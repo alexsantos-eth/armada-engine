@@ -8,6 +8,8 @@ const Playground = () => {
   const {
     initializeNewGame,
     gameState,
+    playerBoard,
+    enemyBoard,
     match,
     engine,
   } = useMatch({
@@ -29,20 +31,18 @@ const Playground = () => {
   };
 
   const getCellContent = (x: number, y: number, isPlayerBoard: boolean) => {
-    if (!match) return null;
-
-    const isPlayerShot = !isPlayerBoard;
-    const shot = match.getShotAtPosition(x, y, isPlayerShot);
-
-    if (shot) {
-      return shot.hit ? "💥" : "💧";
+    const currentBoard = isPlayerBoard ? playerBoard : enemyBoard;
+    const cell = currentBoard?.[y]?.[x];
+    switch (cell) {
+      case "SHIP":
+        return isPlayerBoard ? "🚢" : "";
+      case "HIT":
+        return "💥";
+      case "MISS":
+        return "💧";
+      default:
+        return "";
     }
-
-    if (isPlayerBoard && match.hasShipAtPosition(x, y, true)) {
-      return "🚢";
-    }
-    
-    return "";
   };
 
   useEffect(() => {
