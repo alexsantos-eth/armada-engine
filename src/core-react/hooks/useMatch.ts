@@ -9,7 +9,10 @@ import {
   type MatchCallbacks,
 } from "../../core/engine";
 import { getShipCellsFromShip } from "../../core/tools/ship/calculations";
-import type { GAME_INITIAL_TURN } from "../../core/manager/initializer";
+import type {
+  GAME_INITIAL_TURN,
+  GameSetup,
+} from "../../core/manager/initializer";
 import type { Board } from "../../core/types/common";
 
 interface UseMatchProps extends MatchCallbacks {
@@ -19,12 +22,14 @@ interface UseMatchProps extends MatchCallbacks {
     playerShips: GameShip[];
     enemyShips: GameShip[];
   };
+  initialSetup?: GameSetup;
 }
 
 const useMatch = ({
   config,
   ships,
   startTurn,
+  initialSetup,
   ...callbacks
 }: UseMatchProps | undefined = {}) => {
   const [gameState, setGameState] = useState<GameEngineState | null>(null);
@@ -37,7 +42,8 @@ const useMatch = ({
 
   const initializeNewGame = () => {
     const initializer = new GameInitializer(config);
-    const setup = initializer.initializeGame(startTurn ?? "random", ships);
+    const setup =
+      initialSetup ?? initializer.initializeGame(startTurn ?? "random", ships);
 
     const newMatch = new Match(setup.config, {
       ...callbacks,
