@@ -758,5 +758,196 @@ describe('Match', () => {
       expect(state.areAllEnemyShipsDestroyed).toBe(true);
       expect(state.areAllPlayerShipsDestroyed).toBe(false);
     });
+
+    it('should check if all ships destroyed using dedicated method', () => {
+      expect(match.areAllShipsDestroyed(true)).toBe(false);
+      expect(match.areAllShipsDestroyed(false)).toBe(false);
+
+      // Destroy all enemy ships
+      match.executeShot(5, 5, true);
+      match.executeShot(6, 5, true);
+      match.executeShot(9, 9, false);
+      match.executeShot(7, 7, true);
+      match.executeShot(7, 8, true);
+      match.executeShot(7, 9, true);
+
+      expect(match.areAllShipsDestroyed(false)).toBe(true);
+      expect(match.areAllShipsDestroyed(true)).toBe(false);
+    });
+  });
+
+  describe('RuleSet Management', () => {
+    beforeEach(() => {
+      match.initializeMatch(playerShips, enemyShips);
+    });
+
+    it('should get current ruleset', () => {
+      const ruleSet = match.getRuleSet();
+      expect(ruleSet).toBeDefined();
+      expect(ruleSet.name).toBe('Classic');
+    });
+
+    it('should allow changing ruleset during match', () => {
+      const initialRuleSet = match.getRuleSet();
+      expect(initialRuleSet.name).toBe('Classic');
+
+      // Classic: hit allows shooting again
+      const hit1 = match.executeShot(7, 7, true);
+      expect(hit1.canShootAgain).toBe(true);
+
+      // Change to alternating rules
+      match.setRuleSet(AlternatingTurnsRuleSet);
+      const newRuleSet = match.getRuleSet();
+      expect(newRuleSet.name).toBe('Alternating');
+
+      // Player misses to switch turn
+      match.executeShot(0, 0, true);
+      match.executeShot(9, 9, false); // Enemy miss
+
+      // Now with alternating rules: hit should end turn
+      const hit2 = match.executeShot(7, 8, true);
+      expect(hit2.canShootAgain).toBe(false);
+      expect(hit2.turnEnded).toBe(true);
+    });
+
+    it('should use provided ruleset in constructor', () => {
+      const alternatingMatch = new Match(
+        { boardWidth: 10, boardHeight: 10 },
+        undefined,
+        AlternatingTurnsRuleSet
+      );
+
+      const ruleSet = alternatingMatch.getRuleSet();
+      expect(ruleSet.name).toBe('Alternating');
+    });
+  });
+
+  describe('Phase Management', () => {
+    it('should start in IDLE phase', () => {
+      const newMatch = new Match({ boardWidth: 10, boardHeight: 10 });
+      expect(newMatch.getPhase()).toBe('IDLE');
+    });
+
+    it('should call setPhase with START on initialization', () => {
+      const onPhaseChange = vi.fn();
+      const newMatch = new Match({ boardWidth: 10, boardHeight: 10 }, { onPhaseChange });
+      
+      newMatch.initializeMatch(playerShips, enemyShips);
+      
+      expect(onPhaseChange).toHaveBeenCalledWith('START');
+    });
+
+    it('should cycle through phases during shot execution', () => {
+      const newMatch = new Match({ boardWidth: 10, boardHeight: 10 });
+      newMatch.initializeMatch(playerShips, enemyShips);
+      
+      // Execute a shot - should cycle through phases
+      const result = newMatch.executeShot(5, 5, true);
+      
+      // Shot succeeded, should end in TURN phase
+      expect(result.phase).toBe('TURN');
+      expect(newMatch.getPhase()).toBe('TURN');
+    });
+
+    it('should be in ATTACK phase when shot fails validation', () => {
+      match.initializeMatch(playerShips, enemyShips);
+      
+      // First shot succeeds
+      match.executeShot(5, 5, true);
+      
+      // Try shooting same cell again - should fail in ATTACK phase
+      const result = match.executeShot(5, 5, true);
+      expect(result.success).toBe(false);
+      expect(result.phase).toBe('ATTACK');
+    });
+
+    it('should call onPhaseChange callback during shot', () => {
+      const onPhaseChange = vi.fn();
+      const matchWithCallback = new Match(
+        { boardWidth: 10, boardHeight: 10 },
+        { onPhaseChange }
+      );
+
+      matchWithCallback.initializeMatch(playerShips, enemyShips);
+      matchWithCallback.executeShot(5, 5, true);
+      
+      // Should have called PLAN, ATTACK, and TURN
+      expect(onPhaseChange).toHaveBeenCalled();
+      expect(onPhaseChange).toHaveBeenCalledWith('TURN');
+    });
+  });
+
+  describe('Enemy Victory (Player Ships Destroyed)', () => {
+    beforeEach(() => {
+      match.initializeMatch(playerShips, enemyShips);
+    });
+
+    it('should end match when all player ships destroyed', () => {
+      // Player misses to give enemy turn
+      match.executeShot(9, 9, true);
+      expect(match.isEnemyTurn()).toBe(true);
+
+      // Enemy destroys player ship 1 (small at [0,0])
+      match.executeShot(0, 0, false);
+      match.executeShot(1, 0, false);
+
+      // Turn switches after destruction
+      expect(match.isPlayerTurn()).toBe(true);
+
+      // Player misses
+      match.executeShot(9, 8, true);
+
+      // Enemy destroys player ship 2 (medium at [2,2] vertical)
+      match.executeShot(2, 2, false);
+      match.executeShot(2, 3, false);
+      const result = match.executeShot(2, 4, false);
+
+      expect(result.isGameOver).toBe(true);
+      expect(result.winner).toBe('enemy');
+      expect(match.isMatchOver()).toBe(true);
+      expect(match.getWinner()).toBe('enemy');
+    });
+
+    it('should detect enemy victory with alternating ruleset', () => {
+      const alternatingMatch = new Match(
+        { boardWidth: 10, boardHeight: 10 },
+        undefined,
+        AlternatingTurnsRuleSet
+      );
+      alternatingMatch.initializeMatch(playerShips, enemyShips);
+
+      // Alternately destroy all player ships
+      alternatingMatch.executeShot(9, 9, true); // Player miss
+      alternatingMatch.executeShot(0, 0, false); // Enemy hit
+      alternatingMatch.executeShot(9, 8, true); // Player miss
+      alternatingMatch.executeShot(1, 0, false); // Enemy destroys ship 1
+      
+      alternatingMatch.executeShot(9, 7, true); // Player miss
+      alternatingMatch.executeShot(2, 2, false); // Enemy hit
+      alternatingMatch.executeShot(9, 6, true); // Player miss
+      alternatingMatch.executeShot(2, 3, false); // Enemy hit
+      alternatingMatch.executeShot(9, 5, true); // Player miss
+      const result = alternatingMatch.executeShot(2, 4, false); // Enemy destroys ship 2
+
+      expect(result.isGameOver).toBe(true);
+      expect(result.winner).toBe('enemy');
+    });
+
+    it('should provide correct reason on enemy victory', () => {
+      // Player misses
+      match.executeShot(9, 9, true);
+
+      // Enemy destroys all player ships
+      match.executeShot(0, 0, false);
+      match.executeShot(1, 0, false);
+      match.executeShot(9, 8, true); // Player miss
+      match.executeShot(2, 2, false);
+      match.executeShot(2, 3, false);
+      const result = match.executeShot(2, 4, false);
+
+      expect(result.reason).toBe('Game over');
+      expect(result.turnEnded).toBe(true);
+      expect(result.canShootAgain).toBe(false);
+    });
   });
 });

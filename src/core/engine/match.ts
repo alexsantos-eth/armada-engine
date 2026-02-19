@@ -16,7 +16,7 @@ export class Match {
   private engine: GameEngine;
   private matchCallbacks?: MatchCallbacks;
   private ruleSet: MatchRuleSet;
-  public phase: MatchPhase = "PREPARATION";
+  public phase: MatchPhase = "IDLE";
 
   constructor(
     config?: Partial<GameConfig>,
@@ -61,13 +61,14 @@ export class Match {
   ): void {
     this.engine.initializeGame(playerShips, enemyShips, initialTurn);
     this.matchCallbacks?.onMatchStart?.();
+    this.setPhase("START");
   }
 
   /**
    * Execute a shot following match rules with phase system
    *
    * Phases:
-   * 1. Preparation: Prepare attack type or defense (not implemented yet)
+   * 1. Plan: Prepare attack type or defense (not implemented yet)
    * 2. Attack: Execute the shot and resolve damage
    * 3. Turn: Decide who plays next based on result
    *
@@ -81,8 +82,8 @@ export class Match {
     y: number,
     isPlayerShot: boolean,
   ): MatchShotResult {
-    // Phase 1: Preparation (not implemented yet)
-    this.phasePreparation(isPlayerShot);
+    // Phase 1: Plan (not implemented yet)
+    this.phasePlan(isPlayerShot);
 
     // Phase 2: Attack - Execute the shot
     const attackResult = this.phaseAttack(x, y, isPlayerShot);
@@ -112,17 +113,17 @@ export class Match {
   }
 
   /**
-   * Phase 1: Preparation
+   * Phase 1: Plan
    * Prepare attack type or defense modifications
    * @param _isPlayerShot - true for player, false for enemy (not used yet)
-   * @returns Preparation phase result
+   * @returns Plan phase result
    * @private
    */
-  private phasePreparation(_isPlayerShot: boolean): PreparationPhaseResult {
-    this.setPhase("PREPARATION");
+  private phasePlan(_isPlayerShot: boolean): PlanPhaseResult {
+    this.setPhase("PLAN");
 
     return {
-      phase: "PREPARATION",
+      phase: "PLAN",
       ready: true,
     };
   }
@@ -353,13 +354,13 @@ export class Match {
 /**
  * Match phases
  */
-export type MatchPhase = "PREPARATION" | "ATTACK" | "TURN";
+export type MatchPhase = "PLAN" | "ATTACK" | "TURN" | "START" | "IDLE"
 
 /**
- * Preparation phase result
+ * Plan phase result
  */
-export interface PreparationPhaseResult {
-  phase: "PREPARATION";
+export interface PlanPhaseResult {
+  phase: "PLAN";
   ready: boolean;
 }
 

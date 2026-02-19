@@ -6,7 +6,7 @@ export type {
   MatchShotResult,
   MatchCallbacks,
   MatchPhase,
-  PreparationPhaseResult,
+  PlanPhaseResult,
   AttackPhaseResult,
   TurnPhaseResult,
 } from "./match";
