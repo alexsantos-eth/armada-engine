@@ -1,7 +1,7 @@
 import { useRef } from "preact/hooks";
 import { GameInitializer } from "../core/manager";
 import SingleMatch from "./components/single-match";
-import { Match } from "../core/engine";
+import { Match, type Shot } from "../core/engine";
 
 const initializer = new GameInitializer({
   boardWidth: 5,
@@ -10,17 +10,17 @@ const initializer = new GameInitializer({
 const initialSetup = initializer.initializeGame("random");
 
 const Playground = () => {
-  const matchPlayerRef = useRef<Match | null>(null);
-  const enemyMatchRef = useRef<Match | null>(null);
+  const player1MatchRef = useRef<Match | null>(null);
+  const player2MatchRef = useRef<Match | null>(null);
 
-  const onPlayerShot = (x: number, y: number) => {
-    enemyMatchRef.current?.executeShot(x, y, false);
-    console.log(`Player shot at (${x}, ${y})`);
+  const onPlayer1Shot = (shot: Shot, isPlayerShot: boolean) => {
+    if (!isPlayerShot) return;
+    player2MatchRef.current?.executeShot(shot.x, shot.y, false);
   };
 
-  const onEnemyShot = (x: number, y: number) => {
-    matchPlayerRef.current?.executeShot(x, y, false);
-    console.log(`Enemy shot at (${x}, ${y})`);
+  const onPlayer2Shot = (shot: Shot, isPlayerShot: boolean) => {
+    if (!isPlayerShot) return;
+    player1MatchRef.current?.executeShot(shot.x, shot.y, false);
   };
 
   return (
@@ -28,14 +28,14 @@ const Playground = () => {
       <h1>🚀 Playground 🚀</h1>
 
       <SingleMatch
-        onShot={onPlayerShot}
+        onShot={onPlayer1Shot}
         initialSetup={initialSetup}
-        matchRef={matchPlayerRef}
+        matchRef={player1MatchRef}
       />
 
       <SingleMatch
-        onShot={onEnemyShot}
-        matchRef={enemyMatchRef}
+        onShot={onPlayer2Shot}
+        matchRef={player2MatchRef}
         initialSetup={{
           config: initialSetup.config,
           initialTurn:

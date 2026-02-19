@@ -1,17 +1,16 @@
 import { useEffect } from "preact/hooks";
 import useMatch from "../../core-react/hooks/useMatch";
 import { type GameSetup } from "../../core/manager";
-import type { Match } from "../../core/engine";
+import type { Match, MatchCallbacks } from "../../core/engine";
 
-interface SingleMatchProps {
+interface SingleMatchProps extends MatchCallbacks{
   initialSetup: GameSetup;
-  onShot?: (x: number, y: number) => void;
   matchRef?: React.MutableRefObject<Match | null>;
 }
 
-const SingleMatch = ({ initialSetup, onShot, matchRef }: SingleMatchProps) => {
+const SingleMatch = ({ initialSetup, matchRef , ...callbacks}: SingleMatchProps) => {
   const { initializeNewGame, gameState, playerBoard, enemyBoard, match } =
-    useMatch({ initialSetup });
+    useMatch({ initialSetup, ...callbacks });
 
   const boardSize = match?.getBoardDimensions();
 
@@ -19,7 +18,6 @@ const SingleMatch = ({ initialSetup, onShot, matchRef }: SingleMatchProps) => {
     if (!match || !gameState) return;
     if (gameState.isGameOver || !gameState.isPlayerTurn) return;
     match.executeShot(x, y, true);
-    onShot?.(x, y);
   };
 
   const getCellContent = (x: number, y: number, isPlayerBoard: boolean) => {
