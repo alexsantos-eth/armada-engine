@@ -179,7 +179,7 @@ describe('GameEngine', () => {
       engine.initializeGame(playerShips, enemyShips);
     });
 
-    it('should detect player victory when all enemy ships destroyed', () => {
+    it('should detect when all enemy ships are destroyed', () => {
       // Destroy enemy ship 1 (small ship at [5,5], size 2)
       engine.executeShot(5, 5, true);
       engine.executeShot(6, 5, true);
@@ -187,14 +187,19 @@ describe('GameEngine', () => {
       // Destroy enemy ship 2 (medium ship at [7,7], size 3)
       engine.executeShot(7, 7, true);
       engine.executeShot(7, 8, true);
-      const result = engine.executeShot(7, 9, true);
+      engine.executeShot(7, 9, true);
       
-      expect(result.isGameOver).toBe(true);
-      expect(result.winner).toBe('player');
+      const state = engine.getState();
+      expect(state.areAllEnemyShipsDestroyed).toBe(true);
+      expect(state.areAllPlayerShipsDestroyed).toBe(false);
+      
+      // Game over must be set manually (normally done by Match)
+      engine.setGameOver('player');
       expect(engine.getWinner()).toBe('player');
+      expect(engine.getState().isGameOver).toBe(true);
     });
 
-    it('should detect enemy victory when all player ships destroyed', () => {
+    it('should detect when all player ships are destroyed', () => {
       // Destroy player ship 1 (small ship at [0,0], size 2)
       engine.executeShot(0, 0, false);
       engine.executeShot(1, 0, false);
@@ -202,13 +207,19 @@ describe('GameEngine', () => {
       // Destroy player ship 2 (medium ship at [2,2], size 3)
       engine.executeShot(2, 2, false);
       engine.executeShot(2, 3, false);
-      const result = engine.executeShot(2, 4, false);
+      engine.executeShot(2, 4, false);
       
-      expect(result.isGameOver).toBe(true);
-      expect(result.winner).toBe('enemy');
+      const state = engine.getState();
+      expect(state.areAllPlayerShipsDestroyed).toBe(true);
+      expect(state.areAllEnemyShipsDestroyed).toBe(false);
+      
+      // Game over must be set manually (normally done by Match)
+      engine.setGameOver('enemy');
+      expect(engine.getWinner()).toBe('enemy');
+      expect(engine.getState().isGameOver).toBe(true);
     });
 
-    it('should call onGameOver callback', () => {
+    it('should call onGameOver callback when setGameOver is called', () => {
       const onGameOver = vi.fn();
       const engineWithCallback = new GameEngine({}, { onGameOver });
       engineWithCallback.initializeGame(playerShips, enemyShips);
@@ -220,10 +231,13 @@ describe('GameEngine', () => {
       engineWithCallback.executeShot(7, 8, true);
       engineWithCallback.executeShot(7, 9, true);
       
+      // Manually set game over (normally done by Match)
+      engineWithCallback.setGameOver('player');
+      
       expect(onGameOver).toHaveBeenCalledWith('player');
     });
 
-    it('should not allow shots after game over', () => {
+    it('should check areAllShipsDestroyed helper method', () => {
       // Destroy all enemy ships
       engine.executeShot(5, 5, true);
       engine.executeShot(6, 5, true);
@@ -231,8 +245,8 @@ describe('GameEngine', () => {
       engine.executeShot(7, 8, true);
       engine.executeShot(7, 9, true);
       
-      const state = engine.getState();
-      expect(state.isGameOver).toBe(true);
+      expect(engine.areAllShipsDestroyed(false)).toBe(true); // enemy ships
+      expect(engine.areAllShipsDestroyed(true)).toBe(false); // player ships
     });
   });
 

@@ -1,28 +1,34 @@
 import { GameEngine, type GameEngineState, type ShotResult } from "./logic";
 import type { GameShip, Winner, GameTurn } from "../types/common";
 import type { GameConfig } from "../types/config";
+import { DefaultRuleSet, type MatchRuleSet } from "./rulesets";
 
 /**
  * Match Rules Manager
  *
- * Implements the game match rules:
- * 1. If a shot hits (but doesn't destroy the ship), player can shoot again
- * 2. If a shot destroys the entire ship, turn ends
- * 3. Winner is determined when all enemy ships are destroyed
+ * Implements game match rules using configurable RuleSets:
+ * - Turn management (when to end turn, when to allow shooting again)
+ * - Game over conditions (what determines a winner)
  *
  * This class wraps the GameEngine and enforces turn logic automatically.
  */
 export class Match {
   private engine: GameEngine;
   private matchCallbacks?: MatchCallbacks;
+  private ruleSet: MatchRuleSet;
 
-  constructor(config?: Partial<GameConfig>, callbacks?: MatchCallbacks) {
+  constructor(
+    config?: Partial<GameConfig>,
+    callbacks?: MatchCallbacks,
+    ruleSet?: MatchRuleSet,
+  ) {
     if (!config) {
       const initializer = new GameInitializer();
       config = initializer.getDefaultConfig();
     }
 
     this.matchCallbacks = callbacks;
+    this.ruleSet = ruleSet ?? DefaultRuleSet;
 
     this.engine = new GameEngine(config, {
       onStateChange: (state) => {
@@ -143,7 +149,7 @@ export class Match {
 
   /**
    * Phase 3: Turn Decision
-   * Decide who plays next based on attack result
+   * Decide who plays next based on attack result and current RuleSet
    * @param attackResult - Result from attack phase
    * @param _isPlayerShot - true for player, false for enemy (not used yet)
    * @returns Turn phase result
@@ -155,41 +161,19 @@ export class Match {
   ): TurnPhaseResult {
     const state = this.engine.getState();
 
-    let turnEnded = false;
-    let canShootAgain = false;
-    let reason = "";
+    // Use RuleSet to decide turn
+    const decision = this.ruleSet.decideTurn(attackResult, state);
 
-    if (state.isGameOver) {
-      // Game over - match ends
-      turnEnded = true;
-      canShootAgain = false;
-      reason = "Game over";
-    } else if (attackResult.hit) {
-      if (attackResult.shipDestroyed) {
-        // Ship destroyed - turn ends
-        turnEnded = true;
-        canShootAgain = false;
-        reason = "Ship destroyed - turn ends";
-        this.engine.toggleTurn();
-      } else {
-        // Hit but ship not destroyed - can shoot again
-        turnEnded = false;
-        canShootAgain = true;
-        reason = "Hit - shoot again";
-      }
-    } else {
-      // Miss - turn ends
-      turnEnded = true;
-      canShootAgain = false;
-      reason = "Miss - turn ends";
+    // Apply turn toggle if needed
+    if (decision.shouldToggleTurn) {
       this.engine.toggleTurn();
     }
 
     return {
       phase: "TURN",
-      turnEnded,
-      canShootAgain,
-      reason,
+      turnEnded: decision.shouldEndTurn,
+      canShootAgain: decision.canShootAgain,
+      reason: decision.reason,
       isGameOver: state.isGameOver,
       winner: state.winner,
     };
@@ -267,7 +251,7 @@ export class Match {
 
   /**
    * Check if the match is over and set winner if needed
-   * This is where Match determines game over based on match rules
+   * Uses the current RuleSet to determine game over conditions
    * @private
    */
   private checkGameOver(): void {
@@ -275,11 +259,28 @@ export class Match {
 
     if (state.isGameOver) return;
 
-    if (state.areAllPlayerShipsDestroyed) {
-      this.engine.setGameOver("enemy");
-    } else if (state.areAllEnemyShipsDestroyed) {
-      this.engine.setGameOver("player");
+    // Use RuleSet to check game over
+    const decision = this.ruleSet.checkGameOver(state);
+
+    if (decision.isGameOver && decision.winner) {
+      this.engine.setGameOver(decision.winner);
     }
+  }
+
+  /**
+   * Get current RuleSet
+   * @returns Current match rule set
+   */
+  public getRuleSet(): MatchRuleSet {
+    return this.ruleSet;
+  }
+
+  /**
+   * Set a new RuleSet for the match
+   * @param ruleSet - New rule set to apply
+   */
+  public setRuleSet(ruleSet: MatchRuleSet): void {
+    this.ruleSet = ruleSet;
   }
 
   /**

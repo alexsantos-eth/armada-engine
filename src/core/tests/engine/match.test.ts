@@ -405,4 +405,121 @@ describe('Match', () => {
       expect(match.isPlayerTurn()).toBe(true);
     });
   });
+
+  describe('Phase System', () => {
+    beforeEach(() => {
+      match.initializeMatch(playerShips, enemyShips);
+    });
+
+    it('should return phase information in shot result', () => {
+      const result = match.executeShot(5, 5, true);
+      
+      expect(result).toHaveProperty('phase');
+      expect(result.phase).toBeDefined();
+    });
+
+    it('should return TURN phase for successful shots', () => {
+      const result = match.executeShot(5, 5, true);
+      
+      expect(result.phase).toBe('TURN');
+    });
+
+    it('should return ATTACK phase for failed shots', () => {
+      match.executeShot(5, 5, true);
+      const result = match.executeShot(5, 5, true); // Duplicate
+      
+      expect(result.phase).toBe('ATTACK');
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('Game Over - Immediate Detection', () => {
+    beforeEach(() => {
+      match.initializeMatch(playerShips, enemyShips);
+    });
+
+    it('should detect game over immediately when last ship destroyed', () => {
+      // Destroy first enemy ship
+      match.executeShot(5, 5, true);
+      match.executeShot(6, 5, true);
+      
+      // Turn switches after ship destruction
+      expect(match.isEnemyTurn()).toBe(true);
+      
+      // Enemy misses to give turn back
+      match.executeShot(9, 9, false);
+      expect(match.isPlayerTurn()).toBe(true);
+      
+      // Destroy second enemy ship partially
+      match.executeShot(7, 7, true);
+      expect(match.isPlayerTurn()).toBe(true); // Still player turn (hit but not destroyed)
+      
+      match.executeShot(7, 8, true);
+      expect(match.isPlayerTurn()).toBe(true); // Still player turn (hit but not destroyed)
+      
+      // Destroy last piece of last ship
+      const finalShot = match.executeShot(7, 9, true);
+      
+      // Should detect game over immediately, not allowing shoot again despite hit
+      expect(finalShot.hit).toBe(true);
+      expect(finalShot.shipDestroyed).toBe(true);
+      expect(finalShot.isGameOver).toBe(true);
+      expect(finalShot.winner).toBe('player');
+      expect(finalShot.canShootAgain).toBe(false); // Game over takes priority
+      expect(finalShot.turnEnded).toBe(true);
+      expect(finalShot.reason).toBe('Game over');
+      
+      expect(match.isMatchOver()).toBe(true);
+      expect(match.getWinner()).toBe('player');
+    });
+
+    it('should detect game over on last hit even if it would normally allow shooting again', () => {
+      // Set up: destroy first ship
+      match.executeShot(5, 5, true);
+      match.executeShot(6, 5, true);
+      match.executeShot(9, 9, false); // Enemy miss
+      
+      // Destroy second ship in one continuous turn
+      const hit1 = match.executeShot(7, 7, true);
+      expect(hit1.canShootAgain).toBe(true);
+      
+      const hit2 = match.executeShot(7, 8, true);
+      expect(hit2.canShootAgain).toBe(true);
+      
+      // Last hit should trigger game over, not "shoot again"
+      const finalHit = match.executeShot(7, 9, true);
+      expect(finalHit.canShootAgain).toBe(false);
+      expect(finalHit.isGameOver).toBe(true);
+      expect(finalHit.reason).toBe('Game over');
+    });
+  });
+
+  describe('Match State Updates', () => {
+    beforeEach(() => {
+      match.initializeMatch(playerShips, enemyShips);
+    });
+
+    it('should include ship destruction status in state', () => {
+      const state = match.getState();
+      
+      expect(state).toHaveProperty('areAllPlayerShipsDestroyed');
+      expect(state).toHaveProperty('areAllEnemyShipsDestroyed');
+      expect(state.areAllPlayerShipsDestroyed).toBe(false);
+      expect(state.areAllEnemyShipsDestroyed).toBe(false);
+    });
+
+    it('should update ship destruction status after destroying all ships', () => {
+      // Destroy all enemy ships
+      match.executeShot(5, 5, true);
+      match.executeShot(6, 5, true);
+      match.executeShot(9, 9, false);
+      match.executeShot(7, 7, true);
+      match.executeShot(7, 8, true);
+      match.executeShot(7, 9, true);
+      
+      const state = match.getState();
+      expect(state.areAllEnemyShipsDestroyed).toBe(true);
+      expect(state.areAllPlayerShipsDestroyed).toBe(false);
+    });
+  });
 });

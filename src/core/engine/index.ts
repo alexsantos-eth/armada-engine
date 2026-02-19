@@ -2,7 +2,25 @@ export { GameEngine } from "./logic";
 export type { GameEngineState, ShotResult, GameEngineCallbacks } from "./logic";
 
 export { Match } from "./match";
-export type { MatchShotResult, MatchCallbacks } from "./match";
+export type {
+  MatchShotResult,
+  MatchCallbacks,
+  MatchPhase,
+  PreparationPhaseResult,
+  AttackPhaseResult,
+  TurnPhaseResult,
+} from "./match";
+
+export {
+  ClassicRuleSet,
+  AlternatingTurnsRuleSet,
+  DefaultRuleSet,
+} from "./rulesets";
+export type {
+  MatchRuleSet,
+  TurnDecision,
+  GameOverDecision,
+} from "./rulesets";
 
 export { GameInitializer } from "../manager";
 export type { GameSetup } from "../manager";
