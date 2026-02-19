@@ -1,4 +1,4 @@
-import { useAuthStore } from "../../stores/data/authStore";
+import { useAuthStore } from "../network/stores/data/authStore";
 
 export const useAuth = () => {
   const {

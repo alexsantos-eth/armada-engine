@@ -118,6 +118,8 @@ export class Match {
    * @private
    */
   private phasePreparation(_isPlayerShot: boolean): PreparationPhaseResult {
+    this.matchCallbacks?.onPhaseChange?.("PREPARATION");
+
     return {
       phase: "PREPARATION",
       ready: true,
@@ -138,6 +140,8 @@ export class Match {
     y: number,
     isPlayerShot: boolean,
   ): AttackPhaseResult {
+    this.matchCallbacks?.onPhaseChange?.("ATTACK");
+
     const shotResult = this.engine.executeShot(x, y, isPlayerShot);
     this.checkGameOver();
 
@@ -159,6 +163,8 @@ export class Match {
     attackResult: AttackPhaseResult,
     _isPlayerShot: boolean,
   ): TurnPhaseResult {
+    this.matchCallbacks?.onPhaseChange?.("TURN");
+
     const state = this.engine.getState();
     const decision = this.ruleSet.decideTurn(attackResult, state);
 
@@ -377,6 +383,7 @@ export interface MatchCallbacks {
   onShot?: (shot: Shot, isPlayerShot: boolean) => void;
   onGameOver?: (winner: Winner) => void;
   onMatchStart?: () => void;
+  onPhaseChange?: (phase: MatchPhase) => void;
 }
 
 // Re-export Shot type for convenience

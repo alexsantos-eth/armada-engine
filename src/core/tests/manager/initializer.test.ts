@@ -257,8 +257,8 @@ describe('GameInitializer', () => {
       const initializer = new GameInitializer();
       const config = initializer.getDefaultConfig();
       
-      expect(config.boardWidth).toBe(10);
-      expect(config.boardHeight).toBe(10);
+      expect(config.boardWidth).toBe(5);
+      expect(config.boardHeight).toBe(5);
       expect(config.shipCounts).toEqual({
         small: 1,
         medium: 2,

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { roomService } from "../../../services/room/realtime";
-import type { GameRoom, RoomPlayer } from "../../../types/game/room";
 import { useAuth } from "./useAuth";
+import type { GameRoom, RoomPlayer } from "../types/game/room";
+import { roomService } from "../services/room/realtime";
 
 export const useRoom = (roomId?: string) => {
   const [room, setRoom] = useState<GameRoom | null>(null);
@@ -51,7 +51,7 @@ export const useRoom = (roomId?: string) => {
         setLoading(false);
       }
     },
-    [user]
+    [user],
   );
 
   const joinRoom = useCallback(
@@ -82,7 +82,7 @@ export const useRoom = (roomId?: string) => {
         setLoading(false);
       }
     },
-    [user]
+    [user],
   );
 
   const setPlayerReady = useCallback(
@@ -98,14 +98,16 @@ export const useRoom = (roomId?: string) => {
         await roomService.updatePlayerReady(room.id, user.uid, isReady);
       } catch (err) {
         const errorMessage =
-          err instanceof Error ? err.message : "Error updating player ready status";
+          err instanceof Error
+            ? err.message
+            : "Error updating player ready status";
         setError(errorMessage);
         throw err;
       } finally {
         setLoading(false);
       }
     },
-    [room, user]
+    [room, user],
   );
 
   const startGame = useCallback(async (): Promise<void> => {

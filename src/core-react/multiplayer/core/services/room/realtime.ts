@@ -1,9 +1,9 @@
 import type { GameRoom, RoomPlayer } from "../../types/game/room";
-import { GameInitializer } from "../../../core/engine";
 
-import type { PlayerRole, Shot } from "../../../core/types/common";
 import { dbUtils } from "../../network/realtime/controller";
-import { GAME_CONSTANTS } from "../../../core/constants/game";
+import { GameInitializer } from "../../../../../core/engine";
+import { GAME_CONSTANTS } from "../../../../../core/constants/game";
+import type { PlayerRole, Shot } from "../../../../../core/types/common";
 
 export class RoomService {
   private static instance: RoomService;
@@ -59,6 +59,7 @@ export class RoomService {
       status: "waiting",
       initialTurn,
       currentTurn: initialTurn,
+      ruleSet: 'ClassicRuleSet',
       gameConfig: {
         boardHeight:
           setup.config.boardHeight ?? GAME_CONSTANTS.BOARD.DEFAULT_HEIGHT,
@@ -301,6 +302,12 @@ export class RoomService {
         guest: null,
       });
     }
+  }
+
+  async updateCurrentPhase(roomId: string, currentPhase: string): Promise<void> {
+    await dbUtils.updateDocument(`rooms/${roomId}`, {
+      currentPhase,
+    });
   }
 }
 

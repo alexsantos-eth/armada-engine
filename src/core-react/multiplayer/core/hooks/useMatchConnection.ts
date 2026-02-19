@@ -1,8 +1,8 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useCallback, useEffect, useState } from "react";
-import type { GameRoom, RoomPlayer } from "../../../types/game/room";
-import { roomService } from "../../../services/room/realtime";
 import { useAuth } from "./useAuth";
+import type { GameRoom, RoomPlayer } from "../types/game/room";
+import { roomService } from "../services/room/realtime";
 
 export interface MatchMessage {
   id: string;

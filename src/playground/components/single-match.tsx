@@ -1,5 +1,5 @@
-import type { CellState } from "../../core/types/common";
 import { useBoard, type UseBoardProps } from "../../core-react/hooks";
+import type { CellState } from "../../core/types/common";
 
 interface SingleMatchProps extends UseBoardProps {}
 
@@ -81,9 +81,10 @@ const SingleMatch = ({
                       justifyContent: "center",
                       fontSize: "20px",
                       backgroundColor: "#fce4ec",
-                      cursor: gameState?.isPlayerTurn && !gameState?.isGameOver
-                        ? "pointer"
-                        : "not-allowed",
+                      cursor:
+                        gameState?.isPlayerTurn && !gameState?.isGameOver
+                          ? "pointer"
+                          : "not-allowed",
                     }}
                   >
                     {getCellContent(cell)}

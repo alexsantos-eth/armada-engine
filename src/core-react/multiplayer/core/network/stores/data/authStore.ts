@@ -38,6 +38,12 @@ export const useAuthStore = create<AuthState>((set) => ({
           displayName,
           isAnonymous: true,
         });
+
+        set({
+          user,
+          isAuthenticated: true,
+          isLoading: false,
+        });
       } catch (profileError) {
         console.warn("Failed to create user profile:", profileError);
       }

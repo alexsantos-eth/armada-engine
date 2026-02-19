@@ -2,6 +2,7 @@ import { useRef } from "preact/hooks";
 import { GameInitializer } from "../core/manager";
 import SingleMatch from "./components/single-match";
 import { Match, type Shot } from "../core/engine";
+import NetworkMatch from "./components/network-match";
 
 const initializer = new GameInitializer({
   boardWidth: 5,
@@ -46,6 +47,9 @@ const Playground = () => {
           enemyShips: initialSetup.playerShips,
         }}
       />
+
+      <h2>Network</h2>
+      <NetworkMatch />
     </div>
   );
 };
