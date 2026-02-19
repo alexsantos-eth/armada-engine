@@ -7,7 +7,6 @@ type PositionKey = string;
 const posKey = (x: number, y: number): PositionKey => `${x},${y}`;
 
 export class GameEngine {
-  // Game state
   private currentTurn: GameTurn;
   private playerShips: GameShip[];
   private enemyShips: GameShip[];
@@ -26,7 +25,6 @@ export class GameEngine {
   private playerShipSizes: Map<number, number>;
   private enemyShipSizes: Map<number, number>;
 
-  // Optional callbacks to observe changes
   private onStateChange?: (state: GameEngineState) => void;
   private onTurnChange?: (turn: GameTurn) => void;
   private onShot?: (shot: Shot, isPlayerShot: boolean) => void;
@@ -55,7 +53,6 @@ export class GameEngine {
     this.playerShipSizes = new Map();
     this.enemyShipSizes = new Map();
 
-    // Optional callbacks
     this.onStateChange = callbacks?.onStateChange;
     this.onTurnChange = callbacks?.onTurnChange;
     this.onShot = callbacks?.onShot;
@@ -310,7 +307,6 @@ export class GameEngine {
   public areAllShipsDestroyed(isPlayerShips: boolean): boolean {
     const ships = isPlayerShips ? this.playerShips : this.enemyShips;
 
-    // If no ships, cannot be "all destroyed" - game shouldn't have started
     if (ships.length === 0) {
       return false;
     }
@@ -325,8 +321,6 @@ export class GameEngine {
    * @param winner - The winner of the game ('player' or 'enemy')
    */
   public setGameOver(winner: Winner): void {
-    if (this.isGameOver) return;
-
     this.winner = winner;
     this.isGameOver = true;
     this.onGameOver?.(this.winner);

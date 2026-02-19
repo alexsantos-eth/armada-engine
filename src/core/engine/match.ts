@@ -24,12 +24,12 @@ export class Match {
 
     this.matchCallbacks = callbacks;
 
-    // Create engine with internal callbacks
     this.engine = new GameEngine(config, {
       onStateChange: (state) => {
         this.matchCallbacks?.onStateChange?.(state);
       },
       onTurnChange: (turn) => {
+        this.checkGameOver();
         this.matchCallbacks?.onTurnChange?.(turn);
       },
       onShot: (shot, isPlayerShot) => {
@@ -57,13 +57,12 @@ export class Match {
   }
 
   /**
-   * Execute a shot following match rules
+   * Execute a shot following match rules with phase system
    *
-   * Rules applied:
-   * - If miss: turn ends automatically
-   * - If hit (but ship not destroyed): player can shoot again (turn continues)
-   * - If hit (and ship destroyed): turn ends automatically
-   * - Game over when all enemy ships destroyed
+   * Phases:
+   * 1. Preparation: Prepare attack type or defense (not implemented yet)
+   * 2. Attack: Execute the shot and resolve damage
+   * 3. Turn: Decide who plays next based on result
    *
    * @param x - X coordinate
    * @param y - Y coordinate
@@ -75,23 +74,87 @@ export class Match {
     y: number,
     isPlayerShot: boolean,
   ): MatchShotResult {
-    // Execute the shot
-    const shotResult = this.engine.executeShot(x, y, isPlayerShot);
+    // Phase 1: Preparation (not implemented yet)
+    this.phasePreparation(isPlayerShot);
 
-    if (!shotResult.success) {
+    // Phase 2: Attack - Execute the shot
+    const attackResult = this.phaseAttack(x, y, isPlayerShot);
+
+    if (!attackResult.success) {
       return {
-        ...shotResult,
+        ...attackResult,
         turnEnded: false,
         canShootAgain: false,
-        reason: shotResult.error || "Shot failed",
+        reason: attackResult.error || "Shot failed",
+        phase: "ATTACK",
       };
     }
 
-    // Check if game is over (Match determines this now)
+    // Phase 3: Turn - Decide next turn
+    const turnResult = this.phaseTurn(attackResult, isPlayerShot);
+
+    return {
+      ...attackResult,
+      isGameOver: turnResult.isGameOver,
+      winner: turnResult.winner,
+      turnEnded: turnResult.turnEnded,
+      canShootAgain: turnResult.canShootAgain,
+      reason: turnResult.reason,
+      phase: turnResult.phase,
+    };
+  }
+
+  /**
+   * Phase 1: Preparation
+   * Prepare attack type or defense modifications
+   * @param _isPlayerShot - true for player, false for enemy (not used yet)
+   * @returns Preparation phase result
+   * @private
+   */
+  private phasePreparation(_isPlayerShot: boolean): PreparationPhaseResult {
+    return {
+      phase: "PREPARATION",
+      ready: true,
+    };
+  }
+
+  /**
+   * Phase 2: Attack
+   * Execute the shot and resolve damage
+   * @param x - X coordinate
+   * @param y - Y coordinate
+   * @param isPlayerShot - true for player, false for enemy
+   * @returns Attack phase result
+   * @private
+   */
+  private phaseAttack(
+    x: number,
+    y: number,
+    isPlayerShot: boolean,
+  ): AttackPhaseResult {
+    const shotResult = this.engine.executeShot(x, y, isPlayerShot);
     this.checkGameOver();
+
+    return {
+      ...shotResult,
+      phase: "ATTACK",
+    };
+  }
+
+  /**
+   * Phase 3: Turn Decision
+   * Decide who plays next based on attack result
+   * @param attackResult - Result from attack phase
+   * @param _isPlayerShot - true for player, false for enemy (not used yet)
+   * @returns Turn phase result
+   * @private
+   */
+  private phaseTurn(
+    attackResult: AttackPhaseResult,
+    _isPlayerShot: boolean,
+  ): TurnPhaseResult {
     const state = this.engine.getState();
 
-    // Apply match rules
     let turnEnded = false;
     let canShootAgain = false;
     let reason = "";
@@ -101,8 +164,8 @@ export class Match {
       turnEnded = true;
       canShootAgain = false;
       reason = "Game over";
-    } else if (shotResult.hit) {
-      if (shotResult.shipDestroyed) {
+    } else if (attackResult.hit) {
+      if (attackResult.shipDestroyed) {
         // Ship destroyed - turn ends
         turnEnded = true;
         canShootAgain = false;
@@ -123,12 +186,12 @@ export class Match {
     }
 
     return {
-      ...shotResult,
-      isGameOver: state.isGameOver,
-      winner: state.winner,
+      phase: "TURN",
       turnEnded,
       canShootAgain,
       reason,
+      isGameOver: state.isGameOver,
+      winner: state.winner,
     };
   }
 
@@ -209,11 +272,9 @@ export class Match {
    */
   private checkGameOver(): void {
     const state = this.engine.getState();
-    
-    // If already game over, nothing to do
+
     if (state.isGameOver) return;
 
-    // Check if all ships of either player are destroyed
     if (state.areAllPlayerShipsDestroyed) {
       this.engine.setGameOver("enemy");
     } else if (state.areAllEnemyShipsDestroyed) {
@@ -269,12 +330,45 @@ export class Match {
 }
 
 /**
+ * Match phases
+ */
+export type MatchPhase = "PREPARATION" | "ATTACK" | "TURN";
+
+/**
+ * Preparation phase result
+ */
+export interface PreparationPhaseResult {
+  phase: "PREPARATION";
+  ready: boolean;
+}
+
+/**
+ * Attack phase result
+ */
+export interface AttackPhaseResult extends ShotResult {
+  phase: "ATTACK";
+}
+
+/**
+ * Turn phase result
+ */
+export interface TurnPhaseResult {
+  phase: "TURN";
+  turnEnded: boolean;
+  canShootAgain: boolean;
+  reason: string;
+  isGameOver: boolean;
+  winner: Winner;
+}
+
+/**
  * Match shot result extends ShotResult with turn information
  */
 export interface MatchShotResult extends ShotResult {
-  turnEnded: boolean; // True if the turn ended with this shot
-  canShootAgain: boolean; // True if player can shoot again
-  reason: string; // Explanation of what happened
+  turnEnded: boolean;
+  canShootAgain: boolean;
+  reason: string;
+  phase: MatchPhase;
 }
 
 /**

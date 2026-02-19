@@ -26,6 +26,8 @@ const SingleMatch = ({
     }
   };
 
+  console.log({gameState})
+
   return (
     <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
       {/* Tableros */}
