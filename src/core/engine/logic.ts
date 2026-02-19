@@ -228,7 +228,6 @@ export class GameEngine {
 
     this.shotCount++;
     this.onShot?.(shot, isPlayerShot);
-    this.checkGameOver();
 
     const shipDestroyed =
       result.hit && result.shipId >= 0
@@ -308,7 +307,7 @@ export class GameEngine {
    * @param isPlayerShips - True to check player ships, false for enemy ships
    * @returns True if all ships are destroyed
    */
-  private areAllShipsDestroyed(isPlayerShips: boolean): boolean {
+  public areAllShipsDestroyed(isPlayerShips: boolean): boolean {
     const ships = isPlayerShips ? this.playerShips : this.enemyShips;
 
     // If no ships, cannot be "all destroyed" - game shouldn't have started
@@ -322,20 +321,16 @@ export class GameEngine {
   }
 
   /**
-   * Check if the game is over and set winner
-   * @private
+   * Set the game as over with a winner
+   * @param winner - The winner of the game ('player' or 'enemy')
    */
-  private checkGameOver(): void {
+  public setGameOver(winner: Winner): void {
     if (this.isGameOver) return;
 
-    const areAllPlayerShipsDestroyed = this.areAllShipsDestroyed(true);
-    const areAllEnemyShipsDestroyed = this.areAllShipsDestroyed(false);
-
-    if (areAllPlayerShipsDestroyed || areAllEnemyShipsDestroyed) {
-      this.winner = areAllPlayerShipsDestroyed ? "enemy" : "player";
-      this.isGameOver = true;
-      this.onGameOver?.(this.winner);
-    }
+    this.winner = winner;
+    this.isGameOver = true;
+    this.onGameOver?.(this.winner);
+    this.notifyStateChange();
   }
 
   /**
@@ -443,6 +438,8 @@ export class GameEngine {
       boardWidth: this.boardWidth,
       boardHeight: this.boardHeight,
       shotCount: this.shotCount,
+      areAllPlayerShipsDestroyed: this.areAllShipsDestroyed(true),
+      areAllEnemyShipsDestroyed: this.areAllShipsDestroyed(false),
     };
   }
 
@@ -572,6 +569,8 @@ export interface GameEngineState {
   boardWidth: number;
   boardHeight: number;
   shotCount: number;
+  areAllPlayerShipsDestroyed: boolean;
+  areAllEnemyShipsDestroyed: boolean;
 }
 
 /**

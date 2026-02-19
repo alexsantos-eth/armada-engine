@@ -87,12 +87,16 @@ export class Match {
       };
     }
 
+    // Check if game is over (Match determines this now)
+    this.checkGameOver();
+    const state = this.engine.getState();
+
     // Apply match rules
     let turnEnded = false;
     let canShootAgain = false;
     let reason = "";
 
-    if (shotResult.isGameOver) {
+    if (state.isGameOver) {
       // Game over - match ends
       turnEnded = true;
       canShootAgain = false;
@@ -120,6 +124,8 @@ export class Match {
 
     return {
       ...shotResult,
+      isGameOver: state.isGameOver,
+      winner: state.winner,
       turnEnded,
       canShootAgain,
       reason,
@@ -197,10 +203,38 @@ export class Match {
   }
 
   /**
+   * Check if the match is over and set winner if needed
+   * This is where Match determines game over based on match rules
+   * @private
+   */
+  private checkGameOver(): void {
+    const state = this.engine.getState();
+    
+    // If already game over, nothing to do
+    if (state.isGameOver) return;
+
+    // Check if all ships of either player are destroyed
+    if (state.areAllPlayerShipsDestroyed) {
+      this.engine.setGameOver("enemy");
+    } else if (state.areAllEnemyShipsDestroyed) {
+      this.engine.setGameOver("player");
+    }
+  }
+
+  /**
    * Get board dimensions
    */
   public getBoardDimensions(): { width: number; height: number } {
     return this.engine.getBoardDimensions();
+  }
+
+  /**
+   * Check if all ships of a player are destroyed
+   * @param isPlayerShips - True to check player ships, false for enemy ships
+   * @returns True if all ships are destroyed
+   */
+  public areAllShipsDestroyed(isPlayerShips: boolean): boolean {
+    return this.engine.areAllShipsDestroyed(isPlayerShips);
   }
 
   /**
