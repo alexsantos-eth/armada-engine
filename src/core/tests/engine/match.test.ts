@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Match } from '../../engine/match';
 import type { GameShip } from '../../types/common';
+import { ClassicRuleSet, AlternatingTurnsRuleSet } from '../../engine/rulesets';
 
 describe('Match', () => {
   let match: Match;
@@ -189,6 +190,242 @@ describe('Match', () => {
       expect(result.reason).toBe('Game over');
       expect(result.turnEnded).toBe(true);
       expect(result.canShootAgain).toBe(false);
+    });
+  });
+
+  describe('RuleSet - Classic Rules', () => {
+    let classicMatch: Match;
+
+    beforeEach(() => {
+      classicMatch = new Match(
+        { boardWidth: 10, boardHeight: 10 },
+        undefined,
+        ClassicRuleSet
+      );
+      classicMatch.initializeMatch(playerShips, enemyShips);
+    });
+
+    it('should use Classic ruleset by default', () => {
+      const defaultMatch = new Match({ boardWidth: 10, boardHeight: 10 });
+      defaultMatch.initializeMatch(playerShips, enemyShips);
+      
+      // Classic rule: hit allows shooting again
+      const result = defaultMatch.executeShot(7, 7, true);
+      expect(result.canShootAgain).toBe(true);
+      expect(result.turnEnded).toBe(false);
+    });
+
+    it('should allow shooting again after hit (ship not destroyed)', () => {
+      const result = classicMatch.executeShot(7, 7, true);
+      
+      expect(result.hit).toBe(true);
+      expect(result.shipDestroyed).toBe(false);
+      expect(result.canShootAgain).toBe(true);
+      expect(result.turnEnded).toBe(false);
+      expect(result.reason).toBe('Hit - shoot again');
+      expect(classicMatch.getCurrentTurn()).toBe('PLAYER_TURN');
+    });
+
+    it('should end turn after miss', () => {
+      const result = classicMatch.executeShot(0, 0, true);
+      
+      expect(result.hit).toBe(false);
+      expect(result.canShootAgain).toBe(false);
+      expect(result.turnEnded).toBe(true);
+      expect(result.reason).toBe('Miss - turn ends');
+      expect(classicMatch.getCurrentTurn()).toBe('ENEMY_TURN');
+    });
+
+    it('should end turn after ship destruction', () => {
+      classicMatch.executeShot(5, 5, true);
+      const result = classicMatch.executeShot(6, 5, true);
+      
+      expect(result.shipDestroyed).toBe(true);
+      expect(result.canShootAgain).toBe(false);
+      expect(result.turnEnded).toBe(true);
+      expect(result.reason).toBe('Ship destroyed - turn ends');
+      expect(classicMatch.getCurrentTurn()).toBe('ENEMY_TURN');
+    });
+
+    it('should allow multiple consecutive hits before destruction', () => {
+      // Medium ship has 3 cells
+      const hit1 = classicMatch.executeShot(7, 7, true);
+      expect(hit1.canShootAgain).toBe(true);
+      expect(classicMatch.isPlayerTurn()).toBe(true);
+
+      const hit2 = classicMatch.executeShot(7, 8, true);
+      expect(hit2.canShootAgain).toBe(true);
+      expect(classicMatch.isPlayerTurn()).toBe(true);
+
+      const hit3 = classicMatch.executeShot(7, 9, true);
+      expect(hit3.shipDestroyed).toBe(true);
+      expect(hit3.canShootAgain).toBe(false);
+      expect(hit3.turnEnded).toBe(true);
+      expect(classicMatch.isEnemyTurn()).toBe(true);
+    });
+  });
+
+  describe('RuleSet - Alternating Turns', () => {
+    let alternatingMatch: Match;
+
+    beforeEach(() => {
+      alternatingMatch = new Match(
+        { boardWidth: 10, boardHeight: 10 },
+        undefined,
+        AlternatingTurnsRuleSet
+      );
+      alternatingMatch.initializeMatch(playerShips, enemyShips);
+    });
+
+    it('should end turn after hit (no continuation on hit)', () => {
+      const result = alternatingMatch.executeShot(7, 7, true);
+      
+      expect(result.hit).toBe(true);
+      expect(result.shipDestroyed).toBe(false);
+      expect(result.canShootAgain).toBe(false);
+      expect(result.turnEnded).toBe(true);
+      expect(result.reason).toBe('Hit - turn ends');
+      expect(alternatingMatch.getCurrentTurn()).toBe('ENEMY_TURN');
+    });
+
+    it('should end turn after miss', () => {
+      const result = alternatingMatch.executeShot(0, 0, true);
+      
+      expect(result.hit).toBe(false);
+      expect(result.canShootAgain).toBe(false);
+      expect(result.turnEnded).toBe(true);
+      expect(result.reason).toBe('Miss - turn ends');
+      expect(alternatingMatch.getCurrentTurn()).toBe('ENEMY_TURN');
+    });
+
+    it('should end turn after ship destruction', () => {
+      alternatingMatch.executeShot(5, 5, true);
+      expect(alternatingMatch.isEnemyTurn()).toBe(true);
+      
+      alternatingMatch.executeShot(9, 9, false); // Enemy miss
+      expect(alternatingMatch.isPlayerTurn()).toBe(true);
+      
+      const result = alternatingMatch.executeShot(6, 5, true);
+      
+      expect(result.shipDestroyed).toBe(true);
+      expect(result.canShootAgain).toBe(false);
+      expect(result.turnEnded).toBe(true);
+      expect(alternatingMatch.getCurrentTurn()).toBe('ENEMY_TURN');
+    });
+
+    it('should strictly alternate turns on consecutive hits', () => {
+      // Hit 1 - turn ends
+      const hit1 = alternatingMatch.executeShot(7, 7, true);
+      expect(hit1.canShootAgain).toBe(false);
+      expect(alternatingMatch.isEnemyTurn()).toBe(true);
+
+      // Enemy miss - turn ends
+      alternatingMatch.executeShot(9, 9, false);
+      expect(alternatingMatch.isPlayerTurn()).toBe(true);
+
+      // Hit 2 - turn ends
+      const hit2 = alternatingMatch.executeShot(7, 8, true);
+      expect(hit2.canShootAgain).toBe(false);
+      expect(alternatingMatch.isEnemyTurn()).toBe(true);
+
+      // Enemy miss - turn ends
+      alternatingMatch.executeShot(9, 8, false);
+      expect(alternatingMatch.isPlayerTurn()).toBe(true);
+
+      // Hit 3 - destroys ship, turn ends
+      const hit3 = alternatingMatch.executeShot(7, 9, true);
+      expect(hit3.shipDestroyed).toBe(true);
+      expect(hit3.canShootAgain).toBe(false);
+      expect(alternatingMatch.isEnemyTurn()).toBe(true);
+    });
+
+    it('should work correctly with both players', () => {
+      // Player hits
+      const p1 = alternatingMatch.executeShot(5, 5, true);
+      expect(p1.hit).toBe(true);
+      expect(p1.turnEnded).toBe(true);
+      expect(alternatingMatch.isEnemyTurn()).toBe(true);
+
+      // Enemy hits
+      const e1 = alternatingMatch.executeShot(0, 0, false);
+      expect(e1.hit).toBe(true);
+      expect(e1.turnEnded).toBe(true);
+      expect(alternatingMatch.isPlayerTurn()).toBe(true);
+
+      // Player misses
+      const p2 = alternatingMatch.executeShot(0, 0, true);
+      expect(p2.hit).toBe(false);
+      expect(p2.turnEnded).toBe(true);
+      expect(alternatingMatch.isEnemyTurn()).toBe(true);
+
+      // Enemy misses
+      const e2 = alternatingMatch.executeShot(9, 9, false);
+      expect(e2.hit).toBe(false);
+      expect(e2.turnEnded).toBe(true);
+      expect(alternatingMatch.isPlayerTurn()).toBe(true);
+    });
+  });
+
+  describe('RuleSet - Comparison', () => {
+    let classicMatch: Match;
+    let alternatingMatch: Match;
+
+    beforeEach(() => {
+      classicMatch = new Match(
+        { boardWidth: 10, boardHeight: 10 },
+        undefined,
+        ClassicRuleSet
+      );
+      alternatingMatch = new Match(
+        { boardWidth: 10, boardHeight: 10 },
+        undefined,
+        AlternatingTurnsRuleSet
+      );
+      
+      classicMatch.initializeMatch(playerShips, enemyShips);
+      alternatingMatch.initializeMatch(playerShips, enemyShips);
+    });
+
+    it('should behave differently on hits between rulesets', () => {
+      // Classic: hit allows shooting again
+      const classicResult = classicMatch.executeShot(7, 7, true);
+      expect(classicResult.canShootAgain).toBe(true);
+      expect(classicMatch.isPlayerTurn()).toBe(true);
+
+      // Alternating: hit ends turn
+      const alternatingResult = alternatingMatch.executeShot(7, 7, true);
+      expect(alternatingResult.canShootAgain).toBe(false);
+      expect(alternatingMatch.isEnemyTurn()).toBe(true);
+    });
+
+    it('should behave the same on misses', () => {
+      // Both end turn on miss
+      const classicResult = classicMatch.executeShot(0, 0, true);
+      expect(classicResult.turnEnded).toBe(true);
+      expect(classicMatch.isEnemyTurn()).toBe(true);
+
+      const alternatingResult = alternatingMatch.executeShot(0, 0, true);
+      expect(alternatingResult.turnEnded).toBe(true);
+      expect(alternatingMatch.isEnemyTurn()).toBe(true);
+    });
+
+    it('should have different game pace', () => {
+      // Classic: can destroy ship in one turn with consecutive hits
+      classicMatch.executeShot(5, 5, true);
+      const classicDestroy = classicMatch.executeShot(6, 5, true);
+      expect(classicDestroy.shipDestroyed).toBe(true);
+      expect(classicMatch.getState().shotCount).toBe(2);
+
+      // Alternating: requires multiple turns to destroy ship
+      alternatingMatch.executeShot(5, 5, true);
+      expect(alternatingMatch.isEnemyTurn()).toBe(true);
+      
+      alternatingMatch.executeShot(9, 9, false); // Enemy turn
+      expect(alternatingMatch.isPlayerTurn()).toBe(true);
+      
+      const alternatingDestroy = alternatingMatch.executeShot(6, 5, true);
+      expect(alternatingDestroy.shipDestroyed).toBe(true);
+      expect(alternatingMatch.getState().shotCount).toBe(3); // More shots needed
     });
   });
 
