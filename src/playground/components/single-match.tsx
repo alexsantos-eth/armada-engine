@@ -1,31 +1,22 @@
-import { useEffect } from "preact/hooks";
-import useMatch from "../../core-react/hooks/useMatch";
-import { type GameSetup } from "../../core/manager";
-import type { Match, MatchCallbacks } from "../../core/engine";
+import type { CellState } from "../../core/types/common";
+import { useBoard, type UseBoardProps } from "../../core-react/hooks";
 
-interface SingleMatchProps extends MatchCallbacks{
-  initialSetup: GameSetup;
-  matchRef?: React.MutableRefObject<Match | null>;
-}
+interface SingleMatchProps extends UseBoardProps {}
 
-const SingleMatch = ({ initialSetup, matchRef , ...callbacks}: SingleMatchProps) => {
-  const { initializeNewGame, gameState, playerBoard, enemyBoard, match } =
-    useMatch({ initialSetup, ...callbacks });
+const SingleMatch = ({
+  initialSetup,
+  matchRef,
+  ...callbacks
+}: SingleMatchProps) => {
+  const {
+    executeShot,
+    match: { playerBoard, enemyBoard, gameState, initializeNewGame },
+  } = useBoard({ initialSetup, matchRef, ...callbacks });
 
-  const boardSize = match?.getBoardDimensions();
-
-  const executeShot = (x: number, y: number) => {
-    if (!match || !gameState) return;
-    if (gameState.isGameOver || !gameState.isPlayerTurn) return;
-    match.executeShot(x, y, true);
-  };
-
-  const getCellContent = (x: number, y: number, isPlayerBoard: boolean) => {
-    const currentBoard = isPlayerBoard ? playerBoard : enemyBoard;
-    const cell = currentBoard?.[y]?.[x];
+  const getCellContent = (cell: CellState) => {
     switch (cell) {
       case "SHIP":
-        return isPlayerBoard ? "🚢" : "";
+        return "🚢";
       case "HIT":
         return "💥";
       case "MISS":
@@ -35,10 +26,6 @@ const SingleMatch = ({ initialSetup, matchRef , ...callbacks}: SingleMatchProps)
     }
   };
 
-  useEffect(() => {
-    if (matchRef) matchRef!.current = match;
-  }, [match, matchRef]);
-
   return (
     <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
       {/* Tableros */}
@@ -47,9 +34,9 @@ const SingleMatch = ({ initialSetup, matchRef , ...callbacks}: SingleMatchProps)
         <div>
           <h2>Tu Tablero</h2>
           <div style={{ display: "inline-block", border: "2px solid #333" }}>
-            {Array.from({ length: boardSize?.height ?? 0 }).map((_, y) => (
+            {playerBoard?.map((row, y) => (
               <div key={y} style={{ display: "flex" }}>
-                {Array.from({ length: boardSize?.width ?? 0 }).map((_, x) => (
+                {row.map((cell, x) => (
                   <div
                     key={`${x}-${y}`}
                     style={{
@@ -64,7 +51,7 @@ const SingleMatch = ({ initialSetup, matchRef , ...callbacks}: SingleMatchProps)
                       cursor: "default",
                     }}
                   >
-                    {getCellContent(x, y, true)}
+                    {getCellContent(cell)}
                   </div>
                 ))}
               </div>
@@ -79,9 +66,9 @@ const SingleMatch = ({ initialSetup, matchRef , ...callbacks}: SingleMatchProps)
         <div>
           <h2>Tablero Enemigo</h2>
           <div style={{ display: "inline-block", border: "2px solid #333" }}>
-            {Array.from({ length: boardSize?.height ?? 0 }).map((_, y) => (
+            {enemyBoard?.map((row, y) => (
               <div key={y} style={{ display: "flex" }}>
-                {Array.from({ length: boardSize?.width ?? 0 }).map((_, x) => (
+                {row.map((cell, x) => (
                   <div
                     key={`${x}-${y}`}
                     onClick={() => executeShot(x, y)}
@@ -93,17 +80,13 @@ const SingleMatch = ({ initialSetup, matchRef , ...callbacks}: SingleMatchProps)
                       alignItems: "center",
                       justifyContent: "center",
                       fontSize: "20px",
-                      cursor:
-                        gameState?.isGameOver || !gameState?.isPlayerTurn
-                          ? "not-allowed"
-                          : "pointer",
-                      opacity:
-                        gameState?.isGameOver || !gameState?.isPlayerTurn
-                          ? 0.6
-                          : 1,
+                      backgroundColor: "#fce4ec",
+                      cursor: gameState?.isPlayerTurn && !gameState?.isGameOver
+                        ? "pointer"
+                        : "not-allowed",
                     }}
                   >
-                    {getCellContent(x, y, false)}
+                    {getCellContent(cell)}
                   </div>
                 ))}
               </div>

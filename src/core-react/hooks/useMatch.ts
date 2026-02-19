@@ -15,7 +15,7 @@ import type {
 } from "../../core/manager/initializer";
 import type { Board } from "../../core/types/common";
 
-interface UseMatchProps extends MatchCallbacks {
+export interface UseMatchProps extends MatchCallbacks {
   config?: Partial<GameConfig>;
   startTurn?: GAME_INITIAL_TURN;
   ships?: {
