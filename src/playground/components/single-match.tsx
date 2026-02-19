@@ -33,6 +33,8 @@ const SingleMatch = ({
         {/* Tablero del Jugador */}
         <div>
           <h2>Tu Tablero</h2>
+          <p>Fase: {matchRef?.current?.getPhase()}</p>
+
           <div style={{ display: "inline-block", border: "2px solid #333" }}>
             {playerBoard?.map((row, y) => (
               <div key={y} style={{ display: "flex" }}>

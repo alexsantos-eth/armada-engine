@@ -16,6 +16,7 @@ export class Match {
   private engine: GameEngine;
   private matchCallbacks?: MatchCallbacks;
   private ruleSet: MatchRuleSet;
+  public phase: MatchPhase = "PREPARATION";
 
   constructor(
     config?: Partial<GameConfig>,
@@ -118,7 +119,7 @@ export class Match {
    * @private
    */
   private phasePreparation(_isPlayerShot: boolean): PreparationPhaseResult {
-    this.matchCallbacks?.onPhaseChange?.("PREPARATION");
+    this.setPhase("PREPARATION");
 
     return {
       phase: "PREPARATION",
@@ -140,7 +141,7 @@ export class Match {
     y: number,
     isPlayerShot: boolean,
   ): AttackPhaseResult {
-    this.matchCallbacks?.onPhaseChange?.("ATTACK");
+    this.setPhase("ATTACK");
 
     const shotResult = this.engine.executeShot(x, y, isPlayerShot);
     this.checkGameOver();
@@ -163,7 +164,7 @@ export class Match {
     attackResult: AttackPhaseResult,
     _isPlayerShot: boolean,
   ): TurnPhaseResult {
-    this.matchCallbacks?.onPhaseChange?.("TURN");
+    this.setPhase("TURN");
 
     const state = this.engine.getState();
     const decision = this.ruleSet.decideTurn(attackResult, state);
@@ -329,6 +330,23 @@ export class Match {
     isPlayerShips: boolean,
   ): boolean {
     return this.engine.hasShipAtPosition(x, y, isPlayerShips);
+  }
+
+  /**
+   * Set the current match phase and notify callbacks
+   * @param phase - New match phase to set
+   */
+  public setPhase(phase: MatchPhase): void {
+    this.phase = phase;
+    this.matchCallbacks?.onPhaseChange?.(phase);
+  }
+
+  /**
+   * Get the current match phase
+   * @returns Current match phase
+   */
+  public getPhase(): MatchPhase {
+    return this.phase;
   }
 }
 
