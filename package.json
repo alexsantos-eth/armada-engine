@@ -13,7 +13,9 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "preact": "^10.27.2"
+    "firebase": "^12.9.0",
+    "preact": "^10.27.2",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.2",

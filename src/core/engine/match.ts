@@ -160,11 +160,8 @@ export class Match {
     _isPlayerShot: boolean,
   ): TurnPhaseResult {
     const state = this.engine.getState();
-
-    // Use RuleSet to decide turn
     const decision = this.ruleSet.decideTurn(attackResult, state);
 
-    // Apply turn toggle if needed
     if (decision.shouldToggleTurn) {
       this.engine.toggleTurn();
     }
@@ -259,7 +256,6 @@ export class Match {
 
     if (state.isGameOver) return;
 
-    // Use RuleSet to check game over
     const decision = this.ruleSet.checkGameOver(state);
 
     if (decision.isGameOver && decision.winner) {

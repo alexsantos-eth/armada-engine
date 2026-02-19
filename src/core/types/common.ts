@@ -20,19 +20,6 @@ export interface Shot {
   shipId?: number;
 }
 
-export interface GameState {
-  currentTurn: GameTurn;
-  playerShips: GameShip[];
-  enemyShips: GameShip[];
-  playerShots: Shot[];
-  enemyShots: Shot[];
-  isGameOver: boolean;
-  winner: Winner;
-  boardWidth: number;
-  boardHeight: number;
-  shotCount: number;
-}
-
 export interface ShipPlacement {
   ship: GameShip;
   cells: [number, number][];

@@ -25,8 +25,8 @@ export const GAME_CONSTANTS = {
     },
   },
   BOARD: {
-    DEFAULT_WIDTH: 10,
-    DEFAULT_HEIGHT: 10,
+    DEFAULT_WIDTH: 5,
+    DEFAULT_HEIGHT: 5,
     MIN_SIZE: 3,
     MAX_SIZE: 30,
   },
