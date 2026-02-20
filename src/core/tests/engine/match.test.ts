@@ -56,11 +56,11 @@ describe('Match', () => {
 
     it('should allow shooting again after a hit (ship not destroyed)', () => {
       // Enemy medium ship at [7,7], size 3
-      const result = match.executeShot(7, 7, true);
+      const result = match.planAndAttack(7, 7, true);
       
       expect(result.success).toBe(true);
-      expect(result.hit).toBe(true);
-      expect(result.shipDestroyed).toBe(false);
+      expect(result.shots[0]?.hit).toBe(true);
+      expect(result.shots[0]?.shipDestroyed).toBe(false);
       expect(result.turnEnded).toBe(false);
       expect(result.canShootAgain).toBe(true);
       expect(result.reason).toBe('Hit - shoot again');
@@ -68,10 +68,10 @@ describe('Match', () => {
     });
 
     it('should end turn after miss', () => {
-      const result = match.executeShot(0, 0, true); // Miss
+      const result = match.planAndAttack(0, 0, true); // Miss
       
       expect(result.success).toBe(true);
-      expect(result.hit).toBe(false);
+      expect(result.shots[0]?.hit).toBe(false);
       expect(result.turnEnded).toBe(true);
       expect(result.canShootAgain).toBe(false);
       expect(result.reason).toBe('Miss - turn ends');
@@ -80,12 +80,12 @@ describe('Match', () => {
 
     it('should end turn after ship destruction', () => {
       // Enemy small ship at [5,5], size 2
-      match.executeShot(5, 5, true); // First hit
-      const result = match.executeShot(6, 5, true); // Second hit - destroys
+      match.planAndAttack(5, 5, true); // First hit
+      const result = match.planAndAttack(6, 5, true); // Second hit - destroys
       
       expect(result.success).toBe(true);
-      expect(result.hit).toBe(true);
-      expect(result.shipDestroyed).toBe(true);
+      expect(result.shots[0]?.hit).toBe(true);
+      expect(result.shots[0]?.shipDestroyed).toBe(true);
       expect(result.turnEnded).toBe(true);
       expect(result.canShootAgain).toBe(false);
       expect(result.reason).toBe('Ship destroyed - turn ends');
@@ -100,17 +100,17 @@ describe('Match', () => {
 
     it('should allow multiple hits in same turn if ship not destroyed', () => {
       // Enemy medium ship at [7,7] vertical, size 3
-      const hit1 = match.executeShot(7, 7, true);
+      const hit1 = match.planAndAttack(7, 7, true);
       expect(hit1.canShootAgain).toBe(true);
       expect(match.getCurrentTurn()).toBe('PLAYER_TURN');
       
-      const hit2 = match.executeShot(7, 8, true);
+      const hit2 = match.planAndAttack(7, 8, true);
       expect(hit2.canShootAgain).toBe(true);
       expect(match.getCurrentTurn()).toBe('PLAYER_TURN');
       
       // Third hit destroys the ship
-      const hit3 = match.executeShot(7, 9, true);
-      expect(hit3.shipDestroyed).toBe(true);
+      const hit3 = match.planAndAttack(7, 9, true);
+      expect(hit3.shots[0]?.shipDestroyed).toBe(true);
       expect(hit3.turnEnded).toBe(true);
       expect(match.getCurrentTurn()).toBe('ENEMY_TURN');
     });
@@ -119,33 +119,33 @@ describe('Match', () => {
       expect(match.isPlayerTurn()).toBe(true);
       
       // Player misses
-      match.executeShot(0, 0, true);
+      match.planAndAttack(0, 0, true);
       expect(match.isEnemyTurn()).toBe(true);
       
       // Enemy misses
-      match.executeShot(9, 9, false);
+      match.planAndAttack(9, 9, false);
       expect(match.isPlayerTurn()).toBe(true);
     });
 
     it('should handle complex turn sequence', () => {
       // Player hits but doesn't destroy
-      const r1 = match.executeShot(7, 7, true);
+      const r1 = match.planAndAttack(7, 7, true);
       expect(r1.canShootAgain).toBe(true);
       expect(match.isPlayerTurn()).toBe(true);
       
       // Player misses on second shot
-      const r2 = match.executeShot(0, 0, true);
+      const r2 = match.planAndAttack(0, 0, true);
       expect(r2.turnEnded).toBe(true);
       expect(match.isEnemyTurn()).toBe(true);
       
       // Enemy hits player ship
-      const r3 = match.executeShot(0, 0, false);
+      const r3 = match.planAndAttack(0, 0, false);
       expect(r3.canShootAgain).toBe(true);
       expect(match.isEnemyTurn()).toBe(true);
       
       // Enemy destroys player small ship
-      const r4 = match.executeShot(1, 0, false);
-      expect(r4.shipDestroyed).toBe(true);
+      const r4 = match.planAndAttack(1, 0, false);
+      expect(r4.shots[0]?.shipDestroyed).toBe(true);
       expect(r4.turnEnded).toBe(true);
       expect(match.isPlayerTurn()).toBe(true);
     });
@@ -158,19 +158,19 @@ describe('Match', () => {
 
     it('should end match when all enemy ships destroyed', () => {
       // Destroy enemy ship 1 (small at [5,5])
-      match.executeShot(5, 5, true);
-      match.executeShot(6, 5, true);
+      match.planAndAttack(5, 5, true);
+      match.planAndAttack(6, 5, true);
       
       // Turn should switch after destruction
       expect(match.isEnemyTurn()).toBe(true);
       
       // Enemy misses to give turn back
-      match.executeShot(9, 9, false);
+      match.planAndAttack(9, 9, false);
       
       // Destroy enemy ship 2 (medium at [7,7])
-      match.executeShot(7, 7, true);
-      match.executeShot(7, 8, true);
-      const result = match.executeShot(7, 9, true);
+      match.planAndAttack(7, 7, true);
+      match.planAndAttack(7, 8, true);
+      const result = match.planAndAttack(7, 9, true);
       
       expect(result.isGameOver).toBe(true);
       expect(result.winner).toBe('player');
@@ -180,12 +180,12 @@ describe('Match', () => {
 
     it('should provide game over reason', () => {
       // Destroy all enemy ships
-      match.executeShot(5, 5, true);
-      match.executeShot(6, 5, true);
-      match.executeShot(9, 9, false); // Enemy miss to switch turn
-      match.executeShot(7, 7, true);
-      match.executeShot(7, 8, true);
-      const result = match.executeShot(7, 9, true);
+      match.planAndAttack(5, 5, true);
+      match.planAndAttack(6, 5, true);
+      match.planAndAttack(9, 9, false); // Enemy miss to switch turn
+      match.planAndAttack(7, 7, true);
+      match.planAndAttack(7, 8, true);
+      const result = match.planAndAttack(7, 9, true);
       
       expect(result.reason).toBe('Game over');
       expect(result.turnEnded).toBe(true);
@@ -210,16 +210,16 @@ describe('Match', () => {
       defaultMatch.initializeMatch(playerShips, enemyShips);
       
       // Classic rule: hit allows shooting again
-      const result = defaultMatch.executeShot(7, 7, true);
+      const result = defaultMatch.planAndAttack(7, 7, true);
       expect(result.canShootAgain).toBe(true);
       expect(result.turnEnded).toBe(false);
     });
 
     it('should allow shooting again after hit (ship not destroyed)', () => {
-      const result = classicMatch.executeShot(7, 7, true);
+      const result = classicMatch.planAndAttack(7, 7, true);
       
-      expect(result.hit).toBe(true);
-      expect(result.shipDestroyed).toBe(false);
+      expect(result.shots[0]?.hit).toBe(true);
+      expect(result.shots[0]?.shipDestroyed).toBe(false);
       expect(result.canShootAgain).toBe(true);
       expect(result.turnEnded).toBe(false);
       expect(result.reason).toBe('Hit - shoot again');
@@ -227,9 +227,9 @@ describe('Match', () => {
     });
 
     it('should end turn after miss', () => {
-      const result = classicMatch.executeShot(0, 0, true);
+      const result = classicMatch.planAndAttack(0, 0, true);
       
-      expect(result.hit).toBe(false);
+      expect(result.shots[0]?.hit).toBe(false);
       expect(result.canShootAgain).toBe(false);
       expect(result.turnEnded).toBe(true);
       expect(result.reason).toBe('Miss - turn ends');
@@ -237,10 +237,10 @@ describe('Match', () => {
     });
 
     it('should end turn after ship destruction', () => {
-      classicMatch.executeShot(5, 5, true);
-      const result = classicMatch.executeShot(6, 5, true);
+      classicMatch.planAndAttack(5, 5, true);
+      const result = classicMatch.planAndAttack(6, 5, true);
       
-      expect(result.shipDestroyed).toBe(true);
+      expect(result.shots[0]?.shipDestroyed).toBe(true);
       expect(result.canShootAgain).toBe(false);
       expect(result.turnEnded).toBe(true);
       expect(result.reason).toBe('Ship destroyed - turn ends');
@@ -249,16 +249,16 @@ describe('Match', () => {
 
     it('should allow multiple consecutive hits before destruction', () => {
       // Medium ship has 3 cells
-      const hit1 = classicMatch.executeShot(7, 7, true);
+      const hit1 = classicMatch.planAndAttack(7, 7, true);
       expect(hit1.canShootAgain).toBe(true);
       expect(classicMatch.isPlayerTurn()).toBe(true);
 
-      const hit2 = classicMatch.executeShot(7, 8, true);
+      const hit2 = classicMatch.planAndAttack(7, 8, true);
       expect(hit2.canShootAgain).toBe(true);
       expect(classicMatch.isPlayerTurn()).toBe(true);
 
-      const hit3 = classicMatch.executeShot(7, 9, true);
-      expect(hit3.shipDestroyed).toBe(true);
+      const hit3 = classicMatch.planAndAttack(7, 9, true);
+      expect(hit3.shots[0]?.shipDestroyed).toBe(true);
       expect(hit3.canShootAgain).toBe(false);
       expect(hit3.turnEnded).toBe(true);
       expect(classicMatch.isEnemyTurn()).toBe(true);
@@ -278,10 +278,10 @@ describe('Match', () => {
     });
 
     it('should end turn after hit (no continuation on hit)', () => {
-      const result = alternatingMatch.executeShot(7, 7, true);
+      const result = alternatingMatch.planAndAttack(7, 7, true);
       
-      expect(result.hit).toBe(true);
-      expect(result.shipDestroyed).toBe(false);
+      expect(result.shots[0]?.hit).toBe(true);
+      expect(result.shots[0]?.shipDestroyed).toBe(false);
       expect(result.canShootAgain).toBe(false);
       expect(result.turnEnded).toBe(true);
       expect(result.reason).toBe('Hit - turn ends');
@@ -289,9 +289,9 @@ describe('Match', () => {
     });
 
     it('should end turn after miss', () => {
-      const result = alternatingMatch.executeShot(0, 0, true);
+      const result = alternatingMatch.planAndAttack(0, 0, true);
       
-      expect(result.hit).toBe(false);
+      expect(result.shots[0]?.hit).toBe(false);
       expect(result.canShootAgain).toBe(false);
       expect(result.turnEnded).toBe(true);
       expect(result.reason).toBe('Miss - turn ends');
@@ -299,15 +299,15 @@ describe('Match', () => {
     });
 
     it('should end turn after ship destruction', () => {
-      alternatingMatch.executeShot(5, 5, true);
+      alternatingMatch.planAndAttack(5, 5, true);
       expect(alternatingMatch.isEnemyTurn()).toBe(true);
       
-      alternatingMatch.executeShot(9, 9, false); // Enemy miss
+      alternatingMatch.planAndAttack(9, 9, false); // Enemy miss
       expect(alternatingMatch.isPlayerTurn()).toBe(true);
       
-      const result = alternatingMatch.executeShot(6, 5, true);
+      const result = alternatingMatch.planAndAttack(6, 5, true);
       
-      expect(result.shipDestroyed).toBe(true);
+      expect(result.shots[0]?.shipDestroyed).toBe(true);
       expect(result.canShootAgain).toBe(false);
       expect(result.turnEnded).toBe(true);
       expect(alternatingMatch.getCurrentTurn()).toBe('ENEMY_TURN');
@@ -315,52 +315,52 @@ describe('Match', () => {
 
     it('should strictly alternate turns on consecutive hits', () => {
       // Hit 1 - turn ends
-      const hit1 = alternatingMatch.executeShot(7, 7, true);
+      const hit1 = alternatingMatch.planAndAttack(7, 7, true);
       expect(hit1.canShootAgain).toBe(false);
       expect(alternatingMatch.isEnemyTurn()).toBe(true);
 
       // Enemy miss - turn ends
-      alternatingMatch.executeShot(9, 9, false);
+      alternatingMatch.planAndAttack(9, 9, false);
       expect(alternatingMatch.isPlayerTurn()).toBe(true);
 
       // Hit 2 - turn ends
-      const hit2 = alternatingMatch.executeShot(7, 8, true);
+      const hit2 = alternatingMatch.planAndAttack(7, 8, true);
       expect(hit2.canShootAgain).toBe(false);
       expect(alternatingMatch.isEnemyTurn()).toBe(true);
 
       // Enemy miss - turn ends
-      alternatingMatch.executeShot(9, 8, false);
+      alternatingMatch.planAndAttack(9, 8, false);
       expect(alternatingMatch.isPlayerTurn()).toBe(true);
 
       // Hit 3 - destroys ship, turn ends
-      const hit3 = alternatingMatch.executeShot(7, 9, true);
-      expect(hit3.shipDestroyed).toBe(true);
+      const hit3 = alternatingMatch.planAndAttack(7, 9, true);
+      expect(hit3.shots[0]?.shipDestroyed).toBe(true);
       expect(hit3.canShootAgain).toBe(false);
       expect(alternatingMatch.isEnemyTurn()).toBe(true);
     });
 
     it('should work correctly with both players', () => {
       // Player hits
-      const p1 = alternatingMatch.executeShot(5, 5, true);
-      expect(p1.hit).toBe(true);
+      const p1 = alternatingMatch.planAndAttack(5, 5, true);
+      expect(p1.shots[0]?.hit).toBe(true);
       expect(p1.turnEnded).toBe(true);
       expect(alternatingMatch.isEnemyTurn()).toBe(true);
 
       // Enemy hits
-      const e1 = alternatingMatch.executeShot(0, 0, false);
-      expect(e1.hit).toBe(true);
+      const e1 = alternatingMatch.planAndAttack(0, 0, false);
+      expect(e1.shots[0]?.hit).toBe(true);
       expect(e1.turnEnded).toBe(true);
       expect(alternatingMatch.isPlayerTurn()).toBe(true);
 
       // Player misses
-      const p2 = alternatingMatch.executeShot(0, 0, true);
-      expect(p2.hit).toBe(false);
+      const p2 = alternatingMatch.planAndAttack(0, 0, true);
+      expect(p2.shots[0]?.hit).toBe(false);
       expect(p2.turnEnded).toBe(true);
       expect(alternatingMatch.isEnemyTurn()).toBe(true);
 
       // Enemy misses
-      const e2 = alternatingMatch.executeShot(9, 9, false);
-      expect(e2.hit).toBe(false);
+      const e2 = alternatingMatch.planAndAttack(9, 9, false);
+      expect(e2.shots[0]?.hit).toBe(false);
       expect(e2.turnEnded).toBe(true);
       expect(alternatingMatch.isPlayerTurn()).toBe(true);
     });
@@ -388,43 +388,43 @@ describe('Match', () => {
 
     it('should behave differently on hits between rulesets', () => {
       // Classic: hit allows shooting again
-      const classicResult = classicMatch.executeShot(7, 7, true);
+      const classicResult = classicMatch.planAndAttack(7, 7, true);
       expect(classicResult.canShootAgain).toBe(true);
       expect(classicMatch.isPlayerTurn()).toBe(true);
 
       // Alternating: hit ends turn
-      const alternatingResult = alternatingMatch.executeShot(7, 7, true);
+      const alternatingResult = alternatingMatch.planAndAttack(7, 7, true);
       expect(alternatingResult.canShootAgain).toBe(false);
       expect(alternatingMatch.isEnemyTurn()).toBe(true);
     });
 
     it('should behave the same on misses', () => {
       // Both end turn on miss
-      const classicResult = classicMatch.executeShot(0, 0, true);
+      const classicResult = classicMatch.planAndAttack(0, 0, true);
       expect(classicResult.turnEnded).toBe(true);
       expect(classicMatch.isEnemyTurn()).toBe(true);
 
-      const alternatingResult = alternatingMatch.executeShot(0, 0, true);
+      const alternatingResult = alternatingMatch.planAndAttack(0, 0, true);
       expect(alternatingResult.turnEnded).toBe(true);
       expect(alternatingMatch.isEnemyTurn()).toBe(true);
     });
 
     it('should have different game pace', () => {
       // Classic: can destroy ship in one turn with consecutive hits
-      classicMatch.executeShot(5, 5, true);
-      const classicDestroy = classicMatch.executeShot(6, 5, true);
-      expect(classicDestroy.shipDestroyed).toBe(true);
+      classicMatch.planAndAttack(5, 5, true);
+      const classicDestroy = classicMatch.planAndAttack(6, 5, true);
+      expect(classicDestroy.shots[0]?.shipDestroyed).toBe(true);
       expect(classicMatch.getState().shotCount).toBe(2);
 
       // Alternating: requires multiple turns to destroy ship
-      alternatingMatch.executeShot(5, 5, true);
+      alternatingMatch.planAndAttack(5, 5, true);
       expect(alternatingMatch.isEnemyTurn()).toBe(true);
       
-      alternatingMatch.executeShot(9, 9, false); // Enemy turn
+      alternatingMatch.planAndAttack(9, 9, false); // Enemy turn
       expect(alternatingMatch.isPlayerTurn()).toBe(true);
       
-      const alternatingDestroy = alternatingMatch.executeShot(6, 5, true);
-      expect(alternatingDestroy.shipDestroyed).toBe(true);
+      const alternatingDestroy = alternatingMatch.planAndAttack(6, 5, true);
+      expect(alternatingDestroy.shots[0]?.shipDestroyed).toBe(true);
       expect(alternatingMatch.getState().shotCount).toBe(3); // More shots needed
     });
   });
@@ -435,8 +435,8 @@ describe('Match', () => {
     });
 
     it('should reject already shot cells', () => {
-      match.executeShot(5, 5, true);
-      const result = match.executeShot(5, 5, true);
+      match.planAndAttack(5, 5, true);
+      const result = match.planAndAttack(5, 5, true);
       
       expect(result.success).toBe(false);
       expect(result.turnEnded).toBe(false);
@@ -447,7 +447,7 @@ describe('Match', () => {
     it('should check if cell has been shot', () => {
       expect(match.isCellShot(5, 5, true)).toBe(false);
       
-      match.executeShot(5, 5, true);
+      match.planAndAttack(5, 5, true);
       
       expect(match.isCellShot(5, 5, true)).toBe(true);
     });
@@ -460,7 +460,7 @@ describe('Match', () => {
     });
 
     it('should get shot at position', () => {
-      match.executeShot(5, 5, true);
+      match.planAndAttack(5, 5, true);
       
       const shot = match.getShotAtPosition(5, 5, true);
       expect(shot).toBeDefined();
@@ -487,7 +487,7 @@ describe('Match', () => {
     });
 
     it('should allow resetting match', () => {
-      match.executeShot(5, 5, true);
+      match.planAndAttack(5, 5, true);
       
       match.resetMatch();
       
@@ -528,7 +528,7 @@ describe('Match', () => {
       matchWithCallback.initializeMatch(playerShips, enemyShips);
       
       // Miss to trigger turn change
-      matchWithCallback.executeShot(0, 0, true);
+      matchWithCallback.planAndAttack(0, 0, true);
       
       expect(onTurnChange).toHaveBeenCalledWith('ENEMY_TURN');
     });
@@ -539,7 +539,7 @@ describe('Match', () => {
       
       matchWithCallback.initializeMatch(playerShips, enemyShips);
       
-      matchWithCallback.executeShot(5, 5, true);
+      matchWithCallback.planAndAttack(5, 5, true);
       
       expect(onShot).toHaveBeenCalledWith(
         expect.objectContaining({ x: 5, y: 5 }),
@@ -554,12 +554,12 @@ describe('Match', () => {
       matchWithCallback.initializeMatch(playerShips, enemyShips);
       
       // Destroy all enemy ships
-      matchWithCallback.executeShot(5, 5, true);
-      matchWithCallback.executeShot(6, 5, true);
-      matchWithCallback.executeShot(9, 9, false);
-      matchWithCallback.executeShot(7, 7, true);
-      matchWithCallback.executeShot(7, 8, true);
-      matchWithCallback.executeShot(7, 9, true);
+      matchWithCallback.planAndAttack(5, 5, true);
+      matchWithCallback.planAndAttack(6, 5, true);
+      matchWithCallback.planAndAttack(9, 9, false);
+      matchWithCallback.planAndAttack(7, 7, true);
+      matchWithCallback.planAndAttack(7, 8, true);
+      matchWithCallback.planAndAttack(7, 9, true);
       
       expect(onGameOver).toHaveBeenCalledWith('player');
     });
@@ -581,21 +581,21 @@ describe('Match', () => {
 
     it('should handle shot on last cell of destroyed ship', () => {
       // Destroy small ship completely
-      match.executeShot(5, 5, true);
-      const result = match.executeShot(6, 5, true);
+      match.planAndAttack(5, 5, true);
+      const result = match.planAndAttack(6, 5, true);
       
-      expect(result.shipDestroyed).toBe(true);
+      expect(result.shots[0]?.shipDestroyed).toBe(true);
       expect(result.turnEnded).toBe(true);
     });
 
     it('should maintain turn logic when game ends', () => {
       // Destroy all enemy ships
-      match.executeShot(5, 5, true);
-      match.executeShot(6, 5, true);
-      match.executeShot(9, 9, false);
-      match.executeShot(7, 7, true);
-      match.executeShot(7, 8, true);
-      const result = match.executeShot(7, 9, true);
+      match.planAndAttack(5, 5, true);
+      match.planAndAttack(6, 5, true);
+      match.planAndAttack(9, 9, false);
+      match.planAndAttack(7, 7, true);
+      match.planAndAttack(7, 8, true);
+      const result = match.planAndAttack(7, 9, true);
       
       expect(result.isGameOver).toBe(true);
       expect(result.turnEnded).toBe(true);
@@ -604,14 +604,14 @@ describe('Match', () => {
 
     it('should handle rapid hits on same ship', () => {
       // Hit medium ship multiple times in succession
-      const r1 = match.executeShot(7, 7, true);
+      const r1 = match.planAndAttack(7, 7, true);
       expect(r1.canShootAgain).toBe(true);
       
-      const r2 = match.executeShot(7, 8, true);
+      const r2 = match.planAndAttack(7, 8, true);
       expect(r2.canShootAgain).toBe(true);
       
-      const r3 = match.executeShot(7, 9, true);
-      expect(r3.shipDestroyed).toBe(true);
+      const r3 = match.planAndAttack(7, 9, true);
+      expect(r3.shots[0]?.shipDestroyed).toBe(true);
       expect(r3.turnEnded).toBe(true);
     });
   });
@@ -623,21 +623,21 @@ describe('Match', () => {
 
     it('should handle both players following match rules', () => {
       // Player hits enemy ship
-      const p1 = match.executeShot(7, 7, true);
+      const p1 = match.planAndAttack(7, 7, true);
       expect(p1.canShootAgain).toBe(true);
       
       // Player misses
-      const p2 = match.executeShot(0, 0, true);
+      const p2 = match.planAndAttack(0, 0, true);
       expect(p2.turnEnded).toBe(true);
       expect(match.isEnemyTurn()).toBe(true);
       
       // Enemy hits player ship
-      const e1 = match.executeShot(0, 0, false);
+      const e1 = match.planAndAttack(0, 0, false);
       expect(e1.canShootAgain).toBe(true);
       
       // Enemy destroys player ship
-      const e2 = match.executeShot(1, 0, false);
-      expect(e2.shipDestroyed).toBe(true);
+      const e2 = match.planAndAttack(1, 0, false);
+      expect(e2.shots[0]?.shipDestroyed).toBe(true);
       expect(e2.turnEnded).toBe(true);
       expect(match.isPlayerTurn()).toBe(true);
     });
@@ -649,21 +649,21 @@ describe('Match', () => {
     });
 
     it('should return phase information in shot result', () => {
-      const result = match.executeShot(5, 5, true);
+      const result = match.planAndAttack(5, 5, true);
       
       expect(result).toHaveProperty('phase');
       expect(result.phase).toBeDefined();
     });
 
     it('should return TURN phase for successful shots', () => {
-      const result = match.executeShot(5, 5, true);
+      const result = match.planAndAttack(5, 5, true);
       
       expect(result.phase).toBe('TURN');
     });
 
     it('should return ATTACK phase for failed shots', () => {
-      match.executeShot(5, 5, true);
-      const result = match.executeShot(5, 5, true); // Duplicate
+      match.planAndAttack(5, 5, true);
+      const result = match.planAndAttack(5, 5, true); // Duplicate
       
       expect(result.phase).toBe('ATTACK');
       expect(result.success).toBe(false);
@@ -677,29 +677,29 @@ describe('Match', () => {
 
     it('should detect game over immediately when last ship destroyed', () => {
       // Destroy first enemy ship
-      match.executeShot(5, 5, true);
-      match.executeShot(6, 5, true);
+      match.planAndAttack(5, 5, true);
+      match.planAndAttack(6, 5, true);
       
       // Turn switches after ship destruction
       expect(match.isEnemyTurn()).toBe(true);
       
       // Enemy misses to give turn back
-      match.executeShot(9, 9, false);
+      match.planAndAttack(9, 9, false);
       expect(match.isPlayerTurn()).toBe(true);
       
       // Destroy second enemy ship partially
-      match.executeShot(7, 7, true);
+      match.planAndAttack(7, 7, true);
       expect(match.isPlayerTurn()).toBe(true); // Still player turn (hit but not destroyed)
       
-      match.executeShot(7, 8, true);
+      match.planAndAttack(7, 8, true);
       expect(match.isPlayerTurn()).toBe(true); // Still player turn (hit but not destroyed)
       
       // Destroy last piece of last ship
-      const finalShot = match.executeShot(7, 9, true);
+      const finalShot = match.planAndAttack(7, 9, true);
       
       // Should detect game over immediately, not allowing shoot again despite hit
-      expect(finalShot.hit).toBe(true);
-      expect(finalShot.shipDestroyed).toBe(true);
+      expect(finalShot.shots[0]?.hit).toBe(true);
+      expect(finalShot.shots[0]?.shipDestroyed).toBe(true);
       expect(finalShot.isGameOver).toBe(true);
       expect(finalShot.winner).toBe('player');
       expect(finalShot.canShootAgain).toBe(false); // Game over takes priority
@@ -712,19 +712,19 @@ describe('Match', () => {
 
     it('should detect game over on last hit even if it would normally allow shooting again', () => {
       // Set up: destroy first ship
-      match.executeShot(5, 5, true);
-      match.executeShot(6, 5, true);
-      match.executeShot(9, 9, false); // Enemy miss
+      match.planAndAttack(5, 5, true);
+      match.planAndAttack(6, 5, true);
+      match.planAndAttack(9, 9, false); // Enemy miss
       
       // Destroy second ship in one continuous turn
-      const hit1 = match.executeShot(7, 7, true);
+      const hit1 = match.planAndAttack(7, 7, true);
       expect(hit1.canShootAgain).toBe(true);
       
-      const hit2 = match.executeShot(7, 8, true);
+      const hit2 = match.planAndAttack(7, 8, true);
       expect(hit2.canShootAgain).toBe(true);
       
       // Last hit should trigger game over, not "shoot again"
-      const finalHit = match.executeShot(7, 9, true);
+      const finalHit = match.planAndAttack(7, 9, true);
       expect(finalHit.canShootAgain).toBe(false);
       expect(finalHit.isGameOver).toBe(true);
       expect(finalHit.reason).toBe('Game over');
@@ -747,12 +747,12 @@ describe('Match', () => {
 
     it('should update ship destruction status after destroying all ships', () => {
       // Destroy all enemy ships
-      match.executeShot(5, 5, true);
-      match.executeShot(6, 5, true);
-      match.executeShot(9, 9, false);
-      match.executeShot(7, 7, true);
-      match.executeShot(7, 8, true);
-      match.executeShot(7, 9, true);
+      match.planAndAttack(5, 5, true);
+      match.planAndAttack(6, 5, true);
+      match.planAndAttack(9, 9, false);
+      match.planAndAttack(7, 7, true);
+      match.planAndAttack(7, 8, true);
+      match.planAndAttack(7, 9, true);
       
       const state = match.getState();
       expect(state.areAllEnemyShipsDestroyed).toBe(true);
@@ -764,12 +764,12 @@ describe('Match', () => {
       expect(match.areAllShipsDestroyed(false)).toBe(false);
 
       // Destroy all enemy ships
-      match.executeShot(5, 5, true);
-      match.executeShot(6, 5, true);
-      match.executeShot(9, 9, false);
-      match.executeShot(7, 7, true);
-      match.executeShot(7, 8, true);
-      match.executeShot(7, 9, true);
+      match.planAndAttack(5, 5, true);
+      match.planAndAttack(6, 5, true);
+      match.planAndAttack(9, 9, false);
+      match.planAndAttack(7, 7, true);
+      match.planAndAttack(7, 8, true);
+      match.planAndAttack(7, 9, true);
 
       expect(match.areAllShipsDestroyed(false)).toBe(true);
       expect(match.areAllShipsDestroyed(true)).toBe(false);
@@ -792,7 +792,7 @@ describe('Match', () => {
       expect(initialRuleSet.name).toBe('Classic');
 
       // Classic: hit allows shooting again
-      const hit1 = match.executeShot(7, 7, true);
+      const hit1 = match.planAndAttack(7, 7, true);
       expect(hit1.canShootAgain).toBe(true);
 
       // Change to alternating rules
@@ -801,11 +801,11 @@ describe('Match', () => {
       expect(newRuleSet.name).toBe('Alternating');
 
       // Player misses to switch turn
-      match.executeShot(0, 0, true);
-      match.executeShot(9, 9, false); // Enemy miss
+      match.planAndAttack(0, 0, true);
+      match.planAndAttack(9, 9, false); // Enemy miss
 
       // Now with alternating rules: hit should end turn
-      const hit2 = match.executeShot(7, 8, true);
+      const hit2 = match.planAndAttack(7, 8, true);
       expect(hit2.canShootAgain).toBe(false);
       expect(hit2.turnEnded).toBe(true);
     });
@@ -842,7 +842,7 @@ describe('Match', () => {
       newMatch.initializeMatch(playerShips, enemyShips);
       
       // Execute a shot - should cycle through phases
-      const result = newMatch.executeShot(5, 5, true);
+      const result = newMatch.planAndAttack(5, 5, true);
       
       // Shot succeeded, should end in TURN phase
       expect(result.phase).toBe('TURN');
@@ -853,10 +853,10 @@ describe('Match', () => {
       match.initializeMatch(playerShips, enemyShips);
       
       // First shot succeeds
-      match.executeShot(5, 5, true);
+      match.planAndAttack(5, 5, true);
       
       // Try shooting same cell again - should fail in ATTACK phase
-      const result = match.executeShot(5, 5, true);
+      const result = match.planAndAttack(5, 5, true);
       expect(result.success).toBe(false);
       expect(result.phase).toBe('ATTACK');
     });
@@ -869,7 +869,7 @@ describe('Match', () => {
       );
 
       matchWithCallback.initializeMatch(playerShips, enemyShips);
-      matchWithCallback.executeShot(5, 5, true);
+      matchWithCallback.planAndAttack(5, 5, true);
       
       // Should have called PLAN, ATTACK, and TURN
       expect(onPhaseChange).toHaveBeenCalled();
@@ -884,23 +884,23 @@ describe('Match', () => {
 
     it('should end match when all player ships destroyed', () => {
       // Player misses to give enemy turn
-      match.executeShot(9, 9, true);
+      match.planAndAttack(9, 9, true);
       expect(match.isEnemyTurn()).toBe(true);
 
       // Enemy destroys player ship 1 (small at [0,0])
-      match.executeShot(0, 0, false);
-      match.executeShot(1, 0, false);
+      match.planAndAttack(0, 0, false);
+      match.planAndAttack(1, 0, false);
 
       // Turn switches after destruction
       expect(match.isPlayerTurn()).toBe(true);
 
       // Player misses
-      match.executeShot(9, 8, true);
+      match.planAndAttack(9, 8, true);
 
       // Enemy destroys player ship 2 (medium at [2,2] vertical)
-      match.executeShot(2, 2, false);
-      match.executeShot(2, 3, false);
-      const result = match.executeShot(2, 4, false);
+      match.planAndAttack(2, 2, false);
+      match.planAndAttack(2, 3, false);
+      const result = match.planAndAttack(2, 4, false);
 
       expect(result.isGameOver).toBe(true);
       expect(result.winner).toBe('enemy');
@@ -917,17 +917,17 @@ describe('Match', () => {
       alternatingMatch.initializeMatch(playerShips, enemyShips);
 
       // Alternately destroy all player ships
-      alternatingMatch.executeShot(9, 9, true); // Player miss
-      alternatingMatch.executeShot(0, 0, false); // Enemy hit
-      alternatingMatch.executeShot(9, 8, true); // Player miss
-      alternatingMatch.executeShot(1, 0, false); // Enemy destroys ship 1
+      alternatingMatch.planAndAttack(9, 9, true); // Player miss
+      alternatingMatch.planAndAttack(0, 0, false); // Enemy hit
+      alternatingMatch.planAndAttack(9, 8, true); // Player miss
+      alternatingMatch.planAndAttack(1, 0, false); // Enemy destroys ship 1
       
-      alternatingMatch.executeShot(9, 7, true); // Player miss
-      alternatingMatch.executeShot(2, 2, false); // Enemy hit
-      alternatingMatch.executeShot(9, 6, true); // Player miss
-      alternatingMatch.executeShot(2, 3, false); // Enemy hit
-      alternatingMatch.executeShot(9, 5, true); // Player miss
-      const result = alternatingMatch.executeShot(2, 4, false); // Enemy destroys ship 2
+      alternatingMatch.planAndAttack(9, 7, true); // Player miss
+      alternatingMatch.planAndAttack(2, 2, false); // Enemy hit
+      alternatingMatch.planAndAttack(9, 6, true); // Player miss
+      alternatingMatch.planAndAttack(2, 3, false); // Enemy hit
+      alternatingMatch.planAndAttack(9, 5, true); // Player miss
+      const result = alternatingMatch.planAndAttack(2, 4, false); // Enemy destroys ship 2
 
       expect(result.isGameOver).toBe(true);
       expect(result.winner).toBe('enemy');
@@ -935,15 +935,15 @@ describe('Match', () => {
 
     it('should provide correct reason on enemy victory', () => {
       // Player misses
-      match.executeShot(9, 9, true);
+      match.planAndAttack(9, 9, true);
 
       // Enemy destroys all player ships
-      match.executeShot(0, 0, false);
-      match.executeShot(1, 0, false);
-      match.executeShot(9, 8, true); // Player miss
-      match.executeShot(2, 2, false);
-      match.executeShot(2, 3, false);
-      const result = match.executeShot(2, 4, false);
+      match.planAndAttack(0, 0, false);
+      match.planAndAttack(1, 0, false);
+      match.planAndAttack(9, 8, true); // Player miss
+      match.planAndAttack(2, 2, false);
+      match.planAndAttack(2, 3, false);
+      const result = match.planAndAttack(2, 4, false);
 
       expect(result.reason).toBe('Game over');
       expect(result.turnEnded).toBe(true);

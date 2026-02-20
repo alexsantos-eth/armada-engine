@@ -6,9 +6,15 @@ import {
   type GameConfig,
   type GameEngineState,
   type MatchCallbacks,
+  SINGLE_SHOT,
 } from "../../../../core/engine";
 import { getShipCellsFromShip } from "../../../../core/tools/ship/calculations";
-import type { Board, PlayerRole, Shot } from "../../../../core/types/common";
+import type {
+  Board,
+  PlayerRole,
+  Shot,
+  ShotPattern,
+} from "../../../../core/types/common";
 import type { GameRoom } from "../types/game/room";
 import { roomService } from "../services/room/realtime";
 
@@ -73,11 +79,9 @@ const useNetworkMatch = ({
         },
         onPhaseChange: (phase) => {
           callbacks?.onPhaseChange?.(phase);
-          roomService
-            .updateCurrentPhase(room.id, phase)
-            .catch((error) => {
-              console.error("Error updating current phase:", error);
-            });
+          roomService.updateCurrentPhase(room.id, phase).catch((error) => {
+            console.error("Error updating current phase:", error);
+          });
         },
       },
       ruleSet,
@@ -114,40 +118,97 @@ const useNetworkMatch = ({
     if (newOpponentShots.length > 0 && !isSyncingRef.current) {
       isSyncingRef.current = true;
 
+      const patternGroups = new Map<string, Shot[]>();
+      const singleShots: Shot[] = [];
+
       for (const shot of newOpponentShots) {
-        match.current.executeShot(shot.x, shot.y, false);
+        if (
+          shot.patternId &&
+          shot.patternCenterX !== undefined &&
+          shot.patternCenterY !== undefined
+        ) {
+          const groupKey = `${shot.patternId}-${shot.patternCenterX}-${shot.patternCenterY}`;
+          if (!patternGroups.has(groupKey)) {
+            patternGroups.set(groupKey, []);
+          }
+          patternGroups.get(groupKey)!.push(shot);
+        } else {
+          singleShots.push(shot);
+        }
+      }
+
+      for (const [, shots] of patternGroups) {
+        if (shots.length === 0) continue;
+
+        const firstShot = shots[0];
+        const pattern: ShotPattern = {
+          id: firstShot.patternId!,
+          name: firstShot.patternId!,
+          offsets: shots.map((s) => ({
+            dx: s.x - firstShot.patternCenterX!,
+            dy: s.y - firstShot.patternCenterY!,
+          })),
+        };
+
+        match.current.planShot(
+          firstShot.patternCenterX!,
+          firstShot.patternCenterY!,
+          pattern,
+          false,
+        );
+        match.current.confirmAttack();
+      }
+
+      for (const shot of singleShots) {
+        match.current.planAndAttack(shot.x, shot.y, false, SINGLE_SHOT);
       }
 
       isSyncingRef.current = false;
     }
   }, [room?.hostShots, room?.guestShots, gameState]);
 
-  const executeShot = async (x: number, y: number) => {
+  const executeShot = async (
+    x: number,
+    y: number,
+    pattern: ShotPattern = SINGLE_SHOT,
+  ) => {
     if (!match.current || !room || !gameState) return;
     if (!gameState.isPlayerTurn) return;
     if (gameState.isGameOver) return;
     if (room.currentTurn !== playerRole) return;
 
-    const result = match.current.executeShot(x, y, true);
+    const planResult = match.current.planShot(x, y, pattern, true);
+    if (!planResult.ready) return;
 
+    const result = match.current.confirmAttack();
     if (!result.success) return;
 
     const currentPlayerShots = gameState.playerShots || [];
-    const newShot: Shot = {
-      x,
-      y,
-      hit: result.hit || false,
-      ...(result.shipId !== undefined &&
-        result.shipId >= 0 && { shipId: result.shipId }),
-    };
 
-    const updatedShots = [...currentPlayerShots, newShot];
+    const newShots: Shot[] = result.shots
+      .filter((s) => s.executed)
+      .map((s) => ({
+        x: s.x,
+        y: s.y,
+        hit: s.hit || false,
+        ...(s.shipId !== undefined && s.shipId >= 0 && { shipId: s.shipId }),
+        patternId: pattern.id,
+        patternCenterX: x,
+        patternCenterY: y,
+      }));
+
+    const updatedShots = [...currentPlayerShots, ...newShots];
 
     const cleanShots = (shots: Shot[]) =>
       shots.map((shot) => {
         const cleaned: Shot = { x: shot.x, y: shot.y, hit: shot.hit };
         if (shot.shipId !== undefined) {
           cleaned.shipId = shot.shipId;
+        }
+        if (shot.patternId !== undefined) {
+          cleaned.patternId = shot.patternId;
+          cleaned.patternCenterX = shot.patternCenterX;
+          cleaned.patternCenterY = shot.patternCenterY;
         }
         return cleaned;
       });

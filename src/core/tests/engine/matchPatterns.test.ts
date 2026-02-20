@@ -144,7 +144,7 @@ describe("Match Shot Patterns", () => {
       const result = match.planAndAttack(5, 5, true);
       
       expect(result.success).toBe(true);
-      expect(result.hit).toBe(true);
+      expect(result.shots[0]?.hit).toBe(true);
     });
 
     it("should use SINGLE_SHOT pattern internally", () => {
@@ -161,7 +161,7 @@ describe("Match Shot Patterns", () => {
       
       expect(result.success).toBe(true);
       // First shot of CROSS is center (6,6) which should miss (no ship there)
-      expect(result.hit).toBe(false);
+      expect(result.shots[0]?.hit).toBe(false);
       expect(match.getPendingPlan()).toBeNull();
     });
 
@@ -171,7 +171,7 @@ describe("Match Shot Patterns", () => {
       
       expect(result.success).toBe(true);
       // Returns first shot info (7, 2) which should miss
-      expect(result.hit).toBeDefined();
+      expect(result.shots[0]?.hit).toBeDefined();
     });
   });
 
@@ -184,7 +184,8 @@ describe("Match Shot Patterns", () => {
       
       // Change turn if needed
       if (!match.isPlayerTurn()) {
-        match.getEngine().toggleTurn();
+        const internal = match.getEngine().getInternalAPI();
+        internal.toggleTurn();
       }
       
       // Second pattern
@@ -224,7 +225,8 @@ describe("Match Shot Patterns", () => {
       match.planAndAttack(5, 5, true);
       
       if (!match.isPlayerTurn()) {
-        match.getEngine().toggleTurn();
+        const internal = match.getEngine().getInternalAPI();
+        internal.toggleTurn();
       }
       
       // Plan cross pattern including the already-shot center

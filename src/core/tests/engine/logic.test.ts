@@ -1,11 +1,26 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GameEngine } from '../../engine/logic';
 import type { GameShip, Shot } from '../../types/common';
+import { SINGLE_SHOT } from '../../constants/shotPatterns';
 
 describe('GameEngine', () => {
   let engine: GameEngine;
   let playerShips: GameShip[];
   let enemyShips: GameShip[];
+
+  // Helper function to execute a single shot using pattern system
+  const executeShot = (x: number, y: number, isPlayerShot: boolean) => {
+    const result = engine.executeShotPattern(x, y, SINGLE_SHOT, isPlayerShot);
+    return {
+      success: result.success,
+      error: result.error,
+      hit: result.shots[0]?.hit ?? false,
+      shipId: result.shots[0]?.shipId ?? -1,
+      shipDestroyed: result.shots[0]?.shipDestroyed,
+      isGameOver: result.isGameOver,
+      winner: result.winner,
+    };
+  };
 
   beforeEach(() => {
     engine = new GameEngine({ boardWidth: 10, boardHeight: 10 });
@@ -79,23 +94,27 @@ describe('GameEngine', () => {
     });
 
     it('should toggle turns correctly', () => {
+      const internal = engine.getInternalAPI();
       expect(engine.getCurrentTurn()).toBe('PLAYER_TURN');
       
-      engine.toggleTurn();
+      internal.toggleTurn();
       expect(engine.getCurrentTurn()).toBe('ENEMY_TURN');
       
-      engine.toggleTurn();
+      internal.toggleTurn();
       expect(engine.getCurrentTurn()).toBe('PLAYER_TURN');
     });
 
     it('should call onTurnChange callback when turn changes', () => {
       const onTurnChange = vi.fn();
       const engineWithCallback = new GameEngine({}, { onTurnChange });
+      const internal = engineWithCallback.getInternalAPI();
       
-      engineWithCallback.setEnemyTurn();
+      // Toggle to enemy turn
+      internal.toggleTurn();
       expect(onTurnChange).toHaveBeenCalledWith('ENEMY_TURN');
       
-      engineWithCallback.setPlayerTurn();
+      // Toggle back to player turn
+      internal.toggleTurn();
       expect(onTurnChange).toHaveBeenCalledWith('PLAYER_TURN');
     });
   });
@@ -194,7 +213,8 @@ describe('GameEngine', () => {
       expect(state.areAllPlayerShipsDestroyed).toBe(false);
       
       // Game over must be set manually (normally done by Match)
-      engine.setGameOver('player');
+      const internal = engine.getInternalAPI();
+      internal.setGameOver('player');
       expect(engine.getWinner()).toBe('player');
       expect(engine.getState().isGameOver).toBe(true);
     });
@@ -214,7 +234,8 @@ describe('GameEngine', () => {
       expect(state.areAllEnemyShipsDestroyed).toBe(false);
       
       // Game over must be set manually (normally done by Match)
-      engine.setGameOver('enemy');
+      const internal = engine.getInternalAPI();
+      internal.setGameOver('enemy');
       expect(engine.getWinner()).toBe('enemy');
       expect(engine.getState().isGameOver).toBe(true);
     });
@@ -232,7 +253,8 @@ describe('GameEngine', () => {
       engineWithCallback.executeShot(7, 9, true);
       
       // Manually set game over (normally done by Match)
-      engineWithCallback.setGameOver('player');
+      const internal = engineWithCallback.getInternalAPI();
+      internal.setGameOver('player');
       
       expect(onGameOver).toHaveBeenCalledWith('player');
     });

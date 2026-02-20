@@ -87,7 +87,7 @@ describe("Shot Pattern System", () => {
 
     it("should not re-shoot already shot cells", () => {
       // First shot at center
-      engine.executeShot(5, 5, true);
+      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
       
       // Execute cross pattern
       const result = engine.executeShotPattern(5, 5, CROSS_SHOT, true);
@@ -174,7 +174,8 @@ describe("Shot Pattern System", () => {
 
   describe("Game Over Detection", () => {
     it("should not execute pattern when game is already over", () => {
-      engine.setGameOver("player");
+      const internal = engine.getInternalAPI();
+      internal.setGameOver("player");
       
       const result = engine.executeShotPattern(5, 5, CROSS_SHOT, true);
       
@@ -195,7 +196,7 @@ describe("Shot Pattern System", () => {
 
     it("should not count out-of-bounds or already-shot cells", () => {
       // Shoot center first
-      engine.executeShot(0, 0, true);
+      engine.executeShotPattern(0, 0, SINGLE_SHOT, true);
       
       // Execute cross at corner (some will be out of bounds, one already shot)
       engine.executeShotPattern(0, 0, CROSS_SHOT, true);

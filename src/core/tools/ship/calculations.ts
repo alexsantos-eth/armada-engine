@@ -210,14 +210,9 @@ export function generateShips(config: Partial<GameConfig>): GameShip[] {
         config.boardHeight ?? GAME_CONSTANTS.BOARD.DEFAULT_HEIGHT,
         ships,
       );
+      
       if (ship) {
         ships.push(ship);
-      } else {
-        console.warn(
-          `Failed to place ${variant} ship ${
-            i + 1
-          }/${count}. Board may be too crowded.`,
-        );
       }
     }
   }

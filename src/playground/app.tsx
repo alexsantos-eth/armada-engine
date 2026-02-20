@@ -1,12 +1,12 @@
 import { useRef } from "preact/hooks";
 import { GameInitializer } from "../core/manager";
 import SingleMatch from "./components/single-match";
-import { Match, type Shot } from "../core/engine";
+import { getShotPattern, Match, type Shot } from "../core/engine";
 import NetworkMatch from "./components/network-match";
 
 const initializer = new GameInitializer({
-  boardWidth: 20,
-  boardHeight: 20,
+  boardWidth: 5,
+  boardHeight: 5,
 });
 const initialSetup = initializer.initializeGame("random");
 
@@ -16,12 +16,23 @@ const Playground = () => {
 
   const onPlayer1Shot = (shot: Shot, isPlayerShot: boolean) => {
     if (!isPlayerShot) return;
-    player2MatchRef.current?.planAndAttack(shot.x, shot.y, false);
+
+    player2MatchRef.current?.planAndAttack(
+      shot.x,
+      shot.y,
+      false,
+      getShotPattern(shot.patternId || "single"),
+    );
   };
 
   const onPlayer2Shot = (shot: Shot, isPlayerShot: boolean) => {
     if (!isPlayerShot) return;
-    player1MatchRef.current?.planAndAttack(shot.x, shot.y, false);
+    player1MatchRef.current?.planAndAttack(
+      shot.x,
+      shot.y,
+      false,
+      getShotPattern(shot.patternId || "single"),
+    );
   };
 
   return (

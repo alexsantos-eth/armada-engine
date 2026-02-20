@@ -18,6 +18,9 @@ export interface Shot {
   y: number;
   hit: boolean;
   shipId?: number;
+  patternId?: string; 
+  patternCenterX?: number; 
+  patternCenterY?: number;
 }
 
 /**

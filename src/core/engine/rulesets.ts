@@ -69,9 +69,15 @@ export const ClassicRuleSet: MatchRuleSet = {
       };
     }
 
+    // Evaluate pattern result: check if any shot hit or destroyed a ship
+    const anyHit = attackResult.shots.some((shot) => shot.hit && shot.executed);
+    const anyShipDestroyed = attackResult.shots.some(
+      (shot) => shot.shipDestroyed && shot.executed,
+    );
+
     // Priority 2: Evaluate based on shot result
-    if (attackResult.hit) {
-      if (attackResult.shipDestroyed) {
+    if (anyHit) {
+      if (anyShipDestroyed) {
         // Ship destroyed - turn ends, switch player
         return {
           shouldEndTurn: true,
@@ -139,12 +145,15 @@ export const AlternatingTurnsRuleSet: MatchRuleSet = {
       };
     }
 
+    // Check if any shot hit
+    const anyHit = attackResult.shots.some((shot) => shot.hit && shot.executed);
+
     // Every shot ends turn
     return {
       shouldEndTurn: true,
       shouldToggleTurn: true,
       canShootAgain: false,
-      reason: attackResult.hit ? "Hit - turn ends" : "Miss - turn ends",
+      reason: anyHit ? "Hit - turn ends" : "Miss - turn ends",
     };
   },
 

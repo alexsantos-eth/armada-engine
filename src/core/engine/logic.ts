@@ -1,6 +1,13 @@
 import { GAME_CONSTANTS } from "../constants/game";
 import { getShipCellsFromShip } from "../tools/ship/calculations";
-import type { GameShip, Shot, Winner, GameTurn, ShotPattern, ShotPatternResult } from "../types/common";
+import type {
+  GameShip,
+  Shot,
+  Winner,
+  GameTurn,
+  ShotPattern,
+  ShotPatternResult,
+} from "../types/common";
 import type { GameConfig } from "../types/config";
 
 type PositionKey = string;
@@ -161,7 +168,7 @@ export class GameEngine {
   /**
    * Set turn to player
    */
-  public setPlayerTurn(): void {
+  private setPlayerTurn(): void {
     this.currentTurn = "PLAYER_TURN";
     this.onTurnChange?.(this.currentTurn);
     this.notifyStateChange();
@@ -170,7 +177,7 @@ export class GameEngine {
   /**
    * Set turn to enemy
    */
-  public setEnemyTurn(): void {
+  private setEnemyTurn(): void {
     this.currentTurn = "ENEMY_TURN";
     this.onTurnChange?.(this.currentTurn);
     this.notifyStateChange();
@@ -179,7 +186,7 @@ export class GameEngine {
   /**
    * Toggle turn between player and enemy
    */
-  public toggleTurn(): void {
+  private toggleTurn(): void {
     if (this.currentTurn === "PLAYER_TURN") {
       this.setEnemyTurn();
     } else {
@@ -188,14 +195,22 @@ export class GameEngine {
   }
 
   /**
-   * Execute a shot at target coordinates
+   * Execute a shot at target coordinates (internal use only)
    * @param x - X coordinate on board
    * @param y - Y coordinate on board
    * @param isPlayerShot - True if shot is from player, false if from enemy
    * @param suppressCallback - If true, don't trigger onShot callback (used internally for patterns)
+   * @param patternInfo - Optional pattern information to store with the shot
    * @returns Result of the shot including hit status and game state
+   * @private - Use executeShotPattern() instead
    */
-  public executeShot(x: number, y: number, isPlayerShot: boolean, suppressCallback: boolean = false): ShotResult {
+  private executeShot(
+    x: number,
+    y: number,
+    isPlayerShot: boolean,
+    suppressCallback: boolean = false,
+    patternInfo?: { patternId: string; centerX: number; centerY: number },
+  ): ShotResult {
     if (this.isCellShot(x, y, isPlayerShot)) {
       return {
         success: false,
@@ -212,6 +227,9 @@ export class GameEngine {
       y,
       hit: result.hit,
       shipId: result.shipId >= 0 ? result.shipId : undefined,
+      patternId: patternInfo?.patternId || "single",
+      patternCenterX: patternInfo?.centerX || x,
+      patternCenterY: patternInfo?.centerY || y,
     };
 
     const key = posKey(x, y);
@@ -248,11 +266,20 @@ export class GameEngine {
 
   /**
    * Execute a shot pattern at target coordinates
+   * This is the primary method for executing shots. For a single-cell shot, use SINGLE_SHOT pattern.
+   * 
    * @param centerX - Center X coordinate for the pattern
    * @param centerY - Center Y coordinate for the pattern
-   * @param pattern - The shot pattern to execute
+   * @param pattern - The shot pattern to execute (use SINGLE_SHOT for standard single shots)
    * @param isPlayerShot - True if shots are from player, false if from enemy
    * @returns Result containing all shots executed in the pattern
+   * 
+   * @example
+   * // Single shot
+   * engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
+   * 
+   * // Cross pattern
+   * engine.executeShotPattern(5, 5, CROSS_SHOT, true);
    */
   public executeShotPattern(
     centerX: number,
@@ -287,7 +314,12 @@ export class GameEngine {
       }
 
       if (this.isCellShot(targetX, targetY, isPlayerShot)) {
-        const existingShot = this.getShotAtPosition(targetX, targetY, isPlayerShot);
+        const existingShot = this.getShotAtPosition(
+          targetX,
+          targetY,
+          isPlayerShot,
+        );
+
         shots.push({
           x: targetX,
           y: targetY,
@@ -298,7 +330,14 @@ export class GameEngine {
         continue;
       }
 
-      const shotResult = this.executeShot(targetX, targetY, isPlayerShot, true);
+      const shotResult = this.executeShot(
+        targetX,
+        targetY,
+        isPlayerShot,
+        true,
+        { patternId: pattern.id, centerX, centerY },
+      );
+
       shots.push({
         x: targetX,
         y: targetY,
@@ -306,6 +345,9 @@ export class GameEngine {
         shipId: shotResult.shipId >= 0 ? shotResult.shipId : undefined,
         shipDestroyed: shotResult.shipDestroyed,
         executed: true,
+        patternId: pattern.id,
+        patternCenterX: centerX,
+        patternCenterY: centerY,
       });
     }
 
@@ -313,9 +355,13 @@ export class GameEngine {
       const centerShot: Shot = {
         x: centerX,
         y: centerY,
-        hit: shots.some(s => s.hit && s.executed),
-        shipId: shots.find(s => s.hit && s.executed)?.shipId,
+        hit: shots.some((s) => s.hit && s.executed),
+        shipId: shots.find((s) => s.hit && s.executed)?.shipId,
+        patternId: pattern.id,
+        patternCenterX: centerX,
+        patternCenterY: centerY,
       };
+
       this.onShot(centerShot, isPlayerShot);
     }
 
@@ -403,8 +449,9 @@ export class GameEngine {
   /**
    * Set the game as over with a winner
    * @param winner - The winner of the game ('player' or 'enemy')
+   * @private - Should only be called through Match
    */
-  public setGameOver(winner: Winner): void {
+  private setGameOver(winner: Winner): void {
     this.winner = winner;
     this.isGameOver = true;
     this.onGameOver?.(this.winner);
@@ -628,6 +675,18 @@ export class GameEngine {
   private notifyStateChange(): void {
     this.onStateChange?.(this.getState());
   }
+
+  /**
+   * Get internal API for Match class
+   * @internal - This API should only be used by the Match class
+   * @returns Object with internal methods for turn and game state management
+   */
+  public getInternalAPI(): GameEngineInternalAPI {
+    return {
+      toggleTurn: () => this.toggleTurn(),
+      setGameOver: (winner: Winner) => this.setGameOver(winner),
+    };
+  }
 }
 
 /**
@@ -674,4 +733,24 @@ export interface GameEngineCallbacks {
   onTurnChange?: (turn: GameTurn) => void;
   onShot?: (shot: Shot, isPlayerShot: boolean) => void;
   onGameOver?: (winner: Winner) => void;
+}
+
+/**
+ * Internal API for Match class
+ * @internal - This interface should only be used by the Match class
+ * Provides controlled access to engine internals for game flow management
+ */
+export interface GameEngineInternalAPI {
+  /**
+   * Toggle turn between player and enemy
+   * @internal
+   */
+  toggleTurn: () => void;
+
+  /**
+   * Set the game as over with a winner
+   * @internal
+   * @param winner - The winner of the game
+   */
+  setGameOver: (winner: Winner) => void;
 }

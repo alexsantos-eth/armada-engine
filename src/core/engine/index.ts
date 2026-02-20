@@ -4,12 +4,10 @@ export type { GameEngineState, ShotResult, GameEngineCallbacks } from "./logic";
 export { Match } from "./match";
 export type {
   MatchShotResult,
-  MatchShotPatternResult,
   MatchCallbacks,
   MatchPhase,
   PlanPhaseResult,
   AttackPhaseResult,
-  AttackPhasePatternResult,
   TurnPhaseResult,
 } from "./match";
 
