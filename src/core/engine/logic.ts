@@ -1,6 +1,6 @@
 import { GAME_CONSTANTS } from "../constants/game";
 import { getShipCellsFromShip } from "../tools/ship/calculations";
-import type { GameShip, Shot, Winner, GameTurn } from "../types/common";
+import type { GameShip, Shot, Winner, GameTurn, ShotPattern, ShotPatternResult } from "../types/common";
 import type { GameConfig } from "../types/config";
 
 type PositionKey = string;
@@ -192,9 +192,10 @@ export class GameEngine {
    * @param x - X coordinate on board
    * @param y - Y coordinate on board
    * @param isPlayerShot - True if shot is from player, false if from enemy
+   * @param suppressCallback - If true, don't trigger onShot callback (used internally for patterns)
    * @returns Result of the shot including hit status and game state
    */
-  public executeShot(x: number, y: number, isPlayerShot: boolean): ShotResult {
+  public executeShot(x: number, y: number, isPlayerShot: boolean, suppressCallback: boolean = false): ShotResult {
     if (this.isCellShot(x, y, isPlayerShot)) {
       return {
         success: false,
@@ -224,7 +225,9 @@ export class GameEngine {
     }
 
     this.shotCount++;
-    this.onShot?.(shot, isPlayerShot);
+    if (!suppressCallback) {
+      this.onShot?.(shot, isPlayerShot);
+    }
 
     const shipDestroyed =
       result.hit && result.shipId >= 0
@@ -238,6 +241,87 @@ export class GameEngine {
       hit: result.hit,
       shipId: result.shipId,
       shipDestroyed,
+      isGameOver: this.isGameOver,
+      winner: this.winner,
+    };
+  }
+
+  /**
+   * Execute a shot pattern at target coordinates
+   * @param centerX - Center X coordinate for the pattern
+   * @param centerY - Center Y coordinate for the pattern
+   * @param pattern - The shot pattern to execute
+   * @param isPlayerShot - True if shots are from player, false if from enemy
+   * @returns Result containing all shots executed in the pattern
+   */
+  public executeShotPattern(
+    centerX: number,
+    centerY: number,
+    pattern: ShotPattern,
+    isPlayerShot: boolean,
+  ): ShotPatternResult {
+    if (this.isGameOver) {
+      return {
+        success: false,
+        error: "Game is already over",
+        shots: [],
+        isGameOver: true,
+        winner: this.winner,
+      };
+    }
+
+    const shots: ShotPatternResult["shots"] = [];
+
+    for (const offset of pattern.offsets) {
+      const targetX = centerX + offset.dx;
+      const targetY = centerY + offset.dy;
+
+      if (!this.isValidPosition(targetX, targetY)) {
+        shots.push({
+          x: targetX,
+          y: targetY,
+          hit: false,
+          executed: false,
+        });
+        continue;
+      }
+
+      if (this.isCellShot(targetX, targetY, isPlayerShot)) {
+        const existingShot = this.getShotAtPosition(targetX, targetY, isPlayerShot);
+        shots.push({
+          x: targetX,
+          y: targetY,
+          hit: existingShot?.hit ?? false,
+          shipId: existingShot?.shipId,
+          executed: false,
+        });
+        continue;
+      }
+
+      const shotResult = this.executeShot(targetX, targetY, isPlayerShot, true);
+      shots.push({
+        x: targetX,
+        y: targetY,
+        hit: shotResult.hit,
+        shipId: shotResult.shipId >= 0 ? shotResult.shipId : undefined,
+        shipDestroyed: shotResult.shipDestroyed,
+        executed: true,
+      });
+    }
+
+    if (this.onShot) {
+      const centerShot: Shot = {
+        x: centerX,
+        y: centerY,
+        hit: shots.some(s => s.hit && s.executed),
+        shipId: shots.find(s => s.hit && s.executed)?.shipId,
+      };
+      this.onShot(centerShot, isPlayerShot);
+    }
+
+    return {
+      success: true,
+      shots,
       isGameOver: this.isGameOver,
       winner: this.winner,
     };

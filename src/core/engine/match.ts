@@ -1,7 +1,8 @@
 import { GameEngine, type GameEngineState, type ShotResult } from "./logic";
-import type { GameShip, Winner, GameTurn } from "../types/common";
+import type { GameShip, Winner, GameTurn, ShotPattern, ShotPatternResult } from "../types/common";
 import type { GameConfig } from "../types/config";
 import { DefaultRuleSet, type MatchRuleSet } from "./rulesets";
+import { SINGLE_SHOT } from "../constants/shotPatterns";
 
 /**
  * Match Rules Manager
@@ -16,7 +17,14 @@ export class Match {
   private engine: GameEngine;
   private matchCallbacks?: MatchCallbacks;
   private ruleSet: MatchRuleSet;
-  public phase: MatchPhase = "IDLE";
+  private phase: MatchPhase = "IDLE";
+  
+  private pendingPlan: {
+    centerX: number;
+    centerY: number;
+    pattern: ShotPattern;
+    isPlayerShot: boolean;
+  } | null = null;
 
   constructor(
     config?: Partial<GameConfig>,
@@ -46,6 +54,8 @@ export class Match {
         this.matchCallbacks?.onGameOver?.(winner);
       },
     });
+
+    this.setPhase("IDLE");
   }
 
   /**
@@ -65,41 +75,95 @@ export class Match {
   }
 
   /**
-   * Execute a shot following match rules with phase system
+   * Plan a shot with a pattern (Phase 1: PLAN)
+   * This sets up the attack but doesn't execute it yet.
+   * Call confirmAttack() to execute the planned shot.
    *
-   * Phases:
-   * 1. Plan: Prepare attack type or defense (not implemented yet)
-   * 2. Attack: Execute the shot and resolve damage
-   * 3. Turn: Decide who plays next based on result
-   *
-   * @param x - X coordinate
-   * @param y - Y coordinate
+   * @param centerX - Center X coordinate for the pattern
+   * @param centerY - Center Y coordinate for the pattern
+   * @param pattern - Shot pattern to use (defaults to SINGLE_SHOT)
    * @param isPlayerShot - true for player, false for enemy
-   * @returns Match result with turn information
+   * @returns Plan phase result
    */
-  public executeShot(
-    x: number,
-    y: number,
+  public planShot(
+    centerX: number,
+    centerY: number,
+    pattern: ShotPattern = SINGLE_SHOT,
     isPlayerShot: boolean,
-  ): MatchShotResult {
-    // Phase 1: Plan (not implemented yet)
-    this.phasePlan(isPlayerShot);
+  ): PlanPhaseResult {
+    this.setPhase("PLAN");
 
-    // Phase 2: Attack - Execute the shot
-    const attackResult = this.phaseAttack(x, y, isPlayerShot);
+    if (!this.engine.isValidPosition(centerX, centerY)) {
+      return {
+        phase: "PLAN",
+        ready: false,
+        error: "Invalid position",
+      };
+    }
+
+    if (pattern.id === "single" && this.engine.isCellShot(centerX, centerY, isPlayerShot)) {
+      return {
+        phase: "PLAN",
+        ready: false,
+        error: "Cell already shot",
+      };
+    }
+
+    this.pendingPlan = {
+      centerX,
+      centerY,
+      pattern,
+      isPlayerShot,
+    };
+
+    return {
+      phase: "PLAN",
+      ready: true,
+      pattern,
+      centerX,
+      centerY,
+    };
+  }
+
+  /**
+   * Execute the planned attack (Phase 2: ATTACK + Phase 3: TURN)
+   * Must call planShot() first to set up the attack.
+   *
+   * @returns Match shot pattern result with turn information
+   */
+  public confirmAttack(): MatchShotPatternResult {
+    if (!this.pendingPlan) {
+      return {
+        success: false,
+        error: "No attack planned. Call planShot() first.",
+        shots: [],
+        isGameOver: this.engine.getState().isGameOver,
+        winner: this.engine.getWinner(),
+        turnEnded: false,
+        canShootAgain: false,
+        reason: "No attack planned",
+        phase: "ATTACK",
+      };
+    }
+
+    const { centerX, centerY, pattern, isPlayerShot } = this.pendingPlan;
+
+    // Phase 2: Attack - Execute the shot pattern
+    const attackResult = this.phaseAttackPattern(centerX, centerY, pattern, isPlayerShot);
+    this.pendingPlan = null;
 
     if (!attackResult.success) {
       return {
         ...attackResult,
         turnEnded: false,
         canShootAgain: false,
-        reason: attackResult.error || "Shot failed",
+        reason: attackResult.error || "Attack failed",
         phase: "ATTACK",
       };
     }
 
-    // Phase 3: Turn - Decide next turn
-    const turnResult = this.phaseTurn(attackResult, isPlayerShot);
+    // Phase 3: Turn - Decide next turn based on the overall pattern result
+    const turnResult = this.phaseTurnPattern(attackResult, isPlayerShot);
 
     return {
       ...attackResult,
@@ -113,62 +177,135 @@ export class Match {
   }
 
   /**
-   * Phase 1: Plan
-   * Prepare attack type or defense modifications
-   * @param _isPlayerShot - true for player, false for enemy (not used yet)
-   * @returns Plan phase result
-   * @private
+   * Cancel the pending attack plan
    */
-  private phasePlan(_isPlayerShot: boolean): PlanPhaseResult {
-    this.setPhase("PLAN");
+  public cancelPlan(): void {
+    this.pendingPlan = null;
+    this.setPhase("IDLE");
+  }
+
+  /**
+   * Get the current pending plan (if any)
+   */
+  public getPendingPlan(): { centerX: number; centerY: number; pattern: ShotPattern; isPlayerShot: boolean } | null {
+    return this.pendingPlan;
+  }
+
+  /**
+   * Plan and execute a shot following match rules with phase system
+   * Supports both single shots and pattern shots.
+   * For detailed pattern results, use planShot() + confirmAttack()
+   *
+   * Phases:
+   * 1. Plan: Prepare attack type or defense
+   * 2. Attack: Execute the shot and resolve damage
+   * 3. Turn: Decide who plays next based on result
+   *
+   * @param x - X coordinate (center for patterns)
+   * @param y - Y coordinate (center for patterns)
+   * @param isPlayerShot - true for player, false for enemy
+   * @param pattern - Shot pattern to use (defaults to SINGLE_SHOT)
+   * @returns Match result with turn information (returns first shot for patterns)
+   */
+  public planAndAttack(
+    x: number,
+    y: number,
+    isPlayerShot: boolean,
+    pattern: ShotPattern = SINGLE_SHOT,
+  ): MatchShotResult {
+    const planResult = this.planShot(x, y, pattern, isPlayerShot);
+    
+    if (!planResult.ready) {
+      return {
+        success: false,
+        error: planResult.error,
+        hit: false,
+        shipId: -1,
+        turnEnded: false,
+        canShootAgain: false,
+        reason: planResult.error || "Invalid shot",
+        phase: "ATTACK",
+      };
+    }
+
+    const result = this.confirmAttack();
+
+    const lastShot = result.shots[result.shots.length - 1];
 
     return {
-      phase: "PLAN",
-      ready: true,
+      success: result.success,
+      error: result.error,
+      hit: lastShot?.hit ?? false,
+      shipId: lastShot?.shipId ?? -1,
+      shipDestroyed: lastShot?.shipDestroyed,
+      isGameOver: result.isGameOver,
+      winner: result.winner,
+      turnEnded: result.turnEnded,
+      canShootAgain: result.canShootAgain,
+      reason: result.reason,
+      phase: result.phase,
     };
   }
 
   /**
-   * Phase 2: Attack
-   * Execute the shot and resolve damage
-   * @param x - X coordinate
-   * @param y - Y coordinate
+   * Phase 2: Attack (Pattern version)
+   * Execute the shot pattern and resolve damage
+   * @param centerX - Center X coordinate
+   * @param centerY - Center Y coordinate
+   * @param pattern - Shot pattern to execute
    * @param isPlayerShot - true for player, false for enemy
-   * @returns Attack phase result
+   * @returns Attack phase pattern result
    * @private
    */
-  private phaseAttack(
-    x: number,
-    y: number,
+  private phaseAttackPattern(
+    centerX: number,
+    centerY: number,
+    pattern: ShotPattern,
     isPlayerShot: boolean,
-  ): AttackPhaseResult {
+  ): AttackPhasePatternResult {
     this.setPhase("ATTACK");
 
-    const shotResult = this.engine.executeShot(x, y, isPlayerShot);
+    const patternResult = this.engine.executeShotPattern(centerX, centerY, pattern, isPlayerShot);
     this.checkGameOver();
 
     return {
-      ...shotResult,
+      ...patternResult,
       phase: "ATTACK",
     };
   }
 
   /**
-   * Phase 3: Turn Decision
-   * Decide who plays next based on attack result and current RuleSet
+   * Phase 3: Turn Decision (Pattern version)
+   * Decide who plays next based on pattern attack result and current RuleSet
+   * For patterns, we consider the pattern as a "hit" if any shot in the pattern hit
    * @param attackResult - Result from attack phase
    * @param _isPlayerShot - true for player, false for enemy (not used yet)
    * @returns Turn phase result
    * @private
    */
-  private phaseTurn(
-    attackResult: AttackPhaseResult,
+  private phaseTurnPattern(
+    attackResult: AttackPhasePatternResult,
     _isPlayerShot: boolean,
   ): TurnPhaseResult {
     this.setPhase("TURN");
 
     const state = this.engine.getState();
-    const decision = this.ruleSet.decideTurn(attackResult, state);
+    
+    const anyHit = attackResult.shots.some(shot => shot.hit);
+    const anyShipDestroyed = attackResult.shots.some(shot => shot.shipDestroyed);
+    
+    const syntheticShotResult: AttackPhaseResult = {
+      success: attackResult.success,
+      error: attackResult.error,
+      hit: anyHit,
+      shipId: attackResult.shots.find(s => s.hit)?.shipId ?? -1,
+      shipDestroyed: anyShipDestroyed,
+      isGameOver: attackResult.isGameOver,
+      winner: attackResult.winner,
+      phase: "ATTACK",
+    };
+    
+    const decision = this.ruleSet.decideTurn(syntheticShotResult, state);
 
     if (decision.shouldToggleTurn) {
       this.engine.toggleTurn();
@@ -354,7 +491,7 @@ export class Match {
 /**
  * Match phases
  */
-export type MatchPhase = "PLAN" | "ATTACK" | "TURN" | "START" | "IDLE"
+export type MatchPhase = "PLAN" | "ATTACK" | "TURN" | "START" | "IDLE";
 
 /**
  * Plan phase result
@@ -362,12 +499,23 @@ export type MatchPhase = "PLAN" | "ATTACK" | "TURN" | "START" | "IDLE"
 export interface PlanPhaseResult {
   phase: "PLAN";
   ready: boolean;
+  error?: string;
+  pattern?: ShotPattern;
+  centerX?: number;
+  centerY?: number;
 }
 
 /**
- * Attack phase result
+ * Attack phase result (single shot)
  */
 export interface AttackPhaseResult extends ShotResult {
+  phase: "ATTACK";
+}
+
+/**
+ * Attack phase result (pattern shot)
+ */
+export interface AttackPhasePatternResult extends ShotPatternResult {
   phase: "ATTACK";
 }
 
@@ -387,6 +535,16 @@ export interface TurnPhaseResult {
  * Match shot result extends ShotResult with turn information
  */
 export interface MatchShotResult extends ShotResult {
+  turnEnded: boolean;
+  canShootAgain: boolean;
+  reason: string;
+  phase: MatchPhase;
+}
+
+/**
+ * Match shot pattern result extends ShotPatternResult with turn information
+ */
+export interface MatchShotPatternResult extends ShotPatternResult {
   turnEnded: boolean;
   canShootAgain: boolean;
   reason: string;

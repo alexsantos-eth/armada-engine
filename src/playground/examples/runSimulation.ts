@@ -64,7 +64,7 @@ export function runSimulation(
     const [x, y] = shot;
 
     // Execute the shot
-    const result = match.executeShot(x, y, isPlayerTurn);
+    const result = match.planAndAttack(x, y, isPlayerTurn);
 
     // If the shot failed (shouldn't happen with valid positions), break
     if (!result.success) {
@@ -134,7 +134,7 @@ export function runSimulationWithAI(
     }
 
     const [x, y] = shot;
-    const result = match.executeShot(x, y, isPlayerTurn);
+    const result = match.planAndAttack(x, y, isPlayerTurn);
 
     if (!result.success) {
       console.warn(`Shot failed at (${x}, ${y}): ${result.error}`);

@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useBoard, type UseBoardProps } from "../../core-react/hooks";
-import type { CellState } from "../../core/types/common";
+import type { CellState, ShotPattern } from "../../core/types/common";
+import { SHOT_PATTERNS } from "../../core/constants/shotPatterns";
 
 interface SingleMatchProps extends UseBoardProps {}
 
@@ -8,8 +10,12 @@ const SingleMatch = ({
   matchRef,
   ...callbacks
 }: SingleMatchProps) => {
+  const [selectedPattern, setSelectedPattern] = useState<ShotPattern>(
+    SHOT_PATTERNS.single
+  );
+
   const {
-    executeShot,
+    planAndAttack,
     match: { playerBoard, enemyBoard, gameState, initializeNewGame },
   } = useBoard({ initialSetup, matchRef, ...callbacks });
 
@@ -34,6 +40,46 @@ const SingleMatch = ({
         <div>
           <h2>Tu Tablero</h2>
           <p>Fase: {matchRef?.current?.getPhase()}</p>
+
+          <p>Seleccionar patron de tiro</p>
+          
+          <div style={{ 
+            display: "flex", 
+            flexWrap: "wrap", 
+            gap: "8px", 
+            marginBottom: "10px",
+            maxWidth: "400px" 
+          }}>
+            {Object.values(SHOT_PATTERNS).map((pattern) => (
+              <button
+                key={pattern.id}
+                onClick={() => setSelectedPattern(pattern)}
+                style={{
+                  padding: "8px 12px",
+                  fontSize: "12px",
+                  backgroundColor: selectedPattern.id === pattern.id ? "#4CAF50" : "#f0f0f0",
+                  color: selectedPattern.id === pattern.id ? "white" : "#333",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontWeight: selectedPattern.id === pattern.id ? "bold" : "normal",
+                }}
+                title={pattern.description}
+              >
+                {pattern.name}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ 
+            fontSize: "13px", 
+            color: "#666", 
+            marginBottom: "15px",
+            fontStyle: "italic"
+          }}>
+            Patrón actual: <strong>{selectedPattern.name}</strong>
+            {selectedPattern.description && ` - ${selectedPattern.description}`}
+          </div>
 
           <div style={{ display: "inline-block", border: "2px solid #333" }}>
             {playerBoard?.map((row, y) => (
@@ -73,7 +119,7 @@ const SingleMatch = ({
                 {row.map((cell, x) => (
                   <div
                     key={`${x}-${y}`}
-                    onClick={() => executeShot(x, y)}
+                    onClick={() => planAndAttack(x, y, selectedPattern)}
                     style={{
                       width: "40px",
                       height: "40px",

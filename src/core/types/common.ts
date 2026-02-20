@@ -20,6 +20,51 @@ export interface Shot {
   shipId?: number;
 }
 
+/**
+ * Represents an offset from a center position for shot patterns
+ */
+export interface ShotOffset {
+  /** Horizontal offset (positive = right, negative = left) */
+  dx: number;
+  /** Vertical offset (positive = down, negative = up) */
+  dy: number;
+}
+
+/**
+ * Defines a shot pattern with multiple offsets
+ */
+export interface ShotPattern {
+  /** Unique identifier for the pattern */
+  id: string;
+  /** Human-readable name */
+  name: string;
+  /** Description of the pattern */
+  description?: string;
+  /** Array of offsets from the target position */
+  offsets: ShotOffset[];
+}
+
+/**
+ * Result of executing a shot pattern
+ */
+export interface ShotPatternResult {
+  /** Whether the pattern was executed successfully */
+  success: boolean;
+  /** Error message if execution failed */
+  error?: string;
+  /** Array of individual shot results */
+  shots: Array<
+    {
+      shipDestroyed?: boolean;
+      executed: boolean; // False if shot was out of bounds or already taken
+    } & Shot
+  >;
+  /** Whether the game is over after this pattern */
+  isGameOver: boolean;
+  /** Winner if game is over */
+  winner: Winner;
+}
+
 export interface ShipPlacement {
   ship: GameShip;
   cells: [number, number][];

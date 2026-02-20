@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import useMatch, { type UseMatchProps } from "./useMatch";
-import type { Match } from "../../core/engine";
+import { SINGLE_SHOT, type Match, type ShotPattern } from "../../core/engine";
 
 export interface UseBoardProps extends UseMatchProps {
   matchRef?: React.MutableRefObject<Match | null>;
@@ -8,11 +8,11 @@ export interface UseBoardProps extends UseMatchProps {
 const useBoard = ({ initialSetup, matchRef, ...callbacks }: UseBoardProps) => {
   const match = useMatch({ initialSetup, ...callbacks });
 
-  const executeShot = (x: number, y: number) => {
+  const planAndAttack = (x: number, y: number, pattern: ShotPattern = SINGLE_SHOT) => {
     if(!match.gameState?.isPlayerTurn) return;
     if(match.gameState.isGameOver) return;
 
-    match?.match?.executeShot(x, y, true);
+    match?.match?.planAndAttack(x, y, true, pattern);
   };
 
   useEffect(() => {
@@ -21,7 +21,7 @@ const useBoard = ({ initialSetup, matchRef, ...callbacks }: UseBoardProps) => {
 
   return {
     match,
-    executeShot,
+    planAndAttack,
   };
 };
 

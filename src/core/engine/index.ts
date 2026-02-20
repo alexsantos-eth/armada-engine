@@ -4,10 +4,12 @@ export type { GameEngineState, ShotResult, GameEngineCallbacks } from "./logic";
 export { Match } from "./match";
 export type {
   MatchShotResult,
+  MatchShotPatternResult,
   MatchCallbacks,
   MatchPhase,
   PlanPhaseResult,
   AttackPhaseResult,
+  AttackPhasePatternResult,
   TurnPhaseResult,
 } from "./match";
 
@@ -32,6 +34,25 @@ export type {
   GameTurn,
   ShipVariant,
   ShipOrientation,
+  ShotPattern,
+  ShotOffset,
+  ShotPatternResult,
 } from "../types/common";
 
 export type { GameConfig } from "../types/config";
+
+export {
+  SHOT_PATTERNS,
+  SINGLE_SHOT,
+  CROSS_SHOT,
+  LARGE_CROSS_SHOT,
+  HORIZONTAL_LINE_SHOT,
+  VERTICAL_LINE_SHOT,
+  SQUARE_SHOT,
+  DIAGONAL_X_SHOT,
+  SMALL_SQUARE_SHOT,
+  T_SHAPE_SHOT,
+  L_SHAPE_SHOT,
+  getShotPattern,
+  createCustomPattern,
+} from "../constants/shotPatterns";

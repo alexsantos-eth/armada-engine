@@ -5,8 +5,8 @@ import { Match, type Shot } from "../core/engine";
 import NetworkMatch from "./components/network-match";
 
 const initializer = new GameInitializer({
-  boardWidth: 5,
-  boardHeight: 5,
+  boardWidth: 20,
+  boardHeight: 20,
 });
 const initialSetup = initializer.initializeGame("random");
 
@@ -16,12 +16,12 @@ const Playground = () => {
 
   const onPlayer1Shot = (shot: Shot, isPlayerShot: boolean) => {
     if (!isPlayerShot) return;
-    player2MatchRef.current?.executeShot(shot.x, shot.y, false);
+    player2MatchRef.current?.planAndAttack(shot.x, shot.y, false);
   };
 
   const onPlayer2Shot = (shot: Shot, isPlayerShot: boolean) => {
     if (!isPlayerShot) return;
-    player1MatchRef.current?.executeShot(shot.x, shot.y, false);
+    player1MatchRef.current?.planAndAttack(shot.x, shot.y, false);
   };
 
   return (
