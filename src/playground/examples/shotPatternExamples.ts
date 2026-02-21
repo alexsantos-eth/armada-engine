@@ -17,12 +17,12 @@ function examplePredefinedPatterns() {
   const engine = new GameEngine({ boardWidth: 10, boardHeight: 10 });
   
   const playerShips: GameShip[] = [
-    { coords: [0, 0], variant: "medium", orientation: "horizontal" },
+    { coords: [0, 0], width: 3, height: 1 },
   ];
   
   const enemyShips: GameShip[] = [
-    { coords: [5, 5], variant: "large", orientation: "horizontal" },
-    { coords: [8, 2], variant: "small", orientation: "vertical" },
+    { coords: [5, 5], width: 4, height: 1 },
+    { coords: [8, 2], width: 1, height: 2 },
   ];
   
   engine.initializeGame(playerShips, enemyShips, "PLAYER_TURN");
@@ -51,7 +51,7 @@ function examplePatternByID() {
   const engine = new GameEngine({ boardWidth: 10, boardHeight: 10 });
   
   const enemyShips: GameShip[] = [
-    { coords: [4, 4], variant: "medium", orientation: "horizontal" },
+    { coords: [4, 4], width: 3, height: 1 },
   ];
   
   engine.initializeGame([], enemyShips, "PLAYER_TURN");
@@ -75,7 +75,7 @@ function exampleCustomPatterns() {
   const engine = new GameEngine({ boardWidth: 10, boardHeight: 10 });
   
   const enemyShips: GameShip[] = [
-    { coords: [5, 5], variant: "xlarge", orientation: "horizontal" },
+    { coords: [5, 5], width: 5, height: 1 },
   ];
   
   engine.initializeGame([], enemyShips, "PLAYER_TURN");
@@ -113,7 +113,7 @@ function exampleEdgeCases() {
   const engine = new GameEngine({ boardWidth: 10, boardHeight: 10 });
   
   const enemyShips: GameShip[] = [
-    { coords: [0, 0], variant: "small", orientation: "horizontal" },
+    { coords: [0, 0], width: 2, height: 1 },
   ];
   
   engine.initializeGame([], enemyShips, "PLAYER_TURN");
@@ -146,7 +146,7 @@ function exampleGameOver() {
   
   // Small enemy ship that can be destroyed quickly
   const enemyShips: GameShip[] = [
-    { coords: [5, 5], variant: "small", orientation: "horizontal" }, // 2 cells
+    { coords: [5, 5], width: 2, height: 1 }, // 2 cells
   ];
   
   engine.initializeGame([], enemyShips, "PLAYER_TURN");
@@ -197,8 +197,8 @@ function exampleStrategicUsage() {
   const engine = new GameEngine({ boardWidth: 10, boardHeight: 10 });
   
   const enemyShips: GameShip[] = [
-    { coords: [2, 2], variant: "medium", orientation: "horizontal" },
-    { coords: [7, 5], variant: "large", orientation: "vertical" },
+    { coords: [2, 2], width: 3, height: 1 },
+    { coords: [7, 5], width: 1, height: 4 },
   ];
   
   engine.initializeGame([], enemyShips, "PLAYER_TURN");

@@ -19,8 +19,6 @@ export type {
   Shot,
   Winner,
   GameTurn,
-  ShipVariant,
-  ShipOrientation,
   ShotPattern,
   ShotOffset,
   ShotPatternResult,
@@ -65,4 +63,24 @@ export {
 
 export { GAME_CONSTANTS } from "../constants/game";
 
+export {
+  SMALL_SHIP,
+  MEDIUM_SHIP,
+  LARGE_SHIP,
+  XLARGE_SHIP,
+  SHIP_TEMPLATES,
+  getShipTemplate,
+  createShip,
+} from "../constants/ships";
+
 export { ShotError, PlanError, AttackError } from "./errors";
+
+export {
+  getShip2DCells,
+  getShipCellsFromShip,
+  getShipSize,
+  isValidShipPlacement,
+  generateShip,
+  generateShip2D,
+  generateShips,
+} from "../tools/ship/calculations";

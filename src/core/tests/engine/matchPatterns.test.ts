@@ -6,11 +6,11 @@ import type { GameShip } from "../../types/common";
 describe("Match Shot Patterns", () => {
   let match: Match;
   const playerShips: GameShip[] = [
-    { coords: [0, 0], variant: "medium", orientation: "horizontal" },
+    { coords: [0, 0], width: 3, height: 1 },
   ];
   const enemyShips: GameShip[] = [
-    { coords: [5, 5], variant: "medium", orientation: "horizontal" },
-    { coords: [8, 2], variant: "small", orientation: "vertical" },
+    { coords: [5, 5], width: 3, height: 1 },
+    { coords: [8, 2], width: 1, height: 2 },
   ];
 
   beforeEach(() => {

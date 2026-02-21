@@ -31,7 +31,6 @@ export type GAME_INITIAL_TURN = PlayerName | "random";
  * const initializer = new GameInitializer({
  *   boardWidth: 10,
  *   boardHeight: 10,
- *   shipCounts: { small: 1, medium: 2, large: 1, xlarge: 1 }
  * });
  *
  * const setup = initializer.initializeGame();

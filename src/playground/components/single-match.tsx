@@ -20,7 +20,7 @@ const SingleMatch = ({
 
   const {
     planAndAttack,
-    match: { playerBoard, enemyBoard, gameState, initializeNewGame },
+    match: { playerBoard, enemyBoard, gameState, initializeNewGame , match},
   } = useBoard({ initialSetup, matchRef, ...callbacks });
 
   const getCellContent = (cell: CellState) => {

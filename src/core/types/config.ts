@@ -4,12 +4,7 @@ export interface GameConfig {
   boardWidth: number;
   boardHeight: number;
 
-  shipCounts: {
-    small: number;
-    medium: number;
-    large: number;
-    xlarge: number;
-  };
+  shipCounts: Record<string, number>;
 
   initialTurn: PlayerName | "random";
 }

@@ -1,15 +1,19 @@
 export type GameTurn = "PLAYER_TURN" | "ENEMY_TURN";
 export type PlayerName = "player" | "enemy";
 export type Winner = PlayerName | null;
-export type ShipVariant = "small" | "medium" | "large" | "xlarge";
-export type ShipOrientation = "horizontal" | "vertical";
 export type CellState = "EMPTY" | "SHIP" | "HIT" | "MISS";
 export type Board = CellState[][];
 
+/**
+ * A 2D rectangular ship on the board.
+ * Its footprint is a `width × height` rectangle with top-left corner at `coords`.
+ */
 export interface GameShip {
   coords: [number, number];
-  variant: ShipVariant;
-  orientation: ShipOrientation;
+  /** Number of columns occupied (≥ 1). */
+  width: number;
+  /** Number of rows occupied (≥ 1). */
+  height: number;
   shipId?: number;
 }
 

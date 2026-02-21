@@ -11,7 +11,13 @@ import {
   generateRandomPosition,
 } from '../../../tools/ship/calculations';
 import { GAME_CONSTANTS } from '../../../constants/game';
-import type { GameShip, ShipVariant } from '../../../types/common';
+import {
+  SMALL_SHIP,
+  MEDIUM_SHIP,
+  LARGE_SHIP,
+  XLARGE_SHIP,
+} from '../../../constants/ships';
+import type { GameShip } from '../../../types/common';
 
 describe('Ship Calculations', () => {
   describe('getShipCells', () => {
@@ -58,8 +64,8 @@ describe('Ship Calculations', () => {
     it('should get cells from small horizontal ship', () => {
       const ship: GameShip = {
         coords: [2, 3],
-        variant: 'small',
-        orientation: 'horizontal',
+        width: 2,
+        height: 1,
       };
       
       const cells = getShipCellsFromShip(ship);
@@ -73,8 +79,8 @@ describe('Ship Calculations', () => {
     it('should get cells from medium vertical ship', () => {
       const ship: GameShip = {
         coords: [5, 5],
-        variant: 'medium',
-        orientation: 'vertical',
+        width: 1,
+        height: 3,
       };
       
       const cells = getShipCellsFromShip(ship);
@@ -89,8 +95,8 @@ describe('Ship Calculations', () => {
     it('should get cells from large ship', () => {
       const ship: GameShip = {
         coords: [0, 0],
-        variant: 'large',
-        orientation: 'horizontal',
+        width: 4,
+        height: 1,
       };
       
       const cells = getShipCellsFromShip(ship);
@@ -100,8 +106,8 @@ describe('Ship Calculations', () => {
     it('should get cells from xlarge ship', () => {
       const ship: GameShip = {
         coords: [0, 0],
-        variant: 'xlarge',
-        orientation: 'vertical',
+        width: 1,
+        height: 5,
       };
       
       const cells = getShipCellsFromShip(ship);
@@ -111,26 +117,24 @@ describe('Ship Calculations', () => {
 
   describe('getShipSize', () => {
     it('should return correct size for small ship', () => {
-      expect(getShipSize('small')).toBe(2);
+      expect(getShipSize(SMALL_SHIP)).toBe(2);
     });
 
     it('should return correct size for medium ship', () => {
-      expect(getShipSize('medium')).toBe(3);
+      expect(getShipSize(MEDIUM_SHIP)).toBe(3);
     });
 
     it('should return correct size for large ship', () => {
-      expect(getShipSize('large')).toBe(4);
+      expect(getShipSize(LARGE_SHIP)).toBe(4);
     });
 
     it('should return correct size for xlarge ship', () => {
-      expect(getShipSize('xlarge')).toBe(5);
+      expect(getShipSize(XLARGE_SHIP)).toBe(5);
     });
 
-    it('should match GAME_CONSTANTS values', () => {
-      expect(getShipSize('small')).toBe(GAME_CONSTANTS.SHIPS.SIZES.small);
-      expect(getShipSize('medium')).toBe(GAME_CONSTANTS.SHIPS.SIZES.medium);
-      expect(getShipSize('large')).toBe(GAME_CONSTANTS.SHIPS.SIZES.large);
-      expect(getShipSize('xlarge')).toBe(GAME_CONSTANTS.SHIPS.SIZES.xlarge);
+    it('should return width × height for 2D ships', () => {
+      const ship2D: GameShip = { coords: [0, 0], width: 3, height: 2 };
+      expect(getShipSize(ship2D)).toBe(6);
     });
   });
 
@@ -138,8 +142,8 @@ describe('Ship Calculations', () => {
     it('should validate ship within board bounds', () => {
       const ship: GameShip = {
         coords: [0, 0],
-        variant: 'small',
-        orientation: 'horizontal',
+        width: 2,
+        height: 1,
       };
       
       const valid = isValidShipPlacement(ship, [], 10, 10);
@@ -149,8 +153,8 @@ describe('Ship Calculations', () => {
     it('should reject ship outside board (right edge)', () => {
       const ship: GameShip = {
         coords: [9, 0],
-        variant: 'small',
-        orientation: 'horizontal',
+        width: 2,
+        height: 1,
       };
       
       const valid = isValidShipPlacement(ship, [], 10, 10);
@@ -160,8 +164,8 @@ describe('Ship Calculations', () => {
     it('should reject ship outside board (bottom edge)', () => {
       const ship: GameShip = {
         coords: [0, 9],
-        variant: 'small',
-        orientation: 'vertical',
+        width: 1,
+        height: 2,
       };
       
       const valid = isValidShipPlacement(ship, [], 10, 10);
@@ -171,8 +175,8 @@ describe('Ship Calculations', () => {
     it('should reject ship starting at negative coordinates', () => {
       const ship: GameShip = {
         coords: [-1, 0],
-        variant: 'small',
-        orientation: 'horizontal',
+        width: 2,
+        height: 1,
       };
       
       const valid = isValidShipPlacement(ship, [], 10, 10);
@@ -182,14 +186,14 @@ describe('Ship Calculations', () => {
     it('should reject overlapping ships', () => {
       const existingShip: GameShip = {
         coords: [2, 2],
-        variant: 'small',
-        orientation: 'horizontal',
+        width: 2,
+        height: 1,
       };
       
       const newShip: GameShip = {
         coords: [3, 2],
-        variant: 'small',
-        orientation: 'horizontal',
+        width: 2,
+        height: 1,
       };
       
       const valid = isValidShipPlacement(newShip, [existingShip], 10, 10);
@@ -199,15 +203,15 @@ describe('Ship Calculations', () => {
     it('should enforce minimum distance between ships', () => {
       const existingShip: GameShip = {
         coords: [2, 2],
-        variant: 'small',
-        orientation: 'horizontal',
+        width: 2,
+        height: 1,
       };
       
       // Too close (distance 1)
       const tooClose: GameShip = {
         coords: [2, 3],
-        variant: 'small',
-        orientation: 'horizontal',
+        width: 2,
+        height: 1,
       };
       
       expect(isValidShipPlacement(tooClose, [existingShip], 10, 10)).toBe(false);
@@ -215,8 +219,8 @@ describe('Ship Calculations', () => {
       // Far enough (distance 2)
       const farEnough: GameShip = {
         coords: [2, 4],
-        variant: 'small',
-        orientation: 'horizontal',
+        width: 2,
+        height: 1,
       };
       
       expect(isValidShipPlacement(farEnough, [existingShip], 10, 10)).toBe(true);
@@ -225,15 +229,15 @@ describe('Ship Calculations', () => {
     it('should validate diagonal distance', () => {
       const existingShip: GameShip = {
         coords: [5, 5],
-        variant: 'small',
-        orientation: 'horizontal',
+        width: 2,
+        height: 1,
       };
       
       // Diagonal adjacent (too close)
       const diagonal: GameShip = {
         coords: [7, 6],
-        variant: 'small',
-        orientation: 'horizontal',
+        width: 2,
+        height: 1,
       };
       
       expect(isValidShipPlacement(diagonal, [existingShip], 10, 10)).toBe(false);
@@ -242,14 +246,14 @@ describe('Ship Calculations', () => {
     it('should allow ships at exact minimum distance', () => {
       const existingShip: GameShip = {
         coords: [0, 0],
-        variant: 'small',
-        orientation: 'horizontal',
+        width: 2,
+        height: 1,
       };
       
       const newShip: GameShip = {
         coords: [0, 2],
-        variant: 'small',
-        orientation: 'horizontal',
+        width: 2,
+        height: 1,
       };
       
       expect(isValidShipPlacement(newShip, [existingShip], 10, 10)).toBe(true);
@@ -258,31 +262,30 @@ describe('Ship Calculations', () => {
 
   describe('generateShip', () => {
     it('should generate a valid ship on empty board', () => {
-      const ship = generateShip('small', 10, 10, []);
+      const ship = generateShip(SMALL_SHIP, 10, 10, []);
       
       expect(ship).not.toBeNull();
-      expect(ship?.variant).toBe('small');
-      expect(['horizontal', 'vertical']).toContain(ship?.orientation);
+      expect(ship?.width).toBeGreaterThanOrEqual(1);
+      expect(ship?.height).toBeGreaterThanOrEqual(1);
       expect(ship?.coords).toHaveLength(2);
     });
 
-    it('should generate different ship variants', () => {
-      const variants: ShipVariant[] = ['small', 'medium', 'large', 'xlarge'];
-      
-      variants.forEach(variant => {
-        const ship = generateShip(variant, 15, 15, []);
+    it('should generate different ship templates', () => {
+      [SMALL_SHIP, MEDIUM_SHIP, LARGE_SHIP, XLARGE_SHIP].forEach(template => {
+        const ship = generateShip(template, 15, 15, []);
         
         expect(ship).not.toBeNull();
-        expect(ship?.variant).toBe(variant);
+        expect(ship?.width).toBeGreaterThanOrEqual(1);
+        expect(ship?.height).toBeGreaterThanOrEqual(1);
       });
     });
 
     it('should respect existing ships', () => {
       const existingShips: GameShip[] = [
-        { coords: [0, 0], variant: 'small', orientation: 'horizontal', shipId: 0 },
+        { coords: [0, 0], width: 2, height: 1, shipId: 0 },
       ];
       
-      const ship = generateShip('small', 10, 10, existingShips);
+      const ship = generateShip(SMALL_SHIP, 10, 10, existingShips);
       
       if (ship) {
         expect(isValidShipPlacement(ship, existingShips, 10, 10)).toBe(true);
@@ -292,10 +295,10 @@ describe('Ship Calculations', () => {
     it('should return null when placement is impossible', () => {
       // Try to place large ship on tiny board with existing ships
       const existingShips: GameShip[] = [
-        { coords: [0, 0], variant: 'small', orientation: 'horizontal', shipId: 0 },
+        { coords: [0, 0], width: 2, height: 1, shipId: 0 },
       ];
       
-      const ship = generateShip('xlarge', 3, 3, existingShips);
+      const ship = generateShip(XLARGE_SHIP, 3, 3, existingShips);
       
       // May or may not succeed, but should not throw
       expect(ship === null || ship !== null).toBe(true);
@@ -303,11 +306,11 @@ describe('Ship Calculations', () => {
 
     it('should assign correct ship ID', () => {
       const existingShips: GameShip[] = [
-        { coords: [0, 0], variant: 'small', orientation: 'horizontal', shipId: 0 },
-        { coords: [5, 5], variant: 'small', orientation: 'horizontal', shipId: 1 },
+        { coords: [0, 0], width: 2, height: 1, shipId: 0 },
+        { coords: [5, 5], width: 2, height: 1, shipId: 1 },
       ];
       
-      const ship = generateShip('small', 10, 10, existingShips);
+      const ship = generateShip(SMALL_SHIP, 10, 10, existingShips);
       
       expect(ship?.shipId).toBe(2);
     });
@@ -323,9 +326,9 @@ describe('Ship Calculations', () => {
       
       const ships = generateShips(config);
       
-      const smallShips = ships.filter(s => s.variant === 'small');
-      const mediumShips = ships.filter(s => s.variant === 'medium');
-      const largeShips = ships.filter(s => s.variant === 'large');
+      const smallShips = ships.filter(s => Math.max(s.width, s.height) === 2);
+      const mediumShips = ships.filter(s => Math.max(s.width, s.height) === 3);
+      const largeShips = ships.filter(s => Math.max(s.width, s.height) === 4);
       
       expect(smallShips).toHaveLength(2);
       expect(mediumShips).toHaveLength(1);
@@ -382,27 +385,25 @@ describe('Ship Calculations', () => {
   });
 
   describe('getQuadrantPreferences', () => {
-    it('should return preferences for small ships', () => {
-      const prefs = getQuadrantPreferences('small');
+    it('should return preferences for small ships (2 cells)', () => {
+      const prefs = getQuadrantPreferences(2);
       
       expect(prefs).toBeDefined();
       expect(Array.isArray(prefs)).toBe(true);
       expect(prefs.length).toBeGreaterThan(0);
     });
 
-    it('should return preferences for all ship variants', () => {
-      const variants: ShipVariant[] = ['small', 'medium', 'large', 'xlarge'];
-      
-      variants.forEach(variant => {
-        const prefs = getQuadrantPreferences(variant);
+    it('should return preferences for all ship sizes', () => {
+      [2, 3, 4, 5].forEach(cells => {
+        const prefs = getQuadrantPreferences(cells);
         expect(prefs).toBeDefined();
         expect(Array.isArray(prefs)).toBe(true);
       });
     });
 
-    it('should return different preferences for different variants', () => {
-      const smallPrefs = getQuadrantPreferences('small');
-      const largePrefs = getQuadrantPreferences('large');
+    it('should return different preferences for different sizes', () => {
+      const smallPrefs = getQuadrantPreferences(2);
+      const largePrefs = getQuadrantPreferences(4);
       
       // Preferences should be defined but may vary
       expect(smallPrefs).toBeDefined();

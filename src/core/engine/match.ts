@@ -267,6 +267,21 @@ export class Match {
     this.actor.send({ type: "RESET" });
   }
 
+  /**
+   * Returns the current state of the underlying XState machine.
+   *
+   * Possible values:
+   * - `"idle"` — machine created, no active match yet.
+   * - `{ active: "planning" }` — match in progress, waiting for a shot to be planned.
+   * - `{ active: "planned" }` — shot planned, waiting for confirmation or cancellation.
+   * - `{ active: "attacking" }` — shot being executed (transient).
+   * - `{ active: "resolvingTurn" }` — turn logic being applied (transient).
+   * - `"gameOver"` — match has ended.
+   */
+  public getMachineState(): typeof this.snap.value {
+    return this.snap.value;
+  }
+
   public getRuleSet(): MatchRuleSet {
     return this.snap.context.ruleSet;
   }

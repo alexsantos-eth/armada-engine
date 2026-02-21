@@ -147,8 +147,8 @@ describe('GameInitializer', () => {
       const initializer = new GameInitializer(customConfig);
       const setup = initializer.initializeGame();
       
-      const smallShips = setup.playerShips.filter(s => s.variant === 'small');
-      const mediumShips = setup.playerShips.filter(s => s.variant === 'medium');
+      const smallShips = setup.playerShips.filter(s => Math.max(s.width, s.height) === 2);
+      const mediumShips = setup.playerShips.filter(s => Math.max(s.width, s.height) === 3);
       
       expect(smallShips).toHaveLength(2);
       expect(mediumShips).toHaveLength(1);
@@ -161,16 +161,16 @@ describe('GameInitializer', () => {
         expect(ship.coords).toHaveLength(2);
         expect(ship.coords[0]).toBeGreaterThanOrEqual(0);
         expect(ship.coords[1]).toBeGreaterThanOrEqual(0);
-        expect(['small', 'medium', 'large', 'xlarge']).toContain(ship.variant);
-        expect(['horizontal', 'vertical']).toContain(ship.orientation);
+        expect(ship.width).toBeGreaterThanOrEqual(1);
+        expect(ship.height).toBeGreaterThanOrEqual(1);
       });
       
       setup.enemyShips.forEach(ship => {
         expect(ship.coords).toHaveLength(2);
         expect(ship.coords[0]).toBeGreaterThanOrEqual(0);
         expect(ship.coords[1]).toBeGreaterThanOrEqual(0);
-        expect(['small', 'medium', 'large', 'xlarge']).toContain(ship.variant);
-        expect(['horizontal', 'vertical']).toContain(ship.orientation);
+        expect(ship.width).toBeGreaterThanOrEqual(1);
+        expect(ship.height).toBeGreaterThanOrEqual(1);
       });
     });
   });
@@ -231,10 +231,10 @@ describe('GameInitializer', () => {
     it('should accept custom ship placements', () => {
       const customShips = {
         playerShips: [
-          { coords: [0, 0] as [number, number], variant: 'small' as const, orientation: 'horizontal' as const, shipId: 0 },
+          { coords: [0, 0] as [number, number], width: 2, height: 1, shipId: 0 },
         ],
         enemyShips: [
-          { coords: [5, 5] as [number, number], variant: 'small' as const, orientation: 'horizontal' as const, shipId: 0 },
+          { coords: [5, 5] as [number, number], width: 2, height: 1, shipId: 0 },
         ],
       };
       
@@ -293,9 +293,9 @@ describe('GameInitializer', () => {
       const setup = initializer.initializeGame();
       
       expect(setup.playerShips).toHaveLength(1);
-      expect(setup.playerShips[0].variant).toBe('small');
+      expect(Math.max(setup.playerShips[0].width, setup.playerShips[0].height)).toBe(2);
       expect(setup.enemyShips).toHaveLength(1);
-      expect(setup.enemyShips[0].variant).toBe('small');
+      expect(Math.max(setup.enemyShips[0].width, setup.enemyShips[0].height)).toBe(2);
     });
 
     it('should handle only large ships', () => {
@@ -308,8 +308,8 @@ describe('GameInitializer', () => {
       const setup = initializer.initializeGame();
       
       expect(setup.playerShips).toHaveLength(3);
-      const largeShips = setup.playerShips.filter(s => s.variant === 'large');
-      const xlargeShips = setup.playerShips.filter(s => s.variant === 'xlarge');
+      const largeShips = setup.playerShips.filter(s => Math.max(s.width, s.height) === 4);
+      const xlargeShips = setup.playerShips.filter(s => Math.max(s.width, s.height) === 5);
       
       expect(largeShips).toHaveLength(2);
       expect(xlargeShips).toHaveLength(1);

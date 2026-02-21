@@ -27,13 +27,13 @@ describe('GameEngine', () => {
     
     // Standard test ships
     playerShips = [
-      { coords: [0, 0], variant: 'small', orientation: 'horizontal', shipId: 0 },
-      { coords: [2, 2], variant: 'medium', orientation: 'vertical', shipId: 1 },
+      { coords: [0, 0], width: 2, height: 1, shipId: 0 },
+      { coords: [2, 2], width: 1, height: 3, shipId: 1 },
     ];
     
     enemyShips = [
-      { coords: [5, 5], variant: 'small', orientation: 'horizontal', shipId: 0 },
-      { coords: [7, 7], variant: 'medium', orientation: 'vertical', shipId: 1 },
+      { coords: [5, 5], width: 2, height: 1, shipId: 0 },
+      { coords: [7, 7], width: 1, height: 3, shipId: 1 },
     ];
   });
 
@@ -364,7 +364,7 @@ describe('GameEngine', () => {
       expect(ships).toHaveLength(2);
       
       // Verify it's a copy
-      ships.push({ coords: [9, 9], variant: 'small', orientation: 'horizontal', shipId: 99 });
+      ships.push({ coords: [9, 9], width: 2, height: 1, shipId: 99 });
       expect(engine.getPlayerShips()).toHaveLength(2); // Original unchanged
     });
 
@@ -373,7 +373,7 @@ describe('GameEngine', () => {
       expect(ships).toHaveLength(2);
       
       // Verify it's a copy
-      ships.push({ coords: [9, 9], variant: 'small', orientation: 'horizontal', shipId: 99 });
+      ships.push({ coords: [9, 9], width: 2, height: 1, shipId: 99 });
       expect(engine.getEnemyShips()).toHaveLength(2); // Original unchanged
     });
   });

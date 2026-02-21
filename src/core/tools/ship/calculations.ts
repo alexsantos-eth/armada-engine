@@ -1,37 +1,40 @@
 import { GAME_CONSTANTS } from "../../constants/game";
-import type { ShipVariant, GameShip } from "../../types/common";
+import { SHIP_TEMPLATES } from "../../constants/ships";
+import type { GameShip } from "../../types/common";
 import type { GameConfig } from "../../types/config";
 
-export function getShipCells(
+/**
+ * Generate all cells occupied by a 2D rectangular ship.
+ * @param x - Top-left X coordinate
+ * @param y - Top-left Y coordinate
+ * @param width - Number of columns (≥ 1)
+ * @param height - Number of rows (≥ 1)
+ */
+export function getShip2DCells(
   x: number,
   y: number,
-  size: number,
-  orientation: "horizontal" | "vertical",
+  width: number,
+  height: number,
 ): [number, number][] {
   const cells: [number, number][] = [];
-
-  if (orientation === "horizontal") {
-    for (let i = 0; i < size; i++) {
-      cells.push([x + i, y]);
-    }
-  } else {
-    for (let i = 0; i < size; i++) {
-      cells.push([x, y + i]);
+  for (let row = 0; row < height; row++) {
+    for (let col = 0; col < width; col++) {
+      cells.push([x + col, y + row]);
     }
   }
-
   return cells;
 }
 
 export function getShipCellsFromShip(ship: GameShip): [number, number][] {
-  const size = GAME_CONSTANTS.SHIPS.SIZES[ship.variant];
   const [x, y] = ship.coords;
-
-  return getShipCells(x, y, size, ship.orientation);
+  return getShip2DCells(x, y, ship.width, ship.height);
 }
 
-export function getShipSize(variant: ShipVariant): number {
-  return GAME_CONSTANTS.SHIPS.SIZES[variant];
+/**
+ * Total number of cells occupied by a ship (width × height).
+ */
+export function getShipSize(ship: GameShip): number {
+  return ship.width * ship.height;
 }
 
 export function isValidShipPlacement(
@@ -68,22 +71,29 @@ export function isValidShipPlacement(
 }
 
 export function generateShip(
-  variant: ShipVariant,
+  template: GameShip,
   boardWidth: number,
   boardHeight: number,
   existingShips: GameShip[],
 ): GameShip | null {
   const maxAttempts = GAME_CONSTANTS.SHIPS.MAX_PLACEMENT_ATTEMPTS;
-  const shipSize = getShipSize(variant);
 
-  const quadrantPreferences = getQuadrantPreferences(variant);
+  const quadrantPreferences = getQuadrantPreferences(
+    template.width * template.height,
+  );
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const orientation =
+    const rotate =
+      template.width !== template.height &&
       Math.random() <
-      GAME_CONSTANTS.GAME_LOGIC.SHIP_GENERATION.ORIENTATION_RANDOM_THRESHOLD
-        ? "horizontal"
-        : "vertical";
+        GAME_CONSTANTS.GAME_LOGIC.SHIP_GENERATION.ORIENTATION_RANDOM_THRESHOLD;
+
+    const width  = rotate ? template.height : template.width;
+    const height = rotate ? template.width  : template.height;
+  
+    const shipSize = Math.max(width, height);
+    const orientation = width >= height ? "horizontal" : "vertical";
+
     let coords: [number, number];
 
     if (Math.random() < 0.7 && existingShips.length > 0) {
@@ -105,8 +115,8 @@ export function generateShip(
 
     const ship: GameShip = {
       coords,
-      variant,
-      orientation,
+      width,
+      height,
       shipId: existingShips.length,
     };
 
@@ -118,23 +128,11 @@ export function generateShip(
   return null;
 }
 
-export function getQuadrantPreferences(variant: ShipVariant): number[][] {
-  const preferences = {
-    small: [
-      [0, 1],
-      [2, 3],
-    ],
-    medium: [
-      [1, 2],
-      [0, 3],
-    ],
-    large: [
-      [0, 2],
-      [1, 3],
-    ],
-    xlarge: [[0, 1, 2, 3]],
-  };
-  return preferences[variant];
+export function getQuadrantPreferences(totalCells: number): number[][] {
+  if (totalCells <= 2) return [[0, 1], [2, 3]];
+  if (totalCells === 3) return [[1, 2], [0, 3]];
+  if (totalCells === 4) return [[0, 2], [1, 3]];
+  return [[0, 1, 2, 3]]; 
 }
 
 export function generatePositionInPreferredQuadrant(
@@ -196,21 +194,56 @@ export function generateRandomPosition(
   return [Math.floor(x), Math.floor(y)];
 }
 
+/**
+ * Generate a random valid position for a 2D rectangular ship.
+ * @param width - Number of columns
+ * @param height - Number of rows
+ * @returns Placed GameShip or null if no valid position found within max attempts
+ */
+export function generateShip2D(
+  width: number,
+  height: number,
+  boardWidth: number,
+  boardHeight: number,
+  existingShips: GameShip[],
+): GameShip | null {
+  const maxAttempts = GAME_CONSTANTS.SHIPS.MAX_PLACEMENT_ATTEMPTS;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const x = Math.floor(Math.random() * (boardWidth - width + 1));
+    const y = Math.floor(Math.random() * (boardHeight - height + 1));
+
+    const ship: GameShip = {
+      coords: [x, y],
+      width,
+      height,
+      shipId: existingShips.length,
+    };
+
+    if (isValidShipPlacement(ship, existingShips, boardWidth, boardHeight)) {
+      return ship;
+    }
+  }
+
+  return null;
+}
+
 export function generateShips(config: Partial<GameConfig>): GameShip[] {
   const ships: GameShip[] = [];
-  const shipVariants: ShipVariant[] = ["small", "medium", "large", "xlarge"];
+  const templateNames = Object.keys(SHIP_TEMPLATES) as (keyof typeof SHIP_TEMPLATES)[];
 
-  for (const variant of shipVariants) {
-    const count = config.shipCounts?.[variant] ?? 0;
+  for (const name of templateNames) {
+    const count = config.shipCounts?.[name] ?? 0;
+    const template = SHIP_TEMPLATES[name];
 
     for (let i = 0; i < count; i++) {
       const ship = generateShip(
-        variant,
+        template,
         config.boardWidth ?? GAME_CONSTANTS.BOARD.DEFAULT_WIDTH,
         config.boardHeight ?? GAME_CONSTANTS.BOARD.DEFAULT_HEIGHT,
         ships,
       );
-      
+
       if (ship) {
         ships.push(ship);
       }

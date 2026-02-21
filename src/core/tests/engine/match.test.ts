@@ -12,13 +12,13 @@ describe('Match', () => {
     match = new Match({ boardWidth: 10, boardHeight: 10 });
     
     playerShips = [
-      { coords: [0, 0], variant: 'small', orientation: 'horizontal', shipId: 0 },
-      { coords: [2, 2], variant: 'medium', orientation: 'vertical', shipId: 1 },
+      { coords: [0, 0], width: 2, height: 1, shipId: 0 },
+      { coords: [2, 2], width: 1, height: 3, shipId: 1 },
     ];
     
     enemyShips = [
-      { coords: [5, 5], variant: 'small', orientation: 'horizontal', shipId: 0 },
-      { coords: [7, 7], variant: 'medium', orientation: 'vertical', shipId: 1 },
+      { coords: [5, 5], width: 2, height: 1, shipId: 0 },
+      { coords: [7, 7], width: 1, height: 3, shipId: 1 },
     ];
   });
 
