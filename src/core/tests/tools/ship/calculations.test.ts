@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  getShipCells,
+  getShip2DCells,
   getShipCellsFromShip,
   getShipSize,
   isValidShipPlacement,
@@ -20,9 +20,9 @@ import {
 import type { GameShip } from '../../../types/common';
 
 describe('Ship Calculations', () => {
-  describe('getShipCells', () => {
+  describe('getShip2DCells', () => {
     it('should generate horizontal ship cells', () => {
-      const cells = getShipCells(2, 3, 3, 'horizontal');
+      const cells = getShip2DCells(2, 3, 3, 1);
       
       expect(cells).toEqual([
         [2, 3],
@@ -32,7 +32,7 @@ describe('Ship Calculations', () => {
     });
 
     it('should generate vertical ship cells', () => {
-      const cells = getShipCells(5, 2, 3, 'vertical');
+      const cells = getShip2DCells(5, 2, 1, 3);
       
       expect(cells).toEqual([
         [5, 2],
@@ -42,12 +42,12 @@ describe('Ship Calculations', () => {
     });
 
     it('should handle single cell ship', () => {
-      const cells = getShipCells(0, 0, 1, 'horizontal');
+      const cells = getShip2DCells(0, 0, 1, 1);
       expect(cells).toEqual([[0, 0]]);
     });
 
     it('should handle large ships', () => {
-      const cells = getShipCells(0, 0, 5, 'horizontal');
+      const cells = getShip2DCells(0, 0, 5, 1);
       
       expect(cells).toHaveLength(5);
       expect(cells).toEqual([

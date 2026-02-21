@@ -388,3 +388,77 @@ flowchart LR
 
     CTX --> OUTPUT["Match public methods\nread context via actor.getSnapshot()"]
 ```
+
+---
+
+## 10. Ship Variant System
+
+Ship variants are defined once in `src/core/constants/ships.ts`. All other parts of the engine derive their configuration from that single source of truth — no other file needs updating when variants are added or removed.
+
+### ShipTemplate
+
+Each variant is a `ShipTemplate`, which extends `GameShip` with a `defaultCount` field:
+
+```typescript
+export interface ShipTemplate extends GameShip {
+  /** How many of this ship variant are placed in a default game. */
+  defaultCount: number;
+}
+```
+
+All named constants (`SMALL_SHIP`, `MEDIUM_SHIP`, `LARGE_SHIP`, `XLARGE_SHIP`) are typed as `ShipTemplate` and registered in `SHIP_TEMPLATES`:
+
+```typescript
+export const SHIP_TEMPLATES: Record<string, ShipTemplate> = {
+  small:  SMALL_SHIP,   // 2×1, defaultCount: 1
+  medium: MEDIUM_SHIP,  // 3×1, defaultCount: 2
+  large:  LARGE_SHIP,   // 4×1, defaultCount: 1
+  xlarge: XLARGE_SHIP,  // 5×1, defaultCount: 1
+};
+```
+
+### Dynamic DEFAULT_COUNTS
+
+`GAME_CONSTANTS.SHIPS.DEFAULT_COUNTS` is derived at module load time from `SHIP_TEMPLATES`, so it always reflects the current set of variants without a separate maintenance step:
+
+```typescript
+DEFAULT_COUNTS: Object.fromEntries(
+  Object.entries(SHIP_TEMPLATES).map(([key, t]) => [key, t.defaultCount]),
+) as Record<string, number>
+// → { small: 1, medium: 2, large: 1, xlarge: 1 }
+```
+
+### GameConfig.shipCounts
+
+`GameConfig.shipCounts` is typed as `Record<string, number>` — an open map keyed by variant name — so it accommodates any set of variants without requiring type changes:
+
+```typescript
+export interface GameConfig {
+  boardWidth: number;
+  boardHeight: number;
+  shipCounts: Record<string, number>;
+  initialTurn: PlayerName | "random";
+}
+```
+
+### Adding a new variant
+
+1. Define the constant in `ships.ts`:
+   ```typescript
+   export const HUGE_SHIP: ShipTemplate = { coords: [0, 0], width: 6, height: 1, defaultCount: 1 };
+   ```
+2. Add it to `SHIP_TEMPLATES`:
+   ```typescript
+   export const SHIP_TEMPLATES = { …, huge: HUGE_SHIP };
+   ```
+
+`DEFAULT_COUNTS` and all generation logic update automatically — no changes needed in `game.ts`, `config.ts`, or `calculations.ts`.
+
+```mermaid
+flowchart TD
+    ST["SHIP_TEMPLATES\n(ships.ts)"]
+    ST -->|"Object.entries → map defaultCount"| DC["GAME_CONSTANTS\n.SHIPS.DEFAULT_COUNTS\n(game.ts)"]
+    ST -->|"iterated by key"| GS["generateShips()\n(calculations.ts)"]
+    DC -->|"fallback when\nshipCounts omitted"| INIT["GameInitializer\n(initializer.ts)"]
+    GS --> INIT
+```

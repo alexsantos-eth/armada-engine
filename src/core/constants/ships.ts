@@ -19,7 +19,7 @@ export interface ShipTemplate extends GameShip {
 export const SMALL_SHIP: ShipTemplate = {
   coords: [0, 0],
   width: 2,
-  height: 2,
+  height: 1,
   defaultCount: 1,
 };
 
