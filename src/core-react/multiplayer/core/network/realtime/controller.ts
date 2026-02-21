@@ -25,6 +25,7 @@ import {
 
 import type { DatabaseReference, Query, Unsubscribe } from "firebase/database";
 import { app } from "../../config/database/firebase";
+
 export interface RealtimeOptions {
   includeMetadata?: boolean;
   errorHandler?: (error: Error) => void;

@@ -2,7 +2,7 @@ export { GameEngine } from "./logic";
 export type { GameEngineState, ShotResult, GameEngineCallbacks } from "./logic";
 
 export { Match } from "./match";
-export type { MatchShotResult, MatchCallbacks, PlanPhaseResult } from "./match";
+export type { PlanAndAttackResult, MatchCallbacks, PlanShotResult } from "./match";
 
 export {
   ClassicRuleSet,
@@ -24,6 +24,7 @@ export type {
   ShotPattern,
   ShotOffset,
   ShotPatternResult,
+  PlayerRole,
 } from "../types/common";
 
 export type { GameConfig } from "../types/config";
@@ -60,3 +61,5 @@ export {
   getShotPattern,
   createCustomPattern,
 } from "../constants/shotPatterns";
+
+export { GAME_CONSTANTS } from "../constants/game";

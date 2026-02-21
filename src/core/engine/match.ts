@@ -6,7 +6,10 @@ import { GameEngine, type GameEngineState } from './logic';
 import { matchMachine } from './machines/matchMachine';
 import { DefaultRuleSet, type MatchRuleSet } from './rulesets';
 
+import { getShipCellsFromShip } from '../tools/ship/calculations';
+
 import type {
+  Board,
   GameShip,
   Winner,
   GameTurn,
@@ -93,7 +96,7 @@ export class Match {
   }
 
   /**
-   * Plan a shot with a pattern (Phase 1: PLAN)
+   * Plan a shot with a pattern 
    * This sets up the attack but doesn't execute it yet.
    * Call confirmAttack() to execute the planned shot.
    */
@@ -102,7 +105,7 @@ export class Match {
     centerY: number,
     pattern: ShotPattern = SINGLE_SHOT,
     isPlayerShot: boolean,
-  ): PlanPhaseResult {
+  ): PlanShotResult {
     this.actor.send({
       type: "PLAN_SHOT",
       centerX,
@@ -123,10 +126,10 @@ export class Match {
   }
 
   /**
-   * Execute the planned attack (Phase 2: ATTACK + Phase 3: TURN)
+   * Execute the planned attack
    * Must call planShot() first to set up the attack.
    */
-  public confirmAttack(): MatchShotResult {
+  public confirmAttack(): PlanAndAttackResult {
     if (!this.snap.context.pendingPlan) {
       const state = this.engine.getState();
       return {
@@ -166,8 +169,8 @@ export class Match {
       isGameOver: state.isGameOver,
       winner: state.winner,
       turnEnded: lastTurnDecision?.shouldEndTurn ?? true,
-      canShootAgain: lastTurnDecision?.canShootAgain ?? false,
-      reason: lastTurnDecision?.reason ?? "",
+      canShootAgain: state.isGameOver ? false : (lastTurnDecision?.canShootAgain ?? false),
+      reason: state.isGameOver ? "Game over" : (lastTurnDecision?.reason ?? ""),
     };
   }
 
@@ -203,7 +206,7 @@ export class Match {
     y: number,
     isPlayerShot: boolean,
     pattern: ShotPattern = SINGLE_SHOT,
-  ): MatchShotResult {
+  ): PlanAndAttackResult {
     const planResult = this.planShot(x, y, pattern, isPlayerShot);
 
     if (!planResult.ready) {
@@ -298,9 +301,58 @@ export class Match {
   public getActor() {
     return this.actor;
   }
+
+  /**
+   * Returns the player's board with ship positions and received shots.
+   * Own ships are visible; each enemy shot is marked as HIT or MISS.
+   */
+  public getPlayerBoard(): Board {
+    const state = this.engine.getState();
+    const { boardWidth, boardHeight, playerShips, enemyShots } = state;
+
+    const board: Board = Array.from({ length: boardHeight }, () =>
+      Array(boardWidth).fill("EMPTY"),
+    );
+
+    for (const ship of playerShips) {
+      for (const [x, y] of getShipCellsFromShip(ship)) {
+        if (x >= 0 && x < boardWidth && y >= 0 && y < boardHeight) {
+          board[y][x] = "SHIP";
+        }
+      }
+    }
+
+    for (const shot of enemyShots) {
+      if (shot.x >= 0 && shot.x < boardWidth && shot.y >= 0 && shot.y < boardHeight) {
+        board[shot.y][shot.x] = shot.hit ? "HIT" : "MISS";
+      }
+    }
+
+    return board;
+  }
+
+  /**
+   * Returns the enemy's board showing only the player's shots (ships are hidden).
+   */
+  public getEnemyBoard(): Board {
+    const state = this.engine.getState();
+    const { boardWidth, boardHeight, playerShots } = state;
+
+    const board: Board = Array.from({ length: boardHeight }, () =>
+      Array(boardWidth).fill("EMPTY"),
+    );
+
+    for (const shot of playerShots) {
+      if (shot.x >= 0 && shot.x < boardWidth && shot.y >= 0 && shot.y < boardHeight) {
+        board[shot.y][shot.x] = shot.hit ? "HIT" : "MISS";
+      }
+    }
+
+    return board;
+  }
 }
 
-export interface PlanPhaseResult {
+export interface PlanShotResult {
   ready: boolean;
   error?: string;
   pattern?: ShotPattern;
@@ -308,7 +360,7 @@ export interface PlanPhaseResult {
   centerY?: number;
 }
 
-export interface MatchShotResult extends ShotPatternResult {
+export interface PlanAndAttackResult extends ShotPatternResult {
   turnEnded: boolean;
   canShootAgain: boolean;
   reason: string;

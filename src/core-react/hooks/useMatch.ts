@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   GameInitializer,
   Match,
@@ -8,12 +8,10 @@ import {
   type GameShip,
   type MatchCallbacks,
 } from "../../core/engine";
-import { getShipCellsFromShip } from "../../core/tools/ship/calculations";
 import type {
   GAME_INITIAL_TURN,
   GameSetup,
 } from "../../core/manager/initializer";
-import type { Board } from "../../core/types/common";
 
 export interface UseMatchProps extends MatchCallbacks {
   config?: Partial<GameConfig>;
@@ -66,61 +64,8 @@ const useMatch = ({
     engine.current = engineInstance;
   };
 
-  const playerBoard = useMemo<Board | null>(() => {
-    if (!gameState) return null;
-
-    const board: Board = Array.from({ length: gameState.boardHeight }, () =>
-      Array(gameState.boardWidth).fill("EMPTY"),
-    );
-
-    for (const ship of gameState.playerShips) {
-      const cells = getShipCellsFromShip(ship);
-      for (const [x, y] of cells) {
-        if (
-          x >= 0 &&
-          x < gameState.boardWidth &&
-          y >= 0 &&
-          y < gameState.boardHeight
-        ) {
-          board[y][x] = "SHIP";
-        }
-      }
-    }
-
-    for (const shot of gameState.enemyShots) {
-      if (
-        shot.x >= 0 &&
-        shot.x < gameState.boardWidth &&
-        shot.y >= 0 &&
-        shot.y < gameState.boardHeight
-      ) {
-        board[shot.y][shot.x] = shot.hit ? "HIT" : "MISS";
-      }
-    }
-
-    return board;
-  }, [gameState]);
-
-  const enemyBoard = useMemo<Board | null>(() => {
-    if (!gameState) return null;
-
-    const board: Board = Array.from({ length: gameState.boardHeight }, () =>
-      Array(gameState.boardWidth).fill("EMPTY"),
-    );
-
-    for (const shot of gameState.playerShots) {
-      if (
-        shot.x >= 0 &&
-        shot.x < gameState.boardWidth &&
-        shot.y >= 0 &&
-        shot.y < gameState.boardHeight
-      ) {
-        board[shot.y][shot.x] = shot.hit ? "HIT" : "MISS";
-      }
-    }
-
-    return board;
-  }, [gameState]);
+  const playerBoard = match.current?.getPlayerBoard();
+  const enemyBoard =  match.current?.getEnemyBoard();
 
   return {
     gameState,

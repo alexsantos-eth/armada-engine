@@ -1,5 +1,9 @@
-import type { GameConfig, GameEngineState } from "../../../../../core/engine";
-import type { PlayerRole, Shot } from "../../../../../core/types/common";
+import type {
+  GameConfig,
+  GameEngineState,
+  PlayerRole,
+  Shot,
+} from "../../../../../core/engine";
 
 export type RoomStatus = "waiting" | "playing" | "finished";
 export interface RoomPlayer {
@@ -9,7 +13,7 @@ export interface RoomPlayer {
   joinedAt: number;
   isReady: boolean;
 }
-export type MatchRuleSetName = 'ClassicRuleSet' | 'AlternatingTurnsRuleSet'
+export type MatchRuleSetName = "ClassicRuleSet" | "AlternatingTurnsRuleSet";
 
 export interface GameRoom {
   id: string;

@@ -51,7 +51,7 @@ export type MatchMachineEvent =
       pattern?: ShotPattern;
       isPlayerShot: boolean;
     }
-  /** Confirms and executes the planned attack (ATTACK + TURN phases) */
+  /** Confirms and executes the planned attack */
   | { type: "CONFIRM_ATTACK" }
   /** Cancels the pending plan and returns to the waiting state */
   | { type: "CANCEL_PLAN" }
