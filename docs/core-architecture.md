@@ -2,6 +2,9 @@
 
 This document explains how the core of the game engine is structured, how the pieces relate to each other, and the complete turn lifecycle.
 
+> **Want to add or modify something?**
+> See the [Extension Guide](./extension-guide.md) for step-by-step instructions on changing the board size, ship variants, shot patterns, and game rules.
+
 ---
 
 ## 1. High-Level Architecture

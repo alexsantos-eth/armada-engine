@@ -6,6 +6,12 @@ import type { GameShip } from "../types/common";
  * rest of the engine picks them up automatically.
  */
 export interface ShipTemplate extends GameShip {
+  /** Unique identifier for the ship variant. */
+  id: string;
+  /** Human-readable name. */
+  title: string;
+  /** Description of the ship variant. */
+  description?: string;
   /** How many of this ship variant are placed in a default game. */
   defaultCount: number;
 }
@@ -17,6 +23,9 @@ export interface ShipTemplate extends GameShip {
  *   X X
  */
 export const SMALL_SHIP: ShipTemplate = {
+  id: "small",
+  title: "Small Ship",
+  description: "A compact 2-cell vessel.",
   coords: [0, 0],
   width: 2,
   height: 1,
@@ -30,6 +39,9 @@ export const SMALL_SHIP: ShipTemplate = {
  *   X X X
  */
 export const MEDIUM_SHIP: ShipTemplate = {
+  id: "medium",
+  title: "Medium Ship",
+  description: "A standard 3-cell cruiser.",
   coords: [0, 0],
   width: 3,
   height: 1,
@@ -43,6 +55,9 @@ export const MEDIUM_SHIP: ShipTemplate = {
  *   X X X X
  */
 export const LARGE_SHIP: ShipTemplate = {
+  id: "large",
+  title: "Large Ship",
+  description: "A 4-cell battleship.",
   coords: [0, 0],
   width: 4,
   height: 1,
@@ -56,6 +71,9 @@ export const LARGE_SHIP: ShipTemplate = {
  *   X X X X X
  */
 export const XLARGE_SHIP: ShipTemplate = {
+  id: "xlarge",
+  title: "XLarge Ship",
+  description: "A massive 5-cell carrier.",
   coords: [0, 0],
   width: 5,
   height: 1,
