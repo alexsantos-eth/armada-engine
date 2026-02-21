@@ -1,6 +1,5 @@
 import type { GameEngineState } from "./logic";
-import type { AttackPhaseResult } from "./match";
-import type { Winner } from "../types/common";
+import type { ShotPatternResult, Winner } from "../types/common";
 
 /**
  * Turn decision result
@@ -35,7 +34,7 @@ export interface MatchRuleSet {
    * @returns Turn decision
    */
   decideTurn(
-    attackResult: AttackPhaseResult,
+    attackResult: ShotPatternResult,
     currentState: GameEngineState,
   ): TurnDecision;
 

@@ -5,8 +5,8 @@ import { getShotPattern, Match, type Shot } from "../core/engine";
 import NetworkMatch from "./components/network-match";
 
 const initializer = new GameInitializer({
-  boardWidth: 5,
-  boardHeight: 5,
+  boardWidth: 7,
+  boardHeight: 7,
 });
 const initialSetup = initializer.initializeGame("random");
 

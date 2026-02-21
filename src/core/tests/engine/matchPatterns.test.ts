@@ -22,12 +22,10 @@ describe("Match Shot Patterns", () => {
     it("should plan a shot with a pattern", () => {
       const planResult = match.planShot(5, 5, CROSS_SHOT, true);
       
-      expect(planResult.phase).toBe("PLAN");
       expect(planResult.ready).toBe(true);
       expect(planResult.pattern).toBe(CROSS_SHOT);
       expect(planResult.centerX).toBe(5);
       expect(planResult.centerY).toBe(5);
-      expect(match.getPhase()).toBe("PLAN");
     });
 
     it("should store pending plan", () => {
@@ -47,7 +45,6 @@ describe("Match Shot Patterns", () => {
       
       expect(result.success).toBe(true);
       expect(result.shots).toHaveLength(5);
-      expect(result.phase).toBe("TURN");
     });
 
     it("should clear pending plan after confirmation", () => {
@@ -73,7 +70,6 @@ describe("Match Shot Patterns", () => {
       match.cancelPlan();
       
       expect(match.getPendingPlan()).toBeNull();
-      expect(match.getPhase()).toBe("IDLE");
     });
 
     it("should reject invalid position in plan", () => {

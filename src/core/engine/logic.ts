@@ -267,17 +267,17 @@ export class GameEngine {
   /**
    * Execute a shot pattern at target coordinates
    * This is the primary method for executing shots. For a single-cell shot, use SINGLE_SHOT pattern.
-   * 
+   *
    * @param centerX - Center X coordinate for the pattern
    * @param centerY - Center Y coordinate for the pattern
    * @param pattern - The shot pattern to execute (use SINGLE_SHOT for standard single shots)
    * @param isPlayerShot - True if shots are from player, false if from enemy
    * @returns Result containing all shots executed in the pattern
-   * 
+   *
    * @example
    * // Single shot
    * engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
-   * 
+   *
    * // Cross pattern
    * engine.executeShotPattern(5, 5, CROSS_SHOT, true);
    */

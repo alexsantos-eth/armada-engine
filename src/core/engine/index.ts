@@ -2,25 +2,14 @@ export { GameEngine } from "./logic";
 export type { GameEngineState, ShotResult, GameEngineCallbacks } from "./logic";
 
 export { Match } from "./match";
-export type {
-  MatchShotResult,
-  MatchCallbacks,
-  MatchPhase,
-  PlanPhaseResult,
-  AttackPhaseResult,
-  TurnPhaseResult,
-} from "./match";
+export type { MatchShotResult, MatchCallbacks, PlanPhaseResult } from "./match";
 
 export {
   ClassicRuleSet,
   AlternatingTurnsRuleSet,
   DefaultRuleSet,
 } from "./rulesets";
-export type {
-  MatchRuleSet,
-  TurnDecision,
-  GameOverDecision,
-} from "./rulesets";
+export type { MatchRuleSet, TurnDecision, GameOverDecision } from "./rulesets";
 
 export { GameInitializer } from "../manager";
 export type { GameSetup } from "../manager";
@@ -38,6 +27,23 @@ export type {
 } from "../types/common";
 
 export type { GameConfig } from "../types/config";
+
+export { matchMachine, createMatchActor } from "./machines";
+export {
+  selectGameState,
+  selectCurrentTurn,
+  selectWinner,
+  selectPlanError,
+  selectLastAttackResult,
+} from "./machines";
+export type {
+  MatchMachineActor,
+  MatchMachineSnapshot,
+  MatchMachineContext,
+  MatchMachineEvent,
+  MatchMachineInput,
+  PendingPlan,
+} from "./machines";
 
 export {
   SHOT_PATTERNS,

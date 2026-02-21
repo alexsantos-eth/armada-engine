@@ -643,33 +643,6 @@ describe('Match', () => {
     });
   });
 
-  describe('Phase System', () => {
-    beforeEach(() => {
-      match.initializeMatch(playerShips, enemyShips);
-    });
-
-    it('should return phase information in shot result', () => {
-      const result = match.planAndAttack(5, 5, true);
-      
-      expect(result).toHaveProperty('phase');
-      expect(result.phase).toBeDefined();
-    });
-
-    it('should return TURN phase for successful shots', () => {
-      const result = match.planAndAttack(5, 5, true);
-      
-      expect(result.phase).toBe('TURN');
-    });
-
-    it('should return ATTACK phase for failed shots', () => {
-      match.planAndAttack(5, 5, true);
-      const result = match.planAndAttack(5, 5, true); // Duplicate
-      
-      expect(result.phase).toBe('ATTACK');
-      expect(result.success).toBe(false);
-    });
-  });
-
   describe('Game Over - Immediate Detection', () => {
     beforeEach(() => {
       match.initializeMatch(playerShips, enemyShips);
@@ -819,61 +792,6 @@ describe('Match', () => {
 
       const ruleSet = alternatingMatch.getRuleSet();
       expect(ruleSet.name).toBe('Alternating');
-    });
-  });
-
-  describe('Phase Management', () => {
-    it('should start in IDLE phase', () => {
-      const newMatch = new Match({ boardWidth: 10, boardHeight: 10 });
-      expect(newMatch.getPhase()).toBe('IDLE');
-    });
-
-    it('should call setPhase with START on initialization', () => {
-      const onPhaseChange = vi.fn();
-      const newMatch = new Match({ boardWidth: 10, boardHeight: 10 }, { onPhaseChange });
-      
-      newMatch.initializeMatch(playerShips, enemyShips);
-      
-      expect(onPhaseChange).toHaveBeenCalledWith('START');
-    });
-
-    it('should cycle through phases during shot execution', () => {
-      const newMatch = new Match({ boardWidth: 10, boardHeight: 10 });
-      newMatch.initializeMatch(playerShips, enemyShips);
-      
-      // Execute a shot - should cycle through phases
-      const result = newMatch.planAndAttack(5, 5, true);
-      
-      // Shot succeeded, should end in TURN phase
-      expect(result.phase).toBe('TURN');
-      expect(newMatch.getPhase()).toBe('TURN');
-    });
-
-    it('should be in ATTACK phase when shot fails validation', () => {
-      match.initializeMatch(playerShips, enemyShips);
-      
-      // First shot succeeds
-      match.planAndAttack(5, 5, true);
-      
-      // Try shooting same cell again - should fail in ATTACK phase
-      const result = match.planAndAttack(5, 5, true);
-      expect(result.success).toBe(false);
-      expect(result.phase).toBe('ATTACK');
-    });
-
-    it('should call onPhaseChange callback during shot', () => {
-      const onPhaseChange = vi.fn();
-      const matchWithCallback = new Match(
-        { boardWidth: 10, boardHeight: 10 },
-        { onPhaseChange }
-      );
-
-      matchWithCallback.initializeMatch(playerShips, enemyShips);
-      matchWithCallback.planAndAttack(5, 5, true);
-      
-      // Should have called PLAN, ATTACK, and TURN
-      expect(onPhaseChange).toHaveBeenCalled();
-      expect(onPhaseChange).toHaveBeenCalledWith('TURN');
     });
   });
 

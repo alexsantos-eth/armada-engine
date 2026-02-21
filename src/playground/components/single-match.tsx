@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { useBoard, type UseBoardProps } from "../../core-react/hooks";
-import type { CellState, ShotPattern } from "../../core/types/common";
-import { SHOT_PATTERNS } from "../../core/constants/shotPatterns";
+import { useState } from 'react';
 
+import { useBoard, type UseBoardProps } from '../../core-react/hooks';
+import { SHOT_PATTERNS } from '../../core/constants/shotPatterns';
+
+import type { CellState, ShotPattern } from "../../core/types/common";
 interface SingleMatchProps extends UseBoardProps {}
 
 const SingleMatch = ({
@@ -32,6 +33,8 @@ const SingleMatch = ({
     }
   };
 
+ 
+
   return (
     <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
       {/* Tableros */}
@@ -39,7 +42,6 @@ const SingleMatch = ({
         {/* Tablero del Jugador */}
         <div>
           <h2>Tu Tablero</h2>
-          <p>Fase: {matchRef?.current?.getPhase()}</p>
 
           <p>Seleccionar patron de tiro</p>
           

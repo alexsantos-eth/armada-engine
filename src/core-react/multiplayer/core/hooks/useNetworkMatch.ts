@@ -77,12 +77,6 @@ const useNetworkMatch = ({
               console.error("Error updating current turn:", error);
             });
         },
-        onPhaseChange: (phase) => {
-          callbacks?.onPhaseChange?.(phase);
-          roomService.updateCurrentPhase(room.id, phase).catch((error) => {
-            console.error("Error updating current phase:", error);
-          });
-        },
       },
       ruleSet,
     );

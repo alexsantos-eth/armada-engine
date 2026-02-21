@@ -8,11 +8,11 @@ export interface UseBoardProps extends UseMatchProps {
 const useBoard = ({ initialSetup, matchRef, ...callbacks }: UseBoardProps) => {
   const match = useMatch({ initialSetup, ...callbacks });
 
-  const planAndAttack = (x: number, y: number, pattern: ShotPattern = SINGLE_SHOT) => {
-    if(!match.gameState?.isPlayerTurn) return;
-    if(match.gameState.isGameOver) return;
+  const planAndAttack = (x: number, y: number, pattern: ShotPattern = SINGLE_SHOT, isPlayer: boolean = true) => {
+    if(!match.gameState?.isPlayerTurn && isPlayer) return;
+    if(match.gameState?.isGameOver) return;
 
-    match?.match?.planAndAttack(x, y, true, pattern);
+    match?.match?.planAndAttack(x, y, isPlayer, pattern);
   };
 
   useEffect(() => {

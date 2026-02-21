@@ -1,8 +1,5 @@
-import {
-  GameEngine,
-  type GameEngineState,
-  type GameEngineInternalAPI,
-} from "./logic";
+import { createActor } from "xstate";
+import { GameEngine, type GameEngineState } from "./logic";
 import type {
   GameShip,
   Winner,
@@ -13,29 +10,16 @@ import type {
 import type { GameConfig } from "../types/config";
 import { DefaultRuleSet, type MatchRuleSet } from "./rulesets";
 import { SINGLE_SHOT } from "../constants/shotPatterns";
+import { matchMachine } from "./machines/matchMachine";
 
 /**
  * Match Rules Manager
- *
- * Implements game match rules using configurable RuleSets:
  * - Turn management (when to end turn, when to allow shooting again)
  * - Game over conditions (what determines a winner)
- *
- * This class wraps the GameEngine and enforces turn logic automatically.
  */
 export class Match {
-  private engine: GameEngine;
+  private actor: ReturnType<typeof createActor<typeof matchMachine>>;
   private matchCallbacks?: MatchCallbacks;
-  private ruleSet: MatchRuleSet;
-  private phase: MatchPhase = "IDLE";
-  private engineInternal: GameEngineInternalAPI;
-
-  private pendingPlan: {
-    centerX: number;
-    centerY: number;
-    pattern: ShotPattern;
-    isPlayerShot: boolean;
-  } | null = null;
 
   constructor(
     config?: Partial<GameConfig>,
@@ -48,14 +32,17 @@ export class Match {
     }
 
     this.matchCallbacks = callbacks;
-    this.ruleSet = ruleSet ?? DefaultRuleSet;
 
-    this.engine = new GameEngine(config, {
+    /**
+     * The engine is created here (with its callbacks) and injected into the actor.
+     * This ensures all existing callbacks (onShot, onTurnChange…) continue to
+     * fire synchronously: the engine dispatches them from inside the machine actions.
+     */
+    const engine = new GameEngine(config, {
       onStateChange: (state) => {
         this.matchCallbacks?.onStateChange?.(state);
       },
       onTurnChange: (turn) => {
-        this.checkGameOver();
         this.matchCallbacks?.onTurnChange?.(turn);
       },
       onShot: (shot, isPlayerShot) => {
@@ -66,9 +53,11 @@ export class Match {
       },
     });
 
-    this.engineInternal = this.engine.getInternalAPI();
+    this.actor = createActor(matchMachine, {
+      input: { engine, ruleSet: ruleSet ?? DefaultRuleSet },
+    });
 
-    this.setPhase("IDLE");
+    this.actor.start();
   }
 
   /**
@@ -82,21 +71,19 @@ export class Match {
     enemyShips: GameShip[],
     initialTurn: GameTurn = "PLAYER_TURN",
   ): void {
-    this.engine.initializeGame(playerShips, enemyShips, initialTurn);
+    this.actor.send({
+      type: "INITIALIZE",
+      playerShips,
+      enemyShips,
+      initialTurn,
+    });
     this.matchCallbacks?.onMatchStart?.();
-    this.setPhase("START");
   }
 
   /**
    * Plan a shot with a pattern (Phase 1: PLAN)
    * This sets up the attack but doesn't execute it yet.
    * Call confirmAttack() to execute the planned shot.
-   *
-   * @param centerX - Center X coordinate for the pattern
-   * @param centerY - Center Y coordinate for the pattern
-   * @param pattern - Shot pattern to use (defaults to SINGLE_SHOT)
-   * @param isPlayerShot - true for player, false for enemy
-   * @returns Plan phase result
    */
   public planShot(
     centerX: number,
@@ -104,96 +91,76 @@ export class Match {
     pattern: ShotPattern = SINGLE_SHOT,
     isPlayerShot: boolean,
   ): PlanPhaseResult {
-    this.setPhase("PLAN");
-
-    if (!this.engine.isValidPosition(centerX, centerY)) {
-      return {
-        phase: "PLAN",
-        ready: false,
-        error: "Invalid position",
-      };
-    }
-
-    if (
-      pattern.id === "single" &&
-      this.engine.isCellShot(centerX, centerY, isPlayerShot)
-    ) {
-      return {
-        phase: "PLAN",
-        ready: false,
-        error: "Cell already shot",
-      };
-    }
-
-    this.pendingPlan = {
+    this.actor.send({
+      type: "PLAN_SHOT",
       centerX,
       centerY,
       pattern,
       isPlayerShot,
-    };
+    });
 
-    return {
-      phase: "PLAN",
-      ready: true,
-      pattern,
-      centerX,
-      centerY,
-    };
+    const snap = this.actor.getSnapshot();
+
+    if (snap.context.planError) {
+      return { ready: false, error: snap.context.planError };
+    }
+
+    if (!snap.context.pendingPlan) {
+      return { ready: false, error: "Invalid plan" };
+    }
+
+    return { ready: true, pattern, centerX, centerY };
   }
 
   /**
    * Execute the planned attack (Phase 2: ATTACK + Phase 3: TURN)
    * Must call planShot() first to set up the attack.
-   *
-   * @returns Match shot result with turn information
    */
   public confirmAttack(): MatchShotResult {
-    if (!this.pendingPlan) {
+    const snapBefore = this.actor.getSnapshot();
+
+    if (!snapBefore.context.pendingPlan) {
+      const state = snapBefore.context.engine.getState();
       return {
         success: false,
         error: "No attack planned. Call planShot() first.",
         shots: [],
-        isGameOver: this.engine.getState().isGameOver,
-        winner: this.engine.getWinner(),
+        isGameOver: state.isGameOver,
+        winner: state.winner,
         turnEnded: false,
         canShootAgain: false,
         reason: "No attack planned",
-        phase: "ATTACK",
       };
     }
 
-    const { centerX, centerY, pattern, isPlayerShot } = this.pendingPlan;
+    this.actor.send({ type: "CONFIRM_ATTACK" });
 
-    // Phase 2: Attack - Execute the shot pattern
-    const attackResult = this.phaseAttackPattern(
-      centerX,
-      centerY,
-      pattern,
-      isPlayerShot,
-    );
-    this.pendingPlan = null;
+    const snap = this.actor.getSnapshot();
+    const { lastAttackResult, lastTurnDecision } = snap.context;
 
-    if (!attackResult.success) {
+    if (!lastAttackResult) {
+      const state = snap.context.engine.getState();
       return {
-        ...attackResult,
+        success: false,
+        error: "Attack failed",
+        shots: [],
+        isGameOver: state.isGameOver,
+        winner: state.winner,
         turnEnded: false,
         canShootAgain: false,
-        reason: attackResult.error || "Attack failed",
-        phase: "ATTACK",
+        reason: "Attack failed",
       };
     }
 
-    // Phase 3: Turn - Decide next turn based on the overall pattern result
-    const turnResult = this.phaseTurnPattern(attackResult, isPlayerShot);
+    const state = snap.context.engine.getState();
 
     return {
-      ...attackResult,
-      isGameOver: turnResult.isGameOver,
-      winner: turnResult.winner,
-      turnEnded: turnResult.turnEnded,
-      canShootAgain: turnResult.canShootAgain,
-      reason: turnResult.reason,
-      phase: turnResult.phase,
+      ...lastAttackResult,
+      isGameOver: state.isGameOver,
+      winner: state.winner,
+      turnEnded: lastTurnDecision?.shouldEndTurn ?? true,
+      canShootAgain: lastTurnDecision?.canShootAgain ?? false,
+      reason: lastTurnDecision?.reason ?? "",
     };
   }
 
@@ -201,8 +168,7 @@ export class Match {
    * Cancel the pending attack plan
    */
   public cancelPlan(): void {
-    this.pendingPlan = null;
-    this.setPhase("IDLE");
+    this.actor.send({ type: "CANCEL_PLAN" });
   }
 
   /**
@@ -214,24 +180,16 @@ export class Match {
     pattern: ShotPattern;
     isPlayerShot: boolean;
   } | null {
-    return this.pendingPlan;
+    return this.actor.getSnapshot().context.pendingPlan;
   }
 
   /**
-   * Plan and execute a shot following match rules with phase system
-   * Supports both single shots and pattern shots.
-   * For detailed pattern results, use planShot() + confirmAttack()
+   * Plan and execute a shot in one call (convenience wrapper).
    *
    * Phases:
-   * 1. Plan: Prepare attack type or defense
-   * 2. Attack: Execute the shot and resolve damage
-   * 3. Turn: Decide who plays next based on result
-   *
-   * @param x - X coordinate (center for patterns)
-   * @param y - Y coordinate (center for patterns)
-   * @param isPlayerShot - true for player, false for enemy
-   * @param pattern - Shot pattern to use (defaults to SINGLE_SHOT)
-   * @returns Match result with turn information and all shots executed
+   * 1. Plan: validate and store the shot
+   * 2. Attack: execute the shot pattern
+   * 3. Turn: decide who plays next
    */
   public planAndAttack(
     x: number,
@@ -242,265 +200,111 @@ export class Match {
     const planResult = this.planShot(x, y, pattern, isPlayerShot);
 
     if (!planResult.ready) {
+      const state = this.actor.getSnapshot().context.engine.getState();
       return {
         success: false,
         error: planResult.error,
         shots: [],
-        isGameOver: this.engine.getState().isGameOver,
-        winner: this.engine.getWinner(),
+        isGameOver: state.isGameOver,
+        winner: state.winner,
         turnEnded: false,
         canShootAgain: false,
         reason: planResult.error || "Invalid shot",
-        phase: "ATTACK",
       };
     }
 
     return this.confirmAttack();
   }
 
-  /**
-   * Phase 2: Attack
-   * Execute the shot pattern and resolve damage
-   * @param centerX - Center X coordinate
-   * @param centerY - Center Y coordinate
-   * @param pattern - Shot pattern to execute
-   * @param isPlayerShot - true for player, false for enemy
-   * @returns Attack phase result
-   * @private
-   */
-  private phaseAttackPattern(
-    centerX: number,
-    centerY: number,
-    pattern: ShotPattern,
-    isPlayerShot: boolean,
-  ): AttackPhaseResult {
-    this.setPhase("ATTACK");
-
-    const patternResult = this.engine.executeShotPattern(
-      centerX,
-      centerY,
-      pattern,
-      isPlayerShot,
-    );
-
-    return {
-      ...patternResult,
-      phase: "ATTACK",
-    };
-  }
-
-  /**
-   * Phase 3: Turn Decision
-   * Decide who plays next based on attack result and current RuleSet
-   * We consider the attack a "hit" if any shot in the pattern hit
-   * @param attackResult - Result from attack phase
-   * @param _isPlayerShot - true for player, false for enemy (not used yet)
-   * @returns Turn phase result
-   * @private
-   */
-  private phaseTurnPattern(
-    attackResult: AttackPhaseResult,
-    _isPlayerShot: boolean,
-  ): TurnPhaseResult {
-    this.setPhase("TURN");
-
-    const state = this.engine.getState();
-
-    const decision = this.ruleSet.decideTurn(attackResult, state);
-
-    if (decision.shouldToggleTurn) {
-      this.engineInternal.toggleTurn();
-    }
-    
-    this.checkGameOver();
-
-    return {
-      phase: "TURN",
-      turnEnded: decision.shouldEndTurn,
-      canShootAgain: decision.canShootAgain,
-      reason: decision.reason,
-      isGameOver: state.isGameOver,
-      winner: state.winner,
-    };
-  }
-
-  /**
-   * Check if it's the player's turn
-   */
   public isPlayerTurn(): boolean {
-    return this.engine.isPlayerTurn();
+    return this.actor.getSnapshot().context.engine.isPlayerTurn();
   }
 
-  /**
-   * Check if it's the enemy's turn
-   */
   public isEnemyTurn(): boolean {
-    return this.engine.isEnemyTurn();
+    return this.actor.getSnapshot().context.engine.isEnemyTurn();
   }
 
-  /**
-   * Get current turn
-   */
   public getCurrentTurn(): GameTurn {
-    return this.engine.getCurrentTurn();
+    return this.actor.getSnapshot().context.engine.getCurrentTurn();
   }
 
-  /**
-   * Get complete match state
-   */
   public getState(): GameEngineState {
-    return this.engine.getState();
+    return this.actor.getSnapshot().context.engine.getState();
   }
 
-  /**
-   * Get the underlying game engine (for advanced usage)
-   */
   public getEngine(): GameEngine {
-    return this.engine;
+    return this.actor.getSnapshot().context.engine;
   }
 
-  /**
-   * Check if a cell has been shot
-   */
   public isCellShot(x: number, y: number, isPlayerShot: boolean): boolean {
-    return this.engine.isCellShot(x, y, isPlayerShot);
+    return this.actor
+      .getSnapshot()
+      .context.engine.isCellShot(x, y, isPlayerShot);
   }
 
-  /**
-   * Check if a position is valid
-   */
   public isValidPosition(x: number, y: number): boolean {
-    return this.engine.isValidPosition(x, y);
+    return this.actor.getSnapshot().context.engine.isValidPosition(x, y);
   }
 
-  /**
-   * Get the winner (if game is over)
-   */
   public getWinner(): Winner {
-    return this.engine.getWinner();
+    return this.actor.getSnapshot().context.engine.getWinner();
   }
 
-  /**
-   * Check if the match is over
-   */
   public isMatchOver(): boolean {
-    return this.engine.getState().isGameOver;
+    return this.actor.getSnapshot().context.engine.getState().isGameOver;
   }
 
-  /**
-   * Reset the match
-   */
   public resetMatch(): void {
-    this.engine.resetGame();
+    this.actor.send({ type: "RESET" });
   }
 
-  /**
-   * Check if the match is over and set winner if needed
-   * Uses the current RuleSet to determine game over conditions
-   * @private
-   */
-  private checkGameOver(): void {
-    const state = this.engine.getState();
-
-    if (state.isGameOver) return;
-
-    const decision = this.ruleSet.checkGameOver(state);
-
-    if (decision.isGameOver && decision.winner) {
-      this.engineInternal.setGameOver(decision.winner);
-    }
-  }
-
-  /**
-   * Get current RuleSet
-   * @returns Current match rule set
-   */
   public getRuleSet(): MatchRuleSet {
-    return this.ruleSet;
+    return this.actor.getSnapshot().context.ruleSet;
   }
 
-  /**
-   * Set a new RuleSet for the match
-   * @param ruleSet - New rule set to apply
-   */
   public setRuleSet(ruleSet: MatchRuleSet): void {
-    this.ruleSet = ruleSet;
+    this.actor.send({ type: "SET_RULESET", ruleSet });
   }
 
-  /**
-   * Get board dimensions
-   */
   public getBoardDimensions(): { width: number; height: number } {
-    return this.engine.getBoardDimensions();
+    return this.actor.getSnapshot().context.engine.getBoardDimensions();
   }
 
-  /**
-   * Check if all ships of a player are destroyed
-   * @param isPlayerShips - True to check player ships, false for enemy ships
-   * @returns True if all ships are destroyed
-   */
   public areAllShipsDestroyed(isPlayerShips: boolean): boolean {
-    return this.engine.areAllShipsDestroyed(isPlayerShips);
+    return this.actor
+      .getSnapshot()
+      .context.engine.areAllShipsDestroyed(isPlayerShips);
   }
 
-  /**
-   * Get shot at specific coordinates
-   * @param x - X coordinate
-   * @param y - Y coordinate
-   * @param isPlayerShot - True to check player shots, false for enemy shots
-   * @returns Shot object if found, undefined otherwise
-   */
   public getShotAtPosition(
     x: number,
     y: number,
     isPlayerShot: boolean,
   ): Shot | undefined {
-    return this.engine.getShotAtPosition(x, y, isPlayerShot);
+    return this.actor
+      .getSnapshot()
+      .context.engine.getShotAtPosition(x, y, isPlayerShot);
   }
 
-  /**
-   * Check if there's a ship at specific coordinates
-   * @param x - X coordinate
-   * @param y - Y coordinate
-   * @param isPlayerShips - True to check player ships, false for enemy ships
-   * @returns True if there's a ship at that position
-   */
   public hasShipAtPosition(
     x: number,
     y: number,
     isPlayerShips: boolean,
   ): boolean {
-    return this.engine.hasShipAtPosition(x, y, isPlayerShips);
+    return this.actor
+      .getSnapshot()
+      .context.engine.hasShipAtPosition(x, y, isPlayerShips);
   }
 
-  /**
-   * Set the current match phase and notify callbacks
-   * @param phase - New match phase to set
-   */
-  public setPhase(phase: MatchPhase): void {
-    this.phase = phase;
-    this.matchCallbacks?.onPhaseChange?.(phase);
-  }
-
-  /**
-   * Get the current match phase
-   * @returns Current match phase
-   */
-  public getPhase(): MatchPhase {
-    return this.phase;
+  public getActor() {
+    return this.actor;
   }
 }
 
-/**
- * Match phases
- */
-export type MatchPhase = "PLAN" | "ATTACK" | "TURN" | "START" | "IDLE";
+import type { Shot } from "../types/common";
+import { GameInitializer } from "../manager";
 
-/**
- * Plan phase result
- */
 export interface PlanPhaseResult {
-  phase: "PLAN";
   ready: boolean;
   error?: string;
   pattern?: ShotPattern;
@@ -508,49 +312,16 @@ export interface PlanPhaseResult {
   centerY?: number;
 }
 
-/**
- * Attack phase result
- * All attacks are pattern-based (including single shots with SINGLE_SHOT pattern)
- */
-export interface AttackPhaseResult extends ShotPatternResult {
-  phase: "ATTACK";
-}
-
-/**
- * Turn phase result
- */
-export interface TurnPhaseResult {
-  phase: "TURN";
-  turnEnded: boolean;
-  canShootAgain: boolean;
-  reason: string;
-  isGameOver: boolean;
-  winner: Winner;
-}
-
-/**
- * Match shot result with turn information
- * All shots are pattern-based (including single shots with SINGLE_SHOT pattern)
- */
 export interface MatchShotResult extends ShotPatternResult {
   turnEnded: boolean;
   canShootAgain: boolean;
   reason: string;
-  phase: MatchPhase;
 }
 
-/**
- * Match callbacks for observing match events
- */
-export interface MatchCallbacks {
+export type MatchCallbacks = {
   onStateChange?: (state: GameEngineState) => void;
   onTurnChange?: (turn: GameTurn) => void;
   onShot?: (shot: Shot, isPlayerShot: boolean) => void;
   onGameOver?: (winner: Winner) => void;
   onMatchStart?: () => void;
-  onPhaseChange?: (phase: MatchPhase) => void;
-}
-
-// Re-export Shot type for convenience
-import type { Shot } from "../types/common";
-import { GameInitializer } from "../manager";
+};
