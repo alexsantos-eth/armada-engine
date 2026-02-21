@@ -331,7 +331,52 @@ const result = match.planAndAttack(3, 4, true, SINGLE_SHOT);
 
 ---
 
-## 8. Context Data Flow Summary
+## 8. Error Handling
+
+All error strings are centralised in `src/core/engine/errors.ts` and grouped into three const-object namespaces. Consumers can import and compare against these values instead of matching raw strings.
+
+| Namespace | Where produced | Values |
+|---|---|---|
+| `ShotError` | `GameEngine` — low-level shot execution | `CellAlreadyShot`, `GameAlreadyOver` |
+| `PlanError` | `matchMachine` — plan validation | `InvalidPlan`, `InvalidPosition`, `CellAlreadyShot` |
+| `AttackError` | `Match` — confirm / attack phase | `NoAttackPlanned`, `AttackFailed` |
+
+```mermaid
+graph TD
+    subgraph "errors.ts"
+        SE["ShotError\nCellAlreadyShot\nGameAlreadyOver"]
+        PE["PlanError\nInvalidPlan\nInvalidPosition\nCellAlreadyShot"]
+        AE["AttackError\nNoAttackPlanned\nAttackFailed"]
+    end
+
+    GE["GameEngine\n(logic.ts)"] --> SE
+    MM["matchMachine\n(matchMachine.ts)"] --> PE
+    M["Match\n(match.ts)"] --> AE
+    MM --> |planError typed as PlanError| Types["machines/types.ts"]
+```
+
+Each namespace is a `const` object with an accompanying type alias, making them compatible with `erasableSyntaxOnly` while retaining full type safety:
+
+```typescript
+import { ShotError, PlanError, AttackError } from "./src/core/engine";
+
+// Narrow on plan errors
+const plan = match.planShot(3, 4, SINGLE_SHOT, true);
+if (!plan.ready) {
+  if (plan.error === PlanError.CellAlreadyShot) { /* … */ }
+  if (plan.error === PlanError.InvalidPosition) { /* … */ }
+}
+
+// Narrow on attack errors
+const result = match.confirmAttack();
+if (!result.success) {
+  if (result.error === AttackError.NoAttackPlanned) { /* … */ }
+}
+```
+
+---
+
+## 9. Context Data Flow Summary
 
 ```mermaid
 flowchart LR

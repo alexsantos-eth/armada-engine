@@ -1,6 +1,7 @@
 import type { GameEngine, GameEngineState } from "../logic";
 export type { GameEngine };
 import type { MatchRuleSet, TurnDecision } from "../rulesets";
+import type { PlanError } from "../errors";
 import type {
   GameShip,
   GameTurn,
@@ -30,7 +31,7 @@ export interface MatchMachineContext {
   /** Turn decision made by the ruleset in the last round */
   lastTurnDecision: TurnDecision | null;
   /** Error produced when attempting to plan an invalid shot */
-  planError: string | null;
+  planError: PlanError | null;
 }
 
 export type MatchMachineEvent =

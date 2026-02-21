@@ -64,3 +64,5 @@ export {
 } from "../constants/shotPatterns";
 
 export { GAME_CONSTANTS } from "../constants/game";
+
+export { ShotError, PlanError, AttackError } from "./errors";

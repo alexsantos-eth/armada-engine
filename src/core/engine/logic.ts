@@ -1,5 +1,6 @@
 import { GAME_CONSTANTS } from "../constants/game";
 import { getShipCellsFromShip } from "../tools/ship/calculations";
+import { ShotError } from "./errors";
 import type {
   GameShip,
   Shot,
@@ -214,7 +215,7 @@ export class GameEngine {
     if (this.isCellShot(x, y, isPlayerShot)) {
       return {
         success: false,
-        error: "Cell already shot",
+        error: ShotError.CellAlreadyShot,
         hit: false,
         shipId: -1,
       };
@@ -290,7 +291,7 @@ export class GameEngine {
     if (this.isGameOver) {
       return {
         success: false,
-        error: "Game is already over",
+        error: ShotError.GameAlreadyOver,
         shots: [],
         isGameOver: true,
         winner: this.winner,

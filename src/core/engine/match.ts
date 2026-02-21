@@ -1,6 +1,7 @@
 import { createActor } from 'xstate';
 
 import { SINGLE_SHOT } from '../constants/shotPatterns';
+import { AttackError, PlanError } from './errors';
 import { GameInitializer } from '../manager';
 import { GameEngine, type GameEngineState } from './logic';
 import { matchMachine } from './machines/matchMachine';
@@ -119,7 +120,7 @@ export class Match {
     }
 
     if (!this.snap.context.pendingPlan) {
-      return { ready: false, error: "Invalid plan" };
+      return { ready: false, error: PlanError.InvalidPlan };
     }
 
     return { ready: true, pattern, centerX, centerY };
@@ -134,7 +135,7 @@ export class Match {
       const state = this.engine.getState();
       return {
         success: false,
-        error: "No attack planned. Call planShot() first.",
+        error: AttackError.NoAttackPlanned,
         shots: [],
         isGameOver: state.isGameOver,
         winner: state.winner,
@@ -152,13 +153,13 @@ export class Match {
       const state = this.engine.getState();
       return {
         success: false,
-        error: "Attack failed",
+        error: AttackError.AttackFailed,
         shots: [],
         isGameOver: state.isGameOver,
         winner: state.winner,
         turnEnded: false,
         canShootAgain: false,
-        reason: "Attack failed",
+        reason: AttackError.AttackFailed,
       };
     }
 

@@ -2,6 +2,7 @@ import { setup, assign, createActor } from "xstate";
 import { GameEngine } from "../logic";
 import { DefaultRuleSet } from "../rulesets";
 import { SINGLE_SHOT } from "../../constants/shotPatterns";
+import { PlanError } from "../errors";
 import type {
   MatchMachineContext,
   MatchMachineEvent,
@@ -66,9 +67,9 @@ export const matchMachine = setup({
     setPlanError: assign(({ context, event }) => {
       if (event.type !== "PLAN_SHOT") return {};
 
-      let planError = "Invalid plan";
+      let planError: PlanError = PlanError.InvalidPlan;
       if (!context.engine.isValidPosition(event.centerX, event.centerY)) {
-        planError = "Invalid position";
+        planError = PlanError.InvalidPosition;
       } else if (
         context.engine.isCellShot(
           event.centerX,
@@ -76,7 +77,7 @@ export const matchMachine = setup({
           event.isPlayerShot,
         )
       ) {
-        planError = "Cell already shot";
+        planError = PlanError.CellAlreadyShot;
       }
 
       return { planError };
