@@ -1,5 +1,11 @@
-import { createActor } from "xstate";
-import { GameEngine, type GameEngineState } from "./logic";
+import { createActor } from 'xstate';
+
+import { SINGLE_SHOT } from '../constants/shotPatterns';
+import { GameInitializer } from '../manager';
+import { GameEngine, type GameEngineState } from './logic';
+import { matchMachine } from './machines/matchMachine';
+import { DefaultRuleSet, type MatchRuleSet } from './rulesets';
+
 import type {
   GameShip,
   Winner,
@@ -8,9 +14,7 @@ import type {
   ShotPatternResult,
 } from "../types/common";
 import type { GameConfig } from "../types/config";
-import { DefaultRuleSet, type MatchRuleSet } from "./rulesets";
-import { SINGLE_SHOT } from "../constants/shotPatterns";
-import { matchMachine } from "./machines/matchMachine";
+import type { Shot } from "../types/common";
 
 /**
  * Match Rules Manager
@@ -20,6 +24,14 @@ import { matchMachine } from "./machines/matchMachine";
 export class Match {
   private actor: ReturnType<typeof createActor<typeof matchMachine>>;
   private matchCallbacks?: MatchCallbacks;
+
+  private get snap() {
+    return this.actor.getSnapshot();
+  }
+
+  private get engine() {
+    return this.snap.context.engine;
+  }
 
   constructor(
     config?: Partial<GameConfig>,
@@ -99,13 +111,11 @@ export class Match {
       isPlayerShot,
     });
 
-    const snap = this.actor.getSnapshot();
-
-    if (snap.context.planError) {
-      return { ready: false, error: snap.context.planError };
+    if (this.snap.context.planError) {
+      return { ready: false, error: this.snap.context.planError };
     }
 
-    if (!snap.context.pendingPlan) {
+    if (!this.snap.context.pendingPlan) {
       return { ready: false, error: "Invalid plan" };
     }
 
@@ -117,10 +127,8 @@ export class Match {
    * Must call planShot() first to set up the attack.
    */
   public confirmAttack(): MatchShotResult {
-    const snapBefore = this.actor.getSnapshot();
-
-    if (!snapBefore.context.pendingPlan) {
-      const state = snapBefore.context.engine.getState();
+    if (!this.snap.context.pendingPlan) {
+      const state = this.engine.getState();
       return {
         success: false,
         error: "No attack planned. Call planShot() first.",
@@ -135,11 +143,10 @@ export class Match {
 
     this.actor.send({ type: "CONFIRM_ATTACK" });
 
-    const snap = this.actor.getSnapshot();
-    const { lastAttackResult, lastTurnDecision } = snap.context;
+    const { lastAttackResult, lastTurnDecision } = this.snap.context;
 
     if (!lastAttackResult) {
-      const state = snap.context.engine.getState();
+      const state = this.engine.getState();
       return {
         success: false,
         error: "Attack failed",
@@ -152,7 +159,7 @@ export class Match {
       };
     }
 
-    const state = snap.context.engine.getState();
+    const state = this.engine.getState();
 
     return {
       ...lastAttackResult,
@@ -180,7 +187,7 @@ export class Match {
     pattern: ShotPattern;
     isPlayerShot: boolean;
   } | null {
-    return this.actor.getSnapshot().context.pendingPlan;
+    return this.snap.context.pendingPlan;
   }
 
   /**
@@ -200,7 +207,7 @@ export class Match {
     const planResult = this.planShot(x, y, pattern, isPlayerShot);
 
     if (!planResult.ready) {
-      const state = this.actor.getSnapshot().context.engine.getState();
+      const state = this.engine.getState();
       return {
         success: false,
         error: planResult.error,
@@ -217,41 +224,39 @@ export class Match {
   }
 
   public isPlayerTurn(): boolean {
-    return this.actor.getSnapshot().context.engine.isPlayerTurn();
+    return this.engine.isPlayerTurn();
   }
 
   public isEnemyTurn(): boolean {
-    return this.actor.getSnapshot().context.engine.isEnemyTurn();
+    return this.engine.isEnemyTurn();
   }
 
   public getCurrentTurn(): GameTurn {
-    return this.actor.getSnapshot().context.engine.getCurrentTurn();
+    return this.engine.getCurrentTurn();
   }
 
   public getState(): GameEngineState {
-    return this.actor.getSnapshot().context.engine.getState();
+    return this.engine.getState();
   }
 
   public getEngine(): GameEngine {
-    return this.actor.getSnapshot().context.engine;
+    return this.engine;
   }
 
   public isCellShot(x: number, y: number, isPlayerShot: boolean): boolean {
-    return this.actor
-      .getSnapshot()
-      .context.engine.isCellShot(x, y, isPlayerShot);
+    return this.engine.isCellShot(x, y, isPlayerShot);
   }
 
   public isValidPosition(x: number, y: number): boolean {
-    return this.actor.getSnapshot().context.engine.isValidPosition(x, y);
+    return this.engine.isValidPosition(x, y);
   }
 
   public getWinner(): Winner {
-    return this.actor.getSnapshot().context.engine.getWinner();
+    return this.engine.getWinner();
   }
 
   public isMatchOver(): boolean {
-    return this.actor.getSnapshot().context.engine.getState().isGameOver;
+    return this.engine.getState().isGameOver;
   }
 
   public resetMatch(): void {
@@ -259,7 +264,7 @@ export class Match {
   }
 
   public getRuleSet(): MatchRuleSet {
-    return this.actor.getSnapshot().context.ruleSet;
+    return this.snap.context.ruleSet;
   }
 
   public setRuleSet(ruleSet: MatchRuleSet): void {
@@ -267,13 +272,11 @@ export class Match {
   }
 
   public getBoardDimensions(): { width: number; height: number } {
-    return this.actor.getSnapshot().context.engine.getBoardDimensions();
+    return this.engine.getBoardDimensions();
   }
 
   public areAllShipsDestroyed(isPlayerShips: boolean): boolean {
-    return this.actor
-      .getSnapshot()
-      .context.engine.areAllShipsDestroyed(isPlayerShips);
+    return this.engine.areAllShipsDestroyed(isPlayerShips);
   }
 
   public getShotAtPosition(
@@ -281,9 +284,7 @@ export class Match {
     y: number,
     isPlayerShot: boolean,
   ): Shot | undefined {
-    return this.actor
-      .getSnapshot()
-      .context.engine.getShotAtPosition(x, y, isPlayerShot);
+    return this.engine.getShotAtPosition(x, y, isPlayerShot);
   }
 
   public hasShipAtPosition(
@@ -291,18 +292,13 @@ export class Match {
     y: number,
     isPlayerShips: boolean,
   ): boolean {
-    return this.actor
-      .getSnapshot()
-      .context.engine.hasShipAtPosition(x, y, isPlayerShips);
+    return this.engine.hasShipAtPosition(x, y, isPlayerShips);
   }
 
   public getActor() {
     return this.actor;
   }
 }
-
-import type { Shot } from "../types/common";
-import { GameInitializer } from "../manager";
 
 export interface PlanPhaseResult {
   ready: boolean;
@@ -319,9 +315,9 @@ export interface MatchShotResult extends ShotPatternResult {
 }
 
 export type MatchCallbacks = {
+  onShot?: (shot: Shot, isPlayerShot: boolean) => void;
   onStateChange?: (state: GameEngineState) => void;
   onTurnChange?: (turn: GameTurn) => void;
-  onShot?: (shot: Shot, isPlayerShot: boolean) => void;
   onGameOver?: (winner: Winner) => void;
   onMatchStart?: () => void;
 };

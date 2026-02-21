@@ -273,8 +273,6 @@ export const matchMachine = setup({
          * attacking — transient state.
          * On entry, executes the attack + turn resolution and immediately
          * transitions: to gameOver if the match ended, or back to planning.
-         *
-         * Equivalent to the combined ATTACK + TURN phases.
          */
         attacking: {
           entry: "executeAttackAndResolveTurn",
