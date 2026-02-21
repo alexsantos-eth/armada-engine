@@ -25,6 +25,7 @@ export type {
   ShotOffset,
   ShotPatternResult,
   PlayerRole,
+  CellState,
 } from "../types/common";
 
 export type { GameConfig } from "../types/config";

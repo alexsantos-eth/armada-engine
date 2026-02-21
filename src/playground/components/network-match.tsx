@@ -1,21 +1,24 @@
 import { useEffect, useState } from "preact/hooks";
-import type { CellState, ShotPattern } from "../../core/types/common";
-import { SHOT_PATTERNS } from "../../core/constants/shotPatterns";
+import {
+  type CellState,
+  type ShotPattern,
+  SHOT_PATTERNS,
+} from "../../core/engine";
 import {
   useAuth,
   useRoom,
   useNetworkMatch,
-} from "../../core-react/multiplayer/core/hooks";
+} from "../../core-react/multiplayer";
 
 const NetworkMatch = () => {
   const { signInAnonymously } = useAuth();
   const [roomId, setRoomId] = useState<string | undefined>(undefined);
   const { room, createRoom, joinRoom, setPlayerReady, isHost, isGuest } =
     useRoom(roomId);
-    
+
   const [roomCode, setRoomCode] = useState("");
   const [selectedPattern, setSelectedPattern] = useState<ShotPattern>(
-    SHOT_PATTERNS.single
+    SHOT_PATTERNS.single,
   );
 
   const playerRole = isHost ? "host" : isGuest ? "guest" : "host";
@@ -162,16 +165,18 @@ const NetworkMatch = () => {
         {/* Tablero del Jugador */}
         <div>
           <h2>Tu Tablero</h2>
-          
+
           <p>Seleccionar patrón de tiro</p>
-          
-          <div style={{ 
-            display: "flex", 
-            flexWrap: "wrap", 
-            gap: "8px", 
-            marginBottom: "10px",
-            maxWidth: "400px" 
-          }}>
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "8px",
+              marginBottom: "10px",
+              maxWidth: "400px",
+            }}
+          >
             {Object.values(SHOT_PATTERNS).map((pattern) => (
               <button
                 key={pattern.id}
@@ -179,12 +184,14 @@ const NetworkMatch = () => {
                 style={{
                   padding: "8px 12px",
                   fontSize: "12px",
-                  backgroundColor: selectedPattern.id === pattern.id ? "#4CAF50" : "#f0f0f0",
+                  backgroundColor:
+                    selectedPattern.id === pattern.id ? "#4CAF50" : "#f0f0f0",
                   color: selectedPattern.id === pattern.id ? "white" : "#333",
                   border: "1px solid #ccc",
                   borderRadius: "4px",
                   cursor: "pointer",
-                  fontWeight: selectedPattern.id === pattern.id ? "bold" : "normal",
+                  fontWeight:
+                    selectedPattern.id === pattern.id ? "bold" : "normal",
                 }}
                 title={pattern.description}
               >
@@ -193,12 +200,14 @@ const NetworkMatch = () => {
             ))}
           </div>
 
-          <div style={{ 
-            fontSize: "13px", 
-            color: "#666", 
-            marginBottom: "15px",
-            fontStyle: "italic"
-          }}>
+          <div
+            style={{
+              fontSize: "13px",
+              color: "#666",
+              marginBottom: "15px",
+              fontStyle: "italic",
+            }}
+          >
             Patrón actual: <strong>{selectedPattern.name}</strong>
             {selectedPattern.description && ` - ${selectedPattern.description}`}
           </div>

@@ -89,18 +89,13 @@ export const matchMachine = setup({
     })),
 
     /**
-     * Attack + Turn resolution — executed atomically.
-     *
-     * 1. Execute the shot pattern in the engine
-     * 2. Ask the ruleset to decide the turn outcome
-     * 3. Toggle the turn if required
-     * 4. Check for game-over via the ruleset
+     * Step 1 of the turn cycle: execute the shot pattern in the engine.
+     * Stores `lastAttackResult` and clears the pending plan.
      */
-    executeAttackAndResolveTurn: assign(({ context }) => {
+    executeAttack: assign(({ context }) => {
       if (!context.pendingPlan) return {};
 
       const { centerX, centerY, pattern, isPlayerShot } = context.pendingPlan;
-      const engineInternal = context.engine.getInternalAPI();
 
       const lastAttackResult = context.engine.executeShotPattern(
         centerX,
@@ -109,9 +104,27 @@ export const matchMachine = setup({
         isPlayerShot,
       );
 
+      return {
+        pendingPlan: null,
+        lastAttackResult,
+      };
+    }),
+
+    /**
+     * Step 2 of the turn cycle: resolve the turn outcome.
+     *
+     * 1. Ask the ruleset to decide the turn outcome
+     * 2. Toggle the turn if required
+     * 3. Check for game-over via the ruleset
+     */
+    resolveTurn: assign(({ context }) => {
+      if (!context.lastAttackResult) return {};
+
+      const engineInternal = context.engine.getInternalAPI();
+
       const stateAfterAttack = context.engine.getState();
       const lastTurnDecision = context.ruleSet.decideTurn(
-        lastAttackResult,
+        context.lastAttackResult,
         stateAfterAttack,
       );
 
@@ -127,11 +140,7 @@ export const matchMachine = setup({
         }
       }
 
-      return {
-        pendingPlan: null,
-        lastAttackResult,
-        lastTurnDecision,
-      };
+      return { lastTurnDecision };
     }),
 
     /** Initializes the engine with ship placements and the starting turn */
@@ -270,12 +279,26 @@ export const matchMachine = setup({
         },
 
         /**
-         * attacking — transient state.
-         * On entry, executes the attack + turn resolution and immediately
-         * transitions: to gameOver if the match ended, or back to planning.
+         * attacking — transient state (step 1).
+         * On entry, fires the shot pattern in the engine and immediately
+         * advances to resolvingTurn.
          */
         attacking: {
-          entry: "executeAttackAndResolveTurn",
+          entry: "executeAttack",
+          always: [{ target: "resolvingTurn" }],
+        },
+
+        /**
+         * resolvingTurn — transient state (step 2).
+         * On entry, applies ruleset turn logic and immediately transitions:
+         * to gameOver if the match ended, or back to planning.
+         *
+         * Kept as a separate state so future logic (e.g. animations, network
+         * acknowledgement) can be inserted here without touching the attack
+         * step or the public event API.
+         */
+        resolvingTurn: {
+          entry: "resolveTurn",
           always: [
             {
               guard: "isGameOver",

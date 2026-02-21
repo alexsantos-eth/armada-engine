@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useState } from "react";
 
-import { useBoard, type UseBoardProps } from '../../core-react/hooks';
-import { SHOT_PATTERNS } from '../../core/constants/shotPatterns';
+import { useBoard, type UseBoardProps } from "../../core-react/hooks";
+import {
+  SHOT_PATTERNS,
+  type CellState,
+  type ShotPattern,
+} from "../../core/engine";
 
-import type { CellState, ShotPattern } from "../../core/types/common";
 interface SingleMatchProps extends UseBoardProps {}
 
 const SingleMatch = ({
@@ -12,7 +15,7 @@ const SingleMatch = ({
   ...callbacks
 }: SingleMatchProps) => {
   const [selectedPattern, setSelectedPattern] = useState<ShotPattern>(
-    SHOT_PATTERNS.single
+    SHOT_PATTERNS.single,
   );
 
   const {
@@ -33,8 +36,6 @@ const SingleMatch = ({
     }
   };
 
- 
-
   return (
     <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
       {/* Tableros */}
@@ -44,14 +45,16 @@ const SingleMatch = ({
           <h2>Tu Tablero</h2>
 
           <p>Seleccionar patron de tiro</p>
-          
-          <div style={{ 
-            display: "flex", 
-            flexWrap: "wrap", 
-            gap: "8px", 
-            marginBottom: "10px",
-            maxWidth: "400px" 
-          }}>
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "8px",
+              marginBottom: "10px",
+              maxWidth: "400px",
+            }}
+          >
             {Object.values(SHOT_PATTERNS).map((pattern) => (
               <button
                 key={pattern.id}
@@ -59,12 +62,14 @@ const SingleMatch = ({
                 style={{
                   padding: "8px 12px",
                   fontSize: "12px",
-                  backgroundColor: selectedPattern.id === pattern.id ? "#4CAF50" : "#f0f0f0",
+                  backgroundColor:
+                    selectedPattern.id === pattern.id ? "#4CAF50" : "#f0f0f0",
                   color: selectedPattern.id === pattern.id ? "white" : "#333",
                   border: "1px solid #ccc",
                   borderRadius: "4px",
                   cursor: "pointer",
-                  fontWeight: selectedPattern.id === pattern.id ? "bold" : "normal",
+                  fontWeight:
+                    selectedPattern.id === pattern.id ? "bold" : "normal",
                 }}
                 title={pattern.description}
               >
@@ -73,12 +78,14 @@ const SingleMatch = ({
             ))}
           </div>
 
-          <div style={{ 
-            fontSize: "13px", 
-            color: "#666", 
-            marginBottom: "15px",
-            fontStyle: "italic"
-          }}>
+          <div
+            style={{
+              fontSize: "13px",
+              color: "#666",
+              marginBottom: "15px",
+              fontStyle: "italic",
+            }}
+          >
             Patrón actual: <strong>{selectedPattern.name}</strong>
             {selectedPattern.description && ` - ${selectedPattern.description}`}
           </div>

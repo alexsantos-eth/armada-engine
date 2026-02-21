@@ -35,7 +35,7 @@ graph TD
 | Layer | Class / Module | Responsibility |
 |---|---|---|
 | Public API | `Match` | Wraps the XState actor; exposes simple methods (planShot, confirmAttack, planAndAttack, resetMatch…) and forwards callbacks to consumers. |
-| State Orchestration | `matchMachine` | Owns the named states (`idle`, `active.planning`, `active.planned`, `active.attacking`, `gameOver`) and guards/actions that transition between them. |
+| State Orchestration | `matchMachine` | Owns the named states (`idle`, `active.planning`, `active.planned`, `active.attacking`, `active.resolvingTurn`, `gameOver`) and guards/actions that transition between them. |
 | Pure Compute | `GameEngine` | Holds all mutable board data (shots maps, ship positions, hit counters, turn, game-over flag). Executes shot patterns and emits callbacks. |
 | Rules | `MatchRuleSet` | Stateless object that decides, after each attack, whether to toggle the turn and whether the game is over. |
 
@@ -62,8 +62,10 @@ stateDiagram-v2
 
         planned --> attacking : CONFIRM_ATTACK
 
-        attacking --> gameOver : [isGameOver]
-        attacking --> planning : [else]
+        attacking --> resolvingTurn
+
+        resolvingTurn --> gameOver : [isGameOver]
+        resolvingTurn --> planning : [else]
     }
 
     active --> active : INITIALIZE\n[initializeEngine]
@@ -80,7 +82,8 @@ stateDiagram-v2
 | `idle` | Machine created; no match in progress. Waiting for `INITIALIZE`. |
 | `active.planning` | Waiting for the current player to choose a target cell. |
 | `active.planned` | A valid plan is stored; waiting for confirmation or cancellation. |
-| `active.attacking` | **Transient**: executes the attack + turn resolution atomically, then immediately transitions to `gameOver` or back to `planning`. |
+| `active.attacking` | **Transient** (step 1): fires the shot pattern via `executeAttack`, stores `lastAttackResult`, then immediately advances to `resolvingTurn`. |
+| `active.resolvingTurn` | **Transient** (step 2): applies ruleset turn logic via `resolveTurn` (toggle turn, check game-over), then transitions to `gameOver` or back to `planning`. |
 | `gameOver` | Final state. The winner is read from `engine.getState().winner`. |
 
 ---
@@ -112,14 +115,18 @@ sequenceDiagram
     Match->>matchMachine: send CONFIRM_ATTACK
     matchMachine->>matchMachine: transition → attacking
 
-    Note over matchMachine: entry action: executeAttackAndResolveTurn
+    Note over matchMachine: entry action: executeAttack
 
     matchMachine->>GameEngine: executeShotPattern(x, y, pattern, isPlayerShot)
-    GameEngine-->>matchMachine: ShotPatternResult
+    GameEngine-->>matchMachine: ShotPatternResult → lastAttackResult
 
     GameEngine->>Match: callbacks.onShot / onStateChange
 
-    matchMachine->>MatchRuleSet: decideTurn(attackResult, state)
+    matchMachine->>matchMachine: transition → resolvingTurn
+
+    Note over matchMachine: entry action: resolveTurn
+
+    matchMachine->>MatchRuleSet: decideTurn(lastAttackResult, state)
     MatchRuleSet-->>matchMachine: TurnDecision { shouldToggleTurn, canShootAgain }
 
     alt shouldToggleTurn
@@ -216,7 +223,7 @@ classDiagram
         +states: idle | active | gameOver
         +context: MatchMachineContext
         +guards: isValidPlan, isGameOver
-        +actions: storePlan, executeAttackAndResolveTurn, initializeEngine…
+        +actions: storePlan, executeAttack, resolveTurn, initializeEngine…
     }
 
     class GameEngine {
