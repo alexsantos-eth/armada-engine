@@ -290,6 +290,14 @@ export class GameEngine {
     const shotsMap = isPlayerShot ? this.playerShotsMap : this.enemyShotsMap;
     shotsMap.set(key, shot);
 
+    if (itemCollection?.itemFullyCollected && itemCollection.itemId !== undefined) {
+      for (const s of shotsMap.values()) {
+        if (s.collected && s.itemId === itemCollection.itemId) {
+          s.itemFullyCollected = true;
+        }
+      }
+    }
+
     if (result.hit && result.shipId >= 0) {
       const hitsMap = isPlayerShot ? this.enemyShipHits : this.playerShipHits;
       const currentHits = (hitsMap.get(result.shipId) || 0) + 1;

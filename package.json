@@ -13,8 +13,11 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.2.0",
     "firebase": "^12.9.0",
+    "lucide-react": "^0.575.0",
     "preact": "^10.27.2",
+    "tailwindcss": "^4.2.0",
     "xstate": "^5.28.0",
     "zustand": "^5.0.11"
   },
