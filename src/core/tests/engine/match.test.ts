@@ -206,7 +206,7 @@ describe('Match', () => {
 
     beforeEach(() => {
       classicMatch = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 }, ruleSet: ClassicRuleSet },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10, ruleSet: ClassicRuleSet }, },
       });
       classicMatch.initializeMatch();
     });
@@ -278,7 +278,7 @@ describe('Match', () => {
 
     beforeEach(() => {
       alternatingMatch = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 }, ruleSet: AlternatingTurnsRuleSet },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10, ruleSet: AlternatingTurnsRuleSet } },
       });
       alternatingMatch.initializeMatch();
     });
@@ -380,7 +380,7 @@ describe('Match', () => {
 
     beforeEach(() => {
       itemHitMatch = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 }, playerItems: [], enemyItems, ruleSet: ItemHitRuleSet },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10, ruleSet: ItemHitRuleSet }, playerItems: [], enemyItems },
       });
       itemHitMatch.initializeMatch();
     });
@@ -449,7 +449,7 @@ describe('Match', () => {
 
     it('should work correctly with setRuleSet switching to ItemHit mid-game', () => {
       const m = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 }, playerItems: [], enemyItems, ruleSet: ClassicRuleSet },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10, ruleSet: ClassicRuleSet }, playerItems: [], enemyItems },
       });
       m.initializeMatch();
 
@@ -474,10 +474,10 @@ describe('Match', () => {
 
     beforeEach(() => {
       classicMatch = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 }, ruleSet: ClassicRuleSet },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10, ruleSet: ClassicRuleSet }, },
       });
       alternatingMatch = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 }, ruleSet: AlternatingTurnsRuleSet },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10, ruleSet: AlternatingTurnsRuleSet }, },
       });
 
       classicMatch.initializeMatch();
@@ -895,7 +895,7 @@ describe('Match', () => {
 
     it('should use provided ruleset in constructor', () => {
       const alternatingMatch = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 }, ruleSet: AlternatingTurnsRuleSet },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10, ruleSet: AlternatingTurnsRuleSet } },
       });
 
       const ruleSet = alternatingMatch.getRuleSet();
@@ -936,7 +936,7 @@ describe('Match', () => {
 
     it('should detect enemy victory with alternating ruleset', () => {
       const alternatingMatch = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 }, ruleSet: AlternatingTurnsRuleSet },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10, ruleSet: AlternatingTurnsRuleSet } },
       });
       alternatingMatch.initializeMatch();
 

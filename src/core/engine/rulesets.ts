@@ -54,7 +54,7 @@ export interface MatchRuleSet {
  * - Game over: all enemy ships destroyed
  */
 export const ClassicRuleSet: MatchRuleSet = {
-  name: "Classic",
+  name: "ClassicRuleSet",
   description: "Traditional battleship rules with hit continuation",
 
   decideTurn(attackResult, currentState): TurnDecision {
@@ -131,7 +131,7 @@ export const ClassicRuleSet: MatchRuleSet = {
  * - Game over: all enemy ships destroyed
  */
 export const AlternatingTurnsRuleSet: MatchRuleSet = {
-  name: "Alternating",
+  name: "AlternatingTurnsRuleSet",
   description: "Every shot ends turn, no hit continuation",
 
   decideTurn(attackResult, currentState): TurnDecision {
@@ -186,7 +186,7 @@ export const AlternatingTurnsRuleSet: MatchRuleSet = {
  * - Game over: all enemy ships destroyed
  */
 export const ItemHitRuleSet: MatchRuleSet = {
-  name: "ItemHit",
+  name: "ItemHitRuleSet",
   description:
     "Repeat turn on any item collection or ship hit; turn ends on ship destruction or miss",
 
@@ -263,6 +263,19 @@ export const ItemHitRuleSet: MatchRuleSet = {
     };
   },
 };
+
+export const getRuleSetByName = (name: string): MatchRuleSet => {
+  switch (name) {
+    case ClassicRuleSet.name:
+      return ClassicRuleSet;
+    case AlternatingTurnsRuleSet.name:
+      return AlternatingTurnsRuleSet;
+    case ItemHitRuleSet.name:
+      return ItemHitRuleSet;
+    default:
+      throw new Error(`Unknown ruleset name: ${name}`);
+  }
+}
 
 /**
  * Export default ruleset (Classic)

@@ -49,7 +49,7 @@ export class Match {
       this.setup = initilizer.getGameSetup();
     }
 
-    const ruleSet = setup?.ruleSet ?? DefaultRuleSet;
+    const ruleSet = setup?.config.ruleSet ?? DefaultRuleSet;
     this.matchCallbacks = callbacks;
 
     /**

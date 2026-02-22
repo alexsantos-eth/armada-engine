@@ -1,4 +1,8 @@
-import type { GameRoom, RoomPlayer } from "../../types/game/room";
+import type {
+  GameRoom,
+  MatchRuleSetName,
+  RoomPlayer,
+} from "../../types/game/room";
 
 import { dbUtils } from "../../network/realtime/controller";
 import {
@@ -7,6 +11,7 @@ import {
   type PlayerRole,
   type Shot,
   type GameSetup,
+  DefaultRuleSet,
 } from "../../../../../core/engine";
 
 export class RoomService {
@@ -57,6 +62,7 @@ export class RoomService {
     const gameInitializer = new GameInitializer();
     const setup = initialSetup ?? gameInitializer.getGameSetup();
     const initialTurn = setup.initialTurn === "PLAYER_TURN" ? "host" : "guest";
+    const ruleSetName = setup.config.ruleSet?.name || DefaultRuleSet.name;
 
     const room: GameRoom = {
       id: roomId,
@@ -64,7 +70,7 @@ export class RoomService {
       status: "waiting",
       initialTurn,
       currentTurn: initialTurn,
-      ruleSet: "ClassicRuleSet",
+      ruleSet: ruleSetName as MatchRuleSetName,
       gameConfig: {
         boardHeight:
           setup.config.boardHeight ?? GAME_CONSTANTS.BOARD.DEFAULT_HEIGHT,

@@ -7,7 +7,6 @@ import {
   equalizeItemCounts,
 } from "../tools/ship/calculations";
 import type { PlayerName } from "../types/common";
-import { DefaultRuleSet, type MatchRuleSet } from "../engine/rulesets";
 
 /**
  * Game setup configuration
@@ -26,8 +25,6 @@ export interface GameSetup {
   initialTurn: GameTurn;
   /** Game configuration used */
   config: Partial<GameConfig>;
-  /** RuleSet to use for this match */
-  ruleSet?: MatchRuleSet;
 }
 
 export type GAME_INITIAL_TURN = PlayerName | "random";
@@ -51,7 +48,6 @@ export type GAME_INITIAL_TURN = PlayerName | "random";
  */
 export class GameInitializer {
   private config: GameConfig;
-  private ruleSet: MatchRuleSet;
 
   /**
    * Create a new game initializer
@@ -59,7 +55,6 @@ export class GameInitializer {
    */
   constructor(config: Partial<GameConfig> = {}) {
     this.config = { ...this.getDefaultConfig(), ...config };
-    this.ruleSet = config.ruleSet || DefaultRuleSet;
     this.validateConfig();
   }
 
@@ -167,7 +162,6 @@ export class GameInitializer {
       enemyItems,
       initialTurn,
       config: this.config,
-      ruleSet: this.ruleSet,
     };
   }
 
@@ -188,7 +182,6 @@ export class GameInitializer {
     const initialTurn: GameTurn = this.determineInitialTurn();
 
     return {
-      ruleSet: this.ruleSet,
       config: this.config,
       initialTurn,
       playerShips,

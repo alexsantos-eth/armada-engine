@@ -8,6 +8,7 @@ export {
   ClassicRuleSet,
   AlternatingTurnsRuleSet,
   DefaultRuleSet,
+  getRuleSetByName,
 } from "./rulesets";
 export type { MatchRuleSet, TurnDecision, GameOverDecision } from "./rulesets";
 

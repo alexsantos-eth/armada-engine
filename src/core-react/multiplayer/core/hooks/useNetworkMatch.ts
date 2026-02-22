@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  AlternatingTurnsRuleSet,
-  ClassicRuleSet,
   GameInitializer,
   Match,
   SINGLE_SHOT,
+  getRuleSetByName,
   type GameConfig,
   type GameEngineState,
   type MatchCallbacks,
@@ -56,10 +55,7 @@ const useNetworkMatch = ({
         ? room.initialState.enemyItems || []
         : room.initialState.playerItems || [];
 
-    const ruleSet = {
-      ClassicRuleSet,
-      AlternatingTurnsRuleSet,
-    }[ruleSetName];
+    const ruleSet = getRuleSetByName(ruleSetName);
 
     const initialTurn = room.initialTurn === playerRole ? "player" : "enemy";
 
