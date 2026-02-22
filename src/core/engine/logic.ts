@@ -3,6 +3,7 @@ import { getShipCellsFromShip } from "../tools/ship/calculations";
 import { ShotError } from "./errors";
 import type {
   GameShip,
+  GameItem,
   Shot,
   Winner,
   GameTurn,
@@ -33,6 +34,18 @@ export class GameEngine {
   private playerShipSizes: Map<number, number>;
   private enemyShipSizes: Map<number, number>;
 
+  // Items
+  private playerItems: GameItem[];
+  private enemyItems: GameItem[];
+  private playerItemPositions: Map<PositionKey, number>;
+  private enemyItemPositions: Map<PositionKey, number>;
+  /** How many parts of each item have been shot (indexed by itemId array index). */
+  private playerItemHits: Map<number, number>;
+  private enemyItemHits: Map<number, number>;
+  /** Fully collected item ids (array indices). */
+  private playerCollectedItems: Set<number>;
+  private enemyCollectedItems: Set<number>;
+
   private onStateChange?: (state: GameEngineState) => void;
   private onTurnChange?: (turn: GameTurn) => void;
   private onShot?: (shot: Shot, isPlayerShot: boolean) => void;
@@ -61,6 +74,15 @@ export class GameEngine {
     this.playerShipSizes = new Map();
     this.enemyShipSizes = new Map();
 
+    this.playerItems = [];
+    this.enemyItems = [];
+    this.playerItemPositions = new Map();
+    this.enemyItemPositions = new Map();
+    this.playerItemHits = new Map();
+    this.enemyItemHits = new Map();
+    this.playerCollectedItems = new Set();
+    this.enemyCollectedItems = new Set();
+
     this.onStateChange = callbacks?.onStateChange;
     this.onTurnChange = callbacks?.onTurnChange;
     this.onShot = callbacks?.onShot;
@@ -68,15 +90,19 @@ export class GameEngine {
   }
 
   /**
-   * Initialize a new game with ships and starting turn
+   * Initialize a new game with ships, items, and starting turn
    * @param playerShips - Array of player's ships
    * @param enemyShips - Array of enemy's ships
    * @param initialTurn - Which player starts (defaults to PLAYER_TURN)
+   * @param playerItems - Items placed on the player's board (enemy can collect these)
+   * @param enemyItems - Items placed on the enemy's board (player can collect these)
    */
   public initializeGame(
     playerShips: GameShip[],
     enemyShips: GameShip[],
     initialTurn: GameTurn = "PLAYER_TURN",
+    playerItems: GameItem[] = [],
+    enemyItems: GameItem[] = [],
   ): void {
     this.playerShips = playerShips;
     this.enemyShips = enemyShips;
@@ -94,6 +120,15 @@ export class GameEngine {
     this.playerShipSizes.clear();
     this.enemyShipSizes.clear();
 
+    this.playerItems = playerItems;
+    this.enemyItems = enemyItems;
+    this.playerItemPositions.clear();
+    this.enemyItemPositions.clear();
+    this.playerItemHits.clear();
+    this.enemyItemHits.clear();
+    this.playerCollectedItems.clear();
+    this.enemyCollectedItems.clear();
+
     this.cacheShipPositions(
       playerShips,
       this.playerShipPositions,
@@ -104,6 +139,9 @@ export class GameEngine {
       this.enemyShipPositions,
       this.enemyShipSizes,
     );
+
+    this.cacheItemPositions(playerItems, this.playerItemPositions);
+    this.cacheItemPositions(enemyItems, this.enemyItemPositions);
 
     this.notifyStateChange();
   }
@@ -127,6 +165,15 @@ export class GameEngine {
     this.enemyShipHits.clear();
     this.playerShipSizes.clear();
     this.enemyShipSizes.clear();
+
+    this.playerItems = [];
+    this.enemyItems = [];
+    this.playerItemPositions.clear();
+    this.enemyItemPositions.clear();
+    this.playerItemHits.clear();
+    this.enemyItemHits.clear();
+    this.playerCollectedItems.clear();
+    this.enemyCollectedItems.clear();
 
     this.notifyStateChange();
   }
@@ -223,6 +270,10 @@ export class GameEngine {
 
     const result = this.checkShot(x, y, isPlayerShot);
 
+    const itemCollection = !result.hit
+      ? this.collectItem(x, y, isPlayerShot)
+      : null;
+
     const shot: Shot = {
       x,
       y,
@@ -231,6 +282,11 @@ export class GameEngine {
       patternId: patternInfo?.patternId || "single",
       patternCenterX: patternInfo?.centerX || x,
       patternCenterY: patternInfo?.centerY || y,
+      ...(itemCollection?.collected && {
+        collected: true,
+        itemId: itemCollection.itemId,
+        itemFullyCollected: itemCollection.itemFullyCollected,
+      }),
     };
 
     const key = posKey(x, y);
@@ -262,6 +318,9 @@ export class GameEngine {
       shipDestroyed,
       isGameOver: this.isGameOver,
       winner: this.winner,
+      collected: itemCollection?.collected,
+      itemId: itemCollection?.itemId,
+      itemFullyCollected: itemCollection?.itemFullyCollected,
     };
   }
 
@@ -349,6 +408,9 @@ export class GameEngine {
         patternId: pattern.id,
         patternCenterX: centerX,
         patternCenterY: centerY,
+        collected: shotResult.collected,
+        itemId: shotResult.itemId,
+        itemFullyCollected: shotResult.itemFullyCollected,
       });
     }
 
@@ -479,6 +541,62 @@ export class GameEngine {
   }
 
   /**
+   * Cache item positions for O(1) lookup.
+   * Each item occupies `part` cells in a horizontal row starting at `coords`.
+   * @private
+   */
+  private cacheItemPositions(
+    items: GameItem[],
+    positionsMap: Map<PositionKey, number>,
+  ): void {
+    items.forEach((item, itemId) => {
+      const [startX, y] = item.coords;
+      for (let i = 0; i < item.part; i++) {
+        positionsMap.set(posKey(startX + i, y), itemId);
+      }
+    });
+  }
+
+  /**
+   * Try to collect an item at the given position.
+   * Returns collection info or null if no item is present.
+   * @private
+   */
+  private collectItem(
+    x: number,
+    y: number,
+    isPlayerShot: boolean,
+  ): { collected: boolean; itemId: number; itemFullyCollected: boolean } | null {
+    const itemPositions = isPlayerShot
+      ? this.enemyItemPositions
+      : this.playerItemPositions;
+    const items = isPlayerShot ? this.enemyItems : this.playerItems;
+    const itemHits = isPlayerShot ? this.enemyItemHits : this.playerItemHits;
+    const collectedSet = isPlayerShot
+      ? this.enemyCollectedItems
+      : this.playerCollectedItems;
+
+    const key = posKey(x, y);
+    const itemId = itemPositions.get(key);
+
+    if (itemId === undefined) return null;
+
+    if (collectedSet.has(itemId)) return null;
+
+    const currentHits = (itemHits.get(itemId) ?? 0) + 1;
+    itemHits.set(itemId, currentHits);
+
+    const item = items[itemId];
+    const itemFullyCollected = currentHits === item.part;
+
+    if (itemFullyCollected) {
+      collectedSet.add(itemId);
+    }
+
+    return { collected: true, itemId, itemFullyCollected };
+  }
+
+  /**
    * Set player's ships
    * @param ships - Array of player ships
    */
@@ -507,6 +625,32 @@ export class GameEngine {
       this.enemyShipPositions,
       this.enemyShipSizes,
     );
+    this.notifyStateChange();
+  }
+
+  /**
+   * Set items on the player's board (collectible by the enemy).
+   * @param items - Array of player items
+   */
+  public setPlayerItems(items: GameItem[]): void {
+    this.playerItems = items;
+    this.playerItemPositions.clear();
+    this.playerItemHits.clear();
+    this.playerCollectedItems.clear();
+    this.cacheItemPositions(items, this.playerItemPositions);
+    this.notifyStateChange();
+  }
+
+  /**
+   * Set items on the enemy's board (collectible by the player).
+   * @param items - Array of enemy items
+   */
+  public setEnemyItems(items: GameItem[]): void {
+    this.enemyItems = items;
+    this.enemyItemPositions.clear();
+    this.enemyItemHits.clear();
+    this.enemyCollectedItems.clear();
+    this.cacheItemPositions(items, this.enemyItemPositions);
     this.notifyStateChange();
   }
 
@@ -548,7 +692,7 @@ export class GameEngine {
 
   /**
    * Get complete current game state
-   * @returns Full game state including ships, shots, and game status
+   * @returns Full game state including ships, shots, items, and game status
    */
   public getState(): GameEngineState {
     return {
@@ -566,6 +710,10 @@ export class GameEngine {
       shotCount: this.shotCount,
       areAllPlayerShipsDestroyed: this.areAllShipsDestroyed(true),
       areAllEnemyShipsDestroyed: this.areAllShipsDestroyed(false),
+      playerItems: [...this.playerItems],
+      enemyItems: [...this.enemyItems],
+      playerCollectedItems: Array.from(this.playerCollectedItems),
+      enemyCollectedItems: Array.from(this.enemyCollectedItems),
     };
   }
 
@@ -709,6 +857,14 @@ export interface GameEngineState {
   shotCount: number;
   areAllPlayerShipsDestroyed: boolean;
   areAllEnemyShipsDestroyed: boolean;
+  /** Items placed on the player's board (collectible by the enemy). */
+  playerItems: GameItem[];
+  /** Items placed on the enemy's board (collectible by the player). */
+  enemyItems: GameItem[];
+  /** Indices of player items that have been fully collected by the enemy. */
+  playerCollectedItems: number[];
+  /** Indices of enemy items that have been fully collected by the player. */
+  enemyCollectedItems: number[];
 }
 
 /**
@@ -723,6 +879,12 @@ export interface ShotResult {
   shipDestroyed?: boolean;
   isGameOver?: boolean;
   winner?: Winner;
+  /** True when this shot collected a part of an item. */
+  collected?: boolean;
+  /** The itemId of the collected item (when collected is true). */
+  itemId?: number;
+  /** True when the item is now fully collected. */
+  itemFullyCollected?: boolean;
 }
 
 /**

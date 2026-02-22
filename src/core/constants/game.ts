@@ -1,4 +1,5 @@
 import { SHIP_TEMPLATES } from "./ships";
+import { ITEM_TEMPLATES } from "./items";
 
 export const GAME_CONSTANTS = {
   SHIPS: {
@@ -6,6 +7,13 @@ export const GAME_CONSTANTS = {
     MAX_PLACEMENT_ATTEMPTS: 200,
     DEFAULT_COUNTS: Object.fromEntries(
       Object.entries(SHIP_TEMPLATES).map(([key, t]) => [key, t.defaultCount]),
+    ) as Record<string, number>,
+  },
+  ITEMS: {
+    MIN_DISTANCE_FROM_SHIPS: 1,
+    MAX_PLACEMENT_ATTEMPTS: 200,
+    DEFAULT_COUNTS: Object.fromEntries(
+      Object.entries(ITEM_TEMPLATES).map(([key, t]) => [key, t.defaultCount]),
     ) as Record<string, number>,
   },
   GAME_LOGIC: {

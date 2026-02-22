@@ -56,6 +56,8 @@ const Playground = () => {
               : "PLAYER_TURN",
           playerShips: initialSetup.enemyShips,
           enemyShips: initialSetup.playerShips,
+          playerItems: initialSetup.enemyItems,
+          enemyItems: initialSetup.playerItems,
         }}
       />
 

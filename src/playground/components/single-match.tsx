@@ -31,6 +31,8 @@ const SingleMatch = ({
         return "💥";
       case "MISS":
         return "💧";
+      case "COLLECTED":
+        return "🎁";
       default:
         return "";
     }

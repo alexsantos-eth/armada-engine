@@ -144,7 +144,7 @@ export const matchMachine = setup({
       return { lastTurnDecision };
     }),
 
-    /** Initializes the engine with ship placements and the starting turn */
+    /** Initializes the engine with ship placements, items, and the starting turn */
     initializeEngine: assign(({ context, event }) => {
       if (event.type !== "INITIALIZE") return {};
 
@@ -152,6 +152,8 @@ export const matchMachine = setup({
         event.playerShips,
         event.enemyShips,
         event.initialTurn ?? "PLAYER_TURN",
+        event.playerItems ?? [],
+        event.enemyItems ?? [],
       );
 
       return {

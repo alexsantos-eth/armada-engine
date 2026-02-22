@@ -1,8 +1,22 @@
 export type GameTurn = "PLAYER_TURN" | "ENEMY_TURN";
 export type PlayerName = "player" | "enemy";
 export type Winner = PlayerName | null;
-export type CellState = "EMPTY" | "SHIP" | "HIT" | "MISS";
+export type CellState = "EMPTY" | "SHIP" | "HIT" | "MISS" | "ITEM" | "COLLECTED";
 export type Board = CellState[][];
+
+/**
+ * A collectible item placed on the board.
+ * It occupies `part` cells in a horizontal row starting at `coords`.
+ * When all cells are shot, the item is fully collected.
+ */
+export interface GameItem {
+  coords: [number, number];
+  /** Number of cells (parts) that must be shot to fully collect this item. */
+  part: number;
+  itemId?: number;
+  /** Template identifier (matches ItemTemplate.id), used for cross-board equalization. */
+  templateId?: string;
+}
 
 /**
  * A 2D rectangular ship on the board.
@@ -25,6 +39,12 @@ export interface Shot {
   patternId?: string; 
   patternCenterX?: number; 
   patternCenterY?: number;
+  /** True when this shot collected a part of an item instead of being a plain miss. */
+  collected?: boolean;
+  /** The index-based id of the collected item (when collected is true). */
+  itemId?: number;
+  /** True when this shot caused the item to be fully collected. */
+  itemFullyCollected?: boolean;
 }
 
 /**
@@ -66,6 +86,7 @@ export interface ShotPatternResult {
       executed: boolean; // False if shot was out of bounds or already taken
     } & Shot
   >;
+
   /** Whether the game is over after this pattern */
   isGameOver: boolean;
   /** Winner if game is over */

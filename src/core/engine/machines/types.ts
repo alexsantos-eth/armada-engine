@@ -4,6 +4,7 @@ import type { MatchRuleSet, TurnDecision } from "../rulesets";
 import type { PlanError } from "../errors";
 import type {
   GameShip,
+  GameItem,
   GameTurn,
   ShotPattern,
   ShotPatternResult,
@@ -35,13 +36,17 @@ export interface MatchMachineContext {
 }
 
 export type MatchMachineEvent =
-  /** Initializes the match with both players' ships */
+  /** Initializes the match with both players' ships and optional items */
   | {
       type: "INITIALIZE";
       playerShips: GameShip[];
       enemyShips: GameShip[];
       /** Starting turn (defaults to PLAYER_TURN) */
       initialTurn?: GameTurn;
+      /** Items placed on the player's board (collectible by the enemy). */
+      playerItems?: GameItem[];
+      /** Items placed on the enemy's board (collectible by the player). */
+      enemyItems?: GameItem[];
     }
   /** Plans a shot without executing it */
   | {

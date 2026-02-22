@@ -12,6 +12,7 @@ import { getShipCellsFromShip } from '../tools/ship/calculations';
 import type {
   Board,
   GameShip,
+  GameItem,
   Winner,
   GameTurn,
   ShotPattern,
@@ -77,21 +78,27 @@ export class Match {
   }
 
   /**
-   * Initialize a new match with ships
+   * Initialize a new match with ships and optional items
    * @param playerShips - Player's ship placements
    * @param enemyShips - Enemy's ship placements
    * @param initialTurn - Who starts (defaults to PLAYER_TURN)
+   * @param playerItems - Items on the player's board (collectible by the enemy)
+   * @param enemyItems - Items on the enemy's board (collectible by the player)
    */
   public initializeMatch(
     playerShips: GameShip[],
     enemyShips: GameShip[],
     initialTurn: GameTurn = "PLAYER_TURN",
+    playerItems: GameItem[] = [],
+    enemyItems: GameItem[] = [],
   ): void {
     this.actor.send({
       type: "INITIALIZE",
       playerShips,
       enemyShips,
       initialTurn,
+      playerItems,
+      enemyItems,
     });
     this.matchCallbacks?.onMatchStart?.();
   }
@@ -321,6 +328,7 @@ export class Match {
   /**
    * Returns the player's board with ship positions and received shots.
    * Own ships are visible; each enemy shot is marked as HIT or MISS.
+   * Uncollected items are shown as ITEM; collected item cells as COLLECTED.
    */
   public getPlayerBoard(): Board {
     const state = this.engine.getState();
@@ -330,6 +338,9 @@ export class Match {
       Array(boardWidth).fill("EMPTY"),
     );
 
+
+
+    // PLAYER SHIPS
     for (const ship of playerShips) {
       for (const [x, y] of getShipCellsFromShip(ship)) {
         if (x >= 0 && x < boardWidth && y >= 0 && y < boardHeight) {
@@ -338,9 +349,14 @@ export class Match {
       }
     }
 
+    // ENEMY SHOTS
     for (const shot of enemyShots) {
       if (shot.x >= 0 && shot.x < boardWidth && shot.y >= 0 && shot.y < boardHeight) {
-        board[shot.y][shot.x] = shot.hit ? "HIT" : "MISS";
+        if (shot.collected) {
+          board[shot.y][shot.x] = "MISS";
+        } else {
+          board[shot.y][shot.x] = shot.hit ? "HIT" : "MISS";
+        }
       }
     }
 
@@ -349,18 +365,36 @@ export class Match {
 
   /**
    * Returns the enemy's board showing only the player's shots (ships are hidden).
+   * Uncollected enemy items are shown as ITEM; collected item cells as COLLECTED.
    */
   public getEnemyBoard(): Board {
     const state = this.engine.getState();
-    const { boardWidth, boardHeight, playerShots } = state;
+    const { boardWidth, boardHeight, playerShots, enemyItems, enemyCollectedItems } = state;
 
     const board: Board = Array.from({ length: boardHeight }, () =>
       Array(boardWidth).fill("EMPTY"),
     );
 
+    // ITEMS
+    const collectedSet = new Set(enemyCollectedItems);
+    enemyItems.forEach((item, itemId) => {
+      const [startX, y] = item.coords;
+      for (let i = 0; i < item.part; i++) {
+        const cx = startX + i;
+        if (cx >= 0 && cx < boardWidth && y >= 0 && y < boardHeight) {
+          board[y][cx] = collectedSet.has(itemId) ? "COLLECTED" : "ITEM";
+        }
+      }
+    });
+
+    // PLAYER SHOTS
     for (const shot of playerShots) {
       if (shot.x >= 0 && shot.x < boardWidth && shot.y >= 0 && shot.y < boardHeight) {
-        board[shot.y][shot.x] = shot.hit ? "HIT" : "MISS";
+        if (shot.collected) {
+          board[shot.y][shot.x] = "COLLECTED";
+        } else {
+          board[shot.y][shot.x] = shot.hit ? "HIT" : "MISS";
+        }
       }
     }
 

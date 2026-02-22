@@ -1,6 +1,7 @@
 import { GAME_CONSTANTS } from "../constants/game";
 import type { GameConfig, GameShip, GameTurn } from "../engine";
-import { generateShips } from "../tools/ship/calculations";
+import type { GameItem } from "../types/common";
+import { generateShips, generateItems, equalizeItemCounts } from "../tools/ship/calculations";
 import type { PlayerName } from "../types/common";
 
 /**
@@ -12,6 +13,10 @@ export interface GameSetup {
   playerShips: GameShip[];
   /** Enemy's ship placements */
   enemyShips: GameShip[];
+  /** Items placed on the player's board (collectible by the enemy) */
+  playerItems: GameItem[];
+  /** Items placed on the enemy's board (collectible by the player) */
+  enemyItems: GameItem[];
   /** Who starts the game */
   initialTurn: GameTurn;
   /** Game configuration used */
@@ -97,6 +102,7 @@ export class GameInitializer {
       boardWidth: GAME_CONSTANTS.BOARD.DEFAULT_WIDTH,
       boardHeight: GAME_CONSTANTS.BOARD.DEFAULT_HEIGHT,
       shipCounts: GAME_CONSTANTS.SHIPS.DEFAULT_COUNTS,
+      itemCounts: GAME_CONSTANTS.ITEMS.DEFAULT_COUNTS,
       initialTurn: "random",
     };
   }
@@ -126,6 +132,7 @@ export class GameInitializer {
    *
    * @param startTurn - Override initial turn ('player', 'enemy', or 'random')
    * @param ships - Provide custom ship placements (optional, will generate if not provided)
+   * @param items - Provide custom item placements (optional, will generate if not provided)
    * @returns Complete game setup ready to use
    *
    * @example
@@ -136,7 +143,7 @@ export class GameInitializer {
    * // With custom turn
    * const setup = initializer.initializeGame('player');
    *
-   * // With custom ships
+   * // With custom ships (items will still be generated automatically)
    * const customShips = {
    *   playerShips: generateShips(config),
    *   enemyShips: generateShips(config)
@@ -147,9 +154,17 @@ export class GameInitializer {
   public initializeGame(
     startTurn?: GAME_INITIAL_TURN,
     ships?: { playerShips: GameShip[]; enemyShips: GameShip[] },
+    items?: { playerItems: GameItem[]; enemyItems: GameItem[] },
   ): GameSetup {
     const playerShips = ships?.playerShips ?? generateShips(this.config);
     const enemyShips = ships?.enemyShips ?? generateShips(this.config);
+
+    const rawPlayerItems = items?.playerItems ?? generateItems(this.config, playerShips);
+    const rawEnemyItems = items?.enemyItems ?? generateItems(this.config, enemyShips);
+
+    const [playerItems, enemyItems] = items
+      ? [rawPlayerItems, rawEnemyItems]
+      : equalizeItemCounts(rawPlayerItems, rawEnemyItems);
 
     const nexTurn: GameTurn | undefined =
       startTurn === "player"
@@ -168,6 +183,8 @@ export class GameInitializer {
     return {
       playerShips,
       enemyShips,
+      playerItems,
+      enemyItems,
       initialTurn,
       config: this.config,
     };
