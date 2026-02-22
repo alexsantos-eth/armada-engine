@@ -33,6 +33,13 @@ export interface MatchMachineContext {
   lastTurnDecision: TurnDecision | null;
   /** Error produced when attempting to plan an invalid shot */
   planError: PlanError | null;
+  /**
+   * Result of the last USE_ITEM event.
+   * `true`  — handler found, item wasn't used before, `onUse` was called.
+   * `false` — item not found, no `onUse` handler, or already used.
+   * `null`  — no USE_ITEM event has been sent yet.
+   */
+  lastUseItemResult: boolean | null;
 }
 
 export type MatchMachineEvent =
@@ -64,7 +71,14 @@ export type MatchMachineEvent =
   /** Swaps the active ruleset at runtime */
   | { type: "SET_RULESET"; ruleSet: MatchRuleSet }
   /** Resets the machine to the IDLE state */
-  | { type: "RESET" };
+  | { type: "RESET" }
+  /**
+   * Activates the `onUse` handler of a collected item.
+   * Only processed while the machine is in the `planning` state.
+   * `isPlayerShot: true`  → looks in enemy items (player-collected).
+   * `isPlayerShot: false` → looks in player items (enemy-collected).
+   */
+  | { type: "USE_ITEM"; itemId: number; isPlayerShot: boolean };
 
 export interface MatchMachineInput {
   /** Board configuration (width, height…); ignored when `engine` is provided */

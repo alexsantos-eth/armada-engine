@@ -8,6 +8,40 @@ import type {
   MatchMachineEvent,
   MatchMachineInput,
 } from "./types";
+import type { GameItem, ItemActionContext, Shot } from "../../types/common";
+
+/**
+ * Builds the `ItemActionContext` passed to `onCollect` and `onUse` handlers.
+ * Shared by the `useItem` machine action and the `onItemCollected` callback
+ * wired in `Match`.
+ */
+export function buildItemActionContext(
+  engine: GameEngine,
+  item: GameItem,
+  isPlayerShot: boolean,
+  shot: Shot | undefined,
+): ItemActionContext {
+  const state = engine.getState();
+  const internal = engine.getInternalAPI();
+  return {
+    item,
+    isPlayerShot,
+    shot,
+    currentTurn: state.currentTurn,
+    playerShips: state.playerShips,
+    enemyShips: state.enemyShips,
+    playerItems: state.playerItems,
+    enemyItems: state.enemyItems,
+    playerCollectedItems: state.playerCollectedItems,
+    enemyCollectedItems: state.enemyCollectedItems,
+    setPlayerShips: (ships) => engine.setPlayerShips(ships),
+    setEnemyShips: (ships) => engine.setEnemyShips(ships),
+    setPlayerItems: (items) => engine.setPlayerItems(items),
+    setEnemyItems: (items) => engine.setEnemyItems(items),
+    toggleTurn: () => internal.toggleTurn(),
+    setRuleSet: (ruleSet: unknown) => internal.setPendingRuleSet(ruleSet),
+  };
+}
 
 export const matchMachine = setup({
   types: {} as {
@@ -166,6 +200,7 @@ export const matchMachine = setup({
         planError: null,
         lastAttackResult: null,
         lastTurnDecision: null,
+        lastUseItemResult: null,
       };
     }),
 
@@ -177,6 +212,7 @@ export const matchMachine = setup({
         lastAttackResult: null,
         lastTurnDecision: null,
         planError: null,
+        lastUseItemResult: null,
       };
     }),
 
@@ -184,6 +220,37 @@ export const matchMachine = setup({
     setRuleSet: assign(({ event }) => {
       if (event.type !== "SET_RULESET") return {};
       return { ruleSet: event.ruleSet };
+    }),
+
+    /**
+     * Activates the `onUse` handler of a collected item.
+     * Only reachable from the `planning` state — all other states silently
+     * ignore the event.
+     *
+     * Stores the outcome in `lastUseItemResult`:
+     * - `true`  — handler found, item wasn't used before, `onUse` called.
+     * - `false` — item not found, no `onUse` handler, or already used.
+     */
+    useItem: assign(({ context, event }) => {
+      if (event.type !== "USE_ITEM") return {};
+
+      const { itemId, isPlayerShot } = event;
+      const state = context.engine.getState();
+
+      const items = isPlayerShot ? state.enemyItems : state.playerItems;
+      const item = items[itemId];
+
+      if (!item?.onUse) return { lastUseItemResult: false };
+
+      if (context.engine.isItemUsed(itemId, isPlayerShot)) {
+        return { lastUseItemResult: false };
+      }
+
+      const itemCtx = buildItemActionContext(context.engine, item, isPlayerShot, undefined);
+      item.onUse(itemCtx);
+      context.engine.markItemUsed(itemId, isPlayerShot);
+
+      return { lastUseItemResult: true };
     }),
   },
 }).createMachine({
@@ -205,6 +272,7 @@ export const matchMachine = setup({
       lastAttackResult: null,
       lastTurnDecision: null,
       planError: null,
+      lastUseItemResult: null,
     };
   },
 
@@ -259,6 +327,9 @@ export const matchMachine = setup({
                 actions: "setPlanError",
               },
             ],
+            USE_ITEM: {
+              actions: "useItem",
+            },
           },
         },
 

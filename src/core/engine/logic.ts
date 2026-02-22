@@ -42,6 +42,9 @@ export class GameEngine {
   private enemyItemHits: Map<number, number>;
   private playerCollectedItems: Set<number>;
   private enemyCollectedItems: Set<number>;
+  
+  private usedByPlayer: Set<number>;
+  private usedByEnemy: Set<number>;
 
   private onStateChange?: (state: GameEngineState) => void;
   private onTurnChange?: (turn: GameTurn) => void;
@@ -81,6 +84,8 @@ export class GameEngine {
     this.enemyItemHits = new Map();
     this.playerCollectedItems = new Set();
     this.enemyCollectedItems = new Set();
+    this.usedByPlayer = new Set();
+    this.usedByEnemy = new Set();
 
     this.onStateChange = callbacks?.onStateChange;
     this.onTurnChange = callbacks?.onTurnChange;
@@ -128,6 +133,8 @@ export class GameEngine {
     this.enemyItemHits.clear();
     this.playerCollectedItems.clear();
     this.enemyCollectedItems.clear();
+    this.usedByPlayer.clear();
+    this.usedByEnemy.clear();
 
     this.cacheShipPositions(
       playerShips,
@@ -174,6 +181,8 @@ export class GameEngine {
     this.enemyItemHits.clear();
     this.playerCollectedItems.clear();
     this.enemyCollectedItems.clear();
+    this.usedByPlayer.clear();
+    this.usedByEnemy.clear();
 
     this.notifyStateChange();
   }
@@ -651,6 +660,7 @@ export class GameEngine {
     this.playerItemPositions.clear();
     this.playerItemHits.clear();
     this.playerCollectedItems.clear();
+    this.usedByEnemy.clear();
     this.cacheItemPositions(items, this.playerItemPositions);
     this.notifyStateChange();
   }
@@ -664,6 +674,7 @@ export class GameEngine {
     this.enemyItemPositions.clear();
     this.enemyItemHits.clear();
     this.enemyCollectedItems.clear();
+    this.usedByPlayer.clear();
     this.cacheItemPositions(items, this.enemyItemPositions);
     this.notifyStateChange();
   }
@@ -728,7 +739,32 @@ export class GameEngine {
       enemyItems: [...this.enemyItems],
       playerCollectedItems: Array.from(this.playerCollectedItems),
       enemyCollectedItems: Array.from(this.enemyCollectedItems),
+      playerUsedItems: Array.from(this.usedByPlayer),
+      enemyUsedItems: Array.from(this.usedByEnemy),
     };
+  }
+
+  /**
+   * Mark a collected item as used (via onUse) to prevent double-activation.
+   * @param itemId - The 0-based index in the side's items array.
+   * @param isPlayerShot - true = player used an enemy item; false = enemy used a player item.
+   */
+  public markItemUsed(itemId: number, isPlayerShot: boolean): void {
+    if (isPlayerShot) {
+      this.usedByPlayer.add(itemId);
+    } else {
+      this.usedByEnemy.add(itemId);
+    }
+    this.notifyStateChange();
+  }
+
+  /**
+   * Returns true if the item has already been activated via onUse.
+   */
+  public isItemUsed(itemId: number, isPlayerShot: boolean): boolean {
+    return isPlayerShot
+      ? this.usedByPlayer.has(itemId)
+      : this.usedByEnemy.has(itemId);
   }
 
   /**
@@ -887,6 +923,10 @@ export interface GameEngineState {
   playerCollectedItems: number[];
   /** Indices of enemy items that have been fully collected by the player. */
   enemyCollectedItems: number[];
+  /** Indices of enemy items (player-collected) that the player has already activated via onUse. */
+  playerUsedItems: number[];
+  /** Indices of player items (enemy-collected) that the enemy has already activated via onUse. */
+  enemyUsedItems: number[];
 }
 
 /**

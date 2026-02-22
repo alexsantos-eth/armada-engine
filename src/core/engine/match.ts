@@ -4,7 +4,7 @@ import { SINGLE_SHOT } from "../constants/shots";
 import { AttackError, PlanError } from "./errors";
 import { GameInitializer, type GameSetup } from "../manager";
 import { GameEngine, type GameEngineState } from "./logic";
-import { matchMachine } from "./machines/matchMachine";
+import { matchMachine, buildItemActionContext } from "./machines/matchMachine";
 import { DefaultRuleSet, type MatchRuleSet } from "./rulesets";
 
 import { getShipCellsFromShip } from "../tools/ship/calculations";
@@ -15,7 +15,6 @@ import type {
   Winner,
   GameTurn,
   GameItem,
-  GameShip,
   ShotPattern,
   ShotPatternResult,
   Shot,
@@ -27,9 +26,23 @@ interface NewMatch extends MatchCallbacks {
 }
 
 /**
- * Match Rules Manager
- * - Turn management (when to end turn, when to allow shooting again)
- * - Game over conditions (what determines a winner)
+ * Public api over the `matchMachine` XState actor.
+ *
+ * `Match` has a single responsibility: expose a simple, imperative API so
+ * consumers don't need to interact with the state machine directly.
+ * All heavy game-flow logic (turn management, attack execution, rule
+ * evaluation, game-over detection, item activation) lives inside
+ * `matchMachine` and its actions — `Match` only forwards calls and reads
+ * results from the machine snapshot.
+ *
+ * Typical usage:
+ * ```
+ * match.initializeMatch()          // send INITIALIZE
+ * match.planShot(x, y, pattern)    // send PLAN_SHOT
+ * match.confirmAttack()            // send CONFIRM_ATTACK
+ * match.useItem(itemId, true)      // send USE_ITEM (planning phase only)
+ * match.resetMatch()               // send RESET
+ * ```
  */
 export class Match {
   private actor: ReturnType<typeof createActor<typeof matchMachine>>;
@@ -76,7 +89,7 @@ export class Match {
       onItemCollected: (shot, item, isPlayerShot) => {
         this.matchCallbacks?.onItemCollected?.(shot, item, isPlayerShot);
         if (item.onCollect) {
-          const ctx = this.buildItemActionContext(item, isPlayerShot, shot);
+          const ctx = buildItemActionContext(engine, item, isPlayerShot, shot);
           item.onCollect(ctx);
         }
       },
@@ -304,8 +317,9 @@ export class Match {
   /**
    * Trigger the `onUse` handler of a collected item.
    *
-   * Call this from the UI when the player wants to activate a stored item
-   * effect (e.g. "use shield", "deploy radar scan").
+   * The activation is delegated to the state machine and is only processed
+   * while the machine is in the `planning` phase — calling this from any
+   * other phase (planned, attacking, gameOver…) is a no-op that returns `false`.
    *
    * @param itemId - The `itemId` of the item to use (0-based index in its side's array).
    * @param isPlayerShot - `true` to look in the enemy's items (player-collected),
@@ -313,46 +327,8 @@ export class Match {
    * @returns `true` if the handler was found and called, `false` otherwise.
    */
   public useItem(itemId: number, isPlayerShot: boolean): boolean {
-    const state = this.engine.getState();
-    const items = isPlayerShot ? state.enemyItems : state.playerItems;
-    const item = items[itemId];
-
-    if (!item?.onUse) return false;
-
-    const ctx = this.buildItemActionContext(item, isPlayerShot, undefined);
-    item.onUse(ctx);
-    return true;
-  }
-
-  /**
-   * Build the action context passed to `onCollect` and `onUse` handlers.
-   * @private
-   */
-  private buildItemActionContext(
-    item: GameItem,
-    isPlayerShot: boolean,
-    shot: Shot | undefined,
-  ): ItemActionContext {
-    const state = this.engine.getState();
-    return {
-      item,
-      isPlayerShot,
-      shot,
-      currentTurn: state.currentTurn,
-      playerShips: state.playerShips,
-      enemyShips: state.enemyShips,
-      playerItems: state.playerItems,
-      enemyItems: state.enemyItems,
-      playerCollectedItems: state.playerCollectedItems,
-      enemyCollectedItems: state.enemyCollectedItems,
-      setPlayerShips: (ships: GameShip[]) => this.engine.setPlayerShips(ships),
-      setEnemyShips: (ships: GameShip[]) => this.engine.setEnemyShips(ships),
-      setPlayerItems: (items: GameItem[]) => this.engine.setPlayerItems(items),
-      setEnemyItems: (items: GameItem[]) => this.engine.setEnemyItems(items),
-      toggleTurn: () => this.engine.getInternalAPI().toggleTurn(),
-      setRuleSet: (ruleSet: unknown) =>
-        this.engine.getInternalAPI().setPendingRuleSet(ruleSet),
-    };
+    this.actor.send({ type: "USE_ITEM", itemId, isPlayerShot });
+    return this.snap.context.lastUseItemResult ?? false;
   }
 
   public getBoardDimensions(): { width: number; height: number } {

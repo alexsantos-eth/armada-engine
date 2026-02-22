@@ -2,6 +2,7 @@ import { useBoard, type UseBoardProps } from "../../core-react/hooks";
 import { type ShotPattern } from "../../core/engine";
 import { PlayerBoard, EnemyBoard } from "./boards";
 import { GameOverBanner, GameStateArea } from "./game-status";
+import { ItemSelector } from "./item-selector";
 
 interface SingleMatchProps extends UseBoardProps {
   selectedPattern?: ShotPattern;
@@ -17,11 +18,14 @@ const SingleMatch = ({
 }: SingleMatchProps) => {
   const {
     planAndAttack,
-    match: { playerBoard, enemyBoard, gameState },
+    match: { playerBoard, enemyBoard, gameState, match },
   } = useBoard({ initialSetup, matchRef, ...callbacks });
 
   const canFire = gameState?.isPlayerTurn && !gameState?.isGameOver;
-  const items = gameState?.playerItems || [];
+
+  const handleUseItem = (itemId: number) => {
+    match?.useItem(itemId, true);
+  };
 
   return (
     <div className="select-none">
@@ -35,6 +39,8 @@ const SingleMatch = ({
           onCellClick={(x, y) => planAndAttack(x, y, selectedPattern)}
         />
       </div>
+
+      <ItemSelector gameState={gameState} onUseItem={handleUseItem} />
 
       {showStatus && <GameStateArea gameState={gameState} />}
     </div>
