@@ -18,13 +18,13 @@ This guide answers **one question per topic**: _"I want to change X — what do 
 
 ### What controls the board?
 
-| Constant / Config | File | Default |
-|---|---|---|
-| `BOARD.DEFAULT_WIDTH` | `src/core/constants/game.ts` | `5` |
-| `BOARD.DEFAULT_HEIGHT` | `src/core/constants/game.ts` | `5` |
-| `BOARD.MIN_SIZE` | `src/core/constants/game.ts` | `3` |
-| `BOARD.MAX_SIZE` | `src/core/constants/game.ts` | `30` |
-| `GameConfig.boardWidth/boardHeight` | `src/core/types/config.ts` | (from above) |
+| Constant / Config                   | File                         | Default      |
+| ----------------------------------- | ---------------------------- | ------------ |
+| `BOARD.DEFAULT_WIDTH`               | `src/core/constants/game.ts` | `5`          |
+| `BOARD.DEFAULT_HEIGHT`              | `src/core/constants/game.ts` | `5`          |
+| `BOARD.MIN_SIZE`                    | `src/core/constants/game.ts` | `3`          |
+| `BOARD.MAX_SIZE`                    | `src/core/constants/game.ts` | `30`         |
+| `GameConfig.boardWidth/boardHeight` | `src/core/types/config.ts`   | (from above) |
 
 `GameEngine` reads `boardWidth` and `boardHeight` from the `GameConfig` passed to its constructor. If they are omitted, it falls back to `GAME_CONSTANTS.BOARD.DEFAULT_WIDTH/HEIGHT`.
 
@@ -105,9 +105,9 @@ export interface ShipTemplate extends GameShip {
 // src/core/types/common.ts
 export interface GameShip {
   coords: [number, number]; // always [0, 0] for templates (placed at runtime)
-  width: number;            // columns occupied (horizontal span)
-  height: number;           // rows occupied  (vertical span)
-  shipId?: number;          // assigned at runtime by GameInitializer
+  width: number; // columns occupied (horizontal span)
+  height: number; // rows occupied  (vertical span)
+  shipId?: number; // assigned at runtime by GameInitializer
 }
 ```
 
@@ -117,7 +117,7 @@ export interface GameShip {
 
 ```typescript
 export const HUGE_SHIP: ShipTemplate = {
-  coords: [0, 0],  // always [0,0] for templates
+  coords: [0, 0], // always [0,0] for templates
   width: 6,
   height: 1,
   defaultCount: 1,
@@ -128,11 +128,11 @@ export const HUGE_SHIP: ShipTemplate = {
 
 ```typescript
 export const SHIP_TEMPLATES: Record<string, ShipTemplate> = {
-  small:  SMALL_SHIP,
+  small: SMALL_SHIP,
   medium: MEDIUM_SHIP,
-  large:  LARGE_SHIP,
+  large: LARGE_SHIP,
   xlarge: XLARGE_SHIP,
-  huge:   HUGE_SHIP,   // ← add here
+  huge: HUGE_SHIP, // ← add here
 };
 ```
 
@@ -145,7 +145,7 @@ Change `width`, `height`, or `defaultCount` directly on the constant:
 ```typescript
 export const MEDIUM_SHIP: ShipTemplate = {
   coords: [0, 0],
-  width: 4,        // was 3 — now a 4-cell ship
+  width: 4, // was 3 — now a 4-cell ship
   height: 1,
   defaultCount: 1, // was 2 — reduce fleet count
 };
@@ -210,18 +210,18 @@ export interface ShotPattern {
 
 ### Built-in patterns (src/core/constants/shotPatterns.ts)
 
-| Constant | id | Cells | Shape |
-|---|---|---|---|
-| `SINGLE_SHOT` | `"single"` | 1 | · |
-| `HORIZONTAL_LINE_SHOT` | `"horizontal-line"` | 3 | `─── ` |
-| `VERTICAL_LINE_SHOT` | `"vertical-line"` | 3 | `│` |
-| `CROSS_SHOT` | `"cross"` | 5 | `+` |
-| `LARGE_CROSS_SHOT` | `"large-cross"` | 9 | extended `+` |
-| `SQUARE_SHOT` | `"square"` | 9 | 3×3 block |
-| `SMALL_SQUARE_SHOT` | `"small-square"` | 4 | 2×2 block |
-| `DIAGONAL_X_SHOT` | `"diagonal-x"` | 5 | `✕` |
-| `T_SHAPE_SHOT` | `"t-shape"` | 5 | `T` |
-| `L_SHAPE_SHOT` | `"l-shape"` | 4 | `L` |
+| Constant               | id                  | Cells | Shape        |
+| ---------------------- | ------------------- | ----- | ------------ |
+| `SINGLE_SHOT`          | `"single"`          | 1     | ·            |
+| `HORIZONTAL_LINE_SHOT` | `"horizontal-line"` | 3     | `─── `       |
+| `VERTICAL_LINE_SHOT`   | `"vertical-line"`   | 3     | `│`          |
+| `CROSS_SHOT`           | `"cross"`           | 5     | `+`          |
+| `LARGE_CROSS_SHOT`     | `"large-cross"`     | 9     | extended `+` |
+| `SQUARE_SHOT`          | `"square"`          | 9     | 3×3 block    |
+| `SMALL_SQUARE_SHOT`    | `"small-square"`    | 4     | 2×2 block    |
+| `DIAGONAL_X_SHOT`      | `"diagonal-x"`      | 5     | `✕`          |
+| `T_SHAPE_SHOT`         | `"t-shape"`         | 5     | `T`          |
+| `L_SHAPE_SHOT`         | `"l-shape"`         | 4     | `L`          |
 
 ### Adding a new pattern
 
@@ -243,10 +243,10 @@ export const ARROW_RIGHT_SHOT: ShotPattern = {
   description: "5-shot arrow pointing right",
   offsets: [
     { dx: 0, dy: -1 }, // top
-    { dx: 0, dy: 0 },  // center
-    { dx: 1, dy: 0 },  // right
-    { dx: 0, dy: 1 },  // bottom
-    { dx: 1, dy: 1 },  // bottom-right
+    { dx: 0, dy: 0 }, // center
+    { dx: 1, dy: 0 }, // right
+    { dx: 0, dy: 1 }, // bottom
+    { dx: 1, dy: 1 }, // bottom-right
   ],
 };
 
@@ -280,12 +280,12 @@ match.planAndAttack(5, 5, true, myPattern);
 
 ### Design rules for patterns
 
-| Rule | Why |
-|---|---|
-| `id` must be unique | `getShotPattern(id)` uses it as a map key |
-| `offsets` can be any size from 1 to N | No maximum — but large patterns on small boards will have many skipped shots |
-| Out-of-bounds offsets are safe | The engine skips them, they don't count as a hit or miss |
-| `{ dx: 0, dy: 0 }` is the player-chosen center | You are not required to include it, but most patterns do |
+| Rule                                           | Why                                                                          |
+| ---------------------------------------------- | ---------------------------------------------------------------------------- |
+| `id` must be unique                            | `getShotPattern(id)` uses it as a map key                                    |
+| `offsets` can be any size from 1 to N          | No maximum — but large patterns on small boards will have many skipped shots |
+| Out-of-bounds offsets are safe                 | The engine skips them, they don't count as a hit or miss                     |
+| `{ dx: 0, dy: 0 }` is the player-chosen center | You are not required to include it, but most patterns do                     |
 
 ### Coordinate system
 
@@ -332,26 +332,26 @@ export interface MatchRuleSet {
 
 ```typescript
 export interface TurnDecision {
-  shouldEndTurn: boolean;      // true  → turn is over
-  shouldToggleTurn: boolean;   // true  → switch active player
-  canShootAgain: boolean;      // true  → attacker fires again (same turn)
-  reason: string;              // human-readable, useful for logging/UI
+  shouldEndTurn: boolean; // true  → turn is over
+  shouldToggleTurn: boolean; // true  → switch active player
+  canShootAgain: boolean; // true  → attacker fires again (same turn)
+  reason: string; // human-readable, useful for logging/UI
 }
 
 export interface GameOverDecision {
   isGameOver: boolean;
-  winner: Winner;              // "player" | "enemy" | null
+  winner: Winner; // "player" | "enemy" | null
 }
 ```
 
 ### Built-in rulesets
 
-| Export | Behaviour |
-|---|---|
-| `ClassicRuleSet` | Hit (ship alive) → shoot again. Ship sunk or miss → turn switches. |
-| `AlternatingTurnsRuleSet` | Every shot ends the turn, regardless of result. |
-| `ItemHitRuleSet` | Item collected → shoot again (takes priority). Hit (ship alive) → shoot again. Ship sunk or miss → turn switches. |
-| `DefaultRuleSet` | Alias for `ClassicRuleSet`. |
+| Export                    | Behaviour                                                                                                         |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `ClassicRuleSet`          | Hit (ship alive) → shoot again. Ship sunk or miss → turn switches.                                                |
+| `AlternatingTurnsRuleSet` | Every shot ends the turn, regardless of result.                                                                   |
+| `ItemHitRuleSet`          | Item collected → shoot again (takes priority). Hit (ship alive) → shoot again. Ship sunk or miss → turn switches. |
+| `DefaultRuleSet`          | Alias for `ClassicRuleSet`.                                                                                       |
 
 ### Adding a new ruleset
 
@@ -368,7 +368,12 @@ export const ForgivingRuleSet: MatchRuleSet = {
 
   decideTurn(attackResult, currentState): TurnDecision {
     if (currentState.isGameOver) {
-      return { shouldEndTurn: true, shouldToggleTurn: false, canShootAgain: false, reason: "Game over" };
+      return {
+        shouldEndTurn: true,
+        shouldToggleTurn: false,
+        canShootAgain: false,
+        reason: "Game over",
+      };
     }
 
     const anyShipDestroyed = attackResult.shots.some(
@@ -376,16 +381,28 @@ export const ForgivingRuleSet: MatchRuleSet = {
     );
 
     if (anyShipDestroyed) {
-      return { shouldEndTurn: true, shouldToggleTurn: true, canShootAgain: false, reason: "Ship sunk - turn ends" };
+      return {
+        shouldEndTurn: true,
+        shouldToggleTurn: true,
+        canShootAgain: false,
+        reason: "Ship sunk - turn ends",
+      };
     }
 
     // Hit OR miss → shoot again
-    return { shouldEndTurn: false, shouldToggleTurn: false, canShootAgain: true, reason: "Shoot again" };
+    return {
+      shouldEndTurn: false,
+      shouldToggleTurn: false,
+      canShootAgain: true,
+      reason: "Shoot again",
+    };
   },
 
   checkGameOver(state): GameOverDecision {
-    if (state.areAllEnemyShipsDestroyed) return { isGameOver: true, winner: "player" };
-    if (state.areAllPlayerShipsDestroyed) return { isGameOver: true, winner: "enemy" };
+    if (state.areAllEnemyShipsDestroyed)
+      return { isGameOver: true, winner: "player" };
+    if (state.areAllPlayerShipsDestroyed)
+      return { isGameOver: true, winner: "enemy" };
     return { isGameOver: false, winner: null };
   },
 };
@@ -396,7 +413,13 @@ export const ForgivingRuleSet: MatchRuleSet = {
 ```typescript
 // At construction time
 const match = new Match({
-  setup: { playerShips, enemyShips, initialTurn: "PLAYER_TURN", config, ruleSet: ForgivingRuleSet },
+  setup: {
+    playerShips,
+    enemyShips,
+    initialTurn: "PLAYER_TURN",
+    config,
+    ruleSet: ForgivingRuleSet,
+  },
   ...callbacks,
 });
 
@@ -408,14 +431,14 @@ match.setRuleSet(ForgivingRuleSet);
 
 `decideTurn` and `checkGameOver` both receive the current `GameEngineState`. The most useful fields:
 
-| Field | Type | Description |
-|---|---|---|
-| `currentTurn` | `"PLAYER_TURN" \| "ENEMY_TURN"` | Who is attacking now |
-| `isGameOver` | `boolean` | Whether the game has already ended |
-| `winner` | `Winner` | `"player"`, `"enemy"`, or `null` |
-| `areAllPlayerShipsDestroyed` | `boolean` | All player ships sunk |
-| `areAllEnemyShipsDestroyed` | `boolean` | All enemy ships sunk |
-| `playerShips` / `enemyShips` | `GameShip[]` | Current ship arrays |
+| Field                        | Type                            | Description                        |
+| ---------------------------- | ------------------------------- | ---------------------------------- |
+| `currentTurn`                | `"PLAYER_TURN" \| "ENEMY_TURN"` | Who is attacking now               |
+| `isGameOver`                 | `boolean`                       | Whether the game has already ended |
+| `winner`                     | `Winner`                        | `"player"`, `"enemy"`, or `null`   |
+| `areAllPlayerShipsDestroyed` | `boolean`                       | All player ships sunk              |
+| `areAllEnemyShipsDestroyed`  | `boolean`                       | All enemy ships sunk               |
+| `playerShips` / `enemyShips` | `GameShip[]`                    | Current ship arrays                |
 
 ### Decision flow reference
 
@@ -444,12 +467,12 @@ flowchart TD
 
 ### Common customisation patterns
 
-| Goal | What to change |
-|---|---|
-| Limit shots per turn (e.g. max 3) | Track a counter in a closure/class and toggle once limit is reached |
-| Sudden-death (first hit wins) | `checkGameOver`: return `isGameOver: true` if any shot hit |
-| Time-based turns | Implement outside the engine; call `confirmAttack()` when the timer expires |
-| Different win condition (e.g. sink ONE ship) | `checkGameOver`: check if any individual ship is destroyed, not all |
+| Goal                                         | What to change                                                              |
+| -------------------------------------------- | --------------------------------------------------------------------------- |
+| Limit shots per turn (e.g. max 3)            | Track a counter in a closure/class and toggle once limit is reached         |
+| Sudden-death (first hit wins)                | `checkGameOver`: return `isGameOver: true` if any shot hit                  |
+| Time-based turns                             | Implement outside the engine; call `confirmAttack()` when the timer expires |
+| Different win condition (e.g. sink ONE ship) | `checkGameOver`: check if any individual ship is destroyed, not all         |
 
 ---
 
@@ -477,12 +500,12 @@ export interface GameItem {
 
 ### Built-in item templates (`src/core/constants/items.ts`)
 
-| Constant | `id` | `part` | `defaultCount` | Description |
-|---|---|---|---|---|
-| `HEALTH_KIT` | `"health_kit"` | 1 | 2 | Restores one health when collected |
-| `AMMO_CACHE` | `"ammo_cache"` | 1 | 1 | Grants extra ammo when fully collected |
-| `SHIELD_MODULE` | `"shield_module"` | 1 | 1 | Grants a one-hit shield when collected |
-| `RADAR_DEVICE` | `"radar_device"` | 3 | 1 | Reveals part of enemy board when fully collected |
+| Constant        | `id`              | `part` | `defaultCount` | Description                                      |
+| --------------- | ----------------- | ------ | -------------- | ------------------------------------------------ |
+| `HEALTH_KIT`    | `"health_kit"`    | 1      | 2              | Restores one health when collected               |
+| `AMMO_CACHE`    | `"ammo_cache"`    | 1      | 1              | Grants extra ammo when fully collected           |
+| `SHIELD_MODULE` | `"shield_module"` | 1      | 1              | Grants a one-hit shield when collected           |
+| `RADAR_DEVICE`  | `"radar_device"`  | 3      | 1              | Reveals part of enemy board when fully collected |
 
 ### Adding a new item template
 
@@ -494,8 +517,8 @@ export const REPAIR_DRONE: ItemTemplate = {
   id: "repair_drone",
   title: "Repair Drone",
   description: "Repairs one hit ship cell when collected.",
-  coords: [0, 0],  // always [0,0] for templates; placed at runtime
-  part: 2,         // two cells must be shot to collect
+  coords: [0, 0], // always [0,0] for templates; placed at runtime
+  part: 2, // two cells must be shot to collect
   defaultCount: 1,
 };
 ```
@@ -504,11 +527,11 @@ export const REPAIR_DRONE: ItemTemplate = {
 
 ```typescript
 export const ITEM_TEMPLATES: Record<string, ItemTemplate> = {
-  health_kit:    HEALTH_KIT,
-  ammo_cache:    AMMO_CACHE,
+  health_kit: HEALTH_KIT,
+  ammo_cache: AMMO_CACHE,
   shield_module: SHIELD_MODULE,
-  radar_device:  RADAR_DEVICE,
-  repair_drone:  REPAIR_DRONE,  // ← add here
+  radar_device: RADAR_DEVICE,
+  repair_drone: REPAIR_DRONE, // ← add here
 };
 ```
 
@@ -522,8 +545,8 @@ Pass items via the `setup` object when constructing `Match`. `coords` sets the *
 import { HEALTH_KIT, RADAR_DEVICE } from "./src/core/constants/items";
 
 const enemyItems: GameItem[] = [
-  { ...HEALTH_KIT,   coords: [2, 3] },   // 1-cell item at (2,3)
-  { ...RADAR_DEVICE, coords: [5, 7] },   // 3-cell item at (5,7),(6,7),(7,7)
+  { ...HEALTH_KIT, coords: [2, 3] }, // 1-cell item at (2,3)
+  { ...RADAR_DEVICE, coords: [5, 7] }, // 3-cell item at (5,7),(6,7),(7,7)
 ];
 
 const match = new Match({
@@ -532,8 +555,8 @@ const match = new Match({
     enemyShips,
     initialTurn: "PLAYER_TURN",
     config: { boardWidth: 10, boardHeight: 10 },
-    playerItems: [],       // collectible by the enemy
-    enemyItems,            // collectible by the player
+    playerItems: [], // collectible by the enemy
+    enemyItems, // collectible by the player
   },
 });
 match.initializeMatch();
@@ -548,27 +571,25 @@ const engine = match.getEngine();
 
 // Replace all items on the enemy board
 engine.setEnemyItems([
-  { ...HEALTH_KIT,  coords: [0, 0] },
-  { ...AMMO_CACHE,  coords: [4, 4] },
+  { ...HEALTH_KIT, coords: [0, 0] },
+  { ...AMMO_CACHE, coords: [4, 4] },
 ]);
 
 // Replace all items on the player board
-engine.setPlayerItems([
-  { ...SHIELD_MODULE, coords: [1, 1] },
-]);
+engine.setPlayerItems([{ ...SHIELD_MODULE, coords: [1, 1] }]);
 ```
 
 > **Note:** `setPlayerItems` / `setEnemyItems` reset all hit counters and collected-item state for that board. Call them before the match starts or at well-defined turn boundaries.
 
 ### Design rules for items
 
-| Rule | Why |
-|---|---|
-| Items occupy a **horizontal stripe** of `part` cells starting at `coords` | The engine iterates `coords[0]` to `coords[0] + part - 1` for hit detection |
-| Items and ships **must not overlap** | Undefined behaviour — validate placement before calling `initializeMatch` |
-| A shot on an item cell is **not** a ship hit | `shot.hit` stays `false`; `shot.collected` / `shot.itemFullyCollected` carry the result |
-| `coords` in templates should always be `[0, 0]` | Actual position is set at placement time |
-| `templateId` is optional but recommended | Enables cross-board equalization in multiplayer scenarios |
+| Rule                                                                      | Why                                                                                     |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Items occupy a **horizontal stripe** of `part` cells starting at `coords` | The engine iterates `coords[0]` to `coords[0] + part - 1` for hit detection             |
+| Items and ships **must not overlap**                                      | Undefined behaviour — validate placement before calling `initializeMatch`               |
+| A shot on an item cell is **not** a ship hit                              | `shot.hit` stays `false`; `shot.collected` / `shot.itemFullyCollected` carry the result |
+| `coords` in templates should always be `[0, 0]`                           | Actual position is set at placement time                                                |
+| `templateId` is optional but recommended                                  | Enables cross-board equalization in multiplayer scenarios                               |
 
 ### Reacting to item collection in game logic
 
@@ -578,9 +599,9 @@ The `Shot` object returned after each attack carries the collection result:
 // src/core/types/common.ts
 export interface Shot {
   // …
-  collected?: boolean;           // true if this shot collected a part of an item
-  itemId?: number;               // 0-based index of the collected item
-  itemFullyCollected?: boolean;  // true if all parts of the item are now collected
+  collected?: boolean; // true if this shot collected a part of an item
+  itemId?: number; // 0-based index of the collected item
+  itemFullyCollected?: boolean; // true if all parts of the item are now collected
 }
 ```
 
@@ -590,7 +611,13 @@ To **repeat the turn on item collection**, use `ItemHitRuleSet` (already built-i
 import { ItemHitRuleSet } from "./src/core/engine/rulesets";
 
 const match = new Match({
-  setup: { playerShips, enemyShips, initialTurn: "PLAYER_TURN", config, ruleSet: ItemHitRuleSet },
+  setup: {
+    playerShips,
+    enemyShips,
+    initialTurn: "PLAYER_TURN",
+    config,
+    ruleSet: ItemHitRuleSet,
+  },
 });
 ```
 
@@ -601,7 +628,9 @@ const match = new Match({
   setup: { playerShips, enemyShips, initialTurn: "PLAYER_TURN", config },
   onShot: (shot, isPlayer) => {
     if (shot.itemFullyCollected) {
-      console.log(`Item ${shot.itemId} fully collected by ${isPlayer ? "player" : "enemy"}`);
+      console.log(
+        `Item ${shot.itemId} fully collected by ${isPlayer ? "player" : "enemy"}`,
+      );
       // apply power-up effect here
     }
   },

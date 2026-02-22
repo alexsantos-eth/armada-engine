@@ -35,12 +35,12 @@ graph TD
 
 ### Responsibilities
 
-| Layer | Class / Module | Responsibility |
-|---|---|---|
-| Public API | `Match` | Wraps the XState actor; exposes simple methods (planShot, confirmAttack, planAndAttack, resetMatch…) and forwards callbacks to consumers. |
+| Layer               | Class / Module | Responsibility                                                                                                                                                               |
+| ------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public API          | `Match`        | Wraps the XState actor; exposes simple methods (planShot, confirmAttack, planAndAttack, resetMatch…) and forwards callbacks to consumers.                                    |
 | State Orchestration | `matchMachine` | Owns the named states (`idle`, `active.planning`, `active.planned`, `active.attacking`, `active.resolvingTurn`, `gameOver`) and guards/actions that transition between them. |
-| Pure Compute | `GameEngine` | Holds all mutable board data (shots maps, ship positions, hit counters, turn, game-over flag). Executes shot patterns and emits callbacks. |
-| Rules | `MatchRuleSet` | Stateless object that decides, after each attack, whether to toggle the turn and whether the game is over. |
+| Pure Compute        | `GameEngine`   | Holds all mutable board data (shots maps, ship positions, hit counters, turn, game-over flag). Executes shot patterns and emits callbacks.                                   |
+| Rules               | `MatchRuleSet` | Stateless object that decides, after each attack, whether to toggle the turn and whether the game is over.                                                                   |
 
 ---
 
@@ -80,14 +80,14 @@ stateDiagram-v2
 
 ### State descriptions
 
-| State | Description |
-|---|---|
-| `idle` | Machine created; no match in progress. Waiting for `INITIALIZE`. |
-| `active.planning` | Waiting for the current player to choose a target cell. |
-| `active.planned` | A valid plan is stored; waiting for confirmation or cancellation. |
-| `active.attacking` | **Transient** (step 1): fires the shot pattern via `executeAttack`, stores `lastAttackResult`, then immediately advances to `resolvingTurn`. |
+| State                  | Description                                                                                                                                                |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `idle`                 | Machine created; no match in progress. Waiting for `INITIALIZE`.                                                                                           |
+| `active.planning`      | Waiting for the current player to choose a target cell.                                                                                                    |
+| `active.planned`       | A valid plan is stored; waiting for confirmation or cancellation.                                                                                          |
+| `active.attacking`     | **Transient** (step 1): fires the shot pattern via `executeAttack`, stores `lastAttackResult`, then immediately advances to `resolvingTurn`.               |
 | `active.resolvingTurn` | **Transient** (step 2): applies ruleset turn logic via `resolveTurn` (toggle turn, check game-over), then transitions to `gameOver` or back to `planning`. |
-| `gameOver` | Final state. The winner is read from `engine.getState().winner`. |
+| `gameOver`             | Final state. The winner is read from `engine.getState().winner`.                                                                                           |
 
 ---
 
@@ -207,7 +207,7 @@ flowchart TD
     C -- Yes --> E{Ship destroyed?}
     E -- Yes --> F[Turn ends\nshouldToggleTurn = true\ncanShootAgain = false]
     E -- No --> G[Hit — shoot again\nshouldToggleTurn = false\ncanShootAgain = true]
-    
+
     %% Note: ItemHitRuleSet additionally checks for item collection before the hit check.
     %% If any shot.collected is true, canShootAgain = true regardless of hit/miss on ships.
 ```
@@ -353,11 +353,11 @@ const result = match.planAndAttack(3, 4, true, SINGLE_SHOT);
 
 All error strings are centralised in `src/core/engine/errors.ts` and grouped into three const-object namespaces. Consumers can import and compare against these values instead of matching raw strings.
 
-| Namespace | Where produced | Values |
-|---|---|---|
-| `ShotError` | `GameEngine` — low-level shot execution | `CellAlreadyShot`, `GameAlreadyOver` |
-| `PlanError` | `matchMachine` — plan validation | `InvalidPlan`, `InvalidPosition`, `CellAlreadyShot` |
-| `AttackError` | `Match` — confirm / attack phase | `NoAttackPlanned`, `AttackFailed` |
+| Namespace     | Where produced                          | Values                                              |
+| ------------- | --------------------------------------- | --------------------------------------------------- |
+| `ShotError`   | `GameEngine` — low-level shot execution | `CellAlreadyShot`, `GameAlreadyOver`                |
+| `PlanError`   | `matchMachine` — plan validation        | `InvalidPlan`, `InvalidPosition`, `CellAlreadyShot` |
+| `AttackError` | `Match` — confirm / attack phase        | `NoAttackPlanned`, `AttackFailed`                   |
 
 ```mermaid
 graph TD
@@ -381,14 +381,20 @@ import { ShotError, PlanError, AttackError } from "./src/core/engine";
 // Narrow on plan errors
 const plan = match.planShot(3, 4, SINGLE_SHOT, true);
 if (!plan.ready) {
-  if (plan.error === PlanError.CellAlreadyShot) { /* … */ }
-  if (plan.error === PlanError.InvalidPosition) { /* … */ }
+  if (plan.error === PlanError.CellAlreadyShot) {
+    /* … */
+  }
+  if (plan.error === PlanError.InvalidPosition) {
+    /* … */
+  }
 }
 
 // Narrow on attack errors
 const result = match.confirmAttack();
 if (!result.success) {
-  if (result.error === AttackError.NoAttackPlanned) { /* … */ }
+  if (result.error === AttackError.NoAttackPlanned) {
+    /* … */
+  }
 }
 ```
 
