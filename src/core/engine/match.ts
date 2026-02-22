@@ -4,14 +4,11 @@ import { SINGLE_SHOT } from "../constants/shots";
 import { AttackError, PlanError } from "./errors";
 import { GameInitializer, type GameSetup } from "../manager";
 import { GameEngine, type GameEngineState } from "./logic";
-import { matchMachine, buildItemActionContext } from "./machines/matchMachine";
+import { matchMachine } from "./machines/matchMachine";
 import { DefaultRuleSet, type MatchRuleSet } from "./rulesets";
-
-import { getShipCellsFromShip } from "../tools/ship/calculations";
 
 import type {
   Board,
-  Cell,
   Winner,
   GameTurn,
   GameItem,
@@ -88,10 +85,6 @@ export class Match {
       },
       onItemCollected: (shot, item, isPlayerShot) => {
         this.matchCallbacks?.onItemCollected?.(shot, item, isPlayerShot);
-        if (item.onCollect) {
-          const ctx = buildItemActionContext(engine, item, isPlayerShot, shot);
-          item.onCollect(ctx);
-        }
       },
     });
 
@@ -366,36 +359,7 @@ export class Match {
    * so the UI can render rich hit/miss information.
    */
   public getPlayerBoard(): Board {
-    const state = this.engine.getState();
-    const { boardWidth, boardHeight, playerShips, enemyShots } = state;
-
-    const board: Board = Array.from({ length: boardHeight }, () =>
-      Array.from({ length: boardWidth }, (): Cell => ({ state: "EMPTY" })),
-    );
-
-    // PLAYER SHIPS
-    for (const ship of playerShips) {
-      for (const [x, y] of getShipCellsFromShip(ship)) {
-        if (x >= 0 && x < boardWidth && y >= 0 && y < boardHeight) {
-          board[y][x] = { state: "SHIP" };
-        }
-      }
-    }
-
-    // ENEMY SHOTS — carry full shot data
-    for (const shot of enemyShots) {
-      if (
-        shot.x >= 0 &&
-        shot.x < boardWidth &&
-        shot.y >= 0 &&
-        shot.y < boardHeight
-      ) {
-        const cellState = shot.collected ? "MISS" : shot.hit ? "HIT" : "MISS";
-        board[shot.y][shot.x] = { state: cellState, shot };
-      }
-    }
-
-    return board;
+    return this.engine.getPlayerBoard();
   }
 
   /**
@@ -404,51 +368,7 @@ export class Match {
    * the full {@link Shot} object for rich UI rendering.
    */
   public getEnemyBoard(): Board {
-    const state = this.engine.getState();
-    const {
-      boardWidth,
-      boardHeight,
-      playerShots,
-      enemyItems,
-      enemyCollectedItems,
-    } = state;
-
-    const board: Board = Array.from({ length: boardHeight }, () =>
-      Array.from({ length: boardWidth }, (): Cell => ({ state: "EMPTY" })),
-    );
-
-    // ITEMS
-    const collectedSet = new Set(enemyCollectedItems);
-    enemyItems.forEach((item, itemId) => {
-      const [startX, y] = item.coords;
-      for (let i = 0; i < item.part; i++) {
-        const cx = startX + i;
-        if (cx >= 0 && cx < boardWidth && y >= 0 && y < boardHeight) {
-          board[y][cx] = {
-            state: collectedSet.has(itemId) ? "COLLECTED" : "ITEM",
-          };
-        }
-      }
-    });
-
-    // PLAYER SHOTS — carry full shot data
-    for (const shot of playerShots) {
-      if (
-        shot.x >= 0 &&
-        shot.x < boardWidth &&
-        shot.y >= 0 &&
-        shot.y < boardHeight
-      ) {
-        const cellState = shot.collected
-          ? "COLLECTED"
-          : shot.hit
-            ? "HIT"
-            : "MISS";
-        board[shot.y][shot.x] = { state: cellState, shot };
-      }
-    }
-
-    return board;
+    return this.engine.getEnemyBoard();
   }
 }
 

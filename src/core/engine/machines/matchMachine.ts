@@ -125,7 +125,13 @@ export const matchMachine = setup({
 
     /**
      * Step 1 of the turn cycle: execute the shot pattern in the engine.
-     * Stores `lastAttackResult` and clears the pending plan.
+     * Stores `lastAttackResult`, clears the pending plan, and invokes
+     * `onCollect` for every item that was fully collected by this attack.
+     *
+     * `onCollect` must run here (not in a Match callback) so that any
+     * `ctx.setRuleSet()` call registers as a `pendingRuleSet` before
+     * `resolveTurn` reads it — guaranteeing the new ruleset is applied
+     * to the same turn cycle.
      */
     executeAttack: assign(({ context }) => {
       if (!context.pendingPlan) return {};
@@ -138,6 +144,18 @@ export const matchMachine = setup({
         pattern,
         isPlayerShot,
       );
+
+      for (const shot of lastAttackResult.shots) {
+        if (shot.itemFullyCollected && shot.itemId !== undefined) {
+          const engineState = context.engine.getState();
+          const items = isPlayerShot ? engineState.enemyItems : engineState.playerItems;
+          const item = items[shot.itemId];
+          if (item?.onCollect) {
+            const ctx = buildItemActionContext(context.engine, item, isPlayerShot, shot);
+            item.onCollect(ctx);
+          }
+        }
+      }
 
       return {
         pendingPlan: null,

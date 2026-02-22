@@ -62,6 +62,9 @@ export const AMMO_CACHE: ItemTemplate = {
   onCollect(ctx) {
     ctx.setRuleSet(ClassicRuleSet);
   },
+  onUse: (ctx) => {
+    ctx.setEnemyShips([])
+  }
 };
 
 /**

@@ -2,6 +2,8 @@ import { GAME_CONSTANTS } from "../constants/game";
 import { getShipCellsFromShip } from "../tools/ship/calculations";
 import { ShotError } from "./errors";
 import type {
+  Board,
+  Cell,
   GameShip,
   GameItem,
   Shot,
@@ -42,7 +44,7 @@ export class GameEngine {
   private enemyItemHits: Map<number, number>;
   private playerCollectedItems: Set<number>;
   private enemyCollectedItems: Set<number>;
-  
+
   private usedByPlayer: Set<number>;
   private usedByEnemy: Set<number>;
 
@@ -873,6 +875,96 @@ export class GameEngine {
    */
   private notifyStateChange(): void {
     this.onStateChange?.(this.getState());
+  }
+
+  /**
+   * Returns the player's board with full shot metadata per cell.
+   * Each cell carries its {@link CellState} plus the original {@link Shot} object
+   * (patternId, patternCenterX/Y, shipId, collected, itemId, itemFullyCollected…)
+   * so the UI can render rich hit/miss information.
+   */
+  public getPlayerBoard(): Board {
+    const { boardWidth, boardHeight, playerShips, enemyShots } = this.getState();
+
+    const board: Board = Array.from({ length: boardHeight }, () =>
+      Array.from({ length: boardWidth }, (): Cell => ({ state: "EMPTY" })),
+    );
+
+    // PLAYER SHIPS
+    for (const ship of playerShips) {
+      for (const [x, y] of getShipCellsFromShip(ship)) {
+        if (x >= 0 && x < boardWidth && y >= 0 && y < boardHeight) {
+          board[y][x] = { state: "SHIP" };
+        }
+      }
+    }
+
+    // ENEMY SHOTS — carry full shot data
+    for (const shot of enemyShots) {
+      if (
+        shot.x >= 0 &&
+        shot.x < boardWidth &&
+        shot.y >= 0 &&
+        shot.y < boardHeight
+      ) {
+        const cellState = shot.collected ? "MISS" : shot.hit ? "HIT" : "MISS";
+        board[shot.y][shot.x] = { state: cellState, shot };
+      }
+    }
+
+    return board;
+  }
+
+  /**
+   * Returns the enemy's board with full shot metadata per cell.
+   * Enemy ships remain hidden; each cell the player fired upon includes
+   * the full {@link Shot} object for rich UI rendering.
+   */
+  public getEnemyBoard(): Board {
+    const {
+      boardWidth,
+      boardHeight,
+      playerShots,
+      enemyItems,
+      enemyCollectedItems,
+    } = this.getState();
+
+    const board: Board = Array.from({ length: boardHeight }, () =>
+      Array.from({ length: boardWidth }, (): Cell => ({ state: "EMPTY" })),
+    );
+
+    // ITEMS
+    const collectedSet = new Set(enemyCollectedItems);
+    enemyItems.forEach((item, itemId) => {
+      const [startX, y] = item.coords;
+      for (let i = 0; i < item.part; i++) {
+        const cx = startX + i;
+        if (cx >= 0 && cx < boardWidth && y >= 0 && y < boardHeight) {
+          board[y][cx] = {
+            state: collectedSet.has(itemId) ? "COLLECTED" : "ITEM",
+          };
+        }
+      }
+    });
+
+    // PLAYER SHOTS — carry full shot data
+    for (const shot of playerShots) {
+      if (
+        shot.x >= 0 &&
+        shot.x < boardWidth &&
+        shot.y >= 0 &&
+        shot.y < boardHeight
+      ) {
+        const cellState = shot.collected
+          ? "COLLECTED"
+          : shot.hit
+            ? "HIT"
+            : "MISS";
+        board[shot.y][shot.x] = { state: cellState, shot };
+      }
+    }
+
+    return board;
   }
 
   /**
