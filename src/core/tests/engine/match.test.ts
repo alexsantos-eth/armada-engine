@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Match } from '../../engine/match';
 import type { GameShip } from '../../types/common';
-import { ClassicRuleSet, AlternatingTurnsRuleSet } from '../../engine/rulesets';
+import { ClassicRuleSet, AlternatingTurnsRuleSet, ItemHitRuleSet } from '../../engine/rulesets';
 
 describe('Match', () => {
   let match: Match;
@@ -363,6 +363,102 @@ describe('Match', () => {
       expect(e2.shots[0]?.hit).toBe(false);
       expect(e2.turnEnded).toBe(true);
       expect(alternatingMatch.isPlayerTurn()).toBe(true);
+    });
+  });
+
+  describe('RuleSet - ItemHit Rules', () => {
+    let itemHitMatch: Match;
+
+    // Enemy item at [1,1] (1-cell) — far from ships at [5,5],[7,7]
+    const enemyItems = [{ coords: [1, 1] as [number, number], part: 1 }];
+
+    beforeEach(() => {
+      itemHitMatch = new Match(
+        { boardWidth: 10, boardHeight: 10 },
+        undefined,
+        ItemHitRuleSet,
+      );
+      itemHitMatch.initializeMatch(playerShips, enemyShips, 'PLAYER_TURN', [], enemyItems);
+    });
+
+    it('should repeat turn after collecting an item', () => {
+      const result = itemHitMatch.planAndAttack(1, 1, true);
+
+      expect(result.shots[0]?.collected).toBe(true);
+      expect(result.shots[0]?.hit).toBe(false);
+      expect(result.canShootAgain).toBe(true);
+      expect(result.turnEnded).toBe(false);
+      expect(result.reason).toBe('Item collected - shoot again');
+      expect(itemHitMatch.getCurrentTurn()).toBe('PLAYER_TURN');
+    });
+
+    it('should end turn after miss (no item, no ship)', () => {
+      const result = itemHitMatch.planAndAttack(0, 0, true);
+
+      expect(result.shots[0]?.hit).toBe(false);
+      expect(result.shots[0]?.collected).toBeFalsy();
+      expect(result.canShootAgain).toBe(false);
+      expect(result.turnEnded).toBe(true);
+      expect(result.reason).toBe('Miss - turn ends');
+      expect(itemHitMatch.getCurrentTurn()).toBe('ENEMY_TURN');
+    });
+
+    it('should repeat turn after hitting a ship (not destroyed)', () => {
+      const result = itemHitMatch.planAndAttack(7, 7, true);
+
+      expect(result.shots[0]?.hit).toBe(true);
+      expect(result.shots[0]?.shipDestroyed).toBe(false);
+      expect(result.canShootAgain).toBe(true);
+      expect(result.turnEnded).toBe(false);
+      expect(result.reason).toBe('Hit - shoot again');
+      expect(itemHitMatch.getCurrentTurn()).toBe('PLAYER_TURN');
+    });
+
+    it('should end turn after destroying a ship', () => {
+      itemHitMatch.planAndAttack(5, 5, true);
+      const result = itemHitMatch.planAndAttack(6, 5, true);
+
+      expect(result.shots[0]?.shipDestroyed).toBe(true);
+      expect(result.canShootAgain).toBe(false);
+      expect(result.turnEnded).toBe(true);
+      expect(result.reason).toBe('Ship destroyed - turn ends');
+      expect(itemHitMatch.getCurrentTurn()).toBe('ENEMY_TURN');
+    });
+
+    it('should allow chaining: collect item then hit ship in the same turn', () => {
+      // Collect item → repeat turn
+      const r1 = itemHitMatch.planAndAttack(1, 1, true);
+      expect(r1.canShootAgain).toBe(true);
+      expect(itemHitMatch.isPlayerTurn()).toBe(true);
+
+      // Hit ship (not destroyed) → still repeat turn
+      const r2 = itemHitMatch.planAndAttack(7, 7, true);
+      expect(r2.canShootAgain).toBe(true);
+      expect(itemHitMatch.isPlayerTurn()).toBe(true);
+
+      // Miss → turn ends
+      const r3 = itemHitMatch.planAndAttack(0, 0, true);
+      expect(r3.canShootAgain).toBe(false);
+      expect(r3.turnEnded).toBe(true);
+      expect(itemHitMatch.isEnemyTurn()).toBe(true);
+    });
+
+    it('should work correctly with setRuleSet switching to ItemHit mid-game', () => {
+      const m = new Match({ boardWidth: 10, boardHeight: 10 }, undefined, ClassicRuleSet);
+      m.initializeMatch(playerShips, enemyShips, 'PLAYER_TURN', [], enemyItems);
+
+      // With Classic: item is just a miss (no special handling)
+      const r1 = m.planAndAttack(1, 1, true);
+      expect(r1.turnEnded).toBe(true); // classic treats item cell as miss
+
+      // Switch to ItemHit
+      m.setRuleSet(ItemHitRuleSet);
+      m.planAndAttack(9, 9, false); // enemy miss to restore player turn
+
+      // Now ItemHit: hit ship → repeat turn
+      const r2 = m.planAndAttack(7, 7, true);
+      expect(r2.canShootAgain).toBe(true);
+      expect(m.isPlayerTurn()).toBe(true);
     });
   });
 

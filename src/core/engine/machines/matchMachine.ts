@@ -295,10 +295,6 @@ export const matchMachine = setup({
          * resolvingTurn — transient state (step 2).
          * On entry, applies ruleset turn logic and immediately transitions:
          * to gameOver if the match ended, or back to planning.
-         *
-         * Kept as a separate state so future logic (e.g. animations, network
-         * acknowledgement) can be inserted here without touching the attack
-         * step or the public event API.
          */
         resolvingTurn: {
           entry: "resolveTurn",

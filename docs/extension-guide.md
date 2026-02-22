@@ -10,6 +10,7 @@ This guide answers **one question per topic**: _"I want to change X — what do 
 2. [Ship Types — Adding & Modifying Variants](#2-ship-types--adding--modifying-variants)
 3. [Shot Patterns — Adding & Modifying Patterns](#3-shot-patterns--adding--modifying-patterns)
 4. [Game Rules — Adding & Modifying RuleSets](#4-game-rules--adding--modifying-rulesets)
+5. [Items — Adding & Modifying GameItems](#5-items--adding--modifying-gameitems)
 
 ---
 
@@ -344,6 +345,7 @@ export interface GameOverDecision {
 |---|---|
 | `ClassicRuleSet` | Hit (ship alive) → shoot again. Ship sunk or miss → turn switches. |
 | `AlternatingTurnsRuleSet` | Every shot ends the turn, regardless of result. |
+| `ItemHitRuleSet` | Item collected → shoot again (takes priority). Hit (ship alive) → shoot again. Ship sunk or miss → turn switches. |
 | `DefaultRuleSet` | Alias for `ClassicRuleSet`. |
 
 ### Adding a new ruleset
@@ -414,7 +416,10 @@ flowchart TD
     ATK[Attack executed] --> GO{currentState\n.isGameOver?}
     GO -- Yes --> NOOP[Turn ends, no toggle\ncanShootAgain = false]
 
-    GO -- No --> HIT{any shot.hit\n&& shot.executed?}
+    GO -- No --> ITEM{any shot.collected\n&& shot.executed?\nItemHitRuleSet only}
+    ITEM -- Yes --> AGAIN2[shouldToggleTurn = false\ncanShootAgain = true\nreason: Item collected]
+
+    ITEM -- No --> HIT{any shot.hit\n&& shot.executed?}
 
     HIT -- No / Miss --> MISS[shouldToggleTurn = true\ncanShootAgain = false]
 
@@ -423,7 +428,7 @@ flowchart TD
     DEST -- Yes --> SUNK[shouldToggleTurn = true\ncanShootAgain = false]
     DEST -- No --> AGAIN[shouldToggleTurn = false\ncanShootAgain = true]
 
-    MISS & SUNK & AGAIN --> GOR[checkGameOver]
+    MISS & SUNK & AGAIN & AGAIN2 --> GOR[checkGameOver]
     GOR --> FIN{areAll…Destroyed?}
     FIN -- Yes --> OVER[isGameOver = true\nwinner = player/enemy]
     FIN -- No --> PLAN[→ planning state]
@@ -437,3 +442,164 @@ flowchart TD
 | Sudden-death (first hit wins) | `checkGameOver`: return `isGameOver: true` if any shot hit |
 | Time-based turns | Implement outside the engine; call `confirmAttack()` when the timer expires |
 | Different win condition (e.g. sink ONE ship) | `checkGameOver`: check if any individual ship is destroyed, not all |
+
+---
+
+## 5. Items — Adding & Modifying GameItems
+
+### What is a GameItem?
+
+A `GameItem` is a collectible placed on a board. When all of its cells are shot the item is **fully collected**. Items are independent from ships — they occupy `ITEM` cells and never count as hits or misses on ships.
+
+```typescript
+// src/core/types/common.ts
+export interface GameItem {
+  /** Top-left position on the board. */
+  coords: [number, number];
+  /** Number of cells the item occupies (horizontal stripe). */
+  part: number;
+  /** Runtime index assigned automatically (0-based). */
+  itemId?: number;
+  /** Matches ItemTemplate.id — used for cross-board equalization. */
+  templateId?: string;
+}
+```
+
+`part` determines how many consecutive horizontal cells must be shot to fully collect the item. A `part: 1` item is collected with a single shot; `part: 3` requires three shots in a row.
+
+### Built-in item templates (`src/core/constants/items.ts`)
+
+| Constant | `id` | `part` | `defaultCount` | Description |
+|---|---|---|---|---|
+| `HEALTH_KIT` | `"health_kit"` | 1 | 2 | Restores one health when collected |
+| `AMMO_CACHE` | `"ammo_cache"` | 1 | 1 | Grants extra ammo when fully collected |
+| `SHIELD_MODULE` | `"shield_module"` | 1 | 1 | Grants a one-hit shield when collected |
+| `RADAR_DEVICE` | `"radar_device"` | 3 | 1 | Reveals part of enemy board when fully collected |
+
+### Adding a new item template
+
+**Step 1 — Define the constant in `items.ts`:**
+
+```typescript
+// src/core/constants/items.ts
+export const REPAIR_DRONE: ItemTemplate = {
+  id: "repair_drone",
+  title: "Repair Drone",
+  description: "Repairs one hit ship cell when collected.",
+  coords: [0, 0],  // always [0,0] for templates; placed at runtime
+  part: 2,         // two cells must be shot to collect
+  defaultCount: 1,
+};
+```
+
+**Step 2 — Register it in `ITEM_TEMPLATES`:**
+
+```typescript
+export const ITEM_TEMPLATES: Record<string, ItemTemplate> = {
+  health_kit:    HEALTH_KIT,
+  ammo_cache:    AMMO_CACHE,
+  shield_module: SHIELD_MODULE,
+  radar_device:  RADAR_DEVICE,
+  repair_drone:  REPAIR_DRONE,  // ← add here
+};
+```
+
+That's it for the definition. The engine picks it up automatically anywhere `getItemTemplate("repair_drone")` is called.
+
+### Placing items on the board at match start
+
+Pass item arrays when calling `initializeMatch`. `coords` sets the **top-left** cell of the item; the engine auto-assigns `itemId` (0-based index).
+
+```typescript
+import { HEALTH_KIT, RADAR_DEVICE } from "./src/core/constants/items";
+
+const enemyItems: GameItem[] = [
+  { ...HEALTH_KIT,   coords: [2, 3] },   // 1-cell item at (2,3)
+  { ...RADAR_DEVICE, coords: [5, 7] },   // 3-cell item at (5,7),(6,7),(7,7)
+];
+
+match.initializeMatch(
+  playerShips,
+  enemyShips,
+  "PLAYER_TURN",
+  [],          // playerItems  (collectible by the enemy)
+  enemyItems,  // enemyItems   (collectible by the player)
+);
+```
+
+### Placing items at runtime (after match start)
+
+Use the engine's setter methods when you need to add or replace items mid-match:
+
+```typescript
+const engine = match.getEngine();
+
+// Replace all items on the enemy board
+engine.setEnemyItems([
+  { ...HEALTH_KIT,  coords: [0, 0] },
+  { ...AMMO_CACHE,  coords: [4, 4] },
+]);
+
+// Replace all items on the player board
+engine.setPlayerItems([
+  { ...SHIELD_MODULE, coords: [1, 1] },
+]);
+```
+
+> **Note:** `setPlayerItems` / `setEnemyItems` reset all hit counters and collected-item state for that board. Call them before the match starts or at well-defined turn boundaries.
+
+### Design rules for items
+
+| Rule | Why |
+|---|---|
+| Items occupy a **horizontal stripe** of `part` cells starting at `coords` | The engine iterates `coords[0]` to `coords[0] + part - 1` for hit detection |
+| Items and ships **must not overlap** | Undefined behaviour — validate placement before calling `initializeMatch` |
+| A shot on an item cell is **not** a ship hit | `shot.hit` stays `false`; `shot.collected` / `shot.itemFullyCollected` carry the result |
+| `coords` in templates should always be `[0, 0]` | Actual position is set at placement time |
+| `templateId` is optional but recommended | Enables cross-board equalization in multiplayer scenarios |
+
+### Reacting to item collection in game logic
+
+The `Shot` object returned after each attack carries the collection result:
+
+```typescript
+// src/core/types/common.ts
+export interface Shot {
+  // …
+  collected?: boolean;           // true if this shot collected a part of an item
+  itemId?: number;               // 0-based index of the collected item
+  itemFullyCollected?: boolean;  // true if all parts of the item are now collected
+}
+```
+
+To **repeat the turn on item collection**, use `ItemHitRuleSet` (already built-in):
+
+```typescript
+import { ItemHitRuleSet } from "./src/core/engine/rulesets";
+
+const match = new Match(config, callbacks, ItemHitRuleSet);
+```
+
+Or read the flag in a callback and trigger custom logic on your side:
+
+```typescript
+const match = new Match(config, {
+  onShot: (shot, isPlayer) => {
+    if (shot.itemFullyCollected) {
+      console.log(`Item ${shot.itemId} fully collected by ${isPlayer ? "player" : "enemy"}`);
+      // apply power-up effect here
+    }
+  },
+});
+```
+
+```mermaid
+flowchart TD
+    IT["ITEM_TEMPLATES\n(items.ts)"]
+    IT -->|"spread + new coords"| PLACE["GameItem[]\npasswd to initializeMatch"]
+    PLACE --> INIT["GameEngine.initializeGame()\ncacheItemPositions()"]
+    INIT --> SHOT["executeShotPattern()\ncollectItem()"]
+    SHOT --> RESULT["Shot.collected\nShot.itemFullyCollected"]
+    RESULT --> RS["MatchRuleSet.decideTurn()\ne.g. ItemHitRuleSet"]
+    RESULT --> CB["callbacks.onShot\ncustom power-up logic"]
+```

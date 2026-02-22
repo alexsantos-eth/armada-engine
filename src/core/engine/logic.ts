@@ -34,15 +34,12 @@ export class GameEngine {
   private playerShipSizes: Map<number, number>;
   private enemyShipSizes: Map<number, number>;
 
-  // Items
   private playerItems: GameItem[];
   private enemyItems: GameItem[];
   private playerItemPositions: Map<PositionKey, number>;
   private enemyItemPositions: Map<PositionKey, number>;
-  /** How many parts of each item have been shot (indexed by itemId array index). */
   private playerItemHits: Map<number, number>;
   private enemyItemHits: Map<number, number>;
-  /** Fully collected item ids (array indices). */
   private playerCollectedItems: Set<number>;
   private enemyCollectedItems: Set<number>;
 
