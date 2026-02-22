@@ -178,6 +178,93 @@ export const AlternatingTurnsRuleSet: MatchRuleSet = {
 
 
 /**
+ * Item Hit Rule Set
+ * - Hit an item (collected): shoot again
+ * - Hit a ship (not destroyed): shoot again
+ * - Ship destroyed: turn ends
+ * - Miss: turn ends
+ * - Game over: all enemy ships destroyed
+ */
+export const ItemHitRuleSet: MatchRuleSet = {
+  name: "ItemHit",
+  description:
+    "Repeat turn on any item collection or ship hit; turn ends on ship destruction or miss",
+
+  decideTurn(attackResult, currentState): TurnDecision {
+    if (currentState.isGameOver) {
+      return {
+        shouldEndTurn: true,
+        shouldToggleTurn: false,
+        canShootAgain: false,
+        reason: "Game over",
+      };
+    }
+
+    const anyItemCollected = attackResult.shots.some(
+      (shot) => shot.collected && shot.executed,
+    );
+    const anyHit = attackResult.shots.some((shot) => shot.hit && shot.executed);
+    const anyShipDestroyed = attackResult.shots.some(
+      (shot) => shot.shipDestroyed && shot.executed,
+    );
+
+    // Item collected → repeat turn regardless of other results
+    if (anyItemCollected) {
+      return {
+        shouldEndTurn: false,
+        shouldToggleTurn: false,
+        canShootAgain: true,
+        reason: "Item collected - shoot again",
+      };
+    }
+
+    if (anyHit) {
+      if (anyShipDestroyed) {
+        return {
+          shouldEndTurn: true,
+          shouldToggleTurn: true,
+          canShootAgain: false,
+          reason: "Ship destroyed - turn ends",
+        };
+      } else {
+        return {
+          shouldEndTurn: false,
+          shouldToggleTurn: false,
+          canShootAgain: true,
+          reason: "Hit - shoot again",
+        };
+      }
+    }
+
+    return {
+      shouldEndTurn: true,
+      shouldToggleTurn: true,
+      canShootAgain: false,
+      reason: "Miss - turn ends",
+    };
+  },
+
+  checkGameOver(state): GameOverDecision {
+    if (state.areAllPlayerShipsDestroyed) {
+      return {
+        isGameOver: true,
+        winner: "enemy",
+      };
+    } else if (state.areAllEnemyShipsDestroyed) {
+      return {
+        isGameOver: true,
+        winner: "player",
+      };
+    }
+
+    return {
+      isGameOver: false,
+      winner: null,
+    };
+  },
+};
+
+/**
  * Export default ruleset (Classic)
  */
 export const DefaultRuleSet = ClassicRuleSet;

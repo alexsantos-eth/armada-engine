@@ -2,7 +2,27 @@ export type GameTurn = "PLAYER_TURN" | "ENEMY_TURN";
 export type PlayerName = "player" | "enemy";
 export type Winner = PlayerName | null;
 export type CellState = "EMPTY" | "SHIP" | "HIT" | "MISS" | "ITEM" | "COLLECTED";
-export type Board = CellState[][];
+
+/**
+ * A single cell in a rich board, combining the visual state with the full
+ * shot metadata (when the cell has been fired upon).
+ */
+export interface Cell {
+  /** Visual state of the cell (same as the flat Board). */
+  state: CellState;
+  /**
+   * Full shot details when this cell was fired upon.
+   * Undefined for cells that have not been shot yet (state "EMPTY", "SHIP", "ITEM").
+   */
+  shot?: Shot;
+}
+
+/**
+ * A 2D board where every cell carries both its CellState and the underlying
+ * Shot data. Useful for UIs that need to know *how* a cell was hit
+ * (e.g. which pattern, whichship was sunk, whether an item was collected…).
+ */
+export type Board = Cell[][];
 
 /**
  * A collectible item placed on the board.

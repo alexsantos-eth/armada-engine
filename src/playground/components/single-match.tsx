@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useBoard, type UseBoardProps } from "../../core-react/hooks";
 import {
   SHOT_PATTERNS,
-  type CellState,
+  type Cell,
   type ShotPattern,
 } from "../../core/engine";
 
@@ -20,11 +20,11 @@ const SingleMatch = ({
 
   const {
     planAndAttack,
-    match: { playerBoard, enemyBoard, gameState, initializeNewGame , match},
+    match: { playerBoard, enemyBoard, gameState, initializeNewGame },
   } = useBoard({ initialSetup, matchRef, ...callbacks });
 
-  const getCellContent = (cell: CellState) => {
-    switch (cell) {
+  const getCellContent = (cell: Cell) => {
+    switch (cell.state) {
       case "SHIP":
         return "🚢";
       case "HIT":

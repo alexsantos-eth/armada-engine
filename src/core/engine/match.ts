@@ -11,15 +11,16 @@ import { getShipCellsFromShip } from '../tools/ship/calculations';
 
 import type {
   Board,
+  Cell,
   GameShip,
   GameItem,
   Winner,
   GameTurn,
   ShotPattern,
   ShotPatternResult,
+  Shot,
 } from "../types/common";
 import type { GameConfig } from "../types/config";
-import type { Shot } from "../types/common";
 
 /**
  * Match Rules Manager
@@ -326,37 +327,33 @@ export class Match {
   }
 
   /**
-   * Returns the player's board with ship positions and received shots.
-   * Own ships are visible; each enemy shot is marked as HIT or MISS.
-   * Uncollected items are shown as ITEM; collected item cells as COLLECTED.
+   * Returns the player's board with full shot metadata per cell.
+   * Each cell carries its {@link CellState} plus the original {@link Shot} object
+   * (patternId, patternCenterX/Y, shipId, collected, itemId, itemFullyCollected…)
+   * so the UI can render rich hit/miss information.
    */
   public getPlayerBoard(): Board {
     const state = this.engine.getState();
     const { boardWidth, boardHeight, playerShips, enemyShots } = state;
 
     const board: Board = Array.from({ length: boardHeight }, () =>
-      Array(boardWidth).fill("EMPTY"),
+      Array.from({ length: boardWidth }, (): Cell => ({ state: "EMPTY" })),
     );
-
-
 
     // PLAYER SHIPS
     for (const ship of playerShips) {
       for (const [x, y] of getShipCellsFromShip(ship)) {
         if (x >= 0 && x < boardWidth && y >= 0 && y < boardHeight) {
-          board[y][x] = "SHIP";
+          board[y][x] = { state: "SHIP" };
         }
       }
     }
 
-    // ENEMY SHOTS
+    // ENEMY SHOTS — carry full shot data
     for (const shot of enemyShots) {
       if (shot.x >= 0 && shot.x < boardWidth && shot.y >= 0 && shot.y < boardHeight) {
-        if (shot.collected) {
-          board[shot.y][shot.x] = "MISS";
-        } else {
-          board[shot.y][shot.x] = shot.hit ? "HIT" : "MISS";
-        }
+        const cellState = shot.collected ? "MISS" : (shot.hit ? "HIT" : "MISS");
+        board[shot.y][shot.x] = { state: cellState, shot };
       }
     }
 
@@ -364,15 +361,16 @@ export class Match {
   }
 
   /**
-   * Returns the enemy's board showing only the player's shots (ships are hidden).
-   * Uncollected enemy items are shown as ITEM; collected item cells as COLLECTED.
+   * Returns the enemy's board with full shot metadata per cell.
+   * Enemy ships remain hidden; each cell the player fired upon includes
+   * the full {@link Shot} object for rich UI rendering.
    */
   public getEnemyBoard(): Board {
     const state = this.engine.getState();
     const { boardWidth, boardHeight, playerShots, enemyItems, enemyCollectedItems } = state;
 
     const board: Board = Array.from({ length: boardHeight }, () =>
-      Array(boardWidth).fill("EMPTY"),
+      Array.from({ length: boardWidth }, (): Cell => ({ state: "EMPTY" })),
     );
 
     // ITEMS
@@ -382,19 +380,16 @@ export class Match {
       for (let i = 0; i < item.part; i++) {
         const cx = startX + i;
         if (cx >= 0 && cx < boardWidth && y >= 0 && y < boardHeight) {
-          board[y][cx] = collectedSet.has(itemId) ? "COLLECTED" : "ITEM";
+          board[y][cx] = { state: collectedSet.has(itemId) ? "COLLECTED" : "ITEM" };
         }
       }
     });
 
-    // PLAYER SHOTS
+    // PLAYER SHOTS — carry full shot data
     for (const shot of playerShots) {
       if (shot.x >= 0 && shot.x < boardWidth && shot.y >= 0 && shot.y < boardHeight) {
-        if (shot.collected) {
-          board[shot.y][shot.x] = "COLLECTED";
-        } else {
-          board[shot.y][shot.x] = shot.hit ? "HIT" : "MISS";
-        }
+        const cellState = shot.collected ? "COLLECTED" : (shot.hit ? "HIT" : "MISS");
+        board[shot.y][shot.x] = { state: cellState, shot };
       }
     }
 
