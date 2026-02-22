@@ -1,7 +1,7 @@
 import { setup, assign, createActor } from "xstate";
 import { GameEngine } from "../logic";
 import { DefaultRuleSet } from "../rulesets";
-import { SINGLE_SHOT } from "../../constants/shotPatterns";
+import { SINGLE_SHOT } from "../../constants/shots";
 import { PlanError } from "../errors";
 import type {
   MatchMachineContext,

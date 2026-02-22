@@ -176,12 +176,6 @@ describe('GameInitializer', () => {
   });
 
   describe('Initial Turn Selection', () => {
-    let initializer: GameInitializer;
-
-    beforeEach(() => {
-      initializer = new GameInitializer();
-    });
-
     it('should set player turn when specified', () => {
       const setup = new GameInitializer({ initialTurn: 'player' }).getGameSetup();
       

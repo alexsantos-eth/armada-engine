@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { GameEngine } from "../../engine/logic";
-import { CROSS_SHOT, HORIZONTAL_LINE_SHOT, SINGLE_SHOT, getShotPattern, createCustomPattern } from "../../constants/shotPatterns";
+import { CROSS_SHOT, HORIZONTAL_LINE_SHOT, SINGLE_SHOT, getShotPattern, createCustomPattern } from "../../constants/shots";
 import type { GameShip } from "../../types/common";
 
 describe("Shot Pattern System", () => {

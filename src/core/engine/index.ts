@@ -63,7 +63,7 @@ export {
   L_SHAPE_SHOT,
   getShotPattern,
   createCustomPattern,
-} from "../constants/shotPatterns";
+} from "../constants/shots";
 
 export { GAME_CONSTANTS } from "../constants/game";
 

@@ -1,6 +1,6 @@
 import { createActor } from "xstate";
 
-import { SINGLE_SHOT } from "../constants/shotPatterns";
+import { SINGLE_SHOT } from "../constants/shots";
 import { AttackError, PlanError } from "./errors";
 import { GameInitializer, type GameSetup } from "../manager";
 import { GameEngine, type GameEngineState } from "./logic";

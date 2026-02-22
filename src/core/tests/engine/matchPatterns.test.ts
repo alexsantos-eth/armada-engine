@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Match } from "../../engine/match";
-import { CROSS_SHOT, HORIZONTAL_LINE_SHOT, SINGLE_SHOT } from "../../constants/shotPatterns";
+import { CROSS_SHOT, HORIZONTAL_LINE_SHOT, SINGLE_SHOT } from "../../constants/shots";
 import type { GameShip } from "../../types/common";
 
 describe("Match Shot Patterns", () => {

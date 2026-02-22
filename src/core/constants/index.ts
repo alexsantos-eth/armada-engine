@@ -1,3 +1,4 @@
 export * from "./game";
-export * from "./shotPatterns";
+export * from "./shots";
 export * from "./items";
+export * from "./ships"

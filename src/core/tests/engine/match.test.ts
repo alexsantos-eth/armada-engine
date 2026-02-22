@@ -867,12 +867,12 @@ describe('Match', () => {
     it('should get current ruleset', () => {
       const ruleSet = match.getRuleSet();
       expect(ruleSet).toBeDefined();
-      expect(ruleSet.name).toBe('Classic');
+      expect(ruleSet.name).toBe('ClassicRuleSet');
     });
 
     it('should allow changing ruleset during match', () => {
       const initialRuleSet = match.getRuleSet();
-      expect(initialRuleSet.name).toBe('Classic');
+      expect(initialRuleSet.name).toBe('ClassicRuleSet');
 
       // Classic: hit allows shooting again
       const hit1 = match.planAndAttack(7, 7, true);
@@ -881,7 +881,7 @@ describe('Match', () => {
       // Change to alternating rules
       match.setRuleSet(AlternatingTurnsRuleSet);
       const newRuleSet = match.getRuleSet();
-      expect(newRuleSet.name).toBe('Alternating');
+      expect(newRuleSet.name).toBe('AlternatingTurnsRuleSet');
 
       // Player misses to switch turn
       match.planAndAttack(0, 0, true);
@@ -899,7 +899,7 @@ describe('Match', () => {
       });
 
       const ruleSet = alternatingMatch.getRuleSet();
-      expect(ruleSet.name).toBe('Alternating');
+      expect(ruleSet.name).toBe('AlternatingTurnsRuleSet');
     });
   });
 
