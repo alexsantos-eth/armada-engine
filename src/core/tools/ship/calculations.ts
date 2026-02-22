@@ -89,9 +89,9 @@ export function generateShip(
       Math.random() <
         GAME_CONSTANTS.GAME_LOGIC.SHIP_GENERATION.ORIENTATION_RANDOM_THRESHOLD;
 
-    const width  = rotate ? template.height : template.width;
-    const height = rotate ? template.width  : template.height;
-  
+    const width = rotate ? template.height : template.width;
+    const height = rotate ? template.width : template.height;
+
     const shipSize = Math.max(width, height);
     const orientation = width >= height ? "horizontal" : "vertical";
 
@@ -130,10 +130,22 @@ export function generateShip(
 }
 
 export function getQuadrantPreferences(totalCells: number): number[][] {
-  if (totalCells <= 2) return [[0, 1], [2, 3]];
-  if (totalCells === 3) return [[1, 2], [0, 3]];
-  if (totalCells === 4) return [[0, 2], [1, 3]];
-  return [[0, 1, 2, 3]]; 
+  if (totalCells <= 2)
+    return [
+      [0, 1],
+      [2, 3],
+    ];
+  if (totalCells === 3)
+    return [
+      [1, 2],
+      [0, 3],
+    ];
+  if (totalCells === 4)
+    return [
+      [0, 2],
+      [1, 3],
+    ];
+  return [[0, 1, 2, 3]];
 }
 
 export function generatePositionInPreferredQuadrant(
@@ -231,7 +243,9 @@ export function generateShip2D(
 
 export function generateShips(config: Partial<GameConfig>): GameShip[] {
   const ships: GameShip[] = [];
-  const templateNames = Object.keys(SHIP_TEMPLATES) as (keyof typeof SHIP_TEMPLATES)[];
+  const templateNames = Object.keys(
+    SHIP_TEMPLATES,
+  ) as (keyof typeof SHIP_TEMPLATES)[];
 
   for (const name of templateNames) {
     const count = config.shipCounts?.[name] ?? 0;
@@ -259,7 +273,10 @@ export function generateShips(config: Partial<GameConfig>): GameShip[] {
  */
 export function getItemCells(item: GameItem): [number, number][] {
   const [startX, y] = item.coords;
-  return Array.from({ length: item.part }, (_, i) => [startX + i, y] as [number, number]);
+  return Array.from(
+    { length: item.part },
+    (_, i) => [startX + i, y] as [number, number],
+  );
 }
 
 /**
@@ -306,7 +323,7 @@ function buildOccupiedSet(
  * @returns A placed `GameItem` or `null` if no valid position was found.
  */
 export function generateItem(
-  template: { part: number },
+  template: GameItem,
   boardWidth: number,
   boardHeight: number,
   existingShips: GameShip[],
@@ -321,7 +338,7 @@ export function generateItem(
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const maxX = boardWidth - template.part;
-    if (maxX < 0) return null; 
+    if (maxX < 0) return null;
 
     const x = Math.floor(Math.random() * (maxX + 1));
     const y = Math.floor(Math.random() * boardHeight);
@@ -335,7 +352,15 @@ export function generateItem(
     }
 
     if (valid) {
-      return { coords: [x, y], part: template.part, itemId, templateId };
+      // ITEM WITHOU DESCRIPTION
+      return {
+        part: template.part,
+        onCollect: template.onCollect,
+        onUse: template.onUse,
+        coords: [x, y],
+        itemId,
+        templateId,
+      };
     }
   }
 

@@ -25,6 +25,62 @@ export interface Cell {
 export type Board = Cell[][];
 
 /**
+ * Context passed to item event handlers (`onCollect` and `onUse`).
+ * Provides read access to the current game state and write access to the
+ * most common mutation surfaces (ships, items, turn).
+ *
+ * `setRuleSet` is typed as `unknown` here to avoid a circular dependency
+ * with the engine layer. Import and cast to `MatchRuleSet` in your handler:
+ *
+ * ```typescript
+ * import type { MatchItemActionContext } from '../engine/match';
+ * // MatchItemActionContext extends ItemActionContext with setRuleSet: (ruleSet: MatchRuleSet) => void
+ * ```
+ */
+export interface ItemActionContext {
+  /** The item that triggered the event. */
+  item: GameItem;
+  /** `true` = player fired the shot that collected this item; `false` = enemy did. */
+  isPlayerShot: boolean;
+  /**
+   * The shot that caused the collect event.
+   * `undefined` when the context is built for an `onUse` event that was
+   * triggered manually (not from a shot).
+   */
+  shot?: Shot;
+  /** Snapshot of the current turn at the moment the event fires. */
+  currentTurn: GameTurn;
+  /** Player ships at the moment of the event. */
+  playerShips: GameShip[];
+  /** Enemy ships at the moment of the event. */
+  enemyShips: GameShip[];
+  /** Items placed on the player board at the moment of the event. */
+  playerItems: GameItem[];
+  /** Items placed on the enemy board at the moment of the event. */
+  enemyItems: GameItem[];
+  /** Indices of player items that have been fully collected by the enemy. */
+  playerCollectedItems: number[];
+  /** Indices of enemy items that have been fully collected by the player. */
+  enemyCollectedItems: number[];
+  /** Replace the player's ships (takes effect immediately). */
+  setPlayerShips: (ships: GameShip[]) => void;
+  /** Replace the enemy's ships (takes effect immediately). */
+  setEnemyShips: (ships: GameShip[]) => void;
+  /** Replace the player's items (resets hit/collected state for that board). */
+  setPlayerItems: (items: GameItem[]) => void;
+  /** Replace the enemy's items (resets hit/collected state for that board). */
+  setEnemyItems: (items: GameItem[]) => void;
+  /** Immediately toggles the active turn (player↔enemy). */
+  toggleTurn: () => void;
+  /**
+   * Swap the active ruleset.
+   * Typed as `unknown` to avoid a circular import from the engine layer.
+   * Use `MatchItemActionContext` (from `engine/match`) for full typing.
+   */
+  setRuleSet: (ruleSet: unknown) => void;
+}
+
+/**
  * A collectible item placed on the board.
  * It occupies `part` cells in a horizontal row starting at `coords`.
  * When all cells are shot, the item is fully collected.
@@ -36,6 +92,22 @@ export interface GameItem {
   itemId?: number;
   /** Template identifier (matches ItemTemplate.id), used for cross-board equalization. */
   templateId?: string;
+  /**
+   * Called once when all parts of this item have been fully collected.
+   * Use this to apply immediate effects (repeat the turn, alter ships, change ruleset…).
+   *
+   * For full type safety on `ctx.setRuleSet`, use `MatchItemActionContext`
+   * from `src/core/engine/match` in your handler implementation.
+   */
+  onCollect?: (ctx: ItemActionContext) => void;
+  /**
+   * An optional stored effect that can be triggered by the UI via
+   * `match.useItem(itemId, isPlayerShot)` at any point after collection.
+   *
+   * The engine does **not** call this automatically — it is a manual,
+   * UI-driven action (e.g. "activate shield", "deploy radar scan").
+   */
+  onUse?: (ctx: ItemActionContext) => void;
 }
 
 /**

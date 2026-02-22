@@ -14,9 +14,12 @@ import type {
   Cell,
   Winner,
   GameTurn,
+  GameItem,
+  GameShip,
   ShotPattern,
   ShotPatternResult,
   Shot,
+  ItemActionContext,
 } from "../types/common";
 
 interface NewMatch extends MatchCallbacks {
@@ -69,6 +72,13 @@ export class Match {
       },
       onGameOver: (winner) => {
         this.matchCallbacks?.onGameOver?.(winner);
+      },
+      onItemCollected: (shot, item, isPlayerShot) => {
+        this.matchCallbacks?.onItemCollected?.(shot, item, isPlayerShot);
+        if (item.onCollect) {
+          const ctx = this.buildItemActionContext(item, isPlayerShot, shot);
+          item.onCollect(ctx);
+        }
       },
     });
 
@@ -291,6 +301,60 @@ export class Match {
     this.actor.send({ type: "SET_RULESET", ruleSet });
   }
 
+  /**
+   * Trigger the `onUse` handler of a collected item.
+   *
+   * Call this from the UI when the player wants to activate a stored item
+   * effect (e.g. "use shield", "deploy radar scan").
+   *
+   * @param itemId - The `itemId` of the item to use (0-based index in its side's array).
+   * @param isPlayerShot - `true` to look in the enemy's items (player-collected),
+   *                       `false` to look in the player's items (enemy-collected).
+   * @returns `true` if the handler was found and called, `false` otherwise.
+   */
+  public useItem(itemId: number, isPlayerShot: boolean): boolean {
+    const state = this.engine.getState();
+    const items = isPlayerShot ? state.enemyItems : state.playerItems;
+    const item = items[itemId];
+
+    if (!item?.onUse) return false;
+
+    const ctx = this.buildItemActionContext(item, isPlayerShot, undefined);
+    item.onUse(ctx);
+    return true;
+  }
+
+  /**
+   * Build the action context passed to `onCollect` and `onUse` handlers.
+   * @private
+   */
+  private buildItemActionContext(
+    item: GameItem,
+    isPlayerShot: boolean,
+    shot: Shot | undefined,
+  ): ItemActionContext {
+    const state = this.engine.getState();
+    return {
+      item,
+      isPlayerShot,
+      shot,
+      currentTurn: state.currentTurn,
+      playerShips: state.playerShips,
+      enemyShips: state.enemyShips,
+      playerItems: state.playerItems,
+      enemyItems: state.enemyItems,
+      playerCollectedItems: state.playerCollectedItems,
+      enemyCollectedItems: state.enemyCollectedItems,
+      setPlayerShips: (ships: GameShip[]) => this.engine.setPlayerShips(ships),
+      setEnemyShips: (ships: GameShip[]) => this.engine.setEnemyShips(ships),
+      setPlayerItems: (items: GameItem[]) => this.engine.setPlayerItems(items),
+      setEnemyItems: (items: GameItem[]) => this.engine.setEnemyItems(items),
+      toggleTurn: () => this.engine.getInternalAPI().toggleTurn(),
+      setRuleSet: (ruleSet: unknown) =>
+        this.engine.getInternalAPI().setPendingRuleSet(ruleSet),
+    };
+  }
+
   public getBoardDimensions(): { width: number; height: number } {
     return this.engine.getBoardDimensions();
   }
@@ -412,6 +476,29 @@ export class Match {
   }
 }
 
+/**
+ * Convenience alias for {@link ItemActionContext} used inside `onCollect` and
+ * `onUse` handlers.
+ *
+ * `setRuleSet` accepts `unknown` in the underlying interface to avoid a
+ * circular import; pass any {@link MatchRuleSet} value — TypeScript will not
+ * narrow the argument, but at runtime the engine casts it correctly.
+ *
+ * ```typescript
+ * import type { MatchItemActionContext } from '../engine/match';
+ * import { AlternatingTurnsRuleSet } from '../engine/rulesets';
+ *
+ * const myItem: GameItem = {
+ *   coords: [0, 0],
+ *   part: 1,
+ *   onCollect(ctx: MatchItemActionContext) {
+ *     ctx.setRuleSet(AlternatingTurnsRuleSet);
+ *   },
+ * };
+ * ```
+ */
+export type MatchItemActionContext = ItemActionContext;
+
 export interface PlanShotResult {
   ready: boolean;
   error?: string;
@@ -432,4 +519,5 @@ export type MatchCallbacks = {
   onTurnChange?: (turn: GameTurn) => void;
   onGameOver?: (winner: Winner) => void;
   onMatchStart?: () => void;
+  onItemCollected?: (shot: Shot, item: GameItem, isPlayerShot: boolean) => void;
 };

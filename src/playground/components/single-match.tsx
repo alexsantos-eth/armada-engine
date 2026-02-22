@@ -21,6 +21,7 @@ const SingleMatch = ({
   } = useBoard({ initialSetup, matchRef, ...callbacks });
 
   const canFire = gameState?.isPlayerTurn && !gameState?.isGameOver;
+  const items = gameState?.playerItems || [];
 
   return (
     <div className="select-none">

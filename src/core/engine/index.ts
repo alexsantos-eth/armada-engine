@@ -2,7 +2,7 @@ export { GameEngine } from "./logic";
 export type { GameEngineState, ShotResult, GameEngineCallbacks } from "./logic";
 
 export { Match } from "./match";
-export type { PlanAndAttackResult, MatchCallbacks, PlanShotResult } from "./match";
+export type { PlanAndAttackResult, MatchCallbacks, PlanShotResult, MatchItemActionContext } from "./match";
 
 export {
   ClassicRuleSet,
@@ -28,6 +28,7 @@ export type {
   CellState,
   Cell,
   Board,
+  ItemActionContext,
 } from "../types/common";
 
 export type { GameConfig } from "../types/config";

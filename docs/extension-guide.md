@@ -493,33 +493,122 @@ export interface GameItem {
   itemId?: number;
   /** Matches ItemTemplate.id — used for cross-board equalization. */
   templateId?: string;
+  /**
+   * Called once when all parts of this item have been fully collected.
+   * Fires synchronously, before resolveTurn — so ruleset changes and turn
+   * toggles take effect in the same attack cycle.
+   */
+  onCollect?: (ctx: ItemActionContext) => void;
+  /**
+   * Stored effect triggered manually from the UI via match.useItem().
+   * The engine never calls this automatically.
+   */
+  onUse?: (ctx: ItemActionContext) => void;
 }
 ```
 
 `part` determines how many consecutive horizontal cells must be shot to fully collect the item. A `part: 1` item is collected with a single shot; `part: 3` requires three shots in a row.
 
+---
+
+### Item event handlers — `onCollect` and `onUse`
+
+Both handlers receive an `ItemActionContext` that provides read access to the current game state and write access to every major engine surface.
+
+```typescript
+// src/core/types/common.ts
+export interface ItemActionContext {
+  item: GameItem;          // the item that triggered the event
+  isPlayerShot: boolean;   // true = player collected it
+  shot?: Shot;             // the shot that caused collection (undefined for onUse)
+  currentTurn: GameTurn;
+
+  // read-only snapshots
+  playerShips: GameShip[];
+  enemyShips: GameShip[];
+  playerItems: GameItem[];
+  enemyItems: GameItem[];
+  playerCollectedItems: number[]; // itemId indices
+  enemyCollectedItems: number[];
+
+  // mutations — all take effect immediately
+  setPlayerShips(ships: GameShip[]): void;
+  setEnemyShips(ships: GameShip[]): void;
+  setPlayerItems(items: GameItem[]): void;
+  setEnemyItems(items: GameItem[]): void;
+  toggleTurn(): void;
+  setRuleSet(ruleSet: unknown): void; // pass any MatchRuleSet
+}
+```
+
+#### Timing guarantee for `onCollect`
+
+`onCollect` fires **before** `resolveTurn` evaluates the ruleset. Any call to `ctx.setRuleSet()` inside `onCollect` is applied to the **same attack cycle** — the new ruleset's `decideTurn` is the one that determines whether the collector shoots again.
+
+```
+executeAttack
+  └─ collectItem()
+       └─ onItemCollected callback
+            └─ item.onCollect(ctx)       ← fires here
+                 └─ ctx.setRuleSet(X)    ← stored synchronously in engine
+resolveTurn
+  └─ takePendingRuleSet()                ← picks up X before decideTurn
+  └─ X.decideTurn(...)                   ← new ruleset governs this turn ✓
+  └─ context.ruleSet = X                 ← persisted for all future turns
+```
+
+#### `onUse` — UI-triggered effects
+
+`onUse` is never called by the engine automatically. The UI triggers it via `match.useItem()`:
+
+```typescript
+// returns true if the handler was found and called
+match.useItem(itemId, isPlayerShot);
+```
+
+- `itemId` — 0-based index of the item in the side's array.
+- `isPlayerShot: true` → looks in `enemyItems` (items the player collected).
+- `isPlayerShot: false` → looks in `playerItems` (items the enemy collected).
+
+---
+
 ### Built-in item templates (`src/core/constants/items.ts`)
 
-| Constant        | `id`              | `part` | `defaultCount` | Description                                      |
-| --------------- | ----------------- | ------ | -------------- | ------------------------------------------------ |
-| `HEALTH_KIT`    | `"health_kit"`    | 1      | 2              | Restores one health when collected               |
-| `AMMO_CACHE`    | `"ammo_cache"`    | 1      | 1              | Grants extra ammo when fully collected           |
-| `SHIELD_MODULE` | `"shield_module"` | 1      | 1              | Grants a one-hit shield when collected           |
-| `RADAR_DEVICE`  | `"radar_device"`  | 3      | 1              | Reveals part of enemy board when fully collected |
+| Constant        | `id`              | `part` | `onCollect` effect                                 | `onUse` effect                    |
+| --------------- | ----------------- | ------ | -------------------------------------------------- | --------------------------------- |
+| `HEALTH_KIT`    | `"health_kit"`    | 1      | Switches to `ItemHitRuleSet` (hit-continuation)    | `toggleTurn()` — skip enemy turn  |
+| `AMMO_CACHE`    | `"ammo_cache"`    | 1      | Switches to `ItemHitRuleSet` (hit-continuation)    | —                                 |
+| `SHIELD_MODULE` | `"shield_module"` | 1      | Switches to `AlternatingTurnsRuleSet` (strips shoot-again) | `toggleTurn()` — cancel enemy turn |
+| `RADAR_DEVICE`  | `"radar_device"`  | 3      | Clears all remaining items from the opponent's board | `toggleTurn()` — bonus shot     |
 
-### Adding a new item template
+---
+
+### Adding a new item template with handlers
 
 **Step 1 — Define the constant in `items.ts`:**
 
 ```typescript
 // src/core/constants/items.ts
+import { ItemHitRuleSet } from "../engine/rulesets";
+
 export const REPAIR_DRONE: ItemTemplate = {
   id: "repair_drone",
   title: "Repair Drone",
-  description: "Repairs one hit ship cell when collected.",
-  coords: [0, 0], // always [0,0] for templates; placed at runtime
-  part: 2, // two cells must be shot to collect
+  description: "Grants hit-continuation on collect. Use to remove one enemy ship.",
+  coords: [0, 0],
+  part: 2,
   defaultCount: 1,
+
+  onCollect(ctx) {
+    // Grant shoot-again on hits for the rest of the match
+    ctx.setRuleSet(ItemHitRuleSet);
+  },
+
+  onUse(ctx) {
+    // Remove the last enemy ship from the board
+    const remaining = ctx.enemyShips.slice(0, -1);
+    ctx.setEnemyShips(remaining);
+  },
 };
 ```
 
@@ -535,17 +624,19 @@ export const ITEM_TEMPLATES: Record<string, ItemTemplate> = {
 };
 ```
 
-That's it for the definition. The engine picks it up automatically anywhere `getItemTemplate("repair_drone")` is called.
+That's it. `generateItems` will place the new variant automatically using the full template (including handlers).
+
+> **Important:** `generateItems` spreads the full template object when placing items, so `onCollect` and `onUse` are always preserved. Never construct placed items manually with only `{ coords, part }` — always spread the template: `{ ...REPAIR_DRONE, coords: [x, y] }`.
+
+---
 
 ### Placing items on the board at match start
-
-Pass items via the `setup` object when constructing `Match`. `coords` sets the **top-left** cell of the item; the engine auto-assigns `itemId` (0-based index).
 
 ```typescript
 import { HEALTH_KIT, RADAR_DEVICE } from "./src/core/constants/items";
 
 const enemyItems: GameItem[] = [
-  { ...HEALTH_KIT, coords: [2, 3] }, // 1-cell item at (2,3)
+  { ...HEALTH_KIT, coords: [2, 3] },   // 1-cell item at (2,3)
   { ...RADAR_DEVICE, coords: [5, 7] }, // 3-cell item at (5,7),(6,7),(7,7)
 ];
 
@@ -555,8 +646,8 @@ const match = new Match({
     enemyShips,
     initialTurn: "PLAYER_TURN",
     config: { boardWidth: 10, boardHeight: 10 },
-    playerItems: [], // collectible by the enemy
-    enemyItems, // collectible by the player
+    playerItems: [],
+    enemyItems,
   },
 });
 match.initializeMatch();
@@ -564,86 +655,73 @@ match.initializeMatch();
 
 ### Placing items at runtime (after match start)
 
-Use the engine's setter methods when you need to add or replace items mid-match:
-
 ```typescript
 const engine = match.getEngine();
 
-// Replace all items on the enemy board
 engine.setEnemyItems([
   { ...HEALTH_KIT, coords: [0, 0] },
   { ...AMMO_CACHE, coords: [4, 4] },
 ]);
 
-// Replace all items on the player board
 engine.setPlayerItems([{ ...SHIELD_MODULE, coords: [1, 1] }]);
 ```
 
-> **Note:** `setPlayerItems` / `setEnemyItems` reset all hit counters and collected-item state for that board. Call them before the match starts or at well-defined turn boundaries.
+> **Note:** `setPlayerItems` / `setEnemyItems` reset all hit counters and collected-item state for that board.
+
+---
 
 ### Design rules for items
 
-| Rule                                                                      | Why                                                                                     |
-| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Items occupy a **horizontal stripe** of `part` cells starting at `coords` | The engine iterates `coords[0]` to `coords[0] + part - 1` for hit detection             |
-| Items and ships **must not overlap**                                      | Undefined behaviour — validate placement before calling `initializeMatch`               |
-| A shot on an item cell is **not** a ship hit                              | `shot.hit` stays `false`; `shot.collected` / `shot.itemFullyCollected` carry the result |
-| `coords` in templates should always be `[0, 0]`                           | Actual position is set at placement time                                                |
-| `templateId` is optional but recommended                                  | Enables cross-board equalization in multiplayer scenarios                               |
+| Rule | Why |
+| ---- | --- |
+| Items occupy a **horizontal stripe** of `part` cells starting at `coords` | The engine iterates `coords[0]` to `coords[0] + part - 1` for hit detection |
+| Items and ships **must not overlap** | Undefined behaviour — validate placement before `initializeMatch` |
+| A shot on an item cell is **not** a ship hit | `shot.hit` stays `false`; `shot.collected` / `shot.itemFullyCollected` carry the result |
+| `coords` in templates should always be `[0, 0]` | Actual position is set at placement time |
+| `templateId` is optional but recommended | Enables cross-board equalization in multiplayer |
+| Always spread the full template when placing: `{ ...TEMPLATE, coords }` | Preserves `onCollect` / `onUse` handlers |
+| `onCollect` changes to `setRuleSet` apply to the **same** turn | Engine stores them in `pendingRuleSet` and `resolveTurn` flushes before `decideTurn` |
+| `onUse` is never called automatically | The UI must call `match.useItem(itemId, isPlayerShot)` |
 
-### Reacting to item collection in game logic
+---
+
+### Reacting to item collection in callbacks
 
 The `Shot` object returned after each attack carries the collection result:
 
 ```typescript
-// src/core/types/common.ts
 export interface Shot {
-  // …
-  collected?: boolean; // true if this shot collected a part of an item
-  itemId?: number; // 0-based index of the collected item
-  itemFullyCollected?: boolean; // true if all parts of the item are now collected
+  collected?: boolean;        // true if this shot collected a part of an item
+  itemId?: number;            // 0-based index of the collected item
+  itemFullyCollected?: boolean; // true if all parts are now collected
 }
 ```
 
-To **repeat the turn on item collection**, use `ItemHitRuleSet` (already built-in):
-
-```typescript
-import { ItemHitRuleSet } from "./src/core/engine/rulesets";
-
-const match = new Match({
-  setup: {
-    playerShips,
-    enemyShips,
-    initialTurn: "PLAYER_TURN",
-    config,
-    ruleSet: ItemHitRuleSet,
-  },
-});
-```
-
-Or read the flag in a callback and trigger custom logic on your side:
+You can also react globally via the `onItemCollected` match callback (fires for every full collection, before `onCollect` on the item itself):
 
 ```typescript
 const match = new Match({
   setup: { playerShips, enemyShips, initialTurn: "PLAYER_TURN", config },
-  onShot: (shot, isPlayer) => {
-    if (shot.itemFullyCollected) {
-      console.log(
-        `Item ${shot.itemId} fully collected by ${isPlayer ? "player" : "enemy"}`,
-      );
-      // apply power-up effect here
-    }
+  onItemCollected: (shot, item, isPlayerShot) => {
+    console.log(`Item ${item.templateId} collected by ${isPlayerShot ? "player" : "enemy"}`);
   },
 });
 ```
 
+---
+
+### Data flow
+
 ```mermaid
 flowchart TD
-    IT["ITEM_TEMPLATES\n(items.ts)"]
-    IT -->|"spread + new coords"| PLACE["GameItem[]\npassed to Match setup"]
+    IT["ITEM_TEMPLATES\n(items.ts)\nonCollect / onUse defined here"]
+    IT -->|"{ ...template, coords }"| PLACE["GameItem[]\npassed to Match setup\nhandlers preserved"]
     PLACE --> INIT["GameEngine.initializeGame()\ncacheItemPositions()"]
     INIT --> SHOT["executeShotPattern()\ncollectItem()"]
-    SHOT --> RESULT["Shot.collected\nShot.itemFullyCollected"]
-    RESULT --> RS["MatchRuleSet.decideTurn()\ne.g. ItemHitRuleSet"]
-    RESULT --> CB["callbacks.onShot\ncustom power-up logic"]
+    SHOT --> CB_GLOBAL["callbacks.onItemCollected\n(match-level observer)"]
+    SHOT --> ON_COLLECT["item.onCollect(ctx)\nctx.setRuleSet → pendingRuleSet"]
+    ON_COLLECT --> RESOLVE["resolveTurn\ntakePendingRuleSet()\nnewRuleSet.decideTurn(...)"]
+    RESOLVE --> PLAN["→ planning state\nnewRuleSet active for all future turns"]
+
+    UI["UI / Consumer"] -->|"match.useItem(itemId, isPlayerShot)"| ON_USE["item.onUse(ctx)\nany ctx mutation"]
 ```

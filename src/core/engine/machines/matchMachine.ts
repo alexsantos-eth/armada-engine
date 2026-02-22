@@ -123,8 +123,11 @@ export const matchMachine = setup({
 
       const engineInternal = context.engine.getInternalAPI();
 
+      const pendingRuleSet = engineInternal.takePendingRuleSet();
+      const activeRuleSet = (pendingRuleSet as typeof context.ruleSet | null) ?? context.ruleSet;
+
       const stateAfterAttack = context.engine.getState();
-      const lastTurnDecision = context.ruleSet.decideTurn(
+      const lastTurnDecision = activeRuleSet.decideTurn(
         context.lastAttackResult,
         stateAfterAttack,
       );
@@ -135,13 +138,16 @@ export const matchMachine = setup({
 
       const stateAfterTurn = context.engine.getState();
       if (!stateAfterTurn.isGameOver) {
-        const gameOverDecision = context.ruleSet.checkGameOver(stateAfterTurn);
+        const gameOverDecision = activeRuleSet.checkGameOver(stateAfterTurn);
         if (gameOverDecision.isGameOver && gameOverDecision.winner) {
           engineInternal.setGameOver(gameOverDecision.winner);
         }
       }
 
-      return { lastTurnDecision };
+      return {
+        lastTurnDecision,
+        ...(pendingRuleSet ? { ruleSet: activeRuleSet } : {}),
+      };
     }),
 
     /** Initializes the engine with ship placements, items, and the starting turn */

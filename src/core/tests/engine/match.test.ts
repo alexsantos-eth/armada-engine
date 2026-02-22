@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Match } from '../../engine/match';
-import type { GameShip } from '../../types/common';
+import type { GameShip, GameItem } from '../../types/common';
 import { ClassicRuleSet, AlternatingTurnsRuleSet, ItemHitRuleSet } from '../../engine/rulesets';
 
 describe('Match', () => {
@@ -972,6 +972,310 @@ describe('Match', () => {
       expect(result.reason).toBe('Game over');
       expect(result.turnEnded).toBe(true);
       expect(result.canShootAgain).toBe(false);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Item event handlers — onCollect & onUse
+  // ─────────────────────────────────────────────────────────────────────────
+  describe('Item Events — onCollect', () => {
+    // helper: build a match with one enemy item and an optional onCollect handler
+    function makeItemMatch(enemyItem: GameItem, playerItem?: GameItem) {
+      return new Match({
+        setup: {
+          playerShips,
+          enemyShips,
+          initialTurn: 'PLAYER_TURN',
+          config: { boardWidth: 10, boardHeight: 10 },
+          enemyItems: [enemyItem],
+          playerItems: playerItem ? [playerItem] : [],
+        },
+      });
+    }
+
+    it('onCollect fires when a single-part item is fully collected', () => {
+      const onCollect = vi.fn();
+      const item: GameItem = { coords: [3, 3], part: 1, onCollect };
+      const m = makeItemMatch(item);
+      m.initializeMatch();
+
+      m.planAndAttack(3, 3, true);
+
+      expect(onCollect).toHaveBeenCalledTimes(1);
+    });
+
+    it('onCollect fires only after ALL parts of a multi-part item are shot', () => {
+      const onCollect = vi.fn();
+      const item: GameItem = { coords: [0, 8], part: 3, onCollect };
+      const m = makeItemMatch(item);
+      m.initializeMatch();
+
+      // First two parts — not fully collected yet
+      m.planAndAttack(0, 8, true);
+      expect(onCollect).not.toHaveBeenCalled();
+
+      // After miss, enemy turn, then back
+      m.planAndAttack(9, 9, false); // enemy miss
+      m.planAndAttack(1, 8, true);
+      expect(onCollect).not.toHaveBeenCalled();
+
+      m.planAndAttack(9, 8, false); // enemy miss
+      m.planAndAttack(2, 8, true); // third part — fully collected
+
+      expect(onCollect).toHaveBeenCalledTimes(1);
+    });
+
+    it('onCollect receives a correct ItemActionContext', () => {
+      let receivedCtx: Parameters<NonNullable<GameItem['onCollect']>>[0] | null = null;
+      const item: GameItem = {
+        coords: [3, 3],
+        part: 1,
+        onCollect(ctx) { receivedCtx = ctx; },
+      };
+      const m = makeItemMatch(item);
+      m.initializeMatch();
+
+      m.planAndAttack(3, 3, true);
+
+      expect(receivedCtx).not.toBeNull();
+      expect(receivedCtx!.isPlayerShot).toBe(true);
+      expect(receivedCtx!.item).toMatchObject({ coords: [3, 3], part: 1 });
+      expect(receivedCtx!.shot).toBeDefined();
+      expect(receivedCtx!.shot!.x).toBe(3);
+      expect(receivedCtx!.shot!.y).toBe(3);
+      expect(receivedCtx!.playerShips).toHaveLength(2);
+      expect(receivedCtx!.enemyShips).toHaveLength(2);
+      expect(typeof receivedCtx!.setRuleSet).toBe('function');
+      expect(typeof receivedCtx!.toggleTurn).toBe('function');
+      expect(typeof receivedCtx!.setEnemyShips).toBe('function');
+    });
+
+    it('onCollect — setRuleSet applies to the SAME turn cycle (key timing test)', () => {
+      // Start with ClassicRuleSet (miss = turn ends, item collect = treated as miss).
+      // The item's onCollect switches to ItemHitRuleSet.
+      // With the fix, resolveTurn uses ItemHitRuleSet and sees shot.collected=true
+      // → canShootAgain = true.
+      // Without the fix, ClassicRuleSet would be used → canShootAgain = false.
+      const item: GameItem = {
+        coords: [3, 3],
+        part: 1,
+        onCollect(ctx) { ctx.setRuleSet(ItemHitRuleSet); },
+      };
+      const m = makeItemMatch(item);
+      m.initializeMatch();
+
+      expect(m.getRuleSet().name).toBe('ClassicRuleSet');
+
+      const result = m.planAndAttack(3, 3, true);
+
+      // ItemHitRuleSet: item collected → canShootAgain true
+      expect(result.shots[0]?.collected).toBe(true);
+      expect(result.canShootAgain).toBe(true);
+      expect(result.turnEnded).toBe(false);
+
+      // Ruleset persisted for future turns
+      expect(m.getRuleSet().name).toBe('ItemHitRuleSet');
+    });
+
+    it('onCollect — setRuleSet to AlternatingTurnsRuleSet strips shoot-again on same turn', () => {
+      // Start with ItemHitRuleSet (item collect → shoot again).
+      // onCollect switches to AlternatingTurnsRuleSet → turn ends immediately.
+      const item: GameItem = {
+        coords: [3, 3],
+        part: 1,
+        onCollect(ctx) { ctx.setRuleSet(AlternatingTurnsRuleSet); },
+      };
+      const m = new Match({
+        setup: {
+          playerShips,
+          enemyShips,
+          initialTurn: 'PLAYER_TURN',
+          config: { boardWidth: 10, boardHeight: 10, ruleSet: ItemHitRuleSet },
+          enemyItems: [item],
+        },
+      });
+      m.initializeMatch();
+
+      const result = m.planAndAttack(3, 3, true);
+
+      // AlternatingTurnsRuleSet: every shot ends the turn
+      expect(result.canShootAgain).toBe(false);
+      expect(result.turnEnded).toBe(true);
+      expect(m.getRuleSet().name).toBe('AlternatingTurnsRuleSet');
+    });
+
+    it('onCollect — toggleTurn switches the active player immediately', () => {
+      const item: GameItem = {
+        coords: [3, 3],
+        part: 1,
+        onCollect(ctx) { ctx.toggleTurn(); },
+      };
+      const m = makeItemMatch(item);
+      m.initializeMatch();
+
+      // Player collects item; onCollect toggles to ENEMY_TURN.
+      // resolveTurn (ClassicRuleSet sees collection as miss) would also toggle.
+      // Net result: toggled twice → back to PLAYER_TURN.
+      m.planAndAttack(3, 3, true);
+      // What matters: the toggle was called — verify via state or spy.
+      // We just check the turn has been affected (double-toggle = player again).
+      expect(m.getCurrentTurn()).toBe('PLAYER_TURN');
+    });
+
+    it('onCollect — setEnemyShips replaces enemy ships immediately', () => {
+      const item: GameItem = {
+        coords: [3, 3],
+        part: 1,
+        onCollect(ctx) {
+          // Keep only one enemy ship
+          ctx.setEnemyShips([ctx.enemyShips[0]]);
+        },
+      };
+      const m = makeItemMatch(item);
+      m.initializeMatch();
+
+      expect(m.getState().enemyShips).toHaveLength(2);
+      m.planAndAttack(3, 3, true);
+      expect(m.getState().enemyShips).toHaveLength(1);
+    });
+
+    it('onCollect — setEnemyItems clears remaining items from the board', () => {
+      const item0: GameItem = {
+        coords: [3, 3],
+        part: 1,
+        onCollect(ctx) { ctx.setEnemyItems([]); },
+      };
+      const item1: GameItem = { coords: [4, 4], part: 1 };
+      const m = new Match({
+        setup: {
+          playerShips,
+          enemyShips,
+          initialTurn: 'PLAYER_TURN',
+          config: { boardWidth: 10, boardHeight: 10 },
+          enemyItems: [item0, item1],
+          playerItems: [],
+        },
+      });
+      m.initializeMatch();
+
+      expect(m.getState().enemyItems).toHaveLength(2);
+      m.planAndAttack(3, 3, true);
+      expect(m.getState().enemyItems).toHaveLength(0);
+    });
+
+    it('onCollect fires when the enemy collects a player item', () => {
+      const onCollect = vi.fn();
+      const playerItem: GameItem = { coords: [5, 0], part: 1, onCollect };
+      const m = new Match({
+        setup: {
+          playerShips,
+          enemyShips,
+          initialTurn: 'ENEMY_TURN',
+          config: { boardWidth: 10, boardHeight: 10 },
+          playerItems: [playerItem],
+          enemyItems: [],
+        },
+      });
+      m.initializeMatch();
+
+      m.planAndAttack(5, 0, false); // enemy shoots player's board item
+
+      expect(onCollect).toHaveBeenCalledTimes(1);
+      expect(onCollect).toHaveBeenCalledWith(
+        expect.objectContaining({ isPlayerShot: false }),
+      );
+    });
+  });
+
+  describe('Item Events — onUse / useItem()', () => {
+    function makeItemMatch(enemyItem: GameItem) {
+      return new Match({
+        setup: {
+          playerShips,
+          enemyShips,
+          initialTurn: 'PLAYER_TURN',
+          config: { boardWidth: 10, boardHeight: 10 },
+          enemyItems: [enemyItem],
+          playerItems: [],
+        },
+      });
+    }
+
+    it('useItem() calls onUse on the collected item and returns true', () => {
+      const onUse = vi.fn();
+      const item: GameItem = { coords: [3, 3], part: 1, onUse };
+      const m = makeItemMatch(item);
+      m.initializeMatch();
+
+      const result = m.useItem(0, true);
+
+      expect(result).toBe(true);
+      expect(onUse).toHaveBeenCalledTimes(1);
+    });
+
+    it('useItem() returns false when the item has no onUse handler', () => {
+      const item: GameItem = { coords: [3, 3], part: 1 };
+      const m = makeItemMatch(item);
+      m.initializeMatch();
+
+      expect(m.useItem(0, true)).toBe(false);
+    });
+
+    it('useItem() returns false for an out-of-range itemId', () => {
+      const item: GameItem = { coords: [3, 3], part: 1, onUse: vi.fn() };
+      const m = makeItemMatch(item);
+      m.initializeMatch();
+
+      expect(m.useItem(99, true)).toBe(false);
+    });
+
+    it('useItem() — onUse receives correct ItemActionContext', () => {
+      let ctx: Parameters<NonNullable<GameItem['onUse']>>[0] | null = null;
+      const item: GameItem = {
+        coords: [3, 3],
+        part: 1,
+        onUse(c) { ctx = c; },
+      };
+      const m = makeItemMatch(item);
+      m.initializeMatch();
+
+      m.useItem(0, true);
+
+      expect(ctx).not.toBeNull();
+      expect(ctx!.isPlayerShot).toBe(true);
+      expect(ctx!.shot).toBeUndefined(); // no shot for manual use
+      expect(ctx!.playerShips).toHaveLength(2);
+      expect(ctx!.enemyShips).toHaveLength(2);
+    });
+
+    it('useItem() — toggleTurn inside onUse changes the active player', () => {
+      const item: GameItem = {
+        coords: [3, 3],
+        part: 1,
+        onUse(ctx) { ctx.toggleTurn(); },
+      };
+      const m = makeItemMatch(item);
+      m.initializeMatch();
+
+      expect(m.getCurrentTurn()).toBe('PLAYER_TURN');
+      m.useItem(0, true);
+      expect(m.getCurrentTurn()).toBe('ENEMY_TURN');
+    });
+
+    it('useItem() — setEnemyShips inside onUse replaces ships immediately', () => {
+      const item: GameItem = {
+        coords: [3, 3],
+        part: 1,
+        onUse(ctx) {
+          ctx.setEnemyShips([ctx.enemyShips[0]]);
+        },
+      };
+      const m = makeItemMatch(item);
+      m.initializeMatch();
+
+      expect(m.getState().enemyShips).toHaveLength(2);
+      m.useItem(0, true);
+      expect(m.getState().enemyShips).toHaveLength(1);
     });
   });
 });

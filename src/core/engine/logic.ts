@@ -47,6 +47,8 @@ export class GameEngine {
   private onTurnChange?: (turn: GameTurn) => void;
   private onShot?: (shot: Shot, isPlayerShot: boolean) => void;
   private onGameOver?: (winner: Winner) => void;
+  private onItemCollected?: (shot: Shot, item: GameItem, isPlayerShot: boolean) => void;
+  private pendingRuleSet: unknown = null;
 
   constructor(
     config: Partial<GameConfig> = {},
@@ -83,6 +85,7 @@ export class GameEngine {
     this.onStateChange = callbacks?.onStateChange;
     this.onTurnChange = callbacks?.onTurnChange;
     this.onShot = callbacks?.onShot;
+    this.onItemCollected = callbacks?.onItemCollected;
     this.onGameOver = callbacks?.onGameOver;
   }
 
@@ -307,6 +310,12 @@ export class GameEngine {
     this.shotCount++;
     if (!suppressCallback) {
       this.onShot?.(shot, isPlayerShot);
+    }
+
+    if (itemCollection?.itemFullyCollected && itemCollection.itemId !== undefined) {
+      const items = isPlayerShot ? this.enemyItems : this.playerItems;
+      const collectedItem = items[itemCollection.itemId];
+      this.onItemCollected?.(shot, collectedItem, isPlayerShot);
     }
 
     const shipDestroyed =
@@ -839,6 +848,14 @@ export class GameEngine {
     return {
       toggleTurn: () => this.toggleTurn(),
       setGameOver: (winner: Winner) => this.setGameOver(winner),
+      setPendingRuleSet: (ruleSet: unknown) => {
+        this.pendingRuleSet = ruleSet;
+      },
+      takePendingRuleSet: () => {
+        const rs = this.pendingRuleSet;
+        this.pendingRuleSet = null;
+        return rs;
+      },
     };
   }
 }
@@ -901,6 +918,7 @@ export interface GameEngineCallbacks {
   onTurnChange?: (turn: GameTurn) => void;
   onShot?: (shot: Shot, isPlayerShot: boolean) => void;
   onGameOver?: (winner: Winner) => void;
+  onItemCollected?: (shot: Shot, item: GameItem, isPlayerShot: boolean) => void;
 }
 
 /**
@@ -921,4 +939,19 @@ export interface GameEngineInternalAPI {
    * @param winner - The winner of the game
    */
   setGameOver: (winner: Winner) => void;
+
+  /**
+   * Store a ruleset change that was requested synchronously from inside an
+   * item callback (onCollect / onUse). `resolveTurn` will read and apply it
+   * before calling decideTurn so the correct ruleset is used in the same cycle.
+   * @internal
+   */
+  setPendingRuleSet: (ruleSet: unknown) => void;
+
+  /**
+   * Consume and return the pending ruleset (clears internal storage).
+   * Returns `null` if no ruleset change was requested.
+   * @internal
+   */
+  takePendingRuleSet: () => unknown;
 }

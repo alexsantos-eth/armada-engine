@@ -1,3 +1,4 @@
+import { ItemHitRuleSet, AlternatingTurnsRuleSet, ClassicRuleSet } from "../engine/rulesets";
 import type { GameItem } from "../types/common";
 
 /**
@@ -21,29 +22,46 @@ export interface ItemTemplate extends GameItem {
  *
  * Layout:
  *   [H]
+ *
+ * onCollect: switches the active ruleset to {@link ItemHitRuleSet} so the
+ *   collector continues shooting on every hit (ammunition payoff).
+ * onUse (UI-triggered): toggles the turn back, effectively skipping the
+ *   opponent's next planned shot.
  */
 export const HEALTH_KIT: ItemTemplate = {
   id: "health_kit",
   title: "Health Kit",
-  description: "Restores one point of health when collected.",
+  description: "Switches to hit-continuation rules on collect. Use to skip the opponent\'s next turn.",
   coords: [0, 0],
   part: 1,
-  defaultCount: 2,
+  defaultCount: 1,
+  onCollect(ctx) {
+    ctx.setRuleSet(ItemHitRuleSet);
+  },
+  onUse(ctx) {
+    ctx.toggleTurn();
+  },
 };
 
 /**
- * Ammo Cache — a two-cell ammunition supply.
+ * Ammo Cache — a single-cell ammunition supply.
  *
- * Layout (horizontal):
- *   [A][A]
+ * Layout:
+ *   [A]
+ *
+ * onCollect: switches the active ruleset to {@link ItemHitRuleSet} so the
+ *   collector can chain shots on every hit for the rest of the match.
  */
 export const AMMO_CACHE: ItemTemplate = {
   id: "ammo_cache",
   title: "Ammo Cache",
-  description: "Grants extra ammunition when fully collected.",
+  description: "Grants hit-continuation shooting rules when collected.",
   coords: [0, 0],
   part: 1,
   defaultCount: 1,
+  onCollect(ctx) {
+    ctx.setRuleSet(ClassicRuleSet);
+  },
 };
 
 /**
@@ -51,14 +69,27 @@ export const AMMO_CACHE: ItemTemplate = {
  *
  * Layout:
  *   [S]
+ *
+ * onCollect: switches to {@link AlternatingTurnsRuleSet} so the opponent loses
+ *   any hit-continuation advantage they might have had.
+ * onUse (UI-triggered): toggles the turn immediately, cancelling the
+ *   opponent's current attack window.
  */
 export const SHIELD_MODULE: ItemTemplate = {
   id: "shield_module",
   title: "Shield Module",
-  description: "Grants a one-hit shield when collected.",
+  description: "Removes opponent hit-continuation on collect. Use to cancel the opponent\'s turn.",
   coords: [0, 0],
   part: 1,
   defaultCount: 1,
+  onCollect(ctx) {
+    // Neutalise any shoot-again ruleset that the opponent may have activated.
+    ctx.setRuleSet(AlternatingTurnsRuleSet);
+  },
+  onUse(ctx) {
+    // Flip the turn so the collector's side acts again (blocks one enemy attack).
+    ctx.toggleTurn();
+  },
 };
 
 /**
@@ -66,14 +97,35 @@ export const SHIELD_MODULE: ItemTemplate = {
  *
  * Layout (horizontal):
  *   [R][R][R]
+ *
+ * onCollect: removes all enemy items from the board (they have been "scanned"
+ *   and neutralised), denying the opponent future power-ups.
+ * onUse (UI-triggered): toggles the turn, letting the collector fire again
+ *   with the intelligence advantage just gained.
  */
 export const RADAR_DEVICE: ItemTemplate = {
   id: "radar_device",
   title: "Radar Device",
-  description: "Reveals a section of the enemy board when fully collected.",
+  description: "Removes opponent items on collect. Use to fire an extra shot with the gained intel.",
   coords: [0, 0],
   part: 3,
   defaultCount: 1,
+  onCollect(ctx) {
+    // Wipe remaining (uncollected) items from the opponent's board so they
+    // cannot pick them up later.
+    if (ctx.isPlayerShot) {
+      // Player collected the radar → clear player-side items (opponent board)
+      ctx.setPlayerItems([]);
+    } else {
+      // Enemy collected the radar → clear enemy-side items (player board)
+      ctx.setEnemyItems([]);
+    }
+  },
+  onUse(ctx) {
+    // Fire again: flip the turn so the scanning side gets an extra shot,
+    // representing acting immediately on the new intelligence.
+    ctx.toggleTurn();
+  },
 };
 
 /**

@@ -5,6 +5,7 @@ import {
   getShotPattern,
   Match,
   SHOT_PATTERNS,
+  type GameItem,
   type Shot,
   type ShotPattern,
 } from "../core/engine";
@@ -46,6 +47,15 @@ const PlaygroundMatchs = () => {
     );
   };
 
+  const onItemCollected = (shot: Shot, item: GameItem, isPlayerShot: boolean) => {
+    console.log({
+      message: "Item collected!",
+      shot,
+      item,
+      isPlayerShot,
+    });
+  }
+
   return (
     <div className="p-12 flex flex-col gap-14">
       <div className="flex flex-col gap-4">
@@ -64,6 +74,7 @@ const PlaygroundMatchs = () => {
             onShot={onPlayer1Shot}
             initialSetup={initialSetup}
             matchRef={player1MatchRef}
+            onItemCollected={onItemCollected}
             selectedPattern={selecetedPattern}
             showStatus
           />
