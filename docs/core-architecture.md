@@ -221,7 +221,7 @@ classDiagram
     class Match {
         -actor: XStateActor~matchMachine~
         -matchCallbacks: MatchCallbacks
-        +initializeMatch(playerShips, enemyShips, initialTurn)
+        +initializeMatch()
         +planShot(x, y, pattern, isPlayerShot) PlanPhaseResult
         +confirmAttack() MatchShotResult
         +planAndAttack(x, y, isPlayerShot, pattern) MatchShotResult
@@ -319,19 +319,22 @@ sequenceDiagram
 import { Match } from "./src/core/engine";
 import { ClassicRuleSet } from "./src/core/engine/rulesets";
 
-// 1. Create a match with a ruleset and callbacks
-const match = new Match(
-  { boardWidth: 10, boardHeight: 10 },
-  {
-    onShot: (shot, isPlayer) => console.log("Shot fired", shot, isPlayer),
-    onTurnChange: (turn) => console.log("Turn changed to", turn),
-    onGameOver: (winner) => console.log("Game over! Winner:", winner),
+// 1. Create a match — ships, config, callbacks and ruleset are all bundled in one object
+const match = new Match({
+  setup: {
+    playerShips,
+    enemyShips,
+    initialTurn: "PLAYER_TURN",
+    config: { boardWidth: 10, boardHeight: 10 },
+    ruleSet: ClassicRuleSet,
   },
-  ClassicRuleSet,
-);
+  onShot: (shot, isPlayer) => console.log("Shot fired", shot, isPlayer),
+  onTurnChange: (turn) => console.log("Turn changed to", turn),
+  onGameOver: (winner) => console.log("Game over! Winner:", winner),
+});
 
-// 2. Initialize with ship placements
-match.initializeMatch(playerShips, enemyShips, "PLAYER_TURN");
+// 2. Start the match (reads ships and config from setup)
+match.initializeMatch();
 
 // 3A. Two-phase attack (plan then confirm)
 const plan = match.planShot(3, 4, SINGLE_SHOT, true);
@@ -395,7 +398,7 @@ if (!result.success) {
 
 ```mermaid
 flowchart LR
-    INPUT["Match constructor\n(config, callbacks, ruleSet)"]
+    INPUT["Match constructor\n({ setup, ...callbacks })"]
     --> ENGINE["new GameEngine(config, callbacks)"]
     --> ACTOR["createActor(matchMachine, { engine, ruleSet })"]
 

@@ -9,22 +9,24 @@ describe('Match', () => {
   let enemyShips: GameShip[];
 
   beforeEach(() => {
-    match = new Match({ boardWidth: 10, boardHeight: 10 });
-    
     playerShips = [
       { coords: [0, 0], width: 2, height: 1, shipId: 0 },
       { coords: [2, 2], width: 1, height: 3, shipId: 1 },
     ];
-    
+
     enemyShips = [
       { coords: [5, 5], width: 2, height: 1, shipId: 0 },
       { coords: [7, 7], width: 1, height: 3, shipId: 1 },
     ];
+
+    match = new Match({
+      setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 } },
+    });
   });
 
   describe('Match Initialization', () => {
     it('should initialize a match with ships', () => {
-      match.initializeMatch(playerShips, enemyShips);
+      match.initializeMatch();
       
       const state = match.getState();
       expect(state.playerShips).toHaveLength(2);
@@ -33,17 +35,23 @@ describe('Match', () => {
     });
 
     it('should initialize with custom starting turn', () => {
-      match.initializeMatch(playerShips, enemyShips, 'ENEMY_TURN');
+      const enemyStartMatch = new Match({
+        setup: { playerShips, enemyShips, initialTurn: 'ENEMY_TURN', config: { boardWidth: 10, boardHeight: 10 } },
+      });
+      enemyStartMatch.initializeMatch();
       
-      expect(match.getCurrentTurn()).toBe('ENEMY_TURN');
-      expect(match.isEnemyTurn()).toBe(true);
+      expect(enemyStartMatch.getCurrentTurn()).toBe('ENEMY_TURN');
+      expect(enemyStartMatch.isEnemyTurn()).toBe(true);
     });
 
     it('should call onMatchStart callback', () => {
       const onMatchStart = vi.fn();
-      const matchWithCallback = new Match({ boardWidth: 10, boardHeight: 10 }, { onMatchStart });
+      const matchWithCallback = new Match({
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 } },
+        onMatchStart,
+      });
       
-      matchWithCallback.initializeMatch(playerShips, enemyShips);
+      matchWithCallback.initializeMatch();
       
       expect(onMatchStart).toHaveBeenCalled();
     });
@@ -51,7 +59,7 @@ describe('Match', () => {
 
   describe('Match Rules - Hit Continuation', () => {
     beforeEach(() => {
-      match.initializeMatch(playerShips, enemyShips);
+      match.initializeMatch();
     });
 
     it('should allow shooting again after a hit (ship not destroyed)', () => {
@@ -95,7 +103,7 @@ describe('Match', () => {
 
   describe('Match Rules - Turn Sequence', () => {
     beforeEach(() => {
-      match.initializeMatch(playerShips, enemyShips);
+      match.initializeMatch();
     });
 
     it('should allow multiple hits in same turn if ship not destroyed', () => {
@@ -153,7 +161,7 @@ describe('Match', () => {
 
   describe('Match Rules - Game Over', () => {
     beforeEach(() => {
-      match.initializeMatch(playerShips, enemyShips);
+      match.initializeMatch();
     });
 
     it('should end match when all enemy ships destroyed', () => {
@@ -197,17 +205,17 @@ describe('Match', () => {
     let classicMatch: Match;
 
     beforeEach(() => {
-      classicMatch = new Match(
-        { boardWidth: 10, boardHeight: 10 },
-        undefined,
-        ClassicRuleSet
-      );
-      classicMatch.initializeMatch(playerShips, enemyShips);
+      classicMatch = new Match({
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 }, ruleSet: ClassicRuleSet },
+      });
+      classicMatch.initializeMatch();
     });
 
     it('should use Classic ruleset by default', () => {
-      const defaultMatch = new Match({ boardWidth: 10, boardHeight: 10 });
-      defaultMatch.initializeMatch(playerShips, enemyShips);
+      const defaultMatch = new Match({
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 } },
+      });
+      defaultMatch.initializeMatch();
       
       // Classic rule: hit allows shooting again
       const result = defaultMatch.planAndAttack(7, 7, true);
@@ -269,12 +277,10 @@ describe('Match', () => {
     let alternatingMatch: Match;
 
     beforeEach(() => {
-      alternatingMatch = new Match(
-        { boardWidth: 10, boardHeight: 10 },
-        undefined,
-        AlternatingTurnsRuleSet
-      );
-      alternatingMatch.initializeMatch(playerShips, enemyShips);
+      alternatingMatch = new Match({
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 }, ruleSet: AlternatingTurnsRuleSet },
+      });
+      alternatingMatch.initializeMatch();
     });
 
     it('should end turn after hit (no continuation on hit)', () => {
@@ -373,12 +379,10 @@ describe('Match', () => {
     const enemyItems = [{ coords: [1, 1] as [number, number], part: 1 }];
 
     beforeEach(() => {
-      itemHitMatch = new Match(
-        { boardWidth: 10, boardHeight: 10 },
-        undefined,
-        ItemHitRuleSet,
-      );
-      itemHitMatch.initializeMatch(playerShips, enemyShips, 'PLAYER_TURN', [], enemyItems);
+      itemHitMatch = new Match({
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 }, playerItems: [], enemyItems, ruleSet: ItemHitRuleSet },
+      });
+      itemHitMatch.initializeMatch();
     });
 
     it('should repeat turn after collecting an item', () => {
@@ -444,8 +448,10 @@ describe('Match', () => {
     });
 
     it('should work correctly with setRuleSet switching to ItemHit mid-game', () => {
-      const m = new Match({ boardWidth: 10, boardHeight: 10 }, undefined, ClassicRuleSet);
-      m.initializeMatch(playerShips, enemyShips, 'PLAYER_TURN', [], enemyItems);
+      const m = new Match({
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 }, playerItems: [], enemyItems, ruleSet: ClassicRuleSet },
+      });
+      m.initializeMatch();
 
       // With Classic: item is just a miss (no special handling)
       const r1 = m.planAndAttack(1, 1, true);
@@ -467,19 +473,15 @@ describe('Match', () => {
     let alternatingMatch: Match;
 
     beforeEach(() => {
-      classicMatch = new Match(
-        { boardWidth: 10, boardHeight: 10 },
-        undefined,
-        ClassicRuleSet
-      );
-      alternatingMatch = new Match(
-        { boardWidth: 10, boardHeight: 10 },
-        undefined,
-        AlternatingTurnsRuleSet
-      );
-      
-      classicMatch.initializeMatch(playerShips, enemyShips);
-      alternatingMatch.initializeMatch(playerShips, enemyShips);
+      classicMatch = new Match({
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 }, ruleSet: ClassicRuleSet },
+      });
+      alternatingMatch = new Match({
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 }, ruleSet: AlternatingTurnsRuleSet },
+      });
+
+      classicMatch.initializeMatch();
+      alternatingMatch.initializeMatch();
     });
 
     it('should behave differently on hits between rulesets', () => {
@@ -527,7 +529,7 @@ describe('Match', () => {
 
   describe('Shot Validation', () => {
     beforeEach(() => {
-      match.initializeMatch(playerShips, enemyShips);
+      match.initializeMatch();
     });
 
     it('should reject already shot cells', () => {
@@ -567,7 +569,7 @@ describe('Match', () => {
 
   describe('Match State', () => {
     beforeEach(() => {
-      match.initializeMatch(playerShips, enemyShips);
+      match.initializeMatch();
     });
 
     it('should provide complete match state', () => {
@@ -610,18 +612,24 @@ describe('Match', () => {
   describe('Match Callbacks', () => {
     it('should call onStateChange callback', () => {
       const onStateChange = vi.fn();
-      const matchWithCallback = new Match({ boardWidth: 10, boardHeight: 10 }, { onStateChange });
-      
-      matchWithCallback.initializeMatch(playerShips, enemyShips);
+      const matchWithCallback = new Match({
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 } },
+        onStateChange,
+      });
+
+      matchWithCallback.initializeMatch();
       
       expect(onStateChange).toHaveBeenCalled();
     });
 
     it('should call onTurnChange callback', () => {
       const onTurnChange = vi.fn();
-      const matchWithCallback = new Match({ boardWidth: 10, boardHeight: 10 }, { onTurnChange });
-      
-      matchWithCallback.initializeMatch(playerShips, enemyShips);
+      const matchWithCallback = new Match({
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 } },
+        onTurnChange,
+      });
+
+      matchWithCallback.initializeMatch();
       
       // Miss to trigger turn change
       matchWithCallback.planAndAttack(0, 0, true);
@@ -631,9 +639,12 @@ describe('Match', () => {
 
     it('should call onShot callback', () => {
       const onShot = vi.fn();
-      const matchWithCallback = new Match({ boardWidth: 10, boardHeight: 10 }, { onShot });
-      
-      matchWithCallback.initializeMatch(playerShips, enemyShips);
+      const matchWithCallback = new Match({
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 } },
+        onShot,
+      });
+
+      matchWithCallback.initializeMatch();
       
       matchWithCallback.planAndAttack(5, 5, true);
       
@@ -645,9 +656,12 @@ describe('Match', () => {
 
     it('should call onGameOver callback', () => {
       const onGameOver = vi.fn();
-      const matchWithCallback = new Match({ boardWidth: 10, boardHeight: 10 }, { onGameOver });
-      
-      matchWithCallback.initializeMatch(playerShips, enemyShips);
+      const matchWithCallback = new Match({
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 } },
+        onGameOver,
+      });
+
+      matchWithCallback.initializeMatch();
       
       // Destroy all enemy ships
       matchWithCallback.planAndAttack(5, 5, true);
@@ -672,7 +686,7 @@ describe('Match', () => {
 
   describe('Edge Cases', () => {
     beforeEach(() => {
-      match.initializeMatch(playerShips, enemyShips);
+      match.initializeMatch();
     });
 
     it('should handle shot on last cell of destroyed ship', () => {
@@ -714,7 +728,7 @@ describe('Match', () => {
 
   describe('Both Players Shooting', () => {
     beforeEach(() => {
-      match.initializeMatch(playerShips, enemyShips);
+      match.initializeMatch();
     });
 
     it('should handle both players following match rules', () => {
@@ -741,7 +755,7 @@ describe('Match', () => {
 
   describe('Game Over - Immediate Detection', () => {
     beforeEach(() => {
-      match.initializeMatch(playerShips, enemyShips);
+      match.initializeMatch();
     });
 
     it('should detect game over immediately when last ship destroyed', () => {
@@ -802,7 +816,7 @@ describe('Match', () => {
 
   describe('Match State Updates', () => {
     beforeEach(() => {
-      match.initializeMatch(playerShips, enemyShips);
+      match.initializeMatch();
     });
 
     it('should include ship destruction status in state', () => {
@@ -847,7 +861,7 @@ describe('Match', () => {
 
   describe('RuleSet Management', () => {
     beforeEach(() => {
-      match.initializeMatch(playerShips, enemyShips);
+      match.initializeMatch();
     });
 
     it('should get current ruleset', () => {
@@ -880,11 +894,9 @@ describe('Match', () => {
     });
 
     it('should use provided ruleset in constructor', () => {
-      const alternatingMatch = new Match(
-        { boardWidth: 10, boardHeight: 10 },
-        undefined,
-        AlternatingTurnsRuleSet
-      );
+      const alternatingMatch = new Match({
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 }, ruleSet: AlternatingTurnsRuleSet },
+      });
 
       const ruleSet = alternatingMatch.getRuleSet();
       expect(ruleSet.name).toBe('Alternating');
@@ -893,7 +905,7 @@ describe('Match', () => {
 
   describe('Enemy Victory (Player Ships Destroyed)', () => {
     beforeEach(() => {
-      match.initializeMatch(playerShips, enemyShips);
+      match.initializeMatch();
     });
 
     it('should end match when all player ships destroyed', () => {
@@ -923,12 +935,10 @@ describe('Match', () => {
     });
 
     it('should detect enemy victory with alternating ruleset', () => {
-      const alternatingMatch = new Match(
-        { boardWidth: 10, boardHeight: 10 },
-        undefined,
-        AlternatingTurnsRuleSet
-      );
-      alternatingMatch.initializeMatch(playerShips, enemyShips);
+      const alternatingMatch = new Match({
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 }, ruleSet: AlternatingTurnsRuleSet },
+      });
+      alternatingMatch.initializeMatch();
 
       // Alternately destroy all player ships
       alternatingMatch.planAndAttack(9, 9, true); // Player miss

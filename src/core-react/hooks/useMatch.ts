@@ -5,8 +5,6 @@ import {
   type GameConfig,
   type GameEngine,
   type GameEngineState,
-  type GameItem,
-  type GameShip,
   type MatchCallbacks,
 } from "../../core/engine";
 import type {
@@ -17,22 +15,11 @@ import type {
 export interface UseMatchProps extends MatchCallbacks {
   config?: Partial<GameConfig>;
   startTurn?: GAME_INITIAL_TURN;
-  ships?: {
-    playerShips: GameShip[];
-    enemyShips: GameShip[];
-  };
-  /** Override item placements (both boards). If omitted, items are auto-generated. */
-  items?: {
-    playerItems: GameItem[];
-    enemyItems: GameItem[];
-  };
   initialSetup?: GameSetup;
 }
 
 const useMatch = ({
   config,
-  ships,
-  items,
   startTurn,
   initialSetup,
   ...callbacks
@@ -47,10 +34,10 @@ const useMatch = ({
 
   const initializeNewGame = () => {
     const initializer = new GameInitializer(config);
-    const setup =
-      initialSetup ?? initializer.initializeGame(startTurn ?? "random", ships, items);
+    const setup = initialSetup ?? initializer.getGameSetup();
 
-    const newMatch = new Match(setup.config, {
+    const newMatch = new Match({
+      setup,
       ...callbacks,
       onStateChange: (state) => {
         setGameState(state);
@@ -58,13 +45,7 @@ const useMatch = ({
       },
     });
 
-    newMatch.initializeMatch(
-      setup.playerShips,
-      setup.enemyShips,
-      setup.initialTurn,
-      setup.playerItems,
-      setup.enemyItems,
-    );
+    newMatch.initializeMatch();
 
     match.current = newMatch;
     setGameState(newMatch.getState());
@@ -74,7 +55,7 @@ const useMatch = ({
   };
 
   const playerBoard = match.current?.getPlayerBoard();
-  const enemyBoard =  match.current?.getEnemyBoard();
+  const enemyBoard = match.current?.getEnemyBoard();
 
   return {
     gameState,

@@ -191,6 +191,7 @@ export const matchMachine = setup({
    */
   context: ({ input }) => {
     const engine = input?.engine ?? new GameEngine(input?.config ?? {});
+    
     return {
       engine,
       ruleSet: input?.ruleSet ?? DefaultRuleSet,

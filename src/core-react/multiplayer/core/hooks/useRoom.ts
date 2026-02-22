@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "./useAuth";
 import type { GameRoom, RoomPlayer } from "../types/game/room";
 import { roomService } from "../services/room/realtime";
+import type { GameSetup } from "../../../../core/manager";
 
 export const useRoom = (roomId?: string) => {
   const [room, setRoom] = useState<GameRoom | null>(null);
@@ -24,7 +25,7 @@ export const useRoom = (roomId?: string) => {
   }, [roomId]);
 
   const createRoom = useCallback(
-    async (displayName: string): Promise<GameRoom> => {
+    async (displayName: string, initialSetup?: GameSetup): Promise<GameRoom> => {
       if (!user) {
         throw new Error("User not authenticated");
       }
@@ -39,7 +40,7 @@ export const useRoom = (roomId?: string) => {
           role: "host",
         };
 
-        const newRoom = await roomService.createRoom(hostPlayer);
+        const newRoom = await roomService.createRoom(hostPlayer, initialSetup);
         setRoom(newRoom);
         return newRoom;
       } catch (err) {

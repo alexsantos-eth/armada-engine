@@ -6,6 +6,7 @@ import {
   GAME_CONSTANTS,
   type PlayerRole,
   type Shot,
+  type GameSetup,
 } from "../../../../../core/engine";
 
 export class RoomService {
@@ -36,6 +37,7 @@ export class RoomService {
 
   async createRoom(
     hostPlayer: Omit<RoomPlayer, "joinedAt" | "isReady">,
+    initialSetup?: GameSetup,
   ): Promise<GameRoom> {
     let roomCode: string;
     let attempts = 0;
@@ -53,7 +55,7 @@ export class RoomService {
     const now = Date.now();
 
     const gameInitializer = new GameInitializer();
-    const setup = gameInitializer.initializeGame();
+    const setup = initialSetup ?? gameInitializer.getGameSetup();
     const initialTurn = setup.initialTurn === "PLAYER_TURN" ? "host" : "guest";
 
     const room: GameRoom = {
@@ -76,6 +78,8 @@ export class RoomService {
       initialState: {
         playerShips: setup.playerShips,
         enemyShips: setup.enemyShips,
+        playerItems: setup.playerItems,
+        enemyItems: setup.enemyItems,
       },
       host: {
         ...hostPlayer,

@@ -14,8 +14,10 @@ describe("Match Shot Patterns", () => {
   ];
 
   beforeEach(() => {
-    match = new Match({ boardWidth: 10, boardHeight: 10 });
-    match.initializeMatch(playerShips, enemyShips, "PLAYER_TURN");
+    match = new Match({
+      setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 } },
+    });
+    match.initializeMatch();
   });
 
   describe("planShot and confirmAttack flow", () => {

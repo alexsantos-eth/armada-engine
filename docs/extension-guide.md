@@ -48,11 +48,16 @@ No other file needs to change — every consumer that omits `boardWidth`/`boardH
 Pass dimensions explicitly when constructing `Match` or `GameEngine`:
 
 ```typescript
-const match = new Match(
-  { boardWidth: 10, boardHeight: 10 },
-  callbacks,
-  ClassicRuleSet,
-);
+const match = new Match({
+  setup: {
+    playerShips,
+    enemyShips,
+    initialTurn: "PLAYER_TURN",
+    config: { boardWidth: 10, boardHeight: 10 },
+    ruleSet: ClassicRuleSet,
+  },
+  ...callbacks,
+});
 ```
 
 ### Changing size limits (MIN / MAX)
@@ -390,7 +395,10 @@ export const ForgivingRuleSet: MatchRuleSet = {
 
 ```typescript
 // At construction time
-const match = new Match(config, callbacks, ForgivingRuleSet);
+const match = new Match({
+  setup: { playerShips, enemyShips, initialTurn: "PLAYER_TURN", config, ruleSet: ForgivingRuleSet },
+  ...callbacks,
+});
 
 // Or at runtime (replaces ruleset mid-game)
 match.setRuleSet(ForgivingRuleSet);
@@ -508,7 +516,7 @@ That's it for the definition. The engine picks it up automatically anywhere `get
 
 ### Placing items on the board at match start
 
-Pass item arrays when calling `initializeMatch`. `coords` sets the **top-left** cell of the item; the engine auto-assigns `itemId` (0-based index).
+Pass items via the `setup` object when constructing `Match`. `coords` sets the **top-left** cell of the item; the engine auto-assigns `itemId` (0-based index).
 
 ```typescript
 import { HEALTH_KIT, RADAR_DEVICE } from "./src/core/constants/items";
@@ -518,13 +526,17 @@ const enemyItems: GameItem[] = [
   { ...RADAR_DEVICE, coords: [5, 7] },   // 3-cell item at (5,7),(6,7),(7,7)
 ];
 
-match.initializeMatch(
-  playerShips,
-  enemyShips,
-  "PLAYER_TURN",
-  [],          // playerItems  (collectible by the enemy)
-  enemyItems,  // enemyItems   (collectible by the player)
-);
+const match = new Match({
+  setup: {
+    playerShips,
+    enemyShips,
+    initialTurn: "PLAYER_TURN",
+    config: { boardWidth: 10, boardHeight: 10 },
+    playerItems: [],       // collectible by the enemy
+    enemyItems,            // collectible by the player
+  },
+});
+match.initializeMatch();
 ```
 
 ### Placing items at runtime (after match start)
@@ -577,13 +589,16 @@ To **repeat the turn on item collection**, use `ItemHitRuleSet` (already built-i
 ```typescript
 import { ItemHitRuleSet } from "./src/core/engine/rulesets";
 
-const match = new Match(config, callbacks, ItemHitRuleSet);
+const match = new Match({
+  setup: { playerShips, enemyShips, initialTurn: "PLAYER_TURN", config, ruleSet: ItemHitRuleSet },
+});
 ```
 
 Or read the flag in a callback and trigger custom logic on your side:
 
 ```typescript
-const match = new Match(config, {
+const match = new Match({
+  setup: { playerShips, enemyShips, initialTurn: "PLAYER_TURN", config },
   onShot: (shot, isPlayer) => {
     if (shot.itemFullyCollected) {
       console.log(`Item ${shot.itemId} fully collected by ${isPlayer ? "player" : "enemy"}`);
@@ -596,7 +611,7 @@ const match = new Match(config, {
 ```mermaid
 flowchart TD
     IT["ITEM_TEMPLATES\n(items.ts)"]
-    IT -->|"spread + new coords"| PLACE["GameItem[]\npasswd to initializeMatch"]
+    IT -->|"spread + new coords"| PLACE["GameItem[]\npassed to Match setup"]
     PLACE --> INIT["GameEngine.initializeGame()\ncacheItemPositions()"]
     INIT --> SHOT["executeShotPattern()\ncollectItem()"]
     SHOT --> RESULT["Shot.collected\nShot.itemFullyCollected"]

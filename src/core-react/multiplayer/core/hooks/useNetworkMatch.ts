@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   AlternatingTurnsRuleSet,
   ClassicRuleSet,
+  GameInitializer,
   Match,
   SINGLE_SHOT,
   type GameConfig,
@@ -35,49 +36,6 @@ const useNetworkMatch = ({
     const config: Partial<GameConfig> = room.gameConfig || {};
     const ruleSetName = room.ruleSet || "ClassicRuleSet";
 
-    const ruleSet = {
-      ClassicRuleSet,
-      AlternatingTurnsRuleSet,
-    }[ruleSetName];
-
-    const newMatch = new Match(
-      config,
-      {
-        ...callbacks,
-        onStateChange: (state) => {
-          setGameState(state);
-          callbacks?.onStateChange?.(state);
-        },
-        onGameOver: (result) => {
-          callbacks?.onGameOver?.(result);
-          roomService
-            .endGame(room.id)
-            .catch((error) => {
-              console.error("Error ending game:", error);
-            })
-            .catch((error) => {
-              console.error("Error ending game:", error);
-            });
-        },
-        onTurnChange: (currentTurn) => {
-          callbacks?.onTurnChange?.(currentTurn);
-          roomService
-            .updateCurrentTurn(
-              room.id,
-              currentTurn === "PLAYER_TURN"
-                ? playerRole
-                : playerRole === "host"
-                  ? "guest"
-                  : "host",
-            )
-            .catch((error) => {
-              console.error("Error updating current turn:", error);
-            });
-        },
-      },
-      ruleSet,
-    );
-
     const playerShips =
       playerRole === "host"
         ? room.initialState.playerShips || []
@@ -88,10 +46,72 @@ const useNetworkMatch = ({
         ? room.initialState.enemyShips || []
         : room.initialState.playerShips || [];
 
-    const initialTurn =
-      room.initialTurn === playerRole ? "PLAYER_TURN" : "ENEMY_TURN";
+    const playerItems =
+      playerRole === "host"
+        ? room.initialState.playerItems || []
+        : room.initialState.enemyItems || [];
 
-    newMatch.initializeMatch(playerShips, enemyShips, initialTurn);
+    const enemyItems =
+      playerRole === "host"
+        ? room.initialState.enemyItems || []
+        : room.initialState.playerItems || [];
+
+    const ruleSet = {
+      ClassicRuleSet,
+      AlternatingTurnsRuleSet,
+    }[ruleSetName];
+
+    const initialTurn = room.initialTurn === playerRole ? "player" : "enemy";
+
+    const initializer = new GameInitializer({
+      ...config,
+      initialTurn,
+      ruleSet,
+    });
+
+    const gameSetup = initializer.appendGameSetup({
+      playerShips,
+      enemyShips,
+      playerItems,
+      enemyItems,
+    });
+
+    const newMatch = new Match({
+      setup: gameSetup,
+      ...callbacks,
+      onStateChange: (state) => {
+        setGameState(state);
+        callbacks?.onStateChange?.(state);
+      },
+      onGameOver: (result) => {
+        callbacks?.onGameOver?.(result);
+        roomService
+          .endGame(room.id)
+          .catch((error) => {
+            console.error("Error ending game:", error);
+          })
+          .catch((error) => {
+            console.error("Error ending game:", error);
+          });
+      },
+      onTurnChange: (currentTurn) => {
+        callbacks?.onTurnChange?.(currentTurn);
+        roomService
+          .updateCurrentTurn(
+            room.id,
+            currentTurn === "PLAYER_TURN"
+              ? playerRole
+              : playerRole === "host"
+                ? "guest"
+                : "host",
+          )
+          .catch((error) => {
+            console.error("Error updating current turn:", error);
+          });
+      },
+    });
+
+    newMatch.initializeMatch();
 
     match.current = newMatch;
     setGameState(newMatch.getState());

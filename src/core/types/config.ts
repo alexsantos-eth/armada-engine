@@ -1,3 +1,4 @@
+import type { MatchRuleSet } from "../engine";
 import type { PlayerName } from "./common";
 
 export interface GameConfig {
@@ -14,4 +15,5 @@ export interface GameConfig {
   itemCounts: Record<string, number>;
 
   initialTurn: PlayerName | "random";
+  ruleSet?: MatchRuleSet;
 }
