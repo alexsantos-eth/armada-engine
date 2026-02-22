@@ -1,26 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GameEngine } from '../../engine/logic';
 import type { GameShip, Shot } from '../../types/common';
-import { SINGLE_SHOT } from '../../constants/shotPatterns';
 
 describe('GameEngine', () => {
   let engine: GameEngine;
   let playerShips: GameShip[];
   let enemyShips: GameShip[];
-
-  // Helper function to execute a single shot using pattern system
-  const executeShot = (x: number, y: number, isPlayerShot: boolean) => {
-    const result = engine.executeShotPattern(x, y, SINGLE_SHOT, isPlayerShot);
-    return {
-      success: result.success,
-      error: result.error,
-      hit: result.shots[0]?.hit ?? false,
-      shipId: result.shots[0]?.shipId ?? -1,
-      shipDestroyed: result.shots[0]?.shipDestroyed,
-      isGameOver: result.isGameOver,
-      winner: result.winner,
-    };
-  };
 
   beforeEach(() => {
     engine = new GameEngine({ boardWidth: 10, boardHeight: 10 });

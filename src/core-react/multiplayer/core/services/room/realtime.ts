@@ -70,6 +70,8 @@ export class RoomService {
           setup.config.boardWidth ?? GAME_CONSTANTS.BOARD.DEFAULT_WIDTH,
         shipCounts:
           setup.config.shipCounts ?? GAME_CONSTANTS.SHIPS.DEFAULT_COUNTS,
+        itemCounts:
+          setup.config.itemCounts ?? GAME_CONSTANTS.ITEMS.DEFAULT_COUNTS,
       },
       initialState: {
         playerShips: setup.playerShips,

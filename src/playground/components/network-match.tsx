@@ -1,6 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
 import {
-  type CellState,
+  type Cell,
   type ShotPattern,
   SHOT_PATTERNS,
 } from "../../core/engine";
@@ -53,8 +53,8 @@ const NetworkMatch = () => {
     setPlayerReady(true);
   };
 
-  const getCellContent = (cell: CellState) => {
-    switch (cell) {
+  const getCellContent = (cell: Cell) => {
+    switch (cell.state) {
       case "SHIP":
         return "🚢";
       case "HIT":

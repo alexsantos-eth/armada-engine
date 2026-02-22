@@ -222,7 +222,7 @@ export class GameEngine {
   /**
    * Set turn to enemy
    */
-  private setEnemyTurn(): void {
+  public setEnemyTurn(): void {
     this.currentTurn = "ENEMY_TURN";
     this.onTurnChange?.(this.currentTurn);
     this.notifyStateChange();
@@ -249,7 +249,7 @@ export class GameEngine {
    * @returns Result of the shot including hit status and game state
    * @private - Use executeShotPattern() instead
    */
-  private executeShot(
+  public executeShot(
     x: number,
     y: number,
     isPlayerShot: boolean,
