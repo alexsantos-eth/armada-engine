@@ -6,6 +6,7 @@ import type {
   GameShip,
   GameItem,
   GameTurn,
+  Shot,
   ShotPattern,
   ShotPatternResult,
   Winner,
@@ -20,11 +21,29 @@ export interface PendingPlan {
   isPlayerShot: boolean;
 }
 
+/**
+ * All observable side-effect callbacks surfaced by Match.
+ * Defined here so matchMachine can own the responsibility of invoking them.
+ */
+export type MatchCallbacks = {
+  onShot?: (shot: Shot, isPlayerShot: boolean) => void;
+  onStateChange?: (state: GameEngineState) => void;
+  onTurnChange?: (turn: GameTurn) => void;
+  onGameOver?: (winner: Winner) => void;
+  onMatchStart?: () => void;
+  onItemCollected?: (shot: Shot, item: GameItem, isPlayerShot: boolean) => void;
+  /** Fires after a collected item's `onUse` handler is successfully invoked via
+   * `match.useItem()`. Useful for synchronising manual item activations over the network. */
+  onItemUse?: (itemId: number, isPlayerShot: boolean, item: GameItem) => void;
+};
+
 export interface MatchMachineContext {
   /** Underlying game engine (pure compute layer) */
   engine: GameEngine;
   /** Active ruleset that decides turns and game-over conditions */
   ruleSet: MatchRuleSet;
+  /** Match-level event callbacks owned by the machine */
+  callbacks?: MatchCallbacks;
   /** Planned attack pending confirmation */
   pendingPlan: PendingPlan | null;
   /** Result of the last executed attack */
@@ -90,6 +109,9 @@ export interface MatchMachineInput {
    * When provided, `config` is ignored.
    */
   engine?: GameEngine;
+  /** Match-level callbacks. The machine wires engine callbacks and fires
+   * `onMatchStart` / `onItemUse` at the appropriate transition points. */
+  callbacks?: MatchCallbacks;
 }
 
 export type { GameEngineState, Winner };

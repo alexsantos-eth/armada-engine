@@ -546,12 +546,14 @@ export interface ItemActionContext {
 `onCollect` fires **before** `resolveTurn` evaluates the ruleset. Any call to `ctx.setRuleSet()` inside `onCollect` is applied to the **same attack cycle** — the new ruleset's `decideTurn` is the one that determines whether the collector shoots again.
 
 ```
-executeAttack
-  └─ collectItem()
-       └─ onItemCollected callback
-            └─ item.onCollect(ctx)       ← fires here
-                 └─ ctx.setRuleSet(X)    ← stored synchronously in engine
-resolveTurn
+executeAttack  (matchMachine action)
+  └─ executeShotPattern()
+       └─ collectItem()
+            └─ onItemCollected → matchCallbacks.onItemCollected()   ← consumer notified
+  └─ for each shot where itemFullyCollected:
+       └─ item.onCollect(ctx)            ← fires here, inside the machine action
+            └─ ctx.setRuleSet(X)         ← stored synchronously in engine
+resolveTurn  (matchMachine action)
   └─ takePendingRuleSet()                ← picks up X before decideTurn
   └─ X.decideTurn(...)                   ← new ruleset governs this turn ✓
   └─ context.ruleSet = X                 ← persisted for all future turns
@@ -697,7 +699,7 @@ export interface Shot {
 }
 ```
 
-You can also react globally via the `onItemCollected` match callback (fires for every full collection, before `onCollect` on the item itself):
+You can also react globally via the `onItemCollected` match callback. It fires synchronously inside `executeShotPattern` — i.e. before `item.onCollect` runs — so it receives the collection event first:
 
 ```typescript
 const match = new Match({
@@ -719,7 +721,8 @@ flowchart TD
     PLACE --> INIT["GameEngine.initializeGame()\ncacheItemPositions()"]
     INIT --> SHOT["executeShotPattern()\ncollectItem()"]
     SHOT --> CB_GLOBAL["callbacks.onItemCollected\n(match-level observer)"]
-    SHOT --> ON_COLLECT["item.onCollect(ctx)\nctx.setRuleSet → pendingRuleSet"]
+    SHOT --> EXEC["executeAttack action\niterateCollectedShots"]
+    EXEC --> ON_COLLECT["item.onCollect(ctx)\nctx.setRuleSet → pendingRuleSet"]
     ON_COLLECT --> RESOLVE["resolveTurn\ntakePendingRuleSet()\nnewRuleSet.decideTurn(...)"]
     RESOLVE --> PLAN["→ planning state\nnewRuleSet active for all future turns"]
 

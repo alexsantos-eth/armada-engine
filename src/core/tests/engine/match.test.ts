@@ -993,6 +993,57 @@ describe('Match', () => {
       });
     }
 
+    it('onItemCollected match callback fires when an item is fully collected', () => {
+      const onItemCollected = vi.fn();
+      const item: GameItem = { coords: [3, 3], part: 1 };
+      const m = new Match({
+        setup: {
+          playerShips,
+          enemyShips,
+          initialTurn: 'PLAYER_TURN',
+          config: { boardWidth: 10, boardHeight: 10 },
+          enemyItems: [item],
+          playerItems: [],
+        },
+        onItemCollected,
+      });
+      m.initializeMatch();
+
+      m.planAndAttack(3, 3, true);
+
+      expect(onItemCollected).toHaveBeenCalledTimes(1);
+      const [shot, calledItem, isPlayerShot] = onItemCollected.mock.calls[0];
+      expect(shot.x).toBe(3);
+      expect(shot.y).toBe(3);
+      expect(calledItem).toMatchObject({ coords: [3, 3], part: 1 });
+      expect(isPlayerShot).toBe(true);
+    });
+
+    it('onItemCollected fires before item.onCollect', () => {
+      const callOrder: string[] = [];
+      const item: GameItem = {
+        coords: [3, 3],
+        part: 1,
+        onCollect() { callOrder.push('onCollect'); },
+      };
+      const m = new Match({
+        setup: {
+          playerShips,
+          enemyShips,
+          initialTurn: 'PLAYER_TURN',
+          config: { boardWidth: 10, boardHeight: 10 },
+          enemyItems: [item],
+          playerItems: [],
+        },
+        onItemCollected: () => { callOrder.push('onItemCollected'); },
+      });
+      m.initializeMatch();
+
+      m.planAndAttack(3, 3, true);
+
+      expect(callOrder).toEqual(['onItemCollected', 'onCollect']);
+    });
+
     it('onCollect fires when a single-part item is fully collected', () => {
       const onCollect = vi.fn();
       const item: GameItem = { coords: [3, 3], part: 1, onCollect };
@@ -1276,6 +1327,53 @@ describe('Match', () => {
       expect(m.getState().enemyShips).toHaveLength(2);
       m.useItem(0, true);
       expect(m.getState().enemyShips).toHaveLength(1);
+    });
+
+    it('onItemUse match callback fires when useItem() activates an item', () => {
+      const onItemUse = vi.fn();
+      const onUse = vi.fn();
+      const item: GameItem = { coords: [3, 3], part: 1, onUse };
+      const m = new Match({
+        setup: {
+          playerShips,
+          enemyShips,
+          initialTurn: 'PLAYER_TURN',
+          config: { boardWidth: 10, boardHeight: 10 },
+          enemyItems: [item],
+          playerItems: [],
+        },
+        onItemUse,
+      });
+      m.initializeMatch();
+
+      m.useItem(0, true);
+
+      expect(onItemUse).toHaveBeenCalledTimes(1);
+      const [calledItemId, calledIsPlayerShot, calledItem] = onItemUse.mock.calls[0];
+      expect(calledItemId).toBe(0);
+      expect(calledIsPlayerShot).toBe(true);
+      expect(calledItem).toBe(item);
+    });
+
+    it('onItemUse match callback does NOT fire when useItem() fails', () => {
+      const onItemUse = vi.fn();
+      const item: GameItem = { coords: [3, 3], part: 1 }; // no onUse handler
+      const m = new Match({
+        setup: {
+          playerShips,
+          enemyShips,
+          initialTurn: 'PLAYER_TURN',
+          config: { boardWidth: 10, boardHeight: 10 },
+          enemyItems: [item],
+          playerItems: [],
+        },
+        onItemUse,
+      });
+      m.initializeMatch();
+
+      m.useItem(0, true);
+
+      expect(onItemUse).not.toHaveBeenCalled();
     });
   });
 });

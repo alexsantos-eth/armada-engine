@@ -214,6 +214,8 @@ export const matchMachine = setup({
         event.enemyItems ?? [],
       );
 
+      context.callbacks?.onMatchStart?.();
+
       return {
         planError: null,
         lastAttackResult: null,
@@ -268,6 +270,8 @@ export const matchMachine = setup({
       item.onUse(itemCtx);
       context.engine.markItemUsed(itemId, isPlayerShot);
 
+      context.callbacks?.onItemUse?.(itemId, isPlayerShot, item);
+
       return { lastUseItemResult: true };
     }),
   },
@@ -281,10 +285,18 @@ export const matchMachine = setup({
    * (pending plan, last result, errors).
    */
   context: ({ input }) => {
-    const engine = input?.engine ?? new GameEngine(input?.config ?? {});
-    
+    const callbacks = input?.callbacks;
+    const engine = input?.engine ?? new GameEngine(input?.config ?? {}, {
+      onStateChange: (state) => callbacks?.onStateChange?.(state),
+      onTurnChange: (turn) => callbacks?.onTurnChange?.(turn),
+      onShot: (shot, isPlayerShot) => callbacks?.onShot?.(shot, isPlayerShot),
+      onGameOver: (winner) => callbacks?.onGameOver?.(winner),
+      onItemCollected: (shot, item, isPlayerShot) => callbacks?.onItemCollected?.(shot, item, isPlayerShot),
+    });
+
     return {
       engine,
+      callbacks,
       ruleSet: input?.ruleSet ?? DefaultRuleSet,
       pendingPlan: null,
       lastAttackResult: null,

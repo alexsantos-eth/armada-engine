@@ -3,7 +3,7 @@ import { createActor } from "xstate";
 import { SINGLE_SHOT } from "../constants/shots";
 import { AttackError, PlanError } from "./errors";
 import { GameInitializer, type GameSetup } from "../manager";
-import { GameEngine, type GameEngineState } from "./logic";
+import { type GameEngineState, GameEngine } from "./logic";
 import { matchMachine } from "./machines/matchMachine";
 import { DefaultRuleSet, type MatchRuleSet } from "./rulesets";
 
@@ -11,12 +11,14 @@ import type {
   Board,
   Winner,
   GameTurn,
-  GameItem,
   ShotPattern,
   ShotPatternResult,
   Shot,
   ItemActionContext,
 } from "../types/common";
+
+import type { MatchCallbacks } from "./machines/types";
+export type { MatchCallbacks };
 
 interface NewMatch extends MatchCallbacks {
   setup?: GameSetup;
@@ -43,7 +45,6 @@ interface NewMatch extends MatchCallbacks {
  */
 export class Match {
   private actor: ReturnType<typeof createActor<typeof matchMachine>>;
-  private matchCallbacks?: MatchCallbacks;
   private setup?: GameSetup;
 
   private get snap() {
@@ -63,33 +64,9 @@ export class Match {
     }
 
     const ruleSet = setup?.config.ruleSet ?? DefaultRuleSet;
-    this.matchCallbacks = callbacks;
-
-    /**
-     * The engine is created here (with its callbacks) and injected into the actor.
-     * This ensures all existing callbacks (onShot, onTurnChange…) continue to
-     * fire synchronously: the engine dispatches them from inside the machine actions.
-     */
-    const engine = new GameEngine(this.setup?.config, {
-      onStateChange: (state) => {
-        this.matchCallbacks?.onStateChange?.(state);
-      },
-      onTurnChange: (turn) => {
-        this.matchCallbacks?.onTurnChange?.(turn);
-      },
-      onShot: (shot, isPlayerShot) => {
-        this.matchCallbacks?.onShot?.(shot, isPlayerShot);
-      },
-      onGameOver: (winner) => {
-        this.matchCallbacks?.onGameOver?.(winner);
-      },
-      onItemCollected: (shot, item, isPlayerShot) => {
-        this.matchCallbacks?.onItemCollected?.(shot, item, isPlayerShot);
-      },
-    });
 
     this.actor = createActor(matchMachine, {
-      input: { engine, ruleSet },
+      input: { config: this.setup?.config, ruleSet, callbacks },
     });
 
     this.actor.start();
@@ -107,8 +84,6 @@ export class Match {
       playerItems,
       enemyItems,
     });
-
-    this.matchCallbacks?.onMatchStart?.();
   }
 
   /**
@@ -408,12 +383,3 @@ export interface PlanAndAttackResult extends ShotPatternResult {
   canShootAgain: boolean;
   reason: string;
 }
-
-export type MatchCallbacks = {
-  onShot?: (shot: Shot, isPlayerShot: boolean) => void;
-  onStateChange?: (state: GameEngineState) => void;
-  onTurnChange?: (turn: GameTurn) => void;
-  onGameOver?: (winner: Winner) => void;
-  onMatchStart?: () => void;
-  onItemCollected?: (shot: Shot, item: GameItem, isPlayerShot: boolean) => void;
-};
