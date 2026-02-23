@@ -1,5 +1,6 @@
 import { GameEngine } from "./logic";
 import type { GameItem, ItemActionContext, Shot } from "../types/common";
+import type { GameTurn } from "../types/common";
 
 /**
  * Internal shared builder for `ItemActionContext`.
@@ -14,9 +15,11 @@ function buildContext(
   isPlayerShot: boolean,
   shot: Shot | undefined,
   swapPerspective: boolean,
+  currentTurn: GameTurn,
+  onToggleTurn: () => void,
   captureRuleSet?: (ruleSet: unknown) => void,
 ): ItemActionContext {
-  const state = engine.getState();
+  const state = engine.getState(currentTurn);
   const swap = swapPerspective && !isPlayerShot;
   return {
     item,
@@ -49,7 +52,7 @@ function buildContext(
     setEnemyShots: swap
       ? (shots) => engine.setPlayerShots(shots)
       : (shots) => engine.setEnemyShots(shots),
-    toggleTurn: () => engine.toggleTurn(),
+    toggleTurn: () => onToggleTurn(),
     setRuleSet: (ruleSet: unknown) => captureRuleSet?.(ruleSet),
   };
 }
@@ -70,9 +73,11 @@ export function buildCollectContext(
   item: GameItem,
   isPlayerShot: boolean,
   shot: Shot,
+  currentTurn: GameTurn,
+  onToggleTurn: () => void,
   captureRuleSet?: (rs: unknown) => void,
 ): ItemActionContext {
-  return buildContext(engine, item, isPlayerShot, shot, false, captureRuleSet);
+  return buildContext(engine, item, isPlayerShot, shot, false, currentTurn, onToggleTurn, captureRuleSet);
 }
 
 /**
@@ -89,7 +94,9 @@ export function buildUseContext(
   engine: GameEngine,
   item: GameItem,
   isPlayerShot: boolean,
+  currentTurn: GameTurn,
+  onToggleTurn: () => void,
   captureRuleSet?: (rs: unknown) => void,
 ): ItemActionContext {
-  return buildContext(engine, item, isPlayerShot, undefined, true, captureRuleSet);
+  return buildContext(engine, item, isPlayerShot, undefined, true, currentTurn, onToggleTurn, captureRuleSet);
 }

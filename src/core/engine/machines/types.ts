@@ -42,6 +42,8 @@ export interface MatchMachineContext {
   engine: GameEngine;
   /** Active ruleset that decides turns and game-over conditions */
   ruleSet: MatchRuleSet;
+  /** Current turn — owned by the machine, not the engine */
+  currentTurn: GameTurn;
   /** Match-level event callbacks owned by the machine */
   callbacks?: MatchCallbacks;
   /** Planned attack pending confirmation */
@@ -115,7 +117,12 @@ export type MatchMachineEvent =
    * `isPlayerShot: true`  → looks in enemy items (player-collected).
    * `isPlayerShot: false` → looks in player items (enemy-collected).
    */
-  | { type: "USE_ITEM"; itemId: number; isPlayerShot: boolean };
+  | { type: "USE_ITEM"; itemId: number; isPlayerShot: boolean }
+  /**
+   * Forces the current turn to the given value without side-effects.
+   * Useful for network synchronisation (e.g. re-syncing after reconnect).
+   */
+  | { type: "SYNC_TURN"; turn: GameTurn };
 
 export interface MatchMachineInput {
   /** Board configuration (width, height…); ignored when `engine` is provided */

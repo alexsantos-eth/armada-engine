@@ -18,7 +18,6 @@ type PositionKey = string;
 const posKey = (x: number, y: number): PositionKey => `${x},${y}`;
 
 export class GameEngine {
-  private currentTurn: GameTurn;
   private playerShips: GameShip[];
   private enemyShips: GameShip[];
   private isGameOver: boolean;
@@ -55,7 +54,6 @@ export class GameEngine {
     this.boardWidth = config.boardWidth ?? GAME_CONSTANTS.BOARD.DEFAULT_WIDTH;
     this.boardHeight =
       config.boardHeight ?? GAME_CONSTANTS.BOARD.DEFAULT_HEIGHT;
-    this.currentTurn = "PLAYER_TURN";
     this.playerShips = [];
     this.enemyShips = [];
     this.isGameOver = false;
@@ -85,23 +83,21 @@ export class GameEngine {
   }
 
   /**
-   * Initialize a new game with ships, items, and starting turn
+   * Initialize a new game with ships and items.
+   * The starting turn is managed by the matchMachine, not the engine.
    * @param playerShips - Array of player's ships
    * @param enemyShips - Array of enemy's ships
-   * @param initialTurn - Which player starts (defaults to PLAYER_TURN)
    * @param playerItems - Items placed on the player's board (enemy can collect these)
    * @param enemyItems - Items placed on the enemy's board (player can collect these)
    */
   public initializeGame(
     playerShips: GameShip[],
     enemyShips: GameShip[],
-    initialTurn: GameTurn = "PLAYER_TURN",
     playerItems: GameItem[] = [],
     enemyItems: GameItem[] = [],
   ): void {
     this.playerShips = playerShips;
     this.enemyShips = enemyShips;
-    this.currentTurn = initialTurn;
     this.isGameOver = false;
     this.winner = null;
     this.shotCount = 0;
@@ -148,7 +144,6 @@ export class GameEngine {
    * Reset the game to initial state
    */
   public resetGame(): void {
-    this.currentTurn = "PLAYER_TURN";
     this.playerShips = [];
     this.enemyShips = [];
     this.isGameOver = false;
@@ -190,56 +185,7 @@ export class GameEngine {
     this._version++;
   }
 
-  /**
-   * Get current turn
-   * @returns Current game turn (PLAYER_TURN or ENEMY_TURN)
-   */
-  public getCurrentTurn(): GameTurn {
-    return this.currentTurn;
-  }
 
-  /**
-   * Check if it's the player's turn
-   * @returns True if current turn is PLAYER_TURN
-   */
-  public isPlayerTurn(): boolean {
-    return this.currentTurn === "PLAYER_TURN";
-  }
-
-  /**
-   * Check if it's the enemy's turn
-   * @returns True if current turn is ENEMY_TURN
-   */
-  public isEnemyTurn(): boolean {
-    return this.currentTurn === "ENEMY_TURN";
-  }
-
-  /**
-   * Set turn to player
-   */
-  private setPlayerTurn(): void {
-    this.currentTurn = "PLAYER_TURN";
-    this._version++;
-  }
-
-  /**
-   * Set turn to enemy
-   */
-  private setEnemyTurn(): void {
-    this.currentTurn = "ENEMY_TURN";
-    this._version++;
-  }
-
-  /**
-   * Toggle turn between player and enemy
-   */
-  public toggleTurn(): void {
-    if (this.currentTurn === "PLAYER_TURN") {
-      this.setEnemyTurn();
-    } else {
-      this.setPlayerTurn();
-    }
-  }
 
   /**
    * Execute a shot at target coordinates (internal use only)
@@ -681,11 +627,11 @@ export class GameEngine {
    * Get complete current game state
    * @returns Full game state including ships, shots, items, and game status
    */
-  public getState(): GameEngineState {
+  public getState(currentTurn: GameTurn = "PLAYER_TURN"): GameEngineState {
     return {
-      currentTurn: this.currentTurn,
-      isPlayerTurn: this.isPlayerTurn(),
-      isEnemyTurn: this.isEnemyTurn(),
+      currentTurn,
+      isPlayerTurn: currentTurn === "PLAYER_TURN",
+      isEnemyTurn: currentTurn === "ENEMY_TURN",
       playerShips: [...this.playerShips],
       enemyShips: [...this.enemyShips],
       playerShots: Array.from(this.playerShotsMap.values()),

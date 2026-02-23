@@ -220,25 +220,23 @@ export class Match {
   }
 
   public isPlayerTurn(): boolean {
-    return this.getState().isPlayerTurn;
+    return this.snap.context.currentTurn === "PLAYER_TURN";
   }
 
   public isEnemyTurn(): boolean {
-    return this.getState().isEnemyTurn;
+    return this.snap.context.currentTurn === "ENEMY_TURN";
   }
 
   public getCurrentTurn(): GameTurn {
-    return this.getState().currentTurn;
+    return this.snap.context.currentTurn;
   }
 
   public getState(): GameEngineState {
-    return this.engine.getState();
+    return this.engine.getState(this.snap.context.currentTurn);
   }
 
   public forceSetTurn(turn: GameTurn): void {
-    if (this.engine.getCurrentTurn() !== turn) {
-      this.engine.toggleTurn();
-    }
+    this.actor.send({ type: "SYNC_TURN", turn });
   }
 
   public isCellShot(x: number, y: number, isPlayerShot: boolean): boolean {

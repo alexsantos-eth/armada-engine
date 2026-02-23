@@ -43,14 +43,6 @@ describe('GameEngine', () => {
       expect(state.currentTurn).toBe('PLAYER_TURN');
     });
 
-    it('should initialize with custom starting turn', () => {
-      engine.initializeGame(playerShips, enemyShips, 'ENEMY_TURN');
-      
-      expect(engine.getCurrentTurn()).toBe('ENEMY_TURN');
-      expect(engine.isEnemyTurn()).toBe(true);
-      expect(engine.isPlayerTurn()).toBe(false);
-    });
-
     it('should accept custom board dimensions', () => {
       const customEngine = new GameEngine({ boardWidth: 15, boardHeight: 12 });
       const dimensions = customEngine.getBoardDimensions();
@@ -58,29 +50,6 @@ describe('GameEngine', () => {
       expect(dimensions.width).toBe(15);
       expect(dimensions.height).toBe(12);
     });
-  });
-
-  describe('Turn Management', () => {
-    beforeEach(() => {
-      engine.initializeGame(playerShips, enemyShips);
-    });
-
-    it('should start with player turn by default', () => {
-      expect(engine.isPlayerTurn()).toBe(true);
-      expect(engine.isEnemyTurn()).toBe(false);
-      expect(engine.getCurrentTurn()).toBe('PLAYER_TURN');
-    });
-
-    it('should toggle turns correctly', () => {
-      expect(engine.getCurrentTurn()).toBe('PLAYER_TURN');
-      
-      engine.toggleTurn();
-      expect(engine.getCurrentTurn()).toBe('ENEMY_TURN');
-      
-      engine.toggleTurn();
-      expect(engine.getCurrentTurn()).toBe('PLAYER_TURN');
-    });
-
   });
 
   describe('Shot Execution', () => {
@@ -520,7 +489,7 @@ describe('GameEngine', () => {
     ];
 
     beforeEach(() => {
-      engine.initializeGame(playerShips, enemyShips, 'PLAYER_TURN', [], enemyItems);
+      engine.initializeGame(playerShips, enemyShips, [], enemyItems);
     });
 
     it('should reflect items in state after initializeGame', () => {
@@ -583,7 +552,7 @@ describe('GameEngine', () => {
     it('setPlayerItems resets collected state', () => {
       const eng = new GameEngine({ boardWidth: 10, boardHeight: 10 });
       const items = [{ coords: [1, 1] as [number, number], part: 1 }];
-      eng.initializeGame(playerShips, enemyShips, 'PLAYER_TURN', items, []);
+      eng.initializeGame(playerShips, enemyShips, items, []);
 
       eng.executeShotPattern(1, 1, SINGLE_SHOT, false); // enemy collects player item
       expect(eng.getState().enemyCollectedItems).toContain(0);
@@ -704,7 +673,7 @@ describe('GameEngine', () => {
     const enemyItems = [{ coords: [1, 1] as [number, number], part: 1 }];
 
     beforeEach(() => {
-      engine.initializeGame(playerShips, enemyShips, 'PLAYER_TURN', [], enemyItems);
+      engine.initializeGame(playerShips, enemyShips, [], enemyItems);
     });
 
     it('should return a board with correct dimensions', () => {

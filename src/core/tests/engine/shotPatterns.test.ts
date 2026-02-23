@@ -29,7 +29,7 @@ describe("Shot Pattern System", () => {
 
   beforeEach(() => {
     engine = new GameEngine({ boardWidth: 10, boardHeight: 10 });
-    engine.initializeGame(playerShips, enemyShips, "PLAYER_TURN");
+    engine.initializeGame(playerShips, enemyShips);
   });
 
   describe("Single Shot Pattern", () => {
@@ -365,7 +365,6 @@ describe("Shot Pattern System", () => {
       engine.initializeGame(
         playerShips,
         [{ coords: [5, 5], width: 2, height: 1 }],
-        "PLAYER_TURN",
       );
       const result = engine.executeShotPattern(5, 5, SMALL_SQUARE_SHOT, true);
       const hits = result.shots.filter(s => s.hit && s.executed);
