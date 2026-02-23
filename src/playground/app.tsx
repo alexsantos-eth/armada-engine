@@ -1,7 +1,7 @@
-import PlaygroundMatchs from "./match";
+import MatchPlayground from "./match";
 
 const App = () => {
-  return <PlaygroundMatchs />;
+  return <MatchPlayground />;
 };
 
 export default App;

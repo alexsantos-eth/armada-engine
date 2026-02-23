@@ -50,11 +50,9 @@ export interface GameRoom {
 
 export interface MatchAttackEvent {
   type: "ATTACK";
-  /** Role of the player who fired the shot (used to skip own events). */
   senderId: PlayerRole;
   x: number;
   y: number;
-  /** Full ShotPattern so the receiver never needs to reconstruct it. */
   pattern: ShotPattern;
   timestamp: number;
 }

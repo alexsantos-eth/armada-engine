@@ -98,9 +98,7 @@ const useNetworkMatch = ({
       },
       onShot: (shot, isPlayerShot) => {
         callbacks?.onShot?.(shot, isPlayerShot);
-        // Player shots are pushed to Firebase so the opponent can replay them.
-        // The machine already validated and executed the shot, so this is the
-        // single authoritative moment to sync — no manual push needed elsewhere.
+        
         if (isPlayerShot) {
           const pattern = getShotPattern(shot.patternId!) ?? SINGLE_SHOT;
           roomService
@@ -122,7 +120,7 @@ const useNetworkMatch = ({
       },
       onItemUse: (itemId, isPlayerShot, item) => {
         callbacks?.onItemUse?.(itemId, isPlayerShot, item);
-        // Same pattern: push only the local player's item activations.
+
         if (isPlayerShot) {
           roomService
             .pushMatchEvent(room.id, {

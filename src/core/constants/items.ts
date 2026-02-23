@@ -1,4 +1,4 @@
-import { ItemHitRuleSet, AlternatingTurnsRuleSet, ClassicRuleSet } from "../engine/rulesets";
+import { ItemHitRuleSet } from "../engine/rulesets";
 import type { GameItem } from "../types/common";
 
 /**
@@ -17,47 +17,51 @@ export interface ItemTemplate extends GameItem {
   defaultCount: number;
 }
 
-/**
- * EMP Grenade — a single-cell electromagnetic pulse device.
- *
- * Layout:
- *   [⚡]
- *
- * onCollect: Scrambles enemy intelligence — erases every shot the opponent
- *   has fired so far, forcing them to rediscover ship positions from scratch.
- *   Also activates {@link ItemHitRuleSet} so the collector chains shots on hits.
- * onUse (UI-triggered): toggles the turn, granting a surprise bonus attack
- *   while the opponent's systems are still rebooting.
- */
-export const EMP_GRENADE: ItemTemplate = {
-  id: "emp_grenade",
-  title: "EMP Grenade",
-  description: "Erases all opponent shots on collect, resetting their intel. Use for a bonus attack.",
+export const HEALTH_KIT: ItemTemplate = {
+  id: "health_kit",
+  title: "Health Kit",
+  description: "Grants hit-continuation on collect. Use to skip the enemy's turn.",
   coords: [0, 0],
   part: 1,
   defaultCount: 1,
-  onUse(ctx) {
-ctx.setEnemyShots([]);
 
+  onUse(ctx) {
+    ctx.setRuleSet(ItemHitRuleSet);
   },
 };
 
-/**
- * Phantom Decoy — a two-cell holographic projector.
- *
- * Layout (horizontal):
- *   [👻][👻]
- *
- * onCollect: Projects a fake 1×1 ghost ship onto the collector's own board,
- *   forcing the opponent to waste a shot destroying the decoy before they
- *   can finish off your real fleet. Switches to {@link ClassicRuleSet}.
- * onUse (UI-triggered): Strips all uncollected items from the opponent's
- *   board — the holographic interference jams their power-ups.
- */
-export const PHANTOM_DECOY: ItemTemplate = {
-  id: "phantom_decoy",
-  title: "Phantom Decoy",
-  description: "Spawns a decoy ship on your board on collect. Use to jam opponent items.",
+
+export const AMMO_CACHE: ItemTemplate = {
+  id: "ammo_cache",
+  title: "Ammo Cache",
+  description: "Grants hit-continuation on collect. No activation required.",
+  coords: [0, 0],
+  part: 1,
+  defaultCount: 1,
+
+  onUse(ctx) {
+    ctx.setRuleSet(ItemHitRuleSet);
+  },
+};
+
+
+export const SHIELD_MODULE: ItemTemplate = {
+  id: "shield_module",
+  title: "Shield Module",
+  description: "Forces alternating turns on collect. Use to cancel the enemy's turn.",
+  coords: [0, 0],
+  part: 1,
+  defaultCount: 1,
+
+  onUse(ctx) {
+    ctx.toggleTurn();
+  },
+};
+
+export const RADAR_DEVICE: ItemTemplate = {
+  id: "radar_device",
+  title: "Radar Device",
+  description: "Clears all opponent items on collect. Use for a bonus shot.",
   coords: [0, 0],
   part: 2,
   defaultCount: 1,
@@ -68,69 +72,19 @@ export const PHANTOM_DECOY: ItemTemplate = {
 };
 
 /**
- * Kraken Tentacle — a three-cell ancient sea-monster relic.
- *
- * Layout (horizontal):
- *   [🐙][🐙][🐙]
- *
- * onCollect: The kraken rises — wipes ALL of the opponent's recorded shots
- *   (full intelligence reset) AND slows the pace by switching to
- *   {@link AlternatingTurnsRuleSet}. The opponent loses every advantage at once.
- * onUse (UI-triggered): toggles the turn, unleashing a devastating bonus
- *   strike from the deep.
- */
-export const KRAKEN_TENTACLE: ItemTemplate = {
-  id: "kraken_tentacle",
-  title: "Kraken Tentacle",
-  description: "Resets opponent shots & forces alternating turns on collect. Use for a deep-sea strike.",
-  coords: [0, 0],
-  part: 3,
-  defaultCount: 1,
-
-  onUse(ctx) {
-      ctx.setPlayerItems([]);
-  },
-};
-
-/**
- * Solar Flare — a single-cell burst of cosmic energy.
- *
- * Layout:
- *   [☀️]
- *
- * onCollect: Incinerates every uncollected item on the opponent's board AND
- *   switches to {@link ItemHitRuleSet}, giving the collector rapid-fire
- *   capability while denying the opponent any future power-ups.
- * onUse (UI-triggered): toggles the turn — one last pulse of solar energy
- *   lets the collector fire again immediately.
- */
-export const SOLAR_FLARE: ItemTemplate = {
-  id: "solar_flare",
-  title: "Solar Flare",
-  description: "Burns opponent items & grants rapid fire on collect. Use for an extra shot.",
-  coords: [0, 0],
-  part: 1,
-  defaultCount: 1,
-
-  onUse(ctx) {
-    ctx.setPlayerItems([]);
-  },
-};
-
-/**
- * All predefined item templates, keyed by variant name.
+ * All predefined item templates, keyed by variant id.
  */
 export const ITEM_TEMPLATES: Record<string, ItemTemplate> = {
-  emp_grenade: EMP_GRENADE,
-  phantom_decoy: PHANTOM_DECOY,
-  kraken_tentacle: KRAKEN_TENTACLE,
-  solar_flare: SOLAR_FLARE,
+  health_kit: HEALTH_KIT,
+  ammo_cache: AMMO_CACHE,
+  shield_module: SHIELD_MODULE,
+  radar_device: RADAR_DEVICE,
 };
 
 /**
- * Get an item template by name.
- * @returns The matching ItemTemplate, or EMP_GRENADE if not found.
+ * Get an item template by id.
+ * @returns The matching ItemTemplate, or HEALTH_KIT if not found.
  */
 export function getItemTemplate(name: string): ItemTemplate {
-  return ITEM_TEMPLATES[name] ?? EMP_GRENADE;
+  return ITEM_TEMPLATES[name] ?? HEALTH_KIT;
 }

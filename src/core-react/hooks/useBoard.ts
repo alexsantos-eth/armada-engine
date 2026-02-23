@@ -7,8 +7,6 @@ export interface UseBoardProps extends UseMatchProps {
 }
 const useBoard = ({ initialSetup, matchRef, ...callbacks }: UseBoardProps) => {
   const match = useMatch({ initialSetup, ...callbacks });
-  // useMatch exposes a MatchQueryAPI for external consumers; internally we need
-  // the full Match instance to dispatch commands.
   const cmd = match.match as Match | null;
 
   const planAndAttack = (x: number, y: number, pattern: ShotPattern = SINGLE_SHOT, isPlayer: boolean = true) => {
