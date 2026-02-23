@@ -1,10 +1,11 @@
 import { setup, assign, createActor } from "xstate";
-import { GameEngine, toMatchState } from "../logic";
+import { GameEngine } from "../logic";
 import { DefaultRuleSet } from "../rulesets";
 import { SINGLE_SHOT } from "../../constants/shots";
 import { PlanError } from "../errors";
 import { buildCollectContext, buildUseContext } from "../item";
-import type { Shot, GameTurn } from "../../types/common";
+import { fireMatchCallbacks } from "./callbacks";
+import type { GameTurn } from "../../types/common";
 import type {
   MatchMachineContext,
   MatchMachineEvent,
@@ -93,12 +94,15 @@ export const matchMachine = setup({
 
     /**
      * Step 1a of the turn cycle: execute the shot pattern in the engine.
-     * Stores `lastAttackResult`, clears the pending plan, and fires
-     * `onItemCollected` and `onShot` callbacks.
+     * Stores `lastAttackResult`, `lastAttackIsPlayerShot`, and
+     * `lastAttackCenter` so downstream actions and the CallbackCoordinator
+     * have everything they need. Clears the pending plan.
      *
-     * Item `onCollect` lifecycle handlers are intentionally not called here —
-     * that responsibility belongs to `runCollectHandlers` (step 1b), keeping
-     * shot execution and item lifecycle concerns separate.
+     * Callbacks are intentionally NOT fired here — the CallbackCoordinator
+     * in `resolveTurn` (step 2) is the single place for all firing.
+     *
+     * Item `onCollect` lifecycle handlers are not called here; that is
+     * `runCollectHandlers`'s responsibility (step 1b).
      */
     executeAttack: assign(({ context }) => {
       if (!context.pendingPlan) return {};
@@ -112,39 +116,11 @@ export const matchMachine = setup({
         isPlayerShot,
       );
 
-      // Fire onItemCollected BEFORE item.onCollect so the match-level observer
-      // sees the event before any side-effects the item handler produces.
-      if (context.callbacks?.onItemCollected) {
-        const engineState = context.engine.getState();
-        const notifyItems = isPlayerShot ? engineState.enemyItems : engineState.playerItems;
-        for (const shot of lastAttackResult.shots) {
-          if (shot.itemFullyCollected && shot.itemId !== undefined) {
-            const item = notifyItems[shot.itemId];
-            if (item) {
-              context.callbacks.onItemCollected(shot as Shot, item, isPlayerShot);
-            }
-          }
-        }
-      }
-
-      // Fire onShot once per attack with a representative center shot.
-      if (context.callbacks?.onShot) {
-        const centerShot: Shot = {
-          x: centerX,
-          y: centerY,
-          hit: lastAttackResult.shots.some((s) => s.hit && s.executed),
-          shipId: lastAttackResult.shots.find((s) => s.hit && s.executed)?.shipId,
-          patternId: pattern.id,
-          patternCenterX: centerX,
-          patternCenterY: centerY,
-        };
-        context.callbacks.onShot(centerShot, isPlayerShot);
-      }
-
       return {
         pendingPlan: null,
         lastAttackResult,
         lastAttackIsPlayerShot: isPlayerShot,
+        lastAttackCenter: { centerX, centerY, pattern },
       };
     }),
 
@@ -152,13 +128,13 @@ export const matchMachine = setup({
      * Step 1b of the turn cycle: invoke `onCollect` for every item that was
      * fully collected by the preceding attack.
      *
-     * Separated from `executeAttack` so that item lifecycle logic does not
-     * bleed into shot-execution concerns.
+     * Responsibilities (only these):
+     * 1. Run each collected item's `onCollect` handler.
+     * 2. Accumulate `collectToggleCount` from handlers that called
+     *    `ctx.toggleTurn()`, storing it for `resolveTurn` to consume.
+     * 3. Capture any pending ruleset change from `ctx.setRuleSet()`.
      *
-     * `onCollect` must run before `resolveTurn` (step 2) so that any
-     * `ctx.setRuleSet()` call is captured into `pendingRuleSet` before the
-     * ruleset is consulted — guaranteeing the new ruleset is applied to the
-     * same turn cycle.
+     * Turn mutation and all callbacks belong to `resolveTurn` (step 2).
      */
     runCollectHandlers: assign(({ context }) => {
       if (!context.lastAttackResult || context.lastAttackIsPlayerShot === null) return {};
@@ -190,26 +166,24 @@ export const matchMachine = setup({
         }
       }
 
-      const currentTurn: GameTurn =
-        collectToggleCount % 2 === 0
-          ? context.currentTurn
-          : context.currentTurn === "PLAYER_TURN" ? "ENEMY_TURN" : "PLAYER_TURN";
-
-      context.callbacks?.onStateChange?.(toMatchState(context.engine.getState(), currentTurn));
       return {
-        currentTurn,
+        collectToggleCount,
         pendingRuleSet: capturedRuleSet as typeof context.ruleSet | null,
-        lastAttackIsPlayerShot: null,
+        // lastAttackIsPlayerShot is intentionally NOT cleared here —
+        // resolveTurn still needs it for the CallbackCoordinator payload.
       };
     }),
 
     /**
-     * Step 2 of the turn cycle: resolve the turn outcome.
+     * Step 2 of the turn cycle: resolve the turn outcome and fire all
+     * match-level callbacks through the CallbackCoordinator (single call).
      *
-     * 1. Consume any pending ruleset change captured from `onCollect` handlers
-     * 2. Ask the ruleset to decide the turn outcome
-     * 3. Toggle the turn if required
-     * 4. Check for game-over via the ruleset
+     * 1. Apply collect-phase turn toggles accumulated in `collectToggleCount`.
+     * 2. Consume any pending ruleset change captured from `onCollect` handlers.
+     * 3. Ask the (possibly updated) ruleset to decide the turn outcome.
+     * 4. Toggle the turn if the ruleset requires it.
+     * 5. Check for game-over via the ruleset.
+     * 6. Fire all callbacks via `fireMatchCallbacks`.
      */
     resolveTurn: assign(({ context }) => {
       if (!context.lastAttackResult) return {};
@@ -218,31 +192,51 @@ export const matchMachine = setup({
       const activeRuleSet =
         (pendingRuleSet as typeof context.ruleSet | null) ?? context.ruleSet;
 
+      // Apply collect-phase toggles accumulated by runCollectHandlers.
+      let currentTurn: GameTurn =
+        context.collectToggleCount % 2 === 0
+          ? context.currentTurn
+          : context.currentTurn === "PLAYER_TURN" ? "ENEMY_TURN" : "PLAYER_TURN";
+
       const stateAfterAttack = context.engine.getState();
       const lastTurnDecision = activeRuleSet.decideTurn(
         context.lastAttackResult,
         stateAfterAttack,
       );
 
-      let currentTurn: GameTurn = context.currentTurn;
-      if (lastTurnDecision.shouldToggleTurn) {
+      const rulesetToggledTurn = lastTurnDecision.shouldToggleTurn;
+      if (rulesetToggledTurn) {
         currentTurn = currentTurn === "PLAYER_TURN" ? "ENEMY_TURN" : "PLAYER_TURN";
-        context.callbacks?.onTurnChange?.(currentTurn);
       }
 
+      let winner = null;
       const stateAfterTurn = context.engine.getState();
       if (!stateAfterTurn.isGameOver) {
         const gameOverDecision = activeRuleSet.checkGameOver(stateAfterTurn);
         if (gameOverDecision.isGameOver && gameOverDecision.winner) {
           context.engine.setGameOver(gameOverDecision.winner);
-          context.callbacks?.onGameOver?.(gameOverDecision.winner);
+          winner = gameOverDecision.winner;
         }
       }
 
-      context.callbacks?.onStateChange?.(toMatchState(context.engine.getState(), currentTurn));
+      fireMatchCallbacks(context.callbacks, context.engine, {
+        kind: "attack",
+        result: context.lastAttackResult,
+        isPlayerShot: context.lastAttackIsPlayerShot ?? false,
+        centerX: context.lastAttackCenter?.centerX ?? 0,
+        centerY: context.lastAttackCenter?.centerY ?? 0,
+        pattern: context.lastAttackCenter?.pattern ?? SINGLE_SHOT,
+        currentTurn,
+        rulesetToggledTurn,
+        winner,
+      });
+
       return {
         currentTurn,
         lastTurnDecision,
+        collectToggleCount: 0,
+        lastAttackCenter: null,
+        lastAttackIsPlayerShot: null,
         pendingRuleSet: null,
         ...(pendingRuleSet ? { ruleSet: activeRuleSet } : {}),
       };
@@ -261,8 +255,11 @@ export const matchMachine = setup({
         event.enemyItems ?? [],
       );
 
-      context.callbacks?.onMatchStart?.();
-      context.callbacks?.onStateChange?.(toMatchState(context.engine.getState(), currentTurn));
+      fireMatchCallbacks(context.callbacks, context.engine, {
+        kind: "matchStart",
+        currentTurn,
+      });
+
       return {
         currentTurn,
         planError: null,
@@ -272,13 +269,22 @@ export const matchMachine = setup({
         turnBeforeItemUse: null,
         pendingRuleSet: null,
         lastAttackIsPlayerShot: null,
+        lastAttackCenter: null,
+        collectToggleCount: 0,
+        useToggleCount: 0,
+        lastUsedItemInfo: null,
       };
     }),
 
     /** Resets the engine to its initial empty state */
     resetEngine: assign(({ context }) => {
       context.engine.resetGame();
-      context.callbacks?.onStateChange?.(toMatchState(context.engine.getState(), "PLAYER_TURN"));
+
+      fireMatchCallbacks(context.callbacks, context.engine, {
+        kind: "reset",
+        currentTurn: "PLAYER_TURN",
+      });
+
       return {
         currentTurn: "PLAYER_TURN" as GameTurn,
         pendingPlan: null,
@@ -289,6 +295,10 @@ export const matchMachine = setup({
         turnBeforeItemUse: null,
         pendingRuleSet: null,
         lastAttackIsPlayerShot: null,
+        lastAttackCenter: null,
+        collectToggleCount: 0,
+        useToggleCount: 0,
+        lastUsedItemInfo: null,
       };
     }),
 
@@ -320,6 +330,15 @@ export const matchMachine = setup({
      * Activates the `onUse` handler of a collected item.
      * Only reachable from the `planning` state — all other states silently
      * ignore the event.
+     *
+     * Responsibilities (only these):
+     * 1. Validate that it is the caller's turn and the item is usable.
+     * 2. Invoke `item.onUse` and mark the item as used.
+     * 3. Accumulate `useToggleCount` so `resolveItemUse` can determine
+     *    whether the handler itself changed the turn.
+     * 4. Store `lastUsedItemInfo` for the CallbackCoordinator.
+     *
+     * Turn mutation and all callbacks belong to `resolveItemUse`.
      *
      * Stores the outcome in `lastUseItemResult`:
      * - `true`  — handler found, item wasn't used before, `onUse` called.
@@ -362,36 +381,34 @@ export const matchMachine = setup({
       item.onUse(itemCtx);
       context.engine.markItemUsed(itemId, isPlayerShot);
 
-      const currentTurn: GameTurn =
-        useToggleCount % 2 === 0
-          ? context.currentTurn
-          : context.currentTurn === "PLAYER_TURN" ? "ENEMY_TURN" : "PLAYER_TURN";
-
-      if (isPlayerShot) {
-        context.callbacks?.onItemUse?.(itemId, isPlayerShot, item);
-      }
-
-      context.callbacks?.onStateChange?.(toMatchState(context.engine.getState(), currentTurn));
       return {
-        currentTurn,
         lastUseItemResult: true,
         turnBeforeItemUse,
+        useToggleCount,
+        lastUsedItemInfo: { itemId, isPlayerShot, item },
         pendingRuleSet: capturedRuleSet as typeof context.ruleSet | null,
       };
     }),
 
     /**
-     * Step 2 of the item-use cycle: resolve the turn outcome.
-     * Mirrors the logic that `resolveTurn` applies after an attack:
-     * 1. Ask the ruleset whether the turn should toggle after item use.
-     * 2. Check for game-over.
+     * Step 2 of the item-use cycle: resolve the turn outcome and fire all
+     * match-level callbacks through the CallbackCoordinator (single call).
+     *
+     * 1. Apply `useToggleCount` accumulated by `useItem`'s handler.
+     * 2. Ask the ruleset whether the turn should also toggle after item use.
+     * 3. Check for game-over.
+     * 4. Fire all callbacks via `fireMatchCallbacks`.
+     *
      * Skipped entirely when `lastUseItemResult` is `false` (invalid use).
      */
     resolveItemUse: assign(({ context }) => {
       if (!context.lastUseItemResult) return {};
 
-      const itemToggledTurn = context.currentTurn !== context.turnBeforeItemUse;
-      let currentTurn: GameTurn = context.currentTurn;
+      // Apply toggles the onUse handler accumulated.
+      const itemToggledTurn = context.useToggleCount % 2 !== 0;
+      let currentTurn: GameTurn = itemToggledTurn
+        ? context.currentTurn === "PLAYER_TURN" ? "ENEMY_TURN" : "PLAYER_TURN"
+        : context.currentTurn;
       let rulesetToggledTurn = false;
       const stateAfterUse = context.engine.getState();
       if (!itemToggledTurn && !stateAfterUse.isGameOver) {
@@ -405,21 +422,34 @@ export const matchMachine = setup({
         }
       }
 
-      if (itemToggledTurn || rulesetToggledTurn) {
-        context.callbacks?.onTurnChange?.(currentTurn);
-      }
-
+      let winner = null;
       const stateForGameOver = context.engine.getState();
       if (!stateForGameOver.isGameOver) {
         const gameOverDecision = context.ruleSet.checkGameOver(stateForGameOver);
         if (gameOverDecision.isGameOver && gameOverDecision.winner) {
           context.engine.setGameOver(gameOverDecision.winner);
-          context.callbacks?.onGameOver?.(gameOverDecision.winner);
+          winner = gameOverDecision.winner;
         }
       }
 
-      context.callbacks?.onStateChange?.(toMatchState(context.engine.getState(), currentTurn));
-      return { currentTurn, pendingRuleSet: null };
+      if (context.lastUsedItemInfo) {
+        fireMatchCallbacks(context.callbacks, context.engine, {
+          kind: "itemUse",
+          itemId: context.lastUsedItemInfo.itemId,
+          isPlayerShot: context.lastUsedItemInfo.isPlayerShot,
+          item: context.lastUsedItemInfo.item,
+          currentTurn,
+          turnToggled: itemToggledTurn || rulesetToggledTurn,
+          winner,
+        });
+      }
+
+      return {
+        currentTurn,
+        useToggleCount: 0,
+        lastUsedItemInfo: null,
+        pendingRuleSet: null,
+      };
     }),
   },
 }).createMachine({
@@ -448,6 +478,10 @@ export const matchMachine = setup({
       turnBeforeItemUse: null,
       pendingRuleSet: null,
       lastAttackIsPlayerShot: null,
+      lastAttackCenter: null,
+      collectToggleCount: 0,
+      useToggleCount: 0,
+      lastUsedItemInfo: null,
     };
   },
 

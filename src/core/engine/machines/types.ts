@@ -88,9 +88,45 @@ export interface MatchMachineContext {
    * Carries the `isPlayerShot` flag from `executeAttack` to `runCollectHandlers`.
    * `pendingPlan` is cleared by `executeAttack`, so without this field
    * `runCollectHandlers` would have no way to know which side fired.
-   * Reset to `null` by `initializeEngine` and `resetEngine`.
+   * Reset to `null` by `resolveTurn`.
    */
   lastAttackIsPlayerShot: boolean | null;
+  /**
+   * Carries the shot center and pattern from `executeAttack` to `resolveTurn`
+   * so the CallbackCoordinator can synthesise the `onShot` payload without
+   * requiring `pendingPlan` (which `executeAttack` clears).
+   * Reset to `null` by `resolveTurn`.
+   */
+  lastAttackCenter: {
+    centerX: number;
+    centerY: number;
+    pattern: ShotPattern;
+  } | null;
+  /**
+   * Number of turn toggles accumulated by `onCollect` handlers during
+   * `runCollectHandlers`. Consumed by `resolveTurn` to incorporate
+   * collect-phase turn changes before the ruleset makes its decision.
+   * Reset to 0 by `resolveTurn`.
+   */
+  collectToggleCount: number;
+  /**
+   * Number of turn toggles accumulated by an `onUse` handler during
+   * `useItem`. Consumed by `resolveItemUse` to determine whether the item
+   * itself changed the turn before the ruleset's `decideTurnOnItemUse` runs.
+   * Reset to 0 by `resolveItemUse`.
+   */
+  useToggleCount: number;
+  /**
+   * Identity of the item activated in the last `USE_ITEM` event.
+   * Stored by `useItem` so the CallbackCoordinator in `resolveItemUse` can
+   * fire `onItemUse` without duplicating the lookup logic.
+   * Reset to `null` by `resolveItemUse`.
+   */
+  lastUsedItemInfo: {
+    itemId: number;
+    isPlayerShot: boolean;
+    item: GameItem;
+  } | null;
 }
 
 export type MatchMachineEvent =

@@ -1021,7 +1021,7 @@ describe('Match', () => {
       expect(isPlayerShot).toBe(true);
     });
 
-    it('onItemCollected fires before item.onCollect', () => {
+    it('onItemCollected fires after item.onCollect (coordinator fires at end of turn cycle)', () => {
       const callOrder: string[] = [];
       const item: GameItem = {
         coords: [3, 3],
@@ -1043,7 +1043,11 @@ describe('Match', () => {
 
       m.planAndAttack(3, 3, true);
 
-      expect(callOrder).toEqual(['onItemCollected', 'onCollect']);
+      // With the CallbackCoordinator pattern all game-logic handlers (onCollect)
+      // run synchronously first inside runCollectHandlers, then callbacks are
+      // fired once at the end of the cycle in resolveTurn. From an external
+      // subscriber's perspective the entire transition is still atomic.
+      expect(callOrder).toEqual(['onCollect', 'onItemCollected']);
     });
 
     it('onCollect fires when a single-part item is fully collected', () => {
