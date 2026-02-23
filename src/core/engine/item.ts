@@ -19,13 +19,13 @@ function buildContext(
   onToggleTurn: () => void,
   captureRuleSet?: (ruleSet: unknown) => void,
 ): ItemActionContext {
-  const state = engine.getState(currentTurn);
+  const state = engine.getState();
   const swap = swapPerspective && !isPlayerShot;
   return {
     item,
     isPlayerShot,
     shot,
-    currentTurn: state.currentTurn,
+    currentTurn,
     playerShips: swap ? state.enemyShips : state.playerShips,
     enemyShips: swap ? state.playerShips : state.enemyShips,
     playerItems: swap ? state.enemyItems : state.playerItems,

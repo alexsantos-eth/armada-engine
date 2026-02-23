@@ -2,8 +2,6 @@ import { GAME_CONSTANTS } from "../constants/game";
 import { getShipCellsFromShip } from "../tools/ship/calculations";
 import { ShotError } from "./errors";
 import type {
-  Board,
-  Cell,
   GameShip,
   GameItem,
   Shot,
@@ -624,14 +622,17 @@ export class GameEngine {
   }
 
   /**
-   * Get complete current game state
-   * @returns Full game state including ships, shots, items, and game status
+   * Get the current engine state — ships, shots, items, dimensions, and game status.
+   *
+   * Turn information (`currentTurn`, `isPlayerTurn`, `isEnemyTurn`) is **not**
+   * included here because the turn is owned by the `matchMachine`, not the
+   * engine.  Callers that need a turn-aware snapshot should use
+   * {@link toMatchState} to merge the engine state with the machine's turn.
+   *
+   * @returns Immutable snapshot of all engine data.
    */
-  public getState(currentTurn: GameTurn = "PLAYER_TURN"): GameEngineState {
+  public getState(): GameEngineState {
     return {
-      currentTurn,
-      isPlayerTurn: currentTurn === "PLAYER_TURN",
-      isEnemyTurn: currentTurn === "ENEMY_TURN",
       playerShips: [...this.playerShips],
       enemyShips: [...this.enemyShips],
       playerShots: Array.from(this.playerShotsMap.values()),
@@ -782,103 +783,17 @@ export class GameEngine {
   public getVersion(): number {
     return this._version;
   }
-
-  /**
-   * Returns the player's board with full shot metadata per cell.
-   * Each cell carries its {@link CellState} plus the original {@link Shot} object
-   * (patternId, patternCenterX/Y, shipId, collected, itemId, itemFullyCollected…)
-   * so the UI can render rich hit/miss information.
-   */
-  public getPlayerBoard(): Board {
-    const { boardWidth, boardHeight, playerShips, enemyShots } = this.getState();
-
-    const board: Board = Array.from({ length: boardHeight }, () =>
-      Array.from({ length: boardWidth }, (): Cell => ({ state: "EMPTY" })),
-    );
-
-    // PLAYER SHIPS
-    for (const ship of playerShips) {
-      for (const [x, y] of getShipCellsFromShip(ship)) {
-        if (x >= 0 && x < boardWidth && y >= 0 && y < boardHeight) {
-          board[y][x] = { state: "SHIP" };
-        }
-      }
-    }
-
-    for (const shot of enemyShots) {
-      if (
-        shot.x >= 0 &&
-        shot.x < boardWidth &&
-        shot.y >= 0 &&
-        shot.y < boardHeight
-      ) {
-        const cellState = shot.collected ? "MISS" : shot.hit ? "HIT" : "MISS";
-        board[shot.y][shot.x] = { state: cellState, shot };
-      }
-    }
-
-    return board;
-  }
-
-  /**
-   * Returns the enemy's board with full shot metadata per cell.
-   * Enemy ships remain hidden; each cell the player fired upon includes
-   * the full {@link Shot} object for rich UI rendering.
-   */
-  public getEnemyBoard(): Board {
-    const {
-      boardWidth,
-      boardHeight,
-      playerShots,
-      enemyItems,
-      playerCollectedItems,
-    } = this.getState();
-
-    const board: Board = Array.from({ length: boardHeight }, () =>
-      Array.from({ length: boardWidth }, (): Cell => ({ state: "EMPTY" })),
-    );
-
-    const collectedSet = new Set(playerCollectedItems);
-    enemyItems.forEach((item, itemId) => {
-      const [startX, y] = item.coords;
-      for (let i = 0; i < item.part; i++) {
-        const cx = startX + i;
-        if (cx >= 0 && cx < boardWidth && y >= 0 && y < boardHeight) {
-          board[y][cx] = {
-            state: collectedSet.has(itemId) ? "COLLECTED" : "ITEM",
-          };
-        }
-      }
-    });
-
-    for (const shot of playerShots) {
-      if (
-        shot.x >= 0 &&
-        shot.x < boardWidth &&
-        shot.y >= 0 &&
-        shot.y < boardHeight
-      ) {
-        const cellState = shot.collected
-          ? "COLLECTED"
-          : shot.hit
-            ? "HIT"
-            : "MISS";
-        board[shot.y][shot.x] = { state: cellState, shot };
-      }
-    }
-
-    return board;
-  }
-
 }
-
 
 /**
  * Immutable snapshot of the game engine at a given point in time.
  *
- * Returned by {@link GameEngine.getState} and broadcast to every
- * `onStateChange` subscriber after each mutation. All arrays are
+ * Returned by {@link GameEngine.getState} after each mutation. All arrays are
  * shallow copies — mutating them has no effect on internal engine state.
+ *
+ * This interface is **turn-agnostic**: whose turn it is belongs to the
+ * `matchMachine`, not to the engine. To get a turn-aware snapshot see
+ * {@link MatchState} and {@link toMatchState}.
  *
  * @example
  * const state = engine.getState();
@@ -887,15 +802,6 @@ export class GameEngine {
  * }
  */
 export interface GameEngineState {
-  /** Whose turn it is right now (`"PLAYER_TURN"` or `"ENEMY_TURN"`). */
-  currentTurn: GameTurn;
-
-  /** Convenience flag — `true` when `currentTurn === "PLAYER_TURN"`. */
-  isPlayerTurn: boolean;
-
-  /** Convenience flag — `true` when `currentTurn === "ENEMY_TURN"`. */
-  isEnemyTurn: boolean;
-
   /** Shallow copy of all ships on the **player's** board. */
   playerShips: GameShip[];
 
@@ -983,6 +889,47 @@ export interface GameEngineState {
    * same item powerup.
    */
   enemyUsedItems: number[];
+}
+
+/**
+ * Turn-aware snapshot of the match state, produced by the {@link Match} layer.
+ *
+ * Extends {@link GameEngineState} with `currentTurn`, `isPlayerTurn` and
+ * `isEnemyTurn` which are owned by `matchMachine` — not by `GameEngine`.
+ *
+ * Use {@link toMatchState} to construct one from an engine snapshot plus the
+ * machine's current turn.
+ */
+export interface MatchState extends GameEngineState {
+  /** Whose turn it is right now (`"PLAYER_TURN"` or `"ENEMY_TURN"`). */
+  currentTurn: GameTurn;
+  /** Convenience flag — `true` when `currentTurn === "PLAYER_TURN"`. */
+  isPlayerTurn: boolean;
+  /** Convenience flag — `true` when `currentTurn === "ENEMY_TURN"`. */
+  isEnemyTurn: boolean;
+}
+
+/**
+ * Merges a pure engine snapshot with the machine's current turn to produce a
+ * {@link MatchState}.
+ *
+ * Call this in any place that must bridge the engine layer (turn-agnostic) and
+ * the match layer (turn-aware): machine actions, `Match.getState()`,
+ * `onStateChange` callbacks, etc.
+ *
+ * @example
+ * const matchState = toMatchState(engine.getState(), context.currentTurn);
+ */
+export function toMatchState(
+  state: GameEngineState,
+  currentTurn: GameTurn,
+): MatchState {
+  return {
+    ...state,
+    currentTurn,
+    isPlayerTurn: currentTurn === "PLAYER_TURN",
+    isEnemyTurn: currentTurn === "ENEMY_TURN",
+  };
 }
 
 /**

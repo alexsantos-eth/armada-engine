@@ -1,4 +1,7 @@
-export type { GameEngineState, ShotResult } from "./logic";
+export type { GameEngineState, MatchState, ShotResult } from "./logic";
+export { toMatchState } from "./logic";
+
+export { buildPlayerBoard, buildEnemyBoard } from "./board";
 
 export { Match } from "./match";
 export type { PlanAndAttackResult, MatchCallbacks, PlanShotResult, MatchItemActionContext, MatchQueryAPI } from "./match";

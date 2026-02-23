@@ -3,9 +3,10 @@ import { createActor } from "xstate";
 import { SINGLE_SHOT } from "../constants/shots";
 import { AttackError, PlanError } from "./errors";
 import { GameInitializer, type GameSetup } from "../manager";
-import { type GameEngineState } from "./logic";
-import { matchMachine } from "./machines/matchMachine";
-import type { MatchMachineActor, MatchMachineSnapshot } from "./machines/matchMachine";
+import { type MatchState, toMatchState } from "./logic";
+import { buildPlayerBoard, buildEnemyBoard } from "./board";
+import { matchMachine } from "./machines/match";
+import type { MatchMachineActor, MatchMachineSnapshot } from "./machines/match";
 import { DefaultRuleSet, type MatchRuleSet } from "./rulesets";
 
 import type {
@@ -20,6 +21,7 @@ import type {
 
 import type { MatchCallbacks } from "./machines/types";
 export type { MatchCallbacks };
+export type { MatchState };
 
 interface NewMatch extends MatchCallbacks {
   setup?: GameSetup;
@@ -232,8 +234,8 @@ export class Match {
     return this.snap.context.currentTurn;
   }
 
-  public getState(): GameEngineState {
-    return this.engine.getState(this.snap.context.currentTurn);
+  public getState(): MatchState {
+    return toMatchState(this.engine.getState(), this.snap.context.currentTurn);
   }
 
   public forceSetTurn(turn: GameTurn): void {
@@ -346,21 +348,21 @@ export class Match {
 
   /**
    * Returns the player's board with full shot metadata per cell.
-   * Each cell carries its {@link CellState} plus the original {@link Shot} object
-   * (patternId, patternCenterX/Y, shipId, collected, itemId, itemFullyCollected…)
-   * so the UI can render rich hit/miss information.
+   * Delegates to {@link buildPlayerBoard} — presentation logic lives in
+   * the renderer, not in the engine or the Match facade.
    */
   public getPlayerBoard(): Board {
-    return this.engine.getPlayerBoard();
+    return buildPlayerBoard(this.engine.getState());
   }
 
   /**
    * Returns the enemy's board with full shot metadata per cell.
    * Enemy ships remain hidden; each cell the player fired upon includes
    * the full {@link Shot} object for rich UI rendering.
+   * Delegates to {@link buildEnemyBoard}.
    */
   public getEnemyBoard(): Board {
-    return this.engine.getEnemyBoard();
+    return buildEnemyBoard(this.engine.getState());
   }
 }
 
@@ -406,7 +408,7 @@ export type MatchItemActionContext = ItemActionContext;
  */
 export interface MatchQueryAPI {
   // ── state queries ──────────────────────────────────────────────────────────
-  getState(): GameEngineState;
+  getState(): MatchState;
   getCurrentTurn(): GameTurn;
   isPlayerTurn(): boolean;
   isEnemyTurn(): boolean;

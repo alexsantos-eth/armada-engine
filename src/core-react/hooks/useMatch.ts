@@ -3,7 +3,7 @@ import {
   GameInitializer,
   Match,
   type GameConfig,
-  type GameEngineState,
+  type MatchState,
   type MatchCallbacks,
   type MatchQueryAPI,
 } from "../../core/engine";
@@ -24,7 +24,7 @@ const useMatch = ({
   initialSetup,
   ...callbacks
 }: UseMatchProps | undefined = {}) => {
-  const [gameState, setGameState] = useState<GameEngineState | null>(null);
+  const [gameState, setGameState] = useState<MatchState | null>(null);
   const match = useRef<Match | null>(null);
 
   useEffect(() => {

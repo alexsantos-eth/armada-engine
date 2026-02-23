@@ -1,4 +1,4 @@
-export { matchMachine, createMatchActor } from "./matchMachine";
+export { matchMachine, createMatchActor } from "./match";
 
 export {
   selectGameState,
@@ -6,9 +6,9 @@ export {
   selectWinner,
   selectPlanError,
   selectLastAttackResult,
-} from "./matchMachine";
+} from "./match";
 
-export type { MatchMachineActor, MatchMachineSnapshot } from "./matchMachine";
+export type { MatchMachineActor, MatchMachineSnapshot } from "./match";
 
 export type {
   MatchMachineContext,

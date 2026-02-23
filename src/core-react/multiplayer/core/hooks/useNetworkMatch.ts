@@ -6,7 +6,7 @@ import {
   SINGLE_SHOT,
   getRuleSetByName,
   type GameConfig,
-  type GameEngineState,
+  type MatchState,
   type MatchCallbacks,
   type MatchQueryAPI,
   type PlayerRole,
@@ -41,7 +41,7 @@ const useNetworkMatch = ({
   playerRole,
   ...callbacks
 }: UseNetworkMatchProps) => {
-  const [gameState, setGameState] = useState<GameEngineState | null>(null);
+  const [gameState, setGameState] = useState<MatchState | null>(null);
   const match = useRef<Match | null>(null);
 
   useEffect(() => {

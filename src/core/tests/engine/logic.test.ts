@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { GameEngine } from '../../engine/logic';
+import { buildPlayerBoard, buildEnemyBoard } from '../../engine/board';
 import { SINGLE_SHOT } from '../../constants/shots';
 import type { GameShip, Shot } from '../../types/common';
 
@@ -26,7 +27,6 @@ describe('GameEngine', () => {
   describe('Initialization', () => {
     it('should start with default values', () => {
       const state = engine.getState();
-      expect(state.currentTurn).toBe('PLAYER_TURN');
       expect(state.isGameOver).toBe(false);
       expect(state.winner).toBe(null);
       expect(state.playerShips).toHaveLength(0);
@@ -40,7 +40,6 @@ describe('GameEngine', () => {
       const state = engine.getState();
       expect(state.playerShips).toHaveLength(2);
       expect(state.enemyShips).toHaveLength(2);
-      expect(state.currentTurn).toBe('PLAYER_TURN');
     });
 
     it('should accept custom board dimensions', () => {
@@ -216,9 +215,9 @@ describe('GameEngine', () => {
     it('should return complete game state', () => {
       const state = engine.getState();
       
-      expect(state).toHaveProperty('currentTurn');
-      expect(state).toHaveProperty('isPlayerTurn');
-      expect(state).toHaveProperty('isEnemyTurn');
+      expect(state).not.toHaveProperty('currentTurn');  // turn is machine concern
+      expect(state).not.toHaveProperty('isPlayerTurn');
+      expect(state).not.toHaveProperty('isEnemyTurn');
       expect(state).toHaveProperty('playerShips');
       expect(state).toHaveProperty('enemyShips');
       expect(state).toHaveProperty('playerShots');
@@ -250,7 +249,6 @@ describe('GameEngine', () => {
       engine.resetGame();
       
       const state = engine.getState();
-      expect(state.currentTurn).toBe('PLAYER_TURN');
       expect(state.playerShots).toHaveLength(0);
       expect(state.enemyShots).toHaveLength(0);
       expect(state.shotCount).toBe(0);
@@ -623,21 +621,21 @@ describe('GameEngine', () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Board rendering — getPlayerBoard / getEnemyBoard
+  // Board rendering — buildPlayerBoard / buildEnemyBoard (boardRenderer module)
   // ─────────────────────────────────────────────────────────────────────────
-  describe('Board Rendering — getPlayerBoard', () => {
+  describe('Board Rendering — buildPlayerBoard', () => {
     beforeEach(() => {
       engine.initializeGame(playerShips, enemyShips);
     });
 
     it('should return a board with correct dimensions', () => {
-      const board = engine.getPlayerBoard();
+      const board = buildPlayerBoard(engine.getState());
       expect(board).toHaveLength(10); // 10 rows
       expect(board[0]).toHaveLength(10); // 10 cols
     });
 
     it('should mark player ship cells as SHIP', () => {
-      const board = engine.getPlayerBoard();
+      const board = buildPlayerBoard(engine.getState());
       // playerShip 0: coords [0,0], width 2 → (0,0) and (1,0)
       expect(board[0][0].state).toBe('SHIP');
       expect(board[0][1].state).toBe('SHIP');
@@ -647,21 +645,21 @@ describe('GameEngine', () => {
 
     it('should mark enemy-shot cells as HIT when a ship is hit', () => {
       engine.executeShotPattern(0, 0, SINGLE_SHOT, false); // enemy hits player ship at (0,0)
-      const board = engine.getPlayerBoard();
+      const board = buildPlayerBoard(engine.getState());
       expect(board[0][0].state).toBe('HIT');
       expect(board[0][0].shot).toBeDefined();
     });
 
     it('should mark enemy-shot cells as MISS when no ship is hit', () => {
       engine.executeShotPattern(9, 9, SINGLE_SHOT, false); // enemy misses
-      const board = engine.getPlayerBoard();
+      const board = buildPlayerBoard(engine.getState());
       expect(board[9][9].state).toBe('MISS');
       expect(board[9][9].shot).toBeDefined();
     });
 
     it('should include shot metadata in cell', () => {
       engine.executeShotPattern(0, 0, SINGLE_SHOT, false);
-      const board = engine.getPlayerBoard();
+      const board = buildPlayerBoard(engine.getState());
       const cell = board[0][0];
       expect(cell.shot?.x).toBe(0);
       expect(cell.shot?.y).toBe(0);
@@ -669,7 +667,7 @@ describe('GameEngine', () => {
     });
   });
 
-  describe('Board Rendering — getEnemyBoard', () => {
+  describe('Board Rendering — buildEnemyBoard', () => {
     const enemyItems = [{ coords: [1, 1] as [number, number], part: 1 }];
 
     beforeEach(() => {
@@ -677,43 +675,43 @@ describe('GameEngine', () => {
     });
 
     it('should return a board with correct dimensions', () => {
-      const board = engine.getEnemyBoard();
+      const board = buildEnemyBoard(engine.getState());
       expect(board).toHaveLength(10);
       expect(board[0]).toHaveLength(10);
     });
 
     it('should hide enemy ships (cells start as EMPTY)', () => {
-      const board = engine.getEnemyBoard();
+      const board = buildEnemyBoard(engine.getState());
       // Enemy ship at [5,5] should NOT appear as SHIP (hidden from player)
       expect(board[5][5].state).toBe('EMPTY');
     });
 
     it('should mark item cells as ITEM before collection', () => {
-      const board = engine.getEnemyBoard();
+      const board = buildEnemyBoard(engine.getState());
       expect(board[1][1].state).toBe('ITEM');
     });
 
     it('should mark player-shot cells as HIT when a ship is hit', () => {
       engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
-      const board = engine.getEnemyBoard();
+      const board = buildEnemyBoard(engine.getState());
       expect(board[5][5].state).toBe('HIT');
     });
 
     it('should mark player-shot cells as MISS when nothing is hit', () => {
       engine.executeShotPattern(9, 9, SINGLE_SHOT, true);
-      const board = engine.getEnemyBoard();
+      const board = buildEnemyBoard(engine.getState());
       expect(board[9][9].state).toBe('MISS');
     });
 
     it('should mark collected item cells as COLLECTED', () => {
       engine.executeShotPattern(1, 1, SINGLE_SHOT, true); // collect the item
-      const board = engine.getEnemyBoard();
+      const board = buildEnemyBoard(engine.getState());
       expect(board[1][1].state).toBe('COLLECTED');
     });
 
     it('should include shot metadata in cell', () => {
       engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
-      const board = engine.getEnemyBoard();
+      const board = buildEnemyBoard(engine.getState());
       const cell = board[5][5];
       expect(cell.shot?.x).toBe(5);
       expect(cell.shot?.y).toBe(5);

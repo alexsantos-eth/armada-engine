@@ -1,9 +1,9 @@
 import { setup, assign, createActor } from "xstate";
-import { GameEngine } from "../logic";
+import { GameEngine, toMatchState } from "../logic";
 import { DefaultRuleSet } from "../rulesets";
 import { SINGLE_SHOT } from "../../constants/shots";
 import { PlanError } from "../errors";
-import { buildCollectContext, buildUseContext } from "../itemContext";
+import { buildCollectContext, buildUseContext } from "../item";
 import type { Shot, GameTurn } from "../../types/common";
 import type {
   MatchMachineContext,
@@ -115,7 +115,7 @@ export const matchMachine = setup({
       // Fire onItemCollected BEFORE item.onCollect so the match-level observer
       // sees the event before any side-effects the item handler produces.
       if (context.callbacks?.onItemCollected) {
-        const engineState = context.engine.getState(context.currentTurn);
+        const engineState = context.engine.getState();
         const notifyItems = isPlayerShot ? engineState.enemyItems : engineState.playerItems;
         for (const shot of lastAttackResult.shots) {
           if (shot.itemFullyCollected && shot.itemId !== undefined) {
@@ -170,7 +170,7 @@ export const matchMachine = setup({
 
       for (const shot of context.lastAttackResult.shots) {
         if (shot.itemFullyCollected && shot.itemId !== undefined) {
-          const engineState = context.engine.getState(context.currentTurn);
+          const engineState = context.engine.getState();
           const items = isPlayerShot
             ? engineState.enemyItems
             : engineState.playerItems;
@@ -195,7 +195,7 @@ export const matchMachine = setup({
           ? context.currentTurn
           : context.currentTurn === "PLAYER_TURN" ? "ENEMY_TURN" : "PLAYER_TURN";
 
-      context.callbacks?.onStateChange?.(context.engine.getState(currentTurn));
+      context.callbacks?.onStateChange?.(toMatchState(context.engine.getState(), currentTurn));
       return {
         currentTurn,
         pendingRuleSet: capturedRuleSet as typeof context.ruleSet | null,
@@ -218,7 +218,7 @@ export const matchMachine = setup({
       const activeRuleSet =
         (pendingRuleSet as typeof context.ruleSet | null) ?? context.ruleSet;
 
-      const stateAfterAttack = context.engine.getState(context.currentTurn);
+      const stateAfterAttack = context.engine.getState();
       const lastTurnDecision = activeRuleSet.decideTurn(
         context.lastAttackResult,
         stateAfterAttack,
@@ -230,7 +230,7 @@ export const matchMachine = setup({
         context.callbacks?.onTurnChange?.(currentTurn);
       }
 
-      const stateAfterTurn = context.engine.getState(currentTurn);
+      const stateAfterTurn = context.engine.getState();
       if (!stateAfterTurn.isGameOver) {
         const gameOverDecision = activeRuleSet.checkGameOver(stateAfterTurn);
         if (gameOverDecision.isGameOver && gameOverDecision.winner) {
@@ -239,7 +239,7 @@ export const matchMachine = setup({
         }
       }
 
-      context.callbacks?.onStateChange?.(context.engine.getState(currentTurn));
+      context.callbacks?.onStateChange?.(toMatchState(context.engine.getState(), currentTurn));
       return {
         currentTurn,
         lastTurnDecision,
@@ -262,7 +262,7 @@ export const matchMachine = setup({
       );
 
       context.callbacks?.onMatchStart?.();
-      context.callbacks?.onStateChange?.(context.engine.getState(currentTurn));
+      context.callbacks?.onStateChange?.(toMatchState(context.engine.getState(), currentTurn));
       return {
         currentTurn,
         planError: null,
@@ -278,7 +278,7 @@ export const matchMachine = setup({
     /** Resets the engine to its initial empty state */
     resetEngine: assign(({ context }) => {
       context.engine.resetGame();
-      context.callbacks?.onStateChange?.(context.engine.getState("PLAYER_TURN"));
+      context.callbacks?.onStateChange?.(toMatchState(context.engine.getState(), "PLAYER_TURN"));
       return {
         currentTurn: "PLAYER_TURN" as GameTurn,
         pendingPlan: null,
@@ -336,7 +336,7 @@ export const matchMachine = setup({
 
       if (!isCallersTurn) return { lastUseItemResult: false };
 
-      const state = context.engine.getState(context.currentTurn);
+      const state = context.engine.getState();
       const items = isPlayerShot ? state.enemyItems : state.playerItems;
       const item = items[itemId];
 
@@ -371,7 +371,7 @@ export const matchMachine = setup({
         context.callbacks?.onItemUse?.(itemId, isPlayerShot, item);
       }
 
-      context.callbacks?.onStateChange?.(context.engine.getState(currentTurn));
+      context.callbacks?.onStateChange?.(toMatchState(context.engine.getState(), currentTurn));
       return {
         currentTurn,
         lastUseItemResult: true,
@@ -393,7 +393,7 @@ export const matchMachine = setup({
       const itemToggledTurn = context.currentTurn !== context.turnBeforeItemUse;
       let currentTurn: GameTurn = context.currentTurn;
       let rulesetToggledTurn = false;
-      const stateAfterUse = context.engine.getState(currentTurn);
+      const stateAfterUse = context.engine.getState();
       if (!itemToggledTurn && !stateAfterUse.isGameOver) {
         const itemUseTurnDecision = context.ruleSet.decideTurnOnItemUse?.(
           context.turnBeforeItemUse === "PLAYER_TURN",
@@ -409,7 +409,7 @@ export const matchMachine = setup({
         context.callbacks?.onTurnChange?.(currentTurn);
       }
 
-      const stateForGameOver = context.engine.getState(currentTurn);
+      const stateForGameOver = context.engine.getState();
       if (!stateForGameOver.isGameOver) {
         const gameOverDecision = context.ruleSet.checkGameOver(stateForGameOver);
         if (gameOverDecision.isGameOver && gameOverDecision.winner) {
@@ -418,7 +418,7 @@ export const matchMachine = setup({
         }
       }
 
-      context.callbacks?.onStateChange?.(context.engine.getState(currentTurn));
+      context.callbacks?.onStateChange?.(toMatchState(context.engine.getState(), currentTurn));
       return { currentTurn, pendingRuleSet: null };
     }),
   },

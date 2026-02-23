@@ -1,4 +1,4 @@
-import type { GameEngine, GameEngineState } from "../logic";
+import type { GameEngine, MatchState } from "../logic";
 export type { GameEngine };
 import type { MatchRuleSet, TurnDecision } from "../rulesets";
 import type { PlanError } from "../errors";
@@ -27,7 +27,12 @@ export interface PendingPlan {
  */
 export type MatchCallbacks = {
   onShot?: (shot: Shot, isPlayerShot: boolean) => void;
-  onStateChange?: (state: GameEngineState) => void;
+  /**
+   * Fires after every engine mutation with a turn-aware snapshot.
+   * The state includes `currentTurn`, `isPlayerTurn`, and `isEnemyTurn`
+   * because the turn is added by the machine before broadcasting.
+   */
+  onStateChange?: (state: MatchState) => void;
   onTurnChange?: (turn: GameTurn) => void;
   onGameOver?: (winner: Winner) => void;
   onMatchStart?: () => void;
@@ -153,4 +158,4 @@ export interface MatchMachineInput {
   callbacks?: MatchCallbacks;
 }
 
-export type { GameEngineState, Winner };
+export type { Winner };
