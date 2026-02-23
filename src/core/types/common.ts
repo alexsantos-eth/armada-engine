@@ -58,9 +58,25 @@ export interface ItemActionContext {
   playerItems: GameItem[];
   /** Items placed on the enemy board at the moment of the event. */
   enemyItems: GameItem[];
-  /** Indices of player items that have been fully collected by the enemy. */
+  /**
+   * Indices (into `playerItems`) of items **you** have collected.
+   *
+   * In `GameEngineState` (fixed perspective): items the player collected
+   * from the enemy board (indices into `enemyItems`).
+   *
+   * In `ItemActionContext` (collector's perspective): items you collected
+   * from the opponent's board (indices into `enemyItems`).
+   */
   playerCollectedItems: number[];
-  /** Indices of enemy items that have been fully collected by the player. */
+  /**
+   * Indices (into `enemyItems`) of items your **opponent** has collected.
+   *
+   * In `GameEngineState` (fixed perspective): items the enemy collected
+   * from the player board (indices into `playerItems`).
+   *
+   * In `ItemActionContext` (collector's perspective): items the opponent
+   * collected from your board (indices into `playerItems`).
+   */
   enemyCollectedItems: number[];
   /** All shots fired by the player at the moment of the event. */
   playerShots: Shot[];

@@ -744,8 +744,8 @@ export class GameEngine {
       areAllEnemyShipsDestroyed: this.areAllShipsDestroyed(false),
       playerItems: [...this.playerItems],
       enemyItems: [...this.enemyItems],
-      playerCollectedItems: Array.from(this.playerCollectedItems),
-      enemyCollectedItems: Array.from(this.enemyCollectedItems),
+      playerCollectedItems: Array.from(this.enemyCollectedItems),
+      enemyCollectedItems: Array.from(this.playerCollectedItems),
       playerUsedItems: Array.from(this.usedByPlayer),
       enemyUsedItems: Array.from(this.usedByEnemy),
     };
@@ -931,15 +931,14 @@ export class GameEngine {
       boardHeight,
       playerShots,
       enemyItems,
-      enemyCollectedItems,
+      playerCollectedItems,
     } = this.getState();
 
     const board: Board = Array.from({ length: boardHeight }, () =>
       Array.from({ length: boardWidth }, (): Cell => ({ state: "EMPTY" })),
     );
 
-    // ITEMS
-    const collectedSet = new Set(enemyCollectedItems);
+    const collectedSet = new Set(playerCollectedItems);
     enemyItems.forEach((item, itemId) => {
       const [startX, y] = item.coords;
       for (let i = 0; i < item.part; i++) {
@@ -1016,13 +1015,13 @@ export interface GameEngineState {
   playerItems: GameItem[];
   /** Items placed on the enemy's board (collectible by the player). */
   enemyItems: GameItem[];
-  /** Indices of player items that have been fully collected by the enemy. */
+  /** Indices (into `enemyItems`) of items the **player** has fully collected from the enemy board. */
   playerCollectedItems: number[];
-  /** Indices of enemy items that have been fully collected by the player. */
+  /** Indices (into `playerItems`) of items the **enemy** has fully collected from the player board. */
   enemyCollectedItems: number[];
-  /** Indices of enemy items (player-collected) that the player has already activated via onUse. */
+  /** Indices (into `enemyItems`) of player-collected items the player has already activated via onUse. */
   playerUsedItems: number[];
-  /** Indices of player items (enemy-collected) that the enemy has already activated via onUse. */
+  /** Indices (into `playerItems`) of enemy-collected items the enemy has already activated via onUse. */
   enemyUsedItems: number[];
 }
 

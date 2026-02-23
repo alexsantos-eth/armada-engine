@@ -528,8 +528,8 @@ export interface ItemActionContext {
   enemyShips: GameShip[];
   playerItems: GameItem[];
   enemyItems: GameItem[];
-  playerCollectedItems: number[]; // itemId indices
-  enemyCollectedItems: number[];
+  playerCollectedItems: number[]; // items YOU collected (indices into enemyItems)
+  enemyCollectedItems: number[];  // items OPPONENT collected (indices into playerItems)
 
   // mutations — all take effect immediately
   setPlayerShips(ships: GameShip[]): void;

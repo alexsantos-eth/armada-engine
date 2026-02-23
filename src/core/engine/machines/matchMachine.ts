@@ -16,11 +16,11 @@ import type { GameItem, ItemActionContext, Shot } from "../../types/common";
  * wired in `Match`.
  *
  * @param swapPerspective - When `true` and `isPlayerShot` is `false`, all
- *   player↔enemy setters and readers are swapped so that `onUse` handlers
- *   written from the activator's perspective work correctly when the same
- *   `useItem` call is applied to the *opponent's* board (cross-board sync).
- *   Pass `false` (default) for `onCollect`, which always runs locally on the
- *   board that processed the shot and therefore never needs swapping.
+ *   player↔enemy setters and readers are swapped so that item handlers
+ *   are always written from the **collector's / activator's perspective**.
+ *   This means `ctx.setPlayerShips` always refers to "my ships" and
+ *   `ctx.setEnemyShots` always refers to "opponent's shots", regardless
+ *   of which side actually fired the shot.
  */
 export function buildItemActionContext(
   engine: GameEngine,
@@ -183,6 +183,7 @@ export const matchMachine = setup({
               item,
               isPlayerShot,
               shot,
+              false,
             );
             item.onCollect(ctx);
           }

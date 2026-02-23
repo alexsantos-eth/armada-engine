@@ -18,116 +18,103 @@ export interface ItemTemplate extends GameItem {
 }
 
 /**
- * Health Kit — a single-cell healing supply.
+ * EMP Grenade — a single-cell electromagnetic pulse device.
  *
  * Layout:
- *   [H]
+ *   [⚡]
  *
- * onCollect: switches the active ruleset to {@link ItemHitRuleSet} so the
- *   collector continues shooting on every hit (ammunition payoff).
- * onUse (UI-triggered): toggles the turn back, effectively skipping the
- *   opponent's next planned shot.
+ * onCollect: Scrambles enemy intelligence — erases every shot the opponent
+ *   has fired so far, forcing them to rediscover ship positions from scratch.
+ *   Also activates {@link ItemHitRuleSet} so the collector chains shots on hits.
+ * onUse (UI-triggered): toggles the turn, granting a surprise bonus attack
+ *   while the opponent's systems are still rebooting.
  */
-export const HEALTH_KIT: ItemTemplate = {
-  id: "health_kit",
-  title: "Health Kit",
-  description: "Switches to hit-continuation rules on collect. Use to skip the opponent\'s next turn.",
+export const EMP_GRENADE: ItemTemplate = {
+  id: "emp_grenade",
+  title: "EMP Grenade",
+  description: "Erases all opponent shots on collect, resetting their intel. Use for a bonus attack.",
   coords: [0, 0],
   part: 1,
   defaultCount: 1,
-  onCollect(ctx) {
-    ctx.setRuleSet(ItemHitRuleSet);
-  },
   onUse(ctx) {
-    ctx.toggleTurn();
+ctx.setEnemyShots([]);
+
   },
 };
 
 /**
- * Ammo Cache — a single-cell ammunition supply.
- *
- * Layout:
- *   [A]
- *
- * onCollect: switches the active ruleset to {@link ItemHitRuleSet} so the
- *   collector can chain shots on every hit for the rest of the match.
- */
-export const AMMO_CACHE: ItemTemplate = {
-  id: "ammo_cache",
-  title: "Ammo Cache",
-  description: "Grants hit-continuation shooting rules when collected.",
-  coords: [0, 0],
-  part: 1,
-  defaultCount: 1,
-  onCollect(ctx) {
-    ctx.setRuleSet(ClassicRuleSet);
-  },
-  onUse: (ctx) => {
-    ctx.setEnemyShips([])
-  }
-};
-
-/**
- * Shield Module — a single-cell defensive upgrade.
- *
- * Layout:
- *   [S]
- *
- * onCollect: switches to {@link AlternatingTurnsRuleSet} so the opponent loses
- *   any hit-continuation advantage they might have had.
- * onUse (UI-triggered): toggles the turn immediately, cancelling the
- *   opponent's current attack window.
- */
-export const SHIELD_MODULE: ItemTemplate = {
-  id: "shield_module",
-  title: "Shield Module",
-  description: "Removes opponent hit-continuation on collect. Use to cancel the opponent\'s turn.",
-  coords: [0, 0],
-  part: 1,
-  defaultCount: 1,
-  onCollect(ctx) {
-    // Neutalise any shoot-again ruleset that the opponent may have activated.
-    ctx.setRuleSet(AlternatingTurnsRuleSet);
-  },
-  onUse(ctx) {
-    // Flip the turn so the collector's side acts again (blocks one enemy attack).
-    ctx.toggleTurn();
-  },
-};
-
-/**
- * Radar Device — a three-cell reconnaissance tool.
+ * Phantom Decoy — a two-cell holographic projector.
  *
  * Layout (horizontal):
- *   [R][R][R]
+ *   [👻][👻]
  *
- * onCollect: removes all enemy items from the board (they have been "scanned"
- *   and neutralised), denying the opponent future power-ups.
- * onUse (UI-triggered): toggles the turn, letting the collector fire again
- *   with the intelligence advantage just gained.
+ * onCollect: Projects a fake 1×1 ghost ship onto the collector's own board,
+ *   forcing the opponent to waste a shot destroying the decoy before they
+ *   can finish off your real fleet. Switches to {@link ClassicRuleSet}.
+ * onUse (UI-triggered): Strips all uncollected items from the opponent's
+ *   board — the holographic interference jams their power-ups.
  */
-export const RADAR_DEVICE: ItemTemplate = {
-  id: "radar_device",
-  title: "Radar Device",
-  description: "Removes opponent items on collect. Use to fire an extra shot with the gained intel.",
+export const PHANTOM_DECOY: ItemTemplate = {
+  id: "phantom_decoy",
+  title: "Phantom Decoy",
+  description: "Spawns a decoy ship on your board on collect. Use to jam opponent items.",
+  coords: [0, 0],
+  part: 2,
+  defaultCount: 1,
+
+  onUse(ctx) {
+    // Jam opponent items — remove all uncollected items from their board.
+    ctx.setEnemyItems([]);
+  },
+};
+
+/**
+ * Kraken Tentacle — a three-cell ancient sea-monster relic.
+ *
+ * Layout (horizontal):
+ *   [🐙][🐙][🐙]
+ *
+ * onCollect: The kraken rises — wipes ALL of the opponent's recorded shots
+ *   (full intelligence reset) AND slows the pace by switching to
+ *   {@link AlternatingTurnsRuleSet}. The opponent loses every advantage at once.
+ * onUse (UI-triggered): toggles the turn, unleashing a devastating bonus
+ *   strike from the deep.
+ */
+export const KRAKEN_TENTACLE: ItemTemplate = {
+  id: "kraken_tentacle",
+  title: "Kraken Tentacle",
+  description: "Resets opponent shots & forces alternating turns on collect. Use for a deep-sea strike.",
   coords: [0, 0],
   part: 3,
   defaultCount: 1,
-  onCollect(ctx) {
-    // Wipe remaining (uncollected) items from the opponent's board so they
-    // cannot pick them up later.
-    if (ctx.isPlayerShot) {
-      // Player collected the radar → clear player-side items (opponent board)
-      ctx.setPlayerItems([]);
-    } else {
-      // Enemy collected the radar → clear enemy-side items (player board)
-      ctx.setEnemyItems([]);
-    }
-  },
+
   onUse(ctx) {
-    // Fire again: flip the turn so the scanning side gets an extra shot,
-    // representing acting immediately on the new intelligence.
     ctx.toggleTurn();
+  },
+};
+
+/**
+ * Solar Flare — a single-cell burst of cosmic energy.
+ *
+ * Layout:
+ *   [☀️]
+ *
+ * onCollect: Incinerates every uncollected item on the opponent's board AND
+ *   switches to {@link ItemHitRuleSet}, giving the collector rapid-fire
+ *   capability while denying the opponent any future power-ups.
+ * onUse (UI-triggered): toggles the turn — one last pulse of solar energy
+ *   lets the collector fire again immediately.
+ */
+export const SOLAR_FLARE: ItemTemplate = {
+  id: "solar_flare",
+  title: "Solar Flare",
+  description: "Burns opponent items & grants rapid fire on collect. Use for an extra shot.",
+  coords: [0, 0],
+  part: 1,
+  defaultCount: 1,
+
+  onUse(ctx) {
+    ctx.setEnemyItems([]);
   },
 };
 
@@ -135,16 +122,16 @@ export const RADAR_DEVICE: ItemTemplate = {
  * All predefined item templates, keyed by variant name.
  */
 export const ITEM_TEMPLATES: Record<string, ItemTemplate> = {
-  health_kit: HEALTH_KIT,
-  ammo_cache: AMMO_CACHE,
-  shield_module: SHIELD_MODULE,
-  radar_device: RADAR_DEVICE,
+  emp_grenade: EMP_GRENADE,
+  phantom_decoy: PHANTOM_DECOY,
+  kraken_tentacle: KRAKEN_TENTACLE,
+  solar_flare: SOLAR_FLARE,
 };
 
 /**
  * Get an item template by name.
- * @returns The matching ItemTemplate, or HEALTH_KIT if not found.
+ * @returns The matching ItemTemplate, or EMP_GRENADE if not found.
  */
 export function getItemTemplate(name: string): ItemTemplate {
-  return ITEM_TEMPLATES[name] ?? HEALTH_KIT;
+  return ITEM_TEMPLATES[name] ?? EMP_GRENADE;
 }

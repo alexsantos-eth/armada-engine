@@ -20,15 +20,15 @@ export const ItemSelector = ({ gameState, onUseItem }: ItemSelectorProps) => {
 
   const {
     enemyItems,
-    enemyCollectedItems,
+    playerCollectedItems,
     playerUsedItems,
     isGameOver,
   } = gameState;
 
-  if (enemyCollectedItems.length === 0) return null;
+  if (playerCollectedItems.length === 0) return null;
 
   // All items the player has collected (indices into enemyItems)
-  const collectedItems = enemyCollectedItems.map((itemId) => ({
+  const collectedItems = playerCollectedItems.map((itemId) => ({
     itemId,
     item: enemyItems[itemId],
   })).filter(({ item }) => !!item);
