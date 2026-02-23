@@ -18,13 +18,14 @@ const SingleMatch = ({
 }: SingleMatchProps) => {
   const {
     planAndAttack,
-    match: { playerBoard, enemyBoard, gameState, match },
+    useItem,
+    match: { playerBoard, enemyBoard, gameState },
   } = useBoard({ initialSetup, matchRef, ...callbacks });
 
   const canFire = gameState?.isPlayerTurn && !gameState?.isGameOver;
 
   const handleUseItem = (itemId: number) => {
-    match?.useItem(itemId, true);
+    useItem(itemId, true);
   };
 
   return (

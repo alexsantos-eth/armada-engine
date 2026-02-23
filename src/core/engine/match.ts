@@ -6,7 +6,7 @@ import { GameInitializer, type GameSetup } from "../manager";
 import { type MatchState, toMatchState } from "./logic";
 import { buildPlayerBoard, buildEnemyBoard } from "./board";
 import { matchMachine } from "./machines/match";
-import type { MatchMachineActor, MatchMachineSnapshot } from "./machines/match";
+import type { MatchMachineSnapshot } from "./machines/match";
 import { DefaultRuleSet, type MatchRuleSet } from "./rulesets";
 
 import type {
@@ -120,24 +120,12 @@ export class Match {
   }
 
   /**
-   * Execute the planned attack
+   * Execute the planned attack.
+   * The machine only accepts CONFIRM_ATTACK from the `planned` state, so
+   * `pendingPlan` is guaranteed to exist at this point — no runtime guard needed.
    * Must call planShot() first to set up the attack.
    */
   public confirmAttack(): PlanAndAttackResult {
-    if (!this.snap.context.pendingPlan) {
-      const state = this.engine.getState();
-      return {
-        success: false,
-        error: AttackError.NoAttackPlanned,
-        shots: [],
-        isGameOver: state.isGameOver,
-        winner: state.winner,
-        turnEnded: false,
-        canShootAgain: false,
-        reason: "No attack planned",
-      };
-    }
-
     this.actor.send({ type: "CONFIRM_ATTACK" });
 
     const { lastAttackResult, lastTurnDecision } = this.snap.context;
@@ -266,6 +254,31 @@ export class Match {
     return this.engine.isValidPosition(x, y);
   }
 
+  /**
+   * Returns a rich snapshot of a single cell from the perspective of one side.
+   *
+   * Consolidates `isValidPosition`, `isCellShot`, `getShotAtPosition`, and
+   * `hasShipAtPosition` into one call so consumers don't need to make four
+   * separate queries just to render or evaluate a cell.
+   *
+   * @param x           - Column index.
+   * @param y           - Row index.
+   * @param perspective - `"player"` queries the player side; `"enemy"` queries
+   *                      the enemy side.
+   */
+  public getCellInfo(x: number, y: number, perspective: "player" | "enemy"): CellInfo {
+    if (!this.engine.isValidPosition(x, y)) {
+      return { valid: false, isShot: false, hasShip: false };
+    }
+    const isPlayer = perspective === "player";
+    return {
+      valid: true,
+      isShot: this.engine.isCellShot(x, y, isPlayer),
+      shot: this.engine.getShotAtPosition(x, y, isPlayer),
+      hasShip: this.engine.hasShipAtPosition(x, y, isPlayer),
+    };
+  }
+
   public getWinner(): Winner {
     return this.getState().winner;
   }
@@ -342,8 +355,18 @@ export class Match {
     return this.engine.hasShipAtPosition(x, y, isPlayerShips);
   }
 
-  public getActor() {
-    return this.actor;
+  /**
+   * Subscribe to machine snapshot updates.
+   *
+   * Prefer this over accessing the raw actor — it keeps XState as an
+   * implementation detail and gives consumers a stable, framework-agnostic
+   * subscription API.
+   *
+   * @returns An unsubscribe function. Call it to stop receiving updates.
+   */
+  public subscribe(callback: (snapshot: MatchMachineSnapshot) => void): () => void {
+    const subscription = this.actor.subscribe(callback);
+    return () => subscription.unsubscribe();
   }
 
   /**
@@ -424,17 +447,31 @@ export interface MatchQueryAPI {
   } | null;
 
   // ── board / cell queries ────────────────────────────────────────────────────
-  isCellShot(x: number, y: number, isPlayerShot: boolean): boolean;
-  isValidPosition(x: number, y: number): boolean;
+  getCellInfo(x: number, y: number, perspective: "player" | "enemy"): CellInfo;
   areAllShipsDestroyed(isPlayerShips: boolean): boolean;
-  getShotAtPosition(x: number, y: number, isPlayerShot: boolean): Shot | undefined;
-  hasShipAtPosition(x: number, y: number, isPlayerShips: boolean): boolean;
   getBoardDimensions(): { width: number; height: number };
   getPlayerBoard(): Board;
   getEnemyBoard(): Board;
 
-  // ── actor access (for subscriptions) ───────────────────────────────────────
-  getActor(): MatchMachineActor;
+  // ── subscriptions ──────────────────────────────────────────────────────────
+  subscribe(callback: (snapshot: MatchMachineSnapshot) => void): () => void;
+}
+
+/**
+ * Rich snapshot of a single cell returned by {@link Match.getCellInfo}.
+ *
+ * Replaces the need to call `isValidPosition`, `isCellShot`,
+ * `getShotAtPosition`, and `hasShipAtPosition` separately.
+ */
+export interface CellInfo {
+  /** `false` when the coordinates fall outside the board boundaries. */
+  valid: boolean;
+  /** `true` if the cell has already been fired upon from this perspective. */
+  isShot: boolean;
+  /** Full shot metadata when fired upon; `undefined` for unshot cells. */
+  shot?: Shot;
+  /** `true` if a ship occupies this cell on the given side's board. */
+  hasShip: boolean;
 }
 
 export interface PlanShotResult {

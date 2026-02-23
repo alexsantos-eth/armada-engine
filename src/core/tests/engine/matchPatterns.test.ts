@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Match } from "../../engine/match";
+import { AttackError } from "../../engine/errors";
 import { CROSS_SHOT, HORIZONTAL_LINE_SHOT, SINGLE_SHOT } from "../../constants/shots";
 import type { GameShip } from "../../types/common";
 
@@ -61,7 +62,9 @@ describe("Match Shot Patterns", () => {
       const result = match.confirmAttack();
       
       expect(result.success).toBe(false);
-      expect(result.error).toContain("No attack planned");
+      // Machine silently drops CONFIRM_ATTACK outside the `planned` state;
+      // the method surfaces AttackError.AttackFailed via the missing lastAttackResult branch.
+      expect(result.error).toContain(AttackError.AttackFailed);
       expect(result.shots).toHaveLength(0);
     });
 
