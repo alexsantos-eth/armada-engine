@@ -537,6 +537,14 @@ export class GameEngine {
       this.playerShipPositions,
       this.playerShipSizes,
     );
+
+    this.playerShipHits.clear();
+    for (const [key, shipId] of this.playerShipPositions) {
+      const shot = this.enemyShotsMap.get(key);
+      if (shot?.hit) {
+        this.playerShipHits.set(shipId, (this.playerShipHits.get(shipId) ?? 0) + 1);
+      }
+    }
     this._version++;
   }
 
@@ -553,6 +561,14 @@ export class GameEngine {
       this.enemyShipPositions,
       this.enemyShipSizes,
     );
+
+    this.enemyShipHits.clear();
+    for (const [key, shipId] of this.enemyShipPositions) {
+      const shot = this.playerShotsMap.get(key);
+      if (shot?.hit) {
+        this.enemyShipHits.set(shipId, (this.enemyShipHits.get(shipId) ?? 0) + 1);
+      }
+    }
     this._version++;
   }
 

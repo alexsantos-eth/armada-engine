@@ -1,4 +1,3 @@
-import { ItemHitRuleSet } from "../engine/rulesets";
 import type { GameItem } from "../types/common";
 
 /**
@@ -26,7 +25,12 @@ export const HEALTH_KIT: ItemTemplate = {
   defaultCount: 1,
 
   onUse(ctx) {
-    ctx.setRuleSet(ItemHitRuleSet);
+    ctx.setPlayerShips(ctx.playerShips.concat([{ 
+      coords: [0,0],
+      shipId: ctx.playerShips.length,
+      width: 1,
+      height: 1
+     }]));
   },
 };
 
@@ -40,7 +44,9 @@ export const AMMO_CACHE: ItemTemplate = {
   defaultCount: 1,
 
   onUse(ctx) {
-    ctx.setRuleSet(ItemHitRuleSet);
+    if (ctx.enemyShips.length > 0) {
+      ctx.setEnemyShips(ctx.enemyShips.slice(0, -1));
+    }
   },
 };
 
