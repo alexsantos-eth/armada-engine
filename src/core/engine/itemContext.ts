@@ -2,30 +2,18 @@ import { GameEngine } from "./logic";
 import type { GameItem, ItemActionContext, Shot } from "../types/common";
 
 /**
- * Builds the `ItemActionContext` passed to `onCollect` and `onUse` handlers.
- * Shared by the `useItem` machine action and the `onItemCollected` callback
- * wired in `Match`.
- *
- * This is a pure helper — it has no dependency on XState and is deliberately
- * kept in its own module to avoid coupling the machine file to item-context
- * construction logic.
+ * Internal shared builder for `ItemActionContext`.
  *
  * @param swapPerspective - When `true` and `isPlayerShot` is `false`, all
  *   player↔enemy setters and readers are swapped so that item handlers
  *   are always written from the **collector's / activator's perspective**.
- *   This means `ctx.setPlayerShips` always refers to "my ships" and
- *   `ctx.setEnemyShots` always refers to "opponent's shots", regardless
- *   of which side actually fired the shot.
- * @param captureRuleSet - Called when the handler invokes `ctx.setRuleSet()`.
- *   The machine action captures the value in its own context instead of
- *   writing it into the engine, keeping `GameEngine` free of machine-flow state.
  */
-export function buildItemActionContext(
+function buildContext(
   engine: GameEngine,
   item: GameItem,
   isPlayerShot: boolean,
   shot: Shot | undefined,
-  swapPerspective = false,
+  swapPerspective: boolean,
   captureRuleSet?: (ruleSet: unknown) => void,
 ): ItemActionContext {
   const state = engine.getState();
@@ -64,4 +52,44 @@ export function buildItemActionContext(
     toggleTurn: () => engine.toggleTurn(),
     setRuleSet: (ruleSet: unknown) => captureRuleSet?.(ruleSet),
   };
+}
+
+/**
+ * Builds an `ItemActionContext` for the `executeAttack` action (`onCollect` handlers).
+ *
+ * Perspective is always the **shooter's** — `ctx.playerShips` refers to the
+ * side that fired the shot, `ctx.enemyShips` refers to the opponent.
+ * The triggered `shot` is included in the context.
+ *
+ * @param captureRuleSet - Called when the handler invokes `ctx.setRuleSet()`.
+ *   The machine action captures the value in its own context instead of
+ *   writing it into the engine, keeping `GameEngine` free of machine-flow state.
+ */
+export function buildCollectContext(
+  engine: GameEngine,
+  item: GameItem,
+  isPlayerShot: boolean,
+  shot: Shot,
+  captureRuleSet?: (rs: unknown) => void,
+): ItemActionContext {
+  return buildContext(engine, item, isPlayerShot, shot, false, captureRuleSet);
+}
+
+/**
+ * Builds an `ItemActionContext` for the `useItem` action (`onUse` handlers).
+ *
+ * Perspective is always the **activator's** — regardless of which side owns
+ * the item, `ctx.playerShips` always means "my ships" and
+ * `ctx.enemyShips` always means "opponent's ships".
+ * No shot is associated (items can be used outside of a shot cycle).
+ *
+ * @param captureRuleSet - Called when the handler invokes `ctx.setRuleSet()`.
+ */
+export function buildUseContext(
+  engine: GameEngine,
+  item: GameItem,
+  isPlayerShot: boolean,
+  captureRuleSet?: (rs: unknown) => void,
+): ItemActionContext {
+  return buildContext(engine, item, isPlayerShot, undefined, true, captureRuleSet);
 }

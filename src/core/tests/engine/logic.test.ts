@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GameEngine } from '../../engine/logic';
+import { SINGLE_SHOT } from '../../constants/shots';
 import type { GameShip, Shot } from '../../types/common';
 
 describe('GameEngine', () => {
@@ -108,44 +109,43 @@ describe('GameEngine', () => {
     });
 
     it('should register a miss correctly', () => {
-      const result = engine.executeShot(9, 9, true);
+      const result = engine.executeShotPattern(9, 9, SINGLE_SHOT, true);
       
       expect(result.success).toBe(true);
-      expect(result.hit).toBe(false);
-      expect(result.shipId).toBe(-1);
-      expect(result.shipDestroyed).toBe(false);
+      expect(result.shots[0].hit).toBe(false);
+      expect(result.shots[0].shipId).toBeUndefined();
+      expect(result.shots[0].shipDestroyed).toBe(false);
     });
 
     it('should register a hit correctly', () => {
       // Enemy ship at [5,5] horizontal, size 2
-      const result = engine.executeShot(5, 5, true);
+      const result = engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
       
       expect(result.success).toBe(true);
-      expect(result.hit).toBe(true);
-      expect(result.shipId).toBe(0);
-      expect(result.shipDestroyed).toBe(false);
+      expect(result.shots[0].hit).toBe(true);
+      expect(result.shots[0].shipId).toBe(0);
+      expect(result.shots[0].shipDestroyed).toBe(false);
     });
 
     it('should detect ship destruction', () => {
       // Enemy small ship at [5,5] horizontal, size 2
-      engine.executeShot(5, 5, true); // First hit
-      const result = engine.executeShot(6, 5, true); // Second hit - destroys ship
+      engine.executeShotPattern(5, 5, SINGLE_SHOT, true); // First hit
+      const result = engine.executeShotPattern(6, 5, SINGLE_SHOT, true); // Second hit - destroys ship
       
-      expect(result.hit).toBe(true);
-      expect(result.shipDestroyed).toBe(true);
+      expect(result.shots[0].hit).toBe(true);
+      expect(result.shots[0].shipDestroyed).toBe(true);
     });
 
     it('should prevent shooting same cell twice', () => {
-      engine.executeShot(5, 5, true);
-      const result = engine.executeShot(5, 5, true);
+      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
       
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Cell already shot');
+      expect(result.shots[0].executed).toBe(false);
     });
 
     it('should track shots for both players separately', () => {
-      engine.executeShot(5, 5, true); // Player shot
-      engine.executeShot(0, 0, false); // Enemy shot
+      engine.executeShotPattern(5, 5, SINGLE_SHOT, true); // Player shot
+      engine.executeShotPattern(0, 0, SINGLE_SHOT, false); // Enemy shot
       
       const state = engine.getState();
       expect(state.playerShots).toHaveLength(1);
@@ -157,7 +157,7 @@ describe('GameEngine', () => {
       const engineWithCallback = new GameEngine({}, { onShot });
       engineWithCallback.initializeGame(playerShips, enemyShips);
       
-      engineWithCallback.executeShot(9, 9, true);
+      engineWithCallback.executeShotPattern(9, 9, SINGLE_SHOT, true);
       
       expect(onShot).toHaveBeenCalledWith(
         expect.objectContaining({ x: 9, y: 9, hit: false }),
@@ -168,10 +168,10 @@ describe('GameEngine', () => {
     it('should increment shot count', () => {
       expect(engine.getShotCount()).toBe(0);
       
-      engine.executeShot(0, 0, true);
+      engine.executeShotPattern(0, 0, SINGLE_SHOT, true);
       expect(engine.getShotCount()).toBe(1);
       
-      engine.executeShot(1, 1, false);
+      engine.executeShotPattern(1, 1, SINGLE_SHOT, false);
       expect(engine.getShotCount()).toBe(2);
     });
   });
@@ -183,13 +183,13 @@ describe('GameEngine', () => {
 
     it('should detect when all enemy ships are destroyed', () => {
       // Destroy enemy ship 1 (small ship at [5,5], size 2)
-      engine.executeShot(5, 5, true);
-      engine.executeShot(6, 5, true);
+      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
+      engine.executeShotPattern(6, 5, SINGLE_SHOT, true);
       
       // Destroy enemy ship 2 (medium ship at [7,7], size 3)
-      engine.executeShot(7, 7, true);
-      engine.executeShot(7, 8, true);
-      engine.executeShot(7, 9, true);
+      engine.executeShotPattern(7, 7, SINGLE_SHOT, true);
+      engine.executeShotPattern(7, 8, SINGLE_SHOT, true);
+      engine.executeShotPattern(7, 9, SINGLE_SHOT, true);
       
       const state = engine.getState();
       expect(state.areAllEnemyShipsDestroyed).toBe(true);
@@ -203,13 +203,13 @@ describe('GameEngine', () => {
 
     it('should detect when all player ships are destroyed', () => {
       // Destroy player ship 1 (small ship at [0,0], size 2)
-      engine.executeShot(0, 0, false);
-      engine.executeShot(1, 0, false);
+      engine.executeShotPattern(0, 0, SINGLE_SHOT, false);
+      engine.executeShotPattern(1, 0, SINGLE_SHOT, false);
       
       // Destroy player ship 2 (medium ship at [2,2], size 3)
-      engine.executeShot(2, 2, false);
-      engine.executeShot(2, 3, false);
-      engine.executeShot(2, 4, false);
+      engine.executeShotPattern(2, 2, SINGLE_SHOT, false);
+      engine.executeShotPattern(2, 3, SINGLE_SHOT, false);
+      engine.executeShotPattern(2, 4, SINGLE_SHOT, false);
       
       const state = engine.getState();
       expect(state.areAllPlayerShipsDestroyed).toBe(true);
@@ -227,11 +227,11 @@ describe('GameEngine', () => {
       engineWithCallback.initializeGame(playerShips, enemyShips);
       
       // Destroy all enemy ships
-      engineWithCallback.executeShot(5, 5, true);
-      engineWithCallback.executeShot(6, 5, true);
-      engineWithCallback.executeShot(7, 7, true);
-      engineWithCallback.executeShot(7, 8, true);
-      engineWithCallback.executeShot(7, 9, true);
+      engineWithCallback.executeShotPattern(5, 5, SINGLE_SHOT, true);
+      engineWithCallback.executeShotPattern(6, 5, SINGLE_SHOT, true);
+      engineWithCallback.executeShotPattern(7, 7, SINGLE_SHOT, true);
+      engineWithCallback.executeShotPattern(7, 8, SINGLE_SHOT, true);
+      engineWithCallback.executeShotPattern(7, 9, SINGLE_SHOT, true);
       
       // Manually set game over (normally done by Match)
       engineWithCallback.setGameOver('player');
@@ -241,11 +241,11 @@ describe('GameEngine', () => {
 
     it('should check areAllShipsDestroyed helper method', () => {
       // Destroy all enemy ships
-      engine.executeShot(5, 5, true);
-      engine.executeShot(6, 5, true);
-      engine.executeShot(7, 7, true);
-      engine.executeShot(7, 8, true);
-      engine.executeShot(7, 9, true);
+      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
+      engine.executeShotPattern(6, 5, SINGLE_SHOT, true);
+      engine.executeShotPattern(7, 7, SINGLE_SHOT, true);
+      engine.executeShotPattern(7, 8, SINGLE_SHOT, true);
+      engine.executeShotPattern(7, 9, SINGLE_SHOT, true);
       
       expect(engine.areAllShipsDestroyed(false)).toBe(true); // enemy ships
       expect(engine.areAllShipsDestroyed(true)).toBe(false); // player ships
@@ -271,14 +271,14 @@ describe('GameEngine', () => {
     it('should check if cell has been shot', () => {
       expect(engine.isCellShot(5, 5, true)).toBe(false);
       
-      engine.executeShot(5, 5, true);
+      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
       
       expect(engine.isCellShot(5, 5, true)).toBe(true);
       expect(engine.isCellShot(5, 5, false)).toBe(false); // Different player
     });
 
     it('should get shot at position', () => {
-      engine.executeShot(5, 5, true);
+      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
       
       const shot = engine.getShotAtPosition(5, 5, true);
       expect(shot).toBeDefined();
@@ -320,12 +320,12 @@ describe('GameEngine', () => {
       expect(onStateChange).toHaveBeenCalled();
       
       onStateChange.mockClear();
-      engineWithCallback.executeShot(5, 5, true);
+      engineWithCallback.executeShotPattern(4, 4, SINGLE_SHOT, true);
       expect(onStateChange).toHaveBeenCalled();
     });
 
     it('should reset game state', () => {
-      engine.executeShot(5, 5, true);
+      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
       engine.setEnemyTurn();
       
       engine.resetGame();
@@ -384,23 +384,15 @@ describe('GameEngine', () => {
     });
 
     it('should check shot against enemy ships for player', () => {
-      const hit = engine.checkShot(5, 5, true);
-      expect(hit.hit).toBe(true);
-      expect(hit.shipId).toBe(0);
-      
-      const miss = engine.checkShot(9, 9, true);
-      expect(miss.hit).toBe(false);
-      expect(miss.shipId).toBe(-1);
+      // Player shot hits enemy ship 0 at (5,5) — verified via ship-position query
+      expect(engine.hasShipAtPosition(5, 5, false)).toBe(true);
+      expect(engine.hasShipAtPosition(9, 9, false)).toBe(false);
     });
 
     it('should check shot against player ships for enemy', () => {
-      const hit = engine.checkShot(0, 0, false);
-      expect(hit.hit).toBe(true);
-      expect(hit.shipId).toBe(0);
-      
-      const miss = engine.checkShot(9, 9, false);
-      expect(miss.hit).toBe(false);
-      expect(miss.shipId).toBe(-1);
+      // Enemy shot hits player ship 0 at (0,0) — verified via ship-position query
+      expect(engine.hasShipAtPosition(0, 0, true)).toBe(true);
+      expect(engine.hasShipAtPosition(9, 9, true)).toBe(false);
     });
   });
 
@@ -413,10 +405,10 @@ describe('GameEngine', () => {
       // Enemy small ship at [5,5], size 2
       expect(engine.isShipDestroyed(0, true)).toBe(false);
       
-      engine.executeShot(5, 5, true);
+      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
       expect(engine.isShipDestroyed(0, true)).toBe(false);
       
-      engine.executeShot(6, 5, true);
+      engine.executeShotPattern(6, 5, SINGLE_SHOT, true);
       expect(engine.isShipDestroyed(0, true)).toBe(true);
     });
 
@@ -590,39 +582,39 @@ describe('GameEngine', () => {
     });
 
     it('should mark a shot as collected when hitting an item cell', () => {
-      const result = engine.executeShot(3, 3, true);
+      const result = engine.executeShotPattern(3, 3, SINGLE_SHOT, true);
 
       expect(result.success).toBe(true);
-      expect(result.hit).toBe(false);       // items are not ship hits
-      expect(result.collected).toBe(true);
-      expect(result.itemId).toBe(0);
-      expect(result.itemFullyCollected).toBe(true); // single-part item
+      expect(result.shots[0].hit).toBe(false);       // items are not ship hits
+      expect(result.shots[0].collected).toBe(true);
+      expect(result.shots[0].itemId).toBe(0);
+      expect(result.shots[0].itemFullyCollected).toBe(true); // single-part item
     });
 
     it('should not fully collect a multi-part item until all parts are shot', () => {
-      const r1 = engine.executeShot(6, 6, true); // first part
-      expect(r1.collected).toBe(true);
-      expect(r1.itemFullyCollected).toBe(false);
+      const r1 = engine.executeShotPattern(6, 6, SINGLE_SHOT, true); // first part
+      expect(r1.shots[0].collected).toBe(true);
+      expect(r1.shots[0].itemFullyCollected).toBe(false);
 
-      const r2 = engine.executeShot(7, 6, true); // second part
-      expect(r2.collected).toBe(true);
-      expect(r2.itemFullyCollected).toBe(true);
+      const r2 = engine.executeShotPattern(7, 6, SINGLE_SHOT, true); // second part
+      expect(r2.shots[0].collected).toBe(true);
+      expect(r2.shots[0].itemFullyCollected).toBe(true);
     });
 
     it('should add item index to playerCollectedItems once fully collected', () => {
-      engine.executeShot(3, 3, true);
+      engine.executeShotPattern(3, 3, SINGLE_SHOT, true);
 
       const state = engine.getState();
       expect(state.playerCollectedItems).toContain(0);
     });
 
     it('should not re-collect an already collected item', () => {
-      engine.executeShot(6, 6, true);
-      engine.executeShot(7, 6, true); // fully collected
+      engine.executeShotPattern(6, 6, SINGLE_SHOT, true);
+      engine.executeShotPattern(7, 6, SINGLE_SHOT, true); // fully collected
 
       // Trying to shoot a cell of an already-collected item returns null (no second collection)
-      const result = engine.executeShot(6, 6, true); // cell already shot
-      expect(result.success).toBe(false); // cell already shot
+      const result = engine.executeShotPattern(6, 6, SINGLE_SHOT, true); // cell already shot
+      expect(result.shots[0].executed).toBe(false); // cell already shot
     });
 
     it('should fire onItemCollected callback when an item is fully collected', () => {
@@ -630,7 +622,7 @@ describe('GameEngine', () => {
       const eng = new GameEngine({}, { onItemCollected });
       eng.initializeGame(playerShips, enemyShips, 'PLAYER_TURN', [], enemyItems);
 
-      eng.executeShot(3, 3, true);
+      eng.executeShotPattern(3, 3, SINGLE_SHOT, true);
 
       expect(onItemCollected).toHaveBeenCalledTimes(1);
       const [shot, item, isPlayerShot] = onItemCollected.mock.calls[0];
@@ -645,7 +637,7 @@ describe('GameEngine', () => {
       const eng = new GameEngine({}, { onItemCollected });
       eng.initializeGame(playerShips, enemyShips, 'PLAYER_TURN', [], enemyItems);
 
-      eng.executeShot(6, 6, true); // only first of two parts
+      eng.executeShotPattern(6, 6, SINGLE_SHOT, true); // only first of two parts
 
       expect(onItemCollected).not.toHaveBeenCalled();
     });
@@ -657,10 +649,10 @@ describe('GameEngine', () => {
       const playerItem = { coords: [1, 1] as [number, number], part: 1 };
       eng.setPlayerItems([playerItem]);
 
-      const result = eng.executeShot(1, 1, false); // enemy shoots player board
-      expect(result.collected).toBe(true);
-      expect(result.itemId).toBe(0);
-      expect(result.itemFullyCollected).toBe(true);
+      const result = eng.executeShotPattern(1, 1, SINGLE_SHOT, false); // enemy shoots player board
+      expect(result.shots[0].collected).toBe(true);
+      expect(result.shots[0].itemId).toBe(0);
+      expect(result.shots[0].itemFullyCollected).toBe(true);
     });
 
     it('setPlayerItems resets collected state', () => {
@@ -668,7 +660,7 @@ describe('GameEngine', () => {
       const items = [{ coords: [1, 1] as [number, number], part: 1 }];
       eng.initializeGame(playerShips, enemyShips, 'PLAYER_TURN', items, []);
 
-      eng.executeShot(1, 1, false); // enemy collects player item
+      eng.executeShotPattern(1, 1, SINGLE_SHOT, false); // enemy collects player item
       expect(eng.getState().enemyCollectedItems).toContain(0);
 
       eng.setPlayerItems(items); // reset
@@ -676,7 +668,7 @@ describe('GameEngine', () => {
     });
 
     it('setEnemyItems resets collected state', () => {
-      engine.executeShot(3, 3, true); // collect item 0
+      engine.executeShotPattern(3, 3, SINGLE_SHOT, true); // collect item 0
       expect(engine.getState().playerCollectedItems).toContain(0);
 
       engine.setEnemyItems(enemyItems); // reset
@@ -760,21 +752,21 @@ describe('GameEngine', () => {
     });
 
     it('should mark enemy-shot cells as HIT when a ship is hit', () => {
-      engine.executeShot(0, 0, false); // enemy hits player ship at (0,0)
+      engine.executeShotPattern(0, 0, SINGLE_SHOT, false); // enemy hits player ship at (0,0)
       const board = engine.getPlayerBoard();
       expect(board[0][0].state).toBe('HIT');
       expect(board[0][0].shot).toBeDefined();
     });
 
     it('should mark enemy-shot cells as MISS when no ship is hit', () => {
-      engine.executeShot(9, 9, false); // enemy misses
+      engine.executeShotPattern(9, 9, SINGLE_SHOT, false); // enemy misses
       const board = engine.getPlayerBoard();
       expect(board[9][9].state).toBe('MISS');
       expect(board[9][9].shot).toBeDefined();
     });
 
     it('should include shot metadata in cell', () => {
-      engine.executeShot(0, 0, false);
+      engine.executeShotPattern(0, 0, SINGLE_SHOT, false);
       const board = engine.getPlayerBoard();
       const cell = board[0][0];
       expect(cell.shot?.x).toBe(0);
@@ -808,25 +800,25 @@ describe('GameEngine', () => {
     });
 
     it('should mark player-shot cells as HIT when a ship is hit', () => {
-      engine.executeShot(5, 5, true);
+      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
       const board = engine.getEnemyBoard();
       expect(board[5][5].state).toBe('HIT');
     });
 
     it('should mark player-shot cells as MISS when nothing is hit', () => {
-      engine.executeShot(9, 9, true);
+      engine.executeShotPattern(9, 9, SINGLE_SHOT, true);
       const board = engine.getEnemyBoard();
       expect(board[9][9].state).toBe('MISS');
     });
 
     it('should mark collected item cells as COLLECTED', () => {
-      engine.executeShot(1, 1, true); // collect the item
+      engine.executeShotPattern(1, 1, SINGLE_SHOT, true); // collect the item
       const board = engine.getEnemyBoard();
       expect(board[1][1].state).toBe('COLLECTED');
     });
 
     it('should include shot metadata in cell', () => {
-      engine.executeShot(5, 5, true);
+      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
       const board = engine.getEnemyBoard();
       const cell = board[5][5];
       expect(cell.shot?.x).toBe(5);

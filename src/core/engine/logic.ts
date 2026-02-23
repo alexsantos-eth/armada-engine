@@ -267,7 +267,7 @@ export class GameEngine {
    * @returns Result of the shot including hit status and game state
    * @private - Use executeShotPattern() instead
    */
-  public executeShot(
+  private executeShot(
     x: number,
     y: number,
     isPlayerShot: boolean,
@@ -472,7 +472,7 @@ export class GameEngine {
    * @param isPlayerShot - True if checking enemy ships, false if checking player ships
    * @returns Object with hit status and ship ID if hit
    */
-  public checkShot(
+  private checkShot(
     x: number,
     y: number,
     isPlayerShot: boolean,

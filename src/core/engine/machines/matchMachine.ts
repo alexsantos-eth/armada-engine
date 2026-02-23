@@ -3,13 +3,12 @@ import { GameEngine } from "../logic";
 import { DefaultRuleSet } from "../rulesets";
 import { SINGLE_SHOT } from "../../constants/shots";
 import { PlanError } from "../errors";
-import { buildItemActionContext } from "../itemContext";
+import { buildCollectContext, buildUseContext } from "../itemContext";
 import type {
   MatchMachineContext,
   MatchMachineEvent,
   MatchMachineInput,
 } from "./types";
-import type { GameItem, Shot } from "../../types/common";
 
 export const matchMachine = setup({
   types: {} as {
@@ -123,12 +122,11 @@ export const matchMachine = setup({
             : engineState.playerItems;
           const item = items[shot.itemId];
           if (item?.onCollect) {
-            const ctx = buildItemActionContext(
+            const ctx = buildCollectContext(
               context.engine,
               item,
               isPlayerShot,
               shot,
-              false,
               (rs) => { capturedRuleSet = rs; },
             );
             item.onCollect(ctx);
@@ -260,12 +258,10 @@ return {
       const turnBeforeItemUse = context.engine.getState().currentTurn;
 
       let capturedRuleSet: unknown = null;
-      const itemCtx = buildItemActionContext(
+      const itemCtx = buildUseContext(
         context.engine,
         item,
         isPlayerShot,
-        undefined,
-        true,
         (rs) => { capturedRuleSet = rs; },
       );
 
