@@ -2,6 +2,15 @@ import type { GameEngineState } from "./logic";
 import type { ShotPatternResult, Winner } from "../types/common";
 
 /**
+ * Result returned by {@link MatchRuleSet.decideTurnOnItemUse}.
+ */
+export interface ItemUseTurnDecision {
+  /** Whether to toggle the active turn after the item use. */
+  shouldToggleTurn: boolean;
+  reason: string;
+}
+
+/**
  * Turn decision result
  */
 export interface TurnDecision {
@@ -44,6 +53,22 @@ export interface MatchRuleSet {
    * @returns Game over decision
    */
   checkGameOver(state: GameEngineState): GameOverDecision;
+
+  /**
+   * Called after an item's `onUse` handler has executed (and only when the
+   * item itself did **not** already toggle the turn).
+   *
+   * Return `{ shouldToggleTurn: true }` to forfeit the current player's
+   * remaining turn as a cost for using the item.  When not defined
+   * (the default for all built-in rulesets), item use never affects the turn.
+   *
+   * @param isPlayerUse - `true` when the player used the item; `false` for the enemy.
+   * @param state - Game state immediately after the `onUse` handler ran.
+   */
+  decideTurnOnItemUse?(
+    isPlayerUse: boolean,
+    state: GameEngineState,
+  ): ItemUseTurnDecision;
 }
 
 /**
@@ -264,6 +289,29 @@ export const ItemHitRuleSet: MatchRuleSet = {
   },
 };
 
+/**
+ * Lose Turn On Use Rule Set
+ * - Classic ship-hit rules (hit → shoot again, ship destroyed → turn ends, miss → turn ends)
+ * - Using an item (`onUse`) **costs the current player their turn**; the opponent goes next.
+ *   The turn switch only happens when the item itself did not already toggle the turn.
+ * - Game over: all enemy ships destroyed
+ */
+export const LoseTurnOnUseRuleSet: MatchRuleSet = {
+  name: "LoseTurnOnUseRuleSet",
+  description:
+    "Classic rules, but activating an item (onUse) ends your turn immediately",
+
+  decideTurn: ClassicRuleSet.decideTurn,
+  checkGameOver: ClassicRuleSet.checkGameOver,
+
+  decideTurnOnItemUse(_isPlayerUse, _state): ItemUseTurnDecision {
+    return {
+      shouldToggleTurn: true,
+      reason: "Item used - turn forfeited",
+    };
+  },
+};
+
 export const getRuleSetByName = (name: string): MatchRuleSet => {
   switch (name) {
     case ClassicRuleSet.name:
@@ -272,6 +320,8 @@ export const getRuleSetByName = (name: string): MatchRuleSet => {
       return AlternatingTurnsRuleSet;
     case ItemHitRuleSet.name:
       return ItemHitRuleSet;
+    case LoseTurnOnUseRuleSet.name:
+      return LoseTurnOnUseRuleSet;
     default:
       throw new Error(`Unknown ruleset name: ${name}`);
   }

@@ -313,6 +313,9 @@ export const matchMachine = setup({
         undefined,
         true,
       );
+
+      const turnBeforeUse = context.engine.getState().currentTurn;
+
       item.onUse(itemCtx);
       context.engine.markItemUsed(itemId, isPlayerShot);
 
@@ -322,6 +325,18 @@ export const matchMachine = setup({
 
       const engineInternal = context.engine.getInternalAPI();
       const stateAfterUse = context.engine.getState();
+
+      const itemToggledTurn = stateAfterUse.currentTurn !== turnBeforeUse;
+      if (!itemToggledTurn && !stateAfterUse.isGameOver) {
+        const itemUseTurnDecision = context.ruleSet.decideTurnOnItemUse?.(
+          isPlayerShot,
+          stateAfterUse,
+        );
+        if (itemUseTurnDecision?.shouldToggleTurn) {
+          engineInternal.toggleTurn();
+        }
+      }
+
       if (!stateAfterUse.isGameOver) {
         const gameOverDecision = context.ruleSet.checkGameOver(stateAfterUse);
         if (gameOverDecision.isGameOver && gameOverDecision.winner) {

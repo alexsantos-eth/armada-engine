@@ -325,6 +325,19 @@ export interface MatchRuleSet {
    * is finished and who won.
    */
   checkGameOver(state: GameEngineState): GameOverDecision;
+
+  /**
+   * Optional. Called after item.onUse() executes — but only when the item
+   * itself did NOT already toggle the turn (prevents double-toggle).
+   *
+   * Return { shouldToggleTurn: true } to forfeit the current player's
+   * remaining turn as a cost for using the item.
+   * When omitted (default for ClassicRuleSet etc.) item use never ends the turn.
+   */
+  decideTurnOnItemUse?(
+    isPlayerUse: boolean,
+    state: GameEngineState,
+  ): ItemUseTurnDecision;
 }
 ```
 
@@ -342,6 +355,11 @@ export interface GameOverDecision {
   isGameOver: boolean;
   winner: Winner; // "player" | "enemy" | null
 }
+
+export interface ItemUseTurnDecision {
+  shouldToggleTurn: boolean; // true → forfeit current player's turn after item use
+  reason: string;
+}
 ```
 
 ### Built-in rulesets
@@ -351,6 +369,7 @@ export interface GameOverDecision {
 | `ClassicRuleSet`          | Hit (ship alive) → shoot again. Ship sunk or miss → turn switches.                                                |
 | `AlternatingTurnsRuleSet` | Every shot ends the turn, regardless of result.                                                                   |
 | `ItemHitRuleSet`          | Item collected → shoot again (takes priority). Hit (ship alive) → shoot again. Ship sunk or miss → turn switches. |
+| `LoseTurnOnUseRuleSet`    | Classic shot rules **plus** `decideTurnOnItemUse`: calling `match.useItem()` forfeit the active player's turn.    |
 | `DefaultRuleSet`          | Alias for `ClassicRuleSet`.                                                                                       |
 
 ### Adding a new ruleset
@@ -465,6 +484,26 @@ flowchart TD
     FIN -- No --> PLAN[→ planning state]
 ```
 
+### `decideTurnOnItemUse` — penalising item use
+
+This optional hook is called by the machine after `item.onUse()` runs, **only when the item itself did not already toggle the turn** (preventing double-toggles). Implement it to make item use cost the active player their remaining turn:
+
+```typescript
+export const PenaltyRuleSet: MatchRuleSet = {
+  name: "PenaltyRuleSet",
+  description: "Classic rules — using any item ends your turn",
+
+  decideTurn: ClassicRuleSet.decideTurn,
+  checkGameOver: ClassicRuleSet.checkGameOver,
+
+  decideTurnOnItemUse(_isPlayerUse, _state): ItemUseTurnDecision {
+    return { shouldToggleTurn: true, reason: "Item used — turn forfeited" };
+  },
+};
+```
+
+> **Double-toggle protection:** if `item.onUse` already called `ctx.toggleTurn()`, the machine detects the turn changed and skips `decideTurnOnItemUse` entirely — you cannot end up with two consecutive toggles.
+
 ### Common customisation patterns
 
 | Goal                                         | What to change                                                              |
@@ -473,6 +512,7 @@ flowchart TD
 | Sudden-death (first hit wins)                | `checkGameOver`: return `isGameOver: true` if any shot hit                  |
 | Time-based turns                             | Implement outside the engine; call `confirmAttack()` when the timer expires |
 | Different win condition (e.g. sink ONE ship) | `checkGameOver`: check if any individual ship is destroyed, not all         |
+| Penalise item use (lose turn on `onUse`)     | Implement `decideTurnOnItemUse` — return `{ shouldToggleTurn: true }`       |
 
 ---
 

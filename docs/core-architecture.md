@@ -74,7 +74,7 @@ stateDiagram-v2
     active --> active : INITIALIZE\n[initializeEngine]
     active --> idle : RESET\n[resetEngine]
     active --> active : SET_RULESET\n[setRuleSet]
-
+    active --> active : USE_ITEM\n/ useItem + decideTurnOnItemUse?
     gameOver --> [*]
 ```
 
@@ -83,7 +83,7 @@ stateDiagram-v2
 | State                  | Description                                                                                                                                                |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `idle`                 | Machine created; no match in progress. Waiting for `INITIALIZE`.                                                                                           |
-| `active.planning`      | Waiting for the current player to choose a target cell.                                                                                                    |
+| `active.planning`      | Waiting for the current player to choose a target cell. Also accepts `USE_ITEM` events: calls `item.onUse(ctx)`, then (if the item itself did not toggle the turn) asks `ruleSet.decideTurnOnItemUse?()` whether to forfeit the current player's remaining turn. |
 | `active.planned`       | A valid plan is stored; waiting for confirmation or cancellation.                                                                                          |
 | `active.attacking`     | **Transient** (step 1): fires the shot pattern via `executeAttack`, stores `lastAttackResult`, invokes `item.onCollect` for any fully-collected items, then immediately advances to `resolvingTurn`. |
 | `active.resolvingTurn` | **Transient** (step 2): applies ruleset turn logic via `resolveTurn` (toggle turn, check game-over), then transitions to `gameOver` or back to `planning`. |
@@ -169,6 +169,7 @@ classDiagram
         +description: string
         +decideTurn(attackResult, state) TurnDecision
         +checkGameOver(state) GameOverDecision
+        +decideTurnOnItemUse?(isPlayerUse, state) ItemUseTurnDecision
     }
 
     class ClassicRuleSet {
@@ -192,6 +193,12 @@ classDiagram
         Game over → all enemy ships destroyed
     }
 
+    class LoseTurnOnUseRuleSet {
+        Classic shot rules
+        Item onUse → forfeit current turn
+        No double-toggle if item already toggled
+    }
+
     class DefaultRuleSet {
         Alias for ClassicRuleSet
     }
@@ -199,6 +206,7 @@ classDiagram
     MatchRuleSet <|.. ClassicRuleSet
     MatchRuleSet <|.. AlternatingTurnsRuleSet
     MatchRuleSet <|.. ItemHitRuleSet
+    MatchRuleSet <|.. LoseTurnOnUseRuleSet
     MatchRuleSet <|.. DefaultRuleSet
 ```
 
@@ -270,6 +278,7 @@ classDiagram
         <<interface>>
         +decideTurn(result, state) TurnDecision
         +checkGameOver(state) GameOverDecision
+        +decideTurnOnItemUse?(isPlayerUse, state) ItemUseTurnDecision
     }
 
     class GameItem {

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Match } from '../../engine/match';
 import type { GameShip, GameItem } from '../../types/common';
-import { ClassicRuleSet, AlternatingTurnsRuleSet, ItemHitRuleSet } from '../../engine/rulesets';
+import { ClassicRuleSet, AlternatingTurnsRuleSet, ItemHitRuleSet, LoseTurnOnUseRuleSet } from '../../engine/rulesets';
 
 describe('Match', () => {
   let match: Match;
@@ -1374,6 +1374,76 @@ describe('Match', () => {
       m.useItem(0, true);
 
       expect(onItemUse).not.toHaveBeenCalled();
+    });
+
+    describe('decideTurnOnItemUse — LoseTurnOnUseRuleSet', () => {
+      function makeItemMatchWithRuleSet(enemyItem: GameItem, ruleSet: typeof LoseTurnOnUseRuleSet | typeof ClassicRuleSet) {
+        return new Match({
+          setup: {
+            playerShips,
+            enemyShips,
+            initialTurn: 'PLAYER_TURN',
+            config: { boardWidth: 10, boardHeight: 10, ruleSet },
+            enemyItems: [enemyItem],
+            playerItems: [],
+          },
+        });
+      }
+
+      it('LoseTurnOnUseRuleSet — useItem() forfeits the current player turn', () => {
+        const item: GameItem = { coords: [3, 3], part: 1, onUse: vi.fn() };
+        const m = makeItemMatchWithRuleSet(item, LoseTurnOnUseRuleSet);
+        m.initializeMatch();
+
+        expect(m.getCurrentTurn()).toBe('PLAYER_TURN');
+        m.useItem(0, true);
+        expect(m.getCurrentTurn()).toBe('ENEMY_TURN');
+      });
+
+      it('LoseTurnOnUseRuleSet — no double-toggle when item onUse already called ctx.toggleTurn()', () => {
+        // The item itself toggles the turn; the ruleset must NOT toggle a second time.
+        const item: GameItem = {
+          coords: [3, 3],
+          part: 1,
+          onUse(ctx) { ctx.toggleTurn(); },
+        };
+        const m = makeItemMatchWithRuleSet(item, LoseTurnOnUseRuleSet);
+        m.initializeMatch();
+
+        expect(m.getCurrentTurn()).toBe('PLAYER_TURN');
+        m.useItem(0, true);
+        // Item toggled PLAYER → ENEMY; ruleset detects the toggle happened → no second toggle
+        expect(m.getCurrentTurn()).toBe('ENEMY_TURN');
+      });
+
+      it('ClassicRuleSet — useItem() does NOT toggle turn (baseline)', () => {
+        const item: GameItem = { coords: [3, 3], part: 1, onUse: vi.fn() };
+        const m = makeItemMatchWithRuleSet(item, ClassicRuleSet);
+        m.initializeMatch();
+
+        expect(m.getCurrentTurn()).toBe('PLAYER_TURN');
+        m.useItem(0, true);
+        expect(m.getCurrentTurn()).toBe('PLAYER_TURN'); // unchanged — classic has no decideTurnOnItemUse
+      });
+
+      it('LoseTurnOnUseRuleSet — enemy useItem() forfeits enemy turn', () => {
+        const item: GameItem = { coords: [3, 3], part: 1, onUse: vi.fn() };
+        const m = new Match({
+          setup: {
+            playerShips,
+            enemyShips,
+            initialTurn: 'ENEMY_TURN',
+            config: { boardWidth: 10, boardHeight: 10, ruleSet: LoseTurnOnUseRuleSet },
+            playerItems: [item], // enemy collects from player board
+            enemyItems: [],
+          },
+        });
+        m.initializeMatch();
+
+        expect(m.getCurrentTurn()).toBe('ENEMY_TURN');
+        m.useItem(0, false); // false = enemy using the item
+        expect(m.getCurrentTurn()).toBe('PLAYER_TURN');
+      });
     });
   });
 });
