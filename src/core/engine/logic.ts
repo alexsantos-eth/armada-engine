@@ -603,8 +603,8 @@ export class GameEngine {
     const items = isPlayerShot ? this.enemyItems : this.playerItems;
     const itemHits = isPlayerShot ? this.enemyItemHits : this.playerItemHits;
     const collectedSet = isPlayerShot
-      ? this.enemyCollectedItems
-      : this.playerCollectedItems;
+      ? this.playerCollectedItems
+      : this.enemyCollectedItems;
 
     const key = posKey(x, y);
     const itemId = itemPositions.get(key);
@@ -666,7 +666,7 @@ export class GameEngine {
     this.playerItems = items;
     this.playerItemPositions.clear();
     this.playerItemHits.clear();
-    this.playerCollectedItems.clear();
+    this.enemyCollectedItems.clear();
     this.usedByEnemy.clear();
     this.cacheItemPositions(items, this.playerItemPositions);
     this.notifyStateChange();
@@ -680,7 +680,7 @@ export class GameEngine {
     this.enemyItems = items;
     this.enemyItemPositions.clear();
     this.enemyItemHits.clear();
-    this.enemyCollectedItems.clear();
+    this.playerCollectedItems.clear();
     this.usedByPlayer.clear();
     this.cacheItemPositions(items, this.enemyItemPositions);
     this.notifyStateChange();
@@ -744,8 +744,8 @@ export class GameEngine {
       areAllEnemyShipsDestroyed: this.areAllShipsDestroyed(false),
       playerItems: [...this.playerItems],
       enemyItems: [...this.enemyItems],
-      playerCollectedItems: Array.from(this.enemyCollectedItems),
-      enemyCollectedItems: Array.from(this.playerCollectedItems),
+      playerCollectedItems: Array.from(this.playerCollectedItems),
+      enemyCollectedItems: Array.from(this.enemyCollectedItems),
       playerUsedItems: Array.from(this.usedByPlayer),
       enemyUsedItems: Array.from(this.usedByEnemy),
     };
@@ -904,7 +904,6 @@ export class GameEngine {
       }
     }
 
-    // ENEMY SHOTS — carry full shot data
     for (const shot of enemyShots) {
       if (
         shot.x >= 0 &&
@@ -951,7 +950,6 @@ export class GameEngine {
       }
     });
 
-    // PLAYER SHOTS — carry full shot data
     for (const shot of playerShots) {
       if (
         shot.x >= 0 &&
@@ -993,35 +991,114 @@ export class GameEngine {
 }
 
 /**
- * Game engine state interface
- * Contains all game information at a point in time
+ * Immutable snapshot of the game engine at a given point in time.
+ *
+ * Returned by {@link GameEngine.getState} and broadcast to every
+ * `onStateChange` subscriber after each mutation. All arrays are
+ * shallow copies — mutating them has no effect on internal engine state.
+ *
+ * @example
+ * const state = engine.getState();
+ * if (state.isGameOver) {
+ *   console.log("Winner:", state.winner);
+ * }
  */
 export interface GameEngineState {
+  /** Whose turn it is right now (`"PLAYER_TURN"` or `"ENEMY_TURN"`). */
   currentTurn: GameTurn;
+
+  /** Convenience flag — `true` when `currentTurn === "PLAYER_TURN"`. */
   isPlayerTurn: boolean;
+
+  /** Convenience flag — `true` when `currentTurn === "ENEMY_TURN"`. */
   isEnemyTurn: boolean;
+
+  /** Shallow copy of all ships on the **player's** board. */
   playerShips: GameShip[];
+
+  /** Shallow copy of all ships on the **enemy's** board. */
   enemyShips: GameShip[];
+
+  /**
+   * All shots fired **by the player** (i.e. targeting the enemy board),
+   * in the order they were registered.
+   */
   playerShots: Shot[];
+
+  /**
+   * All shots fired **by the enemy** (i.e. targeting the player board),
+   * in the order they were registered.
+   */
   enemyShots: Shot[];
+
+  /** `true` once the game has ended (by any means). */
   isGameOver: boolean;
+
+  /**
+   * The winner of the game once it is over.
+   * `"player"` | `"enemy"` | `null` while the game is still in progress.
+   */
   winner: Winner;
+
+  /** Width of the game board in cells. */
   boardWidth: number;
+
+  /** Height of the game board in cells. */
   boardHeight: number;
+
+  /** Total number of shots fired by both sides combined. */
   shotCount: number;
+
+  /**
+   * `true` when every ship on the **player's** board has been fully sunk
+   * (i.e. the enemy has won on ships alone).
+   */
   areAllPlayerShipsDestroyed: boolean;
+
+  /**
+   * `true` when every ship on the **enemy's** board has been fully sunk
+   * (i.e. the player has won on ships alone).
+   */
   areAllEnemyShipsDestroyed: boolean;
-  /** Items placed on the player's board (collectible by the enemy). */
+
+  /**
+   * Items placed on the **player's** board.
+   * These are collectible by the enemy when they shoot the corresponding cells.
+   */
   playerItems: GameItem[];
-  /** Items placed on the enemy's board (collectible by the player). */
+
+  /**
+   * Items placed on the **enemy's** board.
+   * These are collectible by the player when they shoot the corresponding cells.
+   */
   enemyItems: GameItem[];
-  /** Indices (into `enemyItems`) of items the **player** has fully collected from the enemy board. */
+
+  /**
+   * Indices (into `enemyItems`) of items the **player** has fully collected
+   * from the enemy board. An item is fully collected once all of its `part`
+   * cells have been hit.
+   */
   playerCollectedItems: number[];
-  /** Indices (into `playerItems`) of items the **enemy** has fully collected from the player board. */
+
+  /**
+   * Indices (into `playerItems`) of items the **enemy** has fully collected
+   * from the player board. An item is fully collected once all of its `part`
+   * cells have been hit.
+   */
   enemyCollectedItems: number[];
-  /** Indices (into `enemyItems`) of player-collected items the player has already activated via onUse. */
+
+  /**
+   * Indices (into `enemyItems`) of player-collected items that the player has
+   * already activated via `onUse`. Used to prevent double-activation of the
+   * same item powerup.
+   */
   playerUsedItems: number[];
-  /** Indices (into `playerItems`) of enemy-collected items the enemy has already activated via onUse. */
+
+  /**
+   * Indices (into `playerItems`) of enemy-collected items that the enemy has
+   * already activated via `onUse`. Used to prevent double-activation of the
+   * same item powerup.
+   */
   enemyUsedItems: number[];
 }
 

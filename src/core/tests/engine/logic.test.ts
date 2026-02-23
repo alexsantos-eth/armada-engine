@@ -509,4 +509,272 @@ describe('GameEngine', () => {
       expect(engine.isValidPosition(5, 5)).toBe(false);
     });
   });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Items
+  // ─────────────────────────────────────────────────────────────────────────
+  describe('Items — placement and collection', () => {
+    /** Enemy has one 1-cell item at (3,3) and one 2-cell item at (6,6)-(7,6). */
+    const enemyItems = [
+      { coords: [3, 3] as [number, number], part: 1 },
+      { coords: [6, 6] as [number, number], part: 2 },
+    ];
+
+    beforeEach(() => {
+      engine.initializeGame(playerShips, enemyShips, 'PLAYER_TURN', [], enemyItems);
+    });
+
+    it('should reflect items in state after initializeGame', () => {
+      const state = engine.getState();
+      expect(state.enemyItems).toHaveLength(2);
+      expect(state.playerItems).toHaveLength(0);
+      expect(state.playerCollectedItems).toHaveLength(0);
+      expect(state.enemyCollectedItems).toHaveLength(0);
+    });
+
+    it('should mark a shot as collected when hitting an item cell', () => {
+      const result = engine.executeShot(3, 3, true);
+
+      expect(result.success).toBe(true);
+      expect(result.hit).toBe(false);       // items are not ship hits
+      expect(result.collected).toBe(true);
+      expect(result.itemId).toBe(0);
+      expect(result.itemFullyCollected).toBe(true); // single-part item
+    });
+
+    it('should not fully collect a multi-part item until all parts are shot', () => {
+      const r1 = engine.executeShot(6, 6, true); // first part
+      expect(r1.collected).toBe(true);
+      expect(r1.itemFullyCollected).toBe(false);
+
+      const r2 = engine.executeShot(7, 6, true); // second part
+      expect(r2.collected).toBe(true);
+      expect(r2.itemFullyCollected).toBe(true);
+    });
+
+    it('should add item index to playerCollectedItems once fully collected', () => {
+      engine.executeShot(3, 3, true);
+
+      const state = engine.getState();
+      expect(state.playerCollectedItems).toContain(0);
+    });
+
+    it('should not re-collect an already collected item', () => {
+      engine.executeShot(6, 6, true);
+      engine.executeShot(7, 6, true); // fully collected
+
+      // Trying to shoot a cell of an already-collected item returns null (no second collection)
+      const result = engine.executeShot(6, 6, true); // cell already shot
+      expect(result.success).toBe(false); // cell already shot
+    });
+
+    it('should fire onItemCollected callback when an item is fully collected', () => {
+      const onItemCollected = vi.fn();
+      const eng = new GameEngine({}, { onItemCollected });
+      eng.initializeGame(playerShips, enemyShips, 'PLAYER_TURN', [], enemyItems);
+
+      eng.executeShot(3, 3, true);
+
+      expect(onItemCollected).toHaveBeenCalledTimes(1);
+      const [shot, item, isPlayerShot] = onItemCollected.mock.calls[0];
+      expect(shot.x).toBe(3);
+      expect(shot.y).toBe(3);
+      expect(item).toMatchObject({ coords: [3, 3], part: 1 });
+      expect(isPlayerShot).toBe(true);
+    });
+
+    it('should NOT fire onItemCollected for a partial collection', () => {
+      const onItemCollected = vi.fn();
+      const eng = new GameEngine({}, { onItemCollected });
+      eng.initializeGame(playerShips, enemyShips, 'PLAYER_TURN', [], enemyItems);
+
+      eng.executeShot(6, 6, true); // only first of two parts
+
+      expect(onItemCollected).not.toHaveBeenCalled();
+    });
+
+    it('should set items via setPlayerItems / setEnemyItems after construction', () => {
+      const eng = new GameEngine({ boardWidth: 10, boardHeight: 10 });
+      eng.initializeGame(playerShips, enemyShips);
+
+      const playerItem = { coords: [1, 1] as [number, number], part: 1 };
+      eng.setPlayerItems([playerItem]);
+
+      const result = eng.executeShot(1, 1, false); // enemy shoots player board
+      expect(result.collected).toBe(true);
+      expect(result.itemId).toBe(0);
+      expect(result.itemFullyCollected).toBe(true);
+    });
+
+    it('setPlayerItems resets collected state', () => {
+      const eng = new GameEngine({ boardWidth: 10, boardHeight: 10 });
+      const items = [{ coords: [1, 1] as [number, number], part: 1 }];
+      eng.initializeGame(playerShips, enemyShips, 'PLAYER_TURN', items, []);
+
+      eng.executeShot(1, 1, false); // enemy collects player item
+      expect(eng.getState().enemyCollectedItems).toContain(0);
+
+      eng.setPlayerItems(items); // reset
+      expect(eng.getState().enemyCollectedItems).toHaveLength(0);
+    });
+
+    it('setEnemyItems resets collected state', () => {
+      engine.executeShot(3, 3, true); // collect item 0
+      expect(engine.getState().playerCollectedItems).toContain(0);
+
+      engine.setEnemyItems(enemyItems); // reset
+      expect(engine.getState().playerCollectedItems).toHaveLength(0);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Item usage tracking (markItemUsed / isItemUsed)
+  // ─────────────────────────────────────────────────────────────────────────
+  describe('Items — markItemUsed / isItemUsed', () => {
+    beforeEach(() => {
+      engine.initializeGame(playerShips, enemyShips);
+    });
+
+    it('should return false for an item that has not been used', () => {
+      expect(engine.isItemUsed(0, true)).toBe(false);
+      expect(engine.isItemUsed(0, false)).toBe(false);
+    });
+
+    it('should return true after marking an item as used (player)', () => {
+      engine.markItemUsed(0, true);
+      expect(engine.isItemUsed(0, true)).toBe(true);
+      expect(engine.isItemUsed(0, false)).toBe(false); // other side unaffected
+    });
+
+    it('should return true after marking an item as used (enemy)', () => {
+      engine.markItemUsed(1, false);
+      expect(engine.isItemUsed(1, false)).toBe(true);
+      expect(engine.isItemUsed(1, true)).toBe(false);
+    });
+
+    it('marks are independent per side', () => {
+      engine.markItemUsed(0, true);
+      engine.markItemUsed(0, false);
+      expect(engine.isItemUsed(0, true)).toBe(true);
+      expect(engine.isItemUsed(0, false)).toBe(true);
+    });
+
+    it('used items appear in playerUsedItems / enemyUsedItems state', () => {
+      engine.markItemUsed(2, true);
+      engine.markItemUsed(3, false);
+
+      const state = engine.getState();
+      expect(state.playerUsedItems).toContain(2);
+      expect(state.enemyUsedItems).toContain(3);
+    });
+
+    it('should reset used-item tracking after initializeGame', () => {
+      engine.markItemUsed(0, true);
+      engine.markItemUsed(0, false);
+
+      engine.initializeGame(playerShips, enemyShips);
+
+      expect(engine.isItemUsed(0, true)).toBe(false);
+      expect(engine.isItemUsed(0, false)).toBe(false);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Board rendering — getPlayerBoard / getEnemyBoard
+  // ─────────────────────────────────────────────────────────────────────────
+  describe('Board Rendering — getPlayerBoard', () => {
+    beforeEach(() => {
+      engine.initializeGame(playerShips, enemyShips);
+    });
+
+    it('should return a board with correct dimensions', () => {
+      const board = engine.getPlayerBoard();
+      expect(board).toHaveLength(10); // 10 rows
+      expect(board[0]).toHaveLength(10); // 10 cols
+    });
+
+    it('should mark player ship cells as SHIP', () => {
+      const board = engine.getPlayerBoard();
+      // playerShip 0: coords [0,0], width 2 → (0,0) and (1,0)
+      expect(board[0][0].state).toBe('SHIP');
+      expect(board[0][1].state).toBe('SHIP');
+      // non-ship cell
+      expect(board[9][9].state).toBe('EMPTY');
+    });
+
+    it('should mark enemy-shot cells as HIT when a ship is hit', () => {
+      engine.executeShot(0, 0, false); // enemy hits player ship at (0,0)
+      const board = engine.getPlayerBoard();
+      expect(board[0][0].state).toBe('HIT');
+      expect(board[0][0].shot).toBeDefined();
+    });
+
+    it('should mark enemy-shot cells as MISS when no ship is hit', () => {
+      engine.executeShot(9, 9, false); // enemy misses
+      const board = engine.getPlayerBoard();
+      expect(board[9][9].state).toBe('MISS');
+      expect(board[9][9].shot).toBeDefined();
+    });
+
+    it('should include shot metadata in cell', () => {
+      engine.executeShot(0, 0, false);
+      const board = engine.getPlayerBoard();
+      const cell = board[0][0];
+      expect(cell.shot?.x).toBe(0);
+      expect(cell.shot?.y).toBe(0);
+      expect(cell.shot?.hit).toBe(true);
+    });
+  });
+
+  describe('Board Rendering — getEnemyBoard', () => {
+    const enemyItems = [{ coords: [1, 1] as [number, number], part: 1 }];
+
+    beforeEach(() => {
+      engine.initializeGame(playerShips, enemyShips, 'PLAYER_TURN', [], enemyItems);
+    });
+
+    it('should return a board with correct dimensions', () => {
+      const board = engine.getEnemyBoard();
+      expect(board).toHaveLength(10);
+      expect(board[0]).toHaveLength(10);
+    });
+
+    it('should hide enemy ships (cells start as EMPTY)', () => {
+      const board = engine.getEnemyBoard();
+      // Enemy ship at [5,5] should NOT appear as SHIP (hidden from player)
+      expect(board[5][5].state).toBe('EMPTY');
+    });
+
+    it('should mark item cells as ITEM before collection', () => {
+      const board = engine.getEnemyBoard();
+      expect(board[1][1].state).toBe('ITEM');
+    });
+
+    it('should mark player-shot cells as HIT when a ship is hit', () => {
+      engine.executeShot(5, 5, true);
+      const board = engine.getEnemyBoard();
+      expect(board[5][5].state).toBe('HIT');
+    });
+
+    it('should mark player-shot cells as MISS when nothing is hit', () => {
+      engine.executeShot(9, 9, true);
+      const board = engine.getEnemyBoard();
+      expect(board[9][9].state).toBe('MISS');
+    });
+
+    it('should mark collected item cells as COLLECTED', () => {
+      engine.executeShot(1, 1, true); // collect the item
+      const board = engine.getEnemyBoard();
+      expect(board[1][1].state).toBe('COLLECTED');
+    });
+
+    it('should include shot metadata in cell', () => {
+      engine.executeShot(5, 5, true);
+      const board = engine.getEnemyBoard();
+      const cell = board[5][5];
+      expect(cell.shot?.x).toBe(5);
+      expect(cell.shot?.y).toBe(5);
+      expect(cell.shot?.hit).toBe(true);
+    });
+  });
 });

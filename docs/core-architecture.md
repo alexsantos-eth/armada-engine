@@ -37,10 +37,10 @@ graph TD
 
 | Layer               | Class / Module | Responsibility                                                                                                                                                               |
 | ------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public API          | `Match`        | Wraps the XState actor; exposes simple methods (planShot, confirmAttack, planAndAttack, resetMatch…) and forwards callbacks to consumers.                                    |
+| Public API          | `Match`        | Wraps the XState actor; exposes simple methods (`planShot`, `confirmAttack`, `planAndAttack`, `resetMatch`, `useItem`…) and forwards callbacks to consumers.                |
 | State Orchestration | `matchMachine` | Owns the named states (`idle`, `active.planning`, `active.planned`, `active.attacking`, `active.resolvingTurn`, `gameOver`) and guards/actions that transition between them. Invokes `item.onCollect` for every fully-collected item after each attack. |
-| Pure Compute        | `GameEngine`   | Holds all mutable board data (shots maps, ship positions, hit counters, turn, game-over flag). Executes shot patterns and emits callbacks.                                   |
-| Rules               | `MatchRuleSet` | Stateless object that decides, after each attack, whether to toggle the turn and whether the game is over.                                                                   |
+| Pure Compute        | `GameEngine`   | Holds all mutable board data (shots maps, ship positions, hit counters, item positions, turn, game-over flag). Executes shot patterns, manages item collection, renders full board views (`getPlayerBoard` / `getEnemyBoard`), and emits callbacks. |
+| Rules               | `MatchRuleSet` | Stateless object that decides, after each attack, whether to toggle the turn and whether the game is over. Receives the full `GameEngineState` so it can inspect items, ships, and shots. |
 
 ---
 
@@ -232,6 +232,7 @@ classDiagram
         +cancelPlan()
         +resetMatch()
         +setRuleSet(ruleSet)
+        +useItem(itemId, isPlayerShot) boolean
         +getState() GameEngineState
         +getEngine() GameEngine
         +getActor()
@@ -249,13 +250,20 @@ classDiagram
         -currentTurn: GameTurn
         -playerShips / enemyShips
         -shotsMap, shipPositions, hitCounters
-        +initializeGame(playerShips, enemyShips, initialTurn)
+        -playerItems / enemyItems
+        -itemPositions, itemHits, collectedItems, usedItems
+        +initializeGame(playerShips, enemyShips, initialTurn, playerItems, enemyItems)
         +executeShotPattern(x, y, pattern, isPlayerShot)
         +isCellShot(x, y, isPlayerShot)
         +isValidPosition(x, y)
+        +setPlayerItems(items) / setEnemyItems(items)
+        +markItemUsed(itemId, isPlayerShot)
+        +isItemUsed(itemId, isPlayerShot)
+        +getPlayerBoard() Board
+        +getEnemyBoard() Board
         +getState() GameEngineState
         +getInternalAPI()
-        -callbacks: onShot, onTurnChange, onStateChange, onGameOver
+        -callbacks: onShot, onTurnChange, onStateChange, onGameOver, onItemCollected
     }
 
     class MatchRuleSet {
@@ -264,15 +272,70 @@ classDiagram
         +checkGameOver(state) GameOverDecision
     }
 
+    class GameItem {
+        +coords: [number, number]
+        +part: number
+        +templateId?: string
+        +onCollect?(ctx: ItemActionContext)
+        +onUse?(ctx: ItemActionContext)
+    }
+
     Match "1" --> "1" matchMachine : creates & sends events
     matchMachine "1" --> "1" GameEngine : holds reference in context
     matchMachine "1" --> "1" MatchRuleSet : holds reference in context
+    GameEngine "1" --> "*" GameItem : stores player & enemy items
     GameEngine ..> Match : fires callbacks
 ```
 
 ---
 
-## 6. React Integration
+## 6. Board Rendering — `getPlayerBoard` / `getEnemyBoard`
+
+`GameEngine` exposes two board-rendering helpers that materialise the internal Maps into a 2-D `Board` array ready for the UI. Each call to `getState()` is **not** required; the helpers call it internally.
+
+```typescript
+const playerBoard = engine.getPlayerBoard(); // Board[row][col]
+const enemyBoard  = engine.getEnemyBoard();
+```
+
+### Cell states
+
+| `cell.state` | Appears on      | Meaning                                                    |
+| ------------ | --------------- | ---------------------------------------------------------- |
+| `"EMPTY"`    | both boards     | Not yet targeted; no ship, no item                         |
+| `"SHIP"`     | player board    | A player ship occupies this cell (own ships always visible)|
+| `"HIT"`      | both boards     | A shot landed on a ship cell                               |
+| `"MISS"`     | both boards     | A shot landed on an empty cell                             |
+| `"ITEM"`     | enemy board     | An enemy item cell that has not yet been collected         |
+| `"COLLECTED"`| enemy board     | An enemy item cell that the player has fully collected      |
+
+> **Note:** Enemy ships are intentionally **never** marked on `getEnemyBoard()` — they remain hidden until sunk.
+
+### Shot metadata
+
+Every fired-upon cell includes the original `Shot` object under `cell.shot`, giving the UI access to `patternId`, `patternCenterX/Y`, `shipId`, `collected`, `itemId`, and `itemFullyCollected`:
+
+```typescript
+const cell = enemyBoard[5][5];
+if (cell.shot) {
+  console.log(cell.shot.patternId);     // e.g. "cross"
+  console.log(cell.shot.shipId);        // ship index, or undefined
+  console.log(cell.shot.itemFullyCollected); // boolean
+}
+```
+
+```mermaid
+flowchart LR
+    GE["GameEngine"]
+    GE -->|"enemyShotsMap + playerShips"| PB["getPlayerBoard()\nSHIP / HIT / MISS cells"]
+    GE -->|"playerShotsMap + enemyItems + playerCollectedItems"| EB["getEnemyBoard()\nEMPTY / HIT / MISS / ITEM / COLLECTED cells"]
+    PB --> UI_P["Player board UI"]
+    EB --> UI_E["Enemy board UI"]
+```
+
+---
+
+## 7. React Integration
 
 The engine is consumed in React through two hooks that sit above `Match`.
 
@@ -317,7 +380,7 @@ sequenceDiagram
 
 ---
 
-## 7. Usage Example (without React)
+## 8. Usage Example (without React)
 
 ```typescript
 import { Match } from "./src/core/engine";
@@ -353,7 +416,7 @@ const result = match.planAndAttack(3, 4, true, SINGLE_SHOT);
 
 ---
 
-## 8. Error Handling
+## 9. Error Handling
 
 All error strings are centralised in `src/core/engine/errors.ts` and grouped into three const-object namespaces. Consumers can import and compare against these values instead of matching raw strings.
 
@@ -404,7 +467,7 @@ if (!result.success) {
 
 ---
 
-## 9. Context Data Flow Summary
+## 10. Context Data Flow Summary
 
 ```mermaid
 flowchart LR

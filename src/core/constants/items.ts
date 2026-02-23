@@ -63,8 +63,8 @@ export const PHANTOM_DECOY: ItemTemplate = {
   defaultCount: 1,
 
   onUse(ctx) {
-    // Jam opponent items — remove all uncollected items from their board.
-    ctx.setEnemyItems([]);
+    // Jam player items — this will remove the items in player board so the enemy cant collect them
+    ctx.setPlayerItems([]);
   },
 };
 

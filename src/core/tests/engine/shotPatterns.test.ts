@@ -1,6 +1,20 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { GameEngine } from "../../engine/logic";
-import { CROSS_SHOT, HORIZONTAL_LINE_SHOT, SINGLE_SHOT, getShotPattern, createCustomPattern } from "../../constants/shots";
+import {
+  CROSS_SHOT,
+  DIAGONAL_X_SHOT,
+  HORIZONTAL_LINE_SHOT,
+  L_SHAPE_SHOT,
+  LARGE_CROSS_SHOT,
+  SHOT_PATTERNS,
+  SINGLE_SHOT,
+  SMALL_SQUARE_SHOT,
+  SQUARE_SHOT,
+  T_SHAPE_SHOT,
+  VERTICAL_LINE_SHOT,
+  getShotPattern,
+  createCustomPattern,
+} from "../../constants/shots";
 import type { GameShip } from "../../types/common";
 
 describe("Shot Pattern System", () => {
@@ -205,6 +219,225 @@ describe("Shot Pattern System", () => {
       const playerShots = engine.getPlayerShots();
       const uniqueShots = new Set(playerShots.map(s => `${s.x},${s.y}`));
       expect(uniqueShots.size).toBe(playerShots.length);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Remaining built-in patterns
+  // ─────────────────────────────────────────────────────────────────────────
+
+  describe("Vertical Line Shot Pattern", () => {
+    it("should fire 3 shots in a vertical column", () => {
+      const result = engine.executeShotPattern(5, 5, VERTICAL_LINE_SHOT, true);
+
+      expect(result.success).toBe(true);
+      expect(result.shots).toHaveLength(3);
+
+      const positions = result.shots.map(s => ({ x: s.x, y: s.y }));
+      expect(positions).toContainEqual({ x: 5, y: 4 }); // Up
+      expect(positions).toContainEqual({ x: 5, y: 5 }); // Center
+      expect(positions).toContainEqual({ x: 5, y: 6 }); // Down
+
+      // All shots share the same X coordinate
+      expect(result.shots.every(s => s.x === 5)).toBe(true);
+    });
+
+    it("should hit ship cells in the column", () => {
+      // Enemy ship at coords [5,5] width=3 → cells (5,5),(6,5),(7,5)
+      // Vertical line at (5,5): fires (5,4),(5,5),(5,6)
+      // Only (5,5) is a ship cell
+      const result = engine.executeShotPattern(5, 5, VERTICAL_LINE_SHOT, true);
+
+      const centerShot = result.shots.find(s => s.x === 5 && s.y === 5);
+      expect(centerShot?.hit).toBe(true);
+
+      const upShot = result.shots.find(s => s.x === 5 && s.y === 4);
+      expect(upShot?.hit).toBe(false);
+    });
+
+    it("should skip out-of-bounds cells at the top edge", () => {
+      const result = engine.executeShotPattern(5, 0, VERTICAL_LINE_SHOT, true);
+
+      const outOfBounds = result.shots.find(s => s.y === -1);
+      expect(outOfBounds?.executed).toBe(false);
+
+      const centerShot = result.shots.find(s => s.x === 5 && s.y === 0);
+      expect(centerShot?.executed).toBe(true);
+    });
+  });
+
+  describe("Large Cross Shot Pattern", () => {
+    it("should fire 9 shots in an extended cross", () => {
+      const result = engine.executeShotPattern(5, 5, LARGE_CROSS_SHOT, true);
+
+      expect(result.success).toBe(true);
+      expect(result.shots).toHaveLength(9);
+    });
+
+    it("should include center, two lateral cells in each direction", () => {
+      const result = engine.executeShotPattern(5, 5, LARGE_CROSS_SHOT, true);
+      const positions = result.shots.map(s => ({ x: s.x, y: s.y }));
+
+      expect(positions).toContainEqual({ x: 5, y: 5 }); // Center
+      expect(positions).toContainEqual({ x: 3, y: 5 }); // Left-2
+      expect(positions).toContainEqual({ x: 7, y: 5 }); // Right-2
+      expect(positions).toContainEqual({ x: 5, y: 3 }); // Up-2
+      expect(positions).toContainEqual({ x: 5, y: 7 }); // Down-2
+    });
+
+    it("should skip out-of-bounds cells near the corner", () => {
+      const result = engine.executeShotPattern(1, 1, LARGE_CROSS_SHOT, true);
+      const oob = result.shots.filter(s => !s.executed);
+      // Cells at x=-1 and y=-1 are out-of-bounds (dx=-2 or dy=-2)
+      expect(oob.length).toBeGreaterThan(0);
+      oob.forEach(s => {
+        expect(s.x < 0 || s.x >= 10 || s.y < 0 || s.y >= 10).toBe(true);
+      });
+    });
+  });
+
+  describe("Square Shot Pattern", () => {
+    it("should fire 9 shots covering a 3×3 block", () => {
+      const result = engine.executeShotPattern(5, 5, SQUARE_SHOT, true);
+
+      expect(result.success).toBe(true);
+      expect(result.shots).toHaveLength(9);
+
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          expect(result.shots).toContainEqual(
+            expect.objectContaining({ x: 5 + dx, y: 5 + dy }),
+          );
+        }
+      }
+    });
+
+    it("should cover and hit all cells of a 3-cell ship entirely inside the square", () => {
+      // Enemy ship at [5,5] width=3 → (5,5),(6,5),(7,5)
+      // Square centered at (6,5) covers all three cells
+      const result = engine.executeShotPattern(6, 5, SQUARE_SHOT, true);
+      const hits = result.shots.filter(s => s.hit && s.executed);
+      expect(hits.length).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  describe("Diagonal X Shot Pattern", () => {
+    it("should fire 5 shots in an X shape", () => {
+      const result = engine.executeShotPattern(5, 5, DIAGONAL_X_SHOT, true);
+
+      expect(result.success).toBe(true);
+      expect(result.shots).toHaveLength(5);
+
+      const positions = result.shots.map(s => ({ x: s.x, y: s.y }));
+      expect(positions).toContainEqual({ x: 5, y: 5 }); // Center
+      expect(positions).toContainEqual({ x: 4, y: 4 }); // Top-left
+      expect(positions).toContainEqual({ x: 6, y: 4 }); // Top-right
+      expect(positions).toContainEqual({ x: 4, y: 6 }); // Bottom-left
+      expect(positions).toContainEqual({ x: 6, y: 6 }); // Bottom-right
+    });
+
+    it("should not include horizontal or vertical neighbors", () => {
+      const result = engine.executeShotPattern(5, 5, DIAGONAL_X_SHOT, true);
+      const positions = result.shots.map(s => `${s.x},${s.y}`);
+
+      expect(positions).not.toContain("4,5"); // left
+      expect(positions).not.toContain("6,5"); // right
+      expect(positions).not.toContain("5,4"); // up
+      expect(positions).not.toContain("5,6"); // down
+    });
+  });
+
+  describe("Small Square Shot Pattern", () => {
+    it("should fire 4 shots in a 2×2 block", () => {
+      const result = engine.executeShotPattern(5, 5, SMALL_SQUARE_SHOT, true);
+
+      expect(result.success).toBe(true);
+      expect(result.shots).toHaveLength(4);
+
+      const positions = result.shots.map(s => ({ x: s.x, y: s.y }));
+      expect(positions).toContainEqual({ x: 5, y: 5 }); // top-left
+      expect(positions).toContainEqual({ x: 6, y: 5 }); // top-right
+      expect(positions).toContainEqual({ x: 5, y: 6 }); // bottom-left
+      expect(positions).toContainEqual({ x: 6, y: 6 }); // bottom-right
+    });
+
+    it("should hit both cells of a 2-cell ship lying inside the square", () => {
+      // Re-init with a custom enemy ship fitting the small square
+      engine.initializeGame(
+        playerShips,
+        [{ coords: [5, 5], width: 2, height: 1 }],
+        "PLAYER_TURN",
+      );
+      const result = engine.executeShotPattern(5, 5, SMALL_SQUARE_SHOT, true);
+      const hits = result.shots.filter(s => s.hit && s.executed);
+      expect(hits).toHaveLength(2);
+    });
+  });
+
+  describe("T-Shape Shot Pattern", () => {
+    it("should fire 5 shots in a T formation", () => {
+      const result = engine.executeShotPattern(5, 5, T_SHAPE_SHOT, true);
+
+      expect(result.success).toBe(true);
+      expect(result.shots).toHaveLength(5);
+
+      const positions = result.shots.map(s => ({ x: s.x, y: s.y }));
+      // Horizontal bar
+      expect(positions).toContainEqual({ x: 4, y: 5 });
+      expect(positions).toContainEqual({ x: 5, y: 5 });
+      expect(positions).toContainEqual({ x: 6, y: 5 });
+      // Vertical stem
+      expect(positions).toContainEqual({ x: 5, y: 6 });
+      expect(positions).toContainEqual({ x: 5, y: 7 });
+    });
+  });
+
+  describe("L-Shape Shot Pattern", () => {
+    it("should fire 4 shots in an L formation", () => {
+      const result = engine.executeShotPattern(5, 5, L_SHAPE_SHOT, true);
+
+      expect(result.success).toBe(true);
+      expect(result.shots).toHaveLength(4);
+
+      const positions = result.shots.map(s => ({ x: s.x, y: s.y }));
+      // Vertical column
+      expect(positions).toContainEqual({ x: 5, y: 5 });
+      expect(positions).toContainEqual({ x: 5, y: 6 });
+      expect(positions).toContainEqual({ x: 5, y: 7 });
+      // Horizontal foot
+      expect(positions).toContainEqual({ x: 6, y: 7 });
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Pattern metadata
+  // ─────────────────────────────────────────────────────────────────────────
+
+  describe("Pattern metadata", () => {
+    it("all built-in patterns should have a non-empty id, name and description", () => {
+      Object.values(SHOT_PATTERNS).forEach(pattern => {
+        expect(pattern.id).toBeTruthy();
+        expect(pattern.name).toBeTruthy();
+        expect(pattern.description).toBeTruthy();
+      });
+    });
+
+    it("all built-in pattern ids should be unique", () => {
+      const ids = Object.values(SHOT_PATTERNS).map(p => p.id);
+      const unique = new Set(ids);
+      expect(unique.size).toBe(ids.length);
+    });
+
+    it("SHOT_PATTERNS map key should match the pattern id", () => {
+      Object.entries(SHOT_PATTERNS).forEach(([key, pattern]) => {
+        expect(key).toBe(pattern.id);
+      });
+    });
+
+    it("each pattern should have at least one offset", () => {
+      Object.values(SHOT_PATTERNS).forEach(pattern => {
+        expect(pattern.offsets.length).toBeGreaterThanOrEqual(1);
+      });
     });
   });
 });
