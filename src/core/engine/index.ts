@@ -1,4 +1,3 @@
-export { GameEngine } from "./logic";
 export type { GameEngineState, ShotResult, GameEngineCallbacks } from "./logic";
 
 export { Match } from "./match";

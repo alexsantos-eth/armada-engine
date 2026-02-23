@@ -66,6 +66,17 @@ export interface MatchMachineContext {
    * double-applied.
    */
   turnBeforeItemUse: GameTurn | null;
+  /**
+   * A ruleset change requested synchronously from inside an `onCollect` or
+   * `onUse` handler via `ctx.setRuleSet()`. Stored in machine context so
+   * `resolveTurn` / `resolveItemUse` can apply it before calling `decideTurn`,
+   * guaranteeing the new ruleset governs the same attack cycle.
+   *
+   * Previously this lived as `pendingRuleSet` on `GameEngine`, which violated
+   * SRP: the engine (state/logic) was holding temporal flow-coordination state
+   * that belongs to the machine (game flow).
+   */
+  pendingRuleSet: MatchRuleSet | null;
 }
 
 export type MatchMachineEvent =

@@ -188,8 +188,7 @@ describe("Shot Pattern System", () => {
 
   describe("Game Over Detection", () => {
     it("should not execute pattern when game is already over", () => {
-      const internal = engine.getInternalAPI();
-      internal.setGameOver("player");
+      engine.setGameOver("player");
       
       const result = engine.executeShotPattern(5, 5, CROSS_SHOT, true);
       

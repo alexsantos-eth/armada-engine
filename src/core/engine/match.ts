@@ -3,7 +3,7 @@ import { createActor } from "xstate";
 import { SINGLE_SHOT } from "../constants/shots";
 import { AttackError, PlanError } from "./errors";
 import { GameInitializer, type GameSetup } from "../manager";
-import { type GameEngineState, GameEngine } from "./logic";
+import { type GameEngineState } from "./logic";
 import { matchMachine } from "./machines/matchMachine";
 import { DefaultRuleSet, type MatchRuleSet } from "./rulesets";
 
@@ -220,23 +220,25 @@ export class Match {
   }
 
   public isPlayerTurn(): boolean {
-    return this.engine.isPlayerTurn();
+    return this.getState().isPlayerTurn;
   }
 
   public isEnemyTurn(): boolean {
-    return this.engine.isEnemyTurn();
+    return this.getState().isEnemyTurn;
   }
 
   public getCurrentTurn(): GameTurn {
-    return this.engine.getCurrentTurn();
+    return this.getState().currentTurn;
   }
 
   public getState(): GameEngineState {
     return this.engine.getState();
   }
 
-  public getEngine(): GameEngine {
-    return this.engine;
+  public forceSetTurn(turn: GameTurn): void {
+    if (this.engine.getCurrentTurn() !== turn) {
+      this.engine.toggleTurn();
+    }
   }
 
   public isCellShot(x: number, y: number, isPlayerShot: boolean): boolean {
@@ -248,11 +250,11 @@ export class Match {
   }
 
   public getWinner(): Winner {
-    return this.engine.getWinner();
+    return this.getState().winner;
   }
 
   public isMatchOver(): boolean {
-    return this.engine.getState().isGameOver;
+    return this.getState().isGameOver;
   }
 
   public resetMatch(): void {

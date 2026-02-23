@@ -1,4 +1,4 @@
-import type { GameEngine } from "../../core/engine";
+import type { Match } from "../../core/engine";
 
 /**
  * AI Player - Pure logic without React dependencies
@@ -9,17 +9,17 @@ import type { GameEngine } from "../../core/engine";
  * 🚀 OPTIMIZADO: Mantiene lista de posiciones disponibles y la actualiza incrementalmente
  */
 export class AIPlayer {
-  private engine: GameEngine;
+  private match: Match;
   private availablePositions: [number, number][];
   protected isPlayer: boolean;
 
   /**
    * Create an AI player
-   * @param engine - The game engine instance
+   * @param match - The Match instance
    * @param isPlayer - True if this AI controls the player, false if it controls the enemy
    */
-  constructor(engine: GameEngine, isPlayer: boolean = false) {
-    this.engine = engine;
+  constructor(match: Match, isPlayer: boolean = false) {
+    this.match = match;
     this.isPlayer = isPlayer;
     this.availablePositions = [];
     this.updateAvailablePositions();
@@ -31,13 +31,13 @@ export class AIPlayer {
    * @private
    */
   private updateAvailablePositions(): void {
-    const { width, height } = this.engine.getBoardDimensions();
+    const { width, height } = this.match.getBoardDimensions();
     this.availablePositions = [];
 
     for (let x = 0; x < width; x++) {
       for (let y = 0; y < height; y++) {
         // 🚀 El engine ahora usa Set para O(1) lookup en vez de O(n)
-        if (!this.engine.isCellShot(x, y, this.isPlayer)) {
+        if (!this.match.isCellShot(x, y, this.isPlayer)) {
           this.availablePositions.push([x, y]);
         }
       }
@@ -75,11 +75,11 @@ export class SmartAIPlayer extends AIPlayer {
 
   /**
    * Create a smart AI player
-   * @param engine - The game engine instance
+   * @param match - The Match instance
    * @param isPlayer - True if this AI controls the player, false if it controls the enemy
    */
-  constructor(engine: GameEngine, isPlayer: boolean = false) {
-    super(engine, isPlayer);
+  constructor(match: Match, isPlayer: boolean = false) {
+    super(match, isPlayer);
   }
 
   /**
@@ -148,8 +148,8 @@ export class SmartAIPlayer extends AIPlayer {
    * @private
    */
   private isValidAndAvailable(x: number, y: number): boolean {
-    const engine = (this as any).engine as GameEngine;
-    return engine.isValidPosition(x, y) && !engine.isCellShot(x, y, false);
+    const match = (this as any).match as Match;
+    return match.isValidPosition(x, y) && !match.isCellShot(x, y, false);
   }
 
 }

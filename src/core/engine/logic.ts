@@ -55,7 +55,6 @@ export class GameEngine {
   private onShot?: (shot: Shot, isPlayerShot: boolean) => void;
   private onGameOver?: (winner: Winner) => void;
   private onItemCollected?: (shot: Shot, item: GameItem, isPlayerShot: boolean) => void;
-  private pendingRuleSet: unknown = null;
 
   constructor(
     config: Partial<GameConfig> = {},
@@ -241,7 +240,7 @@ export class GameEngine {
   /**
    * Set turn to enemy
    */
-  public setEnemyTurn(): void {
+  private setEnemyTurn(): void {
     this.currentTurn = "ENEMY_TURN";
     this.onTurnChange?.(this.currentTurn);
     this.notifyStateChange();
@@ -250,7 +249,7 @@ export class GameEngine {
   /**
    * Toggle turn between player and enemy
    */
-  private toggleTurn(): void {
+  public toggleTurn(): void {
     if (this.currentTurn === "PLAYER_TURN") {
       this.setEnemyTurn();
     } else {
@@ -542,9 +541,8 @@ export class GameEngine {
   /**
    * Set the game as over with a winner
    * @param winner - The winner of the game ('player' or 'enemy')
-   * @private - Should only be called through Match
    */
-  private setGameOver(winner: Winner): void {
+  public setGameOver(winner: Winner): void {
     this.winner = winner;
     this.isGameOver = true;
     this.onGameOver?.(this.winner);
@@ -969,26 +967,8 @@ export class GameEngine {
     return board;
   }
 
-  /**
-   * Get internal API for Match class
-   * @internal - This API should only be used by the Match class
-   * @returns Object with internal methods for turn and game state management
-   */
-  public getInternalAPI(): GameEngineInternalAPI {
-    return {
-      toggleTurn: () => this.toggleTurn(),
-      setGameOver: (winner: Winner) => this.setGameOver(winner),
-      setPendingRuleSet: (ruleSet: unknown) => {
-        this.pendingRuleSet = ruleSet;
-      },
-      takePendingRuleSet: () => {
-        const rs = this.pendingRuleSet;
-        this.pendingRuleSet = null;
-        return rs;
-      },
-    };
-  }
 }
+
 
 /**
  * Immutable snapshot of the game engine at a given point in time.
@@ -1134,37 +1114,4 @@ export interface GameEngineCallbacks {
   onItemCollected?: (shot: Shot, item: GameItem, isPlayerShot: boolean) => void;
 }
 
-/**
- * Internal API for Match class
- * @internal - This interface should only be used by the Match class
- * Provides controlled access to engine internals for game flow management
- */
-export interface GameEngineInternalAPI {
-  /**
-   * Toggle turn between player and enemy
-   * @internal
-   */
-  toggleTurn: () => void;
 
-  /**
-   * Set the game as over with a winner
-   * @internal
-   * @param winner - The winner of the game
-   */
-  setGameOver: (winner: Winner) => void;
-
-  /**
-   * Store a ruleset change that was requested synchronously from inside an
-   * item callback (onCollect / onUse). `resolveTurn` will read and apply it
-   * before calling decideTurn so the correct ruleset is used in the same cycle.
-   * @internal
-   */
-  setPendingRuleSet: (ruleSet: unknown) => void;
-
-  /**
-   * Consume and return the pending ruleset (clears internal storage).
-   * Returns `null` if no ruleset change was requested.
-   * @internal
-   */
-  takePendingRuleSet: () => unknown;
-}

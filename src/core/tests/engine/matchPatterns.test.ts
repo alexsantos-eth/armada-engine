@@ -182,8 +182,7 @@ describe("Match Shot Patterns", () => {
       
       // Change turn if needed
       if (!match.isPlayerTurn()) {
-        const internal = match.getEngine().getInternalAPI();
-        internal.toggleTurn();
+        match.forceSetTurn("PLAYER_TURN");
       }
       
       // Second pattern
@@ -223,8 +222,7 @@ describe("Match Shot Patterns", () => {
       match.planAndAttack(5, 5, true);
       
       if (!match.isPlayerTurn()) {
-        const internal = match.getEngine().getInternalAPI();
-        internal.toggleTurn();
+        match.forceSetTurn("PLAYER_TURN");
       }
       
       // Plan cross pattern including the already-shot center

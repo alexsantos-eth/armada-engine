@@ -676,11 +676,13 @@ describe('Match', () => {
   });
 
   describe('Engine Access', () => {
-    it('should provide access to underlying engine', () => {
-      const engine = match.getEngine();
-      
-      expect(engine).toBeDefined();
-      expect(typeof engine.getState).toBe('function');
+    it('should expose game state directly without leaking the engine', () => {
+      match.initializeMatch();
+      const state = match.getState();
+
+      expect(state).toBeDefined();
+      expect(typeof state.currentTurn).toBe('string');
+      expect((match as any).getEngine).toBeUndefined();
     });
   });
 

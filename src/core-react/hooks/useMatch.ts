@@ -3,7 +3,6 @@ import {
   GameInitializer,
   Match,
   type GameConfig,
-  type GameEngine,
   type GameEngineState,
   type MatchCallbacks,
 } from "../../core/engine";
@@ -26,7 +25,6 @@ const useMatch = ({
 }: UseMatchProps | undefined = {}) => {
   const [gameState, setGameState] = useState<GameEngineState | null>(null);
   const match = useRef<Match | null>(null);
-  const engine = useRef<GameEngine | null>(null);
 
   useEffect(() => {
     initializeNewGame();
@@ -49,9 +47,6 @@ const useMatch = ({
 
     match.current = newMatch;
     setGameState(newMatch.getState());
-
-    const engineInstance = newMatch.getEngine();
-    engine.current = engineInstance;
   };
 
   const playerBoard = match.current?.getPlayerBoard();
@@ -63,7 +58,6 @@ const useMatch = ({
     enemyBoard,
     initializeNewGame,
     match: match.current,
-    engine: engine.current,
   };
 };
 

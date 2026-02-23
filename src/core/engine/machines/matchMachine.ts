@@ -3,70 +3,13 @@ import { GameEngine } from "../logic";
 import { DefaultRuleSet } from "../rulesets";
 import { SINGLE_SHOT } from "../../constants/shots";
 import { PlanError } from "../errors";
+import { buildItemActionContext } from "../itemContext";
 import type {
   MatchMachineContext,
   MatchMachineEvent,
   MatchMachineInput,
 } from "./types";
-import type { GameItem, ItemActionContext, Shot } from "../../types/common";
-
-/**
- * Builds the `ItemActionContext` passed to `onCollect` and `onUse` handlers.
- * Shared by the `useItem` machine action and the `onItemCollected` callback
- * wired in `Match`.
- *
- * @param swapPerspective - When `true` and `isPlayerShot` is `false`, all
- *   player↔enemy setters and readers are swapped so that item handlers
- *   are always written from the **collector's / activator's perspective**.
- *   This means `ctx.setPlayerShips` always refers to "my ships" and
- *   `ctx.setEnemyShots` always refers to "opponent's shots", regardless
- *   of which side actually fired the shot.
- */
-export function buildItemActionContext(
-  engine: GameEngine,
-  item: GameItem,
-  isPlayerShot: boolean,
-  shot: Shot | undefined,
-  swapPerspective = false,
-): ItemActionContext {
-  const state = engine.getState();
-  const internal = engine.getInternalAPI();
-  const swap = swapPerspective && !isPlayerShot;
-  return {
-    item,
-    isPlayerShot,
-    shot,
-    currentTurn: state.currentTurn,
-    playerShips: swap ? state.enemyShips : state.playerShips,
-    enemyShips: swap ? state.playerShips : state.enemyShips,
-    playerItems: swap ? state.enemyItems : state.playerItems,
-    enemyItems: swap ? state.playerItems : state.enemyItems,
-    playerCollectedItems: swap ? state.enemyCollectedItems : state.playerCollectedItems,
-    enemyCollectedItems: swap ? state.playerCollectedItems : state.enemyCollectedItems,
-    playerShots: swap ? state.enemyShots : state.playerShots,
-    enemyShots: swap ? state.playerShots : state.enemyShots,
-    setPlayerShips: swap
-      ? (ships) => engine.setEnemyShips(ships)
-      : (ships) => engine.setPlayerShips(ships),
-    setEnemyShips: swap
-      ? (ships) => engine.setPlayerShips(ships)
-      : (ships) => engine.setEnemyShips(ships),
-    setPlayerItems: swap
-      ? (items) => engine.setEnemyItems(items)
-      : (items) => engine.setPlayerItems(items),
-    setEnemyItems: swap
-      ? (items) => engine.setPlayerItems(items)
-      : (items) => engine.setEnemyItems(items),
-    setPlayerShots: swap
-      ? (shots) => engine.setEnemyShots(shots)
-      : (shots) => engine.setPlayerShots(shots),
-    setEnemyShots: swap
-      ? (shots) => engine.setPlayerShots(shots)
-      : (shots) => engine.setEnemyShots(shots),
-    toggleTurn: () => internal.toggleTurn(),
-    setRuleSet: (ruleSet: unknown) => internal.setPendingRuleSet(ruleSet),
-  };
-}
+import type { GameItem, Shot } from "../../types/common";
 
 export const matchMachine = setup({
   types: {} as {
@@ -154,9 +97,9 @@ export const matchMachine = setup({
      * `onCollect` for every item that was fully collected by this attack.
      *
      * `onCollect` must run here (not in a Match callback) so that any
-     * `ctx.setRuleSet()` call registers as a `pendingRuleSet` before
-     * `resolveTurn` reads it — guaranteeing the new ruleset is applied
-     * to the same turn cycle.
+     * `ctx.setRuleSet()` call is captured into `pendingRuleSet` in machine
+     * context before `resolveTurn` reads it — guaranteeing the new ruleset
+     * is applied to the same turn cycle.
      */
     executeAttack: assign(({ context }) => {
       if (!context.pendingPlan) return {};
@@ -169,6 +112,8 @@ export const matchMachine = setup({
         pattern,
         isPlayerShot,
       );
+
+      let capturedRuleSet: unknown = null;
 
       for (const shot of lastAttackResult.shots) {
         if (shot.itemFullyCollected && shot.itemId !== undefined) {
@@ -184,6 +129,7 @@ export const matchMachine = setup({
               isPlayerShot,
               shot,
               false,
+              (rs) => { capturedRuleSet = rs; },
             );
             item.onCollect(ctx);
           }
@@ -193,22 +139,22 @@ export const matchMachine = setup({
       return {
         pendingPlan: null,
         lastAttackResult,
+        pendingRuleSet: capturedRuleSet as typeof context.ruleSet | null,
       };
     }),
 
     /**
      * Step 2 of the turn cycle: resolve the turn outcome.
      *
-     * 1. Ask the ruleset to decide the turn outcome
-     * 2. Toggle the turn if required
-     * 3. Check for game-over via the ruleset
+     * 1. Consume any pending ruleset change captured from `onCollect` handlers
+     * 2. Ask the ruleset to decide the turn outcome
+     * 3. Toggle the turn if required
+     * 4. Check for game-over via the ruleset
      */
     resolveTurn: assign(({ context }) => {
       if (!context.lastAttackResult) return {};
 
-      const engineInternal = context.engine.getInternalAPI();
-
-      const pendingRuleSet = engineInternal.takePendingRuleSet();
+      const pendingRuleSet = context.pendingRuleSet;
       const activeRuleSet =
         (pendingRuleSet as typeof context.ruleSet | null) ?? context.ruleSet;
 
@@ -219,19 +165,20 @@ export const matchMachine = setup({
       );
 
       if (lastTurnDecision.shouldToggleTurn) {
-        engineInternal.toggleTurn();
+        context.engine.toggleTurn();
       }
 
       const stateAfterTurn = context.engine.getState();
       if (!stateAfterTurn.isGameOver) {
         const gameOverDecision = activeRuleSet.checkGameOver(stateAfterTurn);
         if (gameOverDecision.isGameOver && gameOverDecision.winner) {
-          engineInternal.setGameOver(gameOverDecision.winner);
+          context.engine.setGameOver(gameOverDecision.winner);
         }
       }
 
       return {
         lastTurnDecision,
+        pendingRuleSet: null,
         ...(pendingRuleSet ? { ruleSet: activeRuleSet } : {}),
       };
     }),
@@ -250,12 +197,13 @@ export const matchMachine = setup({
 
       context.callbacks?.onMatchStart?.();
 
-      return {
+return {
         planError: null,
         lastAttackResult: null,
         lastTurnDecision: null,
         lastUseItemResult: null,
         turnBeforeItemUse: null,
+        pendingRuleSet: null,
       };
     }),
 
@@ -269,6 +217,7 @@ export const matchMachine = setup({
         planError: null,
         lastUseItemResult: null,
         turnBeforeItemUse: null,
+        pendingRuleSet: null,
       };
     }),
 
@@ -308,15 +257,17 @@ export const matchMachine = setup({
         return { lastUseItemResult: false };
       }
 
+      const turnBeforeItemUse = context.engine.getState().currentTurn;
+
+      let capturedRuleSet: unknown = null;
       const itemCtx = buildItemActionContext(
         context.engine,
         item,
         isPlayerShot,
         undefined,
         true,
+        (rs) => { capturedRuleSet = rs; },
       );
-
-      const turnBeforeItemUse = context.engine.getState().currentTurn;
 
       item.onUse(itemCtx);
       context.engine.markItemUsed(itemId, isPlayerShot);
@@ -325,7 +276,11 @@ export const matchMachine = setup({
         context.callbacks?.onItemUse?.(itemId, isPlayerShot, item);
       }
 
-      return { lastUseItemResult: true, turnBeforeItemUse };
+      return {
+        lastUseItemResult: true,
+        turnBeforeItemUse,
+        pendingRuleSet: capturedRuleSet as typeof context.ruleSet | null,
+      };
     }),
 
     /**
@@ -338,7 +293,6 @@ export const matchMachine = setup({
     resolveItemUse: assign(({ context }) => {
       if (!context.lastUseItemResult) return {};
 
-      const engineInternal = context.engine.getInternalAPI();
       const stateAfterUse = context.engine.getState();
 
       const itemToggledTurn =
@@ -349,7 +303,7 @@ export const matchMachine = setup({
           stateAfterUse,
         );
         if (itemUseTurnDecision?.shouldToggleTurn) {
-          engineInternal.toggleTurn();
+          context.engine.toggleTurn();
         }
       }
 
@@ -357,11 +311,11 @@ export const matchMachine = setup({
       if (!stateForGameOver.isGameOver) {
         const gameOverDecision = context.ruleSet.checkGameOver(stateForGameOver);
         if (gameOverDecision.isGameOver && gameOverDecision.winner) {
-          engineInternal.setGameOver(gameOverDecision.winner);
+          context.engine.setGameOver(gameOverDecision.winner);
         }
       }
 
-      return {};
+      return { pendingRuleSet: null };
     }),
   },
 }).createMachine({
@@ -396,6 +350,7 @@ export const matchMachine = setup({
       planError: null,
       lastUseItemResult: null,
       turnBeforeItemUse: null,
+      pendingRuleSet: null,
     };
   },
 

@@ -79,27 +79,25 @@ describe('GameEngine', () => {
     });
 
     it('should toggle turns correctly', () => {
-      const internal = engine.getInternalAPI();
       expect(engine.getCurrentTurn()).toBe('PLAYER_TURN');
       
-      internal.toggleTurn();
+      engine.toggleTurn();
       expect(engine.getCurrentTurn()).toBe('ENEMY_TURN');
       
-      internal.toggleTurn();
+      engine.toggleTurn();
       expect(engine.getCurrentTurn()).toBe('PLAYER_TURN');
     });
 
     it('should call onTurnChange callback when turn changes', () => {
       const onTurnChange = vi.fn();
       const engineWithCallback = new GameEngine({}, { onTurnChange });
-      const internal = engineWithCallback.getInternalAPI();
       
       // Toggle to enemy turn
-      internal.toggleTurn();
+      engineWithCallback.toggleTurn();
       expect(onTurnChange).toHaveBeenCalledWith('ENEMY_TURN');
       
       // Toggle back to player turn
-      internal.toggleTurn();
+      engineWithCallback.toggleTurn();
       expect(onTurnChange).toHaveBeenCalledWith('PLAYER_TURN');
     });
   });
@@ -198,8 +196,7 @@ describe('GameEngine', () => {
       expect(state.areAllPlayerShipsDestroyed).toBe(false);
       
       // Game over must be set manually (normally done by Match)
-      const internal = engine.getInternalAPI();
-      internal.setGameOver('player');
+      engine.setGameOver('player');
       expect(engine.getWinner()).toBe('player');
       expect(engine.getState().isGameOver).toBe(true);
     });
@@ -219,8 +216,7 @@ describe('GameEngine', () => {
       expect(state.areAllEnemyShipsDestroyed).toBe(false);
       
       // Game over must be set manually (normally done by Match)
-      const internal = engine.getInternalAPI();
-      internal.setGameOver('enemy');
+      engine.setGameOver('enemy');
       expect(engine.getWinner()).toBe('enemy');
       expect(engine.getState().isGameOver).toBe(true);
     });
@@ -238,8 +234,7 @@ describe('GameEngine', () => {
       engineWithCallback.executeShot(7, 9, true);
       
       // Manually set game over (normally done by Match)
-      const internal = engineWithCallback.getInternalAPI();
-      internal.setGameOver('player');
+      engineWithCallback.setGameOver('player');
       
       expect(onGameOver).toHaveBeenCalledWith('player');
     });
