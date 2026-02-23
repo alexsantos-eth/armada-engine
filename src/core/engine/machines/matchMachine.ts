@@ -255,6 +255,7 @@ export const matchMachine = setup({
         lastAttackResult: null,
         lastTurnDecision: null,
         lastUseItemResult: null,
+        turnBeforeItemUse: null,
       };
     }),
 
@@ -267,6 +268,7 @@ export const matchMachine = setup({
         lastTurnDecision: null,
         planError: null,
         lastUseItemResult: null,
+        turnBeforeItemUse: null,
       };
     }),
 
@@ -314,7 +316,7 @@ export const matchMachine = setup({
         true,
       );
 
-      const turnBeforeUse = context.engine.getState().currentTurn;
+      const turnBeforeItemUse = context.engine.getState().currentTurn;
 
       item.onUse(itemCtx);
       context.engine.markItemUsed(itemId, isPlayerShot);
@@ -323,13 +325,27 @@ export const matchMachine = setup({
         context.callbacks?.onItemUse?.(itemId, isPlayerShot, item);
       }
 
+      return { lastUseItemResult: true, turnBeforeItemUse };
+    }),
+
+    /**
+     * Step 2 of the item-use cycle: resolve the turn outcome.
+     * Mirrors the logic that `resolveTurn` applies after an attack:
+     * 1. Ask the ruleset whether the turn should toggle after item use.
+     * 2. Check for game-over.
+     * Skipped entirely when `lastUseItemResult` is `false` (invalid use).
+     */
+    resolveItemUse: assign(({ context }) => {
+      if (!context.lastUseItemResult) return {};
+
       const engineInternal = context.engine.getInternalAPI();
       const stateAfterUse = context.engine.getState();
 
-      const itemToggledTurn = stateAfterUse.currentTurn !== turnBeforeUse;
+      const itemToggledTurn =
+        stateAfterUse.currentTurn !== context.turnBeforeItemUse;
       if (!itemToggledTurn && !stateAfterUse.isGameOver) {
         const itemUseTurnDecision = context.ruleSet.decideTurnOnItemUse?.(
-          isPlayerShot,
+          context.turnBeforeItemUse === "PLAYER_TURN",
           stateAfterUse,
         );
         if (itemUseTurnDecision?.shouldToggleTurn) {
@@ -344,7 +360,7 @@ export const matchMachine = setup({
         }
       }
 
-      return { lastUseItemResult: true };
+      return {};
     }),
   },
 }).createMachine({
@@ -378,6 +394,7 @@ export const matchMachine = setup({
       lastTurnDecision: null,
       planError: null,
       lastUseItemResult: null,
+      turnBeforeItemUse: null,
     };
   },
 
@@ -433,6 +450,7 @@ export const matchMachine = setup({
               },
             ],
             USE_ITEM: {
+              target: "resolvingItemUse",
               actions: "useItem",
             },
           },
@@ -462,6 +480,25 @@ export const matchMachine = setup({
               actions: "clearPlan",
             },
           },
+        },
+
+        /**
+         * resolvingItemUse — transient state.
+         * On entry, applies ruleset turn logic after an item activation and
+         * immediately transitions: to gameOver if the match ended, or back
+         * to planning.
+         */
+        resolvingItemUse: {
+          entry: "resolveItemUse",
+          always: [
+            {
+              guard: "isGameOver",
+              target: "#match.gameOver",
+            },
+            {
+              target: "planning",
+            },
+          ],
         },
 
         /**

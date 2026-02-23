@@ -330,4 +330,4 @@ export const getRuleSetByName = (name: string): MatchRuleSet => {
 /**
  * Export default ruleset (Classic)
  */
-export const DefaultRuleSet = ClassicRuleSet;
+export const DefaultRuleSet = LoseTurnOnUseRuleSet;

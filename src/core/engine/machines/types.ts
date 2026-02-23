@@ -59,6 +59,13 @@ export interface MatchMachineContext {
    * `null`  — no USE_ITEM event has been sent yet.
    */
   lastUseItemResult: boolean | null;
+  /**
+   * The active turn captured immediately before `onUse` is invoked.
+   * Used by `resolveItemUse` to detect whether the item handler itself
+   * toggled the turn so the ruleset's `decideTurnOnItemUse` is not
+   * double-applied.
+   */
+  turnBeforeItemUse: GameTurn | null;
 }
 
 export type MatchMachineEvent =
