@@ -10,10 +10,6 @@ import type {
   Winner,
 } from "../../types/common";
 
-// ---------------------------------------------------------------------------
-// Payload types — one per game cycle kind
-// ---------------------------------------------------------------------------
-
 export type AttackCyclePayload = {
   kind: "attack";
   result: ShotPatternResult;
@@ -50,10 +46,6 @@ export type CallbackPayload =
   | AttackCyclePayload
   | ItemUseCyclePayload
   | MatchLifecyclePayload;
-
-// ---------------------------------------------------------------------------
-// CallbackCoordinator
-// ---------------------------------------------------------------------------
 
 /**
  * Single point of truth for all match-level callbacks.
@@ -108,9 +100,6 @@ export function fireMatchCallbacks(
 
       const engineState = engine.getState();
 
-      // onItemCollected — fires after onCollect handlers have already run
-      // (both are synchronous within the same XState transition, so external
-      // subscribers still observe them atomically).
       if (callbacks.onItemCollected) {
         const notifyItems = isPlayerShot
           ? engineState.enemyItems
@@ -125,7 +114,6 @@ export function fireMatchCallbacks(
         }
       }
 
-      // onShot — synthesised center shot summarising the pattern result.
       if (callbacks.onShot) {
         const centerShot: Shot = {
           x: centerX,
@@ -139,7 +127,6 @@ export function fireMatchCallbacks(
         callbacks.onShot(centerShot, isPlayerShot);
       }
 
-      // onTurnChange — only for ruleset-driven toggles (not collect-phase toggles).
       if (rulesetToggledTurn) {
         callbacks.onTurnChange?.(currentTurn);
       }
@@ -156,7 +143,6 @@ export function fireMatchCallbacks(
       const { itemId, isPlayerShot, item, currentTurn, turnToggled, winner } =
         payload;
 
-      // onItemUse — only for player-initiated uses (matches original behaviour).
       if (isPlayerShot) {
         callbacks.onItemUse?.(itemId, isPlayerShot, item);
       }

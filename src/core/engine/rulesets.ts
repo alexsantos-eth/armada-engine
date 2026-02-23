@@ -83,7 +83,6 @@ export const ClassicRuleSet: MatchRuleSet = {
   description: "Traditional battleship rules with hit continuation",
 
   decideTurn(attackResult, currentState): TurnDecision {
-    // Priority 1: Game is already over
     if (currentState.isGameOver) {
       return {
         shouldEndTurn: true,
@@ -93,16 +92,13 @@ export const ClassicRuleSet: MatchRuleSet = {
       };
     }
 
-    // Evaluate pattern result: check if any shot hit or destroyed a ship
     const anyHit = attackResult.shots.some((shot) => shot.hit && shot.executed);
     const anyShipDestroyed = attackResult.shots.some(
       (shot) => shot.shipDestroyed && shot.executed,
     );
 
-    // Priority 2: Evaluate based on shot result
     if (anyHit) {
       if (anyShipDestroyed) {
-        // Ship destroyed - turn ends, switch player
         return {
           shouldEndTurn: true,
           shouldToggleTurn: true,
@@ -110,7 +106,6 @@ export const ClassicRuleSet: MatchRuleSet = {
           reason: "Ship destroyed - turn ends",
         };
       } else {
-        // Hit but ship not destroyed - can shoot again
         return {
           shouldEndTurn: false,
           shouldToggleTurn: false,
@@ -119,7 +114,6 @@ export const ClassicRuleSet: MatchRuleSet = {
         };
       }
     } else {
-      // Miss - turn ends, switch player
       return {
         shouldEndTurn: true,
         shouldToggleTurn: true,
@@ -130,7 +124,6 @@ export const ClassicRuleSet: MatchRuleSet = {
   },
 
   checkGameOver(state): GameOverDecision {
-    // Game over when all ships of one player are destroyed
     if (state.areAllPlayerShipsDestroyed) {
       return {
         isGameOver: true,
@@ -169,10 +162,8 @@ export const AlternatingTurnsRuleSet: MatchRuleSet = {
       };
     }
 
-    // Check if any shot hit
     const anyHit = attackResult.shots.some((shot) => shot.hit && shot.executed);
 
-    // Every shot ends turn
     return {
       shouldEndTurn: true,
       shouldToggleTurn: true,
@@ -233,7 +224,6 @@ export const ItemHitRuleSet: MatchRuleSet = {
       (shot) => shot.shipDestroyed && shot.executed,
     );
 
-    // Item collected → repeat turn regardless of other results
     if (anyItemCollected) {
       return {
         shouldEndTurn: false,
@@ -327,7 +317,5 @@ export const getRuleSetByName = (name: string): MatchRuleSet => {
   }
 }
 
-/**
- * Export default ruleset (Classic)
- */
+/** Default ruleset applied when no ruleset is explicitly passed to `Match` or `matchMachine`. */
 export const DefaultRuleSet = LoseTurnOnUseRuleSet;

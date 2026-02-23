@@ -169,8 +169,6 @@ export const matchMachine = setup({
       return {
         collectToggleCount,
         pendingRuleSet: capturedRuleSet as typeof context.ruleSet | null,
-        // lastAttackIsPlayerShot is intentionally NOT cleared here —
-        // resolveTurn still needs it for the CallbackCoordinator payload.
       };
     }),
 
@@ -192,7 +190,6 @@ export const matchMachine = setup({
       const activeRuleSet =
         (pendingRuleSet as typeof context.ruleSet | null) ?? context.ruleSet;
 
-      // Apply collect-phase toggles accumulated by runCollectHandlers.
       let currentTurn: GameTurn =
         context.collectToggleCount % 2 === 0
           ? context.currentTurn
@@ -404,7 +401,6 @@ export const matchMachine = setup({
     resolveItemUse: assign(({ context }) => {
       if (!context.lastUseItemResult) return {};
 
-      // Apply toggles the onUse handler accumulated.
       const itemToggledTurn = context.useToggleCount % 2 !== 0;
       let currentTurn: GameTurn = itemToggledTurn
         ? context.currentTurn === "PLAYER_TURN" ? "ENEMY_TURN" : "PLAYER_TURN"

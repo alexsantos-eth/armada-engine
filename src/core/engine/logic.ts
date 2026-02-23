@@ -173,9 +173,13 @@ export class GameEngine {
   }
 
   /**
-   * Set board dimensions
-   * @param width - Board width in cells
-   * @param height - Board height in cells
+   * Update the board dimensions.
+   *
+   * Does **not** re-initialize ship/item positions — call `initializeGame`
+   * afterwards to apply the new bounds consistently.
+   *
+   * @param width  - Board width in cells.
+   * @param height - Board height in cells.
    */
   public setBoardDimensions(width: number, height: number): void {
     this.boardWidth = width;
@@ -183,16 +187,12 @@ export class GameEngine {
     this._version++;
   }
 
-
-
   /**
-   * Execute a shot at target coordinates (internal use only)
-   * @param x - X coordinate on board
-   * @param y - Y coordinate on board
-   * @param isPlayerShot - True if shot is from player, false if from enemy
-   * @param patternInfo - Optional pattern information to store with the shot
-   * @returns Result of the shot including hit status and game state
-   * @private - Use executeShotPattern() instead
+   * Execute a shot at a single target cell.
+   *
+   * Internal implementation detail — always call {@link executeShotPattern}
+   * from outside this class; it handles pattern expansion, out-of-bounds
+   * offsets, and already-shot cells before delegating here.
    */
   private executeShot(
     x: number,
@@ -368,11 +368,10 @@ export class GameEngine {
   }
 
   /**
-   * Check if a shot hits a ship
-   * @param x - X coordinate
-   * @param y - Y coordinate
-   * @param isPlayerShot - True if checking enemy ships, false if checking player ships
-   * @returns Object with hit status and ship ID if hit
+   * Check if a shot at `(x, y)` hits a ship on the target board.
+   * When `isPlayerShot` is `true`, the player is firing so we check the
+   * enemy's ship positions; when `false`, the enemy is firing so we check
+   * the player's positions.
    */
   private checkShot(
     x: number,
@@ -586,8 +585,8 @@ export class GameEngine {
   }
 
   /**
-   * Set all player shots (useful for replay)
-   * @param shots - Array of player shots
+   * Atomically replace all player shots and recompute enemy ship hit counts.
+   * Used for replay and multiplayer shot synchronisation.
    */
   public setPlayerShots(shots: Shot[]): void {
     this.playerShotsMap.clear();
@@ -604,8 +603,8 @@ export class GameEngine {
   }
 
   /**
-   * Set all enemy shots (useful for replay)
-   * @param shots - Array of enemy shots
+   * Atomically replace all enemy shots and recompute player ship hit counts.
+   * Used for replay and multiplayer shot synchronisation.
    */
   public setEnemyShots(shots: Shot[]): void {
     this.enemyShotsMap.clear();
@@ -933,8 +932,11 @@ export function toMatchState(
 }
 
 /**
- * Shot result interface
- * Contains information about the outcome of a shot
+ * Raw result returned by the internal `executeShot` method.
+ *
+ * Used exclusively inside `GameEngine` — external callers always receive a
+ * {@link ShotPatternResult} from `executeShotPattern`, which aggregates one
+ * `ShotResult` per offset in the pattern.
  */
 export interface ShotResult {
   success: boolean;

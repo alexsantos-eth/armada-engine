@@ -62,8 +62,8 @@ export class Match {
     this.setup = setup;
 
     if (!this.setup) {
-      const initilizer = new GameInitializer();
-      this.setup = initilizer.getGameSetup();
+      const initializer = new GameInitializer();
+      this.setup = initializer.getGameSetup();
     }
 
     const ruleSet = setup?.config.ruleSet ?? DefaultRuleSet;
@@ -75,6 +75,11 @@ export class Match {
     this.actor.start();
   }
 
+  /**
+   * Initialize the match with ships and items from the current setup.
+   * Sends an `INITIALIZE` event to the machine, transitioning it from `idle`
+   * to `active.planning` and firing `onMatchStart`.
+   */
   public initializeMatch(): void {
     const { playerShips, enemyShips, initialTurn, playerItems, enemyItems } =
       this.setup!;
@@ -210,22 +215,35 @@ export class Match {
     return this.confirmAttack();
   }
 
+  /** Returns `true` when it is the player's turn. */
   public isPlayerTurn(): boolean {
     return this.snap.context.currentTurn === "PLAYER_TURN";
   }
 
+  /** Returns `true` when it is the enemy's turn. */
   public isEnemyTurn(): boolean {
     return this.snap.context.currentTurn === "ENEMY_TURN";
   }
 
+  /** Returns the current turn (`"PLAYER_TURN"` or `"ENEMY_TURN"`). */
   public getCurrentTurn(): GameTurn {
     return this.snap.context.currentTurn;
   }
 
+  /**
+   * Returns a turn-aware snapshot of the full game state.
+   * Merges the engine's turn-agnostic {@link GameEngineState} with the
+   * machine's current turn to produce a {@link MatchState}.
+   */
   public getState(): MatchState {
     return toMatchState(this.engine.getState(), this.snap.context.currentTurn);
   }
 
+  /**
+   * Overrides the current turn without side-effects.
+   * Intended for network re-synchronisation after a disconnect — does not
+   * fire `onTurnChange` or any other callback.
+   */
   public forceSetTurn(turn: GameTurn): void {
     this.actor.send({ type: "SYNC_TURN", turn });
   }
@@ -250,6 +268,7 @@ export class Match {
     return this.engine.isCellShot(x, y, isPlayerShot);
   }
 
+  /** Returns `true` if `(x, y)` falls within the board boundaries. */
   public isValidPosition(x: number, y: number): boolean {
     return this.engine.isValidPosition(x, y);
   }
@@ -279,14 +298,17 @@ export class Match {
     };
   }
 
+  /** Returns the winner once the match is over, or `null` while still in progress. */
   public getWinner(): Winner {
     return this.getState().winner;
   }
 
+  /** Returns `true` once the match has ended (game over). */
   public isMatchOver(): boolean {
     return this.getState().isGameOver;
   }
 
+  /** Resets the machine back to `idle` and clears all engine state. */
   public resetMatch(): void {
     this.actor.send({ type: "RESET" });
   }
@@ -306,10 +328,12 @@ export class Match {
     return this.snap.value;
   }
 
+  /** Returns the currently active ruleset. */
   public getRuleSet(): MatchRuleSet {
     return this.snap.context.ruleSet;
   }
 
+  /** Swaps the active ruleset at runtime. Takes effect on the next attack. */
   public setRuleSet(ruleSet: MatchRuleSet): void {
     this.actor.send({ type: "SET_RULESET", ruleSet });
   }
@@ -331,14 +355,20 @@ export class Match {
     return this.snap.context.lastUseItemResult ?? false;
   }
 
+  /** Returns the board dimensions as `{ width, height }`. */
   public getBoardDimensions(): { width: number; height: number } {
     return this.engine.getBoardDimensions();
   }
 
+  /**
+   * Returns `true` if all ships on the given side have been destroyed.
+   * Pass `true` for the player's fleet, `false` for the enemy's fleet.
+   */
   public areAllShipsDestroyed(isPlayerShips: boolean): boolean {
     return this.engine.areAllShipsDestroyed(isPlayerShips);
   }
 
+  /** Returns the full `Shot` record at `(x, y)` for the given side, or `undefined`. */
   public getShotAtPosition(
     x: number,
     y: number,
@@ -347,6 +377,7 @@ export class Match {
     return this.engine.getShotAtPosition(x, y, isPlayerShot);
   }
 
+  /** Returns `true` if a ship occupies `(x, y)` on the given side's board. */
   public hasShipAtPosition(
     x: number,
     y: number,
@@ -430,7 +461,6 @@ export type MatchItemActionContext = ItemActionContext;
  * ```
  */
 export interface MatchQueryAPI {
-  // ── state queries ──────────────────────────────────────────────────────────
   getState(): MatchState;
   getCurrentTurn(): GameTurn;
   isPlayerTurn(): boolean;
@@ -446,14 +476,12 @@ export interface MatchQueryAPI {
     isPlayerShot: boolean;
   } | null;
 
-  // ── board / cell queries ────────────────────────────────────────────────────
   getCellInfo(x: number, y: number, perspective: "player" | "enemy"): CellInfo;
   areAllShipsDestroyed(isPlayerShips: boolean): boolean;
   getBoardDimensions(): { width: number; height: number };
   getPlayerBoard(): Board;
   getEnemyBoard(): Board;
 
-  // ── subscriptions ──────────────────────────────────────────────────────────
   subscribe(callback: (snapshot: MatchMachineSnapshot) => void): () => void;
 }
 
