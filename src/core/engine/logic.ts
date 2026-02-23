@@ -48,6 +48,8 @@ export class GameEngine {
   private usedByPlayer: Set<number>;
   private usedByEnemy: Set<number>;
 
+  private gameInitialized: boolean;
+
   private onStateChange?: (state: GameEngineState) => void;
   private onTurnChange?: (turn: GameTurn) => void;
   private onShot?: (shot: Shot, isPlayerShot: boolean) => void;
@@ -68,6 +70,7 @@ export class GameEngine {
     this.isGameOver = false;
     this.winner = null;
     this.shotCount = 0;
+    this.gameInitialized = false;
 
     this.playerShotsMap = new Map();
     this.enemyShotsMap = new Map();
@@ -152,6 +155,7 @@ export class GameEngine {
     this.cacheItemPositions(playerItems, this.playerItemPositions);
     this.cacheItemPositions(enemyItems, this.enemyItemPositions);
 
+    this.gameInitialized = true;
     this.notifyStateChange();
   }
 
@@ -165,6 +169,7 @@ export class GameEngine {
     this.isGameOver = false;
     this.winner = null;
     this.shotCount = 0;
+    this.gameInitialized = false;
 
     this.playerShotsMap.clear();
     this.enemyShotsMap.clear();
@@ -526,7 +531,7 @@ export class GameEngine {
     const ships = isPlayerShips ? this.playerShips : this.enemyShips;
 
     if (ships.length === 0) {
-      return false;
+      return this.gameInitialized;
     }
 
     return ships.every((_, shipId) =>

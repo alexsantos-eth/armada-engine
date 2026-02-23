@@ -319,6 +319,15 @@ export const matchMachine = setup({
         context.callbacks?.onItemUse?.(itemId, isPlayerShot, item);
       }
 
+      const engineInternal = context.engine.getInternalAPI();
+      const stateAfterUse = context.engine.getState();
+      if (!stateAfterUse.isGameOver) {
+        const gameOverDecision = context.ruleSet.checkGameOver(stateAfterUse);
+        if (gameOverDecision.isGameOver && gameOverDecision.winner) {
+          engineInternal.setGameOver(gameOverDecision.winner);
+        }
+      }
+
       return { lastUseItemResult: true };
     }),
   },
