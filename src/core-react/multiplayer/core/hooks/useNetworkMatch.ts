@@ -5,6 +5,7 @@ import {
   Match,
   SINGLE_SHOT,
   getRuleSetByName,
+  getShotPattern,
   type GameConfig,
   type MatchState,
   type MatchCallbacks,
@@ -88,16 +89,52 @@ const useNetworkMatch = ({
 
     const newMatch = new Match({
       setup: gameSetup,
-      ...callbacks,
+      onMatchStart: () => {
+        callbacks?.onMatchStart?.();
+      },
       onStateChange: (state) => {
         setGameState(state);
         callbacks?.onStateChange?.(state);
       },
-      onGameOver: (result) => {
-        callbacks?.onGameOver?.(result);
-        roomService.endGame(room.id).catch((error) => {
-          console.error("Error ending game:", error);
-        });
+      onShot: (shot, isPlayerShot) => {
+        callbacks?.onShot?.(shot, isPlayerShot);
+        // Player shots are pushed to Firebase so the opponent can replay them.
+        // The machine already validated and executed the shot, so this is the
+        // single authoritative moment to sync — no manual push needed elsewhere.
+        if (isPlayerShot) {
+          const pattern = getShotPattern(shot.patternId!) ?? SINGLE_SHOT;
+          roomService
+            .pushMatchEvent(room.id, {
+              type: "ATTACK",
+              senderId: playerRole,
+              x: shot.x,
+              y: shot.y,
+              pattern,
+              timestamp: Date.now(),
+            })
+            .catch((error) => {
+              console.error("Error pushing attack event:", error);
+            });
+        }
+      },
+      onItemCollected: (shot, item, isPlayerShot) => {
+        callbacks?.onItemCollected?.(shot, item, isPlayerShot);
+      },
+      onItemUse: (itemId, isPlayerShot, item) => {
+        callbacks?.onItemUse?.(itemId, isPlayerShot, item);
+        // Same pattern: push only the local player's item activations.
+        if (isPlayerShot) {
+          roomService
+            .pushMatchEvent(room.id, {
+              type: "USE_ITEM",
+              senderId: playerRole,
+              itemId,
+              timestamp: Date.now(),
+            })
+            .catch((error) => {
+              console.error("Error pushing use-item event:", error);
+            });
+        }
       },
       onTurnChange: (currentTurn) => {
         callbacks?.onTurnChange?.(currentTurn);
@@ -113,6 +150,12 @@ const useNetworkMatch = ({
           .catch((error) => {
             console.error("Error updating current turn:", error);
           });
+      },
+      onGameOver: (winner) => {
+        callbacks?.onGameOver?.(winner);
+        roomService.endGame(room.id).catch((error) => {
+          console.error("Error ending game:", error);
+        });
       },
     });
 
@@ -140,50 +183,22 @@ const useNetworkMatch = ({
     return unsubscribe;
   }, [room?.id, match.current]);
 
-  const executeShot = async (
+  const executeShot = (
     x: number,
     y: number,
     pattern: ShotPattern = SINGLE_SHOT,
   ) => {
-    if (!match.current || !room || !gameState) return;
-    if (!gameState.isPlayerTurn) return;
-    if (gameState.isGameOver) return;
-
-    const result = match.current.planAndAttack(x, y, true, pattern);
-    if (!result.success) return;
-
-    try {
-      await roomService.pushMatchEvent(room.id, {
-        type: "ATTACK",
-        senderId: playerRole,
-        x,
-        y,
-        pattern,
-        timestamp: Date.now(),
-      });
-    } catch (error) {
-      console.error("Error pushing attack event:", error);
-    }
+    if (!match.current || !gameState) return;
+    if (!gameState.isPlayerTurn || gameState.isGameOver) return;
+    
+    match.current.planAndAttack(x, y, true, pattern);
   };
 
-  const useItem = async (itemId: number) => {
-    if (!match.current || !room || !gameState) return;
-    if (!gameState.isPlayerTurn) return;
-    if (gameState.isGameOver) return;
+  const useItem = (itemId: number) => {
+    if (!match.current || !gameState) return;
+    if (!gameState.isPlayerTurn || gameState.isGameOver) return;
 
-    const used = match.current.useItem(itemId, true);
-    if (!used) return;
-
-    try {
-      await roomService.pushMatchEvent(room.id, {
-        type: "USE_ITEM",
-        senderId: playerRole,
-        itemId,
-        timestamp: Date.now(),
-      });
-    } catch (error) {
-      console.error("Error pushing use-item event:", error);
-    }
+    match.current.useItem(itemId, true);
   };
 
   const playerBoard = match.current?.getPlayerBoard();
