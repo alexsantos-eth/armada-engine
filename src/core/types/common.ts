@@ -62,6 +62,10 @@ export interface ItemActionContext {
   playerCollectedItems: number[];
   /** Indices of enemy items that have been fully collected by the player. */
   enemyCollectedItems: number[];
+  /** All shots fired by the player at the moment of the event. */
+  playerShots: Shot[];
+  /** All shots fired by the enemy at the moment of the event. */
+  enemyShots: Shot[];
   /** Replace the player's ships (takes effect immediately). */
   setPlayerShips: (ships: GameShip[]) => void;
   /** Replace the enemy's ships (takes effect immediately). */
@@ -70,6 +74,10 @@ export interface ItemActionContext {
   setPlayerItems: (items: GameItem[]) => void;
   /** Replace the enemy's items (resets hit/collected state for that board). */
   setEnemyItems: (items: GameItem[]) => void;
+  /** Replace the player's recorded shots. */
+  setPlayerShots: (shots: Shot[]) => void;
+  /** Replace the enemy's recorded shots. */
+  setEnemyShots: (shots: Shot[]) => void;
   /** Immediately toggles the active turn (player↔enemy). */
   toggleTurn: () => void;
   /**

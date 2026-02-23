@@ -14,30 +14,55 @@ import type { GameItem, ItemActionContext, Shot } from "../../types/common";
  * Builds the `ItemActionContext` passed to `onCollect` and `onUse` handlers.
  * Shared by the `useItem` machine action and the `onItemCollected` callback
  * wired in `Match`.
+ *
+ * @param swapPerspective - When `true` and `isPlayerShot` is `false`, all
+ *   player↔enemy setters and readers are swapped so that `onUse` handlers
+ *   written from the activator's perspective work correctly when the same
+ *   `useItem` call is applied to the *opponent's* board (cross-board sync).
+ *   Pass `false` (default) for `onCollect`, which always runs locally on the
+ *   board that processed the shot and therefore never needs swapping.
  */
 export function buildItemActionContext(
   engine: GameEngine,
   item: GameItem,
   isPlayerShot: boolean,
   shot: Shot | undefined,
+  swapPerspective = false,
 ): ItemActionContext {
   const state = engine.getState();
   const internal = engine.getInternalAPI();
+  const swap = swapPerspective && !isPlayerShot;
   return {
     item,
     isPlayerShot,
     shot,
     currentTurn: state.currentTurn,
-    playerShips: state.playerShips,
-    enemyShips: state.enemyShips,
-    playerItems: state.playerItems,
-    enemyItems: state.enemyItems,
-    playerCollectedItems: state.playerCollectedItems,
-    enemyCollectedItems: state.enemyCollectedItems,
-    setPlayerShips: (ships) => engine.setPlayerShips(ships),
-    setEnemyShips: (ships) => engine.setEnemyShips(ships),
-    setPlayerItems: (items) => engine.setPlayerItems(items),
-    setEnemyItems: (items) => engine.setEnemyItems(items),
+    playerShips: swap ? state.enemyShips : state.playerShips,
+    enemyShips: swap ? state.playerShips : state.enemyShips,
+    playerItems: swap ? state.enemyItems : state.playerItems,
+    enemyItems: swap ? state.playerItems : state.enemyItems,
+    playerCollectedItems: swap ? state.enemyCollectedItems : state.playerCollectedItems,
+    enemyCollectedItems: swap ? state.playerCollectedItems : state.enemyCollectedItems,
+    playerShots: swap ? state.enemyShots : state.playerShots,
+    enemyShots: swap ? state.playerShots : state.enemyShots,
+    setPlayerShips: swap
+      ? (ships) => engine.setEnemyShips(ships)
+      : (ships) => engine.setPlayerShips(ships),
+    setEnemyShips: swap
+      ? (ships) => engine.setPlayerShips(ships)
+      : (ships) => engine.setEnemyShips(ships),
+    setPlayerItems: swap
+      ? (items) => engine.setEnemyItems(items)
+      : (items) => engine.setPlayerItems(items),
+    setEnemyItems: swap
+      ? (items) => engine.setPlayerItems(items)
+      : (items) => engine.setEnemyItems(items),
+    setPlayerShots: swap
+      ? (shots) => engine.setEnemyShots(shots)
+      : (shots) => engine.setPlayerShots(shots),
+    setEnemyShots: swap
+      ? (shots) => engine.setPlayerShots(shots)
+      : (shots) => engine.setEnemyShots(shots),
     toggleTurn: () => internal.toggleTurn(),
     setRuleSet: (ruleSet: unknown) => internal.setPendingRuleSet(ruleSet),
   };
@@ -148,10 +173,17 @@ export const matchMachine = setup({
       for (const shot of lastAttackResult.shots) {
         if (shot.itemFullyCollected && shot.itemId !== undefined) {
           const engineState = context.engine.getState();
-          const items = isPlayerShot ? engineState.enemyItems : engineState.playerItems;
+          const items = isPlayerShot
+            ? engineState.enemyItems
+            : engineState.playerItems;
           const item = items[shot.itemId];
           if (item?.onCollect) {
-            const ctx = buildItemActionContext(context.engine, item, isPlayerShot, shot);
+            const ctx = buildItemActionContext(
+              context.engine,
+              item,
+              isPlayerShot,
+              shot,
+            );
             item.onCollect(ctx);
           }
         }
@@ -176,7 +208,8 @@ export const matchMachine = setup({
       const engineInternal = context.engine.getInternalAPI();
 
       const pendingRuleSet = engineInternal.takePendingRuleSet();
-      const activeRuleSet = (pendingRuleSet as typeof context.ruleSet | null) ?? context.ruleSet;
+      const activeRuleSet =
+        (pendingRuleSet as typeof context.ruleSet | null) ?? context.ruleSet;
 
       const stateAfterAttack = context.engine.getState();
       const lastTurnDecision = activeRuleSet.decideTurn(
@@ -257,6 +290,12 @@ export const matchMachine = setup({
       const { itemId, isPlayerShot } = event;
       const state = context.engine.getState();
 
+      const isCallersTurn = isPlayerShot
+        ? state.currentTurn === "PLAYER_TURN"
+        : state.currentTurn === "ENEMY_TURN";
+        
+      if (!isCallersTurn) return { lastUseItemResult: false };
+
       const items = isPlayerShot ? state.enemyItems : state.playerItems;
       const item = items[itemId];
 
@@ -266,11 +305,19 @@ export const matchMachine = setup({
         return { lastUseItemResult: false };
       }
 
-      const itemCtx = buildItemActionContext(context.engine, item, isPlayerShot, undefined);
+      const itemCtx = buildItemActionContext(
+        context.engine,
+        item,
+        isPlayerShot,
+        undefined,
+        true,
+      );
       item.onUse(itemCtx);
       context.engine.markItemUsed(itemId, isPlayerShot);
 
-      context.callbacks?.onItemUse?.(itemId, isPlayerShot, item);
+      if (isPlayerShot) {
+        context.callbacks?.onItemUse?.(itemId, isPlayerShot, item);
+      }
 
       return { lastUseItemResult: true };
     }),
@@ -286,13 +333,16 @@ export const matchMachine = setup({
    */
   context: ({ input }) => {
     const callbacks = input?.callbacks;
-    const engine = input?.engine ?? new GameEngine(input?.config ?? {}, {
-      onStateChange: (state) => callbacks?.onStateChange?.(state),
-      onTurnChange: (turn) => callbacks?.onTurnChange?.(turn),
-      onShot: (shot, isPlayerShot) => callbacks?.onShot?.(shot, isPlayerShot),
-      onGameOver: (winner) => callbacks?.onGameOver?.(winner),
-      onItemCollected: (shot, item, isPlayerShot) => callbacks?.onItemCollected?.(shot, item, isPlayerShot),
-    });
+    const engine =
+      input?.engine ??
+      new GameEngine(input?.config ?? {}, {
+        onStateChange: (state) => callbacks?.onStateChange?.(state),
+        onTurnChange: (turn) => callbacks?.onTurnChange?.(turn),
+        onShot: (shot, isPlayerShot) => callbacks?.onShot?.(shot, isPlayerShot),
+        onGameOver: (winner) => callbacks?.onGameOver?.(winner),
+        onItemCollected: (shot, item, isPlayerShot) =>
+          callbacks?.onItemCollected?.(shot, item, isPlayerShot),
+      });
 
     return {
       engine,
