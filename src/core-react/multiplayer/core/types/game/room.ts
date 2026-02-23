@@ -3,6 +3,7 @@ import type {
   GameEngineState,
   PlayerRole,
   Shot,
+  ShotPattern,
 } from "../../../../../core/engine";
 
 export type RoomStatus = "waiting" | "playing" | "finished";
@@ -46,3 +47,23 @@ export interface GameRoom {
     timestamp: number;
   }>;
 }
+
+export interface MatchAttackEvent {
+  type: "ATTACK";
+  /** Role of the player who fired the shot (used to skip own events). */
+  senderId: PlayerRole;
+  x: number;
+  y: number;
+  /** Full ShotPattern so the receiver never needs to reconstruct it. */
+  pattern: ShotPattern;
+  timestamp: number;
+}
+
+export interface MatchUseItemEvent {
+  type: "USE_ITEM";
+  senderId: PlayerRole;
+  itemId: number;
+  timestamp: number;
+}
+
+export type MatchEvent = MatchAttackEvent | MatchUseItemEvent;

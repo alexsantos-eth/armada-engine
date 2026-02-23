@@ -1,5 +1,6 @@
 import type {
   GameRoom,
+  MatchEvent,
   MatchRuleSetName,
   RoomPlayer,
 } from "../../types/game/room";
@@ -308,6 +309,39 @@ export class RoomService {
     );
 
     return unsubscribe;
+  }
+  
+  /**
+   * Push an atomic match event (ATTACK or USE_ITEM) to the room's event
+   * stream. Firebase RTDB's push() guarantees a monotonically-ordered key so
+   * the opponent receives events in the exact order they were sent.
+   */
+  async pushMatchEvent(roomId: string, event: MatchEvent): Promise<void> {
+    await dbUtils.createDocument(
+      `rooms/${roomId}/events`,
+      event as unknown as Record<string, unknown>,
+    );
+  }
+
+  /**
+   * Subscribe to the room's event stream. Fires for all existing events first
+   * (so reconnecting clients can fully replay the match from `initialState`),
+   * then for each new event as it arrives.
+   *
+   * Callers must filter out their own events via `event.senderId`.
+   */
+  subscribeToMatchEvents(
+    roomId: string,
+    onEvent: (event: MatchEvent) => void,
+  ): () => void {
+    const unsubscribes = dbUtils.subscribeToChildEvents<MatchEvent>(
+      `rooms/${roomId}/events`,
+      {
+        onChildAdded: (event) => onEvent(event),
+      },
+    );
+
+    return () => unsubscribes.forEach((unsub) => unsub());
   }
 
   async leaveRoom(roomId: string, playerUid: string): Promise<void> {
