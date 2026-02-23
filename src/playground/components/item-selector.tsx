@@ -32,7 +32,6 @@ export const ItemSelector = ({ gameState, onUseItem }: ItemSelectorProps) => {
     item: enemyItems[itemId],
   })).filter(({ item }) => !!item);
 
-
   return (
     <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-lg">
       <div className="flex items-center gap-2 mb-3 text-slate-700 font-semibold text-sm">

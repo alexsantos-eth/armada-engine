@@ -32,6 +32,9 @@ export interface GameRoom {
   guestShots?: Shot[];
   shotCount?: number;
 
+  hostItemUses?: { itemId: number }[];
+  guestItemUses?: { itemId: number }[];
+
   initialState?: Partial<GameEngineState>;
   currentTurn?: PlayerRole;
   isGameOver?: boolean;

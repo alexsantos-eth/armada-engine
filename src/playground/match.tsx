@@ -47,12 +47,10 @@ const PlaygroundMatchs = () => {
   };
 
   const onPlayer1ItemUsed = (itemId: number) => {
-    console.log("Player 1 used item", itemId);
     player2MatchRef.current?.useItem(itemId, false);
   };
 
   const onPlayer2ItemUsed = (itemId: number) => {
-    console.log("Player 2 used item", itemId);
     player1MatchRef.current?.useItem(itemId, false);
   };
 

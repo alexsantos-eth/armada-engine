@@ -9,6 +9,7 @@ import {
 import { type GameSetup, type ShotPattern } from "../../core/engine";
 import { PlayerBoard, EnemyBoard } from "./boards";
 import { GameOverBanner, GameStateArea } from "./game-status";
+import { ItemSelector } from "./item-selector";
 import {
   useAuth,
   useRoom,
@@ -31,7 +32,7 @@ const NetworkMatch: React.FC<NetworkMatchProps> = ({ selectedPattern, initialSet
 
   const playerRole = isHost ? "host" : isGuest ? "guest" : "host";
 
-  const { executeShot, gameState, playerBoard, enemyBoard } = useNetworkMatch({
+  const { executeShot, useItem, gameState, playerBoard, enemyBoard } = useNetworkMatch({
     room,
     playerRole,
   });
@@ -191,6 +192,8 @@ const NetworkMatch: React.FC<NetworkMatchProps> = ({ selectedPattern, initialSet
           onCellClick={(x, y) => executeShot(x, y, selectedPattern)}
         />
       </div>
+
+      <ItemSelector gameState={gameState} onUseItem={(itemId) => useItem(itemId)} />
 
       {showStatus && <GameStateArea gameState={gameState} />}
     </div>

@@ -11,6 +11,7 @@ import {
   type PlayerRole,
   type Shot,
   type GameSetup,
+  type GameItem,
   DefaultRuleSet,
 } from "../../../../../core/engine";
 
@@ -31,6 +32,11 @@ export class RoomService {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return result;
+  }
+
+  private sanitizeItems(items: GameItem[] | undefined): GameItem[] {
+    if (!items) return [];
+    return items.map(({ onCollect: _onCollect, onUse: _onUse, ...rest }) => rest);
   }
 
   private async isRoomCodeUnique(roomCode: string): Promise<boolean> {
@@ -84,8 +90,8 @@ export class RoomService {
       initialState: {
         playerShips: setup.playerShips,
         enemyShips: setup.enemyShips,
-        playerItems: setup.playerItems,
-        enemyItems: setup.enemyItems,
+        playerItems: this.sanitizeItems(setup.playerItems),
+        enemyItems: this.sanitizeItems(setup.enemyItems),
       },
       host: {
         ...hostPlayer,
@@ -220,6 +226,13 @@ export class RoomService {
     shots: Record<"hostShots" | "guestShots", Shot[]>,
   ): Promise<void> {
     await dbUtils.updateDocument(`rooms/${roomId}`, shots);
+  }
+
+  async updateGameStateItemUses(
+    roomId: string,
+    itemUses: Record<"hostItemUses" | "guestItemUses", { itemId: number }[]>,
+  ): Promise<void> {
+    await dbUtils.updateDocument(`rooms/${roomId}`, itemUses);
   }
 
   async endGame(roomId: string): Promise<void> {
