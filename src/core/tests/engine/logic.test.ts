@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { GameEngine } from '../../engine/logic';
 import { SINGLE_SHOT } from '../../constants/shots';
 import type { GameShip, Shot } from '../../types/common';
@@ -71,14 +71,6 @@ describe('GameEngine', () => {
       expect(engine.getCurrentTurn()).toBe('PLAYER_TURN');
     });
 
-    it('should switch to enemy turn', () => {
-      engine.setEnemyTurn();
-      
-      expect(engine.isPlayerTurn()).toBe(false);
-      expect(engine.isEnemyTurn()).toBe(true);
-      expect(engine.getCurrentTurn()).toBe('ENEMY_TURN');
-    });
-
     it('should toggle turns correctly', () => {
       expect(engine.getCurrentTurn()).toBe('PLAYER_TURN');
       
@@ -89,18 +81,6 @@ describe('GameEngine', () => {
       expect(engine.getCurrentTurn()).toBe('PLAYER_TURN');
     });
 
-    it('should call onTurnChange callback when turn changes', () => {
-      const onTurnChange = vi.fn();
-      const engineWithCallback = new GameEngine({}, { onTurnChange });
-      
-      // Toggle to enemy turn
-      engineWithCallback.toggleTurn();
-      expect(onTurnChange).toHaveBeenCalledWith('ENEMY_TURN');
-      
-      // Toggle back to player turn
-      engineWithCallback.toggleTurn();
-      expect(onTurnChange).toHaveBeenCalledWith('PLAYER_TURN');
-    });
   });
 
   describe('Shot Execution', () => {
@@ -150,19 +130,6 @@ describe('GameEngine', () => {
       const state = engine.getState();
       expect(state.playerShots).toHaveLength(1);
       expect(state.enemyShots).toHaveLength(1);
-    });
-
-    it('should call onShot callback', () => {
-      const onShot = vi.fn();
-      const engineWithCallback = new GameEngine({}, { onShot });
-      engineWithCallback.initializeGame(playerShips, enemyShips);
-      
-      engineWithCallback.executeShotPattern(9, 9, SINGLE_SHOT, true);
-      
-      expect(onShot).toHaveBeenCalledWith(
-        expect.objectContaining({ x: 9, y: 9, hit: false }),
-        true
-      );
     });
 
     it('should increment shot count', () => {
@@ -219,24 +186,6 @@ describe('GameEngine', () => {
       engine.setGameOver('enemy');
       expect(engine.getWinner()).toBe('enemy');
       expect(engine.getState().isGameOver).toBe(true);
-    });
-
-    it('should call onGameOver callback when setGameOver is called', () => {
-      const onGameOver = vi.fn();
-      const engineWithCallback = new GameEngine({}, { onGameOver });
-      engineWithCallback.initializeGame(playerShips, enemyShips);
-      
-      // Destroy all enemy ships
-      engineWithCallback.executeShotPattern(5, 5, SINGLE_SHOT, true);
-      engineWithCallback.executeShotPattern(6, 5, SINGLE_SHOT, true);
-      engineWithCallback.executeShotPattern(7, 7, SINGLE_SHOT, true);
-      engineWithCallback.executeShotPattern(7, 8, SINGLE_SHOT, true);
-      engineWithCallback.executeShotPattern(7, 9, SINGLE_SHOT, true);
-      
-      // Manually set game over (normally done by Match)
-      engineWithCallback.setGameOver('player');
-      
-      expect(onGameOver).toHaveBeenCalledWith('player');
     });
 
     it('should check areAllShipsDestroyed helper method', () => {
@@ -312,21 +261,22 @@ describe('GameEngine', () => {
       expect(state).toHaveProperty('shotCount');
     });
 
-    it('should call onStateChange callback on significant changes', () => {
-      const onStateChange = vi.fn();
-      const engineWithCallback = new GameEngine({}, { onStateChange });
-      
-      engineWithCallback.initializeGame(playerShips, enemyShips);
-      expect(onStateChange).toHaveBeenCalled();
-      
-      onStateChange.mockClear();
-      engineWithCallback.executeShotPattern(4, 4, SINGLE_SHOT, true);
-      expect(onStateChange).toHaveBeenCalled();
+    it('should increment version counter on each mutation', () => {
+      const engine2 = new GameEngine({});
+      const v0 = engine2.getVersion();
+
+      engine2.initializeGame(playerShips, enemyShips);
+      const v1 = engine2.getVersion();
+      expect(v1).toBeGreaterThan(v0);
+
+      engine2.executeShotPattern(4, 4, SINGLE_SHOT, true);
+      const v2 = engine2.getVersion();
+      expect(v2).toBeGreaterThan(v1);
     });
 
     it('should reset game state', () => {
       engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
-      engine.setEnemyTurn();
+
       
       engine.resetGame();
       
@@ -615,31 +565,6 @@ describe('GameEngine', () => {
       // Trying to shoot a cell of an already-collected item returns null (no second collection)
       const result = engine.executeShotPattern(6, 6, SINGLE_SHOT, true); // cell already shot
       expect(result.shots[0].executed).toBe(false); // cell already shot
-    });
-
-    it('should fire onItemCollected callback when an item is fully collected', () => {
-      const onItemCollected = vi.fn();
-      const eng = new GameEngine({}, { onItemCollected });
-      eng.initializeGame(playerShips, enemyShips, 'PLAYER_TURN', [], enemyItems);
-
-      eng.executeShotPattern(3, 3, SINGLE_SHOT, true);
-
-      expect(onItemCollected).toHaveBeenCalledTimes(1);
-      const [shot, item, isPlayerShot] = onItemCollected.mock.calls[0];
-      expect(shot.x).toBe(3);
-      expect(shot.y).toBe(3);
-      expect(item).toMatchObject({ coords: [3, 3], part: 1 });
-      expect(isPlayerShot).toBe(true);
-    });
-
-    it('should NOT fire onItemCollected for a partial collection', () => {
-      const onItemCollected = vi.fn();
-      const eng = new GameEngine({}, { onItemCollected });
-      eng.initializeGame(playerShips, enemyShips, 'PLAYER_TURN', [], enemyItems);
-
-      eng.executeShotPattern(6, 6, SINGLE_SHOT, true); // only first of two parts
-
-      expect(onItemCollected).not.toHaveBeenCalled();
     });
 
     it('should set items via setPlayerItems / setEnemyItems after construction', () => {

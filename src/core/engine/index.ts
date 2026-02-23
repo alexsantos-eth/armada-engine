@@ -1,4 +1,4 @@
-export type { GameEngineState, ShotResult, GameEngineCallbacks } from "./logic";
+export type { GameEngineState, ShotResult } from "./logic";
 
 export { Match } from "./match";
 export type { PlanAndAttackResult, MatchCallbacks, PlanShotResult, MatchItemActionContext } from "./match";

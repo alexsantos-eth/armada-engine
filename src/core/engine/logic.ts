@@ -49,17 +49,9 @@ export class GameEngine {
   private usedByEnemy: Set<number>;
 
   private gameInitialized: boolean;
+  private _version: number = 0;
 
-  private onStateChange?: (state: GameEngineState) => void;
-  private onTurnChange?: (turn: GameTurn) => void;
-  private onShot?: (shot: Shot, isPlayerShot: boolean) => void;
-  private onGameOver?: (winner: Winner) => void;
-  private onItemCollected?: (shot: Shot, item: GameItem, isPlayerShot: boolean) => void;
-
-  constructor(
-    config: Partial<GameConfig> = {},
-    callbacks?: GameEngineCallbacks,
-  ) {
+  constructor(config: Partial<GameConfig> = {}) {
     this.boardWidth = config.boardWidth ?? GAME_CONSTANTS.BOARD.DEFAULT_WIDTH;
     this.boardHeight =
       config.boardHeight ?? GAME_CONSTANTS.BOARD.DEFAULT_HEIGHT;
@@ -90,12 +82,6 @@ export class GameEngine {
     this.enemyCollectedItems = new Set();
     this.usedByPlayer = new Set();
     this.usedByEnemy = new Set();
-
-    this.onStateChange = callbacks?.onStateChange;
-    this.onTurnChange = callbacks?.onTurnChange;
-    this.onShot = callbacks?.onShot;
-    this.onItemCollected = callbacks?.onItemCollected;
-    this.onGameOver = callbacks?.onGameOver;
   }
 
   /**
@@ -155,7 +141,7 @@ export class GameEngine {
     this.cacheItemPositions(enemyItems, this.enemyItemPositions);
 
     this.gameInitialized = true;
-    this.notifyStateChange();
+    this._version++;
   }
 
   /**
@@ -190,7 +176,7 @@ export class GameEngine {
     this.usedByPlayer.clear();
     this.usedByEnemy.clear();
 
-    this.notifyStateChange();
+    this._version++;
   }
 
   /**
@@ -201,7 +187,7 @@ export class GameEngine {
   public setBoardDimensions(width: number, height: number): void {
     this.boardWidth = width;
     this.boardHeight = height;
-    this.notifyStateChange();
+    this._version++;
   }
 
   /**
@@ -233,8 +219,7 @@ export class GameEngine {
    */
   private setPlayerTurn(): void {
     this.currentTurn = "PLAYER_TURN";
-    this.onTurnChange?.(this.currentTurn);
-    this.notifyStateChange();
+    this._version++;
   }
 
   /**
@@ -242,8 +227,7 @@ export class GameEngine {
    */
   private setEnemyTurn(): void {
     this.currentTurn = "ENEMY_TURN";
-    this.onTurnChange?.(this.currentTurn);
-    this.notifyStateChange();
+    this._version++;
   }
 
   /**
@@ -262,7 +246,6 @@ export class GameEngine {
    * @param x - X coordinate on board
    * @param y - Y coordinate on board
    * @param isPlayerShot - True if shot is from player, false if from enemy
-   * @param suppressCallback - If true, don't trigger onShot callback (used internally for patterns)
    * @param patternInfo - Optional pattern information to store with the shot
    * @returns Result of the shot including hit status and game state
    * @private - Use executeShotPattern() instead
@@ -271,7 +254,6 @@ export class GameEngine {
     x: number,
     y: number,
     isPlayerShot: boolean,
-    suppressCallback: boolean = false,
     patternInfo?: { patternId: string; centerX: number; centerY: number },
   ): ShotResult {
     if (this.isCellShot(x, y, isPlayerShot)) {
@@ -323,22 +305,13 @@ export class GameEngine {
     }
 
     this.shotCount++;
-    if (!suppressCallback) {
-      this.onShot?.(shot, isPlayerShot);
-    }
-
-    if (itemCollection?.itemFullyCollected && itemCollection.itemId !== undefined) {
-      const items = isPlayerShot ? this.enemyItems : this.playerItems;
-      const collectedItem = items[itemCollection.itemId];
-      this.onItemCollected?.(shot, collectedItem, isPlayerShot);
-    }
 
     const shipDestroyed =
       result.hit && result.shipId >= 0
         ? this.isShipDestroyed(result.shipId, isPlayerShot)
         : false;
 
-    this.notifyStateChange();
+    this._version++;
 
     return {
       success: true,
@@ -423,7 +396,6 @@ export class GameEngine {
         targetX,
         targetY,
         isPlayerShot,
-        true,
         { patternId: pattern.id, centerX, centerY },
       );
 
@@ -441,20 +413,6 @@ export class GameEngine {
         itemId: shotResult.itemId,
         itemFullyCollected: shotResult.itemFullyCollected,
       });
-    }
-
-    if (this.onShot) {
-      const centerShot: Shot = {
-        x: centerX,
-        y: centerY,
-        hit: shots.some((s) => s.hit && s.executed),
-        shipId: shots.find((s) => s.hit && s.executed)?.shipId,
-        patternId: pattern.id,
-        patternCenterX: centerX,
-        patternCenterY: centerY,
-      };
-
-      this.onShot(centerShot, isPlayerShot);
     }
 
     return {
@@ -545,8 +503,7 @@ export class GameEngine {
   public setGameOver(winner: Winner): void {
     this.winner = winner;
     this.isGameOver = true;
-    this.onGameOver?.(this.winner);
-    this.notifyStateChange();
+    this._version++;
   }
 
   /**
@@ -637,7 +594,7 @@ export class GameEngine {
       this.playerShipPositions,
       this.playerShipSizes,
     );
-    this.notifyStateChange();
+    this._version++;
   }
 
   /**
@@ -653,7 +610,7 @@ export class GameEngine {
       this.enemyShipPositions,
       this.enemyShipSizes,
     );
-    this.notifyStateChange();
+    this._version++;
   }
 
   /**
@@ -667,7 +624,7 @@ export class GameEngine {
     this.enemyCollectedItems.clear();
     this.usedByEnemy.clear();
     this.cacheItemPositions(items, this.playerItemPositions);
-    this.notifyStateChange();
+    this._version++;
   }
 
   /**
@@ -681,7 +638,7 @@ export class GameEngine {
     this.playerCollectedItems.clear();
     this.usedByPlayer.clear();
     this.cacheItemPositions(items, this.enemyItemPositions);
-    this.notifyStateChange();
+    this._version++;
   }
 
   /**
@@ -699,7 +656,7 @@ export class GameEngine {
       }
     });
     this.shotCount = this.playerShotsMap.size + this.enemyShotsMap.size;
-    this.notifyStateChange();
+    this._version++;
   }
 
   /**
@@ -717,7 +674,7 @@ export class GameEngine {
       }
     });
     this.shotCount = this.playerShotsMap.size + this.enemyShotsMap.size;
-    this.notifyStateChange();
+    this._version++;
   }
 
   /**
@@ -760,7 +717,7 @@ export class GameEngine {
     } else {
       this.usedByEnemy.add(itemId);
     }
-    this.notifyStateChange();
+    this._version++;
   }
 
   /**
@@ -873,11 +830,11 @@ export class GameEngine {
   }
 
   /**
-   * Notify state changes to observers
-   * @private
+   * Returns the current mutation counter. Increments on every write, so callers
+   * can cheaply detect whether the engine state has changed.
    */
-  private notifyStateChange(): void {
-    this.onStateChange?.(this.getState());
+  public getVersion(): number {
+    return this._version;
   }
 
   /**
@@ -1100,18 +1057,6 @@ export interface ShotResult {
   itemId?: number;
   /** True when the item is now fully collected. */
   itemFullyCollected?: boolean;
-}
-
-/**
- * Optional callbacks to observe engine changes
- * Useful for UI updates and event handling
- */
-export interface GameEngineCallbacks {
-  onStateChange?: (state: GameEngineState) => void;
-  onTurnChange?: (turn: GameTurn) => void;
-  onShot?: (shot: Shot, isPlayerShot: boolean) => void;
-  onGameOver?: (winner: Winner) => void;
-  onItemCollected?: (shot: Shot, item: GameItem, isPlayerShot: boolean) => void;
 }
 
 

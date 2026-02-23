@@ -4,6 +4,7 @@ import { DefaultRuleSet } from "../rulesets";
 import { SINGLE_SHOT } from "../../constants/shots";
 import { PlanError } from "../errors";
 import { buildCollectContext, buildUseContext } from "../itemContext";
+import type { Shot } from "../../types/common";
 import type {
   MatchMachineContext,
   MatchMachineEvent,
@@ -112,6 +113,21 @@ export const matchMachine = setup({
         isPlayerShot,
       );
 
+      // Fire onItemCollected BEFORE item.onCollect so the match-level observer
+      // sees the event before any side-effects the item handler produces.
+      if (context.callbacks?.onItemCollected) {
+        const engineState = context.engine.getState();
+        const notifyItems = isPlayerShot ? engineState.enemyItems : engineState.playerItems;
+        for (const shot of lastAttackResult.shots) {
+          if (shot.itemFullyCollected && shot.itemId !== undefined) {
+            const item = notifyItems[shot.itemId];
+            if (item) {
+              context.callbacks.onItemCollected(shot as Shot, item, isPlayerShot);
+            }
+          }
+        }
+      }
+
       let capturedRuleSet: unknown = null;
 
       for (const shot of lastAttackResult.shots) {
@@ -134,6 +150,21 @@ export const matchMachine = setup({
         }
       }
 
+      // Fire onShot once per attack with a representative center shot
+      if (context.callbacks?.onShot) {
+        const centerShot: Shot = {
+          x: centerX,
+          y: centerY,
+          hit: lastAttackResult.shots.some((s) => s.hit && s.executed),
+          shipId: lastAttackResult.shots.find((s) => s.hit && s.executed)?.shipId,
+          patternId: pattern.id,
+          patternCenterX: centerX,
+          patternCenterY: centerY,
+        };
+        context.callbacks.onShot(centerShot, isPlayerShot);
+      }
+
+      context.callbacks?.onStateChange?.(context.engine.getState());
       return {
         pendingPlan: null,
         lastAttackResult,
@@ -164,6 +195,7 @@ export const matchMachine = setup({
 
       if (lastTurnDecision.shouldToggleTurn) {
         context.engine.toggleTurn();
+        context.callbacks?.onTurnChange?.(context.engine.getCurrentTurn());
       }
 
       const stateAfterTurn = context.engine.getState();
@@ -171,9 +203,11 @@ export const matchMachine = setup({
         const gameOverDecision = activeRuleSet.checkGameOver(stateAfterTurn);
         if (gameOverDecision.isGameOver && gameOverDecision.winner) {
           context.engine.setGameOver(gameOverDecision.winner);
+          context.callbacks?.onGameOver?.(gameOverDecision.winner);
         }
       }
 
+      context.callbacks?.onStateChange?.(context.engine.getState());
       return {
         lastTurnDecision,
         pendingRuleSet: null,
@@ -194,8 +228,8 @@ export const matchMachine = setup({
       );
 
       context.callbacks?.onMatchStart?.();
-
-return {
+      context.callbacks?.onStateChange?.(context.engine.getState());
+      return {
         planError: null,
         lastAttackResult: null,
         lastTurnDecision: null,
@@ -208,6 +242,7 @@ return {
     /** Resets the engine to its initial empty state */
     resetEngine: assign(({ context }) => {
       context.engine.resetGame();
+      context.callbacks?.onStateChange?.(context.engine.getState());
       return {
         pendingPlan: null,
         lastAttackResult: null,
@@ -272,6 +307,7 @@ return {
         context.callbacks?.onItemUse?.(itemId, isPlayerShot, item);
       }
 
+      context.callbacks?.onStateChange?.(context.engine.getState());
       return {
         lastUseItemResult: true,
         turnBeforeItemUse,
@@ -293,6 +329,7 @@ return {
 
       const itemToggledTurn =
         stateAfterUse.currentTurn !== context.turnBeforeItemUse;
+      let rulesetToggledTurn = false;
       if (!itemToggledTurn && !stateAfterUse.isGameOver) {
         const itemUseTurnDecision = context.ruleSet.decideTurnOnItemUse?.(
           context.turnBeforeItemUse === "PLAYER_TURN",
@@ -300,7 +337,12 @@ return {
         );
         if (itemUseTurnDecision?.shouldToggleTurn) {
           context.engine.toggleTurn();
+          rulesetToggledTurn = true;
         }
+      }
+
+      if (itemToggledTurn || rulesetToggledTurn) {
+        context.callbacks?.onTurnChange?.(context.engine.getCurrentTurn());
       }
 
       const stateForGameOver = context.engine.getState();
@@ -308,9 +350,11 @@ return {
         const gameOverDecision = context.ruleSet.checkGameOver(stateForGameOver);
         if (gameOverDecision.isGameOver && gameOverDecision.winner) {
           context.engine.setGameOver(gameOverDecision.winner);
+          context.callbacks?.onGameOver?.(gameOverDecision.winner);
         }
       }
 
+      context.callbacks?.onStateChange?.(context.engine.getState());
       return { pendingRuleSet: null };
     }),
   },
@@ -325,16 +369,7 @@ return {
    */
   context: ({ input }) => {
     const callbacks = input?.callbacks;
-    const engine =
-      input?.engine ??
-      new GameEngine(input?.config ?? {}, {
-        onStateChange: (state) => callbacks?.onStateChange?.(state),
-        onTurnChange: (turn) => callbacks?.onTurnChange?.(turn),
-        onShot: (shot, isPlayerShot) => callbacks?.onShot?.(shot, isPlayerShot),
-        onGameOver: (winner) => callbacks?.onGameOver?.(winner),
-        onItemCollected: (shot, item, isPlayerShot) =>
-          callbacks?.onItemCollected?.(shot, item, isPlayerShot),
-      });
+    const engine = input?.engine ?? new GameEngine(input?.config ?? {});
 
     return {
       engine,
