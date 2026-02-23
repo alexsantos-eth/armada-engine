@@ -353,8 +353,9 @@ export const matchMachine = setup({
         }
       }
 
-      if (!stateAfterUse.isGameOver) {
-        const gameOverDecision = context.ruleSet.checkGameOver(stateAfterUse);
+      const stateForGameOver = context.engine.getState();
+      if (!stateForGameOver.isGameOver) {
+        const gameOverDecision = context.ruleSet.checkGameOver(stateForGameOver);
         if (gameOverDecision.isGameOver && gameOverDecision.winner) {
           engineInternal.setGameOver(gameOverDecision.winner);
         }

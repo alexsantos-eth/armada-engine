@@ -692,12 +692,12 @@ export class GameEngine {
    */
   public setPlayerShots(shots: Shot[]): void {
     this.playerShotsMap.clear();
-    this.playerShipHits.clear();
+    this.enemyShipHits.clear();
     shots.forEach((shot) => {
       this.playerShotsMap.set(posKey(shot.x, shot.y), shot);
       if (shot.hit && shot.shipId !== undefined) {
-        const currentHits = this.playerShipHits.get(shot.shipId) || 0;
-        this.playerShipHits.set(shot.shipId, currentHits + 1);
+        const currentHits = this.enemyShipHits.get(shot.shipId) || 0;
+        this.enemyShipHits.set(shot.shipId, currentHits + 1);
       }
     });
     this.shotCount = this.playerShotsMap.size + this.enemyShotsMap.size;
@@ -710,12 +710,12 @@ export class GameEngine {
    */
   public setEnemyShots(shots: Shot[]): void {
     this.enemyShotsMap.clear();
-    this.enemyShipHits.clear();
+    this.playerShipHits.clear();
     shots.forEach((shot) => {
       this.enemyShotsMap.set(posKey(shot.x, shot.y), shot);
       if (shot.hit && shot.shipId !== undefined) {
-        const currentHits = this.enemyShipHits.get(shot.shipId) || 0;
-        this.enemyShipHits.set(shot.shipId, currentHits + 1);
+        const currentHits = this.playerShipHits.get(shot.shipId) || 0;
+        this.playerShipHits.set(shot.shipId, currentHits + 1);
       }
     });
     this.shotCount = this.playerShotsMap.size + this.enemyShotsMap.size;

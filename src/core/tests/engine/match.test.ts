@@ -867,12 +867,12 @@ describe('Match', () => {
     it('should get current ruleset', () => {
       const ruleSet = match.getRuleSet();
       expect(ruleSet).toBeDefined();
-      expect(ruleSet.name).toBe('ClassicRuleSet');
+      expect(ruleSet.name).toBe('LoseTurnOnUseRuleSet');
     });
 
     it('should allow changing ruleset during match', () => {
       const initialRuleSet = match.getRuleSet();
-      expect(initialRuleSet.name).toBe('ClassicRuleSet');
+      expect(initialRuleSet.name).toBe('LoseTurnOnUseRuleSet');
 
       // Classic: hit allows shooting again
       const hit1 = match.planAndAttack(7, 7, true);
@@ -1102,11 +1102,11 @@ describe('Match', () => {
     });
 
     it('onCollect — setRuleSet applies to the SAME turn cycle (key timing test)', () => {
-      // Start with ClassicRuleSet (miss = turn ends, item collect = treated as miss).
+      // Start with LoseTurnOnUseRuleSet (miss = turn ends, item collect = treated as miss).
       // The item's onCollect switches to ItemHitRuleSet.
       // With the fix, resolveTurn uses ItemHitRuleSet and sees shot.collected=true
       // → canShootAgain = true.
-      // Without the fix, ClassicRuleSet would be used → canShootAgain = false.
+      // Without the fix, LoseTurnOnUseRuleSet would be used → canShootAgain = false.
       const item: GameItem = {
         coords: [3, 3],
         part: 1,
@@ -1115,7 +1115,7 @@ describe('Match', () => {
       const m = makeItemMatch(item);
       m.initializeMatch();
 
-      expect(m.getRuleSet().name).toBe('ClassicRuleSet');
+      expect(m.getRuleSet().name).toBe('LoseTurnOnUseRuleSet');
 
       const result = m.planAndAttack(3, 3, true);
 

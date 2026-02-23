@@ -491,6 +491,68 @@ describe('GameEngine', () => {
       
       expect(engine.getShotCount()).toBe(2);
     });
+
+    it('setPlayerShots: hits count against enemy ships (areAllEnemyShipsDestroyed)', () => {
+      // enemyShips[0] occupies (5,5) and (6,5) — size 2
+      // Supply both hit shots via setPlayerShots; the engine must report ship 0 as destroyed.
+      const shots: Shot[] = [
+        { x: 5, y: 5, hit: true, shipId: 0 },
+        { x: 6, y: 5, hit: true, shipId: 0 },
+      ];
+
+      engine.setPlayerShots(shots);
+
+      expect(engine.isShipDestroyed(0, true)).toBe(true);
+      expect(engine.getState().areAllEnemyShipsDestroyed).toBe(false); // ship 1 untouched
+    });
+
+    it('setEnemyShots: hits count against player ships (areAllPlayerShipsDestroyed)', () => {
+      // playerShips[0] occupies (0,0) and (1,0) — size 2
+      const shots: Shot[] = [
+        { x: 0, y: 0, hit: true, shipId: 0 },
+        { x: 1, y: 0, hit: true, shipId: 0 },
+      ];
+
+      engine.setEnemyShots(shots);
+
+      expect(engine.isShipDestroyed(0, false)).toBe(true);
+      expect(engine.getState().areAllPlayerShipsDestroyed).toBe(false); // ship 1 untouched
+    });
+
+    it('setEnemyShots([]) does NOT clear enemy-ship hit tracking (EMP grenade regression)', () => {
+      // Player fires and fully destroys both enemy ships.
+      const singleShot = { id: 'single', name: 'Single', offsets: [{ dx: 0, dy: 0 }] };
+      engine.executeShotPattern(5, 5, singleShot, true);
+      engine.executeShotPattern(6, 5, singleShot, true);
+      engine.executeShotPattern(7, 7, singleShot, true);
+      engine.executeShotPattern(7, 8, singleShot, true);
+      engine.executeShotPattern(7, 9, singleShot, true);
+
+      expect(engine.getState().areAllEnemyShipsDestroyed).toBe(true);
+
+      // Simulate EMP grenade: clear enemy (opponent) shots.
+      // This must NOT wipe the player's own hit progress against enemy ships.
+      engine.setEnemyShots([]);
+
+      expect(engine.getState().areAllEnemyShipsDestroyed).toBe(true);
+    });
+
+    it('setPlayerShots([]) does NOT clear player-ship hit tracking', () => {
+      const singleShot = { id: 'single', name: 'Single', offsets: [{ dx: 0, dy: 0 }] };
+      // Enemy fires and fully destroys both player ships.
+      engine.executeShotPattern(0, 0, singleShot, false);
+      engine.executeShotPattern(1, 0, singleShot, false);
+      engine.executeShotPattern(2, 2, singleShot, false);
+      engine.executeShotPattern(2, 3, singleShot, false);
+      engine.executeShotPattern(2, 4, singleShot, false);
+
+      expect(engine.getState().areAllPlayerShipsDestroyed).toBe(true);
+
+      // Clearing player (opponent) shots must NOT wipe enemy's hit progress.
+      engine.setPlayerShots([]);
+
+      expect(engine.getState().areAllPlayerShipsDestroyed).toBe(true);
+    });
   });
 
   describe('Board Dimensions', () => {
