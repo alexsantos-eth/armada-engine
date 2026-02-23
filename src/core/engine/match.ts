@@ -5,6 +5,7 @@ import { AttackError, PlanError } from "./errors";
 import { GameInitializer, type GameSetup } from "../manager";
 import { type GameEngineState } from "./logic";
 import { matchMachine } from "./machines/matchMachine";
+import type { MatchMachineActor, MatchMachineSnapshot } from "./machines/matchMachine";
 import { DefaultRuleSet, type MatchRuleSet } from "./rulesets";
 
 import type {
@@ -239,6 +240,22 @@ export class Match {
     this.actor.send({ type: "SYNC_TURN", turn });
   }
 
+  /**
+   * Atomically replaces the full shot history for both sides.
+   *
+   * This is the designated path for replay and multiplayer shot synchronisation.
+   * It sends a `SYNC_SHOTS` event to the machine, which delegates to
+   * `engine.setPlayerShots()` and `engine.setEnemyShots()`, keeping all engine
+   * mutations flowing through the machine rather than requiring a direct
+   * engine reference.
+   *
+   * @param playerShots - Complete shot list for the player side.
+   * @param enemyShots  - Complete shot list for the enemy side.
+   */
+  public syncShots(playerShots: Shot[], enemyShots: Shot[]): void {
+    this.actor.send({ type: "SYNC_SHOTS", playerShots, enemyShots });
+  }
+
   public isCellShot(x: number, y: number, isPlayerShot: boolean): boolean {
     return this.engine.isCellShot(x, y, isPlayerShot);
   }
@@ -369,6 +386,54 @@ export class Match {
  * ```
  */
 export type MatchItemActionContext = ItemActionContext;
+
+/**
+ * Read-only contract for observers and consumers that need to query a match
+ * but should not have access to command methods
+ * (`planShot`, `confirmAttack`, `syncShots`, `resetMatch`, etc.).
+ *
+ * React hooks and multiplayer consumers should type their `match` reference
+ * as `MatchQueryAPI` rather than the concrete {@link Match} class to prevent
+ * accidental coupling to mutation methods.
+ *
+ * ```typescript
+ * import type { MatchQueryAPI } from '../engine';
+ *
+ * function MyComponent({ match }: { match: MatchQueryAPI | null }) {
+ *   const board = match?.getPlayerBoard();
+ * }
+ * ```
+ */
+export interface MatchQueryAPI {
+  // ── state queries ──────────────────────────────────────────────────────────
+  getState(): GameEngineState;
+  getCurrentTurn(): GameTurn;
+  isPlayerTurn(): boolean;
+  isEnemyTurn(): boolean;
+  getWinner(): Winner;
+  isMatchOver(): boolean;
+  getMachineState(): MatchMachineSnapshot["value"];
+  getRuleSet(): MatchRuleSet;
+  getPendingPlan(): {
+    centerX: number;
+    centerY: number;
+    pattern: ShotPattern;
+    isPlayerShot: boolean;
+  } | null;
+
+  // ── board / cell queries ────────────────────────────────────────────────────
+  isCellShot(x: number, y: number, isPlayerShot: boolean): boolean;
+  isValidPosition(x: number, y: number): boolean;
+  areAllShipsDestroyed(isPlayerShips: boolean): boolean;
+  getShotAtPosition(x: number, y: number, isPlayerShot: boolean): Shot | undefined;
+  hasShipAtPosition(x: number, y: number, isPlayerShips: boolean): boolean;
+  getBoardDimensions(): { width: number; height: number };
+  getPlayerBoard(): Board;
+  getEnemyBoard(): Board;
+
+  // ── actor access (for subscriptions) ───────────────────────────────────────
+  getActor(): MatchMachineActor;
+}
 
 export interface PlanShotResult {
   ready: boolean;

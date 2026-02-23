@@ -8,6 +8,7 @@ import {
   type GameConfig,
   type GameEngineState,
   type MatchCallbacks,
+  type MatchQueryAPI,
   type PlayerRole,
   type ShotPattern,
   type GameItem,
@@ -194,7 +195,7 @@ const useNetworkMatch = ({
     useItem,
     enemyBoard,
     executeShot,
-    match: match.current,
+    match: match.current as MatchQueryAPI | null,
   };
 };
 

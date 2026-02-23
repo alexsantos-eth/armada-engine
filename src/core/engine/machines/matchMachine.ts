@@ -92,14 +92,13 @@ export const matchMachine = setup({
     })),
 
     /**
-     * Step 1 of the turn cycle: execute the shot pattern in the engine.
-     * Stores `lastAttackResult`, clears the pending plan, and invokes
-     * `onCollect` for every item that was fully collected by this attack.
+     * Step 1a of the turn cycle: execute the shot pattern in the engine.
+     * Stores `lastAttackResult`, clears the pending plan, and fires
+     * `onItemCollected` and `onShot` callbacks.
      *
-     * `onCollect` must run here (not in a Match callback) so that any
-     * `ctx.setRuleSet()` call is captured into `pendingRuleSet` in machine
-     * context before `resolveTurn` reads it — guaranteeing the new ruleset
-     * is applied to the same turn cycle.
+     * Item `onCollect` lifecycle handlers are intentionally not called here —
+     * that responsibility belongs to `runCollectHandlers` (step 1b), keeping
+     * shot execution and item lifecycle concerns separate.
      */
     executeAttack: assign(({ context }) => {
       if (!context.pendingPlan) return {};
@@ -128,10 +127,48 @@ export const matchMachine = setup({
         }
       }
 
+      // Fire onShot once per attack with a representative center shot.
+      if (context.callbacks?.onShot) {
+        const centerShot: Shot = {
+          x: centerX,
+          y: centerY,
+          hit: lastAttackResult.shots.some((s) => s.hit && s.executed),
+          shipId: lastAttackResult.shots.find((s) => s.hit && s.executed)?.shipId,
+          patternId: pattern.id,
+          patternCenterX: centerX,
+          patternCenterY: centerY,
+        };
+        context.callbacks.onShot(centerShot, isPlayerShot);
+      }
+
+      return {
+        pendingPlan: null,
+        lastAttackResult,
+        lastAttackIsPlayerShot: isPlayerShot,
+      };
+    }),
+
+    /**
+     * Step 1b of the turn cycle: invoke `onCollect` for every item that was
+     * fully collected by the preceding attack.
+     *
+     * Separated from `executeAttack` so that item lifecycle logic does not
+     * bleed into shot-execution concerns.
+     *
+     * `onCollect` must run before `resolveTurn` (step 2) so that any
+     * `ctx.setRuleSet()` call is captured into `pendingRuleSet` before the
+     * ruleset is consulted — guaranteeing the new ruleset is applied to the
+     * same turn cycle.
+     */
+    runCollectHandlers: assign(({ context }) => {
+      if (!context.lastAttackResult || context.lastAttackIsPlayerShot === null) return {};
+
+      const isPlayerShot = context.lastAttackIsPlayerShot;
+
       let capturedRuleSet: unknown = null;
       let collectToggleCount = 0;
 
-      for (const shot of lastAttackResult.shots) {
+      for (const shot of context.lastAttackResult.shots) {
         if (shot.itemFullyCollected && shot.itemId !== undefined) {
           const engineState = context.engine.getState(context.currentTurn);
           const items = isPlayerShot
@@ -153,31 +190,16 @@ export const matchMachine = setup({
         }
       }
 
-      const currentTurnAfterCollect: GameTurn =
+      const currentTurn: GameTurn =
         collectToggleCount % 2 === 0
           ? context.currentTurn
           : context.currentTurn === "PLAYER_TURN" ? "ENEMY_TURN" : "PLAYER_TURN";
 
-      // Fire onShot once per attack with a representative center shot
-      if (context.callbacks?.onShot) {
-        const centerShot: Shot = {
-          x: centerX,
-          y: centerY,
-          hit: lastAttackResult.shots.some((s) => s.hit && s.executed),
-          shipId: lastAttackResult.shots.find((s) => s.hit && s.executed)?.shipId,
-          patternId: pattern.id,
-          patternCenterX: centerX,
-          patternCenterY: centerY,
-        };
-        context.callbacks.onShot(centerShot, isPlayerShot);
-      }
-
-      context.callbacks?.onStateChange?.(context.engine.getState(currentTurnAfterCollect));
+      context.callbacks?.onStateChange?.(context.engine.getState(currentTurn));
       return {
-        pendingPlan: null,
-        lastAttackResult,
-        currentTurn: currentTurnAfterCollect,
+        currentTurn,
         pendingRuleSet: capturedRuleSet as typeof context.ruleSet | null,
+        lastAttackIsPlayerShot: null,
       };
     }),
 
@@ -249,6 +271,7 @@ export const matchMachine = setup({
         lastUseItemResult: null,
         turnBeforeItemUse: null,
         pendingRuleSet: null,
+        lastAttackIsPlayerShot: null,
       };
     }),
 
@@ -265,6 +288,7 @@ export const matchMachine = setup({
         lastUseItemResult: null,
         turnBeforeItemUse: null,
         pendingRuleSet: null,
+        lastAttackIsPlayerShot: null,
       };
     }),
 
@@ -278,6 +302,18 @@ export const matchMachine = setup({
     syncTurn: assign(({ event }) => {
       if (event.type !== "SYNC_TURN") return {};
       return { currentTurn: event.turn };
+    }),
+
+    /**
+     * Replaces both sides' shot history atomically.
+     * Used for replay and multiplayer synchronisation so all engine mutations
+     * continue to flow through the machine rather than bypassing it.
+     */
+    syncShots: assign(({ context, event }) => {
+      if (event.type !== "SYNC_SHOTS") return {};
+      context.engine.setPlayerShots(event.playerShots);
+      context.engine.setEnemyShots(event.enemyShots);
+      return {};
     }),
 
     /**
@@ -411,6 +447,7 @@ export const matchMachine = setup({
       lastUseItemResult: null,
       turnBeforeItemUse: null,
       pendingRuleSet: null,
+      lastAttackIsPlayerShot: null,
     };
   },
 
@@ -449,6 +486,9 @@ export const matchMachine = setup({
         },
         SYNC_TURN: {
           actions: "syncTurn",
+        },
+        SYNC_SHOTS: {
+          actions: "syncShots",
         },
       },
 
@@ -521,12 +561,13 @@ export const matchMachine = setup({
         },
 
         /**
-         * attacking — transient state (step 1).
-         * On entry, fires the shot pattern in the engine and immediately
-         * advances to resolvingTurn.
+         * attacking — transient state (steps 1a + 1b).
+         * On entry, fires the shot pattern in the engine (executeAttack) and
+         * then runs item onCollect lifecycle handlers (runCollectHandlers),
+         * before immediately advancing to resolvingTurn.
          */
         attacking: {
-          entry: "executeAttack",
+          entry: ["executeAttack", "runCollectHandlers"],
           always: [{ target: "resolvingTurn" }],
         },
 

@@ -5,6 +5,7 @@ import {
   type GameConfig,
   type GameEngineState,
   type MatchCallbacks,
+  type MatchQueryAPI,
 } from "../../core/engine";
 import type {
   GAME_INITIAL_TURN,
@@ -57,7 +58,7 @@ const useMatch = ({
     playerBoard,
     enemyBoard,
     initializeNewGame,
-    match: match.current,
+    match: match.current as MatchQueryAPI | null,
   };
 };
 

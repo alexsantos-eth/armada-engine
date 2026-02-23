@@ -79,6 +79,13 @@ export interface MatchMachineContext {
    * that belongs to the machine (game flow).
    */
   pendingRuleSet: MatchRuleSet | null;
+  /**
+   * Carries the `isPlayerShot` flag from `executeAttack` to `runCollectHandlers`.
+   * `pendingPlan` is cleared by `executeAttack`, so without this field
+   * `runCollectHandlers` would have no way to know which side fired.
+   * Reset to `null` by `initializeEngine` and `resetEngine`.
+   */
+  lastAttackIsPlayerShot: boolean | null;
 }
 
 export type MatchMachineEvent =
@@ -122,7 +129,14 @@ export type MatchMachineEvent =
    * Forces the current turn to the given value without side-effects.
    * Useful for network synchronisation (e.g. re-syncing after reconnect).
    */
-  | { type: "SYNC_TURN"; turn: GameTurn };
+  | { type: "SYNC_TURN"; turn: GameTurn }
+  /**
+   * Replaces the full shot history for both sides in one atomic call.
+   * Useful for replay and multiplayer shot synchronisation — keeps all
+   * engine mutations flowing through the machine rather than requiring
+   * a direct engine reference.
+   */
+  | { type: "SYNC_SHOTS"; playerShots: Shot[]; enemyShots: Shot[] };
 
 export interface MatchMachineInput {
   /** Board configuration (width, height…); ignored when `engine` is provided */

@@ -1,7 +1,7 @@
 export type { GameEngineState, ShotResult } from "./logic";
 
 export { Match } from "./match";
-export type { PlanAndAttackResult, MatchCallbacks, PlanShotResult, MatchItemActionContext } from "./match";
+export type { PlanAndAttackResult, MatchCallbacks, PlanShotResult, MatchItemActionContext, MatchQueryAPI } from "./match";
 
 export {
   ClassicRuleSet,
