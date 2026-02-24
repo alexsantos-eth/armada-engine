@@ -13,6 +13,7 @@ import {
   type PlayerRole,
   type ShotPattern,
   type GameItem,
+  type Cell,
 } from "../../../../core/engine";
 import { ITEM_TEMPLATES } from "../../../../core/constants/items";
 
@@ -43,7 +44,16 @@ const useNetworkMatch = ({
   ...callbacks
 }: UseNetworkMatchProps) => {
   const [gameState, setGameState] = useState<MatchState | null>(null);
+  const [playerBoard, setPlayerBoard] = useState<Cell[][] | undefined>(undefined);
+  const [enemyBoard, setEnemyBoard] = useState<Cell[][] | undefined>(undefined);
   const match = useRef<Match | null>(null);
+  const matchRef = useRef<Match | null>(null);
+
+  const updateState = (m: Match) => {
+    setGameState(m.getState());
+    setPlayerBoard(m.getPlayerBoard());
+    setEnemyBoard(m.getEnemyBoard());
+  };
 
   useEffect(() => {
     if (!room || !room.initialState) return;
@@ -94,6 +104,8 @@ const useNetworkMatch = ({
       },
       onStateChange: (state) => {
         setGameState(state);
+        setPlayerBoard(newMatch.getPlayerBoard());
+        setEnemyBoard(newMatch.getEnemyBoard());
         callbacks?.onStateChange?.(state);
       },
       onShot: (shot, isPlayerShot) => {
@@ -159,27 +171,36 @@ const useNetworkMatch = ({
 
     newMatch.initializeMatch();
     match.current = newMatch;
-    setGameState(newMatch.getState());
+    matchRef.current = newMatch;
+    updateState(newMatch);
   }, [room?.id]);
 
   useEffect(() => {
-    if (!room?.id || !match.current) return;
+    if (!room?.id) return;
 
-    const unsubscribe = roomService.subscribeToMatchEvents(
-      room.id,
-      (event) => {
-        if (event.senderId === playerRole) return;
+    const subscribe = () => {
+      if (!matchRef.current) return () => {};
 
-        if (event.type === "ATTACK") {
-          match.current?.planAndAttack(event.x, event.y, false, event.pattern);
-        } else if (event.type === "USE_ITEM") {
-          match.current?.useItem(event.itemId, false);
-        }
-      },
-    );
+      return roomService.subscribeToMatchEvents(
+        room.id,
+        (event) => {
+          if (event.senderId === playerRole) return;
 
+          const m = matchRef.current;
+          if (!m) return;
+
+          if (event.type === "ATTACK") {
+            m.planAndAttack(event.x, event.y, false, event.pattern);
+          } else if (event.type === "USE_ITEM") {
+            m.useItem(event.itemId, false);
+          }
+        },
+      );
+    };
+
+    const unsubscribe = subscribe();
     return unsubscribe;
-  }, [room?.id, match.current]);
+  }, [room?.id]);
 
   const executeShot = (
     x: number,
@@ -198,9 +219,6 @@ const useNetworkMatch = ({
 
     match.current.useItem(itemId, true);
   };
-
-  const playerBoard = match.current?.getPlayerBoard();
-  const enemyBoard = match.current?.getEnemyBoard();
 
   return {
     gameState,
