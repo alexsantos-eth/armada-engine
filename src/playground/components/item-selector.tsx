@@ -48,7 +48,7 @@ export const ItemSelector = ({ gameState, onUseItem }: ItemSelectorProps) => {
 
           const hasCollectEffect = typeof item.onCollect === "function";
           const hasUseEffect = typeof item.onUse === "function";
-          const alreadyUsed = playerUsedItems.includes(itemId);
+          const alreadyUsed = playerUsedItems.some((usedItem) => usedItem.itemId === itemId);
           const canUse = hasUseEffect && !alreadyUsed && !isGameOver;
 
           return (
