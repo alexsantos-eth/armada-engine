@@ -42,8 +42,8 @@ export class GameEngine {
   private playerCollectedItems: Set<number>;
   private enemyCollectedItems: Set<number>;
 
-  private usedByPlayer: Set<number>;
-  private usedByEnemy: Set<number>;
+  private usedByPlayer: Map<number, number | undefined>;
+  private usedByEnemy: Map<number, number | undefined>;
 
   private gameInitialized: boolean;
   private _version: number = 0;
@@ -76,8 +76,8 @@ export class GameEngine {
     this.enemyItemHits = new Map();
     this.playerCollectedItems = new Set();
     this.enemyCollectedItems = new Set();
-    this.usedByPlayer = new Set();
-    this.usedByEnemy = new Set();
+    this.usedByPlayer = new Map();
+    this.usedByEnemy = new Map();
   }
 
   /**
@@ -663,8 +663,8 @@ export class GameEngine {
       enemyItems: [...this.enemyItems],
       playerCollectedItems: Array.from(this.playerCollectedItems),
       enemyCollectedItems: Array.from(this.enemyCollectedItems),
-      playerUsedItems: Array.from(this.usedByPlayer),
-      enemyUsedItems: Array.from(this.usedByEnemy),
+      playerUsedItems: Array.from(this.usedByPlayer.entries()).map(([itemId, shipId]) => ({ itemId, shipId })),
+      enemyUsedItems: Array.from(this.usedByEnemy.entries()).map(([itemId, shipId]) => ({ itemId, shipId })),
     };
   }
 
@@ -673,11 +673,11 @@ export class GameEngine {
    * @param itemId - The 0-based index in the side's items array.
    * @param isPlayerShot - true = player used an enemy item; false = enemy used a player item.
    */
-  public markItemUsed(itemId: number, isPlayerShot: boolean): void {
+  public markItemUsed(itemId: number, isPlayerShot: boolean, shipId?: number): void {
     if (isPlayerShot) {
-      this.usedByPlayer.add(itemId);
+      this.usedByPlayer.set(itemId, shipId);
     } else {
-      this.usedByEnemy.add(itemId);
+      this.usedByEnemy.set(itemId, shipId);
     }
     this._version++;
   }
@@ -892,18 +892,18 @@ export interface GameEngineState {
   enemyCollectedItems: number[];
 
   /**
-   * Indices (into `enemyItems`) of player-collected items that the player has
-   * already activated via `onUse`. Used to prevent double-activation of the
-   * same item powerup.
+   * Items the player has already activated via `onUse`, keyed by their 0-based
+   * index in `enemyItems`. Each entry also records the optional `shipId` of the
+   * ship the item was targeted at when activated.
    */
-  playerUsedItems: number[];
+  playerUsedItems: { itemId: number; shipId?: number }[];
 
   /**
-   * Indices (into `playerItems`) of enemy-collected items that the enemy has
-   * already activated via `onUse`. Used to prevent double-activation of the
-   * same item powerup.
+   * Items the enemy has already activated via `onUse`, keyed by their 0-based
+   * index in `playerItems`. Each entry also records the optional `shipId` of the
+   * ship the item was targeted at when activated.
    */
-  enemyUsedItems: number[];
+  enemyUsedItems: { itemId: number; shipId?: number }[];
 }
 
 /**

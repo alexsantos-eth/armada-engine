@@ -605,8 +605,17 @@ describe('GameEngine', () => {
       engine.markItemUsed(3, false);
 
       const state = engine.getState();
-      expect(state.playerUsedItems).toContain(2);
-      expect(state.enemyUsedItems).toContain(3);
+      expect(state.playerUsedItems).toContainEqual({ itemId: 2, shipId: undefined });
+      expect(state.enemyUsedItems).toContainEqual({ itemId: 3, shipId: undefined });
+    });
+
+    it('used items store optional shipId', () => {
+      engine.markItemUsed(1, true, 5);
+      engine.markItemUsed(2, false, 7);
+
+      const state = engine.getState();
+      expect(state.playerUsedItems).toContainEqual({ itemId: 1, shipId: 5 });
+      expect(state.enemyUsedItems).toContainEqual({ itemId: 2, shipId: 7 });
     });
 
     it('should reset used-item tracking after initializeGame', () => {

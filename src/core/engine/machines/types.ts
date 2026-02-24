@@ -38,8 +38,9 @@ export type MatchCallbacks = {
   onMatchStart?: () => void;
   onItemCollected?: (shot: Shot, item: GameItem, isPlayerShot: boolean) => void;
   /** Fires after a collected item's `onUse` handler is successfully invoked via
-   * `match.useItem()`. Useful for synchronising manual item activations over the network. */
-  onItemUse?: (itemId: number, isPlayerShot: boolean, item: GameItem) => void;
+   * `match.useItem()`. Useful for synchronising manual item activations over the network.
+   * `shipId` is the optional ship the item was targeted at (passed through from `match.useItem()`). */
+  onItemUse?: (itemId: number, isPlayerShot: boolean, item: GameItem, shipId?: number) => void;
 };
 
 export interface MatchMachineContext {
@@ -126,6 +127,7 @@ export interface MatchMachineContext {
     itemId: number;
     isPlayerShot: boolean;
     item: GameItem;
+    shipId?: number;
   } | null;
 }
 
@@ -165,7 +167,7 @@ export type MatchMachineEvent =
    * `isPlayerShot: true`  → looks in enemy items (player-collected).
    * `isPlayerShot: false` → looks in player items (enemy-collected).
    */
-  | { type: "USE_ITEM"; itemId: number; isPlayerShot: boolean }
+  | { type: "USE_ITEM"; itemId: number; isPlayerShot: boolean; shipId?: number }
   /**
    * Forces the current turn to the given value without side-effects.
    * Useful for network synchronisation (e.g. re-syncing after reconnect).

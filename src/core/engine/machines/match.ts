@@ -344,7 +344,7 @@ export const matchMachine = setup({
     useItem: assign(({ context, event }) => {
       if (event.type !== "USE_ITEM") return {};
 
-      const { itemId, isPlayerShot } = event;
+      const { itemId, isPlayerShot, shipId } = event;
 
       const isCallersTurn = isPlayerShot
         ? context.currentTurn === "PLAYER_TURN"
@@ -376,13 +376,13 @@ export const matchMachine = setup({
       );
 
       item.onUse(itemCtx);
-      context.engine.markItemUsed(itemId, isPlayerShot);
+      context.engine.markItemUsed(itemId, isPlayerShot, shipId);
 
       return {
         lastUseItemResult: true,
         turnBeforeItemUse,
         useToggleCount,
-        lastUsedItemInfo: { itemId, isPlayerShot, item },
+        lastUsedItemInfo: { itemId, isPlayerShot, item, shipId },
         pendingRuleSet: capturedRuleSet as typeof context.ruleSet | null,
       };
     }),
@@ -437,6 +437,7 @@ export const matchMachine = setup({
           currentTurn,
           turnToggled: itemToggledTurn || rulesetToggledTurn,
           winner,
+          shipId: context.lastUsedItemInfo.shipId,
         });
       }
 

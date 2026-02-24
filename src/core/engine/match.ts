@@ -350,8 +350,8 @@ export class Match {
    *                       `false` to look in the player's items (enemy-collected).
    * @returns `true` if the handler was found and called, `false` otherwise.
    */
-  public useItem(itemId: number, isPlayerShot: boolean): boolean {
-    this.actor.send({ type: "USE_ITEM", itemId, isPlayerShot });
+  public useItem(itemId: number, isPlayerShot: boolean, shipId?: number): boolean {
+    this.actor.send({ type: "USE_ITEM", itemId, isPlayerShot, shipId });
     return this.snap.context.lastUseItemResult ?? false;
   }
 

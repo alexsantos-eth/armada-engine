@@ -36,6 +36,8 @@ export type ItemUseCyclePayload = {
   /** True if either the item handler or the ruleset toggled the turn. */
   turnToggled: boolean;
   winner: Winner | null;
+  /** Optional ship the item was targeted at, forwarded from `match.useItem()`. */
+  shipId?: number;
 };
 
 export type MatchLifecyclePayload =
@@ -140,11 +142,11 @@ export function fireMatchCallbacks(
     }
 
     case "itemUse": {
-      const { itemId, isPlayerShot, item, currentTurn, turnToggled, winner } =
+      const { itemId, isPlayerShot, item, currentTurn, turnToggled, winner, shipId } =
         payload;
 
       if (isPlayerShot) {
-        callbacks.onItemUse?.(itemId, isPlayerShot, item);
+        callbacks.onItemUse?.(itemId, isPlayerShot, item, shipId);
       }
 
       if (turnToggled) {

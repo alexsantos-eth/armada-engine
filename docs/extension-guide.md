@@ -605,12 +605,13 @@ resolveTurn  (matchMachine action)
 
 ```typescript
 // returns true if the handler was found and called
-match.useItem(itemId, isPlayerShot);
+match.useItem(itemId, isPlayerShot, shipId?);
 ```
 
 - `itemId` — 0-based index of the item in the side's array.
 - `isPlayerShot: true` → looks in `enemyItems` (items the player collected).
 - `isPlayerShot: false` → looks in `playerItems` (items the enemy collected).
+- `shipId` _(optional)_ — the `shipId` of the ship this item is being targeted at. Stored in `GameEngineState.playerUsedItems` / `enemyUsedItems` alongside the `itemId` for future item handlers that act on a specific ship.
 
 ---
 
@@ -723,7 +724,7 @@ engine.setPlayerItems([{ ...SHIELD_MODULE, coords: [1, 1] }]);
 | `templateId` is optional but recommended | Enables cross-board equalization in multiplayer |
 | Always spread the full template when placing: `{ ...TEMPLATE, coords }` | Preserves `onCollect` / `onUse` handlers |
 | `onCollect` changes to `setRuleSet` apply to the **same** turn | Engine stores them in `pendingRuleSet` and `resolveTurn` flushes before `decideTurn` |
-| `onUse` is never called automatically | The UI must call `match.useItem(itemId, isPlayerShot)` |
+| `onUse` is never called automatically | The UI must call `match.useItem(itemId, isPlayerShot, shipId?)` |
 
 ---
 
@@ -766,5 +767,5 @@ flowchart TD
     ON_COLLECT --> RESOLVE["resolveTurn\ntakePendingRuleSet()\nnewRuleSet.decideTurn(...)"]
     RESOLVE --> PLAN["→ planning state\nnewRuleSet active for all future turns"]
 
-    UI["UI / Consumer"] -->|"match.useItem(itemId, isPlayerShot)"| ON_USE["item.onUse(ctx)\nany ctx mutation"]
+    UI["UI / Consumer"] -->|"match.useItem(itemId, isPlayerShot, shipId?)"| ON_USE["item.onUse(ctx)\nany ctx mutation\nshipId stored in usedItems"]
 ```

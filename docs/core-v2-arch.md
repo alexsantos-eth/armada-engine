@@ -86,7 +86,7 @@ The lowest runtime layer. Holds all mutable game state and exposes deterministic
 - `executeShotPattern(x, y, pattern, isPlayerShot)` → `ShotPatternResult` — **only public mutation path for shots**
 - `setPlayerShips / setEnemyShips / setPlayerItems / setEnemyItems` — direct state overrides (used by item handlers)
 - `setPlayerShots / setEnemyShots` — atomic shot history replacement (replay / multiplayer sync)
-- `markItemUsed / isItemUsed` — activation guard for `onUse` handlers
+- `markItemUsed(itemId, isPlayerShot, shipId?) / isItemUsed` — activation guard for `onUse` handlers; `shipId` is an optional reference to the ship the item was targeted at
 - `setGameOver(winner)` — called by `matchMachine` after the ruleset decides
 - `getState()` → `GameEngineState` — immutable snapshot (turn-agnostic)
 - `getVersion()` — monotonic counter for cheap change detection

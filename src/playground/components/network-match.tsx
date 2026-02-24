@@ -16,6 +16,7 @@ const NetworkMatch: React.FC<NetworkMatchProps> = ({
   showStatus,
 }) => {
   const networkRoom = useNetworkRoom({ initialSetup, signInAnonymously: true });
+  console.log("NetworkMatch render", { networkRoom }); 
 
   const { planAndAttack, useItem, gameState, playerBoard, enemyBoard } =
     useNetworkBoard({
