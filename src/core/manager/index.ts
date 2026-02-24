@@ -5,4 +5,4 @@
  */
 
 export { GameInitializer } from "./initializer";
-export type { GameSetup } from "./initializer";
+export type { GameSetup, IGameSetupProvider } from "./initializer";

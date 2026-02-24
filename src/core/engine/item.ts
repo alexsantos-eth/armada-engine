@@ -1,4 +1,4 @@
-import { GameEngine } from "./logic";
+import type { IGameEngine } from "./logic";
 import type { GameItem, ItemActionContext, Shot } from "../types/common";
 import type { GameTurn } from "../types/common";
 
@@ -10,7 +10,7 @@ import type { GameTurn } from "../types/common";
  *   are always written from the **collector's / activator's perspective**.
  */
 function buildContext(
-  engine: GameEngine,
+  engine: IGameEngine,
   item: GameItem,
   isPlayerShot: boolean,
   shot: Shot | undefined,
@@ -69,7 +69,7 @@ function buildContext(
  *   writing it into the engine, keeping `GameEngine` free of machine-flow state.
  */
 export function buildCollectContext(
-  engine: GameEngine,
+  engine: IGameEngine,
   item: GameItem,
   isPlayerShot: boolean,
   shot: Shot,
@@ -91,7 +91,7 @@ export function buildCollectContext(
  * @param captureRuleSet - Called when the handler invokes `ctx.setRuleSet()`.
  */
 export function buildUseContext(
-  engine: GameEngine,
+  engine: IGameEngine,
   item: GameItem,
   isPlayerShot: boolean,
   currentTurn: GameTurn,

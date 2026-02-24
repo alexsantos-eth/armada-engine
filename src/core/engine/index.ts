@@ -1,4 +1,4 @@
-export type { GameEngineState, MatchState, ShotResult } from "./logic";
+export type { IGameEngine, GameEngineState, MatchState, ShotResult } from "./logic";
 export { toMatchState } from "./logic";
 
 export { buildPlayerBoard, buildEnemyBoard } from "./board";

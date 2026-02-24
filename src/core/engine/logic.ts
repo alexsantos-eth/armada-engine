@@ -15,7 +15,6 @@ import type { GameConfig } from "../types/config";
 type PositionKey = string;
 const posKey = (x: number, y: number): PositionKey => `${x},${y}`;
 
-/** All mutable state that belongs to one side (player or enemy). */
 interface SideState {
   ships: GameShip[];
   items: GameItem[];
@@ -44,7 +43,55 @@ function createSideState(): SideState {
   };
 }
 
-export class GameEngine {
+/**
+ * Contract for the game engine compute layer.
+ *
+ * Program against this interface instead of the concrete `GameEngine` class
+ * so that alternative implementations (fog-of-war, deterministic replay,
+ * test doubles, etc.) can be injected without touching call-sites.
+ */
+export interface IGameEngine {
+  initializeGame(
+    playerShips: GameShip[],
+    enemyShips: GameShip[],
+    playerItems?: GameItem[],
+    enemyItems?: GameItem[],
+  ): void;
+  resetGame(): void;
+  setBoardDimensions(width: number, height: number): void;
+  executeShotPattern(
+    centerX: number,
+    centerY: number,
+    pattern: ShotPattern,
+    isPlayerShot: boolean,
+  ): ShotPatternResult;
+  isCellShot(x: number, y: number, isPlayerShot: boolean): boolean;
+  isShipDestroyed(shipId: number, isPlayerShot: boolean): boolean;
+  areAllShipsDestroyed(isPlayerShips: boolean): boolean;
+  setGameOver(winner: Winner): void;
+  setPlayerShips(ships: GameShip[]): void;
+  setEnemyShips(ships: GameShip[]): void;
+  setPlayerItems(items: GameItem[]): void;
+  setEnemyItems(items: GameItem[]): void;
+  setPlayerShots(shots: Shot[]): void;
+  setEnemyShots(shots: Shot[]): void;
+  getState(): GameEngineState;
+  markItemUsed(itemId: number, isPlayerShot: boolean, shipId?: number): void;
+  isItemUsed(itemId: number, isPlayerShot: boolean): boolean;
+  getPlayerShips(): GameShip[];
+  getEnemyShips(): GameShip[];
+  getPlayerShots(): Shot[];
+  getEnemyShots(): Shot[];
+  getShotCount(): number;
+  getWinner(): Winner;
+  getBoardDimensions(): { width: number; height: number };
+  isValidPosition(x: number, y: number): boolean;
+  getShotAtPosition(x: number, y: number, isPlayerShot: boolean): Shot | undefined;
+  hasShipAtPosition(x: number, y: number, isPlayerShips: boolean): boolean;
+  getVersion(): number;
+}
+
+export class GameEngine implements IGameEngine {
   private playerSide: SideState;
   private enemySide: SideState;
   private isGameOver: boolean;
@@ -510,9 +557,6 @@ export class GameEngine {
     for (const [key, shipId] of this.playerSide.shipPositions) {
       const shot = this.enemySide.shotsMap.get(key);
       if (shot) {
-        // A shot already exists at this cell. If it was originally recorded as a
-        // miss (e.g. the ship was placed retroactively by an item effect after
-        // the shot was fired), correct the record so the ship is properly hit.
         if (!shot.hit) {
           shot.hit = true;
           shot.shipId = shipId;
@@ -541,9 +585,6 @@ export class GameEngine {
     for (const [key, shipId] of this.enemySide.shipPositions) {
       const shot = this.playerSide.shotsMap.get(key);
       if (shot) {
-        // A shot already exists at this cell. If it was originally recorded as a
-        // miss (e.g. the ship was placed retroactively by an item effect after
-        // the shot was fired), correct the record so the ship is properly hit.
         if (!shot.hit) {
           shot.hit = true;
           shot.shipId = shipId;

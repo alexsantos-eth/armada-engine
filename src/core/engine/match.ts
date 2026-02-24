@@ -2,7 +2,7 @@ import { createActor } from "xstate";
 
 import { SINGLE_SHOT } from "../constants/shots";
 import { AttackError, PlanError } from "./errors";
-import { GameInitializer, type GameSetup } from "../manager";
+import { GameInitializer, type GameSetup, type IGameSetupProvider } from "../manager";
 import { type MatchState, toMatchState } from "./logic";
 import { buildPlayerBoard, buildEnemyBoard } from "./board";
 import { matchMachine } from "./machines/match";
@@ -25,6 +25,8 @@ export type { MatchState };
 
 interface NewMatch extends MatchCallbacks {
   setup?: GameSetup;
+  /** Injectable provider — use to swap in custom or test setup logic without modifying Match. */
+  setupProvider?: IGameSetupProvider;
 }
 
 /**
@@ -58,15 +60,15 @@ export class Match {
     return this.snap.context.engine;
   }
 
-  constructor({ setup, ...callbacks }: NewMatch) {
-    this.setup = setup;
-
-    if (!this.setup) {
-      const initializer = new GameInitializer();
-      this.setup = initializer.getGameSetup();
+  constructor({ setup, setupProvider, ...callbacks }: NewMatch) {
+    if (setup) {
+      this.setup = setup;
+    } else {
+      const provider: IGameSetupProvider = setupProvider ?? new GameInitializer();
+      this.setup = provider.getGameSetup();
     }
 
-    const ruleSet = setup?.config.ruleSet ?? DefaultRuleSet;
+    const ruleSet = this.setup?.config.ruleSet ?? DefaultRuleSet;
 
     this.actor = createActor(matchMachine, {
       input: { config: this.setup?.config, ruleSet, callbacks },

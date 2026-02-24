@@ -9,6 +9,14 @@ import {
 import type { PlayerName } from "../types/common";
 
 /**
+ * Abstraction for anything that can provide a ready-to-use GameSetup.
+ * Implement this interface to inject custom setup logic into Match.
+ */
+export interface IGameSetupProvider {
+  getGameSetup(): GameSetup;
+}
+
+/**
  * Game setup configuration
  * Contains all initial values needed to start a game
  */
@@ -46,7 +54,7 @@ export type GAME_INITIAL_TURN = PlayerName | "random";
  * // setup contains: playerShips, enemyShips, initialTurn, config
  * ```
  */
-export class GameInitializer {
+export class GameInitializer implements IGameSetupProvider {
   private config: GameConfig;
 
   /**

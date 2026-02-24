@@ -1,5 +1,5 @@
 import { toMatchState } from "../logic";
-import type { GameEngine } from "../logic";
+import type { IGameEngine } from "../logic";
 import type { MatchCallbacks } from "./types";
 import type {
   GameItem,
@@ -67,7 +67,7 @@ export type CallbackPayload =
  */
 export function fireMatchCallbacks(
   callbacks: MatchCallbacks | undefined,
-  engine: GameEngine,
+  engine: IGameEngine,
   payload: CallbackPayload,
 ): void {
   if (!callbacks) return;

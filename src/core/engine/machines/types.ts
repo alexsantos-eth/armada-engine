@@ -1,5 +1,5 @@
-import type { GameEngine, MatchState } from "../logic";
-export type { GameEngine };
+import type { GameEngine, IGameEngine, MatchState } from "../logic";
+export type { GameEngine, IGameEngine };
 import type { MatchRuleSet, TurnDecision } from "../rulesets";
 import type { PlanError } from "../errors";
 import type {
@@ -45,7 +45,7 @@ export type MatchCallbacks = {
 
 export interface MatchMachineContext {
   /** Underlying game engine (pure compute layer) */
-  engine: GameEngine;
+  engine: IGameEngine;
   /** Active ruleset that decides turns and game-over conditions */
   ruleSet: MatchRuleSet;
   /** Current turn — owned by the machine, not the engine */
@@ -190,7 +190,7 @@ export interface MatchMachineInput {
    * Pre-created engine (with its own callbacks already wired up).
    * When provided, `config` is ignored.
    */
-  engine?: GameEngine;
+  engine?: IGameEngine;
   /** Match-level callbacks. The machine wires engine callbacks and fires
    * `onMatchStart` / `onItemUse` at the appropriate transition points. */
   callbacks?: MatchCallbacks;
