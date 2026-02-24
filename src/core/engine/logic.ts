@@ -15,36 +15,43 @@ import type { GameConfig } from "../types/config";
 type PositionKey = string;
 const posKey = (x: number, y: number): PositionKey => `${x},${y}`;
 
+/** All mutable state that belongs to one side (player or enemy). */
+interface SideState {
+  ships: GameShip[];
+  items: GameItem[];
+  shotsMap: Map<PositionKey, Shot>;
+  shipPositions: Map<PositionKey, number>;
+  shipSizes: Map<number, number>;
+  shipHits: Map<number, number>;
+  itemPositions: Map<PositionKey, number>;
+  itemHits: Map<number, number>;
+  collectedItems: Set<number>;
+  usedItems: Map<number, number | undefined>;
+}
+
+function createSideState(): SideState {
+  return {
+    ships: [],
+    items: [],
+    shotsMap: new Map(),
+    shipPositions: new Map(),
+    shipSizes: new Map(),
+    shipHits: new Map(),
+    itemPositions: new Map(),
+    itemHits: new Map(),
+    collectedItems: new Set(),
+    usedItems: new Map(),
+  };
+}
+
 export class GameEngine {
-  private playerShips: GameShip[];
-  private enemyShips: GameShip[];
+  private playerSide: SideState;
+  private enemySide: SideState;
   private isGameOver: boolean;
   private winner: Winner;
   private boardWidth: number;
   private boardHeight: number;
   private shotCount: number;
-
-  private playerShotsMap: Map<PositionKey, Shot>;
-  private enemyShotsMap: Map<PositionKey, Shot>;
-  private playerShipPositions: Map<PositionKey, number>;
-  private enemyShipPositions: Map<PositionKey, number>;
-  private playerShipHits: Map<number, number>;
-  private enemyShipHits: Map<number, number>;
-  private playerShipSizes: Map<number, number>;
-  private enemyShipSizes: Map<number, number>;
-
-  private playerItems: GameItem[];
-  private enemyItems: GameItem[];
-  private playerItemPositions: Map<PositionKey, number>;
-  private enemyItemPositions: Map<PositionKey, number>;
-  private playerItemHits: Map<number, number>;
-  private enemyItemHits: Map<number, number>;
-  private playerCollectedItems: Set<number>;
-  private enemyCollectedItems: Set<number>;
-
-  private usedByPlayer: Map<number, number | undefined>;
-  private usedByEnemy: Map<number, number | undefined>;
-
   private gameInitialized: boolean;
   private _version: number = 0;
 
@@ -52,32 +59,36 @@ export class GameEngine {
     this.boardWidth = config.boardWidth ?? GAME_CONSTANTS.BOARD.DEFAULT_WIDTH;
     this.boardHeight =
       config.boardHeight ?? GAME_CONSTANTS.BOARD.DEFAULT_HEIGHT;
-    this.playerShips = [];
-    this.enemyShips = [];
     this.isGameOver = false;
     this.winner = null;
     this.shotCount = 0;
     this.gameInitialized = false;
+    this.playerSide = createSideState();
+    this.enemySide = createSideState();
+  }
 
-    this.playerShotsMap = new Map();
-    this.enemyShotsMap = new Map();
-    this.playerShipPositions = new Map();
-    this.enemyShipPositions = new Map();
-    this.playerShipHits = new Map();
-    this.enemyShipHits = new Map();
-    this.playerShipSizes = new Map();
-    this.enemyShipSizes = new Map();
+  /** Returns the state object for the attacking side (the shooter). */
+  private attackingSide(isPlayerShot: boolean): SideState {
+    return isPlayerShot ? this.playerSide : this.enemySide;
+  }
 
-    this.playerItems = [];
-    this.enemyItems = [];
-    this.playerItemPositions = new Map();
-    this.enemyItemPositions = new Map();
-    this.playerItemHits = new Map();
-    this.enemyItemHits = new Map();
-    this.playerCollectedItems = new Set();
-    this.enemyCollectedItems = new Set();
-    this.usedByPlayer = new Map();
-    this.usedByEnemy = new Map();
+  /** Returns the state object for the defending side (receives the shot). */
+  private defendingSide(isPlayerShot: boolean): SideState {
+    return isPlayerShot ? this.enemySide : this.playerSide;
+  }
+
+  /** Clears all mutable collections and arrays on a side, ready for a new game. */
+  private clearSide(side: SideState): void {
+    side.ships = [];
+    side.items = [];
+    side.shotsMap.clear();
+    side.shipPositions.clear();
+    side.shipSizes.clear();
+    side.shipHits.clear();
+    side.itemPositions.clear();
+    side.itemHits.clear();
+    side.collectedItems.clear();
+    side.usedItems.clear();
   }
 
   /**
@@ -94,45 +105,31 @@ export class GameEngine {
     playerItems: GameItem[] = [],
     enemyItems: GameItem[] = [],
   ): void {
-    this.playerShips = playerShips;
-    this.enemyShips = enemyShips;
     this.isGameOver = false;
     this.winner = null;
     this.shotCount = 0;
 
-    this.playerShotsMap.clear();
-    this.enemyShotsMap.clear();
-    this.playerShipPositions.clear();
-    this.enemyShipPositions.clear();
-    this.playerShipHits.clear();
-    this.enemyShipHits.clear();
-    this.playerShipSizes.clear();
-    this.enemyShipSizes.clear();
+    this.clearSide(this.playerSide);
+    this.clearSide(this.enemySide);
 
-    this.playerItems = playerItems;
-    this.enemyItems = enemyItems;
-    this.playerItemPositions.clear();
-    this.enemyItemPositions.clear();
-    this.playerItemHits.clear();
-    this.enemyItemHits.clear();
-    this.playerCollectedItems.clear();
-    this.enemyCollectedItems.clear();
-    this.usedByPlayer.clear();
-    this.usedByEnemy.clear();
+    this.playerSide.ships = playerShips;
+    this.enemySide.ships = enemyShips;
+    this.playerSide.items = playerItems;
+    this.enemySide.items = enemyItems;
 
     this.cacheShipPositions(
       playerShips,
-      this.playerShipPositions,
-      this.playerShipSizes,
+      this.playerSide.shipPositions,
+      this.playerSide.shipSizes,
     );
     this.cacheShipPositions(
       enemyShips,
-      this.enemyShipPositions,
-      this.enemyShipSizes,
+      this.enemySide.shipPositions,
+      this.enemySide.shipSizes,
     );
 
-    this.cacheItemPositions(playerItems, this.playerItemPositions);
-    this.cacheItemPositions(enemyItems, this.enemyItemPositions);
+    this.cacheItemPositions(playerItems, this.playerSide.itemPositions);
+    this.cacheItemPositions(enemyItems, this.enemySide.itemPositions);
 
     this.gameInitialized = true;
     this._version++;
@@ -142,33 +139,12 @@ export class GameEngine {
    * Reset the game to initial state
    */
   public resetGame(): void {
-    this.playerShips = [];
-    this.enemyShips = [];
+    this.clearSide(this.playerSide);
+    this.clearSide(this.enemySide);
     this.isGameOver = false;
     this.winner = null;
     this.shotCount = 0;
     this.gameInitialized = false;
-
-    this.playerShotsMap.clear();
-    this.enemyShotsMap.clear();
-    this.playerShipPositions.clear();
-    this.enemyShipPositions.clear();
-    this.playerShipHits.clear();
-    this.enemyShipHits.clear();
-    this.playerShipSizes.clear();
-    this.enemyShipSizes.clear();
-
-    this.playerItems = [];
-    this.enemyItems = [];
-    this.playerItemPositions.clear();
-    this.enemyItemPositions.clear();
-    this.playerItemHits.clear();
-    this.enemyItemHits.clear();
-    this.playerCollectedItems.clear();
-    this.enemyCollectedItems.clear();
-    this.usedByPlayer.clear();
-    this.usedByEnemy.clear();
-
     this._version++;
   }
 
@@ -231,11 +207,11 @@ export class GameEngine {
     };
 
     const key = posKey(x, y);
-    const shotsMap = isPlayerShot ? this.playerShotsMap : this.enemyShotsMap;
-    shotsMap.set(key, shot);
+    const attackingSide = this.attackingSide(isPlayerShot);
+    attackingSide.shotsMap.set(key, shot);
 
     if (itemCollection?.itemFullyCollected && itemCollection.itemId !== undefined) {
-      for (const s of shotsMap.values()) {
+      for (const s of attackingSide.shotsMap.values()) {
         if (s.collected && s.itemId === itemCollection.itemId) {
           s.itemFullyCollected = true;
         }
@@ -243,9 +219,9 @@ export class GameEngine {
     }
 
     if (result.hit && result.shipId >= 0) {
-      const hitsMap = isPlayerShot ? this.enemyShipHits : this.playerShipHits;
-      const currentHits = (hitsMap.get(result.shipId) || 0) + 1;
-      hitsMap.set(result.shipId, currentHits);
+      const defendingSide = this.defendingSide(isPlayerShot);
+      const currentHits = (defendingSide.shipHits.get(result.shipId) || 0) + 1;
+      defendingSide.shipHits.set(result.shipId, currentHits);
     }
 
     this.shotCount++;
@@ -378,9 +354,7 @@ export class GameEngine {
     y: number,
     isPlayerShot: boolean,
   ): { hit: boolean; shipId: number } {
-    const shipPositions = isPlayerShot
-      ? this.enemyShipPositions
-      : this.playerShipPositions;
+    const shipPositions = this.defendingSide(isPlayerShot).shipPositions;
     const key = posKey(x, y);
     const shipId = shipPositions.get(key);
 
@@ -399,8 +373,7 @@ export class GameEngine {
    * @returns True if cell was already shot
    */
   public isCellShot(x: number, y: number, isPlayerShot: boolean): boolean {
-    const shotsMap = isPlayerShot ? this.playerShotsMap : this.enemyShotsMap;
-    return shotsMap.has(posKey(x, y));
+    return this.attackingSide(isPlayerShot).shotsMap.has(posKey(x, y));
   }
 
   /**
@@ -410,14 +383,11 @@ export class GameEngine {
    * @returns True if all ship cells have been hit
    */
   public isShipDestroyed(shipId: number, isPlayerShot: boolean): boolean {
-    const ships = isPlayerShot ? this.enemyShips : this.playerShips;
-    if (shipId >= ships.length) return false;
+    const side = this.defendingSide(isPlayerShot);
+    if (shipId >= side.ships.length) return false;
 
-    const hitsMap = isPlayerShot ? this.enemyShipHits : this.playerShipHits;
-    const sizesMap = isPlayerShot ? this.enemyShipSizes : this.playerShipSizes;
-
-    const hits = hitsMap.get(shipId) || 0;
-    const size = sizesMap.get(shipId);
+    const hits = side.shipHits.get(shipId) || 0;
+    const size = side.shipSizes.get(shipId);
 
     return size !== undefined && hits === size;
   }
@@ -428,13 +398,13 @@ export class GameEngine {
    * @returns True if all ships are destroyed
    */
   public areAllShipsDestroyed(isPlayerShips: boolean): boolean {
-    const ships = isPlayerShips ? this.playerShips : this.enemyShips;
+    const side = isPlayerShips ? this.playerSide : this.enemySide;
 
-    if (ships.length === 0) {
+    if (side.ships.length === 0) {
       return this.gameInitialized;
     }
 
-    return ships.every((_, shipId) =>
+    return side.ships.every((_, shipId) =>
       this.isShipDestroyed(shipId, !isPlayerShips),
     );
   }
@@ -495,14 +465,12 @@ export class GameEngine {
     y: number,
     isPlayerShot: boolean,
   ): { collected: boolean; itemId: number; itemFullyCollected: boolean } | null {
-    const itemPositions = isPlayerShot
-      ? this.enemyItemPositions
-      : this.playerItemPositions;
-    const items = isPlayerShot ? this.enemyItems : this.playerItems;
-    const itemHits = isPlayerShot ? this.enemyItemHits : this.playerItemHits;
-    const collectedSet = isPlayerShot
-      ? this.playerCollectedItems
-      : this.enemyCollectedItems;
+    const defendingSide = this.defendingSide(isPlayerShot);
+    const attackingSide = this.attackingSide(isPlayerShot);
+    const itemPositions = defendingSide.itemPositions;
+    const items = defendingSide.items;
+    const itemHits = defendingSide.itemHits;
+    const collectedSet = attackingSide.collectedItems;
 
     const key = posKey(x, y);
     const itemId = itemPositions.get(key);
@@ -529,20 +497,27 @@ export class GameEngine {
    * @param ships - Array of player ships
    */
   public setPlayerShips(ships: GameShip[]): void {
-    this.playerShips = ships;
-    this.playerShipPositions.clear();
-    this.playerShipSizes.clear();
+    this.playerSide.ships = ships;
+    this.playerSide.shipPositions.clear();
+    this.playerSide.shipSizes.clear();
     this.cacheShipPositions(
       ships,
-      this.playerShipPositions,
-      this.playerShipSizes,
+      this.playerSide.shipPositions,
+      this.playerSide.shipSizes,
     );
 
-    this.playerShipHits.clear();
-    for (const [key, shipId] of this.playerShipPositions) {
-      const shot = this.enemyShotsMap.get(key);
-      if (shot?.hit) {
-        this.playerShipHits.set(shipId, (this.playerShipHits.get(shipId) ?? 0) + 1);
+    this.playerSide.shipHits.clear();
+    for (const [key, shipId] of this.playerSide.shipPositions) {
+      const shot = this.enemySide.shotsMap.get(key);
+      if (shot) {
+        // A shot already exists at this cell. If it was originally recorded as a
+        // miss (e.g. the ship was placed retroactively by an item effect after
+        // the shot was fired), correct the record so the ship is properly hit.
+        if (!shot.hit) {
+          shot.hit = true;
+          shot.shipId = shipId;
+        }
+        this.playerSide.shipHits.set(shipId, (this.playerSide.shipHits.get(shipId) ?? 0) + 1);
       }
     }
     this._version++;
@@ -553,20 +528,27 @@ export class GameEngine {
    * @param ships - Array of enemy ships
    */
   public setEnemyShips(ships: GameShip[]): void {
-    this.enemyShips = ships;
-    this.enemyShipPositions.clear();
-    this.enemyShipSizes.clear();
+    this.enemySide.ships = ships;
+    this.enemySide.shipPositions.clear();
+    this.enemySide.shipSizes.clear();
     this.cacheShipPositions(
       ships,
-      this.enemyShipPositions,
-      this.enemyShipSizes,
+      this.enemySide.shipPositions,
+      this.enemySide.shipSizes,
     );
 
-    this.enemyShipHits.clear();
-    for (const [key, shipId] of this.enemyShipPositions) {
-      const shot = this.playerShotsMap.get(key);
-      if (shot?.hit) {
-        this.enemyShipHits.set(shipId, (this.enemyShipHits.get(shipId) ?? 0) + 1);
+    this.enemySide.shipHits.clear();
+    for (const [key, shipId] of this.enemySide.shipPositions) {
+      const shot = this.playerSide.shotsMap.get(key);
+      if (shot) {
+        // A shot already exists at this cell. If it was originally recorded as a
+        // miss (e.g. the ship was placed retroactively by an item effect after
+        // the shot was fired), correct the record so the ship is properly hit.
+        if (!shot.hit) {
+          shot.hit = true;
+          shot.shipId = shipId;
+        }
+        this.enemySide.shipHits.set(shipId, (this.enemySide.shipHits.get(shipId) ?? 0) + 1);
       }
     }
     this._version++;
@@ -577,12 +559,12 @@ export class GameEngine {
    * @param items - Array of player items
    */
   public setPlayerItems(items: GameItem[]): void {
-    this.playerItems = items;
-    this.playerItemPositions.clear();
-    this.playerItemHits.clear();
-    this.enemyCollectedItems.clear();
-    this.usedByEnemy.clear();
-    this.cacheItemPositions(items, this.playerItemPositions);
+    this.playerSide.items = items;
+    this.playerSide.itemPositions.clear();
+    this.playerSide.itemHits.clear();
+    this.enemySide.collectedItems.clear();
+    this.enemySide.usedItems.clear();
+    this.cacheItemPositions(items, this.playerSide.itemPositions);
     this._version++;
   }
 
@@ -591,12 +573,12 @@ export class GameEngine {
    * @param items - Array of enemy items
    */
   public setEnemyItems(items: GameItem[]): void {
-    this.enemyItems = items;
-    this.enemyItemPositions.clear();
-    this.enemyItemHits.clear();
-    this.playerCollectedItems.clear();
-    this.usedByPlayer.clear();
-    this.cacheItemPositions(items, this.enemyItemPositions);
+    this.enemySide.items = items;
+    this.enemySide.itemPositions.clear();
+    this.enemySide.itemHits.clear();
+    this.playerSide.collectedItems.clear();
+    this.playerSide.usedItems.clear();
+    this.cacheItemPositions(items, this.enemySide.itemPositions);
     this._version++;
   }
 
@@ -605,16 +587,16 @@ export class GameEngine {
    * Used for replay and multiplayer shot synchronisation.
    */
   public setPlayerShots(shots: Shot[]): void {
-    this.playerShotsMap.clear();
-    this.enemyShipHits.clear();
+    this.playerSide.shotsMap.clear();
+    this.enemySide.shipHits.clear();
     shots.forEach((shot) => {
-      this.playerShotsMap.set(posKey(shot.x, shot.y), shot);
+      this.playerSide.shotsMap.set(posKey(shot.x, shot.y), shot);
       if (shot.hit && shot.shipId !== undefined) {
-        const currentHits = this.enemyShipHits.get(shot.shipId) || 0;
-        this.enemyShipHits.set(shot.shipId, currentHits + 1);
+        const currentHits = this.enemySide.shipHits.get(shot.shipId) || 0;
+        this.enemySide.shipHits.set(shot.shipId, currentHits + 1);
       }
     });
-    this.shotCount = this.playerShotsMap.size + this.enemyShotsMap.size;
+    this.shotCount = this.playerSide.shotsMap.size + this.enemySide.shotsMap.size;
     this._version++;
   }
 
@@ -623,16 +605,16 @@ export class GameEngine {
    * Used for replay and multiplayer shot synchronisation.
    */
   public setEnemyShots(shots: Shot[]): void {
-    this.enemyShotsMap.clear();
-    this.playerShipHits.clear();
+    this.enemySide.shotsMap.clear();
+    this.playerSide.shipHits.clear();
     shots.forEach((shot) => {
-      this.enemyShotsMap.set(posKey(shot.x, shot.y), shot);
+      this.enemySide.shotsMap.set(posKey(shot.x, shot.y), shot);
       if (shot.hit && shot.shipId !== undefined) {
-        const currentHits = this.playerShipHits.get(shot.shipId) || 0;
-        this.playerShipHits.set(shot.shipId, currentHits + 1);
+        const currentHits = this.playerSide.shipHits.get(shot.shipId) || 0;
+        this.playerSide.shipHits.set(shot.shipId, currentHits + 1);
       }
     });
-    this.shotCount = this.playerShotsMap.size + this.enemyShotsMap.size;
+    this.shotCount = this.playerSide.shotsMap.size + this.enemySide.shotsMap.size;
     this._version++;
   }
 
@@ -648,10 +630,10 @@ export class GameEngine {
    */
   public getState(): GameEngineState {
     return {
-      playerShips: [...this.playerShips],
-      enemyShips: [...this.enemyShips],
-      playerShots: Array.from(this.playerShotsMap.values()),
-      enemyShots: Array.from(this.enemyShotsMap.values()),
+      playerShips: [...this.playerSide.ships],
+      enemyShips: [...this.enemySide.ships],
+      playerShots: Array.from(this.playerSide.shotsMap.values()),
+      enemyShots: Array.from(this.enemySide.shotsMap.values()),
       isGameOver: this.isGameOver,
       winner: this.winner,
       boardWidth: this.boardWidth,
@@ -659,12 +641,12 @@ export class GameEngine {
       shotCount: this.shotCount,
       areAllPlayerShipsDestroyed: this.areAllShipsDestroyed(true),
       areAllEnemyShipsDestroyed: this.areAllShipsDestroyed(false),
-      playerItems: [...this.playerItems],
-      enemyItems: [...this.enemyItems],
-      playerCollectedItems: Array.from(this.playerCollectedItems),
-      enemyCollectedItems: Array.from(this.enemyCollectedItems),
-      playerUsedItems: Array.from(this.usedByPlayer.entries()).map(([itemId, shipId]) => ({ itemId, shipId })),
-      enemyUsedItems: Array.from(this.usedByEnemy.entries()).map(([itemId, shipId]) => ({ itemId, shipId })),
+      playerItems: [...this.playerSide.items],
+      enemyItems: [...this.enemySide.items],
+      playerCollectedItems: Array.from(this.playerSide.collectedItems),
+      enemyCollectedItems: Array.from(this.enemySide.collectedItems),
+      playerUsedItems: Array.from(this.playerSide.usedItems.entries()).map(([itemId, shipId]) => ({ itemId, shipId })),
+      enemyUsedItems: Array.from(this.enemySide.usedItems.entries()).map(([itemId, shipId]) => ({ itemId, shipId })),
     };
   }
 
@@ -674,11 +656,7 @@ export class GameEngine {
    * @param isPlayerShot - true = player used an enemy item; false = enemy used a player item.
    */
   public markItemUsed(itemId: number, isPlayerShot: boolean, shipId?: number): void {
-    if (isPlayerShot) {
-      this.usedByPlayer.set(itemId, shipId);
-    } else {
-      this.usedByEnemy.set(itemId, shipId);
-    }
+    this.attackingSide(isPlayerShot).usedItems.set(itemId, shipId);
     this._version++;
   }
 
@@ -686,9 +664,7 @@ export class GameEngine {
    * Returns true if the item has already been activated via onUse.
    */
   public isItemUsed(itemId: number, isPlayerShot: boolean): boolean {
-    return isPlayerShot
-      ? this.usedByPlayer.has(itemId)
-      : this.usedByEnemy.has(itemId);
+    return this.attackingSide(isPlayerShot).usedItems.has(itemId);
   }
 
   /**
@@ -696,7 +672,7 @@ export class GameEngine {
    * @returns Copy of player ships array
    */
   public getPlayerShips(): GameShip[] {
-    return [...this.playerShips];
+    return [...this.playerSide.ships];
   }
 
   /**
@@ -704,7 +680,7 @@ export class GameEngine {
    * @returns Copy of enemy ships array
    */
   public getEnemyShips(): GameShip[] {
-    return [...this.enemyShips];
+    return [...this.enemySide.ships];
   }
 
   /**
@@ -712,7 +688,7 @@ export class GameEngine {
    * @returns Array of player shots
    */
   public getPlayerShots(): Shot[] {
-    return Array.from(this.playerShotsMap.values());
+    return Array.from(this.playerSide.shotsMap.values());
   }
 
   /**
@@ -720,7 +696,7 @@ export class GameEngine {
    * @returns Array of enemy shots
    */
   public getEnemyShots(): Shot[] {
-    return Array.from(this.enemyShotsMap.values());
+    return Array.from(this.enemySide.shotsMap.values());
   }
 
   /**
@@ -769,8 +745,7 @@ export class GameEngine {
     y: number,
     isPlayerShot: boolean,
   ): Shot | undefined {
-    const shotsMap = isPlayerShot ? this.playerShotsMap : this.enemyShotsMap;
-    return shotsMap.get(posKey(x, y));
+    return this.attackingSide(isPlayerShot).shotsMap.get(posKey(x, y));
   }
 
   /**
@@ -785,10 +760,7 @@ export class GameEngine {
     y: number,
     isPlayerShips: boolean,
   ): boolean {
-    const positions = isPlayerShips
-      ? this.playerShipPositions
-      : this.enemyShipPositions;
-    return positions.has(posKey(x, y));
+    return (isPlayerShips ? this.playerSide : this.enemySide).shipPositions.has(posKey(x, y));
   }
 
   /**
