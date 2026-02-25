@@ -90,6 +90,7 @@ export {
   SpectatorBoardView,
   getBoardViewByName,
   DefaultBoardView,
+  withView,
 } from "../constants/views";
 
 export {

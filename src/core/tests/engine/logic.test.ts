@@ -3,7 +3,7 @@ import { GameEngine } from '../../engine/logic';
 import type { IGameEngine, IGameEngineReader } from '../../engine/logic';
 import { buildPlayerBoard, buildEnemyBoard } from '../../engine/board';
 import { SINGLE_SHOT } from '../../constants/shots';
-import { StandardBoardView } from '../../constants/views';
+import { StandardBoardView, withView } from '../../constants/views';
 import type { GameShip, Shot } from '../../types/common';
 
 describe('GameEngine', () => {
@@ -12,7 +12,7 @@ describe('GameEngine', () => {
   let enemyShips: GameShip[];
 
   beforeEach(() => {
-    engine = new GameEngine({ boardView: { ...StandardBoardView, width: 10, height: 10 } });
+    engine = new GameEngine({ boardView: withView( { width: 10, height: 10 }, StandardBoardView) });
     
     // Standard test ships
     playerShips = [
@@ -69,7 +69,7 @@ describe('GameEngine', () => {
     });
 
     it('getVersion increments after each mutation', () => {
-      const eng = new GameEngine({ boardView: { ...StandardBoardView, width: 10, height: 10 } });
+      const eng = new GameEngine({ boardView: withView({ width: 10, height: 10 }, StandardBoardView) });
       const v0 = eng.getVersion();
       eng.initializeGame(
         [{ coords: [0, 0], width: 1, height: 1, shipId: 0 }],
@@ -101,7 +101,7 @@ describe('GameEngine', () => {
     });
 
     it('should accept custom board dimensions', () => {
-      const customEngine = new GameEngine({ boardView: { ...StandardBoardView, width: 15, height: 12 } });
+      const customEngine = new GameEngine({ boardView: withView({ width: 15, height: 12 }, StandardBoardView) });
       const dimensions = customEngine.getBoardDimensions();
       
       expect(dimensions.width).toBe(15);
@@ -593,7 +593,7 @@ describe('GameEngine', () => {
     });
 
     it('should set items via setPlayerItems / setEnemyItems after construction', () => {
-      const eng = new GameEngine({ boardView: { ...StandardBoardView, width: 10, height: 10 } });
+      const eng = new GameEngine({ boardView: withView({ width: 10, height: 10 }, StandardBoardView) });
       eng.initializeGame(playerShips, enemyShips);
 
       const playerItem = { coords: [1, 1] as [number, number], part: 1 };
@@ -606,7 +606,7 @@ describe('GameEngine', () => {
     });
 
     it('setPlayerItems resets collected state', () => {
-      const eng = new GameEngine({ boardView: { ...StandardBoardView, width: 10, height: 10 } });
+      const eng = new GameEngine({ boardView: withView({ width: 10, height: 10 }, StandardBoardView) });
       const items = [{ coords: [1, 1] as [number, number], part: 1 }];
       eng.initializeGame(playerShips, enemyShips, items, []);
 
@@ -782,7 +782,8 @@ describe('GameEngine', () => {
     });
 
     it('should hide enemy ships (cells start as EMPTY)', () => {
-      const board = buildEnemyBoard(engine.getState());
+      // StandardBoardView excludes "enemyShips" from enemySide — ships must be hidden
+      const board = buildEnemyBoard(engine.getState(), withView({ width: 10, height: 10 }, StandardBoardView));
       // Enemy ship at [5,5] should NOT appear as SHIP (hidden from player)
       expect(board[5][5].state).toBe('EMPTY');
     });

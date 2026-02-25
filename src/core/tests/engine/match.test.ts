@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Match, createMatch } from '../../engine/match';
-import { StandardBoardView } from '../../constants/views';
 import type { IGameSetupProvider, GameSetup } from '../../manager';
 import type { GameShip, GameItem } from '../../types/common';
 import { ClassicRuleSet, AlternatingTurnsRuleSet, ItemHitRuleSet, LoseTurnOnUseRuleSet } from '../../engine/rulesets';
+import { StandardBoardView, withView } from '../../engine';
 
 describe('Match', () => {
   let match: Match;
@@ -22,7 +22,7 @@ describe('Match', () => {
     ];
 
     match = new Match({
-      setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 } } },
+      setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) } },
     });
   });
 
@@ -35,7 +35,7 @@ describe('Match', () => {
 
     it('new Match accepts explicit setup', () => {
       const m = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 } } },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) } },
       });
       m.initializeMatch();
       expect(m.getState().playerShips).toHaveLength(2);
@@ -46,7 +46,7 @@ describe('Match', () => {
         playerShips,
         enemyShips,
         initialTurn: 'PLAYER_TURN',
-        config: { boardView: { ...StandardBoardView, width: 10, height: 10 } },
+        config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) },
       };
       const provider: IGameSetupProvider = { getGameSetup: () => customSetup };
       const m = new Match({ setupProvider: provider });
@@ -56,7 +56,7 @@ describe('Match', () => {
 
     it('createMatch with explicit setup behaves like new Match', () => {
       const m = createMatch({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 } } },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) } },
       });
       m.initializeMatch();
       expect(m.getState().enemyShips).toHaveLength(2);
@@ -71,7 +71,7 @@ describe('Match', () => {
             playerShips,
             enemyShips,
             initialTurn: 'PLAYER_TURN',
-            config: { boardView: { ...StandardBoardView, width: 10, height: 10 } },
+            config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) },
           };
         },
       };
@@ -92,7 +92,7 @@ describe('Match', () => {
     it('createMatch passes callbacks through to the machine', () => {
       const onMatchStart = vi.fn();
       const m = createMatch({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 } } },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) } },
         onMatchStart,
       });
       m.initializeMatch();
@@ -112,7 +112,7 @@ describe('Match', () => {
 
     it('should initialize with custom starting turn', () => {
       const enemyStartMatch = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'ENEMY_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 } } },
+        setup: { playerShips, enemyShips, initialTurn: 'ENEMY_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) } },
       });
       enemyStartMatch.initializeMatch();
       
@@ -123,7 +123,7 @@ describe('Match', () => {
     it('should call onMatchStart callback', () => {
       const onMatchStart = vi.fn();
       const matchWithCallback = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 } } },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) } },
         onMatchStart,
       });
       
@@ -282,14 +282,14 @@ describe('Match', () => {
 
     beforeEach(() => {
       classicMatch = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 }, ruleSet: ClassicRuleSet }, },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView), ruleSet: ClassicRuleSet }, },
       });
       classicMatch.initializeMatch();
     });
 
     it('should use Classic ruleset by default', () => {
       const defaultMatch = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 } } },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) } },
       });
       defaultMatch.initializeMatch();
       
@@ -354,7 +354,7 @@ describe('Match', () => {
 
     beforeEach(() => {
       alternatingMatch = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 }, ruleSet: AlternatingTurnsRuleSet } },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView), ruleSet: AlternatingTurnsRuleSet } },
       });
       alternatingMatch.initializeMatch();
     });
@@ -456,7 +456,7 @@ describe('Match', () => {
 
     beforeEach(() => {
       itemHitMatch = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 }, ruleSet: ItemHitRuleSet }, playerItems: [], enemyItems },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView), ruleSet: ItemHitRuleSet }, playerItems: [], enemyItems },
       });
       itemHitMatch.initializeMatch();
     });
@@ -525,7 +525,7 @@ describe('Match', () => {
 
     it('should work correctly with setRuleSet switching to ItemHit mid-game', () => {
       const m = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 }, ruleSet: ClassicRuleSet }, playerItems: [], enemyItems },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView), ruleSet: ClassicRuleSet }, playerItems: [], enemyItems },
       });
       m.initializeMatch();
 
@@ -550,10 +550,10 @@ describe('Match', () => {
 
     beforeEach(() => {
       classicMatch = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 }, ruleSet: ClassicRuleSet }, },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView), ruleSet: ClassicRuleSet }, },
       });
       alternatingMatch = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 }, ruleSet: AlternatingTurnsRuleSet }, },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView), ruleSet: AlternatingTurnsRuleSet }, },
       });
 
       classicMatch.initializeMatch();
@@ -689,7 +689,7 @@ describe('Match', () => {
     it('should call onStateChange callback', () => {
       const onStateChange = vi.fn();
       const matchWithCallback = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 } } },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) } },
         onStateChange,
       });
 
@@ -701,7 +701,7 @@ describe('Match', () => {
     it('should call onTurnChange callback', () => {
       const onTurnChange = vi.fn();
       const matchWithCallback = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 } } },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) } },
         onTurnChange,
       });
 
@@ -716,7 +716,7 @@ describe('Match', () => {
     it('should call onShot callback', () => {
       const onShot = vi.fn();
       const matchWithCallback = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 } } },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) } },
         onShot,
       });
 
@@ -733,7 +733,7 @@ describe('Match', () => {
     it('should call onGameOver callback', () => {
       const onGameOver = vi.fn();
       const matchWithCallback = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 } } },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) } },
         onGameOver,
       });
 
@@ -973,7 +973,7 @@ describe('Match', () => {
 
     it('should use provided ruleset in constructor', () => {
       const alternatingMatch = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 }, ruleSet: AlternatingTurnsRuleSet } },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView), ruleSet: AlternatingTurnsRuleSet } },
       });
 
       const ruleSet = alternatingMatch.getRuleSet();
@@ -1014,7 +1014,7 @@ describe('Match', () => {
 
     it('should detect enemy victory with alternating ruleset', () => {
       const alternatingMatch = new Match({
-        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 }, ruleSet: AlternatingTurnsRuleSet } },
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView), ruleSet: AlternatingTurnsRuleSet } },
       });
       alternatingMatch.initializeMatch();
 
@@ -1064,7 +1064,7 @@ describe('Match', () => {
           playerShips,
           enemyShips,
           initialTurn: 'PLAYER_TURN',
-          config: { boardView: { ...StandardBoardView, width: 10, height: 10 } },
+          config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) },
           enemyItems: [enemyItem],
           playerItems: playerItem ? [playerItem] : [],
         },
@@ -1079,7 +1079,7 @@ describe('Match', () => {
           playerShips,
           enemyShips,
           initialTurn: 'PLAYER_TURN',
-          config: { boardView: { ...StandardBoardView, width: 10, height: 10 } },
+          config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) },
           enemyItems: [item],
           playerItems: [],
         },
@@ -1109,7 +1109,7 @@ describe('Match', () => {
           playerShips,
           enemyShips,
           initialTurn: 'PLAYER_TURN',
-          config: { boardView: { ...StandardBoardView, width: 10, height: 10 } },
+          config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) },
           enemyItems: [item],
           playerItems: [],
         },
@@ -1223,7 +1223,7 @@ describe('Match', () => {
           playerShips,
           enemyShips,
           initialTurn: 'PLAYER_TURN',
-          config: { boardView: { ...StandardBoardView, width: 10, height: 10 }, ruleSet: ItemHitRuleSet },
+          config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView), ruleSet: ItemHitRuleSet },
           enemyItems: [item],
         },
       });
@@ -1284,7 +1284,7 @@ describe('Match', () => {
           playerShips,
           enemyShips,
           initialTurn: 'PLAYER_TURN',
-          config: { boardView: { ...StandardBoardView, width: 10, height: 10 } },
+          config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) },
           enemyItems: [item0, item1],
           playerItems: [],
         },
@@ -1304,7 +1304,7 @@ describe('Match', () => {
           playerShips,
           enemyShips,
           initialTurn: 'ENEMY_TURN',
-          config: { boardView: { ...StandardBoardView, width: 10, height: 10 } },
+          config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) },
           playerItems: [playerItem],
           enemyItems: [],
         },
@@ -1327,7 +1327,7 @@ describe('Match', () => {
           playerShips,
           enemyShips,
           initialTurn: 'PLAYER_TURN',
-          config: { boardView: { ...StandardBoardView, width: 10, height: 10 } },
+          config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) },
           enemyItems: [enemyItem],
           playerItems: [],
         },
@@ -1420,7 +1420,7 @@ describe('Match', () => {
           playerShips,
           enemyShips,
           initialTurn: 'PLAYER_TURN',
-          config: { boardView: { ...StandardBoardView, width: 10, height: 10 } },
+          config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) },
           enemyItems: [item],
           playerItems: [],
         },
@@ -1445,7 +1445,7 @@ describe('Match', () => {
           playerShips,
           enemyShips,
           initialTurn: 'PLAYER_TURN',
-          config: { boardView: { ...StandardBoardView, width: 10, height: 10 } },
+          config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) },
           enemyItems: [item],
           playerItems: [],
         },
@@ -1465,7 +1465,7 @@ describe('Match', () => {
             playerShips,
             enemyShips,
             initialTurn: 'PLAYER_TURN',
-            config: { boardView: { ...StandardBoardView, width: 10, height: 10 }, ruleSet },
+            config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView), ruleSet },
             enemyItems: [enemyItem],
             playerItems: [],
           },
@@ -1515,7 +1515,7 @@ describe('Match', () => {
             playerShips,
             enemyShips,
             initialTurn: 'ENEMY_TURN',
-            config: { boardView: { ...StandardBoardView, width: 10, height: 10 }, ruleSet: LoseTurnOnUseRuleSet },
+            config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView), ruleSet: LoseTurnOnUseRuleSet },
             playerItems: [item], // enemy collects from player board
             enemyItems: [],
           },

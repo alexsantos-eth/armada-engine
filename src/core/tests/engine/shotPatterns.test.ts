@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { GameEngine } from "../../engine/logic";
-import { StandardBoardView } from "../../constants/views";
+import { StandardBoardView, withView } from "../../constants/views";
 import {
   CROSS_SHOT,
   DIAGONAL_X_SHOT,
@@ -29,7 +29,7 @@ describe("Shot Pattern System", () => {
   ];
 
   beforeEach(() => {
-    engine = new GameEngine({ boardView: { ...StandardBoardView, width: 10, height: 10 } });
+    engine = new GameEngine({ boardView: withView({ width: 10, height: 10 }, StandardBoardView, ) });
     engine.initializeGame(playerShips, enemyShips);
   });
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { GameInitializer } from '../../manager/initializer';
 import { GAME_CONSTANTS } from '../../constants/game';
-import { BOARD_DEFAULT_HEIGHT, BOARD_DEFAULT_WIDTH, StandardBoardView } from '../../constants/views';
+import { BOARD_DEFAULT_HEIGHT, BOARD_DEFAULT_WIDTH, StandardBoardView, withView } from '../../constants/views';
 import type { GameConfig } from '../../types/config';
 
 describe('GameInitializer', () => {
@@ -17,7 +17,7 @@ describe('GameInitializer', () => {
 
     it('should create initializer with custom config', () => {
       const customConfig: Partial<GameConfig> = {
-        boardView: { ...StandardBoardView, width: 15, height: 12 },
+        boardView: withView({ width: 15, height: 12 },StandardBoardView, ),
         shipCounts: { small: 2, medium: 1, large: 1, xlarge: 0 },
       };
       
@@ -30,7 +30,7 @@ describe('GameInitializer', () => {
     });
 
     it('should merge custom config with defaults', () => {
-      const initializer = new GameInitializer({ boardView: { ...StandardBoardView, width: 12 } });
+      const initializer = new GameInitializer({ boardView: withView({ width: 12, height: 10 }, StandardBoardView) });
       const setup = initializer.getGameSetup();
       
       expect(setup.config.boardView?.width).toBe(12);
@@ -42,32 +42,32 @@ describe('GameInitializer', () => {
   describe('Configuration Validation', () => {
     it('should reject board width below minimum', () => {
       expect(() => {
-        new GameInitializer({ boardView: { ...StandardBoardView, width: 2 } });
+        new GameInitializer({ boardView: withView({ width: 2, height: 10 }, StandardBoardView) });
       }).toThrow();
     });
 
     it('should reject board height below minimum', () => {
       expect(() => {
-        new GameInitializer({ boardView: { ...StandardBoardView, height: 2 } });
+        new GameInitializer({ boardView: withView({ width: 10, height: 2 }, StandardBoardView) });
       }).toThrow();
     });
 
     it('should reject board width above maximum', () => {
       expect(() => {
-        new GameInitializer({ boardView: { ...StandardBoardView, width: 31 } });
+        new GameInitializer({ boardView: withView({ width: 31 }, StandardBoardView, ) });
       }).toThrow();
     });
 
     it('should reject board height above maximum', () => {
       expect(() => {
-        new GameInitializer({ boardView: { ...StandardBoardView, height: 31 } });
+        new GameInitializer({ boardView: withView({ width: 30, height: 31 }, StandardBoardView) });
       }).toThrow();
     });
 
     it('should reject too many ships for board size', () => {
       expect(() => {
         new GameInitializer({
-          boardView: { ...StandardBoardView, width: 5, height: 5 },
+          boardView: withView({ width: 5, height: 5 }, StandardBoardView),
           shipCounts: { small: 10, medium: 10, large: 10, xlarge: 10 },
         });
       }).toThrow(/Too many ships/);
@@ -76,20 +76,20 @@ describe('GameInitializer', () => {
     it('should accept valid board sizes at boundaries', () => {
       expect(() => {
         new GameInitializer({ 
-          boardView: { ...StandardBoardView, width: 3, height: 3 },
+          boardView: withView({ width: 3, height: 3 }, StandardBoardView),
           shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 }
         });
       }).not.toThrow();
       
       expect(() => {
-        new GameInitializer({ boardView: { ...StandardBoardView, width: 30, height: 30 } });
+        new GameInitializer({ boardView: withView({ width: 30, height: 30 }, StandardBoardView) });
       }).not.toThrow();
     });
 
     it('should accept reasonable ship counts', () => {
       expect(() => {
         new GameInitializer({
-          boardView: { ...StandardBoardView, width: 10, height: 10 },
+          boardView: withView({ width: 10, height: 10 }, StandardBoardView),
           shipCounts: { small: 2, medium: 2, large: 1, xlarge: 1 },
         });
       }).not.toThrow();
@@ -121,7 +121,7 @@ describe('GameInitializer', () => {
 
     it('should generate correct number of ships', () => {
       const customConfig = {
-        boardView: { ...StandardBoardView, width: 10, height: 10 },
+        boardView: withView({ width: 10, height: 10 }, StandardBoardView),
         shipCounts: { small: 2, medium: 1, large: 1, xlarge: 1 },
       };
       
@@ -135,7 +135,7 @@ describe('GameInitializer', () => {
 
     it('should generate ships with correct variants', () => {
       const customConfig = {
-        boardView: { ...StandardBoardView, width: 10, height: 10 },
+        boardView: withView({ width: 10, height: 10 }, StandardBoardView),
         shipCounts: { small: 2, medium: 1, large: 0, xlarge: 0 },
       };
       
@@ -260,7 +260,7 @@ describe('GameInitializer', () => {
   describe('Ship Generation with Different Configs', () => {
     it('should generate no ships when all counts are zero', () => {
       const initializer = new GameInitializer({
-        boardView: { ...StandardBoardView, width: 10, height: 10 },
+        boardView: withView({ width: 10, height: 10 }, StandardBoardView),
         shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
       });
       
@@ -272,7 +272,7 @@ describe('GameInitializer', () => {
 
     it('should handle single ship configuration', () => {
       const initializer = new GameInitializer({
-        boardView: { ...StandardBoardView, width: 10, height: 10 },
+        boardView: withView({ width: 10, height: 10 }, StandardBoardView),
         shipCounts: { small: 1, medium: 0, large: 0, xlarge: 0 },
       });
       
@@ -286,7 +286,7 @@ describe('GameInitializer', () => {
 
     it('should handle only large ships', () => {
       const initializer = new GameInitializer({
-        boardView: { ...StandardBoardView, width: 15, height: 15 },
+        boardView: withView({ width: 15, height: 15 }, StandardBoardView),
         shipCounts: { small: 0, medium: 0, large: 2, xlarge: 1 },
       });
       
@@ -303,7 +303,7 @@ describe('GameInitializer', () => {
 
   describe('Configuration Consistency', () => {
     it('should maintain config across multiple initializations', () => {
-      const initializer = new GameInitializer({ boardView: { ...StandardBoardView, width: 12 } });
+      const initializer = new GameInitializer({ boardView: withView({ width: 12, height: 12 }, StandardBoardView) });
       
       const setup1 = initializer.getGameSetup();
       const setup2 = initializer.getGameSetup();
@@ -313,7 +313,7 @@ describe('GameInitializer', () => {
     });
 
     it('should return same config instance', () => {
-      const initializer = new GameInitializer({ boardView: { ...StandardBoardView, width: 12 } });
+      const initializer = new GameInitializer({ boardView: withView({ width: 12, height: 12 }, StandardBoardView) });
       
       const config1 = initializer.getDefaultConfig();
       const config2 = initializer.getDefaultConfig();
@@ -325,7 +325,7 @@ describe('GameInitializer', () => {
   describe('Item Validation in appendGameSetup', () => {
     it('should throw when a player item overlaps a ship cell', () => {
       const initializer = new GameInitializer({
-        boardView: { ...StandardBoardView, width: 10, height: 10 },
+        boardView: withView({ width: 10, height: 10 }, StandardBoardView),
         shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
       });
 
@@ -345,7 +345,7 @@ describe('GameInitializer', () => {
 
     it('should throw when an enemy item overlaps a ship cell', () => {
       const initializer = new GameInitializer({
-        boardView: { ...StandardBoardView, width: 10, height: 10 },
+        boardView: withView({ width: 10, height: 10 }, StandardBoardView),
         shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
       });
 
@@ -365,7 +365,7 @@ describe('GameInitializer', () => {
 
     it('should throw when a multi-part item partially overlaps a ship', () => {
       const initializer = new GameInitializer({
-        boardView: { ...StandardBoardView, width: 10, height: 10 },
+        boardView: withView({ width: 10, height: 10 }, StandardBoardView),
         shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
       });
 
@@ -385,7 +385,7 @@ describe('GameInitializer', () => {
 
     it('should not throw when items are placed away from ships', () => {
       const initializer = new GameInitializer({
-        boardView: { ...StandardBoardView, width: 10, height: 10 },
+        boardView: withView({ width: 10, height: 10 }, StandardBoardView),
         shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
       });
 
@@ -406,7 +406,7 @@ describe('GameInitializer', () => {
       // When playerItems is not passed, auto-generation handles placement —
       // no error should be thrown regardless of ship density
       const initializer = new GameInitializer({
-        boardView: { ...StandardBoardView, width: 10, height: 10 },
+        boardView: withView({ width: 10, height: 10 }, StandardBoardView),
         shipCounts: { small: 2, medium: 1, large: 0, xlarge: 0 },
       });
 
@@ -419,7 +419,7 @@ describe('GameInitializer', () => {
   describe('Edge Cases', () => {
     it('should handle minimum board size', () => {
       const initializer = new GameInitializer({
-        boardView: { ...StandardBoardView, width: 3, height: 3 },
+        boardView: withView({ width: 3, height: 3 }, StandardBoardView),
         shipCounts: { small: 1, medium: 0, large: 0, xlarge: 0 },
       });
       
@@ -432,7 +432,7 @@ describe('GameInitializer', () => {
 
     it('should handle maximum board size', () => {
       const initializer = new GameInitializer({
-        boardView: { ...StandardBoardView, width: 30, height: 30 },
+        boardView: withView({ width: 30, height: 30 }, StandardBoardView),
         shipCounts: { small: 5, medium: 5, large: 5, xlarge: 5 },
       });
       
@@ -445,7 +445,7 @@ describe('GameInitializer', () => {
 
     it('should handle rectangular boards', () => {
       const initializer = new GameInitializer({
-        boardView: { ...StandardBoardView, width: 15, height: 8 },
+        boardView: withView({ width: 15, height: 8 }, StandardBoardView),
       });
       
       const setup = initializer.getGameSetup();

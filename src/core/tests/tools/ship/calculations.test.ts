@@ -17,7 +17,7 @@ import {
   LARGE_SHIP,
   XLARGE_SHIP,
 } from '../../../constants/ships';
-import { StandardBoardView } from '../../../constants/views';
+import { StandardBoardView, withView } from '../../../constants/views';
 import type { GameShip } from '../../../types/common';
 
 describe('Ship Calculations', () => {
@@ -320,7 +320,7 @@ describe('Ship Calculations', () => {
   describe('generateShips', () => {
     it('should generate ships according to config', () => {
       const config = {
-        boardView: { ...StandardBoardView, width: 10, height: 10 },
+        boardView: withView({ width: 10, height: 10 }, StandardBoardView),
         shipCounts: { small: 2, medium: 1, large: 1, xlarge: 0 },
       };
       
@@ -337,7 +337,7 @@ describe('Ship Calculations', () => {
 
     it('should generate no ships when counts are zero', () => {
       const config = {
-        boardView: { ...StandardBoardView, width: 10, height: 10 },
+        boardView: withView({ width: 10, height: 10 }, StandardBoardView),
         shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
       };
       
@@ -347,7 +347,7 @@ describe('Ship Calculations', () => {
 
     it('should generate valid placements for all ships', () => {
       const config = {
-        boardView: { ...StandardBoardView, width: 15, height: 15 },
+        boardView: withView({ width: 15, height: 15 }, StandardBoardView),
         shipCounts: { small: 2, medium: 2, large: 1, xlarge: 1 },
       };
       
@@ -370,7 +370,7 @@ describe('Ship Calculations', () => {
 
     it('should assign unique ship IDs', () => {
       const config = {
-        boardView: { ...StandardBoardView, width: 10, height: 10 },
+        boardView: withView({ width: 10, height: 10 }, StandardBoardView),
         shipCounts: { small: 3, medium: 0, large: 0, xlarge: 0 },
       };
       
@@ -509,7 +509,7 @@ describe('Ship Calculations', () => {
   describe('Integration - Full Ship Generation', () => {
     it('should generate complete valid fleet', () => {
       const config = {
-        boardView: { ...StandardBoardView, width: 20, height: 20 },
+        boardView: withView({ width: 20, height: 20 }, StandardBoardView),
         shipCounts: { small: 3, medium: 3, large: 2, xlarge: 2 },
       };
       
@@ -527,7 +527,7 @@ describe('Ship Calculations', () => {
 
     it('should handle crowded board gracefully', () => {
       const config = {
-        boardView: { ...StandardBoardView, width: 8, height: 8 },
+        boardView: withView({ width: 8, height: 8 }, StandardBoardView),
         shipCounts: { small: 3, medium: 2, large: 1, xlarge: 0 },
       };
       
@@ -540,7 +540,7 @@ describe('Ship Calculations', () => {
 
     it('should maintain distance between all generated ships', () => {
       const config = {
-        boardView: { ...StandardBoardView, width: 15, height: 15 },
+        boardView: withView({ width: 15, height: 15 }, StandardBoardView),
         shipCounts: { small: 2, medium: 2, large: 1, xlarge: 1 },
       };
       

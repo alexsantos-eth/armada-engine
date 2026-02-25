@@ -31,6 +31,8 @@ export const getCellIcon = (cell: Cell) => {
       return <Gift className="text-amber-500" size={18} />;
     case "OBSTACLE":
       return <Shield className="text-slate-600" size={18} />;
+    case "ITEM":
+      return <Gift className="text-amber-400" size={18} />;
     default:
       return null;
   }
@@ -50,6 +52,8 @@ export const getCellBg = (cell: Cell, isEnemy: boolean) => {
       return "bg-slate-400";
     case "SHIP":
       return isEnemy ? "" : "bg-blue-100";
+    case "ITEM":
+      return "bg-amber-100";
     default:
       return isEnemy ? "hover:bg-rose-100" : "";
   }

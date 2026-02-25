@@ -9,9 +9,9 @@ import type { BoardViewConfig } from "../types/config";
  *   visible enemy items and obstacles, and items they have fully collected.
  *   Enemy ships remain hidden.
  */
-/** Default board width used by all presets. Override via spread: `{ ...StandardBoardView, width: 10 }`. */
+/** Default board width used by all presets. Override via {@link withView}: `withView(StandardBoardView, { width: 10 })`. */
 export const BOARD_DEFAULT_WIDTH = 5;
-/** Default board height used by all presets. Override via spread: `{ ...StandardBoardView, height: 10 }`. */
+/** Default board height used by all presets. Override via {@link withView}: `withView(StandardBoardView, { height: 10 })`. */
 export const BOARD_DEFAULT_HEIGHT = 5;
 
 export const StandardBoardView: BoardViewConfig = {
@@ -19,8 +19,8 @@ export const StandardBoardView: BoardViewConfig = {
   description: "Normal gameplay: own board fully visible, enemy ships hidden",
   width: BOARD_DEFAULT_WIDTH,
   height: BOARD_DEFAULT_HEIGHT,
-  playerSide: ["playerShips", "playerItems", "playerObstacles", "enemyShots"],
-  enemySide: ["playerShots", "enemyItems", "enemyObstacles", "collectedItems"],
+  playerSide: ["playerShips", "playerObstacles", "enemyShots"],
+  enemySide: ["playerShots", "collectedItems"],
 };
 
 /**
@@ -53,13 +53,22 @@ export const DebugBoardView: BoardViewConfig = {
     "playerShips",
     "playerItems",
     "playerObstacles",
-    "enemyShots",
-  ],
-  enemySide: [
     "enemyShips",
     "enemyItems",
     "enemyObstacles",
     "playerShots",
+    "enemyShots",
+    "collectedItems",
+  ],
+  enemySide: [
+    "playerShips",
+    "playerItems",
+    "playerObstacles",
+    "enemyShips",
+    "enemyItems",
+    "enemyObstacles",
+    "playerShots",
+    "enemyShots",
     "collectedItems",
   ],
 };
@@ -80,13 +89,22 @@ export const SpectatorBoardView: BoardViewConfig = {
     "playerShips",
     "playerItems",
     "playerObstacles",
-    "enemyShots",
-  ],
-  enemySide: [
     "enemyShips",
     "enemyItems",
     "enemyObstacles",
     "playerShots",
+    "enemyShots",
+    "collectedItems",
+  ],
+  enemySide: [
+    "playerShips",
+    "playerItems",
+    "playerObstacles",
+    "enemyShips",
+    "enemyItems",
+    "enemyObstacles",
+    "playerShots",
+    "enemyShots",
     "collectedItems",
   ],
 };
@@ -116,3 +134,15 @@ export const getBoardViewByName = (name: string): BoardViewConfig => {
 
 /** Default board view applied when no explicit view config is provided. */
 export const DefaultBoardView = StandardBoardView;
+
+/**
+ * Return a new {@link BoardViewConfig} derived from `base` with the given
+ * `overrides` merged in.  Prefer this over inline spread syntax.
+ *
+ * @example
+ * withView({ width: 10, height: 10 })
+ */
+export const withView = (
+  overrides: Partial<BoardViewConfig>,
+  base: BoardViewConfig = DefaultBoardView,
+): BoardViewConfig => ({ ...base, ...overrides });

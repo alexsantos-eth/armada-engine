@@ -1,16 +1,16 @@
 import { useState } from "preact/hooks";
 import {
   GameInitializer,
-  StandardBoardView,
   SHOT_PATTERNS,
   type ShotPattern,
+  withView,
 } from "../../core/engine";
 import NetworkMatchPage from "./network";
 import Shots from "../components/shots";
 import LocalMatchPage from "./local";
 
 const initializer = new GameInitializer({
-  boardView: { ...StandardBoardView, width: 7, height: 7 },
+  boardView: withView({ width: 7, height: 7 }),
 });
 const initialSetup = initializer.getGameSetup();
 
