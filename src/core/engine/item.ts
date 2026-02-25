@@ -57,7 +57,7 @@ function buildContext(
     boardHeight: state.boardHeight,
     playerObstacles: p.ownObstacles,
     enemyObstacles: p.opponentObstacles,
-    addPlayerShip: (width = 1, height = 1, preferred) => {
+    addPlayerShip: (width = 1, height = 1, preferred, onDestroy) => {
       const fresh = resolvePerspective(engine.getState(), engine, swap);
       const currentState = engine.getState();
       const coords = findFreeShipPosition(
@@ -70,7 +70,7 @@ function buildContext(
         preferred,
       );
       if (!coords) return false;
-      const newShip: GameShip = { coords, shipId: fresh.ownShips.length, width, height };
+      const newShip: GameShip = { coords, shipId: fresh.ownShips.length, width, height, onDestroy };
       fresh.setOwnShips(fresh.ownShips.concat([newShip]));
       return true;
     },
@@ -85,7 +85,7 @@ function buildContext(
       const fresh = resolvePerspective(engine.getState(), engine, swap);
       fresh.setOwnShips([]);
     },
-    addEnemyShip: (width = 1, height = 1, preferred) => {
+    addEnemyShip: (width = 1, height = 1, preferred, onDestroy) => {
       const fresh = resolvePerspective(engine.getState(), engine, swap);
       const currentState = engine.getState();
       const coords = findFreeShipPosition(
@@ -98,7 +98,7 @@ function buildContext(
         preferred,
       );
       if (!coords) return false;
-      const newShip: GameShip = { coords, shipId: fresh.opponentShips.length, width, height };
+      const newShip: GameShip = { coords, shipId: fresh.opponentShips.length, width, height, onDestroy };
       fresh.setOpponentShips(fresh.opponentShips.concat([newShip]));
       return true;
     },

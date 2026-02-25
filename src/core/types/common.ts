@@ -114,12 +114,13 @@ export interface ItemActionContext {
    * Place a new ship on the **player's** board at the first free position
    * that is neither occupied by an existing ship nor already shot.
    *
-   * @param width     Ship width in cells (default 1).
-   * @param height    Ship height in cells (default 1).
-   * @param preferred Optional preferred top-left corner; tried before scanning.
+   * @param width       Ship width in cells (default 1).
+   * @param height      Ship height in cells (default 1).
+   * @param preferred   Optional preferred top-left corner; tried before scanning.
+   * @param onDestroy   Optional callback fired once when all cells of this ship are hit.
    * @returns `true` if placed, `false` if no free slot was found.
    */
-  addPlayerShip: (width?: number, height?: number, preferred?: [number, number]) => boolean;
+  addPlayerShip: (width?: number, height?: number, preferred?: [number, number], onDestroy?: (ctx: ShipActionContext) => void) => boolean;
   /**
    * Remove the player ship with the given `shipId`.
    * @returns `true` if found and removed, `false` if not found.
@@ -131,12 +132,13 @@ export interface ItemActionContext {
    * Place a new ship on the **enemy's** board at the first free position
    * that is neither occupied by an existing ship nor already shot.
    *
-   * @param width     Ship width in cells (default 1).
-   * @param height    Ship height in cells (default 1).
-   * @param preferred Optional preferred top-left corner; tried before scanning.
+   * @param width       Ship width in cells (default 1).
+   * @param height      Ship height in cells (default 1).
+   * @param preferred   Optional preferred top-left corner; tried before scanning.
+   * @param onDestroy   Optional callback fired once when all cells of this ship are hit.
    * @returns `true` if placed, `false` if no free slot was found.
    */
-  addEnemyShip: (width?: number, height?: number, preferred?: [number, number]) => boolean;
+  addEnemyShip: (width?: number, height?: number, preferred?: [number, number], onDestroy?: (ctx: ShipActionContext) => void) => boolean;
   /**
    * Remove the enemy ship with the given `shipId`.
    * @returns `true` if found and removed, `false` if not found.
