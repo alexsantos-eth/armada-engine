@@ -82,6 +82,10 @@ export interface ItemActionContext {
   playerShots: Shot[];
   /** All shots fired by the enemy at the moment of the event. */
   enemyShots: Shot[];
+  /** Width of the game board in cells. */
+  boardWidth: number;
+  /** Height of the game board in cells. */
+  boardHeight: number;
   /** Replace the player's ships (takes effect immediately). */
   setPlayerShips: (ships: GameShip[]) => void;
   /** Replace the enemy's ships (takes effect immediately). */
@@ -96,6 +100,16 @@ export interface ItemActionContext {
   setEnemyShots: (shots: Shot[]) => void;
   /** Immediately toggles the active turn (player↔enemy). */
   toggleTurn: () => void;
+  /**
+   * Place a new 1×1 (or custom-sized) ship on the player's board at the first
+   * free position that is neither occupied by an existing ship nor already shot.
+   *
+   * @param width     Ship width in cells (default 1).
+   * @param height    Ship height in cells (default 1).
+   * @param preferred Optional preferred top-left corner; tried before scanning.
+   * @returns `true` if the ship was placed, `false` if no free slot was found.
+   */
+  addShip: (width?: number, height?: number, preferred?: [number, number]) => boolean;
   /**
    * Swap the active ruleset.
    * Typed as `unknown` to avoid a circular import from the engine layer.

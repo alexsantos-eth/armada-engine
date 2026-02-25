@@ -32,6 +32,66 @@ export function getShipCellsFromShip(ship: GameShip): [number, number][] {
 }
 
 /**
+ * Find the first board position where a ship of the given dimensions fits
+ * without overlapping existing ships or already-shot cells.
+ *
+ * Tries `preferred` first (if provided). Falls back to a top-left → bottom-right
+ * scan of the board.
+ *
+ * @param width         Ship width in cells.
+ * @param height        Ship height in cells.
+ * @param existingShips Ships already placed on the board.
+ * @param shotCells     Cells that have already been shot on the same board.
+ * @param boardWidth    Board width.
+ * @param boardHeight   Board height.
+ * @param preferred     Optional top-left corner to try before scanning.
+ * @returns             A valid top-left `[x, y]`, or `null` if the board is full.
+ */
+export function findFreeShipPosition(
+  width: number,
+  height: number,
+  existingShips: GameShip[],
+  shotCells: { x: number; y: number }[],
+  boardWidth: number,
+  boardHeight: number,
+  preferred?: [number, number],
+): [number, number] | null {
+  const blocked = new Set<string>();
+
+  for (const ship of existingShips) {
+    for (const [cx, cy] of getShipCellsFromShip(ship)) {
+      blocked.add(`${cx},${cy}`);
+    }
+  }
+  for (const { x, y } of shotCells) {
+    blocked.add(`${x},${y}`);
+  }
+
+  const fits = (ox: number, oy: number): boolean => {
+    if (ox < 0 || ox + width > boardWidth) return false;
+    if (oy < 0 || oy + height > boardHeight) return false;
+    for (let row = 0; row < height; row++) {
+      for (let col = 0; col < width; col++) {
+        if (blocked.has(`${ox + col},${oy + row}`)) return false;
+      }
+    }
+    return true;
+  };
+
+  if (preferred && fits(preferred[0], preferred[1])) {
+    return preferred;
+  }
+
+  for (let y = 0; y <= boardHeight - height; y++) {
+    for (let x = 0; x <= boardWidth - width; x++) {
+      if (fits(x, y)) return [x, y];
+    }
+  }
+
+  return null;
+}
+
+/**
  * Total number of cells occupied by a ship (width × height).
  */
 export function getShipSize(ship: GameShip): number {

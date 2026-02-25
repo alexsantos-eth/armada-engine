@@ -25,12 +25,7 @@ export const HEALTH_KIT: ItemTemplate = {
   defaultCount: 1,
 
   onUse(ctx) {
-    ctx.setPlayerShips(ctx.playerShips.concat([{ 
-      coords: [0,0],
-      shipId: ctx.playerShips.length,
-      width: 1,
-      height: 1
-     }]));
+    ctx.addShip(1, 1, [0, 0]);
   },
 };
 

@@ -1,5 +1,11 @@
 import type { IGameEngine } from "./logic";
-import type { GameItem, ItemActionContext, Shot } from "../types/common";
+import { findFreeShipPosition } from "../tools/ship/calculations";
+import type {
+  GameItem,
+  GameShip,
+  ItemActionContext,
+  Shot,
+} from "../types/common";
 import type { GameTurn } from "../types/common";
 
 /**
@@ -30,10 +36,16 @@ function buildContext(
     enemyShips: swap ? state.playerShips : state.enemyShips,
     playerItems: swap ? state.enemyItems : state.playerItems,
     enemyItems: swap ? state.playerItems : state.enemyItems,
-    playerCollectedItems: swap ? state.enemyCollectedItems : state.playerCollectedItems,
-    enemyCollectedItems: swap ? state.playerCollectedItems : state.enemyCollectedItems,
+    playerCollectedItems: swap
+      ? state.enemyCollectedItems
+      : state.playerCollectedItems,
+    enemyCollectedItems: swap
+      ? state.playerCollectedItems
+      : state.enemyCollectedItems,
     playerShots: swap ? state.enemyShots : state.playerShots,
     enemyShots: swap ? state.playerShots : state.enemyShots,
+    boardWidth: state.boardWidth,
+    boardHeight: state.boardHeight,
     setPlayerShips: swap
       ? (ships) => engine.setEnemyShips(ships)
       : (ships) => engine.setPlayerShips(ships),
@@ -53,6 +65,37 @@ function buildContext(
       ? (shots) => engine.setPlayerShots(shots)
       : (shots) => engine.setEnemyShots(shots),
     toggleTurn: () => onToggleTurn(),
+    addShip: (width = 1, height = 1, preferred) => {
+      const currentState = engine.getState();
+      const ownShips = swap
+        ? currentState.enemyShips
+        : currentState.playerShips;
+      const opponentShots = swap
+        ? currentState.playerShots
+        : currentState.enemyShots;
+      const coords = findFreeShipPosition(
+        width,
+        height,
+        ownShips,
+        opponentShots,
+        currentState.boardWidth,
+        currentState.boardHeight,
+        preferred,
+      );
+      if (!coords) return false;
+      const newShip: GameShip = {
+        coords,
+        shipId: ownShips.length,
+        width,
+        height,
+      };
+      if (swap) {
+        engine.setEnemyShips(currentState.enemyShips.concat([newShip]));
+      } else {
+        engine.setPlayerShips(currentState.playerShips.concat([newShip]));
+      }
+      return true;
+    },
     setRuleSet: (ruleSet: unknown) => captureRuleSet?.(ruleSet),
   };
 }
@@ -77,7 +120,16 @@ export function buildCollectContext(
   onToggleTurn: () => void,
   captureRuleSet?: (rs: unknown) => void,
 ): ItemActionContext {
-  return buildContext(engine, item, isPlayerShot, shot, false, currentTurn, onToggleTurn, captureRuleSet);
+  return buildContext(
+    engine,
+    item,
+    isPlayerShot,
+    shot,
+    false,
+    currentTurn,
+    onToggleTurn,
+    captureRuleSet,
+  );
 }
 
 /**
@@ -98,5 +150,14 @@ export function buildUseContext(
   onToggleTurn: () => void,
   captureRuleSet?: (rs: unknown) => void,
 ): ItemActionContext {
-  return buildContext(engine, item, isPlayerShot, undefined, true, currentTurn, onToggleTurn, captureRuleSet);
+  return buildContext(
+    engine,
+    item,
+    isPlayerShot,
+    undefined,
+    true,
+    currentTurn,
+    onToggleTurn,
+    captureRuleSet,
+  );
 }
