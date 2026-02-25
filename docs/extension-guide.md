@@ -45,16 +45,19 @@ No other file needs to change — every consumer that omits `boardWidth`/`boardH
 
 ### Changing the board size per match (runtime)
 
-Pass dimensions explicitly when constructing `Match` or `GameEngine`:
+Pass dimensions explicitly when constructing a match:
 
 ```typescript
-const match = new Match({
+// createMatch() is the recommended entry point — it injects
+// GameInitializer as the default setup provider when no setup is provided.
+import { createMatch } from "./src/core/engine";
+
+const match = createMatch({
   setup: {
     playerShips,
     enemyShips,
     initialTurn: "PLAYER_TURN",
     config: { boardWidth: 10, boardHeight: 10 },
-    ruleSet: ClassicRuleSet,
   },
   ...callbacks,
 });
@@ -431,7 +434,7 @@ export const ForgivingRuleSet: MatchRuleSet = {
 
 ```typescript
 // At construction time
-const match = new Match({
+const match = createMatch({
   setup: {
     playerShips,
     enemyShips,
@@ -677,13 +680,14 @@ That's it. `generateItems` will place the new variant automatically using the fu
 
 ```typescript
 import { HEALTH_KIT, RADAR_DEVICE } from "./src/core/constants/items";
+import { createMatch } from "./src/core/engine";
 
 const enemyItems: GameItem[] = [
   { ...HEALTH_KIT, coords: [2, 3] },   // 1-cell item at (2,3)
   { ...RADAR_DEVICE, coords: [5, 7] }, // 3-cell item at (5,7),(6,7),(7,7)
 ];
 
-const match = new Match({
+const match = createMatch({
   setup: {
     playerShips,
     enemyShips,
@@ -743,7 +747,7 @@ export interface Shot {
 You can also react globally via the `onItemCollected` match callback. It fires synchronously inside `executeShotPattern` — i.e. before `item.onCollect` runs — so it receives the collection event first:
 
 ```typescript
-const match = new Match({
+const match = createMatch({
   setup: { playerShips, enemyShips, initialTurn: "PLAYER_TURN", config },
   onItemCollected: (shot, item, isPlayerShot) => {
     console.log(`Item ${item.templateId} collected by ${isPlayerShot ? "player" : "enemy"}`);

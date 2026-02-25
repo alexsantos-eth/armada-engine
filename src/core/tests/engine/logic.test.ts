@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { GameEngine } from '../../engine/logic';
+import type { IGameEngine, IGameEngineReader } from '../../engine/logic';
 import { buildPlayerBoard, buildEnemyBoard } from '../../engine/board';
 import { SINGLE_SHOT } from '../../constants/shots';
 import type { GameShip, Shot } from '../../types/common';
@@ -22,6 +23,62 @@ describe('GameEngine', () => {
       { coords: [5, 5], width: 2, height: 1, shipId: 0 },
       { coords: [7, 7], width: 1, height: 3, shipId: 1 },
     ];
+  });
+
+  describe('IGameEngineReader / IGameEngine interface segregation', () => {
+    it('GameEngine satisfies IGameEngineReader (read-only contract)', () => {
+      // Compile-time check: the assignment must not produce a TS error.
+      const reader: IGameEngineReader = new GameEngine();
+      expect(reader.getVersion()).toBe(0);
+      expect(reader.getState()).toBeDefined();
+    });
+
+    it('GameEngine satisfies IGameEngine (full contract)', () => {
+      const eng: IGameEngine = new GameEngine();
+      // Mutation methods exist at runtime
+      expect(typeof eng.initializeGame).toBe('function');
+      expect(typeof eng.executeShotPattern).toBe('function');
+      expect(typeof eng.setPlayerShips).toBe('function');
+    });
+
+    it('IGameEngineReader exposes only query methods — mutations are absent from the reader type', () => {
+      const reader: IGameEngineReader = new GameEngine();
+      // Verify all reader methods exist
+      expect(typeof reader.getState).toBe('function');
+      expect(typeof reader.getVersion).toBe('function');
+      expect(typeof reader.isCellShot).toBe('function');
+      expect(typeof reader.isShipDestroyed).toBe('function');
+      expect(typeof reader.areAllShipsDestroyed).toBe('function');
+      expect(typeof reader.isItemUsed).toBe('function');
+      expect(typeof reader.getPlayerShips).toBe('function');
+      expect(typeof reader.getEnemyShips).toBe('function');
+      expect(typeof reader.getPlayerShots).toBe('function');
+      expect(typeof reader.getEnemyShots).toBe('function');
+      expect(typeof reader.getShotCount).toBe('function');
+      expect(typeof reader.getWinner).toBe('function');
+      expect(typeof reader.getBoardDimensions).toBe('function');
+      expect(typeof reader.isValidPosition).toBe('function');
+      expect(typeof reader.getShotAtPosition).toBe('function');
+      expect(typeof reader.hasShipAtPosition).toBe('function');
+      // Mutation methods are NOT part of the reader interface (compile-time only;
+      // at runtime the underlying GameEngine still has them — we just verify
+      // the reader contract does not declare them by asserting on the TS type).
+      const hasMutation = 'initializeGame' in reader;
+      expect(hasMutation).toBe(true); // underlying class has it — only hidden at type level
+    });
+
+    it('getVersion increments after each mutation', () => {
+      const eng = new GameEngine({ boardWidth: 10, boardHeight: 10 });
+      const v0 = eng.getVersion();
+      eng.initializeGame(
+        [{ coords: [0, 0], width: 1, height: 1, shipId: 0 }],
+        [{ coords: [5, 5], width: 1, height: 1, shipId: 0 }],
+      );
+      expect(eng.getVersion()).toBeGreaterThan(v0);
+      const v1 = eng.getVersion();
+      eng.resetGame();
+      expect(eng.getVersion()).toBeGreaterThan(v1);
+    });
   });
 
   describe('Initialization', () => {

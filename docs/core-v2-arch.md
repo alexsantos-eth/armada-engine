@@ -13,12 +13,13 @@ src/core/
 ├── types/              # Shared TypeScript contracts (no runtime code)
 ├── tools/              # Pure utility functions (ship calculations, placement)
 ├── engine/             # Game logic, state machine, board builders, rulesets
-│   ├── logic.ts        # GameEngine — pure state + computation
+│   ├── logic.ts        # IGameEngineReader + IGameEngine interfaces; GameEngine class
 │   ├── board.ts        # Board projection functions (player board, enemy board)
 │   ├── errors.ts       # Typed error constants
 │   ├── item.ts         # ItemActionContext builders for onCollect / onUse
+│   ├── perspective.ts  # SidePerspective — single definition for player↔enemy field pairs
 │   ├── rulesets.ts     # Turn & game-over rule strategies
-│   ├── match.ts        # Match — public imperative API facade
+│   ├── match.ts        # Match class + createMatch factory — public imperative API
 │   └── machines/       # XState state machine (matchMachine)
 │       ├── match.ts    # Machine definition, guards, actions, states
 │       ├── types.ts    # Context, event, input, callback types
@@ -80,6 +81,15 @@ The lowest runtime layer. Holds all mutable game state and exposes deterministic
 - Shot maps for both sides
 - Item arrays, position maps, hit counters, collected-item sets, used-item sets
 - `isGameOver`, `winner`, `boardWidth`, `boardHeight`, `shotCount`, `_version`
+
+**Two interfaces are exported, separated by capability (ISP):**
+
+| Interface | Purpose | Used by |
+|---|---|---|
+| `IGameEngineReader` | 15 read-only query methods | `callbacks.ts`, `board.ts`, read-only consumers |
+| `IGameEngine extends IGameEngineReader` | Adds 8 mutation methods | `matchMachine`, `item.ts`, test doubles |
+
+Program against `IGameEngine` for full access; use `IGameEngineReader` wherever a read-only view suffices — the narrower type communicates intent and prevents accidental mutations.
 
 **Exposes:**
 - `initializeGame(playerShips, enemyShips, playerItems?, enemyItems?)` — boot the game
@@ -155,6 +165,26 @@ Two builder functions that construct an `ItemActionContext` for item lifecycle h
 | `buildUseContext(engine, item, isPlayerShot, …)` | `useItem` action | Activator's perspective (swapped when enemy uses their item) |
 
 The context provides read-only state snapshots and controlled write surfaces (`setPlayerShips`, `toggleTurn`, `setRuleSet`). Direct engine reference is never handed to item handlers.
+
+All player↔enemy field mapping is delegated to `perspective.ts` — `item.ts` has no knowledge of which concrete field is `player` vs `enemy`. Adding a new resource to the context only requires updating `perspective.ts`.
+
+---
+
+### 8a. `engine/perspective.ts` — SidePerspective (player↔enemy resolver)
+
+Single definition point for every player↔enemy data pair.
+
+| Export | Purpose |
+|---|---|
+| `SidePerspective` | Read + write view of one side: `ownShips`, `opponentShips`, `setOwnShips`, … |
+| `resolvePerspective(state, engine, swap)` | Builds a `SidePerspective`; `swap=false` → player=own, `swap=true` → enemy=own |
+
+**OCP extension point — to add a new resource pair** (e.g. `specialZones`):
+1. Add `ownSpecialZones`, `opponentSpecialZones`, and their setters to `SidePerspective`.
+2. Map them in both branches of `resolvePerspective`.
+3. Done — `item.ts` and every other consumer are unchanged.
+
+No circular dependencies: `perspective.ts` imports only `IGameEngine` (from `logic.ts`) and types from `types/common.ts`.
 
 ---
 
@@ -244,9 +274,9 @@ Centralising dispatch here means adding a callback requires editing one function
 
 ---
 
-### 11. `engine/match.ts` — Match (public API facade)
+### 11. `engine/match.ts` — Match + createMatch (public API facade)
 
-The only class consumers should instantiate. Hides XState behind a simple imperative API.
+`Match` is the class consumers interact with. It hides XState behind a simple imperative API. `createMatch` is the recommended factory for application code — it injects `GameInitializer` as the default setup provider so `Match` itself has no hard dependency on any concrete initializer (DIP).
 
 **Responsibilities (only these):**
 - Create and start the `matchMachine` actor
@@ -258,14 +288,29 @@ The only class consumers should instantiate. Hides XState behind a simple impera
 - Flow decisions — that lives in `matchMachine` + rulesets
 - Turn decisions — that lives in `matchMachine` and rulesets
 - Callbacks — that lives in `machines/callbacks.ts`
+- Default setup generation — that lives in `GameInitializer` (injected via `createMatch`)
+
+**Constructor contract:**  
+`new Match(opts)` requires either `opts.setup` (a ready `GameSetup`) or `opts.setupProvider` (any `IGameSetupProvider`). Passing neither throws an error at construction time.
 
 **Typical usage:**
 
 ```typescript
-const match = new Match({
-  setup: initializer.getGameSetup(),
+// Recommended: factory injects GameInitializer as the default setup provider
+const match = createMatch({
   onStateChange: (state) => renderUI(state),
   onGameOver: (winner) => showEndScreen(winner),
+});
+
+// Explicit setup (e.g. from a custom initializer or server payload):
+const match = createMatch({
+  setup: mySetup,
+  onStateChange: (state) => renderUI(state),
+});
+
+// Custom provider (e.g. for testing or server-driven setup):
+const match = createMatch({
+  setupProvider: new MyCustomSetupProvider(),
 });
 
 match.initializeMatch();
@@ -351,8 +396,10 @@ GameInitializer ──► GameSetup
 | New item template | `constants/items.ts` — add to `ITEM_TEMPLATES` |
 | New ruleset | `engine/rulesets.ts` — implement `MatchRuleSet`, export, add to `getRuleSetByName` |
 | New item behaviour | `GameItem.onCollect` / `GameItem.onUse` handlers — use `ItemActionContext` API |
+| New player↔enemy ctx resource | `engine/perspective.ts` — add field pair to `SidePerspective` + both branches of `resolvePerspective`; `item.ts` unchanged |
 | New match callback | `machines/types.ts` `MatchCallbacks` + `machines/callbacks.ts` `fireMatchCallbacks` |
 | New machine event | `machines/types.ts` `MatchMachineEvent` + `machines/match.ts` state transitions |
+| Custom setup generation | Implement `IGameSetupProvider.getGameSetup()` and pass it as `setupProvider` to `createMatch` |
 
 ---
 
@@ -369,3 +416,12 @@ When an item handler calls `ctx.setRuleSet()`, the new ruleset is captured in `p
 
 **`Match` never holds engine state directly.**  
 All reads go through `this.actor.getSnapshot()`. This guarantees `Match` always reflects the machine's latest committed state rather than a stale local copy.
+
+**`IGameEngineReader` separates read from write access (ISP).**  
+Read-only consumers (`fireMatchCallbacks`, `buildPlayerBoard`, …) declare `IGameEngineReader` instead of the full `IGameEngine`. This makes dependencies explicit — a function typed against `IGameEngineReader` cannot accidentally mutate engine state, and the intent is visible at every call site.
+
+**`createMatch` keeps `Match` free of concrete dependencies (DIP).**  
+`Match` depends only on `IGameSetupProvider`; it never imports `GameInitializer` directly. The `createMatch` factory owns the responsibility of injecting a default `GameInitializer` when no provider is supplied. This means `Match` can be unit-tested or extended without pulling in the full initialization stack.
+
+**`perspective.ts` is the single extension point for player↔enemy field pairs (OCP).**  
+All player↔enemy swap logic lives in `SidePerspective` / `resolvePerspective`. When a new game resource is added, only `perspective.ts` changes — `item.ts` and every other consumer are closed for modification. Without this abstraction, every new field would require an `if (swap)` edit spread across multiple files.

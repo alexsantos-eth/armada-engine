@@ -607,11 +607,9 @@ export class GameEngine implements IGameEngine {
       const shot = this.playerSide.shotsMap.get(key);
       if (shot) {
         if (!shot.hit) {
-          // Retroactive hit: ship was placed after the shot was already fired.
           shot.hit = true;
           shot.shipId = shipId;
         } else if (shot.shipId !== shipId) {
-          // Cell ownership changed due to overlap resolution — correct attribution.
           shot.shipId = shipId;
         }
         this.enemySide.shipHits.set(shipId, (this.enemySide.shipHits.get(shipId) ?? 0) + 1);

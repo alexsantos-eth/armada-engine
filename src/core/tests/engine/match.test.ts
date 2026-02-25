@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { Match } from '../../engine/match';
+import { Match, createMatch } from '../../engine/match';
+import type { IGameSetupProvider, GameSetup } from '../../manager';
 import type { GameShip, GameItem } from '../../types/common';
 import { ClassicRuleSet, AlternatingTurnsRuleSet, ItemHitRuleSet, LoseTurnOnUseRuleSet } from '../../engine/rulesets';
 
@@ -21,6 +22,80 @@ describe('Match', () => {
 
     match = new Match({
       setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 } },
+    });
+  });
+
+  describe('Match constructor / createMatch factory', () => {
+    it('new Match throws when neither setup nor setupProvider is given', () => {
+      expect(() => new Match({} as any)).toThrow(
+        /requires either `setup` or `setupProvider`/,
+      );
+    });
+
+    it('new Match accepts explicit setup', () => {
+      const m = new Match({
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 } },
+      });
+      m.initializeMatch();
+      expect(m.getState().playerShips).toHaveLength(2);
+    });
+
+    it('new Match accepts a custom setupProvider', () => {
+      const customSetup: GameSetup = {
+        playerShips,
+        enemyShips,
+        initialTurn: 'PLAYER_TURN',
+        config: { boardWidth: 10, boardHeight: 10 },
+      };
+      const provider: IGameSetupProvider = { getGameSetup: () => customSetup };
+      const m = new Match({ setupProvider: provider });
+      m.initializeMatch();
+      expect(m.getState().playerShips).toHaveLength(2);
+    });
+
+    it('createMatch with explicit setup behaves like new Match', () => {
+      const m = createMatch({
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 } },
+      });
+      m.initializeMatch();
+      expect(m.getState().enemyShips).toHaveLength(2);
+    });
+
+    it('createMatch with a custom setupProvider delegates to the provider', () => {
+      const called: boolean[] = [];
+      const provider: IGameSetupProvider = {
+        getGameSetup() {
+          called.push(true);
+          return {
+            playerShips,
+            enemyShips,
+            initialTurn: 'PLAYER_TURN',
+            config: { boardWidth: 10, boardHeight: 10 },
+          };
+        },
+      };
+      createMatch({ setupProvider: provider });
+      expect(called).toHaveLength(1);
+    });
+
+    it('createMatch with no args falls back to GameInitializer defaults', () => {
+      // GameInitializer defaults: 5x5 board, GAME_CONSTANTS.SHIPS.DEFAULT_COUNTS ships
+      const m = createMatch();
+      m.initializeMatch();
+      const state = m.getState();
+      // Both sides should have ships (count depends on defaults, just check > 0)
+      expect(state.playerShips.length).toBeGreaterThan(0);
+      expect(state.enemyShips.length).toBeGreaterThan(0);
+    });
+
+    it('createMatch passes callbacks through to the machine', () => {
+      const onMatchStart = vi.fn();
+      const m = createMatch({
+        setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 } },
+        onMatchStart,
+      });
+      m.initializeMatch();
+      expect(onMatchStart).toHaveBeenCalledTimes(1);
     });
   });
 
