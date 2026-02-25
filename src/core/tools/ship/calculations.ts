@@ -4,6 +4,10 @@ import { ITEM_TEMPLATES } from "../../constants/items";
 import { OBSTACLE_TEMPLATES } from "../../constants/obstacles";
 import type { GameShip, GameItem, GameObstacle } from "../../types/common";
 import type { GameConfig } from "../../types/config";
+import {
+  BOARD_DEFAULT_HEIGHT,
+  BOARD_DEFAULT_WIDTH,
+} from "../../constants/views";
 
 /**
  * Generate all cells occupied by a 2D rectangular ship.
@@ -315,8 +319,8 @@ export function generateShips(config: Partial<GameConfig>): GameShip[] {
     for (let i = 0; i < count; i++) {
       const ship = generateShip(
         template,
-        config.boardWidth ?? GAME_CONSTANTS.BOARD.DEFAULT_WIDTH,
-        config.boardHeight ?? GAME_CONSTANTS.BOARD.DEFAULT_HEIGHT,
+        config.boardView?.width ?? BOARD_DEFAULT_WIDTH,
+        config.boardView?.height ?? BOARD_DEFAULT_HEIGHT,
         ships,
       );
 
@@ -474,7 +478,6 @@ export function equalizeItemCounts(
     }
   }
 
-  // Re-index itemId so it matches the array position
   return [
     resultA.map((item, idx) => ({ ...item, itemId: idx })),
     resultB.map((item, idx) => ({ ...item, itemId: idx })),
@@ -494,8 +497,8 @@ export function generateItems(
   existingShips: GameShip[],
 ): GameItem[] {
   const items: GameItem[] = [];
-  const boardWidth = config.boardWidth ?? GAME_CONSTANTS.BOARD.DEFAULT_WIDTH;
-  const boardHeight = config.boardHeight ?? GAME_CONSTANTS.BOARD.DEFAULT_HEIGHT;
+  const boardWidth = config.boardView?.width ?? BOARD_DEFAULT_WIDTH;
+  const boardHeight = config.boardView?.height ?? BOARD_DEFAULT_HEIGHT;
   const counts = config.itemCounts ?? GAME_CONSTANTS.ITEMS.DEFAULT_COUNTS;
 
   for (const [name, count] of Object.entries(counts)) {
@@ -617,9 +620,10 @@ export function generateObstacles(
   existingItems: GameItem[],
 ): GameObstacle[] {
   const obstacles: GameObstacle[] = [];
-  const boardWidth = config.boardWidth ?? GAME_CONSTANTS.BOARD.DEFAULT_WIDTH;
-  const boardHeight = config.boardHeight ?? GAME_CONSTANTS.BOARD.DEFAULT_HEIGHT;
-  const counts = config.obstacleCounts ?? GAME_CONSTANTS.OBSTACLES.DEFAULT_COUNTS;
+  const boardWidth = config.boardView?.width ?? BOARD_DEFAULT_WIDTH;
+  const boardHeight = config.boardView?.height ?? BOARD_DEFAULT_HEIGHT;
+  const counts =
+    config.obstacleCounts ?? GAME_CONSTANTS.OBSTACLES.DEFAULT_COUNTS;
 
   for (const [name, count] of Object.entries(counts)) {
     const template = OBSTACLE_TEMPLATES[name];

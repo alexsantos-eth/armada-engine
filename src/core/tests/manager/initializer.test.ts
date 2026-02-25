@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { GameInitializer } from '../../manager/initializer';
 import { GAME_CONSTANTS } from '../../constants/game';
+import { BOARD_DEFAULT_HEIGHT, BOARD_DEFAULT_WIDTH, StandardBoardView } from '../../constants/views';
 import type { GameConfig } from '../../types/config';
 
 describe('GameInitializer', () => {
@@ -9,32 +10,31 @@ describe('GameInitializer', () => {
       const initializer = new GameInitializer();
       const config = initializer.getDefaultConfig();
       
-      expect(config.boardWidth).toBe(GAME_CONSTANTS.BOARD.DEFAULT_WIDTH);
-      expect(config.boardHeight).toBe(GAME_CONSTANTS.BOARD.DEFAULT_HEIGHT);
+      expect(config.boardView.width).toBe(BOARD_DEFAULT_WIDTH);
+      expect(config.boardView.height).toBe(BOARD_DEFAULT_HEIGHT);
       expect(config.shipCounts).toEqual(GAME_CONSTANTS.SHIPS.DEFAULT_COUNTS);
     });
 
     it('should create initializer with custom config', () => {
       const customConfig: Partial<GameConfig> = {
-        boardWidth: 15,
-        boardHeight: 12,
+        boardView: { ...StandardBoardView, width: 15, height: 12 },
         shipCounts: { small: 2, medium: 1, large: 1, xlarge: 0 },
       };
       
       const initializer = new GameInitializer(customConfig);
       const setup = initializer.getGameSetup();
       
-      expect(setup.config.boardWidth).toBe(15);
-      expect(setup.config.boardHeight).toBe(12);
+      expect(setup.config.boardView?.width).toBe(15);
+      expect(setup.config.boardView?.height).toBe(12);
       expect(setup.config.shipCounts?.small).toBe(2);
     });
 
     it('should merge custom config with defaults', () => {
-      const initializer = new GameInitializer({ boardWidth: 12 });
+      const initializer = new GameInitializer({ boardView: { ...StandardBoardView, width: 12 } });
       const setup = initializer.getGameSetup();
       
-      expect(setup.config.boardWidth).toBe(12);
-      expect(setup.config.boardHeight).toBe(GAME_CONSTANTS.BOARD.DEFAULT_HEIGHT);
+      expect(setup.config.boardView?.width).toBe(12);
+      expect(setup.config.boardView?.height).toBe(BOARD_DEFAULT_HEIGHT);
       expect(setup.config.shipCounts).toEqual(GAME_CONSTANTS.SHIPS.DEFAULT_COUNTS);
     });
   });
@@ -42,33 +42,32 @@ describe('GameInitializer', () => {
   describe('Configuration Validation', () => {
     it('should reject board width below minimum', () => {
       expect(() => {
-        new GameInitializer({ boardWidth: 2 });
+        new GameInitializer({ boardView: { ...StandardBoardView, width: 2 } });
       }).toThrow();
     });
 
     it('should reject board height below minimum', () => {
       expect(() => {
-        new GameInitializer({ boardHeight: 2 });
+        new GameInitializer({ boardView: { ...StandardBoardView, height: 2 } });
       }).toThrow();
     });
 
     it('should reject board width above maximum', () => {
       expect(() => {
-        new GameInitializer({ boardWidth: 31 });
+        new GameInitializer({ boardView: { ...StandardBoardView, width: 31 } });
       }).toThrow();
     });
 
     it('should reject board height above maximum', () => {
       expect(() => {
-        new GameInitializer({ boardHeight: 31 });
+        new GameInitializer({ boardView: { ...StandardBoardView, height: 31 } });
       }).toThrow();
     });
 
     it('should reject too many ships for board size', () => {
       expect(() => {
         new GameInitializer({
-          boardWidth: 5,
-          boardHeight: 5,
+          boardView: { ...StandardBoardView, width: 5, height: 5 },
           shipCounts: { small: 10, medium: 10, large: 10, xlarge: 10 },
         });
       }).toThrow(/Too many ships/);
@@ -77,22 +76,20 @@ describe('GameInitializer', () => {
     it('should accept valid board sizes at boundaries', () => {
       expect(() => {
         new GameInitializer({ 
-          boardWidth: 3, 
-          boardHeight: 3,
+          boardView: { ...StandardBoardView, width: 3, height: 3 },
           shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 }
         });
       }).not.toThrow();
       
       expect(() => {
-        new GameInitializer({ boardWidth: 30, boardHeight: 30 });
+        new GameInitializer({ boardView: { ...StandardBoardView, width: 30, height: 30 } });
       }).not.toThrow();
     });
 
     it('should accept reasonable ship counts', () => {
       expect(() => {
         new GameInitializer({
-          boardWidth: 10,
-          boardHeight: 10,
+          boardView: { ...StandardBoardView, width: 10, height: 10 },
           shipCounts: { small: 2, medium: 2, large: 1, xlarge: 1 },
         });
       }).not.toThrow();
@@ -124,8 +121,7 @@ describe('GameInitializer', () => {
 
     it('should generate correct number of ships', () => {
       const customConfig = {
-        boardWidth: 10,
-        boardHeight: 10,
+        boardView: { ...StandardBoardView, width: 10, height: 10 },
         shipCounts: { small: 2, medium: 1, large: 1, xlarge: 1 },
       };
       
@@ -139,8 +135,7 @@ describe('GameInitializer', () => {
 
     it('should generate ships with correct variants', () => {
       const customConfig = {
-        boardWidth: 10,
-        boardHeight: 10,
+        boardView: { ...StandardBoardView, width: 10, height: 10 },
         shipCounts: { small: 2, medium: 1, large: 0, xlarge: 0 },
       };
       
@@ -177,13 +172,13 @@ describe('GameInitializer', () => {
 
   describe('Initial Turn Selection', () => {
     it('should set player turn when specified', () => {
-      const setup = new GameInitializer({ initialTurn: 'player' }).getGameSetup();
+      const setup = new GameInitializer({}, 'player').getGameSetup();
       
       expect(setup.initialTurn).toBe('PLAYER_TURN');
     });
 
     it('should set enemy turn when specified', () => {
-      const setup = new GameInitializer({ initialTurn: 'enemy' }).getGameSetup();
+      const setup = new GameInitializer({}, 'enemy').getGameSetup();
       
       expect(setup.initialTurn).toBe('ENEMY_TURN');
     });
@@ -193,7 +188,7 @@ describe('GameInitializer', () => {
       
       // Run multiple times to get both outcomes
       for (let i = 0; i < 20; i++) {
-        const setup = new GameInitializer({ initialTurn: 'random' }).getGameSetup();
+        const setup = new GameInitializer({}, 'random').getGameSetup();
         results.add(setup.initialTurn);
         
         if (results.size === 2) break; // Both outcomes found
@@ -204,12 +199,12 @@ describe('GameInitializer', () => {
       expect(['PLAYER_TURN', 'ENEMY_TURN']).toContain(Array.from(results)[0] as string);
     });
 
-    it('should use config initialTurn by default', () => {
-      const initializerPlayer = new GameInitializer({ initialTurn: 'player' });
+    it('should use initialTurn constructor argument by default', () => {
+      const initializerPlayer = new GameInitializer({}, 'player');
       const setupPlayer = initializerPlayer.getGameSetup();
       expect(setupPlayer.initialTurn).toBe('PLAYER_TURN');
       
-      const initializerEnemy = new GameInitializer({ initialTurn: 'enemy' });
+      const initializerEnemy = new GameInitializer({}, 'enemy');
       const setupEnemy = initializerEnemy.getGameSetup();
       expect(setupEnemy.initialTurn).toBe('ENEMY_TURN');
     });
@@ -251,23 +246,21 @@ describe('GameInitializer', () => {
       const initializer = new GameInitializer();
       const config = initializer.getDefaultConfig();
       
-      expect(config.boardWidth).toBe(5);
-      expect(config.boardHeight).toBe(5);
+      expect(config.boardView?.width).toBe(5);
+      expect(config.boardView?.height).toBe(5);
       expect(config.shipCounts).toEqual({
         small: 1,
         medium: 2,
         large: 1,
         xlarge: 1,
       });
-      expect(config.initialTurn).toBe('random');
     });
   });
 
   describe('Ship Generation with Different Configs', () => {
     it('should generate no ships when all counts are zero', () => {
       const initializer = new GameInitializer({
-        boardWidth: 10,
-        boardHeight: 10,
+        boardView: { ...StandardBoardView, width: 10, height: 10 },
         shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
       });
       
@@ -279,8 +272,7 @@ describe('GameInitializer', () => {
 
     it('should handle single ship configuration', () => {
       const initializer = new GameInitializer({
-        boardWidth: 10,
-        boardHeight: 10,
+        boardView: { ...StandardBoardView, width: 10, height: 10 },
         shipCounts: { small: 1, medium: 0, large: 0, xlarge: 0 },
       });
       
@@ -294,8 +286,7 @@ describe('GameInitializer', () => {
 
     it('should handle only large ships', () => {
       const initializer = new GameInitializer({
-        boardWidth: 15,
-        boardHeight: 15,
+        boardView: { ...StandardBoardView, width: 15, height: 15 },
         shipCounts: { small: 0, medium: 0, large: 2, xlarge: 1 },
       });
       
@@ -312,30 +303,29 @@ describe('GameInitializer', () => {
 
   describe('Configuration Consistency', () => {
     it('should maintain config across multiple initializations', () => {
-      const initializer = new GameInitializer({ boardWidth: 12 });
+      const initializer = new GameInitializer({ boardView: { ...StandardBoardView, width: 12 } });
       
       const setup1 = initializer.getGameSetup();
       const setup2 = initializer.getGameSetup();
       
-      expect(setup1.config.boardWidth).toBe(12);
-      expect(setup2.config.boardWidth).toBe(12);
+      expect(setup1.config.boardView?.width).toBe(12);
+      expect(setup2.config.boardView?.width).toBe(12);
     });
 
     it('should return same config instance', () => {
-      const initializer = new GameInitializer({ boardWidth: 12 });
+      const initializer = new GameInitializer({ boardView: { ...StandardBoardView, width: 12 } });
       
       const config1 = initializer.getDefaultConfig();
       const config2 = initializer.getDefaultConfig();
       
-      expect(config1.boardWidth).toBe(config2.boardWidth);
+      expect(config1.boardView?.width).toBe(config2.boardView?.width);
     });
   });
 
   describe('Item Validation in appendGameSetup', () => {
     it('should throw when a player item overlaps a ship cell', () => {
       const initializer = new GameInitializer({
-        boardWidth: 10,
-        boardHeight: 10,
+        boardView: { ...StandardBoardView, width: 10, height: 10 },
         shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
       });
 
@@ -355,8 +345,7 @@ describe('GameInitializer', () => {
 
     it('should throw when an enemy item overlaps a ship cell', () => {
       const initializer = new GameInitializer({
-        boardWidth: 10,
-        boardHeight: 10,
+        boardView: { ...StandardBoardView, width: 10, height: 10 },
         shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
       });
 
@@ -376,8 +365,7 @@ describe('GameInitializer', () => {
 
     it('should throw when a multi-part item partially overlaps a ship', () => {
       const initializer = new GameInitializer({
-        boardWidth: 10,
-        boardHeight: 10,
+        boardView: { ...StandardBoardView, width: 10, height: 10 },
         shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
       });
 
@@ -397,8 +385,7 @@ describe('GameInitializer', () => {
 
     it('should not throw when items are placed away from ships', () => {
       const initializer = new GameInitializer({
-        boardWidth: 10,
-        boardHeight: 10,
+        boardView: { ...StandardBoardView, width: 10, height: 10 },
         shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
       });
 
@@ -419,8 +406,7 @@ describe('GameInitializer', () => {
       // When playerItems is not passed, auto-generation handles placement —
       // no error should be thrown regardless of ship density
       const initializer = new GameInitializer({
-        boardWidth: 10,
-        boardHeight: 10,
+        boardView: { ...StandardBoardView, width: 10, height: 10 },
         shipCounts: { small: 2, medium: 1, large: 0, xlarge: 0 },
       });
 
@@ -433,42 +419,39 @@ describe('GameInitializer', () => {
   describe('Edge Cases', () => {
     it('should handle minimum board size', () => {
       const initializer = new GameInitializer({
-        boardWidth: 3,
-        boardHeight: 3,
+        boardView: { ...StandardBoardView, width: 3, height: 3 },
         shipCounts: { small: 1, medium: 0, large: 0, xlarge: 0 },
       });
       
       const setup = initializer.getGameSetup();
       
       expect(setup.playerShips.length).toBeGreaterThan(0);
-      expect(setup.config.boardWidth).toBe(3);
-      expect(setup.config.boardHeight).toBe(3);
+      expect(setup.config.boardView?.width).toBe(3);
+      expect(setup.config.boardView?.height).toBe(3);
     });
 
     it('should handle maximum board size', () => {
       const initializer = new GameInitializer({
-        boardWidth: 30,
-        boardHeight: 30,
+        boardView: { ...StandardBoardView, width: 30, height: 30 },
         shipCounts: { small: 5, medium: 5, large: 5, xlarge: 5 },
       });
       
       const setup = initializer.getGameSetup();
       
-      expect(setup.config.boardWidth).toBe(30);
-      expect(setup.config.boardHeight).toBe(30);
+      expect(setup.config.boardView?.width).toBe(30);
+      expect(setup.config.boardView?.height).toBe(30);
       expect(setup.playerShips.length).toBeLessThanOrEqual(20);
     });
 
     it('should handle rectangular boards', () => {
       const initializer = new GameInitializer({
-        boardWidth: 15,
-        boardHeight: 8,
+        boardView: { ...StandardBoardView, width: 15, height: 8 },
       });
       
       const setup = initializer.getGameSetup();
       
-      expect(setup.config.boardWidth).toBe(15);
-      expect(setup.config.boardHeight).toBe(8);
+      expect(setup.config.boardView?.width).toBe(15);
+      expect(setup.config.boardView?.height).toBe(8);
       
       // Verify ships stay within bounds
       setup.playerShips.forEach(ship => {

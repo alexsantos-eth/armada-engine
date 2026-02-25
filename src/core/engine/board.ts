@@ -1,59 +1,100 @@
 import { getShipCellsFromShip, getObstacleCellsFromObstacle } from "../tools/ship/calculations";
 import type { GameEngineState } from "./logic";
 import type { Board, Cell } from "../types/common";
+import type { BoardLayer, BoardViewConfig } from "../types/config";
+import { DefaultBoardView } from "../constants/views";
+
+/** Fast membership test for a layer list. */
+const has = (layers: BoardLayer[], layer: BoardLayer): boolean =>
+  layers.includes(layer);
+
+/** Allocate a blank board of the given dimensions. */
+function emptyBoard(width: number, height: number): Board {
+  return Array.from({ length: height }, () =>
+    Array.from({ length: width }, (): Cell => ({ state: "EMPTY" })),
+  );
+}
 
 /**
  * Builds the **player's own board** for UI rendering.
  *
- * Shows the player's ships and marks every cell the enemy has fired upon
- * (HIT / MISS). Ships that were hit on a collected-item cell are shown as
- * MISS so item cells don't bleed through.
+ * Which layers are painted is controlled by `view.playerSide`.
+ * Layers are applied in order: ships → items → obstacles → shots.
+ * Shot cells always win over the earlier passes.
  *
- * Extracted from `GameEngine` so the engine has no presentation concerns.
- * Consumes a plain {@link GameEngineState} snapshot — no live engine reference
- * is needed.
+ * | Layer             | What it renders                                       |
+ * |-------------------|-------------------------------------------------------|
+ * | `playerShips`     | Player ship cells → `SHIP`                           |
+ * | `playerItems`     | Items on the player board → `ITEM` / `COLLECTED`     |
+ * | `playerObstacles` | Player obstacle cells → `OBSTACLE`                   |
+ * | `enemyShots`      | Every enemy shot → `HIT` / `MISS` / `OBSTACLE`       |
  *
- * @param state - Current engine snapshot (from `engine.getState()`).
- * @returns A 2-D grid of {@link Cell} objects, indexed as `board[y][x]`.
+ * @param state   - Current engine snapshot (`engine.getState()`).
+ * @param view    - Optional visual config; falls back to {@link DefaultBoardView}.
+ * @returns A 2-D grid of {@link Cell} objects indexed as `board[y][x]`.
  */
-export function buildPlayerBoard(state: GameEngineState): Board {
-  const { boardWidth, boardHeight, playerShips, playerObstacles, enemyShots } = state;
+export function buildPlayerBoard(
+  state: GameEngineState,
+  view?: BoardViewConfig,
+): Board {
+  const layers = view?.playerSide ?? DefaultBoardView.playerSide;
+  const width  = view?.width  ?? state.boardWidth;
+  const height = view?.height ?? state.boardHeight;
 
-  const board: Board = Array.from({ length: boardHeight }, () =>
-    Array.from({ length: boardWidth }, (): Cell => ({ state: "EMPTY" })),
-  );
+  const board = emptyBoard(width, height);
 
-  for (const ship of playerShips) {
-    for (const [x, y] of getShipCellsFromShip(ship)) {
-      if (x >= 0 && x < boardWidth && y >= 0 && y < boardHeight) {
-        board[y][x] = { state: "SHIP" };
+  if (has(layers, "playerShips")) {
+    for (const ship of state.playerShips) {
+      for (const [x, y] of getShipCellsFromShip(ship)) {
+        if (x >= 0 && x < width && y >= 0 && y < height) {
+          board[y][x] = { state: "SHIP" };
+        }
       }
     }
   }
 
-  for (const obstacle of (playerObstacles ?? [])) {
-    for (const [x, y] of getObstacleCellsFromObstacle(obstacle)) {
-      if (x >= 0 && x < boardWidth && y >= 0 && y < boardHeight) {
-        board[y][x] = { state: "OBSTACLE" };
+  if (has(layers, "playerItems")) {
+    const collectedByEnemy = new Set(state.enemyCollectedItems);
+    const showCollected = has(layers, "collectedItems");
+    state.playerItems.forEach((item, itemId) => {
+      const [startX, y] = item.coords;
+      for (let i = 0; i < item.part; i++) {
+        const cx = startX + i;
+        if (cx >= 0 && cx < width && y >= 0 && y < height) {
+          board[y][cx] = {
+            state:
+              showCollected && collectedByEnemy.has(itemId)
+                ? "COLLECTED"
+                : "ITEM",
+          };
+        }
+      }
+    });
+  }
+
+  if (has(layers, "playerObstacles")) {
+    for (const obstacle of (state.playerObstacles ?? [])) {
+      for (const [x, y] of getObstacleCellsFromObstacle(obstacle)) {
+        if (x >= 0 && x < width && y >= 0 && y < height && board[y][x].state === "EMPTY") {
+          board[y][x] = { state: "OBSTACLE" };
+        }
       }
     }
   }
 
-  for (const shot of enemyShots) {
-    if (
-      shot.x >= 0 &&
-      shot.x < boardWidth &&
-      shot.y >= 0 &&
-      shot.y < boardHeight
-    ) {
-      const cellState = shot.collected
-        ? "MISS"
-        : shot.hit
-          ? "HIT"
-          : shot.obstacleHit
-            ? "OBSTACLE"
-            : "MISS";
-      board[shot.y][shot.x] = { state: cellState, shot };
+  if (has(layers, "enemyShots")) {
+    for (const shot of state.enemyShots) {
+      if (shot.x >= 0 && shot.x < width && shot.y >= 0 && shot.y < height) {
+        const existingState = board[shot.y][shot.x].state;
+        const cellState = shot.collected
+          ? "MISS"
+          : shot.hit
+            ? "HIT"
+            : shot.obstacleHit || existingState === "OBSTACLE"
+              ? "OBSTACLE"
+              : "MISS";
+        board[shot.y][shot.x] = { state: cellState, shot };
+      }
     }
   }
 
@@ -63,59 +104,87 @@ export function buildPlayerBoard(state: GameEngineState): Board {
 /**
  * Builds the **enemy board** for UI rendering (the board the player attacks).
  *
- * Enemy ships are hidden — only item cells and shots fired by the player are
- * shown. Collected items are marked as COLLECTED.
+ * Which layers are painted is controlled by `view.enemySide`.
+ * Layers are applied in order: ships → obstacles → items → shots.
+ * Shot cells always win over earlier passes.
  *
- * Extracted from `GameEngine` so the engine has no presentation concerns.
- * Consumes a plain {@link GameEngineState} snapshot — no live engine reference
- * is needed.
+ * | Layer           | What it renders                                             |
+ * |-----------------|-------------------------------------------------------------|
+ * | `enemyShips`    | Enemy ship cells → `SHIP` (hidden in standard play)        |
+ * | `enemyObstacles`| Enemy obstacle cells → `OBSTACLE`                          |
+ * | `enemyItems`    | Enemy items → `ITEM`; `COLLECTED` when `collectedItems` ∈ layers |
+ * | `collectedItems`| Qualifies `enemyItems` to show collected state              |
+ * | `playerShots`   | Every player shot → `HIT` / `MISS` / `OBSTACLE` / `COLLECTED` |
  *
- * @param state - Current engine snapshot (from `engine.getState()`).
- * @returns A 2-D grid of {@link Cell} objects, indexed as `board[y][x]`.
+ * @param state   - Current engine snapshot (`engine.getState()`).
+ * @param view    - Optional visual config; falls back to {@link DefaultBoardView}.
+ * @returns A 2-D grid of {@link Cell} objects indexed as `board[y][x]`.
  */
-export function buildEnemyBoard(state: GameEngineState): Board {
-  const {
-    boardWidth,
-    boardHeight,
-    playerShots,
-    enemyItems,
-    playerCollectedItems,
-  } = state;
+export function buildEnemyBoard(
+  state: GameEngineState,
+  view?: BoardViewConfig,
+): Board {
+  const layers = view?.enemySide ?? DefaultBoardView.enemySide;
+  const width  = view?.width  ?? state.boardWidth;
+  const height = view?.height ?? state.boardHeight;
 
-  const board: Board = Array.from({ length: boardHeight }, () =>
-    Array.from({ length: boardWidth }, (): Cell => ({ state: "EMPTY" })),
-  );
+  const board = emptyBoard(width, height);
 
-  const collectedSet = new Set(playerCollectedItems);
-  enemyItems.forEach((item, itemId) => {
-    const [startX, y] = item.coords;
-    for (let i = 0; i < item.part; i++) {
-      const cx = startX + i;
-      if (cx >= 0 && cx < boardWidth && y >= 0 && y < boardHeight) {
-        board[y][cx] = {
-          state: collectedSet.has(itemId) ? "COLLECTED" : "ITEM",
-        };
+  if (has(layers, "enemyShips")) {
+    for (const ship of state.enemyShips) {
+      for (const [x, y] of getShipCellsFromShip(ship)) {
+        if (x >= 0 && x < width && y >= 0 && y < height) {
+          board[y][x] = { state: "SHIP" };
+        }
       }
     }
-  });
+  }
 
-  for (const shot of playerShots) {
-    if (
-      shot.x >= 0 &&
-      shot.x < boardWidth &&
-      shot.y >= 0 &&
-      shot.y < boardHeight
-    ) {
-      const cellState = shot.collected
-        ? "COLLECTED"
-        : shot.hit
-          ? "HIT"
-          : shot.obstacleHit
-            ? "OBSTACLE"
-            : "MISS";
-      board[shot.y][shot.x] = { state: cellState, shot };
+  if (has(layers, "enemyObstacles")) {
+    for (const obstacle of (state.enemyObstacles ?? [])) {
+      for (const [x, y] of getObstacleCellsFromObstacle(obstacle)) {
+        if (x >= 0 && x < width && y >= 0 && y < height) {
+          board[y][x] = { state: "OBSTACLE" };
+        }
+      }
+    }
+  }
+
+  if (has(layers, "enemyItems")) {
+    const collectedSet = new Set(state.playerCollectedItems);
+    const showCollected = has(layers, "collectedItems");
+    state.enemyItems.forEach((item, itemId) => {
+      const [startX, y] = item.coords;
+      for (let i = 0; i < item.part; i++) {
+        const cx = startX + i;
+        if (cx >= 0 && cx < width && y >= 0 && y < height) {
+          board[y][cx] = {
+            state:
+              showCollected && collectedSet.has(itemId) ? "COLLECTED" : "ITEM",
+          };
+        }
+      }
+    });
+  }
+
+  if (has(layers, "playerShots")) {
+    for (const shot of state.playerShots) {
+      if (shot.x >= 0 && shot.x < width && shot.y >= 0 && shot.y < height) {
+        const existingState = board[shot.y][shot.x].state;
+        const cellState = shot.collected
+          ? "COLLECTED"
+          : shot.hit
+            ? "HIT"
+            : shot.obstacleHit || existingState === "OBSTACLE"
+              ? "OBSTACLE"
+              : existingState === "COLLECTED"
+                ? "COLLECTED"
+                : "MISS";
+        board[shot.y][shot.x] = { state: cellState, shot };
+      }
     }
   }
 
   return board;
 }
+

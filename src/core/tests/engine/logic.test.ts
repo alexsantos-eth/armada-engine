@@ -3,6 +3,7 @@ import { GameEngine } from '../../engine/logic';
 import type { IGameEngine, IGameEngineReader } from '../../engine/logic';
 import { buildPlayerBoard, buildEnemyBoard } from '../../engine/board';
 import { SINGLE_SHOT } from '../../constants/shots';
+import { StandardBoardView } from '../../constants/views';
 import type { GameShip, Shot } from '../../types/common';
 
 describe('GameEngine', () => {
@@ -11,7 +12,7 @@ describe('GameEngine', () => {
   let enemyShips: GameShip[];
 
   beforeEach(() => {
-    engine = new GameEngine({ boardWidth: 10, boardHeight: 10 });
+    engine = new GameEngine({ boardView: { ...StandardBoardView, width: 10, height: 10 } });
     
     // Standard test ships
     playerShips = [
@@ -68,7 +69,7 @@ describe('GameEngine', () => {
     });
 
     it('getVersion increments after each mutation', () => {
-      const eng = new GameEngine({ boardWidth: 10, boardHeight: 10 });
+      const eng = new GameEngine({ boardView: { ...StandardBoardView, width: 10, height: 10 } });
       const v0 = eng.getVersion();
       eng.initializeGame(
         [{ coords: [0, 0], width: 1, height: 1, shipId: 0 }],
@@ -100,7 +101,7 @@ describe('GameEngine', () => {
     });
 
     it('should accept custom board dimensions', () => {
-      const customEngine = new GameEngine({ boardWidth: 15, boardHeight: 12 });
+      const customEngine = new GameEngine({ boardView: { ...StandardBoardView, width: 15, height: 12 } });
       const dimensions = customEngine.getBoardDimensions();
       
       expect(dimensions.width).toBe(15);
@@ -592,7 +593,7 @@ describe('GameEngine', () => {
     });
 
     it('should set items via setPlayerItems / setEnemyItems after construction', () => {
-      const eng = new GameEngine({ boardWidth: 10, boardHeight: 10 });
+      const eng = new GameEngine({ boardView: { ...StandardBoardView, width: 10, height: 10 } });
       eng.initializeGame(playerShips, enemyShips);
 
       const playerItem = { coords: [1, 1] as [number, number], part: 1 };
@@ -605,7 +606,7 @@ describe('GameEngine', () => {
     });
 
     it('setPlayerItems resets collected state', () => {
-      const eng = new GameEngine({ boardWidth: 10, boardHeight: 10 });
+      const eng = new GameEngine({ boardView: { ...StandardBoardView, width: 10, height: 10 } });
       const items = [{ coords: [1, 1] as [number, number], part: 1 }];
       eng.initializeGame(playerShips, enemyShips, items, []);
 
@@ -731,6 +732,40 @@ describe('GameEngine', () => {
       expect(cell.shot?.y).toBe(0);
       expect(cell.shot?.hit).toBe(true);
     });
+
+    // ── Regression: issue 1 ─────────────────────────────────────────────────
+    it('should give SHIP priority over OBSTACLE when they share the same cell', () => {
+      // playerShip 0 occupies (0,0) and (1,0); place an obstacle that also covers (0,0)
+      engine.initializeGame(
+        playerShips,
+        enemyShips,
+        [],
+        [],
+        [{ coords: [0, 0] as [number, number], width: 1, height: 1 }],
+      );
+      const board = buildPlayerBoard(engine.getState());
+      expect(board[0][0].state).toBe('SHIP');
+    });
+
+    // ── Regression: issue 2 ─────────────────────────────────────────────────
+    it('should keep OBSTACLE state on a shot obstacle cell even when shot.obstacleHit is absent', () => {
+      // Construct a state where an obstacle exists at (3,3) and the shot at
+      // that position does NOT carry obstacleHit (simulates stale/reconstructed
+      // state). Without the fix the cell would degrade to MISS.
+      const rawShot = {
+        x: 3, y: 3, hit: false,
+        patternId: 'single', patternCenterX: 3, patternCenterY: 3,
+      };
+      const state = {
+        ...engine.getState(),
+        playerObstacles: [{ coords: [3, 3] as [number, number], width: 1, height: 1 }],
+        enemyShots: [rawShot],
+      };
+      const board = buildPlayerBoard(state as ReturnType<typeof engine.getState>);
+      expect(board[3][3].state).toBe('OBSTACLE');
+      // Shot metadata must still be attached
+      expect(board[3][3].shot).toBe(rawShot);
+    });
   });
 
   describe('Board Rendering — buildEnemyBoard', () => {
@@ -782,6 +817,54 @@ describe('GameEngine', () => {
       expect(cell.shot?.x).toBe(5);
       expect(cell.shot?.y).toBe(5);
       expect(cell.shot?.hit).toBe(true);
+    });
+
+    // ── Regression: issue 3 ─────────────────────────────────────────────────
+    it('should render enemy obstacles as OBSTACLE before the player shoots', () => {
+      engine.initializeGame(
+        playerShips,
+        enemyShips,
+        [],
+        enemyItems,
+        [],
+        [{ coords: [3, 3] as [number, number], width: 1, height: 1 }],
+      );
+      const board = buildEnemyBoard(engine.getState());
+      expect(board[3][3].state).toBe('OBSTACLE');
+    });
+
+    it('should keep OBSTACLE state on a shot enemy obstacle cell even when shot.obstacleHit is absent', () => {
+      engine.initializeGame(
+        playerShips,
+        enemyShips,
+        [],
+        enemyItems,
+        [],
+        [{ coords: [6, 6] as [number, number], width: 1, height: 1 }],
+      );
+      // Shoot the obstacle; obstacleHit should be set by the engine
+      engine.executeShotPattern(6, 6, SINGLE_SHOT, true);
+      const board = buildEnemyBoard(engine.getState());
+      expect(board[6][6].state).toBe('OBSTACLE');
+    });
+
+    // ── Regression: issue 4 ─────────────────────────────────────────────────
+    it('should keep COLLECTED state when a shot on a collected-item cell lacks shot.collected', () => {
+      // Mocked state: item 0 is in playerCollectedItems but the shot at that
+      // position was recorded without collected=true (e.g. replayed / mutated
+      // state). Old code would overwrite with MISS.
+      const staleMissShot = {
+        x: 8, y: 8, hit: false,
+        patternId: 'single', patternCenterX: 8, patternCenterY: 8,
+      };
+      const state = {
+        ...engine.getState(),
+        enemyItems: [{ coords: [8, 8] as [number, number], part: 1 }],
+        playerCollectedItems: [0],
+        playerShots: [staleMissShot],
+      };
+      const board = buildEnemyBoard(state as ReturnType<typeof engine.getState>);
+      expect(board[8][8].state).toBe('COLLECTED');
     });
   });
 });

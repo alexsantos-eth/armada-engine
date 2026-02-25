@@ -1,10 +1,22 @@
-export type { IGameEngine, IGameEngineReader, GameEngineState, MatchState, ShotResult } from "./logic";
+export type {
+  IGameEngine,
+  IGameEngineReader,
+  GameEngineState,
+  MatchState,
+  ShotResult,
+} from "./logic";
 export { toMatchState } from "./logic";
 
 export { buildPlayerBoard, buildEnemyBoard } from "./board";
 
 export { Match, createMatch } from "./match";
-export type { PlanAndAttackResult, MatchCallbacks, PlanShotResult, MatchItemActionContext, MatchQueryAPI } from "./match";
+export type {
+  PlanAndAttackResult,
+  MatchCallbacks,
+  PlanShotResult,
+  MatchItemActionContext,
+  MatchQueryAPI,
+} from "./match";
 
 export {
   ClassicRuleSet,
@@ -34,7 +46,7 @@ export type {
   ItemActionContext,
 } from "../types/common";
 
-export type { GameConfig } from "../types/config";
+export type { GameConfig, BoardLayer, BoardViewConfig } from "../types/config";
 
 export { matchMachine, createMatchActor } from "./machines";
 export {
@@ -70,6 +82,15 @@ export {
 } from "../constants/shots";
 
 export { GAME_CONSTANTS } from "../constants/game";
+
+export {
+  StandardBoardView,
+  FogOfWarBoardView,
+  DebugBoardView,
+  SpectatorBoardView,
+  getBoardViewByName,
+  DefaultBoardView,
+} from "../constants/views";
 
 export {
   SMALL_SHIP,

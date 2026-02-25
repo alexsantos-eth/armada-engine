@@ -63,13 +63,16 @@ export type GAME_INITIAL_TURN = PlayerName | "random";
  */
 export class GameInitializer implements IGameSetupProvider {
   private config: GameConfig;
+  private initialTurn: GAME_INITIAL_TURN;
 
   /**
    * Create a new game initializer
    * @param config - Partial game configuration (uses defaults for missing values)
+   * @param initialTurn - Who starts the game (default: "random")
    */
-  constructor(config: Partial<GameConfig> = {}) {
+  constructor(config: Partial<GameConfig> = {}, initialTurn: GAME_INITIAL_TURN = "random") {
     this.config = { ...this.getDefaultConfig(), ...config };
+    this.initialTurn = initialTurn;
     this.validateConfig();
   }
 
@@ -79,11 +82,12 @@ export class GameInitializer implements IGameSetupProvider {
    * @private
    */
   private validateConfig(): void {
-    const { boardWidth, boardHeight, shipCounts } = this.config;
+    const { boardView, shipCounts } = this.config;
+    const { width, height } = boardView;
 
     if (
-      boardWidth < GAME_CONSTANTS.BOARD.MIN_SIZE ||
-      boardWidth > GAME_CONSTANTS.BOARD.MAX_SIZE
+      width < GAME_CONSTANTS.BOARD.MIN_SIZE ||
+      width > GAME_CONSTANTS.BOARD.MAX_SIZE
     ) {
       throw new Error(
         `Board width must be between ${GAME_CONSTANTS.BOARD.MIN_SIZE} and ${GAME_CONSTANTS.BOARD.MAX_SIZE}`,
@@ -91,8 +95,8 @@ export class GameInitializer implements IGameSetupProvider {
     }
 
     if (
-      boardHeight < GAME_CONSTANTS.BOARD.MIN_SIZE ||
-      boardHeight > GAME_CONSTANTS.BOARD.MAX_SIZE
+      height < GAME_CONSTANTS.BOARD.MIN_SIZE ||
+      height > GAME_CONSTANTS.BOARD.MAX_SIZE
     ) {
       throw new Error(
         `Board height must be between ${GAME_CONSTANTS.BOARD.MIN_SIZE} and ${GAME_CONSTANTS.BOARD.MAX_SIZE}`,
@@ -103,7 +107,7 @@ export class GameInitializer implements IGameSetupProvider {
       (sum, count) => sum + count,
       0,
     );
-    const maxPossibleShips = Math.floor((boardWidth * boardHeight) / 4);
+    const maxPossibleShips = Math.floor((width * height) / 4);
 
     if (totalShips > maxPossibleShips) {
       throw new Error(
@@ -118,12 +122,10 @@ export class GameInitializer implements IGameSetupProvider {
    */
   public getDefaultConfig(): GameConfig {
     return {
-      boardWidth: GAME_CONSTANTS.BOARD.DEFAULT_WIDTH,
-      boardHeight: GAME_CONSTANTS.BOARD.DEFAULT_HEIGHT,
+      boardView: GAME_CONSTANTS.BOARD.DEFAULT_VIEW,
       shipCounts: GAME_CONSTANTS.SHIPS.DEFAULT_COUNTS,
       itemCounts: GAME_CONSTANTS.ITEMS.DEFAULT_COUNTS,
       obstacleCounts: GAME_CONSTANTS.OBSTACLES.DEFAULT_COUNTS,
-      initialTurn: "random",
     };
   }
 
@@ -164,7 +166,7 @@ export class GameInitializer implements IGameSetupProvider {
    * @private
    */
   private determineInitialTurn(): GameTurn {
-    switch (this.config.initialTurn) {
+    switch (this.initialTurn) {
       case "player":
         return "PLAYER_TURN";
       case "enemy":

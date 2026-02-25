@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Match } from "../../engine/match";
 import { AttackError } from "../../engine/errors";
+import { StandardBoardView } from "../../constants/views";
 import { CROSS_SHOT, HORIZONTAL_LINE_SHOT, SINGLE_SHOT } from "../../constants/shots";
 import type { GameShip } from "../../types/common";
 
@@ -16,7 +17,7 @@ describe("Match Shot Patterns", () => {
 
   beforeEach(() => {
     match = new Match({
-      setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardWidth: 10, boardHeight: 10 } },
+      setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: { ...StandardBoardView, width: 10, height: 10 } } },
     });
     match.initializeMatch();
   });

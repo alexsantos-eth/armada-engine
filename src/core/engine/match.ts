@@ -418,7 +418,7 @@ export class Match {
    * the renderer, not in the engine or the Match facade.
    */
   public getPlayerBoard(): Board {
-    return buildPlayerBoard(this.engine.getState());
+    return buildPlayerBoard(this.engine.getState(), this.setup?.config.boardView);
   }
 
   /**
@@ -428,7 +428,7 @@ export class Match {
    * Delegates to {@link buildEnemyBoard}.
    */
   public getEnemyBoard(): Board {
-    return buildEnemyBoard(this.engine.getState());
+    return buildEnemyBoard(this.engine.getState(), this.setup?.config.boardView);
   }
 }
 

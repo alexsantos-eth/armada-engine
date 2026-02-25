@@ -1,4 +1,3 @@
-import { GAME_CONSTANTS } from "../constants/game";
 import { getShipCellsFromShip, getObstacleCellsFromObstacle } from "../tools/ship/calculations";
 import { ShotError } from "./errors";
 import type {
@@ -12,6 +11,7 @@ import type {
   ShotPatternResult,
 } from "../types/common";
 import type { GameConfig } from "../types/config";
+import { BOARD_DEFAULT_HEIGHT, BOARD_DEFAULT_WIDTH } from "../constants/views";
 
 type PositionKey = string;
 const posKey = (x: number, y: number): PositionKey => `${x},${y}`;
@@ -128,9 +128,8 @@ export class GameEngine implements IGameEngine {
   private _version: number = 0;
 
   constructor(config: Partial<GameConfig> = {}) {
-    this.boardWidth = config.boardWidth ?? GAME_CONSTANTS.BOARD.DEFAULT_WIDTH;
-    this.boardHeight =
-      config.boardHeight ?? GAME_CONSTANTS.BOARD.DEFAULT_HEIGHT;
+    this.boardWidth = config.boardView?.width ?? BOARD_DEFAULT_WIDTH;
+    this.boardHeight = config.boardView?.height ?? BOARD_DEFAULT_HEIGHT;
     this.isGameOver = false;
     this.winner = null;
     this.shotCount = 0;

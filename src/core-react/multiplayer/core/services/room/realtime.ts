@@ -15,6 +15,9 @@ import {
   type GameItem,
   DefaultRuleSet,
 } from "../../../../../core/engine";
+import {
+  DefaultBoardView,
+} from "../../../../../core/constants/views";
 
 export class RoomService {
   private static instance: RoomService;
@@ -37,7 +40,9 @@ export class RoomService {
 
   private sanitizeItems(items: GameItem[] | undefined): GameItem[] {
     if (!items) return [];
-    return items.map(({ onCollect: _onCollect, onUse: _onUse, ...rest }) => rest);
+    return items.map(
+      ({ onCollect: _onCollect, onUse: _onUse, ...rest }) => rest,
+    );
   }
 
   private async isRoomCodeUnique(roomCode: string): Promise<boolean> {
@@ -79,14 +84,14 @@ export class RoomService {
       currentTurn: initialTurn,
       ruleSet: ruleSetName as MatchRuleSetName,
       gameConfig: {
-        boardHeight:
-          setup.config.boardHeight ?? GAME_CONSTANTS.BOARD.DEFAULT_HEIGHT,
-        boardWidth:
-          setup.config.boardWidth ?? GAME_CONSTANTS.BOARD.DEFAULT_WIDTH,
+        boardView: setup.config.boardView || DefaultBoardView,
         shipCounts:
           setup.config.shipCounts ?? GAME_CONSTANTS.SHIPS.DEFAULT_COUNTS,
         itemCounts:
           setup.config.itemCounts ?? GAME_CONSTANTS.ITEMS.DEFAULT_COUNTS,
+        obstacleCounts:
+          setup.config.obstacleCounts ??
+          GAME_CONSTANTS.OBSTACLES.DEFAULT_COUNTS,
       },
       initialState: {
         playerShips: setup.playerShips,
@@ -310,7 +315,7 @@ export class RoomService {
 
     return unsubscribe;
   }
-  
+
   /**
    * Push an atomic match event (ATTACK or USE_ITEM) to the room's event
    * stream. Firebase RTDB's push() guarantees a monotonically-ordered key so
