@@ -1,4 +1,5 @@
 import type { IGameEngine } from "./logic";
+import { resolvePerspective } from "./perspective";
 import { findFreeShipPosition } from "../tools/ship/calculations";
 import type {
   GameItem,
@@ -10,6 +11,11 @@ import type { GameTurn } from "../types/common";
 
 /**
  * Internal shared builder for `ItemActionContext`.
+ *
+ * All player↔enemy field mapping is delegated to {@link resolvePerspective}
+ * (perspective.ts). Adding a new game resource to the context only requires
+ * updating `SidePerspective` and `resolvePerspective` — this function does
+ * not need to change (OCP).
  *
  * @param swapPerspective - When `true` and `isPlayerShot` is `false`, all
  *   player↔enemy setters and readers are swapped so that item handlers
@@ -27,57 +33,38 @@ function buildContext(
 ): ItemActionContext {
   const state = engine.getState();
   const swap = swapPerspective && !isPlayerShot;
+  const p = resolvePerspective(state, engine, swap);
+
   return {
     item,
     isPlayerShot,
     shot,
     currentTurn,
-    playerShips: swap ? state.enemyShips : state.playerShips,
-    enemyShips: swap ? state.playerShips : state.enemyShips,
-    playerItems: swap ? state.enemyItems : state.playerItems,
-    enemyItems: swap ? state.playerItems : state.enemyItems,
-    playerCollectedItems: swap
-      ? state.enemyCollectedItems
-      : state.playerCollectedItems,
-    enemyCollectedItems: swap
-      ? state.playerCollectedItems
-      : state.enemyCollectedItems,
-    playerShots: swap ? state.enemyShots : state.playerShots,
-    enemyShots: swap ? state.playerShots : state.enemyShots,
+    playerShips: p.ownShips,
+    enemyShips: p.opponentShips,
+    playerItems: p.ownItems,
+    enemyItems: p.opponentItems,
+    playerCollectedItems: p.ownCollectedItems,
+    enemyCollectedItems: p.opponentCollectedItems,
+    playerShots: p.ownShots,
+    enemyShots: p.opponentShots,
     boardWidth: state.boardWidth,
     boardHeight: state.boardHeight,
-    setPlayerShips: swap
-      ? (ships) => engine.setEnemyShips(ships)
-      : (ships) => engine.setPlayerShips(ships),
-    setEnemyShips: swap
-      ? (ships) => engine.setPlayerShips(ships)
-      : (ships) => engine.setEnemyShips(ships),
-    setPlayerItems: swap
-      ? (items) => engine.setEnemyItems(items)
-      : (items) => engine.setPlayerItems(items),
-    setEnemyItems: swap
-      ? (items) => engine.setPlayerItems(items)
-      : (items) => engine.setEnemyItems(items),
-    setPlayerShots: swap
-      ? (shots) => engine.setEnemyShots(shots)
-      : (shots) => engine.setPlayerShots(shots),
-    setEnemyShots: swap
-      ? (shots) => engine.setPlayerShots(shots)
-      : (shots) => engine.setEnemyShots(shots),
+    setPlayerShips: p.setOwnShips,
+    setEnemyShips: p.setOpponentShips,
+    setPlayerItems: p.setOwnItems,
+    setEnemyItems: p.setOpponentItems,
+    setPlayerShots: p.setOwnShots,
+    setEnemyShots: p.setOpponentShots,
     toggleTurn: () => onToggleTurn(),
     addShip: (width = 1, height = 1, preferred) => {
+      const fresh = resolvePerspective(engine.getState(), engine, swap);
       const currentState = engine.getState();
-      const ownShips = swap
-        ? currentState.enemyShips
-        : currentState.playerShips;
-      const opponentShots = swap
-        ? currentState.playerShots
-        : currentState.enemyShots;
       const coords = findFreeShipPosition(
         width,
         height,
-        ownShips,
-        opponentShots,
+        fresh.ownShips,
+        fresh.opponentShots,
         currentState.boardWidth,
         currentState.boardHeight,
         preferred,
@@ -85,15 +72,11 @@ function buildContext(
       if (!coords) return false;
       const newShip: GameShip = {
         coords,
-        shipId: ownShips.length,
+        shipId: fresh.ownShips.length,
         width,
         height,
       };
-      if (swap) {
-        engine.setEnemyShips(currentState.enemyShips.concat([newShip]));
-      } else {
-        engine.setPlayerShips(currentState.playerShips.concat([newShip]));
-      }
+      fresh.setOwnShips(fresh.ownShips.concat([newShip]));
       return true;
     },
     setRuleSet: (ruleSet: unknown) => captureRuleSet?.(ruleSet),

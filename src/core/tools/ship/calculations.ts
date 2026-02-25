@@ -412,7 +412,6 @@ export function generateItem(
     }
 
     if (valid) {
-      // ITEM WITHOU DESCRIPTION
       return {
         part: template.part,
         onCollect: template.onCollect,

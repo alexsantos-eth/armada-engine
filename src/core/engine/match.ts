@@ -25,7 +25,11 @@ export type { MatchState };
 
 interface NewMatch extends MatchCallbacks {
   setup?: GameSetup;
-  /** Injectable provider — use to swap in custom or test setup logic without modifying Match. */
+  /**
+   * Injectable provider for game setup generation.
+   * Required when `setup` is not provided directly.
+   * Use {@link createMatch} for a convenience wrapper that defaults to `GameInitializer`.
+   */
   setupProvider?: IGameSetupProvider;
 }
 
@@ -63,9 +67,13 @@ export class Match {
   constructor({ setup, setupProvider, ...callbacks }: NewMatch) {
     if (setup) {
       this.setup = setup;
+    } else if (setupProvider) {
+      this.setup = setupProvider.getGameSetup();
     } else {
-      const provider: IGameSetupProvider = setupProvider ?? new GameInitializer();
-      this.setup = provider.getGameSetup();
+      throw new Error(
+        "Match requires either `setup` or `setupProvider`. " +
+        "Use `createMatch()` for a convenience wrapper with a default initializer.",
+      );
     }
 
     const ruleSet = this.setup?.config.ruleSet ?? DefaultRuleSet;
@@ -420,6 +428,29 @@ export class Match {
   public getEnemyBoard(): Board {
     return buildEnemyBoard(this.engine.getState());
   }
+}
+
+/**
+ * Factory wrapper around {@link Match} that injects a {@link GameInitializer}
+ * as the default setup provider when neither `setup` nor `setupProvider` is given.
+ *
+ * Prefer this over `new Match()` in application code so that `Match` itself
+ * stays free of the concrete `GameInitializer` dependency (DIP).
+ *
+ * ```typescript
+ * // No config needed — GameInitializer supplies sensible defaults:
+ * const match = createMatch({ onStateChange: (s) => render(s) });
+ *
+ * // Or pass explicit setup / a custom provider as usual:
+ * const match = createMatch({ setup: mySetup });
+ * const match = createMatch({ setupProvider: myCustomProvider });
+ * ```
+ */
+export function createMatch(opts: NewMatch = {}): Match {
+  if (!opts.setup && !opts.setupProvider) {
+    return new Match({ ...opts, setupProvider: new GameInitializer() });
+  }
+  return new Match(opts);
 }
 
 /**

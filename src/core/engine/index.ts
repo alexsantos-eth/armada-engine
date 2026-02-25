@@ -1,9 +1,9 @@
-export type { IGameEngine, GameEngineState, MatchState, ShotResult } from "./logic";
+export type { IGameEngine, IGameEngineReader, GameEngineState, MatchState, ShotResult } from "./logic";
 export { toMatchState } from "./logic";
 
 export { buildPlayerBoard, buildEnemyBoard } from "./board";
 
-export { Match } from "./match";
+export { Match, createMatch } from "./match";
 export type { PlanAndAttackResult, MatchCallbacks, PlanShotResult, MatchItemActionContext, MatchQueryAPI } from "./match";
 
 export {

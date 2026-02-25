@@ -44,13 +44,42 @@ function createSideState(): SideState {
 }
 
 /**
- * Contract for the game engine compute layer.
+ * Read-only contract for the game engine.
+ *
+ * Use this type for consumers that only need to observe state — callbacks,
+ * board projections, UI queries — without holding write access.
+ * Satisfies ISP: callers declare exactly the capability they need.
+ */
+export interface IGameEngineReader {
+  getState(): GameEngineState;
+  getVersion(): number;
+  isCellShot(x: number, y: number, isPlayerShot: boolean): boolean;
+  isShipDestroyed(shipId: number, isPlayerShot: boolean): boolean;
+  areAllShipsDestroyed(isPlayerShips: boolean): boolean;
+  isItemUsed(itemId: number, isPlayerShot: boolean): boolean;
+  getPlayerShips(): GameShip[];
+  getEnemyShips(): GameShip[];
+  getPlayerShots(): Shot[];
+  getEnemyShots(): Shot[];
+  getShotCount(): number;
+  getWinner(): Winner;
+  getBoardDimensions(): { width: number; height: number };
+  isValidPosition(x: number, y: number): boolean;
+  getShotAtPosition(x: number, y: number, isPlayerShot: boolean): Shot | undefined;
+  hasShipAtPosition(x: number, y: number, isPlayerShips: boolean): boolean;
+}
+
+/**
+ * Full contract for the game engine compute layer (read + mutate).
  *
  * Program against this interface instead of the concrete `GameEngine` class
  * so that alternative implementations (fog-of-war, deterministic replay,
  * test doubles, etc.) can be injected without touching call-sites.
+ *
+ * Extends {@link IGameEngineReader} — anywhere a read-only view suffices,
+ * prefer `IGameEngineReader` to express that intent explicitly (ISP).
  */
-export interface IGameEngine {
+export interface IGameEngine extends IGameEngineReader {
   initializeGame(
     playerShips: GameShip[],
     enemyShips: GameShip[],
@@ -65,9 +94,6 @@ export interface IGameEngine {
     pattern: ShotPattern,
     isPlayerShot: boolean,
   ): ShotPatternResult;
-  isCellShot(x: number, y: number, isPlayerShot: boolean): boolean;
-  isShipDestroyed(shipId: number, isPlayerShot: boolean): boolean;
-  areAllShipsDestroyed(isPlayerShips: boolean): boolean;
   setGameOver(winner: Winner): void;
   setPlayerShips(ships: GameShip[]): void;
   setEnemyShips(ships: GameShip[]): void;
@@ -75,20 +101,7 @@ export interface IGameEngine {
   setEnemyItems(items: GameItem[]): void;
   setPlayerShots(shots: Shot[]): void;
   setEnemyShots(shots: Shot[]): void;
-  getState(): GameEngineState;
   markItemUsed(itemId: number, isPlayerShot: boolean, shipId?: number): void;
-  isItemUsed(itemId: number, isPlayerShot: boolean): boolean;
-  getPlayerShips(): GameShip[];
-  getEnemyShips(): GameShip[];
-  getPlayerShots(): Shot[];
-  getEnemyShots(): Shot[];
-  getShotCount(): number;
-  getWinner(): Winner;
-  getBoardDimensions(): { width: number; height: number };
-  isValidPosition(x: number, y: number): boolean;
-  getShotAtPosition(x: number, y: number, isPlayerShot: boolean): Shot | undefined;
-  hasShipAtPosition(x: number, y: number, isPlayerShips: boolean): boolean;
-  getVersion(): number;
 }
 
 export class GameEngine implements IGameEngine {

@@ -25,6 +25,7 @@ export const HEALTH_KIT: ItemTemplate = {
   defaultCount: 1,
 
   onUse(ctx) {
+    // this will try to add a ship at coord otherwise it place it at another free position, so it won't fail even if the preferred coord is occupied
     ctx.addShip(1, 1, [0, 0]);
   },
 };
@@ -40,6 +41,7 @@ export const AMMO_CACHE: ItemTemplate = {
 
   onUse(ctx) {
     if (ctx.enemyShips.length > 0) {
+      // REMOVE ONE SHIP FROM THE OPPONENT (PREFERABLY THE ONE ON THE COORDS, BUT ANY IF OCCUPIED)
       ctx.setEnemyShips(ctx.enemyShips.slice(0, -1));
     }
   },
@@ -64,10 +66,12 @@ export const RADAR_DEVICE: ItemTemplate = {
   title: "Radar Device",
   description: "Clears all opponent items on collect. Use for a bonus shot.",
   coords: [0, 0],
-  part: 2,
+  part: 1,
   defaultCount: 1,
 
   onUse(ctx) {
+    // REMOVING MY PLAYER ITEMS BECAUSE THESE ARE ITEMS THAT THE OPPONENT COLLECTED FROM ME, SO THEY SHOULD BE CLEARED FROM MY BOARD
+    // DOING THIS REMOVE ENEMY ITEMS TO USE ALSO AND THE ENEMY CANT COLLECT MORE
     ctx.setPlayerItems([]);
   },
 };
