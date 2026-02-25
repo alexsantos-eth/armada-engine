@@ -138,6 +138,15 @@ export class GameEngine implements IGameEngine {
     side.usedItems.clear();
   }
 
+  /** Clears both sides and all shared scalars — single source of truth for a clean slate. */
+  private clearState(): void {
+    this.clearSide(this.playerSide);
+    this.clearSide(this.enemySide);
+    this.isGameOver = false;
+    this.winner = null;
+    this.shotCount = 0;
+  }
+
   /**
    * Initialize a new game with ships and items.
    * The starting turn is managed by the matchMachine, not the engine.
@@ -152,12 +161,7 @@ export class GameEngine implements IGameEngine {
     playerItems: GameItem[] = [],
     enemyItems: GameItem[] = [],
   ): void {
-    this.isGameOver = false;
-    this.winner = null;
-    this.shotCount = 0;
-
-    this.clearSide(this.playerSide);
-    this.clearSide(this.enemySide);
+    this.clearState();
 
     this.playerSide.ships = playerShips;
     this.enemySide.ships = enemyShips;
@@ -186,11 +190,7 @@ export class GameEngine implements IGameEngine {
    * Reset the game to initial state
    */
   public resetGame(): void {
-    this.clearSide(this.playerSide);
-    this.clearSide(this.enemySide);
-    this.isGameOver = false;
-    this.winner = null;
-    this.shotCount = 0;
+    this.clearState();
     this.gameInitialized = false;
     this._version++;
   }
@@ -477,11 +477,17 @@ export class GameEngine implements IGameEngine {
   ): void {
     ships.forEach((ship, shipId) => {
       const cells = getShipCellsFromShip(ship);
-      sizesMap.set(shipId, cells.length);
+      let ownedCells = 0;
 
       cells.forEach(([x, y]) => {
-        positionsMap.set(posKey(x, y), shipId);
+        const key = posKey(x, y);
+        if (!positionsMap.has(key)) {
+          positionsMap.set(key, shipId);
+          ownedCells++;
+        }
       });
+
+      sizesMap.set(shipId, ownedCells);
     });
   }
 
@@ -560,6 +566,8 @@ export class GameEngine implements IGameEngine {
         if (!shot.hit) {
           shot.hit = true;
           shot.shipId = shipId;
+        } else if (shot.shipId !== shipId) {
+          shot.shipId = shipId;
         }
         this.playerSide.shipHits.set(shipId, (this.playerSide.shipHits.get(shipId) ?? 0) + 1);
       }
@@ -586,7 +594,11 @@ export class GameEngine implements IGameEngine {
       const shot = this.playerSide.shotsMap.get(key);
       if (shot) {
         if (!shot.hit) {
+          // Retroactive hit: ship was placed after the shot was already fired.
           shot.hit = true;
+          shot.shipId = shipId;
+        } else if (shot.shipId !== shipId) {
+          // Cell ownership changed due to overlap resolution — correct attribution.
           shot.shipId = shipId;
         }
         this.enemySide.shipHits.set(shipId, (this.enemySide.shipHits.get(shipId) ?? 0) + 1);
