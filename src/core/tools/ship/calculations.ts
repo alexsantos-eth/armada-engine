@@ -1,7 +1,8 @@
 import { GAME_CONSTANTS } from "../../constants/game";
 import { SHIP_TEMPLATES } from "../../constants/ships";
 import { ITEM_TEMPLATES } from "../../constants/items";
-import type { GameShip, GameItem } from "../../types/common";
+import { OBSTACLE_TEMPLATES } from "../../constants/obstacles";
+import type { GameShip, GameItem, GameObstacle } from "../../types/common";
 import type { GameConfig } from "../../types/config";
 
 /**
@@ -519,4 +520,127 @@ export function generateItems(
   }
 
   return items;
+}
+
+// ─── Obstacle utilities ───────────────────────────────────────────────────────
+
+/**
+ * Generate all cells occupied by a rectangular obstacle.
+ * Identical geometry to {@link getShipCellsFromShip} but typed for obstacles.
+ */
+export function getObstacleCellsFromObstacle(
+  obstacle: GameObstacle,
+): [number, number][] {
+  const [x, y] = obstacle.coords;
+  return getShip2DCells(x, y, obstacle.width, obstacle.height);
+}
+
+/**
+ * Try to place a single obstacle on the board without overlapping ships,
+ * items, or other already-placed obstacles.
+ *
+ * Obstacles follow strict no-overlap (distance === 0 is the only boundary —
+ * they may be placed directly adjacent to ships and items).
+ *
+ * @returns A placed `GameObstacle` or `null` if no valid position was found.
+ */
+export function generateObstacle(
+  template: GameObstacle & { width: number; height: number },
+  boardWidth: number,
+  boardHeight: number,
+  existingShips: GameShip[],
+  existingItems: GameItem[],
+  existingObstacles: GameObstacle[],
+  obstacleId: number,
+): GameObstacle | null {
+  const maxAttempts = GAME_CONSTANTS.OBSTACLES.MAX_PLACEMENT_ATTEMPTS;
+  const { width, height } = template;
+
+  // Build a set of all occupied cells (ships + items + existing obstacles).
+  const occupied = new Set<string>();
+  const key = (x: number, y: number) => `${x},${y}`;
+
+  for (const ship of existingShips) {
+    for (const [sx, sy] of getShipCellsFromShip(ship)) {
+      occupied.add(key(sx, sy));
+    }
+  }
+  for (const item of existingItems) {
+    for (const [ix, iy] of getItemCells(item)) {
+      occupied.add(key(ix, iy));
+    }
+  }
+  for (const obs of existingObstacles) {
+    for (const [ox, oy] of getObstacleCellsFromObstacle(obs)) {
+      occupied.add(key(ox, oy));
+    }
+  }
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const maxX = boardWidth - width;
+    const maxY = boardHeight - height;
+    if (maxX < 0 || maxY < 0) return null;
+
+    const x = Math.floor(Math.random() * (maxX + 1));
+    const y = Math.floor(Math.random() * (maxY + 1));
+
+    let valid = true;
+    outer: for (let row = 0; row < height; row++) {
+      for (let col = 0; col < width; col++) {
+        if (occupied.has(key(x + col, y + row))) {
+          valid = false;
+          break outer;
+        }
+      }
+    }
+
+    if (valid) {
+      return { coords: [x, y], width, height, obstacleId };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Generate all obstacles for a board given a config, placing them so they
+ * don't overlap ships or items already present on that board.
+ *
+ * @param config          - Game config (reads `obstacleCounts`, `boardWidth`, `boardHeight`)
+ * @param existingShips   - Ships already placed on this board
+ * @param existingItems   - Items already placed on this board
+ * @returns Array of placed `GameObstacle` objects
+ */
+export function generateObstacles(
+  config: Partial<GameConfig>,
+  existingShips: GameShip[],
+  existingItems: GameItem[],
+): GameObstacle[] {
+  const obstacles: GameObstacle[] = [];
+  const boardWidth = config.boardWidth ?? GAME_CONSTANTS.BOARD.DEFAULT_WIDTH;
+  const boardHeight = config.boardHeight ?? GAME_CONSTANTS.BOARD.DEFAULT_HEIGHT;
+  const counts = config.obstacleCounts ?? GAME_CONSTANTS.OBSTACLES.DEFAULT_COUNTS;
+
+  for (const [name, count] of Object.entries(counts)) {
+    const template = OBSTACLE_TEMPLATES[name];
+    if (!template) continue;
+
+    for (let i = 0; i < count; i++) {
+      const obstacle = generateObstacle(
+        template,
+        boardWidth,
+        boardHeight,
+        existingShips,
+        existingItems,
+        obstacles,
+        obstacles.length,
+      );
+
+      if (obstacle) {
+        obstacles.push(obstacle);
+      }
+    }
+  }
+
+  return obstacles;
 }

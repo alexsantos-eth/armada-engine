@@ -5,6 +5,7 @@ import {
   Droplets,
   Gift,
   Shield,
+  StopCircle,
   Swords,
 } from "lucide-react";
 import { type Cell } from "../../core/engine";
@@ -14,6 +15,11 @@ export const getCellIcon = (cell: Cell) => {
   if (cell.shot?.itemFullyCollected && cell.state === "COLLECTED") {
     return <CheckCircle2 className="text-emerald-500" size={18} />;
   }
+
+  if (cell.shot?.obstacleHit) {
+    return <StopCircle className="text-slate-600" size={18} />;
+  }
+
   switch (cell.state) {
     case "SHIP":
       return <Anchor className="text-blue-600" size={18} />;
@@ -23,6 +29,8 @@ export const getCellIcon = (cell: Cell) => {
       return <Droplets className="text-sky-400" size={16} />;
     case "COLLECTED":
       return <Gift className="text-amber-500" size={18} />;
+    case "OBSTACLE":
+      return <Shield className="text-slate-600" size={18} />;
     default:
       return null;
   }
@@ -38,6 +46,8 @@ export const getCellBg = (cell: Cell, isEnemy: boolean) => {
       return "bg-sky-100";
     case "COLLECTED":
       return "bg-amber-100";
+    case "OBSTACLE":
+      return "bg-slate-400";
     case "SHIP":
       return isEnemy ? "" : "bg-blue-100";
     default:

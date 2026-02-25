@@ -331,6 +331,105 @@ describe('GameInitializer', () => {
     });
   });
 
+  describe('Item Validation in appendGameSetup', () => {
+    it('should throw when a player item overlaps a ship cell', () => {
+      const initializer = new GameInitializer({
+        boardWidth: 10,
+        boardHeight: 10,
+        shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
+      });
+
+      const ship = { coords: [2, 2] as [number, number], width: 2, height: 1, shipId: 0 };
+      // Item placed exactly on the first cell of the ship
+      const overlappingItem = { coords: [2, 2] as [number, number], part: 1, itemId: 0 };
+
+      expect(() => {
+        initializer.appendGameSetup({
+          playerShips: [ship],
+          enemyShips: [],
+          playerItems: [overlappingItem],
+          enemyItems: [],
+        });
+      }).toThrow(/player item.*overlaps a ship/i);
+    });
+
+    it('should throw when an enemy item overlaps a ship cell', () => {
+      const initializer = new GameInitializer({
+        boardWidth: 10,
+        boardHeight: 10,
+        shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
+      });
+
+      const ship = { coords: [5, 3] as [number, number], width: 3, height: 1, shipId: 0 };
+      // Item spans cells [5,3], [6,3], [7,3] — all on the ship
+      const overlappingItem = { coords: [5, 3] as [number, number], part: 2, itemId: 0 };
+
+      expect(() => {
+        initializer.appendGameSetup({
+          playerShips: [],
+          enemyShips: [ship],
+          playerItems: [],
+          enemyItems: [overlappingItem],
+        });
+      }).toThrow(/enemy item.*overlaps a ship/i);
+    });
+
+    it('should throw when a multi-part item partially overlaps a ship', () => {
+      const initializer = new GameInitializer({
+        boardWidth: 10,
+        boardHeight: 10,
+        shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
+      });
+
+      const ship = { coords: [4, 0] as [number, number], width: 1, height: 1, shipId: 0 };
+      // Item starts at [3,0] with part=2 → occupies [3,0] and [4,0]; [4,0] is the ship
+      const partialOverlap = { coords: [3, 0] as [number, number], part: 2, itemId: 0 };
+
+      expect(() => {
+        initializer.appendGameSetup({
+          playerShips: [ship],
+          enemyShips: [],
+          playerItems: [partialOverlap],
+          enemyItems: [],
+        });
+      }).toThrow(/player item.*overlaps a ship/i);
+    });
+
+    it('should not throw when items are placed away from ships', () => {
+      const initializer = new GameInitializer({
+        boardWidth: 10,
+        boardHeight: 10,
+        shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
+      });
+
+      const ship = { coords: [0, 0] as [number, number], width: 2, height: 1, shipId: 0 };
+      const safeItem = { coords: [5, 5] as [number, number], part: 1, itemId: 0 };
+
+      expect(() => {
+        initializer.appendGameSetup({
+          playerShips: [ship],
+          enemyShips: [],
+          playerItems: [safeItem],
+          enemyItems: [],
+        });
+      }).not.toThrow();
+    });
+
+    it('should not validate items that were not provided (auto-generated)', () => {
+      // When playerItems is not passed, auto-generation handles placement —
+      // no error should be thrown regardless of ship density
+      const initializer = new GameInitializer({
+        boardWidth: 10,
+        boardHeight: 10,
+        shipCounts: { small: 2, medium: 1, large: 0, xlarge: 0 },
+      });
+
+      expect(() => {
+        initializer.appendGameSetup({});
+      }).not.toThrow();
+    });
+  });
+
   describe('Edge Cases', () => {
     it('should handle minimum board size', () => {
       const initializer = new GameInitializer({

@@ -1,7 +1,7 @@
 export type GameTurn = "PLAYER_TURN" | "ENEMY_TURN";
 export type PlayerName = "player" | "enemy";
 export type Winner = PlayerName | null;
-export type CellState = "EMPTY" | "SHIP" | "HIT" | "MISS" | "ITEM" | "COLLECTED";
+export type CellState = "EMPTY" | "SHIP" | "HIT" | "MISS" | "ITEM" | "COLLECTED" | "OBSTACLE";
 
 /**
  * A single cell in a rich board, combining the visual state with the full
@@ -149,6 +149,21 @@ export interface GameItem {
 }
 
 /**
+ * A 2D rectangular obstacle placed on the board at game start.
+ * Its footprint is a `width × height` rectangle with top-left corner at `coords`.
+ * Unlike ships, obstacles are indestructible — shots that land on obstacle cells
+ * are recorded as misses and the obstacle persists for the whole match.
+ */
+export interface GameObstacle {
+  coords: [number, number];
+  /** Number of columns occupied (≥ 1). */
+  width: number;
+  /** Number of rows occupied (≥ 1). */
+  height: number;
+  obstacleId?: number;
+}
+
+/**
  * A 2D rectangular ship on the board.
  * Its footprint is a `width × height` rectangle with top-left corner at `coords`.
  */
@@ -175,6 +190,14 @@ export interface Shot {
   itemId?: number;
   /** True when this shot caused the item to be fully collected. */
   itemFullyCollected?: boolean;
+  /**
+   * True when this shot landed on an obstacle cell.
+   * The shot is still recorded as a miss (`hit: false`) — obstacles are indestructible —
+   * but this flag lets the UI distinguish an obstacle bounce from a plain water miss.
+   */
+  obstacleHit?: boolean;
+  /** The 0-based index of the obstacle that was hit (when obstacleHit is true). */
+  obstacleId?: number;
 }
 
 /**

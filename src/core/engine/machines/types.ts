@@ -143,6 +143,10 @@ export type MatchMachineEvent =
       playerItems?: GameItem[];
       /** Items placed on the enemy's board (collectible by the player). */
       enemyItems?: GameItem[];
+      /** Obstacles placed on the player's board (indestructible terrain). */
+      playerObstacles?: import("../../types/common").GameObstacle[];
+      /** Obstacles placed on the enemy's board (indestructible terrain). */
+      enemyObstacles?: import("../../types/common").GameObstacle[];
     }
   /** Plans a shot without executing it */
   | {

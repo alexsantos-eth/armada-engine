@@ -250,6 +250,8 @@ export const matchMachine = setup({
         event.enemyShips,
         event.playerItems ?? [],
         event.enemyItems ?? [],
+        event.playerObstacles ?? [],
+        event.enemyObstacles ?? [],
       );
 
       fireMatchCallbacks(context.callbacks, context.engine, {

@@ -1,9 +1,10 @@
 import { GAME_CONSTANTS } from "../constants/game";
-import { getShipCellsFromShip } from "../tools/ship/calculations";
+import { getShipCellsFromShip, getObstacleCellsFromObstacle } from "../tools/ship/calculations";
 import { ShotError } from "./errors";
 import type {
   GameShip,
   GameItem,
+  GameObstacle,
   Shot,
   Winner,
   GameTurn,
@@ -18,12 +19,14 @@ const posKey = (x: number, y: number): PositionKey => `${x},${y}`;
 interface SideState {
   ships: GameShip[];
   items: GameItem[];
+  obstacles: GameObstacle[];
   shotsMap: Map<PositionKey, Shot>;
   shipPositions: Map<PositionKey, number>;
   shipSizes: Map<number, number>;
   shipHits: Map<number, number>;
   itemPositions: Map<PositionKey, number>;
   itemHits: Map<number, number>;
+  obstaclePositions: Map<PositionKey, number>;
   collectedItems: Set<number>;
   usedItems: Map<number, number | undefined>;
 }
@@ -32,12 +35,14 @@ function createSideState(): SideState {
   return {
     ships: [],
     items: [],
+    obstacles: [],
     shotsMap: new Map(),
     shipPositions: new Map(),
     shipSizes: new Map(),
     shipHits: new Map(),
     itemPositions: new Map(),
     itemHits: new Map(),
+    obstaclePositions: new Map(),
     collectedItems: new Set(),
     usedItems: new Map(),
   };
@@ -61,12 +66,15 @@ export interface IGameEngineReader {
   getEnemyShips(): GameShip[];
   getPlayerShots(): Shot[];
   getEnemyShots(): Shot[];
+  getPlayerObstacles(): GameObstacle[];
+  getEnemyObstacles(): GameObstacle[];
   getShotCount(): number;
   getWinner(): Winner;
   getBoardDimensions(): { width: number; height: number };
   isValidPosition(x: number, y: number): boolean;
   getShotAtPosition(x: number, y: number, isPlayerShot: boolean): Shot | undefined;
   hasShipAtPosition(x: number, y: number, isPlayerShips: boolean): boolean;
+  hasObstacleAtPosition(x: number, y: number, isPlayerSide: boolean): boolean;
 }
 
 /**
@@ -85,6 +93,8 @@ export interface IGameEngine extends IGameEngineReader {
     enemyShips: GameShip[],
     playerItems?: GameItem[],
     enemyItems?: GameItem[],
+    playerObstacles?: GameObstacle[],
+    enemyObstacles?: GameObstacle[],
   ): void;
   resetGame(): void;
   setBoardDimensions(width: number, height: number): void;
@@ -101,6 +111,8 @@ export interface IGameEngine extends IGameEngineReader {
   setEnemyItems(items: GameItem[]): void;
   setPlayerShots(shots: Shot[]): void;
   setEnemyShots(shots: Shot[]): void;
+  setPlayerObstacles(obstacles: GameObstacle[]): void;
+  setEnemyObstacles(obstacles: GameObstacle[]): void;
   markItemUsed(itemId: number, isPlayerShot: boolean, shipId?: number): void;
 }
 
@@ -141,12 +153,14 @@ export class GameEngine implements IGameEngine {
   private clearSide(side: SideState): void {
     side.ships = [];
     side.items = [];
+    side.obstacles = [];
     side.shotsMap.clear();
     side.shipPositions.clear();
     side.shipSizes.clear();
     side.shipHits.clear();
     side.itemPositions.clear();
     side.itemHits.clear();
+    side.obstaclePositions.clear();
     side.collectedItems.clear();
     side.usedItems.clear();
   }
@@ -173,6 +187,8 @@ export class GameEngine implements IGameEngine {
     enemyShips: GameShip[],
     playerItems: GameItem[] = [],
     enemyItems: GameItem[] = [],
+    playerObstacles: GameObstacle[] = [],
+    enemyObstacles: GameObstacle[] = [],
   ): void {
     this.clearState();
 
@@ -180,6 +196,8 @@ export class GameEngine implements IGameEngine {
     this.enemySide.ships = enemyShips;
     this.playerSide.items = playerItems;
     this.enemySide.items = enemyItems;
+    this.playerSide.obstacles = playerObstacles;
+    this.enemySide.obstacles = enemyObstacles;
 
     this.cacheShipPositions(
       playerShips,
@@ -194,6 +212,9 @@ export class GameEngine implements IGameEngine {
 
     this.cacheItemPositions(playerItems, this.playerSide.itemPositions);
     this.cacheItemPositions(enemyItems, this.enemySide.itemPositions);
+
+    this.cacheObstaclePositions(playerObstacles, this.playerSide.obstaclePositions);
+    this.cacheObstaclePositions(enemyObstacles, this.enemySide.obstaclePositions);
 
     this.gameInitialized = true;
     this._version++;
@@ -251,6 +272,11 @@ export class GameEngine implements IGameEngine {
       ? this.collectItem(x, y, isPlayerShot)
       : null;
 
+    // Check if the shot landed on an obstacle (only relevant when it's a miss).
+    const obstacleInfo = !result.hit
+      ? this.checkObstacleHit(x, y, isPlayerShot)
+      : null;
+
     const shot: Shot = {
       x,
       y,
@@ -263,6 +289,10 @@ export class GameEngine implements IGameEngine {
         collected: true,
         itemId: itemCollection.itemId,
         itemFullyCollected: itemCollection.itemFullyCollected,
+      }),
+      ...(obstacleInfo && {
+        obstacleHit: true,
+        obstacleId: obstacleInfo.obstacleId,
       }),
     };
 
@@ -303,7 +333,24 @@ export class GameEngine implements IGameEngine {
       collected: itemCollection?.collected,
       itemId: itemCollection?.itemId,
       itemFullyCollected: itemCollection?.itemFullyCollected,
+      obstacleHit: obstacleInfo?.obstacleId !== undefined ? true : undefined,
+      obstacleId: obstacleInfo?.obstacleId,
     };
+  }
+
+  /**
+   * Check if a shot at `(x, y)` lands on an obstacle on the defending side.
+   * Returns the obstacleId when hit, or null when no obstacle is present.
+   * @private
+   */
+  private checkObstacleHit(
+    x: number,
+    y: number,
+    isPlayerShot: boolean,
+  ): { obstacleId: number } | null {
+    const obstaclePositions = this.defendingSide(isPlayerShot).obstaclePositions;
+    const obstacleId = obstaclePositions.get(posKey(x, y));
+    return obstacleId !== undefined ? { obstacleId } : null;
   }
 
   /**
@@ -392,6 +439,8 @@ export class GameEngine implements IGameEngine {
         collected: shotResult.collected,
         itemId: shotResult.itemId,
         itemFullyCollected: shotResult.itemFullyCollected,
+        obstacleHit: shotResult.obstacleHit,
+        obstacleId: shotResult.obstacleId,
       });
     }
 
@@ -501,6 +550,22 @@ export class GameEngine implements IGameEngine {
       });
 
       sizesMap.set(shipId, ownedCells);
+    });
+  }
+
+  /**
+   * Cache obstacle positions for O(1) lookup.
+   * @private
+   */
+  private cacheObstaclePositions(
+    obstacles: GameObstacle[],
+    positionsMap: Map<PositionKey, number>,
+  ): void {
+    obstacles.forEach((obstacle, obstacleId) => {
+      const cells = getObstacleCellsFromObstacle(obstacle);
+      cells.forEach(([x, y]) => {
+        positionsMap.set(posKey(x, y), obstacleId);
+      });
     });
   }
 
@@ -711,6 +776,8 @@ export class GameEngine implements IGameEngine {
       enemyCollectedItems: Array.from(this.enemySide.collectedItems),
       playerUsedItems: Array.from(this.playerSide.usedItems.entries()).map(([itemId, shipId]) => ({ itemId, shipId })),
       enemyUsedItems: Array.from(this.enemySide.usedItems.entries()).map(([itemId, shipId]) => ({ itemId, shipId })),
+      playerObstacles: [...this.playerSide.obstacles],
+      enemyObstacles: [...this.enemySide.obstacles],
     };
   }
 
@@ -828,6 +895,57 @@ export class GameEngine implements IGameEngine {
   }
 
   /**
+   * Check if there's an obstacle at specific coordinates.
+   * @param x - X coordinate
+   * @param y - Y coordinate
+   * @param isPlayerSide - True to check player board obstacles, false for enemy board
+   * @returns True if there's an obstacle at that position
+   */
+  public hasObstacleAtPosition(
+    x: number,
+    y: number,
+    isPlayerSide: boolean,
+  ): boolean {
+    return (isPlayerSide ? this.playerSide : this.enemySide).obstaclePositions.has(posKey(x, y));
+  }
+
+  /**
+   * Get player's obstacles
+   * @returns Copy of player obstacles array
+   */
+  public getPlayerObstacles(): GameObstacle[] {
+    return [...this.playerSide.obstacles];
+  }
+
+  /**
+   * Get enemy's obstacles
+   * @returns Copy of enemy obstacles array
+   */
+  public getEnemyObstacles(): GameObstacle[] {
+    return [...this.enemySide.obstacles];
+  }
+
+  /**
+   * Set player's obstacles (replaces all obstacle positions on the player board).
+   */
+  public setPlayerObstacles(obstacles: GameObstacle[]): void {
+    this.playerSide.obstacles = obstacles;
+    this.playerSide.obstaclePositions.clear();
+    this.cacheObstaclePositions(obstacles, this.playerSide.obstaclePositions);
+    this._version++;
+  }
+
+  /**
+   * Set enemy's obstacles (replaces all obstacle positions on the enemy board).
+   */
+  public setEnemyObstacles(obstacles: GameObstacle[]): void {
+    this.enemySide.obstacles = obstacles;
+    this.enemySide.obstaclePositions.clear();
+    this.cacheObstaclePositions(obstacles, this.enemySide.obstaclePositions);
+    this._version++;
+  }
+
+  /**
    * Returns the current mutation counter. Increments on every write, so callers
    * can cheaply detect whether the engine state has changed.
    */
@@ -940,6 +1058,20 @@ export interface GameEngineState {
    * ship the item was targeted at when activated.
    */
   enemyUsedItems: { itemId: number; shipId?: number }[];
+
+  /**
+   * Obstacles placed on the **player's** board.
+   * These are permanent, indestructible terrain features — shots that land
+   * on obstacle cells are recorded as misses but the obstacle persists.
+   */
+  playerObstacles: GameObstacle[];
+
+  /**
+   * Obstacles placed on the **enemy's** board.
+   * These are permanent, indestructible terrain features — shots that land
+   * on obstacle cells are recorded as misses but the obstacle persists.
+   */
+  enemyObstacles: GameObstacle[];
 }
 
 /**
@@ -1004,6 +1136,10 @@ export interface ShotResult {
   itemId?: number;
   /** True when the item is now fully collected. */
   itemFullyCollected?: boolean;
+  /** True when this shot landed on an obstacle cell (recorded as a miss but distinct from plain water). */
+  obstacleHit?: boolean;
+  /** The 0-based index of the obstacle that was hit (when obstacleHit is true). */
+  obstacleId?: number;
 }
 
 

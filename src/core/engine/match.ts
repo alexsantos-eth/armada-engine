@@ -91,7 +91,7 @@ export class Match {
    * to `active.planning` and firing `onMatchStart`.
    */
   public initializeMatch(): void {
-    const { playerShips, enemyShips, initialTurn, playerItems, enemyItems } =
+    const { playerShips, enemyShips, initialTurn, playerItems, enemyItems, playerObstacles, enemyObstacles } =
       this.setup!;
 
     this.actor.send({
@@ -101,6 +101,8 @@ export class Match {
       initialTurn,
       playerItems,
       enemyItems,
+      playerObstacles,
+      enemyObstacles,
     });
   }
 

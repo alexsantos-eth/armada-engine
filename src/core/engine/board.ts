@@ -1,4 +1,4 @@
-import { getShipCellsFromShip } from "../tools/ship/calculations";
+import { getShipCellsFromShip, getObstacleCellsFromObstacle } from "../tools/ship/calculations";
 import type { GameEngineState } from "./logic";
 import type { Board, Cell } from "../types/common";
 
@@ -17,7 +17,7 @@ import type { Board, Cell } from "../types/common";
  * @returns A 2-D grid of {@link Cell} objects, indexed as `board[y][x]`.
  */
 export function buildPlayerBoard(state: GameEngineState): Board {
-  const { boardWidth, boardHeight, playerShips, enemyShots } = state;
+  const { boardWidth, boardHeight, playerShips, playerObstacles, enemyShots } = state;
 
   const board: Board = Array.from({ length: boardHeight }, () =>
     Array.from({ length: boardWidth }, (): Cell => ({ state: "EMPTY" })),
@@ -31,6 +31,14 @@ export function buildPlayerBoard(state: GameEngineState): Board {
     }
   }
 
+  for (const obstacle of (playerObstacles ?? [])) {
+    for (const [x, y] of getObstacleCellsFromObstacle(obstacle)) {
+      if (x >= 0 && x < boardWidth && y >= 0 && y < boardHeight) {
+        board[y][x] = { state: "OBSTACLE" };
+      }
+    }
+  }
+
   for (const shot of enemyShots) {
     if (
       shot.x >= 0 &&
@@ -38,7 +46,13 @@ export function buildPlayerBoard(state: GameEngineState): Board {
       shot.y >= 0 &&
       shot.y < boardHeight
     ) {
-      const cellState = shot.collected ? "MISS" : shot.hit ? "HIT" : "MISS";
+      const cellState = shot.collected
+        ? "MISS"
+        : shot.hit
+          ? "HIT"
+          : shot.obstacleHit
+            ? "OBSTACLE"
+            : "MISS";
       board[shot.y][shot.x] = { state: cellState, shot };
     }
   }
@@ -96,7 +110,9 @@ export function buildEnemyBoard(state: GameEngineState): Board {
         ? "COLLECTED"
         : shot.hit
           ? "HIT"
-          : "MISS";
+          : shot.obstacleHit
+            ? "OBSTACLE"
+            : "MISS";
       board[shot.y][shot.x] = { state: cellState, shot };
     }
   }

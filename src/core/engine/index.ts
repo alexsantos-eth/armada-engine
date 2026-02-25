@@ -20,6 +20,7 @@ export type { GameSetup } from "../manager";
 export type {
   GameShip,
   GameItem,
+  GameObstacle,
   Shot,
   Winner,
   GameTurn,

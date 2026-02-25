@@ -1,10 +1,13 @@
 import { GAME_CONSTANTS } from "../constants/game";
 import type { GameConfig, GameShip, GameTurn } from "../engine";
-import type { GameItem } from "../types/common";
+import type { GameItem, GameObstacle } from "../types/common";
 import {
   generateShips,
   generateItems,
+  generateObstacles,
   equalizeItemCounts,
+  getItemCells,
+  getShipCellsFromShip,
 } from "../tools/ship/calculations";
 import type { PlayerName } from "../types/common";
 
@@ -29,6 +32,10 @@ export interface GameSetup {
   playerItems?: GameItem[];
   /** Items placed on the enemy's board (collectible by the player) */
   enemyItems?: GameItem[];
+  /** Obstacles placed on the player's board (indestructible terrain) */
+  playerObstacles?: GameObstacle[];
+  /** Obstacles placed on the enemy's board (indestructible terrain) */
+  enemyObstacles?: GameObstacle[];
   /** Who starts the game */
   initialTurn: GameTurn;
   /** Game configuration used */
@@ -115,8 +122,40 @@ export class GameInitializer implements IGameSetupProvider {
       boardHeight: GAME_CONSTANTS.BOARD.DEFAULT_HEIGHT,
       shipCounts: GAME_CONSTANTS.SHIPS.DEFAULT_COUNTS,
       itemCounts: GAME_CONSTANTS.ITEMS.DEFAULT_COUNTS,
+      obstacleCounts: GAME_CONSTANTS.OBSTACLES.DEFAULT_COUNTS,
       initialTurn: "random",
     };
+  }
+
+  /**
+   * Validate that no item cell overlaps any ship cell on the same board.
+   * @param items - Items to validate
+   * @param ships - Ships already placed on the same board
+   * @param label - Board label used in error messages ("player" or "enemy")
+   * @throws Error if any item overlaps a ship
+   * @private
+   */
+  private validateItems(
+    items: GameItem[],
+    ships: GameShip[],
+    label: string,
+  ): void {
+    const shipCellSet = new Set<string>();
+    for (const ship of ships) {
+      for (const [sx, sy] of getShipCellsFromShip(ship)) {
+        shipCellSet.add(`${sx},${sy}`);
+      }
+    }
+
+    for (const item of items) {
+      for (const [ix, iy] of getItemCells(item)) {
+        if (shipCellSet.has(`${ix},${iy}`)) {
+          throw new Error(
+            `${label} item (id=${item.itemId ?? "?"}) at [${ix},${iy}] overlaps a ship`,
+          );
+        }
+      }
+    }
   }
 
   /**
@@ -161,6 +200,9 @@ export class GameInitializer implements IGameSetupProvider {
       rawEnemyItems,
     );
 
+    const playerObstacles = generateObstacles(this.config, playerShips, playerItems);
+    const enemyObstacles = generateObstacles(this.config, enemyShips, enemyItems);
+
     const initialTurn: GameTurn = this.determineInitialTurn();
 
     return {
@@ -168,6 +210,8 @@ export class GameInitializer implements IGameSetupProvider {
       enemyShips,
       playerItems,
       enemyItems,
+      playerObstacles,
+      enemyObstacles,
       initialTurn,
       config: this.config,
     };
@@ -182,10 +226,22 @@ export class GameInitializer implements IGameSetupProvider {
     const rawEnemyItems =
       setup.enemyItems || generateItems(this.config, enemyShips);
 
+    if (setup.playerItems) {
+      this.validateItems(setup.playerItems, playerShips, "player");
+    }
+    if (setup.enemyItems) {
+      this.validateItems(setup.enemyItems, enemyShips, "enemy");
+    }
+
     const [playerItems, enemyItems] = equalizeItemCounts(
       rawPlayerItems,
       rawEnemyItems,
     );
+
+    const playerObstacles =
+      setup.playerObstacles ?? generateObstacles(this.config, playerShips, playerItems);
+    const enemyObstacles =
+      setup.enemyObstacles ?? generateObstacles(this.config, enemyShips, enemyItems);
 
     const initialTurn: GameTurn = this.determineInitialTurn();
 
@@ -196,6 +252,8 @@ export class GameInitializer implements IGameSetupProvider {
       enemyShips,
       playerItems,
       enemyItems,
+      playerObstacles,
+      enemyObstacles,
     };
   }
 }

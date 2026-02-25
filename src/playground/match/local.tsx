@@ -77,6 +77,8 @@ const LocalMatchPage = ({ selectedPattern, initialSetup }: LocalMatchProps) => {
             enemyShips: initialSetup.playerShips,
             playerItems: initialSetup.enemyItems,
             enemyItems: initialSetup.playerItems,
+            playerObstacles: initialSetup.enemyObstacles,
+            enemyObstacles: initialSetup.playerObstacles,
           }}
           onItemUse={onPlayer2ItemUsed}
         />
