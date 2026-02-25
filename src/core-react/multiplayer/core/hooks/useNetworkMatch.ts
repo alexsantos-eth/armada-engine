@@ -86,9 +86,8 @@ const useNetworkMatch = ({
 
     const initializer = new GameInitializer({
       ...config,
-      initialTurn,
       ruleSet,
-    });
+    }, initialTurn);
 
     const gameSetup = initializer.appendGameSetup({
       playerShips,
