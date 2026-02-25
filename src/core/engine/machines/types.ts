@@ -10,8 +10,9 @@ import type {
   ShotPattern,
   ShotPatternResult,
   Winner,
+  GameObstacle,
 } from "../../types/common";
-import type { GameConfig } from "../../types/config";
+import type { GameConfig, BoardViewConfig } from "../../types/config";
 
 /** Pending plan before the attack is confirmed */
 export interface PendingPlan {
@@ -48,6 +49,14 @@ export interface MatchMachineContext {
   engine: IGameEngine;
   /** Active ruleset that decides turns and game-over conditions */
   ruleSet: MatchRuleSet;
+  /**
+   * Live board-view configuration.
+   * Initialised from `config.boardView`; items can mutate `playerSide` and
+   * `enemySide` at runtime via `ctx.setBoardViewPlayerSide` /
+   * `ctx.setBoardViewEnemySide`.  Width and height are intentionally fixed
+   * (they belong to the game setup, not to item effects).
+   */
+  boardView: BoardViewConfig;
   /** Current turn — owned by the machine, not the engine */
   currentTurn: GameTurn;
   /** Match-level event callbacks owned by the machine */
@@ -144,9 +153,9 @@ export type MatchMachineEvent =
       /** Items placed on the enemy's board (collectible by the player). */
       enemyItems?: GameItem[];
       /** Obstacles placed on the player's board (indestructible terrain). */
-      playerObstacles?: import("../../types/common").GameObstacle[];
+      playerObstacles?: GameObstacle[];
       /** Obstacles placed on the enemy's board (indestructible terrain). */
-      enemyObstacles?: import("../../types/common").GameObstacle[];
+      enemyObstacles?: GameObstacle[];
     }
   /** Plans a shot without executing it */
   | {

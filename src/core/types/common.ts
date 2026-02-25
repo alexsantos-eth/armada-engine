@@ -4,6 +4,30 @@ export type Winner = PlayerName | null;
 export type CellState = "EMPTY" | "SHIP" | "HIT" | "MISS" | "ITEM" | "COLLECTED" | "OBSTACLE";
 
 /**
+ * All renderable data layers that can appear on either side of the board.
+ *
+ * - `playerShips`     – the player's own ships
+ * - `playerItems`     – items placed on the player's board
+ * - `playerObstacles` – obstacles on the player's board
+ * - `enemyShips`      – enemy ships (normally hidden)
+ * - `enemyItems`      – items placed on the enemy's board
+ * - `enemyObstacles`  – obstacles on the enemy's board
+ * - `playerShots`     – shots fired by the player (shown on the enemy board)
+ * - `enemyShots`      – shots fired by the enemy (shown on the player board)
+ * - `collectedItems`  – items that have been fully collected
+ */
+export type BoardLayer =
+  | "playerShips"
+  | "playerItems"
+  | "playerObstacles"
+  | "enemyShips"
+  | "enemyItems"
+  | "enemyObstacles"
+  | "playerShots"
+  | "enemyShots"
+  | "collectedItems";
+
+/**
  * A single cell in a rich board, combining the visual state with the full
  * shot metadata (when the cell has been fired upon).
  */
@@ -86,30 +110,134 @@ export interface ItemActionContext {
   boardWidth: number;
   /** Height of the game board in cells. */
   boardHeight: number;
-  /** Replace the player's ships (takes effect immediately). */
-  setPlayerShips: (ships: GameShip[]) => void;
-  /** Replace the enemy's ships (takes effect immediately). */
-  setEnemyShips: (ships: GameShip[]) => void;
-  /** Replace the player's items (resets hit/collected state for that board). */
-  setPlayerItems: (items: GameItem[]) => void;
-  /** Replace the enemy's items (resets hit/collected state for that board). */
-  setEnemyItems: (items: GameItem[]) => void;
-  /** Replace the player's recorded shots. */
-  setPlayerShots: (shots: Shot[]) => void;
-  /** Replace the enemy's recorded shots. */
-  setEnemyShots: (shots: Shot[]) => void;
-  /** Immediately toggles the active turn (player↔enemy). */
-  toggleTurn: () => void;
   /**
-   * Place a new 1×1 (or custom-sized) ship on the player's board at the first
-   * free position that is neither occupied by an existing ship nor already shot.
+   * Place a new ship on the **player's** board at the first free position
+   * that is neither occupied by an existing ship nor already shot.
    *
    * @param width     Ship width in cells (default 1).
    * @param height    Ship height in cells (default 1).
    * @param preferred Optional preferred top-left corner; tried before scanning.
-   * @returns `true` if the ship was placed, `false` if no free slot was found.
+   * @returns `true` if placed, `false` if no free slot was found.
    */
-  addShip: (width?: number, height?: number, preferred?: [number, number]) => boolean;
+  addPlayerShip: (width?: number, height?: number, preferred?: [number, number]) => boolean;
+  /**
+   * Remove the player ship with the given `shipId`.
+   * @returns `true` if found and removed, `false` if not found.
+   */
+  deletePlayerShip: (shipId: number) => boolean;
+  /** Remove all ships from the player's board. */
+  deleteAllPlayerShips: () => void;
+  /**
+   * Place a new ship on the **enemy's** board at the first free position
+   * that is neither occupied by an existing ship nor already shot.
+   *
+   * @param width     Ship width in cells (default 1).
+   * @param height    Ship height in cells (default 1).
+   * @param preferred Optional preferred top-left corner; tried before scanning.
+   * @returns `true` if placed, `false` if no free slot was found.
+   */
+  addEnemyShip: (width?: number, height?: number, preferred?: [number, number]) => boolean;
+  /**
+   * Remove the enemy ship with the given `shipId`.
+   * @returns `true` if found and removed, `false` if not found.
+   */
+  deleteEnemyShip: (shipId: number) => boolean;
+  /** Remove all ships from the enemy's board. */
+  deleteAllEnemyShips: () => void;
+  /**
+   * Place a new item on the **player's** board at an auto-calculated position
+   * that does not overlap existing ships or items.
+   *
+   * @param template - Source item providing `part`, `templateId`, and optional callbacks.
+   * @returns `true` if placed, `false` if no free slot was found.
+   */
+  addPlayerItem: (template: GameItem) => boolean;
+  /**
+   * Remove the player item with the given `itemId`.
+   * @returns `true` if found and removed, `false` if not found.
+   */
+  deletePlayerItem: (itemId: number) => boolean;
+  /** Remove all items from the player's board. */
+  deleteAllPlayerItems: () => void;
+  /**
+   * Place a new item on the **enemy's** board at an auto-calculated position
+   * that does not overlap existing ships or items.
+   *
+   * @param template - Source item providing `part`, `templateId`, and optional callbacks.
+   * @returns `true` if placed, `false` if no free slot was found.
+   */
+  addEnemyItem: (template: GameItem) => boolean;
+  /**
+   * Remove the enemy item with the given `itemId`.
+   * @returns `true` if found and removed, `false` if not found.
+   */
+  deleteEnemyItem: (itemId: number) => boolean;
+  /** Remove all items from the enemy's board. */
+  deleteAllEnemyItems: () => void;
+  /** Append a shot record to the player's shot history. */
+  addPlayerShot: (shot: Shot) => void;
+  /**
+   * Remove the player shot at the given coordinates.
+   * @returns `true` if found and removed, `false` if not found.
+   */
+  deletePlayerShot: (x: number, y: number) => boolean;
+  /** Remove all shots from the player's shot history. */
+  deleteAllPlayerShots: () => void;
+  /** Append a shot record to the enemy's shot history. */
+  addEnemyShot: (shot: Shot) => void;
+  /**
+   * Remove the enemy shot at the given coordinates.
+   * @returns `true` if found and removed, `false` if not found.
+   */
+  deleteEnemyShot: (x: number, y: number) => boolean;
+  /** Remove all shots from the enemy's shot history. */
+  deleteAllEnemyShots: () => void;
+  /** Player obstacles at the moment of the event. */
+  playerObstacles: GameObstacle[];
+  /** Enemy obstacles at the moment of the event. */
+  enemyObstacles: GameObstacle[];
+  /**
+   * Place a new obstacle on the **player's** board at an auto-calculated position
+   * that does not overlap existing ships, items, or obstacles.
+   *
+   * @param template - Source obstacle providing `width` and `height`.
+   * @returns `true` if placed, `false` if no free slot was found.
+   */
+  addPlayerObstacle: (template: GameObstacle) => boolean;
+  /**
+   * Remove the player obstacle with the given `obstacleId`.
+   * @returns `true` if found and removed, `false` if not found.
+   */
+  deletePlayerObstacle: (obstacleId: number) => boolean;
+  /** Remove all obstacles from the player's board. */
+  deleteAllPlayerObstacles: () => void;
+  /**
+   * Place a new obstacle on the **enemy's** board at an auto-calculated position
+   * that does not overlap existing ships, items, or obstacles.
+   *
+   * @param template - Source obstacle providing `width` and `height`.
+   * @returns `true` if placed, `false` if no free slot was found.
+   */
+  addEnemyObstacle: (template: GameObstacle) => boolean;
+  /**
+   * Remove the enemy obstacle with the given `obstacleId`.
+   * @returns `true` if found and removed, `false` if not found.
+   */
+  deleteEnemyObstacle: (obstacleId: number) => boolean;
+  /** Remove all obstacles from the enemy's board. */
+  deleteAllEnemyObstacles: () => void;
+  /**
+   * Replace the **player-side** layer list in the current board view.
+   * Only the visible layers change — width and height are left untouched.
+   */
+  setBoardViewPlayerSide: (layers: BoardLayer[]) => void;
+  /**
+   * Replace the **enemy-side** layer list in the current board view.
+   * Only the visible layers change — width and height are left untouched.
+   */
+  setBoardViewEnemySide: (layers: BoardLayer[]) => void;
+  /** Immediately toggles the active turn (player↔enemy). */
+  toggleTurn: () => void;
   /**
    * Swap the active ruleset.
    * Typed as `unknown` to avoid a circular import from the engine layer.

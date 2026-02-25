@@ -1,28 +1,6 @@
 import type { MatchRuleSet } from "../engine";
-
-/**
- * All renderable data layers that can appear on either side of the board.
- *
- * - `playerShips`     – the player's own ships
- * - `playerItems`     – items placed on the player's board
- * - `playerObstacles` – obstacles on the player's board
- * - `enemyShips`      – enemy ships (normally hidden)
- * - `enemyItems`      – items placed on the enemy's board
- * - `enemyObstacles`  – obstacles on the enemy's board
- * - `playerShots`     – shots fired by the player (shown on the enemy board)
- * - `enemyShots`      – shots fired by the enemy (shown on the player board)
- * - `collectedItems`  – items that have been fully collected
- */
-export type BoardLayer =
-  | "playerShips"
-  | "playerItems"
-  | "playerObstacles"
-  | "enemyShips"
-  | "enemyItems"
-  | "enemyObstacles"
-  | "playerShots"
-  | "enemyShots"
-  | "collectedItems";
+import type { BoardLayer } from "./common";
+export type { BoardLayer } from "./common";
 
 /**
  * Visual / display configuration for the game board.

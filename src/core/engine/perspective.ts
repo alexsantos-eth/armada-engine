@@ -1,6 +1,6 @@
 import type { IGameEngine } from "./logic";
 import type { GameEngineState } from "./logic";
-import type { GameShip, GameItem, Shot } from "../types/common";
+import type { GameShip, GameItem, Shot, GameObstacle } from "../types/common";
 
 /**
  * A unified, perspective-aware view of a single game snapshot.
@@ -22,6 +22,8 @@ export interface SidePerspective {
   opponentCollectedItems: number[];
   ownShots: Shot[];
   opponentShots: Shot[];
+  ownObstacles: GameObstacle[];
+  opponentObstacles: GameObstacle[];
 
   setOwnShips: (ships: GameShip[]) => void;
   setOpponentShips: (ships: GameShip[]) => void;
@@ -29,6 +31,8 @@ export interface SidePerspective {
   setOpponentItems: (items: GameItem[]) => void;
   setOwnShots: (shots: Shot[]) => void;
   setOpponentShots: (shots: Shot[]) => void;
+  setOwnObstacles: (obstacles: GameObstacle[]) => void;
+  setOpponentObstacles: (obstacles: GameObstacle[]) => void;
 }
 
 /**
@@ -57,6 +61,8 @@ export function resolvePerspective(
       opponentCollectedItems: state.playerCollectedItems,
       ownShots: state.enemyShots,
       opponentShots: state.playerShots,
+      ownObstacles: state.enemyObstacles ?? [],
+      opponentObstacles: state.playerObstacles ?? [],
 
       setOwnShips: (ships) => engine.setEnemyShips(ships),
       setOpponentShips: (ships) => engine.setPlayerShips(ships),
@@ -64,6 +70,8 @@ export function resolvePerspective(
       setOpponentItems: (items) => engine.setPlayerItems(items),
       setOwnShots: (shots) => engine.setEnemyShots(shots),
       setOpponentShots: (shots) => engine.setPlayerShots(shots),
+      setOwnObstacles: (obstacles) => engine.setEnemyObstacles(obstacles),
+      setOpponentObstacles: (obstacles) => engine.setPlayerObstacles(obstacles),
     };
   }
 
@@ -76,6 +84,8 @@ export function resolvePerspective(
     opponentCollectedItems: state.enemyCollectedItems,
     ownShots: state.playerShots,
     opponentShots: state.enemyShots,
+    ownObstacles: state.playerObstacles ?? [],
+    opponentObstacles: state.enemyObstacles ?? [],
 
     setOwnShips: (ships) => engine.setPlayerShips(ships),
     setOpponentShips: (ships) => engine.setEnemyShips(ships),
@@ -83,5 +93,7 @@ export function resolvePerspective(
     setOpponentItems: (items) => engine.setEnemyItems(items),
     setOwnShots: (shots) => engine.setPlayerShots(shots),
     setOpponentShots: (shots) => engine.setEnemyShots(shots),
+    setOwnObstacles: (obstacles) => engine.setPlayerObstacles(obstacles),
+    setOpponentObstacles: (obstacles) => engine.setEnemyObstacles(obstacles),
   };
 }

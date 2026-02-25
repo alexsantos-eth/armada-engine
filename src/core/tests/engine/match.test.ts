@@ -1180,7 +1180,7 @@ describe('Match', () => {
       expect(receivedCtx!.enemyShips).toHaveLength(2);
       expect(typeof receivedCtx!.setRuleSet).toBe('function');
       expect(typeof receivedCtx!.toggleTurn).toBe('function');
-      expect(typeof receivedCtx!.setEnemyShips).toBe('function');
+      expect(typeof receivedCtx!.deleteEnemyShip).toBe('function');
     });
 
     it('onCollect — setRuleSet applies to the SAME turn cycle (key timing test)', () => {
@@ -1255,13 +1255,14 @@ describe('Match', () => {
       expect(m.getCurrentTurn()).toBe('PLAYER_TURN');
     });
 
-    it('onCollect — setEnemyShips replaces enemy ships immediately', () => {
+    it('onCollect — deleteEnemyShip removes an enemy ship immediately', () => {
       const item: GameItem = {
         coords: [3, 3],
         part: 1,
         onCollect(ctx) {
-          // Keep only one enemy ship
-          ctx.setEnemyShips([ctx.enemyShips[0]]);
+          // Remove the last enemy ship
+          const last = ctx.enemyShips[ctx.enemyShips.length - 1];
+          ctx.deleteEnemyShip(last.shipId ?? ctx.enemyShips.length - 1);
         },
       };
       const m = makeItemMatch(item);
@@ -1272,11 +1273,11 @@ describe('Match', () => {
       expect(m.getState().enemyShips).toHaveLength(1);
     });
 
-    it('onCollect — setEnemyItems clears remaining items from the board', () => {
+    it('onCollect — deleteAllEnemyItems clears remaining items from the board', () => {
       const item0: GameItem = {
         coords: [3, 3],
         part: 1,
-        onCollect(ctx) { ctx.setEnemyItems([]); },
+        onCollect(ctx) { ctx.deleteAllEnemyItems(); },
       };
       const item1: GameItem = { coords: [4, 4], part: 1 };
       const m = new Match({
@@ -1395,12 +1396,13 @@ describe('Match', () => {
       expect(m.getCurrentTurn()).toBe('ENEMY_TURN');
     });
 
-    it('useItem() — setEnemyShips inside onUse replaces ships immediately', () => {
+    it('useItem() — deleteEnemyShip inside onUse removes a ship immediately', () => {
       const item: GameItem = {
         coords: [3, 3],
         part: 1,
         onUse(ctx) {
-          ctx.setEnemyShips([ctx.enemyShips[0]]);
+          const last = ctx.enemyShips[ctx.enemyShips.length - 1];
+          ctx.deleteEnemyShip(last.shipId ?? ctx.enemyShips.length - 1);
         },
       };
       const m = makeItemMatch(item);

@@ -20,6 +20,7 @@ import type {
 } from "../types/common";
 
 import type { MatchCallbacks } from "./machines/types";
+import type { BoardViewConfig } from "../types/config";
 export type { MatchCallbacks };
 export type { MatchState };
 
@@ -373,6 +374,14 @@ export class Match {
   }
 
   /**
+   * Returns the current board-view configuration (live value — reflects
+   * any runtime changes made by item handlers).
+   */
+  public getBoardView(): BoardViewConfig {
+    return this.snap.context.boardView;
+  }
+
+  /**
    * Returns `true` if all ships on the given side have been destroyed.
    * Pass `true` for the player's fleet, `false` for the enemy's fleet.
    */
@@ -418,7 +427,7 @@ export class Match {
    * the renderer, not in the engine or the Match facade.
    */
   public getPlayerBoard(): Board {
-    return buildPlayerBoard(this.engine.getState(), this.setup?.config.boardView);
+    return buildPlayerBoard(this.engine.getState(), this.snap.context.boardView);
   }
 
   /**
@@ -428,7 +437,7 @@ export class Match {
    * Delegates to {@link buildEnemyBoard}.
    */
   public getEnemyBoard(): Board {
-    return buildEnemyBoard(this.engine.getState(), this.setup?.config.boardView);
+    return buildEnemyBoard(this.engine.getState(), this.snap.context.boardView);
   }
 }
 
@@ -514,6 +523,7 @@ export interface MatchQueryAPI {
   getCellInfo(x: number, y: number, perspective: "player" | "enemy"): CellInfo;
   areAllShipsDestroyed(isPlayerShips: boolean): boolean;
   getBoardDimensions(): { width: number; height: number };
+  getBoardView(): BoardViewConfig;
   getPlayerBoard(): Board;
   getEnemyBoard(): Board;
 
