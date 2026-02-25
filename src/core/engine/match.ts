@@ -17,6 +17,7 @@ import type {
   ShotPatternResult,
   Shot,
   ItemActionContext,
+  ShipActionContext,
 } from "../types/common";
 
 import type { MatchCallbacks } from "./machines/types";
@@ -486,6 +487,29 @@ export function createMatch(opts: NewMatch = {}): Match {
  * ```
  */
 export type MatchItemActionContext = ItemActionContext;
+
+/**
+ * Fully-typed alias for the context passed to ship `onDestroy` handlers.
+ * Identical to {@link ShipActionContext}.
+ *
+ * Import this type in your ship definitions when you need full type safety
+ * for `ctx.setRuleSet`:
+ *
+ * ```typescript
+ * import type { MatchShipActionContext } from '../engine/match';
+ * import { AlternatingTurnsRuleSet } from '../engine/rulesets';
+ *
+ * const myShip: GameShip = {
+ *   coords: [0, 0],
+ *   width: 2,
+ *   height: 1,
+ *   onDestroy(ctx: MatchShipActionContext) {
+ *     ctx.setRuleSet(AlternatingTurnsRuleSet);
+ *   },
+ * };
+ * ```
+ */
+export type MatchShipActionContext = ShipActionContext;
 
 /**
  * Read-only contract for observers and consumers that need to query a match

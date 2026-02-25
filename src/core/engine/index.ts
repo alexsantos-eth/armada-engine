@@ -15,6 +15,7 @@ export type {
   MatchCallbacks,
   PlanShotResult,
   MatchItemActionContext,
+  MatchShipActionContext,
   MatchQueryAPI,
 } from "./match";
 

@@ -6,6 +6,7 @@ import type {
   GameObstacle,
   GameShip,
   ItemActionContext,
+  ShipActionContext,
   Shot,
   BoardLayer,
 } from "../types/common";
@@ -325,4 +326,40 @@ export function buildUseContext(
     captureBoardViewPlayerSide,
     captureBoardViewEnemySide,
   );
+}
+
+/**
+ * Builds a `ShipActionContext` for the `onDestroy` handler.
+ *
+ * Perspective is always the **shooter's** — `ctx.playerShips` refers to the
+ * side that fired the killing shot, `ctx.enemyShips` refers to the opponent.
+ * The killing `shot` is included in the context.
+ *
+ * @param captureRuleSet - Called when the handler invokes `ctx.setRuleSet()`.
+ */
+export function buildDestroyContext(
+  engine: IGameEngine,
+  ship: GameShip,
+  isPlayerShot: boolean,
+  shot: Shot,
+  currentTurn: GameTurn,
+  onToggleTurn: () => void,
+  captureRuleSet?: (rs: unknown) => void,
+  captureBoardViewPlayerSide?: (layers: BoardLayer[]) => void,
+  captureBoardViewEnemySide?: (layers: BoardLayer[]) => void,
+): ShipActionContext {
+  const dummyItem: GameItem = { coords: ship.coords, part: 1 };
+  const { item: _item, ...rest } = buildContext(
+    engine,
+    dummyItem,
+    isPlayerShot,
+    shot,
+    true,
+    currentTurn,
+    onToggleTurn,
+    captureRuleSet,
+    captureBoardViewPlayerSide,
+    captureBoardViewEnemySide,
+  );
+  return { ...rest, ship };
 }

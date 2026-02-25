@@ -247,6 +247,24 @@ export interface ItemActionContext {
 }
 
 /**
+ * Context passed to ship event handlers (`onDestroy`).
+ * Identical to {@link ItemActionContext} except it carries the destroyed
+ * `ship` instead of an `item`, reflecting which ship triggered the event.
+ *
+ * `setRuleSet` is typed as `unknown` here to avoid a circular dependency
+ * with the engine layer. Import and cast to `MatchRuleSet` in your handler:
+ *
+ * ```typescript
+ * import type { MatchShipActionContext } from '../engine/match';
+ * // MatchShipActionContext extends ShipActionContext with setRuleSet: (ruleSet: MatchRuleSet) => void
+ * ```
+ */
+export type ShipActionContext = Omit<ItemActionContext, 'item'> & {
+  /** The ship that was fully destroyed, triggering this event. */
+  ship: GameShip;
+};
+
+/**
  * A collectible item placed on the board.
  * It occupies `part` cells in a horizontal row starting at `coords`.
  * When all cells are shot, the item is fully collected.
@@ -302,6 +320,17 @@ export interface GameShip {
   /** Number of rows occupied (≥ 1). */
   height: number;
   shipId?: number;
+  /**
+   * Called once when this ship is fully destroyed (all cells hit).
+   * Use this to apply immediate effects (repeat the turn, alter ships, change ruleset…).
+   *
+   * The context perspective is the **shooter's**: `ctx.playerShips` refers to
+   * the side that fired the killing shot, `ctx.enemyShips` is the opponent.
+   *
+   * For full type safety on `ctx.setRuleSet`, use `MatchShipActionContext`
+   * from `src/core/engine/match` in your handler implementation.
+   */
+  onDestroy?: (ctx: ShipActionContext) => void;
 }
 
 export interface Shot {

@@ -184,6 +184,7 @@ export function generateShip(
       width,
       height,
       shipId: existingShips.length,
+      onDestroy: template.onDestroy,
     };
 
     if (isValidShipPlacement(ship, existingShips, boardWidth, boardHeight)) {

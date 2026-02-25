@@ -46,6 +46,10 @@ export const MEDIUM_SHIP: ShipTemplate = {
   width: 3,
   height: 1,
   defaultCount: 2,
+  onDestroy: (ctx) => {
+    console.log("Medium ship destroyed! Triggering explosion...");
+    ctx.deleteAllEnemyObstacles()
+  }
 };
 
 /**
@@ -122,5 +126,6 @@ export function createShip(
     width: template.width,
     height: template.height,
     shipId,
+    onDestroy: template.onDestroy,
   };
 }

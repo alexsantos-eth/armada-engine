@@ -4,7 +4,7 @@ import { DefaultRuleSet } from "../rulesets";
 import { SINGLE_SHOT } from "../../constants/shots";
 import { StandardBoardView } from "../../constants/views";
 import { PlanError } from "../errors";
-import { buildCollectContext, buildUseContext } from "../item";
+import { buildCollectContext, buildUseContext, buildDestroyContext } from "../item";
 import { fireMatchCallbacks } from "./callbacks";
 import type { BoardLayer, GameTurn } from "../../types/common";
 import type { BoardViewConfig } from "../../types/config";
@@ -184,6 +184,70 @@ export const matchMachine = setup({
       return {
         collectToggleCount,
         pendingRuleSet: capturedRuleSet as typeof context.ruleSet | null,
+        boardView: updatedBoardView,
+      };
+    }),
+
+    /**
+     * Step 1c of the turn cycle: invoke `onDestroy` for every ship that was
+     * fully destroyed by the preceding attack.
+     *
+     * Runs after `runCollectHandlers` so collect-phase toggles are already
+     * reflected in `context.collectToggleCount` and `context.boardView`.
+     *
+     * Responsibilities (only these):
+     * 1. Run each destroyed ship's `onDestroy` handler.
+     * 2. Accumulate additional `collectToggleCount` from handlers that called
+     *    `ctx.toggleTurn()`, summing with the collect-phase count.
+     * 3. Capture any pending ruleset change from `ctx.setRuleSet()`,
+     *    overriding any already captured by `runCollectHandlers`.
+     *
+     * Turn mutation and all callbacks belong to `resolveTurn` (step 2).
+     */
+    runDestroyHandlers: assign(({ context }) => {
+      if (!context.lastAttackResult || context.lastAttackIsPlayerShot === null) return {};
+
+      const isPlayerShot = context.lastAttackIsPlayerShot;
+
+      let capturedRuleSet: unknown = null;
+      let destroyToggleCount = 0;
+      let capturedPlayerSide: BoardLayer[] | null = null;
+      let capturedEnemySide: BoardLayer[] | null = null;
+
+      for (const shot of context.lastAttackResult.shots) {
+        if (shot.shipDestroyed && shot.shipId !== undefined) {
+          const engineState = context.engine.getState();
+          const ships = isPlayerShot ? engineState.enemyShips : engineState.playerShips;
+          const ship = ships.find((s) => s.shipId === shot.shipId);
+          if (ship?.onDestroy) {
+            const ctx = buildDestroyContext(
+              context.engine,
+              ship,
+              isPlayerShot,
+              shot,
+              context.currentTurn,
+              () => { destroyToggleCount++; },
+              (rs) => { capturedRuleSet = rs; },
+              (layers) => { capturedPlayerSide = layers; },
+              (layers) => { capturedEnemySide = layers; },
+            );
+            ship.onDestroy(ctx);
+          }
+        }
+      }
+
+      const updatedBoardView =
+        capturedPlayerSide !== null || capturedEnemySide !== null
+          ? {
+              ...context.boardView,
+              ...(capturedPlayerSide !== null ? { playerSide: capturedPlayerSide } : {}),
+              ...(capturedEnemySide !== null ? { enemySide: capturedEnemySide } : {}),
+            }
+          : context.boardView;
+
+      return {
+        collectToggleCount: context.collectToggleCount + destroyToggleCount,
+        ...(capturedRuleSet !== null ? { pendingRuleSet: capturedRuleSet as typeof context.ruleSet } : {}),
         boardView: updatedBoardView,
       };
     }),
@@ -625,13 +689,14 @@ export const matchMachine = setup({
         },
 
         /**
-         * attacking — transient state (steps 1a + 1b).
-         * On entry, fires the shot pattern in the engine (executeAttack) and
-         * then runs item onCollect lifecycle handlers (runCollectHandlers),
+         * attacking — transient state (steps 1a + 1b + 1c).
+         * On entry, fires the shot pattern in the engine (executeAttack),
+         * runs item onCollect lifecycle handlers (runCollectHandlers),
+         * then runs ship onDestroy lifecycle handlers (runDestroyHandlers),
          * before immediately advancing to resolvingTurn.
          */
         attacking: {
-          entry: ["executeAttack", "runCollectHandlers"],
+          entry: ["executeAttack", "runCollectHandlers", "runDestroyHandlers"],
           always: [{ target: "resolvingTurn" }],
         },
 
