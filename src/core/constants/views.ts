@@ -20,7 +20,7 @@ export const StandardBoardView: BoardViewConfig = {
   width: BOARD_DEFAULT_WIDTH,
   height: BOARD_DEFAULT_HEIGHT,
   playerSide: ["playerShips", "playerObstacles", "enemyShots"],
-  enemySide: ["playerShots", "collectedItems"],
+  enemySide: ["enemyItems", "enemyObstacles", "playerShots", "collectedItems"],
 };
 
 /**

@@ -115,8 +115,18 @@ Two pure functions that convert a `GameEngineState` snapshot into a 2-D `Board` 
 
 | Function | Purpose |
 |---|---|
-| `buildPlayerBoard(state)` | Player's own board — ships visible, enemy shots marked HIT/MISS |
-| `buildEnemyBoard(state)` | Enemy board the player attacks — ships hidden, items and player shots shown |
+| `buildPlayerBoard(state, view?)` | Player's own board — ships visible, enemy shots marked HIT/MISS |
+| `buildEnemyBoard(state, view?)` | Enemy board the player attacks — ships hidden, enemy items and obstacles visible, player shots marked HIT/MISS/COLLECTED |
+
+Both functions accept an optional `BoardViewConfig` (e.g. `withView({ width: 10, height: 10 }, StandardBoardView)`).
+When omitted they fall back to `DefaultBoardView` for layer visibility and to `state.boardWidth`/`state.boardHeight` for dimensions.
+
+**`StandardBoardView` layers**
+
+| Side | Layers |
+|---|---|
+| `playerSide` | `playerShips`, `playerObstacles`, `enemyShots` |
+| `enemySide` | `enemyItems`, `enemyObstacles`, `playerShots`, `collectedItems` |
 
 ---
 
@@ -340,7 +350,11 @@ Generates a ready-to-use `GameSetup` from a `Partial<GameConfig>`. Handles:
 - Random first-turn selection when `initialTurn === "random"`
 
 ```typescript
-const setup = new GameInitializer({ boardWidth: 10, boardHeight: 10 }).getGameSetup();
+import { withView, StandardBoardView } from "./src/core/constants/views";
+
+const setup = new GameInitializer({
+  boardView: withView({ width: 10, height: 10 }, StandardBoardView),
+}).getGameSetup();
 // → { playerShips, enemyShips, playerItems, enemyItems, initialTurn, config }
 ```
 

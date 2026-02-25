@@ -18,46 +18,52 @@ This guide answers **one question per topic**: _"I want to change X — what do 
 
 ### What controls the board?
 
-| Constant / Config                   | File                         | Default      |
-| ----------------------------------- | ---------------------------- | ------------ |
-| `BOARD.DEFAULT_WIDTH`               | `src/core/constants/game.ts` | `5`          |
-| `BOARD.DEFAULT_HEIGHT`              | `src/core/constants/game.ts` | `5`          |
-| `BOARD.MIN_SIZE`                    | `src/core/constants/game.ts` | `3`          |
-| `BOARD.MAX_SIZE`                    | `src/core/constants/game.ts` | `30`         |
-| `GameConfig.boardWidth/boardHeight` | `src/core/types/config.ts`   | (from above) |
+| Constant / Config                   | File                              | Default            |
+| ----------------------------------- | --------------------------------- | ------------------ |
+| `BOARD_DEFAULT_WIDTH`               | `src/core/constants/views.ts`     | `5`                |
+| `BOARD_DEFAULT_HEIGHT`              | `src/core/constants/views.ts`     | `5`                |
+| `BOARD.MIN_SIZE`                    | `src/core/constants/game.ts`      | `3`                |
+| `BOARD.MAX_SIZE`                    | `src/core/constants/game.ts`      | `30`               |
+| `GameConfig.boardView.width/height` | `src/core/types/config.ts`        | (from `views.ts`)  |
 
-`GameEngine` reads `boardWidth` and `boardHeight` from the `GameConfig` passed to its constructor. If they are omitted, it falls back to `GAME_CONSTANTS.BOARD.DEFAULT_WIDTH/HEIGHT`.
+Board dimensions are carried inside a `BoardViewConfig` (the `width` and `height` fields).
+Use `withView({ width, height }, StandardBoardView)` to create a config that overrides only the dimensions while keeping the default layer visibility.
 
 ### Changing the default board size
 
-Edit `src/core/constants/game.ts`:
+Edit `src/core/constants/views.ts`:
 
 ```typescript
-BOARD: {
-  DEFAULT_WIDTH: 10,   // ← change here
-  DEFAULT_HEIGHT: 10,  // ← change here
-  MIN_SIZE: 3,
-  MAX_SIZE: 30,
-},
+export const BOARD_DEFAULT_WIDTH  = 10;  // ← change here
+export const BOARD_DEFAULT_HEIGHT = 10;  // ← change here
 ```
 
-No other file needs to change — every consumer that omits `boardWidth`/`boardHeight` will pick up the new defaults automatically.
+All preset views (`StandardBoardView`, `FogOfWarBoardView`, etc.) read these constants, so
+every consumer that does not override dimensions will pick up the new defaults automatically.
 
 ### Changing the board size per match (runtime)
 
-Pass dimensions explicitly when constructing a match:
+Pass a `boardView` created with `withView` when constructing a match through `GameInitializer`:
 
 ```typescript
-// createMatch() is the recommended entry point — it injects
-// GameInitializer as the default setup provider when no setup is provided.
 import { createMatch } from "./src/core/engine";
+import { withView, StandardBoardView } from "./src/core/constants/views";
 
+// Via GameInitializer (recommended — ships are auto-generated for the given size)
+const match = createMatch({
+  setupProvider: new GameInitializer({
+    boardView: withView({ width: 10, height: 10 }, StandardBoardView),
+  }),
+  ...callbacks,
+});
+
+// Via explicit setup (manual ship placement)
 const match = createMatch({
   setup: {
     playerShips,
     enemyShips,
     initialTurn: "PLAYER_TURN",
-    config: { boardWidth: 10, boardHeight: 10 },
+    config: { boardView: withView({ width: 10, height: 10 }, StandardBoardView) },
   },
   ...callbacks,
 });
@@ -69,16 +75,16 @@ const match = createMatch({
 
 ```mermaid
 flowchart TD
-    A["Match constructor\n{ boardWidth, boardHeight }"]
-    A -->|"falls back to"| B["GAME_CONSTANTS.BOARD\nDEFAULT_WIDTH / DEFAULT_HEIGHT"]
-    A --> C["GameEngine\nthis.boardWidth\nthis.boardHeight"]
+    A["GameInitializer\n{ boardView: withView({width,height}) }"]
+    A -->|"falls back to"| B["BOARD_DEFAULT_WIDTH / BOARD_DEFAULT_HEIGHT\n(src/core/constants/views.ts)"]
+    A --> C["GameEngine\nthis.boardWidth / this.boardHeight"]
     C --> D["isValidPosition(x,y)\nbounds check on every shot"]
     C --> E["GameInitializer\nship placement validation"]
 ```
 
 ### Rules enforced by the engine
 
-- Cells outside `[0, boardWidth-1] × [0, boardHeight-1]` are silently **skipped** (not errors) when a multi-cell shot pattern fires. The individual `shot.executed` flag will be `false` for those cells.
+- Cells outside `[0, boardView.width-1] × [0, boardView.height-1]` are silently **skipped** (not errors) when a multi-cell shot pattern fires. The individual `shot.executed` flag will be `false` for those cells.
 - `isValidPosition(x, y)` is a public method on `GameEngine` — call it before planning a shot to surface the error early.
 
 ---
@@ -176,21 +182,22 @@ Pass a `shipCounts` map when initializing a match through `GameInitializer`:
 ```typescript
 // src/core/types/config.ts
 export interface GameConfig {
-  boardWidth: number;
-  boardHeight: number;
+  boardView: BoardViewConfig; // carries width, height and layer visibility
   shipCounts: Record<string, number>; // key = variant name, value = count
-  initialTurn: PlayerName | "random";
+  itemCounts: Record<string, number>;
+  obstacleCounts: Record<string, number>;
+  ruleSet?: MatchRuleSet;
 }
 ```
 
 ```typescript
+import { withView, StandardBoardView } from "./src/core/constants/views";
+
 // Use different counts for this game only
-const config: GameConfig = {
-  boardWidth: 10,
-  boardHeight: 10,
+const initializer = new GameInitializer({
+  boardView: withView({ width: 10, height: 10 }, StandardBoardView),
   shipCounts: { small: 3, medium: 1, large: 0, xlarge: 1 },
-  initialTurn: "PLAYER_TURN",
-};
+});
 ```
 
 ---

@@ -30,7 +30,7 @@ describe('GameInitializer', () => {
     });
 
     it('should merge custom config with defaults', () => {
-      const initializer = new GameInitializer({ boardView: withView({ width: 12, height: 10 }, StandardBoardView) });
+      const initializer = new GameInitializer({ boardView: withView({ width: 12 }, StandardBoardView) });
       const setup = initializer.getGameSetup();
       
       expect(setup.config.boardView?.width).toBe(12);
