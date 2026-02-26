@@ -14,7 +14,7 @@ export interface RoomPlayer {
   joinedAt: number;
   isReady: boolean;
 }
-export type MatchRuleSetName = "ClassicRuleSet" | "AlternatingTurnsRuleSet";
+export type MatchRuleSetName = "classic" | "alternating-turns";
 
 export interface GameRoom {
   id: string;

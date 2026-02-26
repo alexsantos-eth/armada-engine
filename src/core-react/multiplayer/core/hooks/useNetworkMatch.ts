@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   GameInitializer,
   Match,
-  getRuleSetByName,
   type GameConfig,
   type MatchState,
   type MatchCallbacks,
@@ -16,6 +15,7 @@ import { ITEM_TEMPLATES } from "../../../../core/constants/items";
 
 import type { GameRoom } from "../types/game/room";
 import { roomService } from "../services/room/realtime";
+import { DEFAULT_RULESET, getRuleSetById } from "../../../../core/constants";
 
 export interface UseNetworkMatchProps extends Partial<MatchCallbacks> {
   room: GameRoom | null;
@@ -56,7 +56,7 @@ const useNetworkMatch = ({
     if (!room || !room.initialState) return;
 
     const config: Partial<GameConfig> = room.gameConfig || {};
-    const ruleSetName = room.ruleSet || "ClassicRuleSet";
+    const ruleSetName = room.ruleSet || DEFAULT_RULESET.id!;
 
     const playerShips =
       playerRole === "host"
@@ -78,7 +78,7 @@ const useNetworkMatch = ({
         ? room.initialState.enemyItems || []
         : room.initialState.playerItems || [];
 
-    const ruleSet = getRuleSetByName(ruleSetName);
+    const ruleSet = getRuleSetById(ruleSetName);
     const initialTurn = room.initialTurn === playerRole ? "player" : "enemy";
 
     const initializer = new GameInitializer({

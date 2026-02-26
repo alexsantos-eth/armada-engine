@@ -13,11 +13,8 @@ import {
   type Shot,
   type GameSetup,
   type GameItem,
-  DefaultRuleSet,
 } from "../../../../../core/engine";
-import {
-  DefaultBoardView,
-} from "../../../../../core/constants/views";
+import { DEFAULT_BOARD_VIEW, DEFAULT_RULESET } from "../../../../../core/constants";
 
 export class RoomService {
   private static instance: RoomService;
@@ -74,7 +71,7 @@ export class RoomService {
     const gameInitializer = new GameInitializer();
     const setup = initialSetup ?? gameInitializer.getGameSetup();
     const initialTurn = setup.initialTurn === "PLAYER_TURN" ? "host" : "guest";
-    const ruleSetName = setup.config.ruleSet?.title || DefaultRuleSet.title;
+    const ruleSetName = setup.config.ruleSet?.title || DEFAULT_RULESET.title;
 
     const room: GameRoom = {
       id: roomId,
@@ -84,7 +81,7 @@ export class RoomService {
       currentTurn: initialTurn,
       ruleSet: ruleSetName as MatchRuleSetName,
       gameConfig: {
-        boardView: setup.config.boardView || DefaultBoardView,
+        boardView: setup.config.boardView || DEFAULT_BOARD_VIEW,
         shipCounts:
           setup.config.shipCounts ?? GAME_CONSTANTS.SHIPS.DEFAULT_COUNTS,
         itemCounts:

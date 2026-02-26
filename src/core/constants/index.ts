@@ -4,3 +4,4 @@ export * from "./items";
 export * from "./ships";
 export * from "./obstacles";
 export * from "./views";
+export * from "./rulesets";

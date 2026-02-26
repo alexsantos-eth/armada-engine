@@ -22,8 +22,6 @@ export type {
 export {
   ClassicRuleSet,
   AlternatingTurnsRuleSet,
-  DefaultRuleSet,
-  getRuleSetByName,
 } from "../constants/rulesets";
 export type { MatchRuleSet, TurnDecision, GameOverDecision } from "../constants/rulesets";
 

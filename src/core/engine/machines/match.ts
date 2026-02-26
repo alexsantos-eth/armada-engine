@@ -1,6 +1,5 @@
 import { setup, assign, createActor } from "xstate";
 import { GameEngine } from "../logic";
-import { DefaultRuleSet } from "../../constants/rulesets";
 import { StandardBoardView } from "../../constants/views";
 
 import {
@@ -18,6 +17,7 @@ import type {
   MatchMachineInput,
 } from "./types";
 import { PlanError } from "../../types";
+import { DEFAULT_RULESET } from "../../constants";
 
 export const matchMachine = setup({
   types: {} as {
@@ -539,7 +539,7 @@ export const matchMachine = setup({
     return {
       engine,
       callbacks,
-      ruleSet: input?.ruleSet ?? DefaultRuleSet,
+      ruleSet: input?.ruleSet ?? DEFAULT_RULESET,
       boardView: (input?.config?.boardView ??
         StandardBoardView) as BoardViewConfig,
       currentTurn: "PLAYER_TURN" as GameTurn,

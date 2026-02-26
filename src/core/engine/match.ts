@@ -6,7 +6,7 @@ import { type MatchState, toMatchState } from "./logic";
 import { buildPlayerBoard, buildEnemyBoard } from "./board";
 import { matchMachine } from "./machines/match";
 import type { MatchMachineSnapshot } from "./machines/match";
-import { DefaultRuleSet, type MatchRuleSet } from "../constants/rulesets";
+import { DEFAULT_RULESET, type MatchRuleSet } from "../constants/rulesets";
 
 import type { Winner, GameTurn } from "../types/game";
 import type { Board } from "../types/board";
@@ -57,7 +57,7 @@ export class Match implements IMatch {
       );
     }
 
-    const ruleSet = this.setup?.config.ruleSet ?? DefaultRuleSet;
+    const ruleSet = this.setup?.config.ruleSet ?? DEFAULT_RULESET;
 
     this.actor = createActor(matchMachine, {
       input: { config: this.setup?.config, ruleSet, callbacks },

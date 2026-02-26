@@ -945,12 +945,12 @@ describe('Match', () => {
     it('should get current ruleset', () => {
       const ruleSet = match.getRuleSet();
       expect(ruleSet).toBeDefined();
-      expect(ruleSet.title).toBe('LoseTurnOnUseRuleSet');
+      expect(ruleSet.title).toBe('ClassicRuleSet');
     });
 
     it('should allow changing ruleset during match', () => {
       const initialRuleSet = match.getRuleSet();
-      expect(initialRuleSet.title).toBe('LoseTurnOnUseRuleSet');
+      expect(initialRuleSet.title).toBe('ClassicRuleSet');
 
       // Classic: hit allows shooting again
       const hit1 = match.planAndAttack(7, 7, true);
@@ -1197,7 +1197,7 @@ describe('Match', () => {
       const m = makeItemMatch(item);
       m.initializeMatch();
 
-      expect(m.getRuleSet().title).toBe('LoseTurnOnUseRuleSet');
+      expect(m.getRuleSet().title).toBe('ClassicRuleSet');
 
       const result = m.planAndAttack(3, 3, true);
 

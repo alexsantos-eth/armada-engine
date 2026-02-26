@@ -4,6 +4,7 @@ export type {
   GameOverDecision,
   MatchRuleSet,
 } from "../types/rulesets";
+import { createEntitySet } from "../tools/constants";
 import type {
   ItemUseTurnDecision,
   TurnDecision,
@@ -12,6 +13,7 @@ import type {
 } from "../types/rulesets";
 
 export const ClassicRuleSet: MatchRuleSet = {
+  id: "classic",
   title: "ClassicRuleSet",
   description: "Traditional battleship rules with hit continuation",
 
@@ -77,6 +79,7 @@ export const ClassicRuleSet: MatchRuleSet = {
 };
 
 export const AlternatingTurnsRuleSet: MatchRuleSet = {
+  id: "alternating-turns",
   title: "AlternatingTurnsRuleSet",
   description: "Every shot ends turn, no hit continuation",
 
@@ -121,6 +124,7 @@ export const AlternatingTurnsRuleSet: MatchRuleSet = {
 };
 
 export const ItemHitRuleSet: MatchRuleSet = {
+  id: "item-hit",
   title: "ItemHitRuleSet",
   description:
     "Repeat turn on any item collection or ship hit; turn ends on ship destruction or miss",
@@ -199,6 +203,7 @@ export const ItemHitRuleSet: MatchRuleSet = {
 };
 
 export const LoseTurnOnUseRuleSet: MatchRuleSet = {
+  id: "lose-turn-on-use",
   title: "LoseTurnOnUseRuleSet",
   description:
     "Classic rules, but activating an item (onUse) ends your turn immediately",
@@ -214,19 +219,13 @@ export const LoseTurnOnUseRuleSet: MatchRuleSet = {
   },
 };
 
-export const DefaultRuleSet = LoseTurnOnUseRuleSet;
+export const RulesetSet  = createEntitySet<MatchRuleSet>([
+  ClassicRuleSet,
+  AlternatingTurnsRuleSet,
+  ItemHitRuleSet,
+  LoseTurnOnUseRuleSet,
+], ClassicRuleSet.title);
 
-export const getRuleSetByName = (title: string): MatchRuleSet => {
-  switch (title) {
-    case ClassicRuleSet.title:
-      return ClassicRuleSet;
-    case AlternatingTurnsRuleSet.title:
-      return AlternatingTurnsRuleSet;
-    case ItemHitRuleSet.title:
-      return ItemHitRuleSet;
-    case LoseTurnOnUseRuleSet.title:
-      return LoseTurnOnUseRuleSet;
-    default:
-      return DefaultRuleSet;
-  }
-};
+export const RULESETS = RulesetSet.map;
+export const getRuleSetById = RulesetSet.getById;
+export const DEFAULT_RULESET = RulesetSet.default;
