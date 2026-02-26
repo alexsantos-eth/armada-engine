@@ -10,6 +10,8 @@ import type {
   GameEngineState,
   MatchState,
   ShotResult,
+  PositionKey,
+  SideState,
 } from "../types/engine";
 
 export type {
@@ -23,24 +25,7 @@ export type {
 import { BOARD_DEFAULT_HEIGHT, BOARD_DEFAULT_WIDTH } from "../constants/views";
 import { DEFAULT_SHOT_PATTERN } from "../constants";
 
-type PositionKey = string;
 const posKey = (x: number, y: number): PositionKey => `${x},${y}`;
-
-interface SideState {
-  ships: GameShip[];
-  items: GameItem[];
-  obstacles: GameObstacle[];
-  shotPatterns: ShotPattern[];
-  shotsMap: Map<PositionKey, Shot>;
-  shipPositions: Map<PositionKey, number>;
-  shipSizes: Map<number, number>;
-  shipHits: Map<number, number>;
-  itemPositions: Map<PositionKey, number>;
-  itemHits: Map<number, number>;
-  obstaclePositions: Map<PositionKey, number>;
-  collectedItems: Set<number>;
-  usedItems: Map<number, number | undefined>;
-}
 
 function createSideState(): SideState {
   return {

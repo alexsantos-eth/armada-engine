@@ -3,6 +3,32 @@ import type { Shot, ShotPattern, ShotPatternResult } from "./shots";
 import type { GameShip, GameItem, GameObstacle } from "./entities";
 
 /**
+ * Opaque key used to index cells in the engine's internal position maps.
+ * Formatted as `"x,y"`.
+ */
+export type PositionKey = string;
+
+/**
+ * Internal runtime state for one side (player or enemy) within `GameEngine`.
+ * Holds all mutable collections that track ships, items, obstacles, and shots.
+ */
+export interface SideState {
+  ships: GameShip[];
+  items: GameItem[];
+  obstacles: GameObstacle[];
+  shotPatterns: ShotPattern[];
+  shotsMap: Map<PositionKey, Shot>;
+  shipPositions: Map<PositionKey, number>;
+  shipSizes: Map<number, number>;
+  shipHits: Map<number, number>;
+  itemPositions: Map<PositionKey, number>;
+  itemHits: Map<number, number>;
+  obstaclePositions: Map<PositionKey, number>;
+  collectedItems: Set<number>;
+  usedItems: Map<number, number | undefined>;
+}
+
+/**
  * Read-only contract for consumers that only need to observe engine state.
  *
  * Use this type for callbacks, board projections, and UI queries — express
