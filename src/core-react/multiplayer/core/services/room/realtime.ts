@@ -74,7 +74,7 @@ export class RoomService {
     const gameInitializer = new GameInitializer();
     const setup = initialSetup ?? gameInitializer.getGameSetup();
     const initialTurn = setup.initialTurn === "PLAYER_TURN" ? "host" : "guest";
-    const ruleSetName = setup.config.ruleSet?.name || DefaultRuleSet.name;
+    const ruleSetName = setup.config.ruleSet?.title || DefaultRuleSet.title;
 
     const room: GameRoom = {
       id: roomId,

@@ -40,7 +40,7 @@ const Shots: React.FC<ShotsProps> = ({
       <div>
         <h2 className="text-lg">Seleccionar tipo de tiro</h2>
         <p className="text-sm text-gray-500">
-          Patrón seleccionado: {patterns?.[selectedPattern]?.name || "Ninguno"}
+          Patrón seleccionado: {patterns?.[selectedPattern]?.title || "Ninguno"}
         </p>
       </div>
 
@@ -51,7 +51,7 @@ const Shots: React.FC<ShotsProps> = ({
             className={`rounded-xl max-w-15 flex items-center text-center justify-center cursor-pointer px-4 py-2 ${selectedPattern === patterns?.indexOf(pattern) ? "bg-blue-700 text-white" : "bg-transparent text-black border-2"}`}
             onClick={() => onSetShotPattern(pattern)}
           >
-            {SHOT_PATTERNS_EMOJIS[pattern.id] || ""}
+            {SHOT_PATTERNS_EMOJIS[pattern.id || ''] || ""}
           </button>
         ))}
       </div>
