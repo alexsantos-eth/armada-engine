@@ -1,25 +1,35 @@
 import { GAME_CONSTANTS } from "../constants/game";
 import type { GameConfig } from "../types/config";
-import type { GameShip, GameItem, GameObstacle, GameTurn } from "../types/common";
-import {
-  generateShips,
-  generateItems,
-  generateObstacles,
-  generateShotPatterns,
-  equalizeItemCounts,
-  getItemCells,
-  getShipCellsFromShip,
-  getObstacleCellsFromObstacle,
-} from "../tools/ship/calculations";
+import type {
+  GameShip,
+  GameItem,
+  GameObstacle,
+  GameTurn,
+} from "../types/common";
+import { generateShips, getShipCellsFromShip } from "../tools/ships";
+import { generateItems, equalizeItemCounts, getItemCells } from "../tools/items";
+import { generateObstacles, getObstacleCellsFromObstacle } from "../tools/obstacles";
+import { generateShotPatterns } from "../tools/shots";
 
-export type { IGameSetupProvider, GameSetup, GAME_INITIAL_TURN } from "../types/manager";
-import type { IGameSetupProvider, GameSetup, GAME_INITIAL_TURN } from "../types/manager";
+export type {
+  IGameSetupProvider,
+  GameSetup,
+  GAME_INITIAL_TURN,
+} from "../types/manager";
+import type {
+  IGameSetupProvider,
+  GameSetup,
+  GAME_INITIAL_TURN,
+} from "../types/manager";
 
 export class GameInitializer implements IGameSetupProvider {
   private config: GameConfig;
   private initialTurn: GAME_INITIAL_TURN;
 
-  constructor(config: Partial<GameConfig> = {}, initialTurn: GAME_INITIAL_TURN = "random") {
+  constructor(
+    config: Partial<GameConfig> = {},
+    initialTurn: GAME_INITIAL_TURN = "random",
+  ) {
     this.config = { ...this.getDefaultConfig(), ...config };
     this.initialTurn = initialTurn;
     this.validateConfig();
@@ -68,7 +78,7 @@ export class GameInitializer implements IGameSetupProvider {
       obstacleCounts: GAME_CONSTANTS.OBSTACLES.DEFAULT_COUNTS,
     };
   }
-  
+
   private validateItems(
     items: GameItem[],
     ships: GameShip[],
@@ -168,8 +178,16 @@ export class GameInitializer implements IGameSetupProvider {
       rawEnemyItems,
     );
 
-    const playerObstacles = generateObstacles(this.config, playerShips, playerItems);
-    const enemyObstacles = generateObstacles(this.config, enemyShips, enemyItems);
+    const playerObstacles = generateObstacles(
+      this.config,
+      playerShips,
+      playerItems,
+    );
+    const enemyObstacles = generateObstacles(
+      this.config,
+      enemyShips,
+      enemyItems,
+    );
 
     const playerShotPatterns = generateShotPatterns(this.config);
     const enemyShotPatterns = generateShotPatterns(this.config);
@@ -212,16 +230,28 @@ export class GameInitializer implements IGameSetupProvider {
     );
 
     if (setup.playerObstacles) {
-      this.validateObstacles(setup.playerObstacles, playerShips, playerItems, "player");
+      this.validateObstacles(
+        setup.playerObstacles,
+        playerShips,
+        playerItems,
+        "player",
+      );
     }
     if (setup.enemyObstacles) {
-      this.validateObstacles(setup.enemyObstacles, enemyShips, enemyItems, "enemy");
+      this.validateObstacles(
+        setup.enemyObstacles,
+        enemyShips,
+        enemyItems,
+        "enemy",
+      );
     }
 
     const playerObstacles =
-      setup.playerObstacles ?? generateObstacles(this.config, playerShips, playerItems);
+      setup.playerObstacles ??
+      generateObstacles(this.config, playerShips, playerItems);
     const enemyObstacles =
-      setup.enemyObstacles ?? generateObstacles(this.config, enemyShips, enemyItems);
+      setup.enemyObstacles ??
+      generateObstacles(this.config, enemyShips, enemyItems);
 
     const playerShotPatterns =
       setup.playerShotPatterns ?? generateShotPatterns(this.config);

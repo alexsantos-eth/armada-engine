@@ -1,4 +1,8 @@
-import type { IGameEngine, GameEngineState, SidePerspective } from "../types/engine";
+import type {
+  IGameEngine,
+  GameEngineState,
+  SidePerspective,
+} from "../types/engine";
 
 export type { SidePerspective } from "../types/engine";
 

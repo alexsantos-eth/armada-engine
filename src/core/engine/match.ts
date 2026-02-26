@@ -11,7 +11,12 @@ import { DefaultRuleSet, type MatchRuleSet } from "./rulesets";
 import type { Board, Winner, GameTurn, Shot } from "../types/common";
 import type { MatchCallbacks } from "./machines/types";
 import type { BoardViewConfig } from "../types/config";
-import type { NewMatch, CellInfo, PlanShotResult, PlanAndAttackResult } from "../types/match";
+import type {
+  NewMatch,
+  CellInfo,
+  PlanShotResult,
+  PlanAndAttackResult,
+} from "../types/match";
 
 export type { MatchCallbacks };
 export type { MatchState };
@@ -45,7 +50,7 @@ export class Match {
     } else {
       throw new Error(
         "Match requires either `setup` or `setupProvider`. " +
-        "Use `createMatch()` for a convenience wrapper with a default initializer.",
+          "Use `createMatch()` for a convenience wrapper with a default initializer.",
       );
     }
 
@@ -59,8 +64,17 @@ export class Match {
   }
 
   public initializeMatch(): void {
-    const { playerShips, enemyShips, initialTurn, playerItems, enemyItems, playerObstacles, enemyObstacles, playerShotPatterns, enemyShotPatterns } =
-      this.setup!;
+    const {
+      playerShips,
+      enemyShips,
+      initialTurn,
+      playerItems,
+      enemyItems,
+      playerObstacles,
+      enemyObstacles,
+      playerShotPatterns,
+      enemyShotPatterns,
+    } = this.setup!;
 
     this.actor.send({
       type: "INITIALIZE",
@@ -204,7 +218,11 @@ export class Match {
     return this.engine.isValidPosition(x, y);
   }
 
-  public getCellInfo(x: number, y: number, perspective: "player" | "enemy"): CellInfo {
+  public getCellInfo(
+    x: number,
+    y: number,
+    perspective: "player" | "enemy",
+  ): CellInfo {
     if (!this.engine.isValidPosition(x, y)) {
       return { valid: false, isShot: false, hasShip: false };
     }
@@ -241,7 +259,11 @@ export class Match {
     this.actor.send({ type: "SET_RULESET", ruleSet });
   }
 
-  public useItem(itemId: number, isPlayerShot: boolean, shipId?: number): boolean {
+  public useItem(
+    itemId: number,
+    isPlayerShot: boolean,
+    shipId?: number,
+  ): boolean {
     this.actor.send({ type: "USE_ITEM", itemId, isPlayerShot, shipId });
     return this.snap.context.lastUseItemResult ?? false;
   }
@@ -272,13 +294,18 @@ export class Match {
     return this.engine.hasShipAtPosition(x, y, isPlayerShips);
   }
 
-  public subscribe(callback: (snapshot: MatchMachineSnapshot) => void): () => void {
+  public subscribe(
+    callback: (snapshot: MatchMachineSnapshot) => void,
+  ): () => void {
     const subscription = this.actor.subscribe(callback);
     return () => subscription.unsubscribe();
   }
 
   public getPlayerBoard(): Board {
-    return buildPlayerBoard(this.engine.getState(), this.snap.context.boardView);
+    return buildPlayerBoard(
+      this.engine.getState(),
+      this.snap.context.boardView,
+    );
   }
 
   public getEnemyBoard(): Board {

@@ -66,7 +66,6 @@ export type {
   PendingPlan,
 } from "./machines";
 
-
 export { GAME_CONSTANTS } from "../constants/game";
 
 export {
@@ -99,4 +98,4 @@ export {
   generateShip,
   generateShip2D,
   generateShips,
-} from "../tools/ship/calculations";
+} from "../tools/ships";

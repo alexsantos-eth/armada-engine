@@ -1,5 +1,15 @@
-export type { ItemUseTurnDecision, TurnDecision, GameOverDecision, MatchRuleSet } from "../types/rulesets";
-import type { ItemUseTurnDecision, TurnDecision, GameOverDecision, MatchRuleSet } from "../types/rulesets";
+export type {
+  ItemUseTurnDecision,
+  TurnDecision,
+  GameOverDecision,
+  MatchRuleSet,
+} from "../types/rulesets";
+import type {
+  ItemUseTurnDecision,
+  TurnDecision,
+  GameOverDecision,
+  MatchRuleSet,
+} from "../types/rulesets";
 
 export const ClassicRuleSet: MatchRuleSet = {
   name: "ClassicRuleSet",
@@ -217,5 +227,6 @@ export const getRuleSetByName = (name: string): MatchRuleSet => {
     default:
       throw new Error(`Unknown ruleset name: ${name}`);
   }
-}
+};
+
 export const DefaultRuleSet = LoseTurnOnUseRuleSet;

@@ -1,4 +1,5 @@
-import { getShipCellsFromShip, getObstacleCellsFromObstacle } from "../tools/ship/calculations";
+import { getShipCellsFromShip } from "../tools/ships";
+import { getObstacleCellsFromObstacle } from "../tools/obstacles";
 import type { GameEngineState } from "./logic";
 import type { Board, Cell } from "../types/common";
 import type { BoardLayer, BoardViewConfig } from "../types/config";
@@ -18,7 +19,7 @@ export function buildPlayerBoard(
   view?: BoardViewConfig,
 ): Board {
   const layers = view?.playerSide ?? DefaultBoardView.playerSide;
-  const width  = view?.width  ?? state.boardWidth;
+  const width = view?.width ?? state.boardWidth;
   const height = view?.height ?? state.boardHeight;
 
   const board = emptyBoard(width, height);
@@ -53,9 +54,15 @@ export function buildPlayerBoard(
   }
 
   if (has(layers, "playerObstacles")) {
-    for (const obstacle of (state.playerObstacles ?? [])) {
+    for (const obstacle of state.playerObstacles ?? []) {
       for (const [x, y] of getObstacleCellsFromObstacle(obstacle)) {
-        if (x >= 0 && x < width && y >= 0 && y < height && board[y][x].state === "EMPTY") {
+        if (
+          x >= 0 &&
+          x < width &&
+          y >= 0 &&
+          y < height &&
+          board[y][x].state === "EMPTY"
+        ) {
           board[y][x] = { state: "OBSTACLE" };
         }
       }
@@ -90,9 +97,15 @@ export function buildPlayerBoard(
   }
 
   if (has(layers, "enemyObstacles")) {
-    for (const obstacle of (state.enemyObstacles ?? [])) {
+    for (const obstacle of state.enemyObstacles ?? []) {
       for (const [x, y] of getObstacleCellsFromObstacle(obstacle)) {
-        if (x >= 0 && x < width && y >= 0 && y < height && board[y][x].state === "EMPTY") {
+        if (
+          x >= 0 &&
+          x < width &&
+          y >= 0 &&
+          y < height &&
+          board[y][x].state === "EMPTY"
+        ) {
           board[y][x] = { state: "OBSTACLE" };
         }
       }
@@ -141,7 +154,7 @@ export function buildEnemyBoard(
   view?: BoardViewConfig,
 ): Board {
   const layers = view?.enemySide ?? DefaultBoardView.enemySide;
-  const width  = view?.width  ?? state.boardWidth;
+  const width = view?.width ?? state.boardWidth;
   const height = view?.height ?? state.boardHeight;
 
   const board = emptyBoard(width, height);
@@ -157,7 +170,7 @@ export function buildEnemyBoard(
   }
 
   if (has(layers, "enemyObstacles")) {
-    for (const obstacle of (state.enemyObstacles ?? [])) {
+    for (const obstacle of state.enemyObstacles ?? []) {
       for (const [x, y] of getObstacleCellsFromObstacle(obstacle)) {
         if (x >= 0 && x < width && y >= 0 && y < height) {
           board[y][x] = { state: "OBSTACLE" };
@@ -213,9 +226,15 @@ export function buildEnemyBoard(
   }
 
   if (has(layers, "playerObstacles")) {
-    for (const obstacle of (state.playerObstacles ?? [])) {
+    for (const obstacle of state.playerObstacles ?? []) {
       for (const [x, y] of getObstacleCellsFromObstacle(obstacle)) {
-        if (x >= 0 && x < width && y >= 0 && y < height && board[y][x].state === "EMPTY") {
+        if (
+          x >= 0 &&
+          x < width &&
+          y >= 0 &&
+          y < height &&
+          board[y][x].state === "EMPTY"
+        ) {
           board[y][x] = { state: "OBSTACLE" };
         }
       }
@@ -258,4 +277,3 @@ export function buildEnemyBoard(
 
   return board;
 }
-

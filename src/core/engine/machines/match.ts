@@ -3,7 +3,11 @@ import { GameEngine } from "../logic";
 import { DefaultRuleSet } from "../rulesets";
 import { StandardBoardView } from "../../constants/views";
 import { PlanError } from "../errors";
-import { buildCollectContext, buildUseContext, buildDestroyContext } from "../item";
+import {
+  buildCollectContext,
+  buildUseContext,
+  buildDestroyContext,
+} from "../item";
 import { fireMatchCallbacks } from "./callbacks";
 import type { BoardLayer, GameTurn } from "../../types/common";
 import type { BoardViewConfig } from "../../types/config";
@@ -79,7 +83,9 @@ export const matchMachine = setup({
       const expectedTurn = event.isPlayerShot ? "PLAYER_TURN" : "ENEMY_TURN";
       if (context.currentTurn !== expectedTurn) {
         planError = PlanError.NotYourTurn;
-      } else if (!context.engine.isValidPosition(event.centerX, event.centerY)) {
+      } else if (
+        !context.engine.isValidPosition(event.centerX, event.centerY)
+      ) {
         planError = PlanError.InvalidPosition;
       } else {
         const patternIdx = event.patternIdx ?? 0;
@@ -110,7 +116,8 @@ export const matchMachine = setup({
     executeAttack: assign(({ context }) => {
       if (!context.pendingPlan) return {};
 
-      const { centerX, centerY, patternIdx, isPlayerShot } = context.pendingPlan;
+      const { centerX, centerY, patternIdx, isPlayerShot } =
+        context.pendingPlan;
 
       const lastAttackResult = context.engine.executeShotPattern(
         centerX,
@@ -128,7 +135,8 @@ export const matchMachine = setup({
     }),
 
     runCollectHandlers: assign(({ context }) => {
-      if (!context.lastAttackResult || context.lastAttackIsPlayerShot === null) return {};
+      if (!context.lastAttackResult || context.lastAttackIsPlayerShot === null)
+        return {};
 
       const isPlayerShot = context.lastAttackIsPlayerShot;
 
@@ -151,10 +159,18 @@ export const matchMachine = setup({
               isPlayerShot,
               shot,
               context.currentTurn,
-              () => { collectToggleCount++; },
-              (rs) => { capturedRuleSet = rs; },
-              (layers) => { capturedPlayerSide = layers; },
-              (layers) => { capturedEnemySide = layers; },
+              () => {
+                collectToggleCount++;
+              },
+              (rs) => {
+                capturedRuleSet = rs;
+              },
+              (layers) => {
+                capturedPlayerSide = layers;
+              },
+              (layers) => {
+                capturedEnemySide = layers;
+              },
             );
             item.onCollect(ctx);
           }
@@ -165,8 +181,12 @@ export const matchMachine = setup({
         capturedPlayerSide !== null || capturedEnemySide !== null
           ? {
               ...context.boardView,
-              ...(capturedPlayerSide !== null ? { playerSide: capturedPlayerSide } : {}),
-              ...(capturedEnemySide !== null ? { enemySide: capturedEnemySide } : {}),
+              ...(capturedPlayerSide !== null
+                ? { playerSide: capturedPlayerSide }
+                : {}),
+              ...(capturedEnemySide !== null
+                ? { enemySide: capturedEnemySide }
+                : {}),
             }
           : context.boardView;
 
@@ -178,7 +198,8 @@ export const matchMachine = setup({
     }),
 
     runDestroyHandlers: assign(({ context }) => {
-      if (!context.lastAttackResult || context.lastAttackIsPlayerShot === null) return {};
+      if (!context.lastAttackResult || context.lastAttackIsPlayerShot === null)
+        return {};
 
       const isPlayerShot = context.lastAttackIsPlayerShot;
 
@@ -190,7 +211,9 @@ export const matchMachine = setup({
       for (const shot of context.lastAttackResult.shots) {
         if (shot.shipDestroyed && shot.shipId !== undefined) {
           const engineState = context.engine.getState();
-          const ships = isPlayerShot ? engineState.enemyShips : engineState.playerShips;
+          const ships = isPlayerShot
+            ? engineState.enemyShips
+            : engineState.playerShips;
           const ship = ships.find((s) => s.shipId === shot.shipId);
           if (ship?.onDestroy) {
             const ctx = buildDestroyContext(
@@ -199,10 +222,18 @@ export const matchMachine = setup({
               isPlayerShot,
               shot,
               context.currentTurn,
-              () => { destroyToggleCount++; },
-              (rs) => { capturedRuleSet = rs; },
-              (layers) => { capturedPlayerSide = layers; },
-              (layers) => { capturedEnemySide = layers; },
+              () => {
+                destroyToggleCount++;
+              },
+              (rs) => {
+                capturedRuleSet = rs;
+              },
+              (layers) => {
+                capturedPlayerSide = layers;
+              },
+              (layers) => {
+                capturedEnemySide = layers;
+              },
             );
             ship.onDestroy(ctx);
           }
@@ -213,14 +244,20 @@ export const matchMachine = setup({
         capturedPlayerSide !== null || capturedEnemySide !== null
           ? {
               ...context.boardView,
-              ...(capturedPlayerSide !== null ? { playerSide: capturedPlayerSide } : {}),
-              ...(capturedEnemySide !== null ? { enemySide: capturedEnemySide } : {}),
+              ...(capturedPlayerSide !== null
+                ? { playerSide: capturedPlayerSide }
+                : {}),
+              ...(capturedEnemySide !== null
+                ? { enemySide: capturedEnemySide }
+                : {}),
             }
           : context.boardView;
 
       return {
         collectToggleCount: context.collectToggleCount + destroyToggleCount,
-        ...(capturedRuleSet !== null ? { pendingRuleSet: capturedRuleSet as typeof context.ruleSet } : {}),
+        ...(capturedRuleSet !== null
+          ? { pendingRuleSet: capturedRuleSet as typeof context.ruleSet }
+          : {}),
         boardView: updatedBoardView,
       };
     }),
@@ -235,7 +272,9 @@ export const matchMachine = setup({
       let currentTurn: GameTurn =
         context.collectToggleCount % 2 === 0
           ? context.currentTurn
-          : context.currentTurn === "PLAYER_TURN" ? "ENEMY_TURN" : "PLAYER_TURN";
+          : context.currentTurn === "PLAYER_TURN"
+            ? "ENEMY_TURN"
+            : "PLAYER_TURN";
 
       const stateAfterAttack = context.engine.getState();
       const lastTurnDecision = activeRuleSet.decideTurn(
@@ -245,7 +284,8 @@ export const matchMachine = setup({
 
       const rulesetToggledTurn = lastTurnDecision.shouldToggleTurn;
       if (rulesetToggledTurn) {
-        currentTurn = currentTurn === "PLAYER_TURN" ? "ENEMY_TURN" : "PLAYER_TURN";
+        currentTurn =
+          currentTurn === "PLAYER_TURN" ? "ENEMY_TURN" : "PLAYER_TURN";
       }
 
       let winner = null;
@@ -352,7 +392,7 @@ export const matchMachine = setup({
       if (event.type !== "SYNC_TURN") return {};
       return { currentTurn: event.turn };
     }),
-    
+
     syncShots: assign(({ context, event }) => {
       if (event.type !== "SYNC_SHOTS") return {};
       context.engine.setPlayerShots(event.playerShots);
@@ -392,10 +432,18 @@ export const matchMachine = setup({
         item,
         isPlayerShot,
         context.currentTurn,
-        () => { useToggleCount++; },
-        (rs) => { capturedRuleSet = rs; },
-        (layers) => { capturedPlayerSide = layers; },
-        (layers) => { capturedEnemySide = layers; },
+        () => {
+          useToggleCount++;
+        },
+        (rs) => {
+          capturedRuleSet = rs;
+        },
+        (layers) => {
+          capturedPlayerSide = layers;
+        },
+        (layers) => {
+          capturedEnemySide = layers;
+        },
       );
 
       item.onUse(itemCtx);
@@ -405,8 +453,12 @@ export const matchMachine = setup({
         capturedPlayerSide !== null || capturedEnemySide !== null
           ? {
               ...context.boardView,
-              ...(capturedPlayerSide !== null ? { playerSide: capturedPlayerSide } : {}),
-              ...(capturedEnemySide !== null ? { enemySide: capturedEnemySide } : {}),
+              ...(capturedPlayerSide !== null
+                ? { playerSide: capturedPlayerSide }
+                : {}),
+              ...(capturedEnemySide !== null
+                ? { enemySide: capturedEnemySide }
+                : {}),
             }
           : context.boardView;
 
@@ -425,7 +477,9 @@ export const matchMachine = setup({
 
       const itemToggledTurn = context.useToggleCount % 2 !== 0;
       let currentTurn: GameTurn = itemToggledTurn
-        ? context.currentTurn === "PLAYER_TURN" ? "ENEMY_TURN" : "PLAYER_TURN"
+        ? context.currentTurn === "PLAYER_TURN"
+          ? "ENEMY_TURN"
+          : "PLAYER_TURN"
         : context.currentTurn;
       let rulesetToggledTurn = false;
       const stateAfterUse = context.engine.getState();
@@ -435,7 +489,8 @@ export const matchMachine = setup({
           stateAfterUse,
         );
         if (itemUseTurnDecision?.shouldToggleTurn) {
-          currentTurn = currentTurn === "PLAYER_TURN" ? "ENEMY_TURN" : "PLAYER_TURN";
+          currentTurn =
+            currentTurn === "PLAYER_TURN" ? "ENEMY_TURN" : "PLAYER_TURN";
           rulesetToggledTurn = true;
         }
       }
@@ -443,7 +498,8 @@ export const matchMachine = setup({
       let winner = null;
       const stateForGameOver = context.engine.getState();
       if (!stateForGameOver.isGameOver) {
-        const gameOverDecision = context.ruleSet.checkGameOver(stateForGameOver);
+        const gameOverDecision =
+          context.ruleSet.checkGameOver(stateForGameOver);
         if (gameOverDecision.isGameOver && gameOverDecision.winner) {
           context.engine.setGameOver(gameOverDecision.winner);
           winner = gameOverDecision.winner;
@@ -482,7 +538,8 @@ export const matchMachine = setup({
       engine,
       callbacks,
       ruleSet: input?.ruleSet ?? DefaultRuleSet,
-      boardView: (input?.config?.boardView ?? StandardBoardView) as BoardViewConfig,
+      boardView: (input?.config?.boardView ??
+        StandardBoardView) as BoardViewConfig,
       currentTurn: "PLAYER_TURN" as GameTurn,
       pendingPlan: null,
       lastAttackResult: null,

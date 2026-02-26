@@ -1,6 +1,8 @@
 import type { IGameEngine } from "./logic";
 import { resolvePerspective } from "./perspective";
-import { findFreeShipPosition, generateItem, generateObstacle } from "../tools/ship/calculations";
+import { findFreeShipPosition } from "../tools/ships";
+import { generateItem } from "../tools/items";
+import { generateObstacle } from "../tools/obstacles";
 import type {
   GameItem,
   GameObstacle,
@@ -58,7 +60,13 @@ function buildContext(
         preferred,
       );
       if (!coords) return false;
-      const newShip: GameShip = { coords, shipId: fresh.ownShips.length, width, height, onDestroy };
+      const newShip: GameShip = {
+        coords,
+        shipId: fresh.ownShips.length,
+        width,
+        height,
+        onDestroy,
+      };
       fresh.setOwnShips(fresh.ownShips.concat([newShip]));
       return true;
     },
@@ -86,7 +94,13 @@ function buildContext(
         preferred,
       );
       if (!coords) return false;
-      const newShip: GameShip = { coords, shipId: fresh.opponentShips.length, width, height, onDestroy };
+      const newShip: GameShip = {
+        coords,
+        shipId: fresh.opponentShips.length,
+        width,
+        height,
+        onDestroy,
+      };
       fresh.setOpponentShips(fresh.opponentShips.concat([newShip]));
       return true;
     },
@@ -148,7 +162,9 @@ function buildContext(
       const fresh = resolvePerspective(engine.getState(), engine, swap);
       const filtered = fresh.opponentItems.filter((it) => it.itemId !== itemId);
       if (filtered.length === fresh.opponentItems.length) return false;
-      fresh.setOpponentItems(filtered.map((it, idx) => ({ ...it, itemId: idx })));
+      fresh.setOpponentItems(
+        filtered.map((it, idx) => ({ ...it, itemId: idx })),
+      );
       return true;
     },
     deleteAllEnemyItems: () => {
@@ -176,7 +192,9 @@ function buildContext(
     },
     deleteEnemyShot: (x, y) => {
       const fresh = resolvePerspective(engine.getState(), engine, swap);
-      const filtered = fresh.opponentShots.filter((s) => s.x !== x || s.y !== y);
+      const filtered = fresh.opponentShots.filter(
+        (s) => s.x !== x || s.y !== y,
+      );
       if (filtered.length === fresh.opponentShots.length) return false;
       fresh.setOpponentShots(filtered);
       return true;
@@ -203,9 +221,13 @@ function buildContext(
     },
     deletePlayerObstacle: (obstacleId) => {
       const fresh = resolvePerspective(engine.getState(), engine, swap);
-      const filtered = fresh.ownObstacles.filter((o) => o.obstacleId !== obstacleId);
+      const filtered = fresh.ownObstacles.filter(
+        (o) => o.obstacleId !== obstacleId,
+      );
       if (filtered.length === fresh.ownObstacles.length) return false;
-      fresh.setOwnObstacles(filtered.map((o, idx) => ({ ...o, obstacleId: idx })));
+      fresh.setOwnObstacles(
+        filtered.map((o, idx) => ({ ...o, obstacleId: idx })),
+      );
       return true;
     },
     deleteAllPlayerObstacles: () => {
@@ -230,9 +252,13 @@ function buildContext(
     },
     deleteEnemyObstacle: (obstacleId) => {
       const fresh = resolvePerspective(engine.getState(), engine, swap);
-      const filtered = fresh.opponentObstacles.filter((o) => o.obstacleId !== obstacleId);
+      const filtered = fresh.opponentObstacles.filter(
+        (o) => o.obstacleId !== obstacleId,
+      );
       if (filtered.length === fresh.opponentObstacles.length) return false;
-      fresh.setOpponentObstacles(filtered.map((o, idx) => ({ ...o, obstacleId: idx })));
+      fresh.setOpponentObstacles(
+        filtered.map((o, idx) => ({ ...o, obstacleId: idx })),
+      );
       return true;
     },
     deleteAllEnemyObstacles: () => {
