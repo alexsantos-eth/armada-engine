@@ -945,12 +945,12 @@ describe('Match', () => {
     it('should get current ruleset', () => {
       const ruleSet = match.getRuleSet();
       expect(ruleSet).toBeDefined();
-      expect(ruleSet.name).toBe('LoseTurnOnUseRuleSet');
+      expect(ruleSet.title).toBe('LoseTurnOnUseRuleSet');
     });
 
     it('should allow changing ruleset during match', () => {
       const initialRuleSet = match.getRuleSet();
-      expect(initialRuleSet.name).toBe('LoseTurnOnUseRuleSet');
+      expect(initialRuleSet.title).toBe('LoseTurnOnUseRuleSet');
 
       // Classic: hit allows shooting again
       const hit1 = match.planAndAttack(7, 7, true);
@@ -959,7 +959,7 @@ describe('Match', () => {
       // Change to alternating rules
       match.setRuleSet(AlternatingTurnsRuleSet);
       const newRuleSet = match.getRuleSet();
-      expect(newRuleSet.name).toBe('AlternatingTurnsRuleSet');
+      expect(newRuleSet.title).toBe('AlternatingTurnsRuleSet');
 
       // Player misses to switch turn
       match.planAndAttack(0, 0, true);
@@ -977,7 +977,7 @@ describe('Match', () => {
       });
 
       const ruleSet = alternatingMatch.getRuleSet();
-      expect(ruleSet.name).toBe('AlternatingTurnsRuleSet');
+      expect(ruleSet.title).toBe('AlternatingTurnsRuleSet');
     });
   });
 
@@ -1197,7 +1197,7 @@ describe('Match', () => {
       const m = makeItemMatch(item);
       m.initializeMatch();
 
-      expect(m.getRuleSet().name).toBe('LoseTurnOnUseRuleSet');
+      expect(m.getRuleSet().title).toBe('LoseTurnOnUseRuleSet');
 
       const result = m.planAndAttack(3, 3, true);
 
@@ -1207,7 +1207,7 @@ describe('Match', () => {
       expect(result.turnEnded).toBe(false);
 
       // Ruleset persisted for future turns
-      expect(m.getRuleSet().name).toBe('ItemHitRuleSet');
+      expect(m.getRuleSet().title).toBe('ItemHitRuleSet');
     });
 
     it('onCollect — setRuleSet to AlternatingTurnsRuleSet strips shoot-again on same turn', () => {
@@ -1234,7 +1234,7 @@ describe('Match', () => {
       // AlternatingTurnsRuleSet: every shot ends the turn
       expect(result.canShootAgain).toBe(false);
       expect(result.turnEnded).toBe(true);
-      expect(m.getRuleSet().name).toBe('AlternatingTurnsRuleSet');
+      expect(m.getRuleSet().title).toBe('AlternatingTurnsRuleSet');
     });
 
     it('onCollect — toggleTurn switches the active player immediately', () => {

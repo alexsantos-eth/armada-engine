@@ -426,7 +426,7 @@ describe("Shot Pattern System", () => {
     it("all built-in patterns should have a non-empty id, name and description", () => {
       Object.values(SHOT_PATTERNS).forEach(pattern => {
         expect(pattern.id).toBeTruthy();
-        expect(pattern.name).toBeTruthy();
+        expect(pattern.title).toBeTruthy();
         expect(pattern.description).toBeTruthy();
       });
     });

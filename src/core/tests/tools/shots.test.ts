@@ -4,6 +4,7 @@ import {
   SINGLE_SHOT,
   CROSS_SHOT,
   SHOT_PATTERNS,
+  getShotPattern,
 } from '../../constants/shots';
 
 describe('generateShotPatterns', () => {
@@ -57,8 +58,8 @@ describe('generateShotPatterns', () => {
     const patterns = generateShotPatterns({ shotPatternIds: allIds });
     expect(patterns).toHaveLength(allIds.length);
     patterns.forEach(p => {
-      expect(SHOT_PATTERNS[p.id]).toBeDefined();
-      expect(p.offsets).toEqual(SHOT_PATTERNS[p.id].offsets);
+      expect(getShotPattern(p.id||'')).toBeDefined();
+      expect(p.offsets).toEqual(getShotPattern(p.id||'').offsets);
     });
   });
 
