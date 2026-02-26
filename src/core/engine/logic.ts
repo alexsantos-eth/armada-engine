@@ -12,6 +12,7 @@ import type {
 } from "../types/common";
 import type { GameConfig } from "../types/config";
 import { BOARD_DEFAULT_HEIGHT, BOARD_DEFAULT_WIDTH } from "../constants/views";
+import { DEFAULT_SHOT_PATTERN } from "../constants";
 
 type PositionKey = string;
 const posKey = (x: number, y: number): PositionKey => `${x},${y}`;
@@ -208,8 +209,8 @@ export class GameEngine implements IGameEngine {
     this.enemySide.items = enemyItems;
     this.playerSide.obstacles = playerObstacles;
     this.enemySide.obstacles = enemyObstacles;
-    this.playerSide.shotPatterns = playerShotPatterns.length > 0 ? playerShotPatterns : [];
-    this.enemySide.shotPatterns = enemyShotPatterns.length > 0 ? enemyShotPatterns : [];
+    this.playerSide.shotPatterns = playerShotPatterns.length > 0 ? playerShotPatterns : [DEFAULT_SHOT_PATTERN];
+    this.enemySide.shotPatterns = enemyShotPatterns.length > 0 ? enemyShotPatterns : [DEFAULT_SHOT_PATTERN];
 
     this.cacheShipPositions(
       playerShips,
@@ -284,7 +285,6 @@ export class GameEngine implements IGameEngine {
       ? this.collectItem(x, y, isPlayerShot)
       : null;
 
-    // Check if the shot landed on an obstacle (only relevant when it's a miss).
     const obstacleInfo = !result.hit
       ? this.checkObstacleHit(x, y, isPlayerShot)
       : null;
@@ -385,7 +385,7 @@ export class GameEngine implements IGameEngine {
   public executeShotPattern(
     centerX: number,
     centerY: number,
-    patternIdx: number,
+    patternIdx: number = 0,
     isPlayerShot: boolean,
   ): ShotPatternResult {
     if (this.isGameOver) {

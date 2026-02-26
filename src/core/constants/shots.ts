@@ -230,3 +230,5 @@ export function createCustomPattern(
     offsets,
   };
 }
+
+export const DEFAULT_SHOT_PATTERN: ShotPattern =  SINGLE_SHOT
