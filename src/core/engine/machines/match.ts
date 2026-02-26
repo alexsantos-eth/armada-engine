@@ -9,7 +9,8 @@ import {
   buildDestroyContext,
 } from "../item";
 import { fireMatchCallbacks } from "./callbacks";
-import type { BoardLayer, GameTurn } from "../../types/common";
+import type { GameTurn } from "../../types/game";
+import type { BoardLayer } from "../../types/board";
 import type { BoardViewConfig } from "../../types/config";
 import type {
   MatchMachineContext,

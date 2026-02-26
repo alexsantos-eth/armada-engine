@@ -1,6 +1,4 @@
-import type { GameItem } from "./common";
-import type { GameShip } from "./common";
-import type { GameObstacle } from "./common";
+import type { GameItem, GameShip, GameObstacle } from "./entities";
 
 /**
  * An item template — extends `GameItem` with display metadata and a

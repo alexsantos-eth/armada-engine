@@ -1,6 +1,6 @@
 import { GAME_CONSTANTS } from "../constants/game";
 import { SHOT_PATTERNS } from "../constants/shots";
-import type { ShotPattern } from "../types/common";
+import type { ShotPattern } from "../types/shots";
 import type { GameConfig } from "../types/config";
 
 export function generateShotPatterns(config: Partial<GameConfig>): ShotPattern[] {

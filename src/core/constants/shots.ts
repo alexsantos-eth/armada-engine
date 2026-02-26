@@ -1,4 +1,4 @@
-import type { ShotPattern } from "../types/common";
+import type { ShotPattern } from "../types/shots";
 
 export const SINGLE_SHOT: ShotPattern = {
   id: "single",

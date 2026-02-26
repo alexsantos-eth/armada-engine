@@ -1,4 +1,4 @@
-import type { GameShip } from "../types/common";
+import type { GameShip } from "../types/entities";
 export type { ShipTemplate } from "../types/constants";
 import type { ShipTemplate } from "../types/constants";
 

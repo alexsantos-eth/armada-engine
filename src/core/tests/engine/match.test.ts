@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Match, createMatch } from '../../engine/match';
 import type { IGameSetupProvider, GameSetup } from '../../manager';
-import type { GameShip, GameItem } from '../../types/common';
+import type { GameShip, GameItem } from '../../types/entities';
 import { ClassicRuleSet, AlternatingTurnsRuleSet, ItemHitRuleSet, LoseTurnOnUseRuleSet } from '../../engine/rulesets';
 import { StandardBoardView, withView } from '../../engine';
 

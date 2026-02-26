@@ -2,10 +2,12 @@ import type { MatchState } from "./engine";
 import type { MatchRuleSet } from "./rulesets";
 import type { MatchCallbacks } from "./machines";
 import type { GameSetup, IGameSetupProvider } from "./manager";
-import type { Board, GameTurn, Shot, ShotPatternResult, Winner } from "./common";
+import type { GameTurn, Winner } from "./game";
+import type { Board } from "./board";
+import type { Shot, ShotPatternResult } from "./shots";
+import type { ItemActionContext, ShipActionContext } from "./entities";
 import type { BoardViewConfig } from "./config";
 import type { MatchMachineSnapshot } from "../engine/machines/match";
-import type { ItemActionContext, ShipActionContext } from "./common";
 
 /**
  * Fully-typed alias for the context passed to item `onCollect` and `onUse`

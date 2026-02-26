@@ -6,7 +6,7 @@ import {
   getShotPattern,
   createCustomPattern,
 } from "../../constants/shots";
-import type { GameShip } from "../../types/common";
+import type { GameShip } from "../../types/entities";
 
 // All built-in patterns as an ordered array — index is passed to executeShotPattern.
 const ALL_PATTERNS = Object.values(SHOT_PATTERNS);

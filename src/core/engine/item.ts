@@ -3,16 +3,10 @@ import { resolvePerspective } from "./perspective";
 import { findFreeShipPosition } from "../tools/ships";
 import { generateItem } from "../tools/items";
 import { generateObstacle } from "../tools/obstacles";
-import type {
-  GameItem,
-  GameObstacle,
-  GameShip,
-  ItemActionContext,
-  ShipActionContext,
-  Shot,
-  BoardLayer,
-} from "../types/common";
-import type { GameTurn } from "../types/common";
+import type { GameTurn } from "../types/game";
+import type { BoardLayer } from "../types/board";
+import type { Shot } from "../types/shots";
+import type { GameItem, GameObstacle, GameShip, ItemActionContext, ShipActionContext } from "../types/entities";
 
 function buildContext(
   engine: IGameEngine,

@@ -1,11 +1,7 @@
 import { GAME_CONSTANTS } from "../constants/game";
 import type { GameConfig } from "../types/config";
-import type {
-  GameShip,
-  GameItem,
-  GameObstacle,
-  GameTurn,
-} from "../types/common";
+import type { GameTurn } from "../types/game";
+import type { GameShip, GameItem, GameObstacle } from "../types/entities";
 import { generateShips, getShipCellsFromShip } from "../tools/ships";
 import { generateItems, equalizeItemCounts, getItemCells } from "../tools/items";
 import { generateObstacles, getObstacleCellsFromObstacle } from "../tools/obstacles";

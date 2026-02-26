@@ -1,7 +1,7 @@
 import { getShipCellsFromShip } from "../tools/ships";
 import { getObstacleCellsFromObstacle } from "../tools/obstacles";
 import type { GameEngineState } from "./logic";
-import type { Board, Cell } from "../types/common";
+import type { Board, Cell } from "../types/board";
 import type { BoardLayer, BoardViewConfig } from "../types/config";
 import { DefaultBoardView } from "../constants/views";
 

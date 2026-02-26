@@ -1,4 +1,6 @@
-import type { GameItem, GameTurn, ShotPatternResult, Winner } from "./common";
+import type { GameTurn, Winner } from "./game";
+import type { ShotPatternResult } from "./shots";
+import type { GameItem } from "./entities";
 import type { MatchCallbacks } from "./machines";
 
 /**

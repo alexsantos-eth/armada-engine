@@ -8,7 +8,9 @@ import { matchMachine } from "./machines/match";
 import type { MatchMachineSnapshot } from "./machines/match";
 import { DefaultRuleSet, type MatchRuleSet } from "./rulesets";
 
-import type { Board, Winner, GameTurn, Shot } from "../types/common";
+import type { Winner, GameTurn } from "../types/game";
+import type { Board } from "../types/board";
+import type { Shot } from "../types/shots";
 import type { MatchCallbacks } from "./machines/types";
 import type { BoardViewConfig } from "../types/config";
 import type {

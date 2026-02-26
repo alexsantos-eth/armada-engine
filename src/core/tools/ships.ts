@@ -1,6 +1,6 @@
 import { GAME_CONSTANTS } from "../constants/game";
 import { SHIP_TEMPLATES } from "../constants/ships";
-import type { GameShip } from "../types/common";
+import type { GameShip } from "../types/entities";
 import type { GameConfig } from "../types/config";
 import { BOARD_DEFAULT_HEIGHT, BOARD_DEFAULT_WIDTH } from "../constants/views";
 

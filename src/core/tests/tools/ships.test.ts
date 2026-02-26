@@ -20,7 +20,7 @@ import {
   XLARGE_SHIP,
 } from '../../constants/ships';
 import { StandardBoardView, withView } from '../../constants/views';
-import type { GameShip } from '../../types/common';
+import type { GameShip } from '../../types/entities';
 
 describe('getShip2DCells', () => {
   it('should generate horizontal ship cells', () => {

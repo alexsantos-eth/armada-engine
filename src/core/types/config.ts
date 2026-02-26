@@ -1,6 +1,6 @@
 import type { MatchRuleSet } from "./rulesets";
-import type { BoardLayer } from "./common";
-export type { BoardLayer } from "./common";
+import type { BoardLayer } from "./board";
+export type { BoardLayer } from "./board";
 
 /**
  * Visual / display configuration for the game board.

@@ -1,4 +1,6 @@
-import type { GameShip, GameItem, GameObstacle, GameTurn, ShotPattern, PlayerName } from "./common";
+import type { GameTurn, PlayerName } from "./game";
+import type { ShotPattern } from "./shots";
+import type { GameShip, GameItem, GameObstacle } from "./entities";
 import type { GameConfig } from "./config";
 
 /**

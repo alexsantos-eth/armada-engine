@@ -1,25 +1,15 @@
+export type { GameTurn, PlayerName, Winner, PlayerRole } from "./game";
+export type { CellState, BoardLayer, Cell, Board } from "./board";
+export type { Shot, ShotOffset, ShotPattern, ShotPatternResult, ShotRecord } from "./shots";
 export type {
   GameShip,
   GameItem,
   GameObstacle,
-  Shot,
-  ShotOffset,
-  ShotPattern,
-  ShotPatternResult,
-  Winner,
-  GameTurn,
-  PlayerName,
-  PlayerRole,
-  CellState,
-  Cell,
-  Board,
-  BoardLayer,
   ItemActionContext,
   ShipActionContext,
-  BattleResult,
-  ShotRecord,
   ShipPlacement,
-} from "./common";
+  BattleResult,
+} from "./entities";
 
 export type {
   BoardViewConfig,

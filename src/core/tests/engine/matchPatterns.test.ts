@@ -3,7 +3,7 @@ import { Match } from "../../engine/match";
 import { AttackError } from "../../engine/errors";
 import { StandardBoardView, withView } from "../../constants/views";
 import { SHOT_PATTERNS } from "../../constants/shots";
-import type { GameShip } from "../../types/common";
+import type { GameShip } from "../../types/entities";
 
 const ALL_PATTERNS = Object.values(SHOT_PATTERNS);
 const idx = (id: string) => ALL_PATTERNS.findIndex((p) => p.id === id);

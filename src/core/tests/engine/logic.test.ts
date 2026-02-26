@@ -3,7 +3,8 @@ import { GameEngine } from '../../engine/logic';
 import type { IGameEngine, IGameEngineReader } from '../../engine/logic';
 import { buildPlayerBoard, buildEnemyBoard } from '../../engine/board';
 import { StandardBoardView, withView } from '../../constants/views';
-import type { GameShip, Shot } from '../../types/common';
+import type { GameShip } from '../../types/entities';
+import type { Shot } from '../../types/shots';
 
 describe('GameEngine', () => {
   let engine: GameEngine;

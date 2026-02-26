@@ -7,7 +7,7 @@ import {
 } from '../../tools/items';
 import { HEALTH_KIT, AMMO_CACHE } from '../../constants/items';
 import { StandardBoardView, withView } from '../../constants/views';
-import type { GameItem, GameShip } from '../../types/common';
+import type { GameItem, GameShip } from '../../types/entities';
 
 const BOARD = 10;
 const NO_SHIPS: GameShip[] = [];

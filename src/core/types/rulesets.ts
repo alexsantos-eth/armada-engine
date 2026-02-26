@@ -1,5 +1,6 @@
 import type { GameEngineState } from "./engine";
-import type { ShotPatternResult, Winner } from "./common";
+import type { Winner } from "./game";
+import type { ShotPatternResult } from "./shots";
 
 /**
  * Result returned by `MatchRuleSet.decideTurnOnItemUse`.

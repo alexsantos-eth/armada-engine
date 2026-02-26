@@ -1,12 +1,12 @@
 import { toMatchState } from "../logic";
 import type { IGameEngineReader } from "../logic";
-import type { MatchCallbacks } from "./types";
-import type { Shot } from "../../types/common";
+import type { Shot } from "../../types/shots";
 import type {
   AttackCyclePayload,
   ItemUseCyclePayload,
   MatchLifecyclePayload,
   CallbackPayload,
+  MatchCallbacks
 } from "../../types/callbacks";
 
 export type {

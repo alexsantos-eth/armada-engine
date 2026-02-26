@@ -1,13 +1,6 @@
-import type {
-  GameShip,
-  GameItem,
-  GameObstacle,
-  Shot,
-  Winner,
-  GameTurn,
-  ShotPattern,
-  ShotPatternResult,
-} from "./common";
+import type { GameTurn, Winner } from "./game";
+import type { Shot, ShotPattern, ShotPatternResult } from "./shots";
+import type { GameShip, GameItem, GameObstacle } from "./entities";
 
 /**
  * Read-only contract for consumers that only need to observe engine state.

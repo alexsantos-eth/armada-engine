@@ -5,12 +5,9 @@ import type {
   GameShip,
   GameItem,
   GameObstacle,
-  GameTurn,
-  Shot,
-  ShotPattern,
-  ShotPatternResult,
-  Winner,
-} from "./common";
+} from "./entities";
+import type { GameTurn, Winner } from "./game";
+import type { Shot, ShotPattern, ShotPatternResult } from "./shots";
 import type { GameConfig, BoardViewConfig } from "./config";
 
 /**

@@ -30,22 +30,10 @@ export type { MatchRuleSet, TurnDecision, GameOverDecision } from "./rulesets";
 export { GameInitializer } from "../manager";
 export type { GameSetup } from "../manager";
 
-export type {
-  GameShip,
-  GameItem,
-  GameObstacle,
-  Shot,
-  Winner,
-  GameTurn,
-  ShotPattern,
-  ShotOffset,
-  ShotPatternResult,
-  PlayerRole,
-  CellState,
-  Cell,
-  Board,
-  ItemActionContext,
-} from "../types/common";
+export type { GameTurn, Winner, PlayerRole } from "../types/game";
+export type { CellState, Cell, Board } from "../types/board";
+export type { Shot, ShotOffset, ShotPattern, ShotPatternResult } from "../types/shots";
+export type { GameShip, GameItem, GameObstacle, ItemActionContext } from "../types/entities";
 
 export type { GameConfig, BoardLayer, BoardViewConfig } from "../types/config";
 

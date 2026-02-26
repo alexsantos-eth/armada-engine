@@ -1,16 +1,9 @@
 import { getShipCellsFromShip } from "../tools/ships";
 import { getObstacleCellsFromObstacle } from "../tools/obstacles";
 import { ShotError } from "./errors";
-import type {
-  GameShip,
-  GameItem,
-  GameObstacle,
-  Shot,
-  Winner,
-  GameTurn,
-  ShotPattern,
-  ShotPatternResult,
-} from "../types/common";
+import type { GameTurn, Winner } from "../types/game";
+import type { Shot, ShotPattern, ShotPatternResult } from "../types/shots";
+import type { GameShip, GameItem, GameObstacle } from "../types/entities";
 import type { GameConfig } from "../types/config";
 import type {
   IGameEngine,

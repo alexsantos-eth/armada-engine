@@ -10,7 +10,7 @@ import {
   ISLAND_OBSTACLE,
 } from '../../constants/obstacles';
 import { StandardBoardView, withView } from '../../constants/views';
-import type { GameItem, GameObstacle, GameShip } from '../../types/common';
+import type { GameItem, GameObstacle, GameShip } from '../../types/entities';
 
 const BOARD = 10;
 const NO_SHIPS: GameShip[] = [];
