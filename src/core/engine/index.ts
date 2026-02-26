@@ -24,8 +24,8 @@ export {
   AlternatingTurnsRuleSet,
   DefaultRuleSet,
   getRuleSetByName,
-} from "./rulesets";
-export type { MatchRuleSet, TurnDecision, GameOverDecision } from "./rulesets";
+} from "../constants/rulesets";
+export type { MatchRuleSet, TurnDecision, GameOverDecision } from "../constants/rulesets";
 
 export { GameInitializer } from "../manager";
 export type { GameSetup } from "../manager";

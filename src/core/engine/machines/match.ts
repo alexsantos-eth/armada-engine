@@ -1,6 +1,6 @@
 import { setup, assign, createActor } from "xstate";
 import { GameEngine } from "../logic";
-import { DefaultRuleSet } from "../rulesets";
+import { DefaultRuleSet } from "../../constants/rulesets";
 import { StandardBoardView } from "../../constants/views";
 import { PlanError } from "../errors";
 import {
