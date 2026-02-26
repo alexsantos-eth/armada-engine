@@ -34,8 +34,7 @@ const useMatch = ({
   }, []);
 
   const initializeNewGame = () => {
-    const initializer = new GameInitializer(config);
-    const setup = initialSetup ?? initializer.getGameSetup();
+    const setup = initialSetup ?? new GameInitializer(config).getGameSetup();
 
     const newMatch = new Match({
       setup,
