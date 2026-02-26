@@ -95,7 +95,7 @@ export const BoardViewSet = createEntitySet<BoardViewConfig>([
 ], StandardBoardView.title);
 
 export const BOARD_VIEWS = BoardViewSet.map;
-export const getBoardViewById = BoardViewSet.getById;
+export const getBoardView = BoardViewSet.getById;
 export const DEFAULT_BOARD_VIEW = BoardViewSet.default;
 
 export const withView = (

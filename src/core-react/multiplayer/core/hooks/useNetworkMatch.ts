@@ -15,7 +15,7 @@ import { ITEM_TEMPLATES } from "../../../../core/constants/items";
 
 import type { GameRoom } from "../types/game/room";
 import { roomService } from "../services/room/realtime";
-import { DEFAULT_RULESET, getRuleSetById } from "../../../../core/constants";
+import { DEFAULT_RULESET, getRuleSet } from "../../../../core/constants";
 
 export interface UseNetworkMatchProps extends Partial<MatchCallbacks> {
   room: GameRoom | null;
@@ -78,7 +78,7 @@ const useNetworkMatch = ({
         ? room.initialState.enemyItems || []
         : room.initialState.playerItems || [];
 
-    const ruleSet = getRuleSetById(ruleSetName);
+    const ruleSet = getRuleSet(ruleSetName);
     const initialTurn = room.initialTurn === playerRole ? "player" : "enemy";
 
     const initializer = new GameInitializer({

@@ -227,5 +227,5 @@ export const RulesetSet  = createEntitySet<MatchRuleSet>([
 ], ClassicRuleSet.title);
 
 export const RULESETS = RulesetSet.map;
-export const getRuleSetById = RulesetSet.getById;
+export const getRuleSet = RulesetSet.getById;
 export const DEFAULT_RULESET = RulesetSet.default;
