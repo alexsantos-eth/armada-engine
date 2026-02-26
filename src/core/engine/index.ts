@@ -61,8 +61,6 @@ export {
   FogOfWarBoardView,
   DebugBoardView,
   SpectatorBoardView,
-  getBoardViewByName,
-  DefaultBoardView,
   withView,
 } from "../constants/views";
 
@@ -73,7 +71,6 @@ export {
   XLARGE_SHIP,
   SHIP_TEMPLATES,
   getShipTemplate,
-  createShip,
 } from "../constants/ships";
 
 export {

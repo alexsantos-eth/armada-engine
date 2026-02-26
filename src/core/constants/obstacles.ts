@@ -1,5 +1,7 @@
-export type { ObstacleTemplate } from "../types/constants";
 import type { ObstacleTemplate } from "../types/constants";
+import { createEntitySet } from "../tools/constants";
+
+export type { ObstacleTemplate } from "../types/constants";
 
 export const ROCK_OBSTACLE: ObstacleTemplate = {
   id: "rock",
@@ -31,8 +33,13 @@ export const ISLAND_OBSTACLE: ObstacleTemplate = {
   defaultCount: 0,
 };
 
-export const OBSTACLE_TEMPLATES: Record<string, ObstacleTemplate> = {
-  rock: ROCK_OBSTACLE,
-  reef: REEF_OBSTACLE,
-  island: ISLAND_OBSTACLE,
-};
+
+export const ObstacleTemplateSet = createEntitySet<ObstacleTemplate>([
+  ROCK_OBSTACLE,
+  REEF_OBSTACLE,
+  ISLAND_OBSTACLE,
+], ROCK_OBSTACLE.id);
+
+export const OBSTACLE_TEMPLATES = ObstacleTemplateSet.map;
+export const getObstacleTemplate = ObstacleTemplateSet.getById;
+export const DEFAULT_OBSTACLE_TEMPLATE = ObstacleTemplateSet.default;

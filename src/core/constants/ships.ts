@@ -1,6 +1,7 @@
-import type { GameShip } from "../types/entities";
-export type { ShipTemplate } from "../types/constants";
 import type { ShipTemplate } from "../types/constants";
+import { createEntitySet } from "../tools/constants";
+
+export type { ShipTemplate } from "../types/constants";
 
 export const SMALL_SHIP: ShipTemplate = {
   id: "small",
@@ -46,28 +47,13 @@ export const XLARGE_SHIP: ShipTemplate = {
   defaultCount: 1,
 };
 
-export const SHIP_TEMPLATES: Record<string, ShipTemplate> = {
-  small: SMALL_SHIP,
-  medium: MEDIUM_SHIP,
-  large: LARGE_SHIP,
-  xlarge: XLARGE_SHIP,
-};
+export const ShipSet = createEntitySet<ShipTemplate>([
+  SMALL_SHIP,
+  MEDIUM_SHIP,
+  LARGE_SHIP,
+  XLARGE_SHIP,
+], SMALL_SHIP.id);
 
-export function getShipTemplate(name: string): ShipTemplate {
-  return SHIP_TEMPLATES[name] ?? SMALL_SHIP;
-}
-
-export function createShip(
-  template: GameShip,
-  x: number,
-  y: number,
-  shipId?: number,
-): GameShip {
-  return {
-    coords: [x, y],
-    width: template.width,
-    height: template.height,
-    shipId,
-    onDestroy: template.onDestroy,
-  };
-}
+export const SHIP_TEMPLATES = ShipSet.map;
+export const getShipTemplate = ShipSet.getById;
+export const DEFAULT_SHIP_TEMPLATE = ShipSet.default;

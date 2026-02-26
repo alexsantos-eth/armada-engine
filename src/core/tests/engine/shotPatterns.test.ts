@@ -4,7 +4,6 @@ import { StandardBoardView, withView } from "../../constants/views";
 import {
   SHOT_PATTERNS,
   getShotPattern,
-  createCustomPattern,
 } from "../../constants/shots";
 import type { GameShip } from "../../types/entities";
 
@@ -150,35 +149,6 @@ describe("Shot Pattern System", () => {
       
       const shotAt4 = result.shots.find(s => s.x === 4 && s.y === 5);
       expect(shotAt4?.hit).toBe(false); // No ship here
-    });
-  });
-
-  describe("Custom Shot Patterns", () => {
-    it("should create and execute a custom pattern", () => {
-      const customPattern = createCustomPattern(
-        "triangle",
-        "Triangle Shot",
-        [
-          { dx: 0, dy: 0 },
-          { dx: -1, dy: 1 },
-          { dx: 1, dy: 1 },
-        ],
-        "Fires in a triangle shape"
-      );
-      
-      const currentPatterns = engine.getPlayerShotPatterns();
-      const customIdx = currentPatterns.length;
-      engine.setPlayerShotPatterns([...currentPatterns, customPattern]);
-
-      const result = engine.executeShotPattern(5, 5, customIdx, true);
-      
-      expect(result.success).toBe(true);
-      expect(result.shots).toHaveLength(3);
-      
-      const positions = result.shots.map(s => ({ x: s.x, y: s.y }));
-      expect(positions).toContainEqual({ x: 5, y: 5 });
-      expect(positions).toContainEqual({ x: 4, y: 6 });
-      expect(positions).toContainEqual({ x: 6, y: 6 });
     });
   });
 

@@ -1,4 +1,5 @@
 import type { ShotPattern } from "../types/shots";
+import { createEntitySet } from "../tools/constants";
 
 export const SINGLE_SHOT: ShotPattern = {
   id: "single",
@@ -120,35 +121,19 @@ export const L_SHAPE_SHOT: ShotPattern = {
   ],
 };
 
-export const SHOT_PATTERNS: Record<string, ShotPattern> = {
-  single: SINGLE_SHOT,
-  cross: CROSS_SHOT,
-  "large-cross": LARGE_CROSS_SHOT,
-  "horizontal-line": HORIZONTAL_LINE_SHOT,
-  "vertical-line": VERTICAL_LINE_SHOT,
-  square: SQUARE_SHOT,
-  "diagonal-x": DIAGONAL_X_SHOT,
-  "small-square": SMALL_SQUARE_SHOT,
-  "t-shape": T_SHAPE_SHOT,
-  "l-shape": L_SHAPE_SHOT,
-};
+export const ShotPatternSet = createEntitySet<ShotPattern>([
+  SINGLE_SHOT,
+  CROSS_SHOT,
+  LARGE_CROSS_SHOT,
+  HORIZONTAL_LINE_SHOT,
+  VERTICAL_LINE_SHOT,
+  SQUARE_SHOT,
+  DIAGONAL_X_SHOT,
+  SMALL_SQUARE_SHOT,
+  T_SHAPE_SHOT,
+  L_SHAPE_SHOT,
+], SINGLE_SHOT.id);
 
-export function getShotPattern(id: string): ShotPattern {
-  return SHOT_PATTERNS[id] || SINGLE_SHOT;
-}
-
-export function createCustomPattern(
-  id: string,
-  title: string,
-  offsets: Array<{ dx: number; dy: number }>,
-  description?: string,
-): ShotPattern {
-  return {
-    id,
-    title,
-    description,
-    offsets,
-  };
-}
-
-export const DEFAULT_SHOT_PATTERN: ShotPattern =  SINGLE_SHOT
+export const SHOT_PATTERNS = ShotPatternSet.map;
+export const getShotPattern = ShotPatternSet.getById;
+export const DEFAULT_SHOT_PATTERN = ShotPatternSet.default;

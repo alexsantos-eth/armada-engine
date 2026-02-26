@@ -13,10 +13,9 @@ export type { BoardLayer } from "./board";
  * back to the game's `boardWidth` / `boardHeight`.
  *
  * Named presets are provided in `boardviews.ts` and follow the same
- * convention as {@link MatchRuleSet}: a `name`, a `description`, and a
- * `getBoardViewByName` registry function.
+ * convention as {@link MatchRuleSet}: a `title`, a `description`
  */
-export interface BoardViewConfig extends Omit<GameEntity, "id"> {
+export interface BoardViewConfig extends GameEntity {
   /** Number of columns on the board. Single source of truth for board width. */
   width: number;
   /** Number of rows on the board. Single source of truth for board height. */

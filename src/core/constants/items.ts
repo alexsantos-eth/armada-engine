@@ -1,5 +1,7 @@
-export type { ItemTemplate } from "../types/constants";
+import { createEntitySet } from "../tools/constants";
 import type { ItemTemplate } from "../types/constants";
+
+export type { ItemTemplate } from "../types/constants";
 
 export const HEALTH_KIT: ItemTemplate = {
   id: "health_kit",
@@ -57,13 +59,14 @@ export const RADAR_DEVICE: ItemTemplate = {
   },
 };
 
-export const ITEM_TEMPLATES: Record<string, ItemTemplate> = {
-  health_kit: HEALTH_KIT,
-  ammo_cache: AMMO_CACHE,
-  shield_module: SHIELD_MODULE,
-  radar_device: RADAR_DEVICE,
-};
 
-export function getItemTemplate(name: string): ItemTemplate {
-  return ITEM_TEMPLATES[name] ?? HEALTH_KIT;
-}
+export const ItemTemplateSet = createEntitySet<ItemTemplate>([
+  HEALTH_KIT,
+  AMMO_CACHE,
+  SHIELD_MODULE,
+  RADAR_DEVICE,
+], HEALTH_KIT.id);
+
+export const ITEM_TEMPLATES = ItemTemplateSet.map;
+export const getItemTemplate = ItemTemplateSet.getById;
+export const DEFAULT_ITEM_TEMPLATE = ItemTemplateSet.default;
