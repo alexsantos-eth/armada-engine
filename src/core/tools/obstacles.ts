@@ -25,7 +25,6 @@ export function generateObstacle(
   const maxAttempts = GAME_CONSTANTS.OBSTACLES.MAX_PLACEMENT_ATTEMPTS;
   const { width, height } = template;
 
-  // Build a set of all occupied cells (ships + items + existing obstacles).
   const occupied = new Set<string>();
   const key = (x: number, y: number) => `${x},${y}`;
 

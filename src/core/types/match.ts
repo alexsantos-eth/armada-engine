@@ -214,8 +214,6 @@ export interface MatchQueryAPI {
  * ```
  */
 export interface IMatch extends MatchQueryAPI {
-  // ── Lifecycle ────────────────────────────────────────────────────────────
-
   /**
    * Seeds the state machine with the ships, items, obstacles and initial
    * turn provided in the `GameSetup`. Must be called once before any other
@@ -228,8 +226,6 @@ export interface IMatch extends MatchQueryAPI {
    * re-seeding the state machine.
    */
   resetMatch(): void;
-
-  // ── Shot planning ─────────────────────────────────────────────────────────
 
   /**
    * Plans a shot at `(centerX, centerY)` using the given pattern index.
@@ -281,8 +277,6 @@ export interface IMatch extends MatchQueryAPI {
     patternIdx?: number,
   ): PlanAndAttackResult;
 
-  // ── Turn / sync ───────────────────────────────────────────────────────────
-
   /**
    * Forcefully sets the active turn. Used during multiplayer synchronisation
    * to align local state with the server.
@@ -298,15 +292,11 @@ export interface IMatch extends MatchQueryAPI {
    */
   syncShots(playerShots: Shot[], enemyShots: Shot[]): void;
 
-  // ── Rule set ──────────────────────────────────────────────────────────────
-
   /**
    * Replaces the active rule set at runtime without resetting the match.
    * Useful for items or powerups that alter game rules mid-match.
    */
   setRuleSet(ruleSet: MatchRuleSet): void;
-
-  // ── Items ─────────────────────────────────────────────────────────────────
 
   /**
    * Activates the item identified by `itemId`.
@@ -317,8 +307,6 @@ export interface IMatch extends MatchQueryAPI {
    * @returns `true` when the item was successfully used; `false` otherwise.
    */
   useItem(itemId: number, isPlayerShot: boolean, shipId?: number): boolean;
-
-  // ── Board queries (extended) ──────────────────────────────────────────────
 
   /**
    * Returns `true` if cell `(x, y)` has already been fired upon from the
