@@ -55,6 +55,7 @@ export type {
   MatchItemActionContext,
   MatchShipActionContext,
   MatchQueryAPI,
+  IMatch,
   CellInfo,
   PlanShotResult,
   PlanAndAttackResult,

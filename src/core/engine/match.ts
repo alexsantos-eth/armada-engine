@@ -18,6 +18,7 @@ import type {
   CellInfo,
   PlanShotResult,
   PlanAndAttackResult,
+  IMatch,
 } from "../types/match";
 
 export type { MatchCallbacks };
@@ -26,13 +27,14 @@ export type {
   MatchItemActionContext,
   MatchShipActionContext,
   MatchQueryAPI,
+  IMatch,
   CellInfo,
   PlanShotResult,
   PlanAndAttackResult,
   NewMatch,
 } from "../types/match";
 
-export class Match {
+export class Match implements IMatch {
   private actor: ReturnType<typeof createActor<typeof matchMachine>>;
   private setup?: GameSetup;
 

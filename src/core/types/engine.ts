@@ -36,6 +36,9 @@ export interface SideState {
  * prefer this over `IGameEngine`.
  */
 export interface IGameEngineReader {
+  /**
+   * Get a snapshot of the current game state. All arrays are shallow copies 
+   */
   getState(): GameEngineState;
   getVersion(): number;
   isCellShot(x: number, y: number, isPlayerShot: boolean): boolean;
