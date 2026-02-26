@@ -74,7 +74,12 @@ export interface ItemActionContext {
    * @param onDestroy   Optional callback fired once when all cells of this ship are hit.
    * @returns `true` if placed, `false` if no free slot was found.
    */
-  addPlayerShip: (width?: number, height?: number, preferred?: [number, number], onDestroy?: (ctx: ShipActionContext) => void) => boolean;
+  addPlayerShip: (
+    width?: number,
+    height?: number,
+    preferred?: [number, number],
+    onDestroy?: (ctx: ShipActionContext) => void,
+  ) => boolean;
   /**
    * Remove the player ship with the given `shipId`.
    * @returns `true` if found and removed, `false` if not found.
@@ -92,7 +97,12 @@ export interface ItemActionContext {
    * @param onDestroy   Optional callback fired once when all cells of this ship are hit.
    * @returns `true` if placed, `false` if no free slot was found.
    */
-  addEnemyShip: (width?: number, height?: number, preferred?: [number, number], onDestroy?: (ctx: ShipActionContext) => void) => boolean;
+  addEnemyShip: (
+    width?: number,
+    height?: number,
+    preferred?: [number, number],
+    onDestroy?: (ctx: ShipActionContext) => void,
+  ) => boolean;
   /**
    * Remove the enemy ship with the given `shipId`.
    * @returns `true` if found and removed, `false` if not found.
@@ -327,4 +337,16 @@ export interface BattleResult {
   shipPlacements: { player: ShipPlacement[]; enemy: ShipPlacement[] };
   /** Chronologically ordered shot log for the entire match. */
   shotHistory: ShotRecord[];
+}
+
+/**
+ * Base interface for game entities with optional metadata fields.
+ */
+export interface GameEntity {
+  /**  Unique identifier for the entity, used for tracking and referencing. */
+  id?: string;
+  /** Human-readable name for display purposes. */
+  title?: string;
+  /** Optional description providing additional details about the entity. */
+  description?: string;
 }

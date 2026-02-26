@@ -1,4 +1,5 @@
 import type { GameEngineState } from "./engine";
+import type { GameEntity } from "./entities";
 import type { Winner } from "./game";
 import type { ShotPatternResult } from "./shots";
 
@@ -51,12 +52,7 @@ export interface GameOverDecision {
  * Register custom rulesets with `registerRuleSet` so they are accessible
  * via `getRuleSetByName`.
  */
-export interface MatchRuleSet {
-  /** Unique identifier used by `getRuleSetByName`. */
-  name: string;
-  /** Human-readable description of the ruleset behaviour. */
-  description: string;
-
+export interface MatchRuleSet extends GameEntity {
   /**
    * Decides the turn outcome after an attack cycle.
    *

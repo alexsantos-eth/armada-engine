@@ -1,5 +1,6 @@
 import type { MatchRuleSet } from "./rulesets";
 import type { BoardLayer } from "./board";
+import type { GameEntity } from "./entities";
 export type { BoardLayer } from "./board";
 
 /**
@@ -15,14 +16,7 @@ export type { BoardLayer } from "./board";
  * convention as {@link MatchRuleSet}: a `name`, a `description`, and a
  * `getBoardViewByName` registry function.
  */
-export interface BoardViewConfig {
-  /**
-   * Unique identifier for this view configuration.
-   * Used by `getBoardViewByName` to look up a preset by name.
-   */
-  name: string;
-  /** Human-readable description of what this view configuration shows. */
-  description: string;
+export interface BoardViewConfig extends Omit<GameEntity, "id"> {
   /** Number of columns on the board. Single source of truth for board width. */
   width: number;
   /** Number of rows on the board. Single source of truth for board height. */

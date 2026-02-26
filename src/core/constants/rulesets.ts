@@ -12,7 +12,7 @@ import type {
 } from "../types/rulesets";
 
 export const ClassicRuleSet: MatchRuleSet = {
-  name: "ClassicRuleSet",
+  title: "ClassicRuleSet",
   description: "Traditional battleship rules with hit continuation",
 
   decideTurn(attackResult, currentState): TurnDecision {
@@ -77,7 +77,7 @@ export const ClassicRuleSet: MatchRuleSet = {
 };
 
 export const AlternatingTurnsRuleSet: MatchRuleSet = {
-  name: "AlternatingTurnsRuleSet",
+  title: "AlternatingTurnsRuleSet",
   description: "Every shot ends turn, no hit continuation",
 
   decideTurn(attackResult, currentState): TurnDecision {
@@ -121,7 +121,7 @@ export const AlternatingTurnsRuleSet: MatchRuleSet = {
 };
 
 export const ItemHitRuleSet: MatchRuleSet = {
-  name: "ItemHitRuleSet",
+  title: "ItemHitRuleSet",
   description:
     "Repeat turn on any item collection or ship hit; turn ends on ship destruction or miss",
 
@@ -199,7 +199,7 @@ export const ItemHitRuleSet: MatchRuleSet = {
 };
 
 export const LoseTurnOnUseRuleSet: MatchRuleSet = {
-  name: "LoseTurnOnUseRuleSet",
+  title: "LoseTurnOnUseRuleSet",
   description:
     "Classic rules, but activating an item (onUse) ends your turn immediately",
 
@@ -214,19 +214,19 @@ export const LoseTurnOnUseRuleSet: MatchRuleSet = {
   },
 };
 
-export const getRuleSetByName = (name: string): MatchRuleSet => {
-  switch (name) {
-    case ClassicRuleSet.name:
+export const DefaultRuleSet = LoseTurnOnUseRuleSet;
+
+export const getRuleSetByName = (title: string): MatchRuleSet => {
+  switch (title) {
+    case ClassicRuleSet.title:
       return ClassicRuleSet;
-    case AlternatingTurnsRuleSet.name:
+    case AlternatingTurnsRuleSet.title:
       return AlternatingTurnsRuleSet;
-    case ItemHitRuleSet.name:
+    case ItemHitRuleSet.title:
       return ItemHitRuleSet;
-    case LoseTurnOnUseRuleSet.name:
+    case LoseTurnOnUseRuleSet.title:
       return LoseTurnOnUseRuleSet;
     default:
-      throw new Error(`Unknown ruleset name: ${name}`);
+      return DefaultRuleSet;
   }
 };
-
-export const DefaultRuleSet = LoseTurnOnUseRuleSet;

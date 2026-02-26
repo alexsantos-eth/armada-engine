@@ -1,3 +1,4 @@
+import type { GameEntity } from "./entities";
 import type { Winner, GameTurn } from "./game";
 
 /**
@@ -81,13 +82,7 @@ export interface ShotOffset {
  *   ],
  * };
  */
-export interface ShotPattern {
-  /** Registry key used by `GameConfig.shotPatternIds` to look up this pattern. */
-  id: string;
-  /** Display name surfaced in the UI. */
-  name?: string;
-  /** Human-readable description of the pattern's shape and intended use. */
-  description?: string;
+export interface ShotPattern extends GameEntity {
   /** Ordered list of cell offsets that define the pattern's footprint. */
   offsets: ShotOffset[];
 }
