@@ -1,10 +1,11 @@
 import { GAME_CONSTANTS } from "../constants/game";
 import type { GameConfig, GameShip, GameTurn } from "../engine";
-import type { GameItem, GameObstacle } from "../types/common";
+import type { GameItem, GameObstacle, ShotPattern } from "../types/common";
 import {
   generateShips,
   generateItems,
   generateObstacles,
+  generateShotPatterns,
   equalizeItemCounts,
   getItemCells,
   getShipCellsFromShip,
@@ -36,6 +37,10 @@ export interface GameSetup {
   playerObstacles?: GameObstacle[];
   /** Obstacles placed on the enemy's board (indestructible terrain) */
   enemyObstacles?: GameObstacle[];
+  /** Shot patterns available to the player at game start */
+  playerShotPatterns?: ShotPattern[];
+  /** Shot patterns available to the enemy at game start */
+  enemyShotPatterns?: ShotPattern[];
   /** Who starts the game */
   initialTurn: GameTurn;
   /** Game configuration used */
@@ -205,6 +210,9 @@ export class GameInitializer implements IGameSetupProvider {
     const playerObstacles = generateObstacles(this.config, playerShips, playerItems);
     const enemyObstacles = generateObstacles(this.config, enemyShips, enemyItems);
 
+    const playerShotPatterns = generateShotPatterns(this.config);
+    const enemyShotPatterns = generateShotPatterns(this.config);
+
     const initialTurn: GameTurn = this.determineInitialTurn();
 
     return {
@@ -214,6 +222,8 @@ export class GameInitializer implements IGameSetupProvider {
       enemyItems,
       playerObstacles,
       enemyObstacles,
+      playerShotPatterns,
+      enemyShotPatterns,
       initialTurn,
       config: this.config,
     };
@@ -245,6 +255,11 @@ export class GameInitializer implements IGameSetupProvider {
     const enemyObstacles =
       setup.enemyObstacles ?? generateObstacles(this.config, enemyShips, enemyItems);
 
+    const playerShotPatterns =
+      setup.playerShotPatterns ?? generateShotPatterns(this.config);
+    const enemyShotPatterns =
+      setup.enemyShotPatterns ?? generateShotPatterns(this.config);
+
     const initialTurn: GameTurn = this.determineInitialTurn();
 
     return {
@@ -256,6 +271,8 @@ export class GameInitializer implements IGameSetupProvider {
       enemyItems,
       playerObstacles,
       enemyObstacles,
+      playerShotPatterns,
+      enemyShotPatterns,
     };
   }
 }

@@ -4,6 +4,7 @@
 export const ShotError = {
   CellAlreadyShot: "Cell already shot",
   GameAlreadyOver: "Game is already over",
+  PatternNotAvailable: "Shot pattern is not available",
 } as const;
 export type ShotError = (typeof ShotError)[keyof typeof ShotError];
 
@@ -14,6 +15,8 @@ export const PlanError = {
   InvalidPlan: "Invalid plan",
   InvalidPosition: "Invalid position",
   CellAlreadyShot: "Cell already shot",
+  PatternNotAvailable: "Shot pattern is not available",
+  NotYourTurn: "Not your turn",
 } as const;
 export type PlanError = (typeof PlanError)[keyof typeof PlanError];
 

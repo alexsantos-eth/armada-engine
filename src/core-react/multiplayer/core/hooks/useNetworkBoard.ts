@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { SINGLE_SHOT, type Match, type ShotPattern } from "../../../../core/engine";
+import { type Match } from "../../../../core/engine";
 import useNetworkMatch, { type UseNetworkMatchProps } from "./useNetworkMatch";
 
 export interface UseNetworkBoardProps extends UseNetworkMatchProps {
@@ -13,11 +13,11 @@ const useNetworkBoard = ({ matchRef, ...props }: UseNetworkBoardProps) => {
   const planAndAttack = (
     x: number,
     y: number,
-    pattern: ShotPattern = SINGLE_SHOT,
+    patternIdx: number = 0,
   ) => {
     if (!gameState?.isPlayerTurn) return;
     if (gameState?.isGameOver) return;
-    executeShot(x, y, pattern);
+    executeShot(x, y, patternIdx);
   };
 
   useEffect(() => {

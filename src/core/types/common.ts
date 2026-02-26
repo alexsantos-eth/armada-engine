@@ -340,7 +340,11 @@ export interface Shot {
   y: number;
   hit: boolean;
   shipId?: number;
-  patternId?: string; 
+  /**
+   * Index of the pattern in the attacker's `playerShotPatterns` / `enemyShotPatterns`
+   * array at the time the shot was fired. `0` for the first (default) pattern.
+   */
+  patternId?: number;
   patternCenterX?: number; 
   patternCenterY?: number;
   /** True when this shot collected a part of an item instead of being a plain miss. */
@@ -376,7 +380,7 @@ export interface ShotPattern {
   /** Unique identifier for the pattern */
   id: string;
   /** Human-readable name */
-  name: string;
+  name?: string;
   /** Description of the pattern */
   description?: string;
   /** Array of offsets from the target position */

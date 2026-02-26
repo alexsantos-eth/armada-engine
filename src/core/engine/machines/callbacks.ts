@@ -4,7 +4,6 @@ import type { MatchCallbacks } from "./types";
 import type {
   GameItem,
   GameTurn,
-  ShotPattern,
   ShotPatternResult,
   Shot,
   Winner,
@@ -16,7 +15,8 @@ export type AttackCyclePayload = {
   isPlayerShot: boolean;
   centerX: number;
   centerY: number;
-  pattern: ShotPattern;
+  /** 0-based index into the attacker's shotPatterns array */
+  patternIdx: number;
   currentTurn: GameTurn;
   /**
    * True only when the ruleset's `decideTurn` toggled the turn.
@@ -94,7 +94,6 @@ export function fireMatchCallbacks(
         isPlayerShot,
         centerX,
         centerY,
-        pattern,
         currentTurn,
         rulesetToggledTurn,
         winner,
@@ -117,12 +116,13 @@ export function fireMatchCallbacks(
       }
 
       if (callbacks.onShot) {
+        const executedShot = result.shots.find((s) => s.executed);
         const centerShot: Shot = {
           x: centerX,
           y: centerY,
           hit: result.shots.some((s) => s.hit && s.executed),
           shipId: result.shots.find((s) => s.hit && s.executed)?.shipId,
-          patternId: pattern.id,
+          patternId: executedShot?.patternId ?? 0,
           patternCenterX: centerX,
           patternCenterY: centerY,
         };

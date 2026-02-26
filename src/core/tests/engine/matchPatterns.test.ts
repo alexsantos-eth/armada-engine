@@ -2,8 +2,14 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { Match } from "../../engine/match";
 import { AttackError } from "../../engine/errors";
 import { StandardBoardView, withView } from "../../constants/views";
-import { CROSS_SHOT, HORIZONTAL_LINE_SHOT, SINGLE_SHOT } from "../../constants/shots";
+import { SHOT_PATTERNS } from "../../constants/shots";
 import type { GameShip } from "../../types/common";
+
+const ALL_PATTERNS = Object.values(SHOT_PATTERNS);
+const idx = (id: string) => ALL_PATTERNS.findIndex((p) => p.id === id);
+const SINGLE_IDX = idx("single");
+const CROSS_IDX  = idx("cross");
+const HLINE_IDX  = idx("horizontal-line");
 
 describe("Match Shot Patterns", () => {
   let match: Match;
@@ -17,34 +23,41 @@ describe("Match Shot Patterns", () => {
 
   beforeEach(() => {
     match = new Match({
-      setup: { playerShips, enemyShips, initialTurn: 'PLAYER_TURN', config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) } },
+      setup: {
+        playerShips,
+        enemyShips,
+        initialTurn: 'PLAYER_TURN',
+        config: { boardView: withView( { width: 10, height: 10 }, StandardBoardView) },
+        playerShotPatterns: ALL_PATTERNS,
+        enemyShotPatterns: ALL_PATTERNS,
+      },
     });
     match.initializeMatch();
   });
 
   describe("planShot and confirmAttack flow", () => {
     it("should plan a shot with a pattern", () => {
-      const planResult = match.planShot(5, 5, CROSS_SHOT, true);
+      const planResult = match.planShot(5, 5, CROSS_IDX, true);
       
       expect(planResult.ready).toBe(true);
-      expect(planResult.pattern).toBe(CROSS_SHOT);
+      expect(planResult.patternIdx).toBe(CROSS_IDX);
       expect(planResult.centerX).toBe(5);
       expect(planResult.centerY).toBe(5);
     });
 
     it("should store pending plan", () => {
-      match.planShot(5, 5, CROSS_SHOT, true);
+      match.planShot(5, 5, CROSS_IDX, true);
       
       const pendingPlan = match.getPendingPlan();
       expect(pendingPlan).toBeDefined();
       expect(pendingPlan?.centerX).toBe(5);
       expect(pendingPlan?.centerY).toBe(5);
-      expect(pendingPlan?.pattern).toBe(CROSS_SHOT);
+      expect(pendingPlan?.patternIdx).toBe(CROSS_IDX);
       expect(pendingPlan?.isPlayerShot).toBe(true);
     });
 
     it("should execute planned attack", () => {
-      match.planShot(5, 5, CROSS_SHOT, true);
+      match.planShot(5, 5, CROSS_IDX, true);
       const result = match.confirmAttack();
       
       expect(result.success).toBe(true);
@@ -52,7 +65,7 @@ describe("Match Shot Patterns", () => {
     });
 
     it("should clear pending plan after confirmation", () => {
-      match.planShot(5, 5, CROSS_SHOT, true);
+      match.planShot(5, 5, CROSS_IDX, true);
       match.confirmAttack();
       
       const pendingPlan = match.getPendingPlan();
@@ -70,7 +83,7 @@ describe("Match Shot Patterns", () => {
     });
 
     it("should cancel pending plan", () => {
-      match.planShot(5, 5, CROSS_SHOT, true);
+      match.planShot(5, 5, CROSS_IDX, true);
       expect(match.getPendingPlan()).not.toBeNull();
       
       match.cancelPlan();
@@ -79,7 +92,7 @@ describe("Match Shot Patterns", () => {
     });
 
     it("should reject invalid position in plan", () => {
-      const result = match.planShot(-1, 5, CROSS_SHOT, true);
+      const result = match.planShot(-1, 5, CROSS_IDX, true);
       
       expect(result.ready).toBe(false);
       expect(result.error).toBe("Invalid position");
@@ -87,8 +100,8 @@ describe("Match Shot Patterns", () => {
   });
 
   describe("Pattern execution with different patterns", () => {
-    it("should execute SINGLE_SHOT pattern", () => {
-      match.planShot(5, 5, SINGLE_SHOT, true);
+    it("should execute single pattern", () => {
+      match.planShot(5, 5, SINGLE_IDX, true);
       const result = match.confirmAttack();
       
       expect(result.success).toBe(true);
@@ -99,7 +112,7 @@ describe("Match Shot Patterns", () => {
     });
 
     it("should execute CROSS_SHOT pattern", () => {
-      match.planShot(5, 5, CROSS_SHOT, true);
+      match.planShot(5, 5, CROSS_IDX, true);
       const result = match.confirmAttack();
       
       expect(result.success).toBe(true);
@@ -110,7 +123,7 @@ describe("Match Shot Patterns", () => {
     });
 
     it("should execute HORIZONTAL_LINE_SHOT pattern", () => {
-      match.planShot(5, 5, HORIZONTAL_LINE_SHOT, true);
+      match.planShot(5, 5, HLINE_IDX, true);
       const result = match.confirmAttack();
       
       expect(result.success).toBe(true);
@@ -123,7 +136,7 @@ describe("Match Shot Patterns", () => {
 
   describe("Turn management with patterns", () => {
     it("should handle turn ending after pattern", () => {
-      match.planShot(5, 5, CROSS_SHOT, true);
+      match.planShot(5, 5, CROSS_IDX, true);
       const result = match.confirmAttack();
       
       // The default ruleset should toggle turn after any shot
@@ -133,7 +146,7 @@ describe("Match Shot Patterns", () => {
 
     it("should consider pattern as hit if any shot hits", () => {
       // Mix of hits and misses
-      match.planShot(5, 5, CROSS_SHOT, true);
+      match.planShot(5, 5, CROSS_IDX, true);
       const result = match.confirmAttack();
       
       const anyHit = result.shots.some(s => s.hit);
@@ -149,7 +162,7 @@ describe("Match Shot Patterns", () => {
       expect(result.shots[0]?.hit).toBe(true);
     });
 
-    it("should use SINGLE_SHOT pattern internally", () => {
+    it("should use single pattern internally", () => {
       // Execute shot should not leave a pending plan
       match.planAndAttack(5, 5, true);
       
@@ -159,7 +172,7 @@ describe("Match Shot Patterns", () => {
     it("should accept a pattern parameter",() => {
       // Test that pattern parameter works correctly
       // Use a position that hasn't been shot before
-      const result = match.planAndAttack(6, 6, true, CROSS_SHOT);
+      const result = match.planAndAttack(6, 6, true, CROSS_IDX);
       
       expect(result.success).toBe(true);
       // First shot of CROSS is center (6,6) which should miss (no ship there)
@@ -169,7 +182,7 @@ describe("Match Shot Patterns", () => {
 
     it("should accept different pattern types", () => {
       // Horizontal line pattern at (8, 2) where there's a vertical ship
-      const result = match.planAndAttack(8, 2, true, HORIZONTAL_LINE_SHOT);
+      const result = match.planAndAttack(8, 2, true, HLINE_IDX);
       
       expect(result.success).toBe(true);
       // Returns first shot info (7, 2) which should miss
@@ -180,7 +193,7 @@ describe("Match Shot Patterns", () => {
   describe("Multiple pattern executions", () => {
     it("should allow planning different patterns sequentially", () => {
       // First pattern
-      match.planShot(5, 5, CROSS_SHOT, true);
+      match.planShot(5, 5, CROSS_IDX, true);
       let result = match.confirmAttack();
       expect(result.shots).toHaveLength(5);
       
@@ -190,19 +203,19 @@ describe("Match Shot Patterns", () => {
       }
       
       // Second pattern
-      match.planShot(8, 2, HORIZONTAL_LINE_SHOT, true);
+      match.planShot(8, 2, HLINE_IDX, true);
       result = match.confirmAttack();
       expect(result.shots).toHaveLength(3);
     });
 
     it("should allow replanning before confirming", () => {
       // Plan first attack
-      match.planShot(5, 5, CROSS_SHOT, true);
-      expect(match.getPendingPlan()?.pattern).toBe(CROSS_SHOT);
+      match.planShot(5, 5, CROSS_IDX, true);
+      expect(match.getPendingPlan()?.patternIdx).toBe(CROSS_IDX);
       
       // Change mind and plan different attack
-      match.planShot(8, 2, HORIZONTAL_LINE_SHOT, true);
-      expect(match.getPendingPlan()?.pattern).toBe(HORIZONTAL_LINE_SHOT);
+      match.planShot(8, 2, HLINE_IDX, true);
+      expect(match.getPendingPlan()?.patternIdx).toBe(HLINE_IDX);
       
       // Confirm the second plan
       const result = match.confirmAttack();
@@ -212,7 +225,7 @@ describe("Match Shot Patterns", () => {
 
   describe("Edge cases", () => {
     it("should handle pattern at board edge", () => {
-      match.planShot(0, 0, CROSS_SHOT, true);
+      match.planShot(0, 0, CROSS_IDX, true);
       const result = match.confirmAttack();
       
       expect(result.success).toBe(true);
@@ -230,7 +243,7 @@ describe("Match Shot Patterns", () => {
       }
       
       // Plan cross pattern including the already-shot center
-      match.planShot(5, 5, CROSS_SHOT, true);
+      match.planShot(5, 5, CROSS_IDX, true);
       const result = match.confirmAttack();
       
       const centerShot = result.shots.find(s => s.x === 5 && s.y === 5);

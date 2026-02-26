@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { GameEngine } from '../../engine/logic';
 import type { IGameEngine, IGameEngineReader } from '../../engine/logic';
 import { buildPlayerBoard, buildEnemyBoard } from '../../engine/board';
-import { SINGLE_SHOT } from '../../constants/shots';
 import { StandardBoardView, withView } from '../../constants/views';
 import type { GameShip, Shot } from '../../types/common';
 
@@ -115,7 +114,7 @@ describe('GameEngine', () => {
     });
 
     it('should register a miss correctly', () => {
-      const result = engine.executeShotPattern(9, 9, SINGLE_SHOT, true);
+      const result = engine.executeShotPattern(9, 9, 0, true);
       
       expect(result.success).toBe(true);
       expect(result.shots[0].hit).toBe(false);
@@ -125,7 +124,7 @@ describe('GameEngine', () => {
 
     it('should register a hit correctly', () => {
       // Enemy ship at [5,5] horizontal, size 2
-      const result = engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, 0, true);
       
       expect(result.success).toBe(true);
       expect(result.shots[0].hit).toBe(true);
@@ -135,23 +134,23 @@ describe('GameEngine', () => {
 
     it('should detect ship destruction', () => {
       // Enemy small ship at [5,5] horizontal, size 2
-      engine.executeShotPattern(5, 5, SINGLE_SHOT, true); // First hit
-      const result = engine.executeShotPattern(6, 5, SINGLE_SHOT, true); // Second hit - destroys ship
+      engine.executeShotPattern(5, 5, 0, true); // First hit
+      const result = engine.executeShotPattern(6, 5, 0, true); // Second hit - destroys ship
       
       expect(result.shots[0].hit).toBe(true);
       expect(result.shots[0].shipDestroyed).toBe(true);
     });
 
     it('should prevent shooting same cell twice', () => {
-      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
-      const result = engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
+      engine.executeShotPattern(5, 5, 0, true);
+      const result = engine.executeShotPattern(5, 5, 0, true);
       
       expect(result.shots[0].executed).toBe(false);
     });
 
     it('should track shots for both players separately', () => {
-      engine.executeShotPattern(5, 5, SINGLE_SHOT, true); // Player shot
-      engine.executeShotPattern(0, 0, SINGLE_SHOT, false); // Enemy shot
+      engine.executeShotPattern(5, 5, 0, true); // Player shot
+      engine.executeShotPattern(0, 0, 0, false); // Enemy shot
       
       const state = engine.getState();
       expect(state.playerShots).toHaveLength(1);
@@ -161,10 +160,10 @@ describe('GameEngine', () => {
     it('should increment shot count', () => {
       expect(engine.getShotCount()).toBe(0);
       
-      engine.executeShotPattern(0, 0, SINGLE_SHOT, true);
+      engine.executeShotPattern(0, 0, 0, true);
       expect(engine.getShotCount()).toBe(1);
       
-      engine.executeShotPattern(1, 1, SINGLE_SHOT, false);
+      engine.executeShotPattern(1, 1, 0, false);
       expect(engine.getShotCount()).toBe(2);
     });
   });
@@ -176,13 +175,13 @@ describe('GameEngine', () => {
 
     it('should detect when all enemy ships are destroyed', () => {
       // Destroy enemy ship 1 (small ship at [5,5], size 2)
-      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
-      engine.executeShotPattern(6, 5, SINGLE_SHOT, true);
+      engine.executeShotPattern(5, 5, 0, true);
+      engine.executeShotPattern(6, 5, 0, true);
       
       // Destroy enemy ship 2 (medium ship at [7,7], size 3)
-      engine.executeShotPattern(7, 7, SINGLE_SHOT, true);
-      engine.executeShotPattern(7, 8, SINGLE_SHOT, true);
-      engine.executeShotPattern(7, 9, SINGLE_SHOT, true);
+      engine.executeShotPattern(7, 7, 0, true);
+      engine.executeShotPattern(7, 8, 0, true);
+      engine.executeShotPattern(7, 9, 0, true);
       
       const state = engine.getState();
       expect(state.areAllEnemyShipsDestroyed).toBe(true);
@@ -196,13 +195,13 @@ describe('GameEngine', () => {
 
     it('should detect when all player ships are destroyed', () => {
       // Destroy player ship 1 (small ship at [0,0], size 2)
-      engine.executeShotPattern(0, 0, SINGLE_SHOT, false);
-      engine.executeShotPattern(1, 0, SINGLE_SHOT, false);
+      engine.executeShotPattern(0, 0, 0, false);
+      engine.executeShotPattern(1, 0, 0, false);
       
       // Destroy player ship 2 (medium ship at [2,2], size 3)
-      engine.executeShotPattern(2, 2, SINGLE_SHOT, false);
-      engine.executeShotPattern(2, 3, SINGLE_SHOT, false);
-      engine.executeShotPattern(2, 4, SINGLE_SHOT, false);
+      engine.executeShotPattern(2, 2, 0, false);
+      engine.executeShotPattern(2, 3, 0, false);
+      engine.executeShotPattern(2, 4, 0, false);
       
       const state = engine.getState();
       expect(state.areAllPlayerShipsDestroyed).toBe(true);
@@ -216,11 +215,11 @@ describe('GameEngine', () => {
 
     it('should check areAllShipsDestroyed helper method', () => {
       // Destroy all enemy ships
-      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
-      engine.executeShotPattern(6, 5, SINGLE_SHOT, true);
-      engine.executeShotPattern(7, 7, SINGLE_SHOT, true);
-      engine.executeShotPattern(7, 8, SINGLE_SHOT, true);
-      engine.executeShotPattern(7, 9, SINGLE_SHOT, true);
+      engine.executeShotPattern(5, 5, 0, true);
+      engine.executeShotPattern(6, 5, 0, true);
+      engine.executeShotPattern(7, 7, 0, true);
+      engine.executeShotPattern(7, 8, 0, true);
+      engine.executeShotPattern(7, 9, 0, true);
       
       expect(engine.areAllShipsDestroyed(false)).toBe(true); // enemy ships
       expect(engine.areAllShipsDestroyed(true)).toBe(false); // player ships
@@ -246,14 +245,14 @@ describe('GameEngine', () => {
     it('should check if cell has been shot', () => {
       expect(engine.isCellShot(5, 5, true)).toBe(false);
       
-      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
+      engine.executeShotPattern(5, 5, 0, true);
       
       expect(engine.isCellShot(5, 5, true)).toBe(true);
       expect(engine.isCellShot(5, 5, false)).toBe(false); // Different player
     });
 
     it('should get shot at position', () => {
-      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
+      engine.executeShotPattern(5, 5, 0, true);
       
       const shot = engine.getShotAtPosition(5, 5, true);
       expect(shot).toBeDefined();
@@ -295,13 +294,13 @@ describe('GameEngine', () => {
       const v1 = engine2.getVersion();
       expect(v1).toBeGreaterThan(v0);
 
-      engine2.executeShotPattern(4, 4, SINGLE_SHOT, true);
+      engine2.executeShotPattern(4, 4, 0, true);
       const v2 = engine2.getVersion();
       expect(v2).toBeGreaterThan(v1);
     });
 
     it('should reset game state', () => {
-      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
+      engine.executeShotPattern(5, 5, 0, true);
 
       
       engine.resetGame();
@@ -380,10 +379,10 @@ describe('GameEngine', () => {
       // Enemy small ship at [5,5], size 2
       expect(engine.isShipDestroyed(0, true)).toBe(false);
       
-      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
+      engine.executeShotPattern(5, 5, 0, true);
       expect(engine.isShipDestroyed(0, true)).toBe(false);
       
-      engine.executeShotPattern(6, 5, SINGLE_SHOT, true);
+      engine.executeShotPattern(6, 5, 0, true);
       expect(engine.isShipDestroyed(0, true)).toBe(true);
     });
 
@@ -483,12 +482,11 @@ describe('GameEngine', () => {
 
     it('setEnemyShots([]) does NOT clear enemy-ship hit tracking (EMP grenade regression)', () => {
       // Player fires and fully destroys both enemy ships.
-      const singleShot = { id: 'single', name: 'Single', offsets: [{ dx: 0, dy: 0 }] };
-      engine.executeShotPattern(5, 5, singleShot, true);
-      engine.executeShotPattern(6, 5, singleShot, true);
-      engine.executeShotPattern(7, 7, singleShot, true);
-      engine.executeShotPattern(7, 8, singleShot, true);
-      engine.executeShotPattern(7, 9, singleShot, true);
+      engine.executeShotPattern(5, 5, 0, true);
+      engine.executeShotPattern(6, 5, 0, true);
+      engine.executeShotPattern(7, 7, 0, true);
+      engine.executeShotPattern(7, 8, 0, true);
+      engine.executeShotPattern(7, 9, 0, true);
 
       expect(engine.getState().areAllEnemyShipsDestroyed).toBe(true);
 
@@ -500,13 +498,12 @@ describe('GameEngine', () => {
     });
 
     it('setPlayerShots([]) does NOT clear player-ship hit tracking', () => {
-      const singleShot = { id: 'single', name: 'Single', offsets: [{ dx: 0, dy: 0 }] };
       // Enemy fires and fully destroys both player ships.
-      engine.executeShotPattern(0, 0, singleShot, false);
-      engine.executeShotPattern(1, 0, singleShot, false);
-      engine.executeShotPattern(2, 2, singleShot, false);
-      engine.executeShotPattern(2, 3, singleShot, false);
-      engine.executeShotPattern(2, 4, singleShot, false);
+      engine.executeShotPattern(0, 0, 0, false);
+      engine.executeShotPattern(1, 0, 0, false);
+      engine.executeShotPattern(2, 2, 0, false);
+      engine.executeShotPattern(2, 3, 0, false);
+      engine.executeShotPattern(2, 4, 0, false);
 
       expect(engine.getState().areAllPlayerShipsDestroyed).toBe(true);
 
@@ -557,7 +554,7 @@ describe('GameEngine', () => {
     });
 
     it('should mark a shot as collected when hitting an item cell', () => {
-      const result = engine.executeShotPattern(3, 3, SINGLE_SHOT, true);
+      const result = engine.executeShotPattern(3, 3, 0, true);
 
       expect(result.success).toBe(true);
       expect(result.shots[0].hit).toBe(false);       // items are not ship hits
@@ -567,28 +564,28 @@ describe('GameEngine', () => {
     });
 
     it('should not fully collect a multi-part item until all parts are shot', () => {
-      const r1 = engine.executeShotPattern(6, 6, SINGLE_SHOT, true); // first part
+      const r1 = engine.executeShotPattern(6, 6, 0, true); // first part
       expect(r1.shots[0].collected).toBe(true);
       expect(r1.shots[0].itemFullyCollected).toBe(false);
 
-      const r2 = engine.executeShotPattern(7, 6, SINGLE_SHOT, true); // second part
+      const r2 = engine.executeShotPattern(7, 6, 0, true); // second part
       expect(r2.shots[0].collected).toBe(true);
       expect(r2.shots[0].itemFullyCollected).toBe(true);
     });
 
     it('should add item index to playerCollectedItems once fully collected', () => {
-      engine.executeShotPattern(3, 3, SINGLE_SHOT, true);
+      engine.executeShotPattern(3, 3, 0, true);
 
       const state = engine.getState();
       expect(state.playerCollectedItems).toContain(0);
     });
 
     it('should not re-collect an already collected item', () => {
-      engine.executeShotPattern(6, 6, SINGLE_SHOT, true);
-      engine.executeShotPattern(7, 6, SINGLE_SHOT, true); // fully collected
+      engine.executeShotPattern(6, 6, 0, true);
+      engine.executeShotPattern(7, 6, 0, true); // fully collected
 
       // Trying to shoot a cell of an already-collected item returns null (no second collection)
-      const result = engine.executeShotPattern(6, 6, SINGLE_SHOT, true); // cell already shot
+      const result = engine.executeShotPattern(6, 6, 0, true); // cell already shot
       expect(result.shots[0].executed).toBe(false); // cell already shot
     });
 
@@ -599,7 +596,7 @@ describe('GameEngine', () => {
       const playerItem = { coords: [1, 1] as [number, number], part: 1 };
       eng.setPlayerItems([playerItem]);
 
-      const result = eng.executeShotPattern(1, 1, SINGLE_SHOT, false); // enemy shoots player board
+      const result = eng.executeShotPattern(1, 1, 0, false); // enemy shoots player board
       expect(result.shots[0].collected).toBe(true);
       expect(result.shots[0].itemId).toBe(0);
       expect(result.shots[0].itemFullyCollected).toBe(true);
@@ -610,7 +607,7 @@ describe('GameEngine', () => {
       const items = [{ coords: [1, 1] as [number, number], part: 1 }];
       eng.initializeGame(playerShips, enemyShips, items, []);
 
-      eng.executeShotPattern(1, 1, SINGLE_SHOT, false); // enemy collects player item
+      eng.executeShotPattern(1, 1, 0, false); // enemy collects player item
       expect(eng.getState().enemyCollectedItems).toContain(0);
 
       eng.setPlayerItems(items); // reset
@@ -618,7 +615,7 @@ describe('GameEngine', () => {
     });
 
     it('setEnemyItems resets collected state', () => {
-      engine.executeShotPattern(3, 3, SINGLE_SHOT, true); // collect item 0
+      engine.executeShotPattern(3, 3, 0, true); // collect item 0
       expect(engine.getState().playerCollectedItems).toContain(0);
 
       engine.setEnemyItems(enemyItems); // reset
@@ -711,21 +708,21 @@ describe('GameEngine', () => {
     });
 
     it('should mark enemy-shot cells as HIT when a ship is hit', () => {
-      engine.executeShotPattern(0, 0, SINGLE_SHOT, false); // enemy hits player ship at (0,0)
+      engine.executeShotPattern(0, 0, 0, false); // enemy hits player ship at (0,0)
       const board = buildPlayerBoard(engine.getState());
       expect(board[0][0].state).toBe('HIT');
       expect(board[0][0].shot).toBeDefined();
     });
 
     it('should mark enemy-shot cells as MISS when no ship is hit', () => {
-      engine.executeShotPattern(9, 9, SINGLE_SHOT, false); // enemy misses
+      engine.executeShotPattern(9, 9, 0, false); // enemy misses
       const board = buildPlayerBoard(engine.getState());
       expect(board[9][9].state).toBe('MISS');
       expect(board[9][9].shot).toBeDefined();
     });
 
     it('should include shot metadata in cell', () => {
-      engine.executeShotPattern(0, 0, SINGLE_SHOT, false);
+      engine.executeShotPattern(0, 0, 0, false);
       const board = buildPlayerBoard(engine.getState());
       const cell = board[0][0];
       expect(cell.shot?.x).toBe(0);
@@ -754,7 +751,7 @@ describe('GameEngine', () => {
       // state). Without the fix the cell would degrade to MISS.
       const rawShot = {
         x: 3, y: 3, hit: false,
-        patternId: 'single', patternCenterX: 3, patternCenterY: 3,
+        patternId: 0, patternCenterX: 3, patternCenterY: 3,
       };
       const state = {
         ...engine.getState(),
@@ -794,25 +791,25 @@ describe('GameEngine', () => {
     });
 
     it('should mark player-shot cells as HIT when a ship is hit', () => {
-      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
+      engine.executeShotPattern(5, 5, 0, true);
       const board = buildEnemyBoard(engine.getState());
       expect(board[5][5].state).toBe('HIT');
     });
 
     it('should mark player-shot cells as MISS when nothing is hit', () => {
-      engine.executeShotPattern(9, 9, SINGLE_SHOT, true);
+      engine.executeShotPattern(9, 9, 0, true);
       const board = buildEnemyBoard(engine.getState());
       expect(board[9][9].state).toBe('MISS');
     });
 
     it('should mark collected item cells as COLLECTED', () => {
-      engine.executeShotPattern(1, 1, SINGLE_SHOT, true); // collect the item
+      engine.executeShotPattern(1, 1, 0, true); // collect the item
       const board = buildEnemyBoard(engine.getState());
       expect(board[1][1].state).toBe('COLLECTED');
     });
 
     it('should include shot metadata in cell', () => {
-      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
+      engine.executeShotPattern(5, 5, 0, true);
       const board = buildEnemyBoard(engine.getState());
       const cell = board[5][5];
       expect(cell.shot?.x).toBe(5);
@@ -844,7 +841,7 @@ describe('GameEngine', () => {
         [{ coords: [6, 6] as [number, number], width: 1, height: 1 }],
       );
       // Shoot the obstacle; obstacleHit should be set by the engine
-      engine.executeShotPattern(6, 6, SINGLE_SHOT, true);
+      engine.executeShotPattern(6, 6, 0, true);
       const board = buildEnemyBoard(engine.getState());
       expect(board[6][6].state).toBe('OBSTACLE');
     });
@@ -856,7 +853,7 @@ describe('GameEngine', () => {
       // state). Old code would overwrite with MISS.
       const staleMissShot = {
         x: 8, y: 8, hit: false,
-        patternId: 'single', patternCenterX: 8, patternCenterY: 8,
+        patternId: 0, patternCenterX: 8, patternCenterY: 8,
       };
       const state = {
         ...engine.getState(),

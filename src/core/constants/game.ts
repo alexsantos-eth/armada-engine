@@ -2,6 +2,7 @@ import { SHIP_TEMPLATES } from "./ships";
 import { ITEM_TEMPLATES } from "./items";
 import { OBSTACLE_TEMPLATES } from "./obstacles";
 import { StandardBoardView } from "./views";
+import { SHOT_PATTERNS } from "./shots";
 
 export const GAME_CONSTANTS = {
   SHIPS: {
@@ -21,8 +22,14 @@ export const GAME_CONSTANTS = {
   OBSTACLES: {
     MAX_PLACEMENT_ATTEMPTS: 200,
     DEFAULT_COUNTS: Object.fromEntries(
-      Object.entries(OBSTACLE_TEMPLATES).map(([key, t]) => [key, t.defaultCount]),
+      Object.entries(OBSTACLE_TEMPLATES).map(([key, t]) => [
+        key,
+        t.defaultCount,
+      ]),
     ) as Record<string, number>,
+  },
+  SHOTS: {
+    DEFAULT_PATTERN_IDS: Object.keys(SHOT_PATTERNS),
   },
   GAME_LOGIC: {
     BATTLE: {
@@ -39,4 +46,3 @@ export const GAME_CONSTANTS = {
     DEFAULT_VIEW: StandardBoardView,
   },
 };
-

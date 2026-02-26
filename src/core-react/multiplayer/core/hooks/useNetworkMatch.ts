@@ -3,15 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import {
   GameInitializer,
   Match,
-  SINGLE_SHOT,
   getRuleSetByName,
-  getShotPattern,
   type GameConfig,
   type MatchState,
   type MatchCallbacks,
   type MatchQueryAPI,
   type PlayerRole,
-  type ShotPattern,
   type GameItem,
   type Cell,
 } from "../../../../core/engine";
@@ -111,7 +108,8 @@ const useNetworkMatch = ({
         callbacks?.onShot?.(shot, isPlayerShot);
         
         if (isPlayerShot) {
-          const pattern = getShotPattern(shot.patternId!) ?? SINGLE_SHOT;
+          const patterns = newMatch.getState().playerShotPatterns;
+          const pattern = patterns[shot.patternId ?? 0] ?? 0;
           roomService
             .pushMatchEvent(room.id, {
               type: "ATTACK",
@@ -189,7 +187,7 @@ const useNetworkMatch = ({
           if (!m) return;
 
           if (event.type === "ATTACK") {
-            m.planAndAttack(event.x, event.y, false, event.pattern);
+            m.planAndAttack(event.x, event.y, false, 0);
           } else if (event.type === "USE_ITEM") {
             m.useItem(event.itemId, false);
           }
@@ -204,12 +202,12 @@ const useNetworkMatch = ({
   const executeShot = (
     x: number,
     y: number,
-    pattern: ShotPattern = SINGLE_SHOT,
+    patternIdx: number = 0,
   ) => {
     if (!match.current || !gameState) return;
     if (!gameState.isPlayerTurn || gameState.isGameOver) return;
     
-    match.current.planAndAttack(x, y, true, pattern);
+    match.current.planAndAttack(x, y, true, patternIdx);
   };
 
   const useItem = (itemId: number) => {

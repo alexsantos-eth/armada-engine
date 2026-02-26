@@ -2,7 +2,8 @@ import { GAME_CONSTANTS } from "../../constants/game";
 import { SHIP_TEMPLATES } from "../../constants/ships";
 import { ITEM_TEMPLATES } from "../../constants/items";
 import { OBSTACLE_TEMPLATES } from "../../constants/obstacles";
-import type { GameShip, GameItem, GameObstacle } from "../../types/common";
+import { SHOT_PATTERNS } from "../../constants/shots";
+import type { GameShip, GameItem, GameObstacle, ShotPattern } from "../../types/common";
 import type { GameConfig } from "../../types/config";
 import {
   BOARD_DEFAULT_HEIGHT,
@@ -648,4 +649,38 @@ export function generateObstacles(
   }
 
   return obstacles;
+}
+
+/**
+ * Resolve the set of {@link ShotPattern}s a player starts with, derived from
+ * a game configuration.
+ *
+ * The IDs are looked up in the global `SHOT_PATTERNS` registry; unknown IDs
+ * are silently skipped (so old saved configs don't crash on missing patterns).
+ * Duplicates are removed while preserving insertion order.
+ *
+ * Falls back to `GAME_CONSTANTS.SHOTS.DEFAULT_PATTERN_IDS` when
+ * `config.shotPatternIds` is absent.
+ *
+ * @param config - Partial game config.  Only `shotPatternIds` is consumed.
+ * @returns Array of resolved `ShotPattern` objects.
+ */
+export function generateShotPatterns(config: Partial<GameConfig>): ShotPattern[] {
+  const ids = config.shotPatternIds ?? GAME_CONSTANTS.SHOTS.DEFAULT_PATTERN_IDS;
+  const seen = new Set<string>();
+  const patterns: ShotPattern[] = [];
+
+  for (const id of ids) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const pattern = SHOT_PATTERNS[id];
+    if (pattern) {
+      patterns.push({
+        id,
+        offsets: pattern.offsets,
+      });
+    }
+  }
+
+  return patterns;
 }

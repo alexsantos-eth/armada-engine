@@ -18,7 +18,8 @@ import type { GameConfig, BoardViewConfig } from "../../types/config";
 export interface PendingPlan {
   centerX: number;
   centerY: number;
-  pattern: ShotPattern;
+  /** 0-based index into the attacker's shotPatterns array */
+  patternIdx: number;
   isPlayerShot: boolean;
 }
 
@@ -110,7 +111,8 @@ export interface MatchMachineContext {
   lastAttackCenter: {
     centerX: number;
     centerY: number;
-    pattern: ShotPattern;
+    /** 0-based index into the attacker's shotPatterns array */
+    patternIdx: number;
   } | null;
   /**
    * Number of turn toggles accumulated by `onCollect` handlers during
@@ -156,14 +158,18 @@ export type MatchMachineEvent =
       playerObstacles?: GameObstacle[];
       /** Obstacles placed on the enemy's board (indestructible terrain). */
       enemyObstacles?: GameObstacle[];
+      /** Shot patterns available to the player. */
+      playerShotPatterns?: ShotPattern[];
+      /** Shot patterns available to the enemy. */
+      enemyShotPatterns?: ShotPattern[];
     }
   /** Plans a shot without executing it */
   | {
       type: "PLAN_SHOT";
       centerX: number;
       centerY: number;
-      /** Shot pattern; defaults to SINGLE_SHOT */
-      pattern?: ShotPattern;
+      /** 0-based index into the attacker's shotPatterns array; defaults to 0 */
+      patternIdx?: number;
       isPlayerShot: boolean;
     }
   /** Confirms and executes the planned attack */

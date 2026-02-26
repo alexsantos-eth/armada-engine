@@ -1,6 +1,5 @@
 import { createActor } from "xstate";
 
-import { SINGLE_SHOT } from "../constants/shots";
 import { AttackError, PlanError } from "./errors";
 import { GameInitializer, type GameSetup, type IGameSetupProvider } from "../manager";
 import { type MatchState, toMatchState } from "./logic";
@@ -13,7 +12,6 @@ import type {
   Board,
   Winner,
   GameTurn,
-  ShotPattern,
   ShotPatternResult,
   Shot,
   ItemActionContext,
@@ -93,7 +91,7 @@ export class Match {
    * to `active.planning` and firing `onMatchStart`.
    */
   public initializeMatch(): void {
-    const { playerShips, enemyShips, initialTurn, playerItems, enemyItems, playerObstacles, enemyObstacles } =
+    const { playerShips, enemyShips, initialTurn, playerItems, enemyItems, playerObstacles, enemyObstacles, playerShotPatterns, enemyShotPatterns } =
       this.setup!;
 
     this.actor.send({
@@ -105,25 +103,27 @@ export class Match {
       enemyItems,
       playerObstacles,
       enemyObstacles,
+      playerShotPatterns,
+      enemyShotPatterns,
     });
   }
 
   /**
-   * Plan a shot with a pattern
+   * Plan a shot with a pattern index.
    * This sets up the attack but doesn't execute it yet.
    * Call confirmAttack() to execute the planned shot.
    */
   public planShot(
     centerX: number,
     centerY: number,
-    pattern: ShotPattern = SINGLE_SHOT,
+    patternIdx: number = 0,
     isPlayerShot: boolean,
   ): PlanShotResult {
     this.actor.send({
       type: "PLAN_SHOT",
       centerX,
       centerY,
-      pattern,
+      patternIdx,
       isPlayerShot,
     });
 
@@ -135,7 +135,7 @@ export class Match {
       return { ready: false, error: PlanError.InvalidPlan };
     }
 
-    return { ready: true, pattern, centerX, centerY };
+    return { ready: true, patternIdx, centerX, centerY };
   }
 
   /**
@@ -190,7 +190,7 @@ export class Match {
   public getPendingPlan(): {
     centerX: number;
     centerY: number;
-    pattern: ShotPattern;
+    patternIdx: number;
     isPlayerShot: boolean;
   } | null {
     return this.snap.context.pendingPlan;
@@ -208,9 +208,9 @@ export class Match {
     x: number,
     y: number,
     isPlayerShot: boolean,
-    pattern: ShotPattern = SINGLE_SHOT,
+    patternIdx: number = 0,
   ): PlanAndAttackResult {
-    const planResult = this.planShot(x, y, pattern, isPlayerShot);
+    const planResult = this.planShot(x, y, patternIdx, isPlayerShot);
 
     if (!planResult.ready) {
       const state = this.engine.getState();
@@ -540,7 +540,8 @@ export interface MatchQueryAPI {
   getPendingPlan(): {
     centerX: number;
     centerY: number;
-    pattern: ShotPattern;
+    /** 0-based index into the attacker's shotPatterns array */
+    patternIdx: number;
     isPlayerShot: boolean;
   } | null;
 
@@ -574,7 +575,8 @@ export interface CellInfo {
 export interface PlanShotResult {
   ready: boolean;
   error?: string;
-  pattern?: ShotPattern;
+  /** 0-based index into the attacker's shotPatterns array */
+  patternIdx?: number;
   centerX?: number;
   centerY?: number;
 }

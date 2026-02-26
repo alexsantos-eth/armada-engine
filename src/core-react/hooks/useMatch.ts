@@ -16,16 +16,18 @@ export interface UseMatchProps extends MatchCallbacks {
   config?: Partial<GameConfig>;
   startTurn?: GAME_INITIAL_TURN;
   initialSetup?: GameSetup;
+  matchRef?: React.MutableRefObject<Match | null>;
 }
 
 const useMatch = ({
   config,
   startTurn,
   initialSetup,
+  matchRef,
   ...callbacks
 }: UseMatchProps | undefined = {}) => {
   const [gameState, setGameState] = useState<MatchState | null>(null);
-  const match = useRef<Match | null>(null);
+  const match = matchRef ?? useRef<Match | null>(null);
 
   useEffect(() => {
     initializeNewGame();
@@ -45,7 +47,6 @@ const useMatch = ({
     });
 
     newMatch.initializeMatch();
-
     match.current = newMatch;
     setGameState(newMatch.getState());
   };

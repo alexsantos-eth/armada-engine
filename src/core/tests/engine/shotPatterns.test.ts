@@ -2,21 +2,26 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { GameEngine } from "../../engine/logic";
 import { StandardBoardView, withView } from "../../constants/views";
 import {
-  CROSS_SHOT,
-  DIAGONAL_X_SHOT,
-  HORIZONTAL_LINE_SHOT,
-  L_SHAPE_SHOT,
-  LARGE_CROSS_SHOT,
   SHOT_PATTERNS,
-  SINGLE_SHOT,
-  SMALL_SQUARE_SHOT,
-  SQUARE_SHOT,
-  T_SHAPE_SHOT,
-  VERTICAL_LINE_SHOT,
   getShotPattern,
   createCustomPattern,
 } from "../../constants/shots";
 import type { GameShip } from "../../types/common";
+
+// All built-in patterns as an ordered array — index is passed to executeShotPattern.
+const ALL_PATTERNS = Object.values(SHOT_PATTERNS);
+const idx = (id: string) => ALL_PATTERNS.findIndex((p) => p.id === id);
+
+const SINGLE_IDX        = idx("single");
+const CROSS_IDX         = idx("cross");
+const LARGE_CROSS_IDX   = idx("large-cross");
+const HLINE_IDX         = idx("horizontal-line");
+const VLINE_IDX         = idx("vertical-line");
+const SQUARE_IDX        = idx("square");
+const DIAG_X_IDX        = idx("diagonal-x");
+const SMALL_SQUARE_IDX  = idx("small-square");
+const T_SHAPE_IDX       = idx("t-shape");
+const L_SHAPE_IDX       = idx("l-shape");
 
 describe("Shot Pattern System", () => {
   let engine: GameEngine;
@@ -30,12 +35,12 @@ describe("Shot Pattern System", () => {
 
   beforeEach(() => {
     engine = new GameEngine({ boardView: withView({ width: 10, height: 10 }, StandardBoardView, ) });
-    engine.initializeGame(playerShips, enemyShips);
+    engine.initializeGame(playerShips, enemyShips, [], [], [], [], ALL_PATTERNS, ALL_PATTERNS);
   });
 
   describe("Single Shot Pattern", () => {
     it("should execute a single shot", () => {
-      const result = engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, SINGLE_IDX, true);
       
       expect(result.success).toBe(true);
       expect(result.shots).toHaveLength(1);
@@ -46,7 +51,7 @@ describe("Shot Pattern System", () => {
     });
 
     it("should miss when shooting at empty cell", () => {
-      const result = engine.executeShotPattern(0, 5, SINGLE_SHOT, true);
+      const result = engine.executeShotPattern(0, 5, SINGLE_IDX, true);
       
       expect(result.success).toBe(true);
       expect(result.shots[0].hit).toBe(false);
@@ -56,7 +61,7 @@ describe("Shot Pattern System", () => {
 
   describe("Cross Shot Pattern", () => {
     it("should execute 5 shots in a cross pattern", () => {
-      const result = engine.executeShotPattern(5, 5, CROSS_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, CROSS_IDX, true);
       
       expect(result.success).toBe(true);
       expect(result.shots).toHaveLength(5);
@@ -71,7 +76,7 @@ describe("Shot Pattern System", () => {
     });
 
     it("should hit ships at multiple positions in the cross", () => {
-      const result = engine.executeShotPattern(5, 5, CROSS_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, CROSS_IDX, true);
       
       // Center should hit enemy ship at (5,5)
       const centerShot = result.shots.find(s => s.x === 5 && s.y === 5);
@@ -83,7 +88,7 @@ describe("Shot Pattern System", () => {
     });
 
     it("should handle cross pattern at board edge", () => {
-      const result = engine.executeShotPattern(0, 0, CROSS_SHOT, true);
+      const result = engine.executeShotPattern(0, 0, CROSS_IDX, true);
       
       expect(result.success).toBe(true);
       expect(result.shots).toHaveLength(5);
@@ -102,10 +107,10 @@ describe("Shot Pattern System", () => {
 
     it("should not re-shoot already shot cells", () => {
       // First shot at center
-      engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
+      engine.executeShotPattern(5, 5, SINGLE_IDX, true);
       
       // Execute cross pattern
-      const result = engine.executeShotPattern(5, 5, CROSS_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, CROSS_IDX, true);
       
       expect(result.success).toBe(true);
       const centerShot = result.shots.find(s => s.x === 5 && s.y === 5);
@@ -119,7 +124,7 @@ describe("Shot Pattern System", () => {
 
   describe("Horizontal Line Shot Pattern", () => {
     it("should execute 3 shots in a horizontal line", () => {
-      const result = engine.executeShotPattern(5, 5, HORIZONTAL_LINE_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, HLINE_IDX, true);
       
       expect(result.success).toBe(true);
       expect(result.shots).toHaveLength(3);
@@ -134,7 +139,7 @@ describe("Shot Pattern System", () => {
     });
 
     it("should hit consecutive ship cells", () => {
-      const result = engine.executeShotPattern(5, 5, HORIZONTAL_LINE_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, HLINE_IDX, true);
       
       // Ship spans (5,5), (6,5), (7,5)
       const shotAt5 = result.shots.find(s => s.x === 5 && s.y === 5);
@@ -161,7 +166,11 @@ describe("Shot Pattern System", () => {
         "Fires in a triangle shape"
       );
       
-      const result = engine.executeShotPattern(5, 5, customPattern, true);
+      const currentPatterns = engine.getPlayerShotPatterns();
+      const customIdx = currentPatterns.length;
+      engine.setPlayerShotPatterns([...currentPatterns, customPattern]);
+
+      const result = engine.executeShotPattern(5, 5, customIdx, true);
       
       expect(result.success).toBe(true);
       expect(result.shots).toHaveLength(3);
@@ -191,7 +200,7 @@ describe("Shot Pattern System", () => {
     it("should not execute pattern when game is already over", () => {
       engine.setGameOver("player");
       
-      const result = engine.executeShotPattern(5, 5, CROSS_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, CROSS_IDX, true);
       
       expect(result.success).toBe(false);
       expect(result.error).toBe("Game is already over");
@@ -201,7 +210,7 @@ describe("Shot Pattern System", () => {
 
   describe("Shot Count", () => {
     it("should increment shot count for each executed shot in pattern", () => {
-      engine.executeShotPattern(5, 5, CROSS_SHOT, true);
+      engine.executeShotPattern(5, 5, CROSS_IDX, true);
       
       // All 5 shots in cross pattern should execute
       const executedCount = engine.getPlayerShots().length;
@@ -210,10 +219,10 @@ describe("Shot Pattern System", () => {
 
     it("should not count out-of-bounds or already-shot cells", () => {
       // Shoot center first
-      engine.executeShotPattern(0, 0, SINGLE_SHOT, true);
+      engine.executeShotPattern(0, 0, SINGLE_IDX, true);
       
       // Execute cross at corner (some will be out of bounds, one already shot)
-      engine.executeShotPattern(0, 0, CROSS_SHOT, true);
+      engine.executeShotPattern(0, 0, CROSS_IDX, true);
       
       // Only the valid, unshot cells should be added
       const playerShots = engine.getPlayerShots();
@@ -228,7 +237,7 @@ describe("Shot Pattern System", () => {
 
   describe("Vertical Line Shot Pattern", () => {
     it("should fire 3 shots in a vertical column", () => {
-      const result = engine.executeShotPattern(5, 5, VERTICAL_LINE_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, VLINE_IDX, true);
 
       expect(result.success).toBe(true);
       expect(result.shots).toHaveLength(3);
@@ -246,7 +255,7 @@ describe("Shot Pattern System", () => {
       // Enemy ship at coords [5,5] width=3 → cells (5,5),(6,5),(7,5)
       // Vertical line at (5,5): fires (5,4),(5,5),(5,6)
       // Only (5,5) is a ship cell
-      const result = engine.executeShotPattern(5, 5, VERTICAL_LINE_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, VLINE_IDX, true);
 
       const centerShot = result.shots.find(s => s.x === 5 && s.y === 5);
       expect(centerShot?.hit).toBe(true);
@@ -256,7 +265,7 @@ describe("Shot Pattern System", () => {
     });
 
     it("should skip out-of-bounds cells at the top edge", () => {
-      const result = engine.executeShotPattern(5, 0, VERTICAL_LINE_SHOT, true);
+      const result = engine.executeShotPattern(5, 0, VLINE_IDX, true);
 
       const outOfBounds = result.shots.find(s => s.y === -1);
       expect(outOfBounds?.executed).toBe(false);
@@ -268,14 +277,14 @@ describe("Shot Pattern System", () => {
 
   describe("Large Cross Shot Pattern", () => {
     it("should fire 9 shots in an extended cross", () => {
-      const result = engine.executeShotPattern(5, 5, LARGE_CROSS_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, LARGE_CROSS_IDX, true);
 
       expect(result.success).toBe(true);
       expect(result.shots).toHaveLength(9);
     });
 
     it("should include center, two lateral cells in each direction", () => {
-      const result = engine.executeShotPattern(5, 5, LARGE_CROSS_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, LARGE_CROSS_IDX, true);
       const positions = result.shots.map(s => ({ x: s.x, y: s.y }));
 
       expect(positions).toContainEqual({ x: 5, y: 5 }); // Center
@@ -286,7 +295,7 @@ describe("Shot Pattern System", () => {
     });
 
     it("should skip out-of-bounds cells near the corner", () => {
-      const result = engine.executeShotPattern(1, 1, LARGE_CROSS_SHOT, true);
+      const result = engine.executeShotPattern(1, 1, LARGE_CROSS_IDX, true);
       const oob = result.shots.filter(s => !s.executed);
       // Cells at x=-1 and y=-1 are out-of-bounds (dx=-2 or dy=-2)
       expect(oob.length).toBeGreaterThan(0);
@@ -298,7 +307,7 @@ describe("Shot Pattern System", () => {
 
   describe("Square Shot Pattern", () => {
     it("should fire 9 shots covering a 3×3 block", () => {
-      const result = engine.executeShotPattern(5, 5, SQUARE_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, SQUARE_IDX, true);
 
       expect(result.success).toBe(true);
       expect(result.shots).toHaveLength(9);
@@ -315,7 +324,7 @@ describe("Shot Pattern System", () => {
     it("should cover and hit all cells of a 3-cell ship entirely inside the square", () => {
       // Enemy ship at [5,5] width=3 → (5,5),(6,5),(7,5)
       // Square centered at (6,5) covers all three cells
-      const result = engine.executeShotPattern(6, 5, SQUARE_SHOT, true);
+      const result = engine.executeShotPattern(6, 5, SQUARE_IDX, true);
       const hits = result.shots.filter(s => s.hit && s.executed);
       expect(hits.length).toBeGreaterThanOrEqual(3);
     });
@@ -323,7 +332,7 @@ describe("Shot Pattern System", () => {
 
   describe("Diagonal X Shot Pattern", () => {
     it("should fire 5 shots in an X shape", () => {
-      const result = engine.executeShotPattern(5, 5, DIAGONAL_X_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, DIAG_X_IDX, true);
 
       expect(result.success).toBe(true);
       expect(result.shots).toHaveLength(5);
@@ -337,7 +346,7 @@ describe("Shot Pattern System", () => {
     });
 
     it("should not include horizontal or vertical neighbors", () => {
-      const result = engine.executeShotPattern(5, 5, DIAGONAL_X_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, DIAG_X_IDX, true);
       const positions = result.shots.map(s => `${s.x},${s.y}`);
 
       expect(positions).not.toContain("4,5"); // left
@@ -349,7 +358,7 @@ describe("Shot Pattern System", () => {
 
   describe("Small Square Shot Pattern", () => {
     it("should fire 4 shots in a 2×2 block", () => {
-      const result = engine.executeShotPattern(5, 5, SMALL_SQUARE_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, SMALL_SQUARE_IDX, true);
 
       expect(result.success).toBe(true);
       expect(result.shots).toHaveLength(4);
@@ -366,8 +375,9 @@ describe("Shot Pattern System", () => {
       engine.initializeGame(
         playerShips,
         [{ coords: [5, 5], width: 2, height: 1 }],
+        [], [], [], [], ALL_PATTERNS, ALL_PATTERNS,
       );
-      const result = engine.executeShotPattern(5, 5, SMALL_SQUARE_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, SMALL_SQUARE_IDX, true);
       const hits = result.shots.filter(s => s.hit && s.executed);
       expect(hits).toHaveLength(2);
     });
@@ -375,7 +385,7 @@ describe("Shot Pattern System", () => {
 
   describe("T-Shape Shot Pattern", () => {
     it("should fire 5 shots in a T formation", () => {
-      const result = engine.executeShotPattern(5, 5, T_SHAPE_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, T_SHAPE_IDX, true);
 
       expect(result.success).toBe(true);
       expect(result.shots).toHaveLength(5);
@@ -393,7 +403,7 @@ describe("Shot Pattern System", () => {
 
   describe("L-Shape Shot Pattern", () => {
     it("should fire 4 shots in an L formation", () => {
-      const result = engine.executeShotPattern(5, 5, L_SHAPE_SHOT, true);
+      const result = engine.executeShotPattern(5, 5, L_SHAPE_IDX, true);
 
       expect(result.success).toBe(true);
       expect(result.shots).toHaveLength(4);

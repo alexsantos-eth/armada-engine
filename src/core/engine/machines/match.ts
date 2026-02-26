@@ -1,7 +1,6 @@
 import { setup, assign, createActor } from "xstate";
 import { GameEngine } from "../logic";
 import { DefaultRuleSet } from "../rulesets";
-import { SINGLE_SHOT } from "../../constants/shots";
 import { StandardBoardView } from "../../constants/views";
 import { PlanError } from "../errors";
 import { buildCollectContext, buildUseContext, buildDestroyContext } from "../item";
@@ -24,19 +23,32 @@ export const matchMachine = setup({
   guards: {
     /**
      * Validates that the planned shot is legal:
+     * - `isPlayerShot` matches the current turn (turn ownership)
      * - Position is within the board bounds
      * - Cell has not been shot before (only for single-cell patterns)
      */
     isValidPlan: ({ context, event }) => {
       if (event.type !== "PLAN_SHOT") return false;
 
+      const expectedTurn = event.isPlayerShot ? "PLAYER_TURN" : "ENEMY_TURN";
+      if (context.currentTurn !== expectedTurn) {
+        return false;
+      }
+
       if (!context.engine.isValidPosition(event.centerX, event.centerY)) {
         return false;
       }
 
-      const pattern = event.pattern ?? SINGLE_SHOT;
+      const patternIdx = event.patternIdx ?? 0;
+      const patterns = event.isPlayerShot
+        ? context.engine.getPlayerShotPatterns()
+        : context.engine.getEnemyShotPatterns();
+      if (patternIdx < 0 || patternIdx >= patterns.length) {
+        return false;
+      }
+      const pattern = patterns[patternIdx];
       if (
-        pattern.id === "single" &&
+        pattern.offsets.length === 1 &&
         context.engine.isCellShot(
           event.centerX,
           event.centerY,
@@ -61,7 +73,7 @@ export const matchMachine = setup({
         pendingPlan: {
           centerX: event.centerX,
           centerY: event.centerY,
-          pattern: event.pattern ?? SINGLE_SHOT,
+          patternIdx: event.patternIdx ?? 0,
           isPlayerShot: event.isPlayerShot,
         },
         planError: null,
@@ -73,16 +85,27 @@ export const matchMachine = setup({
       if (event.type !== "PLAN_SHOT") return {};
 
       let planError: PlanError = PlanError.InvalidPlan;
-      if (!context.engine.isValidPosition(event.centerX, event.centerY)) {
+      const expectedTurn = event.isPlayerShot ? "PLAYER_TURN" : "ENEMY_TURN";
+      if (context.currentTurn !== expectedTurn) {
+        planError = PlanError.NotYourTurn;
+      } else if (!context.engine.isValidPosition(event.centerX, event.centerY)) {
         planError = PlanError.InvalidPosition;
-      } else if (
-        context.engine.isCellShot(
-          event.centerX,
-          event.centerY,
-          event.isPlayerShot,
-        )
-      ) {
-        planError = PlanError.CellAlreadyShot;
+      } else {
+        const patternIdx = event.patternIdx ?? 0;
+        const patterns = event.isPlayerShot
+          ? context.engine.getPlayerShotPatterns()
+          : context.engine.getEnemyShotPatterns();
+        if (patternIdx < 0 || patternIdx >= patterns.length) {
+          planError = PlanError.PatternNotAvailable;
+        } else if (
+          context.engine.isCellShot(
+            event.centerX,
+            event.centerY,
+            event.isPlayerShot,
+          )
+        ) {
+          planError = PlanError.CellAlreadyShot;
+        }
       }
 
       return { planError };
@@ -109,12 +132,12 @@ export const matchMachine = setup({
     executeAttack: assign(({ context }) => {
       if (!context.pendingPlan) return {};
 
-      const { centerX, centerY, pattern, isPlayerShot } = context.pendingPlan;
+      const { centerX, centerY, patternIdx, isPlayerShot } = context.pendingPlan;
 
       const lastAttackResult = context.engine.executeShotPattern(
         centerX,
         centerY,
-        pattern,
+        patternIdx,
         isPlayerShot,
       );
 
@@ -122,7 +145,7 @@ export const matchMachine = setup({
         pendingPlan: null,
         lastAttackResult,
         lastAttackIsPlayerShot: isPlayerShot,
-        lastAttackCenter: { centerX, centerY, pattern },
+        lastAttackCenter: { centerX, centerY, patternIdx },
       };
     }),
 
@@ -302,7 +325,7 @@ export const matchMachine = setup({
         isPlayerShot: context.lastAttackIsPlayerShot ?? false,
         centerX: context.lastAttackCenter?.centerX ?? 0,
         centerY: context.lastAttackCenter?.centerY ?? 0,
-        pattern: context.lastAttackCenter?.pattern ?? SINGLE_SHOT,
+        patternIdx: context.lastAttackCenter?.patternIdx ?? 0,
         currentTurn,
         rulesetToggledTurn,
         winner,
@@ -332,6 +355,8 @@ export const matchMachine = setup({
         event.enemyItems ?? [],
         event.playerObstacles ?? [],
         event.enemyObstacles ?? [],
+        event.playerShotPatterns ?? [],
+        event.enemyShotPatterns ?? [],
       );
 
       fireMatchCallbacks(context.callbacks, context.engine, {

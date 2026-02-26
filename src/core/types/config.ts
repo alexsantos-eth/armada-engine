@@ -63,5 +63,16 @@ export interface GameConfig {
    */
   obstacleCounts: Record<string, number>;
 
+  /**
+   * IDs of shot patterns available to **both** players.
+   * References keys from `SHOT_PATTERNS` in `constants/shots.ts`.
+   * Omit to fall back to `GAME_CONSTANTS.SHOTS.DEFAULT_PATTERN_IDS` (single-shot only).
+   * Use separate `playerShotPatternIds` / `enemyShotPatternIds` (on `GameSetup`)
+   * when asymmetric loadouts are required.
+   *
+   * @example ["single", "cross", "horizontal-line"]
+   */
+  shotPatternIds?: string[];
+
   ruleSet?: MatchRuleSet;
 }

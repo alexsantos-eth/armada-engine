@@ -20,6 +20,7 @@ interface SideState {
   ships: GameShip[];
   items: GameItem[];
   obstacles: GameObstacle[];
+  shotPatterns: ShotPattern[];
   shotsMap: Map<PositionKey, Shot>;
   shipPositions: Map<PositionKey, number>;
   shipSizes: Map<number, number>;
@@ -36,6 +37,7 @@ function createSideState(): SideState {
     ships: [],
     items: [],
     obstacles: [],
+    shotPatterns: [],
     shotsMap: new Map(),
     shipPositions: new Map(),
     shipSizes: new Map(),
@@ -68,6 +70,8 @@ export interface IGameEngineReader {
   getEnemyShots(): Shot[];
   getPlayerObstacles(): GameObstacle[];
   getEnemyObstacles(): GameObstacle[];
+  getPlayerShotPatterns(): ShotPattern[];
+  getEnemyShotPatterns(): ShotPattern[];
   getShotCount(): number;
   getWinner(): Winner;
   getBoardDimensions(): { width: number; height: number };
@@ -95,13 +99,15 @@ export interface IGameEngine extends IGameEngineReader {
     enemyItems?: GameItem[],
     playerObstacles?: GameObstacle[],
     enemyObstacles?: GameObstacle[],
+    playerShotPatterns?: ShotPattern[],
+    enemyShotPatterns?: ShotPattern[],
   ): void;
   resetGame(): void;
   setBoardDimensions(width: number, height: number): void;
   executeShotPattern(
     centerX: number,
     centerY: number,
-    pattern: ShotPattern,
+    patternIdx: number,
     isPlayerShot: boolean,
   ): ShotPatternResult;
   setGameOver(winner: Winner): void;
@@ -113,6 +119,8 @@ export interface IGameEngine extends IGameEngineReader {
   setEnemyShots(shots: Shot[]): void;
   setPlayerObstacles(obstacles: GameObstacle[]): void;
   setEnemyObstacles(obstacles: GameObstacle[]): void;
+  setPlayerShotPatterns(patterns: ShotPattern[]): void;
+  setEnemyShotPatterns(patterns: ShotPattern[]): void;
   markItemUsed(itemId: number, isPlayerShot: boolean, shipId?: number): void;
 }
 
@@ -153,6 +161,7 @@ export class GameEngine implements IGameEngine {
     side.ships = [];
     side.items = [];
     side.obstacles = [];
+    side.shotPatterns = [];
     side.shotsMap.clear();
     side.shipPositions.clear();
     side.shipSizes.clear();
@@ -188,6 +197,8 @@ export class GameEngine implements IGameEngine {
     enemyItems: GameItem[] = [],
     playerObstacles: GameObstacle[] = [],
     enemyObstacles: GameObstacle[] = [],
+    playerShotPatterns: ShotPattern[] = [],
+    enemyShotPatterns: ShotPattern[] = [],
   ): void {
     this.clearState();
 
@@ -197,6 +208,8 @@ export class GameEngine implements IGameEngine {
     this.enemySide.items = enemyItems;
     this.playerSide.obstacles = playerObstacles;
     this.enemySide.obstacles = enemyObstacles;
+    this.playerSide.shotPatterns = playerShotPatterns.length > 0 ? playerShotPatterns : [];
+    this.enemySide.shotPatterns = enemyShotPatterns.length > 0 ? enemyShotPatterns : [];
 
     this.cacheShipPositions(
       playerShips,
@@ -254,7 +267,7 @@ export class GameEngine implements IGameEngine {
     x: number,
     y: number,
     isPlayerShot: boolean,
-    patternInfo?: { patternId: string; centerX: number; centerY: number },
+    patternInfo?: { patternId: number; centerX: number; centerY: number },
   ): ShotResult {
     if (this.isCellShot(x, y, isPlayerShot)) {
       return {
@@ -281,9 +294,9 @@ export class GameEngine implements IGameEngine {
       y,
       hit: result.hit,
       shipId: result.shipId >= 0 ? result.shipId : undefined,
-      patternId: patternInfo?.patternId || "single",
-      patternCenterX: patternInfo?.centerX || x,
-      patternCenterY: patternInfo?.centerY || y,
+      patternId: patternInfo?.patternId ?? 0,
+      patternCenterX: patternInfo?.centerX ?? x,
+      patternCenterY: patternInfo?.centerY ?? y,
       ...(itemCollection?.collected && {
         collected: true,
         itemId: itemCollection.itemId,
@@ -354,25 +367,25 @@ export class GameEngine implements IGameEngine {
 
   /**
    * Execute a shot pattern at target coordinates
-   * This is the primary method for executing shots. For a single-cell shot, use SINGLE_SHOT pattern.
+   * This is the primary method for executing shots. For a single-cell shot.
    *
    * @param centerX - Center X coordinate for the pattern
    * @param centerY - Center Y coordinate for the pattern
-   * @param pattern - The shot pattern to execute (use SINGLE_SHOT for standard single shots)
+   * @param patternIdx - 0-based index into the attacker's shotPatterns array
    * @param isPlayerShot - True if shots are from player, false if from enemy
    * @returns Result containing all shots executed in the pattern
    *
    * @example
-   * // Single shot
-   * engine.executeShotPattern(5, 5, SINGLE_SHOT, true);
+   * // Single shot (index 0)
+   * engine.executeShotPattern(5, 5, 0, true);
    *
-   * // Cross pattern
-   * engine.executeShotPattern(5, 5, CROSS_SHOT, true);
+   * // Cross pattern (index 1)
+   * engine.executeShotPattern(5, 5, 1, true);
    */
   public executeShotPattern(
     centerX: number,
     centerY: number,
-    pattern: ShotPattern,
+    patternIdx: number,
     isPlayerShot: boolean,
   ): ShotPatternResult {
     if (this.isGameOver) {
@@ -384,6 +397,19 @@ export class GameEngine implements IGameEngine {
         winner: this.winner,
       };
     }
+
+    const attackingPatterns = this.attackingSide(isPlayerShot).shotPatterns;
+    if (patternIdx < 0 || patternIdx >= attackingPatterns.length) {
+      return {
+        success: false,
+        error: ShotError.PatternNotAvailable,
+        shots: [],
+        isGameOver: this.isGameOver,
+        winner: this.winner,
+      };
+    }
+    const pattern = attackingPatterns[patternIdx];
+    const resolvedPatternId = patternIdx;
 
     const shots: ShotPatternResult["shots"] = [];
 
@@ -422,7 +448,7 @@ export class GameEngine implements IGameEngine {
         targetX,
         targetY,
         isPlayerShot,
-        { patternId: pattern.id, centerX, centerY },
+        { patternId: resolvedPatternId, centerX, centerY },
       );
 
       shots.push({
@@ -432,7 +458,7 @@ export class GameEngine implements IGameEngine {
         shipId: shotResult.shipId >= 0 ? shotResult.shipId : undefined,
         shipDestroyed: shotResult.shipDestroyed,
         executed: true,
-        patternId: pattern.id,
+        patternId: resolvedPatternId,
         patternCenterX: centerX,
         patternCenterY: centerY,
         collected: shotResult.collected,
@@ -777,6 +803,8 @@ export class GameEngine implements IGameEngine {
       enemyUsedItems: Array.from(this.enemySide.usedItems.entries()).map(([itemId, shipId]) => ({ itemId, shipId })),
       playerObstacles: [...this.playerSide.obstacles],
       enemyObstacles: [...this.enemySide.obstacles],
+      playerShotPatterns: [...this.playerSide.shotPatterns],
+      enemyShotPatterns: [...this.enemySide.shotPatterns],
     };
   }
 
@@ -922,6 +950,38 @@ export class GameEngine implements IGameEngine {
    */
   public getEnemyObstacles(): GameObstacle[] {
     return [...this.enemySide.obstacles];
+  }
+
+  /**
+   * Get player's available shot patterns.
+   * @returns Copy of the player's shot pattern array.
+   */
+  public getPlayerShotPatterns(): ShotPattern[] {
+    return [...this.playerSide.shotPatterns];
+  }
+
+  /**
+   * Get enemy's available shot patterns.
+   * @returns Copy of the enemy's shot pattern array.
+   */
+  public getEnemyShotPatterns(): ShotPattern[] {
+    return [...this.enemySide.shotPatterns];
+  }
+
+  /**
+   * Replace the player's available shot patterns.
+   */
+  public setPlayerShotPatterns(patterns: ShotPattern[]): void {
+    this.playerSide.shotPatterns = patterns;
+    this._version++;
+  }
+
+  /**
+   * Replace the enemy's available shot patterns.
+   */
+  public setEnemyShotPatterns(patterns: ShotPattern[]): void {
+    this.enemySide.shotPatterns = patterns;
+    this._version++;
   }
 
   /**
@@ -1071,6 +1131,20 @@ export interface GameEngineState {
    * on obstacle cells are recorded as misses but the obstacle persists.
    */
   enemyObstacles: GameObstacle[];
+
+  /**
+   * Shot patterns available to the **player** for the current match.
+   * Set during `initializeGame`; can be mutated at runtime via
+   * `setPlayerShotPatterns`.
+   */
+  playerShotPatterns: ShotPattern[];
+
+  /**
+   * Shot patterns available to the **enemy** for the current match.
+   * Set during `initializeGame`; can be mutated at runtime via
+   * `setEnemyShotPatterns`.
+   */
+  enemyShotPatterns: ShotPattern[];
 }
 
 /**

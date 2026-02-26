@@ -1,22 +1,22 @@
 import { useBoard, type UseBoardProps } from "../../core-react/hooks";
-import { type ShotPattern } from "../../core/engine";
+
 import MatchArena from "./match-arena";
 
 interface LocalMatchProps extends UseBoardProps {
-  selectedPattern?: ShotPattern;
+  selectedPattern?: number;
   showStatus?: boolean;
 }
 
 const LocalMatch = ({
   initialSetup,
   matchRef,
-  selectedPattern,
+  selectedPattern = 0,
   showStatus = false,
   ...callbacks
 }: LocalMatchProps) => {
   const {
-    planAndAttack,
     useItem,
+    cmd,
     match: { playerBoard, enemyBoard, gameState },
   } = useBoard({ initialSetup, matchRef, ...callbacks });
 
@@ -27,15 +27,22 @@ const LocalMatch = ({
   };
 
   return (
-    <MatchArena
-      gameState={gameState}
-      playerBoard={playerBoard}
-      enemyBoard={enemyBoard}
-      canFire={!!canFire}
-      onCellClick={(x, y) => planAndAttack(x, y, selectedPattern)}
-      onUseItem={handleUseItem}
-      showStatus={showStatus}
-    />
+    <>
+      <MatchArena
+        gameState={gameState}
+        playerBoard={playerBoard}
+        enemyBoard={enemyBoard}
+        canFire={!!canFire}
+        onCellClick={(x, y) => {
+          const ready = cmd?.planShot(x, y, selectedPattern, true);
+          if (ready?.ready) {
+            cmd?.confirmAttack();
+          }
+        }}
+        onUseItem={handleUseItem}
+        showStatus={showStatus}
+      />
+    </>
   );
 };
 
