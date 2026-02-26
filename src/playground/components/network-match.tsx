@@ -11,7 +11,6 @@ interface NetworkMatchProps {
 }
 
 const NetworkMatch: React.FC<NetworkMatchProps> = ({
-  selectedPattern,
   initialSetup,
   showStatus,
 }) => {
@@ -42,7 +41,7 @@ const NetworkMatch: React.FC<NetworkMatchProps> = ({
         playerBoard={playerBoard}
         enemyBoard={enemyBoard}
         canFire={!!canFire}
-        onCellClick={(x, y) => planAndAttack(x, y, selectedPattern)}
+        onCellClick={(x, y) => planAndAttack(x, y, 0)}
         onUseItem={(itemId) => useItem(itemId)}
         showStatus={showStatus}
       />
