@@ -11,6 +11,7 @@ import type { ShotPatternResult } from "./shots";
 export interface ItemUseTurnDecision {
   /** Whether to toggle the active turn after the item use. */
   shouldToggleTurn: boolean;
+  /** Human-readable explanation of the decision, surfaced in `PlanAndAttackResult.reason` for debugging. */
   reason: string;
 }
 

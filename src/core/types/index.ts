@@ -1,3 +1,15 @@
+/**
+ * Public type surface for the engine core.
+ *
+ * Re-exports every type, interface, and error constant that external consumers
+ * (React hooks, multiplayer adapters, game setup utilities) need to interact
+ * with the engine. Import from this barrel instead of from individual module
+ * files to maintain a stable import surface.
+ *
+ * Internal implementation types (e.g. `SideState`, `PositionKey`) are
+ * intentionally omitted — they are only required by `GameEngine` and should
+ * not be part of the public API.
+ */
 export type { GameTurn, PlayerName, Winner, PlayerRole } from "./game";
 export type { CellState, BoardLayer, Cell, Board } from "./board";
 export type { Shot, ShotOffset, ShotPattern, ShotPatternResult, ShotRecord } from "./shots";

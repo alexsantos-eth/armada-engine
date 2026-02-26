@@ -11,13 +11,19 @@ import type { MatchCallbacks } from "./machines";
  * `onTurnChange`, `onGameOver`, and `onStateChange` in the correct order.
  */
 export type AttackCyclePayload = {
+  /** Discriminant that identifies this payload as originating from an attack cycle. */
   kind: "attack";
+  /** Aggregated outcome from the engine after all pattern shots were applied. */
   result: ShotPatternResult;
+  /** `true` when the local player fired; `false` when the enemy fired. */
   isPlayerShot: boolean;
+  /** Board column of the pattern's centre cell. */
   centerX: number;
+  /** Board row of the pattern's centre cell. */
   centerY: number;
   /** 0-based index into the attacker's `shotPatterns` array. */
   patternIdx: number;
+  /** Active turn at the end of the attack cycle (after any `onCollect` handler toggles). */
   currentTurn: GameTurn;
   /**
    * `true` only when the ruleset's `decideTurn` toggled the turn.
@@ -25,6 +31,7 @@ export type AttackCyclePayload = {
    * emit `onTurnChange`, preserving the original behaviour.
    */
   rulesetToggledTurn: boolean;
+  /** Winning side if the game ended during this cycle; `null` while still in progress. */
   winner: Winner | null;
 };
 
@@ -33,13 +40,19 @@ export type AttackCyclePayload = {
  * (handler invoked, turns decided).
  */
 export type ItemUseCyclePayload = {
+  /** Discriminant that identifies this payload as originating from an item-use cycle. */
   kind: "itemUse";
+  /** 0-based index of the activated item within the relevant side's items array. */
   itemId: number;
+  /** `true` when the local player activated the item; `false` when the enemy did. */
   isPlayerShot: boolean;
+  /** Full item definition at the moment of activation. */
   item: GameItem;
+  /** Active turn at the end of the item-use cycle. */
   currentTurn: GameTurn;
   /** `true` if either the item handler or the ruleset toggled the turn. */
   turnToggled: boolean;
+  /** Winning side if the game ended during this cycle; `null` while still in progress. */
   winner: Winner | null;
   /** Optional ship the item was targeted at, forwarded from `match.useItem()`. */
   shipId?: number;

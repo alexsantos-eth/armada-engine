@@ -226,6 +226,7 @@ export type ShipActionContext = Omit<ItemActionContext, "item"> & {
  * When all cells are shot, the item is fully collected.
  */
 export interface GameItem {
+  /** Top-left corner of the item's horizontal footprint as `[col, row]` (0-based). */
   coords: [number, number];
   /** Number of cells (parts) that must be shot to fully collect this item. */
   part: number;
@@ -257,6 +258,7 @@ export interface GameItem {
  * are recorded as misses and the obstacle persists for the whole match.
  */
 export interface GameObstacle {
+  /** Top-left corner of the obstacle's rectangular footprint as `[col, row]` (0-based). */
   coords: [number, number];
   /** Number of columns occupied (≥ 1). */
   width: number;
@@ -270,6 +272,7 @@ export interface GameObstacle {
  * Its footprint is a `width × height` rectangle with top-left corner at `coords`.
  */
 export interface GameShip {
+  /** Top-left corner of the ship's rectangular footprint as `[col, row]` (0-based). */
   coords: [number, number];
   /** Number of columns occupied (≥ 1). */
   width: number;
@@ -289,18 +292,39 @@ export interface GameShip {
   onDestroy?: (ctx: ShipActionContext) => void;
 }
 
+/**
+ * Associates a placed ship with the exact board cells it occupies.
+ * Used in `BattleResult.shipPlacements` to reconstruct the full board
+ * layout after a match for replays and post-game analysis.
+ */
 export interface ShipPlacement {
+  /** The ship whose footprint is described by `cells`. */
   ship: GameShip;
+  /** All `[col, row]` coordinates covered by this ship's rectangular footprint. */
   cells: [number, number][];
 }
 
+/**
+ * End-of-match summary produced by the battle simulator.
+ *
+ * Aggregates the outcome, shot counts, hit rates, and the complete placement
+ * and shot history for both sides. Intended for post-game statistics and replay.
+ */
 export interface BattleResult {
+  /** The winning side, or `null` if the match ended without a victor. */
   winner: Winner;
+  /** Total number of turns taken across both sides during the match. */
   totalTurns: number;
+  /** Number of shots fired by the player. */
   playerShots: number;
+  /** Number of shots fired by the enemy. */
   enemyShots: number;
+  /** Number of the player's shots that struck an enemy ship cell. */
   playerHits: number;
+  /** Number of the enemy's shots that struck a player ship cell. */
   enemyHits: number;
+  /** Full ship placements for both sides as they were at game start. */
   shipPlacements: { player: ShipPlacement[]; enemy: ShipPlacement[] };
+  /** Chronologically ordered shot log for the entire match. */
   shotHistory: ShotRecord[];
 }

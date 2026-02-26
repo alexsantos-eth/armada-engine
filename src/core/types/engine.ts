@@ -3,76 +3,139 @@ import type { Shot, ShotPattern, ShotPatternResult } from "./shots";
 import type { GameShip, GameItem, GameObstacle } from "./entities";
 
 /**
- * Opaque key used to index cells in the engine's internal position maps.
- * Formatted as `"x,y"`.
+ * String key used to address a single board cell in the engine's internal
+ * position maps. Encoding as `"x,y"` makes O(1) `Map` lookups possible
+ * without requiring a 2-D array.
+ *
+ * @example
+ * const key: PositionKey = `${x},${y}`;
  */
 export type PositionKey = string;
 
 /**
- * Internal runtime state for one side (player or enemy) within `GameEngine`.
- * Holds all mutable collections that track ships, items, obstacles, and shots.
+ * Internal mutable state bucket owned by `GameEngine` for one side of the
+ * match (player or enemy). Grouping both arrays and pre-computed `Map` lookups
+ * here keeps O(1) access uniform across all game queries without exposing the
+ * structure to external consumers.
+ *
+ * @remarks
+ * This interface is intentionally not part of the public API surface. External
+ * code should read state through `IGameEngineReader` and write through
+ * `IGameEngine`.
  */
 export interface SideState {
+  /** Ship instances placed on this side's board. */
   ships: GameShip[];
+  /** Collectible items placed on this side's board. */
   items: GameItem[];
+  /** Indestructible obstacles placed on this side's board. */
   obstacles: GameObstacle[];
+  /** Shot patterns available to the attacker on this side. */
   shotPatterns: ShotPattern[];
+  /** O(1) lookup from a `PositionKey` to the `Shot` record filed at that cell. */
   shotsMap: Map<PositionKey, Shot>;
+  /** O(1) lookup from a `PositionKey` to the `shipId` of the ship occupying that cell. */
   shipPositions: Map<PositionKey, number>;
+  /** Total cell count per ship — maps `shipId` → number of cells in the ship's footprint. */
   shipSizes: Map<number, number>;
+  /** Running hit tally per ship — maps `shipId` → number of cells already struck. */
   shipHits: Map<number, number>;
+  /** O(1) lookup from a `PositionKey` to the `itemId` of the item part occupying that cell. */
   itemPositions: Map<PositionKey, number>;
+  /** Running collection tally per item — maps `itemId` → number of parts already shot. */
   itemHits: Map<number, number>;
+  /** O(1) lookup from a `PositionKey` to the `obstacleId` of the obstacle occupying that cell. */
   obstaclePositions: Map<PositionKey, number>;
+  /** Set of `itemId` values whose every part-cell has been collected. */
   collectedItems: Set<number>;
+  /** Maps `itemId` to the optional target `shipId` supplied when the item was activated. */
   usedItems: Map<number, number | undefined>;
 }
 
 /**
- * Read-only contract for consumers that only need to observe engine state.
- *
- * Use this type for callbacks, board projections, and UI queries — express
- * the minimum required capability (ISP). Anywhere write access is not needed,
- * prefer this over `IGameEngine`.
+ * Read-only contract for consumers that need to observe but not mutate engine
+ * state. Following the Interface Segregation Principle, prefer this narrower
+ * type for callbacks, board projections, and UI queries over the broader
+ * `IGameEngine` whenever mutation is not required.
  */
 export interface IGameEngineReader {
   /**
-   * Get a snapshot of the current game state. All arrays are shallow copies 
+   * Returns an immutable snapshot of the current game state.
+   * All arrays are shallow copies — mutations have no effect on internal state.
    */
   getState(): GameEngineState;
+  /**
+   * Monotonically increasing counter incremented on every engine mutation.
+   * Consumers can compare cached versions against this value to decide whether
+   * a derived structure (board rendering, AI state) needs to be recomputed.
+   */
   getVersion(): number;
+  /** `true` if the cell at `(x, y)` has already been fired upon from the given perspective. */
   isCellShot(x: number, y: number, isPlayerShot: boolean): boolean;
+  /** `true` if every cell of the given ship has been struck. */
   isShipDestroyed(shipId: number, isPlayerShot: boolean): boolean;
+  /** `true` if every ship on the specified board has been fully sunk. */
   areAllShipsDestroyed(isPlayerShips: boolean): boolean;
+  /** `true` if the item's `onUse` handler has been activated at least once. */
   isItemUsed(itemId: number, isPlayerShot: boolean): boolean;
+  /** Shallow copy of all ships placed on the player's board. */
   getPlayerShips(): GameShip[];
+  /** Shallow copy of all ships placed on the enemy's board. */
   getEnemyShips(): GameShip[];
+  /** Ordered list of shots fired by the player (targeting the enemy board). */
   getPlayerShots(): Shot[];
+  /** Ordered list of shots fired by the enemy (targeting the player board). */
   getEnemyShots(): Shot[];
+  /** Obstacles placed on the player's board. */
   getPlayerObstacles(): GameObstacle[];
+  /** Obstacles placed on the enemy's board. */
   getEnemyObstacles(): GameObstacle[];
+  /** Shot patterns available to the player for the current match. */
   getPlayerShotPatterns(): ShotPattern[];
+  /** Shot patterns available to the enemy for the current match. */
   getEnemyShotPatterns(): ShotPattern[];
+  /** Total number of shots fired by both sides combined. */
   getShotCount(): number;
+  /** Current match winner; `null` while the game is still in progress. */
   getWinner(): Winner;
+  /** Current board width and height in cells. */
   getBoardDimensions(): { width: number; height: number };
+  /** `true` if `(x, y)` falls within the board boundaries. */
   isValidPosition(x: number, y: number): boolean;
+  /** Returns the `Shot` record at `(x, y)` if that cell has been fired upon, otherwise `undefined`. */
   getShotAtPosition(x: number, y: number, isPlayerShot: boolean): Shot | undefined;
+  /** `true` if a ship occupies cell `(x, y)` on the specified side's board. */
   hasShipAtPosition(x: number, y: number, isPlayerShips: boolean): boolean;
+  /** `true` if an obstacle occupies cell `(x, y)` on the specified side's board. */
   hasObstacleAtPosition(x: number, y: number, isPlayerSide: boolean): boolean;
 }
 
 /**
  * Full read + write contract for the game engine compute layer.
  *
- * Program against this interface — not the concrete `GameEngine` class — so
- * alternative implementations (fog-of-war, deterministic replay, test doubles)
- * can be injected without touching call-sites.
+ * Program against this interface rather than the concrete `GameEngine` class
+ * so that alternative implementations — fog-of-war variants, deterministic
+ * replay engines, or test doubles — can be injected without modifying
+ * call-sites.
  *
  * Extends `IGameEngineReader`; prefer the narrower interface wherever write
  * access is not required.
  */
 export interface IGameEngine extends IGameEngineReader {
+  /**
+   * Seeds both sides with their ships, items, obstacles, and shot patterns,
+   * then derives all internal position maps. Must be called exactly once per
+   * match before any mutation or state query that depends on board layout.
+   *
+   * @param playerShips - Ships placed on the player's board.
+   * @param enemyShips - Ships placed on the enemy's board.
+   * @param playerItems - Collectible items placed on the player's board (targeted by the enemy).
+   * @param enemyItems - Collectible items placed on the enemy's board (targeted by the player).
+   * @param playerObstacles - Indestructible terrain on the player's board.
+   * @param enemyObstacles - Indestructible terrain on the enemy's board.
+   * @param playerShotPatterns - Attack patterns available to the player.
+   * @param enemyShotPatterns - Attack patterns available to the enemy.
+   */
   initializeGame(
     playerShips: GameShip[],
     enemyShips: GameShip[],
@@ -83,14 +146,35 @@ export interface IGameEngine extends IGameEngineReader {
     playerShotPatterns?: ShotPattern[],
     enemyShotPatterns?: ShotPattern[],
   ): void;
+  /**
+   * Clears all ships, items, obstacles, shots, and derived position maps,
+   * returning the engine to a blank pre-initialised state. Call before
+   * starting a new match on the same instance.
+   */
   resetGame(): void;
+  /**
+   * Sets the board dimensions used when validating positions and resolving
+   * shot patterns. Typically called before `initializeGame` or between
+   * consecutive matches when the board size changes.
+   */
   setBoardDimensions(width: number, height: number): void;
+  /**
+   * Applies the shot pattern at the given centre coordinate, registers every
+   * resolved cell as a shot on the appropriate side's board, and returns the
+   * aggregated outcome. Out-of-bounds offsets are silently skipped.
+   *
+   * @param centerX - 0-based column index used as the pattern's anchor.
+   * @param centerY - 0-based row index used as the pattern's anchor.
+   * @param patternIdx - 0-based index into the attacker's `shotPatterns` array.
+   * @param isPlayerShot - `true` when the player is attacking (targets the enemy board).
+   */
   executeShotPattern(
     centerX: number,
     centerY: number,
     patternIdx: number,
     isPlayerShot: boolean,
   ): ShotPatternResult;
+  /** Immediately ends the match and declares `winner` as the victor. */
   setGameOver(winner: Winner): void;
   /** Replace all ships on the player's board and recompute positions. */
   setPlayerShips(ships: GameShip[]): void;
@@ -123,13 +207,14 @@ export interface IGameEngine extends IGameEngineReader {
 }
 
 /**
- * Immutable snapshot of the game engine at a given point in time.
+ * Immutable snapshot of the entire engine state at a single point in time.
  *
- * Returned by `GameEngine.getState()` after each mutation. All arrays are
- * shallow copies — mutating them has no effect on the engine's internal state.
+ * Produced by `IGameEngineReader.getState()` after every mutation. Arrays are
+ * shallow copies — mutating them has no effect on internal engine state.
  *
- * This interface is **turn-agnostic**: whose turn it is belongs to the
- * `matchMachine`. For a turn-aware snapshot see `MatchState` and `toMatchState`.
+ * This interface is **turn-agnostic**; turn ownership belongs to
+ * `matchMachine`. For a turn-aware snapshot extend this via `MatchState` and
+ * construct it with `toMatchState`.
  */
 export interface GameEngineState {
   /** Shallow copy of all ships on the player's board. */
@@ -159,24 +244,26 @@ export interface GameEngineState {
   /** Items placed on the enemy's board, collectible by the player. */
   enemyItems: GameItem[];
   /**
-   * Indices (into `enemyItems`) of items the player has fully collected
-   * from the enemy board. An item is fully collected once all of its `part`
-   * cells have been hit.
+   * 0-based indices into `enemyItems` for items the player has fully collected
+   * from the enemy board. An item is considered fully collected once every
+   * one of its declared `part` cells has been hit.
    */
   playerCollectedItems: number[];
   /**
-   * Indices (into `playerItems`) of items the enemy has fully collected
-   * from the player board.
+   * 0-based indices into `playerItems` for items the enemy has fully collected
+   * from the player's board.
    */
   enemyCollectedItems: number[];
   /**
-   * Items the player has activated via `onUse`, keyed by their 0-based index
-   * in `enemyItems`. Each entry also records the optional target `shipId`.
+   * Items the player has activated through their `onUse` handler (collected
+   * from the enemy board). Each entry pairs the `itemId` with the optional
+   * `shipId` the item was targeted at when activated.
    */
   playerUsedItems: { itemId: number; shipId?: number }[];
   /**
-   * Items the enemy has activated via `onUse`, keyed by their 0-based index
-   * in `playerItems`. Each entry also records the optional target `shipId`.
+   * Items the enemy has activated through their `onUse` handler (collected
+   * from the player's board). Each entry pairs the `itemId` with the optional
+   * `shipId` the item was targeted at when activated.
    */
   enemyUsedItems: { itemId: number; shipId?: number }[];
   /**
@@ -196,12 +283,11 @@ export interface GameEngineState {
 }
 
 /**
- * Turn-aware snapshot of the match state, produced by the `Match` layer.
+ * Turn-aware snapshot of the full match state, produced by the `Match` layer.
  *
- * Extends `GameEngineState` with `currentTurn`, `isPlayerTurn`, and
- * `isEnemyTurn` — fields owned by `matchMachine`, not by `GameEngine`.
- *
- * Construct via `toMatchState(engine.getState(), currentTurn)`.
+ * Augments `GameEngineState` with turn ownership fields (`currentTurn`,
+ * `isPlayerTurn`, `isEnemyTurn`) that live in `matchMachine` rather than the
+ * engine. Construct via `toMatchState(engine.getState(), currentTurn)`.
  */
 export interface MatchState extends GameEngineState {
   /** Whose turn it is right now (`"PLAYER_TURN"` or `"ENEMY_TURN"`). */
@@ -213,19 +299,26 @@ export interface MatchState extends GameEngineState {
 }
 
 /**
- * Raw result from the internal shot-execution layer.
+ * Outcome record for a single cell resolved during shot-pattern execution.
  *
- * Used exclusively inside `GameEngine`. External callers always receive a
- * `ShotPatternResult` from `executeShotPattern`, which aggregates one
- * `ShotResult` per pattern offset.
+ * This is an internal type consumed exclusively by `GameEngine`. External
+ * callers always receive a `ShotPatternResult` from `executeShotPattern`,
+ * which aggregates one `ShotResult` per resolved pattern offset.
  */
 export interface ShotResult {
+  /** `true` when the shot was successfully registered. `false` if the cell was already shot or the coordinates are out of bounds. */
   success: boolean;
+  /** Human-readable reason for failure; present only when `success` is `false`. */
   error?: string;
+  /** `true` when the targeted cell contains a ship part. `false` for misses, already-shot cells, and obstacle hits. */
   hit: boolean;
+  /** The `shipId` of the ship whose cell was struck; `0` when no ship occupies the targeted cell. */
   shipId: number;
+  /** `true` when this hit was the final blow that fully destroyed the ship identified by `shipId`. */
   shipDestroyed?: boolean;
+  /** `true` when this shot triggered the end-of-game condition (e.g. all enemy ships sunk). */
   isGameOver?: boolean;
+  /** The winning side when `isGameOver` is `true`; omitted while the match is still in progress. */
   winner?: Winner;
   /** `true` when this shot collected a part of an item. */
   collected?: boolean;
@@ -240,33 +333,51 @@ export interface ShotResult {
 }
 
 /**
- * Perspective-aware view of a single game snapshot for one active side.
+ * Symmetrical, perspective-aware projection of a game snapshot for one active
+ * side. "own" always refers to the **active side** (the shooter or item
+ * activator); "opponent" refers to the other side.
  *
- * "own" refers to the **active side** (shooter / activator).
- * "opponent" refers to the **other side**.
- *
- * This is the single extension point for new player↔enemy data pairs (OCP):
- * adding a new game resource only requires updating `SidePerspective` and
- * `resolvePerspective` — all other consumers remain unchanged.
+ * This is the designated extension point for new symmetric game resources
+ * (Open/Closed Principle): introducing a new pair of player↔enemy collections
+ * only requires updating `SidePerspective` and `resolvePerspective` — all
+ * downstream consumers remain unchanged.
  */
 export interface SidePerspective {
+  /** Ships placed on the active side's board. */
   ownShips: GameShip[];
+  /** Ships placed on the opponent's board. */
   opponentShips: GameShip[];
+  /** Collectible items placed on the active side's board. */
   ownItems: GameItem[];
+  /** Collectible items placed on the opponent's board. */
   opponentItems: GameItem[];
+  /** 0-based indices into `opponentItems` for items the active side has fully collected. */
   ownCollectedItems: number[];
+  /** 0-based indices into `ownItems` for items the opponent has fully collected. */
   opponentCollectedItems: number[];
+  /** Shots fired by the active side (targeting the opponent's board). */
   ownShots: Shot[];
+  /** Shots received by the active side (fired by the opponent). */
   opponentShots: Shot[];
+  /** Obstacles on the active side's board. */
   ownObstacles: GameObstacle[];
+  /** Obstacles on the opponent's board. */
   opponentObstacles: GameObstacle[];
 
+  /** Replaces ships on the active side's board and recomputes all derived position maps. */
   setOwnShips: (ships: GameShip[]) => void;
+  /** Replaces ships on the opponent's board and recomputes all derived position maps. */
   setOpponentShips: (ships: GameShip[]) => void;
+  /** Replaces collectible items on the active side's board (targeted by the opponent). */
   setOwnItems: (items: GameItem[]) => void;
+  /** Replaces collectible items on the opponent's board (targeted by the active side). */
   setOpponentItems: (items: GameItem[]) => void;
+  /** Atomically overwrites the active side's shot history and recomputes opponent ship hit counts. */
   setOwnShots: (shots: Shot[]) => void;
+  /** Atomically overwrites the opponent's shot history and recomputes active side ship hit counts. */
   setOpponentShots: (shots: Shot[]) => void;
+  /** Replaces indestructible terrain on the active side's board. */
   setOwnObstacles: (obstacles: GameObstacle[]) => void;
+  /** Replaces indestructible terrain on the opponent's board. */
   setOpponentObstacles: (obstacles: GameObstacle[]) => void;
 }

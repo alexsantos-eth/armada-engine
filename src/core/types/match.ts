@@ -10,13 +10,16 @@ import type { BoardViewConfig } from "./config";
 import type { MatchMachineSnapshot } from "../engine/machines/match";
 
 /**
- * Fully-typed alias for the context passed to item `onCollect` and `onUse`
- * handlers when they run inside a `Match`.
+ * Narrowed alias for the action context injected into item `onCollect` and
+ * `onUse` callbacks when they execute inside a running `Match`.
  *
- * `setRuleSet` accepts `unknown` in the underlying `ItemActionContext` to
- * avoid a circular import; pass any `MatchRuleSet` value — the engine casts
- * it correctly at runtime.
+ * Re-exported under this name so item definitions can be typed against the
+ * match-scoped contract without importing lower-level engine internals.
+ * Although `setRuleSet` accepts `unknown` in the base `ItemActionContext` to
+ * avoid a circular dependency, any `MatchRuleSet` value is accepted and cast
+ * correctly at runtime.
  *
+ * @example
  * ```typescript
  * import type { MatchItemActionContext } from '../engine';
  * import { AlternatingTurnsRuleSet } from '../engine';
@@ -32,9 +35,14 @@ import type { MatchMachineSnapshot } from "../engine/machines/match";
 export type MatchItemActionContext = ItemActionContext;
 
 /**
- * Fully-typed alias for the context passed to ship `onDestroy` handlers when
- * they run inside a `Match`. Identical to `ShipActionContext`.
+ * Narrowed alias for the action context injected into ship `onDestroy`
+ * callbacks when they execute inside a running `Match`.
  *
+ * Structurally identical to `ShipActionContext`; re-exported under this name
+ * so ship definitions can align their callback signatures with the
+ * match-scoped contract without reaching into lower-level engine modules.
+ *
+ * @example
  * ```typescript
  * import type { MatchShipActionContext } from '../engine';
  * import { AlternatingTurnsRuleSet } from '../engine';
@@ -57,6 +65,7 @@ export type MatchShipActionContext = ShipActionContext;
  * as `MatchQueryAPI` rather than the concrete `Match` class to prevent
  * accidental coupling to mutation methods.
  *
+ * @example
  * ```typescript
  * import type { MatchQueryAPI } from '../engine';
  *
@@ -66,38 +75,136 @@ export type MatchShipActionContext = ShipActionContext;
  * ```
  */
 export interface MatchQueryAPI {
+  /**
+   * Returns the high-level lifecycle phase of the match (e.g. `idle`,
+   * `running`, `finished`). Drives conditional rendering of UI states that
+   * depend on whether play has started or ended.
+   */
   getState(): MatchState;
+
+  /**
+   * Returns the side whose turn it currently is. Consumers that need a
+   * boolean shorthand should prefer `isPlayerTurn` or `isEnemyTurn`.
+   */
   getCurrentTurn(): GameTurn;
+
+  /**
+   * Returns `true` while it is the local player's turn to act. Equivalent
+   * to `getCurrentTurn() === 'player'`.
+   */
   isPlayerTurn(): boolean;
+
+  /**
+   * Returns `true` while it is the enemy's turn to act. Equivalent to
+   * `getCurrentTurn() === 'enemy'`.
+   */
   isEnemyTurn(): boolean;
+
+  /**
+   * Returns the winning side once the match has concluded, or `null` while
+   * the match is still in progress.
+   */
   getWinner(): Winner;
+
+  /**
+   * Returns `true` after a winner has been determined and the match state
+   * machine has transitioned to its terminal state.
+   */
   isMatchOver(): boolean;
+
+  /**
+   * Returns the current XState machine state value. Useful for fine-grained
+   * UI transitions that map directly to individual machine states (e.g.
+   * distinguishing `planning` from `attacking` within a turn).
+   */
   getMachineState(): MatchMachineSnapshot["value"];
+
+  /**
+   * Returns the active rule set governing turn transitions, multi-shot
+   * eligibility, and other game-flow decisions.
+   */
   getRuleSet(): MatchRuleSet;
+
+  /**
+   * Returns the staged shot plan that is waiting for `confirmAttack`, or
+   * `null` when no plan has been initiated.
+   */
   getPendingPlan(): {
+    /** Board column (0-based) used as the centre of the shot pattern. */
     centerX: number;
+    /** Board row (0-based) used as the centre of the shot pattern. */
     centerY: number;
     /** 0-based index into the attacker's `shotPatterns` array. */
     patternIdx: number;
+    /** `true` when the plan belongs to the player; `false` for the enemy. */
     isPlayerShot: boolean;
   } | null;
+
+  /**
+   * Returns a consolidated `CellInfo` snapshot for the cell at `(x, y)`
+   * as seen from the given perspective. Combines validity, shot status, and
+   * ship presence into one call, avoiding multiple round-trips for rendering.
+   *
+   * @param x           Board column (0-based).
+   * @param y           Board row (0-based).
+   * @param perspective Which side's board and shot history to query.
+   */
   getCellInfo(x: number, y: number, perspective: "player" | "enemy"): CellInfo;
+
+  /**
+   * Returns `true` when every ship on the specified side has been fully
+   * destroyed. Used to determine end-of-game conditions independently of
+   * the match state machine.
+   *
+   * @param isPlayerShips `true` to check the player's fleet; `false` for the enemy's.
+   */
   areAllShipsDestroyed(isPlayerShips: boolean): boolean;
+
+  /**
+   * Returns the width and height of the shared game board in grid cells.
+   * Both sides always play on the same dimensions within a single match.
+   */
   getBoardDimensions(): { width: number; height: number };
+
+  /**
+   * Returns the active view configuration controlling how the board is
+   * rendered (cell size, offsets, zoom level, etc.).
+   */
   getBoardView(): BoardViewConfig;
+
+  /**
+   * Returns the player's live `Board` instance, including ship positions,
+   * received shots, and collected items.
+   */
   getPlayerBoard(): Board;
+
+  /**
+   * Returns the enemy's live `Board` instance, including ship positions,
+   * received shots, and collected items.
+   */
   getEnemyBoard(): Board;
+
+  /**
+   * Registers a listener that fires whenever the underlying state machine
+   * emits a new snapshot. Returns an unsubscribe function; call it during
+   * component teardown to prevent memory leaks.
+   *
+   * @param callback Invoked with the latest `MatchMachineSnapshot` on every
+   *                 state transition.
+   * @returns A zero-argument function that removes the subscription.
+   */
   subscribe(callback: (snapshot: MatchMachineSnapshot) => void): () => void;
 }
 
 /**
- * Full contract for an active `Match` instance.
+ * Full read-write contract for an active `Match` instance.
  *
- * Extends `MatchQueryAPI` with all command / mutation methods so that
- * consumers that need write access can type their reference as `IMatch`
- * instead of the concrete `Match` class — keeping coupling to the
- * interface rather than the implementation.
+ * Extends `MatchQueryAPI` with all command and mutation methods. Consumers
+ * that need write access should type their reference as `IMatch` rather than
+ * the concrete `Match` class, keeping their coupling at the interface level.
+ * Consumers that only need to observe state should use `MatchQueryAPI`.
  *
+ * @example
  * ```typescript
  * import type { IMatch } from '../engine';
  *
@@ -246,65 +353,137 @@ export interface IMatch extends MatchQueryAPI {
 }
 
 /**
- * Rich snapshot of a single cell returned by `Match.getCellInfo`.
+ * Rich snapshot of a single board cell returned by `MatchQueryAPI.getCellInfo`.
  *
- * Consolidates `isValidPosition`, `isCellShot`, `getShotAtPosition`, and
- * `hasShipAtPosition` into one call.
+ * Aggregates the four most common cell queries — boundary check, shot status,
+ * shot metadata, and ship occupancy — into a single object, reducing the
+ * number of method calls needed per cell during board rendering.
  */
 export interface CellInfo {
-  /** `false` when the coordinates fall outside the board boundaries. */
+  /**
+   * `true` when the coordinates fall within the board boundaries.
+   * All other fields are only meaningful when `valid` is `true`.
+   */
   valid: boolean;
-  /** `true` if the cell has already been fired upon from this perspective. */
+
+  /**
+   * `true` if the cell has already been targeted by the attacker whose
+   * perspective was supplied to `getCellInfo`. Prevents duplicate shots on
+   * the same cell.
+   */
   isShot: boolean;
-  /** Full shot metadata when fired upon; `undefined` for unshot cells. */
+
+  /**
+   * Full metadata for the shot that landed on this cell, including hit/miss
+   * status, pattern coordinates, and any triggered effects. Present only
+   * when `isShot` is `true`.
+   */
   shot?: Shot;
-  /** `true` if a ship occupies this cell on the given side's board. */
+
+  /**
+   * `true` if a ship part occupies this cell on the queried side's board.
+   * On the enemy board this reveals ship positions, so callers should
+   * gate access to this field appropriately in multiplayer contexts.
+   */
   hasShip: boolean;
 }
 
 /**
- * Result of `Match.planShot`. When `ready` is `true`, the shot is planned
- * and can be confirmed with `confirmAttack`. When `false`, `error` describes
- * why the plan was rejected.
+ * Outcome returned by `IMatch.planShot`.
+ *
+ * When `ready` is `true` the shot has been staged and `confirmAttack` may be
+ * called immediately. When `ready` is `false` the plan was rejected and
+ * `error` contains a human-readable explanation; no staged plan is stored.
  */
 export interface PlanShotResult {
+  /**
+   * `true` when the requested shot position and pattern passed all
+   * validation checks and the plan is ready to be confirmed. `false` when
+   * the cell is out-of-bounds, already shot, or the pattern is invalid.
+   */
   ready: boolean;
+
+  /**
+   * Human-readable rejection reason. Only present when `ready` is `false`.
+   * Intended for debugging and user-facing error messages.
+   */
   error?: string;
-  /** 0-based index into the attacker's `shotPatterns` array. */
+
+  /**
+   * 0-based index into the attacker's `shotPatterns` array that was
+   * resolved during planning. Echoed back so callers can confirm which
+   * pattern will be applied on `confirmAttack`.
+   */
   patternIdx?: number;
+
+  /**
+   * Board column (0-based) that was accepted as the pattern centre.
+   * May differ from the requested value if the engine snapped it to the
+   * nearest valid cell.
+   */
   centerX?: number;
+
+  /**
+   * Board row (0-based) that was accepted as the pattern centre.
+   * May differ from the requested value if the engine snapped it to the
+   * nearest valid cell.
+   */
   centerY?: number;
 }
 
 /**
- * Result of `Match.confirmAttack` and `Match.planAndAttack`.
+ * Outcome returned by `IMatch.confirmAttack` and `IMatch.planAndAttack`.
  *
- * Extends `ShotPatternResult` with turn-resolution fields so the caller
- * knows whether the turn ended, whether the same player may fire again,
- * and a human-readable reason for debugging.
+ * Extends `ShotPatternResult` with the turn-resolution decision produced by
+ * the active `MatchRuleSet`, giving callers everything they need to update
+ * UI state and decide whether to present another attack opportunity.
  */
 export interface PlanAndAttackResult extends ShotPatternResult {
-  /** `true` when the active turn ended after this attack. */
+  /**
+   * `true` when the ruleset determined that control should pass to the
+   * opposing side after this attack. When `false`, the same attacker may
+   * act again (see `canShootAgain`).
+   */
   turnEnded: boolean;
-  /** `true` when the same player may fire another shot. */
+
+  /**
+   * `true` when the active attacker is permitted to fire an additional shot
+   * without yielding the turn. Driven by ruleset conditions such as a
+   * confirmed hit granting a bonus action.
+   */
   canShootAgain: boolean;
-  /** Human-readable reason from the ruleset decision. */
+
+  /**
+   * Human-readable explanation of the turn-resolution decision emitted by
+   * the active ruleset. Intended for debugging and match logging; not
+   * suitable for direct display in production UI without localisation.
+   */
   reason: string;
 }
 
 /**
- * Options accepted by `new Match()` and `createMatch()`.
+ * Construction options accepted by `new Match()` and the `createMatch()`
+ * factory.
  *
- * Extends `MatchCallbacks` so all callbacks can be passed inline.
- * Exactly one of `setup` or `setupProvider` must be provided (or use
- * `createMatch()` which defaults to `GameInitializer`).
+ * Extends `MatchCallbacks` so lifecycle event handlers can be declared
+ * inline at construction time. Supply either `setup` or `setupProvider`;
+ * when neither is provided, `createMatch()` automatically delegates to
+ * `GameInitializer`.
  */
 export interface NewMatch extends MatchCallbacks {
-  setup?: GameSetup;
   /**
-   * Injectable provider for game setup generation.
-   * Required when `setup` is not provided directly.
-   * Use `createMatch` for a convenience wrapper that defaults to `GameInitializer`.
+   * A fully-constructed `GameSetup` to inject directly into the match,
+   * bypassing any provider. When present, `setupProvider` is ignored.
+   * Use this when the board layout has already been generated externally
+   * (e.g. received from a multiplayer server).
+   */
+  setup?: GameSetup;
+
+  /**
+   * Strategy object responsible for generating a `GameSetup` on demand.
+   * Required when `setup` is omitted and the match should produce its own
+   * layout. `createMatch()` defaults this to `GameInitializer` if neither
+   * field is supplied.
    */
   setupProvider?: IGameSetupProvider;
 }

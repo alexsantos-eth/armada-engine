@@ -47,6 +47,11 @@ export interface GameConfig {
    */
   boardView: BoardViewConfig;
 
+  /**
+   * Number of each ship variant to place per board at game start.
+   * Keys match `ShipTemplate.id` values in `SHIP_TEMPLATES`.
+   * Omit individual keys to exclude that variant; set to `{}` to play with no ships.
+   */
   shipCounts: Record<string, number>;
 
   /**
@@ -74,5 +79,10 @@ export interface GameConfig {
    */
   shotPatternIds?: string[];
 
+  /**
+   * Turn and game-over rules to apply for this configuration.
+   * Defaults to `ClassicRuleSet` (alternating turns, first to sink all ships wins)
+   * when omitted. Pass a custom `MatchRuleSet` to override the default behaviour.
+   */
   ruleSet?: MatchRuleSet;
 }

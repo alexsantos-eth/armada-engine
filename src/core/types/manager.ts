@@ -9,6 +9,10 @@ import type { GameConfig } from "./config";
  * via `createMatch({ setupProvider: myProvider })`.
  */
 export interface IGameSetupProvider {
+  /**
+   * Generates and returns a fully-populated {@link GameSetup} ready to pass
+   * to `Match` or `createMatch`. Called once per match initialisation.
+   */
   getGameSetup(): GameSetup;
 }
 
