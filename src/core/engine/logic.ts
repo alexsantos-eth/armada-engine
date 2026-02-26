@@ -1,8 +1,8 @@
 import { getShipCellsFromShip } from "../tools/ships";
 import { getObstacleCellsFromObstacle } from "../tools/obstacles";
-import { ShotError } from "./errors";
+
 import type { GameTurn, Winner } from "../types/game";
-import type { Shot, ShotPattern, ShotPatternResult } from "../types/shots";
+import type { Shot, ShotPattern, ShotPatternResult, ShotPatternShot } from "../types/shots";
 import type { GameShip, GameItem, GameObstacle } from "../types/entities";
 import type { GameConfig } from "../types/config";
 import type {
@@ -24,6 +24,7 @@ export type {
 
 import { BOARD_DEFAULT_HEIGHT, BOARD_DEFAULT_WIDTH } from "../constants/views";
 import { DEFAULT_SHOT_PATTERN } from "../constants";
+import { ShotError } from "../types";
 
 const posKey = (x: number, y: number): PositionKey => `${x},${y}`;
 
@@ -292,7 +293,7 @@ export class GameEngine implements IGameEngine {
     const pattern = attackingPatterns[patternIdx];
     const resolvedPatternId = patternIdx;
 
-    const shots: ShotPatternResult["shots"] = [];
+    const shots: ShotPatternShot[] = [];
 
     for (const offset of pattern.offsets) {
       const targetX = centerX + offset.dx;

@@ -93,6 +93,21 @@ export interface ShotPattern {
 }
 
 /**
+ * Extended shot record with per-pattern execution metadata.
+ *
+ * Created internally by `GameEngine.executeShotPattern` for each cell in the
+ * applied pattern and returned as part of the aggregate {@link ShotPatternResult}.
+ * The `executed` field distinguishes shots that were successfully applied from
+ * those that were skipped due to being out of bounds or already fired upon.
+ */
+export interface ShotPatternShot extends Shot {
+  /** `true` when this shot was the killing blow that destroyed the targeted ship. */
+  shipDestroyed?: boolean;
+  /** `false` if the shot was out of bounds or the cell had already been fired upon. */
+  executed: boolean;
+}
+
+/**
  * Consolidated outcome of firing all cells in one shot pattern.
  *
  * Returned by `IGameEngine.executeShotPattern` and propagated through
@@ -110,14 +125,7 @@ export interface ShotPatternResult {
    * `executed: false` means the cell was out of bounds or had already been shot.
    * `shipDestroyed: true` means this individual shot sank the associated ship.
    */
-  shots: Array<
-    {
-      /** `true` when this shot was the killing blow that destroyed the targeted ship. */
-      shipDestroyed?: boolean;
-      /** `false` if the shot was out of bounds or the cell had already been fired upon. */
-      executed: boolean;
-    } & Shot
-  >;
+  shots: Array<ShotPatternShot>;
   /** `true` if the game ended as a result of any shot in this pattern. */
   isGameOver: boolean;
   /** The winning side once `isGameOver` is `true`; `null` while in progress. */

@@ -76,8 +76,6 @@ export {
   createShip,
 } from "../constants/ships";
 
-export { ShotError, PlanError, AttackError } from "./errors";
-
 export {
   getShip2DCells,
   getShipCellsFromShip,

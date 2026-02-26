@@ -5,6 +5,7 @@ import type { GameShip, GameItem, GameObstacle } from "../types/entities";
 import { generateShips, getShipCellsFromShip } from "../tools/ships";
 import { generateItems, equalizeItemCounts, getItemCells } from "../tools/items";
 import { generateObstacles, getObstacleCellsFromObstacle } from "../tools/obstacles";
+
 import { generateShotPatterns } from "../tools/shots";
 
 export type {
@@ -17,6 +18,7 @@ import type {
   GameSetup,
   GAME_INITIAL_TURN,
 } from "../types/manager";
+import { InitializerError } from "../types/errors";
 
 export class GameInitializer implements IGameSetupProvider {
   private config: GameConfig;
@@ -40,7 +42,10 @@ export class GameInitializer implements IGameSetupProvider {
       width > GAME_CONSTANTS.BOARD.MAX_SIZE
     ) {
       throw new Error(
-        `Board width must be between ${GAME_CONSTANTS.BOARD.MIN_SIZE} and ${GAME_CONSTANTS.BOARD.MAX_SIZE}`,
+        InitializerError.BoardWidth(
+          GAME_CONSTANTS.BOARD.MIN_SIZE,
+          GAME_CONSTANTS.BOARD.MAX_SIZE,
+        ),
       );
     }
 
@@ -49,7 +54,10 @@ export class GameInitializer implements IGameSetupProvider {
       height > GAME_CONSTANTS.BOARD.MAX_SIZE
     ) {
       throw new Error(
-        `Board height must be between ${GAME_CONSTANTS.BOARD.MIN_SIZE} and ${GAME_CONSTANTS.BOARD.MAX_SIZE}`,
+        InitializerError.BoardHeight(
+          GAME_CONSTANTS.BOARD.MIN_SIZE,
+          GAME_CONSTANTS.BOARD.MAX_SIZE,
+        ),
       );
     }
 
@@ -61,7 +69,7 @@ export class GameInitializer implements IGameSetupProvider {
 
     if (totalShips > maxPossibleShips) {
       throw new Error(
-        `Too many ships for board size. Maximum possible: ${maxPossibleShips}`,
+        InitializerError.TooManyShips(maxPossibleShips),
       );
     }
   }
@@ -99,12 +107,22 @@ export class GameInitializer implements IGameSetupProvider {
       for (const [ix, iy] of getItemCells(item)) {
         if (shipCellSet.has(`${ix},${iy}`)) {
           throw new Error(
-            `${label} item (id=${item.itemId ?? "?"}) at [${ix},${iy}] overlaps a ship`,
+            InitializerError.ItemOverlapShip(
+              label,
+              String(item.itemId ?? "?"),
+              ix,
+              iy,
+            ),
           );
         }
         if (otherItemCellSet.has(`${ix},${iy}`)) {
           throw new Error(
-            `${label} item (id=${item.itemId ?? "?"}) at [${ix},${iy}] overlaps another item`,
+            InitializerError.ItemOverlapItem(
+              label,
+              String(item.itemId ?? "?"),
+              ix,
+              iy,
+            ),
           );
         }
       }
@@ -135,12 +153,22 @@ export class GameInitializer implements IGameSetupProvider {
       for (const [ox, oy] of getObstacleCellsFromObstacle(obstacle)) {
         if (shipCellSet.has(`${ox},${oy}`)) {
           throw new Error(
-            `${label} obstacle (id=${obstacle.obstacleId ?? "?"}) at [${ox},${oy}] overlaps a ship`,
+            InitializerError.ObstacleOverlapShip(
+              label,
+              String(obstacle.obstacleId ?? "?"),
+              ox,
+              oy,
+            ),
           );
         }
         if (itemCellSet.has(`${ox},${oy}`)) {
           throw new Error(
-            `${label} obstacle (id=${obstacle.obstacleId ?? "?"}) at [${ox},${oy}] overlaps an item`,
+            InitializerError.ObstacleOverlapItem(
+              label,
+              String(obstacle.obstacleId ?? "?"),
+              ox,
+              oy,
+            ),
           );
         }
       }

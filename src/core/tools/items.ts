@@ -96,13 +96,13 @@ export function equalizeItemCounts(
   const groupB = new Map<string, GameItem[]>();
 
   for (const item of boardA) {
-    const t = item.templateId ?? "__unknown__";
+    const t = item.templateId ?? "_";
     if (!groupA.has(t)) groupA.set(t, []);
     groupA.get(t)!.push(item);
   }
 
   for (const item of boardB) {
-    const t = item.templateId ?? "__unknown__";
+    const t = item.templateId ?? "_";
     if (!groupB.has(t)) groupB.set(t, []);
     groupB.get(t)!.push(item);
   }

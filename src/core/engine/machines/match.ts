@@ -2,7 +2,7 @@ import { setup, assign, createActor } from "xstate";
 import { GameEngine } from "../logic";
 import { DefaultRuleSet } from "../../constants/rulesets";
 import { StandardBoardView } from "../../constants/views";
-import { PlanError } from "../errors";
+
 import {
   buildCollectContext,
   buildUseContext,
@@ -17,6 +17,7 @@ import type {
   MatchMachineEvent,
   MatchMachineInput,
 } from "./types";
+import { PlanError } from "../../types";
 
 export const matchMachine = setup({
   types: {} as {

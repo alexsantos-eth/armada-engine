@@ -50,3 +50,35 @@ export const AttackError = {
 } as const;
 
 export type AttackError = (typeof AttackError)[keyof typeof AttackError];
+
+/**
+ * Errors related to match setup and initialization.
+ */
+export const MatchSetupError = {
+  /** Neither `setup` nor `setupProvider` was supplied to the `Match` constructor. */
+	MissingSetup: "Match requires either `setup` or `setupProvider`. Use `createMatch()` for a convenience wrapper with a default initializer.",
+};
+
+export type MatchSetupError = (typeof MatchSetupError)[keyof typeof MatchSetupError];
+
+/**
+ * Initializer errors related to validating the game setup configuration.
+ */
+export const InitializerError = {
+  /** Board width is outside the allowed range. */
+	BoardWidth: (min: number, max: number) => `Board width must be between ${min} and ${max}`,
+  /** Board height is outside the allowed range. */
+	BoardHeight: (min: number, max: number) => `Board height must be between ${min} and ${max}`,
+  /** The total number of ships exceeds the maximum possible for the board size. */
+	TooManyShips: (max: number) => `Too many ships for board size. Maximum possible: ${max}`,
+  /** An item overlaps a ship in the initial placement. */ 
+	ItemOverlapShip: (label: string, itemId: string, x: number, y: number) => `${label} item (id=${itemId}) at [${x},${y}] overlaps a ship`,
+  /** An item overlaps another item in the initial placement. */
+	ItemOverlapItem: (label: string, itemId: string, x: number, y: number) => `${label} item (id=${itemId}) at [${x},${y}] overlaps another item`,
+  /** An obstacle overlaps a ship in the initial placement. */
+	ObstacleOverlapShip: (label: string, obstacleId: string, x: number, y: number) => `${label} obstacle (id=${obstacleId}) at [${x},${y}] overlaps a ship`,
+  /** An obstacle overlaps an item in the initial placement. */
+	ObstacleOverlapItem: (label: string, obstacleId: string, x: number, y: number) => `${label} obstacle (id=${obstacleId}) at [${x},${y}] overlaps an item`,
+} as const 
+
+export type InitializerError = (typeof InitializerError)[keyof typeof InitializerError];

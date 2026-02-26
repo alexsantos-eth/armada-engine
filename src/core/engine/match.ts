@@ -1,6 +1,6 @@
 import { createActor } from "xstate";
 
-import { AttackError, PlanError } from "./errors";
+import { PlanError, AttackError, MatchSetupError } from "../types/errors";
 import { GameInitializer, type GameSetup } from "../manager";
 import { type MatchState, toMatchState } from "./logic";
 import { buildPlayerBoard, buildEnemyBoard } from "./board";
@@ -53,8 +53,7 @@ export class Match implements IMatch {
       this.setup = setupProvider.getGameSetup();
     } else {
       throw new Error(
-        "Match requires either `setup` or `setupProvider`. " +
-          "Use `createMatch()` for a convenience wrapper with a default initializer.",
+        MatchSetupError.MissingSetup,
       );
     }
 
