@@ -1,70 +1,21 @@
 import { toMatchState } from "../logic";
 import type { IGameEngineReader } from "../logic";
 import type { MatchCallbacks } from "./types";
+import type { Shot } from "../../types/common";
 import type {
-  GameItem,
-  GameTurn,
-  ShotPatternResult,
-  Shot,
-  Winner,
-} from "../../types/common";
+  AttackCyclePayload,
+  ItemUseCyclePayload,
+  MatchLifecyclePayload,
+  CallbackPayload,
+} from "../../types/callbacks";
 
-export type AttackCyclePayload = {
-  kind: "attack";
-  result: ShotPatternResult;
-  isPlayerShot: boolean;
-  centerX: number;
-  centerY: number;
-  /** 0-based index into the attacker's shotPatterns array */
-  patternIdx: number;
-  currentTurn: GameTurn;
-  /**
-   * True only when the ruleset's `decideTurn` toggled the turn.
-   * Collect-phase toggles (from `onCollect` handlers) intentionally do NOT
-   * emit `onTurnChange` — preserving the original behaviour.
-   */
-  rulesetToggledTurn: boolean;
-  winner: Winner | null;
+export type {
+  AttackCyclePayload,
+  ItemUseCyclePayload,
+  MatchLifecyclePayload,
+  CallbackPayload,
 };
 
-export type ItemUseCyclePayload = {
-  kind: "itemUse";
-  itemId: number;
-  isPlayerShot: boolean;
-  item: GameItem;
-  currentTurn: GameTurn;
-  /** True if either the item handler or the ruleset toggled the turn. */
-  turnToggled: boolean;
-  winner: Winner | null;
-  /** Optional ship the item was targeted at, forwarded from `match.useItem()`. */
-  shipId?: number;
-};
-
-export type MatchLifecyclePayload =
-  | { kind: "matchStart"; currentTurn: GameTurn }
-  | { kind: "reset"; currentTurn: GameTurn };
-
-export type CallbackPayload =
-  | AttackCyclePayload
-  | ItemUseCyclePayload
-  | MatchLifecyclePayload;
-
-/**
- * Single point of truth for all match-level callbacks.
- *
- * Called **once** at the end of each game cycle instead of being scattered
- * across `executeAttack`, `runCollectHandlers`, `resolveTurn`, `useItem`,
- * `resolveItemUse`, `initializeEngine`, and `resetEngine`.
- *
- * Adding a new callback now means editing this one function rather than
- * hunting across multiple XState actions.
- *
- * Callback firing order per cycle:
- *  attack  → onItemCollected* → onShot → onTurnChange? → onGameOver? → onStateChange
- *  itemUse → onItemUse? → onTurnChange? → onGameOver? → onStateChange
- *  matchStart → onMatchStart → onStateChange
- *  reset   → onStateChange
- */
 export function fireMatchCallbacks(
   callbacks: MatchCallbacks | undefined,
   engine: IGameEngineReader,
@@ -142,8 +93,15 @@ export function fireMatchCallbacks(
     }
 
     case "itemUse": {
-      const { itemId, isPlayerShot, item, currentTurn, turnToggled, winner, shipId } =
-        payload;
+      const {
+        itemId,
+        isPlayerShot,
+        item,
+        currentTurn,
+        turnToggled,
+        winner,
+        shipId,
+      } = payload;
 
       if (isPlayerShot) {
         callbacks.onItemUse?.(itemId, isPlayerShot, item, shipId);

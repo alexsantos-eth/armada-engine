@@ -1,6 +1,6 @@
 import { GAME_CONSTANTS } from "../constants/game";
-import type { GameConfig, GameShip, GameTurn } from "../engine";
-import type { GameItem, GameObstacle, ShotPattern } from "../types/common";
+import type { GameConfig } from "../types/config";
+import type { GameShip, GameItem, GameObstacle, GameTurn } from "../types/common";
 import {
   generateShips,
   generateItems,
@@ -9,83 +9,22 @@ import {
   equalizeItemCounts,
   getItemCells,
   getShipCellsFromShip,
+  getObstacleCellsFromObstacle,
 } from "../tools/ship/calculations";
-import type { PlayerName } from "../types/common";
 
-/**
- * Abstraction for anything that can provide a ready-to-use GameSetup.
- * Implement this interface to inject custom setup logic into Match.
- */
-export interface IGameSetupProvider {
-  getGameSetup(): GameSetup;
-}
+export type { IGameSetupProvider, GameSetup, GAME_INITIAL_TURN } from "../types/manager";
+import type { IGameSetupProvider, GameSetup, GAME_INITIAL_TURN } from "../types/manager";
 
-/**
- * Game setup configuration
- * Contains all initial values needed to start a game
- */
-export interface GameSetup {
-  /** Player's ship placements */
-  playerShips: GameShip[];
-  /** Enemy's ship placements */
-  enemyShips: GameShip[];
-  /** Items placed on the player's board (collectible by the enemy) */
-  playerItems?: GameItem[];
-  /** Items placed on the enemy's board (collectible by the player) */
-  enemyItems?: GameItem[];
-  /** Obstacles placed on the player's board (indestructible terrain) */
-  playerObstacles?: GameObstacle[];
-  /** Obstacles placed on the enemy's board (indestructible terrain) */
-  enemyObstacles?: GameObstacle[];
-  /** Shot patterns available to the player at game start */
-  playerShotPatterns?: ShotPattern[];
-  /** Shot patterns available to the enemy at game start */
-  enemyShotPatterns?: ShotPattern[];
-  /** Who starts the game */
-  initialTurn: GameTurn;
-  /** Game configuration used */
-  config: Partial<GameConfig>;
-}
-
-export type GAME_INITIAL_TURN = PlayerName | "random";
-
-/**
- * Game Initializer
- *
- * Helps generate initial game values from a simple configuration.
- * Handles validation, default values, and ship generation.
- *
- * @example
- * ```typescript
- * const initializer = new GameInitializer({
- *   boardWidth: 10,
- *   boardHeight: 10,
- * });
- *
- * const setup = initializer.getGameSetup();
- * // setup contains: playerShips, enemyShips, initialTurn, config
- * ```
- */
 export class GameInitializer implements IGameSetupProvider {
   private config: GameConfig;
   private initialTurn: GAME_INITIAL_TURN;
 
-  /**
-   * Create a new game initializer
-   * @param config - Partial game configuration (uses defaults for missing values)
-   * @param initialTurn - Who starts the game (default: "random")
-   */
   constructor(config: Partial<GameConfig> = {}, initialTurn: GAME_INITIAL_TURN = "random") {
     this.config = { ...this.getDefaultConfig(), ...config };
     this.initialTurn = initialTurn;
     this.validateConfig();
   }
 
-  /**
-   * Validate configuration values
-   * @throws Error if configuration is invalid
-   * @private
-   */
   private validateConfig(): void {
     const { boardView, shipCounts } = this.config;
     const { width, height } = boardView;
@@ -121,10 +60,6 @@ export class GameInitializer implements IGameSetupProvider {
     }
   }
 
-  /**
-   * Get default game configuration
-   * @returns Complete default configuration
-   */
   public getDefaultConfig(): GameConfig {
     return {
       boardView: GAME_CONSTANTS.BOARD.DEFAULT_VIEW,
@@ -133,24 +68,24 @@ export class GameInitializer implements IGameSetupProvider {
       obstacleCounts: GAME_CONSTANTS.OBSTACLES.DEFAULT_COUNTS,
     };
   }
-
-  /**
-   * Validate that no item cell overlaps any ship cell on the same board.
-   * @param items - Items to validate
-   * @param ships - Ships already placed on the same board
-   * @param label - Board label used in error messages ("player" or "enemy")
-   * @throws Error if any item overlaps a ship
-   * @private
-   */
+  
   private validateItems(
     items: GameItem[],
     ships: GameShip[],
     label: string,
+    otherItems: GameItem[] = [],
   ): void {
     const shipCellSet = new Set<string>();
     for (const ship of ships) {
       for (const [sx, sy] of getShipCellsFromShip(ship)) {
         shipCellSet.add(`${sx},${sy}`);
+      }
+    }
+
+    const otherItemCellSet = new Set<string>();
+    for (const other of otherItems) {
+      for (const [ox, oy] of getItemCells(other)) {
+        otherItemCellSet.add(`${ox},${oy}`);
       }
     }
 
@@ -161,15 +96,51 @@ export class GameInitializer implements IGameSetupProvider {
             `${label} item (id=${item.itemId ?? "?"}) at [${ix},${iy}] overlaps a ship`,
           );
         }
+        if (otherItemCellSet.has(`${ix},${iy}`)) {
+          throw new Error(
+            `${label} item (id=${item.itemId ?? "?"}) at [${ix},${iy}] overlaps another item`,
+          );
+        }
       }
     }
   }
 
-  /**
-   * Determine initial turn based on configuration
-   * @returns GameTurn value
-   * @private
-   */
+  private validateObstacles(
+    obstacles: GameObstacle[],
+    ships: GameShip[],
+    items: GameItem[],
+    label: string,
+  ): void {
+    const shipCellSet = new Set<string>();
+    for (const ship of ships) {
+      for (const [sx, sy] of getShipCellsFromShip(ship)) {
+        shipCellSet.add(`${sx},${sy}`);
+      }
+    }
+
+    const itemCellSet = new Set<string>();
+    for (const item of items) {
+      for (const [ix, iy] of getItemCells(item)) {
+        itemCellSet.add(`${ix},${iy}`);
+      }
+    }
+
+    for (const obstacle of obstacles) {
+      for (const [ox, oy] of getObstacleCellsFromObstacle(obstacle)) {
+        if (shipCellSet.has(`${ox},${oy}`)) {
+          throw new Error(
+            `${label} obstacle (id=${obstacle.obstacleId ?? "?"}) at [${ox},${oy}] overlaps a ship`,
+          );
+        }
+        if (itemCellSet.has(`${ox},${oy}`)) {
+          throw new Error(
+            `${label} obstacle (id=${obstacle.obstacleId ?? "?"}) at [${ox},${oy}] overlaps an item`,
+          );
+        }
+      }
+    }
+  }
+
   private determineInitialTurn(): GameTurn {
     switch (this.initialTurn) {
       case "player":
@@ -185,16 +156,6 @@ export class GameInitializer implements IGameSetupProvider {
     }
   }
 
-  /**
-   * Initialize a new game with all required values
-   * @returns Complete game setup ready to use
-   *
-   * @example
-   * ```typescript
-   * //  initialization
-   * const setup = initializer.getGameSetup();
-   * ```
-   */
   public getGameSetup(): GameSetup {
     const playerShips = generateShips(this.config);
     const enemyShips = generateShips(this.config);
@@ -249,6 +210,13 @@ export class GameInitializer implements IGameSetupProvider {
       rawPlayerItems,
       rawEnemyItems,
     );
+
+    if (setup.playerObstacles) {
+      this.validateObstacles(setup.playerObstacles, playerShips, playerItems, "player");
+    }
+    if (setup.enemyObstacles) {
+      this.validateObstacles(setup.enemyObstacles, enemyShips, enemyItems, "enemy");
+    }
 
     const playerObstacles =
       setup.playerObstacles ?? generateObstacles(this.config, playerShips, playerItems);

@@ -1,4 +1,4 @@
-import type { MatchRuleSet } from "../engine";
+import type { MatchRuleSet } from "./rulesets";
 import type { BoardLayer } from "./common";
 export type { BoardLayer } from "./common";
 

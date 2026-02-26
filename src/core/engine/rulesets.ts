@@ -1,83 +1,6 @@
-import type { GameEngineState } from "./logic";
-import type { ShotPatternResult, Winner } from "../types/common";
+export type { ItemUseTurnDecision, TurnDecision, GameOverDecision, MatchRuleSet } from "../types/rulesets";
+import type { ItemUseTurnDecision, TurnDecision, GameOverDecision, MatchRuleSet } from "../types/rulesets";
 
-/**
- * Result returned by {@link MatchRuleSet.decideTurnOnItemUse}.
- */
-export interface ItemUseTurnDecision {
-  /** Whether to toggle the active turn after the item use. */
-  shouldToggleTurn: boolean;
-  reason: string;
-}
-
-/**
- * Turn decision result
- */
-export interface TurnDecision {
-  shouldEndTurn: boolean;
-  shouldToggleTurn: boolean;
-  canShootAgain: boolean;
-  reason: string;
-}
-
-/**
- * Game over decision result
- */
-export interface GameOverDecision {
-  isGameOver: boolean;
-  winner: Winner;
-}
-
-/**
- * Match Rule Set interface
- * Defines the rules for turn management and game over conditions
- */
-export interface MatchRuleSet {
-  name: string;
-  description: string;
-
-  /**
-   * Decide turn outcome based on attack result
-   * @param attackResult - Result from attack phase
-   * @param currentState - Current game state
-   * @returns Turn decision
-   */
-  decideTurn(
-    attackResult: ShotPatternResult,
-    currentState: GameEngineState,
-  ): TurnDecision;
-
-  /**
-   * Check if game should be over
-   * @param state - Current game state
-   * @returns Game over decision
-   */
-  checkGameOver(state: GameEngineState): GameOverDecision;
-
-  /**
-   * Called after an item's `onUse` handler has executed (and only when the
-   * item itself did **not** already toggle the turn).
-   *
-   * Return `{ shouldToggleTurn: true }` to forfeit the current player's
-   * remaining turn as a cost for using the item.  When not defined
-   * (the default for all built-in rulesets), item use never affects the turn.
-   *
-   * @param isPlayerUse - `true` when the player used the item; `false` for the enemy.
-   * @param state - Game state immediately after the `onUse` handler ran.
-   */
-  decideTurnOnItemUse?(
-    isPlayerUse: boolean,
-    state: GameEngineState,
-  ): ItemUseTurnDecision;
-}
-
-/**
- * Default/Classic Battleship Rules
- * - Hit (ship not destroyed): shoot again
- * - Ship destroyed: turn ends
- * - Miss: turn ends
- * - Game over: all enemy ships destroyed
- */
 export const ClassicRuleSet: MatchRuleSet = {
   name: "ClassicRuleSet",
   description: "Traditional battleship rules with hit continuation",
@@ -143,11 +66,6 @@ export const ClassicRuleSet: MatchRuleSet = {
   },
 };
 
-/**
- * Alternating Turns Rule Set
- * - Every shot ends the turn, regardless of hit or miss
- * - Game over: all enemy ships destroyed
- */
 export const AlternatingTurnsRuleSet: MatchRuleSet = {
   name: "AlternatingTurnsRuleSet",
   description: "Every shot ends turn, no hit continuation",
@@ -192,15 +110,6 @@ export const AlternatingTurnsRuleSet: MatchRuleSet = {
   },
 };
 
-
-/**
- * Item Hit Rule Set
- * - Hit an item (collected): shoot again
- * - Hit a ship (not destroyed): shoot again
- * - Ship destroyed: turn ends
- * - Miss: turn ends
- * - Game over: all enemy ships destroyed
- */
 export const ItemHitRuleSet: MatchRuleSet = {
   name: "ItemHitRuleSet",
   description:
@@ -279,13 +188,6 @@ export const ItemHitRuleSet: MatchRuleSet = {
   },
 };
 
-/**
- * Lose Turn On Use Rule Set
- * - Classic ship-hit rules (hit → shoot again, ship destroyed → turn ends, miss → turn ends)
- * - Using an item (`onUse`) **costs the current player their turn**; the opponent goes next.
- *   The turn switch only happens when the item itself did not already toggle the turn.
- * - Game over: all enemy ships destroyed
- */
 export const LoseTurnOnUseRuleSet: MatchRuleSet = {
   name: "LoseTurnOnUseRuleSet",
   description:
@@ -316,6 +218,4 @@ export const getRuleSetByName = (name: string): MatchRuleSet => {
       throw new Error(`Unknown ruleset name: ${name}`);
   }
 }
-
-/** Default ruleset applied when no ruleset is explicitly passed to `Match` or `matchMachine`. */
 export const DefaultRuleSet = LoseTurnOnUseRuleSet;

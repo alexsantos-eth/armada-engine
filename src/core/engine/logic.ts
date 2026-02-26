@@ -1,16 +1,11 @@
 import { getShipCellsFromShip, getObstacleCellsFromObstacle } from "../tools/ship/calculations";
 import { ShotError } from "./errors";
-import type {
-  GameShip,
-  GameItem,
-  GameObstacle,
-  Shot,
-  Winner,
-  GameTurn,
-  ShotPattern,
-  ShotPatternResult,
-} from "../types/common";
+import type { GameShip, GameItem, GameObstacle, Shot, Winner, GameTurn, ShotPattern, ShotPatternResult } from "../types/common";
 import type { GameConfig } from "../types/config";
+import type { IGameEngine, GameEngineState, MatchState, ShotResult } from "../types/engine";
+
+export type { IGameEngineReader, IGameEngine, GameEngineState, MatchState, ShotResult } from "../types/engine";
+
 import { BOARD_DEFAULT_HEIGHT, BOARD_DEFAULT_WIDTH } from "../constants/views";
 import { DEFAULT_SHOT_PATTERN } from "../constants";
 
@@ -51,80 +46,6 @@ function createSideState(): SideState {
   };
 }
 
-/**
- * Read-only contract for the game engine.
- *
- * Use this type for consumers that only need to observe state — callbacks,
- * board projections, UI queries — without holding write access.
- * Satisfies ISP: callers declare exactly the capability they need.
- */
-export interface IGameEngineReader {
-  getState(): GameEngineState;
-  getVersion(): number;
-  isCellShot(x: number, y: number, isPlayerShot: boolean): boolean;
-  isShipDestroyed(shipId: number, isPlayerShot: boolean): boolean;
-  areAllShipsDestroyed(isPlayerShips: boolean): boolean;
-  isItemUsed(itemId: number, isPlayerShot: boolean): boolean;
-  getPlayerShips(): GameShip[];
-  getEnemyShips(): GameShip[];
-  getPlayerShots(): Shot[];
-  getEnemyShots(): Shot[];
-  getPlayerObstacles(): GameObstacle[];
-  getEnemyObstacles(): GameObstacle[];
-  getPlayerShotPatterns(): ShotPattern[];
-  getEnemyShotPatterns(): ShotPattern[];
-  getShotCount(): number;
-  getWinner(): Winner;
-  getBoardDimensions(): { width: number; height: number };
-  isValidPosition(x: number, y: number): boolean;
-  getShotAtPosition(x: number, y: number, isPlayerShot: boolean): Shot | undefined;
-  hasShipAtPosition(x: number, y: number, isPlayerShips: boolean): boolean;
-  hasObstacleAtPosition(x: number, y: number, isPlayerSide: boolean): boolean;
-}
-
-/**
- * Full contract for the game engine compute layer (read + mutate).
- *
- * Program against this interface instead of the concrete `GameEngine` class
- * so that alternative implementations (fog-of-war, deterministic replay,
- * test doubles, etc.) can be injected without touching call-sites.
- *
- * Extends {@link IGameEngineReader} — anywhere a read-only view suffices,
- * prefer `IGameEngineReader` to express that intent explicitly (ISP).
- */
-export interface IGameEngine extends IGameEngineReader {
-  initializeGame(
-    playerShips: GameShip[],
-    enemyShips: GameShip[],
-    playerItems?: GameItem[],
-    enemyItems?: GameItem[],
-    playerObstacles?: GameObstacle[],
-    enemyObstacles?: GameObstacle[],
-    playerShotPatterns?: ShotPattern[],
-    enemyShotPatterns?: ShotPattern[],
-  ): void;
-  resetGame(): void;
-  setBoardDimensions(width: number, height: number): void;
-  executeShotPattern(
-    centerX: number,
-    centerY: number,
-    patternIdx: number,
-    isPlayerShot: boolean,
-  ): ShotPatternResult;
-  setGameOver(winner: Winner): void;
-  setPlayerShips(ships: GameShip[]): void;
-  setEnemyShips(ships: GameShip[]): void;
-  setPlayerItems(items: GameItem[]): void;
-  setEnemyItems(items: GameItem[]): void;
-  setPlayerShots(shots: Shot[]): void;
-  setEnemyShots(shots: Shot[]): void;
-  setPlayerObstacles(obstacles: GameObstacle[]): void;
-  setEnemyObstacles(obstacles: GameObstacle[]): void;
-  setPlayerShotPatterns(patterns: ShotPattern[]): void;
-  setEnemyShotPatterns(patterns: ShotPattern[]): void;
-  markItemUsed(itemId: number, isPlayerShot: boolean, shipId?: number): void;
-}
-
 export class GameEngine implements IGameEngine {
   private playerSide: SideState;
   private enemySide: SideState;
@@ -147,17 +68,14 @@ export class GameEngine implements IGameEngine {
     this.enemySide = createSideState();
   }
 
-  /** Returns the state object for the attacking side (the shooter). */
   private attackingSide(isPlayerShot: boolean): SideState {
     return isPlayerShot ? this.playerSide : this.enemySide;
   }
 
-  /** Returns the state object for the defending side (receives the shot). */
   private defendingSide(isPlayerShot: boolean): SideState {
     return isPlayerShot ? this.enemySide : this.playerSide;
   }
 
-  /** Clears all mutable collections and arrays on a side, ready for a new game. */
   private clearSide(side: SideState): void {
     side.ships = [];
     side.items = [];
@@ -174,7 +92,6 @@ export class GameEngine implements IGameEngine {
     side.usedItems.clear();
   }
 
-  /** Clears both sides and all shared scalars — single source of truth for a clean slate. */
   private clearState(): void {
     this.clearSide(this.playerSide);
     this.clearSide(this.enemySide);
@@ -183,14 +100,6 @@ export class GameEngine implements IGameEngine {
     this.shotCount = 0;
   }
 
-  /**
-   * Initialize a new game with ships and items.
-   * The starting turn is managed by the matchMachine, not the engine.
-   * @param playerShips - Array of player's ships
-   * @param enemyShips - Array of enemy's ships
-   * @param playerItems - Items placed on the player's board (enemy can collect these)
-   * @param enemyItems - Items placed on the enemy's board (player can collect these)
-   */
   public initializeGame(
     playerShips: GameShip[],
     enemyShips: GameShip[],
@@ -233,37 +142,18 @@ export class GameEngine implements IGameEngine {
     this._version++;
   }
 
-  /**
-   * Reset the game to initial state
-   */
   public resetGame(): void {
     this.clearState();
     this.gameInitialized = false;
     this._version++;
   }
 
-  /**
-   * Update the board dimensions.
-   *
-   * Does **not** re-initialize ship/item positions — call `initializeGame`
-   * afterwards to apply the new bounds consistently.
-   *
-   * @param width  - Board width in cells.
-   * @param height - Board height in cells.
-   */
   public setBoardDimensions(width: number, height: number): void {
     this.boardWidth = width;
     this.boardHeight = height;
     this._version++;
   }
 
-  /**
-   * Execute a shot at a single target cell.
-   *
-   * Internal implementation detail — always call {@link executeShotPattern}
-   * from outside this class; it handles pattern expansion, out-of-bounds
-   * offsets, and already-shot cells before delegating here.
-   */
   private executeShot(
     x: number,
     y: number,
@@ -350,11 +240,6 @@ export class GameEngine implements IGameEngine {
     };
   }
 
-  /**
-   * Check if a shot at `(x, y)` lands on an obstacle on the defending side.
-   * Returns the obstacleId when hit, or null when no obstacle is present.
-   * @private
-   */
   private checkObstacleHit(
     x: number,
     y: number,
@@ -365,23 +250,6 @@ export class GameEngine implements IGameEngine {
     return obstacleId !== undefined ? { obstacleId } : null;
   }
 
-  /**
-   * Execute a shot pattern at target coordinates
-   * This is the primary method for executing shots. For a single-cell shot.
-   *
-   * @param centerX - Center X coordinate for the pattern
-   * @param centerY - Center Y coordinate for the pattern
-   * @param patternIdx - 0-based index into the attacker's shotPatterns array
-   * @param isPlayerShot - True if shots are from player, false if from enemy
-   * @returns Result containing all shots executed in the pattern
-   *
-   * @example
-   * // Single shot (index 0)
-   * engine.executeShotPattern(5, 5, 0, true);
-   *
-   * // Cross pattern (index 1)
-   * engine.executeShotPattern(5, 5, 1, true);
-   */
   public executeShotPattern(
     centerX: number,
     centerY: number,
@@ -477,12 +345,6 @@ export class GameEngine implements IGameEngine {
     };
   }
 
-  /**
-   * Check if a shot at `(x, y)` hits a ship on the target board.
-   * When `isPlayerShot` is `true`, the player is firing so we check the
-   * enemy's ship positions; when `false`, the enemy is firing so we check
-   * the player's positions.
-   */
   private checkShot(
     x: number,
     y: number,
@@ -499,23 +361,10 @@ export class GameEngine implements IGameEngine {
     return { hit: false, shipId: -1 };
   }
 
-  /**
-   * Check if a cell has already been shot at
-   * @param x - X coordinate
-   * @param y - Y coordinate
-   * @param isPlayerShot - True to check player shots, false for enemy shots
-   * @returns True if cell was already shot
-   */
   public isCellShot(x: number, y: number, isPlayerShot: boolean): boolean {
     return this.attackingSide(isPlayerShot).shotsMap.has(posKey(x, y));
   }
 
-  /**
-   * Check if a ship is completely destroyed
-   * @param shipId - ID of the ship to check
-   * @param isPlayerShot - True if checking enemy ship, false for player ship
-   * @returns True if all ship cells have been hit
-   */
   public isShipDestroyed(shipId: number, isPlayerShot: boolean): boolean {
     const side = this.defendingSide(isPlayerShot);
     if (shipId >= side.ships.length) return false;
@@ -526,11 +375,6 @@ export class GameEngine implements IGameEngine {
     return size !== undefined && hits === size;
   }
 
-  /**
-   * Check if all ships of a player are destroyed
-   * @param isPlayerShips - True to check player ships, false for enemy ships
-   * @returns True if all ships are destroyed
-   */
   public areAllShipsDestroyed(isPlayerShips: boolean): boolean {
     const side = isPlayerShips ? this.playerSide : this.enemySide;
 
@@ -543,20 +387,12 @@ export class GameEngine implements IGameEngine {
     );
   }
 
-  /**
-   * Set the game as over with a winner
-   * @param winner - The winner of the game ('player' or 'enemy')
-   */
   public setGameOver(winner: Winner): void {
     this.winner = winner;
     this.isGameOver = true;
     this._version++;
   }
 
-  /**
-   * Cache ship positions for O(1) lookup
-   * @private
-   */
   private cacheShipPositions(
     ships: GameShip[],
     positionsMap: Map<PositionKey, number>,
@@ -578,10 +414,6 @@ export class GameEngine implements IGameEngine {
     });
   }
 
-  /**
-   * Cache obstacle positions for O(1) lookup.
-   * @private
-   */
   private cacheObstaclePositions(
     obstacles: GameObstacle[],
     positionsMap: Map<PositionKey, number>,
@@ -594,11 +426,6 @@ export class GameEngine implements IGameEngine {
     });
   }
 
-  /**
-   * Cache item positions for O(1) lookup.
-   * Each item occupies `part` cells in a horizontal row starting at `coords`.
-   * @private
-   */
   private cacheItemPositions(
     items: GameItem[],
     positionsMap: Map<PositionKey, number>,
@@ -611,11 +438,6 @@ export class GameEngine implements IGameEngine {
     });
   }
 
-  /**
-   * Try to collect an item at the given position.
-   * Returns collection info or null if no item is present.
-   * @private
-   */
   private collectItem(
     x: number,
     y: number,
@@ -648,10 +470,6 @@ export class GameEngine implements IGameEngine {
     return { collected: true, itemId, itemFullyCollected };
   }
 
-  /**
-   * Set player's ships
-   * @param ships - Array of player ships
-   */
   public setPlayerShips(ships: GameShip[]): void {
     this.playerSide.ships = ships;
     this.playerSide.shipPositions.clear();
@@ -678,10 +496,6 @@ export class GameEngine implements IGameEngine {
     this._version++;
   }
 
-  /**
-   * Set enemy's ships
-   * @param ships - Array of enemy ships
-   */
   public setEnemyShips(ships: GameShip[]): void {
     this.enemySide.ships = ships;
     this.enemySide.shipPositions.clear();
@@ -708,10 +522,6 @@ export class GameEngine implements IGameEngine {
     this._version++;
   }
 
-  /**
-   * Set items on the player's board (collectible by the enemy).
-   * @param items - Array of player items
-   */
   public setPlayerItems(items: GameItem[]): void {
     this.playerSide.items = items;
     this.playerSide.itemPositions.clear();
@@ -722,10 +532,6 @@ export class GameEngine implements IGameEngine {
     this._version++;
   }
 
-  /**
-   * Set items on the enemy's board (collectible by the player).
-   * @param items - Array of enemy items
-   */
   public setEnemyItems(items: GameItem[]): void {
     this.enemySide.items = items;
     this.enemySide.itemPositions.clear();
@@ -736,10 +542,6 @@ export class GameEngine implements IGameEngine {
     this._version++;
   }
 
-  /**
-   * Atomically replace all player shots and recompute enemy ship hit counts.
-   * Used for replay and multiplayer shot synchronisation.
-   */
   public setPlayerShots(shots: Shot[]): void {
     this.playerSide.shotsMap.clear();
     this.enemySide.shipHits.clear();
@@ -754,10 +556,6 @@ export class GameEngine implements IGameEngine {
     this._version++;
   }
 
-  /**
-   * Atomically replace all enemy shots and recompute player ship hit counts.
-   * Used for replay and multiplayer shot synchronisation.
-   */
   public setEnemyShots(shots: Shot[]): void {
     this.enemySide.shotsMap.clear();
     this.playerSide.shipHits.clear();
@@ -772,16 +570,6 @@ export class GameEngine implements IGameEngine {
     this._version++;
   }
 
-  /**
-   * Get the current engine state — ships, shots, items, dimensions, and game status.
-   *
-   * Turn information (`currentTurn`, `isPlayerTurn`, `isEnemyTurn`) is **not**
-   * included here because the turn is owned by the `matchMachine`, not the
-   * engine.  Callers that need a turn-aware snapshot should use
-   * {@link toMatchState} to merge the engine state with the machine's turn.
-   *
-   * @returns Immutable snapshot of all engine data.
-   */
   public getState(): GameEngineState {
     return {
       playerShips: [...this.playerSide.ships],
@@ -808,96 +596,47 @@ export class GameEngine implements IGameEngine {
     };
   }
 
-  /**
-   * Mark a collected item as used (via onUse) to prevent double-activation.
-   * @param itemId - The 0-based index in the side's items array.
-   * @param isPlayerShot - true = player used an enemy item; false = enemy used a player item.
-   */
   public markItemUsed(itemId: number, isPlayerShot: boolean, shipId?: number): void {
     this.attackingSide(isPlayerShot).usedItems.set(itemId, shipId);
     this._version++;
   }
 
-  /**
-   * Returns true if the item has already been activated via onUse.
-   */
   public isItemUsed(itemId: number, isPlayerShot: boolean): boolean {
     return this.attackingSide(isPlayerShot).usedItems.has(itemId);
   }
 
-  /**
-   * Get player's ships
-   * @returns Copy of player ships array
-   */
   public getPlayerShips(): GameShip[] {
     return [...this.playerSide.ships];
   }
 
-  /**
-   * Get enemy's ships
-   * @returns Copy of enemy ships array
-   */
   public getEnemyShips(): GameShip[] {
     return [...this.enemySide.ships];
   }
 
-  /**
-   * Get player's shots
-   * @returns Array of player shots
-   */
   public getPlayerShots(): Shot[] {
     return Array.from(this.playerSide.shotsMap.values());
   }
 
-  /**
-   * Get enemy's shots
-   * @returns Array of enemy shots
-   */
   public getEnemyShots(): Shot[] {
     return Array.from(this.enemySide.shotsMap.values());
   }
 
-  /**
-   * Get total shot count
-   * @returns Total number of shots fired by both players
-   */
   public getShotCount(): number {
     return this.shotCount;
   }
 
-  /**
-   * Get the winner (if game is over)
-   * @returns Winner ('player', 'enemy', or null if not over)
-   */
   public getWinner(): Winner {
     return this.winner;
   }
 
-  /**
-   * Get board dimensions
-   * @returns Object with width and height of the board
-   */
   public getBoardDimensions(): { width: number; height: number } {
     return { width: this.boardWidth, height: this.boardHeight };
   }
 
-  /**
-   * Check if a position is valid on the board
-   * @param x - X coordinate
-   * @param y - Y coordinate
-   * @returns True if position is within board boundaries
-   */
   public isValidPosition(x: number, y: number): boolean {
     return x >= 0 && x < this.boardWidth && y >= 0 && y < this.boardHeight;
   }
 
-  /**
-   * Get shot at specific coordinates
-   * @param x - X coordinate
-   * @param y - Y coordinate
-   * @param isPlayerShot - True to check player shots, false for enemy shots
-   * @returns Shot object if found, undefined otherwise
-   */
   public getShotAtPosition(
     x: number,
     y: number,
@@ -906,13 +645,6 @@ export class GameEngine implements IGameEngine {
     return this.attackingSide(isPlayerShot).shotsMap.get(posKey(x, y));
   }
 
-  /**
-   * Check if there's a ship at specific coordinates
-   * @param x - X coordinate
-   * @param y - Y coordinate
-   * @param isPlayerShips - True to check player ships, false for enemy ships
-   * @returns True if there's a ship at that position
-   */
   public hasShipAtPosition(
     x: number,
     y: number,
@@ -921,13 +653,6 @@ export class GameEngine implements IGameEngine {
     return (isPlayerShips ? this.playerSide : this.enemySide).shipPositions.has(posKey(x, y));
   }
 
-  /**
-   * Check if there's an obstacle at specific coordinates.
-   * @param x - X coordinate
-   * @param y - Y coordinate
-   * @param isPlayerSide - True to check player board obstacles, false for enemy board
-   * @returns True if there's an obstacle at that position
-   */
   public hasObstacleAtPosition(
     x: number,
     y: number,
@@ -936,57 +661,32 @@ export class GameEngine implements IGameEngine {
     return (isPlayerSide ? this.playerSide : this.enemySide).obstaclePositions.has(posKey(x, y));
   }
 
-  /**
-   * Get player's obstacles
-   * @returns Copy of player obstacles array
-   */
   public getPlayerObstacles(): GameObstacle[] {
     return [...this.playerSide.obstacles];
   }
 
-  /**
-   * Get enemy's obstacles
-   * @returns Copy of enemy obstacles array
-   */
   public getEnemyObstacles(): GameObstacle[] {
     return [...this.enemySide.obstacles];
   }
 
-  /**
-   * Get player's available shot patterns.
-   * @returns Copy of the player's shot pattern array.
-   */
   public getPlayerShotPatterns(): ShotPattern[] {
     return [...this.playerSide.shotPatterns];
   }
 
-  /**
-   * Get enemy's available shot patterns.
-   * @returns Copy of the enemy's shot pattern array.
-   */
   public getEnemyShotPatterns(): ShotPattern[] {
     return [...this.enemySide.shotPatterns];
   }
 
-  /**
-   * Replace the player's available shot patterns.
-   */
   public setPlayerShotPatterns(patterns: ShotPattern[]): void {
     this.playerSide.shotPatterns = patterns;
     this._version++;
   }
 
-  /**
-   * Replace the enemy's available shot patterns.
-   */
   public setEnemyShotPatterns(patterns: ShotPattern[]): void {
     this.enemySide.shotPatterns = patterns;
     this._version++;
   }
 
-  /**
-   * Set player's obstacles (replaces all obstacle positions on the player board).
-   */
   public setPlayerObstacles(obstacles: GameObstacle[]): void {
     this.playerSide.obstacles = obstacles;
     this.playerSide.obstaclePositions.clear();
@@ -994,188 +694,18 @@ export class GameEngine implements IGameEngine {
     this._version++;
   }
 
-  /**
-   * Set enemy's obstacles (replaces all obstacle positions on the enemy board).
-   */
   public setEnemyObstacles(obstacles: GameObstacle[]): void {
     this.enemySide.obstacles = obstacles;
     this.enemySide.obstaclePositions.clear();
     this.cacheObstaclePositions(obstacles, this.enemySide.obstaclePositions);
     this._version++;
   }
-
-  /**
-   * Returns the current mutation counter. Increments on every write, so callers
-   * can cheaply detect whether the engine state has changed.
-   */
+  
   public getVersion(): number {
     return this._version;
   }
 }
 
-/**
- * Immutable snapshot of the game engine at a given point in time.
- *
- * Returned by {@link GameEngine.getState} after each mutation. All arrays are
- * shallow copies — mutating them has no effect on internal engine state.
- *
- * This interface is **turn-agnostic**: whose turn it is belongs to the
- * `matchMachine`, not to the engine. To get a turn-aware snapshot see
- * {@link MatchState} and {@link toMatchState}.
- *
- * @example
- * const state = engine.getState();
- * if (state.isGameOver) {
- *   console.log("Winner:", state.winner);
- * }
- */
-export interface GameEngineState {
-  /** Shallow copy of all ships on the **player's** board. */
-  playerShips: GameShip[];
-
-  /** Shallow copy of all ships on the **enemy's** board. */
-  enemyShips: GameShip[];
-
-  /**
-   * All shots fired **by the player** (i.e. targeting the enemy board),
-   * in the order they were registered.
-   */
-  playerShots: Shot[];
-
-  /**
-   * All shots fired **by the enemy** (i.e. targeting the player board),
-   * in the order they were registered.
-   */
-  enemyShots: Shot[];
-
-  /** `true` once the game has ended (by any means). */
-  isGameOver: boolean;
-
-  /**
-   * The winner of the game once it is over.
-   * `"player"` | `"enemy"` | `null` while the game is still in progress.
-   */
-  winner: Winner;
-
-  /** Width of the game board in cells. */
-  boardWidth: number;
-
-  /** Height of the game board in cells. */
-  boardHeight: number;
-
-  /** Total number of shots fired by both sides combined. */
-  shotCount: number;
-
-  /**
-   * `true` when every ship on the **player's** board has been fully sunk
-   * (i.e. the enemy has won on ships alone).
-   */
-  areAllPlayerShipsDestroyed: boolean;
-
-  /**
-   * `true` when every ship on the **enemy's** board has been fully sunk
-   * (i.e. the player has won on ships alone).
-   */
-  areAllEnemyShipsDestroyed: boolean;
-
-  /**
-   * Items placed on the **player's** board.
-   * These are collectible by the enemy when they shoot the corresponding cells.
-   */
-  playerItems: GameItem[];
-
-  /**
-   * Items placed on the **enemy's** board.
-   * These are collectible by the player when they shoot the corresponding cells.
-   */
-  enemyItems: GameItem[];
-
-  /**
-   * Indices (into `enemyItems`) of items the **player** has fully collected
-   * from the enemy board. An item is fully collected once all of its `part`
-   * cells have been hit.
-   */
-  playerCollectedItems: number[];
-
-  /**
-   * Indices (into `playerItems`) of items the **enemy** has fully collected
-   * from the player board. An item is fully collected once all of its `part`
-   * cells have been hit.
-   */
-  enemyCollectedItems: number[];
-
-  /**
-   * Items the player has already activated via `onUse`, keyed by their 0-based
-   * index in `enemyItems`. Each entry also records the optional `shipId` of the
-   * ship the item was targeted at when activated.
-   */
-  playerUsedItems: { itemId: number; shipId?: number }[];
-
-  /**
-   * Items the enemy has already activated via `onUse`, keyed by their 0-based
-   * index in `playerItems`. Each entry also records the optional `shipId` of the
-   * ship the item was targeted at when activated.
-   */
-  enemyUsedItems: { itemId: number; shipId?: number }[];
-
-  /**
-   * Obstacles placed on the **player's** board.
-   * These are permanent, indestructible terrain features — shots that land
-   * on obstacle cells are recorded as misses but the obstacle persists.
-   */
-  playerObstacles: GameObstacle[];
-
-  /**
-   * Obstacles placed on the **enemy's** board.
-   * These are permanent, indestructible terrain features — shots that land
-   * on obstacle cells are recorded as misses but the obstacle persists.
-   */
-  enemyObstacles: GameObstacle[];
-
-  /**
-   * Shot patterns available to the **player** for the current match.
-   * Set during `initializeGame`; can be mutated at runtime via
-   * `setPlayerShotPatterns`.
-   */
-  playerShotPatterns: ShotPattern[];
-
-  /**
-   * Shot patterns available to the **enemy** for the current match.
-   * Set during `initializeGame`; can be mutated at runtime via
-   * `setEnemyShotPatterns`.
-   */
-  enemyShotPatterns: ShotPattern[];
-}
-
-/**
- * Turn-aware snapshot of the match state, produced by the {@link Match} layer.
- *
- * Extends {@link GameEngineState} with `currentTurn`, `isPlayerTurn` and
- * `isEnemyTurn` which are owned by `matchMachine` — not by `GameEngine`.
- *
- * Use {@link toMatchState} to construct one from an engine snapshot plus the
- * machine's current turn.
- */
-export interface MatchState extends GameEngineState {
-  /** Whose turn it is right now (`"PLAYER_TURN"` or `"ENEMY_TURN"`). */
-  currentTurn: GameTurn;
-  /** Convenience flag — `true` when `currentTurn === "PLAYER_TURN"`. */
-  isPlayerTurn: boolean;
-  /** Convenience flag — `true` when `currentTurn === "ENEMY_TURN"`. */
-  isEnemyTurn: boolean;
-}
-
-/**
- * Merges a pure engine snapshot with the machine's current turn to produce a
- * {@link MatchState}.
- *
- * Call this in any place that must bridge the engine layer (turn-agnostic) and
- * the match layer (turn-aware): machine actions, `Match.getState()`,
- * `onStateChange` callbacks, etc.
- *
- * @example
- * const matchState = toMatchState(engine.getState(), context.currentTurn);
- */
 export function toMatchState(
   state: GameEngineState,
   currentTurn: GameTurn,
@@ -1187,32 +717,3 @@ export function toMatchState(
     isEnemyTurn: currentTurn === "ENEMY_TURN",
   };
 }
-
-/**
- * Raw result returned by the internal `executeShot` method.
- *
- * Used exclusively inside `GameEngine` — external callers always receive a
- * {@link ShotPatternResult} from `executeShotPattern`, which aggregates one
- * `ShotResult` per offset in the pattern.
- */
-export interface ShotResult {
-  success: boolean;
-  error?: string;
-  hit: boolean;
-  shipId: number;
-  shipDestroyed?: boolean;
-  isGameOver?: boolean;
-  winner?: Winner;
-  /** True when this shot collected a part of an item. */
-  collected?: boolean;
-  /** The itemId of the collected item (when collected is true). */
-  itemId?: number;
-  /** True when the item is now fully collected. */
-  itemFullyCollected?: boolean;
-  /** True when this shot landed on an obstacle cell (recorded as a miss but distinct from plain water). */
-  obstacleHit?: boolean;
-  /** The 0-based index of the obstacle that was hit (when obstacleHit is true). */
-  obstacleId?: number;
-}
-
-

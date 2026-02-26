@@ -21,12 +21,6 @@ export const matchMachine = setup({
   },
 
   guards: {
-    /**
-     * Validates that the planned shot is legal:
-     * - `isPlayerShot` matches the current turn (turn ownership)
-     * - Position is within the board bounds
-     * - Cell has not been shot before (only for single-cell patterns)
-     */
     isValidPlan: ({ context, event }) => {
       if (event.type !== "PLAN_SHOT") return false;
 
@@ -61,12 +55,10 @@ export const matchMachine = setup({
       return true;
     },
 
-    /** The match has ended (the engine knows after the last shot is processed) */
     isGameOver: ({ context }) => context.engine.getState().isGameOver,
   },
 
   actions: {
-    /** Persists the planned shot in context when the shot is valid */
     storePlan: assign(({ event }) => {
       if (event.type !== "PLAN_SHOT") return {};
       return {
@@ -80,7 +72,6 @@ export const matchMachine = setup({
       };
     }),
 
-    /** Records the plan error when the cell or position is invalid */
     setPlanError: assign(({ context, event }) => {
       if (event.type !== "PLAN_SHOT") return {};
 
@@ -111,24 +102,11 @@ export const matchMachine = setup({
       return { planError };
     }),
 
-    /** Clears the pending plan */
     clearPlan: assign(() => ({
       pendingPlan: null,
       planError: null,
     })),
 
-    /**
-     * Step 1a of the turn cycle: execute the shot pattern in the engine.
-     * Stores `lastAttackResult`, `lastAttackIsPlayerShot`, and
-     * `lastAttackCenter` so downstream actions and the CallbackCoordinator
-     * have everything they need. Clears the pending plan.
-     *
-     * Callbacks are intentionally NOT fired here — the CallbackCoordinator
-     * in `resolveTurn` (step 2) is the single place for all firing.
-     *
-     * Item `onCollect` lifecycle handlers are not called here; that is
-     * `runCollectHandlers`'s responsibility (step 1b).
-     */
     executeAttack: assign(({ context }) => {
       if (!context.pendingPlan) return {};
 
@@ -149,18 +127,6 @@ export const matchMachine = setup({
       };
     }),
 
-    /**
-     * Step 1b of the turn cycle: invoke `onCollect` for every item that was
-     * fully collected by the preceding attack.
-     *
-     * Responsibilities (only these):
-     * 1. Run each collected item's `onCollect` handler.
-     * 2. Accumulate `collectToggleCount` from handlers that called
-     *    `ctx.toggleTurn()`, storing it for `resolveTurn` to consume.
-     * 3. Capture any pending ruleset change from `ctx.setRuleSet()`.
-     *
-     * Turn mutation and all callbacks belong to `resolveTurn` (step 2).
-     */
     runCollectHandlers: assign(({ context }) => {
       if (!context.lastAttackResult || context.lastAttackIsPlayerShot === null) return {};
 
@@ -211,22 +177,6 @@ export const matchMachine = setup({
       };
     }),
 
-    /**
-     * Step 1c of the turn cycle: invoke `onDestroy` for every ship that was
-     * fully destroyed by the preceding attack.
-     *
-     * Runs after `runCollectHandlers` so collect-phase toggles are already
-     * reflected in `context.collectToggleCount` and `context.boardView`.
-     *
-     * Responsibilities (only these):
-     * 1. Run each destroyed ship's `onDestroy` handler.
-     * 2. Accumulate additional `collectToggleCount` from handlers that called
-     *    `ctx.toggleTurn()`, summing with the collect-phase count.
-     * 3. Capture any pending ruleset change from `ctx.setRuleSet()`,
-     *    overriding any already captured by `runCollectHandlers`.
-     *
-     * Turn mutation and all callbacks belong to `resolveTurn` (step 2).
-     */
     runDestroyHandlers: assign(({ context }) => {
       if (!context.lastAttackResult || context.lastAttackIsPlayerShot === null) return {};
 
@@ -275,17 +225,6 @@ export const matchMachine = setup({
       };
     }),
 
-    /**
-     * Step 2 of the turn cycle: resolve the turn outcome and fire all
-     * match-level callbacks through the CallbackCoordinator (single call).
-     *
-     * 1. Apply collect-phase turn toggles accumulated in `collectToggleCount`.
-     * 2. Consume any pending ruleset change captured from `onCollect` handlers.
-     * 3. Ask the (possibly updated) ruleset to decide the turn outcome.
-     * 4. Toggle the turn if the ruleset requires it.
-     * 5. Check for game-over via the ruleset.
-     * 6. Fire all callbacks via `fireMatchCallbacks`.
-     */
     resolveTurn: assign(({ context }) => {
       if (!context.lastAttackResult) return {};
 
@@ -342,7 +281,6 @@ export const matchMachine = setup({
       };
     }),
 
-    /** Initializes the engine with ship placements, items, and the starting turn */
     initializeEngine: assign(({ context, event }) => {
       if (event.type !== "INITIALIZE") return {};
 
@@ -380,7 +318,6 @@ export const matchMachine = setup({
       };
     }),
 
-    /** Resets the engine to its initial empty state */
     resetEngine: assign(({ context }) => {
       context.engine.resetGame();
 
@@ -406,23 +343,16 @@ export const matchMachine = setup({
       };
     }),
 
-    /** Swaps the active ruleset */
     setRuleSet: assign(({ event }) => {
       if (event.type !== "SET_RULESET") return {};
       return { ruleSet: event.ruleSet };
     }),
 
-    /** Overrides the current turn without side-effects (for network re-sync) */
     syncTurn: assign(({ event }) => {
       if (event.type !== "SYNC_TURN") return {};
       return { currentTurn: event.turn };
     }),
-
-    /**
-     * Replaces both sides' shot history atomically.
-     * Used for replay and multiplayer synchronisation so all engine mutations
-     * continue to flow through the machine rather than bypassing it.
-     */
+    
     syncShots: assign(({ context, event }) => {
       if (event.type !== "SYNC_SHOTS") return {};
       context.engine.setPlayerShots(event.playerShots);
@@ -430,24 +360,6 @@ export const matchMachine = setup({
       return {};
     }),
 
-    /**
-     * Activates the `onUse` handler of a collected item.
-     * Only reachable from the `planning` state — all other states silently
-     * ignore the event.
-     *
-     * Responsibilities (only these):
-     * 1. Validate that it is the caller's turn and the item is usable.
-     * 2. Invoke `item.onUse` and mark the item as used.
-     * 3. Accumulate `useToggleCount` so `resolveItemUse` can determine
-     *    whether the handler itself changed the turn.
-     * 4. Store `lastUsedItemInfo` for the CallbackCoordinator.
-     *
-     * Turn mutation and all callbacks belong to `resolveItemUse`.
-     *
-     * Stores the outcome in `lastUseItemResult`:
-     * - `true`  — handler found, item wasn't used before, `onUse` called.
-     * - `false` — item not found, no `onUse` handler, or already used.
-     */
     useItem: assign(({ context, event }) => {
       if (event.type !== "USE_ITEM") return {};
 
@@ -508,17 +420,6 @@ export const matchMachine = setup({
       };
     }),
 
-    /**
-     * Step 2 of the item-use cycle: resolve the turn outcome and fire all
-     * match-level callbacks through the CallbackCoordinator (single call).
-     *
-     * 1. Apply `useToggleCount` accumulated by `useItem`'s handler.
-     * 2. Ask the ruleset whether the turn should also toggle after item use.
-     * 3. Check for game-over.
-     * 4. Fire all callbacks via `fireMatchCallbacks`.
-     *
-     * Skipped entirely when `lastUseItemResult` is `false` (invalid use).
-     */
     resolveItemUse: assign(({ context }) => {
       if (!context.lastUseItemResult) return {};
 
@@ -573,12 +474,6 @@ export const matchMachine = setup({
 }).createMachine({
   id: "match",
   initial: "idle",
-
-  /**
-   * Context is initialized with a fresh GameEngine and the chosen ruleset.
-   * The engine is held by reference; the machine only updates metadata
-   * (pending plan, last result, errors).
-   */
   context: ({ input }) => {
     const callbacks = input?.callbacks;
     const engine = input?.engine ?? new GameEngine(input?.config ?? {});
@@ -605,10 +500,6 @@ export const matchMachine = setup({
   },
 
   states: {
-    /**
-     * idle — machine created, no active match.
-     * Waits for INITIALIZE to transition to active.
-     */
     idle: {
       on: {
         INITIALIZE: {
@@ -618,10 +509,6 @@ export const matchMachine = setup({
       },
     },
 
-    /**
-     * active — match in progress.
-     * Compound state with three sub-states that model the turn cycle.
-     */
     active: {
       initial: "planning",
 
@@ -646,9 +533,6 @@ export const matchMachine = setup({
       },
 
       states: {
-        /**
-         * planning — waiting for the current player to choose a target.
-         */
         planning: {
           on: {
             PLAN_SHOT: [
@@ -667,11 +551,6 @@ export const matchMachine = setup({
             },
           },
         },
-
-        /**
-         * planned — plan stored, waiting for confirmation.
-         * The player may cancel, re-plan, or confirm.
-         */
         planned: {
           on: {
             PLAN_SHOT: [
@@ -693,13 +572,6 @@ export const matchMachine = setup({
             },
           },
         },
-
-        /**
-         * resolvingItemUse — transient state.
-         * On entry, applies ruleset turn logic after an item activation and
-         * immediately transitions: to gameOver if the match ended, or back
-         * to planning.
-         */
         resolvingItemUse: {
           entry: "resolveItemUse",
           always: [
@@ -712,24 +584,10 @@ export const matchMachine = setup({
             },
           ],
         },
-
-        /**
-         * attacking — transient state (steps 1a + 1b + 1c).
-         * On entry, fires the shot pattern in the engine (executeAttack),
-         * runs item onCollect lifecycle handlers (runCollectHandlers),
-         * then runs ship onDestroy lifecycle handlers (runDestroyHandlers),
-         * before immediately advancing to resolvingTurn.
-         */
         attacking: {
           entry: ["executeAttack", "runCollectHandlers", "runDestroyHandlers"],
           always: [{ target: "resolvingTurn" }],
         },
-
-        /**
-         * resolvingTurn — transient state (step 2).
-         * On entry, applies ruleset turn logic and immediately transitions:
-         * to gameOver if the match ended, or back to planning.
-         */
         resolvingTurn: {
           entry: "resolveTurn",
           always: [
@@ -745,30 +603,12 @@ export const matchMachine = setup({
       },
     },
 
-    /**
-     * gameOver — final state.
-     * The winner is available at context.engine.getState().winner.
-     */
     gameOver: {
       type: "final",
     },
   },
 });
 
-/**
- * Creates and starts a ready-to-use matchMachine actor.
- *
- * @example
- * ```ts
- * const actor = createMatchActor({ ruleSet: ClassicRuleSet });
- * actor.subscribe(snapshot => console.log(snapshot.value));
- * actor.start();
- *
- * actor.send({ type: 'INITIALIZE', playerShips: [...], enemyShips: [...] });
- * actor.send({ type: 'PLAN_SHOT', centerX: 3, centerY: 4, isPlayerShot: true });
- * actor.send({ type: 'CONFIRM_ATTACK' });
- * ```
- */
 export function createMatchActor(
   input?: MatchMachineInput,
   options?: Parameters<typeof createActor>[1],
@@ -779,38 +619,18 @@ export function createMatchActor(
 export type MatchMachineActor = ReturnType<typeof createMatchActor>;
 export type MatchMachineSnapshot = ReturnType<MatchMachineActor["getSnapshot"]>;
 
-/**
- * Selector: engine state extracted from the current snapshot.
- * Avoids calling `context.engine.getState()` directly in consumers.
- */
 export function selectGameState(snapshot: MatchMachineSnapshot) {
   return snapshot.context.engine.getState();
 }
-
-/**
- * Selector: current turn ('PLAYER_TURN' | 'ENEMY_TURN').
- */
 export function selectCurrentTurn(snapshot: MatchMachineSnapshot) {
   return snapshot.context.currentTurn;
 }
-
-/**
- * Selector: match winner, or null if the match is still in progress.
- */
 export function selectWinner(snapshot: MatchMachineSnapshot) {
   return snapshot.context.engine.getWinner();
 }
-
-/**
- * Selector: last error produced while planning a shot.
- */
 export function selectPlanError(snapshot: MatchMachineSnapshot) {
   return snapshot.context.planError;
 }
-
-/**
- * Selector: result of the last executed attack.
- */
 export function selectLastAttackResult(snapshot: MatchMachineSnapshot) {
   return snapshot.context.lastAttackResult;
 }

@@ -4,40 +4,15 @@ import type { Board, Cell } from "../types/common";
 import type { BoardLayer, BoardViewConfig } from "../types/config";
 import { DefaultBoardView } from "../constants/views";
 
-/** Fast membership test for a layer list. */
 const has = (layers: BoardLayer[], layer: BoardLayer): boolean =>
   layers.includes(layer);
 
-/** Allocate a blank board of the given dimensions. */
 function emptyBoard(width: number, height: number): Board {
   return Array.from({ length: height }, () =>
     Array.from({ length: width }, (): Cell => ({ state: "EMPTY" })),
   );
 }
 
-/**
- * Builds the **player's own board** for UI rendering.
- *
- * Which layers are painted is controlled by `view.playerSide`.
- * Layers are applied in order: ships → items → obstacles → shots.
- * Shot cells always win over the earlier passes.
- *
- * | Layer             | What it renders                                                        |
- * |-------------------|------------------------------------------------------------------------|
- * | `playerShips`     | Player ship cells → `SHIP`                                            |
- * | `playerItems`     | Items on the player board → `ITEM` / `COLLECTED`                      |
- * | `playerObstacles` | Player obstacle cells → `OBSTACLE`                                    |
- * | `enemyShots`      | Every enemy shot → `HIT` / `MISS` / `OBSTACLE`                        |
- * | `enemyShips`      | Enemy ship cells → `SHIP` (debug/spectator)                           |
- * | `enemyItems`      | Enemy items → `ITEM` / `COLLECTED` (debug/spectator)                  |
- * | `enemyObstacles`  | Enemy obstacle cells → `OBSTACLE` (debug/spectator)                   |
- * | `playerShots`     | Player shots on own board → `HIT` / `MISS` / `OBSTACLE` / `COLLECTED` (debug) |
- * | `collectedItems`  | Qualifies `playerItems` / `enemyItems` to show collected state        |
- *
- * @param state   - Current engine snapshot (`engine.getState()`).
- * @param view    - Optional visual config; falls back to {@link DefaultBoardView}.
- * @returns A 2-D grid of {@link Cell} objects indexed as `board[y][x]`.
- */
 export function buildPlayerBoard(
   state: GameEngineState,
   view?: BoardViewConfig,
@@ -161,29 +136,6 @@ export function buildPlayerBoard(
   return board;
 }
 
-/**
- * Builds the **enemy board** for UI rendering (the board the player attacks).
- *
- * Which layers are painted is controlled by `view.enemySide`.
- * Layers are applied in order: ships → obstacles → items → shots.
- * Shot cells always win over earlier passes.
- *
- * | Layer            | What it renders                                                         |
- * |------------------|-------------------------------------------------------------------------|
- * | `enemyShips`     | Enemy ship cells → `SHIP` (hidden in standard play)                    |
- * | `enemyObstacles` | Enemy obstacle cells → `OBSTACLE`                                       |
- * | `enemyItems`     | Enemy items → `ITEM`; `COLLECTED` when `collectedItems` ∈ layers        |
- * | `collectedItems` | Qualifies `enemyItems` / `playerItems` to show collected state          |
- * | `playerShots`    | Every player shot → `HIT` / `MISS` / `OBSTACLE` / `COLLECTED`          |
- * | `playerShips`    | Player ship cells → `SHIP` (debug/spectator)                           |
- * | `playerItems`    | Player items → `ITEM` / `COLLECTED` (debug/spectator)                  |
- * | `playerObstacles`| Player obstacle cells → `OBSTACLE` (debug/spectator)                   |
- * | `enemyShots`     | Enemy shots on enemy board → `HIT` / `MISS` / `OBSTACLE` (debug)       |
- *
- * @param state   - Current engine snapshot (`engine.getState()`).
- * @param view    - Optional visual config; falls back to {@link DefaultBoardView}.
- * @returns A 2-D grid of {@link Cell} objects indexed as `board[y][x]`.
- */
 export function buildEnemyBoard(
   state: GameEngineState,
   view?: BoardViewConfig,

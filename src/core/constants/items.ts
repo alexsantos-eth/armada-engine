@@ -1,20 +1,5 @@
-import type { GameItem } from "../types/common";
-
-/**
- * An item template — extends GameItem with metadata and a `defaultCount`
- * for how many of this variant appear in a default game.
- * Add new variants here and the rest of the engine picks them up automatically.
- */
-export interface ItemTemplate extends GameItem {
-  /** Unique string identifier for the item variant. */
-  id: string;
-  /** Human-readable name. */
-  title: string;
-  /** Description of the item and any effect it grants when collected. */
-  description?: string;
-  /** How many of this item variant are placed in a default game. */
-  defaultCount: number;
-}
+export type { ItemTemplate } from "../types/constants";
+import type { ItemTemplate } from "../types/constants";
 
 export const HEALTH_KIT: ItemTemplate = {
   id: "health_kit",
@@ -30,7 +15,6 @@ export const HEALTH_KIT: ItemTemplate = {
   },
 };
 
-
 export const AMMO_CACHE: ItemTemplate = {
   id: "ammo_cache",
   title: "Ammo Cache",
@@ -41,13 +25,11 @@ export const AMMO_CACHE: ItemTemplate = {
 
   onUse(ctx) {
     if (ctx.enemyShips.length > 0) {
-      // REMOVE ONE SHIP FROM THE OPPONENT (PREFERABLY THE ONE ON THE COORDS, BUT ANY IF OCCUPIED)
       const last = ctx.enemyShips[ctx.enemyShips.length - 1];
       ctx.deleteEnemyShip(last.shipId ?? ctx.enemyShips.length - 1);
     }
   },
 };
-
 
 export const SHIELD_MODULE: ItemTemplate = {
   id: "shield_module",
@@ -75,9 +57,6 @@ export const RADAR_DEVICE: ItemTemplate = {
   },
 };
 
-/**
- * All predefined item templates, keyed by variant id.
- */
 export const ITEM_TEMPLATES: Record<string, ItemTemplate> = {
   health_kit: HEALTH_KIT,
   ammo_cache: AMMO_CACHE,
@@ -85,10 +64,6 @@ export const ITEM_TEMPLATES: Record<string, ItemTemplate> = {
   radar_device: RADAR_DEVICE,
 };
 
-/**
- * Get an item template by id.
- * @returns The matching ItemTemplate, or HEALTH_KIT if not found.
- */
 export function getItemTemplate(name: string): ItemTemplate {
   return ITEM_TEMPLATES[name] ?? HEALTH_KIT;
 }

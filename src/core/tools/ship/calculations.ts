@@ -10,13 +10,6 @@ import {
   BOARD_DEFAULT_WIDTH,
 } from "../../constants/views";
 
-/**
- * Generate all cells occupied by a 2D rectangular ship.
- * @param x - Top-left X coordinate
- * @param y - Top-left Y coordinate
- * @param width - Number of columns (≥ 1)
- * @param height - Number of rows (≥ 1)
- */
 export function getShip2DCells(
   x: number,
   y: number,
@@ -37,22 +30,6 @@ export function getShipCellsFromShip(ship: GameShip): [number, number][] {
   return getShip2DCells(x, y, ship.width, ship.height);
 }
 
-/**
- * Find the first board position where a ship of the given dimensions fits
- * without overlapping existing ships or already-shot cells.
- *
- * Tries `preferred` first (if provided). Falls back to a top-left → bottom-right
- * scan of the board.
- *
- * @param width         Ship width in cells.
- * @param height        Ship height in cells.
- * @param existingShips Ships already placed on the board.
- * @param shotCells     Cells that have already been shot on the same board.
- * @param boardWidth    Board width.
- * @param boardHeight   Board height.
- * @param preferred     Optional top-left corner to try before scanning.
- * @returns             A valid top-left `[x, y]`, or `null` if the board is full.
- */
 export function findFreeShipPosition(
   width: number,
   height: number,
@@ -97,9 +74,6 @@ export function findFreeShipPosition(
   return null;
 }
 
-/**
- * Total number of cells occupied by a ship (width × height).
- */
 export function getShipSize(ship: GameShip): number {
   return ship.width * ship.height;
 }
@@ -274,12 +248,6 @@ export function generateRandomPosition(
   return [Math.floor(x), Math.floor(y)];
 }
 
-/**
- * Generate a random valid position for a 2D rectangular ship.
- * @param width - Number of columns
- * @param height - Number of rows
- * @returns Placed GameShip or null if no valid position found within max attempts
- */
 export function generateShip2D(
   width: number,
   height: number,
@@ -335,9 +303,6 @@ export function generateShips(config: Partial<GameConfig>): GameShip[] {
   return ships;
 }
 
-/**
- * Returns all cells occupied by an item (horizontal strip of `part` cells).
- */
 export function getItemCells(item: GameItem): [number, number][] {
   const [startX, y] = item.coords;
   return Array.from(
@@ -346,10 +311,6 @@ export function getItemCells(item: GameItem): [number, number][] {
   );
 }
 
-/**
- * Build an occupied-cell set from already-placed ships and items so that
- * placement collision checks are O(1).
- */
 function buildOccupiedSet(
   ships: GameShip[],
   items: GameItem[],
@@ -381,14 +342,6 @@ function buildOccupiedSet(
   return occupied;
 }
 
-/**
- * Try to place a single item on the board without overlapping ships or
- * existing items.
- *
- * Items are always placed horizontally (a strip of `part` cells in one row).
- *
- * @returns A placed `GameItem` or `null` if no valid position was found.
- */
 export function generateItem(
   template: GameItem,
   boardWidth: number,
@@ -433,18 +386,6 @@ export function generateItem(
   return null;
 }
 
-/**
- * Ensure both boards have the same number of items per template type.
- *
- * When ships are densely packed on one board, `generateItems` may fail to place
- * some items while succeeding on the other board. This function trims each board
- * to the minimum count achieved per type so both players always play with an
- * identical item layout (in terms of counts, not positions).
- *
- * Items that are kept have their `itemId` re-indexed to stay contiguous from 0.
- *
- * @returns `[equalizedA, equalizedB]`
- */
 export function equalizeItemCounts(
   boardA: GameItem[],
   boardB: GameItem[],
@@ -486,14 +427,6 @@ export function equalizeItemCounts(
   ];
 }
 
-/**
- * Generate all items for a board given a config, placing them so they don't
- * overlap or crowd the provided ships.
- *
- * @param config - Game config (reads `itemCounts`, `boardWidth`, `boardHeight`)
- * @param existingShips - Ships already placed on this board
- * @returns Array of placed `GameItem` objects
- */
 export function generateItems(
   config: Partial<GameConfig>,
   existingShips: GameShip[],
@@ -527,12 +460,6 @@ export function generateItems(
   return items;
 }
 
-// ─── Obstacle utilities ───────────────────────────────────────────────────────
-
-/**
- * Generate all cells occupied by a rectangular obstacle.
- * Identical geometry to {@link getShipCellsFromShip} but typed for obstacles.
- */
 export function getObstacleCellsFromObstacle(
   obstacle: GameObstacle,
 ): [number, number][] {
@@ -540,15 +467,6 @@ export function getObstacleCellsFromObstacle(
   return getShip2DCells(x, y, obstacle.width, obstacle.height);
 }
 
-/**
- * Try to place a single obstacle on the board without overlapping ships,
- * items, or other already-placed obstacles.
- *
- * Obstacles follow strict no-overlap (distance === 0 is the only boundary —
- * they may be placed directly adjacent to ships and items).
- *
- * @returns A placed `GameObstacle` or `null` if no valid position was found.
- */
 export function generateObstacle(
   template: GameObstacle & { width: number; height: number },
   boardWidth: number,
@@ -607,15 +525,6 @@ export function generateObstacle(
   return null;
 }
 
-/**
- * Generate all obstacles for a board given a config, placing them so they
- * don't overlap ships or items already present on that board.
- *
- * @param config          - Game config (reads `obstacleCounts`, `boardWidth`, `boardHeight`)
- * @param existingShips   - Ships already placed on this board
- * @param existingItems   - Items already placed on this board
- * @returns Array of placed `GameObstacle` objects
- */
 export function generateObstacles(
   config: Partial<GameConfig>,
   existingShips: GameShip[],
@@ -651,20 +560,6 @@ export function generateObstacles(
   return obstacles;
 }
 
-/**
- * Resolve the set of {@link ShotPattern}s a player starts with, derived from
- * a game configuration.
- *
- * The IDs are looked up in the global `SHOT_PATTERNS` registry; unknown IDs
- * are silently skipped (so old saved configs don't crash on missing patterns).
- * Duplicates are removed while preserving insertion order.
- *
- * Falls back to `GAME_CONSTANTS.SHOTS.DEFAULT_PATTERN_IDS` when
- * `config.shotPatternIds` is absent.
- *
- * @param config - Partial game config.  Only `shotPatternIds` is consumed.
- * @returns Array of resolved `ShotPattern` objects.
- */
 export function generateShotPatterns(config: Partial<GameConfig>): ShotPattern[] {
   const ids = config.shotPatternIds ?? GAME_CONSTANTS.SHOTS.DEFAULT_PATTERN_IDS;
   const seen = new Set<string>();

@@ -1,8 +1,5 @@
 import type { ShotPattern } from "../types/common";
 
-/**
- * Single shot pattern (default battleship behavior)
- */
 export const SINGLE_SHOT: ShotPattern = {
   id: "single",
   name: "Single Shot",
@@ -10,13 +7,6 @@ export const SINGLE_SHOT: ShotPattern = {
   offsets: [{ dx: 0, dy: 0 }],
 };
 
-/**
- * Cross pattern - 5 shots in a cross/plus shape
- * Pattern:
- *     X
- *   X X X
- *     X
- */
 export const CROSS_SHOT: ShotPattern = {
   id: "cross",
   name: "Cross Shot",
@@ -30,15 +20,6 @@ export const CROSS_SHOT: ShotPattern = {
   ],
 };
 
-/**
- * Large cross pattern - 9 shots in an extended cross
- * Pattern:
- *       X
- *       X
- *   X X X X X
- *       X
- *       X
- */
 export const LARGE_CROSS_SHOT: ShotPattern = {
   id: "large-cross",
   name: "Large Cross Shot",
@@ -56,10 +37,6 @@ export const LARGE_CROSS_SHOT: ShotPattern = {
   ],
 };
 
-/**
- * Horizontal line - 3 shots in a horizontal line
- * Pattern: X X X
- */
 export const HORIZONTAL_LINE_SHOT: ShotPattern = {
   id: "horizontal-line",
   name: "Horizontal Line",
@@ -71,13 +48,6 @@ export const HORIZONTAL_LINE_SHOT: ShotPattern = {
   ],
 };
 
-/**
- * Vertical line - 3 shots in a vertical line
- * Pattern:
- *   X
- *   X
- *   X
- */
 export const VERTICAL_LINE_SHOT: ShotPattern = {
   id: "vertical-line",
   name: "Vertical Line",
@@ -89,13 +59,6 @@ export const VERTICAL_LINE_SHOT: ShotPattern = {
   ],
 };
 
-/**
- * Square pattern - 9 shots in a 3x3 square
- * Pattern:
- *   X X X
- *   X X X
- *   X X X
- */
 export const SQUARE_SHOT: ShotPattern = {
   id: "square",
   name: "Square Shot",
@@ -107,13 +70,6 @@ export const SQUARE_SHOT: ShotPattern = {
   ],
 };
 
-/**
- * Diagonal X pattern - 5 shots in an X shape
- * Pattern:
- *   X   X
- *     X
- *   X   X
- */
 export const DIAGONAL_X_SHOT: ShotPattern = {
   id: "diagonal-x",
   name: "Diagonal X Shot",
@@ -127,12 +83,6 @@ export const DIAGONAL_X_SHOT: ShotPattern = {
   ],
 };
 
-/**
- * Small square pattern - 4 shots in a 2x2 square
- * Pattern:
- *   X X
- *   X X
- */
 export const SMALL_SQUARE_SHOT: ShotPattern = {
   id: "small-square",
   name: "Small Square Shot",
@@ -145,13 +95,6 @@ export const SMALL_SQUARE_SHOT: ShotPattern = {
   ],
 };
 
-/**
- * T-shape pattern - 5 shots in a T shape
- * Pattern:
- *   X X X
- *     X
- *     X
- */
 export const T_SHAPE_SHOT: ShotPattern = {
   id: "t-shape",
   name: "T-Shape Shot",
@@ -165,13 +108,6 @@ export const T_SHAPE_SHOT: ShotPattern = {
   ],
 };
 
-/**
- * L-shape pattern - 5 shots in an L shape
- * Pattern:
- *   X
- *   X
- *   X X
- */
 export const L_SHAPE_SHOT: ShotPattern = {
   id: "l-shape",
   name: "L-Shape Shot",
@@ -184,9 +120,6 @@ export const L_SHAPE_SHOT: ShotPattern = {
   ],
 };
 
-/**
- * All predefined shot patterns
- */
 export const SHOT_PATTERNS: Record<string, ShotPattern> = {
   single: SINGLE_SHOT,
   cross: CROSS_SHOT,
@@ -200,23 +133,10 @@ export const SHOT_PATTERNS: Record<string, ShotPattern> = {
   "l-shape": L_SHAPE_SHOT,
 };
 
-/**
- * Get a shot pattern by ID
- * @param id - The pattern ID
- * @returns The shot pattern, or SINGLE_SHOT if not found
- */
 export function getShotPattern(id: string): ShotPattern {
   return SHOT_PATTERNS[id] || SINGLE_SHOT;
 }
 
-/**
- * Create a custom shot pattern
- * @param id - Unique identifier
- * @param name - Human-readable name
- * @param offsets - Array of coordinate offsets
- * @param description - Optional description
- * @returns A new ShotPattern
- */
 export function createCustomPattern(
   id: string,
   name: string,
