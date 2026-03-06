@@ -6,6 +6,7 @@ import { type MatchState, toMatchState } from "./logic";
 import { buildPlayerBoard, buildEnemyBoard } from "./board";
 import { matchMachine } from "./machines/match";
 import type { MatchMachineSnapshot } from "./machines/match";
+import { Logger } from "./machines/logger";
 import { DEFAULT_RULESET, type MatchRuleSet } from "../constants/rulesets";
 
 import type { Winner, GameTurn } from "../types/game";
@@ -13,6 +14,7 @@ import type { Board } from "../types/board";
 import type { Shot } from "../types/shots";
 import type { MatchCallbacks } from "./machines/types";
 import type { BoardViewConfig } from "../types/config";
+import type { MatchMachineLogEvent, MatchLogger } from "../types/machines";
 import type {
   NewMatch,
   CellInfo,
@@ -23,6 +25,7 @@ import type {
 
 export type { MatchCallbacks };
 export type { MatchState };
+export { Logger };
 export type {
   MatchItemActionContext,
   MatchShipActionContext,
@@ -37,6 +40,7 @@ export type {
 export class Match implements IMatch {
   private actor: ReturnType<typeof createActor<typeof matchMachine>>;
   private setup?: GameSetup;
+  private logger: MatchLogger;
 
   private get snap() {
     return this.actor.getSnapshot();
@@ -46,7 +50,7 @@ export class Match implements IMatch {
     return this.snap.context.engine;
   }
 
-  constructor({ setup, setupProvider, ...callbacks }: NewMatch) {
+  constructor({ setup, setupProvider, logger, ...callbacks }: NewMatch) {
     if (setup) {
       this.setup = setup;
     } else if (setupProvider) {
@@ -58,9 +62,10 @@ export class Match implements IMatch {
     }
 
     const ruleSet = this.setup?.config.ruleSet ?? DEFAULT_RULESET;
+    this.logger = logger ?? new Logger();
 
     this.actor = createActor(matchMachine, {
-      input: { config: this.setup?.config, ruleSet, callbacks },
+      input: { config: this.setup?.config, ruleSet, callbacks, logger: this.logger },
     });
 
     this.actor.start();
@@ -273,6 +278,18 @@ export class Match implements IMatch {
 
   public getBoardDimensions(): { width: number; height: number } {
     return this.engine.getBoardDimensions();
+  }
+
+  public getEventLog(): MatchMachineLogEvent[] {
+    return this.logger.all();
+  }
+
+  public clearEventLog(): void {
+    this.logger.clear();
+  }
+
+  public getLastEventLog(): MatchMachineLogEvent | undefined {
+    return this.logger.last();
   }
 
   public getBoardView(): BoardViewConfig {

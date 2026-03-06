@@ -26,6 +26,8 @@ const LocalMatch = ({
     useItem(itemId, true);
   };
 
+  const logs = matchRef?.current?.getEventLog() ?? [];
+
   return (
     <>
       <MatchArena
@@ -41,6 +43,7 @@ const LocalMatch = ({
         }}
         onUseItem={handleUseItem}
         showStatus={showStatus}
+        logs={logs} 
       />
     </>
   );

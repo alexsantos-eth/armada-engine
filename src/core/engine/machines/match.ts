@@ -19,6 +19,39 @@ import type {
 import { PlanError } from "../../types";
 import { DEFAULT_RULESET } from "../../constants";
 
+function toMachineStateLabel(value: unknown): string {
+  if (typeof value === "string") return value;
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "unknown";
+  }
+}
+
+function logMachineEvent(
+  context: MatchMachineContext,
+  event: MatchMachineEvent,
+  machineState: unknown,
+  stage: string,
+  metadata?: Record<string, unknown>,
+): void {
+  if (!context.logger) return;
+
+  const engineState = context.engine.getState();
+  context.logger.add({
+    timestamp: new Date().toISOString(),
+    eventType: event.type,
+    stage,
+    machineState: toMachineStateLabel(machineState),
+    currentTurn: context.currentTurn,
+    hasPendingPlan: context.pendingPlan !== null,
+    isGameOver: engineState.isGameOver,
+    winner: engineState.winner,
+    ...(metadata ? { metadata } : {}),
+  });
+}
+
 export const matchMachine = setup({
   types: {} as {
     context: MatchMachineContext;
@@ -65,8 +98,16 @@ export const matchMachine = setup({
   },
 
   actions: {
-    storePlan: assign(({ event }) => {
+    storePlan: assign(({ context, event, self }) => {
       if (event.type !== "PLAN_SHOT") return {};
+
+      logMachineEvent(context, event, self.getSnapshot().value, "storePlan", {
+        centerX: event.centerX,
+        centerY: event.centerY,
+        patternIdx: event.patternIdx ?? 0,
+        isPlayerShot: event.isPlayerShot,
+      });
+
       return {
         pendingPlan: {
           centerX: event.centerX,
@@ -78,7 +119,7 @@ export const matchMachine = setup({
       };
     }),
 
-    setPlanError: assign(({ context, event }) => {
+    setPlanError: assign(({ context, event, self }) => {
       if (event.type !== "PLAN_SHOT") return {};
 
       let planError: PlanError = PlanError.InvalidPlan;
@@ -107,15 +148,27 @@ export const matchMachine = setup({
         }
       }
 
+      logMachineEvent(context, event, self.getSnapshot().value, "setPlanError", {
+        centerX: event.centerX,
+        centerY: event.centerY,
+        patternIdx: event.patternIdx ?? 0,
+        isPlayerShot: event.isPlayerShot,
+        planError,
+      });
+
       return { planError };
     }),
 
-    clearPlan: assign(() => ({
-      pendingPlan: null,
-      planError: null,
-    })),
+    clearPlan: assign(({ context, event, self }) => {
+      logMachineEvent(context, event, self.getSnapshot().value, "clearPlan");
 
-    executeAttack: assign(({ context }) => {
+      return {
+        pendingPlan: null,
+        planError: null,
+      };
+    }),
+
+    executeAttack: assign(({ context, event, self }) => {
       if (!context.pendingPlan) return {};
 
       const { centerX, centerY, patternIdx, isPlayerShot } =
@@ -128,6 +181,20 @@ export const matchMachine = setup({
         isPlayerShot,
       );
 
+      logMachineEvent(
+        context,
+        event,
+        self.getSnapshot().value,
+        "executeAttack",
+        {
+          centerX,
+          centerY,
+          patternIdx,
+          isPlayerShot,
+          shotsCount: lastAttackResult.shots.length,
+        },
+      );
+
       return {
         pendingPlan: null,
         lastAttackResult,
@@ -136,7 +203,7 @@ export const matchMachine = setup({
       };
     }),
 
-    runCollectHandlers: assign(({ context }) => {
+    runCollectHandlers: assign(({ context, event, self }) => {
       if (!context.lastAttackResult || context.lastAttackIsPlayerShot === null)
         return {};
 
@@ -192,6 +259,17 @@ export const matchMachine = setup({
             }
           : context.boardView;
 
+      logMachineEvent(
+        context,
+        event,
+        self.getSnapshot().value,
+        "runCollectHandlers",
+        {
+          isPlayerShot,
+          collectToggleCount,
+        },
+      );
+
       return {
         collectToggleCount,
         pendingRuleSet: capturedRuleSet as typeof context.ruleSet | null,
@@ -199,7 +277,7 @@ export const matchMachine = setup({
       };
     }),
 
-    runDestroyHandlers: assign(({ context }) => {
+    runDestroyHandlers: assign(({ context, event, self }) => {
       if (!context.lastAttackResult || context.lastAttackIsPlayerShot === null)
         return {};
 
@@ -255,6 +333,17 @@ export const matchMachine = setup({
             }
           : context.boardView;
 
+      logMachineEvent(
+        context,
+        event,
+        self.getSnapshot().value,
+        "runDestroyHandlers",
+        {
+          isPlayerShot,
+          destroyToggleCount,
+        },
+      );
+
       return {
         collectToggleCount: context.collectToggleCount + destroyToggleCount,
         ...(capturedRuleSet !== null
@@ -264,7 +353,7 @@ export const matchMachine = setup({
       };
     }),
 
-    resolveTurn: assign(({ context }) => {
+    resolveTurn: assign(({ context, event, self }) => {
       if (!context.lastAttackResult) return {};
 
       const pendingRuleSet = context.pendingRuleSet;
@@ -312,6 +401,12 @@ export const matchMachine = setup({
         winner,
       });
 
+      logMachineEvent(context, event, self.getSnapshot().value, "resolveTurn", {
+        rulesetToggledTurn,
+        currentTurn,
+        winner,
+      });
+
       return {
         currentTurn,
         lastTurnDecision,
@@ -323,7 +418,7 @@ export const matchMachine = setup({
       };
     }),
 
-    initializeEngine: assign(({ context, event }) => {
+    initializeEngine: assign(({ context, event, self }) => {
       if (event.type !== "INITIALIZE") return {};
 
       const currentTurn: GameTurn = event.initialTurn ?? "PLAYER_TURN";
@@ -344,6 +439,12 @@ export const matchMachine = setup({
         currentTurn,
       });
 
+      logMachineEvent(context, event, self.getSnapshot().value, "initializeEngine", {
+        initialTurn: currentTurn,
+        playerShips: event.playerShips.length,
+        enemyShips: event.enemyShips.length,
+      });
+
       return {
         currentTurn,
         planError: null,
@@ -360,13 +461,15 @@ export const matchMachine = setup({
       };
     }),
 
-    resetEngine: assign(({ context }) => {
+    resetEngine: assign(({ context, event, self }) => {
       context.engine.resetGame();
 
       fireMatchCallbacks(context.callbacks, context.engine, {
         kind: "reset",
         currentTurn: "PLAYER_TURN",
       });
+
+      logMachineEvent(context, event, self.getSnapshot().value, "resetEngine");
 
       return {
         currentTurn: "PLAYER_TURN" as GameTurn,
@@ -385,24 +488,36 @@ export const matchMachine = setup({
       };
     }),
 
-    setRuleSet: assign(({ event }) => {
+    setRuleSet: assign(({ context, event, self }) => {
       if (event.type !== "SET_RULESET") return {};
+
+      logMachineEvent(context, event, self.getSnapshot().value, "setRuleSet");
       return { ruleSet: event.ruleSet };
     }),
 
-    syncTurn: assign(({ event }) => {
+    syncTurn: assign(({ context, event, self }) => {
       if (event.type !== "SYNC_TURN") return {};
+
+      logMachineEvent(context, event, self.getSnapshot().value, "syncTurn", {
+        turn: event.turn,
+      });
       return { currentTurn: event.turn };
     }),
 
-    syncShots: assign(({ context, event }) => {
+    syncShots: assign(({ context, event, self }) => {
       if (event.type !== "SYNC_SHOTS") return {};
       context.engine.setPlayerShots(event.playerShots);
       context.engine.setEnemyShots(event.enemyShots);
+
+      logMachineEvent(context, event, self.getSnapshot().value, "syncShots", {
+        playerShots: event.playerShots.length,
+        enemyShots: event.enemyShots.length,
+      });
+
       return {};
     }),
 
-    useItem: assign(({ context, event }) => {
+    useItem: assign(({ context, event, self }) => {
       if (event.type !== "USE_ITEM") return {};
 
       const { itemId, isPlayerShot, shipId } = event;
@@ -411,15 +526,40 @@ export const matchMachine = setup({
         ? context.currentTurn === "PLAYER_TURN"
         : context.currentTurn === "ENEMY_TURN";
 
-      if (!isCallersTurn) return { lastUseItemResult: false };
+      if (!isCallersTurn) {
+        logMachineEvent(context, event, self.getSnapshot().value, "useItem", {
+          itemId,
+          isPlayerShot,
+          shipId,
+          accepted: false,
+          reason: "not-turn",
+        });
+        return { lastUseItemResult: false };
+      }
 
       const state = context.engine.getState();
       const items = isPlayerShot ? state.enemyItems : state.playerItems;
       const item = items[itemId];
 
-      if (!item?.onUse) return { lastUseItemResult: false };
+      if (!item?.onUse) {
+        logMachineEvent(context, event, self.getSnapshot().value, "useItem", {
+          itemId,
+          isPlayerShot,
+          shipId,
+          accepted: false,
+          reason: "missing-onUse",
+        });
+        return { lastUseItemResult: false };
+      }
 
       if (context.engine.isItemUsed(itemId, isPlayerShot)) {
+        logMachineEvent(context, event, self.getSnapshot().value, "useItem", {
+          itemId,
+          isPlayerShot,
+          shipId,
+          accepted: false,
+          reason: "already-used",
+        });
         return { lastUseItemResult: false };
       }
 
@@ -451,6 +591,14 @@ export const matchMachine = setup({
       item.onUse(itemCtx);
       context.engine.markItemUsed(itemId, isPlayerShot, shipId);
 
+      logMachineEvent(context, event, self.getSnapshot().value, "useItem", {
+        itemId,
+        isPlayerShot,
+        shipId,
+        accepted: true,
+        useToggleCount,
+      });
+
       const updatedBoardView =
         capturedPlayerSide !== null || capturedEnemySide !== null
           ? {
@@ -474,7 +622,7 @@ export const matchMachine = setup({
       };
     }),
 
-    resolveItemUse: assign(({ context }) => {
+    resolveItemUse: assign(({ context, event, self }) => {
       if (!context.lastUseItemResult) return {};
 
       const itemToggledTurn = context.useToggleCount % 2 !== 0;
@@ -521,6 +669,19 @@ export const matchMachine = setup({
         });
       }
 
+      logMachineEvent(
+        context,
+        event,
+        self.getSnapshot().value,
+        "resolveItemUse",
+        {
+          itemToggledTurn,
+          rulesetToggledTurn,
+          currentTurn,
+          winner,
+        },
+      );
+
       return {
         currentTurn,
         useToggleCount: 0,
@@ -539,6 +700,7 @@ export const matchMachine = setup({
     return {
       engine,
       callbacks,
+      logger: input?.logger,
       ruleSet: input?.ruleSet ?? DEFAULT_RULESET,
       boardView: (input?.config?.boardView ??
         StandardBoardView) as BoardViewConfig,

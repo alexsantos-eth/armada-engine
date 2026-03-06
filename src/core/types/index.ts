@@ -54,6 +54,8 @@ export type {
   MatchMachineContext,
   MatchMachineEvent,
   MatchMachineInput,
+  MatchMachineLogEvent,
+  MatchLogger,
 } from "./machines";
 
 export type {

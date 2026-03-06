@@ -10,6 +10,7 @@ export { toMatchState } from "./logic";
 export { buildPlayerBoard, buildEnemyBoard } from "./board";
 
 export { Match, createMatch } from "./match";
+export { Logger } from "./match";
 export type {
   PlanAndAttackResult,
   MatchCallbacks,
@@ -49,6 +50,8 @@ export type {
   MatchMachineContext,
   MatchMachineEvent,
   MatchMachineInput,
+  MatchMachineLogEvent,
+  MatchLogger,
   PendingPlan,
 } from "./machines";
 

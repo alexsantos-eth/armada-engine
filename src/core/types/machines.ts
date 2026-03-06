@@ -149,6 +149,42 @@ export interface MatchCallbacks {
 }
 
 /**
+ * Serializable machine event snapshot persisted by the in-memory logger.
+ */
+export interface MatchMachineLogEvent {
+  /** Monotonic event identifier assigned by the logger. */
+  id: number;
+  /** UTC timestamp (ISO-8601) of when the event was recorded. */
+  timestamp: string;
+  /** Event type processed by the state machine (`PLAN_SHOT`, `RESET`, etc.). */
+  eventType: MatchMachineEvent["type"];
+  /** Action or lifecycle stage that produced this log record. */
+  stage: string;
+  /** Best-effort machine state label at log time. */
+  machineState: string;
+  /** Active turn at the moment the record was persisted. */
+  currentTurn: GameTurn;
+  /** Indicates whether a shot plan existed at that moment. */
+  hasPendingPlan: boolean;
+  /** Game-over status as observed from the engine snapshot. */
+  isGameOver: boolean;
+  /** Winner value at log time, or `null` while the match is active. */
+  winner: Winner | null;
+  /** Optional action-specific payload for debugging or telemetry. */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Contract used by the machine to persist `MatchMachineLogEvent` entries.
+ */
+export interface MatchLogger {
+  add(event: Omit<MatchMachineLogEvent, "id">): MatchMachineLogEvent;
+  all(): MatchMachineLogEvent[];
+  clear(): void;
+  last(): MatchMachineLogEvent | undefined;
+}
+
+/**
  * Full internal state of the `matchMachine` XState actor.
  *
  * The engine owns pure computation; this context owns all temporal
@@ -190,6 +226,11 @@ export interface MatchMachineContext {
    * relevant handlers at each transition boundary.
    */
   callbacks?: MatchCallbacks;
+
+  /**
+   * Optional in-memory logger that captures every processed machine event.
+   */
+  logger?: MatchLogger;
 
   /**
    * The most recently staged attack, or `null` when no shot is pending.
@@ -480,6 +521,11 @@ export interface MatchMachineInput {
    * remaining callbacks are forwarded to the engine.
    */
   callbacks?: MatchCallbacks;
+
+  /**
+   * Optional logger instance used by the machine to persist event objects.
+   */
+  logger?: MatchLogger;
 }
 
 export type { Winner };

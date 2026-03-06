@@ -7,5 +7,7 @@ export type {
   MatchMachineContext,
   MatchMachineEvent,
   MatchMachineInput,
+  MatchMachineLogEvent,
+  MatchLogger,
   Winner,
 } from "../../types/machines";

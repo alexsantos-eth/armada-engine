@@ -7,6 +7,7 @@ import type { Board } from "./board";
 import type { Shot, ShotPatternResult } from "./shots";
 import type { ItemActionContext, ShipActionContext } from "./entities";
 import type { BoardViewConfig } from "./config";
+import type { MatchLogger, MatchMachineLogEvent } from "./machines";
 import type { MatchMachineSnapshot } from "../engine/machines/match";
 
 /**
@@ -183,6 +184,21 @@ export interface MatchQueryAPI {
    * received shots, and collected items.
    */
   getEnemyBoard(): Board;
+
+  /**
+   * Returns a copy of the machine logger history ordered by insertion time.
+   */
+  getEventLog(): MatchMachineLogEvent[];
+
+  /**
+   * Returns the newest machine log entry, if one exists.
+   */
+  getLastEventLog(): MatchMachineLogEvent | undefined;
+
+  /**
+   * Removes every persisted machine log entry.
+   */
+  clearEventLog(): void;
 
   /**
    * Registers a listener that fires whenever the underlying state machine
@@ -474,4 +490,9 @@ export interface NewMatch extends MatchCallbacks {
    * field is supplied.
    */
   setupProvider?: IGameSetupProvider;
+
+  /**
+   * Optional custom logger instance. When omitted, `Match` creates one.
+   */
+  logger?: MatchLogger;
 }

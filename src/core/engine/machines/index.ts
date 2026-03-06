@@ -1,4 +1,5 @@
 export { matchMachine, createMatchActor } from "./match";
+export { Logger } from "./logger";
 
 export {
   selectGameState,
@@ -15,4 +16,6 @@ export type {
   MatchMachineEvent,
   MatchMachineInput,
   PendingPlan,
+  MatchMachineLogEvent,
+  MatchLogger,
 } from "./types";
