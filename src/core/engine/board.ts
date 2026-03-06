@@ -3,7 +3,7 @@ import { getObstacleCellsFromObstacle } from "../tools/obstacles";
 import type { GameEngineState } from "./logic";
 import type { Board, Cell } from "../types/board";
 import type { BoardLayer, BoardViewConfig } from "../types/config";
-import { DEFAULT_BOARD_VIEW } from "../constants";
+import { DEFAULT_GAME_MODE } from "../modes";
 
 const has = (layers: BoardLayer[], layer: BoardLayer): boolean =>
   layers.includes(layer);
@@ -18,7 +18,7 @@ export function buildPlayerBoard(
   state: GameEngineState,
   view?: BoardViewConfig,
 ): Board {
-  const layers = view?.playerSide ?? DEFAULT_BOARD_VIEW.playerSide;
+  const layers = view?.playerSide ?? DEFAULT_GAME_MODE.boardView.playerSide;
   const width = view?.width ?? state.boardWidth;
   const height = view?.height ?? state.boardHeight;
 
@@ -153,7 +153,7 @@ export function buildEnemyBoard(
   state: GameEngineState,
   view?: BoardViewConfig,
 ): Board {
-  const layers = view?.enemySide ?? DEFAULT_BOARD_VIEW.enemySide;
+  const layers = view?.enemySide ?? DEFAULT_GAME_MODE.boardView.enemySide;
   const width = view?.width ?? state.boardWidth;
   const height = view?.height ?? state.boardHeight;
 

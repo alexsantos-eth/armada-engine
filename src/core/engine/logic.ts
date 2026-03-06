@@ -13,6 +13,7 @@ import type {
   PositionKey,
   SideState,
 } from "../types/engine";
+import type { GameMode } from "../types/modes";
 
 export type {
   IGameEngineReader,
@@ -22,9 +23,8 @@ export type {
   ShotResult,
 } from "../types/engine";
 
-import { BOARD_DEFAULT_HEIGHT, BOARD_DEFAULT_WIDTH } from "../constants/views";
-import { DEFAULT_SHOT_PATTERN } from "../constants";
 import { ShotError } from "../types";
+import { DEFAULT_GAME_MODE } from "../modes";
 
 const posKey = (x: number, y: number): PositionKey => `${x},${y}`;
 
@@ -56,10 +56,12 @@ export class GameEngine implements IGameEngine {
   private shotCount: number;
   private gameInitialized: boolean;
   private _version: number = 0;
+  private gameMode: GameMode;
 
-  constructor(config: Partial<GameConfig> = {}) {
-    this.boardWidth = config.boardView?.width ?? BOARD_DEFAULT_WIDTH;
-    this.boardHeight = config.boardView?.height ?? BOARD_DEFAULT_HEIGHT;
+  constructor(config: Partial<GameConfig> = {}, gameMode: GameMode = DEFAULT_GAME_MODE) {
+    this.gameMode = gameMode;
+    this.boardWidth = config.boardView?.width ?? DEFAULT_GAME_MODE.boardView.width;
+    this.boardHeight = config.boardView?.height ?? DEFAULT_GAME_MODE.boardView.height;
     this.isGameOver = false;
     this.winner = null;
     this.shotCount = 0;
@@ -121,9 +123,9 @@ export class GameEngine implements IGameEngine {
     this.playerSide.shotPatterns =
       playerShotPatterns.length > 0
         ? playerShotPatterns
-        : [DEFAULT_SHOT_PATTERN];
+        : [DEFAULT_GAME_MODE.shotPatterns[0]];
     this.enemySide.shotPatterns =
-      enemyShotPatterns.length > 0 ? enemyShotPatterns : [DEFAULT_SHOT_PATTERN];
+      enemyShotPatterns.length > 0 ? enemyShotPatterns : [DEFAULT_GAME_MODE.shotPatterns[0]];
 
     this.cacheShipPositions(
       playerShips,
@@ -696,6 +698,10 @@ export class GameEngine implements IGameEngine {
     return (
       isPlayerSide ? this.playerSide : this.enemySide
     ).obstaclePositions.has(posKey(x, y));
+  }
+
+  public getGameMode(): GameMode {
+    return this.gameMode;
   }
 
   public getPlayerObstacles(): GameObstacle[] {

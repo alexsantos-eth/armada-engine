@@ -8,13 +8,12 @@ import type {
 import { dbUtils } from "../../network/realtime/controller";
 import {
   GameInitializer,
-  GAME_CONSTANTS,
   type PlayerRole,
   type Shot,
   type GameSetup,
   type GameItem,
 } from "../../../../../core/engine";
-import { DEFAULT_BOARD_VIEW, DEFAULT_RULESET } from "../../../../../core/constants";
+import { DEFAULT_GAME_MODE } from "../../../../../core/modes";
 
 export class RoomService {
   private static instance: RoomService;
@@ -71,7 +70,7 @@ export class RoomService {
     const gameInitializer = new GameInitializer();
     const setup = initialSetup ?? gameInitializer.getGameSetup();
     const initialTurn = setup.initialTurn === "PLAYER_TURN" ? "host" : "guest";
-    const ruleSetName = setup.config.ruleSet?.title || DEFAULT_RULESET.title;
+    const ruleSetName = setup.config.ruleSet?.title || DEFAULT_GAME_MODE.ruleSet.title;
 
     const room: GameRoom = {
       id: roomId,
@@ -81,14 +80,14 @@ export class RoomService {
       currentTurn: initialTurn,
       ruleSet: ruleSetName as MatchRuleSetName,
       gameConfig: {
-        boardView: setup.config.boardView || DEFAULT_BOARD_VIEW,
+        boardView: setup.config.boardView || DEFAULT_GAME_MODE.boardView,
         shipCounts:
-          setup.config.shipCounts ?? GAME_CONSTANTS.SHIPS.DEFAULT_COUNTS,
+          setup.config.shipCounts ?? DEFAULT_GAME_MODE.constants.SHIPS.DEFAULT_COUNTS,
         itemCounts:
-          setup.config.itemCounts ?? GAME_CONSTANTS.ITEMS.DEFAULT_COUNTS,
+          setup.config.itemCounts ?? DEFAULT_GAME_MODE.constants.ITEMS.DEFAULT_COUNTS,
         obstacleCounts:
           setup.config.obstacleCounts ??
-          GAME_CONSTANTS.OBSTACLES.DEFAULT_COUNTS,
+          DEFAULT_GAME_MODE.constants.OBSTACLES.DEFAULT_COUNTS,
       },
       initialState: {
         playerShips: setup.playerShips,

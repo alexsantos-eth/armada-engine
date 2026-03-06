@@ -1,17 +1,11 @@
-export type {
-  ItemUseTurnDecision,
-  TurnDecision,
-  GameOverDecision,
-  MatchRuleSet,
-} from "../types/rulesets";
-import { createEntitySet } from "../tools/constants";
+import { createEntitySet } from "../../../tools/constants";
 import type {
   TurnDecision,
   GameOverDecision,
   MatchRuleSet,
-} from "../types/rulesets";
-import type { ShotPatternResult } from "../types/shots";
-import type { GameEngineState } from "../types/engine";
+} from "../../../types/rulesets";
+import type { ShotPatternResult } from "../../../types/shots";
+import type { GameEngineState } from "../../../types/engine";
 
 export const ClassicRuleSet: MatchRuleSet = {
   id: "classic",

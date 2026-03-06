@@ -1,8 +1,8 @@
-import type { BoardViewConfig } from "../types/config";
-import { createEntitySet } from "../tools/constants";
+import type { BoardViewConfig } from "../../../types/config";
+import { createEntitySet } from "../../../tools/constants";
 
-export const BOARD_DEFAULT_WIDTH = 5;
-export const BOARD_DEFAULT_HEIGHT = 5;
+export const BOARD_DEFAULT_WIDTH = 7;
+export const BOARD_DEFAULT_HEIGHT = 7;
 
 export const StandardBoardView: BoardViewConfig = {
   id: "standard",

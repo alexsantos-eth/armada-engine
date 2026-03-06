@@ -1,9 +1,7 @@
-import { GAME_CONSTANTS } from "../constants/game";
-import { ITEM_TEMPLATES } from "../constants/items";
 import type { GameShip, GameItem } from "../types/entities";
 import type { GameConfig } from "../types/config";
-import { BOARD_DEFAULT_HEIGHT, BOARD_DEFAULT_WIDTH } from "../constants/views";
 import { getShipCellsFromShip } from "./ships";
+import type { GameMode } from "../types/modes";
 
 export function getItemCells(item: GameItem): [number, number][] {
   const [startX, y] = item.coords;
@@ -51,10 +49,11 @@ export function generateItem(
   existingShips: GameShip[],
   existingItems: GameItem[],
   itemId: number,
-  templateId?: string,
+  templateId: string | undefined,
+  gameMode: GameMode,
 ): GameItem | null {
-  const maxAttempts = GAME_CONSTANTS.ITEMS.MAX_PLACEMENT_ATTEMPTS;
-  const minDist = GAME_CONSTANTS.ITEMS.MIN_DISTANCE_FROM_SHIPS;
+  const maxAttempts = gameMode.constants.ITEMS.MAX_PLACEMENT_ATTEMPTS;
+  const minDist = gameMode.constants.ITEMS.MIN_DISTANCE_FROM_SHIPS;
   const occupied = buildOccupiedSet(existingShips, existingItems, minDist);
   const key = (x: number, y: number) => `${x},${y}`;
 
@@ -158,14 +157,18 @@ export function equalizeItemCounts(
 export function generateItems(
   config: Partial<GameConfig>,
   existingShips: GameShip[],
+  gameMode: GameMode,
 ): GameItem[] {
   const items: GameItem[] = [];
-  const boardWidth = config.boardView?.width ?? BOARD_DEFAULT_WIDTH;
-  const boardHeight = config.boardView?.height ?? BOARD_DEFAULT_HEIGHT;
-  const counts = config.itemCounts ?? GAME_CONSTANTS.ITEMS.DEFAULT_COUNTS;
+  const boardWidth = config.boardView?.width ?? gameMode.boardView.width;
+  const boardHeight = config.boardView?.height ?? gameMode.boardView.height;
+  const counts = config.itemCounts ?? gameMode.defaultCounts.itemCounts;
+  const itemTemplates = Object.fromEntries(
+    gameMode.items.map(item => [item.id, item])
+  );
 
   for (const [name, count] of Object.entries(counts)) {
-    const template = ITEM_TEMPLATES[name];
+    const template = itemTemplates[name];
     if (!template) continue;
 
     for (let i = 0; i < count; i++) {
@@ -177,6 +180,7 @@ export function generateItems(
         items,
         items.length,
         name,
+        gameMode,
       );
 
       if (item) {

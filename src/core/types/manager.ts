@@ -2,6 +2,7 @@ import type { GameTurn, PlayerName } from "./game";
 import type { ShotPattern } from "./shots";
 import type { GameShip, GameItem, GameObstacle } from "./entities";
 import type { GameConfig } from "./config";
+import type { GameMode } from "./modes";
 
 /**
  * Abstraction for anything that can provide a ready-to-use `GameSetup`.
@@ -43,6 +44,8 @@ export interface GameSetup {
   initialTurn: GameTurn;
   /** Game configuration used to generate this setup. */
   config: Partial<GameConfig>;
+  /** The game mode used for this setup. Optional; defaults to DEFAULT_GAME_MODE if not provided. */
+  gameMode?: GameMode;
 }
 
 /**

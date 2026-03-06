@@ -10,7 +10,9 @@ export { toMatchState } from "./logic";
 export { buildPlayerBoard, buildEnemyBoard } from "./board";
 
 export { Match, createMatch } from "./match";
+
 export { Logger } from "./match";
+
 export type {
   PlanAndAttackResult,
   MatchCallbacks,
@@ -20,24 +22,27 @@ export type {
   MatchQueryAPI,
 } from "./match";
 
-export { ClassicRuleSet } from "../constants/rulesets";
 export type {
-  MatchRuleSet,
+  ItemUseTurnDecision,
   TurnDecision,
   GameOverDecision,
-} from "../constants/rulesets";
+  MatchRuleSet,
+} from "../types/rulesets";
 
 export { GameInitializer } from "../manager";
 export type { GameSetup } from "../manager";
 
 export type { GameTurn, Winner, PlayerRole } from "../types/game";
+
 export type { CellState, Cell, Board } from "../types/board";
+
 export type {
   Shot,
   ShotOffset,
   ShotPattern,
   ShotPatternResult,
 } from "../types/shots";
+
 export type {
   GameShip,
   GameItem,
@@ -48,6 +53,7 @@ export type {
 export type { GameConfig, BoardLayer, BoardViewConfig } from "../types/config";
 
 export { matchMachine, createMatchActor } from "./machines";
+
 export {
   selectGameState,
   selectCurrentTurn,
@@ -55,6 +61,7 @@ export {
   selectPlanError,
   selectLastAttackResult,
 } from "./machines";
+
 export type {
   MatchMachineActor,
   MatchMachineSnapshot,
@@ -66,18 +73,7 @@ export type {
   PendingPlan,
 } from "./machines";
 
-export { GAME_CONSTANTS } from "../constants/game";
-
-export { withView } from "../constants/views";
-
-export {
-  SMALL_SHIP,
-  MEDIUM_SHIP,
-  LARGE_SHIP,
-  XLARGE_SHIP,
-  SHIP_TEMPLATES,
-  getShipTemplate,
-} from "../constants/ships";
+export type { GameMode, GameModeConstants } from "../types/modes";
 
 export {
   getShip2DCells,
@@ -88,3 +84,5 @@ export {
   generateShip2D,
   generateShips,
 } from "../tools/ships";
+
+export { withView } from "../modes/classic/entities/views";

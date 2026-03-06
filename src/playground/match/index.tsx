@@ -1,10 +1,8 @@
-import { GameInitializer, withView } from "../../core/engine";
+import { GameInitializer } from "../../core/engine";
 import NetworkMatchPage from "./network";
 import LocalMatchPage from "./local";
 
-const initialSetup = new GameInitializer({
-  boardView: withView({ width: 7, height: 7 }),
-}).getGameSetup();
+const initialSetup = new GameInitializer().getGameSetup();
 
 const MatchPlayground = () => {
   return (

@@ -5,6 +5,7 @@ import type { GameShip, GameItem, GameObstacle } from "./entities";
 import type { GameTurn, Winner } from "./game";
 import type { Shot, ShotPattern, ShotPatternResult } from "./shots";
 import type { GameConfig, BoardViewConfig } from "./config";
+import type { GameMode } from "./modes";
 
 /**
  * Snapshot of the board coordinates and pattern used in an attack.
@@ -501,6 +502,12 @@ export interface MatchMachineInput {
    * Ignored when a fully constructed `engine` is supplied directly.
    */
   config?: Partial<GameConfig>;
+
+  /**
+   * The game mode being used for this match.
+   * Contains ships, items, obstacles, shot patterns, and ruleset defaults.
+   */
+  gameMode?: GameMode;
 
   /**
    * Ruleset that governs turn order and victory conditions.

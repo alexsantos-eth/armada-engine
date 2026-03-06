@@ -1,5 +1,5 @@
-import type { ShotPattern } from "../types/shots";
-import { createEntitySet } from "../tools/constants";
+import type { ShotPattern } from "../../../types/shots";
+import { createEntitySet } from "../../../tools/constants";
 
 export const SINGLE_SHOT: ShotPattern = {
   id: "single",

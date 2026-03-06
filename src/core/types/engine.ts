@@ -1,6 +1,7 @@
 import type { GameTurn, Winner } from "./game";
 import type { Shot, ShotPattern, ShotPatternResult } from "./shots";
 import type { GameShip, GameItem, GameObstacle } from "./entities";
+import type { GameMode } from "./modes";
 
 /**
  * String key used to address a single board cell in the engine's internal
@@ -108,6 +109,8 @@ export interface IGameEngineReader {
   hasShipAtPosition(x: number, y: number, isPlayerShips: boolean): boolean;
   /** `true` if an obstacle occupies cell `(x, y)` on the specified side's board. */
   hasObstacleAtPosition(x: number, y: number, isPlayerSide: boolean): boolean;
+  /** Gets the game mode being used for this engine instance. */
+  getGameMode(): GameMode;
 }
 
 /**

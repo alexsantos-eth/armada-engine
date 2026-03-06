@@ -9,14 +9,14 @@ export const GAME_CONSTANTS = {
     MIN_DISTANCE: 2,
     MAX_PLACEMENT_ATTEMPTS: 200,
     DEFAULT_COUNTS: Object.fromEntries(
-      Object.entries(SHIP_TEMPLATES).map(([key, t]) => [key, t.defaultCount]),
+      Object.entries(SHIP_TEMPLATES).map(([key, t]) => [key, (t as { defaultCount: number }).defaultCount]),
     ) as Record<string, number>,
   },
   ITEMS: {
     MIN_DISTANCE_FROM_SHIPS: 1,
     MAX_PLACEMENT_ATTEMPTS: 200,
     DEFAULT_COUNTS: Object.fromEntries(
-      Object.entries(ITEM_TEMPLATES).map(([key, t]) => [key, t.defaultCount]),
+      Object.entries(ITEM_TEMPLATES).map(([key, t]) => [key, (t as { defaultCount: number }).defaultCount]),
     ) as Record<string, number>,
   },
   OBSTACLES: {
@@ -24,7 +24,7 @@ export const GAME_CONSTANTS = {
     DEFAULT_COUNTS: Object.fromEntries(
       Object.entries(OBSTACLE_TEMPLATES).map(([key, t]) => [
         key,
-        t.defaultCount,
+        (t as { defaultCount: number }).defaultCount,
       ]),
     ) as Record<string, number>,
   },

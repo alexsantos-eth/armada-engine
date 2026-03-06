@@ -6,7 +6,7 @@ import { type MatchState, toMatchState } from "./logic";
 import { buildPlayerBoard, buildEnemyBoard } from "./board";
 import { matchMachine } from "./machines/match";
 import { Logger } from "./machines/logger";
-import { DEFAULT_RULESET, type MatchRuleSet } from "../constants/rulesets";
+import { DEFAULT_GAME_MODE } from "../modes";
 
 import type { Winner, GameTurn } from "../types/game";
 import type { Board } from "../types/board";
@@ -21,6 +21,7 @@ import type {
   PlanAndAttackResult,
   IMatch,
 } from "../types/match";
+import type { MatchRuleSet } from "../types";
 
 export type { MatchCallbacks };
 export type { MatchState };
@@ -60,11 +61,12 @@ export class Match implements IMatch {
       );
     }
 
-    const ruleSet = this.setup?.config.ruleSet ?? DEFAULT_RULESET;
+    const gameMode = this.setup?.gameMode ?? DEFAULT_GAME_MODE;
+    const ruleSet = this.setup?.config.ruleSet ?? gameMode.ruleSet;
     this.logger = logger ?? new Logger();
 
     this.actor = createActor(matchMachine, {
-      input: { config: this.setup?.config, ruleSet, callbacks, logger: this.logger },
+      input: { config: this.setup?.config, ruleSet, gameMode, callbacks, logger: this.logger },
     });
 
     this.actor.start();

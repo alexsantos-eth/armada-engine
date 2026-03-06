@@ -23,6 +23,7 @@ function buildContext(
   const state = engine.getState();
   const swap = swapPerspective && !isPlayerShot;
   const p = resolvePerspective(state, engine, swap);
+  const gameMode = engine.getGameMode();
 
   return {
     item,
@@ -120,6 +121,7 @@ function buildContext(
         fresh.ownItems,
         fresh.ownItems.length,
         template.templateId,
+        gameMode,
       );
       if (!placed) return false;
       fresh.setOwnItems(fresh.ownItems.concat([placed]));
@@ -147,6 +149,7 @@ function buildContext(
         fresh.opponentItems,
         fresh.opponentItems.length,
         template.templateId,
+        gameMode,
       );
       if (!placed) return false;
       fresh.setOpponentItems(fresh.opponentItems.concat([placed]));
@@ -208,6 +211,7 @@ function buildContext(
         fresh.ownItems,
         fresh.ownObstacles,
         fresh.ownObstacles.length,
+        gameMode,
       );
       if (!placed) return false;
       fresh.setOwnObstacles(fresh.ownObstacles.concat([placed]));
@@ -239,6 +243,7 @@ function buildContext(
         fresh.opponentItems,
         fresh.opponentObstacles,
         fresh.opponentObstacles.length,
+        gameMode,
       );
       if (!placed) return false;
       fresh.setOpponentObstacles(fresh.opponentObstacles.concat([placed]));

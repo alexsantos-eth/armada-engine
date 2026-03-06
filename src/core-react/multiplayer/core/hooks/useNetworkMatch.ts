@@ -11,11 +11,10 @@ import {
   type GameItem,
   type Cell,
 } from "../../../../core/engine";
-import { ITEM_TEMPLATES } from "../../../../core/constants/items";
 
 import type { GameRoom } from "../types/game/room";
 import { roomService } from "../services/room/realtime";
-import { DEFAULT_RULESET, getRuleSet } from "../../../../core/constants";
+import { DEFAULT_GAME_MODE } from "../../../../core/modes";
 
 export interface UseNetworkMatchProps extends Partial<MatchCallbacks> {
   room: GameRoom | null;
@@ -25,7 +24,7 @@ export interface UseNetworkMatchProps extends Partial<MatchCallbacks> {
 const rehydrateItems = (items: GameItem[]): GameItem[] =>
   items.map((item) => {
     const template = item.templateId
-      ? ITEM_TEMPLATES[item.templateId]
+      ? DEFAULT_GAME_MODE.items.find((t) => t.id === item.templateId)
       : undefined;
     if (!template) return item;
     return {
@@ -56,7 +55,7 @@ const useNetworkMatch = ({
     if (!room || !room.initialState) return;
 
     const config: Partial<GameConfig> = room.gameConfig || {};
-    const ruleSetName = room.ruleSet || DEFAULT_RULESET.id!;
+    const ruleSetName = room.ruleSet || DEFAULT_GAME_MODE.ruleSet.id!;
 
     const playerShips =
       playerRole === "host"
@@ -78,7 +77,9 @@ const useNetworkMatch = ({
         ? room.initialState.enemyItems || []
         : room.initialState.playerItems || [];
 
-    const ruleSet = getRuleSet(ruleSetName);
+    const ruleSet = DEFAULT_GAME_MODE.ruleSet.id === ruleSetName
+      ? DEFAULT_GAME_MODE.ruleSet
+      : undefined;
     const initialTurn = room.initialTurn === playerRole ? "player" : "enemy";
 
     const initializer = new GameInitializer({

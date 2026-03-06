@@ -1,8 +1,6 @@
-import { GAME_CONSTANTS } from "../constants/game";
-import { OBSTACLE_TEMPLATES } from "../constants/obstacles";
 import type { GameShip, GameItem, GameObstacle } from "../types/entities";
 import type { GameConfig } from "../types/config";
-import { BOARD_DEFAULT_HEIGHT, BOARD_DEFAULT_WIDTH } from "../constants/views";
+import type { GameMode } from "../types/modes";
 import { getShip2DCells, getShipCellsFromShip } from "./ships";
 import { getItemCells } from "./items";
 
@@ -21,8 +19,9 @@ export function generateObstacle(
   existingItems: GameItem[],
   existingObstacles: GameObstacle[],
   obstacleId: number,
+  gameMode: GameMode,
 ): GameObstacle | null {
-  const maxAttempts = GAME_CONSTANTS.OBSTACLES.MAX_PLACEMENT_ATTEMPTS;
+  const maxAttempts = gameMode.constants.OBSTACLES.MAX_PLACEMENT_ATTEMPTS;
   const { width, height } = template;
 
   const occupied = new Set<string>();
@@ -74,15 +73,18 @@ export function generateObstacles(
   config: Partial<GameConfig>,
   existingShips: GameShip[],
   existingItems: GameItem[],
+  gameMode: GameMode,
 ): GameObstacle[] {
   const obstacles: GameObstacle[] = [];
-  const boardWidth = config.boardView?.width ?? BOARD_DEFAULT_WIDTH;
-  const boardHeight = config.boardView?.height ?? BOARD_DEFAULT_HEIGHT;
-  const counts =
-    config.obstacleCounts ?? GAME_CONSTANTS.OBSTACLES.DEFAULT_COUNTS;
+  const boardWidth = config.boardView?.width ?? gameMode.boardView.width;
+  const boardHeight = config.boardView?.height ?? gameMode.boardView.height;
+  const counts = config.obstacleCounts ?? gameMode.defaultCounts.obstacleCounts;
+  const obstacleTemplates = Object.fromEntries(
+    gameMode.obstacles.map(obstacle => [obstacle.id, obstacle])
+  );
 
   for (const [name, count] of Object.entries(counts)) {
-    const template = OBSTACLE_TEMPLATES[name];
+    const template = obstacleTemplates[name];
     if (!template) continue;
 
     for (let i = 0; i < count; i++) {
@@ -94,6 +96,7 @@ export function generateObstacles(
         existingItems,
         obstacles,
         obstacles.length,
+        gameMode,
       );
 
       if (obstacle) {

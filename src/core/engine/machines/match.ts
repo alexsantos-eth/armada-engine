@@ -1,6 +1,6 @@
 import { setup, assign, createActor } from "xstate";
 import { GameEngine } from "../logic";
-import { DEFAULT_BOARD_VIEW } from "../../constants/views";
+import { DEFAULT_GAME_MODE } from "../../modes";
 
 import {
   buildCollectContext,
@@ -17,7 +17,6 @@ import type {
   MatchMachineInput,
 } from "./types";
 import { PlanError } from "../../types";
-import { DEFAULT_RULESET } from "../../constants";
 
 function toMachineStateLabel(value: unknown): string {
   if (typeof value === "string") return value;
@@ -707,15 +706,16 @@ export const matchMachine = setup({
   initial: "idle",
   context: ({ input }) => {
     const callbacks = input?.callbacks;
-    const engine = input?.engine ?? new GameEngine(input?.config ?? {});
+    const gameMode = input?.gameMode ?? DEFAULT_GAME_MODE;
+    const engine = input?.engine ?? new GameEngine(input?.config ?? {}, gameMode);
 
     return {
       engine,
       callbacks,
       logger: input?.logger,
-      ruleSet: input?.ruleSet ?? DEFAULT_RULESET,
+      ruleSet: input?.ruleSet ?? gameMode.ruleSet,
       boardView: (input?.config?.boardView ??
-        DEFAULT_BOARD_VIEW) as BoardViewConfig,
+        gameMode.boardView) as BoardViewConfig,
       currentTurn: "PLAYER_TURN" as GameTurn,
       pendingPlan: null,
       lastAttackResult: null,

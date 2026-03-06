@@ -1,8 +1,6 @@
-import { GAME_CONSTANTS } from "../constants/game";
-import { SHIP_TEMPLATES } from "../constants/ships";
 import type { GameShip } from "../types/entities";
 import type { GameConfig } from "../types/config";
-import { BOARD_DEFAULT_HEIGHT, BOARD_DEFAULT_WIDTH } from "../constants/views";
+import type { GameMode } from "../types/modes";
 
 export function getShip2DCells(
   x: number,
@@ -77,6 +75,7 @@ export function isValidShipPlacement(
   existingShips: GameShip[],
   boardWidth: number,
   boardHeight: number,
+  minDistance: number,
 ): boolean {
   const shipCells = getShipCellsFromShip(ship);
 
@@ -95,7 +94,7 @@ export function isValidShipPlacement(
           Math.abs(shipX - existingX),
           Math.abs(shipY - existingY),
         );
-        if (distance < GAME_CONSTANTS.SHIPS.MIN_DISTANCE) {
+        if (distance < minDistance) {
           return false;
         }
       }
@@ -110,8 +109,9 @@ export function generateShip(
   boardWidth: number,
   boardHeight: number,
   existingShips: GameShip[],
+  gameMode: GameMode,
 ): GameShip | null {
-  const maxAttempts = GAME_CONSTANTS.SHIPS.MAX_PLACEMENT_ATTEMPTS;
+  const maxAttempts = gameMode.constants.SHIPS.MAX_PLACEMENT_ATTEMPTS;
 
   const quadrantPreferences = getQuadrantPreferences(
     template.width * template.height,
@@ -121,7 +121,7 @@ export function generateShip(
     const rotate =
       template.width !== template.height &&
       Math.random() <
-        GAME_CONSTANTS.GAME_LOGIC.SHIP_GENERATION.ORIENTATION_RANDOM_THRESHOLD;
+        gameMode.constants.GAME_LOGIC.SHIP_GENERATION.ORIENTATION_RANDOM_THRESHOLD;
 
     const width = rotate ? template.height : template.width;
     const height = rotate ? template.width : template.height;
@@ -156,7 +156,7 @@ export function generateShip(
       onDestroy: template.onDestroy,
     };
 
-    if (isValidShipPlacement(ship, existingShips, boardWidth, boardHeight)) {
+    if (isValidShipPlacement(ship, existingShips, boardWidth, boardHeight, gameMode.constants.SHIPS.MIN_DISTANCE)) {
       return ship;
     }
   }
@@ -180,7 +180,7 @@ export function generateShip(
           onDestroy: template.onDestroy,
         };
 
-        if (isValidShipPlacement(ship, existingShips, boardWidth, boardHeight)) {
+        if (isValidShipPlacement(ship, existingShips, boardWidth, boardHeight, gameMode.constants.SHIPS.MIN_DISTANCE)) {
           return ship;
         }
       }
@@ -222,8 +222,7 @@ export function generatePositionInPreferredQuadrant(
     targetQuadrant[Math.floor(Math.random() * targetQuadrant.length)];
 
   const quadrantSize = Math.floor(
-    Math.max(boardWidth, boardHeight) /
-      GAME_CONSTANTS.GAME_LOGIC.SHIP_GENERATION.QUADRANT_SIZE_DIVISOR,
+    Math.max(boardWidth, boardHeight) / 2,
   );
   const xMin = Math.floor((quadrant % 2) * quadrantSize);
   const yMin = Math.floor(Math.floor(quadrant / 2) * quadrantSize);
@@ -274,8 +273,9 @@ export function generateShip2D(
   boardWidth: number,
   boardHeight: number,
   existingShips: GameShip[],
+  gameMode: GameMode,
 ): GameShip | null {
-  const maxAttempts = GAME_CONSTANTS.SHIPS.MAX_PLACEMENT_ATTEMPTS;
+  const maxAttempts = gameMode.constants.SHIPS.MAX_PLACEMENT_ATTEMPTS;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const x = Math.floor(Math.random() * (boardWidth - width + 1));
@@ -288,7 +288,7 @@ export function generateShip2D(
       shipId: existingShips.length,
     };
 
-    if (isValidShipPlacement(ship, existingShips, boardWidth, boardHeight)) {
+    if (isValidShipPlacement(ship, existingShips, boardWidth, boardHeight, gameMode.constants.SHIPS.MIN_DISTANCE)) {
       return ship;
     }
   }
@@ -296,28 +296,30 @@ export function generateShip2D(
   return null;
 }
 
-export function generateShips(config: Partial<GameConfig>): GameShip[] {
+export function generateShips(config: Partial<GameConfig>, gameMode: GameMode): GameShip[] {
   const ships: GameShip[] = [];
-  const templateNames = Object.keys(
-    SHIP_TEMPLATES,
-  ) as (keyof typeof SHIP_TEMPLATES)[];
+  const shipTemplates = Object.fromEntries(
+    gameMode.ships.map(ship => [ship.id, ship])
+  );
+  const templateNames = Object.keys(shipTemplates);
 
   templateNames.sort(
     (a, b) =>
-      SHIP_TEMPLATES[b].width * SHIP_TEMPLATES[b].height -
-      SHIP_TEMPLATES[a].width * SHIP_TEMPLATES[a].height,
+      shipTemplates[b].width * shipTemplates[b].height -
+      shipTemplates[a].width * shipTemplates[a].height,
   );
 
   for (const name of templateNames) {
     const count = config.shipCounts?.[name] ?? 0;
-    const template = SHIP_TEMPLATES[name];
+    const template = shipTemplates[name];
 
     for (let i = 0; i < count; i++) {
       const ship = generateShip(
         template,
-        config.boardView?.width ?? BOARD_DEFAULT_WIDTH,
-        config.boardView?.height ?? BOARD_DEFAULT_HEIGHT,
+        config.boardView?.width ?? gameMode.boardView.width,
+        config.boardView?.height ?? gameMode.boardView.height,
         ships,
+        gameMode,
       );
 
       if (ship) {

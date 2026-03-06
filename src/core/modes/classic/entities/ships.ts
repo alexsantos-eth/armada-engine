@@ -1,7 +1,7 @@
-import type { ShipTemplate } from "../types/constants";
-import { createEntitySet } from "../tools/constants";
+import type { ShipTemplate } from "../../../types/constants";
+import { createEntitySet } from "../../../tools/constants";
 
-export type { ShipTemplate } from "../types/constants";
+export type { ShipTemplate } from "../../../types/constants";
 
 export const SMALL_SHIP = Object.freeze({
   id: "small",

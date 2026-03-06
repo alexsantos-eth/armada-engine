@@ -1,7 +1,7 @@
-import type { ObstacleTemplate } from "../types/constants";
-import { createEntitySet } from "../tools/constants";
+import type { ObstacleTemplate } from "../../../types/constants";
+import { createEntitySet } from "../../../tools/constants";
 
-export type { ObstacleTemplate } from "../types/constants";
+export type { ObstacleTemplate } from "../../../types/constants";
 
 export const ROCK_OBSTACLE = Object.freeze({
   id: "rock",

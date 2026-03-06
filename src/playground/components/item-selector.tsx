@@ -1,6 +1,6 @@
 import { Zap, CheckCheck, Package } from "lucide-react";
 import { type GameEngineState } from "../../core/engine";
-import { ITEM_TEMPLATES } from "../../core/constants/items";
+import { DEFAULT_GAME_MODE } from "../../core/modes";
 
 interface ItemSelectorProps {
   gameState?: GameEngineState | null;
@@ -42,7 +42,7 @@ export const ItemSelector = ({ gameState, onUseItem }: ItemSelectorProps) => {
       <div className="flex flex-wrap gap-2">
         {collectedItems.map(({ itemId, item }) => {
           const templateId = item.templateId ?? "";
-          const template = ITEM_TEMPLATES[templateId];
+          const template = DEFAULT_GAME_MODE.items.find((t) => t.id === templateId);
           const title = template?.title ?? templateId ?? `Item #${itemId}`;
           const description = template?.description;
 

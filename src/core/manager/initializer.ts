@@ -1,4 +1,3 @@
-import { GAME_CONSTANTS } from "../constants/game";
 import type { GameConfig } from "../types/config";
 import type { GameTurn } from "../types/game";
 import type { GameShip, GameItem, GameObstacle } from "../types/entities";
@@ -7,6 +6,7 @@ import { generateItems, equalizeItemCounts, getItemCells } from "../tools/items"
 import { generateObstacles, getObstacleCellsFromObstacle } from "../tools/obstacles";
 
 import { generateShotPatterns } from "../tools/shots";
+
 
 export type {
   IGameSetupProvider,
@@ -19,15 +19,20 @@ import type {
   GAME_INITIAL_TURN,
 } from "../types/manager";
 import { InitializerError } from "../types/errors";
+import type { GameMode } from "../engine";
+import { DEFAULT_GAME_MODE } from "../modes";
 
 export class GameInitializer implements IGameSetupProvider {
   private config: GameConfig;
   private initialTurn: GAME_INITIAL_TURN;
+  private gameMode: GameMode;
 
   constructor(
     config: Partial<GameConfig> = {},
     initialTurn: GAME_INITIAL_TURN = "random",
+    gameMode: GameMode = DEFAULT_GAME_MODE,
   ) {
+    this.gameMode = gameMode;
     this.config = { ...this.getDefaultConfig(), ...config };
     this.initialTurn = initialTurn;
     this.validateConfig();
@@ -38,25 +43,25 @@ export class GameInitializer implements IGameSetupProvider {
     const { width, height } = boardView;
 
     if (
-      width < GAME_CONSTANTS.BOARD.MIN_SIZE ||
-      width > GAME_CONSTANTS.BOARD.MAX_SIZE
+      width < this.gameMode.constants.BOARD.MIN_SIZE ||
+      width > this.gameMode.constants.BOARD.MAX_SIZE
     ) {
       throw new Error(
         InitializerError.BoardWidth(
-          GAME_CONSTANTS.BOARD.MIN_SIZE,
-          GAME_CONSTANTS.BOARD.MAX_SIZE,
+          this.gameMode.constants.BOARD.MIN_SIZE,
+          this.gameMode.constants.BOARD.MAX_SIZE,
         ),
       );
     }
 
     if (
-      height < GAME_CONSTANTS.BOARD.MIN_SIZE ||
-      height > GAME_CONSTANTS.BOARD.MAX_SIZE
+      height < this.gameMode.constants.BOARD.MIN_SIZE ||
+      height > this.gameMode.constants.BOARD.MAX_SIZE
     ) {
       throw new Error(
         InitializerError.BoardHeight(
-          GAME_CONSTANTS.BOARD.MIN_SIZE,
-          GAME_CONSTANTS.BOARD.MAX_SIZE,
+          this.gameMode.constants.BOARD.MIN_SIZE,
+          this.gameMode.constants.BOARD.MAX_SIZE,
         ),
       );
     }
@@ -76,10 +81,11 @@ export class GameInitializer implements IGameSetupProvider {
 
   public getDefaultConfig(): GameConfig {
     return {
-      boardView: GAME_CONSTANTS.BOARD.DEFAULT_VIEW,
-      shipCounts: GAME_CONSTANTS.SHIPS.DEFAULT_COUNTS,
-      itemCounts: GAME_CONSTANTS.ITEMS.DEFAULT_COUNTS,
-      obstacleCounts: GAME_CONSTANTS.OBSTACLES.DEFAULT_COUNTS,
+      boardView: this.gameMode.boardView,
+      shipCounts: this.gameMode.defaultCounts.shipCounts,
+      itemCounts: this.gameMode.defaultCounts.itemCounts,
+      obstacleCounts: this.gameMode.defaultCounts.obstacleCounts,
+      ruleSet: this.gameMode.ruleSet,
     };
   }
 
@@ -184,18 +190,18 @@ export class GameInitializer implements IGameSetupProvider {
       case "random":
       default:
         return Math.random() <
-          GAME_CONSTANTS.GAME_LOGIC.BATTLE.RANDOM_TURN_THRESHOLD
+          this.gameMode.constants.GAME_LOGIC.BATTLE.RANDOM_TURN_THRESHOLD
           ? "PLAYER_TURN"
           : "ENEMY_TURN";
     }
   }
 
   public getGameSetup(): GameSetup {
-    const playerShips = generateShips(this.config);
-    const enemyShips = generateShips(this.config);
+    const playerShips = generateShips(this.config, this.gameMode);
+    const enemyShips = generateShips(this.config, this.gameMode);
 
-    const rawPlayerItems = generateItems(this.config, playerShips);
-    const rawEnemyItems = generateItems(this.config, enemyShips);
+    const rawPlayerItems = generateItems(this.config, playerShips, this.gameMode);
+    const rawEnemyItems = generateItems(this.config, enemyShips, this.gameMode);
 
     const [playerItems, enemyItems] = equalizeItemCounts(
       rawPlayerItems,
@@ -206,15 +212,17 @@ export class GameInitializer implements IGameSetupProvider {
       this.config,
       playerShips,
       playerItems,
+      this.gameMode,
     );
     const enemyObstacles = generateObstacles(
       this.config,
       enemyShips,
       enemyItems,
+      this.gameMode,
     );
 
-    const playerShotPatterns = generateShotPatterns(this.config);
-    const enemyShotPatterns = generateShotPatterns(this.config);
+    const playerShotPatterns = generateShotPatterns(this.config, this.gameMode);
+    const enemyShotPatterns = generateShotPatterns(this.config, this.gameMode);
 
     const initialTurn: GameTurn = this.determineInitialTurn();
 
@@ -229,17 +237,18 @@ export class GameInitializer implements IGameSetupProvider {
       enemyShotPatterns,
       initialTurn,
       config: this.config,
+      gameMode: this.gameMode,
     };
   }
 
   public appendGameSetup(setup: Partial<GameSetup>): GameSetup {
-    const playerShips = setup.playerShips || generateShips(this.config);
-    const enemyShips = setup.enemyShips || generateShips(this.config);
+    const playerShips = setup.playerShips || generateShips(this.config, this.gameMode);
+    const enemyShips = setup.enemyShips || generateShips(this.config, this.gameMode);
 
     const rawPlayerItems =
-      setup.playerItems || generateItems(this.config, playerShips);
+      setup.playerItems || generateItems(this.config, playerShips, this.gameMode);
     const rawEnemyItems =
-      setup.enemyItems || generateItems(this.config, enemyShips);
+      setup.enemyItems || generateItems(this.config, enemyShips, this.gameMode);
 
     if (setup.playerItems) {
       this.validateItems(setup.playerItems, playerShips, "player");
@@ -272,15 +281,15 @@ export class GameInitializer implements IGameSetupProvider {
 
     const playerObstacles =
       setup.playerObstacles ??
-      generateObstacles(this.config, playerShips, playerItems);
+      generateObstacles(this.config, playerShips, playerItems, this.gameMode);
     const enemyObstacles =
       setup.enemyObstacles ??
-      generateObstacles(this.config, enemyShips, enemyItems);
+      generateObstacles(this.config, enemyShips, enemyItems, this.gameMode);
 
     const playerShotPatterns =
-      setup.playerShotPatterns ?? generateShotPatterns(this.config);
+      setup.playerShotPatterns ?? generateShotPatterns(this.config, this.gameMode);
     const enemyShotPatterns =
-      setup.enemyShotPatterns ?? generateShotPatterns(this.config);
+      setup.enemyShotPatterns ?? generateShotPatterns(this.config, this.gameMode);
 
     const initialTurn: GameTurn = this.determineInitialTurn();
 
@@ -295,6 +304,7 @@ export class GameInitializer implements IGameSetupProvider {
       enemyObstacles,
       playerShotPatterns,
       enemyShotPatterns,
+      gameMode: this.gameMode,
     };
   }
 }
