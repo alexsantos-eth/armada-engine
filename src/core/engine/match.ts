@@ -5,7 +5,6 @@ import { GameInitializer, type GameSetup } from "../manager";
 import { type MatchState, toMatchState } from "./logic";
 import { buildPlayerBoard, buildEnemyBoard } from "./board";
 import { matchMachine } from "./machines/match";
-import type { MatchMachineSnapshot } from "./machines/match";
 import { Logger } from "./machines/logger";
 import { DEFAULT_RULESET, type MatchRuleSet } from "../constants/rulesets";
 
@@ -315,7 +314,7 @@ export class Match implements IMatch {
   }
 
   public subscribe(
-    callback: (snapshot: MatchMachineSnapshot) => void,
+    callback: (snapshot: unknown) => void,
   ): () => void {
     const subscription = this.actor.subscribe(callback);
     return () => subscription.unsubscribe();

@@ -8,7 +8,17 @@ import type { Shot, ShotPatternResult } from "./shots";
 import type { ItemActionContext, ShipActionContext } from "./entities";
 import type { BoardViewConfig } from "./config";
 import type { MatchLogger, MatchMachineLogEvent } from "./machines";
-import type { MatchMachineSnapshot } from "../engine/machines/match";
+
+/**
+ * Type-safe contract for an XState machine snapshot.
+ * Using loose typing here to avoid circular dependency with engine/machines/match.ts,
+ * which defines the actual XState machine. The snapshot is always safe to pass to
+ * consumers; the machine guarantees type safety internally.
+ */
+export interface MatchMachineSnapshot {
+  value: unknown;
+  [key: string]: unknown;
+}
 
 /**
  * Narrowed alias for the action context injected into item `onCollect` and
@@ -205,11 +215,11 @@ export interface MatchQueryAPI {
    * emits a new snapshot. Returns an unsubscribe function; call it during
    * component teardown to prevent memory leaks.
    *
-   * @param callback Invoked with the latest `MatchMachineSnapshot` on every
+   * @param callback Invoked with the latest machine snapshot on every
    *                 state transition.
    * @returns A zero-argument function that removes the subscription.
    */
-  subscribe(callback: (snapshot: MatchMachineSnapshot) => void): () => void;
+  subscribe(callback: (snapshot: unknown) => void): () => void;
 }
 
 /**

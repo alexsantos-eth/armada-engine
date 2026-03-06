@@ -3,7 +3,7 @@ import { createEntitySet } from "../tools/constants";
 
 export type { ObstacleTemplate } from "../types/constants";
 
-export const ROCK_OBSTACLE: ObstacleTemplate = {
+export const ROCK_OBSTACLE = Object.freeze({
   id: "rock",
   title: "Rock",
   description: "A small 1-cell rock formation. Indestructible.",
@@ -11,9 +11,9 @@ export const ROCK_OBSTACLE: ObstacleTemplate = {
   width: 1,
   height: 1,
   defaultCount: 2,
-};
+}) as ObstacleTemplate;
 
-export const REEF_OBSTACLE: ObstacleTemplate = {
+export const REEF_OBSTACLE = Object.freeze({
   id: "reef",
   title: "Reef",
   description: "A 2-cell horizontal reef. Indestructible.",
@@ -21,9 +21,9 @@ export const REEF_OBSTACLE: ObstacleTemplate = {
   width: 2,
   height: 1,
   defaultCount: 1,
-};
+}) as ObstacleTemplate;
 
-export const ISLAND_OBSTACLE: ObstacleTemplate = {
+export const ISLAND_OBSTACLE = Object.freeze({
   id: "island",
   title: "Island",
   description: "A 2×2 island formation. Indestructible.",
@@ -31,7 +31,7 @@ export const ISLAND_OBSTACLE: ObstacleTemplate = {
   width: 2,
   height: 2,
   defaultCount: 0,
-};
+}) as ObstacleTemplate;
 
 
 export const ObstacleTemplateSet = createEntitySet<ObstacleTemplate>([

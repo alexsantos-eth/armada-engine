@@ -1,9 +1,10 @@
 import { createEntitySet } from "../tools/constants";
 import type { ItemTemplate } from "../types/constants";
+import type { ItemActionContext } from "../types/entities";
 
 export type { ItemTemplate } from "../types/constants";
 
-export const HEALTH_KIT: ItemTemplate = {
+export const HEALTH_KIT = Object.freeze({
   id: "health_kit",
   title: "Health Kit",
   description: "Grants hit-continuation on collect. Use to skip the enemy's turn.",
@@ -11,13 +12,13 @@ export const HEALTH_KIT: ItemTemplate = {
   part: 1,
   defaultCount: 1,
 
-  onUse(ctx) {
+  onUse(ctx: ItemActionContext) {
     ctx.setBoardViewPlayerSide(['playerShips'])
     ctx.setBoardViewEnemySide(['enemyShips'])
   },
-};
+}) as ItemTemplate;
 
-export const AMMO_CACHE: ItemTemplate = {
+export const AMMO_CACHE = Object.freeze({
   id: "ammo_cache",
   title: "Ammo Cache",
   description: "Grants hit-continuation on collect. No activation required.",
@@ -25,15 +26,15 @@ export const AMMO_CACHE: ItemTemplate = {
   part: 1,
   defaultCount: 1,
 
-  onUse(ctx) {
+  onUse(ctx: ItemActionContext) {
     if (ctx.enemyShips.length > 0) {
       const last = ctx.enemyShips[ctx.enemyShips.length - 1];
       ctx.deleteEnemyShip(last.shipId ?? ctx.enemyShips.length - 1);
     }
   },
-};
+}) as ItemTemplate;
 
-export const SHIELD_MODULE: ItemTemplate = {
+export const SHIELD_MODULE = Object.freeze({
   id: "shield_module",
   title: "Shield Module",
   description: "Forces alternating turns on collect. Use to cancel the enemy's turn.",
@@ -41,12 +42,12 @@ export const SHIELD_MODULE: ItemTemplate = {
   part: 1,
   defaultCount: 1,
 
-  onUse(ctx) {
+  onUse(ctx: ItemActionContext) {
     ctx.toggleTurn();
   },
-};
+}) as ItemTemplate;
 
-export const RADAR_DEVICE: ItemTemplate = {
+export const RADAR_DEVICE = Object.freeze({
   id: "radar_device",
   title: "Radar Device",
   description: "Clears all opponent items on collect. Use for a bonus shot.",
@@ -54,10 +55,10 @@ export const RADAR_DEVICE: ItemTemplate = {
   part: 1,
   defaultCount: 1,
 
-  onUse(ctx) {
+  onUse(ctx: ItemActionContext) {
     ctx.deleteAllEnemyObstacles();
   },
-};
+}) as ItemTemplate;
 
 
 export const ItemTemplateSet = createEntitySet<ItemTemplate>([

@@ -1,9 +1,10 @@
 import type { ShipTemplate } from "../types/constants";
+import type { ShipActionContext } from "../types/entities";
 import { createEntitySet } from "../tools/constants";
 
 export type { ShipTemplate } from "../types/constants";
 
-export const SMALL_SHIP: ShipTemplate = {
+export const SMALL_SHIP = Object.freeze({
   id: "small",
   title: "Small Ship",
   description: "A compact 2-cell vessel.",
@@ -11,9 +12,9 @@ export const SMALL_SHIP: ShipTemplate = {
   width: 2,
   height: 1,
   defaultCount: 1,
-};
+}) as ShipTemplate;
 
-export const MEDIUM_SHIP: ShipTemplate = {
+export const MEDIUM_SHIP = Object.freeze({
   id: "medium",
   title: "Medium Ship",
   description: "A standard 3-cell cruiser.",
@@ -21,13 +22,13 @@ export const MEDIUM_SHIP: ShipTemplate = {
   width: 3,
   height: 1,
   defaultCount: 2,
-  onDestroy: (ctx) => {
+  onDestroy: (ctx: ShipActionContext) => {
     console.log("Medium ship destroyed! Triggering explosion...");
     ctx.deleteAllEnemyObstacles()
   }
-};
+}) as ShipTemplate;
 
-export const LARGE_SHIP: ShipTemplate = {
+export const LARGE_SHIP = Object.freeze({
   id: "large",
   title: "Large Ship",
   description: "A 4-cell battleship.",
@@ -35,9 +36,9 @@ export const LARGE_SHIP: ShipTemplate = {
   width: 4,
   height: 1,
   defaultCount: 1,
-};
+}) as ShipTemplate;
 
-export const XLARGE_SHIP: ShipTemplate = {
+export const XLARGE_SHIP = Object.freeze({
   id: "xlarge",
   title: "XLarge Ship",
   description: "A massive 5-cell carrier.",
@@ -45,7 +46,7 @@ export const XLARGE_SHIP: ShipTemplate = {
   width: 5,
   height: 1,
   defaultCount: 1,
-};
+}) as ShipTemplate;
 
 export const ShipSet = createEntitySet<ShipTemplate>([
   SMALL_SHIP,

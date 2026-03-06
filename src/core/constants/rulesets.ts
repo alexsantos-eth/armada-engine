@@ -11,13 +11,15 @@ import type {
   GameOverDecision,
   MatchRuleSet,
 } from "../types/rulesets";
+import type { ShotPatternResult } from "../types/shots";
+import type { GameEngineState } from "../types/engine";
 
 export const ClassicRuleSet: MatchRuleSet = {
   id: "classic",
   title: "ClassicRuleSet",
   description: "Traditional battleship rules with hit continuation",
 
-  decideTurn(attackResult, currentState): TurnDecision {
+  decideTurn(attackResult: ShotPatternResult, currentState: GameEngineState): TurnDecision {
     if (currentState.isGameOver) {
       return {
         shouldEndTurn: true,
@@ -58,7 +60,7 @@ export const ClassicRuleSet: MatchRuleSet = {
     }
   },
 
-  checkGameOver(state): GameOverDecision {
+  checkGameOver(state: GameEngineState): GameOverDecision {
     if (state.areAllPlayerShipsDestroyed) {
       return {
         isGameOver: true,
@@ -83,7 +85,7 @@ export const AlternatingTurnsRuleSet: MatchRuleSet = {
   title: "AlternatingTurnsRuleSet",
   description: "Every shot ends turn, no hit continuation",
 
-  decideTurn(attackResult, currentState): TurnDecision {
+  decideTurn(attackResult: ShotPatternResult, currentState: GameEngineState): TurnDecision {
     if (currentState.isGameOver) {
       return {
         shouldEndTurn: true,
@@ -103,7 +105,7 @@ export const AlternatingTurnsRuleSet: MatchRuleSet = {
     };
   },
 
-  checkGameOver(state): GameOverDecision {
+  checkGameOver(state: GameEngineState): GameOverDecision {
     if (state.areAllPlayerShipsDestroyed) {
       return {
         isGameOver: true,
@@ -129,7 +131,7 @@ export const ItemHitRuleSet: MatchRuleSet = {
   description:
     "Repeat turn on any item collection or ship hit; turn ends on ship destruction or miss",
 
-  decideTurn(attackResult, currentState): TurnDecision {
+  decideTurn(attackResult: ShotPatternResult, currentState: GameEngineState): TurnDecision {
     if (currentState.isGameOver) {
       return {
         shouldEndTurn: true,
@@ -182,7 +184,7 @@ export const ItemHitRuleSet: MatchRuleSet = {
     };
   },
 
-  checkGameOver(state): GameOverDecision {
+  checkGameOver(state: GameEngineState): GameOverDecision {
     if (state.areAllPlayerShipsDestroyed) {
       return {
         isGameOver: true,
@@ -211,7 +213,7 @@ export const LoseTurnOnUseRuleSet: MatchRuleSet = {
   decideTurn: ClassicRuleSet.decideTurn,
   checkGameOver: ClassicRuleSet.checkGameOver,
 
-  decideTurnOnItemUse(_isPlayerUse, _state): ItemUseTurnDecision {
+  decideTurnOnItemUse(_isPlayerUse: boolean, _state: GameEngineState): ItemUseTurnDecision {
     return {
       shouldToggleTurn: true,
       reason: "Item used - turn forfeited",
