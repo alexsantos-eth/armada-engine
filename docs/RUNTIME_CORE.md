@@ -131,7 +131,7 @@ GameInitializer → GameSetup
                         ↓
                  resolveTurn (ruleset, callbacks)
                         ↓
-                 MatchState (UI, consumers)
+                 MatchState (consumers)
 ```
 
 ---

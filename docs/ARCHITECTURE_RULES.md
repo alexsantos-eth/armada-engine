@@ -33,25 +33,17 @@ tsc -b  # TypeScript's project references will catch this
 
 **Forbidden:**
 ```typescript
-// ❌ BAD: Game state in React component
-const [playerShips, setPlayerShips] = useState(engine.playerShips);
-// ... later
-setPlayerShips([...playerShips, newShip]);  // Now local and engine are out of sync!
-
-// ❌ BAD: Game state in Zustand store
-const gameStore = create((set) => ({
+// ❌ BAD: Duplicating engine state in external storage
+const localState = {
   ships: [],  // This duplicates engine state
-  addShip: (ship) => set((state) => ({ ships: [...state.ships, ship] })),
-}));
+  addShip: (ship) => { localState.ships.push(ship); }
+};
 ```
 
 **How to fix:**
 ```typescript
 // ✅ GOOD: Only read from engine; let engine own state
 const ships = engine.playerShips;  // Always read fresh
-
-// ✅ GOOD: React state is for UI only
-const [selectedCells, setSelectedCells] = useState<BoardPosition[]>([]);
 
 // ✅ GOOD: Call engine methods directly
 engine.planShot(x, y);
@@ -514,7 +506,6 @@ export const TEMPLATES = {
 - [ ] All public APIs have JSDoc
 - [ ] No mutations to constants
 - [ ] No state duplication (single source of truth)
-- [ ] No direct engine access in React components (read-only via snapshots)
 - [ ] All handlers use `ItemActionContext`, not engine
 - [ ] Machine logger can trace the entire flow
 
