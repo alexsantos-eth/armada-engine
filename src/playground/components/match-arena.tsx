@@ -15,7 +15,7 @@ interface MatchArenaProps {
   onCellClick: (x: number, y: number) => void;
   onUseItem: (itemId: number) => void;
   showStatus?: boolean;
-  logs: MatchMachineLogEvent[];
+  logs?: MatchMachineLogEvent[];
 }
 
 const MatchArena = ({
