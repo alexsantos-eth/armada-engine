@@ -20,19 +20,30 @@ export type {
   MatchQueryAPI,
 } from "./match";
 
-export {
-  ClassicRuleSet,
-  AlternatingTurnsRuleSet,
+export { ClassicRuleSet } from "../constants/rulesets";
+export type {
+  MatchRuleSet,
+  TurnDecision,
+  GameOverDecision,
 } from "../constants/rulesets";
-export type { MatchRuleSet, TurnDecision, GameOverDecision } from "../constants/rulesets";
 
 export { GameInitializer } from "../manager";
 export type { GameSetup } from "../manager";
 
 export type { GameTurn, Winner, PlayerRole } from "../types/game";
 export type { CellState, Cell, Board } from "../types/board";
-export type { Shot, ShotOffset, ShotPattern, ShotPatternResult } from "../types/shots";
-export type { GameShip, GameItem, GameObstacle, ItemActionContext } from "../types/entities";
+export type {
+  Shot,
+  ShotOffset,
+  ShotPattern,
+  ShotPatternResult,
+} from "../types/shots";
+export type {
+  GameShip,
+  GameItem,
+  GameObstacle,
+  ItemActionContext,
+} from "../types/entities";
 
 export type { GameConfig, BoardLayer, BoardViewConfig } from "../types/config";
 
@@ -57,13 +68,7 @@ export type {
 
 export { GAME_CONSTANTS } from "../constants/game";
 
-export {
-  StandardBoardView,
-  FogOfWarBoardView,
-  DebugBoardView,
-  SpectatorBoardView,
-  withView,
-} from "../constants/views";
+export { withView } from "../constants/views";
 
 export {
   SMALL_SHIP,

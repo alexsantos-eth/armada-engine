@@ -1,7 +1,7 @@
 import { SHIP_TEMPLATES } from "./ships";
 import { ITEM_TEMPLATES } from "./items";
 import { OBSTACLE_TEMPLATES } from "./obstacles";
-import { StandardBoardView } from "./views";
+import { DEFAULT_BOARD_VIEW } from "./views";
 import { SHOT_PATTERNS } from "./shots";
 
 export const GAME_CONSTANTS = {
@@ -43,6 +43,6 @@ export const GAME_CONSTANTS = {
   BOARD: {
     MIN_SIZE: 3,
     MAX_SIZE: 30,
-    DEFAULT_VIEW: StandardBoardView,
+    DEFAULT_VIEW: DEFAULT_BOARD_VIEW,
   },
 };

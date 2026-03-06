@@ -161,6 +161,32 @@ export function generateShip(
     }
   }
 
+  const orientations: Array<[number, number]> =
+    template.width === template.height
+      ? [[template.width, template.height]]
+      : [
+          [template.width, template.height],
+          [template.height, template.width],
+        ];
+
+  for (const [width, height] of orientations) {
+    for (let y = 0; y <= boardHeight - height; y++) {
+      for (let x = 0; x <= boardWidth - width; x++) {
+        const ship: GameShip = {
+          coords: [x, y],
+          width,
+          height,
+          shipId: existingShips.length,
+          onDestroy: template.onDestroy,
+        };
+
+        if (isValidShipPlacement(ship, existingShips, boardWidth, boardHeight)) {
+          return ship;
+        }
+      }
+    }
+  }
+
   return null;
 }
 
@@ -275,6 +301,12 @@ export function generateShips(config: Partial<GameConfig>): GameShip[] {
   const templateNames = Object.keys(
     SHIP_TEMPLATES,
   ) as (keyof typeof SHIP_TEMPLATES)[];
+
+  templateNames.sort(
+    (a, b) =>
+      SHIP_TEMPLATES[b].width * SHIP_TEMPLATES[b].height -
+      SHIP_TEMPLATES[a].width * SHIP_TEMPLATES[a].height,
+  );
 
   for (const name of templateNames) {
     const count = config.shipCounts?.[name] ?? 0;

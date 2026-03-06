@@ -85,6 +85,32 @@ export function generateItem(
     }
   }
 
+  const maxX = boardWidth - template.part;
+  if (maxX < 0) return null;
+
+  for (let y = 0; y < boardHeight; y++) {
+    for (let x = 0; x <= maxX; x++) {
+      let valid = true;
+      for (let i = 0; i < template.part; i++) {
+        if (occupied.has(key(x + i, y))) {
+          valid = false;
+          break;
+        }
+      }
+
+      if (valid) {
+        return {
+          part: template.part,
+          onCollect: template.onCollect,
+          onUse: template.onUse,
+          coords: [x, y],
+          itemId,
+          templateId,
+        };
+      }
+    }
+  }
+
   return null;
 }
 

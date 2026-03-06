@@ -1,6 +1,5 @@
 import { createEntitySet } from "../tools/constants";
 import type { ItemTemplate } from "../types/constants";
-import type { ItemActionContext } from "../types/entities";
 
 export type { ItemTemplate } from "../types/constants";
 
@@ -11,11 +10,6 @@ export const HEALTH_KIT = Object.freeze({
   coords: [0, 0],
   part: 1,
   defaultCount: 1,
-
-  onUse(ctx: ItemActionContext) {
-    ctx.setBoardViewPlayerSide(['playerShips'])
-    ctx.setBoardViewEnemySide(['enemyShips'])
-  },
 }) as ItemTemplate;
 
 export const AMMO_CACHE = Object.freeze({
@@ -25,13 +19,6 @@ export const AMMO_CACHE = Object.freeze({
   coords: [0, 0],
   part: 1,
   defaultCount: 1,
-
-  onUse(ctx: ItemActionContext) {
-    if (ctx.enemyShips.length > 0) {
-      const last = ctx.enemyShips[ctx.enemyShips.length - 1];
-      ctx.deleteEnemyShip(last.shipId ?? ctx.enemyShips.length - 1);
-    }
-  },
 }) as ItemTemplate;
 
 export const SHIELD_MODULE = Object.freeze({
@@ -41,10 +28,6 @@ export const SHIELD_MODULE = Object.freeze({
   coords: [0, 0],
   part: 1,
   defaultCount: 1,
-
-  onUse(ctx: ItemActionContext) {
-    ctx.toggleTurn();
-  },
 }) as ItemTemplate;
 
 export const RADAR_DEVICE = Object.freeze({
@@ -54,10 +37,6 @@ export const RADAR_DEVICE = Object.freeze({
   coords: [0, 0],
   part: 1,
   defaultCount: 1,
-
-  onUse(ctx: ItemActionContext) {
-    ctx.deleteAllEnemyObstacles();
-  },
 }) as ItemTemplate;
 
 

@@ -1,6 +1,6 @@
 import { setup, assign, createActor } from "xstate";
 import { GameEngine } from "../logic";
-import { StandardBoardView } from "../../constants/views";
+import { DEFAULT_BOARD_VIEW } from "../../constants/views";
 
 import {
   buildCollectContext,
@@ -148,13 +148,19 @@ export const matchMachine = setup({
         }
       }
 
-      logMachineEvent(context, event, self.getSnapshot().value, "setPlanError", {
-        centerX: event.centerX,
-        centerY: event.centerY,
-        patternIdx: event.patternIdx ?? 0,
-        isPlayerShot: event.isPlayerShot,
-        planError,
-      });
+      logMachineEvent(
+        context,
+        event,
+        self.getSnapshot().value,
+        "setPlanError",
+        {
+          centerX: event.centerX,
+          centerY: event.centerY,
+          patternIdx: event.patternIdx ?? 0,
+          isPlayerShot: event.isPlayerShot,
+          planError,
+        },
+      );
 
       return { planError };
     }),
@@ -439,11 +445,17 @@ export const matchMachine = setup({
         currentTurn,
       });
 
-      logMachineEvent(context, event, self.getSnapshot().value, "initializeEngine", {
-        initialTurn: currentTurn,
-        playerShips: event.playerShips.length,
-        enemyShips: event.enemyShips.length,
-      });
+      logMachineEvent(
+        context,
+        event,
+        self.getSnapshot().value,
+        "initializeEngine",
+        {
+          initialTurn: currentTurn,
+          playerShips: event.playerShips.length,
+          enemyShips: event.enemyShips.length,
+        },
+      );
 
       return {
         currentTurn,
@@ -703,7 +715,7 @@ export const matchMachine = setup({
       logger: input?.logger,
       ruleSet: input?.ruleSet ?? DEFAULT_RULESET,
       boardView: (input?.config?.boardView ??
-        StandardBoardView) as BoardViewConfig,
+        DEFAULT_BOARD_VIEW) as BoardViewConfig,
       currentTurn: "PLAYER_TURN" as GameTurn,
       pendingPlan: null,
       lastAttackResult: null,

@@ -13,11 +13,11 @@ export const CROSS_SHOT: ShotPattern = {
   title: "Cross Shot",
   description: "Fires 5 shots in a cross pattern",
   offsets: [
-    { dx: 0, dy: 0 },   // Center
-    { dx: -1, dy: 0 },  // Left
-    { dx: 1, dy: 0 },   // Right
-    { dx: 0, dy: -1 },  // Up
-    { dx: 0, dy: 1 },   // Down
+    { dx: 0, dy: 0 },   
+    { dx: -1, dy: 0 },  
+    { dx: 1, dy: 0 },
+    { dx: 0, dy: -1 },
+    { dx: 0, dy: 1 },   
   ],
 };
 
@@ -26,15 +26,15 @@ export const LARGE_CROSS_SHOT: ShotPattern = {
   title: "Large Cross Shot",
   description: "Fires 9 shots in a large cross pattern",
   offsets: [
-    { dx: 0, dy: 0 },   // Center
-    { dx: -1, dy: 0 },  // Left 1
-    { dx: -2, dy: 0 },  // Left 2
-    { dx: 1, dy: 0 },   // Right 1
-    { dx: 2, dy: 0 },   // Right 2
-    { dx: 0, dy: -1 },  // Up 1
-    { dx: 0, dy: -2 },  // Up 2
-    { dx: 0, dy: 1 },   // Down 1
-    { dx: 0, dy: 2 },   // Down 2
+    { dx: 0, dy: 0 },   
+    { dx: -1, dy: 0 },  
+    { dx: -2, dy: 0 },  
+    { dx: 1, dy: 0 },   
+    { dx: 2, dy: 0 },   
+    { dx: 0, dy: -1 }, 
+    { dx: 0, dy: -2 },
+    { dx: 0, dy: 1 },  
+    { dx: 0, dy: 2 },   
   ],
 };
 
@@ -43,9 +43,9 @@ export const HORIZONTAL_LINE_SHOT: ShotPattern = {
   title: "Horizontal Line",
   description: "Fires 3 shots in a horizontal line",
   offsets: [
-    { dx: -1, dy: 0 },  // Left
-    { dx: 0, dy: 0 },   // Center
-    { dx: 1, dy: 0 },   // Right
+    { dx: -1, dy: 0 },  
+    { dx: 0, dy: 0 },  
+    { dx: 1, dy: 0 },   
   ],
 };
 
@@ -54,9 +54,9 @@ export const VERTICAL_LINE_SHOT: ShotPattern = {
   title: "Vertical Line",
   description: "Fires 3 shots in a vertical line",
   offsets: [
-    { dx: 0, dy: -1 },  // Up
-    { dx: 0, dy: 0 },   // Center
-    { dx: 0, dy: 1 },   // Down
+    { dx: 0, dy: -1 }, 
+    { dx: 0, dy: 0 },   
+    { dx: 0, dy: 1 },  
   ],
 };
 
@@ -76,11 +76,11 @@ export const DIAGONAL_X_SHOT: ShotPattern = {
   title: "Diagonal X Shot",
   description: "Fires 5 shots in a diagonal X pattern",
   offsets: [
-    { dx: 0, dy: 0 },   // Center
-    { dx: -1, dy: -1 }, // Top-left
-    { dx: 1, dy: -1 },  // Top-right
-    { dx: -1, dy: 1 },  // Bottom-left
-    { dx: 1, dy: 1 },   // Bottom-right
+    { dx: 0, dy: 0 },   
+    { dx: -1, dy: -1 }, 
+    { dx: 1, dy: -1 }, 
+    { dx: -1, dy: 1 },  
+    { dx: 1, dy: 1 },   
   ],
 };
 
@@ -89,10 +89,10 @@ export const SMALL_SQUARE_SHOT: ShotPattern = {
   title: "Small Square Shot",
   description: "Fires 4 shots in a 2x2 square pattern",
   offsets: [
-    { dx: 0, dy: 0 },   // Top-left
-    { dx: 1, dy: 0 },   // Top-right
-    { dx: 0, dy: 1 },   // Bottom-left
-    { dx: 1, dy: 1 },   // Bottom-right
+    { dx: 0, dy: 0 },   
+    { dx: 1, dy: 0 },   
+    { dx: 0, dy: 1 },   
+    { dx: 1, dy: 1 },   
   ],
 };
 
@@ -101,11 +101,11 @@ export const T_SHAPE_SHOT: ShotPattern = {
   title: "T-Shape Shot",
   description: "Fires 5 shots in a T pattern",
   offsets: [
-    { dx: -1, dy: 0 },  // Top-left
-    { dx: 0, dy: 0 },   // Top-center
-    { dx: 1, dy: 0 },   // Top-right
-    { dx: 0, dy: 1 },   // Middle
-    { dx: 0, dy: 2 },   // Bottom
+    { dx: -1, dy: 0 }, 
+    { dx: 0, dy: 0 },   
+    { dx: 1, dy: 0 },  
+    { dx: 0, dy: 1 },   
+    { dx: 0, dy: 2 },  
   ],
 };
 
@@ -114,10 +114,10 @@ export const L_SHAPE_SHOT: ShotPattern = {
   title: "L-Shape Shot",
   description: "Fires 5 shots in an L pattern",
   offsets: [
-    { dx: 0, dy: 0 },   // Top
-    { dx: 0, dy: 1 },   // Middle
-    { dx: 0, dy: 2 },   // Bottom-left
-    { dx: 1, dy: 2 },   // Bottom-middle
+    { dx: 0, dy: 0 },   
+    { dx: 0, dy: 1 },  
+    { dx: 0, dy: 2 },   
+    { dx: 1, dy: 2 },  
   ],
 };
 

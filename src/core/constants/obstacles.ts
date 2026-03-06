@@ -13,31 +13,8 @@ export const ROCK_OBSTACLE = Object.freeze({
   defaultCount: 2,
 }) as ObstacleTemplate;
 
-export const REEF_OBSTACLE = Object.freeze({
-  id: "reef",
-  title: "Reef",
-  description: "A 2-cell horizontal reef. Indestructible.",
-  coords: [0, 0],
-  width: 2,
-  height: 1,
-  defaultCount: 1,
-}) as ObstacleTemplate;
-
-export const ISLAND_OBSTACLE = Object.freeze({
-  id: "island",
-  title: "Island",
-  description: "A 2×2 island formation. Indestructible.",
-  coords: [0, 0],
-  width: 2,
-  height: 2,
-  defaultCount: 0,
-}) as ObstacleTemplate;
-
-
 export const ObstacleTemplateSet = createEntitySet<ObstacleTemplate>([
   ROCK_OBSTACLE,
-  REEF_OBSTACLE,
-  ISLAND_OBSTACLE,
 ], ROCK_OBSTACLE.id);
 
 export const OBSTACLE_TEMPLATES = ObstacleTemplateSet.map;

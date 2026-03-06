@@ -1,5 +1,4 @@
 import type { ShipTemplate } from "../types/constants";
-import type { ShipActionContext } from "../types/entities";
 import { createEntitySet } from "../tools/constants";
 
 export type { ShipTemplate } from "../types/constants";
@@ -22,10 +21,6 @@ export const MEDIUM_SHIP = Object.freeze({
   width: 3,
   height: 1,
   defaultCount: 2,
-  onDestroy: (ctx: ShipActionContext) => {
-    console.log("Medium ship destroyed! Triggering explosion...");
-    ctx.deleteAllEnemyObstacles()
-  }
 }) as ShipTemplate;
 
 export const LARGE_SHIP = Object.freeze({
