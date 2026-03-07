@@ -48,8 +48,8 @@ function buildContext(
       const coords = findFreeShipPosition(
         width,
         height,
-        fresh.ownShips,
-        fresh.opponentShots,
+        fresh.ownShips as GameShip[],
+        fresh.opponentShots as Shot[],
         currentState.boardWidth,
         currentState.boardHeight,
         preferred,
@@ -62,7 +62,7 @@ function buildContext(
         height,
         onDestroy,
       };
-      fresh.setOwnShips(fresh.ownShips.concat([newShip]));
+      fresh.setOwnShips([...fresh.ownShips, newShip]);
       return true;
     },
     deletePlayerShip: (shipId) => {
@@ -82,8 +82,8 @@ function buildContext(
       const coords = findFreeShipPosition(
         width,
         height,
-        fresh.opponentShips,
-        fresh.ownShots,
+        fresh.opponentShips as GameShip[],
+        fresh.ownShots as Shot[],
         currentState.boardWidth,
         currentState.boardHeight,
         preferred,
@@ -96,7 +96,7 @@ function buildContext(
         height,
         onDestroy,
       };
-      fresh.setOpponentShips(fresh.opponentShips.concat([newShip]));
+      fresh.setOpponentShips([...fresh.opponentShips, newShip]);
       return true;
     },
     deleteEnemyShip: (shipId) => {
@@ -117,14 +117,14 @@ function buildContext(
         template,
         currentState.boardWidth,
         currentState.boardHeight,
-        fresh.ownShips,
-        fresh.ownItems,
+        fresh.ownShips as GameShip[],
+        fresh.ownItems as GameItem[],
         fresh.ownItems.length,
         template.templateId,
         gameMode,
       );
       if (!placed) return false;
-      fresh.setOwnItems(fresh.ownItems.concat([placed]));
+      fresh.setOwnItems([...fresh.ownItems, placed]);
       return true;
     },
     deletePlayerItem: (itemId) => {
@@ -145,14 +145,14 @@ function buildContext(
         template,
         currentState.boardWidth,
         currentState.boardHeight,
-        fresh.opponentShips,
-        fresh.opponentItems,
+        fresh.opponentShips as GameShip[],
+        fresh.opponentItems as GameItem[],
         fresh.opponentItems.length,
         template.templateId,
         gameMode,
       );
       if (!placed) return false;
-      fresh.setOpponentItems(fresh.opponentItems.concat([placed]));
+      fresh.setOpponentItems([...fresh.opponentItems, placed]);
       return true;
     },
     deleteEnemyItem: (itemId) => {
@@ -170,7 +170,7 @@ function buildContext(
     },
     addPlayerShot: (shot) => {
       const fresh = resolvePerspective(engine.getState(), engine, swap);
-      fresh.setOwnShots(fresh.ownShots.concat([shot]));
+      fresh.setOwnShots([...fresh.ownShots, shot]);
     },
     deletePlayerShot: (x, y) => {
       const fresh = resolvePerspective(engine.getState(), engine, swap);
@@ -185,7 +185,7 @@ function buildContext(
     },
     addEnemyShot: (shot) => {
       const fresh = resolvePerspective(engine.getState(), engine, swap);
-      fresh.setOpponentShots(fresh.opponentShots.concat([shot]));
+      fresh.setOpponentShots([...fresh.opponentShots, shot]);
     },
     deleteEnemyShot: (x, y) => {
       const fresh = resolvePerspective(engine.getState(), engine, swap);
@@ -207,14 +207,14 @@ function buildContext(
         template as GameObstacle & { width: number; height: number },
         currentState.boardWidth,
         currentState.boardHeight,
-        fresh.ownShips,
-        fresh.ownItems,
-        fresh.ownObstacles,
+        fresh.ownShips as GameShip[],
+        fresh.ownItems as GameItem[],
+        fresh.ownObstacles as GameObstacle[],
         fresh.ownObstacles.length,
         gameMode,
       );
       if (!placed) return false;
-      fresh.setOwnObstacles(fresh.ownObstacles.concat([placed]));
+      fresh.setOwnObstacles([...fresh.ownObstacles, placed]);
       return true;
     },
     deletePlayerObstacle: (obstacleId) => {
@@ -239,14 +239,14 @@ function buildContext(
         template as GameObstacle & { width: number; height: number },
         currentState.boardWidth,
         currentState.boardHeight,
-        fresh.opponentShips,
-        fresh.opponentItems,
-        fresh.opponentObstacles,
+        fresh.opponentShips as GameShip[],
+        fresh.opponentItems as GameItem[],
+        fresh.opponentObstacles as GameObstacle[],
         fresh.opponentObstacles.length,
         gameMode,
       );
       if (!placed) return false;
-      fresh.setOpponentObstacles(fresh.opponentObstacles.concat([placed]));
+      fresh.setOpponentObstacles([...fresh.opponentObstacles, placed]);
       return true;
     },
     deleteEnemyObstacle: (obstacleId) => {

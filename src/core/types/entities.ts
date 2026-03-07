@@ -29,13 +29,13 @@ export interface ItemActionContext {
   /** Snapshot of the current turn at the moment the event fires. */
   currentTurn: GameTurn;
   /** Player ships at the moment of the event. */
-  playerShips: GameShip[];
+  readonly playerShips: readonly GameShip[];
   /** Enemy ships at the moment of the event. */
-  enemyShips: GameShip[];
+  readonly enemyShips: readonly GameShip[];
   /** Items placed on the player board at the moment of the event. */
-  playerItems: GameItem[];
+  readonly playerItems: readonly GameItem[];
   /** Items placed on the enemy board at the moment of the event. */
-  enemyItems: GameItem[];
+  readonly enemyItems: readonly GameItem[];
   /**
    * Indices (into `playerItems`) of items **you** have collected.
    *
@@ -45,7 +45,7 @@ export interface ItemActionContext {
    * In `ItemActionContext` (collector's perspective): items you collected
    * from the opponent's board (indices into `enemyItems`).
    */
-  playerCollectedItems: number[];
+  readonly playerCollectedItems: readonly number[];
   /**
    * Indices (into `enemyItems`) of items your **opponent** has collected.
    *
@@ -55,11 +55,11 @@ export interface ItemActionContext {
    * In `ItemActionContext` (collector's perspective): items the opponent
    * collected from your board (indices into `playerItems`).
    */
-  enemyCollectedItems: number[];
+  readonly enemyCollectedItems: readonly number[];
   /** All shots fired by the player at the moment of the event. */
-  playerShots: Shot[];
+  readonly playerShots: readonly Shot[];
   /** All shots fired by the enemy at the moment of the event. */
-  enemyShots: Shot[];
+  readonly enemyShots: readonly Shot[];
   /** Width of the game board in cells. */
   boardWidth: number;
   /** Height of the game board in cells. */
@@ -159,9 +159,9 @@ export interface ItemActionContext {
   /** Remove all shots from the enemy's shot history. */
   deleteAllEnemyShots: () => void;
   /** Player obstacles at the moment of the event. */
-  playerObstacles: GameObstacle[];
+  readonly playerObstacles: readonly GameObstacle[];
   /** Enemy obstacles at the moment of the event. */
-  enemyObstacles: GameObstacle[];
+  readonly enemyObstacles: readonly GameObstacle[];
   /**
    * Place a new obstacle on the **player's** board at an auto-calculated position
    * that does not overlap existing ships, items, or obstacles.

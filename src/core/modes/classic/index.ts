@@ -1,5 +1,4 @@
 import type { GameMode } from "../../types/modes";
-import { buildDefaultCounts } from "../../types/modes";
 
 import {
   SMALL_SHIP,
@@ -34,6 +33,7 @@ import { StandardBoardView } from "./entities/views";
 import { GAME_CONSTANTS } from "./entities/game";
 
 import { ClassicRuleSet } from "./entities/rulesets";
+import { buildDefaultCounts } from "../../tools/modes";
 
 /**
  * Classic Game Mode
@@ -45,7 +45,7 @@ import { ClassicRuleSet } from "./entities/rulesets";
  * - Full set of shot patterns
  * - 5x5 standard board
  */
-export const CLASSIC_MODE: GameMode = {
+export const CLASSIC_MODE = Object.freeze({
   id: "classic",
   title: "Classic Mode",
   description: "Traditional gameplay with all standard ships, items, and obstacles",
@@ -98,4 +98,4 @@ export const CLASSIC_MODE: GameMode = {
   constants: GAME_CONSTANTS,
 
   ruleSet: ClassicRuleSet,
-};
+}) satisfies GameMode;

@@ -9,6 +9,7 @@ import {
   type MatchQueryAPI,
   type PlayerRole,
   type GameItem,
+  type GameShip,
   type Cell,
 } from "../../../../core/engine";
 
@@ -21,10 +22,10 @@ export interface UseNetworkMatchProps extends Partial<MatchCallbacks> {
   playerRole: PlayerRole;
 }
 
-const rehydrateItems = (items: GameItem[]): GameItem[] =>
+const rehydrateItems = (items: readonly GameItem[]): GameItem[] =>
   items.map((item) => {
     const template = item.templateId
-      ? DEFAULT_GAME_MODE.items.find((t) => t.id === item.templateId)
+      ? DEFAULT_GAME_MODE.items.find((t) => t.id === item.templateId) as GameItem | undefined
       : undefined;
     if (!template) return item;
     return {
@@ -88,8 +89,8 @@ const useNetworkMatch = ({
     }, initialTurn);
 
     const gameSetup = initializer.appendGameSetup({
-      playerShips,
-      enemyShips,
+      playerShips: playerShips as GameShip[],
+      enemyShips: enemyShips as GameShip[],
       playerItems: rehydrateItems(playerItems),
       enemyItems: rehydrateItems(enemyItems),
     });

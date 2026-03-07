@@ -1,5 +1,4 @@
 import type { GameMode } from "../../types/modes";
-import { buildDefaultCounts } from "../../types/modes";
 
 import {
   TEST_SMALL_SHIP,
@@ -26,6 +25,7 @@ import {
 import { TestBoardView } from "./entities/views";
 import { TEST_GAME_CONSTANTS } from "./entities/game";
 import { TestRuleSet } from "./entities/rulesets";
+import { buildDefaultCounts } from "../../tools/modes";
 
 /**
  * Test Game Mode
@@ -35,7 +35,7 @@ import { TestRuleSet } from "./entities/rulesets";
  * 
  * This mode should NOT be used in production - it's only for tests.
  */
-export const TEST_MODE: GameMode = {
+export const TEST_MODE = Object.freeze({
   id: "test",
   title: "Test Mode",
   description: "Simplified mode for unit testing",
@@ -84,4 +84,4 @@ export const TEST_MODE: GameMode = {
   constants: TEST_GAME_CONSTANTS,
 
   ruleSet: TestRuleSet,
-};
+}) satisfies GameMode;

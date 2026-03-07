@@ -25,7 +25,7 @@ const SHOT_PATTERNS_EMOJIS: Record<string, React.ReactNode> = {
   "l-shape": <CornerDownRight />,
 };
 interface ShotsProps {
-  patterns?: ShotPattern[];
+  patterns?: readonly ShotPattern[];
   selectedPattern?: number;
   onSetShotPattern: (pattern: ShotPattern) => void;
 }

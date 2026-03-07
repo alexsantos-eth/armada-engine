@@ -80,21 +80,21 @@ export interface IGameEngineReader {
   /** `true` if the item's `onUse` handler has been activated at least once. */
   isItemUsed(itemId: number, isPlayerShot: boolean): boolean;
   /** Shallow copy of all ships placed on the player's board. */
-  getPlayerShips(): GameShip[];
+  getPlayerShips(): readonly GameShip[];
   /** Shallow copy of all ships placed on the enemy's board. */
-  getEnemyShips(): GameShip[];
+  getEnemyShips(): readonly GameShip[];
   /** Ordered list of shots fired by the player (targeting the enemy board). */
-  getPlayerShots(): Shot[];
+  getPlayerShots(): readonly Shot[];
   /** Ordered list of shots fired by the enemy (targeting the player board). */
-  getEnemyShots(): Shot[];
+  getEnemyShots(): readonly Shot[];
   /** Obstacles placed on the player's board. */
-  getPlayerObstacles(): GameObstacle[];
+  getPlayerObstacles(): readonly GameObstacle[];
   /** Obstacles placed on the enemy's board. */
-  getEnemyObstacles(): GameObstacle[];
+  getEnemyObstacles(): readonly GameObstacle[];
   /** Shot patterns available to the player for the current match. */
-  getPlayerShotPatterns(): ShotPattern[];
+  getPlayerShotPatterns(): readonly ShotPattern[];
   /** Shot patterns available to the enemy for the current match. */
-  getEnemyShotPatterns(): ShotPattern[];
+  getEnemyShotPatterns(): readonly ShotPattern[];
   /** Total number of shots fired by both sides combined. */
   getShotCount(): number;
   /** Current match winner; `null` while the game is still in progress. */
@@ -221,68 +221,68 @@ export interface IGameEngine extends IGameEngineReader {
  */
 export interface GameEngineState {
   /** Shallow copy of all ships on the player's board. */
-  playerShips: GameShip[];
+  readonly playerShips: readonly GameShip[];
   /** Shallow copy of all ships on the enemy's board. */
-  enemyShips: GameShip[];
+  readonly enemyShips: readonly GameShip[];
   /** All shots fired by the player (targeting the enemy board), in registration order. */
-  playerShots: Shot[];
+  readonly playerShots: readonly Shot[];
   /** All shots fired by the enemy (targeting the player board), in registration order. */
-  enemyShots: Shot[];
+  readonly enemyShots: readonly Shot[];
   /** `true` once the game has ended by any means. */
-  isGameOver: boolean;
+  readonly isGameOver: boolean;
   /** `"player"` | `"enemy"` | `null` while the game is still in progress. */
-  winner: Winner;
+  readonly winner: Winner;
   /** Width of the game board in cells. */
-  boardWidth: number;
+  readonly boardWidth: number;
   /** Height of the game board in cells. */
-  boardHeight: number;
+  readonly boardHeight: number;
   /** Total number of shots fired by both sides combined. */
-  shotCount: number;
+  readonly shotCount: number;
   /** `true` when every ship on the player's board has been fully sunk. */
-  areAllPlayerShipsDestroyed: boolean;
+  readonly areAllPlayerShipsDestroyed: boolean;
   /** `true` when every ship on the enemy's board has been fully sunk. */
-  areAllEnemyShipsDestroyed: boolean;
+  readonly areAllEnemyShipsDestroyed: boolean;
   /** Items placed on the player's board, collectible by the enemy. */
-  playerItems: GameItem[];
+  readonly playerItems: readonly GameItem[];
   /** Items placed on the enemy's board, collectible by the player. */
-  enemyItems: GameItem[];
+  readonly enemyItems: readonly GameItem[];
   /**
    * 0-based indices into `enemyItems` for items the player has fully collected
    * from the enemy board. An item is considered fully collected once every
    * one of its declared `part` cells has been hit.
    */
-  playerCollectedItems: number[];
+  readonly playerCollectedItems: readonly number[];
   /**
    * 0-based indices into `playerItems` for items the enemy has fully collected
    * from the player's board.
    */
-  enemyCollectedItems: number[];
+  readonly enemyCollectedItems: readonly number[];
   /**
    * Items the player has activated through their `onUse` handler (collected
    * from the enemy board). Each entry pairs the `itemId` with the optional
    * `shipId` the item was targeted at when activated.
    */
-  playerUsedItems: { itemId: number; shipId?: number }[];
+  readonly playerUsedItems: readonly { readonly itemId: number; readonly shipId?: number }[];
   /**
    * Items the enemy has activated through their `onUse` handler (collected
    * from the player's board). Each entry pairs the `itemId` with the optional
    * `shipId` the item was targeted at when activated.
    */
-  enemyUsedItems: { itemId: number; shipId?: number }[];
+  readonly enemyUsedItems: readonly { readonly itemId: number; readonly shipId?: number }[];
   /**
    * Obstacles on the player's board — permanent, indestructible terrain.
    * Shots landing on obstacle cells are recorded as misses.
    */
-  playerObstacles: GameObstacle[];
+  readonly playerObstacles: readonly GameObstacle[];
   /**
    * Obstacles on the enemy's board — permanent, indestructible terrain.
    * Shots landing on obstacle cells are recorded as misses.
    */
-  enemyObstacles: GameObstacle[];
+  readonly enemyObstacles: readonly GameObstacle[];
   /** Shot patterns available to the player for the current match. */
-  playerShotPatterns: ShotPattern[];
+  readonly playerShotPatterns: readonly ShotPattern[];
   /** Shot patterns available to the enemy for the current match. */
-  enemyShotPatterns: ShotPattern[];
+  readonly enemyShotPatterns: readonly ShotPattern[];
 }
 
 /**
@@ -347,25 +347,25 @@ export interface ShotResult {
  */
 export interface SidePerspective {
   /** Ships placed on the active side's board. */
-  ownShips: GameShip[];
+  readonly ownShips: readonly GameShip[];
   /** Ships placed on the opponent's board. */
-  opponentShips: GameShip[];
+  readonly opponentShips: readonly GameShip[];
   /** Collectible items placed on the active side's board. */
-  ownItems: GameItem[];
+  readonly ownItems: readonly GameItem[];
   /** Collectible items placed on the opponent's board. */
-  opponentItems: GameItem[];
+  readonly opponentItems: readonly GameItem[];
   /** 0-based indices into `opponentItems` for items the active side has fully collected. */
-  ownCollectedItems: number[];
+  readonly ownCollectedItems: readonly number[];
   /** 0-based indices into `ownItems` for items the opponent has fully collected. */
-  opponentCollectedItems: number[];
+  readonly opponentCollectedItems: readonly number[];
   /** Shots fired by the active side (targeting the opponent's board). */
-  ownShots: Shot[];
+  readonly ownShots: readonly Shot[];
   /** Shots received by the active side (fired by the opponent). */
-  opponentShots: Shot[];
+  readonly opponentShots: readonly Shot[];
   /** Obstacles on the active side's board. */
-  ownObstacles: GameObstacle[];
+  readonly ownObstacles: readonly GameObstacle[];
   /** Obstacles on the opponent's board. */
-  opponentObstacles: GameObstacle[];
+  readonly opponentObstacles: readonly GameObstacle[];
 
   /** Replaces ships on the active side's board and recomputes all derived position maps. */
   setOwnShips: (ships: GameShip[]) => void;
