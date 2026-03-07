@@ -1,33 +1,29 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { GameInitializer } from "../../../manager/initializer";
 import type { GameConfig, BoardViewConfig } from "../../../types/config";
+import { TEST_MODE } from "../../../modes/test";
 
-// Test-specific default values (independent of production constants)
-const TEST_DEFAULT_WIDTH = 5;
-const TEST_DEFAULT_HEIGHT = 5;
+// Test-specific default values (from TEST_MODE)
+const TEST_DEFAULT_WIDTH = TEST_MODE.boardView.width;
+const TEST_DEFAULT_HEIGHT = TEST_MODE.boardView.height;
 
 // Helper to create board view configurations for tests
 function createBoardView(overrides: Partial<BoardViewConfig>): BoardViewConfig {
   return {
-    id: overrides.id || "test-board",
-    title: overrides.title || "TestBoard",
-    description: overrides.description || "Test board configuration",
-    width: overrides.width ?? TEST_DEFAULT_WIDTH,
-    height: overrides.height ?? TEST_DEFAULT_HEIGHT,
-    playerSide: overrides.playerSide || ["playerShips", "enemyShots"],
-    enemySide: overrides.enemySide || ["enemyObstacles", "playerShots", "collectedItems"],
+    ...TEST_MODE.boardView,
+    ...overrides,
   };
 }
 
 describe("GameInitializer (v3)", () => {
   describe("Constructor and Configuration", () => {
     it("should create initializer with default config", () => {
-      const initializer = new GameInitializer();
+      const initializer = new GameInitializer({}, "random", TEST_MODE);
       const config = initializer.getDefaultConfig();
 
-      // Verify config has board dimensions (values come from production defaults)
-      expect(config.boardView.width).toBeGreaterThan(0);
-      expect(config.boardView.height).toBeGreaterThan(0);
+      // Verify config has board dimensions (values come from TEST_MODE defaults)
+      expect(config.boardView.width).toBe(TEST_DEFAULT_WIDTH);
+      expect(config.boardView.height).toBe(TEST_DEFAULT_HEIGHT);
     });
 
     it("should create initializer with custom config", () => {
@@ -36,7 +32,7 @@ describe("GameInitializer (v3)", () => {
         shipCounts: { small: 2, medium: 1, large: 1, xlarge: 0 },
       };
 
-      const initializer = new GameInitializer(customConfig);
+      const initializer = new GameInitializer(customConfig, "random", TEST_MODE);
       const setup = initializer.getGameSetup();
 
       expect(setup.config.boardView?.width).toBe(15);
@@ -47,11 +43,11 @@ describe("GameInitializer (v3)", () => {
     it("should merge custom config with defaults", () => {
       const initializer = new GameInitializer({
         boardView: createBoardView({ width: 12 }),
-      });
+      }, "random", TEST_MODE);
       const setup = initializer.getGameSetup();
 
       expect(setup.config.boardView?.width).toBe(12);
-      // Height should use the default from createBoardView
+      // Height should use the default from TEST_MODE
       expect(setup.config.boardView?.height).toBe(TEST_DEFAULT_HEIGHT);
     });
 
@@ -59,7 +55,7 @@ describe("GameInitializer (v3)", () => {
       const initializer = new GameInitializer({
         boardView: createBoardView({ width: 15, height: 15 }),
         shipCounts: { small: 5, medium: 2, large: 1, xlarge: 0 },
-      });
+      }, "random", TEST_MODE);
       const setup = initializer.getGameSetup();
 
       expect(setup.config.shipCounts?.small).toBe(5);
@@ -74,7 +70,7 @@ describe("GameInitializer (v3)", () => {
       expect(() => {
         new GameInitializer({
           boardView: createBoardView({ width: 2, height: 10 }),
-        });
+        }, "random", TEST_MODE);
       }).toThrow();
     });
 
@@ -82,7 +78,7 @@ describe("GameInitializer (v3)", () => {
       expect(() => {
         new GameInitializer({
           boardView: createBoardView({ width: 10, height: 2 }),
-        });
+        }, "random", TEST_MODE);
       }).toThrow();
     });
 
@@ -90,7 +86,7 @@ describe("GameInitializer (v3)", () => {
       expect(() => {
         new GameInitializer({
           boardView: createBoardView({ width: 31 }),
-        });
+        }, "random", TEST_MODE);
       }).toThrow();
     });
 
@@ -98,7 +94,7 @@ describe("GameInitializer (v3)", () => {
       expect(() => {
         new GameInitializer({
           boardView: createBoardView({ width: 30, height: 31 }),
-        });
+        }, "random", TEST_MODE);
       }).toThrow();
     });
 
@@ -107,7 +103,7 @@ describe("GameInitializer (v3)", () => {
         new GameInitializer({
           boardView: createBoardView({ width: 5, height: 5 }),
           shipCounts: { small: 10, medium: 10, large: 10, xlarge: 10 },
-        });
+        }, "random", TEST_MODE);
       }).toThrow(/Too many ships/);
     });
 
@@ -116,13 +112,13 @@ describe("GameInitializer (v3)", () => {
         new GameInitializer({
           boardView: createBoardView({ width: 3, height: 3 }),
           shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
-        });
+        }, "random", TEST_MODE);
       }).not.toThrow();
 
       expect(() => {
         new GameInitializer({
           boardView: createBoardView({ width: 30, height: 30 }),
-        });
+        }, "random", TEST_MODE);
       }).not.toThrow();
     });
 
@@ -131,7 +127,7 @@ describe("GameInitializer (v3)", () => {
         new GameInitializer({
           boardView: createBoardView({ width: 10, height: 10 }),
           shipCounts: { small: 2, medium: 2, large: 1, xlarge: 1 },
-        });
+        }, "random", TEST_MODE);
       }).not.toThrow();
     });
 
@@ -139,7 +135,7 @@ describe("GameInitializer (v3)", () => {
       expect(() => {
         new GameInitializer({
           shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
-        });
+        }, "random", TEST_MODE);
       }).not.toThrow();
     });
   });
@@ -148,7 +144,7 @@ describe("GameInitializer (v3)", () => {
     let initializer: GameInitializer;
 
     beforeEach(() => {
-      initializer = new GameInitializer();
+      initializer = new GameInitializer({}, "random", TEST_MODE);
     });
 
     it("should generate complete game setup", () => {
@@ -171,7 +167,7 @@ describe("GameInitializer (v3)", () => {
       const initializer = new GameInitializer({
         boardView: createBoardView({ width: 12, height: 12 }),
         shipCounts: { small: 2, medium: 1, large: 1, xlarge: 0 },
-      });
+      }, "random", TEST_MODE);
       const setup = initializer.getGameSetup();
 
       expect(setup.playerShips.length).toBe(setup.enemyShips.length);
@@ -183,7 +179,7 @@ describe("GameInitializer (v3)", () => {
         shipCounts: { small: 2, medium: 1, large: 1, xlarge: 1 },
       };
 
-      const initializer = new GameInitializer(customConfig);
+      const initializer = new GameInitializer(customConfig, "random", TEST_MODE);
       const setup = initializer.getGameSetup();
 
       const totalShips = 2 + 1 + 1 + 1;
@@ -197,7 +193,7 @@ describe("GameInitializer (v3)", () => {
         shipCounts: { small: 2, medium: 1, large: 0, xlarge: 0 },
       };
 
-      const initializer = new GameInitializer(customConfig);
+      const initializer = new GameInitializer(customConfig, "random", TEST_MODE);
       const setup = initializer.getGameSetup();
 
       const smallShips = setup.playerShips.filter(
@@ -259,7 +255,7 @@ describe("GameInitializer (v3)", () => {
         itemCounts: { health_kit: 1, radar_device: 1 },
       };
 
-      const initializer = new GameInitializer(customConfig);
+      const initializer = new GameInitializer(customConfig, "random", TEST_MODE);
       const setup = initializer.getGameSetup();
 
       expect(setup.playerItems).toBeDefined();
@@ -269,12 +265,14 @@ describe("GameInitializer (v3)", () => {
     });
 
     it("should not generate items when not configured", () => {
-      const initializer = new GameInitializer();
+      const initializer = new GameInitializer({}, "random", TEST_MODE);
       const setup = initializer.getGameSetup();
 
-      // Default might have no items or some items depending on constants
+      // TEST_MODE has no items by default
       expect(setup.playerItems).toBeDefined();
       expect(setup.enemyItems).toBeDefined();
+      expect(setup.playerItems!.length).toBe(0);
+      expect(setup.enemyItems!.length).toBe(0);
     });
 
     it("should generate items in valid positions", () => {
@@ -284,7 +282,7 @@ describe("GameInitializer (v3)", () => {
         itemCounts: { health_kit: 2, radar_device: 1 },
       };
 
-      const initializer = new GameInitializer(customConfig);
+      const initializer = new GameInitializer(customConfig, "random", TEST_MODE);
       const setup = initializer.getGameSetup();
       const boardWidth = setup.config.boardView?.width ?? TEST_DEFAULT_WIDTH;
       const boardHeight = setup.config.boardView?.height ?? TEST_DEFAULT_HEIGHT;
@@ -304,7 +302,7 @@ describe("GameInitializer (v3)", () => {
         obstacleCounts: { rock: 2, mine: 1 },
       };
 
-      const initializer = new GameInitializer(customConfig);
+      const initializer = new GameInitializer(customConfig, "random", TEST_MODE);
       const setup = initializer.getGameSetup();
 
       expect(setup.playerObstacles).toBeDefined();
@@ -314,11 +312,14 @@ describe("GameInitializer (v3)", () => {
     });
 
     it("should not generate obstacles when not configured", () => {
-      const initializer = new GameInitializer();
+      const initializer = new GameInitializer({}, "random", TEST_MODE);
       const setup = initializer.getGameSetup();
 
+      // TEST_MODE has no obstacles by default
       expect(setup.playerObstacles).toBeDefined();
       expect(setup.enemyObstacles).toBeDefined();
+      expect(setup.playerObstacles!.length).toBe(0);
+      expect(setup.enemyObstacles!.length).toBe(0);
     });
 
     it("should generate obstacles in valid positions", () => {
@@ -326,7 +327,7 @@ describe("GameInitializer (v3)", () => {
         obstacleCounts: { rock: 2 },
       };
 
-      const initializer = new GameInitializer(customConfig);
+      const initializer = new GameInitializer(customConfig, "random", TEST_MODE);
       const setup = initializer.getGameSetup();
       const boardWidth = setup.config.boardView?.width ?? TEST_DEFAULT_WIDTH;
       const boardHeight = setup.config.boardView?.height ?? TEST_DEFAULT_HEIGHT;
@@ -342,7 +343,7 @@ describe("GameInitializer (v3)", () => {
 
   describe("Shot Patterns Generation", () => {
     it("should include default shot patterns", () => {
-      const initializer = new GameInitializer();
+      const initializer = new GameInitializer({}, "random", TEST_MODE);
       const setup = initializer.getGameSetup();
 
       expect(setup.playerShotPatterns).toBeDefined();
@@ -350,7 +351,7 @@ describe("GameInitializer (v3)", () => {
     });
 
     it("should generate equal patterns for both players", () => {
-      const initializer = new GameInitializer();
+      const initializer = new GameInitializer({}, "random", TEST_MODE);
       const setup = initializer.getGameSetup();
 
       expect(setup.playerShotPatterns?.length).toBe(
@@ -366,7 +367,7 @@ describe("GameInitializer (v3)", () => {
         shipCounts: { small: 3, medium: 2, large: 1, xlarge: 0 },
       };
 
-      const initializer = new GameInitializer(customConfig);
+      const initializer = new GameInitializer(customConfig, "random", TEST_MODE);
       const setup1 = initializer.getGameSetup();
       const setup2 = initializer.getGameSetup();
 
@@ -376,7 +377,7 @@ describe("GameInitializer (v3)", () => {
     });
 
     it("should provide access to default config", () => {
-      const initializer = new GameInitializer();
+      const initializer = new GameInitializer({}, "random", TEST_MODE);
       const defaultConfig = initializer.getDefaultConfig();
 
       expect(defaultConfig).toBeDefined();
@@ -389,7 +390,7 @@ describe("GameInitializer (v3)", () => {
     it("should handle zero ships configuration", () => {
       const initializer = new GameInitializer({
         shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
-      });
+      }, "random", TEST_MODE);
       const setup = initializer.getGameSetup();
 
       expect(setup.playerShips).toHaveLength(0);
@@ -399,7 +400,7 @@ describe("GameInitializer (v3)", () => {
     it("should handle maximum board size", () => {
       const initializer = new GameInitializer({
         boardView: createBoardView({ width: 30, height: 30 }),
-      });
+      }, "random", TEST_MODE);
       const setup = initializer.getGameSetup();
 
       expect(setup.config.boardView?.width).toBe(30);
@@ -410,7 +411,7 @@ describe("GameInitializer (v3)", () => {
       const initializer = new GameInitializer({
         boardView: createBoardView({ width: 3, height: 3 }),
         shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
-      });
+      }, "random", TEST_MODE);
       const setup = initializer.getGameSetup();
 
       expect(setup.config.boardView?.width).toBe(3);
@@ -421,7 +422,7 @@ describe("GameInitializer (v3)", () => {
       const initializer = new GameInitializer({
         boardView: createBoardView({ width: 20, height: 20 }),
         shipCounts: { small: 5, medium: 4, large: 3, xlarge: 2 },
-      });
+      }, "random", TEST_MODE);
       const setup = initializer.getGameSetup();
 
       const totalShips = 5 + 4 + 3 + 2;
@@ -431,7 +432,7 @@ describe("GameInitializer (v3)", () => {
 
   describe("Randomization", () => {
     it("should generate different ship placements", () => {
-      const initializer = new GameInitializer();
+      const initializer = new GameInitializer({}, "random", TEST_MODE);
       const setup1 = initializer.getGameSetup();
       const setup2 = initializer.getGameSetup();
 

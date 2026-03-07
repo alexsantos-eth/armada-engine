@@ -4,15 +4,15 @@ import { createEntitySet } from "../../../tools/constants";
 export const BOARD_DEFAULT_WIDTH = 7;
 export const BOARD_DEFAULT_HEIGHT = 7;
 
-export const StandardBoardView: BoardViewConfig = {
+export const StandardBoardView = Object.freeze({
   id: "standard",
   title: "StandardBoardView",
   description: "Normal gameplay: own board fully visible, enemy ships hidden",
   width: BOARD_DEFAULT_WIDTH,
   height: BOARD_DEFAULT_HEIGHT,
-  playerSide: ["playerShips", "enemyShots"],
-  enemySide: ["enemyObstacles", "playerShots", "collectedItems"],
-};
+  playerSide: ["playerShips", "enemyShots"] as const,
+  enemySide: ["enemyObstacles", "playerShots", "collectedItems"] as const,
+} satisfies BoardViewConfig);
 
 export const BoardViewSet = createEntitySet<BoardViewConfig>([
   StandardBoardView,

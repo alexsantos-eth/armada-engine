@@ -3,8 +3,16 @@ import { ITEM_TEMPLATES } from "./items";
 import { OBSTACLE_TEMPLATES } from "./obstacles";
 import { DEFAULT_BOARD_VIEW } from "./views";
 import { SHOT_PATTERNS } from "./shots";
+import type { GameModeConstants } from "../../../types/modes";
 
-export const GAME_CONSTANTS = {
+/**
+ * Game constants for the Classic game mode.
+ * 
+ * These constants are frozen to prevent runtime mutations that could cause
+ * desynchronization in multiplayer scenarios. Each game mode can define its own
+ * constants, allowing different modes to have different placement rules, thresholds, etc.
+ */
+export const GAME_CONSTANTS = Object.freeze({
   SHIPS: {
     MIN_DISTANCE: 2,
     MAX_PLACEMENT_ATTEMPTS: 200,
@@ -45,4 +53,4 @@ export const GAME_CONSTANTS = {
     MAX_SIZE: 30,
     DEFAULT_VIEW: DEFAULT_BOARD_VIEW,
   },
-};
+} satisfies GameModeConstants);

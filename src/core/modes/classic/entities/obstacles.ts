@@ -7,11 +7,11 @@ export const ROCK_OBSTACLE = Object.freeze({
   id: "rock",
   title: "Rock",
   description: "A small 1-cell rock formation. Indestructible.",
-  coords: [0, 0],
+  coords: [0, 0] as [number, number],
   width: 1,
   height: 1,
   defaultCount: 2,
-}) as ObstacleTemplate;
+}) satisfies ObstacleTemplate;
 
 export const ObstacleTemplateSet = createEntitySet<ObstacleTemplate>([
   ROCK_OBSTACLE,

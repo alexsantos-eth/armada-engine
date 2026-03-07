@@ -7,41 +7,41 @@ export const SMALL_SHIP = Object.freeze({
   id: "small",
   title: "Small Ship",
   description: "A compact 2-cell vessel.",
-  coords: [0, 0],
+  coords: [0, 0] as [number, number],
   width: 2,
   height: 1,
   defaultCount: 1,
-}) as ShipTemplate;
+}) satisfies ShipTemplate;
 
 export const MEDIUM_SHIP = Object.freeze({
   id: "medium",
   title: "Medium Ship",
   description: "A standard 3-cell cruiser.",
-  coords: [0, 0],
+  coords: [0, 0] as [number, number],
   width: 3,
   height: 1,
   defaultCount: 2,
-}) as ShipTemplate;
+}) satisfies ShipTemplate;
 
 export const LARGE_SHIP = Object.freeze({
   id: "large",
   title: "Large Ship",
   description: "A 4-cell battleship.",
-  coords: [0, 0],
+  coords: [0, 0] as [number, number],
   width: 4,
   height: 1,
   defaultCount: 1,
-}) as ShipTemplate;
+}) satisfies ShipTemplate;
 
 export const XLARGE_SHIP = Object.freeze({
   id: "xlarge",
   title: "XLarge Ship",
   description: "A massive 5-cell carrier.",
-  coords: [0, 0],
+  coords: [0, 0] as [number, number],
   width: 5,
   height: 1,
   defaultCount: 1,
-}) as ShipTemplate;
+}) satisfies ShipTemplate;
 
 export const ShipSet = createEntitySet<ShipTemplate>([
   SMALL_SHIP,

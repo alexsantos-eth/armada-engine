@@ -1,4 +1,3 @@
-import { createEntitySet } from "../../../tools/constants";
 import type {
   TurnDecision,
   GameOverDecision,
@@ -7,10 +6,14 @@ import type {
 import type { ShotPatternResult } from "../../../types/shots";
 import type { GameEngineState } from "../../../types/engine";
 
-export const ClassicRuleSet = Object.freeze({
-  id: "classic",
-  title: "ClassicRuleSet",
-  description: "Traditional battleship rules with hit continuation",
+/**
+ * Test mode ruleset - simplified rules for testing
+ */
+
+export const TestRuleSet = Object.freeze({
+  id: "test",
+  title: "TestRuleSet",
+  description: "Simple rules for testing",
 
   decideTurn(attackResult: ShotPatternResult, currentState: GameEngineState): TurnDecision {
     if (currentState.isGameOver) {
@@ -23,26 +26,14 @@ export const ClassicRuleSet = Object.freeze({
     }
 
     const anyHit = attackResult.shots.some((shot) => shot.hit && shot.executed);
-    const anyShipDestroyed = attackResult.shots.some(
-      (shot) => shot.shipDestroyed && shot.executed,
-    );
 
     if (anyHit) {
-      if (anyShipDestroyed) {
-        return {
-          shouldEndTurn: true,
-          shouldToggleTurn: true,
-          canShootAgain: false,
-          reason: "Ship destroyed - turn ends",
-        };
-      } else {
-        return {
-          shouldEndTurn: false,
-          shouldToggleTurn: false,
-          canShootAgain: true,
-          reason: "Hit - shoot again",
-        };
-      }
+      return {
+        shouldEndTurn: false,
+        shouldToggleTurn: false,
+        canShootAgain: true,
+        reason: "Hit - shoot again",
+      };
     } else {
       return {
         shouldEndTurn: true,
@@ -54,12 +45,21 @@ export const ClassicRuleSet = Object.freeze({
   },
 
   checkGameOver(state: GameEngineState): GameOverDecision {
+    if (state.areAllPlayerShipsDestroyed && state.areAllEnemyShipsDestroyed) {
+      return {
+        isGameOver: true,
+        winner: null,
+      };
+    }
+
     if (state.areAllPlayerShipsDestroyed) {
       return {
         isGameOver: true,
         winner: "enemy",
       };
-    } else if (state.areAllEnemyShipsDestroyed) {
+    }
+
+    if (state.areAllEnemyShipsDestroyed) {
       return {
         isGameOver: true,
         winner: "player",
@@ -72,11 +72,3 @@ export const ClassicRuleSet = Object.freeze({
     };
   },
 } satisfies MatchRuleSet);
-
-export const RulesetSet  = createEntitySet<MatchRuleSet>([
-  ClassicRuleSet,
-], ClassicRuleSet.title);
-
-export const RULESETS = RulesetSet.map;
-export const getRuleSet = RulesetSet.getById;
-export const DEFAULT_RULESET = RulesetSet.default;

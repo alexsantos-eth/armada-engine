@@ -7,10 +7,10 @@ export const HEALTH_KIT = Object.freeze({
   id: "health_kit",
   title: "Health Kit",
   description: "Grants hit-continuation on collect. Use to skip the enemy's turn.",
-  coords: [0, 0],
+  coords: [0, 0] as [number, number],
   part: 1,
   defaultCount: 2,
-}) as ItemTemplate;
+}) satisfies ItemTemplate;
 
 export const ItemTemplateSet = createEntitySet<ItemTemplate>([
   HEALTH_KIT,

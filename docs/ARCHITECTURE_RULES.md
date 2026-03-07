@@ -112,11 +112,15 @@ SHIP_TEMPLATES.destroyer.defaultCount = 100;
 
 const shipArray = [SHIP_TEMPLATES.destroyer, SHIP_TEMPLATES.destroyer];
 // Are these the same after mutation? Which one changed?
+
+// ❌ BAD: Mutating game mode constants
+const mode = CLASSIC_MODE;
+mode.constants.SHIPS.MIN_DISTANCE = 5;  // Runtime mutation
 ```
 
 **How to fix:**
 ```typescript
-// ✅ GOOD: Templates are frozen
+// ✅ GOOD: Templates are frozen with Object.freeze()
 const MY_SHIP: ShipTemplate = Object.freeze({
   id: "custom",
   width: 2,
@@ -126,6 +130,26 @@ const MY_SHIP: ShipTemplate = Object.freeze({
   description: "Always the same",
 }) as const;
 
+// ✅ GOOD: Game mode constants are frozen
+export const GAME_CONSTANTS = Object.freeze({
+  SHIPS: {
+    MIN_DISTANCE: 2,
+    MAX_PLACEMENT_ATTEMPTS: 200,
+    DEFAULT_COUNTS: { ... },
+  },
+  // ... rest of constants
+}) as const;
+
+// ✅ GOOD: Create a new mode with different constants
+export const CUSTOM_MODE: GameMode = {
+  id: "custom",
+  // ...
+  constants: Object.freeze({
+    ...GAME_CONSTANTS,
+    SHIPS: { ...GAME_CONSTANTS.SHIPS, MIN_DISTANCE: 5 }
+  }) as const,
+};
+
 // If you need a variation:
 const largerShip: ShipTemplate = Object.freeze({
   ...MY_SHIP,
@@ -133,7 +157,7 @@ const largerShip: ShipTemplate = Object.freeze({
 }) as const;
 ```
 
-**Why:** Frozen constants ensure identity and prevent bugs in multiplayer serialization.
+**Why:** Frozen constants ensure identity and prevent bugs in multiplayer serialization. Constants can vary per game mode, but each mode's constants must be immutable.
 
 ---
 
@@ -479,7 +503,63 @@ export const TEMPLATES = {
 
 ---
 
-### 7. ✅ Deterministic Game Loop
+### 7. ✅ Mode-Based Constants (Per-Mode Configuration)
+
+**Required:** Game mode constants must be defined per-mode and frozen:
+
+```typescript
+/**
+ * Classic mode with specific constants for placement rules,
+ * thresholds, and board configuration.
+ * 
+ * Each game mode can define its own GameModeConstants to allow
+ * different gameplay styles while keeping all values immutable.
+ */
+export const CLASSIC_MODE: GameMode = {
+  id: "classic",
+  title: "Classic Mode",
+  // ... ships, items, obstacles, shotPatterns
+  
+  // ✅ GOOD: Mode-specific constants are frozen
+  constants: Object.freeze({
+    SHIPS: {
+      MIN_DISTANCE: 2,
+      MAX_PLACEMENT_ATTEMPTS: 200,
+      DEFAULT_COUNTS: { /* ... */ },
+    },
+    ITEMS: {
+      MIN_DISTANCE_FROM_SHIPS: 1,
+      MAX_PLACEMENT_ATTEMPTS: 200,
+      DEFAULT_COUNTS: { /* ... */ },
+    },
+    // ... other constants
+  }) as const,
+  
+  ruleSet: ClassicRuleSet,
+};
+```
+
+**Not:**
+```typescript
+// ❌ BAD: Direct mutation of mode constants
+const mode = CLASSIC_MODE;
+mode.constants.SHIPS.MIN_DISTANCE = 5;  // Runtime mutation!
+
+// ❌ BAD: Unfrozen constants
+export const GAME_CONSTANTS = {
+  SHIPS: { MIN_DISTANCE: 2 },  // Not frozen
+};
+```
+
+**Why:**
+- Each mode can customize gameplay (difficulty, entity counts, placement rules)
+- All constants remain immutable once the mode is created
+- Multiplayer stays deterministic (same mode = same rules)
+- Easy to add new modes without affecting existing ones
+
+---
+
+### 8. ✅ Deterministic Game Loop
 
 **Required:** Turn resolution must be deterministic:
 
