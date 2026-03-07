@@ -8,7 +8,12 @@ A modular, extensible, and type-driven engine for turn-based, Battleship-inspire
 
 ```
 src/core/
-├── constants/          # Immutable game data (board, ships, items, shot patterns, rulesets)
+├── modes/              # Game mode definitions (entities and rules)
+│   ├── classic/        # Classic battleship mode
+│   │   └── entities/   # Ships, items, obstacles, shots, views, rulesets, game constants
+│   ├── test/           # Test mode for unit tests
+│   │   └── entities/   # Simplified entities for testing
+│   └── index.ts        # Default game mode export
 ├── types/              # TypeScript contracts (pure types, no runtime code)
 ├── tools/              # Pure utility functions (ship calculations, placement, entity helpers)
 ├── engine/             # Game logic, board builders, error handling
@@ -18,7 +23,6 @@ src/core/
 │   ├── item.ts         # ItemActionContext builders for onCollect/onUse
 │   ├── perspective.ts  # SidePerspective: player↔enemy field mapping
 │   ├── match.ts        # Match class + createMatch factory (public API)
-│   ├── rulesets.ts     # RuleSet registration & utilities
 │   └── machines/       # XState state machine (matchMachine)
 │       ├── match.ts    # Machine definition, guards, actions, states
 │       ├── types.ts    # Context, event, input, callback types
@@ -39,21 +43,35 @@ src/core/
 
 ## Layer Responsibilities
 
-### 1. `constants/` — Foundation Data
-Read-only lookup tables. No business logic, no imports from other layers.
-- `game.ts`: Board size limits, placement caps, thresholds
-- `ships.ts`: Ship templates extending `ShipTemplate` interface
-- `items.ts`: Item templates extending `ItemTemplate` interface with handlers
-- `obstacles.ts`: Obstacle templates extending `ObstacleTemplate` interface
-- `shots.ts`: Predefined hit patterns implementing `ShotPattern`
-- `views.ts`: Default board dimensions and constraints
-- `rulesets.ts`: Immutable objects implementing `MatchRuleSet`. Decide turn flow, game-over, and (optionally) item-use penalties. Swappable at runtime.
-- **Pattern:** All templates extend `GameObject` (adds `defaultCount` to `GameEntity`)
+### 1. `modes/` — Game Mode Definitions
+Defines complete game modes with all entities, rules, and defaults. Each mode is self-contained.
+
+**Structure:**
+- `modes/classic/` — Traditional battleship gameplay with full entity set
+- `modes/test/` — Simplified mode for unit testing with minimal defaults
+- Each mode contains `entities/` folder with:
+  - `ships.ts`: Ship templates extending `ShipTemplate` interface
+  - `items.ts`: Item templates extending `ItemTemplate` interface with handlers
+  - `obstacles.ts`: Obstacle templates extending `ObstacleTemplate` interface
+  - `shots.ts`: Predefined hit patterns implementing `ShotPattern`
+  - `views.ts`: Board dimensions and layer visibility constraints
+  - `rulesets.ts`: Immutable objects implementing `MatchRuleSet` (turn flow, game-over)
+  - `game.ts`: Game constants (placement rules, thresholds, default counts)
+  - `index.ts`: Exports complete `GameMode` object
+
+**Benefits:**
+- **Isolation:** Each mode defines its own entities without affecting others
+- **Testability:** `TEST_MODE` provides predictable defaults for unit tests
+- **Extensibility:** Add new modes without modifying existing ones
+- **Reusability:** Share types and tools across all modes
+
+**Pattern:** All templates extend `GameObject` (adds `defaultCount` to `GameEntity`). Game modes use `buildDefaultCounts()` helper to construct default entity counts from templates.
 
 ### 2. `types/` — Shared Contracts
 Pure type declarations. Used by all layers, preventing circular dependencies. Key files:
 - `entities.ts`: `GameEntity` (base interface with id, title, description), item/ship/obstacle contracts, `ItemActionContext`
 - `constants.ts`: Template interfaces (`ShipTemplate`, `ItemTemplate`, `ObstacleTemplate`, `GameObject`)
+- `modes.ts`: `GameMode`, `GameModeConstants`, `buildDefaultCounts()` helper
 - `config.ts`: `GameConfig`, configuration types
 - `engine.ts`: `GameEngineState`, `IGameEngine`, `IGameEngineReader` interfaces
 - `shots.ts`: `Shot`, `ShotPattern`, `ShotPatternResult` types
@@ -104,24 +122,28 @@ Orchestrates game flow, state transitions, and event handling. XState v5 impleme
 Imperative API for consumers. Hides XState, manages match lifecycle, and exposes key types and callbacks.
 
 ### 11. `manager/initializer.ts` — GameInitializer
-Generates a ready-to-use `GameSetup` from partial config. Handles defaults, validation, and random placement.
-- **Method:** `generate()` → `GameSetup`
-- **Defaults:** Uses constants like `BOARD_DEFAULT_WIDTH`, `SHIP_TEMPLATES`, `ITEM_TEMPLATES`
-- **Validation:** Checks board sizes, ship counts, item placement
-- **Random placement:** Surfaces `randomSeed` for deterministic testing
+Generates a ready-to-use `GameSetup` from partial config and a game mode. Handles defaults, validation, and random placement.
+- **Constructor:** `new GameInitializer(config?, initialTurn?, gameMode?)`
+- **Method:** `getGameSetup()` → `GameSetup`
+- **Defaults:** Uses values from the provided `GameMode` (defaults to `DEFAULT_GAME_MODE`)
+- **Validation:** Checks board sizes, ship counts, item placement using mode's constants
+- **Random placement:** Generates different layouts on each call for replayability
+- **Game Mode Aware:** All entity IDs, counts, and rules come from the active game mode
 
 ---
 
 ## Data Flow
 
 ```
-GameConfig
+GameMode (classic/test/custom)
    ↓
-GameInitializer → GameSetup
+GameConfig + GameMode
+   ↓
+GameInitializer → GameSetup (with mode's entities)
    ↓                ↓
    └────────────→ Match (creates matchMachine)
                         ↓
-                 matchMachine
+                 matchMachine (mode's ruleset)
                         ↓
                  GameEngine.initializeGame()
                         ↓
@@ -129,7 +151,7 @@ GameInitializer → GameSetup
                         ↓
                  executeAttack / runCollectHandlers
                         ↓
-                 resolveTurn (ruleset, callbacks)
+                 resolveTurn (mode's ruleset, callbacks)
                         ↓
                  MatchState (consumers)
 ```
@@ -140,39 +162,53 @@ GameInitializer → GameSetup
 
 | What to extend           | Where to add it                                  |
 |-------------------------|--------------------------------------------------|
-| New shot pattern        | `constants/shots.ts` — add to `SHOT_PATTERNS`    |
-| New ship template       | `constants/ships.ts` — add to `SHIP_TEMPLATES`   |
-| New item template       | `constants/items.ts` — add to `ITEM_TEMPLATES`   |
-| New ruleset             | `constants/rulesets.ts` — implement & export        |
-| New item behaviour      | `GameItem.onCollect` / `onUse` handlers          |
+| New game mode           | Create `modes/yourmode/` with `entities/` folder |
+| New shot pattern (in mode) | `modes/yourmode/entities/shots.ts`            |
+| New ship template (in mode) | `modes/yourmode/entities/ships.ts`           |
+| New item template (in mode) | `modes/yourmode/entities/items.ts`           |
+| New ruleset (in mode)   | `modes/yourmode/entities/rulesets.ts`            |
+| New item behaviour      | `GameItem.onCollect` / `onUse` handlers in item template |
 | New player↔enemy ctx    | `engine/perspective.ts` — add to `SidePerspective`|
 | New match callback      | `machines/types.ts` + `machines/callbacks.ts`    |
 | New machine event       | `machines/types.ts` + `machines/match.ts`        |
 | Custom setup generation | Implement `IGameSetupProvider`                   |
+
+**Creating a Custom Game Mode:**
+1. Create `modes/mymode/entities/` folder
+2. Define ships, items, obstacles, shots, views, rulesets, game constants
+3. Export a `GameMode` object in `modes/mymode/index.ts`
+4. Pass it to `GameInitializer` constructor
 
 ---
 
 ## Design Principles
 
 - **Type-driven from the ground up:** Types define the contract; implementation follows.
+- **Game Mode Architecture:** All entities (ships, items, obstacles, shots, views, rulesets) are scoped to game modes. No global constants.
 - **GameEntity + GameObject pattern:** All identifiable objects extend `GameEntity`; templates extend `GameObject` (adds `defaultCount`).
-- **Layered with no circular dependencies:** constants → types → tools → engine → machines → manager.
+- **Layered with no circular dependencies:** modes → types → tools → engine → machines → manager.
+- **Mode isolation:** Each game mode is self-contained and can define different entities, rules, and defaults.
 - **Turn state is machine-owned:** Engine is turn-agnostic for testability and multiplayer support.
 - **Single callback dispatch:** All callbacks fire from `CallbackCoordinator` for deterministic ordering.
 - **Engine owns all mutable state:** Match and machine read state via snapshots (`GameEngineState`).
 - **Read/write separation:** `IGameEngineReader` vs `IGameEngine` for explicit intent.
 - **OCP for player↔enemy fields:** Only `perspective.ts` changes when adding new resources.
-- **Immutability by default:** Constants frozen; state captured in snapshots; no mutation after creation.
+- **Immutability by default:** All mode entities frozen; state captured in snapshots; no mutation after creation.
 - **Deterministic result objects:** No thrown errors in game logic; errors returned with `reason` strings.
 - **Logger for debugging:** Machine actions logged by `machines/logger.ts` for state transition tracing.
 
 ---
 
-## Recent Changes (v3.1+)
+## Recent Changes (v3.2+)
 
+- **Game Mode Architecture:** Replaced global `constants/` with mode-based entity system (`modes/classic/`, `modes/test/`)
+- **GameMode Interface:** New `GameMode` type defines ships, items, obstacles, shots, views, rulesets, and constants
+- **Mode-Aware Initializer:** `GameInitializer` now accepts a `GameMode` parameter for flexible configuration
+- **Test Mode:** Dedicated `TEST_MODE` for unit tests with simplified entities and zero defaults
+- **buildDefaultCounts():** Helper function to generate default counts from template arrays
 - **GameEntity & GameObject:** Unified metadata pattern for all templates (ships, items, obstacles, rulesets)
 - **Machine Logger:** Added `machines/logger.ts` for debugging state transitions
-- **Standard RuleSet Methods:** All rulesets now follow consistent interface
+- **Standard RuleSet Methods:** All rulesets now follow consistent interface (`decideTurn`, `checkGameOver`)
 - **Improved Error Handling:** Typed error constants with `reason` strings
 - **Game Entity Tools:** New `tools/constants.ts` for entity set creation and validation
 
