@@ -16,6 +16,7 @@
     "@tailwindcss/vite": "^4.2.0",
     "firebase": "^12.9.0",
     "lucide-react": "^0.575.0",
+    "phaser": "^4.0.0-rc.6",
     "preact": "^10.27.2",
     "tailwindcss": "^4.2.0",
     "xstate": "^5.28.0",

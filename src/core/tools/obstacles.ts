@@ -30,25 +30,24 @@ export function generateBorderPosition(
   const maxX = boardWidth - width;
   const maxY = boardHeight - height;
 
-  // Select a random border: 0 = top, 1 = right, 2 = bottom, 3 = left
   const border = Math.floor(Math.random() * 4);
 
   let x: number, y: number;
 
   switch (border) {
-    case 0: // Top edge
+    case 0: 
       x = Math.floor(Math.random() * (maxX + 1));
       y = 0;
       break;
-    case 1: // Right edge
+    case 1: 
       x = maxX;
       y = Math.floor(Math.random() * (maxY + 1));
       break;
-    case 2: // Bottom edge
+    case 2: 
       x = Math.floor(Math.random() * (maxX + 1));
       y = maxY;
       break;
-    case 3: // Left edge
+    case 3:
     default:
       x = 0;
       y = Math.floor(Math.random() * (maxY + 1));
@@ -95,7 +94,6 @@ export function generateObstacle(
     const maxY = boardHeight - height;
     if (maxX < 0 || maxY < 0) return null;
 
-    // 80% probability to place on border, creating interesting irregular shapes
     const useBorderPlacement = Math.random() < 0.8;
     
     let x: number, y: number;
@@ -121,29 +119,23 @@ export function generateObstacle(
     }
   }
 
-  // Fallback: systematic border search if random attempts failed
-  // Try all positions along the borders first
   const borders: Array<[number, number]> = [];
   
-  // Top and bottom edges
   for (let x = 0; x <= boardWidth - width; x++) {
     borders.push([x, 0]); // Top
-    borders.push([x, boardHeight - height]); // Bottom
+    borders.push([x, boardHeight - height]); 
   }
   
-  // Left and right edges (excluding corners already added)
   for (let y = 1; y < boardHeight - height; y++) {
-    borders.push([0, y]); // Left
-    borders.push([boardWidth - width, y]); // Right
+    borders.push([0, y]);
+    borders.push([boardWidth - width, y]); 
   }
   
-  // Shuffle borders for variety
   for (let i = borders.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [borders[i], borders[j]] = [borders[j], borders[i]];
   }
   
-  // Try each border position
   for (const [x, y] of borders) {
     let valid = true;
     outer: for (let row = 0; row < height; row++) {

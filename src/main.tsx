@@ -1,5 +1,5 @@
-import { render } from 'preact'
-import Playground from './playground/app.tsx'
-import './index.css'
+import { render } from "preact";
+import "./index.css";
+import IsometricWorld from "./isometric/page.tsx";
 
-render(<Playground />, document.getElementById('app')!)
+render(<IsometricWorld />, document.getElementById("app")!);
