@@ -3,7 +3,7 @@ import type { IsoScreenBox } from "../types/iso";
 import type { EmptyBoxTextureConfig } from "../types/render";
 
 const DEFAULT_FILL_COLOR = 0xffffff;
-const DEFAULT_STROKE_COLOR = 0xd9d9d9;
+const DEFAULT_STROKE_COLOR = 0xffffff;
 const DEFAULT_LEFT_FILL_COLOR = 0xe8e8e8;
 const DEFAULT_RIGHT_FILL_COLOR = 0xcfcfcf;
 const DEFAULT_BOX_HEIGHT = 28;
@@ -24,7 +24,7 @@ export function ensureEmptyBoxTexture(
     rightFillColor = DEFAULT_RIGHT_FILL_COLOR,
     fillAlpha = 1,
     strokeColor = DEFAULT_STROKE_COLOR,
-    strokeAlpha = 1,
+    strokeAlpha = 0,
     strokeWidth = 2,
   } = config;
 

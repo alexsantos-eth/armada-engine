@@ -11,6 +11,8 @@ export {
   renderEmptyBoxLayer,
 } from "./render";
 
+export { generatePerlinTerrain } from "./terrain";
+
 export type {
   IsoBounds,
   IsoProjectionConfig,
@@ -18,5 +20,7 @@ export type {
 } from "../types/iso";
 
 export type { BoxData, BoxMetadata, BoxType } from "../types/entities";
+
+export type { PerlinTerrainOptions, TerrainPoint } from "../types/terrain";
 
 export type { EmptyBoxTextureConfig } from "../types/render";
