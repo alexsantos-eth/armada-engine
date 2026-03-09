@@ -16,6 +16,6 @@ export const ItemTemplateSet = createEntitySet<ItemTemplate>([
   HEALTH_KIT,
 ], HEALTH_KIT.id);
 
-export const ITEM_TEMPLATES = ItemTemplateSet.map;
+export const ITEMS = ItemTemplateSet.values;
 export const getItemTemplate = ItemTemplateSet.getById;
 export const DEFAULT_ITEM_TEMPLATE = ItemTemplateSet.default;

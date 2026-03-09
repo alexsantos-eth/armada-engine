@@ -82,12 +82,12 @@ export class RoomService {
       gameConfig: {
         boardView: setup.config.boardView || DEFAULT_GAME_MODE.boardView,
         shipCounts:
-          setup.config.shipCounts ?? DEFAULT_GAME_MODE.constants.SHIPS.DEFAULT_COUNTS,
+          setup.config.shipCounts ?? DEFAULT_GAME_MODE.defaultCounts.shipCounts,
         itemCounts:
-          setup.config.itemCounts ?? DEFAULT_GAME_MODE.constants.ITEMS.DEFAULT_COUNTS,
+          setup.config.itemCounts ?? DEFAULT_GAME_MODE.defaultCounts.itemCounts,
         obstacleCounts:
           setup.config.obstacleCounts ??
-          DEFAULT_GAME_MODE.constants.OBSTACLES.DEFAULT_COUNTS,
+          DEFAULT_GAME_MODE.defaultCounts.obstacleCounts,
       },
       initialState: {
         playerShips: setup.playerShips,

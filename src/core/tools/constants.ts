@@ -11,6 +11,8 @@ export type ConstantSet<T extends GameEntity> = {
   getById: (id: string) => T;
   /** The default item to return when an `id` is not found, or when no `id` is provided. */
   default: T;
+  /** An array of all items in the set. */
+  values: T[];
 };
 
 /**
@@ -50,7 +52,8 @@ export function createEntitySet<T extends GameEntity>(
 
   return {
     map,
-    getById: (id: string) => map[id] || defaultItem,
     default: defaultItem,
+    values: Object.values(map),
+    getById: (id: string) => map[id] || defaultItem,
   };
 }

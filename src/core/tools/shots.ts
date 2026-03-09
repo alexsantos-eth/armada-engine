@@ -2,12 +2,17 @@ import type { ShotPattern } from "../types/shots";
 import type { GameConfig } from "../types/config";
 import type { GameMode } from "../types/modes";
 
-export function generateShotPatterns(config: Partial<GameConfig>, gameMode: GameMode): ShotPattern[] {
-  const ids = config.shotPatternIds ?? gameMode.constants.SHOTS.DEFAULT_PATTERN_IDS;
+export function generateShotPatterns(
+  config: Partial<GameConfig>,
+  gameMode: GameMode,
+): ShotPattern[] {
+  const ids: string[] =
+    config.shotPatternIds ?? gameMode.shotPatterns.map((pattern) => pattern.id || '');
+    
   const seen = new Set<string>();
   const patterns: ShotPattern[] = [];
   const shotPatterns = Object.fromEntries(
-    gameMode.shotPatterns.map(pattern => [pattern.id, pattern])
+    gameMode.shotPatterns.map((pattern) => [pattern.id, pattern]),
   );
 
   for (const id of ids) {

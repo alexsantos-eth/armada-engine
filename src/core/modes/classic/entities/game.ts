@@ -1,13 +1,9 @@
-import { SHIP_TEMPLATES } from "./ships";
-import { ITEM_TEMPLATES } from "./items";
-import { OBSTACLE_TEMPLATES } from "./obstacles";
 import { DEFAULT_BOARD_VIEW } from "./views";
-import { SHOT_PATTERNS } from "./shots";
 import type { GameModeConstants } from "../../../types/modes";
 
 /**
  * Game constants for the Classic game mode.
- * 
+ *
  * These constants are frozen to prevent runtime mutations that could cause
  * desynchronization in multiplayer scenarios. Each game mode can define its own
  * constants, allowing different modes to have different placement rules, thresholds, etc.
@@ -16,28 +12,13 @@ export const GAME_CONSTANTS = Object.freeze({
   SHIPS: {
     MIN_DISTANCE: 2,
     MAX_PLACEMENT_ATTEMPTS: 200,
-    DEFAULT_COUNTS: Object.fromEntries(
-      Object.entries(SHIP_TEMPLATES).map(([key, t]) => [key, (t as { defaultCount: number }).defaultCount]),
-    ) as Record<string, number>,
   },
   ITEMS: {
     MIN_DISTANCE_FROM_SHIPS: 1,
     MAX_PLACEMENT_ATTEMPTS: 200,
-    DEFAULT_COUNTS: Object.fromEntries(
-      Object.entries(ITEM_TEMPLATES).map(([key, t]) => [key, (t as { defaultCount: number }).defaultCount]),
-    ) as Record<string, number>,
   },
   OBSTACLES: {
     MAX_PLACEMENT_ATTEMPTS: 200,
-    DEFAULT_COUNTS: Object.fromEntries(
-      Object.entries(OBSTACLE_TEMPLATES).map(([key, t]) => [
-        key,
-        (t as { defaultCount: number }).defaultCount,
-      ]),
-    ) as Record<string, number>,
-  },
-  SHOTS: {
-    DEFAULT_PATTERN_IDS: Object.keys(SHOT_PATTERNS),
   },
   GAME_LOGIC: {
     BATTLE: {

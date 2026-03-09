@@ -50,6 +50,6 @@ export const ShipSet = createEntitySet<ShipTemplate>([
   XLARGE_SHIP,
 ], SMALL_SHIP.id);
 
-export const SHIP_TEMPLATES = ShipSet.map;
+export const SHIPS = ShipSet.values;
 export const getShipTemplate = ShipSet.getById;
 export const DEFAULT_SHIP_TEMPLATE = ShipSet.default;

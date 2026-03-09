@@ -134,6 +134,6 @@ export const ShotPatternSet = createEntitySet<ShotPattern>([
   L_SHAPE_SHOT,
 ], SINGLE_SHOT.id);
 
-export const SHOT_PATTERNS = ShotPatternSet.map;
+export const SHOTS = ShotPatternSet.values;
 export const getShotPattern = ShotPatternSet.getById;
 export const DEFAULT_SHOT_PATTERN = ShotPatternSet.default;

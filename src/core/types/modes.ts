@@ -10,19 +10,13 @@ export interface GameModeConstants {
   SHIPS: {
     MIN_DISTANCE: number;
     MAX_PLACEMENT_ATTEMPTS: number;
-    DEFAULT_COUNTS: Record<string, number>;
   };
   ITEMS: {
     MIN_DISTANCE_FROM_SHIPS: number;
     MAX_PLACEMENT_ATTEMPTS: number;
-    DEFAULT_COUNTS: Record<string, number>;
   };
   OBSTACLES: {
     MAX_PLACEMENT_ATTEMPTS: number;
-    DEFAULT_COUNTS: Record<string, number>;
-  };
-  SHOTS: {
-    DEFAULT_PATTERN_IDS: string[];
   };
   GAME_LOGIC: {
     BATTLE: {

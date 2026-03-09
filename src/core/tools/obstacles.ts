@@ -11,6 +11,53 @@ export function getObstacleCellsFromObstacle(
   return getShip2DCells(x, y, obstacle.width, obstacle.height);
 }
 
+/**
+ * Generates a position along the border of the board.
+ * Creates more interesting irregular shapes on non-square boards.
+ * 
+ * @param width - Width of the obstacle
+ * @param height - Height of the obstacle
+ * @param boardWidth - Width of the game board
+ * @param boardHeight - Height of the game board
+ * @returns Coordinates [x, y] positioned on one of the four board edges
+ */
+export function generateBorderPosition(
+  width: number,
+  height: number,
+  boardWidth: number,
+  boardHeight: number,
+): [number, number] {
+  const maxX = boardWidth - width;
+  const maxY = boardHeight - height;
+
+  // Select a random border: 0 = top, 1 = right, 2 = bottom, 3 = left
+  const border = Math.floor(Math.random() * 4);
+
+  let x: number, y: number;
+
+  switch (border) {
+    case 0: // Top edge
+      x = Math.floor(Math.random() * (maxX + 1));
+      y = 0;
+      break;
+    case 1: // Right edge
+      x = maxX;
+      y = Math.floor(Math.random() * (maxY + 1));
+      break;
+    case 2: // Bottom edge
+      x = Math.floor(Math.random() * (maxX + 1));
+      y = maxY;
+      break;
+    case 3: // Left edge
+    default:
+      x = 0;
+      y = Math.floor(Math.random() * (maxY + 1));
+      break;
+  }
+
+  return [x, y];
+}
+
 export function generateObstacle(
   template: GameObstacle & { width: number; height: number },
   boardWidth: number,
@@ -48,8 +95,16 @@ export function generateObstacle(
     const maxY = boardHeight - height;
     if (maxX < 0 || maxY < 0) return null;
 
-    const x = Math.floor(Math.random() * (maxX + 1));
-    const y = Math.floor(Math.random() * (maxY + 1));
+    // 80% probability to place on border, creating interesting irregular shapes
+    const useBorderPlacement = Math.random() < 0.8;
+    
+    let x: number, y: number;
+    if (useBorderPlacement) {
+      [x, y] = generateBorderPosition(width, height, boardWidth, boardHeight);
+    } else {
+      x = Math.floor(Math.random() * (maxX + 1));
+      y = Math.floor(Math.random() * (maxY + 1));
+    }
 
     let valid = true;
     outer: for (let row = 0; row < height; row++) {
@@ -61,6 +116,45 @@ export function generateObstacle(
       }
     }
 
+    if (valid) {
+      return { coords: [x, y], width, height, obstacleId };
+    }
+  }
+
+  // Fallback: systematic border search if random attempts failed
+  // Try all positions along the borders first
+  const borders: Array<[number, number]> = [];
+  
+  // Top and bottom edges
+  for (let x = 0; x <= boardWidth - width; x++) {
+    borders.push([x, 0]); // Top
+    borders.push([x, boardHeight - height]); // Bottom
+  }
+  
+  // Left and right edges (excluding corners already added)
+  for (let y = 1; y < boardHeight - height; y++) {
+    borders.push([0, y]); // Left
+    borders.push([boardWidth - width, y]); // Right
+  }
+  
+  // Shuffle borders for variety
+  for (let i = borders.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [borders[i], borders[j]] = [borders[j], borders[i]];
+  }
+  
+  // Try each border position
+  for (const [x, y] of borders) {
+    let valid = true;
+    outer: for (let row = 0; row < height; row++) {
+      for (let col = 0; col < width; col++) {
+        if (occupied.has(key(x + col, y + row))) {
+          valid = false;
+          break outer;
+        }
+      }
+    }
+    
     if (valid) {
       return { coords: [x, y], width, height, obstacleId };
     }

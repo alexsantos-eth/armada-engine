@@ -1,32 +1,12 @@
 import type { GameMode } from "../../types/modes";
 
-import {
-  SMALL_SHIP,
-  MEDIUM_SHIP,
-  LARGE_SHIP,
-  XLARGE_SHIP,
-} from "./entities/ships";
+import { SHIPS } from "./entities/ships";
 
-import {
-  HEALTH_KIT,
-} from "./entities/items";
+import { ITEMS } from "./entities/items";
 
-import {
-  ROCK_OBSTACLE,
-} from "./entities/obstacles";
+import { OBSTACLES } from "./entities/obstacles";
 
-import {
-  SINGLE_SHOT,
-  CROSS_SHOT,
-  LARGE_CROSS_SHOT,
-  HORIZONTAL_LINE_SHOT,
-  VERTICAL_LINE_SHOT,
-  SQUARE_SHOT,
-  DIAGONAL_X_SHOT,
-  SMALL_SQUARE_SHOT,
-  T_SHAPE_SHOT,
-  L_SHAPE_SHOT,
-} from "./entities/shots";
+import { SHOTS } from "./entities/shots";
 
 import { StandardBoardView } from "./entities/views";
 
@@ -37,7 +17,7 @@ import { buildDefaultCounts } from "../../tools/modes";
 
 /**
  * Classic Game Mode
- * 
+ *
  * The standard gameplay mode with all traditional entities:
  * - 4 ship types (small, medium, large, xlarge)
  * - Health kit items
@@ -48,54 +28,26 @@ import { buildDefaultCounts } from "../../tools/modes";
 export const CLASSIC_MODE = Object.freeze({
   id: "classic",
   title: "Classic Mode",
-  description: "Traditional gameplay with all standard ships, items, and obstacles",
+  description:
+    "Traditional gameplay with all standard ships, items, and obstacles",
 
-  ships: [
-    SMALL_SHIP,
-    MEDIUM_SHIP,
-    LARGE_SHIP,
-    XLARGE_SHIP,
-  ],
+  ships: SHIPS,
 
-  items: [
-    HEALTH_KIT,
-  ],
+  items: ITEMS,
 
-  obstacles: [
-    ROCK_OBSTACLE,
-  ],
+  obstacles: OBSTACLES,
 
-  shotPatterns: [
-    SINGLE_SHOT,
-    CROSS_SHOT,
-    LARGE_CROSS_SHOT,
-    HORIZONTAL_LINE_SHOT,
-    VERTICAL_LINE_SHOT,
-    SQUARE_SHOT,
-    DIAGONAL_X_SHOT,
-    SMALL_SQUARE_SHOT,
-    T_SHAPE_SHOT,
-    L_SHAPE_SHOT,
-  ],
-
-  boardView: StandardBoardView,
-
-  defaultCounts: {
-    shipCounts: buildDefaultCounts([
-      SMALL_SHIP,
-      MEDIUM_SHIP,
-      LARGE_SHIP,
-      XLARGE_SHIP,
-    ]),
-    itemCounts: buildDefaultCounts([
-      HEALTH_KIT,
-    ]),
-    obstacleCounts: buildDefaultCounts([
-      ROCK_OBSTACLE,
-    ]),
-  },
+  shotPatterns: SHOTS,
 
   constants: GAME_CONSTANTS,
 
+  boardView: StandardBoardView,
+
   ruleSet: ClassicRuleSet,
+
+  defaultCounts: {
+    shipCounts: buildDefaultCounts(SHIPS),
+    itemCounts: buildDefaultCounts(ITEMS),
+    obstacleCounts: buildDefaultCounts(OBSTACLES),
+  },
 }) satisfies GameMode;
