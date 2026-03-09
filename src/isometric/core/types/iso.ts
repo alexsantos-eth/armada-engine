@@ -13,6 +13,10 @@ export type IsoProjectionConfig = {
    */
   tileHeight: number;
   /**
+   * Vertical pixel step used per elevation level. Defaults to tileHeight / 2.
+   */
+  elevationStep?: number;
+  /**
    * X coordinate of the isometric origin (bottom corner where box (0,0) is projected) in screen pixels
    */
   originX: number;
@@ -42,6 +46,10 @@ export type IsoScreenBox = {
    * X coordinate of the projected box on the screen in pixels
    */
   screenX: number;
+  /**
+   * Ground-contact Y before applying elevation offset. Useful for stable depth sorting.
+   */
+  baseScreenY: number;
   /**
    * Y coordinate of the projected box on the screen in pixels
    */

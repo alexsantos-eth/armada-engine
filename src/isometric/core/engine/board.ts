@@ -10,16 +10,22 @@ export function projectBoxesToIsometric(
   projection: IsoProjectionConfig,
 ): IsoScreenBox[] {
   const { tileWidth, tileHeight, originX, originY } = projection;
+  const elevationStep = projection.elevationStep ?? tileHeight / 2;
 
-  return boxes.map((box) => ({
-    x: box.x,
-    y: box.y,
-    box,
-    screenX: originX + (box.x - box.y) * (tileWidth / 2),
-    // Bottom-origin coordinates: x+ goes right, y+ goes left.
-    // Subtract elevation to move boxes up (negative Y is up in screen coordinates)
-    screenY: originY - (box.x + box.y) * (tileHeight / 2) - box.elevation * (tileHeight / 2),
-  }));
+  return boxes.map((box) => {
+    const baseScreenY = originY - (box.x + box.y) * (tileHeight / 2);
+
+    return {
+      x: box.x,
+      y: box.y,
+      box,
+      screenX: originX + (box.x - box.y) * (tileWidth / 2),
+      baseScreenY,
+      // Bottom-origin coordinates: x+ goes right, y+ goes left.
+      // Subtract elevation to move boxes up (negative Y is up in screen coordinates).
+      screenY: baseScreenY - box.elevation * elevationStep,
+    };
+  });
 }
 
 export function getIsometricBounds(boxes: IsoScreenBox[]): IsoBounds {
