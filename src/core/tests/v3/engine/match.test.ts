@@ -372,7 +372,7 @@ describe("Match (v3)", () => {
     it("should show ships on player board", () => {
       const board = match.getPlayerBoard();
 
-      expect(board[0][0].state).toBe("SHIP");
+      expect(board[board.length - 1][0].state).toBe("SHIP");
     });
 
     it("should show shots on enemy board after attack", () => {

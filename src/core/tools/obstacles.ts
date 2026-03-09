@@ -122,7 +122,7 @@ export function generateObstacle(
   const borders: Array<[number, number]> = [];
   
   for (let x = 0; x <= boardWidth - width; x++) {
-    borders.push([x, 0]); // Top
+    borders.push([x, 0]); // Bottom
     borders.push([x, boardHeight - height]); 
   }
   

@@ -158,6 +158,21 @@ GameInitializer → GameSetup (with mode's entities)
 
 ---
 
+## Coordinate System
+
+All core gameplay logic uses a Cartesian-like board convention:
+
+- Origin `(0, 0)` is the bottom-left cell.
+- `x+` moves to the right.
+- `y+` moves upward.
+
+Notes:
+
+- Public APIs such as `planShot(x, y, ...)`, `planAndAttack(x, y, ...)`, and `executeShotPattern(centerX, centerY, ...)` expect this coordinate system.
+- Board matrices are still stored/rendered row-first (`board[row][col]`), so render layers must map logical `y` to row index with `row = boardHeight - 1 - y`.
+
+---
+
 ## Extension Points
 
 | What to extend           | Where to add it                                  |

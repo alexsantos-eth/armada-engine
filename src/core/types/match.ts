@@ -258,7 +258,7 @@ export interface IMatch extends MatchQueryAPI {
    * The shot is staged but not applied until `confirmAttack` is called.
    *
    * @param centerX    Board column (0-based) for the pattern centre.
-   * @param centerY    Board row (0-based) for the pattern centre.
+  * @param centerY    Board y coordinate (0-based, bottom -> top) for the pattern centre.
    * @param patternIdx 0-based index into the attacker's `shotPatterns` array.
    *                   Defaults to `0`.
    * @param isPlayerShot `true` when the player is attacking, `false` for the
@@ -292,7 +292,7 @@ export interface IMatch extends MatchQueryAPI {
    * call. Aborts early and returns a failure result if planning fails.
    *
    * @param x          Board column (0-based).
-   * @param y          Board row (0-based).
+  * @param y          Board y coordinate (0-based, bottom -> top).
    * @param isPlayerShot `true` for a player attack, `false` for enemy.
    * @param patternIdx 0-based pattern index. Defaults to `0`.
    */

@@ -14,6 +14,32 @@ function emptyBoard(width: number, height: number): Board {
   );
 }
 
+const toBoardRow = (height: number, y: number): number => height - 1 - y;
+
+const getBoardCell = (
+  board: Board,
+  width: number,
+  height: number,
+  x: number,
+  y: number,
+): Cell | null => {
+  if (x < 0 || x >= width || y < 0 || y >= height) return null;
+  return board[toBoardRow(height, y)][x];
+};
+
+const setBoardCell = (
+  board: Board,
+  width: number,
+  height: number,
+  x: number,
+  y: number,
+  cell: Cell,
+): boolean => {
+  if (x < 0 || x >= width || y < 0 || y >= height) return false;
+  board[toBoardRow(height, y)][x] = cell;
+  return true;
+};
+
 export function buildPlayerBoard(
   state: GameEngineState,
   view?: BoardViewConfig,
@@ -27,9 +53,7 @@ export function buildPlayerBoard(
   if (has(layers, "playerShips")) {
     for (const ship of state.playerShips) {
       for (const [x, y] of getShipCellsFromShip(ship)) {
-        if (x >= 0 && x < width && y >= 0 && y < height) {
-          board[y][x] = { state: "SHIP" };
-        }
+        setBoardCell(board, width, height, x, y, { state: "SHIP" });
       }
     }
   }
@@ -41,14 +65,12 @@ export function buildPlayerBoard(
       const [startX, y] = item.coords;
       for (let i = 0; i < item.part; i++) {
         const cx = startX + i;
-        if (cx >= 0 && cx < width && y >= 0 && y < height) {
-          board[y][cx] = {
-            state:
-              showCollected && collectedByEnemy.has(itemId)
-                ? "COLLECTED"
-                : "ITEM",
-          };
-        }
+        setBoardCell(board, width, height, cx, y, {
+          state:
+            showCollected && collectedByEnemy.has(itemId)
+              ? "COLLECTED"
+              : "ITEM",
+        });
       }
     });
   }
@@ -56,14 +78,9 @@ export function buildPlayerBoard(
   if (has(layers, "playerObstacles")) {
     for (const obstacle of state.playerObstacles ?? []) {
       for (const [x, y] of getObstacleCellsFromObstacle(obstacle)) {
-        if (
-          x >= 0 &&
-          x < width &&
-          y >= 0 &&
-          y < height &&
-          board[y][x].state === "EMPTY"
-        ) {
-          board[y][x] = { state: "OBSTACLE" };
+        const existingCell = getBoardCell(board, width, height, x, y);
+        if (existingCell?.state === "EMPTY") {
+          setBoardCell(board, width, height, x, y, { state: "OBSTACLE" });
         }
       }
     }
@@ -72,9 +89,7 @@ export function buildPlayerBoard(
   if (has(layers, "enemyShips")) {
     for (const ship of state.enemyShips) {
       for (const [x, y] of getShipCellsFromShip(ship)) {
-        if (x >= 0 && x < width && y >= 0 && y < height) {
-          board[y][x] = { state: "SHIP" };
-        }
+        setBoardCell(board, width, height, x, y, { state: "SHIP" });
       }
     }
   }
@@ -86,12 +101,10 @@ export function buildPlayerBoard(
       const [startX, y] = item.coords;
       for (let i = 0; i < item.part; i++) {
         const cx = startX + i;
-        if (cx >= 0 && cx < width && y >= 0 && y < height) {
-          board[y][cx] = {
-            state:
-              showCollected && collectedSet.has(itemId) ? "COLLECTED" : "ITEM",
-          };
-        }
+        setBoardCell(board, width, height, cx, y, {
+          state:
+            showCollected && collectedSet.has(itemId) ? "COLLECTED" : "ITEM",
+        });
       }
     });
   }
@@ -99,14 +112,9 @@ export function buildPlayerBoard(
   if (has(layers, "enemyObstacles")) {
     for (const obstacle of state.enemyObstacles ?? []) {
       for (const [x, y] of getObstacleCellsFromObstacle(obstacle)) {
-        if (
-          x >= 0 &&
-          x < width &&
-          y >= 0 &&
-          y < height &&
-          board[y][x].state === "EMPTY"
-        ) {
-          board[y][x] = { state: "OBSTACLE" };
+        const existingCell = getBoardCell(board, width, height, x, y);
+        if (existingCell?.state === "EMPTY") {
+          setBoardCell(board, width, height, x, y, { state: "OBSTACLE" });
         }
       }
     }
@@ -114,35 +122,43 @@ export function buildPlayerBoard(
 
   if (has(layers, "enemyShots")) {
     for (const shot of state.enemyShots) {
-      if (shot.x >= 0 && shot.x < width && shot.y >= 0 && shot.y < height) {
-        const existingState = board[shot.y][shot.x].state;
-        const cellState = shot.collected
-          ? "MISS"
-          : shot.hit
-            ? "HIT"
-            : shot.obstacleHit || existingState === "OBSTACLE"
-              ? "OBSTACLE"
-              : "MISS";
-        board[shot.y][shot.x] = { state: cellState, shot };
-      }
+      const existingCell = getBoardCell(board, width, height, shot.x, shot.y);
+      if (!existingCell) continue;
+
+      const cellState = shot.collected
+        ? "MISS"
+        : shot.hit
+          ? "HIT"
+          : shot.obstacleHit || existingCell.state === "OBSTACLE"
+            ? "OBSTACLE"
+            : "MISS";
+
+      setBoardCell(board, width, height, shot.x, shot.y, {
+        state: cellState,
+        shot,
+      });
     }
   }
 
   if (has(layers, "playerShots")) {
     for (const shot of state.playerShots) {
-      if (shot.x >= 0 && shot.x < width && shot.y >= 0 && shot.y < height) {
-        const existingState = board[shot.y][shot.x].state;
-        const cellState = shot.collected
-          ? "COLLECTED"
-          : shot.hit
-            ? "HIT"
-            : shot.obstacleHit || existingState === "OBSTACLE"
-              ? "OBSTACLE"
-              : existingState === "COLLECTED"
-                ? "COLLECTED"
-                : "MISS";
-        board[shot.y][shot.x] = { state: cellState, shot };
-      }
+      const existingCell = getBoardCell(board, width, height, shot.x, shot.y);
+      if (!existingCell) continue;
+
+      const cellState = shot.collected
+        ? "COLLECTED"
+        : shot.hit
+          ? "HIT"
+          : shot.obstacleHit || existingCell.state === "OBSTACLE"
+            ? "OBSTACLE"
+            : existingCell.state === "COLLECTED"
+              ? "COLLECTED"
+              : "MISS";
+
+      setBoardCell(board, width, height, shot.x, shot.y, {
+        state: cellState,
+        shot,
+      });
     }
   }
 
@@ -162,9 +178,7 @@ export function buildEnemyBoard(
   if (has(layers, "enemyShips")) {
     for (const ship of state.enemyShips) {
       for (const [x, y] of getShipCellsFromShip(ship)) {
-        if (x >= 0 && x < width && y >= 0 && y < height) {
-          board[y][x] = { state: "SHIP" };
-        }
+        setBoardCell(board, width, height, x, y, { state: "SHIP" });
       }
     }
   }
@@ -172,9 +186,7 @@ export function buildEnemyBoard(
   if (has(layers, "enemyObstacles")) {
     for (const obstacle of state.enemyObstacles ?? []) {
       for (const [x, y] of getObstacleCellsFromObstacle(obstacle)) {
-        if (x >= 0 && x < width && y >= 0 && y < height) {
-          board[y][x] = { state: "OBSTACLE" };
-        }
+        setBoardCell(board, width, height, x, y, { state: "OBSTACLE" });
       }
     }
   }
@@ -186,12 +198,10 @@ export function buildEnemyBoard(
       const [startX, y] = item.coords;
       for (let i = 0; i < item.part; i++) {
         const cx = startX + i;
-        if (cx >= 0 && cx < width && y >= 0 && y < height) {
-          board[y][cx] = {
-            state:
-              showCollected && collectedSet.has(itemId) ? "COLLECTED" : "ITEM",
-          };
-        }
+        setBoardCell(board, width, height, cx, y, {
+          state:
+            showCollected && collectedSet.has(itemId) ? "COLLECTED" : "ITEM",
+        });
       }
     });
   }
@@ -199,9 +209,7 @@ export function buildEnemyBoard(
   if (has(layers, "playerShips")) {
     for (const ship of state.playerShips) {
       for (const [x, y] of getShipCellsFromShip(ship)) {
-        if (x >= 0 && x < width && y >= 0 && y < height) {
-          board[y][x] = { state: "SHIP" };
-        }
+        setBoardCell(board, width, height, x, y, { state: "SHIP" });
       }
     }
   }
@@ -213,14 +221,12 @@ export function buildEnemyBoard(
       const [startX, y] = item.coords;
       for (let i = 0; i < item.part; i++) {
         const cx = startX + i;
-        if (cx >= 0 && cx < width && y >= 0 && y < height) {
-          board[y][cx] = {
-            state:
-              showCollected && collectedByEnemy.has(itemId)
-                ? "COLLECTED"
-                : "ITEM",
-          };
-        }
+        setBoardCell(board, width, height, cx, y, {
+          state:
+            showCollected && collectedByEnemy.has(itemId)
+              ? "COLLECTED"
+              : "ITEM",
+        });
       }
     });
   }
@@ -228,14 +234,9 @@ export function buildEnemyBoard(
   if (has(layers, "playerObstacles")) {
     for (const obstacle of state.playerObstacles ?? []) {
       for (const [x, y] of getObstacleCellsFromObstacle(obstacle)) {
-        if (
-          x >= 0 &&
-          x < width &&
-          y >= 0 &&
-          y < height &&
-          board[y][x].state === "EMPTY"
-        ) {
-          board[y][x] = { state: "OBSTACLE" };
+        const existingCell = getBoardCell(board, width, height, x, y);
+        if (existingCell?.state === "EMPTY") {
+          setBoardCell(board, width, height, x, y, { state: "OBSTACLE" });
         }
       }
     }
@@ -243,35 +244,43 @@ export function buildEnemyBoard(
 
   if (has(layers, "playerShots")) {
     for (const shot of state.playerShots) {
-      if (shot.x >= 0 && shot.x < width && shot.y >= 0 && shot.y < height) {
-        const existingState = board[shot.y][shot.x].state;
-        const cellState = shot.collected
-          ? "COLLECTED"
-          : shot.hit
-            ? "HIT"
-            : shot.obstacleHit || existingState === "OBSTACLE"
-              ? "OBSTACLE"
-              : existingState === "COLLECTED"
-                ? "COLLECTED"
-                : "MISS";
-        board[shot.y][shot.x] = { state: cellState, shot };
-      }
+      const existingCell = getBoardCell(board, width, height, shot.x, shot.y);
+      if (!existingCell) continue;
+
+      const cellState = shot.collected
+        ? "COLLECTED"
+        : shot.hit
+          ? "HIT"
+          : shot.obstacleHit || existingCell.state === "OBSTACLE"
+            ? "OBSTACLE"
+            : existingCell.state === "COLLECTED"
+              ? "COLLECTED"
+              : "MISS";
+
+      setBoardCell(board, width, height, shot.x, shot.y, {
+        state: cellState,
+        shot,
+      });
     }
   }
 
   if (has(layers, "enemyShots")) {
     for (const shot of state.enemyShots) {
-      if (shot.x >= 0 && shot.x < width && shot.y >= 0 && shot.y < height) {
-        const existingState = board[shot.y][shot.x].state;
-        const cellState = shot.collected
-          ? "MISS"
-          : shot.hit
-            ? "HIT"
-            : shot.obstacleHit || existingState === "OBSTACLE"
-              ? "OBSTACLE"
-              : "MISS";
-        board[shot.y][shot.x] = { state: cellState, shot };
-      }
+      const existingCell = getBoardCell(board, width, height, shot.x, shot.y);
+      if (!existingCell) continue;
+
+      const cellState = shot.collected
+        ? "MISS"
+        : shot.hit
+          ? "HIT"
+          : shot.obstacleHit || existingCell.state === "OBSTACLE"
+            ? "OBSTACLE"
+            : "MISS";
+
+      setBoardCell(board, width, height, shot.x, shot.y, {
+        state: cellState,
+        shot,
+      });
     }
   }
 

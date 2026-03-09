@@ -90,17 +90,18 @@ export interface Cell {
  * Two-dimensional grid of {@link Cell} objects representing one side of the
  * game board (either the local player's or the opponent's).
  *
- * Indexed as `board[row][col]` where `row` is the y-axis (top → bottom) and
- * `col` is the x-axis (left → right), matching the coordinate system used by
- * {@link Shot.x} and {@link Shot.y}.
+ * Coordinates use origin at bottom-left (`x` rightward, `y` upward).
+ * The matrix is still indexed as `board[row][col]` from top row to bottom row,
+ * so the row index for a coordinate is `row = (boardHeight - 1 - y)`.
  *
  * Prefer this type over a plain `CellState[][]` whenever the consumer needs
  * per-cell shot metadata — for example, to display pattern highlights, sunk-ship
  * overlays, or item-collection animations.
  *
  * @example
- * // Accessing the state of the cell at column 2, row 4:
- * const cell = board[4][2];
+ * // Accessing the state of logical coordinate (x=2, y=4):
+ * const row = board.length - 1 - 4;
+ * const cell = board[row][2];
  * if (cell.state === "HIT" && cell.shot?.shipId !== undefined) {
  *   // render sunk-ship indicator
  * }

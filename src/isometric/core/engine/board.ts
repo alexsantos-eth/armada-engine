@@ -17,7 +17,8 @@ export function projectBoxesToIsometric(
     box,
     screenX: originX + (box.x - box.y) * (tileWidth / 2),
     // Bottom-origin coordinates: x+ goes right, y+ goes left.
-    screenY: originY - (box.x + box.y) * (tileHeight / 2),
+    // Subtract elevation to move boxes up (negative Y is up in screen coordinates)
+    screenY: originY - (box.x + box.y) * (tileHeight / 2) - box.elevation * (tileHeight / 2),
   }));
 }
 

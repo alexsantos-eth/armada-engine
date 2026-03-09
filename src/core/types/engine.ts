@@ -167,7 +167,7 @@ export interface IGameEngine extends IGameEngineReader {
    * aggregated outcome. Out-of-bounds offsets are silently skipped.
    *
    * @param centerX - 0-based column index used as the pattern's anchor.
-   * @param centerY - 0-based row index used as the pattern's anchor.
+  * @param centerY - 0-based y coordinate (bottom -> top) used as the pattern's anchor.
    * @param patternIdx - 0-based index into the attacker's `shotPatterns` array.
    * @param isPlayerShot - `true` when the player is attacking (targets the enemy board).
    */

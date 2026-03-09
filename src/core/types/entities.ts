@@ -70,7 +70,7 @@ export interface ItemActionContext {
    *
    * @param width       Ship width in cells (default 1).
    * @param height      Ship height in cells (default 1).
-   * @param preferred   Optional preferred top-left corner; tried before scanning.
+  * @param preferred   Optional preferred bottom-left corner; tried before scanning.
    * @param onDestroy   Optional callback fired once when all cells of this ship are hit.
    * @returns `true` if placed, `false` if no free slot was found.
    */
@@ -93,7 +93,7 @@ export interface ItemActionContext {
    *
    * @param width       Ship width in cells (default 1).
    * @param height      Ship height in cells (default 1).
-   * @param preferred   Optional preferred top-left corner; tried before scanning.
+  * @param preferred   Optional preferred bottom-left corner; tried before scanning.
    * @param onDestroy   Optional callback fired once when all cells of this ship are hit.
    * @returns `true` if placed, `false` if no free slot was found.
    */
@@ -236,7 +236,7 @@ export type ShipActionContext = Omit<ItemActionContext, "item"> & {
  * When all cells are shot, the item is fully collected.
  */
 export interface GameItem {
-  /** Top-left corner of the item's horizontal footprint as `[col, row]` (0-based). */
+  /** Bottom-left corner of the item's horizontal footprint as `[x, y]` (0-based). */
   coords: [number, number];
   /** Number of cells (parts) that must be shot to fully collect this item. */
   part: number;
@@ -263,12 +263,12 @@ export interface GameItem {
 
 /**
  * A 2D rectangular obstacle placed on the board at game start.
- * Its footprint is a `width × height` rectangle with top-left corner at `coords`.
+ * Its footprint is a `width × height` rectangle with bottom-left corner at `coords`.
  * Unlike ships, obstacles are indestructible — shots that land on obstacle cells
  * are recorded as misses and the obstacle persists for the whole match.
  */
 export interface GameObstacle {
-  /** Top-left corner of the obstacle's rectangular footprint as `[col, row]` (0-based). */
+  /** Bottom-left corner of the obstacle's rectangular footprint as `[x, y]` (0-based). */
   coords: [number, number];
   /** Number of columns occupied (≥ 1). */
   width: number;
@@ -279,10 +279,10 @@ export interface GameObstacle {
 
 /**
  * A 2D rectangular ship on the board.
- * Its footprint is a `width × height` rectangle with top-left corner at `coords`.
+ * Its footprint is a `width × height` rectangle with bottom-left corner at `coords`.
  */
 export interface GameShip {
-  /** Top-left corner of the ship's rectangular footprint as `[col, row]` (0-based). */
+  /** Bottom-left corner of the ship's rectangular footprint as `[x, y]` (0-based). */
   coords: [number, number];
   /** Number of columns occupied (≥ 1). */
   width: number;

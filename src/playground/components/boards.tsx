@@ -115,7 +115,11 @@ export const EnemyBoard = ({ board, canFire, onCellClick }: EnemyBoardProps) => 
           {row.map((cell, x) => (
             <div
               key={`${x}-${y}`}
-              onClick={() => onCellClick(x, y)}
+              onClick={() => {
+                if (!board) return;
+                const logicalY = board.length - 1 - y;
+                onCellClick(x, logicalY);
+              }}
               className={`w-9 h-9 flex items-center justify-center border border-rose-100 bg-rose-50 transition-colors ${getCellBg(cell, true)} ${canFire ? "cursor-crosshair" : "cursor-not-allowed opacity-80"}`}
             >
               {getCellIcon(cell)}

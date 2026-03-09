@@ -6,6 +6,16 @@
 
 ## FORBIDDEN PATTERNS (Never Do These)
 
+### Coordinate Convention (Must Always Hold)
+
+All gameplay coordinates in core must follow:
+
+- Origin `(0, 0)` at bottom-left.
+- `x+` to the right.
+- `y+` upward.
+
+If a layer uses top-row-first matrix indexing (UI/render), it must convert row index to logical `y` before calling core APIs.
+
 ### 1. ❌ Circular Dependencies
 
 **Forbidden:**

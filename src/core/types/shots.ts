@@ -19,7 +19,7 @@ import type { Winner, GameTurn } from "./game";
 export interface Shot {
   /** Board column (0-based, left → right) where the shot landed. */
   x: number;
-  /** Board row (0-based, top → bottom) where the shot landed. */
+  /** Board y coordinate (0-based, bottom → top) where the shot landed. */
   y: number;
   /** `true` when the shot struck a ship cell; `false` for water, obstacle, or item. */
   hit: boolean;
@@ -54,13 +54,13 @@ export interface Shot {
  * A single cell offset relative to the pattern's centre coordinate.
  *
  * Positive `dx` moves right; negative moves left.
- * Positive `dy` moves down; negative moves up.
+ * Positive `dy` moves up; negative moves down.
  * The origin offset `{ dx: 0, dy: 0 }` targets the centre cell itself.
  */
 export interface ShotOffset {
   /** Horizontal displacement from the pattern centre (positive = right, negative = left). */
   dx: number;
-  /** Vertical displacement from the pattern centre (positive = down, negative = up). */
+  /** Vertical displacement from the pattern centre (positive = up, negative = down). */
   dy: number;
 }
 
@@ -136,7 +136,7 @@ export interface ShotPatternResult {
 export interface ShotRecord {
   /** Board column (0-based) where the shot was fired. */
   x: number;
-  /** Board row (0-based) where the shot was fired. */
+  /** Board y coordinate (0-based, bottom → top) where the shot was fired. */
   y: number;
   /** `true` when the shot struck a ship cell. */
   hit: boolean;
