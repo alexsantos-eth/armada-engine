@@ -15,9 +15,21 @@ export type EmptyBoxTextureConfig = {
    */
   tileHeight: number;
   /**
+   * Vertical extrusion in pixels for the isometric box sides.
+   */
+  boxHeight?: number;
+  /**
    * The fill color of the box texture, specified as a hexadecimal number (e.g., 0xffffff for white). This color will be used to fill the interior of the box when the texture is generated.
    */
   fillColor?: number;
+  /**
+   * Fill color for the left visible side of the extruded box.
+   */
+  leftFillColor?: number;
+  /**
+   * Fill color for the right visible side of the extruded box.
+   */
+  rightFillColor?: number;
   /**
    * The alpha value for the fill color, determining the transparency of the box texture (0-1).
    */

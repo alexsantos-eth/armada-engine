@@ -13,11 +13,11 @@ export type IsoProjectionConfig = {
    */
   tileHeight: number;
   /**
-   * X coordinate of the isometric origin (where box (0,0) is projected) in screen pixels
+   * X coordinate of the isometric origin (bottom corner where box (0,0) is projected) in screen pixels
    */
   originX: number;
   /**
-   * Y coordinate of the isometric origin (where box (0,0) is projected) in screen pixels
+   * Y coordinate of the isometric origin (bottom corner where box (0,0) is projected) in screen pixels
    */
   originY: number;
 };
