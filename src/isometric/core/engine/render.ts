@@ -258,11 +258,15 @@ export function renderEmptyBox(
   scene: Phaser.Scene,
   box: IsoScreenBox,
   textureKey: string,
+  tint?: number,
 ): Phaser.GameObjects.Image {
   const image = scene.add.image(box.screenX, box.screenY, textureKey);
   image.setOrigin(0.5, textureOriginYByKey.get(textureKey) ?? 0.5);
   // Keep sorting anchored to floor contact and add a tiny tie-breaker for diagonals.
   image.setDepth(box.baseScreenY + box.box.elevation * 0.001 + box.x * 0.0001);
+  if (tint !== undefined) {
+    image.setTint(tint);
+  }
 
   return image;
 }
