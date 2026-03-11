@@ -9,6 +9,7 @@ export {
   ensureEmptyBoxTexture,
   renderEmptyBox,
   renderEmptyBoxLayer,
+  ensureFlatDiamondTexture,
 } from "./render";
 
 export { generatePerlinTerrain } from "./terrain";

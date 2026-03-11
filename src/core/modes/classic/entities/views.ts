@@ -14,9 +14,30 @@ export const StandardBoardView = Object.freeze({
   enemySide: ["enemyObstacles", "playerShots", "collectedItems"] as const,
 } satisfies BoardViewConfig);
 
-export const BoardViewSet = createEntitySet<BoardViewConfig>([
-  StandardBoardView,
-], StandardBoardView.title);
+export const DebugBoardView = Object.freeze({
+  id: "debug",
+  title: "DebugBoardView",
+  description: "Debug view: all entities visible on both sides",
+  width: BOARD_DEFAULT_WIDTH,
+  height: BOARD_DEFAULT_HEIGHT,
+  playerSide: [
+    "playerShips",
+    "enemyShots",
+    "enemyObstacles",
+    "collectedItems",
+  ] as const,
+  enemySide: [
+    "enemyObstacles",
+    "playerShots",
+    "collectedItems",
+    "playerShips",
+  ] as const,
+} satisfies BoardViewConfig);
+
+export const BoardViewSet = createEntitySet<BoardViewConfig>(
+  [StandardBoardView, DebugBoardView],
+  StandardBoardView.title,
+);
 
 export const BOARD_VIEWS = BoardViewSet.map;
 export const getBoardView = BoardViewSet.getById;

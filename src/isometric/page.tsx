@@ -3,20 +3,22 @@ import Phaser from "phaser";
 import {
   Box,
   ensureEmptyBoxTexture,
+  ensureFlatDiamondTexture,
   generatePerlinTerrain,
   getIsometricBounds,
   projectBoxesToIsometric,
   renderEmptyBox,
 } from "./core/engine";
 
-const TILE_WIDTH = 20;
+const TILE_WIDTH = Math.min(window.innerWidth * 0.2, 100);
 const TILE_HEIGHT = TILE_WIDTH / 2;
 const BOX_HEIGHT = TILE_WIDTH / 3;
-const TERRAIN_WIDTH = 50;
-const TERRAIN_HEIGHT = 50;
+const TERRAIN_WIDTH = 30;
+const TERRAIN_HEIGHT = 30;
 
 // Texture colors based on elevation
 const DEEP_WATER_COLORS = [
+  0x062f4a, // -4 or lower
   0x0a3d5c, // -3 or lower
   0x0d4d73, // -2
   0x115d8a, // -1
@@ -46,33 +48,25 @@ function fillElevations(boxes: Box[], minElevation: number): Box[] {
     const targetLevel = Math.floor(box.elevation);
     const boxData = box.getData();
 
-    // Positive elevations build a solid column from ground (0) upward.
-    if (targetLevel > 0) {
-      return Array.from({ length: targetLevel + 1 }, (_, index) =>
+    // Always build a solid column from the global minimum up to the target level.
+    if (targetLevel < minElevation) {
+      return [
         new Box(box.x, box.y, {
           ...boxData,
-          elevation: index,
+          elevation: targetLevel,
         }),
-      );
+      ];
     }
 
-    // Negative elevations and level 0 build a solid column from minElevation upward.
-    if (targetLevel <= 0) {
-      const depth = targetLevel - minElevation + 1;
-      return Array.from({ length: depth }, (_, index) =>
+    const depth = targetLevel - minElevation + 1;
+    return Array.from(
+      { length: depth },
+      (_, index) =>
         new Box(box.x, box.y, {
           ...boxData,
           elevation: minElevation + index,
         }),
-      );
-    }
-
-    return [
-      new Box(box.x, box.y, {
-        ...boxData,
-        elevation: 0,
-      }),
-    ];
+    );
   });
 }
 
@@ -140,23 +134,65 @@ class IsometricScene extends Phaser.Scene {
       rightFillColor: this.adjustBrightness(GRASS_COLOR, 0.7),
     });
 
+    // Create transparent blue water surface for elevation -1 tiles
+    const TRANSPARENT_WATER_COLOR = 0x1e88e5;
+    ensureFlatDiamondTexture(this, {
+      textureKey: "iso-tile-water-surface",
+      tileWidth: TILE_WIDTH,
+      tileHeight: TILE_HEIGHT,
+      fillColor: TRANSPARENT_WATER_COLOR,
+      fillAlpha: 0.4,
+    });
+
     const terrain = generatePerlinTerrain({
       width: TERRAIN_WIDTH,
       height: TERRAIN_HEIGHT,
       seed: Date.now(),
-      scale: 9,
-      octaves: 1,
+      scale: 5,
+      octaves: 0,
       persistence: 0.2,
-      lacunarity: 20,
+      lacunarity: 0,
       minElevation: -3,
-      maxElevation: 4,
+      maxElevation: 5,
     });
 
-    const manualBoxes = terrain.map(
-      (point) => new Box(point.x, point.y, { elevation: point.elevation }),
-    );
+    // Generate 30x30 terrain
+    const manualBoxes = terrain.map((row) => {
+      const box = new Box(row.x, row.y, { elevation: row.elevation });
+      return box;
+    });
 
-    const filledElevationBoxes = fillElevations(manualBoxes, -5);
+    // Force a centered 8x8 block:
+    // - default elevation 0
+    // - first row and first column elevation 1
+    const centerX = Math.floor(TERRAIN_WIDTH / 2);
+    const centerY = Math.floor(TERRAIN_HEIGHT / 2);
+    const centralBlockSize = 8;
+    const halfSize = Math.floor(centralBlockSize / 2);
+    const startX = centerX - halfSize;
+    const startY = centerY - halfSize;
+    const endX = startX + centralBlockSize;
+    const endY = startY + centralBlockSize;
+
+    manualBoxes.forEach((box) => {
+      const isInCenterBlock =
+        box.x >= startX && box.x < endX && box.y >= startY && box.y < endY;
+
+      if (!isInCenterBlock) {
+        return;
+      }
+
+      const isFirstRow = box.y === startY;
+      const isFirstColumn = box.x === startX;
+
+      if (isFirstRow || isFirstColumn) {
+        box.update({ elevation: 1 });
+      } else {
+        box.update({ elevation: 0 });
+      }
+    });
+
+    const filledElevationBoxes = fillElevations(manualBoxes, -1);
 
     const zeroBasedBoxes = projectBoxesToIsometric(filledElevationBoxes, {
       tileWidth: TILE_WIDTH,
@@ -183,6 +219,39 @@ class IsometricScene extends Phaser.Scene {
       const textureKey = getTextureKeyForElevation(box.box.elevation);
       renderEmptyBox(this, box, textureKey);
     });
+
+    // Find tiles with negative elevation and add transparent water surface at elevation 0
+    const maxElevationByTile = new Map<string, number>();
+    filledElevationBoxes.forEach((box) => {
+      const key = `${box.x},${box.y}`;
+      const currentMax = maxElevationByTile.get(key) ?? -Infinity;
+      maxElevationByTile.set(key, Math.max(currentMax, box.elevation));
+    });
+
+    const waterSurfaceBoxes: Box[] = [];
+    maxElevationByTile.forEach((maxElevation, key) => {
+      if (maxElevation < 0) {
+        const [x, y] = key.split(",").map(Number);
+        waterSurfaceBoxes.push(
+          new Box(x, y, {
+            elevation: 0,
+          }),
+        );
+      }
+    });
+
+    // Project and render the transparent water surface boxes
+    const projectedWaterSurface = projectBoxesToIsometric(waterSurfaceBoxes, {
+      tileWidth: TILE_WIDTH,
+      tileHeight: TILE_HEIGHT,
+      elevationStep: BOX_HEIGHT,
+      originX: this.scale.width / 2 - layoutCenterX,
+      originY: this.scale.height / 2 - layoutCenterY,
+    });
+
+    projectedWaterSurface.forEach((box) => {
+      renderEmptyBox(this, box, "iso-tile-water-surface");
+    });
   }
 }
 
@@ -196,8 +265,8 @@ const IsometricWorld = () => {
 
     const game = new Phaser.Game({
       type: Phaser.AUTO,
-      width: 920,
-      height: 640,
+      width: window.innerWidth,
+      height: window.innerHeight,
       parent: containerRef.current,
       backgroundColor: "#111111",
       scene: IsometricScene,
@@ -215,7 +284,6 @@ const IsometricWorld = () => {
         minHeight: "100dvh",
         display: "grid",
         placeItems: "center",
-        padding: "1rem",
         boxSizing: "border-box",
         background:
           "radial-gradient(circle at 50% 20%, #232323 0%, #0b0b0b 65%)",
@@ -224,7 +292,8 @@ const IsometricWorld = () => {
       <div
         ref={containerRef}
         style={{
-          width: "min(920px, 100%)",
+          width: "100%",
+          height: "100%",
           overflow: "hidden",
           borderRadius: "16px",
           border: "1px solid #2f2f2f",

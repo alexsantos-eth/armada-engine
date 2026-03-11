@@ -221,9 +221,6 @@ export class GameInitializer implements IGameSetupProvider {
       this.gameMode,
     );
 
-
-    debugger;
-
     const playerShotPatterns = generateShotPatterns(this.config, this.gameMode);
     const enemyShotPatterns = generateShotPatterns(this.config, this.gameMode);
 

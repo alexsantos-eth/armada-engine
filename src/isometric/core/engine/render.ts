@@ -45,7 +45,6 @@ export function ensureEmptyBoxTexture(
   const tileGraphics = scene.add.graphics({ x: 0, y: 0 });
   tileGraphics.lineStyle(strokeWidth, strokeColor, strokeAlpha);
 
-  // Draw side faces first so the top face remains visually on top.
   tileGraphics.fillStyle(leftFillColor, fillAlpha);
   tileGraphics.beginPath();
   tileGraphics.moveTo(0, leftY);
@@ -100,4 +99,53 @@ export function renderEmptyBoxLayer(
   textureKey: string,
 ): Phaser.GameObjects.Image[] {
   return boxes.map((box) => renderEmptyBox(scene, box, textureKey));
+}
+
+export function ensureFlatDiamondTexture(
+  scene: Phaser.Scene,
+  config: {
+    textureKey: string;
+    tileWidth: number;
+    tileHeight: number;
+    fillColor?: number;
+    fillAlpha?: number;
+    strokeColor?: number;
+    strokeAlpha?: number;
+    strokeWidth?: number;
+  },
+): void {
+  const {
+    textureKey,
+    tileWidth,
+    tileHeight,
+    fillColor = DEFAULT_FILL_COLOR,
+    fillAlpha = 1,
+    strokeColor = DEFAULT_STROKE_COLOR,
+    strokeAlpha = 0,
+    strokeWidth = 2,
+  } = config;
+
+  if (scene.textures.exists(textureKey)) {
+    if (!textureOriginYByKey.has(textureKey)) {
+      textureOriginYByKey.set(textureKey, 0.5);
+    }
+    return;
+  }
+
+  const tileGraphics = scene.add.graphics({ x: 0, y: 0 });
+  tileGraphics.lineStyle(strokeWidth, strokeColor, strokeAlpha);
+
+  tileGraphics.fillStyle(fillColor, fillAlpha);
+  tileGraphics.beginPath();
+  tileGraphics.moveTo(tileWidth / 2, 0); 
+  tileGraphics.lineTo(tileWidth, tileHeight / 2); 
+  tileGraphics.lineTo(tileWidth / 2, tileHeight); 
+  tileGraphics.lineTo(0, tileHeight / 2); 
+  tileGraphics.closePath();
+  tileGraphics.fillPath();
+  tileGraphics.strokePath();
+  tileGraphics.generateTexture(textureKey, tileWidth, tileHeight);
+  tileGraphics.destroy();
+
+  textureOriginYByKey.set(textureKey, 0.5);
 }
