@@ -23,9 +23,6 @@ export function ensureEmptyBoxTexture(
     leftFillColor = DEFAULT_LEFT_FILL_COLOR,
     rightFillColor = DEFAULT_RIGHT_FILL_COLOR,
     fillAlpha = 1,
-    strokeColor = DEFAULT_STROKE_COLOR,
-    strokeAlpha = 0,
-    strokeWidth = 2,
   } = config;
 
   if (scene.textures.exists(textureKey)) {
@@ -37,19 +34,21 @@ export function ensureEmptyBoxTexture(
 
   const textureHeight = tileHeight + boxHeight;
   const topY = 0;
-  const rightY = tileHeight / 2;
-  const bottomY = tileHeight;
-  const leftY = tileHeight / 2;
-  const downY = boxHeight;
+
+
+  const halfWidth = Math.round(tileWidth / 2);
+const rightY = Math.round(tileHeight / 2);
+const bottomY = tileHeight;
+const leftY = Math.round(tileHeight / 2);
+const downY = boxHeight;
 
   const tileGraphics = scene.add.graphics({ x: 0, y: 0 });
-  tileGraphics.lineStyle(strokeWidth, strokeColor, strokeAlpha);
 
   tileGraphics.fillStyle(leftFillColor, fillAlpha);
   tileGraphics.beginPath();
   tileGraphics.moveTo(0, leftY);
-  tileGraphics.lineTo(tileWidth / 2, bottomY);
-  tileGraphics.lineTo(tileWidth / 2, bottomY + downY);
+  tileGraphics.lineTo(halfWidth, bottomY);
+  tileGraphics.lineTo(halfWidth, bottomY + downY);
   tileGraphics.lineTo(0, leftY + downY);
   tileGraphics.closePath();
   tileGraphics.fillPath();
@@ -58,8 +57,8 @@ export function ensureEmptyBoxTexture(
   tileGraphics.fillStyle(rightFillColor, fillAlpha);
   tileGraphics.beginPath();
   tileGraphics.moveTo(tileWidth, rightY);
-  tileGraphics.lineTo(tileWidth / 2, bottomY);
-  tileGraphics.lineTo(tileWidth / 2, bottomY + downY);
+  tileGraphics.lineTo(halfWidth, bottomY);
+  tileGraphics.lineTo(halfWidth, bottomY + downY );
   tileGraphics.lineTo(tileWidth, rightY + downY);
   tileGraphics.closePath();
   tileGraphics.fillPath();
@@ -67,10 +66,10 @@ export function ensureEmptyBoxTexture(
 
   tileGraphics.fillStyle(fillColor, fillAlpha);
   tileGraphics.beginPath();
-  tileGraphics.moveTo(tileWidth / 2, topY);
-  tileGraphics.lineTo(tileWidth, rightY);
-  tileGraphics.lineTo(tileWidth / 2, bottomY);
-  tileGraphics.lineTo(0, leftY);
+  tileGraphics.moveTo(halfWidth, topY);
+  tileGraphics.lineTo(tileWidth + 0.5, rightY);
+  tileGraphics.lineTo(halfWidth, bottomY + 0.5);
+  tileGraphics.lineTo(-0.5, leftY);
   tileGraphics.closePath();
   tileGraphics.fillPath();
   tileGraphics.strokePath();
