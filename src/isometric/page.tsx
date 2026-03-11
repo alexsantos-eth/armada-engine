@@ -4,17 +4,19 @@ import {
   Box,
   ensureEmptyBoxTexture,
   ensureFlatDiamondTexture,
+  ensureTexturedBoxTexture,
   generatePerlinTerrain,
   getIsometricBounds,
   projectBoxesToIsometric,
   renderEmptyBox,
 } from "./core/engine";
 
-const TILE_WIDTH = Math.min(window.innerWidth * 0.2, 100);
+const TILE_WIDTH = Math.min(window.innerWidth * 0.2, 120);
+
 const TILE_HEIGHT = TILE_WIDTH / 2;
 const BOX_HEIGHT = TILE_WIDTH / 3;
-const TERRAIN_WIDTH = 30;
-const TERRAIN_HEIGHT = 30;
+const TERRAIN_WIDTH = 50;
+const TERRAIN_HEIGHT = 50;
 
 // Texture colors based on elevation
 const DEEP_WATER_COLORS = [
@@ -26,8 +28,22 @@ const DEEP_WATER_COLORS = [
 const WATER_COLOR = 0x1e88e5; // elevation 0
 const SAND_COLOR = 0xdeb887; // elevation 1
 const GRASS_COLOR = 0x4caf50; // elevation >= 2
+const TEXTURED_GROUND_KEY = "iso-tile-ground-textured";
+const TEXTURED_GRASS_KEY = "iso-tile-grass-textured";
 
-function getTextureKeyForElevation(elevation: number): string {
+const GROUND_TOP_TEXTURE_KEY = "iso-ground-top";
+const GROUND_LEFT_TEXTURE_KEY = "iso-ground-left";
+const GROUND_RIGHT_TEXTURE_KEY = "iso-ground-right";
+
+const GRASS_TOP_TEXTURE_KEY = "iso-grass-top";
+const GRASS_LEFT_TEXTURE_KEY = "iso-grass-left";
+const GRASS_RIGHT_TEXTURE_KEY = "iso-grass-right";
+
+function getTextureKeyForElevation(
+  elevation: number,
+  useTexturedGround: boolean,
+  useTexturedGrass: boolean,
+): string {
   if (elevation < 0) {
     // Deep water - darker as it goes deeper (invert index)
     const depth = Math.abs(elevation);
@@ -38,6 +54,10 @@ function getTextureKeyForElevation(elevation: number): string {
     return "iso-tile-water";
   } else if (elevation === 1) {
     return "iso-tile-sand";
+  } else if (elevation === 2 && useTexturedGround) {
+    return TEXTURED_GROUND_KEY;
+  } else if (elevation > 2 && useTexturedGrass) {
+    return TEXTURED_GRASS_KEY;
   } else {
     return "iso-tile-grass";
   }
@@ -73,6 +93,16 @@ function fillElevations(boxes: Box[], minElevation: number): Box[] {
 class IsometricScene extends Phaser.Scene {
   constructor() {
     super("isometric-scene");
+  }
+
+  preload() {
+    this.load.image(GROUND_TOP_TEXTURE_KEY, "/assets/ground/top.png");
+    this.load.image(GROUND_LEFT_TEXTURE_KEY, "/assets/ground/left.png");
+    this.load.image(GROUND_RIGHT_TEXTURE_KEY, "/assets/ground/right.png");
+
+    this.load.image(GRASS_TOP_TEXTURE_KEY, "/assets/grass/top.png");
+    this.load.image(GRASS_LEFT_TEXTURE_KEY, "/assets/grass/left.png");
+    this.load.image(GRASS_RIGHT_TEXTURE_KEY, "/assets/grass/right.png");
   }
 
   adjustBrightness(color: number, factor: number): number {
@@ -134,6 +164,45 @@ class IsometricScene extends Phaser.Scene {
       rightFillColor: this.adjustBrightness(GRASS_COLOR, 0.7),
     });
 
+    const hasGroundFaceTextures =
+      this.textures.exists(GROUND_TOP_TEXTURE_KEY) &&
+      this.textures.exists(GROUND_LEFT_TEXTURE_KEY) &&
+      this.textures.exists(GROUND_RIGHT_TEXTURE_KEY);
+
+    if (hasGroundFaceTextures) {
+      ensureTexturedBoxTexture(this, {
+        textureKey: TEXTURED_GROUND_KEY,
+        tileWidth: TILE_WIDTH,
+        tileHeight: TILE_HEIGHT,
+        boxHeight: BOX_HEIGHT,
+        topTextureKey: GROUND_TOP_TEXTURE_KEY,
+        leftTextureKey: GROUND_LEFT_TEXTURE_KEY,
+        rightTextureKey: GROUND_RIGHT_TEXTURE_KEY,
+           topIsPreformed: true,
+      });
+    }
+
+    const hasGrassFaceTextures =
+      this.textures.exists(GRASS_TOP_TEXTURE_KEY) &&
+      this.textures.exists(GRASS_LEFT_TEXTURE_KEY) &&
+      this.textures.exists(GRASS_RIGHT_TEXTURE_KEY);
+
+    if (hasGrassFaceTextures) {
+      ensureTexturedBoxTexture(this, {
+        textureKey: TEXTURED_GRASS_KEY,
+        tileWidth: TILE_WIDTH,
+        tileHeight: TILE_HEIGHT,
+        boxHeight: BOX_HEIGHT,
+        topTextureKey: GRASS_TOP_TEXTURE_KEY,
+        leftTextureKey: GRASS_LEFT_TEXTURE_KEY,
+        rightTextureKey: GRASS_RIGHT_TEXTURE_KEY,
+        topIsPreformed: true,
+      });
+    }
+
+    const canUseTexturedGround = this.textures.exists(TEXTURED_GROUND_KEY);
+    const canUseTexturedGrass = this.textures.exists(TEXTURED_GRASS_KEY);
+
     // Create transparent blue water surface for elevation -1 tiles
     const TRANSPARENT_WATER_COLOR = 0x1e88e5;
     ensureFlatDiamondTexture(this, {
@@ -148,12 +217,12 @@ class IsometricScene extends Phaser.Scene {
       width: TERRAIN_WIDTH,
       height: TERRAIN_HEIGHT,
       seed: Date.now(),
-      scale: 5,
+      scale: 12,
       octaves: 0,
-      persistence: 0.2,
+      persistence: 0.9,
       lacunarity: 0,
       minElevation: -3,
-      maxElevation: 5,
+      maxElevation: 4,
     });
 
     // Generate 30x30 terrain
@@ -216,7 +285,11 @@ class IsometricScene extends Phaser.Scene {
 
     // Render each box with its appropriate texture based on elevation
     centeredBoxes.forEach((box) => {
-      const textureKey = getTextureKeyForElevation(box.box.elevation);
+      const textureKey = getTextureKeyForElevation(
+        box.box.elevation,
+        canUseTexturedGround,
+        canUseTexturedGrass,
+      );
       renderEmptyBox(this, box, textureKey);
     });
 

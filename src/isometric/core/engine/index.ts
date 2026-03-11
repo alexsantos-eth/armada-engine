@@ -7,6 +7,7 @@ export { Box } from "./entities";
 
 export {
   ensureEmptyBoxTexture,
+  ensureTexturedBoxTexture,
   renderEmptyBox,
   renderEmptyBoxLayer,
   ensureFlatDiamondTexture,
@@ -24,4 +25,7 @@ export type { BoxData, BoxMetadata, BoxType } from "../types/entities";
 
 export type { PerlinTerrainOptions, TerrainPoint } from "../types/terrain";
 
-export type { EmptyBoxTextureConfig } from "../types/render";
+export type {
+  EmptyBoxTextureConfig,
+  TexturedBoxTextureConfig,
+} from "../types/render";

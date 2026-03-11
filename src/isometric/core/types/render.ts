@@ -47,3 +47,18 @@ export type EmptyBoxTextureConfig = {
    */
   strokeWidth?: number;
 };
+
+export type TexturedBoxTextureConfig = {
+  textureKey: string;
+  tileWidth: number;
+  tileHeight: number;
+  boxHeight?: number;
+  topTextureKey: string;
+  leftTextureKey: string;
+  rightTextureKey: string;
+  /** Set true when the top texture is already shaped as an isometric diamond — skips affine projection. */
+  topIsPreformed?: boolean;
+  topRotationDegrees?: number;
+  leftRotationDegrees?: number;
+  rightRotationDegrees?: number;
+};
