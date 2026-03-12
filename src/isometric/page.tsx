@@ -408,7 +408,8 @@ const IsometricWorld = () => {
       height: window.innerHeight,
       parent: containerRef.current,
       backgroundColor: "#111111",
-
+      pixelArt: true,
+      roundPixels: true,
       scene: IsometricScene,
     });
 
