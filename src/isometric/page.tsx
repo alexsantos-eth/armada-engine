@@ -272,7 +272,7 @@ class IsometricScene extends Phaser.Scene {
       octaves: 0,
       persistence: 0.9,
       lacunarity: 0,
-      minElevation:1,
+      minElevation: 1,
       maxElevation: 3,
     });
 
@@ -432,7 +432,7 @@ class IsometricScene extends Phaser.Scene {
       });
 
     // this.cameras.main.filters.external?.addColorMatrix()?.colorMatrix.brightness(0.9, false);
-    // this.cameras.main.filters.external?.addTiltShift(0.23, 3.0, 0);
+    this.cameras.main.filters.external?.addTiltShift(0.23, 3.0, 0);
   }
 }
 
@@ -451,6 +451,12 @@ const IsometricWorld = () => {
       parent: containerRef.current,
       backgroundColor: "#111111",
       scene: IsometricScene,
+      antialias: true,
+      powerPreference: "high-performance",
+      fps: {
+        target: 30,
+        forceSetTimeOut: true,
+      },
     });
 
     return () => {
