@@ -16,7 +16,7 @@ const DEVICE_CORES = navigator.hardwareConcurrency ?? 4;
 const DEVICE_MEMORY_GB = (
   navigator as Navigator & { deviceMemory?: number }
 ).deviceMemory ?? 4;
-const LOW_END_DEVICE = DEVICE_CORES <= 4 || DEVICE_MEMORY_GB <= 4;
+const LOW_END_DEVICE = false;
 
 const WIDTH = Math.min(window.innerWidth, LOW_END_DEVICE ? 420 : 500);
 const TILE_WIDTH = Math.min(WIDTH * 0.2, LOW_END_DEVICE ? 84 : 100);
@@ -518,7 +518,6 @@ const IsometricWorld = () => {
           width: "100%",
           height: "100%",
           overflow: "hidden",
-          borderRadius: "32px",
         }}
       />
     </section>
