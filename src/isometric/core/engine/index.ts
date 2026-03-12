@@ -8,6 +8,7 @@ export { Box } from "./entities";
 export {
   ensureEmptyBoxTexture,
   ensureTexturedBoxTexture,
+  getTextureOriginY,
   renderEmptyBox,
   renderBoxTopTint,
   renderEmptyBoxLayer,

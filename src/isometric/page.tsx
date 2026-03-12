@@ -58,6 +58,44 @@ const VIEW_CULL_MARGIN = 120;
 const TOP_TINT_OVERLAY_LIMIT = 1800;
 const ENABLE_TOP_TINT_OVERLAY = false;
 
+let cachedTerrain:
+  | {
+      width: number;
+      height: number;
+      points: ReturnType<typeof generatePerlinTerrain>;
+    }
+  | null = null;
+
+function getOrCreateTerrain() {
+  if (
+    cachedTerrain &&
+    cachedTerrain.width === TERRAIN_WIDTH &&
+    cachedTerrain.height === TERRAIN_HEIGHT
+  ) {
+    return cachedTerrain.points;
+  }
+
+  const points = generatePerlinTerrain({
+    width: TERRAIN_WIDTH,
+    height: TERRAIN_HEIGHT,
+    seed: Date.now(),
+    scale: 12,
+    octaves: 0,
+    persistence: 0.9,
+    lacunarity: 0,
+    minElevation: 1,
+    maxElevation: 3,
+  });
+
+  cachedTerrain = {
+    width: TERRAIN_WIDTH,
+    height: TERRAIN_HEIGHT,
+    points,
+  };
+
+  return points;
+}
+
 function getTextureKeyForElevation(
   elevation: number,
   forceGroundTexture: boolean,
@@ -272,17 +310,7 @@ class IsometricScene extends Phaser.Scene {
       fillAlpha: 1,
     });
 
-    const terrain = generatePerlinTerrain({
-      width: TERRAIN_WIDTH,
-      height: TERRAIN_HEIGHT,
-      seed: Date.now(),
-      scale: 12,
-      octaves: 0,
-      persistence: 0.9,
-      lacunarity: 0,
-      minElevation: 1,
-      maxElevation: 3,
-    });
+    const terrain = getOrCreateTerrain();
 
     // Generate 30x30 terrain
     const manualBoxes = terrain.map((row) => {
@@ -475,7 +503,7 @@ const IsometricWorld = () => {
     <section
       style={{
         width: "100%",
-        maxWidth: "500px",
+        maxWidth: WIDTH,
         minHeight: "100dvh",
         display: "grid",
         placeItems: "center",

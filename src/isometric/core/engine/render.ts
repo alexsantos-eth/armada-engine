@@ -13,6 +13,10 @@ const DEFAULT_BOX_HEIGHT = 28;
 
 const textureOriginYByKey = new Map<string, number>();
 
+export function getTextureOriginY(textureKey: string): number | undefined {
+  return textureOriginYByKey.get(textureKey);
+}
+
 export function ensureEmptyBoxTexture(
   scene: Phaser.Scene,
   config: EmptyBoxTextureConfig,
