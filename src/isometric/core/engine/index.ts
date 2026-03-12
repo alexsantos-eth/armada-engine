@@ -9,11 +9,12 @@ export {
   ensureEmptyBoxTexture,
   ensureTexturedBoxTexture,
   renderEmptyBox,
+  renderBoxTopTint,
   renderEmptyBoxLayer,
   ensureFlatDiamondTexture,
 } from "./render";
 
-export { generatePerlinTerrain } from "./terrain";
+export { buildFilledElevationLevels, generatePerlinTerrain } from "./terrain";
 
 export type {
   IsoBounds,

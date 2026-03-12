@@ -24,6 +24,25 @@ function createSeededRandom(seed: number): () => number {
   };
 }
 
+export function buildFilledElevationLevels(
+  targetElevation: number,
+  minElevation: number,
+): Array<{ elevation: number; useGroundTexture: boolean }> {
+  const targetLevel = Math.floor(targetElevation);
+
+  if (targetLevel < minElevation) {
+    return [{ elevation: targetLevel, useGroundTexture: false }];
+  }
+
+  const depth = targetLevel - minElevation + 1;
+  const useGroundSupportTexture = targetLevel > 2;
+
+  return Array.from({ length: depth }, (_, index) => ({
+    elevation: minElevation + index,
+    useGroundTexture: useGroundSupportTexture && index < depth - 1,
+  }));
+}
+
 export function generatePerlinTerrain(
   options: PerlinTerrainOptions,
 ): TerrainPoint[] {

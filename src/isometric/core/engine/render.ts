@@ -1,4 +1,4 @@
-import type Phaser from "phaser";
+import Phaser from "phaser";
 import type { IsoScreenBox } from "../types/iso";
 import type {
   EmptyBoxTextureConfig,
@@ -269,6 +269,25 @@ export function renderEmptyBox(
   }
 
   return image;
+}
+
+export function renderBoxTopTint(
+  scene: Phaser.Scene,
+  box: IsoScreenBox,
+  textureKey: string,
+  tint: number,
+  alpha = 1,
+): Phaser.GameObjects.Image {
+  const overlay = scene.add.image(box.screenX, box.screenY, textureKey);
+  overlay.setOrigin(0.5, textureOriginYByKey.get(textureKey) ?? 0.5);
+  overlay.setDepth(
+    box.baseScreenY + box.box.elevation * 0.001 + box.x * 0.0001 + 0.00001,
+  );
+  overlay.setTint(tint);
+  overlay.setAlpha(alpha);
+  overlay.setBlendMode(Phaser.BlendModes.MULTIPLY);
+
+  return overlay;
 }
 
 export function renderEmptyBoxLayer(

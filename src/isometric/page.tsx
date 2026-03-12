@@ -2,12 +2,14 @@ import { useEffect, useRef } from "preact/hooks";
 import Phaser from "phaser";
 import {
   Box,
+  buildFilledElevationLevels,
   ensureEmptyBoxTexture,
   ensureFlatDiamondTexture,
   ensureTexturedBoxTexture,
   generatePerlinTerrain,
   getIsometricBounds,
   projectBoxesToIsometric,
+  renderBoxTopTint,
   renderEmptyBox,
 } from "./core/engine";
 
@@ -25,8 +27,10 @@ const DEEP_WATER_COLORS = [
   0x0d4d73, // -2
   0x115d8a, // -1
 ];
+const GROUND_COLOR = 0x8d6e63; // support blocks and elevation 1
 const WATER_COLOR = 0x1e88e5; // elevation 0
 const GRASS_COLOR = 0x4caf50; // elevation >= 1
+const GROUND_TEXTURE_KEY = "iso-tile-ground";
 const TEXTURED_GROUND_KEY = "iso-tile-ground-textured";
 const TEXTURED_GRASS_KEY = "iso-tile-grass-textured";
 
@@ -42,13 +46,19 @@ const TEXTURED_WATER_KEY = "iso-tile-water-textured";
 const WATER_TOP_TEXTURE_KEY = "iso-water-top";
 const WATER_LEFT_TEXTURE_KEY = "iso-water-left";
 const WATER_RIGHT_TEXTURE_KEY = "iso-water-right";
+const TOP_TINT_TEXTURE_KEY = "iso-top-tint-overlay";
 
 function getTextureKeyForElevation(
   elevation: number,
+  forceGroundTexture: boolean,
   useTexturedGround: boolean,
   useTexturedGrass: boolean,
   useTexturedWater: boolean,
 ): string {
+  if (forceGroundTexture) {
+    return useTexturedGround ? TEXTURED_GROUND_KEY : GROUND_TEXTURE_KEY;
+  }
+
   if (elevation < 0) {
     // Deep water - darker as it goes deeper (invert index)
     const depth = Math.abs(elevation);
@@ -57,8 +67,8 @@ function getTextureKeyForElevation(
     return `iso-tile-deep-water-${colorIndex}`;
   } else if (elevation === 0) {
     return useTexturedWater ? TEXTURED_WATER_KEY : "iso-tile-water";
-  } else if (elevation === 1 && useTexturedGround) {
-    return TEXTURED_GROUND_KEY;
+  } else if (elevation === 1) {
+    return useTexturedGround ? TEXTURED_GROUND_KEY : GROUND_TEXTURE_KEY;
   } else if (elevation > 1 && useTexturedGrass) {
     return TEXTURED_GRASS_KEY;
   } else {
@@ -68,26 +78,17 @@ function getTextureKeyForElevation(
 
 function fillElevations(boxes: Box[], minElevation: number): Box[] {
   return boxes.flatMap((box) => {
-    const targetLevel = Math.floor(box.elevation);
     const boxData = box.getData();
 
-    // Always build a solid column from the global minimum up to the target level.
-    if (targetLevel < minElevation) {
-      return [
+    return buildFilledElevationLevels(box.elevation, minElevation).map(
+      ({ elevation, useGroundTexture }) =>
         new Box(box.x, box.y, {
           ...boxData,
-          elevation: targetLevel,
-        }),
-      ];
-    }
-
-    const depth = targetLevel - minElevation + 1;
-    return Array.from(
-      { length: depth },
-      (_, index) =>
-        new Box(box.x, box.y, {
-          ...boxData,
-          elevation: minElevation + index,
+          elevation,
+          metadata: {
+            ...boxData.metadata,
+            forceGroundTexture: useGroundTexture,
+          },
         }),
     );
   });
@@ -147,6 +148,16 @@ class IsometricScene extends Phaser.Scene {
       fillColor: WATER_COLOR,
       leftFillColor: this.adjustBrightness(WATER_COLOR, 0.85),
       rightFillColor: this.adjustBrightness(WATER_COLOR, 0.7),
+    });
+
+    ensureEmptyBoxTexture(this, {
+      textureKey: GROUND_TEXTURE_KEY,
+      tileWidth: TILE_WIDTH,
+      tileHeight: TILE_HEIGHT,
+      boxHeight: BOX_HEIGHT,
+      fillColor: GROUND_COLOR,
+      leftFillColor: this.adjustBrightness(GROUND_COLOR, 0.85),
+      rightFillColor: this.adjustBrightness(GROUND_COLOR, 0.7),
     });
 
     // Create grass texture (elevation >= 1)
@@ -229,6 +240,14 @@ class IsometricScene extends Phaser.Scene {
       fillAlpha: 0.4,
     });
 
+    ensureFlatDiamondTexture(this, {
+      textureKey: TOP_TINT_TEXTURE_KEY,
+      tileWidth: TILE_WIDTH,
+      tileHeight: TILE_HEIGHT,
+      fillColor: 0xffffff,
+      fillAlpha: 1,
+    });
+
     const terrain = generatePerlinTerrain({
       width: TERRAIN_WIDTH,
       height: TERRAIN_HEIGHT,
@@ -307,8 +326,10 @@ class IsometricScene extends Phaser.Scene {
 
     // Render each box with its appropriate texture based on elevation
     centeredBoxes.forEach((box) => {
+      const forceGroundTexture = box.box.metadata.forceGroundTexture === true;
       const textureKey = getTextureKeyForElevation(
         box.box.elevation,
+        forceGroundTexture,
         canUseTexturedGround,
         canUseTexturedGrass,
         canUseTexturedWater,
@@ -317,14 +338,18 @@ class IsometricScene extends Phaser.Scene {
       // Depth tint: blocks lower than the peak appear progressively darker.
       // ratio 1.0 = at peak elevation (no tint), ratio 0.0 = deepest (darkest).
       let tint: number | undefined;
-      if (elevationRange > 0) {
+      if (elevationRange > 1) {
         const ratio = (box.box.elevation - minElevation) / elevationRange;
         // Map ratio → [120, 255]: far below = channel 120 (~47%), at peak = 255 (no darkening).
-        const channel = Math.round(180 + ratio * (255 - 180));
+        const channel = Math.round(170 + ratio * (255 - 170));
         tint = (channel << 16) | (channel << 8) | channel;
       }
 
-      renderEmptyBox(this, box, textureKey, tint);
+      renderEmptyBox(this, box, textureKey);
+
+      if (tint !== undefined) {
+        renderBoxTopTint(this, box, TOP_TINT_TEXTURE_KEY, tint);
+      }
     });
 
     // Find tiles with negative elevation and add transparent water surface at elevation 0
