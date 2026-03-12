@@ -237,7 +237,7 @@ class IsometricScene extends Phaser.Scene {
       octaves: 0,
       persistence: 0.9,
       lacunarity: 0,
-      minElevation: 0,
+      minElevation:1,
       maxElevation: 3,
     });
 
