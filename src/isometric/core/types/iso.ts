@@ -55,25 +55,3 @@ export type IsoScreenBox = {
    */
   screenY: number;
 };
-
-/**
- * Bounds of the projected boxes on the screen, used for layout calculations like centering
- */
-export type IsoBounds = {
-  /**
-   * Minimum X coordinate among the projected boxes on the screen in pixels
-   */
-  minX: number;
-  /**
-   * Maximum X coordinate among the projected boxes on the screen in pixels
-   */
-  maxX: number;
-  /**
-   * Minimum Y coordinate among the projected boxes on the screen in pixels
-   */
-  minY: number;
-  /**
-   * Maximum Y coordinate among the projected boxes on the screen in pixels
-   */
-  maxY: number;
-};

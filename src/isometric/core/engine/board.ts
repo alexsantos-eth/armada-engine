@@ -1,5 +1,4 @@
 import type {
-  IsoBounds,
   IsoProjectionConfig,
   IsoScreenBox,
 } from "../types/iso";
@@ -24,29 +23,4 @@ export function projectBoxesToIsometric(
       screenY: baseScreenY - box.elevation * elevationStep,
     };
   });
-}
-
-export function getIsometricBounds(boxes: IsoScreenBox[]): IsoBounds {
-  if (boxes.length === 0) {
-    return {
-      minX: 0,
-      maxX: 0,
-      minY: 0,
-      maxY: 0,
-    };
-  }
-
-  let minX = Number.POSITIVE_INFINITY;
-  let maxX = Number.NEGATIVE_INFINITY;
-  let minY = Number.POSITIVE_INFINITY;
-  let maxY = Number.NEGATIVE_INFINITY;
-
-  for (const box of boxes) {
-    minX = Math.min(minX, box.screenX);
-    maxX = Math.max(maxX, box.screenX);
-    minY = Math.min(minY, box.screenY);
-    maxY = Math.max(maxY, box.screenY);
-  }
-
-  return { minX, maxX, minY, maxY };
 }

@@ -1,5 +1,6 @@
-import {createNoise2D} from "simplex-noise";
+import { createNoise2D } from "simplex-noise";
 import type { PerlinTerrainOptions, TerrainPoint } from "../types/terrain";
+import { TERRAIN_HEIGHT, TERRAIN_WIDTH } from "./constants";
 
 const DEFAULT_SCALE = 9;
 const DEFAULT_OCTAVES = 4;
@@ -24,25 +25,6 @@ function createSeededRandom(seed: number): () => number {
   };
 }
 
-export function buildFilledElevationLevels(
-  targetElevation: number,
-  minElevation: number,
-): Array<{ elevation: number; useGroundTexture: boolean }> {
-  const targetLevel = Math.floor(targetElevation);
-
-  if (targetLevel < minElevation) {
-    return [{ elevation: targetLevel, useGroundTexture: false }];
-  }
-
-  const depth = targetLevel - minElevation + 1;
-  const useGroundSupportTexture = targetLevel > 2;
-
-  return Array.from({ length: depth }, (_, index) => ({
-    elevation: minElevation + index,
-    useGroundTexture: useGroundSupportTexture && index < depth - 1,
-  }));
-}
-
 export function generatePerlinTerrain(
   options: PerlinTerrainOptions,
 ): TerrainPoint[] {
@@ -59,13 +41,16 @@ export function generatePerlinTerrain(
   const lacunarity = options.lacunarity ?? DEFAULT_LACUNARITY;
   const seed = options.seed ?? 1337;
 
-  const minElevation = Math.floor(options.minElevation ?? DEFAULT_MIN_ELEVATION);
-  const maxElevation = Math.floor(options.maxElevation ?? DEFAULT_MAX_ELEVATION);
+  const minElevation = Math.floor(
+    options.minElevation ?? DEFAULT_MIN_ELEVATION,
+  );
+  const maxElevation = Math.floor(
+    options.maxElevation ?? DEFAULT_MAX_ELEVATION,
+  );
   const low = Math.min(minElevation, maxElevation);
   const high = Math.max(minElevation, maxElevation);
   const elevationRange = Math.max(0, high - low);
 
-  // Use seeded random to initialize SimplexNoise
   const random = createSeededRandom(seed);
   const simplex = createNoise2D(random);
 
@@ -76,7 +61,6 @@ export function generatePerlinTerrain(
       const sampleX = x / Math.max(0.0001, scale);
       const sampleY = y / Math.max(0.0001, scale);
 
-      // Fractal brownian motion with simplex noise
       let amplitude = 1;
       let frequency = 1;
       let noiseValue = 0;
@@ -92,13 +76,50 @@ export function generatePerlinTerrain(
         frequency *= lacunarity;
       }
 
-      const normalizedNoise = amplitudeSum === 0 ? 0 : noiseValue / amplitudeSum;
+      const normalizedNoise =
+        amplitudeSum === 0 ? 0 : noiseValue / amplitudeSum;
       const normalized = clamp((normalizedNoise + 1) / 2, 0, 1);
       const elevation = low + Math.round(normalized * elevationRange);
 
       points.push({ x, y, elevation });
     }
   }
+
+  return points;
+}
+
+let cachedTerrain: {
+  width: number;
+  height: number;
+  points: ReturnType<typeof generatePerlinTerrain>;
+} | null = null;
+
+export function getOrCreateTerrain() {
+  if (
+    cachedTerrain &&
+    cachedTerrain.width === TERRAIN_WIDTH &&
+    cachedTerrain.height === TERRAIN_HEIGHT
+  ) {
+    return cachedTerrain.points;
+  }
+
+  const points = generatePerlinTerrain({
+    width: TERRAIN_WIDTH,
+    height: TERRAIN_HEIGHT,
+    seed: Date.now(),
+    scale: 12,
+    octaves: 0,
+    persistence: 0.9,
+    lacunarity: 0,
+    minElevation: 1,
+    maxElevation: 3,
+  });
+
+  cachedTerrain = {
+    width: TERRAIN_WIDTH,
+    height: TERRAIN_HEIGHT,
+    points,
+  };
 
   return points;
 }
