@@ -17,8 +17,8 @@ const TILE_WIDTH = Math.min(window.innerWidth * 0.2, 100);
 
 const TILE_HEIGHT = TILE_WIDTH / 2;
 const BOX_HEIGHT = TILE_WIDTH / 3;
-const TERRAIN_WIDTH = 50;
-const TERRAIN_HEIGHT = 50;
+const TERRAIN_WIDTH = 25;
+const TERRAIN_HEIGHT = 25;
 
 // Texture colors based on elevation
 const DEEP_WATER_COLORS = [
@@ -431,8 +431,8 @@ class IsometricScene extends Phaser.Scene {
         renderEmptyBox(this, box, "iso-tile-water-surface");
       });
 
-    this.cameras.main.filters.external?.addColorMatrix()?.colorMatrix.brightness(0.9, false);
-    this.cameras.main.filters.external?.addTiltShift(0.23, 3.0, 0);
+    // this.cameras.main.filters.external?.addColorMatrix()?.colorMatrix.brightness(0.9, false);
+    // this.cameras.main.filters.external?.addTiltShift(0.23, 3.0, 0);
   }
 }
 
