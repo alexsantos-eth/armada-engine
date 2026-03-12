@@ -7,18 +7,19 @@ import {
   ensureFlatDiamondTexture,
   ensureTexturedBoxTexture,
   generatePerlinTerrain,
-  getIsometricBounds,
   projectBoxesToIsometric,
   renderBoxTopTint,
   renderEmptyBox,
 } from "./core/engine";
 
-const TILE_WIDTH = Math.min(window.innerWidth * 0.2, 100);
+const WIDTH = Math.min(window.innerWidth, 500)
+const TILE_WIDTH = Math.min(WIDTH * 0.2, 100);
 
 const TILE_HEIGHT = TILE_WIDTH / 2;
 const BOX_HEIGHT = TILE_WIDTH / 3;
-const TERRAIN_WIDTH = 25;
-const TERRAIN_HEIGHT = 25;
+const TERRAIN_WIDTH = 20;
+const TERRAIN_HEIGHT = 20;
+const SUPPORT_MIN_ELEVATION = 0;
 
 // Texture colors based on elevation
 const DEEP_WATER_COLORS = [
@@ -49,6 +50,7 @@ const WATER_RIGHT_TEXTURE_KEY = "iso-water-right";
 const TOP_TINT_TEXTURE_KEY = "iso-top-tint-overlay";
 const VIEW_CULL_MARGIN = 120;
 const TOP_TINT_OVERLAY_LIMIT = 1800;
+const ENABLE_TOP_TINT_OVERLAY = false;
 
 function getTextureKeyForElevation(
   elevation: number,
@@ -312,19 +314,20 @@ class IsometricScene extends Phaser.Scene {
       }
     });
 
-    const filledElevationBoxes = fillElevations(manualBoxes, -1);
+    const filledElevationBoxes = fillElevations(manualBoxes, SUPPORT_MIN_ELEVATION);
 
-    const zeroBasedBoxes = projectBoxesToIsometric(filledElevationBoxes, {
-      tileWidth: TILE_WIDTH,
-      tileHeight: TILE_HEIGHT,
-      elevationStep: BOX_HEIGHT,
-      originX: 0,
-      originY: 0,
-    });
-
-    const bounds = getIsometricBounds(zeroBasedBoxes);
-    const layoutCenterX = (bounds.minX + bounds.maxX) / 2;
-    const layoutCenterY = (bounds.minY + bounds.maxY) / 2;
+    // Compute isometric bounds directly from projection formula (avoids creating N intermediate objects)
+    let bMinX = Infinity, bMaxX = -Infinity, bMinY = Infinity, bMaxY = -Infinity;
+    for (const box of filledElevationBoxes) {
+      const sx = (box.x - box.y) * (TILE_WIDTH / 2);
+      const sy = -(box.x + box.y) * (TILE_HEIGHT / 2) - box.elevation * BOX_HEIGHT;
+      if (sx < bMinX) bMinX = sx;
+      if (sx > bMaxX) bMaxX = sx;
+      if (sy < bMinY) bMinY = sy;
+      if (sy > bMaxY) bMaxY = sy;
+    }
+    const layoutCenterX = (bMinX + bMaxX) / 2;
+    const layoutCenterY = (bMinY + bMaxY) / 2;
 
     const centeredBoxes = projectBoxesToIsometric(filledElevationBoxes, {
       tileWidth: TILE_WIDTH,
@@ -344,7 +347,7 @@ class IsometricScene extends Phaser.Scene {
     );
 
     const shouldRenderTopTintOverlay =
-      visibleBoxes.length <= TOP_TINT_OVERLAY_LIMIT;
+      ENABLE_TOP_TINT_OVERLAY && visibleBoxes.length <= TOP_TINT_OVERLAY_LIMIT;
 
     // Pre-compute elevation range for depth tinting.
     let minElevation = 0;
@@ -372,7 +375,6 @@ class IsometricScene extends Phaser.Scene {
       let tint: number | undefined;
       if (elevationRange > 1) {
         const ratio = (box.box.elevation - minElevation) / elevationRange;
-        // Map ratio → [120, 255]: far below = channel 120 (~47%), at peak = 255 (no darkening).
         const channel = Math.round(170 + ratio * (255 - 170));
         tint = (channel << 16) | (channel << 8) | channel;
       }
@@ -432,7 +434,7 @@ class IsometricScene extends Phaser.Scene {
       });
 
     // this.cameras.main.filters.external?.addColorMatrix()?.colorMatrix.brightness(0.9, false);
-    this.cameras.main.filters.external?.addTiltShift(0.23, 3.0, 0);
+    // this.cameras.main.filters.external?.addTiltShift(0.23, 3.0, 0);
   }
 }
 
@@ -446,17 +448,11 @@ const IsometricWorld = () => {
 
     const game = new Phaser.Game({
       type: Phaser.AUTO,
-      width: window.innerWidth,
+      width: WIDTH,
       height: window.innerHeight,
       parent: containerRef.current,
       backgroundColor: "#111111",
       scene: IsometricScene,
-      antialias: true,
-      powerPreference: "high-performance",
-      fps: {
-        target: 30,
-        forceSetTimeOut: true,
-      },
     });
 
     return () => {
@@ -468,12 +464,12 @@ const IsometricWorld = () => {
     <section
       style={{
         width: "100%",
+        maxWidth: "500px",
         minHeight: "100dvh",
         display: "grid",
         placeItems: "center",
+        margin: "0 auto",
         boxSizing: "border-box",
-        background:
-          "radial-gradient(circle at 50% 20%, #232323 0%, #0b0b0b 65%)",
       }}
     >
       <div
