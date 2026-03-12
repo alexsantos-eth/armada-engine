@@ -12,10 +12,7 @@ import {
   renderEmptyBox,
 } from "./core/engine";
 
-const DEVICE_CORES = navigator.hardwareConcurrency ?? 4;
-const DEVICE_MEMORY_GB = (
-  navigator as Navigator & { deviceMemory?: number }
-).deviceMemory ?? 4;
+
 const LOW_END_DEVICE = false;
 
 const WIDTH = Math.min(window.innerWidth, LOW_END_DEVICE ? 420 : 500);
