@@ -47,6 +47,8 @@ const WATER_TOP_TEXTURE_KEY = "iso-water-top";
 const WATER_LEFT_TEXTURE_KEY = "iso-water-left";
 const WATER_RIGHT_TEXTURE_KEY = "iso-water-right";
 const TOP_TINT_TEXTURE_KEY = "iso-top-tint-overlay";
+const VIEW_CULL_MARGIN = 120;
+const TOP_TINT_OVERLAY_LIMIT = 1800;
 
 function getTextureKeyForElevation(
   elevation: number,
@@ -92,6 +94,20 @@ function fillElevations(boxes: Box[], minElevation: number): Box[] {
         }),
     );
   });
+}
+
+function isWithinViewport(
+  x: number,
+  y: number,
+  viewportWidth: number,
+  viewportHeight: number,
+): boolean {
+  return (
+    x >= -VIEW_CULL_MARGIN &&
+    x <= viewportWidth + VIEW_CULL_MARGIN &&
+    y >= -VIEW_CULL_MARGIN &&
+    y <= viewportHeight + VIEW_CULL_MARGIN
+  );
 }
 
 class IsometricScene extends Phaser.Scene {
@@ -318,14 +334,30 @@ class IsometricScene extends Phaser.Scene {
       originY: this.scale.height / 2 - layoutCenterY,
     });
 
-    // Pre-compute elevation range for depth tinting
-    const elevations = centeredBoxes.map((b) => b.box.elevation);
-    const minElevation = Math.min(...elevations);
-    const maxElevation = Math.max(...elevations);
-    const elevationRange = maxElevation - minElevation;
+    const visibleBoxes = centeredBoxes.filter((box) =>
+      isWithinViewport(
+        box.screenX,
+        box.screenY,
+        this.scale.width,
+        this.scale.height,
+      ),
+    );
+
+    const shouldRenderTopTintOverlay =
+      visibleBoxes.length <= TOP_TINT_OVERLAY_LIMIT;
+
+    // Pre-compute elevation range for depth tinting.
+    let minElevation = 0;
+    let elevationRange = 0;
+    if (visibleBoxes.length > 0) {
+      const elevations = visibleBoxes.map((b) => b.box.elevation);
+      minElevation = Math.min(...elevations);
+      const maxElevation = Math.max(...elevations);
+      elevationRange = maxElevation - minElevation;
+    }
 
     // Render each box with its appropriate texture based on elevation
-    centeredBoxes.forEach((box) => {
+    visibleBoxes.forEach((box) => {
       const forceGroundTexture = box.box.metadata.forceGroundTexture === true;
       const textureKey = getTextureKeyForElevation(
         box.box.elevation,
@@ -345,9 +377,14 @@ class IsometricScene extends Phaser.Scene {
         tint = (channel << 16) | (channel << 8) | channel;
       }
 
-      renderEmptyBox(this, box, textureKey);
+      renderEmptyBox(
+        this,
+        box,
+        textureKey,
+        !shouldRenderTopTintOverlay ? tint : undefined,
+      );
 
-      if (tint !== undefined) {
+      if (tint !== undefined && shouldRenderTopTintOverlay) {
         renderBoxTopTint(this, box, TOP_TINT_TEXTURE_KEY, tint);
       }
     });
@@ -381,16 +418,21 @@ class IsometricScene extends Phaser.Scene {
       originY: this.scale.height / 2 - layoutCenterY,
     });
 
-    projectedWaterSurface.forEach((box) => {
-      renderEmptyBox(this, box, "iso-tile-water-surface");
-    });
+    projectedWaterSurface
+      .filter((box) =>
+        isWithinViewport(
+          box.screenX,
+          box.screenY,
+          this.scale.width,
+          this.scale.height,
+        ),
+      )
+      .forEach((box) => {
+        renderEmptyBox(this, box, "iso-tile-water-surface");
+      });
 
-    const camera = this.cameras.main;
-
-    const fx = camera.postFX?.addColorMatrix();
-    fx?.brightness(0.9, false);
-
-    camera.postFX?.addTiltShift(0.23, 3.0, 0);
+    this.cameras.main.filters.external?.addColorMatrix()?.colorMatrix.brightness(0.9, false);
+    this.cameras.main.filters.external?.addTiltShift(0.23, 3.0, 0);
   }
 }
 
