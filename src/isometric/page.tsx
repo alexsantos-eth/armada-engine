@@ -174,7 +174,7 @@ class IsometricScene extends Phaser.Scene {
         topTextureKey: GROUND_TOP_TEXTURE_KEY,
         leftTextureKey: GROUND_LEFT_TEXTURE_KEY,
         rightTextureKey: GROUND_RIGHT_TEXTURE_KEY,
-           topIsPreformed: true,
+        topIsPreformed: true,
       });
     }
 
@@ -237,7 +237,7 @@ class IsometricScene extends Phaser.Scene {
       octaves: 0,
       persistence: 0.9,
       lacunarity: 0,
-      minElevation:0,
+      minElevation: 0,
       maxElevation: 3,
     });
 
@@ -311,8 +311,8 @@ class IsometricScene extends Phaser.Scene {
         box.box.elevation,
         canUseTexturedGround,
         canUseTexturedGrass,
-      canUseTexturedWater,
-    );
+        canUseTexturedWater,
+      );
 
       // Depth tint: blocks lower than the peak appear progressively darker.
       // ratio 1.0 = at peak elevation (no tint), ratio 0.0 = deepest (darkest).
@@ -320,7 +320,7 @@ class IsometricScene extends Phaser.Scene {
       if (elevationRange > 0) {
         const ratio = (box.box.elevation - minElevation) / elevationRange;
         // Map ratio → [120, 255]: far below = channel 120 (~47%), at peak = 255 (no darkening).
-        const channel = Math.round(150 + ratio * (255 - 150));
+        const channel = Math.round(180 + ratio * (255 - 180));
         tint = (channel << 16) | (channel << 8) | channel;
       }
 
@@ -359,6 +359,13 @@ class IsometricScene extends Phaser.Scene {
     projectedWaterSurface.forEach((box) => {
       renderEmptyBox(this, box, "iso-tile-water-surface");
     });
+
+    const camera = this.cameras.main;
+
+    const fx = camera.postFX?.addColorMatrix();
+    fx?.brightness(0.9, false);
+
+    camera.postFX?.addTiltShift(0.23, 3.0, 0);
   }
 }
 
@@ -376,7 +383,7 @@ const IsometricWorld = () => {
       height: window.innerHeight,
       parent: containerRef.current,
       backgroundColor: "#111111",
- 
+
       scene: IsometricScene,
     });
 
