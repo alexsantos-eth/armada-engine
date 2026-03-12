@@ -12,13 +12,19 @@ import {
   renderEmptyBox,
 } from "./core/engine";
 
-const WIDTH = Math.min(window.innerWidth, 500)
-const TILE_WIDTH = Math.min(WIDTH * 0.2, 100);
+const DEVICE_CORES = navigator.hardwareConcurrency ?? 4;
+const DEVICE_MEMORY_GB = (
+  navigator as Navigator & { deviceMemory?: number }
+).deviceMemory ?? 4;
+const LOW_END_DEVICE = DEVICE_CORES <= 4 || DEVICE_MEMORY_GB <= 4;
+
+const WIDTH = Math.min(window.innerWidth, LOW_END_DEVICE ? 420 : 500);
+const TILE_WIDTH = Math.min(WIDTH * 0.2, LOW_END_DEVICE ? 84 : 100);
 
 const TILE_HEIGHT = TILE_WIDTH / 2;
 const BOX_HEIGHT = TILE_WIDTH / 3;
-const TERRAIN_WIDTH = 20;
-const TERRAIN_HEIGHT = 20;
+const TERRAIN_WIDTH = LOW_END_DEVICE ? 16 : 20;
+const TERRAIN_HEIGHT = LOW_END_DEVICE ? 16 : 20;
 const SUPPORT_MIN_ELEVATION = 0;
 
 // Texture colors based on elevation
@@ -289,7 +295,7 @@ class IsometricScene extends Phaser.Scene {
     // - first row and first column elevation 1
     const centerX = Math.floor(TERRAIN_WIDTH / 2);
     const centerY = Math.floor(TERRAIN_HEIGHT / 2);
-    const centralBlockSize = 8;
+    const centralBlockSize = Math.max(4, Math.min(8, TERRAIN_WIDTH - 2));
     const halfSize = Math.floor(centralBlockSize / 2);
     const startX = centerX - halfSize;
     const startY = centerY - halfSize;
@@ -434,7 +440,7 @@ class IsometricScene extends Phaser.Scene {
       });
 
     // this.cameras.main.filters.external?.addColorMatrix()?.colorMatrix.brightness(0.9, false);
-    // this.cameras.main.filters.external?.addTiltShift(0.23, 3.0, 0);
+    this.cameras.main.filters.external?.addTiltShift(0.23, 3.0, 0);
   }
 }
 
@@ -452,6 +458,11 @@ const IsometricWorld = () => {
       height: window.innerHeight,
       parent: containerRef.current,
       backgroundColor: "#111111",
+      render: {
+        antialias: !LOW_END_DEVICE,
+        roundPixels: true,
+        powerPreference: "high-performance",
+      },
       scene: IsometricScene,
     });
 
