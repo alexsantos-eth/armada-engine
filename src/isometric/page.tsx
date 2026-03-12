@@ -509,6 +509,7 @@ const IsometricWorld = () => {
         placeItems: "center",
         margin: "0 auto",
         boxSizing: "border-box",
+        overflow: 'hidden',
       }}
     >
       <div
@@ -517,9 +518,7 @@ const IsometricWorld = () => {
           width: "100%",
           height: "100%",
           overflow: "hidden",
-          borderRadius: "16px",
-          border: "1px solid #2f2f2f",
-          boxShadow: "0 20px 50px rgba(0, 0, 0, 0.35)",
+          borderRadius: "32px",
         }}
       />
     </section>
