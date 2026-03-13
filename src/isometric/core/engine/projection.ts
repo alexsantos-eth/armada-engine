@@ -57,6 +57,14 @@ export function fillElevations(boxes: Box[], minElevation: number): Box[] {
   return boxes.flatMap((box) => {
     const boxData = box.getData();
 
+    if (box.type === "SHIP") {
+      return [
+        new Box(box.x, box.y, {
+          ...boxData,
+        }),
+      ];
+    }
+
     return buildFilledElevationLevels(box.elevation, minElevation).map(
       ({ elevation, useGroundTexture }) =>
         new Box(box.x, box.y, {

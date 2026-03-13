@@ -3,7 +3,7 @@ import {
   renderEmptyBox,
 } from "./render";
 
-import { Box } from "./entities";
+import { addShipToBoxes, Box, Ship } from "./entities";
 
 import { projectBoxesToIsometric } from "./board";
 
@@ -25,6 +25,8 @@ import {
   WATER_TOP_TEXTURE_KEY,
   WATER_LEFT_TEXTURE_KEY,
   WATER_RIGHT_TEXTURE_KEY,
+  SHIP_SMALL_LEFT_TEXTURE_KEY,
+  SHIP_SMALL_RIGHT_TEXTURE_KEY,
   TILE_WIDTH,
   TILE_HEIGHT,
   BOX_HEIGHT,
@@ -56,6 +58,12 @@ class IsometricScene extends Phaser.Scene {
     this.load.image(WATER_TOP_TEXTURE_KEY, "/assets/water/top.png");
     this.load.image(WATER_LEFT_TEXTURE_KEY, "/assets/water/left.png");
     this.load.image(WATER_RIGHT_TEXTURE_KEY, "/assets/water/right.png");
+
+    this.load.image(SHIP_SMALL_LEFT_TEXTURE_KEY, "/assets/ship/small/left.png");
+    this.load.image(
+      SHIP_SMALL_RIGHT_TEXTURE_KEY,
+      "/assets/ship/small/right.png",
+    );
   }
 
   adjustBrightness(color: number, factor: number): number {
@@ -177,8 +185,17 @@ class IsometricScene extends Phaser.Scene {
       }
     });
 
-    const filledElevationBoxes = fillElevations(
+    const withShips = addShipToBoxes(
       manualBoxes,
+      new Ship("ship-01", centerX, centerY, "VERTICAL"),
+      {
+        elevation: 1,
+          allowOverlay: true,
+      },
+    );
+
+    const filledElevationBoxes = fillElevations(
+      withShips,
       SUPPORT_MIN_ELEVATION,
     );
 
@@ -227,7 +244,32 @@ class IsometricScene extends Phaser.Scene {
       elevationRange = maxElevation - minElevation;
     }
 
-    visibleBoxes.forEach((box) => {
+    const shipBoxesById = new Map<typeof withShips[number]["metadata"]["shipId"], typeof visibleBoxes>();
+
+    const terrainVisibleBoxes = visibleBoxes.filter((box) => {
+      if (box.box.type !== "SHIP") {
+        return true;
+      }
+
+      const shipId =
+        typeof box.box.metadata.shipId === "string"
+          ? box.box.metadata.shipId
+          : undefined;
+
+      if (!shipId) {
+        return false;
+      }
+
+      const existing = shipBoxesById.get(shipId) ?? [];
+      existing.push(box);
+      shipBoxesById.set(shipId, existing);
+
+      return false;
+    });
+
+    let maxTerrainDepth = -Infinity;
+
+    terrainVisibleBoxes.forEach((box) => {
       const forceGroundTexture = box.box.metadata.forceGroundTexture === true;
       const textureKey = getTextureKeyForElevation(
         box.box.elevation,
@@ -236,6 +278,10 @@ class IsometricScene extends Phaser.Scene {
         canUseTexturedGrass,
         canUseTexturedWater,
       );
+
+      const terrainDepth =
+        box.baseScreenY + box.box.elevation * 0.001 + box.x * 0.0001;
+      maxTerrainDepth = Math.max(maxTerrainDepth, terrainDepth);
 
       let tint: number | undefined;
 
@@ -246,6 +292,66 @@ class IsometricScene extends Phaser.Scene {
       }
 
       renderEmptyBox(this, box, textureKey, tint);
+    });
+
+    shipBoxesById.forEach((shipBoxes) => {
+      if (shipBoxes.length === 0) {
+        return;
+      }
+
+      const orientation =
+        shipBoxes[0].box.metadata.shipOrientation === "VERTICAL"
+          ? "VERTICAL"
+          : "HORIZONTAL";
+
+      const textureKey =
+        orientation === "VERTICAL"
+          ? SHIP_SMALL_LEFT_TEXTURE_KEY
+          : SHIP_SMALL_RIGHT_TEXTURE_KEY;
+
+      if (!this.textures.exists(textureKey)) {
+        return;
+      }
+
+      let sumX = 0;
+      let sumY = 0;
+      let maxDepthBase = -Infinity;
+
+      shipBoxes.forEach((box) => {
+        sumX += box.screenX;
+        sumY += box.screenY;
+        maxDepthBase = Math.max(maxDepthBase, box.baseScreenY);
+      });
+
+      const screenXs = shipBoxes.map((box) => box.screenX);
+      const minShipScreenX = Math.min(...screenXs);
+      const maxShipScreenX = Math.max(...screenXs);
+
+      // The ship sprite already includes isometric perspective.
+      // Fit width to occupied tiles and preserve source aspect ratio.
+      const targetShipWidth = maxShipScreenX - minShipScreenX + TILE_WIDTH;
+      const sourceFrame = this.textures.getFrame(textureKey, "__BASE");
+
+      if (!sourceFrame || sourceFrame.width <= 0) {
+        return;
+      }
+
+      const targetShipHeight =
+        targetShipWidth * (sourceFrame.height / sourceFrame.width);
+
+      const centerXScreen = Math.round(sumX / shipBoxes.length);
+      const centerYScreen = Math.round(sumY / shipBoxes.length);
+
+      const shipTexture = this.textures.get(textureKey);
+      shipTexture?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+
+      const shipImage = this.add.image(centerXScreen, centerYScreen, textureKey);
+      shipImage.setOrigin(0.5, 0.5);
+      shipImage.setDisplaySize(
+        Math.round(targetShipWidth),
+        Math.round(targetShipHeight),
+      );
+      shipImage.setDepth(maxTerrainDepth + 1 + maxDepthBase * 0.001);
     });
 
     if (ENABLE_POSTFX) {

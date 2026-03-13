@@ -1,6 +1,16 @@
-export type BoxType = "EMPTY";
+export type BoxType = "EMPTY" | "SHIP";
+
+export type ShipOrientation = "HORIZONTAL" | "VERTICAL";
+
+export type ShipDeckPart = "BOW" | "STERN";
 
 export type BoxMetadata = Record<string, unknown>;
+
+export type ShipDeckCoordinate = {
+  x: number;
+  y: number;
+  part: ShipDeckPart;
+};
 
 /**
  * Represents the data structure for a box entity in an isometric environment.
@@ -60,4 +70,13 @@ export interface IBox {
    * @param data A partial object containing any subset of the box's properties (type, walkability, elevation, metadata) that should be updated. Only the properties included in this object will be modified, while the rest will remain unchanged.
    */
   update(data: Partial<BoxData>): void;
+}
+
+export interface IShip {
+  readonly id: string;
+  readonly originX: number;
+  readonly originY: number;
+  readonly orientation: ShipOrientation;
+  readonly length: 2;
+  getOccupiedCoordinates(): ShipDeckCoordinate[];
 }

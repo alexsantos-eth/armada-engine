@@ -30,5 +30,8 @@ export const WATER_TOP_TEXTURE_KEY = "iso-water-top";
 export const WATER_LEFT_TEXTURE_KEY = "iso-water-left";
 export const WATER_RIGHT_TEXTURE_KEY = "iso-water-right";
 
+export const SHIP_SMALL_LEFT_TEXTURE_KEY = "iso-ship-small-left";
+export const SHIP_SMALL_RIGHT_TEXTURE_KEY = "iso-ship-small-right";
+
 export const VIEW_CULL_MARGIN = 120;
 export const ENABLE_POSTFX = false;
