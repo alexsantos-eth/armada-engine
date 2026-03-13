@@ -2,7 +2,7 @@ export type BoxType = "EMPTY" | "SHIP";
 
 export type ShipOrientation = "HORIZONTAL" | "VERTICAL";
 
-export type ShipDeckPart = "BOW" | "STERN";
+export type ShipDeckPart = "BOW" | "MID" | "STERN";
 
 export type BoxMetadata = Record<string, unknown>;
 
@@ -77,6 +77,6 @@ export interface IShip {
   readonly originX: number;
   readonly originY: number;
   readonly orientation: ShipOrientation;
-  readonly length: 2;
+  readonly length: number;
   getOccupiedCoordinates(): ShipDeckCoordinate[];
 }

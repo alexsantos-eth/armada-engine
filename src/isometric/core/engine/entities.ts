@@ -74,38 +74,34 @@ export class Ship implements IShip {
   public readonly originX: number;
   public readonly originY: number;
   public readonly orientation: ShipOrientation;
-  public readonly length = 2 as const;
+  public readonly length: number;
 
   constructor(
     id: string,
     originX: number,
     originY: number,
     orientation: ShipOrientation = "HORIZONTAL",
+    length = 2,
   ) {
     this.id = id;
     this.originX = originX;
     this.originY = originY;
     this.orientation = orientation;
+    this.length = Math.max(2, Math.floor(length));
   }
 
   getOccupiedCoordinates(): ShipDeckCoordinate[] {
-    const sternX =
-      this.orientation === "HORIZONTAL" ? this.originX + 1 : this.originX;
-    const sternY =
-      this.orientation === "VERTICAL" ? this.originY + 1 : this.originY;
+    return Array.from({ length: this.length }, (_, index) => {
+      const x =
+        this.orientation === "HORIZONTAL" ? this.originX + index : this.originX;
+      const y =
+        this.orientation === "VERTICAL" ? this.originY + index : this.originY;
 
-    return [
-      {
-        x: this.originX,
-        y: this.originY,
-        part: "BOW",
-      },
-      {
-        x: sternX,
-        y: sternY,
-        part: "STERN",
-      },
-    ];
+      const part: ShipDeckCoordinate["part"] =
+        index === 0 ? "BOW" : index === this.length - 1 ? "STERN" : "MID";
+
+      return { x, y, part };
+    });
   }
 }
 

@@ -32,6 +32,8 @@ export const WATER_RIGHT_TEXTURE_KEY = "iso-water-right";
 
 export const SHIP_SMALL_LEFT_TEXTURE_KEY = "iso-ship-small-left";
 export const SHIP_SMALL_RIGHT_TEXTURE_KEY = "iso-ship-small-right";
+export const SHIP_MEDIUM_LEFT_TEXTURE_KEY = "iso-ship-medium-left";
+export const SHIP_MEDIUM_RIGHT_TEXTURE_KEY = "iso-ship-medium-right";
 
 export const VIEW_CULL_MARGIN = 120;
-export const ENABLE_POSTFX = false;
+export const ENABLE_POSTFX = true;

@@ -27,6 +27,8 @@ import {
   WATER_RIGHT_TEXTURE_KEY,
   SHIP_SMALL_LEFT_TEXTURE_KEY,
   SHIP_SMALL_RIGHT_TEXTURE_KEY,
+  SHIP_MEDIUM_LEFT_TEXTURE_KEY,
+  SHIP_MEDIUM_RIGHT_TEXTURE_KEY,
   TILE_WIDTH,
   TILE_HEIGHT,
   BOX_HEIGHT,
@@ -67,6 +69,11 @@ class IsometricScene extends Phaser.Scene {
     this.load.image(
       SHIP_SMALL_RIGHT_TEXTURE_KEY,
       "/assets/ship/small/right.png",
+    );
+    this.load.image(SHIP_MEDIUM_LEFT_TEXTURE_KEY, "/assets/ship/medium/left.png");
+    this.load.image(
+      SHIP_MEDIUM_RIGHT_TEXTURE_KEY,
+      "/assets/ship/medium/right.png",
     );
   }
 
@@ -189,12 +196,21 @@ class IsometricScene extends Phaser.Scene {
       }
     });
 
-    const withShips = addShipToBoxes(
+    const withMediumShip = addShipToBoxes(
       manualBoxes,
-      new Ship("ship-01", centerX, centerY, "HORIZONTAL"),
+      new Ship("ship-01", centerX + 1, centerY, "VERTICAL", 3),
       {
         elevation: 1,
           allowOverlay: true,
+      },
+    );
+
+    const withShips = addShipToBoxes(
+      withMediumShip,
+      new Ship("ship-02", centerX - 1, centerY + 1, "VERTICAL", 2),
+      {
+        elevation: 1,
+        allowOverlay: true,
       },
     );
 
@@ -308,10 +324,24 @@ class IsometricScene extends Phaser.Scene {
           ? "VERTICAL"
           : "HORIZONTAL";
 
+      const shipLength = shipBoxes.length;
+
+      const shipTextureByLength: Record<number, { vertical: string; horizontal: string }> = {
+        3: {
+          vertical: SHIP_MEDIUM_LEFT_TEXTURE_KEY,
+          horizontal: SHIP_MEDIUM_RIGHT_TEXTURE_KEY,
+        },
+      };
+
+      const textureSet = shipTextureByLength[shipLength] ?? {
+        vertical: SHIP_SMALL_LEFT_TEXTURE_KEY,
+        horizontal: SHIP_SMALL_RIGHT_TEXTURE_KEY,
+      };
+
       const textureKey =
         orientation === "VERTICAL"
-          ? SHIP_SMALL_LEFT_TEXTURE_KEY
-          : SHIP_SMALL_RIGHT_TEXTURE_KEY;
+          ? textureSet.vertical
+          : textureSet.horizontal;
 
       if (!this.textures.exists(textureKey)) {
         return;
@@ -366,7 +396,7 @@ class IsometricScene extends Phaser.Scene {
     });
 
     if (ENABLE_POSTFX) {
-      this.cameras.main.filters.external?.addTiltShift(0.23, 3.0, 0);
+      this.cameras.main.filters.external?.addTiltShift(0.1, 3.0, 0);
     }
   }
 }
