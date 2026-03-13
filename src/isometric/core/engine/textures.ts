@@ -102,6 +102,135 @@ function getSourceDimensions(image: CanvasImageSource): {
   };
 }
 
+function drawHighQualityScaledImage(
+  context: CanvasRenderingContext2D,
+  image: CanvasImageSource,
+  sourceWidth: number,
+  sourceHeight: number,
+  targetWidth: number,
+  targetHeight: number,
+): void {
+  const startCanvas = document.createElement("canvas");
+  startCanvas.width = sourceWidth;
+  startCanvas.height = sourceHeight;
+
+  const startContext = startCanvas.getContext("2d");
+
+  if (!startContext) {
+    context.drawImage(image, 0, 0, sourceWidth, sourceHeight, 0, 0, targetWidth, targetHeight);
+    return;
+  }
+
+  startContext.imageSmoothingEnabled = true;
+  startContext.imageSmoothingQuality = "high";
+  startContext.drawImage(image, 0, 0, sourceWidth, sourceHeight);
+
+  let currentCanvas = startCanvas;
+  let currentWidth = sourceWidth;
+  let currentHeight = sourceHeight;
+
+  while (currentWidth * 0.5 > targetWidth && currentHeight * 0.5 > targetHeight) {
+    const nextWidth = Math.max(targetWidth, Math.floor(currentWidth * 0.5));
+    const nextHeight = Math.max(targetHeight, Math.floor(currentHeight * 0.5));
+    const nextCanvas = document.createElement("canvas");
+    nextCanvas.width = nextWidth;
+    nextCanvas.height = nextHeight;
+
+    const nextContext = nextCanvas.getContext("2d");
+
+    if (!nextContext) {
+      break;
+    }
+
+    nextContext.imageSmoothingEnabled = true;
+    nextContext.imageSmoothingQuality = "high";
+    nextContext.drawImage(
+      currentCanvas,
+      0,
+      0,
+      currentWidth,
+      currentHeight,
+      0,
+      0,
+      nextWidth,
+      nextHeight,
+    );
+
+    currentCanvas = nextCanvas;
+    currentWidth = nextWidth;
+    currentHeight = nextHeight;
+  }
+
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.clearRect(0, 0, targetWidth, targetHeight);
+  context.drawImage(
+    currentCanvas,
+    0,
+    0,
+    currentWidth,
+    currentHeight,
+    0,
+    0,
+    targetWidth,
+    targetHeight,
+  );
+}
+
+export function getOrCreateScaledTexture(
+  scene: Phaser.Scene,
+  sourceTextureKey: string,
+  targetWidth: number,
+  targetHeight: number,
+): string | undefined {
+  const scaledWidth = Math.max(1, Math.round(targetWidth));
+  const scaledHeight = Math.max(1, Math.round(targetHeight));
+  const scaledTextureKey = `${sourceTextureKey}__scaled_${scaledWidth}x${scaledHeight}`;
+
+  if (scene.textures.exists(scaledTextureKey)) {
+    return scaledTextureKey;
+  }
+
+  const sourceTexture = scene.textures.get(sourceTextureKey);
+
+  if (!sourceTexture || sourceTexture.key === "__MISSING") {
+    return undefined;
+  }
+
+  const sourceFrame = scene.textures.getFrame(sourceTextureKey, "__BASE");
+  const sourceImage = sourceTexture.getSourceImage() as CanvasImageSource;
+
+  if (!sourceFrame || !sourceImage || sourceFrame.width <= 0 || sourceFrame.height <= 0) {
+    return undefined;
+  }
+
+  const canvasTexture = scene.textures.createCanvas(
+    scaledTextureKey,
+    scaledWidth,
+    scaledHeight,
+  );
+
+  if (!canvasTexture) {
+    return undefined;
+  }
+
+  const context = canvasTexture.getContext();
+
+  drawHighQualityScaledImage(
+    context,
+    sourceImage,
+    sourceFrame.width,
+    sourceFrame.height,
+    scaledWidth,
+    scaledHeight,
+  );
+
+  canvasTexture.refresh();
+  scene.textures.get(scaledTextureKey)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+
+  return scaledTextureKey;
+}
+
 export function ensureTexturedBoxTexture(
   scene: Phaser.Scene,
   config: TexturedBoxTextureConfig,

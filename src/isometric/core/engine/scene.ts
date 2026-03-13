@@ -39,7 +39,11 @@ import {
   getTextureKeyForElevation,
   isWithinViewport,
 } from "./projection";
-import { ensureEmptyBoxTexture, ensureTexturedBoxTexture } from "./textures";
+import {
+  ensureEmptyBoxTexture,
+  ensureTexturedBoxTexture,
+  getOrCreateScaledTexture,
+} from "./textures";
 
 class IsometricScene extends Phaser.Scene {
   constructor() {
@@ -187,7 +191,7 @@ class IsometricScene extends Phaser.Scene {
 
     const withShips = addShipToBoxes(
       manualBoxes,
-      new Ship("ship-01", centerX, centerY, "VERTICAL"),
+      new Ship("ship-01", centerX, centerY, "HORIZONTAL"),
       {
         elevation: 1,
           allowOverlay: true,
@@ -338,19 +342,26 @@ class IsometricScene extends Phaser.Scene {
 
       const targetShipHeight =
         targetShipWidth * (sourceFrame.height / sourceFrame.width);
+      const roundedShipWidth = Math.max(1, Math.round(targetShipWidth));
+      const roundedShipHeight = Math.max(1, Math.round(targetShipHeight));
 
       const centerXScreen = Math.round(sumX / shipBoxes.length);
       const centerYScreen = Math.round(sumY / shipBoxes.length);
 
-      const shipTexture = this.textures.get(textureKey);
-      shipTexture?.setFilter(Phaser.Textures.FilterMode.LINEAR);
-
-      const shipImage = this.add.image(centerXScreen, centerYScreen, textureKey);
-      shipImage.setOrigin(0.5, 0.5);
-      shipImage.setDisplaySize(
-        Math.round(targetShipWidth),
-        Math.round(targetShipHeight),
+      const scaledTextureKey = getOrCreateScaledTexture(
+        this,
+        textureKey,
+        roundedShipWidth,
+        roundedShipHeight,
       );
+
+      const shipImage = this.add.image(
+        centerXScreen,
+        centerYScreen,
+        scaledTextureKey ?? textureKey,
+      );
+      shipImage.setOrigin(0.5, 0.5);
+      shipImage.setDisplaySize(roundedShipWidth, roundedShipHeight);
       shipImage.setDepth(maxTerrainDepth + 1 + maxDepthBase * 0.001);
     });
 
