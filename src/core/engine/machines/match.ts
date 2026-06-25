@@ -136,13 +136,7 @@ export const matchMachine = setup({
           : context.engine.getEnemyShotPatterns();
         if (patternIdx < 0 || patternIdx >= patterns.length) {
           planError = PlanError.PatternNotAvailable;
-        } else if (
-          context.engine.isCellShot(
-            e.centerX,
-            e.centerY,
-            e.isPlayerShot,
-          )
-        ) {
+        } else {
           planError = PlanError.CellAlreadyShot;
         }
       }
@@ -390,7 +384,7 @@ export const matchMachine = setup({
         isPlayerShot: context.lastAttackIsPlayerShot!,
         centerX: context.lastAttackCenter!.centerX,
         centerY: context.lastAttackCenter!.centerY,
-        patternIdx: context.lastAttackCenter?.patternIdx ?? 0,
+        patternIdx: context.lastAttackCenter!.patternIdx,
         currentTurn,
         rulesetToggledTurn,
         winner,

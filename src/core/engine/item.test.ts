@@ -222,14 +222,18 @@ describe("Item Context Builders", () => {
       expect(engine.getEnemyShips().length).toBe(2);
     });
 
-    it("deletePlayerShip should remove a ship by id", () => {
+    it("deletePlayerShip should remove a ship by id and reindex", () => {
       const item = enemyItems[0];
       const shot: Shot = { x: 7, y: 7, hit: false, collected: true };
       const ctx = buildCollectContext(engine, item, true, shot, "PLAYER_TURN", vi.fn());
 
+      ctx.addPlayerShip(1, 1);
+      expect(engine.getPlayerShips().length).toBe(2);
+
       const result = ctx.deletePlayerShip(0);
       expect(result).toBe(true);
-      expect(engine.getPlayerShips().length).toBe(0);
+      expect(engine.getPlayerShips().length).toBe(1);
+      expect(engine.getPlayerShips()[0]?.shipId).toBe(0); // reindexed
     });
 
     it("deletePlayerShip should return false if not found", () => {
@@ -422,14 +426,18 @@ describe("Item Context Builders", () => {
       expect(engine.getState().enemyItems.length).toBe(0);
     });
 
-    it("deleteEnemyShip should remove a ship by id", () => {
+    it("deleteEnemyShip should remove a ship by id and reindex", () => {
       const item = enemyItems[0];
       const shot: Shot = { x: 7, y: 7, hit: false, collected: true };
       const ctx = buildCollectContext(engine, item, true, shot, "PLAYER_TURN", vi.fn());
 
+      ctx.addEnemyShip(1, 1);
+      expect(engine.getEnemyShips().length).toBe(2);
+
       const result = ctx.deleteEnemyShip(0);
       expect(result).toBe(true);
-      expect(engine.getEnemyShips().length).toBe(0);
+      expect(engine.getEnemyShips().length).toBe(1);
+      expect(engine.getEnemyShips()[0]?.shipId).toBe(0); // reindexed
     });
 
     it("deleteEnemyShip should return false if not found", () => {

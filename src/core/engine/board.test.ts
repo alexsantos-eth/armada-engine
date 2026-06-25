@@ -233,11 +233,8 @@ describe("Board Projection", () => {
       expect(getCell(board, 1, 1).state).toBe("SHIP");
     });
     it("should handle undefined obstacle lists", () => {
-      const state = createMockState() as Mutable<GameEngineState>;
-      // @ts-ignore
-      delete (state as Partial<GameEngineState>).playerObstacles;
-      // @ts-ignore
-      delete (state as Partial<GameEngineState>).enemyObstacles;
+      const { playerObstacles, enemyObstacles, ...rest } = createMockState();
+      const state = rest as unknown as GameEngineState;
 
       const view: BoardViewConfig = {
         id: "test", title: "Test", description: "", width: 10, height: 10,
