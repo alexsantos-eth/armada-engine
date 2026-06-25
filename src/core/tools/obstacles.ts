@@ -35,15 +35,15 @@ export function generateBorderPosition(
   let x: number, y: number;
 
   switch (border) {
-    case 0: 
+    case 0:
       x = Math.floor(Math.random() * (maxX + 1));
       y = 0;
       break;
-    case 1: 
+    case 1:
       x = maxX;
       y = Math.floor(Math.random() * (maxY + 1));
       break;
-    case 2: 
+    case 2:
       x = Math.floor(Math.random() * (maxX + 1));
       y = maxY;
       break;
@@ -95,7 +95,7 @@ export function generateObstacle(
     if (maxX < 0 || maxY < 0) return null;
 
     const useBorderPlacement = Math.random() < 0.8;
-    
+
     let x: number, y: number;
     if (useBorderPlacement) {
       [x, y] = generateBorderPosition(width, height, boardWidth, boardHeight);
@@ -120,22 +120,22 @@ export function generateObstacle(
   }
 
   const borders: Array<[number, number]> = [];
-  
+
   for (let x = 0; x <= boardWidth - width; x++) {
-    borders.push([x, 0]); // Bottom
-    borders.push([x, boardHeight - height]); 
+    borders.push([x, 0]);
+    borders.push([x, boardHeight - height]);
   }
-  
+
   for (let y = 1; y < boardHeight - height; y++) {
     borders.push([0, y]);
-    borders.push([boardWidth - width, y]); 
+    borders.push([boardWidth - width, y]);
   }
-  
+
   for (let i = borders.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [borders[i], borders[j]] = [borders[j], borders[i]];
   }
-  
+
   for (const [x, y] of borders) {
     let valid = true;
     outer: for (let row = 0; row < height; row++) {
@@ -146,7 +146,7 @@ export function generateObstacle(
         }
       }
     }
-    
+
     if (valid) {
       return { coords: [x, y], width, height, obstacleId };
     }

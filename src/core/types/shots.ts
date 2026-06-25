@@ -10,7 +10,7 @@ import type { Winner, GameTurn } from "./game";
  * each {@link Cell} of the rendered {@link Board}.
  *
  * @example
- * // A player shot that hit a ship and sank it as part of a cross pattern:
+ * A player shot that hit a ship and sank it as part of a cross pattern:
  * const shot: Shot = {
  *   x: 4, y: 2, hit: true, shipId: 1,
  *   patternId: 1, patternCenterX: 4, patternCenterY: 2,
@@ -72,7 +72,7 @@ export interface ShotOffset {
  * the chosen centre coordinate and fires one {@link Shot} per cell.
  *
  * @example
- * // A cross pattern that hits the centre plus the four cardinal neighbours:
+ * A cross pattern that hits the centre plus the four cardinal neighbours:
  * const cross: ShotPattern = {
  *   id: "cross",
  *   name: "Cross",

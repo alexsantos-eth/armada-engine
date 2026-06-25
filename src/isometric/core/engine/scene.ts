@@ -168,7 +168,6 @@ class IsometricScene extends Phaser.Scene {
       return box;
     });
 
-    // ARENA
     const centerX = Math.floor(TERRAIN_WIDTH / 2);
     const centerY = Math.floor(TERRAIN_HEIGHT / 2);
     const centralBlockSize = Math.max(4, Math.min(8, TERRAIN_WIDTH - 2));
@@ -201,7 +200,7 @@ class IsometricScene extends Phaser.Scene {
       new Ship("ship-01", centerX - 1, centerY - 2, "VERTICAL", 3),
       {
         elevation: 1,
-          allowOverlay: true,
+        allowOverlay: true,
       },
     );
 
@@ -361,8 +360,6 @@ class IsometricScene extends Phaser.Scene {
       const minShipScreenX = Math.min(...screenXs);
       const maxShipScreenX = Math.max(...screenXs);
 
-      // The ship sprite already includes isometric perspective.
-      // Fit width to occupied tiles and preserve source aspect ratio.
       const targetShipWidth = maxShipScreenX - minShipScreenX + TILE_WIDTH;
       const sourceFrame = this.textures.getFrame(textureKey, "__BASE");
 

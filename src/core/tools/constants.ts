@@ -33,8 +33,8 @@ export type ConstantSet<T extends GameEntity> = {
  *   { id: "blue", value: "#00f" },
  * ];
  * const ColorSet = createEntitySet(COLORS, "blue");
- * ColorSet.getById("red"); // { id: "red", value: "#f00" }
- * ColorSet.default; // { id: "blue", value: "#00f" }
+ * ColorSet.getById("red"); { id: "red", value: "#f00" }
+ * ColorSet.default; { id: "blue", value: "#00f" }
  * ```
  */
 export function createEntitySet<T extends GameEntity>(
@@ -42,7 +42,7 @@ export function createEntitySet<T extends GameEntity>(
   fallbackId?: string,
 ): ConstantSet<T> {
   const map: Record<string, T> = {};
-  
+
   for (const item of items) {
     map[item.id || ""] = item;
   }

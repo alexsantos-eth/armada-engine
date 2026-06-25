@@ -62,13 +62,13 @@ export type BoardLayer =
  * is fired upon.
  *
  * @example
- * // A cell hit by a pattern shot that sank a ship:
+ * A cell hit by a pattern shot that sank a ship:
  * const cell: Cell = {
  *   state: "HIT",
  *   shot: { x: 3, y: 5, hit: true, shipId: 2, patternId: 1 },
  * };
  *
- * // An untouched water cell:
+ * An untouched water cell:
  * const empty: Cell = { state: "EMPTY" };
  */
 export interface Cell {
@@ -99,11 +99,11 @@ export interface Cell {
  * overlays, or item-collection animations.
  *
  * @example
- * // Accessing the state of logical coordinate (x=2, y=4):
+ * Accessing the state of logical coordinate (x=2, y=4):
  * const row = board.length - 1 - 4;
  * const cell = board[row][2];
  * if (cell.state === "HIT" && cell.shot?.shipId !== undefined) {
- *   // render sunk-ship indicator
+ *   render sunk-ship indicator
  * }
  */
 export type Board = Cell[][];

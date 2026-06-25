@@ -12,7 +12,7 @@ import type { Shot, ShotRecord } from "./shots";
  *
  * ```typescript
  * import type { MatchItemActionContext } from '../engine/match';
- * // MatchItemActionContext extends ItemActionContext with setRuleSet: (ruleSet: MatchRuleSet) => void
+ * MatchItemActionContext extends ItemActionContext with setRuleSet: (ruleSet: MatchRuleSet) => void
  * ```
  */
 export interface ItemActionContext {
@@ -222,7 +222,7 @@ export interface ItemActionContext {
  *
  * ```typescript
  * import type { MatchShipActionContext } from '../engine/match';
- * // MatchShipActionContext extends ShipActionContext with setRuleSet: (ruleSet: MatchRuleSet) => void
+ * MatchShipActionContext extends ShipActionContext with setRuleSet: (ruleSet: MatchRuleSet) => void
  * ```
  */
 export type ShipActionContext = Omit<ItemActionContext, "item"> & {
