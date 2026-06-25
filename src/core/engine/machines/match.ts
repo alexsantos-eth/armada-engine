@@ -62,17 +62,17 @@ export const matchMachine = setup({
     isValidPlan: ({ context, event }) => {
       const e = event as Extract<MatchMachineEvent, { type: "PLAN_SHOT" }>;
 
-      const expectedTurn = event.isPlayerShot ? "PLAYER_TURN" : "ENEMY_TURN";
+      const expectedTurn = e.isPlayerShot ? "PLAYER_TURN" : "ENEMY_TURN";
       if (context.currentTurn !== expectedTurn) {
         return false;
       }
 
-      if (!context.engine.isValidPosition(event.centerX, event.centerY)) {
+      if (!context.engine.isValidPosition(e.centerX, e.centerY)) {
         return false;
       }
 
-      const patternIdx = event.patternIdx ?? 0;
-      const patterns = event.isPlayerShot
+      const patternIdx = e.patternIdx ?? 0;
+      const patterns = e.isPlayerShot
         ? context.engine.getPlayerShotPatterns()
         : context.engine.getEnemyShotPatterns();
       if (patternIdx < 0 || patternIdx >= patterns.length) {
@@ -82,9 +82,9 @@ export const matchMachine = setup({
       if (
         pattern.offsets.length === 1 &&
         context.engine.isCellShot(
-          event.centerX,
-          event.centerY,
-          event.isPlayerShot,
+          e.centerX,
+          e.centerY,
+          e.isPlayerShot,
         )
       ) {
         return false;
@@ -101,18 +101,18 @@ export const matchMachine = setup({
       const e = event as Extract<MatchMachineEvent, { type: "PLAN_SHOT" }>;
 
       logMachineEvent(context, event, self.getSnapshot().value, "storePlan", {
-        centerX: event.centerX,
-        centerY: event.centerY,
-        patternIdx: event.patternIdx ?? 0,
-        isPlayerShot: event.isPlayerShot,
+        centerX: e.centerX,
+        centerY: e.centerY,
+        patternIdx: e.patternIdx ?? 0,
+        isPlayerShot: e.isPlayerShot,
       });
 
       return {
         pendingPlan: {
-          centerX: event.centerX,
-          centerY: event.centerY,
-          patternIdx: event.patternIdx ?? 0,
-          isPlayerShot: event.isPlayerShot,
+          centerX: e.centerX,
+          centerY: e.centerY,
+          patternIdx: e.patternIdx ?? 0,
+          isPlayerShot: e.isPlayerShot,
         },
         planError: null,
       };
@@ -122,25 +122,25 @@ export const matchMachine = setup({
       const e = event as Extract<MatchMachineEvent, { type: "PLAN_SHOT" }>;
 
       let planError: PlanError = PlanError.InvalidPlan;
-      const expectedTurn = event.isPlayerShot ? "PLAYER_TURN" : "ENEMY_TURN";
+      const expectedTurn = e.isPlayerShot ? "PLAYER_TURN" : "ENEMY_TURN";
       if (context.currentTurn !== expectedTurn) {
         planError = PlanError.NotYourTurn;
       } else if (
-        !context.engine.isValidPosition(event.centerX, event.centerY)
+        !context.engine.isValidPosition(e.centerX, e.centerY)
       ) {
         planError = PlanError.InvalidPosition;
       } else {
-        const patternIdx = event.patternIdx ?? 0;
-        const patterns = event.isPlayerShot
+        const patternIdx = e.patternIdx ?? 0;
+        const patterns = e.isPlayerShot
           ? context.engine.getPlayerShotPatterns()
           : context.engine.getEnemyShotPatterns();
         if (patternIdx < 0 || patternIdx >= patterns.length) {
           planError = PlanError.PatternNotAvailable;
         } else if (
           context.engine.isCellShot(
-            event.centerX,
-            event.centerY,
-            event.isPlayerShot,
+            e.centerX,
+            e.centerY,
+            e.isPlayerShot,
           )
         ) {
           planError = PlanError.CellAlreadyShot;
@@ -153,10 +153,10 @@ export const matchMachine = setup({
         self.getSnapshot().value,
         "setPlanError",
         {
-          centerX: event.centerX,
-          centerY: event.centerY,
-          patternIdx: event.patternIdx ?? 0,
-          isPlayerShot: event.isPlayerShot,
+          centerX: e.centerX,
+          centerY: e.centerY,
+          patternIdx: e.patternIdx ?? 0,
+          isPlayerShot: e.isPlayerShot,
           planError,
         },
       );
@@ -214,7 +214,7 @@ export const matchMachine = setup({
       let capturedPlayerSide: BoardLayer[] | null = null;
       let capturedEnemySide: BoardLayer[] | null = null;
 
-      for (const shot of context.lastAttackResult.shots) {
+      for (const shot of context.lastAttackResult!.shots) {
         if (shot.itemFullyCollected && shot.itemId !== undefined) {
           const engineState = context.engine.getState();
           const items = isPlayerShot
@@ -285,7 +285,7 @@ export const matchMachine = setup({
       let capturedPlayerSide: BoardLayer[] | null = null;
       let capturedEnemySide: BoardLayer[] | null = null;
 
-      for (const shot of context.lastAttackResult.shots) {
+      for (const shot of context.lastAttackResult!.shots) {
         if (shot.shipDestroyed && shot.shipId !== undefined) {
           const engineState = context.engine.getState();
           const ships = isPlayerShot
@@ -364,7 +364,7 @@ export const matchMachine = setup({
 
       const stateAfterAttack = context.engine.getState();
       const lastTurnDecision = activeRuleSet.decideTurn(
-        context.lastAttackResult,
+        context.lastAttackResult!,
         stateAfterAttack,
       );
 
@@ -657,18 +657,16 @@ export const matchMachine = setup({
         }
       }
 
-      if (context.lastUsedItemInfo) {
-        fireMatchCallbacks(context.callbacks, context.engine, {
-          kind: "itemUse",
-          itemId: context.lastUsedItemInfo.itemId,
-          isPlayerShot: context.lastUsedItemInfo.isPlayerShot,
-          item: context.lastUsedItemInfo.item,
-          currentTurn,
-          turnToggled: itemToggledTurn || rulesetToggledTurn,
-          winner,
-          shipId: context.lastUsedItemInfo.shipId,
-        });
-      }
+      fireMatchCallbacks(context.callbacks, context.engine, {
+        kind: "itemUse",
+        itemId: context.lastUsedItemInfo!.itemId,
+        isPlayerShot: context.lastUsedItemInfo!.isPlayerShot,
+        item: context.lastUsedItemInfo!.item,
+        currentTurn,
+        turnToggled: itemToggledTurn || rulesetToggledTurn,
+        winner,
+        shipId: context.lastUsedItemInfo!.shipId,
+      });
 
       logMachineEvent(
         context,

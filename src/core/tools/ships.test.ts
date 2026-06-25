@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { getShip2DCells, getShipCellsFromShip, generateShips, generateShip, generateShip2D, generateRandomPosition, findFreeShipPosition, getShipSize, getQuadrantPreferences } from "./ships";
 import type { GameShip } from "../types/entities";
 import { CLASSIC_MODE } from "../modes/classic";
 import type { GameMode } from "../types/modes";
+import type { BoardViewConfig } from "../types/config";
 
 describe("ships", () => {
   describe("getShip2DCells", () => {
@@ -223,7 +224,7 @@ describe("ships", () => {
     it("should skip ship if generateShip returns null", () => {
       const config = {
         shipCounts: { small: 1 },
-        boardView: { width: 1, height: 1 }
+        boardView: { width: 1, height: 1 } as unknown as BoardViewConfig
       };
       const mockGameMode = {
         ...CLASSIC_MODE,

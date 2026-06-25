@@ -8,7 +8,8 @@ import {
   selectLastAttackResult
 } from "./match";
 import { GameEngine } from "../logic";
-import type { MatchCallbacks, MatchLogger, MatchLogEntry } from "../../types";
+import type { MatchCallbacks, MatchLogger, MatchMachineLogEvent } from "../../types";
+import type { ItemActionContext, ShipActionContext } from "../../types/entities";
 import { DEFAULT_GAME_MODE } from "../../modes";
 
 describe("Match Machine", () => {
@@ -33,11 +34,16 @@ describe("Match Machine", () => {
 
   it("should log events and handle circular JSON safely", () => {
     const engine = new GameEngine();
-    const logs: MatchLogEntry[] = [];
+    const logs: MatchMachineLogEvent[] = [];
     const logger: MatchLogger = {
-      add: (entry) => logs.push(entry),
+      add: (entry) => {
+        const e = { ...entry, id: logs.length } as unknown as MatchMachineLogEvent;
+        logs.push(e);
+        return e;
+      },
       clear: () => { logs.length = 0; },
-      getAll: () => logs,
+      all: () => logs,
+      last: () => logs[logs.length - 1],
     };
     
     // Mock JSON.stringify to throw on the first call to simulate circular reference
@@ -144,36 +150,9 @@ describe("Match Machine", () => {
       shipId: 1
     });
   });
+
   it("should handle full attack cycle with collect and destroy handlers", () => {
     const engine = new GameEngine();
-    
-    // Setup a 1x1 ship and 1x1 item at (0,0)
-      const playerShips = [{ coords: [0,0] as [number, number], width: 1, height: 1, shipId: 0, onDestroy: (ctx: any) => {
-          ctx.toggleTurn();
-          ctx.setRuleSet(DEFAULT_GAME_MODE.ruleSet);
-          ctx.setBoardViewPlayerSide([]);
-          ctx.setBoardViewEnemySide([]);
-      }}];
-      const enemyShips = [{ coords: [0,0] as [number, number], width: 1, height: 1, shipId: 0, onDestroy: (ctx: any) => {
-          ctx.toggleTurn();
-          ctx.setRuleSet(DEFAULT_GAME_MODE.ruleSet);
-          ctx.setBoardViewPlayerSide([]);
-          ctx.setBoardViewEnemySide([]);
-      }}];
-      const playerItems = [{ coords: [0,1] as [number, number], part: 1, itemId: 0, onCollect: (ctx: any) => {
-          ctx.toggleTurn();
-          ctx.setRuleSet(DEFAULT_GAME_MODE.ruleSet);
-          ctx.setBoardViewPlayerSide([]);
-          ctx.setBoardViewEnemySide([]);
-      }}];
-      const enemyItems = [{ coords: [0,1] as [number, number], part: 1, itemId: 0, onCollect: (ctx: any) => {
-          ctx.toggleTurn();
-          ctx.setRuleSet(DEFAULT_GAME_MODE.ruleSet);
-          ctx.setBoardViewPlayerSide([]);
-          ctx.setBoardViewEnemySide([]);
-      }}];
-      const shotPatterns = [{ id: "s1", offsets: [{ dx: 0, dy: 0 }, { dx: 0, dy: 1 }] as { dx: number, dy: number }[] }];
-
     const actor = createMatchActor({
       engine,
       callbacks: {},
@@ -181,9 +160,34 @@ describe("Match Machine", () => {
     });
     actor.start();
 
-    // The machine ignores attacks until it receives INITIALIZE
-    // Wait, the machine already knows the engine state? Let's just pass the INITIALIZE event
-    // with empty arrays so the machine knows it's initialized, but the engine is already setup
+    const playerShips = [{ coords: [0,0] as [number, number], width: 1, height: 1, shipId: 0, onDestroy: (ctx: ShipActionContext) => {
+        ctx.toggleTurn();
+        ctx.setRuleSet(DEFAULT_GAME_MODE.ruleSet);
+        ctx.setBoardViewPlayerSide([]);
+        ctx.setBoardViewEnemySide([]);
+    }}];
+    const enemyShips = [{ coords: [0,0] as [number, number], width: 1, height: 1, shipId: 0, onDestroy: (ctx: ShipActionContext) => {
+        ctx.toggleTurn();
+        ctx.setRuleSet(DEFAULT_GAME_MODE.ruleSet);
+        ctx.setBoardViewPlayerSide([]);
+        ctx.setBoardViewEnemySide([]);
+    }}];
+    const playerItems = [{ coords: [0,1] as [number, number], part: 1, itemId: 0, onCollect: (ctx: ItemActionContext) => {
+        ctx.toggleTurn();
+        ctx.deleteEnemyShip(0);
+        ctx.setRuleSet(DEFAULT_GAME_MODE.ruleSet);
+        ctx.setBoardViewPlayerSide([]);
+        ctx.setBoardViewEnemySide([]);
+    }}];
+    const enemyItems = [{ coords: [0,1] as [number, number], part: 1, itemId: 0, onCollect: (ctx: ItemActionContext) => {
+        ctx.toggleTurn();
+        ctx.deletePlayerShip(0);
+        ctx.setRuleSet(DEFAULT_GAME_MODE.ruleSet);
+        ctx.setBoardViewPlayerSide([]);
+        ctx.setBoardViewEnemySide([]);
+    }}];
+    const shotPatterns = [{ id: "s1", offsets: [{ dx: 0, dy: 0 }, { dx: 0, dy: 1 }] as { dx: number, dy: number }[] }];
+
     actor.send({
       type: "INITIALIZE",
       playerShips,
@@ -195,25 +199,22 @@ describe("Match Machine", () => {
       initialTurn: "PLAYER_TURN"
     });
     
-    actor.send({ type: "PLAN_SHOT", isPlayerShot: true, centerX: 0, centerY: 0, patternIdx: 0 });
-    actor.send({ type: "CANCEL_PLAN" });
-    actor.send({ type: "PLAN_SHOT", isPlayerShot: true, centerX: 0, centerY: 0, patternIdx: 0 });
-    
+    actor.send({ type: "SYNC_TURN", turn: "PLAYER_TURN" });
+    actor.send({ type: "PLAN_SHOT", isPlayerShot: true, centerX: 0, centerY: 1, patternIdx: 0 });
     actor.send({ type: "CONFIRM_ATTACK" });
   });
   
-  it("should handle USE_ITEM full cycle", () => {
+  describe("Item Usage", () => {
     const engine = new GameEngine();
     const playerShips = [{ coords: [0,0] as [number, number], width: 1, height: 1, shipId: 0 }];
     const enemyShips = [{ coords: [0,0] as [number, number], width: 1, height: 1, shipId: 0 }];
-    const playerItems = [{ coords: [0,0] as [number, number], part: 1, itemId: 0, onUse: (ctx: any) => {
+    const playerItems = [{ coords: [0,0] as [number, number], part: 1, itemId: 0, onUse: (ctx: ItemActionContext) => {
           ctx.deleteEnemyShip(0);
           ctx.setRuleSet(DEFAULT_GAME_MODE.ruleSet);
           ctx.setBoardViewPlayerSide([]);
           ctx.setBoardViewEnemySide([]);
       }}];
-    const enemyItems = [{ coords: [0,0] as [number, number], part: 1, itemId: 0, onUse: (ctx: any) => {
-          // Toggle twice so count is 2 (even = no actual toggle), covering useToggleCount++
+    const enemyItems = [{ coords: [0,0] as [number, number], part: 1, itemId: 0, onUse: (ctx: ItemActionContext) => {
           ctx.toggleTurn();
           ctx.toggleTurn();
           ctx.setRuleSet(DEFAULT_GAME_MODE.ruleSet);
@@ -251,14 +252,17 @@ describe("Match Machine", () => {
       initialTurn: "PLAYER_TURN"
     });
     
-    // Test USE_ITEM
-    // Not caller's turn (it's PLAYER_TURN, so enemy can't use)
-    actor.send({ type: "USE_ITEM", itemId: 0, isPlayerShot: false, shipId: 0 });
+    it("should handle invalid item usage", () => {
+      // Test USE_ITEM
+      // Not caller's turn (it's PLAYER_TURN, so enemy can't use)
+      actor.send({ type: "USE_ITEM", itemId: 0, isPlayerShot: false, shipId: 0 });
+    });
     
-    // Use player item
+    it("should handle USE_ITEM full cycle", () => {
+      // Use player item
     const mockRuleSet = {
       ...DEFAULT_GAME_MODE.ruleSet,
-      decideTurnOnItemUse: () => ({ shouldToggleTurn: true })
+      decideTurnOnItemUse: () => ({ shouldToggleTurn: true, reason: "Item used" })
     };
     actor.send({ type: "SET_RULESET", ruleSet: mockRuleSet });
     actor.send({ type: "USE_ITEM", itemId: 0, isPlayerShot: true, shipId: 0 });
@@ -270,7 +274,7 @@ describe("Match Machine", () => {
     // Now test gameOver during resolveItemUse
     const mockRuleSetGameOver = {
       ...DEFAULT_GAME_MODE.ruleSet,
-      checkGameOver: () => ({ isGameOver: true, winner: 'PLAYER' as const })
+      checkGameOver: () => ({ isGameOver: true, winner: 'player' as const })
     };
     actor.send({ type: "SET_RULESET", ruleSet: mockRuleSetGameOver });
     // Add another item so it's not "already used"
@@ -282,7 +286,89 @@ describe("Match Machine", () => {
       enemyItems,
       initialTurn: "PLAYER_TURN"
     });
-    actor.send({ type: "SET_RULESET", ruleSet: mockRuleSetGameOver });
+      actor.send({ type: "SET_RULESET", ruleSet: mockRuleSetGameOver });
+      actor.send({ type: "USE_ITEM", itemId: 0, isPlayerShot: true, shipId: 0 });
+    });
+  });
+
+  it("should cover edge cases in turn resolution and item usage", () => {
+    const engine = new GameEngine();
+    const playerShips = [
+      { coords: [0,0] as [number, number], width: 1, height: 1, shipId: 0, onDestroy: () => {} },
+      { coords: [1,1] as [number, number], width: 1, height: 1, shipId: 1 }
+    ];
+    const enemyShips = [{ coords: [0,0] as [number, number], width: 1, height: 1, shipId: 0 }];
+    const enemyItems = [{ coords: [0,0] as [number, number], part: 1, itemId: 0, onUse: (ctx: ItemActionContext) => {
+          ctx.deletePlayerShip(0);
+          ctx.deletePlayerShip(1); // destroy both ships to trigger game over
+      }}];
+    const playerItems = [
+      { coords: [0,0] as [number, number], part: 1, itemId: 0, onUse: () => {} },
+      { coords: [0,1] as [number, number], part: 1, itemId: 1, onUse: () => {} }, // empty for rule set toggle
+      { coords: [0,2] as [number, number], part: 1, itemId: 2, onUse: (ctx: ItemActionContext) => { ctx.toggleTurn(); } } // toggles turn once
+    ];
+
+    // Cover machine context fallbacks
+    const emptyActor = createMatchActor();
+    emptyActor.start();
+
+    const actor = createMatchActor({
+      engine,
+      callbacks: {},
+      ruleSet: DEFAULT_GAME_MODE.ruleSet
+    });
+    actor.start();
+    actor.send({
+      type: "INITIALIZE",
+      playerShips,
+      enemyShips,
+      playerItems,
+      enemyItems,
+      initialTurn: "ENEMY_TURN"
+    });
+
+    // 1. isPlayerShot: false in USE_ITEM and toggleTurn from ENEMY_TURN to PLAYER_TURN
+    // Also covers null captured views (playerItems[0].onUse is empty)
+    actor.send({ type: "USE_ITEM", itemId: 0, isPlayerShot: false, shipId: 0 });
+
+    // 2. PLAN_SHOT without patternIdx to hit ?? 0 in resolveTurn
+    actor.send({ type: "PLAN_SHOT", isPlayerShot: false, centerX: 0, centerY: 0 }); // undefined patternIdx, destroys ship 0 but not ship 1
+    actor.send({ type: "CONFIRM_ATTACK" });
+
+    // 3. stateAfterTurn.isGameOver in resolveTurn
+    actor.send({ type: "SYNC_TURN", turn: "PLAYER_TURN" });
+    actor.send({ type: "PLAN_SHOT", isPlayerShot: true, centerX: 5, centerY: 5 }); // arbitrary miss
+    
+    // Test ruleset toggle from ENEMY_TURN to PLAYER_TURN using an unused item (itemId: 1)
+    // playerItems[1] does not toggle turn
+    actor.send({ type: "SYNC_TURN", turn: "ENEMY_TURN" });
+    const mockRuleSetEdgeCase = {
+      ...DEFAULT_GAME_MODE.ruleSet,
+      decideTurnOnItemUse: () => ({ shouldToggleTurn: true, reason: "Item used" })
+    };
+    actor.send({ type: "SET_RULESET", ruleSet: mockRuleSetEdgeCase });
+    actor.send({ type: "USE_ITEM", itemId: 1, isPlayerShot: false, shipId: 0 });
+    
+    // Test itemToggledTurn from PLAYER_TURN to ENEMY_TURN
+    actor.send({ type: "SYNC_TURN", turn: "PLAYER_TURN" });
+    actor.send({ type: "USE_ITEM", itemId: 2, isPlayerShot: true, shipId: 0 });
+    
+    // Mock getState just for the resolveTurn action
+    const originalGetState = engine.getState.bind(engine);
+    vi.spyOn(engine, 'getState').mockImplementation(() => {
+      const state = originalGetState();
+      // Only mock isGameOver true when resolving turn after the attack
+      if (actor.getSnapshot().value && typeof actor.getSnapshot().value === 'object' && (actor.getSnapshot().value as any).active === 'attacking') {
+        return { ...state, isGameOver: true };
+      }
+      return state;
+    });
+
+    actor.send({ type: "CONFIRM_ATTACK" });
+
+    // 4. Trigger game over via item to cover the true branch of stateAfterUse.isGameOver
+    // enemyItems[0] deletes both player ships
+    actor.send({ type: "SYNC_TURN", turn: "PLAYER_TURN" });
     actor.send({ type: "USE_ITEM", itemId: 0, isPlayerShot: true, shipId: 0 });
   });
 });

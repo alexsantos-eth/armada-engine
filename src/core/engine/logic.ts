@@ -312,8 +312,8 @@ export class GameEngine implements IGameEngine {
         shots.push({
           x: targetX,
           y: targetY,
-          hit: existingShot?.hit ?? false,
-          shipId: existingShot?.shipId,
+          hit: existingShot!.hit,
+          shipId: existingShot!.shipId,
           executed: false,
         });
         continue;

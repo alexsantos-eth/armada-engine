@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { GameInitializer } from "./initializer";
 import type { GameConfig, BoardViewConfig } from "../types/config";
+import type { GameItem, GameObstacle } from "../types/entities";
 import { CLASSIC_MODE } from "../modes/classic";
 
 // Test-specific default values (from CLASSIC_MODE)
@@ -548,14 +549,14 @@ describe("GameInitializer (v3)", () => {
       expect(() => {
         initializer.appendGameSetup({
           playerShips: [{ coords: [0, 0], width: 1, height: 1, shipId: 0, }],
-          playerObstacles: [{ coords: [0, 0], width: 1, height: 1 } as any],
+          playerObstacles: [{ coords: [0, 0], width: 1, height: 1 } as unknown as GameObstacle],
         });
       }).toThrow(/overlap/i);
       
       expect(() => {
         initializer.appendGameSetup({
           enemyShips: [{ coords: [0, 0], width: 1, height: 1, shipId: 0, }],
-          enemyObstacles: [{ coords: [0, 0], width: 1, height: 1 } as any],
+          enemyObstacles: [{ coords: [0, 0], width: 1, height: 1 } as unknown as GameObstacle],
         });
       }).toThrow(/overlap/i);
     });
@@ -564,14 +565,14 @@ describe("GameInitializer (v3)", () => {
       expect(() => {
         initializer.appendGameSetup({
           playerShips: [{ coords: [0, 0], width: 1, height: 1, shipId: 0, }],
-          playerItems: [{ coords: [0, 0], part: 1 } as any],
+          playerItems: [{ coords: [0, 0], part: 1 } as unknown as GameItem],
         });
       }).toThrow(/overlap/i);
 
       expect(() => {
         initializer.appendGameSetup({
           playerShips: [],
-          playerItems: [{ coords: [1, 1], part: 1 } as any, { coords: [1, 1], part: 2 } as any],
+          playerItems: [{ coords: [1, 1], part: 1 } as unknown as GameItem, { coords: [1, 1], part: 2 } as unknown as GameItem],
         });
       }).toThrow(/overlap/i);
     });
@@ -582,7 +583,7 @@ describe("GameInitializer (v3)", () => {
           playerShips: [],
           playerItems: [{ coords: [4, 4], part: 1, itemId: 0 }],
           enemyItems: [{ coords: [4, 4], part: 1, itemId: 0 }],
-          playerObstacles: [{ coords: [4, 4], width: 2, height: 2 } as any],
+          playerObstacles: [{ coords: [4, 4], width: 2, height: 2 } as unknown as GameObstacle],
         });
       }).toThrow(/overlap/i);
     });

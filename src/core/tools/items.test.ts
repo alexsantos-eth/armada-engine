@@ -3,6 +3,7 @@ import { getItemCells, generateItem, equalizeItemCounts, generateItems } from ".
 import type { GameItem, GameShip } from "../types/entities";
 import { CLASSIC_MODE } from "../modes/classic";
 import type { GameMode } from "../types/modes";
+import type { BoardViewConfig } from "../types/config";
 
 describe("items", () => {
   it("should get item cells correctly", () => {
@@ -147,7 +148,7 @@ describe("items", () => {
     it("should skip item if generateItem returns null", () => {
       const config = {
         itemCounts: { health: 1 },
-        boardView: { width: 1, height: 1 }
+        boardView: { width: 1, height: 1 } as unknown as BoardViewConfig
       };
       const mockGameMode = {
         ...CLASSIC_MODE,

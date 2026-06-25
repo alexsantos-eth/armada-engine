@@ -3,6 +3,7 @@ import { getObstacleCellsFromObstacle, generateObstacle, generateObstacles } fro
 import type { GameObstacle } from "../types/entities";
 import { CLASSIC_MODE } from "../modes/classic";
 import type { GameMode } from "../types/modes";
+import type { BoardViewConfig } from "../types/config";
 
 describe("obstacles", () => {
   describe("getObstacleCellsFromObstacle", () => {
@@ -105,7 +106,7 @@ describe("obstacles", () => {
     it("should skip obstacle if generateObstacle returns null", () => {
       const config = {
         obstacleCounts: { rock: 1 },
-        boardView: { width: 1, height: 1 }
+        boardView: { width: 1, height: 1 } as unknown as BoardViewConfig
       };
       const mockGameMode = {
         ...CLASSIC_MODE,

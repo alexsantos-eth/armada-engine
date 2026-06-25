@@ -600,7 +600,7 @@ describe("Match (v3)", () => {
       expect(state).toHaveProperty("enemyShots");
       expect(state).toHaveProperty("isGameOver");
       expect(state).toHaveProperty("winner");
-      
+
       expect(match.getWinner()).toBe(state.winner);
     });
 
@@ -623,7 +623,7 @@ describe("Match (v3)", () => {
 
       const shotInfo = match.getCellInfo(5, 5, "player");
       expect(shotInfo.isShot).toBe(true);
-      
+
       const invalidInfo = match.getCellInfo(-1, -1, "player");
       expect(invalidInfo.valid).toBe(false);
       expect(invalidInfo.hasShip).toBe(false);
@@ -684,8 +684,8 @@ describe("Match (v3)", () => {
 
     it("should use item via state machine", () => {
       // Place an item and collect it first so it can be used
-      const playerItem = { coords: [1, 1], part: 1, itemId: 0, onUse: () => {} };
-      const enemyItem = { coords: [6, 6], part: 1, itemId: 0, onUse: () => {} };
+      const playerItem = { coords: [1, 1], part: 1, itemId: 0, onUse: () => { } };
+      const enemyItem = { coords: [6, 6], part: 1, itemId: 0, onUse: () => { } };
       const m = createMatch({
         setup: {
           playerShips, enemyShips,
@@ -697,7 +697,7 @@ describe("Match (v3)", () => {
       });
       m.initializeMatch();
       m.planAndAttack(6, 6, true); // Collect the item
-      
+
       // After miss, turn becomes ENEMY_TURN, so force it back
       m.forceSetTurn("PLAYER_TURN");
       const used = m.useItem(0, true);
@@ -717,7 +717,7 @@ describe("Match (v3)", () => {
       expect(match.areAllShipsDestroyed(true)).toBe(false);
       expect(match.hasShipAtPosition(0, 0, true)).toBe(true);
       expect(match.hasShipAtPosition(9, 9, true)).toBe(false);
-      
+
       expect(match.isValidPosition(0, 0)).toBe(true);
       expect(match.isValidPosition(-1, -1)).toBe(false);
 
@@ -732,10 +732,10 @@ describe("Match (v3)", () => {
     it("should allow subscribing to state changes", () => {
       const callback = vi.fn();
       const unsubscribe = match.subscribe(callback);
-      
+
       match.planAndAttack(5, 5, true);
       expect(callback).toHaveBeenCalled();
-      
+
       unsubscribe();
       callback.mockClear();
       match.planAndAttack(6, 5, true);
@@ -744,13 +744,13 @@ describe("Match (v3)", () => {
 
     it("should manage event logs", () => {
       match.planAndAttack(5, 5, true);
-      
+
       const logs = match.getEventLog();
       expect(logs.length).toBeGreaterThan(0);
-      
+
       const last = match.getLastEventLog();
       expect(last).toBeDefined();
-      
+
       match.clearEventLog();
       expect(match.getEventLog()).toHaveLength(0);
       expect(match.getLastEventLog()).toBeUndefined();
@@ -778,45 +778,45 @@ describe("Match (v3)", () => {
       // Mock planShot to return { ready: false, error: undefined }
       const originalPlanShot = match.planShot;
       match.planShot = vi.fn().mockReturnValue({ ready: false, error: undefined });
-      
-      const result = match.planAndAttack(0, 0, 0, true);
+
+      const result = match.planAndAttack(0, 0, true);
       expect(result.success).toBe(false);
       expect(result.reason).toBe("Invalid shot");
-      
+
       // Restore
       match.planShot = originalPlanShot.bind(match);
     });
 
     it("should cover useItem returning false when lastUseItemResult is undefined", () => {
       // Send an invalid item usage event that won't set lastUseItemResult to true
-      const originalSend = (match as any).actor.send;
-      (match as any).actor.send = vi.fn((event: any) => {
+      const originalSend = match["actor"].send;
+      match["actor"].send = vi.fn(() => {
         // Mock getSnapshot to return context with lastUseItemResult undefined
-        (match as any).actor.getSnapshot = vi.fn().mockReturnValue({
+        match["actor"].getSnapshot = vi.fn().mockReturnValue({
           context: { lastUseItemResult: undefined }
         });
       });
-      
+
       const result = match.useItem(999, true);
       expect(result).toBe(false);
 
       // Restore
-      (match as any).actor.send = originalSend;
+      match["actor"].send = originalSend;
     });
     it("should cover planShot returning InvalidPlan when pendingPlan is not set but no error", () => {
-      const originalSend = (match as any).actor.send;
-      (match as any).actor.send = vi.fn((event: any) => {
+      const originalSend = match["actor"].send;
+      match["actor"].send = vi.fn(() => {
         // mock state without pendingPlan and without planError
-        (match as any).actor.getSnapshot = vi.fn().mockReturnValue({
+        match["actor"].getSnapshot = vi.fn().mockReturnValue({
           context: { pendingPlan: null, planError: null }
         });
       });
-      
+
       const result = match.planShot(0, 0, 0, true);
       expect(result.ready).toBe(false);
       expect(result.error).toBe("Invalid plan");
 
-      (match as any).actor.send = originalSend;
+      match["actor"].send = originalSend;
     });
 
     it("should sync shots", () => {
@@ -824,11 +824,11 @@ describe("Match (v3)", () => {
     });
 
     it("should cover confirmAttack when lastTurnDecision is undefined but lastAttackResult exists", () => {
-      const originalSend = (match as any).actor.send;
-      (match as any).actor.send = vi.fn((event: any) => {
-        (match as any).actor.getSnapshot = vi.fn().mockReturnValue({
-          context: { 
-            lastAttackResult: { success: true, shots: [] }, 
+      const originalSend = match["actor"].send;
+      match["actor"].send = vi.fn(() => {
+        match["actor"].getSnapshot = vi.fn().mockReturnValue({
+          context: {
+            lastAttackResult: { success: true, shots: [] },
             lastTurnDecision: null,
             engine: {
               getState: () => ({ isGameOver: false, winner: null })
@@ -836,13 +836,13 @@ describe("Match (v3)", () => {
           }
         });
       });
-      
+
       const result = match.confirmAttack();
       expect(result.turnEnded).toBe(true);
       expect(result.canShootAgain).toBe(false);
       expect(result.reason).toBe("");
 
-      (match as any).actor.send = originalSend;
+      match["actor"].send = originalSend;
     });
   });
 });
