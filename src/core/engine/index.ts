@@ -85,4 +85,4 @@ export {
   generateShips,
 } from "../tools/ships";
 
-export { withView } from "../modes/classic/entities/views";
+export { withView } from "../tools/views";

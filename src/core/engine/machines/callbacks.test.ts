@@ -92,6 +92,55 @@ describe("Match Callbacks", () => {
       );
     });
 
+    it("should NOT trigger onItemCollected if item is undefined", () => {
+      const engine = new GameEngine();
+      engine.initializeGame([], [], [], [], [], [], [], []); // No items
+
+      const callbacks: MatchCallbacks = {
+        onItemCollected: vi.fn(),
+      };
+
+      const payload: AttackCyclePayload = {
+        kind: "attack",
+        result: {
+          success: true,
+          shots: [{ x: 0, y: 0, hit: false, collected: true, itemFullyCollected: true, itemId: 0, executed: true }],
+        } as unknown as ShotPatternResult,
+        isPlayerShot: true,
+        centerX: 0, centerY: 0,
+        currentTurn: "PLAYER_TURN",
+      } as unknown as AttackCyclePayload;
+
+      fireMatchCallbacks(callbacks, engine, payload);
+
+      expect(callbacks.onItemCollected).not.toHaveBeenCalled();
+    });
+
+    it("should NOT trigger onItemCollected if itemFullyCollected is false", () => {
+      const engine = new GameEngine();
+      const enemyItem: GameItem = { itemId: 0, coords: [0, 0], part: 1 };
+      engine.initializeGame([], [], [], [enemyItem], [], [], [], []);
+
+      const callbacks: MatchCallbacks = {
+        onItemCollected: vi.fn(),
+      };
+
+      const payload: AttackCyclePayload = {
+        kind: "attack",
+        result: {
+          success: true,
+          shots: [{ x: 0, y: 0, hit: false, collected: true, itemFullyCollected: false, itemId: 0, executed: true }],
+        } as unknown as ShotPatternResult,
+        isPlayerShot: true,
+        centerX: 0, centerY: 0,
+        currentTurn: "PLAYER_TURN",
+      } as unknown as AttackCyclePayload;
+
+      fireMatchCallbacks(callbacks, engine, payload);
+
+      expect(callbacks.onItemCollected).not.toHaveBeenCalled();
+    });
+
     it("should trigger onTurnChange when rulesetToggledTurn is true", () => {
       const engine = new GameEngine();
       const callbacks: MatchCallbacks = {
@@ -144,6 +193,33 @@ describe("Match Callbacks", () => {
       );
     });
 
+    it("should trigger onShot callback with default patternId 0 when no executed shot", () => {
+      const engine = new GameEngine();
+      const callbacks: MatchCallbacks = {
+        onShot: vi.fn(),
+      };
+
+      fireMatchCallbacks(callbacks, engine, {
+        kind: "attack",
+        result: {
+          success: true,
+          shots: [
+            { x: 5, y: 5, hit: false, executed: false },
+          ],
+        } as unknown as ShotPatternResult,
+        isPlayerShot: true,
+        centerX: 5, centerY: 5,
+        currentTurn: "PLAYER_TURN",
+      } as unknown as AttackCyclePayload);
+
+      expect(callbacks.onShot).toHaveBeenCalledWith(
+        expect.objectContaining({
+          patternId: 0,
+        }),
+        true
+      );
+    });
+
     it("should trigger onGameOver when winner is present", () => {
       const engine = new GameEngine();
       const callbacks: MatchCallbacks = {
@@ -159,7 +235,7 @@ describe("Match Callbacks", () => {
         winner: "player",
       } as unknown as AttackCyclePayload);
 
-      expect(callbacks.onGameOver).toHaveBeenCalledWith("PLAYER");
+      expect(callbacks.onGameOver).toHaveBeenCalledWith("player");
     });
   });
 
@@ -256,7 +332,7 @@ describe("Match Callbacks", () => {
         winner: "enemy",
       } as unknown as ItemUseCyclePayload);
 
-      expect(callbacks.onGameOver).toHaveBeenCalledWith("ENEMY");
+      expect(callbacks.onGameOver).toHaveBeenCalledWith("enemy");
     });
   });
 });

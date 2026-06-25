@@ -43,7 +43,3 @@ export const BOARD_VIEWS = BoardViewSet.map;
 export const getBoardView = BoardViewSet.getById;
 export const DEFAULT_BOARD_VIEW = BoardViewSet.default;
 
-export const withView = (
-  overrides: Partial<BoardViewConfig>,
-  base: BoardViewConfig = DEFAULT_BOARD_VIEW,
-): BoardViewConfig => ({ ...base, ...overrides });

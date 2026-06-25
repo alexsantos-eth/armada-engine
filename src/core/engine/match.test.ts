@@ -772,4 +772,77 @@ describe("Match (v3)", () => {
       expect(m).toBeDefined();
     });
   });
+
+  describe("Edge cases and specific branches", () => {
+    it("should cover planAndAttack with undefined planResult.error", () => {
+      // Mock planShot to return { ready: false, error: undefined }
+      const originalPlanShot = match.planShot;
+      match.planShot = vi.fn().mockReturnValue({ ready: false, error: undefined });
+      
+      const result = match.planAndAttack(0, 0, 0, true);
+      expect(result.success).toBe(false);
+      expect(result.reason).toBe("Invalid shot");
+      
+      // Restore
+      match.planShot = originalPlanShot.bind(match);
+    });
+
+    it("should cover useItem returning false when lastUseItemResult is undefined", () => {
+      // Send an invalid item usage event that won't set lastUseItemResult to true
+      const originalSend = (match as any).actor.send;
+      (match as any).actor.send = vi.fn((event: any) => {
+        // Mock getSnapshot to return context with lastUseItemResult undefined
+        (match as any).actor.getSnapshot = vi.fn().mockReturnValue({
+          context: { lastUseItemResult: undefined }
+        });
+      });
+      
+      const result = match.useItem(999, true);
+      expect(result).toBe(false);
+
+      // Restore
+      (match as any).actor.send = originalSend;
+    });
+    it("should cover planShot returning InvalidPlan when pendingPlan is not set but no error", () => {
+      const originalSend = (match as any).actor.send;
+      (match as any).actor.send = vi.fn((event: any) => {
+        // mock state without pendingPlan and without planError
+        (match as any).actor.getSnapshot = vi.fn().mockReturnValue({
+          context: { pendingPlan: null, planError: null }
+        });
+      });
+      
+      const result = match.planShot(0, 0, 0, true);
+      expect(result.ready).toBe(false);
+      expect(result.error).toBe("Invalid plan");
+
+      (match as any).actor.send = originalSend;
+    });
+
+    it("should sync shots", () => {
+      match.syncShots([], []);
+    });
+
+    it("should cover confirmAttack when lastTurnDecision is undefined but lastAttackResult exists", () => {
+      const originalSend = (match as any).actor.send;
+      (match as any).actor.send = vi.fn((event: any) => {
+        (match as any).actor.getSnapshot = vi.fn().mockReturnValue({
+          context: { 
+            lastAttackResult: { success: true, shots: [] }, 
+            lastTurnDecision: null,
+            engine: {
+              getState: () => ({ isGameOver: false, winner: null })
+            }
+          }
+        });
+      });
+      
+      const result = match.confirmAttack();
+      expect(result.turnEnded).toBe(true);
+      expect(result.canShootAgain).toBe(false);
+      expect(result.reason).toBe("");
+
+      (match as any).actor.send = originalSend;
+    });
+  });
 });

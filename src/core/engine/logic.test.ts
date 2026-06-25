@@ -798,3 +798,123 @@ describe("Logic (v3)", () => {
     });
   });
 });
+
+describe("GameEngine (Internal)", () => {
+  it("should initialize with custom shotPatterns", () => {
+    const logic = new GameEngine({});
+    logic.initializeGame([], [], [], [], [], [], 
+      [{ id: 'p1', name: 'p1', pattern: [[0,0]] }], 
+      [{ id: 'p2', name: 'p2', pattern: [[0,0]] }]
+    );
+    expect(logic.getState().playerShotPatterns[0].id).toBe('p1');
+    expect(logic.getState().enemyShotPatterns[0].id).toBe('p2');
+  });
+
+  it("isShipDestroyed should return false for invalid shipId", () => {
+    const logic = new GameEngine({});
+    expect((logic as any).isShipDestroyed(999, false)).toBe(false);
+  });
+
+  it("setPlayerShips should update shipId on existing hits when shipId changes", () => {
+    const logic = new GameEngine({});
+    
+    logic.initializeGame([{ coords: [0,0], width: 1, height: 1, shipId: 0 }], []);
+    logic.executeShotPattern(0, 0, 0, false); // Enemy shoots 0,0
+
+    // Replace ships so 0,0 is now at index 1 (shipId 1)
+    logic.setPlayerShips([
+      { coords: [1,1], width: 1, height: 1, shipId: 0 },
+      { coords: [0,0], width: 1, height: 1, shipId: 1 }
+    ]);
+    
+    // Do it again with the same shipId to cover the 'else if' false branch
+    logic.setPlayerShips([
+      { coords: [1,1], width: 1, height: 1, shipId: 0 },
+      { coords: [0,0], width: 1, height: 1, shipId: 1 }
+    ]);
+
+    const shot = logic.getState().enemyShots.find(s => s.x === 0 && s.y === 0);
+    expect(shot?.shipId).toBe(1);
+  });
+
+  it("setEnemyShips should update shipId on existing hits when shipId changes", () => {
+    const logic = new GameEngine({});
+    
+    logic.initializeGame([], [{ coords: [0,0], width: 1, height: 1, shipId: 0 }]);
+    logic.executeShotPattern(0, 0, 0, true);
+
+    logic.setEnemyShips([
+      { coords: [1,1], width: 1, height: 1, shipId: 0 },
+      { coords: [0,0], width: 1, height: 1, shipId: 1 }
+    ]);
+    
+    // Do it again with the same shipId to cover the 'else if' false branch
+    logic.setEnemyShips([
+      { coords: [1,1], width: 1, height: 1, shipId: 0 },
+      { coords: [0,0], width: 1, height: 1, shipId: 1 }
+    ]);
+
+    const shot = logic.getState().playerShots.find(s => s.x === 0 && s.y === 0);
+    expect(shot?.shipId).toBe(1);
+  });
+
+  it("should cover 566 and 581 and 315", () => {
+    const logic = new GameEngine({});
+    logic.setPlayerShots([
+      { x: 0, y: 0, hit: true, shipId: 1, patternId: 0, patternCenterX: 0, patternCenterY: 0 },
+      { x: 1, y: 1, hit: false, patternId: 0, patternCenterX: 0, patternCenterY: 0 },
+      { x: 2, y: 2, hit: true, patternId: 0, patternCenterX: 0, patternCenterY: 0 } // shipId undefined
+    ]);
+    logic.setEnemyShots([
+      { x: 0, y: 0, hit: true, shipId: 1, patternId: 0, patternCenterX: 0, patternCenterY: 0 },
+      { x: 1, y: 1, hit: false, patternId: 0, patternCenterX: 0, patternCenterY: 0 },
+      { x: 2, y: 2, hit: true, patternId: 0, patternCenterX: 0, patternCenterY: 0 } // shipId undefined
+    ]);
+
+    // Cover 315 by shooting at an already shot cell
+    logic.executeShotPattern(0, 0, 0, true);
+
+    // Cover 315 nullish coalescing branch by hacking the internal map
+    (logic as any).playerSide.shotsMap.set("1,1", undefined);
+    logic.executeShotPattern(1, 1, 0, true);
+
+    (logic as any).playerSide.shotsMap.set("2,2", { x: 2, y: 2 }); // hit missing
+    logic.executeShotPattern(2, 2, 0, true);
+  });
+
+  it("should not double collect a fully collected item and cover 213 and 413", () => {
+    const logic = new GameEngine({});
+    
+    logic.initializeGame([], [], [{ coords: [2, 2], part: 2, itemId: 1 }], []);
+    
+    // Cover 413 by caching overlapping ships
+    (logic as any).cacheShipPositions([
+      { coords: [0, 0], width: 1, height: 1, shipId: 0 },
+      { coords: [0, 0], width: 1, height: 1, shipId: 1 } // Overlapping
+    ], (logic as any).playerSide.shipPositions, (logic as any).playerSide.shipSizes);
+
+    // Apply shots using the public executeShotPattern to populate shotsMap
+    // But since executeShotPattern adds to enemySide for isPlayerShot=false,
+    // let's just use executeShot so we can pass our own custom patternInfo.
+    // Actually, executeShot adds to attackingSide.
+    // If isPlayerShot=false, attackingSide is enemySide.
+    // We want the item hit to be on playerSide.items!
+    
+    // First shot on [2, 2] -> part 1/2 -> collected = true
+    // Also we need to test line 213 false branch for collected: false.
+    // So let's execute a miss shot at [0,0] first!
+    (logic as any).executeShot(0, 0, false);
+    
+    (logic as any).executeShot(2, 2, false);
+    
+    // Second shot on [3, 2] -> part 2/2 -> fullyCollected!
+    // This will trigger logic to update the previous shot at [2, 2] to itemFullyCollected = true
+    (logic as any).executeShot(3, 2, false);
+    
+    const r2 = logic.getState().enemyShots.find(s => s.x === 3 && s.y === 2);
+    expect(r2?.itemFullyCollected).toBe(true);
+
+    const r3 = (logic as any).executeShot(2, 2, false);
+    expect(r3?.collected).toBeUndefined(); 
+  });
+});

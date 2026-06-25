@@ -231,5 +231,171 @@ describe("Board Projection", () => {
       const board = buildEnemyBoard(state, view);
       expect(getCell(board, 1, 1).state).toBe("SHIP");
     });
+    it("should handle undefined obstacle lists", () => {
+      const state = createMockState() as Mutable<GameEngineState>;
+      delete (state as any).playerObstacles;
+      delete (state as any).enemyObstacles;
+
+      const view: BoardViewConfig = {
+        id: "test", title: "Test", description: "", width: 10, height: 10,
+        playerSide: ["playerObstacles", "enemyObstacles"],
+        enemySide: ["playerObstacles", "enemyObstacles"]
+      };
+
+      const playerBoard = buildPlayerBoard(state, view);
+      const enemyBoard = buildEnemyBoard(state, view);
+      expect(playerBoard).toBeDefined();
+      expect(enemyBoard).toBeDefined();
+    });
+
+    it("should map PLAYER shot to COLLECTED if hitting already COLLECTED cell on player board", () => {
+      const state = createMockState() as Mutable<GameEngineState>;
+      state.enemyCollectedItems = [0]; 
+      state.playerItems = [{ coords: [3, 3], part: 1, itemId: 0 }];
+      
+      state.playerShots = [{ x: 3, y: 3, hit: false }];
+      
+      const view: BoardViewConfig = {
+        id: "test", title: "Test", description: "", width: 10, height: 10,
+        playerSide: ["playerItems", "collectedItems", "playerShots"],
+        enemySide: []
+      };
+
+      const board = buildPlayerBoard(state, view);
+      expect(getCell(board, 3, 3).state).toBe("COLLECTED");
+    });
+    
+    it("should map ENEMY shot to COLLECTED if hitting already COLLECTED cell on enemy board", () => {
+      const state = createMockState() as Mutable<GameEngineState>;
+      state.playerCollectedItems = [0]; 
+      state.enemyItems = [{ coords: [6, 6], part: 1, itemId: 0 }];
+      
+      state.enemyShots = [{ x: 6, y: 6, hit: false }];
+      
+      const view: BoardViewConfig = {
+        id: "test", title: "Test", description: "", width: 10, height: 10,
+        playerSide: [],
+        enemySide: ["enemyItems", "collectedItems", "enemyShots"]
+      };
+
+      const board = buildEnemyBoard(state, view);
+      expect(getCell(board, 6, 6).state).toBe("COLLECTED");
+    });
+    
+    it("should render ITEM if not collected on player board", () => {
+      const state = createMockState() as Mutable<GameEngineState>;
+      state.enemyCollectedItems = []; 
+      state.playerItems = [{ coords: [3, 3], part: 1, itemId: 0 }];
+      
+      const view: BoardViewConfig = {
+        id: "test", title: "Test", description: "", width: 10, height: 10,
+        playerSide: ["playerItems", "collectedItems"],
+        enemySide: []
+      };
+
+      const board = buildPlayerBoard(state, view);
+      expect(getCell(board, 3, 3).state).toBe("ITEM");
+    });
+    
+    it("should render ITEM if not collected on enemy board (enemyItems)", () => {
+      const state = createMockState() as Mutable<GameEngineState>;
+      state.playerCollectedItems = []; 
+      state.enemyItems = [{ coords: [6, 6], part: 1, itemId: 0 }];
+      
+      const view: BoardViewConfig = {
+        id: "test", title: "Test", description: "", width: 10, height: 10,
+        playerSide: [],
+        enemySide: ["enemyItems", "collectedItems"]
+      };
+
+      const board = buildEnemyBoard(state, view);
+      expect(getCell(board, 6, 6).state).toBe("ITEM");
+    });
+    
+    it("should render ITEM if not collected on enemy board (playerItems)", () => {
+      const state = createMockState() as Mutable<GameEngineState>;
+      state.enemyCollectedItems = []; 
+      state.playerItems = [{ coords: [3, 3], part: 1, itemId: 0 }];
+      
+      const view: BoardViewConfig = {
+        id: "test", title: "Test", description: "", width: 10, height: 10,
+        playerSide: [],
+        enemySide: ["playerItems", "collectedItems"]
+      };
+
+      const board = buildEnemyBoard(state, view);
+      expect(getCell(board, 3, 3).state).toBe("ITEM");
+    });
+
+    it("should handle out of bounds shots on enemy board (playerShots)", () => {
+      const state = createMockState() as Mutable<GameEngineState>;
+      state.playerShots = [{ x: 99, y: 99, hit: false }];
+      
+      const view: BoardViewConfig = {
+        id: "test", title: "Test", description: "", width: 10, height: 10,
+        playerSide: [],
+        enemySide: ["playerShots"]
+      };
+
+      const board = buildEnemyBoard(state, view);
+      expect(board.length).toBe(10);
+    });
+
+    it("should handle out of bounds shots on enemy board (enemyShots)", () => {
+      const state = createMockState() as Mutable<GameEngineState>;
+      state.enemyShots = [{ x: 99, y: 99, hit: false }];
+      
+      const view: BoardViewConfig = {
+        id: "test", title: "Test", description: "", width: 10, height: 10,
+        playerSide: [],
+        enemySide: ["enemyShots"]
+      };
+
+      const board = buildEnemyBoard(state, view);
+      expect(board.length).toBe(10);
+    });
+
+    it("should ignore out of bounds items/ships (setBoardCell return false)", () => {
+      const state = createMockState() as Mutable<GameEngineState>;
+      state.playerShips = [{ coords: [-1, -1], width: 1, height: 1, shipId: 0 }];
+      
+      const view: BoardViewConfig = {
+        id: "test", title: "Test", description: "", width: 10, height: 10,
+        playerSide: ["playerShips"],
+        enemySide: []
+      };
+
+      const board = buildPlayerBoard(state, view);
+      expect(board).toBeDefined();
+    });
+
+    it("should prevent enemy obstacles from overwriting existing cells on player board", () => {
+      const state = createMockState() as Mutable<GameEngineState>;
+      state.playerShips = [{ coords: [1, 1], width: 1, height: 1, shipId: 0 }];
+      state.enemyObstacles = [{ coords: [1, 1], width: 1, height: 1, obstacleId: 0 }];
+      
+      const view: BoardViewConfig = {
+        id: "test", title: "Test", description: "", width: 10, height: 10,
+        playerSide: ["playerShips", "enemyObstacles"],
+        enemySide: []
+      };
+
+      const board = buildPlayerBoard(state, view);
+      expect(getCell(board, 1, 1).state).toBe("SHIP"); // Should not be OBSTACLE
+    });
+
+    it("should handle out of bounds enemyShots on player board", () => {
+      const state = createMockState() as Mutable<GameEngineState>;
+      state.enemyShots = [{ x: 99, y: 99, hit: false }];
+      
+      const view: BoardViewConfig = {
+        id: "test", title: "Test", description: "", width: 10, height: 10,
+        playerSide: ["enemyShots"],
+        enemySide: []
+      };
+
+      const board = buildPlayerBoard(state, view);
+      expect(board.length).toBe(10);
+    });
   });
 });

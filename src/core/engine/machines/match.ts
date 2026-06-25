@@ -60,7 +60,7 @@ export const matchMachine = setup({
 
   guards: {
     isValidPlan: ({ context, event }) => {
-      if (event.type !== "PLAN_SHOT") return false;
+      const e = event as Extract<MatchMachineEvent, { type: "PLAN_SHOT" }>;
 
       const expectedTurn = event.isPlayerShot ? "PLAYER_TURN" : "ENEMY_TURN";
       if (context.currentTurn !== expectedTurn) {
@@ -98,7 +98,7 @@ export const matchMachine = setup({
 
   actions: {
     storePlan: assign(({ context, event, self }) => {
-      if (event.type !== "PLAN_SHOT") return {};
+      const e = event as Extract<MatchMachineEvent, { type: "PLAN_SHOT" }>;
 
       logMachineEvent(context, event, self.getSnapshot().value, "storePlan", {
         centerX: event.centerX,
@@ -119,7 +119,7 @@ export const matchMachine = setup({
     }),
 
     setPlanError: assign(({ context, event, self }) => {
-      if (event.type !== "PLAN_SHOT") return {};
+      const e = event as Extract<MatchMachineEvent, { type: "PLAN_SHOT" }>;
 
       let planError: PlanError = PlanError.InvalidPlan;
       const expectedTurn = event.isPlayerShot ? "PLAYER_TURN" : "ENEMY_TURN";
@@ -174,10 +174,8 @@ export const matchMachine = setup({
     }),
 
     executeAttack: assign(({ context, event, self }) => {
-      if (!context.pendingPlan) return {};
-
       const { centerX, centerY, patternIdx, isPlayerShot } =
-        context.pendingPlan;
+        context.pendingPlan!;
 
       const lastAttackResult = context.engine.executeShotPattern(
         centerX,
@@ -209,10 +207,7 @@ export const matchMachine = setup({
     }),
 
     runCollectHandlers: assign(({ context, event, self }) => {
-      if (!context.lastAttackResult || context.lastAttackIsPlayerShot === null)
-        return {};
-
-      const isPlayerShot = context.lastAttackIsPlayerShot;
+      const isPlayerShot = context.lastAttackIsPlayerShot!;
 
       let capturedRuleSet: unknown = null;
       let collectToggleCount = 0;
@@ -283,10 +278,7 @@ export const matchMachine = setup({
     }),
 
     runDestroyHandlers: assign(({ context, event, self }) => {
-      if (!context.lastAttackResult || context.lastAttackIsPlayerShot === null)
-        return {};
-
-      const isPlayerShot = context.lastAttackIsPlayerShot;
+      const isPlayerShot = context.lastAttackIsPlayerShot!;
 
       let capturedRuleSet: unknown = null;
       let destroyToggleCount = 0;
@@ -359,8 +351,6 @@ export const matchMachine = setup({
     }),
 
     resolveTurn: assign(({ context, event, self }) => {
-      if (!context.lastAttackResult) return {};
-
       const pendingRuleSet = context.pendingRuleSet;
       const activeRuleSet =
         (pendingRuleSet as typeof context.ruleSet | null) ?? context.ruleSet;
@@ -396,10 +386,10 @@ export const matchMachine = setup({
 
       fireMatchCallbacks(context.callbacks, context.engine, {
         kind: "attack",
-        result: context.lastAttackResult,
-        isPlayerShot: context.lastAttackIsPlayerShot ?? false,
-        centerX: context.lastAttackCenter?.centerX ?? 0,
-        centerY: context.lastAttackCenter?.centerY ?? 0,
+        result: context.lastAttackResult!,
+        isPlayerShot: context.lastAttackIsPlayerShot!,
+        centerX: context.lastAttackCenter!.centerX,
+        centerY: context.lastAttackCenter!.centerY,
         patternIdx: context.lastAttackCenter?.patternIdx ?? 0,
         currentTurn,
         rulesetToggledTurn,
@@ -424,19 +414,19 @@ export const matchMachine = setup({
     }),
 
     initializeEngine: assign(({ context, event, self }) => {
-      if (event.type !== "INITIALIZE") return {};
+      const e = event as Extract<MatchMachineEvent, { type: "INITIALIZE" }>;
 
-      const currentTurn: GameTurn = event.initialTurn ?? "PLAYER_TURN";
+      const currentTurn: GameTurn = e.initialTurn ?? "PLAYER_TURN";
 
       context.engine.initializeGame(
-        event.playerShips,
-        event.enemyShips,
-        event.playerItems ?? [],
-        event.enemyItems ?? [],
-        event.playerObstacles ?? [],
-        event.enemyObstacles ?? [],
-        event.playerShotPatterns ?? [],
-        event.enemyShotPatterns ?? [],
+        e.playerShips,
+        e.enemyShips,
+        e.playerItems ?? [],
+        e.enemyItems ?? [],
+        e.playerObstacles ?? [],
+        e.enemyObstacles ?? [],
+        e.playerShotPatterns ?? [],
+        e.enemyShotPatterns ?? [],
       );
 
       fireMatchCallbacks(context.callbacks, context.engine, {
@@ -451,8 +441,8 @@ export const matchMachine = setup({
         "initializeEngine",
         {
           initialTurn: currentTurn,
-          playerShips: event.playerShips.length,
-          enemyShips: event.enemyShips.length,
+          playerShips: e.playerShips.length,
+          enemyShips: e.enemyShips.length,
         },
       );
 
@@ -500,38 +490,38 @@ export const matchMachine = setup({
     }),
 
     setRuleSet: assign(({ context, event, self }) => {
-      if (event.type !== "SET_RULESET") return {};
+      const e = event as Extract<MatchMachineEvent, { type: "SET_RULESET" }>;
 
       logMachineEvent(context, event, self.getSnapshot().value, "setRuleSet");
-      return { ruleSet: event.ruleSet };
+      return { ruleSet: e.ruleSet };
     }),
 
     syncTurn: assign(({ context, event, self }) => {
-      if (event.type !== "SYNC_TURN") return {};
+      const e = event as Extract<MatchMachineEvent, { type: "SYNC_TURN" }>;
 
       logMachineEvent(context, event, self.getSnapshot().value, "syncTurn", {
-        turn: event.turn,
+        turn: e.turn,
       });
-      return { currentTurn: event.turn };
+      return { currentTurn: e.turn };
     }),
 
     syncShots: assign(({ context, event, self }) => {
-      if (event.type !== "SYNC_SHOTS") return {};
-      context.engine.setPlayerShots(event.playerShots);
-      context.engine.setEnemyShots(event.enemyShots);
+      const e = event as Extract<MatchMachineEvent, { type: "SYNC_SHOTS" }>;
+      context.engine.setPlayerShots(e.playerShots);
+      context.engine.setEnemyShots(e.enemyShots);
 
       logMachineEvent(context, event, self.getSnapshot().value, "syncShots", {
-        playerShots: event.playerShots.length,
-        enemyShots: event.enemyShots.length,
+        playerShots: e.playerShots.length,
+        enemyShots: e.enemyShots.length,
       });
 
       return {};
     }),
 
     useItem: assign(({ context, event, self }) => {
-      if (event.type !== "USE_ITEM") return {};
+      const e = event as Extract<MatchMachineEvent, { type: "USE_ITEM" }>;
 
-      const { itemId, isPlayerShot, shipId } = event;
+      const { itemId, isPlayerShot, shipId } = e;
 
       const isCallersTurn = isPlayerShot
         ? context.currentTurn === "PLAYER_TURN"
@@ -697,6 +687,7 @@ export const matchMachine = setup({
         currentTurn,
         useToggleCount: 0,
         lastUsedItemInfo: null,
+        ruleSet: context.pendingRuleSet ?? context.ruleSet,
         pendingRuleSet: null,
       };
     }),

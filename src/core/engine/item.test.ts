@@ -4,6 +4,9 @@ import { GameEngine } from "./logic";
 import type { GameShip, GameItem, GameObstacle } from "../types/entities";
 import type { Shot } from "../types/shots";
 import type { BoardViewConfig } from "../types/config";
+import * as itemsTools from "../tools/items";
+import * as obstaclesTools from "../tools/obstacles";
+import * as shipsTools from "../tools/ships";
 
 const testBoardView: BoardViewConfig = {
   id: "test-board",
@@ -247,6 +250,178 @@ describe("Item Context Builders", () => {
       expect(engine.getPlayerShips().length).toBe(0);
     });
 
+    it("addPlayerObstacle should place an obstacle on own board", () => {
+      const item = enemyItems[0];
+      const shot: Shot = { x: 7, y: 7, hit: false, collected: true };
+      const ctx = buildCollectContext(engine, item, true, shot, "PLAYER_TURN", vi.fn());
+
+      const result = ctx.addPlayerObstacle({ width: 1, height: 1 } as any);
+      expect(result).toBe(true);
+      expect(engine.getPlayerObstacles().length).toBe(1);
+    });
+
+    it("deletePlayerObstacle should remove an obstacle by id and reindex", () => {
+      const item = enemyItems[0];
+      const shot: Shot = { x: 7, y: 7, hit: false, collected: true };
+      const ctx = buildCollectContext(engine, item, true, shot, "PLAYER_TURN", vi.fn());
+
+      ctx.addPlayerObstacle({ width: 1, height: 1 } as any);
+      ctx.addPlayerObstacle({ width: 1, height: 1 } as any);
+      expect(engine.getPlayerObstacles().length).toBe(2);
+      
+      const result = ctx.deletePlayerObstacle(0);
+      expect(result).toBe(true);
+      expect(engine.getPlayerObstacles().length).toBe(1);
+      expect(engine.getPlayerObstacles()[0]?.obstacleId).toBe(0); // reindexed
+    });
+
+    it("deletePlayerObstacle should return false if not found", () => {
+      const item = enemyItems[0];
+      const shot: Shot = { x: 7, y: 7, hit: false, collected: true };
+      const ctx = buildCollectContext(engine, item, true, shot, "PLAYER_TURN", vi.fn());
+
+      const result = ctx.deletePlayerObstacle(99);
+      expect(result).toBe(false);
+    });
+
+    it("deleteAllPlayerObstacles should clear all obstacles", () => {
+      const item = enemyItems[0];
+      const shot: Shot = { x: 7, y: 7, hit: false, collected: true };
+      const ctx = buildCollectContext(engine, item, true, shot, "PLAYER_TURN", vi.fn());
+
+      ctx.addPlayerObstacle({ width: 1, height: 1 } as any);
+      ctx.deleteAllPlayerObstacles();
+      expect(engine.getPlayerObstacles().length).toBe(0);
+    });
+
+    it("addEnemyObstacle should place an obstacle on opponent board", () => {
+      const item = enemyItems[0];
+      const shot: Shot = { x: 7, y: 7, hit: false, collected: true };
+      const ctx = buildCollectContext(engine, item, true, shot, "PLAYER_TURN", vi.fn());
+
+      const result = ctx.addEnemyObstacle({ width: 1, height: 1 } as any);
+      expect(result).toBe(true);
+      expect(engine.getEnemyObstacles().length).toBe(1);
+    });
+
+    it("deleteEnemyObstacle should remove an obstacle by id and reindex", () => {
+      const item = enemyItems[0];
+      const shot: Shot = { x: 7, y: 7, hit: false, collected: true };
+      const ctx = buildCollectContext(engine, item, true, shot, "PLAYER_TURN", vi.fn());
+
+      ctx.addEnemyObstacle({ width: 1, height: 1 } as any);
+      ctx.addEnemyObstacle({ width: 1, height: 1 } as any);
+      expect(engine.getEnemyObstacles().length).toBe(2);
+      
+      const result = ctx.deleteEnemyObstacle(0);
+      expect(result).toBe(true);
+      expect(engine.getEnemyObstacles().length).toBe(1);
+      expect(engine.getEnemyObstacles()[0]?.obstacleId).toBe(0); // reindexed
+    });
+
+    it("deleteEnemyObstacle should return false if not found", () => {
+      const item = enemyItems[0];
+      const shot: Shot = { x: 7, y: 7, hit: false, collected: true };
+      const ctx = buildCollectContext(engine, item, true, shot, "PLAYER_TURN", vi.fn());
+
+      const result = ctx.deleteEnemyObstacle(99);
+      expect(result).toBe(false);
+    });
+
+    it("deleteAllEnemyObstacles should clear all obstacles", () => {
+      const item = enemyItems[0];
+      const shot: Shot = { x: 7, y: 7, hit: false, collected: true };
+      const ctx = buildCollectContext(engine, item, true, shot, "PLAYER_TURN", vi.fn());
+
+      ctx.addEnemyObstacle({ width: 1, height: 1 } as any);
+      ctx.deleteAllEnemyObstacles();
+      expect(engine.getEnemyObstacles().length).toBe(0);
+    });
+
+    it("addPlayerItem should place an item on own board", () => {
+      const item = enemyItems[0];
+      const shot: Shot = { x: 7, y: 7, hit: false, collected: true };
+      const ctx = buildCollectContext(engine, item, true, shot, "PLAYER_TURN", vi.fn());
+
+      const result = ctx.addPlayerItem({ templateId: "test" } as any);
+      expect(result).toBe(true);
+      expect(engine.getState().playerItems.length).toBe(2); // 1 exists originally
+    });
+
+    it("deletePlayerItem should remove an item by id and reindex", () => {
+      const item = enemyItems[0];
+      const shot: Shot = { x: 7, y: 7, hit: false, collected: true };
+      const ctx = buildCollectContext(engine, item, true, shot, "PLAYER_TURN", vi.fn());
+      ctx.addPlayerItem({ templateId: "test" } as any);
+      ctx.addPlayerItem({ templateId: "test" } as any);
+      expect(engine.getState().playerItems.length).toBe(3);
+
+      const result = ctx.deletePlayerItem(0);
+      expect(result).toBe(true);
+      expect(engine.getState().playerItems.length).toBe(2);
+      expect(engine.getState().playerItems[0]?.itemId).toBe(0); // reindexed
+    });
+
+    it("deletePlayerItem should return false if not found", () => {
+      const item = enemyItems[0];
+      const shot: Shot = { x: 7, y: 7, hit: false, collected: true };
+      const ctx = buildCollectContext(engine, item, true, shot, "PLAYER_TURN", vi.fn());
+
+      const result = ctx.deletePlayerItem(99);
+      expect(result).toBe(false);
+    });
+
+    it("deleteAllPlayerItems should clear all items", () => {
+      const item = enemyItems[0];
+      const shot: Shot = { x: 7, y: 7, hit: false, collected: true };
+      const ctx = buildCollectContext(engine, item, true, shot, "PLAYER_TURN", vi.fn());
+
+      ctx.deleteAllPlayerItems();
+      expect(engine.getState().playerItems.length).toBe(0);
+    });
+
+    it("addEnemyItem should place an item on opponent board", () => {
+      const item = enemyItems[0];
+      const shot: Shot = { x: 7, y: 7, hit: false, collected: true };
+      const ctx = buildCollectContext(engine, item, true, shot, "PLAYER_TURN", vi.fn());
+
+      const result = ctx.addEnemyItem({ templateId: "test" } as any);
+      expect(result).toBe(true);
+      expect(engine.getState().enemyItems.length).toBe(2);
+    });
+
+    it("deleteEnemyItem should remove an item by id and reindex", () => {
+      const item = enemyItems[0];
+      const shot: Shot = { x: 7, y: 7, hit: false, collected: true };
+      const ctx = buildCollectContext(engine, item, true, shot, "PLAYER_TURN", vi.fn());
+      ctx.addEnemyItem({ templateId: "test" } as any);
+      ctx.addEnemyItem({ templateId: "test" } as any);
+      expect(engine.getState().enemyItems.length).toBe(3);
+      
+      const result = ctx.deleteEnemyItem(0);
+      expect(result).toBe(true);
+      expect(engine.getState().enemyItems.length).toBe(2);
+      expect(engine.getState().enemyItems[0]?.itemId).toBe(0); // reindexed
+    });
+
+    it("deleteEnemyItem should return false if not found", () => {
+      const item = enemyItems[0];
+      const shot: Shot = { x: 7, y: 7, hit: false, collected: true };
+      const ctx = buildCollectContext(engine, item, true, shot, "PLAYER_TURN", vi.fn());
+
+      const result = ctx.deleteEnemyItem(99);
+      expect(result).toBe(false);
+    });
+
+    it("deleteAllEnemyItems should clear all items", () => {
+      const item = enemyItems[0];
+      const shot: Shot = { x: 7, y: 7, hit: false, collected: true };
+      const ctx = buildCollectContext(engine, item, true, shot, "PLAYER_TURN", vi.fn());
+
+      ctx.deleteAllEnemyItems();
+      expect(engine.getState().enemyItems.length).toBe(0);
+    });
+
     it("deleteEnemyShip should remove a ship by id", () => {
       const item = enemyItems[0];
       const shot: Shot = { x: 7, y: 7, hit: false, collected: true };
@@ -458,6 +633,60 @@ describe("Item Context Builders", () => {
 
       ctx.deleteAllEnemyObstacles();
       expect(engine.getEnemyObstacles().length).toBe(0);
+    });
+
+    describe("Item placement failures (!placed branches)", () => {
+      let generateItemSpy: ReturnType<typeof vi.spyOn>;
+      let generateObstacleSpy: ReturnType<typeof vi.spyOn>;
+      let findFreeShipSpy: ReturnType<typeof vi.spyOn>;
+
+      beforeEach(() => {
+        generateItemSpy = vi.spyOn(itemsTools, "generateItem").mockReturnValue(undefined as any);
+        generateObstacleSpy = vi.spyOn(obstaclesTools, "generateObstacle").mockReturnValue(undefined as any);
+        findFreeShipSpy = vi.spyOn(shipsTools, "findFreeShipPosition").mockReturnValue(null as any);
+      });
+
+      afterEach(() => {
+        generateItemSpy.mockRestore();
+        generateObstacleSpy.mockRestore();
+        findFreeShipSpy.mockRestore();
+      });
+
+      it("should return false when addPlayerShip fails to place", () => {
+        const ctx = buildCollectContext(engine, enemyItems[0], true, undefined, "PLAYER_TURN", vi.fn());
+        const result = ctx.addPlayerShip(1, 1);
+        expect(result).toBe(false);
+      });
+
+      it("should return false when addEnemyShip fails to place", () => {
+        const ctx = buildCollectContext(engine, enemyItems[0], true, undefined, "PLAYER_TURN", vi.fn());
+        const result = ctx.addEnemyShip(1, 1);
+        expect(result).toBe(false);
+      });
+
+      it("should return false when addPlayerItem fails to place", () => {
+        const ctx = buildCollectContext(engine, enemyItems[0], true, undefined, "PLAYER_TURN", vi.fn());
+        const result = ctx.addPlayerItem({ templateId: "test" } as any);
+        expect(result).toBe(false);
+      });
+
+      it("should return false when addEnemyItem fails to place", () => {
+        const ctx = buildCollectContext(engine, enemyItems[0], true, undefined, "PLAYER_TURN", vi.fn());
+        const result = ctx.addEnemyItem({ templateId: "test" } as any);
+        expect(result).toBe(false);
+      });
+
+      it("should return false when addPlayerObstacle fails to place", () => {
+        const ctx = buildCollectContext(engine, enemyItems[0], true, undefined, "PLAYER_TURN", vi.fn());
+        const result = ctx.addPlayerObstacle({} as any);
+        expect(result).toBe(false);
+      });
+
+      it("should return false when addEnemyObstacle fails to place", () => {
+        const ctx = buildCollectContext(engine, enemyItems[0], true, undefined, "PLAYER_TURN", vi.fn());
+        const result = ctx.addEnemyObstacle({} as any);
+        expect(result).toBe(false);
+      });
     });
   });
 });

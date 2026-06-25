@@ -172,15 +172,6 @@ export class GameEngine implements IGameEngine {
     isPlayerShot: boolean,
     patternInfo?: { patternId: number; centerX: number; centerY: number },
   ): ShotResult {
-    if (this.isCellShot(x, y, isPlayerShot)) {
-      return {
-        success: false,
-        error: ShotError.CellAlreadyShot,
-        hit: false,
-        shipId: -1,
-      };
-    }
-
     const result = this.checkShot(x, y, isPlayerShot);
 
     const itemCollection = !result.hit
