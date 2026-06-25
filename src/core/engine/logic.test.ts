@@ -1,8 +1,8 @@
 import { describe, expect, it, beforeEach } from "vitest";
-import { GameEngine } from "../../../engine/logic";
-import type { GameShip, GameItem, GameObstacle } from "../../../types/entities";
-import type { Shot, ShotPattern } from "../../../types/shots";
-import type { BoardViewConfig } from "../../../types/config";
+import { GameEngine, toMatchState } from "./logic";
+import type { GameShip, GameItem, GameObstacle } from "../types/entities";
+import type { Shot, ShotPattern } from "../types/shots";
+import type { BoardViewConfig } from "../types/config";
 
 describe("Logic (v3)", () => {
   let engine: GameEngine;
@@ -643,6 +643,158 @@ describe("Logic (v3)", () => {
       const v3 = eng.getVersion();
       eng.resetGame();
       expect(eng.getVersion()).toBeGreaterThan(v3);
+    });
+  });
+  describe("Additional Coverage", () => {
+    beforeEach(() => {
+      engine.initializeGame(playerShips, enemyShips);
+    });
+
+    it("should recalculate hits when ships are replaced (setPlayerShips/setEnemyShips)", () => {
+      // Enemy shoots at player ship [0,0]
+      engine.executeShotPattern(0, 0, 0, false);
+      expect(engine.getPlayerShips()[0].shipId).toBe(0);
+
+      const newPlayerShips: GameShip[] = [
+        { coords: [9, 9], width: 1, height: 1, shipId: 0 },
+        { coords: [0, 0], width: 1, height: 1, shipId: 1 },
+      ];
+      engine.setPlayerShips(newPlayerShips);
+
+      // The existing shot should now map to shipId 1 (the index of the ship)
+      const shot = engine.getShotAtPosition(0, 0, false);
+      expect(shot?.shipId).toBe(1);
+      expect(engine.isShipDestroyed(1, false)).toBe(true);
+
+      const newEnemyShips: GameShip[] = [
+        { coords: [9, 9], width: 1, height: 1, shipId: 0 },
+        { coords: [5, 5], width: 1, height: 1, shipId: 1 },
+      ];
+      engine.executeShotPattern(5, 5, 0, true);
+      engine.setEnemyShips(newEnemyShips);
+
+      const enemyShot = engine.getShotAtPosition(5, 5, true);
+      expect(enemyShot?.shipId).toBe(1);
+      expect(engine.isShipDestroyed(1, true)).toBe(true);
+    });
+
+    it("should clear opponent's collected and used items when setting items", () => {
+      engine.initializeGame(
+        playerShips, enemyShips,
+        [{ coords: [1, 1], part: 1, itemId: 0 }],
+        [{ coords: [6, 6], part: 1, itemId: 0 }]
+      );
+
+      // Player collects enemy item
+      engine.executeShotPattern(6, 6, 0, true);
+      engine.markItemUsed(0, true);
+      
+      expect(engine.getState().playerCollectedItems).toContain(0);
+      expect(engine.getState().playerUsedItems).toContainEqual({ itemId: 0, shipId: undefined });
+
+      // Enemy items replaced, so player's collected/used items from enemy should clear
+      engine.setEnemyItems([{ coords: [7, 7], part: 1, itemId: 0 }]);
+      expect(engine.getState().playerCollectedItems).toHaveLength(0);
+      expect(engine.getState().playerUsedItems).toHaveLength(0);
+
+      // Same for enemy collecting player item
+      engine.executeShotPattern(1, 1, 0, false);
+      engine.markItemUsed(0, false);
+      
+      expect(engine.getState().enemyCollectedItems).toContain(0);
+      engine.setPlayerItems([{ coords: [2, 2], part: 1, itemId: 0 }]);
+      expect(engine.getState().enemyCollectedItems).toHaveLength(0);
+      expect(engine.getState().enemyUsedItems).toHaveLength(0);
+    });
+
+    it("should allow getting and setting obstacles", () => {
+      const obstacles: GameObstacle[] = [{ coords: [3, 3], width: 1, height: 1, obstacleId: 0 }];
+      engine.setPlayerObstacles(obstacles);
+      engine.setEnemyObstacles(obstacles);
+
+      expect(engine.getPlayerObstacles()).toHaveLength(1);
+      expect(engine.getEnemyObstacles()).toHaveLength(1);
+      
+      expect(engine.hasObstacleAtPosition(3, 3, true)).toBe(true);
+      expect(engine.hasObstacleAtPosition(4, 4, true)).toBe(false);
+      expect(engine.hasObstacleAtPosition(3, 3, false)).toBe(true);
+    });
+
+    it("should return game mode", () => {
+      expect(engine.getGameMode()).toBeDefined();
+    });
+
+    it("should reject executeShotPattern if game is over", () => {
+      engine.setGameOver("player");
+      const result = engine.executeShotPattern(5, 5, 0, true);
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.isGameOver).toBe(true);
+    });
+
+    it("should reject executeShotPattern if pattern is unavailable", () => {
+      const result = engine.executeShotPattern(5, 5, 99, true);
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+    });
+
+    it("should detect obstacle hits in executeShotPattern", () => {
+      engine.setEnemyObstacles([{ coords: [8, 8], width: 1, height: 1, obstacleId: 0 }]);
+      const result = engine.executeShotPattern(8, 8, 0, true);
+      expect(result.success).toBe(true);
+      expect(result.shots[0].obstacleHit).toBe(true);
+      expect(result.shots[0].obstacleId).toBe(0);
+    });
+
+    it("should convert missed shots to hits when setting ships over them", () => {
+      engine.executeShotPattern(8, 8, 0, false); // Missed shot by enemy at (8,8)
+      const shotBefore = engine.getShotAtPosition(8, 8, false);
+      expect(shotBefore?.hit).toBe(false);
+
+      // Now set a player ship at (8,8)
+      engine.setPlayerShips([{ coords: [8, 8], width: 1, height: 1, shipId: 0 }]);
+      
+      const shotAfter = engine.getShotAtPosition(8, 8, false);
+      expect(shotAfter?.hit).toBe(true);
+      expect(shotAfter?.shipId).toBe(0);
+
+      // Same for enemy ships
+      engine.executeShotPattern(3, 3, 0, true); // Missed shot by player at (3,3)
+      engine.setEnemyShips([{ coords: [3, 3], width: 1, height: 1, shipId: 0 }]);
+      
+      const enemyShotAfter = engine.getShotAtPosition(3, 3, true);
+      expect(enemyShotAfter?.hit).toBe(true);
+      expect(enemyShotAfter?.shipId).toBe(0);
+      
+      // Cover getEnemyShips
+      expect(engine.getEnemyShips()).toHaveLength(1);
+    });
+
+    it("should allow getting and setting shot patterns", () => {
+      const patterns: ShotPattern[] = [{
+        id: "new-pattern",
+        title: "New Pattern",
+        description: "New",
+        offsets: [{ dx: 0, dy: 0 }]
+      }];
+      
+      engine.setPlayerShotPatterns(patterns);
+      engine.setEnemyShotPatterns(patterns);
+      
+      expect(engine.getPlayerShotPatterns()).toEqual(patterns);
+      expect(engine.getEnemyShotPatterns()).toEqual(patterns);
+    });
+  });
+
+  describe("toMatchState helper", () => {
+    it("should create MatchState from GameEngineState", () => {
+      const state = engine.getState();
+      const matchState = toMatchState(state, "PLAYER_TURN");
+      
+      expect(matchState).toMatchObject(state);
+      expect(matchState.currentTurn).toBe("PLAYER_TURN");
+      expect(matchState.isPlayerTurn).toBe(true);
+      expect(matchState.isEnemyTurn).toBe(false);
     });
   });
 });

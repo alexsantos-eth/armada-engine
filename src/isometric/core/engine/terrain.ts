@@ -111,8 +111,8 @@ export function getOrCreateTerrain() {
     octaves: 0,
     persistence: 0.9,
     lacunarity: 0,
-    minElevation: 1,
-    maxElevation: 3,
+    minElevation: -3,
+    maxElevation: 5,
   });
 
   cachedTerrain = {

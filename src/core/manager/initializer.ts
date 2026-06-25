@@ -93,7 +93,6 @@ export class GameInitializer implements IGameSetupProvider {
     items: GameItem[],
     ships: GameShip[],
     label: string,
-    otherItems: GameItem[] = [],
   ): void {
     const shipCellSet = new Set<string>();
     for (const ship of ships) {
@@ -102,13 +101,7 @@ export class GameInitializer implements IGameSetupProvider {
       }
     }
 
-    const otherItemCellSet = new Set<string>();
-    for (const other of otherItems) {
-      for (const [ox, oy] of getItemCells(other)) {
-        otherItemCellSet.add(`${ox},${oy}`);
-      }
-    }
-
+    const currentItemsCellSet = new Set<string>();
     for (const item of items) {
       for (const [ix, iy] of getItemCells(item)) {
         if (shipCellSet.has(`${ix},${iy}`)) {
@@ -121,7 +114,7 @@ export class GameInitializer implements IGameSetupProvider {
             ),
           );
         }
-        if (otherItemCellSet.has(`${ix},${iy}`)) {
+        if (currentItemsCellSet.has(`${ix},${iy}`)) {
           throw new Error(
             InitializerError.ItemOverlapItem(
               label,
@@ -131,6 +124,7 @@ export class GameInitializer implements IGameSetupProvider {
             ),
           );
         }
+        currentItemsCellSet.add(`${ix},${iy}`);
       }
     }
   }
@@ -155,6 +149,7 @@ export class GameInitializer implements IGameSetupProvider {
       }
     }
 
+    const currentObstaclesCellSet = new Set<string>();
     for (const obstacle of obstacles) {
       for (const [ox, oy] of getObstacleCellsFromObstacle(obstacle)) {
         if (shipCellSet.has(`${ox},${oy}`)) {
@@ -177,6 +172,7 @@ export class GameInitializer implements IGameSetupProvider {
             ),
           );
         }
+        currentObstaclesCellSet.add(`${ox},${oy}`);
       }
     }
   }

@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from "vitest";
-import { GameInitializer } from "../../../manager/initializer";
-import type { GameConfig, BoardViewConfig } from "../../../types/config";
-import { TEST_MODE } from "../../../modes/test";
+import { GameInitializer } from "./initializer";
+import type { GameConfig, BoardViewConfig } from "../types/config";
+import { TEST_MODE } from "../modes/test";
 
 // Test-specific default values (from TEST_MODE)
 const TEST_DEFAULT_WIDTH = TEST_MODE.boardView.width;
@@ -449,6 +449,91 @@ describe("GameInitializer (v3)", () => {
       }
 
       expect(hasDifference).toBe(true);
+    });
+  });
+
+  describe("Initial Turn Settings", () => {
+    it("should allow forcing PLAYER_TURN", () => {
+      const initializer = new GameInitializer({}, "player", TEST_MODE);
+      const setup = initializer.getGameSetup();
+      expect(setup.initialTurn).toBe("PLAYER_TURN");
+    });
+
+    it("should allow forcing ENEMY_TURN", () => {
+      const initializer = new GameInitializer({}, "enemy", TEST_MODE);
+      const setup = initializer.getGameSetup();
+      expect(setup.initialTurn).toBe("ENEMY_TURN");
+    });
+  });
+
+  describe("appendGameSetup Validations", () => {
+    let initializer: GameInitializer;
+
+    beforeEach(() => {
+      initializer = new GameInitializer({
+        boardView: createBoardView({ width: 10, height: 10 }),
+        shipCounts: { small: 0, medium: 0, large: 0, xlarge: 0 },
+        itemCounts: {},
+        obstacleCounts: {},
+      }, "random", TEST_MODE);
+    });
+
+    it("should accept valid custom setups", () => {
+      const setup = initializer.appendGameSetup({
+        playerShips: [{ coords: [1, 1], width: 1, height: 1, shipId: 0, }],
+        playerItems: [{ coords: [3, 3], part: 1, itemId: 0 }],
+        playerObstacles: [{ coords: [5, 5], width: 1, height: 1, obstacleId: 0,  }],
+        enemyShips: [{ coords: [1, 1], width: 1, height: 1, shipId: 0, }],
+        enemyItems: [{ coords: [3, 3], part: 1, itemId: 0 }],
+        enemyObstacles: [{ coords: [5, 5], width: 1, height: 1, obstacleId: 0,  }],
+      });
+      expect(setup.playerShips).toHaveLength(1);
+    });
+
+    it("should throw when item overlaps ship", () => {
+      expect(() => {
+        initializer.appendGameSetup({
+          playerShips: [{ coords: [1, 1], width: 2, height: 1, shipId: 0, }],
+          playerItems: [{ coords: [1, 1], part: 1, itemId: 0 }],
+        });
+      }).toThrow(/overlap/i);
+
+      expect(() => {
+        initializer.appendGameSetup({
+          enemyShips: [{ coords: [5, 5], width: 1, height: 2, shipId: 0, }],
+          enemyItems: [{ coords: [5, 6], part: 1, itemId: 0 }],
+        });
+      }).toThrow(/overlap/i);
+    });
+
+    it("should throw when item overlaps another item", () => {
+      expect(() => {
+        initializer.appendGameSetup({
+          playerShips: [],
+          playerItems: [{ coords: [2, 2], part: 2, itemId: 0 }, { coords: [2, 2], part: 1, itemId: 1 }],
+          enemyItems: [{ coords: [2, 2], part: 2, itemId: 0 }, { coords: [2, 2], part: 1, itemId: 1 }],
+        });
+      }).toThrow(/overlap/i);
+    });
+
+    it("should throw when obstacle overlaps ship", () => {
+      expect(() => {
+        initializer.appendGameSetup({
+          playerShips: [{ coords: [0, 0], width: 1, height: 1, shipId: 0, }],
+          playerObstacles: [{ coords: [0, 0], width: 1, height: 1, obstacleId: 0,  }],
+        });
+      }).toThrow(/overlap/i);
+    });
+
+    it("should throw when obstacle overlaps item", () => {
+      expect(() => {
+        initializer.appendGameSetup({
+          playerShips: [],
+          playerItems: [{ coords: [4, 4], part: 1, itemId: 0 }],
+          enemyItems: [{ coords: [4, 4], part: 1, itemId: 0 }],
+          playerObstacles: [{ coords: [4, 4], width: 2, height: 2, obstacleId: 0,  }],
+        });
+      }).toThrow(/overlap/i);
     });
   });
 });

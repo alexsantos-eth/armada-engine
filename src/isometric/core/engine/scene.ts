@@ -198,7 +198,7 @@ class IsometricScene extends Phaser.Scene {
 
     const withMediumShip = addShipToBoxes(
       manualBoxes,
-      new Ship("ship-01", centerX + 1, centerY, "VERTICAL", 3),
+      new Ship("ship-01", centerX - 1, centerY - 2, "VERTICAL", 3),
       {
         elevation: 1,
           allowOverlay: true,
@@ -207,7 +207,7 @@ class IsometricScene extends Phaser.Scene {
 
     const withShips = addShipToBoxes(
       withMediumShip,
-      new Ship("ship-02", centerX - 1, centerY + 1, "VERTICAL", 2),
+      new Ship("ship-02", centerX - 1, centerY + 1, "HORIZONTAL", 2),
       {
         elevation: 1,
         allowOverlay: true,

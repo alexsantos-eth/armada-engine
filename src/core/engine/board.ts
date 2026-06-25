@@ -186,7 +186,10 @@ export function buildEnemyBoard(
   if (has(layers, "enemyObstacles")) {
     for (const obstacle of state.enemyObstacles ?? []) {
       for (const [x, y] of getObstacleCellsFromObstacle(obstacle)) {
-        setBoardCell(board, width, height, x, y, { state: "OBSTACLE" });
+        const existingCell = getBoardCell(board, width, height, x, y);
+        if (existingCell?.state === "EMPTY") {
+          setBoardCell(board, width, height, x, y, { state: "OBSTACLE" });
+        }
       }
     }
   }
@@ -248,14 +251,12 @@ export function buildEnemyBoard(
       if (!existingCell) continue;
 
       const cellState = shot.collected
-        ? "COLLECTED"
+        ? "MISS"
         : shot.hit
           ? "HIT"
           : shot.obstacleHit || existingCell.state === "OBSTACLE"
             ? "OBSTACLE"
-            : existingCell.state === "COLLECTED"
-              ? "COLLECTED"
-              : "MISS";
+            : "MISS";
 
       setBoardCell(board, width, height, shot.x, shot.y, {
         state: cellState,
@@ -270,12 +271,14 @@ export function buildEnemyBoard(
       if (!existingCell) continue;
 
       const cellState = shot.collected
-        ? "MISS"
+        ? "COLLECTED"
         : shot.hit
           ? "HIT"
           : shot.obstacleHit || existingCell.state === "OBSTACLE"
             ? "OBSTACLE"
-            : "MISS";
+            : existingCell.state === "COLLECTED"
+              ? "COLLECTED"
+              : "MISS";
 
       setBoardCell(board, width, height, shot.x, shot.y, {
         state: cellState,

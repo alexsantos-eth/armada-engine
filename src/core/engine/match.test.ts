@@ -1,8 +1,9 @@
 import { describe, expect, it, beforeEach, vi } from "vitest";
-import { Match, createMatch } from "../../../engine/match";
-import type { GameShip } from "../../../types/entities";
-import type { GameSetup } from "../../../manager";
-import type { BoardViewConfig } from "../../../types/config";
+import { Match, createMatch } from "./match";
+import type { NewMatch } from "../types/match";
+import type { GameShip, GameItem } from "../types/entities";
+import type { GameSetup, IGameSetupProvider } from "../manager";
+import type { BoardViewConfig } from "../types/config";
 
 describe("Match (v3)", () => {
   let match: Match;
@@ -85,7 +86,7 @@ describe("Match (v3)", () => {
     });
 
     it("should throw when neither setup nor setupProvider is given", () => {
-      expect(() => new Match({} as any)).toThrow();
+      expect(() => new Match({} as unknown as NewMatch)).toThrow();
     });
 
     it("should allow starting with enemy turn", () => {
@@ -599,6 +600,8 @@ describe("Match (v3)", () => {
       expect(state).toHaveProperty("enemyShots");
       expect(state).toHaveProperty("isGameOver");
       expect(state).toHaveProperty("winner");
+      
+      expect(match.getWinner()).toBe(state.winner);
     });
 
     it("should track match progress", () => {
@@ -620,6 +623,11 @@ describe("Match (v3)", () => {
 
       const shotInfo = match.getCellInfo(5, 5, "player");
       expect(shotInfo.isShot).toBe(true);
+      
+      const invalidInfo = match.getCellInfo(-1, -1, "player");
+      expect(invalidInfo.valid).toBe(false);
+      expect(invalidInfo.hasShip).toBe(false);
+      expect(invalidInfo.isShot).toBe(false);
     });
 
     it("should detect match over state", () => {
@@ -655,6 +663,113 @@ describe("Match (v3)", () => {
       expect(state.playerShots).toHaveLength(0);
       expect(state.enemyShots).toHaveLength(0);
       expect(state.isGameOver).toBe(false);
+    });
+  });
+
+  describe("Additional API Methods", () => {
+    beforeEach(() => {
+      match.initializeMatch();
+    });
+
+    it("should provide machine state and rule set", () => {
+      expect(match.getMachineState()).toBeDefined();
+      expect(match.getRuleSet()).toBeDefined();
+    });
+
+    it("should update ruleset", () => {
+      const newRuleSet = { ...match.getRuleSet(), id: "new-rules" };
+      match.setRuleSet(newRuleSet);
+      expect(match.getRuleSet().id).toBe("new-rules");
+    });
+
+    it("should use item via state machine", () => {
+      // Place an item and collect it first so it can be used
+      const playerItem = { coords: [1, 1], part: 1, itemId: 0, onUse: () => {} };
+      const enemyItem = { coords: [6, 6], part: 1, itemId: 0, onUse: () => {} };
+      const m = createMatch({
+        setup: {
+          playerShips, enemyShips,
+          playerItems: [playerItem as unknown as GameItem], enemyItems: [enemyItem as unknown as GameItem],
+          playerObstacles: [], enemyObstacles: [],
+          config: {},
+          initialTurn: "PLAYER_TURN",
+        },
+      });
+      m.initializeMatch();
+      m.planAndAttack(6, 6, true); // Collect the item
+      
+      // After miss, turn becomes ENEMY_TURN, so force it back
+      m.forceSetTurn("PLAYER_TURN");
+      const used = m.useItem(0, true);
+      expect(used).toBe(true);
+    });
+
+    it("should provide board dimensions and view config", () => {
+      const dims = match.getBoardDimensions();
+      expect(dims.width).toBe(10);
+      expect(dims.height).toBe(10);
+
+      const view = match.getBoardView();
+      expect(view).toBeDefined();
+    });
+
+    it("should provide engine query methods", () => {
+      expect(match.areAllShipsDestroyed(true)).toBe(false);
+      expect(match.hasShipAtPosition(0, 0, true)).toBe(true);
+      expect(match.hasShipAtPosition(9, 9, true)).toBe(false);
+      
+      expect(match.isValidPosition(0, 0)).toBe(true);
+      expect(match.isValidPosition(-1, -1)).toBe(false);
+
+      match.planAndAttack(5, 5, true);
+      const shot = match.getShotAtPosition(5, 5, true);
+      expect(shot).toBeDefined();
+      expect(shot?.hit).toBe(true);
+      expect(match.isCellShot(5, 5, true)).toBe(true);
+      expect(match.isCellShot(0, 0, true)).toBe(false);
+    });
+
+    it("should allow subscribing to state changes", () => {
+      const callback = vi.fn();
+      const unsubscribe = match.subscribe(callback);
+      
+      match.planAndAttack(5, 5, true);
+      expect(callback).toHaveBeenCalled();
+      
+      unsubscribe();
+      callback.mockClear();
+      match.planAndAttack(6, 5, true);
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it("should manage event logs", () => {
+      match.planAndAttack(5, 5, true);
+      
+      const logs = match.getEventLog();
+      expect(logs.length).toBeGreaterThan(0);
+      
+      const last = match.getLastEventLog();
+      expect(last).toBeDefined();
+      
+      match.clearEventLog();
+      expect(match.getEventLog()).toHaveLength(0);
+      expect(match.getLastEventLog()).toBeUndefined();
+    });
+  });
+
+  describe("createMatch edge cases", () => {
+    it("should use setupProvider if setup is missing", () => {
+      const mockProvider = {
+        getGameSetup: vi.fn().mockReturnValue({ playerShips: [], enemyShips: [], config: {} }),
+      };
+      const m = createMatch({ setupProvider: mockProvider as unknown as IGameSetupProvider });
+      m.initializeMatch();
+      expect(mockProvider.getGameSetup).toHaveBeenCalled();
+    });
+
+    it("should fallback to GameInitializer if no setup or setupProvider provided", () => {
+      const m = createMatch();
+      expect(m).toBeDefined();
     });
   });
 });
