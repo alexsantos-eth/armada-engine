@@ -1,10 +1,8 @@
-import { createActor } from "xstate";
-
 import { PlanError, AttackError, MatchSetupError } from "../types/errors";
 import { GameInitializer, type GameSetup } from "../manager";
 import { type MatchState, toMatchState } from "./logic";
 import { buildPlayerBoard, buildEnemyBoard } from "./board";
-import { matchMachine } from "./machines/match";
+import { createMatchActor, type MatchMachineActor } from "./machines/match";
 import { Logger } from "./machines/logger";
 import { DEFAULT_GAME_MODE } from "../modes";
 
@@ -38,7 +36,7 @@ export type {
 } from "../types/match";
 
 export class Match implements IMatch {
-  private actor: ReturnType<typeof createActor<typeof matchMachine>>;
+  private actor: MatchMachineActor;
   private setup?: GameSetup;
   private logger: MatchLogger;
 
@@ -65,8 +63,12 @@ export class Match implements IMatch {
     const ruleSet = this.setup?.config.ruleSet ?? gameMode.ruleSet;
     this.logger = logger ?? new Logger();
 
-    this.actor = createActor(matchMachine, {
-      input: { config: this.setup?.config, ruleSet, gameMode, callbacks, logger: this.logger },
+    this.actor = createMatchActor({
+      config: this.setup?.config,
+      ruleSet,
+      gameMode,
+      callbacks,
+      logger: this.logger,
     });
 
     this.actor.start();
