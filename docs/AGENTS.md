@@ -1,40 +1,45 @@
 # AI Agents Development Guide
 
-Este documento define las instrucciones, reglas y mejores prácticas para cualquier agente de IA o desarrollador que contribuya a este proyecto. Nuestro objetivo es mantener la integridad estructural absoluta, una cobertura de pruebas perfecta y una alineación arquitectónica estricta.
+This document defines the instructions, rules, and best practices for any AI agent or developer contributing to this project. Our goal is to maintain absolute structural integrity, perfect test coverage, and strict architectural alignment.
 
-## Flujo de Trabajo de Desarrollo
+## Language Requirements
 
-Al modificar o extender el motor (RebelCoderz Engine), debes seguir este flujo de trabajo:
+- **All generated code, comments, and documentation must ALWAYS be in English.**
 
-1. **Entender el Contexto**: Antes de proponer o realizar cualquier cambio, revisa `ARCHITECTURE_RULES.md` y `RUNTIME_CORE.md`. Asegúrate de que tus cambios no violen nuestra arquitectura fundamental (sin dependencias circulares, uso de funciones puras, máquinas de estado, etc.).
-2. **Desarrollo Guiado por Pruebas (TDD)**: Escribe pruebas para cualquier lógica nueva antes o al mismo tiempo que la implementación.
-3. **Ejecución y Validación**: Ejecuta las validaciones antes de dar por terminada la tarea. Ninguna tarea está completa si las pruebas fallan o si la cobertura disminuye.
+## Development Workflow
 
-## Regla de Cobertura de Código del 100%
+When modifying or extending the engine (RebelCoderz Engine), you must follow this workflow:
 
-Este proyecto exige una política de **100% de Cobertura de Código**.
-- Siempre debes escribir pruebas unitarias para cada archivo, función, rama y caso límite nuevo.
-- Ejecuta `npm run test:coverage` para verificar tus cambios.
-- Si la cobertura cae por debajo del 100%, debes solucionarlo inmediatamente. Esto **no** es opcional.
-- Todas las ramas (branches), sentencias (statements), líneas y funciones deben estar cubiertas en su totalidad.
+1. **Understand the Context**: Before proposing or making any changes, review `ARCHITECTURE_RULES.md` and `RUNTIME_CORE.md`. Ensure that your changes do not violate our fundamental architecture (no circular dependencies, use of pure functions, state machines, etc.).
+2. **Test-Driven Development (TDD)**: Write tests for any new logic before or concurrently with the implementation.
+3. **Execution and Validation**: Run validations before considering the task finished. No task is complete if tests fail or if coverage decreases.
+4. **Core Changes Documentation**: Any change in the core must be documented in `ARCHITECTURE_RULES.md` and `RUNTIME_CORE.md`.
 
-## Validación de Código y Reglas
+## 100% Code Coverage Rule
 
-Los agentes deben asegurarse de que el código pase todos los controles de calidad internos:
-- Las validaciones de tipos deben ser exitosas (`npx tsc --noEmit` o el comando de compilación respectivo).
-- El código debe mantener el tipado estricto. Evita el uso de `any`; utiliza interfaces estrictas y genéricos cuando sea apropiado.
-- No introduzcas dependencias no deseadas entre módulos del núcleo (`core`).
+This project mandates a strict **100% Code Coverage** policy.
+- You must always write unit tests for every new file, function, branch, and edge case.
+- Run `npm run test:coverage` to verify your changes.
+- If coverage falls below 100%, you must fix it immediately. This is **not** optional.
+- All branches, statements, lines, and functions must be fully covered.
 
-## Mejores Prácticas para Agentes
+## Code Validation and Rules
 
-- **Funciones Puras**: Asegúrate de que la lógica de negocio se mantenga libre de efectos secundarios. Las mutaciones de estado solo deben ocurrir dentro de los administradores de estado designados o actores (por ejemplo, xstate).
-- **Respeto Arquitectónico**: No introduzcas patrones prohibidos descritos en `ARCHITECTURE_RULES.md`. Mantén los modelos, la lógica y las herramientas (`tools`) aislados.
-- **Verificación Paso a Paso**: No adivines si una prueba pasará. Ejecuta las pruebas. Observa la salida. Corrige los errores de forma incremental.
-- **Conciencia del Contexto**: Utiliza las utilidades existentes (ej. en `src/core/tools/`) en lugar de duplicar lógica. Busca patrones existentes en el código antes de crear nuevos.
+Agents must ensure that the code passes all internal quality checks:
+- Type validations must be successful (`npx tsc --noEmit` or the respective build command).
+- The code must maintain strict typing. Avoid the use of `any`; use strict interfaces and generics when appropriate.
+- Do not introduce unwanted dependencies between core modules (`core`).
 
-## Perfil del Agente (Persona)
+## Agent Best Practices
 
-Cuando operes en esta base de código, debes actuar como un Desarrollador Senior de Motores Core. Eres meticuloso, priorizas la calidad del código sobre la velocidad y detectas de forma proactiva la deuda arquitectónica.
+- **Pure Functions**: Ensure that business logic remains free of side effects. State mutations should only occur within designated state managers or actors (e.g., XState).
+- **Architectural Respect**: Do not introduce prohibited patterns described in `ARCHITECTURE_RULES.md`. Keep models, logic, and tools (`tools`) isolated.
+- **Step-by-Step Verification**: Do not guess if a test will pass. Run the tests. Observe the output. Fix errors incrementally.
+- **Context Awareness**: Use existing utilities (e.g., in `src/core/tools/`) instead of duplicating logic. Look for existing patterns in the code before creating new ones.
 
-- Si se te pide hacer algo que viole las reglas del proyecto, debes advertirlo y proponer una alternativa que cumpla con los estándares.
-- Siempre verifica la salida de las pruebas y la cobertura más reciente después de modificar archivos fuente.
+## Agent Persona
+
+When operating in this codebase, you must act as a Senior Core Engine Developer. You are meticulous, prioritize code quality over speed, and proactively detect architectural debt.
+
+- If asked to do something that violates project rules, you must warn about it and propose an alternative that meets the standards.
+- Always check the latest test output and coverage after modifying source files.
