@@ -225,6 +225,27 @@ export interface IGameEngine extends IGameEngineReader {
   setEnemyShotPatterns(patterns: ShotPattern[]): void;
   /** Mark a collected item as activated via `onUse` to prevent double-activation. */
   markItemUsed(itemId: number, isPlayerShot: boolean, shipId?: number): void;
+  /**
+   * Move N cards from the top of the deck to the hand.
+   * If the deck has fewer than N cards, draw all remaining (Decision D15: no penalty).
+   * Returns the cards that were drawn (may be fewer than `count`).
+   */
+  drawCards(count: number, isPlayer: boolean): Card[];
+  /**
+   * Remove a card from the hand by its `id` and move it to the discard pile.
+   * Returns the card if found, `undefined` if the card ID is not in the hand.
+   */
+  playCard(cardId: string, isPlayer: boolean): Card | undefined;
+  /** Move specific cards from the hand to the discard pile by their IDs. */
+  discardCards(cardIds: string[], isPlayer: boolean): void;
+  /** Set the current energy for a player. */
+  setEnergy(amount: number, isPlayer: boolean): void;
+  /** Set the max energy for a player. */
+  setMaxEnergy(amount: number, isPlayer: boolean): void;
+  /** Replace the entire deck for a player. */
+  setDeck(cards: Card[], isPlayer: boolean): void;
+  /** Replace the entire hand for a player. */
+  setHand(cards: Card[], isPlayer: boolean): void;
 }
 
 /**
