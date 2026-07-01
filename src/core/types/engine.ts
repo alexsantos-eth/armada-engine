@@ -61,6 +61,10 @@ export interface SideState {
   energy: number;
   /** Maximum energy. Increases by 1 each turn. Starts at 3. */
   maxEnergy: number;
+  /** The current active unit (Commander or promoted creature). Represented by shipId. */
+  activeUnit: number | null;
+  /** Bench containing up to 3 creatures. Represented by shipIds. */
+  bench: number[];
 }
 
 /**
@@ -129,6 +133,10 @@ export interface IGameEngineReader {
   getDiscard(isPlayer: boolean): readonly Card[];
   /** Returns the current and max energy for the specified player. */
   getEnergy(isPlayer: boolean): { current: number; max: number };
+  /** Returns the active unit's shipId for the specified player. */
+  getActiveUnit(isPlayer: boolean): number | null;
+  /** Returns the shipIds of the units on the specified player's bench. */
+  getBench(isPlayer: boolean): readonly number[];
 }
 
 /**
@@ -246,6 +254,10 @@ export interface IGameEngine extends IGameEngineReader {
   setDeck(cards: Card[], isPlayer: boolean): void;
   /** Replace the entire hand for a player. */
   setHand(cards: Card[], isPlayer: boolean): void;
+  /** Set the active unit (by shipId) for a player. */
+  setActiveUnit(shipId: number | null, isPlayer: boolean): void;
+  /** Set the bench (array of shipIds) for a player. */
+  setBench(shipIds: number[], isPlayer: boolean): void;
 }
 
 /**
@@ -332,6 +344,10 @@ export interface GameEngineState {
   readonly playerEnergy: number;
   /** Player's max energy. */
   readonly playerMaxEnergy: number;
+  /** Player's active unit (Commander or promoted creature) by shipId. */
+  readonly playerActiveUnit: number | null;
+  /** Player's benched units by shipId (up to 3). */
+  readonly playerBench: readonly number[];
 
   /** Cards remaining in the enemy's deck. */
   readonly enemyDeck: readonly Card[];
@@ -343,6 +359,10 @@ export interface GameEngineState {
   readonly enemyEnergy: number;
   /** Enemy's max energy. */
   readonly enemyMaxEnergy: number;
+  /** Enemy's active unit (Commander or promoted creature) by shipId. */
+  readonly enemyActiveUnit: number | null;
+  /** Enemy's benched units by shipId (up to 3). */
+  readonly enemyBench: readonly number[];
 }
 
 /**
