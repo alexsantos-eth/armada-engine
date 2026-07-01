@@ -3,6 +3,8 @@ import type { ShotPattern } from "./shots";
 import type { GameShip, GameItem, GameObstacle } from "./entities";
 import type { GameConfig } from "./config";
 import type { GameMode } from "./modes";
+import type { Card } from "./cards";
+import type { Commander } from "./commanders";
 
 /**
  * Abstraction for anything that can provide a ready-to-use `GameSetup`.
@@ -46,6 +48,22 @@ export interface GameSetup {
   config: Partial<GameConfig>;
   /** The game mode used for this setup. Optional; defaults to DEFAULT_GAME_MODE if not provided. */
   gameMode?: GameMode;
+  /** Player's starting deck (shuffled, after hand draw). */
+  playerDeck?: Card[];
+  /** Player's starting hand (drawn from deck). */
+  playerHand?: Card[];
+  /** Enemy's starting deck (shuffled, after hand draw). */
+  enemyDeck?: Card[];
+  /** Enemy's starting hand (drawn from deck). */
+  enemyHand?: Card[];
+  /** Starting energy for both players. Default: 3. */
+  initialEnergy?: number;
+  /** Starting max energy for both players. Default: 3. */
+  initialMaxEnergy?: number;
+  /** Player's selected commander. */
+  playerCommander?: Commander;
+  /** Enemy's selected commander. */
+  enemyCommander?: Commander;
 }
 
 /**

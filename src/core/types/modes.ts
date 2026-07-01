@@ -2,6 +2,8 @@ import type { ShipTemplate, ItemTemplate, ObstacleTemplate } from "./constants";
 import type { ShotPattern } from "./shots";
 import type { BoardViewConfig } from "./config";
 import type { MatchRuleSet } from "./rulesets";
+import type { CardTemplate } from "./cards";
+import type { Commander } from "./commanders";
 
 /**
  * Game constants for a mode
@@ -31,6 +33,20 @@ export interface GameModeConstants {
     MIN_SIZE: number;
     MAX_SIZE: number;
     DEFAULT_VIEW: BoardViewConfig;
+  };
+  CARDS: {
+    /** Size of the starting deck */
+    DECK_SIZE: number;
+    /** Number of cards drawn at match start */
+    INITIAL_HAND_SIZE: number;
+    /** Cards drawn per turn during the Draw Phase */
+    DRAW_PER_TURN: number;
+    /** Starting energy at match start */
+    INITIAL_ENERGY: number;
+    /** Starting max energy at match start */
+    INITIAL_MAX_ENERGY: number;
+    /** Max energy gained per turn */
+    ENERGY_GROWTH_PER_TURN: number;
   };
 }
 
@@ -86,5 +102,11 @@ export interface GameMode {
    * Defines turn management and game-over conditions.
    */
   ruleSet: MatchRuleSet;
+
+  /** Card templates available in this mode. Empty array for non-TCG modes. */
+  cards: CardTemplate[];
+
+  /** Commander options available in this mode. Empty array if no commander system. */
+  commanders: Commander[];
 }
 

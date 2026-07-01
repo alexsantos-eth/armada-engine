@@ -1,5 +1,6 @@
 import type { IGameEngine, MatchState } from "./engine";
-import type { MatchRuleSet, TurnDecision } from "./rulesets";
+import type { MatchRuleSet, RuleSetTurnDecision } from "./rulesets";
+import type { Commander } from "./commanders";
 import type { PlanError } from "./errors";
 import type { GameShip, GameItem, GameObstacle } from "./entities";
 import type { GameTurn, Winner } from "./game";
@@ -319,6 +320,12 @@ export interface MatchMachineContext {
    * to fire `onItemUse`, then reset to `null`.
    */
   lastUsedItemInfo: UsedItemInfo | null;
+
+  /** The player's selected commander, or `null` if no commander system. */
+  playerCommander: Commander | null;
+
+  /** The enemy's selected commander, or `null` if no commander system. */
+  enemyCommander: Commander | null;
 }
 
 /**
