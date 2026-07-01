@@ -13,17 +13,17 @@ These decisions were approved by the project owner and must not be changed witho
 | # | Decision | Resolution |
 |---|---|---|
 | **D1** | Classic mode | **Replace** — TCG becomes the only mode. Delete `modes/classic/` entirely. |
-| **D2** | Card complexity | **Simple** — cards have `cardType` + `energyCost`. No rarities. No synergies. |
+| **D2** | Card complexity | **Simple** — cards have `cardType` + `energyCost` + optional `hp`/`atk` for creatures. No rarities. No synergies. |
 | **D3** | Trading / Collection | **No** — gameplay mechanics only. Deferred to a future iteration. |
 | **D4** | State architecture | **Extend `GameEngineState` directly** — deck/hand/discard/energy fields added inline. |
 | **D5** | Base card count | **~15–20 cards** split across attack, skill, defense, trap types. |
-| **D6** | Board size | **7×7** — expanded from 5×5 for more tactical space. |
+| **D6** | Board size | **7×7** — used to represent 1 active unit (Commander) and up to 3 benched creatures. |
 | **D7** | Commander system | **Yes** — each player picks a commander with a unique passive. 2 commanders for v1. |
 | **D8** | Attack cards vs `planShot` | **Replace** — `planShot` is not exposed in TCG mode. Attacks only through cards. |
 | **D9** | Deck composition | **Customizable** — players choose cards from the mode's catalog before the match (deck-building). |
 | **D10** | Energy system | **Start at 3**, +1 max per turn, refill to max each turn. |
 | **D11** | Initial hand size | **5 cards**. |
-| **D12** | Maximum hand size | **No limit** — no forced discard at end of turn. |
+| **D12** | Bench Limit | **Max 3 creatures** — players can have up to 3 creatures on the bench. |
 | **D13** | Cards per turn (Main Phase) | **Unlimited** — as many skill/defense/trap cards as energy allows. |
 | **D14** | Attack cards per turn | **Unlimited** — as many attack cards as energy allows. |
 | **D15** | Empty deck | **No penalty** — just stop drawing, play with remaining hand. |
@@ -96,7 +96,7 @@ import type { GameEntity, ItemActionContext } from "./entities";
 import type { GameObject } from "./constants";
 
 /** Available card types in the TCG system */
-export type CardType = "attack" | "skill" | "defense" | "trap";
+export type CardType = "attack" | "skill" | "defense" | "trap" | "creature";
 
 /**
  * A game card.
@@ -115,6 +115,10 @@ export interface Card extends GameEntity {
   cardType: CardType;
   /** Energy cost to play this card. Must be ≥ 0. */
   energyCost: number;
+  /** Health Points (HP) for creature cards. */
+  hp?: number;
+  /** Attack Power (ATK) for creature cards. */
+  atk?: number;
   /**
    * ID of the `ShotPattern` this card triggers (attack cards only).
    * Must reference a valid pattern ID from the mode's `shotPatterns` array.

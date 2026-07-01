@@ -2,7 +2,7 @@ import type { GameEntity, ItemActionContext } from "./entities";
 import type { GameObject } from "./constants";
 
 /** Available card types in the TCG system */
-export type CardType = "attack" | "skill" | "defense" | "trap";
+export type CardType = "attack" | "skill" | "defense" | "trap" | "creature";
 
 /**
  * A game card.
@@ -15,12 +15,17 @@ export type CardType = "attack" | "skill" | "defense" | "trap";
  * - `skill`: executes an `onPlay` effect (heal, reveal, draw, etc.). Played during Main Phase.
  * - `defense`: places obstacles or modifies the player's board. Played during Main Phase.
  * - `trap`: places a hidden item with an `onCollect` trigger. Played during Main Phase.
+ * - `creature`: places a unit on the bench. Played during Main Phase.
  */
 export interface Card extends GameEntity {
   /** Determines when and how this card can be played */
   cardType: CardType;
   /** Energy cost to play this card. Must be ≥ 0. */
   energyCost: number;
+  /** Health Points (HP) for creature cards. */
+  hp?: number;
+  /** Attack Power (ATK) for creature cards. */
+  atk?: number;
   /**
    * ID of the `ShotPattern` this card triggers (attack cards only).
    * Must reference a valid pattern ID from the mode's `shotPatterns` array.
