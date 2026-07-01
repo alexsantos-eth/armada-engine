@@ -293,6 +293,27 @@ export interface GameEngineState {
   readonly playerShotPatterns: readonly ShotPattern[];
   /** Shot patterns available to the enemy for the current match. */
   readonly enemyShotPatterns: readonly ShotPattern[];
+  /** Cards remaining in the player's deck. */
+  readonly playerDeck: readonly Card[];
+  /** Cards currently in the player's hand. */
+  readonly playerHand: readonly Card[];
+  /** Cards the player has played or discarded. */
+  readonly playerDiscard: readonly Card[];
+  /** Player's current energy. */
+  readonly playerEnergy: number;
+  /** Player's max energy. */
+  readonly playerMaxEnergy: number;
+
+  /** Cards remaining in the enemy's deck. */
+  readonly enemyDeck: readonly Card[];
+  /** Cards currently in the enemy's hand. */
+  readonly enemyHand: readonly Card[];
+  /** Cards the enemy has played or discarded. */
+  readonly enemyDiscard: readonly Card[];
+  /** Enemy's current energy. */
+  readonly enemyEnergy: number;
+  /** Enemy's max energy. */
+  readonly enemyMaxEnergy: number;
 }
 
 /**
