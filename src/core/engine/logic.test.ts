@@ -917,4 +917,86 @@ describe("GameEngine (Internal)", () => {
     const r3 = logic['executeShot'](2, 2, false);
     expect(r3?.collected).toBeUndefined();
   });
+
+  it("should handle TCG card and energy mechanics", () => {
+    const logic = new GameEngine({});
+    
+    const card1 = { id: "c1", cardType: "attack", energyCost: 1 } as any;
+    const card2 = { id: "c2", cardType: "skill", energyCost: 2 } as any;
+    const card3 = { id: "c3", cardType: "creature", energyCost: 3 } as any;
+
+    logic.setDeck([card1, card2, card3], true);
+    expect(logic.getDeck(true)).toHaveLength(3);
+
+    // Draw cards
+    const drawn = logic.drawCards(2, true);
+    expect(drawn).toHaveLength(2);
+    expect(logic.getHand(true)).toHaveLength(2);
+    expect(logic.getDeck(true)).toHaveLength(1);
+    
+    // Play card
+    const played = logic.playCard("c1", true);
+    expect(played?.id).toBe("c1");
+    expect(logic.getHand(true)).toHaveLength(1);
+    expect(logic.getDiscard(true)).toHaveLength(1);
+
+    // Play non-existent card
+    const notPlayed = logic.playCard("c99", true);
+    expect(notPlayed).toBeUndefined();
+
+    // Discard card
+    logic.discardCards(["c2", "c99"], true); // c99 doesn't exist
+    expect(logic.getHand(true)).toHaveLength(0);
+    expect(logic.getDiscard(true)).toHaveLength(2);
+
+    // Energy
+    logic.setMaxEnergy(5, true);
+    logic.setEnergy(4, true);
+    expect(logic.getEnergy(true)).toEqual({ current: 4, max: 5 });
+
+    // Active Unit & Bench
+    logic.setActiveUnit(42, true);
+    logic.setBench([1, 2, 3], true);
+    expect(logic.getActiveUnit(true)).toBe(42);
+    expect(logic.getBench(true)).toEqual([1, 2, 3]);
+
+    // setHand
+    logic.setHand([card1], false);
+    expect(logic.getHand(false)).toHaveLength(1);
+    logic.setHand([card1], true);
+    expect(logic.getHand(true)).toHaveLength(1);
+
+    // State check
+    const state = logic.getState();
+    expect(state.playerDeck).toHaveLength(1);
+    expect(state.playerHand).toHaveLength(1);
+    expect(state.playerDiscard).toHaveLength(2);
+    expect(state.playerEnergy).toBe(4);
+    expect(state.playerMaxEnergy).toBe(5);
+    expect(state.playerActiveUnit).toBe(42);
+    expect(state.playerBench).toEqual([1, 2, 3]);
+    expect(state.enemyHand).toHaveLength(1);
+
+    // Cover enemy side (isPlayer = false) for all methods
+    logic.setDeck([card1, card2, card3], false);
+    expect(logic.getDeck(false)).toHaveLength(3);
+
+    logic.drawCards(2, false);
+    expect(logic.getHand(false)).toHaveLength(3); // 1 from earlier setHand + 2 drawn
+    
+    logic.playCard("c1", false);
+    expect(logic.getDiscard(false)).toHaveLength(1);
+    
+    logic.discardCards(["c2"], false);
+    expect(logic.getDiscard(false)).toHaveLength(2);
+    
+    logic.setMaxEnergy(10, false);
+    logic.setEnergy(9, false);
+    expect(logic.getEnergy(false)).toEqual({ current: 9, max: 10 });
+    
+    logic.setActiveUnit(99, false);
+    logic.setBench([4, 5], false);
+    expect(logic.getActiveUnit(false)).toBe(99);
+    expect(logic.getBench(false)).toEqual([4, 5]);
+  });
 });

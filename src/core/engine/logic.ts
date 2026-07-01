@@ -14,6 +14,7 @@ import type {
   SideState,
 } from "../types/engine";
 import type { GameMode } from "../types/modes";
+import type { Card } from "../types/cards";
 
 export type {
   IGameEngineReader,
@@ -43,6 +44,13 @@ function createSideState(): SideState {
     obstaclePositions: new Map(),
     collectedItems: new Set(),
     usedItems: new Map(),
+    deck: [],
+    hand: [],
+    discard: [],
+    energy: 3,
+    maxEnergy: 3,
+    activeUnit: null,
+    bench: [],
   };
 }
 
@@ -92,6 +100,13 @@ export class GameEngine implements IGameEngine {
     side.obstaclePositions.clear();
     side.collectedItems.clear();
     side.usedItems.clear();
+    side.deck = [];
+    side.hand = [];
+    side.discard = [];
+    side.energy = 3;
+    side.maxEnergy = 3;
+    side.activeUnit = null;
+    side.bench = [];
   }
 
   private clearState(): void {
@@ -615,6 +630,20 @@ export class GameEngine implements IGameEngine {
       enemyObstacles: [...this.enemySide.obstacles],
       playerShotPatterns: [...this.playerSide.shotPatterns],
       enemyShotPatterns: [...this.enemySide.shotPatterns],
+      playerDeck: [...this.playerSide.deck],
+      playerHand: [...this.playerSide.hand],
+      playerDiscard: [...this.playerSide.discard],
+      playerEnergy: this.playerSide.energy,
+      playerMaxEnergy: this.playerSide.maxEnergy,
+      playerActiveUnit: this.playerSide.activeUnit,
+      playerBench: [...this.playerSide.bench],
+      enemyDeck: [...this.enemySide.deck],
+      enemyHand: [...this.enemySide.hand],
+      enemyDiscard: [...this.enemySide.discard],
+      enemyEnergy: this.enemySide.energy,
+      enemyMaxEnergy: this.enemySide.maxEnergy,
+      enemyActiveUnit: this.enemySide.activeUnit,
+      enemyBench: [...this.enemySide.bench],
     };
   }
 
@@ -737,6 +766,91 @@ export class GameEngine implements IGameEngine {
 
   public getVersion(): number {
     return this._version;
+  }
+
+  public getHand(isPlayer: boolean): Card[] {
+    return [...(isPlayer ? this.playerSide : this.enemySide).hand];
+  }
+
+  public getDeck(isPlayer: boolean): Card[] {
+    return [...(isPlayer ? this.playerSide : this.enemySide).deck];
+  }
+
+  public getDiscard(isPlayer: boolean): Card[] {
+    return [...(isPlayer ? this.playerSide : this.enemySide).discard];
+  }
+
+  public getEnergy(isPlayer: boolean): { current: number; max: number } {
+    const side = isPlayer ? this.playerSide : this.enemySide;
+    return { current: side.energy, max: side.maxEnergy };
+  }
+
+  public getActiveUnit(isPlayer: boolean): number | null {
+    return (isPlayer ? this.playerSide : this.enemySide).activeUnit;
+  }
+
+  public getBench(isPlayer: boolean): number[] {
+    return [...(isPlayer ? this.playerSide : this.enemySide).bench];
+  }
+
+  public drawCards(count: number, isPlayer: boolean): Card[] {
+    const side = isPlayer ? this.playerSide : this.enemySide;
+    const drawn = side.deck.splice(0, count);
+    side.hand.push(...drawn);
+    this._version++;
+    return drawn;
+  }
+
+  public playCard(cardId: string, isPlayer: boolean): Card | undefined {
+    const side = isPlayer ? this.playerSide : this.enemySide;
+    const index = side.hand.findIndex((c) => c.id === cardId);
+    if (index === -1) return undefined;
+    const [card] = side.hand.splice(index, 1);
+    side.discard.push(card);
+    this._version++;
+    return card;
+  }
+
+  public discardCards(cardIds: string[], isPlayer: boolean): void {
+    const side = isPlayer ? this.playerSide : this.enemySide;
+    for (const cardId of cardIds) {
+      const index = side.hand.findIndex((c) => c.id === cardId);
+      if (index !== -1) {
+        const [card] = side.hand.splice(index, 1);
+        side.discard.push(card);
+      }
+    }
+    this._version++;
+  }
+
+  public setEnergy(amount: number, isPlayer: boolean): void {
+    (isPlayer ? this.playerSide : this.enemySide).energy = amount;
+    this._version++;
+  }
+
+  public setMaxEnergy(amount: number, isPlayer: boolean): void {
+    (isPlayer ? this.playerSide : this.enemySide).maxEnergy = amount;
+    this._version++;
+  }
+
+  public setDeck(cards: Card[], isPlayer: boolean): void {
+    (isPlayer ? this.playerSide : this.enemySide).deck = [...cards];
+    this._version++;
+  }
+
+  public setHand(cards: Card[], isPlayer: boolean): void {
+    (isPlayer ? this.playerSide : this.enemySide).hand = [...cards];
+    this._version++;
+  }
+
+  public setActiveUnit(shipId: number | null, isPlayer: boolean): void {
+    (isPlayer ? this.playerSide : this.enemySide).activeUnit = shipId;
+    this._version++;
+  }
+
+  public setBench(shipIds: number[], isPlayer: boolean): void {
+    (isPlayer ? this.playerSide : this.enemySide).bench = [...shipIds];
+    this._version++;
   }
 }
 
