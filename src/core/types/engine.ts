@@ -121,6 +121,14 @@ export interface IGameEngineReader {
   hasObstacleAtPosition(x: number, y: number, isPlayerSide: boolean): boolean;
   /** Gets the game mode being used for this engine instance. */
   getGameMode(): GameMode;
+  /** Returns the cards in the specified player's hand. */
+  getHand(isPlayer: boolean): readonly Card[];
+  /** Returns the cards remaining in the specified player's deck. */
+  getDeck(isPlayer: boolean): readonly Card[];
+  /** Returns the cards in the specified player's discard pile. */
+  getDiscard(isPlayer: boolean): readonly Card[];
+  /** Returns the current and max energy for the specified player. */
+  getEnergy(isPlayer: boolean): { current: number; max: number };
 }
 
 /**
