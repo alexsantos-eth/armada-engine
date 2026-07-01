@@ -2,7 +2,7 @@ import type { GameTurn, Winner } from "./game";
 import type { Shot, ShotPattern, ShotPatternResult } from "./shots";
 import type { GameShip, GameItem, GameObstacle } from "./entities";
 import type { GameMode } from "./modes";
-
+import type { Card } from "./cards";
 /**
  * String key used to address a single board cell in the engine's internal
  * position maps. Encoding as `"x,y"` makes O(1) `Map` lookups possible
@@ -51,6 +51,16 @@ export interface SideState {
   collectedItems: Set<number>;
   /** Maps `itemId` to the optional target `shipId` supplied when the item was activated. */
   usedItems: Map<number, number | undefined>;
+  /** Cards remaining in the deck (draw pile), ordered top-to-bottom. */
+  deck: Card[];
+  /** Cards currently in the player's hand. */
+  hand: Card[];
+  /** Cards that have been played or discarded (graveyard). */
+  discard: Card[];
+  /** Current energy available to spend this turn. */
+  energy: number;
+  /** Maximum energy. Increases by 1 each turn. Starts at 3. */
+  maxEnergy: number;
 }
 
 /**
