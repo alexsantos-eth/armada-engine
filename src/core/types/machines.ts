@@ -480,6 +480,56 @@ export interface SyncShotsEvent {
 }
 
 /**
+ * Draws cards from the deck to the hand during the Draw Phase.
+ * If the deck has fewer cards than `count`, draws all remaining (D15: no penalty).
+ */
+export interface DrawCardEvent {
+  readonly type: "DRAW_CARD";
+  /** Number of cards to draw. Default: 1. */
+  count: number;
+  /** Which side draws. */
+  isPlayerDraw: boolean;
+}
+
+/**
+ * Plays a card from the hand.
+ *
+ * - For attack cards: `targetX` and `targetY` are REQUIRED (the shot center).
+ * - For skill/defense/trap cards: `targetX` and `targetY` are optional
+ *   (some effects need a board position, others don't).
+ *
+ * The machine will:
+ * 1. Check `card.canPlay(ctx)` guard (if defined).
+ * 2. Deduct `card.energyCost` from the active player's energy.
+ * 3. Move the card from hand to discard.
+ * 4. Execute `card.onPlay(ctx)`.
+ * 5. For attack cards: resolve the `shotPatternId` at `(targetX, targetY)`.
+ */
+export interface PlayCardEvent {
+  readonly type: "PLAY_CARD";
+  /** The `id` of the card in the player's hand. */
+  cardId: string;
+  /** Which side is playing. */
+  isPlayerPlay: boolean;
+  /** Target board column (0-based). Required for attack cards. */
+  targetX?: number;
+  /** Target board row (0-based). Required for attack cards. */
+  targetY?: number;
+}
+
+/**
+ * Discards cards from the hand to the discard pile.
+ * Used for voluntary discarding or end-of-turn cleanup.
+ */
+export interface DiscardCardEvent {
+  readonly type: "DISCARD_CARD";
+  /** IDs of cards to discard from the hand. */
+  cardIds: string[];
+  /** Which side is discarding. */
+  isPlayerDiscard: boolean;
+}
+
+/**
  * Discriminated union of every event the `matchMachine` actor accepts.
  *
  * Prefer the typed helper methods — `match.planShot()`, `match.confirmAttack()`,
@@ -495,7 +545,10 @@ export type MatchMachineEvent =
   | ResetEvent
   | UseItemEvent
   | SyncTurnEvent
-  | SyncShotsEvent;
+  | SyncShotsEvent
+  | DrawCardEvent
+  | PlayCardEvent
+  | DiscardCardEvent;
 
 /**
  * Bootstrap options passed to `createActor(matchMachine, { input })`.

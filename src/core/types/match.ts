@@ -8,6 +8,7 @@ import type { Shot, ShotPatternResult } from "./shots";
 import type { ItemActionContext, ShipActionContext } from "./entities";
 import type { BoardViewConfig } from "./config";
 import type { MatchLogger, MatchMachineLogEvent } from "./machines";
+import type { Card } from "./cards";
 
 /**
  * Type-safe contract for an XState machine snapshot.
@@ -473,6 +474,22 @@ export interface PlanAndAttackResult extends ShotPatternResult {
    * suitable for direct display in production UI without localisation.
    */
   reason: string;
+}
+
+/**
+ * Result of playing a card via `IMatch.playCard()`.
+ */
+export interface PlayCardResult {
+  /** `true` when the card was successfully played. */
+  success: boolean;
+  /** Error message when `success` is `false`. */
+  error?: string;
+  /** The card that was played (present when `success` is `true`). */
+  card?: Card;
+  /** If this was an attack card, the result of the shot pattern execution. */
+  attackResult?: ShotPatternResult;
+  /** Energy remaining after playing the card. */
+  energyRemaining?: number;
 }
 
 /**
