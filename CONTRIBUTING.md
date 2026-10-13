@@ -54,3 +54,5 @@ public/assets/water/block.svg
 ```
 
 Cada bloque se renderiza con una textura única. Grass se usa en la cima de una columna, ground en los soportes y water en niveles negativos, con oscurecimiento según profundidad. Los cambios de colores o proporciones deben conservar la continuidad entre caras y probarse visualmente con el servidor de Vite.
+
+Como recomendación de diseño, los assets SVG con altura lógica `1` deben usar `viewBox="0 0 1024 853"`, igual que los bloques de terreno. Si una entidad necesita conservar una proporción visual diferente, escala su contenido dentro de ese `viewBox` en lugar de cambiar el lienzo raíz; así se evita que el renderer deforme el asset al ajustarlo a `TILE_HEIGHT + BOX_HEIGHT`.
