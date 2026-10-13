@@ -4,9 +4,9 @@ import { projectBoxesToIsometric } from "../board";
 import { getOrCreateTerrain } from "../terrain";
 import {
   BOX_HEIGHT,
+  DEFAULT_MIN_ELEVATION,
   GROUND_BLOCK_TEXTURE_KEY,
   GRASS_BLOCK_TEXTURE_KEY,
-  SUPPORT_MIN_ELEVATION,
   TERRAIN_HEIGHT,
   TERRAIN_WIDTH,
   TILE_HEIGHT,
@@ -55,7 +55,7 @@ export async function createIsometricScene(
     }
   });
 
-  const filledBoxes = fillElevations(boxes, SUPPORT_MIN_ELEVATION);
+  const filledBoxes = fillElevations(boxes, DEFAULT_MIN_ELEVATION);
   const entities = createEntities(boxes);
   const entitySources = [...new Set(entities.map((entity) => entity.textureSource))];
   const textures = new Map<string, Texture>();

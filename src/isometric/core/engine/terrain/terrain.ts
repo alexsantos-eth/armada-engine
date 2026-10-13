@@ -1,13 +1,15 @@
 import { createNoise2D } from "simplex-noise";
 import type { PerlinTerrainOptions, TerrainPoint } from "../../types";
-import { TERRAIN_HEIGHT, TERRAIN_WIDTH } from "../constants";
-
-const DEFAULT_SCALE = 9;
-const DEFAULT_OCTAVES = 4;
-const DEFAULT_PERSISTENCE = 0.5;
-const DEFAULT_LACUNARITY = 2;
-const DEFAULT_MIN_ELEVATION = 0;
-const DEFAULT_MAX_ELEVATION = 4;
+import {
+  DEFAULT_LACUNARITY,
+  DEFAULT_MAX_ELEVATION,
+  DEFAULT_MIN_ELEVATION,
+  DEFAULT_OCTAVES,
+  DEFAULT_PERSISTENCE,
+  DEFAULT_SCALE,
+  TERRAIN_HEIGHT,
+  TERRAIN_WIDTH,
+} from "../constants";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -106,12 +108,6 @@ export function getOrCreateTerrain() {
     width: TERRAIN_WIDTH,
     height: TERRAIN_HEIGHT,
     seed: Date.now(),
-    scale: 12,
-    octaves: 0,
-    persistence: 0.9,
-    lacunarity: 0,
-    minElevation: -3,
-    maxElevation: 5,
   });
 
   cachedTerrain = {
