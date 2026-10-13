@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "preact/hooks";
-import Phaser from "phaser";
-import IsometricScene from "./core/engine/scene";
+import { Application } from "pixi.js";
+import { createIsometricScene } from "./core/engine/scene";
 import { WIDTH } from "./core/engine/constants";
 
 const IsometricWorld = () => {
@@ -11,22 +11,34 @@ const IsometricWorld = () => {
       return;
     }
 
-    const game = new Phaser.Game({
-      type: Phaser.AUTO,
-      width: WIDTH,
-      height: window.innerHeight,
-      parent: containerRef.current,
-      backgroundColor: "#111111",
-      render: {
+    const container = containerRef.current;
+    const app = new Application();
+    let destroyScene: (() => void) | undefined;
+    let disposed = false;
+
+    void (async () => {
+      await app.init({
+        width: WIDTH,
+        height: window.innerHeight,
+        background: "#111111",
         antialias: true,
-        roundPixels: true,
-        powerPreference: "high-performance",
-      },
-      scene: IsometricScene,
-    });
+        resolution: window.devicePixelRatio,
+        autoDensity: true,
+      });
+
+      if (disposed) {
+        app.destroy(true);
+        return;
+      }
+
+      container.appendChild(app.canvas);
+      destroyScene = await createIsometricScene(app);
+    })();
 
     return () => {
-      game.destroy(true);
+      disposed = true;
+      destroyScene?.();
+      app.destroy(true);
     };
   }, []);
 

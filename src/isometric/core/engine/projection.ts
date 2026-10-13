@@ -14,7 +14,12 @@ export function buildFilledElevationLevels(
   const targetLevel = Math.floor(targetElevation);
 
   if (targetLevel < minElevation) {
-    return [{ elevation: targetLevel, useGroundTexture: false }];
+    const depth = minElevation - targetLevel;
+
+    return Array.from({ length: depth }, (_, index) => ({
+      elevation: targetLevel + index,
+      useGroundTexture: false,
+    }));
   }
 
   const depth = targetLevel - minElevation + 1;
@@ -56,14 +61,6 @@ export function getTextureKeyForElevation(
 export function fillElevations(boxes: Box[], minElevation: number): Box[] {
   return boxes.flatMap((box) => {
     const boxData = box.getData();
-
-    if (box.type === "SHIP") {
-      return [
-        new Box(box.x, box.y, {
-          ...boxData,
-        }),
-      ];
-    }
 
     return buildFilledElevationLevels(box.elevation, minElevation).map(
       ({ elevation, useGroundTexture }) =>

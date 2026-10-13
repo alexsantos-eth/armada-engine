@@ -1,16 +1,6 @@
-export type BoxType = "EMPTY" | "SHIP";
-
-export type ShipOrientation = "HORIZONTAL" | "VERTICAL";
-
-export type ShipDeckPart = "BOW" | "MID" | "STERN";
+export type BoxType = "EMPTY";
 
 export type BoxMetadata = Record<string, unknown>;
-
-export type ShipDeckCoordinate = {
-  x: number;
-  y: number;
-  part: ShipDeckPart;
-};
 
 /**
  * Represents the data structure for a box entity in an isometric environment.
@@ -72,11 +62,3 @@ export interface IBox {
   update(data: Partial<BoxData>): void;
 }
 
-export interface IShip {
-  readonly id: string;
-  readonly originX: number;
-  readonly originY: number;
-  readonly orientation: ShipOrientation;
-  readonly length: number;
-  getOccupiedCoordinates(): ShipDeckCoordinate[];
-}

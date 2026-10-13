@@ -1,5 +1,4 @@
 import { render } from "preact";
-import "./index.css";
-import MatchPlayground from "./playground/match/index.tsx";
+import IsometricWorld from "./isometric/page.tsx";
 
-render(<MatchPlayground />, document.getElementById("app")!);
+render(<IsometricWorld />, document.getElementById("app")!);
