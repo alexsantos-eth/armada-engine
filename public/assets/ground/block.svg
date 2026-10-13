@@ -1,31 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="853" viewBox="0 0 1024 853">
-  <defs>
-    <linearGradient id="ground-top" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#b8b08b" />
-      <stop offset="1" stop-color="#9f9775" />
-    </linearGradient>
-    <linearGradient id="ground-left" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#796b4d" />
-      <stop offset="1" stop-color="#8c7b57" />
-    </linearGradient>
-    <linearGradient id="ground-right" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#a18e63" />
-      <stop offset="1" stop-color="#b5a477" />
-    </linearGradient>
-    <linearGradient id="soil-left" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#b8a47d" />
-      <stop offset="1" stop-color="#c1ae88" />
-    </linearGradient>
-    <linearGradient id="soil-right" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#d6bb8b" />
-      <stop offset="1" stop-color="#e2c99b" />
-    </linearGradient>
-  </defs>
-
-  <path fill="url(#soil-left)" d="M512 0 512 512 0 256Z" />
-  <path fill="url(#soil-right)" d="M512 0 1024 256 512 512Z" />
-  <path fill="url(#soil-left)" d="M0 256 512 512v85.333L0 341.333Z" />
-  <path fill="url(#soil-right)" d="m512 512 512-256v85.333L512 597.333Z" />
-  <path fill="url(#soil-left)" d="M0 341.333 512 597.333v256L0 597.333Z" />
-  <path fill="url(#soil-right)" d="m512 597.333 512-256v256L512 853.333Z" />
+  <path fill="#bda982" d="M0 256 512 512v341.333L0 597.333Z" />
+  <path fill="#dcc391" d="M512 512 1024 256v341.333L512 853.333Z" />
 </svg>

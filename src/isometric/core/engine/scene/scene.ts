@@ -7,20 +7,47 @@ import {
   DEFAULT_MIN_ELEVATION,
   GROUND_BLOCK_TEXTURE_KEY,
   GRASS_BLOCK_TEXTURE_KEY,
+  POSITIVE_ELEVATION_TINT_STEP,
   TERRAIN_HEIGHT,
   TERRAIN_WIDTH,
   TILE_HEIGHT,
   TILE_WIDTH,
+  NEGATIVE_ELEVATION_TINT_STEP,
   WATER_BLOCK_TEXTURE_KEY,
 } from "../constants";
 import { fillElevations, isWithinViewport } from "../projection";
 import { renderBlock } from "../render";
 
-function getWaterTint(elevation: number): number {
-  const depth = Math.max(1, Math.abs(elevation));
-  const factor = Math.max(0.35, 1 - depth * 0.15);
-  const channel = Math.round(255 * factor);
-  return (channel << 16) | (channel << 8) | channel;
+const POSITIVE_ELEVATION_TOP_TINT = 0xe8ffb0;
+
+function getLevelTint(
+  baseTint: number,
+  levelsBelowTop: number,
+  tintStep: number,
+): number {
+  const factor = Math.max(0.35, 1 - levelsBelowTop * tintStep);
+  const red = Math.round(((baseTint >> 16) & 0xff) * factor);
+  const green = Math.round(((baseTint >> 8) & 0xff) * factor);
+  const blue = Math.round((baseTint & 0xff) * factor);
+  return (red << 16) | (green << 8) | blue;
+}
+
+function getNegativeElevationTint(elevation: number): number {
+  return getLevelTint(0xffffff, Math.max(1, Math.abs(elevation)), NEGATIVE_ELEVATION_TINT_STEP);
+}
+
+function getPositiveElevationTint(
+  elevation: number,
+  maxPositiveElevation: number,
+): number | undefined {
+  if (maxPositiveElevation <= 0) return undefined;
+
+  const levelsBelowTop = Math.max(0, maxPositiveElevation - elevation);
+  return getLevelTint(
+    POSITIVE_ELEVATION_TOP_TINT,
+    levelsBelowTop,
+    POSITIVE_ELEVATION_TINT_STEP,
+  );
 }
 
 export async function createIsometricScene(
@@ -85,6 +112,10 @@ export async function createIsometricScene(
       Math.max(currentTop ?? -Infinity, box.elevation),
     );
   });
+  const maxPositiveElevation = filledBoxes.reduce(
+    (maximum, box) => Math.max(maximum, box.elevation),
+    0,
+  );
   let minX = Infinity;
   let maxX = -Infinity;
   let minY = Infinity;
@@ -132,8 +163,11 @@ export async function createIsometricScene(
             ? grassTextureForRender
             : groundTextureForRender;
         const tint = box.box.elevation < 0
-          ? getWaterTint(box.box.elevation)
-          : undefined;
+          ? getNegativeElevationTint(box.box.elevation)
+          : getPositiveElevationTint(
+              box.box.elevation,
+              maxPositiveElevation,
+            );
         renderBlock(
           scene,
           texture,

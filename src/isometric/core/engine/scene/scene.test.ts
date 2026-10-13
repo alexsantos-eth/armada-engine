@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const loadedTextures = new Map<string, { source: string }>();
-const renderCalls: Array<{ texture: { source: string }; elevation: number; height?: number }> = [];
+const renderCalls: Array<{
+  texture: { source: string };
+  elevation: number;
+  tint: number | undefined;
+  height?: number;
+}> = [];
 
 vi.mock("pixi.js", () => {
   class Container {
@@ -37,10 +42,10 @@ vi.mock("../render", () => ({
       _tileWidth: number,
       _tileHeight: number,
       _boxHeight: number,
-      _tint: unknown,
+      tint: number | undefined,
       height?: number,
     ) => {
-      renderCalls.push({ texture, elevation: box.box.elevation, height });
+      renderCalls.push({ texture, elevation: box.box.elevation, tint, height });
     },
   ),
 }));
@@ -95,6 +100,17 @@ describe("createIsometricScene", () => {
     expect(renderCalls.some(({ texture }) => texture.source.includes("water"))).toBe(true);
     expect(renderCalls.some(({ texture }) => texture.source.includes("ground"))).toBe(true);
     expect(renderCalls.some(({ texture }) => texture.source.includes("grass"))).toBe(true);
+    expect(renderCalls.some(({ texture, elevation, tint }) =>
+      texture.source.includes("grass") && elevation > 0 && tint !== undefined,
+    )).toBe(true);
+    expect(renderCalls.some(({ texture, elevation, tint }) =>
+      texture.source.includes("ground") && elevation >= 0 && tint !== 0xe8ffb0,
+    )).toBe(true);
+    expect(new Set(
+      renderCalls
+        .filter(({ elevation, tint }) => elevation > 0 && tint !== undefined)
+        .map(({ tint }) => tint),
+    ).size).toBeGreaterThan(1);
     expect(renderCalls.some(({ texture, height }) => texture.source.includes("statue") && height === 1)).toBe(true);
 
     destroyScene();

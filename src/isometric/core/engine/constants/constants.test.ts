@@ -3,6 +3,8 @@ import {
   BOX_HEIGHT,
   GROUND_BLOCK_TEXTURE_KEY,
   GRASS_BLOCK_TEXTURE_KEY,
+  POSITIVE_ELEVATION_TINT_STEP,
+  NEGATIVE_ELEVATION_TINT_STEP,
   TILE_HEIGHT,
   TILE_WIDTH,
   VIEW_CULL_MARGIN,
@@ -25,5 +27,13 @@ describe("engine constants", () => {
 
   it("defines a positive viewport culling margin", () => {
     expect(VIEW_CULL_MARGIN).toBeGreaterThan(0);
+  });
+
+  it("defines a positive elevation tint step", () => {
+    expect(POSITIVE_ELEVATION_TINT_STEP).toBeGreaterThan(0);
+  });
+
+  it("defines a positive negative elevation tint step", () => {
+    expect(NEGATIVE_ELEVATION_TINT_STEP).toBeGreaterThan(0);
   });
 });
