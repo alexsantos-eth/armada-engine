@@ -2,6 +2,35 @@ export type BoxType = "EMPTY";
 
 export type BoxMetadata = Record<string, unknown>;
 
+export type EntitySurface = "grass" | "water";
+
+export type GridObjectData = {
+  elevation: number;
+  metadata: BoxMetadata;
+};
+
+export interface IGridObject {
+  readonly x: number;
+  readonly y: number;
+  readonly elevation: number;
+  readonly metadata: BoxMetadata;
+}
+
+export type EntityDefinition = {
+  id: string;
+  textureSource: string;
+  height: number;
+  spawnChance: number;
+  surface: EntitySurface;
+};
+
+export type EntityData = GridObjectData & {
+  type: string;
+  walkable: boolean;
+  height: number;
+  textureSource: string;
+};
+
 /**
  * Represents the data structure for a box entity in an isometric environment.
  */
@@ -60,5 +89,13 @@ export interface IBox {
    * @param data A partial object containing any subset of the box's properties (type, walkability, elevation, metadata) that should be updated. Only the properties included in this object will be modified, while the rest will remain unchanged.
    */
   update(data: Partial<BoxData>): void;
+}
+
+export interface IEntity extends IGridObject {
+  readonly type: string;
+  readonly walkable: boolean;
+  readonly height: number;
+  readonly textureSource: string;
+  getData(): EntityData;
 }
 

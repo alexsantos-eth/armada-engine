@@ -34,6 +34,8 @@ La UI de entrada está en `src/isometric/page.tsx` y `src/main.tsx` solo monta e
 
 Los bloques visibles se cargan como SVG desde `public/assets/<material>/block.svg`. El renderer usa una textura por bloque y aplica el tintado de agua por elevación; no reintroducir composición de caras separadas.
 
+Las entidades que no son bloques de terreno se declaran en `engine/entities/config.ts` y se crean mediante `createEntitiesFromConfig()`. La escena no debe conocer nombres concretos como `tree`, ni incluir ramas, constantes o assets específicos de una entidad. Para añadir una entidad, agrega una definición de configuración y su asset; usa la clase `Entity` genérica y conserva `Box` exclusivamente para `grass`, `ground` y `water`.
+
 ## Reglas de cambios
 
 - Mantener TypeScript estricto y no introducir `any` para ocultar errores.

@@ -9,16 +9,23 @@ export function renderBlock(
   tileHeight: number,
   boxHeight: number,
   tint?: number,
+  height = 1,
 ): Sprite {
   const image = new Sprite(texture);
 
   image.width = tileWidth;
-  image.height = tileHeight + boxHeight;
+  image.height = tileHeight + boxHeight * height;
   if (tint !== undefined) {
     image.tint = tint;
   }
   image.anchor.set(0.5, 0);
-  image.position.set(box.screenX, box.screenY - tileHeight / 2);
+  const verticalOffset = height > 1
+    ? tileHeight + boxHeight * height
+    : tileHeight / 2;
+  image.position.set(
+    box.screenX,
+    box.screenY - verticalOffset,
+  );
   image.zIndex =
     box.baseScreenY + box.box.elevation * 0.001 + box.x * 0.0001;
   container.addChild(image);

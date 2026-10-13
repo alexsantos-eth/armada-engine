@@ -82,4 +82,30 @@ describe("renderBlock", () => {
 
     expect(sprite.tint).toBe(0xffffff);
   });
+
+  it("supports a two-block-high sprite", () => {
+    const sprite = renderBlock(
+      { addChild: vi.fn() } as never,
+      { id: "tree" } as never,
+      {
+        x: 0,
+        y: 0,
+        box: new Box(0, 0),
+        screenX: 10,
+        baseScreenY: 20,
+        screenY: 20,
+      },
+      40,
+      20,
+      13,
+      undefined,
+      2,
+    ) as unknown as {
+      height: number;
+      position: { set: ReturnType<typeof vi.fn> };
+    };
+
+    expect(sprite.height).toBe(46);
+    expect(sprite.position.set).toHaveBeenCalledWith(10, -26);
+  });
 });

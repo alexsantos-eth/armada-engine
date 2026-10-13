@@ -8,6 +8,8 @@ El código del engine está organizado por responsabilidad dentro de `src/isomet
 
 Los tipos compartidos viven en `src/isometric/core/types` y se exportan desde `core/types/index.ts`. No se crean tests runtime para archivos que solo contienen tipos.
 
+`Box` está reservado para bloques de terreno (`grass`, `ground` y `water`). Las entidades de juego se declaran como datos en `src/isometric/core/engine/entities/config.ts` y se crean con `createEntitiesFromConfig()`. No se deben añadir entidades concretas a `Box`, a `scene.ts` ni a las constantes de terreno.
+
 ## Tests co-localizados
 
 Los tests viven junto al archivo que prueban:

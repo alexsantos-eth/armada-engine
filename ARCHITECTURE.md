@@ -78,11 +78,13 @@ src/isometric/core/
 
 Los archivos de tipos no contienen lógica runtime y no tienen tests propios. TypeScript y Typedoc validan esos contratos. Los módulos de comportamiento sí tienen tests co-localizados con el sufijo `.test.ts`.
 
-## Modelo de entidades
+## Modelo de terreno y entidades
 
-`Box` representa una celda materializada de la cuadrícula. Sus coordenadas `x` e `y` son inmutables; sus datos (`type`, `walkable`, `elevation` y `metadata`) pueden actualizarse mediante `update()`.
+`Box` representa exclusivamente una celda materializada de terreno. Sus coordenadas `x` e `y` son inmutables; sus datos (`type`, `walkable`, `elevation` y `metadata`) pueden actualizarse mediante `update()`.
 
 La clase aplica datos por defecto y combina metadata de forma superficial. `getData()` devuelve una copia de los datos y una copia de `metadata`, de modo que el consumidor no puede modificar el estado interno accidentalmente.
+
+Las entidades no son subtipos de `Box`. `Entity` implementa el contrato espacial común y contiene su identificador, asset, altura y elevación. Las definiciones viven en `engine/entities/config.ts`; `createEntitiesFromConfig()` filtra las columnas elegibles y crea entidades sin conocer tipos concretos como el árbol. Para incorporar una entidad nueva se añade una entrada de configuración y su SVG, sin modificar `scene.ts`.
 
 ## Generación del terreno
 
@@ -126,7 +128,7 @@ screenY    = baseScreenY - elevation * e
 
 Antes de renderizar, la escena calcula los extremos proyectados de todas las cajas y centra el conjunto en el viewport. Después `isWithinViewport()` descarta cajas fuera del viewport más un margen de `VIEW_CULL_MARGIN`.
 
-## Selección de materiales
+## Selección de materiales y entidades
 
 La escena carga una textura SVG por material:
 
@@ -146,6 +148,8 @@ El bloque superior se identifica con un `Map` cuya clave es `${x}:${y}`. Así el
 
 El agua reutiliza la misma textura SVG para todos sus niveles. `getWaterTint()` aplica un tintado más oscuro cuanto mayor es `Math.abs(elevation)`. No se generan texturas nuevas para cada profundidad.
 
+Después de renderizar los bloques de terreno, la escena proyecta y renderiza las entidades creadas por la factory. Sus texturas y alturas se resuelven mediante la configuración; la escena no contiene reglas por entidad.
+
 ## Renderizado de bloques
 
 `renderBlock()` crea un `Sprite` a partir de una textura ya cargada:
@@ -161,7 +165,7 @@ Los SVG representan el bloque completo. No se deben volver a componer caras `top
 
 ## Ciclo de vida de recursos
 
-`createIsometricScene()` carga los tres SVG con `Assets.load()` en paralelo. Si la escena se desmonta, destruye el container y llama a `Assets.unload()` para cada fuente. Pixi gestiona las texturas; no se debe llamar a `destroy(true)` sobre una textura administrada por `Assets`.
+`createIsometricScene()` carga los SVG de terreno y los assets declarados en la configuración con `Assets.load()` en paralelo. Si la escena se desmonta, destruye el container y llama a `Assets.unload()` para cada fuente. Pixi gestiona las texturas; no se debe llamar a `destroy(true)` sobre una textura administrada por `Assets`.
 
 ## Testing y calidad
 
@@ -186,12 +190,20 @@ pnpm run docs
 
 ## Puntos de extensión
 
-Para añadir un nuevo material:
+Para añadir un nuevo material de terreno:
 
 1. Crear `public/assets/<material>/block.svg` con la misma geometría del bloque.
 2. Añadir una clave en `engine/constants`.
 3. Cargar el SVG en `engine/scene` y añadir la regla de selección.
 4. Actualizar o crear el test de escena para demostrar la selección.
+5. Ejecutar coverage, build y Typedoc.
+
+Para añadir una entidad:
+
+1. Crear su SVG en `public/assets/<entidad>/block.svg`.
+2. Añadir una entrada en `src/isometric/core/engine/entities/config.ts` con `id`, `textureSource`, `height`, `spawnChance` y `surface`.
+3. Añadir o actualizar el test de la factory para demostrar la regla de colocación.
+4. No añadir condiciones específicas de la entidad en `scene.ts`, `Box` o `render.ts`.
 5. Ejecutar coverage, build y Typedoc.
 
 Para añadir una nueva regla de elevación, modificar primero `projection` o la selección de materiales, según dónde pertenezca la decisión. No introducir esa lógica dentro de `render`, porque el renderer solo debe convertir una decisión ya tomada en un Sprite.

@@ -1,4 +1,4 @@
-import type { Box } from "../engine/entities";
+import type { IGridObject } from "./entities";
 
 /**
  * Configuration for projecting grid coordinates to isometric screen coordinates
@@ -29,7 +29,7 @@ export type IsoProjectionConfig = {
 /**
  * Represents a box from the original grid along with its projected screen coordinates in an isometric view
  */
-export type IsoScreenBox = {
+export type IsoScreenBox<T extends IGridObject = IGridObject> = {
   /**
    * X coordinate of the box in the original grid (not screen coordinates)
    */
@@ -41,7 +41,7 @@ export type IsoScreenBox = {
   /**
    * Reference to the original Box object
    */
-  box: Box;
+  box: T;
   /**
    * X coordinate of the projected box on the screen in pixels
    */

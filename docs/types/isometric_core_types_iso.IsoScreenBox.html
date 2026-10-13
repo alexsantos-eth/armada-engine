@@ -10,13 +10,17 @@
 <ul class="tsd-breadcrumb" aria-label="Breadcrumb">
 <li><a href="../modules/isometric_core_types_iso.html">isometric/core/types/iso</a></li>
 <li><a href="" aria-current="page">IsoScreenBox</a></li></ul>
-<h1>Type Alias IsoScreenBox</h1></div>
+<h1>Type Alias IsoScreenBox&lt;T&gt;</h1></div>
 <section class="tsd-panel tsd-comment">
 <div class="tsd-comment tsd-typography"><p>Represents a box from the original grid along with its projected screen coordinates in an isometric view</p>
 </div></section>
-<div class="tsd-signature"><span class="tsd-signature-keyword">type</span> <span class="tsd-kind-type-alias">IsoScreenBox</span> <span class="tsd-signature-symbol">=</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#basescreeny">baseScreenY</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#box">box</a><span class="tsd-signature-symbol">:</span> <a href="../classes/isometric_core_engine_entities_entities.Box.html" class="tsd-signature-type tsd-kind-class">Box</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#screenx">screenX</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#screeny">screenY</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#x">x</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#y">y</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
+<div class="tsd-signature"><span class="tsd-signature-keyword">type</span> <span class="tsd-kind-type-alias">IsoScreenBox</span><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#t">T</a> <span class="tsd-signature-keyword">extends</span> <a href="../interfaces/isometric_core_types_entities.IGridObject.html" class="tsd-signature-type tsd-kind-interface">IGridObject</a> <span class="tsd-signature-symbol">=</span> <a href="../interfaces/isometric_core_types_entities.IGridObject.html" class="tsd-signature-type tsd-kind-interface">IGridObject</a><span class="tsd-signature-symbol">&gt;</span> <span class="tsd-signature-symbol">=</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#basescreeny">baseScreenY</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#box">box</a><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#t">T</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#screenx">screenX</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#screeny">screenY</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#x">x</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#y">y</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div>
+<section class="tsd-panel">
+<h4>Type Parameters</h4>
+<ul class="tsd-type-parameter-list">
+<li><span id="t"><span class="tsd-kind-type-parameter">T</span> <span class="tsd-signature-keyword">extends</span> <a href="../interfaces/isometric_core_types_entities.IGridObject.html" class="tsd-signature-type tsd-kind-interface">IGridObject</a> = <a href="../interfaces/isometric_core_types_entities.IGridObject.html" class="tsd-signature-type tsd-kind-interface">IGridObject</a></span></li></ul></section><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/alexsantos-eth/armada-engine/blob/1930211c6ef263222f1526950618b67b152c749d/src/isometric/core/types/iso.ts#L32">isometric/core/types/iso.ts:32</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/alexsantos-eth/armada-engine/blob/68fab5e75ab7375eb0700e0412681bbb3ce8362a/src/isometric/core/types/iso.ts#L32">isometric/core/types/iso.ts:32</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -40,42 +44,42 @@
 <div class="tsd-comment tsd-typography"><p>Ground-contact Y before applying elevation offset. Useful for stable depth sorting.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/alexsantos-eth/armada-engine/blob/1930211c6ef263222f1526950618b67b152c749d/src/isometric/core/types/iso.ts#L52">isometric/core/types/iso.ts:52</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/alexsantos-eth/armada-engine/blob/68fab5e75ab7375eb0700e0412681bbb3ce8362a/src/isometric/core/types/iso.ts#L52">isometric/core/types/iso.ts:52</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="box"><span>box</span><a href="#box" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">box</span><span class="tsd-signature-symbol">:</span> <a href="../classes/isometric_core_engine_entities_entities.Box.html" class="tsd-signature-type tsd-kind-class">Box</a></div>
+<div class="tsd-signature"><span class="tsd-kind-property">box</span><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#t">T</a></div>
 <div class="tsd-comment tsd-typography"><p>Reference to the original Box object</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/alexsantos-eth/armada-engine/blob/1930211c6ef263222f1526950618b67b152c749d/src/isometric/core/types/iso.ts#L44">isometric/core/types/iso.ts:44</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/alexsantos-eth/armada-engine/blob/68fab5e75ab7375eb0700e0412681bbb3ce8362a/src/isometric/core/types/iso.ts#L44">isometric/core/types/iso.ts:44</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="screenx"><span>screen<wbr/>X</span><a href="#screenx" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">screenX</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
 <div class="tsd-comment tsd-typography"><p>X coordinate of the projected box on the screen in pixels</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/alexsantos-eth/armada-engine/blob/1930211c6ef263222f1526950618b67b152c749d/src/isometric/core/types/iso.ts#L48">isometric/core/types/iso.ts:48</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/alexsantos-eth/armada-engine/blob/68fab5e75ab7375eb0700e0412681bbb3ce8362a/src/isometric/core/types/iso.ts#L48">isometric/core/types/iso.ts:48</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="screeny"><span>screen<wbr/>Y</span><a href="#screeny" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">screenY</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
 <div class="tsd-comment tsd-typography"><p>Y coordinate of the projected box on the screen in pixels</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/alexsantos-eth/armada-engine/blob/1930211c6ef263222f1526950618b67b152c749d/src/isometric/core/types/iso.ts#L56">isometric/core/types/iso.ts:56</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/alexsantos-eth/armada-engine/blob/68fab5e75ab7375eb0700e0412681bbb3ce8362a/src/isometric/core/types/iso.ts#L56">isometric/core/types/iso.ts:56</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="x"><span>x</span><a href="#x" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">x</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
 <div class="tsd-comment tsd-typography"><p>X coordinate of the box in the original grid (not screen coordinates)</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/alexsantos-eth/armada-engine/blob/1930211c6ef263222f1526950618b67b152c749d/src/isometric/core/types/iso.ts#L36">isometric/core/types/iso.ts:36</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/alexsantos-eth/armada-engine/blob/68fab5e75ab7375eb0700e0412681bbb3ce8362a/src/isometric/core/types/iso.ts#L36">isometric/core/types/iso.ts:36</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="y"><span>y</span><a href="#y" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">y</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
 <div class="tsd-comment tsd-typography"><p>Y coordinate of the box in the original grid (not screen coordinates)</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/alexsantos-eth/armada-engine/blob/1930211c6ef263222f1526950618b67b152c749d/src/isometric/core/types/iso.ts#L40">isometric/core/types/iso.ts:40</a></li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/alexsantos-eth/armada-engine/blob/68fab5e75ab7375eb0700e0412681bbb3ce8362a/src/isometric/core/types/iso.ts#L40">isometric/core/types/iso.ts:40</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

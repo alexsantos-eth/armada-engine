@@ -2,12 +2,12 @@ import type {
   IsoProjectionConfig,
   IsoScreenBox,
 } from "../../types";
-import { Box } from "../entities";
+import type { IGridObject } from "../../types";
 
-export function projectBoxesToIsometric(
-  boxes: Box[],
+export function projectBoxesToIsometric<T extends IGridObject>(
+  boxes: T[],
   projection: IsoProjectionConfig,
-): IsoScreenBox[] {
+): IsoScreenBox<T>[] {
   const { tileWidth, tileHeight, originX, originY } = projection;
   const elevationStep = projection.elevationStep ?? tileHeight / 2;
 

@@ -1,5 +1,5 @@
 import { Application, Assets, Container, Texture } from "pixi.js";
-import { Box } from "../entities";
+import { Box, createEntitiesFromConfig, ENTITY_CONFIG } from "../entities";
 import { projectBoxesToIsometric } from "../board";
 import { getOrCreateTerrain } from "../terrain";
 import {
@@ -29,15 +29,20 @@ export async function createIsometricScene(
   const grassBlockSource = "/assets/grass/block.svg";
   const groundBlockSource = "/assets/ground/block.svg";
   const waterBlockSource = "/assets/water/block.svg";
+  const entitySources = ENTITY_CONFIG.map(({ textureSource }) => textureSource);
   const textures = new Map<string, Texture>();
-  const [grassTexture, groundTexture, waterTexture] = await Promise.all([
+  const [grassTexture, groundTexture, waterTexture, ...entityTextures] = await Promise.all([
     Assets.load<Texture>(grassBlockSource),
     Assets.load<Texture>(groundBlockSource),
     Assets.load<Texture>(waterBlockSource),
+    ...entitySources.map((source) => Assets.load<Texture>(source)),
   ]);
   textures.set(GRASS_BLOCK_TEXTURE_KEY, grassTexture);
   textures.set(GROUND_BLOCK_TEXTURE_KEY, groundTexture);
   textures.set(WATER_BLOCK_TEXTURE_KEY, waterTexture);
+  const entityTexturesByType = new Map(
+    ENTITY_CONFIG.map((definition, index) => [definition.id, entityTextures[index]]),
+  );
 
   const scene = new Container();
   scene.sortableChildren = true;
@@ -68,6 +73,7 @@ export async function createIsometricScene(
   });
 
   const filledBoxes = fillElevations(boxes, SUPPORT_MIN_ELEVATION);
+  const entities = createEntitiesFromConfig(boxes);
   const topElevationByColumn = new Map<string, number>();
   filledBoxes.forEach((box) => {
     const columnKey = `${box.x}:${box.y}`;
@@ -91,13 +97,15 @@ export async function createIsometricScene(
     maxY = Math.max(maxY, screenY);
   });
 
-  const projectedBoxes = projectBoxesToIsometric(filledBoxes, {
+  const projection = {
     tileWidth: TILE_WIDTH,
     tileHeight: TILE_HEIGHT,
     elevationStep: BOX_HEIGHT,
     originX: app.screen.width / 2 - (minX + maxX) / 2,
     originY: app.screen.height / 2 - (minY + maxY) / 2,
-  });
+  };
+  const projectedBoxes = projectBoxesToIsometric(filledBoxes, projection);
+  const projectedEntities = projectBoxesToIsometric(entities, projection);
   const grassTextureForRender = textures.get(GRASS_BLOCK_TEXTURE_KEY);
   const groundTextureForRender = textures.get(GROUND_BLOCK_TEXTURE_KEY);
   const waterTextureForRender = textures.get(WATER_BLOCK_TEXTURE_KEY);
@@ -134,6 +142,30 @@ export async function createIsometricScene(
           tint,
         );
       });
+    projectedEntities
+      .filter((entity) =>
+        isWithinViewport(
+          entity.screenX,
+          entity.screenY,
+          app.screen.width,
+          app.screen.height,
+        ),
+      )
+      .forEach((entity) => {
+        const texture = entityTexturesByType.get(entity.box.type);
+        if (!texture) return;
+
+        renderBlock(
+          scene,
+          texture,
+          entity,
+          TILE_WIDTH,
+          TILE_HEIGHT,
+          BOX_HEIGHT,
+          undefined,
+          entity.box.height,
+        );
+      });
   }
 
   return () => {
@@ -141,6 +173,7 @@ export async function createIsometricScene(
     void Assets.unload(grassBlockSource);
     void Assets.unload(groundBlockSource);
     void Assets.unload(waterBlockSource);
+    entitySources.forEach((source) => void Assets.unload(source));
   };
 }
 
