@@ -1,15 +1,12 @@
 import { useEffect, useRef } from "preact/hooks";
 import { Application } from "pixi.js";
-import { createIsometricScene } from "./core/engine/scene";
-import { WIDTH } from "./core/engine/constants";
+import { WIDTH, createIsometricScene } from "./core/engine";
 
 const IsometricWorld = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current) {
-      return;
-    }
+    if (!containerRef.current) return;
 
     const container = containerRef.current;
     const app = new Application();
@@ -57,11 +54,7 @@ const IsometricWorld = () => {
     >
       <div
         ref={containerRef}
-        style={{
-          width: "100%",
-          height: "100%",
-          overflow: "hidden",
-        }}
+        style={{ width: "100%", height: "100%", overflow: "hidden" }}
       />
     </section>
   );

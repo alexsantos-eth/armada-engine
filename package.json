@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "docs": "typedoc",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "pixi.js": "^8.22.0",
@@ -16,8 +19,11 @@
   "devDependencies": {
     "@preact/preset-vite": "^2.10.2",
     "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "5.0.3",
+    "typedoc": "^0.28.20",
     "typescript": "~5.9.3",
-    "vite": "^8.0.0-beta.13"
+    "vite": "^8.0.0-beta.13",
+    "vitest": "^5.0.3"
   },
   "overrides": {
     "vite": "^8.0.0-beta.13"
