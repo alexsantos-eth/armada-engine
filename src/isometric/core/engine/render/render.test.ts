@@ -108,4 +108,27 @@ describe("renderBlock", () => {
     expect(sprite.height).toBe(46);
     expect(sprite.position.set).toHaveBeenCalledWith(10, -26);
   });
+
+  it("anchors a one-block entity to the surface", () => {
+    const sprite = renderBlock(
+      { addChild: vi.fn() } as never,
+      { id: "entity" } as never,
+      {
+        x: 0,
+        y: 0,
+        box: new Box(0, 0),
+        screenX: 10,
+        baseScreenY: 20,
+        screenY: 20,
+      },
+      40,
+      20,
+      13,
+      undefined,
+      1,
+      true,
+    ) as unknown as { position: { set: ReturnType<typeof vi.fn> } };
+
+    expect(sprite.position.set).toHaveBeenCalledWith(10, -13);
+  });
 });

@@ -10,6 +10,7 @@ export function renderBlock(
   boxHeight: number,
   tint?: number,
   height = 1,
+  surfaceAligned = false,
 ): Sprite {
   const image = new Sprite(texture);
 
@@ -19,7 +20,7 @@ export function renderBlock(
     image.tint = tint;
   }
   image.anchor.set(0.5, 0);
-  const verticalOffset = height > 1
+  const verticalOffset = surfaceAligned || height > 1
     ? tileHeight + boxHeight * height
     : tileHeight / 2;
   image.position.set(

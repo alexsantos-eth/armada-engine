@@ -1,5 +1,5 @@
 import { Application, Assets, Container, Texture } from "pixi.js";
-import { Box, createEntitiesFromConfig, ENTITY_CONFIG } from "../entities";
+import { Box, createEntitiesFromConfig, Entity } from "../entities";
 import { projectBoxesToIsometric } from "../board";
 import { getOrCreateTerrain } from "../terrain";
 import {
@@ -25,28 +25,11 @@ function getWaterTint(elevation: number): number {
 
 export async function createIsometricScene(
   app: Application,
+  createEntities: (boxes: Box[]) => Entity[] = createEntitiesFromConfig,
 ): Promise<() => void> {
   const grassBlockSource = "/assets/grass/block.svg";
   const groundBlockSource = "/assets/ground/block.svg";
   const waterBlockSource = "/assets/water/block.svg";
-  const entitySources = ENTITY_CONFIG.map(({ textureSource }) => textureSource);
-  const textures = new Map<string, Texture>();
-  const [grassTexture, groundTexture, waterTexture, ...entityTextures] = await Promise.all([
-    Assets.load<Texture>(grassBlockSource),
-    Assets.load<Texture>(groundBlockSource),
-    Assets.load<Texture>(waterBlockSource),
-    ...entitySources.map((source) => Assets.load<Texture>(source)),
-  ]);
-  textures.set(GRASS_BLOCK_TEXTURE_KEY, grassTexture);
-  textures.set(GROUND_BLOCK_TEXTURE_KEY, groundTexture);
-  textures.set(WATER_BLOCK_TEXTURE_KEY, waterTexture);
-  const entityTexturesByType = new Map(
-    ENTITY_CONFIG.map((definition, index) => [definition.id, entityTextures[index]]),
-  );
-
-  const scene = new Container();
-  scene.sortableChildren = true;
-  app.stage.addChild(scene);
 
   const terrain = getOrCreateTerrain();
   const boxes = terrain.map(
@@ -73,7 +56,26 @@ export async function createIsometricScene(
   });
 
   const filledBoxes = fillElevations(boxes, SUPPORT_MIN_ELEVATION);
-  const entities = createEntitiesFromConfig(boxes);
+  const entities = createEntities(boxes);
+  const entitySources = [...new Set(entities.map((entity) => entity.textureSource))];
+  const textures = new Map<string, Texture>();
+  const [grassTexture, groundTexture, waterTexture, ...entityTextures] = await Promise.all([
+    Assets.load<Texture>(grassBlockSource),
+    Assets.load<Texture>(groundBlockSource),
+    Assets.load<Texture>(waterBlockSource),
+    ...entitySources.map((source) => Assets.load<Texture>(source)),
+  ]);
+  textures.set(GRASS_BLOCK_TEXTURE_KEY, grassTexture);
+  textures.set(GROUND_BLOCK_TEXTURE_KEY, groundTexture);
+  textures.set(WATER_BLOCK_TEXTURE_KEY, waterTexture);
+  const entityTexturesBySource = new Map(
+    entitySources.map((source, index) => [source, entityTextures[index]]),
+  );
+
+  const scene = new Container();
+  scene.sortableChildren = true;
+  app.stage.addChild(scene);
+
   const topElevationByColumn = new Map<string, number>();
   filledBoxes.forEach((box) => {
     const columnKey = `${box.x}:${box.y}`;
@@ -152,7 +154,7 @@ export async function createIsometricScene(
         ),
       )
       .forEach((entity) => {
-        const texture = entityTexturesByType.get(entity.box.type);
+        const texture = entityTexturesBySource.get(entity.box.textureSource);
         if (!texture) return;
 
         renderBlock(
@@ -164,6 +166,7 @@ export async function createIsometricScene(
           BOX_HEIGHT,
           undefined,
           entity.box.height,
+          true,
         );
       });
   }

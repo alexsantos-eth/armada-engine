@@ -46,7 +46,26 @@ vi.mock("../render", () => ({
 }));
 
 import { Assets } from "pixi.js";
+import { Entity } from "../entities";
 import { createIsometricScene } from "./scene";
+
+const createTestEntities = (boxes: { x: number; y: number; elevation: number }[]) =>
+  boxes.length > 0
+    ? [
+        new Entity(
+          boxes[0].x,
+          boxes[0].y,
+          {
+            id: "statue",
+            textureSource: "/assets/statue/block.svg",
+            height: 1,
+            spawnChance: 1,
+            surface: "grass",
+          },
+          boxes[0].elevation,
+        ),
+      ]
+    : [];
 
 describe("createIsometricScene", () => {
   beforeEach(() => {
@@ -66,24 +85,24 @@ describe("createIsometricScene", () => {
       stage: { addChild: vi.fn() },
     };
 
-    const destroyScene = await createIsometricScene(app as never);
+    const destroyScene = await createIsometricScene(app as never, createTestEntities);
 
     expect(Assets.load).toHaveBeenCalledWith("/assets/grass/block.svg");
     expect(Assets.load).toHaveBeenCalledWith("/assets/ground/block.svg");
     expect(Assets.load).toHaveBeenCalledWith("/assets/water/block.svg");
-    expect(Assets.load).toHaveBeenCalledWith("/assets/tree/block.svg");
+    expect(Assets.load).toHaveBeenCalledWith("/assets/statue/block.svg");
     expect(renderCalls.length).toBeGreaterThan(0);
     expect(renderCalls.some(({ texture }) => texture.source.includes("water"))).toBe(true);
     expect(renderCalls.some(({ texture }) => texture.source.includes("ground"))).toBe(true);
     expect(renderCalls.some(({ texture }) => texture.source.includes("grass"))).toBe(true);
-    expect(renderCalls.some(({ texture, height }) => texture.source.includes("tree") && height === 2)).toBe(true);
+    expect(renderCalls.some(({ texture, height }) => texture.source.includes("statue") && height === 1)).toBe(true);
 
     destroyScene();
 
     expect(Assets.unload).toHaveBeenCalledWith("/assets/grass/block.svg");
     expect(Assets.unload).toHaveBeenCalledWith("/assets/ground/block.svg");
     expect(Assets.unload).toHaveBeenCalledWith("/assets/water/block.svg");
-    expect(Assets.unload).toHaveBeenCalledWith("/assets/tree/block.svg");
+    expect(Assets.unload).toHaveBeenCalledWith("/assets/statue/block.svg");
   });
 
   it("does not render when a required texture is unavailable", async () => {
@@ -95,7 +114,7 @@ describe("createIsometricScene", () => {
       stage: { addChild: vi.fn() },
     };
 
-    const destroyScene = await createIsometricScene(app as never);
+    const destroyScene = await createIsometricScene(app as never, createTestEntities);
 
     expect(renderCalls).toHaveLength(0);
     destroyScene();
@@ -104,7 +123,7 @@ describe("createIsometricScene", () => {
   it("skips an entity when its configured texture is unavailable", async () => {
     vi.mocked(Assets.load).mockImplementation(async (source) => {
       const assetSource = source as unknown as string;
-      if (assetSource.includes("/tree/")) return undefined as never;
+      if (assetSource.includes("/statue/")) return undefined as never;
       return { source: assetSource } as never;
     });
     const app = {
@@ -112,7 +131,7 @@ describe("createIsometricScene", () => {
       stage: { addChild: vi.fn() },
     };
 
-    const destroyScene = await createIsometricScene(app as never);
+    const destroyScene = await createIsometricScene(app as never, createTestEntities);
 
     expect(renderCalls.some(({ texture }) => texture.source.includes("tree"))).toBe(false);
     destroyScene();

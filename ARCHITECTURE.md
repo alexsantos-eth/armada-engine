@@ -165,7 +165,7 @@ Los SVG representan el bloque completo. No se deben volver a componer caras `top
 
 ## Ciclo de vida de recursos
 
-`createIsometricScene()` carga los SVG de terreno y los assets declarados en la configuración con `Assets.load()` en paralelo. Si la escena se desmonta, destruye el container y llama a `Assets.unload()` para cada fuente. Pixi gestiona las texturas; no se debe llamar a `destroy(true)` sobre una textura administrada por `Assets`.
+`createIsometricScene()` crea primero las entidades y descubre sus URLs de asset desde `textureSource`. Después carga los SVG de terreno y las URLs únicas de las entidades con `Assets.load()` en paralelo. Si la escena se desmonta, destruye el container y llama a `Assets.unload()` para cada fuente. Pixi gestiona las texturas; no se debe llamar a `destroy(true)` sobre una textura administrada por `Assets`.
 
 ## Testing y calidad
 
