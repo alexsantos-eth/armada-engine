@@ -20,8 +20,10 @@ export function renderBlock(
     image.tint = tint;
   }
   image.anchor.set(0.5, 0);
-  const verticalOffset = surfaceAligned || height > 1
-    ? tileHeight + boxHeight * height
+  const verticalOffset = surfaceAligned
+    ? tileHeight / 2 + boxHeight * height
+    : height > 1
+      ? tileHeight + boxHeight * height
     : tileHeight / 2;
   image.position.set(
     box.screenX,

@@ -8,4 +8,11 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     spawnChance: 0.03,
     surface: "grass",
   },
+  {
+    id: "statue",
+    textureSource: "/assets/statue/block.svg",
+    height: 1,
+    spawnChance: 0.03,
+    surface: "grass",
+  },
 ];

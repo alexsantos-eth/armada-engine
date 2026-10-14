@@ -109,7 +109,7 @@ describe("renderBlock", () => {
     expect(sprite.position.set).toHaveBeenCalledWith(10, -26);
   });
 
-  it("anchors a one-block entity to the surface", () => {
+  it("aligns a one-block entity with the block's top diamond", () => {
     const sprite = renderBlock(
       { addChild: vi.fn() } as never,
       { id: "entity" } as never,
@@ -129,6 +129,6 @@ describe("renderBlock", () => {
       true,
     ) as unknown as { position: { set: ReturnType<typeof vi.fn> } };
 
-    expect(sprite.position.set).toHaveBeenCalledWith(10, -13);
+    expect(sprite.position.set).toHaveBeenCalledWith(10, -3);
   });
 });
