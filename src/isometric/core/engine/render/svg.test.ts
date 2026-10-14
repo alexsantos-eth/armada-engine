@@ -20,6 +20,12 @@ describe("replaceSvgColors", () => {
     }, () => 0.99)).toBe('<path fill="#d6a72c"/><path fill="#d6a72c" stroke="#efc94c"/>');
   });
 
+  it("returns an empty replacement for an empty variation list", () => {
+    expect(replaceSvgColors('<path fill="#9f4b2f"/>', {
+      "#9f4b2f": [],
+    })).toBe('<path fill=""/>');
+  });
+
   it("returns the original SVG when no replacements are configured", () => {
     const svg = '<path fill="#9f4b2f"/>';
 

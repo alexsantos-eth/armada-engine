@@ -118,6 +118,12 @@ export async function createIsometricScene(
       entityTextures[index]?.texture,
     ]),
   );
+  const entityTexturesByEntity = new Map(
+    entities.map((entity) => [
+      entity,
+      entityTexturesBySource.get(entityTextureKeys.get(entity) as string),
+    ]),
+  );
   const loadedEntitySources = entityTextures.map(({ source }) => source);
 
   const scene = new Container();
@@ -209,10 +215,7 @@ export async function createIsometricScene(
         ),
       )
       .forEach((entity) => {
-        const variantKey = entityTextureKeys.get(entity.box);
-        if (!variantKey) return;
-
-        const texture = entityTexturesBySource.get(variantKey);
+        const texture = entityTexturesByEntity.get(entity.box);
         if (!texture) return;
 
         renderBlock(

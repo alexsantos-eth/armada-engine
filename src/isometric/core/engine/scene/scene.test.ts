@@ -57,6 +57,7 @@ vi.mock("../render", () => ({
 import { Assets } from "pixi.js";
 import { Entity } from "../entities";
 import { createSvgColorVariant } from "../render";
+import { getOrCreateTerrain } from "../terrain";
 import { createIsometricScene } from "./scene";
 
 const createTestEntities = (boxes: { x: number; y: number; elevation: number }[]) =>
@@ -181,6 +182,28 @@ describe("createIsometricScene", () => {
     );
 
     destroyScene();
+  });
+
+  it("handles a terrain without positive elevations", async () => {
+    const terrain = getOrCreateTerrain();
+    const originalTerrain = [...terrain];
+    terrain.splice(0, terrain.length, { x: 0, y: 0, elevation: 0 });
+
+    try {
+      const app = {
+        screen: { width: 1300, height: 1000 },
+        stage: { addChild: vi.fn() },
+      };
+
+      const destroyScene = await createIsometricScene(app as never, () => []);
+
+      expect(renderCalls.some(({ texture, tint }) =>
+        texture.source.includes("grass") && tint === undefined,
+      )).toBe(true);
+      destroyScene();
+    } finally {
+      terrain.splice(0, terrain.length, ...originalTerrain);
+    }
   });
 
   it("skips an entity when its configured texture is unavailable", async () => {

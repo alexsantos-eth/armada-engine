@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { TERRAIN_HEIGHT, TERRAIN_WIDTH } from "../constants";
 import { generatePerlinTerrain, getOrCreateTerrain } from "./terrain";
 
 describe("generatePerlinTerrain", () => {
@@ -40,7 +41,7 @@ describe("generatePerlinTerrain", () => {
     const first = getOrCreateTerrain();
     const second = getOrCreateTerrain();
 
-    expect(first).toHaveLength(50 * 50);
+    expect(first).toHaveLength(TERRAIN_WIDTH * TERRAIN_HEIGHT);
     expect(second).toBe(first);
   });
 });
