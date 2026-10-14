@@ -1,5 +1,5 @@
-import { Container, Sprite, Texture } from "pixi.js";
-import type { IsoScreenBox } from "../../types";
+import { Container, Graphics, Sprite, Texture } from "pixi.js";
+import type { EntityLengthAxis, IsoScreenBox } from "../../types";
 
 export function renderBlock(
   container: Container,
@@ -12,6 +12,8 @@ export function renderBlock(
   height = 1,
   surfaceAligned = false,
   length = 1,
+  debug = false,
+  lengthAxis: EntityLengthAxis = "x",
 ): Sprite {
   const image = new Sprite(texture);
 
@@ -31,13 +33,37 @@ export function renderBlock(
       ? tileHeight + boxHeight * height
     : tileHeight / 2;
   const footprintOffset = (length - 1) / 2;
+  const lengthDirection = lengthAxis === "y" ? -1 : 1;
   image.position.set(
-    box.screenX + footprintOffset * (tileWidth / 2),
+    box.screenX + lengthDirection * footprintOffset * (tileWidth / 2),
     box.screenY - footprintOffset * (tileHeight / 2) - verticalOffset,
   );
   image.zIndex =
     box.baseScreenY + box.box.elevation * 0.001 + box.x * 0.0001;
   container.addChild(image);
+
+  if (debug) {
+    const halfWidth = tileWidth / 2;
+    const halfHeight = tileHeight / 2;
+    const outline = new Graphics();
+    const createDiamond = (blockIndex: number, verticalOffset: number) => {
+      const centerX = box.screenX + lengthDirection * blockIndex * (tileWidth / 2);
+      const centerY = box.screenY - blockIndex * (tileHeight / 2) - verticalOffset;
+      return [
+        { x: centerX, y: centerY - halfHeight },
+        { x: centerX + halfWidth, y: centerY },
+        { x: centerX, y: centerY + halfHeight },
+        { x: centerX - halfWidth, y: centerY },
+      ];
+    };
+    for (let blockIndex = 0; blockIndex < length; blockIndex += 1) {
+      outline.poly(createDiamond(blockIndex, 0));
+      outline.poly(createDiamond(blockIndex, boxHeight * height));
+    }
+    outline.stroke({ color: 0xff00ff, width: 1 });
+    outline.zIndex = image.zIndex + 0.0001;
+    container.addChild(outline);
+  }
 
   return image;
 }

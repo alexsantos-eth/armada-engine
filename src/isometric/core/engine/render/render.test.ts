@@ -15,7 +15,12 @@ vi.mock("pixi.js", () => {
     }
   }
 
-  return { Sprite };
+  class Graphics {
+    public poly = vi.fn(() => this);
+    public stroke = vi.fn(() => this);
+  }
+
+  return { Graphics, Sprite };
 });
 
 import { Box } from "../entities";
@@ -160,5 +165,88 @@ describe("renderBlock", () => {
     expect(sprite.width).toBe(60);
     expect(sprite.height).toBeCloseTo(43.3203);
     expect(sprite.position.set).toHaveBeenCalledWith(20, -13);
+  });
+
+  it("positions a multi-block entity along the y axis", () => {
+    const sprite = renderBlock(
+      { addChild: vi.fn() } as never,
+      { id: "boat", width: 1536, height: 1109 } as never,
+      {
+        x: 0,
+        y: 0,
+        box: new Box(0, 0),
+        screenX: 10,
+        baseScreenY: 20,
+        screenY: 20,
+      },
+      40,
+      20,
+      13,
+      undefined,
+      1,
+      true,
+      2,
+      false,
+      "y",
+    ) as unknown as { position: { set: ReturnType<typeof vi.fn> } };
+
+    expect(sprite.position.set).toHaveBeenCalledWith(0, -13);
+  });
+
+  it("draws a debug footprint when enabled", () => {
+    const children: unknown[] = [];
+    const container = { addChild: (child: unknown) => children.push(child) };
+
+    renderBlock(
+      container as never,
+      { id: "house" } as never,
+      {
+        x: 0,
+        y: 0,
+        box: new Box(0, 0),
+        screenX: 10,
+        baseScreenY: 20,
+        screenY: 20,
+      },
+      40,
+      20,
+      13,
+      undefined,
+      1,
+      true,
+      2,
+      true,
+    );
+
+    expect(children).toHaveLength(2);
+    const debugGraphics = children[1] as {
+      poly: ReturnType<typeof vi.fn>;
+      stroke: ReturnType<typeof vi.fn>;
+    };
+    expect(debugGraphics.poly).toHaveBeenNthCalledWith(1, [
+      { x: 10, y: 10 },
+      { x: 30, y: 20 },
+      { x: 10, y: 30 },
+      { x: -10, y: 20 },
+    ]);
+    expect(debugGraphics.poly).toHaveBeenNthCalledWith(2, [
+      { x: 10, y: -3 },
+      { x: 30, y: 7 },
+      { x: 10, y: 17 },
+      { x: -10, y: 7 },
+    ]);
+    expect(debugGraphics.poly).toHaveBeenNthCalledWith(3, [
+      { x: 30, y: 0 },
+      { x: 50, y: 10 },
+      { x: 30, y: 20 },
+      { x: 10, y: 10 },
+    ]);
+    expect(debugGraphics.poly).toHaveBeenNthCalledWith(4, [
+      { x: 30, y: -13 },
+      { x: 50, y: -3 },
+      { x: 30, y: 7 },
+      { x: 10, y: -3 },
+    ]);
+    expect(debugGraphics.stroke).toHaveBeenCalledWith({ color: 0xff00ff, width: 1 });
   });
 });

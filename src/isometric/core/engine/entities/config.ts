@@ -45,6 +45,7 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     spawnChance: 0.03,
     surface: "grass",
     surfaceElevation: 0,
+    debug: true,
     colorReplacements: HOUSE_COLOR_REPLACEMENTS,
   },
   {
@@ -55,6 +56,7 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     spawnChance: 0.03,
     surface: "grass",
     surfaceElevation: 0,
+    debug: true,
     colorReplacements: HOUSE_COLOR_REPLACEMENTS,
   },
   {
@@ -62,9 +64,11 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     textureSource: "/assets/boat/block_2.svg",
     height: 1,
     length: 2,
+    lengthAxis: "y",
     spawnChance: 0.01,
     surfaceElevation: -1,
     surface: "water",
+    debug: true,
   },
   {
     id: "bush",
@@ -74,5 +78,6 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     spawnChance: 0.03,
     surfaceElevation: 0,
     surface: "grass",
+    debug: true,
   },
 ];

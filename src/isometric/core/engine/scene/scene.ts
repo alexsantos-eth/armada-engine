@@ -229,6 +229,8 @@ export async function createIsometricScene(
           entity.box.height,
           true,
           entity.box.length,
+          entity.box.debug,
+          entity.box.lengthAxis,
         );
       });
   }

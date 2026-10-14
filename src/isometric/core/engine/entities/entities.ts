@@ -103,7 +103,9 @@ export class Entity implements IEntity {
       elevation,
       height: definition.height,
       length: definition.length ?? 1,
+      ...(definition.lengthAxis ? { lengthAxis: definition.lengthAxis } : {}),
       textureSource: definition.textureSource,
+      ...(definition.debug ? { debug: true } : {}),
       ...(definition.colorReplacements
         ? { colorReplacements: definition.colorReplacements }
         : {}),
@@ -131,8 +133,16 @@ export class Entity implements IEntity {
     return this.data.length;
   }
 
+  get lengthAxis(): IEntity["lengthAxis"] {
+    return this.data.lengthAxis;
+  }
+
   get textureSource(): string {
     return this.data.textureSource;
+  }
+
+  get debug(): IEntity["debug"] {
+    return this.data.debug;
   }
 
   get colorReplacements(): IEntity["colorReplacements"] {
@@ -159,19 +169,35 @@ export function createEntitiesFromConfig(
 ): Entity[] {
   const entities: Entity[] = [];
   const occupiedPositions = new Set<string>();
+  const boxesByPosition = new Map(
+    boxes.map((box) => [`${box.x}:${box.y}`, box]),
+  );
 
   for (const definition of definitions) {
     for (const box of boxes) {
-      if (!canSpawnOnSurface(box, definition)) continue;
-
-      const positionKey = `${box.x}:${box.y}`;
-      if (occupiedPositions.has(positionKey)) continue;
+      const footprintKeys = getFootprintKeys(box, definition);
+      const footprintBoxes = footprintKeys.map((key) => boxesByPosition.get(key));
+      if (footprintBoxes.some((footprintBox) =>
+        footprintBox === undefined || !canSpawnOnSurface(footprintBox, definition),
+      )) continue;
+      if (footprintKeys.some((key) => occupiedPositions.has(key))) continue;
       if (random() >= definition.spawnChance) continue;
 
-      occupiedPositions.add(positionKey);
+      footprintKeys.forEach((key) => occupiedPositions.add(key));
       entities.push(new Entity(box.x, box.y, definition, box.elevation));
     }
   }
 
   return entities;
+}
+
+function getFootprintKeys(box: IGridObject, definition: EntityDefinition): string[] {
+  const length = definition.length ?? 1;
+  const lengthAxis = definition.lengthAxis ?? "x";
+
+  return Array.from({ length }, (_, index) => {
+    const x = lengthAxis === "x" ? box.x + index : box.x;
+    const y = lengthAxis === "y" ? box.y + index : box.y;
+    return `${x}:${y}`;
+  });
 }

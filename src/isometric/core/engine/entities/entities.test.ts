@@ -80,13 +80,16 @@ describe("Box", () => {
         height: 1,
         spawnChance: 1,
         surface: "grass",
+        debug: true,
         colorReplacements,
       },
       0,
     );
 
     expect(entity.colorReplacements).toEqual(colorReplacements);
+    expect(entity.debug).toBe(true);
     expect(entity.getData().colorReplacements).toEqual(colorReplacements);
+    expect(entity.getData().debug).toBe(true);
   });
 
   it("creates configured entities only on their configured surface", () => {
@@ -199,6 +202,31 @@ describe("Box", () => {
     expect(entities).toHaveLength(2);
     expect(entities.map(({ x, y }) => `${x}:${y}`)).toEqual(["1:2", "3:4"]);
     expect(entities.map(({ type }) => type)).toEqual(["tree", "tree"]);
+  });
+
+  it("reserves the configured length along its selected axis", () => {
+    const entities = createEntitiesFromConfig(
+      [
+        new Box(2, 2, { elevation: -1 }),
+        new Box(2, 3, { elevation: -1 }),
+        new Box(3, 2, { elevation: -1 }),
+      ],
+      [{
+        id: "boat",
+        textureSource: "/assets/boat/block_2.svg",
+        height: 1,
+        length: 2,
+        lengthAxis: "y",
+        spawnChance: 1,
+        surface: "water",
+      }],
+      () => 0,
+    );
+
+    expect(entities).toHaveLength(1);
+    expect(entities[0].x).toBe(2);
+    expect(entities[0].y).toBe(2);
+    expect(entities[0].lengthAxis).toBe("y");
   });
 
   it("supports entities configured for water", () => {

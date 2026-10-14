@@ -4,6 +4,8 @@ export type BoxMetadata = Record<string, unknown>;
 
 export type EntitySurface = "grass" | "water";
 
+export type EntityLengthAxis = "x" | "y";
+
 export type SvgColor = string | readonly string[];
 
 export type SvgColorReplacements = Readonly<Record<string, SvgColor>>;
@@ -25,9 +27,11 @@ export type EntityDefinition = {
   textureSource: string;
   height: number;
   length?: number;
+  lengthAxis?: EntityLengthAxis;
   spawnChance: number;
   surface: EntitySurface;
   surfaceElevation?: number;
+  debug?: boolean;
   colorReplacements?: SvgColorReplacements;
 };
 
@@ -36,7 +40,9 @@ export type EntityData = GridObjectData & {
   walkable: boolean;
   height: number;
   length: number;
+  lengthAxis?: EntityLengthAxis;
   textureSource: string;
+  debug?: boolean;
   colorReplacements?: SvgColorReplacements;
 };
 
@@ -105,7 +111,9 @@ export interface IEntity extends IGridObject {
   readonly walkable: boolean;
   readonly height: number;
   readonly length: number;
+  readonly lengthAxis?: EntityLengthAxis;
   readonly textureSource: string;
+  readonly debug?: boolean;
   readonly colorReplacements?: SvgColorReplacements;
   getData(): EntityData;
 }
