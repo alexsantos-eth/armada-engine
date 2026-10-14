@@ -1,6 +1,42 @@
-import { Container, Graphics, Sprite, Texture } from "pixi.js";
+import { Container, Graphics, Rectangle, Sprite, Texture } from "pixi.js";
 import type { EntityLengthAxis, IsoScreenBox } from "../../types";
 
+/**
+ * Footprint tile that owns each vertical half-tile strip of a multi-block sprite, listed
+ * from the left of the screen. A footprint of `length` tiles is `length + 1` strips wide;
+ * a strip that straddles two tiles belongs to the one nearer the viewer (lower index, the
+ * anchor being tile 0). On the `x` axis the anchor is on the left, on `y` on the right.
+ */
+export function getFootprintSliceTiles(
+  length: number,
+  lengthAxis: EntityLengthAxis,
+): number[] {
+  if (length <= 1) return [0];
+  const fromAnchor = Array.from({ length: length + 1 }, (_, strip) => Math.max(0, strip - 1));
+  return lengthAxis === "x" ? fromAnchor : fromAnchor.reverse();
+}
+
+const stripTexturesCache = new WeakMap<Texture, Texture[]>();
+
+function getStripTextures(texture: Texture, strips: number): Texture[] {
+  const cached = stripTexturesCache.get(texture);
+  if (cached?.length === strips) return cached;
+  const { x, y, width, height } = texture.frame;
+  const stripWidth = width / strips;
+  const textures = Array.from({ length: strips }, (_, strip) => new Texture({
+    source: texture.source,
+    frame: new Rectangle(x + strip * stripWidth, y, stripWidth, height),
+  }));
+  stripTexturesCache.set(texture, textures);
+  return textures;
+}
+
+/**
+ * Renders a block or entity sprite. Multi-block entities are cut into vertical half-tile
+ * strips, each sorted with the depth of its own footprint tile, so things standing in
+ * front of the far end of a long entity (a tree beside the land end of a pier) are drawn
+ * over it instead of behind it. Returns every sprite added.
+ */
 export function renderBlock(
   container: Container,
   texture: Texture,
@@ -14,7 +50,7 @@ export function renderBlock(
   length = 1,
   debug = false,
   lengthAxis: EntityLengthAxis = "x",
-): Sprite {
+): Sprite[] {
   const image = new Sprite(texture);
 
   image.width = tileWidth * ((1 + length) / 2);
@@ -34,13 +70,32 @@ export function renderBlock(
     : tileHeight / 2;
   const footprintOffset = (length - 1) / 2;
   const lengthDirection = lengthAxis === "y" ? -1 : 1;
-  image.position.set(
-    box.screenX + lengthDirection * footprintOffset * (tileWidth / 2),
-    box.screenY - footprintOffset * (tileHeight / 2) - verticalOffset,
-  );
-  image.zIndex =
-    box.baseScreenY + box.box.elevation * 0.001 + box.x * 0.0001;
-  container.addChild(image);
+  const positionX = box.screenX + lengthDirection * footprintOffset * (tileWidth / 2);
+  const positionY = box.screenY - footprintOffset * (tileHeight / 2) - verticalOffset;
+  image.position.set(positionX, positionY);
+  const tileZIndex = (tile: number) =>
+    box.baseScreenY - tile * (tileHeight / 2) + box.box.elevation * 0.001 +
+    (box.x + (lengthAxis === "x" ? tile : 0)) * 0.0001;
+  image.zIndex = tileZIndex(0);
+
+  let sprites = [image];
+  if (length > 1) {
+    const sliceTiles = getFootprintSliceTiles(length, lengthAxis);
+    const stripTextures = getStripTextures(texture, sliceTiles.length);
+    const stripWidth = image.width / sliceTiles.length;
+    const left = positionX - image.width / 2;
+    sprites = sliceTiles.map((tile, strip) => {
+      const slice = new Sprite(stripTextures[strip]);
+      slice.width = stripWidth;
+      slice.height = image.height;
+      slice.tint = image.tint;
+      slice.anchor.set(0, 0);
+      slice.position.set(left + strip * stripWidth, positionY);
+      slice.zIndex = tileZIndex(tile);
+      return slice;
+    });
+  }
+  sprites.forEach((sprite) => container.addChild(sprite));
 
   if (debug) {
     const halfWidth = tileWidth / 2;
@@ -65,5 +120,5 @@ export function renderBlock(
     container.addChild(outline);
   }
 
-  return image;
+  return sprites;
 }

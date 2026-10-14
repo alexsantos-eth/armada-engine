@@ -521,7 +521,7 @@ describe("Box", () => {
         toBoxes(steps),
         [{
           ...pier,
-          surfaceElevation: undefined,
+          surfaceElevation: [0, 1],
           footprintSurfaces: ["water", "sand", "grass"],
         }],
         () => 0,

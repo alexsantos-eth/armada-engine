@@ -7,7 +7,6 @@ import type {
   IEntity,
   IGridObject,
   IBox,
-  TerrainSurface,
 } from "../../types";
 import { classifyColumnSurfaces } from "../terrain";
 import { ENTITY_CONFIG } from "./config";
@@ -73,16 +72,6 @@ export class Box implements IBox {
   }
 }
 
-function canSpawnOnSurface(
-  box: IGridObject,
-  definition: EntityDefinition,
-  surfaces: ReadonlyMap<string, TerrainSurface>,
-  footprintIndex: number,
-): boolean {
-  const surface = definition.footprintSurfaces?.[footprintIndex] ?? definition.surface;
-  return matchesSurfaceElevation(box.elevation, definition.surfaceElevation) &&
-    surfaces.get(`${box.x}:${box.y}`) === surface;
-}
 
 function matchesSurfaceElevation(
   elevation: number,
@@ -180,7 +169,9 @@ export class Entity implements IEntity {
  * grass entities never spawn on sand. `footprintSurfaces` can require a different surface
  * under each block of the footprint (in order from the anchor along `lengthAxis`).
  *
- * Multi-block footprints must be flat: every block shares the anchor's elevation.
+ * Multi-block footprints must be flat: every block shares one elevation, which becomes the
+ * entity's. When a footprint mixes water and other surfaces (a pier), its water blocks are
+ * exempt from that rule and from `surfaceElevation`; the land blocks carry the entity.
  *
  * Each definition may declare a `gap`: the minimum number of free blocks
  * (including diagonals) that must separate two instances of the same entity.
@@ -202,13 +193,28 @@ export function createEntitiesFromConfig(
     for (const box of boxes) {
       const footprintKeys = getFootprintKeys(box, definition);
       const footprintBoxes = footprintKeys.map((key) => boxesByPosition.get(key));
-      if (footprintBoxes.some((footprintBox, index) =>
-        footprintBox === undefined ||
-        !canSpawnOnSurface(footprintBox, definition, surfaces, index),
+      if (footprintBoxes.some((footprintBox) => footprintBox === undefined)) continue;
+      const cells = footprintBoxes as IGridObject[];
+      const required = cells.map((_, index) =>
+        definition.footprintSurfaces?.[index] ?? definition.surface,
+      );
+      if (cells.some((cell, index) => surfaces.get(`${cell.x}:${cell.y}`) !== required[index])) {
+        continue;
+      }
+      // Blocks that carry the entity: all of them, except the water blocks of a footprint
+      // that also stands on land (a pier reaching over the water).
+      const reachesOverWater = required.includes("water") &&
+        required.some((surface) => surface !== "water");
+      const grounded = cells.filter((_, index) =>
+        !reachesOverWater || required[index] !== "water",
+      );
+      // The carrying blocks must share one elevation (the sprite is placed at that height,
+      // so a step under them would show) and match `surfaceElevation`.
+      const elevation = grounded[0].elevation;
+      if (grounded.some((cell) =>
+        cell.elevation !== elevation ||
+        !matchesSurfaceElevation(cell.elevation, definition.surfaceElevation),
       )) continue;
-      // Every block of the footprint must share the anchor's elevation: the sprite is
-      // placed at the anchor's height, so a step under the footprint would show.
-      if (footprintBoxes.some((footprintBox) => footprintBox?.elevation !== box.elevation)) continue;
       if (footprintKeys.some((key) => occupiedPositions.has(key))) continue;
       const sameTypePositions = positionsByType.get(definition.id) ?? new Set<string>();
       if (violatesGap(box, definition, sameTypePositions)) continue;
@@ -219,7 +225,7 @@ export function createEntitiesFromConfig(
         sameTypePositions.add(key);
       });
       positionsByType.set(definition.id, sameTypePositions);
-      entities.push(new Entity(box.x, box.y, definition, box.elevation));
+      entities.push(new Entity(box.x, box.y, definition, elevation));
     }
   }
 
