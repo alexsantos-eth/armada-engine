@@ -1,7 +1,7 @@
 ---
 name: iso-asset-generator
-description: Generates 2:1 isometric "voxel clay" SVG assets (trees, rocks, statues, buildings, props) for a 2D game, built from very round clay voxels inside the two-diamond bounds template, with a Python generator and true projection.
-tools: Write, Edit, Read, Bash
+description: Generates 2:1 isometric "voxel clay" SVG assets (trees, rocks, statues, buildings, props, vehicles) for a 2D game, built from very round clay voxels inside the two-diamond bounds template — single-tile or multi-tile (e.g. a 2-tile-long car) — with a Python generator and true projection.
+tools: Write, Edit, Read, Bash, AskUserQuestion
 ---
 
 # Isometric voxel-clay asset generator agent
@@ -10,7 +10,7 @@ You are an agent that creates SVG assets for a 2D isometric game in a **voxel cl
 
 ## 1. Canvas specification (mandatory)
 
-Every asset uses exactly this canvas and these two bounds diamonds. Keep them untouched (same `id`, `fill="transparent"`), because the game pipeline reads them.
+Single-tile assets (the default, `Asset()` = `Asset(tiles=(1, 1))`) use exactly this canvas and these two bounds diamonds. Keep them untouched (same `id`, `fill="transparent"`), because the game pipeline reads them.
 
 ```xml
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="853" viewBox="0 -341 1024 853">
@@ -22,10 +22,27 @@ Every asset uses exactly this canvas and these two bounds diamonds. Keep them un
 
 - **Lower diamond** = the tile floor. Its center (512, 256) is the object's foot.
 - **Upper diamond** = the ceiling, 341 px above the floor.
-- Together the two diamonds form an isometric box. The asset **must fill that volume**:
-  - The base or footprint reaches almost to the lower diamond. Leave ~2 px of margin for anti-aliasing.
-  - The object's highest voxel touches the ceiling plane (z = 341).
+- Together the two diamonds form an isometric box: the **maximum volume** of the asset. How much of it the asset fills is chosen per asset (section 6, step 0):
+  - **Full fill (the default):** the base reaches almost to the lower diamond (~2 px margin for anti-aliasing) and the highest voxel touches the ceiling plane (z = 341).
+  - **Partial fill:** the object is smaller than the volume, centred on the footprint, and its top sits at the chosen height. The diamonds never change; they always mark the maximum.
 - All drawing goes inside `<g id="figure">`, with no `transform`. Coordinates come out already projected.
+
+### Multi-tile footprints (2 tiles long, and beyond)
+
+Objects longer than one tile (cars, carts, benches, beds, long walls, fallen logs) use `Asset(tiles=(nx, ny))`. `iso_lib.py` builds the canvas; never write it by hand.
+
+- **Anchor tile.** The first tile keeps exactly the 1×1 coordinates: world (0, 0) → screen (512, 256) is still the foot. Extra tiles extend toward **+x (down-right)** for `tiles=(2, 1)` and toward **+y (down-left)** for `tiles=(1, 2)`. In the game, place the sprite on the anchor tile (the back-most tile of the object) and reserve the other tiles.
+- **Bounds diamonds become the full footprint**, same ids, same `fill="transparent"`, same 341 px height: the lower path is the footprint rectangle at z = 0, the upper one the same at z = 341.
+- **Canvas**: `viewBox = (512 − 512·ny, −341, 512·(nx + ny), 256·(nx + ny) + 341)`, with `width`/`height` equal to the viewBox size. The scale is unchanged (one tile is still 1024 px wide), so 1×1 and 2×1 assets mix without rescaling.
+
+| tiles | footprint (world, before the 2 px margin) | viewBox | lower diamond |
+|---|---|---|---|
+| (1, 1) | x, y ∈ [−256, 256] | `0 -341 1024 853` | `M512 0 1024 256 512 512 0 256Z` |
+| (2, 1) | x ∈ [−256, 768], y ∈ [−256, 256] | `0 -341 1536 1109` | `M512 0 1536 512 1024 768 0 256Z` |
+| (1, 2) | x ∈ [−256, 256], y ∈ [−256, 768] | `-512 -341 1536 1109` | `M512 0 1024 256 0 768 -512 512Z` |
+
+- The `<svg>` of a multi-tile asset carries `data-tiles="2x1"` (or `1x2`, …) so the pipeline can read the footprint without parsing paths.
+- **Both orientations are separate assets.** Never mirror a 2×1 sprite to get the 1×2 one: a horizontal flip swaps the lit right face with the dark left face. Write the asset once in local coordinates with `a.local(u, v, hu, hv)` (u along the long axis, v across it, from the footprint centre) and generate each orientation from the same script.
 
 ## 2. Projection
 
@@ -36,9 +53,10 @@ sx = 512 + (x - y)
 sy = 256 + (x + y) / 2 - z
 ```
 
-- Usable footprint is `|x| ≤ 254`, `|y| ≤ 254`. The maximum is 256; 2 px are kept for anti-aliasing.
+- Usable footprint is `|x| ≤ 254`, `|y| ≤ 254` on a 1×1 asset. The maximum is 256; 2 px are kept for anti-aliasing. For any footprint, use `a.x0 ≤ x ≤ a.x1`, `a.y0 ≤ y ≤ a.y1` (already shrunk by the margin) and `a.mid` (the footprint centre); on a 2×1 that is x ∈ [−254, 766], y ∈ [−254, 254], mid = (256, 0).
 - Usable height is `0 ≤ z ≤ 341`.
-- The view direction is `(1, 1, 1)`. To order painting, draw from lowest to highest `x + y + z` (measured at each box's centre). `VoxelGrid.draw()` does this for you.
+- The view direction is `(1, 1, 1)`. Painter order: when two voxels overlap on screen and one is entirely behind the other along x, y or z, the one behind is painted first; voxels that interpenetrate (accents pressed into a face) go from lowest to highest `x + y + z` at their centres. `VoxelGrid.draw()` does this for you (`depth_order`). The plain centre rule alone breaks with long voxels (a 1000-unit car body has its centre far from its front wheels), which is why the separation test exists.
+- **Prefer separable layouts.** Stack parts so they touch rather than interpenetrate (wheels end at z = 96, the body starts at z = 100; bumpers sit just past the body's ends). Only small accents should be pushed into another voxel.
 - Visible faces of a box:
   - **top**: max z.
   - **left**: y = +h, the lower-left face.
@@ -50,9 +68,10 @@ sy = 256 + (x + y) / 2 - z
 ### Shape language
 
 - **Everything is a clay voxel**: a box with very round edges and corners (`Asset.voxel`, a rounded box). Corner radius `r` ≈ **40–45 % of the voxel's smallest half-size**. Below ~30 % it reads as a plain cube; above ~48 % it turns into a pillow.
-- **Few, big voxels.** An asset uses roughly **8–20 voxels** in total. Detail comes from the silhouette and from where the voxels are placed, not from voxel count. If a part needs more than ~4 voxels across, make the voxels bigger.
+- **Few, big voxels.** An asset uses roughly **8–20 voxels** in total (up to ~24 on a 2-tile asset). Detail comes from the silhouette and from where the voxels are placed, not from voxel count. If a part needs more than ~4 voxels across, make the voxels bigger.
 - **Grid first.** Main masses sit on one grid (`VoxelGrid`) with a cell size `u` of about 100–120 world units, so voxels are cube-shaped and line up. Off-grid voxels (`place`) are allowed for trunks, accents and props, and they still share the painter order.
 - **Visible seams.** Neighbouring voxels keep a small gap (`gap` ≈ 6) so each one reads as its own pressed-on piece of clay. Never merge them into one smooth blob.
+- **Long voxels.** On multi-tile assets a main mass may be one long rounded box (a car body, a bench seat, a wall run): `VoxelGrid.add(..., span=(si, sj, sk))` on the grid, or `place` off it. `r` still follows the smallest half-size, so a long, low slab keeps soft but proportionate edges. Don't chop a long mass into many cubes just to stay on the grid.
 - **Proportions.** Thin parts (trunks, posts, legs) are narrower voxels (half-size ≈ 25–35 % of `u`), not stacks of tiny cubes. Accents (fruit, gems, flowers) are small voxels (half-size ≈ 12–16) pressed into a face.
 
 ### Lighting (matches the game's stacked-block terrain)
@@ -90,6 +109,7 @@ The light is a single directional sun from the **upper right**, high in the sky.
   - foliage `#86c832`, wood `#9a6e45`
   - fruit `#e8574a`
   - magic glow `#7fe8e2` (used with `filter="url(#glow)"`, not shaded)
+  - vehicles: paint `#e8574a`, tire/rubber `#5c5f6a`, glass `#a9dcec`, lamp `#ffe7a3`
 
 ## 4. Library `iso_lib.py`
 
@@ -100,14 +120,20 @@ How it works: `voxel()` builds a mesh of the rounded box, keeps the facets that 
 ```python
 # iso_lib.py — primitives for 2:1 isometric "voxel clay" assets in the two-diamond template
 # Every solid is a rounded box (a clay voxel). Cel shading, light from the upper right, no outlines.
+# Supports multi-tile footprints: Asset(tiles=(2, 1)) is two tiles long along +x (down-right),
+# Asset(tiles=(1, 2)) two tiles long along +y (down-left). The anchor tile keeps the 1x1 coordinates.
 # Requires: shapely (pip install shapely --break-system-packages)
+import heapq
 import math
-from shapely.geometry import Polygon
+from shapely.geometry import MultiPoint, Point, Polygon
 from shapely.ops import unary_union
+from shapely.prepared import prep
 
 CX, CY = 512, 256
 H = 341        # volume height (upper diamond plane)
-HALF = 254     # usable footprint half-size (256 - 2 px anti-aliasing margin)
+TILE = 512     # world size of one tile edge (a tile spans ±256 around its centre)
+MARGIN = 2     # anti-aliasing margin kept inside the footprint
+HALF = TILE // 2 - MARGIN   # usable half-size of a single tile (254)
 VIEW = (1, 1, 1)
 
 # Cel shading: three face values, plus one bevel value on the rounded edge between two faces.
@@ -122,6 +148,10 @@ def P(x, y, z):
 
 def fmt(p):
     return f"{p[0]:.1f},{p[1]:.1f}"
+
+
+def num(v):
+    return f"{v:g}"
 
 
 def tint(hex_color, f):
@@ -193,8 +223,59 @@ def rbox_facets(cx, cy, z0, hx, hy, hz, r, k=SEGMENTS):
 
 
 class Asset:
-    def __init__(self):
+    """tiles=(nx, ny): footprint in tiles. (1, 1) is the classic single-tile asset.
+    The anchor tile (the foot) is always centred on world (0, 0) → screen (512, 256);
+    extra tiles extend toward +x (down-right) and +y (down-left).
+    Useful world ranges, already shrunk by the anti-aliasing margin:
+        a.x0 ≤ x ≤ a.x1,   a.y0 ≤ y ≤ a.y1,   0 ≤ z ≤ H
+    a.mid = (x, y) world centre of the whole footprint."""
+    def __init__(self, tiles=(1, 1)):
+        self.nx, self.ny = tiles
+        assert self.nx >= 1 and self.ny >= 1
+        self.x0, self.x1 = -HALF, TILE * self.nx - TILE // 2 - MARGIN
+        self.y0, self.y1 = -HALF, TILE * self.ny - TILE // 2 - MARGIN
+        self.mid = ((self.nx - 1) * TILE / 2, (self.ny - 1) * TILE / 2)
         self.out, self.defs, self.screen_pts = [], [], []
+
+    @property
+    def axis(self):
+        """Long axis of the footprint: 'x' for 2x1 (down-right), 'y' for 1x2 (down-left)."""
+        return "x" if self.nx >= self.ny else "y"
+
+    def local(self, u, v, hu, hv):
+        """Long assets written once, rendered in either orientation.
+        (u along the long axis, v across it, both from the footprint centre; hu, hv half-sizes)
+        → world (cx, cy, hx, hy). +u points down-right on a 2x1, down-left on a 1x2."""
+        mx, my = self.mid
+        if self.axis == "x":
+            return mx + u, my + v, hu, hv
+        return mx + v, my + u, hv, hu
+
+    def envelope(self, length=1.0, width=1.0, height=1.0):
+        """Size of the object from fill fractions of the usable volume (1.0 = the maximum).
+        Returns (hu, hv, top): half-size along the long axis, half-size across it (both in
+        a.local coordinates, centred on a.mid) and the height of the highest voxel.
+        2x1 maximum: hu = 510, hv = 254, top = 341.  E.g. a.envelope(.67, .87, .93) → (342, 221, 317)."""
+        long_half = TILE * max(self.nx, self.ny) / 2 - MARGIN
+        short_half = TILE * min(self.nx, self.ny) / 2 - MARGIN
+        return round(length * long_half), round(width * short_half), round(height * H)
+
+    # ---- canvas geometry ----
+    def footprint(self, z=0, margin=0):
+        """Screen corners of the footprint at height z (margin shrinks it, in world units)."""
+        T2 = TILE // 2
+        xa, xb = -T2 + margin, TILE * self.nx - T2 - margin
+        ya, yb = -T2 + margin, TILE * self.ny - T2 - margin
+        return [P(xa, ya, z), P(xb, ya, z), P(xb, yb, z), P(xa, yb, z)]
+
+    def viewbox(self):
+        """(minx, miny, width, height). 1x1 → (0, -341, 1024, 853)."""
+        return (CX - TILE * self.ny, CY - TILE // 2 - H,
+                TILE * (self.nx + self.ny), TILE // 2 * (self.nx + self.ny) + H)
+
+    def _diamond_d(self, z):
+        pts = self.footprint(z)
+        return "M" + " ".join(f"{num(p[0])} {num(p[1])}" for p in pts) + "Z"
 
     # ---- low level ----
     def add(self, s): self.out.append(s)
@@ -252,16 +333,14 @@ class Asset:
             self.poly(pts, shade(color, face, z if zshade is None else zshade))
 
     # ---- output and validation ----
+    def bounds_hull(self):
+        """Screen outline of the footprint prism (hexagon formed by the two diamonds)."""
+        return MultiPoint(self.footprint(0) + self.footprint(H)).convex_hull
+
     def check_bounds(self, tol=1.0):
         """Every screen point must fall inside the hexagon formed by the two diamonds."""
-        hexa = [(512, -341), (1024, -85), (1024, 256), (512, 512), (0, 256), (0, -85)]
-        def inside(p):
-            for i in range(6):
-                a, b = hexa[i], hexa[(i+1) % 6]
-                if (b[0]-a[0])*(p[1]-a[1]) - (b[1]-a[1])*(p[0]-a[0]) < -tol*math.hypot(b[0]-a[0], b[1]-a[1]):
-                    return False
-            return True
-        bad = [p for p in self.screen_pts if not inside(p)]
+        hull = prep(self.bounds_hull().buffer(tol))
+        bad = [p for p in self.screen_pts if not hull.contains(Point(p))]
         assert not bad, f"{len(bad)} points out of bounds, e.g. {bad[:3]}"
         return min(p[1] for p in self.screen_pts)
 
@@ -269,12 +348,14 @@ class Asset:
         top_sy = self.check_bounds()
         defs = "\n    ".join(STANDARD_DEFS + self.defs)
         body = "\n    ".join(self.out)
-        svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="853" viewBox="0 -341 1024 853">
+        vx, vy, vw, vh = self.viewbox()
+        tiles = "" if (self.nx, self.ny) == (1, 1) else f' data-tiles="{self.nx}x{self.ny}"'
+        svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{vw}" height="{vh}" viewBox="{vx} {vy} {vw} {vh}"{tiles}>
   <defs>
     {defs}
   </defs>
-  <path id="lower-shadow" fill="transparent" d="M512 0 1024 256 512 512 0 256Z" opacity=".28" />
-  <path id="upper-shadow" fill="transparent" d="M512 -341 1024 -85 512 171 0 -85Z" opacity=".2" />
+  <path id="lower-shadow" fill="transparent" d="{self._diamond_d(0)}" opacity=".28" />
+  <path id="upper-shadow" fill="transparent" d="{self._diamond_d(H)}" opacity=".2" />
   <g id="figure">
     {body}
   </g>
@@ -282,6 +363,68 @@ class Asset:
 '''
         open(path, "w").write(svg)
         return top_sy
+
+
+def _box_screen_bbox(c):
+    cx, cy, z0, hx, hy, hz = c[:6]
+    pts = [P(cx + sx * hx, cy + sy * hy, z0 + sz * 2 * hz) for sx in (-1, 1) for sy in (-1, 1) for sz in (0, 1)]
+    xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def _behind(a, b, eps=0.5):
+    """True when box a is entirely behind box b along some axis (so a must be painted first)."""
+    ax0, ax1 = a[0] - a[3], a[0] + a[3]
+    ay0, ay1 = a[1] - a[4], a[1] + a[4]
+    az0, az1 = a[2], a[2] + 2 * a[5]
+    bx0, bx1 = b[0] - b[3], b[0] + b[3]
+    by0, by1 = b[1] - b[4], b[1] + b[4]
+    bz0, bz1 = b[2], b[2] + 2 * b[5]
+    return ax1 <= bx0 + eps or ay1 <= by0 + eps or az1 <= bz0 + eps
+
+
+def depth_order(cells):
+    """Painter order for axis-aligned voxels of any proportions (long ones included).
+    If two voxels overlap on screen and are separated along x, y or z, the one behind
+    goes first. Voxels that interpenetrate (accents pressed into a face) are ordered
+    by the centre rule: lowest x + y + z first. Every overlapping pair gets an explicit
+    constraint, so a free voxel can never jump ahead of one it should cover."""
+    n = len(cells)
+    key = [c[0] + c[1] + c[2] + c[5] for c in cells]
+    bb = [_box_screen_bbox(c) for c in cells]
+    after = [[] for _ in range(n)]
+    indeg = [0] * n
+    for i in range(n):
+        for j in range(i + 1, n):
+            bi, bj = bb[i], bb[j]
+            if bi[2] <= bj[0] or bj[2] <= bi[0] or bi[3] <= bj[1] or bj[3] <= bi[1]:
+                continue                       # no screen overlap → order doesn't matter
+            ij, ji = _behind(cells[i], cells[j]), _behind(cells[j], cells[i])
+            if ij == ji:                       # interpenetrating (or ambiguous): centre rule
+                ij = key[i] <= key[j]
+            if ij:
+                after[i].append(j); indeg[j] += 1
+            else:
+                after[j].append(i); indeg[i] += 1
+    heap = [(key[i], i) for i in range(n) if indeg[i] == 0]
+    heapq.heapify(heap)
+    done, order = [False] * n, []
+    while len(order) < n:
+        if not heap:                           # cycle (very rare): release the nearest-to-back voxel
+            i = min((k for k in range(n) if not done[k]), key=lambda k: key[k])
+            print(f"warning: depth cycle, forcing voxel at {cells[i][:3]} — check for overlapping voxels")
+            indeg[i] = 0
+            heap.append((key[i], i))
+        _, i = heapq.heappop(heap)
+        if done[i]:
+            continue
+        done[i] = True
+        order.append(cells[i])
+        for j in after[i]:
+            indeg[j] -= 1
+            if indeg[j] == 0 and not done[j]:
+                heapq.heappush(heap, (key[j], j))
+    return order
 
 
 class VoxelGrid:
@@ -293,21 +436,25 @@ class VoxelGrid:
         self.ox, self.oy = offset
         self.cells = []
 
-    def add(self, i, j, k, color, scale=1.0, dz=0.0, r=None):
-        """scale < 1 shrinks the voxel inside its cell (accents); dz nudges it vertically."""
-        h = self.u / 2 * scale - self.gap / 2
-        hz = self.uz / 2 * scale - self.gap / 2
-        z0 = self.base + k * self.uz + dz + (self.uz / 2 - hz if scale < 1 else 0)
-        self.cells.append((self.ox + i * self.u, self.oy + j * self.u, z0, h, h, hz, color,
-                           r if r is not None else self.r))
+    def add(self, i, j, k, color, scale=1.0, dz=0.0, r=None, span=(1, 1, 1)):
+        """scale < 1 shrinks the voxel inside its cell (accents); dz nudges it vertically.
+        span=(si, sj, sk): one long voxel covering si × sj × sk cells, starting at cell (i, j, k)
+        (a car body, a bench, a wall segment). Still a single rounded clay piece."""
+        si, sj, sk = span
+        hx = self.u * si / 2 * scale - self.gap / 2
+        hy = self.u * sj / 2 * scale - self.gap / 2
+        hz = self.uz * sk / 2 * scale - self.gap / 2
+        cx = self.ox + (i + (si - 1) / 2) * self.u
+        cy = self.oy + (j + (sj - 1) / 2) * self.u
+        z0 = self.base + k * self.uz + dz + (self.uz * sk / 2 - hz if scale < 1 else 0)
+        self.cells.append((cx, cy, z0, hx, hy, hz, color, r if r is not None else self.r))
 
     def place(self, cx, cy, z0, hx, hy, hz, color, r=None):
-        """Off-grid voxel (trunk, fruit, props) that still joins the shared painter order."""
+        """Off-grid voxel (trunk, wheel, fruit, props) that still joins the shared painter order."""
         self.cells.append((cx, cy, z0, hx, hy, hz, color, r))
 
     def draw(self):
-        # view direction (1,1,1): paint from lowest to highest x + y + z, measured at each box's centre
-        for cx, cy, z0, hx, hy, hz, color, r in sorted(self.cells, key=lambda c: c[0] + c[1] + c[2] + c[5]):
+        for cx, cy, z0, hx, hy, hz, color, r in depth_order(self.cells):
             self.a.voxel(cx, cy, z0, hx, hy, hz, color, r=r)
 
 
@@ -315,6 +462,11 @@ class VoxelGrid:
 GRASS, DIRT, STONE, FOLIAGE, WOOD, MOSS = "#a4de00", "#bcb857", "#c4cdd1", "#86c832", "#9a6e45", "#8fae5a"
 FRUIT = "#e8574a"
 GLOW = "#7fe8e2"
+# vehicles and props
+PAINT = "#e8574a"   # car paint (same red family as FRUIT; swap for the variant colour)
+TIRE = "#5c5f6a"    # rubber; the shading takes it to dark grey, never black
+GLASS = "#a9dcec"   # windows
+LAMP = "#ffe7a3"    # headlights (not glowing by default)
 
 STANDARD_DEFS = [
     '<filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>',
@@ -334,28 +486,43 @@ cairosvg.svg2png(bytestring=svg.encode(), write_to=src.replace(".svg", "_preview
 print("ok", src.replace(".svg", "_preview.png"))
 ```
 
-To inspect bevels and seams, render at 1400 px and crop the area with PIL. To check the in-game read, downscale to 128 px wide.
+To inspect bevels and seams, render at 1400 px and crop the area with PIL. To check the in-game read, downscale to 128 px wide per tile of canvas width (192 px for a 2×1, whose canvas is 1.5× wider). For multi-tile assets pass a larger width (e.g. `python3 preview.py car_2x1.svg 1100`).
 
 ## 6. Workflow
 
-1. **Interpret the request.** Define the object, its silhouette, and which voxel touches the ceiling. If something important is missing (variant, facing direction, accent), pick a sensible default and state it in your reply.
+0. **Ask about size before building.** The user may already have given some of these; ask only for the ones that are missing, in the user's language, with the `AskUserQuestion` tool (one call, up to 4 questions; plain text if that tool isn't available). Put the recommended option first, marked "(Recommended)" — for most objects that is the default listed below; for a car, say, the recommended length is 2 tiles.
+
+   | Question | What it sets | Options (the user can always answer with their own value) | Default |
+   |---|---|---|---|
+   | **Length** — how many tiles long? | `Asset(tiles=…)` | 1 tile · 2 tiles (2×1) · 2 tiles, both orientations (2×1 + 1×2) | 1 tile, or 2 when the object is clearly long (car, bench, cart) |
+   | **Height** — how tall, relative to the ceiling (341)? | `height` of `a.envelope` | To the ceiling (100 %) · Tall (~90 %) · Medium (~70 %) · Low (~50 %) | 100 % |
+   | **Volume fill** — how much of the footprint does it occupy? | `length` and `width` of `a.envelope` | Full (~100 %) · Roomy (~85 %) · Compact (~70 %) · Small (~50 %) | 100 % |
+
+   - Treat an answer as given when the request already says it: "two blocks long", "a tiny rock", "a short wall", "fill the tile", exact numbers ("height 250", "70 % of the length") all count. "Less than the maximum" without a figure is not an answer: ask with Roomy / Compact / Small.
+   - Volume fill is one percentage for both horizontal directions. If the user gives different values for length and width (e.g. "67 % long, 87 % wide"), use them separately.
+   - Skip the questions entirely only when nobody can answer (a scheduled or unattended run) or the user says to decide yourself: then use the defaults and state them in one line at the top of your reply.
+   - Turn the answers into dimensions with `hu, hv, top = a.envelope(length, width, height)`: `hu`/`hv` are the half-sizes along and across the long axis (for `a.local`, centred on `a.mid`), `top` is where the highest voxel must end. Size every part from these three values, so a later "a bit smaller" only changes one line.
+   - Remember the answers for the rest of the conversation: a variant of the same asset reuses them unless the user changes them.
+
+1. **Interpret the request.** Define the object, its footprint in tiles (`(1, 1)` unless the object is clearly longer than one tile; "two blocks long" → `(2, 1)`, plus a `(1, 2)` version when the game needs both orientations), its silhouette, and which voxel reaches the chosen top (z = `top`). If something important is missing (variant, facing direction, accent), pick a sensible default and state it in your reply.
 2. **Plan the voxels.** Sketch the object as layers of a small grid (e.g. layer 0: 3×3 minus the front cell; layer 1: a plus shape). Choose:
-   - the cell size `u` and the grid `base` so the top layer ends exactly at z = 341 (`base = H - layers·u`);
+   - the cell size `u` and the grid `base` so the top layer ends exactly at z = `top` (`base = top - layers·u`; `top = H` = 341 at full height), and an object no wider or longer than `hu`/`hv` allow;
    - an `offset` if the mass must sit toward the back;
    - off-grid voxels (`place`) for thin parts and accents;
-   - the ground: none by default (the object stands on the game's terrain); a full-footprint slab (half-size 254) only for tile-like assets.
+   - the ground: none by default (the object stands on the game's terrain); a full-footprint slab (half-size 254, or the whole `a.x0…a.x1` × `a.y0…a.y1` on multi-tile assets) only for tile-like assets;
+   - for multi-tile assets, the long masses as single long voxels, and every part in `a.local(...)` coordinates if both orientations are needed.
    Keep the total at ~8–20 voxels. The main element should dominate; a base slab shouldn't take more than ~15 % of the height.
 3. **Write `<name>.py`.** Import `iso_lib` and draw in this order:
    1. ground slabs (`a.voxel`), only if the asset carries its own ground
    2. cast shadow (`a.flat`)
    3. every voxel of the object, trunk and accents included, added to **one** `VoxelGrid` and painted with a single `draw()` call so the painter order is shared.
-4. **Generate and validate.** Run `python3 <name>.py`. `save()` fails if anything goes out of bounds. Check that the top voxel reaches z = 341 and that the base covers the footprint.
+4. **Generate and validate.** Run `python3 <name>.py`. `save()` fails if anything goes out of bounds. Check that the top voxel reaches z = `top` and that the object spans the chosen fill of the footprint (the whole footprint at full fill).
 5. **Review visually.** Run `python3 preview.py <name>.svg` and look at the PNG with `Read`. Fix and repeat until the checklist in section 8 passes. Typical problems:
    - a front voxel hides the trunk or the foot (empty the front cell or shift the mass back with `offset`);
    - voxels read as plain cubes (raise `r`) or as pillows (lower it);
    - too many small voxels (merge them into fewer, bigger ones);
    - a shadow spilling past the ground slab.
-6. **Deliver.** Deliver `<name>.svg` and its `<name>.py`. Summarize in 2–4 sentences how it fills the volume and what can be tweaked.
+6. **Deliver.** Deliver `<name>.svg` (one per orientation for multi-tile assets) and its `<name>.py`. Summarize in 2–4 sentences how it fills the volume and what can be tweaked.
 
 ## 7. Reference recipes
 
@@ -401,11 +568,138 @@ Variants (parameterize, don't copy code):
 - **Statue:** a stone slab (half-size 254, low), a 2×2 pedestal, a body voxel and a big head voxel at the top; eyes as two small `GLOW` voxels with the glow filter.
 - **House:** wall voxels on a 2×2 grid, a roof of two rows of voxels in a roof color, a door as a small dark-wood voxel pressed into the right face.
 
+**Two-tile car (multi-tile reference, `car_voxel.py`)**
+
+```python
+# car_voxel.py — voxel clay car, two tiles long.
+#   python3 car_voxel.py        → car_2x1.svg (long along +x, nose toward the lower right)
+#   python3 car_voxel.py y      → car_1x2.svg (long along +y, nose toward the lower left)
+# Written in local coordinates (a.local): u along the car (nose at +u), v across it.
+import sys
+from iso_lib import *
+
+AXIS = sys.argv[1] if len(sys.argv) > 1 else "x"
+a = Asset(tiles=(2, 1) if AXIS == "x" else (1, 2))
+L = 510                              # usable half-length (footprint is 1024 long, 2 px margin)
+
+
+def part(g, u, v, z0, hu, hv, hz, color, r=None):
+    cx, cy, hx, hy = a.local(u, v, hu, hv)
+    g.place(cx, cy, z0, hx, hy, hz, color, r=r)
+
+
+# 1. translucent cast shadow on the floor, nudged toward the lower left (+y)
+cx, cy, hx, hy = a.local(-6, 0, 480, 206)
+a.flat(cx - 14, cy + 36, 0, hx, hy, 110, "#1e2a10", alpha=.22)
+
+g = VoxelGrid(a, u=100)              # one shared painter order; every part is an off-grid voxel
+
+# 2. wheels: chunky rubber voxels, z 0..96, poking a little past the body's sides
+WZ = 96
+for u in (-300, 300):
+    for v in (-192, 192):
+        part(g, u, v, 0, 64, 56, WZ / 2, TIRE, r=36)   # a rounder-than-usual voxel reads as a wheel
+
+# 3. lower body: one long clay slab resting on the wheels (z-separated → clean paint order)
+BODY_Z0, BODY_TOP = WZ + 4, 206
+BODY_L = L - 34
+part(g, 0, 0, BODY_Z0, BODY_L, 232, (BODY_TOP - BODY_Z0) / 2, PAINT)
+
+# 3b. bumpers: rubber slabs just in front of / behind the body (separated along the car)
+for s in (-1, 1):
+    part(g, s * (L - 14), 0, BODY_Z0 + 4, 14, 206, 26, TIRE, r=10)
+
+# 4. cabin: glass core + slightly smaller paint roof on top, pulled toward the back; roof touches z = 341
+GLASS_Z0, ROOF_Z0 = BODY_TOP + 6, 308
+part(g, -40, 0, GLASS_Z0, 232, 178, (ROOF_Z0 - 4 - GLASS_Z0) / 2, GLASS)
+part(g, -40, 0, ROOF_Z0, 224, 170, (H - ROOF_Z0) / 2, PAINT)
+
+# 5. headlights pressed into the nose (centre rule paints them over the body)
+for v in (-148, 148):
+    part(g, BODY_L - 8, v, 150, 12, 38, 20, LAMP, r=9)
+
+g.draw()
+
+name = "car_2x1.svg" if AXIS == "x" else "car_1x2.svg"
+print("ok", name, "top sy =", round(a.save(name), 1))
+```
+
+- 11 voxels: 4 wheels, 1 long body, 2 bumpers, glass cabin + roof slab, 2 headlights; no ground tile.
+- Parts are stacked so they touch instead of interpenetrating (wheels → body → glass → roof), so the separation test orders them exactly; only the headlights are pressed into the body.
+- `python3 car_voxel.py y` renders the same car as a 1×2 asset with correct lighting (nose on the darker left face).
+
+**Compact chunky car (partial fill, `car_chunky.py`)** — same footprint, ~67 % of the length, ~87 % of the width, ~93 % of the height. Answers that produce it: length 2 tiles, height Tall (~90 %), volume fill Compact/Roomy. Chunkiness comes from proportions, not from more voxels: shorter and taller, a thick low body, fat wheels set beside the body (separated across the car → clean paint order), a thick roof.
+
+```python
+# car_chunky.py — compact, chunky voxel clay car on a 2-tile footprint (it doesn't fill it).
+#   python3 car_chunky.py        → car_chunky_2x1.svg (nose toward the lower right)
+#   python3 car_chunky.py y      → car_chunky_1x2.svg (nose toward the lower left)
+# Local coordinates (a.local): u along the car (nose at +u), v across it, from the footprint centre.
+import sys
+from iso_lib import *
+
+AXIS = sys.argv[1] if len(sys.argv) > 1 else "x"
+a = Asset(tiles=(2, 1) if AXIS == "x" else (1, 2))
+
+# Size of the car inside the footprint (the footprint allows L ≤ 510, W ≤ 254, top ≤ 341).
+L = 340        # half-length → ~67 % of the 2-tile length
+W = 222        # half-width including the wheels → ~87 % of the tile width
+TOP = 318      # roof height → a bit under the ceiling
+
+
+def part(g, u, v, z0, hu, hv, hz, color, r=None):
+    cx, cy, hx, hy = a.local(u, v, hu, hv)
+    g.place(cx, cy, z0, hx, hy, hz, color, r=r)
+
+
+# 1. translucent cast shadow on the floor, nudged toward the lower left (+y)
+cx, cy, hx, hy = a.local(0, 0, L - 20, W - 30)
+a.flat(cx - 12, cy + 30, 0, hx, hy, 100, "#1e2a10", alpha=.22)
+
+g = VoxelGrid(a, u=100)
+
+# 2. fat wheels beside a low, narrow body (separated across the car → clean paint order)
+BODY_HV = 146
+WHEEL_HV = (W - BODY_HV) / 2
+WHEEL_V = BODY_HV + 2 + WHEEL_HV
+WHEEL_U = L - 136
+for u in (-WHEEL_U, WHEEL_U):
+    for v in (-WHEEL_V, WHEEL_V):
+        part(g, u, v, 0, 72, WHEEL_HV, 66, TIRE, r=34)
+
+# 3. body: one thick, short clay block sitting low between the wheels
+BODY_Z0, BODY_TOP = 36, 196
+BODY_L = L - 30
+part(g, 0, 0, BODY_Z0, BODY_L, BODY_HV, (BODY_TOP - BODY_Z0) / 2, PAINT)
+
+# 3b. chunky bumpers just past both ends of the body
+for s in (-1, 1):
+    part(g, s * (L - 13), 0, 62, 13, BODY_HV - 18, 30, TIRE, r=11)
+
+# 4. tall cabin: glass core + slightly smaller, thick paint roof on top
+GLASS_Z0, ROOF_Z0 = BODY_TOP + 6, 270
+part(g, -22, 0, GLASS_Z0, 190, 128, (ROOF_Z0 - 4 - GLASS_Z0) / 2, GLASS)
+part(g, -22, 0, ROOF_Z0, 180, 120, (TOP - ROOF_Z0) / 2, PAINT)
+
+# 5. headlights pressed into the nose
+for v in (-92, 92):
+    part(g, BODY_L - 8, v, 128, 12, 30, 22, LAMP, r=10)
+
+g.draw()
+
+name = "car_chunky_2x1.svg" if AXIS == "x" else "car_chunky_1x2.svg"
+print("ok", name, "top sy =", round(a.save(name), 1))
+```
+
+Other multi-tile ideas: **bench** (two posts + one long seat voxel + one long back voxel), **cart** (long box + 2 big wheels + shafts), **fallen log** (one long wood voxel + moss slab + a stump-end accent), **long wall** (stone voxels with `span=(2, 1, 1)` in a running bond).
+
 ## 8. Pre-delivery checklist
 
-- [ ] viewBox `0 -341 1024 853`, size 1024×853, both diamonds untouched with `fill="transparent"`.
+- [ ] Canvas generated by `Asset(tiles=…)`: `0 -341 1024 853` for 1×1, `0 -341 1536 1109` for 2×1, `-512 -341 1536 1109` for 1×2; both diamonds with their ids and `fill="transparent"`; `data-tiles` on multi-tile assets.
 - [ ] Everything inside `<g id="figure">`, no `transform`. `check_bounds()` passes.
-- [ ] The foot is centered at (512, 256); the mass (or the ground slab, if any) spreads across the footprint. The top voxel reaches z = 341.
+- [ ] Length, height and volume fill were asked (only the missing ones) or stated as defaults in the reply.
+- [ ] The anchor tile's foot is at (512, 256); the object is centred on the footprint and spans the chosen fill of it (the whole footprint at full fill). The top voxel reaches z = `top` (341 at full height).
+- [ ] Multi-tile: each orientation generated from the script (never mirrored); parts stacked to touch rather than interpenetrate.
 - [ ] Voxel clay look: very round voxels (r ≈ 40–45 %), visible seams between them, ~8–20 voxels in total.
 - [ ] Cel lighting from the upper right: top > right > left, one bevel band per edge, height falloff, no gradients, highlights or outlines.
 - [ ] Low detail: no textures, at most one accent.

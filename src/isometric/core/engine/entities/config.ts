@@ -23,10 +23,10 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     surface: "grass",
   },
   {
-    id: "car",
-    textureSource: "/assets/car/block.svg",
+    id: "house",
+    textureSource: "/assets/house/block.svg",
     height: 1,
-    length: 2,
+    length: 1,
     spawnChance: 0.03,
     surface: "grass",
   },
