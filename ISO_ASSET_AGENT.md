@@ -23,7 +23,7 @@ Every asset uses exactly this canvas and these two bounds diamonds. Keep them un
 - **Lower diamond** = the tile floor. Its center (512, 256) is the object's foot.
 - **Upper diamond** = the ceiling, 341 px above the floor.
 - Together the two diamonds form an isometric box. The asset **must fill that volume**:
-  - The base or footprint reaches almost to the lower diamond. Leave ~8 px of margin for the outline.
+  - The base or footprint reaches almost to the lower diamond. Leave ~2 px of margin for anti-aliasing.
   - The object's highest point touches the ceiling plane (z = 341).
 - All drawing goes inside `<g id="figure">`, with no `transform`. Coordinates come out already projected.
 
@@ -36,7 +36,7 @@ sx = 512 + (x - y)
 sy = 256 + (x + y) / 2 - z
 ```
 
-- Usable footprint is `|x| ≤ 248`, `|y| ≤ 248`. The maximum is 256; 8 px are kept for the outline.
+- Usable footprint is `|x| ≤ 254`, `|y| ≤ 254`. The maximum is 256; 2 px are kept for anti-aliasing.
 - Usable height is `0 ≤ z ≤ 341`.
 - The view direction is `(1, 1, 1)`. To order painting, draw from lowest to highest `x + y + z`.
 - Visible faces of a box:
@@ -48,22 +48,35 @@ sy = 256 + (x + y) / 2 - z
 
 ## 3. Visual style (consistency across assets)
 
-- **Light** from the upper right:
-  - top face = lightest
-  - right face = medium
-  - left face = darkest
-- **Outline** dark, in the material's color, 2–2.5 px, with `stroke-linejoin="round"`. For organic masses (canopies, bushes), draw a single outer outline: dark ellipses +3 px behind the whole group.
-- **Highlight** on the front top edges: `#eef3f4`, 1.5–2 px, opacity ~0.7.
-- **Ambient occlusion**: a dark→transparent gradient band, 10–14 px tall, at the base of every block that rests on another.
-- **Gradients** per face: vertical on side faces, diagonal on the top. Define them once in `<defs>`.
+### Lighting (matches the game's stacked-block terrain)
+
+The light is a single directional sun from the **upper right**, high in the sky. Shading is **flat**: each face is one solid color, and faces are told apart only by their value. Use these factors, applied to a material's base color:
+
+| Face | Factor | Example: grass `#a4de00` | Example: dirt `#afab51` (right face) |
+|---|---|---|---|
+| Top | 1.00 (full color, most saturated) | `#a4de00` | — |
+| Right (x = +h, lower-right) | ≈ 0.93 | `#9acd00` | `#afab51` |
+| Left (y = +h, lower-left) | ≈ 0.77 | `#7eab00` | `#949149` (≈ 0.85 of the right face) |
+
+- **Order is always top > right > left.** The right face is only slightly darker than the top. The left face is clearly the darkest, but still mid-tone, never near black.
+- **Height falloff instead of ambient occlusion.** Lower parts are a bit darker: each step down of ~one block level is ~5–6 % darker (top `#a4de00` → `#9cd100` one level lower), down to ~85 % at floor level. No dark contact bands, no soft shadows.
+- **Material layers on side faces.** When a top material wraps over the edge (grass over dirt, snow over rock, moss over stone), draw it as a thin band at the top of each side face, about 10–15 % of the face height. Use the top material shaded with that face's factor, and the core material below it.
+- **No gradients, no specular highlights, no rim lines.** Edges read through the value jump between faces. Glow (runes, eyes, magic) is the only allowed exception.
+- **Organic shapes** (spheres, cylinders) use the same three values. Split each shape into a lit cap (upper right, top value), a mid zone (right value) and a shadow side (lower left, left value), with hard edges between zones rather than smooth blends.
+- Pick base colors as fairly saturated mid-to-light tones. The left-face factor darkens them on its own, so don't pre-darken the palette.
+
+`iso_lib.py` applies these rules for you: `frustum`, `box`, `cylinder`, `spheres` and `ground_disc` take a **base material color** and call `shade()` internally. For any extra shape you draw by hand, compute its fill with `shade(color, face, z)` too.
+
+### Other style rules
+
+- **No outlines.** Neither around the silhouette nor between faces. Shapes are separated only by the value difference between faces and by the color difference between materials. The only stroke allowed is a same-color hairline (`.75` px) on each flat face to hide anti-aliasing seams; `iso_lib.py` adds it automatically.
+- **Details are drawn as shapes, not lines.** Cracks, grooves and carvings are thin polygons in the darker value of their face (e.g. a groove on a right face uses the left value). Never use black or near-black strokes.
 - **Game detail**: wear (cracks, moss), texture (leaves, bark grain), and one color or glow accent (runes and eyes with `filter="url(#glow)"`, fruit). No text or logos.
-- Reference palettes:
-  - stone: `#d7dee0 / #a7b2b7 / #6d797f / #48535a`, outline `#283035`
-  - foliage: `#a6d865 / #5f9e3c / #346b2e / #244f25`, outline `#16301b`
-  - wood: `#3b281b → #9a714a`, outline `#24170f`
-  - grass: `#8fc25a → #4f8a35`
-  - moss: `#8fae5a → #55703a`
-  - magic glow: `#7fe8e2`
+- Base material colors (top-face value; `shade()` derives the side faces). They are defined as constants in `iso_lib.py`:
+  - grass `#a4de00`, dirt `#bcb857`
+  - stone `#c4cdd1`, moss `#8fae5a`
+  - foliage `#86c832`, wood `#9a6e45`
+  - magic glow `#7fe8e2` (used with `filter="url(#glow)"`, not shaded)
 
 ## 4. Library `iso_lib.py`
 
@@ -71,18 +84,32 @@ Write this file as-is when you start (if it doesn't exist), and build each asset
 
 ```python
 # iso_lib.py — primitives for 2:1 isometric assets in the two-diamond template
+# Flat shading, light from the upper right, no outlines.
 import math
 
 CX, CY = 512, 256
 H = 341        # volume height (upper diamond plane)
-HALF = 248     # usable footprint half-size (256 - outline margin)
+HALF = 254     # usable footprint half-size (256 - 2 px anti-aliasing margin)
 KX, KY = math.sqrt(2), math.sqrt(1.5)   # semi-axes of a projected sphere
+FACE = {"top": 1.0, "right": 0.93, "left": 0.77}
 
 def P(x, y, z):
     return (CX + (x - y), CY + (x + y) / 2 - z)
 
 def fmt(p):
     return f"{p[0]:.1f},{p[1]:.1f}"
+
+def shade(hex_color, face, z=None):
+    """face: 'top' | 'right' | 'left'. z: height in world units for the height falloff."""
+    f = FACE[face]
+    if z is not None:
+        f *= 0.85 + 0.15 * min(max(z / H, 0), 1)   # ~6 % darker per level down
+    r, g, b = (int(hex_color[i:i+2], 16) for i in (1, 3, 5))
+    return "#%02x%02x%02x" % tuple(min(255, round(c * f)) for c in (r, g, b))
+
+def seam(fill):
+    """Same-color hairline stroke that hides anti-aliasing gaps between adjacent flat faces."""
+    return f'stroke="{fill}" stroke-width=".75" stroke-linejoin="round"' if fill.startswith("#") else ""
 
 class Asset:
     def __init__(self):
@@ -95,75 +122,77 @@ class Asset:
 
     def poly(self, pts3d, fill, extra=""):
         sp = [P(*p) for p in pts3d]; self._track(sp)
-        self.add(f'<polygon points="{" ".join(fmt(p) for p in sp)}" fill="{fill}" {extra}/>')
+        self.add(f'<polygon points="{" ".join(fmt(p) for p in sp)}" fill="{fill}" {extra or seam(fill)}/>')
 
     def line(self, pts3d, stroke, w, extra=""):
         sp = [P(*p) for p in pts3d]; self._track(sp)
         self.add(f'<polyline points="{" ".join(fmt(p) for p in sp)}" fill="none" stroke="{stroke}" '
                  f'stroke-width="{w}" stroke-linecap="round" stroke-linejoin="round" {extra}/>')
 
+    def ellipse(self, cx, cy, rx, ry, fill, extra=""):
+        self._track([(cx-rx, cy), (cx+rx, cy), (cx, cy-ry), (cx, cy+ry)])
+        self.add(f'<ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{rx:.1f}" ry="{ry:.1f}" fill="{fill}" {extra or seam(fill)}/>')
+
     # ---- solids ----
-    EDGE = 'stroke="#283035" stroke-width="2.5" stroke-linejoin="round"'
-    HL = "#eef3f4"
+    def frustum(self, hb, ht, z0, z1, top, side=None, band=0.0, cx=0, cy=0):
+        """Square-based prism (tapered if hb != ht; hb == ht for plain boxes).
+        top: material color of the top face. side: core material of the side faces (default = top).
+        band: fraction (0–1) of the side height covered by the top material wrapping over the edge."""
+        side = side or top
+        for face, quad in (
+            ("left",  lambda za, zb, a, b: [(cx-a, cy+a, za), (cx+a, cy+a, za), (cx+b, cy+b, zb), (cx-b, cy+b, zb)]),
+            ("right", lambda za, zb, a, b: [(cx+a, cy-a, za), (cx+a, cy+a, za), (cx+b, cy+b, zb), (cx+b, cy-b, zb)]),
+        ):
+            self.poly(quad(z0, z1, hb, ht), shade(side, face, z1))
+            if band > 0:
+                zm = z1 - band * (z1 - z0); hm = ht + (hb - ht) * band
+                self.poly(quad(zm, z1, hm, ht), shade(top, face, z1))
+        self.poly([(cx-ht, cy-ht, z1), (cx+ht, cy-ht, z1), (cx+ht, cy+ht, z1), (cx-ht, cy+ht, z1)], shade(top, "top", z1))
 
-    def frustum(self, hb, ht, z0, z1, left="url(#left)", right="url(#right)", top="url(#top)",
-                cx=0, cy=0, edge=None, hl=True):
-        """Square-based prism (tapered if hb != ht). Use hb == ht for plain boxes."""
-        e = edge or self.EDGE
-        self.poly([(cx-hb, cy+hb, z0), (cx+hb, cy+hb, z0), (cx+ht, cy+ht, z1), (cx-ht, cy+ht, z1)], left, e)
-        self.poly([(cx+hb, cy-hb, z0), (cx+hb, cy+hb, z0), (cx+ht, cy+ht, z1), (cx+ht, cy-ht, z1)], right, e)
-        self.poly([(cx-ht, cy-ht, z1), (cx+ht, cy-ht, z1), (cx+ht, cy+ht, z1), (cx-ht, cy+ht, z1)], top, e)
-        if hl:
-            self.line([(cx-ht+6, cy+ht, z1), (cx+ht, cy+ht, z1), (cx+ht, cy-ht+6, z1)], self.HL, 2, 'opacity=".75"')
-            self.line([(cx+hb, cy+hb, z0+4), (cx+ht, cy+ht, z1-2)], self.HL, 1.5, 'opacity=".45"')
-
-    def box(self, cx, cy, hx, hy, z0, z1, left="url(#left)", right="url(#right)", top="url(#top)", hl=True):
+    def box(self, cx, cy, hx, hy, z0, z1, color):
         """Rectangular box (different hx, hy) for reliefs: brows, noses, bricks…"""
-        e = self.EDGE
-        self.poly([(cx-hx, cy+hy, z0), (cx+hx, cy+hy, z0), (cx+hx, cy+hy, z1), (cx-hx, cy+hy, z1)], left, e)
-        self.poly([(cx+hx, cy-hy, z0), (cx+hx, cy+hy, z0), (cx+hx, cy+hy, z1), (cx+hx, cy-hy, z1)], right, e)
-        self.poly([(cx-hx, cy-hy, z1), (cx+hx, cy-hy, z1), (cx+hx, cy+hy, z1), (cx-hx, cy+hy, z1)], top, e)
-        if hl:
-            self.line([(cx-hx+4, cy+hy, z1), (cx+hx, cy+hy, z1), (cx+hx, cy-hy+4, z1)], self.HL, 1.8, 'opacity=".7"')
+        self.poly([(cx-hx, cy+hy, z0), (cx+hx, cy+hy, z0), (cx+hx, cy+hy, z1), (cx-hx, cy+hy, z1)], shade(color, "left", z1))
+        self.poly([(cx+hx, cy-hy, z0), (cx+hx, cy+hy, z0), (cx+hx, cy+hy, z1), (cx+hx, cy-hy, z1)], shade(color, "right", z1))
+        self.poly([(cx-hx, cy-hy, z1), (cx+hx, cy-hy, z1), (cx+hx, cy+hy, z1), (cx-hx, cy+hy, z1)], shade(color, "top", z1))
 
-    def ao_band(self, h, z, depth):
-        """Contact shadow at the base of both visible faces of a block with half-size h."""
-        self.poly([(-h, h, z), (h, h, z), (h, h, z+depth), (-h, h, z+depth)], "url(#ao)")
-        self.poly([(h, -h, z), (h, h, z), (h, h, z+depth), (h, -h, z+depth)], "url(#ao)")
-
-    def cylinder(self, z0, z1, r0, r1, fill, stroke="#24170f"):
-        """Vertical cylinder (tapered if r0 != r1) on the center axis: trunks, columns, posts."""
+    def cylinder(self, z0, z1, r0, r1, color, cap=True):
+        """Vertical cylinder (tapered if r0 != r1) on the center axis: trunks, columns, posts.
+        Right half in the right value, left half in the left value, top cap in the top value."""
         bl, br = (CX - r0*KX, CY - z0), (CX + r0*KX, CY - z0)
         tl, tr = (CX - r1*KX, CY - z1), (CX + r1*KX, CY - z1)
-        self._track([bl, br, tl, tr, (CX, CY - z0 + r0*KX/2)])
-        self.add(f'<path d="M{fmt(tl)} L{fmt(bl)} A{r0*KX:.1f},{r0*KX/2:.1f} 0 0 0 {fmt(br)} L{fmt(tr)} Z" '
-                 f'fill="{fill}" stroke="{stroke}" stroke-width="2.5" stroke-linejoin="round"/>')
+        bc, tc = (CX, CY - z0 + r0*KX/2), (CX, CY - z1 + r1*KX/2)
+        self._track([bl, br, tl, tr, bc])
+        right, left = shade(color, "right", z1), shade(color, "left", z1)
+        self.add(f'<path d="M{fmt(tl)} L{fmt(bl)} A{r0*KX:.1f},{r0*KX/2:.1f} 0 0 0 {fmt(br)} L{fmt(tr)} Z" fill="{right}" {seam(right)}/>')
+        self.add(f'<path d="M{fmt(tl)} L{fmt(bl)} A{r0*KX:.1f},{r0*KX/2:.1f} 0 0 0 {fmt(bc)} L{fmt(tc)} '
+                 f'A{r1*KX:.1f},{r1*KX/2:.1f} 0 0 1 {fmt(tl)} Z" fill="{left}" {seam(left)}/>')
+        if cap:
+            self.ellipse(CX, CY - z1, r1*KX, r1*KX/2, shade(color, "top", z1))
 
-    def ground_disc(self, cx, cy, r, fill, n=64, jitter=0.0, rnd=None, extra=""):
-        """Irregular disc on the floor (grass, dirt, shadow). Keep |c|+r <= HALF."""
+    def ground_disc(self, cx, cy, r, color, n=64, jitter=0.0, rnd=None, face="top", extra=""):
+        """Irregular disc on the floor (grass, dirt, puddles). Keep |c|+r <= HALF.
+        For a cast shadow pass face='left' so it uses the shadow value of the ground color."""
         pts = []
         for i in range(n):
             t = 2*math.pi*i/n
             rr = r * (1 + jitter*((rnd.random() if rnd else 0.5) - 0.5))
             pts.append((cx + rr*math.cos(t), cy + rr*math.sin(t), 0))
-        self.poly(pts, fill, extra)
+        self.poly(pts, shade(color, face, 0), extra)
 
-    def spheres(self, blobs, grad="url(#leaf)", outline="#16301b", highlight="#c6e98a"):
-        """Organic mass of spheres (x, y, z, R). Validates bounds, sorts, draws a single outline.
+    def spheres(self, blobs, color):
+        """Organic mass of spheres (x, y, z, R). Validates bounds and sorts back to front.
+        Each sphere gets three hard-edged zones: shadow (left value), mid (right value), lit cap (top value).
         Returns the screen ellipses so they can be reused in a clipPath."""
         for (x, y, z, R) in blobs:
             assert abs(x)+R <= HALF and abs(y)+R <= HALF and z+R <= H and z-R >= 0, (x, y, z, R)
         blobs = sorted(blobs, key=lambda b: b[0]+b[1]+b[2])
         ells = []
         for (x, y, z, R) in blobs:
-            cx, cy = P(x, y, z); ells.append((cx, cy, R*KX, R*KY))
-            self._track([(cx-R*KX, cy), (cx+R*KX, cy), (cx, cy-R*KY), (cx, cy+R*KY)])
-        for cx, cy, rx, ry in ells:
-            self.add(f'<ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{rx+3:.1f}" ry="{ry+3:.1f}" fill="{outline}"/>')
-        for cx, cy, rx, ry in ells:
-            self.add(f'<ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{rx:.1f}" ry="{ry:.1f}" fill="{grad}"/>')
-            self.add(f'<ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{rx:.1f}" ry="{ry:.1f}" fill="none" stroke="{outline}" stroke-width="2" opacity=".45"/>')
-            self.add(f'<ellipse cx="{cx+rx*.22:.1f}" cy="{cy-ry*.42:.1f}" rx="{rx*.42:.1f}" ry="{ry*.26:.1f}" fill="{highlight}" opacity=".38"/>')
+            cx, cy = P(x, y, z); rx, ry = R*KX, R*KY
+            ells.append((cx, cy, rx, ry))
+            self.ellipse(cx, cy, rx, ry, shade(color, "left", z))
+            self.ellipse(cx + rx*.12, cy - ry*.14, rx*.82, ry*.82, shade(color, "right", z))
+            self.ellipse(cx + rx*.22, cy - ry*.36, rx*.5, ry*.42, shade(color, "top", z))
         return ells
 
     # ---- output and validation ----
@@ -178,8 +207,7 @@ class Asset:
             return True
         bad = [p for p in self.screen_pts if not inside(p)]
         assert not bad, f"{len(bad)} points out of bounds, e.g. {bad[:3]}"
-        top = min(p[1] for p in self.screen_pts)
-        return top
+        return min(p[1] for p in self.screen_pts)
 
     def save(self, path):
         self.check_bounds()
@@ -198,15 +226,11 @@ class Asset:
 '''
         open(path, "w").write(svg)
 
+# Base material colors (top-face value; shade() derives the rest)
+GRASS, DIRT, STONE, FOLIAGE, WOOD, MOSS = "#a4de00", "#bcb857", "#c4cdd1", "#86c832", "#9a6e45", "#8fae5a"
+GLOW = "#7fe8e2"
+
 STANDARD_DEFS = [
-    '<linearGradient id="top" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d7dee0"/><stop offset="1" stop-color="#b3bec2"/></linearGradient>',
-    '<linearGradient id="right" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a7b2b7"/><stop offset="1" stop-color="#7b878d"/></linearGradient>',
-    '<linearGradient id="left" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6d797f"/><stop offset="1" stop-color="#48535a"/></linearGradient>',
-    '<linearGradient id="ao" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#11181c" stop-opacity=".45"/><stop offset="1" stop-color="#11181c" stop-opacity="0"/></linearGradient>',
-    '<linearGradient id="moss" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8fae5a"/><stop offset="1" stop-color="#55703a"/></linearGradient>',
-    '<radialGradient id="leaf" cx=".62" cy=".3" r=".85"><stop offset="0" stop-color="#a6d865"/><stop offset=".45" stop-color="#5f9e3c"/><stop offset=".85" stop-color="#346b2e"/><stop offset="1" stop-color="#244f25"/></radialGradient>',
-    '<linearGradient id="bark" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3b281b"/><stop offset=".6" stop-color="#7a5536"/><stop offset=".85" stop-color="#9a714a"/><stop offset="1" stop-color="#5e412b"/></linearGradient>',
-    '<radialGradient id="grass" cx=".6" cy=".35" r=".75"><stop offset="0" stop-color="#8fc25a"/><stop offset="1" stop-color="#4f8a35"/></radialGradient>',
     '<filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>',
 ]
 ```
@@ -257,24 +281,24 @@ To inspect small details (roots, facial features), render at 1400 px and crop th
 ## 7. Reference recipes
 
 **Statue / monument (blocks)**
-- Two-step plinth: `frustum(248,244,0,22)` and `frustum(212,208,22,38)`.
-- Pedestal `frustum(168,168,38,84)` with its cornice `frustum(180,178,84,94)`.
-- Body `frustum(150,136,94,200)`, neck `frustum(130,126,200,210)` and head `frustum(124,120,210,341)`.
-- `ao_band` at the base of every block.
-- Facial features on the right face (`x = h`), using `box` for brow and nose, and dark polygons for eyes and mouth.
-- Eyes and rune with `glow`, cracks as `line`, moss as polygons with `url(#moss)`.
+- Two-step plinth: `frustum(254,250,0,22, STONE, band=.25)` with `MOSS` as `top` if it should look overgrown, then `frustum(212,208,22,38, STONE)`.
+- Pedestal `frustum(168,168,38,84, STONE)` with its cornice `frustum(180,178,84,94, STONE)`.
+- Body `frustum(150,136,94,200, STONE)`, neck `frustum(130,126,200,210, STONE)` and head `frustum(124,120,210,341, STONE)`.
+- Lower tiers come out slightly darker on their own through the height falloff.
+- Facial features on the right face (`x = h`): `box(..., STONE)` for brow and nose; eyes and mouth as polygons filled with `shade(STONE, "left", z)`.
+- Eyes and rune in `GLOW` with `filter="url(#glow)"`. Cracks and grooves as thin polygons in the face's darker value. Moss patches as polygons in `shade(MOSS, face, z)`.
 
 **Leafy tree (organic)**
-- Grass: `ground_disc(0,0,228, url(#grass), jitter=.05)`.
-- Shadow: `ground_disc(-12,26,168,'#1b3018', extra='opacity=".38"')`.
-- Back roots, then `cylinder(0,236,38,22,'url(#bark)')` with bark grain, then front roots.
-- Roots: convex hull of a half-ellipsoid (length 34–40, width 20, height 22) attached to the trunk. Shorter and wider looks better; no wedges.
-- Canopy: ~14 spheres with R 86–100. The side ones go at `(±148, ∓148)` to reach the left and right corners. The top-center one sits at `z + R = 341`. The front ones must leave the trunk visible up to z ≈ 70.
-- Leaf texture: small ellipses, lighter on the lit side and darker toward the lower left, clipped with `clipPath`. Accents: fruit, flowers, or autumn leaves.
+- Grass: `ground_disc(0,0,234, GRASS, jitter=.05, rnd=rnd)`.
+- Canopy shadow: `ground_disc(-12,26,168, GRASS, face="left")`, the shadow value of the grass itself, opaque.
+- Back roots, then `cylinder(0,236,38,22, WOOD, cap=False)`, then front roots. Bark grain as thin vertical polygons in `shade(WOOD, "left")`.
+- Roots: convex hull of a half-ellipsoid (length 34–40, width 20, height 22) attached to the trunk, split into a right-value and a left-value half. Shorter and wider looks better; no wedges.
+- Canopy: `spheres(blobs, FOLIAGE)` with ~14 spheres of R 86–100. The side ones go at `(±150, ∓150)` to reach the left and right corners. The top-center one sits at `z + R = 341`. The front ones must leave the trunk visible up to z ≈ 70.
+- Leaf texture: small ellipses in the three foliage values (top value on the upper-right of each blob, left value toward the lower left), clipped with a `clipPath` built from the ellipses `spheres` returns. Accents: fruit, flowers, or autumn leaves, all flat.
 
 For variants, parameterize instead of copying code:
-- **Pine:** stacked green frustums that narrow upward.
-- **Rock:** `spheres` with a stone gradient.
+- **Pine:** stacked `frustum(..., FOLIAGE)` tiers that narrow upward, on a short `cylinder(..., WOOD)`.
+- **Rock:** `spheres(blobs, STONE)`, low and wide.
 - **House:** frustums plus a gabled roof built with `poly`.
 
 ## 8. Pre-delivery checklist
@@ -282,7 +306,7 @@ For variants, parameterize instead of copying code:
 - [ ] viewBox `0 -341 1024 853`, size 1024×853, both diamonds untouched with `fill="transparent"`.
 - [ ] Everything inside `<g id="figure">`, no `transform`. `check_bounds()` passes.
 - [ ] The base is centered at (512, 256) and covers the footprint. The highest point reaches z = 341.
-- [ ] Light from the upper right, same as the other assets. Outline is consistent.
+- [ ] Flat lighting from the upper right: top > right (≈0.93) > left (≈0.77), height falloff applied, no gradients, highlights or outlines.
 - [ ] Reads well at in-game size (~128 px wide): clear silhouette, no noisy detail.
 - [ ] You reviewed the preview PNG.
 - [ ] Both the `.svg` and the generator `.py` are delivered.

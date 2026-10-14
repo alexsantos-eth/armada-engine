@@ -9,8 +9,8 @@ export const DEFAULT_SCALE = 15;
 export const DEFAULT_OCTAVES = 5;
 export const DEFAULT_PERSISTENCE = 0.5;
 export const DEFAULT_LACUNARITY = 2;
-export const DEFAULT_MIN_ELEVATION = -6;
-export const DEFAULT_MAX_ELEVATION = 6;
+export const DEFAULT_MIN_ELEVATION = -3;
+export const DEFAULT_MAX_ELEVATION = 3;
 export const POSITIVE_ELEVATION_TINT_STEP = 0.04;
 export const NEGATIVE_ELEVATION_TINT_STEP = 0.15;
 
