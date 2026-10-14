@@ -70,6 +70,9 @@ describe("ENTITY_CONFIG", () => {
       .map(({ id }) => id);
 
     expect(recoloured).toEqual(expect.arrayContaining([
+      "skyscraper",
+      "hotel_x",
+      "office_y",
       "house_balcony",
       "tower",
       "apartments_x",
@@ -90,6 +93,25 @@ describe("ENTITY_CONFIG", () => {
     tallTrees.forEach(({ height }) => expect(height).toBe(2));
   });
 
+  it("declares the large buildings between four and six blocks tall", () => {
+    const large = ENTITY_CONFIG.filter(({ textureSource }) => {
+      const height = readTiles(textureSource)[2];
+      return textureSource.startsWith("/assets/building/") && height >= 4 && height <= 6;
+    });
+
+    expect(large.map(({ id }) => id)).toEqual(expect.arrayContaining([
+      "skyscraper",
+      "hotel_x",
+      "hotel_y",
+      "office_x",
+      "office_y",
+    ]));
+    large.forEach(({ colorReplacements, gap }) => {
+      expect(colorReplacements).toBeDefined();
+      expect(gap).toBeGreaterThanOrEqual(2);
+    });
+  });
+
   it("declares multi-storey houses and buildings", () => {
     const tall = ENTITY_CONFIG.filter(({ textureSource }) =>
       /\/(house|building)\//.test(textureSource) && readTiles(textureSource)[2] >= 2,
@@ -102,7 +124,7 @@ describe("ENTITY_CONFIG", () => {
       "apartments_x",
       "apartments_y",
     ]));
-    expect(tall.filter(({ textureSource }) => readTiles(textureSource)[2] >= 3))
+    expect(tall.filter(({ textureSource }) => readTiles(textureSource)[2] === 3))
       .toHaveLength(3);
   });
 });

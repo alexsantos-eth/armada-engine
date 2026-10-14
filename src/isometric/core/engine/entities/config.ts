@@ -46,6 +46,43 @@ const APARTMENTS_ROOF_COLOR_REPLACEMENTS = {
   "#55606c": ["#55606c", "#3d7772", "#7f4131", "#997d49"],
 } as const;
 
+/** Gold crown and antenna of `skyscraper`: gold, silver, red, blue. */
+const SKYSCRAPER_ROOF_COLOR_REPLACEMENTS = {
+  "#c9a43a": ["#c9a43a", "#b9bec4", "#c4553c", "#3f6fb0"],
+  "#c29e38": ["#c29e38", "#b3b7bd", "#bd523a", "#3d6baa"],
+  "#bb9936": ["#bb9936", "#acb1b6", "#b64f38", "#3b67a4"],
+  "#b29133": ["#b29133", "#a4a8ae", "#ae4b35", "#38629c"],
+  "#ab8b31": ["#ab8b31", "#9da2a7", "#a74833", "#365e96"],
+  "#9b7e2d": ["#9b7e2d", "#8f9397", "#97422e", "#315688"],
+} as const;
+
+/** Terracotta roof and awning of the hotels: terracotta, blue, green, violet. */
+const HOTEL_ROOF_COLOR_REPLACEMENTS = {
+  "#c4553c": ["#c4553c", "#3f6f9e", "#5c8f4a", "#7a5aa8"],
+  "#bd523a": ["#bd523a", "#3d6b98", "#598a47", "#7657a2"],
+  "#bb5139": ["#bb5139", "#3c6a97", "#588847", "#7456a0"],
+  "#b64f38": ["#b64f38", "#3a6793", "#558545", "#71549c"],
+  "#b54e37": ["#b54e37", "#3a6792", "#558444", "#71539b"],
+  "#ae4b35": ["#ae4b35", "#38638c", "#527f42", "#6c5095"],
+  "#ad4b35": ["#ad4b35", "#38628b", "#517e41", "#6c4f94"],
+  "#a74833": ["#a74833", "#365f87", "#4e7a3f", "#684d8f"],
+  "#a64833": ["#a64833", "#355e86", "#4e793f", "#674c8e"],
+  "#a14631": ["#a14631", "#345b82", "#4c753d", "#644a8a"],
+  "#9f4531": ["#9f4531", "#335a80", "#4b743c", "#634988"],
+  "#97412e": ["#97412e", "#31567a", "#476e39", "#5e4581"],
+  "#903e2c": ["#903e2c", "#2e5274", "#446936", "#5a427b"],
+} as const;
+
+/** Copper terrace and roof of the office blocks: green copper, bronze, slate, red. */
+const OFFICE_ROOF_COLOR_REPLACEMENTS = {
+  "#4e8f78": ["#4e8f78", "#c27a3a", "#6f7d8c", "#a8433f"],
+  "#4b8a74": ["#4b8a74", "#bb7638", "#6b7987", "#a2413d"],
+  "#498570": ["#498570", "#b47136", "#677482", "#9c3e3b"],
+  "#457f6a": ["#457f6a", "#ac6c33", "#636f7c", "#953b38"],
+  "#427a66": ["#427a66", "#a56831", "#5f6b77", "#8f3936"],
+  "#3c6e5c": ["#3c6e5c", "#955e2d", "#55606c", "#813430"],
+} as const;
+
 export const ENTITY_CONFIG: EntityDefinition[] = [
   {
     id: "tree",
@@ -175,6 +212,65 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     surface: "grass",
     surfaceElevation: 0,
     colorReplacements: APARTMENTS_ROOF_COLOR_REPLACEMENTS,
+  },
+  {
+    id: "skyscraper",
+    textureSource: "/assets/building/block_skyscraper.svg",
+    height: 6,
+    length: 1,
+    gap: 2,
+    spawnChance: 0.004,
+    surface: "grass",
+    surfaceElevation: 0,
+    colorReplacements: SKYSCRAPER_ROOF_COLOR_REPLACEMENTS,
+  },
+  {
+    id: "hotel_x",
+    textureSource: "/assets/building/block_hotel_1x2.svg",
+    height: 4,
+    length: 2,
+    lengthAxis: "x",
+    gap: 2,
+    spawnChance: 0.004,
+    surface: "grass",
+    surfaceElevation: 0,
+    colorReplacements: HOTEL_ROOF_COLOR_REPLACEMENTS,
+  },
+  {
+    id: "hotel_y",
+    textureSource: "/assets/building/block_hotel_2x1.svg",
+    height: 4,
+    length: 2,
+    lengthAxis: "y",
+    gap: 2,
+    spawnChance: 0.004,
+    surface: "grass",
+    surfaceElevation: 0,
+    colorReplacements: HOTEL_ROOF_COLOR_REPLACEMENTS,
+  },
+  {
+    id: "office_x",
+    textureSource: "/assets/building/block_office_1x3.svg",
+    height: 5,
+    length: 3,
+    lengthAxis: "x",
+    gap: 2,
+    spawnChance: 0.003,
+    surface: "grass",
+    surfaceElevation: 0,
+    colorReplacements: OFFICE_ROOF_COLOR_REPLACEMENTS,
+  },
+  {
+    id: "office_y",
+    textureSource: "/assets/building/block_office_3x1.svg",
+    height: 5,
+    length: 3,
+    lengthAxis: "y",
+    gap: 2,
+    spawnChance: 0.003,
+    surface: "grass",
+    surfaceElevation: 0,
+    colorReplacements: OFFICE_ROOF_COLOR_REPLACEMENTS,
   },
   {
     id: "boat",
