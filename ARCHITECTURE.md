@@ -84,7 +84,7 @@ Los archivos de tipos no contienen lógica runtime y no tienen tests propios. Ty
 
 La clase aplica datos por defecto y combina metadata de forma superficial. `getData()` devuelve una copia de los datos y una copia de `metadata`, de modo que el consumidor no puede modificar el estado interno accidentalmente.
 
-Las entidades no son subtipos de `Box`. `Entity` implementa el contrato espacial común y contiene su identificador, asset, altura, longitud, orientación de longitud y elevación. Las definiciones viven en `engine/entities/config.ts`; `createEntitiesFromConfig()` filtra columnas por superficie y, cuando existe, por `surfaceElevation`, valida todas las celdas de una huella multi-bloque y las reserva en un `Set` para evitar solapamientos. Si la definición declara `gap`, descarta además cualquier huella que quede a menos de `gap` bloques (diagonales incluidas, distancia de Chebyshev) de otra instancia de la misma definición. La primera definición que reserva una coordenada tiene prioridad. Para incorporar una entidad nueva se añade una entrada de configuración y su SVG, sin modificar `scene.ts`.
+Las entidades no son subtipos de `Box`. `Entity` implementa el contrato espacial común y contiene su identificador, asset, altura, longitud, orientación de longitud y elevación. Las definiciones viven en `engine/entities/config.ts`; `createEntitiesFromConfig()` filtra columnas por superficie y, cuando existe, por `surfaceElevation` (un número exige esa elevación exacta; una lista acepta cualquiera de sus valores), exige que todas las celdas de una huella multi-bloque compartan la elevación de la celda de origen (el sprite se coloca a esa altura, así que un escalón bajo la huella sería visible), valida todas las celdas de una huella multi-bloque y las reserva en un `Set` para evitar solapamientos. Si la definición declara `gap`, descarta además cualquier huella que quede a menos de `gap` bloques (diagonales incluidas, distancia de Chebyshev) de otra instancia de la misma definición. La primera definición que reserva una coordenada tiene prioridad. Para incorporar una entidad nueva se añade una entrada de configuración y su SVG, sin modificar `scene.ts`.
 
 ## Generación del terreno
 
@@ -213,7 +213,7 @@ Para añadir una nueva regla de elevación, modificar primero `projection` o la 
 
 ## Estado actual de entidades y assets
 
-Las definiciones de entidad pueden exigir `surfaceElevation`, declarar una huella con `length` y `lengthAxis`, imponer una separación mínima con `gap`, activar `debug` y proporcionar `colorReplacements`. La factory valida todas las celdas de la huella, las reserva en un `Set` y evita solapamientos entre entidades; la primera definición que reserva una coordenada tiene prioridad.
+Las definiciones de entidad pueden exigir `surfaceElevation` (número o lista de elevaciones válidas), declarar una huella con `length` y `lengthAxis`, imponer una separación mínima con `gap`, activar `debug` y proporcionar `colorReplacements`. La factory valida todas las celdas de la huella, las reserva en un `Set` y evita solapamientos entre entidades; la primera definición que reserva una coordenada tiene prioridad.
 
 `gap` indica cuántos bloques libres como mínimo deben separar dos instancias del mismo `id`; se mide desde toda la huella e incluye las diagonales. `gap: 1` impide colocar dos instancias contiguas. No afecta a entidades de otras definiciones (por ejemplo, `house` y `house_2x1` se tratan por separado). Valores ausentes, `0` o negativos no imponen separación.
 

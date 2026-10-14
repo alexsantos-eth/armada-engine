@@ -10,7 +10,7 @@ Los tipos compartidos viven en `src/isometric/core/types` y se exportan desde `c
 
 `Box` está reservado para bloques de terreno (`grass`, `ground` y `water`). Las entidades de juego se declaran como datos en `src/isometric/core/engine/entities/config.ts` y se crean con `createEntitiesFromConfig()`. No se deben añadir entidades concretas a `Box`, a `scene.ts` ni a las constantes de terreno.
 
-Las definiciones de entidad admiten `surfaceElevation` para exigir una elevación exacta, `length` y `lengthAxis` (`"x"` por defecto) para huellas multi-bloque, `gap` para exigir una separación mínima en bloques (diagonales incluidas) entre instancias de la misma entidad, `colorReplacements` para variantes SVG por instancia y `debug` para dibujar su huella visual. La factory valida y reserva todas las celdas de la huella antes de crear la entidad, por lo que las definiciones posteriores no pueden solaparse con una entidad ya colocada.
+Las definiciones de entidad admiten `surfaceElevation` para exigir una elevación exacta o una lista de elevaciones válidas (p. ej. `[0, 1]`); en cualquier caso, una huella multi-bloque solo se coloca sobre celdas a la misma elevación, `length` y `lengthAxis` (`"x"` por defecto) para huellas multi-bloque, `gap` para exigir una separación mínima en bloques (diagonales incluidas) entre instancias de la misma entidad, `colorReplacements` para variantes SVG por instancia y `debug` para dibujar su huella visual. La factory valida y reserva todas las celdas de la huella antes de crear la entidad, por lo que las definiciones posteriores no pueden solaparse con una entidad ya colocada.
 
 ## Tests co-localizados
 

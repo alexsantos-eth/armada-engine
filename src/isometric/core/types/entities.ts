@@ -30,7 +30,12 @@ export type EntityDefinition = {
   lengthAxis?: EntityLengthAxis;
   spawnChance: number;
   surface: EntitySurface;
-  surfaceElevation?: number;
+  /**
+   * Terrain elevation(s) the entity may stand on. A single number requires that exact
+   * elevation; a list accepts any of them. An empty list never matches. Whatever the
+   * value, every block of a multi-block footprint must share the same elevation. Defaults to any elevation valid for `surface`.
+   */
+  surfaceElevation?: number | readonly number[];
   /**
    * Minimum number of free blocks (diagonals included) required between two
    * instances of this same entity. `1` forbids adjacent instances. Defaults to `0`.

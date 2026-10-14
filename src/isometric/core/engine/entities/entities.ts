@@ -72,10 +72,7 @@ export class Box implements IBox {
 }
 
 function canSpawnOnSurface(box: IGridObject, definition: EntityDefinition): boolean {
-  if (
-    definition.surfaceElevation !== undefined &&
-    box.elevation !== definition.surfaceElevation
-  ) {
+  if (!matchesSurfaceElevation(box.elevation, definition.surfaceElevation)) {
     return false;
   }
 
@@ -85,6 +82,16 @@ function canSpawnOnSurface(box: IGridObject, definition: EntityDefinition): bool
     case "water":
       return box.elevation < 0;
   }
+}
+
+function matchesSurfaceElevation(
+  elevation: number,
+  surfaceElevation: EntityDefinition["surfaceElevation"],
+): boolean {
+  if (surfaceElevation === undefined) return true;
+  return typeof surfaceElevation === "number"
+    ? elevation === surfaceElevation
+    : surfaceElevation.includes(elevation);
 }
 
 /** Represents a configured non-terrain entity in the world grid. */
@@ -169,6 +176,8 @@ export class Entity implements IEntity {
 /**
  * Creates configured entities on eligible terrain columns.
  *
+ * Multi-block footprints must be flat: every block shares the anchor's elevation.
+ *
  * Each definition may declare a `gap`: the minimum number of free blocks
  * (including diagonals) that must separate two instances of the same entity.
  */
@@ -191,6 +200,9 @@ export function createEntitiesFromConfig(
       if (footprintBoxes.some((footprintBox) =>
         footprintBox === undefined || !canSpawnOnSurface(footprintBox, definition),
       )) continue;
+      // Every block of the footprint must share the anchor's elevation: the sprite is
+      // placed at the anchor's height, so a step under the footprint would show.
+      if (footprintBoxes.some((footprintBox) => footprintBox?.elevation !== box.elevation)) continue;
       if (footprintKeys.some((key) => occupiedPositions.has(key))) continue;
       const sameTypePositions = positionsByType.get(definition.id) ?? new Set<string>();
       if (violatesGap(box, definition, sameTypePositions)) continue;

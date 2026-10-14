@@ -157,6 +157,85 @@ describe("Box", () => {
     expect(entities[0].elevation).toBe(3);
   });
 
+  it("accepts a list of valid surface elevations", () => {
+    const entities = createEntitiesFromConfig(
+      [2, 3, 4, 5].map((elevation, x) => new Box(x * 2, 0, { elevation })),
+      [{
+        id: "house",
+        textureSource: "/assets/house/block.svg",
+        height: 1,
+        spawnChance: 1,
+        surface: "grass",
+        surfaceElevation: [3, 5],
+      }],
+      () => 0,
+    );
+
+    expect(entities.map(({ elevation }) => elevation)).toEqual([3, 5]);
+  });
+
+  it("never spawns with an empty list of surface elevations", () => {
+    expect(createEntitiesFromConfig(
+      [new Box(0, 0, { elevation: 0 })],
+      [{
+        id: "house",
+        textureSource: "/assets/house/block.svg",
+        height: 1,
+        spawnChance: 1,
+        surface: "grass",
+        surfaceElevation: [],
+      }],
+      () => 0,
+    )).toEqual([]);
+  });
+
+  it("keeps multi-block footprints flat without a surface elevation", () => {
+    const definition = {
+      id: "boat",
+      textureSource: "/assets/boat/block_2.svg",
+      height: 1,
+      length: 2,
+      spawnChance: 1,
+      surface: "water" as const,
+    };
+
+    expect(createEntitiesFromConfig(
+      [new Box(0, 0, { elevation: -1 }), new Box(1, 0, { elevation: -2 })],
+      [definition],
+      () => 0,
+    )).toEqual([]);
+    expect(createEntitiesFromConfig(
+      [new Box(0, 0, { elevation: -2 }), new Box(1, 0, { elevation: -2 })],
+      [definition],
+      () => 0,
+    )).toHaveLength(1);
+  });
+
+  it("keeps multi-block footprints flat when several elevations are valid", () => {
+    const definition = {
+      id: "hotel",
+      textureSource: "/assets/building/block_hotel_1x2.svg",
+      height: 4,
+      length: 2,
+      spawnChance: 1,
+      surface: "grass" as const,
+      surfaceElevation: [0, 1],
+    };
+
+    expect(createEntitiesFromConfig(
+      [new Box(0, 0, { elevation: 0 }), new Box(1, 0, { elevation: 1 })],
+      [definition],
+      () => 0,
+    )).toEqual([]);
+
+    const flat = createEntitiesFromConfig(
+      [new Box(0, 0, { elevation: 1 }), new Box(1, 0, { elevation: 1 })],
+      [definition],
+      () => 0,
+    );
+    expect(flat.map(({ x, y, elevation }) => `${x}:${y}@${elevation}`)).toEqual(["0:0@1"]);
+  });
+
   it("uses the random result to skip eligible columns", () => {
     const boxes = [new Box(1, 2, { elevation: 1 })];
 
