@@ -112,6 +112,28 @@ describe("ENTITY_CONFIG", () => {
     });
   });
 
+  it("lists at most one surface per footprint block", () => {
+    ENTITY_CONFIG.forEach(({ footprintSurfaces, length }) => {
+      expect((footprintSurfaces ?? []).length).toBeLessThanOrEqual(length ?? 1);
+    });
+  });
+
+  it("declares a pier for each axis and direction of a grass-sand-sand row", () => {
+    const piers = ENTITY_CONFIG.filter(({ textureSource }) =>
+      textureSource.startsWith("/assets/pier/"),
+    );
+
+    expect(piers.map(({ lengthAxis, footprintSurfaces }) =>
+      `${lengthAxis}:${footprintSurfaces?.join(",")}`,
+    ).sort()).toEqual([
+      "x:grass,sand,sand",
+      "x:sand,sand,grass",
+      "y:grass,sand,sand",
+      "y:sand,sand,grass",
+    ]);
+    piers.forEach(({ length }) => expect(length).toBe(3));
+  });
+
   it("declares multi-storey houses and buildings", () => {
     const tall = ENTITY_CONFIG.filter(({ textureSource }) =>
       /\/(house|building)\//.test(textureSource) && readTiles(textureSource)[2] >= 2,

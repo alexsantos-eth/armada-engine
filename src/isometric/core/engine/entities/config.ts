@@ -85,6 +85,30 @@ const OFFICE_ROOF_COLOR_REPLACEMENTS = {
 
 export const ENTITY_CONFIG: EntityDefinition[] = [
   {
+    id: "pier_x_reverse",
+    textureSource: "/assets/pier/block_1x3_land_end.svg",
+    height: 1,
+    length: 3,
+    lengthAxis: "x",
+    footprintSurfaces: ["sand", "sand", "grass"],
+    gap: 3,
+    spawnChance: 0.2,
+    surface: "sand",
+    surfaceElevation: 0,
+  },
+  {
+    id: "pier_y_reverse",
+    textureSource: "/assets/pier/block_3x1_land_end.svg",
+    height: 1,
+    length: 3,
+    lengthAxis: "y",
+    footprintSurfaces: ["sand", "sand", "grass"],
+    gap: 3,
+    spawnChance: 0.2,
+    surface: "sand",
+    surfaceElevation: 0,
+  },
+  {
     id: "tree",
     textureSource: "/assets/tree/block.svg",
     height: 1,

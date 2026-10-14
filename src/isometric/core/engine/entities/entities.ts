@@ -77,9 +77,11 @@ function canSpawnOnSurface(
   box: IGridObject,
   definition: EntityDefinition,
   surfaces: ReadonlyMap<string, TerrainSurface>,
+  footprintIndex: number,
 ): boolean {
+  const surface = definition.footprintSurfaces?.[footprintIndex] ?? definition.surface;
   return matchesSurfaceElevation(box.elevation, definition.surfaceElevation) &&
-    surfaces.get(`${box.x}:${box.y}`) === definition.surface;
+    surfaces.get(`${box.x}:${box.y}`) === surface;
 }
 
 function matchesSurfaceElevation(
@@ -175,7 +177,8 @@ export class Entity implements IEntity {
  * Creates configured entities on eligible terrain columns.
  *
  * Each column's surface (grass, water or sand) comes from `classifyColumnSurfaces()`, so
- * grass entities never spawn on sand.
+ * grass entities never spawn on sand. `footprintSurfaces` can require a different surface
+ * under each block of the footprint (in order from the anchor along `lengthAxis`).
  *
  * Multi-block footprints must be flat: every block shares the anchor's elevation.
  *
@@ -199,8 +202,9 @@ export function createEntitiesFromConfig(
     for (const box of boxes) {
       const footprintKeys = getFootprintKeys(box, definition);
       const footprintBoxes = footprintKeys.map((key) => boxesByPosition.get(key));
-      if (footprintBoxes.some((footprintBox) =>
-        footprintBox === undefined || !canSpawnOnSurface(footprintBox, definition, surfaces),
+      if (footprintBoxes.some((footprintBox, index) =>
+        footprintBox === undefined ||
+        !canSpawnOnSurface(footprintBox, definition, surfaces, index),
       )) continue;
       // Every block of the footprint must share the anchor's elevation: the sprite is
       // placed at the anchor's height, so a step under the footprint would show.

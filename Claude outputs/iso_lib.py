@@ -139,7 +139,11 @@ def _rbox_facets_plain(cx, cy, z0, hx, hy, hz, r, k=SEGMENTS):
 
 
 class Asset:
-    def __init__(self, tiles=(1, 1)):
+    def __init__(self, tiles=(1, 1), below=0):
+        """below: extra world units under the floor (z < 0) the canvas makes room for, e.g.
+        pier posts that reach a lower terrain block. The top of the canvas and the anchor
+        do not move, so renderers that place sprites from their top edge are unaffected."""
+        self.below = below
         self.nx, self.ny, self.nz = (tuple(tiles) + (1,))[:3]
         assert self.nx >= 1 and self.ny >= 1 and self.nz >= 1
         self.ceiling = H * self.nz
@@ -171,7 +175,7 @@ class Asset:
 
     def viewbox(self):
         return (CX - TILE * self.ny, CY - TILE // 2 - self.ceiling,
-                TILE * (self.nx + self.ny), TILE // 2 * (self.nx + self.ny) + self.ceiling)
+                TILE * (self.nx + self.ny), TILE // 2 * (self.nx + self.ny) + self.ceiling + self.below)
 
     def _diamond_d(self, z):
         pts = self.footprint(z)
@@ -267,7 +271,7 @@ class Asset:
             self.poly(pts, shade(color, face, z if zshade is None else zshade))
 
     def bounds_hull(self):
-        return MultiPoint(self.footprint(0) + self.footprint(self.ceiling)).convex_hull
+        return MultiPoint(self.footprint(-self.below) + self.footprint(self.ceiling)).convex_hull
 
     def check_bounds(self, tol=1.0):
         hull = prep(self.bounds_hull().buffer(tol))

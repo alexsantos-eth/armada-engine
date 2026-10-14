@@ -34,6 +34,12 @@ export type EntityDefinition = {
   spawnChance: number;
   surface: EntitySurface;
   /**
+   * Surface required under each block of the footprint, in order from the anchor along
+   * `lengthAxis` (e.g. `["grass", "sand", "sand"]` for a pier that starts on land).
+   * Blocks it does not list use `surface`.
+   */
+  footprintSurfaces?: readonly EntitySurface[];
+  /**
    * Terrain elevation(s) the entity may stand on. A single number requires that exact
    * elevation; a list accepts any of them. An empty list never matches. Whatever the
    * value, every block of a multi-block footprint must share the same elevation. Defaults to any elevation valid for `surface`.

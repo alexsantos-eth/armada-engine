@@ -449,6 +449,59 @@ describe("Box", () => {
     ).map(({ x, y }) => `${x}:${y}`)).toEqual(["1:0"]);
   });
 
+  describe("footprintSurfaces", () => {
+    // y=0: 0  0  0  0
+    // y=1: 0  0  0 -1   → (0,1) inland grass, (1,1) and (2,1) shore sand
+    // y=2: 0 -1 -1 -1
+    const shore = [
+      [0, 0, 0, 0],
+      [0, 0, 0, -1],
+      [0, -1, -1, -1],
+    ];
+    const toBoxes = (rows: number[][], transpose = false) =>
+      rows.flatMap((row, y) => row.map((elevation, x) =>
+        transpose ? new Box(y, x, { elevation }) : new Box(x, y, { elevation }),
+      ));
+    const pier = {
+      id: "pier",
+      textureSource: "/assets/pier/block_x.svg",
+      height: 1,
+      length: 3,
+      spawnChance: 1,
+      surface: "sand" as const,
+      surfaceElevation: 0,
+    };
+
+    it("requires each footprint block to match its surface, in order", () => {
+      expect(createEntitiesFromConfig(
+        toBoxes(shore),
+        [{ ...pier, footprintSurfaces: ["grass", "sand", "sand"] }],
+        () => 0,
+      ).map(({ x, y }) => `${x}:${y}`)).toEqual(["0:1"]);
+      expect(createEntitiesFromConfig(
+        toBoxes(shore),
+        [{ ...pier, footprintSurfaces: ["sand", "sand", "grass"] }],
+        () => 0,
+      )).toEqual([]);
+    });
+
+    it("follows the length axis", () => {
+      expect(createEntitiesFromConfig(
+        toBoxes(shore, true),
+        [{ ...pier, lengthAxis: "y", footprintSurfaces: ["grass", "sand", "sand"] }],
+        () => 0,
+      ).map(({ x, y }) => `${x}:${y}`)).toEqual(["1:0"]);
+    });
+
+    it("falls back to the definition surface for blocks it does not list", () => {
+      expect(createEntitiesFromConfig(
+        toBoxes(shore),
+        [{ ...pier, footprintSurfaces: ["grass", "sand"] }],
+        () => 0,
+      ).map(({ x, y }) => `${x}:${y}`)).toEqual(["0:1"]);
+    });
+  });
+
   it("supports entities configured for water", () => {
     const entities = createEntitiesFromConfig(
       [new Box(1, 2, { elevation: -1 })],
