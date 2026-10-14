@@ -6,6 +6,7 @@ const renderCalls: Array<{
   elevation: number;
   tint: number | undefined;
   height?: number;
+  length?: number;
 }> = [];
 
 vi.mock("pixi.js", () => {
@@ -44,8 +45,10 @@ vi.mock("../render", () => ({
       _boxHeight: number,
       tint: number | undefined,
       height?: number,
+      _surfaceAligned?: boolean,
+      length?: number,
     ) => {
-      renderCalls.push({ texture, elevation: box.box.elevation, tint, height });
+      renderCalls.push({ texture, elevation: box.box.elevation, tint, height, length });
     },
   ),
 }));
@@ -64,6 +67,7 @@ const createTestEntities = (boxes: { x: number; y: number; elevation: number }[]
             id: "statue",
             textureSource: "/assets/statue/block.svg",
             height: 1,
+            length: 2,
             spawnChance: 1,
             surface: "grass",
           },
@@ -112,6 +116,7 @@ describe("createIsometricScene", () => {
         .map(({ tint }) => tint),
     ).size).toBeGreaterThan(1);
     expect(renderCalls.some(({ texture, height }) => texture.source.includes("statue") && height === 1)).toBe(true);
+    expect(renderCalls.some(({ texture, length }) => texture.source.includes("statue") && length === 2)).toBe(true);
 
     destroyScene();
 

@@ -47,6 +47,7 @@ describe("Box", () => {
         id: "statue",
         textureSource: "/assets/statue/block.svg",
         height: 3,
+        length: 2,
         spawnChance: 1,
         surface: "grass",
       },
@@ -59,6 +60,7 @@ describe("Box", () => {
     expect(entity.walkable).toBe(false);
     expect(entity.elevation).toBe(4);
     expect(entity.height).toBe(3);
+    expect(entity.length).toBe(2);
     expect(entity.textureSource).toBe("/assets/statue/block.svg");
 
     const data = entity.getData();
@@ -93,6 +95,7 @@ describe("Box", () => {
         walkable: false,
         elevation: 3,
         height: 3,
+        length: 1,
         textureSource: "/assets/statue/block.svg",
         metadata: {},
       },
@@ -101,6 +104,7 @@ describe("Box", () => {
         walkable: false,
         elevation: 0,
         height: 3,
+        length: 1,
         textureSource: "/assets/statue/block.svg",
         metadata: {},
       },
@@ -117,6 +121,7 @@ describe("Box", () => {
         id: "tree",
         textureSource: "/assets/tree/block.svg",
         height: 2,
+        length: 1,
         spawnChance: 0.5,
         surface: "grass",
       }],
@@ -131,6 +136,7 @@ describe("Box", () => {
         id: "buoy",
         textureSource: "/assets/buoy/block.svg",
         height: 1,
+        length: 1,
         spawnChance: 1,
         surface: "water",
       }],

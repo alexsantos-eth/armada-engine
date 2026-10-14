@@ -20,6 +20,7 @@ export type EntityDefinition = {
   id: string;
   textureSource: string;
   height: number;
+  length?: number;
   spawnChance: number;
   surface: EntitySurface;
 };
@@ -28,6 +29,7 @@ export type EntityData = GridObjectData & {
   type: string;
   walkable: boolean;
   height: number;
+  length: number;
   textureSource: string;
 };
 
@@ -95,6 +97,7 @@ export interface IEntity extends IGridObject {
   readonly type: string;
   readonly walkable: boolean;
   readonly height: number;
+  readonly length: number;
   readonly textureSource: string;
   getData(): EntityData;
 }

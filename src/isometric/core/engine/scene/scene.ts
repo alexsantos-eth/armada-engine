@@ -201,6 +201,7 @@ export async function createIsometricScene(
           undefined,
           entity.box.height,
           true,
+          entity.box.length,
         );
       });
   }

@@ -3,9 +3,9 @@ export const TILE_WIDTH = Math.min(WIDTH * 0.2, 40);
 
 export const TILE_HEIGHT = TILE_WIDTH / 2;
 export const BOX_HEIGHT = TILE_WIDTH / 3;
-export const TERRAIN_WIDTH = 64;
-export const TERRAIN_HEIGHT = 64;
-export const DEFAULT_SCALE = 15;
+export const TERRAIN_WIDTH = 32;
+export const TERRAIN_HEIGHT = 32;
+export const DEFAULT_SCALE = 50;
 export const DEFAULT_OCTAVES = 5;
 export const DEFAULT_PERSISTENCE = 0.5;
 export const DEFAULT_LACUNARITY = 2;

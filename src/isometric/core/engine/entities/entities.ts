@@ -95,6 +95,7 @@ export class Entity implements IEntity {
       walkable: false,
       elevation,
       height: definition.height,
+      length: definition.length ?? 1,
       textureSource: definition.textureSource,
       metadata: {},
     };
@@ -114,6 +115,10 @@ export class Entity implements IEntity {
 
   get height(): number {
     return this.data.height;
+  }
+
+  get length(): number {
+    return this.data.length;
   }
 
   get textureSource(): string {

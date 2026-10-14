@@ -131,4 +131,34 @@ describe("renderBlock", () => {
 
     expect(sprite.position.set).toHaveBeenCalledWith(10, -3);
   });
+
+  it("scales an entity across its isometric footprint", () => {
+    const sprite = renderBlock(
+      { addChild: vi.fn() } as never,
+      { id: "car", width: 1536, height: 1109 } as never,
+      {
+        x: 0,
+        y: 0,
+        box: new Box(0, 0),
+        screenX: 10,
+        baseScreenY: 20,
+        screenY: 20,
+      },
+      40,
+      20,
+      13,
+      undefined,
+      1,
+      true,
+      2,
+    ) as unknown as {
+      width: number;
+      height: number;
+      position: { set: ReturnType<typeof vi.fn> };
+    };
+
+    expect(sprite.width).toBe(60);
+    expect(sprite.height).toBeCloseTo(43.3203);
+    expect(sprite.position.set).toHaveBeenCalledWith(20, -13);
+  });
 });
