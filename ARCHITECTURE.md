@@ -141,9 +141,9 @@ public/assets/sand/block.svg
 
 La selección vive en `engine/terrain/surfaces.ts`, sin dependencias de Pixi, y se hace en dos pasos:
 
-1. `classifyColumnSurfaces(boxes)` decide la superficie de cada columna (clave `${x}:${y}`) a partir de su bloque más alto y del de sus cuatro vecinas directas (no diagonales):
+1. `classifyColumnSurfaces(boxes)` decide la superficie de cada columna (clave `${x}:${y}`) a partir de su bloque más alto y del de sus vecinas:
    - cima negativa: `water`;
-   - cima exactamente en `SAND_ELEVATION` (`0`) con al menos una vecina de agua: `sand`;
+   - cima exactamente en `SAND_ELEVATION` (`0`) en una orilla: al menos una vecina directa de agua y, entre sus ocho vecinas (diagonales incluidas, para que las esquinas de la playa sigan siendo arena), alguna de interior, es decir, tierra más alta o tierra a `0` que no toque agua: `sand`. Así los islotes y las franjas sueltas en medio del agua no se vuelven arena;
    - cualquier otra: `grass`.
 2. `getBlockMaterial(elevation, topElevation, surface)` elige el material de cada bloque:
    - elevación negativa: `water`;

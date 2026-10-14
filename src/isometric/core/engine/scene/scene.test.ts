@@ -208,7 +208,7 @@ describe("createIsometricScene", () => {
     }
   });
 
-  it("renders sand on zero-elevation columns next to water", async () => {
+  it("renders sand only on the shore of a landmass", async () => {
     const terrain = getOrCreateTerrain();
     const originalTerrain = [...terrain];
     terrain.splice(
@@ -216,8 +216,12 @@ describe("createIsometricScene", () => {
       terrain.length,
       { x: 0, y: 0, elevation: -1 },
       { x: 1, y: 0, elevation: 0 },
+      { x: 2, y: 0, elevation: 0 },
       { x: 3, y: 0, elevation: 0 },
       { x: 5, y: 0, elevation: 2 },
+      { x: 7, y: 0, elevation: -1 },
+      { x: 8, y: 0, elevation: 0 },
+      { x: 9, y: 0, elevation: -1 },
     );
 
     try {
@@ -229,8 +233,11 @@ describe("createIsometricScene", () => {
       const destroyScene = await createIsometricScene(app as never, () => []);
       const topCalls = renderCalls.filter(({ elevation }) => elevation === 0);
 
-      // (1,0) touches water → sand; (3,0) does not → grass; (5,0) is taller → ground at 0.
+      // (1,0) is the shore of the (2,0)–(3,0) landmass → sand; (2,0) and (3,0) → grass;
+      // (5,0) is taller → ground at 0; (8,0) is an islet in the water → grass, not sand.
       expect(topCalls.map(({ texture }) => texture.source).sort()).toEqual([
+        "/assets/grass/block.svg",
+        "/assets/grass/block.svg",
         "/assets/grass/block.svg",
         "/assets/ground/block.svg",
         "/assets/sand/block.svg",

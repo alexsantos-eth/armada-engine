@@ -428,6 +428,7 @@ describe("Box", () => {
     const boxes = [
       new Box(0, 0, { elevation: -1 }),
       new Box(1, 0, { elevation: 0 }),
+      new Box(2, 0, { elevation: 0 }),
       new Box(3, 0, { elevation: 0 }),
     ];
     const definition = {
@@ -440,7 +441,7 @@ describe("Box", () => {
       boxes,
       [{ ...definition, id: "tree", surface: "grass" }],
       () => 0,
-    ).map(({ x, y }) => `${x}:${y}`)).toEqual(["3:0"]);
+    ).map(({ x, y }) => `${x}:${y}`)).toEqual(["2:0", "3:0"]);
     expect(createEntitiesFromConfig(
       boxes,
       [{ ...definition, id: "palm", surface: "sand" }],

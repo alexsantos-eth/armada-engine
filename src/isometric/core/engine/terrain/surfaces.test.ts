@@ -13,42 +13,82 @@ const column = (x: number, y: number, elevation: number) => ({
   metadata: {},
 });
 
+/** Builds columns from rows of elevations: rows[y][x]; `null` leaves the cell out. */
+const grid = (rows: (number | null)[][]) =>
+  rows.flatMap((row, y) =>
+    row.flatMap((elevation, x) => (elevation === null ? [] : [column(x, y, elevation)])),
+  );
+
 describe("getColumnSurface", () => {
   it("is water below zero", () => {
-    expect(getColumnSurface(-1, [])).toBe("water");
+    expect(getColumnSurface(-1, true, true)).toBe("water");
   });
 
-  it("is sand at the sand elevation next to water", () => {
+  it("is sand at the sand elevation on a shore of inland ground", () => {
     expect(SAND_ELEVATION).toBe(0);
-    expect(getColumnSurface(0, [undefined, 1, -2])).toBe("sand");
+    expect(getColumnSurface(0, true, true)).toBe("sand");
   });
 
-  it("is grass at the sand elevation without water around", () => {
-    expect(getColumnSurface(0, [undefined, 0, 2])).toBe("grass");
+  it("is grass without water around or without inland ground", () => {
+    expect(getColumnSurface(0, false, true)).toBe("grass");
+    expect(getColumnSurface(0, true, false)).toBe("grass");
   });
 
   it("is grass above the sand elevation even next to water", () => {
-    expect(getColumnSurface(1, [-1])).toBe("grass");
+    expect(getColumnSurface(1, true, true)).toBe("grass");
   });
 });
 
 describe("classifyColumnSurfaces", () => {
-  it("only treats edge-adjacent water columns as neighbours", () => {
-    const surfaces = classifyColumnSurfaces([
-      column(0, 0, -1),
-      column(1, 0, 0),
-      column(1, 1, 0),
-      column(2, 2, 0),
-      column(0, 2, 1),
-    ]);
+  it("puts sand only on the shore of a landmass", () => {
+    const surfaces = classifyColumnSurfaces(grid([
+      [-1, -1, -1, -1],
+      [-1, 0, 0, -1],
+      [-1, 0, 1, -1],
+      [-1, -1, -1, -1],
+    ]));
 
-    expect(Object.fromEntries(surfaces)).toEqual({
-      "0:0": "water",
-      "1:0": "sand",
-      "1:1": "grass",
-      "2:2": "grass",
-      "0:2": "grass",
-    });
+    expect(surfaces.get("1:1")).toBe("sand");
+    expect(surfaces.get("2:1")).toBe("sand");
+    expect(surfaces.get("1:2")).toBe("sand");
+    expect(surfaces.get("2:2")).toBe("grass");
+    expect(surfaces.get("0:0")).toBe("water");
+  });
+
+  it("does not put sand on islets in the middle of the water", () => {
+    const surfaces = classifyColumnSurfaces(grid([
+      [-1, -1, -1, -1, -1],
+      [-1, 0, -1, 0, 0],
+      [-1, -1, -1, -1, -1],
+    ]));
+
+    expect(surfaces.get("1:1")).toBe("grass");
+    expect(surfaces.get("3:1")).toBe("grass");
+    expect(surfaces.get("4:1")).toBe("grass");
+  });
+
+  it("counts diagonal inland ground so shore corners stay sand", () => {
+    const surfaces = classifyColumnSurfaces(grid([
+      [-1, -1, -1],
+      [-1, 0, 0],
+      [-1, 0, 1],
+    ]));
+
+    // (1,1)'s edge neighbours are water or other shore cells; its only inland
+    // neighbour is the diagonal (2,2).
+    expect(surfaces.get("2:1")).toBe("sand");
+    expect(surfaces.get("1:2")).toBe("sand");
+    expect(surfaces.get("1:1")).toBe("sand");
+  });
+
+  it("only counts edge-adjacent water", () => {
+    const surfaces = classifyColumnSurfaces(grid([
+      [-1, null, null],
+      [null, 0, 0],
+      [null, 0, 0],
+    ]));
+
+    expect(surfaces.get("1:1")).toBe("grass");
   });
 
   it("uses the top block of filled columns", () => {
@@ -58,6 +98,7 @@ describe("classifyColumnSurfaces", () => {
       column(0, 0, 0),
       column(1, 0, -3),
       column(1, 0, -2),
+      column(0, 1, 1),
     ]);
 
     expect(surfaces.get("0:0")).toBe("sand");
