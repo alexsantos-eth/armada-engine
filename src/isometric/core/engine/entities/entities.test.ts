@@ -69,6 +69,26 @@ describe("Box", () => {
     expect(entity.metadata).toEqual({});
   });
 
+  it("preserves configured SVG color replacements", () => {
+    const colorReplacements = { "#9f4b2f": "#245c4a" };
+    const entity = new Entity(
+      0,
+      0,
+      {
+        id: "house",
+        textureSource: "/assets/house/block.svg",
+        height: 1,
+        spawnChance: 1,
+        surface: "grass",
+        colorReplacements,
+      },
+      0,
+    );
+
+    expect(entity.colorReplacements).toEqual(colorReplacements);
+    expect(entity.getData().colorReplacements).toEqual(colorReplacements);
+  });
+
   it("creates configured entities only on their configured surface", () => {
     const boxes = [
       new Box(1, 2, { elevation: 3 }),

@@ -4,6 +4,10 @@ export type BoxMetadata = Record<string, unknown>;
 
 export type EntitySurface = "grass" | "water";
 
+export type SvgColor = string | readonly string[];
+
+export type SvgColorReplacements = Readonly<Record<string, SvgColor>>;
+
 export type GridObjectData = {
   elevation: number;
   metadata: BoxMetadata;
@@ -23,6 +27,7 @@ export type EntityDefinition = {
   length?: number;
   spawnChance: number;
   surface: EntitySurface;
+  colorReplacements?: SvgColorReplacements;
 };
 
 export type EntityData = GridObjectData & {
@@ -31,6 +36,7 @@ export type EntityData = GridObjectData & {
   height: number;
   length: number;
   textureSource: string;
+  colorReplacements?: SvgColorReplacements;
 };
 
 /**
@@ -99,6 +105,7 @@ export interface IEntity extends IGridObject {
   readonly height: number;
   readonly length: number;
   readonly textureSource: string;
+  readonly colorReplacements?: SvgColorReplacements;
   getData(): EntityData;
 }
 

@@ -16,7 +16,7 @@ import {
   WATER_BLOCK_TEXTURE_KEY,
 } from "../constants";
 import { fillElevations, isWithinViewport } from "../projection";
-import { renderBlock } from "../render";
+import { createSvgColorVariant, renderBlock } from "../render";
 
 const POSITIVE_ELEVATION_TOP_TINT = 0xe8ffb0;
 
@@ -84,20 +84,41 @@ export async function createIsometricScene(
 
   const filledBoxes = fillElevations(boxes, DEFAULT_MIN_ELEVATION);
   const entities = createEntities(boxes);
-  const entitySources = [...new Set(entities.map((entity) => entity.textureSource))];
+  const entityTextureKeys = new Map<Entity, string>();
+  const entityTextureVariants = [
+    ...new Map(
+      entities.map((entity, index) => {
+        const variantKey = entity.colorReplacements
+          ? `entity:${index}`
+          : entity.textureSource;
+        entityTextureKeys.set(entity, variantKey);
+        return [variantKey, entity] as const;
+      }),
+    ).entries(),
+  ];
   const textures = new Map<string, Texture>();
   const [grassTexture, groundTexture, waterTexture, ...entityTextures] = await Promise.all([
     Assets.load<Texture>(grassBlockSource),
     Assets.load<Texture>(groundBlockSource),
     Assets.load<Texture>(waterBlockSource),
-    ...entitySources.map((source) => Assets.load<Texture>(source)),
+    ...entityTextureVariants.map(async ([variantKey, entity]) => {
+      const source = await createSvgColorVariant(
+        entity.textureSource,
+        entity.colorReplacements,
+      );
+      return { variantKey, source, texture: await Assets.load<Texture>(source) };
+    }),
   ]);
   textures.set(GRASS_BLOCK_TEXTURE_KEY, grassTexture);
   textures.set(GROUND_BLOCK_TEXTURE_KEY, groundTexture);
   textures.set(WATER_BLOCK_TEXTURE_KEY, waterTexture);
   const entityTexturesBySource = new Map(
-    entitySources.map((source, index) => [source, entityTextures[index]]),
+    entityTextureVariants.map(([variantKey], index) => [
+      variantKey,
+      entityTextures[index]?.texture,
+    ]),
   );
+  const loadedEntitySources = entityTextures.map(({ source }) => source);
 
   const scene = new Container();
   scene.sortableChildren = true;
@@ -188,7 +209,10 @@ export async function createIsometricScene(
         ),
       )
       .forEach((entity) => {
-        const texture = entityTexturesBySource.get(entity.box.textureSource);
+        const variantKey = entityTextureKeys.get(entity.box);
+        if (!variantKey) return;
+
+        const texture = entityTexturesBySource.get(variantKey);
         if (!texture) return;
 
         renderBlock(
@@ -211,7 +235,7 @@ export async function createIsometricScene(
     void Assets.unload(grassBlockSource);
     void Assets.unload(groundBlockSource);
     void Assets.unload(waterBlockSource);
-    entitySources.forEach((source) => void Assets.unload(source));
+    loadedEntitySources.forEach((source) => void Assets.unload(source));
   };
 }
 

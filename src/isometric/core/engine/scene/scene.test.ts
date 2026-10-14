@@ -35,6 +35,7 @@ vi.mock("pixi.js", () => {
 });
 
 vi.mock("../render", () => ({
+  createSvgColorVariant: vi.fn(async (source: string) => source),
   renderBlock: vi.fn(
     (
       _container: unknown,
@@ -55,6 +56,7 @@ vi.mock("../render", () => ({
 
 import { Assets } from "pixi.js";
 import { Entity } from "../entities";
+import { createSvgColorVariant } from "../render";
 import { createIsometricScene } from "./scene";
 
 const createTestEntities = (boxes: { x: number; y: number; elevation: number }[]) =>
@@ -75,6 +77,23 @@ const createTestEntities = (boxes: { x: number; y: number; elevation: number }[]
         ),
       ]
     : [];
+
+const createColorizedEntities = (boxes: { x: number; y: number; elevation: number }[]) =>
+  boxes.slice(0, 2).map((box, index) => new Entity(
+    box.x,
+    box.y,
+    {
+      id: `house-${index}`,
+      textureSource: "/assets/house/block.svg",
+      height: 1,
+      spawnChance: 1,
+      surface: "grass",
+      colorReplacements: {
+        "#9f4b2f": ["#f0c040", "#c0392b", "#3478b8"],
+      },
+    },
+    box.elevation,
+  ));
 
 describe("createIsometricScene", () => {
   beforeEach(() => {
@@ -138,6 +157,29 @@ describe("createIsometricScene", () => {
     const destroyScene = await createIsometricScene(app as never, createTestEntities);
 
     expect(renderCalls).toHaveLength(0);
+    destroyScene();
+  });
+
+  it("creates one colorized SVG variant per entity instance", async () => {
+    const app = {
+      screen: { width: 1300, height: 1000 },
+      stage: { addChild: vi.fn() },
+    };
+
+    const destroyScene = await createIsometricScene(app as never, createColorizedEntities);
+
+    expect(createSvgColorVariant).toHaveBeenCalledTimes(2);
+    expect(createSvgColorVariant).toHaveBeenNthCalledWith(
+      1,
+      "/assets/house/block.svg",
+      { "#9f4b2f": ["#f0c040", "#c0392b", "#3478b8"] },
+    );
+    expect(createSvgColorVariant).toHaveBeenNthCalledWith(
+      2,
+      "/assets/house/block.svg",
+      { "#9f4b2f": ["#f0c040", "#c0392b", "#3478b8"] },
+    );
+
     destroyScene();
   });
 

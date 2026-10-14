@@ -97,6 +97,9 @@ export class Entity implements IEntity {
       height: definition.height,
       length: definition.length ?? 1,
       textureSource: definition.textureSource,
+      ...(definition.colorReplacements
+        ? { colorReplacements: definition.colorReplacements }
+        : {}),
       metadata: {},
     };
   }
@@ -123,6 +126,10 @@ export class Entity implements IEntity {
 
   get textureSource(): string {
     return this.data.textureSource;
+  }
+
+  get colorReplacements(): IEntity["colorReplacements"] {
+    return this.data.colorReplacements;
   }
 
   get metadata(): BoxMetadata {
