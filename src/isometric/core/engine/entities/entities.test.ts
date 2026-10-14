@@ -493,6 +493,41 @@ describe("Box", () => {
       ).map(({ x, y }) => `${x}:${y}`)).toEqual(["1:0"]);
     });
 
+    it("lets land-and-water footprints reach over water at a lower elevation", () => {
+      // x=0 water (-1), x=1 shore sand (0), x=2 inland grass (0), on every row.
+      const beach = [
+        [-1, 0, 0, 0],
+        [-1, 0, 0, 0],
+        [-1, 0, 0, 0],
+      ];
+      const entities = createEntitiesFromConfig(
+        toBoxes(beach),
+        [{ ...pier, footprintSurfaces: ["water", "sand", "grass"] }],
+        () => 0,
+      );
+
+      expect(entities.map(({ x, y }) => `${x}:${y}`)).toEqual(["0:0", "0:1", "0:2"]);
+      // The entity stands at the land elevation, not at the water anchor's.
+      entities.forEach(({ elevation }) => expect(elevation).toBe(0));
+    });
+
+    it("still requires the land blocks of a mixed footprint to be flat", () => {
+      const steps = [
+        [-1, 0, 1, 1],
+        [-1, 0, 1, 1],
+      ];
+
+      expect(createEntitiesFromConfig(
+        toBoxes(steps),
+        [{
+          ...pier,
+          surfaceElevation: undefined,
+          footprintSurfaces: ["water", "sand", "grass"],
+        }],
+        () => 0,
+      )).toEqual([]);
+    });
+
     it("falls back to the definition surface for blocks it does not list", () => {
       expect(createEntitiesFromConfig(
         toBoxes(shore),

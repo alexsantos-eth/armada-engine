@@ -118,7 +118,9 @@ describe("ENTITY_CONFIG", () => {
     });
   });
 
-  it("declares a pier for each axis and direction of a grass-sand-sand row", () => {
+  // The "land at the anchor" orientations (grass, sand, sand) are temporarily disabled;
+  // their SVGs stay in /assets/pier/ (block_*_land_start.svg).
+  it("declares the land-at-the-end pier on both axes", () => {
     const piers = ENTITY_CONFIG.filter(({ textureSource }) =>
       textureSource.startsWith("/assets/pier/"),
     );
@@ -126,9 +128,7 @@ describe("ENTITY_CONFIG", () => {
     expect(piers.map(({ lengthAxis, footprintSurfaces }) =>
       `${lengthAxis}:${footprintSurfaces?.join(",")}`,
     ).sort()).toEqual([
-      "x:grass,sand,sand",
       "x:sand,sand,grass",
-      "y:grass,sand,sand",
       "y:sand,sand,grass",
     ]);
     piers.forEach(({ length }) => expect(length).toBe(3));
