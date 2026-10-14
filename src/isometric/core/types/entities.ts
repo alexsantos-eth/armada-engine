@@ -27,6 +27,7 @@ export type EntityDefinition = {
   length?: number;
   spawnChance: number;
   surface: EntitySurface;
+  surfaceElevation?: number;
   colorReplacements?: SvgColorReplacements;
 };
 

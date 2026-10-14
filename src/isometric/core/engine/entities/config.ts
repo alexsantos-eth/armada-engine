@@ -29,6 +29,7 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     length: 1,
     spawnChance: 0.03,
     surface: "grass",
+    surfaceElevation: 2,
     colorReplacements: {
       "#9f4b2f": ["#8f5f12", "#7f241b", "#1f4f85"],
       "#a34d31": ["#986614", "#8f2b20", "#265d96"],

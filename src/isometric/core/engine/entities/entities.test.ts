@@ -132,6 +132,28 @@ describe("Box", () => {
     expect(entities.map(({ x, y }) => `${x}:${y}`)).toEqual(["1:2", "6:7"]);
   });
 
+  it("restricts entities to their configured surface elevation", () => {
+    const entities = createEntitiesFromConfig(
+      [
+        new Box(1, 2, { elevation: 2 }),
+        new Box(3, 4, { elevation: 3 }),
+        new Box(5, 6, { elevation: 4 }),
+      ],
+      [{
+        id: "house",
+        textureSource: "/assets/house/block.svg",
+        height: 1,
+        spawnChance: 1,
+        surface: "grass",
+        surfaceElevation: 3,
+      }],
+      () => 0,
+    );
+
+    expect(entities).toHaveLength(1);
+    expect(entities[0].elevation).toBe(3);
+  });
+
   it("uses the random result to skip eligible columns", () => {
     const boxes = [new Box(1, 2, { elevation: 1 })];
 

@@ -71,8 +71,15 @@ export class Box implements IBox {
   }
 }
 
-function canSpawnOnSurface(box: IGridObject, surface: EntityDefinition["surface"]): boolean {
-  switch (surface) {
+function canSpawnOnSurface(box: IGridObject, definition: EntityDefinition): boolean {
+  if (
+    definition.surfaceElevation !== undefined &&
+    box.elevation !== definition.surfaceElevation
+  ) {
+    return false;
+  }
+
+  switch (definition.surface) {
     case "grass":
       return box.elevation >= 0;
     case "water":
@@ -154,7 +161,7 @@ export function createEntitiesFromConfig(
     boxes
       .filter(
         (box) =>
-          canSpawnOnSurface(box, definition.surface) &&
+          canSpawnOnSurface(box, definition) &&
           random() < definition.spawnChance,
       )
       .map(
