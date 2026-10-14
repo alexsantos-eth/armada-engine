@@ -68,3 +68,15 @@ pnpm dev
 ```
 
 No crear commits ni ramas automáticamente. No revertir cambios existentes que no pertenezcan al trabajo actual.
+
+## Estado actual del core
+
+Las entidades se configuran en `engine/entities/config.ts` y pueden usar `surfaceElevation`, `length`, `lengthAxis`, `colorReplacements` y `debug`. `createEntitiesFromConfig()` valida la superficie y la elevación de toda la huella, reserva las coordenadas con un `Set` y evita solapamientos entre entidades.
+
+Los assets multi-bloque declaran su geometría con `data-tiles`; `lengthAxis: "x"` es el valor por defecto y `lengthAxis: "y"` orienta la huella hacia el eje `y`. El renderer aplica la orientación al sprite y dibuja un rombo de debug por bloque ocupado en sus niveles inferior y superior.
+
+`colorReplacements` acepta colores individuales o listas de variantes. La escena genera una textura SVG recoloreada por instancia, manteniendo una elección coherente de variante dentro de cada asset.
+
+## Regla de documentación
+
+Cada cambio que modifique el funcionamiento del core, sus contratos, el renderizado o el flujo de assets debe actualizar en el mismo cambio los Markdown afectados. Como mínimo, revisa `ARCHITECTURE.md` para el runtime y `CONTRIBUTING.md` para el flujo; revisa también `ISO_ASSET_AGENT.md` si cambia la geometría o integración de assets.

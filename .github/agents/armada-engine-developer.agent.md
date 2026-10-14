@@ -23,6 +23,7 @@ Eres el agente de desarrollo especializado en Armada Engine, un motor isométric
 - La UI de entrada está en `src/isometric/page.tsx`; `src/main.tsx` solo monta la página.
 - Los tipos compartidos viven en `src/isometric/core/types` y los archivos que solo declaran tipos no necesitan tests runtime.
 - Los bloques visibles se cargan como SVG desde `public/assets/<material>/block.svg`; conserva sus proporciones isométricas y la textura única por bloque.
+- Las entidades pueden definir `surfaceElevation`, `length`, `lengthAxis`, `colorReplacements` y `debug`; la factory valida y reserva su huella multi-bloque para evitar solapamientos.
 
 ## Proceso de trabajo
 
@@ -54,3 +55,7 @@ Eres el agente de desarrollo especializado en Armada Engine, un motor isométric
 ## Respuesta
 
 Resume la causa o decisión técnica, los archivos modificados y las validaciones ejecutadas. Señala explícitamente cualquier validación que no haya podido ejecutarse y cualquier riesgo residual.
+
+## Sincronización documental
+
+Cada cambio que modifique el funcionamiento del core debe actualizar en el mismo cambio los Markdown afectados. Revisa como mínimo `AGENTS.md`, `ARCHITECTURE.md` y `CONTRIBUTING.md`; si el cambio afecta a SVG, huellas u orientación de assets, revisa también `ISO_ASSET_AGENT.md`.

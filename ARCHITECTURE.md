@@ -84,7 +84,7 @@ Los archivos de tipos no contienen lógica runtime y no tienen tests propios. Ty
 
 La clase aplica datos por defecto y combina metadata de forma superficial. `getData()` devuelve una copia de los datos y una copia de `metadata`, de modo que el consumidor no puede modificar el estado interno accidentalmente.
 
-Las entidades no son subtipos de `Box`. `Entity` implementa el contrato espacial común y contiene su identificador, asset, altura y elevación. Las definiciones viven en `engine/entities/config.ts`; `createEntitiesFromConfig()` filtra las columnas elegibles y crea entidades sin conocer tipos concretos como el árbol. Para incorporar una entidad nueva se añade una entrada de configuración y su SVG, sin modificar `scene.ts`.
+Las entidades no son subtipos de `Box`. `Entity` implementa el contrato espacial común y contiene su identificador, asset, altura, longitud, orientación de longitud y elevación. Las definiciones viven en `engine/entities/config.ts`; `createEntitiesFromConfig()` filtra columnas por superficie y, cuando existe, por `surfaceElevation`, valida todas las celdas de una huella multi-bloque y las reserva en un `Set` para evitar solapamientos. La primera definición que reserva una coordenada tiene prioridad. Para incorporar una entidad nueva se añade una entrada de configuración y su SVG, sin modificar `scene.ts`.
 
 ## Generación del terreno
 
@@ -148,24 +148,27 @@ El bloque superior se identifica con un `Map` cuya clave es `${x}:${y}`. Así el
 
 El agua reutiliza la misma textura SVG para todos sus niveles. `getWaterTint()` aplica un tintado más oscuro cuanto mayor es `Math.abs(elevation)`. No se generan texturas nuevas para cada profundidad.
 
-Después de renderizar los bloques de terreno, la escena proyecta y renderiza las entidades creadas por la factory. Sus texturas y alturas se resuelven mediante la configuración; la escena no contiene reglas por entidad.
+Después de renderizar los bloques de terreno, la escena proyecta y renderiza las entidades creadas por la factory. Sus texturas, alturas, longitudes y debug se resuelven mediante la configuración; la escena no contiene reglas por entidad.
+
+Las variantes de color SVG se generan por instancia cuando `colorReplacements` está definido. Cada clave de color puede tener un color o una lista; se selecciona una variante coherente para todo el SVG de esa instancia, se codifica como una fuente `data:image/svg+xml` y se carga como textura Pixi independiente.
 
 ## Renderizado de bloques
 
 `renderBlock()` crea un `Sprite` a partir de una textura ya cargada:
 
-1. Ajusta el tamaño a `TILE_WIDTH` y `TILE_HEIGHT + BOX_HEIGHT`.
+1. Ajusta el tamaño a `TILE_WIDTH` y a la proporción del SVG cuando la entidad ocupa varios bloques.
 2. Coloca el ancla en `(0.5, 0)` para alinear el centro horizontal y el borde superior.
-3. Posiciona el sprite en `screenX` y `screenY - TILE_HEIGHT / 2`.
+3. Posiciona el sprite según `lengthAxis`; el eje `y` desplaza la huella hacia el lado inferior izquierdo de la proyección.
 4. Aplica tint opcional.
 5. Calcula `zIndex` usando `baseScreenY`, elevación y una pequeña corrección por `x`.
-6. Añade el sprite al `Container` ordenable.
+6. Si `debug` está activo, añade un `Graphics` con un rombo fino por bloque ocupado en los niveles inferior y superior.
+7. Añade los objetos al `Container` ordenable.
 
 Los SVG representan el bloque completo. No se deben volver a componer caras `top`, `left` y `right` en runtime.
 
 ## Ciclo de vida de recursos
 
-`createIsometricScene()` crea primero las entidades y descubre sus URLs de asset desde `textureSource`. Después carga los SVG de terreno y las URLs únicas de las entidades con `Assets.load()` en paralelo. Si la escena se desmonta, destruye el container y llama a `Assets.unload()` para cada fuente. Pixi gestiona las texturas; no se debe llamar a `destroy(true)` sobre una textura administrada por `Assets`.
+`createIsometricScene()` crea primero las entidades y descubre sus assets desde `textureSource`. Después carga los SVG de terreno y las variantes de entidad con `Assets.load()` en paralelo. Cada instancia recoloreada obtiene su propia variante; las fuentes originales sin recolor pueden reutilizarse. Si la escena se desmonta, destruye el container y llama a `Assets.unload()` para cada fuente cargada. Pixi gestiona las texturas; no se debe llamar a `destroy(true)` sobre una textura administrada por `Assets`.
 
 ## Testing y calidad
 
@@ -201,9 +204,21 @@ Para añadir un nuevo material de terreno:
 Para añadir una entidad:
 
 1. Crear su SVG en `public/assets/<entidad>/block.svg`.
-2. Añadir una entrada en `src/isometric/core/engine/entities/config.ts` con `id`, `textureSource`, `height`, `spawnChance` y `surface`.
+2. Añadir una entrada en `src/isometric/core/engine/entities/config.ts` con `id`, `textureSource`, `height`, `spawnChance` y `surface`; si ocupa más de un bloque, añadir `length` y `lengthAxis` según `data-tiles`.
 3. Añadir o actualizar el test de la factory para demostrar la regla de colocación.
 4. No añadir condiciones específicas de la entidad en `scene.ts`, `Box` o `render.ts`.
 5. Ejecutar coverage, build y Typedoc.
 
 Para añadir una nueva regla de elevación, modificar primero `projection` o la selección de materiales, según dónde pertenezca la decisión. No introducir esa lógica dentro de `render`, porque el renderer solo debe convertir una decisión ya tomada en un Sprite.
+
+## Estado actual de entidades y assets
+
+Las definiciones de entidad pueden exigir `surfaceElevation`, declarar una huella con `length` y `lengthAxis`, activar `debug` y proporcionar `colorReplacements`. La factory valida todas las celdas de la huella, las reserva en un `Set` y evita solapamientos entre entidades; la primera definición que reserva una coordenada tiene prioridad.
+
+`lengthAxis: "x"` es el valor por defecto. `lengthAxis: "y"` orienta el asset hacia el eje `y` y se aplica de forma coherente a la reserva de celdas, al posicionamiento del sprite y a los rombos de debug. Los assets multi-bloque deben reflejar su atributo SVG `data-tiles` en esta configuración.
+
+Cuando una entidad define `colorReplacements`, cada instancia obtiene una textura SVG recoloreada propia. Cada clave acepta un color o una lista; se selecciona una variante coherente para todas las apariciones de esa clave dentro del SVG. `debug: true` dibuja un rombo fino por bloque ocupado en las superficies inferior y superior.
+
+## Regla de sincronización
+
+Todo cambio que modifique el funcionamiento del core, sus contratos, el renderizado o el flujo de assets debe actualizar en el mismo cambio los Markdown afectados. `ARCHITECTURE.md` documenta el runtime, `CONTRIBUTING.md` el flujo práctico y `ISO_ASSET_AGENT.md` las reglas de generación e integración de SVG.
