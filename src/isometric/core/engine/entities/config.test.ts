@@ -77,6 +77,19 @@ describe("ENTITY_CONFIG", () => {
     ]));
   });
 
+  it("declares the two-block-tall tree variants", () => {
+    const tallTrees = ENTITY_CONFIG.filter(({ textureSource }) =>
+      textureSource.startsWith("/assets/tree/") && readTiles(textureSource)[2] === 2,
+    );
+
+    expect(tallTrees.map(({ id }) => id)).toEqual(expect.arrayContaining([
+      "tree_3",
+      "tree_7",
+      "tree_8",
+    ]));
+    tallTrees.forEach(({ height }) => expect(height).toBe(2));
+  });
+
   it("declares multi-storey houses and buildings", () => {
     const tall = ENTITY_CONFIG.filter(({ textureSource }) =>
       /\/(house|building)\//.test(textureSource) && readTiles(textureSource)[2] >= 2,
