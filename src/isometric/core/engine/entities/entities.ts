@@ -157,16 +157,21 @@ export function createEntitiesFromConfig(
   definitions: EntityDefinition[] = ENTITY_CONFIG,
   random: () => number = Math.random,
 ): Entity[] {
-  return definitions.flatMap((definition) =>
-    boxes
-      .filter(
-        (box) =>
-          canSpawnOnSurface(box, definition) &&
-          random() < definition.spawnChance,
-      )
-      .map(
-        (box) =>
-          new Entity(box.x, box.y, definition, box.elevation),
-      ),
-  );
+  const entities: Entity[] = [];
+  const occupiedPositions = new Set<string>();
+
+  for (const definition of definitions) {
+    for (const box of boxes) {
+      if (!canSpawnOnSurface(box, definition)) continue;
+
+      const positionKey = `${box.x}:${box.y}`;
+      if (occupiedPositions.has(positionKey)) continue;
+      if (random() >= definition.spawnChance) continue;
+
+      occupiedPositions.add(positionKey);
+      entities.push(new Entity(box.x, box.y, definition, box.elevation));
+    }
+  }
+
+  return entities;
 }

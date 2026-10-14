@@ -1,6 +1,6 @@
 ---
 name: iso-asset-generator
-description: Generates 2:1 isometric "voxel clay" SVG assets (trees, rocks, statues, buildings, props, vehicles) for a 2D game, built from very round clay voxels inside the two-diamond bounds template — single-tile or multi-tile (e.g. a 2-tile-long car) — with a Python generator and true projection.
+description: Generates 2:1 isometric "voxel clay" SVG assets (trees, rocks, statues, buildings, props, vehicles) for a 2D game, built from very round clay voxels inside the two-diamond bounds template — single-tile or multi-tile (e.g. a 2-tile-long car, a 2-block-tall house) — with a Python generator and true projection.
 tools: Write, Edit, Read, Bash, AskUserQuestion
 ---
 
@@ -44,6 +44,16 @@ Objects longer than one tile (cars, carts, benches, beds, long walls, fallen log
 - The `<svg>` of a multi-tile asset carries `data-tiles="2x1"` (or `1x2`, …) so the pipeline can read the footprint without parsing paths.
 - **Both orientations are separate assets.** Never mirror a 2×1 sprite to get the 1×2 one: a horizontal flip swaps the lit right face with the dark left face. Write the asset once in local coordinates with `a.local(u, v, hu, hv)` (u along the long axis, v across it, from the footprint centre) and generate each orientation from the same script.
 
+### Height in blocks (2 blocks tall, and beyond)
+
+Tall objects (two-storey houses, towers, big trees, lampposts) use a third number: `Asset(tiles=(nx, ny, nz))`, with `nz` blocks of height. `Asset(tiles=(1, 1, 2))` is one tile wide and **two blocks tall**.
+
+- **Ceiling** = `a.ceiling` = 341 · nz (682 for two blocks). The floor, the anchor tile and the foot at (512, 256) don't move; only the upper diamond goes up.
+- **Canvas** grows upward: `viewBox` min-y = −341 · nz, height = 256 · (nx + ny) + 341 · nz. 1×1×2 → `0 -682 1024 1194`, upper diamond `M512 -682 1024 -426 512 -170 0 -426Z`. `data-tiles="1x1x2"`.
+- Height and footprint combine freely: `(2, 1, 2)` is two tiles long and two blocks tall.
+- **Height falloff is absolute** (85 % at z = 0 up to 100 % at z = 341, then flat), so walls at the same height match between 1- and 2-block assets placed side by side.
+- Design for the height: split a tall object into readable stages (storeys, a trunk and a crown, a shaft and a lamp) instead of stretching single-block voxels. Keep each voxel roughly cube-like (`u` 100–260); a two-storey house uses one row of wall blocks per storey.
+
 ## 2. Projection
 
 World coordinates: `x` points down-right, `y` points down-left, and `z` points up. The origin is the center of the lower diamond.
@@ -54,7 +64,7 @@ sy = 256 + (x + y) / 2 - z
 ```
 
 - Usable footprint is `|x| ≤ 254`, `|y| ≤ 254` on a 1×1 asset. The maximum is 256; 2 px are kept for anti-aliasing. For any footprint, use `a.x0 ≤ x ≤ a.x1`, `a.y0 ≤ y ≤ a.y1` (already shrunk by the margin) and `a.mid` (the footprint centre); on a 2×1 that is x ∈ [−254, 766], y ∈ [−254, 254], mid = (256, 0).
-- Usable height is `0 ≤ z ≤ 341`.
+- Usable height is `0 ≤ z ≤ 341` per block of height: `0 ≤ z ≤ a.ceiling` (682 for a 2-block-tall asset).
 - The view direction is `(1, 1, 1)`. Painter order: when two voxels overlap on screen and one is entirely behind the other along x, y or z, the one behind is painted first; voxels that interpenetrate (accents pressed into a face) go from lowest to highest `x + y + z` at their centres. `VoxelGrid.draw()` does this for you (`depth_order`). The plain centre rule alone breaks with long voxels (a 1000-unit car body has its centre far from its front wheels), which is why the separation test exists.
 - **Prefer separable layouts.** Stack parts so they touch rather than interpenetrate (wheels end at z = 96, the body starts at z = 100; bumpers sit just past the body's ends). Only small accents should be pushed into another voxel.
 - Visible faces of a box:
@@ -71,6 +81,7 @@ sy = 256 + (x + y) / 2 - z
 - **Few, big voxels.** An asset uses roughly **8–20 voxels** in total (up to ~24 on a 2-tile asset). Detail comes from the silhouette and from where the voxels are placed, not from voxel count. If a part needs more than ~4 voxels across, make the voxels bigger.
 - **Grid first.** Main masses sit on one grid (`VoxelGrid`) with a cell size `u` of about 100–120 world units, so voxels are cube-shaped and line up. Off-grid voxels (`place`) are allowed for trunks, accents and props, and they still share the painter order.
 - **Visible seams.** Neighbouring voxels keep a small gap (`gap` ≈ 6) so each one reads as its own pressed-on piece of clay. Never merge them into one smooth blob.
+- **Hollow forms are framed, not carved.** Voxels can't be subtracted, so a cockpit, a cart bed, a well or a planter is a low floor voxel surrounded by thin rail voxels (each rail separated from the floor along x or y). See the speedboat idea in section 7.
 - **Long voxels.** On multi-tile assets a main mass may be one long rounded box (a car body, a bench seat, a wall run): `VoxelGrid.add(..., span=(si, sj, sk))` on the grid, or `place` off it. `r` still follows the smallest half-size, so a long, low slab keeps soft but proportionate edges. Don't chop a long mass into many cubes just to stay on the grid.
 - **Proportions.** Thin parts (trunks, posts, legs) are narrower voxels (half-size ≈ 25–35 % of `u`), not stacks of tiny cubes. Accents (fruit, gems, flowers) are small voxels (half-size ≈ 12–16) pressed into a face.
 
@@ -89,13 +100,14 @@ The light is a single directional sun from the **upper right**, high in the sky.
 
 - **Order is always top > right > left.** The left face is clearly the darkest, but still mid-tone, never near black.
 - **One bevel band per rounded edge.** The middle third of each rounded edge gets the average of the two faces it joins. That single flat band is what makes the clay read as soft and round. No gradients across it.
-- **Height falloff instead of ambient occlusion.** Lower voxels are a bit darker, down to ~85 % at floor level. Each voxel is shaded with the height of its own top, so all its regions shift together. No dark contact bands, no soft shadows.
+- **Height falloff instead of ambient occlusion.** Lower voxels are a bit darker, down to ~85 % at floor level; everything from one block up (z ≥ 341) is at 100 %. Each voxel is shaded with the height of its own top, so all its regions shift together. No dark contact bands, no soft shadows.
 - **Material layers are separate voxels.** Grass over dirt, snow over rock, moss over stone: stack a thinner, slightly smaller voxel of the top material on the core voxel, so the layer shows as its own rounded slab.
 - **Cast shadow**: one flat rounded rectangle (`Asset.flat`) shifted toward the lower left (+y).
   - On a ground voxel of the asset: `face="left"`, the ground's own left value, opaque, kept inside that ground.
   - With no ground (the object stands straight on the game's terrain): on the floor (z = 0) in a dark neutral (`#1e2a10`) with `alpha=.22`, so it darkens whatever tile the game draws below.
 - **No gradients, no specular highlights, no rim lines.** Glow (runes, eyes, magic) is the only allowed exception.
-- Pick base colors as fairly saturated mid-to-light tones; the factors darken them on their own.
+- Pick base colors as fairly saturated mid-to-light tones; the factors darken them on their own. For white materials use a near-white base (`#fffdf6`), or the shading reads as grey.
+- The accent must contrast with what the game draws underneath: no blue hull on water, no green roof among trees.
 
 `iso_lib.py` applies these rules for you: `voxel` and `VoxelGrid` take a **base material color** and do the face, bevel and falloff shading internally. For any extra shape you draw by hand, compute its fill with `shade(color, face, z)`.
 
@@ -121,7 +133,8 @@ How it works: `voxel()` builds a mesh of the rounded box, keeps the facets that 
 # iso_lib.py — primitives for 2:1 isometric "voxel clay" assets in the two-diamond template
 # Every solid is a rounded box (a clay voxel). Cel shading, light from the upper right, no outlines.
 # Supports multi-tile footprints: Asset(tiles=(2, 1)) is two tiles long along +x (down-right),
-# Asset(tiles=(1, 2)) two tiles long along +y (down-left). The anchor tile keeps the 1x1 coordinates.
+# Asset(tiles=(1, 2)) two tiles long along +y (down-left), Asset(tiles=(1, 1, 2)) two blocks tall
+# (ceiling at z = 682). The anchor tile keeps the 1x1 coordinates.
 # Requires: shapely (pip install shapely --break-system-packages)
 import heapq
 import math
@@ -160,7 +173,8 @@ def tint(hex_color, f):
 
 
 def falloff(z):
-    """Height falloff instead of ambient occlusion: 85 % at the floor, 100 % at the ceiling."""
+    """Height falloff instead of ambient occlusion: 85 % at the floor, 100 % from one block up (341).
+    Absolute, not relative to the asset, so a wall at the same height matches across 1- and 2-block assets."""
     return 0.85 + 0.15 * min(max(z / H, 0), 1)
 
 
@@ -223,15 +237,17 @@ def rbox_facets(cx, cy, z0, hx, hy, hz, r, k=SEGMENTS):
 
 
 class Asset:
-    """tiles=(nx, ny): footprint in tiles. (1, 1) is the classic single-tile asset.
+    """tiles=(nx, ny) or (nx, ny, nz): footprint in tiles, plus height in blocks (nz, default 1).
+    (1, 1) is the classic single-tile asset; (1, 1, 2) is one tile wide and two blocks tall.
     The anchor tile (the foot) is always centred on world (0, 0) → screen (512, 256);
-    extra tiles extend toward +x (down-right) and +y (down-left).
+    extra tiles extend toward +x (down-right) and +y (down-left); extra blocks stack upward.
     Useful world ranges, already shrunk by the anti-aliasing margin:
-        a.x0 ≤ x ≤ a.x1,   a.y0 ≤ y ≤ a.y1,   0 ≤ z ≤ H
+        a.x0 ≤ x ≤ a.x1,   a.y0 ≤ y ≤ a.y1,   0 ≤ z ≤ a.ceiling (= H · nz)
     a.mid = (x, y) world centre of the whole footprint."""
     def __init__(self, tiles=(1, 1)):
-        self.nx, self.ny = tiles
-        assert self.nx >= 1 and self.ny >= 1
+        self.nx, self.ny, self.nz = (tuple(tiles) + (1,))[:3]
+        assert self.nx >= 1 and self.ny >= 1 and self.nz >= 1
+        self.ceiling = H * self.nz
         self.x0, self.x1 = -HALF, TILE * self.nx - TILE // 2 - MARGIN
         self.y0, self.y1 = -HALF, TILE * self.ny - TILE // 2 - MARGIN
         self.mid = ((self.nx - 1) * TILE / 2, (self.ny - 1) * TILE / 2)
@@ -254,11 +270,13 @@ class Asset:
     def envelope(self, length=1.0, width=1.0, height=1.0):
         """Size of the object from fill fractions of the usable volume (1.0 = the maximum).
         Returns (hu, hv, top): half-size along the long axis, half-size across it (both in
-        a.local coordinates, centred on a.mid) and the height of the highest voxel.
-        2x1 maximum: hu = 510, hv = 254, top = 341.  E.g. a.envelope(.67, .87, .93) → (342, 221, 317)."""
+        a.local coordinates, centred on a.mid) and the height of the highest voxel, as a
+        fraction of the ceiling (341 per block of height).
+        2x1 maximum: hu = 510, hv = 254, top = 341.  E.g. a.envelope(.67, .87, .93) → (342, 221, 317).
+        1x1x2 maximum: hu = hv = 254, top = 682."""
         long_half = TILE * max(self.nx, self.ny) / 2 - MARGIN
         short_half = TILE * min(self.nx, self.ny) / 2 - MARGIN
-        return round(length * long_half), round(width * short_half), round(height * H)
+        return round(length * long_half), round(width * short_half), round(height * self.ceiling)
 
     # ---- canvas geometry ----
     def footprint(self, z=0, margin=0):
@@ -269,9 +287,9 @@ class Asset:
         return [P(xa, ya, z), P(xb, ya, z), P(xb, yb, z), P(xa, yb, z)]
 
     def viewbox(self):
-        """(minx, miny, width, height). 1x1 → (0, -341, 1024, 853)."""
-        return (CX - TILE * self.ny, CY - TILE // 2 - H,
-                TILE * (self.nx + self.ny), TILE // 2 * (self.nx + self.ny) + H)
+        """(minx, miny, width, height). 1x1 → (0, -341, 1024, 853); 1x1x2 → (0, -682, 1024, 1194)."""
+        return (CX - TILE * self.ny, CY - TILE // 2 - self.ceiling,
+                TILE * (self.nx + self.ny), TILE // 2 * (self.nx + self.ny) + self.ceiling)
 
     def _diamond_d(self, z):
         pts = self.footprint(z)
@@ -335,7 +353,7 @@ class Asset:
     # ---- output and validation ----
     def bounds_hull(self):
         """Screen outline of the footprint prism (hexagon formed by the two diamonds)."""
-        return MultiPoint(self.footprint(0) + self.footprint(H)).convex_hull
+        return MultiPoint(self.footprint(0) + self.footprint(self.ceiling)).convex_hull
 
     def check_bounds(self, tol=1.0):
         """Every screen point must fall inside the hexagon formed by the two diamonds."""
@@ -349,13 +367,14 @@ class Asset:
         defs = "\n    ".join(STANDARD_DEFS + self.defs)
         body = "\n    ".join(self.out)
         vx, vy, vw, vh = self.viewbox()
-        tiles = "" if (self.nx, self.ny) == (1, 1) else f' data-tiles="{self.nx}x{self.ny}"'
+        dims = f"{self.nx}x{self.ny}" + (f"x{self.nz}" if self.nz > 1 else "")
+        tiles = "" if dims == "1x1" else f' data-tiles="{dims}"'
         svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{vw}" height="{vh}" viewBox="{vx} {vy} {vw} {vh}"{tiles}>
   <defs>
     {defs}
   </defs>
   <path id="lower-shadow" fill="transparent" d="{self._diamond_d(0)}" opacity=".28" />
-  <path id="upper-shadow" fill="transparent" d="{self._diamond_d(H)}" opacity=".2" />
+  <path id="upper-shadow" fill="transparent" d="{self._diamond_d(self.ceiling)}" opacity=".2" />
   <g id="figure">
     {body}
   </g>
@@ -400,7 +419,9 @@ def depth_order(cells):
             if bi[2] <= bj[0] or bj[2] <= bi[0] or bi[3] <= bj[1] or bj[3] <= bi[1]:
                 continue                       # no screen overlap → order doesn't matter
             ij, ji = _behind(cells[i], cells[j]), _behind(cells[j], cells[i])
-            if ij == ji:                       # interpenetrating (or ambiguous): centre rule
+            if ij and ji:                      # separated in opposite senses on two axes:
+                continue                       # they can't really overlap on screen
+            if not ij and not ji:              # interpenetrating: centre rule
                 ij = key[i] <= key[j]
             if ij:
                 after[i].append(j); indeg[j] += 1
@@ -495,10 +516,11 @@ To inspect bevels and seams, render at 1400 px and crop the area with PIL. To ch
    | Question | What it sets | Options (the user can always answer with their own value) | Default |
    |---|---|---|---|
    | **Length** — how many tiles long? | `Asset(tiles=…)` | 1 tile · 2 tiles (2×1) · 2 tiles, both orientations (2×1 + 1×2) | 1 tile, or 2 when the object is clearly long (car, bench, cart) |
-   | **Height** — how tall, relative to the ceiling (341)? | `height` of `a.envelope` | To the ceiling (100 %) · Tall (~90 %) · Medium (~70 %) · Low (~50 %) | 100 % |
+   | **Height** — how tall, relative to the ceiling (341 per block)? | `height` of `a.envelope`; blocks → `nz` | To the ceiling (100 %) · Tall (~90 %) · Medium (~70 %) · Low (~50 %) | 1 block, 100 % |
    | **Volume fill** — how much of the footprint does it occupy? | `length` and `width` of `a.envelope` | Full (~100 %) · Roomy (~85 %) · Compact (~70 %) · Small (~50 %) | 100 % |
 
    - Treat an answer as given when the request already says it: "two blocks long", "a tiny rock", "a short wall", "fill the tile", exact numbers ("height 250", "70 % of the length") all count. "Less than the maximum" without a figure is not an answer: ask with Roomy / Compact / Small.
+   - "N blocks tall" sets `tiles=(…, …, N)` and answers the height question at 100 % of that ceiling ("2 blocks tall" → ceiling 682). A height above one block without saying blocks (e.g. "height 500") also means `nz = 2`.
    - Volume fill is one percentage for both horizontal directions. If the user gives different values for length and width (e.g. "67 % long, 87 % wide"), use them separately.
    - Skip the questions entirely only when nobody can answer (a scheduled or unattended run) or the user says to decide yourself: then use the defaults and state them in one line at the top of your reply.
    - Turn the answers into dimensions with `hu, hv, top = a.envelope(length, width, height)`: `hu`/`hv` are the half-sizes along and across the long axis (for `a.local`, centred on `a.mid`), `top` is where the highest voxel must end. Size every part from these three values, so a later "a bit smaller" only changes one line.
@@ -691,11 +713,83 @@ name = "car_chunky_2x1.svg" if AXIS == "x" else "car_chunky_1x2.svg"
 print("ok", name, "top sy =", round(a.save(name), 1))
 ```
 
-Other multi-tile ideas: **bench** (two posts + one long seat voxel + one long back voxel), **cart** (long box + 2 big wheels + shafts), **fallen log** (one long wood voxel + moss slab + a stump-end accent), **long wall** (stone voxels with `span=(2, 1, 1)` in a running bond).
+**Two-storey house (2 blocks tall, `house_2story.py`)** — 1×1×2, full fill, roof ridge at z = 682. Answers that produce it: length 1 tile, height "2 blocks tall", fill Full.
+
+```python
+# house_2story.py — voxel clay house, 1x1 footprint, two blocks tall (ceiling z = 682).
+# Same materials as house_voxel.py: stone plinth, plaster walls, terracotta gable roof.
+# Two storeys read as two rows of wall blocks split by a wooden floor band; the upper
+# storey juts out a little over the lower one.
+from iso_lib import *
+
+a = Asset(tiles=(1, 1, 2))                    # 1x1 footprint, 2 blocks tall
+HU, HV, TOP = a.envelope(1.0, 1.0, 1.0)       # → 254, 254, 682 (full fill, to the ceiling)
+
+WALL = "#efe0bf"     # plaster
+ROOF = "#d4643f"     # terracotta (the accent of this asset)
+DOOR = tint(WOOD, .8)
+
+# 1. ground: low stone plinth over the whole footprint
+PLINTH = 30
+a.voxel(0, 0, 0, HU, HV, PLINTH / 2, STONE, r=12)
+
+# 2. cast shadow of the house on the plinth, toward the lower left (+y), kept inside it
+a.flat(-12, 22, PLINTH, HU - 30, HV - 34, 40, STONE, face="left", zshade=PLINTH)
+
+g = VoxelGrid(a, u=100)
+
+
+def walls(half, z0, z1):
+    """One storey: 2x2 plaster blocks of the given outer half-size."""
+    for i in (-1, 1):
+        for j in (-1, 1):
+            g.place(i * half / 2, j * half / 2, z0, half / 2 - 3, half / 2 - 3, (z1 - z0) / 2, WALL)
+
+
+# 3. ground floor, inset for the eaves and the jutting upper floor
+F1_HALF, F1_Z0, F1_TOP = 220, PLINTH + 4, 290
+walls(F1_HALF, F1_Z0, F1_TOP)
+
+# 4. floor band: one wooden slab between the storeys, a bit wider than the ground floor
+BAND_Z0, BAND_TOP = F1_TOP + 4, 330
+g.place(0, 0, BAND_Z0, 236, 236, (BAND_TOP - BAND_Z0) / 2, WOOD)
+
+# 5. upper floor, jutting out a little over the ground floor
+F2_HALF, F2_Z0, F2_TOP = 232, BAND_TOP + 4, 552
+walls(F2_HALF, F2_Z0, F2_TOP)
+
+# 6. gable roof along x: two long eaves rows that overhang the upper walls, a ridge up to the ceiling
+EAVES_Z0, RIDGE_Z0 = F2_TOP + 6, 616
+EAVE = HV - 6
+for j in (-1, 1):
+    g.place(0, j * EAVE / 2, EAVES_Z0, EAVE, EAVE / 2 - 3, (RIDGE_Z0 - 4 - EAVES_Z0) / 2, ROOF)
+g.place(0, 0, RIDGE_Z0, EAVE - 18, 94, (TOP - RIDGE_Z0) / 2, ROOF)
+
+# 7. chimney: stone voxel on the back of the eaves layer, level with the ridge
+g.place(-150, -170, RIDGE_Z0, 36, 36, (TOP - RIDGE_Z0) / 2, STONE)
+
+# 8. door on the right face (ground floor), windows on both visible faces of each storey
+g.place(F1_HALF - 10, F1_HALF / 2, F1_Z0, 12, 44, 82, DOOR, r=10)
+g.place(F1_HALF - 10, -F1_HALF / 2, 150, 12, 40, 40, GLASS, r=10)          # ground floor, right face
+g.place(-F1_HALF / 2, F1_HALF - 10, 150, 46, 12, 40, GLASS, r=10)          # ground floor, left face
+g.place(F1_HALF / 2, F1_HALF - 10, 150, 46, 12, 40, GLASS, r=10)
+for s in (-1, 1):                                                          # upper floor, both faces
+    g.place(F2_HALF - 10, s * F2_HALF / 2, 404, 12, 40, 44, GLASS, r=10)
+    g.place(s * F2_HALF / 2, F2_HALF - 10, 404, 46, 12, 44, GLASS, r=10)
+
+g.draw()
+
+print("ok house_2story.svg top sy =", round(a.save("house_2story.svg"), 1))
+```
+
+- 22 voxels: plinth, 4 + 4 wall blocks, 1 wooden floor band, 2 eaves rows + ridge, chimney, door, 8 windows. Within the budget because each storey is still just a 2×2 of big blocks.
+- The upper storey juts out over the lower one and the eaves over the upper storey; every layer is z-separated, so the painter order is exact.
+
+Other multi-tile ideas: **bench** (two posts + one long seat voxel + one long back voxel), **cart** (long box + 2 big wheels + shafts), **speedboat** (2×1, low: a red lower hull and a white upper hull in sections that narrow toward the bow; a sunken cockpit = wood floor framed by white side rails and a transom; seats, a glass windshield as the tallest part, an outboard motor past the stern), **fallen log** (one long wood voxel + moss slab + a stump-end accent), **long wall** (stone voxels with `span=(2, 1, 1)` in a running bond).
 
 ## 8. Pre-delivery checklist
 
-- [ ] Canvas generated by `Asset(tiles=…)`: `0 -341 1024 853` for 1×1, `0 -341 1536 1109` for 2×1, `-512 -341 1536 1109` for 1×2; both diamonds with their ids and `fill="transparent"`; `data-tiles` on multi-tile assets.
+- [ ] Canvas generated by `Asset(tiles=…)`: `0 -341 1024 853` for 1×1, `0 -341 1536 1109` for 2×1, `-512 -341 1536 1109` for 1×2, `0 -682 1024 1194` for 1×1×2; both diamonds with their ids and `fill="transparent"`; `data-tiles` on multi-tile assets.
 - [ ] Everything inside `<g id="figure">`, no `transform`. `check_bounds()` passes.
 - [ ] Length, height and volume fill were asked (only the missing ones) or stated as defaults in the reply.
 - [ ] The anchor tile's foot is at (512, 256); the object is centred on the footprint and spans the chosen fill of it (the whole footprint at full fill). The top voxel reaches z = `top` (341 at full height).

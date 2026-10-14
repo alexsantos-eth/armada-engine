@@ -1,5 +1,20 @@
 import type { EntityDefinition } from "../../types";
 
+const HOUSE_COLOR_REPLACEMENTS = {
+  "#9f4b2f": ["#8f5f12", "#7f241b", "#1f4f85"],
+  "#a34d31": ["#986614", "#8f2b20", "#265d96"],
+  "#b05334": ["#aa7418", "#a83224", "#2d6bab"],
+  "#b45536": ["#af791a", "#b33828", "#3478b8"],
+  "#b75636": ["#b47d1b", "#bd3e2c", "#3a84c4"],
+  "#bc5838": ["#b9821d", "#c84431", "#438ed0"],
+  "#c15b39": ["#c18920", "#cf4a35", "#4a98dc"],
+  "#c55d3b": ["#c58e22", "#d65039", "#55a1e4"],
+  "#c85e3b": ["#cc9625", "#dd563e", "#60a9eb"],
+  "#cd613d": ["#d19c28", "#e05d43", "#6ab1ef"],
+  "#cf623e": ["#d5a32b", "#e66349", "#73b9f2"],
+  "#d4643f": ["#d9aa31", "#ed6d52", "#80c1f5"],
+} as const;
+
 export const ENTITY_CONFIG: EntityDefinition[] = [
   {
     id: "tree",
@@ -29,20 +44,35 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     length: 1,
     spawnChance: 0.03,
     surface: "grass",
-    surfaceElevation: 2,
-    colorReplacements: {
-      "#9f4b2f": ["#8f5f12", "#7f241b", "#1f4f85"],
-      "#a34d31": ["#986614", "#8f2b20", "#265d96"],
-      "#b05334": ["#aa7418", "#a83224", "#2d6bab"],
-      "#b45536": ["#af791a", "#b33828", "#3478b8"],
-      "#b75636": ["#b47d1b", "#bd3e2c", "#3a84c4"],
-      "#bc5838": ["#b9821d", "#c84431", "#438ed0"],
-      "#c15b39": ["#c18920", "#cf4a35", "#4a98dc"],
-      "#c55d3b": ["#c58e22", "#d65039", "#55a1e4"],
-      "#c85e3b": ["#cc9625", "#dd563e", "#60a9eb"],
-      "#cd613d": ["#d19c28", "#e05d43", "#6ab1ef"],
-      "#cf623e": ["#d5a32b", "#e66349", "#73b9f2"],
-      "#d4643f": ["#d9aa31", "#ed6d52", "#80c1f5"],
-    },
+    surfaceElevation: 0,
+    colorReplacements: HOUSE_COLOR_REPLACEMENTS,
+  },
+  {
+    id: "house_2x1",
+    textureSource: "/assets/house/block_2x1.svg",
+    height: 2,
+    length: 1,
+    spawnChance: 0.03,
+    surface: "grass",
+    surfaceElevation: 0,
+    colorReplacements: HOUSE_COLOR_REPLACEMENTS,
+  },
+  {
+    id: "boat",
+    textureSource: "/assets/boat/block_2.svg",
+    height: 1,
+    length: 2,
+    spawnChance: 0.01,
+    surfaceElevation: -1,
+    surface: "water",
+  },
+  {
+    id: "bush",
+    textureSource: "/assets/bush/block.svg",
+    height: 1,
+    length: 1,
+    spawnChance: 0.03,
+    surfaceElevation: 0,
+    surface: "grass",
   },
 ];

@@ -171,6 +171,36 @@ describe("Box", () => {
     )).toEqual([]);
   });
 
+  it("does not place different entity definitions on the same position", () => {
+    const entities = createEntitiesFromConfig(
+      [
+        new Box(1, 2, { elevation: 1 }),
+        new Box(3, 4, { elevation: 1 }),
+      ],
+      [
+        {
+          id: "tree",
+          textureSource: "/assets/tree/block.svg",
+          height: 1,
+          spawnChance: 1,
+          surface: "grass",
+        },
+        {
+          id: "statue",
+          textureSource: "/assets/statue/block.svg",
+          height: 1,
+          spawnChance: 1,
+          surface: "grass",
+        },
+      ],
+      () => 0,
+    );
+
+    expect(entities).toHaveLength(2);
+    expect(entities.map(({ x, y }) => `${x}:${y}`)).toEqual(["1:2", "3:4"]);
+    expect(entities.map(({ type }) => type)).toEqual(["tree", "tree"]);
+  });
+
   it("supports entities configured for water", () => {
     const entities = createEntitiesFromConfig(
       [new Box(1, 2, { elevation: -1 })],
