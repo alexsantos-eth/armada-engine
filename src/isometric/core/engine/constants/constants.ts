@@ -11,7 +11,7 @@ export const DEFAULT_PERSISTENCE = 0.5;
 export const DEFAULT_LACUNARITY = 2;
 export const DEFAULT_MIN_ELEVATION = -3;
 export const DEFAULT_MAX_ELEVATION = 4;
-export const POSITIVE_ELEVATION_TINT_STEP = 0.04;
+export const POSITIVE_ELEVATION_TINT_STEP = 0.05;
 export const NEGATIVE_ELEVATION_TINT_STEP = 0.15;
 
 export const GRASS_BLOCK_TEXTURE_KEY = "iso-grass-block";

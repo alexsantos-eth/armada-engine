@@ -31,6 +31,34 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     surface: "grass",
   },
   {
+    id: "tree_3",
+    textureSource: "/assets/tree/block_3.svg",
+    height: 2,
+    spawnChance: 0.03,
+    surface: "grass",
+  },
+  {
+    id: "tree_4",
+    textureSource: "/assets/tree/block_4.svg",
+    height: 1,
+    spawnChance: 0.03,
+    surface: "grass",
+  },
+  {
+    id: "tree_5",
+    textureSource: "/assets/tree/block_5.svg",
+    height: 1,
+    spawnChance: 0.03,
+    surface: "grass",
+  },
+  {
+    id: "tree_6",
+    textureSource: "/assets/tree/block_6.svg",
+    height: 1,
+    spawnChance: 0.03,
+    surface: "grass",
+  },
+  {
     id: "statue",
     textureSource: "/assets/statue/block.svg",
     height: 2,
@@ -45,7 +73,6 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     spawnChance: 0.03,
     surface: "grass",
     surfaceElevation: 0,
-    debug: true,
     colorReplacements: HOUSE_COLOR_REPLACEMENTS,
   },
   {
@@ -56,7 +83,6 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     spawnChance: 0.03,
     surface: "grass",
     surfaceElevation: 0,
-    debug: true,
     colorReplacements: HOUSE_COLOR_REPLACEMENTS,
   },
   {
@@ -68,7 +94,6 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     spawnChance: 0.01,
     surfaceElevation: -1,
     surface: "water",
-    debug: true,
   },
   {
     id: "bush",
@@ -78,6 +103,5 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     spawnChance: 0.03,
     surfaceElevation: 0,
     surface: "grass",
-    debug: true,
   },
 ];

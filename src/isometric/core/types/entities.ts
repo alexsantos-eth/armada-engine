@@ -31,6 +31,7 @@ export type EntityDefinition = {
   spawnChance: number;
   surface: EntitySurface;
   surfaceElevation?: number;
+  gap?: number;
   debug?: boolean;
   colorReplacements?: SvgColorReplacements;
 };
@@ -41,6 +42,7 @@ export type EntityData = GridObjectData & {
   height: number;
   length: number;
   lengthAxis?: EntityLengthAxis;
+  gap?: number;
   textureSource: string;
   debug?: boolean;
   colorReplacements?: SvgColorReplacements;
@@ -112,6 +114,7 @@ export interface IEntity extends IGridObject {
   readonly height: number;
   readonly length: number;
   readonly lengthAxis?: EntityLengthAxis;
+  readonly gap?: number;
   readonly textureSource: string;
   readonly debug?: boolean;
   readonly colorReplacements?: SvgColorReplacements;

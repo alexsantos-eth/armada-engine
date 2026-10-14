@@ -229,6 +229,27 @@ describe("Box", () => {
     expect(entities[0].lengthAxis).toBe("y");
   });
 
+  it("keeps the configured gap between entities of the same type", () => {
+    const entities = createEntitiesFromConfig(
+      [
+        new Box(0, 0, { elevation: 1 }),
+        new Box(1, 0, { elevation: 1 }),
+        new Box(2, 0, { elevation: 1 }),
+      ],
+      [{
+        id: "house",
+        textureSource: "/assets/house/block.svg",
+        height: 1,
+        gap: 1,
+        spawnChance: 1,
+        surface: "grass",
+      }],
+      () => 0,
+    );
+
+    expect(entities.map(({ x, y }) => `${x}:${y}`)).toEqual(["0:0", "2:0"]);
+  });
+
   it("supports entities configured for water", () => {
     const entities = createEntitiesFromConfig(
       [new Box(1, 2, { elevation: -1 })],
