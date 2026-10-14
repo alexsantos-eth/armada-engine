@@ -250,6 +250,101 @@ describe("Box", () => {
     expect(entities.map(({ x, y }) => `${x}:${y}`)).toEqual(["0:0", "2:0"]);
   });
 
+  it("treats diagonal neighbours as adjacent for the gap", () => {
+    const entities = createEntitiesFromConfig(
+      [
+        new Box(0, 0, { elevation: 1 }),
+        new Box(1, 1, { elevation: 1 }),
+        new Box(2, 2, { elevation: 1 }),
+      ],
+      [{
+        id: "house",
+        textureSource: "/assets/house/block.svg",
+        height: 1,
+        gap: 1,
+        spawnChance: 1,
+        surface: "grass",
+      }],
+      () => 0,
+    );
+
+    expect(entities.map(({ x, y }) => `${x}:${y}`)).toEqual(["0:0", "2:2"]);
+  });
+
+  it("measures the gap from the whole multi-block footprint", () => {
+    const boxes = [0, 1, 2, 3, 4, 5].flatMap((x) =>
+      [0, 1, 2, 3].map((y) => new Box(x, y, { elevation: -1 })),
+    );
+    const entities = createEntitiesFromConfig(
+      boxes,
+      [{
+        id: "boat",
+        textureSource: "/assets/boat/block_2.svg",
+        height: 1,
+        length: 2,
+        lengthAxis: "y",
+        gap: 2,
+        spawnChance: 1,
+        surface: "water",
+      }],
+      () => 0,
+    );
+
+    expect(entities.map(({ x, y }) => `${x}:${y}`)).toEqual(["0:0", "3:0"]);
+    expect(entities[0].gap).toBe(2);
+    expect(entities[0].getData().gap).toBe(2);
+  });
+
+  it("does not apply the gap between different entity definitions", () => {
+    const entities = createEntitiesFromConfig(
+      [
+        new Box(0, 0, { elevation: 1 }),
+        new Box(1, 0, { elevation: 1 }),
+      ],
+      [
+        {
+          id: "house",
+          textureSource: "/assets/house/block.svg",
+          height: 1,
+          gap: 1,
+          spawnChance: 1,
+          surface: "grass",
+        },
+        {
+          id: "bush",
+          textureSource: "/assets/bush/block.svg",
+          height: 1,
+          spawnChance: 1,
+          surface: "grass",
+        },
+      ],
+      () => 0,
+    );
+
+    expect(entities.map(({ type }) => type)).toEqual(["house", "bush"]);
+  });
+
+  it("ignores non-positive gaps", () => {
+    const entities = createEntitiesFromConfig(
+      [
+        new Box(0, 0, { elevation: 1 }),
+        new Box(1, 0, { elevation: 1 }),
+      ],
+      [{
+        id: "house",
+        textureSource: "/assets/house/block.svg",
+        height: 1,
+        gap: -1,
+        spawnChance: 1,
+        surface: "grass",
+      }],
+      () => 0,
+    );
+
+    expect(entities).toHaveLength(2);
+    expect(entities[0].gap).toBeUndefined();
+  });
+
   it("supports entities configured for water", () => {
     const entities = createEntitiesFromConfig(
       [new Box(1, 2, { elevation: -1 })],

@@ -15,6 +15,37 @@ const HOUSE_COLOR_REPLACEMENTS = {
   "#d4643f": ["#d9aa31", "#ed6d52", "#80c1f5"],
 } as const;
 
+/** Slate-blue roof of `house_balcony`: blue, red, green, ochre. */
+const HOUSE_BALCONY_ROOF_COLOR_REPLACEMENTS = {
+  "#4f78b0": ["#4f78b0", "#b5473a", "#3f8a6a", "#c08a2e"],
+  "#4c74aa": ["#4c74aa", "#af4538", "#3d8566", "#b9852c"],
+  "#4970a4": ["#4970a4", "#a84236", "#3b8063", "#b3802b"],
+  "#466a9c": ["#466a9c", "#a03f33", "#387a5e", "#aa7a29"],
+  "#436696": ["#436696", "#9a3d31", "#36765a", "#a47627"],
+  "#3d5c88": ["#3d5c88", "#8c372d", "#316a52", "#946a23"],
+} as const;
+
+/** Violet roof of `tower`: violet, teal, red, blue. */
+const TOWER_ROOF_COLOR_REPLACEMENTS = {
+  "#7a5aa8": ["#7a5aa8", "#2f7d86", "#a8433f", "#3b5f9e"],
+  "#7657a2": ["#7657a2", "#2d7981", "#a2413d", "#395c98"],
+  "#71549c": ["#71549c", "#2c747c", "#9c3e3a", "#375893"],
+  "#6c5095": ["#6c5095", "#2a6f77", "#953b38", "#34548c"],
+  "#684d8f": ["#684d8f", "#286a72", "#8f3936", "#325186"],
+  "#5e4581": ["#5e4581", "#246067", "#813330", "#2d4979"],
+} as const;
+
+/** Slate flat roof and parapet of the apartment blocks: slate, teal, brick, sand. */
+const APARTMENTS_ROOF_COLOR_REPLACEMENTS = {
+  "#6f7d8c": ["#6f7d8c", "#4f9a94", "#a5543f", "#c7a25f"],
+  "#6b7987": ["#6b7987", "#4c948f", "#9f513d", "#c09c5c"],
+  "#677482": ["#677482", "#498f89", "#994e3a", "#b99658"],
+  "#626f7c": ["#626f7c", "#468883", "#924a38", "#b08f54"],
+  "#5e6a77": ["#5e6a77", "#43837e", "#8c4736", "#a98a51"],
+  "#5b6673": ["#5b6673", "#417e79", "#874534", "#a3854e"],
+  "#55606c": ["#55606c", "#3d7772", "#7f4131", "#997d49"],
+} as const;
+
 export const ENTITY_CONFIG: EntityDefinition[] = [
   {
     id: "tree",
@@ -86,10 +117,57 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     colorReplacements: HOUSE_COLOR_REPLACEMENTS,
   },
   {
+    id: "house_balcony",
+    textureSource: "/assets/house/block_balcony.svg",
+    height: 2,
+    length: 1,
+    gap: 1,
+    spawnChance: 0.02,
+    surface: "grass",
+    surfaceElevation: 0,
+    colorReplacements: HOUSE_BALCONY_ROOF_COLOR_REPLACEMENTS,
+  },
+  {
+    id: "tower",
+    textureSource: "/assets/building/block_tower.svg",
+    height: 3,
+    length: 1,
+    gap: 1,
+    spawnChance: 0.01,
+    surface: "grass",
+    surfaceElevation: 0,
+    colorReplacements: TOWER_ROOF_COLOR_REPLACEMENTS,
+  },
+  {
+    id: "apartments_x",
+    textureSource: "/assets/building/block_apartments_1x2.svg",
+    height: 3,
+    length: 2,
+    lengthAxis: "x",
+    gap: 2,
+    spawnChance: 0.008,
+    surface: "grass",
+    surfaceElevation: 0,
+    colorReplacements: APARTMENTS_ROOF_COLOR_REPLACEMENTS,
+  },
+  {
+    id: "apartments_y",
+    textureSource: "/assets/building/block_apartments_2x1.svg",
+    height: 3,
+    length: 2,
+    lengthAxis: "y",
+    gap: 2,
+    spawnChance: 0.008,
+    surface: "grass",
+    surfaceElevation: 0,
+    colorReplacements: APARTMENTS_ROOF_COLOR_REPLACEMENTS,
+  },
+  {
     id: "boat",
     textureSource: "/assets/boat/block_2.svg",
     height: 1,
     length: 2,
+    gap: 3,
     lengthAxis: "y",
     spawnChance: 0.01,
     surfaceElevation: -1,

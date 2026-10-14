@@ -31,6 +31,10 @@ export type EntityDefinition = {
   spawnChance: number;
   surface: EntitySurface;
   surfaceElevation?: number;
+  /**
+   * Minimum number of free blocks (diagonals included) required between two
+   * instances of this same entity. `1` forbids adjacent instances. Defaults to `0`.
+   */
   gap?: number;
   debug?: boolean;
   colorReplacements?: SvgColorReplacements;

@@ -104,6 +104,7 @@ export class Entity implements IEntity {
       height: definition.height,
       length: definition.length ?? 1,
       ...(definition.lengthAxis ? { lengthAxis: definition.lengthAxis } : {}),
+      ...(definition.gap !== undefined && definition.gap > 0 ? { gap: definition.gap } : {}),
       textureSource: definition.textureSource,
       ...(definition.debug ? { debug: true } : {}),
       ...(definition.colorReplacements
@@ -137,6 +138,10 @@ export class Entity implements IEntity {
     return this.data.lengthAxis;
   }
 
+  get gap(): IEntity["gap"] {
+    return this.data.gap;
+  }
+
   get textureSource(): string {
     return this.data.textureSource;
   }
@@ -161,7 +166,12 @@ export class Entity implements IEntity {
   }
 }
 
-/** Creates configured entities on eligible terrain columns. */
+/**
+ * Creates configured entities on eligible terrain columns.
+ *
+ * Each definition may declare a `gap`: the minimum number of free blocks
+ * (including diagonals) that must separate two instances of the same entity.
+ */
 export function createEntitiesFromConfig(
   boxes: IGridObject[],
   definitions: EntityDefinition[] = ENTITY_CONFIG,
@@ -169,6 +179,7 @@ export function createEntitiesFromConfig(
 ): Entity[] {
   const entities: Entity[] = [];
   const occupiedPositions = new Set<string>();
+  const positionsByType = new Map<string, Set<string>>();
   const boxesByPosition = new Map(
     boxes.map((box) => [`${box.x}:${box.y}`, box]),
   );
@@ -181,9 +192,15 @@ export function createEntitiesFromConfig(
         footprintBox === undefined || !canSpawnOnSurface(footprintBox, definition),
       )) continue;
       if (footprintKeys.some((key) => occupiedPositions.has(key))) continue;
+      const sameTypePositions = positionsByType.get(definition.id) ?? new Set<string>();
+      if (violatesGap(box, definition, sameTypePositions)) continue;
       if (random() >= definition.spawnChance) continue;
 
-      footprintKeys.forEach((key) => occupiedPositions.add(key));
+      footprintKeys.forEach((key) => {
+        occupiedPositions.add(key);
+        sameTypePositions.add(key);
+      });
+      positionsByType.set(definition.id, sameTypePositions);
       entities.push(new Entity(box.x, box.y, definition, box.elevation));
     }
   }
@@ -200,4 +217,26 @@ function getFootprintKeys(box: IGridObject, definition: EntityDefinition): strin
     const y = lengthAxis === "y" ? box.y + index : box.y;
     return `${x}:${y}`;
   });
+}
+
+function violatesGap(
+  box: IGridObject,
+  definition: EntityDefinition,
+  sameTypePositions: ReadonlySet<string>,
+): boolean {
+  const gap = Math.max(0, Math.floor(definition.gap ?? 0));
+  if (gap === 0) return false;
+
+  const length = definition.length ?? 1;
+  const isXAxis = (definition.lengthAxis ?? "x") === "x";
+  const maxX = box.x + (isXAxis ? length - 1 : 0);
+  const maxY = box.y + (isXAxis ? 0 : length - 1);
+
+  for (let x = box.x - gap; x <= maxX + gap; x++) {
+    for (let y = box.y - gap; y <= maxY + gap; y++) {
+      if (sameTypePositions.has(`${x}:${y}`)) return true;
+    }
+  }
+
+  return false;
 }
