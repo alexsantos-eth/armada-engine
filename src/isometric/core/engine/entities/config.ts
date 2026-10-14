@@ -154,7 +154,7 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     length: 1,
     spawnChance: 0.03,
     surface: "grass",
-    surfaceElevation: 1,
+    surfaceElevation: [1, 2],
     colorReplacements: HOUSE_COLOR_REPLACEMENTS,
   },
   {
@@ -164,7 +164,7 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     length: 1,
     spawnChance: 0.03,
     surface: "grass",
-    surfaceElevation: 1,
+    surfaceElevation: [1, 2],
     colorReplacements: HOUSE_COLOR_REPLACEMENTS,
   },
   {
@@ -175,7 +175,7 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     gap: 1,
     spawnChance: 0.02,
     surface: "grass",
-    surfaceElevation: 0,
+    surfaceElevation: [1, 2],
     colorReplacements: HOUSE_BALCONY_ROOF_COLOR_REPLACEMENTS,
   },
   {

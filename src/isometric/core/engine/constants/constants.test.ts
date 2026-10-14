@@ -4,6 +4,7 @@ import {
   GROUND_BLOCK_TEXTURE_KEY,
   GRASS_BLOCK_TEXTURE_KEY,
   POSITIVE_ELEVATION_TINT_STEP,
+  SAND_BLOCK_TEXTURE_KEY,
   NEGATIVE_ELEVATION_TINT_STEP,
   TILE_HEIGHT,
   TILE_WIDTH,
@@ -22,7 +23,8 @@ describe("engine constants", () => {
       GRASS_BLOCK_TEXTURE_KEY,
       GROUND_BLOCK_TEXTURE_KEY,
       WATER_BLOCK_TEXTURE_KEY,
-    ]).size).toBe(3);
+      SAND_BLOCK_TEXTURE_KEY,
+    ]).size).toBe(4);
   });
 
   it("defines a positive viewport culling margin", () => {

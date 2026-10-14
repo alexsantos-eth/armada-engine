@@ -1,7 +1,8 @@
 import { Application, Assets, Container, Texture } from "pixi.js";
 import { Box, createEntitiesFromConfig, Entity } from "../entities";
 import { projectBoxesToIsometric } from "../board";
-import { getOrCreateTerrain } from "../terrain";
+import { classifyColumnSurfaces, getBlockMaterial, getOrCreateTerrain } from "../terrain";
+import type { TerrainMaterial, TerrainSurface } from "../../types";
 import {
   BOX_HEIGHT,
   DEFAULT_MIN_ELEVATION,
@@ -13,12 +14,15 @@ import {
   TILE_HEIGHT,
   TILE_WIDTH,
   NEGATIVE_ELEVATION_TINT_STEP,
+  SAND_BLOCK_TEXTURE_KEY,
   WATER_BLOCK_TEXTURE_KEY,
 } from "../constants";
 import { fillElevations, isWithinViewport } from "../projection";
 import { createSvgColorVariant, renderBlock } from "../render";
 
 const POSITIVE_ELEVATION_TOP_TINT = 0xe8ffb0;
+/** Neutral tint for sand: same height darkening as grass, without the green cast. */
+const SAND_TOP_TINT = 0xffffff;
 
 function getLevelTint(
   baseTint: number,
@@ -39,12 +43,13 @@ function getNegativeElevationTint(elevation: number): number {
 function getPositiveElevationTint(
   elevation: number,
   maxPositiveElevation: number,
+  topTint: number = POSITIVE_ELEVATION_TOP_TINT,
 ): number | undefined {
   if (maxPositiveElevation <= 0) return undefined;
 
   const levelsBelowTop = Math.max(0, maxPositiveElevation - elevation);
   return getLevelTint(
-    POSITIVE_ELEVATION_TOP_TINT,
+    topTint,
     levelsBelowTop,
     POSITIVE_ELEVATION_TINT_STEP,
   );
@@ -57,6 +62,7 @@ export async function createIsometricScene(
   const grassBlockSource = "/assets/grass/block.svg";
   const groundBlockSource = "/assets/ground/block.svg";
   const waterBlockSource = "/assets/water/block.svg";
+  const sandBlockSource = "/assets/sand/block.svg";
 
   const terrain = getOrCreateTerrain();
   const boxes = terrain.map(
@@ -97,10 +103,11 @@ export async function createIsometricScene(
     ).entries(),
   ];
   const textures = new Map<string, Texture>();
-  const [grassTexture, groundTexture, waterTexture, ...entityTextures] = await Promise.all([
+  const [grassTexture, groundTexture, waterTexture, sandTexture, ...entityTextures] = await Promise.all([
     Assets.load<Texture>(grassBlockSource),
     Assets.load<Texture>(groundBlockSource),
     Assets.load<Texture>(waterBlockSource),
+    Assets.load<Texture>(sandBlockSource),
     ...entityTextureVariants.map(async ([variantKey, entity]) => {
       const source = await createSvgColorVariant(
         entity.textureSource,
@@ -112,6 +119,7 @@ export async function createIsometricScene(
   textures.set(GRASS_BLOCK_TEXTURE_KEY, grassTexture);
   textures.set(GROUND_BLOCK_TEXTURE_KEY, groundTexture);
   textures.set(WATER_BLOCK_TEXTURE_KEY, waterTexture);
+  textures.set(SAND_BLOCK_TEXTURE_KEY, sandTexture);
   const entityTexturesBySource = new Map(
     entityTextureVariants.map(([variantKey], index) => [
       variantKey,
@@ -169,8 +177,21 @@ export async function createIsometricScene(
   const grassTextureForRender = textures.get(GRASS_BLOCK_TEXTURE_KEY);
   const groundTextureForRender = textures.get(GROUND_BLOCK_TEXTURE_KEY);
   const waterTextureForRender = textures.get(WATER_BLOCK_TEXTURE_KEY);
+  const sandTextureForRender = textures.get(SAND_BLOCK_TEXTURE_KEY);
+  const surfaces = classifyColumnSurfaces(filledBoxes);
 
-  if (grassTextureForRender && groundTextureForRender && waterTextureForRender) {
+  if (
+    grassTextureForRender &&
+    groundTextureForRender &&
+    waterTextureForRender &&
+    sandTextureForRender
+  ) {
+    const texturesByMaterial: Record<TerrainMaterial, Texture> = {
+      grass: grassTextureForRender,
+      ground: groundTextureForRender,
+      water: waterTextureForRender,
+      sand: sandTextureForRender,
+    };
     projectedBoxes
       .filter((box) =>
         isWithinViewport(
@@ -182,18 +203,18 @@ export async function createIsometricScene(
       )
       .forEach((box) => {
         const columnKey = `${box.x}:${box.y}`;
-        const isTopBlock =
-          box.box.elevation === topElevationByColumn.get(columnKey);
-        const texture = box.box.elevation < 0
-          ? waterTextureForRender
-          : isTopBlock
-            ? grassTextureForRender
-            : groundTextureForRender;
-        const tint = box.box.elevation < 0
+        const material = getBlockMaterial(
+          box.box.elevation,
+          topElevationByColumn.get(columnKey) as number,
+          surfaces.get(columnKey) as TerrainSurface,
+        );
+        const texture = texturesByMaterial[material];
+        const tint = material === "water"
           ? getNegativeElevationTint(box.box.elevation)
           : getPositiveElevationTint(
               box.box.elevation,
               maxPositiveElevation,
+              material === "sand" ? SAND_TOP_TINT : POSITIVE_ELEVATION_TOP_TINT,
             );
         renderBlock(
           scene,
@@ -240,6 +261,7 @@ export async function createIsometricScene(
     void Assets.unload(grassBlockSource);
     void Assets.unload(groundBlockSource);
     void Assets.unload(waterBlockSource);
+    void Assets.unload(sandBlockSource);
     loadedEntitySources.forEach((source) => void Assets.unload(source));
   };
 }

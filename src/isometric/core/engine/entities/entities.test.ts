@@ -424,6 +424,30 @@ describe("Box", () => {
     expect(entities[0].gap).toBeUndefined();
   });
 
+  it("keeps grass entities off sand and spawns sand entities only there", () => {
+    const boxes = [
+      new Box(0, 0, { elevation: -1 }),
+      new Box(1, 0, { elevation: 0 }),
+      new Box(3, 0, { elevation: 0 }),
+    ];
+    const definition = {
+      textureSource: "/assets/tree/block.svg",
+      height: 1,
+      spawnChance: 1,
+    };
+
+    expect(createEntitiesFromConfig(
+      boxes,
+      [{ ...definition, id: "tree", surface: "grass" }],
+      () => 0,
+    ).map(({ x, y }) => `${x}:${y}`)).toEqual(["3:0"]);
+    expect(createEntitiesFromConfig(
+      boxes,
+      [{ ...definition, id: "palm", surface: "sand" }],
+      () => 0,
+    ).map(({ x, y }) => `${x}:${y}`)).toEqual(["1:0"]);
+  });
+
   it("supports entities configured for water", () => {
     const entities = createEntitiesFromConfig(
       [new Box(1, 2, { elevation: -1 })],

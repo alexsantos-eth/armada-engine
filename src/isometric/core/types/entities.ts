@@ -1,8 +1,11 @@
+import type { TerrainSurface } from "./terrain";
+
 export type BoxType = "EMPTY";
 
 export type BoxMetadata = Record<string, unknown>;
 
-export type EntitySurface = "grass" | "water";
+/** Terrain surface an entity can spawn on (the material of a column's top block). */
+export type EntitySurface = TerrainSurface;
 
 export type EntityLengthAxis = "x" | "y";
 

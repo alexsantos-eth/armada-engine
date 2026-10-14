@@ -7,7 +7,9 @@ import type {
   IEntity,
   IGridObject,
   IBox,
+  TerrainSurface,
 } from "../../types";
+import { classifyColumnSurfaces } from "../terrain";
 import { ENTITY_CONFIG } from "./config";
 
 const DEFAULT_BOX_DATA: BoxData = {
@@ -71,17 +73,13 @@ export class Box implements IBox {
   }
 }
 
-function canSpawnOnSurface(box: IGridObject, definition: EntityDefinition): boolean {
-  if (!matchesSurfaceElevation(box.elevation, definition.surfaceElevation)) {
-    return false;
-  }
-
-  switch (definition.surface) {
-    case "grass":
-      return box.elevation >= 0;
-    case "water":
-      return box.elevation < 0;
-  }
+function canSpawnOnSurface(
+  box: IGridObject,
+  definition: EntityDefinition,
+  surfaces: ReadonlyMap<string, TerrainSurface>,
+): boolean {
+  return matchesSurfaceElevation(box.elevation, definition.surfaceElevation) &&
+    surfaces.get(`${box.x}:${box.y}`) === definition.surface;
 }
 
 function matchesSurfaceElevation(
@@ -176,6 +174,9 @@ export class Entity implements IEntity {
 /**
  * Creates configured entities on eligible terrain columns.
  *
+ * Each column's surface (grass, water or sand) comes from `classifyColumnSurfaces()`, so
+ * grass entities never spawn on sand.
+ *
  * Multi-block footprints must be flat: every block shares the anchor's elevation.
  *
  * Each definition may declare a `gap`: the minimum number of free blocks
@@ -192,13 +193,14 @@ export function createEntitiesFromConfig(
   const boxesByPosition = new Map(
     boxes.map((box) => [`${box.x}:${box.y}`, box]),
   );
+  const surfaces = classifyColumnSurfaces(boxes);
 
   for (const definition of definitions) {
     for (const box of boxes) {
       const footprintKeys = getFootprintKeys(box, definition);
       const footprintBoxes = footprintKeys.map((key) => boxesByPosition.get(key));
       if (footprintBoxes.some((footprintBox) =>
-        footprintBox === undefined || !canSpawnOnSurface(footprintBox, definition),
+        footprintBox === undefined || !canSpawnOnSurface(footprintBox, definition, surfaces),
       )) continue;
       // Every block of the footprint must share the anchor's elevation: the sprite is
       // placed at the anchor's height, so a step under the footprint would show.

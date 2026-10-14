@@ -136,13 +136,21 @@ La escena carga una textura SVG por material:
 public/assets/grass/block.svg
 public/assets/ground/block.svg
 public/assets/water/block.svg
+public/assets/sand/block.svg
 ```
 
-La selección se realiza por columna y elevación:
+La selección vive en `engine/terrain/surfaces.ts`, sin dependencias de Pixi, y se hace en dos pasos:
 
-- elevación negativa: `water`;
-- bloque con la elevación máxima de su columna: `grass`;
-- cualquier bloque inferior no negativo: `ground`.
+1. `classifyColumnSurfaces(boxes)` decide la superficie de cada columna (clave `${x}:${y}`) a partir de su bloque más alto y del de sus cuatro vecinas directas (no diagonales):
+   - cima negativa: `water`;
+   - cima exactamente en `SAND_ELEVATION` (`0`) con al menos una vecina de agua: `sand`;
+   - cualquier otra: `grass`.
+2. `getBlockMaterial(elevation, topElevation, surface)` elige el material de cada bloque:
+   - elevación negativa: `water`;
+   - bloque superior de la columna: la superficie de la columna (`grass` o `sand`);
+   - cualquier bloque inferior no negativo: `ground`.
+
+El SVG de arena ocupa la mitad del alto del bloque (su cima está a z = 170 de 341 dentro del mismo lienzo `1024×853`), de modo que la orilla baja en dos escalones suaves: agua → arena (medio bloque) → pasto (bloque completo). El renderer no cambia, porque la geometría reducida vive en el asset. Las entidades se siguen alineando a la altura completa del bloque, así que una entidad con `surface: "sand"` necesitará desplazarse medio bloque hacia abajo cuando se añada la primera. La arena recibe el mismo oscurecimiento por altura que el pasto, pero con un tinte neutro (`SAND_TOP_TINT`) en lugar del verdoso. `createEntitiesFromConfig()` usa la misma clasificación para `surface`, por lo que las entidades de `grass` no aparecen sobre arena y existe la superficie `"sand"` para entidades de playa.
 
 El bloque superior se identifica con un `Map` cuya clave es `${x}:${y}`. Así el material no depende de la posición absoluta en pantalla.
 
@@ -197,7 +205,7 @@ Para añadir un nuevo material de terreno:
 
 1. Crear `public/assets/<material>/block.svg` con la misma geometría del bloque.
 2. Añadir una clave en `engine/constants`.
-3. Cargar el SVG en `engine/scene` y añadir la regla de selección.
+3. Añadir el material a `TerrainMaterial` (y a `TerrainSurface` si puede ser la cima de una columna), su regla en `engine/terrain/surfaces.ts` y cargar el SVG en `engine/scene`.
 4. Actualizar o crear el test de escena para demostrar la selección.
 5. Ejecutar coverage, build y Typedoc.
 

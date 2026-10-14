@@ -8,7 +8,7 @@ El código del engine está organizado por responsabilidad dentro de `src/isomet
 
 Los tipos compartidos viven en `src/isometric/core/types` y se exportan desde `core/types/index.ts`. No se crean tests runtime para archivos que solo contienen tipos.
 
-`Box` está reservado para bloques de terreno (`grass`, `ground` y `water`). Las entidades de juego se declaran como datos en `src/isometric/core/engine/entities/config.ts` y se crean con `createEntitiesFromConfig()`. No se deben añadir entidades concretas a `Box`, a `scene.ts` ni a las constantes de terreno.
+`Box` está reservado para bloques de terreno (`grass`, `ground`, `water` y `sand`). Las entidades de juego se declaran como datos en `src/isometric/core/engine/entities/config.ts` y se crean con `createEntitiesFromConfig()`. No se deben añadir entidades concretas a `Box`, a `scene.ts` ni a las constantes de terreno.
 
 Las definiciones de entidad admiten `surfaceElevation` para exigir una elevación exacta o una lista de elevaciones válidas (p. ej. `[0, 1]`); en cualquier caso, una huella multi-bloque solo se coloca sobre celdas a la misma elevación, `length` y `lengthAxis` (`"x"` por defecto) para huellas multi-bloque, `gap` para exigir una separación mínima en bloques (diagonales incluidas) entre instancias de la misma entidad, `colorReplacements` para variantes SVG por instancia y `debug` para dibujar su huella visual. La factory valida y reserva todas las celdas de la huella antes de crear la entidad, por lo que las definiciones posteriores no pueden solaparse con una entidad ya colocada.
 
@@ -55,9 +55,10 @@ Los materiales de bloque se cargan desde:
 public/assets/grass/block.svg
 public/assets/ground/block.svg
 public/assets/water/block.svg
+public/assets/sand/block.svg
 ```
 
-Cada bloque se renderiza con una textura única. Grass se usa en la cima de una columna, ground en los soportes y water en niveles negativos, con oscurecimiento según profundidad. Los cambios de colores o proporciones deben conservar la continuidad entre caras y probarse visualmente con el servidor de Vite.
+Cada bloque se renderiza con una textura única. Grass se usa en la cima de una columna, sand en la cima de columnas a elevación `0` con una vecina directa de agua (su SVG mide medio bloque de alto para suavizar la orilla), ground en los soportes y water en niveles negativos, con oscurecimiento según profundidad. Las reglas viven en `engine/terrain/surfaces.ts` y las comparten la escena y la factory de entidades (`surface: "sand"` permite entidades de playa; las de `grass` no aparecen sobre arena). Los cambios de colores o proporciones deben conservar la continuidad entre caras y probarse visualmente con el servidor de Vite.
 
 Como recomendación de diseño, los assets SVG con altura lógica `1` deben usar `viewBox="0 0 1024 853"`, igual que los bloques de terreno. Si una entidad necesita conservar una proporción visual diferente, escala su contenido dentro de ese `viewBox` en lugar de cambiar el lienzo raíz; así se evita que el renderer deforme el asset al ajustarlo a `TILE_HEIGHT + BOX_HEIGHT`.
 

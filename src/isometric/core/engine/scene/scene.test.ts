@@ -108,7 +108,7 @@ describe("createIsometricScene", () => {
     vi.restoreAllMocks();
   });
 
-  it("loads the three block SVGs and renders all material layers", async () => {
+  it("loads the terrain block SVGs and renders all material layers", async () => {
     const app = {
       screen: { width: 1300, height: 1000 },
       stage: { addChild: vi.fn() },
@@ -119,6 +119,7 @@ describe("createIsometricScene", () => {
     expect(Assets.load).toHaveBeenCalledWith("/assets/grass/block.svg");
     expect(Assets.load).toHaveBeenCalledWith("/assets/ground/block.svg");
     expect(Assets.load).toHaveBeenCalledWith("/assets/water/block.svg");
+    expect(Assets.load).toHaveBeenCalledWith("/assets/sand/block.svg");
     expect(Assets.load).toHaveBeenCalledWith("/assets/statue/block.svg");
     expect(renderCalls.length).toBeGreaterThan(0);
     expect(renderCalls.some(({ texture }) => texture.source.includes("water"))).toBe(true);
@@ -143,6 +144,7 @@ describe("createIsometricScene", () => {
     expect(Assets.unload).toHaveBeenCalledWith("/assets/grass/block.svg");
     expect(Assets.unload).toHaveBeenCalledWith("/assets/ground/block.svg");
     expect(Assets.unload).toHaveBeenCalledWith("/assets/water/block.svg");
+    expect(Assets.unload).toHaveBeenCalledWith("/assets/sand/block.svg");
     expect(Assets.unload).toHaveBeenCalledWith("/assets/statue/block.svg");
   });
 
@@ -200,6 +202,43 @@ describe("createIsometricScene", () => {
       expect(renderCalls.some(({ texture, tint }) =>
         texture.source.includes("grass") && tint === undefined,
       )).toBe(true);
+      destroyScene();
+    } finally {
+      terrain.splice(0, terrain.length, ...originalTerrain);
+    }
+  });
+
+  it("renders sand on zero-elevation columns next to water", async () => {
+    const terrain = getOrCreateTerrain();
+    const originalTerrain = [...terrain];
+    terrain.splice(
+      0,
+      terrain.length,
+      { x: 0, y: 0, elevation: -1 },
+      { x: 1, y: 0, elevation: 0 },
+      { x: 3, y: 0, elevation: 0 },
+      { x: 5, y: 0, elevation: 2 },
+    );
+
+    try {
+      const app = {
+        screen: { width: 1300, height: 1000 },
+        stage: { addChild: vi.fn() },
+      };
+
+      const destroyScene = await createIsometricScene(app as never, () => []);
+      const topCalls = renderCalls.filter(({ elevation }) => elevation === 0);
+
+      // (1,0) touches water → sand; (3,0) does not → grass; (5,0) is taller → ground at 0.
+      expect(topCalls.map(({ texture }) => texture.source).sort()).toEqual([
+        "/assets/grass/block.svg",
+        "/assets/ground/block.svg",
+        "/assets/sand/block.svg",
+      ]);
+      const sand = topCalls.find(({ texture }) => texture.source.includes("sand"));
+      const grass = topCalls.find(({ texture }) => texture.source.includes("grass"));
+      expect(sand?.tint).toBeDefined();
+      expect(sand?.tint).not.toBe(grass?.tint);
       destroyScene();
     } finally {
       terrain.splice(0, terrain.length, ...originalTerrain);

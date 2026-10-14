@@ -29,3 +29,9 @@ export type PerlinTerrainOptions = {
   /** Maximum elevation allowed in the generated terrain. */
   maxElevation?: number;
 };
+
+/** Material of the top block of a terrain column. */
+export type TerrainSurface = "grass" | "water" | "sand";
+
+/** Material used to render a single terrain block. */
+export type TerrainMaterial = TerrainSurface | "ground";
