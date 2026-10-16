@@ -7,8 +7,6 @@ import {
   DEFAULT_OCTAVES,
   DEFAULT_PERSISTENCE,
   DEFAULT_SCALE,
-  TERRAIN_HEIGHT,
-  TERRAIN_WIDTH,
 } from "../constants";
 import { createSeededRandom, DEFAULT_WORLD_SEED } from "../random";
 
@@ -74,44 +72,6 @@ export function generatePerlinTerrain(
       points.push({ x, y, elevation });
     }
   }
-
-  return points;
-}
-
-let cachedTerrain: {
-  width: number;
-  height: number;
-  seed: number;
-  points: TerrainPoint[];
-} | null = null;
-
-/**
- * Returns the world terrain for `seed` (`TERRAIN_WIDTH` × `TERRAIN_HEIGHT`), generating it
- * once and caching it while the seed and dimensions stay the same. The seed is explicit so
- * the same world can be rebuilt from a save; never derive it from the clock here.
- */
-export function getOrCreateTerrain(seed: number = DEFAULT_WORLD_SEED): TerrainPoint[] {
-  if (
-    cachedTerrain &&
-    cachedTerrain.seed === seed &&
-    cachedTerrain.width === TERRAIN_WIDTH &&
-    cachedTerrain.height === TERRAIN_HEIGHT
-  ) {
-    return cachedTerrain.points;
-  }
-
-  const points = generatePerlinTerrain({
-    width: TERRAIN_WIDTH,
-    height: TERRAIN_HEIGHT,
-    seed,
-  });
-
-  cachedTerrain = {
-    width: TERRAIN_WIDTH,
-    height: TERRAIN_HEIGHT,
-    seed,
-    points,
-  };
 
   return points;
 }

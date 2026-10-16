@@ -9,10 +9,17 @@ import {
   TILE_HEIGHT,
   TILE_WIDTH,
   VIEW_CULL_MARGIN,
+  WIDTH,
   WATER_BLOCK_TEXTURE_KEY,
 } from "./constants";
 
 describe("engine constants", () => {
+  it("uses a static view width without reading window", () => {
+    expect(typeof window).toBe("undefined");
+    expect(WIDTH).toBe(1300);
+    expect(TILE_WIDTH).toBe(40);
+  });
+
   it("keeps the isometric block proportions consistent", () => {
     expect(TILE_HEIGHT).toBe(TILE_WIDTH / 2);
     expect(BOX_HEIGHT).toBe(TILE_WIDTH / 3);

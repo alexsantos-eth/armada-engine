@@ -34,8 +34,7 @@ vi.mock("pixi.js", () => {
   };
 });
 
-vi.mock("../render", async (importOriginal) => ({
-  pickColorVariation: (await importOriginal<typeof import("../render")>()).pickColorVariation,
+vi.mock("../render", () => ({
   createSvgColorVariant: vi.fn(async (source: string, _replacements?: unknown, variation = 0) =>
     _replacements ? `${source}#${variation}` : source),
   renderBlock: vi.fn(
@@ -57,12 +56,36 @@ vi.mock("../render", async (importOriginal) => ({
 }));
 
 import { Assets } from "pixi.js";
-import { Entity } from "../entities";
+import type { TerrainPoint } from "../../types";
+import { Box, Entity } from "../entities";
 import { createSvgColorVariant } from "../render";
-import { getOrCreateTerrain } from "../terrain";
+import { classifyColumnSurfaces } from "../terrain";
+import { generateWorld, type World } from "../world";
 import { createIsometricScene } from "./scene";
 
-const createTestEntities = (boxes: { x: number; y: number; elevation: number }[]) =>
+type EntityFactory = (columns: readonly Box[]) => Entity[];
+
+/** The generated default terrain (no configured entities) with test entities on top. */
+const defaultWorld = (createEntities: EntityFactory = () => []): World => {
+  const world = generateWorld({ entityDefinitions: [] });
+  return { ...world, entities: createEntities(world.columns) };
+};
+
+/** A world built from explicit terrain points, for precise material checks. */
+const worldFrom = (points: TerrainPoint[], createEntities: EntityFactory = () => []): World => {
+  const columns = points.map(({ x, y, elevation }) => new Box(x, y, { elevation }));
+  return {
+    seed: 0,
+    width: 0,
+    height: 0,
+    spawnPlateau: false,
+    columns,
+    surfaces: classifyColumnSurfaces(columns),
+    entities: createEntities(columns),
+  };
+};
+
+const createTestEntities = (boxes: readonly Box[]) =>
   boxes.length > 0
     ? [
         new Entity(
@@ -81,7 +104,7 @@ const createTestEntities = (boxes: { x: number; y: number; elevation: number }[]
       ]
     : [];
 
-const createColorizedEntities = (boxes: { x: number; y: number; elevation: number }[]) =>
+const createColorizedEntities = (boxes: readonly Box[]) =>
   boxes.slice(0, 2).map((box, index) => new Entity(
     box.x,
     box.y,
@@ -115,7 +138,7 @@ describe("createIsometricScene", () => {
       stage: { addChild: vi.fn() },
     };
 
-    const destroyScene = await createIsometricScene(app as never, { createEntities: createTestEntities });
+    const destroyScene = await createIsometricScene(app as never, defaultWorld(createTestEntities));
 
     expect(Assets.load).toHaveBeenCalledWith("/assets/grass/block.svg");
     expect(Assets.load).toHaveBeenCalledWith("/assets/ground/block.svg");
@@ -158,7 +181,7 @@ describe("createIsometricScene", () => {
       stage: { addChild: vi.fn() },
     };
 
-    const destroyScene = await createIsometricScene(app as never, { createEntities: createTestEntities });
+    const destroyScene = await createIsometricScene(app as never, defaultWorld(createTestEntities));
 
     expect(renderCalls).toHaveLength(0);
     destroyScene();
@@ -170,22 +193,20 @@ describe("createIsometricScene", () => {
       stage: { addChild: vi.fn() },
     };
 
-    const destroyScene = await createIsometricScene(app as never, {
-      createEntities: createColorizedEntities,
-    });
+    const destroyScene = await createIsometricScene(app as never, defaultWorld(createColorizedEntities));
 
-    // Two different types → one variant each, with a seeded variation index.
+    // Two different types → one variant each, with the variation stored on the entity.
     expect(createSvgColorVariant).toHaveBeenCalledTimes(2);
     vi.mocked(createSvgColorVariant).mock.calls.forEach(([source, replacements, variation]) => {
       expect(source).toBe("/assets/house/block.svg");
       expect(replacements).toEqual({ "#9f4b2f": ["#f0c040", "#c0392b", "#3478b8"] });
-      expect([0, 1, 2]).toContain(variation);
+      expect(variation).toBe(0);
     });
 
     destroyScene();
   });
 
-  it("shares variant textures between instances of the same type", async () => {
+  it("shares variant textures between instances of the same type and variation", async () => {
     const app = {
       screen: { width: 1300, height: 1000 },
       stage: { addChild: vi.fn() },
@@ -199,87 +220,60 @@ describe("createIsometricScene", () => {
       colorReplacements: { "#9f4b2f": ["#f0c040", "#c0392b", "#3478b8"] },
     };
 
-    const destroyScene = await createIsometricScene(app as never, {
-      createEntities: (boxes) =>
-        boxes.slice(0, 40).map((box) => new Entity(box.x, box.y, definition, box.elevation)),
-    });
+    const destroyScene = await createIsometricScene(app as never, defaultWorld((columns) =>
+      columns.slice(0, 40).map((box, index) =>
+        new Entity(box.x, box.y, definition, box.elevation, { colorVariant: index % 3 }))));
 
-    const sources = vi.mocked(createSvgColorVariant).mock.calls.map(([, , variation]) => variation);
-    expect(sources.length).toBeLessThanOrEqual(3);
-    expect(new Set(sources).size).toBe(sources.length);
+    const variations = vi.mocked(createSvgColorVariant).mock.calls.map(([, , variation]) => variation);
+    expect(variations.sort()).toEqual([0, 1, 2]);
     expect(
       renderCalls.filter(({ texture }) => texture.source.startsWith("/assets/house/")).length,
-    ).toBeGreaterThan(sources.length);
+    ).toBeGreaterThan(3);
 
     destroyScene();
   });
 
-  it("rebuilds the same world from the same seed without Math.random", async () => {
+  it("only reads the world: rendering it twice gives the same result", async () => {
     const app = {
       screen: { width: 1300, height: 1000 },
       stage: { addChild: vi.fn() },
     };
     const randomSpy = vi.spyOn(Math, "random");
-    const rolls: number[][] = [];
-    const recordRolls = (_boxes: unknown, random: () => number) => {
-      rolls.push([random(), random(), random()]);
-      return [];
-    };
+    const world = defaultWorld(createTestEntities);
+    const before = world.columns.map(({ elevation }) => elevation);
 
-    (await createIsometricScene(app as never, { seed: 7, createEntities: recordRolls }))();
-    const firstRender = renderCalls.splice(0).map(({ elevation }) => elevation);
-    (await createIsometricScene(app as never, { seed: 7, createEntities: recordRolls }))();
-    const secondRender = renderCalls.splice(0).map(({ elevation }) => elevation);
-    (await createIsometricScene(app as never, { seed: 8, createEntities: recordRolls }))();
-    const otherRender = renderCalls.splice(0).map(({ elevation }) => elevation);
+    (await createIsometricScene(app as never, world))();
+    const first = renderCalls.splice(0);
+    (await createIsometricScene(app as never, world))();
 
-    expect(secondRender).toEqual(firstRender);
-    expect(rolls[1]).toEqual(rolls[0]);
-    expect(otherRender).not.toEqual(firstRender);
-    expect(rolls[2]).not.toEqual(rolls[0]);
+    expect(renderCalls).toEqual(first);
+    expect(world.columns.map(({ elevation }) => elevation)).toEqual(before);
     expect(randomSpy).not.toHaveBeenCalled();
   });
 
-  it("places the configured entities by default", async () => {
+  it("handles a terrain without positive elevations", async () => {
     const app = {
       screen: { width: 1300, height: 1000 },
       stage: { addChild: vi.fn() },
     };
 
-    const destroyScene = await createIsometricScene(app as never);
+    const destroyScene = await createIsometricScene(app as never, worldFrom([
+      { x: 0, y: 0, elevation: 0 },
+    ]));
 
-    expect(Assets.load).toHaveBeenCalledWith("/assets/grass/block.svg");
+    expect(renderCalls.some(({ texture, tint }) =>
+      texture.source.includes("grass") && tint === undefined,
+    )).toBe(true);
     destroyScene();
   });
 
-  it("handles a terrain without positive elevations", async () => {
-    const terrain = getOrCreateTerrain();
-    const originalTerrain = [...terrain];
-    terrain.splice(0, terrain.length, { x: 0, y: 0, elevation: 0 });
-
-    try {
-      const app = {
-        screen: { width: 1300, height: 1000 },
-        stage: { addChild: vi.fn() },
-      };
-
-      const destroyScene = await createIsometricScene(app as never, { createEntities: () => [] });
-
-      expect(renderCalls.some(({ texture, tint }) =>
-        texture.source.includes("grass") && tint === undefined,
-      )).toBe(true);
-      destroyScene();
-    } finally {
-      terrain.splice(0, terrain.length, ...originalTerrain);
-    }
-  });
-
   it("renders sand only on the shore of a landmass", async () => {
-    const terrain = getOrCreateTerrain();
-    const originalTerrain = [...terrain];
-    terrain.splice(
-      0,
-      terrain.length,
+    const app = {
+      screen: { width: 1300, height: 1000 },
+      stage: { addChild: vi.fn() },
+    };
+
+    const destroyScene = await createIsometricScene(app as never, worldFrom([
       { x: 0, y: 0, elevation: -1 },
       { x: 1, y: 0, elevation: 0 },
       { x: 2, y: 0, elevation: 0 },
@@ -288,34 +282,23 @@ describe("createIsometricScene", () => {
       { x: 7, y: 0, elevation: -1 },
       { x: 8, y: 0, elevation: 0 },
       { x: 9, y: 0, elevation: -1 },
-    );
+    ]));
+    const topCalls = renderCalls.filter(({ elevation }) => elevation === 0);
 
-    try {
-      const app = {
-        screen: { width: 1300, height: 1000 },
-        stage: { addChild: vi.fn() },
-      };
-
-      const destroyScene = await createIsometricScene(app as never, { createEntities: () => [] });
-      const topCalls = renderCalls.filter(({ elevation }) => elevation === 0);
-
-      // (1,0) is the shore of the (2,0)–(3,0) landmass → sand; (2,0) and (3,0) → grass;
-      // (5,0) is taller → ground at 0; (8,0) is an islet in the water → grass, not sand.
-      expect(topCalls.map(({ texture }) => texture.source).sort()).toEqual([
-        "/assets/grass/block.svg",
-        "/assets/grass/block.svg",
-        "/assets/grass/block.svg",
-        "/assets/ground/block.svg",
-        "/assets/sand/block.svg",
-      ]);
-      const sand = topCalls.find(({ texture }) => texture.source.includes("sand"));
-      const grass = topCalls.find(({ texture }) => texture.source.includes("grass"));
-      expect(sand?.tint).toBeDefined();
-      expect(sand?.tint).not.toBe(grass?.tint);
-      destroyScene();
-    } finally {
-      terrain.splice(0, terrain.length, ...originalTerrain);
-    }
+    // (1,0) is the shore of the (2,0)–(3,0) landmass → sand; (2,0) and (3,0) → grass;
+    // (5,0) is taller → ground at 0; (8,0) is an islet in the water → grass, not sand.
+    expect(topCalls.map(({ texture }) => texture.source).sort()).toEqual([
+      "/assets/grass/block.svg",
+      "/assets/grass/block.svg",
+      "/assets/grass/block.svg",
+      "/assets/ground/block.svg",
+      "/assets/sand/block.svg",
+    ]);
+    const sand = topCalls.find(({ texture }) => texture.source.includes("sand"));
+    const grass = topCalls.find(({ texture }) => texture.source.includes("grass"));
+    expect(sand?.tint).toBeDefined();
+    expect(sand?.tint).not.toBe(grass?.tint);
+    destroyScene();
   });
 
   it("skips an entity when its configured texture is unavailable", async () => {
@@ -329,7 +312,7 @@ describe("createIsometricScene", () => {
       stage: { addChild: vi.fn() },
     };
 
-    const destroyScene = await createIsometricScene(app as never, { createEntities: createTestEntities });
+    const destroyScene = await createIsometricScene(app as never, defaultWorld(createTestEntities));
 
     expect(renderCalls.some(({ texture }) => texture.source.includes("tree"))).toBe(false);
     destroyScene();

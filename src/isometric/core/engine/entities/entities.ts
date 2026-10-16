@@ -4,15 +4,17 @@ import type {
   BoxType,
   EntityData,
   EntityDefinition,
+  EntityInstanceOptions,
   IEntity,
   IGridObject,
   IBox,
   TerrainSurface,
 } from "../../types";
-import { createSeededRandom, DEFAULT_WORLD_SEED, type RandomSource } from "../random";
+import { createSeededRandom, DEFAULT_WORLD_SEED, deriveSeed, type RandomSource } from "../random";
 import { classifyColumnSurfaces } from "../terrain";
 import { ENTITY_CONFIG } from "./config";
 import { pickFormationOffsets, resolveFormation } from "./formation";
+import { pickColorVariation } from "./variants";
 
 const DEFAULT_BOX_DATA: BoxData = {
   type: "EMPTY",
@@ -96,23 +98,23 @@ export class Entity implements IEntity {
   public readonly x: number;
   public readonly y: number;
 
-  private readonly data: EntityData;
+  private data: EntityData;
 
   /**
-   * @param id Stable instance id. Defaults to {@link createEntityId} for the spawn anchor;
-   *   pass the stored id when restoring an entity so its identity survives.
+   * @param options Instance identity: `id` defaults to {@link createEntityId} for the spawn
+   *   anchor and `colorVariant` to `0`. Use {@link Entity.fromData} to restore a saved entity.
    */
   constructor(
     x: number,
     y: number,
     definition: EntityDefinition,
     elevation: number,
-    id: string = createEntityId(definition.id, x, y),
+    options: EntityInstanceOptions = {},
   ) {
     this.x = x;
     this.y = y;
     this.data = {
-      id,
+      id: options.id ?? createEntityId(definition.id, x, y),
       type: definition.id,
       walkable: false,
       elevation,
@@ -123,10 +125,28 @@ export class Entity implements IEntity {
       textureSource: definition.textureSource,
       ...(definition.debug ? { debug: true } : {}),
       ...(definition.colorReplacements
-        ? { colorReplacements: definition.colorReplacements }
+        ? {
+            colorReplacements: definition.colorReplacements,
+            colorVariant: options.colorVariant ?? 0,
+          }
         : {}),
       metadata: {},
     };
+  }
+
+  /**
+   * Restores an entity from data previously returned by {@link Entity.getData} (e.g. from a
+   * save), keeping its id, color variation, walkability and metadata.
+   */
+  static fromData(x: number, y: number, data: EntityData): Entity {
+    const entity = new Entity(
+      x,
+      y,
+      { id: data.type, textureSource: data.textureSource, height: data.height, spawnChance: 0, surface: "grass" },
+      data.elevation,
+    );
+    entity.data = { ...data, metadata: { ...data.metadata } };
+    return entity;
   }
 
   get id(): string {
@@ -171,6 +191,10 @@ export class Entity implements IEntity {
 
   get colorReplacements(): IEntity["colorReplacements"] {
     return this.data.colorReplacements;
+  }
+
+  get colorVariant(): IEntity["colorVariant"] {
+    return this.data.colorVariant;
   }
 
   get metadata(): BoxMetadata {
@@ -221,12 +245,17 @@ const NO_KEYS: ReadonlySet<string> = new Set();
  *
  * Placement is deterministic for a given `random` source: pass one derived from the world
  * seed (`createSeededRandom(deriveSeed(seed, "entities"))`). Without it, a fixed default seed
- * is used; `Math.random()` is never used.
+ * is used; `Math.random()` is never used. `variantRandom` picks each instance's color
+ * variation (only for definitions with variation lists) from its own stream, so changing
+ * colors never moves entities.
  */
 export function createEntitiesFromConfig(
   boxes: IGridObject[],
   definitions: EntityDefinition[] = ENTITY_CONFIG,
   random: RandomSource = createSeededRandom(DEFAULT_WORLD_SEED),
+  variantRandom: RandomSource = createSeededRandom(
+    deriveSeed(DEFAULT_WORLD_SEED, "entity-color-variants"),
+  ),
 ): Entity[] {
   const entities: Entity[] = [];
   const occupiedPositions = new Set<string>();
@@ -264,7 +293,9 @@ export function createEntitiesFromConfig(
         sameTypePositions.add(key);
       });
       members.forEach(({ box: member, elevation }) => {
-        entities.push(new Entity(member.x, member.y, definition, elevation));
+        entities.push(new Entity(member.x, member.y, definition, elevation, {
+          colorVariant: pickColorVariation(definition.colorReplacements, variantRandom),
+        }));
       });
     }
   }

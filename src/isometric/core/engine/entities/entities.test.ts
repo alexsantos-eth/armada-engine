@@ -2,6 +2,15 @@ import { describe, expect, it, vi } from "vitest";
 import { Box, Entity, createEntitiesFromConfig } from "./entities";
 
 describe("Box", () => {
+  it("keeps metadata when an update does not include it", () => {
+    const box = new Box(0, 0, { metadata: { biome: "grass" } });
+
+    box.update({ elevation: 2 });
+
+    expect(box.elevation).toBe(2);
+    expect(box.metadata).toEqual({ biome: "grass" });
+  });
+
   it("applies defaults and preserves coordinates", () => {
     const box = new Box(2, 3);
 
@@ -76,7 +85,7 @@ describe("Box", () => {
       9,
       { id: "statue", textureSource: "/s.svg", height: 1, spawnChance: 1, surface: "grass" },
       0,
-      "statue@2,3",
+      { id: "statue@2,3" },
     );
 
     expect(entity.id).toBe("statue@2,3");
@@ -115,6 +124,61 @@ describe("Box", () => {
     expect(first.length).toBeGreaterThan(1);
     expect(new Set(first).size).toBe(first.length);
     expect(second).toEqual(first);
+  });
+
+  it("restores an entity from its data, keeping identity, variation and metadata", () => {
+    const original = new Entity(
+      1,
+      2,
+      {
+        id: "house",
+        textureSource: "/h.svg",
+        height: 2,
+        length: 2,
+        lengthAxis: "y",
+        gap: 1,
+        spawnChance: 1,
+        surface: "grass",
+        colorReplacements: { "#000000": ["#111111", "#222222"] },
+      },
+      3,
+      { id: "house@0,0", colorVariant: 1 },
+    );
+    const data = { ...original.getData(), walkable: true, metadata: { hp: 5 } };
+
+    const restored = Entity.fromData(4, 5, JSON.parse(JSON.stringify(data)));
+
+    expect(restored.x).toBe(4);
+    expect(restored.y).toBe(5);
+    expect(restored.getData()).toEqual(data);
+    expect(restored.colorVariant).toBe(1);
+    expect(restored.walkable).toBe(true);
+    data.metadata.hp = 0;
+    expect(restored.metadata).toEqual({ hp: 5 });
+  });
+
+  it("assigns a seeded color variation only to entities with colorReplacements", () => {
+    const boxes = Array.from({ length: 30 }, (_, index) => new Box(index, 0, { elevation: 1 }));
+    const definitions = [
+      {
+        id: "house",
+        textureSource: "/h.svg",
+        height: 1,
+        spawnChance: 1,
+        surface: "grass" as const,
+        colorReplacements: { "#000000": ["#1", "#2", "#3"] },
+      },
+    ];
+    const plain = new Entity(0, 0, { id: "rock", textureSource: "/r.svg", height: 1, spawnChance: 1, surface: "grass" }, 0, { colorVariant: 2 });
+
+    const variants = createEntitiesFromConfig(boxes, definitions).map(({ colorVariant }) => colorVariant);
+
+    expect(new Set(variants).size).toBeGreaterThan(1);
+    variants.forEach((variant) => expect([0, 1, 2]).toContain(variant));
+    expect(createEntitiesFromConfig(boxes, definitions).map(({ colorVariant }) => colorVariant))
+      .toEqual(variants);
+    expect(plain.colorVariant).toBeUndefined();
+    expect(plain.getData()).not.toHaveProperty("colorVariant");
   });
 
   it("preserves configured SVG color replacements", () => {

@@ -1,4 +1,8 @@
-export const WIDTH = Math.min(window.innerWidth, 1300);
+/**
+ * Width of the game view in pixels. Static so the core never reads `window`: it can run in
+ * Node, tests or a worker. The page adapts its layout around it.
+ */
+export const WIDTH = 1300;
 export const TILE_WIDTH = Math.min(WIDTH * 0.2, 40);
 
 export const TILE_HEIGHT = TILE_WIDTH / 2;

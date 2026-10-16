@@ -6,6 +6,19 @@ Criterio: el core debe sostener un **RPG isométrico procedural de supervivencia
 
 Niveles: **Bloqueante** (rompe la visión) · **Alta** (reescritura cara cuando llegue un sistema previsto) · **Media** (corregible localmente) · **Baja** (higiene).
 
+## 2026-10-16 — Modelo World y core sin `window`
+
+Aplicadas las fases 1 y 2 del plan, a petición del usuario.
+
+| # | Estado | Cambio |
+|---|---|---|
+| 5 | Corregido | `engine/world`: `World` (seed, tamaño, `spawnPlateau`, columnas, superficies, entidades) es la fuente de verdad. `generateWorld()` genera; `createIsometricScene(app, world)` solo lee y renderiza. La meseta central de demo es ahora `applySpawnPlateau()`/`getSpawnArea()` en `terrain/spawn.ts`, opción `spawnPlateau` (por defecto activa). Eliminada la caché singleton `getOrCreateTerrain()`. |
+| 5 | Corregido | Guardado: `serializeWorld()` → `WorldSnapshot` JSON versionado (terreno regenerado desde la semilla, entidades como datos) y `restoreWorld()` con `Entity.fromData()`. |
+| 8 | Corregido | `WIDTH` es una constante estática (1300); el core no lee `window`. Eliminado el shim `tests/setup.ts`: si un módulo del core vuelve a leer `window`, la suite falla. |
+| 11 | Corregido | `colorVariant` forma parte de `EntityData`: se elige al crear la entidad (flujo `"entity-color-variants"`) y se guarda. `getColorVariationCount`/`pickColorVariation` pasan de `render/svg` a `entities/variants`. |
+
+Pendiente del plan: fases 3 (capas: `Box`/`fillElevations` a `terrain`, renombrar `board`/`projection`, contenido fuera de `entities`), 4 (chunks) y 5 (bucle y cámara). Nota para la fase 4: los snapshots solo guardan entidades; cuando el terreno sea modificable habrá que guardar sus deltas y subir `WORLD_SNAPSHOT_VERSION`.
+
 ## 2026-10-16 — Primera revisión (tras el trabajo de formaciones)
 
 Las formaciones (`formation.ts`) están bien aisladas, son puras y consumen `random` de forma documentada. Los hallazgos son del core en general.
@@ -23,13 +36,13 @@ Las formaciones (`formation.ts`) están bien aisladas, son puras y consumen `ran
 
 | # | Nivel | Hallazgo | Dónde |
 |---|---|---|---|
-| 5 | Alta | **La escena es la fuente de verdad y el generador del mundo.** `createIsometricScene` genera terreno, aplica una meseta central fija (código de demo), rellena columnas, crea entidades y renderiza. No existe un modelo `World` independiente de Pixi que se pueda simular, guardar o probar sin render. | `scene/scene.ts` (generación + meseta en las líneas iniciales de la función) |
+| 5 | Alta (corregido) | **La escena es la fuente de verdad y el generador del mundo.** `createIsometricScene` genera terreno, aplica una meseta central fija (código de demo), rellena columnas, crea entidades y renderiza. No existe un modelo `World` independiente de Pixi que se pueda simular, guardar o probar sin render. | `scene/scene.ts` (generación + meseta en las líneas iniciales de la función) |
 | 6 | Alta | **Mundo de tamaño fijo, sin chunks.** `TERRAIN_WIDTH × TERRAIN_HEIGHT` y caché singleton de módulo. El ruido ya se muestrea en coordenadas absolutas (bien), pero ni terreno, ni entidades, ni render trabajan por chunk. | `terrain/terrain.ts`, `constants.ts` |
 | 7 | Alta | **Render estático, sin bucle ni cámara.** Se crean sprites una vez, el culling se hace solo al construir (lo que queda fuera nunca existe) y no hay bucle de simulación de paso fijo, reloj de juego ni movimiento de cámara. | `scene/scene.ts`, `projection.ts` |
-| 8 | Media | **El core depende de `window` al importarse.** `constants.ts` lee `window.innerWidth`; impide ejecutar la simulación en un worker o en Node sin el shim de `tests/setup.ts`. Las medidas de pantalla deben llegar como configuración de vista. | `constants/constants.ts` |
+| 8 | Media (corregido) | **El core depende de `window` al importarse.** `constants.ts` lee `window.innerWidth`; impide ejecutar la simulación en un worker o en Node sin el shim de `tests/setup.ts`. Las medidas de pantalla deben llegar como configuración de vista. | `constants/constants.ts` |
 | 9 | Media | **Responsabilidades cruzadas.** `Box` (terreno) vive en `entities`; `projection.ts` importa `Box` y hace relleno de columnas + culling, mientras la proyección real está en `board`. Contenido (`ENTITY_CONFIG`) dentro del módulo de motor `entities`. | `entities/entities.ts`, `projection/`, `board/`, `entities/config.ts` |
 | 10 | Media | **Índice espacial por strings.** Claves `` `${x}:${y}` `` dispersas y `Map`/`Set` globales para todo el mapa. Sirve a 32×32; no escala a consultas de vecindad, colisión ni pathfinding en mundos grandes. | `entities.ts`, `surfaces.ts`, `scene.ts` |
-| 11 | Media | **La variación de color no forma parte del estado de la entidad.** Se reproduce desde la semilla, pero si una entidad se crea o se mueve en partida no conserva su variante al guardar. | `scene.ts` → debería pasar a `EntityData` |
+| 11 | Media (corregido) | **La variación de color no forma parte del estado de la entidad.** Se reproduce desde la semilla, pero si una entidad se crea o se mueve en partida no conserva su variante al guardar. | `scene.ts` → debería pasar a `EntityData` |
 | 12 | Baja | `renderBlock()` con 12 parámetros posicionales; difícil de extender (animación, selección, sombras). | `render/render.ts` |
 
 ### Plan propuesto (no aplicado, pendiente de tu confirmación)

@@ -1,7 +1,7 @@
 import { Application, Assets, Container, Texture } from "pixi.js";
-import { Box, createEntitiesFromConfig, Entity, ENTITY_CONFIG } from "../entities";
+import type { Entity } from "../entities";
 import { projectBoxesToIsometric } from "../board";
-import { classifyColumnSurfaces, getBlockMaterial, getOrCreateTerrain } from "../terrain";
+import { getBlockMaterial } from "../terrain";
 import type { TerrainMaterial, TerrainSurface } from "../../types";
 import {
   BOX_HEIGHT,
@@ -9,8 +9,6 @@ import {
   GROUND_BLOCK_TEXTURE_KEY,
   GRASS_BLOCK_TEXTURE_KEY,
   POSITIVE_ELEVATION_TINT_STEP,
-  TERRAIN_HEIGHT,
-  TERRAIN_WIDTH,
   TILE_HEIGHT,
   TILE_WIDTH,
   NEGATIVE_ELEVATION_TINT_STEP,
@@ -18,13 +16,8 @@ import {
   WATER_BLOCK_TEXTURE_KEY,
 } from "../constants";
 import { fillElevations, isWithinViewport } from "../projection";
-import {
-  createSeededRandom,
-  DEFAULT_WORLD_SEED,
-  deriveSeed,
-  type RandomSource,
-} from "../random";
-import { createSvgColorVariant, pickColorVariation, renderBlock } from "../render";
+import { createSvgColorVariant, renderBlock } from "../render";
+import type { World } from "../world";
 
 const POSITIVE_ELEVATION_TOP_TINT = 0xe8ffb0;
 /** Neutral tint for sand: same height darkening as grass, without the green cast. */
@@ -61,75 +54,29 @@ function getPositiveElevationTint(
   );
 }
 
-/** Creates the entities of a world from its terrain columns and a seeded random source. */
-export type EntityFactory = (boxes: Box[], random: RandomSource) => Entity[];
-
-/** Options of {@link createIsometricScene}. */
-export type IsometricSceneOptions = {
-  /**
-   * World seed. Terrain, entity placement and color variants all derive from it, so the
-   * same seed rebuilds the same world. Defaults to `DEFAULT_WORLD_SEED`.
-   */
-  seed?: number;
-  /** Entity factory; defaults to `createEntitiesFromConfig()` with `ENTITY_CONFIG`. */
-  createEntities?: EntityFactory;
-};
-
-const createConfiguredEntities: EntityFactory = (boxes, random) =>
-  createEntitiesFromConfig(boxes, ENTITY_CONFIG, random);
-
 /**
- * Builds the world for `options.seed` and renders it into `app`. Returns a cleanup that
+ * Renders `world` into `app`. The scene only reads the world: it never generates or changes
+ * it, so the same world can be simulated, saved or rendered again. Returns a cleanup that
  * destroys the scene and unloads its assets.
  */
 export async function createIsometricScene(
   app: Application,
-  options: IsometricSceneOptions = {},
+  world: World,
 ): Promise<() => void> {
-  const seed = options.seed ?? DEFAULT_WORLD_SEED;
-  const createEntities = options.createEntities ?? createConfiguredEntities;
   const grassBlockSource = "/assets/grass/block.svg";
   const groundBlockSource = "/assets/ground/block.svg";
   const waterBlockSource = "/assets/water/block.svg";
   const sandBlockSource = "/assets/sand/block.svg";
 
-  const terrain = getOrCreateTerrain(seed);
-  const boxes = terrain.map(
-    (row) => new Box(row.x, row.y, { elevation: row.elevation }),
-  );
-  const centerX = Math.floor(TERRAIN_WIDTH / 2);
-  const centerY = Math.floor(TERRAIN_HEIGHT / 2);
-  const centralBlockSize = Math.max(4, Math.min(8, TERRAIN_WIDTH - 2));
-  const halfSize = Math.floor(centralBlockSize / 2);
-  const startX = centerX - halfSize;
-  const startY = centerY - halfSize;
-  const endX = startX + centralBlockSize;
-  const endY = startY + centralBlockSize;
-
-  boxes.forEach((box) => {
-    const central =
-      box.x >= startX &&
-      box.x < endX &&
-      box.y >= startY &&
-      box.y < endY;
-    if (central) {
-      box.update({ elevation: box.y === startY || box.x === startX ? 1 : 0 });
-    }
-  });
-
-  const filledBoxes = fillElevations(boxes, DEFAULT_MIN_ELEVATION);
-  const entities = createEntities(
-    boxes,
-    createSeededRandom(deriveSeed(seed, "entities")),
-  );
+  const filledBoxes = fillElevations([...world.columns], DEFAULT_MIN_ELEVATION);
+  const { entities, surfaces } = world;
   // One texture per (entity type, color variation): instances share it instead of each
   // fetching and decoding its own SVG. Types without `colorReplacements` share their source.
-  const variantRandom = createSeededRandom(deriveSeed(seed, "entity-color-variants"));
   const entityTextureKeys = new Map<Entity, string>();
   const entityTextureVariants = [
     ...new Map(
       entities.map((entity) => {
-        const variation = pickColorVariation(entity.colorReplacements, variantRandom);
+        const variation = entity.colorVariant ?? 0;
         const variantKey = entity.colorReplacements
           ? `${entity.type}:${entity.textureSource}#${variation}`
           : entity.textureSource;
@@ -210,12 +157,11 @@ export async function createIsometricScene(
     originY: app.screen.height / 2 - (minY + maxY) / 2,
   };
   const projectedBoxes = projectBoxesToIsometric(filledBoxes, projection);
-  const projectedEntities = projectBoxesToIsometric(entities, projection);
+  const projectedEntities = projectBoxesToIsometric([...entities], projection);
   const grassTextureForRender = textures.get(GRASS_BLOCK_TEXTURE_KEY);
   const groundTextureForRender = textures.get(GROUND_BLOCK_TEXTURE_KEY);
   const waterTextureForRender = textures.get(WATER_BLOCK_TEXTURE_KEY);
   const sandTextureForRender = textures.get(SAND_BLOCK_TEXTURE_KEY);
-  const surfaces = classifyColumnSurfaces(filledBoxes);
 
   if (
     grassTextureForRender &&

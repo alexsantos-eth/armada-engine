@@ -17,9 +17,11 @@ core/
     constants/
     entities/
     projection/
+    random/
     render/
     scene/
     terrain/
+    world/
     index.ts
   types/
     entities.ts
@@ -76,9 +78,9 @@ Las entidades se configuran en `engine/entities/config.ts` y pueden usar `surfac
 
 Los assets multi-bloque declaran su geometría con `data-tiles`; `lengthAxis: "x"` es el valor por defecto y `lengthAxis: "y"` orienta la huella hacia el eje `y`. El renderer aplica la orientación al sprite y dibuja un rombo de debug por bloque ocupado en sus niveles inferior y superior.
 
-`colorReplacements` acepta colores individuales o listas de variantes. Cada instancia recibe una variación elegida con la semilla del mundo y la escena crea una sola textura recoloreada por (tipo, variación), compartida entre instancias.
+`colorReplacements` acepta colores individuales o listas de variantes. Cada instancia guarda una variación (`colorVariant`) elegida con la semilla al crearse y la escena crea una sola textura recoloreada por (tipo, variación), compartida entre instancias.
 
-Todo el mundo se deriva de una semilla (`createIsometricScene(app, { seed })`); cada `Entity` tiene un `id` de instancia estable. Las deudas conocidas y los planes de refactor del core están en `CORE_REVIEW.md`.
+El estado del juego es un `World` de datos (`engine/world`): `generateWorld({ seed })` lo genera, `serializeWorld()`/`restoreWorld()` lo guardan y `createIsometricScene(app, world)` solo lo renderiza. El core no lee `window` (`WIDTH` es estático); cada `Entity` tiene un `id` de instancia estable. Las deudas conocidas y los planes de refactor del core están en `CORE_REVIEW.md`.
 
 ## Regla de documentación
 

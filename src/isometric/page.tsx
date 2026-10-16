@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "preact/hooks";
 import { Application } from "pixi.js";
-import { WIDTH, createIsometricScene, resolveWorldSeed } from "./core/engine";
+import { WIDTH, createIsometricScene, generateWorld, resolveWorldSeed } from "./core/engine";
 
 const IsometricWorld = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -32,7 +32,8 @@ const IsometricWorld = () => {
       // The seed is the whole world: log it so a world can be reproduced with `?seed=`.
       const seed = resolveWorldSeed(window.location.search, Math.random);
       console.info(`Armada world seed: ${seed}`);
-      destroyScene = await createIsometricScene(app, { seed });
+      const world = generateWorld({ seed });
+      destroyScene = await createIsometricScene(app, world);
     })();
 
     return () => {

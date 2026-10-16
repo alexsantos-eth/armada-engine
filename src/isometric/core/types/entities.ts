@@ -108,6 +108,20 @@ export type EntityData = GridObjectData & {
   textureSource: string;
   debug?: boolean;
   colorReplacements?: SvgColorReplacements;
+  /**
+   * Index of the color variation applied to `colorReplacements` lists. Chosen once when
+   * the entity is created (from the world seed) and kept in its data, so it survives saves.
+   * Present only when `colorReplacements` is.
+   */
+  colorVariant?: number;
+};
+
+/** Optional identity data when creating an {@link IEntity} instance. */
+export type EntityInstanceOptions = {
+  /** Stable id; defaults to `<type>@<x>,<y>` of the spawn anchor. */
+  id?: string;
+  /** Color variation index; ignored when the definition has no `colorReplacements`. */
+  colorVariant?: number;
 };
 
 /**
@@ -182,6 +196,7 @@ export interface IEntity extends IGridObject {
   readonly textureSource: string;
   readonly debug?: boolean;
   readonly colorReplacements?: SvgColorReplacements;
+  readonly colorVariant?: number;
   getData(): EntityData;
 }
 
