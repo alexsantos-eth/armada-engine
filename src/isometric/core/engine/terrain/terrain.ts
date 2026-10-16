@@ -10,21 +10,10 @@ import {
   TERRAIN_HEIGHT,
   TERRAIN_WIDTH,
 } from "../constants";
+import { createSeededRandom, DEFAULT_WORLD_SEED } from "../random";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
-}
-
-function createSeededRandom(seed: number): () => number {
-  let value = seed >>> 0;
-
-  return () => {
-    value += 0x6d2b79f5;
-    let t = value;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }
 
 export function generatePerlinTerrain(
@@ -41,7 +30,7 @@ export function generatePerlinTerrain(
   const octaves = Math.max(1, Math.floor(options.octaves ?? DEFAULT_OCTAVES));
   const persistence = options.persistence ?? DEFAULT_PERSISTENCE;
   const lacunarity = options.lacunarity ?? DEFAULT_LACUNARITY;
-  const seed = options.seed ?? 1337;
+  const seed = options.seed ?? DEFAULT_WORLD_SEED;
 
   const minElevation = Math.floor(
     options.minElevation ?? DEFAULT_MIN_ELEVATION,
@@ -92,12 +81,19 @@ export function generatePerlinTerrain(
 let cachedTerrain: {
   width: number;
   height: number;
-  points: ReturnType<typeof generatePerlinTerrain>;
+  seed: number;
+  points: TerrainPoint[];
 } | null = null;
 
-export function getOrCreateTerrain() {
+/**
+ * Returns the world terrain for `seed` (`TERRAIN_WIDTH` × `TERRAIN_HEIGHT`), generating it
+ * once and caching it while the seed and dimensions stay the same. The seed is explicit so
+ * the same world can be rebuilt from a save; never derive it from the clock here.
+ */
+export function getOrCreateTerrain(seed: number = DEFAULT_WORLD_SEED): TerrainPoint[] {
   if (
     cachedTerrain &&
+    cachedTerrain.seed === seed &&
     cachedTerrain.width === TERRAIN_WIDTH &&
     cachedTerrain.height === TERRAIN_HEIGHT
   ) {
@@ -107,12 +103,13 @@ export function getOrCreateTerrain() {
   const points = generatePerlinTerrain({
     width: TERRAIN_WIDTH,
     height: TERRAIN_HEIGHT,
-    seed: Date.now(),
+    seed,
   });
 
   cachedTerrain = {
     width: TERRAIN_WIDTH,
     height: TERRAIN_HEIGHT,
+    seed,
     points,
   };
 

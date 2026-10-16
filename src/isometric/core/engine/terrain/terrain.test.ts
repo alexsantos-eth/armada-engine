@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TERRAIN_HEIGHT, TERRAIN_WIDTH } from "../constants";
+import { DEFAULT_WORLD_SEED } from "../random";
 import { generatePerlinTerrain, getOrCreateTerrain } from "./terrain";
 
 describe("generatePerlinTerrain", () => {
@@ -43,5 +44,28 @@ describe("generatePerlinTerrain", () => {
 
     expect(first).toHaveLength(TERRAIN_WIDTH * TERRAIN_HEIGHT);
     expect(second).toBe(first);
+  });
+
+  it("builds the world terrain from the given seed, deterministically", () => {
+    const seeded = getOrCreateTerrain(99);
+
+    expect(seeded).toEqual(
+      generatePerlinTerrain({ width: TERRAIN_WIDTH, height: TERRAIN_HEIGHT, seed: 99 }),
+    );
+    expect(getOrCreateTerrain(99)).toBe(seeded);
+    expect(getOrCreateTerrain(100)).not.toEqual(seeded);
+  });
+
+  it("defaults to DEFAULT_WORLD_SEED instead of the clock", () => {
+    expect(getOrCreateTerrain()).toEqual(
+      generatePerlinTerrain({
+        width: TERRAIN_WIDTH,
+        height: TERRAIN_HEIGHT,
+        seed: DEFAULT_WORLD_SEED,
+      }),
+    );
+    expect(generatePerlinTerrain({ width: 3, height: 3 })).toEqual(
+      generatePerlinTerrain({ width: 3, height: 3, seed: DEFAULT_WORLD_SEED }),
+    );
   });
 });

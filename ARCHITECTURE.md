@@ -31,7 +31,7 @@ flowchart LR
 - densidad automática;
 - fondo oscuro.
 
-Cuando `app.init()` termina, la página añade `app.canvas` al DOM y llama a `createIsometricScene(app)`. El cleanup del efecto destruye la escena y la aplicación. Si el componente se desmonta mientras Pixi aún inicializa, la bandera `disposed` evita añadir un canvas o una escena incompletos.
+Cuando `app.init()` termina, la página añade `app.canvas` al DOM, resuelve la semilla del mundo con `resolveWorldSeed(location.search, Math.random)` (parámetro `?seed=` de la URL o una semilla nueva), la muestra en consola y llama a `createIsometricScene(app, { seed })`. La página es el único lugar donde se usa `Math.random()`. El cleanup del efecto destruye la escena y la aplicación. Si el componente se desmonta mientras Pixi aún inicializa, la bandera `disposed` evita añadir un canvas o una escena incompletos.
 
 ## Organización de módulos
 
@@ -60,6 +60,10 @@ src/isometric/core/
       projection.ts
       projection.test.ts
       index.ts
+    random/
+      random.ts
+      random.test.ts
+      index.ts
     render/
       render.ts
       render.test.ts
@@ -82,13 +86,24 @@ src/isometric/core/
 
 Los archivos de tipos no contienen lógica runtime y no tienen tests propios. TypeScript y Typedoc validan esos contratos. Los módulos de comportamiento sí tienen tests co-localizados con el sufijo `.test.ts`.
 
+## Determinismo y semilla del mundo
+
+Todo el mundo se deriva de una sola semilla numérica. `engine/random` expone:
+
+- `createSeededRandom(seed)`: generador determinista (mulberry32) que devuelve un `RandomSource` en `[0, 1)`.
+- `deriveSeed(seed, label)`: sub-semilla independiente por sistema (`"entities"`, `"entity-color-variants"` y, en el futuro, `"chunk:x:y"`, etc.). Cada sistema consume su propio flujo, así que añadir tiradas en uno no altera lo que genera otro.
+- `DEFAULT_WORLD_SEED`: semilla usada cuando no se proporciona ninguna (tests y herramientas).
+- `resolveWorldSeed(search, random)`: resuelve la semilla en el punto de entrada.
+
+La lógica de dominio y generación nunca llama a `Math.random()` ni usa el reloj: recibe un `RandomSource` creado a partir de la semilla. Con la misma semilla, terreno, entidades, IDs y variantes de color son idénticos, lo que es requisito para guardar y cargar partidas.
+
 ## Modelo de terreno y entidades
 
 `Box` representa exclusivamente una celda materializada de terreno. Sus coordenadas `x` e `y` son inmutables; sus datos (`type`, `walkable`, `elevation` y `metadata`) pueden actualizarse mediante `update()`.
 
 La clase aplica datos por defecto y combina metadata de forma superficial. `getData()` devuelve una copia de los datos y una copia de `metadata`, de modo que el consumidor no puede modificar el estado interno accidentalmente.
 
-Las entidades no son subtipos de `Box`. `Entity` implementa el contrato espacial común y contiene su identificador, asset, altura, longitud, orientación de longitud y elevación. Las definiciones viven en `engine/entities/config.ts`; `createEntitiesFromConfig()` filtra columnas por superficie y, cuando existe, por `surfaceElevation` (un número exige esa elevación exacta; una lista acepta cualquiera de sus valores), exige que todas las celdas de una huella multi-bloque compartan la elevación de la celda de origen (el sprite se coloca a esa altura, así que un escalón bajo la huella sería visible), valida todas las celdas de una huella multi-bloque y las reserva en un `Set` para evitar solapamientos. Si la definición declara `gap`, descarta además cualquier huella que quede a menos de `gap` bloques (diagonales incluidas, distancia de Chebyshev) de otra instancia de la misma definición. La primera definición que reserva una coordenada tiene prioridad. `footprintSurfaces` permite exigir una superficie distinta bajo cada bloque de la huella, en orden desde la celda de origen a lo largo de `lengthAxis`; los bloques que no lista usan `surface`. Si una huella combina agua con otras superficies (una entidad que avanza sobre el agua), sus casillas de agua quedan exentas de la regla de huella plana y de `surfaceElevation`: solo las casillas de tierra deben estar a la misma elevación, y esa elevación es la de la entidad aunque la casilla de origen sea agua. Las huellas solo de agua (barcos) siguen exigiendo ambas reglas en todas sus casillas. Los muelles (`pier_x_reverse` y `pier_y_reverse`, con los SVG `block_1x3_over_water.svg` y `block_3x1_over_water.svg` en `public/assets/pier/`) usan `footprintSurfaces: ["water", "sand", "grass"]`: avanzan desde el borde del pasto, sobre la arena, hasta una casilla de agua. Como el agua está en la casilla de origen, solo encajan en costas cuya agua queda hacia el espectador; la orientación opuesta (pasto en la casilla de origen) está desactivada temporalmente. Los SVG `block_*_land_start.svg` y `block_*_land_end.svg` son de la versión anterior (`grass, sand, sand`) y no se usan. Su pasarela queda a la altura del pasto y sus pilotes bajan hasta la arena (medio bloque más baja) y hasta el agua (un bloque más baja); para eso el SVG alarga el lienzo hacia abajo. `renderBlock()` coloca los sprites desde su borde superior y, en entidades de varias casillas, toma la altura de la imagen de la proporción del SVG, así que ese espacio extra no altera la posición. Para incorporar una entidad nueva se añade una entrada de configuración y su SVG, sin modificar `scene.ts`.
+Las entidades no son subtipos de `Box`. `Entity` implementa el contrato espacial común y contiene un `id` de instancia estable y único (`<tipo>@<x>,<y>` del ancla al crearse, mediante `createEntityId()`; se guarda en sus datos y no se recalcula, y el constructor acepta un `id` explícito para restaurar entidades), su tipo (`type`, el `id` de la definición), asset, altura, longitud, orientación de longitud y elevación. Las definiciones viven en `engine/entities/config.ts`; `createEntitiesFromConfig()` filtra columnas por superficie y, cuando existe, por `surfaceElevation` (un número exige esa elevación exacta; una lista acepta cualquiera de sus valores), exige que todas las celdas de una huella multi-bloque compartan la elevación de la celda de origen (el sprite se coloca a esa altura, así que un escalón bajo la huella sería visible), valida todas las celdas de una huella multi-bloque y las reserva en un `Set` para evitar solapamientos. Si la definición declara `gap`, descarta además cualquier huella que quede a menos de `gap` bloques (diagonales incluidas, distancia de Chebyshev) de otra instancia de la misma definición. La primera definición que reserva una coordenada tiene prioridad. `footprintSurfaces` permite exigir una superficie distinta bajo cada bloque de la huella, en orden desde la celda de origen a lo largo de `lengthAxis`; los bloques que no lista usan `surface`. Si una huella combina agua con otras superficies (una entidad que avanza sobre el agua), sus casillas de agua quedan exentas de la regla de huella plana y de `surfaceElevation`: solo las casillas de tierra deben estar a la misma elevación, y esa elevación es la de la entidad aunque la casilla de origen sea agua. Las huellas solo de agua (barcos) siguen exigiendo ambas reglas en todas sus casillas. Los muelles (`pier_x_reverse` y `pier_y_reverse`, con los SVG `block_1x3_over_water.svg` y `block_3x1_over_water.svg` en `public/assets/pier/`) usan `footprintSurfaces: ["water", "sand", "grass"]`: avanzan desde el borde del pasto, sobre la arena, hasta una casilla de agua. Como el agua está en la casilla de origen, solo encajan en costas cuya agua queda hacia el espectador; la orientación opuesta (pasto en la casilla de origen) está desactivada temporalmente. Los SVG `block_*_land_start.svg` y `block_*_land_end.svg` son de la versión anterior (`grass, sand, sand`) y no se usan. Su pasarela queda a la altura del pasto y sus pilotes bajan hasta la arena (medio bloque más baja) y hasta el agua (un bloque más baja); para eso el SVG alarga el lienzo hacia abajo. `renderBlock()` coloca los sprites desde su borde superior y, en entidades de varias casillas, toma la altura de la imagen de la proporción del SVG, así que ese espacio extra no altera la posición. Para incorporar una entidad nueva se añade una entrada de configuración y su SVG, sin modificar `scene.ts`.
 
 ### Formaciones
 
@@ -119,7 +134,7 @@ Como la tirada es por grupo, una definición agrupada en tríos debe usar aproxi
 4. Combina amplitud con `persistence` y frecuencia con `lacunarity`.
 5. Normaliza el ruido a `[0, 1]` y lo convierte al rango `[minElevation, maxElevation]`.
 
-`getOrCreateTerrain()` construye el mapa usado por la escena con las dimensiones de `TERRAIN_WIDTH` y `TERRAIN_HEIGHT`, y conserva el resultado en caché. Una segunda llamada con las mismas dimensiones devuelve la misma referencia.
+`getOrCreateTerrain(seed)` construye el mapa usado por la escena con las dimensiones de `TERRAIN_WIDTH` y `TERRAIN_HEIGHT` para esa semilla (por defecto `DEFAULT_WORLD_SEED`) y conserva el resultado en caché. Una segunda llamada con la misma semilla y dimensiones devuelve la misma referencia; otra semilla regenera el mapa. El generador usa `createSeededRandom()` de `engine/random`.
 
 ## Construcción de columnas
 
@@ -181,7 +196,7 @@ El agua reutiliza la misma textura SVG para todos sus niveles. `getWaterTint()` 
 
 Después de renderizar los bloques de terreno, la escena proyecta y renderiza las entidades creadas por la factory. Sus texturas, alturas, longitudes y debug se resuelven mediante la configuración; la escena no contiene reglas por entidad.
 
-Las variantes de color SVG se generan por instancia cuando `colorReplacements` está definido. Cada clave de color puede tener un color o una lista; se selecciona una variante coherente para todo el SVG de esa instancia, se codifica como una fuente `data:image/svg+xml` y se carga como textura Pixi independiente.
+Las variantes de color SVG se eligen por instancia cuando `colorReplacements` está definido, pero las texturas se comparten: la escena elige con `pickColorVariation()` y un `RandomSource` derivado de la semilla (`"entity-color-variants"`) un índice de variación por instancia, y crea una sola textura por par (tipo de entidad, índice) con `createSvgColorVariant(source, replacements, variationIndex)`. Cada clave de color puede tener un color o una lista; el índice se aplica a todas las listas del SVG, que se codifica como fuente `data:image/svg+xml`. El número de texturas recoloreadas depende de los tipos y variaciones, no del número de instancias.
 
 ## Renderizado de bloques
 
@@ -199,9 +214,11 @@ Los SVG representan el bloque completo. No se deben volver a componer caras `top
 
 ## Ciclo de vida de recursos
 
-`createIsometricScene()` crea primero las entidades y descubre sus assets desde `textureSource`. Después carga los SVG de terreno y las variantes de entidad con `Assets.load()` en paralelo. Cada instancia recoloreada obtiene su propia variante; las fuentes originales sin recolor pueden reutilizarse. Si la escena se desmonta, destruye el container y llama a `Assets.unload()` para cada fuente cargada. Pixi gestiona las texturas; no se debe llamar a `destroy(true)` sobre una textura administrada por `Assets`.
+`createIsometricScene()` crea primero las entidades y descubre sus assets desde `textureSource`. Después carga los SVG de terreno y las variantes de entidad con `Assets.load()` en paralelo. Las instancias comparten la textura de su (tipo, variación); las fuentes originales sin recolor también se reutilizan. Si la escena se desmonta, destruye el container y llama a `Assets.unload()` para cada fuente cargada. Pixi gestiona las texturas; no se debe llamar a `destroy(true)` sobre una textura administrada por `Assets`.
 
 ## Testing y calidad
+
+Los tests de generación comprueban el determinismo: la misma semilla produce el mismo terreno, las mismas entidades e IDs, y `Math.random()` no se llama.
 
 Vitest ejecuta tests co-localizados mediante `src/**/*.test.ts`. La cobertura se mide con V8 y tiene umbrales obligatorios de `100%` para:
 
@@ -254,7 +271,7 @@ Los árboles de dos bloques de alto (`data-tiles="1x1x2"`, `height: 2`) son `tre
 
 `lengthAxis: "x"` es el valor por defecto. `lengthAxis: "y"` orienta el asset hacia el eje `y` y se aplica de forma coherente a la reserva de celdas, al posicionamiento del sprite y a los rombos de debug. Los assets multi-bloque deben reflejar su atributo SVG `data-tiles` en esta configuración.
 
-Cuando una entidad define `colorReplacements`, cada instancia obtiene una textura SVG recoloreada propia. Cada clave acepta un color o una lista; se selecciona una variante coherente para todas las apariciones de esa clave dentro del SVG. `debug: true` dibuja un rombo fino por bloque ocupado en las superficies inferior y superior.
+Cuando una entidad define `colorReplacements`, cada instancia recibe una variación elegida con la semilla del mundo y comparte la textura de esa variación con las demás instancias de su tipo. Cada clave acepta un color o una lista; se selecciona una variante coherente para todas las apariciones de esa clave dentro del SVG. `debug: true` dibuja un rombo fino por bloque ocupado en las superficies inferior y superior.
 
 ## Regla de sincronización
 

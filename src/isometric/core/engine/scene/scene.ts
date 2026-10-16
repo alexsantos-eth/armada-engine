@@ -1,5 +1,5 @@
 import { Application, Assets, Container, Texture } from "pixi.js";
-import { Box, createEntitiesFromConfig, Entity } from "../entities";
+import { Box, createEntitiesFromConfig, Entity, ENTITY_CONFIG } from "../entities";
 import { projectBoxesToIsometric } from "../board";
 import { classifyColumnSurfaces, getBlockMaterial, getOrCreateTerrain } from "../terrain";
 import type { TerrainMaterial, TerrainSurface } from "../../types";
@@ -18,7 +18,13 @@ import {
   WATER_BLOCK_TEXTURE_KEY,
 } from "../constants";
 import { fillElevations, isWithinViewport } from "../projection";
-import { createSvgColorVariant, renderBlock } from "../render";
+import {
+  createSeededRandom,
+  DEFAULT_WORLD_SEED,
+  deriveSeed,
+  type RandomSource,
+} from "../random";
+import { createSvgColorVariant, pickColorVariation, renderBlock } from "../render";
 
 const POSITIVE_ELEVATION_TOP_TINT = 0xe8ffb0;
 /** Neutral tint for sand: same height darkening as grass, without the green cast. */
@@ -55,16 +61,39 @@ function getPositiveElevationTint(
   );
 }
 
+/** Creates the entities of a world from its terrain columns and a seeded random source. */
+export type EntityFactory = (boxes: Box[], random: RandomSource) => Entity[];
+
+/** Options of {@link createIsometricScene}. */
+export type IsometricSceneOptions = {
+  /**
+   * World seed. Terrain, entity placement and color variants all derive from it, so the
+   * same seed rebuilds the same world. Defaults to `DEFAULT_WORLD_SEED`.
+   */
+  seed?: number;
+  /** Entity factory; defaults to `createEntitiesFromConfig()` with `ENTITY_CONFIG`. */
+  createEntities?: EntityFactory;
+};
+
+const createConfiguredEntities: EntityFactory = (boxes, random) =>
+  createEntitiesFromConfig(boxes, ENTITY_CONFIG, random);
+
+/**
+ * Builds the world for `options.seed` and renders it into `app`. Returns a cleanup that
+ * destroys the scene and unloads its assets.
+ */
 export async function createIsometricScene(
   app: Application,
-  createEntities: (boxes: Box[]) => Entity[] = createEntitiesFromConfig,
+  options: IsometricSceneOptions = {},
 ): Promise<() => void> {
+  const seed = options.seed ?? DEFAULT_WORLD_SEED;
+  const createEntities = options.createEntities ?? createConfiguredEntities;
   const grassBlockSource = "/assets/grass/block.svg";
   const groundBlockSource = "/assets/ground/block.svg";
   const waterBlockSource = "/assets/water/block.svg";
   const sandBlockSource = "/assets/sand/block.svg";
 
-  const terrain = getOrCreateTerrain();
+  const terrain = getOrCreateTerrain(seed);
   const boxes = terrain.map(
     (row) => new Box(row.x, row.y, { elevation: row.elevation }),
   );
@@ -89,16 +118,23 @@ export async function createIsometricScene(
   });
 
   const filledBoxes = fillElevations(boxes, DEFAULT_MIN_ELEVATION);
-  const entities = createEntities(boxes);
+  const entities = createEntities(
+    boxes,
+    createSeededRandom(deriveSeed(seed, "entities")),
+  );
+  // One texture per (entity type, color variation): instances share it instead of each
+  // fetching and decoding its own SVG. Types without `colorReplacements` share their source.
+  const variantRandom = createSeededRandom(deriveSeed(seed, "entity-color-variants"));
   const entityTextureKeys = new Map<Entity, string>();
   const entityTextureVariants = [
     ...new Map(
-      entities.map((entity, index) => {
+      entities.map((entity) => {
+        const variation = pickColorVariation(entity.colorReplacements, variantRandom);
         const variantKey = entity.colorReplacements
-          ? `entity:${index}`
+          ? `${entity.type}:${entity.textureSource}#${variation}`
           : entity.textureSource;
         entityTextureKeys.set(entity, variantKey);
-        return [variantKey, entity] as const;
+        return [variantKey, { entity, variation }] as const;
       }),
     ).entries(),
   ];
@@ -108,10 +144,11 @@ export async function createIsometricScene(
     Assets.load<Texture>(groundBlockSource),
     Assets.load<Texture>(waterBlockSource),
     Assets.load<Texture>(sandBlockSource),
-    ...entityTextureVariants.map(async ([variantKey, entity]) => {
+    ...entityTextureVariants.map(async ([variantKey, { entity, variation }]) => {
       const source = await createSvgColorVariant(
         entity.textureSource,
         entity.colorReplacements,
+        variation,
       );
       return { variantKey, source, texture: await Assets.load<Texture>(source) };
     }),

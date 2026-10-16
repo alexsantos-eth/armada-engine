@@ -1,17 +1,44 @@
 import type { SvgColorReplacements } from "../../types";
+import type { RandomSource } from "../random";
 
 const SVG_COLOR_ATTRIBUTE_PATTERN = /(fill|stroke)\s*=\s*(["'])#([0-9a-fA-F]{3,8})\2/g;
 
+/**
+ * Number of color variations declared by `replacements`: the length of its first list, or
+ * `0` when every key maps to a single color.
+ */
+export function getColorVariationCount(replacements: SvgColorReplacements | undefined): number {
+  if (!replacements) return 0;
+  return Object.values(replacements)
+    .find((color): color is readonly string[] => Array.isArray(color))?.length ?? 0;
+}
+
+/**
+ * Picks the variation index for one instance. Only consumes `random` when `replacements`
+ * declares variation lists, so entities without them never shift a seeded sequence.
+ */
+export function pickColorVariation(
+  replacements: SvgColorReplacements | undefined,
+  random: RandomSource,
+): number {
+  const count = getColorVariationCount(replacements);
+  return count === 0 ? 0 : Math.min(count - 1, Math.floor(random() * count));
+}
+
+/**
+ * Replaces `fill`/`stroke` hex colors of an SVG. Keys mapped to a list use the entry at
+ * `variationIndex` (clamped to the list), so every key of one SVG shares the same variation.
+ */
 export function replaceSvgColors(
   svg: string,
   replacements: SvgColorReplacements,
-  random: () => number = Math.random,
+  variationIndex = 0,
 ): string {
-  const variationIndex = getVariationIndex(replacements, random);
+  const index = Math.max(0, Math.floor(variationIndex));
   const normalizedReplacements = new Map(
     Object.entries(replacements).map(([source, target]) => [
       source.toLowerCase(),
-      pickColor(target, variationIndex),
+      pickColor(target, index),
     ]),
   );
 
@@ -26,27 +53,21 @@ export function replaceSvgColors(
   );
 }
 
-function getVariationIndex(
-  replacements: SvgColorReplacements,
-  random: () => number,
-): number {
-  const variationCount = Object.values(replacements)
-    .find((color): color is readonly string[] => Array.isArray(color))?.length ?? 0;
-  return variationCount === 0
-    ? 0
-    : Math.min(variationCount - 1, Math.floor(random() * variationCount));
-}
-
 function pickColor(color: string | readonly string[], variationIndex: number): string {
   if (typeof color === "string") return color;
 
   return color[Math.min(color.length - 1, variationIndex)] ?? "";
 }
 
+/**
+ * Loads an SVG asset and returns a `data:` URL with its colors replaced for
+ * `variationIndex`, or `source` unchanged when there is nothing to replace. Callers should
+ * create one variant per `(source, variationIndex)` and share its texture between instances.
+ */
 export async function createSvgColorVariant(
   source: string,
   replacements?: SvgColorReplacements,
-  random: () => number = Math.random,
+  variationIndex = 0,
 ): Promise<string> {
   if (!replacements || Object.keys(replacements).length === 0) return source;
 
@@ -55,6 +76,6 @@ export async function createSvgColorVariant(
     throw new Error(`Unable to load SVG asset: ${source}`);
   }
 
-  const svg = replaceSvgColors(await response.text(), replacements, random);
+  const svg = replaceSvgColors(await response.text(), replacements, variationIndex);
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }

@@ -9,6 +9,7 @@ import type {
   IBox,
   TerrainSurface,
 } from "../../types";
+import { createSeededRandom, DEFAULT_WORLD_SEED, type RandomSource } from "../random";
 import { classifyColumnSurfaces } from "../terrain";
 import { ENTITY_CONFIG } from "./config";
 import { pickFormationOffsets, resolveFormation } from "./formation";
@@ -85,6 +86,11 @@ function matchesSurfaceElevation(
     : surfaceElevation.includes(elevation);
 }
 
+/** Builds the default id of an entity spawned with its anchor at `(x, y)`. */
+export function createEntityId(type: string, x: number, y: number): string {
+  return `${type}@${x},${y}`;
+}
+
 /** Represents a configured non-terrain entity in the world grid. */
 export class Entity implements IEntity {
   public readonly x: number;
@@ -92,10 +98,21 @@ export class Entity implements IEntity {
 
   private readonly data: EntityData;
 
-  constructor(x: number, y: number, definition: EntityDefinition, elevation: number) {
+  /**
+   * @param id Stable instance id. Defaults to {@link createEntityId} for the spawn anchor;
+   *   pass the stored id when restoring an entity so its identity survives.
+   */
+  constructor(
+    x: number,
+    y: number,
+    definition: EntityDefinition,
+    elevation: number,
+    id: string = createEntityId(definition.id, x, y),
+  ) {
     this.x = x;
     this.y = y;
     this.data = {
+      id,
       type: definition.id,
       walkable: false,
       elevation,
@@ -110,6 +127,10 @@ export class Entity implements IEntity {
         : {}),
       metadata: {},
     };
+  }
+
+  get id(): string {
+    return this.data.id;
   }
 
   get type(): string {
@@ -197,11 +218,15 @@ const NO_KEYS: ReadonlySet<string> = new Set();
  * A definition with a `formation` spawns in groups: `spawnChance` is rolled once on a valid
  * anchor column and then every member of the formation map is validated with the same rules.
  * The group spawns only when at least `minMembers` fit; the `gap` applies between groups.
+ *
+ * Placement is deterministic for a given `random` source: pass one derived from the world
+ * seed (`createSeededRandom(deriveSeed(seed, "entities"))`). Without it, a fixed default seed
+ * is used; `Math.random()` is never used.
  */
 export function createEntitiesFromConfig(
   boxes: IGridObject[],
   definitions: EntityDefinition[] = ENTITY_CONFIG,
-  random: () => number = Math.random,
+  random: RandomSource = createSeededRandom(DEFAULT_WORLD_SEED),
 ): Entity[] {
   const entities: Entity[] = [];
   const occupiedPositions = new Set<string>();

@@ -39,6 +39,7 @@ Las entidades que no son bloques de terreno se declaran en `engine/entities/conf
 ## Reglas de cambios
 
 - Mantener TypeScript estricto y no introducir `any` para ocultar errores.
+- No usar `Math.random()` ni el reloj en lógica de dominio o generación: recibir un `RandomSource` de `engine/random` derivado de la semilla del mundo (`deriveSeed(seed, "<sistema>")`). Solo `page.tsx` elige una semilla nueva.
 - No mezclar responsabilidades de terreno, proyección, entidades y Pixi en un mismo módulo.
 - Crear o actualizar el `index.ts` de la responsabilidad cuando se exponga un nuevo símbolo.
 - Todo archivo de comportamiento en `src` debe tener un test co-localizado con el mismo nombre y extensión `.test.ts`: `foo.ts` junto a `foo.test.ts`.
@@ -75,7 +76,9 @@ Las entidades se configuran en `engine/entities/config.ts` y pueden usar `surfac
 
 Los assets multi-bloque declaran su geometría con `data-tiles`; `lengthAxis: "x"` es el valor por defecto y `lengthAxis: "y"` orienta la huella hacia el eje `y`. El renderer aplica la orientación al sprite y dibuja un rombo de debug por bloque ocupado en sus niveles inferior y superior.
 
-`colorReplacements` acepta colores individuales o listas de variantes. La escena genera una textura SVG recoloreada por instancia, manteniendo una elección coherente de variante dentro de cada asset.
+`colorReplacements` acepta colores individuales o listas de variantes. Cada instancia recibe una variación elegida con la semilla del mundo y la escena crea una sola textura recoloreada por (tipo, variación), compartida entre instancias.
+
+Todo el mundo se deriva de una semilla (`createIsometricScene(app, { seed })`); cada `Entity` tiene un `id` de instancia estable. Las deudas conocidas y los planes de refactor del core están en `CORE_REVIEW.md`.
 
 ## Regla de documentación
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Box, Entity, createEntitiesFromConfig } from "./entities";
 
 describe("Box", () => {
@@ -62,11 +62,59 @@ describe("Box", () => {
     expect(entity.height).toBe(3);
     expect(entity.length).toBe(2);
     expect(entity.textureSource).toBe("/assets/statue/block.svg");
+    expect(entity.id).toBe("statue@2,3");
 
     const data = entity.getData();
     data.metadata.tag = "changed";
 
     expect(entity.metadata).toEqual({});
+  });
+
+  it("keeps an explicit id, so restored entities keep their identity after moving", () => {
+    const entity = new Entity(
+      9,
+      9,
+      { id: "statue", textureSource: "/s.svg", height: 1, spawnChance: 1, surface: "grass" },
+      0,
+      "statue@2,3",
+    );
+
+    expect(entity.id).toBe("statue@2,3");
+    expect(entity.getData().id).toBe("statue@2,3");
+  });
+
+  it("is deterministic without an explicit random source", () => {
+    const boxes = Array.from({ length: 16 }, (_, index) =>
+      new Box(index % 4, Math.floor(index / 4), { elevation: 1 }));
+    const definitions = [
+      { id: "rock", textureSource: "/r.svg", height: 1, spawnChance: 0.5, surface: "grass" as const },
+    ];
+    const randomSpy = vi.spyOn(Math, "random");
+
+    expect(createEntitiesFromConfig(boxes, definitions).map(({ id }) => id))
+      .toEqual(createEntitiesFromConfig(boxes, definitions).map(({ id }) => id));
+    expect(randomSpy).not.toHaveBeenCalled();
+    randomSpy.mockRestore();
+  });
+
+  it("gives every created entity a unique, reproducible id", () => {
+    const boxes = Array.from({ length: 16 }, (_, index) =>
+      new Box(index % 4, Math.floor(index / 4), { elevation: 1 }));
+    const definitions = [
+      { id: "rock", textureSource: "/r.svg", height: 1, spawnChance: 0.5, surface: "grass" as const },
+      { id: "tree", textureSource: "/t.svg", height: 2, spawnChance: 1, surface: "grass" as const },
+    ];
+    const roll = () => {
+      let state = 0;
+      return () => (state = (state + 0.37) % 1);
+    };
+
+    const first = createEntitiesFromConfig(boxes, definitions, roll()).map(({ id }) => id);
+    const second = createEntitiesFromConfig(boxes, definitions, roll()).map(({ id }) => id);
+
+    expect(first.length).toBeGreaterThan(1);
+    expect(new Set(first).size).toBe(first.length);
+    expect(second).toEqual(first);
   });
 
   it("preserves configured SVG color replacements", () => {
@@ -114,6 +162,7 @@ describe("Box", () => {
     expect(entities).toHaveLength(2);
     expect(entities.map((entity) => entity.getData())).toEqual([
       {
+        id: "statue@1,2",
         type: "statue",
         walkable: false,
         elevation: 3,
@@ -123,6 +172,7 @@ describe("Box", () => {
         metadata: {},
       },
       {
+        id: "statue@6,7",
         type: "statue",
         walkable: false,
         elevation: 0,

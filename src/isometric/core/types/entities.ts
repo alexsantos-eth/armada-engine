@@ -93,6 +93,12 @@ export type EntityDefinition = {
 };
 
 export type EntityData = GridObjectData & {
+  /**
+   * Stable identifier of this instance, unique within a world. It is assigned once at
+   * creation (`<type>@<x>,<y>` of the spawn anchor) and never recomputed, so saves, AI
+   * targets and events can reference the entity even after it moves.
+   */
+  id: string;
   type: string;
   walkable: boolean;
   height: number;
@@ -165,6 +171,8 @@ export interface IBox {
 }
 
 export interface IEntity extends IGridObject {
+  /** Stable identifier of this instance; see `EntityData.id`. */
+  readonly id: string;
   readonly type: string;
   readonly walkable: boolean;
   readonly height: number;
