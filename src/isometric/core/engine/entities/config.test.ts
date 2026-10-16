@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ENTITY_CONFIG } from "./config";
+import { parseFormationMap, resolveFormation } from "./formation";
 
 const ASSET_SOURCES = import.meta.glob<string>("/public/assets/**/*.svg", {
   query: "?raw",
@@ -148,5 +149,29 @@ describe("ENTITY_CONFIG", () => {
     ]));
     expect(tall.filter(({ textureSource }) => readTiles(textureSource)[2] === 3))
       .toHaveLength(3);
+  });
+
+  it.each(
+    ENTITY_CONFIG
+      .filter(({ formation }) => formation !== undefined)
+      .map((definition) => [definition.id, definition] as const),
+  )("declares a valid formation map for %s", (_, definition) => {
+    expect(() => resolveFormation(definition.formation)).not.toThrow();
+  });
+
+  it("groups the two-block-tall trees in groves of three", () => {
+    const groves = ENTITY_CONFIG.filter(({ formation }) => formation !== undefined);
+
+    expect(groves.map(({ id }) => id)).toEqual(expect.arrayContaining([
+      "tree_3",
+      "tree_7",
+      "tree_8",
+    ]));
+    groves
+      .filter(({ id }) => ["tree_3", "tree_7", "tree_8"].includes(id))
+      .forEach(({ formation }) => {
+        expect(parseFormationMap(formation?.map ?? [])).toHaveLength(3);
+        expect(formation?.rotate).toBe(true);
+      });
   });
 });

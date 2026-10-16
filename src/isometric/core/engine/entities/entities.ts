@@ -7,9 +7,11 @@ import type {
   IEntity,
   IGridObject,
   IBox,
+  TerrainSurface,
 } from "../../types";
 import { classifyColumnSurfaces } from "../terrain";
 import { ENTITY_CONFIG } from "./config";
+import { pickFormationOffsets, resolveFormation } from "./formation";
 
 const DEFAULT_BOX_DATA: BoxData = {
   type: "EMPTY",
@@ -162,6 +164,22 @@ export class Entity implements IEntity {
   }
 }
 
+/** Lookups shared by every placement check of one `createEntitiesFromConfig()` call. */
+type PlacementContext = {
+  readonly boxesByPosition: ReadonlyMap<string, IGridObject>;
+  readonly surfaces: ReadonlyMap<string, TerrainSurface>;
+  readonly occupiedPositions: ReadonlySet<string>;
+};
+
+/** A validated position for one entity instance. */
+type Placement = {
+  readonly box: IGridObject;
+  readonly footprintKeys: readonly string[];
+  readonly elevation: number;
+};
+
+const NO_KEYS: ReadonlySet<string> = new Set();
+
 /**
  * Creates configured entities on eligible terrain columns.
  *
@@ -175,6 +193,10 @@ export class Entity implements IEntity {
  *
  * Each definition may declare a `gap`: the minimum number of free blocks
  * (including diagonals) that must separate two instances of the same entity.
+ *
+ * A definition with a `formation` spawns in groups: `spawnChance` is rolled once on a valid
+ * anchor column and then every member of the formation map is validated with the same rules.
+ * The group spawns only when at least `minMembers` fit; the `gap` applies between groups.
  */
 export function createEntitiesFromConfig(
   boxes: IGridObject[],
@@ -184,52 +206,91 @@ export function createEntitiesFromConfig(
   const entities: Entity[] = [];
   const occupiedPositions = new Set<string>();
   const positionsByType = new Map<string, Set<string>>();
-  const boxesByPosition = new Map(
-    boxes.map((box) => [`${box.x}:${box.y}`, box]),
-  );
-  const surfaces = classifyColumnSurfaces(boxes);
+  const context: PlacementContext = {
+    boxesByPosition: new Map(boxes.map((box) => [`${box.x}:${box.y}`, box])),
+    surfaces: classifyColumnSurfaces(boxes),
+    occupiedPositions,
+  };
 
   for (const definition of definitions) {
+    const formation = resolveFormation(definition.formation);
+    const sameTypePositions = positionsByType.get(definition.id) ?? new Set<string>();
+    positionsByType.set(definition.id, sameTypePositions);
+
     for (const box of boxes) {
-      const footprintKeys = getFootprintKeys(box, definition);
-      const footprintBoxes = footprintKeys.map((key) => boxesByPosition.get(key));
-      if (footprintBoxes.some((footprintBox) => footprintBox === undefined)) continue;
-      const cells = footprintBoxes as IGridObject[];
-      const required = cells.map((_, index) =>
-        definition.footprintSurfaces?.[index] ?? definition.surface,
-      );
-      if (cells.some((cell, index) => surfaces.get(`${cell.x}:${cell.y}`) !== required[index])) {
-        continue;
-      }
-      // Blocks that carry the entity: all of them, except the water blocks of a footprint
-      // that also stands on land (a pier reaching over the water).
-      const reachesOverWater = required.includes("water") &&
-        required.some((surface) => surface !== "water");
-      const grounded = cells.filter((_, index) =>
-        !reachesOverWater || required[index] !== "water",
-      );
-      // The carrying blocks must share one elevation (the sprite is placed at that height,
-      // so a step under them would show) and match `surfaceElevation`.
-      const elevation = grounded[0].elevation;
-      if (grounded.some((cell) =>
-        cell.elevation !== elevation ||
-        !matchesSurfaceElevation(cell.elevation, definition.surfaceElevation),
-      )) continue;
-      if (footprintKeys.some((key) => occupiedPositions.has(key))) continue;
-      const sameTypePositions = positionsByType.get(definition.id) ?? new Set<string>();
-      if (violatesGap(box, definition, sameTypePositions)) continue;
+      if (!findPlacement(box, definition, context, sameTypePositions, NO_KEYS)) continue;
       if (random() >= definition.spawnChance) continue;
 
-      footprintKeys.forEach((key) => {
+      // The anchor sits at offset (0, 0), so it is always the first member placed.
+      const groupKeys = new Set<string>();
+      const members: Placement[] = [];
+      for (const offset of pickFormationOffsets(formation, random)) {
+        const memberBox = context.boxesByPosition.get(`${box.x + offset.x}:${box.y + offset.y}`);
+        const placement = memberBox &&
+          findPlacement(memberBox, definition, context, sameTypePositions, groupKeys);
+        if (!placement) continue;
+        placement.footprintKeys.forEach((key) => groupKeys.add(key));
+        members.push(placement);
+      }
+      if (members.length < formation.minMembers) continue;
+
+      groupKeys.forEach((key) => {
         occupiedPositions.add(key);
         sameTypePositions.add(key);
       });
-      positionsByType.set(definition.id, sameTypePositions);
-      entities.push(new Entity(box.x, box.y, definition, elevation));
+      members.forEach(({ box: member, elevation }) => {
+        entities.push(new Entity(member.x, member.y, definition, elevation));
+      });
     }
   }
 
   return entities;
+}
+
+/**
+ * Validates one instance of `definition` anchored on `box`: footprint inside the map,
+ * surfaces, flat elevation, free cells (including those already taken by the current
+ * group) and `gap` with previously placed instances of the same entity.
+ */
+function findPlacement(
+  box: IGridObject,
+  definition: EntityDefinition,
+  context: PlacementContext,
+  sameTypePositions: ReadonlySet<string>,
+  groupKeys: ReadonlySet<string>,
+): Placement | undefined {
+  const footprintKeys = getFootprintKeys(box, definition);
+  const footprintBoxes = footprintKeys.map((key) => context.boxesByPosition.get(key));
+  if (footprintBoxes.some((footprintBox) => footprintBox === undefined)) return undefined;
+  const cells = footprintBoxes as IGridObject[];
+  const required = cells.map((_, index) =>
+    definition.footprintSurfaces?.[index] ?? definition.surface,
+  );
+  if (cells.some((cell, index) =>
+    context.surfaces.get(`${cell.x}:${cell.y}`) !== required[index],
+  )) {
+    return undefined;
+  }
+  // Blocks that carry the entity: all of them, except the water blocks of a footprint
+  // that also stands on land (a pier reaching over the water).
+  const reachesOverWater = required.includes("water") &&
+    required.some((surface) => surface !== "water");
+  const grounded = cells.filter((_, index) =>
+    !reachesOverWater || required[index] !== "water",
+  );
+  // The carrying blocks must share one elevation (the sprite is placed at that height,
+  // so a step under them would show) and match `surfaceElevation`.
+  const elevation = grounded[0].elevation;
+  if (grounded.some((cell) =>
+    cell.elevation !== elevation ||
+    !matchesSurfaceElevation(cell.elevation, definition.surfaceElevation),
+  )) return undefined;
+  if (footprintKeys.some((key) =>
+    context.occupiedPositions.has(key) || groupKeys.has(key),
+  )) return undefined;
+  if (violatesGap(box, definition, sameTypePositions)) return undefined;
+
+  return { box, footprintKeys, elevation };
 }
 
 function getFootprintKeys(box: IGridObject, definition: EntityDefinition): string[] {

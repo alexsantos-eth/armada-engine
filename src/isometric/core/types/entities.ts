@@ -13,6 +13,39 @@ export type SvgColor = string | readonly string[];
 
 export type SvgColorReplacements = Readonly<Record<string, SvgColor>>;
 
+/** Relative position on the grid, in blocks, from a formation's anchor. */
+export type GridOffset = {
+  /** Offset along the engine `x` axis. */
+  readonly x: number;
+  /** Offset along the engine `y` axis. */
+  readonly y: number;
+};
+
+/**
+ * Formation map that groups instances of one entity when they spawn.
+ *
+ * Instead of rolling each column on its own, the factory rolls `spawnChance` once on an
+ * anchor column and then tries to place a whole group following `map`.
+ */
+export type EntityFormation = {
+  /**
+   * Grid drawn as text: each string is a row along `y` and each character a column along
+   * `x`. `"X"` marks a member and `"."` an empty cell. The first `"X"` in reading order is
+   * the anchor, placed on the column that wins the spawn roll.
+   *
+   * @example `["XX", "X."]` groups three instances in an L.
+   */
+  map: readonly string[];
+  /**
+   * Minimum number of members that must fit (valid terrain, free cells, `gap` with other
+   * groups) for the group to spawn. Members that do not fit are skipped. Defaults to every
+   * member of `map`; values are clamped between `1` and that count.
+   */
+  minMembers?: number;
+  /** Rotates each group a random number of quarter turns around its anchor. */
+  rotate?: boolean;
+};
+
 export type GridObjectData = {
   elevation: number;
   metadata: BoxMetadata;
@@ -50,6 +83,11 @@ export type EntityDefinition = {
    * instances of this same entity. `1` forbids adjacent instances. Defaults to `0`.
    */
   gap?: number;
+  /**
+   * Groups instances following a formation map (e.g. trees in groves of three). The `gap`
+   * applies between groups, not between members of the same group.
+   */
+  formation?: EntityFormation;
   debug?: boolean;
   colorReplacements?: SvgColorReplacements;
 };

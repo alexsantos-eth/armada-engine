@@ -1,4 +1,13 @@
-import type { EntityDefinition } from "../../types";
+import type { EntityDefinition, EntityFormation } from "../../types";
+
+/**
+ * Groves of three trees of the same kind, in an L rotated at random. Trees with this
+ * formation roll `spawnChance` once per grove, so it is a third of the single-tree value.
+ */
+const TREE_GROVE_FORMATION: EntityFormation = {
+  map: ["XX", "X."],
+  rotate: true,
+};
 
 const HOUSE_COLOR_REPLACEMENTS = {
   "#9f4b2f": ["#8f5f12", "#7f241b", "#1f4f85"],
@@ -126,8 +135,9 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     id: "tree_3",
     textureSource: "/assets/tree/block_3.svg",
     height: 2,
-    spawnChance: 0.03,
+    spawnChance: 0.01,
     surface: "grass",
+    formation: TREE_GROVE_FORMATION,
   },
   {
     id: "tree_4",
@@ -154,15 +164,17 @@ export const ENTITY_CONFIG: EntityDefinition[] = [
     id: "tree_7",
     textureSource: "/assets/tree/block_7.svg",
     height: 2,
-    spawnChance: 0.03,
+    spawnChance: 0.01,
     surface: "grass",
+    formation: TREE_GROVE_FORMATION,
   },
   {
     id: "tree_8",
     textureSource: "/assets/tree/block_8.svg",
     height: 2,
-    spawnChance: 0.03,
+    spawnChance: 0.01,
     surface: "grass",
+    formation: TREE_GROVE_FORMATION,
   },
   {
     id: "statue",

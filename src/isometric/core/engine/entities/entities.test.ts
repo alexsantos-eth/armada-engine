@@ -555,3 +555,131 @@ describe("Box", () => {
     expect(entities[0].type).toBe("buoy");
   });
 });
+describe("createEntitiesFromConfig formations", () => {
+  const tree = {
+    id: "tree",
+    textureSource: "/assets/tree/block.svg",
+    height: 1,
+    surface: "grass" as const,
+  };
+
+  function grid(width: number, height: number, elevation = 1): Box[] {
+    return Array.from({ length: width }, (_, x) =>
+      Array.from({ length: height }, (__, y) => new Box(x, y, { elevation })),
+    ).flat();
+  }
+
+  function sequence(...values: number[]): () => number {
+    return () => values.shift() ?? 1;
+  }
+
+  const positions = (entities: Entity[]) => entities.map(({ x, y }) => `${x}:${y}`);
+
+  it("places the whole group around the anchor with a single spawn roll", () => {
+    let calls = 0;
+    const random = sequence(0);
+    const entities = createEntitiesFromConfig(
+      grid(4, 4),
+      [{ ...tree, spawnChance: 0.5, formation: { map: ["XX", "X."] } }],
+      () => {
+        calls++;
+        return random();
+      },
+    );
+
+    expect(positions(entities)).toEqual(["0:0", "1:0", "0:1"]);
+    expect(entities.every(({ type }) => type === "tree")).toBe(true);
+    // The anchor rolls once, then each of the 13 columns left free; members never roll.
+    expect(calls).toBe(1 + 16 - 3);
+  });
+
+  it("discards a group when fewer than minMembers fit", () => {
+    const definition = { ...tree, spawnChance: 1, formation: { map: ["XXX"] } };
+
+    expect(createEntitiesFromConfig(grid(2, 1), [definition], () => 0)).toEqual([]);
+    expect(positions(createEntitiesFromConfig(
+      grid(2, 1),
+      [{ ...definition, formation: { map: ["XXX"], minMembers: 2 } }],
+      () => 0,
+    ))).toEqual(["0:0", "1:0"]);
+  });
+
+  it("skips members on cells taken by earlier definitions", () => {
+    const boxes = [
+      new Box(0, 0, { elevation: 1 }),
+      new Box(0, 1, { elevation: 1 }),
+      new Box(1, 0, { elevation: 2 }),
+      new Box(1, 1, { elevation: 1 }),
+    ];
+    const entities = createEntitiesFromConfig(
+      boxes,
+      [
+        {
+          id: "statue",
+          textureSource: "/assets/statue/block.svg",
+          height: 1,
+          spawnChance: 1,
+          surface: "grass",
+          surfaceElevation: 2,
+        },
+        { ...tree, spawnChance: 1, formation: { map: ["XX", "X."], minMembers: 2 } },
+      ],
+      () => 0,
+    );
+
+    expect(entities.map(({ type, x, y }) => `${type}@${x}:${y}`)).toEqual([
+      "statue@1:0",
+      "tree@0:0",
+      "tree@0:1",
+    ]);
+  });
+
+  it("rotates each group around its anchor when rotation is enabled", () => {
+    const entities = createEntitiesFromConfig(
+      grid(3, 3),
+      [{ ...tree, spawnChance: 0.5, formation: { map: ["XX", "X."], rotate: true } }],
+      // Skip (0,0), (0,1), (0,2) and (1,0); spawn at (1,1) and turn it twice.
+      sequence(1, 1, 1, 1, 0, 0.5),
+    );
+
+    expect(positions(entities)).toEqual(["1:1", "0:1", "1:0"]);
+  });
+
+  it("applies the gap between groups but not inside a group", () => {
+    const entities = createEntitiesFromConfig(
+      grid(6, 1),
+      [{ ...tree, spawnChance: 1, gap: 1, formation: { map: ["XX"] } }],
+      () => 0,
+    );
+
+    expect(positions(entities)).toEqual(["0:0", "1:0", "3:0", "4:0"]);
+  });
+
+  it("keeps multi-block members of one group from overlapping", () => {
+    const entities = createEntitiesFromConfig(
+      grid(4, 1, -1),
+      [{
+        id: "boat",
+        textureSource: "/assets/boat/block_2.svg",
+        height: 1,
+        length: 2,
+        spawnChance: 1,
+        surface: "water",
+        formation: { map: ["XX"], minMembers: 1 },
+      }],
+      () => 0,
+    );
+
+    expect(positions(entities)).toEqual(["0:0", "2:0"]);
+  });
+
+  it("gives each member the elevation of its own column", () => {
+    const entities = createEntitiesFromConfig(
+      [new Box(0, 0, { elevation: 1 }), new Box(1, 0, { elevation: 2 })],
+      [{ ...tree, spawnChance: 1, formation: { map: ["XX"] } }],
+      () => 0,
+    );
+
+    expect(entities.map(({ elevation }) => elevation)).toEqual([1, 2]);
+  });
+});
