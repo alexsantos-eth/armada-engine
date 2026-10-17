@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
  * (through their barrel), so the dependency graph stays acyclic and domain code never
  * reaches Pixi or the browser:
  *
- * constants, random → grid → terrain → entities → world → scene ← projection, culling, render
+ * constants, random → grid → terrain → entities → world → scene ← projection, render
  *
  * Outside the engine, a module may only reach the shared types (`../../types`): the engine
  * never imports game content. Content (`src/isometric/content`) is plain data and only
@@ -15,13 +15,12 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   constants: [],
   random: [],
   projection: [],
-  culling: ["constants"],
   grid: ["constants"],
   terrain: ["constants", "grid", "random"],
   entities: ["grid", "random", "terrain"],
   world: ["constants", "entities", "grid", "random", "terrain"],
   render: [],
-  scene: ["constants", "culling", "entities", "grid", "projection", "render", "terrain", "world"],
+  scene: ["constants", "entities", "grid", "projection", "render", "terrain", "world"],
 };
 
 /** Modules allowed to import Pixi. Everything else is pure domain logic. */

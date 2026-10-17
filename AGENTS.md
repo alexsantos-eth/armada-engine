@@ -14,7 +14,6 @@ La lógica principal vive en `src/isometric/core`.
 core/
   engine/
     constants/
-    culling/
     grid/
     entities/
     projection/

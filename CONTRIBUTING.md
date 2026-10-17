@@ -8,6 +8,8 @@ El código del engine está organizado por responsabilidad dentro de `src/isomet
 
 Para cualquier búsqueda por posición usa `engine/grid`: `CellMap` para un valor por columna y `SpatialIndex` para qué ocupa cada celda, con las coordenadas tipadas `WorldCoord`/`ChunkCoord`/`LocalCoord`. No uses claves de texto `"x:y"`: el test de arquitectura las rechaza.
 
+Para el render, usa lo que PixiJS ya resuelve antes que código propio (tabla en la skill `armada-core-review` y guía en https://pixijs.com/8.x/guides/getting-started/intro). En particular: no filtres por viewport a mano (marca las vistas con `cullable = true`; el `CullerPlugin` está registrado en `page.tsx`) y no asignes `zIndex` a las vistas del mundo (usa `createBlockViews()` + `addInDepthOrder()`).
+
 Las dependencias entre módulos están fijadas en `engine/architecture.test.ts` (tabla en `ARCHITECTURE.md`). Si un módulo nuevo necesita otra dependencia, añádela a esa tabla de forma explícita y justificada; un módulo nuevo debe aparecer en ella o el test falla.
 
 Los tipos compartidos viven en `src/isometric/core/types` y se exportan desde `core/types/index.ts`. No se crean tests runtime para archivos que solo contienen tipos.

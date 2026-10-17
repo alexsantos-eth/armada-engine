@@ -6,6 +6,19 @@ Criterio: el core debe sostener un **RPG isométrico procedural de supervivencia
 
 Niveles: **Bloqueante** (rompe la visión) · **Alta** (reescritura cara cuando llegue un sistema previsto) · **Media** (corregible localmente) · **Baja** (higiene).
 
+## 2026-10-17 — Culling y orden de dibujo con PixiJS
+
+Consultadas: [Culler Plugin](https://pixijs.com/8.x/guides/components/application/culler-plugin), [Performance Tips](https://pixijs.com/8.x/guides/concepts/performance-tips), [Container](https://pixijs.com/8.x/guides/components/scene-objects/container) y el código de `pixi.js` 8.22.0 (`Culler`, `sortMixin`).
+
+| # | Estado | Cambio |
+|---|---|---|
+| 14 | Corregido (Alta) | **Culling propio que impedía la cámara.** `isWithinViewport()` descartaba al construir lo que quedaba fuera de pantalla, así que nunca se creaba. Ahora la escena crea todas las vistas con `cullable = true` y el `CullerPlugin` (`page.tsx`) omite dibujarlas por frame. Eliminado el módulo `engine/culling` y `VIEW_CULL_MARGIN`. |
+| 15 | Corregido (Media) | **Orden por `sortableChildren` sobre miles de hijos.** Pixi solo reordena cuando algo cambia, pero asignar `zIndex` activa `sortableChildren` en el padre: cualquier entidad en movimiento habría reordenado el mundo entero. Ahora `createBlockViews()` devuelve cada vista con su profundidad (`DepthView`) sin tocar `zIndex`, y la escena las añade una vez en orden con `addInDepthOrder()`. `renderBlock()` desaparece. |
+
+Verificado en Chromium (WebGL) con `?seed=1337`: la escena se dibuja igual, sin errores. El orden es el mismo que antes porque ambos son un ordenamiento estable por la misma profundidad sobre el mismo orden de creación.
+
+Pendiente ligado a esto: con la cámara (#7), recolocar la vista de una entidad que se mueve (inserción por profundidad, sin reordenar todo) y medir el coste del culler por frame (la guía avisa de que empeora si la CPU es el cuello de botella); si hace falta, agrupar por chunk con `cullArea` o `cacheAsTexture`.
+
 ## 2026-10-16 — `renderBlock()` con objeto de opciones
 
 | # | Estado | Cambio |

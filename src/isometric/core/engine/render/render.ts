@@ -31,7 +31,17 @@ function getStripTextures(texture: Texture, strips: number): Texture[] {
   return textures;
 }
 
-/** What to draw with {@link renderBlock}. Only `texture`, `box` and `metrics` are required. */
+/**
+ * A display object with its isometric draw depth: larger depths are drawn later (in front).
+ * Depth is kept outside Pixi's `zIndex` on purpose: assigning `zIndex` turns on
+ * `sortableChildren` in the parent, which re-sorts every child whenever anything changes.
+ */
+export type DepthView = {
+  readonly view: Container;
+  readonly depth: number;
+};
+
+/** What to draw with {@link createBlockViews}. Only `texture`, `box` and `metrics` are required. */
 export type RenderBlockOptions = {
   /** Loaded texture of the block or entity. */
   readonly texture: Texture;
@@ -54,12 +64,13 @@ export type RenderBlockOptions = {
 };
 
 /**
- * Renders a block or entity sprite. Multi-block entities are cut into vertical half-tile
- * strips, each sorted with the depth of its own footprint tile, so things standing in
+ * Creates the views of a block or entity, each with its draw depth, without adding them to
+ * any container (see {@link addInDepthOrder}). Multi-block entities are cut into vertical
+ * half-tile strips, each with the depth of its own footprint tile, so things standing in
  * front of the far end of a long entity (a tree beside the land end of a pier) are drawn
- * over it instead of behind it. Returns every sprite added.
+ * over it instead of behind it. Sprites come first; the debug outline, when enabled, last.
  */
-export function renderBlock(container: Container, options: RenderBlockOptions): Sprite[] {
+export function createBlockViews(options: RenderBlockOptions): DepthView[] {
   const {
     texture,
     box,
@@ -93,29 +104,27 @@ export function renderBlock(container: Container, options: RenderBlockOptions): 
   const positionX = box.screenX + lengthDirection * footprintOffset * (tileWidth / 2);
   const positionY = box.screenY - footprintOffset * (tileHeight / 2) - verticalOffset;
   image.position.set(positionX, positionY);
-  const tileZIndex = (tile: number) =>
+  const tileDepth = (tile: number) =>
     box.baseScreenY - tile * (tileHeight / 2) + box.box.elevation * 0.001 +
     (box.x + (lengthAxis === "x" ? tile : 0)) * 0.0001;
-  image.zIndex = tileZIndex(0);
+  const anchorDepth = tileDepth(0);
 
-  let sprites = [image];
+  let views: DepthView[] = [{ view: image, depth: anchorDepth }];
   if (length > 1) {
     const sliceTiles = getFootprintSliceTiles(length, lengthAxis);
     const stripTextures = getStripTextures(texture, sliceTiles.length);
     const stripWidth = image.width / sliceTiles.length;
     const left = positionX - image.width / 2;
-    sprites = sliceTiles.map((tile, strip) => {
+    views = sliceTiles.map((tile, strip) => {
       const slice = new Sprite(stripTextures[strip]);
       slice.width = stripWidth;
       slice.height = image.height;
       slice.tint = image.tint;
       slice.anchor.set(0, 0);
       slice.position.set(left + strip * stripWidth, positionY);
-      slice.zIndex = tileZIndex(tile);
-      return slice;
+      return { view: slice, depth: tileDepth(tile) };
     });
   }
-  sprites.forEach((sprite) => container.addChild(sprite));
 
   if (debug) {
     const halfWidth = tileWidth / 2;
@@ -136,9 +145,19 @@ export function renderBlock(container: Container, options: RenderBlockOptions): 
       outline.poly(createDiamond(blockIndex, boxHeight * height));
     }
     outline.stroke({ color: 0xff00ff, width: 1 });
-    outline.zIndex = image.zIndex + 0.0001;
-    container.addChild(outline);
+    views.push({ view: outline, depth: anchorDepth + 0.0001 });
   }
 
-  return sprites;
+  return views;
+}
+
+/**
+ * Adds `views` to `container` from back to front (ascending depth; equal depths keep their
+ * order). One sort when building, instead of Pixi re-sorting every child: the container does
+ * not need `sortableChildren`.
+ */
+export function addInDepthOrder(container: Container, views: readonly DepthView[]): void {
+  [...views]
+    .sort((a, b) => a.depth - b.depth)
+    .forEach(({ view }) => container.addChild(view));
 }

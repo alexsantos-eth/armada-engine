@@ -10,7 +10,6 @@ import {
   TILE_HEIGHT,
   TILE_METRICS,
   TILE_WIDTH,
-  VIEW_CULL_MARGIN,
   WIDTH,
   WATER_BLOCK_TEXTURE_KEY,
 } from "./constants";
@@ -43,10 +42,6 @@ describe("engine constants", () => {
 
   it("uses a power-of-two chunk size", () => {
     expect(Number.isInteger(Math.log2(CHUNK_SIZE))).toBe(true);
-  });
-
-  it("defines a positive viewport culling margin", () => {
-    expect(VIEW_CULL_MARGIN).toBeGreaterThan(0);
   });
 
   it("defines a positive elevation tint step", () => {

@@ -47,8 +47,27 @@ vi.mock("pixi.js", () => {
   return { Graphics, Rectangle, Sprite, Texture };
 });
 
+import { Graphics } from "pixi.js";
 import { Box } from "../terrain";
-import { getFootprintSliceTiles, renderBlock } from "./render";
+import {
+  addInDepthOrder,
+  createBlockViews,
+  getFootprintSliceTiles,
+  type RenderBlockOptions,
+} from "./render";
+
+const depths = new WeakMap<object, number>();
+const depthOf = (view: unknown) => depths.get(view as object);
+
+/** Adds a block's views to `container` as the scene does and returns its sprites. */
+function renderViews(container: { addChild: (child: never) => unknown }, options: RenderBlockOptions) {
+  const views = createBlockViews(options);
+  views.forEach(({ view, depth }) => {
+    depths.set(view, depth);
+    container.addChild(view as never);
+  });
+  return views.filter(({ view }) => !(view instanceof Graphics)).map(({ view }) => view);
+}
 
 const carTexture = {
   id: "car",
@@ -80,7 +99,7 @@ describe("getFootprintSliceTiles", () => {
   });
 });
 
-describe("renderBlock", () => {
+describe("createBlockViews", () => {
   it("configures and adds a positioned block sprite", () => {
     const children: unknown[] = [];
     const container = { addChild: (child: unknown) => children.push(child) };
@@ -93,7 +112,7 @@ describe("renderBlock", () => {
       screenY: 140,
     };
 
-    const sprite = renderBlock(container as never, {
+    const sprite = renderViews(container as never, {
       texture: { id: "grass" } as never,
       box,
       metrics: { tileWidth: 40, tileHeight: 20, boxHeight: 13 },
@@ -106,7 +125,9 @@ describe("renderBlock", () => {
     expect(sprite.tint).toBe(0x88aaff);
     expect(sprite.anchor.set).toHaveBeenCalledWith(0.5, 0);
     expect(sprite.position.set).toHaveBeenCalledWith(120, 130);
-    expect(sprite.zIndex).toBeCloseTo(170.0032);
+    expect(depthOf(sprite)).toBeCloseTo(170.0032);
+    // Depth never goes through zIndex, which would make Pixi sort the whole container.
+    expect(sprite.zIndex).toBe(0);
   });
 
   it("keeps the default tint when no tint is provided", () => {
@@ -120,7 +141,7 @@ describe("renderBlock", () => {
       screenY: 20,
     };
 
-    const sprite = renderBlock(container as never, {
+    const sprite = renderViews(container as never, {
       texture: { id: "ground" } as never,
       box,
       metrics: { tileWidth: 40, tileHeight: 20, boxHeight: 13 },
@@ -130,7 +151,7 @@ describe("renderBlock", () => {
   });
 
   it("supports a two-block-high sprite", () => {
-    const sprite = renderBlock({ addChild: vi.fn() } as never, {
+    const sprite = renderViews({ addChild: vi.fn() } as never, {
       texture: { id: "tree" } as never,
       box: {
         x: 0,
@@ -152,7 +173,7 @@ describe("renderBlock", () => {
   });
 
   it("aligns a one-block entity with the block's top diamond", () => {
-    const sprite = renderBlock({ addChild: vi.fn() } as never, {
+    const sprite = renderViews({ addChild: vi.fn() } as never, {
       texture: { id: "entity" } as never,
       box: {
         x: 0,
@@ -172,7 +193,7 @@ describe("renderBlock", () => {
 
   it("slices a multi-block entity into half-tile strips across its footprint", () => {
     const children: unknown[] = [];
-    const sprites = renderBlock({ addChild: (child: unknown) => children.push(child) } as never, {
+    const sprites = renderViews({ addChild: (child: unknown) => children.push(child) } as never, {
       texture: carTexture as never,
       box: {
         x: 0,
@@ -202,13 +223,13 @@ describe("renderBlock", () => {
       expect(sprite.texture.frame?.width).toBeCloseTo(512);
     });
     // The first two strips belong to the anchor tile, the last one to the farther tile.
-    expect(sprites[0].zIndex).toBeCloseTo(20);
-    expect(sprites[1].zIndex).toBeCloseTo(20);
-    expect(sprites[2].zIndex).toBeCloseTo(10.0001);
+    expect(depthOf(sprites[0])).toBeCloseTo(20);
+    expect(depthOf(sprites[1])).toBeCloseTo(20);
+    expect(depthOf(sprites[2])).toBeCloseTo(10.0001);
   });
 
   it("reuses the strip textures of a texture", () => {
-    const render = () => renderBlock({ addChild: vi.fn() } as never, {
+    const render = () => renderViews({ addChild: vi.fn() } as never, {
       texture: carTexture as never,
       box: { x: 0, y: 0, box: new Box(0, 0), screenX: 10, baseScreenY: 20, screenY: 20 },
       metrics: { tileWidth: 40, tileHeight: 20, boxHeight: 13 },
@@ -221,7 +242,7 @@ describe("renderBlock", () => {
   });
 
   it("positions a multi-block entity along the y axis", () => {
-    const sprite = renderBlock({ addChild: vi.fn() } as never, {
+    const sprite = renderViews({ addChild: vi.fn() } as never, {
       texture: carTexture as never,
       box: {
         x: 0,
@@ -245,14 +266,14 @@ describe("renderBlock", () => {
       [-10, -13],
       [10, -13],
     ]);
-    expect(sprite.map(({ zIndex }) => zIndex)).toEqual([10, 20, 20]);
+    expect(sprite.map(depthOf)).toEqual([10, 20, 20]);
   });
 
   it("draws a debug footprint when enabled", () => {
     const children: unknown[] = [];
     const container = { addChild: (child: unknown) => children.push(child) };
 
-    renderBlock(container as never, {
+    renderViews(container as never, {
       texture: carTexture as never,
       box: {
         x: 0,
@@ -270,6 +291,7 @@ describe("renderBlock", () => {
     });
 
     expect(children).toHaveLength(4);
+    expect(depthOf(children[3])).toBeCloseTo((depthOf(children[0]) as number) + 0.0001);
     const debugGraphics = children[3] as {
       poly: ReturnType<typeof vi.fn>;
       stroke: ReturnType<typeof vi.fn>;
@@ -299,5 +321,22 @@ describe("renderBlock", () => {
       { x: 10, y: -3 },
     ]);
     expect(debugGraphics.stroke).toHaveBeenCalledWith({ color: 0xff00ff, width: 1 });
+  });
+});
+
+describe("addInDepthOrder", () => {
+  it("adds views from back to front, keeping the order of equal depths", () => {
+    const children: string[] = [];
+    const container = { addChild: (child: { name: string }) => children.push(child.name) };
+    const view = (name: string, depth: number) => ({ view: { name } as never, depth });
+
+    addInDepthOrder(container as never, [
+      view("front", 30),
+      view("back", 10),
+      view("middle-a", 20),
+      view("middle-b", 20),
+    ]);
+
+    expect(children).toEqual(["back", "middle-a", "middle-b", "front"]);
   });
 });

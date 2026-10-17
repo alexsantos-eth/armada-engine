@@ -16,9 +16,8 @@ import {
   SAND_BLOCK_TEXTURE_KEY,
   WATER_BLOCK_TEXTURE_KEY,
 } from "../constants";
-import { isWithinViewport } from "../culling";
 import { CellMap } from "../grid";
-import { createSvgColorVariant, renderBlock } from "../render";
+import { addInDepthOrder, createBlockViews, createSvgColorVariant, type DepthView } from "../render";
 import type { World } from "../world";
 
 const POSITIVE_ELEVATION_TOP_TINT = 0xe8ffb0;
@@ -120,9 +119,11 @@ export async function createIsometricScene(
   );
   const loadedEntitySources = entityTextures.map(({ source }) => source);
 
+  // Draw order comes from adding views in depth order once (see `addInDepthOrder()`), so the
+  // scene never needs `sortableChildren`, which would re-sort every child on any change.
   const scene = new Container();
-  scene.sortableChildren = true;
   app.stage.addChild(scene);
+  const views: DepthView[] = [];
 
   // Each world column holds its top elevation.
   const topElevationByColumn = CellMap.from(world.columns, ({ elevation }) => elevation);
@@ -170,61 +171,50 @@ export async function createIsometricScene(
       water: waterTextureForRender,
       sand: sandTextureForRender,
     };
-    projectedBoxes
-      .filter((box) =>
-        isWithinViewport(
-          box.screenX,
-          box.screenY,
-          app.screen.width,
-          app.screen.height,
-        ),
-      )
-      .forEach((box) => {
-        const material = getBlockMaterial(
-          box.box.elevation,
-          topElevationByColumn.get(box.x, box.y) as number,
-          surfaces.get(box.x, box.y) as TerrainSurface,
-        );
-        const texture = texturesByMaterial[material];
-        const tint = material === "water"
-          ? getNegativeElevationTint(box.box.elevation)
-          : getPositiveElevationTint(
-              box.box.elevation,
-              maxPositiveElevation,
-              material === "sand" ? SAND_TOP_TINT : POSITIVE_ELEVATION_TOP_TINT,
-            );
-        renderBlock(scene, {
-          texture,
-          box,
-          metrics: TILE_METRICS,
-          tint,
-        });
-      });
-    projectedEntities
-      .filter((entity) =>
-        isWithinViewport(
-          entity.screenX,
-          entity.screenY,
-          app.screen.width,
-          app.screen.height,
-        ),
-      )
-      .forEach((entity) => {
-        const texture = entityTexturesByEntity.get(entity.box);
-        if (!texture) return;
+    projectedBoxes.forEach((box) => {
+      const material = getBlockMaterial(
+        box.box.elevation,
+        topElevationByColumn.get(box.x, box.y) as number,
+        surfaces.get(box.x, box.y) as TerrainSurface,
+      );
+      const texture = texturesByMaterial[material];
+      const tint = material === "water"
+        ? getNegativeElevationTint(box.box.elevation)
+        : getPositiveElevationTint(
+            box.box.elevation,
+            maxPositiveElevation,
+            material === "sand" ? SAND_TOP_TINT : POSITIVE_ELEVATION_TOP_TINT,
+          );
+      views.push(...createBlockViews({
+        texture,
+        box,
+        metrics: TILE_METRICS,
+        tint,
+      }));
+    });
+    projectedEntities.forEach((entity) => {
+      const texture = entityTexturesByEntity.get(entity.box);
+      if (!texture) return;
 
-        renderBlock(scene, {
-          texture,
-          box: entity,
-          metrics: TILE_METRICS,
-          height: entity.box.height,
-          surfaceAligned: true,
-          length: entity.box.length,
-          debug: entity.box.debug,
-          lengthAxis: entity.box.lengthAxis,
-        });
-      });
+      views.push(...createBlockViews({
+        texture,
+        box: entity,
+        metrics: TILE_METRICS,
+        height: entity.box.height,
+        surfaceAligned: true,
+        length: entity.box.length,
+        debug: entity.box.debug,
+        lengthAxis: entity.box.lengthAxis,
+      }));
+    });
   }
+
+  // Every world view is created, also the ones off screen: Pixi's culler (`CullerPlugin`,
+  // registered by the app) skips drawing them each frame, so a moving camera reveals them.
+  views.forEach(({ view }) => {
+    view.cullable = true;
+  });
+  addInDepthOrder(scene, views);
 
   return () => {
     scene.destroy({ children: true });

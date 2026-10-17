@@ -37,18 +37,21 @@ vi.mock("pixi.js", () => {
 vi.mock("../render", () => ({
   createSvgColorVariant: vi.fn(async (source: string, _replacements?: unknown, variation = 0) =>
     _replacements ? `${source}#${variation}` : source),
-  renderBlock: vi.fn(
-    (
-      _container: unknown,
-      { texture, box, tint, height, length }: {
-        texture: { source: string };
-        box: { box: { elevation: number } };
-        tint?: number;
-        height?: number;
-        length?: number;
-      },
-    ) => {
+  createBlockViews: vi.fn(
+    ({ texture, box, tint, height, length }: {
+      texture: { source: string };
+      box: { box: { elevation: number }; baseScreenY: number };
+      tint?: number;
+      height?: number;
+      length?: number;
+    }) => {
       renderCalls.push({ texture, elevation: box.box.elevation, tint, height, length });
+      return [{ view: { cullable: false, source: texture.source }, depth: box.baseScreenY }];
+    },
+  ),
+  addInDepthOrder: vi.fn(
+    (container: { addChild: (child: unknown) => void }, views: { view: unknown; depth: number }[]) => {
+      [...views].sort((a, b) => a.depth - b.depth).forEach(({ view }) => container.addChild(view));
     },
   ),
 }));
@@ -56,7 +59,7 @@ vi.mock("../render", () => ({
 import { Assets } from "pixi.js";
 import type { TerrainPoint } from "../../types";
 import { Entity, indexEntities } from "../entities";
-import { createSvgColorVariant } from "../render";
+import { addInDepthOrder, createSvgColorVariant } from "../render";
 import { Box, classifyColumnSurfaces } from "../terrain";
 import { generateWorld, type World } from "../world";
 import { createIsometricScene } from "./scene";
@@ -230,6 +233,24 @@ describe("createIsometricScene", () => {
       renderCalls.filter(({ texture }) => texture.source.startsWith("/assets/house/")).length,
     ).toBeGreaterThan(3);
 
+    destroyScene();
+  });
+
+  it("adds every view once, in depth order, as cullable, without sortableChildren", async () => {
+    const stageChildren: { sortableChildren: boolean; children: { cullable: boolean }[] }[] = [];
+    const app = {
+      screen: { width: 1300, height: 1000 },
+      stage: { addChild: (child: never) => stageChildren.push(child) },
+    };
+
+    const destroyScene = await createIsometricScene(app as never, defaultWorld(createTestEntities));
+    const [scene] = stageChildren;
+
+    expect(addInDepthOrder).toHaveBeenCalledTimes(1);
+    expect(scene.sortableChildren).toBe(false);
+    // Off-screen views are created too: Pixi's culler hides them per frame.
+    expect(scene.children).toHaveLength(renderCalls.length);
+    expect(scene.children.every(({ cullable }) => cullable)).toBe(true);
     destroyScene();
   });
 
