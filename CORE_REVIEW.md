@@ -6,6 +6,17 @@ Criterio: el core debe sostener un **RPG isométrico procedural de supervivencia
 
 Niveles: **Bloqueante** (rompe la visión) · **Alta** (reescritura cara cuando llegue un sistema previsto) · **Media** (corregible localmente) · **Baja** (higiene).
 
+## 2026-10-16 — Contenido fuera del motor y sin meseta de aparición (fase 3 completa)
+
+| # | Estado | Cambio |
+|---|---|---|
+| 9 | Corregido | `ENTITY_CONFIG` pasa de `engine/entities/config.ts` a `src/isometric/content/entities.ts`. El motor ya no trae contenido: `generateWorld({ entityDefinitions })` y `createEntitiesFromConfig(boxes, definitions, …)` lo reciben obligatoriamente; `page.tsx` lo conecta. |
+| 13 | Corregido (Media) | Contenido sin validar: una errata en la configuración no daba error, solo entidades que no aparecían. `validateEntityDefinitions()` (`entities/validation.ts`) se ejecuta en `generateWorld()` y lanza `EntityConfigError` con todos los problemas; `content/entities.test.ts` la aplica a `ENTITY_CONFIG`. |
+| — | Eliminado (por decisión del usuario) | Meseta de aparición: `terrain/spawn.ts` (`applySpawnPlateau`, `getSpawnArea`), la opción y el campo `spawnPlateau`. El terreno es el ruido sin retoques. `WORLD_SNAPSHOT_VERSION` sube a 2 porque el snapshot cambia de forma; los de versión 1 se rechazan. |
+| 9 | Guardián ampliado | `architecture.test.ts`: el motor solo sale de `engine/` hacia `../../types` (nunca al contenido) y el contenido solo importa tipos del core. |
+
+Siguiente según el plan: coordenadas tipadas e índice espacial (#10), después bucle/reloj/cámara (#7) y chunks (#6). La zona de aparición, si vuelve, debería ser un sistema de juego que elige un punto válido del mundo, no un retoque del terreno.
+
 ## 2026-10-16 — Capas reordenadas (fase 3 parcial)
 
 | # | Estado | Cambio |
@@ -49,7 +60,7 @@ Las formaciones (`formation.ts`) están bien aisladas, son puras y consumen `ran
 | 6 | Alta | **Mundo de tamaño fijo, sin chunks.** `TERRAIN_WIDTH × TERRAIN_HEIGHT` y caché singleton de módulo. El ruido ya se muestrea en coordenadas absolutas (bien), pero ni terreno, ni entidades, ni render trabajan por chunk. | `terrain/terrain.ts`, `constants.ts` |
 | 7 | Alta | **Render estático, sin bucle ni cámara.** Se crean sprites una vez, el culling se hace solo al construir (lo que queda fuera nunca existe) y no hay bucle de simulación de paso fijo, reloj de juego ni movimiento de cámara. | `scene/scene.ts`, `projection.ts` |
 | 8 | Media (corregido) | **El core depende de `window` al importarse.** `constants.ts` lee `window.innerWidth`; impide ejecutar la simulación en un worker o en Node sin el shim de `tests/setup.ts`. Las medidas de pantalla deben llegar como configuración de vista. | `constants/constants.ts` |
-| 9 | Media (corregido salvo contenido) | **Responsabilidades cruzadas.** `Box` (terreno) vive en `entities`; `projection.ts` importa `Box` y hace relleno de columnas + culling, mientras la proyección real está en `board`. Contenido (`ENTITY_CONFIG`) dentro del módulo de motor `entities`. | `entities/entities.ts`, `projection/`, `board/`, `entities/config.ts` |
+| 9 | Media (corregido) | **Responsabilidades cruzadas.** `Box` (terreno) vive en `entities`; `projection.ts` importa `Box` y hace relleno de columnas + culling, mientras la proyección real está en `board`. Contenido (`ENTITY_CONFIG`) dentro del módulo de motor `entities`. | `entities/entities.ts`, `projection/`, `board/`, `entities/config.ts` |
 | 10 | Media | **Índice espacial por strings.** Claves `` `${x}:${y}` `` dispersas y `Map`/`Set` globales para todo el mapa. Sirve a 32×32; no escala a consultas de vecindad, colisión ni pathfinding en mundos grandes. | `entities.ts`, `surfaces.ts`, `scene.ts` |
 | 11 | Media (corregido) | **La variación de color no forma parte del estado de la entidad.** Se reproduce desde la semilla, pero si una entidad se crea o se mueve en partida no conserva su variante al guardar. | `scene.ts` → debería pasar a `EntityData` |
 | 12 | Baja | `renderBlock()` con 12 parámetros posicionales; difícil de extender (animación, selección, sombras). | `render/render.ts` |

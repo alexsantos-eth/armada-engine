@@ -1,4 +1,10 @@
-import type { EntityDefinition, EntityFormation } from "../../types";
+import type { EntityDefinition, EntityFormation } from "../core/types";
+
+/*
+ * Game content: the entities that populate the world. This is data, not engine code — the
+ * engine receives it through `generateWorld({ entityDefinitions })` and validates it with
+ * `validateEntityDefinitions()`. Add or tune entities here without touching `core/`.
+ */
 
 /**
  * Groves of three trees of the same kind, in an L rotated at random. Trees with this
@@ -92,7 +98,8 @@ const OFFICE_ROOF_COLOR_REPLACEMENTS = {
   "#3c6e5c": ["#3c6e5c", "#955e2d", "#55606c", "#813430"],
 } as const;
 
-export const ENTITY_CONFIG: EntityDefinition[] = [
+/** Every entity the world generator can place, in placement priority order. */
+export const ENTITY_CONFIG: readonly EntityDefinition[] = [
   {
     id: "pier_x_reverse",
     textureSource: "/assets/pier/block_1x3_over_water.svg",

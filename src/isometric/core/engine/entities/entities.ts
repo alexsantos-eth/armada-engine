@@ -9,7 +9,6 @@ import type {
 } from "../../types";
 import { createSeededRandom, DEFAULT_WORLD_SEED, deriveSeed, type RandomSource } from "../random";
 import { classifyColumnSurfaces } from "../terrain";
-import { ENTITY_CONFIG } from "./config";
 import { pickFormationOffsets, resolveFormation } from "./formation";
 import { pickColorVariation } from "./variants";
 
@@ -186,7 +185,7 @@ const NO_KEYS: ReadonlySet<string> = new Set();
  */
 export function createEntitiesFromConfig(
   boxes: IGridObject[],
-  definitions: EntityDefinition[] = ENTITY_CONFIG,
+  definitions: readonly EntityDefinition[],
   random: RandomSource = createSeededRandom(DEFAULT_WORLD_SEED),
   variantRandom: RandomSource = createSeededRandom(
     deriveSeed(DEFAULT_WORLD_SEED, "entity-color-variants"),

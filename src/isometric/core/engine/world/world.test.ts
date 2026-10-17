@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { TERRAIN_HEIGHT, TERRAIN_WIDTH } from "../constants";
 import type { EntityDefinition } from "../../types";
-import { classifyColumnSurfaces, getSpawnArea } from "../terrain";
+import { classifyColumnSurfaces, generatePerlinTerrain } from "../terrain";
+import { EntityConfigError } from "../entities";
 import { DEFAULT_WORLD_SEED } from "../random";
 import {
   generateWorld,
@@ -39,13 +40,17 @@ describe("generateWorld", () => {
     expect(world.entities).toEqual([]);
   });
 
-  it("uses the default seed, size and entity configuration", () => {
-    const world = generateWorld();
+  it("uses the default seed and size", () => {
+    const world = generateWorld({ entityDefinitions: DEFINITIONS });
 
     expect(world.seed).toBe(DEFAULT_WORLD_SEED);
     expect(world.columns).toHaveLength(TERRAIN_WIDTH * TERRAIN_HEIGHT);
-    expect(world.spawnPlateau).toBe(true);
     expect(world.entities.length).toBeGreaterThan(0);
+  });
+
+  it("validates the content before generating anything", () => {
+    expect(() => generateWorld({ entityDefinitions: [ROCK, { ...ROCK, spawnChance: 3 }] }))
+      .toThrow(EntityConfigError);
   });
 
   it("is fully deterministic for a seed and never uses Math.random", () => {
@@ -67,19 +72,12 @@ describe("generateWorld", () => {
     randomSpy.mockRestore();
   });
 
-  it("flattens the spawn area unless disabled", () => {
-    const flat = generateWorld({ seed: 9, entityDefinitions: [] });
-    const raw = generateWorld({ seed: 9, entityDefinitions: [], spawnPlateau: false });
-    const { startX, startY, endX, endY } = getSpawnArea(TERRAIN_WIDTH, TERRAIN_HEIGHT);
-    const inArea = ({ x, y }: { x: number; y: number }) =>
-      x >= startX && x < endX && y >= startY && y < endY;
+  it("uses the raw noise terrain, without reshaping any area", () => {
+    const world = generateWorld({ seed: 9, entityDefinitions: [] });
 
-    flat.columns.filter(inArea).forEach((box) => {
-      expect(box.elevation).toBe(box.x === startX || box.y === startY ? 1 : 0);
-    });
-    expect(raw.spawnPlateau).toBe(false);
-    expect(raw.columns.filter(inArea).map(({ elevation }) => elevation))
-      .not.toEqual(flat.columns.filter(inArea).map(({ elevation }) => elevation));
+    expect(world.columns.map(({ x, y, elevation }) => ({ x, y, elevation }))).toEqual(
+      generatePerlinTerrain({ width: TERRAIN_WIDTH, height: TERRAIN_HEIGHT, seed: 9 }),
+    );
   });
 
   it("keeps color variation independent from entity placement", () => {
@@ -104,7 +102,6 @@ describe("serializeWorld / restoreWorld", () => {
 
     expect(snapshot.version).toBe(WORLD_SNAPSHOT_VERSION);
     expect(restored.seed).toBe(77);
-    expect(restored.spawnPlateau).toBe(world.spawnPlateau);
     expect(restored.columns.map((b) => [b.x, b.y, b.elevation]))
       .toEqual(world.columns.map((b) => [b.x, b.y, b.elevation]));
     expect(restored.surfaces).toEqual(world.surfaces);
@@ -124,5 +121,7 @@ describe("serializeWorld / restoreWorld", () => {
 
     expect(() => restoreWorld({ ...snapshot, version: 99 as never }))
       .toThrow("Unsupported world snapshot version 99");
+    expect(() => restoreWorld({ ...snapshot, version: 1 as never }))
+      .toThrow("Unsupported world snapshot version 1");
   });
 });

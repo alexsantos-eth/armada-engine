@@ -6,6 +6,10 @@ import { describe, expect, it } from "vitest";
  * reaches Pixi or the browser:
  *
  * constants, random → terrain → entities → world → scene ← projection, culling, render
+ *
+ * Outside the engine, a module may only reach the shared types (`../../types`): the engine
+ * never imports game content. Content (`src/isometric/content`) is plain data and only
+ * imports core types; the app wires both together.
  */
 const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   constants: [],
@@ -28,12 +32,26 @@ const sources = import.meta.glob<string>(["./*/*.ts", "!./**/*.test.ts"], {
   import: "default",
 });
 
+const contentSources = import.meta.glob<string>(["../../content/*.ts", "!../../content/*.test.ts"], {
+  eager: true,
+  query: "?raw",
+  import: "default",
+});
+
+/** `… from "x"`, side-effect `import "x"` and dynamic `import("x")`. */
+const importsOf = (source: string) =>
+  [...source.matchAll(/(?:\bfrom|\bimport)\s*\(?\s*["']([^"']+)["']/g)].map((match) => match[1]);
+
 const files = Object.entries(sources).map(([path, source]) => ({
   path,
   module: path.split("/")[1],
   source,
-  // `… from "x"`, side-effect `import "x"` and dynamic `import("x")`.
-  imports: [...source.matchAll(/(?:\bfrom|\bimport)\s*\(?\s*["']([^"']+)["']/g)].map((match) => match[1]),
+  imports: importsOf(source),
+}));
+
+const contentFiles = Object.entries(contentSources).map(([path, source]) => ({
+  path,
+  imports: importsOf(source),
 }));
 
 describe("engine architecture", () => {
@@ -51,6 +69,19 @@ describe("engine architecture", () => {
       expect(rest, `${target} must import the "../${dependency}" barrel`).toEqual([]);
       expect(ALLOWED_DEPENDENCIES[module], `${module} must not import ${dependency}`).toContain(dependency);
     });
+  });
+
+  it.each(files)("$path only leaves the engine to reach the shared types", ({ imports }) => {
+    const outside = imports.filter((target) => target.startsWith("../../"));
+    outside.forEach((target) => expect(target).toBe("../../types"));
+  });
+
+  it("finds the content modules", () => {
+    expect(contentFiles.length).toBeGreaterThan(0);
+  });
+
+  it.each(contentFiles)("content $path only imports core types", ({ imports }) => {
+    imports.forEach((target) => expect(target).toMatch(/^(\.\/|\.\.\/core\/types$)/));
   });
 
   it.each(files)("$path uses Pixi only in render and scene", ({ module, imports }) => {

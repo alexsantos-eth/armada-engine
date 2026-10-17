@@ -1,8 +1,8 @@
 import type { EntityData, EntityDefinition, TerrainSurface } from "../../types";
 import { TERRAIN_HEIGHT, TERRAIN_WIDTH } from "../constants";
-import { createEntitiesFromConfig, Entity, ENTITY_CONFIG } from "../entities";
+import { createEntitiesFromConfig, Entity, validateEntityDefinitions } from "../entities";
 import { createSeededRandom, DEFAULT_WORLD_SEED, deriveSeed } from "../random";
-import { applySpawnPlateau, Box, classifyColumnSurfaces, generatePerlinTerrain } from "../terrain";
+import { Box, classifyColumnSurfaces, generatePerlinTerrain } from "../terrain";
 
 /**
  * The game world as plain domain state: the single source of truth that systems simulate,
@@ -16,8 +16,6 @@ export type World = {
   readonly width: number;
   /** Number of columns along `y`. */
   readonly height: number;
-  /** Whether the spawn area was flattened when generating the terrain. */
-  readonly spawnPlateau: boolean;
   /** One terrain box per column, holding the column's top elevation. */
   readonly columns: readonly Box[];
   /** Surface of each column (top block material), keyed by `x:y`. */
@@ -34,18 +32,20 @@ export type WorldOptions = {
   width?: number;
   /** Columns along `y`. Defaults to `TERRAIN_HEIGHT`. */
   height?: number;
-  /** Flattens the centered spawn area (see `applySpawnPlateau()`). Defaults to `true`. */
-  spawnPlateau?: boolean;
-  /** Entity definitions to place. Defaults to `ENTITY_CONFIG`. */
-  entityDefinitions?: readonly EntityDefinition[];
+  /**
+   * Entity definitions to place (game content, e.g. `ENTITY_CONFIG` from
+   * `src/isometric/content`). Required: the engine ships no content of its own. They are
+   * validated with `validateEntityDefinitions()` before anything is generated.
+   */
+  entityDefinitions: readonly EntityDefinition[];
 };
 
 /** Version of {@link WorldSnapshot}; bump it when the snapshot shape changes. */
-export const WORLD_SNAPSHOT_VERSION = 1;
+export const WORLD_SNAPSHOT_VERSION = 2;
 
 /**
  * JSON-serializable save of a {@link World}. The terrain is not stored: it is regenerated
- * from `seed`, size and `spawnPlateau`. Entities are stored as data, so changes made during
+ * from `seed` and size. Entities are stored as data, so changes made during
  * play (removed, moved or modified entities) are kept.
  */
 export type WorldSnapshot = {
@@ -53,47 +53,45 @@ export type WorldSnapshot = {
   seed: number;
   width: number;
   height: number;
-  spawnPlateau: boolean;
   entities: { x: number; y: number; data: EntityData }[];
 };
 
-type TerrainState = Pick<World, "seed" | "width" | "height" | "spawnPlateau" | "columns" | "surfaces">;
+type TerrainState = Pick<World, "seed" | "width" | "height" | "columns" | "surfaces">;
 
 function generateTerrainState(
   seed: number,
   width: number,
   height: number,
-  spawnPlateau: boolean,
 ): TerrainState {
   const points = generatePerlinTerrain({ width, height, seed });
-  const shaped = spawnPlateau ? applySpawnPlateau(points, width, height) : points;
-  const columns = shaped.map(({ x, y, elevation }) => new Box(x, y, { elevation }));
+  const columns = points.map(({ x, y, elevation }) => new Box(x, y, { elevation }));
 
   return {
     seed,
     width,
     height,
-    spawnPlateau,
     columns,
     surfaces: classifyColumnSurfaces(columns),
   };
 }
 
 /**
- * Generates a world from a seed: terrain (simplex noise, optional spawn plateau), column
+ * Generates a world from a seed: terrain (simplex noise), column
  * surfaces and entities. Each system draws from its own seeded stream (`deriveSeed`), so the
  * same options always produce the same world.
+ *
+ * @throws `EntityConfigError` when `entityDefinitions` is invalid.
  */
-export function generateWorld(options: WorldOptions = {}): World {
+export function generateWorld(options: WorldOptions): World {
+  validateEntityDefinitions(options.entityDefinitions);
   const terrain = generateTerrainState(
     options.seed ?? DEFAULT_WORLD_SEED,
     options.width ?? TERRAIN_WIDTH,
     options.height ?? TERRAIN_HEIGHT,
-    options.spawnPlateau ?? true,
   );
   const entities = createEntitiesFromConfig(
     [...terrain.columns],
-    [...(options.entityDefinitions ?? ENTITY_CONFIG)],
+    options.entityDefinitions,
     createSeededRandom(deriveSeed(terrain.seed, "entities")),
     createSeededRandom(deriveSeed(terrain.seed, "entity-color-variants")),
   );
@@ -108,7 +106,6 @@ export function serializeWorld(world: World): WorldSnapshot {
     seed: world.seed,
     width: world.width,
     height: world.height,
-    spawnPlateau: world.spawnPlateau,
     entities: world.entities.map((entity) => ({ x: entity.x, y: entity.y, data: entity.getData() })),
   };
 }
@@ -128,7 +125,6 @@ export function restoreWorld(snapshot: WorldSnapshot): World {
     snapshot.seed,
     snapshot.width,
     snapshot.height,
-    snapshot.spawnPlateau,
   );
   const entities = snapshot.entities.map(({ x, y, data }) => Entity.fromData(x, y, data));
 

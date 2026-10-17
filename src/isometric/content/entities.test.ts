@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ENTITY_CONFIG } from "./config";
-import { parseFormationMap, resolveFormation } from "./formation";
+import { parseFormationMap, resolveFormation, validateEntityDefinitions } from "../core/engine";
+import { ENTITY_CONFIG } from "./entities";
 
 const ASSET_SOURCES = import.meta.glob<string>("/public/assets/**/*.svg", {
   query: "?raw",
@@ -22,6 +22,10 @@ function readTiles(textureSource: string): [number, number, number] {
 }
 
 describe("ENTITY_CONFIG", () => {
+  it("passes the engine's content validation", () => {
+    expect(() => validateEntityDefinitions(ENTITY_CONFIG)).not.toThrow();
+  });
+
   it("uses unique entity ids", () => {
     const ids = ENTITY_CONFIG.map(({ id }) => id);
 

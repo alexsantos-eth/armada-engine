@@ -78,7 +78,6 @@ const worldFrom = (points: TerrainPoint[], createEntities: EntityFactory = () =>
     seed: 0,
     width: 0,
     height: 0,
-    spawnPlateau: false,
     columns,
     surfaces: classifyColumnSurfaces(columns),
     entities: createEntities(columns),

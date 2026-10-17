@@ -36,7 +36,7 @@ La UI de entrada está en `src/isometric/page.tsx` y `src/main.tsx` solo monta e
 
 Los bloques visibles se cargan como SVG desde `public/assets/<material>/block.svg`. El renderer usa una textura por bloque y aplica el tintado de agua por elevación; no reintroducir composición de caras separadas.
 
-Las entidades que no son bloques de terreno se declaran en `engine/entities/config.ts` y se crean mediante `createEntitiesFromConfig()`. La escena no debe conocer nombres concretos como `tree`, ni incluir ramas, constantes o assets específicos de una entidad. Para añadir una entidad, agrega una definición de configuración y su asset; usa la clase `Entity` genérica y conserva `Box` exclusivamente para `grass`, `ground` y `water`.
+Las entidades que no son bloques de terreno se declaran en `src/isometric/content/entities.ts` (contenido, fuera del motor) y se crean mediante `createEntitiesFromConfig()`. La escena no debe conocer nombres concretos como `tree`, ni incluir ramas, constantes o assets específicos de una entidad. Para añadir una entidad, agrega una definición de configuración y su asset; usa la clase `Entity` genérica y conserva `Box` exclusivamente para `grass`, `ground` y `water`.
 
 ## Reglas de cambios
 
@@ -74,7 +74,7 @@ No crear commits ni ramas automáticamente. No revertir cambios existentes que n
 
 ## Estado actual del core
 
-Las entidades se configuran en `engine/entities/config.ts` y pueden usar `surfaceElevation`, `length`, `lengthAxis`, `colorReplacements` y `debug`. `createEntitiesFromConfig()` valida la superficie y la elevación de toda la huella, reserva las coordenadas con un `Set` y evita solapamientos entre entidades.
+Las entidades se configuran en `src/isometric/content/entities.ts` (validadas al cargar con `validateEntityDefinitions()`) y pueden usar `surfaceElevation`, `length`, `lengthAxis`, `colorReplacements` y `debug`. `createEntitiesFromConfig()` valida la superficie y la elevación de toda la huella, reserva las coordenadas con un `Set` y evita solapamientos entre entidades.
 
 Los assets multi-bloque declaran su geometría con `data-tiles`; `lengthAxis: "x"` es el valor por defecto y `lengthAxis: "y"` orienta la huella hacia el eje `y`. El renderer aplica la orientación al sprite y dibuja un rombo de debug por bloque ocupado en sus niveles inferior y superior.
 
