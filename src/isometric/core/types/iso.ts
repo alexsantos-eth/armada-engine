@@ -55,3 +55,13 @@ export type IsoScreenBox<T extends IGridObject = IGridObject> = {
    */
   screenY: number;
 };
+
+/** Pixel size of one isometric block, shared by projection and rendering. */
+export type TileMetrics = {
+  /** Width of a tile's top diamond. */
+  readonly tileWidth: number;
+  /** Height of a tile's top diamond (half of `tileWidth` in 2:1 isometric). */
+  readonly tileHeight: number;
+  /** Vertical pixels per elevation level (the height of a block's side). */
+  readonly boxHeight: number;
+};

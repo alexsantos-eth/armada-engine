@@ -10,6 +10,7 @@ import {
   GRASS_BLOCK_TEXTURE_KEY,
   POSITIVE_ELEVATION_TINT_STEP,
   TILE_HEIGHT,
+  TILE_METRICS,
   TILE_WIDTH,
   NEGATIVE_ELEVATION_TINT_STEP,
   SAND_BLOCK_TEXTURE_KEY,
@@ -192,15 +193,12 @@ export async function createIsometricScene(
               maxPositiveElevation,
               material === "sand" ? SAND_TOP_TINT : POSITIVE_ELEVATION_TOP_TINT,
             );
-        renderBlock(
-          scene,
+        renderBlock(scene, {
           texture,
           box,
-          TILE_WIDTH,
-          TILE_HEIGHT,
-          BOX_HEIGHT,
+          metrics: TILE_METRICS,
           tint,
-        );
+        });
       });
     projectedEntities
       .filter((entity) =>
@@ -215,20 +213,16 @@ export async function createIsometricScene(
         const texture = entityTexturesByEntity.get(entity.box);
         if (!texture) return;
 
-        renderBlock(
-          scene,
+        renderBlock(scene, {
           texture,
-          entity,
-          TILE_WIDTH,
-          TILE_HEIGHT,
-          BOX_HEIGHT,
-          undefined,
-          entity.box.height,
-          true,
-          entity.box.length,
-          entity.box.debug,
-          entity.box.lengthAxis,
-        );
+          box: entity,
+          metrics: TILE_METRICS,
+          height: entity.box.height,
+          surfaceAligned: true,
+          length: entity.box.length,
+          debug: entity.box.debug,
+          lengthAxis: entity.box.lengthAxis,
+        });
       });
   }
 

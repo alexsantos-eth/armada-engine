@@ -1,5 +1,5 @@
 import { Container, Graphics, Rectangle, Sprite, Texture } from "pixi.js";
-import type { EntityLengthAxis, IsoScreenBox } from "../../types";
+import type { EntityLengthAxis, IsoScreenBox, TileMetrics } from "../../types";
 
 /**
  * Footprint tile that owns each vertical half-tile strip of a multi-block sprite, listed
@@ -31,26 +31,46 @@ function getStripTextures(texture: Texture, strips: number): Texture[] {
   return textures;
 }
 
+/** What to draw with {@link renderBlock}. Only `texture`, `box` and `metrics` are required. */
+export type RenderBlockOptions = {
+  /** Loaded texture of the block or entity. */
+  readonly texture: Texture;
+  /** Projected position (from `projectBoxesToIsometric()`). */
+  readonly box: IsoScreenBox;
+  /** Tile size in pixels (usually `TILE_METRICS`). */
+  readonly metrics: TileMetrics;
+  /** Tint applied to the sprite. Defaults to none. */
+  readonly tint?: number;
+  /** Height in blocks. Defaults to `1`. */
+  readonly height?: number;
+  /** Places the sprite on top of its column (entities) instead of as the column's block. */
+  readonly surfaceAligned?: boolean;
+  /** Footprint length in tiles. Defaults to `1`. */
+  readonly length?: number;
+  /** Axis of a multi-tile footprint. Defaults to `"x"`. */
+  readonly lengthAxis?: EntityLengthAxis;
+  /** Draws a diamond outline per occupied block. Defaults to `false`. */
+  readonly debug?: boolean;
+};
+
 /**
  * Renders a block or entity sprite. Multi-block entities are cut into vertical half-tile
  * strips, each sorted with the depth of its own footprint tile, so things standing in
  * front of the far end of a long entity (a tree beside the land end of a pier) are drawn
  * over it instead of behind it. Returns every sprite added.
  */
-export function renderBlock(
-  container: Container,
-  texture: Texture,
-  box: IsoScreenBox,
-  tileWidth: number,
-  tileHeight: number,
-  boxHeight: number,
-  tint?: number,
-  height = 1,
-  surfaceAligned = false,
-  length = 1,
-  debug = false,
-  lengthAxis: EntityLengthAxis = "x",
-): Sprite[] {
+export function renderBlock(container: Container, options: RenderBlockOptions): Sprite[] {
+  const {
+    texture,
+    box,
+    metrics: { tileWidth, tileHeight, boxHeight },
+    tint,
+    height = 1,
+    surfaceAligned = false,
+    length = 1,
+    lengthAxis = "x",
+    debug = false,
+  } = options;
   const image = new Sprite(texture);
 
   image.width = tileWidth * ((1 + length) / 2);

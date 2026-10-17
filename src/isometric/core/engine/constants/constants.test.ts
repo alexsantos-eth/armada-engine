@@ -8,6 +8,7 @@ import {
   SAND_BLOCK_TEXTURE_KEY,
   NEGATIVE_ELEVATION_TINT_STEP,
   TILE_HEIGHT,
+  TILE_METRICS,
   TILE_WIDTH,
   VIEW_CULL_MARGIN,
   WIDTH,
@@ -24,6 +25,11 @@ describe("engine constants", () => {
   it("keeps the isometric block proportions consistent", () => {
     expect(TILE_HEIGHT).toBe(TILE_WIDTH / 2);
     expect(BOX_HEIGHT).toBe(TILE_WIDTH / 3);
+    expect(TILE_METRICS).toEqual({
+      tileWidth: TILE_WIDTH,
+      tileHeight: TILE_HEIGHT,
+      boxHeight: BOX_HEIGHT,
+    });
   });
 
   it("provides unique block texture keys", () => {

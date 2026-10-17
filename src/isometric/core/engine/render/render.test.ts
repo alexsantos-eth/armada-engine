@@ -93,15 +93,12 @@ describe("renderBlock", () => {
       screenY: 140,
     };
 
-    const sprite = renderBlock(
-      container as never,
-      { id: "grass" } as never,
+    const sprite = renderBlock(container as never, {
+      texture: { id: "grass" } as never,
       box,
-      40,
-      20,
-      13,
-      0x88aaff,
-    )[0] as unknown as TestSprite;
+      metrics: { tileWidth: 40, tileHeight: 20, boxHeight: 13 },
+      tint: 0x88aaff,
+    })[0] as unknown as TestSprite;
 
     expect(children).toEqual([sprite]);
     expect(sprite.width).toBe(40);
@@ -123,23 +120,19 @@ describe("renderBlock", () => {
       screenY: 20,
     };
 
-    const sprite = renderBlock(
-      container as never,
-      { id: "ground" } as never,
+    const sprite = renderBlock(container as never, {
+      texture: { id: "ground" } as never,
       box,
-      40,
-      20,
-      13,
-    )[0] as unknown as { tint: number };
+      metrics: { tileWidth: 40, tileHeight: 20, boxHeight: 13 },
+    })[0] as unknown as { tint: number };
 
     expect(sprite.tint).toBe(0xffffff);
   });
 
   it("supports a two-block-high sprite", () => {
-    const sprite = renderBlock(
-      { addChild: vi.fn() } as never,
-      { id: "tree" } as never,
-      {
+    const sprite = renderBlock({ addChild: vi.fn() } as never, {
+      texture: { id: "tree" } as never,
+      box: {
         x: 0,
         y: 0,
         box: new Box(0, 0),
@@ -147,12 +140,9 @@ describe("renderBlock", () => {
         baseScreenY: 20,
         screenY: 20,
       },
-      40,
-      20,
-      13,
-      undefined,
-      2,
-    )[0] as unknown as {
+      metrics: { tileWidth: 40, tileHeight: 20, boxHeight: 13 },
+      height: 2,
+    })[0] as unknown as {
       height: number;
       position: { set: ReturnType<typeof vi.fn> };
     };
@@ -162,10 +152,9 @@ describe("renderBlock", () => {
   });
 
   it("aligns a one-block entity with the block's top diamond", () => {
-    const sprite = renderBlock(
-      { addChild: vi.fn() } as never,
-      { id: "entity" } as never,
-      {
+    const sprite = renderBlock({ addChild: vi.fn() } as never, {
+      texture: { id: "entity" } as never,
+      box: {
         x: 0,
         y: 0,
         box: new Box(0, 0),
@@ -173,23 +162,19 @@ describe("renderBlock", () => {
         baseScreenY: 20,
         screenY: 20,
       },
-      40,
-      20,
-      13,
-      undefined,
-      1,
-      true,
-    )[0] as unknown as { position: { set: ReturnType<typeof vi.fn> } };
+      metrics: { tileWidth: 40, tileHeight: 20, boxHeight: 13 },
+      height: 1,
+      surfaceAligned: true,
+    })[0] as unknown as { position: { set: ReturnType<typeof vi.fn> } };
 
     expect(sprite.position.set).toHaveBeenCalledWith(10, -3);
   });
 
   it("slices a multi-block entity into half-tile strips across its footprint", () => {
     const children: unknown[] = [];
-    const sprites = renderBlock(
-      { addChild: (child: unknown) => children.push(child) } as never,
-      carTexture as never,
-      {
+    const sprites = renderBlock({ addChild: (child: unknown) => children.push(child) } as never, {
+      texture: carTexture as never,
+      box: {
         x: 0,
         y: 0,
         box: new Box(0, 0),
@@ -197,14 +182,12 @@ describe("renderBlock", () => {
         baseScreenY: 20,
         screenY: 20,
       },
-      40,
-      20,
-      13,
-      0x88aaff,
-      1,
-      true,
-      2,
-    ) as unknown as TestSprite[];
+      metrics: { tileWidth: 40, tileHeight: 20, boxHeight: 13 },
+      tint: 0x88aaff,
+      height: 1,
+      surfaceAligned: true,
+      length: 2,
+    }) as unknown as TestSprite[];
 
     // A 2-tile footprint spans 60px: three 20px strips starting at x = 20 - 30.
     expect(children).toEqual(sprites);
@@ -225,27 +208,22 @@ describe("renderBlock", () => {
   });
 
   it("reuses the strip textures of a texture", () => {
-    const render = () => renderBlock(
-      { addChild: vi.fn() } as never,
-      carTexture as never,
-      { x: 0, y: 0, box: new Box(0, 0), screenX: 10, baseScreenY: 20, screenY: 20 },
-      40,
-      20,
-      13,
-      undefined,
-      1,
-      true,
-      2,
-    ) as unknown as TestSprite[];
+    const render = () => renderBlock({ addChild: vi.fn() } as never, {
+      texture: carTexture as never,
+      box: { x: 0, y: 0, box: new Box(0, 0), screenX: 10, baseScreenY: 20, screenY: 20 },
+      metrics: { tileWidth: 40, tileHeight: 20, boxHeight: 13 },
+      height: 1,
+      surfaceAligned: true,
+      length: 2,
+    }) as unknown as TestSprite[];
 
     expect(render()[2].texture).toBe(render()[2].texture);
   });
 
   it("positions a multi-block entity along the y axis", () => {
-    const sprite = renderBlock(
-      { addChild: vi.fn() } as never,
-      carTexture as never,
-      {
+    const sprite = renderBlock({ addChild: vi.fn() } as never, {
+      texture: carTexture as never,
+      box: {
         x: 0,
         y: 0,
         box: new Box(0, 0),
@@ -253,16 +231,13 @@ describe("renderBlock", () => {
         baseScreenY: 20,
         screenY: 20,
       },
-      40,
-      20,
-      13,
-      undefined,
-      1,
-      true,
-      2,
-      false,
-      "y",
-    ) as unknown as TestSprite[];
+      metrics: { tileWidth: 40, tileHeight: 20, boxHeight: 13 },
+      height: 1,
+      surfaceAligned: true,
+      length: 2,
+      debug: false,
+      lengthAxis: "y",
+    }) as unknown as TestSprite[];
 
     // Centre at x = 0, so the strips start at -30; the anchor tile is on the right.
     expect(sprite.map(({ position }) => position.set.mock.calls[0])).toEqual([
@@ -277,10 +252,9 @@ describe("renderBlock", () => {
     const children: unknown[] = [];
     const container = { addChild: (child: unknown) => children.push(child) };
 
-    renderBlock(
-      container as never,
-      carTexture as never,
-      {
+    renderBlock(container as never, {
+      texture: carTexture as never,
+      box: {
         x: 0,
         y: 0,
         box: new Box(0, 0),
@@ -288,15 +262,12 @@ describe("renderBlock", () => {
         baseScreenY: 20,
         screenY: 20,
       },
-      40,
-      20,
-      13,
-      undefined,
-      1,
-      true,
-      2,
-      true,
-    );
+      metrics: { tileWidth: 40, tileHeight: 20, boxHeight: 13 },
+      height: 1,
+      surfaceAligned: true,
+      length: 2,
+      debug: true,
+    });
 
     expect(children).toHaveLength(4);
     const debugGraphics = children[3] as {

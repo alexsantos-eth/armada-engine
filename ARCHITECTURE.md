@@ -270,7 +270,7 @@ Las variantes de color SVG se comparten: cada entidad con `colorReplacements` gu
 
 ## Renderizado de bloques
 
-`renderBlock()` crea un `Sprite` a partir de una textura ya cargada:
+`renderBlock(container, options)` crea un `Sprite` a partir de una textura ya cargada. `options` (`RenderBlockOptions`) lleva `texture`, `box` (posición proyectada) y `metrics` (`TileMetrics`: `tileWidth`, `tileHeight`, `boxHeight`; la escena pasa `TILE_METRICS`), y opcionalmente `tint`, `height` (1), `surfaceAligned` (`false`), `length` (1), `lengthAxis` (`"x"`) y `debug` (`false`). Una opción nueva del renderer se añade como campo opcional con valor por defecto, sin tocar las llamadas existentes. Pasos:
 
 1. Ajusta el tamaño a `TILE_WIDTH` y a la proporción del SVG cuando la entidad ocupa varios bloques.
 2. Coloca el ancla en `(0.5, 0)` para alinear el centro horizontal y el borde superior.

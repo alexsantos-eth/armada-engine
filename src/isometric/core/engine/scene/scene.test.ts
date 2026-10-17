@@ -40,15 +40,13 @@ vi.mock("../render", () => ({
   renderBlock: vi.fn(
     (
       _container: unknown,
-      texture: { source: string },
-      box: { box: { elevation: number } },
-      _tileWidth: number,
-      _tileHeight: number,
-      _boxHeight: number,
-      tint: number | undefined,
-      height?: number,
-      _surfaceAligned?: boolean,
-      length?: number,
+      { texture, box, tint, height, length }: {
+        texture: { source: string };
+        box: { box: { elevation: number } };
+        tint?: number;
+        height?: number;
+        length?: number;
+      },
     ) => {
       renderCalls.push({ texture, elevation: box.box.elevation, tint, height, length });
     },
