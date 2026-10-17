@@ -6,4 +6,5 @@ export * from "./random";
 export * from "./render";
 export * from "./scene";
 export * from "./terrain";
+export * from "./time";
 export * from "./world";

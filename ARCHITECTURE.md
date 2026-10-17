@@ -13,6 +13,7 @@ flowchart LR
   Page --> Scene[engine/scene]
   World --> Entities[engine/entities]
   World --> Terrain[engine/terrain]
+  World --> Time[engine/time]
   Entities --> Terrain
   Terrain --> Random[engine/random]
   Scene --> World
@@ -81,6 +82,12 @@ src/isometric/core/
       scene.ts
       scene.test.ts
       index.ts
+    time/
+      clock.ts
+      clock.test.ts
+      sun.ts
+      sun.test.ts
+      index.ts
     terrain/
       box.ts
       box.test.ts
@@ -101,6 +108,7 @@ src/isometric/core/
     entities.ts
     iso.ts
     terrain.ts
+    time.ts
     index.ts
 src/isometric/content/
   entities.ts        # ENTITY_CONFIG: datos de juego, fuera del motor
@@ -119,7 +127,8 @@ Responsabilidades y dependencias permitidas (entre módulos solo a través de su
 | `grid` | Coordenadas (mundo, chunk, local), claves numéricas, `CellMap` y `SpatialIndex` | `constants` |
 | `terrain` | `Box`, ruido, relleno de columnas (`fillElevations`) y superficies | `constants`, `grid`, `random` |
 | `entities` | `Entity`, huellas, colocación, formaciones, variantes de color y validación de definiciones | `grid`, `random`, `terrain` |
-| `world` | Modelo `World`, generación y guardado | `constants`, `entities`, `grid`, `random`, `terrain` |
+| `time` | Reloj de juego (ticks), hora del día y estado del sol | — |
+| `world` | Modelo `World`, generación y guardado | `constants`, `entities`, `grid`, `random`, `terrain`, `time` |
 | `projection` | Rejilla → coordenadas de pantalla isométricas (`projectBoxesToIsometric`) | — |
 | `render` | Sprites Pixi y recoloreado SVG | — |
 | `scene` | Orquesta el render de un `World` | todos salvo `random` |
@@ -142,11 +151,26 @@ Los archivos de tipos no contienen lógica runtime y no tienen tests propios. Ty
 
 ## Modelo World
 
-`engine/world` define `World`, el estado del juego como datos de dominio sin Pixi ni `window`: `seed`, `width`, `height`, `columns` (un `Box` por columna con su elevación superior), `surfaces` (`CellMap` con la superficie de cada columna), `entities` y `occupancy` (`SpatialIndex` de las entidades sobre sus huellas, derivado: no se guarda y `restoreWorld()` lo reconstruye). Es la única fuente de verdad: los sistemas lo simulan, el guardado lo serializa y la escena solo lo lee.
+`engine/world` define `World`, el estado del juego como datos de dominio sin Pixi ni `window`: `seed`, `width`, `height`, `columns` (un `Box` por columna con su elevación superior), `surfaces` (`CellMap` con la superficie de cada columna), `entities`, `occupancy` (`SpatialIndex` de las entidades sobre sus huellas, derivado: no se guarda y `restoreWorld()` lo reconstruye) y `clock` (reloj de juego, ver [Tiempo de juego y sol](#tiempo-de-juego-y-sol)). Es la única fuente de verdad: los sistemas lo simulan, el guardado lo serializa y la escena solo lo lee.
 
-- `generateWorld(options)` valida `entityDefinitions` con `validateEntityDefinitions()` (lanza `EntityConfigError` con todos los problemas a la vez), genera el terreno (`generatePerlinTerrain()` con la semilla, sin retoques), clasifica superficies y crea entidades con `createEntitiesFromConfig()` usando flujos derivados (`"entities"` para la colocación y `"entity-color-variants"` para la variación de color). Opciones: `seed`, `width`, `height` y `entityDefinitions` (obligatoria: el motor no trae contenido propio).
-- `serializeWorld(world)` produce un `WorldSnapshot` JSON (`version` 2, `seed`, tamaño y entidades como `{ x, y, data }`). El terreno no se guarda: se regenera desde la semilla.
-- `restoreWorld(snapshot)` regenera el terreno y restaura las entidades con `Entity.fromData()`, conservando ids, variaciones, metadata y los cambios hechos en partida. Rechaza versiones distintas de `WORLD_SNAPSHOT_VERSION`; la versión 1 incluía la meseta de aparición, que ya no existe.
+- `generateWorld(options)` valida `entityDefinitions` con `validateEntityDefinitions()` (lanza `EntityConfigError` con todos los problemas a la vez), genera el terreno (`generatePerlinTerrain()` con la semilla, sin retoques), clasifica superficies y crea entidades con `createEntitiesFromConfig()` usando flujos derivados (`"entities"` para la colocación y `"entity-color-variants"` para la variación de color). Opciones: `seed`, `width`, `height`, `entityDefinitions` (obligatoria: el motor no trae contenido propio) y `startTick` (por defecto `WORLD_START_TICK`, las 08:00 del día 0). La hora inicial no altera nada de lo generado.
+- `serializeWorld(world)` produce un `WorldSnapshot` JSON (`version` 3, `seed`, tamaño, `tick` del reloj y entidades como `{ x, y, data }`). El terreno no se guarda: se regenera desde la semilla.
+- `restoreWorld(snapshot)` regenera el terreno, restaura las entidades con `Entity.fromData()` (conservando ids, variaciones, metadata y los cambios hechos en partida) y restaura el reloj. Rechaza versiones distintas de `WORLD_SNAPSHOT_VERSION`: la versión 1 incluía la meseta de aparición, que ya no existe, y la 2 no guardaba la hora. Lanza `RangeError` si el `tick` guardado no es un entero seguro no negativo.
+
+## Tiempo de juego y sol
+
+`engine/time` no depende de ningún otro módulo (tipos en `core/types/time.ts`). El tiempo es un **contador entero de ticks** guardado en `World.clock` (`WorldClock`: `{ tick }`); todo lo demás se deriva de él con funciones puras.
+
+- `TICKS_PER_SECOND` (20) fija el paso de simulación: cada paso avanza un tick. `TICKS_PER_DAY` (24 000) da días de 20 minutos reales; una hora de juego son 1 000 ticks. `WORLD_START_TICK` es las 08:00 del día 0.
+- `createWorldClock(tick?)` crea el reloj y `advanceClock(clock, ticks = 1)` lo avanza; ambos lanzan `RangeError` con ticks negativos, decimales o fuera del rango seguro (el reloj no cambia). Solo el paso fijo de simulación avanza el reloj, nunca el frame de render, así que la hora es la misma en cualquier máquina y se reproduce al cargar.
+- `getTimeOfDay(tick)` devuelve la fracción del día en `[0, 1)` (`0` medianoche, `0.25` amanecer, `0.5` mediodía, `0.75` atardecer) y `getClockTime(tick)` la lectura `{ day, hour, minute }` para UI y depuración.
+- `getSunState(tick, palette?)` devuelve un `SunState`:
+  - `direction`: vector unitario hacia el sol en ejes del mundo. El sol recorre un círculo inclinado: sale por el este (`+x`) a las 06:00, culmina al sur (`-y`) a `SUN_MAX_ALTITUDE` (60°) al mediodía y se pone por el oeste (`-x`) a las 18:00. Con esta orientación, la luz del mediodía llega desde el lado de la cámara, como la pintada en los assets, y las sombras caen alejándose del espectador.
+  - `elevation`: seno de la altitud (`direction.z`), negativo de noche.
+  - `daylight`: `0` de noche, `1` de día, con transición suave (`smoothstep`) entre `NIGHT_ELEVATION` (−0.1) y `DAY_ELEVATION` (0.15).
+  - `ambient`: color de luz ambiente (`Rgb` en `[0, 1]`) muestreado de una paleta por elevación con `sampleSkyPalette()`. `DEFAULT_SKY_PALETTE` va de una noche azulada y tenue a un horizonte anaranjado y a blanco puro (sin tinte) de media mañana a media tarde. Un juego puede pasar su propia paleta; debe tener al menos una clave y elevaciones estrictamente crecientes (si no, `RangeError`).
+
+El estado del sol es presentación: la lógica de juego que dependa de la hora (por ejemplo, la noche) debe decidir con el `tick` entero, no con los flotantes del sol. La escena todavía no usa este módulo: el bucle de simulación y el tinte ambiente son los siguientes pasos.
 
 ## Determinismo y semilla del mundo
 

@@ -36,6 +36,8 @@ El mundo se genera a partir de una semilla. En lógica de dominio y generación 
 
 El estado del juego vive en `World` (`engine/world`): genera con `generateWorld()`, guarda con `serializeWorld()`/`restoreWorld()` y renderiza con `createIsometricScene(app, world)`. La escena no genera ni modifica el mundo; la nueva lógica de juego actúa sobre `World`, nunca sobre objetos de Pixi. El core no debe leer `window` (los tests corren en Node sin shim); las medidas de la vista son constantes o llegan desde `page.tsx`.
 
+El tiempo de juego también es estado del `World`: un contador entero (`world.clock.tick`) que solo avanza el paso fijo de simulación con `advanceClock()`, nunca el reloj del sistema ni el delta de un frame. La hora del día y la luz del sol se derivan del tick con `getTimeOfDay()` y `getSunState()` (`engine/time`); las decisiones de juego que dependan de la hora deben usar el tick entero. Si cambias la forma de `WorldSnapshot`, sube `WORLD_SNAPSHOT_VERSION` (ahora 3, que añadió `tick`).
+
 Las deudas conocidas del core y los planes de refactor están en [CORE_REVIEW.md](CORE_REVIEW.md); léelo antes de cambiar el core.
 
 ## Entorno de tests

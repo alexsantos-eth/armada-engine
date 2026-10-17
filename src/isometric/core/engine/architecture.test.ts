@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
  * reaches Pixi or the browser:
  *
  * constants, random → grid → terrain → entities → world → scene ← projection, render
+ * time → world (the world holds the game clock)
  *
  * Outside the engine, a module may only reach the shared types (`../../types`): the engine
  * never imports game content. Content (`src/isometric/content`) is plain data and only
@@ -14,11 +15,12 @@ import { describe, expect, it } from "vitest";
 const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   constants: [],
   random: [],
+  time: [],
   projection: [],
   grid: ["constants"],
   terrain: ["constants", "grid", "random"],
   entities: ["grid", "random", "terrain"],
-  world: ["constants", "entities", "grid", "random", "terrain"],
+  world: ["constants", "entities", "grid", "random", "terrain", "time"],
   render: [],
   scene: ["constants", "entities", "grid", "projection", "render", "terrain", "world"],
 };

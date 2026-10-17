@@ -1,9 +1,10 @@
-import type { EntityData, EntityDefinition, TerrainSurface } from "../../types";
+import type { EntityData, EntityDefinition, TerrainSurface, WorldClock } from "../../types";
 import type { ReadonlyCellMap, SpatialIndex } from "../grid";
 import { TERRAIN_HEIGHT, TERRAIN_WIDTH } from "../constants";
 import { createEntitiesFromConfig, Entity, indexEntities, validateEntityDefinitions } from "../entities";
 import { createSeededRandom, DEFAULT_WORLD_SEED, deriveSeed } from "../random";
 import { Box, classifyColumnSurfaces, generatePerlinTerrain } from "../terrain";
+import { createWorldClock, WORLD_START_TICK } from "../time";
 
 /**
  * The game world as plain domain state: the single source of truth that systems simulate,
@@ -28,6 +29,11 @@ export type World = {
    * from `entities`: never serialized, rebuilt on restore.
    */
   readonly occupancy: SpatialIndex<Entity>;
+  /**
+   * Game clock. Only the fixed simulation step advances it (`advanceClock(world.clock)`);
+   * time of day and sunlight are derived from its tick with `getSunState()`.
+   */
+  readonly clock: WorldClock;
 };
 
 /** Options of {@link generateWorld}. */
@@ -44,21 +50,24 @@ export type WorldOptions = {
    * validated with `validateEntityDefinitions()` before anything is generated.
    */
   entityDefinitions: readonly EntityDefinition[];
+  /** Tick the game clock starts at. Defaults to `WORLD_START_TICK` (08:00 of day 0). */
+  startTick?: number;
 };
 
 /** Version of {@link WorldSnapshot}; bump it when the snapshot shape changes. */
-export const WORLD_SNAPSHOT_VERSION = 2;
+export const WORLD_SNAPSHOT_VERSION = 3;
 
 /**
  * JSON-serializable save of a {@link World}. The terrain is not stored: it is regenerated
  * from `seed` and size. Entities are stored as data, so changes made during
- * play (removed, moved or modified entities) are kept.
+ * play (removed, moved or modified entities) are kept, and so is the game time (`tick`).
  */
 export type WorldSnapshot = {
   version: typeof WORLD_SNAPSHOT_VERSION;
   seed: number;
   width: number;
   height: number;
+  tick: number;
   entities: { x: number; y: number; data: EntityData }[];
 };
 
@@ -87,9 +96,11 @@ function generateTerrainState(
  * same options always produce the same world.
  *
  * @throws `EntityConfigError` when `entityDefinitions` is invalid.
+ * @throws `RangeError` when `startTick` is not a non-negative safe integer.
  */
 export function generateWorld(options: WorldOptions): World {
   validateEntityDefinitions(options.entityDefinitions);
+  const clock = createWorldClock(options.startTick ?? WORLD_START_TICK);
   const terrain = generateTerrainState(
     options.seed ?? DEFAULT_WORLD_SEED,
     options.width ?? TERRAIN_WIDTH,
@@ -102,7 +113,7 @@ export function generateWorld(options: WorldOptions): World {
     createSeededRandom(deriveSeed(terrain.seed, "entity-color-variants")),
   );
 
-  return { ...terrain, entities, occupancy: indexEntities(entities) };
+  return { ...terrain, entities, occupancy: indexEntities(entities), clock };
 }
 
 /** Converts a world into a JSON-serializable {@link WorldSnapshot}. */
@@ -112,21 +123,24 @@ export function serializeWorld(world: World): WorldSnapshot {
     seed: world.seed,
     width: world.width,
     height: world.height,
+    tick: world.clock.tick,
     entities: world.entities.map((entity) => ({ x: entity.x, y: entity.y, data: entity.getData() })),
   };
 }
 
 /**
  * Rebuilds a world from a snapshot: regenerates the terrain from its seed and restores the
- * saved entities as they were (no new entity generation).
+ * saved entities and game time as they were (no new entity generation).
  *
  * @throws When the snapshot version is not supported.
+ * @throws `RangeError` when the saved tick is not a non-negative safe integer.
  */
 export function restoreWorld(snapshot: WorldSnapshot): World {
   if (snapshot.version !== WORLD_SNAPSHOT_VERSION) {
     throw new Error(`Unsupported world snapshot version ${String(snapshot.version)}`);
   }
 
+  const clock = createWorldClock(snapshot.tick);
   const terrain = generateTerrainState(
     snapshot.seed,
     snapshot.width,
@@ -134,5 +148,5 @@ export function restoreWorld(snapshot: WorldSnapshot): World {
   );
   const entities = snapshot.entities.map(({ x, y, data }) => Entity.fromData(x, y, data));
 
-  return { ...terrain, entities, occupancy: indexEntities(entities) };
+  return { ...terrain, entities, occupancy: indexEntities(entities), clock };
 }

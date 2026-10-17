@@ -85,6 +85,7 @@ const worldFrom = (points: TerrainPoint[], createEntities: EntityFactory = () =>
     surfaces: classifyColumnSurfaces(columns),
     entities,
     occupancy: indexEntities(entities),
+    clock: { tick: 0 },
   };
 };
 

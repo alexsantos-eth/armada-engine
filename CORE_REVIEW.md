@@ -6,6 +6,18 @@ Criterio: el core debe sostener un **RPG isométrico procedural de supervivencia
 
 Niveles: **Bloqueante** (rompe la visión) · **Alta** (reescritura cara cuando llegue un sistema previsto) · **Media** (corregible localmente) · **Baja** (higiene).
 
+## 2026-10-17 — Reloj de juego y estado del sol (paso 1 de la iluminación)
+
+Alcance: nuevo módulo `engine/time` (`clock.ts`, `sun.ts`, tipos en `core/types/time.ts`), `World.clock` y `WorldSnapshot` v3. No toca render ni escena, así que no se consultó la guía de PixiJS en esta revisión.
+
+| # | Estado | Cambio |
+|---|---|---|
+| 7 | Avanzado (Alta) | **Reloj de juego.** `World.clock` (`{ tick }` entero) es estado del mundo, se guarda (`WorldSnapshot` v3, campo `tick`) y solo lo avanza `advanceClock()`. `getTimeOfDay()`, `getClockTime()` y `getSunState()` derivan del tick la hora y la luz (dirección del sol en ejes del mundo, `daylight`, color ambiente por paleta). Siguen pendientes de #7 el bucle de paso fijo y la cámara. |
+| 16 | Corregido (Baja) | `getTimeOfDay()` devolvía fracciones negativas con ticks negativos (el `%` de JS conserva el signo); cualquier desfase horario futuro (zonas, eventos "hace N horas") habría producido un sol fuera de rango. Ahora envuelve en `[0, 1)`. Tests en `time/clock.test.ts`. |
+| 17 | Pendiente (Media) | **Sin comunicación tipada entre sistemas.** El ciclo día/noche, el clima y las necesidades reaccionarán a cambios de hora (amanecer, anochecer) y de estado. Sin un bus de eventos tipado, cada sistema leerá o llamará a los demás directamente. Proponer un bus mínimo en el dominio cuando llegue el primer sistema que lo necesite (probablemente con el bucle, paso 2). |
+
+Notas para el paso 2 (bucle): el `Ticker` de Pixi marca los frames y alimenta con `elapsedMS` un acumulador de paso fijo **en el dominio** (`1000 / TICKS_PER_SECOND` ms por tick), con tope de pasos por frame para no entrar en espiral tras una pausa del navegador; pausa y escala de tiempo viven en ese acumulador, no en el reloj. Consultar antes https://pixijs.com/8.x/guides/components/ticker y https://pixijs.com/8.x/guides/concepts/render-loop. El estado del sol usa flotantes (`Math.sin`/`Math.cos`): es presentación; la lógica de juego que dependa de la hora debe decidir con el tick entero.
+
 ## 2026-10-17 — Culling y orden de dibujo con PixiJS
 
 Consultadas: [Culler Plugin](https://pixijs.com/8.x/guides/components/application/culler-plugin), [Performance Tips](https://pixijs.com/8.x/guides/concepts/performance-tips), [Container](https://pixijs.com/8.x/guides/components/scene-objects/container) y el código de `pixi.js` 8.22.0 (`Culler`, `sortMixin`).

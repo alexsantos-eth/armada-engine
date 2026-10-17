@@ -21,12 +21,14 @@ core/
     render/
     scene/
     terrain/
+    time/
     world/
     index.ts
   types/
     entities.ts
     iso.ts
     terrain.ts
+    time.ts
     index.ts
 ```
 

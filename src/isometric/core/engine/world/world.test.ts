@@ -4,6 +4,7 @@ import type { EntityDefinition } from "../../types";
 import { classifyColumnSurfaces, generatePerlinTerrain } from "../terrain";
 import { EntityConfigError } from "../entities";
 import { DEFAULT_WORLD_SEED } from "../random";
+import { advanceClock, TICKS_PER_DAY, WORLD_START_TICK } from "../time";
 import {
   generateWorld,
   restoreWorld,
@@ -93,6 +94,34 @@ describe("generateWorld", () => {
   });
 });
 
+describe("World clock", () => {
+  it("starts a new world at the world start tick", () => {
+    const world = generateWorld({ seed: 5, width: 4, height: 4, entityDefinitions: [] });
+
+    expect(world.clock).toEqual({ tick: WORLD_START_TICK });
+  });
+
+  it("accepts an explicit start tick", () => {
+    const world = generateWorld({ seed: 5, width: 4, height: 4, entityDefinitions: [], startTick: 0 });
+
+    expect(world.clock.tick).toBe(0);
+  });
+
+  it("rejects an invalid start tick", () => {
+    expect(() => generateWorld({ width: 4, height: 4, entityDefinitions: [], startTick: -1 }))
+      .toThrow(RangeError);
+  });
+
+  it("does not change what is generated", () => {
+    const options = { seed: 42, width: 16, height: 16, entityDefinitions: DEFINITIONS };
+    const morning = generateWorld(options);
+    const night = generateWorld({ ...options, startTick: 3 * TICKS_PER_DAY });
+
+    expect(night.entities.map((entity) => entity.getData()))
+      .toEqual(morning.entities.map((entity) => entity.getData()));
+  });
+});
+
 describe("World occupancy", () => {
   it("indexes every entity over its footprint", () => {
     const world = generateWorld({ seed: 42, width: 16, height: 16, entityDefinitions: DEFINITIONS });
@@ -120,12 +149,31 @@ describe("serializeWorld / restoreWorld", () => {
     const restored = restoreWorld(snapshot);
 
     expect(snapshot.version).toBe(WORLD_SNAPSHOT_VERSION);
+    expect(WORLD_SNAPSHOT_VERSION).toBe(3);
     expect(restored.seed).toBe(77);
     expect(restored.columns.map((b) => [b.x, b.y, b.elevation]))
       .toEqual(world.columns.map((b) => [b.x, b.y, b.elevation]));
     expect(restored.surfaces).toEqual(world.surfaces);
     expect(restored.entities.map((e) => [e.x, e.y, e.getData()]))
       .toEqual(world.entities.map((e) => [e.x, e.y, e.getData()]));
+  });
+
+  it("saves and restores the game time", () => {
+    const world = generateWorld({ seed: 77, width: 4, height: 4, entityDefinitions: [] });
+    advanceClock(world.clock, TICKS_PER_DAY + 123);
+
+    const snapshot = JSON.parse(JSON.stringify(serializeWorld(world)));
+    const restored = restoreWorld(snapshot);
+
+    expect(snapshot.tick).toBe(WORLD_START_TICK + TICKS_PER_DAY + 123);
+    expect(restored.clock).toEqual(world.clock);
+    expect(restored.clock).not.toBe(world.clock);
+  });
+
+  it("rejects a snapshot with an invalid tick", () => {
+    const snapshot = serializeWorld(generateWorld({ seed: 1, width: 4, height: 4, entityDefinitions: [] }));
+
+    expect(() => restoreWorld({ ...snapshot, tick: -5 })).toThrow(RangeError);
   });
 
   it("keeps entity changes made after generation instead of regenerating them", () => {
@@ -142,5 +190,7 @@ describe("serializeWorld / restoreWorld", () => {
       .toThrow("Unsupported world snapshot version 99");
     expect(() => restoreWorld({ ...snapshot, version: 1 as never }))
       .toThrow("Unsupported world snapshot version 1");
+    expect(() => restoreWorld({ ...snapshot, version: 2 as never }))
+      .toThrow("Unsupported world snapshot version 2");
   });
 });
