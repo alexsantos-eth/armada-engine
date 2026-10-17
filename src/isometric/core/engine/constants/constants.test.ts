@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BOX_HEIGHT,
+  CHUNK_SIZE,
   GROUND_BLOCK_TEXTURE_KEY,
   GRASS_BLOCK_TEXTURE_KEY,
   POSITIVE_ELEVATION_TINT_STEP,
@@ -32,6 +33,10 @@ describe("engine constants", () => {
       WATER_BLOCK_TEXTURE_KEY,
       SAND_BLOCK_TEXTURE_KEY,
     ]).size).toBe(4);
+  });
+
+  it("uses a power-of-two chunk size", () => {
+    expect(Number.isInteger(Math.log2(CHUNK_SIZE))).toBe(true);
   });
 
   it("defines a positive viewport culling margin", () => {

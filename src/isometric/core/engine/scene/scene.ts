@@ -16,6 +16,7 @@ import {
   WATER_BLOCK_TEXTURE_KEY,
 } from "../constants";
 import { isWithinViewport } from "../culling";
+import { CellMap } from "../grid";
 import { createSvgColorVariant, renderBlock } from "../render";
 import type { World } from "../world";
 
@@ -122,15 +123,8 @@ export async function createIsometricScene(
   scene.sortableChildren = true;
   app.stage.addChild(scene);
 
-  const topElevationByColumn = new Map<string, number>();
-  filledBoxes.forEach((box) => {
-    const columnKey = `${box.x}:${box.y}`;
-    const currentTop = topElevationByColumn.get(columnKey);
-    topElevationByColumn.set(
-      columnKey,
-      Math.max(currentTop ?? -Infinity, box.elevation),
-    );
-  });
+  // Each world column holds its top elevation.
+  const topElevationByColumn = CellMap.from(world.columns, ({ elevation }) => elevation);
   const maxPositiveElevation = filledBoxes.reduce(
     (maximum, box) => Math.max(maximum, box.elevation),
     0,
@@ -185,11 +179,10 @@ export async function createIsometricScene(
         ),
       )
       .forEach((box) => {
-        const columnKey = `${box.x}:${box.y}`;
         const material = getBlockMaterial(
           box.box.elevation,
-          topElevationByColumn.get(columnKey) as number,
-          surfaces.get(columnKey) as TerrainSurface,
+          topElevationByColumn.get(box.x, box.y) as number,
+          surfaces.get(box.x, box.y) as TerrainSurface,
         );
         const texture = texturesByMaterial[material];
         const tint = material === "water"

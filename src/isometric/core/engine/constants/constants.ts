@@ -24,3 +24,9 @@ export const WATER_BLOCK_TEXTURE_KEY = "iso-water-block";
 export const SAND_BLOCK_TEXTURE_KEY = "iso-sand-block";
 
 export const VIEW_CULL_MARGIN = 120;
+
+/**
+ * Side of a chunk in columns. The world is split into `CHUNK_SIZE` × `CHUNK_SIZE` chunks for
+ * generation, streaming and spatial lookups.
+ */
+export const CHUNK_SIZE = 32;

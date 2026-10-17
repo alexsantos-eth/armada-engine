@@ -15,6 +15,7 @@ core/
   engine/
     constants/
     culling/
+    grid/
     entities/
     projection/
     random/
@@ -74,7 +75,7 @@ No crear commits ni ramas automáticamente. No revertir cambios existentes que n
 
 ## Estado actual del core
 
-Las entidades se configuran en `src/isometric/content/entities.ts` (validadas al cargar con `validateEntityDefinitions()`) y pueden usar `surfaceElevation`, `length`, `lengthAxis`, `colorReplacements` y `debug`. `createEntitiesFromConfig()` valida la superficie y la elevación de toda la huella, reserva las coordenadas con un `Set` y evita solapamientos entre entidades.
+Las entidades se configuran en `src/isometric/content/entities.ts` (validadas al cargar con `validateEntityDefinitions()`) y pueden usar `surfaceElevation`, `length`, `lengthAxis`, `colorReplacements` y `debug`. `createEntitiesFromConfig()` valida la superficie y la elevación de toda la huella, registra las coordenadas en un `SpatialIndex` (`engine/grid`) y evita solapamientos entre entidades.
 
 Los assets multi-bloque declaran su geometría con `data-tiles`; `lengthAxis: "x"` es el valor por defecto y `lengthAxis: "y"` orienta la huella hacia el eje `y`. El renderer aplica la orientación al sprite y dibuja un rombo de debug por bloque ocupado en sus niveles inferior y superior.
 

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
  * (through their barrel), so the dependency graph stays acyclic and domain code never
  * reaches Pixi or the browser:
  *
- * constants, random → terrain → entities → world → scene ← projection, culling, render
+ * constants, random → grid → terrain → entities → world → scene ← projection, culling, render
  *
  * Outside the engine, a module may only reach the shared types (`../../types`): the engine
  * never imports game content. Content (`src/isometric/content`) is plain data and only
@@ -16,11 +16,12 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   random: [],
   projection: [],
   culling: ["constants"],
-  terrain: ["constants", "random"],
-  entities: ["random", "terrain"],
-  world: ["constants", "entities", "random", "terrain"],
+  grid: ["constants"],
+  terrain: ["constants", "grid", "random"],
+  entities: ["grid", "random", "terrain"],
+  world: ["constants", "entities", "grid", "random", "terrain"],
   render: [],
-  scene: ["constants", "culling", "entities", "projection", "render", "terrain", "world"],
+  scene: ["constants", "culling", "entities", "grid", "projection", "render", "terrain", "world"],
 };
 
 /** Modules allowed to import Pixi. Everything else is pure domain logic. */
@@ -87,6 +88,10 @@ describe("engine architecture", () => {
   it.each(files)("$path uses Pixi only in render and scene", ({ module, imports }) => {
     if (PIXI_MODULES.has(module)) return;
     expect(imports).not.toContain("pixi.js");
+  });
+
+  it.each(files)("$path uses numeric cell keys instead of \"x:y\" strings", ({ source }) => {
+    expect(source).not.toMatch(/`\$\{[^}]+\}:\$\{[^}]+\}`/);
   });
 
   it.each(files)("$path does not read browser globals", ({ source }) => {

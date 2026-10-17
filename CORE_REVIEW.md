@@ -6,6 +6,16 @@ Criterio: el core debe sostener un **RPG isométrico procedural de supervivencia
 
 Niveles: **Bloqueante** (rompe la visión) · **Alta** (reescritura cara cuando llegue un sistema previsto) · **Media** (corregible localmente) · **Baja** (higiene).
 
+## 2026-10-16 — Coordenadas tipadas e índice espacial (paso 2)
+
+| # | Estado | Cambio |
+|---|---|---|
+| 10 | Corregido | Nuevo módulo `engine/grid`: `WorldCoord`/`ChunkCoord`/`LocalCoord`/`WorldRect` (`core/types/grid.ts`), conversiones mundo ↔ chunk ↔ local con `CHUNK_SIZE = 32`, claves numéricas `cellKey`/`chunkKey` (±2²⁰), `CellMap` y `SpatialIndex` (consultas por celda, rectángulo y radio, deterministas). Eliminadas todas las claves `"x:y"` del motor. |
+| 10 | Corregido | `createEntitiesFromConfig()` usa un `SpatialIndex` para ocupación y `gap`; `classifyColumnSurfaces()` devuelve `CellMap`; la escena usa `CellMap`. `World.occupancy` expone el índice de entidades (derivado, no se guarda). Verificado: con `ENTITY_CONFIG` y 4 semillas, las más de 1.000 entidades generadas son idénticas a las de antes del cambio. |
+| 10 | Guardián | `architecture.test.ts` prohíbe plantillas `` `${…}:${…}` `` en el código del motor. |
+
+Siguiente: bucle de paso fijo, reloj y cámara (#7), después chunks (#6), que ya pueden apoyarse en `ChunkCoord`, `chunkRect()` y `chunkKey()`.
+
 ## 2026-10-16 — Contenido fuera del motor y sin meseta de aparición (fase 3 completa)
 
 | # | Estado | Cambio |
@@ -61,7 +71,7 @@ Las formaciones (`formation.ts`) están bien aisladas, son puras y consumen `ran
 | 7 | Alta | **Render estático, sin bucle ni cámara.** Se crean sprites una vez, el culling se hace solo al construir (lo que queda fuera nunca existe) y no hay bucle de simulación de paso fijo, reloj de juego ni movimiento de cámara. | `scene/scene.ts`, `projection.ts` |
 | 8 | Media (corregido) | **El core depende de `window` al importarse.** `constants.ts` lee `window.innerWidth`; impide ejecutar la simulación en un worker o en Node sin el shim de `tests/setup.ts`. Las medidas de pantalla deben llegar como configuración de vista. | `constants/constants.ts` |
 | 9 | Media (corregido) | **Responsabilidades cruzadas.** `Box` (terreno) vive en `entities`; `projection.ts` importa `Box` y hace relleno de columnas + culling, mientras la proyección real está en `board`. Contenido (`ENTITY_CONFIG`) dentro del módulo de motor `entities`. | `entities/entities.ts`, `projection/`, `board/`, `entities/config.ts` |
-| 10 | Media | **Índice espacial por strings.** Claves `` `${x}:${y}` `` dispersas y `Map`/`Set` globales para todo el mapa. Sirve a 32×32; no escala a consultas de vecindad, colisión ni pathfinding en mundos grandes. | `entities.ts`, `surfaces.ts`, `scene.ts` |
+| 10 | Media (corregido) | **Índice espacial por strings.** Claves `` `${x}:${y}` `` dispersas y `Map`/`Set` globales para todo el mapa. Sirve a 32×32; no escala a consultas de vecindad, colisión ni pathfinding en mundos grandes. | `entities.ts`, `surfaces.ts`, `scene.ts` |
 | 11 | Media (corregido) | **La variación de color no forma parte del estado de la entidad.** Se reproduce desde la semilla, pero si una entidad se crea o se mueve en partida no conserva su variante al guardar. | `scene.ts` → debería pasar a `EntityData` |
 | 12 | Baja | `renderBlock()` con 12 parámetros posicionales; difícil de extender (animación, selección, sombras). | `render/render.ts` |
 

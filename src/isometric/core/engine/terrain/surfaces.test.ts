@@ -48,11 +48,11 @@ describe("classifyColumnSurfaces", () => {
       [-1, -1, -1, -1],
     ]));
 
-    expect(surfaces.get("1:1")).toBe("sand");
-    expect(surfaces.get("2:1")).toBe("sand");
-    expect(surfaces.get("1:2")).toBe("sand");
-    expect(surfaces.get("2:2")).toBe("grass");
-    expect(surfaces.get("0:0")).toBe("water");
+    expect(surfaces.get(1, 1)).toBe("sand");
+    expect(surfaces.get(2, 1)).toBe("sand");
+    expect(surfaces.get(1, 2)).toBe("sand");
+    expect(surfaces.get(2, 2)).toBe("grass");
+    expect(surfaces.get(0, 0)).toBe("water");
   });
 
   it("does not put sand on islets in the middle of the water", () => {
@@ -62,9 +62,9 @@ describe("classifyColumnSurfaces", () => {
       [-1, -1, -1, -1, -1],
     ]));
 
-    expect(surfaces.get("1:1")).toBe("grass");
-    expect(surfaces.get("3:1")).toBe("grass");
-    expect(surfaces.get("4:1")).toBe("grass");
+    expect(surfaces.get(1, 1)).toBe("grass");
+    expect(surfaces.get(3, 1)).toBe("grass");
+    expect(surfaces.get(4, 1)).toBe("grass");
   });
 
   it("counts diagonal inland ground so shore corners stay sand", () => {
@@ -76,9 +76,9 @@ describe("classifyColumnSurfaces", () => {
 
     // (1,1)'s edge neighbours are water or other shore cells; its only inland
     // neighbour is the diagonal (2,2).
-    expect(surfaces.get("2:1")).toBe("sand");
-    expect(surfaces.get("1:2")).toBe("sand");
-    expect(surfaces.get("1:1")).toBe("sand");
+    expect(surfaces.get(2, 1)).toBe("sand");
+    expect(surfaces.get(1, 2)).toBe("sand");
+    expect(surfaces.get(1, 1)).toBe("sand");
   });
 
   it("only counts edge-adjacent water", () => {
@@ -88,7 +88,7 @@ describe("classifyColumnSurfaces", () => {
       [null, 0, 0],
     ]));
 
-    expect(surfaces.get("1:1")).toBe("grass");
+    expect(surfaces.get(1, 1)).toBe("grass");
   });
 
   it("uses the top block of filled columns", () => {
@@ -101,8 +101,8 @@ describe("classifyColumnSurfaces", () => {
       column(0, 1, 1),
     ]);
 
-    expect(surfaces.get("0:0")).toBe("sand");
-    expect(surfaces.get("1:0")).toBe("water");
+    expect(surfaces.get(0, 0)).toBe("sand");
+    expect(surfaces.get(1, 0)).toBe("water");
   });
 });
 

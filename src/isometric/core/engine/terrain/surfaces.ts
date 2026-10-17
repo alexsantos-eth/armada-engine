@@ -1,4 +1,5 @@
 import type { IGridObject, TerrainMaterial, TerrainSurface } from "../../types";
+import { CellMap } from "../grid";
 
 /** Elevation the top block of a column must have to become sand. */
 export const SAND_ELEVATION = 0;
@@ -24,8 +25,8 @@ export function getColumnSurface(
 }
 
 /**
- * Classifies the surface of every column, keyed by `x:y`. Accepts one box per column or
- * filled columns (several boxes per coordinate); the highest box is the column's top.
+ * Classifies the surface of every column. Accepts one box per column or filled columns
+ * (several boxes per coordinate); the highest box is the column's top.
  *
  * A shore candidate is a column at {@link SAND_ELEVATION} with an edge-adjacent water
  * column. It becomes sand when any of its eight neighbours is inland ground: a land column
@@ -34,32 +35,29 @@ export function getColumnSurface(
  */
 export function classifyColumnSurfaces(
   boxes: readonly IGridObject[],
-): Map<string, TerrainSurface> {
-  const columns = new Map<string, { x: number; y: number; top: number }>();
+): CellMap<TerrainSurface> {
+  const tops = new CellMap<number>();
   boxes.forEach(({ x, y, elevation }) => {
-    const key = `${x}:${y}`;
-    const top = Math.max(columns.get(key)?.top ?? -Infinity, elevation);
-    columns.set(key, { x, y, top });
+    tops.set(x, y, Math.max(tops.get(x, y) ?? -Infinity, elevation));
   });
 
-  const topAt = (x: number, y: number) => columns.get(`${x}:${y}`)?.top;
-  const touchesWater = new Map<string, boolean>();
-  columns.forEach(({ x, y }, key) => {
-    touchesWater.set(key, EDGE_OFFSETS.some(([dx, dy]) => {
-      const top = topAt(x + dx, y + dy);
+  const touchesWater = new CellMap<boolean>();
+  tops.forEach((_, x, y) => {
+    touchesWater.set(x, y, EDGE_OFFSETS.some(([dx, dy]) => {
+      const top = tops.get(x + dx, y + dy);
       return top !== undefined && top < 0;
     }));
   });
   const isInland = (x: number, y: number) => {
-    const top = topAt(x, y);
+    const top = tops.get(x, y);
     if (top === undefined || top < 0) return false;
-    return top !== SAND_ELEVATION || !touchesWater.get(`${x}:${y}`);
+    return top !== SAND_ELEVATION || !touchesWater.get(x, y);
   };
 
-  const surfaces = new Map<string, TerrainSurface>();
-  columns.forEach(({ x, y, top }, key) => {
+  const surfaces = new CellMap<TerrainSurface>();
+  tops.forEach((top, x, y) => {
     const touchesInland = AROUND_OFFSETS.some(([dx, dy]) => isInland(x + dx, y + dy));
-    surfaces.set(key, getColumnSurface(top, touchesWater.get(key) as boolean, touchesInland));
+    surfaces.set(x, y, getColumnSurface(top, touchesWater.get(x, y) as boolean, touchesInland));
   });
   return surfaces;
 }

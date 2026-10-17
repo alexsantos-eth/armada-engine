@@ -57,7 +57,7 @@ vi.mock("../render", () => ({
 
 import { Assets } from "pixi.js";
 import type { TerrainPoint } from "../../types";
-import { Entity } from "../entities";
+import { Entity, indexEntities } from "../entities";
 import { createSvgColorVariant } from "../render";
 import { Box, classifyColumnSurfaces } from "../terrain";
 import { generateWorld, type World } from "../world";
@@ -68,19 +68,22 @@ type EntityFactory = (columns: readonly Box[]) => Entity[];
 /** The generated default terrain (no configured entities) with test entities on top. */
 const defaultWorld = (createEntities: EntityFactory = () => []): World => {
   const world = generateWorld({ entityDefinitions: [] });
-  return { ...world, entities: createEntities(world.columns) };
+  const entities = createEntities(world.columns);
+  return { ...world, entities, occupancy: indexEntities(entities) };
 };
 
 /** A world built from explicit terrain points, for precise material checks. */
 const worldFrom = (points: TerrainPoint[], createEntities: EntityFactory = () => []): World => {
   const columns = points.map(({ x, y, elevation }) => new Box(x, y, { elevation }));
+  const entities = createEntities(columns);
   return {
     seed: 0,
     width: 0,
     height: 0,
     columns,
     surfaces: classifyColumnSurfaces(columns),
-    entities: createEntities(columns),
+    entities,
+    occupancy: indexEntities(entities),
   };
 };
 

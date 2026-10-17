@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { Box } from "../terrain";
-import { Entity, createEntitiesFromConfig } from "./entities";
+import {
+  Entity,
+  createEntitiesFromConfig,
+  getEntityFootprint,
+  getFootprint,
+  indexEntities,
+} from "./entities";
 
 describe("createEntitiesFromConfig formations", () => {
   const tree = {
@@ -753,3 +759,37 @@ describe("Entity and createEntitiesFromConfig", () => {
     expect(entities[0].type).toBe("buoy");
   });
 });
+
+describe("footprints and the entity index", () => {
+  const pier = {
+    id: "pier",
+    textureSource: "/assets/pier/block.svg",
+    height: 1,
+    length: 3,
+    lengthAxis: "y" as const,
+    spawnChance: 1,
+    surface: "grass" as const,
+  };
+
+  it("lists the footprint cells from the anchor along the axis", () => {
+    expect(getFootprint({ x: 2, y: 3 })).toEqual([{ x: 2, y: 3 }]);
+    expect(getFootprint({ x: 2, y: 3 }, 2)).toEqual([{ x: 2, y: 3 }, { x: 3, y: 3 }]);
+    expect(getFootprint({ x: 2, y: 3 }, 2, "y")).toEqual([{ x: 2, y: 3 }, { x: 2, y: 4 }]);
+    expect(getEntityFootprint(new Entity(1, 1, pier, 0))).toEqual([
+      { x: 1, y: 1 }, { x: 1, y: 2 }, { x: 1, y: 3 },
+    ]);
+  });
+
+  it("indexes entities over their whole footprint", () => {
+    const long = new Entity(1, 1, pier, 0);
+    const rock = new Entity(5, 5, { ...pier, id: "rock", length: 1 }, 0);
+
+    const index = indexEntities([long, rock]);
+
+    expect(index.at(1, 3)).toEqual([long]);
+    expect(index.at(5, 5)).toEqual([rock]);
+    expect(index.isOccupied(2, 2)).toBe(false);
+    expect(index.queryRadius(4, 4, 1)).toEqual([rock]);
+  });
+});
+

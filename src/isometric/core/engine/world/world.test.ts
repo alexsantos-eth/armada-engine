@@ -93,6 +93,25 @@ describe("generateWorld", () => {
   });
 });
 
+describe("World occupancy", () => {
+  it("indexes every entity over its footprint", () => {
+    const world = generateWorld({ seed: 42, width: 16, height: 16, entityDefinitions: DEFINITIONS });
+
+    expect(world.occupancy.size).toBe(world.entities.length);
+    world.entities.forEach((entity) => expect(world.occupancy.at(entity.x, entity.y)).toContain(entity));
+  });
+
+  it("is rebuilt on restore instead of being saved", () => {
+    const world = generateWorld({ seed: 42, width: 16, height: 16, entityDefinitions: DEFINITIONS });
+    const snapshot = serializeWorld(world);
+    const restored = restoreWorld(snapshot);
+
+    expect(snapshot).not.toHaveProperty("occupancy");
+    expect(restored.occupancy.size).toBe(world.entities.length);
+    restored.entities.forEach((entity) => expect(restored.occupancy.at(entity.x, entity.y)).toEqual([entity]));
+  });
+});
+
 describe("serializeWorld / restoreWorld", () => {
   it("round-trips a world through JSON", () => {
     const world = generateWorld({ seed: 77, width: 12, height: 12, entityDefinitions: DEFINITIONS });

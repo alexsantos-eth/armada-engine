@@ -1,6 +1,7 @@
 import type { EntityData, EntityDefinition, TerrainSurface } from "../../types";
+import type { ReadonlyCellMap, SpatialIndex } from "../grid";
 import { TERRAIN_HEIGHT, TERRAIN_WIDTH } from "../constants";
-import { createEntitiesFromConfig, Entity, validateEntityDefinitions } from "../entities";
+import { createEntitiesFromConfig, Entity, indexEntities, validateEntityDefinitions } from "../entities";
 import { createSeededRandom, DEFAULT_WORLD_SEED, deriveSeed } from "../random";
 import { Box, classifyColumnSurfaces, generatePerlinTerrain } from "../terrain";
 
@@ -18,10 +19,15 @@ export type World = {
   readonly height: number;
   /** One terrain box per column, holding the column's top elevation. */
   readonly columns: readonly Box[];
-  /** Surface of each column (top block material), keyed by `x:y`. */
-  readonly surfaces: ReadonlyMap<string, TerrainSurface>;
+  /** Surface of each column (top block material). */
+  readonly surfaces: ReadonlyCellMap<TerrainSurface>;
   /** Non-terrain entities, in creation order. */
   readonly entities: readonly Entity[];
+  /**
+   * Spatial index of `entities` over their footprints (what occupies each column). Derived
+   * from `entities`: never serialized, rebuilt on restore.
+   */
+  readonly occupancy: SpatialIndex<Entity>;
 };
 
 /** Options of {@link generateWorld}. */
@@ -90,13 +96,13 @@ export function generateWorld(options: WorldOptions): World {
     options.height ?? TERRAIN_HEIGHT,
   );
   const entities = createEntitiesFromConfig(
-    [...terrain.columns],
+    terrain.columns,
     options.entityDefinitions,
     createSeededRandom(deriveSeed(terrain.seed, "entities")),
     createSeededRandom(deriveSeed(terrain.seed, "entity-color-variants")),
   );
 
-  return { ...terrain, entities };
+  return { ...terrain, entities, occupancy: indexEntities(entities) };
 }
 
 /** Converts a world into a JSON-serializable {@link WorldSnapshot}. */
@@ -128,5 +134,5 @@ export function restoreWorld(snapshot: WorldSnapshot): World {
   );
   const entities = snapshot.entities.map(({ x, y, data }) => Entity.fromData(x, y, data));
 
-  return { ...terrain, entities };
+  return { ...terrain, entities, occupancy: indexEntities(entities) };
 }

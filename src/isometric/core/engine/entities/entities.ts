@@ -3,10 +3,13 @@ import type {
   EntityData,
   EntityDefinition,
   EntityInstanceOptions,
+  EntityLengthAxis,
   IEntity,
   IGridObject,
   TerrainSurface,
+  WorldCoord,
 } from "../../types";
+import { CellMap, SpatialIndex, type ReadonlyCellMap } from "../grid";
 import { createSeededRandom, DEFAULT_WORLD_SEED, deriveSeed, type RandomSource } from "../random";
 import { classifyColumnSurfaces } from "../terrain";
 import { pickFormationOffsets, resolveFormation } from "./formation";
@@ -143,21 +146,53 @@ export class Entity implements IEntity {
   }
 }
 
+/**
+ * Columns covered by a footprint of `length` blocks anchored at `anchor`, along `lengthAxis`
+ * (`"x"` by default), in order from the anchor.
+ */
+export function getFootprint(
+  anchor: WorldCoord,
+  length = 1,
+  lengthAxis: EntityLengthAxis = "x",
+): WorldCoord[] {
+  return Array.from({ length }, (_, index) => ({
+    x: lengthAxis === "x" ? anchor.x + index : anchor.x,
+    y: lengthAxis === "y" ? anchor.y + index : anchor.y,
+  }));
+}
+
+/** Columns covered by an entity. */
+export function getEntityFootprint(entity: IEntity): WorldCoord[] {
+  return getFootprint(entity, entity.length, entity.lengthAxis);
+}
+
+/**
+ * Builds the spatial index of `entities` over their whole footprints: what occupies each
+ * column, for collision, neighbourhood and placement queries. It is derived data — rebuild it
+ * from the entities, never serialize it.
+ */
+export function indexEntities<E extends IEntity>(entities: Iterable<E>): SpatialIndex<E> {
+  const index = new SpatialIndex<E>();
+  for (const entity of entities) index.insert(entity, getEntityFootprint(entity));
+  return index;
+}
+
 /** Lookups shared by every placement check of one `createEntitiesFromConfig()` call. */
 type PlacementContext = {
-  readonly boxesByPosition: ReadonlyMap<string, IGridObject>;
-  readonly surfaces: ReadonlyMap<string, TerrainSurface>;
-  readonly occupiedPositions: ReadonlySet<string>;
+  readonly columns: ReadonlyCellMap<IGridObject>;
+  readonly surfaces: ReadonlyCellMap<TerrainSurface>;
+  /** Entities placed so far, over their whole footprints. */
+  readonly placed: SpatialIndex<Entity>;
 };
 
 /** A validated position for one entity instance. */
 type Placement = {
   readonly box: IGridObject;
-  readonly footprintKeys: readonly string[];
+  readonly footprint: readonly WorldCoord[];
   readonly elevation: number;
 };
 
-const NO_KEYS: ReadonlySet<string> = new Set();
+const NO_CELLS: ReadonlyCellMap<true> = new CellMap<true>();
 
 /**
  * Creates configured entities on eligible terrain columns.
@@ -177,6 +212,8 @@ const NO_KEYS: ReadonlySet<string> = new Set();
  * anchor column and then every member of the formation map is validated with the same rules.
  * The group spawns only when at least `minMembers` fit; the `gap` applies between groups.
  *
+ * Occupancy and `gap` are answered by a {@link SpatialIndex} of the entities placed so far.
+ *
  * Placement is deterministic for a given `random` source: pass one derived from the world
  * seed (`createSeededRandom(deriveSeed(seed, "entities"))`). Without it, a fixed default seed
  * is used; `Math.random()` is never used. `variantRandom` picks each instance's color
@@ -184,7 +221,7 @@ const NO_KEYS: ReadonlySet<string> = new Set();
  * colors never moves entities.
  */
 export function createEntitiesFromConfig(
-  boxes: IGridObject[],
+  boxes: readonly IGridObject[],
   definitions: readonly EntityDefinition[],
   random: RandomSource = createSeededRandom(DEFAULT_WORLD_SEED),
   variantRandom: RandomSource = createSeededRandom(
@@ -192,44 +229,38 @@ export function createEntitiesFromConfig(
   ),
 ): Entity[] {
   const entities: Entity[] = [];
-  const occupiedPositions = new Set<string>();
-  const positionsByType = new Map<string, Set<string>>();
   const context: PlacementContext = {
-    boxesByPosition: new Map(boxes.map((box) => [`${box.x}:${box.y}`, box])),
+    columns: CellMap.from(boxes, (box) => box),
     surfaces: classifyColumnSurfaces(boxes),
-    occupiedPositions,
+    placed: new SpatialIndex<Entity>(),
   };
 
   for (const definition of definitions) {
     const formation = resolveFormation(definition.formation);
-    const sameTypePositions = positionsByType.get(definition.id) ?? new Set<string>();
-    positionsByType.set(definition.id, sameTypePositions);
 
     for (const box of boxes) {
-      if (!findPlacement(box, definition, context, sameTypePositions, NO_KEYS)) continue;
+      if (!findPlacement(box, definition, context, NO_CELLS)) continue;
       if (random() >= definition.spawnChance) continue;
 
       // The anchor sits at offset (0, 0), so it is always the first member placed.
-      const groupKeys = new Set<string>();
+      const groupCells = new CellMap<true>();
       const members: Placement[] = [];
       for (const offset of pickFormationOffsets(formation, random)) {
-        const memberBox = context.boxesByPosition.get(`${box.x + offset.x}:${box.y + offset.y}`);
+        const memberBox = context.columns.get(box.x + offset.x, box.y + offset.y);
         const placement = memberBox &&
-          findPlacement(memberBox, definition, context, sameTypePositions, groupKeys);
+          findPlacement(memberBox, definition, context, groupCells);
         if (!placement) continue;
-        placement.footprintKeys.forEach((key) => groupKeys.add(key));
+        placement.footprint.forEach(({ x, y }) => groupCells.set(x, y, true));
         members.push(placement);
       }
       if (members.length < formation.minMembers) continue;
 
-      groupKeys.forEach((key) => {
-        occupiedPositions.add(key);
-        sameTypePositions.add(key);
-      });
-      members.forEach(({ box: member, elevation }) => {
-        entities.push(new Entity(member.x, member.y, definition, elevation, {
+      members.forEach(({ box: member, elevation, footprint }) => {
+        const entity = new Entity(member.x, member.y, definition, elevation, {
           colorVariant: pickColorVariation(definition.colorReplacements, variantRandom),
-        }));
+        });
+        context.placed.insert(entity, footprint);
+        entities.push(entity);
       });
     }
   }
@@ -246,19 +277,16 @@ function findPlacement(
   box: IGridObject,
   definition: EntityDefinition,
   context: PlacementContext,
-  sameTypePositions: ReadonlySet<string>,
-  groupKeys: ReadonlySet<string>,
+  groupCells: ReadonlyCellMap<true>,
 ): Placement | undefined {
-  const footprintKeys = getFootprintKeys(box, definition);
-  const footprintBoxes = footprintKeys.map((key) => context.boxesByPosition.get(key));
+  const footprint = getFootprint(box, definition.length, definition.lengthAxis);
+  const footprintBoxes = footprint.map(({ x, y }) => context.columns.get(x, y));
   if (footprintBoxes.some((footprintBox) => footprintBox === undefined)) return undefined;
   const cells = footprintBoxes as IGridObject[];
   const required = cells.map((_, index) =>
     definition.footprintSurfaces?.[index] ?? definition.surface,
   );
-  if (cells.some((cell, index) =>
-    context.surfaces.get(`${cell.x}:${cell.y}`) !== required[index],
-  )) {
+  if (cells.some((cell, index) => context.surfaces.get(cell.x, cell.y) !== required[index])) {
     return undefined;
   }
   // Blocks that carry the entity: all of them, except the water blocks of a footprint
@@ -275,43 +303,30 @@ function findPlacement(
     cell.elevation !== elevation ||
     !matchesSurfaceElevation(cell.elevation, definition.surfaceElevation),
   )) return undefined;
-  if (footprintKeys.some((key) =>
-    context.occupiedPositions.has(key) || groupKeys.has(key),
-  )) return undefined;
-  if (violatesGap(box, definition, sameTypePositions)) return undefined;
+  if (footprint.some(({ x, y }) => context.placed.isOccupied(x, y) || groupCells.has(x, y))) {
+    return undefined;
+  }
+  if (violatesGap(footprint, definition, context.placed)) return undefined;
 
-  return { box, footprintKeys, elevation };
+  return { box, footprint, elevation };
 }
 
-function getFootprintKeys(box: IGridObject, definition: EntityDefinition): string[] {
-  const length = definition.length ?? 1;
-  const lengthAxis = definition.lengthAxis ?? "x";
-
-  return Array.from({ length }, (_, index) => {
-    const x = lengthAxis === "x" ? box.x + index : box.x;
-    const y = lengthAxis === "y" ? box.y + index : box.y;
-    return `${x}:${y}`;
-  });
-}
-
+/**
+ * Whether another instance of the same definition is within `gap` columns of the footprint
+ * (Chebyshev distance, so diagonals count).
+ */
 function violatesGap(
-  box: IGridObject,
+  footprint: readonly WorldCoord[],
   definition: EntityDefinition,
-  sameTypePositions: ReadonlySet<string>,
+  placed: SpatialIndex<Entity>,
 ): boolean {
   const gap = Math.max(0, Math.floor(definition.gap ?? 0));
   if (gap === 0) return false;
 
-  const length = definition.length ?? 1;
-  const isXAxis = (definition.lengthAxis ?? "x") === "x";
-  const maxX = box.x + (isXAxis ? length - 1 : 0);
-  const maxY = box.y + (isXAxis ? 0 : length - 1);
-
-  for (let x = box.x - gap; x <= maxX + gap; x++) {
-    for (let y = box.y - gap; y <= maxY + gap; y++) {
-      if (sameTypePositions.has(`${x}:${y}`)) return true;
-    }
-  }
-
-  return false;
+  const first = footprint[0];
+  const last = footprint[footprint.length - 1];
+  return placed.anyInRect(
+    { minX: first.x - gap, minY: first.y - gap, maxX: last.x + gap, maxY: last.y + gap },
+    ({ type }) => type === definition.id,
+  );
 }
