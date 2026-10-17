@@ -1,6 +1,7 @@
 export * from "./constants";
 export * from "./entities";
 export * from "./grid";
+export * from "./lighting";
 export * from "./projection";
 export * from "./random";
 export * from "./render";

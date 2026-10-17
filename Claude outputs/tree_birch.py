@@ -11,8 +11,7 @@ BARK = "#f1ece1"                      # near-white birch bark
 LEAVES = "#f0a830"                    # autumn orange
 RED = "#d9532c"                       # accent leaves
 
-# 1. translucent cast shadow on the floor, toward the lower left (+y)
-a.flat(-14, 30, 0, 160, 160, 90, "#1e2a10", alpha=.22)
+# No cast shadow: the game draws a dynamic shadow that follows the sun.
 
 U, UZ = 112, 116
 BASE = TOP - 3 * UZ                   # crown from z = 334 up to the ceiling

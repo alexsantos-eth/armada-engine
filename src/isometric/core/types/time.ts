@@ -51,8 +51,10 @@ export type SunState = {
   /** Fraction of the day in `[0, 1)`: `0` midnight, `0.25` sunrise, `0.5` noon, `0.75` sunset. */
   readonly timeOfDay: number;
   /**
-   * Unit vector pointing from the ground toward the sun, in world grid axes (`+x` east, `-y`
-   * south, `+z` up). Shadows fall along its opposite horizontal direction.
+   * Unit vector pointing from the ground toward the sun, in world grid axes (`+z` up). By
+   * day its `x` and `y` are never positive: the sun stays in front of the scene, so shadows
+   * (along its opposite horizontal direction) only fall on the caster's tile and the ones
+   * behind it.
    */
   readonly direction: Vector3;
   /** Sine of the sun altitude (`direction.z`): negative while the sun is below the horizon. */

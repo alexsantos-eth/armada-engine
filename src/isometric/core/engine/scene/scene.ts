@@ -1,8 +1,8 @@
-import { Application, Assets, Container, Texture } from "pixi.js";
+import { Application, Assets, Container, type Sprite, Texture, UPDATE_PRIORITY } from "pixi.js";
 import type { Entity } from "../entities";
 import { projectBoxesToIsometric } from "../projection";
 import { fillElevations, getBlockMaterial } from "../terrain";
-import type { TerrainMaterial, TerrainSurface } from "../../types";
+import type { ShadowCaster, ShadowShape, TerrainMaterial, TerrainSurface } from "../../types";
 import {
   BOX_HEIGHT,
   DEFAULT_MIN_ELEVATION,
@@ -17,7 +17,17 @@ import {
   WATER_BLOCK_TEXTURE_KEY,
 } from "../constants";
 import { CellMap } from "../grid";
-import { addInDepthOrder, createBlockViews, createSvgColorVariant, type DepthView } from "../render";
+import { getShadowShape } from "../lighting";
+import {
+  addInDepthOrder,
+  createBlockViews,
+  createShadowView,
+  createSvgColorVariant,
+  type DepthView,
+  placeShadowView,
+  rgbToTint,
+} from "../render";
+import { getSunState } from "../time";
 import type { World } from "../world";
 
 const POSITIVE_ELEVATION_TOP_TINT = 0xe8ffb0;
@@ -58,7 +68,13 @@ function getPositiveElevationTint(
 /**
  * Renders `world` into `app`. The scene only reads the world: it never generates or changes
  * it, so the same world can be simulated, saved or rendered again. Returns a cleanup that
- * destroys the scene and unloads its assets.
+ * destroys the scene, stops its per-frame updates and unloads its assets.
+ *
+ * Every entity gets a shadow lying on the ground between its tile and itself. Every frame
+ * (from `app.ticker`, at `UPDATE_PRIORITY.NORMAL`: after the simulation, which runs at `HIGH`,
+ * and before the Application renders at `LOW`) the scene lights the world for the current
+ * tick, only when the tick changed: it tints the world with the sun's ambient light and lays
+ * each shadow away from the sun (hidden at night).
  */
 export async function createIsometricScene(
   app: Application,
@@ -68,6 +84,7 @@ export async function createIsometricScene(
   const groundBlockSource = "/assets/ground/block.svg";
   const waterBlockSource = "/assets/water/block.svg";
   const sandBlockSource = "/assets/sand/block.svg";
+  const shadowSource = "/assets/shadow/blob.svg";
 
   const filledBoxes = fillElevations(world.columns, DEFAULT_MIN_ELEVATION);
   const { entities, surfaces } = world;
@@ -87,11 +104,12 @@ export async function createIsometricScene(
     ).entries(),
   ];
   const textures = new Map<string, Texture>();
-  const [grassTexture, groundTexture, waterTexture, sandTexture, ...entityTextures] = await Promise.all([
+  const [grassTexture, groundTexture, waterTexture, sandTexture, shadowTexture, ...entityTextures] = await Promise.all([
     Assets.load<Texture>(grassBlockSource),
     Assets.load<Texture>(groundBlockSource),
     Assets.load<Texture>(waterBlockSource),
     Assets.load<Texture>(sandBlockSource),
+    Assets.load<Texture>(shadowSource),
     ...entityTextureVariants.map(async ([variantKey, { entity, variation }]) => {
       const source = await createSvgColorVariant(
         entity.textureSource,
@@ -121,9 +139,12 @@ export async function createIsometricScene(
 
   // Draw order comes from adding views in depth order once (see `addInDepthOrder()`), so the
   // scene never needs `sortableChildren`, which would re-sort every child on any change.
-  const scene = new Container();
+  // A render group: its tint (the ambient light) and, later, its position (the camera) are
+  // applied on the GPU without updating its thousands of children.
+  const scene = new Container({ isRenderGroup: true });
   app.stage.addChild(scene);
   const views: DepthView[] = [];
+  const shadows: { view: Sprite; caster: ShadowCaster; origin: { x: number; y: number } }[] = [];
 
   // Each world column holds its top elevation.
   const topElevationByColumn = CellMap.from(world.columns, ({ elevation }) => elevation);
@@ -196,6 +217,20 @@ export async function createIsometricScene(
       const texture = entityTexturesByEntity.get(entity.box);
       if (!texture) return;
 
+      // Added after the terrain and before the entity, with the depth of its anchor tile.
+      if (shadowTexture) {
+        const shadow = createShadowView(shadowTexture, entity, TILE_METRICS);
+        views.push(shadow);
+        shadows.push({
+          view: shadow.view as Sprite,
+          caster: {
+            height: entity.box.height,
+            length: entity.box.length,
+            lengthAxis: entity.box.lengthAxis ?? "x",
+          },
+          origin: { x: entity.screenX, y: entity.screenY },
+        });
+      }
       views.push(...createBlockViews({
         texture,
         box: entity,
@@ -216,12 +251,34 @@ export async function createIsometricScene(
   });
   addInDepthOrder(scene, views);
 
+  const lightWorld = (tick: number) => {
+    const sun = getSunState(tick);
+    scene.tint = rgbToTint(sun.ambient);
+    // Casters of the same size share one shape per tick.
+    const shapes = new Map<string, ShadowShape | null>();
+    shadows.forEach(({ view, caster, origin }) => {
+      const key = [caster.height, caster.length, caster.lengthAxis].join("|");
+      if (!shapes.has(key)) shapes.set(key, getShadowShape(sun, caster));
+      placeShadowView(view, shapes.get(key) as ShadowShape | null, origin, TILE_METRICS);
+    });
+  };
+  let litTick = world.clock.tick;
+  lightWorld(litTick);
+  const updateLight = () => {
+    if (world.clock.tick === litTick) return;
+    litTick = world.clock.tick;
+    lightWorld(litTick);
+  };
+  app.ticker.add(updateLight, undefined, UPDATE_PRIORITY.NORMAL);
+
   return () => {
+    app.ticker.remove(updateLight, undefined);
     scene.destroy({ children: true });
     void Assets.unload(grassBlockSource);
     void Assets.unload(groundBlockSource);
     void Assets.unload(waterBlockSource);
     void Assets.unload(sandBlockSource);
+    void Assets.unload(shadowSource);
     loadedEntitySources.forEach((source) => void Assets.unload(source));
   };
 }

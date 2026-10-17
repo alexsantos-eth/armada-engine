@@ -22,6 +22,8 @@ flowchart LR
   Scene --> World
   Scene --> Projection[engine/projection]
   Scene --> Render[engine/render]
+  Scene --> Time
+  Scene --> Lighting[engine/lighting]
   Render --> Pixi[PixiJS]
   Scene --> Assets[SVG block assets]
 ```
@@ -69,6 +71,10 @@ src/isometric/core/
       variants.ts
       variants.test.ts
       index.ts
+    lighting/
+      shadow.ts
+      shadow.test.ts
+      index.ts
     projection/
       projection.ts
       projection.test.ts
@@ -78,8 +84,12 @@ src/isometric/core/
       random.test.ts
       index.ts
     render/
+      color.ts
+      color.test.ts
       render.ts
       render.test.ts
+      shadow.ts
+      shadow.test.ts
       index.ts
     scene/
       scene.ts
@@ -116,6 +126,7 @@ src/isometric/core/
   types/
     entities.ts
     iso.ts
+    lighting.ts
     simulation.ts
     terrain.ts
     time.ts
@@ -138,11 +149,12 @@ Responsabilidades y dependencias permitidas (entre módulos solo a través de su
 | `terrain` | `Box`, ruido, relleno de columnas (`fillElevations`) y superficies | `constants`, `grid`, `random` |
 | `entities` | `Entity`, huellas, colocación, formaciones, variantes de color y validación de definiciones | `grid`, `random`, `terrain` |
 | `time` | Reloj de juego (ticks), hora del día y estado del sol | — |
+| `lighting` | Geometría de las sombras proyectadas (elipse en el suelo según sol, altura y huella) | `constants` |
 | `world` | Modelo `World`, generación y guardado | `constants`, `entities`, `grid`, `random`, `terrain`, `time` |
 | `projection` | Rejilla → coordenadas de pantalla isométricas (`projectBoxesToIsometric`) | — |
-| `render` | Sprites Pixi y recoloreado SVG | — |
+| `render` | Sprites Pixi, recoloreado SVG, conversión de color de luz a tinte y vistas de sombra | — |
 | `simulation` | Bucle de paso fijo: convierte tiempo real en ticks y avanza el `World` | `time`, `world` |
-| `scene` | Orquesta el render de un `World` | `constants`, `entities`, `grid`, `projection`, `render`, `terrain`, `world` |
+| `scene` | Orquesta el render de un `World`, su luz ambiente y sus sombras | `constants`, `entities`, `grid`, `lighting`, `projection`, `render`, `terrain`, `time`, `world` |
 
 Fuera del motor, sus módulos solo pueden importar los tipos compartidos (`../../types`), nunca el contenido; el contenido solo importa tipos del core. Solo `render` y `scene` importan Pixi, y ningún módulo del motor lee `window`, `document` ni `localStorage`. `engine/architecture.test.ts` comprueba estas reglas sobre el código fuente: un import no permitido, saltarse un barrel o usar Pixi o el navegador en otro módulo hace fallar la suite.
 
@@ -176,12 +188,12 @@ Los archivos de tipos no contienen lógica runtime y no tienen tests propios. Ty
 - `createWorldClock(tick?)` crea el reloj y `advanceClock(clock, ticks = 1)` lo avanza; ambos lanzan `RangeError` con ticks negativos, decimales o fuera del rango seguro (el reloj no cambia). Solo el paso fijo de simulación avanza el reloj, nunca el frame de render, así que la hora es la misma en cualquier máquina y se reproduce al cargar.
 - `getTimeOfDay(tick)` devuelve la fracción del día en `[0, 1)` (`0` medianoche, `0.25` amanecer, `0.5` mediodía, `0.75` atardecer) y `getClockTime(tick)` la lectura `{ day, hour, minute }` para UI y depuración.
 - `getSunState(tick, palette?)` devuelve un `SunState`:
-  - `direction`: vector unitario hacia el sol en ejes del mundo. El sol recorre un círculo inclinado: sale por el este (`+x`) a las 06:00, culmina al sur (`-y`) a `SUN_MAX_ALTITUDE` (60°) al mediodía y se pone por el oeste (`-x`) a las 18:00. Con esta orientación, la luz del mediodía llega desde el lado de la cámara, como la pintada en los assets, y las sombras caen alejándose del espectador.
+  - `direction`: vector unitario hacia el sol en ejes del mundo. El sol sale a las 06:00, culmina a `SUN_MAX_ALTITUDE` (60°) al mediodía y se pone a las 18:00; su acimut gira de forma uniforme de `−y` (abajo a la derecha de la pantalla) por `−x −y` (el lado de la cámara) hasta `−x` (abajo a la izquierda). Es un cuarto de vuelta estilizado en lugar de la media vuelta real, para que el sol esté siempre delante de la escena: así las sombras solo caen sobre la casilla de quien las proyecta y las de detrás, que se dibujan antes. Las casillas de delante (con `x` o `y` menor) se dibujan después y cortarían cualquier sombra que entrara en ellas.
   - `elevation`: seno de la altitud (`direction.z`), negativo de noche.
   - `daylight`: `0` de noche, `1` de día, con transición suave (`smoothstep`) entre `NIGHT_ELEVATION` (−0.1) y `DAY_ELEVATION` (0.15).
   - `ambient`: color de luz ambiente (`Rgb` en `[0, 1]`) muestreado de una paleta por elevación con `sampleSkyPalette()`. `DEFAULT_SKY_PALETTE` va de una noche azulada y tenue a un horizonte anaranjado y a blanco puro (sin tinte) de media mañana a media tarde. Un juego puede pasar su propia paleta; debe tener al menos una clave y elevaciones estrictamente crecientes (si no, `RangeError`).
 
-El estado del sol es presentación: la lógica de juego que dependa de la hora (por ejemplo, la noche) debe decidir con el `tick` entero, no con los flotantes del sol. La escena todavía no usa este módulo: el tinte ambiente es el siguiente paso. `formatClockTime(time)` formatea la hora como `HH:MM`.
+El estado del sol es presentación: la lógica de juego que dependa de la hora (por ejemplo, la noche) debe decidir con el `tick` entero, no con los flotantes del sol. La escena lo usa para la luz ambiente (ver [Luz ambiente](#luz-ambiente)). `formatClockTime(time)` formatea la hora como `HH:MM` y `resolveStartTick(search)` lee `?hour=` de la URL (`?hour=17.5` arranca a las 17:30 del día 0; con `?timeScale=0` la hora queda fija) para depurar luz y sombras.
 
 ## Bucle de simulación
 
@@ -325,9 +337,27 @@ La escena junta las vistas de todo el mundo y llama una vez a `addInDepthOrder(c
 
 Los SVG representan el bloque completo. No se deben volver a componer caras `top`, `left` y `right` en runtime.
 
+## Luz ambiente
+
+El contenedor del mundo que crea la escena es un render group (`new Container({ isRenderGroup: true })`). En PixiJS 8.22 el tinte de la raíz de un render group pasa a ser el `worldColor` del grupo y se aplica en GPU como uniforme global, sin recalcular sus miles de hijos; los tintes propios de cada vista (agua por profundidad, oscurecimiento por altura) se multiplican dentro del grupo, así que se conservan. El mismo grupo servirá para mover la cámara en GPU.
+
+Al crearse, y después en un listener de `app.ticker` con prioridad `UPDATE_PRIORITY.NORMAL` (tras la simulación, en `HIGH`, y antes del render de `Application`, en `LOW`), la escena asigna `scene.tint = rgbToTint(getSunState(world.clock.tick).ambient)`, solo en los frames en que el tick cambió. `rgbToTint()` (`engine/render/color.ts`) convierte un `Rgb` en `[0, 1]` a `0xRRGGBB`, recortando canales fuera de rango. De día el ambiente es blanco, así que el mundo se ve exactamente como antes. El cleanup de la escena quita el listener.
+
+El tinte es multiplicativo: oscurece y colorea, pero no desatura. De noche el pasto, muy saturado, queda verde oliva oscuro más que azul; ajustar `DEFAULT_SKY_PALETTE` (o pasar otra paleta) es el primer recurso, y una desaturación real requeriría un filtro sobre el mundo, con su coste por frame.
+
+## Sombras
+
+Los assets no llevan sombra proyectada propia: la dibuja el motor y sigue al sol.
+
+- **Geometría (dominio).** `getShadowShape(sun, caster)` (`engine/lighting`, tipos en `core/types/lighting.ts`) devuelve un `ShadowShape`: una elipse en el suelo, en casillas y ejes del mundo, relativa al centro de la casilla ancla del que la proyecta. Empieza bajo la huella (tan ancha como la huella vista desde el sol, con `FOOTPRINT_HALF_SIZE` = 0.4 por casilla y la longitud de una entidad de varias casillas a lo largo de su eje) y se alarga en sentido opuesto al sol `altura × BLOCK_HEIGHT_IN_TILES / tan(altitud)`, con tope `MAX_SHADOW_LENGTH` (3 casillas). La elipse nunca sobrepasa la huella hacia `−x` ni `−y` (las casillas de delante): con el sol siempre delante solo podría hacerlo una huella de varias casillas vista en diagonal, y entonces se desplaza hacia atrás lo justo. Un test lo comprueba para todas las horas y varios tamaños. `BLOCK_HEIGHT_IN_TILES` (≈ 0.53) sale de la proyección 2:1: `BOX_HEIGHT / TILE_WIDTH × √(5/2)`. La opacidad sube de `0` en el horizonte a `SHADOW_ALPHA` (0.3) en `SHADOW_FADE_ELEVATION`; con el sol bajo el horizonte devuelve `null`.
+- **Vista (render).** `createShadowView(texture, box, metrics)` crea un sprite centrado y oculto con la profundidad de la casilla ancla (`getBlockDepth()`, la misma función que usa `createBlockViews()`). `placeShadowView(view, shape, origin, metrics)` lo coloca con `setFromMatrix()` usando `getShadowMatrix()`: píxeles de la textura → elipse en casillas (escala, giro, centro) → pantalla por la proyección 2:1 desde `origin`, el punto de pantalla del centro de la casilla ancla a la altura del suelo de la entidad; con `null` lo oculta. La textura es `public/assets/shadow/blob.svg`, un círculo negro con borde difuminado.
+- **Escena.** Por cada entidad crea una sombra justo antes de sus vistas, con la profundidad de su casilla ancla: al ordenar (estable) queda después del bloque de suelo de esa casilla y antes de la entidad, y por encima de las casillas de detrás, que es hacia donde caen las sombras. En `lightWorld()`, el mismo listener que tiñe el mundo, recoloca todas las sombras cuando cambia el tick; las entidades del mismo tamaño comparten una forma por tick.
+
+Límites conocidos: la sombra queda en el plano del suelo de quien la proyecta (sobre un desnivel no se pliega), puede oscurecer la parte baja de una entidad situada detrás (lo que es físicamente razonable), gira un cuarto de vuelta al día en lugar de media y en el borde del mapa cae sobre el fondo. Un barrido completo exigiría otra técnica (una capa de sombras renderizada a textura y aplicada solo al suelo). El terreno (acantilados) aún no proyecta sombra.
+
 ## Ciclo de vida de recursos
 
-`createIsometricScene(app, world)` no genera ni modifica el mundo: lee sus columnas, superficies y entidades, y descubre los assets desde `textureSource`. Después carga los SVG de terreno y las variantes de entidad con `Assets.load()` en paralelo. Las instancias comparten la textura de su (tipo, variación); las fuentes originales sin recolor también se reutilizan. Si la escena se desmonta, destruye el container y llama a `Assets.unload()` para cada fuente cargada. Pixi gestiona las texturas; no se debe llamar a `destroy(true)` sobre una textura administrada por `Assets`.
+`createIsometricScene(app, world)` no genera ni modifica el mundo: lee sus columnas, superficies y entidades, y descubre los assets desde `textureSource`. Después carga los SVG de terreno y las variantes de entidad con `Assets.load()` en paralelo. Las instancias comparten la textura de su (tipo, variación); las fuentes originales sin recolor también se reutilizan. Carga también la textura de sombra (`/assets/shadow/blob.svg`). Si la escena se desmonta, quita su listener del ticker, destruye el container y llama a `Assets.unload()` para cada fuente cargada. Pixi gestiona las texturas; no se debe llamar a `destroy(true)` sobre una textura administrada por `Assets`.
 
 ## Testing y calidad
 

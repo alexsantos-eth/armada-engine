@@ -29,9 +29,7 @@ DECK_Z0, DECK_T = 4, 36               # deck just above the grass top
 
 g = VoxelGrid(a, u=100)
 
-# 1. translucent shadow of the deck on the sand, toward the lower left
-cx, cy, hx, hy = a.local(-S * 240, 0, 500, DECK_HV - 10)
-a.flat(cx - 10, cy + 26, -SAND_DROP, hx, hy, 40, "#1e2a10", alpha=.2)
+# No cast shadow: the game draws a dynamic shadow that follows the sun.
 
 
 def part(u, v, z0, hu, hv, hz, color, r=None):

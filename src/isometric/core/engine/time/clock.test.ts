@@ -5,6 +5,7 @@ import {
   createWorldClock,
   getClockTime,
   getTimeOfDay,
+  resolveStartTick,
   TICKS_PER_DAY,
   TICKS_PER_SECOND,
   WORLD_START_TICK,
@@ -119,4 +120,28 @@ describe("formatClockTime", () => {
   ])("formats %o as %s", (time, label) => {
     expect(formatClockTime(time)).toBe(label);
   });
+});
+
+describe("resolveStartTick", () => {
+  it("defaults to the world start tick", () => {
+    expect(resolveStartTick("")).toBe(WORLD_START_TICK);
+    expect(resolveStartTick("?seed=3")).toBe(WORLD_START_TICK);
+  });
+
+  it("reads the hour query parameter as a tick of day 0", () => {
+    expect(resolveStartTick("?hour=0")).toBe(0);
+    expect(resolveStartTick("?seed=3&hour=15")).toBe((15 / 24) * TICKS_PER_DAY);
+    expect(resolveStartTick("?hour=17.5")).toBe((17.5 / 24) * TICKS_PER_DAY);
+  });
+
+  it("rounds to a whole tick", () => {
+    expect(Number.isInteger(resolveStartTick("?hour=7.123"))).toBe(true);
+  });
+
+  it.each(["?hour=", "?hour=noon", "?hour=-1", "?hour=24", "?hour=Infinity"])(
+    "falls back to the world start tick for the invalid value %s",
+    (search) => {
+      expect(resolveStartTick(search)).toBe(WORLD_START_TICK);
+    },
+  );
 });

@@ -8,6 +8,7 @@ import {
   formatClockTime,
   generateWorld,
   getClockTime,
+  resolveStartTick,
   resolveTimeScale,
   resolveWorldSeed,
 } from "./core/engine";
@@ -47,7 +48,9 @@ const IsometricWorld = () => {
       // The seed is the whole world: log it so a world can be reproduced with `?seed=`.
       const seed = resolveWorldSeed(window.location.search, Math.random);
       console.info(`Armada world seed: ${seed}`);
-      const world = generateWorld({ seed, entityDefinitions: ENTITY_CONFIG });
+      // `?hour=17.5` starts the day at 17:30 (debugging light; `?timeScale=0` freezes it).
+      const startTick = resolveStartTick(window.location.search);
+      const world = generateWorld({ seed, entityDefinitions: ENTITY_CONFIG, startTick });
       destroyScene = await createIsometricScene(app, world);
       // Unmounted while the scene was loading: the cleanup already ran without it.
       if (disposed) {

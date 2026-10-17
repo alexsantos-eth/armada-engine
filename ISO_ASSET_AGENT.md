@@ -102,9 +102,8 @@ The light is a single directional sun from the **upper right**, high in the sky.
 - **One bevel band per rounded edge.** The middle third of each rounded edge gets the average of the two faces it joins. That single flat band is what makes the clay read as soft and round. No gradients across it.
 - **Height falloff instead of ambient occlusion.** Lower voxels are a bit darker, down to ~85 % at floor level; everything from one block up (z ≥ 341) is at 100 %. Each voxel is shaded with the height of its own top, so all its regions shift together. No dark contact bands, no soft shadows.
 - **Material layers are separate voxels.** Grass over dirt, snow over rock, moss over stone: stack a thinner, slightly smaller voxel of the top material on the core voxel, so the layer shows as its own rounded slab.
-- **Cast shadow**: one flat rounded rectangle (`Asset.flat`) shifted toward the lower left (+y).
-  - On a ground voxel of the asset: `face="left"`, the ground's own left value, opaque, kept inside that ground.
-  - With no ground (the object stands straight on the game's terrain): on the floor (z = 0) in a dark neutral (`#1e2a10`) with `alpha=.22`, so it darkens whatever tile the game draws below.
+- **No cast shadow on the floor.** The game draws a dynamic shadow for every entity that follows the sun (`engine/lighting`, `render/shadow.ts`), so an object standing on the game's terrain carries no shadow of its own: never a translucent `#1e2a10` shadow at z = 0 (`Asset.flat(..., alpha=…)`), which would stay fixed while the sun moves.
+  - On a ground voxel of the asset (a plinth, a slab), a small opaque shadow with `face="left"`, kept inside that ground, is still allowed; keep it subtle, since it does not move with the sun either.
 - **No gradients, no specular highlights, no rim lines.** Glow (runes, eyes, magic) is the only allowed exception.
 - Pick base colors as fairly saturated mid-to-light tones; the factors darken them on their own. For white materials use a near-white base (`#fffdf6`), or the shading reads as grey.
 - The accent must contrast with what the game draws underneath: no blue hull on water, no green roof among trees.
@@ -536,7 +535,7 @@ To inspect bevels and seams, render at 1400 px and crop the area with PIL. To ch
    Keep the total at ~8–20 voxels. The main element should dominate; a base slab shouldn't take more than ~15 % of the height.
 3. **Write `<name>.py`.** Import `iso_lib` and draw in this order:
    1. ground slabs (`a.voxel`), only if the asset carries its own ground
-   2. cast shadow (`a.flat`)
+   2. (no floor cast shadow: the game draws it)
    3. every voxel of the object, trunk and accents included, added to **one** `VoxelGrid` and painted with a single `draw()` call so the painter order is shared.
 4. **Generate and validate.** Run `python3 <name>.py`. `save()` fails if anything goes out of bounds. Check that the top voxel reaches z = `top` and that the object spans the chosen fill of the footprint (the whole footprint at full fill).
 5. **Review visually.** Run `python3 preview.py <name>.svg` and look at the PNG with `Read`. Fix and repeat until the checklist in section 8 passes. Typical problems:
@@ -551,14 +550,12 @@ To inspect bevels and seams, render at 1400 px and crop the area with PIL. To ch
 **Leafy tree (reference asset, `tree_voxel.py`)**
 
 ```python
-# tree_voxel.py — voxel clay tree: few, very round voxels, no ground tile (only its cast shadow)
+# tree_voxel.py — voxel clay tree: few, very round voxels, no ground tile and no cast shadow (the game draws it)
 from iso_lib import *
 
 a = Asset()
 
-# 1. cast shadow of the canopy on the floor (z = 0), toward the lower left (+y).
-#    Translucent, so it darkens whatever terrain tile the game draws underneath.
-a.flat(-20, 28, 0, 150, 150, 86, "#1e2a10", alpha=.22)
+# 1. no cast shadow: the game draws a dynamic one that follows the sun
 
 # 2. trunk + canopy share one grid so the painter order is common.
 #    The canopy is shifted toward the back so the trunk stays visible in front.
@@ -580,7 +577,7 @@ a.save("tree_voxel.svg")
 print("ok tree_voxel.svg")
 ```
 
-- 17 voxels: 1 trunk standing on the floor, 13 canopy voxels (8 + 5), 3 fruits; no ground tile, only a translucent cast shadow.
+- 17 voxels: 1 trunk standing on the floor, 13 canopy voxels (8 + 5), 3 fruits; no ground tile and no cast shadow (the game draws it).
 - The canopy is offset (−22, −22) toward the back and its front cell is empty, so the trunk shows in front.
 
 Variants (parameterize, don't copy code):
@@ -610,9 +607,7 @@ def part(g, u, v, z0, hu, hv, hz, color, r=None):
     g.place(cx, cy, z0, hx, hy, hz, color, r=r)
 
 
-# 1. translucent cast shadow on the floor, nudged toward the lower left (+y)
-cx, cy, hx, hy = a.local(-6, 0, 480, 206)
-a.flat(cx - 14, cy + 36, 0, hx, hy, 110, "#1e2a10", alpha=.22)
+# 1. no cast shadow: the game draws a dynamic one that follows the sun
 
 g = VoxelGrid(a, u=100)              # one shared painter order; every part is an off-grid voxel
 
@@ -674,9 +669,7 @@ def part(g, u, v, z0, hu, hv, hz, color, r=None):
     g.place(cx, cy, z0, hx, hy, hz, color, r=r)
 
 
-# 1. translucent cast shadow on the floor, nudged toward the lower left (+y)
-cx, cy, hx, hy = a.local(0, 0, L - 20, W - 30)
-a.flat(cx - 12, cy + 30, 0, hx, hy, 100, "#1e2a10", alpha=.22)
+# 1. no cast shadow: the game draws a dynamic one that follows the sun
 
 g = VoxelGrid(a, u=100)
 

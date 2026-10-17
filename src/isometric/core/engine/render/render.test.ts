@@ -52,6 +52,7 @@ import { Box } from "../terrain";
 import {
   addInDepthOrder,
   createBlockViews,
+  getBlockDepth,
   getFootprintSliceTiles,
   type RenderBlockOptions,
 } from "./render";
@@ -321,6 +322,37 @@ describe("createBlockViews", () => {
       { x: 10, y: -3 },
     ]);
     expect(debugGraphics.stroke).toHaveBeenCalledWith({ color: 0xff00ff, width: 1 });
+  });
+});
+
+describe("getBlockDepth", () => {
+  const metrics = { tileWidth: 40, tileHeight: 20, boxHeight: 40 / 3 };
+  const at = (x: number, y: number, elevation: number, baseScreenY: number) => ({
+    x,
+    y,
+    screenX: 0,
+    screenY: 0,
+    baseScreenY,
+    box: new Box(x, y, { elevation }),
+  });
+
+  it("orders by ground position, then elevation, then x", () => {
+    expect(getBlockDepth(at(2, 3, 1, 100), metrics)).toBeCloseTo(100 + 0.001 + 0.0002);
+    expect(getBlockDepth(at(2, 3, 1, 110), metrics)).toBeGreaterThan(getBlockDepth(at(2, 3, 1, 100), metrics));
+  });
+
+  it("gives the depth of another tile of a footprint along its axis", () => {
+    const box = at(2, 3, 0, 100);
+
+    expect(getBlockDepth(box, metrics, 2, "x")).toBeCloseTo(100 - 20 + 0.0004);
+    expect(getBlockDepth(box, metrics, 2, "y")).toBeCloseTo(100 - 20 + 0.0002);
+  });
+
+  it("matches the depth createBlockViews gives a sprite", () => {
+    const box = at(4, 1, 2, 90);
+    const [{ depth }] = createBlockViews({ texture: carTexture as never, box, metrics });
+
+    expect(depth).toBe(getBlockDepth(box, metrics));
   });
 });
 

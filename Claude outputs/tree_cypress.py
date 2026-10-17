@@ -8,8 +8,7 @@ a = Asset(tiles=(1, 1, 2))
 TOP = a.ceiling                       # 682
 CYPRESS = "#3f8f47"
 
-# 1. translucent cast shadow on the floor, toward the lower left (+y)
-a.flat(-10, 30, 0, 120, 120, 70, "#1e2a10", alpha=.22)
+# No cast shadow: the game draws a dynamic shadow that follows the sun.
 
 U, UZ, BASE = 104, 95, 112            # 2x2 column, 6 layers from z = 112 up to 682
 g = VoxelGrid(a, u=U, uz=UZ, base=BASE, gap=6, r=22, offset=(-U / 2 - 8, -U / 2 - 8))

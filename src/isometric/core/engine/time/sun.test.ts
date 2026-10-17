@@ -12,30 +12,50 @@ const at = (hour: number) => Math.round((hour / 24) * TICKS_PER_DAY);
 const length = ({ x, y, z }: { x: number; y: number; z: number }) => Math.hypot(x, y, z);
 
 describe("getSunState", () => {
-  it("rises in the east (+x) at 06:00", () => {
+  it("rises from the lower right of the screen (-y) at 06:00", () => {
     const sun = getSunState(at(6));
 
     expect(sun.timeOfDay).toBe(0.25);
-    expect(sun.direction.x).toBeCloseTo(1);
-    expect(sun.direction.y).toBeCloseTo(0);
+    expect(sun.direction.x).toBeCloseTo(0);
+    expect(sun.direction.y).toBeCloseTo(-1);
     expect(sun.elevation).toBeCloseTo(0);
   });
 
-  it("stands in the south (-y) at its highest altitude at noon", () => {
+  it("stands on the camera side (-x, -y) at its highest altitude at noon", () => {
     const sun = getSunState(at(12));
 
-    expect(sun.direction.x).toBeCloseTo(0);
-    expect(sun.direction.y).toBeCloseTo(-Math.cos(SUN_MAX_ALTITUDE));
+    expect(sun.direction.x).toBeCloseTo(-Math.cos(SUN_MAX_ALTITUDE) * Math.SQRT1_2);
+    expect(sun.direction.y).toBeCloseTo(-Math.cos(SUN_MAX_ALTITUDE) * Math.SQRT1_2);
     expect(sun.elevation).toBeCloseTo(Math.sin(SUN_MAX_ALTITUDE));
     expect(sun.daylight).toBe(1);
     expect(sun.ambient).toEqual({ r: 1, g: 1, b: 1 });
   });
 
-  it("sets in the west (-x) at 18:00", () => {
+  it("sets at the lower left of the screen (-x) at 18:00", () => {
     const sun = getSunState(at(18));
 
     expect(sun.direction.x).toBeCloseTo(-1);
+    expect(sun.direction.y).toBeCloseTo(0);
     expect(sun.elevation).toBeCloseTo(0);
+  });
+
+  it("stays in the front quadrant all day, so shadows only fall on the caster's tile and the tiles behind", () => {
+    for (let hour = 6; hour <= 18; hour += 0.25) {
+      const { direction } = getSunState(at(hour));
+      // Tiles in front (smaller x or y) are drawn later and would cover a shadow reaching them.
+      expect(direction.x).toBeLessThanOrEqual(1e-9);
+      expect(direction.y).toBeLessThanOrEqual(1e-9);
+    }
+  });
+
+  it("moves its azimuth steadily from -y to -x through the day", () => {
+    const azimuth = (hour: number) => {
+      const { direction } = getSunState(at(hour));
+      return Math.atan2(direction.y, direction.x);
+    };
+
+    expect(azimuth(9)).toBeCloseTo(-Math.PI / 2 - Math.PI / 8);
+    expect(azimuth(15)).toBeCloseTo(-Math.PI + Math.PI / 8);
   });
 
   it("is below the horizon with the night ambient at midnight", () => {

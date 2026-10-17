@@ -66,11 +66,18 @@ export function sampleSkyPalette(palette: readonly SkyKey[], elevation: number):
   };
 }
 
+/** Sun azimuth at sunrise, in radians from `+x` toward `+y`: `−y`, the lower right of the screen. */
+const SUNRISE_AZIMUTH = -Math.PI / 2;
+/** Azimuth swept from sunrise to sunset: a quarter turn, to `−x`, the lower left of the screen. */
+const AZIMUTH_SWEEP = -Math.PI / 2;
+
 /**
- * Sunlight at a tick. The sun follows a tilted circle: it rises in the east (`+x`) at 06:00,
- * peaks in the south (`-y`) at {@link SUN_MAX_ALTITUDE} at noon and sets in the west (`-x`) at
- * 18:00. With this orientation the noon light comes from the camera side, like the light
- * baked into the assets, and shadows fall away from the viewer.
+ * Sunlight at a tick. The sun rises at 06:00, peaks at {@link SUN_MAX_ALTITUDE} at noon and
+ * sets at 18:00. Its azimuth turns steadily from `−y` (the lower right of the screen) through
+ * `−x −y` (the camera side) to `−x` (the lower left): a stylised quarter turn instead of the
+ * real half turn, so the sun always stays in front of the scene. Shadows then only fall on
+ * the caster's own tile and the tiles behind it, which are drawn before the caster; the tiles
+ * in front (smaller `x` or `y`) are drawn later and would cut any shadow reaching them.
  *
  * Pure and deterministic: the same tick always gives the same state.
  *
@@ -80,12 +87,14 @@ export function getSunState(tick: number, palette: readonly SkyKey[] = DEFAULT_S
   const timeOfDay = getTimeOfDay(tick);
   const angle = 2 * Math.PI * (timeOfDay - 0.25);
   const elevation = Math.sin(angle) * Math.sin(SUN_MAX_ALTITUDE);
+  const horizontal = Math.sqrt(1 - elevation * elevation);
+  const azimuth = SUNRISE_AZIMUTH + AZIMUTH_SWEEP * (angle / Math.PI);
 
   return {
     timeOfDay,
     direction: {
-      x: Math.cos(angle),
-      y: -Math.sin(angle) * Math.cos(SUN_MAX_ALTITUDE),
+      x: Math.cos(azimuth) * horizontal,
+      y: Math.sin(azimuth) * horizontal,
       z: elevation,
     },
     elevation,

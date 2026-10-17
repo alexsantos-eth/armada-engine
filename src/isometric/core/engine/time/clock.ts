@@ -69,3 +69,17 @@ export function getClockTime(tick: number): ClockTime {
 export function formatClockTime({ hour, minute }: ClockTime): string {
   return [hour, minute].map((part) => String(part).padStart(2, "0")).join(":");
 }
+
+/**
+ * Reads the starting hour from the URL query (`?hour=17.5` starts the world at 17:30 of day 0),
+ * for debugging light and shadows; combine with `?timeScale=0` to freeze it. Missing or
+ * invalid values (outside `[0, 24)` or not numeric) give {@link WORLD_START_TICK}.
+ *
+ * @param search The query string, e.g. `location.search`.
+ */
+export function resolveStartTick(search: string): number {
+  const value = new URLSearchParams(search).get("hour");
+  const hour = value === null || value.trim() === "" ? Number.NaN : Number(value);
+  if (!Number.isFinite(hour) || hour < 0 || hour >= HOURS_PER_DAY) return WORLD_START_TICK;
+  return Math.round((hour / HOURS_PER_DAY) * TICKS_PER_DAY);
+}

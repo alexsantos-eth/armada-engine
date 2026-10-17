@@ -41,6 +41,21 @@ export type DepthView = {
   readonly depth: number;
 };
 
+/**
+ * Draw depth of a block, an entity or anything standing on a tile (larger is drawn later):
+ * by ground position (`baseScreenY`), then elevation, then `x` to break ties. `tile` picks
+ * another tile of a multi-tile footprint along `lengthAxis` (`0` is the anchor tile).
+ */
+export function getBlockDepth(
+  box: IsoScreenBox,
+  metrics: TileMetrics,
+  tile = 0,
+  lengthAxis: EntityLengthAxis = "x",
+): number {
+  return box.baseScreenY - tile * (metrics.tileHeight / 2) + box.box.elevation * 0.001 +
+    (box.x + (lengthAxis === "x" ? tile : 0)) * 0.0001;
+}
+
 /** What to draw with {@link createBlockViews}. Only `texture`, `box` and `metrics` are required. */
 export type RenderBlockOptions = {
   /** Loaded texture of the block or entity. */
@@ -104,9 +119,7 @@ export function createBlockViews(options: RenderBlockOptions): DepthView[] {
   const positionX = box.screenX + lengthDirection * footprintOffset * (tileWidth / 2);
   const positionY = box.screenY - footprintOffset * (tileHeight / 2) - verticalOffset;
   image.position.set(positionX, positionY);
-  const tileDepth = (tile: number) =>
-    box.baseScreenY - tile * (tileHeight / 2) + box.box.elevation * 0.001 +
-    (box.x + (lengthAxis === "x" ? tile : 0)) * 0.0001;
+  const tileDepth = (tile: number) => getBlockDepth(box, options.metrics, tile, lengthAxis);
   const anchorDepth = tileDepth(0);
 
   let views: DepthView[] = [{ view: image, depth: anchorDepth }];
