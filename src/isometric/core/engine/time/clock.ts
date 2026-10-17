@@ -64,3 +64,8 @@ export function getClockTime(tick: number): ClockTime {
     minute: minutesOfDay % MINUTES_PER_HOUR,
   };
 }
+
+/** Formats the wall-clock part of a {@link ClockTime} as `HH:MM` (24-hour). */
+export function formatClockTime({ hour, minute }: ClockTime): string {
+  return [hour, minute].map((part) => String(part).padStart(2, "0")).join(":");
+}

@@ -5,6 +5,7 @@ export * from "./projection";
 export * from "./random";
 export * from "./render";
 export * from "./scene";
+export * from "./simulation";
 export * from "./terrain";
 export * from "./time";
 export * from "./world";

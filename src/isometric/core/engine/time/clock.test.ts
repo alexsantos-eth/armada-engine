@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   advanceClock,
+  formatClockTime,
   createWorldClock,
   getClockTime,
   getTimeOfDay,
@@ -108,5 +109,14 @@ describe("getClockTime", () => {
     [-TICKS_PER_DAY / 4, { day: -1, hour: 18, minute: 0 }],
   ])("reads tick %s as %o", (tick, time) => {
     expect(getClockTime(tick)).toEqual(time);
+  });
+});
+
+describe("formatClockTime", () => {
+  it.each([
+    [{ day: 0, hour: 8, minute: 0 }, "08:00"],
+    [{ day: 4, hour: 23, minute: 5 }, "23:05"],
+  ])("formats %o as %s", (time, label) => {
+    expect(formatClockTime(time)).toBe(label);
   });
 });

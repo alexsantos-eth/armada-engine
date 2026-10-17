@@ -6,6 +6,17 @@ Criterio: el core debe sostener un **RPG isométrico procedural de supervivencia
 
 Niveles: **Bloqueante** (rompe la visión) · **Alta** (reescritura cara cuando llegue un sistema previsto) · **Media** (corregible localmente) · **Baja** (higiene).
 
+## 2026-10-17 — Bucle de simulación de paso fijo (paso 2 de la iluminación)
+
+Alcance: nuevo módulo `engine/simulation` (`stepper.ts`, `simulation.ts`, tipos en `core/types/simulation.ts`), `formatClockTime()` en `time` y el cableado en `page.tsx`. Consultadas: [Ticker](https://pixijs.com/8.x/guides/components/ticker), [Render Loop](https://pixijs.com/8.x/guides/concepts/render-loop) y el código de `pixi.js` 8.22.0 (`TickerPlugin`: `Application` dibuja con `UPDATE_PRIORITY.LOW`; `Ticker.elapsedMS` es tiempo real sin recortar ni escalar). La guía no trata el paso fijo; se implementa en el dominio, como pedía esta skill.
+
+| # | Estado | Cambio |
+|---|---|---|
+| 7 | Avanzado (Alta) | **Bucle de paso fijo.** `createSimulation(world)` convierte el `elapsedMS` del ticker en ticks enteros con un acumulador (`consumeFrame`: recorte a 250 ms de tiempo real, `timeScale`, pausa, alpha de interpolación) y los ejecuta con `stepWorld()`, único punto de entrada de la simulación. `page.tsx` lo registra en `app.ticker` con prioridad `HIGH`, antes del render. Se adopta el `Ticker` de Pixi; no hay `requestAnimationFrame` propio. Verificado en Chromium (WebGL, `?seed=1337&timeScale=600`): la hora avanza unos 2 s reales por día, sin errores. Queda de #7 la cámara. |
+| 18 | Corregido (Media) | **Canvas movido dentro de la etiqueta de hora.** La primera versión de la etiqueta era un primer hijo condicional sin `key`; al aparecer, Preact reutilizó el `<div>` del canvas y lo anidó dentro de ella (detectado en el navegador, no en los tests). La etiqueta está siempre montada y va después del contenedor. Además, si la página se desmonta mientras la escena carga, ya no se registra el bucle sobre una aplicación destruida. |
+| 19 | Pendiente (Baja) | **`page.tsx` sin tests.** Hoy cablea semilla, mundo, escena, bucle y HUD sin ninguna prueba (no entra en la cobertura porque ningún test lo importa); el fallo #18 solo se vio en el navegador. Cuando el HUD o los controles crezcan, extraer la lógica a funciones probadas o añadir un test de la página con mocks de Pixi. |
+| 20 | Pendiente (Baja) | **Pasos por frame sin tope con `timeScale` alto.** El recorte es de tiempo real (250 ms), así que `?timeScale=600` puede pedir 3 000 pasos en un frame. Hoy un paso solo suma al reloj; cuando haya sistemas con coste, añadir `maxStepsPerFrame` al acumulador. Además, `stepWorld()` avanza el reloj de una vez: cuando llegue el primer sistema, debe iterar tick a tick para que cada sistema vea cada tick en orden. |
+
 ## 2026-10-17 — Reloj de juego y estado del sol (paso 1 de la iluminación)
 
 Alcance: nuevo módulo `engine/time` (`clock.ts`, `sun.ts`, tipos en `core/types/time.ts`), `World.clock` y `WorldSnapshot` v3. No toca render ni escena, así que no se consultó la guía de PixiJS en esta revisión.

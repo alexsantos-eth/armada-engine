@@ -11,6 +11,9 @@ flowchart LR
   Main[src/main.tsx] --> Page[src/isometric/page.tsx]
   Page --> World[engine/world]
   Page --> Scene[engine/scene]
+  Page --> Simulation[engine/simulation]
+  Simulation --> World
+  Simulation --> Time
   World --> Entities[engine/entities]
   World --> Terrain[engine/terrain]
   World --> Time[engine/time]
@@ -35,7 +38,7 @@ flowchart LR
 - densidad automática;
 - fondo oscuro.
 
-Cuando `app.init()` termina, la página añade `app.canvas` al DOM, resuelve la semilla del mundo con `resolveWorldSeed(location.search, Math.random)` (parámetro `?seed=` de la URL o una semilla nueva), la muestra en consola, genera el mundo con `generateWorld({ seed })` y lo renderiza con `createIsometricScene(app, world)`. La página es el único lugar donde se usan `Math.random()` y `window`. El cleanup del efecto destruye la escena y la aplicación. Si el componente se desmonta mientras Pixi aún inicializa, la bandera `disposed` evita añadir un canvas o una escena incompletos.
+Cuando `app.init()` termina, la página añade `app.canvas` al DOM, resuelve la semilla del mundo con `resolveWorldSeed(location.search, Math.random)` (parámetro `?seed=` de la URL o una semilla nueva), la muestra en consola, genera el mundo con `generateWorld({ seed })` y lo renderiza con `createIsometricScene(app, world)`. Después crea el bucle de simulación con `createSimulation(world, { timeScale: resolveTimeScale(location.search) })` y lo registra en `app.ticker` con prioridad `UPDATE_PRIORITY.HIGH` (ver [Bucle de simulación](#bucle-de-simulación)); cada frame que avanza el reloj actualiza la etiqueta de hora (`Día N · HH:MM`) que la página superpone al canvas. La página es el único lugar donde se usan `Math.random()` y `window`. El cleanup del efecto quita el listener del ticker, destruye la escena y la aplicación. Si el componente se desmonta mientras Pixi aún inicializa o la escena carga, la bandera `disposed` evita añadir un canvas, una escena o un bucle sobre una aplicación destruida. La etiqueta de hora está siempre montada después del contenedor del canvas: si fuera un primer hijo condicional, Preact reutilizaría el elemento del contenedor y movería el canvas dentro de la etiqueta.
 
 ## Organización de módulos
 
@@ -88,6 +91,12 @@ src/isometric/core/
       sun.ts
       sun.test.ts
       index.ts
+    simulation/
+      simulation.ts
+      simulation.test.ts
+      stepper.ts
+      stepper.test.ts
+      index.ts
     terrain/
       box.ts
       box.test.ts
@@ -107,6 +116,7 @@ src/isometric/core/
   types/
     entities.ts
     iso.ts
+    simulation.ts
     terrain.ts
     time.ts
     index.ts
@@ -131,7 +141,8 @@ Responsabilidades y dependencias permitidas (entre módulos solo a través de su
 | `world` | Modelo `World`, generación y guardado | `constants`, `entities`, `grid`, `random`, `terrain`, `time` |
 | `projection` | Rejilla → coordenadas de pantalla isométricas (`projectBoxesToIsometric`) | — |
 | `render` | Sprites Pixi y recoloreado SVG | — |
-| `scene` | Orquesta el render de un `World` | todos salvo `random` |
+| `simulation` | Bucle de paso fijo: convierte tiempo real en ticks y avanza el `World` | `time`, `world` |
+| `scene` | Orquesta el render de un `World` | `constants`, `entities`, `grid`, `projection`, `render`, `terrain`, `world` |
 
 Fuera del motor, sus módulos solo pueden importar los tipos compartidos (`../../types`), nunca el contenido; el contenido solo importa tipos del core. Solo `render` y `scene` importan Pixi, y ningún módulo del motor lee `window`, `document` ni `localStorage`. `engine/architecture.test.ts` comprueba estas reglas sobre el código fuente: un import no permitido, saltarse un barrel o usar Pixi o el navegador en otro módulo hace fallar la suite.
 
@@ -170,7 +181,20 @@ Los archivos de tipos no contienen lógica runtime y no tienen tests propios. Ty
   - `daylight`: `0` de noche, `1` de día, con transición suave (`smoothstep`) entre `NIGHT_ELEVATION` (−0.1) y `DAY_ELEVATION` (0.15).
   - `ambient`: color de luz ambiente (`Rgb` en `[0, 1]`) muestreado de una paleta por elevación con `sampleSkyPalette()`. `DEFAULT_SKY_PALETTE` va de una noche azulada y tenue a un horizonte anaranjado y a blanco puro (sin tinte) de media mañana a media tarde. Un juego puede pasar su propia paleta; debe tener al menos una clave y elevaciones estrictamente crecientes (si no, `RangeError`).
 
-El estado del sol es presentación: la lógica de juego que dependa de la hora (por ejemplo, la noche) debe decidir con el `tick` entero, no con los flotantes del sol. La escena todavía no usa este módulo: el bucle de simulación y el tinte ambiente son los siguientes pasos.
+El estado del sol es presentación: la lógica de juego que dependa de la hora (por ejemplo, la noche) debe decidir con el `tick` entero, no con los flotantes del sol. La escena todavía no usa este módulo: el tinte ambiente es el siguiente paso. `formatClockTime(time)` formatea la hora como `HH:MM`.
+
+## Bucle de simulación
+
+PixiJS marca los frames; el dominio decide cuántos pasos de simulación tocan. `engine/simulation` depende solo de `time` y `world` (tipos en `core/types/simulation.ts`) y no usa Pixi ni temporizadores: se prueba en Node.
+
+- `createFixedStepper(options?)` crea un acumulador de paso fijo (`FixedStepper`): `stepMs` (por defecto `STEP_MS` = 50 ms, un tick a `TICKS_PER_SECOND`), `maxFrameMs` (por defecto `DEFAULT_MAX_FRAME_MS` = 250) y `timeScale` (por defecto `1`). Valores no válidos lanzan `RangeError`.
+- `consumeFrame(stepper, elapsedMs)` recorta el tiempo real del frame a `maxFrameMs`, lo multiplica por `timeScale`, lo suma al acumulador y devuelve los pasos enteros que caben; el resto queda para el siguiente frame. Así el número de pasos no depende de los FPS, y tras una pausa larga (pestaña oculta, depurador) la simulación continúa sin una ráfaga de pasos: ese tiempo de juego se pierde a propósito. El recorte se aplica al tiempo real, no al escalado, para que `timeScale` alto siga siendo rápido. Con `paused = true`, o con tiempos no válidos (cero, negativos, `NaN`, infinitos), no hay pasos ni acumulación.
+- `setTimeScale(stepper, scale)` cambia la velocidad (`0` congela el tiempo) y `getInterpolationAlpha(stepper)` da la fracción del siguiente paso ya transcurrida, para interpolar en render lo que se mueva.
+- `stepWorld(world, ticks)` es el único punto de entrada de la simulación: hoy avanza `world.clock`; los sistemas de juego (clima, necesidades, IA) se ejecutarán aquí, una vez por tick y en orden fijo.
+- `createSimulation(world, options?)` une ambos: `simulation.frame(elapsedMs)` consume el frame, ejecuta `stepWorld()` con los pasos debidos y devuelve `{ steps, alpha, tick }`. `simulation.stepper` permite pausar o cambiar la velocidad.
+- `resolveTimeScale(search)` lee `?timeScale=` de la URL para depurar el ciclo del día (`?timeScale=60`: un día en 20 s); valores ausentes, negativos o no numéricos dan `1`.
+
+`page.tsx` llama a `simulation.frame(ticker.elapsedMS)` en un listener de `app.ticker` con prioridad `UPDATE_PRIORITY.HIGH`. `elapsedMS` es el tiempo real sin recortar ni escalar por el ticker (el recorte y la escala son del acumulador). `Application` dibuja desde el mismo ticker con prioridad `LOW` (`TickerPlugin` de PixiJS 8.22), así que la simulación siempre corre antes del render del mismo frame.
 
 ## Determinismo y semilla del mundo
 

@@ -20,6 +20,7 @@ core/
     random/
     render/
     scene/
+    simulation/
     terrain/
     time/
     world/
@@ -27,6 +28,7 @@ core/
   types/
     entities.ts
     iso.ts
+    simulation.ts
     terrain.ts
     time.ts
     index.ts
