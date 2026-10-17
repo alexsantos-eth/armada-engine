@@ -1,24 +1,30 @@
-import type { ShadowCaster, ShadowShape, SunState } from "../../types";
+import type { Affine2D, ShadowProjection, SunState, TileMetrics } from "../../types";
 import { BOX_HEIGHT, TILE_WIDTH } from "../constants";
 
 /**
- * Height of one block in tiles of world length. In the 2:1 projection a tile edge spans
- * `TILE_WIDTH / 2` px across the screen at 45° and a vertical unit is `√(5/2)` times shorter
- * than that per pixel, so a block (`BOX_HEIGHT` px) is about half a tile tall.
+ * Ground tiles per screen pixel of height. In the 2:1 projection a tile edge spans
+ * `tileWidth / 2` px across the screen at 45° and a vertical unit is `√(5/2)` times shorter
+ * than that per pixel, so one pixel of height is `√(5/2) / tileWidth` tiles.
  */
+const tilesPerPixelOfHeight = (metrics: TileMetrics) => Math.sqrt(5 / 2) / metrics.tileWidth;
+
+/** Height of one block in tiles of world length (about half a tile). */
 export const BLOCK_HEIGHT_IN_TILES = (BOX_HEIGHT / TILE_WIDTH) * Math.sqrt(5 / 2);
 
-/** Longest shadow, in tiles: a low sun would otherwise stretch shadows across the map. */
-export const MAX_SHADOW_LENGTH = 3;
+/** Cap on how far a unit of height reaches when the sun is low (`1 / tan(altitude)`). */
+export const MAX_SHADOW_STRETCH = 4;
 
-/** Opacity of a shadow in full sun. */
-export const SHADOW_ALPHA = 0.3;
+/** Opacity of shadows in full sun. */
+export const SHADOW_ALPHA = 0.32;
 
 /** Sun elevation (sine of its altitude) from which shadows reach full opacity. */
 export const SHADOW_FADE_ELEVATION = 0.25;
 
-/** Half-size of a one-tile footprint, in tiles: a little inside the tile. */
-export const FOOTPRINT_HALF_SIZE = 0.4;
+/**
+ * Ticks between shadow redraws (half a second of game time at real speed): the sun moves a
+ * fraction of a degree in that time, so redrawing every tick would cost without showing.
+ */
+export const SHADOW_REFRESH_TICKS = 10;
 
 function smoothstep(edge0: number, edge1: number, value: number): number {
   const t = Math.min(Math.max((value - edge0) / (edge1 - edge0), 0), 1);
@@ -26,50 +32,56 @@ function smoothstep(edge0: number, edge1: number, value: number): number {
 }
 
 /**
- * Shadow cast on the ground by a caster under a sun, as an ellipse: it starts under the
- * footprint (a contact shadow, as wide as the footprint seen from the sun) and stretches away
- * from the sun by `height / tan(altitude)`, capped at {@link MAX_SHADOW_LENGTH}. It fades in
- * from the horizon to {@link SHADOW_FADE_ELEVATION}. Returns `null` while the sun is at or
- * below the horizon. Pure: the same sun and caster always give the same shape.
- *
- * The ellipse never extends past the footprint toward `−x` or `−y`, where the tiles in front
- * of the caster are: those are drawn after it and would cut the shadow. With the sun always in
- * front of the scene (`getSunState()`), only a multi-tile footprint seen at an angle could
- * reach them; the ellipse is then moved back just enough.
+ * How the sun lays shadows on the ground: direction opposite to the sun, ground length per
+ * unit of height (`1 / tan(altitude)`, capped at {@link MAX_SHADOW_STRETCH}) and opacity
+ * (fading in from the horizon to {@link SHADOW_FADE_ELEVATION}). `null` while the sun is at or
+ * below the horizon. Pure: the same sun always gives the same projection.
  */
-export function getShadowShape(sun: SunState, caster: ShadowCaster): ShadowShape | null {
+export function getShadowProjection(sun: SunState): ShadowProjection | null {
   if (sun.elevation <= 0) return null;
 
   const horizontal = Math.hypot(sun.direction.x, sun.direction.y);
-  const ux = horizontal > 0 ? -sun.direction.x / horizontal : 1;
-  const uy = horizontal > 0 ? -sun.direction.y / horizontal : 0;
-  const length = Math.min(
-    (caster.height * BLOCK_HEIGHT_IN_TILES * horizontal) / sun.elevation,
-    MAX_SHADOW_LENGTH,
-  );
+  return {
+    dirX: horizontal > 0 ? -sun.direction.x / horizontal : 1,
+    dirY: horizontal > 0 ? -sun.direction.y / horizontal : 0,
+    stretch: Math.min(horizontal / sun.elevation, MAX_SHADOW_STRETCH),
+    alpha: SHADOW_ALPHA * smoothstep(0, SHADOW_FADE_ELEVATION, sun.elevation),
+  };
+}
 
-  // Footprint as an ellipse around its centre: half-sizes along x and y, in tiles.
-  const extra = (caster.length - 1) / 2;
-  const halfX = FOOTPRINT_HALF_SIZE + (caster.lengthAxis === "x" ? extra : 0);
-  const halfY = FOOTPRINT_HALF_SIZE + (caster.lengthAxis === "y" ? extra : 0);
-  const extentAlong = Math.hypot(ux * halfX, uy * halfY);
-  const extentAcross = Math.hypot(uy * halfX, ux * halfY);
+/**
+ * Lays a sprite's silhouette on the ground as its shadow. Maps screen pixels relative to the
+ * sprite's foot (`x` right, `y` down) to world tiles on a ground plane, treating the sprite as
+ * an upright cut-out standing on its foot and turned to face the sun (objects have volume: a
+ * tree crown casts its full width whatever the sun's azimuth, where a flat card seen edge-on
+ * would cast a line). A pixel across the sprite is laid across the shadow, perpendicular to
+ * it, at the sprite's own width (a screen pixel spans `√2 / tileWidth` tiles); a pixel `h` px
+ * above the foot is laid `h` px of height × `stretch` away along the shadow direction. With
+ * the sun behind the camera (shadows straight up the screen) this is the sprite seen as is.
+ *
+ * @param foot World position (tiles) of the point the sprite stands on.
+ * @param lift Blocks between the caster's ground and the plane the shadow falls on (`0` for
+ * its own ground; `2` for ground two blocks lower, where the shadow lands further away).
+ */
+export function getSilhouetteMatrix(
+  projection: ShadowProjection,
+  foot: { readonly x: number; readonly y: number },
+  lift: number,
+  metrics: TileMetrics,
+): Affine2D {
+  const perPixel = tilesPerPixelOfHeight(metrics);
+  const reachPerPixel = projection.stretch * perPixel;
+  const liftReach = projection.stretch * lift * metrics.boxHeight * perPixel;
 
-  const angle = Math.atan2(uy, ux);
-  const radiusAlong = extentAlong + length / 2;
-  const radiusAcross = extentAcross;
-  const centerX = (caster.lengthAxis === "x" ? extra : 0) + (ux * length) / 2;
-  const centerY = (caster.lengthAxis === "y" ? extra : 0) + (uy * length) / 2;
-  // Half-extents of the rotated ellipse along x and y.
-  const reachX = Math.hypot(radiusAlong * Math.cos(angle), radiusAcross * Math.sin(angle));
-  const reachY = Math.hypot(radiusAlong * Math.sin(angle), radiusAcross * Math.cos(angle));
+  const acrossPerPixel = Math.SQRT2 / metrics.tileWidth;
 
   return {
-    centerX: Math.max(centerX, reachX - FOOTPRINT_HALF_SIZE),
-    centerY: Math.max(centerY, reachY - FOOTPRINT_HALF_SIZE),
-    angle,
-    radiusAlong,
-    radiusAcross,
-    alpha: SHADOW_ALPHA * smoothstep(0, SHADOW_FADE_ELEVATION, sun.elevation),
+    // Across the shadow: (dirY, −dirX), which is screen right when shadows point straight up.
+    a: acrossPerPixel * projection.dirY,
+    b: -acrossPerPixel * projection.dirX,
+    c: -reachPerPixel * projection.dirX,
+    d: -reachPerPixel * projection.dirY,
+    tx: foot.x + liftReach * projection.dirX,
+    ty: foot.y + liftReach * projection.dirY,
   };
 }

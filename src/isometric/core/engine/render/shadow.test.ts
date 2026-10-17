@@ -1,6 +1,30 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("pixi.js", () => {
+  class Rectangle {
+    public x: number;
+    public y: number;
+    public width: number;
+    public height: number;
+
+    constructor(x: number, y: number, width: number, height: number) {
+      this.x = x;
+      this.y = y;
+      this.width = width;
+      this.height = height;
+    }
+  }
+
+  class Texture {
+    public source: unknown;
+    public frame: Rectangle;
+
+    constructor({ source, frame }: { source: unknown; frame: Rectangle }) {
+      this.source = source;
+      this.frame = frame;
+    }
+  }
+
   class Matrix {
     public a: number;
     public b: number;
@@ -20,115 +44,199 @@ vi.mock("pixi.js", () => {
   }
 
   class Sprite {
-    public texture: { width: number; height: number };
+    public texture: Texture;
+    public x = 0;
+    public y = 0;
+    public width = 0;
+    public height = 0;
+    public tint = 0xffffff;
     public visible = true;
     public alpha = 1;
-    public anchor = { set: vi.fn() };
+    public anchor = {
+      x: 0,
+      y: 0,
+      set: (x: number, y = x) => {
+        this.anchor.x = x;
+        this.anchor.y = y;
+      },
+    };
     public setFromMatrix = vi.fn();
 
-    constructor(texture: { width: number; height: number }) {
+    constructor(texture: Texture) {
       this.texture = texture;
     }
   }
 
-  return { Matrix, Sprite };
+  class Graphics {}
+
+  return { Graphics, Matrix, Rectangle, Sprite, Texture };
 });
 
-import type { ShadowShape } from "../../types";
+import { Graphics, Rectangle, Sprite, Texture } from "pixi.js";
+import type { Affine2D } from "../../types";
 import { Box } from "../terrain";
-import { getBlockDepth } from "./render";
-import { createShadowView, getShadowMatrix, placeShadowView } from "./shadow";
+import {
+  composeAffine,
+  createGroundShadowView,
+  createSilhouettes,
+  getGroundShadowMatrix,
+  getSilhouetteMapMatrix,
+  placeSilhouette,
+  SHADOW_MAP_PIXELS_PER_TILE,
+} from "./shadow";
 
 const METRICS = { tileWidth: 40, tileHeight: 20, boxHeight: 40 / 3 };
-const TEXTURE = { width: 128, height: 64 };
-const ORIGIN = { x: 300, y: 200 };
+const apply = (m: Affine2D, x: number, y: number) => ({ x: m.a * x + m.c * y + m.tx, y: m.b * x + m.d * y + m.ty });
+const texture = (width: number, height: number) =>
+  new Texture({ source: { id: "src" } as never, frame: new Rectangle(0, 0, width, height) });
 
-/** World tile offset → screen, the same 2:1 projection as `projectBoxesToIsometric()`. */
-const toScreen = (wx: number, wy: number) => ({
-  x: ORIGIN.x + (wx - wy) * (METRICS.tileWidth / 2),
-  y: ORIGIN.y - (wx + wy) * (METRICS.tileHeight / 2),
-});
-
-const apply = (m: ReturnType<typeof getShadowMatrix>, x: number, y: number) => ({
-  x: m.a * x + m.c * y + m.tx,
-  y: m.b * x + m.d * y + m.ty,
-});
-
-const SHAPE: ShadowShape = {
-  centerX: 0.6,
-  centerY: 0.2,
-  angle: Math.PI / 3,
-  radiusAlong: 1.2,
-  radiusAcross: 0.4,
-  alpha: 0.25,
+/** A sprite placed like `createBlockViews()` places one. */
+const placedSprite = (tex: Texture, x: number, y: number, width: number, height: number, anchorX = 0.5) => {
+  const sprite = new Sprite(tex);
+  sprite.anchor.set(anchorX, 0);
+  sprite.x = x;
+  sprite.y = y;
+  sprite.width = width;
+  sprite.height = height;
+  return sprite;
 };
 
-describe("getShadowMatrix", () => {
-  it("maps the texture centre to the projected shadow centre", () => {
-    const point = apply(getShadowMatrix(SHAPE, ORIGIN, METRICS, TEXTURE), 0, 0);
-    const expected = toScreen(SHAPE.centerX, SHAPE.centerY);
+const entityBox = (x: number, y: number, screenX: number, screenY: number) => ({
+  x,
+  y,
+  screenX,
+  screenY,
+  baseScreenY: 0,
+  box: new Box(x, y, { elevation: 1 }),
+});
 
-    expect(point.x).toBeCloseTo(expected.x);
-    expect(point.y).toBeCloseTo(expected.y);
-  });
+describe("composeAffine", () => {
+  it("applies the inner transform first", () => {
+    const scale: Affine2D = { a: 2, b: 0, c: 0, d: 3, tx: 0, ty: 0 };
+    const move: Affine2D = { a: 1, b: 0, c: 0, d: 1, tx: 5, ty: -1 };
 
-  it("maps the texture edges to the ends of the ellipse axes on the ground", () => {
-    const matrix = getShadowMatrix(SHAPE, ORIGIN, METRICS, TEXTURE);
-    const along = apply(matrix, TEXTURE.width / 2, 0);
-    const across = apply(matrix, 0, TEXTURE.height / 2);
-    const cos = Math.cos(SHAPE.angle);
-    const sin = Math.sin(SHAPE.angle);
-    const alongEnd = toScreen(SHAPE.centerX + cos * SHAPE.radiusAlong, SHAPE.centerY + sin * SHAPE.radiusAlong);
-    const acrossEnd = toScreen(SHAPE.centerX - sin * SHAPE.radiusAcross, SHAPE.centerY + cos * SHAPE.radiusAcross);
-
-    expect(along.x).toBeCloseTo(alongEnd.x);
-    expect(along.y).toBeCloseTo(alongEnd.y);
-    expect(across.x).toBeCloseTo(acrossEnd.x);
-    expect(across.y).toBeCloseTo(acrossEnd.y);
+    expect(apply(composeAffine(move, scale), 1, 1)).toEqual({ x: 7, y: 2 });
+    expect(apply(composeAffine(scale, move), 1, 1)).toEqual({ x: 12, y: 0 });
   });
 });
 
-describe("createShadowView", () => {
-  it("creates a hidden, centred shadow sprite drawn with the depth of the caster's tile", () => {
-    const box = { x: 2, y: 3, screenX: 300, screenY: 200, baseScreenY: 150, box: new Box(2, 3, { elevation: 1 }) };
-    const { view, depth } = createShadowView(TEXTURE as never, box, METRICS);
-    const sprite = view as unknown as { visible: boolean; anchor: { set: ReturnType<typeof vi.fn> } };
+describe("getGroundShadowMatrix", () => {
+  const ppt = 16;
+  const top = { x: 300, y: 200 };
 
+  it("maps the tile's square of the shadow map onto its top diamond", () => {
+    const matrix = getGroundShadowMatrix(top, METRICS, ppt);
+    const centre = apply(matrix, ppt / 2, ppt / 2);
+    const back = apply(matrix, 0, 0); // −x −y corner: bottom of the diamond, toward the camera
+    const right = apply(matrix, ppt, 0); // +x −y corner: right of the diamond
+    const far = apply(matrix, ppt, ppt); // +x +y corner: top of the diamond
+
+    expect(centre.x).toBeCloseTo(top.x);
+    expect(centre.y).toBeCloseTo(top.y);
+    expect(back).toEqual({ x: top.x, y: top.y + METRICS.tileHeight / 2 });
+    expect(right.x).toBeCloseTo(top.x + METRICS.tileWidth / 2);
+    expect(right.y).toBeCloseTo(top.y);
+    expect(far.x).toBeCloseTo(top.x);
+    expect(far.y).toBeCloseTo(top.y - METRICS.tileHeight / 2);
+  });
+});
+
+describe("createGroundShadowView", () => {
+  it("creates a hidden sprite of the tile's shadow, laid on its top with the given depth", () => {
+    const frame = texture(SHADOW_MAP_PIXELS_PER_TILE, SHADOW_MAP_PIXELS_PER_TILE);
+    const { view, depth } = createGroundShadowView(frame, { x: 10, y: 20 }, METRICS, 42.5);
+    const sprite = view as unknown as Sprite & { setFromMatrix: ReturnType<typeof vi.fn> };
+
+    expect(depth).toBe(42.5);
     expect(sprite.visible).toBe(false);
-    expect(sprite.anchor.set).toHaveBeenCalledWith(0.5);
-    expect(depth).toBe(getBlockDepth(box, METRICS));
+    expect(sprite.setFromMatrix).toHaveBeenCalledWith(expect.objectContaining(
+      getGroundShadowMatrix({ x: 10, y: 20 }, METRICS, SHADOW_MAP_PIXELS_PER_TILE),
+    ));
   });
 });
 
-describe("placeShadowView", () => {
-  const newSprite = () =>
-    createShadowView(TEXTURE as never, {
-      x: 0, y: 0, screenX: 0, screenY: 0, baseScreenY: 0, box: new Box(0, 0),
-    }, METRICS).view as unknown as {
-      visible: boolean;
-      alpha: number;
-      setFromMatrix: ReturnType<typeof vi.fn>;
-    };
+describe("createSilhouettes", () => {
+  it("makes a black silhouette of a one-tile sprite, cropped at its foot", () => {
+    // The sprite spans y 100..140; its foot (the tile centre) is at y 130.
+    const sprite = placedSprite(texture(64, 80), 200, 100, 40, 40);
+    const [silhouette] = createSilhouettes([{ view: sprite as never, depth: 0 }], entityBox(3, 4, 200, 130), METRICS);
 
-  it("shows the sprite with the shape's transform and opacity", () => {
-    const sprite = newSprite();
+    expect(silhouette.sprite.tint).toBe(0x000000);
+    expect(silhouette.worldFoot).toEqual({ x: 3, y: 4 });
+    expect(silhouette.screenFoot).toEqual({ x: 200, y: 130 });
+    expect(silhouette.display).toEqual({ left: 180, top: 100, width: 40, height: 30 });
+    expect(silhouette.sprite.texture.frame).toMatchObject({ x: 0, y: 0, width: 64, height: 60 });
+  });
 
-    placeShadowView(sprite as never, SHAPE, ORIGIN, METRICS);
+  it("reuses the cropped texture for sprites of the same texture and crop", () => {
+    const tex = texture(64, 80);
+    const box = entityBox(3, 4, 200, 130);
+    const [first] = createSilhouettes([{ view: placedSprite(tex, 200, 100, 40, 40) as never, depth: 0 }], box, METRICS);
+    const [second] = createSilhouettes([{ view: placedSprite(tex, 200, 100, 40, 40) as never, depth: 0 }], box, METRICS);
 
-    expect(sprite.visible).toBe(true);
-    expect(sprite.alpha).toBe(SHAPE.alpha);
-    expect(sprite.setFromMatrix).toHaveBeenCalledWith(
-      expect.objectContaining(getShadowMatrix(SHAPE, ORIGIN, METRICS, TEXTURE)),
+    expect(second.sprite.texture).toBe(first.sprite.texture);
+  });
+
+  it("keeps the whole texture when the foot is at or below the sprite's bottom", () => {
+    const tex = texture(64, 80);
+    const [silhouette] = createSilhouettes(
+      [{ view: placedSprite(tex, 200, 100, 40, 40) as never, depth: 0 }],
+      entityBox(0, 0, 200, 150),
+      METRICS,
     );
+
+    expect(silhouette.sprite.texture).toBe(tex);
+    expect(silhouette.display.height).toBe(40);
   });
 
-  it("hides the sprite when there is no shadow", () => {
-    const sprite = newSprite();
-    placeShadowView(sprite as never, SHAPE, ORIGIN, METRICS);
+  it("gives each strip of a multi-tile sprite the foot of its own tile, and skips debug outlines", () => {
+    const tex = texture(32, 80);
+    const strips = [0, 1, 2].map((strip) => placedSprite(tex, 100 + strip * 20, 60, 20, 60, 0));
+    const views = [...strips.map((view) => ({ view: view as never, depth: 0 })), { view: new Graphics() as never, depth: 0 }];
 
-    placeShadowView(sprite as never, null, ORIGIN, METRICS);
+    const alongX = createSilhouettes(views, entityBox(5, 6, 120, 100), METRICS, 2, "x");
+    const alongY = createSilhouettes(views, entityBox(5, 6, 120, 100), METRICS, 2, "y");
 
-    expect(sprite.visible).toBe(false);
-    expect(sprite.setFromMatrix).toHaveBeenCalledTimes(1);
+    expect(alongX.map(({ worldFoot }) => worldFoot)).toEqual([{ x: 5, y: 6 }, { x: 5, y: 6 }, { x: 6, y: 6 }]);
+    expect(alongX[2].screenFoot).toEqual({ x: 140, y: 90 });
+    expect(alongY.map(({ worldFoot }) => worldFoot)).toEqual([{ x: 5, y: 7 }, { x: 5, y: 6 }, { x: 5, y: 6 }]);
+    expect(alongY[0].screenFoot).toEqual({ x: 100, y: 90 });
+  });
+});
+
+describe("getSilhouetteMapMatrix / placeSilhouette", () => {
+  const identityWorld: Affine2D = { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 };
+  const silhouette = () => createSilhouettes(
+    [{ view: placedSprite(texture(64, 80), 200, 100, 40, 40) as never, depth: 0 }],
+    entityBox(3, 4, 200, 130),
+    METRICS,
+  )[0];
+
+  it("maps texture pixels to shadow-map pixels through the foot-relative world transform", () => {
+    const shape = silhouette();
+    const world: Affine2D = { a: 0.5, b: 0, c: 0, d: 0.25, tx: 3, ty: 4 };
+    const matrix = getSilhouetteMapMatrix(shape, world, { x: 1, y: 2 }, 10);
+    // Texture pixel (0, 0) is the sprite's top-left: 20 px left of and 30 px above the foot.
+    const topLeft = apply(matrix, 0, 0);
+
+    expect(topLeft.x).toBeCloseTo((3 + 0.5 * -20 - 1) * 10);
+    expect(topLeft.y).toBeCloseTo((4 + 0.25 * -30 - 2) * 10);
+    // The cropped bottom centre (texture 32, 60) is the foot itself.
+    const foot = apply(matrix, 32, 60);
+    expect(foot.x).toBeCloseTo((3 - 1) * 10);
+    expect(foot.y).toBeCloseTo((4 - 2) * 10);
+  });
+
+  it("places and shows the silhouette sprite", () => {
+    const shape = silhouette();
+    shape.sprite.visible = false;
+    const sprite = shape.sprite as unknown as { setFromMatrix: ReturnType<typeof vi.fn> };
+
+    placeSilhouette(shape, identityWorld, { x: 0, y: 0 }, 16);
+
+    expect(shape.sprite.visible).toBe(true);
+    expect(sprite.setFromMatrix).toHaveBeenCalledWith(
+      expect.objectContaining(getSilhouetteMapMatrix(shape, identityWorld, { x: 0, y: 0 }, 16)),
+    );
   });
 });

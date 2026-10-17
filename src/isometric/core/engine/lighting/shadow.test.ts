@@ -1,17 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ShadowCaster, SunState } from "../../types";
-import { BOX_HEIGHT, TILE_WIDTH } from "../constants";
-import { getSunState, TICKS_PER_DAY } from "../time";
+import type { Affine2D, SunState } from "../../types";
+import { BOX_HEIGHT, TILE_METRICS, TILE_WIDTH } from "../constants";
 import {
   BLOCK_HEIGHT_IN_TILES,
-  FOOTPRINT_HALF_SIZE,
-  getShadowShape,
-  MAX_SHADOW_LENGTH,
+  getShadowProjection,
+  getSilhouetteMatrix,
+  MAX_SHADOW_STRETCH,
   SHADOW_ALPHA,
   SHADOW_FADE_ELEVATION,
 } from "./shadow";
 
-const TREE: ShadowCaster = { height: 1, length: 1, lengthAxis: "x" };
 const WHITE = { r: 1, g: 1, b: 1 };
 
 /** A sun at `altitude` radians whose horizontal direction points at `toward` (from +x to +y). */
@@ -27,76 +25,48 @@ const sunAt = (altitude: number, toward = -3 * Math.PI / 4): SunState => ({
   ambient: WHITE,
 });
 
-describe("shadow constants", () => {
+const apply = (m: Affine2D, x: number, y: number) => ({ x: m.a * x + m.c * y + m.tx, y: m.b * x + m.d * y + m.ty });
+
+/** World tile offset → screen offset in the 2:1 projection. */
+const toScreen = (wx: number, wy: number) => ({
+  x: (wx - wy) * (TILE_WIDTH / 2),
+  y: -(wx + wy) * (TILE_METRICS.tileHeight / 2),
+});
+
+describe("BLOCK_HEIGHT_IN_TILES", () => {
   it("measures a block in tiles from the 2:1 projection (about half a tile)", () => {
     expect(BLOCK_HEIGHT_IN_TILES).toBeCloseTo((BOX_HEIGHT / TILE_WIDTH) * Math.sqrt(2.5));
     expect(BLOCK_HEIGHT_IN_TILES).toBeCloseTo(0.527, 3);
   });
 });
 
-describe("getShadowShape", () => {
+describe("getShadowProjection", () => {
   it("casts no shadow while the sun is at or below the horizon", () => {
-    expect(getShadowShape(sunAt(0), TREE)).toBeNull();
-    expect(getShadowShape(sunAt(-0.4), TREE)).toBeNull();
+    expect(getShadowProjection(sunAt(0))).toBeNull();
+    expect(getShadowProjection(sunAt(-0.3))).toBeNull();
   });
 
-  it("points away from the sun", () => {
-    const shape = getShadowShape(sunAt(0.5, -3 * Math.PI / 4), TREE);
+  it("points shadows away from the sun", () => {
+    const projection = getShadowProjection(sunAt(0.6, -3 * Math.PI / 4));
 
-    expect(shape?.angle).toBeCloseTo(Math.PI / 4);
-    expect(shape?.centerX).toBeGreaterThan(0);
-    expect(shape?.centerY).toBeCloseTo(shape?.centerX ?? Number.NaN);
+    expect(projection?.dirX).toBeCloseTo(Math.SQRT1_2);
+    expect(projection?.dirY).toBeCloseTo(Math.SQRT1_2);
   });
 
-  it("grows as the sun gets lower: length = height in tiles / tan(altitude)", () => {
-    const altitude = Math.PI / 4;
-    const shape = getShadowShape(sunAt(altitude, Math.PI), TREE);
-    const length = BLOCK_HEIGHT_IN_TILES / Math.tan(altitude);
-
-    expect(Math.cos(shape?.angle ?? 0)).toBeCloseTo(1);
-    expect(shape?.radiusAlong).toBeCloseTo(FOOTPRINT_HALF_SIZE + length / 2);
-    expect(shape?.radiusAcross).toBeCloseTo(FOOTPRINT_HALF_SIZE);
-    expect(shape?.centerX).toBeCloseTo(length / 2);
-    expect(shape?.centerY).toBeCloseTo(0);
+  it("stretches one tile of height to 1 / tan(altitude) tiles, capped", () => {
+    expect(getShadowProjection(sunAt(Math.PI / 3))?.stretch).toBeCloseTo(1 / Math.tan(Math.PI / 3));
+    expect(getShadowProjection(sunAt(0.01))?.stretch).toBe(MAX_SHADOW_STRETCH);
   });
 
-  it("scales with the caster height and is capped at MAX_SHADOW_LENGTH", () => {
-    const low = getShadowShape(sunAt(1), TREE);
-    const tall = getShadowShape(sunAt(1), { ...TREE, height: 3 });
-    const tower = getShadowShape(sunAt(0.05), { ...TREE, height: 6 });
-
-    expect((tall?.radiusAlong ?? 0) - FOOTPRINT_HALF_SIZE)
-      .toBeCloseTo(3 * ((low?.radiusAlong ?? 0) - FOOTPRINT_HALF_SIZE));
-    expect(tower?.radiusAlong).toBeCloseTo(FOOTPRINT_HALF_SIZE + MAX_SHADOW_LENGTH / 2);
-  });
-
-  it("starts from the centre of a multi-tile footprint and covers its extent", () => {
-    const sun = sunAt(Math.PI / 2 - 1e-9, 0);
-    const alongX = getShadowShape(sun, { height: 1, length: 3, lengthAxis: "x" });
-    const alongY = getShadowShape(sun, { height: 1, length: 3, lengthAxis: "y" });
-
-    expect(alongX?.centerX).toBeCloseTo(1);
-    expect(alongX?.centerY).toBeCloseTo(0);
-    expect(alongX?.radiusAlong).toBeCloseTo(1 + FOOTPRINT_HALF_SIZE);
-    expect(alongX?.radiusAcross).toBeCloseTo(FOOTPRINT_HALF_SIZE);
-    expect(alongY?.centerX).toBeCloseTo(0);
-    expect(alongY?.centerY).toBeCloseTo(1);
-    expect(alongY?.radiusAlong).toBeCloseTo(FOOTPRINT_HALF_SIZE);
-    expect(alongY?.radiusAcross).toBeCloseTo(1 + FOOTPRINT_HALF_SIZE);
-  });
-
-  it("handles a sun straight overhead as a round contact shadow", () => {
+  it("handles a sun straight overhead", () => {
     const zenith: SunState = { ...sunAt(0), direction: { x: 0, y: 0, z: 1 }, elevation: 1 };
-    const shape = getShadowShape(zenith, TREE);
 
-    expect(shape).toMatchObject({ centerX: 0, centerY: 0, angle: 0 });
-    expect(shape?.radiusAlong).toBeCloseTo(FOOTPRINT_HALF_SIZE);
-    expect(shape?.radiusAcross).toBeCloseTo(FOOTPRINT_HALF_SIZE);
+    expect(getShadowProjection(zenith)).toMatchObject({ dirX: 1, dirY: 0, stretch: 0 });
   });
 
-  it("fades in as the sun rises and reaches SHADOW_ALPHA", () => {
-    const low = getShadowShape(sunAt(Math.asin(SHADOW_FADE_ELEVATION / 4)), TREE);
-    const high = getShadowShape(sunAt(Math.asin(SHADOW_FADE_ELEVATION)), TREE);
+  it("fades in from the horizon to SHADOW_ALPHA", () => {
+    const low = getShadowProjection(sunAt(Math.asin(SHADOW_FADE_ELEVATION / 4)));
+    const high = getShadowProjection(sunAt(Math.asin(SHADOW_FADE_ELEVATION)));
 
     expect(low?.alpha).toBeGreaterThan(0);
     expect(low?.alpha).toBeLessThan(SHADOW_ALPHA);
@@ -106,36 +76,56 @@ describe("getShadowShape", () => {
   it("is pure and deterministic", () => {
     const randomSpy = vi.spyOn(Math, "random");
 
-    expect(getShadowShape(sunAt(0.7), TREE)).toEqual(getShadowShape(sunAt(0.7), TREE));
+    expect(getShadowProjection(sunAt(0.7))).toEqual(getShadowProjection(sunAt(0.7)));
     expect(randomSpy).not.toHaveBeenCalled();
     randomSpy.mockRestore();
   });
+});
 
-  it("never reaches the tiles in front of the caster at any hour, so nothing drawn later cuts it", () => {
-    const casters: ShadowCaster[] = [
-      TREE,
-      { height: 6, length: 1, lengthAxis: "x" },
-      { height: 3, length: 3, lengthAxis: "x" },
-      { height: 3, length: 2, lengthAxis: "y" },
-    ];
-    // Tiles in front of the anchor start half a tile before its centre on x or y; the shadow
-    // stays within the footprint on that side.
-    const front = -FOOTPRINT_HALF_SIZE - 1e-9;
+describe("getSilhouetteMatrix", () => {
+  const projection = { dirX: 0.6, dirY: 0.8, stretch: 1.5, alpha: 0.3 };
+  const foot = { x: 4, y: 7 };
 
-    for (let hour = 6; hour <= 18; hour += 0.1) {
-      const sun = getSunState(Math.round((hour / 24) * TICKS_PER_DAY));
-      casters.forEach((caster) => {
-        const shape = getShadowShape(sun, caster);
-        if (!shape) return;
-        const cos = Math.cos(shape.angle);
-        const sin = Math.sin(shape.angle);
-        const minX = shape.centerX - Math.hypot(shape.radiusAlong * cos, shape.radiusAcross * sin);
-        const minY = shape.centerY - Math.hypot(shape.radiusAlong * sin, shape.radiusAcross * cos);
-        expect(minX).toBeGreaterThan(front);
-        expect(minY).toBeGreaterThan(front);
-        expect(minX).toBeGreaterThan(-0.5);
-        expect(minY).toBeGreaterThan(-0.5);
-      });
-    }
+  it("keeps the foot of the sprite on the foot tile", () => {
+    const point = apply(getSilhouetteMatrix(projection, foot, 0, TILE_METRICS), 0, 0);
+
+    expect(point.x).toBeCloseTo(foot.x);
+    expect(point.y).toBeCloseTo(foot.y);
+  });
+
+  it("lays the sprite's width across the shadow, perpendicular to it, at its own size", () => {
+    const matrix = getSilhouetteMatrix(projection, foot, 0, TILE_METRICS);
+    const point = apply(matrix, 10, 0);
+    const across = { x: point.x - foot.x, y: point.y - foot.y };
+
+    expect(across.x * projection.dirX + across.y * projection.dirY).toBeCloseTo(0);
+    expect(Math.hypot(across.x, across.y)).toBeCloseTo((10 * Math.SQRT2) / TILE_WIDTH);
+  });
+
+  it("shows the sprite as is when shadows point straight up the screen", () => {
+    const up = { dirX: Math.SQRT1_2, dirY: Math.SQRT1_2, stretch: 1, alpha: 0.3 };
+    const point = apply(getSilhouetteMatrix(up, foot, 0, TILE_METRICS), 10, 0);
+    const screen = toScreen(point.x - foot.x, point.y - foot.y);
+
+    expect(screen.x).toBeCloseTo(10);
+    expect(screen.y).toBeCloseTo(0);
+  });
+
+  it("lays pixels above the foot along the shadow, one block of height reaching stretch × block", () => {
+    const matrix = getSilhouetteMatrix(projection, foot, 0, TILE_METRICS);
+    const top = apply(matrix, 0, -BOX_HEIGHT);
+    const reach = projection.stretch * BLOCK_HEIGHT_IN_TILES;
+
+    expect(top.x).toBeCloseTo(foot.x + projection.dirX * reach);
+    expect(top.y).toBeCloseTo(foot.y + projection.dirY * reach);
+  });
+
+  it("moves the shadow further away on a lower plane, by the caster's lift", () => {
+    const onOwnPlane = apply(getSilhouetteMatrix(projection, foot, 0, TILE_METRICS), 0, 0);
+    const twoBelow = apply(getSilhouetteMatrix(projection, foot, 2, TILE_METRICS), 0, 0);
+    const reach = 2 * projection.stretch * BLOCK_HEIGHT_IN_TILES;
+
+    expect(twoBelow.x - onOwnPlane.x).toBeCloseTo(projection.dirX * reach);
+    expect(twoBelow.y - onOwnPlane.y).toBeCloseTo(projection.dirY * reach);
   });
 });

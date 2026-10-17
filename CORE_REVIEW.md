@@ -6,6 +6,19 @@ Criterio: el core debe sostener un **RPG isométrico procedural de supervivencia
 
 Niveles: **Bloqueante** (rompe la visión) · **Alta** (reescritura cara cuando llegue un sistema previsto) · **Media** (corregible localmente) · **Baja** (higiene).
 
+## 2026-10-17 — Sombras con silueta, proyectadas sobre el terreno
+
+Alcance: `lighting/shadow.ts` (`getShadowProjection`, `getSilhouetteMatrix`), `render/shadow.ts` (siluetas, mapas de sombra, vistas sobre el terreno), la escena y el sol (vuelve a la media vuelta). Sustituye las elipses de #26. Consultados los tipos de `pixi.js` 8.22.0: `RenderTexture.create({ width, height })`, `renderer.render({ container, target, clear, clearColor })` (`RenderOptions`/`ClearOptions`) y `BlurFilter({ strength, quality })`; `Container.setFromMatrix()` admite matrices con sesgo y reflexión (#26).
+
+| # | Estado | Cambio |
+|---|---|---|
+| 30 | Corregido (Alta) | **Todas las sombras iguales y «pegadas» encima del suelo** (reportado por el usuario con captura). Las elipses eran la misma forma para todo y vivían en el plano de quien las proyecta: no se deformaban en los escalones. Ahora cada sprite proyecta su silueta (recortada a la altura del pie y girada hacia el sol) en un mapa de sombras por elevación, en espacio del mundo, y cada cima de columna muestra su cuadrado del mapa de su elevación justo después de su bloque superior. Las sombras siguen el relieve: en un escalón se interrumpen y continúan desplazadas abajo. |
+| 31 | Corregido (Alta) | **Sombras cortadas por las casillas de delante** (#29) resuelto de raíz: cada casilla pinta su propia sombra, así que el orden de dibujo ya no las recorta. El sol vuelve al recorrido real de media vuelta (este → sur → oeste) y desaparecen el desplazamiento de elipses y el test de cuadrante delantero. |
+| 32 | Corregido (Media) | **Silueta de canto con el sol de lado.** La primera versión trataba cada sprite como una cartulina de cara a la cámara: con el sol de lado su sombra era una línea fina (detectado en el navegador con opacidad 1). La silueta se gira hacia el sol, como un objeto con volumen; test en `lighting/shadow.test.ts`. |
+| 33 | Pendiente (Baja) | **Límites de la técnica.** Sin sombras sobre caras laterales de bloques, sobre otras entidades ni sobre terreno más alto que quien proyecta; el terreno no proyecta sombra. Coste: un `RenderTexture` por elevación (8 de 528 × 528 con el mapa actual) redibujado cada `SHADOW_REFRESH_TICKS`; con chunks, un mapa por chunk y elevación visibles, o redibujar solo los chunks con casters. |
+
+Verificado en Chromium (`?seed=1337&timeScale=0&hour=8/11/15/17.5`, y con opacidad 1 sin desenfoque para comprobar formas): siluetas reconocibles de árboles y casas, a la izquierda por la mañana y a la derecha por la tarde, sin cortes y desplazadas en los escalones; sin errores de consola.
+
 ## 2026-10-17 — Sombras dinámicas (paso 4 de la iluminación)
 
 Alcance: nuevo módulo `engine/lighting` (`getShadowShape`), `render/shadow.ts` (`getShadowMatrix`, `createShadowView`, `placeShadowView`), `getBlockDepth()` extraído de `createBlockViews()`, sombras en la escena, nueva orientación del sol, `?hour=` (`resolveStartTick`) y 18 SVG sin su sombra pintada. Consultado el código de `pixi.js` 8.22.0: `Container.setFromMatrix()` descompone con `Matrix.decompose()`, que admite sesgo, así que la matriz isométrica (con sesgo y reflexión) se aplica exacta; las sombras van en el mismo render group del mundo.

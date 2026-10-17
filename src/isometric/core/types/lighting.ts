@@ -1,30 +1,24 @@
-import type { EntityLengthAxis } from "./entities";
-
-/** What a shadow depends on: the caster's height and footprint (an entity's own fields). */
-export type ShadowCaster = {
-  /** Height in blocks. */
-  readonly height: number;
-  /** Footprint length in tiles. */
-  readonly length: number;
-  /** Axis the footprint extends along from its anchor tile. */
-  readonly lengthAxis: EntityLengthAxis;
+/** Affine transform in Pixi's convention: `x' = a·x + c·y + tx`, `y' = b·x + d·y + ty`. */
+export type Affine2D = {
+  readonly a: number;
+  readonly b: number;
+  readonly c: number;
+  readonly d: number;
+  readonly tx: number;
+  readonly ty: number;
 };
 
 /**
- * A cast shadow as an ellipse lying on the ground, in tiles and world grid axes. Positions
- * are relative to the centre of the caster's anchor tile, at the caster's ground level.
+ * How the sun lays shadows on the ground at a given moment: the direction they fall along and
+ * how far a unit of height reaches. Derived from the sun state; `null` at night.
  */
-export type ShadowShape = {
-  /** Ellipse centre along `x`, in tiles from the anchor tile centre. */
-  readonly centerX: number;
-  /** Ellipse centre along `y`, in tiles from the anchor tile centre. */
-  readonly centerY: number;
-  /** Direction of the long axis on the ground, in radians from `+x` toward `+y`. */
-  readonly angle: number;
-  /** Half-length along `angle`, in tiles. */
-  readonly radiusAlong: number;
-  /** Half-width across `angle`, in tiles. */
-  readonly radiusAcross: number;
-  /** Opacity in `[0, 1]`. */
+export type ShadowProjection = {
+  /** Unit direction shadows fall along on the ground, world `x`. */
+  readonly dirX: number;
+  /** Unit direction shadows fall along on the ground, world `y`. */
+  readonly dirY: number;
+  /** Ground length (tiles) of the shadow of one tile of height: `1 / tan(altitude)`, capped. */
+  readonly stretch: number;
+  /** Shadow opacity in `[0, 1]`: `0` at the horizon, full once the sun is high enough. */
   readonly alpha: number;
 };

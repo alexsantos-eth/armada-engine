@@ -45,6 +45,39 @@ vi.mock("pixi.js", () => {
       unload: vi.fn(async () => undefined),
     },
     Container,
+    Rectangle: class {
+      public x: number;
+      public y: number;
+      public width: number;
+      public height: number;
+      constructor(x: number, y: number, width: number, height: number) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+      }
+    },
+    Texture: class {
+      public source: unknown;
+      public frame: unknown;
+      constructor({ source, frame }: { source: unknown; frame: unknown }) {
+        this.source = source;
+        this.frame = frame;
+      }
+    },
+    RenderTexture: {
+      create: vi.fn((options: { width: number; height: number }) => ({
+        ...options,
+        source: { renderTarget: true },
+        destroy: vi.fn(),
+      })),
+    },
+    BlurFilter: class {
+      public options: unknown;
+      constructor(options: unknown) {
+        this.options = options;
+      }
+    },
     UPDATE_PRIORITY: { HIGH: 50, NORMAL: 0, LOW: -50 },
   };
 });
@@ -69,18 +102,23 @@ vi.mock("../render", async () => ({
       }];
     },
   ),
-  createShadowView: vi.fn(
-    (texture: { source: string }, box: { x: number; y: number; baseScreenY: number }) => ({
-      view: { cullable: false, source: texture.source, x: box.x, y: box.y, shadow: true },
-      depth: box.baseScreenY,
+  SHADOW_MAP_PIXELS_PER_TILE: 16,
+  SHADOW_BLUR: 2,
+  createGroundShadowView: vi.fn(
+    (texture: { source: unknown; frame: unknown }, tileTop: { x: number; y: number }, _metrics: unknown, depth: number) => ({
+      view: { cullable: false, source: "ground-shadow", groundShadow: true, texture, tileTop, visible: false, alpha: 1 },
+      depth,
     }),
   ),
-  placeShadowView: vi.fn(
-    (view: { shape?: unknown; origin?: unknown }, shape: unknown, origin: unknown) => {
-      view.shape = shape;
-      view.origin = origin;
-    },
-  ),
+  createSilhouettes: vi.fn((_views: unknown, box: { x: number; y: number; box: { elevation: number } }) => [{
+    sprite: { visible: false, silhouetteOf: box.box },
+    worldFoot: { x: box.x, y: box.y },
+    screenFoot: { x: 0, y: 0 },
+    display: { left: 0, top: 0, width: 1, height: 1 },
+  }]),
+  placeSilhouette: vi.fn((silhouette: { sprite: { visible: boolean } }) => {
+    silhouette.sprite.visible = true;
+  }),
   addInDepthOrder: vi.fn(
     (container: { addChild: (child: unknown) => void }, views: { view: unknown; depth: number }[]) => {
       [...views].sort((a, b) => a.depth - b.depth).forEach(({ view }) => container.addChild(view));
@@ -91,11 +129,19 @@ vi.mock("../render", async () => ({
 import { Assets } from "pixi.js";
 import type { TerrainPoint } from "../../types";
 import { Entity, indexEntities } from "../entities";
-import { addInDepthOrder, createShadowView, createSvgColorVariant, placeShadowView } from "../render";
-import { getShadowShape } from "../lighting";
+import { Assets as PixiAssets, RenderTexture } from "pixi.js";
+import {
+  addInDepthOrder,
+  createGroundShadowView,
+  createSilhouettes,
+  createSvgColorVariant,
+  placeSilhouette,
+} from "../render";
+import { getShadowProjection, getSilhouetteMatrix, SHADOW_REFRESH_TICKS } from "../lighting";
 import { Box, classifyColumnSurfaces } from "../terrain";
 import { generateWorld, type World } from "../world";
 import { DEFAULT_SKY_PALETTE, TICKS_PER_DAY, getSunState } from "../time";
+import { TILE_METRICS } from "../constants";
 import { rgbToTint } from "../render/color";
 import { createIsometricScene } from "./scene";
 
@@ -199,6 +245,7 @@ describe("createIsometricScene", () => {
     const app = {
       screen: { width: 1300, height: 1000 },
       ticker: createTicker(),
+      renderer: { render: vi.fn() },
       stage: { addChild: vi.fn() },
     };
 
@@ -209,7 +256,6 @@ describe("createIsometricScene", () => {
     expect(Assets.load).toHaveBeenCalledWith("/assets/water/block.svg");
     expect(Assets.load).toHaveBeenCalledWith("/assets/sand/block.svg");
     expect(Assets.load).toHaveBeenCalledWith("/assets/statue/block.svg");
-    expect(Assets.load).toHaveBeenCalledWith("/assets/shadow/blob.svg");
     expect(renderCalls.length).toBeGreaterThan(0);
     expect(renderCalls.some(({ texture }) => texture.source.includes("water"))).toBe(true);
     expect(renderCalls.some(({ texture }) => texture.source.includes("ground"))).toBe(true);
@@ -235,7 +281,6 @@ describe("createIsometricScene", () => {
     expect(Assets.unload).toHaveBeenCalledWith("/assets/water/block.svg");
     expect(Assets.unload).toHaveBeenCalledWith("/assets/sand/block.svg");
     expect(Assets.unload).toHaveBeenCalledWith("/assets/statue/block.svg");
-    expect(Assets.unload).toHaveBeenCalledWith("/assets/shadow/blob.svg");
   });
 
   it("does not render when a required texture is unavailable", async () => {
@@ -245,6 +290,7 @@ describe("createIsometricScene", () => {
     const app = {
       screen: { width: 1300, height: 1000 },
       ticker: createTicker(),
+      renderer: { render: vi.fn() },
       stage: { addChild: vi.fn() },
     };
 
@@ -258,6 +304,7 @@ describe("createIsometricScene", () => {
     const app = {
       screen: { width: 1300, height: 1000 },
       ticker: createTicker(),
+      renderer: { render: vi.fn() },
       stage: { addChild: vi.fn() },
     };
 
@@ -278,6 +325,7 @@ describe("createIsometricScene", () => {
     const app = {
       screen: { width: 1300, height: 1000 },
       ticker: createTicker(),
+      renderer: { render: vi.fn() },
       stage: { addChild: vi.fn() },
     };
     const definition = {
@@ -307,6 +355,7 @@ describe("createIsometricScene", () => {
     const app = {
       screen: { width: 1300, height: 1000 },
       ticker: createTicker(),
+      renderer: { render: vi.fn() },
       stage: { addChild: (child: never) => stageChildren.push(child) },
     };
 
@@ -317,7 +366,7 @@ describe("createIsometricScene", () => {
     expect(scene.sortableChildren).toBe(false);
     // Off-screen views are created too: Pixi's culler hides them per frame.
     expect(scene.children).toHaveLength(
-      renderCalls.length + vi.mocked(createShadowView).mock.calls.length,
+      renderCalls.length + vi.mocked(createGroundShadowView).mock.calls.length,
     );
     expect(scene.children.every(({ cullable }) => cullable)).toBe(true);
     destroyScene();
@@ -327,6 +376,7 @@ describe("createIsometricScene", () => {
     const app = {
       screen: { width: 1300, height: 1000 },
       ticker: createTicker(),
+      renderer: { render: vi.fn() },
       stage: { addChild: vi.fn() },
     };
     const randomSpy = vi.spyOn(Math, "random");
@@ -346,6 +396,7 @@ describe("createIsometricScene", () => {
     const app = {
       screen: { width: 1300, height: 1000 },
       ticker: createTicker(),
+      renderer: { render: vi.fn() },
       stage: { addChild: vi.fn() },
     };
 
@@ -363,6 +414,7 @@ describe("createIsometricScene", () => {
     const app = {
       screen: { width: 1300, height: 1000 },
       ticker: createTicker(),
+      renderer: { render: vi.fn() },
       stage: { addChild: vi.fn() },
     };
 
@@ -403,6 +455,7 @@ describe("createIsometricScene", () => {
     const app = {
       screen: { width: 1300, height: 1000 },
       ticker: createTicker(),
+      renderer: { render: vi.fn() },
       stage: { addChild: vi.fn() },
     };
 
@@ -419,6 +472,7 @@ describe("createIsometricScene", () => {
       const app = {
         screen: { width: 1300, height: 1000 },
         ticker,
+        renderer: { render: vi.fn() },
         stage: { addChild: (child: TintedContainer) => stageChildren.push(child) },
       };
       const destroyScene = await createIsometricScene(app as never, world);
@@ -475,109 +529,178 @@ describe("createIsometricScene", () => {
   });
 
   describe("shadows", () => {
+    type View = {
+      source: string;
+      x?: number;
+      y?: number;
+      groundShadow?: boolean;
+      tileTop?: { x: number; y: number };
+      texture?: { source: unknown; frame: { x: number; y: number; width: number; height: number } };
+      visible?: boolean;
+      alpha?: number;
+    };
+
     // An earlier test replaces the loader's implementation; start from the default one.
     beforeEach(() => {
-      vi.mocked(Assets.load).mockImplementation(async (source) => {
+      vi.mocked(PixiAssets.load).mockImplementation(async (source) => {
         const texture = { source: source as unknown as string };
         loadedTextures.set(texture.source, texture);
         return texture as never;
       });
     });
 
-    type View = { source: string; x: number; y: number; shadow?: boolean; shape?: unknown; origin?: unknown };
-
     const sceneOf = async (world: World) => {
       const ticker = createTicker();
+      const renderer = { render: vi.fn() };
       const stageChildren: { children: View[] }[] = [];
       const app = {
         screen: { width: 1300, height: 1000 },
         ticker,
+        renderer,
         stage: { addChild: (child: { children: View[] }) => stageChildren.push(child) },
       };
       const destroyScene = await createIsometricScene(app as never, world);
-      return { ticker, children: stageChildren[0].children, destroyScene };
+      return { ticker, renderer, children: stageChildren[0].children, destroyScene };
     };
-    const withEntitiesAt = (hour: number) => {
-      const world = defaultWorld(createTestEntities);
-      world.clock.tick = (hour / 24) * TICKS_PER_DAY;
+    const at = (world: World, hour: number) => {
+      world.clock.tick = Math.round((hour / 24) * TICKS_PER_DAY);
       return world;
     };
-    const caster = (world: World) => world.entities[0];
+    const groundShadows = (children: View[]) => children.filter(({ groundShadow }) => groundShadow);
 
-    it("creates one shadow per entity, drawn over its ground and under the entity", async () => {
-      const world = withEntitiesAt(12);
+    it("puts a shadow layer on the top of every column, right after its top block", async () => {
+      const world = at(defaultWorld(createTestEntities), 12);
       const { children, destroyScene } = await sceneOf(world);
-      const { x, y } = caster(world);
-      const shadowIndex = children.findIndex(({ shadow }) => shadow);
-      const entityIndex = children.findIndex(({ source }) => source.includes("statue"));
-      const groundIndex = children.reduce(
-        (last, view, index) =>
-          !view.shadow && !view.source.includes("statue") && view.x === x && view.y === y ? index : last,
+      const entity = world.entities[0];
+      const isAt = (view: View, x: number, y: number) => view.x === x && view.y === y;
+      const topIndex = children.reduce(
+        (last, view, index) => (!view.groundShadow && !view.source.includes("statue") && isAt(view, entity.x, entity.y) ? index : last),
         -1,
       );
+      const shadowIndex = children.findIndex(
+        (view) => view.groundShadow && view.texture?.frame.x === (entity.x - 0) * 16 && view.texture.frame.y === entity.y * 16,
+      );
+      const entityIndex = children.findIndex(({ source }) => source.includes("statue"));
 
-      expect(createShadowView).toHaveBeenCalledTimes(world.entities.length);
-      expect(children[shadowIndex].source).toBe("/assets/shadow/blob.svg");
-      expect(groundIndex).toBeLessThan(shadowIndex);
+      expect(groundShadows(children)).toHaveLength(world.columns.length);
+      expect(topIndex).toBeLessThan(shadowIndex);
       expect(shadowIndex).toBeLessThan(entityIndex);
       destroyScene();
     });
 
-    it("lays shadows for the sun of the current tick, from the caster's ground point", async () => {
-      const world = withEntitiesAt(15);
+    it("gives each tile its square of the shadow map of its own elevation", async () => {
+      const world = worldFrom([
+        { x: 0, y: 0, elevation: 2 },
+        { x: 1, y: 0, elevation: 2 },
+        { x: 0, y: 1, elevation: 1 },
+        { x: 1, y: 1, elevation: -1 },
+      ]);
       const { children, destroyScene } = await sceneOf(world);
-      const shadow = children.find(({ shadow: isShadow }) => isShadow);
-      const entity = caster(world);
+      const shadows = groundShadows(children);
 
-      expect(shadow?.shape).toEqual(getShadowShape(getSunState(world.clock.tick), {
-        height: entity.height,
-        length: entity.length,
-        lengthAxis: "x",
-      }));
-      expect(shadow?.origin).toEqual({ x: expect.any(Number), y: expect.any(Number) });
+      expect(RenderTexture.create).toHaveBeenCalledTimes(3);
+      expect(RenderTexture.create).toHaveBeenCalledWith({ width: 32, height: 32 });
+      const frames = shadows.map(({ texture }) => texture?.frame);
+      expect(frames).toEqual(expect.arrayContaining([
+        { x: 0, y: 0, width: 16, height: 16 },
+        { x: 16, y: 0, width: 16, height: 16 },
+        { x: 0, y: 16, width: 16, height: 16 },
+        { x: 16, y: 16, width: 16, height: 16 },
+      ]));
+      const sourceOf = (fx: number, fy: number) =>
+        shadows.find(({ texture }) => texture?.frame.x === fx && texture.frame.y === fy)?.texture?.source;
+      expect(sourceOf(0, 0)).toBe(sourceOf(16, 0));
+      expect(sourceOf(0, 0)).not.toBe(sourceOf(0, 16));
       destroyScene();
     });
 
-    it("hides shadows at night", async () => {
-      const { children, destroyScene } = await sceneOf(withEntitiesAt(0));
+    it("lays the shadow of a sand tile on its half-height top", async () => {
+      const { children, destroyScene } = await sceneOf(worldFrom([
+        { x: 0, y: 0, elevation: -1 },
+        { x: 1, y: 0, elevation: 0 },
+        { x: 2, y: 0, elevation: 0 },
+        { x: 3, y: 0, elevation: 0 },
+      ]));
+      const blockAt = (x: number) =>
+        children.filter((view) => !view.groundShadow && view.x === x && view.source.includes("/")).at(-1);
+      const shadowAt = (frameX: number) => groundShadows(children).find(({ texture }) => texture?.frame.x === frameX);
 
-      expect(children.find(({ shadow }) => shadow)?.shape).toBeNull();
+      expect(blockAt(1)?.source).toBe("/assets/sand/block.svg");
+      // (2, 0) is half a tile higher on screen than (1, 0); the sand top is half a block lower still.
+      expect((shadowAt(16)?.tileTop?.y ?? 0) - (shadowAt(32)?.tileTop?.y ?? 0))
+        .toBeCloseTo(TILE_METRICS.tileHeight / 2 + TILE_METRICS.boxHeight / 2);
       destroyScene();
     });
 
-    it("moves shadows only on frames where the clock advanced", async () => {
-      const world = withEntitiesAt(9);
-      const { ticker, children, destroyScene } = await sceneOf(world);
-      const placed = vi.mocked(placeShadowView).mock.calls.length;
+    it("draws every caster into each shadow map at or below its own ground", async () => {
+      const world = at(defaultWorld(createTestEntities), 15);
+      const { renderer, destroyScene } = await sceneOf(world);
+      const levels = new Set(world.columns.map(({ elevation }) => elevation));
+      const entity = world.entities[0];
+      const projection = getShadowProjection(getSunState(world.clock.tick));
+      const lowerLevels = [...levels].filter((level) => level <= entity.elevation);
 
-      ticker.frame();
-      expect(placeShadowView).toHaveBeenCalledTimes(placed);
-
-      world.clock.tick += TICKS_PER_DAY / 6;
-      ticker.frame();
-      expect(placeShadowView).toHaveBeenCalledTimes(placed + world.entities.length);
-      expect(children.find(({ shadow }) => shadow)?.shape).toEqual(
-        getShadowShape(getSunState(world.clock.tick), {
-          height: caster(world).height,
-          length: caster(world).length,
-          lengthAxis: "x",
-        }),
-      );
-      destroyScene();
-    });
-
-    it("skips shadows when the shadow texture is unavailable", async () => {
-      vi.mocked(Assets.load).mockImplementation(async (source) => {
-        const assetSource = source as unknown as string;
-        if (assetSource.includes("/shadow/")) return undefined as never;
-        return { source: assetSource } as never;
+      expect(createSilhouettes).toHaveBeenCalledTimes(world.entities.length);
+      expect(renderer.render).toHaveBeenCalledTimes(levels.size);
+      expect(renderer.render).toHaveBeenCalledWith(expect.objectContaining({ clear: true, clearColor: [0, 0, 0, 0] }));
+      expect(placeSilhouette).toHaveBeenCalledTimes(lowerLevels.length);
+      lowerLevels.forEach((level) => {
+        expect(placeSilhouette).toHaveBeenCalledWith(
+          expect.anything(),
+          getSilhouetteMatrix(projection as never, { x: entity.x, y: entity.y }, entity.elevation - level, TILE_METRICS),
+          { x: -0.5, y: -0.5 },
+          16,
+        );
       });
-
-      const { children, destroyScene } = await sceneOf(withEntitiesAt(12));
-
-      expect(createShadowView).not.toHaveBeenCalled();
-      expect(children.some(({ source }) => source.includes("statue"))).toBe(true);
       destroyScene();
+    });
+
+    it("shows the shadow layer by day with the sun's opacity and hides it at night", async () => {
+      const day = await sceneOf(at(defaultWorld(), 9));
+      const night = await sceneOf(at(defaultWorld(), 0));
+      const alpha = getShadowProjection(getSunState(Math.round((9 / 24) * TICKS_PER_DAY)))?.alpha;
+
+      expect(groundShadows(day.children).every(({ visible, alpha: a }) => visible && a === alpha)).toBe(true);
+      expect(groundShadows(night.children).every(({ visible }) => !visible)).toBe(true);
+      expect(night.renderer.render).not.toHaveBeenCalled();
+      day.destroyScene();
+      night.destroyScene();
+    });
+
+    it("redraws the shadow maps only every SHADOW_REFRESH_TICKS ticks", async () => {
+      const world = at(defaultWorld(createTestEntities), 10);
+      const { ticker, renderer, destroyScene } = await sceneOf(world);
+      const draws = renderer.render.mock.calls.length;
+
+      world.clock.tick += SHADOW_REFRESH_TICKS - 1;
+      ticker.frame();
+      expect(renderer.render).toHaveBeenCalledTimes(draws);
+
+      world.clock.tick += 1;
+      ticker.frame();
+      expect(renderer.render).toHaveBeenCalledTimes(2 * draws);
+      destroyScene();
+    });
+
+    it("redraws the maps as soon as the sun rises again", async () => {
+      const world = at(defaultWorld(createTestEntities), 5.9);
+      const { ticker, renderer, destroyScene } = await sceneOf(world);
+      expect(renderer.render).not.toHaveBeenCalled();
+
+      world.clock.tick = Math.round((6.2 / 24) * TICKS_PER_DAY);
+      ticker.frame();
+
+      expect(renderer.render).toHaveBeenCalled();
+      destroyScene();
+    });
+
+    it("destroys the shadow maps when the scene is destroyed", async () => {
+      const { destroyScene } = await sceneOf(at(defaultWorld(), 12));
+      const maps = vi.mocked(RenderTexture.create).mock.results.map(({ value }) => value as { destroy: ReturnType<typeof vi.fn> });
+
+      destroyScene();
+
+      maps.forEach((map) => expect(map.destroy).toHaveBeenCalledWith(true));
     });
   });
 });

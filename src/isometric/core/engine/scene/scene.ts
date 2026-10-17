@@ -1,8 +1,18 @@
-import { Application, Assets, Container, type Sprite, Texture, UPDATE_PRIORITY } from "pixi.js";
+import {
+  Application,
+  Assets,
+  BlurFilter,
+  Container,
+  Rectangle,
+  RenderTexture,
+  type Sprite,
+  Texture,
+  UPDATE_PRIORITY,
+} from "pixi.js";
 import type { Entity } from "../entities";
 import { projectBoxesToIsometric } from "../projection";
 import { fillElevations, getBlockMaterial } from "../terrain";
-import type { ShadowCaster, ShadowShape, TerrainMaterial, TerrainSurface } from "../../types";
+import type { ShadowProjection, TerrainMaterial, TerrainSurface } from "../../types";
 import {
   BOX_HEIGHT,
   DEFAULT_MIN_ELEVATION,
@@ -17,15 +27,19 @@ import {
   WATER_BLOCK_TEXTURE_KEY,
 } from "../constants";
 import { CellMap } from "../grid";
-import { getShadowShape } from "../lighting";
+import { getShadowProjection, getSilhouetteMatrix, SHADOW_REFRESH_TICKS } from "../lighting";
 import {
   addInDepthOrder,
   createBlockViews,
-  createShadowView,
+  createGroundShadowView,
+  createSilhouettes,
   createSvgColorVariant,
   type DepthView,
-  placeShadowView,
+  placeSilhouette,
   rgbToTint,
+  SHADOW_BLUR,
+  SHADOW_MAP_PIXELS_PER_TILE,
+  type Silhouette,
 } from "../render";
 import { getSunState } from "../time";
 import type { World } from "../world";
@@ -70,11 +84,13 @@ function getPositiveElevationTint(
  * it, so the same world can be simulated, saved or rendered again. Returns a cleanup that
  * destroys the scene, stops its per-frame updates and unloads its assets.
  *
- * Every entity gets a shadow lying on the ground between its tile and itself. Every frame
- * (from `app.ticker`, at `UPDATE_PRIORITY.NORMAL`: after the simulation, which runs at `HIGH`,
- * and before the Application renders at `LOW`) the scene lights the world for the current
- * tick, only when the tick changed: it tints the world with the sun's ambient light and lays
- * each shadow away from the sun (hidden at night).
+ * Shadows are drawn onto the terrain: every entity's sprites are laid on the ground as black
+ * silhouettes into a shadow map per terrain elevation (world-space render textures), and every
+ * column's top shows its square of the map of its own elevation, right after its top block.
+ * Every frame (from `app.ticker`, at `UPDATE_PRIORITY.NORMAL`: after the simulation, which runs
+ * at `HIGH`, and before the Application renders at `LOW`) the scene lights the world for the
+ * current tick, only when the tick changed: it tints the world with the sun's ambient light and,
+ * every `SHADOW_REFRESH_TICKS` ticks, redraws the shadow maps (hidden at night).
  */
 export async function createIsometricScene(
   app: Application,
@@ -84,7 +100,6 @@ export async function createIsometricScene(
   const groundBlockSource = "/assets/ground/block.svg";
   const waterBlockSource = "/assets/water/block.svg";
   const sandBlockSource = "/assets/sand/block.svg";
-  const shadowSource = "/assets/shadow/blob.svg";
 
   const filledBoxes = fillElevations(world.columns, DEFAULT_MIN_ELEVATION);
   const { entities, surfaces } = world;
@@ -104,12 +119,11 @@ export async function createIsometricScene(
     ).entries(),
   ];
   const textures = new Map<string, Texture>();
-  const [grassTexture, groundTexture, waterTexture, sandTexture, shadowTexture, ...entityTextures] = await Promise.all([
+  const [grassTexture, groundTexture, waterTexture, sandTexture, ...entityTextures] = await Promise.all([
     Assets.load<Texture>(grassBlockSource),
     Assets.load<Texture>(groundBlockSource),
     Assets.load<Texture>(waterBlockSource),
     Assets.load<Texture>(sandBlockSource),
-    Assets.load<Texture>(shadowSource),
     ...entityTextureVariants.map(async ([variantKey, { entity, variation }]) => {
       const source = await createSvgColorVariant(
         entity.textureSource,
@@ -144,7 +158,31 @@ export async function createIsometricScene(
   const scene = new Container({ isRenderGroup: true });
   app.stage.addChild(scene);
   const views: DepthView[] = [];
-  const shadows: { view: Sprite; caster: ShadowCaster; origin: { x: number; y: number } }[] = [];
+
+  // Shadow maps: one world-space render texture per top elevation, a square of
+  // `SHADOW_MAP_PIXELS_PER_TILE` texels per column, texel (0, 0) at `mapOrigin`.
+  const pixelsPerTile = SHADOW_MAP_PIXELS_PER_TILE;
+  const gridMinX = Math.min(...world.columns.map(({ x }) => x));
+  const gridMinY = Math.min(...world.columns.map(({ y }) => y));
+  const gridMaxX = Math.max(...world.columns.map(({ x }) => x));
+  const gridMaxY = Math.max(...world.columns.map(({ y }) => y));
+  const mapOrigin = { x: gridMinX - 0.5, y: gridMinY - 0.5 };
+  const shadowMaps = new Map<number, RenderTexture>();
+  const shadowMapFor = (level: number) => {
+    const existing = shadowMaps.get(level);
+    if (existing) return existing;
+    const map = RenderTexture.create({
+      width: (gridMaxX - gridMinX + 1) * pixelsPerTile,
+      height: (gridMaxY - gridMinY + 1) * pixelsPerTile,
+    });
+    shadowMaps.set(level, map);
+    return map;
+  };
+  const groundShadows: Sprite[] = [];
+  // Silhouettes are drawn into the shadow maps, never into the scene; blurred for soft edges.
+  const casters = new Container();
+  casters.filters = [new BlurFilter({ strength: SHADOW_BLUR, quality: 2 })];
+  const silhouettes: { silhouette: Silhouette; elevation: number }[] = [];
 
   // Each world column holds its top elevation.
   const topElevationByColumn = CellMap.from(world.columns, ({ elevation }) => elevation);
@@ -206,32 +244,36 @@ export async function createIsometricScene(
             maxPositiveElevation,
             material === "sand" ? SAND_TOP_TINT : POSITIVE_ELEVATION_TOP_TINT,
           );
-      views.push(...createBlockViews({
+      const blockViews = createBlockViews({
         texture,
         box,
         metrics: TILE_METRICS,
         tint,
-      }));
+      });
+      views.push(...blockViews);
+
+      // The top of the column shows its square of the shadow map of its elevation; sand tops
+      // are half a block lower than the block.
+      if (box.box.elevation !== topElevationByColumn.get(box.x, box.y)) return;
+      const frame = new Texture({
+        source: shadowMapFor(box.box.elevation).source,
+        frame: new Rectangle(
+          (box.x - gridMinX) * pixelsPerTile,
+          (box.y - gridMinY) * pixelsPerTile,
+          pixelsPerTile,
+          pixelsPerTile,
+        ),
+      });
+      const tileTop = { x: box.screenX, y: box.screenY + (material === "sand" ? BOX_HEIGHT / 2 : 0) };
+      const groundShadow = createGroundShadowView(frame, tileTop, TILE_METRICS, blockViews[0].depth);
+      views.push(groundShadow);
+      groundShadows.push(groundShadow.view as Sprite);
     });
     projectedEntities.forEach((entity) => {
       const texture = entityTexturesByEntity.get(entity.box);
       if (!texture) return;
 
-      // Added after the terrain and before the entity, with the depth of its anchor tile.
-      if (shadowTexture) {
-        const shadow = createShadowView(shadowTexture, entity, TILE_METRICS);
-        views.push(shadow);
-        shadows.push({
-          view: shadow.view as Sprite,
-          caster: {
-            height: entity.box.height,
-            length: entity.box.length,
-            lengthAxis: entity.box.lengthAxis ?? "x",
-          },
-          origin: { x: entity.screenX, y: entity.screenY },
-        });
-      }
-      views.push(...createBlockViews({
+      const entityViews = createBlockViews({
         texture,
         box: entity,
         metrics: TILE_METRICS,
@@ -240,7 +282,13 @@ export async function createIsometricScene(
         length: entity.box.length,
         debug: entity.box.debug,
         lengthAxis: entity.box.lengthAxis,
-      }));
+      });
+      views.push(...entityViews);
+      createSilhouettes(entityViews, entity, TILE_METRICS, entity.box.length, entity.box.lengthAxis ?? "x")
+        .forEach((silhouette) => {
+          casters.addChild(silhouette.sprite);
+          silhouettes.push({ silhouette, elevation: entity.box.elevation });
+        });
     });
   }
 
@@ -251,15 +299,41 @@ export async function createIsometricScene(
   });
   addInDepthOrder(scene, views);
 
+  // Each map holds the shadows falling on ground of its elevation: casters standing on that
+  // ground or higher, laid further away the higher they stand (shadows onto higher ground are
+  // not drawn).
+  const drawShadowMaps = (projection: ShadowProjection) => {
+    shadowMaps.forEach((map, level) => {
+      silhouettes.forEach(({ silhouette, elevation }) => {
+        if (elevation < level) {
+          silhouette.sprite.visible = false;
+          return;
+        }
+        const ground = getSilhouetteMatrix(projection, silhouette.worldFoot, elevation - level, TILE_METRICS);
+        placeSilhouette(silhouette, ground, mapOrigin, pixelsPerTile);
+      });
+      app.renderer.render({ container: casters, target: map, clear: true, clearColor: [0, 0, 0, 0] });
+    });
+  };
+  let shadowTick: number | undefined;
   const lightWorld = (tick: number) => {
     const sun = getSunState(tick);
     scene.tint = rgbToTint(sun.ambient);
-    // Casters of the same size share one shape per tick.
-    const shapes = new Map<string, ShadowShape | null>();
-    shadows.forEach(({ view, caster, origin }) => {
-      const key = [caster.height, caster.length, caster.lengthAxis].join("|");
-      if (!shapes.has(key)) shapes.set(key, getShadowShape(sun, caster));
-      placeShadowView(view, shapes.get(key) as ShadowShape | null, origin, TILE_METRICS);
+    const projection = getShadowProjection(sun);
+    if (!projection) {
+      groundShadows.forEach((view) => {
+        view.visible = false;
+      });
+      shadowTick = undefined;
+      return;
+    }
+    if (shadowTick === undefined || Math.abs(tick - shadowTick) >= SHADOW_REFRESH_TICKS) {
+      drawShadowMaps(projection);
+      shadowTick = tick;
+    }
+    groundShadows.forEach((view) => {
+      view.visible = true;
+      view.alpha = projection.alpha;
     });
   };
   let litTick = world.clock.tick;
@@ -274,11 +348,12 @@ export async function createIsometricScene(
   return () => {
     app.ticker.remove(updateLight, undefined);
     scene.destroy({ children: true });
+    casters.destroy({ children: true });
+    shadowMaps.forEach((map) => map.destroy(true));
     void Assets.unload(grassBlockSource);
     void Assets.unload(groundBlockSource);
     void Assets.unload(waterBlockSource);
     void Assets.unload(sandBlockSource);
-    void Assets.unload(shadowSource);
     loadedEntitySources.forEach((source) => void Assets.unload(source));
   };
 }

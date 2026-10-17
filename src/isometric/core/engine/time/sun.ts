@@ -66,18 +66,17 @@ export function sampleSkyPalette(palette: readonly SkyKey[], elevation: number):
   };
 }
 
-/** Sun azimuth at sunrise, in radians from `+x` toward `+y`: `−y`, the lower right of the screen. */
-const SUNRISE_AZIMUTH = -Math.PI / 2;
-/** Azimuth swept from sunrise to sunset: a quarter turn, to `−x`, the lower left of the screen. */
-const AZIMUTH_SWEEP = -Math.PI / 2;
+/** East in world grid axes: screen right (north is screen up, `+x +y`). */
+const EAST = { x: Math.SQRT1_2, y: -Math.SQRT1_2 };
+/** South in world grid axes: toward the camera (screen down). */
+const SOUTH = { x: -Math.SQRT1_2, y: -Math.SQRT1_2 };
 
 /**
- * Sunlight at a tick. The sun rises at 06:00, peaks at {@link SUN_MAX_ALTITUDE} at noon and
- * sets at 18:00. Its azimuth turns steadily from `−y` (the lower right of the screen) through
- * `−x −y` (the camera side) to `−x` (the lower left): a stylised quarter turn instead of the
- * real half turn, so the sun always stays in front of the scene. Shadows then only fall on
- * the caster's own tile and the tiles behind it, which are drawn before the caster; the tiles
- * in front (smaller `x` or `y`) are drawn later and would cut any shadow reaching them.
+ * Sunlight at a tick. North is screen up, so the camera looks north. The sun follows a tilted
+ * circle: it rises in the east (screen right, `+x −y`) at 06:00, peaks in the south (the
+ * camera side, `−x −y`) at {@link SUN_MAX_ALTITUDE} at noon and sets in the west (screen left,
+ * `−x +y`) at 18:00. It never lights the scene from behind, so shadows fall sideways at dawn
+ * and dusk and away from the viewer at noon.
  *
  * Pure and deterministic: the same tick always gives the same state.
  *
@@ -87,14 +86,14 @@ export function getSunState(tick: number, palette: readonly SkyKey[] = DEFAULT_S
   const timeOfDay = getTimeOfDay(tick);
   const angle = 2 * Math.PI * (timeOfDay - 0.25);
   const elevation = Math.sin(angle) * Math.sin(SUN_MAX_ALTITUDE);
-  const horizontal = Math.sqrt(1 - elevation * elevation);
-  const azimuth = SUNRISE_AZIMUTH + AZIMUTH_SWEEP * (angle / Math.PI);
+  const east = Math.cos(angle);
+  const south = Math.sin(angle) * Math.cos(SUN_MAX_ALTITUDE);
 
   return {
     timeOfDay,
     direction: {
-      x: Math.cos(azimuth) * horizontal,
-      y: Math.sin(azimuth) * horizontal,
+      x: east * EAST.x + south * SOUTH.x,
+      y: east * EAST.y + south * SOUTH.y,
       z: elevation,
     },
     elevation,
