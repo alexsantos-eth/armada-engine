@@ -13,8 +13,8 @@ La lógica principal vive en `src/isometric/core`.
 ```text
 core/
   engine/
-    board/
     constants/
+    culling/
     entities/
     projection/
     random/

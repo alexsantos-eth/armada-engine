@@ -47,7 +47,7 @@ vi.mock("pixi.js", () => {
   return { Graphics, Rectangle, Sprite, Texture };
 });
 
-import { Box } from "../entities";
+import { Box } from "../terrain";
 import { getFootprintSliceTiles, renderBlock } from "./render";
 
 const carTexture = {

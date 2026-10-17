@@ -1,7 +1,7 @@
 import { Application, Assets, Container, Texture } from "pixi.js";
 import type { Entity } from "../entities";
-import { projectBoxesToIsometric } from "../board";
-import { getBlockMaterial } from "../terrain";
+import { projectBoxesToIsometric } from "../projection";
+import { fillElevations, getBlockMaterial } from "../terrain";
 import type { TerrainMaterial, TerrainSurface } from "../../types";
 import {
   BOX_HEIGHT,
@@ -15,7 +15,7 @@ import {
   SAND_BLOCK_TEXTURE_KEY,
   WATER_BLOCK_TEXTURE_KEY,
 } from "../constants";
-import { fillElevations, isWithinViewport } from "../projection";
+import { isWithinViewport } from "../culling";
 import { createSvgColorVariant, renderBlock } from "../render";
 import type { World } from "../world";
 
@@ -68,7 +68,7 @@ export async function createIsometricScene(
   const waterBlockSource = "/assets/water/block.svg";
   const sandBlockSource = "/assets/sand/block.svg";
 
-  const filledBoxes = fillElevations([...world.columns], DEFAULT_MIN_ELEVATION);
+  const filledBoxes = fillElevations(world.columns, DEFAULT_MIN_ELEVATION);
   const { entities, surfaces } = world;
   // One texture per (entity type, color variation): instances share it instead of each
   // fetching and decoding its own SVG. Types without `colorReplacements` share their source.
@@ -157,7 +157,7 @@ export async function createIsometricScene(
     originY: app.screen.height / 2 - (minY + maxY) / 2,
   };
   const projectedBoxes = projectBoxesToIsometric(filledBoxes, projection);
-  const projectedEntities = projectBoxesToIsometric([...entities], projection);
+  const projectedEntities = projectBoxesToIsometric(entities, projection);
   const grassTextureForRender = textures.get(GRASS_BLOCK_TEXTURE_KEY);
   const groundTextureForRender = textures.get(GROUND_BLOCK_TEXTURE_KEY);
   const waterTextureForRender = textures.get(WATER_BLOCK_TEXTURE_KEY);

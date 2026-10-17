@@ -1,42 +1,26 @@
-import { VIEW_CULL_MARGIN } from "../constants";
-import { Box } from "../entities";
+import type { IGridObject, IsoProjectionConfig, IsoScreenBox } from "../../types";
 
-export function buildFilledElevationLevels(
-  targetElevation: number,
-  minElevation: number,
-): number[] {
-  const targetLevel = Math.floor(targetElevation);
+/**
+ * Projects grid objects to isometric screen coordinates. `baseScreenY` is the ground
+ * contact point (stable for depth sorting) and `screenY` adds the elevation offset.
+ */
+export function projectBoxesToIsometric<T extends IGridObject>(
+  boxes: readonly T[],
+  projection: IsoProjectionConfig,
+): IsoScreenBox<T>[] {
+  const { tileWidth, tileHeight, originX, originY } = projection;
+  const elevationStep = projection.elevationStep ?? tileHeight / 2;
 
-  if (targetLevel < minElevation) {
-    const depth = minElevation - targetLevel;
+  return boxes.map((box) => {
+    const baseScreenY = originY - (box.x + box.y) * (tileHeight / 2);
 
-    return Array.from({ length: depth }, (_, index) => targetLevel + index);
-  }
-
-  const depth = targetLevel - minElevation + 1;
-  return Array.from({ length: depth }, (_, index) => minElevation + index);
-}
-
-export function fillElevations(boxes: Box[], minElevation: number): Box[] {
-  return boxes.flatMap((box) => {
-    const boxData = box.getData();
-
-    return buildFilledElevationLevels(box.elevation, minElevation).map(
-      (elevation) => new Box(box.x, box.y, { ...boxData, elevation }),
-    );
+    return {
+      x: box.x,
+      y: box.y,
+      box,
+      screenX: originX + (box.x - box.y) * (tileWidth / 2),
+      baseScreenY,
+      screenY: baseScreenY - box.elevation * elevationStep,
+    };
   });
-}
-
-export function isWithinViewport(
-  x: number,
-  y: number,
-  viewportWidth: number,
-  viewportHeight: number,
-): boolean {
-  return (
-    x >= -VIEW_CULL_MARGIN &&
-    x <= viewportWidth + VIEW_CULL_MARGIN &&
-    y >= -VIEW_CULL_MARGIN &&
-    y <= viewportHeight + VIEW_CULL_MARGIN
-  );
 }

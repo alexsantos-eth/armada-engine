@@ -6,6 +6,15 @@ Criterio: el core debe sostener un **RPG isométrico procedural de supervivencia
 
 Niveles: **Bloqueante** (rompe la visión) · **Alta** (reescritura cara cuando llegue un sistema previsto) · **Media** (corregible localmente) · **Baja** (higiene).
 
+## 2026-10-16 — Capas reordenadas (fase 3 parcial)
+
+| # | Estado | Cambio |
+|---|---|---|
+| 9 | Corregido (parcial) | `Box` pasa de `entities` a `terrain/box.ts`; `buildFilledElevationLevels`/`fillElevations` de `projection` a `terrain/columns.ts`. `board` → `projection` (`projectBoxesToIsometric`) y el culling sale a `culling` (`isWithinViewport`). Eliminada la carpeta `board`. |
+| 9 | Nuevo guardián | `engine/architecture.test.ts` fija el grafo de dependencias (acíclico: `constants`/`random` → `terrain` → `entities` → `world` → `scene`), exige importar por barrel, limita Pixi a `render`/`scene` y prohíbe `window`/`document`/`localStorage` en el motor. |
+
+Queda de la fase 3: mover `ENTITY_CONFIG` (contenido) fuera del módulo `entities` a una carpeta de contenido. Siguen pendientes las fases 4 (chunks) y 5 (bucle y cámara).
+
 ## 2026-10-16 — Modelo World y core sin `window`
 
 Aplicadas las fases 1 y 2 del plan, a petición del usuario.
@@ -17,7 +26,7 @@ Aplicadas las fases 1 y 2 del plan, a petición del usuario.
 | 8 | Corregido | `WIDTH` es una constante estática (1300); el core no lee `window`. Eliminado el shim `tests/setup.ts`: si un módulo del core vuelve a leer `window`, la suite falla. |
 | 11 | Corregido | `colorVariant` forma parte de `EntityData`: se elige al crear la entidad (flujo `"entity-color-variants"`) y se guarda. `getColorVariationCount`/`pickColorVariation` pasan de `render/svg` a `entities/variants`. |
 
-Pendiente del plan: fases 3 (capas: `Box`/`fillElevations` a `terrain`, renombrar `board`/`projection`, contenido fuera de `entities`), 4 (chunks) y 5 (bucle y cámara). Nota para la fase 4: los snapshots solo guardan entidades; cuando el terreno sea modificable habrá que guardar sus deltas y subir `WORLD_SNAPSHOT_VERSION`.
+Pendiente del plan en ese momento: fases 3 (capas), 4 (chunks) y 5 (bucle y cámara). Nota para la fase 4: los snapshots solo guardan entidades; cuando el terreno sea modificable habrá que guardar sus deltas y subir `WORLD_SNAPSHOT_VERSION`.
 
 ## 2026-10-16 — Primera revisión (tras el trabajo de formaciones)
 
@@ -40,7 +49,7 @@ Las formaciones (`formation.ts`) están bien aisladas, son puras y consumen `ran
 | 6 | Alta | **Mundo de tamaño fijo, sin chunks.** `TERRAIN_WIDTH × TERRAIN_HEIGHT` y caché singleton de módulo. El ruido ya se muestrea en coordenadas absolutas (bien), pero ni terreno, ni entidades, ni render trabajan por chunk. | `terrain/terrain.ts`, `constants.ts` |
 | 7 | Alta | **Render estático, sin bucle ni cámara.** Se crean sprites una vez, el culling se hace solo al construir (lo que queda fuera nunca existe) y no hay bucle de simulación de paso fijo, reloj de juego ni movimiento de cámara. | `scene/scene.ts`, `projection.ts` |
 | 8 | Media (corregido) | **El core depende de `window` al importarse.** `constants.ts` lee `window.innerWidth`; impide ejecutar la simulación en un worker o en Node sin el shim de `tests/setup.ts`. Las medidas de pantalla deben llegar como configuración de vista. | `constants/constants.ts` |
-| 9 | Media | **Responsabilidades cruzadas.** `Box` (terreno) vive en `entities`; `projection.ts` importa `Box` y hace relleno de columnas + culling, mientras la proyección real está en `board`. Contenido (`ENTITY_CONFIG`) dentro del módulo de motor `entities`. | `entities/entities.ts`, `projection/`, `board/`, `entities/config.ts` |
+| 9 | Media (corregido salvo contenido) | **Responsabilidades cruzadas.** `Box` (terreno) vive en `entities`; `projection.ts` importa `Box` y hace relleno de columnas + culling, mientras la proyección real está en `board`. Contenido (`ENTITY_CONFIG`) dentro del módulo de motor `entities`. | `entities/entities.ts`, `projection/`, `board/`, `entities/config.ts` |
 | 10 | Media | **Índice espacial por strings.** Claves `` `${x}:${y}` `` dispersas y `Map`/`Set` globales para todo el mapa. Sirve a 32×32; no escala a consultas de vecindad, colisión ni pathfinding en mundos grandes. | `entities.ts`, `surfaces.ts`, `scene.ts` |
 | 11 | Media (corregido) | **La variación de color no forma parte del estado de la entidad.** Se reproduce desde la semilla, pero si una entidad se crea o se mueve en partida no conserva su variante al guardar. | `scene.ts` → debería pasar a `EntityData` |
 | 12 | Baja | `renderBlock()` con 12 parámetros posicionales; difícil de extender (animación, selección, sombras). | `render/render.ts` |

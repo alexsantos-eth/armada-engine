@@ -9,11 +9,15 @@ El flujo principal es:
 ```mermaid
 flowchart LR
   Main[src/main.tsx] --> Page[src/isometric/page.tsx]
+  Page --> World[engine/world]
   Page --> Scene[engine/scene]
-  Scene --> Terrain[engine/terrain]
-  Scene --> Entities[engine/entities]
+  World --> Entities[engine/entities]
+  World --> Terrain[engine/terrain]
+  Entities --> Terrain
+  Terrain --> Random[engine/random]
+  Scene --> World
   Scene --> Projection[engine/projection]
-  Scene --> Board[engine/board]
+  Scene --> Culling[engine/culling]
   Scene --> Render[engine/render]
   Render --> Pixi[PixiJS]
   Scene --> Assets[SVG block assets]
@@ -40,13 +44,13 @@ Cada responsabilidad tiene una carpeta y un barrel `index.ts`:
 ```text
 src/isometric/core/
   engine/
-    board/
-      board.ts
-      board.test.ts
-      index.ts
     constants/
       constants.ts
       constants.test.ts
+      index.ts
+    culling/
+      culling.ts
+      culling.test.ts
       index.ts
     entities/
       config.ts
@@ -75,6 +79,10 @@ src/isometric/core/
       scene.test.ts
       index.ts
     terrain/
+      box.ts
+      box.test.ts
+      columns.ts
+      columns.test.ts
       terrain.ts
       terrain.test.ts
       surfaces.ts
@@ -86,6 +94,7 @@ src/isometric/core/
       world.ts
       world.test.ts
       index.ts
+    architecture.test.ts
     index.ts
   types/
     entities.ts
@@ -93,6 +102,22 @@ src/isometric/core/
     terrain.ts
     index.ts
 ```
+
+Responsabilidades y dependencias permitidas (entre módulos solo a través de su barrel):
+
+| Módulo | Responsabilidad | Puede importar |
+|---|---|---|
+| `constants` | Medidas, rangos y claves de textura | — |
+| `random` | Aleatoriedad con semilla | — |
+| `terrain` | `Box`, ruido, relleno de columnas (`fillElevations`), superficies y meseta de aparición | `constants`, `random` |
+| `entities` | `Entity`, configuración, colocación, formaciones y variantes de color | `random`, `terrain` |
+| `world` | Modelo `World`, generación y guardado | `constants`, `entities`, `random`, `terrain` |
+| `projection` | Rejilla → coordenadas de pantalla isométricas (`projectBoxesToIsometric`) | — |
+| `culling` | Visibilidad en el viewport (`isWithinViewport`) | `constants` |
+| `render` | Sprites Pixi y recoloreado SVG | — |
+| `scene` | Orquesta el render de un `World` | todos salvo `random` |
+
+Solo `render` y `scene` importan Pixi, y ningún módulo del motor lee `window`, `document` ni `localStorage`. `engine/architecture.test.ts` comprueba estas reglas sobre el código fuente: un import no permitido, saltarse un barrel o usar Pixi o el navegador en otro módulo hace fallar la suite.
 
 Los archivos de tipos no contienen lógica runtime y no tienen tests propios. TypeScript y Typedoc validan esos contratos. Los módulos de comportamiento sí tienen tests co-localizados con el sufijo `.test.ts`.
 
@@ -117,7 +142,7 @@ La lógica de dominio y generación nunca llama a `Math.random()` ni usa el relo
 
 ## Modelo de terreno y entidades
 
-`Box` representa exclusivamente una celda materializada de terreno. Sus coordenadas `x` e `y` son inmutables; sus datos (`type`, `walkable`, `elevation` y `metadata`) pueden actualizarse mediante `update()`.
+`Box` (`engine/terrain/box.ts`) representa exclusivamente una celda materializada de terreno. Sus coordenadas `x` e `y` son inmutables; sus datos (`type`, `walkable`, `elevation` y `metadata`) pueden actualizarse mediante `update()`.
 
 La clase aplica datos por defecto y combina metadata de forma superficial. `getData()` devuelve una copia de los datos y una copia de `metadata`, de modo que el consumidor no puede modificar el estado interno accidentalmente.
 
@@ -160,7 +185,7 @@ Como la tirada es por grupo, una definición agrupada en tríos debe usar aproxi
 
 La escena materializa las columnas para dibujarlas:
 
-`fillElevations(boxes, minElevation)` materializa todos los niveles entre `minElevation` y la elevación de cada caja. Por ejemplo:
+`fillElevations(boxes, minElevation)` (`engine/terrain/columns.ts`) materializa todos los niveles entre `minElevation` y la elevación de cada caja. Por ejemplo:
 
 ```text
 elevación final: 2
@@ -172,7 +197,7 @@ Esto garantiza que una columna alta no aparezca flotando y que cada nivel pueda 
 
 ## Proyección isométrica
 
-`projectBoxesToIsometric()` conserva la caja original y añade sus coordenadas de pantalla.
+`projectBoxesToIsometric()` (`engine/projection`) conserva la caja original y añade sus coordenadas de pantalla.
 
 Con ancho `tw`, alto `th`, origen `(ox, oy)` y paso vertical `e`, las fórmulas son:
 
@@ -184,7 +209,7 @@ screenY    = baseScreenY - elevation * e
 
 `baseScreenY` representa el contacto con el suelo sin desplazar por elevación. Se usa para ordenar sprites de forma estable. Si no se especifica `elevationStep`, se usa `th / 2`.
 
-Antes de renderizar, la escena calcula los extremos proyectados de todas las cajas y centra el conjunto en el viewport. Después `isWithinViewport()` descarta cajas fuera del viewport más un margen de `VIEW_CULL_MARGIN`.
+Antes de renderizar, la escena calcula los extremos proyectados de todas las cajas y centra el conjunto en el viewport. Después `isWithinViewport()` (`engine/culling`) descarta cajas fuera del viewport más un margen de `VIEW_CULL_MARGIN`.
 
 ## Selección de materiales y entidades
 
@@ -277,7 +302,7 @@ Para añadir una entidad:
 4. No añadir condiciones específicas de la entidad en `scene.ts`, `Box` o `render.ts`.
 5. Ejecutar coverage, build y Typedoc.
 
-Para añadir una nueva regla de elevación, modificar primero `projection` o la selección de materiales, según dónde pertenezca la decisión. No introducir esa lógica dentro de `render`, porque el renderer solo debe convertir una decisión ya tomada en un Sprite.
+Para añadir una nueva regla de elevación, modificar primero `terrain` (relleno de columnas y superficies) o la selección de materiales, según dónde pertenezca la decisión. No introducir esa lógica dentro de `render`, porque el renderer solo debe convertir una decisión ya tomada en un Sprite.
 
 ## Estado actual de entidades y assets
 

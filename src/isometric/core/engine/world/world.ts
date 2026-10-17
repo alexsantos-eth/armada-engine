@@ -1,8 +1,8 @@
 import type { EntityData, EntityDefinition, TerrainSurface } from "../../types";
 import { TERRAIN_HEIGHT, TERRAIN_WIDTH } from "../constants";
-import { Box, createEntitiesFromConfig, Entity, ENTITY_CONFIG } from "../entities";
+import { createEntitiesFromConfig, Entity, ENTITY_CONFIG } from "../entities";
 import { createSeededRandom, DEFAULT_WORLD_SEED, deriveSeed } from "../random";
-import { applySpawnPlateau, classifyColumnSurfaces, generatePerlinTerrain } from "../terrain";
+import { applySpawnPlateau, Box, classifyColumnSurfaces, generatePerlinTerrain } from "../terrain";
 
 /**
  * The game world as plain domain state: the single source of truth that systems simulate,

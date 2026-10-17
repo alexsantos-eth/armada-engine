@@ -6,9 +6,11 @@ La explicación detallada del runtime está en [ARCHITECTURE.md](ARCHITECTURE.md
 
 El código del engine está organizado por responsabilidad dentro de `src/isometric/core/engine`. Cada carpeta expone su API mediante `index.ts`; los módulos consumidores deben importar desde el barrel de la carpeta.
 
+Las dependencias entre módulos están fijadas en `engine/architecture.test.ts` (tabla en `ARCHITECTURE.md`). Si un módulo nuevo necesita otra dependencia, añádela a esa tabla de forma explícita y justificada; un módulo nuevo debe aparecer en ella o el test falla.
+
 Los tipos compartidos viven en `src/isometric/core/types` y se exportan desde `core/types/index.ts`. No se crean tests runtime para archivos que solo contienen tipos.
 
-`Box` está reservado para bloques de terreno (`grass`, `ground`, `water` y `sand`). Las entidades de juego se declaran como datos en `src/isometric/core/engine/entities/config.ts` y se crean con `createEntitiesFromConfig()`. No se deben añadir entidades concretas a `Box`, a `scene.ts` ni a las constantes de terreno.
+`Box` vive en `engine/terrain` y está reservado para bloques de terreno (`grass`, `ground`, `water` y `sand`). Las entidades de juego se declaran como datos en `src/isometric/core/engine/entities/config.ts` y se crean con `createEntitiesFromConfig()`. No se deben añadir entidades concretas a `Box`, a `scene.ts` ni a las constantes de terreno.
 
 Las definiciones de entidad admiten `footprintSurfaces` para exigir una superficie por bloque de la huella (p. ej. `["grass", "sand", "sand"]` en los muelles), `surfaceElevation` para exigir una elevación exacta o una lista de elevaciones válidas (p. ej. `[0, 1]`); en cualquier caso, una huella multi-bloque solo se coloca sobre celdas a la misma elevación, `length` y `lengthAxis` (`"x"` por defecto) para huellas multi-bloque, `gap` para exigir una separación mínima en bloques (diagonales incluidas) entre instancias de la misma entidad, `formation` para agruparlas al colocarlas siguiendo un mapa de texto (`X` miembro, `.` vacío; p. ej. `{ map: ["XX", "X."], rotate: true }` para tríos en L girados al azar; `minMembers` fija cuántos deben caber, por defecto todos; el `gap` se mide entre grupos y la tirada de `spawnChance` es una por grupo, así que conviene dividirla por el tamaño del grupo para conservar la densidad), `colorReplacements` para variantes SVG (la variación se elige al crear cada instancia, se guarda en `colorVariant` y la textura se comparte por tipo y variación) y `debug` para dibujar su huella visual. La factory valida y reserva todas las celdas de la huella antes de crear la entidad, por lo que las definiciones posteriores no pueden solaparse con una entidad ya colocada.
 
@@ -17,9 +19,9 @@ Las definiciones de entidad admiten `footprintSurfaces` para exigir una superfic
 Los tests viven junto al archivo que prueban:
 
 ```text
-projection/
-  projection.ts
-  projection.test.ts
+terrain/
+  columns.ts
+  columns.test.ts
 ```
 
 ## Determinismo

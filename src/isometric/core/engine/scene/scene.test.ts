@@ -57,9 +57,9 @@ vi.mock("../render", () => ({
 
 import { Assets } from "pixi.js";
 import type { TerrainPoint } from "../../types";
-import { Box, Entity } from "../entities";
+import { Entity } from "../entities";
 import { createSvgColorVariant } from "../render";
-import { classifyColumnSurfaces } from "../terrain";
+import { Box, classifyColumnSurfaces } from "../terrain";
 import { generateWorld, type World } from "../world";
 import { createIsometricScene } from "./scene";
 
