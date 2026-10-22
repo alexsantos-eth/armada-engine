@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { Application, type Ticker, UPDATE_PRIORITY } from "pixi.js";
 import { ENTITY_CONFIG, PLAYER_APPEARANCE } from "./content";
 import {
-  WIDTH,
   bindCameraControls,
   createIsometricScene,
   createSimulation,
@@ -15,22 +14,7 @@ import {
   resolveWorldSeed,
   setPlayerWalk,
 } from "./core/engine";
-
-/** Keys that walk the player, by the screen direction they hold. */
-const WALK_KEYS = {
-  up: ["ArrowUp", "KeyW"],
-  down: ["ArrowDown", "KeyS"],
-  left: ["ArrowLeft", "KeyA"],
-  right: ["ArrowRight", "KeyD"],
-} as const;
-const WALKING_KEYS = new Set<string>(Object.values(WALK_KEYS).flat());
-/** Keys that zoom at the centre of the view, by the factor of one press. */
-const ZOOM_KEYS = new Map<string, number>([
-  ["Equal", 1.25],
-  ["NumpadAdd", 1.25],
-  ["Minus", 0.8],
-  ["NumpadSubtract", 0.8],
-]);
+import { bindKeyboardControls } from "./input";
 
 const IsometricWorld = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -47,9 +31,10 @@ const IsometricWorld = () => {
     let disposed = false;
 
     void (async () => {
+      // The canvas fills the window and follows its size: the scene re-applies the camera and
+      // culls again on every renderer resize.
       await app.init({
-        width: WIDTH,
-        height: window.innerHeight,
+        resizeTo: window,
         background: "#111111",
         antialias: true,
         resolution: window.devicePixelRatio,
@@ -85,47 +70,21 @@ const IsometricWorld = () => {
         return;
       }
 
-      // Controls: arrows/WASD walk the player (read here, since the core never reads the
-      // keyboard; the simulation moves it on its next ticks), drag and wheel move the camera
-      // through Pixi's events (it follows the player again as soon as it walks), +/- zoom.
+      // Controls: arrows/WASD walk the player (read by the app, since the core never reads the
+      // keyboard; the simulation moves it on its next ticks), +/- zoom at the centre of the view,
+      // and drag, wheel and pinch move the camera through Pixi's events (it follows the player
+      // again as soon as it walks).
       const unbindPointer = bindCameraControls(app.stage, app.renderer.screen, scene.camera);
-      const held = new Set<string>();
-      const walk = () =>
-        setPlayerWalk(world.player, {
-          up: WALK_KEYS.up.some((code) => held.has(code)),
-          down: WALK_KEYS.down.some((code) => held.has(code)),
-          left: WALK_KEYS.left.some((code) => held.has(code)),
-          right: WALK_KEYS.right.some((code) => held.has(code)),
-        });
-      const onKeyDown = (event: KeyboardEvent) => {
-        if (event.altKey || event.ctrlKey || event.metaKey) return;
-        const zoom = ZOOM_KEYS.get(event.code);
-        if (zoom !== undefined) {
+      const unbindKeyboard = bindKeyboardControls(window, {
+        walk: (directions) => setPlayerWalk(world.player, directions),
+        zoom: (factor) => {
           const { width, height } = app.renderer.screen;
-          scene.camera.zoomAt(zoom, { x: width / 2, y: height / 2 });
-        } else if (WALKING_KEYS.has(event.code)) {
-          held.add(event.code);
-          walk();
-        } else {
-          return;
-        }
-        event.preventDefault();
-      };
-      const onKeyUp = (event: KeyboardEvent) => {
-        if (held.delete(event.code)) walk();
-      };
-      const releaseKeys = () => {
-        held.clear();
-        walk();
-      };
-      window.addEventListener("keydown", onKeyDown);
-      window.addEventListener("keyup", onKeyUp);
-      window.addEventListener("blur", releaseKeys);
+          scene.camera.zoomAt(factor, { x: width / 2, y: height / 2 });
+        },
+      });
       stopControls = () => {
         unbindPointer();
-        window.removeEventListener("keydown", onKeyDown);
-        window.removeEventListener("keyup", onKeyUp);
-        window.removeEventListener("blur", releaseKeys);
+        unbindKeyboard();
       };
 
       const showClock = (tick: number) => {
@@ -154,13 +113,8 @@ const IsometricWorld = () => {
   return (
     <section
       style={{
-        width: "100%",
-        maxWidth: WIDTH,
-        minHeight: "100dvh",
-        display: "grid",
-        placeItems: "center",
-        margin: "0 auto",
-        boxSizing: "border-box",
+        width: "100vw",
+        height: "100dvh",
         overflow: "hidden",
         position: "relative",
       }}

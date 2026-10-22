@@ -41,3 +41,13 @@ export type CameraTransform = {
   readonly y: number;
   readonly scale: number;
 };
+
+/**
+ * What two fingers did between two frames: the move of their midpoint (a pan), how much they
+ * spread apart (a zoom factor) and where they are now (the zoom anchor), all on screen.
+ */
+export type PinchGesture = {
+  readonly pan: ScreenPoint;
+  readonly factor: number;
+  readonly anchor: ScreenPoint;
+};

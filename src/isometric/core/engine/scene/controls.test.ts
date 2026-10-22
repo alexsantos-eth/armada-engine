@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { getWheelZoomFactor } from "../camera";
+import { getPinchGesture, getWheelZoomFactor } from "../camera";
 import { bindCameraControls } from "./controls";
 
 type Listener = (event: unknown) => void;
@@ -27,8 +27,10 @@ const createCamera = () => ({
   update: vi.fn(),
 });
 
-/** Pixi reuses one `global` point per event: the controls must copy it. */
-const pointer = (x: number, y: number, button = 0) => ({ button, global: { x, y } });
+/** Pixi reuses one `global` point per event: the controls must copy it. The mouse is pointer 1. */
+const pointer = (x: number, y: number, button = 0, pointerId = 1) => ({ button, pointerId, global: { x, y } });
+/** A finger: a touch pointer with its own id, always on the main button. */
+const finger = (pointerId: number, x: number, y: number) => pointer(x, y, 0, pointerId);
 
 describe("bindCameraControls", () => {
   it("makes the whole screen answer pointer events", () => {
@@ -84,6 +86,71 @@ describe("bindCameraControls", () => {
 
     stage.emit("wheel", { deltaY: -3, deltaMode: 1, global: { x: 300, y: 200 } });
     expect(camera.zoomAt).toHaveBeenCalledWith(getWheelZoomFactor(-3, 1), { x: 300, y: 200 });
+  });
+
+  it("pinches with two fingers: pans by their midpoint and zooms at it by their spread", () => {
+    const stage = createStage();
+    const camera = createCamera();
+    bindCameraControls(stage as never, {} as never, camera);
+
+    stage.emit("pointerdown", finger(7, 100, 100));
+    stage.emit("pointerdown", finger(8, 200, 100));
+    stage.emit("globalpointermove", finger(8, 250, 100));
+
+    const gesture = getPinchGesture(
+      [
+        { x: 100, y: 100 },
+        { x: 200, y: 100 },
+      ],
+      [
+        { x: 100, y: 100 },
+        { x: 250, y: 100 },
+      ],
+    );
+    expect(camera.pan.mock.calls).toEqual([[gesture.pan]]);
+    expect(camera.zoomAt.mock.calls).toEqual([[gesture.factor, gesture.anchor]]);
+    // Pan first, then zoom at the new midpoint: the ground under the fingers stays under them.
+    expect(camera.pan.mock.invocationCallOrder[0]).toBeLessThan(camera.zoomAt.mock.invocationCallOrder[0]);
+  });
+
+  it("keeps dragging with the finger left after a pinch, from where it is", () => {
+    const stage = createStage();
+    const camera = createCamera();
+    bindCameraControls(stage as never, {} as never, camera);
+
+    stage.emit("pointerdown", finger(7, 100, 100));
+    stage.emit("pointerdown", finger(8, 200, 100));
+    stage.emit("globalpointermove", finger(7, 120, 100));
+    camera.pan.mockClear();
+    camera.zoomAt.mockClear();
+
+    stage.emit("pointerup", finger(8, 200, 100));
+    expect(stage.cursor).toBe("grabbing");
+    stage.emit("globalpointermove", finger(7, 130, 90));
+    expect(camera.pan.mock.calls).toEqual([[{ x: 10, y: -10 }]]);
+    expect(camera.zoomAt).not.toHaveBeenCalled();
+
+    stage.emit("pointerupoutside", finger(7, 130, 90));
+    expect(stage.cursor).toBe("grab");
+  });
+
+  it("pinches with the first two fingers only", () => {
+    const stage = createStage();
+    const camera = createCamera();
+    bindCameraControls(stage as never, {} as never, camera);
+
+    stage.emit("pointerdown", finger(7, 100, 100));
+    stage.emit("pointerdown", finger(8, 200, 100));
+    stage.emit("pointerdown", finger(9, 300, 300));
+    stage.emit("globalpointermove", finger(9, 350, 300));
+    expect(camera.pan).not.toHaveBeenCalled();
+    expect(camera.zoomAt).not.toHaveBeenCalled();
+
+    // Once one of the two lifts, the third finger joins the pinch from where it moved to.
+    stage.emit("pointerup", finger(7, 100, 100));
+    stage.emit("globalpointermove", finger(9, 350, 200));
+    expect(camera.zoomAt).toHaveBeenCalledTimes(1);
+    expect(camera.pan.mock.calls).toEqual([[{ x: 0, y: -50 }]]);
   });
 
   it("removes every listener and restores the stage", () => {

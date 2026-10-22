@@ -12,6 +12,7 @@ import {
   followCamera,
   getCullRect,
   getGroundPointBelow,
+  getPinchGesture,
   getWheelZoomFactor,
   needsCull,
   panCamera,
@@ -233,5 +234,68 @@ describe("getCullRect and needsCull", () => {
     // Along +x +y, one column is 20 px up at zoom 2: 150 px is 7.5 columns.
     expect(needsCull(culled, { x: 3.75, y: 3.75, zoom: 2 }, viewport, projection, 0.25)).toBe(false);
     expect(needsCull(culled, { x: 3.8, y: 3.8, zoom: 2 }, viewport, projection, 0.25)).toBe(true);
+  });
+});
+
+describe("getPinchGesture", () => {
+  it("zooms by how much the fingers spread, at their new midpoint", () => {
+    const gesture = getPinchGesture(
+      [
+        { x: 100, y: 100 },
+        { x: 200, y: 100 },
+      ],
+      [
+        { x: 75, y: 100 },
+        { x: 225, y: 100 },
+      ],
+    );
+
+    expect(gesture).toEqual({ pan: { x: 0, y: 0 }, factor: 1.5, anchor: { x: 150, y: 100 } });
+  });
+
+  it("pans by the move of the midpoint", () => {
+    const gesture = getPinchGesture(
+      [
+        { x: 0, y: 0 },
+        { x: 0, y: 100 },
+      ],
+      [
+        { x: 30, y: 10 },
+        { x: 30, y: 60 },
+      ],
+    );
+
+    expect(gesture.pan).toEqual({ x: 30, y: -15 });
+    expect(gesture.factor).toBe(0.5);
+    expect(gesture.anchor).toEqual({ x: 30, y: 35 });
+  });
+
+  it("does not zoom when the fingers started or ended on the same point", () => {
+    const same = { x: 50, y: 50 };
+    expect(getPinchGesture([same, same], [same, { x: 80, y: 90 }]).factor).toBe(1);
+    expect(getPinchGesture([same, { x: 80, y: 90 }], [same, same]).factor).toBe(1);
+  });
+
+  it("a pinch applied with panCamera and zoomCameraAt keeps the ground under the fingers", () => {
+    const from = [
+      { x: 300, y: 250 },
+      { x: 420, y: 330 },
+    ] as const;
+    const to = [
+      { x: 280, y: 260 },
+      { x: 470, y: 360 },
+    ] as const;
+    const start: Camera = { x: 10, y: 12, zoom: 2 };
+
+    const { pan, factor, anchor } = getPinchGesture(from, to);
+    const panned = panCamera(start, pan, open, projection);
+    const next = zoomCameraAt(panned, factor, anchor, viewport, open, projection);
+
+    const midpoint = { x: (from[0].x + from[1].x) / 2, y: (from[0].y + from[1].y) / 2 };
+    const groundUnderMidpoint = screenToGround(start, viewport, midpoint, projection);
+    const after = screenToGround(next, viewport, anchor, projection);
+    expect(after.x).toBeCloseTo(groundUnderMidpoint.x);
+    expect(after.y).toBeCloseTo(groundUnderMidpoint.y);
+    expect(next.zoom).toBeCloseTo(2 * factor);
   });
 });

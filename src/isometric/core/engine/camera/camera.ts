@@ -5,6 +5,7 @@ import type {
   CameraTransform,
   GridPoint,
   IsoProjectionConfig,
+  PinchGesture,
   ScreenPoint,
   ScreenSize,
 } from "../../types";
@@ -12,7 +13,7 @@ import type {
 /** Zoom the camera starts at: close to the ground, at the centre of the world. */
 export const CAMERA_START_ZOOM = 3;
 
-/** Smallest zoom: the whole 32 × 32 world fits the default viewport. */
+/** Smallest zoom: the whole 32 × 32 world fits a window 1300 px wide. */
 export const CAMERA_MIN_ZOOM = 1;
 
 /**
@@ -152,6 +153,29 @@ export function getWheelZoomFactor(deltaY: number, deltaMode = 0): number {
   if (!Number.isFinite(deltaY)) return 1;
   const pixels = deltaY * (WHEEL_PIXELS_PER_MODE[deltaMode] ?? 1);
   return Math.exp(-pixels * CAMERA_WHEEL_SENSITIVITY);
+}
+
+/**
+ * What two fingers did between two frames, from their screen points `from` to `to` (same
+ * order): the midpoint's move, to pass to `panCamera()`, and the spread ratio with the new
+ * midpoint, to pass to `zoomCameraAt()` after it. Together they keep the ground under the
+ * fingers' midpoint under it. Fingers that started or ended on the same point do not zoom.
+ */
+export function getPinchGesture(
+  from: readonly [ScreenPoint, ScreenPoint],
+  to: readonly [ScreenPoint, ScreenPoint],
+): PinchGesture {
+  const midpoint = ([a, b]: readonly [ScreenPoint, ScreenPoint]) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  const spread = ([a, b]: readonly [ScreenPoint, ScreenPoint]) => Math.hypot(b.x - a.x, b.y - a.y);
+  const before = midpoint(from);
+  const anchor = midpoint(to);
+  const fromSpread = spread(from);
+  const toSpread = spread(to);
+  return {
+    pan: { x: anchor.x - before.x, y: anchor.y - before.y },
+    factor: fromSpread > 0 && toSpread > 0 ? toSpread / fromSpread : 1,
+    anchor,
+  };
 }
 
 /**

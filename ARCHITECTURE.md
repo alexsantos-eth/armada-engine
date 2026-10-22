@@ -107,13 +107,12 @@ Una columna entera `(x, y)` es el cuadrado que va de `(x, y)` a `(x + 1, y + 1)`
 
 `src/isometric/page.tsx` crea una instancia de `Application` de PixiJS dentro de `useEffect`. Configura:
 
-- ancho fijo `WIDTH` (1300 px, constante estática: el core no lee `window`);
-- alto igual al viewport;
+- `resizeTo: window`: el canvas llena la ventana y sigue su tamaño (el `ResizePlugin` de Pixi llama a `renderer.resize()`, y la escena re-centra la cámara y vuelve a cullear en cada evento `resize` del renderer). `WIDTH` ya solo es el ancho de referencia del que sale `TILE_WIDTH`; el core sigue sin leer `window`;
 - resolución del dispositivo;
 - densidad automática;
 - fondo oscuro.
 
-Cuando `app.init()` termina, la página añade `app.canvas` al DOM, resuelve la semilla del mundo con `resolveWorldSeed(location.search, Math.random)` (parámetro `?seed=` de la URL o una semilla nueva), la muestra en consola, genera el mundo con `generateWorld({ seed })`, crea el bucle de simulación con `createSimulation(world, { timeScale: resolveTimeScale(location.search) })` y renderiza el mundo con `createIsometricScene(app, world, { player: PLAYER_APPEARANCE, interpolation: () => getInterpolationAlpha(simulation.stepper) })`. Con la escena lista conecta los controles: `bindCameraControls(app.stage, app.renderer.screen, scene.camera)` para arrastrar y hacer zoom con la rueda (ver [Cámara](#cámara)), y en la propia página el teclado, porque el core no lee el teclado: flechas o WASD **mueven al personaje** (ver [Jugador](#jugador)) y `+`/`-` hacen zoom en el centro. Cada pulsación o suelta de una tecla de movimiento llama a `setPlayerWalk(world.player, direcciones)`; la simulación lo mueve en sus siguientes ticks y la cámara lo sigue. Al perder el foco la ventana se sueltan todas. Después registra la simulación en `app.ticker` con prioridad `UPDATE_PRIORITY.HIGH` (ver [Bucle de simulación](#bucle-de-simulación)); cada frame que avanza el reloj actualiza la etiqueta de hora (`Día N · HH:MM`) que la página superpone al canvas. La página es el único lugar donde se usan `Math.random()` y `window`. El cleanup del efecto quita los listeners del ticker, los controles de la cámara y los del teclado, destruye la escena y la aplicación. Si el componente se desmonta mientras Pixi aún inicializa o la escena carga, la bandera `disposed` evita añadir un canvas, una escena o un bucle sobre una aplicación destruida. La etiqueta de hora está siempre montada después del contenedor del canvas: si fuera un primer hijo condicional, Preact reutilizaría el elemento del contenedor y movería el canvas dentro de la etiqueta.
+Cuando `app.init()` termina, la página añade `app.canvas` al DOM, resuelve la semilla del mundo con `resolveWorldSeed(location.search, Math.random)` (parámetro `?seed=` de la URL o una semilla nueva), la muestra en consola, genera el mundo con `generateWorld({ seed })`, crea el bucle de simulación con `createSimulation(world, { timeScale: resolveTimeScale(location.search) })` y renderiza el mundo con `createIsometricScene(app, world, { player: PLAYER_APPEARANCE, interpolation: () => getInterpolationAlpha(simulation.stepper) })`. Con la escena lista conecta los controles: `bindCameraControls(app.stage, app.renderer.screen, scene.camera)` para arrastrar, hacer zoom con la rueda y pellizcar (ver [Cámara](#cámara)), y `bindKeyboardControls(window, { walk, zoom })` (`src/isometric/input`, fuera del core, porque el core no lee el teclado): flechas o WASD **mueven al personaje** (ver [Jugador](#jugador)) y `+`/`-` hacen zoom en el centro (`KEYBOARD_ZOOM_STEP`, ×1,25). Cada pulsación o suelta de una tecla de movimiento llama a `walk(direcciones)`, que la página pasa a `setPlayerWalk(world.player, direcciones)`; la simulación lo mueve en sus siguientes ticks y la cámara lo sigue. Las teclas con Alt, Ctrl o Meta siguen siendo atajos del navegador, y al perder el foco la ventana se sueltan todas. Después registra la simulación en `app.ticker` con prioridad `UPDATE_PRIORITY.HIGH` (ver [Bucle de simulación](#bucle-de-simulación)); cada frame que avanza el reloj actualiza la etiqueta de hora (`Día N · HH:MM`) que la página superpone al canvas. La página es el único lugar donde se usan `Math.random()` y `window`. El cleanup del efecto quita los listeners del ticker, los controles de la cámara y los del teclado, destruye la escena y la aplicación. Si el componente se desmonta mientras Pixi aún inicializa o la escena carga, la bandera `disposed` evita añadir un canvas, una escena o un bucle sobre una aplicación destruida. La etiqueta de hora está siempre montada después del contenedor del canvas: si fuera un primer hijo condicional, Preact reutilizaría el elemento del contenedor y movería el canvas dentro de la etiqueta.
 
 ## Organización de módulos
 
@@ -175,7 +174,7 @@ src/isometric/core/
     scene/
       camera.ts          # cámara de la escena: mueve el contenedor y cullea
       camera.test.ts
-      controls.ts        # arrastre y rueda con los eventos de Pixi
+      controls.ts        # arrastre, rueda y pellizco con los eventos de Pixi
       controls.test.ts
       scene.ts
       scene.test.ts
@@ -225,6 +224,10 @@ src/isometric/core/
     terrain.ts
     time.ts
     index.ts
+src/isometric/input/
+  keyboard.ts        # teclado del juego: caminar (flechas/WASD) y zoom (+/-)
+  keyboard.test.ts
+  index.ts
 src/isometric/content/
   entities.ts        # ENTITY_CONFIG: datos de juego, fuera del motor
   entities.test.ts
@@ -232,6 +235,8 @@ src/isometric/content/
   player.test.ts
   index.ts
 ```
+
+La entrada del navegador que no pasa por Pixi (`src/isometric/input`, hoy el teclado) es de la aplicación: el motor no la importa, recibe `window` (o cualquier objetivo de eventos) desde `page.tsx` y solo importa tipos del core.
 
 El contenido del juego (`src/isometric/content`) son datos: el motor no lo importa. `page.tsx` lo pasa a `generateWorld({ entityDefinitions: ENTITY_CONFIG })`, que lo valida antes de generar.
 
@@ -424,14 +429,14 @@ La cámara es **estado de vista**, no del juego: no vive en `World`, no se guard
 - `Camera` es `{ x, y, zoom }`: `x`/`y` es el **punto del suelo** (elevación `0`, en columnas del mundo, fraccionario) que se ve en el centro del viewport, en los ejes de [Sistema de coordenadas](#sistema-de-coordenadas). Así la cámara dice qué parte del mundo (y, con chunks, qué chunks) está a la vista. `zoom` es cuántos píxeles de pantalla ocupa un píxel de la escena.
 - `CameraLimits` fija el rango de zoom y el rectángulo de columnas en el que se queda el centro. Al limitar en columnas (no en píxeles de la escena) el centro nunca sale del rombo del mundo; en los bordes se ve el vacío más allá de la última columna, pero nunca solo vacío. `createCamera(limits, start?)` empieza en el centro de los límites con `CAMERA_START_ZOOM` (3) y lanza `RangeError` con límites no válidos; `clampCamera()` aplica los límites.
 - `panCamera(camera, delta, limits, projection)` mueve la escena `delta` píxeles de pantalla (un arrastre): el suelo bajo el puntero lo sigue. `zoomCameraAt(camera, factor, anchor, viewport, limits, projection)` multiplica el zoom manteniendo fijo el punto del suelo bajo `anchor` (el cursor). `screenToGround()` da el punto del suelo que se ve en un punto de pantalla y `getCameraTransform()` la posición y escala del contenedor del mundo.
-- Entrada: `getWheelZoomFactor(deltaY, deltaMode)` convierte la rueda (píxeles, líneas o páginas) en un factor (`CAMERA_WHEEL_SENSITIVITY`). El teclado no mueve la cámara: mueve al jugador, y la cámara lo sigue.
+- Entrada: `getWheelZoomFactor(deltaY, deltaMode)` convierte la rueda (píxeles, líneas o páginas) en un factor (`CAMERA_WHEEL_SENSITIVITY`). `getPinchGesture(from, to)` convierte lo que hicieron dos dedos entre dos frames en un `PinchGesture`: `pan` (lo que se movió su punto medio, para `panCamera()`), `factor` (cuánto se separaron) y `anchor` (su punto medio nuevo, para `zoomCameraAt()` después del desplazamiento); aplicados en ese orden, el suelo bajo los dedos se queda bajo ellos. Si los dedos empezaron o acabaron en el mismo punto no hay zoom. El teclado no mueve la cámara: mueve al jugador, y la cámara lo sigue.
 - Seguimiento: `followCamera(camera, target, elapsedMs, limits)` acerca el centro al punto `target` recorriendo la mitad de la distancia que falta cada `CAMERA_FOLLOW_HALF_LIFE_MS` (90 ms) reales, igual a cualquier FPS, y se ajusta encima al quedar a menos de una milésima de columna. `getGroundPointBelow(point, elevation, projection)` da el punto del suelo que se dibuja donde está `point` elevado `elevation` bloques: lo que la cámara debe mirar para centrar algo sobre una columna alta.
 - Culling: `getCullRect(viewport)` es el viewport ampliado `CAMERA_CULL_MARGIN` (un 25 %) por cada lado, y `needsCull(culledFor, camera, viewport, projection)` dice si hay que volver a cullear: siempre que cambia el zoom, y cuando la escena se ha movido en pantalla más que ese margen. Así un desplazamiento no recorre las miles de vistas en cada frame; en PixiJS 8.22 cambiar `culled` también marca `structureDidChange` en el render group, así que cullear menos evita reconstruir sus instrucciones.
-- Zoom: de `CAMERA_MIN_ZOOM` (1, el mundo de 32 × 32 cabe entero) a `CAMERA_MAX_ZOOM` (4).
+- Zoom: de `CAMERA_MIN_ZOOM` (1, el mundo de 32 × 32 cabe entero en una ventana de 1300 px de ancho) a `CAMERA_MAX_ZOOM` (4).
 
 En la escena, `createSceneCamera(container, screen, limits, projection, start?)` (`scene/camera.ts`) aplica la cámara al contenedor del mundo (`position` y `scale` del render group: un uniforme en GPU, sin tocar a sus hijos) y cullea cuando toca; lee `screen` (el `renderer.screen`) en cada cambio, así que `resize()` re-centra tras redimensionar. `follow(target)` hace que `update(elapsedMs)` deslice la cámara hacia `target` en cada frame (`followCamera()`), hasta el siguiente `pan()`: arrastrar suelta al jugador y la cámara vuelve a seguirlo en cuanto camina. `createIsometricScene(app, world, options?)` devuelve `{ camera, destroy }`, con los límites en las columnas del mundo y la cámara en `options.camera`, sobre el jugador si se dibuja, o en el centro. El contenedor del mundo tiene `eventMode = "none"`: las vistas no participan en el hit testing de Pixi.
 
-`bindCameraControls(stage, screen, camera)` (`scene/controls.ts`) usa el sistema de eventos de PixiJS en el `stage` (`eventMode = "static"`, `hitArea` = la pantalla): arrastrar con el botón principal (o un dedo) desplaza y la rueda hace zoom en el cursor; devuelve una función que quita los controles. El teclado lo lee `page.tsx`. No hay zoom con pellizco.
+`bindCameraControls(stage, screen, camera)` (`scene/controls.ts`) usa el sistema de eventos de PixiJS en el `stage` (`eventMode = "static"`, `hitArea` = la pantalla): arrastrar con el botón principal (o un dedo) desplaza, la rueda hace zoom en el cursor y dos dedos pellizcan (`camera.pan()` y luego `camera.zoomAt()` con `getPinchGesture()`); devuelve una función que quita los controles. Guarda los punteros pulsados por `pointerId`: pellizcan los dos primeros, un tercero espera a que se levante uno de ellos, y el dedo que queda tras un pellizco sigue arrastrando desde donde está. Pixi ya pone `touch-action: none` en el canvas, así que el navegador no desplaza ni amplía la página bajo el gesto. Pixi no emite `pointercancel` (no escucha el `pointercancel` nativo), así que un toque cancelado por el sistema puede quedar registrado hasta el siguiente `pointerup` de ese id. El teclado lo lee `bindKeyboardControls()` (`src/isometric/input`).
 
 ## Selección de materiales y entidades
 
