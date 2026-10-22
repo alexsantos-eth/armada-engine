@@ -1,10 +1,49 @@
 # Revisión del core
 
-Backlog vivo de la skill `armada-core-review`. Cada revisión añade una entrada, actualiza el estado de los hallazgos anteriores y no repite lo ya registrado. Vive en la raíz (no en `docs/`, que es salida de Typedoc).
+Backlog vivo de la skill `armada-core-review`. Cada revisión añade una entrada, actualiza el estado de los hallazgos anteriores y no repite lo ya registrado. Vive en la raíz del repo.
 
 Criterio: el core debe sostener un **RPG isométrico procedural de supervivencia**: mundo por semilla y por chunks, simulación determinista y persistente, sistemas RPG data-driven, guardado/carga y rendimiento con miles de entidades.
 
 Niveles: **Bloqueante** (rompe la visión) · **Alta** (reescritura cara cuando llegue un sistema previsto) · **Media** (corregible localmente) · **Baja** (higiene).
+
+## 2026-10-20 — Revisión de rendimiento
+
+Medido en Chromium con `?seed=1337` (SwiftShader: sirve para la CPU, no para FPS absolutos), cronometrando desde dentro con la app expuesta solo en una copia local. Consultado el código de `pixi.js` 8.22.0: `CullerPlugin` llama a `Culler.shared.cull(stage, screen)` en cada `render()`, y `loadSVG` rasteriza con `asset.data.resolution`.
+
+| Medida | Antes | Después |
+|---|---|---|
+| CPU por frame (media / p95) | 6.5 / 17 ms | 1.4 / 3.5 ms |
+| Memoria de texturas | 217 MB (38 fuentes, hasta 2048 px) | 5.7 MB |
+| Carga de la escena | 1.78 s | 1.28 s |
+| Draw calls / reconstrucciones por frame | 9 / 0 | 9 / 0 |
+
+| # | Estado | Cambio |
+|---|---|---|
+| 42 | Corregido (Alta) | **Culling en cada frame.** El `CullerPlugin` recorría las miles de vistas del mundo y recalculaba sus bounds en cada frame aunque nada se moviera: ~80 % de la CPU por frame (1.45 ms sin él). Ahora la escena llama a `Culler.shared.cull(scene, renderer.screen, false)` al construirse y en el `resize` del renderer; `page.tsx` ya no registra el plugin. Tests en «performance» de `scene.test.ts`. |
+| 43 | Corregido (Alta) | **SVG rasterizados a 1024 px por bloque** para dibujarse a 40 px: 217 MB de texturas, carga lenta y bordes dentados al reducir. `getSvgResolution()` (`render/svg.ts`) ajusta la resolución al tamaño en pantalla × densidad del dispositivo × 1.5. Comparado visualmente a 1× y 2×: igual de nítido y sin dientes de sierra. |
+| 44 | Pendiente (Media) | Cuando llegue la cámara (#7): llamar al culling al moverla y, con mundos por chunks, cullear por chunk (`cullArea` en el contenedor de cada chunk) en lugar de recorrer todas las vistas; si hay zoom, recalcular `getSvgResolution()` con el mayor zoom previsto. |
+
+## 2026-10-20 — Oclusión ambiental
+
+Alcance: `lighting/occlusion.ts` (`getOcclusion`, `buildOcclusionMap`), capas de los mapas de sombra en la escena y `createGroundShadowView()` siempre visible. Consultados los tipos de `pixi.js` 8.22.0: `AlphaFilter` («úsalo en lugar de la `alpha` del contenedor para evitar la superposición de elementos individuales») y `BufferImageSource({ resource, width, height })`.
+
+| # | Estado | Cambio |
+|---|---|---|
+| 39 | Adoptado | **Oclusión ambiental calculada una vez.** Al pie de paredes y escalones (según el desnivel) y como sombra de contacto alrededor de cada entidad, calculada en el dominio con funciones puras y compuesta al fondo de cada mapa de sombras. Sin coste por frame ni sprites nuevos; visible de día y de noche. Tests en `lighting/occlusion.test.ts` (bordes, esquinas, desniveles, arena, cimas, entidades) y en la escena. Verificado en Chromium (con la oclusión forzada al máximo para comprobar la colocación). |
+| 40 | Corregido (Media) | **Las 1024 vistas de suelo ya no se tocan nunca.** La opacidad del sol pasa al dibujo del mapa (`AlphaFilter` sobre las siluetas, que además evita oscurecer doble) y la visibilidad no cambia: al amanecer y al anochecer ya no hay asignaciones sobre miles de sprites ni reconstrucciones del render group del mundo. |
+| 41 | Pendiente (Baja) | La oclusión es estática: cuando las entidades se muevan o el terreno sea editable, recalcular solo las columnas afectadas (cada columna depende de sus 8 vecinas) y volver a subir la textura de ese nivel. |
+
+## 2026-10-20 — Rendimiento de las sombras
+
+Reportado por el usuario: el rendimiento cae con las sombras. Medido en Chromium (SwiftShader no sirve para FPS absolutos, porque incluso sin sombras va a ~2 FPS; sí sirve para el coste de CPU de cada parte, cronometrado desde dentro con la app expuesta solo en una copia local). Consultado el código de `pixi.js` 8.22.0: `Container` `set visible` y `set renderable` marcan `parentRenderGroup.structureDidChange`, que hace reconstruir las instrucciones de todo el grupo; `set alpha` no hace nada si el valor no cambia.
+
+| # | Estado | Cambio |
+|---|---|---|
+| 34 | Corregido (Alta) | **Reconstrucción del render group en cada redibujado.** El redibujado ocultaba y mostraba siluetas de un único contenedor en cada uno de los 8 mapas: 8 reconstrucciones por refresco. Ahora cada mapa tiene un contenedor fijo con sus siluetas y nunca se cambia `visible`. |
+| 35 | Corregido (Alta) | **Pico periódico.** Los 8 renders a textura con desenfoque se hacían en un mismo frame cada medio segundo (y en cada frame a velocidades altas). Ahora se reparten uno por frame; al aparecer las sombras se dibujan todos a la vez. Los mapas a los que no llega ninguna entidad no se dibujan. Medido: el coste máximo de sombras en un frame baja de 8.2 a 3.2 ms a ×1 y de 15.3 a 3.6 ms a ×60; la media, de 2.5 a 1.0 ms y de 4.7 a 0.8 ms. |
+| 38 | Corregido (Alta) | **Sombras congeladas tras #35** (reportado por el usuario). El reparto reiniciaba la cola con todos los mapas cada vez que vencía el refresco y dibujaba el primero: con más de `SHADOW_REFRESH_TICKS` ticks por frame (tiempo acelerado, pocos FPS) la cola se reiniciaba en cada frame, siempre se redibujaba el mismo mapa y los demás se quedaban fijos. Ahora cada mapa guarda su `drawnTick` y en cada frame se redibuja el más desactualizado, con el sol de ese frame. Tests: «keeps every map moving when a refresh falls due on every frame» (reproducía el fallo) y «redraws each map with the sun of the frame it is drawn in». Verificado en Chromium a ×200. |
+| 36 | Corregido (Baja) | La opacidad de las 1024 vistas de suelo se reasignaba en cada tick y su visibilidad en cada actualización; ahora solo cuando cambian. |
+| 37 | Pendiente (Media) | **Coste fijo por frame.** Siguen las 1024 vistas de sombra sobre las cimas (una por columna) en el render group del mundo y su relleno con mezcla alfa. Si hace falta más, medir en una GPU real antes de: ocultar las vistas de casillas sin sombra (costaría reconstrucciones al cambiar), bajar `SHADOW_MAP_PIXELS_PER_TILE`, quitar el `BlurFilter` (el filtrado lineal ya suaviza) o pasar a un mapa por chunk visible. |
 
 ## 2026-10-17 — Sombras con silueta, proyectadas sobre el terreno
 
@@ -25,7 +64,7 @@ Alcance: nuevo módulo `engine/lighting` (`getShadowShape`), `render/shadow.ts` 
 
 | # | Estado | Cambio |
 |---|---|---|
-| 24 | Corregido (Alta) | **Sombras fijas en los assets.** 18 SVG llevaban un polígono translúcido `#1e2a10` que no se movía con el sol; los generadores y `ISO_ASSET_AGENT.md` lo exigían. Eliminado de los SVG (verificado: XML válido, ninguno con `#1e2a10`), de `pier.py`, `tree_birch.py`, `tree_cypress.py` y de la guía de assets. El motor dibuja una sombra por entidad. |
+| 24 | Corregido (Alta) | **Sombras fijas en los assets.** 18 SVG llevaban un polígono translúcido `#1e2a10` que no se movía con el sol; los generadores y la guía de assets lo exigían. Eliminado de los SVG (verificado: XML válido, ninguno con `#1e2a10`), de `pier.py`, `tree_birch.py`, `tree_cypress.py` y de la guía de assets. El motor dibuja una sombra por entidad. |
 | 25 | Corregido (Media) | **El sol iluminaba desde detrás por la mañana.** Con la orientación del paso 1, de 06:00 a ~10:00 las sombras caían hacia la cámara y las casillas de delante (dibujadas después) las habrían cortado. Primera corrección insuficiente: ver #29. |
 | 29 | Corregido (Alta) | **Sombras cortadas por las casillas de delante** (reportado por el usuario con captura, a media tarde). Exigir que la sombra se alejara de la cámara (`x + y` creciente) no bastaba: una sombra hacia `+x −y` entra en la fila `y − 1`, que se dibuja después, y sale con un corte diagonal recto. Condición correcta: la sombra no debe entrar en ninguna casilla con `x` o `y` menor. Ahora el acimut del sol gira un cuarto de vuelta, de `−y` a `−x` (siempre delante), y `getShadowShape()` desplaza hacia atrás la elipse de huellas de varias casillas vistas en diagonal. Tests: `time/sun.test.ts` (componentes del sol nunca positivas de día) y `lighting/shadow.test.ts` (ninguna sombra pasa de la huella hacia `−x`/`−y` en ninguna hora ni tamaño). Verificado en Chromium a las 07:30, 10:00, 14:00, 16:00 y 17:30, sin cortes. |
 | 26 | Adoptado | **Geometría en el dominio, vista en render.** `getShadowShape()` es pura y se prueba sin Pixi; `getShadowMatrix()` es una función pura de la vista. La profundidad de la sombra sale de `getBlockDepth()`, la misma que usan los bloques, sin duplicar la fórmula. Verificado en Chromium (`?seed=1337&timeScale=0&hour=8/12/16/17.5`): sombras largas a la izquierda por la mañana, manchas cortas al mediodía, largas a la derecha por la tarde y tenues al atardecer, sin errores. |
@@ -71,12 +110,12 @@ Consultadas: [Culler Plugin](https://pixijs.com/8.x/guides/components/applicatio
 
 | # | Estado | Cambio |
 |---|---|---|
-| 14 | Corregido (Alta) | **Culling propio que impedía la cámara.** `isWithinViewport()` descartaba al construir lo que quedaba fuera de pantalla, así que nunca se creaba. Ahora la escena crea todas las vistas con `cullable = true` y el `CullerPlugin` (`page.tsx`) omite dibujarlas por frame. Eliminado el módulo `engine/culling` y `VIEW_CULL_MARGIN`. |
+| 14 | Corregido (Alta) | **Culling propio que impedía la cámara.** `isWithinViewport()` descartaba al construir lo que quedaba fuera de pantalla, así que nunca se creaba. Ahora la escena crea todas las vistas con `cullable = true` y el `CullerPlugin` (`page.tsx`) omite dibujarlas por frame (sustituido por culling bajo demanda en #42). Eliminado el módulo `engine/culling` y `VIEW_CULL_MARGIN`. |
 | 15 | Corregido (Media) | **Orden por `sortableChildren` sobre miles de hijos.** Pixi solo reordena cuando algo cambia, pero asignar `zIndex` activa `sortableChildren` en el padre: cualquier entidad en movimiento habría reordenado el mundo entero. Ahora `createBlockViews()` devuelve cada vista con su profundidad (`DepthView`) sin tocar `zIndex`, y la escena las añade una vez en orden con `addInDepthOrder()`. `renderBlock()` desaparece. |
 
 Verificado en Chromium (WebGL) con `?seed=1337`: la escena se dibuja igual, sin errores. El orden es el mismo que antes porque ambos son un ordenamiento estable por la misma profundidad sobre el mismo orden de creación.
 
-Pendiente ligado a esto: con la cámara (#7), recolocar la vista de una entidad que se mueve (inserción por profundidad, sin reordenar todo) y medir el coste del culler por frame (la guía avisa de que empeora si la CPU es el cuello de botella); si hace falta, agrupar por chunk con `cullArea` o `cacheAsTexture`.
+Pendiente ligado a esto: con la cámara (#7), recolocar la vista de una entidad que se mueve (inserción por profundidad, sin reordenar todo) y medir el coste del culler por frame (la guía avisa de que empeora si la CPU es el cuello de botella); si hace falta, agrupar por chunk con `cullArea` o `cacheAsTexture`. **Medido en #42:** era el 80 % del frame; pasó a culling bajo demanda.
 
 ## 2026-10-16 — `renderBlock()` con objeto de opciones
 

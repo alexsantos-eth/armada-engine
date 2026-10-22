@@ -8,7 +8,7 @@ El código del engine está organizado por responsabilidad dentro de `src/isomet
 
 Para cualquier búsqueda por posición usa `engine/grid`: `CellMap` para un valor por columna y `SpatialIndex` para qué ocupa cada celda, con las coordenadas tipadas `WorldCoord`/`ChunkCoord`/`LocalCoord`. No uses claves de texto `"x:y"`: el test de arquitectura las rechaza.
 
-Para el render, usa lo que PixiJS ya resuelve antes que código propio (tabla en la skill `armada-core-review` y guía en https://pixijs.com/8.x/guides/getting-started/intro). En particular: no filtres por viewport a mano (marca las vistas con `cullable = true`; el `CullerPlugin` está registrado en `page.tsx`) y no asignes `zIndex` a las vistas del mundo (usa `createBlockViews()` + `addInDepthOrder()`).
+Para el render, usa lo que PixiJS ya resuelve antes que código propio (tabla en la skill `armada-core-review` y guía en https://pixijs.com/8.x/guides/getting-started/intro). En particular: no filtres por viewport a mano (marca las vistas con `cullable = true` y llama a `Culler.shared.cull()` solo cuando cambie lo visible: al construir, al redimensionar y al mover la cámara; no registres el `CullerPlugin`, que recorre todo el mundo en cada frame), carga los SVG con la resolución de `getSvgResolution()` (nunca a su tamaño de lienzo de 1024 px) y no asignes `zIndex` a las vistas del mundo (usa `createBlockViews()` + `addInDepthOrder()`).
 
 Las dependencias entre módulos están fijadas en `engine/architecture.test.ts` (tabla en `ARCHITECTURE.md`). Si un módulo nuevo necesita otra dependencia, añádela a esa tabla de forma explícita y justificada; un módulo nuevo debe aparecer en ella o el test falla.
 
@@ -36,7 +36,7 @@ El mundo se genera a partir de una semilla. En lógica de dominio y generación 
 
 El estado del juego vive en `World` (`engine/world`): genera con `generateWorld()`, guarda con `serializeWorld()`/`restoreWorld()` y renderiza con `createIsometricScene(app, world)`. La escena no genera ni modifica el mundo; la nueva lógica de juego actúa sobre `World`, nunca sobre objetos de Pixi. El core no debe leer `window` (los tests corren en Node sin shim); las medidas de la vista son constantes o llegan desde `page.tsx`.
 
-El tiempo de juego también es estado del `World`: un contador entero (`world.clock.tick`) que solo avanza el paso fijo de simulación con `advanceClock()`, nunca el reloj del sistema ni el delta de un frame. La hora del día y la luz del sol se derivan del tick con `getTimeOfDay()` y `getSunState()` (`engine/time`); las decisiones de juego que dependan de la hora deben usar el tick entero. Si cambias la forma de `WorldSnapshot`, sube `WORLD_SNAPSHOT_VERSION` (ahora 3, que añadió `tick`). El bucle vive en `engine/simulation`: `page.tsx` pasa `ticker.elapsedMS` a `simulation.frame()` y el acumulador de paso fijo decide cuántos ticks ejecutar con `stepWorld()`. Un sistema de juego nuevo se ejecuta dentro de `stepWorld()`, nunca en un listener del ticker ni en la escena. Para revisar el ciclo del día, abre la app con `?timeScale=60` (un día en 20 s). La escena tiñe el mundo con `getSunState(tick).ambient` desde su propio listener del ticker (prioridad `NORMAL`, entre la simulación y el render) y solo lee el `World`: no asignes tintes de iluminación sprite a sprite, y para cambiar los colores del día ajusta la paleta de cielo. Las sombras son siluetas de los sprites tumbadas en el suelo (`getShadowProjection()` y `getSilhouetteMatrix()` en `engine/lighting`) que la escena dibuja en un mapa de sombras por elevación y muestra sobre la cima de cada columna; no dibujes sombras como sprites sueltos entre las vistas del mundo, porque las casillas de delante las cortarían. Para revisarlas, abre la app con `?hour=8&timeScale=0` (o cualquier hora).
+El tiempo de juego también es estado del `World`: un contador entero (`world.clock.tick`) que solo avanza el paso fijo de simulación con `advanceClock()`, nunca el reloj del sistema ni el delta de un frame. La hora del día y la luz del sol se derivan del tick con `getTimeOfDay()` y `getSunState()` (`engine/time`); las decisiones de juego que dependan de la hora deben usar el tick entero. Si cambias la forma de `WorldSnapshot`, sube `WORLD_SNAPSHOT_VERSION` (ahora 3, que añadió `tick`). El bucle vive en `engine/simulation`: `page.tsx` pasa `ticker.elapsedMS` a `simulation.frame()` y el acumulador de paso fijo decide cuántos ticks ejecutar con `stepWorld()`. Un sistema de juego nuevo se ejecuta dentro de `stepWorld()`, nunca en un listener del ticker ni en la escena. Para revisar el ciclo del día, abre la app con `?timeScale=60` (un día en 20 s). La escena tiñe el mundo con `getSunState(tick).ambient` desde su propio listener del ticker (prioridad `NORMAL`, entre la simulación y el render) y solo lee el `World`: no asignes tintes de iluminación sprite a sprite, y para cambiar los colores del día ajusta la paleta de cielo. Las sombras son siluetas de los sprites tumbadas en el suelo (`getShadowProjection()` y `getSilhouetteMatrix()` en `engine/lighting`) que la escena dibuja en un mapa de sombras por elevación y muestra sobre la cima de cada columna; no dibujes sombras como sprites sueltos entre las vistas del mundo, porque las casillas de delante las cortarían. Para revisarlas, abre la app con `?hour=8&timeScale=0` (o cualquier hora). La oclusión ambiental (`getOcclusion()`/`buildOcclusionMap()` en `engine/lighting`) se calcula una vez y va al fondo de esos mapas: no añadas capas ni sprites por casilla para ella.
 
 Las deudas conocidas del core y los planes de refactor están en [CORE_REVIEW.md](CORE_REVIEW.md); léelo antes de cambiar el core.
 
@@ -60,12 +60,11 @@ Antes de abrir un cambio ejecuta:
 ```bash
 pnpm test:coverage
 pnpm build
-pnpm run docs
 ```
 
-Typedoc toma `src` como entrada y genera la documentación en `docs/`. Las APIs públicas y los tipos deben tener comentarios TSDoc concisos. Los tests están excluidos de Typedoc.
+Las APIs públicas y los tipos deben tener comentarios TSDoc concisos.
 
-Cuando un cambio modifica el funcionamiento del core, también deben actualizarse los Markdown afectados, como mínimo `ARCHITECTURE.md` para el runtime y este archivo para el flujo de contribución. Si afecta a la generación o geometría de assets, actualiza además `ISO_ASSET_AGENT.md`.
+Cuando un cambio modifica el funcionamiento del core, también deben actualizarse los Markdown afectados, como mínimo `ARCHITECTURE.md` para el runtime y este archivo para el flujo de contribución. Si afecta a la generación o geometría de assets, la skill `iso-asset-generator` puede necesitar actualizarse.
 
 ## Assets y render
 
@@ -90,4 +89,4 @@ Los assets no llevan sombra proyectada en el suelo (el antiguo polígono transl�
 
 ## Sincronización documental
 
-Cada cambio funcional del core debe actualizar los Markdown que describen ese comportamiento. Revisa `ARCHITECTURE.md` para el flujo runtime, este archivo para las reglas de contribución y `ISO_ASSET_AGENT.md` para cambios de assets. La documentación debe actualizarse antes de ejecutar la validación final.
+Cada cambio funcional del core debe actualizar los Markdown que describen ese comportamiento. Revisa `ARCHITECTURE.md` para el flujo runtime, este archivo para las reglas de contribución y la skill `iso-asset-generator` para cambios de assets. La documentación debe actualizarse antes de ejecutar la validación final.

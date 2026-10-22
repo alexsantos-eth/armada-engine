@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { Application, CullerPlugin, extensions, type Ticker, UPDATE_PRIORITY } from "pixi.js";
+import { Application, type Ticker, UPDATE_PRIORITY } from "pixi.js";
 import { ENTITY_CONFIG } from "./content";
 import {
   WIDTH,
@@ -12,9 +12,6 @@ import {
   resolveTimeScale,
   resolveWorldSeed,
 } from "./core/engine";
-
-// Skip drawing off-screen objects (those marked `cullable`) on every frame.
-extensions.add(CullerPlugin);
 
 const IsometricWorld = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);

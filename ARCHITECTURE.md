@@ -158,7 +158,7 @@ Responsabilidades y dependencias permitidas (entre módulos solo a través de su
 
 Fuera del motor, sus módulos solo pueden importar los tipos compartidos (`../../types`), nunca el contenido; el contenido solo importa tipos del core. Solo `render` y `scene` importan Pixi, y ningún módulo del motor lee `window`, `document` ni `localStorage`. `engine/architecture.test.ts` comprueba estas reglas sobre el código fuente: un import no permitido, saltarse un barrel o usar Pixi o el navegador en otro módulo hace fallar la suite.
 
-Los archivos de tipos no contienen lógica runtime y no tienen tests propios. TypeScript y Typedoc validan esos contratos. Los módulos de comportamiento sí tienen tests co-localizados con el sufijo `.test.ts`.
+Los archivos de tipos no contienen lógica runtime y no tienen tests propios. TypeScript valida esos contratos. Los módulos de comportamiento sí tienen tests co-localizados con el sufijo `.test.ts`.
 
 ## Coordenadas e índice espacial
 
@@ -288,7 +288,9 @@ screenY    = baseScreenY - elevation * e
 
 `baseScreenY` representa el contacto con el suelo sin desplazar por elevación. Se usa para ordenar sprites de forma estable. Si no se especifica `elevationStep`, se usa `th / 2`.
 
-Antes de renderizar, la escena calcula los extremos proyectados de todas las cajas y centra el conjunto en el viewport. Crea las vistas de **todas** las cajas y entidades, también las que quedan fuera de pantalla, y las marca con `cullable = true`: el `CullerPlugin` de PixiJS, registrado en `page.tsx` con `extensions.add(CullerPlugin)`, comprueba en cada frame sus bounds contra `renderer.screen` y omite dibujar las que no se ven. Así una cámara que se mueva las mostrará sin reconstruir la escena. Ya no existe un filtro propio de viewport (el antiguo `isWithinViewport` no creaba lo que quedaba fuera al construir).
+Antes de renderizar, la escena calcula los extremos proyectados de todas las cajas y centra el conjunto en el viewport. Crea las vistas de **todas** las cajas y entidades, también las que quedan fuera de pantalla, y las marca con `cullable = true`. El culling se hace **bajo demanda**: la escena llama a `Culler.shared.cull(scene, renderer.screen, false)` al construirse y en cada evento `resize` del renderer (y lo hará cuando se mueva la cámara), no en cada frame. No se registra el `CullerPlugin`: recorría y calculaba los bounds de las miles de vistas en cada frame aunque nada se moviera, y era ~80 % del coste de CPU por frame. Así una cámara que se mueva las mostrará sin reconstruir la escena. Ya no existe un filtro propio de viewport (el antiguo `isWithinViewport` no creaba lo que quedaba fuera al construir).
+
+Los SVG se rasterizan a la resolución con la que se ven, no a la de su lienzo: `getSvgResolution(TILE_WIDTH, renderer.resolution)` (`render/svg.ts`) devuelve `min(1, TILE_WIDTH × resolución del dispositivo × SVG_DETAIL / SVG_TILE_WIDTH)` (`SVG_DETAIL = 1.5`, `SVG_TILE_WIDTH = 1024`) y la escena la pasa a todas sus cargas con `Assets.load({ src, data: { resolution } })`. Rasterizar a 1024 px un bloque que se dibuja a 40 px ocupaba ~217 MB de texturas y producía bordes dentados al reducir sin mipmaps; ahora ocupa ~6 MB y los bordes se ven suaves. Si sube `TILE_WIDTH` (zoom de cámara), la resolución se recalcula con el mayor tamaño de pantalla previsto.
 
 ## Selección de materiales y entidades
 
@@ -351,14 +353,23 @@ Los assets no llevan sombra proyectada propia: la dibuja el motor sobre el terre
 
 - **Proyección (dominio).** `getShadowProjection(sun)` (`engine/lighting`, tipos en `core/types/lighting.ts`) devuelve un `ShadowProjection`: dirección de las sombras en el suelo (opuesta al sol), `stretch` (casillas de suelo por casilla de altura, `1 / tan(altitud)`, con tope `MAX_SHADOW_STRETCH` = 4) y `alpha` (de `0` en el horizonte a `SHADOW_ALPHA` = 0.32 en `SHADOW_FADE_ELEVATION`); `null` de noche. `getSilhouetteMatrix(projection, foot, lift, metrics)` devuelve la transformación afín que tumba en el suelo los píxeles de un sprite, relativos a su pie: trata el sprite como un recorte vertical sobre su pie y **girado hacia el sol** (los objetos tienen volumen: una copa proyecta todo su ancho venga de donde venga el sol, mientras que una cartulina de canto proyectaría una línea). Un píxel a lo ancho del sprite se pone de través a la sombra (`√2 / tileWidth` casillas por píxel); un píxel `h` por encima del pie, a `h × √(5/2) / tileWidth` casillas de altura × `stretch` en la dirección de la sombra. `lift` son los bloques entre el suelo de quien proyecta y el plano que recibe la sombra: cuanto más bajo el plano, más lejos cae. `BLOCK_HEIGHT_IN_TILES` (≈ 0.53) es la altura de un bloque en casillas.
 - **Siluetas (render).** `createSilhouettes(views, box, metrics, length, lengthAxis)` (`render/shadow.ts`) crea, por cada sprite de una entidad tal como lo devuelve `createBlockViews()`, una copia negra recortada a la altura de su pie (solo proyecta lo que está por encima del suelo). Las franjas de una entidad de varias casillas usan cada una el pie de su propia casilla (`getFootprintSliceTiles()`). Los recortes se cachean por textura.
-- **Mapas de sombra (escena).** La escena crea un `RenderTexture` por elevación de cima del terreno, en espacio del mundo visto desde arriba: `SHADOW_MAP_PIXELS_PER_TILE` (16) texels por columna, texel `(0, 0)` en la esquina de la columna mínima. Cada `SHADOW_REFRESH_TICKS` (10) ticks redibuja todos los mapas: en el mapa de la elevación `e` coloca con `placeSilhouette()` (matriz `getSilhouetteMapMatrix()` = píxeles de la textura → píxeles relativos al pie → casillas del mundo por `getSilhouetteMatrix(…, elevación − e)` → texels) las siluetas de las entidades que están a esa elevación o más arriba, y las renderiza con `app.renderer.render({ container, target, clear: true, clearColor: [0, 0, 0, 0] })`. El contenedor de siluetas lleva un `BlurFilter` (`SHADOW_BLUR` = 2) para bordes suaves; las sombras que se solapan no se oscurecen doble.
-- **Sobre el terreno.** Cada cima de columna recibe una vista `createGroundShadowView()`: un sprite con su cuadrado del mapa de su elevación, colocado sobre su rombo superior con `getGroundShadowMatrix()` (la cima de la arena, medio bloque más baja), añadido justo después del bloque superior con su misma profundidad. Queda encima de su casilla y debajo de lo que está sobre ella o delante, así que **ninguna casilla corta una sombra**, y en un escalón la sombra se interrumpe y sigue desplazada en el nivel inferior. De día la escena muestra estas vistas con `alpha` = `projection.alpha`; de noche las oculta y no redibuja.
+- **Mapas de sombra (escena).** La escena crea un `RenderTexture` por elevación de cima del terreno, en espacio del mundo visto desde arriba: `SHADOW_MAP_PIXELS_PER_TILE` (16) texels por columna, texel `(0, 0)` en la esquina de la columna mínima. Cada mapa se dibuja desde una capa fija: primero el sprite de la **oclusión ambiental** de ese nivel (ver [Oclusión ambiental](#oclusión-ambiental)), luego, si alguna entidad llega a él, su contenedor de siluetas: las de las entidades a esa elevación o más arriba, cada una con su `lift` (bloques hasta ese nivel). Nunca se cambia `visible` ni `renderable` de una silueta: en PixiJS 8.22 ese cambio marca `structureDidChange` en el render group, que entonces reconstruye todas sus instrucciones de dibujo. Para dibujar un mapa, `placeSilhouette()` coloca cada silueta (matriz `getSilhouetteMapMatrix()` = píxeles de la textura → píxeles relativos al pie → casillas del mundo por `getSilhouetteMatrix(…, lift)` → texels) y `app.renderer.render({ container, target, clear: true, clearColor: [0, 0, 0, 0] })` lo pinta. Las siluetas llevan dos filtros compartidos: `BlurFilter` (`SHADOW_BLUR` = 2) para bordes suaves y `AlphaFilter`, que aplica la opacidad del sol (`projection.alpha`) al grupo entero, así que las sombras que se solapan no se oscurecen doble. De noche el contenedor de siluetas se oculta (una vez, al anochecer) y el mapa solo lleva la oclusión.
+- **Ritmo de redibujado.** Al crear la escena, al amanecer y al anochecer se dibujan todos los mapas a la vez. De día, cada mapa con siluetas recuerda el tick para el que se dibujó y en cada frame (el listener de luz corre aunque el reloj no avance) se redibuja **un solo mapa: el más desactualizado**, si tiene al menos `SHADOW_REFRESH_TICKS` (10) ticks de antigüedad, con el sol de ese frame. Así ningún frame paga todos los mapas y, por turnos, todos siguen moviéndose aunque el refresco venza en cada frame (tiempo acelerado o pocos FPS). Los mapas sin siluetas solo contienen la oclusión, que no cambia, y no se redibujan.
+- **Sobre el terreno.** Cada cima de columna recibe una vista `createGroundShadowView()`: un sprite con su cuadrado del mapa de su elevación, colocado sobre su rombo superior con `getGroundShadowMatrix()` (la cima de la arena, medio bloque más baja), añadido justo después del bloque superior con su misma profundidad. Queda encima de su casilla y debajo de lo que está sobre ella o delante, así que **ninguna casilla corta una sombra**, y en un escalón la sombra se interrumpe y sigue desplazada en el nivel inferior. Estas vistas están siempre visibles con opacidad 1 y la escena no vuelve a tocarlas: lo que muestran (oclusión, sombras, su opacidad) lo decide el mapa.
 
-Límites conocidos: las sombras solo caen sobre las cimas del terreno, no sobre las caras laterales de los bloques ni sobre otras entidades; tampoco sobre terreno más alto que quien las proyecta. El sprite tratado como recorte vertical alarga un poco las sombras (la cara superior del objeto cuenta como altura). El terreno (acantilados) no proyecta sombra. Coste: un `RenderTexture` por elevación (8 con el terreno actual, 528 × 528) y una vista por columna; los mapas se redibujan a ~2 Hz a velocidad real.
+Límites conocidos: las sombras solo caen sobre las cimas del terreno, no sobre las caras laterales de los bloques ni sobre otras entidades; tampoco sobre terreno más alto que quien las proyecta. El sprite tratado como recorte vertical alarga un poco las sombras (la cara superior del objeto cuenta como altura). El terreno (acantilados) no proyecta sombra. Coste: un `RenderTexture` por elevación (8 con el terreno actual, 528 × 528) y una textura de oclusión por elevación (256 × 256), una vista por columna y, por refresco, un render a textura con desenfoque por cada mapa al que llega alguna entidad, repartidos de uno en uno entre frames.
+
+## Oclusión ambiental
+
+La oscuridad donde llega menos cielo al suelo, al pie de las paredes y alrededor de la base de las entidades. El terreno y las entidades son estáticos, así que se calcula **una sola vez** al crear la escena y no cuesta nada por frame.
+
+- **Cálculo (dominio).** `getOcclusion(terrain, x, y, u, v)` (`engine/lighting/occlusion.ts`) da la oclusión en un punto `(u, v)` de la cima de la columna `(x, y)`. Cada columna vecina más alta oscurece el suelo a su pie según el desnivel (completo desde un bloque; la arena, medio bloque más baja, cuenta medio), con `AO_WALL_ALPHA` (0.4) que se desvanece en `AO_WALL_RADIUS` (0.5 casillas) desde la columna; así quedan bandas a lo largo de los escalones y esquinas más oscuras donde se juntan dos paredes. Cada entidad sobre el mismo suelo (la propia columna o una vecina a la misma altura) añade una sombra de contacto: `AO_CONTACT_ALPHA` (0.3) en un núcleo `AO_CONTACT_INSET` (0.2) dentro de su casilla que se desvanece en `AO_CONTACT_RADIUS` (0.35). Las cimas de los acantilados no se oscurecen. Las aportaciones se combinan como sombras apiladas, `1 − Π(1 − oᵢ)`, sin llegar nunca a negro. `OcclusionTerrain` describe el terreno con funciones (`topHeightAt`, `levelAt`, `occupiedAt`), así que el cálculo no depende de `World` ni de Pixi.
+- **Mapa.** `buildOcclusionMap(terrain, level, AO_PIXELS_PER_TILE)` devuelve un `Uint8ClampedArray` RGBA negro con la oclusión en alfa, muestreada en el centro de cada texel, con la misma disposición que los mapas de sombra pero a `AO_PIXELS_PER_TILE` (8) texels por casilla: la oclusión es suave y el filtrado lineal la interpola. Solo escribe las columnas de ese nivel.
+- **Escena.** Para cada elevación crea una textura con `BufferImageSource` a partir de ese mapa (`topHeightAt` a partir de la elevación y la superficie, `occupiedAt` = `world.occupancy.isOccupied`) y la pone, escalada ×2, al fondo de la capa de su mapa de sombras. Así aparece en las mismas vistas de suelo, de día y de noche, sin sprites nuevos en la escena; las sombras del sol se componen encima. Si en el futuro las entidades se mueven o el terreno cambia, habrá que recalcular la oclusión de las columnas afectadas.
 
 ## Ciclo de vida de recursos
 
-`createIsometricScene(app, world)` no genera ni modifica el mundo: lee sus columnas, superficies y entidades, y descubre los assets desde `textureSource`. Después carga los SVG de terreno y las variantes de entidad con `Assets.load()` en paralelo. Las instancias comparten la textura de su (tipo, variación); las fuentes originales sin recolor también se reutilizan. Si la escena se desmonta, quita su listener del ticker, destruye las siluetas y los mapas de sombra (`RenderTexture.destroy(true)`), destruye el container y llama a `Assets.unload()` para cada fuente cargada. Pixi gestiona las texturas; no se debe llamar a `destroy(true)` sobre una textura administrada por `Assets`.
+`createIsometricScene(app, world)` no genera ni modifica el mundo: lee sus columnas, superficies y entidades, y descubre los assets desde `textureSource`. Después carga los SVG de terreno y las variantes de entidad con `Assets.load()` en paralelo. Las instancias comparten la textura de su (tipo, variación); las fuentes originales sin recolor también se reutilizan. Si la escena se desmonta, quita su listener del ticker y el de `resize` del renderer, destruye las capas de sombra, las texturas de oclusión y los mapas de sombra (`destroy(true)`), destruye el container y llama a `Assets.unload()` para cada fuente cargada. Pixi gestiona las texturas; no se debe llamar a `destroy(true)` sobre una textura administrada por `Assets`.
 
 ## Testing y calidad
 
@@ -378,10 +389,9 @@ El flujo completo de validación es:
 ```bash
 pnpm test:coverage
 pnpm build
-pnpm run docs
 ```
 
-`pnpm run docs` genera Typedoc en `docs/`. El coverage HTML se genera en `coverage/`; ambos directorios son artefactos generados y no deben editarse manualmente.
+El coverage HTML se genera en `coverage/` y el build en `dist/`; ambos directorios son artefactos generados y no deben editarse manualmente.
 
 ## Puntos de extensión
 
@@ -391,7 +401,7 @@ Para añadir un nuevo material de terreno:
 2. Añadir una clave en `engine/constants`.
 3. Añadir el material a `TerrainMaterial` (y a `TerrainSurface` si puede ser la cima de una columna), su regla en `engine/terrain/surfaces.ts` y cargar el SVG en `engine/scene`.
 4. Actualizar o crear el test de escena para demostrar la selección.
-5. Ejecutar coverage, build y Typedoc.
+5. Ejecutar coverage y build.
 
 Para añadir una entidad:
 
@@ -399,7 +409,7 @@ Para añadir una entidad:
 2. Añadir una entrada en `src/isometric/content/entities.ts` (`ENTITY_CONFIG`) con `id`, `textureSource`, `height`, `spawnChance` y `surface`; si ocupa más de un bloque, añadir `length` y `lengthAxis` según `data-tiles`, y si mide varios bloques de alto, `height` igual al tercer valor de `data-tiles` (`1x1x3` → `height: 3`).
 3. Añadir o actualizar el test de la factory para demostrar la regla de colocación.
 4. No añadir condiciones específicas de la entidad en `scene.ts`, `Box` o `render.ts`.
-5. Ejecutar coverage, build y Typedoc.
+5. Ejecutar coverage y build.
 
 Para añadir una nueva regla de elevación, modificar primero `terrain` (relleno de columnas y superficies) o la selección de materiales, según dónde pertenezca la decisión. No introducir esa lógica dentro de `render`, porque el renderer solo debe convertir una decisión ya tomada en un Sprite.
 
@@ -419,4 +429,4 @@ Cuando una entidad define `colorReplacements`, cada instancia recibe una variaci
 
 ## Regla de sincronización
 
-Todo cambio que modifique el funcionamiento del core, sus contratos, el renderizado o el flujo de assets debe actualizar en el mismo cambio los Markdown afectados. `ARCHITECTURE.md` documenta el runtime, `CONTRIBUTING.md` el flujo práctico y `ISO_ASSET_AGENT.md` las reglas de generación e integración de SVG.
+Todo cambio que modifique el funcionamiento del core, sus contratos, el renderizado o el flujo de assets debe actualizar en el mismo cambio los Markdown afectados. `ARCHITECTURE.md` documenta el runtime y `CONTRIBUTING.md` el flujo práctico; las reglas de generación e integración de SVG viven en la skill `iso-asset-generator`.
