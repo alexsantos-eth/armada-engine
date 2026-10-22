@@ -9,9 +9,10 @@ El flujo principal es:
 ```mermaid
 flowchart LR
   Main[src/main.tsx] --> Page[src/isometric/page.tsx]
-  Page --> World[engine/world]
-  Page --> Scene[engine/scene]
-  Page --> Simulation[engine/simulation]
+  Page --> Game[src/isometric/game]
+  Game --> World[engine/world]
+  Game --> Scene[engine/scene]
+  Game --> Simulation[engine/simulation]
   Simulation --> World
   Simulation --> Time
   Simulation --> Events[engine/events]
@@ -105,14 +106,18 @@ Una columna entera `(x, y)` es el cuadrado que va de `(x, y)` a `(x + 1, y + 1)`
 
 `src/main.tsx` obtiene el elemento `#app` y monta `IsometricWorld`.
 
-`src/isometric/page.tsx` crea una instancia de `Application` de PixiJS dentro de `useEffect`. Configura:
+`src/isometric/page.tsx` es declarativa: un `<section>` a pantalla completa con el contenedor del canvas y la etiqueta de hora, y un único `useEffect(() => mountGame(contenedor, { window, onClockChange: setClockLabel }).destroy, [])`. No importa Pixi ni el core. La etiqueta de hora está siempre montada después del contenedor del canvas: si fuera un primer hijo condicional, Preact reutilizaría el elemento del contenedor y movería el canvas dentro de la etiqueta.
+
+`mountGame(container, options)` (`src/isometric/game`) es la capa de aplicación entre la página y el core: junta el core, el contenido y la entrada, y es la única parte imperativa del arranque. Crea una instancia de `Application` de PixiJS y la configura con:
 
 - `resizeTo: window`: el canvas llena la ventana y sigue su tamaño (el `ResizePlugin` de Pixi llama a `renderer.resize()`, y la escena re-centra la cámara y vuelve a cullear en cada evento `resize` del renderer). `WIDTH` ya solo es el ancho de referencia del que sale `TILE_WIDTH`; el core sigue sin leer `window`;
 - resolución del dispositivo;
 - densidad automática;
 - fondo oscuro.
 
-Cuando `app.init()` termina, la página añade `app.canvas` al DOM, resuelve la semilla del mundo con `resolveWorldSeed(location.search, Math.random)` (parámetro `?seed=` de la URL o una semilla nueva), la muestra en consola, genera el mundo con `generateWorld({ seed })`, crea el bucle de simulación con `createSimulation(world, { timeScale: resolveTimeScale(location.search) })` y renderiza el mundo con `createIsometricScene(app, world, { player: PLAYER_APPEARANCE, interpolation: () => getInterpolationAlpha(simulation.stepper) })`. Con la escena lista conecta los controles: `bindCameraControls(app.stage, app.renderer.screen, scene.camera)` para arrastrar, hacer zoom con la rueda y pellizcar (ver [Cámara](#cámara)), y `bindKeyboardControls(window, { walk, zoom })` (`src/isometric/input`, fuera del core, porque el core no lee el teclado): flechas o WASD **mueven al personaje** (ver [Jugador](#jugador)) y `+`/`-` hacen zoom en el centro (`KEYBOARD_ZOOM_STEP`, ×1,25). Cada pulsación o suelta de una tecla de movimiento llama a `walk(direcciones)`, que la página pasa a `setPlayerWalk(world.player, direcciones)`; la simulación lo mueve en sus siguientes ticks y la cámara lo sigue. Las teclas con Alt, Ctrl o Meta siguen siendo atajos del navegador, y al perder el foco la ventana se sueltan todas. Después registra la simulación en `app.ticker` con prioridad `UPDATE_PRIORITY.HIGH` (ver [Bucle de simulación](#bucle-de-simulación)); cada frame que avanza el reloj actualiza la etiqueta de hora (`Día N · HH:MM`) que la página superpone al canvas. La página es el único lugar donde se usan `Math.random()` y `window`. El cleanup del efecto quita los listeners del ticker, los controles de la cámara y los del teclado, destruye la escena y la aplicación. Si el componente se desmonta mientras Pixi aún inicializa o la escena carga, la bandera `disposed` evita añadir un canvas, una escena o un bucle sobre una aplicación destruida. La etiqueta de hora está siempre montada después del contenedor del canvas: si fuera un primer hijo condicional, Preact reutilizaría el elemento del contenedor y movería el canvas dentro de la etiqueta.
+Cuando `app.init()` termina, añade `app.canvas` al contenedor y lee las opciones de arranque de la URL con `resolveLaunchOptions(location.search, random)` (`game/launch.ts`): la semilla (`resolveWorldSeed()`, parámetro `?seed=` o una semilla nueva de `random`, por defecto `Math.random`), la hora inicial (`?hour=`) y la escala de tiempo (`?timeScale=`). Muestra la semilla en consola, genera el mundo con `generateWorld({ seed, entityDefinitions: ENTITY_CONFIG, startTick })`, crea el bucle de simulación con `createSimulation(world, { timeScale })` y renderiza el mundo con `createIsometricScene(app, world, { player: PLAYER_APPEARANCE, interpolation: () => getInterpolationAlpha(simulation.stepper) })`. Con la escena lista conecta los controles: `bindCameraControls(app.stage, app.renderer.screen, scene.camera)` para arrastrar, hacer zoom con la rueda y pellizcar (ver [Cámara](#cámara)), y `bindKeyboardControls(window, { walk, zoom })` (`src/isometric/input`, fuera del core, porque el core no lee el teclado): flechas o WASD **mueven al personaje** (ver [Jugador](#jugador)) y `+`/`-` hacen zoom en el centro (`KEYBOARD_ZOOM_STEP`, ×1,25). Cada pulsación o suelta de una tecla de movimiento llama a `walk(direcciones)`, que `mountGame()` pasa a `setPlayerWalk(world.player, direcciones)`; la simulación lo mueve en sus siguientes ticks y la cámara lo sigue. Las teclas con Alt, Ctrl o Meta siguen siendo atajos del navegador, y al perder el foco la ventana se sueltan todas. Después registra la simulación en `app.ticker` con prioridad `UPDATE_PRIORITY.HIGH` (ver [Bucle de simulación](#bucle-de-simulación)); al arrancar y en cada frame que avanza el reloj llama a `onClockChange(formatClockLabel(tick, timeScale))` (`Día N · HH:MM`, más `· ×S` si el tiempo no corre a velocidad real), y la página pinta esa etiqueta sobre el canvas. La capa `game` es el único lugar donde se usan `Math.random()` y `window`, que recibe de la página (los tests le pasan un `window` falso).
+
+`mountGame()` devuelve `{ ready, destroy }`. Cada paso del arranque registra su desmontaje en cuanto existe, y `destroy()` los deshace en orden inverso: listener del ticker, teclado, controles de puntero, escena y aplicación. Si se llama mientras el juego arranca, espera a que termine el paso en curso (`app.init()` o la carga de la escena) y entonces desmonta lo creado sin seguir arrancando: así nunca se destruye una `Application` que aún no ha inicializado (en Pixi 8.22 eso lanza, porque sus plugins no existen todavía) ni se crea una escena o un bucle sobre una aplicación destruida. `ready` se resuelve al terminar de arrancar (o de parar) y se rechaza si el arranque falla. `destroy()` se puede llamar varias veces.
 
 ## Organización de módulos
 
@@ -224,6 +229,12 @@ src/isometric/core/
     terrain.ts
     time.ts
     index.ts
+src/isometric/game/
+  game.ts            # mountGame(): arranca y desmonta el juego (Pixi, mundo, simulación, escena, controles)
+  game.test.ts
+  launch.ts          # resolveLaunchOptions() de la URL y formatClockLabel()
+  launch.test.ts
+  index.ts
 src/isometric/input/
   keyboard.ts        # teclado del juego: caminar (flechas/WASD) y zoom (+/-)
   keyboard.test.ts
@@ -236,9 +247,11 @@ src/isometric/content/
   index.ts
 ```
 
-La entrada del navegador que no pasa por Pixi (`src/isometric/input`, hoy el teclado) es de la aplicación: el motor no la importa, recibe `window` (o cualquier objetivo de eventos) desde `page.tsx` y solo importa tipos del core.
+La capa de aplicación (`src/isometric/game`) une el core, el contenido y la entrada; el motor no la importa y la página solo la monta. La lógica imperativa del arranque (crear la `Application`, generar el mundo, el bucle, los controles y su desmontaje) va aquí, probada con mocks de Pixi, y no en `page.tsx`.
 
-El contenido del juego (`src/isometric/content`) son datos: el motor no lo importa. `page.tsx` lo pasa a `generateWorld({ entityDefinitions: ENTITY_CONFIG })`, que lo valida antes de generar.
+La entrada del navegador que no pasa por Pixi (`src/isometric/input`, hoy el teclado) es de la aplicación: el motor no la importa, recibe `window` (o cualquier objetivo de eventos) desde `mountGame()` y solo importa tipos del core.
+
+El contenido del juego (`src/isometric/content`) son datos: el motor no lo importa. `mountGame()` lo pasa a `generateWorld({ entityDefinitions: ENTITY_CONFIG })`, que lo valida antes de generar.
 
 Responsabilidades y dependencias permitidas (entre módulos solo a través de su barrel):
 
@@ -322,7 +335,7 @@ PixiJS marca los frames; el dominio decide cuántos pasos de simulación tocan. 
 - `createSimulation(world, options?)` une ambos: `simulation.frame(elapsedMs)` consume el frame, ejecuta `stepWorld()` con los pasos debidos y devuelve `{ steps, alpha, tick }`. `simulation.stepper` permite pausar o cambiar la velocidad, y `simulation.events` es el bus de la simulación.
 - `resolveTimeScale(search)` lee `?timeScale=` de la URL para depurar el ciclo del día (`?timeScale=60`: un día en 20 s); valores ausentes, negativos o no numéricos dan `1`.
 
-`page.tsx` llama a `simulation.frame(ticker.elapsedMS)` en un listener de `app.ticker` con prioridad `UPDATE_PRIORITY.HIGH`. `elapsedMS` es el tiempo real sin recortar ni escalar por el ticker (el recorte y la escala son del acumulador). `Application` dibuja desde el mismo ticker con prioridad `LOW` (`TickerPlugin` de PixiJS 8.22), así que la simulación siempre corre antes del render del mismo frame.
+`mountGame()` (`src/isometric/game`) llama a `simulation.frame(ticker.elapsedMS)` en un listener de `app.ticker` con prioridad `UPDATE_PRIORITY.HIGH`. `elapsedMS` es el tiempo real sin recortar ni escalar por el ticker (el recorte y la escala son del acumulador). `Application` dibuja desde el mismo ticker con prioridad `LOW` (`TickerPlugin` de PixiJS 8.22), así que la simulación siempre corre antes del render del mismo frame.
 
 ## Eventos entre sistemas
 
