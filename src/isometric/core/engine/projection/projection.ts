@@ -1,8 +1,14 @@
 import type { IGridObject, IsoProjectionConfig, IsoScreenBox } from "../../types";
 
 /**
- * Projects grid objects to isometric screen coordinates. `baseScreenY` is the ground
- * contact point (stable for depth sorting) and `screenY` adds the elevation offset.
+ * Projects grid objects to isometric screen coordinates (screen `y` grows downward):
+ *
+ * - `screenX = originX + (x − y) · tileWidth / 2`
+ * - `baseScreenY = originY − (x + y) · tileHeight / 2`
+ * - `screenY = baseScreenY − elevation · elevationStep`
+ *
+ * So `+x` moves up-right, `+y` up-left and elevation up; `(screenX, screenY)` is the centre of
+ * the box's top face. `baseScreenY` ignores elevation (stable for depth sorting).
  */
 export function projectBoxesToIsometric<T extends IGridObject>(
   boxes: readonly T[],

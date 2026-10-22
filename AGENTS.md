@@ -36,6 +36,8 @@ core/
 
 Cada responsabilidad debe permanecer en su propia carpeta. Los `index.ts` son barrels públicos: los imports entre responsabilidades deben preferirlos, por ejemplo `../entities` o `./core/engine`, en lugar de apuntar al archivo interno.
 
+Sistema de coordenadas (referencia en `ARCHITECTURE.md`, sección «Sistema de coordenadas»): la columna `(0, 0)` es la más cercana a la cámara; `+x` va arriba a la derecha en pantalla (noreste), `+y` arriba a la izquierda (noroeste), `elevation` hacia arriba y el norte es arriba (`+x +y`). En píxeles de pantalla, `y` crece hacia abajo. Los assets SVG usan un convenio de ejes distinto (`data-tiles`).
+
 La UI de entrada está en `src/isometric/page.tsx` y `src/main.tsx` solo monta esa página.
 
 Los bloques visibles se cargan como SVG desde `public/assets/<material>/block.svg`. El renderer usa una textura por bloque y aplica el tintado de agua por elevación; no reintroducir composición de caras separadas.

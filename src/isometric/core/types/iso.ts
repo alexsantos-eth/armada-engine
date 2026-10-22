@@ -1,7 +1,9 @@
 import type { IGridObject } from "./entities";
 
 /**
- * Configuration for projecting grid coordinates to isometric screen coordinates
+ * Configuration for projecting grid coordinates to isometric screen coordinates (2:1).
+ * World `+x` goes up-right on screen, `+y` up-left and elevation up; screen `y` grows
+ * downward, as in PixiJS. See "Sistema de coordenadas" in ARCHITECTURE.md.
  */
 export type IsoProjectionConfig = {
   /**
@@ -17,11 +19,11 @@ export type IsoProjectionConfig = {
    */
   elevationStep?: number;
   /**
-   * X coordinate of the isometric origin (bottom corner where box (0,0) is projected) in screen pixels
+   * Screen X, in pixels, of the centre of the top face of column `(0, 0)` at elevation `0`.
    */
   originX: number;
   /**
-   * Y coordinate of the isometric origin (bottom corner where box (0,0) is projected) in screen pixels
+   * Screen Y, in pixels, of the centre of the top face of column `(0, 0)` at elevation `0`.
    */
   originY: number;
 };
@@ -43,15 +45,16 @@ export type IsoScreenBox<T extends IGridObject = IGridObject> = {
    */
   box: T;
   /**
-   * X coordinate of the projected box on the screen in pixels
+   * Screen X, in pixels, of the centre of the box's top face.
    */
   screenX: number;
   /**
-   * Ground-contact Y before applying elevation offset. Useful for stable depth sorting.
+   * Screen Y of the centre of the column at elevation `0`, before the elevation offset.
+   * Smaller (higher on screen) means farther from the camera; used for stable depth sorting.
    */
   baseScreenY: number;
   /**
-   * Y coordinate of the projected box on the screen in pixels
+   * Screen Y, in pixels, of the centre of the box's top face (`baseScreenY` raised by its elevation).
    */
   screenY: number;
 };
