@@ -1,5 +1,24 @@
 import type { SvgColorReplacements } from "../../types";
 
+/** Width in px of the tile in the SVG assets' canvas (a block's diamond spans its full width). */
+export const SVG_TILE_WIDTH = 1024;
+
+/**
+ * Extra rasterization detail over the on-screen size: keeps edges smooth when a texture is
+ * drawn slightly larger or between pixels, without mipmaps.
+ */
+export const SVG_DETAIL = 1.5;
+
+/**
+ * Resolution to rasterize the SVG assets at (`data.resolution` of `Assets.load()`), so their
+ * textures match the size they are drawn at instead of their 1024 px canvas: the on-screen tile
+ * width × the device pixel ratio × {@link SVG_DETAIL}, relative to {@link SVG_TILE_WIDTH}, and
+ * never above `1`. If the tile grows on screen (camera zoom), pass the largest expected width.
+ */
+export function getSvgResolution(tileWidth: number, deviceResolution = 1): number {
+  return Math.min(1, (tileWidth * deviceResolution * SVG_DETAIL) / SVG_TILE_WIDTH);
+}
+
 const SVG_COLOR_ATTRIBUTE_PATTERN = /(fill|stroke)\s*=\s*(["'])#([0-9a-fA-F]{3,8})\2/g;
 
 /**

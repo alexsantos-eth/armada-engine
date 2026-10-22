@@ -1,4 +1,4 @@
-import { Container, Graphics, Rectangle, Sprite, Texture } from "pixi.js";
+import { type Container, Graphics, Rectangle, Sprite, Texture } from "pixi.js";
 import type { EntityLengthAxis, IsoScreenBox, TileMetrics } from "../../types";
 
 /**

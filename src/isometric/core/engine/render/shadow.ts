@@ -46,7 +46,8 @@ export function getGroundShadowMatrix(tileTop: PlanePoint, metrics: TileMetrics,
 /**
  * Creates the view that draws a tile's part of a shadow map on its top face. Added right after
  * the tile with the tile's depth, it lies on the tile and under anything standing on it or in
- * front of it. Hidden until the scene shows it (by day).
+ * front of it. Always visible at full opacity: what it shows (ambient occlusion, sun shadows
+ * and their opacity) is drawn into the map, so the scene never touches it again.
  *
  * @param texture The tile's square of the shadow map of its elevation.
  */
@@ -59,7 +60,6 @@ export function createGroundShadowView(
 ): DepthView {
   const sprite = new Sprite(texture);
   sprite.setFromMatrix(toMatrix(getGroundShadowMatrix(tileTop, metrics, pixelsPerTile)));
-  sprite.visible = false;
   return { view: sprite, depth };
 }
 
@@ -163,8 +163,11 @@ export function getSilhouetteMapMatrix(
   return composeAffine(toMap, composeAffine(world, toFoot));
 }
 
-/** Places a silhouette in a shadow map (see {@link getSilhouetteMapMatrix}) and shows it. */
+/**
+ * Places a silhouette in a shadow map (see {@link getSilhouetteMapMatrix}). Its visibility is
+ * left alone: changing `visible` marks the render group's structure as changed and rebuilds all
+ * its draw instructions.
+ */
 export function placeSilhouette(silhouette: Silhouette, world: Affine2D, mapOrigin: PlanePoint, pixelsPerTile: number): void {
   silhouette.sprite.setFromMatrix(toMatrix(getSilhouetteMapMatrix(silhouette, world, mapOrigin, pixelsPerTile)));
-  silhouette.sprite.visible = true;
 }

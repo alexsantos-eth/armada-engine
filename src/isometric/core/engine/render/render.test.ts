@@ -113,7 +113,7 @@ describe("createBlockViews", () => {
       screenY: 140,
     };
 
-    const sprite = renderViews(container as never, {
+    const sprite = renderViews(container, {
       texture: { id: "grass" } as never,
       box,
       metrics: { tileWidth: 40, tileHeight: 20, boxHeight: 13 },
@@ -142,7 +142,7 @@ describe("createBlockViews", () => {
       screenY: 20,
     };
 
-    const sprite = renderViews(container as never, {
+    const sprite = renderViews(container, {
       texture: { id: "ground" } as never,
       box,
       metrics: { tileWidth: 40, tileHeight: 20, boxHeight: 13 },
@@ -152,7 +152,7 @@ describe("createBlockViews", () => {
   });
 
   it("supports a two-block-high sprite", () => {
-    const sprite = renderViews({ addChild: vi.fn() } as never, {
+    const sprite = renderViews({ addChild: vi.fn() }, {
       texture: { id: "tree" } as never,
       box: {
         x: 0,
@@ -174,7 +174,7 @@ describe("createBlockViews", () => {
   });
 
   it("aligns a one-block entity with the block's top diamond", () => {
-    const sprite = renderViews({ addChild: vi.fn() } as never, {
+    const sprite = renderViews({ addChild: vi.fn() }, {
       texture: { id: "entity" } as never,
       box: {
         x: 0,
@@ -194,7 +194,7 @@ describe("createBlockViews", () => {
 
   it("slices a multi-block entity into half-tile strips across its footprint", () => {
     const children: unknown[] = [];
-    const sprites = renderViews({ addChild: (child: unknown) => children.push(child) } as never, {
+    const sprites = renderViews({ addChild: (child: unknown) => children.push(child) }, {
       texture: carTexture as never,
       box: {
         x: 0,
@@ -230,7 +230,7 @@ describe("createBlockViews", () => {
   });
 
   it("reuses the strip textures of a texture", () => {
-    const render = () => renderViews({ addChild: vi.fn() } as never, {
+    const render = () => renderViews({ addChild: vi.fn() }, {
       texture: carTexture as never,
       box: { x: 0, y: 0, box: new Box(0, 0), screenX: 10, baseScreenY: 20, screenY: 20 },
       metrics: { tileWidth: 40, tileHeight: 20, boxHeight: 13 },
@@ -243,7 +243,7 @@ describe("createBlockViews", () => {
   });
 
   it("positions a multi-block entity along the y axis", () => {
-    const sprite = renderViews({ addChild: vi.fn() } as never, {
+    const sprite = renderViews({ addChild: vi.fn() }, {
       texture: carTexture as never,
       box: {
         x: 0,
@@ -262,7 +262,7 @@ describe("createBlockViews", () => {
     }) as unknown as TestSprite[];
 
     // Centre at x = 0, so the strips start at -30; the anchor tile is on the right.
-    expect(sprite.map(({ position }) => position.set.mock.calls[0])).toEqual([
+    expect(sprite.map(({ position }) => position.set.mock.calls[0] as number[])).toEqual([
       [-30, -13],
       [-10, -13],
       [10, -13],
@@ -274,7 +274,7 @@ describe("createBlockViews", () => {
     const children: unknown[] = [];
     const container = { addChild: (child: unknown) => children.push(child) };
 
-    renderViews(container as never, {
+    renderViews(container, {
       texture: carTexture as never,
       box: {
         x: 0,

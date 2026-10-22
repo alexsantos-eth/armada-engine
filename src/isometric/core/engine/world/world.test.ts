@@ -10,6 +10,7 @@ import {
   restoreWorld,
   serializeWorld,
   WORLD_SNAPSHOT_VERSION,
+  type WorldSnapshot,
 } from "./world";
 
 const ROCK: EntityDefinition = {
@@ -145,7 +146,7 @@ describe("serializeWorld / restoreWorld", () => {
   it("round-trips a world through JSON", () => {
     const world = generateWorld({ seed: 77, width: 12, height: 12, entityDefinitions: DEFINITIONS });
 
-    const snapshot = JSON.parse(JSON.stringify(serializeWorld(world)));
+    const snapshot = JSON.parse(JSON.stringify(serializeWorld(world))) as WorldSnapshot;
     const restored = restoreWorld(snapshot);
 
     expect(snapshot.version).toBe(WORLD_SNAPSHOT_VERSION);
@@ -162,7 +163,7 @@ describe("serializeWorld / restoreWorld", () => {
     const world = generateWorld({ seed: 77, width: 4, height: 4, entityDefinitions: [] });
     advanceClock(world.clock, TICKS_PER_DAY + 123);
 
-    const snapshot = JSON.parse(JSON.stringify(serializeWorld(world)));
+    const snapshot = JSON.parse(JSON.stringify(serializeWorld(world))) as WorldSnapshot;
     const restored = restoreWorld(snapshot);
 
     expect(snapshot.tick).toBe(WORLD_START_TICK + TICKS_PER_DAY + 123);

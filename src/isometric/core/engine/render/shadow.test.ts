@@ -142,13 +142,14 @@ describe("getGroundShadowMatrix", () => {
 });
 
 describe("createGroundShadowView", () => {
-  it("creates a hidden sprite of the tile's shadow, laid on its top with the given depth", () => {
+  it("creates an always-visible sprite of the tile's shadow, laid on its top with the given depth", () => {
     const frame = texture(SHADOW_MAP_PIXELS_PER_TILE, SHADOW_MAP_PIXELS_PER_TILE);
     const { view, depth } = createGroundShadowView(frame, { x: 10, y: 20 }, METRICS, 42.5);
     const sprite = view as unknown as Sprite & { setFromMatrix: ReturnType<typeof vi.fn> };
 
     expect(depth).toBe(42.5);
-    expect(sprite.visible).toBe(false);
+    // Never hidden: what it shows (occlusion, shadows, opacity) is decided by the map.
+    expect(sprite.visible).toBe(true);
     expect(sprite.setFromMatrix).toHaveBeenCalledWith(expect.objectContaining(
       getGroundShadowMatrix({ x: 10, y: 20 }, METRICS, SHADOW_MAP_PIXELS_PER_TILE),
     ));
@@ -159,7 +160,7 @@ describe("createSilhouettes", () => {
   it("makes a black silhouette of a one-tile sprite, cropped at its foot", () => {
     // The sprite spans y 100..140; its foot (the tile centre) is at y 130.
     const sprite = placedSprite(texture(64, 80), 200, 100, 40, 40);
-    const [silhouette] = createSilhouettes([{ view: sprite as never, depth: 0 }], entityBox(3, 4, 200, 130), METRICS);
+    const [silhouette] = createSilhouettes([{ view: sprite, depth: 0 }], entityBox(3, 4, 200, 130), METRICS);
 
     expect(silhouette.sprite.tint).toBe(0x000000);
     expect(silhouette.worldFoot).toEqual({ x: 3, y: 4 });
@@ -171,8 +172,8 @@ describe("createSilhouettes", () => {
   it("reuses the cropped texture for sprites of the same texture and crop", () => {
     const tex = texture(64, 80);
     const box = entityBox(3, 4, 200, 130);
-    const [first] = createSilhouettes([{ view: placedSprite(tex, 200, 100, 40, 40) as never, depth: 0 }], box, METRICS);
-    const [second] = createSilhouettes([{ view: placedSprite(tex, 200, 100, 40, 40) as never, depth: 0 }], box, METRICS);
+    const [first] = createSilhouettes([{ view: placedSprite(tex, 200, 100, 40, 40), depth: 0 }], box, METRICS);
+    const [second] = createSilhouettes([{ view: placedSprite(tex, 200, 100, 40, 40), depth: 0 }], box, METRICS);
 
     expect(second.sprite.texture).toBe(first.sprite.texture);
   });
@@ -180,7 +181,7 @@ describe("createSilhouettes", () => {
   it("keeps the whole texture when the foot is at or below the sprite's bottom", () => {
     const tex = texture(64, 80);
     const [silhouette] = createSilhouettes(
-      [{ view: placedSprite(tex, 200, 100, 40, 40) as never, depth: 0 }],
+      [{ view: placedSprite(tex, 200, 100, 40, 40), depth: 0 }],
       entityBox(0, 0, 200, 150),
       METRICS,
     );
@@ -207,7 +208,7 @@ describe("createSilhouettes", () => {
 describe("getSilhouetteMapMatrix / placeSilhouette", () => {
   const identityWorld: Affine2D = { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 };
   const silhouette = () => createSilhouettes(
-    [{ view: placedSprite(texture(64, 80), 200, 100, 40, 40) as never, depth: 0 }],
+    [{ view: placedSprite(texture(64, 80), 200, 100, 40, 40), depth: 0 }],
     entityBox(3, 4, 200, 130),
     METRICS,
   )[0];
@@ -227,14 +228,15 @@ describe("getSilhouetteMapMatrix / placeSilhouette", () => {
     expect(foot.y).toBeCloseTo((4 - 2) * 10);
   });
 
-  it("places and shows the silhouette sprite", () => {
+  it("places the silhouette sprite without touching its visibility", () => {
     const shape = silhouette();
     shape.sprite.visible = false;
     const sprite = shape.sprite as unknown as { setFromMatrix: ReturnType<typeof vi.fn> };
 
     placeSilhouette(shape, identityWorld, { x: 0, y: 0 }, 16);
 
-    expect(shape.sprite.visible).toBe(true);
+    // Changing `visible` would rebuild the layer's render instructions on every redraw.
+    expect(shape.sprite.visible).toBe(false);
     expect(sprite.setFromMatrix).toHaveBeenCalledWith(
       expect.objectContaining(getSilhouetteMapMatrix(shape, identityWorld, { x: 0, y: 0 }, 16)),
     );

@@ -236,7 +236,7 @@ describe("Entity and createEntitiesFromConfig", () => {
     );
     const data = { ...original.getData(), walkable: true, metadata: { hp: 5 } };
 
-    const restored = Entity.fromData(4, 5, JSON.parse(JSON.stringify(data)));
+    const restored = Entity.fromData(4, 5, JSON.parse(JSON.stringify(data)) as typeof data);
 
     expect(restored.x).toBe(4);
     expect(restored.y).toBe(5);

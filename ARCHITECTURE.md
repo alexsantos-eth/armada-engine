@@ -363,7 +363,7 @@ Límites conocidos: las sombras solo caen sobre las cimas del terreno, no sobre 
 
 La oscuridad donde llega menos cielo al suelo, al pie de las paredes y alrededor de la base de las entidades. El terreno y las entidades son estáticos, así que se calcula **una sola vez** al crear la escena y no cuesta nada por frame.
 
-- **Cálculo (dominio).** `getOcclusion(terrain, x, y, u, v)` (`engine/lighting/occlusion.ts`) da la oclusión en un punto `(u, v)` de la cima de la columna `(x, y)`. Cada columna vecina más alta oscurece el suelo a su pie según el desnivel (completo desde un bloque; la arena, medio bloque más baja, cuenta medio), con `AO_WALL_ALPHA` (0.4) que se desvanece en `AO_WALL_RADIUS` (0.5 casillas) desde la columna; así quedan bandas a lo largo de los escalones y esquinas más oscuras donde se juntan dos paredes. Cada entidad sobre el mismo suelo (la propia columna o una vecina a la misma altura) añade una sombra de contacto: `AO_CONTACT_ALPHA` (0.3) en un núcleo `AO_CONTACT_INSET` (0.2) dentro de su casilla que se desvanece en `AO_CONTACT_RADIUS` (0.35). Las cimas de los acantilados no se oscurecen. Las aportaciones se combinan como sombras apiladas, `1 − Π(1 − oᵢ)`, sin llegar nunca a negro. `OcclusionTerrain` describe el terreno con funciones (`topHeightAt`, `levelAt`, `occupiedAt`), así que el cálculo no depende de `World` ni de Pixi.
+- **Cálculo (dominio).** `getOcclusion(terrain, x, y, u, v)` (`engine/lighting/occlusion.ts`) da la oclusión en un punto `(u, v)` de la cima de la columna `(x, y)`. Cada columna vecina más alta oscurece el suelo a su pie según el desnivel (completo desde un bloque; la arena, medio bloque más baja, cuenta medio), con `AO_WALL_ALPHA` (0.13) que se desvanece en `AO_WALL_RADIUS` (0.5 casillas) desde la columna; así quedan bandas a lo largo de los escalones y esquinas más oscuras donde se juntan dos paredes. Cada entidad sobre el mismo suelo (la propia columna o una vecina a la misma altura) añade una sombra de contacto: `AO_CONTACT_ALPHA` (0.4) en un núcleo `AO_CONTACT_INSET` (0.2) dentro de su casilla que se desvanece en `AO_CONTACT_RADIUS` (0.35). Las cimas de los acantilados no se oscurecen. Las aportaciones se combinan como sombras apiladas, `1 − Π(1 − oᵢ)`, sin llegar nunca a negro. `OcclusionTerrain` describe el terreno con funciones (`topHeightAt`, `levelAt`, `occupiedAt`), así que el cálculo no depende de `World` ni de Pixi.
 - **Mapa.** `buildOcclusionMap(terrain, level, AO_PIXELS_PER_TILE)` devuelve un `Uint8ClampedArray` RGBA negro con la oclusión en alfa, muestreada en el centro de cada texel, con la misma disposición que los mapas de sombra pero a `AO_PIXELS_PER_TILE` (8) texels por casilla: la oclusión es suave y el filtrado lineal la interpola. Solo escribe las columnas de ese nivel.
 - **Escena.** Para cada elevación crea una textura con `BufferImageSource` a partir de ese mapa (`topHeightAt` a partir de la elevación y la superficie, `occupiedAt` = `world.occupancy.isOccupied`) y la pone, escalada ×2, al fondo de la capa de su mapa de sombras. Así aparece en las mismas vistas de suelo, de día y de noche, sin sprites nuevos en la escena; las sombras del sol se componen encima. Si en el futuro las entidades se mueven o el terreno cambia, habrá que recalcular la oclusión de las columnas afectadas.
 
@@ -387,6 +387,7 @@ Los tests de renderer y escena mockean PixiJS. Esto permite probar selección de
 El flujo completo de validación es:
 
 ```bash
+pnpm lint
 pnpm test:coverage
 pnpm build
 ```
@@ -401,7 +402,7 @@ Para añadir un nuevo material de terreno:
 2. Añadir una clave en `engine/constants`.
 3. Añadir el material a `TerrainMaterial` (y a `TerrainSurface` si puede ser la cima de una columna), su regla en `engine/terrain/surfaces.ts` y cargar el SVG en `engine/scene`.
 4. Actualizar o crear el test de escena para demostrar la selección.
-5. Ejecutar coverage y build.
+5. Ejecutar lint, coverage y build.
 
 Para añadir una entidad:
 
@@ -409,7 +410,7 @@ Para añadir una entidad:
 2. Añadir una entrada en `src/isometric/content/entities.ts` (`ENTITY_CONFIG`) con `id`, `textureSource`, `height`, `spawnChance` y `surface`; si ocupa más de un bloque, añadir `length` y `lengthAxis` según `data-tiles`, y si mide varios bloques de alto, `height` igual al tercer valor de `data-tiles` (`1x1x3` → `height: 3`).
 3. Añadir o actualizar el test de la factory para demostrar la regla de colocación.
 4. No añadir condiciones específicas de la entidad en `scene.ts`, `Box` o `render.ts`.
-5. Ejecutar coverage y build.
+5. Ejecutar lint, coverage y build.
 
 Para añadir una nueva regla de elevación, modificar primero `terrain` (relleno de columnas y superficies) o la selección de materiales, según dónde pertenezca la decisión. No introducir esa lógica dentro de `render`, porque el renderer solo debe convertir una decisión ya tomada en un Sprite.
 

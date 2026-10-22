@@ -6,6 +6,10 @@ Criterio: el core debe sostener un **RPG isométrico procedural de supervivencia
 
 Niveles: **Bloqueante** (rompe la visión) · **Alta** (reescritura cara cuando llegue un sistema previsto) · **Media** (corregible localmente) · **Baja** (higiene).
 
+## 2026-10-21 — Reimplementación tras pérdida de cambios
+
+Los cambios sin commit de #34–#43 se perdieron al borrarse `src/isometric/core/engine/` (restaurado desde `shadows v3`). Reimplementados según este registro y `ARCHITECTURE.md`, con tests primero: `getSvgResolution()` (#43), culling bajo demanda con `Culler.shared.cull()` al construir y en el `resize` del renderer (#42), oclusión ambiental en `lighting/occlusion.ts` compuesta al fondo de cada mapa de sombras (#39), una capa fija por mapa con sus siluetas y `BlurFilter`/`AlphaFilter` compartidos (#34, #40), redibujado de un mapa por frame, el más desactualizado (#35, #38), y vistas de suelo que la escena no vuelve a tocar (#36, #40). Validado: 565 tests, cobertura 100 %, build, y en Chromium (`?seed=1337&hour=8|1&timeScale=0`) sin errores de consola. No se volvieron a medir los tiempos de #42 ni de la tabla de rendimiento.
+
 ## 2026-10-20 — Revisión de rendimiento
 
 Medido en Chromium con `?seed=1337` (SwiftShader: sirve para la CPU, no para FPS absolutos), cronometrando desde dentro con la app expuesta solo en una copia local. Consultado el código de `pixi.js` 8.22.0: `CullerPlugin` llama a `Culler.shared.cull(stage, screen)` en cada `render()`, y `loadSVG` rasteriza con `asset.data.resolution`.

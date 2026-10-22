@@ -61,11 +61,12 @@ Las entidades que no son bloques de terreno se declaran en `src/isometric/conten
 Antes de terminar un cambio:
 
 ```bash
+pnpm lint
 pnpm test:coverage
 pnpm build
 ```
 
-`pnpm test:coverage` debe terminar con 100% en las cuatro métricas. Si se añade comportamiento, primero añade el caso de test que lo defina y después implementa el cambio.
+`pnpm lint` debe terminar sin errores y `pnpm test:coverage` debe terminar con 100% en las cuatro métricas. Si se añade comportamiento, primero añade el caso de test que lo defina y después implementa el cambio.
 
 Para trabajar visualmente:
 
@@ -73,7 +74,7 @@ Para trabajar visualmente:
 pnpm dev
 ```
 
-No crear commits ni ramas automáticamente. No revertir cambios existentes que no pertenezcan al trabajo actual.
+No crear commits ni ramas automáticamente: el commit y el push a `iso` solo se hacen al invocar la skill `armada-commit`. No revertir cambios existentes que no pertenezcan al trabajo actual.
 
 ## Estado actual del core
 

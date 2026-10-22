@@ -28,20 +28,20 @@ function checkDefinition(definition: EntityDefinition, report: (issue: string) =
     report(`textureSource must be an absolute SVG path such as "/assets/<name>/block.svg" (got "${definition.textureSource}")`);
   }
   if (!isPositiveInteger(definition.height)) {
-    report(`height must be a positive integer (got ${definition.height})`);
+    report(`height must be a positive integer (got ${String(definition.height)})`);
   }
-  if (!isPositiveInteger(length)) report(`length must be a positive integer (got ${length})`);
+  if (!isPositiveInteger(length)) report(`length must be a positive integer (got ${String(length)})`);
   if (!(definition.spawnChance >= 0 && definition.spawnChance <= 1)) {
-    report(`spawnChance must be between 0 and 1 (got ${definition.spawnChance})`);
+    report(`spawnChance must be between 0 and 1 (got ${String(definition.spawnChance)})`);
   }
   if (!isSurface(definition.surface)) {
-    report(`surface must be one of ${SURFACES.join(", ")} (got "${definition.surface}")`);
+    report(`surface must be one of ${SURFACES.join(", ")} (got "${String(definition.surface)}")`);
   }
   if (definition.lengthAxis !== undefined && definition.lengthAxis !== "x" && definition.lengthAxis !== "y") {
     report(`lengthAxis must be "x" or "y" (got "${String(definition.lengthAxis)}")`);
   }
   if (definition.gap !== undefined && !(Number.isInteger(definition.gap) && definition.gap >= 0)) {
-    report(`gap must be a non-negative integer (got ${definition.gap})`);
+    report(`gap must be a non-negative integer (got ${String(definition.gap)})`);
   }
 
   const footprintSurfaces = definition.footprintSurfaces ?? [];
@@ -50,7 +50,7 @@ function checkDefinition(definition: EntityDefinition, report: (issue: string) =
   }
   footprintSurfaces.forEach((surface, index) => {
     if (!isSurface(surface)) {
-      report(`footprintSurfaces[${index}] must be one of ${SURFACES.join(", ")} (got "${surface}")`);
+      report(`footprintSurfaces[${index}] must be one of ${SURFACES.join(", ")} (got "${String(surface)}")`);
     }
   });
 

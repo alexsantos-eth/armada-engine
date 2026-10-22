@@ -58,9 +58,12 @@ La configuración exige 100% de statements, branches, functions y lines. Cada nu
 Antes de abrir un cambio ejecuta:
 
 ```bash
+pnpm lint
 pnpm test:coverage
 pnpm build
 ```
+
+`pnpm lint` ejecuta ESLint (`eslint.config.js`: reglas recomendadas de typescript-eslint con información de tipos, imports de tipo en línea y `eqeqeq`) y debe terminar sin errores; corrige el código en lugar de desactivar reglas. Los commits y el push a la rama `iso` solo se hacen al invocar la skill `armada-commit`, que valida todo esto antes.
 
 Las APIs públicas y los tipos deben tener comentarios TSDoc concisos.
 

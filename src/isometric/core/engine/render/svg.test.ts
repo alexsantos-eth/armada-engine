@@ -1,5 +1,28 @@
 import { describe, expect, it, vi } from "vitest";
-import { createSvgColorVariant, replaceSvgColors } from "./svg";
+import {
+  createSvgColorVariant,
+  getSvgResolution,
+  replaceSvgColors,
+  SVG_DETAIL,
+  SVG_TILE_WIDTH,
+} from "./svg";
+
+describe("getSvgResolution", () => {
+  it("rasterizes a 1024 px tile canvas at the size it is drawn, with some detail to spare", () => {
+    expect(SVG_TILE_WIDTH).toBe(1024);
+    expect(SVG_DETAIL).toBe(1.5);
+    expect(getSvgResolution(40)).toBeCloseTo((40 * 1.5) / 1024);
+  });
+
+  it("scales with the device pixel ratio", () => {
+    expect(getSvgResolution(40, 2)).toBeCloseTo(2 * getSvgResolution(40, 1));
+  });
+
+  it("never rasterizes above the canvas's own size", () => {
+    expect(getSvgResolution(1024, 1)).toBe(1);
+    expect(getSvgResolution(2048, 3)).toBe(1);
+  });
+});
 
 describe("replaceSvgColors", () => {
   it("replaces configured fill and stroke colors while preserving other colors", () => {
@@ -42,9 +65,9 @@ describe("replaceSvgColors", () => {
   });
 
   it("creates a data URL from a recolored SVG asset", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({
       ok: true,
-      text: async () => '<path fill="#9f4b2f"/>',
+      text: () => Promise.resolve('<path fill="#9f4b2f"/>'),
     })));
 
     await expect(createSvgColorVariant("/assets/house/block.svg", {
@@ -62,9 +85,9 @@ describe("replaceSvgColors", () => {
   });
 
   it("applies the requested variation to the data URL", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({
       ok: true,
-      text: async () => '<path fill="#9f4b2f"/>',
+      text: () => Promise.resolve('<path fill="#9f4b2f"/>'),
     })));
 
     await expect(createSvgColorVariant("/assets/house/block.svg", {
@@ -77,7 +100,7 @@ describe("replaceSvgColors", () => {
   });
 
   it("rejects when the SVG asset cannot be fetched", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false })));
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ ok: false })));
 
     await expect(createSvgColorVariant("/assets/house/block.svg", {
       "#9f4b2f": "#245c4a",

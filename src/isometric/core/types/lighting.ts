@@ -1,3 +1,5 @@
+import type { WorldRect } from "./grid";
+
 /** Affine transform in Pixi's convention: `x' = a·x + c·y + tx`, `y' = b·x + d·y + ty`. */
 export type Affine2D = {
   readonly a: number;
@@ -21,4 +23,19 @@ export type ShadowProjection = {
   readonly stretch: number;
   /** Shadow opacity in `[0, 1]`: `0` at the horizon, full once the sun is high enough. */
   readonly alpha: number;
+};
+
+/**
+ * The terrain as ambient occlusion sees it, described with lookups so the computation depends
+ * on neither `World` nor Pixi. Columns outside the world return `undefined`.
+ */
+export type OcclusionTerrain = {
+  /** Columns covered by the occlusion maps (inclusive). */
+  readonly bounds: WorldRect;
+  /** Height of a column's top surface in blocks (a sand top is half a block below its block). */
+  topHeightAt(x: number, y: number): number | undefined;
+  /** Top elevation of a column: the shadow map level its top belongs to. */
+  levelAt(x: number, y: number): number | undefined;
+  /** Whether an entity stands on the column. */
+  occupiedAt(x: number, y: number): boolean;
 };
