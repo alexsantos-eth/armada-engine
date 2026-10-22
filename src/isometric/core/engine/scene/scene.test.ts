@@ -581,6 +581,28 @@ describe("createIsometricScene", () => {
       destroyScene();
     });
 
+    it("never creates the buried blocks: only the ones the camera can see", async () => {
+      const app = {
+        screen: { width: 1300, height: 1000 },
+        ticker: createTicker(),
+        renderer: createRenderer(),
+        stage: { addChild: vi.fn() },
+      };
+      // A 3×3 plateau two blocks high, filled down to DEFAULT_MIN_ELEVATION (−3): 9 columns of 6.
+      const points = Array.from({ length: 9 }, (_, index) => ({
+        x: index % 3,
+        y: Math.floor(index / 3),
+        elevation: 2,
+      }));
+
+      const destroyScene = await createIsometricScene(app as never, worldFrom(points));
+
+      // Behind the camera-side faces (x = 0 or y = 0), the 4 inner columns keep only their top.
+      expect(renderCalls).toHaveLength(9 * 6 - 4 * 5);
+      expect(renderCalls.filter(({ elevation }) => elevation === 2)).toHaveLength(9);
+      destroyScene();
+    });
+
     it("culls on demand: once when built and on every renderer resize, never per frame", async () => {
       const ticker = createTicker();
       const renderer = createRenderer();

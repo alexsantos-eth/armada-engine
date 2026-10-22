@@ -14,7 +14,7 @@ import {
 } from "pixi.js";
 import type { Entity } from "../entities";
 import { projectBoxesToIsometric } from "../projection";
-import { fillElevations, getBlockMaterial } from "../terrain";
+import { fillElevations, getBlockMaterial, removeHiddenBlocks } from "../terrain";
 import type { OcclusionTerrain, ShadowProjection, TerrainMaterial, TerrainSurface } from "../../types";
 import {
   BOX_HEIGHT,
@@ -98,6 +98,9 @@ type ShadowLayer = {
  * Renders `world` into `app`. The scene only reads the world: it never generates or changes
  * it, so the same world can be simulated, saved or rendered again. Returns a cleanup that
  * destroys the scene, stops its per-frame updates and unloads its assets.
+ *
+ * Terrain blocks fully covered by others (`removeHiddenBlocks()`) are never created: from the
+ * fixed camera only the shell of the terrain shows.
  *
  * SVGs are rasterized at the size they are drawn (`getSvgResolution()`), and every view is
  * created `cullable`: the scene culls on demand (`Culler.shared.cull()`) when it is built and
@@ -212,7 +215,14 @@ export async function createIsometricScene(app: Application, world: World): Prom
     originX: app.screen.width / 2 - (minX + maxX) / 2,
     originY: app.screen.height / 2 - (minY + maxY) / 2,
   };
-  const projectedBoxes = projectBoxesToIsometric(filledBoxes, projection);
+  // Only the blocks the camera can see: most of a filled terrain is buried and would still
+  // be drawn, and pay its fill, on every frame. A sand top sits half a block lower and covers
+  // nothing behind it. The framing above still uses every block.
+  const visibleBoxes = removeHiddenBlocks(
+    filledBoxes,
+    (box) => !(box.elevation === topElevationByColumn.get(box.x, box.y) && surfaces.get(box.x, box.y) === "sand"),
+  );
+  const projectedBoxes = projectBoxesToIsometric(visibleBoxes, projection);
   const projectedEntities = projectBoxesToIsometric(entities, projection);
   // Entities with their views, to lay their silhouettes in the shadow maps.
   const casterViews: { entity: (typeof projectedEntities)[number]; views: DepthView[] }[] = [];
