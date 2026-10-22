@@ -25,14 +25,17 @@ const HOUSE: EntityDefinition = {
 const DEFINITIONS = [ROCK, HOUSE];
 
 describe("generateWorld", () => {
-  it("builds one column per cell with the classified surfaces, without Pixi or window", () => {
+  it("builds one column per cell typed with its classified surface, without Pixi or window", () => {
     const world = generateWorld({ seed: 5, width: 10, height: 6, entityDefinitions: [] });
+    const surfaces = classifyColumnSurfaces(world.columns);
 
     expect(world.seed).toBe(5);
     expect(world.width).toBe(10);
     expect(world.height).toBe(6);
     expect(world.columns).toHaveLength(60);
-    expect(world.surfaces).toEqual(classifyColumnSurfaces(world.columns));
+    expect(world.columns.every(({ x, y, type }) => type === surfaces.get(x, y))).toBe(true);
+    // The column's `type` is the only record of its surface.
+    expect(world).not.toHaveProperty("surfaces");
     expect(world.entities).toEqual([]);
   });
 
@@ -148,7 +151,7 @@ describe("serializeWorld / restoreWorld", () => {
     expect(restored.columns.map((b) => [b.x, b.y, b.elevation])).toEqual(
       world.columns.map((b) => [b.x, b.y, b.elevation]),
     );
-    expect(restored.surfaces).toEqual(world.surfaces);
+    expect(restored.columns.map(({ type }) => type)).toEqual(world.columns.map(({ type }) => type));
     expect(restored.entities.map((e) => [e.x, e.y, e.getData()])).toEqual(
       world.entities.map((e) => [e.x, e.y, e.getData()]),
     );

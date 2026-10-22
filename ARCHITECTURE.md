@@ -174,9 +174,9 @@ Los archivos de tipos no contienen lógica runtime y no tienen tests propios. Ty
 
 ## Modelo World
 
-`engine/world` define `World`, el estado del juego como datos de dominio sin Pixi ni `window`: `seed`, `width`, `height`, `columns` (un `Box` por columna con su elevación superior), `surfaces` (`CellMap` con la superficie de cada columna), `entities`, `occupancy` (`SpatialIndex` de las entidades sobre sus huellas, derivado: no se guarda y `restoreWorld()` lo reconstruye) y `clock` (reloj de juego, ver [Tiempo de juego y sol](#tiempo-de-juego-y-sol)). Es la única fuente de verdad: los sistemas lo simulan, el guardado lo serializa y la escena solo lo lee.
+`engine/world` define `World`, el estado del juego como datos de dominio sin Pixi ni `window`: `seed`, `width`, `height`, `columns` (un `Box` por columna con su elevación superior y, como `type`, la superficie de la columna, clasificada una vez al generar), `entities`, `occupancy` (`SpatialIndex` de las entidades sobre sus huellas, derivado: no se guarda y `restoreWorld()` lo reconstruye) y `clock` (reloj de juego, ver [Tiempo de juego y sol](#tiempo-de-juego-y-sol)). Es la única fuente de verdad: los sistemas lo simulan, el guardado lo serializa y la escena solo lo lee.
 
-- `generateWorld(options)` valida `entityDefinitions` con `validateEntityDefinitions()` (lanza `EntityConfigError` con todos los problemas a la vez), genera el terreno (`generatePerlinTerrain()` con la semilla, sin retoques), clasifica superficies y crea entidades con `createEntitiesFromConfig()` usando flujos derivados (`"entities"` para la colocación y `"entity-color-variants"` para la variación de color). Opciones: `seed`, `width`, `height`, `entityDefinitions` (obligatoria: el motor no trae contenido propio) y `startTick` (por defecto `WORLD_START_TICK`, las 08:00 del día 0). La hora inicial no altera nada de lo generado.
+- `generateWorld(options)` valida `entityDefinitions` con `validateEntityDefinitions()` (lanza `EntityConfigError` con todos los problemas a la vez), genera el terreno (`generatePerlinTerrain()` con la semilla, sin retoques), crea las columnas tipadas con su superficie (`createTerrainColumns()`) y crea entidades con `createEntitiesFromConfig()` usando flujos derivados (`"entities"` para la colocación y `"entity-color-variants"` para la variación de color). Opciones: `seed`, `width`, `height`, `entityDefinitions` (obligatoria: el motor no trae contenido propio) y `startTick` (por defecto `WORLD_START_TICK`, las 08:00 del día 0). La hora inicial no altera nada de lo generado.
 - `serializeWorld(world)` produce un `WorldSnapshot` JSON (`version` 3, `seed`, tamaño, `tick` del reloj y entidades como `{ x, y, data }`). El terreno no se guarda: se regenera desde la semilla.
 - `restoreWorld(snapshot)` regenera el terreno, restaura las entidades con `Entity.fromData()` (conservando ids, variaciones, metadata y los cambios hechos en partida) y restaura el reloj. Rechaza versiones distintas de `WORLD_SNAPSHOT_VERSION`: la versión 1 incluía la meseta de aparición, que ya no existe, y la 2 no guardaba la hora. Lanza `RangeError` si el `tick` guardado no es un entero seguro no negativo.
 
@@ -221,7 +221,7 @@ La lógica de dominio y generación nunca llama a `Math.random()` ni usa el relo
 
 ## Modelo de terreno y entidades
 
-`Box` (`engine/terrain/box.ts`) representa exclusivamente una celda materializada de terreno. Sus coordenadas `x` e `y` son inmutables; sus datos (`type`, `walkable`, `elevation` y `metadata`) pueden actualizarse mediante `update()`.
+`Box` (`engine/terrain/box.ts`) representa exclusivamente una celda materializada de terreno. Sus coordenadas `x` e `y` son inmutables; sus datos (`type`, `walkable`, `elevation` y `metadata`) pueden actualizarse mediante `update()`. `type` (`BoxType`, igual a `TerrainMaterial`: `grass`, `water`, `sand` o `ground`) es el material del bloque y se asigna **una sola vez**, al crearlo: sin `type`, toma el de su elevación inicial (`getElevationMaterial()`: `water` bajo cero, si no `grass`); la arena y el `ground` dependen de las vecinas y de la columna, así que los asignan `createTerrainColumns()` y `fillElevations()`. El resto del motor lee `box.type` y no vuelve a clasificar.
 
 La clase aplica datos por defecto y combina metadata de forma superficial. `getData()` devuelve una copia de los datos y una copia de `metadata`, de modo que el consumidor no puede modificar el estado interno accidentalmente.
 
@@ -305,20 +305,18 @@ public/assets/water/block.svg
 public/assets/sand/block.svg
 ```
 
-La selección vive en `engine/terrain/surfaces.ts`, sin dependencias de Pixi, y se hace en dos pasos:
+La selección vive en `engine/terrain/surfaces.ts`, sin dependencias de Pixi, se hace en dos pasos y cada uno se ejecuta una sola vez:
 
-1. `classifyColumnSurfaces(boxes)` decide la superficie de cada columna (clave `${x}:${y}`) a partir de su bloque más alto y del de sus vecinas:
+1. `classifyColumnSurfaces(boxes)` decide la superficie de cada columna (un `CellMap`) a partir de su bloque más alto y del de sus vecinas. `createTerrainColumns(points)` la llama al generar el mundo y guarda el resultado como `type` de cada columna:
    - cima negativa: `water`;
    - cima exactamente en `SAND_ELEVATION` (`0`) en una orilla: al menos una vecina directa de agua y, entre sus ocho vecinas (diagonales incluidas, para que las esquinas de la playa sigan siendo arena), alguna de interior, es decir, tierra más alta o tierra a `0` que no toque agua: `sand`. Así los islotes y las franjas sueltas en medio del agua no se vuelven arena;
    - cualquier otra: `grass`.
-2. `getBlockMaterial(elevation, topElevation, surface)` elige el material de cada bloque:
+2. `getBlockMaterial(elevation, topElevation, surface)` elige el material de cada bloque; `fillElevations()` lo aplica al materializar cada nivel y lo guarda como `type` del bloque, que la escena usa directamente para elegir textura y tinte:
    - elevación negativa: `water`;
    - bloque superior de la columna: la superficie de la columna (`grass` o `sand`);
    - cualquier bloque inferior no negativo: `ground`.
 
-El SVG de arena ocupa la mitad del alto del bloque (su cima está a z = 170 de 341 dentro del mismo lienzo `1024×853`), de modo que la orilla baja en dos escalones suaves: agua → arena (medio bloque) → pasto (bloque completo). El renderer no cambia, porque la geometría reducida vive en el asset. Las entidades se siguen alineando a la altura completa del bloque, así que una entidad con `surface: "sand"` necesitará desplazarse medio bloque hacia abajo cuando se añada la primera. La arena recibe el mismo oscurecimiento por altura que el pasto, pero con un tinte neutro (`SAND_TOP_TINT`) en lugar del verdoso. `createEntitiesFromConfig()` usa la misma clasificación para `surface`, por lo que las entidades de `grass` no aparecen sobre arena y existe la superficie `"sand"` para entidades de playa.
-
-El bloque superior se identifica con un `Map` cuya clave es `${x}:${y}`. Así el material no depende de la posición absoluta en pantalla.
+El SVG de arena ocupa la mitad del alto del bloque (su cima está a z = 170 de 341 dentro del mismo lienzo `1024×853`), de modo que la orilla baja en dos escalones suaves: agua → arena (medio bloque) → pasto (bloque completo). El renderer no cambia, porque la geometría reducida vive en el asset. Las entidades se siguen alineando a la altura completa del bloque, así que una entidad con `surface: "sand"` necesitará desplazarse medio bloque hacia abajo cuando se añada la primera. La arena recibe el mismo oscurecimiento por altura que el pasto, pero con un tinte neutro (`SAND_TOP_TINT`) en lugar del verdoso. `createEntitiesFromConfig()` compara `surface` con el `type` de cada columna (sin volver a clasificar), por lo que las entidades de `grass` no aparecen sobre arena y existe la superficie `"sand"` para entidades de playa.
 
 El agua reutiliza la misma textura SVG para todos sus niveles. `getWaterTint()` aplica un tintado más oscuro cuanto mayor es `Math.abs(elevation)`. No se generan texturas nuevas para cada profundidad.
 
@@ -402,7 +400,7 @@ Para añadir un nuevo material de terreno:
 
 1. Crear `public/assets/<material>/block.svg` con la misma geometría del bloque.
 2. Añadir una clave en `engine/constants`.
-3. Añadir el material a `TerrainMaterial` (y a `TerrainSurface` si puede ser la cima de una columna), su regla en `engine/terrain/surfaces.ts` y cargar el SVG en `engine/scene`.
+3. Añadir el material a `TerrainMaterial` (y a `TerrainSurface` si puede ser la cima de una columna) y su regla en `engine/terrain/surfaces.ts` (`classifyColumnSurfaces()` o `getBlockMaterial()`): llega a cada bloque como `type`. Cargar el SVG en `engine/scene`.
 4. Actualizar o crear el test de escena para demostrar la selección.
 5. Ejecutar lint, coverage y build.
 

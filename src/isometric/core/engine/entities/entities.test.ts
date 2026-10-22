@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { Box } from "../terrain";
+import { Box, createTerrainColumns } from "../terrain";
 import { Entity, createEntitiesFromConfig, getEntityFootprint, getFootprint, indexEntities } from "./entities";
 
 describe("createEntitiesFromConfig formations", () => {
@@ -624,12 +624,12 @@ describe("Entity and createEntitiesFromConfig", () => {
   });
 
   it("keeps grass entities off sand and spawns sand entities only there", () => {
-    const boxes = [
-      new Box(0, 0, { elevation: -1 }),
-      new Box(1, 0, { elevation: 0 }),
-      new Box(2, 0, { elevation: 0 }),
-      new Box(3, 0, { elevation: 0 }),
-    ];
+    const boxes = createTerrainColumns([
+      { x: 0, y: 0, elevation: -1 },
+      { x: 1, y: 0, elevation: 0 },
+      { x: 2, y: 0, elevation: 0 },
+      { x: 3, y: 0, elevation: 0 },
+    ]);
     const definition = {
       textureSource: "/assets/tree/block.svg",
       height: 1,
@@ -658,8 +658,10 @@ describe("Entity and createEntitiesFromConfig", () => {
       [0, -1, -1, -1],
     ];
     const toBoxes = (rows: number[][], transpose = false) =>
-      rows.flatMap((row, y) =>
-        row.map((elevation, x) => (transpose ? new Box(y, x, { elevation }) : new Box(x, y, { elevation }))),
+      createTerrainColumns(
+        rows.flatMap((row, y) =>
+          row.map((elevation, x) => (transpose ? { x: y, y: x, elevation } : { x, y, elevation })),
+        ),
       );
     const pier = {
       id: "pier",
@@ -740,6 +742,15 @@ describe("Entity and createEntitiesFromConfig", () => {
         ),
       ).toEqual(["0:1"]);
     });
+  });
+
+  it("reads each column's surface from its type instead of classifying the terrain again", () => {
+    const palm = { id: "palm", textureSource: "/assets/palm/block.svg", height: 1, spawnChance: 1 };
+    // Typed sand far from any water: only the column's own type can make it sand.
+    const boxes = [new Box(0, 0, { elevation: 3, type: "sand" }), new Box(1, 0, { elevation: 3 })];
+
+    expect(createEntitiesFromConfig(boxes, [{ ...palm, surface: "sand" }], () => 0).map(({ x }) => x)).toEqual([0]);
+    expect(createEntitiesFromConfig(boxes, [{ ...palm, surface: "grass" }], () => 0).map(({ x }) => x)).toEqual([1]);
   });
 
   it("supports entities configured for water", () => {

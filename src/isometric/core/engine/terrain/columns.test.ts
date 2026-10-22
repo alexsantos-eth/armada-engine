@@ -19,6 +19,26 @@ describe("column filling", () => {
     expect(filled.every((box) => box !== source)).toBe(true);
     expect(filled.every((box) => box.metadata.kind === "hill")).toBe(true);
   });
+
+  it("gives every filled level its material once: water below zero, ground under the top", () => {
+    const filled = fillElevations([new Box(0, 0, { elevation: 2, type: "grass" })], -2);
+
+    expect(filled.map(({ elevation, type }) => [elevation, type])).toEqual([
+      [-2, "water"],
+      [-1, "water"],
+      [0, "ground"],
+      [1, "ground"],
+      [2, "grass"],
+    ]);
+  });
+
+  it("keeps the column's own material on its top (a sand shore, a water column)", () => {
+    expect(fillElevations([new Box(0, 0, { elevation: 0, type: "sand" })], -1).map(({ type }) => type)).toEqual([
+      "water",
+      "sand",
+    ]);
+    expect(fillElevations([new Box(0, 0, { elevation: -1 })], -2).map(({ type }) => type)).toEqual(["water", "water"]);
+  });
 });
 
 describe("hidden blocks", () => {

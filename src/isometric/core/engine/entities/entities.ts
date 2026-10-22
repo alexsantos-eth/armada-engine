@@ -6,12 +6,11 @@ import type {
   EntityLengthAxis,
   IEntity,
   IGridObject,
-  TerrainSurface,
+  ITerrainColumn,
   WorldCoord,
 } from "../../types";
 import { CellMap, SpatialIndex, type ReadonlyCellMap } from "../grid";
 import { createSeededRandom, DEFAULT_WORLD_SEED, deriveSeed, type RandomSource } from "../random";
-import { classifyColumnSurfaces } from "../terrain";
 import { pickFormationOffsets, resolveFormation } from "./formation";
 import { pickColorVariation } from "./variants";
 
@@ -170,8 +169,7 @@ export function indexEntities<E extends IEntity>(entities: Iterable<E>): Spatial
 
 /** Lookups shared by every placement check of one `createEntitiesFromConfig()` call. */
 type PlacementContext = {
-  readonly columns: ReadonlyCellMap<IGridObject>;
-  readonly surfaces: ReadonlyCellMap<TerrainSurface>;
+  readonly columns: ReadonlyCellMap<ITerrainColumn>;
   /** Entities placed so far, over their whole footprints. */
   readonly placed: SpatialIndex<Entity>;
 };
@@ -188,8 +186,8 @@ const NO_CELLS: ReadonlyCellMap<true> = new CellMap<true>();
 /**
  * Creates configured entities on eligible terrain columns.
  *
- * Each column's surface (grass, water or sand) comes from `classifyColumnSurfaces()`, so
- * grass entities never spawn on sand. `footprintSurfaces` can require a different surface
+ * Each column's surface (grass, water or sand) is its `type`, classified once when the
+ * terrain was created (`createTerrainColumns()`), so grass entities never spawn on sand. `footprintSurfaces` can require a different surface
  * under each block of the footprint (in order from the anchor along `lengthAxis`).
  *
  * Multi-block footprints must be flat: every block shares one elevation, which becomes the
@@ -212,7 +210,7 @@ const NO_CELLS: ReadonlyCellMap<true> = new CellMap<true>();
  * colors never moves entities.
  */
 export function createEntitiesFromConfig(
-  boxes: readonly IGridObject[],
+  boxes: readonly ITerrainColumn[],
   definitions: readonly EntityDefinition[],
   random: RandomSource = createSeededRandom(DEFAULT_WORLD_SEED),
   variantRandom: RandomSource = createSeededRandom(deriveSeed(DEFAULT_WORLD_SEED, "entity-color-variants")),
@@ -220,7 +218,6 @@ export function createEntitiesFromConfig(
   const entities: Entity[] = [];
   const context: PlacementContext = {
     columns: CellMap.from(boxes, (box) => box),
-    surfaces: classifyColumnSurfaces(boxes),
     placed: new SpatialIndex<Entity>(),
   };
 
@@ -262,7 +259,7 @@ export function createEntitiesFromConfig(
  * group) and `gap` with previously placed instances of the same entity.
  */
 function findPlacement(
-  box: IGridObject,
+  box: ITerrainColumn,
   definition: EntityDefinition,
   context: PlacementContext,
   groupCells: ReadonlyCellMap<true>,
@@ -270,9 +267,9 @@ function findPlacement(
   const footprint = getFootprint(box, definition.length, definition.lengthAxis);
   const footprintBoxes = footprint.map(({ x, y }) => context.columns.get(x, y));
   if (footprintBoxes.some((footprintBox) => footprintBox === undefined)) return undefined;
-  const cells = footprintBoxes as IGridObject[];
+  const cells = footprintBoxes as ITerrainColumn[];
   const required = cells.map((_, index) => definition.footprintSurfaces?.[index] ?? definition.surface);
-  if (cells.some((cell, index) => context.surfaces.get(cell.x, cell.y) !== required[index])) {
+  if (cells.some((cell, index) => cell.type !== required[index])) {
     return undefined;
   }
   // Blocks that carry the entity: all of them, except the water blocks of a footprint

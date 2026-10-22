@@ -16,7 +16,7 @@ describe("Box", () => {
 
     expect(box.x).toBe(2);
     expect(box.y).toBe(3);
-    expect(box.type).toBe("EMPTY");
+    expect(box.type).toBe("grass");
     expect(box.walkable).toBe(true);
     expect(box.elevation).toBe(0);
     expect(box.metadata).toEqual({});
@@ -33,7 +33,7 @@ describe("Box", () => {
     expect(box.elevation).toBe(4);
     expect(box.metadata).toEqual({ biome: "grass", wet: true });
     expect(box.getData()).toEqual({
-      type: "EMPTY",
+      type: "grass",
       walkable: true,
       elevation: 4,
       metadata: { biome: "grass", wet: true },
@@ -46,5 +46,12 @@ describe("Box", () => {
     data.metadata.tag = "changed";
 
     expect(box.metadata.tag).toBe("original");
+  });
+
+  it("takes the material of its elevation unless one is given: water below zero, else grass", () => {
+    expect(new Box(0, 0, { elevation: -1 }).type).toBe("water");
+    expect(new Box(0, 0, { elevation: 0 }).type).toBe("grass");
+    expect(new Box(0, 0, { elevation: 0, type: "sand" }).type).toBe("sand");
+    expect(new Box(0, 0, { elevation: 2, type: "ground" }).getData().type).toBe("ground");
   });
 });

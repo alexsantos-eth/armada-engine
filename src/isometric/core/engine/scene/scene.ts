@@ -14,8 +14,8 @@ import {
 } from "pixi.js";
 import type { Entity } from "../entities";
 import { projectBoxesToIsometric } from "../projection";
-import { fillElevations, getBlockMaterial, removeHiddenBlocks } from "../terrain";
-import type { OcclusionTerrain, ShadowProjection, TerrainMaterial, TerrainSurface } from "../../types";
+import { fillElevations, removeHiddenBlocks } from "../terrain";
+import type { OcclusionTerrain, ShadowProjection, TerrainMaterial } from "../../types";
 import {
   BOX_HEIGHT,
   DEFAULT_MIN_ELEVATION,
@@ -122,7 +122,7 @@ export async function createIsometricScene(app: Application, world: World): Prom
   const sandBlockSource = "/assets/sand/block.svg";
 
   const filledBoxes = fillElevations(world.columns, DEFAULT_MIN_ELEVATION);
-  const { entities, surfaces } = world;
+  const { entities } = world;
   // One texture per (entity type, color variation): instances share it instead of each
   // fetching and decoding its own SVG. Types without `colorReplacements` share their source.
   const entityTextureKeys = new Map<Entity, string>();
@@ -192,8 +192,8 @@ export async function createIsometricScene(app: Application, world: World): Prom
     return map;
   };
 
-  // Each world column holds its top elevation.
-  const topElevationByColumn = CellMap.from(world.columns, ({ elevation }) => elevation);
+  // Each world column holds its top elevation and, as its type, its surface.
+  const columnAt = CellMap.from(world.columns, (column) => column);
   const maxPositiveElevation = filledBoxes.reduce((maximum, box) => Math.max(maximum, box.elevation), 0);
   let minX = Infinity;
   let maxX = -Infinity;
@@ -218,10 +218,7 @@ export async function createIsometricScene(app: Application, world: World): Prom
   // Only the blocks the camera can see: most of a filled terrain is buried and would still
   // be drawn, and pay its fill, on every frame. A sand top sits half a block lower and covers
   // nothing behind it. The framing above still uses every block.
-  const visibleBoxes = removeHiddenBlocks(
-    filledBoxes,
-    (box) => !(box.elevation === topElevationByColumn.get(box.x, box.y) && surfaces.get(box.x, box.y) === "sand"),
-  );
+  const visibleBoxes = removeHiddenBlocks(filledBoxes, (box) => box.type !== "sand");
   const projectedBoxes = projectBoxesToIsometric(visibleBoxes, projection);
   const projectedEntities = projectBoxesToIsometric(entities, projection);
   // Entities with their views, to lay their silhouettes in the shadow maps.
@@ -239,11 +236,8 @@ export async function createIsometricScene(app: Application, world: World): Prom
       sand: sandTextureForRender,
     };
     projectedBoxes.forEach((box) => {
-      const material = getBlockMaterial(
-        box.box.elevation,
-        topElevationByColumn.get(box.x, box.y) as number,
-        surfaces.get(box.x, box.y) as TerrainSurface,
-      );
+      // Typed once by `fillElevations()`: water, ground, or the column's surface on top.
+      const material = box.box.type;
       const texture = texturesByMaterial[material];
       const tint =
         material === "water"
@@ -263,7 +257,7 @@ export async function createIsometricScene(app: Application, world: World): Prom
 
       // The top of the column shows its square of the shadow map of its elevation; sand tops
       // are half a block lower than the block.
-      if (box.box.elevation !== topElevationByColumn.get(box.x, box.y)) return;
+      if (box.box.elevation !== columnAt.get(box.x, box.y)?.elevation) return;
       const frame = new Texture({
         source: shadowMapFor(box.box.elevation).source,
         frame: new Rectangle(
@@ -309,11 +303,11 @@ export async function createIsometricScene(app: Application, world: World): Prom
   const occlusionTerrain: OcclusionTerrain = {
     bounds: { minX: gridMinX, minY: gridMinY, maxX: gridMaxX, maxY: gridMaxY },
     topHeightAt: (x, y) => {
-      const elevation = topElevationByColumn.get(x, y);
-      if (elevation === undefined) return undefined;
-      return surfaces.get(x, y) === "sand" ? elevation - 0.5 : elevation;
+      const column = columnAt.get(x, y);
+      if (column === undefined) return undefined;
+      return column.type === "sand" ? column.elevation - 0.5 : column.elevation;
     },
-    levelAt: (x, y) => topElevationByColumn.get(x, y),
+    levelAt: (x, y) => columnAt.get(x, y)?.elevation,
   };
 
   // Silhouettes are drawn into the shadow maps, never into the scene: blurred for soft edges,

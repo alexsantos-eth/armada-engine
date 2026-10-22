@@ -1,6 +1,12 @@
-import type { TerrainSurface } from "./terrain";
+import type { TerrainMaterial, TerrainSurface } from "./terrain";
 
-export type BoxType = "EMPTY";
+/**
+ * Material of a terrain block (`grass`, `water`, `sand` or `ground`), assigned once when the
+ * block is created: a column's top carries its surface and each filled level its own
+ * material (see `createTerrainColumns()` and `fillElevations()`). Systems read it instead of
+ * classifying the terrain again.
+ */
+export type BoxType = TerrainMaterial;
 
 export type BoxMetadata = Record<string, unknown>;
 
@@ -56,6 +62,11 @@ export interface IGridObject {
   readonly y: number;
   readonly elevation: number;
   readonly metadata: BoxMetadata;
+}
+
+/** A terrain column as entity placement reads it: its top elevation and, as `type`, its surface. */
+export interface ITerrainColumn extends IGridObject {
+  readonly type: BoxType;
 }
 
 export type EntityDefinition = {

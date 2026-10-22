@@ -1,5 +1,6 @@
-import type { IGridObject, TerrainMaterial, TerrainSurface } from "../../types";
+import type { BoxType, IGridObject, TerrainMaterial, TerrainPoint, TerrainSurface } from "../../types";
 import { CellMap } from "../grid";
+import { Box } from "./box";
 
 /** Elevation the top block of a column must have to become sand. */
 export const SAND_ELEVATION = 0;
@@ -31,7 +32,9 @@ export function getColumnSurface(topElevation: number, touchesWater: boolean, to
  * that is not a shore candidate itself (higher ground, or ground at the sand elevation away
  * from the water). Diagonals count so the corners of a beach stay sand.
  */
-export function classifyColumnSurfaces(boxes: readonly IGridObject[]): CellMap<TerrainSurface> {
+export function classifyColumnSurfaces(
+  boxes: readonly Pick<IGridObject, "x" | "y" | "elevation">[],
+): CellMap<TerrainSurface> {
   const tops = new CellMap<number>();
   boxes.forEach(({ x, y, elevation }) => {
     tops.set(x, y, Math.max(tops.get(x, y) ?? -Infinity, elevation));
@@ -64,9 +67,19 @@ export function classifyColumnSurfaces(boxes: readonly IGridObject[]): CellMap<T
 
 /**
  * Material of one block: negative blocks are water, the top block takes its column's
- * surface and every other block is ground.
+ * material (its surface) and every other block is ground.
  */
-export function getBlockMaterial(elevation: number, topElevation: number, surface: TerrainSurface): TerrainMaterial {
+export function getBlockMaterial(elevation: number, topElevation: number, surface: BoxType): TerrainMaterial {
   if (elevation < 0) return "water";
   return elevation === topElevation ? surface : "ground";
+}
+
+/**
+ * The terrain columns of a height map: one `Box` per point, typed with its column's surface
+ * ({@link classifyColumnSurfaces}, computed once here). The rest of the engine reads
+ * `box.type` instead of classifying again.
+ */
+export function createTerrainColumns(points: readonly TerrainPoint[]): Box[] {
+  const surfaces = classifyColumnSurfaces(points);
+  return points.map(({ x, y, elevation }) => new Box(x, y, { elevation, type: surfaces.get(x, y) as TerrainSurface }));
 }

@@ -1,15 +1,22 @@
 import type { BoxData, BoxMetadata, BoxType, IBox } from "../../types";
 
-const DEFAULT_BOX_DATA: BoxData = {
-  type: "EMPTY",
+const DEFAULT_BOX_DATA: Omit<BoxData, "type"> = {
   walkable: true,
   elevation: 0,
   metadata: {},
 };
 
 /**
+ * Material a block gets from its elevation alone: water below zero, grass otherwise. Sand
+ * and ground depend on the neighbours and on the column, so `createTerrainColumns()` and
+ * `fillElevations()` assign them.
+ */
+export const getElevationMaterial = (elevation: number): BoxType => (elevation < 0 ? "water" : "grass");
+
+/**
  * One materialized terrain block: immutable grid coordinates plus mutable data (`type`,
  * `walkable`, `elevation`, `metadata`). Used only for terrain; entities are `Entity`.
+ * Without a `type`, it takes {@link getElevationMaterial} of its initial elevation.
  */
 export class Box implements IBox {
   public readonly x: number;
@@ -20,8 +27,10 @@ export class Box implements IBox {
   constructor(x: number, y: number, initialData?: Partial<BoxData>) {
     this.x = x;
     this.y = y;
+    const elevation = initialData?.elevation ?? DEFAULT_BOX_DATA.elevation;
     this.data = {
       ...DEFAULT_BOX_DATA,
+      type: getElevationMaterial(elevation),
       ...initialData,
       metadata: {
         ...DEFAULT_BOX_DATA.metadata,

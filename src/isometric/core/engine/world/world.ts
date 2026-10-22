@@ -1,9 +1,9 @@
-import type { EntityData, EntityDefinition, TerrainSurface, WorldClock } from "../../types";
-import type { ReadonlyCellMap, SpatialIndex } from "../grid";
+import type { EntityData, EntityDefinition, WorldClock } from "../../types";
+import type { SpatialIndex } from "../grid";
 import { TERRAIN_HEIGHT, TERRAIN_WIDTH } from "../constants";
 import { createEntitiesFromConfig, Entity, indexEntities, validateEntityDefinitions } from "../entities";
 import { createSeededRandom, DEFAULT_WORLD_SEED, deriveSeed } from "../random";
-import { Box, classifyColumnSurfaces, generatePerlinTerrain } from "../terrain";
+import { type Box, createTerrainColumns, generatePerlinTerrain } from "../terrain";
 import { createWorldClock, WORLD_START_TICK } from "../time";
 
 /**
@@ -18,10 +18,11 @@ export type World = {
   readonly width: number;
   /** Number of columns along `y`. */
   readonly height: number;
-  /** One terrain box per column, holding the column's top elevation. */
+  /**
+   * One terrain box per column, holding the column's top elevation and, as its `type`, the
+   * column's surface (`grass`, `water` or `sand`), classified once at generation.
+   */
   readonly columns: readonly Box[];
-  /** Surface of each column (top block material). */
-  readonly surfaces: ReadonlyCellMap<TerrainSurface>;
   /** Non-terrain entities, in creation order. */
   readonly entities: readonly Entity[];
   /**
@@ -71,24 +72,20 @@ export type WorldSnapshot = {
   entities: { x: number; y: number; data: EntityData }[];
 };
 
-type TerrainState = Pick<World, "seed" | "width" | "height" | "columns" | "surfaces">;
+type TerrainState = Pick<World, "seed" | "width" | "height" | "columns">;
 
 function generateTerrainState(seed: number, width: number, height: number): TerrainState {
-  const points = generatePerlinTerrain({ width, height, seed });
-  const columns = points.map(({ x, y, elevation }) => new Box(x, y, { elevation }));
-
   return {
     seed,
     width,
     height,
-    columns,
-    surfaces: classifyColumnSurfaces(columns),
+    columns: createTerrainColumns(generatePerlinTerrain({ width, height, seed })),
   };
 }
 
 /**
- * Generates a world from a seed: terrain (simplex noise), column
- * surfaces and entities. Each system draws from its own seeded stream (`deriveSeed`), so the
+ * Generates a world from a seed: terrain (simplex noise) with each column typed with its
+ * surface, and entities. Each system draws from its own seeded stream (`deriveSeed`), so the
  * same options always produce the same world.
  *
  * @throws `EntityConfigError` when `entityDefinitions` is invalid.

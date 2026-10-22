@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { SAND_ELEVATION, classifyColumnSurfaces, getBlockMaterial, getColumnSurface } from "./surfaces";
+import { Box } from "./box";
+import {
+  SAND_ELEVATION,
+  classifyColumnSurfaces,
+  createTerrainColumns,
+  getBlockMaterial,
+  getColumnSurface,
+} from "./surfaces";
 
 const column = (x: number, y: number, elevation: number) => ({
   x,
@@ -119,5 +126,30 @@ describe("getBlockMaterial", () => {
 
   it("renders blocks under the top as ground", () => {
     expect(getBlockMaterial(1, 3, "grass")).toBe("ground");
+  });
+});
+
+describe("createTerrainColumns", () => {
+  it("creates one box per point, typed once with its column's surface", () => {
+    // x: water, shore sand, inland grass, higher grass.
+    const points = grid([[-1, 0, 0, 1]]);
+    const columns = createTerrainColumns(points);
+
+    expect(columns.every((box) => box instanceof Box)).toBe(true);
+    expect(columns.map(({ x, y, elevation }) => ({ x, y, elevation }))).toEqual(
+      points.map(({ x, y, elevation }) => ({ x, y, elevation })),
+    );
+    expect(columns.map(({ type }) => type)).toEqual(["water", "sand", "grass", "grass"]);
+  });
+
+  it("matches classifyColumnSurfaces() column by column", () => {
+    const points = grid([
+      [0, 0, 0, 0],
+      [0, 0, 0, -1],
+      [0, -1, -1, -1],
+    ]);
+    const surfaces = classifyColumnSurfaces(points);
+
+    expect(createTerrainColumns(points).every(({ x, y, type }) => surfaces.get(x, y) === type)).toBe(true);
   });
 });

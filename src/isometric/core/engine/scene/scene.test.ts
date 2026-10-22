@@ -194,7 +194,7 @@ import {
   placeSilhouette,
 } from "../render";
 import { AO_PIXELS_PER_TILE, getShadowProjection, getSilhouetteMatrix, SHADOW_REFRESH_TICKS } from "../lighting";
-import { Box, classifyColumnSurfaces } from "../terrain";
+import { type Box, createTerrainColumns } from "../terrain";
 import { generateWorld, type World } from "../world";
 import { DEFAULT_SKY_PALETTE, TICKS_PER_DAY, getSunState } from "../time";
 import { TILE_METRICS } from "../constants";
@@ -254,14 +254,13 @@ const defaultWorld = (createEntities: EntityFactory = () => []): World => {
 
 /** A world built from explicit terrain points, for precise material checks. */
 const worldFrom = (points: TerrainPoint[], createEntities: EntityFactory = () => []): World => {
-  const columns = points.map(({ x, y, elevation }) => new Box(x, y, { elevation }));
+  const columns = createTerrainColumns(points);
   const entities = createEntities(columns);
   return {
     seed: 0,
     width: 0,
     height: 0,
     columns,
-    surfaces: classifyColumnSurfaces(columns),
     entities,
     occupancy: indexEntities(entities),
     clock: { tick: 0 },
@@ -537,6 +536,25 @@ describe("createIsometricScene", () => {
     const grass = topCalls.find(({ texture }) => texture.source.includes("grass"));
     expect(sand?.tint).toBeDefined();
     expect(sand?.tint).not.toBe(grass?.tint);
+    destroyScene();
+  });
+
+  it("draws each block with the material its box was typed with, without classifying again", async () => {
+    const app = {
+      screen: { width: 1300, height: 1000 },
+      ticker: createTicker(),
+      renderer: createRenderer(),
+      stage: { addChild: vi.fn() },
+    };
+    const world = worldFrom([{ x: 0, y: 0, elevation: 2 }]);
+    // Typed sand two blocks up, far from any water: only the box's type can make it sand.
+    world.columns[0].update({ type: "sand" });
+
+    const destroyScene = await createIsometricScene(app as never, world);
+
+    expect(renderCalls.find(({ elevation }) => elevation === 2)?.texture.source).toBe("/assets/sand/block.svg");
+    expect(renderCalls.find(({ elevation }) => elevation === 1)?.texture.source).toBe("/assets/ground/block.svg");
+    expect(renderCalls.find(({ elevation }) => elevation === -1)?.texture.source).toBe("/assets/water/block.svg");
     destroyScene();
   });
 

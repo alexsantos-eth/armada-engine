@@ -1,5 +1,6 @@
 import { CellMap } from "../grid";
 import { Box } from "./box";
+import { getBlockMaterial } from "./surfaces";
 
 /**
  * Elevation levels a column of top elevation `targetElevation` occupies down to
@@ -21,14 +22,17 @@ export function buildFilledElevationLevels(targetElevation: number, minElevation
 
 /**
  * Materializes every level of each column: returns one new `Box` per occupied level (see
- * {@link buildFilledElevationLevels}), copying the column's data. Inputs are not modified.
+ * {@link buildFilledElevationLevels}), copying the column's data and typed once with its
+ * material (`getBlockMaterial()`: water below zero, the column's own type on its top, ground
+ * under it). Inputs are not modified.
  */
 export function fillElevations(boxes: readonly Box[], minElevation: number): Box[] {
   return boxes.flatMap((box) => {
     const boxData = box.getData();
 
     return buildFilledElevationLevels(box.elevation, minElevation).map(
-      (elevation) => new Box(box.x, box.y, { ...boxData, elevation }),
+      (elevation) =>
+        new Box(box.x, box.y, { ...boxData, elevation, type: getBlockMaterial(elevation, box.elevation, box.type) }),
     );
   });
 }
