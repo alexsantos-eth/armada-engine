@@ -304,7 +304,6 @@ export async function createIsometricScene(app: Application, world: World): Prom
       return surfaces.get(x, y) === "sand" ? elevation - 0.5 : elevation;
     },
     levelAt: (x, y) => topElevationByColumn.get(x, y),
-    occupiedAt: (x, y) => world.occupancy.isOccupied(x, y),
   };
 
   // Silhouettes are drawn into the shadow maps, never into the scene: blurred for soft edges,

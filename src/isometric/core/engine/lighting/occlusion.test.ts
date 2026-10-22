@@ -1,17 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { OcclusionTerrain } from "../../types";
-import {
-  AO_CONTACT_ALPHA,
-  AO_CONTACT_INSET,
-  AO_CONTACT_RADIUS,
-  AO_PIXELS_PER_TILE,
-  AO_WALL_ALPHA,
-  AO_WALL_RADIUS,
-  buildOcclusionMap,
-  getOcclusion,
-} from "./occlusion";
+import { AO_PIXELS_PER_TILE, AO_WALL_ALPHA, AO_WALL_RADIUS, buildOcclusionMap, getOcclusion } from "./occlusion";
 
-type Column = { x: number; y: number; height: number; level?: number; occupied?: boolean };
+type Column = { x: number; y: number; height: number; level?: number };
 
 /** A terrain from explicit columns; `level` defaults to the height rounded up (sand tops sit half a block lower). */
 const terrainOf = (columns: Column[]): OcclusionTerrain => {
@@ -28,7 +19,6 @@ const terrainOf = (columns: Column[]): OcclusionTerrain => {
       const column = at(x, y);
       return column === undefined ? undefined : (column.level ?? Math.ceil(column.height));
     },
-    occupiedAt: (x, y) => at(x, y)?.occupied ?? false,
   };
 };
 
@@ -45,11 +35,8 @@ const plateau = (...overrides: Column[]) => {
 
 describe("ambient occlusion constants", () => {
   it("keeps the documented strengths, reaches and map resolution", () => {
-    expect(AO_WALL_ALPHA).toBe(0.13);
+    expect(AO_WALL_ALPHA).toBe(0.12);
     expect(AO_WALL_RADIUS).toBe(0.5);
-    expect(AO_CONTACT_ALPHA).toBe(0.4);
-    expect(AO_CONTACT_INSET).toBe(0.2);
-    expect(AO_CONTACT_RADIUS).toBe(0.35);
     expect(AO_PIXELS_PER_TILE).toBe(8);
   });
 });
@@ -116,35 +103,10 @@ describe("getOcclusion", () => {
     expect(getOcclusion(terrain, 0, 0, 1, 0.3)).toBe(0);
   });
 
-  it("adds a contact shadow under an entity, strongest in its core", () => {
-    const terrain = plateau({ x: 0, y: 0, height: 0, occupied: true });
-
-    expect(getOcclusion(terrain, 0, 0, 0.5, 0.5)).toBeCloseTo(AO_CONTACT_ALPHA);
-    expect(getOcclusion(terrain, 0, 0, AO_CONTACT_INSET, 0.5)).toBeCloseTo(AO_CONTACT_ALPHA);
-    expect(getOcclusion(terrain, 0, 0, 0, 0.5)).toBeLessThan(AO_CONTACT_ALPHA);
-    expect(getOcclusion(terrain, 0, 0, 0, 0.5)).toBeGreaterThan(0);
-  });
-
-  it("spills an entity's contact shadow onto neighbours on the same ground", () => {
-    const terrain = plateau({ x: 1, y: 0, height: 0, occupied: true });
-    const spill = getOcclusion(terrain, 0, 0, 1, 0.5);
-
-    expect(spill).toBeGreaterThan(0);
-    expect(spill).toBeLessThan(AO_CONTACT_ALPHA);
-    // Beyond the core plus AO_CONTACT_RADIUS it is gone.
-    expect(getOcclusion(terrain, 0, 0, 1 + AO_CONTACT_INSET - AO_CONTACT_RADIUS, 0.5)).toBe(0);
-  });
-
-  it("ignores entities standing on other ground levels", () => {
-    expect(getOcclusion(plateau({ x: 1, y: 0, height: -1, occupied: true }), 0, 0, 1, 0.5)).toBe(0);
-  });
-
-  it("combines walls and contact shadows as stacked shadows", () => {
-    const terrain = plateau({ x: 1, y: 0, height: 1 }, { x: 0, y: 0, height: 0, occupied: true });
-    const wall = getOcclusion(plateau({ x: 1, y: 0, height: 1 }), 0, 0, 0.75, 0.5);
-    const contact = getOcclusion(plateau({ x: 0, y: 0, height: 0, occupied: true }), 0, 0, 0.75, 0.5);
-
-    expect(getOcclusion(terrain, 0, 0, 0.75, 0.5)).toBeCloseTo(1 - (1 - wall) * (1 - contact));
+  it("lets only taller terrain occlude, never what stands on the same ground", () => {
+    // A neighbour at the same height or lower adds nothing, whatever stands on it.
+    expect(getOcclusion(plateau({ x: 1, y: 0, height: -1 }), 0, 0, 1, 0.5)).toBe(0);
+    expect(getOcclusion(plateau(), 0, 0, 1, 0.5)).toBe(0);
   });
 });
 

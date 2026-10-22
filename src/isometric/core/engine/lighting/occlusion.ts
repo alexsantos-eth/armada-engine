@@ -1,19 +1,10 @@
 import type { OcclusionTerrain } from "../../types";
 
 /** Darkness at the foot of a wall one block (or more) tall. */
-export const AO_WALL_ALPHA = 0.13;
+export const AO_WALL_ALPHA = 0.12;
 
 /** Reach (tiles) of a wall's occlusion from its base. */
 export const AO_WALL_RADIUS = 0.5;
-
-/** Darkness of the contact shadow under an entity. */
-export const AO_CONTACT_ALPHA = 0.4;
-
-/** Inset (tiles) from the tile's edge of the core of an entity's contact shadow. */
-export const AO_CONTACT_INSET = 0.2;
-
-/** Reach (tiles) of an entity's contact shadow beyond its core. */
-export const AO_CONTACT_RADIUS = 0.35;
 
 /**
  * Resolution of the occlusion maps: texels per tile along each axis. Occlusion is soft, so a
@@ -29,10 +20,10 @@ function smoothstep(edge0: number, edge1: number, value: number): number {
 /** `1` at distance `0`, easing out to `0` at `radius`. */
 const fade = (distance: number, radius: number) => 1 - smoothstep(0, radius, distance);
 
-/** Distance from `(px, py)` to the square `[min, max]²` offset by `(cx, cy)`; `0` inside. */
-function distanceToSquare(px: number, py: number, cx: number, cy: number, min: number, max: number): number {
-  const dx = Math.max(cx + min - px, 0, px - (cx + max));
-  const dy = Math.max(cy + min - py, 0, py - (cy + max));
+/** Distance from `(px, py)` to the unit tile centred on `(cx, cy)`; `0` inside. */
+function distanceToTile(px: number, py: number, cx: number, cy: number): number {
+  const dx = Math.max(cx - 0.5 - px, 0, px - (cx + 0.5));
+  const dy = Math.max(cy - 0.5 - py, 0, py - (cy + 0.5));
   return Math.hypot(dx, dy);
 }
 
@@ -43,11 +34,10 @@ function distanceToSquare(px: number, py: number, cx: number, cy: number, min: n
  *
  * Every taller neighbour darkens the ground at its foot by its height step (fully from one
  * block; a sand top, half a block lower, counts half) with {@link AO_WALL_ALPHA}, fading out
- * within {@link AO_WALL_RADIUS}: bands along steps and darker inner corners. Every entity on the
- * same ground (the column itself or a neighbour at the same height) adds a contact shadow of
- * {@link AO_CONTACT_ALPHA} over a core {@link AO_CONTACT_INSET} inside its tile, fading out
- * within {@link AO_CONTACT_RADIUS}. Cliff tops are never darkened. Contributions stack like
- * shadows, `1 − Π(1 − oᵢ)`, so it never reaches black. Pure and deterministic.
+ * within {@link AO_WALL_RADIUS}: bands along steps and darker inner corners. Only terrain
+ * occludes: entities leave no contact shadow (their sun shadows are drawn separately). Cliff
+ * tops are never darkened. Contributions stack like shadows, `1 − Π(1 − oᵢ)`, so it never
+ * reaches black. Pure and deterministic.
  */
 export function getOcclusion(terrain: OcclusionTerrain, x: number, y: number, u: number, v: number): number {
   const own = terrain.topHeightAt(x, y);
@@ -59,15 +49,10 @@ export function getOcclusion(terrain: OcclusionTerrain, x: number, y: number, u:
   for (let dy = -1; dy <= 1; dy += 1) {
     for (let dx = -1; dx <= 1; dx += 1) {
       const height = terrain.topHeightAt(x + dx, y + dy);
-      if (height === undefined) continue;
+      if (height === undefined || height <= own) continue;
 
-      if (height > own) {
-        const distance = distanceToSquare(px, py, dx, dy, -0.5, 0.5);
-        light *= 1 - AO_WALL_ALPHA * Math.min(1, height - own) * fade(distance, AO_WALL_RADIUS);
-      } else if (height === own && terrain.occupiedAt(x + dx, y + dy)) {
-        const distance = distanceToSquare(px, py, dx, dy, -0.5 + AO_CONTACT_INSET, 0.5 - AO_CONTACT_INSET);
-        light *= 1 - AO_CONTACT_ALPHA * fade(distance, AO_CONTACT_RADIUS);
-      }
+      const distance = distanceToTile(px, py, dx, dy);
+      light *= 1 - AO_WALL_ALPHA * Math.min(1, height - own) * fade(distance, AO_WALL_RADIUS);
     }
   }
   return 1 - light;

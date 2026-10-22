@@ -36,6 +36,4 @@ export type OcclusionTerrain = {
   topHeightAt(x: number, y: number): number | undefined;
   /** Top elevation of a column: the shadow map level its top belongs to. */
   levelAt(x: number, y: number): number | undefined;
-  /** Whether an entity stands on the column. */
-  occupiedAt(x: number, y: number): boolean;
 };

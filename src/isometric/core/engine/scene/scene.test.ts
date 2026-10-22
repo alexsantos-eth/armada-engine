@@ -857,7 +857,7 @@ describe("createIsometricScene", () => {
       destroyScene();
     });
 
-    it("darkens the ground around an entity with its contact shadow", async () => {
+    it("leaves no contact shadow around entities on flat ground", async () => {
       const world = at(
         worldFrom(
           [
@@ -875,7 +875,8 @@ describe("createIsometricScene", () => {
         }
       ).texture.source.options.resource;
 
-      expect(resource.some((value) => value > 0)).toBe(true);
+      expect(world.entities.length).toBeGreaterThan(0);
+      expect(resource.every((value) => value === 0)).toBe(true);
       destroyScene();
     });
 
