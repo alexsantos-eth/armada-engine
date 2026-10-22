@@ -19,7 +19,11 @@ vi.mock("pixi.js", () => {
     public isRenderGroup: boolean;
     public tintWrites: number[] = [];
     public filters: unknown[] | undefined;
+    public filterArea: unknown;
     public visibleWrites: boolean[] = [];
+    public eventMode = "passive";
+    public position = { x: 0, y: 0, set: vi.fn((x: number, y: number) => Object.assign(this.position, { x, y })) };
+    public scale = { x: 1, y: 1, set: vi.fn((value: number) => Object.assign(this.scale, { x: value, y: value })) };
     public destroy = vi.fn();
 
     constructor(options: { isRenderGroup?: boolean } = {}) {
@@ -45,6 +49,13 @@ vi.mock("pixi.js", () => {
 
     addChild(child: unknown): void {
       this.children.push(child);
+    }
+
+    /** Like Pixi: a child already in the container is moved, the index counting without it. */
+    addChildAt(child: unknown, index: number): void {
+      const current = this.children.indexOf(child);
+      if (current >= 0) this.children.splice(current, 1);
+      this.children.splice(index, 0, child);
     }
   }
 
@@ -137,20 +148,27 @@ vi.mock("../render", async () => ({
       length,
     }: {
       texture: { source: string };
-      box: { box: { elevation: number }; baseScreenY: number; x: number; y: number };
+      box: { box: { elevation: number }; baseScreenY: number; screenX: number; screenY: number; x: number; y: number };
       tint?: number;
       height?: number;
       length?: number;
     }) => {
       renderCalls.push({ texture, elevation: box.box.elevation, tint, height, length });
+      // The sprite's top-left sits 30 px above the top of its box.
+      const position = {
+        x: box.screenX,
+        y: box.screenY - 30,
+        set: vi.fn((x: number, y: number) => Object.assign(position, { x, y })),
+      };
       return [
         {
-          view: { cullable: false, source: texture.source, x: box.x, y: box.y },
+          view: { cullable: false, source: texture.source, x: box.x, y: box.y, position },
           depth: box.baseScreenY,
         },
       ];
     },
   ),
+  getBlockDepth: vi.fn((box: { baseScreenY: number }) => box.baseScreenY),
   SHADOW_MAP_PIXELS_PER_TILE: 16,
   SHADOW_BLUR: 2,
   createGroundShadowView: vi.fn(
@@ -184,12 +202,16 @@ vi.mock("../render", async () => ({
 import { Assets } from "pixi.js";
 import type { TerrainPoint } from "../../types";
 import { Entity, indexEntities } from "../entities";
+import { CellMap } from "../grid";
+import { createPlayer } from "../player";
 import { Assets as PixiAssets, Culler, RenderTexture } from "pixi.js";
 import {
   addInDepthOrder,
+  createBlockViews,
   createGroundShadowView,
   createSilhouettes,
   createSvgColorVariant,
+  getBlockDepth,
   getSvgResolution,
   placeSilhouette,
 } from "../render";
@@ -198,10 +220,12 @@ import { type Box, createTerrainColumns } from "../terrain";
 import { generateWorld, type World } from "../world";
 import { DEFAULT_SKY_PALETTE, TICKS_PER_DAY, getSunState } from "../time";
 import { TILE_METRICS } from "../constants";
+import { CAMERA_MAX_ZOOM, CAMERA_START_ZOOM, getCullRect, getGroundPointBelow } from "../camera";
+import { projectGridPoint } from "../projection";
 import { rgbToTint } from "../render/color";
 import { createIsometricScene } from "./scene";
 
-type TickerListener = () => void;
+type TickerListener = (ticker: { elapsedMS: number }) => void;
 
 /** Minimal Pixi ticker: records listeners so a test can run a frame by hand. */
 const createTicker = () => {
@@ -215,7 +239,7 @@ const createTicker = () => {
       const index = listeners.findIndex((listener) => listener.fn === fn);
       if (index >= 0) listeners.splice(index, 1);
     }),
-    frame: () => listeners.forEach(({ fn }) => fn()),
+    frame: (elapsedMS = 16) => listeners.forEach(({ fn }) => fn({ elapsedMS })),
   };
 };
 
@@ -237,6 +261,12 @@ const createRenderer = (resolution = 1) => {
   };
 };
 
+type SceneContainer = {
+  eventMode: string;
+  position: { x: number; y: number };
+  scale: { x: number; y: number };
+};
+
 type TintedContainer = {
   isRenderGroup: boolean;
   tint: number;
@@ -256,14 +286,16 @@ const defaultWorld = (createEntities: EntityFactory = () => []): World => {
 const worldFrom = (points: TerrainPoint[], createEntities: EntityFactory = () => []): World => {
   const columns = createTerrainColumns(points);
   const entities = createEntities(columns);
+  const ground = { columnIndex: CellMap.from(columns, (column) => column), occupancy: indexEntities(entities) };
   return {
     seed: 0,
     width: 0,
     height: 0,
     columns,
     entities,
-    occupancy: indexEntities(entities),
+    ...ground,
     clock: { tick: 0 },
+    player: createPlayer(ground, { x: 0, y: 0 }),
   };
 };
 
@@ -326,27 +358,27 @@ describe("createIsometricScene", () => {
       stage: { addChild: vi.fn() },
     };
 
-    const destroyScene = await createIsometricScene(app as never, defaultWorld(createTestEntities));
+    const { destroy: destroyScene } = await createIsometricScene(app as never, defaultWorld(createTestEntities));
 
     expect(Assets.load).toHaveBeenCalledWith({
       src: "/assets/grass/block.svg",
-      data: { resolution: expect.any(Number) },
+      data: { resolution: expect.any(Number), autoGenerateMipmaps: true },
     });
     expect(Assets.load).toHaveBeenCalledWith({
       src: "/assets/ground/block.svg",
-      data: { resolution: expect.any(Number) },
+      data: { resolution: expect.any(Number), autoGenerateMipmaps: true },
     });
     expect(Assets.load).toHaveBeenCalledWith({
       src: "/assets/water/block.svg",
-      data: { resolution: expect.any(Number) },
+      data: { resolution: expect.any(Number), autoGenerateMipmaps: true },
     });
     expect(Assets.load).toHaveBeenCalledWith({
       src: "/assets/sand/block.svg",
-      data: { resolution: expect.any(Number) },
+      data: { resolution: expect.any(Number), autoGenerateMipmaps: true },
     });
     expect(Assets.load).toHaveBeenCalledWith({
       src: "/assets/statue/block.svg",
-      data: { resolution: expect.any(Number) },
+      data: { resolution: expect.any(Number), autoGenerateMipmaps: true },
     });
     expect(renderCalls.length).toBeGreaterThan(0);
     expect(renderCalls.some(({ texture }) => texture.source.includes("water"))).toBe(true);
@@ -387,7 +419,7 @@ describe("createIsometricScene", () => {
       stage: { addChild: vi.fn() },
     };
 
-    const destroyScene = await createIsometricScene(app as never, defaultWorld(createTestEntities));
+    const { destroy: destroyScene } = await createIsometricScene(app as never, defaultWorld(createTestEntities));
 
     expect(renderCalls).toHaveLength(0);
     destroyScene();
@@ -401,7 +433,7 @@ describe("createIsometricScene", () => {
       stage: { addChild: vi.fn() },
     };
 
-    const destroyScene = await createIsometricScene(app as never, defaultWorld(createColorizedEntities));
+    const { destroy: destroyScene } = await createIsometricScene(app as never, defaultWorld(createColorizedEntities));
 
     // Two different types → one variant each, with the variation stored on the entity.
     expect(createSvgColorVariant).toHaveBeenCalledTimes(2);
@@ -430,7 +462,7 @@ describe("createIsometricScene", () => {
       colorReplacements: { "#9f4b2f": ["#f0c040", "#c0392b", "#3478b8"] },
     };
 
-    const destroyScene = await createIsometricScene(
+    const { destroy: destroyScene } = await createIsometricScene(
       app as never,
       defaultWorld((columns) =>
         columns
@@ -455,7 +487,7 @@ describe("createIsometricScene", () => {
       stage: { addChild: (child: never) => stageChildren.push(child) },
     };
 
-    const destroyScene = await createIsometricScene(app as never, defaultWorld(createTestEntities));
+    const { destroy: destroyScene } = await createIsometricScene(app as never, defaultWorld(createTestEntities));
     const [scene] = stageChildren;
 
     expect(addInDepthOrder).toHaveBeenCalledTimes(1);
@@ -477,9 +509,9 @@ describe("createIsometricScene", () => {
     const world = defaultWorld(createTestEntities);
     const before = world.columns.map(({ elevation }) => elevation);
 
-    (await createIsometricScene(app as never, world))();
+    (await createIsometricScene(app as never, world)).destroy();
     const first = renderCalls.splice(0);
-    (await createIsometricScene(app as never, world))();
+    (await createIsometricScene(app as never, world)).destroy();
 
     expect(renderCalls).toEqual(first);
     expect(world.columns.map(({ elevation }) => elevation)).toEqual(before);
@@ -494,7 +526,10 @@ describe("createIsometricScene", () => {
       stage: { addChild: vi.fn() },
     };
 
-    const destroyScene = await createIsometricScene(app as never, worldFrom([{ x: 0, y: 0, elevation: 0 }]));
+    const { destroy: destroyScene } = await createIsometricScene(
+      app as never,
+      worldFrom([{ x: 0, y: 0, elevation: 0 }]),
+    );
 
     expect(renderCalls.some(({ texture, tint }) => texture.source.includes("grass") && tint === undefined)).toBe(true);
     destroyScene();
@@ -508,7 +543,7 @@ describe("createIsometricScene", () => {
       stage: { addChild: vi.fn() },
     };
 
-    const destroyScene = await createIsometricScene(
+    const { destroy: destroyScene } = await createIsometricScene(
       app as never,
       worldFrom([
         { x: 0, y: 0, elevation: -1 },
@@ -550,7 +585,7 @@ describe("createIsometricScene", () => {
     // Typed sand two blocks up, far from any water: only the box's type can make it sand.
     world.columns[0].update({ type: "sand" });
 
-    const destroyScene = await createIsometricScene(app as never, world);
+    const { destroy: destroyScene } = await createIsometricScene(app as never, world);
 
     expect(renderCalls.find(({ elevation }) => elevation === 2)?.texture.source).toBe("/assets/sand/block.svg");
     expect(renderCalls.find(({ elevation }) => elevation === 1)?.texture.source).toBe("/assets/ground/block.svg");
@@ -571,14 +606,14 @@ describe("createIsometricScene", () => {
       stage: { addChild: vi.fn() },
     };
 
-    const destroyScene = await createIsometricScene(app as never, defaultWorld(createTestEntities));
+    const { destroy: destroyScene } = await createIsometricScene(app as never, defaultWorld(createTestEntities));
 
     expect(renderCalls.some(({ texture }) => texture.source.includes("tree"))).toBe(false);
     destroyScene();
   });
 
   describe("performance", () => {
-    it("rasterizes every SVG at the size it is drawn, for the device's pixel ratio", async () => {
+    it("rasterizes every SVG at the size it is drawn at the largest zoom, for the device's pixel ratio", async () => {
       const app = {
         screen: { width: 1300, height: 1000 },
         ticker: createTicker(),
@@ -586,16 +621,19 @@ describe("createIsometricScene", () => {
         stage: { addChild: vi.fn() },
       };
 
-      const destroyScene = await createIsometricScene(app as never, defaultWorld(createColorizedEntities));
-      const resolution = getSvgResolution(40, 2);
+      const { destroy: destroyScene } = await createIsometricScene(app as never, defaultWorld(createColorizedEntities));
+      const resolution = getSvgResolution(40 * CAMERA_MAX_ZOOM, 2);
 
-      expect(getSvgResolution).toHaveBeenCalledWith(40, 2);
+      expect(getSvgResolution).toHaveBeenCalledWith(40 * CAMERA_MAX_ZOOM, 2);
       expect(vi.mocked(Assets.load).mock.calls.length).toBeGreaterThan(4);
       vi.mocked(Assets.load).mock.calls.forEach(([asset]) => {
-        expect(asset).toEqual({ src: expect.any(String), data: { resolution } });
+        expect(asset).toEqual({ src: expect.any(String), data: { resolution, autoGenerateMipmaps: true } });
       });
       // Colorized variants too.
-      expect(Assets.load).toHaveBeenCalledWith({ src: "/assets/house/block.svg#0", data: { resolution } });
+      expect(Assets.load).toHaveBeenCalledWith({
+        src: "/assets/house/block.svg#0",
+        data: { resolution, autoGenerateMipmaps: true },
+      });
       destroyScene();
     });
 
@@ -613,7 +651,7 @@ describe("createIsometricScene", () => {
         elevation: 2,
       }));
 
-      const destroyScene = await createIsometricScene(app as never, worldFrom(points));
+      const { destroy: destroyScene } = await createIsometricScene(app as never, worldFrom(points));
 
       // Behind the camera-side faces (x = 0 or y = 0), the 4 inner columns keep only their top.
       expect(renderCalls).toHaveLength(9 * 6 - 4 * 5);
@@ -622,6 +660,8 @@ describe("createIsometricScene", () => {
     });
 
     it("culls on demand: once when built and on every renderer resize, never per frame", async () => {
+      // Against the screen grown by the camera's cull margin.
+      const cullRect = getCullRect({ width: 1300, height: 1000 });
       const ticker = createTicker();
       const renderer = createRenderer();
       const stageChildren: unknown[] = [];
@@ -632,11 +672,11 @@ describe("createIsometricScene", () => {
         stage: { addChild: (child: unknown) => stageChildren.push(child) },
       };
 
-      const destroyScene = await createIsometricScene(app as never, defaultWorld(createTestEntities));
+      const { destroy: destroyScene } = await createIsometricScene(app as never, defaultWorld(createTestEntities));
       const [scene] = stageChildren;
 
       expect(Culler.shared.cull).toHaveBeenCalledTimes(1);
-      expect(Culler.shared.cull).toHaveBeenCalledWith(scene, renderer.screen, false);
+      expect(Culler.shared.cull).toHaveBeenCalledWith(scene, cullRect, false);
       ticker.frame();
       ticker.frame();
       expect(Culler.shared.cull).toHaveBeenCalledTimes(1);
@@ -651,6 +691,290 @@ describe("createIsometricScene", () => {
     });
   });
 
+  describe("camera", () => {
+    const sceneOf = async (world: World, options?: Parameters<typeof createIsometricScene>[2]) => {
+      const renderer = createRenderer();
+      const stageChildren: SceneContainer[] = [];
+      const app = {
+        screen: renderer.screen,
+        ticker: createTicker(),
+        renderer,
+        stage: { addChild: (child: SceneContainer) => stageChildren.push(child) },
+      };
+      const scene = await createIsometricScene(app as never, world, options);
+      return { renderer, container: stageChildren[0], scene };
+    };
+
+    it("projects ground (0, 0) at scene (0, 0) and puts the camera's ground point at the screen centre", async () => {
+      const { container, scene } = await sceneOf(worldFrom([{ x: 0, y: 0, elevation: 0 }]), {
+        camera: { x: 0, y: 0, zoom: 2 },
+      });
+      const top = vi.mocked(createBlockViews).mock.calls.find(([{ box }]) => box.box.elevation === 0)?.[0].box;
+
+      expect(top).toMatchObject({ screenX: 0, screenY: 0 });
+      expect(scene.camera.state).toEqual({ x: 0, y: 0, zoom: 2 });
+      expect(container.position).toMatchObject({ x: 650, y: 500 });
+      expect(container.scale).toMatchObject({ x: 2, y: 2 });
+      scene.destroy();
+    });
+
+    it("starts zoomed in at the centre of the world, and keeps the world views out of hit testing", async () => {
+      const world = defaultWorld();
+      const { scene, container } = await sceneOf(world);
+      const centre = (world.width - 1) / 2;
+
+      expect(scene.camera.state).toEqual({ x: centre, y: centre, zoom: CAMERA_START_ZOOM });
+      // Ground (c, c) is drawn c · tileHeight above scene (0, 0).
+      expect(container.position.x).toBeCloseTo(650);
+      expect(container.position.y).toBeCloseTo(500 + centre * TILE_METRICS.tileHeight * CAMERA_START_ZOOM);
+      expect(container.eventMode).toBe("none");
+      scene.destroy();
+    });
+
+    it("keeps the camera inside the world's columns", async () => {
+      const world = defaultWorld();
+      const { scene } = await sceneOf(world, { camera: { x: 1e6, y: -5 } });
+
+      expect(scene.camera.state).toMatchObject({ x: world.width - 1, y: 0, zoom: CAMERA_START_ZOOM });
+      scene.destroy();
+    });
+
+    it("moves the world container when the camera pans or zooms", async () => {
+      const { container, scene } = await sceneOf(defaultWorld());
+      const { x, y } = container.position;
+
+      scene.camera.pan({ x: 30, y: -15 });
+      expect(container.position.x).toBeCloseTo(x + 30);
+      expect(container.position.y).toBeCloseTo(y - 15);
+      scene.camera.zoomAt(0.5, { x: 650, y: 500 });
+      expect(container.scale).toMatchObject({ x: CAMERA_START_ZOOM / 2 });
+      scene.destroy();
+    });
+
+    it("applies the camera to a resized screen", async () => {
+      const { renderer, container, scene } = await sceneOf(defaultWorld());
+      const { x } = container.position;
+
+      renderer.screen.width = 800;
+      renderer.emit("resize");
+      expect(container.position.x).toBeCloseTo(x - 250);
+      scene.destroy();
+    });
+  });
+
+  describe("player", () => {
+    const PLAYER = { textureSource: "/assets/player/block.svg", height: 1 } as const;
+    const projection = {
+      tileWidth: TILE_METRICS.tileWidth,
+      tileHeight: TILE_METRICS.tileHeight,
+      elevationStep: TILE_METRICS.boxHeight,
+      originX: 0,
+      originY: 0,
+    };
+    type PlayerView = {
+      source: string;
+      cullable: boolean;
+      x?: number;
+      y?: number;
+      position: { x: number; y: number; set: ReturnType<typeof vi.fn> };
+    };
+
+    /** A flat 4 × 4 field at elevation 1 with the player standing on `at`. */
+    const fieldWithPlayer = (at = { x: 1, y: 1 }): World => {
+      const points = Array.from({ length: 16 }, (_, index) => ({
+        x: index % 4,
+        y: Math.floor(index / 4),
+        elevation: 1,
+      }));
+      const world = worldFrom(points);
+      return { ...world, player: createPlayer(world, at) };
+    };
+
+    const sceneOf = async (world: World, interpolation?: () => number) => {
+      const ticker = createTicker();
+      const stageChildren: { children: PlayerView[] }[] = [];
+      const app = {
+        screen: { width: 1300, height: 1000 },
+        ticker,
+        renderer: createRenderer(),
+        stage: { addChild: (child: { children: PlayerView[] }) => stageChildren.push(child) },
+      };
+      const scene = await createIsometricScene(app as never, world, { player: PLAYER, interpolation });
+      const container = stageChildren[0];
+      const view = container.children.find(({ source }) => source === PLAYER.textureSource) as PlayerView;
+      return { ticker, container, view, scene };
+    };
+
+    /** Where the sprite of a player at `at` is drawn: 30 px above its top (see the mock). */
+    const spriteAt = (at: { x: number; y: number; elevation: number }) => {
+      const ground = projectGridPoint(at, projection);
+      return { x: ground.x, y: ground.y - at.elevation * TILE_METRICS.boxHeight - 30 };
+    };
+
+    it("loads the player's SVG and draws it once, standing on its column and never culled", async () => {
+      const { view, scene } = await sceneOf(fieldWithPlayer());
+
+      expect(PixiAssets.load).toHaveBeenCalledWith(expect.objectContaining({ src: PLAYER.textureSource }));
+      expect(renderCalls.filter(({ texture }) => texture.source === PLAYER.textureSource)).toEqual([
+        expect.objectContaining({ elevation: 1, height: 1 }),
+      ]);
+      expect(view.cullable).toBe(false);
+      expect(view.position).toMatchObject(spriteAt({ x: 1, y: 1, elevation: 1 }));
+      scene.destroy();
+    });
+
+    it("starts the camera on the player, lifted by its elevation", async () => {
+      const { scene } = await sceneOf(fieldWithPlayer({ x: 2, y: 1 }));
+
+      expect(scene.camera.state).toEqual({
+        ...getGroundPointBelow({ x: 2, y: 1 }, 1, projection),
+        zoom: CAMERA_START_ZOOM,
+      });
+      scene.destroy();
+    });
+
+    it("puts the player in the draw order after the columns behind it and before the ones in front", async () => {
+      const { container, view, scene } = await sceneOf(fieldWithPlayer());
+      const index = container.children.indexOf(view);
+      const blocks = container.children.filter((child) => child.x !== undefined && child !== view);
+
+      // Depth grows towards the camera: x + y ≥ 2 is behind or level with column (1, 1).
+      blocks.forEach((block) => {
+        const behind = (block.x ?? 0) + (block.y ?? 0) >= 2;
+        expect(container.children.indexOf(block) < index).toBe(behind);
+      });
+      scene.destroy();
+    });
+
+    it("draws the player between its last two ticks and glides the camera after it", async () => {
+      const world = fieldWithPlayer();
+      const { ticker, container, view, scene } = await sceneOf(world, () => 0.5);
+      const addChildAt = vi.spyOn(container as never, "addChildAt");
+      const before = scene.camera.state;
+
+      world.player.x = 1.4;
+      ticker.frame(50);
+      expect(view.position).toMatchObject(spriteAt({ x: 1.2, y: 1, elevation: 1 }));
+      // Still on column (1, 1): the draw order is kept.
+      expect(addChildAt).not.toHaveBeenCalled();
+      expect(scene.camera.state.x).toBeGreaterThan(before.x);
+      expect(scene.camera.state.x).toBeLessThan(getGroundPointBelow({ x: 1.2, y: 1 }, 1, projection).x);
+
+      for (let frame = 0; frame < 100; frame += 1) ticker.frame(50);
+      expect(scene.camera.state).toEqual({
+        ...getGroundPointBelow({ x: 1.2, y: 1 }, 1, projection),
+        zoom: CAMERA_START_ZOOM,
+      });
+      scene.destroy();
+    });
+
+    it("computes the player's depth again only when it enters another column", async () => {
+      const world = fieldWithPlayer();
+      const { ticker, scene } = await sceneOf(world, () => 0.5);
+      const depth = vi.mocked(getBlockDepth);
+      depth.mockClear();
+
+      world.player.x = 1.4;
+      ticker.frame();
+      world.player.previous = { x: 1.4, y: 1, elevation: 1 };
+      ticker.frame();
+      expect(depth).not.toHaveBeenCalled();
+
+      world.player.x = 2.2;
+      ticker.frame();
+      expect(depth).toHaveBeenCalledTimes(1);
+      scene.destroy();
+    });
+
+    it("keeps the player's place in the draw order on another column at the same depth", async () => {
+      const world = fieldWithPlayer();
+      const { ticker, container, scene } = await sceneOf(world);
+      const addChildAt = vi.spyOn(container as never, "addChildAt");
+
+      // Column (2, 0): same x + y and elevation as (1, 1), so the same depth.
+      Object.assign(world.player, { x: 1.8, y: 0.4, previous: { x: 1.8, y: 0.4, elevation: 1 } });
+      ticker.frame();
+      expect(vi.mocked(getBlockDepth)).toHaveBeenCalled();
+      expect(addChildAt).not.toHaveBeenCalled();
+      scene.destroy();
+    });
+
+    it("moves the player in the draw order only when it enters another column", async () => {
+      const world = fieldWithPlayer();
+      const { ticker, container, view, scene } = await sceneOf(world);
+      const addChildAt = vi.spyOn(container as never, "addChildAt");
+
+      world.player.previous = { x: 1, y: 1, elevation: 1 };
+      world.player.x = 1.8;
+      ticker.frame();
+      ticker.frame();
+      expect(view.position).toMatchObject(spriteAt({ x: 1.8, y: 1, elevation: 1 }));
+      expect(addChildAt).toHaveBeenCalledTimes(1);
+      const index = container.children.indexOf(view);
+      container.children
+        .filter((child) => child.x !== undefined && child !== view)
+        .forEach((block) => {
+          expect(container.children.indexOf(block) < index).toBe((block.x ?? 0) + (block.y ?? 0) >= 3);
+        });
+      scene.destroy();
+    });
+
+    it("stands the player on the half-height top of a sand column", async () => {
+      const shore = worldFrom([
+        { x: 0, y: 0, elevation: -1 },
+        { x: 1, y: 0, elevation: 0 },
+        { x: 2, y: 0, elevation: 0 },
+        { x: 3, y: 0, elevation: 0 },
+      ]);
+      expect(shore.columnIndex.get(1, 0)?.type).toBe("sand");
+      const { view, scene } = await sceneOf({ ...shore, player: createPlayer(shore, { x: 1, y: 0 }) });
+
+      const onGrass = spriteAt({ x: 1, y: 0, elevation: 0 });
+      expect(view.position).toMatchObject({ x: onGrass.x, y: onGrass.y + TILE_METRICS.boxHeight / 2 });
+      scene.destroy();
+    });
+
+    it("does not touch the sprite while the player stands still", async () => {
+      const { ticker, view, scene } = await sceneOf(fieldWithPlayer());
+      view.position.set.mockClear();
+
+      ticker.frame();
+      ticker.frame();
+      expect(view.position.set).not.toHaveBeenCalled();
+      scene.destroy();
+    });
+
+    it("draws a player off the terrain at its own elevation, behind everything", async () => {
+      const world = fieldWithPlayer();
+      const { ticker, container, view, scene } = await sceneOf(world);
+
+      Object.assign(world.player, { x: 9, y: 9, elevation: 2 });
+      ticker.frame();
+      expect(view.position).toMatchObject(spriteAt({ x: 9, y: 9, elevation: 2 }));
+      expect(container.children[0]).toBe(view);
+      scene.destroy();
+    });
+
+    it("stops updating the player and unloads its SVG when destroyed", async () => {
+      const { ticker, scene } = await sceneOf(fieldWithPlayer());
+
+      scene.destroy();
+      expect(ticker.listeners).toHaveLength(0);
+      expect(PixiAssets.unload).toHaveBeenCalledWith(PLAYER.textureSource);
+    });
+
+    it("is neither drawn nor followed without an appearance", async () => {
+      const ticker = createTicker();
+      const app = { screen: {}, ticker, renderer: createRenderer(), stage: { addChild: vi.fn() } };
+      const scene = await createIsometricScene(app as never, fieldWithPlayer());
+
+      expect(renderCalls.some(({ texture }) => texture.source === PLAYER.textureSource)).toBe(false);
+      expect(ticker.listeners).toHaveLength(1);
+      expect(scene.camera.state).toMatchObject({ x: 1.5, y: 1.5 });
+      scene.destroy();
+    });
+  });
+
   describe("ambient light", () => {
     const sceneOf = async (world: World) => {
       const ticker = createTicker();
@@ -661,7 +985,7 @@ describe("createIsometricScene", () => {
         renderer: createRenderer(),
         stage: { addChild: (child: TintedContainer) => stageChildren.push(child) },
       };
-      const destroyScene = await createIsometricScene(app as never, world);
+      const { destroy: destroyScene } = await createIsometricScene(app as never, world);
       return { ticker, scene: stageChildren[0], destroyScene };
     };
     const atHour = (hour: number) => {
@@ -745,7 +1069,7 @@ describe("createIsometricScene", () => {
         renderer,
         stage: { addChild: (child: { children: View[] }) => stageChildren.push(child) },
       };
-      const destroyScene = await createIsometricScene(app as never, world);
+      const { destroy: destroyScene } = await createIsometricScene(app as never, world);
       return { ticker, renderer, children: stageChildren[0].children, destroyScene };
     };
     const at = (world: World, hour: number) => {
@@ -945,6 +1269,20 @@ describe("createIsometricScene", () => {
       casters.forEach(({ filters }) => {
         expect(filters?.[0]).toBe(blur);
         expect(filters?.[1]).toBe(opacity);
+      });
+      destroyScene();
+    });
+
+    it("gives each group of silhouettes its map's rectangle as filter area, so Pixi never measures it", async () => {
+      const { destroyScene } = await sceneOf(at(defaultWorld(createTestEntities), 9));
+      const casters = castersOf() as (Layer & { filterArea?: unknown })[];
+
+      expect(casters.length).toBeGreaterThan(0);
+      const maps = vi
+        .mocked(RenderTexture.create)
+        .mock.results.map(({ value }) => value as { width: number; height: number });
+      casters.forEach(({ filterArea }) => {
+        expect(filterArea).toEqual({ x: 0, y: 0, width: maps[0].width, height: maps[0].height });
       });
       destroyScene();
     });

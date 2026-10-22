@@ -5,17 +5,26 @@ import {
   BlurFilter,
   BufferImageSource,
   Container,
-  Culler,
   Rectangle,
   RenderTexture,
   Sprite,
   Texture,
+  type Ticker,
   UPDATE_PRIORITY,
 } from "pixi.js";
+import { CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM, getGroundPointBelow } from "../camera";
 import type { Entity } from "../entities";
-import { projectBoxesToIsometric } from "../projection";
+import { getPlayerColumn, getPlayerRenderPosition } from "../player";
+import { projectBoxesToIsometric, projectGridPoint } from "../projection";
 import { fillElevations, removeHiddenBlocks } from "../terrain";
-import type { OcclusionTerrain, ShadowProjection, TerrainMaterial } from "../../types";
+import type {
+  Camera,
+  OcclusionTerrain,
+  PlayerAppearance,
+  PlayerPosition,
+  ShadowProjection,
+  TerrainMaterial,
+} from "../../types";
 import {
   BOX_HEIGHT,
   DEFAULT_MIN_ELEVATION,
@@ -44,6 +53,7 @@ import {
   createSilhouettes,
   createSvgColorVariant,
   type DepthView,
+  getBlockDepth,
   getSvgResolution,
   placeSilhouette,
   rgbToTint,
@@ -53,6 +63,7 @@ import {
 } from "../render";
 import { getSunState } from "../time";
 import type { World } from "../world";
+import { createSceneCamera, type SceneCamera } from "./camera";
 
 const POSITIVE_ELEVATION_TOP_TINT = 0xe8ffb0;
 /** Neutral tint for sand: same height darkening as grass, without the green cast. */
@@ -94,17 +105,52 @@ type ShadowLayer = {
   drawnTick: number;
 };
 
+/** Options of {@link createIsometricScene}. */
+export type IsometricSceneOptions = {
+  /**
+   * Where the camera starts: by default on the player when it is drawn, otherwise the centre
+   * of the world, at `CAMERA_START_ZOOM`.
+   */
+  readonly camera?: Partial<Camera>;
+  /** How to draw `world.player` (game content). Without it the player is not drawn or followed. */
+  readonly player?: PlayerAppearance;
+  /**
+   * Fraction of the next simulation tick already elapsed (`getInterpolationAlpha()`), read every
+   * frame to draw the player between ticks. Defaults to `1`: the player as of the last tick.
+   */
+  readonly interpolation?: () => number;
+};
+
+/** A rendered world: its camera, and the cleanup that destroys it. */
+export type IsometricScene = {
+  readonly camera: SceneCamera;
+  /** Destroys the scene, stops its per-frame updates and unloads its assets. */
+  readonly destroy: () => void;
+};
+
 /**
  * Renders `world` into `app`. The scene only reads the world: it never generates or changes
- * it, so the same world can be simulated, saved or rendered again. Returns a cleanup that
- * destroys the scene, stops its per-frame updates and unloads its assets.
+ * it, so the same world can be simulated, saved or rendered again. Returns the scene's camera
+ * and a cleanup that destroys the scene, stops its per-frame updates and unloads its assets.
+ *
+ * Ground `(0, 0)` is projected at scene `(0, 0)`, and the camera (`createSceneCamera()`) moves
+ * and scales the world container. The camera looks at a ground point: it starts at the centre of
+ * the world with `CAMERA_START_ZOOM`, or where `options.camera` says, and stays inside the world.
  *
  * Terrain blocks fully covered by others (`removeHiddenBlocks()`) are never created: from the
  * fixed camera only the shell of the terrain shows.
  *
- * SVGs are rasterized at the size they are drawn (`getSvgResolution()`), and every view is
- * created `cullable`: the scene culls on demand (`Culler.shared.cull()`) when it is built and
- * when the renderer resizes, never every frame.
+ * SVGs are rasterized at the size they are drawn at the largest zoom (`getSvgResolution()` with
+ * `CAMERA_MAX_ZOOM`), and every view is created `cullable`: the camera culls on demand
+ * (`Culler.shared.cull()`) when the scene is built, when the renderer resizes and when the camera
+ * moved past its cull margin, never every frame.
+ *
+ * With `options.player`, the scene draws `world.player` (one sprite, not cullable) and the
+ * camera follows it. Every frame, from `app.ticker` at `UPDATE_PRIORITY.NORMAL`, it places the
+ * sprite between the player's last two ticks (`options.interpolation`), tells the camera to
+ * follow it when it moved and glides the camera. The sprite is moved in the draw order only
+ * when the player enters another column or elevation (`addChildAt()`, at the index its depth
+ * takes among the world views); never with `zIndex`. The player casts no shadow yet.
  *
  * Shadows are drawn onto the terrain: every column's top shows its square of the shadow map of
  * its own elevation, right after its top block. Each map is drawn from a fixed layer: the
@@ -115,7 +161,11 @@ type ShadowLayer = {
  * built, at sunrise and at sunset (without silhouettes at night); and by day redraws one map per
  * frame, the stalest, once it is `SHADOW_REFRESH_TICKS` old.
  */
-export async function createIsometricScene(app: Application, world: World): Promise<() => void> {
+export async function createIsometricScene(
+  app: Application,
+  world: World,
+  options: IsometricSceneOptions = {},
+): Promise<IsometricScene> {
   const grassBlockSource = "/assets/grass/block.svg";
   const groundBlockSource = "/assets/ground/block.svg";
   const waterBlockSource = "/assets/water/block.svg";
@@ -139,10 +189,13 @@ export async function createIsometricScene(app: Application, world: World): Prom
     ).entries(),
   ];
   const textures = new Map<string, Texture>();
-  // Rasterize each SVG at the size it is drawn, not at its 1024 px canvas.
-  const resolution = getSvgResolution(TILE_WIDTH, app.renderer.resolution);
-  const loadSvg = (src: string) => Assets.load<Texture>({ src, data: { resolution } });
-  const [grassTexture, groundTexture, waterTexture, sandTexture, ...entityTextures] = await Promise.all([
+  // Rasterize each SVG at the size it is drawn at the largest zoom, not at its 1024 px canvas.
+  // Mipmaps keep the edges smooth when the camera zooms out and the texture is drawn smaller.
+  const resolution = getSvgResolution(TILE_WIDTH * CAMERA_MAX_ZOOM, app.renderer.resolution);
+  const loadSvg = (src: string) => Assets.load<Texture>({ src, data: { resolution, autoGenerateMipmaps: true } });
+  const playerSource = options.player?.textureSource;
+  const [playerTexture, grassTexture, groundTexture, waterTexture, sandTexture, ...entityTextures] = await Promise.all([
+    playerSource === undefined ? undefined : loadSvg(playerSource),
     loadSvg(grassBlockSource),
     loadSvg(groundBlockSource),
     loadSvg(waterBlockSource),
@@ -166,9 +219,11 @@ export async function createIsometricScene(app: Application, world: World): Prom
 
   // Draw order comes from adding views in depth order once (see `addInDepthOrder()`), so the
   // scene never needs `sortableChildren`, which would re-sort every child on any change.
-  // A render group: its tint (the ambient light) and, later, its position (the camera) are
-  // applied on the GPU without updating its thousands of children.
+  // A render group: its tint (the ambient light) and its position and scale (the camera) are
+  // applied on the GPU without updating its thousands of children. No view takes pointer events,
+  // so the camera controls on the stage never hit-test them.
   const scene = new Container({ isRenderGroup: true });
+  scene.eventMode = "none";
   app.stage.addChild(scene);
   const views: DepthView[] = [];
 
@@ -195,29 +250,17 @@ export async function createIsometricScene(app: Application, world: World): Prom
   // Each world column holds its top elevation and, as its type, its surface.
   const columnAt = CellMap.from(world.columns, (column) => column);
   const maxPositiveElevation = filledBoxes.reduce((maximum, box) => Math.max(maximum, box.elevation), 0);
-  let minX = Infinity;
-  let maxX = -Infinity;
-  let minY = Infinity;
-  let maxY = -Infinity;
-  filledBoxes.forEach((box) => {
-    const screenX = (box.x - box.y) * (TILE_WIDTH / 2);
-    const screenY = -(box.x + box.y) * (TILE_HEIGHT / 2) - box.elevation * BOX_HEIGHT;
-    minX = Math.min(minX, screenX);
-    maxX = Math.max(maxX, screenX);
-    minY = Math.min(minY, screenY);
-    maxY = Math.max(maxY, screenY);
-  });
-
+  // Ground (0, 0) is scene (0, 0): the camera puts the part of the world it looks at on screen.
   const projection = {
     tileWidth: TILE_WIDTH,
     tileHeight: TILE_HEIGHT,
     elevationStep: BOX_HEIGHT,
-    originX: app.screen.width / 2 - (minX + maxX) / 2,
-    originY: app.screen.height / 2 - (minY + maxY) / 2,
+    originX: 0,
+    originY: 0,
   };
   // Only the blocks the camera can see: most of a filled terrain is buried and would still
   // be drawn, and pay its fill, on every frame. A sand top sits half a block lower and covers
-  // nothing behind it. The framing above still uses every block.
+  // nothing behind it.
   const visibleBoxes = removeHiddenBlocks(filledBoxes, (box) => box.type !== "sand");
   const projectedBoxes = projectBoxesToIsometric(visibleBoxes, projection);
   const projectedEntities = projectBoxesToIsometric(entities, projection);
@@ -290,14 +333,59 @@ export async function createIsometricScene(app: Application, world: World): Prom
   }
 
   // Every world view is created, also the ones off screen, so a moving camera reveals them.
-  // Culled on demand: Pixi's `CullerPlugin` would walk every view each frame.
+  // Culled on demand by the camera: Pixi's `CullerPlugin` would walk every view each frame.
   views.forEach(({ view }) => {
     view.cullable = true;
   });
-  addInDepthOrder(scene, views);
-  const cull = () => Culler.shared.cull(scene, app.renderer.screen, false);
-  cull();
-  app.renderer.on("resize", cull);
+  const ordered = [...views].sort((a, b) => a.depth - b.depth);
+  addInDepthOrder(scene, ordered);
+
+  // The player: one sprite, placed in the draw order by the depth of the column it is on.
+  const depths = ordered.map(({ depth }) => depth);
+  const player = playerTexture && createPlayerView(playerTexture, options.player?.height);
+  function createPlayerView(texture: Texture, height = 1) {
+    const at = getPlayerColumn(world.player);
+    const [projected] = projectBoxesToIsometric(
+      [{ ...at, elevation: world.player.elevation, metadata: {} }],
+      projection,
+    );
+    const [{ view }] = createBlockViews({
+      texture,
+      box: projected,
+      metrics: TILE_METRICS,
+      height,
+      surfaceAligned: true,
+    });
+    // Always drawn: the camera keeps the player on screen, and the culler runs only on demand.
+    view.cullable = false;
+    return { view, offset: { x: view.position.x - projected.screenX, y: view.position.y - projected.screenY } };
+  }
+  /** Index in the scene of the first view drawn after something at `depth`. */
+  const indexAfter = (depth: number) => {
+    let low = 0;
+    let high = depths.length;
+    while (low < high) {
+      const middle = (low + high) >> 1;
+      if (depths[middle] <= depth) low = middle + 1;
+      else high = middle;
+    }
+    return low;
+  };
+  const playerGround = () => getGroundPointBelow(world.player, world.player.elevation, projection);
+  // The camera looks at a ground point inside the world's columns.
+  const camera = createSceneCamera(
+    scene,
+    app.renderer.screen,
+    {
+      minZoom: CAMERA_MIN_ZOOM,
+      maxZoom: CAMERA_MAX_ZOOM,
+      bounds: { minX: gridMinX, minY: gridMinY, maxX: gridMaxX, maxY: gridMaxY },
+    },
+    projection,
+    options.camera ?? (player ? playerGround() : undefined),
+  );
+  const onResize = () => camera.resize();
+  app.renderer.on("resize", onResize);
 
   // Ambient occlusion: computed once for the whole terrain (it is static).
   const occlusionTerrain: OcclusionTerrain = {
@@ -339,6 +427,8 @@ export async function createIsometricScene(app: Application, world: World): Prom
 
     const casters = new Container();
     casters.filters = [blurFilter, alphaFilter];
+    // The whole map: known up front, so Pixi does not measure the silhouettes on every redraw.
+    casters.filterArea = new Rectangle(0, 0, map.width, map.height);
     silhouettes.forEach(({ silhouette }) => casters.addChild(silhouette.sprite));
     root.addChild(casters);
     return { map, root, occlusion, casters, silhouettes, drawnTick: 0 };
@@ -395,9 +485,54 @@ export async function createIsometricScene(app: Application, world: World): Prom
   updateLight();
   app.ticker.add(updateLight, undefined, UPDATE_PRIORITY.NORMAL);
 
-  return () => {
+  // The player: placed every frame between its last two ticks, followed by the camera.
+  let stopPlayer = () => {};
+  if (player) {
+    let drawnAt = getPlayerRenderPosition(world.player, 1);
+    let drawnDepth: number | undefined;
+    let depthFor: { x: number; y: number; elevation: number } | undefined;
+    const place = (at: PlayerPosition) => {
+      const column = getPlayerColumn(at);
+      const top = columnAt.get(column.x, column.y);
+      // A sand top is half a block lower than its block: the player stands on it, not above it.
+      const sink = top?.type === "sand" ? BOX_HEIGHT / 2 : 0;
+      const screen = projectGridPoint(at, projection);
+      player.view.position.set(
+        screen.x + player.offset.x,
+        screen.y - at.elevation * BOX_HEIGHT + sink + player.offset.y,
+      );
+      // In the draw order by the column it stands on, at that column's top: computed, and the
+      // view moved, only when that column changes, not on every frame of the walk.
+      const elevation = top?.elevation ?? world.player.elevation;
+      if (depthFor?.x !== column.x || depthFor.y !== column.y || depthFor.elevation !== elevation) {
+        depthFor = { ...column, elevation };
+        const [projected] = projectBoxesToIsometric([{ ...depthFor, metadata: {} }], projection);
+        const depth = getBlockDepth(projected, TILE_METRICS);
+        if (depth !== drawnDepth) {
+          scene.addChildAt(player.view, indexAfter(depth));
+          drawnDepth = depth;
+        }
+      }
+      drawnAt = at;
+    };
+    const updatePlayer = (ticker: Ticker) => {
+      const at = getPlayerRenderPosition(world.player, options.interpolation?.() ?? 1);
+      if (at.x !== drawnAt.x || at.y !== drawnAt.y || at.elevation !== drawnAt.elevation) {
+        place(at);
+        camera.follow(getGroundPointBelow(at, at.elevation, projection));
+      }
+      camera.update(ticker.elapsedMS);
+    };
+    place(drawnAt);
+    camera.follow(playerGround());
+    app.ticker.add(updatePlayer, undefined, UPDATE_PRIORITY.NORMAL);
+    stopPlayer = () => app.ticker.remove(updatePlayer, undefined);
+  }
+
+  const destroy = () => {
     app.ticker.remove(updateLight, undefined);
-    app.renderer.off("resize", cull);
+    stopPlayer();
+    app.renderer.off("resize", onResize);
     scene.destroy({ children: true });
     layers.forEach(({ root, occlusion }) => {
       root.destroy({ children: true });
@@ -409,7 +544,9 @@ export async function createIsometricScene(app: Application, world: World): Prom
     void Assets.unload(waterBlockSource);
     void Assets.unload(sandBlockSource);
     loadedEntitySources.forEach((source) => void Assets.unload(source));
+    if (playerSource !== undefined) void Assets.unload(playerSource);
   };
+  return { camera, destroy };
 }
 
 export default createIsometricScene;

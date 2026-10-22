@@ -1,5 +1,6 @@
 import type { EventBus, FixedStepperOptions, Simulation, SimulationEvents } from "../../types";
 import { createEventBus } from "../events";
+import { stepPlayer } from "../player";
 import { advanceClock, assertClockStep, TICKS_PER_DAY, TICKS_PER_HOUR } from "../time";
 import type { World } from "../world";
 import { consumeFrame, createFixedStepper, getInterpolationAlpha } from "./stepper";
@@ -16,24 +17,28 @@ function emitTickEvents(events: EventBus<SimulationEvents>, tick: number): void 
 
 /**
  * Advances the world by whole simulation ticks. This is the single entry point of the
- * simulation: game systems (weather, needs, AI) will run here, once per tick, in a fixed
- * order, so the same ticks always produce the same world.
+ * simulation: game systems run here, once per tick, in a fixed order, so the same ticks (and
+ * the same input) always produce the same world. Today: the player walks (`stepPlayer()`),
+ * then the clock advances.
  *
  * With `events`, the world advances one tick at a time and, after each tick, emits in this
  * order: `hourChanged` and `dayChanged` when the tick starts an hour or a day, then `tick`.
- * Every listener sees the world at that exact tick. Without `events`, the clock jumps at once.
+ * Every listener sees the world at that exact tick. Without `events`, the player still walks
+ * every tick, and the clock jumps at once.
  *
  * @throws `RangeError` when `ticks` is not a non-negative safe integer or the clock would
  * leave the safe integer range; the world is unchanged and nothing is emitted.
  */
 export function stepWorld(world: World, ticks: number, events?: EventBus<SimulationEvents>): void {
+  assertClockStep(world.clock, ticks);
   if (events === undefined) {
+    stepPlayer(world.player, world, ticks);
     advanceClock(world.clock, ticks);
     return;
   }
 
-  assertClockStep(world.clock, ticks);
   for (let step = 0; step < ticks; step += 1) {
+    stepPlayer(world.player, world);
     emitTickEvents(events, advanceClock(world.clock));
   }
 }

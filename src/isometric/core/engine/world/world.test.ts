@@ -4,6 +4,7 @@ import type { EntityDefinition } from "../../types";
 import { classifyColumnSurfaces, generatePerlinTerrain } from "../terrain";
 import { EntityConfigError } from "../entities";
 import { DEFAULT_WORLD_SEED } from "../random";
+import { canStandOn, setPlayerWalk, stepPlayer } from "../player";
 import { advanceClock, TICKS_PER_DAY, WORLD_START_TICK } from "../time";
 import { generateWorld, restoreWorld, serializeWorld, WORLD_SNAPSHOT_VERSION, type WorldSnapshot } from "./world";
 
@@ -138,6 +139,45 @@ describe("World occupancy", () => {
   });
 });
 
+describe("World column index", () => {
+  it("finds every column by its cell, and is rebuilt on restore instead of being saved", () => {
+    const world = generateWorld({ seed: 3, width: 6, height: 5, entityDefinitions: [] });
+    const snapshot = serializeWorld(world);
+
+    expect(world.columnIndex.size).toBe(world.columns.length);
+    world.columns.forEach((column) => expect(world.columnIndex.get(column.x, column.y)).toBe(column));
+    expect(snapshot).not.toHaveProperty("columnIndex");
+    expect(restoreWorld(snapshot).columnIndex.size).toBe(world.columns.length);
+  });
+});
+
+describe("World player", () => {
+  it("spawns standing on the walkable column nearest the centre, the same for the same seed", () => {
+    const world = generateWorld({ seed: 42, width: 16, height: 16, entityDefinitions: DEFINITIONS });
+    const { x, y, elevation, walk } = world.player;
+
+    expect(canStandOn(world, x, y, elevation)).toBe(true);
+    expect(world.columnIndex.get(x, y)?.elevation).toBe(elevation);
+    expect(walk).toEqual({ x: 0, y: 0 });
+    expect(generateWorld({ seed: 42, width: 16, height: 16, entityDefinitions: DEFINITIONS }).player).toEqual(
+      world.player,
+    );
+  });
+
+  it("saves where the player stands and restores it standing still", () => {
+    const world = generateWorld({ seed: 42, width: 16, height: 16, entityDefinitions: DEFINITIONS });
+    setPlayerWalk(world.player, { up: true, down: false, left: false, right: true });
+    stepPlayer(world.player, world, 3);
+
+    const snapshot = JSON.parse(JSON.stringify(serializeWorld(world))) as WorldSnapshot;
+    const restored = restoreWorld(snapshot);
+
+    expect(snapshot.player).toEqual({ x: world.player.x, y: world.player.y });
+    expect(restored.player).toMatchObject({ x: world.player.x, y: world.player.y, elevation: world.player.elevation });
+    expect(restored.player.walk).toEqual({ x: 0, y: 0 });
+  });
+});
+
 describe("serializeWorld / restoreWorld", () => {
   it("round-trips a world through JSON", () => {
     const world = generateWorld({ seed: 77, width: 12, height: 12, entityDefinitions: DEFINITIONS });
@@ -146,7 +186,7 @@ describe("serializeWorld / restoreWorld", () => {
     const restored = restoreWorld(snapshot);
 
     expect(snapshot.version).toBe(WORLD_SNAPSHOT_VERSION);
-    expect(WORLD_SNAPSHOT_VERSION).toBe(3);
+    expect(WORLD_SNAPSHOT_VERSION).toBe(4);
     expect(restored.seed).toBe(77);
     expect(restored.columns.map((b) => [b.x, b.y, b.elevation])).toEqual(
       world.columns.map((b) => [b.x, b.y, b.elevation]),
@@ -188,5 +228,6 @@ describe("serializeWorld / restoreWorld", () => {
     expect(() => restoreWorld({ ...snapshot, version: 99 as never })).toThrow("Unsupported world snapshot version 99");
     expect(() => restoreWorld({ ...snapshot, version: 1 as never })).toThrow("Unsupported world snapshot version 1");
     expect(() => restoreWorld({ ...snapshot, version: 2 as never })).toThrow("Unsupported world snapshot version 2");
+    expect(() => restoreWorld({ ...snapshot, version: 3 as never })).toThrow("Unsupported world snapshot version 3");
   });
 });

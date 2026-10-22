@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Box } from "../terrain";
-import { projectBoxesToIsometric } from "./projection";
+import { projectBoxesToIsometric, projectGridPoint, unprojectScreenDelta } from "./projection";
 
 describe("projectBoxesToIsometric", () => {
   it("projects grid coordinates and elevation", () => {
@@ -55,5 +55,28 @@ describe("projectBoxesToIsometric", () => {
     });
 
     expect(projected.screenY).toBe(-20);
+  });
+});
+
+describe("projectGridPoint and unprojectScreenDelta", () => {
+  const projection = { tileWidth: 40, tileHeight: 20, originX: 100, originY: 50 };
+
+  it("projects ground points like boxes at elevation 0, also between columns", () => {
+    const [box] = projectBoxesToIsometric([new Box(3, 1, { elevation: 0 })], projection);
+    expect(projectGridPoint({ x: 3, y: 1 }, projection)).toEqual({ x: box.screenX, y: box.screenY });
+    expect(projectGridPoint({ x: 0.5, y: 0.5 }, projection)).toEqual({ x: 100, y: 40 });
+  });
+
+  it("follows the documented directions: right is +x −y, up is +x +y", () => {
+    expect(unprojectScreenDelta({ x: 40, y: 0 }, projection)).toEqual({ x: 1, y: -1 });
+    expect(unprojectScreenDelta({ x: 0, y: -20 }, projection)).toEqual({ x: 1, y: 1 });
+  });
+
+  it("inverts the projection of a displacement", () => {
+    const from = projectGridPoint({ x: 2, y: 5 }, projection);
+    const to = projectGridPoint({ x: -1.25, y: 7.5 }, projection);
+    const delta = unprojectScreenDelta({ x: to.x - from.x, y: to.y - from.y }, projection);
+    expect(delta.x).toBeCloseTo(-3.25);
+    expect(delta.y).toBeCloseTo(2.5);
   });
 });

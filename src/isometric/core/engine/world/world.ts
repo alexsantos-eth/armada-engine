@@ -1,9 +1,10 @@
-import type { EntityData, EntityDefinition, WorldClock } from "../../types";
-import type { SpatialIndex } from "../grid";
+import type { EntityData, EntityDefinition, GridPoint, PlayerState, WorldClock } from "../../types";
+import { CellMap, type ReadonlyCellMap, type SpatialIndex } from "../grid";
 import { TERRAIN_HEIGHT, TERRAIN_WIDTH } from "../constants";
 import { createEntitiesFromConfig, Entity, indexEntities, validateEntityDefinitions } from "../entities";
 import { createSeededRandom, DEFAULT_WORLD_SEED, deriveSeed } from "../random";
 import { type Box, createTerrainColumns, generatePerlinTerrain } from "../terrain";
+import { createPlayer, findPlayerSpawn } from "../player";
 import { createWorldClock, WORLD_START_TICK } from "../time";
 
 /**
@@ -23,6 +24,8 @@ export type World = {
    * column's surface (`grass`, `water` or `sand`), classified once at generation.
    */
   readonly columns: readonly Box[];
+  /** `columns` by cell, for lookups by position. Derived: never serialized, rebuilt on restore. */
+  readonly columnIndex: ReadonlyCellMap<Box>;
   /** Non-terrain entities, in creation order. */
   readonly entities: readonly Entity[];
   /**
@@ -35,6 +38,12 @@ export type World = {
    * time of day and sunlight are derived from its tick with `getSunState()`.
    */
   readonly clock: WorldClock;
+  /**
+   * The player character. Only the simulation step moves it (`stepPlayer()` inside
+   * `stepWorld()`), walking where `player.walk` points; the scene draws it and the camera
+   * follows it.
+   */
+  readonly player: PlayerState;
 };
 
 /** Options of {@link generateWorld}. */
@@ -56,12 +65,13 @@ export type WorldOptions = {
 };
 
 /** Version of {@link WorldSnapshot}; bump it when the snapshot shape changes. */
-export const WORLD_SNAPSHOT_VERSION = 3;
+export const WORLD_SNAPSHOT_VERSION = 4;
 
 /**
  * JSON-serializable save of a {@link World}. The terrain is not stored: it is regenerated
  * from `seed` and size. Entities are stored as data, so changes made during
- * play (removed, moved or modified entities) are kept, and so is the game time (`tick`).
+ * play (removed, moved or modified entities) are kept, and so are the game time (`tick`) and
+ * where the player stands (`player`; its walk is input and is not saved).
  */
 export type WorldSnapshot = {
   version: typeof WORLD_SNAPSHOT_VERSION;
@@ -69,23 +79,21 @@ export type WorldSnapshot = {
   width: number;
   height: number;
   tick: number;
+  player: GridPoint;
   entities: { x: number; y: number; data: EntityData }[];
 };
 
-type TerrainState = Pick<World, "seed" | "width" | "height" | "columns">;
+type TerrainState = Pick<World, "seed" | "width" | "height" | "columns" | "columnIndex">;
 
 function generateTerrainState(seed: number, width: number, height: number): TerrainState {
-  return {
-    seed,
-    width,
-    height,
-    columns: createTerrainColumns(generatePerlinTerrain({ width, height, seed })),
-  };
+  const columns = createTerrainColumns(generatePerlinTerrain({ width, height, seed }));
+  return { seed, width, height, columns, columnIndex: CellMap.from(columns, (column) => column) };
 }
 
 /**
  * Generates a world from a seed: terrain (simplex noise) with each column typed with its
- * surface, and entities. Each system draws from its own seeded stream (`deriveSeed`), so the
+ * surface, entities, and the player on the walkable column nearest the centre
+ * (`findPlayerSpawn()`). Each system draws from its own seeded stream (`deriveSeed`), so the
  * same options always produce the same world.
  *
  * @throws `EntityConfigError` when `entityDefinitions` is invalid.
@@ -106,7 +114,9 @@ export function generateWorld(options: WorldOptions): World {
     createSeededRandom(deriveSeed(terrain.seed, "entity-color-variants")),
   );
 
-  return { ...terrain, entities, occupancy: indexEntities(entities), clock };
+  const ground = { columnIndex: terrain.columnIndex, occupancy: indexEntities(entities) };
+  const spawn = findPlayerSpawn(ground, { x: (terrain.width - 1) / 2, y: (terrain.height - 1) / 2 });
+  return { ...terrain, entities, ...ground, clock, player: createPlayer(ground, spawn) };
 }
 
 /** Converts a world into a JSON-serializable {@link WorldSnapshot}. */
@@ -117,13 +127,15 @@ export function serializeWorld(world: World): WorldSnapshot {
     width: world.width,
     height: world.height,
     tick: world.clock.tick,
+    player: { x: world.player.x, y: world.player.y },
     entities: world.entities.map((entity) => ({ x: entity.x, y: entity.y, data: entity.getData() })),
   };
 }
 
 /**
  * Rebuilds a world from a snapshot: regenerates the terrain from its seed and restores the
- * saved entities and game time as they were (no new entity generation).
+ * saved entities, game time and player position as they were (no new entity generation).
+ * The player stands still.
  *
  * @throws When the snapshot version is not supported.
  * @throws `RangeError` when the saved tick is not a non-negative safe integer.
@@ -137,5 +149,6 @@ export function restoreWorld(snapshot: WorldSnapshot): World {
   const terrain = generateTerrainState(snapshot.seed, snapshot.width, snapshot.height);
   const entities = snapshot.entities.map(({ x, y, data }) => Entity.fromData(x, y, data));
 
-  return { ...terrain, entities, occupancy: indexEntities(entities), clock };
+  const ground = { columnIndex: terrain.columnIndex, occupancy: indexEntities(entities) };
+  return { ...terrain, entities, ...ground, clock, player: createPlayer(ground, snapshot.player) };
 }

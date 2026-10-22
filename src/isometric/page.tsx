@@ -1,17 +1,36 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { Application, type Ticker, UPDATE_PRIORITY } from "pixi.js";
-import { ENTITY_CONFIG } from "./content";
+import { ENTITY_CONFIG, PLAYER_APPEARANCE } from "./content";
 import {
   WIDTH,
+  bindCameraControls,
   createIsometricScene,
   createSimulation,
   formatClockTime,
   generateWorld,
   getClockTime,
+  getInterpolationAlpha,
   resolveStartTick,
   resolveTimeScale,
   resolveWorldSeed,
+  setPlayerWalk,
 } from "./core/engine";
+
+/** Keys that walk the player, by the screen direction they hold. */
+const WALK_KEYS = {
+  up: ["ArrowUp", "KeyW"],
+  down: ["ArrowDown", "KeyS"],
+  left: ["ArrowLeft", "KeyA"],
+  right: ["ArrowRight", "KeyD"],
+} as const;
+const WALKING_KEYS = new Set<string>(Object.values(WALK_KEYS).flat());
+/** Keys that zoom at the centre of the view, by the factor of one press. */
+const ZOOM_KEYS = new Map<string, number>([
+  ["Equal", 1.25],
+  ["NumpadAdd", 1.25],
+  ["Minus", 0.8],
+  ["NumpadSubtract", 0.8],
+]);
 
 const IsometricWorld = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -24,6 +43,7 @@ const IsometricWorld = () => {
     const app = new Application();
     let destroyScene: (() => void) | undefined;
     let stopSimulation: (() => void) | undefined;
+    let stopControls: (() => void) | undefined;
     let disposed = false;
 
     void (async () => {
@@ -48,18 +68,66 @@ const IsometricWorld = () => {
       // `?hour=17.5` starts the day at 17:30 (debugging light; `?timeScale=0` freezes it).
       const startTick = resolveStartTick(window.location.search);
       const world = generateWorld({ seed, entityDefinitions: ENTITY_CONFIG, startTick });
-      destroyScene = await createIsometricScene(app, world);
+      // Fixed-step simulation fed by the Pixi ticker. HIGH priority runs it before the
+      // Application renders (LOW), so every frame draws the state of that frame.
+      // `?timeScale=60` runs a game day in 20 real seconds.
+      const timeScale = resolveTimeScale(window.location.search);
+      const simulation = createSimulation(world, { timeScale });
+      // The scene draws the player between its last two ticks, and the camera follows it.
+      const scene = await createIsometricScene(app, world, {
+        player: PLAYER_APPEARANCE,
+        interpolation: () => getInterpolationAlpha(simulation.stepper),
+      });
+      destroyScene = scene.destroy;
       // Unmounted while the scene was loading: the cleanup already ran without it.
       if (disposed) {
         destroyScene();
         return;
       }
 
-      // Fixed-step simulation fed by the Pixi ticker. HIGH priority runs it before the
-      // Application renders (LOW), so every frame draws the state of that frame.
-      // `?timeScale=60` runs a game day in 20 real seconds.
-      const timeScale = resolveTimeScale(window.location.search);
-      const simulation = createSimulation(world, { timeScale });
+      // Controls: arrows/WASD walk the player (read here, since the core never reads the
+      // keyboard; the simulation moves it on its next ticks), drag and wheel move the camera
+      // through Pixi's events (it follows the player again as soon as it walks), +/- zoom.
+      const unbindPointer = bindCameraControls(app.stage, app.renderer.screen, scene.camera);
+      const held = new Set<string>();
+      const walk = () =>
+        setPlayerWalk(world.player, {
+          up: WALK_KEYS.up.some((code) => held.has(code)),
+          down: WALK_KEYS.down.some((code) => held.has(code)),
+          left: WALK_KEYS.left.some((code) => held.has(code)),
+          right: WALK_KEYS.right.some((code) => held.has(code)),
+        });
+      const onKeyDown = (event: KeyboardEvent) => {
+        if (event.altKey || event.ctrlKey || event.metaKey) return;
+        const zoom = ZOOM_KEYS.get(event.code);
+        if (zoom !== undefined) {
+          const { width, height } = app.renderer.screen;
+          scene.camera.zoomAt(zoom, { x: width / 2, y: height / 2 });
+        } else if (WALKING_KEYS.has(event.code)) {
+          held.add(event.code);
+          walk();
+        } else {
+          return;
+        }
+        event.preventDefault();
+      };
+      const onKeyUp = (event: KeyboardEvent) => {
+        if (held.delete(event.code)) walk();
+      };
+      const releaseKeys = () => {
+        held.clear();
+        walk();
+      };
+      window.addEventListener("keydown", onKeyDown);
+      window.addEventListener("keyup", onKeyUp);
+      window.addEventListener("blur", releaseKeys);
+      stopControls = () => {
+        unbindPointer();
+        window.removeEventListener("keydown", onKeyDown);
+        window.removeEventListener("keyup", onKeyUp);
+        window.removeEventListener("blur", releaseKeys);
+      };
+
       const showClock = (tick: number) => {
         const time = getClockTime(tick);
         const speed = timeScale === 1 ? "" : ` · ×${timeScale}`;
@@ -77,6 +145,7 @@ const IsometricWorld = () => {
     return () => {
       disposed = true;
       stopSimulation?.();
+      stopControls?.();
       destroyScene?.();
       app.destroy(true);
     };

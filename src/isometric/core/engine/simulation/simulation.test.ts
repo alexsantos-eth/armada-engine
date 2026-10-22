@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import { createEventBus } from "../events";
+import { PLAYER_STEP, setPlayerWalk } from "../player";
 import { TICKS_PER_DAY, TICKS_PER_SECOND } from "../time";
+import type { SimulationEvents } from "../../types";
 import { generateWorld } from "../world";
 import { createSimulation, resolveTimeScale, stepWorld } from "./simulation";
 
@@ -17,9 +20,40 @@ describe("stepWorld", () => {
 
   it("rejects invalid tick counts without changing the world", () => {
     const world = newWorld(0);
+    setPlayerWalk(world.player, { up: true, down: false, left: false, right: false });
+    const player = { ...world.player };
 
     expect(() => stepWorld(world, -1)).toThrow(RangeError);
+    expect(() => stepWorld(world, 1.5, createEventBus<SimulationEvents>())).toThrow(RangeError);
     expect(world.clock.tick).toBe(0);
+    expect(world.player).toEqual(player);
+  });
+
+  it("walks the player once per tick, the same with and without events", () => {
+    const walked = (withEvents: boolean) => {
+      const world = generateWorld({ seed: 42, width: 16, height: 16, entityDefinitions: [], startTick: 0 });
+      setPlayerWalk(world.player, { up: false, down: true, left: false, right: false });
+      const start = { x: world.player.x, y: world.player.y };
+      stepWorld(world, 2, withEvents ? createEventBus<SimulationEvents>() : undefined);
+      return { start, player: world.player };
+    };
+
+    const { start, player } = walked(false);
+    expect(Math.hypot(player.x - start.x, player.y - start.y)).toBeCloseTo(2 * PLAYER_STEP);
+    expect(walked(true).player).toEqual(player);
+  });
+
+  it("lets event listeners see the player where it is at that tick", () => {
+    const world = generateWorld({ seed: 42, width: 16, height: 16, entityDefinitions: [], startTick: 0 });
+    setPlayerWalk(world.player, { up: false, down: true, left: false, right: false });
+    const events = createEventBus<SimulationEvents>();
+    const seen: number[] = [];
+    events.on("tick", () => seen.push(world.player.x));
+
+    stepWorld(world, 2, events);
+
+    expect(seen[1]).toBe(world.player.x);
+    expect(seen[0]).toBe(world.player.previous.x);
   });
 });
 

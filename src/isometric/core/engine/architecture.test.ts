@@ -9,6 +9,8 @@ import { describe, expect, it } from "vitest";
  * time → world (the world holds the game clock) → simulation (fixed-step loop)
  * events (typed bus, no dependencies) → simulation (emits clock events)
  * constants → lighting (shadow geometry) → scene
+ * projection → camera (view maths on the ground plane) → scene (moves and culls the world container)
+ * grid, time → player (the player system) → world (holds the player), simulation (walks it each tick), scene (draws it)
  *
  * Outside the engine, a module may only reach the shared types (`../../types`): the engine
  * never imports game content. Content (`src/isometric/content`) is plain data and only
@@ -16,6 +18,7 @@ import { describe, expect, it } from "vitest";
  */
 const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   constants: [],
+  camera: ["projection"],
   random: [],
   events: [],
   time: [],
@@ -24,10 +27,23 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   lighting: ["constants"],
   terrain: ["constants", "grid", "random"],
   entities: ["grid", "random", "terrain"],
-  world: ["constants", "entities", "grid", "random", "terrain", "time"],
+  player: ["grid", "time"],
+  world: ["constants", "entities", "grid", "player", "random", "terrain", "time"],
   render: [],
-  simulation: ["events", "time", "world"],
-  scene: ["constants", "entities", "grid", "lighting", "projection", "render", "terrain", "time", "world"],
+  simulation: ["events", "player", "time", "world"],
+  scene: [
+    "camera",
+    "constants",
+    "entities",
+    "grid",
+    "lighting",
+    "player",
+    "projection",
+    "render",
+    "terrain",
+    "time",
+    "world",
+  ],
 };
 
 /** Modules allowed to import Pixi. Everything else is pure domain logic. */

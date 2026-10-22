@@ -68,3 +68,9 @@ export type TileMetrics = {
   /** Vertical pixels per elevation level (the height of a block's side). */
   readonly boxHeight: number;
 };
+
+/** A point on the ground plane (elevation `0`) in world columns; fractional inside a column. */
+export type GridPoint = {
+  readonly x: number;
+  readonly y: number;
+};
