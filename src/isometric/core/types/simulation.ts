@@ -1,3 +1,5 @@
+import type { EventBus, SimulationEvents } from "./events";
+
 /** Options of a fixed-step accumulator (`createFixedStepper`). */
 export type FixedStepperOptions = {
   /** Real milliseconds per simulation step. Defaults to one world tick (`STEP_MS`). */
@@ -41,6 +43,8 @@ export type Simulation<TWorld> = {
   readonly world: TWorld;
   /** Accumulator state: pause it or change its speed here. */
   readonly stepper: FixedStepper;
+  /** Events emitted while the world advances; game systems subscribe here. */
+  readonly events: EventBus<SimulationEvents>;
   /** Feeds one rendered frame's real elapsed milliseconds and runs the due steps. */
   frame(elapsedMs: number): SimulationFrame;
 };

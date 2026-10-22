@@ -14,6 +14,7 @@ flowchart LR
   Page --> Simulation[engine/simulation]
   Simulation --> World
   Simulation --> Time
+  Simulation --> Events[engine/events]
   World --> Entities[engine/entities]
   World --> Terrain[engine/terrain]
   World --> Time[engine/time]
@@ -171,9 +172,14 @@ src/isometric/core/
       sun.ts
       sun.test.ts
       index.ts
+    events/
+      bus.ts
+      bus.test.ts
+      index.ts
     simulation/
       simulation.ts
       simulation.test.ts
+      events.test.ts
       stepper.ts
       stepper.test.ts
       index.ts
@@ -195,6 +201,7 @@ src/isometric/core/
     index.ts
   types/
     entities.ts
+    events.ts
     grid.ts
     iso.ts
     lighting.ts
@@ -220,11 +227,12 @@ Responsabilidades y dependencias permitidas (entre módulos solo a través de su
 | `terrain`    | `Box`, ruido, relleno de columnas (`fillElevations`), bloques visibles (`removeHiddenBlocks`) y superficies                  | `constants`, `grid`, `random`                                                                   |
 | `entities`   | `Entity`, huellas, colocación, formaciones, variantes de color y validación de definiciones                                  | `grid`, `random`, `terrain`                                                                     |
 | `time`       | Reloj de juego (ticks), hora del día y estado del sol                                                                        | —                                                                                               |
+| `events`     | Bus de eventos tipado y síncrono entre sistemas (`createEventBus`)                                                           | —                                                                                               |
 | `lighting`   | Proyección de las sombras: dirección, alargamiento y opacidad según el sol; transformación que tumba una silueta en el suelo | `constants`                                                                                     |
 | `world`      | Modelo `World`, generación y guardado                                                                                        | `constants`, `entities`, `grid`, `random`, `terrain`, `time`                                    |
 | `projection` | Rejilla → coordenadas de pantalla isométricas (`projectBoxesToIsometric`)                                                    | —                                                                                               |
 | `render`     | Sprites Pixi, recoloreado SVG, conversión de color de luz a tinte, siluetas y vistas de sombra sobre el terreno              | —                                                                                               |
-| `simulation` | Bucle de paso fijo: convierte tiempo real en ticks y avanza el `World`                                                       | `time`, `world`                                                                                 |
+| `simulation` | Bucle de paso fijo: convierte tiempo real en ticks, avanza el `World` y emite los eventos del reloj                          | `events`, `time`, `world`                                                                       |
 | `scene`      | Orquesta el render de un `World`, su luz ambiente y sus sombras                                                              | `constants`, `entities`, `grid`, `lighting`, `projection`, `render`, `terrain`, `time`, `world` |
 
 Fuera del motor, sus módulos solo pueden importar los tipos compartidos (`../../types`), nunca el contenido; el contenido solo importa tipos del core. Solo `render` y `scene` importan Pixi, y ningún módulo del motor lee `window`, `document` ni `localStorage`. `engine/architecture.test.ts` comprueba estas reglas sobre el código fuente: un import no permitido, saltarse un barrel o usar Pixi o el navegador en otro módulo hace fallar la suite.
@@ -268,16 +276,26 @@ El estado del sol es presentación: la lógica de juego que dependa de la hora (
 
 ## Bucle de simulación
 
-PixiJS marca los frames; el dominio decide cuántos pasos de simulación tocan. `engine/simulation` depende solo de `time` y `world` (tipos en `core/types/simulation.ts`) y no usa Pixi ni temporizadores: se prueba en Node.
+PixiJS marca los frames; el dominio decide cuántos pasos de simulación tocan. `engine/simulation` depende solo de `events`, `time` y `world` (tipos en `core/types/simulation.ts`) y no usa Pixi ni temporizadores: se prueba en Node.
 
 - `createFixedStepper(options?)` crea un acumulador de paso fijo (`FixedStepper`): `stepMs` (por defecto `STEP_MS` = 50 ms, un tick a `TICKS_PER_SECOND`), `maxFrameMs` (por defecto `DEFAULT_MAX_FRAME_MS` = 250) y `timeScale` (por defecto `1`). Valores no válidos lanzan `RangeError`.
 - `consumeFrame(stepper, elapsedMs)` recorta el tiempo real del frame a `maxFrameMs`, lo multiplica por `timeScale`, lo suma al acumulador y devuelve los pasos enteros que caben; el resto queda para el siguiente frame. Así el número de pasos no depende de los FPS, y tras una pausa larga (pestaña oculta, depurador) la simulación continúa sin una ráfaga de pasos: ese tiempo de juego se pierde a propósito. El recorte se aplica al tiempo real, no al escalado, para que `timeScale` alto siga siendo rápido. Con `paused = true`, o con tiempos no válidos (cero, negativos, `NaN`, infinitos), no hay pasos ni acumulación.
 - `setTimeScale(stepper, scale)` cambia la velocidad (`0` congela el tiempo) y `getInterpolationAlpha(stepper)` da la fracción del siguiente paso ya transcurrida, para interpolar en render lo que se mueva.
-- `stepWorld(world, ticks)` es el único punto de entrada de la simulación: hoy avanza `world.clock`; los sistemas de juego (clima, necesidades, IA) se ejecutarán aquí, una vez por tick y en orden fijo.
-- `createSimulation(world, options?)` une ambos: `simulation.frame(elapsedMs)` consume el frame, ejecuta `stepWorld()` con los pasos debidos y devuelve `{ steps, alpha, tick }`. `simulation.stepper` permite pausar o cambiar la velocidad.
+- `stepWorld(world, ticks, events?)` es el único punto de entrada de la simulación: hoy avanza `world.clock`; los sistemas de juego (clima, necesidades, IA) se ejecutarán aquí, una vez por tick y en orden fijo. Con `events` avanza tick a tick y emite los eventos del reloj (ver [Eventos entre sistemas](#eventos-entre-sistemas)); sin él, el reloj salta de una vez. Un número de ticks no válido se rechaza entero (`assertClockStep()`), sin cambiar el mundo ni emitir.
+- `createSimulation(world, options?)` une ambos: `simulation.frame(elapsedMs)` consume el frame, ejecuta `stepWorld()` con los pasos debidos y devuelve `{ steps, alpha, tick }`. `simulation.stepper` permite pausar o cambiar la velocidad, y `simulation.events` es el bus de la simulación.
 - `resolveTimeScale(search)` lee `?timeScale=` de la URL para depurar el ciclo del día (`?timeScale=60`: un día en 20 s); valores ausentes, negativos o no numéricos dan `1`.
 
 `page.tsx` llama a `simulation.frame(ticker.elapsedMS)` en un listener de `app.ticker` con prioridad `UPDATE_PRIORITY.HIGH`. `elapsedMS` es el tiempo real sin recortar ni escalar por el ticker (el recorte y la escala son del acumulador). `Application` dibuja desde el mismo ticker con prioridad `LOW` (`TickerPlugin` de PixiJS 8.22), así que la simulación siempre corre antes del render del mismo frame.
+
+## Eventos entre sistemas
+
+Los sistemas de juego no se llaman ni se leen entre sí: anuncian lo que pasó en un bus de eventos tipado y los interesados se suscriben. `engine/events` no depende de ningún otro módulo del motor (tipos en `core/types/events.ts`).
+
+- `createEventBus<Events>()` crea un `EventBus` tipado por un mapa `nombre → payload`: `on(type, listener)` devuelve la función para darse de baja, `off`, `emit`, `has` y `clear`. TypeScript rechaza nombres de evento desconocidos y payloads que no coinciden.
+- Es **síncrono** y sin colas ni temporizadores: un evento se atiende dentro del tick que lo emite, así que los mismos ticks producen las mismas llamadas en el mismo orden (determinismo). Los listeners se llaman en orden de suscripción; altas y bajas hechas durante un `emit` cuentan desde el siguiente; un evento emitido desde un listener se atiende en el momento (en profundidad); si un listener lanza, el error llega al emisor y el resto no se llama.
+- El bus guarda funciones, no estado: no forma parte del guardado. Tras cargar un `WorldSnapshot`, los sistemas se suscriben de nuevo.
+- `SimulationEvents` son los eventos de `simulation.events`. Tras cada tick, en este orden: `hourChanged` `{ tick, day, hour }` al entrar en una hora, `dayChanged` `{ tick, day }` a las 00:00 y `tick` `{ tick }`. Cada listener ve el mundo exactamente en ese tick. El payload de `tick` solo se crea si alguien escucha (`has("tick")`).
+- Un sistema nuevo define sus eventos como un tipo en `core/types/events.ts` y recibe el bus que necesita; no importa el módulo de otro sistema para enterarse de sus cambios.
 
 ## Determinismo y semilla del mundo
 

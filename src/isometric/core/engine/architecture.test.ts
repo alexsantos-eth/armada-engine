@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
  *
  * constants, random → grid → terrain → entities → world → scene ← projection, render
  * time → world (the world holds the game clock) → simulation (fixed-step loop)
+ * events (typed bus, no dependencies) → simulation (emits clock events)
  * constants → lighting (shadow geometry) → scene
  *
  * Outside the engine, a module may only reach the shared types (`../../types`): the engine
@@ -16,6 +17,7 @@ import { describe, expect, it } from "vitest";
 const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   constants: [],
   random: [],
+  events: [],
   time: [],
   projection: [],
   grid: ["constants"],
@@ -24,7 +26,7 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   entities: ["grid", "random", "terrain"],
   world: ["constants", "entities", "grid", "random", "terrain", "time"],
   render: [],
-  simulation: ["time", "world"],
+  simulation: ["events", "time", "world"],
   scene: ["constants", "entities", "grid", "lighting", "projection", "render", "terrain", "time", "world"],
 };
 

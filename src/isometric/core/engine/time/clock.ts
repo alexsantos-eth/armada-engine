@@ -6,6 +6,9 @@ export const TICKS_PER_SECOND = 20;
 /** Ticks in one game day: 20 real minutes at {@link TICKS_PER_SECOND}. */
 export const TICKS_PER_DAY = 20 * 60 * TICKS_PER_SECOND;
 
+/** Ticks in one game hour. */
+export const TICKS_PER_HOUR = TICKS_PER_DAY / 24;
+
 /** Tick a new world starts at: 08:00 of day 0. */
 export const WORLD_START_TICK = (8 / 24) * TICKS_PER_DAY;
 
@@ -39,11 +42,21 @@ export function createWorldClock(tick: number = WORLD_START_TICK): WorldClock {
  * leave the safe integer range. The clock is left unchanged.
  */
 export function advanceClock(clock: WorldClock, ticks = 1): number {
+  assertClockStep(clock, ticks);
+  clock.tick += ticks;
+  return clock.tick;
+}
+
+/**
+ * Checks that {@link advanceClock} can advance `clock` by `ticks`, without changing it. Lets a
+ * caller that advances tick by tick reject the whole step before running any of it.
+ *
+ * @throws `RangeError` when `ticks` is not a non-negative safe integer or the result would
+ * leave the safe integer range.
+ */
+export function assertClockStep(clock: WorldClock, ticks: number): void {
   assertTick(ticks, "Clock step");
-  const next = clock.tick + ticks;
-  assertTick(next, "World clock tick");
-  clock.tick = next;
-  return next;
+  assertTick(clock.tick + ticks, "World clock tick");
 }
 
 /**
