@@ -63,7 +63,7 @@ pnpm test:coverage
 pnpm build
 ```
 
-`pnpm lint` ejecuta ESLint (`eslint.config.js`: reglas recomendadas de typescript-eslint con información de tipos, imports de tipo en línea y `eqeqeq`) y debe terminar sin errores; corrige el código en lugar de desactivar reglas. Los commits y el push a la rama `iso` solo se hacen al invocar la skill `armada-commit`, que valida todo esto antes.
+`pnpm lint` ejecuta ESLint (`eslint.config.js`: reglas recomendadas de typescript-eslint con información de tipos, imports de tipo en línea y `eqeqeq`) y debe terminar sin errores; corrige el código en lugar de desactivar reglas. El formato lo decide Prettier (`.prettierrc.json`, `.prettierignore`): `pnpm format` reescribe todo el proyecto y `pnpm format:check` lo comprueba; ESLint incluye `eslint-config-prettier` al final para no chocar con él. Los commits y el push a la rama `iso` solo se hacen al invocar la skill `armada-commit`, que valida todo esto antes.
 
 Las APIs públicas y los tipos deben tener comentarios TSDoc concisos.
 

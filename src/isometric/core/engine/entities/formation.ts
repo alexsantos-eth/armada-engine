@@ -53,10 +53,7 @@ export function parseFormationMap(map: readonly string[]): GridOffset[] {
  * Rotates formation offsets around the anchor by quarter turns (`(x, y)` → `(-y, x)` per
  * turn). Any integer is accepted; negative values turn the other way.
  */
-export function rotateFormation(
-  offsets: readonly GridOffset[],
-  quarterTurns: number,
-): GridOffset[] {
+export function rotateFormation(offsets: readonly GridOffset[], quarterTurns: number): GridOffset[] {
   const turns = ((quarterTurns % 4) + 4) % 4;
 
   return offsets.map((offset) => {
@@ -77,9 +74,7 @@ export function resolveFormation(formation: EntityFormation | undefined): Resolv
   if (formation === undefined) return SINGLE_ANCHOR;
 
   const offsets = parseFormationMap(formation.map);
-  const rotations = formation.rotate
-    ? [0, 1, 2, 3].map((turns) => rotateFormation(offsets, turns))
-    : [offsets];
+  const rotations = formation.rotate ? [0, 1, 2, 3].map((turns) => rotateFormation(offsets, turns)) : [offsets];
   const requested = Math.floor(formation.minMembers ?? offsets.length);
 
   return {
@@ -92,10 +87,7 @@ export function resolveFormation(formation: EntityFormation | undefined): Resolv
  * Picks the orientation used by one group. Only consumes `random` when the formation has
  * more than one orientation.
  */
-export function pickFormationOffsets(
-  formation: ResolvedFormation,
-  random: () => number,
-): readonly GridOffset[] {
+export function pickFormationOffsets(formation: ResolvedFormation, random: () => number): readonly GridOffset[] {
   const { rotations } = formation;
   if (rotations.length === 1) return rotations[0];
 

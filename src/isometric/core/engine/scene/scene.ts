@@ -58,11 +58,7 @@ const POSITIVE_ELEVATION_TOP_TINT = 0xe8ffb0;
 /** Neutral tint for sand: same height darkening as grass, without the green cast. */
 const SAND_TOP_TINT = 0xffffff;
 
-function getLevelTint(
-  baseTint: number,
-  levelsBelowTop: number,
-  tintStep: number,
-): number {
+function getLevelTint(baseTint: number, levelsBelowTop: number, tintStep: number): number {
   const factor = Math.max(0.35, 1 - levelsBelowTop * tintStep);
   const red = Math.round(((baseTint >> 16) & 0xff) * factor);
   const green = Math.round(((baseTint >> 8) & 0xff) * factor);
@@ -82,11 +78,7 @@ function getPositiveElevationTint(
   if (maxPositiveElevation <= 0) return undefined;
 
   const levelsBelowTop = Math.max(0, maxPositiveElevation - elevation);
-  return getLevelTint(
-    topTint,
-    levelsBelowTop,
-    POSITIVE_ELEVATION_TINT_STEP,
-  );
+  return getLevelTint(topTint, levelsBelowTop, POSITIVE_ELEVATION_TINT_STEP);
 }
 
 /** One shadow map and the fixed layer it is drawn from. */
@@ -120,10 +112,7 @@ type ShadowLayer = {
  * built, at sunrise and at sunset (without silhouettes at night); and by day redraws one map per
  * frame, the stalest, once it is `SHADOW_REFRESH_TICKS` old.
  */
-export async function createIsometricScene(
-  app: Application,
-  world: World,
-): Promise<() => void> {
+export async function createIsometricScene(app: Application, world: World): Promise<() => void> {
   const grassBlockSource = "/assets/grass/block.svg";
   const groundBlockSource = "/assets/ground/block.svg";
   const waterBlockSource = "/assets/water/block.svg";
@@ -156,11 +145,7 @@ export async function createIsometricScene(
     loadSvg(waterBlockSource),
     loadSvg(sandBlockSource),
     ...entityTextureVariants.map(async ([variantKey, { entity, variation }]) => {
-      const source = await createSvgColorVariant(
-        entity.textureSource,
-        entity.colorReplacements,
-        variation,
-      );
+      const source = await createSvgColorVariant(entity.textureSource, entity.colorReplacements, variation);
       return { variantKey, source, texture: await loadSvg(source) };
     }),
   ]);
@@ -169,16 +154,10 @@ export async function createIsometricScene(
   textures.set(WATER_BLOCK_TEXTURE_KEY, waterTexture);
   textures.set(SAND_BLOCK_TEXTURE_KEY, sandTexture);
   const entityTexturesBySource = new Map(
-    entityTextureVariants.map(([variantKey], index) => [
-      variantKey,
-      entityTextures[index]?.texture,
-    ]),
+    entityTextureVariants.map(([variantKey], index) => [variantKey, entityTextures[index]?.texture]),
   );
   const entityTexturesByEntity = new Map(
-    entities.map((entity) => [
-      entity,
-      entityTexturesBySource.get(entityTextureKeys.get(entity) as string),
-    ]),
+    entities.map((entity) => [entity, entityTexturesBySource.get(entityTextureKeys.get(entity) as string)]),
   );
   const loadedEntitySources = entityTextures.map(({ source }) => source);
 
@@ -212,18 +191,14 @@ export async function createIsometricScene(
 
   // Each world column holds its top elevation.
   const topElevationByColumn = CellMap.from(world.columns, ({ elevation }) => elevation);
-  const maxPositiveElevation = filledBoxes.reduce(
-    (maximum, box) => Math.max(maximum, box.elevation),
-    0,
-  );
+  const maxPositiveElevation = filledBoxes.reduce((maximum, box) => Math.max(maximum, box.elevation), 0);
   let minX = Infinity;
   let maxX = -Infinity;
   let minY = Infinity;
   let maxY = -Infinity;
   filledBoxes.forEach((box) => {
     const screenX = (box.x - box.y) * (TILE_WIDTH / 2);
-    const screenY =
-      -(box.x + box.y) * (TILE_HEIGHT / 2) - box.elevation * BOX_HEIGHT;
+    const screenY = -(box.x + box.y) * (TILE_HEIGHT / 2) - box.elevation * BOX_HEIGHT;
     minX = Math.min(minX, screenX);
     maxX = Math.max(maxX, screenX);
     minY = Math.min(minY, screenY);
@@ -246,12 +221,7 @@ export async function createIsometricScene(
   const waterTextureForRender = textures.get(WATER_BLOCK_TEXTURE_KEY);
   const sandTextureForRender = textures.get(SAND_BLOCK_TEXTURE_KEY);
 
-  if (
-    grassTextureForRender &&
-    groundTextureForRender &&
-    waterTextureForRender &&
-    sandTextureForRender
-  ) {
+  if (grassTextureForRender && groundTextureForRender && waterTextureForRender && sandTextureForRender) {
     const texturesByMaterial: Record<TerrainMaterial, Texture> = {
       grass: grassTextureForRender,
       ground: groundTextureForRender,
@@ -265,13 +235,14 @@ export async function createIsometricScene(
         surfaces.get(box.x, box.y) as TerrainSurface,
       );
       const texture = texturesByMaterial[material];
-      const tint = material === "water"
-        ? getNegativeElevationTint(box.box.elevation)
-        : getPositiveElevationTint(
-            box.box.elevation,
-            maxPositiveElevation,
-            material === "sand" ? SAND_TOP_TINT : POSITIVE_ELEVATION_TOP_TINT,
-          );
+      const tint =
+        material === "water"
+          ? getNegativeElevationTint(box.box.elevation)
+          : getPositiveElevationTint(
+              box.box.elevation,
+              maxPositiveElevation,
+              material === "sand" ? SAND_TOP_TINT : POSITIVE_ELEVATION_TOP_TINT,
+            );
       const blockViews = createBlockViews({
         texture,
         box,
@@ -357,8 +328,10 @@ export async function createIsometricScene(
     const silhouettes = casterViews
       .filter(({ entity }) => entity.box.elevation >= level)
       .flatMap(({ entity, views: entityViews }) =>
-        createSilhouettes(entityViews, entity, TILE_METRICS, entity.box.length, entity.box.lengthAxis ?? "x")
-          .map((silhouette) => ({ silhouette, lift: entity.box.elevation - level })));
+        createSilhouettes(entityViews, entity, TILE_METRICS, entity.box.length, entity.box.lengthAxis ?? "x").map(
+          (silhouette) => ({ silhouette, lift: entity.box.elevation - level }),
+        ),
+      );
     if (silhouettes.length === 0) return { map, root, occlusion, silhouettes, drawnTick: 0 };
 
     const casters = new Container();

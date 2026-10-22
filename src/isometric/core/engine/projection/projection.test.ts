@@ -24,10 +24,12 @@ describe("projectBoxesToIsometric", () => {
   });
 
   it("defaults the elevation step to half tile height", () => {
-    const [projected] = projectBoxesToIsometric(
-      [new Box(0, 0, { elevation: 2 })],
-      { tileWidth: 40, tileHeight: 20, originX: 0, originY: 0 },
-    );
+    const [projected] = projectBoxesToIsometric([new Box(0, 0, { elevation: 2 })], {
+      tileWidth: 40,
+      tileHeight: 20,
+      originX: 0,
+      originY: 0,
+    });
 
     expect(projected.screenY).toBe(-20);
   });

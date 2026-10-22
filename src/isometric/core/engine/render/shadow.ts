@@ -168,6 +168,11 @@ export function getSilhouetteMapMatrix(
  * left alone: changing `visible` marks the render group's structure as changed and rebuilds all
  * its draw instructions.
  */
-export function placeSilhouette(silhouette: Silhouette, world: Affine2D, mapOrigin: PlanePoint, pixelsPerTile: number): void {
+export function placeSilhouette(
+  silhouette: Silhouette,
+  world: Affine2D,
+  mapOrigin: PlanePoint,
+  pixelsPerTile: number,
+): void {
   silhouette.sprite.setFromMatrix(toMatrix(getSilhouetteMapMatrix(silhouette, world, mapOrigin, pixelsPerTile)));
 }

@@ -15,8 +15,13 @@ import {
 describe("cell keys", () => {
   it("round-trips coordinates, including negatives and the range limits", () => {
     const samples = [
-      [0, 0], [1, 0], [0, 1], [-1, -1], [123, -456],
-      [MAX_GRID_COORD, MAX_GRID_COORD], [-MAX_GRID_COORD, -MAX_GRID_COORD],
+      [0, 0],
+      [1, 0],
+      [0, 1],
+      [-1, -1],
+      [123, -456],
+      [MAX_GRID_COORD, MAX_GRID_COORD],
+      [-MAX_GRID_COORD, -MAX_GRID_COORD],
     ];
     samples.forEach(([x, y]) => expect(cellFromKey(cellKey(x, y))).toEqual({ x, y }));
   });
@@ -55,7 +60,11 @@ describe("chunk coordinates", () => {
   });
 
   it("rebuilds the world coordinate from chunk and local", () => {
-    [{ x: 0, y: 0 }, { x: -1, y: 37 }, { x: -70, y: -33 }].forEach((world) => {
+    [
+      { x: 0, y: 0 },
+      { x: -1, y: 37 },
+      { x: -70, y: -33 },
+    ].forEach((world) => {
       expect(toWorldCoord(toChunkCoord(world), toLocalCoord(world))).toEqual(world);
     });
   });

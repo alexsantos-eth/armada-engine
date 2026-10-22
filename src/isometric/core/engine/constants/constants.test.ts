@@ -32,12 +32,10 @@ describe("engine constants", () => {
   });
 
   it("provides unique block texture keys", () => {
-    expect(new Set([
-      GRASS_BLOCK_TEXTURE_KEY,
-      GROUND_BLOCK_TEXTURE_KEY,
-      WATER_BLOCK_TEXTURE_KEY,
-      SAND_BLOCK_TEXTURE_KEY,
-    ]).size).toBe(4);
+    expect(
+      new Set([GRASS_BLOCK_TEXTURE_KEY, GROUND_BLOCK_TEXTURE_KEY, WATER_BLOCK_TEXTURE_KEY, SAND_BLOCK_TEXTURE_KEY])
+        .size,
+    ).toBe(4);
   });
 
   it("uses a power-of-two chunk size", () => {

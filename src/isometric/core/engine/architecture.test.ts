@@ -61,9 +61,7 @@ const contentFiles = Object.entries(contentSources).map(([path, source]) => ({
 
 describe("engine architecture", () => {
   it("covers every engine module", () => {
-    expect(new Set(files.map(({ module }) => module))).toEqual(
-      new Set(Object.keys(ALLOWED_DEPENDENCIES)),
-    );
+    expect(new Set(files.map(({ module }) => module))).toEqual(new Set(Object.keys(ALLOWED_DEPENDENCIES)));
   });
 
   it.each(files)("$path only depends on its allowed modules, through their barrels", ({ module, imports }) => {
@@ -94,7 +92,7 @@ describe("engine architecture", () => {
     expect(imports).not.toContain("pixi.js");
   });
 
-  it.each(files)("$path uses numeric cell keys instead of \"x:y\" strings", ({ source }) => {
+  it.each(files)('$path uses numeric cell keys instead of "x:y" strings', ({ source }) => {
     expect(source).not.toMatch(/`\$\{[^}]+\}:\$\{[^}]+\}`/);
   });
 

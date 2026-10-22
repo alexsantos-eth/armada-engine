@@ -141,20 +141,20 @@ El contenido del juego (`src/isometric/content`) son datos: el motor no lo impor
 
 Responsabilidades y dependencias permitidas (entre módulos solo a través de su barrel):
 
-| Módulo | Responsabilidad | Puede importar |
-|---|---|---|
-| `constants` | Medidas, rangos y claves de textura | — |
-| `random` | Aleatoriedad con semilla | — |
-| `grid` | Coordenadas (mundo, chunk, local), claves numéricas, `CellMap` y `SpatialIndex` | `constants` |
-| `terrain` | `Box`, ruido, relleno de columnas (`fillElevations`) y superficies | `constants`, `grid`, `random` |
-| `entities` | `Entity`, huellas, colocación, formaciones, variantes de color y validación de definiciones | `grid`, `random`, `terrain` |
-| `time` | Reloj de juego (ticks), hora del día y estado del sol | — |
-| `lighting` | Proyección de las sombras: dirección, alargamiento y opacidad según el sol; transformación que tumba una silueta en el suelo | `constants` |
-| `world` | Modelo `World`, generación y guardado | `constants`, `entities`, `grid`, `random`, `terrain`, `time` |
-| `projection` | Rejilla → coordenadas de pantalla isométricas (`projectBoxesToIsometric`) | — |
-| `render` | Sprites Pixi, recoloreado SVG, conversión de color de luz a tinte, siluetas y vistas de sombra sobre el terreno | — |
-| `simulation` | Bucle de paso fijo: convierte tiempo real en ticks y avanza el `World` | `time`, `world` |
-| `scene` | Orquesta el render de un `World`, su luz ambiente y sus sombras | `constants`, `entities`, `grid`, `lighting`, `projection`, `render`, `terrain`, `time`, `world` |
+| Módulo       | Responsabilidad                                                                                                              | Puede importar                                                                                  |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `constants`  | Medidas, rangos y claves de textura                                                                                          | —                                                                                               |
+| `random`     | Aleatoriedad con semilla                                                                                                     | —                                                                                               |
+| `grid`       | Coordenadas (mundo, chunk, local), claves numéricas, `CellMap` y `SpatialIndex`                                              | `constants`                                                                                     |
+| `terrain`    | `Box`, ruido, relleno de columnas (`fillElevations`) y superficies                                                           | `constants`, `grid`, `random`                                                                   |
+| `entities`   | `Entity`, huellas, colocación, formaciones, variantes de color y validación de definiciones                                  | `grid`, `random`, `terrain`                                                                     |
+| `time`       | Reloj de juego (ticks), hora del día y estado del sol                                                                        | —                                                                                               |
+| `lighting`   | Proyección de las sombras: dirección, alargamiento y opacidad según el sol; transformación que tumba una silueta en el suelo | `constants`                                                                                     |
+| `world`      | Modelo `World`, generación y guardado                                                                                        | `constants`, `entities`, `grid`, `random`, `terrain`, `time`                                    |
+| `projection` | Rejilla → coordenadas de pantalla isométricas (`projectBoxesToIsometric`)                                                    | —                                                                                               |
+| `render`     | Sprites Pixi, recoloreado SVG, conversión de color de luz a tinte, siluetas y vistas de sombra sobre el terreno              | —                                                                                               |
+| `simulation` | Bucle de paso fijo: convierte tiempo real en ticks y avanza el `World`                                                       | `time`, `world`                                                                                 |
+| `scene`      | Orquesta el render de un `World`, su luz ambiente y sus sombras                                                              | `constants`, `entities`, `grid`, `lighting`, `projection`, `render`, `terrain`, `time`, `world` |
 
 Fuera del motor, sus módulos solo pueden importar los tipos compartidos (`../../types`), nunca el contenido; el contenido solo importa tipos del core. Solo `render` y `scene` importan Pixi, y ningún módulo del motor lee `window`, `document` ni `localStorage`. `engine/architecture.test.ts` comprueba estas reglas sobre el código fuente: un import no permitido, saltarse un barrel o usar Pixi o el navegador en otro módulo hace fallar la suite.
 

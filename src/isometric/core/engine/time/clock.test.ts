@@ -106,7 +106,7 @@ describe("getClockTime", () => {
     [0, { day: 0, hour: 0, minute: 0 }],
     [TICKS_PER_DAY / 2, { day: 0, hour: 12, minute: 0 }],
     [TICKS_PER_DAY - 1, { day: 0, hour: 23, minute: 59 }],
-    [3 * TICKS_PER_DAY + TICKS_PER_DAY / 24 * 18.5, { day: 3, hour: 18, minute: 30 }],
+    [3 * TICKS_PER_DAY + (TICKS_PER_DAY / 24) * 18.5, { day: 3, hour: 18, minute: 30 }],
     [-TICKS_PER_DAY / 4, { day: -1, hour: 18, minute: 0 }],
   ])("reads tick %s as %o", (tick, time) => {
     expect(getClockTime(tick)).toEqual(time);

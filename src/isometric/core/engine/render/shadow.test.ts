@@ -150,9 +150,9 @@ describe("createGroundShadowView", () => {
     expect(depth).toBe(42.5);
     // Never hidden: what it shows (occlusion, shadows, opacity) is decided by the map.
     expect(sprite.visible).toBe(true);
-    expect(sprite.setFromMatrix).toHaveBeenCalledWith(expect.objectContaining(
-      getGroundShadowMatrix({ x: 10, y: 20 }, METRICS, SHADOW_MAP_PIXELS_PER_TILE),
-    ));
+    expect(sprite.setFromMatrix).toHaveBeenCalledWith(
+      expect.objectContaining(getGroundShadowMatrix({ x: 10, y: 20 }, METRICS, SHADOW_MAP_PIXELS_PER_TILE)),
+    );
   });
 });
 
@@ -193,25 +193,37 @@ describe("createSilhouettes", () => {
   it("gives each strip of a multi-tile sprite the foot of its own tile, and skips debug outlines", () => {
     const tex = texture(32, 80);
     const strips = [0, 1, 2].map((strip) => placedSprite(tex, 100 + strip * 20, 60, 20, 60, 0));
-    const views = [...strips.map((view) => ({ view: view as never, depth: 0 })), { view: new Graphics() as never, depth: 0 }];
+    const views = [
+      ...strips.map((view) => ({ view: view as never, depth: 0 })),
+      { view: new Graphics() as never, depth: 0 },
+    ];
 
     const alongX = createSilhouettes(views, entityBox(5, 6, 120, 100), METRICS, 2, "x");
     const alongY = createSilhouettes(views, entityBox(5, 6, 120, 100), METRICS, 2, "y");
 
-    expect(alongX.map(({ worldFoot }) => worldFoot)).toEqual([{ x: 5, y: 6 }, { x: 5, y: 6 }, { x: 6, y: 6 }]);
+    expect(alongX.map(({ worldFoot }) => worldFoot)).toEqual([
+      { x: 5, y: 6 },
+      { x: 5, y: 6 },
+      { x: 6, y: 6 },
+    ]);
     expect(alongX[2].screenFoot).toEqual({ x: 140, y: 90 });
-    expect(alongY.map(({ worldFoot }) => worldFoot)).toEqual([{ x: 5, y: 7 }, { x: 5, y: 6 }, { x: 5, y: 6 }]);
+    expect(alongY.map(({ worldFoot }) => worldFoot)).toEqual([
+      { x: 5, y: 7 },
+      { x: 5, y: 6 },
+      { x: 5, y: 6 },
+    ]);
     expect(alongY[0].screenFoot).toEqual({ x: 100, y: 90 });
   });
 });
 
 describe("getSilhouetteMapMatrix / placeSilhouette", () => {
   const identityWorld: Affine2D = { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 };
-  const silhouette = () => createSilhouettes(
-    [{ view: placedSprite(texture(64, 80), 200, 100, 40, 40), depth: 0 }],
-    entityBox(3, 4, 200, 130),
-    METRICS,
-  )[0];
+  const silhouette = () =>
+    createSilhouettes(
+      [{ view: placedSprite(texture(64, 80), 200, 100, 40, 40), depth: 0 }],
+      entityBox(3, 4, 200, 130),
+      METRICS,
+    )[0];
 
   it("maps texture pixels to shadow-map pixels through the foot-relative world transform", () => {
     const shape = silhouette();

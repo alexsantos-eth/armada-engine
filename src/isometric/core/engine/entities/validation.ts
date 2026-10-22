@@ -18,14 +18,15 @@ export class EntityConfigError extends Error {
 }
 
 const isPositiveInteger = (value: number) => Number.isInteger(value) && value > 0;
-const isSurface = (value: string): value is TerrainSurface =>
-  (SURFACES as readonly string[]).includes(value);
+const isSurface = (value: string): value is TerrainSurface => (SURFACES as readonly string[]).includes(value);
 
 function checkDefinition(definition: EntityDefinition, report: (issue: string) => void): void {
   const length = definition.length ?? 1;
 
   if (!TEXTURE_SOURCE.test(definition.textureSource)) {
-    report(`textureSource must be an absolute SVG path such as "/assets/<name>/block.svg" (got "${definition.textureSource}")`);
+    report(
+      `textureSource must be an absolute SVG path such as "/assets/<name>/block.svg" (got "${definition.textureSource}")`,
+    );
   }
   if (!isPositiveInteger(definition.height)) {
     report(`height must be a positive integer (got ${String(definition.height)})`);
@@ -54,12 +55,13 @@ function checkDefinition(definition: EntityDefinition, report: (issue: string) =
     }
   });
 
-  const elevations = definition.surfaceElevation === undefined
-    ? []
-    : ([] as number[]).concat(definition.surfaceElevation);
-  elevations.filter((elevation) => !Number.isInteger(elevation)).forEach((elevation) => {
-    report(`surfaceElevation must contain integers (got ${elevation})`);
-  });
+  const elevations =
+    definition.surfaceElevation === undefined ? [] : ([] as number[]).concat(definition.surfaceElevation);
+  elevations
+    .filter((elevation) => !Number.isInteger(elevation))
+    .forEach((elevation) => {
+      report(`surfaceElevation must contain integers (got ${elevation})`);
+    });
 
   if (definition.formation) {
     try {
@@ -83,7 +85,9 @@ function checkDefinition(definition: EntityDefinition, report: (issue: string) =
     }
     const invalid = targets.filter((color) => !HEX_COLOR.test(color));
     if (invalid.length > 0) {
-      report(`colorReplacements["${source}"] must be hex colors (got ${invalid.map((color) => `"${color}"`).join(", ")})`);
+      report(
+        `colorReplacements["${source}"] must be hex colors (got ${invalid.map((color) => `"${color}"`).join(", ")})`,
+      );
     }
   });
   if (variationLengths.size > 1) {

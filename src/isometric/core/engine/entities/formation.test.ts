@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  parseFormationMap,
-  pickFormationOffsets,
-  resolveFormation,
-  rotateFormation,
-} from "./formation";
+import { parseFormationMap, pickFormationOffsets, resolveFormation, rotateFormation } from "./formation";
 
 describe("parseFormationMap", () => {
   it("returns member offsets relative to the first member, anchor first", () => {
@@ -89,9 +84,7 @@ describe("resolveFormation", () => {
     const offsets = parseFormationMap(["XX", "X."]);
     const resolved = resolveFormation({ map: ["XX", "X."], rotate: true });
 
-    expect(resolved.rotations).toEqual([0, 1, 2, 3].map((turns) =>
-      rotateFormation(offsets, turns),
-    ));
+    expect(resolved.rotations).toEqual([0, 1, 2, 3].map((turns) => rotateFormation(offsets, turns)));
   });
 
   it("clamps minMembers between one and the member count", () => {
@@ -107,10 +100,12 @@ describe("pickFormationOffsets", () => {
     const resolved = resolveFormation({ map: ["XX"] });
     let calls = 0;
 
-    expect(pickFormationOffsets(resolved, () => {
-      calls++;
-      return 0.9;
-    })).toBe(resolved.rotations[0]);
+    expect(
+      pickFormationOffsets(resolved, () => {
+        calls++;
+        return 0.9;
+      }),
+    ).toBe(resolved.rotations[0]);
     expect(calls).toBe(0);
   });
 

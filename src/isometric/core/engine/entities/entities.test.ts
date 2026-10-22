@@ -1,12 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { Box } from "../terrain";
-import {
-  Entity,
-  createEntitiesFromConfig,
-  getEntityFootprint,
-  getFootprint,
-  indexEntities,
-} from "./entities";
+import { Entity, createEntitiesFromConfig, getEntityFootprint, getFootprint, indexEntities } from "./entities";
 
 describe("createEntitiesFromConfig formations", () => {
   const tree = {
@@ -50,11 +44,11 @@ describe("createEntitiesFromConfig formations", () => {
     const definition = { ...tree, spawnChance: 1, formation: { map: ["XXX"] } };
 
     expect(createEntitiesFromConfig(grid(2, 1), [definition], () => 0)).toEqual([]);
-    expect(positions(createEntitiesFromConfig(
-      grid(2, 1),
-      [{ ...definition, formation: { map: ["XXX"], minMembers: 2 } }],
-      () => 0,
-    ))).toEqual(["0:0", "1:0"]);
+    expect(
+      positions(
+        createEntitiesFromConfig(grid(2, 1), [{ ...definition, formation: { map: ["XXX"], minMembers: 2 } }], () => 0),
+      ),
+    ).toEqual(["0:0", "1:0"]);
   });
 
   it("skips members on cells taken by earlier definitions", () => {
@@ -80,11 +74,7 @@ describe("createEntitiesFromConfig formations", () => {
       () => 0,
     );
 
-    expect(entities.map(({ type, x, y }) => `${type}@${x}:${y}`)).toEqual([
-      "statue@1:0",
-      "tree@0:0",
-      "tree@0:1",
-    ]);
+    expect(entities.map(({ type, x, y }) => `${type}@${x}:${y}`)).toEqual(["statue@1:0", "tree@0:0", "tree@0:1"]);
   });
 
   it("rotates each group around its anchor when rotation is enabled", () => {
@@ -111,15 +101,17 @@ describe("createEntitiesFromConfig formations", () => {
   it("keeps multi-block members of one group from overlapping", () => {
     const entities = createEntitiesFromConfig(
       grid(4, 1, -1),
-      [{
-        id: "boat",
-        textureSource: "/assets/boat/block_2.svg",
-        height: 1,
-        length: 2,
-        spawnChance: 1,
-        surface: "water",
-        formation: { map: ["XX"], minMembers: 1 },
-      }],
+      [
+        {
+          id: "boat",
+          textureSource: "/assets/boat/block_2.svg",
+          height: 1,
+          length: 2,
+          spawnChance: 1,
+          surface: "water",
+          formation: { map: ["XX"], minMembers: 1 },
+        },
+      ],
       () => 0,
     );
 
@@ -183,22 +175,21 @@ describe("Entity and createEntitiesFromConfig", () => {
   });
 
   it("is deterministic without an explicit random source", () => {
-    const boxes = Array.from({ length: 16 }, (_, index) =>
-      new Box(index % 4, Math.floor(index / 4), { elevation: 1 }));
+    const boxes = Array.from({ length: 16 }, (_, index) => new Box(index % 4, Math.floor(index / 4), { elevation: 1 }));
     const definitions = [
       { id: "rock", textureSource: "/r.svg", height: 1, spawnChance: 0.5, surface: "grass" as const },
     ];
     const randomSpy = vi.spyOn(Math, "random");
 
-    expect(createEntitiesFromConfig(boxes, definitions).map(({ id }) => id))
-      .toEqual(createEntitiesFromConfig(boxes, definitions).map(({ id }) => id));
+    expect(createEntitiesFromConfig(boxes, definitions).map(({ id }) => id)).toEqual(
+      createEntitiesFromConfig(boxes, definitions).map(({ id }) => id),
+    );
     expect(randomSpy).not.toHaveBeenCalled();
     randomSpy.mockRestore();
   });
 
   it("gives every created entity a unique, reproducible id", () => {
-    const boxes = Array.from({ length: 16 }, (_, index) =>
-      new Box(index % 4, Math.floor(index / 4), { elevation: 1 }));
+    const boxes = Array.from({ length: 16 }, (_, index) => new Box(index % 4, Math.floor(index / 4), { elevation: 1 }));
     const definitions = [
       { id: "rock", textureSource: "/r.svg", height: 1, spawnChance: 0.5, surface: "grass" as const },
       { id: "tree", textureSource: "/t.svg", height: 2, spawnChance: 1, surface: "grass" as const },
@@ -259,14 +250,19 @@ describe("Entity and createEntitiesFromConfig", () => {
         colorReplacements: { "#000000": ["#1", "#2", "#3"] },
       },
     ];
-    const plain = new Entity(0, 0, { id: "rock", textureSource: "/r.svg", height: 1, spawnChance: 1, surface: "grass" }, 0, { colorVariant: 2 });
+    const plain = new Entity(
+      0,
+      0,
+      { id: "rock", textureSource: "/r.svg", height: 1, spawnChance: 1, surface: "grass" },
+      0,
+      { colorVariant: 2 },
+    );
 
     const variants = createEntitiesFromConfig(boxes, definitions).map(({ colorVariant }) => colorVariant);
 
     expect(new Set(variants).size).toBeGreaterThan(1);
     variants.forEach((variant) => expect([0, 1, 2]).toContain(variant));
-    expect(createEntitiesFromConfig(boxes, definitions).map(({ colorVariant }) => colorVariant))
-      .toEqual(variants);
+    expect(createEntitiesFromConfig(boxes, definitions).map(({ colorVariant }) => colorVariant)).toEqual(variants);
     expect(plain.colorVariant).toBeUndefined();
     expect(plain.getData()).not.toHaveProperty("colorVariant");
   });
@@ -295,21 +291,19 @@ describe("Entity and createEntitiesFromConfig", () => {
   });
 
   it("creates configured entities only on their configured surface", () => {
-    const boxes = [
-      new Box(1, 2, { elevation: 3 }),
-      new Box(4, 5, { elevation: -1 }),
-      new Box(6, 7, { elevation: 0 }),
-    ];
+    const boxes = [new Box(1, 2, { elevation: 3 }), new Box(4, 5, { elevation: -1 }), new Box(6, 7, { elevation: 0 })];
 
     const entities = createEntitiesFromConfig(
       boxes,
-      [{
-        id: "statue",
-        textureSource: "/assets/statue/block.svg",
-        height: 3,
-        spawnChance: 1,
-        surface: "grass",
-      }],
+      [
+        {
+          id: "statue",
+          textureSource: "/assets/statue/block.svg",
+          height: 3,
+          spawnChance: 1,
+          surface: "grass",
+        },
+      ],
       () => 0,
     );
 
@@ -341,19 +335,17 @@ describe("Entity and createEntitiesFromConfig", () => {
 
   it("restricts entities to their configured surface elevation", () => {
     const entities = createEntitiesFromConfig(
+      [new Box(1, 2, { elevation: 2 }), new Box(3, 4, { elevation: 3 }), new Box(5, 6, { elevation: 4 })],
       [
-        new Box(1, 2, { elevation: 2 }),
-        new Box(3, 4, { elevation: 3 }),
-        new Box(5, 6, { elevation: 4 }),
+        {
+          id: "house",
+          textureSource: "/assets/house/block.svg",
+          height: 1,
+          spawnChance: 1,
+          surface: "grass",
+          surfaceElevation: 3,
+        },
       ],
-      [{
-        id: "house",
-        textureSource: "/assets/house/block.svg",
-        height: 1,
-        spawnChance: 1,
-        surface: "grass",
-        surfaceElevation: 3,
-      }],
       () => 0,
     );
 
@@ -364,14 +356,16 @@ describe("Entity and createEntitiesFromConfig", () => {
   it("accepts a list of valid surface elevations", () => {
     const entities = createEntitiesFromConfig(
       [2, 3, 4, 5].map((elevation, x) => new Box(x * 2, 0, { elevation })),
-      [{
-        id: "house",
-        textureSource: "/assets/house/block.svg",
-        height: 1,
-        spawnChance: 1,
-        surface: "grass",
-        surfaceElevation: [3, 5],
-      }],
+      [
+        {
+          id: "house",
+          textureSource: "/assets/house/block.svg",
+          height: 1,
+          spawnChance: 1,
+          surface: "grass",
+          surfaceElevation: [3, 5],
+        },
+      ],
       () => 0,
     );
 
@@ -379,18 +373,22 @@ describe("Entity and createEntitiesFromConfig", () => {
   });
 
   it("never spawns with an empty list of surface elevations", () => {
-    expect(createEntitiesFromConfig(
-      [new Box(0, 0, { elevation: 0 })],
-      [{
-        id: "house",
-        textureSource: "/assets/house/block.svg",
-        height: 1,
-        spawnChance: 1,
-        surface: "grass",
-        surfaceElevation: [],
-      }],
-      () => 0,
-    )).toEqual([]);
+    expect(
+      createEntitiesFromConfig(
+        [new Box(0, 0, { elevation: 0 })],
+        [
+          {
+            id: "house",
+            textureSource: "/assets/house/block.svg",
+            height: 1,
+            spawnChance: 1,
+            surface: "grass",
+            surfaceElevation: [],
+          },
+        ],
+        () => 0,
+      ),
+    ).toEqual([]);
   });
 
   it("keeps multi-block footprints flat without a surface elevation", () => {
@@ -403,16 +401,20 @@ describe("Entity and createEntitiesFromConfig", () => {
       surface: "water" as const,
     };
 
-    expect(createEntitiesFromConfig(
-      [new Box(0, 0, { elevation: -1 }), new Box(1, 0, { elevation: -2 })],
-      [definition],
-      () => 0,
-    )).toEqual([]);
-    expect(createEntitiesFromConfig(
-      [new Box(0, 0, { elevation: -2 }), new Box(1, 0, { elevation: -2 })],
-      [definition],
-      () => 0,
-    )).toHaveLength(1);
+    expect(
+      createEntitiesFromConfig(
+        [new Box(0, 0, { elevation: -1 }), new Box(1, 0, { elevation: -2 })],
+        [definition],
+        () => 0,
+      ),
+    ).toEqual([]);
+    expect(
+      createEntitiesFromConfig(
+        [new Box(0, 0, { elevation: -2 }), new Box(1, 0, { elevation: -2 })],
+        [definition],
+        () => 0,
+      ),
+    ).toHaveLength(1);
   });
 
   it("keeps multi-block footprints flat when several elevations are valid", () => {
@@ -426,11 +428,13 @@ describe("Entity and createEntitiesFromConfig", () => {
       surfaceElevation: [0, 1],
     };
 
-    expect(createEntitiesFromConfig(
-      [new Box(0, 0, { elevation: 0 }), new Box(1, 0, { elevation: 1 })],
-      [definition],
-      () => 0,
-    )).toEqual([]);
+    expect(
+      createEntitiesFromConfig(
+        [new Box(0, 0, { elevation: 0 }), new Box(1, 0, { elevation: 1 })],
+        [definition],
+        () => 0,
+      ),
+    ).toEqual([]);
 
     const flat = createEntitiesFromConfig(
       [new Box(0, 0, { elevation: 1 }), new Box(1, 0, { elevation: 1 })],
@@ -443,26 +447,27 @@ describe("Entity and createEntitiesFromConfig", () => {
   it("uses the random result to skip eligible columns", () => {
     const boxes = [new Box(1, 2, { elevation: 1 })];
 
-    expect(createEntitiesFromConfig(
-      boxes,
-      [{
-        id: "tree",
-        textureSource: "/assets/tree/block.svg",
-        height: 2,
-        length: 1,
-        spawnChance: 0.5,
-        surface: "grass",
-      }],
-      () => 1,
-    )).toEqual([]);
+    expect(
+      createEntitiesFromConfig(
+        boxes,
+        [
+          {
+            id: "tree",
+            textureSource: "/assets/tree/block.svg",
+            height: 2,
+            length: 1,
+            spawnChance: 0.5,
+            surface: "grass",
+          },
+        ],
+        () => 1,
+      ),
+    ).toEqual([]);
   });
 
   it("does not place different entity definitions on the same position", () => {
     const entities = createEntitiesFromConfig(
-      [
-        new Box(1, 2, { elevation: 1 }),
-        new Box(3, 4, { elevation: 1 }),
-      ],
+      [new Box(1, 2, { elevation: 1 }), new Box(3, 4, { elevation: 1 })],
       [
         {
           id: "tree",
@@ -489,20 +494,18 @@ describe("Entity and createEntitiesFromConfig", () => {
 
   it("reserves the configured length along its selected axis", () => {
     const entities = createEntitiesFromConfig(
+      [new Box(2, 2, { elevation: -1 }), new Box(2, 3, { elevation: -1 }), new Box(3, 2, { elevation: -1 })],
       [
-        new Box(2, 2, { elevation: -1 }),
-        new Box(2, 3, { elevation: -1 }),
-        new Box(3, 2, { elevation: -1 }),
+        {
+          id: "boat",
+          textureSource: "/assets/boat/block_2.svg",
+          height: 1,
+          length: 2,
+          lengthAxis: "y",
+          spawnChance: 1,
+          surface: "water",
+        },
       ],
-      [{
-        id: "boat",
-        textureSource: "/assets/boat/block_2.svg",
-        height: 1,
-        length: 2,
-        lengthAxis: "y",
-        spawnChance: 1,
-        surface: "water",
-      }],
       () => 0,
     );
 
@@ -514,19 +517,17 @@ describe("Entity and createEntitiesFromConfig", () => {
 
   it("keeps the configured gap between entities of the same type", () => {
     const entities = createEntitiesFromConfig(
+      [new Box(0, 0, { elevation: 1 }), new Box(1, 0, { elevation: 1 }), new Box(2, 0, { elevation: 1 })],
       [
-        new Box(0, 0, { elevation: 1 }),
-        new Box(1, 0, { elevation: 1 }),
-        new Box(2, 0, { elevation: 1 }),
+        {
+          id: "house",
+          textureSource: "/assets/house/block.svg",
+          height: 1,
+          gap: 1,
+          spawnChance: 1,
+          surface: "grass",
+        },
       ],
-      [{
-        id: "house",
-        textureSource: "/assets/house/block.svg",
-        height: 1,
-        gap: 1,
-        spawnChance: 1,
-        surface: "grass",
-      }],
       () => 0,
     );
 
@@ -535,19 +536,17 @@ describe("Entity and createEntitiesFromConfig", () => {
 
   it("treats diagonal neighbours as adjacent for the gap", () => {
     const entities = createEntitiesFromConfig(
+      [new Box(0, 0, { elevation: 1 }), new Box(1, 1, { elevation: 1 }), new Box(2, 2, { elevation: 1 })],
       [
-        new Box(0, 0, { elevation: 1 }),
-        new Box(1, 1, { elevation: 1 }),
-        new Box(2, 2, { elevation: 1 }),
+        {
+          id: "house",
+          textureSource: "/assets/house/block.svg",
+          height: 1,
+          gap: 1,
+          spawnChance: 1,
+          surface: "grass",
+        },
       ],
-      [{
-        id: "house",
-        textureSource: "/assets/house/block.svg",
-        height: 1,
-        gap: 1,
-        spawnChance: 1,
-        surface: "grass",
-      }],
       () => 0,
     );
 
@@ -555,21 +554,21 @@ describe("Entity and createEntitiesFromConfig", () => {
   });
 
   it("measures the gap from the whole multi-block footprint", () => {
-    const boxes = [0, 1, 2, 3, 4, 5].flatMap((x) =>
-      [0, 1, 2, 3].map((y) => new Box(x, y, { elevation: -1 })),
-    );
+    const boxes = [0, 1, 2, 3, 4, 5].flatMap((x) => [0, 1, 2, 3].map((y) => new Box(x, y, { elevation: -1 })));
     const entities = createEntitiesFromConfig(
       boxes,
-      [{
-        id: "boat",
-        textureSource: "/assets/boat/block_2.svg",
-        height: 1,
-        length: 2,
-        lengthAxis: "y",
-        gap: 2,
-        spawnChance: 1,
-        surface: "water",
-      }],
+      [
+        {
+          id: "boat",
+          textureSource: "/assets/boat/block_2.svg",
+          height: 1,
+          length: 2,
+          lengthAxis: "y",
+          gap: 2,
+          spawnChance: 1,
+          surface: "water",
+        },
+      ],
       () => 0,
     );
 
@@ -580,10 +579,7 @@ describe("Entity and createEntitiesFromConfig", () => {
 
   it("does not apply the gap between different entity definitions", () => {
     const entities = createEntitiesFromConfig(
-      [
-        new Box(0, 0, { elevation: 1 }),
-        new Box(1, 0, { elevation: 1 }),
-      ],
+      [new Box(0, 0, { elevation: 1 }), new Box(1, 0, { elevation: 1 })],
       [
         {
           id: "house",
@@ -609,18 +605,17 @@ describe("Entity and createEntitiesFromConfig", () => {
 
   it("ignores non-positive gaps", () => {
     const entities = createEntitiesFromConfig(
+      [new Box(0, 0, { elevation: 1 }), new Box(1, 0, { elevation: 1 })],
       [
-        new Box(0, 0, { elevation: 1 }),
-        new Box(1, 0, { elevation: 1 }),
+        {
+          id: "house",
+          textureSource: "/assets/house/block.svg",
+          height: 1,
+          gap: -1,
+          spawnChance: 1,
+          surface: "grass",
+        },
       ],
-      [{
-        id: "house",
-        textureSource: "/assets/house/block.svg",
-        height: 1,
-        gap: -1,
-        spawnChance: 1,
-        surface: "grass",
-      }],
       () => 0,
     );
 
@@ -641,16 +636,16 @@ describe("Entity and createEntitiesFromConfig", () => {
       spawnChance: 1,
     };
 
-    expect(createEntitiesFromConfig(
-      boxes,
-      [{ ...definition, id: "tree", surface: "grass" }],
-      () => 0,
-    ).map(({ x, y }) => `${x}:${y}`)).toEqual(["2:0", "3:0"]);
-    expect(createEntitiesFromConfig(
-      boxes,
-      [{ ...definition, id: "palm", surface: "sand" }],
-      () => 0,
-    ).map(({ x, y }) => `${x}:${y}`)).toEqual(["1:0"]);
+    expect(
+      createEntitiesFromConfig(boxes, [{ ...definition, id: "tree", surface: "grass" }], () => 0).map(
+        ({ x, y }) => `${x}:${y}`,
+      ),
+    ).toEqual(["2:0", "3:0"]);
+    expect(
+      createEntitiesFromConfig(boxes, [{ ...definition, id: "palm", surface: "sand" }], () => 0).map(
+        ({ x, y }) => `${x}:${y}`,
+      ),
+    ).toEqual(["1:0"]);
   });
 
   describe("footprintSurfaces", () => {
@@ -663,9 +658,9 @@ describe("Entity and createEntitiesFromConfig", () => {
       [0, -1, -1, -1],
     ];
     const toBoxes = (rows: number[][], transpose = false) =>
-      rows.flatMap((row, y) => row.map((elevation, x) =>
-        transpose ? new Box(y, x, { elevation }) : new Box(x, y, { elevation }),
-      ));
+      rows.flatMap((row, y) =>
+        row.map((elevation, x) => (transpose ? new Box(y, x, { elevation }) : new Box(x, y, { elevation }))),
+      );
     const pier = {
       id: "pier",
       textureSource: "/assets/pier/block_x.svg",
@@ -677,24 +672,26 @@ describe("Entity and createEntitiesFromConfig", () => {
     };
 
     it("requires each footprint block to match its surface, in order", () => {
-      expect(createEntitiesFromConfig(
-        toBoxes(shore),
-        [{ ...pier, footprintSurfaces: ["grass", "sand", "sand"] }],
-        () => 0,
-      ).map(({ x, y }) => `${x}:${y}`)).toEqual(["0:1"]);
-      expect(createEntitiesFromConfig(
-        toBoxes(shore),
-        [{ ...pier, footprintSurfaces: ["sand", "sand", "grass"] }],
-        () => 0,
-      )).toEqual([]);
+      expect(
+        createEntitiesFromConfig(
+          toBoxes(shore),
+          [{ ...pier, footprintSurfaces: ["grass", "sand", "sand"] }],
+          () => 0,
+        ).map(({ x, y }) => `${x}:${y}`),
+      ).toEqual(["0:1"]);
+      expect(
+        createEntitiesFromConfig(toBoxes(shore), [{ ...pier, footprintSurfaces: ["sand", "sand", "grass"] }], () => 0),
+      ).toEqual([]);
     });
 
     it("follows the length axis", () => {
-      expect(createEntitiesFromConfig(
-        toBoxes(shore, true),
-        [{ ...pier, lengthAxis: "y", footprintSurfaces: ["grass", "sand", "sand"] }],
-        () => 0,
-      ).map(({ x, y }) => `${x}:${y}`)).toEqual(["1:0"]);
+      expect(
+        createEntitiesFromConfig(
+          toBoxes(shore, true),
+          [{ ...pier, lengthAxis: "y", footprintSurfaces: ["grass", "sand", "sand"] }],
+          () => 0,
+        ).map(({ x, y }) => `${x}:${y}`),
+      ).toEqual(["1:0"]);
     });
 
     it("lets land-and-water footprints reach over water at a lower elevation", () => {
@@ -721,37 +718,43 @@ describe("Entity and createEntitiesFromConfig", () => {
         [-1, 0, 1, 1],
       ];
 
-      expect(createEntitiesFromConfig(
-        toBoxes(steps),
-        [{
-          ...pier,
-          surfaceElevation: [0, 1],
-          footprintSurfaces: ["water", "sand", "grass"],
-        }],
-        () => 0,
-      )).toEqual([]);
+      expect(
+        createEntitiesFromConfig(
+          toBoxes(steps),
+          [
+            {
+              ...pier,
+              surfaceElevation: [0, 1],
+              footprintSurfaces: ["water", "sand", "grass"],
+            },
+          ],
+          () => 0,
+        ),
+      ).toEqual([]);
     });
 
     it("falls back to the definition surface for blocks it does not list", () => {
-      expect(createEntitiesFromConfig(
-        toBoxes(shore),
-        [{ ...pier, footprintSurfaces: ["grass", "sand"] }],
-        () => 0,
-      ).map(({ x, y }) => `${x}:${y}`)).toEqual(["0:1"]);
+      expect(
+        createEntitiesFromConfig(toBoxes(shore), [{ ...pier, footprintSurfaces: ["grass", "sand"] }], () => 0).map(
+          ({ x, y }) => `${x}:${y}`,
+        ),
+      ).toEqual(["0:1"]);
     });
   });
 
   it("supports entities configured for water", () => {
     const entities = createEntitiesFromConfig(
       [new Box(1, 2, { elevation: -1 })],
-      [{
-        id: "buoy",
-        textureSource: "/assets/buoy/block.svg",
-        height: 1,
-        length: 1,
-        spawnChance: 1,
-        surface: "water",
-      }],
+      [
+        {
+          id: "buoy",
+          textureSource: "/assets/buoy/block.svg",
+          height: 1,
+          length: 1,
+          spawnChance: 1,
+          surface: "water",
+        },
+      ],
       () => 0,
     );
 
@@ -773,10 +776,18 @@ describe("footprints and the entity index", () => {
 
   it("lists the footprint cells from the anchor along the axis", () => {
     expect(getFootprint({ x: 2, y: 3 })).toEqual([{ x: 2, y: 3 }]);
-    expect(getFootprint({ x: 2, y: 3 }, 2)).toEqual([{ x: 2, y: 3 }, { x: 3, y: 3 }]);
-    expect(getFootprint({ x: 2, y: 3 }, 2, "y")).toEqual([{ x: 2, y: 3 }, { x: 2, y: 4 }]);
+    expect(getFootprint({ x: 2, y: 3 }, 2)).toEqual([
+      { x: 2, y: 3 },
+      { x: 3, y: 3 },
+    ]);
+    expect(getFootprint({ x: 2, y: 3 }, 2, "y")).toEqual([
+      { x: 2, y: 3 },
+      { x: 2, y: 4 },
+    ]);
     expect(getEntityFootprint(new Entity(1, 1, pier, 0))).toEqual([
-      { x: 1, y: 1 }, { x: 1, y: 2 }, { x: 1, y: 3 },
+      { x: 1, y: 1 },
+      { x: 1, y: 2 },
+      { x: 1, y: 3 },
     ]);
   });
 
@@ -792,4 +803,3 @@ describe("footprints and the entity index", () => {
     expect(index.queryRadius(4, 4, 1)).toEqual([rock]);
   });
 });
-

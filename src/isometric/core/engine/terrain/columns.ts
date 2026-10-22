@@ -5,10 +5,7 @@ import { Box } from "./box";
  * `minElevation`. Below the minimum (deep water) it lists the levels from the target up to
  * the minimum instead.
  */
-export function buildFilledElevationLevels(
-  targetElevation: number,
-  minElevation: number,
-): number[] {
+export function buildFilledElevationLevels(targetElevation: number, minElevation: number): number[] {
   const targetLevel = Math.floor(targetElevation);
 
   if (targetLevel < minElevation) {

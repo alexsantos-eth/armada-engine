@@ -96,10 +96,7 @@ const IsometricWorld = () => {
         position: "relative",
       }}
     >
-      <div
-        ref={containerRef}
-        style={{ width: "100%", height: "100%", overflow: "hidden" }}
-      />
+      <div ref={containerRef} style={{ width: "100%", height: "100%", overflow: "hidden" }} />
       {/* Always mounted, after the canvas container: a conditional first child would make
           Preact reuse the container's element and move the canvas into the label. */}
       <div

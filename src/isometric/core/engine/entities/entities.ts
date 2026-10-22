@@ -15,14 +15,9 @@ import { classifyColumnSurfaces } from "../terrain";
 import { pickFormationOffsets, resolveFormation } from "./formation";
 import { pickColorVariation } from "./variants";
 
-function matchesSurfaceElevation(
-  elevation: number,
-  surfaceElevation: EntityDefinition["surfaceElevation"],
-): boolean {
+function matchesSurfaceElevation(elevation: number, surfaceElevation: EntityDefinition["surfaceElevation"]): boolean {
   if (surfaceElevation === undefined) return true;
-  return typeof surfaceElevation === "number"
-    ? elevation === surfaceElevation
-    : surfaceElevation.includes(elevation);
+  return typeof surfaceElevation === "number" ? elevation === surfaceElevation : surfaceElevation.includes(elevation);
 }
 
 /** Builds the default id of an entity spawned with its anchor at `(x, y)`. */
@@ -150,11 +145,7 @@ export class Entity implements IEntity {
  * Columns covered by a footprint of `length` blocks anchored at `anchor`, along `lengthAxis`
  * (`"x"` by default), in order from the anchor.
  */
-export function getFootprint(
-  anchor: WorldCoord,
-  length = 1,
-  lengthAxis: EntityLengthAxis = "x",
-): WorldCoord[] {
+export function getFootprint(anchor: WorldCoord, length = 1, lengthAxis: EntityLengthAxis = "x"): WorldCoord[] {
   return Array.from({ length }, (_, index) => ({
     x: lengthAxis === "x" ? anchor.x + index : anchor.x,
     y: lengthAxis === "y" ? anchor.y + index : anchor.y,
@@ -224,9 +215,7 @@ export function createEntitiesFromConfig(
   boxes: readonly IGridObject[],
   definitions: readonly EntityDefinition[],
   random: RandomSource = createSeededRandom(DEFAULT_WORLD_SEED),
-  variantRandom: RandomSource = createSeededRandom(
-    deriveSeed(DEFAULT_WORLD_SEED, "entity-color-variants"),
-  ),
+  variantRandom: RandomSource = createSeededRandom(deriveSeed(DEFAULT_WORLD_SEED, "entity-color-variants")),
 ): Entity[] {
   const entities: Entity[] = [];
   const context: PlacementContext = {
@@ -247,8 +236,7 @@ export function createEntitiesFromConfig(
       const members: Placement[] = [];
       for (const offset of pickFormationOffsets(formation, random)) {
         const memberBox = context.columns.get(box.x + offset.x, box.y + offset.y);
-        const placement = memberBox &&
-          findPlacement(memberBox, definition, context, groupCells);
+        const placement = memberBox && findPlacement(memberBox, definition, context, groupCells);
         if (!placement) continue;
         placement.footprint.forEach(({ x, y }) => groupCells.set(x, y, true));
         members.push(placement);
@@ -283,26 +271,23 @@ function findPlacement(
   const footprintBoxes = footprint.map(({ x, y }) => context.columns.get(x, y));
   if (footprintBoxes.some((footprintBox) => footprintBox === undefined)) return undefined;
   const cells = footprintBoxes as IGridObject[];
-  const required = cells.map((_, index) =>
-    definition.footprintSurfaces?.[index] ?? definition.surface,
-  );
+  const required = cells.map((_, index) => definition.footprintSurfaces?.[index] ?? definition.surface);
   if (cells.some((cell, index) => context.surfaces.get(cell.x, cell.y) !== required[index])) {
     return undefined;
   }
   // Blocks that carry the entity: all of them, except the water blocks of a footprint
   // that also stands on land (a pier reaching over the water).
-  const reachesOverWater = required.includes("water") &&
-    required.some((surface) => surface !== "water");
-  const grounded = cells.filter((_, index) =>
-    !reachesOverWater || required[index] !== "water",
-  );
+  const reachesOverWater = required.includes("water") && required.some((surface) => surface !== "water");
+  const grounded = cells.filter((_, index) => !reachesOverWater || required[index] !== "water");
   // The carrying blocks must share one elevation (the sprite is placed at that height,
   // so a step under them would show) and match `surfaceElevation`.
   const elevation = grounded[0].elevation;
-  if (grounded.some((cell) =>
-    cell.elevation !== elevation ||
-    !matchesSurfaceElevation(cell.elevation, definition.surfaceElevation),
-  )) return undefined;
+  if (
+    grounded.some(
+      (cell) => cell.elevation !== elevation || !matchesSurfaceElevation(cell.elevation, definition.surfaceElevation),
+    )
+  )
+    return undefined;
   if (footprint.some(({ x, y }) => context.placed.isOccupied(x, y) || groupCells.has(x, y))) {
     return undefined;
   }

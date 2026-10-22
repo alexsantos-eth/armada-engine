@@ -82,7 +82,12 @@ vi.mock("pixi.js", () => {
     },
     Sprite: class {
       public texture: unknown;
-      public scale = { value: 1, set: vi.fn(function (this: { value: number }, value: number) { this.value = value; }) };
+      public scale = {
+        value: 1,
+        set: vi.fn(function (this: { value: number }, value: number) {
+          this.value = value;
+        }),
+      };
       constructor(texture: unknown) {
         this.texture = texture;
       }
@@ -121,9 +126,16 @@ vi.mock("../render", async () => ({
   // Real color conversion: the scene test checks the exact ambient tint.
   rgbToTint: (await vi.importActual<typeof ColorModule>("../render/color")).rgbToTint,
   createSvgColorVariant: vi.fn((source: string, _replacements?: unknown, variation = 0) =>
-    Promise.resolve(_replacements ? `${source}#${variation}` : source)),
+    Promise.resolve(_replacements ? `${source}#${variation}` : source),
+  ),
   createBlockViews: vi.fn(
-    ({ texture, box, tint, height, length }: {
+    ({
+      texture,
+      box,
+      tint,
+      height,
+      length,
+    }: {
       texture: { source: string };
       box: { box: { elevation: number }; baseScreenY: number; x: number; y: number };
       tint?: number;
@@ -131,27 +143,36 @@ vi.mock("../render", async () => ({
       length?: number;
     }) => {
       renderCalls.push({ texture, elevation: box.box.elevation, tint, height, length });
-      return [{
-        view: { cullable: false, source: texture.source, x: box.x, y: box.y },
-        depth: box.baseScreenY,
-      }];
+      return [
+        {
+          view: { cullable: false, source: texture.source, x: box.x, y: box.y },
+          depth: box.baseScreenY,
+        },
+      ];
     },
   ),
   SHADOW_MAP_PIXELS_PER_TILE: 16,
   SHADOW_BLUR: 2,
   createGroundShadowView: vi.fn(
-    (texture: { source: unknown; frame: unknown }, tileTop: { x: number; y: number }, _metrics: unknown, depth: number) => ({
+    (
+      texture: { source: unknown; frame: unknown },
+      tileTop: { x: number; y: number },
+      _metrics: unknown,
+      depth: number,
+    ) => ({
       view: { cullable: false, source: "ground-shadow", groundShadow: true, texture, tileTop, visible: true, alpha: 1 },
       depth,
     }),
   ),
   getSvgResolution: vi.fn((tileWidth: number, resolution = 1) => (tileWidth * resolution * 1.5) / 1024),
-  createSilhouettes: vi.fn((_views: unknown, box: { x: number; y: number; box: { elevation: number } }) => [{
-    sprite: { silhouetteOf: box.box },
-    worldFoot: { x: box.x, y: box.y },
-    screenFoot: { x: 0, y: 0 },
-    display: { left: 0, top: 0, width: 1, height: 1 },
-  }]),
+  createSilhouettes: vi.fn((_views: unknown, box: { x: number; y: number; box: { elevation: number } }) => [
+    {
+      sprite: { silhouetteOf: box.box },
+      worldFoot: { x: box.x, y: box.y },
+      screenFoot: { x: 0, y: 0 },
+      display: { left: 0, top: 0, width: 1, height: 1 },
+    },
+  ]),
   placeSilhouette: vi.fn(),
   addInDepthOrder: vi.fn(
     (container: { addChild: (child: unknown) => void }, views: { view: unknown; depth: number }[]) => {
@@ -267,21 +288,24 @@ const createTestEntities = (boxes: readonly Box[]) =>
     : [];
 
 const createColorizedEntities = (boxes: readonly Box[]) =>
-  boxes.slice(0, 2).map((box, index) => new Entity(
-    box.x,
-    box.y,
-    {
-      id: `house-${index}`,
-      textureSource: "/assets/house/block.svg",
-      height: 1,
-      spawnChance: 1,
-      surface: "grass",
-      colorReplacements: {
-        "#9f4b2f": ["#f0c040", "#c0392b", "#3478b8"],
-      },
-    },
-    box.elevation,
-  ));
+  boxes.slice(0, 2).map(
+    (box, index) =>
+      new Entity(
+        box.x,
+        box.y,
+        {
+          id: `house-${index}`,
+          textureSource: "/assets/house/block.svg",
+          height: 1,
+          spawnChance: 1,
+          surface: "grass",
+          colorReplacements: {
+            "#9f4b2f": ["#f0c040", "#c0392b", "#3478b8"],
+          },
+        },
+        box.elevation,
+      ),
+  );
 
 describe("createIsometricScene", () => {
   beforeEach(() => {
@@ -305,26 +329,44 @@ describe("createIsometricScene", () => {
 
     const destroyScene = await createIsometricScene(app as never, defaultWorld(createTestEntities));
 
-    expect(Assets.load).toHaveBeenCalledWith({ src: "/assets/grass/block.svg", data: { resolution: expect.any(Number) } });
-    expect(Assets.load).toHaveBeenCalledWith({ src: "/assets/ground/block.svg", data: { resolution: expect.any(Number) } });
-    expect(Assets.load).toHaveBeenCalledWith({ src: "/assets/water/block.svg", data: { resolution: expect.any(Number) } });
-    expect(Assets.load).toHaveBeenCalledWith({ src: "/assets/sand/block.svg", data: { resolution: expect.any(Number) } });
-    expect(Assets.load).toHaveBeenCalledWith({ src: "/assets/statue/block.svg", data: { resolution: expect.any(Number) } });
+    expect(Assets.load).toHaveBeenCalledWith({
+      src: "/assets/grass/block.svg",
+      data: { resolution: expect.any(Number) },
+    });
+    expect(Assets.load).toHaveBeenCalledWith({
+      src: "/assets/ground/block.svg",
+      data: { resolution: expect.any(Number) },
+    });
+    expect(Assets.load).toHaveBeenCalledWith({
+      src: "/assets/water/block.svg",
+      data: { resolution: expect.any(Number) },
+    });
+    expect(Assets.load).toHaveBeenCalledWith({
+      src: "/assets/sand/block.svg",
+      data: { resolution: expect.any(Number) },
+    });
+    expect(Assets.load).toHaveBeenCalledWith({
+      src: "/assets/statue/block.svg",
+      data: { resolution: expect.any(Number) },
+    });
     expect(renderCalls.length).toBeGreaterThan(0);
     expect(renderCalls.some(({ texture }) => texture.source.includes("water"))).toBe(true);
     expect(renderCalls.some(({ texture }) => texture.source.includes("ground"))).toBe(true);
     expect(renderCalls.some(({ texture }) => texture.source.includes("grass"))).toBe(true);
-    expect(renderCalls.some(({ texture, elevation, tint }) =>
-      texture.source.includes("grass") && elevation > 0 && tint !== undefined,
-    )).toBe(true);
-    expect(renderCalls.some(({ texture, elevation, tint }) =>
-      texture.source.includes("ground") && elevation >= 0 && tint !== 0xe8ffb0,
-    )).toBe(true);
-    expect(new Set(
-      renderCalls
-        .filter(({ elevation, tint }) => elevation > 0 && tint !== undefined)
-        .map(({ tint }) => tint),
-    ).size).toBeGreaterThan(1);
+    expect(
+      renderCalls.some(
+        ({ texture, elevation, tint }) => texture.source.includes("grass") && elevation > 0 && tint !== undefined,
+      ),
+    ).toBe(true);
+    expect(
+      renderCalls.some(
+        ({ texture, elevation, tint }) => texture.source.includes("ground") && elevation >= 0 && tint !== 0xe8ffb0,
+      ),
+    ).toBe(true);
+    expect(
+      new Set(renderCalls.filter(({ elevation, tint }) => elevation > 0 && tint !== undefined).map(({ tint }) => tint))
+        .size,
+    ).toBeGreaterThan(1);
     expect(renderCalls.some(({ texture, height }) => texture.source.includes("statue") && height === 1)).toBe(true);
     expect(renderCalls.some(({ texture, length }) => texture.source.includes("statue") && length === 2)).toBe(true);
 
@@ -338,9 +380,7 @@ describe("createIsometricScene", () => {
   });
 
   it("does not render when a required texture is unavailable", async () => {
-    vi.mocked(Assets.load).mockImplementationOnce(
-      () => Promise.resolve(undefined as never),
-    );
+    vi.mocked(Assets.load).mockImplementationOnce(() => Promise.resolve(undefined as never));
     const app = {
       screen: { width: 1300, height: 1000 },
       ticker: createTicker(),
@@ -391,15 +431,18 @@ describe("createIsometricScene", () => {
       colorReplacements: { "#9f4b2f": ["#f0c040", "#c0392b", "#3478b8"] },
     };
 
-    const destroyScene = await createIsometricScene(app as never, defaultWorld((columns) =>
-      columns.slice(0, 40).map((box, index) =>
-        new Entity(box.x, box.y, definition, box.elevation, { colorVariant: index % 3 }))));
+    const destroyScene = await createIsometricScene(
+      app as never,
+      defaultWorld((columns) =>
+        columns
+          .slice(0, 40)
+          .map((box, index) => new Entity(box.x, box.y, definition, box.elevation, { colorVariant: index % 3 })),
+      ),
+    );
 
     const variations = vi.mocked(createSvgColorVariant).mock.calls.map(([, , variation]) => variation);
     expect(variations.sort()).toEqual([0, 1, 2]);
-    expect(
-      renderCalls.filter(({ texture }) => texture.source.startsWith("/assets/house/")).length,
-    ).toBeGreaterThan(3);
+    expect(renderCalls.filter(({ texture }) => texture.source.startsWith("/assets/house/")).length).toBeGreaterThan(3);
 
     destroyScene();
   });
@@ -419,9 +462,7 @@ describe("createIsometricScene", () => {
     expect(addInDepthOrder).toHaveBeenCalledTimes(1);
     expect(scene.sortableChildren).toBe(false);
     // Off-screen views are created too, so a moving camera reveals them.
-    expect(scene.children).toHaveLength(
-      renderCalls.length + vi.mocked(createGroundShadowView).mock.calls.length,
-    );
+    expect(scene.children).toHaveLength(renderCalls.length + vi.mocked(createGroundShadowView).mock.calls.length);
     expect(scene.children.every(({ cullable }) => cullable)).toBe(true);
     destroyScene();
   });
@@ -454,13 +495,9 @@ describe("createIsometricScene", () => {
       stage: { addChild: vi.fn() },
     };
 
-    const destroyScene = await createIsometricScene(app as never, worldFrom([
-      { x: 0, y: 0, elevation: 0 },
-    ]));
+    const destroyScene = await createIsometricScene(app as never, worldFrom([{ x: 0, y: 0, elevation: 0 }]));
 
-    expect(renderCalls.some(({ texture, tint }) =>
-      texture.source.includes("grass") && tint === undefined,
-    )).toBe(true);
+    expect(renderCalls.some(({ texture, tint }) => texture.source.includes("grass") && tint === undefined)).toBe(true);
     destroyScene();
   });
 
@@ -472,16 +509,19 @@ describe("createIsometricScene", () => {
       stage: { addChild: vi.fn() },
     };
 
-    const destroyScene = await createIsometricScene(app as never, worldFrom([
-      { x: 0, y: 0, elevation: -1 },
-      { x: 1, y: 0, elevation: 0 },
-      { x: 2, y: 0, elevation: 0 },
-      { x: 3, y: 0, elevation: 0 },
-      { x: 5, y: 0, elevation: 2 },
-      { x: 7, y: 0, elevation: -1 },
-      { x: 8, y: 0, elevation: 0 },
-      { x: 9, y: 0, elevation: -1 },
-    ]));
+    const destroyScene = await createIsometricScene(
+      app as never,
+      worldFrom([
+        { x: 0, y: 0, elevation: -1 },
+        { x: 1, y: 0, elevation: 0 },
+        { x: 2, y: 0, elevation: 0 },
+        { x: 3, y: 0, elevation: 0 },
+        { x: 5, y: 0, elevation: 2 },
+        { x: 7, y: 0, elevation: -1 },
+        { x: 8, y: 0, elevation: 0 },
+        { x: 9, y: 0, elevation: -1 },
+      ]),
+    );
     const topCalls = renderCalls.filter(({ elevation }) => elevation === 0);
 
     // (1,0) is the shore of the (2,0)–(3,0) landmass → sand; (2,0) and (3,0) → grass;
@@ -680,11 +720,13 @@ describe("createIsometricScene", () => {
       const entity = world.entities[0];
       const isAt = (view: View, x: number, y: number) => view.x === x && view.y === y;
       const topIndex = children.reduce(
-        (last, view, index) => (!view.groundShadow && !view.source.includes("statue") && isAt(view, entity.x, entity.y) ? index : last),
+        (last, view, index) =>
+          !view.groundShadow && !view.source.includes("statue") && isAt(view, entity.x, entity.y) ? index : last,
         -1,
       );
       const shadowIndex = children.findIndex(
-        (view) => view.groundShadow && view.texture?.frame.x === (entity.x - 0) * 16 && view.texture.frame.y === entity.y * 16,
+        (view) =>
+          view.groundShadow && view.texture?.frame.x === (entity.x - 0) * 16 && view.texture.frame.y === entity.y * 16,
       );
       const entityIndex = children.findIndex(({ source }) => source.includes("statue"));
 
@@ -707,12 +749,14 @@ describe("createIsometricScene", () => {
       expect(RenderTexture.create).toHaveBeenCalledTimes(3);
       expect(RenderTexture.create).toHaveBeenCalledWith({ width: 32, height: 32 });
       const frames = shadows.map(({ texture }) => texture?.frame);
-      expect(frames).toEqual(expect.arrayContaining([
-        { x: 0, y: 0, width: 16, height: 16 },
-        { x: 16, y: 0, width: 16, height: 16 },
-        { x: 0, y: 16, width: 16, height: 16 },
-        { x: 16, y: 16, width: 16, height: 16 },
-      ]));
+      expect(frames).toEqual(
+        expect.arrayContaining([
+          { x: 0, y: 0, width: 16, height: 16 },
+          { x: 16, y: 0, width: 16, height: 16 },
+          { x: 0, y: 16, width: 16, height: 16 },
+          { x: 16, y: 16, width: 16, height: 16 },
+        ]),
+      );
       const sourceOf = (fx: number, fy: number) =>
         shadows.find(({ texture }) => texture?.frame.x === fx && texture.frame.y === fy)?.texture?.source;
       expect(sourceOf(0, 0)).toBe(sourceOf(16, 0));
@@ -721,20 +765,23 @@ describe("createIsometricScene", () => {
     });
 
     it("lays the shadow of a sand tile on its half-height top", async () => {
-      const { children, destroyScene } = await sceneOf(worldFrom([
-        { x: 0, y: 0, elevation: -1 },
-        { x: 1, y: 0, elevation: 0 },
-        { x: 2, y: 0, elevation: 0 },
-        { x: 3, y: 0, elevation: 0 },
-      ]));
+      const { children, destroyScene } = await sceneOf(
+        worldFrom([
+          { x: 0, y: 0, elevation: -1 },
+          { x: 1, y: 0, elevation: 0 },
+          { x: 2, y: 0, elevation: 0 },
+          { x: 3, y: 0, elevation: 0 },
+        ]),
+      );
       const blockAt = (x: number) =>
         children.filter((view) => !view.groundShadow && view.x === x && view.source.includes("/")).at(-1);
       const shadowAt = (frameX: number) => groundShadows(children).find(({ texture }) => texture?.frame.x === frameX);
 
       expect(blockAt(1)?.source).toBe("/assets/sand/block.svg");
       // (2, 0) is half a tile higher on screen than (1, 0); the sand top is half a block lower still.
-      expect((shadowAt(16)?.tileTop?.y ?? 0) - (shadowAt(32)?.tileTop?.y ?? 0))
-        .toBeCloseTo(TILE_METRICS.tileHeight / 2 + TILE_METRICS.boxHeight / 2);
+      expect((shadowAt(16)?.tileTop?.y ?? 0) - (shadowAt(32)?.tileTop?.y ?? 0)).toBeCloseTo(
+        TILE_METRICS.tileHeight / 2 + TILE_METRICS.boxHeight / 2,
+      );
       destroyScene();
     });
 
@@ -761,7 +808,12 @@ describe("createIsometricScene", () => {
       lowerLevels.forEach((level) => {
         expect(placeSilhouette).toHaveBeenCalledWith(
           expect.anything(),
-          getSilhouetteMatrix(projection as never, { x: entity.x, y: entity.y }, entity.elevation - level, TILE_METRICS),
+          getSilhouetteMatrix(
+            projection as never,
+            { x: entity.x, y: entity.y },
+            entity.elevation - level,
+            TILE_METRICS,
+          ),
           { x: -0.5, y: -0.5 },
           16,
         );
@@ -773,12 +825,15 @@ describe("createIsometricScene", () => {
     });
 
     it("puts the level's ambient occlusion, computed once, at the bottom of each map", async () => {
-      const world = at(worldFrom([
-        { x: 0, y: 0, elevation: 1 },
-        { x: 1, y: 0, elevation: 0 },
-        { x: 0, y: 1, elevation: 0 },
-        { x: 1, y: 1, elevation: 0 },
-      ]), 12);
+      const world = at(
+        worldFrom([
+          { x: 0, y: 0, elevation: 1 },
+          { x: 1, y: 0, elevation: 0 },
+          { x: 0, y: 1, elevation: 0 },
+          { x: 1, y: 1, elevation: 0 },
+        ]),
+        12,
+      );
       const { renderer, ticker, destroyScene } = await sceneOf(world);
       type OcclusionSprite = {
         texture: { source: { options: { resource: Uint8ClampedArray; width: number; height: number } } };
@@ -803,14 +858,22 @@ describe("createIsometricScene", () => {
     });
 
     it("darkens the ground around an entity with its contact shadow", async () => {
-      const world = at(worldFrom([
-        { x: 0, y: 0, elevation: 0 },
-        { x: 1, y: 0, elevation: 0 },
-      ], createTestEntities), 0);
+      const world = at(
+        worldFrom(
+          [
+            { x: 0, y: 0, elevation: 0 },
+            { x: 1, y: 0, elevation: 0 },
+          ],
+          createTestEntities,
+        ),
+        0,
+      );
       const { renderer, destroyScene } = await sceneOf(world);
-      const resource = (layerOf(renderer, 0).children[0] as {
-        texture: { source: { options: { resource: Uint8ClampedArray } } };
-      }).texture.source.options.resource;
+      const resource = (
+        layerOf(renderer, 0).children[0] as {
+          texture: { source: { options: { resource: Uint8ClampedArray } } };
+        }
+      ).texture.source.options.resource;
 
       expect(resource.some((value) => value > 0)).toBe(true);
       destroyScene();
@@ -886,7 +949,9 @@ describe("createIsometricScene", () => {
       const { ticker, renderer, destroyScene } = await sceneOf(world);
       const built = renderer.render.mock.calls.length;
       const withCasters = new Set(
-        renderer.render.mock.calls.map((_, call) => layerOf(renderer, call)).filter(({ children }) => children.length === 2),
+        renderer.render.mock.calls
+          .map((_, call) => layerOf(renderer, call))
+          .filter(({ children }) => children.length === 2),
       );
 
       for (let frame = 0; frame < 3 * withCasters.size; frame += 1) {
@@ -916,8 +981,9 @@ describe("createIsometricScene", () => {
       const [silhouette, matrix] = vi.mocked(placeSilhouette).mock.calls[0];
 
       expect(renderer.render).toHaveBeenCalledTimes(1);
-      expect(lifts.map((lift) => getSilhouetteMatrix(projection as never, silhouette.worldFoot, lift, TILE_METRICS)))
-        .toContainEqual(matrix);
+      expect(
+        lifts.map((lift) => getSilhouetteMatrix(projection as never, silhouette.worldFoot, lift, TILE_METRICS)),
+      ).toContainEqual(matrix);
       destroyScene();
     });
 
@@ -939,11 +1005,15 @@ describe("createIsometricScene", () => {
 
     it("destroys the shadow maps, their layers and the occlusion textures when the scene is destroyed", async () => {
       const { renderer, destroyScene } = await sceneOf(at(defaultWorld(createTestEntities), 12));
-      const maps = vi.mocked(RenderTexture.create).mock.results.map(({ value }) => value as { destroy: ReturnType<typeof vi.fn> });
-      const layers = renderer.render.mock.calls.map((_, call) =>
-        layerOf(renderer, call) as Layer & { destroy: ReturnType<typeof vi.fn> });
-      const occlusion = layers.map(({ children }) =>
-        (children[0] as { texture: { destroy: ReturnType<typeof vi.fn> } }).texture);
+      const maps = vi
+        .mocked(RenderTexture.create)
+        .mock.results.map(({ value }) => value as { destroy: ReturnType<typeof vi.fn> });
+      const layers = renderer.render.mock.calls.map(
+        (_, call) => layerOf(renderer, call) as Layer & { destroy: ReturnType<typeof vi.fn> },
+      );
+      const occlusion = layers.map(
+        ({ children }) => (children[0] as { texture: { destroy: ReturnType<typeof vi.fn> } }).texture,
+      );
 
       destroyScene();
 

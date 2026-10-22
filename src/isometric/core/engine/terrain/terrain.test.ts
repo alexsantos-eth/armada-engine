@@ -18,14 +18,7 @@ describe("generatePerlinTerrain", () => {
     });
 
     expect(terrain).toHaveLength(6);
-    expect(terrain.map(({ x, y }) => `${x}:${y}`)).toEqual([
-      "0:0",
-      "0:1",
-      "1:0",
-      "1:1",
-      "2:0",
-      "2:1",
-    ]);
+    expect(terrain.map(({ x, y }) => `${x}:${y}`)).toEqual(["0:0", "0:1", "1:0", "1:1", "2:0", "2:1"]);
     expect(terrain.every(({ elevation }) => elevation >= -2 && elevation <= 4)).toBe(true);
   });
 

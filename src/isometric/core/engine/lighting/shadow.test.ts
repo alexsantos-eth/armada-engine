@@ -13,7 +13,7 @@ import {
 const WHITE = { r: 1, g: 1, b: 1 };
 
 /** A sun at `altitude` radians whose horizontal direction points at `toward` (from +x to +y). */
-const sunAt = (altitude: number, toward = -3 * Math.PI / 4): SunState => ({
+const sunAt = (altitude: number, toward = (-3 * Math.PI) / 4): SunState => ({
   timeOfDay: 0.5,
   direction: {
     x: Math.cos(altitude) * Math.cos(toward),
@@ -47,7 +47,7 @@ describe("getShadowProjection", () => {
   });
 
   it("points shadows away from the sun", () => {
-    const projection = getShadowProjection(sunAt(0.6, -3 * Math.PI / 4));
+    const projection = getShadowProjection(sunAt(0.6, (-3 * Math.PI) / 4));
 
     expect(projection?.dirX).toBeCloseTo(Math.SQRT1_2);
     expect(projection?.dirY).toBeCloseTo(Math.SQRT1_2);

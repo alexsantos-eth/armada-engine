@@ -7,10 +7,7 @@ import type { EntityLengthAxis, IsoScreenBox, TileMetrics } from "../../types";
  * a strip that straddles two tiles belongs to the one nearer the viewer (lower index, the
  * anchor being tile 0). On the `x` axis the anchor is on the left, on `y` on the right.
  */
-export function getFootprintSliceTiles(
-  length: number,
-  lengthAxis: EntityLengthAxis,
-): number[] {
+export function getFootprintSliceTiles(length: number, lengthAxis: EntityLengthAxis): number[] {
   if (length <= 1) return [0];
   const fromAnchor = Array.from({ length: length + 1 }, (_, strip) => Math.max(0, strip - 1));
   return lengthAxis === "x" ? fromAnchor : fromAnchor.reverse();
@@ -23,10 +20,14 @@ function getStripTextures(texture: Texture, strips: number): Texture[] {
   if (cached?.length === strips) return cached;
   const { x, y, width, height } = texture.frame;
   const stripWidth = width / strips;
-  const textures = Array.from({ length: strips }, (_, strip) => new Texture({
-    source: texture.source,
-    frame: new Rectangle(x + strip * stripWidth, y, stripWidth, height),
-  }));
+  const textures = Array.from(
+    { length: strips },
+    (_, strip) =>
+      new Texture({
+        source: texture.source,
+        frame: new Rectangle(x + strip * stripWidth, y, stripWidth, height),
+      }),
+  );
   stripTexturesCache.set(texture, textures);
   return textures;
 }
@@ -52,8 +53,12 @@ export function getBlockDepth(
   tile = 0,
   lengthAxis: EntityLengthAxis = "x",
 ): number {
-  return box.baseScreenY - tile * (metrics.tileHeight / 2) + box.box.elevation * 0.001 +
-    (box.x + (lengthAxis === "x" ? tile : 0)) * 0.0001;
+  return (
+    box.baseScreenY -
+    tile * (metrics.tileHeight / 2) +
+    box.box.elevation * 0.001 +
+    (box.x + (lengthAxis === "x" ? tile : 0)) * 0.0001
+  );
 }
 
 /** What to draw with {@link createBlockViews}. Only `texture`, `box` and `metrics` are required. */
@@ -101,9 +106,8 @@ export function createBlockViews(options: RenderBlockOptions): DepthView[] {
 
   image.width = tileWidth * ((1 + length) / 2);
   const textureAspectRatio = texture.width > 0 ? texture.height / texture.width : undefined;
-  image.height = length > 1 && textureAspectRatio !== undefined
-    ? image.width * textureAspectRatio
-    : tileHeight + boxHeight * height;
+  image.height =
+    length > 1 && textureAspectRatio !== undefined ? image.width * textureAspectRatio : tileHeight + boxHeight * height;
   if (tint !== undefined) {
     image.tint = tint;
   }
@@ -113,7 +117,7 @@ export function createBlockViews(options: RenderBlockOptions): DepthView[] {
     ? footprintDepth + boxHeight * height
     : height > 1
       ? tileHeight + boxHeight * height
-    : tileHeight / 2;
+      : tileHeight / 2;
   const footprintOffset = (length - 1) / 2;
   const lengthDirection = lengthAxis === "y" ? -1 : 1;
   const positionX = box.screenX + lengthDirection * footprintOffset * (tileWidth / 2);
@@ -170,7 +174,5 @@ export function createBlockViews(options: RenderBlockOptions): DepthView[] {
  * not need `sortableChildren`.
  */
 export function addInDepthOrder(container: Container, views: readonly DepthView[]): void {
-  [...views]
-    .sort((a, b) => a.depth - b.depth)
-    .forEach(({ view }) => container.addChild(view));
+  [...views].sort((a, b) => a.depth - b.depth).forEach(({ view }) => container.addChild(view));
 }

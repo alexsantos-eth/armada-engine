@@ -9,13 +9,21 @@ describe("SpatialIndex", () => {
     const index = new SpatialIndex<Item>();
     const pier = item("pier");
 
-    index.insert(pier, [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }]);
+    index.insert(pier, [
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+      { x: 2, y: 0 },
+    ]);
 
     expect(index.at(1, 0)).toEqual([pier]);
     expect(index.at(3, 0)).toEqual([]);
     expect(index.isOccupied(2, 0)).toBe(true);
     expect(index.isOccupied(0, 1)).toBe(false);
-    expect(index.cellsOf(pier)).toEqual([{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }]);
+    expect(index.cellsOf(pier)).toEqual([
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+      { x: 2, y: 0 },
+    ]);
     expect(index.cellsOf(item("other"))).toEqual([]);
     expect(index.has(pier)).toBe(true);
     expect(index.size).toBe(1);
@@ -26,7 +34,10 @@ describe("SpatialIndex", () => {
     const a = item("a");
     const b = item("b");
 
-    index.insert(a, [{ x: 0, y: 0 }, { x: 0, y: 0 }]);
+    index.insert(a, [
+      { x: 0, y: 0 },
+      { x: 0, y: 0 },
+    ]);
     index.insert(b, [{ x: 0, y: 0 }]);
 
     expect(index.at(0, 0)).toEqual([a, b]);
@@ -65,7 +76,11 @@ describe("SpatialIndex", () => {
     const wide = item("wide");
     const near = item("near", "tree");
     index.insert(far, [{ x: 10, y: 10 }]);
-    index.insert(wide, [{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }]);
+    index.insert(wide, [
+      { x: -1, y: 0 },
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+    ]);
     index.insert(near, [{ x: 1, y: 1 }]);
 
     const rect = { minX: -1, minY: -1, maxX: 1, maxY: 1 };
@@ -84,15 +99,19 @@ describe("SpatialIndex", () => {
     expect(index.anyInRect({ minX: -1, minY: -1, maxX: 1, maxY: 1 })).toBe(true);
     expect(index.anyInRect({ minX: -500, minY: -500, maxX: 500, maxY: 500 })).toBe(true);
     expect(index.anyInRect({ minX: 2, minY: 2, maxX: 3, maxY: 3 })).toBe(false);
-    expect(index.anyInRect({ minX: -500, minY: -500, maxX: 500, maxY: 500 }, ({ kind }) => kind === "tree"))
-      .toBe(false);
+    expect(index.anyInRect({ minX: -500, minY: -500, maxX: 500, maxY: 500 }, ({ kind }) => kind === "tree")).toBe(
+      false,
+    );
   });
 
   it("scans cells when the rectangle is smaller than the index", () => {
     const index = new SpatialIndex<Item>();
     const field = item("field");
     const rock = item("rock");
-    index.insert(field, Array.from({ length: 16 }, (_, i) => ({ x: 10 + (i % 4), y: 10 + Math.floor(i / 4) })));
+    index.insert(
+      field,
+      Array.from({ length: 16 }, (_, i) => ({ x: 10 + (i % 4), y: 10 + Math.floor(i / 4) })),
+    );
     index.insert(rock, [{ x: 0, y: 0 }]);
 
     expect(index.anyInRect({ minX: 0, minY: 0, maxX: 1, maxY: 1 })).toBe(true);

@@ -4,8 +4,7 @@ import { getColorVariationCount, pickColorVariation } from "./variants";
 describe("getColorVariationCount", () => {
   it("counts the variations of the first list, or zero without lists", () => {
     expect(getColorVariationCount({ "#000000": "#ffffff" })).toBe(0);
-    expect(getColorVariationCount({ "#000000": "#ffffff", "#111111": ["#a", "#b", "#c"] }))
-      .toBe(3);
+    expect(getColorVariationCount({ "#000000": "#ffffff", "#111111": ["#a", "#b", "#c"] })).toBe(3);
     expect(getColorVariationCount(undefined)).toBe(0);
   });
 });

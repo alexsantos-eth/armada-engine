@@ -22,22 +22,24 @@ const issuesOf = (definitions: readonly EntityDefinition[]): readonly string[] =
 
 describe("validateEntityDefinitions", () => {
   it("accepts valid definitions, including every optional field", () => {
-    expect(() => validateEntityDefinitions([
-      VALID,
-      {
-        ...VALID,
-        id: "pier",
-        length: 3,
-        lengthAxis: "y",
-        footprintSurfaces: ["water", "sand", "grass"],
-        surfaceElevation: [0, 1],
-        gap: 2,
-        formation: { map: ["XX", "X."], minMembers: 2, rotate: true },
-        colorReplacements: { "#9f4b2f": ["#111111", "#222222"], "#abc": ["#333", "#444"] },
-        debug: true,
-      },
-      { ...VALID, id: "house", surfaceElevation: 0, colorReplacements: { "#000000": "#ffffff" } },
-    ])).not.toThrow();
+    expect(() =>
+      validateEntityDefinitions([
+        VALID,
+        {
+          ...VALID,
+          id: "pier",
+          length: 3,
+          lengthAxis: "y",
+          footprintSurfaces: ["water", "sand", "grass"],
+          surfaceElevation: [0, 1],
+          gap: 2,
+          formation: { map: ["XX", "X."], minMembers: 2, rotate: true },
+          colorReplacements: { "#9f4b2f": ["#111111", "#222222"], "#abc": ["#333", "#444"] },
+          debug: true,
+        },
+        { ...VALID, id: "house", surfaceElevation: 0, colorReplacements: { "#000000": "#ffffff" } },
+      ]),
+    ).not.toThrow();
     expect(() => validateEntityDefinitions([])).not.toThrow();
   });
 
@@ -49,14 +51,18 @@ describe("validateEntityDefinitions", () => {
   });
 
   it("reports invalid numbers", () => {
-    expect(issuesOf([{
-      ...VALID,
-      height: 0,
-      length: 1.5,
-      spawnChance: 2,
-      gap: -1,
-      surfaceElevation: [0.5],
-    }])).toEqual([
+    expect(
+      issuesOf([
+        {
+          ...VALID,
+          height: 0,
+          length: 1.5,
+          spawnChance: 2,
+          gap: -1,
+          surfaceElevation: [0.5],
+        },
+      ]),
+    ).toEqual([
       "rock: height must be a positive integer (got 0)",
       "rock: length must be a positive integer (got 1.5)",
       "rock: spawnChance must be between 0 and 1 (got 2)",
@@ -70,14 +76,18 @@ describe("validateEntityDefinitions", () => {
   });
 
   it("reports invalid surfaces, axes and texture sources", () => {
-    expect(issuesOf([{
-      ...VALID,
-      textureSource: "rock.svg",
-      surface: "lava" as never,
-      lengthAxis: "z" as never,
-      length: 2,
-      footprintSurfaces: ["grass", "snow" as never, "sand"],
-    }])).toEqual([
+    expect(
+      issuesOf([
+        {
+          ...VALID,
+          textureSource: "rock.svg",
+          surface: "lava" as never,
+          lengthAxis: "z" as never,
+          length: 2,
+          footprintSurfaces: ["grass", "snow" as never, "sand"],
+        },
+      ]),
+    ).toEqual([
       'rock: textureSource must be an absolute SVG path such as "/assets/<name>/block.svg" (got "rock.svg")',
       'rock: surface must be one of grass, water, sand (got "lava")',
       'rock: lengthAxis must be "x" or "y" (got "z")',
@@ -87,11 +97,13 @@ describe("validateEntityDefinitions", () => {
   });
 
   it("reports invalid formations", () => {
-    expect(issuesOf([
-      { ...VALID, formation: { map: ["X?"] } },
-      { ...VALID, id: "b", formation: { map: ["XX"], minMembers: 3 } },
-      { ...VALID, id: "c", formation: { map: ["XX"], minMembers: 0 } },
-    ])).toEqual([
+    expect(
+      issuesOf([
+        { ...VALID, formation: { map: ["X?"] } },
+        { ...VALID, id: "b", formation: { map: ["XX"], minMembers: 3 } },
+        { ...VALID, id: "c", formation: { map: ["XX"], minMembers: 0 } },
+      ]),
+    ).toEqual([
       'rock: formation: Invalid formation map character "?" at row 0, column 1: use "X" or ".".',
       "b: formation.minMembers must be an integer between 1 and 2 (got 3)",
       "c: formation.minMembers must be an integer between 1 and 2 (got 0)",
@@ -99,16 +111,20 @@ describe("validateEntityDefinitions", () => {
   });
 
   it("reports invalid color replacements", () => {
-    expect(issuesOf([{
-      ...VALID,
-      colorReplacements: {
-        red: "#ff0000",
-        "#000000": "blue",
-        "#111111": [],
-        "#222222": ["#aaaaaa", "#bbbbbb"],
-        "#333333": ["#cccccc"],
-      },
-    }])).toEqual([
+    expect(
+      issuesOf([
+        {
+          ...VALID,
+          colorReplacements: {
+            red: "#ff0000",
+            "#000000": "blue",
+            "#111111": [],
+            "#222222": ["#aaaaaa", "#bbbbbb"],
+            "#333333": ["#cccccc"],
+          },
+        },
+      ]),
+    ).toEqual([
       'rock: colorReplacements key "red" must be a hex color',
       'rock: colorReplacements["#000000"] must be hex colors (got "blue")',
       'rock: colorReplacements["#111111"] must not be an empty list',
@@ -117,11 +133,10 @@ describe("validateEntityDefinitions", () => {
   });
 
   it("lists every issue at once in the error message", () => {
-    expect(() => validateEntityDefinitions([{ ...VALID, height: 0, spawnChance: -1 }]))
-      .toThrow(
-        "Invalid entity configuration:\n" +
-          "- rock: height must be a positive integer (got 0)\n" +
-          "- rock: spawnChance must be between 0 and 1 (got -1)",
-      );
+    expect(() => validateEntityDefinitions([{ ...VALID, height: 0, spawnChance: -1 }])).toThrow(
+      "Invalid entity configuration:\n" +
+        "- rock: height must be a positive integer (got 0)\n" +
+        "- rock: spawnChance must be between 0 and 1 (got -1)",
+    );
   });
 });

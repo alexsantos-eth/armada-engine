@@ -31,12 +31,18 @@ describe("CellMap", () => {
 
     expect(seen).toEqual(["2,0=1", "-1,5=2"]);
     expect([...map.values()]).toEqual([1, 2]);
-    expect([...map.entries()]).toEqual([[{ x: 2, y: 0 }, 1], [{ x: -1, y: 5 }, 2]]);
+    expect([...map.entries()]).toEqual([
+      [{ x: 2, y: 0 }, 1],
+      [{ x: -1, y: 5 }, 2],
+    ]);
   });
 
   it("builds from grid objects", () => {
     const map = CellMap.from(
-      [{ x: 1, y: 1, elevation: 4 }, { x: 2, y: 1, elevation: 5 }],
+      [
+        { x: 1, y: 1, elevation: 4 },
+        { x: 2, y: 1, elevation: 5 },
+      ],
       ({ elevation }) => elevation,
     );
 

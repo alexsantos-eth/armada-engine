@@ -14,9 +14,7 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-export function generatePerlinTerrain(
-  options: PerlinTerrainOptions,
-): TerrainPoint[] {
+export function generatePerlinTerrain(options: PerlinTerrainOptions): TerrainPoint[] {
   const width = Math.max(0, Math.floor(options.width));
   const height = Math.max(0, Math.floor(options.height));
 
@@ -30,12 +28,8 @@ export function generatePerlinTerrain(
   const lacunarity = options.lacunarity ?? DEFAULT_LACUNARITY;
   const seed = options.seed ?? DEFAULT_WORLD_SEED;
 
-  const minElevation = Math.floor(
-    options.minElevation ?? DEFAULT_MIN_ELEVATION,
-  );
-  const maxElevation = Math.floor(
-    options.maxElevation ?? DEFAULT_MAX_ELEVATION,
-  );
+  const minElevation = Math.floor(options.minElevation ?? DEFAULT_MIN_ELEVATION);
+  const maxElevation = Math.floor(options.maxElevation ?? DEFAULT_MAX_ELEVATION);
   const low = Math.min(minElevation, maxElevation);
   const high = Math.max(minElevation, maxElevation);
   const elevationRange = Math.max(0, high - low);

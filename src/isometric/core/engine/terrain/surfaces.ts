@@ -4,22 +4,20 @@ import { CellMap } from "../grid";
 /** Elevation the top block of a column must have to become sand. */
 export const SAND_ELEVATION = 0;
 
-const EDGE_OFFSETS = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
-const AROUND_OFFSETS = [
-  ...EDGE_OFFSETS,
-  [1, 1], [1, -1], [-1, 1], [-1, -1],
+const EDGE_OFFSETS = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
 ] as const;
+const AROUND_OFFSETS = [...EDGE_OFFSETS, [1, 1], [1, -1], [-1, 1], [-1, -1]] as const;
 
 /**
  * Chooses the surface of a column. Below zero it is water. At {@link SAND_ELEVATION} it is
  * sand only on a shore: it touches water edge-wise and has inland ground around it (so
  * islets and strips in the middle of the water stay grass). Otherwise grass.
  */
-export function getColumnSurface(
-  topElevation: number,
-  touchesWater: boolean,
-  touchesInland: boolean,
-): TerrainSurface {
+export function getColumnSurface(topElevation: number, touchesWater: boolean, touchesInland: boolean): TerrainSurface {
   if (topElevation < 0) return "water";
   return topElevation === SAND_ELEVATION && touchesWater && touchesInland ? "sand" : "grass";
 }
@@ -33,9 +31,7 @@ export function getColumnSurface(
  * that is not a shore candidate itself (higher ground, or ground at the sand elevation away
  * from the water). Diagonals count so the corners of a beach stay sand.
  */
-export function classifyColumnSurfaces(
-  boxes: readonly IGridObject[],
-): CellMap<TerrainSurface> {
+export function classifyColumnSurfaces(boxes: readonly IGridObject[]): CellMap<TerrainSurface> {
   const tops = new CellMap<number>();
   boxes.forEach(({ x, y, elevation }) => {
     tops.set(x, y, Math.max(tops.get(x, y) ?? -Infinity, elevation));
@@ -43,10 +39,14 @@ export function classifyColumnSurfaces(
 
   const touchesWater = new CellMap<boolean>();
   tops.forEach((_, x, y) => {
-    touchesWater.set(x, y, EDGE_OFFSETS.some(([dx, dy]) => {
-      const top = tops.get(x + dx, y + dy);
-      return top !== undefined && top < 0;
-    }));
+    touchesWater.set(
+      x,
+      y,
+      EDGE_OFFSETS.some(([dx, dy]) => {
+        const top = tops.get(x + dx, y + dy);
+        return top !== undefined && top < 0;
+      }),
+    );
   });
   const isInland = (x: number, y: number) => {
     const top = tops.get(x, y);
@@ -66,11 +66,7 @@ export function classifyColumnSurfaces(
  * Material of one block: negative blocks are water, the top block takes its column's
  * surface and every other block is ground.
  */
-export function getBlockMaterial(
-  elevation: number,
-  topElevation: number,
-  surface: TerrainSurface,
-): TerrainMaterial {
+export function getBlockMaterial(elevation: number, topElevation: number, surface: TerrainSurface): TerrainMaterial {
   if (elevation < 0) return "water";
   return elevation === topElevation ? surface : "ground";
 }

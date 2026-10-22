@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  createSeededRandom,
-  DEFAULT_WORLD_SEED,
-  deriveSeed,
-  resolveWorldSeed,
-} from "./random";
+import { createSeededRandom, DEFAULT_WORLD_SEED, deriveSeed, resolveWorldSeed } from "./random";
 
 describe("createSeededRandom", () => {
   it("produces the same sequence for the same seed", () => {

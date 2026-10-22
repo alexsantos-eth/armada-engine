@@ -5,13 +5,7 @@ import { classifyColumnSurfaces, generatePerlinTerrain } from "../terrain";
 import { EntityConfigError } from "../entities";
 import { DEFAULT_WORLD_SEED } from "../random";
 import { advanceClock, TICKS_PER_DAY, WORLD_START_TICK } from "../time";
-import {
-  generateWorld,
-  restoreWorld,
-  serializeWorld,
-  WORLD_SNAPSHOT_VERSION,
-  type WorldSnapshot,
-} from "./world";
+import { generateWorld, restoreWorld, serializeWorld, WORLD_SNAPSHOT_VERSION, type WorldSnapshot } from "./world";
 
 const ROCK: EntityDefinition = {
   id: "rock",
@@ -51,8 +45,7 @@ describe("generateWorld", () => {
   });
 
   it("validates the content before generating anything", () => {
-    expect(() => generateWorld({ entityDefinitions: [ROCK, { ...ROCK, spawnChance: 3 }] }))
-      .toThrow(EntityConfigError);
+    expect(() => generateWorld({ entityDefinitions: [ROCK, { ...ROCK, spawnChance: 3 }] })).toThrow(EntityConfigError);
   });
 
   it("is fully deterministic for a seed and never uses Math.random", () => {
@@ -109,8 +102,7 @@ describe("World clock", () => {
   });
 
   it("rejects an invalid start tick", () => {
-    expect(() => generateWorld({ width: 4, height: 4, entityDefinitions: [], startTick: -1 }))
-      .toThrow(RangeError);
+    expect(() => generateWorld({ width: 4, height: 4, entityDefinitions: [], startTick: -1 })).toThrow(RangeError);
   });
 
   it("does not change what is generated", () => {
@@ -118,8 +110,9 @@ describe("World clock", () => {
     const morning = generateWorld(options);
     const night = generateWorld({ ...options, startTick: 3 * TICKS_PER_DAY });
 
-    expect(night.entities.map((entity) => entity.getData()))
-      .toEqual(morning.entities.map((entity) => entity.getData()));
+    expect(night.entities.map((entity) => entity.getData())).toEqual(
+      morning.entities.map((entity) => entity.getData()),
+    );
   });
 });
 
@@ -152,11 +145,13 @@ describe("serializeWorld / restoreWorld", () => {
     expect(snapshot.version).toBe(WORLD_SNAPSHOT_VERSION);
     expect(WORLD_SNAPSHOT_VERSION).toBe(3);
     expect(restored.seed).toBe(77);
-    expect(restored.columns.map((b) => [b.x, b.y, b.elevation]))
-      .toEqual(world.columns.map((b) => [b.x, b.y, b.elevation]));
+    expect(restored.columns.map((b) => [b.x, b.y, b.elevation])).toEqual(
+      world.columns.map((b) => [b.x, b.y, b.elevation]),
+    );
     expect(restored.surfaces).toEqual(world.surfaces);
-    expect(restored.entities.map((e) => [e.x, e.y, e.getData()]))
-      .toEqual(world.entities.map((e) => [e.x, e.y, e.getData()]));
+    expect(restored.entities.map((e) => [e.x, e.y, e.getData()])).toEqual(
+      world.entities.map((e) => [e.x, e.y, e.getData()]),
+    );
   });
 
   it("saves and restores the game time", () => {
@@ -187,11 +182,8 @@ describe("serializeWorld / restoreWorld", () => {
   it("rejects snapshots from an unknown version", () => {
     const snapshot = serializeWorld(generateWorld({ seed: 1, width: 4, height: 4, entityDefinitions: [] }));
 
-    expect(() => restoreWorld({ ...snapshot, version: 99 as never }))
-      .toThrow("Unsupported world snapshot version 99");
-    expect(() => restoreWorld({ ...snapshot, version: 1 as never }))
-      .toThrow("Unsupported world snapshot version 1");
-    expect(() => restoreWorld({ ...snapshot, version: 2 as never }))
-      .toThrow("Unsupported world snapshot version 2");
+    expect(() => restoreWorld({ ...snapshot, version: 99 as never })).toThrow("Unsupported world snapshot version 99");
+    expect(() => restoreWorld({ ...snapshot, version: 1 as never })).toThrow("Unsupported world snapshot version 1");
+    expect(() => restoreWorld({ ...snapshot, version: 2 as never })).toThrow("Unsupported world snapshot version 2");
   });
 });

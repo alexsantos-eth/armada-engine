@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  SAND_ELEVATION,
-  classifyColumnSurfaces,
-  getBlockMaterial,
-  getColumnSurface,
-} from "./surfaces";
+import { SAND_ELEVATION, classifyColumnSurfaces, getBlockMaterial, getColumnSurface } from "./surfaces";
 
 const column = (x: number, y: number, elevation: number) => ({
   x,
@@ -15,9 +10,7 @@ const column = (x: number, y: number, elevation: number) => ({
 
 /** Builds columns from rows of elevations: rows[y][x]; `null` leaves the cell out. */
 const grid = (rows: (number | null)[][]) =>
-  rows.flatMap((row, y) =>
-    row.flatMap((elevation, x) => (elevation === null ? [] : [column(x, y, elevation)])),
-  );
+  rows.flatMap((row, y) => row.flatMap((elevation, x) => (elevation === null ? [] : [column(x, y, elevation)])));
 
 describe("getColumnSurface", () => {
   it("is water below zero", () => {
@@ -41,12 +34,14 @@ describe("getColumnSurface", () => {
 
 describe("classifyColumnSurfaces", () => {
   it("puts sand only on the shore of a landmass", () => {
-    const surfaces = classifyColumnSurfaces(grid([
-      [-1, -1, -1, -1],
-      [-1, 0, 0, -1],
-      [-1, 0, 1, -1],
-      [-1, -1, -1, -1],
-    ]));
+    const surfaces = classifyColumnSurfaces(
+      grid([
+        [-1, -1, -1, -1],
+        [-1, 0, 0, -1],
+        [-1, 0, 1, -1],
+        [-1, -1, -1, -1],
+      ]),
+    );
 
     expect(surfaces.get(1, 1)).toBe("sand");
     expect(surfaces.get(2, 1)).toBe("sand");
@@ -56,11 +51,13 @@ describe("classifyColumnSurfaces", () => {
   });
 
   it("does not put sand on islets in the middle of the water", () => {
-    const surfaces = classifyColumnSurfaces(grid([
-      [-1, -1, -1, -1, -1],
-      [-1, 0, -1, 0, 0],
-      [-1, -1, -1, -1, -1],
-    ]));
+    const surfaces = classifyColumnSurfaces(
+      grid([
+        [-1, -1, -1, -1, -1],
+        [-1, 0, -1, 0, 0],
+        [-1, -1, -1, -1, -1],
+      ]),
+    );
 
     expect(surfaces.get(1, 1)).toBe("grass");
     expect(surfaces.get(3, 1)).toBe("grass");
@@ -68,11 +65,13 @@ describe("classifyColumnSurfaces", () => {
   });
 
   it("counts diagonal inland ground so shore corners stay sand", () => {
-    const surfaces = classifyColumnSurfaces(grid([
-      [-1, -1, -1],
-      [-1, 0, 0],
-      [-1, 0, 1],
-    ]));
+    const surfaces = classifyColumnSurfaces(
+      grid([
+        [-1, -1, -1],
+        [-1, 0, 0],
+        [-1, 0, 1],
+      ]),
+    );
 
     // (1,1)'s edge neighbours are water or other shore cells; its only inland
     // neighbour is the diagonal (2,2).
@@ -82,11 +81,13 @@ describe("classifyColumnSurfaces", () => {
   });
 
   it("only counts edge-adjacent water", () => {
-    const surfaces = classifyColumnSurfaces(grid([
-      [-1, null, null],
-      [null, 0, 0],
-      [null, 0, 0],
-    ]));
+    const surfaces = classifyColumnSurfaces(
+      grid([
+        [-1, null, null],
+        [null, 0, 0],
+        [null, 0, 0],
+      ]),
+    );
 
     expect(surfaces.get(1, 1)).toBe("grass");
   });

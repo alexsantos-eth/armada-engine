@@ -7,18 +7,14 @@ import type { RandomSource } from "../random";
  */
 export function getColorVariationCount(replacements: SvgColorReplacements | undefined): number {
   if (!replacements) return 0;
-  return Object.values(replacements)
-    .find((color): color is readonly string[] => Array.isArray(color))?.length ?? 0;
+  return Object.values(replacements).find((color): color is readonly string[] => Array.isArray(color))?.length ?? 0;
 }
 
 /**
  * Picks the color variation of one instance. Only consumes `random` when `replacements`
  * declares variation lists, so entities without them never shift a seeded sequence.
  */
-export function pickColorVariation(
-  replacements: SvgColorReplacements | undefined,
-  random: RandomSource,
-): number {
+export function pickColorVariation(replacements: SvgColorReplacements | undefined, random: RandomSource): number {
   const count = getColorVariationCount(replacements);
   return count === 0 ? 0 : Math.min(count - 1, Math.floor(random() * count));
 }

@@ -146,7 +146,6 @@ export type BoxData = {
   metadata: BoxMetadata;
 };
 
-
 export interface IBox {
   /**
    * The x-coordinate of the box in the isometric grid. This represents the horizontal position of the box and is typically used to determine its location within the grid-based layout of the isometric environment.
@@ -167,7 +166,7 @@ export interface IBox {
   /**
    * Represents the height or elevation level of the box in the isometric space. This can be used to create a sense of depth and layering in the environment, allowing for features like hills, platforms, or multi-level structures. This property is read-only and is typically determined based on the box's type or other characteristics.
    */
-  readonly elevation: number;     
+  readonly elevation: number;
   /**
    * A flexible object that can hold any additional metadata associated with the box. This can include custom properties, tags, or any other relevant information that may be needed for game logic, rendering, or interactions within the isometric environment. This property is read-only and can be accessed to retrieve any additional information about the box.
    */
@@ -199,4 +198,3 @@ export interface IEntity extends IGridObject {
   readonly colorVariant?: number;
   getData(): EntityData;
 }
-

@@ -73,11 +73,7 @@ export type WorldSnapshot = {
 
 type TerrainState = Pick<World, "seed" | "width" | "height" | "columns" | "surfaces">;
 
-function generateTerrainState(
-  seed: number,
-  width: number,
-  height: number,
-): TerrainState {
+function generateTerrainState(seed: number, width: number, height: number): TerrainState {
   const points = generatePerlinTerrain({ width, height, seed });
   const columns = points.map(({ x, y, elevation }) => new Box(x, y, { elevation }));
 
@@ -141,11 +137,7 @@ export function restoreWorld(snapshot: WorldSnapshot): World {
   }
 
   const clock = createWorldClock(snapshot.tick);
-  const terrain = generateTerrainState(
-    snapshot.seed,
-    snapshot.width,
-    snapshot.height,
-  );
+  const terrain = generateTerrainState(snapshot.seed, snapshot.width, snapshot.height);
   const entities = snapshot.entities.map(({ x, y, data }) => Entity.fromData(x, y, data));
 
   return { ...terrain, entities, occupancy: indexEntities(entities), clock };

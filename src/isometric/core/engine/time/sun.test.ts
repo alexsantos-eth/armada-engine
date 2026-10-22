@@ -1,12 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SkyKey } from "../../types";
 import { TICKS_PER_DAY } from "./clock";
-import {
-  DEFAULT_SKY_PALETTE,
-  getSunState,
-  sampleSkyPalette,
-  SUN_MAX_ALTITUDE,
-} from "./sun";
+import { DEFAULT_SKY_PALETTE, getSunState, sampleSkyPalette, SUN_MAX_ALTITUDE } from "./sun";
 
 const at = (hour: number) => Math.round((hour / 24) * TICKS_PER_DAY);
 const length = ({ x, y, z }: { x: number; y: number; z: number }) => Math.hypot(x, y, z);

@@ -25,28 +25,16 @@ const SVG_COLOR_ATTRIBUTE_PATTERN = /(fill|stroke)\s*=\s*(["'])#([0-9a-fA-F]{3,8
  * Replaces `fill`/`stroke` hex colors of an SVG. Keys mapped to a list use the entry at
  * `variationIndex` (clamped to the list), so every key of one SVG shares the same variation.
  */
-export function replaceSvgColors(
-  svg: string,
-  replacements: SvgColorReplacements,
-  variationIndex = 0,
-): string {
+export function replaceSvgColors(svg: string, replacements: SvgColorReplacements, variationIndex = 0): string {
   const index = Math.max(0, Math.floor(variationIndex));
   const normalizedReplacements = new Map(
-    Object.entries(replacements).map(([source, target]) => [
-      source.toLowerCase(),
-      pickColor(target, index),
-    ]),
+    Object.entries(replacements).map(([source, target]) => [source.toLowerCase(), pickColor(target, index)]),
   );
 
-  return svg.replace(
-    SVG_COLOR_ATTRIBUTE_PATTERN,
-    (match, attribute: string, quote: string, color: string) => {
-      const replacement = normalizedReplacements.get(`#${color.toLowerCase()}`);
-      return replacement === undefined
-        ? match
-        : `${attribute}=${quote}${replacement}${quote}`;
-    },
-  );
+  return svg.replace(SVG_COLOR_ATTRIBUTE_PATTERN, (match, attribute: string, quote: string, color: string) => {
+    const replacement = normalizedReplacements.get(`#${color.toLowerCase()}`);
+    return replacement === undefined ? match : `${attribute}=${quote}${replacement}${quote}`;
+  });
 }
 
 function pickColor(color: string | readonly string[], variationIndex: number): string {
