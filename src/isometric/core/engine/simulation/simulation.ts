@@ -1,6 +1,6 @@
 import type { EventBus, FixedStepperOptions, Simulation, SimulationEvents, WorldSystem } from "../../types";
 import { createEventBus } from "../events";
-import { advanceClock, assertClockStep, TICKS_PER_DAY, TICKS_PER_HOUR } from "../time";
+import { advanceClock, assertClockStep, CLOCK_PART, TICKS_PER_DAY, TICKS_PER_HOUR } from "../time";
 import type { World } from "../world";
 import { consumeFrame, createFixedStepper, getInterpolationAlpha } from "./stepper";
 
@@ -31,14 +31,18 @@ export type StepOptions = {
  * With `events`, after each tick it emits, in this order: `hourChanged` and `dayChanged` when the
  * tick starts an hour or a day, then `tick`. Every listener sees the world at that exact tick.
  *
+ * The clock is the world's `CLOCK_PART` (`createClockPart()`).
+ *
  * @throws `RangeError` when `ticks` is not a non-negative safe integer or the clock would
  * leave the safe integer range; the world is unchanged and nothing is emitted.
+ * @throws When the world has no clock part.
  */
 export function stepWorld(world: World, ticks: number, { systems = [], events }: StepOptions = {}): void {
-  assertClockStep(world.clock, ticks);
+  const clock = world.parts.get(CLOCK_PART);
+  assertClockStep(clock, ticks);
   for (let step = 0; step < ticks; step += 1) {
     systems.forEach((system) => system.step(world, events));
-    const tick = advanceClock(world.clock);
+    const tick = advanceClock(clock);
     if (events) emitTickEvents(events, tick);
   }
 }
@@ -65,7 +69,7 @@ export function createSimulation(world: World, options: SimulationOptions = {}):
     frame(elapsedMs) {
       const steps = consumeFrame(stepper, elapsedMs);
       if (steps > 0) stepWorld(world, steps, { systems, events });
-      return { steps, alpha: getInterpolationAlpha(stepper), tick: world.clock.tick };
+      return { steps, alpha: getInterpolationAlpha(stepper), tick: world.parts.get(CLOCK_PART).tick };
     },
   };
 }

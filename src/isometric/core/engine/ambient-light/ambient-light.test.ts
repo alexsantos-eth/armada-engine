@@ -5,12 +5,12 @@ vi.mock("../render", async () => (await import("../flow-check/scene-harness")).m
 
 import { rgbToTint } from "../render/color";
 import { mountScene, resetHarness, worldFrom } from "../flow-check/scene-harness";
-import { DEFAULT_SKY_PALETTE, getSunState, TICKS_PER_DAY } from "../time";
+import { CLOCK_PART, DEFAULT_SKY_PALETTE, getSunState, TICKS_PER_DAY } from "../time";
 import { createAmbientLight } from "./ambient-light";
 
 const atHour = (hour: number) => {
   const world = worldFrom([{ x: 0, y: 0, elevation: 0 }]);
-  world.clock.tick = (hour / 24) * TICKS_PER_DAY;
+  world.parts.get(CLOCK_PART).tick = (hour / 24) * TICKS_PER_DAY;
   return world;
 };
 
@@ -38,10 +38,10 @@ describe("createAmbientLight", () => {
     ticker.frame();
     expect(root.tintWrites).toHaveLength(writes);
 
-    world.clock.tick += TICKS_PER_DAY / 4;
+    world.parts.get(CLOCK_PART).tick += TICKS_PER_DAY / 4;
     ticker.frame();
     expect(root.tintWrites).toHaveLength(writes + 1);
-    expect(root.tint).toBe(rgbToTint(getSunState(world.clock.tick).ambient));
+    expect(root.tint).toBe(rgbToTint(getSunState(world.parts.get(CLOCK_PART).tick).ambient));
     scene.destroy();
   });
 });

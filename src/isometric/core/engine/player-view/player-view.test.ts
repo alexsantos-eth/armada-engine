@@ -7,7 +7,9 @@ import { Assets } from "pixi.js";
 import { CAMERA_START_ZOOM, getGroundPointBelow } from "../camera";
 import { createCameraView } from "../camera-view";
 import { TILE_METRICS } from "../constants";
-import { createPlayer } from "../player";
+import { WorldParts } from "../parts";
+import { createPlayer, PLAYER_PART } from "../player";
+import { createClockPart } from "../time";
 import { projectGridPoint } from "../projection";
 import { getBlockDepth } from "../render";
 import {
@@ -35,8 +37,13 @@ const projection = {
 /** A flat 4 × 4 field at elevation 1 with the player standing on `at`. */
 const fieldWithPlayer = (at = { x: 1, y: 1 }): World => {
   const points = Array.from({ length: 16 }, (_, index) => ({ x: index % 4, y: Math.floor(index / 4), elevation: 1 }));
-  const world = worldFrom(points);
-  return { ...world, player: createPlayer(world, at) };
+  return standing(worldFrom(points), at);
+};
+
+/** `world` with its player standing on `at`. */
+const standing = (world: World, at: { x: number; y: number }): World => {
+  Object.assign(world.parts.get(PLAYER_PART), createPlayer(world, at));
+  return world;
 };
 
 /** The terrain, the player and the camera, as the game draws them. */
@@ -109,7 +116,7 @@ describe("createPlayerView", () => {
     const addChildAt = vi.spyOn(root as never, "addChildAt");
     const before = camera.state;
 
-    world.player.x = 1.4;
+    world.parts.get(PLAYER_PART).x = 1.4;
     ticker.frame(50);
     expect(view.position).toMatchObject(spriteAt({ x: 1.2, y: 1, elevation: 1 }));
     // Still on column (1, 1): the draw order is kept.
@@ -128,13 +135,13 @@ describe("createPlayerView", () => {
     const depth = vi.mocked(getBlockDepth);
     depth.mockClear();
 
-    world.player.x = 1.4;
+    world.parts.get(PLAYER_PART).x = 1.4;
     ticker.frame();
-    world.player.previous = { x: 1.4, y: 1, elevation: 1 };
+    world.parts.get(PLAYER_PART).previous = { x: 1.4, y: 1, elevation: 1 };
     ticker.frame();
     expect(depth).not.toHaveBeenCalled();
 
-    world.player.x = 2.2;
+    world.parts.get(PLAYER_PART).x = 2.2;
     ticker.frame();
     expect(depth).toHaveBeenCalledTimes(1);
     scene.destroy();
@@ -146,7 +153,7 @@ describe("createPlayerView", () => {
     const addChildAt = vi.spyOn(root as never, "addChildAt");
 
     // Column (2, 0): same x + y and elevation as (1, 1), so the same depth.
-    Object.assign(world.player, { x: 1.8, y: 0.4, previous: { x: 1.8, y: 0.4, elevation: 1 } });
+    Object.assign(world.parts.get(PLAYER_PART), { x: 1.8, y: 0.4, previous: { x: 1.8, y: 0.4, elevation: 1 } });
     ticker.frame();
     expect(vi.mocked(getBlockDepth)).toHaveBeenCalled();
     expect(addChildAt).not.toHaveBeenCalled();
@@ -158,8 +165,8 @@ describe("createPlayerView", () => {
     const { ticker, root, view, scene } = await sceneOf(world);
     const addChildAt = vi.spyOn(root as never, "addChildAt");
 
-    world.player.previous = { x: 1, y: 1, elevation: 1 };
-    world.player.x = 1.8;
+    world.parts.get(PLAYER_PART).previous = { x: 1, y: 1, elevation: 1 };
+    world.parts.get(PLAYER_PART).x = 1.8;
     ticker.frame();
     ticker.frame();
     expect(view.position).toMatchObject(spriteAt({ x: 1.8, y: 1, elevation: 1 }));
@@ -179,7 +186,7 @@ describe("createPlayerView", () => {
       { x: 3, y: 0, elevation: 0 },
     ]);
     expect(shore.columnIndex.get(1, 0)?.type).toBe("sand");
-    const { view, scene } = await sceneOf({ ...shore, player: createPlayer(shore, { x: 1, y: 0 }) });
+    const { view, scene } = await sceneOf(standing(shore, { x: 1, y: 0 }));
 
     const onGrass = spriteAt({ x: 1, y: 0, elevation: 0 });
     expect(view.position).toMatchObject({ x: onGrass.x, y: onGrass.y + TILE_METRICS.boxHeight / 2 });
@@ -200,7 +207,7 @@ describe("createPlayerView", () => {
     const world = fieldWithPlayer();
     const { ticker, root, view, scene } = await sceneOf(world);
 
-    Object.assign(world.player, { x: 9, y: 9, elevation: 2 });
+    Object.assign(world.parts.get(PLAYER_PART), { x: 9, y: 9, elevation: 2 });
     ticker.frame();
     expect(view.position).toMatchObject(spriteAt({ x: 9, y: 9, elevation: 2 }));
     expect(root.children[0]).toBe(view);
@@ -212,7 +219,7 @@ describe("createPlayerView", () => {
     const { ticker, root, scene } = await mountScene(world, [createPlayerView(PLAYER)]);
     const [view] = root.children;
 
-    world.player.x = 1.4;
+    world.parts.get(PLAYER_PART).x = 1.4;
     ticker.frame();
     expect(view.position).toMatchObject(spriteAt({ x: 1.4, y: 1, elevation: 1 }));
     scene.destroy();
@@ -222,6 +229,17 @@ describe("createPlayerView", () => {
     vi.mocked(Assets.load).mockImplementation(() => Promise.resolve(undefined as never));
     const { root, scene } = await mountScene(fieldWithPlayer(), [createPlayerView(PLAYER)]);
 
+    expect(root.children).toHaveLength(0);
+    expect(scene.services.focus).toBeUndefined();
+    scene.destroy();
+  });
+
+  it("draws, loads and provides nothing in a world without a player part", async () => {
+    const field = fieldWithPlayer();
+    const world: World = { ...field, parts: WorldParts.create([createClockPart(0)], field) };
+    const { root, scene } = await mountScene(world, [createPlayerView(PLAYER)]);
+
+    expect(Assets.load).not.toHaveBeenCalled();
     expect(root.children).toHaveLength(0);
     expect(scene.services.focus).toBeUndefined();
     scene.destroy();

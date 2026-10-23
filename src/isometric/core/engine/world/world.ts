@@ -1,10 +1,9 @@
-import type { EntityData, EntityDefinition, GridPoint, PlayerState, WorldClock } from "../../types";
+import type { EntityData, EntityDefinition, WorldPart } from "../../types";
 import { CellMap, type ReadonlyCellMap, type SpatialIndex } from "../grid";
 import { createEntitiesFromConfig, Entity, indexEntities, validateEntityDefinitions } from "../entities";
+import { type SavedWorldParts, WorldParts } from "../parts";
 import { createSeededRandom, DEFAULT_WORLD_SEED, deriveSeed } from "../random";
 import { type Box, createTerrainColumns, generatePerlinTerrain } from "../terrain";
-import { createPlayer, findPlayerSpawn } from "../player";
-import { createWorldClock, WORLD_START_TICK } from "../time";
 
 /** Columns along `x` of a generated world when `generateWorld()` gets no `width`. */
 export const TERRAIN_WIDTH = 32;
@@ -38,17 +37,22 @@ export type World = {
    */
   readonly occupancy: SpatialIndex<Entity>;
   /**
-   * Game clock. Only the fixed simulation step advances it (`advanceClock(world.clock)`);
-   * time of day and sunlight are derived from its tick with `getSunState()`.
+   * State owned by game systems, one {@link WorldPart} each, read by key: the game clock
+   * (`world.parts.get(CLOCK_PART)`), the player (`PLAYER_PART`), later weather or needs. The app
+   * registers them (`generateWorld({ parts })`); each one saves and restores itself, so a new
+   * system with state never edits this type nor the snapshot.
    */
-  readonly clock: WorldClock;
-  /**
-   * The player character. Only the simulation step moves it (`stepPlayer()` inside
-   * `stepWorld()`), walking where `player.walk` points; the scene draws it and the camera
-   * follows it.
-   */
-  readonly player: PlayerState;
+  readonly parts: WorldParts;
 };
+
+/**
+ * What a world part gets to create or restore its state: the rest of the world (terrain and
+ * entities), never other parts.
+ */
+export type WorldPartContext = Omit<World, "parts">;
+
+/** A world part the world can hold: one that creates its state from a {@link WorldPartContext}. */
+export type WorldPartOf = WorldPart<unknown, unknown, WorldPartContext>;
 
 /** Options of {@link generateWorld}. */
 export type WorldOptions = {
@@ -64,27 +68,33 @@ export type WorldOptions = {
    * validated with `validateEntityDefinitions()` before anything is generated.
    */
   entityDefinitions: readonly EntityDefinition[];
-  /** Tick the game clock starts at. Defaults to `WORLD_START_TICK` (08:00 of day 0). */
-  startTick?: number;
+  /**
+   * Parts of world state the game's systems own (e.g. `createClockPart(startTick)`,
+   * `createPlayerPart()`), created in this order after the terrain and entities. Defaults to none.
+   */
+  parts?: readonly WorldPartOf[];
 };
 
-/** Version of {@link WorldSnapshot}; bump it when the snapshot shape changes. */
-export const WORLD_SNAPSHOT_VERSION = 4;
+/**
+ * Version of the {@link WorldSnapshot} envelope; bump it when the envelope's shape changes. A
+ * part's saved data has a version of its own (`WorldPart.version`), so changing a part never
+ * bumps this one.
+ */
+export const WORLD_SNAPSHOT_VERSION = 5;
 
 /**
  * JSON-serializable save of a {@link World}. The terrain is not stored: it is regenerated
- * from `seed` and size. Entities are stored as data, so changes made during
- * play (removed, moved or modified entities) are kept, and so are the game time (`tick`) and
- * where the player stands (`player`; its walk is input and is not saved).
+ * from `seed` and size. Entities are stored as data, so changes made during play (removed,
+ * moved or modified entities) are kept. Each world part is stored under its id with its own
+ * version (`parts`): the game time, where the player stands, and whatever parts come later.
  */
 export type WorldSnapshot = {
   version: typeof WORLD_SNAPSHOT_VERSION;
   seed: number;
   width: number;
   height: number;
-  tick: number;
-  player: GridPoint;
   entities: { x: number; y: number; data: EntityData }[];
+  parts: SavedWorldParts;
 };
 
 type TerrainState = Pick<World, "seed" | "width" | "height" | "columns" | "columnIndex">;
@@ -96,16 +106,14 @@ function generateTerrainState(seed: number, width: number, height: number): Terr
 
 /**
  * Generates a world from a seed: terrain (simplex noise) with each column typed with its
- * surface, entities, and the player on the walkable column nearest the centre
- * (`findPlayerSpawn()`). Each system draws from its own seeded stream (`deriveSeed`), so the
- * same options always produce the same world.
+ * surface, entities, then the state of each part in `options.parts`. Each system draws from
+ * its own seeded stream (`deriveSeed`), so the same options always produce the same world.
  *
  * @throws `EntityConfigError` when `entityDefinitions` is invalid.
- * @throws `RangeError` when `startTick` is not a non-negative safe integer.
+ * @throws When two parts share an id.
  */
 export function generateWorld(options: WorldOptions): World {
   validateEntityDefinitions(options.entityDefinitions);
-  const clock = createWorldClock(options.startTick ?? WORLD_START_TICK);
   const terrain = generateTerrainState(
     options.seed ?? DEFAULT_WORLD_SEED,
     options.width ?? TERRAIN_WIDTH,
@@ -118,9 +126,8 @@ export function generateWorld(options: WorldOptions): World {
     createSeededRandom(deriveSeed(terrain.seed, "entity-color-variants")),
   );
 
-  const ground = { columnIndex: terrain.columnIndex, occupancy: indexEntities(entities) };
-  const spawn = findPlayerSpawn(ground, { x: (terrain.width - 1) / 2, y: (terrain.height - 1) / 2 });
-  return { ...terrain, entities, ...ground, clock, player: createPlayer(ground, spawn) };
+  const base: WorldPartContext = { ...terrain, entities, occupancy: indexEntities(entities) };
+  return { ...base, parts: WorldParts.create(options.parts ?? [], base) };
 }
 
 /** Converts a world into a JSON-serializable {@link WorldSnapshot}. */
@@ -130,29 +137,29 @@ export function serializeWorld(world: World): WorldSnapshot {
     seed: world.seed,
     width: world.width,
     height: world.height,
-    tick: world.clock.tick,
-    player: { x: world.player.x, y: world.player.y },
     entities: world.entities.map((entity) => ({ x: entity.x, y: entity.y, data: entity.getData() })),
+    parts: world.parts.serialize(),
   };
 }
 
 /**
- * Rebuilds a world from a snapshot: regenerates the terrain from its seed and restores the
- * saved entities, game time and player position as they were (no new entity generation).
- * The player stands still.
+ * Rebuilds a world from a snapshot: regenerates the terrain from its seed, restores the saved
+ * entities as they were (no new entity generation), then each part in `parts` from its saved
+ * data. Pass the same parts the world was generated with: a part with no saved data gets a new
+ * state, and saved data of a part not passed is kept untouched for the next save
+ * (`WorldParts.restore()`).
  *
- * @throws When the snapshot version is not supported.
- * @throws `RangeError` when the saved tick is not a non-negative safe integer.
+ * @throws When the snapshot version, or the version of a saved part, is not supported.
+ * @throws When two parts share an id, or a part rejects its saved data.
  */
-export function restoreWorld(snapshot: WorldSnapshot): World {
+export function restoreWorld(snapshot: WorldSnapshot, parts: readonly WorldPartOf[] = []): World {
   if (snapshot.version !== WORLD_SNAPSHOT_VERSION) {
     throw new Error(`Unsupported world snapshot version ${String(snapshot.version)}`);
   }
 
-  const clock = createWorldClock(snapshot.tick);
   const terrain = generateTerrainState(snapshot.seed, snapshot.width, snapshot.height);
   const entities = snapshot.entities.map(({ x, y, data }) => Entity.fromData(x, y, data));
 
-  const ground = { columnIndex: terrain.columnIndex, occupancy: indexEntities(entities) };
-  return { ...terrain, entities, ...ground, clock, player: createPlayer(ground, snapshot.player) };
+  const base: WorldPartContext = { ...terrain, entities, occupancy: indexEntities(entities) };
+  return { ...base, parts: WorldParts.restore(parts, snapshot.parts, base) };
 }

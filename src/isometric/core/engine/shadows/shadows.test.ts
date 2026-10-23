@@ -27,7 +27,7 @@ import {
 } from "../flow-check/scene-harness";
 import type { Box } from "../terrain";
 import { createTerrainView } from "../terrain-view";
-import { getSunState, TICKS_PER_DAY } from "../time";
+import { CLOCK_PART, getSunState, TICKS_PER_DAY } from "../time";
 import type { World } from "../world";
 import { createReceivedShadows } from "./received-shadow";
 import { createShadows } from "./shadows";
@@ -60,7 +60,7 @@ describe("createShadows", () => {
     return { ticker, renderer, children: root.children as View[], destroyScene: scene.destroy };
   };
   const at = (world: World, hour: number) => {
-    world.clock.tick = Math.round((hour / 24) * TICKS_PER_DAY);
+    world.parts.get(CLOCK_PART).tick = Math.round((hour / 24) * TICKS_PER_DAY);
     return world;
   };
   const groundShadows = (children: View[]) => children.filter(({ groundShadow }) => groundShadow);
@@ -148,7 +148,7 @@ describe("createShadows", () => {
     const { renderer, destroyScene } = await sceneOf(world);
     const levels = new Set(world.columns.map(({ elevation }) => elevation));
     const entity = world.entities[0];
-    const projection = getShadowProjection(getSunState(world.clock.tick));
+    const projection = getShadowProjection(getSunState(world.parts.get(CLOCK_PART).tick));
     const lowerLevels = [...levels].filter((level) => level <= entity.elevation);
 
     expect(renderer.render).toHaveBeenCalledTimes(levels.size);
@@ -198,7 +198,7 @@ describe("createShadows", () => {
     // The low ground at the foot of (0, 0) is darkened; the top of (0, 0) is not.
     expect([darkened(0), darkened(1)].sort()).toEqual([false, true]);
 
-    world.clock.tick += 5 * SHADOW_REFRESH_TICKS;
+    world.parts.get(CLOCK_PART).tick += 5 * SHADOW_REFRESH_TICKS;
     ticker.frame();
     // No casters: the occlusion never changes, so the maps are not redrawn by day.
     expect(renderer.render).toHaveBeenCalledTimes(2);
@@ -233,7 +233,7 @@ describe("createShadows", () => {
     const { children, ticker, destroyScene } = await sceneOf(world);
 
     for (let hour = 9; hour < 33; hour += 3) {
-      world.clock.tick = Math.round((hour / 24) * TICKS_PER_DAY);
+      world.parts.get(CLOCK_PART).tick = Math.round((hour / 24) * TICKS_PER_DAY);
       ticker.frame();
     }
     expect(groundShadows(children).every(({ visible, alpha }) => visible === true && alpha === 1)).toBe(true);
@@ -244,7 +244,7 @@ describe("createShadows", () => {
     const world = at(defaultWorld(createTestEntities), 9);
     const { destroyScene } = await sceneOf(world);
     const casters = castersOf();
-    const alpha = getShadowProjection(getSunState(world.clock.tick))?.alpha;
+    const alpha = getShadowProjection(getSunState(world.parts.get(CLOCK_PART).tick))?.alpha;
 
     expect(casters.length).toBeGreaterThan(0);
     const [blur, opacity] = casters[0].filters as [{ options: unknown }, { alpha: number }];
@@ -282,7 +282,7 @@ describe("createShadows", () => {
     expect(casters.length).toBeGreaterThan(0);
     expect(casters.every(({ visibleWrites }) => visibleWrites.join() === "false")).toBe(true);
 
-    world.clock.tick += 5 * SHADOW_REFRESH_TICKS;
+    world.parts.get(CLOCK_PART).tick += 5 * SHADOW_REFRESH_TICKS;
     ticker.frame();
     expect(renderer.render).toHaveBeenCalledTimes(levels.size);
     expect(casters.every(({ visibleWrites }) => visibleWrites.length === 1)).toBe(true);
@@ -294,11 +294,11 @@ describe("createShadows", () => {
     const { ticker, renderer, destroyScene } = await sceneOf(world);
     const draws = renderer.render.mock.calls.length;
 
-    world.clock.tick += SHADOW_REFRESH_TICKS - 1;
+    world.parts.get(CLOCK_PART).tick += SHADOW_REFRESH_TICKS - 1;
     ticker.frame();
     expect(renderer.render).toHaveBeenCalledTimes(draws);
 
-    world.clock.tick += 1;
+    world.parts.get(CLOCK_PART).tick += 1;
     ticker.frame();
     expect(renderer.render).toHaveBeenCalledTimes(draws + 1);
     // The frame loop runs even when the clock stands still: the next stale map is drawn.
@@ -318,7 +318,7 @@ describe("createShadows", () => {
     );
 
     for (let frame = 0; frame < 3 * withCasters.size; frame += 1) {
-      world.clock.tick += SHADOW_REFRESH_TICKS * 3;
+      world.parts.get(CLOCK_PART).tick += SHADOW_REFRESH_TICKS * 3;
       ticker.frame();
     }
     const redrawn = renderer.render.mock.calls.slice(built).map((_, call) => layerOf(renderer, built + call));
@@ -338,9 +338,9 @@ describe("createShadows", () => {
     vi.mocked(placeSilhouette).mockClear();
     renderer.render.mockClear();
 
-    world.clock.tick += SHADOW_REFRESH_TICKS;
+    world.parts.get(CLOCK_PART).tick += SHADOW_REFRESH_TICKS;
     ticker.frame();
-    const projection = getShadowProjection(getSunState(world.clock.tick));
+    const projection = getShadowProjection(getSunState(world.parts.get(CLOCK_PART).tick));
     const [silhouette, matrix] = vi.mocked(placeSilhouette).mock.calls[0];
 
     expect(renderer.render).toHaveBeenCalledTimes(1);
@@ -357,7 +357,7 @@ describe("createShadows", () => {
     const casters = castersOf();
     expect(placeSilhouette).not.toHaveBeenCalled();
 
-    world.clock.tick = Math.round((6.2 / 24) * TICKS_PER_DAY);
+    world.parts.get(CLOCK_PART).tick = Math.round((6.2 / 24) * TICKS_PER_DAY);
     ticker.frame();
 
     expect(renderer.render).toHaveBeenCalledTimes(2 * levels.size);
@@ -438,7 +438,7 @@ describe("createShadows", () => {
       const world = at(row([0, 1]), 10);
       const { ticker, destroyScene } = await sceneOf(world);
       const { draw } = received();
-      const sun = getShadowProjection(getSunState(world.clock.tick));
+      const sun = getShadowProjection(getSunState(world.parts.get(CLOCK_PART).tick));
       const offsetOf = draw.mock.calls[0][0] as (...args: unknown[]) => unknown;
 
       expect(draw).toHaveBeenCalledTimes(1);
@@ -449,7 +449,7 @@ describe("createShadows", () => {
       // One target per frame, the stalest: within a few frames the atlas is drawn again.
       const levels = new Set(world.columns.map(({ elevation }) => elevation)).size;
       for (let frame = 0; frame <= levels; frame += 1) {
-        world.clock.tick += SHADOW_REFRESH_TICKS;
+        world.parts.get(CLOCK_PART).tick += SHADOW_REFRESH_TICKS;
         ticker.frame();
       }
       expect(draw.mock.calls.length).toBeGreaterThan(1);

@@ -2,13 +2,16 @@ import { PLAYER_APPEARANCE } from "../content";
 import {
   createAmbientLight,
   createCameraView,
+  createClockPart,
   createEntityView,
+  createPlayerPart,
   createPlayerSystem,
   createPlayerView,
   createShadows,
   createTerrainView,
   type SceneModule,
   type World,
+  type WorldPartOf,
 } from "../core/engine";
 import type { WorldSystem } from "../core/types";
 
@@ -28,6 +31,16 @@ export function createSceneModules(disabled: ReadonlySet<string> = new Set()): S
     createCameraView(),
   ];
   return modules.filter(({ id }) => !disabled.has(id));
+}
+
+/**
+ * The parts of world state the game's systems own, in order: the clock (starting a new world at
+ * `startTick`) and the player. Pass the same list to `generateWorld()` and `restoreWorld()`. They
+ * are not left out with `?modules=`: a system that is off keeps its state, so saving loses
+ * nothing.
+ */
+export function createWorldParts(startTick?: number): WorldPartOf[] {
+  return [createClockPart(startTick), createPlayerPart()];
 }
 
 /** The game systems the simulation runs every tick, in order (`stepWorld()`), but the `disabled` ones. */

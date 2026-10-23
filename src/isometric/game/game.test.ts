@@ -2,8 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { TERRAIN_APPEARANCE } from "../content";
 import {
   bindCameraControls,
+  CLOCK_PART,
   createScene,
   getWalkDirection,
+  PLAYER_PART,
   STEP_MS,
   TICKS_PER_HOUR,
   type SceneModule,
@@ -143,7 +145,7 @@ describe("mountGame", () => {
 
     expect(log).toHaveBeenCalledWith("Armada world seed: 1337");
     expect(world.seed).toBe(1337);
-    expect(world.clock.tick).toBe(15 * TICKS_PER_HOUR);
+    expect(world.parts.get(CLOCK_PART).tick).toBe(15 * TICKS_PER_HOUR);
     expect(modules.map(({ id }) => id)).toEqual([
       "terrain",
       "entities",
@@ -161,12 +163,16 @@ describe("mountGame", () => {
     await game.ready;
     const { app, world, modules } = started();
     expect(log).toHaveBeenCalledWith("Armada ?modules= names no module: fog");
-    world.player.walk = { x: 1, y: 0 };
+    world.parts.get(PLAYER_PART).walk = { x: 1, y: 0 };
 
     onTick(app)({ elapsedMS: 1000 });
 
     expect(modules.map(({ id }) => id)).toEqual(["terrain", "entities", "ambient-light", "camera"]);
-    expect(world.player.previous).toEqual({ x: world.player.x, y: world.player.y, elevation: world.player.elevation });
+    expect(world.parts.get(PLAYER_PART).previous).toEqual({
+      x: world.parts.get(PLAYER_PART).x,
+      y: world.parts.get(PLAYER_PART).y,
+      elevation: world.parts.get(PLAYER_PART).elevation,
+    });
   });
 
   it("draws a new seed from `random` when the URL has none", async () => {
@@ -201,7 +207,7 @@ describe("mountGame", () => {
     expect(options.interpolation?.()).toBeCloseTo(0.5);
 
     onTick(app)({ elapsedMS: STEP_MS / 120 });
-    expect(world.clock.tick).toBe(15 * TICKS_PER_HOUR + 1);
+    expect(world.parts.get(CLOCK_PART).tick).toBe(15 * TICKS_PER_HOUR + 1);
     expect(onClockChange).toHaveBeenCalledTimes(2);
   });
 
@@ -212,7 +218,9 @@ describe("mountGame", () => {
     const { camera } = (await scene).services;
 
     window.press("KeyW");
-    expect(world.player.walk).toEqual(getWalkDirection({ up: true, down: false, left: false, right: false }));
+    expect(world.parts.get(PLAYER_PART).walk).toEqual(
+      getWalkDirection({ up: true, down: false, left: false, right: false }),
+    );
 
     window.press("Equal");
     expect(camera.zoomAt).toHaveBeenCalledWith(KEYBOARD_ZOOM_STEP, { x: 400, y: 300 });
@@ -236,7 +244,9 @@ describe("mountGame", () => {
     window.press("KeyD");
 
     expect(bindCameraControls).not.toHaveBeenCalled();
-    expect(world.player.walk).toEqual(getWalkDirection({ up: false, down: false, left: false, right: true }));
+    expect(world.parts.get(PLAYER_PART).walk).toEqual(
+      getWalkDirection({ up: false, down: false, left: false, right: true }),
+    );
   });
 
   it("undoes everything in reverse order when destroyed, once", async () => {

@@ -7,6 +7,7 @@ export * from "./entity-view";
 export * from "./events";
 export * from "./grid";
 export * from "./lighting";
+export * from "./parts";
 export * from "./player";
 export * from "./player-view";
 export * from "./projection";

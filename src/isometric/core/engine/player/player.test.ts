@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { ITerrainColumn, PlayerState, ScreenDirections, TerrainMaterial } from "../../types";
+import type { ITerrainColumn, PlayerState, ScreenDirections, TerrainMaterial, WorldPartKey } from "../../types";
 import { CellMap } from "../grid";
 import { TICKS_PER_SECOND } from "../time";
 import {
   PLAYER_MAX_CLIMB,
+  PLAYER_PART,
   PLAYER_RADIUS,
   PLAYER_SPEED,
   PLAYER_STEP,
@@ -145,7 +146,10 @@ describe("createPlayerSystem", () => {
     const player = walking(field, { x: 1, y: 2 }, { up: true, right: true });
     const system = createPlayerSystem();
 
-    system.step({ ...field, player });
+    system.step({
+      ...field,
+      parts: { get: <T>(key: WorldPartKey<T>) => (key.id === PLAYER_PART.id ? player : null) as T },
+    });
 
     expect(system.id).toBe("player");
     expect(player.x).toBeCloseTo(1 + PLAYER_STEP);

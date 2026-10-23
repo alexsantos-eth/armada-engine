@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SimulationEvents } from "../../types";
 import { createEventBus } from "../events";
-import { TICKS_PER_DAY, TICKS_PER_HOUR } from "../time";
+import { CLOCK_PART, createClockPart, TICKS_PER_DAY, TICKS_PER_HOUR } from "../time";
 import { generateWorld } from "../world";
 import { createSimulation, stepWorld } from "../simulation";
 
 const newWorld = (startTick?: number) =>
-  generateWorld({ seed: 1, width: 4, height: 4, entityDefinitions: [], startTick });
+  generateWorld({ seed: 1, width: 4, height: 4, entityDefinitions: [], parts: [createClockPart(startTick)] });
 
 /** Records every simulation event, in emission order. */
 function record(events = createEventBus<SimulationEvents>()) {
@@ -24,7 +24,7 @@ describe("stepWorld with events", () => {
 
     stepWorld(world, 2, { events });
 
-    expect(world.clock.tick).toBe(TICKS_PER_DAY + 1);
+    expect(world.parts.get(CLOCK_PART).tick).toBe(TICKS_PER_DAY + 1);
     expect(log).toEqual([
       `hour ${String(TICKS_PER_DAY)} d1 h0`,
       `day ${String(TICKS_PER_DAY)} d1`,
@@ -49,7 +49,7 @@ describe("stepWorld with events", () => {
     const events = createEventBus<SimulationEvents>();
     const seen: number[] = [];
     events.on("tick", ({ tick }) => {
-      expect(world.clock.tick).toBe(tick);
+      expect(world.parts.get(CLOCK_PART).tick).toBe(tick);
       seen.push(tick);
     });
 
@@ -66,7 +66,7 @@ describe("stepWorld with events", () => {
     stepWorld(world, 5, { events });
 
     expect(emit).not.toHaveBeenCalled();
-    expect(world.clock.tick).toBe(5);
+    expect(world.parts.get(CLOCK_PART).tick).toBe(5);
   });
 
   it("rejects invalid tick counts without changing the world or emitting", () => {
@@ -75,7 +75,7 @@ describe("stepWorld with events", () => {
 
     expect(() => stepWorld(world, 1.5, { events })).toThrow(RangeError);
     expect(() => stepWorld(newWorld(1), Number.MAX_SAFE_INTEGER, { events })).toThrow(RangeError);
-    expect(world.clock.tick).toBe(0);
+    expect(world.parts.get(CLOCK_PART).tick).toBe(0);
     expect(log).toEqual([]);
   });
 });

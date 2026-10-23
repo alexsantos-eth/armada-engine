@@ -3,6 +3,7 @@ import { CAMERA_MAX_ZOOM } from "../camera";
 import { BOX_HEIGHT, TILE_HEIGHT, TILE_METRICS, TILE_WIDTH } from "../constants";
 import { CellMap } from "../grid";
 import { addInDepthOrder, getSvgResolution } from "../render";
+import { CLOCK_PART } from "../time";
 import type { World } from "../world";
 import type { TerrainAppearance } from "../../types";
 import type {
@@ -60,9 +61,12 @@ export type Scene = {
  * Frames come from one `app.ticker` listener at `UPDATE_PRIORITY.NORMAL`: after the simulation
  * (`HIGH`), before the Application renders (`LOW`).
  *
- * @throws When two modules share an id (before anything is created); when a module `requires` a
- * service no earlier module provides, provides one an earlier module already provides, or its
- * setup fails (the modules already set up are destroyed first).
+ * Frames carry the tick of the world's clock (`CLOCK_PART`), so the world needs one.
+ *
+ * @throws When two modules share an id, or the world has no clock part (before anything is
+ * created); when a module `requires` a service no earlier module provides, provides one an
+ * earlier module already provides, or its setup fails (the modules already set up are destroyed
+ * first).
  */
 export async function createScene(
   app: Application,
@@ -72,6 +76,7 @@ export async function createScene(
 ): Promise<Scene> {
   const twin = modules.find(({ id }, index) => modules.findIndex((other) => other.id === id) !== index);
   if (twin) throw new Error(`Scene module id "${twin.id}" is used twice`);
+  const clock = world.parts.get(CLOCK_PART);
 
   const root = new Container({ isRenderGroup: true });
   root.eventMode = "none";
@@ -153,7 +158,7 @@ export async function createScene(
 
   const onFrame = (ticker: Ticker) => {
     const frame: SceneFrame = {
-      tick: world.clock.tick,
+      tick: clock.tick,
       elapsedMs: ticker.elapsedMS,
       alpha: options.interpolation?.() ?? 1,
     };

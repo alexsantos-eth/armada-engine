@@ -7,6 +7,8 @@ import { Assets } from "pixi.js";
 import { CAMERA_MAX_ZOOM } from "../camera";
 import { TILE_METRICS } from "../constants";
 import { addInDepthOrder, getSvgResolution } from "../render";
+import { WorldParts } from "../parts";
+import { CLOCK_PART } from "../time";
 import type { BuiltScene, SceneContext, SceneFrame, SceneModule, SceneModulePart } from "./module";
 import { indexAfter, SCENE_LAYER, sortViews } from "./scene";
 import { mountScene, resetHarness, TEST_TERRAIN, worldFrom } from "../flow-check/scene-harness";
@@ -129,6 +131,16 @@ describe("createScene", () => {
     expect(log).toEqual(["setup first", "destroy first"]);
   });
 
+  it("rejects a world without a clock before setting any module up", async () => {
+    const first = probe("first");
+    const world = shore();
+
+    await expect(mountScene({ ...world, parts: WorldParts.create([], world) }, [first.module])).rejects.toThrow(
+      'The world has no "clock" part',
+    );
+    expect(first.seen.context).toBeUndefined();
+  });
+
   it("rejects two modules with the same id before setting any up", async () => {
     const first = probe("twin");
     const second = probe("twin");
@@ -206,7 +218,7 @@ describe("createScene", () => {
   it("updates every module each frame, in order, from one listener between simulation and render", async () => {
     const log: string[] = [];
     const world = shore();
-    world.clock.tick = 42;
+    world.parts.get(CLOCK_PART).tick = 42;
     const a = probe("a", {}, log);
     const b = probe("b", {}, log);
     const { ticker, scene } = await mountScene(world, [a.module, b.module], { interpolation: () => 0.25 });

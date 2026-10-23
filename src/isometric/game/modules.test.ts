@@ -9,8 +9,9 @@ vi.mock("../core/engine/shadows/received-shadow", async () =>
   (await import("../core/engine/flow-check/scene-harness")).mockReceivedShadow(),
 );
 
+import { CLOCK_PART, PLAYER_PART, TICKS_PER_HOUR, WORLD_START_TICK } from "../core/engine";
 import { createTestEntities, defaultWorld, mountScene, resetHarness } from "../core/engine/flow-check/scene-harness";
-import { createSceneModules, createWorldSystems, findUnknownModules } from "./modules";
+import { createSceneModules, createWorldParts, createWorldSystems, findUnknownModules } from "./modules";
 
 const SCENE_IDS = ["terrain", "entities", "shadows", "ambient-light", "player", "camera"];
 
@@ -41,14 +42,25 @@ describe("createSceneModules", () => {
     const world = defaultWorld(createTestEntities);
     const { ticker, root, scene } = await mountScene(world, createSceneModules(new Set([id])));
 
-    world.clock.tick += 1000;
-    world.player.x += 0.5;
+    world.parts.get(CLOCK_PART).tick += 1000;
+    world.parts.get(PLAYER_PART).x += 0.5;
     ticker.frame();
     ticker.frame();
 
     expect(root.children.length).toBeGreaterThan(0);
     scene.destroy();
     expect(ticker.listeners).toHaveLength(0);
+  });
+});
+
+describe("createWorldParts", () => {
+  it("registers the clock and the player, in that order", () => {
+    expect(createWorldParts().map(({ id }) => id)).toEqual([CLOCK_PART.id, PLAYER_PART.id]);
+  });
+
+  it("starts the clock of a new world at the given tick, or at the world start tick", () => {
+    expect(createWorldParts()[0].create(defaultWorld())).toEqual({ tick: WORLD_START_TICK });
+    expect(createWorldParts(TICKS_PER_HOUR)[0].create(defaultWorld())).toEqual({ tick: TICKS_PER_HOUR });
   });
 });
 

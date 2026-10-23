@@ -1,13 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 import { createEventBus } from "../events";
-import { createPlayerSystem, PLAYER_STEP, setPlayerWalk } from "../player";
-import { TICKS_PER_DAY, TICKS_PER_SECOND } from "../time";
+import { createPlayerPart, createPlayerSystem, PLAYER_PART, PLAYER_STEP, setPlayerWalk } from "../player";
+import { CLOCK_PART, createClockPart, TICKS_PER_DAY, TICKS_PER_SECOND } from "../time";
 import type { SimulationEvents, WorldSystem } from "../../types";
 import { generateWorld, type World } from "../world";
 import { createSimulation, resolveTimeScale, stepWorld } from "./simulation";
 
 const newWorld = (startTick?: number) =>
-  generateWorld({ seed: 1, width: 4, height: 4, entityDefinitions: [], startTick });
+  generateWorld({
+    seed: 1,
+    width: 4,
+    height: 4,
+    entityDefinitions: [],
+    parts: [createClockPart(startTick), createPlayerPart()],
+  });
 
 describe("stepWorld", () => {
   it("advances the world clock by whole ticks", () => {
@@ -15,32 +21,46 @@ describe("stepWorld", () => {
 
     stepWorld(world, 3);
 
-    expect(world.clock.tick).toBe(3);
+    expect(world.parts.get(CLOCK_PART).tick).toBe(3);
   });
 
   it("rejects invalid tick counts without changing the world", () => {
     const world = newWorld(0);
-    setPlayerWalk(world.player, { up: true, down: false, left: false, right: false });
-    const player = { ...world.player };
+    setPlayerWalk(world.parts.get(PLAYER_PART), { up: true, down: false, left: false, right: false });
+    const player = { ...world.parts.get(PLAYER_PART) };
 
     expect(() => stepWorld(world, -1)).toThrow(RangeError);
     expect(() =>
       stepWorld(world, 1.5, { systems: [createPlayerSystem()], events: createEventBus<SimulationEvents>() }),
     ).toThrow(RangeError);
-    expect(world.clock.tick).toBe(0);
-    expect(world.player).toEqual(player);
+    expect(world.parts.get(CLOCK_PART).tick).toBe(0);
+    expect(world.parts.get(PLAYER_PART)).toEqual(player);
+  });
+
+  it("needs the world's clock part, and runs nothing without it", () => {
+    const world = generateWorld({ seed: 1, width: 4, height: 4, entityDefinitions: [], parts: [createPlayerPart()] });
+    const step = vi.fn();
+
+    expect(() => stepWorld(world, 1, { systems: [{ id: "probe", step }] })).toThrow('The world has no "clock" part');
+    expect(step).not.toHaveBeenCalled();
   });
 
   it("walks the player once per tick, the same with and without events", () => {
     const walked = (withEvents: boolean) => {
-      const world = generateWorld({ seed: 42, width: 16, height: 16, entityDefinitions: [], startTick: 0 });
-      setPlayerWalk(world.player, { up: false, down: true, left: false, right: false });
-      const start = { x: world.player.x, y: world.player.y };
+      const world = generateWorld({
+        seed: 42,
+        width: 16,
+        height: 16,
+        entityDefinitions: [],
+        parts: [createClockPart(0), createPlayerPart()],
+      });
+      setPlayerWalk(world.parts.get(PLAYER_PART), { up: false, down: true, left: false, right: false });
+      const start = { x: world.parts.get(PLAYER_PART).x, y: world.parts.get(PLAYER_PART).y };
       stepWorld(world, 2, {
         systems: [createPlayerSystem()],
         events: withEvents ? createEventBus<SimulationEvents>() : undefined,
       });
-      return { start, player: world.player };
+      return { start, player: world.parts.get(PLAYER_PART) };
     };
 
     const { start, player } = walked(false);
@@ -57,7 +77,7 @@ describe("stepWorld", () => {
       id,
       step: (stepped, bus) => {
         expect(bus).toBe(events);
-        log.push(`${id} ${String(stepped.clock.tick)}`);
+        log.push(`${id} ${String(stepped.parts.get(CLOCK_PART).tick)}`);
       },
     });
 
@@ -68,25 +88,31 @@ describe("stepWorld", () => {
 
   it("leaves the player standing without its system", () => {
     const world = newWorld(0);
-    setPlayerWalk(world.player, { up: true, down: false, left: false, right: false });
-    const { x, y } = world.player;
+    setPlayerWalk(world.parts.get(PLAYER_PART), { up: true, down: false, left: false, right: false });
+    const { x, y } = world.parts.get(PLAYER_PART);
 
     stepWorld(world, 5);
 
-    expect(world.player).toMatchObject({ x, y });
+    expect(world.parts.get(PLAYER_PART)).toMatchObject({ x, y });
   });
 
   it("lets event listeners see the player where it is at that tick", () => {
-    const world = generateWorld({ seed: 42, width: 16, height: 16, entityDefinitions: [], startTick: 0 });
-    setPlayerWalk(world.player, { up: false, down: true, left: false, right: false });
+    const world = generateWorld({
+      seed: 42,
+      width: 16,
+      height: 16,
+      entityDefinitions: [],
+      parts: [createClockPart(0), createPlayerPart()],
+    });
+    setPlayerWalk(world.parts.get(PLAYER_PART), { up: false, down: true, left: false, right: false });
     const events = createEventBus<SimulationEvents>();
     const seen: number[] = [];
-    events.on("tick", () => seen.push(world.player.x));
+    events.on("tick", () => seen.push(world.parts.get(PLAYER_PART).x));
 
     stepWorld(world, 2, { systems: [createPlayerSystem()], events });
 
-    expect(seen[1]).toBe(world.player.x);
-    expect(seen[0]).toBe(world.player.previous.x);
+    expect(seen[1]).toBe(world.parts.get(PLAYER_PART).x);
+    expect(seen[0]).toBe(world.parts.get(PLAYER_PART).previous.x);
   });
 });
 
@@ -104,18 +130,26 @@ describe("createSimulation", () => {
     expect(frame.steps).toBe(2);
     expect(frame.tick).toBe(2);
     expect(frame.alpha).toBeCloseTo(0.2);
-    expect(world.clock.tick).toBe(2);
+    expect(world.parts.get(CLOCK_PART).tick).toBe(2);
   });
 
   it("runs its systems on every tick", () => {
-    const world = generateWorld({ seed: 42, width: 16, height: 16, entityDefinitions: [], startTick: 0 });
-    setPlayerWalk(world.player, { up: false, down: true, left: false, right: false });
-    const start = { x: world.player.x, y: world.player.y };
+    const world = generateWorld({
+      seed: 42,
+      width: 16,
+      height: 16,
+      entityDefinitions: [],
+      parts: [createClockPart(0), createPlayerPart()],
+    });
+    setPlayerWalk(world.parts.get(PLAYER_PART), { up: false, down: true, left: false, right: false });
+    const start = { x: world.parts.get(PLAYER_PART).x, y: world.parts.get(PLAYER_PART).y };
     const simulation = createSimulation(world, { systems: [createPlayerSystem()] });
 
     simulation.frame(100);
 
-    expect(Math.hypot(world.player.x - start.x, world.player.y - start.y)).toBeCloseTo(2 * PLAYER_STEP);
+    expect(Math.hypot(world.parts.get(PLAYER_PART).x - start.x, world.parts.get(PLAYER_PART).y - start.y)).toBeCloseTo(
+      2 * PLAYER_STEP,
+    );
   });
 
   it("runs one game day in 20 real minutes at 60 FPS", () => {
@@ -124,7 +158,7 @@ describe("createSimulation", () => {
 
     for (let frame = 0; frame < 20 * 60 * 60; frame += 1) simulation.frame(1000 / 60);
 
-    expect(Math.abs(world.clock.tick - TICKS_PER_DAY)).toBeLessThanOrEqual(1);
+    expect(Math.abs(world.parts.get(CLOCK_PART).tick - TICKS_PER_DAY)).toBeLessThanOrEqual(1);
   });
 
   it("honours the stepper options and lets the game pause and speed up time", () => {
@@ -133,9 +167,9 @@ describe("createSimulation", () => {
 
     const ticksPerCappedFrame = (2 * 250) / (1000 / TICKS_PER_SECOND);
     simulation.frame(1000); // capped at 250 ms of real time, then doubled
-    expect(world.clock.tick).toBe(ticksPerCappedFrame);
+    expect(world.parts.get(CLOCK_PART).tick).toBe(ticksPerCappedFrame);
     simulation.frame(250);
-    expect(world.clock.tick).toBe(2 * ticksPerCappedFrame);
+    expect(world.parts.get(CLOCK_PART).tick).toBe(2 * ticksPerCappedFrame);
 
     simulation.stepper.paused = true;
     expect(simulation.frame(250).steps).toBe(0);

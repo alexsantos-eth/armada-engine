@@ -2,16 +2,18 @@ import { Application, type Ticker, UPDATE_PRIORITY } from "pixi.js";
 import { ENTITY_CONFIG, TERRAIN_APPEARANCE } from "../content";
 import {
   bindCameraControls,
+  CLOCK_PART,
   createScene,
   createSimulation,
   generateWorld,
   getInterpolationAlpha,
+  PLAYER_PART,
   setPlayerWalk,
   type RandomSource,
 } from "../core/engine";
 import { bindKeyboardControls } from "../input";
 import { formatClockLabel, resolveLaunchOptions } from "./launch";
-import { createSceneModules, createWorldSystems, findUnknownModules } from "./modules";
+import { createSceneModules, createWorldParts, createWorldSystems, findUnknownModules } from "./modules";
 
 /** Where and how a game runs. */
 export type GameOptions = {
@@ -78,7 +80,7 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     log(`Armada world seed: ${seed}`);
     const unknown = findUnknownModules(disabledModules);
     if (unknown.length > 0) log(`Armada ?modules= names no module: ${unknown.join(", ")}`);
-    const world = generateWorld({ seed, entityDefinitions: ENTITY_CONFIG, startTick });
+    const world = generateWorld({ seed, entityDefinitions: ENTITY_CONFIG, parts: createWorldParts(startTick) });
     const simulation = createSimulation(world, { timeScale, systems: createWorldSystems(disabledModules) });
     // The scene draws the player between its last two ticks, and the camera follows it.
     const scene = await createScene(app, world, createSceneModules(disabledModules), {
@@ -92,7 +94,7 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     if (camera) teardowns.push(bindCameraControls(app.stage, app.renderer.screen, camera));
     teardowns.push(
       bindKeyboardControls(window, {
-        walk: (directions) => setPlayerWalk(world.player, directions),
+        walk: (directions) => setPlayerWalk(world.parts.get(PLAYER_PART), directions),
         zoom: (factor) => {
           const { width, height } = app.renderer.screen;
           camera?.zoomAt(factor, { x: width / 2, y: height / 2 });
@@ -104,7 +106,7 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
       const { steps, tick } = simulation.frame(ticker.elapsedMS);
       if (steps > 0) onClockChange(formatClockLabel(tick, timeScale));
     };
-    onClockChange(formatClockLabel(world.clock.tick, timeScale));
+    onClockChange(formatClockLabel(world.parts.get(CLOCK_PART).tick, timeScale));
     app.ticker.add(onTick, undefined, UPDATE_PRIORITY.HIGH);
     teardowns.push(() => app.ticker.remove(onTick));
   };

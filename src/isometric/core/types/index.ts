@@ -4,6 +4,7 @@ export * from "./events";
 export * from "./grid";
 export * from "./iso";
 export * from "./lighting";
+export * from "./parts";
 export * from "./player";
 export * from "./simulation";
 export * from "./terrain";

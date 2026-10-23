@@ -15,9 +15,11 @@ import { vi } from "vitest";
 import type * as ColorModule from "../render/color";
 import { Entity, indexEntities } from "../entities";
 import { CellMap } from "../grid";
-import { createPlayer } from "../player";
+import { WorldParts } from "../parts";
+import { createPlayer, createPlayerPart } from "../player";
 import { type Box, createTerrainColumns } from "../terrain";
-import { generateWorld, type World } from "../world";
+import { createClockPart } from "../time";
+import { generateWorld, type World, type WorldPartContext, type WorldPartOf } from "../world";
 import type { TerrainAppearance, TerrainPoint } from "../../types";
 import type { SceneModule, SceneOptions } from "../scene";
 
@@ -376,28 +378,36 @@ export async function mountScene(
 /** Builds entities on the columns of a world. */
 export type EntityFactory = (columns: readonly Box[]) => Entity[];
 
-/** The generated default terrain (no configured entities) with test entities on top. */
+/** The parts the game registers: the clock (at the world start tick) and the player. */
+export const testParts = (): WorldPartOf[] => [createClockPart(), createPlayerPart()];
+
+/**
+ * The generated default terrain (no configured entities) with test entities on top, and the
+ * game's parts (`testParts()`) created on that ground.
+ */
 export const defaultWorld = (createEntities: EntityFactory = () => []): World => {
   const world = generateWorld({ entityDefinitions: [] });
   const entities = createEntities(world.columns);
-  return { ...world, entities, occupancy: indexEntities(entities) };
+  const base: WorldPartContext = { ...world, entities, occupancy: indexEntities(entities) };
+  return { ...base, parts: WorldParts.create(testParts(), base) };
 };
 
 /** A world built from explicit terrain points, for precise material checks. */
 export const worldFrom = (points: TerrainPoint[], createEntities: EntityFactory = () => []): World => {
   const columns = createTerrainColumns(points);
   const entities = createEntities(columns);
-  const ground = { columnIndex: CellMap.from(columns, (column) => column), occupancy: indexEntities(entities) };
-  return {
+  const base: WorldPartContext = {
     seed: 0,
     width: 0,
     height: 0,
     columns,
     entities,
-    ...ground,
-    clock: { tick: 0 },
-    player: createPlayer(ground, { x: 0, y: 0 }),
+    columnIndex: CellMap.from(columns, (column) => column),
+    occupancy: indexEntities(entities),
   };
+  // The clock at tick 0 and the player on column (0, 0), wherever it would spawn.
+  const player: WorldPartOf = { ...createPlayerPart(), create: (ground) => createPlayer(ground, { x: 0, y: 0 }) };
+  return { ...base, parts: WorldParts.create([createClockPart(0), player], base) };
 };
 
 /** One two-tile statue on the first column. */

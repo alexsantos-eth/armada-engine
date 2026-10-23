@@ -1,6 +1,6 @@
 import { rgbToTint } from "../render";
 import type { SceneModule } from "../scene";
-import { getSunState } from "../time";
+import { CLOCK_PART, getSunState } from "../time";
 
 /**
  * Scene module of the ambient light: tints the world container (a render group, so the tint is
@@ -19,7 +19,7 @@ export function createAmbientLight(): SceneModule {
         tintedTick = tick;
       };
       return {
-        start: () => update(world.clock.tick),
+        start: () => update(world.parts.get(CLOCK_PART).tick),
         update: ({ tick }) => update(tick),
         destroy: () => {},
       };

@@ -20,7 +20,7 @@ import {
 import { projectBoxesToIsometric } from "../projection";
 import { getBlockDepth } from "../render";
 import { SCENE_LAYER, type SceneModule, type SceneView } from "../scene";
-import { getSunState } from "../time";
+import { CLOCK_PART, getSunState } from "../time";
 import type { OcclusionTerrain, ShadowProjection } from "../../types";
 import { createReceivedShadows, type ShadowReceiver } from "./received-shadow";
 import {
@@ -242,7 +242,7 @@ export function createShadows(): SceneModule {
 
       return {
         views,
-        start: () => update(world.clock.tick),
+        start: () => update(world.parts.get(CLOCK_PART).tick),
         update: ({ tick }) => update(tick),
         destroy: () => {
           layers.forEach(({ root, occlusion }) => {

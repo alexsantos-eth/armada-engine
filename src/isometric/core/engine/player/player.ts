@@ -5,6 +5,8 @@ import type {
   PlayerState,
   ScreenDirections,
   WorldCoord,
+  WorldPartKey,
+  WorldPartReader,
   WorldSystem,
 } from "../../types";
 import type { ReadonlyCellMap } from "../grid";
@@ -24,6 +26,9 @@ export const PLAYER_RADIUS = 0.2;
 
 /** Most blocks the player climbs up or down from one column to the next. */
 export const PLAYER_MAX_CLIMB = 1;
+
+/** Key of the player part (`createPlayerPart()`): read it with `world.parts.get(PLAYER_PART)`. */
+export const PLAYER_PART: WorldPartKey<PlayerState> = { id: "player" };
 
 /**
  * What the player walks on: the terrain columns, and what occupies each one. The `World`
@@ -145,15 +150,20 @@ export function stepPlayer(player: PlayerState, ground: PlayerGround, ticks = 1)
   }
 }
 
-/** A world with a player: its ground and the player standing on it (the `World` is one). */
-export type PlayerWorld = PlayerGround & { readonly player: PlayerState };
+/**
+ * A world with a player: its ground and its parts, among them the player ({@link PLAYER_PART}).
+ * The `World` is one.
+ */
+export type PlayerWorld = PlayerGround & { readonly parts: WorldPartReader };
 
 /**
- * The player as a game system for `stepWorld()`: each tick, the player walks one step
- * (`stepPlayer()`) on the world's ground.
+ * The player as a game system for `stepWorld()`: each tick, the world's player
+ * ({@link PLAYER_PART}) walks one step (`stepPlayer()`) on the world's ground.
+ *
+ * @throws On a step, when the world has no player part.
  */
 export function createPlayerSystem(): WorldSystem<PlayerWorld> {
-  return { id: "player", step: (world) => stepPlayer(world.player, world) };
+  return { id: "player", step: (world) => stepPlayer(world.parts.get(PLAYER_PART), world) };
 }
 
 /**
