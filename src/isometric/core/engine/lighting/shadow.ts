@@ -85,3 +85,48 @@ export function getSilhouetteMatrix(
     ty: foot.y + liftReach * projection.dirY,
   };
 }
+
+/**
+ * Where the sun lays a caster's silhouette on another entity, both upright cut-outs turned to
+ * face the sun as in {@link getSilhouetteMatrix}. A sun ray through the caster reaches the
+ * receiver `along` tiles further down the shadow and `along / stretch` tiles of height lower,
+ * keeping its offset across the shadow; so every pixel of the caster's silhouette, relative to
+ * the caster's foot, lands on the receiver at the same point relative to the receiver's foot
+ * plus the returned offset (screen pixels, `y` down). Rows the offset moves below the
+ * receiver's foot fell on the ground before reaching it.
+ *
+ * `null` when the receiver is not down the shadow from the caster (beside or towards the sun),
+ * or when the sun is straight overhead.
+ *
+ * @param casterFoot World position (tiles) the caster stands on.
+ * @param receiverFoot World position (tiles) the receiver stands on.
+ * @param lift Blocks the caster stands above the receiver (negative when below).
+ */
+export function getCastShadowOffset(
+  projection: ShadowProjection,
+  casterFoot: { readonly x: number; readonly y: number },
+  receiverFoot: { readonly x: number; readonly y: number },
+  lift: number,
+  metrics: TileMetrics,
+): { x: number; y: number } | null {
+  const toX = receiverFoot.x - casterFoot.x;
+  const toY = receiverFoot.y - casterFoot.y;
+  const along = projection.dirX * toX + projection.dirY * toY;
+  if (along <= 0 || projection.stretch <= 0) return null;
+
+  // Across the shadow: (dirY, −dirX), screen right as in `getSilhouetteMatrix()`.
+  const across = -(projection.dirY * toX - projection.dirX * toY);
+  return {
+    x: across / (Math.SQRT2 / metrics.tileWidth),
+    y: along / (projection.stretch * tilesPerPixelOfHeight(metrics)) - lift * metrics.boxHeight,
+  };
+}
+
+/**
+ * Farthest ground distance (tiles) the shadow of something `height` screen pixels tall can
+ * reach, `lift` blocks above the ground it falls on, with the sun as low as shadows get
+ * ({@link MAX_SHADOW_STRETCH}). Whatever stands farther away is never shaded by it.
+ */
+export function getShadowReach(height: number, lift: number, metrics: TileMetrics): number {
+  return Math.max(0, MAX_SHADOW_STRETCH * tilesPerPixelOfHeight(metrics) * (height + lift * metrics.boxHeight));
+}

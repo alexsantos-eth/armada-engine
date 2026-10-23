@@ -67,6 +67,10 @@ export function createGroundShadowView(
 export type Silhouette = {
   /** Black sprite drawn into the shadow maps (never into the scene). */
   readonly sprite: Sprite;
+  /** The entity's sprite it copies, drawn in the scene: what other casters' shadows fall on. */
+  readonly source: Sprite;
+  /** Draw depth of `source`. */
+  readonly depth: number;
   /** World tile the sprite stands on. */
   readonly worldFoot: PlanePoint;
   /** Screen point of that tile's centre at the caster's ground level. */
@@ -103,11 +107,11 @@ export function createSilhouettes(
   length = 1,
   lengthAxis: EntityLengthAxis = "x",
 ): Silhouette[] {
-  const sprites = views.map(({ view }) => view).filter((view): view is Sprite => view instanceof Sprite);
+  const sprites = views.filter((item): item is DepthView & { view: Sprite } => item.view instanceof Sprite);
   const tiles = sprites.length > 1 ? getFootprintSliceTiles(length, lengthAxis) : [0];
   const sideways = lengthAxis === "y" ? -1 : 1;
 
-  return sprites.map((source, index) => {
+  return sprites.map(({ view: source, depth }, index) => {
     const tile = tiles[index];
     const screenFoot = {
       x: box.screenX + sideways * tile * (metrics.tileWidth / 2),
@@ -121,6 +125,8 @@ export function createSilhouettes(
 
     return {
       sprite,
+      source,
+      depth,
       worldFoot: {
         x: box.x + (lengthAxis === "x" ? tile : 0),
         y: box.y + (lengthAxis === "y" ? tile : 0),

@@ -42,7 +42,9 @@ import { CellMap } from "../grid";
 import {
   AO_PIXELS_PER_TILE,
   buildOcclusionMap,
+  getCastShadowOffset,
   getShadowProjection,
+  getShadowReach,
   getSilhouetteMatrix,
   SHADOW_REFRESH_TICKS,
 } from "../lighting";
@@ -50,6 +52,7 @@ import {
   addInDepthOrder,
   createBlockViews,
   createGroundShadowView,
+  createReceivedShadows,
   createSilhouettes,
   createSvgColorVariant,
   type DepthView,
@@ -59,6 +62,7 @@ import {
   rgbToTint,
   SHADOW_BLUR,
   SHADOW_MAP_PIXELS_PER_TILE,
+  type ShadowReceiver,
   type Silhouette,
 } from "../render";
 import { getSunState } from "../time";
@@ -101,9 +105,22 @@ type ShadowLayer = {
   /** Silhouettes of the entities on this level or higher, with the shared filters. */
   readonly casters?: Container;
   readonly silhouettes: readonly { silhouette: Silhouette; lift: number }[];
-  /** Tick the map was last drawn for. */
+};
+
+/** Something drawn from the sun into a texture: a shadow map, or the shadows entities receive. */
+type ShadowTarget = {
+  /** Its casters, hidden at night (none when nothing casts on it). */
+  readonly casters?: Container;
+  readonly draw: (sun: ShadowProjection | null) => void;
+  /** Tick it was last drawn for. */
   drawnTick: number;
 };
+
+/**
+ * Tiles beyond a caster's shadow reach that a receiver may still stand and be shaded: the
+ * shadow and the receiver are as wide as a tile.
+ */
+const RECEIVER_SPAN = 1;
 
 /** Options of {@link createIsometricScene}. */
 export type IsometricSceneOptions = {
@@ -160,6 +177,11 @@ export type IsometricScene = {
  * tints the world with the ambient light when the tick changed; draws every map when it is
  * built, at sunrise and at sunset (without silhouettes at night); and by day redraws one map per
  * frame, the stalest, once it is `SHADOW_REFRESH_TICKS` old.
+ *
+ * Entities also shade each other: every entity sprite within reach of another entity's shadow
+ * (`getShadowReach()`) shows its square of one atlas right after it (`createReceivedShadows()`),
+ * where the other silhouettes land as `getCastShadowOffset()` says. The atlas takes its turn
+ * among the maps.
  */
 export async function createIsometricScene(
   app: Application,
@@ -332,6 +354,40 @@ export async function createIsometricScene(
     });
   }
 
+  // Silhouettes are drawn into shadow textures, never into the scene: blurred for soft edges,
+  // with the sun's opacity applied to each group as a whole so overlaps do not darken twice.
+  const blurFilter = new BlurFilter({ strength: SHADOW_BLUR, quality: 2 });
+  const alphaFilter = new AlphaFilter({ alpha: 1 });
+
+  // Shadows entities cast on each other: each entity sprite receives the silhouettes of the
+  // other entities whose shadow could reach it with the sun at its lowest.
+  const bodies = casterViews.map(({ entity, views: entityViews }) => ({
+    entity,
+    silhouettes: createSilhouettes(entityViews, entity, TILE_METRICS, entity.box.length, entity.box.lengthAxis ?? "x"),
+  }));
+  const receivers: ShadowReceiver[] = bodies
+    .flatMap((body) =>
+      body.silhouettes.map((own) => ({
+        own,
+        casters: bodies
+          .filter((other) => other !== body)
+          .flatMap((other) => {
+            const lift = other.entity.box.elevation - body.entity.box.elevation;
+            return other.silhouettes
+              .filter(
+                ({ worldFoot, display }) =>
+                  Math.hypot(own.worldFoot.x - worldFoot.x, own.worldFoot.y - worldFoot.y) <=
+                  getShadowReach(display.height, lift, TILE_METRICS) + RECEIVER_SPAN,
+              )
+              .map((silhouette) => ({ silhouette, lift }));
+          }),
+      })),
+    )
+    .filter(({ casters }) => casters.length > 0);
+  const received =
+    receivers.length > 0 ? createReceivedShadows(receivers, app.renderer, [blurFilter, alphaFilter]) : undefined;
+  if (received) views.push(...received.views);
+
   // Every world view is created, also the ones off screen, so a moving camera reveals them.
   // Culled on demand by the camera: Pixi's `CullerPlugin` would walk every view each frame.
   views.forEach(({ view }) => {
@@ -398,10 +454,6 @@ export async function createIsometricScene(
     levelAt: (x, y) => columnAt.get(x, y)?.elevation,
   };
 
-  // Silhouettes are drawn into the shadow maps, never into the scene: blurred for soft edges,
-  // with the sun's opacity applied to each group as a whole so overlaps do not darken twice.
-  const blurFilter = new BlurFilter({ strength: SHADOW_BLUR, quality: 2 });
-  const alphaFilter = new AlphaFilter({ alpha: 1 });
   const layers: ShadowLayer[] = [...shadowMaps].map(([level, map]) => {
     const root = new Container();
     const occlusion = new Texture({
@@ -423,7 +475,7 @@ export async function createIsometricScene(
           (silhouette) => ({ silhouette, lift: entity.box.elevation - level }),
         ),
       );
-    if (silhouettes.length === 0) return { map, root, occlusion, silhouettes, drawnTick: 0 };
+    if (silhouettes.length === 0) return { map, root, occlusion, silhouettes };
 
     const casters = new Container();
     casters.filters = [blurFilter, alphaFilter];
@@ -431,19 +483,37 @@ export async function createIsometricScene(
     casters.filterArea = new Rectangle(0, 0, map.width, map.height);
     silhouettes.forEach(({ silhouette }) => casters.addChild(silhouette.sprite));
     root.addChild(casters);
-    return { map, root, occlusion, casters, silhouettes, drawnTick: 0 };
+    return { map, root, occlusion, casters, silhouettes };
   });
 
-  const drawLayer = (layer: ShadowLayer, tick: number, sun: ShadowProjection | null) => {
+  const drawLayer = (layer: ShadowLayer, sun: ShadowProjection | null) => {
     if (sun && layer.casters) {
-      alphaFilter.alpha = sun.alpha;
       layer.silhouettes.forEach(({ silhouette, lift }) => {
         const ground = getSilhouetteMatrix(sun, silhouette.worldFoot, lift, TILE_METRICS);
         placeSilhouette(silhouette, ground, mapOrigin, pixelsPerTile);
       });
     }
     app.renderer.render({ container: layer.root, target: layer.map, clear: true, clearColor: [0, 0, 0, 0] });
-    layer.drawnTick = tick;
+  };
+  const targets: ShadowTarget[] = layers.map((layer) => ({
+    casters: layer.casters,
+    draw: (sun) => drawLayer(layer, sun),
+    drawnTick: 0,
+  }));
+  if (received) {
+    targets.push({
+      casters: received.casters,
+      draw: (sun) =>
+        received.draw(
+          sun && ((caster, receiver, lift) => getCastShadowOffset(sun, caster, receiver, lift, TILE_METRICS)),
+        ),
+      drawnTick: 0,
+    });
+  }
+  const drawTarget = (target: ShadowTarget, tick: number, sun: ShadowProjection | null) => {
+    if (sun) alphaFilter.alpha = sun.alpha;
+    target.draw(sun);
+    target.drawnTick = tick;
   };
 
   let tintedTick: number | undefined;
@@ -461,9 +531,9 @@ export async function createIsometricScene(
     // When built, at sunrise and at sunset: every map (casters only by day).
     if (isDay !== daytime) {
       daytime = isDay;
-      layers.forEach((layer) => {
-        if (layer.casters) layer.casters.visible = isDay;
-        drawLayer(layer, tick, shadows);
+      targets.forEach((target) => {
+        if (target.casters) target.casters.visible = isDay;
+        drawTarget(target, tick, shadows);
       });
       return;
     }
@@ -471,16 +541,16 @@ export async function createIsometricScene(
 
     // By day, one map per frame: the stalest, so no frame pays for all of them and, in turns,
     // all keep moving even when a refresh falls due on every frame.
-    let stalest: ShadowLayer | undefined;
+    let stalest: ShadowTarget | undefined;
     let stalestAge = SHADOW_REFRESH_TICKS - 1;
-    layers.forEach((layer) => {
-      const age = Math.abs(tick - layer.drawnTick);
-      if (layer.casters && age > stalestAge) {
-        stalest = layer;
+    targets.forEach((target) => {
+      const age = Math.abs(tick - target.drawnTick);
+      if (target.casters && age > stalestAge) {
+        stalest = target;
         stalestAge = age;
       }
     });
-    if (stalest) drawLayer(stalest, tick, shadows);
+    if (stalest) drawTarget(stalest, tick, shadows);
   };
   updateLight();
   app.ticker.add(updateLight, undefined, UPDATE_PRIORITY.NORMAL);
@@ -539,6 +609,7 @@ export async function createIsometricScene(
       occlusion.destroy(true);
     });
     shadowMaps.forEach((map) => map.destroy(true));
+    received?.destroy();
     void Assets.unload(grassBlockSource);
     void Assets.unload(groundBlockSource);
     void Assets.unload(waterBlockSource);

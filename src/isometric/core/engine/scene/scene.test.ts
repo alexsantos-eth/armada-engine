@@ -183,14 +183,28 @@ vi.mock("../render", async () => ({
     }),
   ),
   getSvgResolution: vi.fn((tileWidth: number, resolution = 1) => (tileWidth * resolution * 1.5) / 1024),
-  createSilhouettes: vi.fn((_views: unknown, box: { x: number; y: number; box: { elevation: number } }) => [
-    {
-      sprite: { silhouetteOf: box.box },
-      worldFoot: { x: box.x, y: box.y },
-      screenFoot: { x: 0, y: 0 },
-      display: { left: 0, top: 0, width: 1, height: 1 },
-    },
-  ]),
+  createSilhouettes: vi.fn(
+    (views: { view: unknown; depth: number }[], box: { x: number; y: number; box: { elevation: number } }) => [
+      {
+        sprite: { silhouetteOf: box.box },
+        source: views[0].view,
+        depth: views[0].depth,
+        worldFoot: { x: box.x, y: box.y },
+        screenFoot: { x: 0, y: 0 },
+        display: { left: 0, top: 0, width: 1, height: 1 },
+      },
+    ],
+  ),
+  createReceivedShadows: vi.fn((receivers: { own: { source: unknown; depth: number } }[]) => ({
+    views: receivers.map(({ own }) => ({
+      view: { cullable: false, source: "received-shadow", receivedShadowOf: own.source },
+      depth: own.depth,
+    })),
+    casters: { visible: true },
+    atlas: {},
+    draw: vi.fn(),
+    destroy: vi.fn(),
+  })),
   placeSilhouette: vi.fn(),
   addInDepthOrder: vi.fn(
     (container: { addChild: (child: unknown) => void }, views: { view: unknown; depth: number }[]) => {
@@ -209,13 +223,20 @@ import {
   addInDepthOrder,
   createBlockViews,
   createGroundShadowView,
+  createReceivedShadows,
   createSilhouettes,
   createSvgColorVariant,
   getBlockDepth,
   getSvgResolution,
   placeSilhouette,
 } from "../render";
-import { AO_PIXELS_PER_TILE, getShadowProjection, getSilhouetteMatrix, SHADOW_REFRESH_TICKS } from "../lighting";
+import {
+  AO_PIXELS_PER_TILE,
+  getCastShadowOffset,
+  getShadowProjection,
+  getSilhouetteMatrix,
+  SHADOW_REFRESH_TICKS,
+} from "../lighting";
 import { type Box, createTerrainColumns } from "../terrain";
 import { generateWorld, type World } from "../world";
 import { DEFAULT_SKY_PALETTE, TICKS_PER_DAY, getSunState } from "../time";
@@ -1166,8 +1187,10 @@ describe("createIsometricScene", () => {
 
       expect(renderer.render).toHaveBeenCalledTimes(levels.size);
       expect(renderer.render).toHaveBeenCalledWith(expect.objectContaining({ clear: true, clearColor: [0, 0, 0, 0] }));
-      // One silhouette set per map the entity reaches, each in that map's own fixed layer.
-      expect(createSilhouettes).toHaveBeenCalledTimes(lowerLevels.length);
+      // One silhouette set per map the entity reaches, each in that map's own fixed layer, and
+      // one cast on other entities (none here: it is alone).
+      expect(createSilhouettes).toHaveBeenCalledTimes(lowerLevels.length + 1);
+      expect(createReceivedShadows).not.toHaveBeenCalled();
       expect(placeSilhouette).toHaveBeenCalledTimes(lowerLevels.length);
       lowerLevels.forEach((level) => {
         expect(placeSilhouette).toHaveBeenCalledWith(
@@ -1380,6 +1403,112 @@ describe("createIsometricScene", () => {
       expect(placeSilhouette).toHaveBeenCalled();
       expect(casters.every(({ visibleWrites }) => visibleWrites.join() === "false,true")).toBe(true);
       destroyScene();
+    });
+
+    describe("on other entities", () => {
+      /** A row of columns, entities standing on `entityColumns` (one with its block raised). */
+      const row = (entityColumns: number[], raised?: number) =>
+        worldFrom(
+          [0, 1, 2, 3, 4, 5].map((x) => ({ x, y: 0, elevation: x === raised ? 2 : 1 })),
+          (columns) =>
+            entityColumns.map((x) => {
+              const column = columns.find((box) => box.x === x) as Box;
+              return new Entity(
+                x,
+                0,
+                {
+                  id: `tree-${x}`,
+                  textureSource: "/assets/tree/block.svg",
+                  height: 1,
+                  spawnChance: 1,
+                  surface: "grass",
+                },
+                column.elevation,
+              );
+            }),
+        );
+      type Received = ReturnType<typeof createReceivedShadows> & {
+        casters: { visible: boolean };
+        draw: ReturnType<typeof vi.fn>;
+        destroy: ReturnType<typeof vi.fn>;
+      };
+      const received = () => vi.mocked(createReceivedShadows).mock.results[0].value as Received;
+      const receiversOf = () => vi.mocked(createReceivedShadows).mock.calls[0][0];
+
+      it("lets each entity receive the silhouettes of the others whose shadow can reach it", async () => {
+        const world = at(row([0, 1, 5]), 10);
+        const { destroyScene } = await sceneOf(world);
+        const footOf = (silhouette: { worldFoot: { x: number } }) => silhouette.worldFoot.x;
+
+        expect(createReceivedShadows).toHaveBeenCalledTimes(1);
+        // The two neighbours shade each other; the tree at x = 5 is beyond any shadow's reach.
+        expect(
+          receiversOf().map(({ own, casters }) => [footOf(own), casters.map(({ silhouette }) => footOf(silhouette))]),
+        ).toEqual([
+          [0, [1]],
+          [1, [0]],
+        ]);
+        expect(receiversOf()[0].casters[0].lift).toBe(0);
+        destroyScene();
+      });
+
+      it("gives each caster the blocks it stands above its receiver", async () => {
+        const { destroyScene } = await sceneOf(at(row([0, 1], 1), 10));
+        const lifts = receiversOf().map(({ casters }) => casters[0].lift);
+
+        expect(lifts).toEqual([1, -1]);
+        destroyScene();
+      });
+
+      it("draws a receiver's shadow right after its sprite, with the ground shadows' filters", async () => {
+        const world = at(row([0, 1]), 10);
+        const { children, destroyScene } = await sceneOf(world);
+        type Child = View & { receivedShadowOf?: unknown };
+        const shadowIndex = (children as Child[]).findIndex(({ receivedShadowOf }) => receivedShadowOf !== undefined);
+        const shadow = children[shadowIndex] as Child;
+        const [blur, opacity] = castersOf()[0].filters as unknown[];
+
+        expect(children[shadowIndex - 1]).toBe(shadow.receivedShadowOf);
+        expect(vi.mocked(createReceivedShadows).mock.calls[0][2]).toEqual([blur, opacity]);
+        destroyScene();
+      });
+
+      it("lays the casters with the sun when built and on its turn by day", async () => {
+        const world = at(row([0, 1]), 10);
+        const { ticker, destroyScene } = await sceneOf(world);
+        const { draw } = received();
+        const sun = getShadowProjection(getSunState(world.clock.tick));
+        const offsetOf = draw.mock.calls[0][0] as (...args: unknown[]) => unknown;
+
+        expect(draw).toHaveBeenCalledTimes(1);
+        expect(offsetOf({ x: 0, y: 0 }, { x: 1, y: 0 }, 1)).toEqual(
+          getCastShadowOffset(sun as never, { x: 0, y: 0 }, { x: 1, y: 0 }, 1, TILE_METRICS),
+        );
+
+        // One target per frame, the stalest: within a few frames the atlas is drawn again.
+        const levels = new Set(world.columns.map(({ elevation }) => elevation)).size;
+        for (let frame = 0; frame <= levels; frame += 1) {
+          world.clock.tick += SHADOW_REFRESH_TICKS;
+          ticker.frame();
+        }
+        expect(draw.mock.calls.length).toBeGreaterThan(1);
+        destroyScene();
+      });
+
+      it("draws the atlas empty at night, hiding its casters", async () => {
+        const { destroyScene } = await sceneOf(at(row([0, 1]), 0));
+
+        expect(received().draw).toHaveBeenCalledWith(null);
+        expect(received().casters.visible).toBe(false);
+        destroyScene();
+      });
+
+      it("destroys the received shadows with the scene", async () => {
+        const { destroyScene } = await sceneOf(at(row([0, 1]), 10));
+
+        destroyScene();
+        expect(received().destroy).toHaveBeenCalled();
+      });
     });
 
     it("destroys the shadow maps, their layers and the occlusion textures when the scene is destroyed", async () => {

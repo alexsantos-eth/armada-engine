@@ -3,7 +3,9 @@ import type { Affine2D, SunState } from "../../types";
 import { BOX_HEIGHT, TILE_METRICS, TILE_WIDTH } from "../constants";
 import {
   BLOCK_HEIGHT_IN_TILES,
+  getCastShadowOffset,
   getShadowProjection,
+  getShadowReach,
   getSilhouetteMatrix,
   MAX_SHADOW_STRETCH,
   SHADOW_ALPHA,
@@ -127,5 +129,72 @@ describe("getSilhouetteMatrix", () => {
 
     expect(twoBelow.x - onOwnPlane.x).toBeCloseTo(projection.dirX * reach);
     expect(twoBelow.y - onOwnPlane.y).toBeCloseTo(projection.dirY * reach);
+  });
+});
+
+describe("getCastShadowOffset", () => {
+  const projection = { dirX: 0.6, dirY: 0.8, stretch: 1.5, alpha: 0.3 };
+  const caster = { x: 4, y: 7 };
+  const down = (tiles: number, across = 0) => ({
+    x: caster.x + projection.dirX * tiles + projection.dirY * across,
+    y: caster.y + projection.dirY * tiles - projection.dirX * across,
+  });
+
+  it.each([
+    { name: "straight down the shadow", receiver: down(2), lift: 0 },
+    { name: "beside the shadow's axis", receiver: down(1.5, 0.4), lift: 0 },
+    { name: "on lower ground", receiver: down(3, -0.3), lift: 2 },
+    { name: "on higher ground", receiver: down(2.5), lift: -1 },
+  ])("puts on the receiver's foot the caster pixel whose ground shadow falls there ($name)", ({ receiver, lift }) => {
+    const offset = getCastShadowOffset(projection, caster, receiver, lift, TILE_METRICS);
+    // The caster pixel drawn at the receiver's foot: its shadow on the receiver's ground plane.
+    const ground = apply(
+      getSilhouetteMatrix(projection, caster, lift, TILE_METRICS),
+      -(offset?.x ?? NaN),
+      -(offset?.y ?? NaN),
+    );
+
+    expect(ground.x).toBeCloseTo(receiver.x);
+    expect(ground.y).toBeCloseTo(receiver.y);
+  });
+
+  it("lowers the shadow on the receiver the farther down the shadow it stands", () => {
+    const near = getCastShadowOffset(projection, caster, down(1), 0, TILE_METRICS);
+    const far = getCastShadowOffset(projection, caster, down(2), 0, TILE_METRICS);
+
+    expect(near?.x).toBeCloseTo(0);
+    expect((far?.y ?? 0) - (near?.y ?? 0)).toBeCloseTo((near?.y ?? 0) - 0);
+    expect(near?.y).toBeCloseTo(BOX_HEIGHT / (projection.stretch * BLOCK_HEIGHT_IN_TILES));
+  });
+
+  it("raises the shadow on the receiver by the blocks the caster stands above it", () => {
+    const level = getCastShadowOffset(projection, caster, down(1), 0, TILE_METRICS);
+    const above = getCastShadowOffset(projection, caster, down(1), 2, TILE_METRICS);
+
+    expect((level?.y ?? 0) - (above?.y ?? 0)).toBeCloseTo(2 * BOX_HEIGHT);
+  });
+
+  it("shifts the shadow sideways with the receiver's offset across the shadow", () => {
+    const right = getCastShadowOffset(projection, caster, down(1, 1), 0, TILE_METRICS);
+
+    // The receiver one tile to the right of the shadow's axis sees the caster one tile to its left.
+    expect(right?.x).toBeCloseTo(-TILE_WIDTH / Math.SQRT2);
+  });
+
+  it("casts nothing on what stands towards the sun, or with the sun overhead", () => {
+    expect(getCastShadowOffset(projection, caster, down(-0.5, 1), 0, TILE_METRICS)).toBeNull();
+    expect(getCastShadowOffset(projection, caster, down(-1), 0, TILE_METRICS)).toBeNull();
+    expect(getCastShadowOffset({ ...projection, stretch: 0 }, caster, down(1), 0, TILE_METRICS)).toBeNull();
+  });
+});
+
+describe("getShadowReach", () => {
+  it("reaches MAX_SHADOW_STRETCH times the caster's height, lift included", () => {
+    expect(getShadowReach(BOX_HEIGHT, 0, TILE_METRICS)).toBeCloseTo(MAX_SHADOW_STRETCH * BLOCK_HEIGHT_IN_TILES);
+    expect(getShadowReach(BOX_HEIGHT, 1, TILE_METRICS)).toBeCloseTo(2 * MAX_SHADOW_STRETCH * BLOCK_HEIGHT_IN_TILES);
+  });
+
+  it("reaches nothing when the caster is wholly below the ground it would fall on", () => {
+    expect(getShadowReach(BOX_HEIGHT, -2, TILE_METRICS)).toBe(0);
   });
 });

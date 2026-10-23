@@ -160,9 +160,11 @@ describe("createSilhouettes", () => {
   it("makes a black silhouette of a one-tile sprite, cropped at its foot", () => {
     // The sprite spans y 100..140; its foot (the tile centre) is at y 130.
     const sprite = placedSprite(texture(64, 80), 200, 100, 40, 40);
-    const [silhouette] = createSilhouettes([{ view: sprite, depth: 0 }], entityBox(3, 4, 200, 130), METRICS);
+    const [silhouette] = createSilhouettes([{ view: sprite, depth: 5 }], entityBox(3, 4, 200, 130), METRICS);
 
     expect(silhouette.sprite.tint).toBe(0x000000);
+    expect(silhouette.source).toBe(sprite);
+    expect(silhouette.depth).toBe(5);
     expect(silhouette.worldFoot).toEqual({ x: 3, y: 4 });
     expect(silhouette.screenFoot).toEqual({ x: 200, y: 130 });
     expect(silhouette.display).toEqual({ left: 180, top: 100, width: 40, height: 30 });
