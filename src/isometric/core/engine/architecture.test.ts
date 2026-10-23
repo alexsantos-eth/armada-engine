@@ -5,12 +5,15 @@ import { describe, expect, it } from "vitest";
  * (through their barrel), so the dependency graph stays acyclic and domain code never
  * reaches Pixi or the browser:
  *
- * constants, random → grid → terrain → entities → world → scene ← projection, render
- * time → world (the world holds the game clock) → simulation (fixed-step loop)
- * events (typed bus, no dependencies) → simulation (emits clock events)
- * constants → lighting (shadow geometry) → scene
- * projection → camera (view maths on the ground plane) → scene (moves and culls the world container)
- * grid, time → player (the player system) → world (holds the player), simulation (walks it each tick), scene (draws it)
+ * random → grid → terrain → entities → world (with player and time) → simulation (with events)
+ * The simulation runs the game systems the app hands it (`WorldSystem`), e.g. `createPlayerSystem()`.
+ * constants (view metrics) → lighting (shadow geometry)
+ * projection → camera (view maths on the ground plane)
+ * render (Pixi primitives) → scene (the compositor and the `SceneModule` contract)
+ * scene → scene modules: terrain-view, entity-view, shadows, ambient-light, player-view, camera-view
+ *
+ * The scene draws nothing itself: the app hands it a list of scene modules. A scene module never
+ * imports another one (they share services through the scene), and the scene never imports them.
  *
  * Outside the engine, a module may only reach the shared types (`../../types`): the engine
  * never imports game content. Content (`src/isometric/content`) is plain data and only
@@ -23,31 +26,35 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   events: [],
   time: [],
   projection: [],
-  grid: ["constants"],
+  grid: [],
   lighting: ["constants"],
-  terrain: ["constants", "grid", "random"],
+  terrain: ["grid", "random"],
   entities: ["grid", "random", "terrain"],
   player: ["grid", "time"],
-  world: ["constants", "entities", "grid", "player", "random", "terrain", "time"],
+  world: ["entities", "grid", "player", "random", "terrain", "time"],
   render: [],
-  simulation: ["events", "player", "time", "world"],
-  scene: [
-    "camera",
-    "constants",
-    "entities",
-    "grid",
-    "lighting",
-    "player",
-    "projection",
-    "render",
-    "terrain",
-    "time",
-    "world",
-  ],
+  simulation: ["events", "time", "world"],
+  scene: ["camera", "constants", "entities", "grid", "render", "terrain", "world"],
+  "terrain-view": ["projection", "render", "scene", "terrain"],
+  "entity-view": ["entities", "projection", "render", "scene"],
+  shadows: ["lighting", "projection", "render", "scene", "time"],
+  "ambient-light": ["render", "scene", "time"],
+  "camera-view": ["camera", "scene"],
+  "player-view": ["camera", "player", "projection", "render", "scene"],
 };
 
+/** Scene modules: drawn by the scene from the list the app gives it. */
+const SCENE_MODULES = new Set([
+  "terrain-view",
+  "entity-view",
+  "shadows",
+  "ambient-light",
+  "camera-view",
+  "player-view",
+]);
+
 /** Modules allowed to import Pixi. Everything else is pure domain logic. */
-const PIXI_MODULES = new Set(["render", "scene"]);
+const PIXI_MODULES = new Set(["render", "scene", ...SCENE_MODULES]);
 
 const sources = import.meta.glob<string>(["./*/*.ts", "!./**/*.test.ts"], {
   eager: true,
@@ -92,6 +99,15 @@ describe("engine architecture", () => {
     });
   });
 
+  it("keeps scene modules independent: none depends on another, and the scene on none", () => {
+    Object.entries(ALLOWED_DEPENDENCIES).forEach(([module, dependencies]) => {
+      if (module !== "scene" && !SCENE_MODULES.has(module)) return;
+      dependencies.forEach((dependency) =>
+        expect(SCENE_MODULES.has(dependency), `${module} → ${dependency}`).toBe(false),
+      );
+    });
+  });
+
   it.each(files)("$path only leaves the engine to reach the shared types", ({ imports }) => {
     const outside = imports.filter((target) => target.startsWith("../../"));
     outside.forEach((target) => expect(target).toBe("../../types"));
@@ -105,7 +121,7 @@ describe("engine architecture", () => {
     imports.forEach((target) => expect(target).toMatch(/^(\.\/|\.\.\/core\/types$)/));
   });
 
-  it.each(files)("$path uses Pixi only in render and scene", ({ module, imports }) => {
+  it.each(files)("$path uses Pixi only in render, the scene and scene modules", ({ module, imports }) => {
     if (PIXI_MODULES.has(module)) return;
     expect(imports).not.toContain("pixi.js");
   });

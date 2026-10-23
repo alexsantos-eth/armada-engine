@@ -10,6 +10,7 @@ import {
   type PlayerGround,
   canStandOn,
   createPlayer,
+  createPlayerSystem,
   findPlayerSpawn,
   getPlayerColumn,
   getPlayerRenderPosition,
@@ -135,6 +136,20 @@ describe("getWalkDirection", () => {
   it("stands still with nothing or opposite directions held", () => {
     expect(getWalkDirection(still)).toEqual({ x: 0, y: 0 });
     expect(getWalkDirection({ up: true, down: true, left: true, right: true })).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe("createPlayerSystem", () => {
+  it("walks the world's player one tick on the world's ground", () => {
+    const field = groundFrom(["00000", "00000", "00000", "00000", "00000"]);
+    const player = walking(field, { x: 1, y: 2 }, { up: true, right: true });
+    const system = createPlayerSystem();
+
+    system.step({ ...field, player });
+
+    expect(system.id).toBe("player");
+    expect(player.x).toBeCloseTo(1 + PLAYER_STEP);
+    expect(player.previous).toEqual({ x: 1, y: 2, elevation: 0 });
   });
 });
 

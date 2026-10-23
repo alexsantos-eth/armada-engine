@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { bindKeyboardControls, KEYBOARD_ZOOM_STEP } from "./keyboard";
+import { bindKeyboard, bindKeyboardControls, KEYBOARD_ZOOM_STEP, type KeyBinding } from "./keyboard";
 
 type Listener = (event: unknown) => void;
 
@@ -133,5 +133,49 @@ describe("bindKeyboardControls", () => {
     expect(target.count()).toBe(0);
     target.emit("keydown", key("KeyW"));
     expect(controls.walk).not.toHaveBeenCalled();
+  });
+});
+
+describe("bindKeyboard", () => {
+  it("sends each key to the first binding that lists it, held keys with the rest held of their binding", () => {
+    const target = createTarget();
+    const first = { kind: "press", keys: ["KeyE"], press: vi.fn() } satisfies KeyBinding;
+    const shadowed = { kind: "press", keys: ["KeyE", "KeyR"], press: vi.fn() } satisfies KeyBinding;
+    const crouch = {
+      kind: "hold",
+      keys: ["ShiftLeft", "KeyC"],
+      hold: vi.fn<(held: ReadonlySet<string>) => void>(),
+    } satisfies KeyBinding;
+    bindKeyboard(target as never, [first, shadowed, crouch]);
+
+    const press = key("KeyE");
+    target.emit("keydown", press);
+    target.emit("keydown", key("KeyR"));
+    target.emit("keydown", key("KeyC"));
+    target.emit("keydown", key("ShiftLeft"));
+    target.emit("keyup", key("KeyC"));
+    target.emit("keyup", key("KeyE"));
+
+    expect(first.press).toHaveBeenCalledExactlyOnceWith("KeyE");
+    expect(shadowed.press).toHaveBeenCalledExactlyOnceWith("KeyR");
+    expect(press.preventDefault).toHaveBeenCalled();
+    expect(crouch.hold.mock.calls.map(([held]) => [...held])).toEqual([["KeyC"], ["ShiftLeft", "KeyC"], ["ShiftLeft"]]);
+  });
+
+  it("releases every hold binding when the window loses focus", () => {
+    const target = createTarget();
+    const crouch = {
+      kind: "hold",
+      keys: ["KeyC"],
+      hold: vi.fn<(held: ReadonlySet<string>) => void>(),
+    } satisfies KeyBinding;
+    const zoom = { kind: "press", keys: ["Equal"], press: vi.fn() } satisfies KeyBinding;
+    bindKeyboard(target as never, [crouch, zoom]);
+
+    target.emit("keydown", key("KeyC"));
+    target.emit("blur");
+
+    expect([...crouch.hold.mock.lastCall![0]]).toEqual([]);
+    expect(zoom.press).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,6 @@
 import type { Container, FederatedPointerEvent, FederatedWheelEvent, Rectangle } from "pixi.js";
 import { getPinchGesture, getWheelZoomFactor } from "../camera";
-import type { ScreenPoint } from "../../types";
-import type { SceneCamera } from "./camera";
+import type { SceneCamera, ScreenPoint } from "../../types";
 
 /**
  * Lets the player move `camera` with the pointer, through Pixi's event system on `stage`:

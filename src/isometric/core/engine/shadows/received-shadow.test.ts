@@ -83,7 +83,7 @@ vi.mock("pixi.js", () => {
 });
 
 import { Rectangle, RenderTexture, Sprite, Texture } from "pixi.js";
-import type { Silhouette } from "./shadow";
+import type { Silhouette } from "./silhouette";
 import {
   createReceivedShadows,
   RECEIVED_SHADOW_ATLAS_WIDTH,

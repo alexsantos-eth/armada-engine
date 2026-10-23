@@ -1,8 +1,8 @@
 import { Application, type Ticker, UPDATE_PRIORITY } from "pixi.js";
-import { ENTITY_CONFIG, PLAYER_APPEARANCE } from "../content";
+import { ENTITY_CONFIG, TERRAIN_APPEARANCE } from "../content";
 import {
   bindCameraControls,
-  createIsometricScene,
+  createScene,
   createSimulation,
   generateWorld,
   getInterpolationAlpha,
@@ -11,6 +11,7 @@ import {
 } from "../core/engine";
 import { bindKeyboardControls } from "../input";
 import { formatClockLabel, resolveLaunchOptions } from "./launch";
+import { createSceneModules, createWorldSystems, findUnknownModules } from "./modules";
 
 /** Where and how a game runs. */
 export type GameOptions = {
@@ -45,8 +46,9 @@ export type Game = {
  *
  * It creates the Pixi app (filling `window`), resolves the launch options from the URL, generates
  * the world with the game content, runs its fixed-step simulation on the app's ticker (`HIGH`
- * priority, before the render), renders it with the player, and binds the controls: pointer on
- * the stage (drag, wheel, pinch) and keyboard on the window (walk, zoom at the centre of the view).
+ * priority, before the render), renders it with the modules of `createSceneModules()`, and binds
+ * the controls: pointer on the stage (drag, wheel, pinch, when the scene has a camera) and
+ * keyboard on the window (walk, zoom at the centre of the view).
  */
 export function mountGame(container: HTMLElement, options: GameOptions): Game {
   const { window, onClockChange, random = Math.random, log = console.info } = options;
@@ -72,25 +74,28 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     if (destroyed) return;
 
     container.appendChild(app.canvas);
-    const { seed, startTick, timeScale } = resolveLaunchOptions(window.location.search, random);
+    const { seed, startTick, timeScale, disabledModules } = resolveLaunchOptions(window.location.search, random);
     log(`Armada world seed: ${seed}`);
+    const unknown = findUnknownModules(disabledModules);
+    if (unknown.length > 0) log(`Armada ?modules= names no module: ${unknown.join(", ")}`);
     const world = generateWorld({ seed, entityDefinitions: ENTITY_CONFIG, startTick });
-    const simulation = createSimulation(world, { timeScale });
+    const simulation = createSimulation(world, { timeScale, systems: createWorldSystems(disabledModules) });
     // The scene draws the player between its last two ticks, and the camera follows it.
-    const scene = await createIsometricScene(app, world, {
-      player: PLAYER_APPEARANCE,
+    const scene = await createScene(app, world, createSceneModules(disabledModules), {
+      terrain: TERRAIN_APPEARANCE,
       interpolation: () => getInterpolationAlpha(simulation.stepper),
     });
     teardowns.push(scene.destroy);
     if (destroyed) return;
 
-    teardowns.push(bindCameraControls(app.stage, app.renderer.screen, scene.camera));
+    const { camera } = scene.services;
+    if (camera) teardowns.push(bindCameraControls(app.stage, app.renderer.screen, camera));
     teardowns.push(
       bindKeyboardControls(window, {
         walk: (directions) => setPlayerWalk(world.player, directions),
         zoom: (factor) => {
           const { width, height } = app.renderer.screen;
-          scene.camera.zoomAt(factor, { x: width / 2, y: height / 2 });
+          camera?.zoomAt(factor, { x: width / 2, y: height / 2 });
         },
       }),
     );

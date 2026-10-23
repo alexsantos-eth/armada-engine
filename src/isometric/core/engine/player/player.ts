@@ -1,4 +1,12 @@
-import type { GridPoint, ITerrainColumn, PlayerPosition, PlayerState, ScreenDirections, WorldCoord } from "../../types";
+import type {
+  GridPoint,
+  ITerrainColumn,
+  PlayerPosition,
+  PlayerState,
+  ScreenDirections,
+  WorldCoord,
+  WorldSystem,
+} from "../../types";
 import type { ReadonlyCellMap } from "../grid";
 import { TICKS_PER_SECOND } from "../time";
 
@@ -135,6 +143,17 @@ export function stepPlayer(player: PlayerState, ground: PlayerGround, ticks = 1)
     player.previous = { x: player.x, y: player.y, elevation: player.elevation };
     stepOnce(player, ground);
   }
+}
+
+/** A world with a player: its ground and the player standing on it (the `World` is one). */
+export type PlayerWorld = PlayerGround & { readonly player: PlayerState };
+
+/**
+ * The player as a game system for `stepWorld()`: each tick, the player walks one step
+ * (`stepPlayer()`) on the world's ground.
+ */
+export function createPlayerSystem(): WorldSystem<PlayerWorld> {
+  return { id: "player", step: (world) => stepPlayer(world.player, world) };
 }
 
 /**

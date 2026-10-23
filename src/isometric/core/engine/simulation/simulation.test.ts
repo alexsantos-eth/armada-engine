@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { createEventBus } from "../events";
-import { PLAYER_STEP, setPlayerWalk } from "../player";
+import { createPlayerSystem, PLAYER_STEP, setPlayerWalk } from "../player";
 import { TICKS_PER_DAY, TICKS_PER_SECOND } from "../time";
-import type { SimulationEvents } from "../../types";
-import { generateWorld } from "../world";
+import type { SimulationEvents, WorldSystem } from "../../types";
+import { generateWorld, type World } from "../world";
 import { createSimulation, resolveTimeScale, stepWorld } from "./simulation";
 
 const newWorld = (startTick?: number) =>
@@ -24,7 +24,9 @@ describe("stepWorld", () => {
     const player = { ...world.player };
 
     expect(() => stepWorld(world, -1)).toThrow(RangeError);
-    expect(() => stepWorld(world, 1.5, createEventBus<SimulationEvents>())).toThrow(RangeError);
+    expect(() =>
+      stepWorld(world, 1.5, { systems: [createPlayerSystem()], events: createEventBus<SimulationEvents>() }),
+    ).toThrow(RangeError);
     expect(world.clock.tick).toBe(0);
     expect(world.player).toEqual(player);
   });
@@ -34,13 +36,44 @@ describe("stepWorld", () => {
       const world = generateWorld({ seed: 42, width: 16, height: 16, entityDefinitions: [], startTick: 0 });
       setPlayerWalk(world.player, { up: false, down: true, left: false, right: false });
       const start = { x: world.player.x, y: world.player.y };
-      stepWorld(world, 2, withEvents ? createEventBus<SimulationEvents>() : undefined);
+      stepWorld(world, 2, {
+        systems: [createPlayerSystem()],
+        events: withEvents ? createEventBus<SimulationEvents>() : undefined,
+      });
       return { start, player: world.player };
     };
 
     const { start, player } = walked(false);
     expect(Math.hypot(player.x - start.x, player.y - start.y)).toBeCloseTo(2 * PLAYER_STEP);
     expect(walked(true).player).toEqual(player);
+  });
+
+  it("runs the systems every tick, in order, before the clock advances", () => {
+    const world = newWorld(0);
+    const log: string[] = [];
+    const events = createEventBus<SimulationEvents>();
+    events.on("tick", ({ tick }) => log.push(`tick ${String(tick)}`));
+    const system = (id: string): WorldSystem<World> => ({
+      id,
+      step: (stepped, bus) => {
+        expect(bus).toBe(events);
+        log.push(`${id} ${String(stepped.clock.tick)}`);
+      },
+    });
+
+    stepWorld(world, 2, { systems: [system("a"), system("b")], events });
+
+    expect(log).toEqual(["a 0", "b 0", "tick 1", "a 1", "b 1", "tick 2"]);
+  });
+
+  it("leaves the player standing without its system", () => {
+    const world = newWorld(0);
+    setPlayerWalk(world.player, { up: true, down: false, left: false, right: false });
+    const { x, y } = world.player;
+
+    stepWorld(world, 5);
+
+    expect(world.player).toMatchObject({ x, y });
   });
 
   it("lets event listeners see the player where it is at that tick", () => {
@@ -50,7 +83,7 @@ describe("stepWorld", () => {
     const seen: number[] = [];
     events.on("tick", () => seen.push(world.player.x));
 
-    stepWorld(world, 2, events);
+    stepWorld(world, 2, { systems: [createPlayerSystem()], events });
 
     expect(seen[1]).toBe(world.player.x);
     expect(seen[0]).toBe(world.player.previous.x);
@@ -72,6 +105,17 @@ describe("createSimulation", () => {
     expect(frame.tick).toBe(2);
     expect(frame.alpha).toBeCloseTo(0.2);
     expect(world.clock.tick).toBe(2);
+  });
+
+  it("runs its systems on every tick", () => {
+    const world = generateWorld({ seed: 42, width: 16, height: 16, entityDefinitions: [], startTick: 0 });
+    setPlayerWalk(world.player, { up: false, down: true, left: false, right: false });
+    const start = { x: world.player.x, y: world.player.y };
+    const simulation = createSimulation(world, { systems: [createPlayerSystem()] });
+
+    simulation.frame(100);
+
+    expect(Math.hypot(world.player.x - start.x, world.player.y - start.y)).toBeCloseTo(2 * PLAYER_STEP);
   });
 
   it("runs one game day in 20 real minutes at 60 FPS", () => {

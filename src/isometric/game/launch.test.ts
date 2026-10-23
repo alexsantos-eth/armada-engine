@@ -1,15 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 import { TICKS_PER_DAY, TICKS_PER_HOUR, WORLD_START_TICK } from "../core/engine";
-import { formatClockLabel, resolveLaunchOptions } from "./launch";
+import { formatClockLabel, resolveDisabledModules, resolveLaunchOptions } from "./launch";
 
 describe("resolveLaunchOptions", () => {
   it("reads the seed, the starting hour and the time scale from the URL query", () => {
     const random = vi.fn(() => 0.5);
 
-    expect(resolveLaunchOptions("?seed=1337&hour=15&timeScale=0", random)).toEqual({
+    expect(resolveLaunchOptions("?seed=1337&hour=15&timeScale=0&modules=-shadows", random)).toEqual({
       seed: 1337,
       startTick: 15 * TICKS_PER_HOUR,
       timeScale: 0,
+      disabledModules: new Set(["shadows"]),
     });
     expect(random).not.toHaveBeenCalled();
   });
@@ -19,7 +20,20 @@ describe("resolveLaunchOptions", () => {
       seed: 1073741824,
       startTick: WORLD_START_TICK,
       timeScale: 1,
+      disabledModules: new Set(),
     });
+  });
+});
+
+describe("resolveDisabledModules", () => {
+  it("leaves out the modules listed with a leading minus", () => {
+    expect(resolveDisabledModules("?modules=-shadows, -ambient-light")).toEqual(new Set(["shadows", "ambient-light"]));
+  });
+
+  it("ignores entries without a minus, a lone minus and an empty list", () => {
+    expect(resolveDisabledModules("?modules=shadows,-,")).toEqual(new Set());
+    expect(resolveDisabledModules("?modules=")).toEqual(new Set());
+    expect(resolveDisabledModules("?seed=4")).toEqual(new Set());
   });
 });
 

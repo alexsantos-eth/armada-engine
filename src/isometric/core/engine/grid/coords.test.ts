@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { CHUNK_SIZE } from "../constants";
 import {
   cellFromKey,
   cellKey,
@@ -10,6 +9,7 @@ import {
   toChunkCoord,
   toLocalCoord,
   toWorldCoord,
+  CHUNK_SIZE,
 } from "./coords";
 
 describe("cell keys", () => {

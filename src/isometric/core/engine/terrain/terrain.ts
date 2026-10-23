@@ -1,14 +1,19 @@
 import { createNoise2D } from "simplex-noise";
 import type { PerlinTerrainOptions, TerrainPoint } from "../../types";
-import {
-  DEFAULT_LACUNARITY,
-  DEFAULT_MAX_ELEVATION,
-  DEFAULT_MIN_ELEVATION,
-  DEFAULT_OCTAVES,
-  DEFAULT_PERSISTENCE,
-  DEFAULT_SCALE,
-} from "../constants";
 import { createSeededRandom, DEFAULT_WORLD_SEED } from "../random";
+
+/** Default sampling distance of the terrain noise field. */
+export const DEFAULT_SCALE = 50;
+/** Default number of noise layers combined per cell. */
+export const DEFAULT_OCTAVES = 5;
+/** Default amplitude multiplier between successive octaves. */
+export const DEFAULT_PERSISTENCE = 0.5;
+/** Default frequency multiplier between successive octaves. */
+export const DEFAULT_LACUNARITY = 2;
+/** Lowest elevation the generated terrain reaches, and the bottom its columns are filled down to. */
+export const DEFAULT_MIN_ELEVATION = -3;
+/** Highest elevation the generated terrain reaches. */
+export const DEFAULT_MAX_ELEVATION = 4;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));

@@ -1,18 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  BOX_HEIGHT,
-  CHUNK_SIZE,
-  GROUND_BLOCK_TEXTURE_KEY,
-  GRASS_BLOCK_TEXTURE_KEY,
-  POSITIVE_ELEVATION_TINT_STEP,
-  SAND_BLOCK_TEXTURE_KEY,
-  NEGATIVE_ELEVATION_TINT_STEP,
-  TILE_HEIGHT,
-  TILE_METRICS,
-  TILE_WIDTH,
-  WIDTH,
-  WATER_BLOCK_TEXTURE_KEY,
-} from "./constants";
+import { BOX_HEIGHT, TILE_HEIGHT, TILE_METRICS, TILE_WIDTH, WIDTH } from "./constants";
 
 describe("engine constants", () => {
   it("uses a static view width without reading window", () => {
@@ -29,24 +16,5 @@ describe("engine constants", () => {
       tileHeight: TILE_HEIGHT,
       boxHeight: BOX_HEIGHT,
     });
-  });
-
-  it("provides unique block texture keys", () => {
-    expect(
-      new Set([GRASS_BLOCK_TEXTURE_KEY, GROUND_BLOCK_TEXTURE_KEY, WATER_BLOCK_TEXTURE_KEY, SAND_BLOCK_TEXTURE_KEY])
-        .size,
-    ).toBe(4);
-  });
-
-  it("uses a power-of-two chunk size", () => {
-    expect(Number.isInteger(Math.log2(CHUNK_SIZE))).toBe(true);
-  });
-
-  it("defines a positive elevation tint step", () => {
-    expect(POSITIVE_ELEVATION_TINT_STEP).toBeGreaterThan(0);
-  });
-
-  it("defines a positive negative elevation tint step", () => {
-    expect(NEGATIVE_ELEVATION_TINT_STEP).toBeGreaterThan(0);
   });
 });

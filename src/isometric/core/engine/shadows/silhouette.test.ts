@@ -83,7 +83,7 @@ import {
   getSilhouetteMapMatrix,
   placeSilhouette,
   SHADOW_MAP_PIXELS_PER_TILE,
-} from "./shadow";
+} from "./silhouette";
 
 const METRICS = { tileWidth: 40, tileHeight: 20, boxHeight: 40 / 3 };
 const apply = (m: Affine2D, x: number, y: number) => ({ x: m.a * x + m.c * y + m.tx, y: m.b * x + m.d * y + m.ty });

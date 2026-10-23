@@ -1,6 +1,6 @@
 import { Container, type Filter, Rectangle, RenderTexture, type Renderer, Sprite, Texture } from "pixi.js";
-import type { DepthView } from "./render";
-import type { PlanePoint, Silhouette } from "./shadow";
+import type { DepthView } from "../render";
+import type { PlanePoint, Silhouette } from "./silhouette";
 
 /** Texels of the received-shadow atlas per screen pixel of a receiver (at zoom 1). */
 export const RECEIVED_SHADOW_RESOLUTION = 2;

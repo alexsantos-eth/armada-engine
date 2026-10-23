@@ -22,7 +22,7 @@ describe("stepWorld with events", () => {
     const world = newWorld(TICKS_PER_DAY - 1);
     const { events, log } = record();
 
-    stepWorld(world, 2, events);
+    stepWorld(world, 2, { events });
 
     expect(world.clock.tick).toBe(TICKS_PER_DAY + 1);
     expect(log).toEqual([
@@ -39,7 +39,7 @@ describe("stepWorld with events", () => {
     const hours: number[] = [];
     events.on("hourChanged", ({ hour }) => hours.push(hour));
 
-    stepWorld(world, 3 * TICKS_PER_HOUR, events);
+    stepWorld(world, 3 * TICKS_PER_HOUR, { events });
 
     expect(hours).toEqual([1, 2, 3]);
   });
@@ -53,7 +53,7 @@ describe("stepWorld with events", () => {
       seen.push(tick);
     });
 
-    stepWorld(world, 3, events);
+    stepWorld(world, 3, { events });
 
     expect(seen).toEqual([1, 2, 3]);
   });
@@ -63,7 +63,7 @@ describe("stepWorld with events", () => {
     const events = createEventBus<SimulationEvents>();
     const emit = vi.spyOn(events, "emit");
 
-    stepWorld(world, 5, events);
+    stepWorld(world, 5, { events });
 
     expect(emit).not.toHaveBeenCalled();
     expect(world.clock.tick).toBe(5);
@@ -73,8 +73,8 @@ describe("stepWorld with events", () => {
     const world = newWorld(0);
     const { events, log } = record();
 
-    expect(() => stepWorld(world, 1.5, events)).toThrow(RangeError);
-    expect(() => stepWorld(newWorld(1), Number.MAX_SAFE_INTEGER, events)).toThrow(RangeError);
+    expect(() => stepWorld(world, 1.5, { events })).toThrow(RangeError);
+    expect(() => stepWorld(newWorld(1), Number.MAX_SAFE_INTEGER, { events })).toThrow(RangeError);
     expect(world.clock.tick).toBe(0);
     expect(log).toEqual([]);
   });

@@ -1,6 +1,6 @@
 import { Matrix, Rectangle, Sprite, Texture } from "pixi.js";
 import type { Affine2D, EntityLengthAxis, IsoScreenBox, TileMetrics } from "../../types";
-import { type DepthView, getFootprintSliceTiles } from "./render";
+import { type DepthView, getFootprintSliceTiles } from "../render";
 
 /** Resolution of the shadow maps: texels per world tile along each axis. */
 export const SHADOW_MAP_PIXELS_PER_TILE = 16;

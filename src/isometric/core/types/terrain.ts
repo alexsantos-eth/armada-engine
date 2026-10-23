@@ -35,3 +35,34 @@ export type TerrainSurface = "grass" | "water" | "sand";
 
 /** Material used to render a single terrain block. */
 export type TerrainMaterial = TerrainSurface | "ground";
+
+/**
+ * How the blocks of a material are tinted by their elevation (`0` keeps the texture's colours):
+ *
+ * - `"depth"`: underwater blocks darken with depth from white, by `step` per level below `0`
+ *   (at least one level).
+ * - `"height"`: blocks darken from `topTint`, by `step` per level below the highest elevation of
+ *   the world; untinted when the world has no elevation above `0`.
+ *
+ * The darkening factor never goes under `0.35`.
+ */
+export type TerrainTint =
+  | { readonly kind: "depth"; readonly step: number }
+  | { readonly kind: "height"; readonly topTint: number; readonly step: number };
+
+/** How the blocks of one terrain material are drawn (game content). */
+export type TerrainMaterialAppearance = {
+  /** SVG of the block, under `public/` (e.g. `/assets/grass/block.svg`). */
+  readonly textureSource: string;
+  /** Tint by elevation. */
+  readonly tint: TerrainTint;
+  /**
+   * Blocks the top of the block sits below the top of its cell (sand: `0.5`). Things standing on
+   * it and the shadows on it sink by as much, and a block with an inset never hides the blocks
+   * behind it. Defaults to `0`.
+   */
+  readonly topInset?: number;
+};
+
+/** How every terrain material is drawn: the scene receives it as content. */
+export type TerrainAppearance = Readonly<Record<TerrainMaterial, TerrainMaterialAppearance>>;

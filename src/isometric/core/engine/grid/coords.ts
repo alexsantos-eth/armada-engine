@@ -1,5 +1,10 @@
 import type { CellKey, ChunkCoord, ChunkKey, LocalCoord, WorldCoord, WorldRect } from "../../types";
-import { CHUNK_SIZE } from "../constants";
+
+/**
+ * Side of a chunk in columns. The world is split into `CHUNK_SIZE` × `CHUNK_SIZE` chunks for
+ * generation, streaming and spatial lookups.
+ */
+export const CHUNK_SIZE = 32;
 
 /**
  * Largest absolute coordinate a key can hold (2²⁰ − 1). A world of ±1,048,575 columns is far

@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { PLAYER_APPEARANCE } from "../content";
+import { TERRAIN_APPEARANCE } from "../content";
 import {
   bindCameraControls,
-  createIsometricScene,
+  createScene,
   getWalkDirection,
   STEP_MS,
   TICKS_PER_HOUR,
-  type IsometricSceneOptions,
+  type SceneModule,
+  type SceneOptions,
   type World,
 } from "../core/engine";
 import { KEYBOARD_ZOOM_STEP } from "../input";
@@ -34,9 +35,9 @@ vi.mock("pixi.js", () => {
 
 vi.mock("../core/engine", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  createIsometricScene: vi.fn(() =>
+  createScene: vi.fn(() =>
     Promise.resolve({
-      camera: { zoomAt: vi.fn() },
+      services: { camera: { zoomAt: vi.fn() } },
       destroy: vi.fn(() => mocks.teardowns.push("scene")),
     }),
   ),
@@ -92,17 +93,21 @@ type MockApp = {
   destroy: ReturnType<typeof vi.fn>;
 };
 
-type MockScene = { camera: { zoomAt: ReturnType<typeof vi.fn> }; destroy: ReturnType<typeof vi.fn> };
+type MockScene = {
+  services: { camera: { zoomAt: ReturnType<typeof vi.fn> } };
+  destroy: ReturnType<typeof vi.fn>;
+};
 
-/** The app, world, scene options and scene of the last game that reached its scene. */
+/** The app, world, modules, scene options and scene of the last game that reached its scene. */
 const started = () => {
-  const [app, world, options] = vi.mocked(createIsometricScene).mock.lastCall as unknown as [
+  const [app, world, modules, options] = vi.mocked(createScene).mock.lastCall as unknown as [
     MockApp,
     World,
-    IsometricSceneOptions,
+    SceneModule[],
+    SceneOptions,
   ];
-  const scene = vi.mocked(createIsometricScene).mock.results.at(-1)!.value as Promise<MockScene>;
-  return { app, world, options, scene };
+  const scene = vi.mocked(createScene).mock.results.at(-1)!.value as Promise<MockScene>;
+  return { app, world, modules, options, scene };
 };
 
 /** The simulation listener the game added to the app's ticker. */
@@ -134,13 +139,34 @@ describe("mountGame", () => {
   it("generates the world of the URL's seed and hour, logs the seed and renders it", async () => {
     const { log, game } = mount("?seed=1337&hour=15");
     await game.ready;
-    const { world, options } = started();
+    const { world, modules, options } = started();
 
     expect(log).toHaveBeenCalledWith("Armada world seed: 1337");
     expect(world.seed).toBe(1337);
     expect(world.clock.tick).toBe(15 * TICKS_PER_HOUR);
-    expect(options.player).toBe(PLAYER_APPEARANCE);
+    expect(modules.map(({ id }) => id)).toEqual([
+      "terrain",
+      "entities",
+      "shadows",
+      "ambient-light",
+      "player",
+      "camera",
+    ]);
+    expect(options.terrain).toBe(TERRAIN_APPEARANCE);
     expect(options.interpolation?.()).toBe(0);
+  });
+
+  it("leaves out the modules and systems the URL disables", async () => {
+    const { game, log } = mount("?seed=1&modules=-shadows,-player,-fog");
+    await game.ready;
+    const { app, world, modules } = started();
+    expect(log).toHaveBeenCalledWith("Armada ?modules= names no module: fog");
+    world.player.walk = { x: 1, y: 0 };
+
+    onTick(app)({ elapsedMS: 1000 });
+
+    expect(modules.map(({ id }) => id)).toEqual(["terrain", "entities", "ambient-light", "camera"]);
+    expect(world.player.previous).toEqual({ x: world.player.x, y: world.player.y, elevation: world.player.elevation });
   });
 
   it("draws a new seed from `random` when the URL has none", async () => {
@@ -183,7 +209,7 @@ describe("mountGame", () => {
     const { window, game } = mount();
     await game.ready;
     const { world, scene } = started();
-    const { camera } = await scene;
+    const { camera } = (await scene).services;
 
     window.press("KeyW");
     expect(world.player.walk).toEqual(getWalkDirection({ up: true, down: false, left: false, right: false }));
@@ -197,7 +223,20 @@ describe("mountGame", () => {
     await game.ready;
     const { app, scene } = started();
 
-    expect(bindCameraControls).toHaveBeenCalledWith(app.stage, app.renderer.screen, (await scene).camera);
+    expect(bindCameraControls).toHaveBeenCalledWith(app.stage, app.renderer.screen, (await scene).services.camera);
+  });
+
+  it("walks but binds no camera controls when the scene has no camera", async () => {
+    vi.mocked(createScene).mockResolvedValueOnce({ services: {}, destroy: vi.fn() });
+    const { window, game } = mount();
+    await game.ready;
+    const { world } = started();
+
+    window.press("Equal");
+    window.press("KeyD");
+
+    expect(bindCameraControls).not.toHaveBeenCalled();
+    expect(world.player.walk).toEqual(getWalkDirection({ up: false, down: false, left: false, right: true }));
   });
 
   it("undoes everything in reverse order when destroyed, once", async () => {
@@ -227,20 +266,20 @@ describe("mountGame", () => {
 
     expect(teardowns).toEqual(["app"]);
     expect(container.appendChild).not.toHaveBeenCalled();
-    expect(createIsometricScene).not.toHaveBeenCalled();
+    expect(createScene).not.toHaveBeenCalled();
   });
 
   it("destroys the scene, then the app, when unmounted while the scene loads", async () => {
-    const loading = deferred<Awaited<ReturnType<typeof createIsometricScene>>>();
-    vi.mocked(createIsometricScene).mockReturnValueOnce(loading.promise);
+    const loading = deferred<Awaited<ReturnType<typeof createScene>>>();
+    vi.mocked(createScene).mockReturnValueOnce(loading.promise);
     const { window, game } = mount();
-    await vi.waitFor(() => expect(createIsometricScene).toHaveBeenCalled());
+    await vi.waitFor(() => expect(createScene).toHaveBeenCalled());
 
     game.destroy();
     expect(teardowns).toEqual([]);
 
     const destroyScene = vi.fn(() => teardowns.push("scene"));
-    loading.resolve({ camera: {} as never, destroy: destroyScene });
+    loading.resolve({ services: { camera: {} as never }, destroy: destroyScene });
     await game.ready;
 
     expect(teardowns).toEqual(["scene", "app"]);
@@ -249,7 +288,7 @@ describe("mountGame", () => {
   });
 
   it("still tears down what started when starting fails", async () => {
-    vi.mocked(createIsometricScene).mockReturnValueOnce(Promise.reject(new Error("asset failed")));
+    vi.mocked(createScene).mockReturnValueOnce(Promise.reject(new Error("asset failed")));
     const { game } = mount();
 
     await expect(game.ready).rejects.toThrow("asset failed");

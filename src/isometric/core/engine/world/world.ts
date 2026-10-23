@@ -1,11 +1,15 @@
 import type { EntityData, EntityDefinition, GridPoint, PlayerState, WorldClock } from "../../types";
 import { CellMap, type ReadonlyCellMap, type SpatialIndex } from "../grid";
-import { TERRAIN_HEIGHT, TERRAIN_WIDTH } from "../constants";
 import { createEntitiesFromConfig, Entity, indexEntities, validateEntityDefinitions } from "../entities";
 import { createSeededRandom, DEFAULT_WORLD_SEED, deriveSeed } from "../random";
 import { type Box, createTerrainColumns, generatePerlinTerrain } from "../terrain";
 import { createPlayer, findPlayerSpawn } from "../player";
 import { createWorldClock, WORLD_START_TICK } from "../time";
+
+/** Columns along `x` of a generated world when `generateWorld()` gets no `width`. */
+export const TERRAIN_WIDTH = 32;
+/** Columns along `y` of a generated world when `generateWorld()` gets no `height`. */
+export const TERRAIN_HEIGHT = 32;
 
 /**
  * The game world as plain domain state: the single source of truth that systems simulate,

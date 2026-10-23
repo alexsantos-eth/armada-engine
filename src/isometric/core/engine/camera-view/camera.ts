@@ -8,26 +8,7 @@ import {
   panCamera,
   zoomCameraAt,
 } from "../camera";
-import type { Camera, CameraLimits, GridPoint, IsoProjectionConfig, ScreenPoint } from "../../types";
-
-/** The camera of a scene: moves its world container and culls it when what shows changes. */
-export type SceneCamera = {
-  /** What the camera looks at now. */
-  readonly state: Camera;
-  /** Moves the scene by `delta` screen pixels (a drag). Stops following until `follow()`. */
-  pan(delta: ScreenPoint): void;
-  /** Multiplies the zoom by `factor`, keeping the scene point under `anchor` (screen) in place. */
-  zoomAt(factor: number, anchor: ScreenPoint): void;
-  /** Applies the camera to a new viewport size (after a renderer resize) and culls again. */
-  resize(): void;
-  /**
-   * Follows the ground point `target` (the player): from now on `update()` glides the camera
-   * towards it, until the next `pan()`. Call it again whenever the target moves.
-   */
-  follow(target: GridPoint): void;
-  /** Glides a following camera towards its target for a frame of `elapsedMs` real milliseconds. */
-  update(elapsedMs: number): void;
-};
+import type { Camera, CameraLimits, GridPoint, IsoProjectionConfig, SceneCamera } from "../../types";
 
 /**
  * Creates the camera of `world` (the scene's world container, a render group, so moving it is a

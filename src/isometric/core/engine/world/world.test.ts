@@ -1,12 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
-import { TERRAIN_HEIGHT, TERRAIN_WIDTH } from "../constants";
 import type { EntityDefinition } from "../../types";
 import { classifyColumnSurfaces, generatePerlinTerrain } from "../terrain";
 import { EntityConfigError } from "../entities";
 import { DEFAULT_WORLD_SEED } from "../random";
 import { canStandOn, setPlayerWalk, stepPlayer } from "../player";
 import { advanceClock, TICKS_PER_DAY, WORLD_START_TICK } from "../time";
-import { generateWorld, restoreWorld, serializeWorld, WORLD_SNAPSHOT_VERSION, type WorldSnapshot } from "./world";
+import {
+  generateWorld,
+  restoreWorld,
+  serializeWorld,
+  TERRAIN_HEIGHT,
+  TERRAIN_WIDTH,
+  WORLD_SNAPSHOT_VERSION,
+  type WorldSnapshot,
+} from "./world";
 
 const ROCK: EntityDefinition = {
   id: "rock",

@@ -1,6 +1,5 @@
-import type { EventBus, FixedStepperOptions, Simulation, SimulationEvents } from "../../types";
+import type { EventBus, FixedStepperOptions, Simulation, SimulationEvents, WorldSystem } from "../../types";
 import { createEventBus } from "../events";
-import { stepPlayer } from "../player";
 import { advanceClock, assertClockStep, TICKS_PER_DAY, TICKS_PER_HOUR } from "../time";
 import type { World } from "../world";
 import { consumeFrame, createFixedStepper, getInterpolationAlpha } from "./stepper";
@@ -15,42 +14,48 @@ function emitTickEvents(events: EventBus<SimulationEvents>, tick: number): void 
   if (events.has("tick")) events.emit("tick", { tick });
 }
 
+/** What runs while the world advances (`stepWorld()`). */
+export type StepOptions = {
+  /** Game systems, run every tick in this order before the clock advances. Defaults to none. */
+  readonly systems?: readonly WorldSystem<World>[];
+  /** Where the clock's events are emitted after each tick. */
+  readonly events?: EventBus<SimulationEvents>;
+};
+
 /**
  * Advances the world by whole simulation ticks. This is the single entry point of the
- * simulation: game systems run here, once per tick, in a fixed order, so the same ticks (and
- * the same input) always produce the same world. Today: the player walks (`stepPlayer()`),
- * then the clock advances.
+ * simulation: one tick at a time, the game systems run in list order (they get `events` to emit
+ * their own), then the clock advances, so the same ticks (and the same input) always produce the
+ * same world.
  *
- * With `events`, the world advances one tick at a time and, after each tick, emits in this
- * order: `hourChanged` and `dayChanged` when the tick starts an hour or a day, then `tick`.
- * Every listener sees the world at that exact tick. Without `events`, the player still walks
- * every tick, and the clock jumps at once.
+ * With `events`, after each tick it emits, in this order: `hourChanged` and `dayChanged` when the
+ * tick starts an hour or a day, then `tick`. Every listener sees the world at that exact tick.
  *
  * @throws `RangeError` when `ticks` is not a non-negative safe integer or the clock would
  * leave the safe integer range; the world is unchanged and nothing is emitted.
  */
-export function stepWorld(world: World, ticks: number, events?: EventBus<SimulationEvents>): void {
+export function stepWorld(world: World, ticks: number, { systems = [], events }: StepOptions = {}): void {
   assertClockStep(world.clock, ticks);
-  if (events === undefined) {
-    stepPlayer(world.player, world, ticks);
-    advanceClock(world.clock, ticks);
-    return;
-  }
-
   for (let step = 0; step < ticks; step += 1) {
-    stepPlayer(world.player, world);
-    emitTickEvents(events, advanceClock(world.clock));
+    systems.forEach((system) => system.step(world, events));
+    const tick = advanceClock(world.clock);
+    if (events) emitTickEvents(events, tick);
   }
 }
 
+/** Options of {@link createSimulation}: the stepper's, and the game systems to run. */
+export type SimulationOptions = FixedStepperOptions & Pick<StepOptions, "systems">;
+
 /**
  * Creates the simulation loop of a world: a fixed-step accumulator that turns real frame
- * times into world ticks, and the event bus systems use to react to them
- * (`simulation.events`). It does not own a timer: the app calls `frame()` once per rendered
- * frame (from the Pixi ticker), so the loop stays pure and testable without a browser.
+ * times into world ticks, runs `options.systems` on each (`stepWorld()`), and the event bus
+ * systems use to react to them (`simulation.events`). It does not own a timer: the app calls
+ * `frame()` once per rendered frame (from the Pixi ticker), so the loop stays pure and testable
+ * without a browser.
  */
-export function createSimulation(world: World, options: FixedStepperOptions = {}): Simulation<World> {
-  const stepper = createFixedStepper(options);
+export function createSimulation(world: World, options: SimulationOptions = {}): Simulation<World> {
+  const { systems, ...stepperOptions } = options;
+  const stepper = createFixedStepper(stepperOptions);
   const events = createEventBus<SimulationEvents>();
 
   return {
@@ -59,7 +64,7 @@ export function createSimulation(world: World, options: FixedStepperOptions = {}
     events,
     frame(elapsedMs) {
       const steps = consumeFrame(stepper, elapsedMs);
-      if (steps > 0) stepWorld(world, steps, events);
+      if (steps > 0) stepWorld(world, steps, { systems, events });
       return { steps, alpha: getInterpolationAlpha(stepper), tick: world.clock.tick };
     },
   };

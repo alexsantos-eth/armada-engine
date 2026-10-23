@@ -1,3 +1,5 @@
+import type { GridPoint } from "./iso";
+
 /** A point or a distance in screen pixels (PixiJS: `x` right, `y` down). */
 export type ScreenPoint = {
   readonly x: number;
@@ -50,4 +52,23 @@ export type PinchGesture = {
   readonly pan: ScreenPoint;
   readonly factor: number;
   readonly anchor: ScreenPoint;
+};
+
+/** The camera of a scene: moves its world container and culls it when what shows changes. */
+export type SceneCamera = {
+  /** What the camera looks at now. */
+  readonly state: Camera;
+  /** Moves the scene by `delta` screen pixels (a drag). Stops following until `follow()`. */
+  pan(delta: ScreenPoint): void;
+  /** Multiplies the zoom by `factor`, keeping the scene point under `anchor` (screen) in place. */
+  zoomAt(factor: number, anchor: ScreenPoint): void;
+  /** Applies the camera to a new viewport size (after a renderer resize) and culls again. */
+  resize(): void;
+  /**
+   * Follows the ground point `target` (the player): from now on `update()` glides the camera
+   * towards it, until the next `pan()`. Call it again whenever the target moves.
+   */
+  follow(target: GridPoint): void;
+  /** Glides a following camera towards its target for a frame of `elapsedMs` real milliseconds. */
+  update(elapsedMs: number): void;
 };

@@ -1,3 +1,2 @@
-export * from "./camera";
-export * from "./controls";
+export * from "./module";
 export * from "./scene";

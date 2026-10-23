@@ -48,3 +48,16 @@ export type Simulation<TWorld> = {
   /** Feeds one rendered frame's real elapsed milliseconds and runs the due steps. */
   frame(elapsedMs: number): SimulationFrame;
 };
+
+/**
+ * A game system: one step of its rules per world tick (the player walking, later weather or
+ * needs). `stepWorld()` runs the systems it is given in list order, every tick, before the clock
+ * advances. A step only reads and changes the world (and may emit on `events`): no clock, no
+ * `Math.random()`, no Pixi, so the same ticks always give the same world.
+ */
+export type WorldSystem<TWorld> = {
+  /** Unique name, for errors and debugging. */
+  readonly id: string;
+  /** Runs one tick of the system on `world`. */
+  step(world: TWorld, events?: EventBus<SimulationEvents>): void;
+};
