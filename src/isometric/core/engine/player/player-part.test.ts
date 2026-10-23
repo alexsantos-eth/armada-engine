@@ -57,4 +57,25 @@ describe("createPlayerPart", () => {
     });
     expect(world.chunks.loadAround).toHaveBeenCalledWith({ x: 0.8, y: 0 });
   });
+
+  it("moves a restored player whose spot no longer fits to the walkable column nearest it", () => {
+    // New content put a rock where the player was saved.
+    const world = {
+      ...ground([column(0, 0, 1), column(1, 0, 1, "water"), column(0, 1, 2), column(-1, 0, 1)]),
+      occupancy: { at: (x: number, y: number) => (x === 0 && y === 0 ? [{ walkable: false }] : []) },
+    };
+    const player = part.restore({ x: -0.1, y: 0 }, world);
+
+    expect(player).toMatchObject({ ...findPlayerSpawn(world, { x: -0.1, y: 0 }), walk: { x: 0, y: 0 } });
+    expect(player).toMatchObject({ x: -1, y: 0, elevation: 1 });
+    expect(player.previous).toEqual({ x: -1, y: 0, elevation: 1 });
+    expect(world.chunks.loadAround.mock.calls).toEqual([[{ x: -0.1, y: 0 }], [{ x: -1, y: 0, elevation: 1 }]]);
+  });
+
+  it("keeps a restored player standing where its feet fit, even across two columns", () => {
+    const world = ground([column(0, 0, 1), column(1, 0, 2)]);
+
+    expect(part.restore({ x: 0.5, y: 0 }, world)).toMatchObject({ x: 0.5, y: 0 });
+    expect(world.chunks.loadAround).toHaveBeenCalledTimes(1);
+  });
 });

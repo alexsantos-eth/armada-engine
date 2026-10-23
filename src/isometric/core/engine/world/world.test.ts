@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import type { EntityDefinition, WorldPart } from "../../types";
 import { classifyColumnSurfaces, generatePerlinTerrain, generateTerrainColumns } from "../terrain";
-import { EntityConfigError } from "../entities";
+import { EntityConfigError, fingerprintEntityDefinitions } from "../entities";
 import { CHUNK_SIZE } from "../grid";
 import { DEFAULT_WORLD_SEED } from "../random";
-import { canStandOn, createPlayerPart, PLAYER_PART, setPlayerWalk, stepPlayer } from "../player";
+import { canStandOn, createPlayerPart, fitsPlayerAt, PLAYER_PART, setPlayerWalk, stepPlayer } from "../player";
 import { advanceClock, CLOCK_PART, createClockPart, TICKS_PER_DAY, WORLD_START_TICK } from "../time";
 import { createFixedChunkSource } from "./sources";
 import {
@@ -279,7 +279,7 @@ describe("serializeWorld / restoreWorld", () => {
     const restored = restoreWorld(snapshot, { entityDefinitions: DEFINITIONS });
 
     expect(snapshot.version).toBe(WORLD_SNAPSHOT_VERSION);
-    expect(WORLD_SNAPSHOT_VERSION).toBe(6);
+    expect(WORLD_SNAPSHOT_VERSION).toBe(7);
     expect(snapshot.size).toEqual({ width: 12, height: 12 });
     // Nothing was edited: the terrain and the entities are generated again.
     expect(snapshot.chunks).toEqual([]);
@@ -321,7 +321,7 @@ describe("serializeWorld / restoreWorld", () => {
     });
     const snapshot = serializeWorld(world);
 
-    expect(Object.keys(snapshot)).toEqual(["version", "seed", "size", "chunks", "parts"]);
+    expect(Object.keys(snapshot)).toEqual(["version", "seed", "size", "contentFingerprint", "chunks", "parts"]);
     expect(Object.keys(snapshot.parts)).toEqual(["clock", "player", "probe"]);
     expect(snapshot.parts.probe).toEqual({ version: 1, data: 0 });
   });
@@ -374,6 +374,44 @@ describe("serializeWorld / restoreWorld", () => {
     );
   });
 
+  it("saves the fingerprint of the content the world was generated with", () => {
+    const world = generateWorld({ seed: 1, ...sized(4, 4), entityDefinitions: DEFINITIONS });
+    const snapshot = serializeWorld(world);
+    const restored = restoreWorld(snapshot, { entityDefinitions: DEFINITIONS });
+
+    expect(world.contentFingerprint).toBe(fingerprintEntityDefinitions(DEFINITIONS));
+    expect(world.contentChanged).toBe(false);
+    expect(snapshot.contentFingerprint).toBe(world.contentFingerprint);
+    expect(restored.contentFingerprint).toBe(world.contentFingerprint);
+    expect(restored.contentChanged).toBe(false);
+  });
+
+  it("regenerates the untouched chunks with the current content when it changed, keeping the edited ones", () => {
+    const world = generateWorld({ seed: 77, entityDefinitions: DEFINITIONS, parts: PARTS });
+    const origin = { cx: 0, cy: 0 };
+    const [, ...kept] = world.chunks.get(origin)?.entities ?? [];
+    world.chunks.setEntities(origin, kept);
+    const player = world.parts.get(PLAYER_PART);
+    // A content update: more rocks, one of them where the player stands.
+    const updated = [{ ...ROCK, spawnChance: 0.6 }, HOUSE];
+    const fresh = generateWorld({ seed: 77, entityDefinitions: updated });
+    expect(fitsPlayerAt(fresh, player)).toBe(false);
+
+    const snapshot = JSON.parse(JSON.stringify(serializeWorld(world))) as WorldSnapshot;
+    const restored = restoreWorld(snapshot, { entityDefinitions: updated, parts: PARTS });
+    const dataOf = (from: World, coord: { cx: number; cy: number }) =>
+      from.chunks.get(coord)?.entities.map((entity) => entity.getData());
+
+    expect(restored.contentChanged).toBe(true);
+    expect(restored.contentFingerprint).toBe(fingerprintEntityDefinitions(updated));
+    expect(dataOf(restored, origin)).toEqual(kept.map((entity) => entity.getData()));
+    expect(dataOf(restored, { cx: 1, cy: 0 })).toEqual(dataOf(fresh, { cx: 1, cy: 0 }));
+    expect(dataOf(restored, { cx: 1, cy: 0 })).not.toEqual(dataOf(world, { cx: 1, cy: 0 }));
+    // The player is moved off the new rock, and the next save records the current content.
+    expect(fitsPlayerAt(restored, restored.parts.get(PLAYER_PART))).toBe(true);
+    expect(serializeWorld(restored).contentFingerprint).toBe(fingerprintEntityDefinitions(updated));
+  });
+
   it("validates the content given to restore the world", () => {
     const snapshot = serializeWorld(generateWorld({ seed: 1, ...sized(4, 4), entityDefinitions: [] }));
 
@@ -386,7 +424,7 @@ describe("serializeWorld / restoreWorld", () => {
     const snapshot = serializeWorld(generateWorld({ seed: 1, ...sized(4, 4), entityDefinitions: [] }));
 
     const content = { entityDefinitions: [] };
-    [99, 1, 2, 3, 4, 5].forEach((version) =>
+    [99, 1, 2, 3, 4, 5, 6].forEach((version) =>
       expect(() => restoreWorld({ ...snapshot, version: version as never }, content)).toThrow(
         `Unsupported world snapshot version ${version}`,
       ),
@@ -407,6 +445,19 @@ describe("createWorld", () => {
       { cx: -1, cy: 0 },
       { cx: 0, cy: 0 },
     ]);
+  });
+
+  it("has no content fingerprint unless given one, and a changed content only against a saved one", () => {
+    const source = createFixedChunkSource(columns);
+    const world = (options: { contentFingerprint?: string; savedContentFingerprint?: string }) => {
+      const { contentFingerprint, contentChanged } = createWorld({ seed: 2, source, ...options });
+      return { contentFingerprint, contentChanged };
+    };
+
+    expect(world({})).toEqual({ contentFingerprint: "", contentChanged: false });
+    expect(world({ contentFingerprint: "abc" })).toEqual({ contentFingerprint: "abc", contentChanged: false });
+    expect(world({ contentFingerprint: "abc", savedContentFingerprint: "abc" }).contentChanged).toBe(false);
+    expect(world({ contentFingerprint: "abc", savedContentFingerprint: "abd" }).contentChanged).toBe(true);
   });
 
   it("restores its parts from saved ones", () => {

@@ -70,6 +70,14 @@ function fitsAt(ground: PlayerGround, point: GridPoint, fromElevation: number): 
   return true;
 }
 
+/**
+ * Whether the player's feet fit standing at the ground point `point`, from the elevation of the
+ * column under it: every column its square touches is walkable (see {@link canStandOn}).
+ */
+export function fitsPlayerAt(ground: PlayerGround, point: GridPoint): boolean {
+  return fitsAt(ground, point, elevationAt(ground, point));
+}
+
 /** Elevation of the column under `point`, or `0` off the terrain. */
 function elevationAt(ground: PlayerGround, point: GridPoint): number {
   const { x, y } = getPlayerColumn(point);

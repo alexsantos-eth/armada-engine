@@ -1,6 +1,6 @@
 import type { EntityDefinition, GridPoint, WorldPart, WorldRect } from "../../types";
 import type { Entity } from "../entities";
-import { validateEntityDefinitions } from "../entities";
+import { fingerprintEntityDefinitions, validateEntityDefinitions } from "../entities";
 import { CHUNK_SIZE, type ReadonlyCellMap, type SpatialIndex } from "../grid";
 import { type SavedWorldParts, WorldParts } from "../parts";
 import { DEFAULT_WORLD_SEED } from "../random";
@@ -44,6 +44,19 @@ export type World = {
    * system with state never edits this type nor the snapshot.
    */
   readonly parts: WorldParts;
+  /**
+   * Fingerprint of the entity definitions the untouched chunks are generated with
+   * (`fingerprintEntityDefinitions()`), saved with the world; `""` for a world built from a
+   * hand-made source.
+   */
+  readonly contentFingerprint: string;
+  /**
+   * Whether the world was restored from a save made with other entity definitions (a content
+   * update). It is restored all the same: its untouched chunks are generated with the current
+   * definitions, its edited ones keep their saved entities, and the player is moved off anything
+   * that now stands on its spot. The game may tell the player.
+   */
+  readonly contentChanged: boolean;
 };
 
 /**
@@ -92,6 +105,10 @@ export type CreateWorldOptions = {
   readonly centre?: GridPoint;
   /** Edited chunks of a save. */
   readonly saved?: readonly SavedChunk[];
+  /** Fingerprint of the content `source` generates with (`World.contentFingerprint`). Defaults to `""`. */
+  readonly contentFingerprint?: string;
+  /** Content fingerprint of a save: when it differs from `contentFingerprint`, `contentChanged` is set. */
+  readonly savedContentFingerprint?: string;
   readonly parts?: readonly WorldPartOf[];
   /** Saved parts: the parts are restored from them instead of created. */
   readonly savedParts?: SavedWorldParts;
@@ -105,19 +122,23 @@ export const START_LOAD_RADIUS = 1;
  * part's saved data has a version of its own (`WorldPart.version`), so changing a part never
  * bumps this one.
  */
-export const WORLD_SNAPSHOT_VERSION = 6;
+export const WORLD_SNAPSHOT_VERSION = 7;
 
 /**
  * JSON-serializable save of a {@link World}. Terrain and untouched entities are not stored: they
  * are regenerated, chunk by chunk, from `seed`, `size` and the entity definitions. Only edited
  * chunks keep their entities (`chunks`), so changes made during play are kept. Each world part
- * is stored under its id with its own version (`parts`).
+ * is stored under its id with its own version (`parts`). `contentFingerprint` records the entity
+ * definitions the world was generated with, so restoring it with other ones is detected
+ * (`World.contentChanged`) and the world is regenerated with the current ones.
  */
 export type WorldSnapshot = {
   version: typeof WORLD_SNAPSHOT_VERSION;
   seed: number;
   /** Size of a bounded world, or `null` for an unbounded one. */
   size: WorldSize | null;
+  /** Fingerprint of the entity definitions the world was generated with (`fingerprintEntityDefinitions()`). */
+  contentFingerprint: string;
   chunks: SavedChunk[];
   parts: SavedWorldParts;
 };
@@ -150,6 +171,8 @@ export function createWorld(options: CreateWorldOptions): World {
   const chunks = new WorldChunks(options.source, options.saved);
   chunks.loadAround(centre, START_LOAD_RADIUS);
 
+  const contentFingerprint = options.contentFingerprint ?? "";
+  const { savedContentFingerprint } = options;
   const base: WorldPartContext = {
     seed: options.seed,
     bounds,
@@ -157,6 +180,8 @@ export function createWorld(options: CreateWorldOptions): World {
     chunks,
     columnIndex: chunks.columnIndex,
     occupancy: chunks.occupancy,
+    contentFingerprint,
+    contentChanged: savedContentFingerprint !== undefined && savedContentFingerprint !== contentFingerprint,
   };
   const parts = options.parts ?? [];
   return {
@@ -182,6 +207,7 @@ export function generateWorld(options: WorldOptions): World {
     seed,
     bounds,
     source: createSeededChunkSource({ seed, entityDefinitions: options.entityDefinitions, bounds }),
+    contentFingerprint: fingerprintEntityDefinitions(options.entityDefinitions),
     parts: options.parts,
   });
 }
@@ -193,15 +219,20 @@ export function serializeWorld(world: World): WorldSnapshot {
     version: WORLD_SNAPSHOT_VERSION,
     seed: world.seed,
     size: bounds ? { width: bounds.maxX - bounds.minX + 1, height: bounds.maxY - bounds.minY + 1 } : null,
+    contentFingerprint: world.contentFingerprint,
     chunks: world.chunks.serialize(),
     parts: world.parts.serialize(),
   };
 }
 
 /**
- * Rebuilds a world from a snapshot: the same chunk source (seed, size and the entity definitions,
- * which must be the ones it was generated with), the edited chunks with their saved entities, then
- * each part in `options.parts` from its saved data. Pass the same parts the world was generated
+ * Rebuilds a world from a snapshot: the same chunk source (seed, size and the current entity
+ * definitions), the edited chunks with their saved entities, then each part in `options.parts`
+ * from its saved data. When the definitions are not the ones the world was generated with (their
+ * fingerprint differs from `snapshot.contentFingerprint`), the world is regenerated with the
+ * current ones: the untouched chunks come out as the new content makes them, `contentChanged` is
+ * set, the player is moved off anything now standing on its spot, and the next save records the
+ * new fingerprint. Pass the same parts the world was generated
  * with: a part with no saved data gets a new state, and saved data of a part not passed is kept
  * untouched for the next save (`WorldParts.restore()`).
  *
@@ -220,6 +251,8 @@ export function restoreWorld(snapshot: WorldSnapshot, options: RestoreWorldOptio
     seed: snapshot.seed,
     bounds,
     source: createSeededChunkSource({ seed: snapshot.seed, entityDefinitions: options.entityDefinitions, bounds }),
+    contentFingerprint: fingerprintEntityDefinitions(options.entityDefinitions),
+    savedContentFingerprint: snapshot.contentFingerprint,
     saved: snapshot.chunks,
     parts: options.parts,
     savedParts: snapshot.parts,

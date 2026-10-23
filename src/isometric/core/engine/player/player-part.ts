@@ -1,5 +1,5 @@
 import type { GridPoint, PlayerState, WorldPart } from "../../types";
-import { createPlayer, findPlayerSpawn, PLAYER_PART, type PlayerGround } from "./player";
+import { createPlayer, findPlayerSpawn, fitsPlayerAt, PLAYER_PART, type PlayerGround } from "./player";
 
 /**
  * What a player part needs from the world: the ground, where a new world starts, and loading the
@@ -20,7 +20,9 @@ export type SavedPlayer = GridPoint;
 /**
  * The player as a world part (read it with `world.parts.get(PLAYER_PART)`). A new world puts it
  * on the walkable column nearest the world's centre (`findPlayerSpawn()`); a saved one, standing
- * where it was. Either way the chunks around it are loaded first.
+ * where it was. If its feet no longer fit there (the world was restored with other content and
+ * something now stands on that spot), it goes on the walkable column nearest it. Either way the
+ * chunks around it are loaded first.
  */
 export function createPlayerPart(): WorldPart<PlayerState, SavedPlayer, PlayerSpawnGround> {
   return {
@@ -35,7 +37,10 @@ export function createPlayerPart(): WorldPart<PlayerState, SavedPlayer, PlayerSp
     serialize: (player) => ({ x: player.x, y: player.y }),
     restore: (saved, ground) => {
       ground.chunks.loadAround(saved);
-      return createPlayer(ground, saved);
+      if (fitsPlayerAt(ground, saved)) return createPlayer(ground, saved);
+      const spawn = findPlayerSpawn(ground, saved);
+      ground.chunks.loadAround(spawn);
+      return createPlayer(ground, spawn);
     },
   };
 }

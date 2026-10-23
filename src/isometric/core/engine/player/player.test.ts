@@ -13,6 +13,7 @@ import {
   createPlayer,
   createPlayerSystem,
   findPlayerSpawn,
+  fitsPlayerAt,
   PLAYER_SPAWN_RADIUS,
   getPlayerColumn,
   getPlayerRenderPosition,
@@ -81,6 +82,17 @@ describe("canStandOn", () => {
     expect(canStandOn(ground, 1, 1, 0)).toBe(false);
     expect(canStandOn(ground, 2, 1, 0)).toBe(true);
     expect(canStandOn(ground, 9, 9, 0)).toBe(false);
+  });
+});
+
+describe("fitsPlayerAt", () => {
+  it("needs every column under the player's feet to take it from the column under it", () => {
+    expect(fitsPlayerAt(groundFrom(["0T0"]), { x: 0, y: 0 })).toBe(true);
+    expect(fitsPlayerAt(groundFrom(["0T0"]), { x: 0.2, y: 0 })).toBe(true);
+    expect(fitsPlayerAt(groundFrom(["0T0"]), { x: 0.4, y: 0 })).toBe(false);
+    expect(fitsPlayerAt(groundFrom(["01"]), { x: 0.5, y: 0 })).toBe(true);
+    expect(fitsPlayerAt(groundFrom(["03"]), { x: 0.5, y: 0 })).toBe(false);
+    expect(fitsPlayerAt(groundFrom(["~"]), { x: 0, y: 0 })).toBe(false);
   });
 });
 
