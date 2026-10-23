@@ -92,6 +92,7 @@ import {
   RECEIVED_SHADOW_RESOLUTION,
   type ShadowReceiver,
 } from "./received-shadow";
+import { createTexturePool } from "./texture-pool";
 
 const RES = RECEIVED_SHADOW_RESOLUTION;
 const PAD = RECEIVED_SHADOW_PADDING;
@@ -145,7 +146,7 @@ const twoReceivers = (): ShadowReceiver[] => {
 describe("createReceivedShadows", () => {
   it("packs one padded square per receiver at RECEIVED_SHADOW_RESOLUTION, in one atlas", () => {
     const renderer = createRenderer();
-    const shadows = createReceivedShadows(twoReceivers(), renderer as never, []);
+    const shadows = createReceivedShadows(twoReceivers(), renderer as never, [], createTexturePool());
     const frames = shadows.views.map(({ view }) => (view as Sprite).texture.frame);
 
     expect(frames).toEqual([
@@ -159,7 +160,7 @@ describe("createReceivedShadows", () => {
   it("starts a new row of squares when one would pass RECEIVED_SHADOW_ATLAS_WIDTH", () => {
     const wide = RECEIVED_SHADOW_ATLAS_WIDTH / (2 * RES);
     const receivers = [0, 1].map(() => ({ own: silhouetteOf(0, 0, wide, 20), casters: [] }));
-    const shadows = createReceivedShadows(receivers, createRenderer() as never, []);
+    const shadows = createReceivedShadows(receivers, createRenderer() as never, [], createTexturePool());
     const frames = shadows.views.map(({ view }) => (view as Sprite).texture.frame);
 
     expect(frames[1]).toMatchObject({ x: PAD, y: 2 * PAD + 20 * RES });
@@ -167,7 +168,7 @@ describe("createReceivedShadows", () => {
   });
 
   it("shows each receiver's square over its sprite, with its depth", () => {
-    const shadows = createReceivedShadows(twoReceivers(), createRenderer() as never, []);
+    const shadows = createReceivedShadows(twoReceivers(), createRenderer() as never, [], createTexturePool());
     const [first] = shadows.views;
     const view = first.view as Sprite;
 
@@ -179,7 +180,7 @@ describe("createReceivedShadows", () => {
   it("computes once a mask that is opaque everywhere but on the receivers", () => {
     const renderer = createRenderer();
     const receivers = twoReceivers();
-    createReceivedShadows(receivers, renderer as never, []);
+    createReceivedShadows(receivers, renderer as never, [], createTexturePool());
     const [{ container, target, clearColor }] = renderer.render.mock.calls[0];
     const cutouts = container.children as MockSprite[];
 
@@ -195,7 +196,7 @@ describe("createReceivedShadows", () => {
   it("draws the black casters with the given filters, then erases the mask, into the atlas", () => {
     const renderer = createRenderer();
     const filters = [{ blur: true }, { alpha: true }];
-    const shadows = createReceivedShadows(twoReceivers(), renderer as never, filters as never);
+    const shadows = createReceivedShadows(twoReceivers(), renderer as never, filters as never, createTexturePool());
 
     shadows.draw(null);
     const { container, target, clear, clearColor } = renderer.render.mock.calls[1][0];
@@ -220,7 +221,7 @@ describe("createReceivedShadows", () => {
   it("lays a caster on its receiver's square, moved by the offset and cropped around the square", () => {
     const renderer = createRenderer();
     const receivers = twoReceivers();
-    const shadows = createReceivedShadows(receivers, renderer as never, []);
+    const shadows = createReceivedShadows(receivers, renderer as never, [], createTexturePool());
     const offsetOf = vi.fn(() => ({ x: -90, y: 25 }));
 
     shadows.draw(offsetOf);
@@ -254,7 +255,7 @@ describe("createReceivedShadows", () => {
   });
 
   it("crops the side and top of a caster that runs past the square", () => {
-    const shadows = createReceivedShadows(twoReceivers(), createRenderer() as never, []);
+    const shadows = createReceivedShadows(twoReceivers(), createRenderer() as never, [], createTexturePool());
     const [sprite] = shadows.casters.children as MockSprite[];
 
     // At (90, −20) px: 10 px left of the square, 20 px above it.
@@ -266,7 +267,7 @@ describe("createReceivedShadows", () => {
   });
 
   it("hides a caster that does not shade its receiver, writing visibility only on change", () => {
-    const shadows = createReceivedShadows(twoReceivers(), createRenderer() as never, []);
+    const shadows = createReceivedShadows(twoReceivers(), createRenderer() as never, [], createTexturePool());
     const [sprite] = shadows.casters.children as MockSprite[];
 
     shadows.draw(() => ({ x: 0, y: 0 }));
@@ -277,19 +278,44 @@ describe("createReceivedShadows", () => {
     expect(sprite.visibleWrites).toEqual([false, true, false]);
   });
 
-  it("destroys the atlas, the mask, the casters and its textures", () => {
+  it("destroys the atlas, the mask and the casters, and gives the caster textures back to the pool", () => {
     const renderer = createRenderer();
-    const shadows = createReceivedShadows(twoReceivers(), renderer as never, []);
+    const textures = createTexturePool();
+    const shadows = createReceivedShadows(twoReceivers(), renderer as never, [], textures);
     shadows.draw(null);
     const root = renderer.render.mock.calls[1][0].container;
     const mask = renderer.render.mock.calls[0][0].target as { destroy: ReturnType<typeof vi.fn> };
+    const casterTextures = (shadows.casters.children as MockSprite[]).map(({ texture }) => texture);
 
     shadows.destroy();
 
     expect(root.destroy).toHaveBeenCalledWith({ children: true });
-    (shadows.casters.children as MockSprite[]).forEach(({ texture }) => expect(texture.destroy).toHaveBeenCalled());
+    casterTextures.forEach((texture) => expect(texture.destroy).not.toHaveBeenCalled());
+    expect(textures.size).toBe(casterTextures.length);
     shadows.views.forEach(({ view }) => expect((view as Sprite).texture.destroy).toHaveBeenCalled());
     expect(mask.destroy).toHaveBeenCalledWith(true);
     expect(shadows.atlas.destroy).toHaveBeenCalledWith(true);
+    // The atlas goes before the views' textures: its source drops their listeners at once.
+    const atlasOrder = (shadows.atlas.destroy as unknown as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0];
+    shadows.views.forEach(({ view }) =>
+      expect(
+        ((view as Sprite).texture.destroy as unknown as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0],
+      ).toBeGreaterThan(atlasOrder),
+    );
+  });
+
+  it("reuses the caster textures a destroyed set gave back", () => {
+    const textures = createTexturePool();
+    const receivers = twoReceivers();
+    const first = createReceivedShadows(receivers, createRenderer() as never, [], textures);
+    const given = (first.casters.children as MockSprite[]).map(({ texture }) => texture);
+    first.destroy();
+
+    const second = createReceivedShadows(receivers, createRenderer() as never, [], textures);
+
+    const reused = (second.casters.children as MockSprite[]).map(({ texture }) => texture);
+    expect(reused).toHaveLength(given.length);
+    reused.forEach((texture) => expect(given).toContain(texture));
+    expect(textures.size).toBe(0);
   });
 });

@@ -6,6 +6,8 @@ import { Box } from "../terrain";
 import {
   CHUNK_KEEP_RADIUS,
   CHUNK_LOAD_RADIUS,
+  CHUNK_PREFETCH_RADIUS,
+  CHUNKS_LOADED_PER_FRAME,
   type ChunkSource,
   chunkOfPoint,
   type SavedChunk,
@@ -107,7 +109,7 @@ describe("WorldChunks", () => {
 
     // One chunk on: the far row is kept, within the keep radius.
     const second = chunks.stream([{ cx: 1, cy: 0 }]);
-    expect(CHUNK_KEEP_RADIUS).toBe(2);
+    expect(CHUNK_KEEP_RADIUS).toBe(3);
     expect(second.loaded).toEqual([
       { cx: 2, cy: -1 },
       { cx: 2, cy: 0 },
@@ -115,8 +117,8 @@ describe("WorldChunks", () => {
     ]);
     expect(second.unloaded).toEqual([]);
 
-    // Further: what is out of reach goes first, then the new ground comes.
-    const third = chunks.stream([{ cx: 3, cy: 0 }]);
+    // Further: what is out of reach goes first, then the new ground comes (the world ends at 3).
+    const third = chunks.stream([{ cx: 4, cy: 0 }]);
     expect(third.unloaded).toEqual([
       { cx: -1, cy: -1 },
       { cx: 0, cy: -1 },
@@ -131,6 +133,70 @@ describe("WorldChunks", () => {
       { cx: 3, cy: 1 },
     ]);
     expect(chunks.columnIndex.get(0, 0)).toBeUndefined();
+    expect(third.pending).toBe(0);
+  });
+
+  it("loads within a budget, the needed chunks first, and says how many are left", () => {
+    const chunks = new WorldChunks(testSource());
+    expect(CHUNKS_LOADED_PER_FRAME).toBe(2);
+
+    const first = chunks.stream([{ cx: 0, cy: 0 }], { maxLoads: 4 });
+    expect(first.loaded).toEqual([
+      { cx: -1, cy: -1 },
+      { cx: 0, cy: -1 },
+      { cx: 1, cy: -1 },
+      { cx: -1, cy: 0 },
+    ]);
+    expect(first.pending).toBe(5);
+    expect(chunks.stream([{ cx: 0, cy: 0 }], { maxLoads: 4 }).pending).toBe(1);
+    const last = chunks.stream([{ cx: 0, cy: 0 }], { maxLoads: 4 });
+    expect(last.loaded).toEqual([{ cx: 1, cy: 1 }]);
+    expect(last.pending).toBe(0);
+    expect(chunks.isReady({ cx: 0, cy: 0 })).toBe(true);
+  });
+
+  it("loads ahead within the prefetch radius only once every needed chunk is in", () => {
+    const chunks = new WorldChunks(testSource());
+    expect(CHUNK_PREFETCH_RADIUS).toBe(2);
+
+    const first = chunks.stream([{ cx: 0, cy: 0 }], { prefetchRadius: 2, maxLoads: 10 });
+    expect(first.loaded).toHaveLength(10);
+    // The nine needed ones, then the first of the ring ahead.
+    expect(first.loaded[9]).toEqual({ cx: -2, cy: -2 });
+    expect(first.pending).toBe(0);
+
+    // A needed chunk is short of budget: nothing is loaded ahead.
+    const moved = chunks.stream([{ cx: 2, cy: 0 }], { prefetchRadius: 2, maxLoads: 1 });
+    expect(moved.loaded).toHaveLength(1);
+    expect(moved.pending).toBe(5);
+
+    chunks.stream([{ cx: 0, cy: 0 }], { prefetchRadius: 2 });
+    expect(chunks.size).toBe(25);
+  });
+
+  it("counts a chunk two foci share once", () => {
+    const source = testSource();
+    const chunks = new WorldChunks(source);
+
+    const { loaded, pending } = chunks.stream(
+      [
+        { cx: 0, cy: 0 },
+        { cx: 1, cy: 0 },
+      ],
+      { maxLoads: 12 },
+    );
+
+    expect(loaded).toHaveLength(12);
+    expect(pending).toBe(0);
+    expect(source.generate).toHaveBeenCalledTimes(12);
+  });
+
+  it("keeps at least the chunks it loads ahead", () => {
+    const chunks = new WorldChunks(testSource());
+    chunks.stream([{ cx: 0, cy: 0 }], { prefetchRadius: 2, keepRadius: 0 });
+
+    expect(chunks.stream([{ cx: 0, cy: 0 }], { prefetchRadius: 2, keepRadius: 0 }).unloaded).toEqual([]);
+    expect(chunks.size).toBe(25);
   });
 
   it("keeps what any focus needs, and never keeps less than it loads", () => {

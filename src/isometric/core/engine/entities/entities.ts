@@ -145,10 +145,16 @@ export class Entity implements IEntity {
  * (`"x"` by default), in order from the anchor.
  */
 export function getFootprint(anchor: WorldCoord, length = 1, lengthAxis: EntityLengthAxis = "x"): WorldCoord[] {
-  return Array.from({ length }, (_, index) => ({
-    x: lengthAxis === "x" ? anchor.x + index : anchor.x,
-    y: lengthAxis === "y" ? anchor.y + index : anchor.y,
-  }));
+  // A plain loop: placement asks for a footprint per column and definition, and `Array.from()`
+  // with a callback was a third of the time spent generating a chunk.
+  const footprint: WorldCoord[] = [];
+  for (let index = 0; index < length; index += 1) {
+    footprint.push({
+      x: lengthAxis === "x" ? anchor.x + index : anchor.x,
+      y: lengthAxis === "y" ? anchor.y + index : anchor.y,
+    });
+  }
+  return footprint;
 }
 
 /** Columns covered by an entity. */
@@ -264,6 +270,10 @@ function findPlacement(
   context: PlacementContext,
   groupCells: ReadonlyCellMap<true>,
 ): Placement | undefined {
+  // The anchor is the footprint's first block: most columns fail on its surface or because it is
+  // taken, before anything is allocated for the rest of the footprint.
+  if (box.type !== (definition.footprintSurfaces?.[0] ?? definition.surface)) return undefined;
+  if (context.placed.isOccupied(box.x, box.y) || groupCells.has(box.x, box.y)) return undefined;
   const footprint = getFootprint(box, definition.length, definition.lengthAxis);
   const footprintBoxes = footprint.map(({ x, y }) => context.columns.get(x, y));
   if (footprintBoxes.some((footprintBox) => footprintBox === undefined)) return undefined;

@@ -3,6 +3,7 @@ import { TERRAIN_APPEARANCE } from "../content";
 import {
   bindCameraControls,
   chunkOfPoint,
+  CHUNKS_LOADED_PER_FRAME,
   CLOCK_PART,
   createScene,
   getWalkDirection,
@@ -167,11 +168,20 @@ describe("mountGame", () => {
     const home = chunkOfPoint(world.parts.get(PLAYER_PART));
     const far = { cx: home.cx + 10, cy: home.cy };
 
-    options.stream?.([far]);
-
+    // While the scene is built: everything the view needs, at once.
+    options.stream?.([far], true);
     expect(world.chunks.has(far)).toBe(true);
     expect(world.chunks.has(home)).toBe(true);
     expect(world.chunks.has({ cx: home.cx + 5, cy: home.cy })).toBe(false);
+
+    // On frames: a few chunks per frame, the ground around the player first.
+    const next = { cx: home.cx - 10, cy: home.cy };
+    options.stream?.([next], false);
+    expect(world.chunks.isReady(next)).toBe(false);
+    const frames = Math.ceil(9 / CHUNKS_LOADED_PER_FRAME) - 1;
+    for (let frame = 0; frame < frames; frame += 1) options.stream?.([next], false);
+    expect(world.chunks.isReady(next)).toBe(true);
+    expect(world.chunks.isReady(home)).toBe(true);
   });
 
   it("leaves out the modules and systems the URL disables", async () => {

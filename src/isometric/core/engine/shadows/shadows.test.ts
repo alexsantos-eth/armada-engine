@@ -25,6 +25,7 @@ import {
   createTestEntities,
   defaultWorld,
   entitiesOf,
+  frameUntil,
   mountScene,
   resetHarness,
   worldFrom,
@@ -34,7 +35,7 @@ import { createTerrainView } from "../terrain-view";
 import { CLOCK_PART, getSunState, TICKS_PER_DAY } from "../time";
 import type { World } from "../world";
 import { createReceivedShadows } from "./received-shadow";
-import { createShadows, SHADOW_MAP_MARGIN } from "./shadows";
+import { createShadows, SHADOW_GATHERS_PER_FRAME, SHADOW_MAP_MARGIN } from "./shadows";
 import { createSilhouettes, placeSilhouette } from "./silhouette";
 
 describe("createShadows", () => {
@@ -540,8 +541,11 @@ describe("createShadows", () => {
         { cx: 0, cy: 0 },
         { cx: 1, cy: 0 },
       ];
+      await frameUntil(ticker, () => expect(scene.shownChunks()).toHaveLength(2));
+      expect(SHADOW_GATHERS_PER_FRAME).toBe(1);
+      // Both chunks gather their casters again, one per frame, the one never drawn first.
       ticker.frame();
-      await vi.waitFor(() => expect(scene.shownChunks()).toHaveLength(2));
+      expect(createReceivedShadows).toHaveBeenCalledTimes(1);
       ticker.frame();
       // Both trees now shade each other, each in its own chunk's atlas.
       expect(createReceivedShadows).toHaveBeenCalledTimes(2);
@@ -549,11 +553,10 @@ describe("createShadows", () => {
 
       // Chunk 2 comes next to chunk 1: chunk 1 gathers again, and trades its atlas for a new one.
       visible.chunks = [0, 1, 2].map((cx) => ({ cx, cy: 0 }));
-      ticker.frame();
-      await vi.waitFor(() => expect(scene.shownChunks()).toHaveLength(3));
-      ticker.frame();
-      expect(createReceivedShadows).toHaveBeenCalledTimes(3);
-      const [, first] = vi.mocked(createReceivedShadows).mock.results;
+      await frameUntil(ticker, () => expect(scene.shownChunks()).toHaveLength(3));
+      await frameUntil(ticker, () => expect(createReceivedShadows).toHaveBeenCalledTimes(3));
+      // Chunk 1's first atlas: it gathered first, never drawn until then.
+      const [first] = vi.mocked(createReceivedShadows).mock.results;
       expect((first.value as { destroy: ReturnType<typeof vi.fn> }).destroy).toHaveBeenCalled();
       expect(receivedCount()).toBe(2);
 

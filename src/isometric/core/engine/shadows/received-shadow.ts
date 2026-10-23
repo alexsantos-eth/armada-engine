@@ -1,6 +1,7 @@
 import { Container, type Filter, Rectangle, RenderTexture, type Renderer, Sprite, Texture } from "pixi.js";
 import type { DepthView } from "../render";
 import type { PlanePoint, Silhouette } from "./silhouette";
+import type { TexturePool } from "./texture-pool";
 
 /** Texels of the received-shadow atlas per screen pixel of a receiver (at zoom 1). */
 export const RECEIVED_SHADOW_RESOLUTION = 2;
@@ -93,11 +94,16 @@ function packSlots(receivers: readonly ShadowReceiver[]) {
  * {@link RECEIVED_SHADOW_BLEED} texels around it, and then keeps it only where the receiver
  * is opaque: a mask computed once, `1 − alpha` of every receiver, erases the rest. One render
  * to texture per draw, whatever the number of receivers.
+ *
+ * The caster textures (one per receiver and caster, over the casters' shared SVG sources) come
+ * from `textures` and go back to it on `destroy()`: destroying them would walk the listeners of
+ * their source once each.
  */
 export function createReceivedShadows(
   receivers: readonly ShadowReceiver[],
   renderer: Renderer,
   filters: readonly Filter[],
+  textures: TexturePool,
 ): ReceivedShadows {
   const resolution = RECEIVED_SHADOW_RESOLUTION;
   const { slots, width, height } = packSlots(receivers);
@@ -148,11 +154,7 @@ export function createReceivedShadows(
         y: slot.y + (receiver.own.screenFoot.y + display.top - screenFoot.y - target.top) * resolution,
       };
       // Its own frame, cropped to the receiver's square on every draw; the scale never changes.
-      const texture = new Texture({
-        source,
-        frame: new Rectangle(base.x, base.y, base.width, base.height),
-        dynamic: true,
-      });
+      const texture = textures.acquire(source, base);
       const sprite = new Sprite(texture);
       sprite.tint = 0x000000;
       sprite.visible = false;
@@ -219,10 +221,11 @@ export function createReceivedShadows(
     },
     destroy() {
       root.destroy({ children: true });
-      placed.forEach(({ texture }) => texture.destroy());
-      views.forEach(({ view }) => view.texture.destroy());
+      placed.forEach(({ texture }) => textures.release(texture));
+      // The atlas first: destroying its source drops the listeners of the views' textures at once.
       mask.destroy(true);
       atlas.destroy(true);
+      views.forEach(({ view }) => view.texture.destroy());
     },
   };
 }

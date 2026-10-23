@@ -2,7 +2,9 @@ import { Application, type Ticker, UPDATE_PRIORITY } from "pixi.js";
 import { ENTITY_CONFIG, TERRAIN_APPEARANCE } from "../content";
 import {
   bindCameraControls,
+  CHUNK_PREFETCH_RADIUS,
   chunkOfPoint,
+  CHUNKS_LOADED_PER_FRAME,
   CLOCK_PART,
   createScene,
   createSimulation,
@@ -50,8 +52,8 @@ export type Game = {
  * It creates the Pixi app (filling `window`), resolves the launch options from the URL, generates
  * the world with the game content (unbounded, by chunks), runs its fixed-step simulation on the
  * app's ticker (`HIGH` priority, before the render), renders it with the modules of
- * `createSceneModules()` while streaming the chunks the camera sees and those around the player
- * (`world.chunks.stream()`), and binds
+ * `createSceneModules()` while streaming the chunks around the player and those the camera sees
+ * (`world.chunks.stream()`, a few per frame once started), and binds
  * the controls: pointer on the stage (drag, wheel, pinch, when the scene has a camera) and
  * keyboard on the window (walk, zoom at the centre of the view).
  */
@@ -86,11 +88,17 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     const world = generateWorld({ seed, entityDefinitions: ENTITY_CONFIG, parts: createWorldParts(startTick) });
     const simulation = createSimulation(world, { timeScale, systems: createWorldSystems(disabledModules) });
     // The scene draws the player between its last two ticks, and the camera follows it. The world
-    // keeps loaded what the camera sees and the ground around the player, wherever the camera is.
+    // keeps loaded the ground around the player first and what the camera sees, wherever the
+    // camera is: all at once while the scene is built, then a few chunks per frame, loading
+    // ahead of the camera when nothing is missing.
     const scene = await createScene(app, world, createSceneModules(disabledModules), {
       terrain: TERRAIN_APPEARANCE,
       interpolation: () => getInterpolationAlpha(simulation.stepper),
-      stream: (visible) => world.chunks.stream([...visible, chunkOfPoint(world.parts.get(PLAYER_PART))]),
+      stream: (visible, building) =>
+        world.chunks.stream(
+          [chunkOfPoint(world.parts.get(PLAYER_PART)), ...visible],
+          building ? {} : { prefetchRadius: CHUNK_PREFETCH_RADIUS, maxLoads: CHUNKS_LOADED_PER_FRAME },
+        ),
     });
     teardowns.push(scene.destroy);
     if (destroyed) return;

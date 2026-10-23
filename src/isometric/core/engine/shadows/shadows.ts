@@ -23,7 +23,9 @@ import { type BuiltScene, type EntityView, SCENE_LAYER, type SceneModule, type S
 import { CLOCK_PART, getSunState } from "../time";
 import type { WorldChunk } from "../world";
 import type { ChunkKey, OcclusionTerrain, ShadowProjection, WorldRect } from "../../types";
-import { createReceivedShadows, type ReceivedShadows, type ShadowReceiver } from "./received-shadow";
+import { pairShadows } from "./pairs";
+import { createReceivedShadows, type ReceivedShadows } from "./received-shadow";
+import { createTexturePool } from "./texture-pool";
 import {
   createGroundShadowView,
   createSilhouettes,
@@ -38,6 +40,13 @@ import {
  * crosses a chunk edge does not fade at the edge of the map.
  */
 export const SHADOW_MAP_MARGIN = 1;
+
+/**
+ * Shown chunks that gather their casters again per frame, once the scene is built: showing a
+ * chunk makes it and its eight neighbours stale, and gathering them all in one frame froze the
+ * game. The chunks never drawn go first; the others keep their old shadows a few frames.
+ */
+export const SHADOW_GATHERS_PER_FRAME = 1;
 
 /** One shadow map and the fixed layer it is drawn from. */
 type ShadowLayer = {
@@ -90,11 +99,13 @@ const RECEIVER_SPAN = 1;
  * its square of its chunk's atlas right after it (`createReceivedShadows()`), where the other
  * silhouettes land as `getCastShadowOffset()` says. The atlas takes its turn among the maps.
  *
- * A chunk's maps are drawn as soon as it is shown, at sunrise and at sunset (without silhouettes
- * at night); by day one map per frame is redrawn, the stalest of every shown chunk, once it is
- * `SHADOW_REFRESH_TICKS` old. When a chunk is shown or hidden, the casters of its neighbours are
- * gathered again. The casters come from the `entityViews` service: without it, the maps hold the
- * occlusion only.
+ * A chunk's maps are drawn when it gathers its casters, at sunrise and at sunset (without
+ * silhouettes at night); by day one map per frame is redrawn, the stalest of every shown chunk,
+ * once it is `SHADOW_REFRESH_TICKS` old. When a chunk is shown or hidden, it and its neighbours
+ * gather their casters again: all of them when the scene is built, then
+ * {@link SHADOW_GATHERS_PER_FRAME} per frame, the chunks never drawn first. The caster textures
+ * of the received shadows are pooled (`createTexturePool()`), never destroyed one by one. The
+ * casters come from the `entityViews` service: without it, the maps hold the occlusion only.
  */
 export function createShadows(): SceneModule {
   return {
@@ -105,6 +116,8 @@ export function createShadows(): SceneModule {
       // with the sun's opacity applied to each group as a whole so overlaps do not darken twice.
       const blurFilter = new BlurFilter({ strength: SHADOW_BLUR, quality: 2 });
       const alphaFilter = new AlphaFilter({ alpha: 1 });
+      // Caster textures of the received shadows, reused as chunks gather again.
+      const textures = createTexturePool();
       const chunks = new Map<ChunkKey, ShadowChunk>();
       // Set by `start()`, before any chunk gathers its casters.
       let scene!: BuiltScene;
@@ -194,29 +207,14 @@ export function createShadows(): SceneModule {
           scene.remove(shadow.received.views);
           shadow.received = undefined;
         }
-        const bodies = near.map((view) => ({ view, silhouettes: silhouettesOf(view) }));
-        const receivers: ShadowReceiver[] = bodies
-          .filter(({ view }) => own.includes(view))
-          .flatMap((body) =>
-            body.silhouettes.map((silhouette) => ({
-              own: silhouette,
-              casters: bodies
-                .filter((other) => other !== body)
-                .flatMap((other) => {
-                  const lift = other.view.entity.box.elevation - body.view.entity.box.elevation;
-                  return other.silhouettes
-                    .filter(
-                      ({ worldFoot, display }) =>
-                        Math.hypot(silhouette.worldFoot.x - worldFoot.x, silhouette.worldFoot.y - worldFoot.y) <=
-                        getShadowReach(display.height, lift, metrics) + RECEIVER_SPAN,
-                    )
-                    .map((caster) => ({ silhouette: caster, lift }));
-                }),
-            })),
-          )
-          .filter(({ casters }) => casters.length > 0);
+        const receiving = new Set(own);
+        const receivers = pairShadows(
+          near.map((view) => ({ view, elevation: view.entity.box.elevation, silhouettes: silhouettesOf(view) })),
+          ({ view }) => receiving.has(view),
+          (height, lift) => getShadowReach(height, lift, metrics) + RECEIVER_SPAN,
+        );
         if (receivers.length > 0) {
-          const received = createReceivedShadows(receivers, app.renderer, [blurFilter, alphaFilter]);
+          const received = createReceivedShadows(receivers, app.renderer, [blurFilter, alphaFilter], textures);
           const views = received.views.map((view) => ({ ...view, layer: SCENE_LAYER.onObject }));
           shadow.received = { shadows: received, views };
           scene.add(views);
@@ -321,7 +319,11 @@ export function createShadows(): SceneModule {
         sun = getShadowProjection(getSunState(now));
         const isDay = sun !== null;
         const shadows = [...chunks.values()];
-        const fresh = shadows.filter(({ stale }) => stale).flatMap(gather);
+        // When built, every chunk; then a few per frame, those never drawn first.
+        const stale = shadows
+          .filter(({ stale: isStale }) => isStale)
+          .sort((a, b) => Number(a.targets.length > 0) - Number(b.targets.length > 0));
+        const fresh = (daytime === undefined ? stale : stale.slice(0, SHADOW_GATHERS_PER_FRAME)).flatMap(gather);
         // When built, at sunrise and at sunset: every map (casters only by day); otherwise the maps
         // of the chunks that just gathered their casters.
         const turned = isDay !== daytime;

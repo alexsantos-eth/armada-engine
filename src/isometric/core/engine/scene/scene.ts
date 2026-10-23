@@ -33,7 +33,7 @@ export const SCENE_LAYER = {
 /**
  * Chunks the scene starts showing per frame once it is built, so walking or panning into new
  * ground never builds several chunks in one frame. The first chunks are all shown before the
- * scene starts.
+ * scene starts; after that, each module draws its part of a chunk in a frame of its own.
  */
 export const CHUNKS_SHOWN_PER_FRAME = 1;
 
@@ -60,10 +60,12 @@ export type SceneOptions = {
   /**
    * Called when the scene is built and on every frame, before it shows or hides chunks, with the
    * chunks the camera sees (nearest first): the app loads them, and what else the game needs,
-   * into the world (`world.chunks.stream()`). The scene itself never loads chunks: without it, it
-   * shows the chunks the world has loaded.
+   * into the world (`world.chunks.stream()`). `building` is `true` only while the scene is
+   * built, when everything the first view needs should load at once; on frames, load within a
+   * budget so no frame generates many chunks. The scene itself never loads chunks: without it,
+   * it shows the chunks the world has loaded.
    */
-  readonly stream?: (visible: readonly ChunkCoord[]) => void;
+  readonly stream?: (visible: readonly ChunkCoord[], building: boolean) => void;
 };
 
 /** A rendered world: the services its modules provide, and the cleanup that destroys it. */
@@ -90,8 +92,9 @@ type ShownChunk = {
  * without a camera) once the world has loaded it and its neighbours (`world.chunks.isReady()`).
  * Each module draws its part of a chunk (`showChunk()`), and the chunk's views come and go
  * together. The chunks in view when the scene is built are all shown before the modules start;
- * after that, {@link CHUNKS_SHOWN_PER_FRAME} per frame, nearest first, and a chunk is hidden once
- * it is neither in view nor next to a chunk in view, or its ground is no longer loaded.
+ * after that, {@link CHUNKS_SHOWN_PER_FRAME} per frame, nearest first, each module drawing its part
+ * in a frame of its own (no frame pays for a whole chunk), and a chunk is hidden once it is
+ * neither in view nor next to a chunk in view, or its ground is no longer loaded.
  *
  * The world container is a render group (its tint and its transform are applied on the GPU) and
  * takes no pointer events. Views are kept sorted by depth and then by layer (`SCENE_LAYER`), never
@@ -154,6 +157,15 @@ export async function createScene(
   const parts: SceneModulePart[] = [];
   const shown = new Map<ChunkKey, ShownChunk>();
   let destroyed = false;
+  // Resolved when the next frame starts (or the scene is destroyed): a chunk drawn after the
+  // scene starts spreads its modules over frames.
+  let waiting: Array<() => void> = [];
+  const nextFrame = () => new Promise<void>((resolve) => waiting.push(resolve));
+  const resumeWaiting = () => {
+    const due = waiting;
+    waiting = [];
+    due.forEach((resume) => resume());
+  };
   const hideChunk = (entry: ShownChunk) => {
     shown.delete(entry.chunk.key);
     [...entry.parts].reverse().forEach((part) => part.destroy?.());
@@ -162,6 +174,7 @@ export async function createScene(
   const unload = () => loaded.forEach((source) => void Assets.unload(source));
   const teardown = () => {
     destroyed = true;
+    resumeWaiting();
     [...shown.values()].reverse().forEach(hideChunk);
     [...parts].reverse().forEach((part) => part.destroy());
     root.destroy({ children: true });
@@ -186,13 +199,21 @@ export async function createScene(
     },
     add: (views) => {
       if (views.length === 0) return;
-      views.forEach(({ view }) => {
-        view.cullable = true;
+      // Merged into the sorted views: each new one goes in at its place, after the views of the
+      // same depth and layer already in (as a stable sort would put it), and the views already
+      // in are never taken out and added again.
+      const merged: SceneView[] = [];
+      let next = 0;
+      sortViews(views).forEach((entry) => {
+        while (next < order.length && compareViews(order[next], entry) <= 0) {
+          merged.push(order[next]);
+          next += 1;
+        }
+        entry.view.cullable = true;
+        root.addChildAt(entry.view, merged.length);
+        merged.push(entry);
       });
-      order = sortViews([...order, ...views]);
-      // Re-added in one pass: cheaper than inserting thousands of views one by one.
-      root.removeChildren();
-      addInDepthOrder(root, order);
+      order = [...merged, ...order.slice(next)];
     },
     remove: (views) => {
       if (views.length === 0) return;
@@ -205,12 +226,19 @@ export async function createScene(
     },
   };
 
-  /** What the module parts draw for `chunk`, in module order; `undefined` once the scene is gone. */
-  const drawChunk = async (chunk: WorldChunk): Promise<ShownChunk | undefined> => {
+  /**
+   * What the module parts draw for `chunk`, in module order; `undefined` once the scene is gone.
+   * With `spread`, each part draws in a frame of its own.
+   */
+  const drawChunk = async (chunk: WorldChunk, spread: boolean): Promise<ShownChunk | undefined> => {
     const chunkParts: SceneChunkPart[] = [];
+    let started = false;
     for (const part of parts) {
-      const drawn = await part.showChunk?.(chunk);
-      if (drawn) chunkParts.push(drawn);
+      if (!part.showChunk) continue;
+      if (spread && started) await nextFrame();
+      started = true;
+      if (destroyed) break;
+      chunkParts.push(await part.showChunk(chunk));
     }
     const entry: ShownChunk = { chunk, parts: chunkParts, views: chunkParts.flatMap(({ views = [] }) => views) };
     if (!destroyed) return entry;
@@ -220,9 +248,9 @@ export async function createScene(
   };
 
   /** Chunks to show: in view (nearest first) and ready. */
-  const wanted = () => {
+  const wanted = (building: boolean) => {
     const visible = services.camera?.visibleChunks() ?? [...world.chunks.values()].map(({ coord }) => coord);
-    options.stream?.(visible);
+    options.stream?.(visible, building);
     return { visible, ready: visible.filter((coord) => world.chunks.isReady(coord)) };
   };
 
@@ -247,8 +275,8 @@ export async function createScene(
     }
 
     const first: SceneView[] = parts.flatMap(({ views = [] }) => views);
-    for (const coord of wanted().ready) {
-      const entry = (await drawChunk(world.chunks.get(coord) as WorldChunk)) as ShownChunk;
+    for (const coord of wanted(true).ready) {
+      const entry = (await drawChunk(world.chunks.get(coord) as WorldChunk, false)) as ShownChunk;
       shown.set(entry.chunk.key, entry);
       first.push(...entry.views);
     }
@@ -267,7 +295,7 @@ export async function createScene(
   // One chunk is drawn at a time, over as many frames as its modules need.
   let drawing: ChunkKey | undefined;
   const syncChunks = () => {
-    const { visible, ready } = wanted();
+    const { visible, ready } = wanted(false);
     const inView = new Set(visible.map(({ cx, cy }) => chunkKey(cx, cy)));
     const nearView = ({ cx, cy }: ChunkCoord) =>
       [-1, 0, 1].some((dx) => [-1, 0, 1].some((dy) => inView.has(chunkKey(cx + dx, cy + dy))));
@@ -282,7 +310,7 @@ export async function createScene(
       .forEach((coord) => {
         const chunk = world.chunks.get(coord) as WorldChunk;
         drawing = chunk.key;
-        void drawChunk(chunk).then((entry) => {
+        void drawChunk(chunk, true).then((entry) => {
           drawing = undefined;
           if (!entry) return;
           shown.set(chunk.key, entry);
@@ -293,6 +321,7 @@ export async function createScene(
   };
 
   const onFrame = (ticker: Ticker) => {
+    resumeWaiting();
     syncChunks();
     const frame: SceneFrame = {
       tick: clock.tick,
@@ -313,9 +342,14 @@ export async function createScene(
   };
 }
 
+/** Draw order of two views: by depth, then layer (negative when `a` goes first). */
+export function compareViews(a: SceneView, b: SceneView): number {
+  return a.depth - b.depth || a.layer - b.layer;
+}
+
 /** `views` by depth, then layer; views of the same depth and layer keep their order. */
 export function sortViews(views: readonly SceneView[]): SceneView[] {
-  return [...views].sort((a, b) => a.depth - b.depth || a.layer - b.layer);
+  return [...views].sort(compareViews);
 }
 
 /** Index of the first of the ascending `depths` past `depth`. */

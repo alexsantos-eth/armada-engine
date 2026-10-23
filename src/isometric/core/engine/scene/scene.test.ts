@@ -316,6 +316,24 @@ const fakeCamera = (visible: { chunks: ChunkCoord[] }) => {
 
 const names = (children: unknown[]) => children.map((child) => (child as { name: string }).name);
 
+/** A module `id` that draws one view per chunk: on the terrain layer for `ground`, on the object one otherwise. */
+const layeredProbe = (id: string, log: string[]): SceneModule => ({
+  id,
+  setup: () => ({
+    showChunk: ({ coord: { cx } }: WorldChunk) => {
+      log.push(`${id} ${cx}`);
+      return {
+        views: [{ view: view(`${id} ${cx}`), depth: -cx, layer: id === "ground" ? 0 : 2 }],
+        destroy: () => log.push(`un${id} ${cx}`),
+      };
+    },
+    destroy: () => {},
+  }),
+});
+
+/** Lets the chunk drawing a frame started run. */
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 describe("createScene chunks", () => {
   beforeEach(() => {
     resetHarness();
@@ -344,7 +362,8 @@ describe("createScene chunks", () => {
     world.chunks.unload({ cx: 3, cy: 0 });
     const { root, scene } = await mountScene(world, [camera, chunkProbe()], { stream });
 
-    expect(stream).toHaveBeenCalledWith([{ cx: 1, cy: 0 }]);
+    // While built: everything the first view needs at once.
+    expect(stream).toHaveBeenCalledWith([{ cx: 1, cy: 0 }], true);
     expect(names(root.children)).toEqual(["chunk 1"]);
     scene.destroy();
   });
@@ -371,6 +390,53 @@ describe("createScene chunks", () => {
     await vi.waitFor(() => expect(names(root.children)).toEqual(["chunk 2", "chunk 1", "chunk 0"]));
     expect(log).toEqual(["show 1", "show 2"]);
     scene.destroy();
+  });
+
+  it("draws a chunk that comes into view after the start over frames, one module per frame", async () => {
+    const visible = { chunks: [{ cx: 0, cy: 0 }] };
+    const { module: camera } = fakeCamera(visible);
+    const log: string[] = [];
+    const ground = layeredProbe("ground", log);
+    const { ticker, root, scene } = await mountScene(strip(), [ground, camera, layeredProbe("things", log)]);
+    log.length = 0;
+
+    visible.chunks = [
+      { cx: 0, cy: 0 },
+      { cx: 1, cy: 0 },
+    ];
+    ticker.frame();
+    await settle();
+    // The first module drew its part; the second waits for the next frame, and nothing shows yet.
+    expect(log).toEqual(["ground 1"]);
+    expect(scene.shownChunks()).toHaveLength(1);
+
+    ticker.frame();
+    await settle();
+    expect(log).toEqual(["ground 1", "things 1"]);
+    expect(scene.shownChunks()).toHaveLength(2);
+    expect(names(root.children)).toEqual(["ground 1", "things 1", "ground 0", "things 0"]);
+    scene.destroy();
+  });
+
+  it("stops drawing a chunk when the scene is destroyed between two of its modules", async () => {
+    const visible = { chunks: [{ cx: 0, cy: 0 }] };
+    const { module: camera } = fakeCamera(visible);
+    const log: string[] = [];
+    const { ticker, scene } = await mountScene(strip(), [
+      camera,
+      layeredProbe("ground", log),
+      layeredProbe("things", log),
+    ]);
+    log.length = 0;
+
+    visible.chunks = [{ cx: 1, cy: 0 }];
+    ticker.frame();
+    await settle();
+    scene.destroy();
+    await settle();
+
+    // Chunk 0 is hidden with the scene; chunk 1's first part is freed, its second never drawn.
+    expect(log).toEqual(["ground 1", "unthings 0", "unground 0", "unground 1"]);
   });
 
   it("hides a chunk once it is neither in view nor next to a chunk in view", async () => {
@@ -448,10 +514,16 @@ describe("createScene chunks", () => {
     expect(names(root.children)).toEqual(["later", "moving", "a"]);
     built.placeAt(root.children[1] as never, 2);
     expect(names(root.children)).toEqual(["later", "a", "moving"]);
+    // Merged in after the views of its depth and layer already in, as a stable sort would.
+    built.add([
+      { view: view("front"), depth: 3, layer: 0 },
+      { view: view("twin"), depth: 1, layer: 0 },
+    ]);
+    expect(names(root.children)).toEqual(["later", "a", "twin", "moving", "front"]);
 
     built.remove([]);
     built.remove([later]);
-    expect(names(root.children)).toEqual(["a", "moving"]);
+    expect(names(root.children)).toEqual(["a", "twin", "moving", "front"]);
     expect((later.view as { destroy: () => void }).destroy).toHaveBeenCalled();
     scene.destroy();
   });

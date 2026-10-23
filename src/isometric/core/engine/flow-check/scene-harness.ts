@@ -304,6 +304,24 @@ export const createTicker = () => {
   };
 };
 
+/**
+ * Runs frames until `check` passes (at most `limit`), letting what each frame started settle in
+ * between: after the scene starts, a chunk is drawn over several frames, a module per frame.
+ */
+export async function frameUntil(ticker: { frame: () => void }, check: () => void, limit = 20): Promise<void> {
+  for (let frame = 0; frame < limit; frame += 1) {
+    try {
+      check();
+      return;
+    } catch {
+      // Not yet: run another frame.
+    }
+    ticker.frame();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  check();
+}
+
 /** Minimal Pixi renderer: render-to-texture calls and resize listeners. */
 export const createRenderer = (resolution = 1) => {
   const listeners = new Map<string, Set<() => void>>();

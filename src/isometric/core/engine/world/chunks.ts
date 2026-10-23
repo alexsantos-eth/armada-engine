@@ -56,24 +56,49 @@ export type SavedChunk = {
 export const CHUNK_LOAD_RADIUS = 1;
 
 /**
- * Chunks kept loaded around each focus chunk (`stream()`), past those loaded: a chunk is unloaded
- * only once it is further than this from every focus, so a focus going back and forth over a
- * chunk edge does not reload the same chunks.
+ * Chunks the game loads ahead around each focus chunk (`stream()` with `prefetchRadius`), with
+ * the load budget the needed ones leave: the ground is generated a few frames before the camera
+ * reaches it, never all at once.
  */
-export const CHUNK_KEEP_RADIUS = 2;
+export const CHUNK_PREFETCH_RADIUS = 2;
+
+/**
+ * Chunks kept loaded around each focus chunk (`stream()`), past those loaded ahead: a chunk is
+ * unloaded only once it is further than this from every focus, so a focus going back and forth
+ * over a chunk edge does not unload and generate the same chunks again (hysteresis).
+ */
+export const CHUNK_KEEP_RADIUS = 3;
+
+/**
+ * Chunks the game generates per frame (`stream()` with `maxLoads`): generating one takes some
+ * milliseconds, and a camera crossing a chunk edge needs a whole row of them.
+ */
+export const CHUNKS_LOADED_PER_FRAME = 2;
 
 /** What one `stream()` call did. */
 export type ChunkStreamResult = {
   readonly loaded: readonly ChunkCoord[];
   readonly unloaded: readonly ChunkCoord[];
+  /** Chunks within `loadRadius` of a focus left to load: the budget ran out first. */
+  readonly pending: number;
 };
 
 /** Options of {@link WorldChunks.stream}. */
 export type ChunkStreamOptions = {
-  /** Defaults to {@link CHUNK_LOAD_RADIUS}. */
+  /** Chunks needed around each focus. Defaults to {@link CHUNK_LOAD_RADIUS}. */
   readonly loadRadius?: number;
-  /** Defaults to {@link CHUNK_KEEP_RADIUS}; never under `loadRadius`. */
+  /**
+   * Chunks loaded ahead around each focus once the needed ones are in, within the budget. Defaults
+   * to `loadRadius` (none ahead); the game passes {@link CHUNK_PREFETCH_RADIUS}.
+   */
+  readonly prefetchRadius?: number;
+  /** Defaults to {@link CHUNK_KEEP_RADIUS}; never under `loadRadius` nor `prefetchRadius`. */
   readonly keepRadius?: number;
+  /**
+   * Most chunks loaded by this call (needed ones first). Defaults to no limit; the game passes
+   * {@link CHUNKS_LOADED_PER_FRAME} on every frame.
+   */
+  readonly maxLoads?: number;
 };
 
 /** Chunk of the column nearest the ground point `point`. */
@@ -203,23 +228,47 @@ export class WorldChunks {
   }
 
   /**
-   * Keeps the chunks around `focus` loaded (what the camera sees, where the player stands): loads
-   * every chunk within `loadRadius` of a focus chunk, in focus order, and unloads, first, every
-   * loaded chunk further than `keepRadius` from all of them.
+   * Keeps the chunks around `focus` loaded (what the camera sees, where the player stands, most
+   * important first): unloads, first, every loaded chunk further than `keepRadius` from all of
+   * them; then loads, in focus order, the chunks within `loadRadius` of a focus chunk and, after
+   * all of those, the ones within `prefetchRadius`, at most `maxLoads` in all. Called on every
+   * frame with a budget, it spreads generation over frames and loads ahead of the camera in the
+   * frames that need nothing else.
    */
   stream(focus: Iterable<ChunkCoord>, options: ChunkStreamOptions = {}): ChunkStreamResult {
     const loadRadius = options.loadRadius ?? CHUNK_LOAD_RADIUS;
-    const keepRadius = Math.max(loadRadius, options.keepRadius ?? CHUNK_KEEP_RADIUS);
+    const prefetchRadius = Math.max(loadRadius, options.prefetchRadius ?? loadRadius);
+    const keepRadius = Math.max(prefetchRadius, options.keepRadius ?? CHUNK_KEEP_RADIUS);
+    let budget = options.maxLoads ?? Infinity;
     const centres = [...focus];
     const near = (coord: ChunkCoord) =>
       centres.some(({ cx, cy }) => Math.max(Math.abs(coord.cx - cx), Math.abs(coord.cy - cy)) <= keepRadius);
 
     const unloaded = [...this.loaded.values()].filter(({ coord }) => !near(coord)).map(({ coord }) => coord);
     unloaded.forEach((coord) => this.unload(coord));
-    const loaded = centres
-      .flatMap((centre) => chunksAround(centre, loadRadius))
-      .filter((coord) => !this.has(coord) && this.load(coord) !== undefined);
-    return { loaded, unloaded };
+
+    const loaded: ChunkCoord[] = [];
+    /** Loads the missing chunks within `radius` of each focus, within the budget; returns those left. */
+    const loadWithin = (radius: number) => {
+      // Two foci may share a chunk: it counts once.
+      const listed = new Set<ChunkKey>();
+      const missing = centres
+        .flatMap((centre) => chunksAround(centre, radius))
+        .filter((coord) => {
+          const key = chunkKey(coord.cx, coord.cy);
+          if (listed.has(key) || this.loaded.has(key) || !this.exists(coord)) return false;
+          listed.add(key);
+          return true;
+        });
+      const now = missing.slice(0, budget);
+      now.forEach((coord) => this.load(coord));
+      loaded.push(...now);
+      budget -= now.length;
+      return missing.length - now.length;
+    };
+    const pending = loadWithin(loadRadius);
+    if (pending === 0 && prefetchRadius > loadRadius) loadWithin(prefetchRadius);
+    return { loaded, unloaded, pending };
   }
 
   /**
