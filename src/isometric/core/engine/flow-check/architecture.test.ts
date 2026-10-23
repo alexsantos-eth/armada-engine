@@ -56,13 +56,14 @@ const SCENE_MODULES = new Set([
 /** Modules allowed to import Pixi. Everything else is pure domain logic. */
 const PIXI_MODULES = new Set(["render", "scene", ...SCENE_MODULES]);
 
-const sources = import.meta.glob<string>(["./*/*.ts", "!./**/*.test.ts"], {
+// Every engine module but `flow-check`, which holds the checks and their test support.
+const sources = import.meta.glob<string>(["../*/*.ts", "!../**/*.test.ts", "!../flow-check/**"], {
   eager: true,
   query: "?raw",
   import: "default",
 });
 
-const contentSources = import.meta.glob<string>(["../../content/*.ts", "!../../content/*.test.ts"], {
+const contentSources = import.meta.glob<string>(["../../../content/*.ts", "!../../../content/*.test.ts"], {
   eager: true,
   query: "?raw",
   import: "default",
@@ -79,10 +80,43 @@ const files = Object.entries(sources).map(([path, source]) => ({
   imports: importsOf(source),
 }));
 
+/**
+ * Every source file of the app, to check that each one has its test beside it (`foo.ts` next to
+ * `foo.test.ts`). Only `flow-check` holds tests and test support of no single file.
+ */
+const appFiles = Object.keys(import.meta.glob(["/src/**/*.{ts,tsx}", "!/src/**/*.d.ts"])).map((path) => path.slice(1));
+
+/** Files that need no test of their own: barrels, shared type declarations and the entry point. */
+const isExempt = (path: string) =>
+  path.endsWith("/index.ts") || path.startsWith("src/isometric/core/types/") || path === "src/main.tsx";
+
+const inFlowCheck = (path: string) => path.startsWith("src/isometric/core/engine/flow-check/");
+
 const contentFiles = Object.entries(contentSources).map(([path, source]) => ({
   path,
   imports: importsOf(source),
 }));
+
+describe("test layout", () => {
+  const tests = new Set(appFiles.filter((path) => /\.test\.tsx?$/.test(path)));
+  const sourcesOf = (path: string) => [path.replace(/\.test\.tsx?$/, ".ts"), path.replace(/\.test\.tsx?$/, ".tsx")];
+  const testsOf = (path: string) => [path.replace(/\.tsx?$/, ".test.ts"), path.replace(/\.tsx?$/, ".test.tsx")];
+
+  it("finds the app files", () => {
+    expect(appFiles).toContain("src/isometric/page.tsx");
+  });
+
+  it.each([...tests].filter((path) => !inFlowCheck(path)))("%s sits beside the file it tests", (path) => {
+    expect(sourcesOf(path).some((source) => appFiles.includes(source))).toBe(true);
+  });
+
+  it.each(appFiles.filter((path) => !tests.has(path) && !isExempt(path) && !inFlowCheck(path)))(
+    "%s has its test beside it",
+    (path) => {
+      expect(testsOf(path).some((test) => tests.has(test))).toBe(true);
+    },
+  );
+});
 
 describe("engine architecture", () => {
   it("covers every engine module", () => {

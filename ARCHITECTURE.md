@@ -198,10 +198,9 @@ src/isometric/core/
       index.ts
     scene/               # compositor: contrato SceneModule, orden de dibujo, frames y destroy
       module.ts          # tipos del contrato
+      module.test.ts     # comprobaciones de tipos del contrato
       scene.ts
       scene.test.ts
-      testing/
-        harness.ts       # mocks de Pixi y del render, app falsa y mundos para tests de módulos
       index.ts
     shadows/             # módulo de escena: mapas de sombra, oclusión y sombras recibidas
       received-shadow.ts
@@ -224,7 +223,6 @@ src/isometric/core/
     simulation/
       simulation.ts
       simulation.test.ts
-      events.test.ts
       stepper.ts
       stepper.test.ts
       index.ts
@@ -246,7 +244,10 @@ src/isometric/core/
       world.ts
       world.test.ts
       index.ts
-    architecture.test.ts
+    flow-check/          # comprobaciones de varios módulos a la vez y soporte de tests
+      architecture.test.ts      # capas, barrels, Pixi, módulos de escena y tests al lado de su archivo
+      simulation-events.test.ts # orden de los eventos del reloj a través de la simulación
+      scene-harness.ts          # mocks de Pixi y del render, app falsa y mundos para tests de módulos
     index.ts
   types/
     camera.ts
@@ -314,9 +315,9 @@ Responsabilidades y dependencias permitidas (entre módulos solo a través de su
 | `player-view`   | Módulo de escena: sprite del jugador, interpolado entre ticks y movido en el orden de dibujo; servicio `focus`                                  | `camera`, `player`, `projection`, `render`, `scene`                     |
 | `camera-view`   | Módulo de escena: cámara de la escena (mueve el contenedor, cullea y sigue) y controles de puntero; servicio `camera`                           | `camera`, `scene`                                                       |
 
-Fuera del motor, sus módulos solo pueden importar los tipos compartidos (`../../types`), nunca el contenido; el contenido solo importa tipos del core. Solo `render`, `scene` y los módulos de escena importan Pixi, y ningún módulo del motor lee `window`, `document` ni `localStorage`. Un módulo de escena nunca importa a otro, y `scene` no importa a ninguno: se comunican por servicios. `engine/architecture.test.ts` comprueba estas reglas sobre el código fuente: un import no permitido, saltarse un barrel, que un módulo de escena dependa de otro o usar Pixi o el navegador en otro módulo hace fallar la suite.
+Fuera del motor, sus módulos solo pueden importar los tipos compartidos (`../../types`), nunca el contenido; el contenido solo importa tipos del core. Solo `render`, `scene` y los módulos de escena importan Pixi, y ningún módulo del motor lee `window`, `document` ni `localStorage`. Un módulo de escena nunca importa a otro, y `scene` no importa a ninguno: se comunican por servicios. `engine/flow-check/architecture.test.ts` comprueba estas reglas sobre el código fuente: un import no permitido, saltarse un barrel, que un módulo de escena dependa de otro o usar Pixi o el navegador en otro módulo hace fallar la suite.
 
-Los archivos de tipos no contienen lógica runtime y no tienen tests propios. TypeScript valida esos contratos. Los módulos de comportamiento sí tienen tests co-localizados con el sufijo `.test.ts`.
+Cada archivo de `src` tiene su test al lado (`foo.ts` y `foo.test.ts`), y cada test está al lado del archivo que prueba. Quedan fuera los barrels (`index.ts`), los tipos compartidos de `core/types` (TypeScript valida esos contratos) y la entrada `main.tsx`. Un archivo que solo declara tipos dentro de un módulo, como `scene/module.ts`, también tiene su test, con comprobaciones de tipos (`expectTypeOf`) que fallan al compilar si el contrato cambia. Lo que no prueba un único archivo (las reglas de arquitectura, un flujo que cruza varios módulos) y el soporte compartido de los tests viven en `engine/flow-check/`, la única carpeta exenta; `flow-check/architecture.test.ts` hace cumplir esta regla.
 
 ## Escena modular
 
@@ -337,7 +338,7 @@ Los módulos colaboran solo por **servicios** con nombre (`SceneServices`): `ent
 
 Módulos del juego (`game/modules.ts`, en este orden): `createTerrainView()`, `createEntityView()`, `createShadows()`, `createAmbientLight()`, `createPlayerView(PLAYER_APPEARANCE)` y `createCameraView()`. `modules.test.ts` monta la escena real quitando cada uno y comprueba que el resto dibuja, avanza frames y se destruye. Si `?modules=` nombra un id que no es de ningún módulo ni sistema (una errata), `mountGame()` lo avisa en el log (`findUnknownModules()`).
 
-Para añadir un módulo de escena: crea `engine/<nombre>/` con su `createX(): SceneModule`, su barrel y su test (con `scene/testing/harness.ts`: `mockPixi()`, `mockRender()`, `mountScene(world, [módulo])`), añádelo a `ALLOWED_DEPENDENCIES` y a `SCENE_MODULES` en `architecture.test.ts` (y a la tabla de arriba), y a la lista de `game/modules.ts`. Si comparte algo con otros módulos, declara el servicio en `SceneServices`. Nunca importes otro módulo de escena.
+Para añadir un módulo de escena: crea `engine/<nombre>/` con su `createX(): SceneModule`, su barrel y su test (con `flow-check/scene-harness.ts`: `mockPixi()`, `mockRender()`, `mountScene(world, [módulo])`), añádelo a `ALLOWED_DEPENDENCIES` y a `SCENE_MODULES` en `flow-check/architecture.test.ts` (y a la tabla de arriba), y a la lista de `game/modules.ts`. Si comparte algo con otros módulos, declara el servicio en `SceneServices`. Nunca importes otro módulo de escena.
 
 ## Coordenadas e índice espacial
 
@@ -603,7 +604,7 @@ Vitest ejecuta tests co-localizados mediante `src/**/*.test.ts`. La cobertura se
 - functions;
 - lines.
 
-Los tests de renderer y escena mockean PixiJS. Esto permite probar selección de materiales, carga/unload, geometría y tintado sin WebGL ni navegador. Cada módulo de escena se prueba solo, montado con `mountScene(world, [módulo])` de `engine/scene/testing/harness.ts` (mocks de Pixi, del render y de las sombras, app y ticker falsos, mundos de prueba); la carpeta `testing/` queda fuera de la cobertura porque no es código de producción. `game/modules.test.ts` monta la escena real sin cada módulo, uno a uno, para demostrar que el juego sigue en pie.
+Los tests de renderer y escena mockean PixiJS. Esto permite probar selección de materiales, carga/unload, geometría y tintado sin WebGL ni navegador. Cada módulo de escena se prueba solo, montado con `mountScene(world, [módulo])` de `engine/flow-check/scene-harness.ts` (mocks de Pixi, del render y de las sombras, app y ticker falsos, mundos de prueba); `flow-check/` queda fuera de la cobertura porque no es código de producción. `game/modules.test.ts` monta la escena real sin cada módulo, uno a uno, para demostrar que el juego sigue en pie.
 
 El flujo completo de validación es:
 

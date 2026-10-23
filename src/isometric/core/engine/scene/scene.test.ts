@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("pixi.js", async () => (await import("./testing/harness")).mockPixi());
-vi.mock("../render", async () => (await import("./testing/harness")).mockRender());
+vi.mock("pixi.js", async () => (await import("../flow-check/scene-harness")).mockPixi());
+vi.mock("../render", async () => (await import("../flow-check/scene-harness")).mockRender());
 
 import { Assets } from "pixi.js";
 import { CAMERA_MAX_ZOOM } from "../camera";
@@ -9,7 +9,7 @@ import { TILE_METRICS } from "../constants";
 import { addInDepthOrder, getSvgResolution } from "../render";
 import type { BuiltScene, SceneContext, SceneFrame, SceneModule, SceneModulePart } from "./module";
 import { indexAfter, SCENE_LAYER, sortViews } from "./scene";
-import { mountScene, resetHarness, TEST_TERRAIN, worldFrom } from "./testing/harness";
+import { mountScene, resetHarness, TEST_TERRAIN, worldFrom } from "../flow-check/scene-harness";
 
 /** A module that records what the scene does with it. */
 const probe = (id: string, part: Partial<SceneModulePart> = {}, log: string[] = []) => {

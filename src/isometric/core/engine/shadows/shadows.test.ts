@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("pixi.js", async () => (await import("../scene/testing/harness")).mockPixi());
-vi.mock("../render", async () => (await import("../scene/testing/harness")).mockRender());
-vi.mock("./silhouette", async () => (await import("../scene/testing/harness")).mockSilhouette());
-vi.mock("./received-shadow", async () => (await import("../scene/testing/harness")).mockReceivedShadow());
+vi.mock("pixi.js", async () => (await import("../flow-check/scene-harness")).mockPixi());
+vi.mock("../render", async () => (await import("../flow-check/scene-harness")).mockRender());
+vi.mock("./silhouette", async () => (await import("../flow-check/scene-harness")).mockSilhouette());
+vi.mock("./received-shadow", async () => (await import("../flow-check/scene-harness")).mockReceivedShadow());
 
 import { RenderTexture } from "pixi.js";
 import { Entity } from "../entities";
@@ -24,7 +24,7 @@ import {
   mountScene,
   resetHarness,
   worldFrom,
-} from "../scene/testing/harness";
+} from "../flow-check/scene-harness";
 import type { Box } from "../terrain";
 import { createTerrainView } from "../terrain-view";
 import { getSunState, TICKS_PER_DAY } from "../time";

@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("pixi.js", async () => (await import("../scene/testing/harness")).mockPixi());
-vi.mock("../render", async () => (await import("../scene/testing/harness")).mockRender());
+vi.mock("pixi.js", async () => (await import("../flow-check/scene-harness")).mockPixi());
+vi.mock("../render", async () => (await import("../flow-check/scene-harness")).mockRender());
 
 import { Culler } from "pixi.js";
 import { CAMERA_START_ZOOM, getCullRect } from "../camera";
 import { TILE_METRICS } from "../constants";
 import type { SceneModule } from "../scene";
-import { defaultWorld, mountScene, resetHarness, worldFrom } from "../scene/testing/harness";
+import { defaultWorld, mountScene, resetHarness, worldFrom } from "../flow-check/scene-harness";
 import type { SceneCamera } from "../../types";
 import { createCameraView } from "./camera-view";
 

@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("pixi.js", async () => (await import("../core/engine/scene/testing/harness")).mockPixi());
-vi.mock("../core/engine/render", async () => (await import("../core/engine/scene/testing/harness")).mockRender());
+vi.mock("pixi.js", async () => (await import("../core/engine/flow-check/scene-harness")).mockPixi());
+vi.mock("../core/engine/render", async () => (await import("../core/engine/flow-check/scene-harness")).mockRender());
 vi.mock("../core/engine/shadows/silhouette", async () =>
-  (await import("../core/engine/scene/testing/harness")).mockSilhouette(),
+  (await import("../core/engine/flow-check/scene-harness")).mockSilhouette(),
 );
 vi.mock("../core/engine/shadows/received-shadow", async () =>
-  (await import("../core/engine/scene/testing/harness")).mockReceivedShadow(),
+  (await import("../core/engine/flow-check/scene-harness")).mockReceivedShadow(),
 );
 
-import { createTestEntities, defaultWorld, mountScene, resetHarness } from "../core/engine/scene/testing/harness";
+import { createTestEntities, defaultWorld, mountScene, resetHarness } from "../core/engine/flow-check/scene-harness";
 import { createSceneModules, createWorldSystems, findUnknownModules } from "./modules";
 
 const SCENE_IDS = ["terrain", "entities", "shadows", "ambient-light", "player", "camera"];

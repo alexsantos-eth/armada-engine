@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("pixi.js", async () => (await import("../scene/testing/harness")).mockPixi());
-vi.mock("../render", async () => (await import("../scene/testing/harness")).mockRender());
+vi.mock("pixi.js", async () => (await import("../flow-check/scene-harness")).mockPixi());
+vi.mock("../render", async () => (await import("../flow-check/scene-harness")).mockRender());
 
 import { Assets } from "pixi.js";
 import { CAMERA_START_ZOOM, getGroundPointBelow } from "../camera";
@@ -10,7 +10,14 @@ import { TILE_METRICS } from "../constants";
 import { createPlayer } from "../player";
 import { projectGridPoint } from "../projection";
 import { getBlockDepth } from "../render";
-import { loadTexture, mountScene, renderCalls, resetHarness, type TestView, worldFrom } from "../scene/testing/harness";
+import {
+  loadTexture,
+  mountScene,
+  renderCalls,
+  resetHarness,
+  type TestView,
+  worldFrom,
+} from "../flow-check/scene-harness";
 import { createTerrainView } from "../terrain-view";
 import type { World } from "../world";
 import type { SceneCamera } from "../../types";

@@ -3,8 +3,8 @@
  * record what a module draws, a fake app (ticker, renderer, stage) and small worlds. Each test
  * file mocks with it before importing the module under test:
  *
- *   vi.mock("pixi.js", async () => (await import("../scene/testing/harness")).mockPixi());
- *   vi.mock("../render", async () => (await import("../scene/testing/harness")).mockRender());
+ *   vi.mock("pixi.js", async () => (await import("../flow-check/scene-harness")).mockPixi());
+ *   vi.mock("../render", async () => (await import("../flow-check/scene-harness")).mockRender());
  *
  * Code that runs the shadows module also mocks its Pixi parts (`mockSilhouette()`,
  * `mockReceivedShadow()`).
@@ -12,14 +12,14 @@
  * Never imported by engine code.
  */
 import { vi } from "vitest";
-import type * as ColorModule from "../../render/color";
-import { Entity, indexEntities } from "../../entities";
-import { CellMap } from "../../grid";
-import { createPlayer } from "../../player";
-import { type Box, createTerrainColumns } from "../../terrain";
-import { generateWorld, type World } from "../../world";
-import type { TerrainAppearance, TerrainPoint } from "../../../types";
-import type { SceneModule, SceneOptions } from "..";
+import type * as ColorModule from "../render/color";
+import { Entity, indexEntities } from "../entities";
+import { CellMap } from "../grid";
+import { createPlayer } from "../player";
+import { type Box, createTerrainColumns } from "../terrain";
+import { generateWorld, type World } from "../world";
+import type { TerrainAppearance, TerrainPoint } from "../../types";
+import type { SceneModule, SceneOptions } from "../scene";
 
 /** Textures the mocked `Assets.load` returned, by source. */
 export const loadedTextures = new Map<string, { source: string }>();
@@ -169,7 +169,7 @@ export function mockPixi() {
 export async function mockRender() {
   return {
     // Real color conversion: tests check the exact ambient tint.
-    rgbToTint: (await vi.importActual<typeof ColorModule>("../../render/color")).rgbToTint,
+    rgbToTint: (await vi.importActual<typeof ColorModule>("../render/color")).rgbToTint,
     createSvgColorVariant: vi.fn((source: string, replacements?: unknown, variation = 0) =>
       Promise.resolve(replacements ? `${source}#${variation}` : source),
     ),
@@ -359,7 +359,7 @@ export async function mountScene(
   modules: readonly SceneModule[],
   options: Partial<SceneOptions> & { readonly resolution?: number } = {},
 ) {
-  const { createScene } = await import("..");
+  const { createScene } = await import("../scene");
   const ticker = createTicker();
   const renderer = createRenderer(options.resolution);
   const stage: TestRoot[] = [];

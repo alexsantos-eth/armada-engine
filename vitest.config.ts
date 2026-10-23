@@ -7,8 +7,8 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],
-      // Test support (mocks and fakes shared by test files), never run by the app.
-      exclude: ["**/testing/**"],
+      // Checks and test support (mocks and fakes shared by test files), never run by the app.
+      exclude: ["**/flow-check/**"],
       thresholds: {
         branches: 100,
         functions: 100,

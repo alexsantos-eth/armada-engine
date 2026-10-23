@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("pixi.js", async () => (await import("../scene/testing/harness")).mockPixi());
-vi.mock("../render", async () => (await import("../scene/testing/harness")).mockRender());
+vi.mock("pixi.js", async () => (await import("../flow-check/scene-harness")).mockPixi());
+vi.mock("../render", async () => (await import("../flow-check/scene-harness")).mockRender());
 
 import { Assets } from "pixi.js";
 import { Entity } from "../entities";
@@ -15,7 +15,7 @@ import {
   mountScene,
   renderCalls,
   resetHarness,
-} from "../scene/testing/harness";
+} from "../flow-check/scene-harness";
 import { createEntityView } from "./entity-view";
 
 const HOUSE = {

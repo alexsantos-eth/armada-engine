@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("pixi.js", async () => (await import("../scene/testing/harness")).mockPixi());
-vi.mock("../render", async () => (await import("../scene/testing/harness")).mockRender());
+vi.mock("pixi.js", async () => (await import("../flow-check/scene-harness")).mockPixi());
+vi.mock("../render", async () => (await import("../flow-check/scene-harness")).mockRender());
 
 import { rgbToTint } from "../render/color";
-import { mountScene, resetHarness, worldFrom } from "../scene/testing/harness";
+import { mountScene, resetHarness, worldFrom } from "../flow-check/scene-harness";
 import { DEFAULT_SKY_PALETTE, getSunState, TICKS_PER_DAY } from "../time";
 import { createAmbientLight } from "./ambient-light";
 

@@ -3,7 +3,7 @@ import type { SimulationEvents } from "../../types";
 import { createEventBus } from "../events";
 import { TICKS_PER_DAY, TICKS_PER_HOUR } from "../time";
 import { generateWorld } from "../world";
-import { createSimulation, stepWorld } from "./simulation";
+import { createSimulation, stepWorld } from "../simulation";
 
 const newWorld = (startTick?: number) =>
   generateWorld({ seed: 1, width: 4, height: 4, entityDefinitions: [], startTick });
