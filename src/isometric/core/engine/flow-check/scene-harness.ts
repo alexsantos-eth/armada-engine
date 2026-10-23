@@ -13,14 +13,14 @@
  */
 import { vi } from "vitest";
 import type * as ColorModule from "../render/color";
-import { Entity, indexEntities } from "../entities";
-import { CellMap } from "../grid";
-import { WorldParts } from "../parts";
+import { Entity } from "../entities";
+import { chunksInRect } from "../grid";
 import { createPlayer, createPlayerPart } from "../player";
-import { type Box, createTerrainColumns } from "../terrain";
+import { DEFAULT_WORLD_SEED } from "../random";
+import { type Box, createTerrainColumns, generateTerrainColumns } from "../terrain";
 import { createClockPart } from "../time";
-import { generateWorld, type World, type WorldPartContext, type WorldPartOf } from "../world";
-import type { TerrainAppearance, TerrainPoint } from "../../types";
+import { createFixedChunkSource, createWorld, type World, type WorldPartOf } from "../world";
+import type { TerrainAppearance, TerrainPoint, WorldRect } from "../../types";
 import type { SceneModule, SceneOptions } from "../scene";
 
 /** Textures the mocked `Assets.load` returned, by source. */
@@ -98,6 +98,15 @@ export function mockPixi() {
       const current = this.children.indexOf(child);
       if (current >= 0) this.children.splice(current, 1);
       this.children.splice(index, 0, child);
+    }
+
+    removeChild(child: unknown): void {
+      const current = this.children.indexOf(child);
+      if (current >= 0) this.children.splice(current, 1);
+    }
+
+    removeChildren(): void {
+      this.children.length = 0;
     }
   }
 
@@ -204,7 +213,7 @@ export async function mockRender() {
         };
         return [
           {
-            view: { cullable: false, source: texture.source, x: box.x, y: box.y, position },
+            view: { cullable: false, source: texture.source, x: box.x, y: box.y, position, destroy: vi.fn() },
             depth: box.baseScreenY,
           },
         ];
@@ -240,6 +249,7 @@ export function mockSilhouette() {
           tileTop,
           visible: true,
           alpha: 1,
+          destroy: vi.fn(),
         },
         depth,
       }),
@@ -265,7 +275,7 @@ export function mockReceivedShadow() {
   return {
     createReceivedShadows: vi.fn((receivers: { own: { source: unknown; depth: number } }[]) => ({
       views: receivers.map(({ own }) => ({
-        view: { cullable: false, source: "received-shadow", receivedShadowOf: own.source },
+        view: { cullable: false, source: "received-shadow", receivedShadowOf: own.source, destroy: vi.fn() },
         depth: own.depth,
       })),
       casters: { visible: true },
@@ -329,6 +339,7 @@ export type TestRoot = {
 export type TestView = {
   source: string;
   cullable: boolean;
+  destroy: ReturnType<typeof vi.fn>;
   x?: number;
   y?: number;
   position: { x: number; y: number; set: ReturnType<typeof vi.fn> };
@@ -381,33 +392,52 @@ export type EntityFactory = (columns: readonly Box[]) => Entity[];
 /** The parts the game registers: the clock (at the world start tick) and the player. */
 export const testParts = (): WorldPartOf[] => [createClockPart(), createPlayerPart()];
 
+/** Every column of a world's loaded chunks, chunk by chunk. */
+export const columnsOf = (world: World): Box[] => [...world.chunks.values()].flatMap(({ columns }) => columns);
+
+/** Every entity of a world's loaded chunks, chunk by chunk. */
+export const entitiesOf = (world: World): Entity[] => [...world.chunks.values()].flatMap(({ entities }) => entities);
+
+/** A world of fixed `columns` and the entities `createEntities` puts on them, every chunk loaded. */
+function fixedWorld(
+  columns: readonly Box[],
+  createEntities: EntityFactory,
+  parts: readonly WorldPartOf[],
+  seed: number,
+): World {
+  const xs = columns.map(({ x }) => x);
+  const ys = columns.map(({ y }) => y);
+  const bounds: WorldRect = {
+    minX: Math.min(...xs),
+    minY: Math.min(...ys),
+    maxX: Math.max(...xs),
+    maxY: Math.max(...ys),
+  };
+  const world = createWorld({
+    seed,
+    bounds,
+    source: createFixedChunkSource(columns, createEntities(columns)),
+    parts,
+  });
+  chunksInRect(bounds).forEach((coord) => world.chunks.load(coord));
+  return world;
+}
+
 /**
- * The generated default terrain (no configured entities) with test entities on top, and the
- * game's parts (`testParts()`) created on that ground.
+ * The generated default terrain of one chunk (32 × 32 columns, no configured entities) with test
+ * entities on top, and the game's parts (`testParts()`) created on that ground.
  */
 export const defaultWorld = (createEntities: EntityFactory = () => []): World => {
-  const world = generateWorld({ entityDefinitions: [] });
-  const entities = createEntities(world.columns);
-  const base: WorldPartContext = { ...world, entities, occupancy: indexEntities(entities) };
-  return { ...base, parts: WorldParts.create(testParts(), base) };
+  const area = { minX: 0, minY: 0, maxX: 31, maxY: 31 };
+  const columns = generateTerrainColumns(area, { seed: DEFAULT_WORLD_SEED, clip: area });
+  return fixedWorld(columns, createEntities, testParts(), DEFAULT_WORLD_SEED);
 };
 
 /** A world built from explicit terrain points, for precise material checks. */
 export const worldFrom = (points: TerrainPoint[], createEntities: EntityFactory = () => []): World => {
-  const columns = createTerrainColumns(points);
-  const entities = createEntities(columns);
-  const base: WorldPartContext = {
-    seed: 0,
-    width: 0,
-    height: 0,
-    columns,
-    entities,
-    columnIndex: CellMap.from(columns, (column) => column),
-    occupancy: indexEntities(entities),
-  };
   // The clock at tick 0 and the player on column (0, 0), wherever it would spawn.
   const player: WorldPartOf = { ...createPlayerPart(), create: (ground) => createPlayer(ground, { x: 0, y: 0 }) };
-  return { ...base, parts: WorldParts.create([createClockPart(0), player], base) };
+  return fixedWorld(createTerrainColumns(points), createEntities, [createClockPart(0), player], 0);
 };
 
 /** One two-tile statue on the first column. */

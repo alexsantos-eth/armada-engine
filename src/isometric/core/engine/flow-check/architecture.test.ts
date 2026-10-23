@@ -5,12 +5,13 @@ import { describe, expect, it } from "vitest";
  * (through their barrel), so the dependency graph stays acyclic and domain code never
  * reaches Pixi or the browser:
  *
- * random → grid → terrain → entities → world → simulation (with events)
+ * random → grid → terrain → entities → world → simulation (with events); the world is made of chunks
+ * (`WorldChunks`) generated from the seed and loaded around the camera and the player.
  * parts (the `WorldParts` container) → world; time and player own their world parts (`CLOCK_PART`,
  * `PLAYER_PART`), so the world never names them: the app registers them (`generateWorld({ parts })`).
  * The simulation runs the game systems the app hands it (`WorldSystem`), e.g. `createPlayerSystem()`.
  * constants (view metrics) → lighting (shadow geometry)
- * projection → camera (view maths on the ground plane)
+ * projection, grid → camera (view maths on the ground plane, and the chunks in view)
  * render (Pixi primitives) → scene (the compositor and the `SceneModule` contract)
  * scene → scene modules: terrain-view, entity-view, shadows, ambient-light, player-view, camera-view
  *
@@ -23,7 +24,7 @@ import { describe, expect, it } from "vitest";
  */
 const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   constants: [],
-  camera: ["projection"],
+  camera: ["grid", "projection"],
   random: [],
   events: [],
   parts: [],
@@ -40,7 +41,7 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   scene: ["camera", "constants", "entities", "grid", "render", "terrain", "time", "world"],
   "terrain-view": ["projection", "render", "scene", "terrain"],
   "entity-view": ["entities", "projection", "render", "scene"],
-  shadows: ["lighting", "projection", "render", "scene", "time"],
+  shadows: ["lighting", "projection", "render", "scene", "time", "world"],
   "ambient-light": ["render", "scene", "time"],
   "camera-view": ["camera", "scene"],
   "player-view": ["camera", "player", "projection", "render", "scene"],

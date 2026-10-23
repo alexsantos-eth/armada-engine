@@ -5,6 +5,7 @@ vi.mock("../render", async () => (await import("../flow-check/scene-harness")).m
 
 import { Assets } from "pixi.js";
 import {
+  columnsOf,
   createTestEntities,
   defaultWorld,
   mountScene,
@@ -12,6 +13,7 @@ import {
   resetHarness,
   worldFrom,
 } from "../flow-check/scene-harness";
+import { DEFAULT_MAX_ELEVATION } from "../terrain";
 import { getTerrainTint, createTerrainView } from "./terrain-view";
 
 const renderTerrain = (world: Parameters<typeof mountScene>[0]) => mountScene(world, [createTerrainView()]);
@@ -53,21 +55,24 @@ describe("createTerrainView", () => {
   it("only reads the world: rendering it twice gives the same result", async () => {
     const random = vi.spyOn(Math, "random");
     const world = defaultWorld();
-    const before = world.columns.map(({ elevation }) => elevation);
+    const before = columnsOf(world).map(({ elevation }) => elevation);
 
     (await renderTerrain(world)).scene.destroy();
     const first = renderCalls.splice(0);
     (await renderTerrain(world)).scene.destroy();
 
     expect(renderCalls).toEqual(first);
-    expect(world.columns.map(({ elevation }) => elevation)).toEqual(before);
+    expect(columnsOf(world).map(({ elevation }) => elevation)).toEqual(before);
     expect(random).not.toHaveBeenCalled();
   });
 
-  it("leaves a terrain without positive elevations untinted above water", async () => {
+  it("tints by height from the highest elevation the terrain reaches, the same in every chunk", async () => {
     const { scene } = await renderTerrain(worldFrom([{ x: 0, y: 0, elevation: 0 }]));
+    const grass = { kind: "height", topTint: 0xe8ffb0, step: 0.05 } as const;
 
-    expect(renderCalls.some(({ texture, tint }) => texture.source.includes("grass") && tint === undefined)).toBe(true);
+    expect(renderCalls.find(({ texture }) => texture.source.includes("grass"))?.tint).toBe(
+      getTerrainTint(grass, 0, DEFAULT_MAX_ELEVATION),
+    );
     scene.destroy();
   });
 
@@ -105,7 +110,7 @@ describe("createTerrainView", () => {
   it("draws each block with the material its box was typed with, without classifying again", async () => {
     const world = worldFrom([{ x: 0, y: 0, elevation: 2 }]);
     // Typed sand two blocks up, far from any water: only the box's type can make it sand.
-    world.columns[0].update({ type: "sand" });
+    columnsOf(world)[0].update({ type: "sand" });
 
     const { scene } = await renderTerrain(world);
 
@@ -127,11 +132,30 @@ describe("createTerrainView", () => {
     scene.destroy();
   });
 
+  it("covers the blocks on a chunk's edge with its neighbour's columns, as if the terrain were one", async () => {
+    // A 4×3 plateau across the edge between chunks 0 and 1 (x = 31 | 32 or y = 31 | 32), and the same one inside chunk 0.
+    const plateau = (fromX: number, fromY = 0) =>
+      Array.from({ length: 12 }, (_, index) => ({
+        x: fromX + (index % 4),
+        y: fromY + Math.floor(index / 4),
+        elevation: 2,
+      }));
+
+    (await renderTerrain(worldFrom(plateau(0)))).scene.destroy();
+    const inside = renderCalls.splice(0).length;
+    for (const across of [plateau(30), plateau(0, 30)]) {
+      const { scene } = await renderTerrain(worldFrom(across));
+      expect(scene.shownChunks()).toHaveLength(2);
+      expect(renderCalls.splice(0)).toHaveLength(inside);
+      scene.destroy();
+    }
+  });
+
   it("lets blocks behind a sunken top show", async () => {
     // A 3×3 plateau whose front corner is sand: half a block lower, it hides nothing behind it.
     const points = Array.from({ length: 9 }, (_, index) => ({ x: index % 3, y: Math.floor(index / 3), elevation: 2 }));
     const world = worldFrom(points);
-    world.columns[0].update({ type: "sand" });
+    columnsOf(world)[0].update({ type: "sand" });
 
     const { scene } = await renderTerrain(world);
 

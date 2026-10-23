@@ -19,6 +19,12 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+/**
+ * Height map of `width` × `height` columns from `(originX, originY)`, sampled from seeded
+ * multi-octave simplex noise at absolute world positions: the same seed gives every column the
+ * same elevation whatever area it is generated with. Points come `x`-major (all `y` of the first
+ * `x`, then the next).
+ */
 export function generatePerlinTerrain(options: PerlinTerrainOptions): TerrainPoint[] {
   const width = Math.max(0, Math.floor(options.width));
   const height = Math.max(0, Math.floor(options.height));
@@ -32,6 +38,8 @@ export function generatePerlinTerrain(options: PerlinTerrainOptions): TerrainPoi
   const persistence = options.persistence ?? DEFAULT_PERSISTENCE;
   const lacunarity = options.lacunarity ?? DEFAULT_LACUNARITY;
   const seed = options.seed ?? DEFAULT_WORLD_SEED;
+  const originX = Math.floor(options.originX ?? 0);
+  const originY = Math.floor(options.originY ?? 0);
 
   const minElevation = Math.floor(options.minElevation ?? DEFAULT_MIN_ELEVATION);
   const maxElevation = Math.floor(options.maxElevation ?? DEFAULT_MAX_ELEVATION);
@@ -44,8 +52,8 @@ export function generatePerlinTerrain(options: PerlinTerrainOptions): TerrainPoi
 
   const points: TerrainPoint[] = [];
 
-  for (let x = 0; x < width; x += 1) {
-    for (let y = 0; y < height; y += 1) {
+  for (let x = originX; x < originX + width; x += 1) {
+    for (let y = originY; y < originY + height; y += 1) {
       const sampleX = x / Math.max(0.0001, scale);
       const sampleY = y / Math.max(0.0001, scale);
 

@@ -6,11 +6,13 @@ import {
   CAMERA_MAX_ZOOM,
   CAMERA_MIN_ZOOM,
   CAMERA_START_ZOOM,
+  CHUNK_VIEW_MARGIN,
   clampCamera,
   createCamera,
   getCameraTransform,
   followCamera,
   getCullRect,
+  getVisibleChunks,
   getGroundPointBelow,
   getPinchGesture,
   getWheelZoomFactor,
@@ -297,5 +299,31 @@ describe("getPinchGesture", () => {
     expect(after.x).toBeCloseTo(groundUnderMidpoint.x);
     expect(after.y).toBeCloseTo(groundUnderMidpoint.y);
     expect(next.zoom).toBeCloseTo(2 * factor);
+  });
+});
+
+describe("getVisibleChunks", () => {
+  it("is the chunks whose ground or raised content reaches the screen, nearest the camera first", () => {
+    expect(CHUNK_VIEW_MARGIN).toBeGreaterThan(0);
+    expect(getVisibleChunks({ x: 15.5, y: 15.5, zoom: 4 }, viewport, projection)).toEqual([{ cx: 0, cy: 0 }]);
+    // On a chunk corner, the four chunks that meet there.
+    expect(getVisibleChunks({ x: 31.5, y: 31.5, zoom: 4 }, viewport, projection, 0)).toEqual([
+      { cx: 0, cy: 0 },
+      { cx: 1, cy: 0 },
+      { cx: 0, cy: 1 },
+      { cx: 1, cy: 1 },
+    ]);
+  });
+
+  it("sees more chunks zoomed out, but not those past the screen's left and right edges", () => {
+    expect(getVisibleChunks({ x: 15.5, y: 15.5, zoom: 1 }, viewport, projection)).toEqual([
+      { cx: 0, cy: 0 },
+      { cx: 0, cy: -1 },
+      { cx: -1, cy: 0 },
+      { cx: 1, cy: 0 },
+      { cx: 0, cy: 1 },
+      { cx: -1, cy: -1 },
+      { cx: 1, cy: 1 },
+    ]);
   });
 });

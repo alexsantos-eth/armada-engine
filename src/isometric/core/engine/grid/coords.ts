@@ -78,3 +78,24 @@ export function chunkRect({ cx, cy }: ChunkCoord): WorldRect {
     maxY: (cy + 1) * CHUNK_SIZE - 1,
   };
 }
+
+/** Chunks within `radius` chunks of `centre` (a square, diagonals included), row by row along `x`. */
+export function chunksAround({ cx, cy }: ChunkCoord, radius: number): ChunkCoord[] {
+  const chunks: ChunkCoord[] = [];
+  for (let dy = -radius; dy <= radius; dy += 1) {
+    for (let dx = -radius; dx <= radius; dx += 1) chunks.push({ cx: cx + dx, cy: cy + dy });
+  }
+  return chunks;
+}
+
+/** Chunks that hold at least one column of `rect`, row by row along `x`; none for an empty rectangle. */
+export function chunksInRect(rect: WorldRect): ChunkCoord[] {
+  if (rect.maxX < rect.minX || rect.maxY < rect.minY) return [];
+  const min = toChunkCoord({ x: rect.minX, y: rect.minY });
+  const max = toChunkCoord({ x: rect.maxX, y: rect.maxY });
+  const chunks: ChunkCoord[] = [];
+  for (let cy = min.cy; cy <= max.cy; cy += 1) {
+    for (let cx = min.cx; cx <= max.cx; cx += 1) chunks.push({ cx, cy });
+  }
+  return chunks;
+}

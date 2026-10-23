@@ -25,6 +25,7 @@ const createCamera = () => ({
   resize: vi.fn(),
   follow: vi.fn(),
   update: vi.fn(),
+  visibleChunks: vi.fn(() => []),
 });
 
 /** Pixi reuses one `global` point per event: the controls must copy it. The mouse is pointer 1. */

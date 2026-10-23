@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { TERRAIN_APPEARANCE } from "../content";
 import {
   bindCameraControls,
+  chunkOfPoint,
   CLOCK_PART,
   createScene,
   getWalkDirection,
@@ -40,6 +41,7 @@ vi.mock("../core/engine", async (importOriginal) => ({
   createScene: vi.fn(() =>
     Promise.resolve({
       services: { camera: { zoomAt: vi.fn() } },
+      shownChunks: () => [],
       destroy: vi.fn(() => mocks.teardowns.push("scene")),
     }),
   ),
@@ -158,6 +160,20 @@ describe("mountGame", () => {
     expect(options.interpolation?.()).toBe(0);
   });
 
+  it("keeps loaded the chunks the camera sees and those around the player", async () => {
+    const { game } = mount("?seed=7");
+    await game.ready;
+    const { world, options } = started();
+    const home = chunkOfPoint(world.parts.get(PLAYER_PART));
+    const far = { cx: home.cx + 10, cy: home.cy };
+
+    options.stream?.([far]);
+
+    expect(world.chunks.has(far)).toBe(true);
+    expect(world.chunks.has(home)).toBe(true);
+    expect(world.chunks.has({ cx: home.cx + 5, cy: home.cy })).toBe(false);
+  });
+
   it("leaves out the modules and systems the URL disables", async () => {
     const { game, log } = mount("?seed=1&modules=-shadows,-player,-fog");
     await game.ready;
@@ -235,7 +251,7 @@ describe("mountGame", () => {
   });
 
   it("walks but binds no camera controls when the scene has no camera", async () => {
-    vi.mocked(createScene).mockResolvedValueOnce({ services: {}, destroy: vi.fn() });
+    vi.mocked(createScene).mockResolvedValueOnce({ services: {}, shownChunks: () => [], destroy: vi.fn() });
     const { window, game } = mount();
     await game.ready;
     const { world } = started();
@@ -289,7 +305,7 @@ describe("mountGame", () => {
     expect(teardowns).toEqual([]);
 
     const destroyScene = vi.fn(() => teardowns.push("scene"));
-    loading.resolve({ services: { camera: {} as never }, destroy: destroyScene });
+    loading.resolve({ services: { camera: {} as never }, shownChunks: () => [], destroy: destroyScene });
     await game.ready;
 
     expect(teardowns).toEqual(["scene", "app"]);

@@ -2,6 +2,7 @@ import { Application, type Ticker, UPDATE_PRIORITY } from "pixi.js";
 import { ENTITY_CONFIG, TERRAIN_APPEARANCE } from "../content";
 import {
   bindCameraControls,
+  chunkOfPoint,
   CLOCK_PART,
   createScene,
   createSimulation,
@@ -47,8 +48,10 @@ export type Game = {
  * together, so the page only declares where the game goes and what it shows.
  *
  * It creates the Pixi app (filling `window`), resolves the launch options from the URL, generates
- * the world with the game content, runs its fixed-step simulation on the app's ticker (`HIGH`
- * priority, before the render), renders it with the modules of `createSceneModules()`, and binds
+ * the world with the game content (unbounded, by chunks), runs its fixed-step simulation on the
+ * app's ticker (`HIGH` priority, before the render), renders it with the modules of
+ * `createSceneModules()` while streaming the chunks the camera sees and those around the player
+ * (`world.chunks.stream()`), and binds
  * the controls: pointer on the stage (drag, wheel, pinch, when the scene has a camera) and
  * keyboard on the window (walk, zoom at the centre of the view).
  */
@@ -82,10 +85,12 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     if (unknown.length > 0) log(`Armada ?modules= names no module: ${unknown.join(", ")}`);
     const world = generateWorld({ seed, entityDefinitions: ENTITY_CONFIG, parts: createWorldParts(startTick) });
     const simulation = createSimulation(world, { timeScale, systems: createWorldSystems(disabledModules) });
-    // The scene draws the player between its last two ticks, and the camera follows it.
+    // The scene draws the player between its last two ticks, and the camera follows it. The world
+    // keeps loaded what the camera sees and the ground around the player, wherever the camera is.
     const scene = await createScene(app, world, createSceneModules(disabledModules), {
       terrain: TERRAIN_APPEARANCE,
       interpolation: () => getInterpolationAlpha(simulation.stepper),
+      stream: (visible) => world.chunks.stream([...visible, chunkOfPoint(world.parts.get(PLAYER_PART))]),
     });
     teardowns.push(scene.destroy);
     if (destroyed) return;

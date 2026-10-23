@@ -4,11 +4,12 @@ import {
   followCamera,
   getCameraTransform,
   getCullRect,
+  getVisibleChunks,
   needsCull,
   panCamera,
   zoomCameraAt,
 } from "../camera";
-import type { Camera, CameraLimits, GridPoint, IsoProjectionConfig, SceneCamera } from "../../types";
+import type { Camera, CameraLimits, ChunkCoord, GridPoint, IsoProjectionConfig, SceneCamera } from "../../types";
 
 /**
  * Creates the camera of `world` (the scene's world container, a render group, so moving it is a
@@ -26,6 +27,8 @@ export function createSceneCamera(
   let camera = createCamera(limits, start);
   let culledFor: Camera | undefined;
   let target: GridPoint | undefined;
+  // The scene asks on every frame: computed again only when the camera or the screen changed.
+  let seen: { camera: Camera; width: number; height: number; chunks: readonly ChunkCoord[] } | undefined;
 
   const apply = (force = false) => {
     const { x, y, scale } = getCameraTransform(camera, screen, projection);
@@ -57,6 +60,13 @@ export function createSceneCamera(
     },
     resize() {
       apply(true);
+    },
+    visibleChunks() {
+      const { width, height } = screen;
+      if (seen?.camera !== camera || seen.width !== width || seen.height !== height) {
+        seen = { camera, width, height, chunks: getVisibleChunks(camera, screen, projection) };
+      }
+      return seen.chunks;
     },
     follow(point) {
       target = point;

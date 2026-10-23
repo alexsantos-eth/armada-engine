@@ -5,6 +5,8 @@ import {
   chunkFromKey,
   chunkKey,
   chunkRect,
+  chunksAround,
+  chunksInRect,
   MAX_GRID_COORD,
   toChunkCoord,
   toLocalCoord,
@@ -76,5 +78,32 @@ describe("chunk coordinates", () => {
       maxX: -1,
       maxY: 3 * CHUNK_SIZE - 1,
     });
+  });
+});
+
+describe("chunk ranges", () => {
+  it("lists the chunks around a chunk, row by row along x", () => {
+    expect(chunksAround({ cx: 2, cy: -1 }, 0)).toEqual([{ cx: 2, cy: -1 }]);
+    expect(chunksAround({ cx: 0, cy: 0 }, 1)).toEqual([
+      { cx: -1, cy: -1 },
+      { cx: 0, cy: -1 },
+      { cx: 1, cy: -1 },
+      { cx: -1, cy: 0 },
+      { cx: 0, cy: 0 },
+      { cx: 1, cy: 0 },
+      { cx: -1, cy: 1 },
+      { cx: 0, cy: 1 },
+      { cx: 1, cy: 1 },
+    ]);
+  });
+
+  it("lists the chunks that hold a rectangle's columns", () => {
+    expect(chunksInRect({ minX: -1, minY: 0, maxX: CHUNK_SIZE, maxY: 3 })).toEqual([
+      { cx: -1, cy: 0 },
+      { cx: 0, cy: 0 },
+      { cx: 1, cy: 0 },
+    ]);
+    expect(chunksInRect({ minX: 5, minY: 5, maxX: 4, maxY: 9 })).toEqual([]);
+    expect(chunksInRect({ minX: 5, minY: 5, maxX: 9, maxY: 4 })).toEqual([]);
   });
 });

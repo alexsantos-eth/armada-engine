@@ -4,7 +4,7 @@ vi.mock("pixi.js", () => ({ Culler: { shared: { cull: vi.fn() } } }));
 
 import { Culler } from "pixi.js";
 import type { CameraLimits } from "../../types";
-import { CAMERA_FOLLOW_HALF_LIFE_MS, getCullRect } from "../camera";
+import { CAMERA_FOLLOW_HALF_LIFE_MS, getCullRect, getVisibleChunks } from "../camera";
 import { createSceneCamera } from "./camera";
 
 const limits: CameraLimits = {
@@ -124,5 +124,28 @@ describe("createSceneCamera", () => {
     camera.follow({ x: 10, y: 4 });
     camera.update(1000);
     expect(camera.state.x).toBeGreaterThan(dragged.x);
+  });
+
+  it("says which chunks are in view where it looks now", () => {
+    const { screen, camera } = setup({ x: 40, y: 8, zoom: 2 });
+
+    expect(camera.visibleChunks()).toEqual(getVisibleChunks(camera.state, screen, projection));
+    expect(camera.visibleChunks()[0]).toEqual({ cx: 1, cy: 0 });
+  });
+
+  it("works the chunks in view out again only when the camera or the screen changed", () => {
+    const { screen, camera } = setup({ x: 40, y: 8, zoom: 2 });
+    const first = camera.visibleChunks();
+
+    expect(camera.visibleChunks()).toBe(first);
+    screen.width = 1600;
+    const wider = camera.visibleChunks();
+    expect(wider).not.toBe(first);
+    expect(wider.length).toBeGreaterThan(first.length);
+    screen.height = 900;
+    expect(camera.visibleChunks()).not.toBe(wider);
+    const tall = camera.visibleChunks();
+    camera.pan({ x: 200, y: 0 });
+    expect(camera.visibleChunks()).not.toBe(tall);
   });
 });

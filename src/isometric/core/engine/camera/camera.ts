@@ -1,6 +1,8 @@
+import { chunkRect, chunksInRect } from "../grid";
 import { projectGridPoint, unprojectScreenDelta } from "../projection";
 import type {
   Camera,
+  ChunkCoord,
   CameraLimits,
   CameraTransform,
   GridPoint,
@@ -13,7 +15,7 @@ import type {
 /** Zoom the camera starts at: close to the ground, at the centre of the world. */
 export const CAMERA_START_ZOOM = 3;
 
-/** Smallest zoom: the whole 32 × 32 world fits a window 1300 px wide. */
+/** Smallest zoom: a whole chunk (32 × 32 columns) fits a window 1300 px wide. */
 export const CAMERA_MIN_ZOOM = 1;
 
 /**
@@ -232,4 +234,75 @@ export function needsCull(
     Math.abs(to.x - from.x) * camera.zoom > viewport.width * margin ||
     Math.abs(to.y - from.y) * camera.zoom > viewport.height * margin
   );
+}
+
+/**
+ * Blocks above the ground a chunk's content may reach on screen when looking for the chunks in
+ * view: the highest terrain (4) and the tallest entities on it (6).
+ */
+export const CHUNK_VIEW_RISE = 10;
+
+/** Blocks below the ground a chunk's content may reach on screen: the deepest water (−3) and the block under it. */
+export const CHUNK_VIEW_DROP = 4;
+
+/**
+ * Part of the viewport, on every side, around the screen in which a chunk counts as in view: it is
+ * shown a little before it scrolls in.
+ */
+export const CHUNK_VIEW_MARGIN = 0.1;
+
+/**
+ * Chunks with something on screen for `camera` in `viewport`, the screen grown by `margin` on
+ * every side: each chunk's ground, raised {@link CHUNK_VIEW_RISE} blocks and
+ * lowered {@link CHUNK_VIEW_DROP}, must overlap it on screen. Nearest the centre of the view
+ * first (ties by `cy`, then `cx`), so what loads first is what the player looks at.
+ */
+export function getVisibleChunks(
+  camera: Camera,
+  viewport: ScreenSize,
+  projection: IsoProjectionConfig,
+  margin: number = CHUNK_VIEW_MARGIN,
+): ChunkCoord[] {
+  const step = projection.elevationStep ?? projection.tileHeight / 2;
+  const cull = getCullRect(viewport, margin);
+  const corners = [
+    { x: cull.x, y: cull.y },
+    { x: cull.x + cull.width, y: cull.y },
+    { x: cull.x, y: cull.y + cull.height },
+    { x: cull.x + cull.width, y: cull.y + cull.height },
+  ].map((corner) => screenToGround(camera, viewport, corner, projection));
+  // Ground under the screen, grown by how far raised and lowered content shifts along x and y.
+  const shift = (Math.max(CHUNK_VIEW_RISE, CHUNK_VIEW_DROP) * step) / projection.tileHeight + 1;
+  const candidates = chunksInRect({
+    minX: Math.floor(Math.min(...corners.map(({ x }) => x)) - shift),
+    minY: Math.floor(Math.min(...corners.map(({ y }) => y)) - shift),
+    maxX: Math.ceil(Math.max(...corners.map(({ x }) => x)) + shift),
+    maxY: Math.ceil(Math.max(...corners.map(({ y }) => y)) + shift),
+  });
+
+  const transform = getCameraTransform(camera, viewport, projection);
+  const toScreen = (point: GridPoint) => {
+    const scene = projectGridPoint(point, projection);
+    return { x: scene.x * transform.scale + transform.x, y: scene.y * transform.scale + transform.y };
+  };
+  const seen = (coord: ChunkCoord) => {
+    const { minX, minY, maxX, maxY } = chunkRect(coord);
+    const ground = [
+      { x: minX - 0.5, y: minY - 0.5 },
+      { x: maxX + 0.5, y: minY - 0.5 },
+      { x: minX - 0.5, y: maxY + 0.5 },
+      { x: maxX + 0.5, y: maxY + 0.5 },
+    ].map(toScreen);
+    const left = Math.min(...ground.map(({ x }) => x));
+    const right = Math.max(...ground.map(({ x }) => x));
+    const top = Math.min(...ground.map(({ y }) => y)) - CHUNK_VIEW_RISE * step * camera.zoom;
+    const bottom = Math.max(...ground.map(({ y }) => y)) + CHUNK_VIEW_DROP * step * camera.zoom;
+    return left < cull.x + cull.width && right > cull.x && top < cull.y + cull.height && bottom > cull.y;
+  };
+
+  const middle = (coord: ChunkCoord) => {
+    const { minX, minY, maxX, maxY } = chunkRect(coord);
+    return ((minX + maxX) / 2 - camera.x) ** 2 + ((minY + maxY) / 2 - camera.y) ** 2;
+  };
+  return candidates.filter(seen).sort((a, b) => middle(a) - middle(b) || a.cy - b.cy || a.cx - b.cx);
 }

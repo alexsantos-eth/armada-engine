@@ -1,12 +1,17 @@
 import type { GridPoint, PlayerState, WorldPart } from "../../types";
 import { createPlayer, findPlayerSpawn, PLAYER_PART, type PlayerGround } from "./player";
 
-/** What a new player needs from the world: the ground, and the world's size to find its centre. */
+/**
+ * What a player part needs from the world: the ground, where a new world starts, and loading the
+ * chunks under the player. The world's part context satisfies it.
+ */
 export type PlayerSpawnGround = PlayerGround & {
-  /** Columns along `x`. */
-  readonly width: number;
-  /** Columns along `y`. */
-  readonly height: number;
+  /** Where a new world starts: the player spawns near it. */
+  readonly centre: GridPoint;
+  readonly chunks: {
+    /** Loads the chunks around the ground point `point`, so the player has ground to stand on. */
+    loadAround(point: GridPoint): void;
+  };
 };
 
 /** Saved player: the ground point it stands on (its walk is input and is not saved). */
@@ -14,16 +19,23 @@ export type SavedPlayer = GridPoint;
 
 /**
  * The player as a world part (read it with `world.parts.get(PLAYER_PART)`). A new world puts it
- * on the walkable column nearest the centre (`findPlayerSpawn()`); a saved one, standing where it
- * was.
+ * on the walkable column nearest the world's centre (`findPlayerSpawn()`); a saved one, standing
+ * where it was. Either way the chunks around it are loaded first.
  */
 export function createPlayerPart(): WorldPart<PlayerState, SavedPlayer, PlayerSpawnGround> {
   return {
     id: PLAYER_PART.id,
     version: 1,
-    create: (ground) =>
-      createPlayer(ground, findPlayerSpawn(ground, { x: (ground.width - 1) / 2, y: (ground.height - 1) / 2 })),
+    create: (ground) => {
+      ground.chunks.loadAround(ground.centre);
+      const spawn = findPlayerSpawn(ground, ground.centre);
+      ground.chunks.loadAround(spawn);
+      return createPlayer(ground, spawn);
+    },
     serialize: (player) => ({ x: player.x, y: player.y }),
-    restore: (saved, ground) => createPlayer(ground, saved),
+    restore: (saved, ground) => {
+      ground.chunks.loadAround(saved);
+      return createPlayer(ground, saved);
+    },
   };
 }

@@ -9,8 +9,7 @@ import { createSimulation, resolveTimeScale, stepWorld } from "./simulation";
 const newWorld = (startTick?: number) =>
   generateWorld({
     seed: 1,
-    width: 4,
-    height: 4,
+    size: { width: 4, height: 4 },
     entityDefinitions: [],
     parts: [createClockPart(startTick), createPlayerPart()],
   });
@@ -38,7 +37,12 @@ describe("stepWorld", () => {
   });
 
   it("needs the world's clock part, and runs nothing without it", () => {
-    const world = generateWorld({ seed: 1, width: 4, height: 4, entityDefinitions: [], parts: [createPlayerPart()] });
+    const world = generateWorld({
+      seed: 1,
+      size: { width: 4, height: 4 },
+      entityDefinitions: [],
+      parts: [createPlayerPart()],
+    });
     const step = vi.fn();
 
     expect(() => stepWorld(world, 1, { systems: [{ id: "probe", step }] })).toThrow('The world has no "clock" part');
@@ -49,8 +53,7 @@ describe("stepWorld", () => {
     const walked = (withEvents: boolean) => {
       const world = generateWorld({
         seed: 42,
-        width: 16,
-        height: 16,
+        size: { width: 16, height: 16 },
         entityDefinitions: [],
         parts: [createClockPart(0), createPlayerPart()],
       });
@@ -99,8 +102,7 @@ describe("stepWorld", () => {
   it("lets event listeners see the player where it is at that tick", () => {
     const world = generateWorld({
       seed: 42,
-      width: 16,
-      height: 16,
+      size: { width: 16, height: 16 },
       entityDefinitions: [],
       parts: [createClockPart(0), createPlayerPart()],
     });
@@ -136,8 +138,7 @@ describe("createSimulation", () => {
   it("runs its systems on every tick", () => {
     const world = generateWorld({
       seed: 42,
-      width: 16,
-      height: 16,
+      size: { width: 16, height: 16 },
       entityDefinitions: [],
       parts: [createClockPart(0), createPlayerPart()],
     });

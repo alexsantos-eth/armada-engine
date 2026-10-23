@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import type { Container } from "pixi.js";
-import type { SceneCamera } from "../../types";
+import type { ChunkKey, SceneCamera } from "../../types";
 import type {
   BuiltScene,
   EntityView,
@@ -26,7 +26,7 @@ describe("scene module contract", () => {
   it("names the services modules share, each with its type", () => {
     expectTypeOf<SceneServiceKey>().toEqualTypeOf<"camera" | "entityViews" | "focus">();
     expectTypeOf<SceneServices["camera"]>().toEqualTypeOf<SceneCamera>();
-    expectTypeOf<SceneServices["entityViews"]>().toEqualTypeOf<readonly EntityView[]>();
+    expectTypeOf<SceneServices["entityViews"]>().toEqualTypeOf<ReadonlyMap<ChunkKey, readonly EntityView[]>>();
     expectTypeOf<SceneServices["focus"]>().toEqualTypeOf<SceneFocus>();
   });
 

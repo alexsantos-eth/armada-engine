@@ -1,6 +1,14 @@
-import type { BoxType, IGridObject, TerrainMaterial, TerrainPoint, TerrainSurface } from "../../types";
+import type { BoxType, IGridObject, TerrainMaterial, TerrainPoint, TerrainSurface, WorldRect } from "../../types";
 import { CellMap } from "../grid";
 import { Box } from "./box";
+import { generatePerlinTerrain } from "./terrain";
+
+/**
+ * Columns around a column, on every side, whose elevations decide its surface: its eight
+ * neighbours, and the neighbours of those (whether a neighbour is inland depends on whether
+ * it touches water). See {@link classifyColumnSurfaces}.
+ */
+export const SURFACE_REACH = 2;
 
 /** Elevation the top block of a column must have to become sand. */
 export const SAND_ELEVATION = 0;
@@ -82,4 +90,47 @@ export function getBlockMaterial(elevation: number, topElevation: number, surfac
 export function createTerrainColumns(points: readonly TerrainPoint[]): Box[] {
   const surfaces = classifyColumnSurfaces(points);
   return points.map(({ x, y, elevation }) => new Box(x, y, { elevation, type: surfaces.get(x, y) as TerrainSurface }));
+}
+
+/** `a ∩ b`, or `undefined` when they do not overlap. */
+function intersectRects(a: WorldRect, b: WorldRect): WorldRect | undefined {
+  const rect = {
+    minX: Math.max(a.minX, b.minX),
+    minY: Math.max(a.minY, b.minY),
+    maxX: Math.min(a.maxX, b.maxX),
+    maxY: Math.min(a.maxY, b.maxY),
+  };
+  return rect.minX <= rect.maxX && rect.minY <= rect.maxY ? rect : undefined;
+}
+
+/** Options of {@link generateTerrainColumns}. */
+export type TerrainAreaOptions = {
+  /** World seed of the height map. */
+  readonly seed: number;
+  /** Edge of a bounded world: no column exists outside it. Defaults to none (unbounded). */
+  readonly clip?: WorldRect;
+};
+
+/**
+ * The terrain columns of one area of the world (a chunk), typed with their surface exactly as if
+ * the whole world had been generated at once: the height map is sampled {@link SURFACE_REACH}
+ * columns past the area on every side, classified, and only the area is kept. Areas generated on
+ * their own therefore meet without seams. Columns come `x`-major, like `generatePerlinTerrain()`.
+ * Nothing is generated outside `clip`.
+ */
+export function generateTerrainColumns(area: WorldRect, { seed, clip }: TerrainAreaOptions): Box[] {
+  const inside = clip ? intersectRects(area, clip) : area;
+  if (!inside) return [];
+  const reach = SURFACE_REACH;
+  const grown = { minX: area.minX - reach, minY: area.minY - reach, maxX: area.maxX + reach, maxY: area.maxY + reach };
+  const sampled = clip ? (intersectRects(grown, clip) as WorldRect) : grown;
+  const points = generatePerlinTerrain({
+    seed,
+    originX: sampled.minX,
+    originY: sampled.minY,
+    width: sampled.maxX - sampled.minX + 1,
+    height: sampled.maxY - sampled.minY + 1,
+  });
+  const keep = ({ x, y }: TerrainPoint) => x >= inside.minX && x <= inside.maxX && y >= inside.minY && y <= inside.maxY;
+  return createTerrainColumns(points).filter(keep);
 }

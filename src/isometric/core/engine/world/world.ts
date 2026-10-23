@@ -1,39 +1,40 @@
-import type { EntityData, EntityDefinition, WorldPart } from "../../types";
-import { CellMap, type ReadonlyCellMap, type SpatialIndex } from "../grid";
-import { createEntitiesFromConfig, Entity, indexEntities, validateEntityDefinitions } from "../entities";
+import type { EntityDefinition, GridPoint, WorldPart, WorldRect } from "../../types";
+import type { Entity } from "../entities";
+import { validateEntityDefinitions } from "../entities";
+import { CHUNK_SIZE, type ReadonlyCellMap, type SpatialIndex } from "../grid";
 import { type SavedWorldParts, WorldParts } from "../parts";
-import { createSeededRandom, DEFAULT_WORLD_SEED, deriveSeed } from "../random";
-import { type Box, createTerrainColumns, generatePerlinTerrain } from "../terrain";
-
-/** Columns along `x` of a generated world when `generateWorld()` gets no `width`. */
-export const TERRAIN_WIDTH = 32;
-/** Columns along `y` of a generated world when `generateWorld()` gets no `height`. */
-export const TERRAIN_HEIGHT = 32;
+import { DEFAULT_WORLD_SEED } from "../random";
+import type { Box } from "../terrain";
+import { type ChunkSource, type SavedChunk, WorldChunks } from "./chunks";
+import { createSeededChunkSource } from "./sources";
 
 /**
  * The game world as plain domain state: the single source of truth that systems simulate,
  * saves serialize and the scene only renders. It has no Pixi objects and never reads
  * `window`.
+ *
+ * The world is made of chunks of `CHUNK_SIZE` × `CHUNK_SIZE` columns, generated from the seed
+ * when they are loaded (`chunks.stream()`, around the camera and the player) and dropped when
+ * they are far; it may be unbounded. Lookups by position (`columnIndex`, `occupancy`) cover the
+ * loaded chunks.
  */
 export type World = {
   /** Seed every generated part of the world derives from. */
   readonly seed: number;
-  /** Number of columns along `x`. */
-  readonly width: number;
-  /** Number of columns along `y`. */
-  readonly height: number;
+  /** Columns of a bounded world (inclusive), or `undefined` when it has no edge. */
+  readonly bounds: WorldRect | undefined;
+  /** Where a new world starts (the player spawns near it): the centre of its bounds, or of chunk `(0, 0)`. */
+  readonly centre: GridPoint;
+  /** The loaded chunks: their terrain and entities, loaded and unloaded as the game needs them. */
+  readonly chunks: WorldChunks;
   /**
-   * One terrain box per column, holding the column's top elevation and, as its `type`, the
-   * column's surface (`grass`, `water` or `sand`), classified once at generation.
+   * Top terrain box of every loaded column: its elevation and, as `type`, its surface (`grass`,
+   * `water` or `sand`), classified once at generation. Derived: never serialized.
    */
-  readonly columns: readonly Box[];
-  /** `columns` by cell, for lookups by position. Derived: never serialized, rebuilt on restore. */
   readonly columnIndex: ReadonlyCellMap<Box>;
-  /** Non-terrain entities, in creation order. */
-  readonly entities: readonly Entity[];
   /**
-   * Spatial index of `entities` over their footprints (what occupies each column). Derived
-   * from `entities`: never serialized, rebuilt on restore.
+   * What occupies each loaded column: the entities of the loaded chunks over their footprints.
+   * Derived: never serialized. Change entities per chunk (`chunks.setEntities()`).
    */
   readonly occupancy: SpatialIndex<Entity>;
   /**
@@ -47,21 +48,28 @@ export type World = {
 
 /**
  * What a world part gets to create or restore its state: the rest of the world (terrain and
- * entities), never other parts.
+ * entities, and loading the chunks it needs), never other parts.
  */
 export type WorldPartContext = Omit<World, "parts">;
 
 /** A world part the world can hold: one that creates its state from a {@link WorldPartContext}. */
 export type WorldPartOf = WorldPart<unknown, unknown, WorldPartContext>;
 
+/** Size of a bounded world, in columns from `(0, 0)`. */
+export type WorldSize = {
+  readonly width: number;
+  readonly height: number;
+};
+
 /** Options of {@link generateWorld}. */
 export type WorldOptions = {
   /** World seed. Defaults to `DEFAULT_WORLD_SEED`. */
   seed?: number;
-  /** Columns along `x`. Defaults to `TERRAIN_WIDTH`. */
-  width?: number;
-  /** Columns along `y`. Defaults to `TERRAIN_HEIGHT`. */
-  height?: number;
+  /**
+   * Bounds the world to `width` × `height` columns from `(0, 0)`. Defaults to an unbounded world,
+   * streamed by chunks.
+   */
+  size?: WorldSize;
   /**
    * Entity definitions to place (game content, e.g. `ENTITY_CONFIG` from
    * `src/isometric/content`). Required: the engine ships no content of its own. They are
@@ -70,96 +78,150 @@ export type WorldOptions = {
   entityDefinitions: readonly EntityDefinition[];
   /**
    * Parts of world state the game's systems own (e.g. `createClockPart(startTick)`,
-   * `createPlayerPart()`), created in this order after the terrain and entities. Defaults to none.
+   * `createPlayerPart()`), created in this order after the first chunks. Defaults to none.
    */
   parts?: readonly WorldPartOf[];
 };
+
+/** Options of {@link createWorld}. */
+export type CreateWorldOptions = {
+  readonly seed: number;
+  readonly source: ChunkSource;
+  readonly bounds?: WorldRect;
+  /** Defaults to the centre of `bounds`, or of chunk `(0, 0)`. */
+  readonly centre?: GridPoint;
+  /** Edited chunks of a save. */
+  readonly saved?: readonly SavedChunk[];
+  readonly parts?: readonly WorldPartOf[];
+  /** Saved parts: the parts are restored from them instead of created. */
+  readonly savedParts?: SavedWorldParts;
+};
+
+/** Chunks loaded around the centre before the parts are created: where the player spawns. */
+export const START_LOAD_RADIUS = 1;
 
 /**
  * Version of the {@link WorldSnapshot} envelope; bump it when the envelope's shape changes. A
  * part's saved data has a version of its own (`WorldPart.version`), so changing a part never
  * bumps this one.
  */
-export const WORLD_SNAPSHOT_VERSION = 5;
+export const WORLD_SNAPSHOT_VERSION = 6;
 
 /**
- * JSON-serializable save of a {@link World}. The terrain is not stored: it is regenerated
- * from `seed` and size. Entities are stored as data, so changes made during play (removed,
- * moved or modified entities) are kept. Each world part is stored under its id with its own
- * version (`parts`): the game time, where the player stands, and whatever parts come later.
+ * JSON-serializable save of a {@link World}. Terrain and untouched entities are not stored: they
+ * are regenerated, chunk by chunk, from `seed`, `size` and the entity definitions. Only edited
+ * chunks keep their entities (`chunks`), so changes made during play are kept. Each world part
+ * is stored under its id with its own version (`parts`).
  */
 export type WorldSnapshot = {
   version: typeof WORLD_SNAPSHOT_VERSION;
   seed: number;
-  width: number;
-  height: number;
-  entities: { x: number; y: number; data: EntityData }[];
+  /** Size of a bounded world, or `null` for an unbounded one. */
+  size: WorldSize | null;
+  chunks: SavedChunk[];
   parts: SavedWorldParts;
 };
 
-type TerrainState = Pick<World, "seed" | "width" | "height" | "columns" | "columnIndex">;
+/** Options of {@link restoreWorld}. */
+export type RestoreWorldOptions = {
+  /** The entity definitions the world was generated with: untouched chunks are generated again. */
+  readonly entityDefinitions: readonly EntityDefinition[];
+  /** The parts the world was generated with. Defaults to none. */
+  readonly parts?: readonly WorldPartOf[];
+};
 
-function generateTerrainState(seed: number, width: number, height: number): TerrainState {
-  const columns = createTerrainColumns(generatePerlinTerrain({ width, height, seed }));
-  return { seed, width, height, columns, columnIndex: CellMap.from(columns, (column) => column) };
+const boundsOf = (size: WorldSize | null | undefined): WorldRect | undefined =>
+  size ? { minX: 0, minY: 0, maxX: size.width - 1, maxY: size.height - 1 } : undefined;
+
+/**
+ * Builds a world from a {@link ChunkSource}: loads the chunks around its centre
+ * ({@link START_LOAD_RADIUS}), then creates its parts, or restores them from `savedParts`.
+ * `generateWorld()` and `restoreWorld()` use it with chunks generated from the seed; tools and
+ * tests may give it hand-made chunks (`createFixedChunkSource()`).
+ *
+ * @throws When two parts share an id, or a part rejects its saved data.
+ */
+export function createWorld(options: CreateWorldOptions): World {
+  const { bounds } = options;
+  const middle = (CHUNK_SIZE - 1) / 2;
+  const centre =
+    options.centre ??
+    (bounds ? { x: (bounds.minX + bounds.maxX) / 2, y: (bounds.minY + bounds.maxY) / 2 } : { x: middle, y: middle });
+  const chunks = new WorldChunks(options.source, options.saved);
+  chunks.loadAround(centre, START_LOAD_RADIUS);
+
+  const base: WorldPartContext = {
+    seed: options.seed,
+    bounds,
+    centre,
+    chunks,
+    columnIndex: chunks.columnIndex,
+    occupancy: chunks.occupancy,
+  };
+  const parts = options.parts ?? [];
+  return {
+    ...base,
+    parts: options.savedParts ? WorldParts.restore(parts, options.savedParts, base) : WorldParts.create(parts, base),
+  };
 }
 
 /**
- * Generates a world from a seed: terrain (simplex noise) with each column typed with its
- * surface, entities, then the state of each part in `options.parts`. Each system draws from
- * its own seeded stream (`deriveSeed`), so the same options always produce the same world.
+ * Generates a world from a seed: chunks of terrain (simplex noise) with each column typed with
+ * its surface and their entities (`createSeededChunkSource()`), the first ones around the centre,
+ * then the state of each part in `options.parts`. Each system draws from its own seeded stream
+ * (`deriveSeed`), so the same options always produce the same world.
  *
  * @throws `EntityConfigError` when `entityDefinitions` is invalid.
  * @throws When two parts share an id.
  */
 export function generateWorld(options: WorldOptions): World {
   validateEntityDefinitions(options.entityDefinitions);
-  const terrain = generateTerrainState(
-    options.seed ?? DEFAULT_WORLD_SEED,
-    options.width ?? TERRAIN_WIDTH,
-    options.height ?? TERRAIN_HEIGHT,
-  );
-  const entities = createEntitiesFromConfig(
-    terrain.columns,
-    options.entityDefinitions,
-    createSeededRandom(deriveSeed(terrain.seed, "entities")),
-    createSeededRandom(deriveSeed(terrain.seed, "entity-color-variants")),
-  );
-
-  const base: WorldPartContext = { ...terrain, entities, occupancy: indexEntities(entities) };
-  return { ...base, parts: WorldParts.create(options.parts ?? [], base) };
+  const seed = options.seed ?? DEFAULT_WORLD_SEED;
+  const bounds = boundsOf(options.size);
+  return createWorld({
+    seed,
+    bounds,
+    source: createSeededChunkSource({ seed, entityDefinitions: options.entityDefinitions, bounds }),
+    parts: options.parts,
+  });
 }
 
 /** Converts a world into a JSON-serializable {@link WorldSnapshot}. */
 export function serializeWorld(world: World): WorldSnapshot {
+  const { bounds } = world;
   return {
     version: WORLD_SNAPSHOT_VERSION,
     seed: world.seed,
-    width: world.width,
-    height: world.height,
-    entities: world.entities.map((entity) => ({ x: entity.x, y: entity.y, data: entity.getData() })),
+    size: bounds ? { width: bounds.maxX - bounds.minX + 1, height: bounds.maxY - bounds.minY + 1 } : null,
+    chunks: world.chunks.serialize(),
     parts: world.parts.serialize(),
   };
 }
 
 /**
- * Rebuilds a world from a snapshot: regenerates the terrain from its seed, restores the saved
- * entities as they were (no new entity generation), then each part in `parts` from its saved
- * data. Pass the same parts the world was generated with: a part with no saved data gets a new
- * state, and saved data of a part not passed is kept untouched for the next save
- * (`WorldParts.restore()`).
+ * Rebuilds a world from a snapshot: the same chunk source (seed, size and the entity definitions,
+ * which must be the ones it was generated with), the edited chunks with their saved entities, then
+ * each part in `options.parts` from its saved data. Pass the same parts the world was generated
+ * with: a part with no saved data gets a new state, and saved data of a part not passed is kept
+ * untouched for the next save (`WorldParts.restore()`).
  *
  * @throws When the snapshot version, or the version of a saved part, is not supported.
+ * @throws `EntityConfigError` when `entityDefinitions` is invalid.
  * @throws When two parts share an id, or a part rejects its saved data.
  */
-export function restoreWorld(snapshot: WorldSnapshot, parts: readonly WorldPartOf[] = []): World {
+export function restoreWorld(snapshot: WorldSnapshot, options: RestoreWorldOptions): World {
   if (snapshot.version !== WORLD_SNAPSHOT_VERSION) {
     throw new Error(`Unsupported world snapshot version ${String(snapshot.version)}`);
   }
+  validateEntityDefinitions(options.entityDefinitions);
 
-  const terrain = generateTerrainState(snapshot.seed, snapshot.width, snapshot.height);
-  const entities = snapshot.entities.map(({ x, y, data }) => Entity.fromData(x, y, data));
-
-  const base: WorldPartContext = { ...terrain, entities, occupancy: indexEntities(entities) };
-  return { ...base, parts: WorldParts.restore(parts, snapshot.parts, base) };
+  const bounds = boundsOf(snapshot.size);
+  return createWorld({
+    seed: snapshot.seed,
+    bounds,
+    source: createSeededChunkSource({ seed: snapshot.seed, entityDefinitions: options.entityDefinitions, bounds }),
+    saved: snapshot.chunks,
+    parts: options.parts,
+    savedParts: snapshot.parts,
+  });
 }

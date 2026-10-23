@@ -10,8 +10,10 @@ import { addInDepthOrder, getSvgResolution } from "../render";
 import { WorldParts } from "../parts";
 import { CLOCK_PART } from "../time";
 import type { BuiltScene, SceneContext, SceneFrame, SceneModule, SceneModulePart } from "./module";
-import { indexAfter, SCENE_LAYER, sortViews } from "./scene";
-import { mountScene, resetHarness, TEST_TERRAIN, worldFrom } from "../flow-check/scene-harness";
+import type { ChunkCoord } from "../../types";
+import type { WorldChunk } from "../world";
+import { CHUNKS_SHOWN_PER_FRAME, indexAfter, SCENE_LAYER, sortViews, UNBOUNDED_CAMERA_BOUNDS } from "./scene";
+import { columnsOf, mountScene, resetHarness, TEST_TERRAIN, worldFrom } from "../flow-check/scene-harness";
 
 /** A module that records what the scene does with it. */
 const probe = (id: string, part: Partial<SceneModulePart> = {}, log: string[] = []) => {
@@ -38,7 +40,7 @@ const probe = (id: string, part: Partial<SceneModulePart> = {}, log: string[] = 
   return { module, seen };
 };
 
-const view = (name: string) => ({ name, cullable: false }) as never;
+const view = (name: string) => ({ name, cullable: false, destroy: vi.fn() }) as never;
 
 const shore = () =>
   worldFrom([
@@ -80,11 +82,22 @@ describe("createScene", () => {
     });
     expect(context.metrics).toBe(TILE_METRICS);
     expect(context.terrain).toBe(TEST_TERRAIN);
-    expect(context.columnAt.get(2, 0)).toBe(world.columns[2]);
+    expect(context.columnAt).toBe(world.columnIndex);
+    expect(context.columnAt.get(2, 0)).toBe(columnsOf(world)[2]);
     // (1, 0) is the sand shore: half a block lower; the rest and the outside, not at all.
     expect(context.topInsetAt(1, 0)).toBe(0.5);
     expect(context.topInsetAt(2, 0)).toBe(0);
     expect(context.topInsetAt(9, 9)).toBe(0);
+    scene.destroy();
+  });
+
+  it("lets the camera of an unbounded world go anywhere but the far edges of the grid", async () => {
+    const world = shore();
+    const { module, seen } = probe("a");
+    const { scene } = await mountScene({ ...world, bounds: undefined }, [module]);
+
+    expect(seen.context?.bounds).toBe(UNBOUNDED_CAMERA_BOUNDS);
+    expect(UNBOUNDED_CAMERA_BOUNDS.maxX).toBeGreaterThan(1_000_000);
     scene.destroy();
   });
 
@@ -101,7 +114,7 @@ describe("createScene", () => {
   });
 
   it("sets modules up in order, each seeing the services of those before it", async () => {
-    const camera = { follow: vi.fn() };
+    const camera = { follow: vi.fn(), visibleChunks: () => [] };
     const first = probe("first", { provides: { camera: camera as never } });
     const reader: SceneModule = {
       id: "reader",
@@ -267,6 +280,180 @@ describe("createScene", () => {
     expect(ticker.listeners).toHaveLength(0);
     expect(log).toEqual(["destroy b", "destroy a"]);
     expect(root.destroy).toHaveBeenCalledWith({ children: true });
+  });
+});
+
+/** Columns in chunks `0…3` along x (and one at the far end of chunk 3), each a flat column at elevation 0. */
+const strip = () => worldFrom([0, 40, 72, 104, 127].map((x) => ({ x, y: 0, elevation: 0 })));
+
+/** A module that draws one view per chunk and records what it is asked. */
+const chunkProbe = (log: string[] = []) => {
+  const module: SceneModule = {
+    id: "chunks",
+    setup: () => ({
+      showChunk: (chunk: WorldChunk) => {
+        log.push(`show ${chunk.coord.cx}`);
+        return {
+          views: [{ view: view(`chunk ${chunk.coord.cx}`), depth: -chunk.coord.cx, layer: SCENE_LAYER.terrain }],
+          destroy: () => log.push(`hide ${chunk.coord.cx}`),
+        };
+      },
+      destroy: () => {},
+    }),
+  };
+  return module;
+};
+
+/** A camera module whose view is whatever `visible` holds. */
+const fakeCamera = (visible: { chunks: ChunkCoord[] }) => {
+  const camera = { resize: vi.fn(), visibleChunks: vi.fn(() => visible.chunks) };
+  const module: SceneModule = {
+    id: "camera",
+    setup: () => ({ provides: { camera: camera as never }, destroy: () => {} }),
+  };
+  return { camera, module };
+};
+
+const names = (children: unknown[]) => children.map((child) => (child as { name: string }).name);
+
+describe("createScene chunks", () => {
+  beforeEach(() => {
+    resetHarness();
+    vi.clearAllMocks();
+  });
+
+  it("shows every loaded chunk without a camera, each module drawing its part before the modules start", async () => {
+    const log: string[] = [];
+    const { module: last } = probe("last", {}, log);
+    const { root, scene } = await mountScene(strip(), [chunkProbe(log), last]);
+
+    // In the order the world loaded them: around its centre first.
+    expect(log).toEqual(["setup last", "show 1", "show 2", "show 3", "show 0", "start last"]);
+    expect(names(root.children)).toEqual(["chunk 3", "chunk 2", "chunk 1", "chunk 0"]);
+    expect(root.children.every(({ cullable }) => cullable)).toBe(true);
+    expect(scene.shownChunks()).toHaveLength(4);
+    scene.destroy();
+    expect(log.slice(-5)).toEqual(["hide 0", "hide 3", "hide 2", "hide 1", "destroy last"]);
+  });
+
+  it("shows only the ready chunks the camera sees, and asks the app to stream them", async () => {
+    const visible = { chunks: [{ cx: 1, cy: 0 }] };
+    const { module: camera } = fakeCamera(visible);
+    const stream = vi.fn();
+    const world = strip();
+    world.chunks.unload({ cx: 3, cy: 0 });
+    const { root, scene } = await mountScene(world, [camera, chunkProbe()], { stream });
+
+    expect(stream).toHaveBeenCalledWith([{ cx: 1, cy: 0 }]);
+    expect(names(root.children)).toEqual(["chunk 1"]);
+    scene.destroy();
+  });
+
+  it("shows the chunks that come into view one per frame, nearest first, and culls them", async () => {
+    const visible = { chunks: [{ cx: 0, cy: 0 }] };
+    const { module: cameraModule, camera } = fakeCamera(visible);
+    const log: string[] = [];
+    const { ticker, root, scene } = await mountScene(strip(), [cameraModule, chunkProbe(log)]);
+    log.length = 0;
+
+    visible.chunks = [
+      { cx: 0, cy: 0 },
+      { cx: 1, cy: 0 },
+      { cx: 2, cy: 0 },
+    ];
+    expect(CHUNKS_SHOWN_PER_FRAME).toBe(1);
+    ticker.frame();
+    // Still drawing chunk 1: nothing else starts.
+    ticker.frame();
+    await vi.waitFor(() => expect(names(root.children)).toEqual(["chunk 1", "chunk 0"]));
+    expect(camera.resize).toHaveBeenCalledTimes(1);
+    ticker.frame();
+    await vi.waitFor(() => expect(names(root.children)).toEqual(["chunk 2", "chunk 1", "chunk 0"]));
+    expect(log).toEqual(["show 1", "show 2"]);
+    scene.destroy();
+  });
+
+  it("hides a chunk once it is neither in view nor next to a chunk in view", async () => {
+    const visible = { chunks: [0, 1, 2, 3].map((cx) => ({ cx, cy: 0 })) };
+    const { module: camera } = fakeCamera(visible);
+    const log: string[] = [];
+    const { ticker, root, scene } = await mountScene(strip(), [camera, chunkProbe(log)]);
+    log.length = 0;
+
+    visible.chunks = [{ cx: 2, cy: 0 }];
+    ticker.frame();
+
+    expect(log).toEqual(["hide 0"]);
+    expect(names(root.children)).toEqual(["chunk 3", "chunk 2", "chunk 1"]);
+    scene.destroy();
+  });
+
+  it("hides a chunk whose ground the world unloaded", async () => {
+    const log: string[] = [];
+    const world = strip();
+    const { ticker, root, scene } = await mountScene(world, [chunkProbe(log)]);
+    log.length = 0;
+
+    world.chunks.unload({ cx: 3, cy: 0 });
+    ticker.frame();
+
+    // Chunk 2 lost a neighbour: it is no longer ready.
+    expect(log).toEqual(["hide 2", "hide 3"]);
+    expect(names(root.children)).toEqual(["chunk 1", "chunk 0"]);
+    scene.destroy();
+  });
+
+  it("drops a chunk drawn after the scene was destroyed", async () => {
+    const visible = { chunks: [{ cx: 0, cy: 0 }] };
+    const { module: camera } = fakeCamera(visible);
+    let finish!: () => void;
+    const gone = vi.fn();
+    const drawn = { view: { name: "late", destroy: vi.fn() } as never, depth: 0, layer: SCENE_LAYER.terrain };
+    const slow: SceneModule = {
+      id: "slow",
+      setup: () => ({
+        showChunk: ({ coord }) =>
+          coord.cx === 0
+            ? {}
+            : new Promise((resolve) => {
+                finish = () => resolve({ views: [drawn], destroy: gone });
+              }),
+        destroy: () => {},
+      }),
+    };
+    const { ticker, scene } = await mountScene(strip(), [camera, slow]);
+
+    visible.chunks = [{ cx: 1, cy: 0 }];
+    ticker.frame();
+    await vi.waitFor(() => expect(finish).toBeDefined());
+    scene.destroy();
+    finish();
+
+    await vi.waitFor(() => expect(gone).toHaveBeenCalled());
+    expect((drawn.view as { destroy: () => void }).destroy).toHaveBeenCalled();
+  });
+
+  it("adds and removes views in the draw order once built", async () => {
+    const { module, seen } = probe("a", { views: [{ view: view("a"), depth: 1, layer: 0 }] });
+    const { root, scene } = await mountScene(shore(), [module]);
+    const built = seen.built as BuiltScene;
+    const later = { view: { name: "later", cullable: false, destroy: vi.fn() } as never, depth: 0, layer: 0 as const };
+
+    built.add([]);
+    built.add([later]);
+    expect(names(root.children)).toEqual(["later", "a"]);
+    expect((later.view as { cullable: boolean }).cullable).toBe(true);
+
+    built.placeAt(view("moving"), 0.5);
+    expect(names(root.children)).toEqual(["later", "moving", "a"]);
+    built.placeAt(root.children[1] as never, 2);
+    expect(names(root.children)).toEqual(["later", "a", "moving"]);
+
+    built.remove([]);
+    built.remove([later]);
+    expect(names(root.children)).toEqual(["a", "moving"]);
+    expect((later.view as { destroy: () => void }).destroy).toHaveBeenCalled();
+    scene.destroy();
   });
 });
 

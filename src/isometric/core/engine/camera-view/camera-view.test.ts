@@ -33,7 +33,7 @@ describe("createCameraView", () => {
   it("starts zoomed in at the centre of the world without a focus", async () => {
     const world = defaultWorld();
     const { root, scene } = await mountScene(world, [createCameraView()]);
-    const centre = (world.width - 1) / 2;
+    const centre = world.centre.x;
 
     expect(cameraOf(scene).state).toEqual({ x: centre, y: centre, zoom: CAMERA_START_ZOOM });
     // Ground (c, c) is drawn c · tileHeight above scene (0, 0).
@@ -57,7 +57,7 @@ describe("createCameraView", () => {
     const world = defaultWorld();
     const { scene } = await mountScene(world, [createCameraView({ start: { x: 1e6, y: -5 } })]);
 
-    expect(cameraOf(scene).state).toMatchObject({ x: world.width - 1, y: 0, zoom: CAMERA_START_ZOOM });
+    expect(cameraOf(scene).state).toMatchObject({ x: world.bounds?.maxX, y: 0, zoom: CAMERA_START_ZOOM });
     scene.destroy();
   });
 

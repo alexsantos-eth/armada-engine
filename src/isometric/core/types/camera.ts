@@ -1,3 +1,4 @@
+import type { ChunkCoord } from "./grid";
 import type { GridPoint } from "./iso";
 
 /** A point or a distance in screen pixels (PixiJS: `x` right, `y` down). */
@@ -62,8 +63,13 @@ export type SceneCamera = {
   pan(delta: ScreenPoint): void;
   /** Multiplies the zoom by `factor`, keeping the scene point under `anchor` (screen) in place. */
   zoomAt(factor: number, anchor: ScreenPoint): void;
-  /** Applies the camera to a new viewport size (after a renderer resize) and culls again. */
+  /** Applies the camera again and culls: after a renderer resize, or once views were added. */
   resize(): void;
+  /**
+   * Chunks the camera sees now, with the cull margin around the screen, nearest the centre of the
+   * view first (`getVisibleChunks()`): what the world loads and the scene shows.
+   */
+  visibleChunks(): readonly ChunkCoord[];
   /**
    * Follows the ground point `target` (the player): from now on `update()` glides the camera
    * towards it, until the next `pan()`. Call it again whenever the target moves.

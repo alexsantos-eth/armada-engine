@@ -14,6 +14,13 @@ export type PerlinTerrainOptions = {
   width: number;
   /** Number of cells along the vertical axis. */
   height: number;
+  /**
+   * World column of the first cell along `x`. Defaults to `0`. The noise is sampled at absolute
+   * world positions, so two areas of one seed always meet without a seam (chunks).
+   */
+  originX?: number;
+  /** World column of the first cell along `y`. Defaults to `0`. */
+  originY?: number;
   /** Seed used to make the generated terrain reproducible. */
   seed?: number;
   /** Sampling distance applied to the noise field. */

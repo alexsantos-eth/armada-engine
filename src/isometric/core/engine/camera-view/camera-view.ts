@@ -7,14 +7,14 @@ import { createSceneCamera } from "./camera";
 export type CameraViewOptions = {
   /**
    * Where the camera starts. By default on the scene's `focus` (the player) when a module
-   * provides it, otherwise the centre of the world, at `CAMERA_START_ZOOM`.
+   * provides it, otherwise the world's centre (`world.centre`), at `CAMERA_START_ZOOM`.
    */
   readonly start?: Partial<Camera>;
 };
 
 /**
  * Scene module of the camera: it moves and scales the world container (`createSceneCamera()`)
- * inside the world's columns, culls it on demand (once all views are in, on every renderer
+ * inside the world's bounds (`context.bounds`), says which chunks are in view (`visibleChunks()`), culls it on demand (once all views are in, on every renderer
  * resize and when the camera moved past its cull margin) and glides it every frame after
  * whatever it follows. Provides the `camera` service; put it after the module that provides
  * `focus`.
@@ -22,13 +22,13 @@ export type CameraViewOptions = {
 export function createCameraView(options: CameraViewOptions = {}): SceneModule {
   return {
     id: "camera",
-    setup({ app, root, bounds, projection, services }) {
+    setup({ app, world, root, bounds, projection, services }) {
       const camera = createSceneCamera(
         root,
         app.renderer.screen,
         { minZoom: CAMERA_MIN_ZOOM, maxZoom: CAMERA_MAX_ZOOM, bounds },
         projection,
-        options.start ?? services.get("focus")?.ground(),
+        options.start ?? services.get("focus")?.ground() ?? world.centre,
       );
       const onResize = () => camera.resize();
       app.renderer.on("resize", onResize);

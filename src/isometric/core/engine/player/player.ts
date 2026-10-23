@@ -76,18 +76,39 @@ function elevationAt(ground: PlayerGround, point: GridPoint): number {
   return ground.columnIndex.get(x, y)?.elevation ?? 0;
 }
 
+/** Columns around the centre, on every side, a new player's spawn is searched in (a chunk's width). */
+export const PLAYER_SPAWN_RADIUS = 32;
+
 /**
- * Where a new player appears: the centre of the walkable column nearest `centre` (ties broken
- * by `x`, then `y`), so the same world always spawns the player in the same place. A world
- * with no walkable column puts the player on the column nearest `centre`, and a world with no
- * columns at `centre` itself, at elevation `0`.
+ * Where a new player appears: the centre of the walkable column nearest `centre` (ties broken by
+ * `x`, then `y`), so the same world always spawns the player in the same place. The search goes in
+ * square rings around `centre`, out to {@link PLAYER_SPAWN_RADIUS} columns, and stops as soon as no
+ * further ring can hold a nearer column; only the loaded columns count. With no walkable column
+ * there, the player goes on the nearest column even if it is water, and with no column at all, on
+ * `centre` itself at elevation `0`.
  */
 export function findPlayerSpawn(ground: PlayerGround, centre: GridPoint): PlayerPosition {
   const distance = (column: WorldCoord) => (column.x - centre.x) ** 2 + (column.y - centre.y) ** 2;
-  const blocked = (column: ITerrainColumn) => Number(!canStandOn(ground, column.x, column.y, column.elevation));
-  const [spawn] = [...ground.columnIndex.values()].sort(
-    (a, b) => blocked(a) - blocked(b) || distance(a) - distance(b) || a.x - b.x || a.y - b.y,
-  );
+  const before = (a: ITerrainColumn, b: ITerrainColumn | undefined) =>
+    b === undefined || (distance(a) - distance(b) || a.x - b.x || a.y - b.y) < 0;
+  const origin = { x: Math.floor(centre.x), y: Math.floor(centre.y) };
+  let walkable: ITerrainColumn | undefined;
+  let any: ITerrainColumn | undefined;
+
+  for (let radius = 0; radius <= PLAYER_SPAWN_RADIUS; radius += 1) {
+    // Every column of a ring is at least `radius - 1` away from `centre`.
+    if (walkable && (radius - 1) ** 2 > distance(walkable)) break;
+    for (let dx = -radius; dx <= radius; dx += 1) {
+      for (let dy = -radius; dy <= radius; dy += 1) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
+        const column = ground.columnIndex.get(origin.x + dx, origin.y + dy);
+        if (column === undefined) continue;
+        if (before(column, any)) any = column;
+        if (before(column, walkable) && canStandOn(ground, column.x, column.y, column.elevation)) walkable = column;
+      }
+    }
+  }
+  const spawn = walkable ?? any;
   return spawn ? { x: spawn.x, y: spawn.y, elevation: spawn.elevation } : { ...centre, elevation: 0 };
 }
 

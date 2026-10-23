@@ -2,7 +2,7 @@ import type { Texture } from "pixi.js";
 import { projectBoxesToIsometric } from "../projection";
 import { createBlockViews } from "../render";
 import { SCENE_LAYER, type SceneModule, type SceneView } from "../scene";
-import { DEFAULT_MIN_ELEVATION, fillElevations, removeHiddenBlocks } from "../terrain";
+import { type Box, DEFAULT_MAX_ELEVATION, DEFAULT_MIN_ELEVATION, fillElevations, removeHiddenBlocks } from "../terrain";
 import type { TerrainMaterial, TerrainTint } from "../../types";
 
 /** Darkest a tinted block gets: the factor of its colour never goes under it. */
@@ -27,18 +27,21 @@ export function getTerrainTint(tint: TerrainTint, elevation: number, maxElevatio
 }
 
 /**
- * Scene module of the terrain: one sprite per visible block, with the texture and the tint of
- * its material (`context.terrain`, game content). Every column is filled down to
+ * Scene module of the terrain, chunk by chunk: one sprite per visible block, with the texture and
+ * the tint of its material (`context.terrain`, game content). Every column is filled down to
  * `DEFAULT_MIN_ELEVATION` (`fillElevations()`), and blocks fully covered by others
  * (`removeHiddenBlocks()`) are never created: from the fixed camera only the shell of the terrain
- * shows. A block whose material has a `topInset` covers nothing behind it.
+ * shows. A block whose material has a `topInset` covers nothing behind it. The blocks along a
+ * chunk's `−x`/`−y` edges are covered by the neighbour chunk's columns (`context.columnAt`), so
+ * chunks meet as if the terrain were one. Tints by height count from `DEFAULT_MAX_ELEVATION`, the
+ * same in every chunk.
  *
  * When a material's SVG cannot be loaded, no terrain is drawn.
  */
 export function createTerrainView(): SceneModule {
   return {
     id: "terrain",
-    async setup({ world, terrain, projection, metrics, assets }) {
+    async setup({ terrain, projection, metrics, columnAt, assets }) {
       const materials = Object.keys(terrain) as TerrainMaterial[];
       const loaded = await Promise.all(materials.map((material) => assets.loadSvg(terrain[material].textureSource)));
       const textures = new Map<TerrainMaterial, Texture>();
@@ -48,19 +51,37 @@ export function createTerrainView(): SceneModule {
       });
       if (textures.size < materials.length) return { destroy: () => {} };
 
-      const filled = fillElevations(world.columns, DEFAULT_MIN_ELEVATION);
-      const maxElevation = filled.reduce((maximum, box) => Math.max(maximum, box.elevation), 0);
-      const visible = removeHiddenBlocks(filled, (box) => (terrain[box.type].topInset ?? 0) === 0);
-      const views: SceneView[] = projectBoxesToIsometric(visible, projection).flatMap((box) =>
-        // Typed once by `fillElevations()`: water, ground, or the column's surface on top.
-        createBlockViews({
-          texture: textures.get(box.box.type) as Texture,
-          box,
-          metrics,
-          tint: getTerrainTint(terrain[box.box.type].tint, box.box.elevation, maxElevation),
-        }).map((view) => ({ ...view, layer: SCENE_LAYER.terrain })),
-      );
-      return { views, destroy: () => {} };
+      return {
+        showChunk: ({ rect, columns }) => {
+          // The neighbours' columns on the `−x` and `−y` edges, which cover the chunk's blocks there.
+          const edge: Box[] = [];
+          for (let x = rect.minX - 1; x <= rect.maxX; x += 1) {
+            const column = columnAt.get(x, rect.minY - 1);
+            if (column) edge.push(column);
+          }
+          for (let y = rect.minY; y <= rect.maxY; y += 1) {
+            const column = columnAt.get(rect.minX - 1, y);
+            if (column) edge.push(column);
+          }
+          const own = fillElevations(columns, DEFAULT_MIN_ELEVATION);
+          const covering = fillElevations(edge, DEFAULT_MIN_ELEVATION);
+          const shown = new Set(
+            removeHiddenBlocks([...own, ...covering], (box) => (terrain[box.type].topInset ?? 0) === 0),
+          );
+          const visible = own.filter((box) => shown.has(box));
+          const views: SceneView[] = projectBoxesToIsometric(visible, projection).flatMap((box) =>
+            // Typed once by `fillElevations()`: water, ground, or the column's surface on top.
+            createBlockViews({
+              texture: textures.get(box.box.type) as Texture,
+              box,
+              metrics,
+              tint: getTerrainTint(terrain[box.box.type].tint, box.box.elevation, DEFAULT_MAX_ELEVATION),
+            }).map((view) => ({ ...view, layer: SCENE_LAYER.terrain })),
+          );
+          return { views };
+        },
+        destroy: () => {},
+      };
     },
   };
 }

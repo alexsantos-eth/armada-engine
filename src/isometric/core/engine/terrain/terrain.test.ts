@@ -34,3 +34,13 @@ describe("generatePerlinTerrain", () => {
     );
   });
 });
+
+describe("generatePerlinTerrain origin", () => {
+  it("samples absolute world positions, so areas of one seed meet without a seam", () => {
+    const whole = generatePerlinTerrain({ width: 6, height: 4, seed: 11, originX: -2, originY: -1 });
+    const part = generatePerlinTerrain({ width: 2, height: 2, seed: 11, originX: 1, originY: 0 });
+
+    expect(whole[0]).toMatchObject({ x: -2, y: -1 });
+    expect(part).toEqual(whole.filter(({ x, y }) => x >= 1 && x <= 2 && y >= 0 && y <= 1));
+  });
+});

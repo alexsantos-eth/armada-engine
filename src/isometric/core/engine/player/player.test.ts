@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ITerrainColumn, PlayerState, ScreenDirections, TerrainMaterial, WorldPartKey } from "../../types";
 import { CellMap } from "../grid";
 import { TICKS_PER_SECOND } from "../time";
@@ -13,6 +13,7 @@ import {
   createPlayer,
   createPlayerSystem,
   findPlayerSpawn,
+  PLAYER_SPAWN_RADIUS,
   getPlayerColumn,
   getPlayerRenderPosition,
   getWalkDirection,
@@ -100,6 +101,20 @@ describe("findPlayerSpawn", () => {
   it("falls back to the nearest column when nothing is walkable, and to the centre without columns", () => {
     expect(findPlayerSpawn(groundFrom(["~T"]), { x: 0.8, y: 0 })).toEqual({ x: 1, y: 0, elevation: 0 });
     expect(findPlayerSpawn(groundFrom([]), { x: 2, y: 3 })).toEqual({ x: 2, y: 3, elevation: 0 });
+  });
+
+  it("searches rings around the centre, no further than it must nor than PLAYER_SPAWN_RADIUS", () => {
+    const row = (length: number, at: number, cell: string) => "~".repeat(at) + cell + "~".repeat(length - at - 1);
+    const near = groundFrom([row(80, 42, "0")]);
+    const get = vi.spyOn(near.columnIndex, "get");
+
+    expect(findPlayerSpawn(near, { x: 40, y: 0 })).toEqual({ x: 42, y: 0, elevation: 0 });
+    // Found on ring 2: ring 3 could still hold a nearer column, ring 4 cannot.
+    expect(Math.max(...get.mock.calls.map(([x]) => Math.abs(x - 40)))).toBe(3);
+
+    expect(PLAYER_SPAWN_RADIUS).toBe(32);
+    const far = groundFrom([row(80, 40 + PLAYER_SPAWN_RADIUS + 1, "0")]);
+    expect(findPlayerSpawn(far, { x: 40, y: 0 })).toEqual({ x: 40, y: 0, elevation: -1 });
   });
 });
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ITerrainColumn } from "../../types";
 import { CellMap } from "../grid";
 import { findPlayerSpawn, PLAYER_PART } from "./player";
@@ -14,9 +14,9 @@ const column = (x: number, y: number, elevation: number, type: ITerrainColumn["t
   metadata: {},
 });
 
-const ground = (columns: ITerrainColumn[], width = 3, height = 3) => ({
-  width,
-  height,
+const ground = (columns: ITerrainColumn[], centre = { x: 1, y: 1 }) => ({
+  centre,
+  chunks: { loadAround: vi.fn() },
   columnIndex: CellMap.from(columns, (c) => c),
   occupancy: { at: () => [] },
 });
@@ -33,6 +33,8 @@ describe("createPlayerPart", () => {
     expect(player).toMatchObject({ ...findPlayerSpawn(world, { x: 1, y: 1 }), walk: { x: 0, y: 0 } });
     expect(player).toMatchObject({ x: 2, y: 1, elevation: 3 });
     expect(player.previous).toEqual({ x: 2, y: 1, elevation: 3 });
+    // The ground around the centre first, to find the spawn; then around the spawn.
+    expect(world.chunks.loadAround.mock.calls).toEqual([[{ x: 1, y: 1 }], [{ x: 2, y: 1, elevation: 3 }]]);
   });
 
   it("saves where the player stands, but not its walk or previous position", () => {
@@ -53,5 +55,6 @@ describe("createPlayerPart", () => {
       previous: { x: 0.8, y: 0, elevation: 2 },
       walk: { x: 0, y: 0 },
     });
+    expect(world.chunks.loadAround).toHaveBeenCalledWith({ x: 0.8, y: 0 });
   });
 });

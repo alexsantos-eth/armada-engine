@@ -6,15 +6,17 @@ vi.mock("../render", async () => (await import("../flow-check/scene-harness")).m
 import { Assets } from "pixi.js";
 import { Entity } from "../entities";
 import { createSvgColorVariant } from "../render";
-import type { SceneModule } from "../scene";
+import type { EntityView, SceneModule } from "../scene";
 import {
   createColorizedEntities,
   createTestEntities,
   defaultWorld,
+  entitiesOf,
   loadTexture,
   mountScene,
   renderCalls,
   resetHarness,
+  worldFrom,
 } from "../flow-check/scene-harness";
 import { createEntityView } from "./entity-view";
 
@@ -47,23 +49,30 @@ describe("createEntityView", () => {
     expect(Assets.unload).toHaveBeenCalledWith("/assets/statue/block.svg");
   });
 
-  it("provides each entity with its views", async () => {
+  it("provides the entities of each shown chunk with their views, until the chunk is hidden", async () => {
     const world = defaultWorld(createTestEntities);
-    let seen: unknown;
+    let seen: readonly EntityView[] | undefined;
     const reader: SceneModule = {
       id: "reader",
       requires: ["entityViews"],
-      setup: ({ services }) => {
-        seen = services.get("entityViews");
-        return { destroy: () => {} };
-      },
+      setup: ({ services }) => ({
+        showChunk: ({ key }) => {
+          seen = services.get("entityViews")?.get(key);
+          return {};
+        },
+        destroy: () => {},
+      }),
     };
 
     const { root, scene } = await mountScene(world, [createEntityView(), reader]);
 
-    expect(seen).toEqual([{ entity: expect.objectContaining({ box: world.entities[0] }), views: [expect.anything()] }]);
-    expect(root.children[0]).toBe((seen as { views: { view: unknown }[] }[])[0].views[0].view);
+    expect(seen).toEqual([
+      { entity: expect.objectContaining({ box: entitiesOf(world)[0] }), views: [expect.anything()] },
+    ]);
+    expect(root.children[0]).toBe(seen?.[0].views[0].view);
+    expect(scene.services.entityViews?.size).toBe(1);
     scene.destroy();
+    expect(scene.services.entityViews?.size).toBe(0);
   });
 
   it("creates one colorized SVG variant per entity type and variation", async () => {
@@ -96,6 +105,23 @@ describe("createEntityView", () => {
     scene.destroy();
   });
 
+  it("loads a texture once for every chunk that needs it", async () => {
+    const world = worldFrom(
+      [
+        { x: 0, y: 0, elevation: 1 },
+        { x: 40, y: 0, elevation: 1 },
+      ],
+      (columns) => columns.map((box) => new Entity(box.x, box.y, HOUSE, box.elevation, { colorVariant: 1 })),
+    );
+
+    const { scene } = await mountScene(world, [createEntityView()]);
+
+    expect(scene.shownChunks()).toHaveLength(2);
+    expect(createSvgColorVariant).toHaveBeenCalledTimes(1);
+    expect(renderCalls).toHaveLength(2);
+    scene.destroy();
+  });
+
   it("skips an entity whose texture cannot be used", async () => {
     vi.mocked(Assets.load).mockImplementation((asset) => {
       const source = (asset as unknown as { src: string }).src;
@@ -109,7 +135,7 @@ describe("createEntityView", () => {
     const { scene } = await mountScene(world, [createEntityView()]);
 
     expect(renderCalls.map(({ texture }) => texture.source)).toEqual(["/assets/house/block.svg"]);
-    expect(scene.services.entityViews).toHaveLength(1);
+    expect(scene.services.entityViews?.get(world.chunks.get({ cx: 0, cy: 0 })!.key)).toHaveLength(1);
     scene.destroy();
   });
 });

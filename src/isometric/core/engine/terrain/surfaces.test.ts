@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import { Box } from "./box";
 import {
   SAND_ELEVATION,
+  SURFACE_REACH,
   classifyColumnSurfaces,
   createTerrainColumns,
+  generateTerrainColumns,
   getBlockMaterial,
   getColumnSurface,
 } from "./surfaces";
+import { generatePerlinTerrain } from "./terrain";
 
 const column = (x: number, y: number, elevation: number) => ({
   x,
@@ -151,5 +154,31 @@ describe("createTerrainColumns", () => {
     const surfaces = classifyColumnSurfaces(points);
 
     expect(createTerrainColumns(points).every(({ x, y, type }) => surfaces.get(x, y) === type)).toBe(true);
+  });
+});
+
+describe("generateTerrainColumns", () => {
+  const shape = (boxes: readonly Box[]) => boxes.map(({ x, y, elevation, type }) => [x, y, elevation, type]);
+  // A seed and an area with shores, so sand depends on columns outside the area.
+  const seed = 1337;
+  const area = { minX: 0, minY: 0, maxX: 15, maxY: 15 };
+
+  it("types an area's columns as if the whole world had been generated at once", () => {
+    const whole = createTerrainColumns(
+      generatePerlinTerrain({ seed, originX: -8, originY: -8, width: 32, height: 32 }),
+    );
+    const inArea = whole.filter(({ x, y }) => x >= 0 && x <= 15 && y >= 0 && y <= 15);
+
+    expect(SURFACE_REACH).toBe(2);
+    expect(shape(generateTerrainColumns(area, { seed }))).toEqual(shape(inArea));
+    expect(inArea.some(({ type }) => type === "sand")).toBe(true);
+  });
+
+  it("generates nothing outside the clip, and classifies the edge with what is inside", () => {
+    const clip = { minX: 0, minY: 0, maxX: 9, maxY: 5 };
+    const clipped = generateTerrainColumns(area, { seed, clip });
+
+    expect(shape(clipped)).toEqual(shape(createTerrainColumns(generatePerlinTerrain({ seed, width: 10, height: 6 }))));
+    expect(generateTerrainColumns({ minX: 20, minY: 0, maxX: 30, maxY: 5 }, { seed, clip })).toEqual([]);
   });
 });

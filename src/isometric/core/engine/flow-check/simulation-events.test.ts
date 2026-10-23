@@ -6,7 +6,7 @@ import { generateWorld } from "../world";
 import { createSimulation, stepWorld } from "../simulation";
 
 const newWorld = (startTick?: number) =>
-  generateWorld({ seed: 1, width: 4, height: 4, entityDefinitions: [], parts: [createClockPart(startTick)] });
+  generateWorld({ seed: 1, size: { width: 4, height: 4 }, entityDefinitions: [], parts: [createClockPart(startTick)] });
 
 /** Records every simulation event, in emission order. */
 function record(events = createEventBus<SimulationEvents>()) {
