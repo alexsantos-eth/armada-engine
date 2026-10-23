@@ -1,4 +1,5 @@
 import { afterAll, describe, expect, it, vi } from "vitest";
+import { chunkDataTransfer } from "../core/engine/world";
 import { createChunkGenerator } from "./chunk-generator";
 
 describe("chunk worker", () => {
@@ -7,7 +8,7 @@ describe("chunk worker", () => {
     Reflect.deleteProperty(globalThis, "onmessage");
   });
 
-  it("answers each request with its chunk", async () => {
+  it("answers each request with its chunk, transferring its buffers instead of copying them", async () => {
     const postMessage = vi.fn();
     vi.stubGlobal("postMessage", postMessage);
     await import("./chunk-worker");
@@ -15,6 +16,10 @@ describe("chunk worker", () => {
 
     scope.onmessage({ data: { seed: 3, cx: 0, cy: -1 } });
 
-    expect(postMessage).toHaveBeenCalledWith(createChunkGenerator()({ seed: 3, cx: 0, cy: -1 }));
+    const answer = createChunkGenerator()({ seed: 3, cx: 0, cy: -1 });
+    expect(postMessage).toHaveBeenCalledWith(answer, chunkDataTransfer(answer.data));
+    const [sent, transfer] = postMessage.mock.calls[0] as [typeof answer, ArrayBuffer[]];
+    expect(transfer).toEqual(chunkDataTransfer(sent.data));
+    expect(transfer[0]).toBe(sent.data.columns.x.buffer);
   });
 });

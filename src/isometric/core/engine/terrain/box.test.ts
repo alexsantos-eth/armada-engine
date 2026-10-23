@@ -54,4 +54,50 @@ describe("Box", () => {
     expect(new Box(0, 0, { elevation: 0, type: "sand" }).type).toBe("sand");
     expect(new Box(0, 0, { elevation: 2, type: "ground" }).getData().type).toBe("ground");
   });
+
+  it("shares one frozen empty metadata among the boxes without any, so a column is one object (#96)", () => {
+    const plain = new Box(0, 0);
+    const empty = new Box(1, 0, { metadata: {} });
+
+    expect(plain.metadata).toBe(empty.metadata);
+    expect(Object.isFrozen(plain.metadata)).toBe(true);
+    expect(new Box(0, 0, { metadata: { tag: "a" } }).metadata).not.toBe(plain.metadata);
+  });
+
+  it("keeps its metadata read-only: changing it throws, update() replaces it", () => {
+    const given = { tag: "original" };
+    const box = new Box(0, 0, { metadata: given });
+    given.tag = "changed";
+
+    expect(box.metadata.tag).toBe("original");
+    expect(() => {
+      (box.metadata as { tag: string }).tag = "changed";
+    }).toThrow(TypeError);
+    box.update({ metadata: { tag: "updated" } });
+    expect(box.metadata).toEqual({ tag: "updated" });
+    expect(Object.isFrozen(box.metadata)).toBe(true);
+  });
+
+  it("uses a frozen metadata object as given instead of copying it", () => {
+    const shared = Object.freeze({ biome: "forest" });
+
+    expect(new Box(0, 0, { metadata: shared }).metadata).toBe(shared);
+    expect(new Box(0, 0, { metadata: shared }).getData().metadata).not.toBe(shared);
+  });
+
+  it("returns a new data object on every call", () => {
+    const box = new Box(0, 0);
+
+    expect(box.getData()).not.toBe(box.getData());
+    expect(box.getData().metadata).not.toBe(box.metadata);
+  });
+
+  it("changes only the fields an update gives", () => {
+    const box = new Box(0, 0, { elevation: 1, type: "sand", walkable: false, metadata: { a: 1 } });
+
+    box.update({ walkable: true });
+    expect(box.getData()).toEqual({ type: "sand", walkable: true, elevation: 1, metadata: { a: 1 } });
+    box.update({ type: "ground" });
+    expect(box.type).toBe("ground");
+  });
 });

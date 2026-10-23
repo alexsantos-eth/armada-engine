@@ -1,18 +1,19 @@
-import type { CellKey, WorldCoord, WorldRect } from "../../types";
-import { cellFromKey, cellKey } from "./coords";
+import type { WorldCoord, WorldRect } from "../../types";
+import { CellMap } from "./cell-map";
 
 const EMPTY: readonly never[] = Object.freeze([]);
 
 /**
  * Which items occupy which world columns. An item can cover several cells (multi-block
- * footprints) and a cell can hold several items. Lookups use numeric cell keys; queries
- * return items in insertion order, so they stay deterministic.
+ * footprints) and a cell can hold several items. Cells are kept in a {@link CellMap} (lookups
+ * allocate nothing); queries return items in insertion order, so they stay deterministic.
  *
  * It is a derived lookup: rebuild it from the domain state instead of serializing it.
  */
 export class SpatialIndex<T> {
-  private readonly byCell = new Map<CellKey, T[]>();
-  private readonly cellsByItem = new Map<T, CellKey[]>();
+  private readonly byCell = new CellMap<T[]>();
+  /** The cells of each item, as `x, y` pairs in one flat list. */
+  private readonly cellsByItem = new Map<T, number[]>();
   private readonly order = new Map<T, number>();
   private sequence = 0;
 
@@ -33,26 +34,31 @@ export class SpatialIndex<T> {
   insert(item: T, cells: readonly WorldCoord[]): void {
     if (this.cellsByItem.has(item)) throw new Error("Item is already in the index; use move()");
 
-    const keys = [...new Set(cells.map(({ x, y }) => cellKey(x, y)))];
-    keys.forEach((key) => {
-      const items = this.byCell.get(key);
+    const pairs: number[] = [];
+    cells.forEach(({ x, y }) => {
+      // Footprints are a few cells: comparing with the ones kept is cheaper than a set.
+      for (let index = 0; index < pairs.length; index += 2) if (pairs[index] === x && pairs[index + 1] === y) return;
+      pairs.push(x, y);
+      const items = this.byCell.get(x, y);
       if (items) items.push(item);
-      else this.byCell.set(key, [item]);
+      else this.byCell.set(x, y, [item]);
     });
-    this.cellsByItem.set(item, keys);
+    this.cellsByItem.set(item, pairs);
     this.order.set(item, this.sequence++);
   }
 
   /** Removes `item`; returns whether it was indexed. */
   remove(item: T): boolean {
-    const keys = this.cellsByItem.get(item);
-    if (!keys) return false;
+    const pairs = this.cellsByItem.get(item);
+    if (!pairs) return false;
 
-    keys.forEach((key) => {
-      const remaining = (this.byCell.get(key) as T[]).filter((other) => other !== item);
-      if (remaining.length === 0) this.byCell.delete(key);
-      else this.byCell.set(key, remaining);
-    });
+    for (let index = 0; index < pairs.length; index += 2) {
+      const x = pairs[index];
+      const y = pairs[index + 1];
+      const remaining = (this.byCell.get(x, y) as T[]).filter((other) => other !== item);
+      if (remaining.length === 0) this.byCell.delete(x, y);
+      else this.byCell.set(x, y, remaining);
+    }
     this.cellsByItem.delete(item);
     this.order.delete(item);
     return true;
@@ -66,16 +72,17 @@ export class SpatialIndex<T> {
 
   /** Items covering the column `(x, y)`. */
   at(x: number, y: number): readonly T[] {
-    return this.byCell.get(cellKey(x, y)) ?? EMPTY;
+    return this.byCell.get(x, y) ?? EMPTY;
   }
 
   isOccupied(x: number, y: number): boolean {
-    return this.byCell.has(cellKey(x, y));
+    return this.byCell.has(x, y);
   }
 
   /** Cells covered by `item`, or an empty list when it is not indexed. */
   cellsOf(item: T): WorldCoord[] {
-    return (this.cellsByItem.get(item) ?? []).map(cellFromKey);
+    const pairs = this.cellsByItem.get(item) ?? [];
+    return Array.from({ length: pairs.length / 2 }, (_, index) => ({ x: pairs[2 * index], y: pairs[2 * index + 1] }));
   }
 
   /** Indexed items in insertion order. */
@@ -116,7 +123,7 @@ export class SpatialIndex<T> {
       // Indexed loops: placement asks this for every candidate column, and iterators allocate.
       for (let x = minX; x <= maxX; x += 1) {
         for (let y = minY; y <= maxY; y += 1) {
-          const items = this.byCell.get(cellKey(x, y));
+          const items = this.byCell.get(x, y);
           if (items === undefined) continue;
           for (let index = 0; index < items.length; index += 1) if (visit(items[index])) return true;
         }
@@ -124,8 +131,7 @@ export class SpatialIndex<T> {
       return false;
     }
 
-    for (const [key, items] of this.byCell) {
-      const { x, y } = cellFromKey(key);
+    for (const [{ x, y }, items] of this.byCell.entries()) {
       if (x < minX || x > maxX || y < minY || y > maxY) continue;
       for (const item of items) if (visit(item)) return true;
     }

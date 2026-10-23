@@ -137,4 +137,29 @@ describe("SpatialIndex", () => {
 
     expect([...index.items()]).toEqual([b, a]);
   });
+
+  it("finds items across chunk edges and at negative coordinates, by either strategy", () => {
+    const index = new SpatialIndex<Item>();
+    const pier = item("pier");
+    const rock = item("rock");
+    index.insert(pier, [
+      { x: -1, y: 31 },
+      { x: 0, y: 31 },
+      { x: 0, y: 32 },
+    ]);
+    index.insert(rock, [{ x: -33, y: -1 }]);
+
+    expect(index.at(0, 32)).toEqual([pier]);
+    expect(index.cellsOf(pier)).toEqual([
+      { x: -1, y: 31 },
+      { x: 0, y: 31 },
+      { x: 0, y: 32 },
+    ]);
+    expect(index.queryRect({ minX: -1, minY: 32, maxX: 0, maxY: 32 })).toEqual([pier]);
+    expect(index.queryRect({ minX: -900, minY: -900, maxX: 900, maxY: 900 })).toEqual([pier, rock]);
+    expect(index.queryRect({ minX: -900, minY: -900, maxX: 900, maxY: 0 })).toEqual([rock]);
+    index.remove(pier);
+    expect(index.isOccupied(0, 32)).toBe(false);
+    expect(index.queryRect({ minX: -900, minY: -900, maxX: 900, maxY: 900 })).toEqual([rock]);
+  });
 });

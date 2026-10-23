@@ -15,10 +15,19 @@ export const MAX_GRID_COORD = 2 ** 20 - 1;
 const OFFSET = MAX_GRID_COORD;
 const SPAN = 2 * MAX_GRID_COORD + 1;
 
-function packKey(x: number, y: number): number {
+/**
+ * Checks that `(x, y)` is a grid position a key can hold: integers within {@link MAX_GRID_COORD}.
+ *
+ * @throws `RangeError` otherwise.
+ */
+export function assertGridCoord(x: number, y: number): void {
   if (!Number.isInteger(x) || !Number.isInteger(y) || Math.abs(x) > MAX_GRID_COORD || Math.abs(y) > MAX_GRID_COORD) {
     throw new RangeError(`Grid coordinate out of range: (${x}, ${y})`);
   }
+}
+
+function packKey(x: number, y: number): number {
+  assertGridCoord(x, y);
   return (x + OFFSET) * SPAN + (y + OFFSET);
 }
 

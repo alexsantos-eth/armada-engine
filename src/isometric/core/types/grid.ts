@@ -40,7 +40,10 @@ export type WorldRect = {
 declare const cellKeyBrand: unique symbol;
 declare const chunkKeyBrand: unique symbol;
 
-/** Numeric key of one world column (see `cellKey()`); only valid for `CellMap`/`SpatialIndex`. */
+/**
+ * Numeric key of one world column (see `cellKey()`), unique in the whole grid. It does not fit a
+ * small integer, so `CellMap` and `SpatialIndex` key their cells by chunk instead (#95).
+ */
 export type CellKey = number & { readonly [cellKeyBrand]: true };
 
 /** Numeric key of one chunk (see `chunkKey()`). */

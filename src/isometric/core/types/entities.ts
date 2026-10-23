@@ -61,7 +61,7 @@ export interface IGridObject {
   readonly x: number;
   readonly y: number;
   readonly elevation: number;
-  readonly metadata: BoxMetadata;
+  readonly metadata: Readonly<BoxMetadata>;
 }
 
 /** A terrain column as entity placement reads it: its top elevation and, as `type`, its surface. */
@@ -179,9 +179,9 @@ export interface IBox {
    */
   readonly elevation: number;
   /**
-   * A flexible object that can hold any additional metadata associated with the box. This can include custom properties, tags, or any other relevant information that may be needed for game logic, rendering, or interactions within the isometric environment. This property is read-only and can be accessed to retrieve any additional information about the box.
+   * A flexible object that can hold any additional metadata associated with the box. This can include custom properties, tags, or any other relevant information that may be needed for game logic, rendering, or interactions within the isometric environment. This property is read-only and can be accessed to retrieve any additional information about the box. The object itself is frozen: replace it with `update({ metadata })`.
    */
-  readonly metadata: BoxMetadata;
+  readonly metadata: Readonly<BoxMetadata>;
   /**
    * Retrieves the complete data structure of the box, including its type, walkability, elevation, and any associated metadata. This method provides a way to access all relevant information about the box in a single object, which can be useful for game logic, rendering decisions, or interactions within the isometric environment.
    * @returns A `BoxData` object containing the type, walkability, elevation, and metadata of the box.

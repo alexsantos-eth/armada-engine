@@ -2,7 +2,7 @@ import type { Texture } from "pixi.js";
 import { projectBoxesToIsometric } from "../projection";
 import { createBlockViews, createSpritePool } from "../render";
 import { SCENE_LAYER, type SceneModule, type SceneView } from "../scene";
-import { type Box, DEFAULT_MAX_ELEVATION, DEFAULT_MIN_ELEVATION, fillElevations, removeHiddenBlocks } from "../terrain";
+import { type Box, createVisibleBlocks, DEFAULT_MAX_ELEVATION, DEFAULT_MIN_ELEVATION } from "../terrain";
 import type { TerrainMaterial, TerrainTint } from "../../types";
 
 /** Darkest a tinted block gets: the factor of its colour never goes under it. */
@@ -29,9 +29,9 @@ export function getTerrainTint(tint: TerrainTint, elevation: number, maxElevatio
 /**
  * Scene module of the terrain, chunk by chunk: one sprite per visible block, with the texture and
  * the tint of its material (`context.terrain`, game content). Every column is filled down to
- * `DEFAULT_MIN_ELEVATION` (`fillElevations()`), and blocks fully covered by others
- * (`removeHiddenBlocks()`) are never created: from the fixed camera only the shell of the terrain
- * shows. A block whose material has a `topInset` covers nothing behind it. The blocks along a
+ * `DEFAULT_MIN_ELEVATION`, and blocks fully covered by others are never created
+ * (`createVisibleBlocks()`): from the fixed camera only the shell of the terrain shows. A block
+ * whose material has a `topInset` covers nothing behind it. The blocks along a
  * chunk's `−x`/`−y` edges are covered by the neighbour chunk's columns (`context.columnAt`), so
  * chunks meet as if the terrain were one. Tints by height count from `DEFAULT_MAX_ELEVATION`, the
  * same in every chunk.
@@ -65,14 +65,15 @@ export function createTerrainView(): SceneModule {
             const column = columnAt.get(rect.minX - 1, y);
             if (column) edge.push(column);
           }
-          const own = fillElevations(columns, DEFAULT_MIN_ELEVATION);
-          const covering = fillElevations(edge, DEFAULT_MIN_ELEVATION);
-          const shown = new Set(
-            removeHiddenBlocks([...own, ...covering], (box) => (terrain[box.type].topInset ?? 0) === 0),
+          // Only the blocks the camera sees are created (#96).
+          const visible = createVisibleBlocks(
+            columns,
+            edge,
+            DEFAULT_MIN_ELEVATION,
+            (material) => (terrain[material].topInset ?? 0) === 0,
           );
-          const visible = own.filter((box) => shown.has(box));
           const views: SceneView[] = projectBoxesToIsometric(visible, projection).flatMap((box) =>
-            // Typed once by `fillElevations()`: water, ground, or the column's surface on top.
+            // Typed once by `createVisibleBlocks()`: water, ground, or the column's surface on top.
             createBlockViews({
               texture: textures.get(box.box.type) as Texture,
               box,

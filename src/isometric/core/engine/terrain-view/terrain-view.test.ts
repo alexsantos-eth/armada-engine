@@ -54,7 +54,9 @@ describe("createTerrainView", () => {
     expect(vi.mocked(createBlockViews).mock.calls.every(([options]) => options.sprites === pool)).toBe(true);
     scene.destroy();
     // Hidden with the scene: every block back in the pool, never destroyed by the scene.
-    expect(pool.kept).toEqual(expect.arrayContaining(drawn));
+    // A set: `arrayContaining` compares every pair, seconds for thousands of blocks.
+    const kept = new Set(pool.kept);
+    expect(drawn.every((view) => kept.has(view))).toBe(true);
     expect(pool.kept).toHaveLength(drawn.length);
     expect(drawn.every(({ destroy }) => vi.mocked(destroy).mock.calls.length === 0)).toBe(true);
     expect(pool.destroy).toHaveBeenCalled();
