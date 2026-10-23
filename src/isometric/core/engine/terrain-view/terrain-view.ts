@@ -1,6 +1,6 @@
 import type { Texture } from "pixi.js";
 import { projectBoxesToIsometric } from "../projection";
-import { createBlockViews } from "../render";
+import { createBlockViews, createSpritePool } from "../render";
 import { SCENE_LAYER, type SceneModule, type SceneView } from "../scene";
 import { type Box, DEFAULT_MAX_ELEVATION, DEFAULT_MIN_ELEVATION, fillElevations, removeHiddenBlocks } from "../terrain";
 import type { TerrainMaterial, TerrainTint } from "../../types";
@@ -50,6 +50,8 @@ export function createTerrainView(): SceneModule {
         if (texture) textures.set(material, texture);
       });
       if (textures.size < materials.length) return { destroy: () => {} };
+      // A hidden chunk's blocks are given back for the next chunk shown (#94).
+      const sprites = createSpritePool();
 
       return {
         showChunk: ({ rect, columns }) => {
@@ -76,11 +78,12 @@ export function createTerrainView(): SceneModule {
               box,
               metrics,
               tint: getTerrainTint(terrain[box.box.type].tint, box.box.elevation, DEFAULT_MAX_ELEVATION),
+              sprites,
             }).map((view) => ({ ...view, layer: SCENE_LAYER.terrain })),
           );
-          return { views };
+          return { views, keepsViews: true, destroy: () => sprites.give(views.map(({ view }) => view)) };
         },
-        destroy: () => {},
+        destroy: () => sprites.destroy(),
       };
     },
   };

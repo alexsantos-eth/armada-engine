@@ -15,6 +15,7 @@ import {
   type RandomSource,
 } from "../core/engine";
 import { bindKeyboardControls } from "../input";
+import { type ChunkWorker, createChunkPrefetch, startChunkWorker } from "./chunk-prefetch";
 import { formatClockLabel, resolveLaunchOptions } from "./launch";
 import { createSceneModules, createWorldParts, createWorldSystems, findUnknownModules } from "./modules";
 
@@ -31,6 +32,8 @@ export type GameOptions = {
   readonly random?: RandomSource;
   /** Where the world seed is reported, so a world can be reproduced. Defaults to `console.info`. */
   readonly log?: (message: string) => void;
+  /** Starts the worker that generates the chunks ahead of the camera. Defaults to `startChunkWorker()`. */
+  readonly chunkWorker?: () => ChunkWorker;
 };
 
 /** A running game (`mountGame()`). */
@@ -38,8 +41,8 @@ export type Game = {
   /** Settles when the game has started, or stopped starting because it was destroyed; rejects if starting failed. */
   readonly ready: Promise<void>;
   /**
-   * Stops the game and frees it: simulation, keyboard and pointer controls, scene and Pixi app, in
-   * that order. Safe to call at any time and more than once; while the game is still starting, the
+   * Stops the game and frees it: simulation, keyboard and pointer controls, scene, chunk worker and
+   * Pixi app, in that order. Safe to call at any time and more than once; while the game is still starting, the
    * teardown waits for the step in progress, so nothing is created on a destroyed app.
    */
   readonly destroy: () => void;
@@ -53,12 +56,13 @@ export type Game = {
  * the world with the game content (unbounded, by chunks), runs its fixed-step simulation on the
  * app's ticker (`HIGH` priority, before the render), renders it with the modules of
  * `createSceneModules()` while streaming the chunks around the player and those the camera sees
- * (`world.chunks.stream()`, a few per frame once started), and binds
+ * (`world.chunks.stream()`, a few per frame once started, those ahead generated in a worker:
+ * `createChunkPrefetch()`), and binds
  * the controls: pointer on the stage (drag, wheel, pinch, when the scene has a camera) and
  * keyboard on the window (walk, zoom at the centre of the view).
  */
 export function mountGame(container: HTMLElement, options: GameOptions): Game {
-  const { window, onClockChange, random = Math.random, log = console.info } = options;
+  const { window, onClockChange, random = Math.random, log = console.info, chunkWorker = startChunkWorker } = options;
   const app = new Application();
   // Undone in reverse order: each step registers its teardown as soon as it exists.
   const teardowns: Array<() => void> = [];
@@ -87,18 +91,25 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     if (unknown.length > 0) log(`Armada ?modules= names no module: ${unknown.join(", ")}`);
     const world = generateWorld({ seed, entityDefinitions: ENTITY_CONFIG, parts: createWorldParts(startTick) });
     const simulation = createSimulation(world, { timeScale, systems: createWorldSystems(disabledModules) });
+    const prefetch = createChunkPrefetch(world, chunkWorker());
+    teardowns.push(prefetch.destroy);
     // The scene draws the player between its last two ticks, and the camera follows it. The world
     // keeps loaded the ground around the player first and what the camera sees, wherever the
-    // camera is: all at once while the scene is built, then a few chunks per frame, loading
-    // ahead of the camera when nothing is missing.
+    // camera is: all at once while the scene is built, then a few chunks per frame. The chunks
+    // ahead of the camera are generated in the worker, and load once they are ready.
     const scene = await createScene(app, world, createSceneModules(disabledModules), {
       terrain: TERRAIN_APPEARANCE,
       interpolation: () => getInterpolationAlpha(simulation.stepper),
-      stream: (visible, building) =>
-        world.chunks.stream(
-          [chunkOfPoint(world.parts.get(PLAYER_PART)), ...visible],
-          building ? {} : { prefetchRadius: CHUNK_PREFETCH_RADIUS, maxLoads: CHUNKS_LOADED_PER_FRAME },
-        ),
+      stream: (visible, building) => {
+        const focus = [chunkOfPoint(world.parts.get(PLAYER_PART)), ...visible];
+        if (building) return world.chunks.stream(focus);
+        prefetch.request(focus);
+        return world.chunks.stream(focus, {
+          prefetchRadius: CHUNK_PREFETCH_RADIUS,
+          maxLoads: CHUNKS_LOADED_PER_FRAME,
+          prefetchPrepared: true,
+        });
+      },
     });
     teardowns.push(scene.destroy);
     if (destroyed) return;

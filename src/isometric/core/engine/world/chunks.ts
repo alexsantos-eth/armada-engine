@@ -100,6 +100,11 @@ export type ChunkStreamOptions = {
    * {@link CHUNKS_LOADED_PER_FRAME} on every frame.
    */
   readonly maxLoads?: number;
+  /**
+   * Loads ahead (past `loadRadius`) only the chunks prepared for it (`prepare()`, by a worker),
+   * so the call never generates a chunk it does not need yet. Defaults to `false`.
+   */
+  readonly prefetchPrepared?: boolean;
 };
 
 /** Chunk of the column nearest the ground point `point`. */
@@ -124,6 +129,8 @@ export class WorldChunks {
   private readonly edits = new Map<ChunkKey, readonly Entity[]>();
   private readonly columns = new CellMap<Box>();
   private readonly index = new SpatialIndex<Entity>();
+  /** Content generated elsewhere for chunks not loaded yet (`prepare()`). */
+  private readonly prepared = new Map<ChunkKey, ChunkContent>();
 
   /** @param saved Edited chunks of a save (`serialize()`): loaded with their saved entities. */
   constructor(source: ChunkSource, saved: readonly SavedChunk[] = []) {
@@ -175,6 +182,22 @@ export class WorldChunks {
   }
 
   /**
+   * Keeps `content` of chunk `coord`, generated elsewhere (a worker, with the same seed and entity
+   * definitions: what the source would generate), for when it loads: loading it then only indexes
+   * it. Ignored when the chunk is loaded or the world has no such chunk; `stream()` drops it once
+   * it is further than `keepRadius` from every focus.
+   */
+  prepare(coord: ChunkCoord, content: ChunkContent): void {
+    if (this.has(coord) || !this.exists(coord)) return;
+    this.prepared.set(chunkKey(coord.cx, coord.cy), content);
+  }
+
+  /** Whether chunk `coord` has content waiting for its load (`prepare()`). */
+  isPrepared({ cx, cy }: ChunkCoord): boolean {
+    return this.prepared.has(chunkKey(cx, cy));
+  }
+
+  /**
    * Whether chunk `coord` is loaded with all of its eight neighbours that exist: what the edges of
    * its terrain (hidden blocks, ambient occlusion) and its shadows need to be drawn.
    */
@@ -183,8 +206,8 @@ export class WorldChunks {
   }
 
   /**
-   * Loads chunk `coord` (generated, or with its edited entities) and indexes its columns and
-   * entities. Does nothing when it is loaded already.
+   * Loads chunk `coord` (prepared, or generated now; with its edited entities if any) and indexes
+   * its columns and entities. Does nothing when it is loaded already.
    *
    * @returns The chunk, or `undefined` when the world has no such chunk.
    */
@@ -194,7 +217,8 @@ export class WorldChunks {
     if (existing) return existing;
     if (!this.source.has(coord)) return undefined;
 
-    const content = this.source.generate(coord);
+    const content = this.prepared.get(key) ?? this.source.generate(coord);
+    this.prepared.delete(key);
     const chunk: WorldChunk = {
       coord: { cx: coord.cx, cy: coord.cy },
       key,
@@ -247,10 +271,14 @@ export class WorldChunks {
 
     const unloaded = [...this.loaded.values()].filter(({ coord }) => !near(coord)).map(({ coord }) => coord);
     unloaded.forEach((coord) => this.unload(coord));
+    [...this.prepared.keys()].filter((key) => !near(chunkFromKey(key))).forEach((key) => this.prepared.delete(key));
 
     const loaded: ChunkCoord[] = [];
-    /** Loads the missing chunks within `radius` of each focus, within the budget; returns those left. */
-    const loadWithin = (radius: number) => {
+    /**
+     * Loads the missing chunks within `radius` of each focus (only the prepared ones with
+     * `preparedOnly`), within the budget; returns those left.
+     */
+    const loadWithin = (radius: number, preparedOnly: boolean) => {
       // Two foci may share a chunk: it counts once.
       const listed = new Set<ChunkKey>();
       const missing = centres
@@ -258,6 +286,7 @@ export class WorldChunks {
         .filter((coord) => {
           const key = chunkKey(coord.cx, coord.cy);
           if (listed.has(key) || this.loaded.has(key) || !this.exists(coord)) return false;
+          if (preparedOnly && !this.prepared.has(key)) return false;
           listed.add(key);
           return true;
         });
@@ -267,8 +296,8 @@ export class WorldChunks {
       budget -= now.length;
       return missing.length - now.length;
     };
-    const pending = loadWithin(loadRadius);
-    if (pending === 0 && prefetchRadius > loadRadius) loadWithin(prefetchRadius);
+    const pending = loadWithin(loadRadius, false);
+    if (pending === 0 && prefetchRadius > loadRadius) loadWithin(prefetchRadius, options.prefetchPrepared ?? false);
     return { loaded, unloaded, pending };
   }
 

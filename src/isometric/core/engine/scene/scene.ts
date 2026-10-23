@@ -2,7 +2,7 @@ import { type Application, Assets, Container, type Texture, type Ticker, UPDATE_
 import { CAMERA_MAX_ZOOM } from "../camera";
 import { BOX_HEIGHT, TILE_HEIGHT, TILE_METRICS, TILE_WIDTH } from "../constants";
 import { CHUNK_SIZE, chunkKey, MAX_GRID_COORD } from "../grid";
-import { addInDepthOrder, getSvgResolution } from "../render";
+import { getSvgResolution } from "../render";
 import { CLOCK_PART } from "../time";
 import type { World, WorldChunk } from "../world";
 import type { ChunkCoord, ChunkKey, TerrainAppearance, WorldRect } from "../../types";
@@ -17,6 +17,7 @@ import type {
   SceneServices,
   SceneView,
 } from "./module";
+import { createDrawOrder } from "./draw-order";
 
 /** The {@link SceneLayer}s, by what they hold. */
 export const SCENE_LAYER = {
@@ -166,10 +167,17 @@ export async function createScene(
     waiting = [];
     due.forEach((resume) => resume());
   };
+  const order = createDrawOrder(root);
+  /** Frees what the parts of a chunk out of the world container made, the last part first. */
+  const dropParts = (chunkParts: readonly SceneChunkPart[]) =>
+    [...chunkParts].reverse().forEach((part) => {
+      if (!part.keepsViews) part.views?.forEach(({ view }) => view.destroy());
+      part.destroy?.();
+    });
   const hideChunk = (entry: ShownChunk) => {
     shown.delete(entry.chunk.key);
-    [...entry.parts].reverse().forEach((part) => part.destroy?.());
-    built.remove(entry.views);
+    order.remove(entry.views);
+    dropParts(entry.parts);
   };
   const unload = () => loaded.forEach((source) => void Assets.unload(source));
   const teardown = () => {
@@ -181,48 +189,17 @@ export async function createScene(
     unload();
   };
 
-  // The views in `root`, in the order of its children.
-  let order: SceneView[] = [];
-  const takeOut = (view: SceneView["view"]) => {
-    const index = order.findIndex((entry) => entry.view === view);
-    if (index >= 0) order.splice(index, 1);
-  };
   const built: BuiltScene = {
-    placeAt: (view, depth) => {
-      takeOut(view);
-      const index = indexAfter(
-        order.map((entry) => entry.depth),
-        depth,
-      );
-      order.splice(index, 0, { view, depth, layer: SCENE_LAYER.object });
-      root.addChildAt(view, index);
-    },
+    placeAt: (view, depth) => order.placeAt(view, depth, SCENE_LAYER.object),
     add: (views) => {
-      if (views.length === 0) return;
-      // Merged into the sorted views: each new one goes in at its place, after the views of the
-      // same depth and layer already in (as a stable sort would put it), and the views already
-      // in are never taken out and added again.
-      const merged: SceneView[] = [];
-      let next = 0;
-      sortViews(views).forEach((entry) => {
-        while (next < order.length && compareViews(order[next], entry) <= 0) {
-          merged.push(order[next]);
-          next += 1;
-        }
-        entry.view.cullable = true;
-        root.addChildAt(entry.view, merged.length);
-        merged.push(entry);
+      views.forEach(({ view }) => {
+        view.cullable = true;
       });
-      order = [...merged, ...order.slice(next)];
+      order.add(views);
     },
     remove: (views) => {
-      if (views.length === 0) return;
-      const gone = new Set(views.map(({ view }) => view));
-      order = order.filter(({ view }) => !gone.has(view));
-      views.forEach(({ view }) => {
-        root.removeChild(view);
-        view.destroy();
-      });
+      order.remove(views);
+      views.forEach(({ view }) => view.destroy());
     },
   };
 
@@ -242,8 +219,7 @@ export async function createScene(
     }
     const entry: ShownChunk = { chunk, parts: chunkParts, views: chunkParts.flatMap(({ views = [] }) => views) };
     if (!destroyed) return entry;
-    [...chunkParts].reverse().forEach((part) => part.destroy?.());
-    entry.views.forEach(({ view }) => view.destroy());
+    dropParts(chunkParts);
     return undefined;
   };
 
@@ -280,11 +256,7 @@ export async function createScene(
       shown.set(entry.chunk.key, entry);
       first.push(...entry.views);
     }
-    first.forEach(({ view }) => {
-      view.cullable = true;
-    });
-    order = sortViews(first);
-    addInDepthOrder(root, order);
+    built.add(first);
   } catch (error) {
     teardown();
     throw error;
@@ -340,26 +312,4 @@ export async function createScene(
       teardown();
     },
   };
-}
-
-/** Draw order of two views: by depth, then layer (negative when `a` goes first). */
-export function compareViews(a: SceneView, b: SceneView): number {
-  return a.depth - b.depth || a.layer - b.layer;
-}
-
-/** `views` by depth, then layer; views of the same depth and layer keep their order. */
-export function sortViews(views: readonly SceneView[]): SceneView[] {
-  return [...views].sort(compareViews);
-}
-
-/** Index of the first of the ascending `depths` past `depth`. */
-export function indexAfter(depths: readonly number[], depth: number): number {
-  let low = 0;
-  let high = depths.length;
-  while (low < high) {
-    const middle = (low + high) >> 1;
-    if (depths[middle] <= depth) low = middle + 1;
-    else high = middle;
-  }
-  return low;
 }

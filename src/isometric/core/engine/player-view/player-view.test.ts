@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("pixi.js", async () => (await import("../flow-check/scene-harness")).mockPixi());
 vi.mock("../render", async () => (await import("../flow-check/scene-harness")).mockRender());
 
-import { Assets } from "pixi.js";
+import { Assets, Container } from "pixi.js";
 import { CAMERA_START_ZOOM, getGroundPointBelow } from "../camera";
 import { createCameraView } from "../camera-view";
 import { TILE_METRICS } from "../constants";
@@ -65,7 +65,14 @@ const spriteAt = (at: { x: number; y: number; elevation: number }) => {
 const blocksOf = (children: TestView[], player: TestView) =>
   children.filter((child) => child.x !== undefined && child !== player);
 
+/** Watches every insertion in a container: the scene moving a view in its draw order. */
+const moves = () => vi.spyOn(Container.prototype as never, "addChildAt");
+
 describe("createPlayerView", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   beforeEach(() => {
     resetHarness();
     vi.clearAllMocks();
@@ -112,8 +119,8 @@ describe("createPlayerView", () => {
 
   it("draws the player between its last two ticks and glides the camera after it", async () => {
     const world = fieldWithPlayer();
-    const { ticker, root, view, camera, scene } = await sceneOf(world, () => 0.5);
-    const addChildAt = vi.spyOn(root as never, "addChildAt");
+    const { ticker, view, camera, scene } = await sceneOf(world, () => 0.5);
+    const addChildAt = moves();
     const before = camera.state;
 
     world.parts.get(PLAYER_PART).x = 1.4;
@@ -149,8 +156,8 @@ describe("createPlayerView", () => {
 
   it("keeps the player's place in the draw order on another column at the same depth", async () => {
     const world = fieldWithPlayer();
-    const { ticker, root, scene } = await sceneOf(world);
-    const addChildAt = vi.spyOn(root as never, "addChildAt");
+    const { ticker, scene } = await sceneOf(world);
+    const addChildAt = moves();
 
     // Column (2, 0): same x + y and elevation as (1, 1), so the same depth.
     Object.assign(world.parts.get(PLAYER_PART), { x: 1.8, y: 0.4, previous: { x: 1.8, y: 0.4, elevation: 1 } });
@@ -163,7 +170,7 @@ describe("createPlayerView", () => {
   it("moves the player in the draw order only when it enters another column", async () => {
     const world = fieldWithPlayer();
     const { ticker, root, view, scene } = await sceneOf(world);
-    const addChildAt = vi.spyOn(root as never, "addChildAt");
+    const addChildAt = moves();
 
     world.parts.get(PLAYER_PART).previous = { x: 1, y: 1, elevation: 1 };
     world.parts.get(PLAYER_PART).x = 1.8;

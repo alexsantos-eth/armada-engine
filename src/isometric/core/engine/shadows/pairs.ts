@@ -55,21 +55,25 @@ export function pairShadows<B extends ShadowBody>(
     }),
   );
 
-  return bodies
-    .filter(receives)
-    .flatMap((body) =>
-      body.silhouettes.map((own) => ({
-        own,
-        // Never empty: its own body lists itself there.
-        casters: (cells.get(cellOf(own.worldFoot.x))?.get(cellOf(own.worldFoot.y)) as Listed[]).flatMap(
-          ({ body: other, silhouette: { worldFoot, display }, silhouette }): ShadowCaster[] => {
-            if (other === body) return [];
-            const lift = other.elevation - body.elevation;
-            const distance = Math.hypot(own.worldFoot.x - worldFoot.x, own.worldFoot.y - worldFoot.y);
-            return distance <= reach(display.height, lift) ? [{ silhouette, lift }] : [];
-          },
-        ),
-      })),
-    )
-    .filter(({ casters }) => casters.length > 0);
+  // Plain loops: a chunk pairs thousands of silhouettes, and an array per candidate fed the garbage
+  // collector.
+  const receivers: ShadowReceiver[] = [];
+  bodies.forEach((body) => {
+    if (!receives(body)) return;
+    body.silhouettes.forEach((own) => {
+      // Never empty: its own body lists itself there.
+      const listed = cells.get(cellOf(own.worldFoot.x))?.get(cellOf(own.worldFoot.y)) as Listed[];
+      const casters: ShadowCaster[] = [];
+      for (let index = 0; index < listed.length; index += 1) {
+        const { body: other, silhouette } = listed[index];
+        if (other === body) continue;
+        const lift = other.elevation - body.elevation;
+        const { worldFoot, display } = silhouette;
+        const distance = Math.hypot(own.worldFoot.x - worldFoot.x, own.worldFoot.y - worldFoot.y);
+        if (distance <= reach(display.height, lift)) casters.push({ silhouette, lift });
+      }
+      if (casters.length > 0) receivers.push({ own, casters });
+    });
+  });
+  return receivers;
 }

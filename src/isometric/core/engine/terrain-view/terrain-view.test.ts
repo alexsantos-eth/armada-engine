@@ -4,6 +4,7 @@ vi.mock("pixi.js", async () => (await import("../flow-check/scene-harness")).moc
 vi.mock("../render", async () => (await import("../flow-check/scene-harness")).mockRender());
 
 import { Assets } from "pixi.js";
+import { createBlockViews, createSpritePool } from "../render";
 import {
   columnsOf,
   createTestEntities,
@@ -41,6 +42,22 @@ describe("createTerrainView", () => {
     // Entities are not the terrain's.
     expect(renderCalls.some(({ texture }) => texture.source.includes("statue"))).toBe(false);
     scene.destroy();
+  });
+
+  it("takes the blocks' sprites from its pool and gives a hidden chunk's back to it", async () => {
+    const { root, scene } = await renderTerrain(defaultWorld());
+    const pool = vi.mocked(createSpritePool).mock.results[0].value as ReturnType<typeof createSpritePool> & {
+      kept: unknown[];
+    };
+    const drawn = [...root.children];
+
+    expect(vi.mocked(createBlockViews).mock.calls.every(([options]) => options.sprites === pool)).toBe(true);
+    scene.destroy();
+    // Hidden with the scene: every block back in the pool, never destroyed by the scene.
+    expect(pool.kept).toEqual(expect.arrayContaining(drawn));
+    expect(pool.kept).toHaveLength(drawn.length);
+    expect(drawn.every(({ destroy }) => vi.mocked(destroy).mock.calls.length === 0)).toBe(true);
+    expect(pool.destroy).toHaveBeenCalled();
   });
 
   it("draws no terrain when a material's SVG cannot be used", async () => {

@@ -126,7 +126,16 @@ export type BuiltScene = {
 export type SceneChunkPart = {
   /** Views of the chunk, added with every other module's for it and removed when it is hidden. */
   readonly views?: readonly SceneView[];
-  /** Frees what the module made for the chunk besides its views, which the scene destroys. */
+  /**
+   * The module takes its views back when the chunk is hidden, to use them again (a `SpritePool`):
+   * the scene takes them out of the world container and leaves them to `destroy()`. Otherwise the
+   * scene destroys them.
+   */
+  readonly keepsViews?: boolean;
+  /**
+   * Frees what the module made for the chunk, once its views are out of the world container: with
+   * `keepsViews`, its views too (kept or destroyed); otherwise the scene already destroyed them.
+   */
   destroy?(): void;
 };
 

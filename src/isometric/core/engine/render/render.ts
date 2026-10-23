@@ -1,4 +1,5 @@
-import { type Container, Graphics, Rectangle, Sprite, Texture } from "pixi.js";
+import { type Container, Graphics, Rectangle, Texture } from "pixi.js";
+import { NEW_SPRITES, type SpriteSource } from "./sprite-pool";
 import type { EntityLengthAxis, IsoScreenBox, TileMetrics } from "../../types";
 
 /**
@@ -69,7 +70,7 @@ export type RenderBlockOptions = {
   readonly box: IsoScreenBox;
   /** Tile size in pixels (usually `TILE_METRICS`). */
   readonly metrics: TileMetrics;
-  /** Tint applied to the sprite. Defaults to none. */
+  /** Tint applied to the sprite. Defaults to none (white). */
   readonly tint?: number;
   /** Height in blocks. Defaults to `1`. */
   readonly height?: number;
@@ -81,11 +82,13 @@ export type RenderBlockOptions = {
   readonly lengthAxis?: EntityLengthAxis;
   /** Draws a diamond outline per occupied block. Defaults to `false`. */
   readonly debug?: boolean;
+  /** Where the sprites come from, e.g. a `SpritePool`. Defaults to new ones ({@link NEW_SPRITES}). */
+  readonly sprites?: SpriteSource;
 };
 
 /**
  * Creates the views of a block or entity, each with its draw depth, without adding them to
- * any container (see {@link addInDepthOrder}). Multi-block entities are cut into vertical
+ * any container (the scene adds them in its draw order). Multi-block entities are cut into vertical
  * half-tile strips, each with the depth of its own footprint tile, so things standing in
  * front of the far end of a long entity (a tree beside the land end of a pier) are drawn
  * over it instead of behind it. Sprites come first; the debug outline, when enabled, last.
@@ -101,17 +104,12 @@ export function createBlockViews(options: RenderBlockOptions): DepthView[] {
     length = 1,
     lengthAxis = "x",
     debug = false,
+    sprites = NEW_SPRITES,
   } = options;
-  const image = new Sprite(texture);
-
-  image.width = tileWidth * ((1 + length) / 2);
+  const width = tileWidth * ((1 + length) / 2);
   const textureAspectRatio = texture.width > 0 ? texture.height / texture.width : undefined;
-  image.height =
-    length > 1 && textureAspectRatio !== undefined ? image.width * textureAspectRatio : tileHeight + boxHeight * height;
-  if (tint !== undefined) {
-    image.tint = tint;
-  }
-  image.anchor.set(0.5, 0);
+  const spriteHeight =
+    length > 1 && textureAspectRatio !== undefined ? width * textureAspectRatio : tileHeight + boxHeight * height;
   const footprintDepth = tileHeight * ((1 + length) / 4);
   const verticalOffset = surfaceAligned
     ? footprintDepth + boxHeight * height
@@ -122,25 +120,30 @@ export function createBlockViews(options: RenderBlockOptions): DepthView[] {
   const lengthDirection = lengthAxis === "y" ? -1 : 1;
   const positionX = box.screenX + lengthDirection * footprintOffset * (tileWidth / 2);
   const positionY = box.screenY - footprintOffset * (tileHeight / 2) - verticalOffset;
-  image.position.set(positionX, positionY);
   const tileDepth = (tile: number) => getBlockDepth(box, options.metrics, tile, lengthAxis);
   const anchorDepth = tileDepth(0);
+  const draw = (source: Texture, spriteWidth: number, anchorX: number, x: number) => {
+    const sprite = sprites.take(source);
+    sprite.width = spriteWidth;
+    sprite.height = spriteHeight;
+    sprite.tint = tint ?? 0xffffff;
+    sprite.anchor.set(anchorX, 0);
+    sprite.position.set(x, positionY);
+    return sprite;
+  };
 
-  let views: DepthView[] = [{ view: image, depth: anchorDepth }];
+  let views: DepthView[];
   if (length > 1) {
     const sliceTiles = getFootprintSliceTiles(length, lengthAxis);
     const stripTextures = getStripTextures(texture, sliceTiles.length);
-    const stripWidth = image.width / sliceTiles.length;
-    const left = positionX - image.width / 2;
-    views = sliceTiles.map((tile, strip) => {
-      const slice = new Sprite(stripTextures[strip]);
-      slice.width = stripWidth;
-      slice.height = image.height;
-      slice.tint = image.tint;
-      slice.anchor.set(0, 0);
-      slice.position.set(left + strip * stripWidth, positionY);
-      return { view: slice, depth: tileDepth(tile) };
-    });
+    const stripWidth = width / sliceTiles.length;
+    const left = positionX - width / 2;
+    views = sliceTiles.map((tile, strip) => ({
+      view: draw(stripTextures[strip], stripWidth, 0, left + strip * stripWidth),
+      depth: tileDepth(tile),
+    }));
+  } else {
+    views = [{ view: draw(texture, width, 0.5, positionX), depth: anchorDepth }];
   }
 
   if (debug) {
@@ -166,13 +169,4 @@ export function createBlockViews(options: RenderBlockOptions): DepthView[] {
   }
 
   return views;
-}
-
-/**
- * Adds `views` to `container` from back to front (ascending depth; equal depths keep their
- * order). One sort when building, instead of Pixi re-sorting every child: the container does
- * not need `sortableChildren`.
- */
-export function addInDepthOrder(container: Container, views: readonly DepthView[]): void {
-  [...views].sort((a, b) => a.depth - b.depth).forEach(({ view }) => container.addChild(view));
 }

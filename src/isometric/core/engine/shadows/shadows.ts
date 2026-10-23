@@ -18,7 +18,7 @@ import {
   SHADOW_REFRESH_TICKS,
 } from "../lighting";
 import { projectBoxesToIsometric } from "../projection";
-import { getBlockDepth } from "../render";
+import { createSpritePool, getBlockDepth } from "../render";
 import { type BuiltScene, type EntityView, SCENE_LAYER, type SceneModule, type SceneView } from "../scene";
 import { CLOCK_PART, getSunState } from "../time";
 import type { WorldChunk } from "../world";
@@ -132,6 +132,8 @@ export function createShadows(): SceneModule {
       const alphaFilter = new AlphaFilter({ alpha: 1 });
       // Caster textures of the received shadows, reused as chunks gather again.
       const textures = createTexturePool();
+      // Sprites of the ground shadows, a chunk's given back when it is hidden for the next one.
+      const groundSprites = createSpritePool();
       const chunks = new Map<ChunkKey, ShadowChunk>();
       // Set by `start()`, before any chunk gathers its casters.
       let scene!: BuiltScene;
@@ -177,6 +179,29 @@ export function createShadows(): SceneModule {
         silhouettesByView.set(view, made);
         return made;
       };
+      // Sprites of silhouettes no map draws any more, reused by the next gathering instead of
+      // destroyed and made again: a chunk's maps hold thousands.
+      const spares: Sprite[] = [];
+      const spriteFor = (silhouette: Silhouette) => {
+        const sprite = spares.pop();
+        if (!sprite) return createSilhouetteSprite(silhouette);
+        sprite.texture = silhouette.texture;
+        return sprite;
+      };
+      /** A layer's container of silhouettes, with the shared filters, on top of its occlusion. */
+      const castersFor = (layer: ShadowLayer) => {
+        const casters = new Container();
+        casters.filters = [blurFilter, alphaFilter];
+        // The whole map: known up front, so Pixi does not measure the silhouettes on every redraw.
+        casters.filterArea = new Rectangle(0, 0, layer.map.width, layer.map.height);
+        layer.root.addChild(casters);
+        layer.casters = casters;
+        return casters;
+      };
+      /** Takes the silhouette sprites out of a map's layer, to be reused. */
+      const spareCasters = (layer: ShadowLayer) => {
+        layer.casters?.removeChildren().forEach((sprite) => spares.push(sprite as Sprite));
+      };
       /**
        * Whether `silhouette`'s shadow may fall on `area` (or its blur spill into it), `lift` blocks
        * above it, with the sun as low as shadows get: within its reach, plus how far it spreads
@@ -212,8 +237,7 @@ export function createShadows(): SceneModule {
         const area = areaOf(shadow.chunk.rect);
         const { near } = nearbyViews(shadow.chunk);
         shadow.maps = shadow.layers.map((layer) => {
-          layer.casters?.destroy({ children: true });
-          layer.casters = undefined;
+          spareCasters(layer);
           // Casters standing on this level or higher (shadows onto higher ground are not drawn)
           // whose shadow may reach the map.
           layer.silhouettes = near
@@ -222,16 +246,15 @@ export function createShadows(): SceneModule {
               const lift = caster.entity.box.elevation - layer.level;
               return silhouettesOf(caster)
                 .filter((silhouette) => reaches(silhouette, lift, area))
-                .map((silhouette) => ({ silhouette, lift, sprite: createSilhouetteSprite(silhouette) }));
+                .map((silhouette) => ({ silhouette, lift, sprite: spriteFor(silhouette) }));
             });
-          if (layer.silhouettes.length > 0) {
-            const casters = new Container();
-            casters.filters = [blurFilter, alphaFilter];
-            // The whole map: known up front, so Pixi does not measure the silhouettes on every redraw.
-            casters.filterArea = new Rectangle(0, 0, layer.map.width, layer.map.height);
+          if (layer.silhouettes.length === 0) {
+            // An empty container would still run its filters on every redraw.
+            layer.casters?.destroy();
+            layer.casters = undefined;
+          } else {
+            const casters = layer.casters ?? castersFor(layer);
             layer.silhouettes.forEach(({ sprite }) => casters.addChild(sprite));
-            layer.root.addChild(casters);
-            layer.casters = casters;
           }
           return { casters: layer.casters, draw: (light) => drawLayer(layer, area, light), drawnTick: tick };
         });
@@ -315,7 +338,14 @@ export function createShadows(): SceneModule {
           });
           const tileTop = { x: top.screenX, y: top.screenY + topInsetAt(top.x, top.y) * metrics.boxHeight };
           return {
-            ...createGroundShadowView(frame, tileTop, metrics, getBlockDepth(top, metrics)),
+            ...createGroundShadowView(
+              frame,
+              tileTop,
+              metrics,
+              getBlockDepth(top, metrics),
+              pixelsPerTile,
+              groundSprites,
+            ),
             layer: SCENE_LAYER.ground,
           };
         });
@@ -342,14 +372,18 @@ export function createShadows(): SceneModule {
         touch(chunk);
         return {
           views,
+          keepsViews: true,
           destroy: () => {
+            groundSprites.give(views.map(({ view }) => view));
             chunks.delete(chunk.key);
             touch(chunk);
             if (shadow.received) {
               shadow.received.shadows.destroy();
               scene.remove(shadow.received.views);
             }
-            layers.forEach(({ root, occlusion }) => {
+            layers.forEach((layer) => {
+              spareCasters(layer);
+              const { root, occlusion } = layer;
               root.destroy({ children: true });
               occlusion.destroy(true);
             });
@@ -404,7 +438,10 @@ export function createShadows(): SceneModule {
           update(world.parts.get(CLOCK_PART).tick);
         },
         update: ({ tick: now }) => update(now),
-        destroy: () => {},
+        destroy: () => {
+          spares.forEach((sprite) => sprite.destroy());
+          groundSprites.destroy();
+        },
       };
     },
   };

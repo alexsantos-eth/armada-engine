@@ -1,13 +1,4 @@
-import {
-  Container,
-  type Filter,
-  Rectangle,
-  RenderTexture,
-  type Renderer,
-  Sprite,
-  Texture,
-  type TextureSource,
-} from "pixi.js";
+import { Container, type Filter, Rectangle, RenderTexture, type Renderer, Sprite, Texture } from "pixi.js";
 import type { DepthView } from "../render";
 import type { PlanePoint, Silhouette } from "./silhouette";
 import type { TexturePool } from "./texture-pool";
@@ -57,23 +48,8 @@ export type ReceivedShadows = {
   destroy(): void;
 };
 
-/** A caster's silhouette on one receiver's square of the atlas. */
-type PlacedCaster = {
-  /** Source and frame of the silhouette's texture. */
-  readonly source: TextureSource;
-  readonly base: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
-  /** Atlas texels it covers, uncropped. */
-  readonly size: { readonly width: number; readonly height: number };
-  /** Atlas texel of its top-left corner before the sun's offset. */
-  readonly origin: PlanePoint;
-  /** What a draw may cover: the receiver's square and the bleed around it. */
-  readonly crop: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
-  readonly casterFoot: PlanePoint;
-  readonly receiverFoot: PlanePoint;
-  readonly lift: number;
-  /** Its sprite and pooled texture, once it has shown. */
-  drawn?: { readonly sprite: Sprite; readonly texture: Texture };
-};
+/** A pair's sprite and pooled texture, made the first time it shows. */
+type DrawnCaster = { readonly sprite: Sprite; readonly texture: Texture };
 
 /** The screen rectangle a sprite is drawn in. */
 function displayOf(sprite: Sprite) {
@@ -161,36 +137,29 @@ export function createReceivedShadows(
   const root = new Container();
   root.addChild(casters, erase);
 
-  const placed = receivers.flatMap((receiver, index) => {
+  // The pairs (a caster on a receiver), in receiver and caster order, as flat arrays: an atlas
+  // holds thousands and lives as long as its chunk, so an object per pair fed the garbage collector.
+  const count = receivers.reduce((total, { casters: own }) => total + own.length, 0);
+  const pairSilhouettes = new Array<Silhouette>(count);
+  const pairLifts = new Float64Array(count);
+  const pairReceivers = new Uint32Array(count);
+  // Atlas texel of the silhouette's top-left corner before the sun's offset: its foot on the receiver's.
+  const pairOrigins = new Float64Array(2 * count);
+  const drawn = new Array<DrawnCaster | undefined>(count);
+  let pair = 0;
+  receivers.forEach((receiver, index) => {
     const slot = slots[index];
     const target = displayOf(receiver.own.source);
-    // What a draw may cover: the receiver's square and the bleed around it.
-    const crop = {
-      left: slot.x - RECEIVED_SHADOW_BLEED,
-      top: slot.y - RECEIVED_SHADOW_BLEED,
-      right: slot.x + slot.width + RECEIVED_SHADOW_BLEED,
-      bottom: slot.y + slot.height + RECEIVED_SHADOW_BLEED,
-    };
-    return receiver.casters.map(({ silhouette, lift }): PlacedCaster => {
-      const { source, frame } = silhouette.texture;
-      const base = { x: frame.x, y: frame.y, width: frame.width, height: frame.height };
+    receiver.casters.forEach(({ silhouette, lift }) => {
       const { display, screenFoot } = silhouette;
-      const size = { width: display.width * resolution, height: display.height * resolution };
-      // Where the silhouette lands in the atlas before the sun's offset: its foot on the receiver's.
-      const origin = {
-        x: slot.x + (receiver.own.screenFoot.x + display.left - screenFoot.x - target.left) * resolution,
-        y: slot.y + (receiver.own.screenFoot.y + display.top - screenFoot.y - target.top) * resolution,
-      };
-      return {
-        source,
-        base,
-        size,
-        origin,
-        crop,
-        casterFoot: silhouette.worldFoot,
-        receiverFoot: receiver.own.worldFoot,
-        lift,
-      };
+      pairSilhouettes[pair] = silhouette;
+      pairLifts[pair] = lift;
+      pairReceivers[pair] = index;
+      pairOrigins[2 * pair] =
+        slot.x + (receiver.own.screenFoot.x + display.left - screenFoot.x - target.left) * resolution;
+      pairOrigins[2 * pair + 1] =
+        slot.y + (receiver.own.screenFoot.y + display.top - screenFoot.y - target.top) * resolution;
+      pair += 1;
     });
   });
 
@@ -206,43 +175,51 @@ export function createReceivedShadows(
     return { view: sprite, depth: own.depth };
   });
 
-  /** The caster's sprite, made the first time it shows: most pairs never do under one sun. */
-  const spriteOf = (item: PlacedCaster) => {
-    if (item.drawn) return item.drawn;
+  /** The pair's sprite, made the first time it shows: most pairs never do under one sun. */
+  const spriteOf = (pair: number, base: Rectangle, width: number, height: number) => {
+    const made = drawn[pair];
+    if (made) return made;
     // Its own frame, cropped to the receiver's square on every draw; the scale never changes.
-    const texture = textures.acquire(item.source, item.base);
+    const texture = textures.acquire(pairSilhouettes[pair].texture.source, base);
     const sprite = new Sprite(texture);
     sprite.tint = 0x000000;
-    sprite.scale.set(item.size.width / item.base.width, item.size.height / item.base.height);
+    sprite.scale.set(width / base.width, height / base.height);
     casters.addChild(sprite);
-    item.drawn = { sprite, texture };
-    return item.drawn;
+    drawn[pair] = { sprite, texture };
+    return drawn[pair];
   };
 
-  const place = (item: PlacedCaster, offsetOf: CastShadowOffset) => {
-    const { base, size, origin, crop } = item;
-    const offset = offsetOf(item.casterFoot, item.receiverFoot, item.lift);
+  const place = (pair: number, offsetOf: CastShadowOffset) => {
+    const silhouette = pairSilhouettes[pair];
+    const receiver = pairReceivers[pair];
+    const offset = offsetOf(silhouette.worldFoot, receivers[receiver].own.worldFoot, pairLifts[pair]);
     let shown = offset !== null;
     if (offset) {
-      const x = origin.x + offset.x * resolution;
-      const y = origin.y + offset.y * resolution;
-      const x0 = Math.max(x, crop.left);
-      const y0 = Math.max(y, crop.top);
-      const x1 = Math.min(x + size.width, crop.right);
-      const y1 = Math.min(y + size.height, crop.bottom);
+      const base = silhouette.texture.frame;
+      const width = silhouette.display.width * resolution;
+      const height = silhouette.display.height * resolution;
+      const x = pairOrigins[2 * pair] + offset.x * resolution;
+      const y = pairOrigins[2 * pair + 1] + offset.y * resolution;
+      // What a draw may cover: the receiver's square and the bleed around it.
+      const slot = slots[receiver];
+      const x0 = Math.max(x, slot.x - RECEIVED_SHADOW_BLEED);
+      const y0 = Math.max(y, slot.y - RECEIVED_SHADOW_BLEED);
+      const x1 = Math.min(x + width, slot.x + slot.width + RECEIVED_SHADOW_BLEED);
+      const y1 = Math.min(y + height, slot.y + slot.height + RECEIVED_SHADOW_BLEED);
       shown = x1 > x0 && y1 > y0;
       if (shown) {
-        const { sprite, texture } = spriteOf(item);
-        texture.frame.x = base.x + ((x0 - x) / size.width) * base.width;
-        texture.frame.y = base.y + ((y0 - y) / size.height) * base.height;
-        texture.frame.width = ((x1 - x0) / size.width) * base.width;
-        texture.frame.height = ((y1 - y0) / size.height) * base.height;
+        const { sprite, texture } = spriteOf(pair, base, width, height);
+        texture.frame.x = base.x + ((x0 - x) / width) * base.width;
+        texture.frame.y = base.y + ((y0 - y) / height) * base.height;
+        texture.frame.width = ((x1 - x0) / width) * base.width;
+        texture.frame.height = ((y1 - y0) / height) * base.height;
         texture.update();
         sprite.position.set(x0, y0);
       }
     }
     // Only on change: every change rebuilds the draw instructions of the atlas.
-    if (item.drawn && item.drawn.sprite.visible !== shown) item.drawn.sprite.visible = shown;
+    const made = drawn[pair];
+    if (made && made.sprite.visible !== shown) made.sprite.visible = shown;
   };
 
   return {
@@ -250,12 +227,12 @@ export function createReceivedShadows(
     casters,
     atlas,
     draw(offsetOf) {
-      if (offsetOf) placed.forEach((item) => place(item, offsetOf));
+      if (offsetOf) for (let index = 0; index < count; index += 1) place(index, offsetOf);
       renderer.render({ container: root, target: atlas, clear: true, clearColor: [0, 0, 0, 0] });
     },
     destroy() {
       root.destroy({ children: true });
-      placed.forEach(({ drawn }) => drawn && textures.release(drawn.texture));
+      drawn.forEach((made) => made && textures.release(made.texture));
       // The atlas first: destroying its source drops the listeners of the views' textures at once.
       mask.destroy(true);
       atlas.destroy(true);

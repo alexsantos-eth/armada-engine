@@ -174,6 +174,55 @@ describe("WorldChunks", () => {
     expect(chunks.size).toBe(25);
   });
 
+  it("loads prepared content instead of generating it, once", () => {
+    const source = testSource();
+    const chunks = new WorldChunks(source);
+    const made = testSource().generate({ cx: 1, cy: 0 });
+
+    chunks.prepare({ cx: 1, cy: 0 }, made);
+    expect(chunks.isPrepared({ cx: 1, cy: 0 })).toBe(true);
+    const chunk = chunks.load({ cx: 1, cy: 0 });
+
+    expect(source.generate).not.toHaveBeenCalled();
+    expect(chunk?.columns).toBe(made.columns);
+    expect(chunk?.entities).toBe(made.entities);
+    expect(chunks.occupancy.at(CHUNK_SIZE, 0)).toEqual(made.entities);
+    expect(chunks.isPrepared({ cx: 1, cy: 0 })).toBe(false);
+    // Unloaded and loaded again: generated, the prepared content was used up.
+    chunks.unload({ cx: 1, cy: 0 });
+    chunks.load({ cx: 1, cy: 0 });
+    expect(source.generate).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores content prepared for a loaded chunk or one the world does not have", () => {
+    const chunks = new WorldChunks(testSource());
+    const content = { columns: [], entities: [] };
+    chunks.load({ cx: 0, cy: 0 });
+
+    chunks.prepare({ cx: 0, cy: 0 }, content);
+    chunks.prepare({ cx: 9, cy: 0 }, content);
+
+    expect(chunks.isPrepared({ cx: 0, cy: 0 })).toBe(false);
+    expect(chunks.isPrepared({ cx: 9, cy: 0 })).toBe(false);
+  });
+
+  it("loads ahead only prepared chunks when asked, and drops those it would not keep", () => {
+    const source = testSource();
+    const chunks = new WorldChunks(source);
+    const content = (coord: ChunkCoord) => testSource().generate(coord);
+    chunks.prepare({ cx: 2, cy: 2 }, content({ cx: 2, cy: 2 }));
+    chunks.prepare({ cx: -3, cy: -3 }, content({ cx: -3, cy: -3 }));
+
+    const { loaded } = chunks.stream([{ cx: 0, cy: 0 }], { prefetchRadius: 2, keepRadius: 2, prefetchPrepared: true });
+
+    // The nine needed ones, generated, then the one prepared ahead.
+    expect(loaded).toHaveLength(10);
+    expect(loaded[9]).toEqual({ cx: 2, cy: 2 });
+    expect(source.generate).toHaveBeenCalledTimes(9);
+    // Out of the kept radius: dropped.
+    expect(chunks.isPrepared({ cx: -3, cy: -3 })).toBe(false);
+  });
+
   it("counts a chunk two foci share once", () => {
     const source = testSource();
     const chunks = new WorldChunks(source);

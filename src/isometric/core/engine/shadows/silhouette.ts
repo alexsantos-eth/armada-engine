@@ -1,6 +1,6 @@
 import { Matrix, Rectangle, Sprite, Texture } from "pixi.js";
 import type { Affine2D, EntityLengthAxis, IsoScreenBox, TileMetrics } from "../../types";
-import { type DepthView, getFootprintSliceTiles } from "../render";
+import { type DepthView, getFootprintSliceTiles, NEW_SPRITES, type SpriteSource } from "../render";
 
 /** Resolution of the shadow maps: texels per world tile along each axis. */
 export const SHADOW_MAP_PIXELS_PER_TILE = 16;
@@ -23,7 +23,9 @@ export function composeAffine(outer: Affine2D, inner: Affine2D): Affine2D {
   };
 }
 
-const toMatrix = ({ a, b, c, d, tx, ty }: Affine2D) => new Matrix(a, b, c, d, tx, ty);
+// Only read by `setFromMatrix()`, never kept: one matrix for every sprite placed.
+const placement = new Matrix();
+const toMatrix = ({ a, b, c, d, tx, ty }: Affine2D) => placement.set(a, b, c, d, tx, ty);
 
 /**
  * Transform that lays a tile's square of the shadow map (`pixelsPerTile` texels a side, `+x`
@@ -50,6 +52,7 @@ export function getGroundShadowMatrix(tileTop: PlanePoint, metrics: TileMetrics,
  * and their opacity) is drawn into the map, so the scene never touches it again.
  *
  * @param texture The tile's square of the shadow map of its elevation.
+ * @param sprites Where the sprite comes from, e.g. a `SpritePool`.
  */
 export function createGroundShadowView(
   texture: Texture,
@@ -57,8 +60,9 @@ export function createGroundShadowView(
   metrics: TileMetrics,
   depth: number,
   pixelsPerTile = SHADOW_MAP_PIXELS_PER_TILE,
+  sprites: SpriteSource = NEW_SPRITES,
 ): DepthView {
-  const sprite = new Sprite(texture);
+  const sprite = sprites.take(texture);
   sprite.setFromMatrix(toMatrix(getGroundShadowMatrix(tileTop, metrics, pixelsPerTile)));
   return { view: sprite, depth };
 }

@@ -33,13 +33,18 @@ vi.mock("pixi.js", () => {
     public tx: number;
     public ty: number;
 
-    constructor(a: number, b: number, c: number, d: number, tx: number, ty: number) {
+    constructor(a = 1, b = 0, c = 0, d = 1, tx = 0, ty = 0) {
       this.a = a;
       this.b = b;
       this.c = c;
       this.d = d;
       this.tx = tx;
       this.ty = ty;
+    }
+
+    set(a: number, b: number, c: number, d: number, tx: number, ty: number): this {
+      Object.assign(this, { a, b, c, d, tx, ty });
+      return this;
     }
   }
 
@@ -153,6 +158,20 @@ describe("createGroundShadowView", () => {
     expect(sprite.visible).toBe(true);
     expect(sprite.setFromMatrix).toHaveBeenCalledWith(
       expect.objectContaining(getGroundShadowMatrix({ x: 10, y: 20 }, METRICS, SHADOW_MAP_PIXELS_PER_TILE)),
+    );
+  });
+
+  it("takes its sprite from the given source, e.g. a pool", () => {
+    const frame = texture(8, 8);
+    const kept = new Sprite(texture(1, 1));
+    const take = vi.fn(() => kept);
+
+    const { view } = createGroundShadowView(frame, { x: 0, y: 0 }, METRICS, 1, 8, { take });
+
+    expect(take).toHaveBeenCalledWith(frame);
+    expect(view).toBe(kept);
+    expect((kept as unknown as { setFromMatrix: ReturnType<typeof vi.fn> }).setFromMatrix).toHaveBeenCalledWith(
+      expect.objectContaining(getGroundShadowMatrix({ x: 0, y: 0 }, METRICS, 8)),
     );
   });
 });

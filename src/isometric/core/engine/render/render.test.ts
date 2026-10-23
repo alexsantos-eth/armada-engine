@@ -47,15 +47,9 @@ vi.mock("pixi.js", () => {
   return { Graphics, Rectangle, Sprite, Texture };
 });
 
-import { Graphics } from "pixi.js";
+import { Graphics, Sprite } from "pixi.js";
 import { Box } from "../terrain";
-import {
-  addInDepthOrder,
-  createBlockViews,
-  getBlockDepth,
-  getFootprintSliceTiles,
-  type RenderBlockOptions,
-} from "./render";
+import { createBlockViews, getBlockDepth, getFootprintSliceTiles, type RenderBlockOptions } from "./render";
 
 const depths = new WeakMap<object, number>();
 const depthOf = (view: unknown) => depths.get(view as object);
@@ -255,6 +249,28 @@ describe("createBlockViews", () => {
     expect(render()[2].texture).toBe(render()[2].texture);
   });
 
+  it("takes every sprite, strips too, from the given source", () => {
+    const made: Sprite[] = [];
+    const sprites = {
+      take: vi.fn((texture: never) => {
+        const sprite = new Sprite(texture);
+        made.push(sprite);
+        return sprite;
+      }),
+    };
+    const box = { x: 0, y: 0, box: new Box(0, 0), screenX: 10, baseScreenY: 20, screenY: 20 };
+    const metrics = { tileWidth: 40, tileHeight: 20, boxHeight: 13 };
+
+    const block = createBlockViews({ texture: carTexture as never, box, metrics, sprites });
+    const car = createBlockViews({ texture: carTexture as never, box, metrics, length: 2, sprites });
+
+    expect(sprites.take).toHaveBeenCalledTimes(4);
+    expect(sprites.take).toHaveBeenNthCalledWith(1, carTexture);
+    expect([...block, ...car].map(({ view }) => view)).toEqual(made);
+    // A kept sprite may carry the tint of a block it drew before: always set.
+    expect((block[0].view as unknown as TestSprite).tint).toBe(0xffffff);
+  });
+
   it("positions a multi-block entity along the y axis", () => {
     const sprite = renderViews(
       { addChild: vi.fn() },
@@ -369,22 +385,5 @@ describe("getBlockDepth", () => {
     const [{ depth }] = createBlockViews({ texture: carTexture as never, box, metrics });
 
     expect(depth).toBe(getBlockDepth(box, metrics));
-  });
-});
-
-describe("addInDepthOrder", () => {
-  it("adds views from back to front, keeping the order of equal depths", () => {
-    const children: string[] = [];
-    const container = { addChild: (child: { name: string }) => children.push(child.name) };
-    const view = (name: string, depth: number) => ({ view: { name } as never, depth });
-
-    addInDepthOrder(container as never, [
-      view("front", 30),
-      view("back", 10),
-      view("middle-a", 20),
-      view("middle-b", 20),
-    ]);
-
-    expect(children).toEqual(["back", "middle-a", "middle-b", "front"]);
   });
 });

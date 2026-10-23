@@ -105,8 +105,9 @@ export function mockPixi() {
       if (current >= 0) this.children.splice(current, 1);
     }
 
-    removeChildren(): void {
-      this.children.length = 0;
+    /** Like Pixi: returns the children it took out. */
+    removeChildren(): unknown[] {
+      return this.children.splice(0);
     }
   }
 
@@ -220,12 +221,17 @@ export async function mockRender() {
       },
     ),
     getBlockDepth: vi.fn((box: { baseScreenY: number }) => box.baseScreenY),
+    // A pool that keeps what it is given, to check what modules give back.
+    createSpritePool: vi.fn(() => {
+      const kept: unknown[] = [];
+      return {
+        kept,
+        take: vi.fn(),
+        give: vi.fn((views: readonly unknown[]) => kept.push(...views)),
+        destroy: vi.fn(),
+      };
+    }),
     getSvgResolution: vi.fn((tileWidth: number, resolution = 1) => (tileWidth * resolution * 1.5) / 1024),
-    addInDepthOrder: vi.fn(
-      (container: { addChild: (child: unknown) => void }, views: { view: unknown; depth: number }[]) => {
-        [...views].sort((a, b) => a.depth - b.depth).forEach(({ view }) => container.addChild(view));
-      },
-    ),
   };
 }
 
@@ -350,7 +356,10 @@ export type TestRoot = {
   isRenderGroup: boolean;
   eventMode: string;
   sortableChildren: boolean;
+  /** The views in the order they are drawn, across the scene's depth bands. */
   children: TestView[];
+  /** The depth bands: the world container's own children. */
+  bands: Array<{ children: TestView[] }>;
   tint: number;
   tintWrites: number[];
   position: { x: number; y: number };
@@ -406,7 +415,22 @@ export async function mountScene(
     stage: { addChild: (child: TestRoot) => stage.push(child) },
   };
   const scene = await createScene(app as never, world, modules, { terrain: TEST_TERRAIN, ...options });
-  return { app, ticker, renderer, root: stage[0], scene };
+  return { app, ticker, renderer, root: drawnRoot(stage[0]), scene };
+}
+
+/**
+ * `root` with `children` listing its views in draw order (the views of its depth bands, band by
+ * band) and `bands` its own children.
+ */
+function drawnRoot(root: TestRoot): TestRoot {
+  const bands = (root as unknown as { children: Array<{ children: TestView[] }> }).children;
+  return new Proxy(root, {
+    get: (target, key, receiver) => {
+      if (key === "children") return bands.flatMap(({ children }) => children);
+      if (key === "bands") return bands;
+      return Reflect.get(target, key, receiver) as unknown;
+    },
+  });
 }
 
 /** Builds entities on the columns of a world. */

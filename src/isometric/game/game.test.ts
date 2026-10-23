@@ -15,6 +15,8 @@ import {
   type World,
 } from "../core/engine";
 import { KEYBOARD_ZOOM_STEP } from "../input";
+import type { ChunkRequest } from "./chunk-generator";
+import type { ChunkWorker } from "./chunk-prefetch";
 import { mountGame } from "./game";
 
 const mocks = vi.hoisted(() => ({
@@ -25,6 +27,25 @@ const mocks = vi.hoisted(() => ({
 }));
 const { teardowns } = mocks;
 
+/** A chunk worker that only records what it is asked; stopping it is a teardown. */
+class FakeWorker {
+  static last: FakeWorker | undefined;
+  readonly requests: ChunkRequest[] = [];
+  onmessage: ChunkWorker["onmessage"] = null;
+
+  constructor() {
+    FakeWorker.last = this;
+  }
+
+  postMessage(request: ChunkRequest): void {
+    this.requests.push(request);
+  }
+
+  terminate(): void {
+    teardowns.push("worker");
+  }
+}
+
 vi.mock("pixi.js", () => {
   class Application {
     init = vi.fn(() => mocks.nextInit ?? Promise.resolve());
@@ -34,7 +55,9 @@ vi.mock("pixi.js", () => {
     ticker = { add: vi.fn(), remove: vi.fn(() => mocks.teardowns.push("ticker")) };
     destroy = vi.fn(() => mocks.teardowns.push("app"));
   }
-  return { Application, UPDATE_PRIORITY: { HIGH: 50, NORMAL: 0, LOW: -25 } };
+  // Made when the engine is imported (the matrix that places shadow sprites).
+  class Matrix {}
+  return { Application, Matrix, UPDATE_PRIORITY: { HIGH: 50, NORMAL: 0, LOW: -25 } };
 });
 
 vi.mock("../core/engine", async (importOriginal) => ({
@@ -85,7 +108,13 @@ const mount = (search?: string) => {
   const container = createContainer();
   const onClockChange = vi.fn();
   const log = vi.fn();
-  const game = mountGame(container as never, { window: window as never, onClockChange, log, random: () => 0.5 });
+  const game = mountGame(container as never, {
+    window: window as never,
+    onClockChange,
+    log,
+    random: () => 0.5,
+    chunkWorker: () => new FakeWorker(),
+  });
   return { window, container, onClockChange, log, game };
 };
 
@@ -184,6 +213,21 @@ describe("mountGame", () => {
     expect(world.chunks.isReady(home)).toBe(true);
   });
 
+  it("asks the chunk worker for the chunks ahead on frames, never while the scene is built", async () => {
+    const { game } = mount("?seed=7");
+    await game.ready;
+    const { world, options } = started();
+    const worker = FakeWorker.last as FakeWorker;
+    const away = { cx: chunkOfPoint(world.parts.get(PLAYER_PART)).cx + 20, cy: 0 };
+
+    options.stream?.([away], true);
+    expect(worker.requests).toEqual([]);
+    options.stream?.([{ cx: away.cx + 10, cy: 0 }], false);
+
+    expect(worker.requests.length).toBeGreaterThan(0);
+    expect(worker.requests.every(({ seed }) => seed === 7)).toBe(true);
+  });
+
   it("leaves out the modules and systems the URL disables", async () => {
     const { game, log } = mount("?seed=1&modules=-shadows,-player,-fog");
     await game.ready;
@@ -209,7 +253,9 @@ describe("mountGame", () => {
     expect(log).toHaveBeenCalledWith("Armada world seed: 2147483648");
   });
 
-  it("defaults to Math.random for the seed and console.info for the log", async () => {
+  it("defaults to Math.random for the seed, console.info for the log and a Web Worker for the chunks", async () => {
+    vi.stubGlobal("Worker", FakeWorker);
+    FakeWorker.last = undefined;
     const random = vi.spyOn(Math, "random").mockReturnValue(0.25);
     const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
     const game = mountGame(createContainer() as never, { window: createWindow("") as never, onClockChange: vi.fn() });
@@ -217,6 +263,8 @@ describe("mountGame", () => {
 
     expect(random).toHaveBeenCalled();
     expect(info).toHaveBeenCalledWith("Armada world seed: 1073741824");
+    expect(FakeWorker.last).toBeInstanceOf(FakeWorker);
+    vi.unstubAllGlobals();
   });
 
   it("runs the simulation before the render on every frame and shows the clock when it ticks", async () => {
@@ -283,7 +331,7 @@ describe("mountGame", () => {
     game.destroy();
     game.destroy();
 
-    expect(teardowns).toEqual(["ticker", "keyboard", "pointer", "scene", "app"]);
+    expect(teardowns).toEqual(["ticker", "keyboard", "pointer", "scene", "worker", "app"]);
     expect(app.ticker.remove).toHaveBeenCalledWith(onTick(app));
     expect(app.destroy).toHaveBeenCalledWith(true);
     expect(window.listenerCount()).toBe(0);
@@ -318,7 +366,7 @@ describe("mountGame", () => {
     loading.resolve({ services: { camera: {} as never }, shownChunks: () => [], destroy: destroyScene });
     await game.ready;
 
-    expect(teardowns).toEqual(["scene", "app"]);
+    expect(teardowns).toEqual(["scene", "worker", "app"]);
     expect(bindCameraControls).not.toHaveBeenCalled();
     expect(window.listenerCount()).toBe(0);
   });
@@ -330,6 +378,6 @@ describe("mountGame", () => {
     await expect(game.ready).rejects.toThrow("asset failed");
     game.destroy();
 
-    expect(teardowns).toEqual(["app"]);
+    expect(teardowns).toEqual(["worker", "app"]);
   });
 });

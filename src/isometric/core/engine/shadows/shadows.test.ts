@@ -10,7 +10,7 @@ import { Entity } from "../entities";
 import { createEntityView } from "../entity-view";
 import type { SceneModule } from "../scene";
 import { TILE_METRICS } from "../constants";
-import { CHUNK_SIZE } from "../grid";
+import { CHUNK_SIZE, chunkKey } from "../grid";
 import {
   AO_PIXELS_PER_TILE,
   getCastShadowOffset,
@@ -36,7 +36,13 @@ import { CLOCK_PART, getSunState, TICKS_PER_DAY } from "../time";
 import type { World } from "../world";
 import { createReceivedShadows } from "./received-shadow";
 import { createShadows, SHADOW_GATHERS_PER_FRAME, SHADOW_MAP_MARGIN } from "./shadows";
-import { createSilhouettes, createSilhouetteSprite, placeSilhouette, type Silhouette } from "./silhouette";
+import {
+  createGroundShadowView,
+  createSilhouettes,
+  createSilhouetteSprite,
+  placeSilhouette,
+  type Silhouette,
+} from "./silhouette";
 
 describe("createShadows", () => {
   beforeEach(() => {
@@ -516,7 +522,7 @@ describe("createShadows", () => {
         createEntityView(),
         createShadows(),
       ]);
-      return { ticker, children: root.children as View[], scene };
+      return { ticker, children: () => root.children as View[], scene };
     };
 
     it("lays the silhouettes of the neighbouring chunks' entities on a chunk's maps", async () => {
@@ -549,7 +555,7 @@ describe("createShadows", () => {
       const world = edge();
       const visible = { chunks: [{ cx: 0, cy: 0 }] };
       const { ticker, children, scene } = await sceneOn(world, visible);
-      const receivedCount = () => children.filter(({ source }) => source === "received-shadow").length;
+      const receivedCount = () => children().filter(({ source }) => source === "received-shadow").length;
       // Chunk 0 alone: its tree receives no shadow.
       expect(createReceivedShadows).not.toHaveBeenCalled();
 
@@ -591,6 +597,23 @@ describe("createShadows", () => {
       scene.destroy();
     });
 
+    it("uses the silhouette sprites of hidden chunks again instead of making new ones", async () => {
+      const visible = { chunks: [0, 1].map((cx) => ({ cx, cy: 0 })) };
+      const { ticker, scene } = await sceneOn(edge(), visible);
+      const made = vi.mocked(createSilhouetteSprite).mock.calls.length;
+      expect(made).toBeGreaterThan(0);
+
+      visible.chunks = [{ cx: 3, cy: 0 }];
+      ticker.frame();
+      expect(scene.shownChunks()).not.toContain(chunkKey(0, 0));
+      visible.chunks = [0, 1].map((cx) => ({ cx, cy: 0 }));
+      await frameUntil(ticker, () => expect(scene.shownChunks()).toHaveLength(2));
+      for (let frame = 0; frame < 6; frame += 1) ticker.frame();
+
+      expect(vi.mocked(createSilhouetteSprite).mock.calls).toHaveLength(made);
+      scene.destroy();
+    });
+
     it("draws a shown chunk's maps right away, and only those", async () => {
       const visible = { chunks: [{ cx: 3, cy: 0 }] };
       const { ticker, renderer, scene } = await mountScene(edge(), [cameraOn(visible), createShadows()]);
@@ -628,6 +651,22 @@ describe("createShadows", () => {
     expect(createSilhouettes).not.toHaveBeenCalled();
     expect(castersOf()).toHaveLength(0);
     scene.destroy();
+  });
+
+  it("takes the ground shadows' sprites from its pool and gives a hidden chunk's back to it", async () => {
+    const { children, destroyScene } = await sceneOf(at(defaultWorld(), 12));
+    const ground = children.filter(({ source }) => source === "ground-shadow");
+    const pool = vi.mocked(createGroundShadowView).mock.calls[0][5] as unknown as {
+      kept: unknown[];
+      destroy: ReturnType<typeof vi.fn>;
+    };
+
+    expect(ground.length).toBeGreaterThan(0);
+    expect(vi.mocked(createGroundShadowView).mock.calls.every((call) => (call[5] as unknown) === pool)).toBe(true);
+    destroyScene();
+    expect(pool.kept).toHaveLength(ground.length);
+    expect(pool.kept).toEqual(expect.arrayContaining(ground));
+    expect(pool.destroy).toHaveBeenCalled();
   });
 
   it("destroys the shadow maps, their layers and the occlusion textures when the scene is destroyed", async () => {

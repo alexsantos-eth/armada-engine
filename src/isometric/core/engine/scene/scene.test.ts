@@ -6,13 +6,13 @@ vi.mock("../render", async () => (await import("../flow-check/scene-harness")).m
 import { Assets } from "pixi.js";
 import { CAMERA_MAX_ZOOM } from "../camera";
 import { TILE_METRICS } from "../constants";
-import { addInDepthOrder, getSvgResolution } from "../render";
+import { getSvgResolution } from "../render";
 import { WorldParts } from "../parts";
 import { CLOCK_PART } from "../time";
 import type { BuiltScene, SceneContext, SceneFrame, SceneModule, SceneModulePart } from "./module";
 import type { ChunkCoord } from "../../types";
 import type { WorldChunk } from "../world";
-import { CHUNKS_SHOWN_PER_FRAME, indexAfter, SCENE_LAYER, sortViews, UNBOUNDED_CAMERA_BOUNDS } from "./scene";
+import { CHUNKS_SHOWN_PER_FRAME, SCENE_LAYER, UNBOUNDED_CAMERA_BOUNDS } from "./scene";
 import { columnsOf, mountScene, resetHarness, TEST_TERRAIN, worldFrom } from "../flow-check/scene-harness";
 
 /** A module that records what the scene does with it. */
@@ -208,7 +208,6 @@ describe("createScene", () => {
 
     const { root, scene } = await mountScene(shore(), [objects.module, ground.module]);
 
-    expect(addInDepthOrder).toHaveBeenCalledTimes(1);
     expect(root.sortableChildren).toBe(false);
     expect(root.children).toEqual([back, block, shadow, entity]);
     expect(root.children.every(({ cullable }) => cullable)).toBe(true);
@@ -469,6 +468,36 @@ describe("createScene chunks", () => {
     scene.destroy();
   });
 
+  it("leaves the views of a part that keeps them to it: out of the scene before its destroy()", async () => {
+    const visible = { chunks: [0, 1].map((cx) => ({ cx, cy: 0 })) };
+    const { module: camera } = fakeCamera(visible);
+    const kept = view("kept");
+    const dropped = view("dropped");
+    const scene: { root?: { children: unknown[] } } = {};
+    const given = vi.fn(() => expect(scene.root?.children).not.toContain(kept));
+    const keeper: SceneModule = {
+      id: "keeper",
+      setup: () => ({
+        showChunk: ({ coord }) =>
+          coord.cx === 0
+            ? { views: [{ view: kept, depth: 0, layer: SCENE_LAYER.terrain }], keepsViews: true, destroy: given }
+            : { views: [{ view: dropped, depth: 1, layer: SCENE_LAYER.terrain }] },
+        destroy: () => {},
+      }),
+    };
+    const mounted = await mountScene(strip(), [camera, keeper]);
+    scene.root = mounted.root;
+
+    visible.chunks = [{ cx: 3, cy: 0 }];
+    mounted.ticker.frame();
+
+    expect(given).toHaveBeenCalledTimes(1);
+    expect((kept as unknown as { destroy: () => void }).destroy).not.toHaveBeenCalled();
+    expect((dropped as unknown as { destroy: () => void }).destroy).toHaveBeenCalled();
+    expect(mounted.root.children).toEqual([]);
+    mounted.scene.destroy();
+  });
+
   it("drops a chunk drawn after the scene was destroyed", async () => {
     const visible = { chunks: [{ cx: 0, cy: 0 }] };
     const { module: camera } = fakeCamera(visible);
@@ -499,6 +528,36 @@ describe("createScene chunks", () => {
     expect((drawn.view as { destroy: () => void }).destroy).toHaveBeenCalled();
   });
 
+  it("leaves the views of a chunk drawn after the scene was destroyed to a part that keeps them", async () => {
+    const visible = { chunks: [{ cx: 0, cy: 0 }] };
+    const { module: camera } = fakeCamera(visible);
+    let finish!: () => void;
+    const gone = vi.fn();
+    const drawn = { view: { name: "late", destroy: vi.fn() } as never, depth: 0, layer: SCENE_LAYER.terrain };
+    const slow: SceneModule = {
+      id: "slow",
+      setup: () => ({
+        showChunk: ({ coord }) =>
+          coord.cx === 0
+            ? {}
+            : new Promise((resolve) => {
+                finish = () => resolve({ views: [drawn], keepsViews: true, destroy: gone });
+              }),
+        destroy: () => {},
+      }),
+    };
+    const { ticker, scene } = await mountScene(strip(), [camera, slow]);
+
+    visible.chunks = [{ cx: 1, cy: 0 }];
+    ticker.frame();
+    await vi.waitFor(() => expect(finish).toBeDefined());
+    scene.destroy();
+    finish();
+
+    await vi.waitFor(() => expect(gone).toHaveBeenCalled());
+    expect((drawn.view as { destroy: () => void }).destroy).not.toHaveBeenCalled();
+  });
+
   it("adds and removes views in the draw order once built", async () => {
     const { module, seen } = probe("a", { views: [{ view: view("a"), depth: 1, layer: 0 }] });
     const { root, scene } = await mountScene(shore(), [module]);
@@ -526,32 +585,5 @@ describe("createScene chunks", () => {
     expect(names(root.children)).toEqual(["a", "twin", "moving", "front"]);
     expect((later.view as { destroy: () => void }).destroy).toHaveBeenCalled();
     scene.destroy();
-  });
-});
-
-describe("sortViews", () => {
-  it("sorts by depth, then layer, keeping the order of equals", () => {
-    const views = [
-      { view: view("c"), depth: 2, layer: 0 as const },
-      { view: view("b2"), depth: 1, layer: 2 as const },
-      { view: view("a"), depth: 1, layer: 0 as const },
-      { view: view("b3"), depth: 1, layer: 2 as const },
-    ];
-
-    expect(sortViews(views).map(({ view: { name } }: { view: { name: string } }) => name)).toEqual([
-      "a",
-      "b2",
-      "b3",
-      "c",
-    ]);
-  });
-});
-
-describe("indexAfter", () => {
-  it("finds the first index past a depth in ascending depths", () => {
-    expect(indexAfter([], 3)).toBe(0);
-    expect(indexAfter([1, 2, 2, 5], 0)).toBe(0);
-    expect(indexAfter([1, 2, 2, 5], 2)).toBe(3);
-    expect(indexAfter([1, 2, 2, 5], 9)).toBe(4);
   });
 });
