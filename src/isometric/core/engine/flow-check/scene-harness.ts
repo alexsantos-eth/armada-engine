@@ -257,7 +257,7 @@ export function mockSilhouette() {
     createSilhouettes: vi.fn(
       (views: { view: unknown; depth: number }[], box: { x: number; y: number; box: { elevation: number } }) => [
         {
-          sprite: { silhouetteOf: box.box },
+          texture: { silhouetteOf: box.box },
           source: views[0].view,
           depth: views[0].depth,
           worldFoot: { x: box.x, y: box.y },
@@ -266,6 +266,11 @@ export function mockSilhouette() {
         },
       ],
     ),
+    createSilhouetteSprite: vi.fn((silhouette: { texture: unknown }) => ({
+      silhouette: true,
+      texture: silhouette.texture,
+      destroy: vi.fn(),
+    })),
     placeSilhouette: vi.fn(),
   };
 }

@@ -36,7 +36,7 @@ import { CLOCK_PART, getSunState, TICKS_PER_DAY } from "../time";
 import type { World } from "../world";
 import { createReceivedShadows } from "./received-shadow";
 import { createShadows, SHADOW_GATHERS_PER_FRAME, SHADOW_MAP_MARGIN } from "./shadows";
-import { createSilhouettes, placeSilhouette } from "./silhouette";
+import { createSilhouettes, createSilhouetteSprite, placeSilhouette, type Silhouette } from "./silhouette";
 
 describe("createShadows", () => {
   beforeEach(() => {
@@ -162,14 +162,16 @@ describe("createShadows", () => {
 
     expect(renderer.render).toHaveBeenCalledTimes(levels.size);
     expect(renderer.render).toHaveBeenCalledWith(expect.objectContaining({ clear: true, clearColor: [0, 0, 0, 0] }));
-    // One silhouette set per map the entity reaches, each in that map's own fixed layer, and
-    // one cast on other entities (none here: it is alone).
-    expect(createSilhouettes).toHaveBeenCalledTimes(lowerLevels.length + 1);
+    // Its silhouettes are made once; each map it reaches draws them with a sprite of its own, in
+    // that map's fixed layer. Nothing is cast on other entities: it is alone.
+    expect(createSilhouettes).toHaveBeenCalledTimes(1);
+    expect(createSilhouetteSprite).toHaveBeenCalledTimes(lowerLevels.length);
     expect(createReceivedShadows).not.toHaveBeenCalled();
     expect(placeSilhouette).toHaveBeenCalledTimes(lowerLevels.length);
     lowerLevels.forEach((level) => {
       expect(placeSilhouette).toHaveBeenCalledWith(
         expect.anything(),
+        (vi.mocked(createSilhouettes).mock.results[0].value as Silhouette[])[0],
         getSilhouetteMatrix(projection as never, { x: entity.x, y: entity.y }, entity.elevation - level, TILE_METRICS),
         { x: -1.5, y: -1.5 },
         16,
@@ -350,7 +352,7 @@ describe("createShadows", () => {
     world.parts.get(CLOCK_PART).tick += SHADOW_REFRESH_TICKS;
     ticker.frame();
     const projection = getShadowProjection(getSunState(world.parts.get(CLOCK_PART).tick));
-    const [silhouette, matrix] = vi.mocked(placeSilhouette).mock.calls[0];
+    const [, silhouette, matrix] = vi.mocked(placeSilhouette).mock.calls[0];
 
     expect(renderer.render).toHaveBeenCalledTimes(1);
     expect(
@@ -523,9 +525,23 @@ describe("createShadows", () => {
 
       // Chunk 1's map starts a margin before x = 32: the tree at x = 31, in chunk 0, casts on it.
       expect(scene.shownChunks()).toHaveLength(1);
-      const origins = vi.mocked(placeSilhouette).mock.calls.map(([, , origin]) => origin);
+      const origins = vi.mocked(placeSilhouette).mock.calls.map(([, , , origin]) => origin);
       expect(origins).toContainEqual({ x: 32 - SHADOW_MAP_MARGIN - 0.5, y: -SHADOW_MAP_MARGIN - 0.5 });
-      expect(vi.mocked(createSilhouettes).mock.calls.map(([, entity]) => entity.box.x)).toEqual([32, 32]);
+      // Made once, for the maps and the shadows entities cast on each other.
+      expect(vi.mocked(createSilhouettes).mock.calls.map(([, entity]) => entity.box.x)).toEqual([32]);
+      scene.destroy();
+    });
+
+    it("leaves out of a map the casters whose shadow cannot reach it", async () => {
+      const world = edge();
+      const visible = { chunks: [0, 1, 2].map((cx) => ({ cx, cy: 0 })) };
+      const { scene } = await sceneOn(world, visible);
+      const origins = vi.mocked(placeSilhouette).mock.calls.map(([, , , origin]) => origin.x);
+
+      // The trees stand at x 31 and 32: chunk 1's map gets both, chunk 2's (from x 63) none.
+      expect(scene.shownChunks()).toHaveLength(3);
+      expect(origins.filter((x) => x === 32 - SHADOW_MAP_MARGIN - 0.5)).toHaveLength(2);
+      expect(origins).not.toContain(64 - SHADOW_MAP_MARGIN - 0.5);
       scene.destroy();
     });
 
@@ -543,7 +559,12 @@ describe("createShadows", () => {
       ];
       await frameUntil(ticker, () => expect(scene.shownChunks()).toHaveLength(2));
       expect(SHADOW_GATHERS_PER_FRAME).toBe(1);
-      // Both chunks gather their casters again, one per frame, the one never drawn first.
+      // Both chunks gather their casters again, a step per frame (their maps, then the shadows
+      // their entities receive), the one never gathered first.
+      ticker.frame();
+      expect(createReceivedShadows).not.toHaveBeenCalled();
+      ticker.frame();
+      expect(createReceivedShadows).toHaveBeenCalledTimes(1);
       ticker.frame();
       expect(createReceivedShadows).toHaveBeenCalledTimes(1);
       ticker.frame();

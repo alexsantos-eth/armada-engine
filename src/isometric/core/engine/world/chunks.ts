@@ -70,10 +70,11 @@ export const CHUNK_PREFETCH_RADIUS = 2;
 export const CHUNK_KEEP_RADIUS = 3;
 
 /**
- * Chunks the game generates per frame (`stream()` with `maxLoads`): generating one takes some
- * milliseconds, and a camera crossing a chunk edge needs a whole row of them.
+ * Chunks the game generates per frame (`stream()` with `maxLoads`): generating one takes tens of
+ * milliseconds on a slow machine, so one per frame. The prefetch ring keeps the stream ahead of
+ * the camera: a row of chunks crossing into view was generated frames before.
  */
-export const CHUNKS_LOADED_PER_FRAME = 2;
+export const CHUNKS_LOADED_PER_FRAME = 1;
 
 /** What one `stream()` call did. */
 export type ChunkStreamResult = {

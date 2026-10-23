@@ -113,9 +113,12 @@ export class SpatialIndex<T> {
 
     const area = (maxX - minX + 1) * (maxY - minY + 1);
     if (area <= this.byCell.size) {
+      // Indexed loops: placement asks this for every candidate column, and iterators allocate.
       for (let x = minX; x <= maxX; x += 1) {
         for (let y = minY; y <= maxY; y += 1) {
-          for (const item of this.at(x, y)) if (visit(item)) return true;
+          const items = this.byCell.get(cellKey(x, y));
+          if (items === undefined) continue;
+          for (let index = 0; index < items.length; index += 1) if (visit(items[index])) return true;
         }
       }
       return false;

@@ -29,6 +29,7 @@ import { createTexturePool } from "./texture-pool";
 import {
   createGroundShadowView,
   createSilhouettes,
+  createSilhouetteSprite,
   placeSilhouette,
   SHADOW_BLUR,
   SHADOW_MAP_PIXELS_PER_TILE,
@@ -42,11 +43,16 @@ import {
 export const SHADOW_MAP_MARGIN = 1;
 
 /**
- * Shown chunks that gather their casters again per frame, once the scene is built: showing a
- * chunk makes it and its eight neighbours stale, and gathering them all in one frame froze the
- * game. The chunks never drawn go first; the others keep their old shadows a few frames.
+ * Gathering steps per frame, once the scene is built: showing a chunk makes it and its eight
+ * neighbours gather their casters again, and gathering them all in one frame froze the game. A
+ * chunk gathers in two steps, on two frames: its maps' casters ({@link ShadowGathering}
+ * `"maps"`), then the shadows its entities receive (`"received"`). The chunks never gathered
+ * go first; the others keep their old shadows a few frames.
  */
 export const SHADOW_GATHERS_PER_FRAME = 1;
+
+/** The gathering step a chunk is waiting for: see {@link SHADOW_GATHERS_PER_FRAME}. */
+export type ShadowGathering = "maps" | "received";
 
 /** One shadow map and the fixed layer it is drawn from. */
 type ShadowLayer = {
@@ -57,7 +63,8 @@ type ShadowLayer = {
   readonly occlusion: Texture;
   /** Silhouettes of the entities on this level or higher, with the shared filters. */
   casters?: Container;
-  silhouettes: readonly { silhouette: Silhouette; lift: number }[];
+  /** Those that may reach the map, each with its sprite in `casters`. */
+  silhouettes: readonly { silhouette: Silhouette; lift: number; sprite: Sprite }[];
 };
 
 /** Something drawn from the sun into a texture: a shadow map, or the shadows entities receive. */
@@ -73,11 +80,16 @@ type ShadowTarget = {
 type ShadowChunk = {
   readonly chunk: WorldChunk;
   readonly layers: readonly ShadowLayer[];
-  received?: { readonly shadows: ReceivedShadows; readonly views: readonly SceneView[] };
-  targets: ShadowTarget[];
-  /** Its casters must be gathered again: it, or a neighbour, was just shown or hidden. */
-  stale: boolean;
+  received?: { readonly shadows: ReceivedShadows; readonly views: readonly SceneView[]; readonly target: ShadowTarget };
+  /** Its maps, drawn from the casters gathered last. */
+  maps: ShadowTarget[];
+  /** Its next gathering step: it, or a neighbour, was just shown or hidden. */
+  gathering?: ShadowGathering;
+  /** Whether it has gathered both steps once. */
+  gathered: boolean;
 };
+
+const targetsOf = ({ maps, received }: ShadowChunk) => (received ? [...maps, received.target] : maps);
 
 /**
  * Tiles beyond a caster's shadow reach that a receiver may still stand and be shaded: the
@@ -102,10 +114,12 @@ const RECEIVER_SPAN = 1;
  * A chunk's maps are drawn when it gathers its casters, at sunrise and at sunset (without
  * silhouettes at night); by day one map per frame is redrawn, the stalest of every shown chunk,
  * once it is `SHADOW_REFRESH_TICKS` old. When a chunk is shown or hidden, it and its neighbours
- * gather their casters again: all of them when the scene is built, then
- * {@link SHADOW_GATHERS_PER_FRAME} per frame, the chunks never drawn first. The caster textures
- * of the received shadows are pooled (`createTexturePool()`), never destroyed one by one. The
- * casters come from the `entityViews` service: without it, the maps hold the occlusion only.
+ * gather their casters again, in two steps (maps, then received shadows): all of them when the
+ * scene is built, then {@link SHADOW_GATHERS_PER_FRAME} step per frame, the chunks never
+ * gathered first. A map only takes the casters whose shadow may reach it, and each entity view's
+ * silhouettes are made once. The caster textures of the received shadows are pooled
+ * (`createTexturePool()`), never destroyed one by one. The casters come from the `entityViews`
+ * service: without it, the maps hold the occlusion only.
  */
 export function createShadows(): SceneModule {
   return {
@@ -153,15 +167,36 @@ export function createShadows(): SceneModule {
         return { own: byChunk.get(chunk.key) ?? [], near };
       };
 
-      const silhouettesOf = ({ entity, views }: EntityView) =>
-        createSilhouettes(views, entity, metrics, entity.box.length, entity.box.lengthAxis ?? "x");
+      // Silhouettes of each entity view, made once: its sprites never move.
+      const silhouettesByView = new WeakMap<EntityView, readonly Silhouette[]>();
+      const silhouettesOf = (view: EntityView) => {
+        const cached = silhouettesByView.get(view);
+        if (cached) return cached;
+        const { entity, views } = view;
+        const made = createSilhouettes(views, entity, metrics, entity.box.length, entity.box.lengthAxis ?? "x");
+        silhouettesByView.set(view, made);
+        return made;
+      };
+      /**
+       * Whether `silhouette`'s shadow may fall on `area` (or its blur spill into it), `lift` blocks
+       * above it, with the sun as low as shadows get: within its reach, plus how far it spreads
+       * across the shadow, plus a tile.
+       */
+      const reaches = ({ worldFoot, screenFoot, display }: Silhouette, lift: number, area: WorldRect) => {
+        const across =
+          (Math.max(screenFoot.x - display.left, display.left + display.width - screenFoot.x) * Math.SQRT2) /
+          metrics.tileWidth;
+        const dx = Math.max(area.minX - 0.5 - worldFoot.x, 0, worldFoot.x - area.maxX - 0.5);
+        const dy = Math.max(area.minY - 0.5 - worldFoot.y, 0, worldFoot.y - area.maxY - 0.5);
+        return Math.hypot(dx, dy) <= getShadowReach(display.height, lift, metrics) + across + RECEIVER_SPAN;
+      };
 
       const drawLayer = (layer: ShadowLayer, area: WorldRect, light: ShadowProjection | null) => {
         if (light && layer.casters) {
           const mapOrigin = { x: area.minX - 0.5, y: area.minY - 0.5 };
-          layer.silhouettes.forEach(({ silhouette, lift }) => {
+          layer.silhouettes.forEach(({ silhouette, lift, sprite }) => {
             const ground = getSilhouetteMatrix(light, silhouette.worldFoot, lift, metrics);
-            placeSilhouette(silhouette, ground, mapOrigin, pixelsPerTile);
+            placeSilhouette(sprite, silhouette, ground, mapOrigin, pixelsPerTile);
           });
         }
         app.renderer.render({ container: layer.root, target: layer.map, clear: true, clearColor: [0, 0, 0, 0] });
@@ -172,77 +207,86 @@ export function createShadows(): SceneModule {
         target.drawnTick = tick;
       };
 
-      /** Gathers the casters of a chunk's maps and atlas again; returns its targets, to draw. */
-      const gather = (shadow: ShadowChunk): ShadowTarget[] => {
-        shadow.stale = false;
+      /** Gathers the casters of a chunk's maps again; returns the maps, to draw. */
+      const gatherMaps = (shadow: ShadowChunk): ShadowTarget[] => {
         const area = areaOf(shadow.chunk.rect);
-        const { own, near } = nearbyViews(shadow.chunk);
-
-        shadow.layers.forEach((layer) => {
+        const { near } = nearbyViews(shadow.chunk);
+        shadow.maps = shadow.layers.map((layer) => {
           layer.casters?.destroy({ children: true });
           layer.casters = undefined;
-          // Casters standing on this level or higher: shadows onto higher ground are not drawn.
+          // Casters standing on this level or higher (shadows onto higher ground are not drawn)
+          // whose shadow may reach the map.
           layer.silhouettes = near
             .filter(({ entity }) => entity.box.elevation >= layer.level)
-            .flatMap((caster) =>
-              silhouettesOf(caster).map((silhouette) => ({
-                silhouette,
-                lift: caster.entity.box.elevation - layer.level,
-              })),
-            );
-          if (layer.silhouettes.length === 0) return;
-          const casters = new Container();
-          casters.filters = [blurFilter, alphaFilter];
-          // The whole map: known up front, so Pixi does not measure the silhouettes on every redraw.
-          casters.filterArea = new Rectangle(0, 0, layer.map.width, layer.map.height);
-          layer.silhouettes.forEach(({ silhouette }) => casters.addChild(silhouette.sprite));
-          layer.root.addChild(casters);
-          layer.casters = casters;
+            .flatMap((caster) => {
+              const lift = caster.entity.box.elevation - layer.level;
+              return silhouettesOf(caster)
+                .filter((silhouette) => reaches(silhouette, lift, area))
+                .map((silhouette) => ({ silhouette, lift, sprite: createSilhouetteSprite(silhouette) }));
+            });
+          if (layer.silhouettes.length > 0) {
+            const casters = new Container();
+            casters.filters = [blurFilter, alphaFilter];
+            // The whole map: known up front, so Pixi does not measure the silhouettes on every redraw.
+            casters.filterArea = new Rectangle(0, 0, layer.map.width, layer.map.height);
+            layer.silhouettes.forEach(({ sprite }) => casters.addChild(sprite));
+            layer.root.addChild(casters);
+            layer.casters = casters;
+          }
+          return { casters: layer.casters, draw: (light) => drawLayer(layer, area, light), drawnTick: tick };
         });
+        return shadow.maps;
+      };
 
-        // Shadows entities cast on each other: each sprite of the chunk receives the silhouettes of
-        // the nearby entities whose shadow could reach it with the sun at its lowest.
+      /**
+       * Gathers the shadows the entities of a chunk cast on each other again: each sprite of the
+       * chunk receives the silhouettes of the nearby entities whose shadow could reach it with the
+       * sun at its lowest. Returns their atlas, to draw (none when nothing shades them).
+       */
+      const gatherReceived = (shadow: ShadowChunk): ShadowTarget[] => {
         if (shadow.received) {
           shadow.received.shadows.destroy();
           scene.remove(shadow.received.views);
           shadow.received = undefined;
         }
+        const { own, near } = nearbyViews(shadow.chunk);
         const receiving = new Set(own);
         const receivers = pairShadows(
           near.map((view) => ({ view, elevation: view.entity.box.elevation, silhouettes: silhouettesOf(view) })),
           ({ view }) => receiving.has(view),
           (height, lift) => getShadowReach(height, lift, metrics) + RECEIVER_SPAN,
         );
-        if (receivers.length > 0) {
-          const received = createReceivedShadows(receivers, app.renderer, [blurFilter, alphaFilter], textures);
-          const views = received.views.map((view) => ({ ...view, layer: SCENE_LAYER.onObject }));
-          shadow.received = { shadows: received, views };
-          scene.add(views);
-        }
-
-        shadow.targets = shadow.layers.map((layer) => ({
-          casters: layer.casters,
-          draw: (light) => drawLayer(layer, area, light),
+        if (receivers.length === 0) return [];
+        const shadows = createReceivedShadows(receivers, app.renderer, [blurFilter, alphaFilter], textures);
+        const views = shadows.views.map((view) => ({ ...view, layer: SCENE_LAYER.onObject }));
+        scene.add(views);
+        const target: ShadowTarget = {
+          casters: shadows.casters,
+          draw: (light) =>
+            shadows.draw(
+              light && ((caster, receiver, lift) => getCastShadowOffset(light, caster, receiver, lift, metrics)),
+            ),
           drawnTick: tick,
-        }));
-        const received = shadow.received?.shadows;
-        if (received) {
-          shadow.targets.push({
-            casters: received.casters,
-            draw: (light) =>
-              received.draw(
-                light && ((caster, receiver, lift) => getCastShadowOffset(light, caster, receiver, lift, metrics)),
-              ),
-            drawnTick: tick,
-          });
+        };
+        shadow.received = { shadows, views, target };
+        return [target];
+      };
+
+      /** Runs the next gathering step of a chunk; returns what it gathered, to draw. */
+      const gather = (shadow: ShadowChunk): ShadowTarget[] => {
+        if (shadow.gathering === "maps") {
+          shadow.gathering = "received";
+          return gatherMaps(shadow);
         }
-        return shadow.targets;
+        shadow.gathering = undefined;
+        shadow.gathered = true;
+        return gatherReceived(shadow);
       };
 
       /** Marks `chunk` and its shown neighbours to gather their casters again. */
       const touch = (chunk: WorldChunk) =>
         around(chunk).forEach((other) => {
-          other.stale = true;
+          other.gathering = "maps";
         });
 
       const showChunk = (chunk: WorldChunk) => {
@@ -293,7 +337,7 @@ export function createShadows(): SceneModule {
           return { level, map, root, occlusion, silhouettes: [] };
         });
 
-        const shadow: ShadowChunk = { chunk, layers, targets: [], stale: true };
+        const shadow: ShadowChunk = { chunk, layers, maps: [], gathering: "maps", gathered: false };
         chunks.set(chunk.key, shadow);
         touch(chunk);
         return {
@@ -319,16 +363,20 @@ export function createShadows(): SceneModule {
         sun = getShadowProjection(getSunState(now));
         const isDay = sun !== null;
         const shadows = [...chunks.values()];
-        // When built, every chunk; then a few per frame, those never drawn first.
+        // When built, both steps of every chunk; then a few steps per frame, the chunks never
+        // gathered first.
         const stale = shadows
-          .filter(({ stale: isStale }) => isStale)
-          .sort((a, b) => Number(a.targets.length > 0) - Number(b.targets.length > 0));
-        const fresh = (daytime === undefined ? stale : stale.slice(0, SHADOW_GATHERS_PER_FRAME)).flatMap(gather);
+          .filter(({ gathering }) => gathering !== undefined)
+          .sort((a, b) => Number(a.gathered) - Number(b.gathered));
+        const fresh =
+          daytime === undefined
+            ? stale.flatMap((shadow) => [...gather(shadow), ...gather(shadow)])
+            : stale.slice(0, SHADOW_GATHERS_PER_FRAME).flatMap(gather);
         // When built, at sunrise and at sunset: every map (casters only by day); otherwise the maps
         // of the chunks that just gathered their casters.
         const turned = isDay !== daytime;
         daytime = isDay;
-        const targets = shadows.flatMap(({ targets: own }) => own);
+        const targets = shadows.flatMap(targetsOf);
         (turned ? targets : fresh).forEach((target) => {
           if (target.casters) target.casters.visible = isDay;
           drawTarget(target, sun);

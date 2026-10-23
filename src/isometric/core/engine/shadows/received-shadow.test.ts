@@ -124,9 +124,10 @@ const silhouetteOf = (
     source,
     depth,
     // Cropped at its foot, from a texture with a frame offset in its source.
-    sprite: new Sprite(
-      new Texture({ source: { id: "silhouette" } as never, frame: new Rectangle(8, 4, 2 * width, 2 * (height - 10)) }),
-    ),
+    texture: new Texture({
+      source: { id: "silhouette" } as never,
+      frame: new Rectangle(8, 4, 2 * width, 2 * (height - 10)),
+    }),
     worldFoot,
     screenFoot: { x: left + width / 2, y: footY },
     display: { left, top, width, height: height - 10 },
@@ -209,13 +210,25 @@ describe("createReceivedShadows", () => {
     expect(casters.filterArea).toEqual(new Rectangle(0, 0, shadows.atlas.width, shadows.atlas.height));
     expect(erase.blendMode).toBe("erase");
     expect(erase.texture).toBe(renderer.render.mock.calls[0][0].target);
-    expect(casters.children).toHaveLength(2);
-    (casters.children as MockSprite[]).forEach((sprite) => {
-      expect(sprite.tint).toBe(0x000000);
-      expect(sprite.texture.dynamic).toBe(true);
-      expect(sprite.texture.source).toEqual({ id: "silhouette" });
-      expect(sprite.visibleWrites).toEqual([false]);
-    });
+    // At night nothing is laid: no caster has a sprite yet.
+    expect(casters.children).toHaveLength(0);
+  });
+
+  it("makes a caster's sprite the first time a draw shows it: black, over a pooled texture", () => {
+    const textures = createTexturePool();
+    const shadows = createReceivedShadows(twoReceivers(), createRenderer() as never, [], textures);
+    // Only the first receiver is shaded: the second caster lands far above its square.
+    const offsetOf = vi.fn((_caster: unknown, receiver: { x: number }) => (receiver.x === 2 ? { x: 0, y: 0 } : null));
+
+    shadows.draw(offsetOf);
+    shadows.draw(offsetOf);
+
+    expect(shadows.casters.children).toHaveLength(1);
+    const [sprite] = shadows.casters.children as MockSprite[];
+    expect(sprite.tint).toBe(0x000000);
+    expect(sprite.texture.dynamic).toBe(true);
+    expect(sprite.texture.source).toEqual({ id: "silhouette" });
+    expect(sprite.visibleWrites).toEqual([]);
   });
 
   it("lays a caster on its receiver's square, moved by the offset and cropped around the square", () => {
@@ -225,26 +238,25 @@ describe("createReceivedShadows", () => {
     const offsetOf = vi.fn(() => ({ x: -90, y: 25 }));
 
     shadows.draw(offsetOf);
-    const [sprite] = shadows.casters.children as MockSprite[];
-    const { frame } = sprite.texture;
 
     expect(offsetOf).toHaveBeenCalledWith({ x: 0, y: 0 }, { x: 2, y: 2 }, 0);
     expect(offsetOf).toHaveBeenCalledWith({ x: 0, y: 0 }, { x: 3, y: 3 }, 1);
     // Caster display (0, 0, 20 × 40) with foot (10, 40); receiver foot (110, 30): the silhouette
     // lands at (110 − 10 − 90, 30 − 40 + 25) = (10, 15) px, 90 px left of the receiver at x 100.
-    // In the atlas it starts at PAD − 180 texels, so only the bleed beside the square is kept.
+    // In the atlas it starts at PAD − 180 texels, so it misses the square and its bleed: no sprite.
     const x = PAD + (10 - 100) * RES;
     const y = PAD + 15 * RES;
-    expect(sprite.visibleWrites).toEqual([false]);
-    expect(sprite.texture.update).not.toHaveBeenCalled();
+    expect(shadows.casters.children).toHaveLength(0);
 
     offsetOf.mockReturnValue({ x: 5, y: 25 });
     shadows.draw(offsetOf);
+    const [sprite] = shadows.casters.children as MockSprite[];
+    const { frame } = sprite.texture;
     // Now at (105, 15) px: x = PAD + 10 texels, cropped at the right and bottom of the square plus the bleed.
     const left = PAD + 5 * RES;
     const bottom = PAD + 40 * RES + RECEIVED_SHADOW_BLEED;
     expect(x).toBeLessThan(PAD - RECEIVED_SHADOW_BLEED - 20 * RES);
-    expect(sprite.visibleWrites).toEqual([false, true]);
+    expect(sprite.visibleWrites).toEqual([]);
     expect(sprite.position.set).toHaveBeenLastCalledWith(left, y);
     expect(sprite.scale).toMatchObject({ x: (20 * RES) / 40, y: (40 * RES) / 80 });
     expect(frame.x).toBeCloseTo(8);
@@ -256,10 +268,10 @@ describe("createReceivedShadows", () => {
 
   it("crops the side and top of a caster that runs past the square", () => {
     const shadows = createReceivedShadows(twoReceivers(), createRenderer() as never, [], createTexturePool());
-    const [sprite] = shadows.casters.children as MockSprite[];
 
     // At (90, −20) px: 10 px left of the square, 20 px above it.
     shadows.draw(() => ({ x: -10, y: -10 }));
+    const [sprite] = shadows.casters.children as MockSprite[];
 
     expect(sprite.position.set).toHaveBeenLastCalledWith(PAD - RECEIVED_SHADOW_BLEED, PAD - RECEIVED_SHADOW_BLEED);
     expect(sprite.texture.frame.x).toBeCloseTo(8 + ((10 * RES - RECEIVED_SHADOW_BLEED) / (20 * RES)) * 40);
@@ -268,21 +280,22 @@ describe("createReceivedShadows", () => {
 
   it("hides a caster that does not shade its receiver, writing visibility only on change", () => {
     const shadows = createReceivedShadows(twoReceivers(), createRenderer() as never, [], createTexturePool());
+
+    shadows.draw(() => ({ x: 0, y: 0 }));
     const [sprite] = shadows.casters.children as MockSprite[];
-
-    shadows.draw(() => ({ x: 0, y: 0 }));
     shadows.draw(() => ({ x: 0, y: 0 }));
     shadows.draw(() => null);
     shadows.draw(() => null);
+    shadows.draw(() => ({ x: 0, y: 0 }));
 
-    expect(sprite.visibleWrites).toEqual([false, true, false]);
+    expect(sprite.visibleWrites).toEqual([false, true]);
   });
 
   it("destroys the atlas, the mask and the casters, and gives the caster textures back to the pool", () => {
     const renderer = createRenderer();
     const textures = createTexturePool();
     const shadows = createReceivedShadows(twoReceivers(), renderer as never, [], textures);
-    shadows.draw(null);
+    shadows.draw(() => ({ x: 0, y: 0 }));
     const root = renderer.render.mock.calls[1][0].container;
     const mask = renderer.render.mock.calls[0][0].target as { destroy: ReturnType<typeof vi.fn> };
     const casterTextures = (shadows.casters.children as MockSprite[]).map(({ texture }) => texture);
@@ -291,7 +304,8 @@ describe("createReceivedShadows", () => {
 
     expect(root.destroy).toHaveBeenCalledWith({ children: true });
     casterTextures.forEach((texture) => expect(texture.destroy).not.toHaveBeenCalled());
-    expect(textures.size).toBe(casterTextures.length);
+    expect(casterTextures).toHaveLength(2);
+    expect(textures.size).toBe(2);
     shadows.views.forEach(({ view }) => expect((view as Sprite).texture.destroy).toHaveBeenCalled());
     expect(mask.destroy).toHaveBeenCalledWith(true);
     expect(shadows.atlas.destroy).toHaveBeenCalledWith(true);
@@ -308,10 +322,15 @@ describe("createReceivedShadows", () => {
     const textures = createTexturePool();
     const receivers = twoReceivers();
     const first = createReceivedShadows(receivers, createRenderer() as never, [], textures);
+    first.draw(() => ({ x: 0, y: 0 }));
     const given = (first.casters.children as MockSprite[]).map(({ texture }) => texture);
     first.destroy();
+    // A set never drawn shaded nothing: it took no texture and gives none back.
+    createReceivedShadows(receivers, createRenderer() as never, [], textures).destroy();
+    expect(textures.size).toBe(given.length);
 
     const second = createReceivedShadows(receivers, createRenderer() as never, [], textures);
+    second.draw(() => ({ x: 0, y: 0 }));
 
     const reused = (second.casters.children as MockSprite[]).map(({ texture }) => texture);
     expect(reused).toHaveLength(given.length);

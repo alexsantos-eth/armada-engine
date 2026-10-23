@@ -41,13 +41,15 @@ export function pairShadows<B extends ShadowBody>(
       // Farthest it reaches: onto the lowest body.
       const farthest = reach(silhouette.display.height, body.elevation - lowest);
       const { x, y } = silhouette.worldFoot;
+      // One entry, listed in every cell it reaches.
+      const entry: Listed = { body, silhouette };
       for (let column = cellOf(x - farthest); column <= cellOf(x + farthest); column += 1) {
         const rows = cells.get(column) ?? new Map<number, Listed[]>();
         cells.set(column, rows);
         for (let row = cellOf(y - farthest); row <= cellOf(y + farthest); row += 1) {
           const listed = rows.get(row) ?? [];
           rows.set(row, listed);
-          listed.push({ body, silhouette });
+          listed.push(entry);
         }
       }
     }),

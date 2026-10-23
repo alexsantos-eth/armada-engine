@@ -63,10 +63,14 @@ export function createGroundShadowView(
   return { view: sprite, depth };
 }
 
-/** A caster's silhouette for the shadow maps: a black copy of one of its sprites. */
+/**
+ * A caster's silhouette for the shadow textures: one of its sprites, cropped at its foot. Plain
+ * data over shared textures, so it can be kept and paired freely; what draws it is a black
+ * sprite of its own per shadow texture (`createSilhouetteSprite()`).
+ */
 export type Silhouette = {
-  /** Black sprite drawn into the shadow maps (never into the scene). */
-  readonly sprite: Sprite;
+  /** The sprite's texture cropped at its foot: what the shadow textures draw, in black. */
+  readonly texture: Texture;
   /** The entity's sprite it copies, drawn in the scene: what other casters' shadows fall on. */
   readonly source: Sprite;
   /** Draw depth of `source`. */
@@ -120,11 +124,9 @@ export function createSilhouettes(
     const left = source.x - source.anchor.x * source.width;
     const top = source.y - source.anchor.y * source.height;
     const fraction = Math.min(Math.max((screenFoot.y - top) / source.height, 0), 1);
-    const sprite = new Sprite(cropTexture(source.texture, fraction));
-    sprite.tint = 0x000000;
 
     return {
-      sprite,
+      texture: cropTexture(source.texture, fraction),
       source,
       depth,
       worldFoot: {
@@ -135,6 +137,13 @@ export function createSilhouettes(
       display: { left, top, width: source.width, height: source.height * fraction },
     };
   });
+}
+
+/** A black sprite of `silhouette`, to draw it into one shadow texture (never into the scene). */
+export function createSilhouetteSprite(silhouette: Silhouette): Sprite {
+  const sprite = new Sprite(silhouette.texture);
+  sprite.tint = 0x000000;
+  return sprite;
 }
 
 /**
@@ -148,7 +157,7 @@ export function getSilhouetteMapMatrix(
   mapOrigin: PlanePoint,
   pixelsPerTile: number,
 ): Affine2D {
-  const { frame } = silhouette.sprite.texture;
+  const { frame } = silhouette.texture;
   const { display, screenFoot } = silhouette;
   const toFoot: Affine2D = {
     a: display.width / frame.width,
@@ -170,15 +179,16 @@ export function getSilhouetteMapMatrix(
 }
 
 /**
- * Places a silhouette in a shadow map (see {@link getSilhouetteMapMatrix}). Its visibility is
- * left alone: changing `visible` marks the render group's structure as changed and rebuilds all
- * its draw instructions.
+ * Places `sprite`, a sprite of `silhouette` (`createSilhouetteSprite()`), in a shadow map (see
+ * {@link getSilhouetteMapMatrix}). Its visibility is left alone: changing `visible` marks the
+ * render group's structure as changed and rebuilds all its draw instructions.
  */
 export function placeSilhouette(
+  sprite: Sprite,
   silhouette: Silhouette,
   world: Affine2D,
   mapOrigin: PlanePoint,
   pixelsPerTile: number,
 ): void {
-  silhouette.sprite.setFromMatrix(toMatrix(getSilhouetteMapMatrix(silhouette, world, mapOrigin, pixelsPerTile)));
+  sprite.setFromMatrix(toMatrix(getSilhouetteMapMatrix(silhouette, world, mapOrigin, pixelsPerTile)));
 }

@@ -79,6 +79,7 @@ import {
   composeAffine,
   createGroundShadowView,
   createSilhouettes,
+  createSilhouetteSprite,
   getGroundShadowMatrix,
   getSilhouetteMapMatrix,
   placeSilhouette,
@@ -157,18 +158,17 @@ describe("createGroundShadowView", () => {
 });
 
 describe("createSilhouettes", () => {
-  it("makes a black silhouette of a one-tile sprite, cropped at its foot", () => {
+  it("makes the silhouette of a one-tile sprite, cropped at its foot", () => {
     // The sprite spans y 100..140; its foot (the tile centre) is at y 130.
     const sprite = placedSprite(texture(64, 80), 200, 100, 40, 40);
     const [silhouette] = createSilhouettes([{ view: sprite, depth: 5 }], entityBox(3, 4, 200, 130), METRICS);
 
-    expect(silhouette.sprite.tint).toBe(0x000000);
     expect(silhouette.source).toBe(sprite);
     expect(silhouette.depth).toBe(5);
     expect(silhouette.worldFoot).toEqual({ x: 3, y: 4 });
     expect(silhouette.screenFoot).toEqual({ x: 200, y: 130 });
     expect(silhouette.display).toEqual({ left: 180, top: 100, width: 40, height: 30 });
-    expect(silhouette.sprite.texture.frame).toMatchObject({ x: 0, y: 0, width: 64, height: 60 });
+    expect(silhouette.texture.frame).toMatchObject({ x: 0, y: 0, width: 64, height: 60 });
   });
 
   it("reuses the cropped texture for sprites of the same texture and crop", () => {
@@ -177,7 +177,7 @@ describe("createSilhouettes", () => {
     const [first] = createSilhouettes([{ view: placedSprite(tex, 200, 100, 40, 40), depth: 0 }], box, METRICS);
     const [second] = createSilhouettes([{ view: placedSprite(tex, 200, 100, 40, 40), depth: 0 }], box, METRICS);
 
-    expect(second.sprite.texture).toBe(first.sprite.texture);
+    expect(second.texture).toBe(first.texture);
   });
 
   it("keeps the whole texture when the foot is at or below the sprite's bottom", () => {
@@ -188,7 +188,7 @@ describe("createSilhouettes", () => {
       METRICS,
     );
 
-    expect(silhouette.sprite.texture).toBe(tex);
+    expect(silhouette.texture).toBe(tex);
     expect(silhouette.display.height).toBe(40);
   });
 
@@ -218,6 +218,21 @@ describe("createSilhouettes", () => {
   });
 });
 
+describe("createSilhouetteSprite", () => {
+  it("draws the silhouette's texture in black", () => {
+    const [silhouette] = createSilhouettes(
+      [{ view: placedSprite(texture(64, 80), 200, 100, 40, 40), depth: 0 }],
+      entityBox(3, 4, 200, 130),
+      METRICS,
+    );
+    const sprite = createSilhouetteSprite(silhouette);
+
+    expect(sprite.texture).toBe(silhouette.texture);
+    expect(sprite.tint).toBe(0x000000);
+    expect(createSilhouetteSprite(silhouette)).not.toBe(sprite);
+  });
+});
+
 describe("getSilhouetteMapMatrix / placeSilhouette", () => {
   const identityWorld: Affine2D = { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 };
   const silhouette = () =>
@@ -244,13 +259,14 @@ describe("getSilhouetteMapMatrix / placeSilhouette", () => {
 
   it("places the silhouette sprite without touching its visibility", () => {
     const shape = silhouette();
-    shape.sprite.visible = false;
-    const sprite = shape.sprite as unknown as { setFromMatrix: ReturnType<typeof vi.fn> };
+    const placed = createSilhouetteSprite(shape);
+    placed.visible = false;
+    const sprite = placed as unknown as { setFromMatrix: ReturnType<typeof vi.fn> };
 
-    placeSilhouette(shape, identityWorld, { x: 0, y: 0 }, 16);
+    placeSilhouette(placed, shape, identityWorld, { x: 0, y: 0 }, 16);
 
     // Changing `visible` would rebuild the layer's render instructions on every redraw.
-    expect(shape.sprite.visible).toBe(false);
+    expect(placed.visible).toBe(false);
     expect(sprite.setFromMatrix).toHaveBeenCalledWith(
       expect.objectContaining(getSilhouetteMapMatrix(shape, identityWorld, { x: 0, y: 0 }, 16)),
     );

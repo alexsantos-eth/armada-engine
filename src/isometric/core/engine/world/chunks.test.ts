@@ -138,7 +138,7 @@ describe("WorldChunks", () => {
 
   it("loads within a budget, the needed chunks first, and says how many are left", () => {
     const chunks = new WorldChunks(testSource());
-    expect(CHUNKS_LOADED_PER_FRAME).toBe(2);
+    expect(CHUNKS_LOADED_PER_FRAME).toBe(1);
 
     const first = chunks.stream([{ cx: 0, cy: 0 }], { maxLoads: 4 });
     expect(first.loaded).toEqual([

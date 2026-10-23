@@ -259,10 +259,19 @@ export function createEntitiesFromConfig(
   return entities;
 }
 
+/** Whether column `(x, y)` is taken: by an entity placed before, or by the current group. */
+function isTaken(context: PlacementContext, groupCells: ReadonlyCellMap<true>, x: number, y: number): boolean {
+  return context.placed.isOccupied(x, y) || groupCells.has(x, y);
+}
+
 /**
  * Validates one instance of `definition` anchored on `box`: footprint inside the map,
  * surfaces, flat elevation, free cells (including those already taken by the current
  * group) and `gap` with previously placed instances of the same entity.
+ *
+ * It runs for every column and definition, so it checks the footprint block by block and only
+ * allocates for a valid placement: allocating on every call made generation stall on garbage
+ * collection.
  */
 function findPlacement(
   box: ITerrainColumn,
@@ -270,53 +279,56 @@ function findPlacement(
   context: PlacementContext,
   groupCells: ReadonlyCellMap<true>,
 ): Placement | undefined {
+  const { footprintSurfaces: surfaces, surface: defaultSurface, length = 1, lengthAxis = "x" } = definition;
   // The anchor is the footprint's first block: most columns fail on its surface or because it is
-  // taken, before anything is allocated for the rest of the footprint.
-  if (box.type !== (definition.footprintSurfaces?.[0] ?? definition.surface)) return undefined;
-  if (context.placed.isOccupied(box.x, box.y) || groupCells.has(box.x, box.y)) return undefined;
-  const footprint = getFootprint(box, definition.length, definition.lengthAxis);
-  const footprintBoxes = footprint.map(({ x, y }) => context.columns.get(x, y));
-  if (footprintBoxes.some((footprintBox) => footprintBox === undefined)) return undefined;
-  const cells = footprintBoxes as ITerrainColumn[];
-  const required = cells.map((_, index) => definition.footprintSurfaces?.[index] ?? definition.surface);
-  if (cells.some((cell, index) => cell.type !== required[index])) {
-    return undefined;
-  }
+  // taken.
+  if (box.type !== (surfaces?.[0] ?? defaultSurface)) return undefined;
+  if (isTaken(context, groupCells, box.x, box.y)) return undefined;
+
   // Blocks that carry the entity: all of them, except the water blocks of a footprint
   // that also stands on land (a pier reaching over the water).
-  const reachesOverWater = required.includes("water") && required.some((surface) => surface !== "water");
-  const grounded = cells.filter((_, index) => !reachesOverWater || required[index] !== "water");
-  // The carrying blocks must share one elevation (the sprite is placed at that height,
-  // so a step under them would show) and match `surfaceElevation`.
-  const elevation = grounded[0].elevation;
-  if (
-    grounded.some(
-      (cell) => cell.elevation !== elevation || !matchesSurfaceElevation(cell.elevation, definition.surfaceElevation),
-    )
-  )
-    return undefined;
-  if (footprint.some(({ x, y }) => context.placed.isOccupied(x, y) || groupCells.has(x, y))) {
-    return undefined;
+  let water = false;
+  let land = false;
+  for (let index = 0; index < length; index += 1) {
+    if ((surfaces?.[index] ?? defaultSurface) === "water") water = true;
+    else land = true;
   }
-  if (violatesGap(footprint, definition, context.placed)) return undefined;
+  const reachesOverWater = water && land;
+  const alongX = lengthAxis === "x";
+  let elevation: number | undefined;
+  for (let index = 0; index < length; index += 1) {
+    const x = alongX ? box.x + index : box.x;
+    const y = alongX ? box.y : box.y + index;
+    const cell = context.columns.get(x, y);
+    const required = surfaces?.[index] ?? defaultSurface;
+    if (cell === undefined || cell.type !== required || isTaken(context, groupCells, x, y)) return undefined;
+    if (reachesOverWater && required === "water") continue;
+    // The carrying blocks must share one elevation (the sprite is placed at that height,
+    // so a step under them would show) and match `surfaceElevation`.
+    elevation ??= cell.elevation;
+    if (cell.elevation !== elevation || !matchesSurfaceElevation(cell.elevation, definition.surfaceElevation)) {
+      return undefined;
+    }
+  }
+  const last = { x: alongX ? box.x + length - 1 : box.x, y: alongX ? box.y : box.y + length - 1 };
+  if (violatesGap(box, last, definition, context.placed)) return undefined;
 
-  return { box, footprint, elevation };
+  return { box, footprint: getFootprint(box, length, lengthAxis), elevation: elevation as number };
 }
 
 /**
- * Whether another instance of the same definition is within `gap` columns of the footprint
- * (Chebyshev distance, so diagonals count).
+ * Whether another instance of the same definition is within `gap` columns of the footprint from
+ * `first` to `last` (Chebyshev distance, so diagonals count).
  */
 function violatesGap(
-  footprint: readonly WorldCoord[],
+  first: WorldCoord,
+  last: WorldCoord,
   definition: EntityDefinition,
   placed: SpatialIndex<Entity>,
 ): boolean {
   const gap = Math.max(0, Math.floor(definition.gap ?? 0));
   if (gap === 0) return false;
 
-  const first = footprint[0];
-  const last = footprint[footprint.length - 1];
   return placed.anyInRect(
     { minX: first.x - gap, minY: first.y - gap, maxX: last.x + gap, maxY: last.y + gap },
     ({ type }) => type === definition.id,
