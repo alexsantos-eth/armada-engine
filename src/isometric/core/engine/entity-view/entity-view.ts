@@ -1,7 +1,7 @@
 import type { Texture } from "pixi.js";
 import type { Entity } from "../entities";
 import { projectBoxesToIsometric } from "../projection";
-import { createBlockViews, createSvgColorVariant } from "../render";
+import { createBlockViews, createSvgColorVariant, releaseSvgColorVariant } from "../render";
 import { type EntityView, SCENE_LAYER, type SceneModule, type SceneView } from "../scene";
 import type { ChunkKey } from "../../types";
 
@@ -19,8 +19,8 @@ function textureKey(entity: Entity): string {
  * Scene module of the entities, chunk by chunk: the sprites of the entities of every shown chunk,
  * standing on their columns, cut in strips along multi-tile footprints (`createBlockViews()`). It
  * loads one texture per (entity type, colour variation) the first time a chunk needs it, shared by
- * every instance with that variation in every chunk; types without `colorReplacements` share
- * their SVG. An entity whose texture cannot be loaded is skipped.
+ * every instance with that variation in every chunk (its `blob:` URL is released once loaded);
+ * types without `colorReplacements` share their SVG. An entity whose texture cannot be loaded is skipped.
  *
  * Provides `entityViews` (the entities of each shown chunk with their views), e.g. for shadows.
  */
@@ -34,7 +34,7 @@ export function createEntityView(): SceneModule {
         const known = textures.get(key);
         if (known) return known;
         const loading = createSvgColorVariant(entity.textureSource, entity.colorReplacements, variationOf(entity)).then(
-          (source) => assets.loadSvg(source),
+          (source) => assets.loadSvg(source).finally(() => releaseSvgColorVariant(source)),
         );
         textures.set(key, loading);
         return loading;

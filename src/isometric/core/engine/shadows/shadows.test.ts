@@ -160,6 +160,9 @@ describe("createShadows", () => {
 
   it("draws every map when built: the level's occlusion, then the casters on it or higher", async () => {
     const world = at(defaultWorld(createTestEntities), 15);
+    // The ground transform is one object written again for each silhouette: keep a copy of each.
+    const grounds: unknown[] = [];
+    vi.mocked(placeSilhouette).mockImplementation((_sprite, _silhouette, ground) => void grounds.push({ ...ground }));
     const { renderer, destroyScene } = await sceneOf(world);
     const levels = new Set(columnsOf(world).map(({ elevation }) => elevation));
     const entity = entitiesOf(world)[0];
@@ -178,11 +181,15 @@ describe("createShadows", () => {
       expect(placeSilhouette).toHaveBeenCalledWith(
         expect.anything(),
         (vi.mocked(createSilhouettes).mock.results[0].value as Silhouette[])[0],
-        getSilhouetteMatrix(projection as never, { x: entity.x, y: entity.y }, entity.elevation - level, TILE_METRICS),
+        expect.anything(),
         { x: -1.5, y: -1.5 },
         16,
       );
+      expect(grounds).toContainEqual(
+        getSilhouetteMatrix(projection as never, { x: entity.x, y: entity.y }, entity.elevation - level, TILE_METRICS),
+      );
     });
+    vi.mocked(placeSilhouette).mockReset();
     const layers = renderer.render.mock.calls.map((_, call) => layerOf(renderer, call));
     expect(layers.every(({ children }) => children.length >= 1)).toBe(true);
     expect(layers.filter(({ children }) => children.length === 2)).toHaveLength(lowerLevels.length);
@@ -594,6 +601,28 @@ describe("createShadows", () => {
       vi.mocked(createReceivedShadows).mock.results.forEach(({ value }) =>
         expect((value as { destroy: ReturnType<typeof vi.fn> }).destroy).toHaveBeenCalled(),
       );
+      scene.destroy();
+    });
+
+    it("leaves out of a level's map the casters that cannot reach a column of that level", async () => {
+      // A tree on the high ground at x = 0; the low ground, 20 tiles away, is out of its reach.
+      const world = at(
+        worldFrom(
+          [
+            { x: 0, y: 0, elevation: 2 },
+            { x: 1, y: 0, elevation: 2 },
+            { x: 20, y: 0, elevation: 0 },
+            { x: 21, y: 0, elevation: 0 },
+          ],
+          ([first]) => [new Entity(first.x, first.y, TREE, first.elevation)],
+        ),
+        10,
+      );
+      const { scene } = await sceneOn(world, { chunks: [{ cx: 0, cy: 0 }] });
+
+      // Two maps, but only the high one takes the tree's silhouette.
+      expect(RenderTexture.create).toHaveBeenCalledTimes(2);
+      expect(placeSilhouette).toHaveBeenCalledTimes(1);
       scene.destroy();
     });
 

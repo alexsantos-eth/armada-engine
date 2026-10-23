@@ -32,7 +32,8 @@ export type ShadowReceiver = {
 /**
  * Where a caster's silhouette lands on a receiver: screen pixels to add to the silhouette,
  * relative to the caster's foot, to place it relative to the receiver's foot (see
- * `getCastShadowOffset()`); `null` when the caster does not shade it.
+ * `getCastShadowOffset()`); `null` when the caster does not shade it. The point may be the same
+ * object on every call: read it before the next one.
  */
 export type CastShadowOffset = (casterFoot: PlanePoint, receiverFoot: PlanePoint, lift: number) => PlanePoint | null;
 

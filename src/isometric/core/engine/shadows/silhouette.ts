@@ -1,5 +1,5 @@
 import { Matrix, Rectangle, Sprite, Texture } from "pixi.js";
-import type { Affine2D, EntityLengthAxis, IsoScreenBox, TileMetrics } from "../../types";
+import type { Affine2D, AffineTarget, EntityLengthAxis, IsoScreenBox, TileMetrics } from "../../types";
 import { type DepthView, getFootprintSliceTiles, NEW_SPRITES, type SpriteSource } from "../render";
 
 /** Resolution of the shadow maps: texels per world tile along each axis. */
@@ -153,33 +153,32 @@ export function createSilhouetteSprite(silhouette: Silhouette): Sprite {
 /**
  * Transform that draws a silhouette into a shadow map: texture pixels → screen pixels relative
  * to its foot → world tiles on the map's ground plane (`world`, from `getSilhouetteMatrix()`)
- * → shadow-map texels, from `mapOrigin` (the world point at texel `(0, 0)`).
+ * → shadow-map texels, from `mapOrigin` (the world point at texel `(0, 0)`). Written into `out`
+ * (a new object by default) and composed in place: a shadow redraw places hundreds of
+ * silhouettes, and the intermediate transforms of each one fed the garbage collector.
  */
 export function getSilhouetteMapMatrix(
   silhouette: Silhouette,
   world: Affine2D,
   mapOrigin: PlanePoint,
   pixelsPerTile: number,
+  out: AffineTarget = { a: 0, b: 0, c: 0, d: 0, tx: 0, ty: 0 },
 ): Affine2D {
   const { frame } = silhouette.texture;
   const { display, screenFoot } = silhouette;
-  const toFoot: Affine2D = {
-    a: display.width / frame.width,
-    b: 0,
-    c: 0,
-    d: display.height / frame.height,
-    tx: display.left - screenFoot.x,
-    ty: display.top - screenFoot.y,
-  };
-  const toMap: Affine2D = {
-    a: pixelsPerTile,
-    b: 0,
-    c: 0,
-    d: pixelsPerTile,
-    tx: -mapOrigin.x * pixelsPerTile,
-    ty: -mapOrigin.y * pixelsPerTile,
-  };
-  return composeAffine(toMap, composeAffine(world, toFoot));
+  // To the foot: texture pixels scaled to the display, from the foot.
+  const scaleX = display.width / frame.width;
+  const scaleY = display.height / frame.height;
+  const footX = display.left - screenFoot.x;
+  const footY = display.top - screenFoot.y;
+  // To the map: world tiles from its origin, in texels.
+  out.a = pixelsPerTile * world.a * scaleX;
+  out.b = pixelsPerTile * world.b * scaleX;
+  out.c = pixelsPerTile * world.c * scaleY;
+  out.d = pixelsPerTile * world.d * scaleY;
+  out.tx = pixelsPerTile * (world.a * footX + world.c * footY + world.tx - mapOrigin.x);
+  out.ty = pixelsPerTile * (world.b * footX + world.d * footY + world.ty - mapOrigin.y);
+  return out;
 }
 
 /**
@@ -194,5 +193,6 @@ export function placeSilhouette(
   mapOrigin: PlanePoint,
   pixelsPerTile: number,
 ): void {
-  sprite.setFromMatrix(toMatrix(getSilhouetteMapMatrix(silhouette, world, mapOrigin, pixelsPerTile)));
+  getSilhouetteMapMatrix(silhouette, world, mapOrigin, pixelsPerTile, placement);
+  sprite.setFromMatrix(placement);
 }

@@ -122,6 +122,13 @@ describe("getSilhouetteMatrix", () => {
     expect(top.y).toBeCloseTo(foot.y + projection.dirY * reach);
   });
 
+  it("writes the transform into `out` when given one, making no object of its own", () => {
+    const out = { a: 0, b: 0, c: 0, d: 0, tx: 0, ty: 0 };
+
+    expect(getSilhouetteMatrix(projection, foot, 1, TILE_METRICS, out)).toBe(out);
+    expect(out).toEqual(getSilhouetteMatrix(projection, foot, 1, TILE_METRICS));
+  });
+
   it("moves the shadow further away on a lower plane, by the caster's lift", () => {
     const onOwnPlane = apply(getSilhouetteMatrix(projection, foot, 0, TILE_METRICS), 0, 0);
     const twoBelow = apply(getSilhouetteMatrix(projection, foot, 2, TILE_METRICS), 0, 0);
@@ -179,6 +186,14 @@ describe("getCastShadowOffset", () => {
 
     // The receiver one tile to the right of the shadow's axis sees the caster one tile to its left.
     expect(right?.x).toBeCloseTo(-TILE_WIDTH / Math.SQRT2);
+  });
+
+  it("writes the offset into `out` when given one, making no object of its own", () => {
+    const out = { x: 0, y: 0 };
+
+    expect(getCastShadowOffset(projection, caster, down(1, 1), 2, TILE_METRICS, out)).toBe(out);
+    expect(out).toEqual(getCastShadowOffset(projection, caster, down(1, 1), 2, TILE_METRICS));
+    expect(getCastShadowOffset(projection, caster, down(-1), 0, TILE_METRICS, out)).toBeNull();
   });
 
   it("casts nothing on what stands towards the sun, or with the sun overhead", () => {

@@ -147,9 +147,10 @@ export async function createScene(
     },
     assets: {
       // Mipmaps keep the edges smooth when the camera zooms out and the texture is drawn smaller.
+      // Always Pixi's SVG parser: a recoloured variant comes as a `blob:` URL, with no extension.
       loadSvg: (src) => {
         loaded.add(src);
-        return Assets.load<Texture>({ src, data: { resolution, autoGenerateMipmaps: true } });
+        return Assets.load<Texture>({ src, parser: "svg", data: { resolution, autoGenerateMipmaps: true } });
       },
     },
     services: { get: (key) => services[key] },

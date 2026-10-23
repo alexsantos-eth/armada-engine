@@ -44,9 +44,13 @@ function pickColor(color: string | readonly string[], variationIndex: number): s
 }
 
 /**
- * Loads an SVG asset and returns a `data:` URL with its colors replaced for
- * `variationIndex`, or `source` unchanged when there is nothing to replace. Callers should
- * create one variant per `(source, variationIndex)` and share its texture between instances.
+ * Loads an SVG asset and returns a `blob:` URL of it with its colors replaced for
+ * `variationIndex`, or `source` unchanged when there is nothing to replace. Not a `data:` URL:
+ * Pixi parses the URL of every asset it loads several times (resolving, picking the parser,
+ * caching), and with an SVG of hundreds of kilobytes encoded in it each pass scanned the whole
+ * SVG. A `blob:` URL has no extension, so load it with Pixi's `svg` parser, and give it back
+ * with {@link releaseSvgColorVariant} once loaded. Callers should create one variant per
+ * `(source, variationIndex)` and share its texture between instances.
  */
 export async function createSvgColorVariant(
   source: string,
@@ -61,5 +65,13 @@ export async function createSvgColorVariant(
   }
 
   const svg = replaceSvgColors(await response.text(), replacements, variationIndex);
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  return URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+}
+
+/**
+ * Frees the `blob:` URL {@link createSvgColorVariant} made, once its texture is loaded (the
+ * texture keeps its own pixels). Any other URL, such as an unchanged source, is left alone.
+ */
+export function releaseSvgColorVariant(url: string): void {
+  if (url.startsWith("blob:")) URL.revokeObjectURL(url);
 }

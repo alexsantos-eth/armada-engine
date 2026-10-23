@@ -276,6 +276,34 @@ describe("getSilhouetteMapMatrix / placeSilhouette", () => {
     expect(foot.y).toBeCloseTo((4 - 2) * 10);
   });
 
+  it("is the foot transform, then the world transform, then the map's texels, composed", () => {
+    const shape = silhouette();
+    const world: Affine2D = { a: 0.3, b: -0.2, c: 0.15, d: 0.4, tx: 5, ty: -2 };
+    const { frame } = shape.texture;
+    const toFoot: Affine2D = {
+      a: shape.display.width / frame.width,
+      b: 0,
+      c: 0,
+      d: shape.display.height / frame.height,
+      tx: shape.display.left - shape.screenFoot.x,
+      ty: shape.display.top - shape.screenFoot.y,
+    };
+    const toMap: Affine2D = { a: 8, b: 0, c: 0, d: 8, tx: -8 * 1.5, ty: -8 * -0.5 };
+    const expected = composeAffine(toMap, composeAffine(world, toFoot));
+    const matrix = getSilhouetteMapMatrix(shape, world, { x: 1.5, y: -0.5 }, 8);
+
+    (Object.keys(expected) as (keyof Affine2D)[]).forEach((key) => expect(matrix[key]).toBeCloseTo(expected[key]));
+  });
+
+  it("writes the transform into `out` when given one, making no object of its own", () => {
+    const shape = silhouette();
+    const world: Affine2D = { a: 0.3, b: -0.2, c: 0.15, d: 0.4, tx: 5, ty: -2 };
+    const out = { a: 0, b: 0, c: 0, d: 0, tx: 0, ty: 0 };
+
+    expect(getSilhouetteMapMatrix(shape, world, { x: 1, y: 2 }, 10, out)).toBe(out);
+    expect(out).toEqual(getSilhouetteMapMatrix(shape, world, { x: 1, y: 2 }, 10));
+  });
+
   it("places the silhouette sprite without touching its visibility", () => {
     const shape = silhouette();
     const placed = createSilhouetteSprite(shape);

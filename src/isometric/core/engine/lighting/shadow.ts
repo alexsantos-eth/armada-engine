@@ -1,4 +1,4 @@
-import type { Affine2D, ShadowProjection, SunState, TileMetrics } from "../../types";
+import type { Affine2D, AffineTarget, ShadowProjection, SunState, TileMetrics } from "../../types";
 import { BOX_HEIGHT, TILE_WIDTH } from "../constants";
 
 /**
@@ -62,12 +62,15 @@ export function getShadowProjection(sun: SunState): ShadowProjection | null {
  * @param foot World position (tiles) of the point the sprite stands on.
  * @param lift Blocks between the caster's ground and the plane the shadow falls on (`0` for
  * its own ground; `2` for ground two blocks lower, where the shadow lands further away).
+ * @param out Where to write the transform, returned: a shadow redraw lays hundreds of
+ * silhouettes, and a new object for each one fed the garbage collector. Defaults to a new one.
  */
 export function getSilhouetteMatrix(
   projection: ShadowProjection,
   foot: { readonly x: number; readonly y: number },
   lift: number,
   metrics: TileMetrics,
+  out: AffineTarget = { a: 0, b: 0, c: 0, d: 0, tx: 0, ty: 0 },
 ): Affine2D {
   const perPixel = tilesPerPixelOfHeight(metrics);
   const reachPerPixel = projection.stretch * perPixel;
@@ -75,15 +78,14 @@ export function getSilhouetteMatrix(
 
   const acrossPerPixel = Math.SQRT2 / metrics.tileWidth;
 
-  return {
-    // Across the shadow: (dirY, −dirX), which is screen right when shadows point straight up.
-    a: acrossPerPixel * projection.dirY,
-    b: -acrossPerPixel * projection.dirX,
-    c: -reachPerPixel * projection.dirX,
-    d: -reachPerPixel * projection.dirY,
-    tx: foot.x + liftReach * projection.dirX,
-    ty: foot.y + liftReach * projection.dirY,
-  };
+  // Across the shadow: (dirY, −dirX), which is screen right when shadows point straight up.
+  out.a = acrossPerPixel * projection.dirY;
+  out.b = -acrossPerPixel * projection.dirX;
+  out.c = -reachPerPixel * projection.dirX;
+  out.d = -reachPerPixel * projection.dirY;
+  out.tx = foot.x + liftReach * projection.dirX;
+  out.ty = foot.y + liftReach * projection.dirY;
+  return out;
 }
 
 /**
@@ -101,6 +103,8 @@ export function getSilhouetteMatrix(
  * @param casterFoot World position (tiles) the caster stands on.
  * @param receiverFoot World position (tiles) the receiver stands on.
  * @param lift Blocks the caster stands above the receiver (negative when below).
+ * @param out Where to write the offset, returned (untouched when `null`): an atlas draw places
+ * thousands of pairs. Defaults to a new object.
  */
 export function getCastShadowOffset(
   projection: ShadowProjection,
@@ -108,6 +112,7 @@ export function getCastShadowOffset(
   receiverFoot: { readonly x: number; readonly y: number },
   lift: number,
   metrics: TileMetrics,
+  out: { x: number; y: number } = { x: 0, y: 0 },
 ): { x: number; y: number } | null {
   const toX = receiverFoot.x - casterFoot.x;
   const toY = receiverFoot.y - casterFoot.y;
@@ -116,10 +121,9 @@ export function getCastShadowOffset(
 
   // Across the shadow: (dirY, −dirX), screen right as in `getSilhouetteMatrix()`.
   const across = -(projection.dirY * toX - projection.dirX * toY);
-  return {
-    x: across / (Math.SQRT2 / metrics.tileWidth),
-    y: along / (projection.stretch * tilesPerPixelOfHeight(metrics)) - lift * metrics.boxHeight,
-  };
+  out.x = across / (Math.SQRT2 / metrics.tileWidth);
+  out.y = along / (projection.stretch * tilesPerPixelOfHeight(metrics)) - lift * metrics.boxHeight;
+  return out;
 }
 
 /**

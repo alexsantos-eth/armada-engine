@@ -11,6 +11,12 @@ export type Affine2D = {
 };
 
 /**
+ * A writable {@link Affine2D}, for the functions that write their result into one instead of
+ * making a new object (Pixi's `Matrix` is one).
+ */
+export type AffineTarget = { -readonly [Key in keyof Affine2D]: Affine2D[Key] };
+
+/**
  * How the sun lays shadows on the ground at a given moment: the direction they fall along and
  * how far a unit of height reaches. Derived from the sun state; `null` at night.
  */

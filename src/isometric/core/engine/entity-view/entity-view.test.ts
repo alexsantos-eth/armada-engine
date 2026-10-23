@@ -5,7 +5,7 @@ vi.mock("../render", async () => (await import("../flow-check/scene-harness")).m
 
 import { Assets } from "pixi.js";
 import { Entity } from "../entities";
-import { createSvgColorVariant } from "../render";
+import { createSvgColorVariant, releaseSvgColorVariant } from "../render";
 import type { EntityView, SceneModule } from "../scene";
 import {
   createColorizedEntities,
@@ -40,7 +40,11 @@ describe("createEntityView", () => {
     const world = defaultWorld(createTestEntities);
     const { root, scene } = await mountScene(world, [createEntityView()]);
 
-    expect(Assets.load).toHaveBeenCalledWith({ src: "/assets/statue/block.svg", data: expect.anything() });
+    expect(Assets.load).toHaveBeenCalledWith({
+      src: "/assets/statue/block.svg",
+      parser: "svg",
+      data: expect.anything(),
+    });
     expect(renderCalls).toEqual([
       expect.objectContaining({ texture: { source: "/assets/statue/block.svg" }, height: 1, length: 2 }),
     ]);
@@ -85,7 +89,13 @@ describe("createEntityView", () => {
       expect(replacements).toEqual(HOUSE.colorReplacements);
       expect(variation).toBe(0);
     });
-    expect(Assets.load).toHaveBeenCalledWith({ src: "/assets/house/block.svg#0", data: expect.anything() });
+    expect(Assets.load).toHaveBeenCalledWith({
+      src: "/assets/house/block.svg#0",
+      parser: "svg",
+      data: expect.anything(),
+    });
+    // The variant's URL is given back once its texture is loaded.
+    expect(releaseSvgColorVariant).toHaveBeenCalledWith("/assets/house/block.svg#0");
     scene.destroy();
   });
 

@@ -65,7 +65,8 @@ export type SceneServiceRegistry = {
 /** SVG loading shared by the modules: same resolution for all, unloaded with the scene. */
 export type SceneAssets = {
   /**
-   * Loads an SVG rasterized at the size it is drawn at the largest zoom, with mipmaps. The
+   * Loads an SVG rasterized at the size it is drawn at the largest zoom, with mipmaps, always
+   * with Pixi's SVG parser (so a `blob:` URL from `createSvgColorVariant()` loads too). The
    * scene unloads it when destroyed. Resolves `undefined` when the asset cannot be used.
    */
   loadSvg(source: string): Promise<Texture | undefined>;

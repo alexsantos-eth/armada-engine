@@ -1,5 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
-import { createSvgColorVariant, getSvgResolution, replaceSvgColors, SVG_DETAIL, SVG_TILE_WIDTH } from "./svg";
+import {
+  createSvgColorVariant,
+  getSvgResolution,
+  releaseSvgColorVariant,
+  replaceSvgColors,
+  SVG_DETAIL,
+  SVG_TILE_WIDTH,
+} from "./svg";
+
+/** The SVG text behind a `blob:` URL made by `URL.createObjectURL()` in this test. */
+const blobs = new Map<string, Blob>();
+const svgOf = (url: string) => (blobs.get(url) as Blob).text();
 
 describe("getSvgResolution", () => {
   it("rasterizes a 1024 px tile canvas at the size it is drawn, with some detail to spare", () => {
@@ -68,23 +79,33 @@ describe("replaceSvgColors", () => {
     expect(replaceSvgColors(svg, {})).toBe(svg);
   });
 
-  it("creates a data URL from a recolored SVG asset", async () => {
+  const stubFetch = (svg: string) =>
     vi.stubGlobal(
       "fetch",
-      vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          text: () => Promise.resolve('<path fill="#9f4b2f"/>'),
-        }),
-      ),
+      vi.fn(() => Promise.resolve({ ok: true, text: () => Promise.resolve(svg) })),
     );
+  const stubObjectUrls = () => {
+    blobs.clear();
+    vi.spyOn(URL, "createObjectURL").mockImplementation((blob) => {
+      const url = `blob:test/${blobs.size}`;
+      blobs.set(url, blob as Blob);
+      return url;
+    });
+  };
 
-    await expect(
-      createSvgColorVariant("/assets/house/block.svg", {
-        "#9f4b2f": "#245c4a",
-      }),
-    ).resolves.toBe(`data:image/svg+xml,${encodeURIComponent('<path fill="#245c4a"/>')}`);
+  it("hands out a short blob: URL of the recolored SVG asset, typed as SVG", async () => {
+    stubFetch('<path fill="#9f4b2f"/>');
+    stubObjectUrls();
 
+    const url = await createSvgColorVariant("/assets/house/block.svg", { "#9f4b2f": "#245c4a" });
+
+    // Not a data: URL: Pixi parses the URL of every asset it loads, and an SVG of hundreds of
+    // kilobytes, encoded in its URL, made each of those passes a scan of the whole SVG.
+    expect(url).toBe("blob:test/0");
+    expect(blobs.get(url)?.type).toBe("image/svg+xml");
+    await expect(svgOf(url)).resolves.toBe('<path fill="#245c4a"/>');
+
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -92,28 +113,25 @@ describe("replaceSvgColors", () => {
     await expect(createSvgColorVariant("/assets/house/block.svg", {})).resolves.toBe("/assets/house/block.svg");
   });
 
-  it("applies the requested variation to the data URL", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          text: () => Promise.resolve('<path fill="#9f4b2f"/>'),
-        }),
-      ),
-    );
+  it("applies the requested variation", async () => {
+    stubFetch('<path fill="#9f4b2f"/>');
+    stubObjectUrls();
 
-    await expect(
-      createSvgColorVariant(
-        "/assets/house/block.svg",
-        {
-          "#9f4b2f": ["#245c4a", "#d6a72c"],
-        },
-        1,
-      ),
-    ).resolves.toBe(`data:image/svg+xml,${encodeURIComponent('<path fill="#d6a72c"/>')}`);
+    const url = await createSvgColorVariant("/assets/house/block.svg", { "#9f4b2f": ["#245c4a", "#d6a72c"] }, 1);
 
+    await expect(svgOf(url)).resolves.toBe('<path fill="#d6a72c"/>');
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it("releases a variant's blob: URL, and leaves any other URL alone", () => {
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+
+    releaseSvgColorVariant("blob:test/0");
+    releaseSvgColorVariant("/assets/house/block.svg");
+
+    expect(revoke.mock.calls).toEqual([["blob:test/0"]]);
+    vi.restoreAllMocks();
   });
 
   it("rejects when the SVG asset cannot be fetched", async () => {

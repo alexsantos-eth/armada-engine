@@ -107,7 +107,11 @@ describe("createScene", () => {
     const resolution = getSvgResolution(TILE_METRICS.tileWidth * CAMERA_MAX_ZOOM, 2);
 
     await expect(seen.context?.assets.loadSvg("/assets/a.svg")).resolves.toEqual({ source: "/assets/a.svg" });
-    expect(Assets.load).toHaveBeenCalledWith({ src: "/assets/a.svg", data: { resolution, autoGenerateMipmaps: true } });
+    expect(Assets.load).toHaveBeenCalledWith({
+      src: "/assets/a.svg",
+      parser: "svg",
+      data: { resolution, autoGenerateMipmaps: true },
+    });
 
     scene.destroy();
     expect(Assets.unload).toHaveBeenCalledWith("/assets/a.svg");

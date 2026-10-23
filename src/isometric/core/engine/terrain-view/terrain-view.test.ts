@@ -29,7 +29,11 @@ describe("createTerrainView", () => {
     const { scene } = await renderTerrain(defaultWorld(createTestEntities));
 
     ["grass", "ground", "water", "sand"].forEach((material) =>
-      expect(Assets.load).toHaveBeenCalledWith({ src: `/assets/${material}/block.svg`, data: expect.anything() }),
+      expect(Assets.load).toHaveBeenCalledWith({
+        src: `/assets/${material}/block.svg`,
+        parser: "svg",
+        data: expect.anything(),
+      }),
     );
     expect(renderCalls.some(({ texture }) => texture.source.includes("water"))).toBe(true);
     expect(renderCalls.some(({ texture }) => texture.source.includes("ground"))).toBe(true);

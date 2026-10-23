@@ -185,6 +185,7 @@ export async function mockRender() {
     createSvgColorVariant: vi.fn((source: string, replacements?: unknown, variation = 0) =>
       Promise.resolve(replacements ? `${source}#${variation}` : source),
     ),
+    releaseSvgColorVariant: vi.fn(),
     createBlockViews: vi.fn(
       ({
         texture,
