@@ -85,17 +85,13 @@ export function getOcclusion(terrain: OcclusionTerrain, x: number, y: number, u:
 }
 
 /**
- * Occlusion map of one level: RGBA texels, black with the occlusion in alpha, sampled at each
- * texel's centre. Laid out like the shadow maps (a square of `pixelsPerTile` texels per column
- * of `terrain.bounds`, texel `(0, 0)` at the corner of its minimum column); only the columns
- * whose top belongs to `level` and that have a taller neighbour are written, the rest stay
+ * Occlusion map of a chunk's shadow map: RGBA texels, black with the occlusion in alpha, sampled
+ * at each texel's centre. Laid out like the shadow maps (a square of `pixelsPerTile` texels per
+ * column of `terrain.bounds`, texel `(0, 0)` at the corner of its minimum column); every column
+ * gets its own top's occlusion, whatever its level, and those without a taller neighbour stay
  * transparent. The neighbours of each column are read once, not once per texel.
  */
-export function buildOcclusionMap(
-  terrain: OcclusionTerrain,
-  level: number,
-  pixelsPerTile = AO_PIXELS_PER_TILE,
-): Uint8ClampedArray {
+export function buildOcclusionMap(terrain: OcclusionTerrain, pixelsPerTile = AO_PIXELS_PER_TILE): Uint8ClampedArray {
   const { minX, minY, maxX, maxY } = terrain.bounds;
   const width = (maxX - minX + 1) * pixelsPerTile;
   const height = (maxY - minY + 1) * pixelsPerTile;
@@ -103,7 +99,6 @@ export function buildOcclusionMap(
 
   for (let y = minY; y <= maxY; y += 1) {
     for (let x = minX; x <= maxX; x += 1) {
-      if (terrain.levelAt(x, y) !== level) continue;
       const steps = tallerNeighbours(terrain, x, y);
       if (steps === undefined) continue;
       for (let j = 0; j < pixelsPerTile; j += 1) {

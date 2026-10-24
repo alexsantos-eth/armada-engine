@@ -107,6 +107,12 @@ export type SceneContext = {
   readonly topInsetAt: (x: number, y: number) => number;
   readonly assets: SceneAssets;
   readonly services: SceneServiceRegistry;
+  /**
+   * Runs `step` and returns what it returns; in a profiled scene (`?perf`) it also records the
+   * milliseconds it took under `label` (`<module id>:<what>`, e.g. `shadows:maps`), so the parts
+   * of a module's `update()` show apart.
+   */
+  readonly profile: <T>(label: string, step: () => T) => T;
 };
 
 /** One frame of the scene, after the simulation stepped. */

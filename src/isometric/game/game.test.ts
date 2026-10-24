@@ -343,7 +343,12 @@ describe("mountGame", () => {
     await game.ready;
     const { app, scene } = started();
 
-    expect(bindCameraControls).toHaveBeenCalledWith(app.stage, app.renderer.screen, (await scene).services.camera);
+    expect(bindCameraControls).toHaveBeenCalledWith(
+      app.stage,
+      app.renderer.screen,
+      (await scene).services.camera,
+      app.canvas,
+    );
   });
 
   it("walks but binds no camera controls when the scene has no camera", async () => {

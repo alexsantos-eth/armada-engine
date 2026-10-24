@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { OcclusionTerrain } from "../../types";
 import { AO_PIXELS_PER_TILE, AO_WALL_ALPHA, AO_WALL_RADIUS, buildOcclusionMap, getOcclusion } from "./occlusion";
 
-type Column = { x: number; y: number; height: number; level?: number };
+type Column = { x: number; y: number; height: number };
 
-/** A terrain from explicit columns; `level` defaults to the height rounded up (sand tops sit half a block lower). */
+/** A terrain from explicit columns (a sand top sits half a block lower than its block). */
 const terrainOf = (columns: Column[]): OcclusionTerrain => {
   const at = (x: number, y: number) => columns.find((column) => column.x === x && column.y === y);
   return {
@@ -15,10 +15,6 @@ const terrainOf = (columns: Column[]): OcclusionTerrain => {
       maxY: Math.max(...columns.map(({ y }) => y)),
     },
     topHeightAt: (x, y) => at(x, y)?.height,
-    levelAt: (x, y) => {
-      const column = at(x, y);
-      return column === undefined ? undefined : (column.level ?? Math.ceil(column.height));
-    },
   };
 };
 
@@ -114,7 +110,7 @@ describe("buildOcclusionMap", () => {
   it("lays every column's square out like the shadow maps, black with the occlusion in alpha", () => {
     const terrain = plateau({ x: 1, y: 0, height: 1 });
     const pixels = 4;
-    const map = buildOcclusionMap(terrain, 0, pixels);
+    const map = buildOcclusionMap(terrain, pixels);
     const width = 3 * pixels;
     const texel = (x: number, y: number) => map.slice((y * width + x) * 4, (y * width + x) * 4 + 4);
 
@@ -129,21 +125,24 @@ describe("buildOcclusionMap", () => {
     expect(texel(1, 1)[3]).toBe(0);
   });
 
-  it("only writes the columns whose top belongs to the level", () => {
+  it("gives every column its own top's occlusion, whatever its level", () => {
     const terrain = plateau({ x: 1, y: 0, height: 1 });
+    const map = buildOcclusionMap(terrain, 2);
+    const width = 3 * 2;
+    const alphaAt = (x: number, y: number) => map[(y * width + x) * 4 + 3];
 
-    // Level 1 holds only (1, 0), a cliff top: nothing to darken there.
-    expect(buildOcclusionMap(terrain, 1, 2).every((value) => value === 0)).toBe(true);
-    // A sand top (height −0.5) belongs to level 0 and is darkened by the grass next to it.
+    // The cliff top (1, 0) is never darkened; the ground at its foot is.
+    expect(alphaAt(5, 2)).toBe(0);
+    expect(alphaAt(3, 2)).toBeGreaterThan(0);
+    // A sand top (height −0.5) is darkened by the grass next to it.
     const shore = terrainOf([
-      { x: 0, y: 0, height: -0.5, level: 0 },
+      { x: 0, y: 0, height: -0.5 },
       { x: 1, y: 0, height: 0 },
     ]);
-    const map = buildOcclusionMap(shore, 0, 2);
-    expect(map[(0 * 4 + 1) * 4 + 3]).toBeGreaterThan(0);
+    expect(buildOcclusionMap(shore, 2)[(0 * 4 + 1) * 4 + 3]).toBeGreaterThan(0);
   });
 
   it("uses AO_PIXELS_PER_TILE by default", () => {
-    expect(buildOcclusionMap(plateau(), 0)).toHaveLength((3 * AO_PIXELS_PER_TILE) ** 2 * 4);
+    expect(buildOcclusionMap(plateau())).toHaveLength((3 * AO_PIXELS_PER_TILE) ** 2 * 4);
   });
 });

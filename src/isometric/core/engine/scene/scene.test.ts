@@ -492,6 +492,30 @@ describe("createScene chunks", () => {
     scene.destroy();
   });
 
+  it("lets a module time parts of its work with context.profile(), profiled or not", async () => {
+    const timed = (results: unknown[]): SceneModule => ({
+      id: "timed",
+      setup: ({ profile }) => ({
+        update: () => results.push(profile("timed:part", () => "done")),
+        destroy: vi.fn(),
+      }),
+    });
+    let clock = 0;
+    const record = vi.fn();
+    const profiled: unknown[] = [];
+    const first = await mountScene(strip(), [timed(profiled)], { profiler: { now: () => (clock += 3), record } });
+    first.ticker.frame();
+    expect(profiled).toEqual(["done"]);
+    expect(record).toHaveBeenCalledWith("timed:part", 3);
+    first.scene.destroy();
+
+    const plain: unknown[] = [];
+    const second = await mountScene(strip(), [timed(plain)]);
+    second.ticker.frame();
+    expect(plain).toEqual(["done"]);
+    second.scene.destroy();
+  });
+
   it("hides a chunk whose ground the world unloaded", async () => {
     const log: string[] = [];
     const world = strip();

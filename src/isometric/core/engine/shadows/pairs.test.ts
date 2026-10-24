@@ -91,4 +91,20 @@ describe("pairShadows", () => {
     expect(pairs.length).toBeGreaterThan(10);
     expect(pairs).toEqual(everyPair(bodies, receives));
   });
+
+  it("pairs a chunk's receivers with the casters around it as comparing every pair does", () => {
+    const random = createSeededRandom(7);
+    const at = (from: number, span: number) => from + Math.round(random() * span);
+    // Three chunks by three of 32 tiles; the middle one receives.
+    const bodies = Array.from({ length: 300 }, () =>
+      body(at(-2, 4), silhouette(at(-32, 96), at(-32, 96), 5 + random() * 60)),
+    );
+    const inside = ({ silhouettes: [{ worldFoot }] }: ShadowBody) =>
+      worldFoot.x >= 0 && worldFoot.x < 32 && worldFoot.y >= 0 && worldFoot.y < 32;
+
+    const pairs = pairShadows(bodies, inside, reach);
+
+    expect(pairs.length).toBeGreaterThan(10);
+    expect(pairs).toEqual(everyPair(bodies, inside));
+  });
 });

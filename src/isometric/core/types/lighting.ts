@@ -40,6 +40,4 @@ export type OcclusionTerrain = {
   readonly bounds: WorldRect;
   /** Height of a column's top surface in blocks (a sand top is half a block below its block). */
   topHeightAt(x: number, y: number): number | undefined;
-  /** Top elevation of a column: the shadow map level its top belongs to. */
-  levelAt(x: number, y: number): number | undefined;
 };

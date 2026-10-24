@@ -23,34 +23,54 @@ export const SHADOW_PAIR_CELL = 4;
  * with their lift over it; silhouettes no caster reaches are left out. The result is the one
  * comparing every pair gives (receivers in body order, their casters in body and silhouette
  * order), but each caster is first listed in every {@link SHADOW_PAIR_CELL} cell its farthest
- * reach covers, and each receiver only looks at the casters listed in its own cell.
+ * reach covers among those the receivers stand in, and each receiver only looks at the casters
+ * listed in its own cell. A chunk pairs its own entities with those of the chunks around it: the
+ * casters far from every receiver are never listed.
  */
 export function pairShadows<B extends ShadowBody>(
   bodies: readonly B[],
   receives: (body: B) => boolean,
   reach: ShadowReach,
 ): ShadowReceiver[] {
-  const lowest = Math.min(...bodies.map(({ elevation }) => elevation));
   const cellOf = (value: number) => Math.floor(value / SHADOW_PAIR_CELL);
+  const receiving = bodies.filter(receives);
 
-  // The casters that may reach each cell, by cell column and then row, in body and silhouette order.
+  // The cells the receivers stand in: a caster is only listed there.
+  let minColumn = Infinity;
+  let maxColumn = -Infinity;
+  let minRow = Infinity;
+  let maxRow = -Infinity;
+  receiving.forEach(({ silhouettes }) =>
+    silhouettes.forEach(({ worldFoot: { x, y } }) => {
+      minColumn = Math.min(minColumn, cellOf(x));
+      maxColumn = Math.max(maxColumn, cellOf(x));
+      minRow = Math.min(minRow, cellOf(y));
+      maxRow = Math.max(maxRow, cellOf(y));
+    }),
+  );
+  if (minColumn > maxColumn) return [];
+  const rows = maxRow - minRow + 1;
+  const lowest = Math.min(...receiving.map(({ elevation }) => elevation));
+
+  // The casters that may reach each of those cells, column after column, in body and silhouette order.
   type Listed = { readonly body: B; readonly silhouette: Silhouette };
-  const cells = new Map<number, Map<number, Listed[]>>();
+  const cells: Listed[][] = Array.from({ length: (maxColumn - minColumn + 1) * rows }, () => []);
+  const cellAt = (x: number, y: number) => cells[(cellOf(x) - minColumn) * rows + cellOf(y) - minRow];
   bodies.forEach((body) =>
     body.silhouettes.forEach((silhouette) => {
-      // Farthest it reaches: onto the lowest body.
+      // Farthest it reaches: onto the lowest receiver.
       const farthest = reach(silhouette.display.height, body.elevation - lowest);
       const { x, y } = silhouette.worldFoot;
+      const fromRow = Math.max(cellOf(y - farthest), minRow);
+      const toRow = Math.min(cellOf(y + farthest), maxRow);
       // One entry, listed in every cell it reaches.
       const entry: Listed = { body, silhouette };
-      for (let column = cellOf(x - farthest); column <= cellOf(x + farthest); column += 1) {
-        const rows = cells.get(column) ?? new Map<number, Listed[]>();
-        cells.set(column, rows);
-        for (let row = cellOf(y - farthest); row <= cellOf(y + farthest); row += 1) {
-          const listed = rows.get(row) ?? [];
-          rows.set(row, listed);
-          listed.push(entry);
-        }
+      for (
+        let column = Math.max(cellOf(x - farthest), minColumn);
+        column <= Math.min(cellOf(x + farthest), maxColumn);
+        column += 1
+      ) {
+        for (let row = fromRow; row <= toRow; row += 1) cells[(column - minColumn) * rows + row - minRow].push(entry);
       }
     }),
   );
@@ -58,11 +78,10 @@ export function pairShadows<B extends ShadowBody>(
   // Plain loops: a chunk pairs thousands of silhouettes, and an array per candidate fed the garbage
   // collector.
   const receivers: ShadowReceiver[] = [];
-  bodies.forEach((body) => {
-    if (!receives(body)) return;
+  receiving.forEach((body) => {
     body.silhouettes.forEach((own) => {
       // Never empty: its own body lists itself there.
-      const listed = cells.get(cellOf(own.worldFoot.x))?.get(cellOf(own.worldFoot.y)) as Listed[];
+      const listed = cellAt(own.worldFoot.x, own.worldFoot.y);
       const casters: ShadowCaster[] = [];
       for (let index = 0; index < listed.length; index += 1) {
         const { body: other, silhouette } = listed[index];

@@ -89,8 +89,8 @@ export function mockPixi() {
       return this.tintWrites.at(-1) ?? 0xffffff;
     }
 
-    addChild(child: unknown): void {
-      this.children.push(child);
+    addChild(...children: unknown[]): void {
+      this.children.push(...children);
     }
 
     /** Like Pixi: a child already in the container is moved, the index counting without it. */

@@ -60,7 +60,8 @@ export type SceneProfiler = {
    * Called with the milliseconds a step took. The steps: `stream` (the app loading chunks),
    * `hide` (hiding the chunks out of view), `show:<module id>` (a module drawing its part of a
    * chunk, until it returns), `add` (a shown chunk's views joining the draw order, and culled)
-   * and `update:<module id>` (a module's `update()`).
+   * and `update:<module id>` (a module's `update()`), and the parts of it a module times with
+   * `context.profile()` (`<module id>:<what>`).
    */
   readonly record: (label: string, ms: number) => void;
 };
@@ -145,6 +146,10 @@ export async function createScene(
   root.eventMode = "none";
   app.stage.addChild(root);
 
+  const { profiler } = options;
+  const now = () => profiler?.now() ?? 0;
+  /** Records the time since `start` under `label`, when the scene is profiled. */
+  const since = (label: string, start: number) => profiler?.record(label, profiler.now() - start);
   const loaded = new Set<string>();
   const resolution = getSvgResolution(TILE_WIDTH * CAMERA_MAX_ZOOM, app.renderer.resolution);
   const services: Partial<SceneServices> = {};
@@ -172,15 +177,18 @@ export async function createScene(
       },
     },
     services: { get: (key) => services[key] },
+    profile: (label, step) => {
+      if (!profiler) return step();
+      const start = profiler.now();
+      const result = step();
+      since(label, start);
+      return result;
+    },
   };
 
   const parts: SceneModulePart[] = [];
   // What each part's steps are recorded as, by part.
   const labels: Array<{ readonly show: string; readonly update: string }> = [];
-  const { profiler } = options;
-  const now = () => profiler?.now() ?? 0;
-  /** Records the time since `start` under `label`, when the scene is profiled. */
-  const since = (label: string, start: number) => profiler?.record(label, profiler.now() - start);
   const shown = new Map<ChunkKey, ShownChunk>();
   let destroyed = false;
   // Resolved when the next frame starts (or the scene is destroyed): a chunk drawn after the

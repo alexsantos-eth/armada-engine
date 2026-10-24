@@ -133,7 +133,7 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     monitor?.watch(scene);
 
     const { camera } = scene.services;
-    if (camera) teardowns.push(bindCameraControls(app.stage, app.renderer.screen, camera));
+    if (camera) teardowns.push(bindCameraControls(app.stage, app.renderer.screen, camera, app.canvas));
     teardowns.push(
       bindKeyboardControls(window, {
         walk: (directions) => setPlayerWalk(world.parts.get(PLAYER_PART), directions),

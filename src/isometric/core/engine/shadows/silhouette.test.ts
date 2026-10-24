@@ -145,6 +145,13 @@ describe("getGroundShadowMatrix", () => {
     expect(far.x).toBeCloseTo(top.x);
     expect(far.y).toBeCloseTo(top.y - METRICS.tileHeight / 2);
   });
+
+  it("lays a square of other sides over the whole diamond too", () => {
+    const matrix = getGroundShadowMatrix(top, METRICS, 15.5, 15);
+
+    expect(apply(matrix, 15.5, 15)).toEqual(apply(getGroundShadowMatrix(top, METRICS, ppt), ppt, ppt));
+    expect(apply(matrix, 15.5, 0).x).toBeCloseTo(top.x + METRICS.tileWidth / 2);
+  });
 });
 
 describe("createGroundShadowView", () => {
@@ -161,12 +168,12 @@ describe("createGroundShadowView", () => {
     );
   });
 
-  it("takes its sprite from the given source, e.g. a pool", () => {
+  it("takes its sprite from the given source, e.g. a pool, and lays its frame's texels on the top", () => {
     const frame = texture(8, 8);
     const kept = new Sprite(texture(1, 1));
     const take = vi.fn(() => kept);
 
-    const { view } = createGroundShadowView(frame, { x: 0, y: 0 }, METRICS, 1, 8, { take });
+    const { view } = createGroundShadowView(frame, { x: 0, y: 0 }, METRICS, 1, { take });
 
     expect(take).toHaveBeenCalledWith(frame);
     expect(view).toBe(kept);

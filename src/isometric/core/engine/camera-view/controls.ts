@@ -2,6 +2,12 @@ import type { Container, FederatedPointerEvent, FederatedWheelEvent, Rectangle }
 import { getPinchGesture, getWheelZoomFactor } from "../camera";
 import type { SceneCamera, ScreenPoint } from "../../types";
 
+/** What tells the controls that the system cancelled a touch: the canvas (`app.canvas`). */
+export type PointerCancelSource = {
+  addEventListener(type: "pointercancel", listener: (event: { readonly pointerId: number }) => void): void;
+  removeEventListener(type: "pointercancel", listener: (event: { readonly pointerId: number }) => void): void;
+};
+
 /**
  * Lets the player move `camera` with the pointer, through Pixi's event system on `stage`:
  * drag with the main button (or a finger) to pan, the wheel to zoom at the cursor, and two
@@ -10,12 +16,19 @@ import type { SceneCamera, ScreenPoint } from "../../types";
  * Pixi already sets `touch-action: none` on the canvas, so the browser does not scroll or zoom
  * the page under the gesture. `screen`
  * (the renderer's screen) is the stage's hit area, so the whole canvas answers even where no
- * view is. Returns a function that removes the controls.
+ * view is. Pixi 8.22 does not forward `pointercancel`: given `canvas`, a touch the system cancels
+ * (a gesture of the OS, an incoming call) lifts there too, or it would stay held and the next
+ * finger would pinch against it. Returns a function that removes the controls.
  *
  * Only the stage listens: the scene's world container has `eventMode = "none"`, so a pointer
  * move never hit-tests its thousands of views.
  */
-export function bindCameraControls(stage: Container, screen: Rectangle, camera: SceneCamera): () => void {
+export function bindCameraControls(
+  stage: Container,
+  screen: Rectangle,
+  camera: SceneCamera,
+  canvas?: PointerCancelSource,
+): () => void {
   // Pointers held down on the stage, by id, in the order they went down, at their last point.
   const held = new Map<number, ScreenPoint>();
 
@@ -41,7 +54,7 @@ export function bindCameraControls(stage: Container, screen: Rectangle, camera: 
     }
     held.set(event.pointerId, at);
   };
-  const onUp = (event: FederatedPointerEvent) => {
+  const onUp = (event: { readonly pointerId: number }) => {
     held.delete(event.pointerId);
     if (held.size === 0) stage.cursor = "grab";
   };
@@ -57,8 +70,10 @@ export function bindCameraControls(stage: Container, screen: Rectangle, camera: 
   stage.on("pointerup", onUp);
   stage.on("pointerupoutside", onUp);
   stage.on("wheel", onWheel);
+  canvas?.addEventListener("pointercancel", onUp);
 
   return () => {
+    canvas?.removeEventListener("pointercancel", onUp);
     stage.off("pointerdown", onDown);
     stage.off("globalpointermove", onMove);
     stage.off("pointerup", onUp);

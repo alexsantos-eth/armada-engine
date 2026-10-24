@@ -28,18 +28,21 @@ const placement = new Matrix();
 const toMatrix = ({ a, b, c, d, tx, ty }: Affine2D) => placement.set(a, b, c, d, tx, ty);
 
 /**
- * Transform that lays a tile's square of the shadow map (`pixelsPerTile` texels a side, `+x`
- * right and `+y` down in the map) onto the tile's top diamond on screen, centred on `tileTop`,
- * the screen point of the centre of the tile's top face.
+ * Transform that lays a tile's square of the shadow map (`texelsWide` × `texelsDeep` texels,
+ * `+x` right and `+y` down in the map) onto the tile's top diamond on screen, centred on
+ * `tileTop`, the screen point of the centre of the tile's top face.
  */
-export function getGroundShadowMatrix(tileTop: PlanePoint, metrics: TileMetrics, pixelsPerTile: number): Affine2D {
-  const halfWidth = metrics.tileWidth / (2 * pixelsPerTile);
-  const halfHeight = metrics.tileHeight / (2 * pixelsPerTile);
+export function getGroundShadowMatrix(
+  tileTop: PlanePoint,
+  metrics: TileMetrics,
+  texelsWide: number,
+  texelsDeep = texelsWide,
+): Affine2D {
   return {
-    a: halfWidth,
-    b: -halfHeight,
-    c: -halfWidth,
-    d: -halfHeight,
+    a: metrics.tileWidth / (2 * texelsWide),
+    b: -metrics.tileHeight / (2 * texelsWide),
+    c: -metrics.tileWidth / (2 * texelsDeep),
+    d: -metrics.tileHeight / (2 * texelsDeep),
     tx: tileTop.x,
     ty: tileTop.y + metrics.tileHeight / 2,
   };
@@ -51,7 +54,8 @@ export function getGroundShadowMatrix(tileTop: PlanePoint, metrics: TileMetrics,
  * front of it. Always visible at full opacity: what it shows (ambient occlusion, sun shadows
  * and their opacity) is drawn into the map, so the scene never touches it again.
  *
- * @param texture The tile's square of the shadow map of its elevation.
+ * @param texture The tile's square of its chunk's shadow map: its frame, whatever its size, is
+ * laid over the whole top (a square inset half a texel on a side still covers it).
  * @param sprites Where the sprite comes from, e.g. a `SpritePool`.
  */
 export function createGroundShadowView(
@@ -59,11 +63,10 @@ export function createGroundShadowView(
   tileTop: PlanePoint,
   metrics: TileMetrics,
   depth: number,
-  pixelsPerTile = SHADOW_MAP_PIXELS_PER_TILE,
   sprites: SpriteSource = NEW_SPRITES,
 ): DepthView {
   const sprite = sprites.take(texture);
-  sprite.setFromMatrix(toMatrix(getGroundShadowMatrix(tileTop, metrics, pixelsPerTile)));
+  sprite.setFromMatrix(toMatrix(getGroundShadowMatrix(tileTop, metrics, texture.frame.width, texture.frame.height)));
   return { view: sprite, depth };
 }
 

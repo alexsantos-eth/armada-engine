@@ -167,4 +167,27 @@ describe("bindCameraControls", () => {
     stage.emit("wheel", { deltaY: 100, deltaMode: 0, global: { x: 0, y: 0 } });
     expect(camera.zoomAt).not.toHaveBeenCalled();
   });
+
+  it("lifts a touch the system cancels on the canvas, so the next finger pans instead of pinching", () => {
+    const stage = createStage();
+    const camera = createCamera();
+    const cancel = new Set<(event: { pointerId: number }) => void>();
+    const canvas = {
+      addEventListener: vi.fn((_type: string, fn: (event: { pointerId: number }) => void) => cancel.add(fn)),
+      removeEventListener: vi.fn((_type: string, fn: (event: { pointerId: number }) => void) => cancel.delete(fn)),
+    };
+    const unbind = bindCameraControls(stage as never, {} as never, camera, canvas);
+
+    stage.emit("pointerdown", finger(7, 0, 0));
+    cancel.forEach((fn) => fn({ pointerId: 7 }));
+    expect(stage.cursor).toBe("grab");
+    stage.emit("pointerdown", finger(8, 10, 10));
+    stage.emit("globalpointermove", finger(8, 15, 10));
+    expect(camera.pan).toHaveBeenCalledWith({ x: 5, y: 0 });
+    expect(camera.zoomAt).not.toHaveBeenCalled();
+
+    unbind();
+    expect(canvas.removeEventListener).toHaveBeenCalledWith("pointercancel", canvas.addEventListener.mock.calls[0][1]);
+    expect(cancel.size).toBe(0);
+  });
 });
