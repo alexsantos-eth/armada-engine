@@ -24,6 +24,15 @@ export type SceneLayer = 0 | 1 | 2 | 3;
 /** A world view with its draw depth and its {@link SceneLayer}. */
 export type SceneView = DepthView & { readonly layer: SceneLayer };
 
+/** The scene's camera as the scene uses it: a {@link SceneCamera} that can also cull a few views. */
+export type SceneCameraService = SceneCamera & {
+  /**
+   * Culls only `views`, just added to the scene, against what the camera shows now: the rest is
+   * as the last cull left it, and culling the whole scene again took ~20 ms with the zoom out.
+   */
+  cullViews(views: readonly SceneView[]): void;
+};
+
 /** An entity with the views `entity-view` drew for it. */
 export type EntityView = {
   readonly entity: IsoScreenBox<Entity>;
@@ -43,7 +52,7 @@ export type SceneFocus = {
  */
 export type SceneServices = {
   /** The scene's camera (`camera-view`). */
-  readonly camera: SceneCamera;
+  readonly camera: SceneCameraService;
   /**
    * The entities of every shown chunk with their views (`entity-view`), by chunk key, e.g. to cast
    * shadows from them. A chunk is in it from its `showChunk()` in `entity-view` until it is hidden.

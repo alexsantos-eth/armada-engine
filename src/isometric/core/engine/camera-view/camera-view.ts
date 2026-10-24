@@ -10,6 +10,11 @@ export type CameraViewOptions = {
    * provides it, otherwise the world's centre (`world.centre`), at `CAMERA_START_ZOOM`.
    */
   readonly start?: Partial<Camera>;
+  /**
+   * Whether the camera culls the views out of the screen. Defaults to `true`; `false` draws every
+   * view of the shown chunks, to measure what culling saves (`?cull=off`).
+   */
+  readonly cull?: boolean;
 };
 
 /**
@@ -29,6 +34,7 @@ export function createCameraView(options: CameraViewOptions = {}): SceneModule {
         { minZoom: CAMERA_MIN_ZOOM, maxZoom: CAMERA_MAX_ZOOM, bounds },
         projection,
         options.start ?? services.get("focus")?.ground() ?? world.centre,
+        options.cull,
       );
       const onResize = () => camera.resize();
       app.renderer.on("resize", onResize);

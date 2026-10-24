@@ -49,6 +49,22 @@ export const UNBOUNDED_CAMERA_BOUNDS: WorldRect = {
   maxY: MAX_GRID_COORD - 4 * CHUNK_SIZE,
 };
 
+/**
+ * Where a profiled scene reports the time its frames take, step by step (the app's `?perf`
+ * mode). The scene never reads a clock itself: `now` is the app's (e.g. `performance.now`).
+ */
+export type SceneProfiler = {
+  /** Current time, in milliseconds. */
+  readonly now: () => number;
+  /**
+   * Called with the milliseconds a step took. The steps: `stream` (the app loading chunks),
+   * `hide` (hiding the chunks out of view), `show:<module id>` (a module drawing its part of a
+   * chunk, until it returns), `add` (a shown chunk's views joining the draw order, and culled)
+   * and `update:<module id>` (a module's `update()`).
+   */
+  readonly record: (label: string, ms: number) => void;
+};
+
 /** Options of {@link createScene}. */
 export type SceneOptions = {
   /** How each terrain material is drawn (game content, e.g. `TERRAIN_APPEARANCE`). */
@@ -67,6 +83,8 @@ export type SceneOptions = {
    * it shows the chunks the world has loaded.
    */
   readonly stream?: (visible: readonly ChunkCoord[], building: boolean) => void;
+  /** Times each step of every frame (see {@link SceneProfiler}). Defaults to none: nothing is timed. */
+  readonly profiler?: SceneProfiler;
 };
 
 /** A rendered world: the services its modules provide, and the cleanup that destroys it. */
@@ -157,6 +175,12 @@ export async function createScene(
   };
 
   const parts: SceneModulePart[] = [];
+  // What each part's steps are recorded as, by part.
+  const labels: Array<{ readonly show: string; readonly update: string }> = [];
+  const { profiler } = options;
+  const now = () => profiler?.now() ?? 0;
+  /** Records the time since `start` under `label`, when the scene is profiled. */
+  const since = (label: string, start: number) => profiler?.record(label, profiler.now() - start);
   const shown = new Map<ChunkKey, ShownChunk>();
   let destroyed = false;
   // Resolved when the next frame starts (or the scene is destroyed): a chunk drawn after the
@@ -211,12 +235,15 @@ export async function createScene(
   const drawChunk = async (chunk: WorldChunk, spread: boolean): Promise<ShownChunk | undefined> => {
     const chunkParts: SceneChunkPart[] = [];
     let started = false;
-    for (const part of parts) {
+    for (const [index, part] of parts.entries()) {
       if (!part.showChunk) continue;
       if (spread && started) await nextFrame();
       started = true;
       if (destroyed) break;
-      chunkParts.push(await part.showChunk(chunk));
+      const start = now();
+      const drawn = part.showChunk(chunk);
+      since(labels[index].show, start);
+      chunkParts.push(await drawn);
     }
     const entry: ShownChunk = { chunk, parts: chunkParts, views: chunkParts.flatMap(({ views = [] }) => views) };
     if (!destroyed) return entry;
@@ -227,7 +254,9 @@ export async function createScene(
   /** Chunks to show: in view (nearest first) and ready. */
   const wanted = (building: boolean) => {
     const visible = services.camera?.visibleChunks() ?? [...world.chunks.values()].map(({ coord }) => coord);
+    const start = now();
     options.stream?.(visible, building);
+    since("stream", start);
     return { visible, ready: visible.filter((coord) => world.chunks.isReady(coord)) };
   };
 
@@ -239,6 +268,7 @@ export async function createScene(
       }
       const part = await module.setup(context);
       parts.push(part);
+      labels.push({ show: `show:${module.id}`, update: `update:${module.id}` });
       // A service has one owner: two modules providing it would silently replace each other.
       const provided = Object.keys(part.provides ?? {}) as SceneServiceKey[];
       const taken = provided.find((key) => providers.has(key));
@@ -272,9 +302,14 @@ export async function createScene(
     const inView = new Set(visible.map(({ cx, cy }) => chunkKey(cx, cy)));
     const nearView = ({ cx, cy }: ChunkCoord) =>
       [-1, 0, 1].some((dx) => [-1, 0, 1].some((dy) => inView.has(chunkKey(cx + dx, cy + dy))));
-    [...shown.values()]
-      .filter(({ chunk }) => !world.chunks.isReady(chunk.coord) || !nearView(chunk.coord))
-      .forEach(hideChunk);
+    const gone = [...shown.values()].filter(
+      ({ chunk }) => !world.chunks.isReady(chunk.coord) || !nearView(chunk.coord),
+    );
+    if (gone.length > 0) {
+      const start = now();
+      gone.forEach(hideChunk);
+      since("hide", start);
+    }
 
     if (drawing !== undefined) return;
     ready
@@ -287,8 +322,10 @@ export async function createScene(
           drawing = undefined;
           if (!entry) return;
           shown.set(chunk.key, entry);
+          const start = now();
           built.add(entry.views);
-          services.camera?.resize();
+          services.camera?.cullViews(entry.views);
+          since("add", start);
         });
       });
   };
@@ -301,7 +338,12 @@ export async function createScene(
       elapsedMs: ticker.elapsedMS,
       alpha: options.interpolation?.() ?? 1,
     };
-    parts.forEach((part) => part.update?.(frame));
+    parts.forEach((part, index) => {
+      if (!part.update) return;
+      const start = now();
+      part.update(frame);
+      since(labels[index].update, start);
+    });
   };
   app.ticker.add(onFrame, undefined, UPDATE_PRIORITY.NORMAL);
 

@@ -13,7 +13,7 @@ import type { ReadonlyCellMap } from "../grid";
 import { TICKS_PER_SECOND } from "../time";
 
 /** Walking speed of the player, in columns per second of simulation (`TICKS_PER_SECOND` ticks). */
-export const PLAYER_SPEED = 0.3;
+export const PLAYER_SPEED = 3;
 
 /** Columns a walking player moves in one tick. */
 export const PLAYER_STEP = PLAYER_SPEED / TICKS_PER_SECOND;

@@ -9,7 +9,7 @@ import { TILE_METRICS } from "../constants";
 import { getSvgResolution } from "../render";
 import { WorldParts } from "../parts";
 import { CLOCK_PART } from "../time";
-import type { BuiltScene, SceneContext, SceneFrame, SceneModule, SceneModulePart } from "./module";
+import type { BuiltScene, SceneContext, SceneFrame, SceneModule, SceneModulePart, SceneView } from "./module";
 import type { ChunkCoord } from "../../types";
 import type { WorldChunk } from "../world";
 import { CHUNKS_SHOWN_PER_FRAME, SCENE_LAYER, UNBOUNDED_CAMERA_BOUNDS } from "./scene";
@@ -309,7 +309,11 @@ const chunkProbe = (log: string[] = []) => {
 
 /** A camera module whose view is whatever `visible` holds. */
 const fakeCamera = (visible: { chunks: ChunkCoord[] }) => {
-  const camera = { resize: vi.fn(), visibleChunks: vi.fn(() => visible.chunks) };
+  const camera = {
+    resize: vi.fn(),
+    cullViews: vi.fn<(views: readonly SceneView[]) => void>(),
+    visibleChunks: vi.fn(() => visible.chunks),
+  };
   const module: SceneModule = {
     id: "camera",
     setup: () => ({ provides: { camera: camera as never }, destroy: () => {} }),
@@ -388,7 +392,10 @@ describe("createScene chunks", () => {
     // Still drawing chunk 1: nothing else starts.
     ticker.frame();
     await vi.waitFor(() => expect(names(root.children)).toEqual(["chunk 1", "chunk 0"]));
-    expect(camera.resize).toHaveBeenCalledTimes(1);
+    // Only the new chunk's views: culling the whole scene again took ~20 ms zoomed out.
+    expect(camera.cullViews).toHaveBeenCalledTimes(1);
+    expect(names(camera.cullViews.mock.calls[0][0].map(({ view }) => view))).toEqual(["chunk 1"]);
+    expect(camera.resize).not.toHaveBeenCalled();
     ticker.frame();
     await vi.waitFor(() => expect(names(root.children)).toEqual(["chunk 2", "chunk 1", "chunk 0"]));
     expect(log).toEqual(["show 1", "show 2"]);
@@ -454,6 +461,34 @@ describe("createScene chunks", () => {
 
     expect(log).toEqual(["hide 0"]);
     expect(names(root.children)).toEqual(["chunk 3", "chunk 2", "chunk 1"]);
+    scene.destroy();
+  });
+
+  it("times each step of a frame for a profiler: streaming, hiding, each module's part and update", async () => {
+    const visible = { chunks: [0, 1].map((cx) => ({ cx, cy: 0 })) };
+    const { module: camera } = fakeCamera(visible);
+    const { module: last } = probe("last");
+    let clock = 0;
+    const record = vi.fn();
+    const profiler = { now: () => (clock += 2), record };
+    const { ticker, scene } = await mountScene(strip(), [camera, chunkProbe(), last], { profiler, stream: vi.fn() });
+    const labels = () => record.mock.calls.map(([label]) => label as string);
+
+    // While built: streaming and the chunk parts, each timed.
+    expect(labels()).toEqual(["stream", "show:chunks", "show:chunks"]);
+    expect(record.mock.calls.every(([, ms]) => ms === 2)).toBe(true);
+    record.mockClear();
+
+    visible.chunks = [{ cx: 2, cy: 0 }];
+    ticker.frame();
+    await settle();
+    // Chunk 0 leaves the view, chunk 2 is drawn and its views are added (and culled).
+    expect(labels()).toEqual(["stream", "hide", "show:chunks", "update:last", "add"]);
+    record.mockClear();
+
+    ticker.frame();
+    // Nothing to hide or add: only streaming and the updates.
+    expect(labels()).toEqual(["stream", "update:last"]);
     scene.destroy();
   });
 

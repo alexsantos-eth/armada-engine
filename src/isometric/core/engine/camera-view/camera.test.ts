@@ -47,6 +47,34 @@ describe("createSceneCamera", () => {
     expect(Culler.shared.cull).toHaveBeenCalledWith(world, getCullRect({ width: 800, height: 600 }), false);
   });
 
+  it("never culls when culling is off, so every view is drawn", () => {
+    const world = createWorld();
+    const screen = { x: 0, y: 0, width: 800, height: 600 };
+    const camera = createSceneCamera(world as never, screen as never, limits, projection, undefined, false);
+
+    camera.pan({ x: 500, y: 0 });
+    camera.resize();
+    camera.cullViews([{ view: {} as never, depth: 0, layer: 0 }]);
+    expect(Culler.shared.cull).not.toHaveBeenCalled();
+  });
+
+  it("culls only the views it is given, against the screen it culls the scene with", () => {
+    const { camera, screen } = setup();
+    vi.mocked(Culler.shared.cull).mockClear();
+    const first = { name: "first" };
+    const second = { name: "second" };
+    screen.width = 1000;
+
+    camera.cullViews([
+      { view: first as never, depth: 0, layer: 0 },
+      { view: second as never, depth: 1, layer: 2 },
+    ]);
+    expect(vi.mocked(Culler.shared.cull).mock.calls).toEqual([
+      [first, getCullRect({ width: 1000, height: 600 }), false],
+      [second, getCullRect({ width: 1000, height: 600 }), false],
+    ]);
+  });
+
   it("pans without culling until the scene moved past the margin", () => {
     const { world, camera } = setup({ x: 0, y: 0, zoom: 1 });
 

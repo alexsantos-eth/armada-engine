@@ -196,7 +196,10 @@ describe("createReceivedShadows", () => {
 
   it("draws the black casters with the given filters, then erases the mask, into the atlas", () => {
     const renderer = createRenderer();
-    const filters = [{ blur: true }, { alpha: true }];
+    const filters = [
+      { blur: true, padding: 3 },
+      { alpha: true, padding: 1 },
+    ];
     const shadows = createReceivedShadows(twoReceivers(), renderer as never, filters as never, createTexturePool());
 
     shadows.draw(null);
@@ -207,7 +210,8 @@ describe("createReceivedShadows", () => {
     expect({ clear, clearColor }).toEqual({ clear: true, clearColor: [0, 0, 0, 0] });
     expect(casters).toBe(shadows.casters);
     expect(casters.filters).toEqual(filters);
-    expect(casters.filterArea).toEqual(new Rectangle(0, 0, shadows.atlas.width, shadows.atlas.height));
+    // Inset by the filters' padding, which Pixi adds back: the filtered area is the atlas, no wider.
+    expect(casters.filterArea).toEqual(new Rectangle(4, 4, shadows.atlas.width - 8, shadows.atlas.height - 8));
     expect(erase.blendMode).toBe("erase");
     expect(erase.texture).toBe(renderer.render.mock.calls[0][0].target);
     // At night nothing is laid: no caster has a sprite yet.

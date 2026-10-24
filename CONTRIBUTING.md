@@ -83,6 +83,32 @@ Las APIs públicas y los tipos deben tener comentarios TSDoc concisos.
 
 Cuando un cambio modifica el funcionamiento del core, también deben actualizarse los Markdown afectados, como mínimo `ARCHITECTURE.md` para el runtime y este archivo para el flujo de contribución. Si afecta a la generación o geometría de assets, la skill `iso-asset-generator` puede necesitar actualizarse.
 
+## Medir el rendimiento en tu equipo
+
+Las medidas de Chromium headless (SwiftShader, sin GPU) solo sirven para comparar dos versiones entre sí: antes de optimizar render o memoria, mide en un equipo con GPU. El modo `?perf` escribe en la consola cada 5 s un informe (ver [Medir el rendimiento](ARCHITECTURE.md#medir-el-rendimiento)):
+
+```text
+Armada perf · 5.0 s · 300 frames · 60.0 fps · chunks 9
+frame ms p50 16.7 · p95 17.4 · max 41.2 · over 33.4 ms: 1
+cpu ms p50 3.1 · p95 5.2 · max 30.8 · draw calls avg 42 · max 61
+textures 412.6 MB (render 330.1 · svg 74.3 · buffer 8.2) in 210 · js heap 96.4 MB
+largest textures: render 2048×1024 ×6 = 48.0 MB · render 544×544 ×30 = 33.9 MB · svg 1024×853 ×9 = 31.2 MB
+steps ms avg/max per frame: update:shadows 0.80/17.20 · show:terrain 0.30/9.10 · …
+```
+
+1. Usa el build de producción, no `pnpm dev` (sin minificar y con recarga en caliente): `pnpm build && pnpm preview`, y abre en Chrome `http://localhost:4173/?seed=1337&hour=8&perf`, con las herramientas de desarrollo en la pestaña **Console**. Mide siempre con la misma semilla, hora y tamaño de ventana, con el equipo enchufado (un portátil con batería baja la GPU) y sin otras pestañas pesadas. Para el heap, Chrome solo da `js heap` exacto si se abre con `--enable-precise-memory-info`.
+2. Cómo leerlo:
+   - `frame ms` es el tiempo entre frames: 16,7 ms son 60 fps; `over 33.4 ms` cuenta los tirones (menos de 30 fps).
+   - `cpu ms` es lo que tarda el hilo principal en un frame (simulación, escena y envío de Pixi a la GPU). Si `frame` es mucho mayor que `cpu` y los fps no llegan a la tasa de la pantalla, el límite es la GPU; si `cpu` se acerca a `frame`, es la CPU.
+   - `textures` es la memoria de GPU de las texturas por tipo: `render` son los mapas de sombra (544 × 544 por chunk y elevación) y los atlas de sombras recibidas, `svg` los sprites, `buffer` la oclusión (#53). `largest textures` dice qué grupos de un tipo y tamaño ocupan más: los atlas de sombras recibidas y sus máscaras son los `render` anchos (hasta 2048 texels), los mapas de sombra los `render 544×544`.
+   - `steps` dice qué paso de la escena cuesta: `update:shadows` (redibujar un mapa de sombra y reunir siluetas o rehacer un atlas; su máximo es el tirón al caminar), `show:<módulo>` (dibujar la parte de un chunk que entra), `add` (meter el chunk en el orden de dibujo y cullear) y `update:camera` (incluye el culling al moverse, #44).
+3. Escenarios, unos 20 s cada uno; copia dos o tres informes de cada uno:
+   - **Quieto**: `?seed=1337&hour=8&timeScale=0&perf`, sin tocar nada.
+   - **Caminando**: `?seed=1337&hour=8&timeScale=6&perf`, manteniendo una flecha pulsada (carga y descarga chunks).
+   - **Zoom alejado**: como caminando, tras pulsar `-` cuatro veces (más chunks mostrados: memoria y culling).
+   - **Sin culling** (#44): repite caminando y zoom alejado con `&cull=off` y compara `frame`, `cpu` y `draw calls`.
+4. Tiempo de GPU: en la pestaña **Performance**, graba 10 s caminando; la pista **GPU** muestra cuánto trabaja la GPU en cada frame y la de **Frames** los frames perdidos. La memoria real del proceso de GPU está en el **Administrador de tareas** de Chrome (menú Ventana; la columna «Memoria de GPU» se activa con clic derecho en los encabezados), para compararla con `textures`. En macOS, el Monitor de Actividad (Ventana → Historial de la GPU) muestra la carga de la GPU.
+
 ## Assets y render
 
 Los materiales de bloque se cargan desde:

@@ -9,6 +9,7 @@ vi.mock("../core/engine/shadows/received-shadow", async () =>
   (await import("../core/engine/flow-check/scene-harness")).mockReceivedShadow(),
 );
 
+import { Culler } from "pixi.js";
 import { CLOCK_PART, PLAYER_PART, TICKS_PER_HOUR, WORLD_START_TICK } from "../core/engine";
 import { createTestEntities, defaultWorld, mountScene, resetHarness } from "../core/engine/flow-check/scene-harness";
 import { createSceneModules, createWorldParts, createWorldSystems, findUnknownModules } from "./modules";
@@ -36,6 +37,17 @@ describe("createSceneModules", () => {
       "ambient-light",
       "player",
     ]);
+  });
+
+  it("culls with the camera unless culling is off", async () => {
+    const culled = await mountScene(defaultWorld(), createSceneModules());
+    expect(Culler.shared.cull).toHaveBeenCalled();
+    culled.scene.destroy();
+    vi.mocked(Culler.shared.cull).mockClear();
+
+    const unculled = await mountScene(defaultWorld(), createSceneModules(new Set(), { cull: false }));
+    expect(Culler.shared.cull).not.toHaveBeenCalled();
+    unculled.scene.destroy();
   });
 
   it.each(SCENE_IDS)("draws, runs and tears down the scene without %s", async (id) => {

@@ -95,6 +95,14 @@ describe("createCameraView", () => {
     expect(Culler.shared.cull).toHaveBeenCalledTimes(built + 1);
   });
 
+  it("can leave culling off (measuring what culling saves)", async () => {
+    const { renderer, scene } = await mountScene(defaultWorld(), [createCameraView({ cull: false })]);
+
+    renderer.emit("resize");
+    expect(Culler.shared.cull).not.toHaveBeenCalled();
+    scene.destroy();
+  });
+
   it("glides after what it follows on every frame", async () => {
     const { ticker, scene } = await mountScene(defaultWorld(), [createCameraView({ start: { x: 2, y: 2 } })]);
 

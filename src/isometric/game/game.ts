@@ -18,6 +18,7 @@ import { bindKeyboardControls } from "../input";
 import { type ChunkWorker, createChunkPrefetch, startChunkWorker } from "./chunk-prefetch";
 import { formatClockLabel, resolveLaunchOptions } from "./launch";
 import { createSceneModules, createWorldParts, createWorldSystems, findUnknownModules } from "./modules";
+import { PERF_REPORT_MS, startPerfMonitor } from "./perf";
 
 /** Where and how a game runs. */
 export type GameOptions = {
@@ -85,7 +86,10 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     if (destroyed) return;
 
     container.appendChild(app.canvas);
-    const { seed, startTick, timeScale, disabledModules } = resolveLaunchOptions(window.location.search, random);
+    const { seed, startTick, timeScale, disabledModules, perf, cull } = resolveLaunchOptions(
+      window.location.search,
+      random,
+    );
     log(`Armada world seed: ${seed}`);
     const unknown = findUnknownModules(disabledModules);
     if (unknown.length > 0) log(`Armada ?modules= names no module: ${unknown.join(", ")}`);
@@ -93,12 +97,25 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     const simulation = createSimulation(world, { timeScale, systems: createWorldSystems(disabledModules) });
     const prefetch = createChunkPrefetch(world, chunkWorker());
     teardowns.push(prefetch.destroy);
+    // `?perf`: frames are measured from the first ticker listener to after the render.
+    const monitor = perf
+      ? startPerfMonitor(app, {
+          now: () => window.performance.now(),
+          log,
+          heapBytes: () => (window.performance as { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize,
+        })
+      : undefined;
+    if (monitor) {
+      teardowns.push(monitor.destroy);
+      log(`Armada perf: a report every ${PERF_REPORT_MS / 1000} s, culling ${cull ? "on" : "off"}`);
+    }
     // The scene draws the player between its last two ticks, and the camera follows it. The world
     // keeps loaded the ground around the player first and what the camera sees, wherever the
     // camera is: all at once while the scene is built, then a few chunks per frame. The chunks
     // ahead of the camera are generated in the worker, and load once they are ready.
-    const scene = await createScene(app, world, createSceneModules(disabledModules), {
+    const scene = await createScene(app, world, createSceneModules(disabledModules, { cull }), {
       terrain: TERRAIN_APPEARANCE,
+      profiler: monitor?.profiler,
       interpolation: () => getInterpolationAlpha(simulation.stepper),
       stream: (visible, building) => {
         const focus = [chunkOfPoint(world.parts.get(PLAYER_PART)), ...visible];
@@ -113,6 +130,7 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     });
     teardowns.push(scene.destroy);
     if (destroyed) return;
+    monitor?.watch(scene);
 
     const { camera } = scene.services;
     if (camera) teardowns.push(bindCameraControls(app.stage, app.renderer.screen, camera));

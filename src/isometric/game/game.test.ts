@@ -57,7 +57,7 @@ vi.mock("pixi.js", () => {
   }
   // Made when the engine is imported (the matrix that places shadow sprites).
   class Matrix {}
-  return { Application, Matrix, UPDATE_PRIORITY: { HIGH: 50, NORMAL: 0, LOW: -25 } };
+  return { Application, Matrix, UPDATE_PRIORITY: { INTERACTION: 50, HIGH: 25, NORMAL: 0, LOW: -25, UTILITY: -50 } };
 });
 
 vi.mock("../core/engine", async (importOriginal) => ({
@@ -80,6 +80,7 @@ const createWindow = (search = "?seed=1337&hour=15") => {
   return {
     location: { search },
     devicePixelRatio: 2,
+    performance: { now: vi.fn(() => 0), memory: { usedJSHeapSize: 2 * 1024 * 1024 } },
     addEventListener: vi.fn((type: string, fn: Listener) =>
       listeners.set(type, (listeners.get(type) ?? new Set()).add(fn)),
     ),
@@ -228,6 +229,43 @@ describe("mountGame", () => {
     expect(worker.requests.every(({ seed }) => seed === 7)).toBe(true);
   });
 
+  it("measures frames with ?perf: profiles the scene and reports what it shows", async () => {
+    const { game, log, window } = mount("?seed=1&perf");
+    await game.ready;
+    const { app, options } = started();
+    expect(log).toHaveBeenCalledWith("Armada perf: a report every 5 s, culling on");
+    expect(options.profiler?.now).toBeTypeOf("function");
+
+    // The monitor's listeners: the first of a frame and the last, after the render.
+    const listeners = app.ticker.add.mock.calls.map(([fn, , priority]) => ({ fn, priority })) as Array<{
+      fn: (ticker: { elapsedMS: number }) => void;
+      priority: number;
+    }>;
+    const first = listeners.find(({ priority }) => priority === 50)!;
+    const last = listeners.find(({ priority }) => priority === -50)!;
+    first.fn({ elapsedMS: 5000 });
+    last.fn({ elapsedMS: 5000 });
+    const report = (log.mock.lastCall as [string])[0];
+    expect(report).toContain("chunks 0");
+    expect(report).toContain("js heap 2.0 MB");
+    expect(window.performance.now).toHaveBeenCalled();
+
+    game.destroy();
+    expect(app.ticker.remove).toHaveBeenCalledWith(first.fn);
+    expect(app.ticker.remove).toHaveBeenCalledWith(last.fn);
+  });
+
+  it("profiles nothing without ?perf, and draws everything with ?cull=off", async () => {
+    const { game, log } = mount("?seed=1&cull=off&perf");
+    await game.ready;
+    expect(log).toHaveBeenCalledWith("Armada perf: a report every 5 s, culling off");
+    game.destroy();
+
+    const plain = mount("?seed=1");
+    await plain.game.ready;
+    expect(started().options.profiler).toBeUndefined();
+  });
+
   it("leaves out the modules and systems the URL disables", async () => {
     const { game, log } = mount("?seed=1&modules=-shadows,-player,-fog");
     await game.ready;
@@ -272,7 +310,7 @@ describe("mountGame", () => {
     await game.ready;
     const { app, world, options } = started();
 
-    expect(app.ticker.add).toHaveBeenCalledWith(expect.any(Function), undefined, 50);
+    expect(app.ticker.add).toHaveBeenCalledWith(expect.any(Function), undefined, 25);
     expect(onClockChange).toHaveBeenLastCalledWith("Día 1 · 15:00 · ×60");
     expect(onClockChange).toHaveBeenCalledTimes(1);
 

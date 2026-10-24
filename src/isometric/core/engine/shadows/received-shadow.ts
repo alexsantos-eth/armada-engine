@@ -4,7 +4,7 @@ import type { PlanePoint, Silhouette } from "./silhouette";
 import type { TexturePool } from "./texture-pool";
 
 /** Texels of the received-shadow atlas per screen pixel of a receiver (at zoom 1). */
-export const RECEIVED_SHADOW_RESOLUTION = 2;
+export const RECEIVED_SHADOW_RESOLUTION = 1;
 
 /** Empty texels around each receiver's square of the atlas: wider than the blur spreads. */
 export const RECEIVED_SHADOW_PADDING = 16;
@@ -131,8 +131,11 @@ export function createReceivedShadows(
 
   const casters = new Container();
   casters.filters = [...filters];
-  // The whole atlas: known up front, so Pixi does not measure the silhouettes on every draw.
-  casters.filterArea = new Rectangle(0, 0, width, height);
+  // The whole atlas: known up front, so Pixi does not measure the silhouettes on every draw. Pixi
+  // pads it by the filters' padding and rounds its filter textures up to powers of two: inset by
+  // that padding (narrower than the atlas's own), or a 2048-wide atlas filters at 4096 (#53).
+  const inset = filters.reduce((total, filter) => total + filter.padding, 0);
+  casters.filterArea = new Rectangle(inset, inset, width - 2 * inset, height - 2 * inset);
   const erase = new Sprite(mask);
   erase.blendMode = "erase";
   const root = new Container();

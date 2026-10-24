@@ -21,6 +21,10 @@ export type LaunchOptions = {
   readonly timeScale: number;
   /** Modules and systems left out, by id: `?modules=-shadows,-ambient-light` (debugging a module alone). */
   readonly disabledModules: ReadonlySet<string>;
+  /** Measures the frames and logs a report every few seconds: `?perf` (see `startPerfMonitor()`). */
+  readonly perf: boolean;
+  /** Whether the camera culls what is off screen; `?cull=off` draws everything (to measure culling). */
+  readonly cull: boolean;
 };
 
 /**
@@ -33,7 +37,19 @@ export function resolveLaunchOptions(search: string, random: RandomSource): Laun
     startTick: resolveStartTick(search),
     timeScale: resolveTimeScale(search),
     disabledModules: resolveDisabledModules(search),
+    perf: resolveSwitch(search, "perf", false),
+    cull: resolveSwitch(search, "cull", true),
   };
+}
+
+/**
+ * A switch of the URL query: on when `name` is there (`?perf`, `?perf=1`), off when it says so
+ * (`0`, `off` or `false`, in any case), and `fallback` when it is not there.
+ */
+export function resolveSwitch(search: string, name: string, fallback: boolean): boolean {
+  const value = new URLSearchParams(search).get(name);
+  if (value === null) return fallback;
+  return !["0", "off", "false"].includes(value.trim().toLowerCase());
 }
 
 /**

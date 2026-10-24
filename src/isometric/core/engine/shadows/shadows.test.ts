@@ -518,7 +518,7 @@ describe("createShadows", () => {
     const cameraOn = (visible: { chunks: { cx: number; cy: number }[] }) => ({
       id: "camera",
       setup: () => ({
-        provides: { camera: { resize: vi.fn(), visibleChunks: () => visible.chunks } as never },
+        provides: { camera: { cullViews: vi.fn(), visibleChunks: () => visible.chunks } as never },
         destroy: () => {},
       }),
     });

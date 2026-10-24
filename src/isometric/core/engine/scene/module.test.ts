@@ -4,6 +4,7 @@ import type { ChunkKey, SceneCamera } from "../../types";
 import type {
   BuiltScene,
   EntityView,
+  SceneCameraService,
   SceneFocus,
   SceneFrame,
   SceneLayer,
@@ -25,7 +26,9 @@ describe("scene module contract", () => {
 
   it("names the services modules share, each with its type", () => {
     expectTypeOf<SceneServiceKey>().toEqualTypeOf<"camera" | "entityViews" | "focus">();
-    expectTypeOf<SceneServices["camera"]>().toEqualTypeOf<SceneCamera>();
+    expectTypeOf<SceneServices["camera"]>().toEqualTypeOf<SceneCameraService>();
+    // The camera of the core types, plus culling the views just added.
+    expectTypeOf<SceneCameraService>().toExtend<SceneCamera>();
     expectTypeOf<SceneServices["entityViews"]>().toEqualTypeOf<ReadonlyMap<ChunkKey, readonly EntityView[]>>();
     expectTypeOf<SceneServices["focus"]>().toEqualTypeOf<SceneFocus>();
   });
@@ -33,7 +36,7 @@ describe("scene module contract", () => {
   it("reads a service by name, `undefined` when no module provides it", () => {
     const registry: SceneServiceRegistry = { get: () => undefined };
 
-    expectTypeOf(registry.get("camera")).toEqualTypeOf<SceneCamera | undefined>();
+    expectTypeOf(registry.get("camera")).toEqualTypeOf<SceneCameraService | undefined>();
     expectTypeOf(registry.get("focus")).toEqualTypeOf<SceneFocus | undefined>();
     expect(registry.get("entityViews")).toBeUndefined();
   });

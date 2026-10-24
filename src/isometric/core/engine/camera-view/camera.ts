@@ -9,13 +9,15 @@ import {
   panCamera,
   zoomCameraAt,
 } from "../camera";
-import type { Camera, CameraLimits, ChunkCoord, GridPoint, IsoProjectionConfig, SceneCamera } from "../../types";
+import type { SceneCameraService } from "../scene";
+import type { Camera, CameraLimits, ChunkCoord, GridPoint, IsoProjectionConfig } from "../../types";
 
 /**
  * Creates the camera of `world` (the scene's world container, a render group, so moving it is a
  * GPU uniform and its children are not touched), whose views were placed with `projection`. `screen` is the renderer's screen rectangle,
  * read on every change so a resize is picked up. Culls with `Culler.shared` against the screen
- * grown by a margin, and only again when the zoom changes or the scene moved past that margin.
+ * grown by a margin, and only again when the zoom changes or the scene moved past that margin;
+ * with `cull` `false` it never culls, and every view is drawn (to measure what culling saves).
  */
 export function createSceneCamera(
   world: Container,
@@ -23,7 +25,8 @@ export function createSceneCamera(
   limits: CameraLimits,
   projection: IsoProjectionConfig,
   start?: Partial<Camera>,
-): SceneCamera {
+  cull = true,
+): SceneCameraService {
   let camera = createCamera(limits, start);
   let culledFor: Camera | undefined;
   let target: GridPoint | undefined;
@@ -34,7 +37,7 @@ export function createSceneCamera(
     const { x, y, scale } = getCameraTransform(camera, screen, projection);
     world.position.set(x, y);
     world.scale.set(scale);
-    if (force || needsCull(culledFor, camera, screen, projection)) {
+    if (cull && (force || needsCull(culledFor, camera, screen, projection))) {
       Culler.shared.cull(world, getCullRect(screen), false);
       culledFor = camera;
     }
@@ -60,6 +63,11 @@ export function createSceneCamera(
     },
     resize() {
       apply(true);
+    },
+    cullViews(views) {
+      if (!cull) return;
+      const rect = getCullRect(screen);
+      views.forEach(({ view }) => Culler.shared.cull(view, rect, false));
     },
     visibleChunks() {
       const { width, height } = screen;
