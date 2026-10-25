@@ -127,7 +127,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
   {
     id: "tree",
     textureSource: "/assets/tree/block.svg",
-    height: 1,
+    height: 2,
     spawnChance: 0.03,
     surface: "grass",
   },
@@ -149,21 +149,21 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
   {
     id: "tree_4",
     textureSource: "/assets/tree/block_4.svg",
-    height: 1,
+    height: 2,
     spawnChance: 0.03,
     surface: "grass",
   },
   {
     id: "tree_5",
     textureSource: "/assets/tree/block_5.svg",
-    height: 1,
+    height: 2,
     spawnChance: 0.03,
     surface: "grass",
   },
   {
     id: "tree_6",
     textureSource: "/assets/tree/block_6.svg",
-    height: 1,
+    height: 2,
     spawnChance: 0.03,
     surface: "grass",
   },

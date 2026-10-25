@@ -81,13 +81,15 @@ describe("ENTITY_CONFIG", () => {
     );
   });
 
-  it("declares the two-block-tall tree variants", () => {
-    const tallTrees = ENTITY_CONFIG.filter(
-      ({ textureSource }) => textureSource.startsWith("/assets/tree/") && readTiles(textureSource)[2] === 2,
-    );
+  // Content rule: no tree is shorter than two blocks.
+  it("keeps every tree at least two blocks tall", () => {
+    const trees = ENTITY_CONFIG.filter(({ textureSource }) => textureSource.startsWith("/assets/tree/"));
 
-    expect(tallTrees.map(({ id }) => id)).toEqual(expect.arrayContaining(["tree_3", "tree_7", "tree_8"]));
-    tallTrees.forEach(({ height }) => expect(height).toBe(2));
+    expect(trees.length).toBeGreaterThan(0);
+    trees.forEach(({ height, textureSource }) => {
+      expect(readTiles(textureSource)[2]).toBeGreaterThanOrEqual(2);
+      expect(height).toBe(readTiles(textureSource)[2]);
+    });
   });
 
   it("declares the large buildings between four and six blocks tall", () => {
@@ -141,7 +143,7 @@ describe("ENTITY_CONFIG", () => {
     expect(() => resolveFormation(definition.formation)).not.toThrow();
   });
 
-  it("groups the two-block-tall trees in groves of three", () => {
+  it("groups the pine, cypress and birch in groves of three", () => {
     const groves = ENTITY_CONFIG.filter(({ formation }) => formation !== undefined);
 
     expect(groves.map(({ id }) => id)).toEqual(expect.arrayContaining(["tree_3", "tree_7", "tree_8"]));
