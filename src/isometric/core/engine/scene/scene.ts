@@ -39,6 +39,14 @@ export const SCENE_LAYER = {
 export const CHUNKS_SHOWN_PER_FRAME = 1;
 
 /**
+ * Chunks out of view the scene hides per frame: hiding one takes its ~2 500 views out of the draw
+ * order and frees what its modules made, and walking with the zoom out a row of chunks leaves the
+ * view at once (16–26 ms in one frame, #44). The others wait, out of view and culled. A chunk whose
+ * ground the world unloaded is hidden at once.
+ */
+export const CHUNKS_HIDDEN_PER_FRAME = 1;
+
+/**
  * Where the camera of an unbounded world may go: all of the grid but a margin of chunks at its far
  * edges, so the chunks loaded around the camera always have keys.
  */
@@ -113,8 +121,9 @@ type ShownChunk = {
  * Each module draws its part of a chunk (`showChunk()`), and the chunk's views come and go
  * together. The chunks in view when the scene is built are all shown before the modules start;
  * after that, {@link CHUNKS_SHOWN_PER_FRAME} per frame, nearest first, each module drawing its part
- * in a frame of its own (no frame pays for a whole chunk), and a chunk is hidden once it is
- * neither in view nor next to a chunk in view, or its ground is no longer loaded.
+ * in a frame of its own (no frame pays for a whole chunk). A chunk is hidden once its ground is
+ * no longer loaded, or, {@link CHUNKS_HIDDEN_PER_FRAME} per frame, once it is neither in view nor
+ * next to a chunk in view.
  *
  * The world container is a render group (its tint and its transform are applied on the GPU) and
  * takes no pointer events. Views are kept sorted by depth and then by layer (`SCENE_LAYER`), never
@@ -310,9 +319,9 @@ export async function createScene(
     const inView = new Set(visible.map(({ cx, cy }) => chunkKey(cx, cy)));
     const nearView = ({ cx, cy }: ChunkCoord) =>
       [-1, 0, 1].some((dx) => [-1, 0, 1].some((dy) => inView.has(chunkKey(cx + dx, cy + dy))));
-    const gone = [...shown.values()].filter(
-      ({ chunk }) => !world.chunks.isReady(chunk.coord) || !nearView(chunk.coord),
-    );
+    const unready = [...shown.values()].filter(({ chunk }) => !world.chunks.isReady(chunk.coord));
+    const away = [...shown.values()].filter(({ chunk }) => world.chunks.isReady(chunk.coord) && !nearView(chunk.coord));
+    const gone = [...unready, ...away.slice(0, CHUNKS_HIDDEN_PER_FRAME)];
     if (gone.length > 0) {
       const start = now();
       gone.forEach(hideChunk);

@@ -12,7 +12,7 @@ import { CLOCK_PART } from "../time";
 import type { BuiltScene, SceneContext, SceneFrame, SceneModule, SceneModulePart, SceneView } from "./module";
 import type { ChunkCoord } from "../../types";
 import type { WorldChunk } from "../world";
-import { CHUNKS_SHOWN_PER_FRAME, SCENE_LAYER, UNBOUNDED_CAMERA_BOUNDS } from "./scene";
+import { CHUNKS_HIDDEN_PER_FRAME, CHUNKS_SHOWN_PER_FRAME, SCENE_LAYER, UNBOUNDED_CAMERA_BOUNDS } from "./scene";
 import { columnsOf, mountScene, resetHarness, TEST_TERRAIN, worldFrom } from "../flow-check/scene-harness";
 
 /** A module that records what the scene does with it. */
@@ -464,6 +464,26 @@ describe("createScene chunks", () => {
     scene.destroy();
   });
 
+  it("hides CHUNKS_HIDDEN_PER_FRAME chunks out of view per frame, the others staying until then", async () => {
+    const visible = { chunks: [0, 1, 2, 3].map((cx) => ({ cx, cy: 0 })) };
+    const { module: camera } = fakeCamera(visible);
+    const log: string[] = [];
+    const { ticker, root, scene } = await mountScene(strip(), [camera, chunkProbe(log)]);
+    log.length = 0;
+
+    expect(CHUNKS_HIDDEN_PER_FRAME).toBe(1);
+    visible.chunks = [{ cx: 3, cy: 0 }];
+    ticker.frame();
+    expect(log).toEqual(["hide 0"]);
+    expect(names(root.children)).toEqual(["chunk 3", "chunk 2", "chunk 1"]);
+    ticker.frame();
+    expect(log).toEqual(["hide 0", "hide 1"]);
+    ticker.frame();
+    expect(log).toEqual(["hide 0", "hide 1"]);
+    expect(names(root.children)).toEqual(["chunk 3", "chunk 2"]);
+    scene.destroy();
+  });
+
   it("times each step of a frame for a profiler: streaming, hiding, each module's part and update", async () => {
     const visible = { chunks: [0, 1].map((cx) => ({ cx, cy: 0 })) };
     const { module: camera } = fakeCamera(visible);
@@ -551,7 +571,8 @@ describe("createScene chunks", () => {
     const mounted = await mountScene(strip(), [camera, keeper]);
     scene.root = mounted.root;
 
-    visible.chunks = [{ cx: 3, cy: 0 }];
+    visible.chunks = [];
+    mounted.ticker.frame();
     mounted.ticker.frame();
 
     expect(given).toHaveBeenCalledTimes(1);

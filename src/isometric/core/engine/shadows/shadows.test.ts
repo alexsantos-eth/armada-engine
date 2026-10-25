@@ -704,9 +704,9 @@ describe("createShadows", () => {
       expect((first.value as { destroy: ReturnType<typeof vi.fn> }).destroy).toHaveBeenCalled();
       expect(receivedCount()).toBe(2);
 
+      // Out of view, hidden one per frame.
       visible.chunks = [];
-      ticker.frame();
-      expect(scene.shownChunks()).toEqual([]);
+      await frameUntil(ticker, () => expect(scene.shownChunks()).toEqual([]));
       expect(receivedCount()).toBe(0);
       vi.mocked(createReceivedShadows).mock.results.forEach(({ value }) =>
         expect((value as { destroy: ReturnType<typeof vi.fn> }).destroy).toHaveBeenCalled(),
