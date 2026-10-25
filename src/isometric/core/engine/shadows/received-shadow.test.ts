@@ -54,8 +54,8 @@ vi.mock("pixi.js", () => {
     public position = { set: vi.fn((x: number, y: number) => Object.assign(this, { x, y })) };
     public scale = { x: 1, y: 1, set: vi.fn((x: number, y = x) => Object.assign(this.scale, { x, y })) };
 
-    constructor(texture: Texture) {
-      this.texture = texture;
+    constructor(texture?: Texture) {
+      this.texture = texture as Texture;
     }
 
     set visible(value: boolean) {
@@ -67,8 +67,15 @@ vi.mock("pixi.js", () => {
     }
   }
 
+  class Matrix {
+    set(): this {
+      return this;
+    }
+  }
+
   return {
     Container,
+    Matrix,
     Rectangle,
     RenderTexture: {
       create: vi.fn((options: { width: number; height: number }) => ({
@@ -85,6 +92,7 @@ vi.mock("pixi.js", () => {
 import { Rectangle, RenderTexture, Sprite, Texture } from "pixi.js";
 import type { Silhouette } from "./silhouette";
 import {
+  createReceivedShadowRig,
   createReceivedShadows,
   RECEIVED_SHADOW_ATLAS_WIDTH,
   RECEIVED_SHADOW_BLEED,
@@ -136,6 +144,21 @@ const silhouetteOf = (
 
 const createRenderer = () => ({ render: vi.fn<(options: RenderCall) => void>() });
 
+/** The sprites a rig lends its draws, in the order it made them. */
+const spritesOf = (rig: ReturnType<typeof createReceivedShadowRig>) =>
+  (rig.casters.container as unknown as MockContainer).children as MockSprite[];
+
+/** Received shadows of `receivers`, drawn with a rig of their own. */
+const atlasOf = (
+  receivers: readonly ShadowReceiver[],
+  renderer = createRenderer(),
+  textures = createTexturePool(),
+  filters: unknown[] = [],
+) => {
+  const rig = createReceivedShadowRig(renderer as never, filters as never);
+  return { rig, renderer, textures, shadows: createReceivedShadows(receivers, rig, textures) };
+};
+
 const twoReceivers = (): ShadowReceiver[] => {
   const caster = silhouetteOf(0, 0, 20, 50, { x: 0, y: 0 });
   return [
@@ -144,10 +167,33 @@ const twoReceivers = (): ShadowReceiver[] => {
   ];
 };
 
+describe("createReceivedShadowRig", () => {
+  it("holds the casters with the given filters, then the eraser, in its root", () => {
+    const filters = [
+      { blur: true, padding: 3 },
+      { alpha: true, padding: 1 },
+    ];
+    const rig = createReceivedShadowRig(createRenderer() as never, filters as never);
+    const root = rig.root as unknown as MockContainer;
+
+    expect(root.children).toEqual([rig.casters.container, rig.eraser]);
+    expect((rig.casters.container as unknown as MockContainer).filters).toEqual(filters);
+    expect((rig.eraser as MockSprite).blendMode).toBe("erase");
+    expect(rig.padding).toBe(4);
+  });
+
+  it("destroys its root with the sprites, not their textures", () => {
+    const rig = createReceivedShadowRig(createRenderer() as never, []);
+
+    rig.destroy();
+
+    expect(rig.root.destroy).toHaveBeenCalledWith({ children: true });
+  });
+});
+
 describe("createReceivedShadows", () => {
   it("packs one padded square per receiver at RECEIVED_SHADOW_RESOLUTION, in one atlas", () => {
-    const renderer = createRenderer();
-    const shadows = createReceivedShadows(twoReceivers(), renderer as never, [], createTexturePool());
+    const { shadows } = atlasOf(twoReceivers());
     const frames = shadows.views.map(({ view }) => (view as Sprite).texture.frame);
 
     expect(frames).toEqual([
@@ -161,7 +207,7 @@ describe("createReceivedShadows", () => {
   it("starts a new row of squares when one would pass RECEIVED_SHADOW_ATLAS_WIDTH", () => {
     const wide = RECEIVED_SHADOW_ATLAS_WIDTH / (2 * RES);
     const receivers = [0, 1].map(() => ({ own: silhouetteOf(0, 0, wide, 20), casters: [] }));
-    const shadows = createReceivedShadows(receivers, createRenderer() as never, [], createTexturePool());
+    const { shadows } = atlasOf(receivers);
     const frames = shadows.views.map(({ view }) => (view as Sprite).texture.frame);
 
     expect(frames[1]).toMatchObject({ x: PAD, y: 2 * PAD + 20 * RES });
@@ -169,7 +215,7 @@ describe("createReceivedShadows", () => {
   });
 
   it("shows each receiver's square over its sprite, with its depth", () => {
-    const shadows = createReceivedShadows(twoReceivers(), createRenderer() as never, [], createTexturePool());
+    const { shadows } = atlasOf(twoReceivers());
     const [first] = shadows.views;
     const view = first.view as Sprite;
 
@@ -179,9 +225,8 @@ describe("createReceivedShadows", () => {
   });
 
   it("computes once a mask that is opaque everywhere but on the receivers", () => {
-    const renderer = createRenderer();
     const receivers = twoReceivers();
-    createReceivedShadows(receivers, renderer as never, [], createTexturePool());
+    const { renderer } = atlasOf(receivers);
     const [{ container, target, clearColor }] = renderer.render.mock.calls[0];
     const cutouts = container.children as MockSprite[];
 
@@ -194,51 +239,47 @@ describe("createReceivedShadows", () => {
     expect(container.destroy).toHaveBeenCalledWith({ children: true });
   });
 
-  it("draws the black casters with the given filters, then erases the mask, into the atlas", () => {
-    const renderer = createRenderer();
+  it("draws the rig's black casters, then erases its own mask, into the atlas", () => {
     const filters = [
       { blur: true, padding: 3 },
       { alpha: true, padding: 1 },
     ];
-    const shadows = createReceivedShadows(twoReceivers(), renderer as never, filters as never, createTexturePool());
+    const { rig, renderer, shadows } = atlasOf(twoReceivers(), createRenderer(), createTexturePool(), filters);
 
     shadows.draw(null);
     const { container, target, clear, clearColor } = renderer.render.mock.calls[1][0];
-    const [casters, erase] = container.children as [MockContainer, MockSprite];
+    const casters = rig.casters.container as unknown as MockContainer & { visible: boolean };
 
+    expect(container).toBe(rig.root);
     expect(target).toBe(shadows.atlas);
     expect({ clear, clearColor }).toEqual({ clear: true, clearColor: [0, 0, 0, 0] });
-    expect(casters).toBe(shadows.casters);
-    expect(casters.filters).toEqual(filters);
     // Inset by the filters' padding, which Pixi adds back: the filtered area is the atlas, no wider.
     expect(casters.filterArea).toEqual(new Rectangle(4, 4, shadows.atlas.width - 8, shadows.atlas.height - 8));
-    expect(erase.blendMode).toBe("erase");
-    expect(erase.texture).toBe(renderer.render.mock.calls[0][0].target);
-    // At night nothing is laid: no caster has a sprite yet.
+    expect(rig.eraser.texture).toBe(renderer.render.mock.calls[0][0].target);
+    // At night nothing is laid: no caster has a sprite yet, and the casters are hidden.
     expect(casters.children).toHaveLength(0);
+    expect(casters.visible).toBe(false);
   });
 
-  it("makes a caster's sprite the first time a draw shows it: black, over a pooled texture", () => {
-    const textures = createTexturePool();
-    const shadows = createReceivedShadows(twoReceivers(), createRenderer() as never, [], textures);
+  it("lends a black sprite and a pooled texture to each pair a draw shows, and takes the texture back", () => {
+    const { rig, textures, shadows } = atlasOf(twoReceivers());
     // Only the first receiver is shaded: the second caster lands far above its square.
     const offsetOf = vi.fn((_caster: unknown, receiver: { x: number }) => (receiver.x === 2 ? { x: 0, y: 0 } : null));
 
     shadows.draw(offsetOf);
     shadows.draw(offsetOf);
 
-    expect(shadows.casters.children).toHaveLength(1);
-    const [sprite] = shadows.casters.children as MockSprite[];
+    expect(spritesOf(rig)).toHaveLength(1);
+    const [sprite] = spritesOf(rig);
     expect(sprite.tint).toBe(0x000000);
     expect(sprite.texture.dynamic).toBe(true);
     expect(sprite.texture.source).toEqual({ id: "silhouette" });
-    expect(sprite.visibleWrites).toEqual([]);
+    expect(textures.size).toBe(1);
   });
 
   it("lays a caster on its receiver's square, moved by the offset and cropped around the square", () => {
-    const renderer = createRenderer();
     const receivers = twoReceivers();
-    const shadows = createReceivedShadows(receivers, renderer as never, [], createTexturePool());
+    const { rig, shadows } = atlasOf(receivers);
     const offsetOf = vi.fn(() => ({ x: -90, y: 25 }));
 
     shadows.draw(offsetOf);
@@ -250,65 +291,80 @@ describe("createReceivedShadows", () => {
     // In the atlas it starts at PAD − 180 texels, so it misses the square and its bleed: no sprite.
     const x = PAD + (10 - 100) * RES;
     const y = PAD + 15 * RES;
-    expect(shadows.casters.children).toHaveLength(0);
+    expect(spritesOf(rig)).toHaveLength(0);
 
     offsetOf.mockReturnValue({ x: 5, y: 25 });
     shadows.draw(offsetOf);
-    const [sprite] = shadows.casters.children as MockSprite[];
+    const [sprite] = spritesOf(rig);
     const { frame } = sprite.texture;
     // Now at (105, 15) px: x = PAD + 10 texels, cropped at the right and bottom of the square plus the bleed.
     const left = PAD + 5 * RES;
     const bottom = PAD + 40 * RES + RECEIVED_SHADOW_BLEED;
     expect(x).toBeLessThan(PAD - RECEIVED_SHADOW_BLEED - 20 * RES);
-    expect(sprite.visibleWrites).toEqual([]);
     expect(sprite.position.set).toHaveBeenLastCalledWith(left, y);
     expect(sprite.scale).toMatchObject({ x: (20 * RES) / 40, y: (40 * RES) / 80 });
     expect(frame.x).toBeCloseTo(8);
     expect(frame.y).toBeCloseTo(4);
     expect(frame.width).toBeCloseTo(((PAD + 20 * RES + RECEIVED_SHADOW_BLEED - left) / (20 * RES)) * 40);
     expect(frame.height).toBeCloseTo(((bottom - y) / (40 * RES)) * 80);
-    expect(sprite.texture.update).toHaveBeenCalled();
   });
 
   it("crops the side and top of a caster that runs past the square", () => {
-    const shadows = createReceivedShadows(twoReceivers(), createRenderer() as never, [], createTexturePool());
+    const { rig, shadows } = atlasOf(twoReceivers());
 
     // At (90, −20) px: 10 px left of the square, 20 px above it.
     shadows.draw(() => ({ x: -10, y: -10 }));
-    const [sprite] = shadows.casters.children as MockSprite[];
+    const [sprite] = spritesOf(rig);
 
     expect(sprite.position.set).toHaveBeenLastCalledWith(PAD - RECEIVED_SHADOW_BLEED, PAD - RECEIVED_SHADOW_BLEED);
     expect(sprite.texture.frame.x).toBeCloseTo(8 + ((10 * RES - RECEIVED_SHADOW_BLEED) / (20 * RES)) * 40);
     expect(sprite.texture.frame.y).toBeCloseTo(4 + ((20 * RES - RECEIVED_SHADOW_BLEED) / (40 * RES)) * 80);
   });
 
-  it("hides a caster that does not shade its receiver, writing visibility only on change", () => {
-    const shadows = createReceivedShadows(twoReceivers(), createRenderer() as never, [], createTexturePool());
+  it("hides the sprites a draw does not use, writing visibility only on change", () => {
+    const { rig, shadows } = atlasOf(twoReceivers());
 
     shadows.draw(() => ({ x: 0, y: 0 }));
-    const [sprite] = shadows.casters.children as MockSprite[];
+    const [sprite] = spritesOf(rig);
     shadows.draw(() => ({ x: 0, y: 0 }));
     shadows.draw(() => null);
     shadows.draw(() => null);
     shadows.draw(() => ({ x: 0, y: 0 }));
 
-    expect(sprite.visibleWrites).toEqual([false, true]);
+    // Made hidden, then shown by the first draw.
+    expect(sprite.visibleWrites).toEqual([false, true, false, true]);
   });
 
-  it("destroys the atlas, the mask and the casters, and gives the caster textures back to the pool", () => {
+  it("lends the same sprites and textures to every atlas of a rig", () => {
     const renderer = createRenderer();
     const textures = createTexturePool();
-    const shadows = createReceivedShadows(twoReceivers(), renderer as never, [], textures);
+    const rig = createReceivedShadowRig(renderer as never, []);
+    const receivers = twoReceivers();
+    const first = createReceivedShadows(receivers, rig, textures);
+    const second = createReceivedShadows(receivers, rig, textures);
+
+    first.draw(() => ({ x: 0, y: 0 }));
+    const sprites = [...spritesOf(rig)];
+    const lent = sprites.map(({ texture }) => texture);
+    second.draw(() => ({ x: 0, y: 0 }));
+
+    expect(sprites).toHaveLength(2);
+    expect(spritesOf(rig)).toEqual(sprites);
+    spritesOf(rig).forEach(({ texture }) => expect(lent).toContain(texture));
+    expect(textures.size).toBe(2);
+    expect(renderer.render.mock.calls.at(-1)?.[0].target).toBe(second.atlas);
+  });
+
+  it("destroys the atlas and the mask, not the rig nor the textures it lent", () => {
+    const { rig, renderer, textures, shadows } = atlasOf(twoReceivers());
     shadows.draw(() => ({ x: 0, y: 0 }));
-    const root = renderer.render.mock.calls[1][0].container;
     const mask = renderer.render.mock.calls[0][0].target as { destroy: ReturnType<typeof vi.fn> };
-    const casterTextures = (shadows.casters.children as MockSprite[]).map(({ texture }) => texture);
+    const lent = spritesOf(rig).map(({ texture }) => texture);
 
     shadows.destroy();
 
-    expect(root.destroy).toHaveBeenCalledWith({ children: true });
-    casterTextures.forEach((texture) => expect(texture.destroy).not.toHaveBeenCalled());
-    expect(casterTextures).toHaveLength(2);
+    expect(rig.root.destroy).not.toHaveBeenCalled();
+    lent.forEach((texture) => expect(texture.destroy).not.toHaveBeenCalled());
     expect(textures.size).toBe(2);
     shadows.views.forEach(({ view }) => expect((view as Sprite).texture.destroy).toHaveBeenCalled());
     expect(mask.destroy).toHaveBeenCalledWith(true);
@@ -320,25 +376,5 @@ describe("createReceivedShadows", () => {
         ((view as Sprite).texture.destroy as unknown as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0],
       ).toBeGreaterThan(atlasOrder),
     );
-  });
-
-  it("reuses the caster textures a destroyed set gave back", () => {
-    const textures = createTexturePool();
-    const receivers = twoReceivers();
-    const first = createReceivedShadows(receivers, createRenderer() as never, [], textures);
-    first.draw(() => ({ x: 0, y: 0 }));
-    const given = (first.casters.children as MockSprite[]).map(({ texture }) => texture);
-    first.destroy();
-    // A set never drawn shaded nothing: it took no texture and gives none back.
-    createReceivedShadows(receivers, createRenderer() as never, [], textures).destroy();
-    expect(textures.size).toBe(given.length);
-
-    const second = createReceivedShadows(receivers, createRenderer() as never, [], textures);
-    second.draw(() => ({ x: 0, y: 0 }));
-
-    const reused = (second.casters.children as MockSprite[]).map(({ texture }) => texture);
-    expect(reused).toHaveLength(given.length);
-    reused.forEach((texture) => expect(given).toContain(texture));
-    expect(textures.size).toBe(0);
   });
 });

@@ -1,4 +1,4 @@
-import { Matrix, Rectangle, Sprite, Texture } from "pixi.js";
+import { Container, type Filter, Matrix, Rectangle, Sprite, Texture } from "pixi.js";
 import type { Affine2D, AffineTarget, EntityLengthAxis, IsoScreenBox, TileMetrics } from "../../types";
 import { type DepthView, getFootprintSliceTiles, NEW_SPRITES, type SpriteSource } from "../render";
 
@@ -72,8 +72,8 @@ export function createGroundShadowView(
 
 /**
  * A caster's silhouette for the shadow textures: one of its sprites, cropped at its foot. Plain
- * data over shared textures, so it can be kept and paired freely; what draws it is a black
- * sprite of its own per shadow texture (`createSilhouetteSprite()`).
+ * data over shared textures, so it can be kept and paired freely; what draws it is one of the
+ * black sprites a draw borrows (`createCasterSprites()`).
  */
 export type Silhouette = {
   /** The sprite's texture cropped at its foot: what the shadow textures draw, in black. */
@@ -146,11 +146,57 @@ export function createSilhouettes(
   });
 }
 
-/** A black sprite of `silhouette`, to draw it into one shadow texture (never into the scene). */
-export function createSilhouetteSprite(silhouette: Silhouette): Sprite {
-  const sprite = new Sprite(silhouette.texture);
-  sprite.tint = 0x000000;
-  return sprite;
+/**
+ * Black sprites that draw silhouettes into shadow textures, shared by every texture a module draws
+ * (#97): a draw lays its casters on the first sprites (`sprite()`), shows only those (`show()`) and
+ * renders, so the module keeps as many sprites as its largest draw needs instead of one per caster
+ * of every texture. A Pixi sprite is some forty objects for the garbage collector to walk, and a
+ * sprite per caster of every map of the shown chunks was over a third of the sprites of the game.
+ */
+export type CasterSprites = {
+  /** Holds the sprites, with the shadow filters: the container a draw renders holds it. */
+  readonly container: Container;
+  /** The draw's sprite number `index` (counted from 0, one after another), showing `texture`. */
+  sprite(index: number, texture: Texture): Sprite;
+  /**
+   * Shows the first `count` sprites only, and the container only when it holds some: an empty
+   * container would still run its filters. Visibility is written only where it changes.
+   */
+  show(count: number): void;
+  /** Destroys the container and its sprites, not their textures. */
+  destroy(): void;
+};
+
+/** Creates {@link CasterSprites} drawn with `filters`; it makes its sprites as draws need them. */
+export function createCasterSprites(filters: readonly Filter[]): CasterSprites {
+  const container = new Container();
+  container.filters = [...filters];
+  const sprites: Sprite[] = [];
+  // Sprites `[0, shown)` are visible, the others hidden.
+  let shown = 0;
+  return {
+    container,
+    sprite(index, texture) {
+      const kept = sprites[index];
+      if (kept) {
+        kept.texture = texture;
+        return kept;
+      }
+      const sprite = new Sprite(texture);
+      sprite.tint = 0x000000;
+      sprite.visible = false;
+      sprites.push(sprite);
+      container.addChild(sprite);
+      return sprite;
+    },
+    show(count) {
+      for (let index = count; index < shown; index += 1) sprites[index].visible = false;
+      for (let index = shown; index < count; index += 1) sprites[index].visible = true;
+      shown = count;
+      if (container.visible !== count > 0) container.visible = count > 0;
+    },
+    destroy: () => container.destroy({ children: true }),
+  };
 }
 
 /**
@@ -185,9 +231,8 @@ export function getSilhouetteMapMatrix(
 }
 
 /**
- * Places `sprite`, a sprite of `silhouette` (`createSilhouetteSprite()`), in a shadow map (see
- * {@link getSilhouetteMapMatrix}). Its visibility is left alone: changing `visible` marks the
- * render group's structure as changed and rebuilds all its draw instructions.
+ * Places `sprite`, a sprite of `silhouette` (`CasterSprites.sprite()`), in a shadow map (see
+ * {@link getSilhouetteMapMatrix}). Its visibility is left alone: `CasterSprites.show()` decides it.
  */
 export function placeSilhouette(
   sprite: Sprite,

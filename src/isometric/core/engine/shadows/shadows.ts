@@ -24,12 +24,17 @@ import { CLOCK_PART, getSunState } from "../time";
 import type { WorldChunk } from "../world";
 import type { AffineTarget, ChunkKey, OcclusionTerrain, ShadowProjection, WorldRect } from "../../types";
 import { pairShadows } from "./pairs";
-import { createReceivedShadows, type ReceivedShadows, type ShadowReceiver } from "./received-shadow";
+import {
+  createReceivedShadowRig,
+  createReceivedShadows,
+  type ReceivedShadows,
+  type ShadowReceiver,
+} from "./received-shadow";
 import { createTexturePool } from "./texture-pool";
 import {
+  createCasterSprites,
   createGroundShadowView,
   createSilhouettes,
-  createSilhouetteSprite,
   placeSilhouette,
   SHADOW_BLUR,
   SHADOW_MAP_PIXELS_PER_TILE,
@@ -67,9 +72,10 @@ export type ShadowGathering = "maps" | "pairs" | "received";
 type ShadowTargetKind = Exclude<ShadowGathering, "pairs">;
 
 /**
- * One level of a chunk's shadow map: the fixed layers its columns' squares are drawn from. The
- * level is drawn whole into the module's scratch texture, then copied into the chunk's map over
- * its own columns only, so one map holds every level (#53).
+ * One level of a chunk's shadow map, as data: the level is drawn whole into the module's scratch
+ * texture (the chunk's ambient occlusion, then the casters, then the other levels' columns
+ * erased), then copied into the chunk's map over its own columns only, so one map holds every
+ * level (#53). Every level of every chunk is drawn with the same sprites, one draw after another.
  */
 type ShadowLayer = {
   readonly level: number;
@@ -78,29 +84,30 @@ type ShadowLayer = {
    * caster whose shadow cannot reach it is left out of the map.
    */
   readonly bounds: WorldRect;
-  /**
-   * Drawn into the scratch texture: the chunk's ambient occlusion at the bottom, then the casters
-   * (if any reach it), then the other levels' columns erased.
-   */
-  readonly root: Container;
-  /** Drawn into the chunk's map: this level's columns erased, then the scratch texture over them. */
-  readonly copy: Container;
-  /** The scratch texture of its map's size. */
-  readonly scratch: RenderTexture;
-  /** Its two masks' textures: its own columns, and the other levels'. */
-  readonly masks: readonly Texture[];
-  /** Silhouettes of the entities on this level or higher, with the shared filters. */
-  casters?: Container;
-  /** Those that may reach the map, each with its sprite in `casters`. */
-  silhouettes: readonly { silhouette: Silhouette; lift: number; sprite: Sprite }[];
+  /** Mask of its own columns: erased in the map before the copy. */
+  readonly own: Texture;
+  /** Mask of the other levels' columns: erased in the scratch texture. */
+  readonly others: Texture;
+  /** Silhouettes of the entities on this level or higher that may reach the map. */
+  casters: readonly Silhouette[];
+  /** Blocks each of `casters` stands above the level. */
+  lifts: readonly number[];
+};
+
+/** A texture levels are drawn whole into, shared by the maps of its size. */
+type Scratch = {
+  readonly texture: RenderTexture;
+  /** The whole texture, the casters' filter area: known up front, so Pixi never measures them. */
+  readonly area: Rectangle;
 };
 
 /** Something drawn from the sun into a texture: a shadow map, or the shadows entities receive. */
 type ShadowTarget = {
   /** What it is, for the profiled scene: a shadow map (`maps`) or an atlas (`received`). */
   readonly kind: ShadowTargetKind;
-  /** Its casters, hidden at night (none when nothing casts on it). */
-  readonly casters?: Container;
+  /** Whether anything casts on it: only then do the sun's moves change it. */
+  readonly casts: boolean;
+  /** Draws it, with the casters laid by `sun` (none at night). */
   readonly draw: (sun: ShadowProjection | null) => void;
   /** Tick it was last drawn for. */
   drawnTick: number;
@@ -123,6 +130,10 @@ type ShadowChunk = {
   readonly chunk: WorldChunk;
   /** Its shadow map: every column's square shows the shadows of its own level. */
   readonly map: RenderTexture;
+  /** Where its levels are drawn whole, before each is copied into the map. */
+  readonly scratch: Scratch;
+  /** Its ambient occlusion, at the bottom of every level. */
+  readonly occlusion: Texture;
   readonly layers: readonly ShadowLayer[];
   received?: { readonly shadows: ReceivedShadows; readonly views: readonly SceneView[]; readonly target: ShadowTarget };
   /** The shadows its entities' sprites receive, paired on the step before their atlas is built. */
@@ -163,10 +174,12 @@ const RECEIVER_SPAN = 1;
  * gather their casters again, in three steps (maps, pairs, received shadows): all of them when the
  * scene is built, then {@link SHADOW_GATHERS_PER_FRAME} step per frame, the chunks never
  * gathered first. A map only takes the casters whose shadow may reach a column of its level
- * (only those squares of it show), and each entity view's silhouettes are made once. The caster
- * textures of the received shadows are pooled (`createTexturePool()`), never destroyed one by
- * one. The casters come from the `entityViews` service: without it, the maps hold the occlusion
- * only.
+ * (only those squares of it show), and each entity view's silhouettes are made once. Every map is
+ * drawn with the same sprites (`createCasterSprites()`), and every atlas with those of its rig
+ * (`createReceivedShadowRig()`), one draw after another: the module keeps the sprites of its
+ * largest draw, not one per caster of every shown chunk (#97). The caster textures of the received
+ * shadows are pooled (`createTexturePool()`), never destroyed one by one. The casters come from
+ * the `entityViews` service: without it, the maps hold the occlusion only.
  */
 export function createShadows(): SceneModule {
   return {
@@ -176,12 +189,12 @@ export function createShadows(): SceneModule {
       // Where each level is drawn whole before its columns are copied into its chunk's map: one per
       // size of map (all chunks but those cut by the edge of a bounded world share one), shared by
       // the chunks, since the draws run one after the other.
-      const scratches = new Map<string, RenderTexture>();
+      const scratches = new Map<string, Scratch>();
       const scratchFor = ({ width, height }: RenderTexture) => {
         const size = `${width}×${height}`;
         const existing = scratches.get(size);
         if (existing) return existing;
-        const made = RenderTexture.create({ width, height });
+        const made = { texture: RenderTexture.create({ width, height }), area: new Rectangle(0, 0, width, height) };
         scratches.set(size, made);
         return made;
       };
@@ -189,7 +202,28 @@ export function createShadows(): SceneModule {
       // with the sun's opacity applied to each group as a whole so overlaps do not darken twice.
       const blurFilter = new BlurFilter({ strength: SHADOW_BLUR, quality: 2 });
       const alphaFilter = new AlphaFilter({ alpha: 1 });
-      // Caster textures of the received shadows, reused as chunks gather again.
+      // What every level of every map is drawn with, one after another: into the scratch, the
+      // chunk's occlusion, the casters and the eraser of the other levels' columns; then, into the
+      // map, the eraser of the level's own columns and the scratch over them.
+      const casters = createCasterSprites([blurFilter, alphaFilter]);
+      const occlusionSprite = new Sprite();
+      occlusionSprite.scale.set(pixelsPerTile / AO_PIXELS_PER_TILE);
+      const eraser = () => {
+        const sprite = new Sprite();
+        sprite.blendMode = "erase";
+        sprite.scale.set(pixelsPerTile);
+        return sprite;
+      };
+      const othersEraser = eraser();
+      const ownEraser = eraser();
+      const scratchSprite = new Sprite();
+      const levelRoot = new Container();
+      levelRoot.addChild(occlusionSprite, casters.container, othersEraser);
+      const copyRoot = new Container();
+      copyRoot.addChild(ownEraser, scratchSprite);
+      // The atlases of received shadows have their own, with the same filters.
+      const receivedRig = createReceivedShadowRig(app.renderer, [blurFilter, alphaFilter]);
+      // Caster textures of the received shadows, reused from draw to draw.
       const textures = createTexturePool();
       // Sprites of the ground shadows, a chunk's given back when it is hidden for the next one.
       const groundSprites = createSpritePool();
@@ -237,30 +271,6 @@ export function createShadows(): SceneModule {
         silhouettesByView.set(view, made);
         return made;
       };
-      // Sprites of silhouettes no map draws any more, reused by the next gathering instead of
-      // destroyed and made again: a chunk's maps hold thousands.
-      const spares: Sprite[] = [];
-      const spriteFor = (silhouette: Silhouette) => {
-        const sprite = spares.pop();
-        if (!sprite) return createSilhouetteSprite(silhouette);
-        sprite.texture = silhouette.texture;
-        return sprite;
-      };
-      /** A layer's container of silhouettes, with the shared filters, on top of its occlusion. */
-      const castersFor = (layer: ShadowLayer) => {
-        const casters = new Container();
-        casters.filters = [blurFilter, alphaFilter];
-        // The whole map: known up front, so Pixi does not measure the silhouettes on every redraw.
-        casters.filterArea = new Rectangle(0, 0, layer.scratch.width, layer.scratch.height);
-        // Over the occlusion, under the eraser of the other levels.
-        layer.root.addChildAt(casters, 1);
-        layer.casters = casters;
-        return casters;
-      };
-      /** Takes the silhouette sprites out of a map's layer, to be reused. */
-      const spareCasters = (layer: ShadowLayer) => {
-        layer.casters?.removeChildren().forEach((sprite) => spares.push(sprite as Sprite));
-      };
       /**
        * Whether `silhouette`'s shadow may fall on `area` (or its blur spill into it), `lift` blocks
        * above it, with the sun as low as shadows get: within its reach, plus how far it spreads
@@ -279,16 +289,29 @@ export function createShadows(): SceneModule {
       // of them, and an object for each one was most of the garbage of a scene at rest.
       const ground: AffineTarget = { a: 0, b: 0, c: 0, d: 0, tx: 0, ty: 0 };
       const offset = { x: 0, y: 0 };
-      const drawLayer = (layer: ShadowLayer, area: WorldRect, map: RenderTexture, light: ShadowProjection | null) => {
-        if (light && layer.casters) {
+      const drawLayer = (shadow: ShadowChunk, layer: ShadowLayer, area: WorldRect, light: ShadowProjection | null) => {
+        const shown = light ? layer.casters.length : 0;
+        if (light) {
           const mapOrigin = { x: area.minX - 0.5, y: area.minY - 0.5 };
-          layer.silhouettes.forEach(({ silhouette, lift, sprite }) => {
-            getSilhouetteMatrix(light, silhouette.worldFoot, lift, metrics, ground);
-            placeSilhouette(sprite, silhouette, ground, mapOrigin, pixelsPerTile);
-          });
+          for (let index = 0; index < shown; index += 1) {
+            const silhouette = layer.casters[index];
+            getSilhouetteMatrix(light, silhouette.worldFoot, layer.lifts[index], metrics, ground);
+            placeSilhouette(casters.sprite(index, silhouette.texture), silhouette, ground, mapOrigin, pixelsPerTile);
+          }
         }
-        app.renderer.render({ container: layer.root, target: layer.scratch, clear: true, clearColor: [0, 0, 0, 0] });
-        app.renderer.render({ container: layer.copy, target: map, clear: false });
+        casters.show(shown);
+        casters.container.filterArea = shadow.scratch.area;
+        occlusionSprite.texture = shadow.occlusion;
+        othersEraser.texture = layer.others;
+        ownEraser.texture = layer.own;
+        scratchSprite.texture = shadow.scratch.texture;
+        app.renderer.render({
+          container: levelRoot,
+          target: shadow.scratch.texture,
+          clear: true,
+          clearColor: [0, 0, 0, 0],
+        });
+        app.renderer.render({ container: copyRoot, target: shadow.map, clear: false });
       };
       const drawTarget = (target: ShadowTarget, light: ShadowProjection | null) => {
         if (light) alphaFilter.alpha = light.alpha;
@@ -299,33 +322,28 @@ export function createShadows(): SceneModule {
 
       /** Gathers the casters of a chunk's maps again; returns the maps, to draw. */
       const gatherMaps = (shadow: ShadowChunk): ShadowTarget[] => {
-        const { map } = shadow;
         const area = areaOf(shadow.chunk.rect);
         const { near } = nearbyViews(shadow.chunk);
         shadow.maps = shadow.layers.map((layer) => {
-          spareCasters(layer);
           // Casters standing on this level or higher (shadows onto higher ground are not drawn)
           // whose shadow may reach a column of the level.
-          layer.silhouettes = near
-            .filter(({ entity }) => entity.box.elevation >= layer.level)
-            .flatMap((caster) => {
-              const lift = caster.entity.box.elevation - layer.level;
-              return silhouettesOf(caster)
-                .filter((silhouette) => reaches(silhouette, lift, layer.bounds))
-                .map((silhouette) => ({ silhouette, lift, sprite: spriteFor(silhouette) }));
+          const reaching: Silhouette[] = [];
+          const lifts: number[] = [];
+          near.forEach((caster) => {
+            const lift = caster.entity.box.elevation - layer.level;
+            if (lift < 0) return;
+            silhouettesOf(caster).forEach((silhouette) => {
+              if (!reaches(silhouette, lift, layer.bounds)) return;
+              reaching.push(silhouette);
+              lifts.push(lift);
             });
-          if (layer.silhouettes.length === 0) {
-            // An empty container would still run its filters on every redraw.
-            layer.casters?.destroy();
-            layer.casters = undefined;
-          } else {
-            const casters = layer.casters ?? castersFor(layer);
-            layer.silhouettes.forEach(({ sprite }) => casters.addChild(sprite));
-          }
+          });
+          layer.casters = reaching;
+          layer.lifts = lifts;
           return {
             kind: "maps",
-            casters: layer.casters,
-            draw: (light) => drawLayer(layer, area, map, light),
+            casts: reaching.length > 0,
+            draw: (light) => drawLayer(shadow, layer, area, light),
             drawnTick: tick,
           };
         });
@@ -361,12 +379,12 @@ export function createShadows(): SceneModule {
         const receivers = shadow.pairs as readonly ShadowReceiver[];
         shadow.pairs = undefined;
         if (receivers.length === 0) return [];
-        const shadows = createReceivedShadows(receivers, app.renderer, [blurFilter, alphaFilter], textures);
+        const shadows = createReceivedShadows(receivers, receivedRig, textures);
         const views = shadows.views.map((view) => ({ ...view, layer: SCENE_LAYER.onObject }));
         scene.add(views);
         const target: ShadowTarget = {
           kind: "received",
-          casters: shadows.casters,
+          casts: true,
           draw: (light) =>
             shadows.draw(
               light &&
@@ -403,8 +421,8 @@ export function createShadows(): SceneModule {
         });
 
       /**
-       * A mask of the columns of `area`, a texel per column scaled up to the map's squares: opaque
-       * where `holds` says (fully transparent elsewhere), to erase with.
+       * A mask of the columns of `area`, a texel per column (scaled up to the map's squares when
+       * drawn): opaque where `holds` says (fully transparent elsewhere), to erase with.
        */
       const columnMask = (area: WorldRect, holds: (level: number | undefined) => boolean) => {
         const width = area.maxX - area.minX + 1;
@@ -415,13 +433,7 @@ export function createShadows(): SceneModule {
             if (holds(columnAt.get(x, y)?.elevation)) alpha[((y - area.minY) * width + x - area.minX) * 4 + 3] = 255;
           }
         }
-        const texture = new Texture({
-          source: new BufferImageSource({ resource: alpha, width, height, scaleMode: "nearest" }),
-        });
-        const sprite = new Sprite(texture);
-        sprite.blendMode = "erase";
-        sprite.scale.set(pixelsPerTile);
-        return sprite;
+        return new Texture({ source: new BufferImageSource({ resource: alpha, width, height, scaleMode: "nearest" }) });
       };
 
       const showChunk = (chunk: WorldChunk) => {
@@ -477,20 +489,25 @@ export function createShadows(): SceneModule {
         });
         // The masks cover the margin too (the neighbours' columns, at their own level): the edge
         // texels of a square blend with the next square's, so the map has no seam at chunk edges.
-        const scratch = scratchFor(map);
-        const layers: ShadowLayer[] = [...bounds].map(([level, rect]) => {
-          const occlusionSprite = new Sprite(occlusion);
-          occlusionSprite.scale.set(pixelsPerTile / AO_PIXELS_PER_TILE);
-          const others = columnMask(area, (other) => other !== level);
-          const own = columnMask(area, (other) => other === level);
-          const root = new Container();
-          root.addChild(occlusionSprite, others);
-          const copy = new Container();
-          copy.addChild(own, new Sprite(scratch));
-          return { level, bounds: rect, root, copy, scratch, masks: [own.texture, others.texture], silhouettes: [] };
-        });
+        const layers: ShadowLayer[] = [...bounds].map(([level, rect]) => ({
+          level,
+          bounds: rect,
+          own: columnMask(area, (other) => other === level),
+          others: columnMask(area, (other) => other !== level),
+          casters: [],
+          lifts: [],
+        }));
 
-        const shadow: ShadowChunk = { chunk, map, layers, maps: [], gathering: "maps", gathered: false };
+        const shadow: ShadowChunk = {
+          chunk,
+          map,
+          scratch: scratchFor(map),
+          occlusion,
+          layers,
+          maps: [],
+          gathering: "maps",
+          gathered: false,
+        };
         chunks.set(chunk.key, shadow);
         touch(chunk);
         return {
@@ -504,12 +521,9 @@ export function createShadows(): SceneModule {
               shadow.received.shadows.destroy();
               scene.remove(shadow.received.views);
             }
-            layers.forEach((layer) => {
-              spareCasters(layer);
-              // The masks' textures are the layer's own; the occlusion and the scratch are shared.
-              layer.masks.forEach((mask) => mask.destroy(true));
-              layer.root.destroy({ children: true });
-              layer.copy.destroy({ children: true });
+            layers.forEach(({ own, others }) => {
+              own.destroy(true);
+              others.destroy(true);
             });
             occlusion.destroy(true);
             // Its views' textures go with the map's source.
@@ -537,14 +551,10 @@ export function createShadows(): SceneModule {
         const turned = isDay !== daytime;
         daytime = isDay;
         const targets = shadows.flatMap(targetsOf);
-        (building ? targets : fresh).forEach((target) => {
-          if (target.casters) target.casters.visible = isDay;
-          drawTarget(target, sun);
-        });
+        (building ? targets : fresh).forEach((target) => drawTarget(target, sun));
         // At sunrise and at sunset, every map and atlas again (casters only by day), a few per frame.
         if (turned && !building) {
           targets.forEach((target) => {
-            if (target.casters) target.casters.visible = isDay;
             target.turning = true;
           });
         }
@@ -563,7 +573,7 @@ export function createShadows(): SceneModule {
         let stalestAge = SHADOW_REFRESH_TICKS - 1;
         targets.forEach((target) => {
           const age = Math.abs(now - target.drawnTick);
-          if (target.casters && age > stalestAge) {
+          if (target.casts && age > stalestAge) {
             stalest = target;
             stalestAge = age;
           }
@@ -579,9 +589,14 @@ export function createShadows(): SceneModule {
         },
         update: ({ tick: now }) => update(now),
         destroy: () => {
-          spares.forEach((sprite) => sprite.destroy());
+          // The caster sprites with their containers and filters; their textures are the entities' and the chunks'.
+          levelRoot.destroy({ children: true });
+          copyRoot.destroy({ children: true });
+          receivedRig.destroy();
+          blurFilter.destroy();
+          alphaFilter.destroy();
           groundSprites.destroy();
-          scratches.forEach((scratch) => scratch.destroy(true));
+          scratches.forEach(({ texture }) => texture.destroy(true));
         },
       };
     },

@@ -55,7 +55,7 @@ vi.mock("pixi.js", () => {
     public width = 0;
     public height = 0;
     public tint = 0xffffff;
-    public visible = true;
+    public visibleWrites: boolean[] = [];
     public alpha = 1;
     public anchor = {
       x: 0,
@@ -66,25 +66,53 @@ vi.mock("pixi.js", () => {
       },
     };
     public setFromMatrix = vi.fn();
+    public destroy = vi.fn();
 
     constructor(texture: Texture) {
       this.texture = texture;
+    }
+
+    set visible(value: boolean) {
+      this.visibleWrites.push(value);
+    }
+
+    get visible(): boolean {
+      return this.visibleWrites.at(-1) ?? true;
+    }
+  }
+
+  class Container {
+    public children: unknown[] = [];
+    public filters: unknown[] | undefined;
+    public visibleWrites: boolean[] = [];
+    public destroy = vi.fn();
+
+    addChild(...children: unknown[]): void {
+      this.children.push(...children);
+    }
+
+    set visible(value: boolean) {
+      this.visibleWrites.push(value);
+    }
+
+    get visible(): boolean {
+      return this.visibleWrites.at(-1) ?? true;
     }
   }
 
   class Graphics {}
 
-  return { Graphics, Matrix, Rectangle, Sprite, Texture };
+  return { Container, Graphics, Matrix, Rectangle, Sprite, Texture };
 });
 
-import { Graphics, Rectangle, Sprite, Texture } from "pixi.js";
+import { type Container, Graphics, Rectangle, Sprite, Texture } from "pixi.js";
 import type { Affine2D } from "../../types";
 import { Box } from "../terrain";
 import {
   composeAffine,
+  createCasterSprites,
   createGroundShadowView,
   createSilhouettes,
-  createSilhouetteSprite,
   getGroundShadowMatrix,
   getSilhouetteMapMatrix,
   placeSilhouette,
@@ -244,18 +272,67 @@ describe("createSilhouettes", () => {
   });
 });
 
-describe("createSilhouetteSprite", () => {
-  it("draws the silhouette's texture in black", () => {
-    const [silhouette] = createSilhouettes(
-      [{ view: placedSprite(texture(64, 80), 200, 100, 40, 40), depth: 0 }],
-      entityBox(3, 4, 200, 130),
-      METRICS,
-    );
-    const sprite = createSilhouetteSprite(silhouette);
+describe("createCasterSprites", () => {
+  type MockSprite = Sprite & { visibleWrites: boolean[] };
+  type MockContainer = Container & { children: MockSprite[]; visibleWrites: boolean[]; filters: unknown[] };
+  const first = texture(10, 10);
+  const second = texture(20, 20);
 
-    expect(sprite.texture).toBe(silhouette.texture);
+  it("holds its sprites in one container, with the given filters, hidden until a draw shows some", () => {
+    const filters = [{ blur: true }, { alpha: true }];
+    const casters = createCasterSprites(filters as never);
+    const container = casters.container as MockContainer;
+
+    expect(container.filters).toEqual(filters);
+    expect(container.filters).not.toBe(filters);
+    expect(container.children).toHaveLength(0);
+    casters.show(0);
+    expect(container.visibleWrites).toEqual([false]);
+  });
+
+  it("makes a black sprite the first time a draw needs it, and lends the same one to later draws", () => {
+    const casters = createCasterSprites([]);
+    const container = casters.container as MockContainer;
+    const sprite = casters.sprite(0, first) as MockSprite;
+
+    expect(sprite.texture).toBe(first);
     expect(sprite.tint).toBe(0x000000);
-    expect(createSilhouetteSprite(silhouette)).not.toBe(sprite);
+    expect(container.children).toEqual([sprite]);
+    expect(casters.sprite(1, second)).not.toBe(sprite);
+    // The next draw: the same sprites, showing its own textures.
+    expect(casters.sprite(0, second)).toBe(sprite);
+    expect(sprite.texture).toBe(second);
+    expect(container.children).toHaveLength(2);
+  });
+
+  it("shows only the sprites of the draw, writing visibility only where it changes", () => {
+    const casters = createCasterSprites([]);
+    const container = casters.container as MockContainer;
+    const sprites = [0, 1, 2].map((index) => casters.sprite(index, first) as MockSprite);
+    casters.show(3);
+    expect(sprites.map(({ visible }) => visible)).toEqual([true, true, true]);
+    expect(container.visibleWrites).toEqual([]);
+
+    casters.show(1);
+    expect(sprites.map(({ visible }) => visible)).toEqual([true, false, false]);
+    casters.show(0);
+    expect(container.visibleWrites).toEqual([false]);
+    casters.show(2);
+    expect(sprites.map(({ visibleWrites }) => visibleWrites)).toEqual([
+      [false, true, false, true],
+      [false, true, false, true],
+      [false, true, false],
+    ]);
+    expect(container.visibleWrites).toEqual([false, true]);
+  });
+
+  it("destroys its container and sprites, not their textures", () => {
+    const casters = createCasterSprites([]);
+    casters.sprite(0, first);
+
+    casters.destroy();
+
+    expect(casters.container.destroy).toHaveBeenCalledWith({ children: true });
   });
 });
 
@@ -313,14 +390,14 @@ describe("getSilhouetteMapMatrix / placeSilhouette", () => {
 
   it("places the silhouette sprite without touching its visibility", () => {
     const shape = silhouette();
-    const placed = createSilhouetteSprite(shape);
-    placed.visible = false;
+    const placed = createCasterSprites([]).sprite(0, shape.texture) as Sprite & { visibleWrites: boolean[] };
+    const writes = placed.visibleWrites.length;
     const sprite = placed as unknown as { setFromMatrix: ReturnType<typeof vi.fn> };
 
     placeSilhouette(placed, shape, identityWorld, { x: 0, y: 0 }, 16);
 
-    // Changing `visible` would rebuild the layer's render instructions on every redraw.
-    expect(placed.visible).toBe(false);
+    // `CasterSprites.show()` decides what a draw shows.
+    expect(placed.visibleWrites).toHaveLength(writes);
     expect(sprite.setFromMatrix).toHaveBeenCalledWith(
       expect.objectContaining(getSilhouetteMapMatrix(shape, identityWorld, { x: 0, y: 0 }, 16)),
     );

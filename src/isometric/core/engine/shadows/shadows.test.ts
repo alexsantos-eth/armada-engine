@@ -20,7 +20,6 @@ import {
 } from "../lighting";
 import {
   columnsOf,
-  containers,
   type createRenderer,
   createTestEntities,
   defaultWorld,
@@ -34,12 +33,12 @@ import type { Box } from "../terrain";
 import { createTerrainView } from "../terrain-view";
 import { CLOCK_PART, getSunState, TICKS_PER_DAY } from "../time";
 import type { World } from "../world";
-import { createReceivedShadows } from "./received-shadow";
+import { createReceivedShadowRig, createReceivedShadows } from "./received-shadow";
 import { createShadows, SHADOW_GATHERS_PER_FRAME, SHADOW_MAP_MARGIN, SHADOW_TURN_DRAWS_PER_FRAME } from "./shadows";
 import {
+  createCasterSprites,
   createGroundShadowView,
   createSilhouettes,
-  createSilhouetteSprite,
   placeSilhouette,
   type Silhouette,
 } from "./silhouette";
@@ -136,9 +135,7 @@ describe("createShadows", () => {
       scale: { value: number };
       texture: { source: { options: { resource: Uint8ClampedArray; width: number } } };
     };
-    const draws = renderer.render.mock.calls.map(
-      ([options]) => options as unknown as { container: { children: unknown[] }; target: unknown; clear: boolean },
-    );
+    const draws = renderer.drawn;
     expect(draws).toHaveLength(6);
     const masked = (mask: Mask) => {
       const { resource, width } = mask.texture.source.options;
@@ -157,8 +154,8 @@ describe("createShadows", () => {
       const [drawn, copied] = [draws[2 * index], draws[2 * index + 1]];
       expect(drawn).toEqual(expect.objectContaining({ target: scratch, clear: true }));
       expect(copied).toEqual(expect.objectContaining({ target: map, clear: false }));
-      const others = drawn.container.children.at(-1) as Mask;
-      const [own, copy] = copied.container.children as [Mask, { texture: unknown }];
+      const others = drawn.children.at(-1) as unknown as Mask;
+      const [own, copy] = copied.children as unknown as [Mask, { texture: unknown }];
       expect(others.blendMode).toBe("erase");
       expect(own.blendMode).toBe("erase");
       expect(own.scale.value).toBe(16);
@@ -191,19 +188,36 @@ describe("createShadows", () => {
     destroyScene();
   });
 
-  type Layer = { children: unknown[]; visibleWrites: boolean[]; filters?: unknown[] };
+  type Renderer = ReturnType<typeof createRenderer>;
+  /** The shared caster sprites, as a draw left them: the filters and how many it showed. */
+  type Casters = { filters: unknown[]; filterArea: unknown; shown: number };
+  type LevelDraw = { readonly children: ReadonlyArray<Record<string, unknown>> };
   /**
-   * Each level of a map drawn into the scratch texture, in order (`clear`); the copy of its
-   * columns into the chunk's map that follows each one is left out.
+   * Each level of a map drawn into the scratch texture, in order (`clear`), as it was drawn; the
+   * copy of its columns into the chunk's map that follows each one is left out.
    */
-  const levelDraws = (renderer: ReturnType<typeof createRenderer>) =>
-    renderer.render.mock.calls
-      .map(([options]) => options as unknown as { container: Layer; target: unknown; clear: boolean })
-      .filter(({ clear }) => clear);
-  /** The fixed layer each level is drawn from, in the order of the draws. */
-  const layerOf = (renderer: ReturnType<typeof createRenderer>, draw: number) => levelDraws(renderer)[draw].container;
-  /** The containers of silhouettes: the only ones with filters. */
-  const castersOf = () => containers.filter((container) => (container as Layer).filters !== undefined) as Layer[];
+  const levelDraws = (renderer: Renderer): LevelDraw[] => renderer.drawn.filter(({ clear }) => clear);
+  /** What level draw number `draw` was drawn from: the occlusion, the casters and the other levels' eraser. */
+  const layerOf = (renderer: Renderer, draw: number) => levelDraws(renderer)[draw];
+  /** The casters of a level draw, as it drew them. */
+  const castersIn = (draw: LevelDraw) => draw.children[1] as unknown as Casters;
+  /** Which level a level draw drew: its other levels' mask, the level's own. */
+  const levelOf = (draw: LevelDraw) => draw.children[2].texture;
+  /** The module's caster sprites (made once, whatever the chunks shown). */
+  const casterSprites = () =>
+    vi.mocked(createCasterSprites).mock.results.map(
+      ({ value }) =>
+        value as {
+          container: Casters & { children: unknown[] };
+          sprite: ReturnType<typeof vi.fn>;
+          show: ReturnType<typeof vi.fn>;
+        },
+    );
+  /** Forgets the draws so far. */
+  const clearDraws = (renderer: Renderer) => {
+    renderer.render.mockClear();
+    renderer.drawn.length = 0;
+  };
 
   it("draws every map when built: the level's occlusion, then the casters on it or higher", async () => {
     const world = at(defaultWorld(createTestEntities), 15);
@@ -218,10 +232,14 @@ describe("createShadows", () => {
 
     expect(levelDraws(renderer)).toHaveLength(levels.size);
     expect(renderer.render).toHaveBeenCalledWith(expect.objectContaining({ clear: true, clearColor: [0, 0, 0, 0] }));
-    // Its silhouettes are made once; each map it reaches draws them with a sprite of its own, in
-    // that map's fixed layer. Nothing is cast on other entities: it is alone.
+    // Its silhouettes are made once; each map it reaches lays them on the module's caster sprites,
+    // the same for every map. Nothing is cast on other entities: it is alone.
     expect(createSilhouettes).toHaveBeenCalledTimes(1);
-    expect(createSilhouetteSprite).toHaveBeenCalledTimes(lowerLevels.length);
+    expect(casterSprites()).toHaveLength(1);
+    const [casters] = casterSprites();
+    expect(casters.sprite).toHaveBeenCalledTimes(lowerLevels.length);
+    expect(casters.sprite.mock.calls.every(([index]) => index === 0)).toBe(true);
+    expect(casters.container.children).toHaveLength(1);
     expect(createReceivedShadows).not.toHaveBeenCalled();
     expect(placeSilhouette).toHaveBeenCalledTimes(lowerLevels.length);
     lowerLevels.forEach((level) => {
@@ -237,10 +255,11 @@ describe("createShadows", () => {
       );
     });
     vi.mocked(placeSilhouette).mockReset();
-    const layers = levelDraws(renderer).map(({ container }) => container);
-    // The occlusion and the other levels' eraser, with the casters between them when any reach it.
-    expect(layers.every(({ children }) => children.length >= 2)).toBe(true);
-    expect(layers.filter(({ children }) => children.length === 3)).toHaveLength(lowerLevels.length);
+    // The occlusion, the casters (shown on the levels they reach) and the other levels' eraser.
+    const draws = levelDraws(renderer);
+    expect(draws.every(({ children }) => children.length === 3)).toBe(true);
+    expect(draws.filter((draw) => castersIn(draw).shown === 1)).toHaveLength(lowerLevels.length);
+    expect(draws.filter((draw) => castersIn(draw).shown === 0)).toHaveLength(levels.size - lowerLevels.length);
     destroyScene();
   });
 
@@ -324,52 +343,43 @@ describe("createShadows", () => {
     destroyScene();
   });
 
-  it("applies the sun's opacity to each group of silhouettes with shared blur and alpha filters", async () => {
+  it("applies the sun's opacity to all the silhouettes of a map at once, with shared blur and alpha filters", async () => {
     const world = at(defaultWorld(createTestEntities), 9);
     const { destroyScene } = await sceneOf(world);
-    const casters = castersOf();
     const alpha = getShadowProjection(getSunState(world.parts.get(CLOCK_PART).tick))?.alpha;
 
-    expect(casters.length).toBeGreaterThan(0);
-    const [blur, opacity] = casters[0].filters as [{ options: unknown }, { alpha: number }];
+    expect(casterSprites()).toHaveLength(1);
+    const [blur, opacity] = casterSprites()[0].container.filters as [{ options: unknown }, { alpha: number }];
     expect(blur.options).toEqual({ strength: 2, quality: 2 });
     expect(opacity.alpha).toBe(alpha);
-    casters.forEach(({ filters }) => {
-      expect(filters?.[0]).toBe(blur);
-      expect(filters?.[1]).toBe(opacity);
-    });
     destroyScene();
   });
 
-  it("gives each group of silhouettes its map's rectangle as filter area, so Pixi never measures it", async () => {
-    const { destroyScene } = await sceneOf(at(defaultWorld(createTestEntities), 9));
-    const casters = castersOf() as (Layer & { filterArea?: unknown })[];
+  it("gives the silhouettes of each map its rectangle as filter area, so Pixi never measures them", async () => {
+    const { renderer, destroyScene } = await sceneOf(at(defaultWorld(createTestEntities), 9));
 
-    expect(casters.length).toBeGreaterThan(0);
     const maps = vi
       .mocked(RenderTexture.create)
       .mock.results.map(({ value }) => value as { width: number; height: number });
-    casters.forEach(({ filterArea }) => {
-      expect(filterArea).toEqual({ x: 0, y: 0, width: maps[0].width, height: maps[0].height });
+    expect(levelDraws(renderer).length).toBeGreaterThan(0);
+    levelDraws(renderer).forEach((draw) => {
+      expect(castersIn(draw).filterArea).toEqual({ x: 0, y: 0, width: maps[0].width, height: maps[0].height });
     });
     destroyScene();
   });
 
-  it("draws the maps at night with the occlusion only, hiding the casters once", async () => {
+  it("draws the maps at night with the occlusion only, showing no caster", async () => {
     const world = at(defaultWorld(createTestEntities), 0);
     const { renderer, ticker, destroyScene } = await sceneOf(world);
     const levels = new Set(columnsOf(world).map(({ elevation }) => elevation));
-    const casters = castersOf();
 
     expect(levelDraws(renderer)).toHaveLength(levels.size);
     expect(placeSilhouette).not.toHaveBeenCalled();
-    expect(casters.length).toBeGreaterThan(0);
-    expect(casters.every(({ visibleWrites }) => visibleWrites.join() === "false")).toBe(true);
+    expect(levelDraws(renderer).every((draw) => castersIn(draw).shown === 0)).toBe(true);
 
     world.parts.get(CLOCK_PART).tick += 5 * SHADOW_REFRESH_TICKS;
     ticker.frame();
     expect(levelDraws(renderer)).toHaveLength(levels.size);
-    expect(casters.every(({ visibleWrites }) => visibleWrites.length === 1)).toBe(true);
     destroyScene();
   });
 
@@ -397,17 +407,15 @@ describe("createShadows", () => {
     const built = levelDraws(renderer).length;
     const withCasters = new Set(
       levelDraws(renderer)
-        .map(({ container }) => container)
-        .filter(({ children }) => children.length === 3),
+        .filter((draw) => castersIn(draw).shown > 0)
+        .map(levelOf),
     );
 
     for (let frame = 0; frame < 3 * withCasters.size; frame += 1) {
       world.parts.get(CLOCK_PART).tick += SHADOW_REFRESH_TICKS * 3;
       ticker.frame();
     }
-    const redrawn = levelDraws(renderer)
-      .slice(built)
-      .map(({ container }) => container);
+    const redrawn = levelDraws(renderer).slice(built).map(levelOf);
 
     expect(redrawn).toHaveLength(3 * withCasters.size);
     expect(new Set(redrawn)).toEqual(withCasters);
@@ -422,7 +430,7 @@ describe("createShadows", () => {
       .filter((level) => level <= entity.elevation)
       .map((level) => entity.elevation - level);
     vi.mocked(placeSilhouette).mockClear();
-    renderer.render.mockClear();
+    clearDraws(renderer);
 
     world.parts.get(CLOCK_PART).tick += SHADOW_REFRESH_TICKS;
     ticker.frame();
@@ -440,16 +448,20 @@ describe("createShadows", () => {
     const world = at(defaultWorld(createTestEntities), 5.9);
     const { ticker, renderer, destroyScene } = await sceneOf(world);
     const levels = new Set(columnsOf(world).map(({ elevation }) => elevation));
-    const casters = castersOf();
     expect(levels.size).toBeGreaterThan(SHADOW_TURN_DRAWS_PER_FRAME);
     expect(placeSilhouette).not.toHaveBeenCalled();
+    expect(levelDraws(renderer).every((draw) => castersIn(draw).shown === 0)).toBe(true);
 
     world.parts.get(CLOCK_PART).tick = Math.round((6.2 / 24) * TICKS_PER_DAY);
     ticker.frame();
 
     expect(levelDraws(renderer)).toHaveLength(levels.size + SHADOW_TURN_DRAWS_PER_FRAME);
     expect(placeSilhouette).toHaveBeenCalled();
-    expect(casters.every(({ visibleWrites }) => visibleWrites.join() === "false,true")).toBe(true);
+    expect(
+      levelDraws(renderer)
+        .slice(levels.size)
+        .some((draw) => castersIn(draw).shown > 0),
+    ).toBe(true);
     ticker.frame();
     expect(levelDraws(renderer)).toHaveLength(2 * levels.size);
     destroyScene();
@@ -459,15 +471,15 @@ describe("createShadows", () => {
     const world = at(defaultWorld(createTestEntities), 17.9);
     const { ticker, renderer, destroyScene } = await sceneOf(world);
     const levels = new Set(columnsOf(world).map(({ elevation }) => elevation));
-    const casters = castersOf();
-    renderer.render.mockClear();
+    expect(levelDraws(renderer).some((draw) => castersIn(draw).shown > 0)).toBe(true);
+    clearDraws(renderer);
     vi.mocked(placeSilhouette).mockClear();
 
     world.parts.get(CLOCK_PART).tick = Math.round((18.2 / 24) * TICKS_PER_DAY);
     for (let frame = 0; frame < Math.ceil(levels.size / SHADOW_TURN_DRAWS_PER_FRAME); frame += 1) ticker.frame();
     expect(levelDraws(renderer)).toHaveLength(levels.size);
     expect(placeSilhouette).not.toHaveBeenCalled();
-    expect(casters.every(({ visibleWrites }) => visibleWrites.join() === "true,false")).toBe(true);
+    expect(levelDraws(renderer).every((draw) => castersIn(draw).shown === 0)).toBe(true);
 
     // Then nothing more at night.
     ticker.frame();
@@ -498,7 +510,6 @@ describe("createShadows", () => {
           }),
       );
     type Received = ReturnType<typeof createReceivedShadows> & {
-      casters: { visible: boolean };
       draw: ReturnType<typeof vi.fn>;
       destroy: ReturnType<typeof vi.fn>;
     };
@@ -536,10 +547,13 @@ describe("createShadows", () => {
       type Child = View & { receivedShadowOf?: unknown };
       const shadowIndex = (children as Child[]).findIndex(({ receivedShadowOf }) => receivedShadowOf !== undefined);
       const shadow = children[shadowIndex] as Child;
-      const [blur, opacity] = castersOf()[0].filters as unknown[];
+      const [blur, opacity] = casterSprites()[0].container.filters;
+      const [rig] = vi.mocked(createReceivedShadowRig).mock.results;
 
       expect(children[shadowIndex - 1]).toBe(shadow.receivedShadowOf);
-      expect(vi.mocked(createReceivedShadows).mock.calls[0][2]).toEqual([blur, opacity]);
+      expect(createReceivedShadowRig).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(createReceivedShadowRig).mock.calls[0][1]).toEqual([blur, opacity]);
+      expect(vi.mocked(createReceivedShadows).mock.calls[0][1]).toBe(rig.value);
       destroyScene();
     });
 
@@ -588,19 +602,20 @@ describe("createShadows", () => {
       destroyScene();
     });
 
-    it("draws the atlas empty at night, hiding its casters", async () => {
+    it("draws the atlas empty at night, without its casters", async () => {
       const { destroyScene } = await sceneOf(at(row([0, 1]), 0));
 
       expect(received().draw).toHaveBeenCalledWith(null);
-      expect(received().casters.visible).toBe(false);
       destroyScene();
     });
 
-    it("destroys the received shadows with the scene", async () => {
+    it("destroys the received shadows and their rig with the scene", async () => {
       const { destroyScene } = await sceneOf(at(row([0, 1]), 10));
+      const rig = vi.mocked(createReceivedShadowRig).mock.results[0].value as { destroy: ReturnType<typeof vi.fn> };
 
       destroyScene();
       expect(received().destroy).toHaveBeenCalled();
+      expect(rig.destroy).toHaveBeenCalled();
     });
   });
 
@@ -631,13 +646,13 @@ describe("createShadows", () => {
       }),
     });
     const sceneOn = async (world: World, visible: { chunks: { cx: number; cy: number }[] }) => {
-      const { ticker, root, scene } = await mountScene(world, [
+      const { ticker, renderer, root, scene } = await mountScene(world, [
         cameraOn(visible),
         createTerrainView(),
         createEntityView(),
         createShadows(),
       ]);
-      return { ticker, children: () => root.children as View[], scene };
+      return { ticker, renderer, children: () => root.children as View[], scene };
     };
 
     it("lays the silhouettes of the neighbouring chunks' entities on a chunk's maps", async () => {
@@ -736,11 +751,9 @@ describe("createShadows", () => {
       scene.destroy();
     });
 
-    it("uses the silhouette sprites of hidden chunks again instead of making new ones", async () => {
+    it("keeps the caster sprites of its largest draw only, whatever the chunks shown and hidden", async () => {
       const visible = { chunks: [0, 1].map((cx) => ({ cx, cy: 0 })) };
-      const { ticker, scene } = await sceneOn(edge(), visible);
-      const made = vi.mocked(createSilhouetteSprite).mock.calls.length;
-      expect(made).toBeGreaterThan(0);
+      const { ticker, renderer, scene } = await sceneOn(edge(), visible);
 
       visible.chunks = [{ cx: 3, cy: 0 }];
       ticker.frame();
@@ -749,7 +762,11 @@ describe("createShadows", () => {
       await frameUntil(ticker, () => expect(scene.shownChunks()).toHaveLength(2));
       for (let frame = 0; frame < 6; frame += 1) ticker.frame();
 
-      expect(vi.mocked(createSilhouetteSprite).mock.calls).toHaveLength(made);
+      // Two trees: every map they reach is drawn with the same two sprites.
+      const largest = Math.max(...levelDraws(renderer).map((draw) => castersIn(draw).shown));
+      expect(largest).toBe(2);
+      expect(casterSprites()).toHaveLength(1);
+      expect(casterSprites()[0].container.children).toHaveLength(largest);
       scene.destroy();
     });
 
@@ -773,10 +790,10 @@ describe("createShadows", () => {
       id: "no-entities",
       setup: () => ({ provides: { entityViews: new Map() }, destroy: () => {} }),
     };
-    const { scene } = await mountScene(at(defaultWorld(createTestEntities), 12), [empty, createShadows()]);
+    const { renderer, scene } = await mountScene(at(defaultWorld(createTestEntities), 12), [empty, createShadows()]);
 
     expect(createSilhouettes).not.toHaveBeenCalled();
-    expect(castersOf()).toHaveLength(0);
+    expect(levelDraws(renderer).every((draw) => castersIn(draw).shown === 0)).toBe(true);
     scene.destroy();
   });
 
@@ -788,7 +805,7 @@ describe("createShadows", () => {
     expect(root.children).toHaveLength(columnsOf(world).length);
     expect(levelDraws(renderer)).toHaveLength(levels.size);
     expect(createSilhouettes).not.toHaveBeenCalled();
-    expect(castersOf()).toHaveLength(0);
+    expect(levelDraws(renderer).every((draw) => castersIn(draw).shown === 0)).toBe(true);
     scene.destroy();
   });
 
@@ -808,20 +825,31 @@ describe("createShadows", () => {
     expect(pool.destroy).toHaveBeenCalled();
   });
 
-  it("destroys the shadow maps, their layers, masks and occlusion and the scratch with the scene", async () => {
+  it("destroys the shadow maps, their masks and occlusion, the scratch, the filters and what draws them with the scene", async () => {
     const { renderer, destroyScene } = await sceneOf(at(defaultWorld(createTestEntities), 12));
     type Destroyable = { destroy: ReturnType<typeof vi.fn> };
-    type Drawn = Layer & Destroyable & { children: { texture: Destroyable }[] };
     const maps = vi.mocked(RenderTexture.create).mock.results.map(({ value }) => value as Destroyable);
-    const drawn = renderer.render.mock.calls.map(([options]) => (options as unknown as { container: Drawn }).container);
-    // Each level's occlusion (first), its other levels' mask (last) and its own mask (first of its copy).
-    const textures = drawn.flatMap(({ children }) => [children[0].texture, children[children.length - 1].texture]);
+    // Each level's occlusion (first) and other levels' mask (last), and its own mask (first of its copy).
+    const textures = renderer.drawn.flatMap(({ children }) => [
+      children[0].texture as Destroyable,
+      children[children.length - 1].texture as Destroyable,
+    ]);
+    const roots = new Set(renderer.drawn.map(({ container }) => container as Destroyable));
+    const [rig] = vi.mocked(createReceivedShadowRig).mock.results;
+    const filters = casterSprites()[0].container.filters as Destroyable[];
 
     destroyScene();
 
+    // The blur and the sun's opacity, shared by the maps and the received shadows.
+    expect(filters).toHaveLength(2);
+    filters.forEach((filter) => expect(filter.destroy).toHaveBeenCalledTimes(1));
+
     expect(maps).toHaveLength(2);
     maps.forEach((map) => expect(map.destroy).toHaveBeenCalledWith(true));
-    drawn.forEach((container) => expect(container.destroy).toHaveBeenCalledWith({ children: true }));
+    // The level and its copy, with the caster sprites.
+    expect(roots.size).toBe(2);
+    roots.forEach((root) => expect(root.destroy).toHaveBeenCalledWith({ children: true }));
+    expect((rig.value as Destroyable).destroy).toHaveBeenCalled();
     textures
       .filter((texture) => !maps.includes(texture))
       .forEach((texture) => expect(texture.destroy).toHaveBeenCalledWith(true));

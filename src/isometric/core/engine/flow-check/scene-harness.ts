@@ -155,12 +155,14 @@ export function mockPixi() {
     },
     AlphaFilter: class {
       public alpha: number;
+      public destroy = vi.fn();
       constructor({ alpha }: { alpha: number }) {
         this.alpha = alpha;
       }
     },
     BlurFilter: class {
       public options: unknown;
+      public destroy = vi.fn();
       constructor(options: unknown) {
         this.options = options;
       }
@@ -273,11 +275,23 @@ export function mockSilhouette() {
         },
       ],
     ),
-    createSilhouetteSprite: vi.fn((silhouette: { texture: unknown }) => ({
-      silhouette: true,
-      texture: silhouette.texture,
-      destroy: vi.fn(),
-    })),
+    // The shared caster sprites: `container.shown` is how many the last draw showed.
+    createCasterSprites: vi.fn((filters: unknown[]) => {
+      const sprites: Array<{ casterSprite: true; texture: unknown }> = [];
+      const container = { filters, filterArea: undefined as unknown, shown: 0, children: sprites, destroy: vi.fn() };
+      return {
+        container,
+        sprite: vi.fn((index: number, texture: unknown) => {
+          const sprite = (sprites[index] ??= { casterSprite: true, texture });
+          sprite.texture = texture;
+          return sprite;
+        }),
+        show: vi.fn((count: number) => {
+          container.shown = count;
+        }),
+        destroy: vi.fn(),
+      };
+    }),
     placeSilhouette: vi.fn(),
   };
 }
@@ -285,12 +299,16 @@ export function mockSilhouette() {
 /** A mock of `shadows/received-shadow`: one view per receiver, right after its own sprite. */
 export function mockReceivedShadow() {
   return {
+    createReceivedShadowRig: vi.fn((renderer: unknown, filters: unknown[]) => ({
+      renderer,
+      filters,
+      destroy: vi.fn(),
+    })),
     createReceivedShadows: vi.fn((receivers: { own: { source: unknown; depth: number } }[]) => ({
       views: receivers.map(({ own }) => ({
         view: { cullable: false, source: "received-shadow", receivedShadowOf: own.source, destroy: vi.fn() },
         depth: own.depth,
       })),
-      casters: { visible: true },
       atlas: {},
       draw: vi.fn(),
       destroy: vi.fn(),
@@ -334,13 +352,29 @@ export async function frameUntil(ticker: { frame: () => void }, check: () => voi
   check();
 }
 
-/** Minimal Pixi renderer: render-to-texture calls and resize listeners. */
+/**
+ * A render to texture as the mocked renderer saw it: its target, and a shallow copy of each child
+ * of the container drawn, as it was then (modules draw many textures with the same sprites).
+ */
+export type RenderedDraw = {
+  readonly container: unknown;
+  readonly target: unknown;
+  readonly clear: boolean;
+  readonly children: ReadonlyArray<Record<string, unknown>>;
+};
+
+/** Minimal Pixi renderer: render-to-texture calls (also kept as `drawn`) and resize listeners. */
 export const createRenderer = (resolution = 1) => {
   const listeners = new Map<string, Set<() => void>>();
+  const drawn: RenderedDraw[] = [];
   return {
     resolution,
     screen: { x: 0, y: 0, width: 1300, height: 1000 },
-    render: vi.fn(),
+    drawn,
+    render: vi.fn((options: { container: { children?: unknown[] }; target: unknown; clear?: boolean }) => {
+      const children = (options.container.children ?? []).map((child) => ({ ...(child as object) }));
+      drawn.push({ container: options.container, target: options.target, clear: options.clear ?? true, children });
+    }),
     listeners,
     on: vi.fn((event: string, fn: () => void) => {
       listeners.set(event, (listeners.get(event) ?? new Set()).add(fn));
