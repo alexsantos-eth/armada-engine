@@ -61,8 +61,24 @@ export type SceneServices = {
   readonly entityViews: ReadonlyMap<ChunkKey, readonly EntityView[]>;
   /** What the camera starts on (`player-view`). */
   readonly focus: SceneFocus;
+  /** What moves and casts a shadow of its own, e.g. to lay it on the ground (`player-view`: the player). */
+  readonly movingCasters: readonly SceneMovingCaster[];
   /** Textures that replace a terrain material's own, block by block (`surface-bands`: the animated water). */
   readonly terrainSurfaces: SceneTerrainSurfaces;
+};
+
+/** Something that moves through the scene and casts a shadow: its sprite and where its feet are. */
+export type SceneMovingCaster = {
+  /** Its sprite in the scene: its silhouette is what casts the shadow. */
+  readonly view: Container;
+  /**
+   * Where its feet are as drawn this frame: `ground` in world columns with the top elevation of
+   * the column it stands on, and `screen` that point in scene pixels.
+   */
+  foot(): {
+    readonly ground: { readonly x: number; readonly y: number; readonly elevation: number };
+    readonly screen: { readonly x: number; readonly y: number };
+  };
 };
 
 /** Textures for terrain blocks, provided by a module that draws them (e.g. animated). */
@@ -144,6 +160,12 @@ export type BuiltScene = {
    * if already there). For views that move between columns; never with `zIndex`.
    */
   placeAt(view: Container, depth: number): void;
+  /**
+   * Puts `view` in the draw order at another depth or layer, after the views of the same depth and
+   * layer, as `add()` would (moved if already there): for a view on the ground that moves from
+   * column to column (a moving shadow), drawn on its column's top and under what stands on it.
+   */
+  move(view: SceneView): void;
   /** Adds `views` in the draw order (by depth, then layer), `cullable`, as a chunk's views are. */
   add(views: readonly SceneView[]): void;
   /** Takes `views` out of the scene and destroys them (not their textures). */

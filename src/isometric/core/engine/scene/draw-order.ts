@@ -37,6 +37,8 @@ export type DrawOrder = {
   remove(views: readonly SceneView[]): void;
   /** Puts `view` after every view at `depth` or closer to the back, moving it if already in. */
   placeAt(view: Container, depth: number, layer: SceneLayer): void;
+  /** Puts `entry` at its depth and layer as {@link DrawOrder.add} does, moving it if already in. */
+  move(entry: SceneView): void;
 };
 
 type Band = {
@@ -86,16 +88,17 @@ export function createDrawOrder(root: Container): DrawOrder {
     band.container.destroy();
   };
 
+  const add = (entry: SceneView) => {
+    const band = bandFor(entry.depth);
+    insert(
+      band,
+      entry,
+      firstAfter(band.entries, (other) => compareViews(other, entry) > 0),
+    );
+  };
+
   return {
-    add: (views) =>
-      views.forEach((entry) => {
-        const band = bandFor(entry.depth);
-        insert(
-          band,
-          entry,
-          firstAfter(band.entries, (other) => compareViews(other, entry) > 0),
-        );
-      }),
+    add: (views) => views.forEach(add),
     remove: (views) => views.forEach(({ view }) => takeOut(view)),
     placeAt: (view, depth, layer) => {
       takeOut(view);
@@ -105,6 +108,10 @@ export function createDrawOrder(root: Container): DrawOrder {
         { view, depth, layer },
         firstAfter(band.entries, (other) => other.depth > depth),
       );
+    },
+    move: (entry) => {
+      takeOut(entry.view);
+      add(entry);
     },
   };
 }

@@ -184,9 +184,9 @@ describe("mountGame", () => {
       "terrain",
       "entities",
       "foliage-wind",
+      "player",
       "shadows",
       "ambient-light",
-      "player",
       "camera",
     ]);
     expect(options.terrain).toBe(TERRAIN_APPEARANCE);

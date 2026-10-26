@@ -1,7 +1,7 @@
 import type { EntityDefinition, GridPoint, WorldPart, WorldRect } from "../../types";
 import type { Entity } from "../entities";
 import { fingerprintEntityDefinitions, validateEntityDefinitions } from "../entities";
-import { CHUNK_SIZE, type ReadonlyCellMap, type SpatialIndex } from "../grid";
+import { CHUNK_SIZE, type ReadonlyCellMap, SpatialIndex } from "../grid";
 import { type SavedWorldParts, WorldParts } from "../parts";
 import { DEFAULT_WORLD_SEED } from "../random";
 import type { Box } from "../terrain";
@@ -16,7 +16,7 @@ import { createSeededChunkSource } from "./sources";
  * The world is made of chunks of `CHUNK_SIZE` × `CHUNK_SIZE` columns, generated from the seed
  * when they are loaded (`chunks.stream()`, around the camera and the player) and dropped when
  * they are far; it may be unbounded. Lookups by position (`columnIndex`, `occupancy`) cover the
- * loaded chunks.
+ * loaded chunks; `movers`, what moves.
  */
 export type World = {
   /** Seed every generated part of the world derives from. */
@@ -37,6 +37,12 @@ export type World = {
    * Derived: never serialized. Change entities per chunk (`chunks.setEntities()`).
    */
   readonly occupancy: SpatialIndex<Entity>;
+  /**
+   * What moves through the world (the player, later creatures), over the columns it stands on,
+   * apart from the entities that never move (`occupancy`). Each system keeps its own movers in it
+   * as they change column (`movers.move()`); it starts empty. Derived: never serialized.
+   */
+  readonly movers: SpatialIndex<object>;
   /**
    * State owned by game systems, one {@link WorldPart} each, read by key: the game clock
    * (`world.parts.get(CLOCK_PART)`), the player (`PLAYER_PART`), later weather or needs. The app
@@ -180,6 +186,7 @@ export function createWorld(options: CreateWorldOptions): World {
     chunks,
     columnIndex: chunks.columnIndex,
     occupancy: chunks.occupancy,
+    movers: new SpatialIndex<object>(),
     contentFingerprint,
     contentChanged: savedContentFingerprint !== undefined && savedContentFingerprint !== contentFingerprint,
   };

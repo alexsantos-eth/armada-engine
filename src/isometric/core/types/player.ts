@@ -43,4 +43,9 @@ export type PlayerAppearance = {
   readonly textureSource: string;
   /** Height in blocks. Defaults to `1`. */
   readonly height?: number;
+  /**
+   * Size the character is drawn at, relative to its tile (`0.5` is half as wide and half as tall),
+   * scaled about its feet so it still stands on its column. Defaults to `1`.
+   */
+  readonly scale?: number;
 };

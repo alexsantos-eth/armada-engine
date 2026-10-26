@@ -6,6 +6,7 @@ import type {
   EntityView,
   SceneCameraService,
   SceneFocus,
+  SceneMovingCaster,
   SceneFrame,
   SceneLayer,
   SceneModule,
@@ -26,12 +27,15 @@ describe("scene module contract", () => {
   });
 
   it("names the services modules share, each with its type", () => {
-    expectTypeOf<SceneServiceKey>().toEqualTypeOf<"camera" | "entityViews" | "focus" | "terrainSurfaces">();
+    expectTypeOf<SceneServiceKey>().toEqualTypeOf<
+      "camera" | "entityViews" | "focus" | "movingCasters" | "terrainSurfaces"
+    >();
     expectTypeOf<SceneServices["camera"]>().toEqualTypeOf<SceneCameraService>();
     // The camera of the core types, plus culling the views just added.
     expectTypeOf<SceneCameraService>().toExtend<SceneCamera>();
     expectTypeOf<SceneServices["entityViews"]>().toEqualTypeOf<ReadonlyMap<ChunkKey, readonly EntityView[]>>();
     expectTypeOf<SceneServices["focus"]>().toEqualTypeOf<SceneFocus>();
+    expectTypeOf<SceneServices["movingCasters"]>().toEqualTypeOf<readonly SceneMovingCaster[]>();
     expectTypeOf<SceneServices["terrainSurfaces"]>().toEqualTypeOf<SceneTerrainSurfaces>();
   });
 

@@ -19,9 +19,9 @@ const SCENE_IDS = [
   "terrain",
   "entities",
   "foliage-wind",
+  "player",
   "shadows",
   "ambient-light",
-  "player",
   "camera",
 ];
 
@@ -45,8 +45,8 @@ describe("createSceneModules", () => {
       "terrain",
       "entities",
       "foliage-wind",
-      "ambient-light",
       "player",
+      "ambient-light",
     ]);
   });
 

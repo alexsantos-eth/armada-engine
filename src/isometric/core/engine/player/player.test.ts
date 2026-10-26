@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ITerrainColumn, PlayerState, ScreenDirections, TerrainMaterial, WorldPartKey } from "../../types";
-import { CellMap } from "../grid";
+import { CellMap, SpatialIndex } from "../grid";
 import { TICKS_PER_SECOND } from "../time";
 import {
   PLAYER_MAX_CLIMB,
@@ -15,6 +15,7 @@ import {
   findPlayerSpawn,
   fitsPlayerAt,
   PLAYER_SPAWN_RADIUS,
+  getPlayerCells,
   getPlayerColumn,
   getPlayerRenderPosition,
   getWalkDirection,
@@ -175,12 +176,76 @@ describe("createPlayerSystem", () => {
 
     system.step({
       ...field,
+      movers: new SpatialIndex<object>(),
       parts: { get: <T>(key: WorldPartKey<T>) => (key.id === PLAYER_PART.id ? player : null) as T },
     });
 
     expect(system.id).toBe("player");
     expect(player.x).toBeCloseTo(1 + PLAYER_STEP);
     expect(player.previous).toEqual({ x: 1, y: 2, elevation: 0 });
+  });
+
+  /** The 5 × 5 field with `player` as its part and `movers` as its index of what moves. */
+  const worldOf = (player: PlayerState, movers = new SpatialIndex<object>()) => ({
+    ...groundFrom(["00000", "00000", "00000", "00000", "00000"]),
+    movers,
+    parts: { get: <T>(key: WorldPartKey<T>) => (key.id === PLAYER_PART.id ? player : null) as T },
+  });
+
+  it("puts the player in the world's movers on the columns its feet take, on its first step", () => {
+    const player = createPlayer(groundFrom(["00000"]), { x: 2, y: 0.9 });
+    const world = worldOf(player);
+
+    createPlayerSystem().step(world);
+
+    expect(world.movers.at(2, 1)).toEqual([player]);
+    expect(world.movers.cellsOf(player)).toEqual([{ x: 2, y: 1 }]);
+  });
+
+  it("moves the player in the movers only when the columns under its feet change", () => {
+    const player = walking(groundFrom(["00000"]), { x: 1, y: 2 }, { right: true, up: true });
+    const world = worldOf(player);
+    const move = vi.spyOn(world.movers, "move");
+    const system = createPlayerSystem();
+
+    system.step(world);
+    expect(world.movers.cellsOf(player)).toEqual([{ x: 1, y: 2 }]);
+    // Two steps more put its feet across the edge with the next column along `x`.
+    system.step(world);
+    system.step(world);
+    expect(move).toHaveBeenCalledTimes(2);
+    expect(world.movers.cellsOf(player)).toEqual([
+      { x: 1, y: 2 },
+      { x: 2, y: 2 },
+    ]);
+
+    setPlayerWalk(player, still);
+    for (let tick = 0; tick < 5; tick += 1) system.step(world);
+    expect(move).toHaveBeenCalledTimes(2);
+    expect(world.movers.size).toBe(1);
+  });
+
+  it("puts the player again in a new index or as a new player, as a restored world has", () => {
+    const player = createPlayer(groundFrom(["00000"]), { x: 1, y: 1 });
+    const system = createPlayerSystem();
+    system.step(worldOf(player));
+
+    const restored = worldOf(player);
+    system.step(restored);
+    expect(restored.movers.at(1, 1)).toEqual([player]);
+
+    const other = createPlayer(groundFrom(["00000"]), { x: 1, y: 1 });
+    const again = worldOf(other, restored.movers);
+    system.step(again);
+    expect(again.movers.at(1, 1)).toEqual([player, other]);
+  });
+});
+
+describe("getPlayerCells", () => {
+  it("is the columns the square of the player's feet touches", () => {
+    expect(getPlayerCells({ x: 2, y: 3 })).toEqual({ minX: 2, minY: 3, maxX: 2, maxY: 3 });
+    expect(getPlayerCells({ x: 2.5, y: 3 })).toEqual({ minX: 2, minY: 3, maxX: 3, maxY: 3 });
+    expect(getPlayerCells({ x: 2.4, y: 2.6 })).toEqual({ minX: 2, minY: 2, maxX: 3, maxY: 3 });
   });
 });
 

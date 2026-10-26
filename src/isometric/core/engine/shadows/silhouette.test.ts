@@ -112,9 +112,11 @@ import {
   composeAffine,
   createCasterSprites,
   createGroundShadowView,
+  createMovingSilhouette,
   createSilhouettes,
   getGroundShadowMatrix,
   getSilhouetteMapMatrix,
+  placeGroundShadowView,
   placeSilhouette,
   SHADOW_MAP_PIXELS_PER_TILE,
 } from "./silhouette";
@@ -208,6 +210,31 @@ describe("createGroundShadowView", () => {
     expect((kept as unknown as { setFromMatrix: ReturnType<typeof vi.fn> }).setFromMatrix).toHaveBeenCalledWith(
       expect.objectContaining(getGroundShadowMatrix({ x: 0, y: 0 }, METRICS, 8)),
     );
+  });
+});
+
+describe("placeGroundShadowView", () => {
+  it("lays a ground shadow view on the top of another tile", () => {
+    const sprite = new Sprite(texture(16, 16)) as Sprite & { setFromMatrix: ReturnType<typeof vi.fn> };
+
+    placeGroundShadowView(sprite, { x: 30, y: -5 }, METRICS, { width: 16, height: 16 });
+
+    expect(sprite.setFromMatrix).toHaveBeenCalledWith(
+      expect.objectContaining(getGroundShadowMatrix({ x: 30, y: -5 }, METRICS, 16)),
+    );
+  });
+});
+
+describe("createMovingSilhouette", () => {
+  it("makes the silhouette of a moving sprite as drawn now, cropped at its foot", () => {
+    const sprite = placedSprite(texture(64, 80), 200, 100, 40, 40);
+    const silhouette = createMovingSilhouette(sprite, { x: 200, y: 130 }, { x: 3.4, y: 4.1 });
+
+    expect(silhouette.sources).toEqual([sprite]);
+    expect(silhouette.worldFoot).toEqual({ x: 3.4, y: 4.1 });
+    expect(silhouette.screenFoot).toEqual({ x: 200, y: 130 });
+    expect(silhouette.display).toEqual({ left: 180, top: 100, width: 40, height: 30 });
+    expect(silhouette.texture.frame).toMatchObject({ width: 64, height: 60 });
   });
 });
 

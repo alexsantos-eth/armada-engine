@@ -233,6 +233,7 @@ export async function createScene(
 
   const built: BuiltScene = {
     placeAt: (view, depth) => order.placeAt(view, depth, SCENE_LAYER.object),
+    move: (view) => order.move(view),
     add: (views) => {
       views.forEach(({ view }) => {
         view.cullable = true;

@@ -66,8 +66,22 @@ export function createGroundShadowView(
   sprites: SpriteSource = NEW_SPRITES,
 ): DepthView {
   const sprite = sprites.take(texture);
-  sprite.setFromMatrix(toMatrix(getGroundShadowMatrix(tileTop, metrics, texture.frame.width, texture.frame.height)));
+  placeGroundShadowView(sprite, tileTop, metrics, texture.frame);
   return { view: sprite, depth };
+}
+
+/**
+ * Lays `view`, a ground shadow view (see {@link createGroundShadowView}), on the top of another
+ * tile, centred on `tileTop`: for a view that moves from tile to tile with what casts on it.
+ * `frame` is the size of the square of the map it shows.
+ */
+export function placeGroundShadowView(
+  view: Container,
+  tileTop: PlanePoint,
+  metrics: TileMetrics,
+  frame: { readonly width: number; readonly height: number },
+): void {
+  view.setFromMatrix(toMatrix(getGroundShadowMatrix(tileTop, metrics, frame.width, frame.height)));
 }
 
 /** A rectangle on screen, in pixels. */
@@ -185,25 +199,44 @@ export function createSilhouettes(
       x: box.screenX + sideways * tile * (metrics.tileWidth / 2),
       y: box.screenY - tile * (metrics.tileHeight / 2),
     };
-    const body = stackTexture(sprites);
-    const bodyDisplay = sprites.length === 1 ? displayOf(sprites[0]) : around(sprites.map(displayOf));
-    const { left, top, width, height } = bodyDisplay;
-    const fraction = Math.min(Math.max((screenFoot.y - top) / height, 0), 1);
-
-    return {
-      texture: cropTexture(body, fraction),
-      sources: sprites,
-      body,
-      bodyDisplay,
-      depth,
-      worldFoot: {
-        x: box.x + (lengthAxis === "x" ? tile : 0),
-        y: box.y + (lengthAxis === "y" ? tile : 0),
-      },
-      screenFoot,
-      display: { left, top, width, height: height * fraction },
+    const worldFoot = {
+      x: box.x + (lengthAxis === "x" ? tile : 0),
+      y: box.y + (lengthAxis === "y" ? tile : 0),
     };
+    return silhouetteOf(sprites, depth, screenFoot, worldFoot);
   });
+}
+
+/**
+ * The silhouette of `sprites` (one sprite, or the parts of a cut one, bottom first) standing on
+ * `worldFoot`, drawn with its foot at `screenFoot`: cropped at its foot.
+ */
+function silhouetteOf(sprites: Sprite[], depth: number, screenFoot: PlanePoint, worldFoot: PlanePoint): Silhouette {
+  const body = stackTexture(sprites);
+  const bodyDisplay = sprites.length === 1 ? displayOf(sprites[0]) : around(sprites.map(displayOf));
+  const { left, top, width, height } = bodyDisplay;
+  const fraction = Math.min(Math.max((screenFoot.y - top) / height, 0), 1);
+
+  return {
+    texture: cropTexture(body, fraction),
+    sources: sprites,
+    body,
+    bodyDisplay,
+    depth,
+    worldFoot,
+    screenFoot,
+    display: { left, top, width, height: height * fraction },
+  };
+}
+
+/**
+ * The silhouette of a sprite that moves (the player), as drawn now with its foot at `screenFoot`
+ * on screen and `worldFoot` in the world: cropped at its foot like an entity's. Only where the
+ * sprite is drawn relative to its foot matters to a shadow map (`placeSilhouette()`), so while the
+ * sprite keeps its size the silhouette can be made once and laid wherever the foot goes.
+ */
+export function createMovingSilhouette(sprite: Sprite, screenFoot: PlanePoint, worldFoot: PlanePoint): Silhouette {
+  return silhouetteOf([sprite], 0, screenFoot, worldFoot);
 }
 
 /**

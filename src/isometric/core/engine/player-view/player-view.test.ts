@@ -92,6 +92,20 @@ describe("createPlayerView", () => {
     expect(Assets.unload).toHaveBeenCalledWith(PLAYER.textureSource);
   });
 
+  it("draws the sprite at its appearance's scale about its feet, still standing on its column", async () => {
+    const world = fieldWithPlayer();
+    const { root, scene } = await mountScene(world, [createPlayerView({ ...PLAYER, scale: 0.5 })]);
+    const view = root.children.find(({ source }) => source === PLAYER.textureSource) as TestView & {
+      scale: { x: number; y: number };
+    };
+    const ground = projectGridPoint({ x: 1, y: 1 }, projection);
+
+    expect(view.scale).toMatchObject({ x: 0.5, y: 0.5 });
+    // The mock draws the sprite 30 px above its feet: half of it at half the size.
+    expect(view.position).toMatchObject({ x: ground.x, y: ground.y - TILE_METRICS.boxHeight - 15 });
+    scene.destroy();
+  });
+
   it("is one block tall when its appearance gives no height", async () => {
     const { scene } = await mountScene(fieldWithPlayer(), [createPlayerView({ textureSource: PLAYER.textureSource })]);
 
@@ -133,6 +147,22 @@ describe("createPlayerView", () => {
 
     for (let frame = 0; frame < 100; frame += 1) ticker.frame(50);
     expect(camera.state).toEqual({ ...getGroundPointBelow({ x: 1.2, y: 1 }, 1, projection), zoom: CAMERA_START_ZOOM });
+    scene.destroy();
+  });
+
+  it("provides the player as what moves and casts a shadow, with its feet where they are drawn", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, view, scene } = await sceneOf(world, () => 0.5);
+    const [caster] = scene.services.movingCasters ?? [];
+
+    expect(caster.view).toBe(view);
+    world.parts.get(PLAYER_PART).x = 1.4;
+    ticker.frame();
+    const ground = projectGridPoint({ x: 1.2, y: 1 }, projection);
+    expect(caster.foot()).toEqual({
+      ground: { x: 1.2, y: 1, elevation: 1 },
+      screen: { x: ground.x, y: ground.y - TILE_METRICS.boxHeight },
+    });
     scene.destroy();
   });
 

@@ -95,4 +95,18 @@ describe("createDrawOrder", () => {
     order.add([at("later", 9 * DRAW_BAND_DEPTH, 2)]);
     expect(names()).toEqual(["a", "b", "far", "moving", "later"]);
   });
+
+  it("moves a view to another depth or layer, after the views of the same depth and layer", () => {
+    const { order, names } = drawn();
+    const top = at("top", 1, 0);
+    order.add([top, at("tree", 1, 2), at("far", 4 * DRAW_BAND_DEPTH, 0)]);
+    const shadow = { view: view("shadow"), depth: 1, layer: 1 as const };
+
+    order.move(shadow);
+    expect(names()).toEqual(["top", "shadow", "tree", "far"]);
+    order.move({ ...shadow, depth: 4 * DRAW_BAND_DEPTH });
+    expect(names()).toEqual(["top", "tree", "far", "shadow"]);
+    order.move({ ...top, layer: 3 });
+    expect(names()).toEqual(["tree", "top", "far", "shadow"]);
+  });
 });

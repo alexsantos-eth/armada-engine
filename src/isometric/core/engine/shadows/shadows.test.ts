@@ -5,7 +5,7 @@ vi.mock("../render", async () => (await import("../flow-check/scene-harness")).m
 vi.mock("./silhouette", async () => (await import("../flow-check/scene-harness")).mockSilhouette());
 vi.mock("./received-shadow", async () => (await import("../flow-check/scene-harness")).mockReceivedShadow());
 
-import { RenderTexture } from "pixi.js";
+import { RenderTexture, Sprite } from "pixi.js";
 import { Entity } from "../entities";
 import { createEntityView } from "../entity-view";
 import type { SceneModule } from "../scene";
@@ -33,11 +33,13 @@ import type { Box } from "../terrain";
 import { createTerrainView } from "../terrain-view";
 import { CLOCK_PART, getSunState, TICKS_PER_DAY } from "../time";
 import type { World } from "../world";
+import { MOVING_SHADOW_PIXELS_PER_TILE, MOVING_SHADOW_RADIUS } from "./moving-shadow";
 import { createReceivedShadowRig, createReceivedShadows } from "./received-shadow";
 import { createShadows, SHADOW_GATHERS_PER_FRAME, SHADOW_MAP_MARGIN, SHADOW_TURN_DRAWS_PER_FRAME } from "./shadows";
 import {
   createCasterSprites,
   createGroundShadowView,
+  createMovingSilhouette,
   createSilhouettes,
   placeSilhouette,
   type Silhouette,
@@ -838,6 +840,43 @@ describe("createShadows", () => {
     expect(pool.kept).toHaveLength(ground.length);
     expect(pool.kept).toEqual(expect.arrayContaining(ground));
     expect(pool.destroy).toHaveBeenCalled();
+  });
+
+  it("casts the shadow of what moves in a map of its own that follows it, with the sun's opacity", async () => {
+    const world = at(defaultWorld(), 12);
+    const [column] = columnsOf(world);
+    const foot = { ground: { x: column.x, y: column.y, elevation: column.elevation }, screen: { x: 0, y: 0 } };
+    const view = new Sprite({} as never);
+    const mover: SceneModule = {
+      id: "mover",
+      setup: () => ({ provides: { movingCasters: [{ view, foot: () => foot }] }, destroy: () => {} }),
+    };
+    const { ticker, renderer, root, scene } = await mountScene(world, [createTerrainView(), mover, createShadows()]);
+    const side = (2 * MOVING_SHADOW_RADIUS + 1) * MOVING_SHADOW_PIXELS_PER_TILE;
+    const movingMap = vi
+      .mocked(RenderTexture.create)
+      .mock.results.map(({ value }) => value as { width: number; destroy: ReturnType<typeof vi.fn> })
+      .find(({ width }) => width === side);
+    const movingDraws = () => renderer.drawn.filter(({ target }) => target === movingMap);
+    const [filters] = casterSprites().map(({ container }) => container.filters as Array<{ alpha?: number }>);
+
+    // Its views stand on the columns around it, never culled: they follow it, in the camera's view.
+    const followers = (root.children as Array<View & { cullable: boolean }>).filter(
+      ({ texture }) => texture?.source === (movingMap as unknown as { source: unknown }).source,
+    );
+    expect(followers).toHaveLength((2 * MOVING_SHADOW_RADIUS + 1) ** 2);
+    expect(followers.every(({ cullable }) => !cullable)).toBe(true);
+    expect(movingDraws()).toHaveLength(1);
+    expect(createMovingSilhouette).toHaveBeenCalledWith(view, foot.screen, foot.ground);
+
+    foot.ground = { ...foot.ground, x: column.x + 0.1 };
+    filters[1].alpha = 1;
+    ticker.frame();
+    expect(movingDraws()).toHaveLength(2);
+    expect(filters[1].alpha).toBe(getShadowProjection(getSunState(world.parts.get(CLOCK_PART).tick))?.alpha);
+
+    scene.destroy();
+    expect(movingMap?.destroy).toHaveBeenCalledWith(true);
   });
 
   it("destroys the shadow maps, their masks and occlusion, the scratch, the filters and what draws them with the scene", async () => {

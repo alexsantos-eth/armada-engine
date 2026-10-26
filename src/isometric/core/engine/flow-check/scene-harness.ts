@@ -218,9 +218,24 @@ export async function mockRender() {
           y: box.screenY - 30,
           set: vi.fn((x: number, y: number) => Object.assign(position, { x, y })),
         };
+        const scale: { x: number; y: number; set: (x: number, y?: number) => void } = {
+          x: 1,
+          y: 1,
+          set: vi.fn((x: number, y: number = x) => {
+            Object.assign(scale, { x, y });
+          }),
+        };
         return [
           {
-            view: { cullable: false, source: texture.source, x: box.x, y: box.y, position, destroy: vi.fn() },
+            view: {
+              cullable: false,
+              source: texture.source,
+              x: box.x,
+              y: box.y,
+              position,
+              scale,
+              destroy: vi.fn(),
+            },
             depth: box.baseScreenY,
           },
         ];
@@ -298,6 +313,22 @@ export function mockSilhouette() {
       };
     }),
     placeSilhouette: vi.fn(),
+    // Records where a ground shadow view was laid, as `createGroundShadowView()` does.
+    placeGroundShadowView: vi.fn((view: { tileTop?: unknown }, tileTop: { x: number; y: number }) => {
+      view.tileTop = tileTop;
+    }),
+    createMovingSilhouette: vi.fn(
+      (sprite: unknown, screenFoot: { x: number; y: number }, worldFoot: { x: number; y: number }) => ({
+        texture: { movingSilhouetteOf: sprite },
+        sources: [sprite],
+        body: { bodyOf: sprite },
+        bodyDisplay: { left: 0, top: 0, width: 1, height: 1 },
+        depth: 0,
+        worldFoot,
+        screenFoot,
+        display: { left: 0, top: 0, width: 1, height: 1 },
+      }),
+    ),
   };
 }
 

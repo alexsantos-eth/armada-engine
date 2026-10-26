@@ -30,6 +30,7 @@ import {
   type ReceivedShadows,
   type ShadowReceiver,
 } from "./received-shadow";
+import { createMovingShadow } from "./moving-shadow";
 import { createTexturePool } from "./texture-pool";
 import {
   createCasterSprites,
@@ -228,6 +229,22 @@ export function createShadows(): SceneModule {
       // Sprites of the ground shadows, a chunk's given back when it is hidden for the next one.
       const groundSprites = createSpritePool();
       const chunks = new Map<ChunkKey, ShadowChunk>();
+      // The shadows of what moves (the player), each in a small map of its own that follows it (#58).
+      const moving = (services.get("movingCasters") ?? []).map((caster) =>
+        createMovingShadow(caster, {
+          renderer: app.renderer,
+          filters: [blurFilter, alphaFilter],
+          elevationAt: (x, y) => columnAt.get(x, y)?.elevation,
+          topInsetAt,
+          projection,
+          metrics,
+        }),
+      );
+      const movingViews = moving.flatMap(({ views }) => views);
+      const updateMoving = () => {
+        if (sun) alphaFilter.alpha = sun.alpha;
+        moving.forEach((shadow) => shadow.update(scene, sun, tick));
+      };
       // Set by `start()`, before any chunk gathers its casters.
       let scene!: BuiltScene;
       let daytime: boolean | undefined;
@@ -587,16 +604,24 @@ export function createShadows(): SceneModule {
       };
 
       return {
+        views: movingViews,
         showChunk,
         start: (built) => {
           scene = built;
+          // They follow what casts them, which the camera keeps in view.
+          movingViews.forEach(({ view }) => {
+            view.cullable = false;
+          });
           update(world.parts.get(CLOCK_PART).tick);
+          updateMoving();
         },
         update: ({ tick: now }) => {
           update(now);
           profile("shadows:follow", follow);
+          profile("shadows:moving", updateMoving);
         },
         destroy: () => {
+          moving.forEach((shadow) => shadow.destroy());
           // The caster sprites with their containers and filters; their textures are the entities' and the chunks'.
           levelRoot.destroy({ children: true });
           copyRoot.destroy({ children: true });

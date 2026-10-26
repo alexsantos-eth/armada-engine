@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PLAYER_APPEARANCE } from "./player";
+import { PLAYER_APPEARANCE, PLAYER_SCALE } from "./player";
 
 const ASSET_SOURCES = import.meta.glob<string>("/public/assets/player/*.svg", {
   query: "?raw",
@@ -15,6 +15,12 @@ describe("PLAYER_APPEARANCE", () => {
     expect(svg).toContain('viewBox="0 -341 1024 853"');
     expect(svg).not.toContain("data-tiles");
     expect(PLAYER_APPEARANCE.height).toBe(1);
+  });
+
+  it("is drawn smaller than its tile, so it stands shorter than a one-block house", () => {
+    expect(PLAYER_APPEARANCE.scale).toBe(PLAYER_SCALE);
+    expect(PLAYER_SCALE).toBeGreaterThan(0);
+    expect(PLAYER_SCALE).toBeLessThan(1);
   });
 
   it("casts no shadow of its own: the engine owns shadows", () => {

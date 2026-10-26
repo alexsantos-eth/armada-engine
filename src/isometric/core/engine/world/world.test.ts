@@ -232,6 +232,22 @@ describe("World occupancy", () => {
   });
 });
 
+describe("World movers", () => {
+  it("starts empty, apart from the entities, and is never saved: the systems fill it as things move", () => {
+    const world = generateWorld({ seed: 42, ...sized(16, 16), entityDefinitions: DEFINITIONS, parts: PARTS });
+    const player = world.parts.get(PLAYER_PART);
+    expect(world.movers.size).toBe(0);
+
+    world.movers.move(player, [{ x: 3, y: 4 }]);
+    const snapshot = serializeWorld(world);
+    const restored = restoreWorld(snapshot, { entityDefinitions: DEFINITIONS, parts: PARTS });
+
+    expect(world.occupancy.at(3, 4)).not.toContain(player);
+    expect(JSON.stringify(snapshot)).not.toContain("movers");
+    expect(restored.movers.size).toBe(0);
+  });
+});
+
 describe("World column index", () => {
   it("finds every column by its cell, and is rebuilt on restore instead of being saved", () => {
     const world = generateWorld({ seed: 3, ...sized(6, 5), entityDefinitions: [] });

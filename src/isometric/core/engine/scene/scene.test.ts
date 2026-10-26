@@ -663,6 +663,9 @@ describe("createScene chunks", () => {
       { view: view("twin"), depth: 1, layer: 0 },
     ]);
     expect(names(root.children)).toEqual(["later", "a", "twin", "moving", "front"]);
+    built.move({ view: root.children[0] as never, depth: 1, layer: 0 });
+    expect(names(root.children)).toEqual(["a", "twin", "later", "moving", "front"]);
+    built.move({ ...later, depth: 0 });
 
     built.remove([]);
     built.remove([later]);

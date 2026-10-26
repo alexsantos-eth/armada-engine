@@ -7,6 +7,7 @@ import type {
   WorldCoord,
   WorldPartKey,
   WorldPartReader,
+  WorldRect,
   WorldSystem,
 } from "../../types";
 import type { ReadonlyCellMap } from "../grid";
@@ -180,19 +181,60 @@ export function stepPlayer(player: PlayerState, ground: PlayerGround, ticks = 1)
 }
 
 /**
- * A world with a player: its ground and its parts, among them the player ({@link PLAYER_PART}).
- * The `World` is one.
+ * Columns the player's feet take standing at `point`: every column the square of side
+ * `2 × PLAYER_RADIUS` around it touches (one to four), as an inclusive rectangle.
  */
-export type PlayerWorld = PlayerGround & { readonly parts: WorldPartReader };
+export function getPlayerCells(point: GridPoint): WorldRect {
+  const min = getPlayerColumn({ x: point.x - PLAYER_RADIUS, y: point.y - PLAYER_RADIUS });
+  const max = getPlayerColumn({ x: point.x + PLAYER_RADIUS, y: point.y + PLAYER_RADIUS });
+  return { minX: min.x, minY: min.y, maxX: max.x, maxY: max.y };
+}
+
+/** What moves through the world (`world.movers`), as the player system keeps itself in it. */
+export type PlayerMovers = {
+  /** Puts `item` on `cells`, taking it off the cells it was on (adding it when it was not there). */
+  move(item: object, cells: readonly WorldCoord[]): void;
+};
+
+/**
+ * A world with a player: its ground, its index of what moves and its parts, among them the
+ * player ({@link PLAYER_PART}). The `World` is one.
+ */
+export type PlayerWorld = PlayerGround & { readonly movers: PlayerMovers; readonly parts: WorldPartReader };
 
 /**
  * The player as a game system for `stepWorld()`: each tick, the world's player
- * ({@link PLAYER_PART}) walks one step (`stepPlayer()`) on the world's ground.
+ * ({@link PLAYER_PART}) walks one step (`stepPlayer()`) on the world's ground, and then stands in
+ * `world.movers` on the columns its feet take (`getPlayerCells()`): moved there on its first step
+ * and whenever those columns change, not on every tick, so AI or collisions can find it by cell.
  *
  * @throws On a step, when the world has no player part.
  */
 export function createPlayerSystem(): WorldSystem<PlayerWorld> {
-  return { id: "player", step: (world) => stepPlayer(world.parts.get(PLAYER_PART), world) };
+  // Where the player was last put in which index: a restored world has a new one of both.
+  let placed: { movers: PlayerMovers; player: PlayerState; cells: WorldRect } | undefined;
+  return {
+    id: "player",
+    step: (world) => {
+      const player = world.parts.get(PLAYER_PART);
+      stepPlayer(player, world);
+      const cells = getPlayerCells(player);
+      if (
+        placed?.movers === world.movers &&
+        placed.player === player &&
+        placed.cells.minX === cells.minX &&
+        placed.cells.minY === cells.minY &&
+        placed.cells.maxX === cells.maxX &&
+        placed.cells.maxY === cells.maxY
+      )
+        return;
+      const covered: WorldCoord[] = [];
+      for (let x = cells.minX; x <= cells.maxX; x += 1)
+        for (let y = cells.minY; y <= cells.maxY; y += 1) covered.push({ x, y });
+      world.movers.move(player, covered);
+      placed = { movers: world.movers, player, cells };
+    },
+  };
 }
 
 /**

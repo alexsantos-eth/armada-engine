@@ -13,7 +13,7 @@ import type {
 } from "../../types";
 
 /** Zoom the camera starts at: close to the ground, at the centre of the world. */
-export const CAMERA_START_ZOOM = 3;
+export const CAMERA_START_ZOOM = 5;
 
 /** Smallest zoom: a whole chunk (32 × 32 columns) fits a window 1300 px wide. */
 export const CAMERA_MIN_ZOOM = 1;
@@ -22,7 +22,7 @@ export const CAMERA_MIN_ZOOM = 1;
  * Largest zoom. The scene rasterizes the SVGs for it (`getSvgResolution()`), so raising it
  * grows texture memory with its square.
  */
-export const CAMERA_MAX_ZOOM = 4;
+export const CAMERA_MAX_ZOOM = 5;
 
 /**
  * How fast the camera catches up with what it follows (`followCamera()`): it covers half the
