@@ -37,6 +37,42 @@ export type ScreenDirections = {
   readonly right: boolean;
 };
 
+/**
+ * Screen direction the player faces, of eight: north is up on screen (`+x +y`), east right
+ * (`+x −y`). Their order is `PLAYER_FACINGS` (`engine/player`), the rows of a walk sheet.
+ */
+export type PlayerFacing =
+  "east" | "north-east" | "north" | "north-west" | "west" | "south-west" | "south" | "south-east";
+
+/** A rectangle in an SVG's own units, from its top-left corner. */
+export type SvgRect = {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+};
+
+/**
+ * The player walking, drawn from one SVG sheet: one row per facing (in `PLAYER_FACINGS` order), one
+ * column per pose: column `0` standing, then the {@link PlayerWalkSheet.frames} poses of one walk
+ * cycle (two steps). Every cell shows the same window ({@link PlayerWalkSheet.cell}) of the
+ * character's one-tile canvas, so its feet stay where the static SVG's are.
+ */
+export type PlayerWalkSheet = {
+  /** SVG of the sheet (e.g. `/assets/player/walk.svg`). */
+  readonly source: string;
+  /** Size of the one-tile canvas a cell is cut from (the static SVG's, `1024 × 853` for one block). */
+  readonly canvas: { readonly width: number; readonly height: number };
+  /** Window of that canvas every cell shows, in its units from its top-left corner. */
+  readonly cell: SvgRect;
+  /** Units between two cells of the sheet, across and down. */
+  readonly gap: number;
+  /** Walk poses per cycle, after the standing one. */
+  readonly frames: number;
+  /** Columns the player walks in one cycle: how far it goes per two steps, so its feet do not slide. */
+  readonly stride: number;
+};
+
 /** How the scene draws the player (game content, like an entity definition). */
 export type PlayerAppearance = {
   /** SVG of the character, one tile wide (e.g. `/assets/player/block.svg`). */
@@ -48,4 +84,9 @@ export type PlayerAppearance = {
    * scaled about its feet so it still stands on its column. Defaults to `1`.
    */
   readonly scale?: number;
+  /**
+   * Walks with poses from a sheet, turned to where it walks (one of eight facings), instead of
+   * drawing `textureSource` still. `textureSource` is still loaded if the sheet cannot be.
+   */
+  readonly walk?: PlayerWalkSheet;
 };

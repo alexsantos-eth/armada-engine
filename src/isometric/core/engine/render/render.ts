@@ -1,4 +1,4 @@
-import { type Container, Graphics, Rectangle, Texture } from "pixi.js";
+import { type Container, Graphics, Rectangle, Sprite, Texture } from "pixi.js";
 import { NEW_SPRITES, type SpriteSource } from "./sprite-pool";
 import type { EntityLengthAxis, IsoScreenBox, TileMetrics } from "../../types";
 
@@ -115,9 +115,73 @@ export type RenderBlockOptions = {
    * for multi-tile footprints.
    */
   readonly splitAt?: number;
+  /**
+   * The texture shows only this window of the sprite's canvas (a cell of a sheet cut with
+   * {@link getSheetFrames}), as fractions of the canvas's width and height from its top-left
+   * corner: the sprite is sized and anchored so the window is drawn where it lies in the whole
+   * canvas. Ignored for multi-tile footprints and with `splitAt`.
+   */
+  readonly cell?: SheetCell;
   /** Where the sprites come from, e.g. a `SpritePool`. Defaults to new ones ({@link NEW_SPRITES}). */
   readonly sprites?: SpriteSource;
 };
+
+/** A window of a sprite's canvas, in fractions of its width and height from its top-left corner. */
+export type SheetCell = {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+};
+
+/** How a sheet texture is laid out: a grid of equal cells, with `gap` texture units between them. */
+export type SheetLayout = {
+  readonly columns: number;
+  readonly rows: number;
+  /** Size of a cell, in the texture's units. */
+  readonly cellWidth: number;
+  readonly cellHeight: number;
+  readonly gap: number;
+};
+
+const sheetFramesCache = new WeakMap<Texture, Texture[][]>();
+
+/**
+ * The cells of the sheet `texture`, by row and column, each a texture over the same source: made
+ * once per sheet (cached; `layout` must not change for it) and shared, never one per frame drawn.
+ */
+export function getSheetFrames(texture: Texture, layout: SheetLayout): Texture[][] {
+  const cached = sheetFramesCache.get(texture);
+  if (cached) return cached;
+  const { columns, rows, cellWidth, cellHeight, gap } = layout;
+  const { x, y } = texture.frame;
+  const frames = Array.from({ length: rows }, (_, row) =>
+    Array.from(
+      { length: columns },
+      (_, column) =>
+        new Texture({
+          source: texture.source,
+          frame: new Rectangle(x + column * (cellWidth + gap), y + row * (cellHeight + gap), cellWidth, cellHeight),
+        }),
+    ),
+  );
+  sheetFramesCache.set(texture, frames);
+  return frames;
+}
+
+/**
+ * Shows `texture` on the sprite `view` (a cell of the same sheet as the one it shows, so its size
+ * and anchor still fit), writing it only when it changes, and keeps the sprite's scale: Pixi 8.22
+ * sets a sprite's scale again from the last `width`/`height` written when its texture changes,
+ * which undid any scale set since (the player's, drawn smaller than its tile). Views that are not
+ * sprites are left alone.
+ */
+export function showFrame(view: Container, texture: Texture): void {
+  if (!(view instanceof Sprite) || view.texture === texture) return;
+  const { x, y } = view.scale;
+  view.texture = texture;
+  view.scale.set(x, y);
+}
 
 /**
  * Creates the views of a block or entity, each with its draw depth, without adding them to
@@ -138,6 +202,7 @@ export function createBlockViews(options: RenderBlockOptions): DepthView[] {
     lengthAxis = "x",
     debug = false,
     splitAt,
+    cell,
     sprites = NEW_SPRITES,
   } = options;
   const width = tileWidth * ((1 + length) / 2);
@@ -194,6 +259,12 @@ export function createBlockViews(options: RenderBlockOptions): DepthView[] {
       { view: draw(bottom, width, 0.5, positionX, spriteHeight - topHeight, 0, cutY), depth: anchorDepth },
       { view: draw(top, width, 0.5, positionX, topHeight, 1, cutY), depth: anchorDepth, stacked: true },
     ];
+  } else if (cell) {
+    // The window's share of the canvas, anchored at the canvas's top centre.
+    const anchorX = (0.5 - cell.x) / cell.width;
+    const anchorY = (0 - cell.y) / cell.height;
+    const sprite = draw(texture, width * cell.width, anchorX, positionX, spriteHeight * cell.height, anchorY);
+    views = [{ view: sprite, depth: anchorDepth }];
   } else {
     views = [{ view: draw(texture, width, 0.5, positionX), depth: anchorDepth }];
   }

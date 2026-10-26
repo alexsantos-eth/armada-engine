@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { PLAYER_APPEARANCE, PLAYER_SCALE } from "./player";
+import { PLAYER_FACINGS } from "../core/engine/player";
+import { PLAYER_APPEARANCE, PLAYER_SCALE, PLAYER_WALK } from "./player";
 
 const ASSET_SOURCES = import.meta.glob<string>("/public/assets/player/*.svg", {
   query: "?raw",
@@ -25,5 +26,23 @@ describe("PLAYER_APPEARANCE", () => {
 
   it("casts no shadow of its own: the engine owns shadows", () => {
     expect(ASSET_SOURCES[`/public${PLAYER_APPEARANCE.textureSource}`]?.toLowerCase()).not.toContain("#1e2a10");
+  });
+
+  it("walks with a sheet laid out as the generator says: its facings, cell, gap and poses", () => {
+    const svg = ASSET_SOURCES[`/public${PLAYER_WALK.source}`] ?? "";
+    const { cell, gap, frames } = PLAYER_WALK;
+
+    expect(PLAYER_APPEARANCE.walk).toBe(PLAYER_WALK);
+    expect(svg).toContain(`data-facings="${PLAYER_FACINGS.join(" ")}"`);
+    expect(svg).toContain(`data-cell="${cell.x} ${cell.y} ${cell.width} ${cell.height}"`);
+    expect(svg).toContain(`data-gap="${gap}"`);
+    expect(svg).toContain(`data-frames="${frames + 1}"`);
+    const width = (frames + 1) * (cell.width + gap) - gap;
+    const height = PLAYER_FACINGS.length * (cell.height + gap) - gap;
+    expect(svg).toContain(`viewBox="0 0 ${width} ${height}"`);
+    // The window lies inside the still figure's canvas.
+    expect(cell.x + cell.width).toBeLessThanOrEqual(PLAYER_WALK.canvas.width);
+    expect(cell.y + cell.height).toBeLessThanOrEqual(PLAYER_WALK.canvas.height);
+    expect(svg.toLowerCase()).not.toContain("#1e2a10");
   });
 });

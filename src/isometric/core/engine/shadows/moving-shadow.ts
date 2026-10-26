@@ -64,8 +64,9 @@ export type MovingShadow = {
  * redrawn by turns, so it has its own small map instead, centred on the column the caster stands
  * on ({@link MOVING_SHADOW_RADIUS} columns around it), redrawn only when it moves (and as the sun
  * moves), and read by ground views of its own on the tops of those columns, right after the
- * chunk's ones and under what stands on them. Its silhouette is made once, the first time it is
- * drawn: its sprite keeps its size, so only where its foot goes changes.
+ * chunk's ones and under what stands on them. Its silhouette is made once per texture its sprite
+ * shows (a walk sheet's cells), the first time it is drawn with it: its sprite keeps its size, so
+ * only where its foot goes changes; showing another texture draws the map again, even standing.
  *
  * Its shadow falls on the ground the caster stands on: the columns at another level show none of
  * it, it falls on no entity, and where it crosses an entity's shadow both darken the ground.
@@ -95,8 +96,9 @@ export function createMovingShadow(caster: SceneMovingCaster, context: MovingSha
   }
 
   let centre: { x: number; y: number; level: number | undefined } | undefined;
-  let drawn: { x: number; y: number; elevation: number; tick: number; day: boolean } | undefined;
-  let silhouette: Silhouette | undefined;
+  let drawn: { x: number; y: number; elevation: number; tick: number; day: boolean; texture: unknown } | undefined;
+  // By the texture the caster's sprite showed when it was made.
+  const silhouettes = new Map<Texture, Silhouette>();
   // Written for each draw, read at once.
   const ground: AffineTarget = { a: 0, b: 0, c: 0, d: 0, tx: 0, ty: 0 };
 
@@ -129,16 +131,22 @@ export function createMovingShadow(caster: SceneMovingCaster, context: MovingSha
       if (entered) follow(scene, x, y, level);
 
       const day = light !== null;
-      const moved =
-        drawn?.x !== foot.ground.x || drawn.y !== foot.ground.y || drawn.elevation !== foot.ground.elevation;
-      if (!entered && !moved && drawn?.day === day && Math.abs(tick - drawn.tick) < SHADOW_REFRESH_TICKS) return;
-      drawn = { ...foot.ground, tick, day };
-
       const { view } = caster;
+      const texture = view instanceof Sprite ? view.texture : undefined;
+      const moved =
+        drawn?.x !== foot.ground.x ||
+        drawn.y !== foot.ground.y ||
+        drawn.elevation !== foot.ground.elevation ||
+        drawn.texture !== texture;
+      if (!entered && !moved && drawn?.day === day && Math.abs(tick - drawn.tick) < SHADOW_REFRESH_TICKS) return;
+      drawn = { ...foot.ground, tick, day, texture };
+
       if (light && level !== undefined && view instanceof Sprite) {
         // The caster's foot points may be written in place as it moves: the silhouette keeps where
         // they were when its sprite was measured.
-        silhouette ??= createMovingSilhouette(view, { ...foot.screen }, { ...foot.ground });
+        const silhouette =
+          silhouettes.get(view.texture) ?? createMovingSilhouette(view, { ...foot.screen }, { ...foot.ground });
+        silhouettes.set(view.texture, silhouette);
         const lift = foot.ground.elevation - level;
         getSilhouetteMatrix(light, foot.ground, lift, metrics, ground);
         const mapOrigin = { x: x - MOVING_SHADOW_RADIUS - 0.5, y: y - MOVING_SHADOW_RADIUS - 0.5 };

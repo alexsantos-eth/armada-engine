@@ -1,9 +1,10 @@
 import { getGroundPointBelow } from "../camera";
-import { getPlayerColumn, getPlayerRenderPosition, PLAYER_PART } from "../player";
+import { getPlayerColumn, getPlayerFacing, getPlayerRenderPosition, PLAYER_PART } from "../player";
 import { projectBoxesToIsometric, projectGridPoint } from "../projection";
-import { createBlockViews, getBlockDepth } from "../render";
+import { createBlockViews, getBlockDepth, getSheetFrames, showFrame } from "../render";
 import { SCENE_LAYER, type BuiltScene, type SceneModule } from "../scene";
 import type { PlayerAppearance, PlayerPosition } from "../../types";
+import { getWalkPose, getWalkSheetCell, getWalkSheetLayout, PLAYER_START_FACING } from "./walk";
 
 /**
  * Scene module of the player: draws the world's player (`PLAYER_PART`) with `appearance` (game
@@ -16,6 +17,14 @@ import type { PlayerAppearance, PlayerPosition } from "../../types";
  * there (`move()` to `SCENE_LAYER.behindObject`), so it walks behind a tree's trunk; in front,
  * after it. Never with `zIndex`. On a column with a `topInset` (sand) it stands that much lower.
  *
+ * With a walk sheet (`appearance.walk`) the sprite shows one of its cells: turned to the facing
+ * nearest the way the player walks (`getPlayerFacing()`; standing, the last one, at first
+ * `PLAYER_START_FACING`), the standing pose on a frame it did not move and, while it moves, the walk
+ * pose for how far it has gone since it set off (`getWalkPose()`), so its feet keep pace with the
+ * ground. Every cell is the same window of its canvas, so the sprite keeps its size and its feet;
+ * its texture is written only when the cell changes. Without the sheet, or if it cannot be loaded,
+ * the still `textureSource` is drawn.
+ *
  * Provides `focus` (the ground below the player), so the camera starts on it, and the player as
  * the one `movingCasters`, so `shadows` lays its shadow where its feet are drawn. When the world
  * has no player part or its SVG cannot be loaded, nothing is drawn or followed.
@@ -25,7 +34,13 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
     id: "player",
     async setup({ world, projection, metrics, columnAt, topInsetAt, assets, services }) {
       const player = world.parts.find(PLAYER_PART);
-      const texture = player && (await assets.loadSvg(appearance.textureSource));
+      const sheet = appearance.walk;
+      const sheetTexture = player && sheet && (await assets.loadSvg(sheet.source));
+      // The sheet and its cells by facing, then pose (column `0` standing), shared.
+      const walk =
+        sheet && sheetTexture ? { sheet, frames: getSheetFrames(sheetTexture, getWalkSheetLayout(sheet)) } : undefined;
+      let facing = PLAYER_START_FACING;
+      const texture = walk?.frames[facing][0] ?? (player && (await assets.loadSvg(appearance.textureSource)));
       if (!player || !texture) return { destroy: () => {} };
 
       const ground = (at: PlayerPosition) => getGroundPointBelow(at, at.elevation, projection);
@@ -39,6 +54,7 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
         metrics,
         height: appearance.height ?? 1,
         surfaceAligned: true,
+        cell: walk && getWalkSheetCell(walk.sheet),
       });
       view.cullable = false;
       // Scaled about the feet, which stand on the column's top (`projected.screenY`).
@@ -47,6 +63,15 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
       const offset = { x: view.position.x - projected.screenX, y: (view.position.y - projected.screenY) * scale };
 
       let drawnAt = getPlayerRenderPosition(player, 1);
+      // Columns walked since the player last stood still, for its walk pose.
+      let walked = 0;
+      /** Turns the sprite and picks its pose for a frame that moved it from `drawnAt` to `at`, or not. */
+      const animate = (at: PlayerPosition, moved: boolean) => {
+        if (!walk) return;
+        facing = getPlayerFacing(player.walk) ?? facing;
+        walked = moved ? walked + Math.hypot(at.x - drawnAt.x, at.y - drawnAt.y) : 0;
+        showFrame(view, walk.frames[facing][moved ? getWalkPose(walked, walk.sheet) : 0]);
+      };
       // Where its feet are on screen: written by `place()`, read by whoever casts its shadow.
       const drawnFoot = { x: 0, y: 0 };
       let drawnDepth: number | undefined;
@@ -91,7 +116,9 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
         },
         update: ({ alpha }) => {
           const at = getPlayerRenderPosition(player, alpha);
-          if (at.x === drawnAt.x && at.y === drawnAt.y && at.elevation === drawnAt.elevation) return;
+          const moved = at.x !== drawnAt.x || at.y !== drawnAt.y || at.elevation !== drawnAt.elevation;
+          animate(at, moved);
+          if (!moved) return;
           place(at);
           services.get("camera")?.follow(ground(at));
         },

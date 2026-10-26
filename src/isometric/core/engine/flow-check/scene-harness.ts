@@ -34,6 +34,7 @@ export const renderCalls: Array<{
   height?: number;
   length?: number;
   splitAt?: number;
+  cell?: unknown;
 }> = [];
 
 /** Every mocked Pixi `Container` created, in order. */
@@ -44,6 +45,7 @@ export function resetHarness(): void {
   loadedTextures.clear();
   renderCalls.length = 0;
   containers.length = 0;
+  sheetFrames.clear();
 }
 
 /** The default implementation of the mocked `Assets.load`. */
@@ -180,6 +182,9 @@ export function mockPixi() {
   };
 }
 
+/** Cells the mocked `getSheetFrames()` cut, by sheet. */
+const sheetFrames = new Map<unknown, Array<Array<{ source: string; row: number; column: number }>>>();
+
 /** A mock of `../render`: block views that record their calls (each sprite 30 px above its box). */
 export async function mockRender() {
   return {
@@ -197,6 +202,7 @@ export async function mockRender() {
         height,
         length,
         splitAt,
+        cell,
       }: {
         texture: { source: string };
         box: {
@@ -211,8 +217,9 @@ export async function mockRender() {
         height?: number;
         length?: number;
         splitAt?: number;
+        cell?: unknown;
       }) => {
-        renderCalls.push({ texture, elevation: box.box.elevation, tint, height, length, splitAt });
+        renderCalls.push({ texture, elevation: box.box.elevation, tint, height, length, splitAt, cell });
         const position = {
           x: box.screenX,
           y: box.screenY - 30,
@@ -230,6 +237,7 @@ export async function mockRender() {
             view: {
               cullable: false,
               source: texture.source,
+              texture,
               x: box.x,
               y: box.y,
               position,
@@ -242,6 +250,19 @@ export async function mockRender() {
       },
     ),
     getBlockDepth: vi.fn((box: { baseScreenY: number }) => box.baseScreenY),
+    // A sheet's cells as `{ source, row, column }`, made once per sheet like the real one.
+    getSheetFrames: vi.fn((texture: { source: string }, layout: { columns: number; rows: number }) => {
+      const cut =
+        sheetFrames.get(texture) ??
+        Array.from({ length: layout.rows }, (_, row) =>
+          Array.from({ length: layout.columns }, (_, column) => ({ source: texture.source, row, column })),
+        );
+      sheetFrames.set(texture, cut);
+      return cut;
+    }),
+    showFrame: vi.fn((view: { texture?: unknown }, texture: unknown) => {
+      view.texture = texture;
+    }),
     // A pool that keeps what it is given, to check what modules give back.
     createSpritePool: vi.fn(() => {
       const kept: unknown[] = [];

@@ -8,7 +8,7 @@ import { CAMERA_START_ZOOM, getGroundPointBelow } from "../camera";
 import { createCameraView } from "../camera-view";
 import { TILE_METRICS } from "../constants";
 import { WorldParts } from "../parts";
-import { createPlayer, PLAYER_PART } from "../player";
+import { createPlayer, PLAYER_FACINGS, PLAYER_PART } from "../player";
 import { createClockPart } from "../time";
 import { projectGridPoint } from "../projection";
 import { getBlockDepth } from "../render";
@@ -25,8 +25,22 @@ import { createTerrainView } from "../terrain-view";
 import type { World } from "../world";
 import type { SceneCamera } from "../../types";
 import { createPlayerView } from "./player-view";
+import { getWalkPose, getWalkSheetCell } from "./walk";
 
 const PLAYER = { textureSource: "/assets/player/block.svg", height: 1 } as const;
+const SHEET = {
+  source: "/assets/player/walk.svg",
+  canvas: { width: 1024, height: 853 },
+  cell: { x: 312, y: 186, width: 400, height: 462 },
+  gap: 48,
+  frames: 8,
+  stride: 1.4,
+} as const;
+const WALKER = { ...PLAYER, walk: SHEET };
+
+/** The cell of the walk sheet a sprite shows, as the mocked `getSheetFrames()` cuts them. */
+const cellOf = (view: TestView) => view.texture as unknown as { source: string; row: number; column: number };
+const facing = (name: string) => PLAYER_FACINGS.indexOf(name as never);
 const projection = {
   tileWidth: TILE_METRICS.tileWidth,
   tileHeight: TILE_METRICS.tileHeight,
@@ -288,6 +302,87 @@ describe("createPlayerView", () => {
     world.parts.get(PLAYER_PART).x = 1.4;
     ticker.frame();
     expect(view.position).toMatchObject(spriteAt({ x: 1.4, y: 1, elevation: 1 }));
+    scene.destroy();
+  });
+
+  it("draws its walk sheet's standing cell facing the camera, sized as the window of its canvas", async () => {
+    const { root, scene } = await mountScene(fieldWithPlayer(), [createPlayerView(WALKER)]);
+    const [view] = root.children;
+
+    expect(Assets.load).toHaveBeenCalledWith(expect.objectContaining({ src: SHEET.source }));
+    expect(Assets.load).not.toHaveBeenCalledWith(expect.objectContaining({ src: PLAYER.textureSource }));
+    expect(renderCalls).toEqual([expect.objectContaining({ cell: getWalkSheetCell(SHEET), height: 1 })]);
+    expect(cellOf(view)).toEqual({ source: SHEET.source, row: facing("south"), column: 0 });
+    scene.destroy();
+  });
+
+  it("turns to where the player walks and steps through the poses by the distance it walked", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, root, scene } = await mountScene(world, [createPlayerView(WALKER)]);
+    const [view] = root.children;
+    const player = world.parts.get(PLAYER_PART);
+    const step = (x: number, y: number) => {
+      Object.assign(player, { previous: { x: player.x, y: player.y, elevation: 1 }, x, y });
+      ticker.frame();
+    };
+
+    // Up on screen: north.
+    player.walk = { x: Math.SQRT1_2, y: Math.SQRT1_2 };
+    step(1.3, 1.3);
+    const first = Math.hypot(0.3, 0.3);
+    expect(cellOf(view)).toMatchObject({ row: facing("north"), column: getWalkPose(first, SHEET) });
+    step(1.6, 1.6);
+    expect(cellOf(view)).toMatchObject({ row: facing("north"), column: getWalkPose(2 * first, SHEET) });
+    expect(getWalkPose(2 * first, SHEET)).not.toBe(getWalkPose(first, SHEET));
+
+    // Right on screen: east, still walking.
+    player.walk = { x: Math.SQRT1_2, y: -Math.SQRT1_2 };
+    step(1.9, 1.3);
+    expect(cellOf(view)).toMatchObject({ row: facing("east"), column: getWalkPose(3 * first, SHEET) });
+    scene.destroy();
+  });
+
+  it("stands still facing the way it last walked, and sets off again from the first pose", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, root, scene } = await mountScene(world, [createPlayerView(WALKER)]);
+    const [view] = root.children;
+    const player = world.parts.get(PLAYER_PART);
+
+    player.walk = { x: -1, y: 0 };
+    Object.assign(player, { previous: { x: 1, y: 1, elevation: 1 }, x: 0.4, y: 1 });
+    ticker.frame();
+    expect(cellOf(view)).toMatchObject({ row: facing("south-west") });
+    expect(cellOf(view).column).toBeGreaterThan(1);
+
+    // Let go: the last tick did not move it.
+    player.walk = { x: 0, y: 0 };
+    player.previous = { x: 0.4, y: 1, elevation: 1 };
+    ticker.frame();
+    expect(cellOf(view)).toMatchObject({ row: facing("south-west"), column: 0 });
+
+    player.walk = { x: -1, y: 0 };
+    Object.assign(player, { x: 0.35 });
+    ticker.frame();
+    expect(cellOf(view)).toMatchObject({ row: facing("south-west"), column: 1 });
+    scene.destroy();
+  });
+
+  it("draws its still SVG when the walk sheet cannot be used", async () => {
+    vi.mocked(Assets.load).mockImplementation((asset) =>
+      (asset as unknown as { src: string }).src === SHEET.source
+        ? Promise.resolve(undefined as never)
+        : loadTexture(asset as never),
+    );
+    const world = fieldWithPlayer();
+    const { ticker, root, scene } = await mountScene(world, [createPlayerView(WALKER)]);
+    const [view] = root.children;
+
+    expect(view.source).toBe(PLAYER.textureSource);
+    expect(renderCalls).toEqual([expect.objectContaining({ cell: undefined })]);
+    world.parts.get(PLAYER_PART).walk = { x: 1, y: 0 };
+    world.parts.get(PLAYER_PART).x = 1.2;
+    ticker.frame();
+    expect(view.texture).toEqual({ source: PLAYER.textureSource });
     scene.destroy();
   });
 

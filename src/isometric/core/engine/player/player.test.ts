@@ -19,7 +19,9 @@ import {
   getPlayerCells,
   getPlayerColumn,
   getPlayerRenderPosition,
+  getPlayerFacing,
   getWalkDirection,
+  PLAYER_FACINGS,
   setPlayerWalk,
   stepPlayer,
 } from "./player";
@@ -152,6 +154,38 @@ describe("createPlayer", () => {
 
   it("stands at elevation 0 off the terrain", () => {
     expect(createPlayer(groundFrom(["0"]), { x: 5, y: 5 }).elevation).toBe(0);
+  });
+});
+
+describe("getPlayerFacing", () => {
+  const still = { up: false, down: false, left: false, right: false };
+
+  it("faces the screen direction walked in, of eight, east first and counter-clockwise", () => {
+    const held: Array<[Partial<ScreenDirections>, string]> = [
+      [{ right: true }, "east"],
+      [{ up: true, right: true }, "north-east"],
+      [{ up: true }, "north"],
+      [{ up: true, left: true }, "north-west"],
+      [{ left: true }, "west"],
+      [{ down: true, left: true }, "south-west"],
+      [{ down: true }, "south"],
+      [{ down: true, right: true }, "south-east"],
+    ];
+    for (const [directions, facing] of held) {
+      const index = getPlayerFacing(getWalkDirection({ ...still, ...directions }));
+      expect(PLAYER_FACINGS[index ?? -1]).toBe(facing);
+    }
+  });
+
+  it("rounds any direction to the nearest facing", () => {
+    // Mostly up (`+x +y`), a little to the right (`+x −y`).
+    expect(PLAYER_FACINGS[getPlayerFacing({ x: 1, y: 0.8 }) ?? -1]).toBe("north");
+    // Just under east: right, a hair down.
+    expect(PLAYER_FACINGS[getPlayerFacing({ x: 0.5, y: -0.6 }) ?? -1]).toBe("east");
+  });
+
+  it("has no facing standing still", () => {
+    expect(getPlayerFacing({ x: 0, y: 0 })).toBeUndefined();
   });
 });
 

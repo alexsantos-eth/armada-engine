@@ -9,6 +9,7 @@ vi.mock("pixi.js", () => {
     public zIndex = 0;
     public anchor = { set: vi.fn() };
     public position = { set: vi.fn() };
+    public scale = { x: 1, y: 1, set: vi.fn() };
 
     constructor(texture: unknown) {
       this.texture = texture;
@@ -49,7 +50,14 @@ vi.mock("pixi.js", () => {
 
 import { Graphics, Sprite } from "pixi.js";
 import { Box } from "../terrain";
-import { createBlockViews, getBlockDepth, getFootprintSliceTiles, type RenderBlockOptions } from "./render";
+import {
+  createBlockViews,
+  getBlockDepth,
+  getFootprintSliceTiles,
+  getSheetFrames,
+  type RenderBlockOptions,
+  showFrame,
+} from "./render";
 
 const depths = new WeakMap<object, number>();
 const depthOf = (view: unknown) => depths.get(view as object);
@@ -403,6 +411,113 @@ describe("createBlockViews", () => {
       { x: 10, y: -3 },
     ]);
     expect(debugGraphics.stroke).toHaveBeenCalledWith({ color: 0xff00ff, width: 1 });
+  });
+});
+
+describe("createBlockViews with a cell", () => {
+  const box = { x: 0, y: 0, box: new Box(0, 0, { elevation: 1 }), screenX: 100, baseScreenY: 60, screenY: 50 };
+  const metrics = { tileWidth: 40, tileHeight: 20, boxHeight: 13 };
+
+  it("sizes and anchors the sprite so its window lies where it does in the whole canvas", () => {
+    // The middle half across, the top three quarters down.
+    const cell = { x: 0.25, y: 0, width: 0.5, height: 0.75 };
+    const [sprite] = renderViews(
+      { addChild: vi.fn() },
+      {
+        texture: { id: "sheet-cell" } as never,
+        box,
+        metrics,
+        surfaceAligned: true,
+        cell,
+      },
+    ) as unknown as TestSprite[];
+
+    // The whole canvas would be 40 × 33, anchored at its top centre.
+    expect(sprite.width).toBe(20);
+    expect(sprite.height).toBeCloseTo(24.75);
+    expect(sprite.anchor.set).toHaveBeenCalledWith(0.5, 0);
+    const [{ position }] = createBlockViews({
+      texture: { id: "whole" } as never,
+      box,
+      metrics,
+      surfaceAligned: true,
+    }).map(({ view }) => view as unknown as TestSprite);
+    expect(sprite.position.set.mock.calls[0]).toEqual(position.set.mock.calls[0]);
+  });
+
+  it("anchors a window off the canvas's centre and top at the canvas's top centre", () => {
+    const [sprite] = renderViews(
+      { addChild: vi.fn() },
+      {
+        texture: { id: "sheet-cell" } as never,
+        box,
+        metrics,
+        cell: { x: 0.5, y: 0.2, width: 0.25, height: 0.4 },
+      },
+    ) as unknown as TestSprite[];
+
+    expect(sprite.anchor.set).toHaveBeenCalledWith(0, -0.5);
+    expect(sprite.width).toBe(10);
+  });
+});
+
+describe("getSheetFrames", () => {
+  const sheet = { source: { id: "sheet" }, frame: { x: 4, y: 2, width: 100, height: 60 } };
+  const layout = { columns: 3, rows: 2, cellWidth: 30, cellHeight: 25, gap: 5 };
+
+  it("cuts the sheet into its cells, by row and column, over the same source", () => {
+    const frames = getSheetFrames(sheet as never, layout);
+
+    expect(frames).toHaveLength(2);
+    expect(frames[0]).toHaveLength(3);
+    expect(frames[1][2].source).toBe(sheet.source);
+    expect(frames[0][0].frame).toMatchObject({ x: 4, y: 2, width: 30, height: 25 });
+    expect(frames[1][2].frame).toMatchObject({ x: 4 + 2 * 35, y: 2 + 30, width: 30, height: 25 });
+  });
+
+  it("cuts each sheet once", () => {
+    expect(getSheetFrames(sheet as never, layout)).toBe(getSheetFrames(sheet as never, layout));
+  });
+});
+
+describe("showFrame", () => {
+  it("shows another frame on a sprite, writing its texture only when it changes", () => {
+    const sprite = new Sprite("first" as never);
+    let writes = 0;
+    let texture: unknown = "first";
+    Object.defineProperty(sprite, "texture", {
+      get: () => texture,
+      set: (value: unknown) => {
+        writes += 1;
+        texture = value;
+      },
+    });
+
+    showFrame(sprite, "first" as never);
+    expect(writes).toBe(0);
+    showFrame(sprite, "second" as never);
+    expect(texture).toBe("second");
+    expect(writes).toBe(1);
+  });
+
+  it("keeps the sprite's scale, which Pixi resets from its last width and height on a new texture", () => {
+    const sprite = new Sprite("first" as never) as unknown as { scale: { x: number; y: number; set: unknown } };
+    const scale = { x: 0.6, y: 0.6, set: vi.fn((x: number, y: number) => Object.assign(scale, { x, y })) };
+    sprite.scale = scale;
+    // Like Pixi: a new texture puts back the scale of the last width written.
+    Object.defineProperty(sprite, "texture", { set: () => Object.assign(scale, { x: 1, y: 1 }), get: () => "first" });
+
+    showFrame(sprite as never, "second" as never);
+
+    expect(scale).toMatchObject({ x: 0.6, y: 0.6 });
+  });
+
+  it("leaves views that are not sprites alone", () => {
+    const outline = new Graphics();
+
+    showFrame(outline, "frame" as never);
+
+    expect(outline).not.toHaveProperty("texture");
   });
 });
 

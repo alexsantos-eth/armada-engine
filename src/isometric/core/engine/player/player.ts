@@ -1,6 +1,7 @@
 import type {
   GridPoint,
   ITerrainColumn,
+  PlayerFacing,
   PlayerPosition,
   PlayerState,
   ScreenDirections,
@@ -175,6 +176,30 @@ export function getWalkDirection(directions: ScreenDirections): GridPoint {
   const y = up - across;
   const length = Math.hypot(x, y);
   return length === 0 ? { x: 0, y: 0 } : { x: x / length, y: y / length };
+}
+
+/** The eight facings, counter-clockwise on screen from east: the rows of a walk sheet. */
+export const PLAYER_FACINGS: readonly PlayerFacing[] = [
+  "east",
+  "north-east",
+  "north",
+  "north-west",
+  "west",
+  "south-west",
+  "south",
+  "south-east",
+];
+
+/**
+ * Index in {@link PLAYER_FACINGS} of the facing nearest the world direction `walk` (right on screen
+ * is `+x −y`, up `+x +y`), or `undefined` for `(0, 0)`: someone standing keeps the way they faced.
+ */
+export function getPlayerFacing(walk: GridPoint): number | undefined {
+  const across = walk.x - walk.y;
+  const up = walk.x + walk.y;
+  if (across === 0 && up === 0) return undefined;
+  const octant = Math.round(Math.atan2(up, across) / (Math.PI / 4));
+  return (octant + PLAYER_FACINGS.length) % PLAYER_FACINGS.length;
 }
 
 /** Sets the direction the player walks in from the screen directions held (the input). */

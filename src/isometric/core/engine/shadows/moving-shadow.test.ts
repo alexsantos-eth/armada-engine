@@ -163,6 +163,33 @@ describe("createMovingShadow", () => {
     expect(renderer.render).toHaveBeenCalledTimes(2);
   });
 
+  it("makes a silhouette per texture its sprite shows, and draws again when it shows another", () => {
+    const standing = { cell: "standing" };
+    const stepping = { cell: "stepping" };
+    const sprite = new Sprite(standing as never);
+    const { caster } = casterAt({ x: 3, y: 4, elevation: 1 }, sprite);
+    const { shadow, scene, renderer } = shadowOf(caster);
+
+    shadow.update(scene, noon, 0);
+    // A walk pose, without moving (the sprite is turned in place).
+    sprite.texture = stepping as never;
+    shadow.update(scene, noon, 1);
+    expect(renderer.render).toHaveBeenCalledTimes(2);
+    expect(createMovingSilhouette).toHaveBeenCalledTimes(2);
+
+    // Back to a pose it already showed: its silhouette is kept.
+    sprite.texture = standing as never;
+    shadow.update(scene, noon, 2);
+    expect(renderer.render).toHaveBeenCalledTimes(3);
+    expect(createMovingSilhouette).toHaveBeenCalledTimes(2);
+    const silhouettes = vi.mocked(createMovingSilhouette).mock.results.map(({ value }) => value as unknown);
+    expect(vi.mocked(placeSilhouette).mock.calls.map(([, silhouette]) => silhouette)).toEqual([
+      silhouettes[0],
+      silhouettes[1],
+      silhouettes[0],
+    ]);
+  });
+
   it("draws again only when the caster moves, the sun turns or a refresh is due", () => {
     const { caster, at } = casterAt({ x: 3, y: 4, elevation: 1 });
     const { shadow, scene, renderer, moved } = shadowOf(caster);
