@@ -48,7 +48,8 @@ describe("camera defaults", () => {
 
 describe("createCamera", () => {
   it("looks at the centre of its bounds with the start zoom", () => {
-    expect(createCamera(limits)).toEqual({ x: 15.5, y: 15.5, zoom: CAMERA_START_ZOOM });
+    const game = { ...limits, maxZoom: CAMERA_MAX_ZOOM };
+    expect(createCamera(game)).toEqual({ x: 15.5, y: 15.5, zoom: CAMERA_START_ZOOM });
   });
 
   it("accepts a start point and zoom, clamped to the limits", () => {
