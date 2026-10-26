@@ -34,14 +34,15 @@ export function getTerrainTint(tint: TerrainTint, elevation: number, maxElevatio
  * whose material has a `topInset` covers nothing behind it. The blocks along a
  * chunk's `−x`/`−y` edges are covered by the neighbour chunk's columns (`context.columnAt`), so
  * chunks meet as if the terrain were one. Tints by height count from `DEFAULT_MAX_ELEVATION`, the
- * same in every chunk.
+ * same in every chunk. A block takes the texture the `terrainSurfaces` service gives it (the
+ * animated water of `surface-bands`), if any, instead of its material's own.
  *
  * When a material's SVG cannot be loaded, no terrain is drawn.
  */
 export function createTerrainView(): SceneModule {
   return {
     id: "terrain",
-    async setup({ terrain, projection, metrics, columnAt, assets }) {
+    async setup({ terrain, projection, metrics, columnAt, assets, services }) {
       const materials = Object.keys(terrain) as TerrainMaterial[];
       const loaded = await Promise.all(materials.map((material) => assets.loadSvg(terrain[material].textureSource)));
       const textures = new Map<TerrainMaterial, Texture>();
@@ -52,6 +53,8 @@ export function createTerrainView(): SceneModule {
       if (textures.size < materials.length) return { destroy: () => {} };
       // A hidden chunk's blocks are given back for the next chunk shown (#94).
       const sprites = createSpritePool();
+      // Textures that replace a material's own (the animated water), when a module provides them.
+      const surfaces = services.get("terrainSurfaces");
 
       return {
         showChunk: ({ rect, columns }) => {
@@ -75,7 +78,9 @@ export function createTerrainView(): SceneModule {
           const views: SceneView[] = projectBoxesToIsometric(visible, projection).flatMap((box) =>
             // Typed once by `createVisibleBlocks()`: water, ground, or the column's surface on top.
             createBlockViews({
-              texture: textures.get(box.box.type) as Texture,
+              texture:
+                surfaces?.textureAt(box.box.type, box.box.x, box.box.y, box.box.elevation) ??
+                (textures.get(box.box.type) as Texture),
               box,
               metrics,
               tint: getTerrainTint(terrain[box.box.type].tint, box.box.elevation, DEFAULT_MAX_ELEVATION),

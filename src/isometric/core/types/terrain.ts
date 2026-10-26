@@ -57,6 +57,26 @@ export type TerrainTint =
   | { readonly kind: "depth"; readonly step: number }
   | { readonly kind: "height"; readonly topTint: number; readonly step: number };
 
+/**
+ * Soft bands of light that drift across the top of a material's blocks (water), drawn by the
+ * `surface-bands` scene module. The pattern repeats every two tiles, so the bands cross from one
+ * block to the next without a seam.
+ */
+export type TerrainBands = {
+  /** Bands every two tiles. */
+  readonly count: number;
+  /** Width of a band, as a fraction of the space between two bands, in `(0, 1]`. */
+  readonly width: number;
+  /** Opacity of the light in the middle of a band, in `(0, 1]`. */
+  readonly alpha: number;
+  /** Real milliseconds a band takes to drift two tiles. */
+  readonly period: number;
+  /** Blocks whose elevation is below it are deep: their bands are fainter and slower. */
+  readonly deepBelow: number;
+  /** How much of the light and the speed deep blocks keep, in `[0, 1]`. */
+  readonly deep: number;
+};
+
 /** How the blocks of one terrain material are drawn (game content). */
 export type TerrainMaterialAppearance = {
   /** SVG of the block, under `public/` (e.g. `/assets/grass/block.svg`). */
@@ -69,6 +89,8 @@ export type TerrainMaterialAppearance = {
    * behind it. Defaults to `0`.
    */
   readonly topInset?: number;
+  /** Bands of light drifting across the top of its blocks. Without it, the top stays still. */
+  readonly bands?: TerrainBands;
 };
 
 /** How every terrain material is drawn: the scene receives it as content. */

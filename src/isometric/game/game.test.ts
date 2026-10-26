@@ -180,6 +180,7 @@ describe("mountGame", () => {
     expect(world.seed).toBe(1337);
     expect(world.parts.get(CLOCK_PART).tick).toBe(15 * TICKS_PER_HOUR);
     expect(modules.map(({ id }) => id)).toEqual([
+      "surface-bands",
       "terrain",
       "entities",
       "foliage-wind",
@@ -276,7 +277,14 @@ describe("mountGame", () => {
 
     onTick(app)({ elapsedMS: 1000 });
 
-    expect(modules.map(({ id }) => id)).toEqual(["terrain", "entities", "foliage-wind", "ambient-light", "camera"]);
+    expect(modules.map(({ id }) => id)).toEqual([
+      "surface-bands",
+      "terrain",
+      "entities",
+      "foliage-wind",
+      "ambient-light",
+      "camera",
+    ]);
     expect(world.parts.get(PLAYER_PART).previous).toEqual({
       x: world.parts.get(PLAYER_PART).x,
       y: world.parts.get(PLAYER_PART).y,

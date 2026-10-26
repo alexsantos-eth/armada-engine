@@ -11,7 +11,10 @@ const HEIGHT_TINT_STEP = 0.05;
 /** Green-yellow light on the top levels of grass and ground. */
 const LAND_TOP_TINT = 0xe8ffb0;
 
-/** The terrain materials: grass and ground share the land tint, sand keeps its colour, water darkens with depth. */
+/**
+ * The terrain materials: grass and ground share the land tint, sand keeps its colour, water darkens
+ * with depth and has bands of light drifting across it.
+ */
 export const TERRAIN_APPEARANCE: TerrainAppearance = {
   grass: {
     textureSource: "/assets/grass/block.svg",
@@ -24,6 +27,9 @@ export const TERRAIN_APPEARANCE: TerrainAppearance = {
   water: {
     textureSource: "/assets/water/block.svg",
     tint: { kind: "depth", step: 0.15 },
+    // Soft light drifting across the water: three bands every two tiles, two tiles in 9 s; under
+    // the first level, fainter and slower.
+    bands: { count: 3, width: 0.45, alpha: 0.16, period: 9000, deepBelow: -1, deep: 0.45 },
   },
   // Neutral: the same height darkening as grass, without the green cast. Its top is half a block lower.
   sand: {

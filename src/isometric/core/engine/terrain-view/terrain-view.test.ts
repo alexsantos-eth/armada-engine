@@ -14,6 +14,8 @@ import {
   resetHarness,
   worldFrom,
 } from "../flow-check/scene-harness";
+import type { Texture } from "pixi.js";
+import type { SceneModule } from "../scene";
 import { DEFAULT_MAX_ELEVATION } from "../terrain";
 import { getTerrainTint, createTerrainView } from "./terrain-view";
 
@@ -172,6 +174,25 @@ describe("createTerrainView", () => {
       expect(renderCalls.splice(0)).toHaveLength(inside);
       scene.destroy();
     }
+  });
+
+  it("draws a block with the texture a terrainSurfaces module gives for it, or with its own", async () => {
+    const water = { source: "surface:water" } as unknown as Texture;
+    const surfaces: SceneModule = {
+      id: "surfaces",
+      setup: () => ({
+        destroy: () => undefined,
+        provides: {
+          terrainSurfaces: { textureAt: (material) => (material === "water" ? water : undefined) },
+        },
+      }),
+    };
+
+    const { scene } = await mountScene(worldFrom([{ x: 0, y: 0, elevation: 2 }]), [surfaces, createTerrainView()]);
+
+    expect(renderCalls.find(({ elevation }) => elevation === -1)?.texture).toBe(water);
+    expect(renderCalls.find(({ elevation }) => elevation === 2)?.texture.source).toBe("/assets/grass/block.svg");
+    scene.destroy();
   });
 
   it("lets blocks behind a sunken top show", async () => {
