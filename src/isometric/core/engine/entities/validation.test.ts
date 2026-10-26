@@ -90,10 +90,10 @@ describe("validateEntityDefinitions", () => {
       ]),
     ).toEqual([
       'rock: textureSource must be an absolute SVG path such as "/assets/<name>/block.svg" (got "rock.svg")',
-      'rock: surface must be one of grass, water, sand (got "lava")',
+      'rock: surface must be one of grass, water, sand, ground (got "lava")',
       'rock: lengthAxis must be "x" or "y" (got "z")',
       "rock: footprintSurfaces lists 3 surfaces for a footprint of 2 blocks",
-      'rock: footprintSurfaces[1] must be one of grass, water, sand (got "snow")',
+      'rock: footprintSurfaces[1] must be one of grass, water, sand, ground (got "snow")',
     ]);
   });
 

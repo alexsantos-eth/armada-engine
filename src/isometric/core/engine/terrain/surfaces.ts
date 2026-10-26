@@ -1,5 +1,6 @@
 import type { BoxType, IGridObject, TerrainMaterial, TerrainPoint, TerrainSurface, WorldRect } from "../../types";
 import { CellMap } from "../grid";
+import { type BareGroundField, BARE_GROUND_ELEVATION, createBareGroundField } from "./bare-ground";
 import { Box } from "./box";
 import { generatePerlinTerrain } from "./terrain";
 
@@ -84,12 +85,17 @@ export function getBlockMaterial(elevation: number, topElevation: number, surfac
 
 /**
  * The terrain columns of a height map: one `Box` per point, typed with its column's surface
- * ({@link classifyColumnSurfaces}, computed once here). The rest of the engine reads
- * `box.type` instead of classifying again.
+ * ({@link classifyColumnSurfaces}, computed once here). With `bareGround`, grass at
+ * {@link BARE_GROUND_ELEVATION} becomes `ground` where the field says so (patches where grass did
+ * not grow). The rest of the engine reads `box.type` instead of classifying again.
  */
-export function createTerrainColumns(points: readonly TerrainPoint[]): Box[] {
+export function createTerrainColumns(points: readonly TerrainPoint[], bareGround?: BareGroundField): Box[] {
   const surfaces = classifyColumnSurfaces(points);
-  return points.map(({ x, y, elevation }) => new Box(x, y, { elevation, type: surfaces.get(x, y) as TerrainSurface }));
+  return points.map(({ x, y, elevation }) => {
+    const surface = surfaces.get(x, y) as TerrainSurface;
+    const bare = surface === "grass" && elevation === BARE_GROUND_ELEVATION && bareGround?.(x, y) === true;
+    return new Box(x, y, { elevation, type: bare ? "ground" : surface });
+  });
 }
 
 /** `a ∩ b`, or `undefined` when they do not overlap. */
@@ -114,8 +120,9 @@ export type TerrainAreaOptions = {
 /**
  * The terrain columns of one area of the world (a chunk), typed with their surface exactly as if
  * the whole world had been generated at once: the height map is sampled {@link SURFACE_REACH}
- * columns past the area on every side, classified, and only the area is kept. Areas generated on
- * their own therefore meet without seams. Columns come `x`-major, like `generatePerlinTerrain()`.
+ * columns past the area on every side, classified (with the world's patches of bare ground,
+ * {@link createBareGroundField}), and only the area is kept. Areas generated on their own
+ * therefore meet without seams. Columns come `x`-major, like `generatePerlinTerrain()`.
  * Nothing is generated outside `clip`.
  */
 export function generateTerrainColumns(area: WorldRect, { seed, clip }: TerrainAreaOptions): Box[] {
@@ -132,5 +139,5 @@ export function generateTerrainColumns(area: WorldRect, { seed, clip }: TerrainA
     height: sampled.maxY - sampled.minY + 1,
   });
   const keep = ({ x, y }: TerrainPoint) => x >= inside.minX && x <= inside.maxX && y >= inside.minY && y <= inside.maxY;
-  return createTerrainColumns(points).filter(keep);
+  return createTerrainColumns(points, createBareGroundField(seed)).filter(keep);
 }

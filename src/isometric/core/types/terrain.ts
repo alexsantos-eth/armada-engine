@@ -37,11 +37,14 @@ export type PerlinTerrainOptions = {
   maxElevation?: number;
 };
 
-/** Material of the top block of a terrain column. */
-export type TerrainSurface = "grass" | "water" | "sand";
+/**
+ * Material of the top block of a terrain column: `ground` on the patches of the lowest land
+ * where grass did not grow.
+ */
+export type TerrainSurface = "grass" | "water" | "sand" | "ground";
 
-/** Material used to render a single terrain block. */
-export type TerrainMaterial = TerrainSurface | "ground";
+/** Material used to render a single terrain block (any surface; `ground` also under the top). */
+export type TerrainMaterial = TerrainSurface;
 
 /**
  * How the blocks of a material are tinted by their elevation (`0` keeps the texture's colours):

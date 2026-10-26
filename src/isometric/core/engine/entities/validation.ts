@@ -1,7 +1,7 @@
 import type { EntityDefinition, TerrainSurface } from "../../types";
 import { parseFormationMap } from "./formation";
 
-const SURFACES: readonly TerrainSurface[] = ["grass", "water", "sand"];
+const SURFACES: readonly TerrainSurface[] = ["grass", "water", "sand", "ground"];
 const HEX_COLOR = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 const TEXTURE_SOURCE = /^\/.+\.svg$/;
 

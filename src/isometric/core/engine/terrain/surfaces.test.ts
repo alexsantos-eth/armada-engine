@@ -9,6 +9,7 @@ import {
   getBlockMaterial,
   getColumnSurface,
 } from "./surfaces";
+import { createBareGroundField } from "./bare-ground";
 import { generatePerlinTerrain } from "./terrain";
 
 const column = (x: number, y: number, elevation: number) => ({
@@ -145,6 +146,23 @@ describe("createTerrainColumns", () => {
     expect(columns.map(({ type }) => type)).toEqual(["water", "sand", "grass", "grass"]);
   });
 
+  it("turns grass at the lowest land elevation into ground where the field is bare", () => {
+    // x: water, shore sand, grass at 0 (twice), grass at 1.
+    const points = grid([[-1, 0, 0, 0, 1]]);
+    const bare = (x: number) => x !== 2;
+
+    expect(createTerrainColumns(points, bare).map(({ type }) => type)).toEqual([
+      "water",
+      "sand",
+      "grass",
+      "ground",
+      "grass",
+    ]);
+    expect(createTerrainColumns(points, () => false).map(({ type }) => type)).toEqual(
+      createTerrainColumns(points).map(({ type }) => type),
+    );
+  });
+
   it("matches classifyColumnSurfaces() column by column", () => {
     const points = grid([
       [0, 0, 0, 0],
@@ -166,6 +184,7 @@ describe("generateTerrainColumns", () => {
   it("types an area's columns as if the whole world had been generated at once", () => {
     const whole = createTerrainColumns(
       generatePerlinTerrain({ seed, originX: -8, originY: -8, width: 32, height: 32 }),
+      createBareGroundField(seed),
     );
     const inArea = whole.filter(({ x, y }) => x >= 0 && x <= 15 && y >= 0 && y <= 15);
 
@@ -178,7 +197,9 @@ describe("generateTerrainColumns", () => {
     const clip = { minX: 0, minY: 0, maxX: 9, maxY: 5 };
     const clipped = generateTerrainColumns(area, { seed, clip });
 
-    expect(shape(clipped)).toEqual(shape(createTerrainColumns(generatePerlinTerrain({ seed, width: 10, height: 6 }))));
+    const points = generatePerlinTerrain({ seed, width: 10, height: 6 });
+
+    expect(shape(clipped)).toEqual(shape(createTerrainColumns(points, createBareGroundField(seed))));
     expect(generateTerrainColumns({ minX: 20, minY: 0, maxX: 30, maxY: 5 }, { seed, clip })).toEqual([]);
   });
 });

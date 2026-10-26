@@ -137,7 +137,7 @@ describe("createVisibleBlocks", () => {
   };
 
   it("gives the blocks of filling the columns and removing the hidden ones, in that order", () => {
-    // A chunk of generated terrain (hills, shores, sea) and the columns on its −x/−y edges.
+    // A chunk of generated terrain (hills, shores, bare ground, sea) and the columns on its −x/−y edges.
     const area = { minX: 32, minY: -64, maxX: 63, maxY: -33 };
     const around = generateTerrainColumns({ minX: 31, minY: -65, maxX: 63, maxY: -33 }, { seed: 1337 });
     const inside = ({ x, y }: Box) => x >= area.minX && y >= area.minY;
@@ -146,7 +146,7 @@ describe("createVisibleBlocks", () => {
 
     const visible = createVisibleBlocks(columns, covering, -3, fillsCell);
 
-    expect(new Set(columns.map(({ type }) => type))).toEqual(new Set(["grass", "sand", "water"]));
+    expect(new Set(columns.map(({ type }) => type))).toEqual(new Set(["grass", "ground", "sand", "water"]));
     expect(visible.length).toBeLessThan(fillElevations(columns, -3).length / 2);
     expect(visible.map(describeBlock)).toEqual(reference(columns, covering, -3).map(describeBlock));
   });

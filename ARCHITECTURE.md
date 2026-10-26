@@ -275,6 +275,8 @@ src/isometric/core/
       terrain.test.ts
       surfaces.ts
       surfaces.test.ts
+      bare-ground.ts     # parches de tierra sin pasto (ruido)
+      bare-ground.test.ts
       index.ts
     terrain-view/        # módulo de escena: bloques de terreno con textura y tinte por material
       terrain-view.ts
@@ -615,9 +617,12 @@ La selección vive en `engine/terrain/surfaces.ts`, sin dependencias de Pixi, se
    - cima negativa: `water`;
    - cima exactamente en `SAND_ELEVATION` (`0`) en una orilla: al menos una vecina directa de agua y, entre sus ocho vecinas (diagonales incluidas, para que las esquinas de la playa sigan siendo arena), alguna de interior, es decir, tierra más alta o tierra a `0` que no toque agua: `sand`. Así los islotes y las franjas sueltas en medio del agua no se vuelven arena;
    - cualquier otra: `grass`.
+
+   Después, `createTerrainColumns(points, bareGround?)` convierte en `ground` el pasto con cima en `BARE_GROUND_ELEVATION` (`0`, la tierra más baja) donde el campo de ruido `bareGround` lo pide: parches de tierra donde no creció el pasto. `generateTerrainColumns()` pasa `createBareGroundField(seed)` (`terrain/bare-ground.ts`): simplex con su propio flujo (`deriveSeed(seed, "bare-ground")`), dos octavas (la segunda, con peso `0.35`, deshilacha los bordes) muestreadas en coordenadas absolutas a escala `BARE_GROUND_SCALE` (9 columnas) y umbral `BARE_GROUND_THRESHOLD` (`0.35`): con la semilla 1337, ~19 % del pasto a `0`. No depende de vecinas, así que no amplía `SURFACE_REACH` ni deja costuras entre chunks; cuesta ~0,1 ms por chunk, en el worker. La arena se decide antes y no cambia (una columna de tierra a `0` cuenta como interior). Las entidades con `surface: "grass"` no aparecen en los parches; `"ground"` es una superficie válida para entidades.
+
 2. `getBlockMaterial(elevation, topElevation, surface)` elige el material de cada bloque; `fillElevations()` y `createVisibleBlocks()` lo aplican al materializar cada nivel y lo guarda como `type` del bloque, que la escena usa directamente para elegir textura y tinte:
    - elevación negativa: `water`;
-   - bloque superior de la columna: la superficie de la columna (`grass` o `sand`);
+   - bloque superior de la columna: la superficie de la columna (`grass`, `sand` o `ground`);
    - cualquier bloque inferior no negativo: `ground`.
 
 El SVG de arena ocupa la mitad del alto del bloque (su cima está a z = 170 de 341 dentro del mismo lienzo `1024×853`), de modo que la orilla baja en dos escalones suaves: agua → arena (medio bloque) → pasto (bloque completo). El renderer no cambia, porque la geometría reducida vive en el asset. Las entidades se siguen alineando a la altura completa del bloque, así que una entidad con `surface: "sand"` necesitará desplazarse medio bloque hacia abajo cuando se añada la primera. La arena recibe el mismo oscurecimiento por altura que el pasto, pero con un tinte neutro en lugar del verdoso, y declara `topInset: 0.5` (su cima medio bloque más baja), que las sombras, la oclusión y el jugador leen con `topInsetAt()`. `createEntitiesFromConfig()` compara `surface` con el `type` de cada columna (sin volver a clasificar), por lo que las entidades de `grass` no aparecen sobre arena y existe la superficie `"sand"` para entidades de playa.
