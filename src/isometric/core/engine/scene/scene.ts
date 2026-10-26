@@ -25,10 +25,15 @@ export const SCENE_LAYER = {
   terrain: 0,
   /** What lies on a terrain top: its shadows. */
   ground: 1,
+  /**
+   * What stands on a column behind the centre of what stands there: the player walking behind a
+   * tree's trunk, drawn after the column's top but before the tree.
+   */
+  behindObject: 2,
   /** What stands on the terrain: entities. */
-  object: 2,
+  object: 3,
   /** What lies on what stands: the shadows entities receive. */
-  onObject: 3,
+  onObject: 4,
 } as const;
 
 /**

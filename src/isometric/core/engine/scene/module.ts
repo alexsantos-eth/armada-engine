@@ -18,9 +18,10 @@ import type {
 
 /**
  * Where a view goes among the views of the same depth (the same column and elevation): the
- * terrain block, then what lies on it, then what stands on it, then what lies on that.
+ * terrain block, then what lies on it, then what stands behind the centre of what stands on it,
+ * then what stands on it, then what lies on that.
  */
-export type SceneLayer = 0 | 1 | 2 | 3;
+export type SceneLayer = 0 | 1 | 2 | 3 | 4;
 
 /** A world view with its draw depth and its {@link SceneLayer}. */
 export type SceneView = DepthView & { readonly layer: SceneLayer };

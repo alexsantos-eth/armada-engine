@@ -36,6 +36,15 @@ export type EntitySway = {
 
 export type SvgColorReplacements = Readonly<Record<string, SvgColor>>;
 
+/**
+ * Where an entity blocks movement, block by block: the side of a square centred on each block of
+ * its footprint, as a fraction of the block's side (`0`–`1`). `1` blocks the whole block (a
+ * house), a small value only its centre (a tree's trunk), `0` nothing (a pier's end on land). A
+ * single number applies to every block; a list gives one per block, in order from the anchor
+ * along `lengthAxis`, and blocks it does not list block whole.
+ */
+export type EntityCollision = number | readonly number[];
+
 /** Relative position on the grid, in blocks, from a formation's anchor. */
 export type GridOffset = {
   /** Offset along the engine `x` axis. */
@@ -120,6 +129,8 @@ export type EntityDefinition = {
   colorReplacements?: SvgColorReplacements;
   /** Sways in the wind (trees). Single-tile entities only. */
   sway?: EntitySway;
+  /** Where it blocks movement (see {@link EntityCollision}). Defaults to every whole block (`1`). */
+  collision?: EntityCollision;
 };
 
 export type EntityData = GridObjectData & {
@@ -146,6 +157,8 @@ export type EntityData = GridObjectData & {
   colorVariant?: number;
   /** How the entity sways in the wind; see `EntityDefinition.sway`. */
   sway?: EntitySway;
+  /** Where it blocks movement; see `EntityDefinition.collision`. Absent: every whole block. */
+  collision?: EntityCollision;
 };
 
 /** Optional identity data when creating an {@link IEntity} instance. */
@@ -229,5 +242,12 @@ export interface IEntity extends IGridObject {
   readonly colorReplacements?: SvgColorReplacements;
   readonly colorVariant?: number;
   readonly sway?: EntitySway;
+  readonly collision?: EntityCollision;
+  /**
+   * Side of the square, centred on column `(x, y)`, the entity blocks movement in there, as a
+   * fraction of the block (see {@link EntityCollision}); `0` off its footprint or where it does
+   * not block.
+   */
+  collisionAt(x: number, y: number): number;
   getData(): EntityData;
 }

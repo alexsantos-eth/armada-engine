@@ -23,7 +23,7 @@ import { SCENE_LAYER } from "./scene";
 describe("scene module contract", () => {
   it("has one layer per `SCENE_LAYER` entry, in draw order", () => {
     expectTypeOf<(typeof SCENE_LAYER)[keyof typeof SCENE_LAYER]>().toEqualTypeOf<SceneLayer>();
-    expect(Object.values(SCENE_LAYER)).toEqual([0, 1, 2, 3]);
+    expect(Object.values(SCENE_LAYER)).toEqual([0, 1, 2, 3, 4]);
   });
 
   it("names the services modules share, each with its type", () => {

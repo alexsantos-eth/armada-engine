@@ -9,6 +9,7 @@ import {
   PLAYER_SPEED,
   PLAYER_STEP,
   type PlayerGround,
+  type PlayerObstacle,
   canStandOn,
   createPlayer,
   createPlayerSystem,
@@ -23,6 +24,9 @@ import {
   stepPlayer,
 } from "./player";
 
+/** Side of the square a `t` trunk blocks in {@link groundFrom}. */
+const TRUNK = 0.2;
+
 /** Ticks a walking player needs to cover `columns`, whatever `PLAYER_SPEED` is. */
 const ticksFor = (columns: number) => Math.ceil(columns / PLAYER_STEP);
 
@@ -31,11 +35,12 @@ const still: ScreenDirections = { up: false, down: false, left: false, right: fa
 /**
  * A ground drawn as text: each string is a row along `y`, each character a column along `x`.
  * Digits are grass at that elevation, `~` water, `T` a tree (grass at 0 with a non-walkable
- * occupant), `w` grass at 0 with a walkable occupant.
+ * occupant), `w` grass at 0 with a walkable occupant, `t` a trunk (an occupant blocking a square of
+ * side {@link TRUNK} on its centre) and `o` an occupant that blocks none of its block.
  */
 const groundFrom = (rows: readonly string[]): PlayerGround => {
   const columns: ITerrainColumn[] = [];
-  const occupants = new CellMap<{ walkable: boolean }[]>();
+  const occupants = new CellMap<PlayerObstacle[]>();
   rows.forEach((row, y) =>
     [...row].forEach((cell, x) => {
       const type: TerrainMaterial = cell === "~" ? "water" : "grass";
@@ -43,6 +48,8 @@ const groundFrom = (rows: readonly string[]): PlayerGround => {
       columns.push({ x, y, elevation, type, metadata: {} });
       if (cell === "T") occupants.set(x, y, [{ walkable: false }]);
       if (cell === "w") occupants.set(x, y, [{ walkable: true }]);
+      if (cell === "t") occupants.set(x, y, [{ walkable: false, collisionAt: () => TRUNK }]);
+      if (cell === "o") occupants.set(x, y, [{ walkable: false, collisionAt: () => 0 }]);
     }),
   );
   return {
@@ -306,6 +313,30 @@ describe("stepPlayer", () => {
     const free = walking(yard, { x: 0, y: 1 }, { up: true, right: true });
     stepPlayer(free, yard, ticksFor(2));
     expect(free.x).toBeGreaterThan(1);
+  });
+
+  it("only bumps into the square an occupant blocks, centred on its column", () => {
+    const grove = groundFrom(["000", "0t0", "000"]);
+    // Past the trunk, inside its column but clear of its square.
+    const beside = walking(grove, { x: 0, y: 1 - (PLAYER_RADIUS + TRUNK / 2) - 0.05 }, { up: true, right: true });
+    stepPlayer(beside, grove, ticksFor(2));
+    expect(beside.x).toBeGreaterThan(1.9);
+
+    // Straight at it: stops against its edge, well inside the column.
+    const ahead = walking(grove, { x: 0, y: 1 }, { up: true, right: true });
+    stepPlayer(ahead, grove, ticksFor(2));
+    expect(ahead.x).toBeGreaterThan(0.5);
+    expect(ahead.x).toBeLessThanOrEqual(1 - (PLAYER_RADIUS + TRUNK / 2));
+    expect(ahead.x).toBeGreaterThan(1 - (PLAYER_RADIUS + TRUNK / 2) - PLAYER_STEP);
+  });
+
+  it("walks over an occupant that blocks none of its block, and cannot stand on a trunk's column", () => {
+    const pier = groundFrom(["0o0"]);
+    const player = walking(pier, { x: 0, y: 0 }, { up: true, right: true });
+    stepPlayer(player, pier, ticksFor(2));
+    expect(player.x).toBeGreaterThan(1.9);
+    expect(canStandOn(pier, 1, 0, 0)).toBe(true);
+    expect(canStandOn(groundFrom(["t"]), 0, 0, 0)).toBe(false);
   });
 
   it("climbs and goes down one block, and takes the elevation of the column under it", () => {

@@ -161,6 +161,31 @@ describe("Entity and createEntitiesFromConfig", () => {
     expect(entity.metadata).toEqual({});
   });
 
+  it("blocks whole blocks by default, a centred square of its collision, or one per footprint block", () => {
+    const rock = {
+      id: "rock",
+      textureSource: "/assets/rock/block.svg",
+      height: 1,
+      spawnChance: 1,
+      surface: "grass" as const,
+    };
+    const house = new Entity(2, 3, { ...rock, length: 2 } as const, 0);
+    expect(house.collision).toBeUndefined();
+    expect([house.collisionAt(2, 3), house.collisionAt(3, 3)]).toEqual([1, 1]);
+    expect(house.getData().collision).toBeUndefined();
+
+    const tree = new Entity(2, 3, { ...rock, collision: 0.15 } as const, 0);
+    expect(tree.collisionAt(2, 3)).toBe(0.15);
+    expect(tree.getData().collision).toBe(0.15);
+
+    const pier = new Entity(2, 3, { ...rock, length: 3, lengthAxis: "y", collision: [1, 0] } as const, 0);
+    expect([pier.collisionAt(2, 3), pier.collisionAt(2, 4), pier.collisionAt(2, 5)]).toEqual([1, 0, 1]);
+    // Off the footprint: before the anchor, past its end, or beside it.
+    expect([pier.collisionAt(2, 2), pier.collisionAt(2, 6), pier.collisionAt(3, 4)]).toEqual([0, 0, 0]);
+    expect([house.collisionAt(1, 3), house.collisionAt(4, 3), house.collisionAt(2, 4)]).toEqual([0, 0, 0]);
+    expect(Entity.fromData(2, 3, pier.getData()).collisionAt(2, 4)).toBe(0);
+  });
+
   it("keeps an explicit id, so restored entities keep their identity after moving", () => {
     const entity = new Entity(
       9,

@@ -57,6 +57,15 @@ function checkDefinition(definition: EntityDefinition, report: (issue: string) =
     }
   }
 
+  if (definition.collision !== undefined) {
+    const sizes = typeof definition.collision === "number" ? [definition.collision] : definition.collision;
+    if (sizes.length > length) report(`collision lists ${sizes.length} sizes for a footprint of ${length} blocks`);
+    sizes.forEach((size, index) => {
+      const at = typeof definition.collision === "number" ? "collision" : `collision[${index}]`;
+      if (!(size >= 0 && size <= 1)) report(`${at} must be between 0 and 1 (got ${String(size)})`);
+    });
+  }
+
   const footprintSurfaces = definition.footprintSurfaces ?? [];
   if (footprintSurfaces.length > length) {
     report(`footprintSurfaces lists ${footprintSurfaces.length} surfaces for a footprint of ${length} blocks`);
@@ -110,8 +119,8 @@ function checkDefinition(definition: EntityDefinition, report: (issue: string) =
 /**
  * Validates entity definitions when content is loaded, so a typo in the data fails early
  * with a clear message instead of silently spawning nothing (or garbage). Checks ids,
- * texture paths, numeric ranges, surfaces, axes, footprints, formations, color replacements
- * and sway.
+ * texture paths, numeric ranges, surfaces, axes, footprints, formations, color replacements,
+ * sway and collision.
  *
  * @throws {@link EntityConfigError} listing every issue found.
  */

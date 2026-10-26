@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseFormationMap, resolveFormation, validateEntityDefinitions } from "../core/engine";
-import { ENTITY_CONFIG } from "./entities";
+import { ENTITY_CONFIG, TREE_TRUNK_COLLISION } from "./entities";
 
 const ASSET_SOURCES = import.meta.glob<string>("/public/assets/**/*.svg", {
   query: "?raw",
@@ -24,6 +24,29 @@ function readTiles(textureSource: string): [number, number, number] {
 describe("ENTITY_CONFIG", () => {
   it("passes the engine's content validation", () => {
     expect(() => validateEntityDefinitions(ENTITY_CONFIG)).not.toThrow();
+  });
+
+  it("blocks only the trunk of every tree, the same for all", () => {
+    const trees = ENTITY_CONFIG.filter(({ textureSource }) => textureSource.startsWith("/assets/tree/"));
+    expect(trees.length).toBeGreaterThan(0);
+    trees.forEach((tree) => expect(tree.collision).toBe(TREE_TRUNK_COLLISION));
+    expect(TREE_TRUNK_COLLISION).toBeGreaterThan(0);
+    expect(TREE_TRUNK_COLLISION).toBeLessThan(0.5);
+  });
+
+  it("lets the player walk over the end of every pier that stands on the grass", () => {
+    const piers = ENTITY_CONFIG.filter(({ textureSource }) => textureSource.startsWith("/assets/pier/"));
+    expect(piers.length).toBeGreaterThan(0);
+    piers.forEach(({ footprintSurfaces = [], collision }) => {
+      const sizes = footprintSurfaces.map((_, index) => (typeof collision === "object" ? (collision[index] ?? 1) : 1));
+      footprintSurfaces.forEach((surface, index) => expect(sizes[index]).toBe(surface === "grass" ? 0 : 1));
+    });
+  });
+
+  it("blocks the whole block of every house", () => {
+    ENTITY_CONFIG.filter(({ textureSource }) => textureSource.startsWith("/assets/house/")).forEach(({ collision }) =>
+      expect(collision ?? 1).toBe(1),
+    );
   });
 
   it("uses unique entity ids", () => {

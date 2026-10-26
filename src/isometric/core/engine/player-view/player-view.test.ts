@@ -12,6 +12,7 @@ import { createPlayer, PLAYER_PART } from "../player";
 import { createClockPart } from "../time";
 import { projectGridPoint } from "../projection";
 import { getBlockDepth } from "../render";
+import { SCENE_LAYER, type BuiltScene, type SceneModule } from "../scene";
 import {
   loadTexture,
   mountScene,
@@ -137,16 +138,16 @@ describe("createPlayerView", () => {
     const addChildAt = moves();
     const before = camera.state;
 
-    world.parts.get(PLAYER_PART).x = 1.4;
+    world.parts.get(PLAYER_PART).x = 0.6;
     ticker.frame(50);
-    expect(view.position).toMatchObject(spriteAt({ x: 1.2, y: 1, elevation: 1 }));
-    // Still on column (1, 1): the draw order is kept.
+    expect(view.position).toMatchObject(spriteAt({ x: 0.8, y: 1, elevation: 1 }));
+    // Still on column (1, 1), in front of its middle: the draw order is kept.
     expect(addChildAt).not.toHaveBeenCalled();
-    expect(camera.state.x).toBeGreaterThan(before.x);
-    expect(camera.state.x).toBeLessThan(getGroundPointBelow({ x: 1.2, y: 1 }, 1, projection).x);
+    expect(camera.state.x).toBeLessThan(before.x);
+    expect(camera.state.x).toBeGreaterThan(getGroundPointBelow({ x: 0.8, y: 1 }, 1, projection).x);
 
     for (let frame = 0; frame < 100; frame += 1) ticker.frame(50);
-    expect(camera.state).toEqual({ ...getGroundPointBelow({ x: 1.2, y: 1 }, 1, projection), zoom: CAMERA_START_ZOOM });
+    expect(camera.state).toEqual({ ...getGroundPointBelow({ x: 0.8, y: 1 }, 1, projection), zoom: CAMERA_START_ZOOM });
     scene.destroy();
   });
 
@@ -189,11 +190,39 @@ describe("createPlayerView", () => {
     const { ticker, scene } = await sceneOf(world);
     const addChildAt = moves();
 
-    // Column (2, 0): same x + y and elevation as (1, 1), so the same depth.
-    Object.assign(world.parts.get(PLAYER_PART), { x: 1.8, y: 0.4, previous: { x: 1.8, y: 0.4, elevation: 1 } });
+    // Column (2, 0): same x + y and elevation as (1, 1), so the same depth; in front of its middle.
+    Object.assign(world.parts.get(PLAYER_PART), { x: 1.6, y: 0.2, previous: { x: 1.6, y: 0.2, elevation: 1 } });
     ticker.frame();
     expect(vi.mocked(getBlockDepth)).toHaveBeenCalled();
     expect(addChildAt).not.toHaveBeenCalled();
+    scene.destroy();
+  });
+
+  it("goes behind what stands on its column past the column's middle, and in front of it before", async () => {
+    const world = fieldWithPlayer();
+    // The scene once built, as every module's `start()` gets it.
+    let built: BuiltScene | undefined;
+    const probe: SceneModule = { id: "probe", setup: () => ({ start: (scene) => (built = scene), destroy: () => {} }) };
+    const { ticker, root, scene } = await mountScene(world, [createTerrainView(), probe, createPlayerView(PLAYER)]);
+    const view = root.children.find(({ source }) => source === PLAYER.textureSource) as TestView;
+    const placeAt = vi.spyOn(built as BuiltScene, "placeAt");
+    const move = vi.spyOn(built as BuiltScene, "move");
+    const walkTo = (x: number, y: number) => {
+      Object.assign(world.parts.get(PLAYER_PART), { x, y, previous: { x, y, elevation: 1 } });
+      ticker.frame();
+    };
+    const top = blocksOf(root.children, view).find((block) => block.x === 1 && block.y === 1) as TestView;
+
+    walkTo(1.2, 1.1);
+    expect(move).toHaveBeenCalledWith({ view, depth: expect.any(Number) as number, layer: SCENE_LAYER.behindObject });
+    // Still drawn on its column's top.
+    expect(root.children.indexOf(view)).toBeGreaterThan(root.children.indexOf(top));
+    walkTo(1.3, 1.2);
+    expect(move).toHaveBeenCalledTimes(1);
+    expect(placeAt).not.toHaveBeenCalled();
+    walkTo(0.8, 1);
+    expect(placeAt).toHaveBeenCalledTimes(1);
+    expect(move).toHaveBeenCalledTimes(1);
     scene.destroy();
   });
 

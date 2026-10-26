@@ -21,7 +21,8 @@ export const PLAYER_STEP = PLAYER_SPEED / TICKS_PER_SECOND;
 
 /**
  * Half the side of the square the player's feet take on the ground, in columns. Every column
- * that square touches must be walkable, so the sprite never stands half inside a tree.
+ * that square touches must be land it can step on, and the square must not overlap where an
+ * occupant blocks (`collisionAt()`), so the sprite never stands half inside a tree's trunk.
  */
 export const PLAYER_RADIUS = 0.2;
 
@@ -32,15 +33,41 @@ export const PLAYER_MAX_CLIMB = 1;
 export const PLAYER_PART: WorldPartKey<PlayerState> = { id: "player" };
 
 /**
+ * Something standing on a column, as the player bumps into it (an `Entity` is one): a walkable
+ * one never blocks; any other blocks a square centred on each column it stands on.
+ */
+export type PlayerObstacle = {
+  readonly walkable: boolean;
+  /**
+   * Side of the square it blocks centred on column `(x, y)`, as a fraction of the block (`0` for
+   * nothing, `1` for the whole block). Without it, the whole block.
+   */
+  collisionAt?(x: number, y: number): number;
+};
+
+/**
  * What the player walks on: the terrain columns, and what occupies each one. The `World`
  * satisfies it (`world.columnIndex`, `world.occupancy`), so the player never imports the world.
  */
 export type PlayerGround = {
   /** Terrain column at each world cell (its top elevation and, as `type`, its surface). */
   readonly columnIndex: ReadonlyCellMap<ITerrainColumn>;
-  /** Things standing on each cell; the player cannot enter a cell with a non-walkable one. */
-  readonly occupancy: { at(x: number, y: number): readonly { readonly walkable: boolean }[] };
+  /** Things standing on each cell; the player's feet cannot overlap the square one blocks. */
+  readonly occupancy: { at(x: number, y: number): readonly PlayerObstacle[] };
 };
+
+/** Side of the square `obstacle` blocks centred on column `(x, y)`: `0` when it is walkable. */
+function blockedSide(obstacle: PlayerObstacle, x: number, y: number): number {
+  if (obstacle.walkable) return 0;
+  return obstacle.collisionAt ? obstacle.collisionAt(x, y) : 1;
+}
+
+/** Whether the player's terrain lets it onto column `(x, y)` from `fromElevation` (occupants aside). */
+function isSteppable(ground: PlayerGround, x: number, y: number, fromElevation: number): boolean {
+  const column = ground.columnIndex.get(x, y);
+  if (column === undefined || column.type === "water") return false;
+  return Math.abs(column.elevation - fromElevation) <= PLAYER_MAX_CLIMB;
+}
 
 /** Column the ground point `point` belongs to: the one whose centre is nearest. */
 export function getPlayerColumn(point: GridPoint): WorldCoord {
@@ -48,24 +75,33 @@ export function getPlayerColumn(point: GridPoint): WorldCoord {
 }
 
 /**
- * Whether the player can stand on column `(x, y)` coming from `fromElevation`: the column
- * exists, is not water, is at most {@link PLAYER_MAX_CLIMB} blocks higher or lower, and
- * nothing non-walkable stands on it.
+ * Whether the player can stand on the centre of column `(x, y)` coming from `fromElevation`: the
+ * column exists, is not water, is at most {@link PLAYER_MAX_CLIMB} blocks higher or lower, and
+ * nothing standing on it blocks any of it (`collisionAt()` above `0`).
  */
 export function canStandOn(ground: PlayerGround, x: number, y: number, fromElevation: number): boolean {
-  const column = ground.columnIndex.get(x, y);
-  if (column === undefined || column.type === "water") return false;
-  if (Math.abs(column.elevation - fromElevation) > PLAYER_MAX_CLIMB) return false;
-  return ground.occupancy.at(x, y).every((occupant) => occupant.walkable);
+  if (!isSteppable(ground, x, y, fromElevation)) return false;
+  return ground.occupancy.at(x, y).every((occupant) => blockedSide(occupant, x, y) <= 0);
 }
 
-/** Whether the player's feet fit at `point`, coming from `fromElevation`. */
+/**
+ * Whether the player's feet fit at `point`, coming from `fromElevation`: every column their
+ * square touches can be stepped on, and the square overlaps none of the squares its occupants
+ * block (touching their edge is allowed).
+ */
 function fitsAt(ground: PlayerGround, point: GridPoint, fromElevation: number): boolean {
   const min = getPlayerColumn({ x: point.x - PLAYER_RADIUS, y: point.y - PLAYER_RADIUS });
   const max = getPlayerColumn({ x: point.x + PLAYER_RADIUS, y: point.y + PLAYER_RADIUS });
   for (let x = min.x; x <= max.x; x += 1) {
     for (let y = min.y; y <= max.y; y += 1) {
-      if (!canStandOn(ground, x, y, fromElevation)) return false;
+      if (!isSteppable(ground, x, y, fromElevation)) return false;
+      const occupants = ground.occupancy.at(x, y);
+      for (let index = 0; index < occupants.length; index += 1) {
+        const side = blockedSide(occupants[index], x, y);
+        if (side <= 0) continue;
+        const reach = PLAYER_RADIUS + side / 2;
+        if (Math.abs(point.x - x) < reach && Math.abs(point.y - y) < reach) return false;
+      }
     }
   }
   return true;

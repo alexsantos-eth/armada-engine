@@ -642,6 +642,20 @@ describe("createScene chunks", () => {
     expect((drawn.view as { destroy: () => void }).destroy).not.toHaveBeenCalled();
   });
 
+  it("moves a view behind the objects of its depth, on top of its column", async () => {
+    const tree = { view: view("tree"), depth: 1, layer: SCENE_LAYER.object };
+    const top = { view: view("top"), depth: 1, layer: SCENE_LAYER.terrain };
+    const { module, seen } = probe("a", { views: [tree, top] });
+    const { root } = await mountScene(shore(), [module]);
+    const built = seen.built as BuiltScene;
+    const walker = view("walker");
+
+    built.placeAt(walker, 1);
+    expect(names(root.children)).toEqual(["top", "tree", "walker"]);
+    built.move({ view: walker, depth: 1, layer: SCENE_LAYER.behindObject });
+    expect(names(root.children)).toEqual(["top", "walker", "tree"]);
+  });
+
   it("adds and removes views in the draw order once built", async () => {
     const { module, seen } = probe("a", { views: [{ view: view("a"), depth: 1, layer: 0 }] });
     const { root, scene } = await mountScene(shore(), [module]);

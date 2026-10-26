@@ -15,6 +15,19 @@ const TREE_GROVE_FORMATION: EntityFormation = {
   rotate: true,
 };
 
+/**
+ * What a tree blocks: only its trunk, a square of this side centred on its block (a fraction of
+ * the block). Every tree's trunk is about the same width (~0.11–0.12 of a block in the assets),
+ * with a little margin so the player does not seem to walk into the bark.
+ */
+export const TREE_TRUNK_COLLISION = 0.15;
+
+/**
+ * What a pier blocks, block by block from the water end: the block over the water and the one
+ * on the sand, but not its end on the grass, which is walked over.
+ */
+const PIER_COLLISION = [1, 1, 0] as const;
+
 const HOUSE_COLOR_REPLACEMENTS = {
   "#9f4b2f": ["#8f5f12", "#7f241b", "#1f4f85"],
   "#a34d31": ["#986614", "#8f2b20", "#265d96"],
@@ -111,6 +124,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     spawnChance: 0.2,
     surface: "sand",
     surfaceElevation: 0,
+    collision: PIER_COLLISION,
   },
   {
     id: "pier_y_reverse",
@@ -123,6 +137,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     spawnChance: 0.2,
     surface: "sand",
     surfaceElevation: 0,
+    collision: PIER_COLLISION,
   },
   {
     id: "tree",
@@ -131,6 +146,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     spawnChance: 0.03,
     surface: "grass",
     sway: { cut: 0.58, amplitude: 1.5, period: 3400 },
+    collision: TREE_TRUNK_COLLISION,
   },
   {
     id: "tree_2",
@@ -139,6 +155,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     spawnChance: 0.1,
     surface: "grass",
     sway: { cut: 0.69, amplitude: 1.5, period: 3800 },
+    collision: TREE_TRUNK_COLLISION,
   },
   {
     id: "tree_3",
@@ -147,6 +164,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     spawnChance: 0.01,
     surface: "grass",
     sway: { cut: 0.76, amplitude: 1, period: 3000 },
+    collision: TREE_TRUNK_COLLISION,
     formation: TREE_GROVE_FORMATION,
   },
   {
@@ -156,6 +174,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     spawnChance: 0.03,
     surface: "grass",
     sway: { cut: 0.61, amplitude: 2, period: 4200 },
+    collision: TREE_TRUNK_COLLISION,
   },
   {
     id: "tree_5",
@@ -164,6 +183,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     spawnChance: 0.03,
     surface: "grass",
     sway: { cut: 0.67, amplitude: 2, period: 3200 },
+    collision: TREE_TRUNK_COLLISION,
   },
   {
     id: "tree_6",
@@ -172,6 +192,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     spawnChance: 0.03,
     surface: "grass",
     sway: { cut: 0.61, amplitude: 1.5, period: 3600 },
+    collision: TREE_TRUNK_COLLISION,
   },
   {
     id: "tree_7",
@@ -180,6 +201,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     spawnChance: 0.01,
     surface: "grass",
     sway: { cut: 0.72, amplitude: 1, period: 2800 },
+    collision: TREE_TRUNK_COLLISION,
     formation: TREE_GROVE_FORMATION,
   },
   {
@@ -189,6 +211,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     spawnChance: 0.01,
     surface: "grass",
     sway: { cut: 0.74, amplitude: 1.5, period: 3000 },
+    collision: TREE_TRUNK_COLLISION,
     formation: TREE_GROVE_FORMATION,
   },
   {

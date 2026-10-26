@@ -62,6 +62,7 @@ export class Entity implements IEntity {
           }
         : {}),
       ...(definition.sway ? { sway: definition.sway } : {}),
+      ...(definition.collision !== undefined ? { collision: definition.collision } : {}),
       metadata: {},
     };
   }
@@ -131,6 +132,18 @@ export class Entity implements IEntity {
 
   get sway(): IEntity["sway"] {
     return this.data.sway;
+  }
+
+  get collision(): IEntity["collision"] {
+    return this.data.collision;
+  }
+
+  collisionAt(x: number, y: number): number {
+    const alongX = this.data.lengthAxis !== "y";
+    const index = alongX ? x - this.x : y - this.y;
+    if ((alongX ? y !== this.y : x !== this.x) || index < 0 || index >= this.data.length) return 0;
+    const { collision = 1 } = this.data;
+    return typeof collision === "number" ? collision : (collision[index] ?? 1);
   }
 
   get metadata(): BoxMetadata {

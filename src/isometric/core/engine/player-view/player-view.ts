@@ -2,7 +2,7 @@ import { getGroundPointBelow } from "../camera";
 import { getPlayerColumn, getPlayerRenderPosition, PLAYER_PART } from "../player";
 import { projectBoxesToIsometric, projectGridPoint } from "../projection";
 import { createBlockViews, getBlockDepth } from "../render";
-import type { BuiltScene, SceneModule } from "../scene";
+import { SCENE_LAYER, type BuiltScene, type SceneModule } from "../scene";
 import type { PlayerAppearance, PlayerPosition } from "../../types";
 
 /**
@@ -11,8 +11,10 @@ import type { PlayerAppearance, PlayerPosition } from "../../types";
  * camera keeps it on screen). Every frame it places the sprite between the player's last two
  * ticks (`frame.alpha`) and, when it moved, tells the `camera` (if any) to follow it. The sprite
  * moves in the draw order only when the player enters another column or elevation (`placeAt()`,
- * at the depth of that column's top); never with `zIndex`. On a column with a `topInset` (sand)
- * it stands that much lower.
+ * at the depth of that column's top) or crosses the middle of its column: behind it (further from
+ * the camera, `x + y` above the column's) it goes on the column's top but before what stands
+ * there (`move()` to `SCENE_LAYER.behindObject`), so it walks behind a tree's trunk; in front,
+ * after it. Never with `zIndex`. On a column with a `topInset` (sand) it stands that much lower.
  *
  * Provides `focus` (the ground below the player), so the camera starts on it, and the player as
  * the one `movingCasters`, so `shadows` lays its shadow where its feet are drawn. When the world
@@ -48,7 +50,9 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
       // Where its feet are on screen: written by `place()`, read by whoever casts its shadow.
       const drawnFoot = { x: 0, y: 0 };
       let drawnDepth: number | undefined;
+      let drawnBehind: boolean | undefined;
       let depthFor: { x: number; y: number; elevation: number } | undefined;
+      let depth = 0;
       // Set by `start()`, before the first `place()`.
       let scene!: BuiltScene;
       const place = (at: PlayerPosition) => {
@@ -58,16 +62,19 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
         drawnFoot.y = screen.y - (at.elevation - topInsetAt(column.x, column.y)) * metrics.boxHeight;
         view.position.set(drawnFoot.x + offset.x, drawnFoot.y + offset.y);
         // In the draw order by the column it stands on, at that column's top: computed, and the
-        // view moved, only when that column changes, not on every frame of the walk.
+        // view moved, only when that column or the side of its middle changes, not on every frame.
         const elevation = columnAt.get(column.x, column.y)?.elevation ?? player.elevation;
         if (depthFor?.x !== column.x || depthFor.y !== column.y || depthFor.elevation !== elevation) {
           depthFor = { ...column, elevation };
           const [top] = projectBoxesToIsometric([{ ...depthFor, metadata: {} }], projection);
-          const depth = getBlockDepth(top, metrics);
-          if (depth !== drawnDepth) {
-            scene.placeAt(view, depth);
-            drawnDepth = depth;
-          }
+          depth = getBlockDepth(top, metrics);
+        }
+        const behind = at.x + at.y > column.x + column.y;
+        if (depth !== drawnDepth || behind !== drawnBehind) {
+          if (behind) scene.move({ view, depth, layer: SCENE_LAYER.behindObject });
+          else scene.placeAt(view, depth);
+          drawnDepth = depth;
+          drawnBehind = behind;
         }
         drawnAt = at;
       };

@@ -38,7 +38,8 @@ describe("validateEntityDefinitions", () => {
           debug: true,
         },
         { ...VALID, id: "house", surfaceElevation: 0, colorReplacements: { "#000000": "#ffffff" } },
-        { ...VALID, id: "tree", sway: { cut: 0.6, amplitude: 2, period: 3000 } },
+        { ...VALID, id: "tree", sway: { cut: 0.6, amplitude: 2, period: 3000 }, collision: 0.15 },
+        { ...VALID, id: "dock", length: 3, collision: [1, 1, 0] },
       ]),
     ).not.toThrow();
     expect(() => validateEntityDefinitions([])).not.toThrow();
@@ -144,6 +145,15 @@ describe("validateEntityDefinitions", () => {
       "rock: sway.cut must be between 0 and 1, both excluded (got 1)",
       "rock: sway.amplitude must be a non-negative number (got Infinity)",
       "rock: sway.period must be a positive number (got NaN)",
+    ]);
+  });
+
+  it("reports invalid collision", () => {
+    expect(issuesOf([{ ...VALID, collision: 1.5 }])).toEqual(["rock: collision must be between 0 and 1 (got 1.5)"]);
+    expect(issuesOf([{ ...VALID, length: 2, collision: [1, -0.1, Number.NaN] }])).toEqual([
+      "rock: collision lists 3 sizes for a footprint of 2 blocks",
+      "rock: collision[1] must be between 0 and 1 (got -0.1)",
+      "rock: collision[2] must be between 0 and 1 (got NaN)",
     ]);
   });
 
