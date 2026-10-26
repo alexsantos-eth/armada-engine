@@ -80,6 +80,18 @@ export type TerrainBands = {
   readonly deep: number;
 };
 
+/**
+ * Another look for the top block of a material's columns (grass with flowers, fallen leaves): a
+ * share of the columns, picked per column from the world seed, shows it instead of the material's
+ * own texture. Only the top block of a column changes; the blocks under it keep the material's.
+ */
+export type TerrainVariant = {
+  /** SVG of the block, under `public/`, with the same canvas as the material's own. */
+  readonly textureSource: string;
+  /** Share of the columns that show it, in `[0, 1]`; the shares of a material add up to at most `1`. */
+  readonly chance: number;
+};
+
 /** How the blocks of one terrain material are drawn (game content). */
 export type TerrainMaterialAppearance = {
   /** SVG of the block, under `public/` (e.g. `/assets/grass/block.svg`). */
@@ -94,6 +106,8 @@ export type TerrainMaterialAppearance = {
   readonly topInset?: number;
   /** Bands of light drifting across the top of its blocks. Without it, the top stays still. */
   readonly bands?: TerrainBands;
+  /** Other looks of its top blocks, each on a share of the columns. Without it, every top is the same. */
+  readonly variants?: readonly TerrainVariant[];
 };
 
 /** How every terrain material is drawn: the scene receives it as content. */

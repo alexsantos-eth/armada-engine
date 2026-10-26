@@ -9,15 +9,18 @@ import {
   columnsOf,
   createTestEntities,
   defaultWorld,
+  loadTexture,
   mountScene,
   renderCalls,
   resetHarness,
+  TEST_TERRAIN,
   worldFrom,
 } from "../flow-check/scene-harness";
 import type { Texture } from "pixi.js";
 import type { SceneModule } from "../scene";
 import { DEFAULT_MAX_ELEVATION } from "../terrain";
 import { getTerrainTint, createTerrainView } from "./terrain-view";
+import { createVariantPicker } from "./variants";
 
 const renderTerrain = (world: Parameters<typeof mountScene>[0]) => mountScene(world, [createTerrainView()]);
 
@@ -193,6 +196,62 @@ describe("createTerrainView", () => {
     expect(renderCalls.find(({ elevation }) => elevation === -1)?.texture).toBe(water);
     expect(renderCalls.find(({ elevation }) => elevation === 2)?.texture.source).toBe("/assets/grass/block.svg");
     scene.destroy();
+  });
+
+  describe("variants", () => {
+    const variants = [
+      { textureSource: "/assets/grass/block_flowers.svg", chance: 0.3 },
+      { textureSource: "/assets/grass/block_leaves.svg", chance: 0.3 },
+    ];
+    const terrain = { ...TEST_TERRAIN, grass: { ...TEST_TERRAIN.grass, variants } };
+    // A 6×6 plateau two blocks high, with ground under its grass tops.
+    const points = Array.from({ length: 36 }, (_, index) => ({ x: index % 6, y: Math.floor(index / 6), elevation: 2 }));
+
+    it("draws the top of each column with the variant picked for it from the seed, and the rest plain", async () => {
+      const world = worldFrom(points);
+      const { scene } = await mountScene(world, [createTerrainView()], { terrain });
+      const tops = vi
+        .mocked(createBlockViews)
+        .mock.calls.map(([options]) => options)
+        .filter(({ box }) => box.box.elevation === 2);
+      const pick = createVariantPicker(variants, world.seed, "terrain-variants:grass");
+      const expected = (x: number, y: number) => {
+        const index = pick(x, y);
+        return index < 0 ? "/assets/grass/block.svg" : variants[index].textureSource;
+      };
+
+      expect(tops.length).toBeGreaterThan(0);
+      tops.forEach(({ box, texture }) =>
+        expect((texture as unknown as { source: string }).source).toBe(expected(box.box.x, box.box.y)),
+      );
+      expect(new Set(tops.map(({ texture }) => texture)).size).toBe(3);
+      // The blocks under the tops keep their material's own texture.
+      expect(
+        renderCalls.filter(({ elevation }) => elevation < 2).every(({ texture }) => !texture.source.includes("_")),
+      ).toBe(true);
+      scene.destroy();
+    });
+
+    it("keeps the material's own texture where a variant cannot be loaded", async () => {
+      vi.mocked(Assets.load).mockImplementation(((asset: string | { src: string }) => {
+        const source = typeof asset === "string" ? asset : asset.src;
+        return Promise.resolve(source.includes("_") ? undefined : { source });
+      }) as never);
+      const { scene } = await mountScene(worldFrom(points), [createTerrainView()], { terrain });
+
+      expect(renderCalls.length).toBeGreaterThan(0);
+      expect(renderCalls.every(({ texture }) => !texture.source.includes("_"))).toBe(true);
+      scene.destroy();
+      vi.mocked(Assets.load).mockImplementation(loadTexture as never);
+    });
+
+    it("fails the setup with invalid variants", async () => {
+      const invalid = { ...TEST_TERRAIN, grass: { ...TEST_TERRAIN.grass, variants: [{ ...variants[0], chance: 2 }] } };
+
+      await expect(mountScene(worldFrom(points), [createTerrainView()], { terrain: invalid })).rejects.toThrow(
+        'Terrain "grass": variants[0].chance must be in [0, 1]',
+      );
+    });
   });
 
   it("lets blocks behind a sunken top show", async () => {

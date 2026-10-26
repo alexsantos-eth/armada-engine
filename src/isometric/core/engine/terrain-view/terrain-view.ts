@@ -4,6 +4,7 @@ import { createBlockViews, createSpritePool } from "../render";
 import { SCENE_LAYER, type SceneModule, type SceneView } from "../scene";
 import { type Box, createVisibleBlocks, DEFAULT_MAX_ELEVATION, DEFAULT_MIN_ELEVATION } from "../terrain";
 import type { TerrainMaterial, TerrainTint } from "../../types";
+import { createVariantPicker, type VariantPicker, validateTerrainVariants } from "./variants";
 
 /** Darkest a tinted block gets: the factor of its colour never goes under it. */
 const MIN_TINT_FACTOR = 0.35;
@@ -35,22 +36,55 @@ export function getTerrainTint(tint: TerrainTint, elevation: number, maxElevatio
  * chunk's `−x`/`−y` edges are covered by the neighbour chunk's columns (`context.columnAt`), so
  * chunks meet as if the terrain were one. Tints by height count from `DEFAULT_MAX_ELEVATION`, the
  * same in every chunk. A block takes the texture the `terrainSurfaces` service gives it (the
- * animated water of `surface-bands`), if any, instead of its material's own.
+ * animated water of `surface-bands`), if any, instead of its material's own. The top block of a
+ * column whose material has `variants` shows the one `createVariantPicker()` picks for it from the
+ * world seed (flowers, leaves, in clumps), if any; the blocks under it keep the material's texture.
  *
- * When a material's SVG cannot be loaded, no terrain is drawn.
+ * When a material's SVG cannot be loaded, no terrain is drawn; a variant that cannot be loaded is
+ * left out. Invalid `variants` (game content) fail the scene's setup.
  */
 export function createTerrainView(): SceneModule {
   return {
     id: "terrain",
-    async setup({ terrain, projection, metrics, columnAt, assets, services }) {
+    async setup({ world, terrain, projection, metrics, columnAt, assets, services }) {
       const materials = Object.keys(terrain) as TerrainMaterial[];
-      const loaded = await Promise.all(materials.map((material) => assets.loadSvg(terrain[material].textureSource)));
+      materials.forEach((material) => {
+        const issues = validateTerrainVariants(terrain[material].variants ?? []);
+        if (issues.length > 0) throw new Error(`Terrain "${material}": ${issues.join("; ")}`);
+      });
+      const [loaded, loadedVariants] = await Promise.all([
+        Promise.all(materials.map((material) => assets.loadSvg(terrain[material].textureSource))),
+        Promise.all(
+          materials.map((material) =>
+            Promise.all((terrain[material].variants ?? []).map(({ textureSource }) => assets.loadSvg(textureSource))),
+          ),
+        ),
+      ]);
       const textures = new Map<TerrainMaterial, Texture>();
       materials.forEach((material, index) => {
         const texture = loaded[index];
         if (texture) textures.set(material, texture);
       });
       if (textures.size < materials.length) return { destroy: () => {} };
+      // The other looks of each material's top blocks, by the index its picker gives (`undefined`
+      // where a variant failed to load: that column keeps the material's texture).
+      const variants = new Map<
+        TerrainMaterial,
+        { readonly pick: VariantPicker; readonly looks: (Texture | undefined)[] }
+      >();
+      materials.forEach((material, index) => {
+        const list = terrain[material].variants ?? [];
+        if (list.length === 0) return;
+        const pick = createVariantPicker(list, world.seed, `terrain-variants:${material}`);
+        variants.set(material, { pick, looks: loadedVariants[index] });
+      });
+      /** The texture of `block` when it is the top of its column and its material has variants. */
+      const variantOf = ({ type, x, y, elevation }: Box): Texture | undefined => {
+        const material = variants.get(type);
+        if (!material || elevation !== Math.floor((columnAt.get(x, y) as Box).elevation)) return undefined;
+        const index = material.pick(x, y);
+        return index < 0 ? undefined : material.looks[index];
+      };
       // A hidden chunk's blocks are given back for the next chunk shown (#94).
       const sprites = createSpritePool();
       // Textures that replace a material's own (the animated water), when a module provides them.
@@ -80,6 +114,7 @@ export function createTerrainView(): SceneModule {
             createBlockViews({
               texture:
                 surfaces?.textureAt(box.box.type, box.box.x, box.box.y, box.box.elevation) ??
+                variantOf(box.box) ??
                 (textures.get(box.box.type) as Texture),
               box,
               metrics,

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { validateTerrainBands } from "../core/engine";
+import { validateTerrainBands, validateTerrainVariants } from "../core/engine";
 import { TERRAIN_APPEARANCE } from "./terrain";
 
-const ASSET_SOURCES = import.meta.glob<string>("/public/assets/*/block.svg", {
+const ASSET_SOURCES = import.meta.glob<string>("/public/assets/*/block*.svg", {
   query: "?raw",
   import: "default",
   eager: true,
@@ -13,6 +13,16 @@ describe("TERRAIN_APPEARANCE", () => {
     Object.values(TERRAIN_APPEARANCE).forEach(({ textureSource }) => {
       expect(ASSET_SOURCES[`/public${textureSource}`]).toBeDefined();
     });
+  });
+
+  it("gives the grass valid variants with something on top, each an existing SVG", () => {
+    const variants = TERRAIN_APPEARANCE.grass.variants ?? [];
+
+    expect(variants.length).toBeGreaterThan(0);
+    expect(validateTerrainVariants(variants)).toEqual([]);
+    variants.forEach(({ textureSource }) => expect(ASSET_SOURCES[`/public${textureSource}`]).toBeDefined());
+    // Most of the grass stays plain.
+    expect(variants.reduce((sum, { chance }) => sum + chance, 0)).toBeLessThan(0.5);
   });
 
   it("sinks only sand, half a block, and darkens only water with depth", () => {
