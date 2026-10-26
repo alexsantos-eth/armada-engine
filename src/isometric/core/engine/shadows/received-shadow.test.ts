@@ -58,6 +58,10 @@ vi.mock("pixi.js", () => {
       this.texture = texture as Texture;
     }
 
+    setSize(width: number, height: number): void {
+      Object.assign(this, { width, height });
+    }
+
     set visible(value: boolean) {
       this.visibleWrites.push(value);
     }
@@ -78,11 +82,15 @@ vi.mock("pixi.js", () => {
     Matrix,
     Rectangle,
     RenderTexture: {
-      create: vi.fn((options: { width: number; height: number }) => ({
-        ...options,
-        source: { renderTarget: true },
-        destroy: vi.fn(),
-      })),
+      create: vi.fn((options: { width: number; height: number }) => {
+        const texture = {
+          ...options,
+          source: { renderTarget: true },
+          destroy: vi.fn(),
+          resize: vi.fn((width: number, height: number) => Object.assign(texture, { width, height })),
+        };
+        return texture;
+      }),
     },
     Sprite,
     Texture,
@@ -113,6 +121,13 @@ type MockContainer = {
   destroy: ReturnType<typeof vi.fn>;
 };
 type RenderCall = { container: MockContainer; target: unknown; clear: boolean; clearColor: number[] };
+type MockRenderTexture = {
+  width: number;
+  height: number;
+  dynamic?: boolean;
+  destroy: ReturnType<typeof vi.fn>;
+  resize: ReturnType<typeof vi.fn>;
+};
 
 /** An entity sprite drawn at `left, top` with `width × height` px, standing on `screenFoot`. */
 const silhouetteOf = (
@@ -180,14 +195,52 @@ describe("createReceivedShadowRig", () => {
     expect((rig.casters.container as unknown as MockContainer).filters).toEqual(filters);
     expect((rig.eraser as MockSprite).blendMode).toBe("erase");
     expect(rig.padding).toBe(4);
+    // The eraser shows the rig's one mask, which can grow.
+    expect(rig.eraser.texture).toBe(vi.mocked(RenderTexture.create).mock.results.at(-1)?.value);
+    expect(rig.eraser.texture).toMatchObject({ dynamic: true });
   });
 
-  it("destroys its root with the sprites, not their textures", () => {
-    const rig = createReceivedShadowRig(createRenderer() as never, []);
+  it("draws a mask opaque everywhere but on the cutouts, grown to the largest atlas", () => {
+    const renderer = createRenderer();
+    const rig = createReceivedShadowRig(renderer as never, []);
+    const mask = rig.eraser.texture as unknown as MockRenderTexture;
+    const [first, second] = twoReceivers().map(({ own }) => own.source.texture);
+
+    rig.drawMask(100, 50, [first, second], new Float64Array([1, 2, 3, 4, 5, 6, 7, 8]));
+    const [{ container, target, clear, clearColor }] = renderer.render.mock.calls[0];
+    const cutouts = container.children as MockSprite[];
+
+    expect(target).toBe(mask);
+    expect({ clear, clearColor }).toEqual({ clear: true, clearColor: [0, 0, 0, 1] });
+    expect(cutouts.map(({ texture }) => texture)).toEqual([first, second]);
+    expect(cutouts.every(({ blendMode }) => blendMode === "erase")).toBe(true);
+    expect(cutouts[1]).toMatchObject({ x: 5, y: 6, width: 7, height: 8 });
+    expect(mask).toMatchObject({ width: 100, height: 50 });
+
+    // A smaller atlas keeps the mask as it is and hides the cutouts it does not use, writing only changes.
+    rig.drawMask(60, 80, [second], new Float64Array([9, 10, 11, 12]));
+    rig.drawMask(60, 80, [second, first], new Float64Array([9, 10, 11, 12, 1, 2, 3, 4]));
+    rig.drawMask(10, 10, [second], new Float64Array([9, 10, 11, 12]));
+    rig.drawMask(10, 10, [second], new Float64Array([9, 10, 11, 12]));
+
+    expect(mask).toMatchObject({ width: 100, height: 80 });
+    expect(mask.resize).toHaveBeenCalledTimes(2);
+    expect(container.children).toHaveLength(2);
+    expect(cutouts[0]).toMatchObject({ texture: second, x: 9, y: 10, width: 11, height: 12 });
+    expect(cutouts[1].visibleWrites).toEqual([false, true, false]);
+  });
+
+  it("destroys its root with the sprites, its cutouts and its mask, not the casters' textures", () => {
+    const renderer = createRenderer();
+    const rig = createReceivedShadowRig(renderer as never, []);
+    const mask = rig.eraser.texture as unknown as MockRenderTexture;
+    rig.drawMask(10, 10, [], new Float64Array());
 
     rig.destroy();
 
     expect(rig.root.destroy).toHaveBeenCalledWith({ children: true });
+    expect(renderer.render.mock.calls[0][0].container.destroy).toHaveBeenCalledWith({ children: true });
+    expect(mask.destroy).toHaveBeenCalledWith(true);
   });
 });
 
@@ -224,19 +277,20 @@ describe("createReceivedShadows", () => {
     expect(view.scale.set).toHaveBeenCalledWith(1 / RES);
   });
 
-  it("computes once a mask that is opaque everywhere but on the receivers", () => {
+  it("draws its receivers' cutouts into the rig's mask before each draw, keeping no mask of its own", () => {
     const receivers = twoReceivers();
-    const { renderer } = atlasOf(receivers);
-    const [{ container, target, clearColor }] = renderer.render.mock.calls[0];
+    const { rig, renderer, shadows } = atlasOf(receivers);
+    expect(renderer.render).not.toHaveBeenCalled();
+
+    shadows.draw(null);
+    const [{ container, target }] = renderer.render.mock.calls[0];
     const cutouts = container.children as MockSprite[];
 
-    expect(renderer.render).toHaveBeenCalledTimes(1);
-    expect(clearColor).toEqual([0, 0, 0, 1]);
-    expect(target).toBe(vi.mocked(RenderTexture.create).mock.results.at(-1)?.value);
+    expect(target).toBe(rig.eraser.texture);
+    expect(rig.eraser.texture).toMatchObject({ width: shadows.atlas.width, height: shadows.atlas.height });
     expect(cutouts.map(({ texture }) => texture)).toEqual(receivers.map(({ own }) => own.source.texture));
-    expect(cutouts.every(({ blendMode }) => blendMode === "erase")).toBe(true);
     expect(cutouts[1]).toMatchObject({ x: 2 * PAD + 20 * RES, y: PAD, width: 30 * RES, height: 30 * RES });
-    expect(container.destroy).toHaveBeenCalledWith({ children: true });
+    expect(renderer.render.mock.calls[1][0].target).toBe(shadows.atlas);
   });
 
   it("draws the rig's black casters, then erases its own mask, into the atlas", () => {
@@ -355,10 +409,10 @@ describe("createReceivedShadows", () => {
     expect(renderer.render.mock.calls.at(-1)?.[0].target).toBe(second.atlas);
   });
 
-  it("destroys the atlas and the mask, not the rig nor the textures it lent", () => {
+  it("destroys the atlas, not the rig, its mask nor the textures it lent", () => {
     const { rig, renderer, textures, shadows } = atlasOf(twoReceivers());
     shadows.draw(() => ({ x: 0, y: 0 }));
-    const mask = renderer.render.mock.calls[0][0].target as { destroy: ReturnType<typeof vi.fn> };
+    const mask = renderer.render.mock.calls[0][0].target as MockRenderTexture;
     const lent = spritesOf(rig).map(({ texture }) => texture);
 
     shadows.destroy();
@@ -367,7 +421,7 @@ describe("createReceivedShadows", () => {
     lent.forEach((texture) => expect(texture.destroy).not.toHaveBeenCalled());
     expect(textures.size).toBe(2);
     shadows.views.forEach(({ view }) => expect((view as Sprite).texture.destroy).toHaveBeenCalled());
-    expect(mask.destroy).toHaveBeenCalledWith(true);
+    expect(mask.destroy).not.toHaveBeenCalled();
     expect(shadows.atlas.destroy).toHaveBeenCalledWith(true);
     // The atlas goes before the views' textures: its source drops their listeners at once.
     const atlasOrder = (shadows.atlas.destroy as unknown as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0];

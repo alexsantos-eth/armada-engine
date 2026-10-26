@@ -40,7 +40,9 @@ export type CastShadowOffset = (casterFoot: PlanePoint, receiverFoot: PlanePoint
 /**
  * What a module draws its atlases of received shadows with, one atlas after another: the black
  * caster sprites, with the shadow filters, and over them the eraser of the atlas's mask. Shared by
- * every atlas, so a module keeps the sprites of its largest draw only (#97).
+ * every atlas, so a module keeps the sprites of its largest draw only (#97), and one mask, as
+ * large as its largest atlas: a mask per atlas, as large as it, was half the memory of the
+ * received shadows (#53).
  */
 export type ReceivedShadowRig = {
   readonly renderer: Renderer;
@@ -51,19 +53,64 @@ export type ReceivedShadowRig = {
   readonly eraser: Sprite;
   /** What a draw renders into an atlas: the casters, then the eraser. */
   readonly root: Container;
-  /** Destroys the root, the caster sprites and the eraser, not their textures. */
+  /**
+   * Draws the mask of an atlas `width` × `height` texels into the eraser: opaque everywhere but
+   * where `cutouts` (the receivers' textures, each in its rectangle of the atlas: `x`, `y`, `width`
+   * and `height`, four numbers a cutout) are drawn.
+   */
+  drawMask(width: number, height: number, cutouts: readonly Texture[], rects: Float64Array): void;
+  /** Destroys the root, the caster sprites, the eraser and the mask, not the casters' textures. */
   destroy(): void;
 };
 
 /** Creates the {@link ReceivedShadowRig} of a module, its casters drawn with `filters`. */
 export function createReceivedShadowRig(renderer: Renderer, filters: readonly Filter[]): ReceivedShadowRig {
   const casters = createCasterSprites(filters);
-  const eraser = new Sprite();
+  // Dynamic: the eraser follows its size when it grows.
+  const mask = RenderTexture.create({ width: 1, height: 1, dynamic: true });
+  const eraser = new Sprite(mask);
   eraser.blendMode = "erase";
   const root = new Container();
   root.addChild(casters.container, eraser);
   const padding = filters.reduce((total, filter) => total + filter.padding, 0);
-  return { renderer, casters, padding, eraser, root, destroy: () => root.destroy({ children: true }) };
+  // The receivers' cutouts of the mask drawn, one sprite each, kept for the next masks.
+  const cutoutRoot = new Container();
+  const cutoutSprites: Sprite[] = [];
+  return {
+    renderer,
+    casters,
+    padding,
+    eraser,
+    root,
+    drawMask(width, height, cutouts, rects) {
+      // Grown, never shrunk: the eraser covers the whole mask, past the atlas where nothing is drawn.
+      if (width > mask.width || height > mask.height) {
+        mask.resize(Math.max(width, mask.width), Math.max(height, mask.height));
+      }
+      cutouts.forEach((texture, index) => {
+        let sprite = cutoutSprites[index];
+        if (!sprite) {
+          sprite = new Sprite();
+          sprite.blendMode = "erase";
+          cutoutSprites.push(sprite);
+          cutoutRoot.addChild(sprite);
+        }
+        sprite.texture = texture;
+        sprite.position.set(rects[4 * index], rects[4 * index + 1]);
+        sprite.setSize(rects[4 * index + 2], rects[4 * index + 3]);
+        if (!sprite.visible) sprite.visible = true;
+      });
+      for (let index = cutouts.length; index < cutoutSprites.length; index += 1) {
+        if (cutoutSprites[index].visible) cutoutSprites[index].visible = false;
+      }
+      renderer.render({ container: cutoutRoot, target: mask, clear: true, clearColor: [0, 0, 0, 1] });
+    },
+    destroy() {
+      root.destroy({ children: true });
+      cutoutRoot.destroy({ children: true });
+      mask.destroy(true);
+    },
+  };
 }
 
 /** Shadows that entities cast on each other, drawn into one atlas. */
@@ -123,8 +170,9 @@ function packSlots(receivers: readonly ShadowReceiver[]) {
  * Each draw lays every caster's black silhouette on its receivers' squares with the sprites and
  * filters of `rig` (shared with the other atlases; the filters, with the ground shadows: blur and
  * the sun's opacity), cropped to the square and {@link RECEIVED_SHADOW_BLEED} texels around it,
- * and then keeps it only where the receiver is opaque: a mask computed once, `1 − alpha` of every
- * receiver, erases the rest. One render to texture per draw, whatever the number of receivers.
+ * and then keeps it only where the receiver is opaque: the rig's mask, drawn first with every
+ * receiver's cutout (`1 − alpha` of each), erases the rest. Two renders to texture per draw (the
+ * mask, then the atlas), whatever the number of receivers.
  *
  * Under one sun about one pair in ten is ever shaded: a draw only borrows sprites, and cropped
  * textures from `textures` (over the casters' shared SVG sources: destroying them would walk the
@@ -138,24 +186,20 @@ export function createReceivedShadows(
   textures: TexturePool,
 ): ReceivedShadows {
   const resolution = RECEIVED_SHADOW_RESOLUTION;
-  const { renderer, casters, padding, eraser, root } = rig;
+  const { renderer, casters, padding, root } = rig;
   const { slots, width, height } = packSlots(receivers);
   const atlas = RenderTexture.create({ width, height });
 
-  // The mask: opaque everywhere but where a receiver is drawn, computed once.
-  const mask = RenderTexture.create({ width, height });
-  const maskRoot = new Container();
+  // The mask's cutouts, drawn into the rig's mask on every draw: each receiver's texture on its square.
+  const cutouts = receivers.map(({ own }) => own.source.texture);
+  const cutoutRects = new Float64Array(4 * receivers.length);
   receivers.forEach(({ own: { source } }, index) => {
     const display = displayOf(source);
-    const cutout = new Sprite(source.texture);
-    cutout.blendMode = "erase";
-    cutout.position.set(slots[index].x, slots[index].y);
-    cutout.width = display.width * resolution;
-    cutout.height = display.height * resolution;
-    maskRoot.addChild(cutout);
+    cutoutRects[4 * index] = slots[index].x;
+    cutoutRects[4 * index + 1] = slots[index].y;
+    cutoutRects[4 * index + 2] = display.width * resolution;
+    cutoutRects[4 * index + 3] = display.height * resolution;
   });
-  renderer.render({ container: maskRoot, target: mask, clear: true, clearColor: [0, 0, 0, 1] });
-  maskRoot.destroy({ children: true });
 
   // The whole atlas: known up front, so Pixi does not measure the silhouettes on every draw. Pixi
   // pads it by the filters' padding and rounds its filter textures up to powers of two: inset by
@@ -241,14 +285,13 @@ export function createReceivedShadows(
       if (offsetOf) for (let index = 0; index < count; index += 1) if (place(index, shown, offsetOf)) shown += 1;
       casters.show(shown);
       casters.container.filterArea = filterArea;
-      eraser.texture = mask;
+      rig.drawMask(width, height, cutouts, cutoutRects);
       renderer.render({ container: root, target: atlas, clear: true, clearColor: [0, 0, 0, 0] });
       for (const texture of borrowed) textures.release(texture);
       borrowed.length = 0;
     },
     destroy() {
       // The atlas first: destroying its source drops the listeners of the views' textures at once.
-      mask.destroy(true);
       atlas.destroy(true);
       views.forEach(({ view }) => view.texture.destroy());
     },
