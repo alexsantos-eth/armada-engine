@@ -79,6 +79,26 @@ describe("createEntityView", () => {
     expect(scene.services.entityViews?.size).toBe(0);
   });
 
+  it("cuts the sprite of an entity that sways where its sway says", async () => {
+    const world = defaultWorld((boxes) =>
+      boxes
+        .slice(0, 1)
+        .map(
+          (box) =>
+            new Entity(
+              box.x,
+              box.y,
+              { ...HOUSE, id: "tree", colorReplacements: undefined, sway: { cut: 0.6, amplitude: 2, period: 3000 } },
+              box.elevation,
+            ),
+        ),
+    );
+    const { scene } = await mountScene(world, [createEntityView()]);
+
+    expect(renderCalls).toEqual([expect.objectContaining({ splitAt: 0.6 })]);
+    scene.destroy();
+  });
+
   it("creates one colorized SVG variant per entity type and variation", async () => {
     const { scene } = await mountScene(defaultWorld(createColorizedEntities), [createEntityView()]);
 

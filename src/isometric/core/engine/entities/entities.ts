@@ -61,6 +61,7 @@ export class Entity implements IEntity {
             colorVariant: options.colorVariant ?? 0,
           }
         : {}),
+      ...(definition.sway ? { sway: definition.sway } : {}),
       metadata: {},
     };
   }
@@ -126,6 +127,10 @@ export class Entity implements IEntity {
 
   get colorVariant(): IEntity["colorVariant"] {
     return this.data.colorVariant;
+  }
+
+  get sway(): IEntity["sway"] {
+    return this.data.sway;
   }
 
   get metadata(): BoxMetadata {

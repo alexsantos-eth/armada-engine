@@ -17,6 +17,23 @@ export type EntityLengthAxis = "x" | "y";
 
 export type SvgColor = string | readonly string[];
 
+/**
+ * How an entity sways in the wind (a tree): its sprite is cut in two at `cut`, the part below
+ * stays still (the trunk) and the part above leans from the cut (the canopy). Single-tile
+ * entities only.
+ */
+export type EntitySway = {
+  /**
+   * Where the sprite is cut, as a fraction of its height from its top (between `0` and `1`,
+   * both excluded): usually the bottom of the canopy.
+   */
+  readonly cut: number;
+  /** How far the top of the sprite leans to each side, in world pixels (screen pixels at zoom 1). */
+  readonly amplitude: number;
+  /** Milliseconds of one sway there and back. */
+  readonly period: number;
+};
+
 export type SvgColorReplacements = Readonly<Record<string, SvgColor>>;
 
 /** Relative position on the grid, in blocks, from a formation's anchor. */
@@ -101,6 +118,8 @@ export type EntityDefinition = {
   formation?: EntityFormation;
   debug?: boolean;
   colorReplacements?: SvgColorReplacements;
+  /** Sways in the wind (trees). Single-tile entities only. */
+  sway?: EntitySway;
 };
 
 export type EntityData = GridObjectData & {
@@ -125,6 +144,8 @@ export type EntityData = GridObjectData & {
    * Present only when `colorReplacements` is.
    */
   colorVariant?: number;
+  /** How the entity sways in the wind; see `EntityDefinition.sway`. */
+  sway?: EntitySway;
 };
 
 /** Optional identity data when creating an {@link IEntity} instance. */
@@ -207,5 +228,6 @@ export interface IEntity extends IGridObject {
   readonly debug?: boolean;
   readonly colorReplacements?: SvgColorReplacements;
   readonly colorVariant?: number;
+  readonly sway?: EntitySway;
   getData(): EntityData;
 }

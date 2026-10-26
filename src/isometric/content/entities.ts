@@ -130,6 +130,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     height: 2,
     spawnChance: 0.03,
     surface: "grass",
+    sway: { cut: 0.58, amplitude: 1.5, period: 3400 },
   },
   {
     id: "tree_2",
@@ -137,6 +138,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     height: 2,
     spawnChance: 0.1,
     surface: "grass",
+    sway: { cut: 0.69, amplitude: 1.5, period: 3800 },
   },
   {
     id: "tree_3",
@@ -144,6 +146,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     height: 2,
     spawnChance: 0.01,
     surface: "grass",
+    sway: { cut: 0.76, amplitude: 1, period: 3000 },
     formation: TREE_GROVE_FORMATION,
   },
   {
@@ -152,6 +155,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     height: 2,
     spawnChance: 0.03,
     surface: "grass",
+    sway: { cut: 0.61, amplitude: 2, period: 4200 },
   },
   {
     id: "tree_5",
@@ -159,6 +163,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     height: 2,
     spawnChance: 0.03,
     surface: "grass",
+    sway: { cut: 0.67, amplitude: 2, period: 3200 },
   },
   {
     id: "tree_6",
@@ -166,6 +171,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     height: 2,
     spawnChance: 0.03,
     surface: "grass",
+    sway: { cut: 0.61, amplitude: 1.5, period: 3600 },
   },
   {
     id: "tree_7",
@@ -173,6 +179,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     height: 2,
     spawnChance: 0.01,
     surface: "grass",
+    sway: { cut: 0.72, amplitude: 1, period: 2800 },
     formation: TREE_GROVE_FORMATION,
   },
   {
@@ -181,6 +188,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     height: 2,
     spawnChance: 0.01,
     surface: "grass",
+    sway: { cut: 0.74, amplitude: 1.5, period: 3000 },
     formation: TREE_GROVE_FORMATION,
   },
   {

@@ -217,12 +217,37 @@ describe("createSilhouettes", () => {
     const sprite = placedSprite(texture(64, 80), 200, 100, 40, 40);
     const [silhouette] = createSilhouettes([{ view: sprite, depth: 5 }], entityBox(3, 4, 200, 130), METRICS);
 
-    expect(silhouette.source).toBe(sprite);
+    expect(silhouette.sources).toEqual([sprite]);
+    expect(silhouette.body).toBe(sprite.texture);
+    expect(silhouette.bodyDisplay).toEqual({ left: 180, top: 100, width: 40, height: 40 });
     expect(silhouette.depth).toBe(5);
     expect(silhouette.worldFoot).toEqual({ x: 3, y: 4 });
     expect(silhouette.screenFoot).toEqual({ x: 200, y: 130 });
     expect(silhouette.display).toEqual({ left: 180, top: 100, width: 40, height: 30 });
     expect(silhouette.texture.frame).toMatchObject({ x: 0, y: 0, width: 64, height: 60 });
+  });
+
+  it("makes one silhouette of a sprite cut in two, as if whole", () => {
+    // The sprite of the previous test cut at y 124 (texel row 48): bottom first, then the top part.
+    const source = { id: "src" } as never;
+    const bottom = placedSprite(new Texture({ source, frame: new Rectangle(0, 48, 64, 32) }), 200, 124, 40, 16);
+    const top = placedSprite(new Texture({ source, frame: new Rectangle(0, 0, 64, 48) }), 200, 124, 40, 24);
+    top.anchor.set(0.5, 1);
+    const views = [
+      { view: bottom, depth: 5 },
+      { view: top, depth: 5, stacked: true },
+    ];
+    const [silhouette, ...others] = createSilhouettes(views, entityBox(3, 4, 200, 130), METRICS);
+
+    expect(others).toEqual([]);
+    expect(silhouette.sources).toEqual([bottom, top]);
+    expect(silhouette.body.source).toBe(source);
+    expect(silhouette.body.frame).toMatchObject({ x: 0, y: 0, width: 64, height: 80 });
+    expect(silhouette.bodyDisplay).toEqual({ left: 180, top: 100, width: 40, height: 40 });
+    expect(silhouette.display).toEqual({ left: 180, top: 100, width: 40, height: 30 });
+    expect(silhouette.texture.frame).toMatchObject({ x: 0, y: 0, width: 64, height: 60 });
+    // The whole texture is made once per cut.
+    expect(createSilhouettes(views, entityBox(3, 4, 200, 130), METRICS)[0].body).toBe(silhouette.body);
   });
 
   it("reuses the cropped texture for sprites of the same texture and crop", () => {

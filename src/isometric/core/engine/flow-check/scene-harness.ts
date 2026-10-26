@@ -33,6 +33,7 @@ export const renderCalls: Array<{
   tint: number | undefined;
   height?: number;
   length?: number;
+  splitAt?: number;
 }> = [];
 
 /** Every mocked Pixi `Container` created, in order. */
@@ -195,6 +196,7 @@ export async function mockRender() {
         tint,
         height,
         length,
+        splitAt,
       }: {
         texture: { source: string };
         box: {
@@ -208,8 +210,9 @@ export async function mockRender() {
         tint?: number;
         height?: number;
         length?: number;
+        splitAt?: number;
       }) => {
-        renderCalls.push({ texture, elevation: box.box.elevation, tint, height, length });
+        renderCalls.push({ texture, elevation: box.box.elevation, tint, height, length, splitAt });
         const position = {
           x: box.screenX,
           y: box.screenY - 30,
@@ -267,7 +270,9 @@ export function mockSilhouette() {
       (views: { view: unknown; depth: number }[], box: { x: number; y: number; box: { elevation: number } }) => [
         {
           texture: { silhouetteOf: box.box },
-          source: views[0].view,
+          sources: [views[0].view],
+          body: { bodyOf: box.box },
+          bodyDisplay: { left: 0, top: 0, width: 1, height: 1 },
           depth: views[0].depth,
           worldFoot: { x: box.x, y: box.y },
           screenFoot: { x: 0, y: 0 },
@@ -304,13 +309,14 @@ export function mockReceivedShadow() {
       filters,
       destroy: vi.fn(),
     })),
-    createReceivedShadows: vi.fn((receivers: { own: { source: unknown; depth: number } }[]) => ({
+    createReceivedShadows: vi.fn((receivers: { own: { sources: readonly unknown[]; depth: number } }[]) => ({
       views: receivers.map(({ own }) => ({
-        view: { cullable: false, source: "received-shadow", receivedShadowOf: own.source, destroy: vi.fn() },
+        view: { cullable: false, source: "received-shadow", receivedShadowOf: own.sources[0], destroy: vi.fn() },
         depth: own.depth,
       })),
       atlas: {},
       draw: vi.fn(),
+      follow: vi.fn(),
       destroy: vi.fn(),
     })),
   };

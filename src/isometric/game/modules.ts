@@ -4,6 +4,7 @@ import {
   createCameraView,
   createClockPart,
   createEntityView,
+  createFoliageWind,
   createPlayerPart,
   createPlayerSystem,
   createPlayerView,
@@ -17,8 +18,9 @@ import type { WorldSystem } from "../core/types";
 
 /**
  * The scene modules the game draws with, in order: each one may use the services of those
- * before it (shadows use the entities' views; the camera starts on the player), and every frame
- * they update in this order (the player moves before the camera glides after it). Any of them
+ * before it (the wind and the shadows use the entities' views; the camera starts on the player), and
+ * every frame they update in this order (the canopies lean before their shadows follow them; the
+ * player moves before the camera glides after it). Any of them
  * can be left out (`disabled`, by id) and the rest keep working. With `cull: false` the camera
  * draws every view of the shown chunks (`?cull=off`, to measure what culling saves).
  */
@@ -29,6 +31,7 @@ export function createSceneModules(
   const modules = [
     createTerrainView(),
     createEntityView(),
+    createFoliageWind(),
     createShadows(),
     createAmbientLight(),
     createPlayerView(PLAYER_APPEARANCE),

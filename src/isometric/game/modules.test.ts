@@ -14,7 +14,7 @@ import { CLOCK_PART, PLAYER_PART, TICKS_PER_HOUR, WORLD_START_TICK } from "../co
 import { createTestEntities, defaultWorld, mountScene, resetHarness } from "../core/engine/flow-check/scene-harness";
 import { createSceneModules, createWorldParts, createWorldSystems, findUnknownModules } from "./modules";
 
-const SCENE_IDS = ["terrain", "entities", "shadows", "ambient-light", "player", "camera"];
+const SCENE_IDS = ["terrain", "entities", "foliage-wind", "shadows", "ambient-light", "player", "camera"];
 
 describe("createSceneModules", () => {
   beforeEach(() => {
@@ -34,6 +34,7 @@ describe("createSceneModules", () => {
     expect(createSceneModules(new Set(["shadows", "camera"])).map(({ id }) => id)).toEqual([
       "terrain",
       "entities",
+      "foliage-wind",
       "ambient-light",
       "player",
     ]);

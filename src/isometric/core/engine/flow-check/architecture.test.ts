@@ -13,7 +13,8 @@ import { describe, expect, it } from "vitest";
  * constants (view metrics) → lighting (shadow geometry)
  * projection, grid → camera (view maths on the ground plane, and the chunks in view)
  * render (Pixi primitives) → scene (the compositor and the `SceneModule` contract)
- * scene → scene modules: terrain-view, entity-view, shadows, ambient-light, player-view, camera-view
+ * random → wind (how swaying entities lean, from their sway and the time)
+ * scene → scene modules: terrain-view, entity-view, foliage-wind, shadows, ambient-light, player-view, camera-view
  *
  * The scene draws nothing itself: the app hands it a list of scene modules. A scene module never
  * imports another one (they share services through the scene), and the scene never imports them.
@@ -42,6 +43,8 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   "terrain-view": ["projection", "render", "scene", "terrain"],
   "entity-view": ["entities", "projection", "render", "scene"],
   shadows: ["lighting", "projection", "render", "scene", "time", "world"],
+  wind: ["random"],
+  "foliage-wind": ["scene", "wind"],
   "ambient-light": ["render", "scene", "time"],
   "camera-view": ["camera", "scene"],
   "player-view": ["camera", "player", "projection", "render", "scene"],
@@ -51,6 +54,7 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
 const SCENE_MODULES = new Set([
   "terrain-view",
   "entity-view",
+  "foliage-wind",
   "shadows",
   "ambient-light",
   "camera-view",

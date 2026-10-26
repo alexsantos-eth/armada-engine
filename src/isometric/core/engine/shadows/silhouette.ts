@@ -70,6 +70,24 @@ export function createGroundShadowView(
   return { view: sprite, depth };
 }
 
+/** A rectangle on screen, in pixels. */
+export type ScreenRect = {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+};
+
+/** The screen rectangle a sprite is drawn in, before any skew. */
+export function displayOf(sprite: Sprite): ScreenRect {
+  return {
+    left: sprite.x - sprite.anchor.x * sprite.width,
+    top: sprite.y - sprite.anchor.y * sprite.height,
+    width: sprite.width,
+    height: sprite.height,
+  };
+}
+
 /**
  * A caster's silhouette for the shadow textures: one of its sprites, cropped at its foot. Plain
  * data over shared textures, so it can be kept and paired freely; what draws it is one of the
@@ -78,16 +96,23 @@ export function createGroundShadowView(
 export type Silhouette = {
   /** The sprite's texture cropped at its foot: what the shadow textures draw, in black. */
   readonly texture: Texture;
-  /** The entity's sprite it copies, drawn in the scene: what other casters' shadows fall on. */
-  readonly source: Sprite;
-  /** Draw depth of `source`. */
+  /**
+   * The entity's sprites it copies, drawn in the scene: what other casters' shadows fall on. One
+   * sprite, or the parts of a sprite cut in two (`createBlockViews({ splitAt })`), bottom first.
+   */
+  readonly sources: readonly Sprite[];
+  /** `sources` as one texture, uncropped: what a receiver keeps its shadows to. */
+  readonly body: Texture;
+  /** Screen rectangle of `sources` as one sprite, uncropped (as drawn while nothing leans). */
+  readonly bodyDisplay: ScreenRect;
+  /** Draw depth of `sources`. */
   readonly depth: number;
   /** World tile the sprite stands on. */
   readonly worldFoot: PlanePoint;
   /** Screen point of that tile's centre at the caster's ground level. */
   readonly screenFoot: PlanePoint;
   /** Screen rectangle of the silhouette (the sprite cropped at its foot). */
-  readonly display: { readonly left: number; readonly top: number; readonly width: number; readonly height: number };
+  readonly display: ScreenRect;
 };
 
 const croppedTextures = new WeakMap<Texture, Map<number, Texture>>();
@@ -106,10 +131,35 @@ function cropTexture(texture: Texture, fraction: number): Texture {
   return cropped;
 }
 
+const stackTextures = new WeakMap<Texture, Texture>();
+
+/** The texture of the parts of a sprite cut in two (bottom first) as one, cached per cut. */
+function stackTexture(parts: readonly Sprite[]): Texture {
+  if (parts.length === 1) return parts[0].texture;
+  const top = parts[parts.length - 1].texture;
+  const cached = stackTextures.get(top);
+  if (cached) return cached;
+  const { x, y, width } = top.frame;
+  const height = parts.reduce((total, part) => total + part.texture.frame.height, 0);
+  const whole = new Texture({ source: top.source, frame: new Rectangle(x, y, width, height) });
+  stackTextures.set(top, whole);
+  return whole;
+}
+
+/** The rectangle around `rects`. */
+function around(rects: readonly ScreenRect[]): ScreenRect {
+  const left = Math.min(...rects.map((rect) => rect.left));
+  const top = Math.min(...rects.map((rect) => rect.top));
+  const right = Math.max(...rects.map((rect) => rect.left + rect.width));
+  const bottom = Math.max(...rects.map((rect) => rect.top + rect.height));
+  return { left, top, width: right - left, height: bottom - top };
+}
+
 /**
  * Silhouettes of an entity's sprites (as returned by `createBlockViews()`), one per sprite: a
- * multi-tile entity's strips each stand on their own footprint tile. Each is cropped at its
- * foot, so only what stands above the ground casts a shadow. Debug outlines are skipped.
+ * multi-tile entity's strips each stand on their own footprint tile, and the parts of a sprite cut
+ * in two (`stacked`) make one silhouette, as if whole. Each is cropped at its foot, so only what
+ * stands above the ground casts a shadow. Debug outlines are skipped.
  */
 export function createSilhouettes(
   views: readonly DepthView[],
@@ -118,30 +168,40 @@ export function createSilhouettes(
   length = 1,
   lengthAxis: EntityLengthAxis = "x",
 ): Silhouette[] {
-  const sprites = views.filter((item): item is DepthView & { view: Sprite } => item.view instanceof Sprite);
-  const tiles = sprites.length > 1 ? getFootprintSliceTiles(length, lengthAxis) : [0];
+  // The sprites, the parts of a cut one together.
+  const groups: { sprites: Sprite[]; depth: number }[] = [];
+  views.forEach(({ view, depth, stacked }) => {
+    if (!(view instanceof Sprite)) return;
+    const last = groups.at(-1);
+    if (stacked && last) last.sprites.push(view);
+    else groups.push({ sprites: [view], depth });
+  });
+  const tiles = groups.length > 1 ? getFootprintSliceTiles(length, lengthAxis) : [0];
   const sideways = lengthAxis === "y" ? -1 : 1;
 
-  return sprites.map(({ view: source, depth }, index) => {
+  return groups.map(({ sprites, depth }, index) => {
     const tile = tiles[index];
     const screenFoot = {
       x: box.screenX + sideways * tile * (metrics.tileWidth / 2),
       y: box.screenY - tile * (metrics.tileHeight / 2),
     };
-    const left = source.x - source.anchor.x * source.width;
-    const top = source.y - source.anchor.y * source.height;
-    const fraction = Math.min(Math.max((screenFoot.y - top) / source.height, 0), 1);
+    const body = stackTexture(sprites);
+    const bodyDisplay = sprites.length === 1 ? displayOf(sprites[0]) : around(sprites.map(displayOf));
+    const { left, top, width, height } = bodyDisplay;
+    const fraction = Math.min(Math.max((screenFoot.y - top) / height, 0), 1);
 
     return {
-      texture: cropTexture(source.texture, fraction),
-      source,
+      texture: cropTexture(body, fraction),
+      sources: sprites,
+      body,
+      bodyDisplay,
       depth,
       worldFoot: {
         x: box.x + (lengthAxis === "x" ? tile : 0),
         y: box.y + (lengthAxis === "y" ? tile : 0),
       },
       screenFoot,
-      display: { left, top, width: source.width, height: source.height * fraction },
+      display: { left, top, width, height: height * fraction },
     };
   });
 }

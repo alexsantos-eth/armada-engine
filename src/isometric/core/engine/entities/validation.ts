@@ -45,6 +45,18 @@ function checkDefinition(definition: EntityDefinition, report: (issue: string) =
     report(`gap must be a non-negative integer (got ${String(definition.gap)})`);
   }
 
+  if (definition.sway) {
+    const { cut, amplitude, period } = definition.sway;
+    if (length !== 1) report(`sway is for single-tile entities (got length ${length})`);
+    if (!(cut > 0 && cut < 1)) report(`sway.cut must be between 0 and 1, both excluded (got ${String(cut)})`);
+    if (!(amplitude >= 0 && Number.isFinite(amplitude))) {
+      report(`sway.amplitude must be a non-negative number (got ${String(amplitude)})`);
+    }
+    if (!(period > 0 && Number.isFinite(period))) {
+      report(`sway.period must be a positive number (got ${String(period)})`);
+    }
+  }
+
   const footprintSurfaces = definition.footprintSurfaces ?? [];
   if (footprintSurfaces.length > length) {
     report(`footprintSurfaces lists ${footprintSurfaces.length} surfaces for a footprint of ${length} blocks`);
@@ -98,8 +110,8 @@ function checkDefinition(definition: EntityDefinition, report: (issue: string) =
 /**
  * Validates entity definitions when content is loaded, so a typo in the data fails early
  * with a clear message instead of silently spawning nothing (or garbage). Checks ids,
- * texture paths, numeric ranges, surfaces, axes, footprints, formations and color
- * replacements.
+ * texture paths, numeric ranges, surfaces, axes, footprints, formations, color replacements
+ * and sway.
  *
  * @throws {@link EntityConfigError} listing every issue found.
  */

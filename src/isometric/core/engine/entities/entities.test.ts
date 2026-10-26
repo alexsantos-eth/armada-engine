@@ -221,6 +221,7 @@ describe("Entity and createEntitiesFromConfig", () => {
         spawnChance: 1,
         surface: "grass",
         colorReplacements: { "#000000": ["#111111", "#222222"] },
+        sway: { cut: 0.5, amplitude: 2, period: 3000 },
       },
       3,
       { id: "house@0,0", colorVariant: 1 },
@@ -233,6 +234,7 @@ describe("Entity and createEntitiesFromConfig", () => {
     expect(restored.y).toBe(5);
     expect(restored.getData()).toEqual(data);
     expect(restored.colorVariant).toBe(1);
+    expect(restored.sway).toEqual({ cut: 0.5, amplitude: 2, period: 3000 });
     expect(restored.walkable).toBe(true);
     data.metadata.hp = 0;
     expect(restored.metadata).toEqual({ hp: 5 });

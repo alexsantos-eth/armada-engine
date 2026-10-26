@@ -38,6 +38,7 @@ describe("validateEntityDefinitions", () => {
           debug: true,
         },
         { ...VALID, id: "house", surfaceElevation: 0, colorReplacements: { "#000000": "#ffffff" } },
+        { ...VALID, id: "tree", sway: { cut: 0.6, amplitude: 2, period: 3000 } },
       ]),
     ).not.toThrow();
     expect(() => validateEntityDefinitions([])).not.toThrow();
@@ -129,6 +130,20 @@ describe("validateEntityDefinitions", () => {
       'rock: colorReplacements["#000000"] must be hex colors (got "blue")',
       'rock: colorReplacements["#111111"] must not be an empty list',
       "rock: colorReplacements variation lists must all have the same length (got 2, 1)",
+    ]);
+  });
+
+  it("reports invalid sway", () => {
+    expect(issuesOf([{ ...VALID, length: 2, sway: { cut: 0, amplitude: -1, period: 0 } }])).toEqual([
+      "rock: sway is for single-tile entities (got length 2)",
+      "rock: sway.cut must be between 0 and 1, both excluded (got 0)",
+      "rock: sway.amplitude must be a non-negative number (got -1)",
+      "rock: sway.period must be a positive number (got 0)",
+    ]);
+    expect(issuesOf([{ ...VALID, sway: { cut: 1, amplitude: Infinity, period: Number.NaN } }])).toEqual([
+      "rock: sway.cut must be between 0 and 1, both excluded (got 1)",
+      "rock: sway.amplitude must be a non-negative number (got Infinity)",
+      "rock: sway.period must be a positive number (got NaN)",
     ]);
   });
 

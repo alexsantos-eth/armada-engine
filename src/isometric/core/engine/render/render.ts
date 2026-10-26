@@ -16,6 +16,26 @@ export function getFootprintSliceTiles(length: number, lengthAxis: EntityLengthA
 
 const stripTexturesCache = new WeakMap<Texture, Texture[]>();
 
+const splitTexturesCache = new WeakMap<Texture, Map<number, readonly [Texture, Texture]>>();
+
+/**
+ * `texture` cut in two at texel row `row` of its frame (top part, bottom part), cached per
+ * texture and row: shared by every sprite of the texture, never one per instance.
+ */
+function getSplitTextures(texture: Texture, row: number): readonly [Texture, Texture] {
+  const byRow = splitTexturesCache.get(texture) ?? new Map<number, readonly [Texture, Texture]>();
+  splitTexturesCache.set(texture, byRow);
+  const cached = byRow.get(row);
+  if (cached) return cached;
+  const { x, y, width, height } = texture.frame;
+  const parts = [
+    new Texture({ source: texture.source, frame: new Rectangle(x, y, width, row) }),
+    new Texture({ source: texture.source, frame: new Rectangle(x, y + row, width, height - row) }),
+  ] as const;
+  byRow.set(row, parts);
+  return parts;
+}
+
 function getStripTextures(texture: Texture, strips: number): Texture[] {
   const cached = stripTexturesCache.get(texture);
   if (cached?.length === strips) return cached;
@@ -41,6 +61,11 @@ function getStripTextures(texture: Texture, strips: number): Texture[] {
 export type DepthView = {
   readonly view: Container;
   readonly depth: number;
+  /**
+   * The view is the top part of the sprite before it in the list, cut from the same texture
+   * (`RenderBlockOptions.splitAt`): together they draw one sprite, and its origin is the cut.
+   */
+  readonly stacked?: boolean;
 };
 
 /**
@@ -82,6 +107,14 @@ export type RenderBlockOptions = {
   readonly lengthAxis?: EntityLengthAxis;
   /** Draws a diamond outline per occupied block. Defaults to `false`. */
   readonly debug?: boolean;
+  /**
+   * Cuts a single-tile sprite in two at this fraction of its height from its top (between `0` and
+   * `1`, rounded to a texel row): the bottom part anchored on its top edge, then the top part
+   * (`stacked`) anchored on its bottom edge, both at the cut, so leaning the top part (`skew`) bends
+   * the sprite there and the bottom stays still. Drawn as one sprite while nothing leans. Ignored
+   * for multi-tile footprints.
+   */
+  readonly splitAt?: number;
   /** Where the sprites come from, e.g. a `SpritePool`. Defaults to new ones ({@link NEW_SPRITES}). */
   readonly sprites?: SpriteSource;
 };
@@ -104,6 +137,7 @@ export function createBlockViews(options: RenderBlockOptions): DepthView[] {
     length = 1,
     lengthAxis = "x",
     debug = false,
+    splitAt,
     sprites = NEW_SPRITES,
   } = options;
   const width = tileWidth * ((1 + length) / 2);
@@ -122,15 +156,25 @@ export function createBlockViews(options: RenderBlockOptions): DepthView[] {
   const positionY = box.screenY - footprintOffset * (tileHeight / 2) - verticalOffset;
   const tileDepth = (tile: number) => getBlockDepth(box, options.metrics, tile, lengthAxis);
   const anchorDepth = tileDepth(0);
-  const draw = (source: Texture, spriteWidth: number, anchorX: number, x: number) => {
+  const draw = (
+    source: Texture,
+    spriteWidth: number,
+    anchorX: number,
+    x: number,
+    drawnHeight = spriteHeight,
+    anchorY = 0,
+    y = positionY,
+  ) => {
     const sprite = sprites.take(source);
     sprite.width = spriteWidth;
-    sprite.height = spriteHeight;
+    sprite.height = drawnHeight;
     sprite.tint = tint ?? 0xffffff;
-    sprite.anchor.set(anchorX, 0);
-    sprite.position.set(x, positionY);
+    sprite.anchor.set(anchorX, anchorY);
+    sprite.position.set(x, y);
     return sprite;
   };
+  // The texel row of the cut, when it leaves texels on both sides.
+  const splitRow = splitAt === undefined || length > 1 ? 0 : Math.round(texture.frame.height * splitAt);
 
   let views: DepthView[];
   if (length > 1) {
@@ -142,6 +186,14 @@ export function createBlockViews(options: RenderBlockOptions): DepthView[] {
       view: draw(stripTextures[strip], stripWidth, 0, left + strip * stripWidth),
       depth: tileDepth(tile),
     }));
+  } else if (splitRow > 0 && splitRow < texture.frame.height) {
+    const [top, bottom] = getSplitTextures(texture, splitRow);
+    const topHeight = (spriteHeight * splitRow) / texture.frame.height;
+    const cutY = positionY + topHeight;
+    views = [
+      { view: draw(bottom, width, 0.5, positionX, spriteHeight - topHeight, 0, cutY), depth: anchorDepth },
+      { view: draw(top, width, 0.5, positionX, topHeight, 1, cutY), depth: anchorDepth, stacked: true },
+    ];
   } else {
     views = [{ view: draw(texture, width, 0.5, positionX), depth: anchorDepth }];
   }

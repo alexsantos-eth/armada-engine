@@ -53,6 +53,19 @@ vi.mock("pixi.js", () => {
     public anchor = { x: 0, y: 0 };
     public position = { set: vi.fn((x: number, y: number) => Object.assign(this, { x, y })) };
     public scale = { x: 1, y: 1, set: vi.fn((x: number, y = x) => Object.assign(this.scale, { x, y })) };
+    public pivot = { x: 0, y: 0, set: vi.fn((x: number, y = x) => Object.assign(this.pivot, { x, y })) };
+    public skewWrites: number[] = [];
+    public skew = {
+      writes: this.skewWrites,
+      value: 0,
+      get x() {
+        return this.value;
+      },
+      set x(value: number) {
+        this.value = value;
+        this.writes.push(value);
+      },
+    };
 
     constructor(texture?: Texture) {
       this.texture = texture as Texture;
@@ -144,7 +157,9 @@ const silhouetteOf = (
   Object.assign(source, { x: left, y: top, width, height });
   const footY = top + height - 10;
   return {
-    source,
+    sources: [source],
+    body: source.texture,
+    bodyDisplay: { left, top, width, height },
     depth,
     // Cropped at its foot, from a texture with a frame offset in its source.
     texture: new Texture({
@@ -204,7 +219,7 @@ describe("createReceivedShadowRig", () => {
     const renderer = createRenderer();
     const rig = createReceivedShadowRig(renderer as never, []);
     const mask = rig.eraser.texture as unknown as MockRenderTexture;
-    const [first, second] = twoReceivers().map(({ own }) => own.source.texture);
+    const [first, second] = twoReceivers().map(({ own }) => own.body);
 
     rig.drawMask(100, 50, [first, second], new Float64Array([1, 2, 3, 4, 5, 6, 7, 8]));
     const [{ container, target, clear, clearColor }] = renderer.render.mock.calls[0];
@@ -277,6 +292,35 @@ describe("createReceivedShadows", () => {
     expect(view.scale.set).toHaveBeenCalledWith(1 / RES);
   });
 
+  it("shows the square of a sprite cut in two in two parts, the top one leaning with its part", () => {
+    // A 20 × 40 sprite at (100, 0) cut at y 16: the bottom part hangs from the cut, the top stands on it.
+    const own = silhouetteOf(100, 0, 20, 40, { x: 2, y: 2 }, 7);
+    const bottom = own.sources[0];
+    const top = new Sprite(own.body);
+    Object.assign(bottom, { y: 16, height: 24 });
+    Object.assign(top, { x: 110, y: 16, width: 20, height: 16, anchor: { x: 0.5, y: 1 } });
+    const { shadows } = atlasOf([{ own: { ...own, sources: [bottom, top] }, casters: [] }]);
+    const [low, high] = shadows.views.map(({ view }) => view as Sprite);
+
+    expect(shadows.views.map(({ depth }) => depth)).toEqual([7, 7]);
+    // The bottom part shows the square from the cut down; the top part the rest, about the cut.
+    expect(high.texture.frame).toEqual(new Rectangle(PAD, PAD, 20 * RES, 16 * RES));
+    expect(low.texture.frame).toEqual(new Rectangle(PAD, PAD + 16 * RES, 20 * RES, 24 * RES));
+    expect(low.position.set).toHaveBeenCalledWith(100, 16);
+    expect(high.pivot.set).toHaveBeenCalledWith(10 * RES, 16 * RES);
+    expect(high.position.set).toHaveBeenCalledWith(110, 16);
+
+    // It leans as its part does, writing only what changed.
+    const leans = (high as unknown as { skewWrites: number[] }).skewWrites;
+    shadows.follow();
+    top.skew.x = 0.05;
+    shadows.follow();
+    shadows.follow();
+    expect(leans).toEqual([0.05]);
+    expect(high.skew.x).toBe(0.05);
+    expect((low as unknown as { skewWrites: number[] }).skewWrites).toEqual([]);
+  });
+
   it("draws its receivers' cutouts into the rig's mask before each draw, keeping no mask of its own", () => {
     const receivers = twoReceivers();
     const { rig, renderer, shadows } = atlasOf(receivers);
@@ -288,7 +332,7 @@ describe("createReceivedShadows", () => {
 
     expect(target).toBe(rig.eraser.texture);
     expect(rig.eraser.texture).toMatchObject({ width: shadows.atlas.width, height: shadows.atlas.height });
-    expect(cutouts.map(({ texture }) => texture)).toEqual(receivers.map(({ own }) => own.source.texture));
+    expect(cutouts.map(({ texture }) => texture)).toEqual(receivers.map(({ own }) => own.body));
     expect(cutouts[1]).toMatchObject({ x: 2 * PAD + 20 * RES, y: PAD, width: 30 * RES, height: 30 * RES });
     expect(renderer.render.mock.calls[1][0].target).toBe(shadows.atlas);
   });

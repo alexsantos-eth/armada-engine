@@ -92,6 +92,20 @@ describe("ENTITY_CONFIG", () => {
     });
   });
 
+  // Trees sway subtly: only the canopy, above the cut, moves 1–2 world pixels at most.
+  it("sways every tree, and only the trees, subtly", () => {
+    ENTITY_CONFIG.forEach(({ textureSource, sway }) => {
+      if (!textureSource.startsWith("/assets/tree/")) {
+        expect(sway).toBeUndefined();
+        return;
+      }
+      expect(sway).toBeDefined();
+      expect(sway?.cut).toBeGreaterThan(0.5);
+      expect(sway?.amplitude).toBeGreaterThanOrEqual(1);
+      expect(sway?.amplitude).toBeLessThanOrEqual(2);
+    });
+  });
+
   it("declares the large buildings between four and six blocks tall", () => {
     const large = ENTITY_CONFIG.filter(({ textureSource }) => {
       const height = readTiles(textureSource)[2];

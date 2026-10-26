@@ -21,6 +21,8 @@ function textureKey(entity: Entity): string {
  * loads one texture per (entity type, colour variation) the first time a chunk needs it, shared by
  * every instance with that variation in every chunk (its `blob:` URL is released once loaded);
  * types without `colorReplacements` share their SVG. An entity whose texture cannot be loaded is skipped.
+ * An entity that sways (`sway`) is drawn cut at `sway.cut`: a still sprite and, `stacked` on it, the
+ * part that leans (`foliage-wind`).
  *
  * Provides `entityViews` (the entities of each shown chunk with their views), e.g. for shadows.
  */
@@ -58,6 +60,7 @@ export function createEntityView(): SceneModule {
               length: entity.box.length,
               debug: entity.box.debug,
               lengthAxis: entity.box.lengthAxis,
+              splitAt: entity.box.sway?.cut,
             });
             own.push({ entity, views });
           });

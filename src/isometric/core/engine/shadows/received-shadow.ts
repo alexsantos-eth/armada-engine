@@ -1,6 +1,6 @@
 import { Container, type Filter, Rectangle, RenderTexture, type Renderer, Sprite, Texture } from "pixi.js";
 import type { DepthView } from "../render";
-import { type CasterSprites, createCasterSprites, type PlanePoint, type Silhouette } from "./silhouette";
+import { type CasterSprites, createCasterSprites, displayOf, type PlanePoint, type Silhouette } from "./silhouette";
 import type { TextureFrame, TexturePool } from "./texture-pool";
 
 /** Texels of the received-shadow atlas per screen pixel of a receiver (at zoom 1). */
@@ -24,7 +24,7 @@ export type ShadowCaster = {
 
 /** An entity's sprite that other entities' shadows may fall on. */
 export type ShadowReceiver = {
-  /** Its own silhouette: the sprite in the scene (`source`), its depth and where it stands. */
+  /** Its own silhouette: its sprites in the scene (`sources`), its depth and where it stands. */
   readonly own: Silhouette;
   readonly casters: readonly ShadowCaster[];
 };
@@ -115,26 +115,24 @@ export function createReceivedShadowRig(renderer: Renderer, filters: readonly Fi
 
 /** Shadows that entities cast on each other, drawn into one atlas. */
 export type ReceivedShadows = {
-  /** One view per receiver, to add right after it: its square of the atlas over its sprite. */
+  /**
+   * One view per receiver sprite, to add right after it: its part of the receiver's square of the
+   * atlas over it. The view over the top part of a sprite cut in two shares its origin (the cut).
+   */
   readonly views: readonly DepthView[];
   readonly atlas: RenderTexture;
   /** Places the casters with `offsetOf` (none when not given) and draws the atlas. */
   draw(offsetOf: CastShadowOffset | null): void;
+  /**
+   * Leans the view over the top part of each sprite cut in two as that part leans (its `skew`,
+   * e.g. a canopy in the wind), so its shadows stay on it. Writes only what changed.
+   */
+  follow(): void;
   destroy(): void;
 };
 
 // What a draw crops each caster's texture to, copied into the texture at once.
 const crop: { -readonly [Key in keyof TextureFrame]: number } = { x: 0, y: 0, width: 0, height: 0 };
-
-/** The screen rectangle a sprite is drawn in. */
-function displayOf(sprite: Sprite) {
-  return {
-    left: sprite.x - sprite.anchor.x * sprite.width,
-    top: sprite.y - sprite.anchor.y * sprite.height,
-    width: sprite.width,
-    height: sprite.height,
-  };
-}
 
 /** Shelf packing: each receiver's square, `RECEIVED_SHADOW_PADDING` texels apart. */
 function packSlots(receivers: readonly ShadowReceiver[]) {
@@ -144,7 +142,7 @@ function packSlots(receivers: readonly ShadowReceiver[]) {
   let rowHeight = 0;
   let width = padding;
   const slots = receivers.map(({ own }) => {
-    const display = displayOf(own.source);
+    const display = own.bodyDisplay;
     const slotWidth = Math.ceil(display.width * RECEIVED_SHADOW_RESOLUTION);
     const slotHeight = Math.ceil(display.height * RECEIVED_SHADOW_RESOLUTION);
     if (x > padding && x + slotWidth + padding > RECEIVED_SHADOW_ATLAS_WIDTH) {
@@ -191,10 +189,9 @@ export function createReceivedShadows(
   const atlas = RenderTexture.create({ width, height });
 
   // The mask's cutouts, drawn into the rig's mask on every draw: each receiver's texture on its square.
-  const cutouts = receivers.map(({ own }) => own.source.texture);
+  const cutouts = receivers.map(({ own }) => own.body);
   const cutoutRects = new Float64Array(4 * receivers.length);
-  receivers.forEach(({ own: { source } }, index) => {
-    const display = displayOf(source);
+  receivers.forEach(({ own: { bodyDisplay: display } }, index) => {
     cutoutRects[4 * index] = slots[index].x;
     cutoutRects[4 * index + 1] = slots[index].y;
     cutoutRects[4 * index + 2] = display.width * resolution;
@@ -218,7 +215,7 @@ export function createReceivedShadows(
   let pair = 0;
   receivers.forEach((receiver, index) => {
     const slot = slots[index];
-    const target = displayOf(receiver.own.source);
+    const target = receiver.own.bodyDisplay;
     receiver.casters.forEach(({ silhouette, lift }) => {
       const { display, screenFoot } = silhouette;
       pairSilhouettes[pair] = silhouette;
@@ -232,16 +229,31 @@ export function createReceivedShadows(
     });
   });
 
-  const views = receivers.map(({ own }, index) => {
+  // The views over the top parts of cut sprites, each after the part it follows.
+  const followers: Sprite[] = [];
+  const views = receivers.flatMap(({ own }, index) => {
     const slot = slots[index];
-    const display = displayOf(own.source);
-    const sprite = new Sprite(
-      new Texture({ source: atlas.source, frame: new Rectangle(slot.x, slot.y, slot.width, slot.height) }),
-    );
-    sprite.position.set(display.left, display.top);
-    sprite.scale.set(1 / resolution);
-    // Same depth, added after the receiver: drawn right over it.
-    return { view: sprite, depth: own.depth };
+    const body = own.bodyDisplay;
+    return own.sources.map((part, partIndex) => {
+      // Each part shows its rows of the square; the bottom one (or the whole sprite) down to its bottom.
+      const display = own.sources.length === 1 ? body : displayOf(part);
+      const top = slot.y + (display.top - body.top) * resolution;
+      const bottom = partIndex === 0 ? slot.y + slot.height : top + display.height * resolution;
+      const sprite = new Sprite(
+        new Texture({ source: atlas.source, frame: new Rectangle(slot.x, top, slot.width, bottom - top) }),
+      );
+      sprite.scale.set(1 / resolution);
+      if (partIndex === 0) {
+        sprite.position.set(display.left, display.top);
+      } else {
+        // Its origin on its part's (the cut), so the same skew leans both the same way.
+        sprite.pivot.set((part.x - display.left) * resolution, (part.y - display.top) * resolution);
+        sprite.position.set(part.x, part.y);
+        followers.push(part, sprite);
+      }
+      // Same depth, added after the receiver: drawn right over it.
+      return { view: sprite, depth: own.depth };
+    });
   });
 
   // The textures a draw borrowed, given back once it is rendered.
@@ -289,6 +301,13 @@ export function createReceivedShadows(
       renderer.render({ container: root, target: atlas, clear: true, clearColor: [0, 0, 0, 0] });
       for (const texture of borrowed) textures.release(texture);
       borrowed.length = 0;
+    },
+    follow() {
+      for (let index = 0; index < followers.length; index += 2) {
+        const lean = followers[index].skew.x;
+        const view = followers[index + 1];
+        if (view.skew.x !== lean) view.skew.x = lean;
+      }
     },
     destroy() {
       // The atlas first: destroying its source drops the listeners of the views' textures at once.

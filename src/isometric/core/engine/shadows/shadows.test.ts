@@ -511,6 +511,7 @@ describe("createShadows", () => {
       );
     type Received = ReturnType<typeof createReceivedShadows> & {
       draw: ReturnType<typeof vi.fn>;
+      follow: ReturnType<typeof vi.fn>;
       destroy: ReturnType<typeof vi.fn>;
     };
     const received = () => vi.mocked(createReceivedShadows).mock.results[0].value as Received;
@@ -575,9 +576,23 @@ describe("createShadows", () => {
           "shadows:gather-received",
           "shadows:maps",
           "shadows:received",
+          "shadows:follow",
         ]),
       );
       scene.destroy();
+    });
+
+    it("leans each atlas's views with the parts they cover, every frame", async () => {
+      const world = at(row([0, 1]), 10);
+      const { ticker, destroyScene } = await sceneOf(world);
+      const { follow } = received();
+      const before = follow.mock.calls.length;
+
+      ticker.frame();
+      ticker.frame();
+
+      expect(follow).toHaveBeenCalledTimes(before + 2);
+      destroyScene();
     });
 
     it("lays the casters with the sun when built and on its turn by day", async () => {

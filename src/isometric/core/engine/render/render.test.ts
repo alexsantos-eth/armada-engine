@@ -170,6 +170,55 @@ describe("createBlockViews", () => {
     expect(sprite.position.set).toHaveBeenCalledWith(10, -26);
   });
 
+  it("cuts a sprite in two at splitAt: a still bottom and a stacked top, both at the cut", () => {
+    const treeTexture = {
+      width: 100,
+      height: 200,
+      source: { id: "tree-source" },
+      frame: { x: 4, y: 6, width: 100, height: 200 },
+    };
+    const box = { x: 0, y: 0, box: new Box(0, 0), screenX: 10, baseScreenY: 20, screenY: 20 };
+    const metrics = { tileWidth: 40, tileHeight: 20, boxHeight: 13 };
+    const views = createBlockViews({ texture: treeTexture as never, box, metrics, height: 2, splitAt: 0.6 });
+    const [bottom, top] = views.map(
+      ({ view }) => view as unknown as TestSprite & { texture: { source: unknown; frame: unknown } },
+    );
+
+    expect(views.map(({ depth, stacked }) => ({ depth, stacked }))).toEqual([
+      { depth: getBlockDepth(box, metrics), stacked: undefined },
+      { depth: getBlockDepth(box, metrics), stacked: true },
+    ]);
+    // The cut is texel row 120: the top keeps rows [0, 120), the bottom the other 80.
+    expect(top.texture.source).toBe(treeTexture.source);
+    expect(top.texture.frame).toEqual({ x: 4, y: 6, width: 100, height: 120 });
+    expect(bottom.texture.frame).toEqual({ x: 4, y: 126, width: 100, height: 80 });
+    expect(top.height + bottom.height).toBeCloseTo(46, 9);
+    expect(top.height).toBeCloseTo(27.6, 9);
+    // Both meet at the cut: the bottom hangs from it, the top stands on it.
+    expect(bottom.anchor.set).toHaveBeenCalledWith(0.5, 0);
+    expect(top.anchor.set).toHaveBeenCalledWith(0.5, 1);
+    expect(bottom.position.set).toHaveBeenCalledWith(10, -26 + 27.6);
+    expect(top.position.set).toHaveBeenCalledWith(10, -26 + 27.6);
+    // The two parts are shared by every sprite of the texture and cut.
+    const again = createBlockViews({ texture: treeTexture as never, box, metrics, height: 2, splitAt: 0.6 });
+    expect(again.map(({ view }) => (view as unknown as TestSprite).texture)).toEqual([bottom.texture, top.texture]);
+    expect((again[0].view as unknown as TestSprite).texture).toBe(bottom.texture);
+  });
+
+  it("keeps a sprite whole when splitAt leaves no texel on a side, or for a multi-tile footprint", () => {
+    const treeTexture = { width: 100, height: 200, source: {}, frame: { x: 0, y: 0, width: 100, height: 200 } };
+    const box = { x: 0, y: 0, box: new Box(0, 0), screenX: 10, baseScreenY: 20, screenY: 20 };
+    const metrics = { tileWidth: 40, tileHeight: 20, boxHeight: 13 };
+
+    for (const splitAt of [0, 0.001, 0.999, 1]) {
+      const views = createBlockViews({ texture: treeTexture as never, box, metrics, splitAt });
+      expect(views).toHaveLength(1);
+      expect((views[0].view as unknown as TestSprite).texture).toBe(treeTexture);
+    }
+    const car = createBlockViews({ texture: carTexture as never, box, metrics, length: 2, splitAt: 0.5 });
+    expect(car.map(({ stacked }) => stacked)).toEqual([undefined, undefined, undefined]);
+  });
+
   it("aligns a one-block entity with the block's top diamond", () => {
     const sprite = renderViews(
       { addChild: vi.fn() },

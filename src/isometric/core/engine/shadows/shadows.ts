@@ -532,6 +532,11 @@ export function createShadows(): SceneModule {
         };
       };
 
+      // The shadows on the parts of sprites that lean (a canopy in the wind) lean with them.
+      const follow = () => {
+        for (const { received } of chunks.values()) received?.shadows.follow();
+      };
+
       const update = (now: number) => {
         tick = now;
         sun = getShadowProjection(getSunState(now));
@@ -587,7 +592,10 @@ export function createShadows(): SceneModule {
           scene = built;
           update(world.parts.get(CLOCK_PART).tick);
         },
-        update: ({ tick: now }) => update(now),
+        update: ({ tick: now }) => {
+          update(now);
+          profile("shadows:follow", follow);
+        },
         destroy: () => {
           // The caster sprites with their containers and filters; their textures are the entities' and the chunks'.
           levelRoot.destroy({ children: true });
