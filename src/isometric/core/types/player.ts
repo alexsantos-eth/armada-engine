@@ -7,12 +7,17 @@ export type PlayerPosition = {
   readonly y: number;
   /** Top elevation of the column under the player (the column nearest the ground point). */
   readonly elevation: number;
-  /** Blocks its feet are above that top while it jumps; `0` or absent on the ground. */
+  /** Blocks the top of that column sits below its elevation (sand's `topInset`); `0` or absent for none. */
+  readonly inset?: number;
+  /** Blocks its feet are above that sunken top while it jumps or falls; `0` or absent on the ground. */
   readonly height?: number;
 };
 
-/** Where the player is drawn in a frame: its position with the height of its feet (`0` on the ground). */
-export type PlayerRenderPosition = PlayerPosition & { readonly height: number };
+/**
+ * Where the player is drawn in a frame: its position with the inset of the top under it and the
+ * height of its feet above that top (both `0` standing on a full block).
+ */
+export type PlayerRenderPosition = PlayerPosition & { readonly inset: number; readonly height: number };
 
 /**
  * The player character as domain state in the `World`. Only the simulation step moves it
@@ -24,10 +29,18 @@ export type PlayerState = {
   y: number;
   /** Top elevation of the column under the player. */
   elevation: number;
-  /** Blocks its feet are above that top: `0` on the ground, more while it jumps. Not saved. */
+  /** Blocks the top of that column sits below its elevation (sand's `topInset`), `0` for most. Not saved. */
+  inset: number;
+  /**
+   * Blocks its feet are above that sunken top (`elevation - inset`): `0` on the ground, more while it
+   * jumps or falls. Not saved.
+   */
   height: number;
-  /** Ticks since it took off, while it jumps (`undefined` on the ground). Not saved. */
-  airborne: number | undefined;
+  /**
+   * Blocks per tick its feet rise while in the air (negative falling), pulled down by gravity;
+   * `undefined` on the ground. Not saved.
+   */
+  verticalSpeed: number | undefined;
   /**
    * The app asked it to jump (`jumpPlayer()`): the next tick takes off if it stands on the ground,
    * and clears it either way. Input, like `walk`. Not saved.

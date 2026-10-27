@@ -1,4 +1,4 @@
-import { PLAYER_APPEARANCE } from "../content";
+import { PLAYER_APPEARANCE, TERRAIN_APPEARANCE } from "../content";
 import {
   createAmbientLight,
   createCameraView,
@@ -11,6 +11,7 @@ import {
   createShadows,
   createSurfaceBands,
   createTerrainView,
+  type PlayerTopInset,
   type SceneModule,
   type World,
   type WorldPartOf,
@@ -53,9 +54,13 @@ export function createWorldParts(startTick?: number): WorldPartOf[] {
   return [createClockPart(startTick), createPlayerPart()];
 }
 
-/** The game systems the simulation runs every tick, in order (`stepWorld()`), but the `disabled` ones. */
+/**
+ * The game systems the simulation runs every tick, in order (`stepWorld()`), but the `disabled` ones.
+ * The player falls onto the sunken tops of the terrain content (`topInset`, sand) as they are drawn.
+ */
 export function createWorldSystems(disabled: ReadonlySet<string> = new Set()): WorldSystem<World>[] {
-  return [createPlayerSystem()].filter(({ id }) => !disabled.has(id));
+  const topInset: PlayerTopInset = (type) => TERRAIN_APPEARANCE[type].topInset ?? 0;
+  return [createPlayerSystem({ topInset })].filter(({ id }) => !disabled.has(id));
 }
 
 /** The ids in `disabled` that name no scene module nor game system: a typo in `?modules=`. */

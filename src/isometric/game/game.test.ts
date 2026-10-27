@@ -289,6 +289,7 @@ describe("mountGame", () => {
       x: world.parts.get(PLAYER_PART).x,
       y: world.parts.get(PLAYER_PART).y,
       elevation: world.parts.get(PLAYER_PART).elevation,
+      inset: 0,
       height: 0,
     });
   });

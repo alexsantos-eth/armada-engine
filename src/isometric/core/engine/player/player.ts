@@ -6,6 +6,7 @@ import type {
   PlayerRenderPosition,
   PlayerState,
   ScreenDirections,
+  TerrainMaterial,
   WorldCoord,
   WorldPartKey,
   WorldPartReader,
@@ -34,13 +35,35 @@ export const PLAYER_MAX_CLIMB = 1;
 /** Blocks the player's feet rise at the top of a jump. */
 export const PLAYER_JUMP_HEIGHT = 0.75;
 
-/** Ticks a jump lasts, from take-off to landing (half a second). */
+/** Ticks a jump lasts on flat ground, from take-off to landing (half a second). */
 export const PLAYER_JUMP_TICKS = 10;
 
+/** Blocks per tick the feet rise at take-off, so a jump peaks at {@link PLAYER_JUMP_HEIGHT}. */
+export const PLAYER_JUMP_SPEED = (4 * PLAYER_JUMP_HEIGHT) / PLAYER_JUMP_TICKS;
+
 /**
- * Height of the feet above the ground `tick` ticks into a jump: a parabola, `0` at take-off and on
- * landing ({@link PLAYER_JUMP_TICKS}), {@link PLAYER_JUMP_HEIGHT} halfway. Ticks are whole, so a
- * jump is the same every time.
+ * Blocks per tick its feet's upward speed drops each tick in the air: what brings a jump down after
+ * {@link PLAYER_JUMP_TICKS}, and what makes the player fall when it walks off a lower column.
+ */
+export const PLAYER_GRAVITY = (8 * PLAYER_JUMP_HEIGHT) / PLAYER_JUMP_TICKS ** 2;
+
+/**
+ * Blocks the top of a column of each material sits below its elevation (game content: sand's
+ * `topInset` in `TERRAIN_APPEARANCE`), so the player falls onto a sunken top instead of dropping
+ * there in one frame.
+ */
+export type PlayerTopInset = (type: TerrainMaterial) => number;
+
+/** Every top at its column's elevation. */
+const NO_INSET: PlayerTopInset = () => 0;
+
+/** Feet closer to the ground than this, in blocks, have landed (rounding of the falling steps). */
+const LANDING = 1e-9;
+
+/**
+ * Height of the feet above flat ground `tick` ticks into a jump: a parabola, `0` at take-off and on
+ * landing ({@link PLAYER_JUMP_TICKS}), {@link PLAYER_JUMP_HEIGHT} halfway. The player follows it
+ * under {@link PLAYER_GRAVITY} while the ground under it stays level.
  */
 export function getJumpHeight(tick: number): number {
   const t = Math.min(Math.max(tick, 0), PLAYER_JUMP_TICKS);
@@ -139,6 +162,13 @@ function elevationAt(ground: PlayerGround, point: GridPoint): number {
   return ground.columnIndex.get(x, y)?.elevation ?? 0;
 }
 
+/** Blocks the top of the column under `point` sits below its elevation, `0` off the terrain. */
+function insetAt(ground: PlayerGround, point: GridPoint, topInset: PlayerTopInset): number {
+  const { x, y } = getPlayerColumn(point);
+  const column = ground.columnIndex.get(x, y);
+  return column === undefined ? 0 : topInset(column.type);
+}
+
 /** Columns around the centre, on every side, a new player's spawn is searched in (a chunk's width). */
 export const PLAYER_SPAWN_RADIUS = 32;
 
@@ -180,10 +210,11 @@ export function createPlayer(ground: PlayerGround, at: GridPoint): PlayerState {
   const position = { x: at.x, y: at.y, elevation: elevationAt(ground, at) };
   return {
     ...position,
+    inset: 0,
     height: 0,
-    airborne: undefined,
+    verticalSpeed: undefined,
     wantsJump: false,
-    previous: { ...position, height: 0 },
+    previous: { ...position, inset: 0, height: 0 },
     walk: { x: 0, y: 0 },
   };
 }
@@ -236,20 +267,27 @@ export function jumpPlayer(player: PlayerState): void {
   player.wantsJump = true;
 }
 
-/** One tick of a jump: takes off if asked to on the ground, rises and falls, and lands. */
-function stepJump(player: PlayerState): void {
-  const { airborne } = player;
+/**
+ * One tick in the air: takes off if asked to on the ground, starts falling if the ground dropped
+ * away under its feet, rises and falls under {@link PLAYER_GRAVITY}, and lands on the column under it.
+ */
+function stepAir(player: PlayerState): void {
   const wants = player.wantsJump;
   player.wantsJump = false;
-  if (airborne === undefined && !wants) return;
-  const tick = (airborne ?? 0) + 1;
-  const landed = tick >= PLAYER_JUMP_TICKS;
-  player.airborne = landed ? undefined : tick;
-  player.height = landed ? 0 : getJumpHeight(tick);
+  if (player.verticalSpeed === undefined) {
+    if (player.height > 0) player.verticalSpeed = 0;
+    else if (wants) player.verticalSpeed = PLAYER_JUMP_SPEED;
+    else return;
+  }
+  // The exact distance of a tick of constant gravity, so a jump on flat ground is `getJumpHeight()`.
+  const height = player.height + player.verticalSpeed - PLAYER_GRAVITY / 2;
+  const landed = height <= LANDING;
+  player.height = landed ? 0 : height;
+  player.verticalSpeed = landed ? undefined : player.verticalSpeed - PLAYER_GRAVITY;
 }
 
 /** Moves the player one tick along its walk; blocked moves slide along the free axis. */
-function stepOnce(player: PlayerState, ground: PlayerGround): void {
+function stepOnce(player: PlayerState, ground: PlayerGround, topInset: PlayerTopInset): void {
   const { walk } = player;
   if (walk.x === 0 && walk.y === 0) return;
   const from = { x: player.x, y: player.y };
@@ -260,9 +298,15 @@ function stepOnce(player: PlayerState, ground: PlayerGround): void {
   ];
   const next = moves.find((move) => (move.x !== from.x || move.y !== from.y) && fitsAt(ground, move, player.elevation));
   if (next === undefined) return;
+  // The feet keep their height in the world: over a lower top (a lower column, or sand's sunken
+  // one) they are higher above it and fall; onto a higher one they step up on it.
+  const feet = player.elevation - player.inset + player.height;
   player.x = next.x;
   player.y = next.y;
   player.elevation = elevationAt(ground, next);
+  player.inset = insetAt(ground, next, topInset);
+  player.height = Math.max(0, feet - (player.elevation - player.inset));
+  if (player.height === 0) player.verticalSpeed = undefined;
 }
 
 /**
@@ -270,19 +314,27 @@ function stepOnce(player: PlayerState, ground: PlayerGround): void {
  * {@link PLAYER_SPEED}. Each tick it moves along `player.walk` if its feet fit there (land,
  * a climb of at most {@link PLAYER_MAX_CLIMB}, nothing in the way); otherwise it slides along
  * whichever axis is free, or stays. It jumps too: asked to (`jumpPlayer()`) on the ground, its
- * feet rise and fall over {@link PLAYER_JUMP_TICKS} ticks (`getJumpHeight()`), walking all the
- * while as on the ground (a jump does not clear obstacles or climb higher yet). Keeps
+ * feet take off at {@link PLAYER_JUMP_SPEED} and gravity ({@link PLAYER_GRAVITY}) brings them down,
+ * after {@link PLAYER_JUMP_TICKS} ticks on flat ground (`getJumpHeight()`). Its feet keep their
+ * height when it walks onto a lower top (a lower column, or the sunken top of `topInset`, e.g. sand),
+ * so it falls onto it, jumping or not; onto a higher one
+ * (at most {@link PLAYER_MAX_CLIMB} up) it steps up as on the ground. In the air it walks as on the
+ * ground (a jump does not clear obstacles or reach higher columns yet). Keeps
  * `player.previous` one tick behind for interpolation. Deterministic: the same walk and jumps on
  * the same ground give the same path.
  */
-export function stepPlayer(player: PlayerState, ground: PlayerGround, ticks = 1): void {
+export function stepPlayer(player: PlayerState, ground: PlayerGround, ticks = 1, topInset = NO_INSET): void {
   for (let tick = 0; tick < ticks; tick += 1) {
     // Standing still on the ground, every tick is the same: one is enough to settle `previous`.
-    const resting = player.walk.x === 0 && player.walk.y === 0 && player.airborne === undefined && !player.wantsJump;
+    const resting =
+      player.walk.x === 0 && player.walk.y === 0 && player.verticalSpeed === undefined && !player.wantsJump;
     if (resting && tick > 0) return;
-    player.previous = { x: player.x, y: player.y, elevation: player.elevation, height: player.height };
-    stepOnce(player, ground);
-    stepJump(player);
+    // On the ground its feet are on the top under it (a new or restored player starts at `0`).
+    if (player.verticalSpeed === undefined) player.inset = insetAt(ground, player, topInset);
+    const { x, y, elevation, inset, height } = player;
+    player.previous = { x, y, elevation, inset, height };
+    stepOnce(player, ground, topInset);
+    stepAir(player);
   }
 }
 
@@ -310,20 +362,21 @@ export type PlayerWorld = PlayerGround & { readonly movers: PlayerMovers; readon
 
 /**
  * The player as a game system for `stepWorld()`: each tick, the world's player
- * ({@link PLAYER_PART}) walks one step (`stepPlayer()`) on the world's ground, and then stands in
+ * ({@link PLAYER_PART}) walks one step (`stepPlayer()`) on the world's ground, whose tops sink by
+ * `options.topInset` (the terrain content's, e.g. sand's half block; none by default), and then stands in
  * `world.movers` on the columns its feet take (`getPlayerCells()`): moved there on its first step
  * and whenever those columns change, not on every tick, so AI or collisions can find it by cell.
  *
  * @throws On a step, when the world has no player part.
  */
-export function createPlayerSystem(): WorldSystem<PlayerWorld> {
+export function createPlayerSystem(options: { readonly topInset?: PlayerTopInset } = {}): WorldSystem<PlayerWorld> {
   // Where the player was last put in which index: a restored world has a new one of both.
   let placed: { movers: PlayerMovers; player: PlayerState; cells: WorldRect } | undefined;
   return {
     id: "player",
     step: (world) => {
       const player = world.parts.get(PLAYER_PART);
-      stepPlayer(player, world);
+      stepPlayer(player, world, 1, options.topInset);
       const cells = getPlayerCells(player);
       if (
         placed?.movers === world.movers &&
@@ -354,6 +407,7 @@ export function getPlayerRenderPosition(player: PlayerState, alpha: number): Pla
     x: lerp(player.previous.x, player.x),
     y: lerp(player.previous.y, player.y),
     elevation: lerp(player.previous.elevation, player.elevation),
+    inset: lerp(player.previous.inset ?? 0, player.inset),
     height: lerp(player.previous.height ?? 0, player.height),
   };
 }

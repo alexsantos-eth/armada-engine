@@ -24,6 +24,8 @@ import {
   jumpPlayer,
   PLAYER_JUMP_HEIGHT,
   PLAYER_JUMP_TICKS,
+  PLAYER_JUMP_SPEED,
+  PLAYER_GRAVITY,
   getWalkDirection,
   PLAYER_FACINGS,
   setPlayerWalk,
@@ -42,14 +44,14 @@ const still: ScreenDirections = { up: false, down: false, left: false, right: fa
  * A ground drawn as text: each string is a row along `y`, each character a column along `x`.
  * Digits are grass at that elevation, `~` water, `T` a tree (grass at 0 with a non-walkable
  * occupant), `w` grass at 0 with a walkable occupant, `t` a trunk (an occupant blocking a square of
- * side {@link TRUNK} on its centre) and `o` an occupant that blocks none of its block.
+ * side {@link TRUNK} on its centre), `o` an occupant that blocks none of its block and `s` sand at 0.
  */
 const groundFrom = (rows: readonly string[]): PlayerGround => {
   const columns: ITerrainColumn[] = [];
   const occupants = new CellMap<PlayerObstacle[]>();
   rows.forEach((row, y) =>
     [...row].forEach((cell, x) => {
-      const type: TerrainMaterial = cell === "~" ? "water" : "grass";
+      const type: TerrainMaterial = cell === "~" ? "water" : cell === "s" ? "sand" : "grass";
       const elevation = /\d/.test(cell) ? Number(cell) : cell === "~" ? -1 : 0;
       columns.push({ x, y, elevation, type, metadata: {} });
       if (cell === "T") occupants.set(x, y, [{ walkable: false }]);
@@ -151,10 +153,11 @@ describe("createPlayer", () => {
       x: 1.2,
       y: 0,
       elevation: 3,
+      inset: 0,
       height: 0,
-      airborne: undefined,
+      verticalSpeed: undefined,
       wantsJump: false,
-      previous: { x: 1.2, y: 0, elevation: 3, height: 0 },
+      previous: { x: 1.2, y: 0, elevation: 3, inset: 0, height: 0 },
       walk: { x: 0, y: 0 },
     });
   });
@@ -230,7 +233,21 @@ describe("createPlayerSystem", () => {
 
     expect(system.id).toBe("player");
     expect(player.x).toBeCloseTo(1 + PLAYER_STEP);
-    expect(player.previous).toEqual({ x: 1, y: 2, elevation: 0, height: 0 });
+    expect(player.previous).toEqual({ x: 1, y: 2, elevation: 0, inset: 0, height: 0 });
+  });
+
+  it("sinks the player onto the tops its options inset", () => {
+    const sand = groundFrom(["ss", "ss"]);
+    const player = createPlayer(sand, { x: 1, y: 1 });
+    const system = createPlayerSystem({ topInset: () => 0.25 });
+
+    system.step({
+      ...sand,
+      movers: new SpatialIndex<object>(),
+      parts: { get: <T>(key: WorldPartKey<T>) => (key.id === PLAYER_PART.id ? player : null) as T },
+    });
+
+    expect(player.inset).toBe(0.25);
   });
 
   /** The 5 × 5 field with `player` as its part and `movers` as its index of what moves. */
@@ -315,25 +332,35 @@ describe("getJumpHeight", () => {
 describe("jumping", () => {
   const field = groundFrom(["00000", "00000", "00000"]);
 
+  /** Steps `player` until it lands, returning the height of its feet after each tick. */
+  const untilLanded = (player: PlayerState, ground: PlayerGround) => {
+    const heights: number[] = [];
+    do {
+      stepPlayer(player, ground);
+      heights.push(player.height);
+    } while (player.verticalSpeed !== undefined && heights.length < 100);
+    return heights;
+  };
+
+  it("derives its take-off speed and gravity from the height and length of a jump", () => {
+    expect(PLAYER_JUMP_SPEED).toBeCloseTo(0.3);
+    expect(PLAYER_GRAVITY).toBeCloseTo(0.06);
+  });
+
   it("takes off on the next tick when asked on the ground, and lands after PLAYER_JUMP_TICKS", () => {
     const player = createPlayer(field, { x: 1, y: 1 });
     jumpPlayer(player);
     expect(player.wantsJump).toBe(true);
 
-    const heights: number[] = [];
-    for (let tick = 0; tick < PLAYER_JUMP_TICKS; tick += 1) {
-      stepPlayer(player, field);
-      heights.push(player.height);
-    }
+    const heights = untilLanded(player, field);
 
-    expect(heights.slice(0, -1)).toEqual(
-      Array.from({ length: PLAYER_JUMP_TICKS - 1 }, (_, tick) => getJumpHeight(tick + 1)),
-    );
+    expect(heights).toHaveLength(PLAYER_JUMP_TICKS);
+    heights.slice(0, -1).forEach((height, tick) => expect(height).toBeCloseTo(getJumpHeight(tick + 1)));
     expect(player.height).toBe(0);
-    expect(player.airborne).toBeUndefined();
+    expect(player.verticalSpeed).toBeUndefined();
     expect(player.wantsJump).toBe(false);
     // The tick before landing, in `previous`, for the render to interpolate.
-    expect(player.previous.height).toBe(getJumpHeight(PLAYER_JUMP_TICKS - 1));
+    expect(player.previous.height).toBeCloseTo(getJumpHeight(PLAYER_JUMP_TICKS - 1));
   });
 
   it("does not jump again in the air: asking then is forgotten", () => {
@@ -343,7 +370,7 @@ describe("jumping", () => {
     jumpPlayer(player);
     stepPlayer(player, field);
 
-    expect(player.airborne).toBe(4);
+    expect(player.height).toBeCloseTo(getJumpHeight(4));
     expect(player.wantsJump).toBe(false);
     stepPlayer(player, field, PLAYER_JUMP_TICKS);
     expect(player.height).toBe(0);
@@ -359,7 +386,7 @@ describe("jumping", () => {
     const player = jump();
 
     expect(player.x - player.y).toBeCloseTo(1 - 1 + 4 * PLAYER_STEP * Math.SQRT2);
-    expect(player.height).toBe(getJumpHeight(4));
+    expect(player.height).toBeCloseTo(getJumpHeight(4));
     expect(jump()).toEqual(player);
   });
 
@@ -368,7 +395,79 @@ describe("jumping", () => {
     jumpPlayer(player);
     stepPlayer(player, field, 5);
 
-    expect(player.airborne).toBe(5);
+    expect(player.height).toBeCloseTo(getJumpHeight(5));
+  });
+
+  // Rows along y, columns along x: walking up and right goes along +x.
+  const step = (row: string) => groundFrom([row, row, row]);
+
+  it("falls onto a lower column it walks onto, instead of dropping there in one tick", () => {
+    const ground = step("2211");
+    const player = walking(ground, { x: 1, y: 1 }, { up: true, right: true });
+    const feet: number[] = [];
+    for (let tick = 0; tick < 20; tick += 1) {
+      stepPlayer(player, ground);
+      feet.push(player.elevation + player.height);
+    }
+
+    expect(player).toMatchObject({ elevation: 1, height: 0, verticalSpeed: undefined });
+    const falling = feet.filter((at) => at > 1 && at < 2);
+    expect(falling.length).toBeGreaterThanOrEqual(3);
+    feet.slice(1).forEach((at, tick) => {
+      expect(at).toBeLessThanOrEqual(feet[tick]);
+      expect(feet[tick] - at).toBeLessThan(0.5);
+    });
+  });
+
+  it("stays in the air longer when it jumps onto a lower column, and lands on it", () => {
+    const ground = step("1100000");
+    const player = walking(ground, { x: 1, y: 1 }, { up: true, right: true });
+    jumpPlayer(player);
+
+    const heights = untilLanded(player, ground);
+
+    expect(heights.length).toBeGreaterThan(PLAYER_JUMP_TICKS);
+    expect(Math.max(...heights)).toBeGreaterThan(PLAYER_JUMP_HEIGHT);
+    expect(player).toMatchObject({ elevation: 0, inset: 0, height: 0 });
+  });
+
+  /** Sand's top sinks half a block, as in the terrain content. */
+  const sandInset = (type: TerrainMaterial) => (type === "sand" ? 0.5 : 0);
+
+  it("falls onto the sunken top of sand at the same elevation, and steps back up off it", () => {
+    const ground = step("00ss00");
+    const player = walking(ground, { x: 1, y: 1 }, { up: true, right: true });
+    const feet: number[] = [];
+    while (player.x < 3) {
+      stepPlayer(player, ground, 1, sandInset);
+      feet.push(player.elevation - player.inset + player.height);
+    }
+
+    expect(player).toMatchObject({ elevation: 0, inset: 0.5, height: 0, verticalSpeed: undefined });
+    expect(feet.filter((at) => at > -0.5 && at < 0).length).toBeGreaterThanOrEqual(2);
+    while (player.x < 4.6) stepPlayer(player, ground, 1, sandInset);
+    expect(player).toMatchObject({ elevation: 0, inset: 0, height: 0 });
+  });
+
+  it("settles a player that starts on sand onto its sunken top at once", () => {
+    const ground = step("ss");
+    const player = createPlayer(ground, { x: 1, y: 1 });
+    stepPlayer(player, ground, 3, sandInset);
+
+    expect(player).toMatchObject({ inset: 0.5, height: 0, previous: { inset: 0.5, height: 0 } });
+
+    const off = createPlayer(ground, { x: 9, y: 9 });
+    stepPlayer(off, ground, 1, sandInset);
+    expect(off.inset).toBe(0);
+  });
+
+  it("steps up onto a higher column it reaches in the air, landing there", () => {
+    const ground = step("0011");
+    const player = walking(ground, { x: 1, y: 1 }, { up: true, right: true });
+    jumpPlayer(player);
+    while (player.elevation === 0) stepPlayer(player, ground);
+
+    expect(player).toMatchObject({ elevation: 1, height: 0, verticalSpeed: undefined });
   });
 });
 
@@ -380,7 +479,7 @@ describe("stepPlayer", () => {
     stepPlayer(player, field);
     expect(player.x).toBeCloseTo(1 + PLAYER_STEP);
     expect(player.y).toBe(2);
-    expect(player.previous).toEqual({ x: 1, y: 2, elevation: 0, height: 0 });
+    expect(player.previous).toEqual({ x: 1, y: 2, elevation: 0, inset: 0, height: 0 });
 
     stepPlayer(player, field, 3);
     expect(player.x).toBeCloseTo(1 + 4 * PLAYER_STEP);
@@ -393,7 +492,7 @@ describe("stepPlayer", () => {
     stepPlayer(player, field, 100);
     expect(player).toMatchObject({ x: 2, y: 2, previous: { x: 2, y: 2, elevation: 0 } });
     stepPlayer(player, field, 0);
-    expect(player.previous).toEqual({ x: 2, y: 2, elevation: 0, height: 0 });
+    expect(player.previous).toEqual({ x: 2, y: 2, elevation: 0, inset: 0, height: 0 });
   });
 
   it("is deterministic: the same walk gives the same path", () => {
@@ -497,22 +596,29 @@ describe("getPlayerRenderPosition", () => {
     x: 2,
     y: 4,
     elevation: 1,
+    inset: 0.5,
     height: 0.5,
-    airborne: 3,
+    verticalSpeed: 0.1,
     wantsJump: false,
     previous: { x: 1, y: 4, elevation: 0 },
     walk: { x: 1, y: 0 },
   };
 
   it("interpolates between the previous and the current position", () => {
-    expect(getPlayerRenderPosition(player, 0)).toEqual({ x: 1, y: 4, elevation: 0, height: 0 });
-    expect(getPlayerRenderPosition(player, 0.25)).toEqual({ x: 1.25, y: 4, elevation: 0.25, height: 0.125 });
-    expect(getPlayerRenderPosition(player, 1)).toEqual({ x: 2, y: 4, elevation: 1, height: 0.5 });
+    expect(getPlayerRenderPosition(player, 0)).toEqual({ x: 1, y: 4, elevation: 0, inset: 0, height: 0 });
+    expect(getPlayerRenderPosition(player, 0.25)).toEqual({
+      x: 1.25,
+      y: 4,
+      elevation: 0.25,
+      inset: 0.125,
+      height: 0.125,
+    });
+    expect(getPlayerRenderPosition(player, 1)).toEqual({ x: 2, y: 4, elevation: 1, inset: 0.5, height: 0.5 });
   });
 
   it("clamps alpha to [0, 1] and treats invalid values as the current position", () => {
-    expect(getPlayerRenderPosition(player, -1)).toEqual({ x: 1, y: 4, elevation: 0, height: 0 });
-    expect(getPlayerRenderPosition(player, 2)).toEqual({ x: 2, y: 4, elevation: 1, height: 0.5 });
-    expect(getPlayerRenderPosition(player, Number.NaN)).toEqual({ x: 2, y: 4, elevation: 1, height: 0.5 });
+    expect(getPlayerRenderPosition(player, -1)).toEqual({ x: 1, y: 4, elevation: 0, inset: 0, height: 0 });
+    expect(getPlayerRenderPosition(player, 2)).toEqual({ x: 2, y: 4, elevation: 1, inset: 0.5, height: 0.5 });
+    expect(getPlayerRenderPosition(player, Number.NaN)).toEqual({ x: 2, y: 4, elevation: 1, inset: 0.5, height: 0.5 });
   });
 });

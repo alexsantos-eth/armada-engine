@@ -8,7 +8,7 @@ import { CAMERA_START_ZOOM, getGroundPointBelow } from "../camera";
 import { createCameraView } from "../camera-view";
 import { TILE_METRICS } from "../constants";
 import { WorldParts } from "../parts";
-import { createPlayer, PLAYER_FACINGS, PLAYER_PART } from "../player";
+import { createPlayer, PLAYER_FACINGS, PLAYER_PART, stepPlayer } from "../player";
 import { createClockPart } from "../time";
 import { projectGridPoint } from "../projection";
 import { getBlockDepth } from "../render";
@@ -24,7 +24,7 @@ import {
 import { createTerrainView } from "../terrain-view";
 import type { World } from "../world";
 import type { SceneCamera } from "../../types";
-import { createPlayerView } from "./player-view";
+import { createPlayerView, PLAYER_AIR_POSE_HEIGHT } from "./player-view";
 import { getWalkPose, getWalkSheetCell } from "./walk";
 
 const PLAYER = { textureSource: "/assets/player/block.svg", height: 1 } as const;
@@ -267,7 +267,10 @@ describe("createPlayerView", () => {
       { x: 3, y: 0, elevation: 0 },
     ]);
     expect(shore.columnIndex.get(1, 0)?.type).toBe("sand");
-    const { view, scene } = await sceneOf(standing(shore, { x: 1, y: 0 }));
+    standing(shore, { x: 1, y: 0 });
+    // The player system keeps the sunken top under it.
+    stepPlayer(shore.parts.get(PLAYER_PART), shore, 1, (type) => (type === "sand" ? 0.5 : 0));
+    const { view, scene } = await sceneOf(shore);
 
     const onGrass = spriteAt({ x: 1, y: 0, elevation: 0 });
     expect(view.position).toMatchObject({ x: onGrass.x, y: onGrass.y + TILE_METRICS.boxHeight / 2 });
@@ -385,12 +388,33 @@ describe("createPlayerView", () => {
     scene.destroy();
   });
 
-  it("shows the sheet's air pose in the air, standing when it has none", async () => {
-    const jumpAt = async (walk: typeof SHEET | Omit<typeof SHEET, "airPose">) => {
+  it("follows a fall with the camera as it falls, from where its feet left the ground", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, camera, scene } = await sceneOf(world);
+    const player = world.parts.get(PLAYER_PART);
+    const settle = (at: { elevation: number; inset?: number; height: number }) => {
+      const position = { x: 1, y: 1, inset: 0, ...at };
+      Object.assign(player, position, { previous: position });
+      for (let frame = 0; frame < 50; frame += 1) ticker.frame(50);
+      return camera.state;
+    };
+    const lookingAt = (level: number) => getGroundPointBelow({ x: 1, y: 1 }, level, projection);
+
+    // Walked off onto a column a block lower: its feet are still up there.
+    expect(settle({ elevation: 0, height: 0.9 })).toMatchObject(lookingAt(0.9));
+    expect(settle({ elevation: 0, height: 0.4 })).toMatchObject(lookingAt(0.4));
+    // Never back up while in the air, and on the sunken top it lands on once it does.
+    expect(settle({ elevation: 0, height: 0.6 })).toMatchObject(lookingAt(0.4));
+    expect(settle({ elevation: 0, inset: 0.5, height: 0 })).toMatchObject(lookingAt(-0.5));
+    scene.destroy();
+  });
+
+  it("shows the sheet's air pose in the air, standing when it has none or barely left the ground", async () => {
+    const jumpAt = async (walk: typeof SHEET | Omit<typeof SHEET, "airPose">, height = 0.3) => {
       resetHarness();
       const world = fieldWithPlayer();
       const { ticker, root, scene } = await mountScene(world, [createPlayerView({ ...PLAYER, walk })]);
-      Object.assign(world.parts.get(PLAYER_PART), { height: 0.3 });
+      Object.assign(world.parts.get(PLAYER_PART), { height });
       ticker.frame();
       const cell = cellOf(root.children[0]);
       scene.destroy();
@@ -400,6 +424,7 @@ describe("createPlayerView", () => {
 
     expect(await jumpAt(SHEET)).toMatchObject({ column: 3 });
     expect(await jumpAt(withoutAirPose)).toMatchObject({ column: 0 });
+    expect(await jumpAt(SHEET, PLAYER_AIR_POSE_HEIGHT)).toMatchObject({ column: 0 });
   });
 
   it("draws its still SVG when the walk sheet cannot be used", async () => {
