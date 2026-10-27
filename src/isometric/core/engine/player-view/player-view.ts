@@ -4,7 +4,14 @@ import { projectBoxesToIsometric, projectGridPoint } from "../projection";
 import { createBlockViews, getBlockDepth, getSheetFrames, showFrame } from "../render";
 import { SCENE_LAYER, type BuiltScene, type SceneModule } from "../scene";
 import type { PlayerAppearance, PlayerRenderPosition } from "../../types";
-import { getWalkPose, getWalkSheetCell, getWalkSheetLayout, PLAYER_START_FACING } from "./walk";
+import {
+  getIdlePose,
+  getIdleSheetLayout,
+  getWalkPose,
+  getWalkSheetCell,
+  getWalkSheetLayout,
+  PLAYER_START_FACING,
+} from "./walk";
 
 /**
  * Blocks above the ground the player's feet must be to show the air pose: a short drop (onto sand)
@@ -32,9 +39,11 @@ export const PLAYER_AIR_POSE_HEIGHT = 0.25;
  * nearest the way the player walks (`getPlayerFacing()`; standing, the last one, at first
  * `PLAYER_START_FACING`), the standing pose on a frame it did not move and, while it moves, the walk
  * pose for how far it has gone since it set off (`getWalkPose()`), so its feet keep pace with the
- * ground; in the air (more than {@link PLAYER_AIR_POSE_HEIGHT} above the ground), the sheet's `airPose`. Every cell is the same window of its canvas,
- * so the sprite keeps its size and its feet;
- * its texture is written only when the cell changes. Without the sheet, or if it cannot be loaded,
+ * ground; in the air (more than {@link PLAYER_AIR_POSE_HEIGHT} above the ground), the sheet's
+ * `airPose`; standing still on the ground, with the sheet's `idle` sheet, the pose of its idle cycle
+ * (breathing, looking around) for how long it has stood (`getIdlePose()`, by real time), from the
+ * standing pose. Every cell is the same window of its canvas, so the sprite keeps its size and its
+ * feet; its texture is written only when the cell changes. Without the sheet, or if it cannot be loaded,
  * the still `textureSource` is drawn.
  *
  * Its SVGs are rasterized at `appearance.scale` (`loadSvg()`'s `scale`), as small as it is drawn.
@@ -55,6 +64,13 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
       // The sheet and its cells by facing, then pose (column `0` standing), shared.
       const walk =
         sheet && sheetTexture ? { sheet, frames: getSheetFrames(sheetTexture, getWalkSheetLayout(sheet)) } : undefined;
+      // Its idle cycle while it stands still, from a second sheet laid out like the first.
+      const idleSheet = walk?.sheet.idle;
+      const idleTexture = idleSheet && (await assets.loadSvg(idleSheet.source, { scale }));
+      const idle =
+        walk && idleSheet && idleTexture
+          ? { sheet: idleSheet, frames: getSheetFrames(idleTexture, getIdleSheetLayout(walk.sheet, idleSheet)) }
+          : undefined;
       let facing = PLAYER_START_FACING;
       const texture =
         walk?.frames[facing][0] ?? (player && (await assets.loadSvg(appearance.textureSource, { scale })));
@@ -86,20 +102,26 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
       const offset = { x: view.position.x - projected.screenX, y: (view.position.y - projected.screenY) * scale };
 
       let drawnAt = getPlayerRenderPosition(player, 1);
-      // Columns walked since the player last stood still, for its walk pose.
+      // Columns walked since the player last stood still, for its walk pose, and real milliseconds
+      // it has stood still on the ground, for its idle cycle.
       let walked = 0;
-      /** Turns the sprite and picks its pose for a frame that draws it at `at`, after `drawnAt`. */
-      const animate = (at: PlayerRenderPosition) => {
+      let stood = 0;
+      /**
+       * Turns the sprite and picks its pose for a frame, `elapsedMs` after the last one, that draws it
+       * at `at`, after `drawnAt`.
+       */
+      const animate = (at: PlayerRenderPosition, elapsedMs: number) => {
         if (!walk) return;
         facing = getPlayerFacing(player.walk) ?? facing;
         const walking = at.x !== drawnAt.x || at.y !== drawnAt.y;
+        const flying = at.height > PLAYER_AIR_POSE_HEIGHT;
         walked = walking ? walked + Math.hypot(at.x - drawnAt.x, at.y - drawnAt.y) : 0;
-        const pose =
-          at.height > PLAYER_AIR_POSE_HEIGHT
-            ? (walk.sheet.airPose ?? 0)
-            : walking
-              ? getWalkPose(walked, walk.sheet)
-              : 0;
+        stood = walking || flying ? 0 : stood + elapsedMs;
+        if (idle && !walking && !flying) {
+          showFrame(view, idle.frames[facing][getIdlePose(stood, idle.sheet)]);
+          return;
+        }
+        const pose = flying ? (walk.sheet.airPose ?? 0) : walking ? getWalkPose(walked, walk.sheet) : 0;
         showFrame(view, walk.frames[facing][pose]);
       };
       // Where its feet are on screen: written by `place()`, read by whoever casts its shadow.
@@ -148,7 +170,7 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
           place(drawnAt);
           services.get("camera")?.follow(ground(drawnAt));
         },
-        update: ({ alpha }) => {
+        update: ({ alpha, elapsedMs }) => {
           const at = getPlayerRenderPosition(player, alpha);
           const moved =
             at.x !== drawnAt.x ||
@@ -156,7 +178,7 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
             at.elevation !== drawnAt.elevation ||
             at.inset !== drawnAt.inset ||
             at.height !== drawnAt.height;
-          animate(at);
+          animate(at, elapsedMs);
           if (!moved) return;
           place(at);
           services.get("camera")?.follow(ground(at));

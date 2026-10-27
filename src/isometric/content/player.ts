@@ -26,6 +26,10 @@ export const PLAYER_WALK: PlayerWalkSheet = {
   stride: 1.4,
   // In the air: the pose with the legs furthest apart, a leap.
   airPose: 3,
+  // Standing still: `idle.svg`, made by `Claude outputs/player_idle.py` in this sheet's window. Every
+  // 3.2 s it breathes twice (the chest growing, the head and arms rising) and looks to one side and
+  // then the other, leaning a little that way.
+  idle: { source: "/assets/player/idle.svg", frames: 8, period: 3200 },
 };
 
 /**

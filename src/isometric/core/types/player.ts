@@ -100,6 +100,22 @@ export type PlayerWalkSheet = {
   readonly stride: number;
   /** Column of the sheet shown in the air, while it jumps. Defaults to `0`, standing. */
   readonly airPose?: number;
+  /** Breathing and looking around while it stands still. Without it, it stands still on column `0`. */
+  readonly idle?: PlayerIdleSheet;
+};
+
+/**
+ * The player breathing and looking around while it stands still, drawn from a second SVG sheet laid
+ * out like its walk sheet (the same canvas, cell and gap; one row per facing): one column per pose of
+ * a cycle, column `0` the walk sheet's standing pose, so it starts from where it stopped.
+ */
+export type PlayerIdleSheet = {
+  /** SVG of the sheet (e.g. `/assets/player/idle.svg`). */
+  readonly source: string;
+  /** Poses per cycle, standing included. */
+  readonly frames: number;
+  /** Real milliseconds a cycle lasts. */
+  readonly period: number;
 };
 
 /** How the scene draws the player (game content, like an entity definition). */

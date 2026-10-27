@@ -45,4 +45,26 @@ describe("PLAYER_APPEARANCE", () => {
     expect(cell.y + cell.height).toBeLessThanOrEqual(PLAYER_WALK.canvas.height);
     expect(svg.toLowerCase()).not.toContain("#1e2a10");
   });
+
+  it("breathes standing still with a sheet in the walk sheet's window, starting from its standing pose", () => {
+    const svg = ASSET_SOURCES[`/public${PLAYER_WALK.idle?.source}`] ?? "";
+    const walk = ASSET_SOURCES[`/public${PLAYER_WALK.source}`] ?? "";
+    const { cell, gap, idle } = PLAYER_WALK;
+    const frames = idle?.frames ?? 0;
+
+    expect(frames).toBeGreaterThan(1);
+    expect(idle?.period).toBeGreaterThan(0);
+    expect(svg).toContain(`data-facings="${PLAYER_FACINGS.join(" ")}"`);
+    expect(svg).toContain(`data-cell="${cell.x} ${cell.y} ${cell.width} ${cell.height}"`);
+    expect(svg).toContain(`data-gap="${gap}"`);
+    expect(svg).toContain(`data-frames="${frames}"`);
+    const width = frames * (cell.width + gap) - gap;
+    const height = PLAYER_FACINGS.length * (cell.height + gap) - gap;
+    expect(svg).toContain(`viewBox="0 0 ${width} ${height}"`);
+    // Column 0 is the walk sheet's standing pose, so standing still starts without a jump.
+    const standing = (sheet: string, facing: string) =>
+      sheet.match(new RegExp(`<g id="${facing}-0"[^>]*>[^]*?</g>`))?.[0];
+    PLAYER_FACINGS.forEach((facing) => expect(standing(svg, facing)).toBe(standing(walk, facing)));
+    expect(svg.toLowerCase()).not.toContain("#1e2a10");
+  });
 });

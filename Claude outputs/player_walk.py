@@ -136,8 +136,13 @@ def pose(phase, walking):
 
 def draw_figure(phase, walking, yaw):
     """SVG paths of the figure (relative to the tile canvas) and their screen points."""
+    return draw_parts(pose(phase, walking), yaw)
+
+
+def draw_parts(parts, yaw):
+    """SVG paths of `parts` (each a Part and how far it rises), turned to `yaw`, and their screen points."""
     drawn = []
-    for part, lift in pose(phase, walking):
+    for part, lift in parts:
         groups = {}
         points = []
         for pts, n in rbox_local(*part.h, part.r):

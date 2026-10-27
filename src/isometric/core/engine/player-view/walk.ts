@@ -1,6 +1,6 @@
 import { PLAYER_FACINGS } from "../player";
 import type { SheetCell, SheetLayout } from "../render";
-import type { PlayerWalkSheet } from "../../types";
+import type { PlayerIdleSheet, PlayerWalkSheet } from "../../types";
 
 /** Facing the player starts with, before it walks: towards the camera. */
 export const PLAYER_START_FACING = PLAYER_FACINGS.indexOf("south");
@@ -14,6 +14,20 @@ export function getWalkSheetLayout(sheet: PlayerWalkSheet): SheetLayout {
     cellHeight: sheet.cell.height,
     gap: sheet.gap,
   };
+}
+
+/** How `idle`, the idle sheet of `sheet`, is laid out: like `sheet`, one column per pose of its cycle. */
+export function getIdleSheetLayout(sheet: PlayerWalkSheet, idle: PlayerIdleSheet): SheetLayout {
+  return { ...getWalkSheetLayout(sheet), columns: idle.frames };
+}
+
+/**
+ * Column of an idle sheet showing a player that has stood still `ms` real milliseconds: where it is
+ * in its cycle, one cycle every `period` (column `0`, standing, first).
+ */
+export function getIdlePose(ms: number, idle: PlayerIdleSheet): number {
+  const cycle = (Math.max(0, ms) % idle.period) / idle.period;
+  return Math.min(idle.frames - 1, Math.floor(cycle * idle.frames));
 }
 
 /** The window of the character's canvas every cell of `sheet` shows, in fractions of the canvas. */

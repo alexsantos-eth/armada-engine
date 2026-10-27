@@ -25,7 +25,7 @@ import { createTerrainView } from "../terrain-view";
 import type { World } from "../world";
 import type { SceneCamera } from "../../types";
 import { createPlayerView, PLAYER_AIR_POSE_HEIGHT } from "./player-view";
-import { getWalkPose, getWalkSheetCell } from "./walk";
+import { getIdlePose, getWalkPose, getWalkSheetCell } from "./walk";
 
 const PLAYER = { textureSource: "/assets/player/block.svg", height: 1 } as const;
 const SHEET = {
@@ -366,6 +366,51 @@ describe("createPlayerView", () => {
     player.walk = { x: Math.SQRT1_2, y: -Math.SQRT1_2 };
     step(1.9, 1.3);
     expect(cellOf(view)).toMatchObject({ row: facing("east"), column: getWalkPose(3 * first, SHEET) });
+    scene.destroy();
+  });
+
+  it("breathes standing still, from the standing pose, by time; walking and in the air it does not", async () => {
+    const idle = { source: "/assets/player/idle.svg", frames: 4, period: 400 };
+    const world = fieldWithPlayer();
+    const { ticker, root, scene } = await mountScene(world, [
+      createPlayerView({ ...PLAYER, walk: { ...SHEET, idle } }),
+    ]);
+    const [view] = root.children;
+    const player = world.parts.get(PLAYER_PART);
+
+    ticker.frame(150);
+    expect(cellOf(view)).toMatchObject({ source: idle.source, row: facing("south"), column: getIdlePose(150, idle) });
+    ticker.frame(150);
+    expect(cellOf(view)).toMatchObject({ source: idle.source, column: getIdlePose(300, idle) });
+
+    // Walking: the walk sheet; stopping again starts a new breath.
+    Object.assign(player, { previous: { x: 1, y: 1, elevation: 1 }, x: 1.3 });
+    ticker.frame(150);
+    expect(cellOf(view)).toMatchObject({ source: SHEET.source });
+    Object.assign(player, { previous: { x: 1.3, y: 1, elevation: 1 } });
+    ticker.frame(50);
+    expect(cellOf(view)).toMatchObject({ source: idle.source, column: 0 });
+
+    // In the air: the air pose.
+    Object.assign(player, { height: 0.5 });
+    ticker.frame(150);
+    expect(cellOf(view)).toMatchObject({ source: SHEET.source, column: SHEET.airPose });
+    scene.destroy();
+  });
+
+  it("stands still on the walk sheet when its idle sheet cannot be loaded", async () => {
+    const idle = { source: "/assets/player/idle.svg", frames: 4, period: 400 };
+    vi.mocked(Assets.load).mockImplementation((asset) =>
+      (asset as unknown as { src: string }).src === idle.source
+        ? Promise.resolve(undefined as never)
+        : loadTexture(asset as never),
+    );
+    const { ticker, root, scene } = await mountScene(fieldWithPlayer(), [
+      createPlayerView({ ...PLAYER, walk: { ...SHEET, idle } }),
+    ]);
+
+    ticker.frame(300);
+    expect(cellOf(root.children[0])).toMatchObject({ source: SHEET.source, column: 0 });
     scene.destroy();
   });
 
