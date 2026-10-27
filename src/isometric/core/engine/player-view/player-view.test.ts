@@ -4,14 +4,14 @@ vi.mock("pixi.js", async () => (await import("../flow-check/scene-harness")).moc
 vi.mock("../render", async () => (await import("../flow-check/scene-harness")).mockRender());
 
 import { Assets, Container } from "pixi.js";
-import { CAMERA_START_ZOOM, getGroundPointBelow } from "../camera";
+import { CAMERA_MAX_ZOOM, CAMERA_START_ZOOM, getGroundPointBelow } from "../camera";
 import { createCameraView } from "../camera-view";
 import { TILE_METRICS } from "../constants";
 import { WorldParts } from "../parts";
 import { createPlayer, PLAYER_FACINGS, PLAYER_PART, stepPlayer } from "../player";
 import { createClockPart } from "../time";
 import { projectGridPoint } from "../projection";
-import { getBlockDepth } from "../render";
+import { getBlockDepth, getSvgResolution } from "../render";
 import { SCENE_LAYER, type BuiltScene, type SceneModule } from "../scene";
 import {
   loadTexture,
@@ -317,6 +317,29 @@ describe("createPlayerView", () => {
     expect(Assets.load).not.toHaveBeenCalledWith(expect.objectContaining({ src: PLAYER.textureSource }));
     expect(renderCalls).toEqual([expect.objectContaining({ cell: getWalkSheetCell(SHEET), height: 1 })]);
     expect(cellOf(view)).toEqual({ source: SHEET.source, row: facing("south"), column: 0 });
+    scene.destroy();
+  });
+
+  it("rasterizes its SVGs at its scale, as small as it is drawn", async () => {
+    const { scene } = await mountScene(fieldWithPlayer(), [createPlayerView({ ...WALKER, scale: 0.5 })]);
+    const full = getSvgResolution(TILE_METRICS.tileWidth * CAMERA_MAX_ZOOM, 1);
+
+    expect(Assets.load).toHaveBeenCalledWith(
+      expect.objectContaining({ src: SHEET.source, data: { resolution: full * 0.5, autoGenerateMipmaps: true } }),
+    );
+    scene.destroy();
+  });
+
+  it("rasterizes the still SVG at its scale when it has no walk sheet", async () => {
+    const { scene } = await mountScene(fieldWithPlayer(), [createPlayerView({ ...PLAYER, scale: 0.25 })]);
+    const full = getSvgResolution(TILE_METRICS.tileWidth * CAMERA_MAX_ZOOM, 1);
+
+    expect(Assets.load).toHaveBeenCalledWith(
+      expect.objectContaining({
+        src: PLAYER.textureSource,
+        data: { resolution: full * 0.25, autoGenerateMipmaps: true },
+      }),
+    );
     scene.destroy();
   });
 

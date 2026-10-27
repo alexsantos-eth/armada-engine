@@ -106,8 +106,13 @@ export type SceneAssets = {
    * Loads an SVG rasterized at the size it is drawn at the largest zoom, with mipmaps, always
    * with Pixi's SVG parser (so a `blob:` URL from `createSvgColorVariant()` loads too). The
    * scene unloads it when destroyed. Resolves `undefined` when the asset cannot be used.
+   *
+   * `options.scale` is the largest size it is drawn at relative to its tile (the player's `0.6`):
+   * below `1` it is rasterized at that much less resolution, so a sprite drawn smaller does not
+   * hold texels it never shows; above `1` it changes nothing. Pixi caches a texture by `source`,
+   * so a source is always loaded with the same scale.
    */
-  loadSvg(source: string): Promise<Texture | undefined>;
+  loadSvg(source: string, options?: { readonly scale?: number }): Promise<Texture | undefined>;
 };
 
 /** What every module receives: the world it draws and what the scene shares. */

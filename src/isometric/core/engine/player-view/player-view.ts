@@ -37,6 +37,8 @@ export const PLAYER_AIR_POSE_HEIGHT = 0.25;
  * its texture is written only when the cell changes. Without the sheet, or if it cannot be loaded,
  * the still `textureSource` is drawn.
  *
+ * Its SVGs are rasterized at `appearance.scale` (`loadSvg()`'s `scale`), as small as it is drawn.
+ *
  * Provides `focus` (the ground below the player), so the camera starts on it, and the player as
  * the one `movingCasters`, so `shadows` lays its shadow where its feet are drawn. When the world
  * has no player part or its SVG cannot be loaded, nothing is drawn or followed.
@@ -47,12 +49,15 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
     async setup({ world, projection, metrics, columnAt, assets, services }) {
       const player = world.parts.find(PLAYER_PART);
       const sheet = appearance.walk;
-      const sheetTexture = player && sheet && (await assets.loadSvg(sheet.source));
+      const scale = appearance.scale ?? 1;
+      // Rasterized as small as it is drawn: the walk sheet at full size is tens of MB of texture.
+      const sheetTexture = player && sheet && (await assets.loadSvg(sheet.source, { scale }));
       // The sheet and its cells by facing, then pose (column `0` standing), shared.
       const walk =
         sheet && sheetTexture ? { sheet, frames: getSheetFrames(sheetTexture, getWalkSheetLayout(sheet)) } : undefined;
       let facing = PLAYER_START_FACING;
-      const texture = walk?.frames[facing][0] ?? (player && (await assets.loadSvg(appearance.textureSource)));
+      const texture =
+        walk?.frames[facing][0] ?? (player && (await assets.loadSvg(appearance.textureSource, { scale })));
       if (!player || !texture) return { destroy: () => {} };
 
       // Blocks above elevation `0` the camera looks at: the top the player stands on or, while its
@@ -77,7 +82,6 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
       });
       view.cullable = false;
       // Scaled about the feet, which stand on the column's top (`projected.screenY`).
-      const scale = appearance.scale ?? 1;
       view.scale.set(view.scale.x * scale, view.scale.y * scale);
       const offset = { x: view.position.x - projected.screenX, y: (view.position.y - projected.screenY) * scale };
 

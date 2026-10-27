@@ -117,6 +117,27 @@ describe("createScene", () => {
     expect(Assets.unload).toHaveBeenCalledWith("/assets/a.svg");
   });
 
+  it("loads an SVG drawn smaller than its tile at that much less resolution, never more", async () => {
+    const { module, seen } = probe("a");
+    const { scene } = await mountScene(shore(), [module], { resolution: 2 });
+    const resolution = getSvgResolution(TILE_METRICS.tileWidth * CAMERA_MAX_ZOOM, 2);
+
+    await seen.context?.assets.loadSvg("/assets/small.svg", { scale: 0.5 });
+    await seen.context?.assets.loadSvg("/assets/big.svg", { scale: 3 });
+    expect(Assets.load).toHaveBeenCalledWith({
+      src: "/assets/small.svg",
+      parser: "svg",
+      data: { resolution: resolution * 0.5, autoGenerateMipmaps: true },
+    });
+    expect(Assets.load).toHaveBeenCalledWith({
+      src: "/assets/big.svg",
+      parser: "svg",
+      data: { resolution, autoGenerateMipmaps: true },
+    });
+
+    scene.destroy();
+  });
+
   it("sets modules up in order, each seeing the services of those before it", async () => {
     const camera = { follow: vi.fn(), visibleChunks: () => [] };
     const first = probe("first", { provides: { camera: camera as never } });
