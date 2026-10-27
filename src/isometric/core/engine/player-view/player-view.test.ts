@@ -35,6 +35,7 @@ const SHEET = {
   gap: 48,
   frames: 8,
   stride: 1.4,
+  airPose: 3,
 } as const;
 const WALKER = { ...PLAYER, walk: SHEET };
 
@@ -365,6 +366,40 @@ describe("createPlayerView", () => {
     ticker.frame();
     expect(cellOf(view)).toMatchObject({ row: facing("south-west"), column: 1 });
     scene.destroy();
+  });
+
+  it("lifts the sprite and the feet it casts its shadow from while it jumps, not the camera", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, view, camera, scene } = await sceneOf(world);
+    const [caster] = scene.services.movingCasters ?? [];
+    const player = world.parts.get(PLAYER_PART);
+
+    Object.assign(player, { height: 0.5, previous: { x: 1, y: 1, elevation: 1, height: 0.5 } });
+    ticker.frame();
+
+    const standing = spriteAt({ x: 1, y: 1, elevation: 1 });
+    expect(view.position).toMatchObject({ x: standing.x, y: standing.y - 0.5 * TILE_METRICS.boxHeight });
+    expect(caster.foot().ground).toEqual({ x: 1, y: 1, elevation: 1.5 });
+    for (let frame = 0; frame < 50; frame += 1) ticker.frame(50);
+    expect(camera.state).toMatchObject(getGroundPointBelow({ x: 1, y: 1 }, 1, projection));
+    scene.destroy();
+  });
+
+  it("shows the sheet's air pose in the air, standing when it has none", async () => {
+    const jumpAt = async (walk: typeof SHEET | Omit<typeof SHEET, "airPose">) => {
+      resetHarness();
+      const world = fieldWithPlayer();
+      const { ticker, root, scene } = await mountScene(world, [createPlayerView({ ...PLAYER, walk })]);
+      Object.assign(world.parts.get(PLAYER_PART), { height: 0.3 });
+      ticker.frame();
+      const cell = cellOf(root.children[0]);
+      scene.destroy();
+      return cell;
+    };
+    const { airPose: _, ...withoutAirPose } = SHEET;
+
+    expect(await jumpAt(SHEET)).toMatchObject({ column: 3 });
+    expect(await jumpAt(withoutAirPose)).toMatchObject({ column: 0 });
   });
 
   it("draws its still SVG when the walk sheet cannot be used", async () => {

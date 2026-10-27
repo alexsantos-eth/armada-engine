@@ -24,6 +24,8 @@ export const PLAYER_WALK: PlayerWalkSheet = {
   gap: 48,
   frames: 8,
   stride: 1.4,
+  // In the air: the pose with the legs furthest apart, a leap.
+  airPose: 3,
 };
 
 /**

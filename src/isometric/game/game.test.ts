@@ -289,6 +289,7 @@ describe("mountGame", () => {
       x: world.parts.get(PLAYER_PART).x,
       y: world.parts.get(PLAYER_PART).y,
       elevation: world.parts.get(PLAYER_PART).elevation,
+      height: 0,
     });
   });
 
@@ -332,7 +333,7 @@ describe("mountGame", () => {
     expect(onClockChange).toHaveBeenCalledTimes(2);
   });
 
-  it("walks the player with the keyboard and zooms at the centre of the view", async () => {
+  it("walks and jumps the player with the keyboard and zooms at the centre of the view", async () => {
     const { window, game } = mount();
     await game.ready;
     const { world, scene } = started();
@@ -342,6 +343,9 @@ describe("mountGame", () => {
     expect(world.parts.get(PLAYER_PART).walk).toEqual(
       getWalkDirection({ up: true, down: false, left: false, right: false }),
     );
+
+    window.press("Space");
+    expect(world.parts.get(PLAYER_PART).wantsJump).toBe(true);
 
     window.press("Equal");
     expect(camera.zoomAt).toHaveBeenCalledWith(KEYBOARD_ZOOM_STEP, { x: 400, y: 300 });

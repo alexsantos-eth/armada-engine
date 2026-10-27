@@ -3,6 +3,7 @@ import type {
   ITerrainColumn,
   PlayerFacing,
   PlayerPosition,
+  PlayerRenderPosition,
   PlayerState,
   ScreenDirections,
   WorldCoord,
@@ -29,6 +30,22 @@ export const PLAYER_RADIUS = 0.2;
 
 /** Most blocks the player climbs up or down from one column to the next. */
 export const PLAYER_MAX_CLIMB = 1;
+
+/** Blocks the player's feet rise at the top of a jump. */
+export const PLAYER_JUMP_HEIGHT = 0.75;
+
+/** Ticks a jump lasts, from take-off to landing (half a second). */
+export const PLAYER_JUMP_TICKS = 10;
+
+/**
+ * Height of the feet above the ground `tick` ticks into a jump: a parabola, `0` at take-off and on
+ * landing ({@link PLAYER_JUMP_TICKS}), {@link PLAYER_JUMP_HEIGHT} halfway. Ticks are whole, so a
+ * jump is the same every time.
+ */
+export function getJumpHeight(tick: number): number {
+  const t = Math.min(Math.max(tick, 0), PLAYER_JUMP_TICKS);
+  return (4 * PLAYER_JUMP_HEIGHT * t * (PLAYER_JUMP_TICKS - t)) / PLAYER_JUMP_TICKS ** 2;
+}
 
 /** Key of the player part (`createPlayerPart()`): read it with `world.parts.get(PLAYER_PART)`. */
 export const PLAYER_PART: WorldPartKey<PlayerState> = { id: "player" };
@@ -161,7 +178,14 @@ export function findPlayerSpawn(ground: PlayerGround, centre: GridPoint): Player
 /** Creates a standing player at the ground point `at`, on the column under it. */
 export function createPlayer(ground: PlayerGround, at: GridPoint): PlayerState {
   const position = { x: at.x, y: at.y, elevation: elevationAt(ground, at) };
-  return { ...position, previous: { ...position }, walk: { x: 0, y: 0 } };
+  return {
+    ...position,
+    height: 0,
+    airborne: undefined,
+    wantsJump: false,
+    previous: { ...position, height: 0 },
+    walk: { x: 0, y: 0 },
+  };
 }
 
 /**
@@ -207,6 +231,23 @@ export function setPlayerWalk(player: PlayerState, directions: ScreenDirections)
   player.walk = getWalkDirection(directions);
 }
 
+/** Asks the player to jump (the input): it takes off on the next tick if it is on the ground. */
+export function jumpPlayer(player: PlayerState): void {
+  player.wantsJump = true;
+}
+
+/** One tick of a jump: takes off if asked to on the ground, rises and falls, and lands. */
+function stepJump(player: PlayerState): void {
+  const { airborne } = player;
+  const wants = player.wantsJump;
+  player.wantsJump = false;
+  if (airborne === undefined && !wants) return;
+  const tick = (airborne ?? 0) + 1;
+  const landed = tick >= PLAYER_JUMP_TICKS;
+  player.airborne = landed ? undefined : tick;
+  player.height = landed ? 0 : getJumpHeight(tick);
+}
+
 /** Moves the player one tick along its walk; blocked moves slide along the free axis. */
 function stepOnce(player: PlayerState, ground: PlayerGround): void {
   const { walk } = player;
@@ -228,16 +269,20 @@ function stepOnce(player: PlayerState, ground: PlayerGround): void {
  * The player system: runs `ticks` simulation ticks (default `1`) of the player walking at
  * {@link PLAYER_SPEED}. Each tick it moves along `player.walk` if its feet fit there (land,
  * a climb of at most {@link PLAYER_MAX_CLIMB}, nothing in the way); otherwise it slides along
- * whichever axis is free, or stays. Keeps `player.previous` one tick behind for interpolation.
- * Deterministic: the same walk on the same ground gives the same path.
+ * whichever axis is free, or stays. It jumps too: asked to (`jumpPlayer()`) on the ground, its
+ * feet rise and fall over {@link PLAYER_JUMP_TICKS} ticks (`getJumpHeight()`), walking all the
+ * while as on the ground (a jump does not clear obstacles or climb higher yet). Keeps
+ * `player.previous` one tick behind for interpolation. Deterministic: the same walk and jumps on
+ * the same ground give the same path.
  */
 export function stepPlayer(player: PlayerState, ground: PlayerGround, ticks = 1): void {
-  const standing = player.walk.x === 0 && player.walk.y === 0;
-  // Standing still, every tick is the same: one is enough to settle `previous`.
-  const steps = standing ? Math.min(ticks, 1) : ticks;
-  for (let tick = 0; tick < steps; tick += 1) {
-    player.previous = { x: player.x, y: player.y, elevation: player.elevation };
+  for (let tick = 0; tick < ticks; tick += 1) {
+    // Standing still on the ground, every tick is the same: one is enough to settle `previous`.
+    const resting = player.walk.x === 0 && player.walk.y === 0 && player.airborne === undefined && !player.wantsJump;
+    if (resting && tick > 0) return;
+    player.previous = { x: player.x, y: player.y, elevation: player.elevation, height: player.height };
     stepOnce(player, ground);
+    stepJump(player);
   }
 }
 
@@ -302,12 +347,13 @@ export function createPlayerSystem(): WorldSystem<PlayerWorld> {
  * Ground point and elevation where the player is drawn this frame: between `previous` and
  * the current position, `alpha` of a tick (`getInterpolationAlpha()`) after `previous`.
  */
-export function getPlayerRenderPosition(player: PlayerState, alpha: number): PlayerPosition {
+export function getPlayerRenderPosition(player: PlayerState, alpha: number): PlayerRenderPosition {
   const t = Math.min(1, Math.max(0, Number.isFinite(alpha) ? alpha : 1));
   const lerp = (from: number, to: number) => from + (to - from) * t;
   return {
     x: lerp(player.previous.x, player.x),
     y: lerp(player.previous.y, player.y),
     elevation: lerp(player.previous.elevation, player.elevation),
+    height: lerp(player.previous.height ?? 0, player.height),
   };
 }

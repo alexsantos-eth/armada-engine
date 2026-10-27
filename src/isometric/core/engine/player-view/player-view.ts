@@ -3,7 +3,7 @@ import { getPlayerColumn, getPlayerFacing, getPlayerRenderPosition, PLAYER_PART 
 import { projectBoxesToIsometric, projectGridPoint } from "../projection";
 import { createBlockViews, getBlockDepth, getSheetFrames, showFrame } from "../render";
 import { SCENE_LAYER, type BuiltScene, type SceneModule } from "../scene";
-import type { PlayerAppearance, PlayerPosition } from "../../types";
+import type { PlayerAppearance, PlayerPosition, PlayerRenderPosition } from "../../types";
 import { getWalkPose, getWalkSheetCell, getWalkSheetLayout, PLAYER_START_FACING } from "./walk";
 
 /**
@@ -16,12 +16,15 @@ import { getWalkPose, getWalkSheetCell, getWalkSheetLayout, PLAYER_START_FACING 
  * the camera, `x + y` above the column's) it goes on the column's top but before what stands
  * there (`move()` to `SCENE_LAYER.behindObject`), so it walks behind a tree's trunk; in front,
  * after it. Never with `zIndex`. On a column with a `topInset` (sand) it stands that much lower.
+ * While it jumps (`height`), the sprite and the feet it gives the shadow rise that many blocks; its
+ * place in the draw order and the camera stay with the ground below it.
  *
  * With a walk sheet (`appearance.walk`) the sprite shows one of its cells: turned to the facing
  * nearest the way the player walks (`getPlayerFacing()`; standing, the last one, at first
  * `PLAYER_START_FACING`), the standing pose on a frame it did not move and, while it moves, the walk
  * pose for how far it has gone since it set off (`getWalkPose()`), so its feet keep pace with the
- * ground. Every cell is the same window of its canvas, so the sprite keeps its size and its feet;
+ * ground; in the air (a jump), the sheet's `airPose`. Every cell is the same window of its canvas,
+ * so the sprite keeps its size and its feet;
  * its texture is written only when the cell changes. Without the sheet, or if it cannot be loaded,
  * the still `textureSource` is drawn.
  *
@@ -65,26 +68,32 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
       let drawnAt = getPlayerRenderPosition(player, 1);
       // Columns walked since the player last stood still, for its walk pose.
       let walked = 0;
-      /** Turns the sprite and picks its pose for a frame that moved it from `drawnAt` to `at`, or not. */
-      const animate = (at: PlayerPosition, moved: boolean) => {
+      /** Turns the sprite and picks its pose for a frame that draws it at `at`, after `drawnAt`. */
+      const animate = (at: PlayerRenderPosition) => {
         if (!walk) return;
         facing = getPlayerFacing(player.walk) ?? facing;
-        walked = moved ? walked + Math.hypot(at.x - drawnAt.x, at.y - drawnAt.y) : 0;
-        showFrame(view, walk.frames[facing][moved ? getWalkPose(walked, walk.sheet) : 0]);
+        const walking = at.x !== drawnAt.x || at.y !== drawnAt.y;
+        walked = walking ? walked + Math.hypot(at.x - drawnAt.x, at.y - drawnAt.y) : 0;
+        const pose = at.height > 0 ? (walk.sheet.airPose ?? 0) : walking ? getWalkPose(walked, walk.sheet) : 0;
+        showFrame(view, walk.frames[facing][pose]);
       };
       // Where its feet are on screen: written by `place()`, read by whoever casts its shadow.
       const drawnFoot = { x: 0, y: 0 };
+      // Where its feet are in the world for its shadow: lifted by a jump's height, as if it stood higher.
+      let castFrom = { x: drawnAt.x, y: drawnAt.y, elevation: drawnAt.elevation };
       let drawnDepth: number | undefined;
       let drawnBehind: boolean | undefined;
       let depthFor: { x: number; y: number; elevation: number } | undefined;
       let depth = 0;
       // Set by `start()`, before the first `place()`.
       let scene!: BuiltScene;
-      const place = (at: PlayerPosition) => {
+      const place = (at: PlayerRenderPosition) => {
         const column = getPlayerColumn(at);
         const screen = projectGridPoint(at, projection);
         drawnFoot.x = screen.x;
-        drawnFoot.y = screen.y - (at.elevation - topInsetAt(column.x, column.y)) * metrics.boxHeight;
+        const lifted = at.elevation + at.height;
+        drawnFoot.y = screen.y - (lifted - topInsetAt(column.x, column.y)) * metrics.boxHeight;
+        castFrom = { x: at.x, y: at.y, elevation: lifted };
         view.position.set(drawnFoot.x + offset.x, drawnFoot.y + offset.y);
         // In the draw order by the column it stands on, at that column's top: computed, and the
         // view moved, only when that column or the side of its middle changes, not on every frame.
@@ -107,7 +116,7 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
       return {
         provides: {
           focus: { ground: () => ground(player) },
-          movingCasters: [{ view, foot: () => ({ ground: drawnAt, screen: drawnFoot }) }],
+          movingCasters: [{ view, foot: () => ({ ground: castFrom, screen: drawnFoot }) }],
         },
         start: (built) => {
           scene = built;
@@ -116,8 +125,12 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
         },
         update: ({ alpha }) => {
           const at = getPlayerRenderPosition(player, alpha);
-          const moved = at.x !== drawnAt.x || at.y !== drawnAt.y || at.elevation !== drawnAt.elevation;
-          animate(at, moved);
+          const moved =
+            at.x !== drawnAt.x ||
+            at.y !== drawnAt.y ||
+            at.elevation !== drawnAt.elevation ||
+            at.height !== drawnAt.height;
+          animate(at);
           if (!moved) return;
           place(at);
           services.get("camera")?.follow(ground(at));

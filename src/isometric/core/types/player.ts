@@ -7,7 +7,12 @@ export type PlayerPosition = {
   readonly y: number;
   /** Top elevation of the column under the player (the column nearest the ground point). */
   readonly elevation: number;
+  /** Blocks its feet are above that top while it jumps; `0` or absent on the ground. */
+  readonly height?: number;
 };
+
+/** Where the player is drawn in a frame: its position with the height of its feet (`0` on the ground). */
+export type PlayerRenderPosition = PlayerPosition & { readonly height: number };
 
 /**
  * The player character as domain state in the `World`. Only the simulation step moves it
@@ -19,6 +24,15 @@ export type PlayerState = {
   y: number;
   /** Top elevation of the column under the player. */
   elevation: number;
+  /** Blocks its feet are above that top: `0` on the ground, more while it jumps. Not saved. */
+  height: number;
+  /** Ticks since it took off, while it jumps (`undefined` on the ground). Not saved. */
+  airborne: number | undefined;
+  /**
+   * The app asked it to jump (`jumpPlayer()`): the next tick takes off if it stands on the ground,
+   * and clears it either way. Input, like `walk`. Not saved.
+   */
+  wantsJump: boolean;
   /** Where the player stood one tick earlier, so the render can interpolate. Not saved. */
   previous: PlayerPosition;
   /**
@@ -71,6 +85,8 @@ export type PlayerWalkSheet = {
   readonly frames: number;
   /** Columns the player walks in one cycle: how far it goes per two steps, so its feet do not slide. */
   readonly stride: number;
+  /** Column of the sheet shown in the air, while it jumps. Defaults to `0`, standing. */
+  readonly airPose?: number;
 };
 
 /** How the scene draws the player (game content, like an entity definition). */

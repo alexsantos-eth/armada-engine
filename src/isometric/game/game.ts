@@ -11,6 +11,7 @@ import {
   generateWorld,
   getInterpolationAlpha,
   PLAYER_PART,
+  jumpPlayer,
   setPlayerWalk,
   type RandomSource,
 } from "../core/engine";
@@ -137,6 +138,7 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     teardowns.push(
       bindKeyboardControls(window, {
         walk: (directions) => setPlayerWalk(world.parts.get(PLAYER_PART), directions),
+        jump: () => jumpPlayer(world.parts.get(PLAYER_PART)),
         zoom: (factor) => {
           const { width, height } = app.renderer.screen;
           camera?.zoomAt(factor, { x: width / 2, y: height / 2 });

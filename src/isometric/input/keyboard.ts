@@ -8,6 +8,9 @@ export const WALK_KEYS: Readonly<Record<keyof ScreenDirections, readonly string[
   right: ["ArrowRight", "KeyD"],
 };
 
+/** Keys that make the player jump (`KeyboardEvent.code`). */
+export const JUMP_KEYS: readonly string[] = ["Space"];
+
 /** Zoom factor of one press of `+` (`−` divides by it). */
 export const KEYBOARD_ZOOM_STEP = 1.25;
 
@@ -45,15 +48,22 @@ export function walkBinding(walk: (directions: ScreenDirections) => void): KeyBi
   };
 }
 
+/** Jumping: a jump per press of {@link JUMP_KEYS} (held, the key repeats and it hops again on landing). */
+export function jumpBinding(jump: () => void): KeyBinding {
+  return { kind: "press", keys: JUMP_KEYS, press: () => jump() };
+}
+
 /** Zoom: `+` multiplies the zoom by {@link KEYBOARD_ZOOM_STEP}, `−` divides by it (main and numeric keypads). */
 export function zoomBinding(zoom: (factor: number) => void): KeyBinding {
   return { kind: "press", keys: [...ZOOM_KEYS.keys()], press: (code) => zoom(ZOOM_KEYS.get(code) as number) };
 }
 
-/** What the keyboard drives: the player's walk and the camera's zoom. */
+/** What the keyboard drives: the player's walk and jumps and the camera's zoom. */
 export type KeyboardControls = {
   /** The screen directions held now; called on every change, all `false` when none is. */
   readonly walk: (directions: ScreenDirections) => void;
+  /** One jump, on each press of the space bar. */
+  readonly jump: () => void;
   /** One zoom step by `factor` (the app picks the anchor, e.g. the centre of the view). */
   readonly zoom: (factor: number) => void;
 };
@@ -107,9 +117,10 @@ export function bindKeyboard(target: KeyboardTarget, bindings: readonly KeyBindi
 }
 
 /**
- * Reads the keyboard on `target` for the game: arrows/WASD walk (held keys, combined), `+`/`−`
- * zoom (main and numeric keypads), with {@link bindKeyboard}. Returns a function that unbinds it.
+ * Reads the keyboard on `target` for the game: arrows/WASD walk (held keys, combined), the space
+ * bar jumps, `+`/`−` zoom (main and numeric keypads), with {@link bindKeyboard}. Returns a function
+ * that unbinds it.
  */
 export function bindKeyboardControls(target: KeyboardTarget, controls: KeyboardControls): () => void {
-  return bindKeyboard(target, [walkBinding(controls.walk), zoomBinding(controls.zoom)]);
+  return bindKeyboard(target, [walkBinding(controls.walk), jumpBinding(controls.jump), zoomBinding(controls.zoom)]);
 }

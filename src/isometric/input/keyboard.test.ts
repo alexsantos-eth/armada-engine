@@ -27,7 +27,7 @@ const key = (code: string, modifiers: { altKey?: boolean; ctrlKey?: boolean; met
 
 const setup = () => {
   const target = createTarget();
-  const controls = { walk: vi.fn(), zoom: vi.fn() };
+  const controls = { walk: vi.fn(), jump: vi.fn(), zoom: vi.fn() };
   const unbind = bindKeyboardControls(target as never, controls);
   return { target, controls, unbind };
 };
@@ -93,6 +93,19 @@ describe("bindKeyboardControls", () => {
       [1 / KEYBOARD_ZOOM_STEP],
       [1 / KEYBOARD_ZOOM_STEP],
     ]);
+    expect(controls.walk).not.toHaveBeenCalled();
+  });
+
+  it("jumps once per press of the space bar, keeping the page from scrolling", () => {
+    const { target, controls } = setup();
+
+    const space = key("Space");
+    target.emit("keydown", space);
+    target.emit("keyup", key("Space"));
+    target.emit("keydown", key("Space"));
+
+    expect(controls.jump).toHaveBeenCalledTimes(2);
+    expect(space.preventDefault).toHaveBeenCalled();
     expect(controls.walk).not.toHaveBeenCalled();
   });
 

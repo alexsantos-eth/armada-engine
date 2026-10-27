@@ -32,7 +32,7 @@ describe("createPlayerPart", () => {
 
     expect(player).toMatchObject({ ...findPlayerSpawn(world, { x: 1, y: 1 }), walk: { x: 0, y: 0 } });
     expect(player).toMatchObject({ x: 2, y: 1, elevation: 3 });
-    expect(player.previous).toEqual({ x: 2, y: 1, elevation: 3 });
+    expect(player.previous).toEqual({ x: 2, y: 1, elevation: 3, height: 0 });
     // The ground around the centre first, to find the spawn; then around the spawn.
     expect(world.chunks.loadAround.mock.calls).toEqual([[{ x: 1, y: 1 }], [{ x: 2, y: 1, elevation: 3 }]]);
   });
@@ -52,7 +52,10 @@ describe("createPlayerPart", () => {
       x: 0.8,
       y: 0,
       elevation: 2,
-      previous: { x: 0.8, y: 0, elevation: 2 },
+      height: 0,
+      airborne: undefined,
+      wantsJump: false,
+      previous: { x: 0.8, y: 0, elevation: 2, height: 0 },
       walk: { x: 0, y: 0 },
     });
     expect(world.chunks.loadAround).toHaveBeenCalledWith({ x: 0.8, y: 0 });
@@ -68,7 +71,7 @@ describe("createPlayerPart", () => {
 
     expect(player).toMatchObject({ ...findPlayerSpawn(world, { x: -0.1, y: 0 }), walk: { x: 0, y: 0 } });
     expect(player).toMatchObject({ x: -1, y: 0, elevation: 1 });
-    expect(player.previous).toEqual({ x: -1, y: 0, elevation: 1 });
+    expect(player.previous).toEqual({ x: -1, y: 0, elevation: 1, height: 0 });
     expect(world.chunks.loadAround.mock.calls).toEqual([[{ x: -0.1, y: 0 }], [{ x: -1, y: 0, elevation: 1 }]]);
   });
 
