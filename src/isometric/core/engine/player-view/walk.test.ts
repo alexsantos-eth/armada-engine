@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { PLAYER_FACINGS } from "../player";
 import {
+  getClimbPose,
+  getClimbSheetLayout,
   getIdlePose,
   getIdleSheetLayout,
   getWalkPose,
@@ -47,5 +49,23 @@ describe("player walk sheet", () => {
     const poses = [0, 499, 500, 1000, 1999, 2000, 2600, -5].map((ms) => getIdlePose(ms, IDLE));
 
     expect(poses).toEqual([0, 0, 1, 2, 3, 0, 1, 0]);
+  });
+
+  const CLIMB = { source: "/assets/player/climb.svg", frames: 4 };
+
+  it("lays out the climb sheet like the walk sheet, a column per pose of a climb", () => {
+    expect(getClimbSheetLayout(SHEET, CLIMB)).toEqual({
+      columns: 4,
+      rows: 8,
+      cellWidth: 400,
+      cellHeight: 400,
+      gap: 40,
+    });
+  });
+
+  it("steps through the poses of a climb in order, an equal share of it each", () => {
+    const poses = [0, 0.24, 0.25, 0.5, 0.99, 1, -0.1].map((progress) => getClimbPose(progress, CLIMB));
+
+    expect(poses).toEqual([0, 0, 1, 2, 3, 3, 0]);
   });
 });

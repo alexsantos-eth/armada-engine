@@ -4,6 +4,13 @@ import { CellMap, SpatialIndex } from "../grid";
 import { TICKS_PER_SECOND } from "../time";
 import {
   PLAYER_MAX_CLIMB,
+  PLAYER_CLIMB_REACH,
+  PLAYER_CLIMB_RISE_SHARE,
+  PLAYER_CLIMB_TICKS,
+  PLAYER_STEP_HEIGHT,
+  getClimbAdvance,
+  getClimbRise,
+  getPlayerClimbProgress,
   PLAYER_PART,
   PLAYER_RADIUS,
   PLAYER_SPEED,
@@ -157,6 +164,7 @@ describe("createPlayer", () => {
       height: 0,
       verticalSpeed: undefined,
       wantsJump: false,
+      climb: undefined,
       previous: { x: 1.2, y: 0, elevation: 3, inset: 0, height: 0 },
       walk: { x: 0, y: 0 },
     });
@@ -557,7 +565,7 @@ describe("stepPlayer", () => {
   it("climbs and goes down one block, and takes the elevation of the column under it", () => {
     const stairs = groundFrom(["01210"]);
     const player = walking(stairs, { x: 0, y: 0 }, { up: true, right: true });
-    const elevations = Array.from({ length: ticksFor(6) }, () => {
+    const elevations = Array.from({ length: ticksFor(6) + 2 * PLAYER_CLIMB_TICKS }, () => {
       stepPlayer(player, stairs);
       return player.elevation;
     });
@@ -600,6 +608,7 @@ describe("getPlayerRenderPosition", () => {
     height: 0.5,
     verticalSpeed: 0.1,
     wantsJump: false,
+    climb: undefined,
     previous: { x: 1, y: 4, elevation: 0 },
     walk: { x: 1, y: 0 },
   };
@@ -620,5 +629,121 @@ describe("getPlayerRenderPosition", () => {
     expect(getPlayerRenderPosition(player, -1)).toEqual({ x: 1, y: 4, elevation: 0, inset: 0, height: 0 });
     expect(getPlayerRenderPosition(player, 2)).toEqual({ x: 2, y: 4, elevation: 1, inset: 0.5, height: 0.5 });
     expect(getPlayerRenderPosition(player, Number.NaN)).toEqual({ x: 2, y: 4, elevation: 1, inset: 0.5, height: 0.5 });
+  });
+});
+
+describe("climbing", () => {
+  /** Feet of `player` in the world. */
+  const feetOf = (player: PlayerState) => player.elevation - player.inset + player.height;
+  /** Steps `player` until it climbs, at most `limit` ticks. */
+  const untilClimbing = (player: PlayerState, ground: PlayerGround, topInset?: (type: TerrainMaterial) => number) => {
+    for (let tick = 0; tick < 50 && player.climb === undefined; tick += 1) stepPlayer(player, ground, 1, topInset);
+  };
+  /** Sand's top `depth` below its elevation, every other top at it. */
+  const sunken = (depth: number) => (type: TerrainMaterial) => (type === "sand" ? depth : 0);
+
+  it("eases the feet up over the first share of a climb and then steps onto the top", () => {
+    expect([0, PLAYER_CLIMB_RISE_SHARE / 2, PLAYER_CLIMB_RISE_SHARE, 1, -1].map(getClimbRise)).toEqual([
+      0, 0.5, 1, 1, 0,
+    ]);
+    const halfway = PLAYER_CLIMB_RISE_SHARE + (1 - PLAYER_CLIMB_RISE_SHARE) / 2;
+    expect([0, PLAYER_CLIMB_RISE_SHARE, halfway, 1, 2].map(getClimbAdvance)).toEqual([0, 0, 0.5, 1, 1]);
+    expect(PLAYER_STEP_HEIGHT).toBeLessThan(0.5);
+  });
+
+  it("stops at the foot of a higher column and climbs it: feet up first, then onto the top", () => {
+    const ground = groundFrom(["01", "01"]);
+    const player = walking(ground, { x: 0, y: 0 }, { up: true, right: true });
+    untilClimbing(player, ground);
+    const { climb } = player;
+
+    expect(player).toMatchObject({ elevation: 0, height: 0 });
+    expect(player.x).toBeLessThan(0.5);
+    expect(climb).toMatchObject({ direction: { x: 1, y: 0 }, feet: 0, rise: 1, ticks: PLAYER_CLIMB_TICKS, tick: 0 });
+    expect(climb?.from).toEqual({ x: player.x, y: 0 });
+    expect(climb?.to.x).toBeCloseTo(player.x + PLAYER_STEP + PLAYER_CLIMB_REACH);
+
+    const path: Array<{ x: number; feet: number }> = [];
+    while (player.climb) {
+      stepPlayer(player, ground);
+      path.push({ x: player.x, feet: feetOf(player) });
+    }
+    // Its last tick is drawn as part of the climb; the next one walks on.
+    expect(path).toHaveLength(PLAYER_CLIMB_TICKS + 1);
+    const rising = path.filter((at) => at.x === climb?.from.x);
+    expect(rising).toHaveLength(Math.floor(PLAYER_CLIMB_TICKS * PLAYER_CLIMB_RISE_SHARE));
+    rising.forEach((at, index) => expect(at.feet).toBeGreaterThanOrEqual(rising[index - 1]?.feet ?? 0));
+    path.slice(rising.length).forEach((at) => expect(at.feet).toBe(1));
+    expect(path[PLAYER_CLIMB_TICKS - 1]).toEqual({ x: climb?.to.x, feet: 1 });
+    expect(player).toMatchObject({ elevation: 1, inset: 0, height: 0, verticalSpeed: undefined });
+    expect(player.x).toBeGreaterThan(climb?.to.x ?? 0);
+  });
+
+  it("ignores its walk and forgets jumps while it climbs, even standing still", () => {
+    const ground = groundFrom(["01"]);
+    const player = walking(ground, { x: 0, y: 0 }, { up: true, right: true });
+    untilClimbing(player, ground);
+    setPlayerWalk(player, { ...still, down: true });
+    jumpPlayer(player);
+    stepPlayer(player, ground);
+
+    expect(player.wantsJump).toBe(false);
+    expect(player.verticalSpeed).toBeUndefined();
+    player.walk = { x: 0, y: 0 };
+    stepPlayer(player, ground, PLAYER_CLIMB_TICKS);
+    expect(player).toMatchObject({ elevation: 1, height: 0 });
+  });
+
+  it("climbs from sand's sunken top onto a full one in half the time, and steps up a little rise", () => {
+    const sand = groundFrom(["s0"]);
+    const player = walking(sand, { x: 0, y: 0 }, { up: true, right: true });
+    untilClimbing(player, sand, sunken(0.5));
+    expect(player.climb).toMatchObject({ feet: -0.5, rise: 0.5, ticks: PLAYER_CLIMB_TICKS / 2 });
+
+    const low = groundFrom(["s0"]);
+    const stepper = walking(low, { x: 0, y: 0 }, { up: true, right: true });
+    for (let tick = 0; tick < ticksFor(1); tick += 1) stepPlayer(stepper, low, 1, sunken(PLAYER_STEP_HEIGHT));
+    expect(stepper.climb).toBeUndefined();
+    expect(stepper.x).toBeGreaterThan(0.5);
+  });
+
+  it("climbs from where its feet are when it reaches a higher column in the air", () => {
+    const ground = groundFrom(["0011"]);
+    const player = walking(ground, { x: 1, y: 0 }, { up: true, right: true });
+    jumpPlayer(player);
+    stepPlayer(player, ground);
+    untilClimbing(player, ground);
+
+    expect(player.climb?.feet).toBeGreaterThan(0);
+    expect(player.climb?.rise).toBeCloseTo(1 - (player.climb?.feet ?? 0));
+    expect(player.verticalSpeed).toBeUndefined();
+    while (player.elevation === 0 || player.climb) stepPlayer(player, ground);
+    expect(player).toMatchObject({ elevation: 1, height: 0, verticalSpeed: undefined });
+  });
+
+  it("ends where it reached the top when its feet do not fit further on", () => {
+    const open = groundFrom(["01"]);
+    const ground: PlayerGround = {
+      columnIndex: open.columnIndex,
+      occupancy: { at: (x, y) => (x === 1 && y === 0 ? [{ walkable: false, collisionAt: () => TRUNK }] : []) },
+    };
+    const player = walking(ground, { x: 0, y: 0 }, { up: true, right: true });
+    untilClimbing(player, ground);
+
+    expect(player.climb?.to.x).toBeCloseTo(player.x + PLAYER_STEP);
+  });
+
+  it("is drawn through its climb between its last two ticks, and not at all standing", () => {
+    const ground = groundFrom(["01"]);
+    const player = walking(ground, { x: 0, y: 0 }, { up: true, right: true });
+    expect(getPlayerClimbProgress(player, 0.5)).toBeUndefined();
+    untilClimbing(player, ground);
+
+    expect(getPlayerClimbProgress(player, 0.5)).toBe(0);
+    stepPlayer(player, ground, 3);
+    expect(getPlayerClimbProgress(player, 0)).toBe(2 / PLAYER_CLIMB_TICKS);
+    expect(getPlayerClimbProgress(player, 0.5)).toBe(2.5 / PLAYER_CLIMB_TICKS);
+    expect(getPlayerClimbProgress(player, Number.NaN)).toBe(3 / PLAYER_CLIMB_TICKS);
+    expect(getPlayerClimbProgress(player, 5)).toBe(3 / PLAYER_CLIMB_TICKS);
   });
 });

@@ -30,6 +30,9 @@ export const PLAYER_WALK: PlayerWalkSheet = {
   // 3.2 s it breathes twice (the chest growing, the head and arms rising) and looks to one side and
   // then the other, leaning a little that way.
   idle: { source: "/assets/player/idle.svg", frames: 8, period: 3200 },
+  // Climbing onto a higher top: `climb.svg`, made by `Claude outputs/player_climb.py` in this sheet's
+  // window. It reaches up, pulls itself up, puts a knee on the top, pushes on its hands and stands.
+  climb: { source: "/assets/player/climb.svg", frames: 6 },
 };
 
 /**

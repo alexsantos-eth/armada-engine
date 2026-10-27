@@ -1,5 +1,6 @@
 import type {
   GridPoint,
+  PlayerClimb,
   ITerrainColumn,
   PlayerFacing,
   PlayerPosition,
@@ -57,6 +58,21 @@ export type PlayerTopInset = (type: TerrainMaterial) => number;
 /** Every top at its column's elevation. */
 const NO_INSET: PlayerTopInset = () => 0;
 
+/**
+ * Blocks a top may stand above the player's feet and still be stepped onto in one tick, as today:
+ * a higher one (a column one block up, or a full top from sand's sunken one) it climbs.
+ */
+export const PLAYER_STEP_HEIGHT = 0.25;
+
+/** Ticks a climb of one block lasts (0.6 s); a lower one, its share of them. */
+export const PLAYER_CLIMB_TICKS = 12;
+
+/** Share of a climb its feet take to rise to the top; in the rest it steps onto it. */
+export const PLAYER_CLIMB_RISE_SHARE = 0.7;
+
+/** Columns past where it reaches the higher top the player walks on during a climb, so it stands on it. */
+export const PLAYER_CLIMB_REACH = 0.25;
+
 /** Feet closer to the ground than this, in blocks, have landed (rounding of the falling steps). */
 const LANDING = 1e-9;
 
@@ -68,6 +84,28 @@ const LANDING = 1e-9;
 export function getJumpHeight(tick: number): number {
   const t = Math.min(Math.max(tick, 0), PLAYER_JUMP_TICKS);
   return (4 * PLAYER_JUMP_HEIGHT * t * (PLAYER_JUMP_TICKS - t)) / PLAYER_JUMP_TICKS ** 2;
+}
+
+/** Eases `t` (`0`–`1`) in and out: slow at both ends. */
+function smoothstep(t: number): number {
+  const clamped = Math.min(Math.max(t, 0), 1);
+  return clamped * clamped * (3 - 2 * clamped);
+}
+
+/**
+ * Share of its rise a climb's feet have risen at `progress` (`0`–`1`) of it: eased in and out over
+ * its first {@link PLAYER_CLIMB_RISE_SHARE}, then all of it.
+ */
+export function getClimbRise(progress: number): number {
+  return smoothstep(progress / PLAYER_CLIMB_RISE_SHARE);
+}
+
+/**
+ * Share of the way from `from` to `to` a climb has gone at `progress` (`0`–`1`) of it: none while
+ * its feet rise, then eased in and out until it stands on the top.
+ */
+export function getClimbAdvance(progress: number): number {
+  return smoothstep((progress - PLAYER_CLIMB_RISE_SHARE) / (1 - PLAYER_CLIMB_RISE_SHARE));
 }
 
 /** Key of the player part (`createPlayerPart()`): read it with `world.parts.get(PLAYER_PART)`. */
@@ -214,6 +252,7 @@ export function createPlayer(ground: PlayerGround, at: GridPoint): PlayerState {
     height: 0,
     verticalSpeed: undefined,
     wantsJump: false,
+    climb: undefined,
     previous: { ...position, inset: 0, height: 0 },
     walk: { x: 0, y: 0 },
   };
@@ -299,14 +338,76 @@ function stepOnce(player: PlayerState, ground: PlayerGround, topInset: PlayerTop
   const next = moves.find((move) => (move.x !== from.x || move.y !== from.y) && fitsAt(ground, move, player.elevation));
   if (next === undefined) return;
   // The feet keep their height in the world: over a lower top (a lower column, or sand's sunken
-  // one) they are higher above it and fall; onto a higher one they step up on it.
+  // one) they are higher above it and fall; onto a slightly higher one they step up on it, and onto
+  // a higher one they climb, from where they are.
   const feet = player.elevation - player.inset + player.height;
+  const elevation = elevationAt(ground, next);
+  const inset = insetAt(ground, next, topInset);
+  const rise = elevation - inset - feet;
+  if (rise > PLAYER_STEP_HEIGHT) {
+    player.climb = startClimb(ground, from, next, elevation, feet, rise);
+    player.verticalSpeed = undefined;
+    return;
+  }
   player.x = next.x;
   player.y = next.y;
-  player.elevation = elevationAt(ground, next);
-  player.inset = insetAt(ground, next, topInset);
-  player.height = Math.max(0, feet - (player.elevation - player.inset));
+  player.elevation = elevation;
+  player.inset = inset;
+  player.height = Math.max(0, feet - (elevation - inset));
   if (player.height === 0) player.verticalSpeed = undefined;
+}
+
+/**
+ * A climb from `from` onto the top `next` stands on, `rise` blocks above the feet (at `feet`): it
+ * ends {@link PLAYER_CLIMB_REACH} columns further on that column, if the feet fit there, or at `next`.
+ */
+function startClimb(
+  ground: PlayerGround,
+  from: GridPoint,
+  next: GridPoint,
+  elevation: number,
+  feet: number,
+  rise: number,
+): PlayerClimb {
+  const length = Math.hypot(next.x - from.x, next.y - from.y);
+  const direction = { x: (next.x - from.x) / length, y: (next.y - from.y) / length };
+  const further = {
+    x: next.x + direction.x * PLAYER_CLIMB_REACH,
+    y: next.y + direction.y * PLAYER_CLIMB_REACH,
+  };
+  const column = getPlayerColumn(next);
+  const onTop = getPlayerColumn(further);
+  const fits = onTop.x === column.x && onTop.y === column.y && fitsAt(ground, further, elevation);
+  return {
+    from: { x: from.x, y: from.y },
+    to: fits ? further : { x: next.x, y: next.y },
+    direction,
+    feet,
+    rise,
+    ticks: Math.round(PLAYER_CLIMB_TICKS * rise),
+    tick: 0,
+  };
+}
+
+/**
+ * One tick of a climb: its feet rise towards the top ({@link getClimbRise}) and then it steps onto
+ * it ({@link getClimbAdvance}), on whichever column is under it.
+ */
+function stepClimb(player: PlayerState, climb: PlayerClimb, ground: PlayerGround, topInset: PlayerTopInset): void {
+  climb.tick += 1;
+  const progress = climb.tick / climb.ticks;
+  const advance = getClimbAdvance(progress);
+  const point = {
+    x: climb.from.x + (climb.to.x - climb.from.x) * advance,
+    y: climb.from.y + (climb.to.y - climb.from.y) * advance,
+  };
+  const feet = climb.feet + climb.rise * getClimbRise(progress);
+  player.x = point.x;
+  player.y = point.y;
+  player.elevation = elevationAt(ground, point);
+  player.inset = insetAt(ground, point, topInset);
+  const height = feet - (player.elevation - player.inset);
+  player.height = height > LANDING ? height : 0;
 }
 
 /**
@@ -317,25 +418,53 @@ function stepOnce(player: PlayerState, ground: PlayerGround, topInset: PlayerTop
  * feet take off at {@link PLAYER_JUMP_SPEED} and gravity ({@link PLAYER_GRAVITY}) brings them down,
  * after {@link PLAYER_JUMP_TICKS} ticks on flat ground (`getJumpHeight()`). Its feet keep their
  * height when it walks onto a lower top (a lower column, or the sunken top of `topInset`, e.g. sand),
- * so it falls onto it, jumping or not; onto a higher one
- * (at most {@link PLAYER_MAX_CLIMB} up) it steps up as on the ground. In the air it walks as on the
+ * so it falls onto it, jumping or not; onto one at most {@link PLAYER_STEP_HEIGHT} above its feet it
+ * steps up as on the ground, and onto a higher one (a column at most {@link PLAYER_MAX_CLIMB} up, or
+ * a full top from sand) it climbs (`player.climb`): it stops at the foot of it, its feet rise to the
+ * top in the first {@link PLAYER_CLIMB_RISE_SHARE} of {@link PLAYER_CLIMB_TICKS} ticks per block
+ * and then it steps {@link PLAYER_CLIMB_REACH} columns onto it, its walk and jumps ignored until it
+ * stands there. In the air it walks as on the
  * ground (a jump does not clear obstacles or reach higher columns yet). Keeps
  * `player.previous` one tick behind for interpolation. Deterministic: the same walk and jumps on
  * the same ground give the same path.
  */
 export function stepPlayer(player: PlayerState, ground: PlayerGround, ticks = 1, topInset = NO_INSET): void {
   for (let tick = 0; tick < ticks; tick += 1) {
+    // A climb is over the tick after its last one, so that one is drawn as part of it.
+    if (player.climb && player.climb.tick >= player.climb.ticks) player.climb = undefined;
+    const { climb } = player;
     // Standing still on the ground, every tick is the same: one is enough to settle `previous`.
     const resting =
-      player.walk.x === 0 && player.walk.y === 0 && player.verticalSpeed === undefined && !player.wantsJump;
+      player.walk.x === 0 &&
+      player.walk.y === 0 &&
+      player.verticalSpeed === undefined &&
+      !player.wantsJump &&
+      climb === undefined;
     if (resting && tick > 0) return;
     // On the ground its feet are on the top under it (a new or restored player starts at `0`).
-    if (player.verticalSpeed === undefined) player.inset = insetAt(ground, player, topInset);
+    if (player.verticalSpeed === undefined && climb === undefined) player.inset = insetAt(ground, player, topInset);
     const { x, y, elevation, inset, height } = player;
     player.previous = { x, y, elevation, inset, height };
+    if (climb) {
+      // Climbing, it neither walks nor jumps: asking to is forgotten.
+      player.wantsJump = false;
+      stepClimb(player, climb, ground, topInset);
+      continue;
+    }
     stepOnce(player, ground, topInset);
-    stepAir(player);
+    if (player.climb === undefined) stepAir(player);
   }
+}
+
+/**
+ * How far through its climb the player is drawn this frame, `alpha` of a tick after `previous`
+ * (`0` at the foot, `1` standing on the top), or `undefined` when it is not climbing.
+ */
+export function getPlayerClimbProgress(player: PlayerState, alpha: number): number | undefined {
+  const { climb } = player;
+  if (climb === undefined) return undefined;
+  const t = Math.min(1, Math.max(0, Number.isFinite(alpha) ? alpha : 1));
+  return Math.min(1, Math.max(0, (climb.tick - 1 + t) / climb.ticks));
 }
 
 /**

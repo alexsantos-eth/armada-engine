@@ -1,10 +1,18 @@
 import { getGroundPointBelow } from "../camera";
-import { getPlayerColumn, getPlayerFacing, getPlayerRenderPosition, PLAYER_PART } from "../player";
+import {
+  getPlayerClimbProgress,
+  getPlayerColumn,
+  getPlayerFacing,
+  getPlayerRenderPosition,
+  PLAYER_PART,
+} from "../player";
 import { projectBoxesToIsometric, projectGridPoint } from "../projection";
 import { createBlockViews, getBlockDepth, getSheetFrames, showFrame } from "../render";
 import { SCENE_LAYER, type BuiltScene, type SceneModule } from "../scene";
 import type { PlayerAppearance, PlayerRenderPosition } from "../../types";
 import {
+  getClimbPose,
+  getClimbSheetLayout,
   getIdlePose,
   getIdleSheetLayout,
   getWalkPose,
@@ -42,7 +50,9 @@ export const PLAYER_AIR_POSE_HEIGHT = 0.25;
  * ground; in the air (more than {@link PLAYER_AIR_POSE_HEIGHT} above the ground), the sheet's
  * `airPose`; standing still on the ground, with the sheet's `idle` sheet, the pose of its idle cycle
  * (breathing, looking around) for how long it has stood (`getIdlePose()`, by real time), from the
- * standing pose. Every cell is the same window of its canvas, so the sprite keeps its size and its
+ * standing pose; climbing onto a higher top (`player.climb`), turned the way it climbs, with the
+ * sheet's `climb` sheet, the pose for how far through the climb it is (`getPlayerClimbProgress()`,
+ * `getClimbPose()`), or the standing pose without it, while the camera follows its feet up. Every cell is the same window of its canvas, so the sprite keeps its size and its
  * feet; its texture is written only when the cell changes. Without the sheet, or if it cannot be loaded,
  * the still `textureSource` is drawn.
  *
@@ -71,17 +81,25 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
         walk && idleSheet && idleTexture
           ? { sheet: idleSheet, frames: getSheetFrames(idleTexture, getIdleSheetLayout(walk.sheet, idleSheet)) }
           : undefined;
+      // Its climb onto a higher top, from a third sheet laid out like the first.
+      const climbSheet = walk?.sheet.climb;
+      const climbTexture = climbSheet && (await assets.loadSvg(climbSheet.source, { scale }));
+      const climb =
+        walk && climbSheet && climbTexture
+          ? { sheet: climbSheet, frames: getSheetFrames(climbTexture, getClimbSheetLayout(walk.sheet, climbSheet)) }
+          : undefined;
       let facing = PLAYER_START_FACING;
       const texture =
         walk?.frames[facing][0] ?? (player && (await assets.loadSvg(appearance.textureSource, { scale })));
       if (!player || !texture) return { destroy: () => {} };
 
       // Blocks above elevation `0` the camera looks at: the top the player stands on or, while its
-      // feet are below where they left the ground, its feet.
+      // feet are below where they left the ground or it climbs, its feet.
       let level = player.elevation - player.inset;
       const ground = (at: PlayerRenderPosition) => {
         const top = at.elevation - at.inset;
-        level = at.height > 0 ? Math.min(level, top + at.height) : top;
+        if (player.climb) level = top + at.height;
+        else level = at.height > 0 ? Math.min(level, top + at.height) : top;
         return getGroundPointBelow(at, level, projection);
       };
       const [projected] = projectBoxesToIsometric(
@@ -110,9 +128,16 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
        * Turns the sprite and picks its pose for a frame, `elapsedMs` after the last one, that draws it
        * at `at`, after `drawnAt`.
        */
-      const animate = (at: PlayerRenderPosition, elapsedMs: number) => {
+      const animate = (at: PlayerRenderPosition, alpha: number, elapsedMs: number) => {
         if (!walk) return;
-        facing = getPlayerFacing(player.walk) ?? facing;
+        const climbing = getPlayerClimbProgress(player, alpha);
+        facing = getPlayerFacing(player.climb?.direction ?? player.walk) ?? facing;
+        if (climbing !== undefined) {
+          walked = 0;
+          stood = 0;
+          showFrame(view, climb ? climb.frames[facing][getClimbPose(climbing, climb.sheet)] : walk.frames[facing][0]);
+          return;
+        }
         const walking = at.x !== drawnAt.x || at.y !== drawnAt.y;
         const flying = at.height > PLAYER_AIR_POSE_HEIGHT;
         walked = walking ? walked + Math.hypot(at.x - drawnAt.x, at.y - drawnAt.y) : 0;
@@ -178,7 +203,7 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
             at.elevation !== drawnAt.elevation ||
             at.inset !== drawnAt.inset ||
             at.height !== drawnAt.height;
-          animate(at, elapsedMs);
+          animate(at, alpha, elapsedMs);
           if (!moved) return;
           place(at);
           services.get("camera")?.follow(ground(at));

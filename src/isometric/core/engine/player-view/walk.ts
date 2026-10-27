@@ -1,6 +1,6 @@
 import { PLAYER_FACINGS } from "../player";
 import type { SheetCell, SheetLayout } from "../render";
-import type { PlayerIdleSheet, PlayerWalkSheet } from "../../types";
+import type { PlayerClimbSheet, PlayerIdleSheet, PlayerWalkSheet } from "../../types";
 
 /** Facing the player starts with, before it walks: towards the camera. */
 export const PLAYER_START_FACING = PLAYER_FACINGS.indexOf("south");
@@ -19,6 +19,19 @@ export function getWalkSheetLayout(sheet: PlayerWalkSheet): SheetLayout {
 /** How `idle`, the idle sheet of `sheet`, is laid out: like `sheet`, one column per pose of its cycle. */
 export function getIdleSheetLayout(sheet: PlayerWalkSheet, idle: PlayerIdleSheet): SheetLayout {
   return { ...getWalkSheetLayout(sheet), columns: idle.frames };
+}
+
+/** How `climb`, the climb sheet of `sheet`, is laid out: like `sheet`, one column per pose of a climb. */
+export function getClimbSheetLayout(sheet: PlayerWalkSheet, climb: PlayerClimbSheet): SheetLayout {
+  return { ...getWalkSheetLayout(sheet), columns: climb.frames };
+}
+
+/**
+ * Column of a climb sheet showing a player `progress` (`0`–`1`) through its climb
+ * (`getPlayerClimbProgress()`): its poses in order, each for an equal share of the climb.
+ */
+export function getClimbPose(progress: number, climb: PlayerClimbSheet): number {
+  return Math.min(climb.frames - 1, Math.max(0, Math.floor(progress * climb.frames)));
 }
 
 /**

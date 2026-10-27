@@ -67,4 +67,22 @@ describe("PLAYER_APPEARANCE", () => {
     PLAYER_FACINGS.forEach((facing) => expect(standing(svg, facing)).toBe(standing(walk, facing)));
     expect(svg.toLowerCase()).not.toContain("#1e2a10");
   });
+
+  it("climbs with a sheet in the walk sheet's window, a column per pose of a climb", () => {
+    const svg = ASSET_SOURCES[`/public${PLAYER_WALK.climb?.source}`] ?? "";
+    const { cell, gap, climb } = PLAYER_WALK;
+    const frames = climb?.frames ?? 0;
+
+    expect(frames).toBeGreaterThan(1);
+    expect(svg).toContain(`data-facings="${PLAYER_FACINGS.join(" ")}"`);
+    expect(svg).toContain(`data-cell="${cell.x} ${cell.y} ${cell.width} ${cell.height}"`);
+    expect(svg).toContain(`data-gap="${gap}"`);
+    expect(svg).toContain(`data-frames="${frames}"`);
+    const width = frames * (cell.width + gap) - gap;
+    const height = PLAYER_FACINGS.length * (cell.height + gap) - gap;
+    expect(svg).toContain(`viewBox="0 0 ${width} ${height}"`);
+    // Under the 4 096 px a GPU texture may measure at resolution 1 (#105).
+    expect(Math.max(width, height)).toBeLessThan(4096);
+    expect(svg.toLowerCase()).not.toContain("#1e2a10");
+  });
 });

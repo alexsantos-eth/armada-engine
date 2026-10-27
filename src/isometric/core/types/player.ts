@@ -46,6 +46,11 @@ export type PlayerState = {
    * and clears it either way. Input, like `walk`. Not saved.
    */
   wantsJump: boolean;
+  /**
+   * Climbing onto a higher top (`PlayerClimb`), its walk and jumps ignored until it stands there;
+   * `undefined` otherwise. Not saved: a restored player stands where it was.
+   */
+  climb: PlayerClimb | undefined;
   /** Where the player stood one tick earlier, so the render can interpolate. Not saved. */
   previous: PlayerPosition;
   /**
@@ -54,6 +59,27 @@ export type PlayerState = {
    * Not saved.
    */
   walk: GridPoint;
+};
+
+/**
+ * The player climbing onto a top higher than its feet: for {@link PlayerClimb.ticks} ticks its feet
+ * rise from where they were at the foot of it, at `from`, to that top, and then it steps onto it, to `to`.
+ */
+export type PlayerClimb = {
+  /** Ground point it climbs from, at the foot of the higher top. */
+  readonly from: GridPoint;
+  /** Ground point it stands on at the end, on the higher top. */
+  readonly to: GridPoint;
+  /** Unit world direction it climbs in (`to − from`), the way it faces. */
+  readonly direction: GridPoint;
+  /** Height of its feet in the world when it set off (`elevation − inset + height`). */
+  readonly feet: number;
+  /** Blocks its feet rise: from `feet` to the higher top. */
+  readonly rise: number;
+  /** Ticks the climb lasts. */
+  readonly ticks: number;
+  /** Ticks of it done, from `0` to `ticks`. */
+  tick: number;
 };
 
 /** Screen directions held by the player (keyboard): up is north (`+x +y`), right is east (`+x −y`). */
@@ -102,6 +128,21 @@ export type PlayerWalkSheet = {
   readonly airPose?: number;
   /** Breathing and looking around while it stands still. Without it, it stands still on column `0`. */
   readonly idle?: PlayerIdleSheet;
+  /** Climbing onto a higher top. Without it, it climbs in its standing pose. */
+  readonly climb?: PlayerClimbSheet;
+};
+
+/**
+ * The player climbing onto a higher top, drawn from another SVG sheet laid out like its walk sheet
+ * (the same canvas, cell and gap; one row per facing): one column per pose of a climb, in order,
+ * from reaching up to standing on the top. Its feet stay where the walk sheet's are: the engine
+ * raises them.
+ */
+export type PlayerClimbSheet = {
+  /** SVG of the sheet (e.g. `/assets/player/climb.svg`). */
+  readonly source: string;
+  /** Poses of a climb. */
+  readonly frames: number;
 };
 
 /**

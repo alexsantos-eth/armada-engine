@@ -25,7 +25,7 @@ import { createTerrainView } from "../terrain-view";
 import type { World } from "../world";
 import type { SceneCamera } from "../../types";
 import { createPlayerView, PLAYER_AIR_POSE_HEIGHT } from "./player-view";
-import { getIdlePose, getWalkPose, getWalkSheetCell } from "./walk";
+import { getClimbPose, getIdlePose, getWalkPose, getWalkSheetCell } from "./walk";
 
 const PLAYER = { textureSource: "/assets/player/block.svg", height: 1 } as const;
 const SHEET = {
@@ -395,6 +395,82 @@ describe("createPlayerView", () => {
     Object.assign(player, { height: 0.5 });
     ticker.frame(150);
     expect(cellOf(view)).toMatchObject({ source: SHEET.source, column: SHEET.airPose });
+    scene.destroy();
+  });
+
+  it("climbs through the poses of its climb sheet, turned the way it climbs, and then walks on", async () => {
+    const climbSheet = { source: "/assets/player/climb.svg", frames: 4 };
+    const world = fieldWithPlayer();
+    const { ticker, root, scene } = await mountScene(world, [
+      createPlayerView({ ...PLAYER, walk: { ...SHEET, climb: climbSheet } }),
+    ]);
+    const [view] = root.children;
+    const player = world.parts.get(PLAYER_PART);
+    const climb = { from: { x: 1, y: 1 }, to: { x: 1, y: 1.6 }, direction: { x: 0, y: 1 }, feet: 1, rise: 1 };
+
+    // Its walk says otherwise: it faces the way it climbs.
+    player.walk = { x: 1, y: 0 };
+    player.climb = { ...climb, ticks: 4, tick: 2 };
+    ticker.frame();
+    expect(cellOf(view)).toMatchObject({
+      source: climbSheet.source,
+      row: facing("north-west"),
+      column: getClimbPose(2 / 4, climbSheet),
+    });
+
+    player.climb = undefined;
+    ticker.frame();
+    expect(cellOf(view)).toMatchObject({ row: facing("north-east") });
+    expect(cellOf(view).source).not.toBe(climbSheet.source);
+    scene.destroy();
+  });
+
+  it("climbs in its standing pose without a climb sheet, or when it cannot be loaded", async () => {
+    const climbSheet = { source: "/assets/player/climb.svg", frames: 4 };
+    vi.mocked(Assets.load).mockImplementation((asset) =>
+      (asset as unknown as { src: string }).src === climbSheet.source
+        ? Promise.resolve(undefined as never)
+        : loadTexture(asset as never),
+    );
+    for (const walk of [SHEET, { ...SHEET, climb: climbSheet }]) {
+      resetHarness();
+      const world = fieldWithPlayer();
+      const { ticker, root, scene } = await mountScene(world, [createPlayerView({ ...PLAYER, walk })]);
+      const player = world.parts.get(PLAYER_PART);
+      Object.assign(player, { previous: { x: 1, y: 1, elevation: 1 }, x: 1, y: 1.2, height: 0.5 });
+      player.climb = {
+        from: { x: 1, y: 1 },
+        to: { x: 1, y: 1.6 },
+        direction: { x: 0, y: 1 },
+        feet: 1,
+        rise: 1,
+        ticks: 4,
+        tick: 3,
+      };
+      ticker.frame();
+      expect(cellOf(root.children[0])).toMatchObject({ source: SHEET.source, row: facing("north-west"), column: 0 });
+      scene.destroy();
+    }
+  });
+
+  it("follows the feet up with the camera while it climbs", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, camera, scene } = await sceneOf(world);
+    const player = world.parts.get(PLAYER_PART);
+    const position = { x: 1, y: 1, elevation: 1, inset: 0, height: 0.6 };
+    Object.assign(player, position, { previous: position });
+    player.climb = {
+      from: { x: 1, y: 1 },
+      to: { x: 1, y: 1.6 },
+      direction: { x: 0, y: 1 },
+      feet: 1,
+      rise: 1,
+      ticks: 12,
+      tick: 6,
+    };
+    for (let frame = 0; frame < 50; frame += 1) ticker.frame(50);
+
+    expect(camera.state).toMatchObject(getGroundPointBelow({ x: 1, y: 1 }, 1.6, projection));
     scene.destroy();
   });
 
