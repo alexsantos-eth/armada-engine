@@ -11,6 +11,7 @@ coverage
 node_modules
 dist
 dist-ssr
+graphify-out
 *.local
 
 # Editor directories and files
