@@ -548,6 +548,8 @@ Como la tirada es por grupo, una definición agrupada en tríos debe usar aproxi
 
 El decorado pequeño se dibuja como variante de la cima del pasto, no como entidad: el ruido existente forma parches de flores, piedras, setas, hojas y arbustos bajos; el terreno conserva la misma colisión, oclusión y render por bloque.
 
+Las rocas grandes sí son entidades (`large_rock`, `large_rock_2`, `large_rock_3`): cada una usa una silueta voxel clay diferente de `public/assets/rock/`, aparece con baja probabilidad y bloquea el centro de su huella con `collision: 0.7`. Sus sombras y profundidad siguen el flujo normal de `entity-view` y `shadows`; sus SVG salen de `artifacts/large_rocks.py`.
+
 ## Generación del terreno
 
 `generatePerlinTerrain(options)` produce una lista ordenada por `x` y después por `y`:

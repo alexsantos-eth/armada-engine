@@ -64,6 +64,24 @@ describe("ENTITY_CONFIG", () => {
     );
   });
 
+  it("adds three distinct large rock entities with blocking footprints", () => {
+    const rocks = ENTITY_CONFIG.filter(({ id }) => ["large_rock", "large_rock_2", "large_rock_3"].includes(id));
+    const ground = Array.from({ length: 20 }, (_, x) =>
+      Array.from({ length: 20 }, (_, y) => new Box(x, y, { elevation: 0, type: "grass" as const })),
+    ).flat();
+
+    expect(rocks.map(({ id }) => id)).toEqual(["large_rock", "large_rock_2", "large_rock_3"]);
+    expect(new Set(rocks.map(({ textureSource }) => textureSource)).size).toBe(3);
+    rocks.forEach((rock) => {
+      expect(readSvg(rock.textureSource)).toContain('id="figure"');
+      expect(rock.height).toBe(1);
+      expect(rock.collision).toBeGreaterThan(0.5);
+      expect(rock.spawnChance).toBeGreaterThan(0);
+      expect(rock.spawnChance).toBeLessThan(0.01);
+      expect(createEntitiesFromConfig(ground, [rock], () => 0).length).toBeGreaterThan(0);
+    });
+  });
+
   it("places houses and civic services at fixed lots in each neighborhood", () => {
     const ids = ["house", "house_2x1", "house_balcony", "hospital", "restaurant", "market", "townhall"];
     const buildings = ENTITY_CONFIG.filter(({ id }) => ids.includes(id));
