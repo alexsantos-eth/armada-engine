@@ -21,6 +21,7 @@ El motor sostiene un **RPG isométrico muy completo, procedural y de supervivenc
 Al terminar cualquier trabajo en el core, invoca la skill **`armada-core-review`** (ver Flujo de trabajo).
 
 Antes de tocar código, lee en la raíz del repo:
+
 - `ARCHITECTURE.md` — flujo runtime completo.
 - `CONTRIBUTING.md` — contribución y validación.
 - `CORE_REVIEW.md` (si existe) — deudas conocidas y planes pendientes del core.
@@ -204,6 +205,7 @@ src/isometric/page.tsx   # declarativa: maqueta + useEffect(() => mountGame(...)
 ## Regla de documentación
 
 Todo cambio que modifique el funcionamiento del core, sus contratos, el renderizado o el flujo de assets debe actualizar en el mismo cambio los Markdown afectados:
+
 - `ARCHITECTURE.md` para el runtime.
 - `CONTRIBUTING.md` para el flujo.
 

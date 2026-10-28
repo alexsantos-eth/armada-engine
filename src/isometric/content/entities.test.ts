@@ -58,6 +58,12 @@ describe("ENTITY_CONFIG", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  it("keeps small ground clutter as grass variants instead of separate entities", () => {
+    expect(ENTITY_CONFIG.some(({ id }) => ["wildflowers", "pebbles", "mushrooms", "fallen_leaves"].includes(id))).toBe(
+      false,
+    );
+  });
+
   it("places houses and civic services at fixed lots in each neighborhood", () => {
     const ids = ["house", "house_2x1", "house_balcony", "hospital", "restaurant", "market", "townhall"];
     const buildings = ENTITY_CONFIG.filter(({ id }) => ids.includes(id));

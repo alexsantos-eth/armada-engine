@@ -3,6 +3,7 @@ import { projectBoxesToIsometric } from "../projection";
 import { createBlockViews, createSpritePool } from "../render";
 import { SCENE_LAYER, type SceneModule, type SceneView } from "../scene";
 import { type Box, createVisibleBlocks, DEFAULT_MAX_ELEVATION, DEFAULT_MIN_ELEVATION } from "../terrain";
+import { createNoiseField, type NoiseField } from "../terrain";
 import type { TerrainMaterial, TerrainTint } from "../../types";
 import { createVariantPicker, type VariantPicker, validateTerrainVariants } from "./variants";
 
@@ -25,6 +26,15 @@ export function getTerrainTint(tint: TerrainTint, elevation: number, maxElevatio
   if (tint.kind === "depth") return darken(0xffffff, Math.max(1, Math.abs(elevation)), tint.step);
   if (maxElevation <= 0) return undefined;
   return darken(tint.topTint, Math.max(0, maxElevation - elevation), tint.step);
+}
+
+/** Multiplies an existing elevation tint by a subtle material color. */
+export function applyNoiseTint(base: number | undefined, color: number): number {
+  const tint = base ?? 0xffffff;
+  const red = Math.round((((tint >> 16) & 0xff) * ((color >> 16) & 0xff)) / 255);
+  const green = Math.round((((tint >> 8) & 0xff) * ((color >> 8) & 0xff)) / 255);
+  const blue = Math.round(((tint & 0xff) * (color & 0xff)) / 255);
+  return (red << 16) | (green << 8) | blue;
 }
 
 /**
@@ -72,12 +82,29 @@ export function createTerrainView(): SceneModule {
         TerrainMaterial,
         { readonly pick: VariantPicker; readonly looks: (Texture | undefined)[] }
       >();
+      const tintFields = new Map<TerrainMaterial, { readonly field: NoiseField; readonly colors: readonly number[] }>();
       materials.forEach((material, index) => {
         const list = terrain[material].variants ?? [];
-        if (list.length === 0) return;
-        const pick = createVariantPicker(list, world.seed, `terrain-variants:${material}`);
-        variants.set(material, { pick, looks: loadedVariants[index] });
+        if (list.length > 0) {
+          const pick = createVariantPicker(list, world.seed, `terrain-variants:${material}`);
+          variants.set(material, { pick, looks: loadedVariants[index] });
+        }
+        const noiseTints = terrain[material].noiseTints;
+        if (noiseTints && noiseTints.colors.length > 0) {
+          tintFields.set(material, {
+            field: createNoiseField(world.seed, `terrain-tints:${material}`, { scale: noiseTints.scale }),
+            colors: noiseTints.colors,
+          });
+        }
       });
+      const tintOf = (box: Box): number | undefined => {
+        const base = getTerrainTint(terrain[box.type].tint, box.elevation, DEFAULT_MAX_ELEVATION);
+        const variation = tintFields.get(box.type);
+        if (!variation) return base;
+        const value = variation.field(box.x, box.y);
+        const index = Math.min(variation.colors.length - 1, Math.floor(((value + 1) / 2) * variation.colors.length));
+        return applyNoiseTint(base, variation.colors[index]);
+      };
       /** The texture of `block` when it is the top of its column and its material has variants. */
       const variantOf = ({ type, x, y, elevation }: Box): Texture | undefined => {
         const material = variants.get(type);
@@ -118,7 +145,7 @@ export function createTerrainView(): SceneModule {
                 (textures.get(box.box.type) as Texture),
               box,
               metrics,
-              tint: getTerrainTint(terrain[box.box.type].tint, box.box.elevation, DEFAULT_MAX_ELEVATION),
+              tint: tintOf(box.box),
               sprites,
             }).map((view) => ({ ...view, layer: SCENE_LAYER.terrain })),
           );

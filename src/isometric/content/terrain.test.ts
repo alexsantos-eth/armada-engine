@@ -25,6 +25,19 @@ describe("TERRAIN_APPEARANCE", () => {
     expect(variants.reduce((sum, { chance }) => sum + chance, 0)).toBeLessThan(0.5);
   });
 
+  it("keeps wildflowers, pebbles and mushrooms as clustered grass-top variations", () => {
+    const sources = (TERRAIN_APPEARANCE.grass.variants ?? []).map(({ textureSource }) => textureSource);
+    expect(sources).toEqual(
+      expect.arrayContaining([
+        "/assets/grass/block_wildflowers_red.svg",
+        "/assets/grass/block_wildflowers_white.svg",
+        "/assets/grass/block_pebbles.svg",
+        "/assets/grass/block_mushrooms.svg",
+      ]),
+    );
+    expect(sources.some((source) => source.startsWith("/assets/clutter/"))).toBe(false);
+  });
+
   it("sinks only sand, half a block, and darkens only water with depth", () => {
     expect(TERRAIN_APPEARANCE.sand.topInset).toBe(0.5);
     expect(["grass", "ground", "water"].map((material) => TERRAIN_APPEARANCE[material as "grass"].topInset)).toEqual([

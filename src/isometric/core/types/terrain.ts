@@ -98,6 +98,8 @@ export type TerrainMaterialAppearance = {
   readonly textureSource: string;
   /** Tint by elevation. */
   readonly tint: TerrainTint;
+  /** Subtle per-column tint palette selected by seeded noise; each color multiplies the height tint. */
+  readonly noiseTints?: { readonly scale: number; readonly colors: readonly number[] };
   /**
    * Blocks the top of the block sits below the top of its cell (sand: `0.5`). Things standing on
    * it and the shadows on it sink by as much, and a block with an inset never hides the blocks

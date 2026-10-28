@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { OcclusionTerrain } from "../../types";
-import { AO_ENTITY_ALPHA, AO_ENTITY_RADIUS, AO_PIXELS_PER_TILE, AO_WALL_ALPHA, AO_WALL_RADIUS, buildOcclusionMap, getOcclusion } from "./occlusion";
+import {
+  AO_ENTITY_ALPHA,
+  AO_ENTITY_RADIUS,
+  AO_PIXELS_PER_TILE,
+  AO_WALL_ALPHA,
+  AO_WALL_RADIUS,
+  buildOcclusionMap,
+  getOcclusion,
+} from "./occlusion";
 
 type Column = { x: number; y: number; height: number };
 

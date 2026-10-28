@@ -19,7 +19,7 @@ import {
 import type { Texture } from "pixi.js";
 import type { SceneModule } from "../scene";
 import { DEFAULT_MAX_ELEVATION } from "../terrain";
-import { getTerrainTint, createTerrainView } from "./terrain-view";
+import { applyNoiseTint, getTerrainTint, createTerrainView } from "./terrain-view";
 import { createVariantPicker } from "./variants";
 
 const renderTerrain = (world: Parameters<typeof mountScene>[0]) => mountScene(world, [createTerrainView()]);
@@ -102,6 +102,26 @@ describe("createTerrainView", () => {
       getTerrainTint(grass, 0, DEFAULT_MAX_ELEVATION),
     );
     scene.destroy();
+  });
+
+  it("varies land tint by seeded noise while keeping chunks deterministic", async () => {
+    const world = worldFrom(Array.from({ length: 24 }, (_, index) => ({ x: index, y: 0, elevation: 0 })));
+    const terrain = {
+      ...TEST_TERRAIN,
+      grass: {
+        ...TEST_TERRAIN.grass,
+        noiseTints: { scale: 8, colors: [0xffffff, 0xfff3d2, 0xd8efaa, 0xe1e8a8] },
+      },
+    };
+    const { scene } = await mountScene(world, [createTerrainView()], { terrain });
+    const first = renderCalls.map(({ tint }) => tint);
+    scene.destroy();
+    renderCalls.splice(0);
+
+    const { scene: secondScene } = await mountScene(world, [createTerrainView()], { terrain });
+    expect(new Set(renderCalls.map(({ tint }) => tint)).size).toBeGreaterThan(1);
+    expect(renderCalls.map(({ tint }) => tint)).toEqual(first);
+    secondScene.destroy();
   });
 
   it("renders sand only on the shore of a landmass, with its own tint", async () => {
@@ -268,6 +288,10 @@ describe("createTerrainView", () => {
 });
 
 describe("getTerrainTint", () => {
+  it("uses the noise color as a base when no elevation tint is defined", () => {
+    expect(applyNoiseTint(undefined, 0xe5e9a8)).toBe(0xe5e9a8);
+  });
+
   it("darkens underwater blocks with depth from white, at least one level", () => {
     const tint = { kind: "depth", step: 0.15 } as const;
 
