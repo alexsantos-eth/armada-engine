@@ -5,12 +5,6 @@
     "ast_hash": "79d778c20c337612cf957aceb8146a94",
     "semantic_hash": ""
   },
-  ".codex/hooks.json": {
-    "mtime": 1793145322.6063957,
-    "seen": 1793146064.8456519,
-    "ast_hash": "79d778c20c337612cf957aceb8146a94",
-    "semantic_hash": ""
-  },
   ".prettierrc.json": {
     "mtime": 1792640486.943141,
     "seen": 1793146064.845654,
@@ -180,9 +174,9 @@
     "semantic_hash": ""
   },
   "src/isometric/content/player.test.ts": {
-    "mtime": 1793146053.6711397,
-    "seen": 1793146064.845675,
-    "ast_hash": "fc790ec2fc48dc9db93d0fc30a05b56e",
+    "mtime": 1793146067.6217725,
+    "seen": 1793146189.932632,
+    "ast_hash": "323cd0601f15524be0d13478bc010b98",
     "semantic_hash": ""
   },
   "src/isometric/content/player.ts": {
