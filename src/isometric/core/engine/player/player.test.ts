@@ -160,6 +160,7 @@ describe("createPlayer", () => {
       x: 1.2,
       y: 0,
       elevation: 3,
+      motion: { type: "idle" },
       inset: 0,
       height: 0,
       verticalSpeed: undefined,
@@ -338,6 +339,15 @@ describe("getJumpHeight", () => {
 });
 
 describe("jumping", () => {
+  it("transitions through jumping and falling motion states and settles to idle", () => {
+    const player = createPlayer(groundFrom(["0"]), { x: 0, y: 0 });
+    jumpPlayer(player);
+    stepPlayer(player, groundFrom(["0"]));
+    expect(player.motion).toEqual({ type: "jumping" });
+    stepPlayer(player, groundFrom(["0"]), PLAYER_JUMP_TICKS);
+    expect(player.motion).toEqual({ type: "idle" });
+  });
+
   const field = groundFrom(["00000", "00000", "00000"]);
 
   /** Steps `player` until it lands, returning the height of its feet after each tick. */
@@ -601,6 +611,7 @@ describe("stepPlayer", () => {
 
 describe("getPlayerRenderPosition", () => {
   const player: PlayerState = {
+    motion: { type: "jumping" },
     x: 2,
     y: 4,
     elevation: 1,
@@ -677,6 +688,7 @@ describe("climbing", () => {
     expect(path[PLAYER_CLIMB_TICKS - 1]).toEqual({ x: climb?.to.x, feet: 1 });
     expect(player).toMatchObject({ elevation: 1, inset: 0, height: 0, verticalSpeed: undefined });
     expect(player.x).toBeGreaterThan(climb?.to.x ?? 0);
+    expect(player.motion).toEqual({ type: "walking" });
   });
 
   it("ignores its walk and forgets jumps while it climbs, even standing still", () => {
@@ -691,7 +703,9 @@ describe("climbing", () => {
     expect(player.verticalSpeed).toBeUndefined();
     player.walk = { x: 0, y: 0 };
     stepPlayer(player, ground, PLAYER_CLIMB_TICKS);
+    stepPlayer(player, ground);
     expect(player).toMatchObject({ elevation: 1, height: 0 });
+    expect(player.motion).toEqual({ type: "idle" });
   });
 
   it("climbs from sand's sunken top onto a full one in half the time, and steps up a little rise", () => {

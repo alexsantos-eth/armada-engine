@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
  * (`WorldChunks`) generated from the seed and loaded around the camera and the player.
  * parts (the `WorldParts` container) → world; time and player own their world parts (`CLOCK_PART`,
  * `PLAYER_PART`), so the world never names them: the app registers them (`generateWorld({ parts })`).
+ * player uses XState's pure transition API for deterministic locomotion ticks.
  * The simulation runs the game systems the app hands it (`WorldSystem`), e.g. `createPlayerSystem()`.
  * constants (view metrics) → lighting (shadow geometry)
  * projection, grid → camera (view maths on the ground plane, and the chunks in view)
@@ -37,7 +38,7 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   lighting: ["constants"],
   terrain: ["grid", "random"],
   entities: ["grid", "random", "terrain"],
-  player: ["grid", "time"],
+  player: ["grid", "time", "xstate"],
   world: ["entities", "grid", "parts", "random", "terrain"],
   render: [],
   simulation: ["events", "time", "world"],

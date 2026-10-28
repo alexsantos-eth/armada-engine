@@ -52,10 +52,12 @@ describe("createPlayerPart", () => {
       x: 0.8,
       y: 0,
       elevation: 2,
+      motion: { type: "idle" },
       inset: 0,
       height: 0,
       verticalSpeed: undefined,
       wantsJump: false,
+      climb: undefined,
       previous: { x: 0.8, y: 0, elevation: 2, inset: 0, height: 0 },
       walk: { x: 0, y: 0 },
     });

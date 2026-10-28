@@ -24,6 +24,8 @@ export type PlayerRenderPosition = PlayerPosition & { readonly inset: number; re
  * (`stepPlayer()` inside `stepWorld()`); the scene only draws it.
  */
 export type PlayerState = {
+  /** Current locomotion state, advanced only by the player simulation system. */
+  motion: PlayerMotion;
   /** Ground point in world columns, fractional; column `(x, y)` is centred on whole numbers. */
   x: number;
   y: number;
@@ -60,6 +62,17 @@ export type PlayerState = {
    */
   walk: GridPoint;
 };
+
+/** Discrete locomotion states used by the player simulation and its view. */
+export type PlayerMotion =
+  | { readonly type: "idle" }
+  | { readonly type: "walking" }
+  | { readonly type: "jumping" }
+  | { readonly type: "falling" }
+  | { readonly type: "climbing" };
+
+/** State keys recognized by the player's XState motion machine. */
+export type PlayerMotionType = PlayerMotion["type"];
 
 /**
  * The player climbing onto a top higher than its feet: for {@link PlayerClimb.ticks} ticks its feet

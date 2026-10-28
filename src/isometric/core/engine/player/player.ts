@@ -16,6 +16,7 @@ import type {
 } from "../../types";
 import type { ReadonlyCellMap } from "../grid";
 import { TICKS_PER_SECOND } from "../time";
+import { transitionPlayerMotion, type PlayerMotionEvent } from "./motion";
 
 /** Walking speed of the player, in columns per second of simulation (`TICKS_PER_SECOND` ticks). */
 export const PLAYER_SPEED = 3;
@@ -248,6 +249,7 @@ export function createPlayer(ground: PlayerGround, at: GridPoint): PlayerState {
   const position = { x: at.x, y: at.y, elevation: elevationAt(ground, at) };
   return {
     ...position,
+    motion: { type: "idle" },
     inset: 0,
     height: 0,
     verticalSpeed: undefined,
@@ -304,6 +306,23 @@ export function setPlayerWalk(player: PlayerState, directions: ScreenDirections)
 /** Asks the player to jump (the input): it takes off on the next tick if it is on the ground. */
 export function jumpPlayer(player: PlayerState): void {
   player.wantsJump = true;
+}
+
+/** Converts the physical result of this tick to one event for the XState motion machine. */
+function getMotionEvent(player: PlayerState): PlayerMotionEvent {
+  const moved = player.x !== player.previous.x || player.y !== player.previous.y;
+  if (player.climb) return { type: player.motion.type === "climbing" ? "CLIMB_TICK" : "CLIMB" };
+  if (player.motion.type === "climbing") return { type: moved ? "CLIMB_DONE_WALKING" : "CLIMB_DONE_IDLE" };
+  if (player.verticalSpeed !== undefined) return { type: player.verticalSpeed > 0 ? "JUMP" : "FALL" };
+  if (player.motion.type === "jumping" || player.motion.type === "falling")
+    return { type: moved ? "LAND_WALKING" : "LAND_IDLE" };
+  return { type: moved ? "WALK" : "STOP" };
+}
+
+/** Advances locomotion through the XState machine and stores only its serializable state key. */
+function updateMotion(player: PlayerState): void {
+  const type = transitionPlayerMotion(player.motion.type, getMotionEvent(player));
+  player.motion = { type };
 }
 
 /**
@@ -449,10 +468,12 @@ export function stepPlayer(player: PlayerState, ground: PlayerGround, ticks = 1,
       // Climbing, it neither walks nor jumps: asking to is forgotten.
       player.wantsJump = false;
       stepClimb(player, climb, ground, topInset);
+      updateMotion(player);
       continue;
     }
     stepOnce(player, ground, topInset);
     if (player.climb === undefined) stepAir(player);
+    updateMotion(player);
   }
 }
 

@@ -22,12 +22,6 @@ import {
 } from "./walk";
 
 /**
- * Blocks above the ground the player's feet must be to show the air pose: a short drop (onto sand)
- * keeps it walking.
- */
-export const PLAYER_AIR_POSE_HEIGHT = 0.25;
-
-/**
  * Scene module of the player: draws the world's player (`PLAYER_PART`) with `appearance` (game
  * content) as one sprite, at `appearance.scale` of its tile about its feet, never culled (the
  * camera keeps it on screen). Every frame it places the sprite between the player's last two
@@ -47,7 +41,7 @@ export const PLAYER_AIR_POSE_HEIGHT = 0.25;
  * nearest the way the player walks (`getPlayerFacing()`; standing, the last one, at first
  * `PLAYER_START_FACING`), the standing pose on a frame it did not move and, while it moves, the walk
  * pose for how far it has gone since it set off (`getWalkPose()`), so its feet keep pace with the
- * ground; in the air (more than {@link PLAYER_AIR_POSE_HEIGHT} above the ground), the sheet's
+ * ground; in the jumping or falling motion states, the sheet's
  * `airPose`; standing still on the ground, with the sheet's `idle` sheet, the pose of its idle cycle
  * (breathing, looking around) for how long it has stood (`getIdlePose()`, by real time), from the
  * standing pose; climbing onto a higher top (`player.climb`), turned the way it climbs, with the
@@ -98,7 +92,7 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
       let level = player.elevation - player.inset;
       const ground = (at: PlayerRenderPosition) => {
         const top = at.elevation - at.inset;
-        if (player.climb) level = top + at.height;
+        if (player.motion.type === "climbing") level = top + at.height;
         else level = at.height > 0 ? Math.min(level, top + at.height) : top;
         return getGroundPointBelow(at, level, projection);
       };
@@ -138,8 +132,8 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
           showFrame(view, climb ? climb.frames[facing][getClimbPose(climbing, climb.sheet)] : walk.frames[facing][0]);
           return;
         }
-        const walking = at.x !== drawnAt.x || at.y !== drawnAt.y;
-        const flying = at.height > PLAYER_AIR_POSE_HEIGHT;
+        const walking = player.motion.type === "walking";
+        const flying = player.motion.type === "jumping" || player.motion.type === "falling";
         walked = walking ? walked + Math.hypot(at.x - drawnAt.x, at.y - drawnAt.y) : 0;
         stood = walking || flying ? 0 : stood + elapsedMs;
         if (idle && !walking && !flying) {

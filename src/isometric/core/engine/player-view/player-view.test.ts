@@ -24,7 +24,7 @@ import {
 import { createTerrainView } from "../terrain-view";
 import type { World } from "../world";
 import type { SceneCamera } from "../../types";
-import { createPlayerView, PLAYER_AIR_POSE_HEIGHT } from "./player-view";
+import { createPlayerView } from "./player-view";
 import { getClimbPose, getIdlePose, getWalkPose, getWalkSheetCell } from "./walk";
 
 const PLAYER = { textureSource: "/assets/player/block.svg", height: 1 } as const;
@@ -355,6 +355,7 @@ describe("createPlayerView", () => {
 
     // Up on screen: north.
     player.walk = { x: Math.SQRT1_2, y: Math.SQRT1_2 };
+    player.motion = { type: "walking" };
     step(1.3, 1.3);
     const first = Math.hypot(0.3, 0.3);
     expect(cellOf(view)).toMatchObject({ row: facing("north"), column: getWalkPose(first, SHEET) });
@@ -364,6 +365,7 @@ describe("createPlayerView", () => {
 
     // Right on screen: east, still walking.
     player.walk = { x: Math.SQRT1_2, y: -Math.SQRT1_2 };
+    player.motion = { type: "walking" };
     step(1.9, 1.3);
     expect(cellOf(view)).toMatchObject({ row: facing("east"), column: getWalkPose(3 * first, SHEET) });
     scene.destroy();
@@ -385,14 +387,17 @@ describe("createPlayerView", () => {
 
     // Walking: the walk sheet; stopping again starts a new breath.
     Object.assign(player, { previous: { x: 1, y: 1, elevation: 1 }, x: 1.3 });
+    player.motion = { type: "walking" };
     ticker.frame(150);
     expect(cellOf(view)).toMatchObject({ source: SHEET.source });
     Object.assign(player, { previous: { x: 1.3, y: 1, elevation: 1 } });
+    player.motion = { type: "idle" };
     ticker.frame(50);
     expect(cellOf(view)).toMatchObject({ source: idle.source, column: 0 });
 
     // In the air: the air pose.
     Object.assign(player, { height: 0.5 });
+    player.motion = { type: "jumping" };
     ticker.frame(150);
     expect(cellOf(view)).toMatchObject({ source: SHEET.source, column: SHEET.airPose });
     scene.destroy();
@@ -411,6 +416,7 @@ describe("createPlayerView", () => {
     // Its walk says otherwise: it faces the way it climbs.
     player.walk = { x: 1, y: 0 };
     player.climb = { ...climb, ticks: 4, tick: 2 };
+    player.motion = { type: "climbing" };
     ticker.frame();
     expect(cellOf(view)).toMatchObject({
       source: climbSheet.source,
@@ -419,6 +425,7 @@ describe("createPlayerView", () => {
     });
 
     player.climb = undefined;
+    player.motion = { type: "walking" };
     ticker.frame();
     expect(cellOf(view)).toMatchObject({ row: facing("north-east") });
     expect(cellOf(view).source).not.toBe(climbSheet.source);
@@ -447,6 +454,7 @@ describe("createPlayerView", () => {
         ticks: 4,
         tick: 3,
       };
+      player.motion = { type: "climbing" };
       ticker.frame();
       expect(cellOf(root.children[0])).toMatchObject({ source: SHEET.source, row: facing("north-west"), column: 0 });
       scene.destroy();
@@ -468,6 +476,7 @@ describe("createPlayerView", () => {
       ticks: 12,
       tick: 6,
     };
+    player.motion = { type: "climbing" };
     for (let frame = 0; frame < 50; frame += 1) ticker.frame(50);
 
     expect(camera.state).toMatchObject(getGroundPointBelow({ x: 1, y: 1 }, 1.6, projection));
@@ -498,18 +507,21 @@ describe("createPlayerView", () => {
 
     player.walk = { x: -1, y: 0 };
     Object.assign(player, { previous: { x: 1, y: 1, elevation: 1 }, x: 0.4, y: 1 });
+    player.motion = { type: "walking" };
     ticker.frame();
     expect(cellOf(view)).toMatchObject({ row: facing("south-west") });
     expect(cellOf(view).column).toBeGreaterThan(1);
 
     // Let go: the last tick did not move it.
     player.walk = { x: 0, y: 0 };
+    player.motion = { type: "idle" };
     player.previous = { x: 0.4, y: 1, elevation: 1 };
     ticker.frame();
     expect(cellOf(view)).toMatchObject({ row: facing("south-west"), column: 0 });
 
     player.walk = { x: -1, y: 0 };
     Object.assign(player, { x: 0.35 });
+    player.motion = { type: "walking" };
     ticker.frame();
     expect(cellOf(view)).toMatchObject({ row: facing("south-west"), column: 1 });
     scene.destroy();
@@ -522,6 +534,7 @@ describe("createPlayerView", () => {
     const player = world.parts.get(PLAYER_PART);
 
     Object.assign(player, { height: 0.5, previous: { x: 1, y: 1, elevation: 1, height: 0.5 } });
+    player.motion = { type: "jumping" };
     ticker.frame();
 
     const standing = spriteAt({ x: 1, y: 1, elevation: 1 });
@@ -553,12 +566,13 @@ describe("createPlayerView", () => {
     scene.destroy();
   });
 
-  it("shows the sheet's air pose in the air, standing when it has none or barely left the ground", async () => {
+  it("shows the sheet's air pose whenever the motion state is airborne", async () => {
     const jumpAt = async (walk: typeof SHEET | Omit<typeof SHEET, "airPose">, height = 0.3) => {
       resetHarness();
       const world = fieldWithPlayer();
       const { ticker, root, scene } = await mountScene(world, [createPlayerView({ ...PLAYER, walk })]);
       Object.assign(world.parts.get(PLAYER_PART), { height });
+      world.parts.get(PLAYER_PART).motion = { type: "jumping" };
       ticker.frame();
       const cell = cellOf(root.children[0]);
       scene.destroy();
@@ -568,7 +582,7 @@ describe("createPlayerView", () => {
 
     expect(await jumpAt(SHEET)).toMatchObject({ column: 3 });
     expect(await jumpAt(withoutAirPose)).toMatchObject({ column: 0 });
-    expect(await jumpAt(SHEET, PLAYER_AIR_POSE_HEIGHT)).toMatchObject({ column: 0 });
+    expect(await jumpAt(SHEET, 0.25)).toMatchObject({ column: 3 });
   });
 
   it("draws its still SVG when the walk sheet cannot be used", async () => {

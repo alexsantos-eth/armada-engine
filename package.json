@@ -16,7 +16,8 @@
   "dependencies": {
     "pixi.js": "^8.22.0",
     "preact": "^10.27.2",
-    "simplex-noise": "^4.0.3"
+    "simplex-noise": "^4.0.3",
+    "xstate": "^5.33.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
