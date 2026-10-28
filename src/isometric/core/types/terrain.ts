@@ -90,6 +90,8 @@ export type TerrainVariant = {
   readonly textureSource: string;
   /** Share of the columns that show it, in `[0, 1]`; the shares of a material add up to at most `1`. */
   readonly chance: number;
+  /** Optional source-pixel rectangle for a frame in a shared SVG spritesheet. */
+  readonly frame?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
 };
 
 /** How the blocks of one terrain material are drawn (game content). */

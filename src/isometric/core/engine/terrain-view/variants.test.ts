@@ -18,10 +18,12 @@ describe("validateTerrainVariants", () => {
         { textureSource: "flowers.png", chance: 0.5 },
         { textureSource: "/assets/a.svg", chance: -0.1 },
         { textureSource: "/assets/b.svg", chance: 0.8 },
+        { textureSource: "/assets/sheet.svg", chance: 0, frame: { x: -1, y: 0, width: 0, height: 10 } },
       ]),
     ).toEqual([
       'variants[0].textureSource must be an absolute SVG path (got "flowers.png")',
       "variants[1].chance must be in [0, 1] (got -0.1)",
+      "variants[3].frame must have non-negative coordinates and positive dimensions",
       "the chances of the variants add up to more than 1 (got 1.2000000000000002)",
     ]);
   });

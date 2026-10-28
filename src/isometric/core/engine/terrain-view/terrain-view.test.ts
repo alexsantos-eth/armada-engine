@@ -265,6 +265,33 @@ describe("createTerrainView", () => {
       vi.mocked(Assets.load).mockImplementation(loadTexture as never);
     });
 
+    it("crops shared variant frames from their one spritesheet source", async () => {
+      const sheetVariants = [
+        { textureSource: "/assets/grass/sheet.svg", chance: 0.3, frame: { x: 0, y: 0, width: 100, height: 80 } },
+        { textureSource: "/assets/grass/sheet.svg", chance: 0.3, frame: { x: 100, y: 0, width: 100, height: 80 } },
+      ];
+      const sheetTerrain = { ...TEST_TERRAIN, grass: { ...TEST_TERRAIN.grass, variants: sheetVariants } };
+      vi.mocked(Assets.load).mockImplementation(((asset: string | { src: string }) => {
+        const source = typeof asset === "string" ? asset : asset.src;
+        return Promise.resolve(
+          source === "/assets/grass/sheet.svg"
+            ? { source, frame: { x: 0, y: 0, width: 400, height: 160 } }
+            : { source },
+        );
+      }) as never);
+
+      const { scene } = await mountScene(worldFrom(points), [createTerrainView()], { terrain: sheetTerrain });
+      const sheetTextures = renderCalls
+        .map(({ texture }) => texture as unknown as { source: string; frame?: { x: number; width: number } })
+        .filter(({ source }) => source === "/assets/grass/sheet.svg");
+
+      expect(sheetTextures.length).toBeGreaterThan(0);
+      expect(new Set(sheetTextures.map(({ frame }) => frame?.width))).toEqual(new Set([200]));
+      expect(new Set(sheetTextures.map(({ frame }) => frame?.x))).toEqual(new Set([0, 200]));
+      scene.destroy();
+      vi.mocked(Assets.load).mockImplementation(loadTexture as never);
+    });
+
     it("fails the setup with invalid variants", async () => {
       const invalid = { ...TEST_TERRAIN, grass: { ...TEST_TERRAIN.grass, variants: [{ ...variants[0], chance: 2 }] } };
 

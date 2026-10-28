@@ -1,4 +1,4 @@
-import type { Texture } from "pixi.js";
+import { Rectangle, Texture } from "pixi.js";
 import { projectBoxesToIsometric } from "../projection";
 import { createBlockViews, createSpritePool } from "../render";
 import { SCENE_LAYER, type SceneModule, type SceneView } from "../scene";
@@ -87,7 +87,23 @@ export function createTerrainView(): SceneModule {
         const list = terrain[material].variants ?? [];
         if (list.length > 0) {
           const pick = createVariantPicker(list, world.seed, `terrain-variants:${material}`);
-          variants.set(material, { pick, looks: loadedVariants[index] });
+          const atlasWidth = Math.max(...list.map(({ frame }) => (frame?.x ?? 0) + (frame?.width ?? 0)));
+          const atlasHeight = Math.max(...list.map(({ frame }) => (frame?.y ?? 0) + (frame?.height ?? 0)));
+          const looks = loadedVariants[index].map((sheet, frameIndex) => {
+            const frame = list[frameIndex].frame;
+            return sheet && frame && sheet.frame
+              ? new Texture({
+                  source: sheet.source,
+                  frame: new Rectangle(
+                    sheet.frame.x + (frame.x * sheet.frame.width) / atlasWidth,
+                    sheet.frame.y + (frame.y * sheet.frame.height) / atlasHeight,
+                    (frame.width * sheet.frame.width) / atlasWidth,
+                    (frame.height * sheet.frame.height) / atlasHeight,
+                  ),
+                })
+              : sheet;
+          });
+          variants.set(material, { pick, looks });
         }
         const noiseTints = terrain[material].noiseTints;
         if (noiseTints && noiseTints.colors.length > 0) {

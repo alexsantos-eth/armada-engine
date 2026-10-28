@@ -20,6 +20,10 @@ export function validateTerrainVariants(variants: readonly TerrainVariant[]): st
     if (!/^\/.+\.svg$/.test(textureSource)) {
       issues.push(`variants[${index}].textureSource must be an absolute SVG path (got "${textureSource}")`);
     }
+    const frame = variants[index].frame;
+    if (frame && (!(frame.x >= 0) || !(frame.y >= 0) || !(frame.width > 0) || !(frame.height > 0))) {
+      issues.push(`variants[${index}].frame must have non-negative coordinates and positive dimensions`);
+    }
     if (!(chance >= 0 && chance <= 1))
       issues.push(`variants[${index}].chance must be in [0, 1] (got ${String(chance)})`);
     total += chance;

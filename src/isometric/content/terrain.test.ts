@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { validateTerrainBands, validateTerrainVariants } from "../core/engine";
 import { TERRAIN_APPEARANCE } from "./terrain";
 
-const ASSET_SOURCES = import.meta.glob<string>("/public/assets/*/block*.svg", {
+const ASSET_SOURCES = import.meta.glob<string>("/public/assets/*/*.svg", {
   query: "?raw",
   import: "default",
   eager: true,
@@ -27,15 +27,12 @@ describe("TERRAIN_APPEARANCE", () => {
 
   it("keeps wildflowers, pebbles and mushrooms as clustered grass-top variations", () => {
     const sources = (TERRAIN_APPEARANCE.grass.variants ?? []).map(({ textureSource }) => textureSource);
-    expect(sources).toEqual(
-      expect.arrayContaining([
-        "/assets/grass/block_wildflowers_red.svg",
-        "/assets/grass/block_wildflowers_white.svg",
-        "/assets/grass/block_pebbles.svg",
-        "/assets/grass/block_mushrooms.svg",
-      ]),
-    );
-    expect(sources.some((source) => source.startsWith("/assets/clutter/"))).toBe(false);
+    expect(sources).toEqual(expect.arrayContaining(["/assets/grass/grass_variants.svg"]));
+    expect(new Set(sources)).toEqual(new Set(["/assets/grass/grass_variants.svg"]));
+    expect(
+      (TERRAIN_APPEARANCE.grass.variants ?? []).every(({ frame }) => frame?.width === 1024 && frame.height === 853),
+    ).toBe(true);
+    expect(sources.every((source) => source === "/assets/grass/grass_variants.svg")).toBe(true);
   });
 
   it("sinks only sand, half a block, and darkens only water with depth", () => {
