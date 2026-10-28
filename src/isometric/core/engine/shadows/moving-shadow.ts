@@ -1,5 +1,5 @@
 import { type Filter, Rectangle, RenderTexture, type Renderer, Sprite, Texture } from "pixi.js";
-import { getSilhouetteMatrix, SHADOW_REFRESH_TICKS } from "../lighting";
+import { easeShadowProjection, getSilhouetteMatrix, SHADOW_REFRESH_TICKS } from "../lighting";
 import { projectBoxesToIsometric } from "../projection";
 import { getBlockDepth } from "../render";
 import { type BuiltScene, SCENE_LAYER, type SceneMovingCaster, type SceneView } from "../scene";
@@ -96,7 +96,17 @@ export function createMovingShadow(caster: SceneMovingCaster, context: MovingSha
   }
 
   let centre: { x: number; y: number; level: number | undefined } | undefined;
-  let drawn: { x: number; y: number; elevation: number; tick: number; day: boolean; texture: unknown } | undefined;
+  let drawn:
+    | {
+        x: number;
+        y: number;
+        elevation: number;
+        tick: number;
+        day: boolean;
+        texture: unknown;
+        light: ShadowProjection | null;
+      }
+    | undefined;
   // By the texture the caster's sprite showed when it was made.
   const silhouettes = new Map<Texture, Silhouette>();
   // Written for each draw, read at once.
@@ -139,16 +149,17 @@ export function createMovingShadow(caster: SceneMovingCaster, context: MovingSha
         drawn.elevation !== foot.ground.elevation ||
         drawn.texture !== texture;
       if (!entered && !moved && drawn?.day === day && Math.abs(tick - drawn.tick) < SHADOW_REFRESH_TICKS) return;
-      drawn = { ...foot.ground, tick, day, texture };
+      const easedLight = easeShadowProjection(drawn?.light, light);
+      drawn = { ...foot.ground, tick, day, texture, light: easedLight };
 
-      if (light && level !== undefined && view instanceof Sprite) {
+      if (easedLight && level !== undefined && view instanceof Sprite) {
         // The caster's foot points may be written in place as it moves: the silhouette keeps where
         // they were when its sprite was measured.
         const silhouette =
           silhouettes.get(view.texture) ?? createMovingSilhouette(view, { ...foot.screen }, { ...foot.ground });
         silhouettes.set(view.texture, silhouette);
         const lift = foot.ground.elevation - level;
-        getSilhouetteMatrix(light, foot.ground, lift, metrics, ground);
+        getSilhouetteMatrix(easedLight, foot.ground, lift, metrics, ground);
         const mapOrigin = { x: x - MOVING_SHADOW_RADIUS - 0.5, y: y - MOVING_SHADOW_RADIUS - 0.5 };
         placeSilhouette(casters.sprite(0, silhouette.texture), silhouette, ground, mapOrigin, pixelsPerTile);
         casters.show(1);

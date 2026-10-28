@@ -10,7 +10,9 @@ import {
 } from "pixi.js";
 import {
   AO_PIXELS_PER_TILE,
+  AO_TERRAIN_SHADOW_REACH,
   buildOcclusionMap,
+  easeShadowProjection,
   getCastShadowOffset,
   getShadowProjection,
   getShadowReach,
@@ -19,7 +21,14 @@ import {
 } from "../lighting";
 import { projectBoxesToIsometric } from "../projection";
 import { createSpritePool, getBlockDepth } from "../render";
-import { type BuiltScene, type EntityView, SCENE_LAYER, type SceneModule, type SceneView } from "../scene";
+import {
+  type BuiltScene,
+  type EntityView,
+  SCENE_LAYER,
+  type SceneModule,
+  type SceneMovingCaster,
+  type SceneView,
+} from "../scene";
 import { CLOCK_PART, getSunState } from "../time";
 import type { WorldChunk } from "../world";
 import type { AffineTarget, ChunkKey, OcclusionTerrain, ShadowProjection, WorldRect } from "../../types";
@@ -65,6 +74,9 @@ export const SHADOW_GATHERS_PER_FRAME = 1;
  * (#72). The sun is on the horizon then and shadows are faded out, so the turns do not show.
  */
 export const SHADOW_TURN_DRAWS_PER_FRAME = 4;
+
+/** Daylight map refreshes per frame: spread render-target work across frames. */
+export const SHADOW_REFRESH_DRAWS_PER_FRAME = 1;
 
 /** The gathering step a chunk is waiting for: see {@link SHADOW_GATHERS_PER_FRAME}. */
 export type ShadowGathering = "maps" | "pairs" | "received";
@@ -112,9 +124,20 @@ type ShadowTarget = {
   readonly draw: (sun: ShadowProjection | null) => void;
   /** Tick it was last drawn for. */
   drawnTick: number;
+  /** Eased projection actually baked into this target. */
+  drawnLight?: ShadowProjection | null;
   /** Whether it waits to be drawn for the sunrise or the sunset ({@link SHADOW_TURN_DRAWS_PER_FRAME}). */
   turning?: boolean;
 };
+
+/** An entity overlay that follows the terrain's directional occlusion with a short fade. */
+type TerrainShadowReceiver = {
+  readonly silhouette: Silhouette;
+  readonly view: SceneView;
+};
+
+/** Narrow vertical slices approximate a soft fade into the lit part without a filter pass. */
+const TERRAIN_SHADOW_BANDS = 16;
 
 /** What the profiled scene records a target's draws as: made once, not on every draw. */
 const DRAW_LABEL: Readonly<Record<ShadowTargetKind, string>> = { maps: "shadows:maps", received: "shadows:received" };
@@ -135,6 +158,12 @@ type ShadowChunk = {
   readonly scratch: Scratch;
   /** Its ambient occlusion, at the bottom of every level. */
   readonly occlusion: Texture;
+  readonly occlusionSource: BufferImageSource;
+  readonly occlusionContacts: readonly { readonly x: number; readonly y: number }[];
+  readonly area: WorldRect;
+  readonly terrainShadow: Uint8Array;
+  readonly terrainReceivers: readonly TerrainShadowReceiver[];
+  occlusionProjectionKey?: string;
   readonly layers: readonly ShadowLayer[];
   received?: { readonly shadows: ReceivedShadows; readonly views: readonly SceneView[]; readonly target: ShadowTarget };
   /** The shadows its entities' sprites receive, paired on the step before their atlas is built. */
@@ -226,6 +255,22 @@ export function createShadows(): SceneModule {
       const receivedRig = createReceivedShadowRig(app.renderer, [blurFilter, alphaFilter]);
       // Caster textures of the received shadows, reused from draw to draw.
       const textures = createTexturePool();
+      // Slices are shared by every receiver that uses the same sprite frame, avoiding per-entity textures.
+      const terrainReceiverTextures = new Map<Texture, readonly Texture[]>();
+      const terrainReceiverTexturesOf = (body: Texture) => {
+        const cached = terrainReceiverTextures.get(body);
+        if (cached) return cached;
+        const made = Array.from({ length: TERRAIN_SHADOW_BANDS }, (_, index) => {
+          const start = Math.round(body.frame.height * (1 - (index + 1) / TERRAIN_SHADOW_BANDS));
+          const end = Math.round(body.frame.height * (1 - index / TERRAIN_SHADOW_BANDS));
+          return new Texture({
+            source: body.source,
+            frame: new Rectangle(body.frame.x, body.frame.y + start, body.frame.width, Math.max(1, end - start)),
+          });
+        });
+        terrainReceiverTextures.set(body, made);
+        return made;
+      };
       // Sprites of the ground shadows, a chunk's given back when it is hidden for the next one.
       const groundSprites = createSpritePool();
       const chunks = new Map<ChunkKey, ShadowChunk>();
@@ -306,7 +351,49 @@ export function createShadows(): SceneModule {
       // of them, and an object for each one was most of the garbage of a scene at rest.
       const ground: AffineTarget = { a: 0, b: 0, c: 0, d: 0, tx: 0, ty: 0 };
       const offset = { x: 0, y: 0 };
+      const movingTerrainAlphas = new WeakMap<SceneMovingCaster, number>();
+      const terrainShadowAt = (shadow: ShadowChunk, worldX: number, worldY: number) => {
+        const width = (shadow.area.maxX - shadow.area.minX + 1) * AO_PIXELS_PER_TILE;
+        const height = (shadow.area.maxY - shadow.area.minY + 1) * AO_PIXELS_PER_TILE;
+        const sampleX = Math.min(
+          Math.max((worldX - shadow.area.minX + 0.5) * AO_PIXELS_PER_TILE - 0.5, 0),
+          width - 1,
+        );
+        const sampleY = Math.min(
+          Math.max((worldY - shadow.area.minY + 0.5) * AO_PIXELS_PER_TILE - 0.5, 0),
+          height - 1,
+        );
+        const left = Math.floor(sampleX);
+        const top = Math.floor(sampleY);
+        const right = Math.min(left + 1, width - 1);
+        const bottom = Math.min(top + 1, height - 1);
+        const mixX = sampleX - left;
+        const mixY = sampleY - top;
+        const topAlpha =
+          shadow.terrainShadow[top * width + left] * (1 - mixX) +
+          shadow.terrainShadow[top * width + right] * mixX;
+        const bottomAlpha =
+          shadow.terrainShadow[bottom * width + left] * (1 - mixX) +
+          shadow.terrainShadow[bottom * width + right] * mixX;
+        return (topAlpha * (1 - mixY) + bottomAlpha * mixY) / 255;
+      };
       const drawLayer = (shadow: ShadowChunk, layer: ShadowLayer, area: WorldRect, light: ShadowProjection | null) => {
+        // The entity receiver uses this mask at only 8 texels per tile. Rebuilding it for every
+        // minute solar movement was needless CPU work; quantize below that spatial resolution.
+        const projectionKey = light
+          ? `${Math.round(light.dirX * 64)},${Math.round(light.dirY * 64)},${Math.round(light.stretch * 16)},${Math.round(light.alpha * 64)}`
+          : "night";
+        if (shadow.occlusionProjectionKey !== projectionKey) {
+          shadow.occlusionSource.resource = buildOcclusionMap(
+            occlusionTerrain(area),
+            AO_PIXELS_PER_TILE,
+            shadow.occlusionContacts,
+            light,
+            shadow.terrainShadow,
+          );
+          shadow.occlusionSource.update();
+          shadow.occlusionProjectionKey = projectionKey;
+        }
         const shown = light ? layer.casters.length : 0;
         if (light) {
           const mapOrigin = { x: area.minX - 0.5, y: area.minY - 0.5 };
@@ -330,9 +417,47 @@ export function createShadows(): SceneModule {
         });
         app.renderer.render({ container: copyRoot, target: shadow.map, clear: false });
       };
+
+      const updateTerrainReceiverShadows = () => {
+        for (const shadow of chunks.values()) {
+          for (const { silhouette, view } of shadow.terrainReceivers) {
+            const target = sun ? terrainShadowAt(shadow, silhouette.worldFoot.x, silhouette.worldFoot.y) : 0;
+            const current = view.view.alpha;
+            const alpha = current + (target - current) * 0.16;
+            const next = Math.abs(alpha - target) < 0.005 ? target : alpha;
+            if (Math.abs(next - current) > 0.001) view.view.alpha = next;
+            const visible = next > 0.005;
+            if (view.view.visible !== visible) view.view.visible = visible;
+          }
+        }
+      };
+      const updateMovingReceiverShadows = () => {
+        const receivers = services.get("movingCasters") ?? [];
+        receivers.forEach((receiver) => {
+          if (!receiver.receiveTerrainShadow) return;
+          const { ground } = receiver.foot();
+          const tileX = Math.round(ground.x);
+          const tileY = Math.round(ground.y);
+          let shadow: ShadowChunk | undefined;
+          for (const candidate of chunks.values()) {
+            const { rect } = candidate.chunk;
+            if (tileX < rect.minX || tileX > rect.maxX || tileY < rect.minY || tileY > rect.maxY) continue;
+            shadow = candidate;
+            break;
+          }
+          const target = sun && shadow ? terrainShadowAt(shadow, ground.x, ground.y) : 0;
+          const current = movingTerrainAlphas.get(receiver) ?? 0;
+          const alpha = current + (target - current) * 0.16;
+          const next = Math.abs(alpha - target) < 0.005 ? target : alpha;
+          movingTerrainAlphas.set(receiver, next);
+          if (Math.abs(next - current) > 0.001) receiver.receiveTerrainShadow(next);
+        });
+      };
       const drawTarget = (target: ShadowTarget, light: ShadowProjection | null) => {
-        if (light) alphaFilter.alpha = light.alpha;
-        profile(DRAW_LABEL[target.kind], () => target.draw(light));
+        const eased = easeShadowProjection(target.drawnLight, light);
+        if (eased) alphaFilter.alpha = eased.alpha;
+        profile(DRAW_LABEL[target.kind], () => target.draw(eased));
+        target.drawnLight = eased;
         target.drawnTick = tick;
         target.turning = false;
       };
@@ -341,6 +466,13 @@ export function createShadows(): SceneModule {
       const gatherMaps = (shadow: ShadowChunk): ShadowTarget[] => {
         const area = areaOf(shadow.chunk.rect);
         const { near } = nearbyViews(shadow.chunk);
+        let maxTerrainHeight = -Infinity;
+        for (let y = area.minY - AO_TERRAIN_SHADOW_REACH; y <= area.maxY + AO_TERRAIN_SHADOW_REACH; y += 1) {
+          for (let x = area.minX - AO_TERRAIN_SHADOW_REACH; x <= area.maxX + AO_TERRAIN_SHADOW_REACH; x += 1) {
+            const column = columnAt.get(x, y);
+            if (column) maxTerrainHeight = Math.max(maxTerrainHeight, column.elevation - topInsetAt(x, y));
+          }
+        }
         shadow.maps = shadow.layers.map((layer) => {
           // Casters standing on this level or higher (shadows onto higher ground are not drawn)
           // whose shadow may reach a column of the level.
@@ -359,7 +491,7 @@ export function createShadows(): SceneModule {
           layer.lifts = lifts;
           return {
             kind: "maps",
-            casts: reaching.length > 0,
+            casts: reaching.length > 0 || maxTerrainHeight >= layer.level + 1,
             draw: (light) => drawLayer(shadow, layer, area, light),
             drawnTick: tick,
           };
@@ -480,30 +612,60 @@ export function createShadows(): SceneModule {
           });
           const tileTop = { x: top.screenX, y: top.screenY + topInsetAt(x, y) * metrics.boxHeight };
           return {
-            ...createGroundShadowView(frame, tileTop, metrics, getBlockDepth(top, metrics), groundSprites),
+            ...createGroundShadowView(
+              frame,
+              tileTop,
+              metrics,
+              getBlockDepth(top, metrics),
+              groundSprites,
+            ),
             layer: SCENE_LAYER.ground,
           };
         });
+        const entityViews = services.get("entityViews")?.get(chunk.key) ?? [];
+        const terrainReceivers: TerrainShadowReceiver[] = entityViews.flatMap((entityView) =>
+          silhouettesOf(entityView).map((silhouette) => {
+            const { body, bodyDisplay } = silhouette;
+            const height = Math.min(metrics.boxHeight, bodyDisplay.height);
+            const bandHeight = height / TERRAIN_SHADOW_BANDS;
+            const container = new Container();
+            container.alpha = 0;
+            container.visible = false;
+            const bands = terrainReceiverTexturesOf(body).map((texture, index) => {
+              const sprite = new Sprite(texture);
+              sprite.position.set(
+                bodyDisplay.left,
+                bodyDisplay.top + bodyDisplay.height - (index + 1) * bandHeight,
+              );
+              sprite.setSize(bodyDisplay.width, bandHeight);
+              sprite.tint = 0x000000;
+              sprite.alpha = (1 - (index + 0.5) / TERRAIN_SHADOW_BANDS) ** 2;
+              return sprite;
+            });
+            container.addChild(...bands);
+            return {
+              silhouette,
+              view: { view: container, depth: silhouette.depth, layer: SCENE_LAYER.onObject },
+            };
+          }),
+        );
 
         // Ambient occlusion: computed once per chunk (the terrain is static), every column at its own top.
-        const occlusion = new Texture({
-          source: new BufferImageSource({
-            resource: buildOcclusionMap(
-              occlusionTerrain(area),
-              AO_PIXELS_PER_TILE,
-              chunk.entities.flatMap(({ x, y, length, lengthAxis, contactShadow }) => {
-                if (contactShadow === false) return [];
-                const alongY = Number(lengthAxis === "y");
-                return Array.from({ length }, (_, index) => ({
-                  x: x + index * (1 - alongY),
-                  y: y + index * alongY,
-                }));
-              }),
-            ),
-            width: columnsWide * AO_PIXELS_PER_TILE,
-            height: columnsDeep * AO_PIXELS_PER_TILE,
-          }),
+        const occlusionContacts = chunk.entities.flatMap(({ x, y, length, lengthAxis, contactShadow }) => {
+          if (contactShadow === false) return [];
+          const alongY = Number(lengthAxis === "y");
+          return Array.from({ length }, (_, index) => ({
+            x: x + index * (1 - alongY),
+            y: y + index * alongY,
+          }));
         });
+        const terrainShadow = new Uint8Array(columnsWide * columnsDeep * AO_PIXELS_PER_TILE * AO_PIXELS_PER_TILE);
+        const occlusionSource = new BufferImageSource({
+          resource: buildOcclusionMap(occlusionTerrain(area), AO_PIXELS_PER_TILE, occlusionContacts, null, terrainShadow),
+          width: columnsWide * AO_PIXELS_PER_TILE,
+          height: columnsDeep * AO_PIXELS_PER_TILE,
+        });
+        const occlusion = new Texture({ source: occlusionSource });
         const bounds = new Map<number, { minX: number; minY: number; maxX: number; maxY: number }>();
         chunk.columns.forEach(({ x, y, elevation }) => {
           const rect = bounds.get(elevation);
@@ -531,6 +693,11 @@ export function createShadows(): SceneModule {
           map,
           scratch: scratchFor(map),
           occlusion,
+          occlusionSource,
+          occlusionContacts,
+          area,
+          terrainShadow,
+          terrainReceivers,
           layers,
           maps: [],
           gathering: "maps",
@@ -539,10 +706,13 @@ export function createShadows(): SceneModule {
         chunks.set(chunk.key, shadow);
         touch(chunk);
         return {
-          views,
+          views: [...views, ...terrainReceivers.map(({ view }) => view)],
           keepsViews: true,
           destroy: () => {
             groundSprites.give(views.map(({ view }) => view));
+            terrainReceivers.forEach(({ view }) => {
+              view.view.destroy({ children: true, texture: false, textureSource: false });
+            });
             chunks.delete(chunk.key);
             touch(chunk);
             if (shadow.received) {
@@ -568,6 +738,8 @@ export function createShadows(): SceneModule {
       const update = (now: number) => {
         tick = now;
         sun = getShadowProjection(getSunState(now));
+        updateTerrainReceiverShadows();
+        updateMovingReceiverShadows();
         const isDay = sun !== null;
         const shadows = [...chunks.values()];
         // When built, every step of every chunk; then a few steps per frame, the chunks never
@@ -600,18 +772,25 @@ export function createShadows(): SceneModule {
         }
         if (turning > 0 || !sun) return;
 
-        // By day, one map per frame: the stalest, so no frame pays for all of them and, in turns,
-        // all keep moving even when a refresh falls due on every frame.
-        let stalest: ShadowTarget | undefined;
-        let stalestAge = SHADOW_REFRESH_TICKS - 1;
-        targets.forEach((target) => {
-          const age = Math.abs(now - target.drawnTick);
-          if (target.casts && age > stalestAge) {
-            stalest = target;
-            stalestAge = age;
-          }
-        });
-        if (stalest) drawTarget(stalest, sun);
+        // Spread map redraws over frames, prioritizing terrain maps that carry the directional
+        // occlusion. Two targets per frame shorten the solar update cycle without a full redraw.
+        for (let drawn = 0; drawn < SHADOW_REFRESH_DRAWS_PER_FRAME; drawn += 1) {
+          let stalest: ShadowTarget | undefined;
+          let stalestAge = SHADOW_REFRESH_TICKS - 1;
+          targets.forEach((target) => {
+            const age = Math.abs(now - target.drawnTick);
+            const preferred =
+              stalest === undefined ||
+              (target.kind === "maps" && stalest.kind !== "maps") ||
+              (target.kind === stalest.kind && age > stalestAge);
+            if (target.casts && age > SHADOW_REFRESH_TICKS - 1 && preferred) {
+              stalest = target;
+              stalestAge = age;
+            }
+          });
+          if (!stalest) break;
+          drawTarget(stalest, sun);
+        }
       };
 
       return {
@@ -637,6 +816,8 @@ export function createShadows(): SceneModule {
           levelRoot.destroy({ children: true });
           copyRoot.destroy({ children: true });
           receivedRig.destroy();
+          terrainReceiverTextures.forEach((receiverTextures) => receiverTextures.forEach((texture) => texture.destroy(false)));
+          terrainReceiverTextures.clear();
           blurFilter.destroy();
           alphaFilter.destroy();
           groundSprites.destroy();

@@ -152,8 +152,11 @@ export function mockPixi() {
     },
     BufferImageSource: class {
       public options: { resource: Uint8ClampedArray; width: number; height: number };
+      public resource: Uint8ClampedArray;
+      public update = vi.fn();
       constructor(options: { resource: Uint8ClampedArray; width: number; height: number }) {
         this.options = options;
+        this.resource = options.resource;
       }
     },
     AlphaFilter: class {

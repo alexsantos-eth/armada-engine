@@ -26,6 +26,9 @@ export const SHADOW_FADE_ELEVATION = 0.25;
  */
 export const SHADOW_REFRESH_TICKS = 10;
 
+/** Fraction of a sun change applied at each cached shadow redraw. */
+export const SHADOW_PROJECTION_EASE = 0.35;
+
 function smoothstep(edge0: number, edge1: number, value: number): number {
   const t = Math.min(Math.max((value - edge0) / (edge1 - edge0), 0), 1);
   return t * t * (3 - 2 * t);
@@ -46,6 +49,25 @@ export function getShadowProjection(sun: SunState): ShadowProjection | null {
     dirY: horizontal > 0 ? -sun.direction.y / horizontal : 0,
     stretch: Math.min(horizontal / sun.elevation, MAX_SHADOW_STRETCH),
     alpha: SHADOW_ALPHA * smoothstep(0, SHADOW_FADE_ELEVATION, sun.elevation),
+  };
+}
+
+/** Eases a cached shadow projection toward the current sun while preserving a unit direction. */
+export function easeShadowProjection(
+  previous: ShadowProjection | null | undefined,
+  next: ShadowProjection | null,
+  amount = SHADOW_PROJECTION_EASE,
+): ShadowProjection | null {
+  if (!previous || !next) return next;
+  const mix = Math.min(Math.max(amount, 0), 1);
+  const x = previous.dirX + (next.dirX - previous.dirX) * mix;
+  const y = previous.dirY + (next.dirY - previous.dirY) * mix;
+  const length = Math.hypot(x, y) || 1;
+  return {
+    dirX: x / length,
+    dirY: y / length,
+    stretch: previous.stretch + (next.stretch - previous.stretch) * mix,
+    alpha: previous.alpha + (next.alpha - previous.alpha) * mix,
   };
 }
 

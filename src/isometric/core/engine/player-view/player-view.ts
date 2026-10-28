@@ -1,3 +1,4 @@
+import { Container, Rectangle, Sprite, Texture } from "pixi.js";
 import { getGroundPointBelow } from "../camera";
 import {
   getPlayerClimbProgress,
@@ -20,6 +21,26 @@ import {
   getWalkSheetLayout,
   PLAYER_START_FACING,
 } from "./walk";
+
+const TERRAIN_SHADOW_BANDS = 16;
+const terrainShadowTextures = new WeakMap<Texture, Texture[]>();
+
+/** Vertical texture slices, cached per animation frame to fade the shadow at block height. */
+function bottomBandTextures(texture: Texture): Texture[] {
+  const cached = terrainShadowTextures.get(texture);
+  if (cached) return cached;
+  const frame = texture.frame;
+  const bands = Array.from({ length: TERRAIN_SHADOW_BANDS }, (_, index) => {
+    const start = Math.round(frame.height * (1 - (index + 1) / TERRAIN_SHADOW_BANDS));
+    const end = Math.round(frame.height * (1 - index / TERRAIN_SHADOW_BANDS));
+    return new Texture({
+      source: texture.source,
+      frame: new Rectangle(frame.x, frame.y + start, frame.width, Math.max(1, end - start)),
+    });
+  });
+  terrainShadowTextures.set(texture, bands);
+  return bands;
+}
 
 /**
  * Scene module of the player: draws the world's player (`PLAYER_PART`) with `appearance` (game
@@ -108,9 +129,43 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
         surfaceAligned: true,
         cell: walk && getWalkSheetCell(walk.sheet),
       });
+      if (!(view instanceof Sprite)) return { destroy: () => {} };
       view.cullable = false;
       // Scaled about the feet, which stand on the column's top (`projected.screenY`).
       view.scale.set(view.scale.x * scale, view.scale.y * scale);
+      const terrainShadowOverlay = new Container();
+      terrainShadowOverlay.alpha = 0;
+      terrainShadowOverlay.visible = false;
+      view.addChild(terrainShadowOverlay);
+      const terrainShadowOverlays = Array.from({ length: TERRAIN_SHADOW_BANDS }, (_, index) => {
+        const overlay = new Sprite();
+        overlay.tint = 0x000000;
+        overlay.alpha = (1 - (index + 0.5) / TERRAIN_SHADOW_BANDS) ** 2;
+        return overlay;
+      });
+      terrainShadowOverlay.addChild(...terrainShadowOverlays);
+      let syncedTerrainTexture: Texture | undefined;
+      const syncTerrainShadowOverlay = () => {
+        if (syncedTerrainTexture === view.texture) return;
+        syncedTerrainTexture = view.texture;
+        const scaleX = Math.abs(view.scale.x) || 1;
+        const scaleY = Math.abs(view.scale.y) || 1;
+        const width = view.width / scaleX;
+        const height = view.height / scaleY;
+        const shadedHeight = Math.min(height, metrics.boxHeight / scaleY);
+        const bandHeight = shadedHeight / TERRAIN_SHADOW_BANDS;
+        const textures = bottomBandTextures(view.texture);
+        terrainShadowOverlays.forEach((overlay, index) => {
+          overlay.texture = textures[index];
+          overlay.position.set(
+            -view.anchor.x * width,
+            -view.anchor.y * height + height - (index + 1) * bandHeight,
+          );
+          overlay.width = width;
+          overlay.height = bandHeight;
+        });
+      };
+      syncTerrainShadowOverlay();
       const offset = { x: view.position.x - projected.screenX, y: (view.position.y - projected.screenY) * scale };
 
       let drawnAt = getPlayerRenderPosition(player, 1);
@@ -145,6 +200,10 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
       };
       // Where its feet are on screen: written by `place()`, read by whoever casts its shadow.
       const drawnFoot = { x: 0, y: 0 };
+      const receiveTerrainShadow = (alpha: number) => {
+        terrainShadowOverlay.alpha = alpha;
+        terrainShadowOverlay.visible = alpha > 0.005;
+      };
       // Where its feet are in the world for its shadow: lifted by a jump's height, as if it stood higher.
       let castFrom = { x: drawnAt.x, y: drawnAt.y, elevation: drawnAt.elevation };
       let drawnDepth: number | undefined;
@@ -182,7 +241,7 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
       return {
         provides: {
           focus: { ground: () => getGroundPointBelow(player, level, projection) },
-          movingCasters: [{ view, foot: () => ({ ground: castFrom, screen: drawnFoot }) }],
+          movingCasters: [{ view, foot: () => ({ ground: castFrom, screen: drawnFoot }), receiveTerrainShadow }],
         },
         start: (built) => {
           scene = built;
@@ -198,6 +257,7 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
             at.inset !== drawnAt.inset ||
             at.height !== drawnAt.height;
           animate(at, alpha, elapsedMs);
+          syncTerrainShadowOverlay();
           if (!moved) return;
           place(at);
           services.get("camera")?.follow(ground(at));

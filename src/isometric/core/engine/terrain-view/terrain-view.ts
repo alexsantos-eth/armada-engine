@@ -10,6 +10,9 @@ import { createVariantPicker, type VariantPicker, validateTerrainVariants } from
 /** Darkest a tinted block gets: the factor of its colour never goes under it. */
 const MIN_TINT_FACTOR = 0.35;
 
+/** The block SVG's top ends at y=171 in a 853 px viewBox starting at y=-341. */
+const TERRAIN_TOP_FRACTION = 0.6;
+
 function darken(tint: number, levels: number, step: number): number {
   const factor = Math.max(MIN_TINT_FACTOR, 1 - levels * step);
   const red = Math.round(((tint >> 16) & 0xff) * factor);
@@ -162,6 +165,7 @@ export function createTerrainView(): SceneModule {
               box,
               metrics,
               tint: tintOf(box.box),
+              splitAt: TERRAIN_TOP_FRACTION,
               sprites,
             }).map((view) => ({ ...view, layer: SCENE_LAYER.terrain })),
           );

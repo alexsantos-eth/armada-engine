@@ -72,6 +72,8 @@ export type SceneServices = {
 export type SceneMovingCaster = {
   /** Its sprite in the scene: its silhouette is what casts the shadow. */
   readonly view: Container;
+  /** Applies terrain shadowing to the moving sprite, when it can receive it. */
+  readonly receiveTerrainShadow?: (alpha: number) => void;
   /**
    * Where its feet are as drawn this frame: `ground` in world columns with the top elevation of
    * the column it stands on, and `screen` that point in scene pixels.

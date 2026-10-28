@@ -12,8 +12,8 @@ import type {
   ScreenSize,
 } from "../../types";
 
-/** Zoom the camera starts at: close to the ground, at the centre of the world. */
-export const CAMERA_START_ZOOM = 8;
+/** Zoom the camera starts at: at the centre of the world. */
+export const CAMERA_START_ZOOM = 4;
 
 /** Smallest zoom: a whole chunk (32 × 32 columns) fits a window 1300 px wide. */
 export const CAMERA_MIN_ZOOM = 1;

@@ -1,4 +1,5 @@
-import type { OcclusionTerrain } from "../../types";
+import type { OcclusionTerrain, ShadowProjection } from "../../types";
+import { SHADOW_ALPHA } from "./shadow";
 
 /** Darkness at the foot of a wall one block (or more) tall. */
 export const AO_WALL_ALPHA = 0.12;
@@ -13,9 +14,16 @@ export const AO_WALL_RADIUS = 0.5;
 export const AO_PIXELS_PER_TILE = 8;
 
 /** Strong, compact contact darkening around a static entity's ground footprint. */
-export const AO_ENTITY_ALPHA = 0.3;
+export const AO_ENTITY_ALPHA = 0.45;
 /** Contact shadow radius in tiles, centered in each occupied footprint tile. */
 export const AO_ENTITY_RADIUS = 0.3;
+
+/** Maximum world distance sampled toward the sun for a terrain shadow. */
+export const AO_TERRAIN_SHADOW_REACH = 8;
+/** Distance between terrain height samples along a light ray, in tiles. */
+export const AO_TERRAIN_SHADOW_STEP = 0.5;
+/** Darkness of a terrain shadow in full sun. */
+export const AO_TERRAIN_SHADOW_ALPHA = 0.34;
 
 /** A world tile in a static entity's ground footprint. */
 export type OcclusionContact = { readonly x: number; readonly y: number };
@@ -104,24 +112,102 @@ export function buildOcclusionMap(
   terrain: OcclusionTerrain,
   pixelsPerTile = AO_PIXELS_PER_TILE,
   contacts: readonly OcclusionContact[] = [],
+  projection: ShadowProjection | null = null,
+  terrainShadowOutput?: Uint8Array,
 ): Uint8ClampedArray {
   const { minX, minY, maxX, maxY } = terrain.bounds;
   const width = (maxX - minX + 1) * pixelsPerTile;
   const height = (maxY - minY + 1) * pixelsPerTile;
   const pixels = new Uint8ClampedArray(width * height * 4);
+  terrainShadowOutput?.fill(0);
+  const terrainShadowAlpha = projection ? new Uint8Array(width * height) : undefined;
+  // Cache the small ray search area in a contiguous array: per-texel ray marches must not
+  // repeatedly cross the terrain's world/chunk lookup boundary.
+  const reach = projection ? AO_TERRAIN_SHADOW_REACH : 0;
+  const heightsMinX = minX - reach - 1;
+  const heightsMinY = minY - reach - 1;
+  const heightsWidth = maxX - minX + 2 * (reach + 1) + 1;
+  const heights = new Float32Array(heightsWidth * (maxY - minY + 2 * (reach + 1) + 1));
+  heights.fill(Number.NaN);
+  for (let y = heightsMinY; y < heightsMinY + heights.length / heightsWidth; y += 1) {
+    for (let x = heightsMinX; x < heightsMinX + heightsWidth; x += 1) {
+      const value = terrain.topHeightAt(x, y);
+      if (value !== undefined) heights[(y - heightsMinY) * heightsWidth + x - heightsMinX] = value;
+    }
+  }
+  const cachedHeightAt = (x: number, y: number): number | undefined => {
+    const localX = x - heightsMinX;
+    const localY = y - heightsMinY;
+    if (localX < 0 || localX >= heightsWidth || localY < 0 || localY * heightsWidth + localX >= heights.length) return undefined;
+    const value = heights[localY * heightsWidth + localX];
+    return Number.isNaN(value) ? undefined : value;
+  };
 
   for (let y = minY; y <= maxY; y += 1) {
     for (let x = minX; x <= maxX; x += 1) {
       const steps = tallerNeighbours(terrain, x, y);
-      if (steps === undefined) continue;
-      for (let j = 0; j < pixelsPerTile; j += 1) {
-        for (let i = 0; i < pixelsPerTile; i += 1) {
-          const occlusion = occlusionAt(steps, (i + 0.5) / pixelsPerTile, (j + 0.5) / pixelsPerTile);
-          const texel = ((y - minY) * pixelsPerTile + j) * width + (x - minX) * pixelsPerTile + i;
-          pixels[texel * 4 + 3] = Math.round(occlusion * 255);
+      const ownHeight = cachedHeightAt(x, y);
+      for (let j = 0; j < pixelsPerTile; j += 2) {
+        for (let i = 0; i < pixelsPerTile; i += 2) {
+          const u = (i + 1) / pixelsPerTile;
+          const v = (j + 1) / pixelsPerTile;
+          let terrainShadow = false;
+          if (projection && ownHeight !== undefined && projection.stretch > 0) {
+            for (let distance = AO_TERRAIN_SHADOW_STEP; distance <= AO_TERRAIN_SHADOW_REACH; distance += AO_TERRAIN_SHADOW_STEP) {
+              const sourceX = Math.floor(x + u - projection.dirX * distance);
+              const sourceY = Math.floor(y + v - projection.dirY * distance);
+              const sourceHeight = cachedHeightAt(sourceX, sourceY);
+              // Ignore half-height surface offsets: they create isolated specks at sand/grass
+              // transitions instead of a readable block-cast shadow.
+              const requiredHeight = ownHeight + Math.max(1, distance / projection.stretch);
+              if (sourceHeight === undefined || sourceHeight < requiredHeight) continue;
+              terrainShadow = true;
+              break;
+            }
+          }
+          const strength = terrainShadow ? AO_TERRAIN_SHADOW_ALPHA * (projection?.alpha ?? 0) / SHADOW_ALPHA : 0;
+          for (let dy = 0; dy < 2 && j + dy < pixelsPerTile; dy += 1) {
+            for (let dx = 0; dx < 2 && i + dx < pixelsPerTile; dx += 1) {
+              const sampleU = (i + dx + 0.5) / pixelsPerTile;
+              const sampleV = (j + dy + 0.5) / pixelsPerTile;
+              const occlusion = steps === undefined ? 0 : occlusionAt(steps, sampleU, sampleV);
+              const texel = ((y - minY) * pixelsPerTile + j + dy) * width + (x - minX) * pixelsPerTile + i + dx;
+              pixels[texel * 4 + 3] = Math.round(occlusion * 255);
+              if (strength > 0 && terrainShadowAlpha) terrainShadowAlpha[texel] = Math.round(strength * 255);
+            }
+          }
         }
       }
     }
+  }
+
+  // Feather only the directional mask. A 3×3 binomial blur removes isolated coarse ray hits
+  // while preserving the crisp wall/contact AO already written to the output map.
+  if (terrainShadowAlpha) {
+    const weights = [1, 2, 1];
+    for (let py = 0; py < height; py += 1) {
+      for (let px = 0; px < width; px += 1) {
+        let weighted = 0;
+        let total = 0;
+        for (let dy = -1; dy <= 1; dy += 1) {
+          const sy = py + dy;
+          if (sy < 0 || sy >= height) continue;
+          for (let dx = -1; dx <= 1; dx += 1) {
+            const sx = px + dx;
+            if (sx < 0 || sx >= width) continue;
+            const weight = weights[dx + 1] * weights[dy + 1];
+            weighted += terrainShadowAlpha[sy * width + sx] * weight;
+            total += weight;
+          }
+        }
+        if (weighted === 0) continue;
+        const index = (py * width + px) * 4 + 3;
+        const shadow = weighted / total / 255;
+        const existing = pixels[index] / 255;
+        pixels[index] = Math.round((1 - (1 - existing) * (1 - shadow)) * 255);
+      }
+    }
+    terrainShadowOutput?.set(terrainShadowAlpha);
   }
 
   // Bake static entity contact into the same low-resolution map. Visit only the small texel
