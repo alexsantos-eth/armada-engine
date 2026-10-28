@@ -12,6 +12,14 @@ export const AO_WALL_RADIUS = 0.5;
  */
 export const AO_PIXELS_PER_TILE = 8;
 
+/** Strong, compact contact darkening around a static entity's ground footprint. */
+export const AO_ENTITY_ALPHA = 0.3;
+/** Contact shadow radius in tiles, centered in each occupied footprint tile. */
+export const AO_ENTITY_RADIUS = 0.3;
+
+/** A world tile in a static entity's ground footprint. */
+export type OcclusionContact = { readonly x: number; readonly y: number };
+
 function smoothstep(edge0: number, edge1: number, value: number): number {
   const t = Math.min(Math.max((value - edge0) / (edge1 - edge0), 0), 1);
   return t * t * (3 - 2 * t);
@@ -75,9 +83,9 @@ function occlusionAt(steps: readonly number[], u: number, v: number): number {
  * Every taller neighbour darkens the ground at its foot by its height step (fully from one
  * block; a sand top, half a block lower, counts half) with {@link AO_WALL_ALPHA}, fading out
  * within {@link AO_WALL_RADIUS}: bands along steps and darker inner corners. Only terrain
- * occludes: entities leave no contact shadow (their sun shadows are drawn separately). Cliff
- * tops are never darkened. Contributions stack like shadows, `1 − Π(1 − oᵢ)`, so it never
- * reaches black. Pure and deterministic.
+ * occludes through this rule; static entity contact is baked separately by `buildOcclusionMap`.
+ * Cliff tops are never darkened. Contributions stack like shadows, `1 − Π(1 − oᵢ)`, so it
+ * never reaches black. Pure and deterministic.
  */
 export function getOcclusion(terrain: OcclusionTerrain, x: number, y: number, u: number, v: number): number {
   const steps = tallerNeighbours(terrain, x, y);
@@ -89,9 +97,14 @@ export function getOcclusion(terrain: OcclusionTerrain, x: number, y: number, u:
  * at each texel's centre. Laid out like the shadow maps (a square of `pixelsPerTile` texels per
  * column of `terrain.bounds`, texel `(0, 0)` at the corner of its minimum column); every column
  * gets its own top's occlusion, whatever its level, and those without a taller neighbour stay
- * transparent. The neighbours of each column are read once, not once per texel.
+ * transparent. The neighbours of each column are read once, not once per texel. Each optional
+ * contact adds a compact radial shadow around its footprint tile, composited with terrain AO.
  */
-export function buildOcclusionMap(terrain: OcclusionTerrain, pixelsPerTile = AO_PIXELS_PER_TILE): Uint8ClampedArray {
+export function buildOcclusionMap(
+  terrain: OcclusionTerrain,
+  pixelsPerTile = AO_PIXELS_PER_TILE,
+  contacts: readonly OcclusionContact[] = [],
+): Uint8ClampedArray {
   const { minX, minY, maxX, maxY } = terrain.bounds;
   const width = (maxX - minX + 1) * pixelsPerTile;
   const height = (maxY - minY + 1) * pixelsPerTile;
@@ -107,6 +120,31 @@ export function buildOcclusionMap(terrain: OcclusionTerrain, pixelsPerTile = AO_
           const texel = ((y - minY) * pixelsPerTile + j) * width + (x - minX) * pixelsPerTile + i;
           pixels[texel * 4 + 3] = Math.round(occlusion * 255);
         }
+      }
+    }
+  }
+
+  // Bake static entity contact into the same low-resolution map. Visit only the small texel
+  // bounds around each footprint cell; this work happens once when a chunk is shown.
+  const radiusInPixels = AO_ENTITY_RADIUS * pixelsPerTile;
+  const radiusSquared = radiusInPixels * radiusInPixels;
+  for (const { x, y } of contacts) {
+    const centerX = (x + 0.5 - minX) * pixelsPerTile;
+    const centerY = (y + 0.5 - minY) * pixelsPerTile;
+    const left = Math.max(0, Math.floor(centerX - radiusInPixels));
+    const right = Math.min(width - 1, Math.ceil(centerX + radiusInPixels));
+    const top = Math.max(0, Math.floor(centerY - radiusInPixels));
+    const bottom = Math.min(height - 1, Math.ceil(centerY + radiusInPixels));
+    for (let py = top; py <= bottom; py += 1) {
+      for (let px = left; px <= right; px += 1) {
+        const dx = px + 0.5 - centerX;
+        const dy = py + 0.5 - centerY;
+        const distanceSquared = dx * dx + dy * dy;
+        if (distanceSquared >= radiusSquared) continue;
+        const amount = AO_ENTITY_ALPHA * fade(Math.sqrt(distanceSquared) / pixelsPerTile, AO_ENTITY_RADIUS);
+        const alphaIndex = (py * width + px) * 4 + 3;
+        const existing = pixels[alphaIndex] / 255;
+        pixels[alphaIndex] = Math.round((1 - (1 - existing) * (1 - amount)) * 255);
       }
     }
   }

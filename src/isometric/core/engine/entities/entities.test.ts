@@ -240,6 +240,25 @@ describe("Entity and createEntitiesFromConfig", () => {
     expect(Entity.fromData(2, 3, pier.getData()).collisionAt(2, 4)).toBe(0);
   });
 
+  it("preserves contact-shadow opt-outs through entity data", () => {
+    const pier = new Entity(
+      2,
+      3,
+      {
+        id: "pier",
+        textureSource: "/assets/pier.svg",
+        height: 1,
+        spawnChance: 1,
+        surface: "sand",
+        contactShadow: false,
+      },
+      0,
+    );
+
+    expect(pier.contactShadow).toBe(false);
+    expect(Entity.fromData(2, 3, pier.getData()).contactShadow).toBe(false);
+  });
+
   it("keeps an explicit id, so restored entities keep their identity after moving", () => {
     const entity = new Entity(
       9,

@@ -488,7 +488,18 @@ export function createShadows(): SceneModule {
         // Ambient occlusion: computed once per chunk (the terrain is static), every column at its own top.
         const occlusion = new Texture({
           source: new BufferImageSource({
-            resource: buildOcclusionMap(occlusionTerrain(area), AO_PIXELS_PER_TILE),
+            resource: buildOcclusionMap(
+              occlusionTerrain(area),
+              AO_PIXELS_PER_TILE,
+              chunk.entities.flatMap(({ x, y, length, lengthAxis, contactShadow }) => {
+                if (contactShadow === false) return [];
+                const alongY = Number(lengthAxis === "y");
+                return Array.from({ length }, (_, index) => ({
+                  x: x + index * (1 - alongY),
+                  y: y + index * alongY,
+                }));
+              }),
+            ),
             width: columnsWide * AO_PIXELS_PER_TILE,
             height: columnsDeep * AO_PIXELS_PER_TILE,
           }),

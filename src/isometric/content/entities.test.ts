@@ -39,7 +39,8 @@ describe("ENTITY_CONFIG", () => {
   it("lets the player walk over the end of every pier that stands on the grass", () => {
     const piers = ENTITY_CONFIG.filter(({ textureSource }) => textureSource.startsWith("/assets/pier/"));
     expect(piers.length).toBeGreaterThan(0);
-    piers.forEach(({ footprintSurfaces = [], collision }) => {
+    piers.forEach(({ footprintSurfaces = [], collision, contactShadow }) => {
+      expect(contactShadow).toBe(false);
       const sizes = footprintSurfaces.map((_, index) => (typeof collision === "object" ? (collision[index] ?? 1) : 1));
       footprintSurfaces.forEach((surface, index) => expect(sizes[index]).toBe(surface === "grass" ? 0 : 1));
     });

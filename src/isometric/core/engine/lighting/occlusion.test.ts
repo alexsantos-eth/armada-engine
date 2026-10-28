@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { OcclusionTerrain } from "../../types";
-import { AO_PIXELS_PER_TILE, AO_WALL_ALPHA, AO_WALL_RADIUS, buildOcclusionMap, getOcclusion } from "./occlusion";
+import { AO_ENTITY_ALPHA, AO_ENTITY_RADIUS, AO_PIXELS_PER_TILE, AO_WALL_ALPHA, AO_WALL_RADIUS, buildOcclusionMap, getOcclusion } from "./occlusion";
 
 type Column = { x: number; y: number; height: number };
 
@@ -107,6 +107,29 @@ describe("getOcclusion", () => {
 });
 
 describe("buildOcclusionMap", () => {
+  it("bakes a compact dark contact shadow around entity footprint cells", () => {
+    const terrain = plateau();
+    const map = buildOcclusionMap(terrain, 8, [{ x: 0, y: 0 }]);
+    const alphaAt = (x: number, y: number) => map[(y * 24 + x) * 4 + 3] / 255;
+    const center = alphaAt(12, 12);
+    const edge = alphaAt(13, 12);
+
+    expect(center).toBeGreaterThan(AO_ENTITY_ALPHA * 0.7);
+    expect(center).toBeGreaterThan(edge);
+    expect(edge).toBeGreaterThan(0);
+    expect(alphaAt(14, 12)).toBe(0);
+    expect(AO_ENTITY_RADIUS).toBeLessThan(1);
+  });
+
+  it("composites contact darkening over terrain occlusion", () => {
+    const terrain = plateau({ x: 1, y: 0, height: 1 });
+    const terrainOnly = buildOcclusionMap(terrain, 8);
+    const combined = buildOcclusionMap(terrain, 8, [{ x: 0, y: 0 }]);
+    const alphaIndex = (12 * 24 + 13) * 4 + 3;
+
+    expect(combined[alphaIndex]).toBeGreaterThan(terrainOnly[alphaIndex]);
+  });
+
   it("lays every column's square out like the shadow maps, black with the occlusion in alpha", () => {
     const terrain = plateau({ x: 1, y: 0, height: 1 });
     const pixels = 4;

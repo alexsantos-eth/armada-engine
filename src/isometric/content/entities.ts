@@ -217,6 +217,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     surface: "sand",
     surfaceElevation: 0,
     collision: PIER_COLLISION,
+    contactShadow: false,
   },
   {
     id: "pier_y_reverse",
@@ -230,6 +231,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     surface: "sand",
     surfaceElevation: 0,
     collision: PIER_COLLISION,
+    contactShadow: false,
   },
   ...SETTLEMENT_ENTITIES,
   {

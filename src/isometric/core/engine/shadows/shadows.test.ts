@@ -310,7 +310,7 @@ describe("createShadows", () => {
     destroyScene();
   });
 
-  it("leaves no contact shadow around entities on flat ground", async () => {
+  it("bakes entity contact shadows into the flat-ground occlusion map", async () => {
     const world = at(
       worldFrom(
         [
@@ -329,6 +329,40 @@ describe("createShadows", () => {
     ).texture.source.options.resource;
 
     expect(entitiesOf(world).length).toBeGreaterThan(0);
+    expect(resource.some((value, index) => index % 4 === 3 && value > 0)).toBe(true);
+    destroyScene();
+  });
+
+  it("omits contact shadows for entities configured without them", async () => {
+    const world = worldFrom(
+      [
+        { x: 0, y: 0, elevation: 0 },
+        { x: 1, y: 0, elevation: 0 },
+      ],
+      (columns) => [
+        new Entity(
+          columns[0].x,
+          columns[0].y,
+          {
+            id: "pier",
+            textureSource: "/assets/pier.svg",
+            height: 1,
+            length: 2,
+            spawnChance: 1,
+            surface: "sand",
+            contactShadow: false,
+          },
+          columns[0].elevation,
+        ),
+      ],
+    );
+    const { renderer, destroyScene } = await sceneOf(world);
+    const resource = (
+      layerOf(renderer, 0).children[0] as {
+        texture: { source: { options: { resource: Uint8ClampedArray } } };
+      }
+    ).texture.source.options.resource;
+
     expect(resource.every((value) => value === 0)).toBe(true);
     destroyScene();
   });

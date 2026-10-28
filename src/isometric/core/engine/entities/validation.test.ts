@@ -35,6 +35,7 @@ describe("validateEntityDefinitions", () => {
           gap: 2,
           formation: { map: ["XX", "X."], minMembers: 2, rotate: true },
           settlementLot: { regionSize: 64, offset: { x: 24, y: 24 }, reservedPathWidth: 8 },
+          contactShadow: false,
           colorReplacements: { "#9f4b2f": ["#111111", "#222222"], "#abc": ["#333", "#444"] },
           debug: true,
         },

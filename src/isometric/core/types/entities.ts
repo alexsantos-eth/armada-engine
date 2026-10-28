@@ -143,6 +143,8 @@ export type EntityDefinition = {
   sway?: EntitySway;
   /** Where it blocks movement (see {@link EntityCollision}). Defaults to every whole block (`1`). */
   collision?: EntityCollision;
+  /** Whether to add a dark contact mark at the entity's ground footprint. Defaults to `true`. */
+  contactShadow?: boolean;
 };
 
 export type EntityData = GridObjectData & {
@@ -171,6 +173,8 @@ export type EntityData = GridObjectData & {
   sway?: EntitySway;
   /** Where it blocks movement; see `EntityDefinition.collision`. Absent: every whole block. */
   collision?: EntityCollision;
+  /** Whether this entity's footprint adds a static ground contact shadow. Defaults to `true`. */
+  contactShadow?: boolean;
 };
 
 /** Optional identity data when creating an {@link IEntity} instance. */
@@ -255,6 +259,8 @@ export interface IEntity extends IGridObject {
   readonly colorVariant?: number;
   readonly sway?: EntitySway;
   readonly collision?: EntityCollision;
+  /** Whether this entity's footprint adds a static ground contact shadow. Defaults to `true`. */
+  readonly contactShadow?: boolean;
   /**
    * Side of the square, centred on column `(x, y)`, the entity blocks movement in there, as a
    * fraction of the block (see {@link EntityCollision}); `0` off its footprint or where it does
