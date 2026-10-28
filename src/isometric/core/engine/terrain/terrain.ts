@@ -2,12 +2,12 @@ import { createNoise2D } from "simplex-noise";
 import type { PerlinTerrainOptions, TerrainPoint } from "../../types";
 import { createSeededRandom, DEFAULT_WORLD_SEED } from "../random";
 
-/** Default sampling distance of the terrain noise field. */
-export const DEFAULT_SCALE = 50;
-/** Default number of noise layers combined per cell. */
-export const DEFAULT_OCTAVES = 5;
-/** Default amplitude multiplier between successive octaves. */
-export const DEFAULT_PERSISTENCE = 0.5;
+/** Default sampling distance of the terrain noise field; larger values form broader, gentler landforms. */
+export const DEFAULT_SCALE = 48;
+/** Default number of noise layers; fewer layers remove small, noisy height changes that impede walking. */
+export const DEFAULT_OCTAVES = 4;
+/** Default amplitude multiplier; lower values keep fine terrain detail subordinate to broad hills. */
+export const DEFAULT_PERSISTENCE = 0.4;
 /** Default frequency multiplier between successive octaves. */
 export const DEFAULT_LACUNARITY = 2;
 /** Lowest elevation the generated terrain reaches, and the bottom its columns are filled down to. */

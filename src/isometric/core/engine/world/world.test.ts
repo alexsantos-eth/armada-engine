@@ -409,7 +409,17 @@ describe("serializeWorld / restoreWorld", () => {
     world.chunks.setEntities(origin, kept);
     const player = world.parts.get(PLAYER_PART);
     // A content update: more rocks, one of them where the player stands.
-    const updated = [{ ...ROCK, spawnChance: 0.6 }, HOUSE];
+    const playerColumn = world.columnIndex.get(player.x, player.y);
+    if (!playerColumn) throw new Error("The player must stand on a generated column.");
+    const updated = [
+      {
+        ...ROCK,
+        spawnChance: 1,
+        surface: playerColumn.type,
+        surfaceElevation: player.elevation,
+      },
+      HOUSE,
+    ];
     const fresh = generateWorld({ seed: 77, entityDefinitions: updated });
     expect(fitsPlayerAt(fresh, player)).toBe(false);
 

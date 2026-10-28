@@ -31,6 +31,7 @@ git rev-list --left-right --count origin/iso...iso   # <detrás> <delante>
 ```
 
 Para y avisa al usuario, sin commitear, si:
+
 - la rama no es `iso`;
 - no hay cambios (`git status` vacío) ni commits locales sin subir;
 - `origin/iso` tiene commits que no están en local (`<detrás>` > 0): no hagas pull, rebase ni merge por tu cuenta; pregunta;
@@ -93,6 +94,7 @@ pnpm build
 ```
 
 Todo tiene que pasar:
+
 - `pnpm format:check` sin archivos pendientes de formato;
 - `pnpm lint` sin errores ni avisos nuevos;
 - `pnpm test:coverage` con todos los tests en verde y **100 %** en statements, branches, functions y lines (comprueba el resumen; los thresholds ya lo exigen);
@@ -180,6 +182,7 @@ feat(lighting): add ambient occlusion maps
 ## Informe final
 
 Breve:
+
 1. El commit: hash corto y la primera línea del mensaje (y el cuerpo, si el usuario no lo ha visto).
 2. Formato: cuántos archivos reformateó Prettier (o que no hizo falta).
 3. Validación: Prettier, ESLint, tests (cuántos) con la cobertura de las cuatro métricas, y build.

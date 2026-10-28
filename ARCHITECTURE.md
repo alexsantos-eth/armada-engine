@@ -527,7 +527,7 @@ Las entidades no son subtipos de `Box`. `Entity` implementa el contrato espacial
 
 ### Formaciones
 
-Por defecto cada columna válida tira `spawnChance` por separado, así que las instancias quedan dispersas al azar. Una definición puede declarar `formation` para que aparezcan agrupadas. La lógica vive en `engine/entities/formation.ts`, sin dependencias de Pixi:
+Por defecto cada columna válida tira `spawnChance` por separado, así que las instancias quedan dispersas al azar. Una definición puede declarar `formation` para agruparlas. El contenido usa grupos para los árboles y los arbustos, y `gap` para dejar espacio entre arboledas de la misma especie. La lógica vive en `engine/entities/formation.ts`, sin dependencias de Pixi:
 
 ```ts
 formation: {
@@ -542,7 +542,7 @@ formation: {
 3. En `createEntitiesFromConfig()`, cuando una columna es válida como ancla y supera la tirada de `spawnChance`, `pickFormationOffsets()` elige la orientación (solo consume `random` si hay más de una) y cada miembro se valida con las mismas reglas que una entidad suelta: superficie, `footprintSurfaces`, elevación plana, `surfaceElevation`, celdas libres y `gap`. Los miembros que no encajan se omiten; si quedan menos de `minMembers`, el grupo se descarta sin reservar nada.
 4. Los miembros de un grupo no pueden solaparse entre sí (importa en entidades de varias casillas), cada uno toma la elevación de su propia columna y `gap` se mide entre grupos, no entre miembros del mismo grupo. Las huellas multi-bloque no se giran: `rotate` solo gira la disposición del grupo, no el asset.
 
-Como la tirada es por grupo, una definición agrupada en tríos debe usar aproximadamente un tercio del `spawnChance` que tendría suelta para conservar la densidad. El pino, el ciprés y el abedul (`tree_3`, `tree_7`, `tree_8`) usan `TREE_GROVE_FORMATION`: arboledas de tres en L, giradas al azar.
+Como la tirada es por grupo, una definición agrupada en tríos debe usar aproximadamente un tercio del `spawnChance` que tendría suelta para conservar la densidad. Las ocho especies de árbol usan `TREE_GROVE_FORMATION`: arboledas de tres en L, giradas al azar; `bush` usa el mismo patrón como parche de sotobosque. Las tasas de aparición de árboles son moderadas para dejar claros entre grupos.
 
 ## Generación del terreno
 
@@ -550,7 +550,7 @@ Como la tirada es por grupo, una definición agrupada en tríos debe usar aproxi
 
 1. Normaliza `width` y `height` a enteros no negativos; `originX`/`originY` (por defecto `0`) son la primera columna del área.
 2. Usa un generador pseudoaleatorio determinista a partir de `seed`.
-3. Muestrea `simplex-noise` en varias octavas.
+3. Muestrea `simplex-noise` en varias octavas (por defecto `scale = 48`, `octaves = 4`, `persistence = 0.4`, `lacunarity = 2`). Estos valores favorecen lomas amplias y reducen los cambios pequeños de altura que vuelven incómodo recorrer el terreno.
 4. Combina amplitud con `persistence` y frecuencia con `lacunarity`.
 5. Normaliza el ruido a `[0, 1]` y lo convierte al rango `[minElevation, maxElevation]`.
 
@@ -631,7 +631,7 @@ La selección vive en `engine/terrain/surfaces.ts`, sin dependencias de Pixi, se
    - cima exactamente en `SAND_ELEVATION` (`0`) en una orilla: al menos una vecina directa de agua y, entre sus ocho vecinas (diagonales incluidas, para que las esquinas de la playa sigan siendo arena), alguna de interior, es decir, tierra más alta o tierra a `0` que no toque agua: `sand`. Así los islotes y las franjas sueltas en medio del agua no se vuelven arena;
    - cualquier otra: `grass`.
 
-   Después, `createTerrainColumns(points, bareGround?)` convierte en `ground` el pasto con cima en `BARE_GROUND_ELEVATION` (`0`, la tierra más baja) donde el campo de ruido `bareGround` lo pide: parches de tierra donde no creció el pasto. `generateTerrainColumns()` pasa `createBareGroundField(seed)` (`terrain/bare-ground.ts`): un `createNoiseField()` con su propio flujo (`deriveSeed(seed, "bare-ground")`), dos octavas (la segunda, con peso `0.35`, deshilacha los bordes) muestreadas en coordenadas absolutas a escala `BARE_GROUND_SCALE` (9 columnas) y umbral `BARE_GROUND_THRESHOLD` (`0.35`): con la semilla 1337, ~19 % del pasto a `0`. No depende de vecinas, así que no amplía `SURFACE_REACH` ni deja costuras entre chunks; cuesta ~0,1 ms por chunk, en el worker. La arena se decide antes y no cambia (una columna de tierra a `0` cuenta como interior). Las entidades con `surface: "grass"` no aparecen en los parches; `"ground"` es una superficie válida para entidades.
+Después, `createTerrainColumns(points, bareGround?)` convierte en `ground` el pasto con cima en `BARE_GROUND_ELEVATION` (`0`, la tierra más baja) donde el campo de ruido `bareGround` lo pide: claros donde no creció el pasto. `generateTerrainColumns()` pasa `createBareGroundField(seed)` (`terrain/bare-ground.ts`): un `createNoiseField()` con su propio flujo (`deriveSeed(seed, "bare-ground")`), dos octavas (la segunda, con peso `0.25`, suaviza los bordes) muestreadas en coordenadas absolutas a escala `BARE_GROUND_SCALE` (14 columnas) y umbral `BARE_GROUND_THRESHOLD` (`0.45`). Las manchas más amplias y menos frecuentes rompen la alfombra de pasto sin sembrar tierra desnuda en cada pocos bloques. No depende de vecinas, así que no amplía `SURFACE_REACH` ni deja costuras entre chunks; cuesta ~0,1 ms por chunk, en el worker. La arena se decide antes y no cambia (una columna de tierra a `0` cuenta como interior). Las entidades con `surface: "grass"` no aparecen en los claros; `"ground"` es una superficie válida para entidades.
 
 2. `getBlockMaterial(elevation, topElevation, surface)` elige el material de cada bloque; `fillElevations()` y `createVisibleBlocks()` lo aplican al materializar cada nivel y lo guarda como `type` del bloque, que la escena usa directamente para elegir textura y tinte:
    - elevación negativa: `water`;

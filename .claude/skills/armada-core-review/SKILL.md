@@ -36,21 +36,22 @@ El motor usa PixiJS v8 (comprueba la versión exacta en `node_modules/pixi.js/pa
 
 **Cómo consultar:** lee con WebFetch las páginas de la guía que apliquen al alcance, empezando por el índice https://pixijs.com/8.x/guides/getting-started/intro. Verifica cada API en la página antes de usarla o recomendarla; no cites de memoria opciones que la guía no muestre. Si una página no cubre un detalle, búscalo en la referencia de la API o dilo en el informe.
 
-| Necesidad del motor | Módulo de PixiJS | Guía |
-|---|---|---|
-| Bucle por frame, pausa, límite de FPS | `Ticker` (`add`, prioridades `UPDATE_PRIORITY`, `minFPS`/`maxFPS`, `deltaTime`, `elapsedMS`) | https://pixijs.com/8.x/guides/components/ticker · https://pixijs.com/8.x/guides/concepts/render-loop |
-| No dibujar lo que está fuera de pantalla | `CullerPlugin` (`extensions.add`), `cullable`, `cullableChildren`, `cullArea`, `Culler.shared.cull()` | https://pixijs.com/8.x/guides/components/application/culler-plugin |
-| Mover mundo y HUD sin recalcular en CPU | Render groups (`isRenderGroup: true`) | https://pixijs.com/8.x/guides/concepts/render-groups |
-| Orden de dibujo independiente del árbol (UI sobre el mundo, barras de vida, capas de profundidad) | `RenderLayer` (`attach`, `sortableChildren`, `sortRenderLayerChildren()`) | https://pixijs.com/8.x/guides/concepts/render-layers |
-| Partes estáticas con muchos hijos (terreno de un chunk) | `cacheAsTexture()` / `updateCacheTexture()` | https://pixijs.com/8.x/guides/components/scene-objects/container |
-| Miles de sprites ligeros (hierba, partículas, clima) | `ParticleContainer` + `Particle` (experimental) | https://pixijs.com/8.x/guides/components/scene-objects/particle-container |
-| Menos texturas y lotes de dibujo más grandes | Spritesheets (texturas que comparten un `TextureSource`; un lote admite hasta 16 texturas) | https://pixijs.com/8.x/guides/components/textures · https://pixijs.com/8.x/guides/concepts/performance-tips |
-| Carga, caché, bundles y carga en segundo plano | `Assets` (`init` con manifiesto, bundles, background loading, `unload`) | https://pixijs.com/8.x/guides/components/assets |
-| Memoria de GPU al descargar chunks | Texture GC (`textureGCActive`, `textureGCMaxIdle`, `textureGCCheckCountMax`), `destroy()`, `texture.source.unload()`, pools de objetos | https://pixijs.com/8.x/guides/concepts/garbage-collection |
-| Interacción y selección | `eventMode`, `interactiveChildren = false`, `hitArea` | https://pixijs.com/8.x/guides/components/events · performance tips |
-| Texto que cambia a menudo (HUD, contadores) | `BitmapText` | https://pixijs.com/8.x/guides/concepts/performance-tips |
+| Necesidad del motor                                                                               | Módulo de PixiJS                                                                                                                       | Guía                                                                                                        |
+| ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Bucle por frame, pausa, límite de FPS                                                             | `Ticker` (`add`, prioridades `UPDATE_PRIORITY`, `minFPS`/`maxFPS`, `deltaTime`, `elapsedMS`)                                           | https://pixijs.com/8.x/guides/components/ticker · https://pixijs.com/8.x/guides/concepts/render-loop        |
+| No dibujar lo que está fuera de pantalla                                                          | `CullerPlugin` (`extensions.add`), `cullable`, `cullableChildren`, `cullArea`, `Culler.shared.cull()`                                  | https://pixijs.com/8.x/guides/components/application/culler-plugin                                          |
+| Mover mundo y HUD sin recalcular en CPU                                                           | Render groups (`isRenderGroup: true`)                                                                                                  | https://pixijs.com/8.x/guides/concepts/render-groups                                                        |
+| Orden de dibujo independiente del árbol (UI sobre el mundo, barras de vida, capas de profundidad) | `RenderLayer` (`attach`, `sortableChildren`, `sortRenderLayerChildren()`)                                                              | https://pixijs.com/8.x/guides/concepts/render-layers                                                        |
+| Partes estáticas con muchos hijos (terreno de un chunk)                                           | `cacheAsTexture()` / `updateCacheTexture()`                                                                                            | https://pixijs.com/8.x/guides/components/scene-objects/container                                            |
+| Miles de sprites ligeros (hierba, partículas, clima)                                              | `ParticleContainer` + `Particle` (experimental)                                                                                        | https://pixijs.com/8.x/guides/components/scene-objects/particle-container                                   |
+| Menos texturas y lotes de dibujo más grandes                                                      | Spritesheets (texturas que comparten un `TextureSource`; un lote admite hasta 16 texturas)                                             | https://pixijs.com/8.x/guides/components/textures · https://pixijs.com/8.x/guides/concepts/performance-tips |
+| Carga, caché, bundles y carga en segundo plano                                                    | `Assets` (`init` con manifiesto, bundles, background loading, `unload`)                                                                | https://pixijs.com/8.x/guides/components/assets                                                             |
+| Memoria de GPU al descargar chunks                                                                | Texture GC (`textureGCActive`, `textureGCMaxIdle`, `textureGCCheckCountMax`), `destroy()`, `texture.source.unload()`, pools de objetos | https://pixijs.com/8.x/guides/concepts/garbage-collection                                                   |
+| Interacción y selección                                                                           | `eventMode`, `interactiveChildren = false`, `hitArea`                                                                                  | https://pixijs.com/8.x/guides/components/events · performance tips                                          |
+| Texto que cambia a menudo (HUD, contadores)                                                       | `BitmapText`                                                                                                                           | https://pixijs.com/8.x/guides/concepts/performance-tips                                                     |
 
 **Límites de esa adopción** (la arquitectura manda sobre la comodidad):
+
 - Pixi solo se usa en `render` y `scene`; nunca entra en dominio (`world`, `entities`, `terrain`, `grid`). `architecture.test.ts` lo exige.
 - El `Ticker` marca los frames, pero la simulación avanza con un reloj propio de paso fijo en el dominio, alimentado con el `elapsedMS` del ticker. Así la simulación sigue siendo determinista y testeable sin Pixi.
 - El culling de Pixi decide qué se **dibuja**; qué chunks se **cargan o simulan** lo decide el dominio con `engine/grid`. No sustituyas uno por otro.
@@ -62,37 +63,44 @@ El motor usa PixiJS v8 (comprueba la versión exacta en `node_modules/pixi.js/pa
 Revisa cada punto. Marca solo lo que realmente encuentres en el código, con archivo y línea.
 
 ### 1. Arquitectura y límites
+
 - Separación dominio / proyección / terreno / render / escena. Ningún import de Pixi fuera de `render` y `scene`.
 - Imports entre responsabilidades solo vía barrels `index.ts`; sin dependencias circulares.
 - La escena no conoce entidades concretas por nombre; no hay `switch`/`if` por tipo de entidad.
 - Estado del juego separado de los objetos de Pixi: el render **lee** el estado, nunca es la fuente de verdad.
 
 ### 2. Determinismo y generación procedural
+
 - Ningún `Math.random()` en lógica de dominio o generación: debe existir un RNG con semilla inyectable (p. ej. mulberry32/xoshiro) y sub-semillas derivadas por chunk/sistema.
 - Ruido (terreno, biomas) parametrizado por semilla y coordenadas absolutas, no por orden de generación.
 - Generación por chunks con coordenadas mundo ↔ chunk ↔ local bien definidas; el terreno no asume un tablero fijo.
 - El orden de iteración no altera el resultado (cuidado con `Set`/`Map` cuando el orden importa).
 
 ### 3. Modelo de entidades
+
 - IDs estables y únicos por entidad (necesarios para guardado, referencias, IA).
 - Datos de entidad serializables (objetos planos), separados de su sprite.
 - Camino hacia composición (componentes/sistemas tipo ECS) en vez de jerarquías de clases: `Entity` genérica + datos es correcto; vigila que no crezca con campos específicos de gameplay.
 - Ocupación espacial: un `Set` de coordenadas en string sirve para validar colocación, pero no escala como índice espacial. Evalúa un índice por chunk/grid con claves numéricas para consultas de vecindad, colisión y pathfinding.
 
 ### 4. Bucle y simulación
+
 - Bucle con **paso fijo** para la simulación (acumulador) e interpolación en render; la lógica no depende del framerate.
 - Reloj de juego propio (pausable, escalable), no `Date.now()` disperso.
 - Bus de eventos o mecanismo tipado de comunicación entre sistemas, para no acoplar sistemas futuros entre sí.
 
 ### 5. Persistencia
+
 - Todo el estado de dominio se puede serializar y restaurar; versión de esquema en los datos guardados.
 - Lo derivable (texturas, sprites, cachés) no se guarda: se reconstruye desde semilla + deltas.
 
 ### 6. Contenido data-driven
+
 - Configuración (entidades, materiales, futuros objetos/biomas) validada al cargar con errores claros.
 - Añadir contenido no requiere tocar escena ni renderer.
 
 ### 7. Rendimiento y escalado
+
 - Soluciones propias que ya resuelve PixiJS (ver la tabla de la sección PixiJS): culling a mano, bucle con `requestAnimationFrame` propio, ordenación manual de miles de hijos, cachés de texturas duplicando `Assets`.
 - Texturas recoloreadas por instancia: cachearlas por combinación (asset + variante), no generar una por entidad.
 - Culling por viewport/chunk; destrucción de sprites y texturas al descargar (sin fugas).
@@ -100,6 +108,7 @@ Revisa cada punto. Marca solo lo que realmente encuentres en el código, con arc
 - Sin trabajo O(n²) en caminos calientes; sin asignaciones innecesarias por frame.
 
 ### 8. Calidad y mantenibilidad
+
 - Tipos que modelan el dominio (uniones discriminadas, tipos marca para coordenadas mundo vs pantalla vs chunk).
 - Constantes mágicas centralizadas en `constants`.
 - Tests que verifican comportamiento y determinismo, no solo cobertura.
@@ -107,12 +116,12 @@ Revisa cada punto. Marca solo lo que realmente encuentres en el código, con arc
 
 ## Clasificación de hallazgos
 
-| Nivel | Significado |
-|---|---|
-| **Bloqueante** | Rompe la visión (no determinista, estado no serializable, render como fuente de verdad). |
-| **Alta** | Obligará a una reescritura cara cuando llegue un sistema previsto (chunks, guardado, IA). |
-| **Media** | Encarece el desarrollo o el rendimiento pero se puede corregir localmente. |
-| **Baja** | Higiene: nombres, duplicación, documentación. |
+| Nivel          | Significado                                                                               |
+| -------------- | ----------------------------------------------------------------------------------------- |
+| **Bloqueante** | Rompe la visión (no determinista, estado no serializable, render como fuente de verdad).  |
+| **Alta**       | Obligará a una reescritura cara cuando llegue un sistema previsto (chunks, guardado, IA). |
+| **Media**      | Encarece el desarrollo o el rendimiento pero se puede corregir localmente.                |
+| **Baja**       | Higiene: nombres, duplicación, documentación.                                             |
 
 ## Qué corregir y cómo
 
@@ -158,6 +167,7 @@ Si cambia la geometría o la integración de assets, avisa de que `iso-asset-gen
 ## Informe final
 
 Breve, en este orden:
+
 1. Hallazgos por nivel (archivo:línea, impacto en la visión, una línea cada uno).
 2. Qué corregiste y qué tests lo cubren.
 3. Qué queda pendiente o requiere tu decisión (con el plan en `CORE_REVIEW.md`).

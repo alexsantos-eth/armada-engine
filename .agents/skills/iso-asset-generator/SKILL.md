@@ -35,11 +35,11 @@ Objects longer than one tile (cars, carts, benches, beds, long walls, fallen log
 - **Bounds diamonds become the full footprint**, same ids, same `fill="transparent"`, same 341 px height: the lower path is the footprint rectangle at z = 0, the upper one the same at z = 341.
 - **Canvas**: `viewBox = (512 − 512·ny, −341, 512·(nx + ny), 256·(nx + ny) + 341)`, with `width`/`height` equal to the viewBox size. The scale is unchanged (one tile is still 1024 px wide), so 1×1 and 2×1 assets mix without rescaling.
 
-| tiles | footprint (world, before the 2 px margin) | viewBox | lower diamond |
-|---|---|---|---|
-| (1, 1) | x, y ∈ [−256, 256] | `0 -341 1024 853` | `M512 0 1024 256 512 512 0 256Z` |
-| (2, 1) | x ∈ [−256, 768], y ∈ [−256, 256] | `0 -341 1536 1109` | `M512 0 1536 512 1024 768 0 256Z` |
-| (1, 2) | x ∈ [−256, 256], y ∈ [−256, 768] | `-512 -341 1536 1109` | `M512 0 1024 256 0 768 -512 512Z` |
+| tiles  | footprint (world, before the 2 px margin) | viewBox               | lower diamond                     |
+| ------ | ----------------------------------------- | --------------------- | --------------------------------- |
+| (1, 1) | x, y ∈ [−256, 256]                        | `0 -341 1024 853`     | `M512 0 1024 256 512 512 0 256Z`  |
+| (2, 1) | x ∈ [−256, 768], y ∈ [−256, 256]          | `0 -341 1536 1109`    | `M512 0 1536 512 1024 768 0 256Z` |
+| (1, 2) | x ∈ [−256, 256], y ∈ [−256, 768]          | `-512 -341 1536 1109` | `M512 0 1024 256 0 768 -512 512Z` |
 
 - The `<svg>` of a multi-tile asset carries `data-tiles="2x1"` (or `1x2`, …) so the pipeline can read the footprint without parsing paths.
 - **Both orientations are separate assets.** Never mirror a 2×1 sprite to get the 1×2 one: a horizontal flip swaps the lit right face with the dark left face. Write the asset once in local coordinates with `a.local(u, v, hu, hv)` (u along the long axis, v across it, from the footprint centre) and generate each orientation from the same script.
@@ -90,14 +90,14 @@ sy = 256 + (x + y) / 2 - z
 
 The light is a single directional sun from the **upper right**, high in the sky. Shading is **cel/flat**: each region is one solid color, told apart only by value. Factors applied to a material's base color:
 
-| Region | Factor | Example: foliage `#86c832` |
-|---|---|---|
-| Top face | 1.00 (full color, most saturated) | `#86c832` |
-| Top ↔ right bevel | ≈ 0.965 | `#81c130` |
-| Right face (x = +h, lower-right) | ≈ 0.93 | `#7dba2e` |
-| Top ↔ left bevel | ≈ 0.885 | `#77b12c` |
-| Right ↔ left bevel (vertical edge) | ≈ 0.85 | `#72aa2a` |
-| Left face (y = +h, lower-left) | ≈ 0.77 | `#679a26` |
+| Region                             | Factor                            | Example: foliage `#86c832` |
+| ---------------------------------- | --------------------------------- | -------------------------- |
+| Top face                           | 1.00 (full color, most saturated) | `#86c832`                  |
+| Top ↔ right bevel                  | ≈ 0.965                           | `#81c130`                  |
+| Right face (x = +h, lower-right)   | ≈ 0.93                            | `#7dba2e`                  |
+| Top ↔ left bevel                   | ≈ 0.885                           | `#77b12c`                  |
+| Right ↔ left bevel (vertical edge) | ≈ 0.85                            | `#72aa2a`                  |
+| Left face (y = +h, lower-left)     | ≈ 0.77                            | `#679a26`                  |
 
 - **Order is always top > right > left.** The left face is clearly the darkest, but still mid-tone, never near black.
 - **One bevel band per rounded edge.** The middle third of each rounded edge gets the average of the two faces it joins. That single flat band is what makes the clay read as soft and round. No gradients across it.
@@ -644,12 +644,11 @@ To inspect bevels and seams, render at 1400 px and crop the area with PIL. To ch
 
 0. **Ask about size before building.** The user may already have given some of these; ask only for the ones that are missing, in the user's language, with the `AskUserQuestion` tool (one call, up to 4 questions; plain text if that tool isn't available). Put the recommended option first, marked "(Recommended)" — for most objects that is the default listed below; for a car, say, the recommended length is 2 tiles.
 
-   | Question | What it sets | Options (the user can always answer with their own value) | Default |
-   |---|---|---|---|
-   | **Length** — how many tiles long? | `Asset(tiles=…)` | 1 tile · 2 tiles (2×1) · 2 tiles, both orientations (2×1 + 1×2) | 1 tile, or 2 when the object is clearly long (car, bench, cart) |
-   | **Height** — how tall, relative to the ceiling (341 per block)? | `height` of `a.envelope`; blocks → `nz` | To the ceiling (100 %) · Tall (~90 %) · Medium (~70 %) · Low (~50 %) | 1 block, 100 % (trees: 2 blocks, 100 %) |
-   | **Volume fill** — how much of the footprint does it occupy? | `length` and `width` of `a.envelope` | Full (~100 %) · Roomy (~85 %) · Compact (~70 %) · Small (~50 %) | 100 % |
-
+   | Question                                                        | What it sets                            | Options (the user can always answer with their own value)            | Default                                                         |
+   | --------------------------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------- |
+   | **Length** — how many tiles long?                               | `Asset(tiles=…)`                        | 1 tile · 2 tiles (2×1) · 2 tiles, both orientations (2×1 + 1×2)      | 1 tile, or 2 when the object is clearly long (car, bench, cart) |
+   | **Height** — how tall, relative to the ceiling (341 per block)? | `height` of `a.envelope`; blocks → `nz` | To the ceiling (100 %) · Tall (~90 %) · Medium (~70 %) · Low (~50 %) | 1 block, 100 % (trees: 2 blocks, 100 %)                         |
+   | **Volume fill** — how much of the footprint does it occupy?     | `length` and `width` of `a.envelope`    | Full (~100 %) · Roomy (~85 %) · Compact (~70 %) · Small (~50 %)      | 100 %                                                           |
    - Treat an answer as given when the request already says it: "two blocks long", "a tiny rock", "a short wall", "fill the tile", exact numbers ("height 250", "70 % of the length") all count. "Less than the maximum" without a figure is not an answer: ask with Roomy / Compact / Small.
    - "N blocks tall" sets `tiles=(…, …, N)` and answers the height question at 100 % of that ceiling ("2 blocks tall" → ceiling 682). A height above one block without saying blocks (e.g. "height 500") also means `nz = 2`.
    - **Trees are at least 2 blocks tall.** Any tree (every species, every variant) uses `tiles=(…, …, 2)` or more and reaches at least z = 682 (100 % of the 2-block ceiling). For a tree, the height question only offers 2 blocks (Recommended) or more; never offer or build a 1-block tree, and treat "a small tree" as 2 blocks with a lighter crown, not a lower ceiling. If the user asks for a shorter tree, say this rule applies and build it at 2 blocks. The rule is for trees only: bushes, rocks, flowers, stumps, fallen logs and other props keep the normal height options.
@@ -665,7 +664,7 @@ To inspect bevels and seams, render at 1400 px and crop the area with PIL. To ch
    - off-grid voxels (`place`) for thin parts and accents;
    - the ground: none by default (the object stands on the game's terrain); a full-footprint slab (half-size 254, or the whole `a.x0…a.x1` × `a.y0…a.y1` on multi-tile assets) only for tile-like assets;
    - for multi-tile assets, the long masses as single long voxels, and every part in `a.local(...)` coordinates if both orientations are needed.
-   Keep the total at ~8–20 voxels. The main element should dominate; a base slab shouldn't take more than ~15 % of the height.
+     Keep the total at ~8–20 voxels. The main element should dominate; a base slab shouldn't take more than ~15 % of the height.
 3. **Write `<name>.py`.** Import `iso_lib` and draw in this order:
    1. ground slabs (`a.voxel`), only if the asset carries its own ground
    2. cast shadow (`a.flat`)
@@ -722,6 +721,7 @@ print("ok tree_voxel.svg top sy =", round(a.save("tree_voxel.svg"), 1))
 
 Variants (parameterize, don't copy code):
 All tree variants are `tiles=(1, 1, 2)` (or taller) and reach z = 682:
+
 - **Pine:** trunk ~104, then six tiers of cube-like voxels up to z = 682: 3×3 minus the front cell (c 96) → plus (88) → 2×2 (96) → 2×2 (76) → one (100) → a tip at 0.6 scale; darker green (`#5fa83c`), no fruit. More tiers, not taller voxels.
 - **Columnar (cypress / poplar):** a 2×2 column (`u` ≈ 104, `uz` ≈ 95–104) on a trunk of ~110–170: the bottom layer without its front cell (so the trunk shows), full 2×2 layers, a slimmer (0.86) top layer and one rounded tip at the ceiling. Cypress: 5 layers, dark blue-green (`#3f8f47`); poplar: 4 layers, `FOLIAGE`, longer trunk.
 - **Flat-topped (acacia / umbrella):** a trunk up to ~600 into a wide, thin canopy at the ceiling (`u` ≈ 148, `uz` ≈ 50: 3×3 minus the front cell → plus), and one side branch toward +x at ~240 carrying a second, smaller flat 2×2 pad at ~320; the trunk is the feature.

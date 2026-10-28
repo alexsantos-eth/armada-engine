@@ -67,9 +67,7 @@ describe("PLAYER_APPEARANCE", () => {
         .match(new RegExp(`<g id="${facing}-0"[^>]*>[^]*?</g>`))?.[0]
         // Idle and walk sheets may use different lighting palettes; compare the pose geometry.
         ?.replace(/\s(?:fill|stroke)="[^"]*"/g, "");
-    PLAYER_FACINGS.forEach((facing) =>
-      expect(standingPose(svg, facing)).toBe(standingPose(walk, facing)),
-    );
+    PLAYER_FACINGS.forEach((facing) => expect(standingPose(svg, facing)).toBe(standingPose(walk, facing)));
     expect(svg.toLowerCase()).not.toContain("#1e2a10");
   });
 
