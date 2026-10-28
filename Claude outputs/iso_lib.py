@@ -17,7 +17,7 @@ MARGIN = 2     # anti-aliasing margin kept inside the footprint
 HALF = TILE // 2 - MARGIN   # usable half-size of a single tile (254)
 VIEW = (1, 1, 1)
 
-FACE = {"top": 1.0, "right": 0.93, "left": 0.77}
+FACE = {"top": 1.0, "right": 0.93, "left": 0.693}
 BEVEL = 0.866
 SEGMENTS = 24
 SMOOTH = 2

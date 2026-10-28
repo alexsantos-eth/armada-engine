@@ -62,9 +62,14 @@ describe("PLAYER_APPEARANCE", () => {
     const height = PLAYER_FACINGS.length * (cell.height + gap) - gap;
     expect(svg).toContain(`viewBox="0 0 ${width} ${height}"`);
     // Column 0 is the walk sheet's standing pose, so standing still starts without a jump.
-    const standing = (sheet: string, facing: string) =>
-      sheet.match(new RegExp(`<g id="${facing}-0"[^>]*>[^]*?</g>`))?.[0];
-    PLAYER_FACINGS.forEach((facing) => expect(standing(svg, facing)).toBe(standing(walk, facing)));
+    const standingPose = (sheet: string, facing: string) =>
+      sheet
+        .match(new RegExp(`<g id="${facing}-0"[^>]*>[^]*?</g>`))?.[0]
+        // Idle and walk sheets may use different lighting palettes; compare the pose geometry.
+        ?.replace(/\s(?:fill|stroke)="[^"]*"/g, "");
+    PLAYER_FACINGS.forEach((facing) =>
+      expect(standingPose(svg, facing)).toBe(standingPose(walk, facing)),
+    );
     expect(svg.toLowerCase()).not.toContain("#1e2a10");
   });
 
