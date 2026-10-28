@@ -44,6 +44,16 @@ function checkDefinition(definition: EntityDefinition, report: (issue: string) =
   if (definition.gap !== undefined && !(Number.isInteger(definition.gap) && definition.gap >= 0)) {
     report(`gap must be a non-negative integer (got ${String(definition.gap)})`);
   }
+  if (definition.settlementLot) {
+    const { regionSize, offset } = definition.settlementLot;
+    if (!isPositiveInteger(regionSize)) report(`settlementLot.regionSize must be a positive integer (got ${regionSize})`);
+    if (!Number.isInteger(offset.x) || offset.x < 0 || offset.x >= regionSize) {
+      report(`settlementLot.offset.x must be an integer inside the region (got ${offset.x})`);
+    }
+    if (!Number.isInteger(offset.y) || offset.y < 0 || offset.y >= regionSize) {
+      report(`settlementLot.offset.y must be an integer inside the region (got ${offset.y})`);
+    }
+  }
 
   if (definition.sway) {
     const { cut, amplitude, period } = definition.sway;

@@ -53,6 +53,14 @@ export type GridOffset = {
   readonly y: number;
 };
 
+/** Absolute grid offset of a reserved building lot inside a settlement region. */
+export type SettlementLot = {
+  /** Side length of each square settlement region. */
+  readonly regionSize: number;
+  /** Lot position relative to the region's minimum x and y. */
+  readonly offset: GridOffset;
+};
+
 /**
  * Formation map that groups instances of one entity when they spawn.
  *
@@ -125,6 +133,8 @@ export type EntityDefinition = {
    * applies between groups, not between members of the same group.
    */
   formation?: EntityFormation;
+  /** Places the entity only at this deterministic lot in each region, leaving room for paths. */
+  settlementLot?: SettlementLot;
   debug?: boolean;
   colorReplacements?: SvgColorReplacements;
   /** Sways in the wind (trees). Single-tile entities only. */

@@ -127,6 +127,24 @@ describe("createEntitiesFromConfig formations", () => {
 
     expect(entities.map(({ elevation }) => elevation)).toEqual([1, 2]);
   });
+
+  it("places settlement lots at absolute region coordinates and leaves other cells available", () => {
+    const boxes = grid(64, 64);
+    const definition = {
+      ...tree,
+      spawnChance: 1,
+      settlementLot: { regionSize: 64, offset: { x: 24, y: 24 } },
+    };
+
+    const first = createEntitiesFromConfig(boxes, [definition], () => 0);
+    const reordered = createEntitiesFromConfig([...boxes].reverse(), [definition], () => 0);
+
+    expect(positions(first)).toEqual(["24:24"]);
+    expect(positions(reordered)).toEqual(["24:24"]);
+
+    const negativeRegion = grid(64, 64).map((box) => new Box(box.x - 64, box.y - 64, { elevation: box.elevation }));
+    expect(positions(createEntitiesFromConfig(negativeRegion, [definition], () => 0))).toEqual(["-40:-40"]);
+  });
 });
 
 describe("Entity and createEntitiesFromConfig", () => {

@@ -28,6 +28,12 @@ const BUSH_PATCH_FORMATION: EntityFormation = {
   rotate: true,
 };
 
+/** Three reserved house lots around an eight-cell cross for future paths and a small plaza. */
+const SETTLEMENT_LOT = {
+  regionSize: 64,
+  offset: { x: 21, y: 21 },
+} as const;
+
 /**
  * What a pier blocks, block by block from the water end: the block over the water and the one
  * on the sand, but not its end on the grass, which is walked over.
@@ -245,31 +251,36 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     textureSource: "/assets/house/block.svg",
     height: 1,
     length: 1,
-    spawnChance: 0.03,
+    spawnChance: 0.9,
+    gap: 2,
     surface: "grass",
     surfaceElevation: [1, 2],
     colorReplacements: HOUSE_COLOR_REPLACEMENTS,
+    settlementLot: SETTLEMENT_LOT,
   },
   {
     id: "house_2x1",
     textureSource: "/assets/house/block_2x1.svg",
     height: 2,
     length: 1,
-    spawnChance: 0.03,
+    spawnChance: 0.9,
+    gap: 2,
     surface: "grass",
     surfaceElevation: [1, 2],
     colorReplacements: HOUSE_COLOR_REPLACEMENTS,
+    settlementLot: { regionSize: 64, offset: { x: 39, y: 21 } },
   },
   {
     id: "house_balcony",
     textureSource: "/assets/house/block_balcony.svg",
     height: 2,
     length: 1,
-    gap: 1,
-    spawnChance: 0.02,
+    gap: 2,
+    spawnChance: 0.9,
     surface: "grass",
     surfaceElevation: [1, 2],
     colorReplacements: HOUSE_BALCONY_ROOF_COLOR_REPLACEMENTS,
+    settlementLot: { regionSize: 64, offset: { x: 21, y: 39 } },
   },
   {
     id: "tower",

@@ -34,6 +34,7 @@ describe("validateEntityDefinitions", () => {
           surfaceElevation: [0, 1],
           gap: 2,
           formation: { map: ["XX", "X."], minMembers: 2, rotate: true },
+          settlementLot: { regionSize: 64, offset: { x: 24, y: 24 } },
           colorReplacements: { "#9f4b2f": ["#111111", "#222222"], "#abc": ["#333", "#444"] },
           debug: true,
         },
@@ -109,6 +110,18 @@ describe("validateEntityDefinitions", () => {
       'rock: formation: Invalid formation map character "?" at row 0, column 1: use "X" or ".".',
       "b: formation.minMembers must be an integer between 1 and 2 (got 3)",
       "c: formation.minMembers must be an integer between 1 and 2 (got 0)",
+    ]);
+  });
+
+  it("reports invalid settlement lots", () => {
+    expect(
+      issuesOf([
+        { ...VALID, settlementLot: { regionSize: 0, offset: { x: 64, y: -1 } } },
+      ]),
+    ).toEqual([
+      "rock: settlementLot.regionSize must be a positive integer (got 0)",
+      "rock: settlementLot.offset.x must be an integer inside the region (got 64)",
+      "rock: settlementLot.offset.y must be an integer inside the region (got -1)",
     ]);
   });
 

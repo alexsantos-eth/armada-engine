@@ -249,6 +249,7 @@ export function createEntitiesFromConfig(
     const formation = resolveFormation(definition.formation);
 
     for (const box of boxes) {
+      if (definition.settlementLot && !isSettlementLot(box, definition.settlementLot)) continue;
       if (!findPlacement(box, definition, context, NO_CELLS)) continue;
       if (random() >= definition.spawnChance) continue;
 
@@ -275,6 +276,16 @@ export function createEntitiesFromConfig(
   }
 
   return entities;
+}
+
+/** Whether a column is the absolute, region-relative anchor for this settlement lot. */
+function isSettlementLot(
+  box: ITerrainColumn,
+  lot: NonNullable<EntityDefinition["settlementLot"]>,
+): boolean {
+  const regionX = Math.floor(box.x / lot.regionSize) * lot.regionSize;
+  const regionY = Math.floor(box.y / lot.regionSize) * lot.regionSize;
+  return box.x === regionX + lot.offset.x && box.y === regionY + lot.offset.y;
 }
 
 /** Whether column `(x, y)` is taken: by an entity placed before, or by the current group. */
