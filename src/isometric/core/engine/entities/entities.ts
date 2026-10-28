@@ -205,6 +205,11 @@ type Placement = {
   readonly elevation: number;
 };
 
+type SettlementPath = {
+  readonly regionSize: number;
+  readonly width: number;
+};
+
 const NO_CELLS: ReadonlyCellMap<true> = new CellMap<true>();
 
 /**
@@ -240,6 +245,15 @@ export function createEntitiesFromConfig(
   variantRandom: RandomSource = createSeededRandom(deriveSeed(DEFAULT_WORLD_SEED, "entity-color-variants")),
 ): Entity[] {
   const entities: Entity[] = [];
+  const settlementPaths: SettlementPath[] = [];
+  definitions.forEach(({ settlementLot }) => {
+    if (settlementLot?.reservedPathWidth === undefined) return;
+    const { regionSize, reservedPathWidth } = settlementLot;
+    if (!settlementPaths.some((path) => path.regionSize === regionSize && path.width === reservedPathWidth)) {
+      settlementPaths.push({ regionSize, width: reservedPathWidth });
+    }
+  });
+  const paths = settlementPaths;
   const context: PlacementContext = {
     columns: CellMap.from(boxes, (box) => box),
     placed: new SpatialIndex<Entity>(),
@@ -250,6 +264,7 @@ export function createEntitiesFromConfig(
 
     for (const box of boxes) {
       if (definition.settlementLot && !isSettlementLot(box, definition.settlementLot)) continue;
+      if (crossesSettlementPath(box, definition, paths)) continue;
       if (!findPlacement(box, definition, context, NO_CELLS)) continue;
       if (random() >= definition.spawnChance) continue;
 
@@ -258,6 +273,7 @@ export function createEntitiesFromConfig(
       const members: Placement[] = [];
       for (const offset of pickFormationOffsets(formation, random)) {
         const memberBox = context.columns.get(box.x + offset.x, box.y + offset.y);
+        if (memberBox && crossesSettlementPath(memberBox, definition, paths)) continue;
         const placement = memberBox && findPlacement(memberBox, definition, context, groupCells);
         if (!placement) continue;
         placement.footprint.forEach(({ x, y }) => groupCells.set(x, y, true));
@@ -278,11 +294,35 @@ export function createEntitiesFromConfig(
   return entities;
 }
 
-/** Whether a column is the absolute, region-relative anchor for this settlement lot. */
-function isSettlementLot(
+/** Whether any block of this entity footprint intersects a reserved central settlement route. */
+function crossesSettlementPath(
   box: ITerrainColumn,
-  lot: NonNullable<EntityDefinition["settlementLot"]>,
+  definition: EntityDefinition,
+  paths: readonly SettlementPath[],
 ): boolean {
+  const { length = 1, lengthAxis = "x" } = definition;
+  for (let index = 0; index < length; index += 1) {
+    const x = box.x + (lengthAxis === "x" ? index : 0);
+    const y = box.y + (lengthAxis === "y" ? index : 0);
+    for (const { regionSize, width } of paths) {
+      const regionX = Math.floor(x / regionSize) * regionSize;
+      const regionY = Math.floor(y / regionSize) * regionSize;
+      const centerX = regionX + regionSize / 2;
+      const centerY = regionY + regionSize / 2;
+      const halfWidth = width / 2;
+      if (
+        (x >= centerX - halfWidth && x < centerX + halfWidth) ||
+        (y >= centerY - halfWidth && y < centerY + halfWidth)
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** Whether a column is the absolute, region-relative anchor for this settlement lot. */
+function isSettlementLot(box: ITerrainColumn, lot: NonNullable<EntityDefinition["settlementLot"]>): boolean {
   const regionX = Math.floor(box.x / lot.regionSize) * lot.regionSize;
   const regionY = Math.floor(box.y / lot.regionSize) * lot.regionSize;
   return box.x === regionX + lot.offset.x && box.y === regionY + lot.offset.y;

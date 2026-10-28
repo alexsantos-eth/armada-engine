@@ -59,6 +59,8 @@ export type SettlementLot = {
   readonly regionSize: number;
   /** Lot position relative to the region's minimum x and y. */
   readonly offset: GridOffset;
+  /** Width in columns of a reserved cross-shaped route through the region. */
+  readonly reservedPathWidth?: number;
 };
 
 /**

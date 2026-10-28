@@ -28,11 +28,15 @@ const BUSH_PATCH_FORMATION: EntityFormation = {
   rotate: true,
 };
 
-/** Three reserved house lots around an eight-cell cross for future paths and a small plaza. */
-const SETTLEMENT_LOT = {
-  regionSize: 64,
-  offset: { x: 21, y: 21 },
-} as const;
+/** Side of a structured neighborhood, in world columns. */
+const SETTLEMENT_REGION_SIZE = 128;
+
+/** Creates one fixed building lot while keeping all structures on the same settlement grid. */
+const settlementLot = (x: number, y: number) => ({
+  regionSize: SETTLEMENT_REGION_SIZE,
+  offset: { x, y },
+  reservedPathWidth: 8,
+});
 
 /**
  * What a pier blocks, block by block from the water end: the block over the water and the one
@@ -123,6 +127,82 @@ const OFFICE_ROOF_COLOR_REPLACEMENTS = {
   "#366353": ["#366353", "#865528", "#4c5661", "#742f2b"],
 } as const;
 
+/** Fixed neighborhood structures are placed before vegetation and free-standing landmarks. */
+const SETTLEMENT_ENTITIES: readonly EntityDefinition[] = [
+  {
+    id: "house",
+    textureSource: "/assets/house/block.svg",
+    height: 1,
+    length: 1,
+    spawnChance: 1,
+    gap: 2,
+    surface: "grass",
+    surfaceElevation: [1, 2],
+    colorReplacements: HOUSE_COLOR_REPLACEMENTS,
+    settlementLot: settlementLot(24, 24),
+  },
+  {
+    id: "house_2x1",
+    textureSource: "/assets/house/block_2x1.svg",
+    height: 2,
+    length: 1,
+    spawnChance: 1,
+    gap: 2,
+    surface: "grass",
+    surfaceElevation: [1, 2],
+    colorReplacements: HOUSE_COLOR_REPLACEMENTS,
+    settlementLot: settlementLot(88, 24),
+  },
+  {
+    id: "house_balcony",
+    textureSource: "/assets/house/block_balcony.svg",
+    height: 2,
+    length: 1,
+    gap: 2,
+    spawnChance: 1,
+    surface: "grass",
+    surfaceElevation: [1, 2],
+    colorReplacements: HOUSE_BALCONY_ROOF_COLOR_REPLACEMENTS,
+    settlementLot: settlementLot(24, 88),
+  },
+  {
+    id: "hospital",
+    textureSource: "/assets/building/block_hospital.svg",
+    height: 2,
+    spawnChance: 1,
+    gap: 2,
+    surface: "grass",
+    settlementLot: settlementLot(88, 88),
+  },
+  {
+    id: "restaurant",
+    textureSource: "/assets/building/block_restaurant.svg",
+    height: 1,
+    spawnChance: 1,
+    gap: 2,
+    surface: "grass",
+    settlementLot: settlementLot(24, 52),
+  },
+  {
+    id: "market",
+    textureSource: "/assets/building/block_market.svg",
+    height: 1,
+    spawnChance: 1,
+    gap: 2,
+    surface: "grass",
+    settlementLot: settlementLot(88, 52),
+  },
+  {
+    id: "townhall",
+    textureSource: "/assets/building/block_townhall.svg",
+    height: 2,
+    spawnChance: 1,
+    gap: 2,
+    surface: "grass",
+    settlementLot: settlementLot(52, 24),
+  },
+];
+
 /** Every entity the world generator can place, in placement priority order. */
 export const ENTITY_CONFIG: readonly EntityDefinition[] = [
   {
@@ -151,6 +231,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     surfaceElevation: 0,
     collision: PIER_COLLISION,
   },
+  ...SETTLEMENT_ENTITIES,
   {
     id: "tree",
     textureSource: "/assets/tree/block.svg",
@@ -245,42 +326,6 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     height: 2,
     spawnChance: 0.0005,
     surface: "grass",
-  },
-  {
-    id: "house",
-    textureSource: "/assets/house/block.svg",
-    height: 1,
-    length: 1,
-    spawnChance: 0.9,
-    gap: 2,
-    surface: "grass",
-    surfaceElevation: [1, 2],
-    colorReplacements: HOUSE_COLOR_REPLACEMENTS,
-    settlementLot: SETTLEMENT_LOT,
-  },
-  {
-    id: "house_2x1",
-    textureSource: "/assets/house/block_2x1.svg",
-    height: 2,
-    length: 1,
-    spawnChance: 0.9,
-    gap: 2,
-    surface: "grass",
-    surfaceElevation: [1, 2],
-    colorReplacements: HOUSE_COLOR_REPLACEMENTS,
-    settlementLot: { regionSize: 64, offset: { x: 39, y: 21 } },
-  },
-  {
-    id: "house_balcony",
-    textureSource: "/assets/house/block_balcony.svg",
-    height: 2,
-    length: 1,
-    gap: 2,
-    spawnChance: 0.9,
-    surface: "grass",
-    surfaceElevation: [1, 2],
-    colorReplacements: HOUSE_BALCONY_ROOF_COLOR_REPLACEMENTS,
-    settlementLot: { regionSize: 64, offset: { x: 21, y: 39 } },
   },
   {
     id: "tower",

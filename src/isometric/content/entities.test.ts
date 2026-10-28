@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseFormationMap, resolveFormation, validateEntityDefinitions } from "../core/engine";
+import { createEntitiesFromConfig } from "../core/engine/entities";
+import { Box } from "../core/engine/terrain";
 import { ENTITY_CONFIG, TREE_TRUNK_COLLISION } from "./entities";
 
 const ASSET_SOURCES = import.meta.glob<string>("/public/assets/**/*.svg", {
@@ -53,6 +55,36 @@ describe("ENTITY_CONFIG", () => {
     const ids = ENTITY_CONFIG.map(({ id }) => id);
 
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("places houses and civic services at fixed lots in each neighborhood", () => {
+    const ids = ["house", "house_2x1", "house_balcony", "hospital", "restaurant", "market", "townhall"];
+    const buildings = ENTITY_CONFIG.filter(({ id }) => ids.includes(id));
+    const lots = buildings.map(({ settlementLot }) => settlementLot);
+
+    expect(buildings.map(({ id }) => id)).toEqual(ids);
+    expect(lots.every((lot) => lot?.regionSize === 128)).toBe(true);
+    expect(new Set(lots.map((lot) => `${lot?.offset.x}:${lot?.offset.y}`)).size).toBe(ids.length);
+    expect(buildings.every(({ spawnChance }) => spawnChance === 1)).toBe(true);
+  });
+
+  it("generates all neighborhood structures and keeps their route cross open", () => {
+    const columns = Array.from({ length: 128 }, (_, x) =>
+      Array.from({ length: 128 }, (__, y) => new Box(x, y, { elevation: 1 })),
+    ).flat();
+    const settlementDefinitions = ENTITY_CONFIG.filter(({ settlementLot }) => settlementLot !== undefined);
+    const buildings = createEntitiesFromConfig(columns, settlementDefinitions, () => 0);
+
+    expect(buildings.map(({ id }) => id)).toEqual([
+      "house@24,24",
+      "house_2x1@88,24",
+      "house_balcony@24,88",
+      "hospital@88,88",
+      "restaurant@24,52",
+      "market@88,52",
+      "townhall@52,24",
+    ]);
+    expect(buildings.every(({ x, y }) => !(x >= 60 && x < 68) && !(y >= 60 && y < 68))).toBe(true);
   });
 
   it.each(ENTITY_CONFIG.map((definition) => [definition.id, definition] as const))(

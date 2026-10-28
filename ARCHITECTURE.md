@@ -420,7 +420,7 @@ Para añadir un módulo de escena: crea `engine/<nombre>/` con su `createX(): Sc
 
 `createEntitiesFromConfig()` usa un `SpatialIndex` de las entidades ya colocadas para la ocupación y para `gap` (`anyInRect` filtrando por tipo), y `getFootprint()`/`getEntityFootprint()` calculan las celdas de una huella. `indexEntities(entities)` construye el índice de cualquier lista de entidades.
 
-Las casas de `content/entities.ts` usan `settlementLot`: un solar en coordenadas absolutas dentro de regiones de 64 × 64 columnas. Los tres solares residenciales ocupan posiciones separadas y dejan libre una cruz central de ocho columnas de ancho, reservada para senderos y una futura plaza. La fábrica solo intenta colocar la entidad en el solar correspondiente; la elegibilidad del terreno y `spawnChance` siguen decidiendo si la casa cabe. Como las posiciones dependen de coordenadas absolutas, no cambian con el orden de carga de chunks, incluidos los negativos.
+Las entidades estructurales de `content/entities.ts` usan `settlementLot`: solares en coordenadas absolutas dentro de regiones de 128 × 128 columnas. Cada barrio reserva lotes para tres viviendas, un hospital, un restaurante, un mercado y un ayuntamiento, además de una cruz central de ocho columnas para senderos y plaza. La factory excluye de esa cruz también las huellas de otras entidades, incluidas las que cruzan entre chunks. Las estructuras se colocan antes de la vegetación para proteger sus solares. La elegibilidad del terreno, la elevación y la ocupación se siguen validando; las coordenadas son estables con chunks en cualquier orden, semilla y región negativa.
 
 ## Modelo World
 

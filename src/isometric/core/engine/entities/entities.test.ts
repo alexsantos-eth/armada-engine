@@ -145,6 +145,42 @@ describe("createEntitiesFromConfig formations", () => {
     const negativeRegion = grid(64, 64).map((box) => new Box(box.x - 64, box.y - 64, { elevation: box.elevation }));
     expect(positions(createEntitiesFromConfig(negativeRegion, [definition], () => 0))).toEqual(["-40:-40"]);
   });
+
+  it("keeps random entities out of reserved settlement paths", () => {
+    const boxes = grid(8, 8);
+    const plazaBuilding = {
+      ...tree,
+      id: "clinic",
+      spawnChance: 1,
+      settlementLot: { regionSize: 8, offset: { x: 1, y: 1 }, reservedPathWidth: 2 },
+    };
+    const placed = createEntitiesFromConfig(
+      boxes,
+      [plazaBuilding, { ...tree, spawnChance: 1, formation: { map: ["XX"] } }],
+      () => 0,
+    );
+
+    expect(positions(placed)).toContain("1:1");
+    expect(placed.some(({ x, y, type }) => type === "tree" && (x === 3 || x === 4 || y === 3 || y === 4))).toBe(false);
+  });
+
+  it("keeps a multi-block footprint out when it crosses a reserved settlement path", () => {
+    const definition = {
+      ...tree,
+      id: "cart",
+      length: 2,
+      spawnChance: 1,
+      settlementLot: { regionSize: 8, offset: { x: 2, y: 1 }, reservedPathWidth: 2 },
+    };
+
+    expect(
+      createEntitiesFromConfig(
+        [new Box(2, 1, { elevation: 1 }), new Box(3, 1, { elevation: 1 })],
+        [definition],
+        () => 0,
+      ),
+    ).toEqual([]);
+  });
 });
 
 describe("Entity and createEntitiesFromConfig", () => {

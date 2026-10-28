@@ -46,12 +46,22 @@ function checkDefinition(definition: EntityDefinition, report: (issue: string) =
   }
   if (definition.settlementLot) {
     const { regionSize, offset } = definition.settlementLot;
-    if (!isPositiveInteger(regionSize)) report(`settlementLot.regionSize must be a positive integer (got ${regionSize})`);
+    if (!isPositiveInteger(regionSize))
+      report(`settlementLot.regionSize must be a positive integer (got ${regionSize})`);
     if (!Number.isInteger(offset.x) || offset.x < 0 || offset.x >= regionSize) {
       report(`settlementLot.offset.x must be an integer inside the region (got ${offset.x})`);
     }
     if (!Number.isInteger(offset.y) || offset.y < 0 || offset.y >= regionSize) {
       report(`settlementLot.offset.y must be an integer inside the region (got ${offset.y})`);
+    }
+    const { reservedPathWidth } = definition.settlementLot;
+    if (
+      reservedPathWidth !== undefined &&
+      !(Number.isInteger(reservedPathWidth) && reservedPathWidth > 0 && reservedPathWidth < regionSize)
+    ) {
+      report(
+        `settlementLot.reservedPathWidth must be a positive integer smaller than the region (got ${reservedPathWidth})`,
+      );
     }
   }
 
