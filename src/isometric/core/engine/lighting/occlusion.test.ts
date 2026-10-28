@@ -177,3 +177,29 @@ describe("buildOcclusionMap", () => {
     expect(buildOcclusionMap(plateau())).toHaveLength((3 * AO_PIXELS_PER_TILE) ** 2 * 4);
   });
 });
+
+describe("baked directional terrain shadows", () => {
+  it("keeps cliff tops lit while feathering only across the same receiver height", () => {
+    const terrain = terrainOf([
+      { x: 0, y: 0, height: 2 },
+      { x: 1, y: 0, height: 0 },
+    ]);
+    const projection = { dirX: 1, dirY: 0, stretch: 2, alpha: 0.32 };
+    const output = new Uint8Array(2 * 8 * 8);
+    expect(buildOcclusionMap(terrain, 8, [], projection)).toHaveLength(2 * 8 * 8 * 4);
+    const map = buildOcclusionMap(terrain, 8, [], projection, output);
+    for (let y = 0; y < 8; y += 1) {
+      for (let x = 0; x < 8; x += 1) expect(map[(y * 16 + x) * 4 + 3]).toBe(0);
+    }
+    expect(output.some((alpha) => alpha > 0)).toBe(true);
+    expect(map.some((value, index) => index % 4 === 3 && value > 0)).toBe(true);
+  });
+  it("does not cast a ray for flat, missing, or half-height ground and handles map edges", () => {
+    const projection = { dirX: -1, dirY: 0, stretch: 0, alpha: 0.32 };
+    const terrain = plateau();
+    const map = buildOcclusionMap(terrain, 3, [], projection);
+    expect(map.every((value) => value === 0)).toBe(true);
+    const open = { bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 }, topHeightAt: () => undefined };
+    expect(buildOcclusionMap(open, 1, [], { ...projection, stretch: 1 }).every((value) => value === 0)).toBe(true);
+  });
+});

@@ -14,6 +14,7 @@ import {
   jumpPlayer,
   setPlayerWalk,
   type RandomSource,
+  type PhaseLighting,
 } from "../core/engine";
 import { bindKeyboardControls } from "../input";
 import { type ChunkWorker, createChunkPrefetch, startChunkWorker } from "./chunk-prefetch";
@@ -36,6 +37,8 @@ export type GameOptions = {
   readonly log?: (message: string) => void;
   /** Starts the worker that generates the chunks ahead of the camera. Defaults to `startChunkWorker()`. */
   readonly chunkWorker?: () => ChunkWorker;
+  /** Optional shared phase controller for explicit lighting transitions. Defaults to stable daylight. */
+  readonly lighting?: PhaseLighting;
 };
 
 /** A running game (`mountGame()`). */
@@ -114,21 +117,26 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     // keeps loaded the ground around the player first and what the camera sees, wherever the
     // camera is: all at once while the scene is built, then a few chunks per frame. The chunks
     // ahead of the camera are generated in the worker, and load once they are ready.
-    const scene = await createScene(app, world, createSceneModules(disabledModules, { cull }), {
-      terrain: TERRAIN_APPEARANCE,
-      profiler: monitor?.profiler,
-      interpolation: () => getInterpolationAlpha(simulation.stepper),
-      stream: (visible, building) => {
-        const focus = [chunkOfPoint(world.parts.get(PLAYER_PART)), ...visible];
-        if (building) return world.chunks.stream(focus);
-        prefetch.request(focus);
-        return world.chunks.stream(focus, {
-          prefetchRadius: CHUNK_PREFETCH_RADIUS,
-          maxLoads: CHUNKS_LOADED_PER_FRAME,
-          prefetchPrepared: true,
-        });
+    const scene = await createScene(
+      app,
+      world,
+      createSceneModules(disabledModules, { cull, lighting: options.lighting }),
+      {
+        terrain: TERRAIN_APPEARANCE,
+        profiler: monitor?.profiler,
+        interpolation: () => getInterpolationAlpha(simulation.stepper),
+        stream: (visible, building) => {
+          const focus = [chunkOfPoint(world.parts.get(PLAYER_PART)), ...visible];
+          if (building) return world.chunks.stream(focus);
+          prefetch.request(focus);
+          return world.chunks.stream(focus, {
+            prefetchRadius: CHUNK_PREFETCH_RADIUS,
+            maxLoads: CHUNKS_LOADED_PER_FRAME,
+            prefetchPrepared: true,
+          });
+        },
       },
-    });
+    );
     teardowns.push(scene.destroy);
     if (destroyed) return;
     monitor?.watch(scene);

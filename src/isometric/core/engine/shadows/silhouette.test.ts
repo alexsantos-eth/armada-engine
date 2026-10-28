@@ -119,6 +119,8 @@ import {
   placeGroundShadowView,
   placeSilhouette,
   SHADOW_MAP_PIXELS_PER_TILE,
+  cropSilhouetteAbove,
+  type Silhouette,
 } from "./silhouette";
 
 const METRICS = { tileWidth: 40, tileHeight: 20, boxHeight: 40 / 3 };
@@ -454,4 +456,16 @@ describe("getSilhouetteMapMatrix / placeSilhouette", () => {
       expect.objectContaining(getSilhouetteMapMatrix(shape, identityWorld, { x: 0, y: 0 }, 16)),
     );
   });
+});
+
+it("clips the part of a lower caster below a higher receiving plane", () => {
+  const shape = {
+    texture: texture(40, 80),
+    display: { left: 0, top: -80, width: 40, height: 80 },
+  } as unknown as Silhouette;
+  expect(cropSilhouetteAbove(shape, 0)).toBe(shape);
+  expect(cropSilhouetteAbove(shape, 100)).toBeUndefined();
+  const cropped = cropSilhouetteAbove(shape, 20)!;
+  expect(cropped.display.height).toBe(60);
+  expect(cropped.texture.frame.height).toBe(60);
 });

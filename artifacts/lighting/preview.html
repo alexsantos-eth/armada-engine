@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Armada · Iluminación</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #111;
+        font:
+          12px system-ui,
+          sans-serif;
+      }
+      #game {
+        position: absolute;
+        inset: 0;
+      }
+      #clock {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        padding: 6px 10px;
+        border-radius: 6px;
+        color: white;
+        background: #20331dc9;
+        pointer-events: none;
+      }
+      nav {
+        position: absolute;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 4px;
+        padding: 5px;
+        border-radius: 12px;
+        background: #1e2b23e8;
+        box-shadow: 0 5px 20px #0003;
+      }
+      button {
+        border: 0;
+        border-radius: 8px;
+        padding: 9px 14px;
+        background: transparent;
+        color: #d7dfd5;
+        cursor: pointer;
+        font: inherit;
+      }
+      button[aria-pressed="true"] {
+        background: #ecf3d7;
+        color: #263622;
+      }
+      button:focus-visible {
+        outline: 2px solid #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <div id="clock"></div>
+    <nav aria-label="Fase de iluminación">
+      <button data-phase="dawn" aria-pressed="false">Amanecer</button>
+      <button data-phase="day" aria-pressed="true">Día</button>
+      <button data-phase="sunset" aria-pressed="false">Atardecer</button>
+      <button data-phase="night" aria-pressed="false">Noche</button>
+    </nav>
+    <script type="module">
+      import { mountGame } from "/src/isometric/game/index.ts";
+      import { createPhaseLighting } from "/src/isometric/core/engine/lighting/index.ts";
+      const lighting = createPhaseLighting();
+      const game = mountGame(document.querySelector("#game"), {
+        window,
+        lighting,
+        onClockChange: (label) => {
+          document.querySelector("#clock").textContent = label;
+        },
+      });
+      document.querySelectorAll("button[data-phase]").forEach((button) => {
+        button.addEventListener("click", () => {
+          lighting.transitionTo(button.dataset.phase, 3000);
+          document.querySelectorAll("button[data-phase]").forEach((other) => {
+            other.setAttribute("aria-pressed", String(other === button));
+          });
+        });
+      });
+      window.addEventListener("pagehide", game.destroy, { once: true });
+    </script>
+  </body>
+</html>

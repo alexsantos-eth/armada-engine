@@ -2,14 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("pixi.js", async () => (await import("../flow-check/scene-harness")).mockPixi());
 vi.mock("../render", async () => (await import("../flow-check/scene-harness")).mockRender());
+vi.mock("./terrain-faces", async () => (await import("../flow-check/scene-harness")).mockTerrainFaces());
 vi.mock("./silhouette", async () => (await import("../flow-check/scene-harness")).mockSilhouette());
 
 import { type Renderer, RenderTexture, Sprite } from "pixi.js";
 import { TILE_METRICS } from "../constants";
-import { getShadowProjection, getSilhouetteMatrix, SHADOW_REFRESH_TICKS } from "../lighting";
+import { getShadowProjection, getSilhouetteMatrix } from "../lighting";
 import { projectBoxesToIsometric } from "../projection";
 import type { BuiltScene, SceneMovingCaster, SceneView } from "../scene";
 import { getSunState, TICKS_PER_HOUR } from "../time";
+import { createTerrainFaceShadows } from "./terrain-faces";
 import { createMovingShadow, MOVING_SHADOW_PIXELS_PER_TILE, MOVING_SHADOW_RADIUS } from "./moving-shadow";
 import {
   createCasterSprites,
@@ -48,7 +50,11 @@ const casterAt = (ground: { x: number; y: number; elevation: number }, view: unk
 };
 
 /** A moving shadow over flat ground at elevation 1, but for the columns `heights` sets. */
-const shadowOf = (caster: SceneMovingCaster, heights: (x: number, y: number) => number | undefined = () => 1) => {
+const shadowOf = (
+  caster: SceneMovingCaster,
+  heights: (x: number, y: number) => number | undefined = () => 1,
+  strength?: () => number,
+) => {
   const renderer = { render: vi.fn() };
   const filters = [{ blur: true }, { alpha: 1 }];
   const shadow = createMovingShadow(caster, {
@@ -58,6 +64,7 @@ const shadowOf = (caster: SceneMovingCaster, heights: (x: number, y: number) => 
     topInsetAt: (x) => (x === 6 ? 0.25 : 0),
     projection,
     metrics: TILE_METRICS,
+    strength,
   });
   const moved: SceneView[] = [];
   const scene: BuiltScene = {
@@ -101,17 +108,17 @@ describe("createMovingShadow", () => {
     expect(slots.every(({ visible }) => !visible)).toBe(true);
   });
 
-  it("lays its views on the columns around the caster at its level, under what stands on them", () => {
+  it("lays views at each receiving column height, including upper and lower ground", () => {
     const { caster } = casterAt({ x: 3.2, y: 4, elevation: 1 });
     const { shadow, scene, moved, slots } = shadowOf(caster, (x) => (x === 5 ? 2 : 1));
 
-    shadow.update(scene, noon, 0);
+    shadow.update(scene, noon);
 
     const [top] = projectBoxesToIsometric([{ x: 4, y: 5, elevation: 1, metadata: {} }], projection);
     expect(slotOf(slots, 3, 4, 4, 5)).toMatchObject({ visible: true, tileTop: { x: top.screenX, y: top.screenY } });
     expect(moved).toContainEqual(expect.objectContaining({ view: slotOf(slots, 3, 4, 4, 5), depth: top.baseScreenY }));
     // A column of another level shows none of it.
-    expect(slotOf(slots, 3, 4, 5, 5).visible).toBe(false);
+    expect(slotOf(slots, 3, 4, 5, 5).visible).toBe(true);
     // On a sand top, as much lower.
     expect(slotOf(slots, 3, 4, 6, 4).tileTop?.y).toBeCloseTo(
       projectBoxesToIsometric([{ x: 6, y: 4, elevation: 1, metadata: {} }], projection)[0].screenY +
@@ -121,7 +128,7 @@ describe("createMovingShadow", () => {
       width: MOVING_SHADOW_PIXELS_PER_TILE,
       height: MOVING_SHADOW_PIXELS_PER_TILE,
     });
-    expect(moved).toHaveLength(SIDE * SIDE - SIDE);
+    expect(moved).toHaveLength(SIDE * SIDE);
   });
 
   it("lays the caster's silhouette by the sun from its foot, made once", () => {
@@ -129,7 +136,7 @@ describe("createMovingShadow", () => {
     const { shadow, scene, renderer } = shadowOf(caster);
     const light = noon as NonNullable<typeof noon>;
 
-    shadow.update(scene, light, 0);
+    shadow.update(scene, light);
 
     expect(createMovingSilhouette).toHaveBeenCalledWith(caster.view, at.screen, at.ground);
     // Copies of its feet, not the caster's own points (which may be written in place as it moves).
@@ -144,23 +151,23 @@ describe("createMovingShadow", () => {
     expect(placeSilhouette).toHaveBeenCalledWith(
       sprites.sprite.mock.results[0].value,
       silhouette,
-      expect.objectContaining(getSilhouetteMatrix(light, at.ground, 0.5, TILE_METRICS)),
+      expect.objectContaining(getSilhouetteMatrix(light, at.ground, 0.75, TILE_METRICS)),
       { x: 3 - MOVING_SHADOW_RADIUS - 0.5, y: 4 - MOVING_SHADOW_RADIUS - 0.5 },
       MOVING_SHADOW_PIXELS_PER_TILE,
     );
     expect(renderer.render).toHaveBeenCalledWith({
       container: sprites.container,
-      target: vi.mocked(RenderTexture.create).mock.results[0].value,
+      target: vi.mocked(RenderTexture.create).mock.results[1].value,
       clear: true,
       clearColor: [0, 0, 0, 0],
     });
 
     at.ground = { x: 3.4, y: 4, elevation: 1 };
     at.screen.x = 99;
-    shadow.update(scene, light, 1);
+    shadow.update(scene, light);
     expect(createMovingSilhouette).toHaveBeenCalledTimes(1);
     expect(screenFoot).toEqual({ x: 10, y: 20 });
-    expect(renderer.render).toHaveBeenCalledTimes(2);
+    expect(renderer.render).toHaveBeenCalledTimes(12);
   });
 
   it("makes a silhouette per texture its sprite shows, and draws again when it shows another", () => {
@@ -170,75 +177,78 @@ describe("createMovingShadow", () => {
     const { caster } = casterAt({ x: 3, y: 4, elevation: 1 }, sprite);
     const { shadow, scene, renderer } = shadowOf(caster);
 
-    shadow.update(scene, noon, 0);
+    shadow.update(scene, noon);
     // A walk pose, without moving (the sprite is turned in place).
     sprite.texture = stepping as never;
-    shadow.update(scene, noon, 1);
-    expect(renderer.render).toHaveBeenCalledTimes(2);
+    shadow.update(scene, noon);
+    expect(renderer.render).toHaveBeenCalledTimes(12);
     expect(createMovingSilhouette).toHaveBeenCalledTimes(2);
 
     // Back to a pose it already showed: its silhouette is kept.
     sprite.texture = standing as never;
-    shadow.update(scene, noon, 2);
-    expect(renderer.render).toHaveBeenCalledTimes(3);
+    shadow.update(scene, noon);
+    expect(renderer.render).toHaveBeenCalledTimes(18);
     expect(createMovingSilhouette).toHaveBeenCalledTimes(2);
     const silhouettes = vi.mocked(createMovingSilhouette).mock.results.map(({ value }) => value as unknown);
     expect(vi.mocked(placeSilhouette).mock.calls.map(([, silhouette]) => silhouette)).toEqual([
       silhouettes[0],
+      silhouettes[0],
       silhouettes[1],
+      silhouettes[1],
+      silhouettes[0],
       silhouettes[0],
     ]);
   });
 
-  it("draws again only when the caster moves, the sun turns or a refresh is due", () => {
+  it("draws again only when the caster moves or the projection changes, with no clock refresh", () => {
     const { caster, at } = casterAt({ x: 3, y: 4, elevation: 1 });
     const { shadow, scene, renderer, moved } = shadowOf(caster);
 
-    shadow.update(scene, noon, 0);
-    shadow.update(scene, noon, SHADOW_REFRESH_TICKS - 1);
-    expect(renderer.render).toHaveBeenCalledTimes(1);
-    shadow.update(scene, noon, SHADOW_REFRESH_TICKS);
-    expect(renderer.render).toHaveBeenCalledTimes(2);
+    shadow.update(scene, noon);
+    shadow.update(scene, noon);
+    expect(renderer.render).toHaveBeenCalledTimes(6);
+    shadow.update(scene, noon);
+    expect(renderer.render).toHaveBeenCalledTimes(6);
 
     // At night, an empty map.
-    shadow.update(scene, null, SHADOW_REFRESH_TICKS);
-    expect(renderer.render).toHaveBeenCalledTimes(3);
+    shadow.update(scene, null);
+    expect(renderer.render).toHaveBeenCalledTimes(7);
     expect(castersOf().show).toHaveBeenLastCalledWith(0);
 
     // Moving within its column moves no view.
     const placed = moved.length;
     at.ground = { x: 3.3, y: 4, elevation: 1 };
-    shadow.update(scene, null, SHADOW_REFRESH_TICKS);
-    expect(renderer.render).toHaveBeenCalledTimes(4);
+    shadow.update(scene, null);
+    expect(renderer.render).toHaveBeenCalledTimes(8);
     expect(moved).toHaveLength(placed);
   });
 
-  it("follows the caster into another column, showing the views of its new level only", () => {
+  it("follows the caster into another column while preserving every receiver height", () => {
     const { caster, at } = casterAt({ x: 3, y: 4, elevation: 1 });
     const { shadow, scene, moved, slots } = shadowOf(caster, (x) => (x >= 5 ? 2 : 1));
-    shadow.update(scene, noon, 0);
-    expect(slotOf(slots, 3, 4, 5, 4).visible).toBe(false);
+    shadow.update(scene, noon);
+    expect(slotOf(slots, 3, 4, 5, 4).visible).toBe(true);
 
     at.ground = { x: 5, y: 4, elevation: 2 };
     moved.length = 0;
-    shadow.update(scene, noon, 0);
+    shadow.update(scene, noon);
 
     expect(slotOf(slots, 5, 4, 5, 4).visible).toBe(true);
-    expect(slotOf(slots, 5, 4, 4, 4).visible).toBe(false);
-    expect(moved).toHaveLength(SIDE * (MOVING_SHADOW_RADIUS + 1));
+    expect(slotOf(slots, 5, 4, 4, 4).visible).toBe(true);
+    expect(moved).toHaveLength(SIDE * SIDE);
   });
 
   it("shows nothing off the loaded ground, nor for a caster that is not a sprite", () => {
     const off = casterAt({ x: 3, y: 4, elevation: 0 });
     const offGround = shadowOf(off.caster, () => undefined);
-    offGround.shadow.update(offGround.scene, noon, 0);
+    offGround.shadow.update(offGround.scene, noon);
     expect(offGround.slots.every(({ visible }) => !visible)).toBe(true);
     expect(offGround.renderer.render).toHaveBeenCalledTimes(1);
     expect(createMovingSilhouette).not.toHaveBeenCalled();
 
     const flat = casterAt({ x: 3, y: 4, elevation: 1 }, { notASprite: true });
     const notSprite = shadowOf(flat.caster);
-    notSprite.shadow.update(notSprite.scene, noon, 0);
+    notSprite.shadow.update(notSprite.scene, noon);
     expect(createMovingSilhouette).not.toHaveBeenCalled();
     expect(castersOf(1).show).toHaveBeenLastCalledWith(0);
   });
@@ -253,4 +263,40 @@ describe("createMovingShadow", () => {
     expect(map.destroy).toHaveBeenCalledWith(true);
     expect(castersOf().destroy).toHaveBeenCalled();
   });
+});
+
+it("projects onto wall receiver bands, clips upper planes and grades walls without a redraw", () => {
+  vi.clearAllMocks();
+  const faceView = new Sprite({} as never);
+  const faces = {
+    views: [{ view: faceView, depth: 0, layer: 1 as const }],
+    levels: [0.5, 2],
+    clear: vi.fn(),
+    begin: vi.fn(),
+    commit: vi.fn(),
+    cancel: vi.fn(),
+    draw: vi.fn(),
+    destroy: vi.fn(),
+  };
+  vi.mocked(createTerrainFaceShadows).mockReturnValueOnce(faces);
+  const { caster } = casterAt({ x: 3, y: 4, elevation: 1 });
+  let strength = 0.7;
+  const { shadow, scene, renderer } = shadowOf(
+    caster,
+    () => 1,
+    () => strength,
+  );
+  shadow.update(scene, noon);
+  expect(scene.add).toHaveBeenCalledWith(faces.views);
+  expect(faces.draw).toHaveBeenCalledWith(0.5, noon);
+  expect(faces.draw).toHaveBeenCalledWith(2, noon);
+  expect(faceView.alpha).toBe(0.7);
+  const draws = renderer.render.mock.calls.length;
+  strength = 0.5;
+  shadow.update(scene, noon);
+  expect(faceView.alpha).toBe(0.5);
+  expect(renderer.render).toHaveBeenCalledTimes(draws);
+  shadow.destroy();
+  expect(scene.remove).toHaveBeenCalledWith(faces.views);
+  expect(faces.destroy).toHaveBeenCalledWith(false);
 });

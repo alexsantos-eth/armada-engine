@@ -106,7 +106,7 @@ describe("createScene", () => {
     const { scene } = await mountScene(shore(), [module], { resolution: 2 });
     const resolution = getSvgResolution(TILE_METRICS.tileWidth * CAMERA_MAX_ZOOM, 2);
 
-    await expect(seen.context?.assets.loadSvg("/assets/a.svg")).resolves.toEqual({ source: "/assets/a.svg" });
+    await expect(seen.context?.assets.loadSvg("/assets/a.svg")).resolves.toMatchObject({ source: "/assets/a.svg" });
     expect(Assets.load).toHaveBeenCalledWith({
       src: "/assets/a.svg",
       parser: "svg",

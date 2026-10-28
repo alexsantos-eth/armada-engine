@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("pixi.js", async () => (await import("../flow-check/scene-harness")).mockPixi());
 vi.mock("../render", async () => (await import("../flow-check/scene-harness")).mockRender());
 
-import { Assets, Container } from "pixi.js";
+import { Assets, Container, type Sprite } from "pixi.js";
 import { CAMERA_MAX_ZOOM, CAMERA_START_ZOOM, getGroundPointBelow } from "../camera";
 import { createCameraView } from "../camera-view";
 import { TILE_METRICS } from "../constants";
@@ -11,7 +11,7 @@ import { WorldParts } from "../parts";
 import { createPlayer, PLAYER_FACINGS, PLAYER_PART, stepPlayer } from "../player";
 import { createClockPart } from "../time";
 import { projectGridPoint } from "../projection";
-import { getBlockDepth, getSvgResolution } from "../render";
+import { createBlockViews, getBlockDepth, getSvgResolution } from "../render";
 import { SCENE_LAYER, type BuiltScene, type SceneModule } from "../scene";
 import {
   loadTexture,
@@ -316,7 +316,7 @@ describe("createPlayerView", () => {
     expect(Assets.load).toHaveBeenCalledWith(expect.objectContaining({ src: SHEET.source }));
     expect(Assets.load).not.toHaveBeenCalledWith(expect.objectContaining({ src: PLAYER.textureSource }));
     expect(renderCalls).toEqual([expect.objectContaining({ cell: getWalkSheetCell(SHEET), height: 1 })]);
-    expect(cellOf(view)).toEqual({ source: SHEET.source, row: facing("south"), column: 0 });
+    expect(cellOf(view)).toMatchObject({ source: SHEET.source, row: facing("south"), column: 0 });
     scene.destroy();
   });
 
@@ -600,7 +600,7 @@ describe("createPlayerView", () => {
     world.parts.get(PLAYER_PART).walk = { x: 1, y: 0 };
     world.parts.get(PLAYER_PART).x = 1.2;
     ticker.frame();
-    expect(view.texture).toEqual({ source: PLAYER.textureSource });
+    expect(view.texture).toMatchObject({ source: PLAYER.textureSource });
     scene.destroy();
   });
 
@@ -621,6 +621,57 @@ describe("createPlayerView", () => {
     expect(Assets.load).not.toHaveBeenCalled();
     expect(root.children).toHaveLength(0);
     expect(scene.services.focus).toBeUndefined();
+    scene.destroy();
+  });
+});
+
+describe("terrain shadow receiver", () => {
+  beforeEach(() => {
+    resetHarness();
+    vi.clearAllMocks();
+  });
+  it("fades only the bottom part of the player and follows the receiver callback", async () => {
+    const { root, scene } = await mountScene(fieldWithPlayer(), [createPlayerView({ ...PLAYER, scale: 0 })]);
+    const sprite = root.children[0] as unknown as Sprite;
+    const overlay = sprite.children[0];
+    const caster = scene.services.movingCasters![0];
+    caster.receiveTerrainShadow!(0.3);
+    expect(overlay.alpha).toBe(0.3);
+    expect(overlay.visible).toBe(true);
+    caster.receiveTerrainShadow!(0);
+    expect(overlay.visible).toBe(false);
+    scene.destroy();
+  });
+  it("receives actual shadow rows over its full height", async () => {
+    const { root, scene } = await mountScene(fieldWithPlayer(), [createPlayerView(PLAYER)]);
+    const sprite = root.children[0] as unknown as Sprite;
+    const overlay = sprite.children[0];
+    const caster = scene.services.movingCasters![0];
+    caster.receiveTerrainShadowBands!(new Float32Array(16).fill(0.3));
+    expect(overlay.visible).toBe(true);
+    expect(overlay.alpha).toBe(1);
+    expect((overlay.children[0] as Sprite).alpha).toBeCloseTo(0.3);
+    caster.receiveTerrainShadowBands!(new Float32Array(16));
+    expect(overlay.visible).toBe(false);
+    scene.destroy();
+  });
+  it("reuses the bottom crop when sprites share the same texture and display scale", async () => {
+    const shared = { source: PLAYER.textureSource, frame: { x: 0, y: 0, width: 16, height: 16 } };
+    vi.mocked(Assets.load).mockResolvedValueOnce(shared);
+    const first = await mountScene(fieldWithPlayer(), [createPlayerView(PLAYER)]);
+    vi.mocked(Assets.load).mockResolvedValueOnce(shared);
+    const second = await mountScene(fieldWithPlayer(), [createPlayerView(PLAYER)]);
+    const bottom = (root: typeof first.root) =>
+      ((root.children[0] as unknown as Sprite).children[0].children[0] as Sprite).texture;
+    expect(bottom(first.root)).toBe(bottom(second.root));
+    expect(bottom(first.root).frame.y).toBeGreaterThan(0);
+    first.scene.destroy();
+    second.scene.destroy();
+  });
+  it("degrades when a renderer provides no sprite", async () => {
+    vi.mocked(createBlockViews).mockReturnValueOnce([{ view: new Container(), depth: 0 }]);
+    const { scene } = await mountScene(fieldWithPlayer(), [createPlayerView(PLAYER)]);
+    expect(scene.services.movingCasters).toBeUndefined();
     scene.destroy();
   });
 });

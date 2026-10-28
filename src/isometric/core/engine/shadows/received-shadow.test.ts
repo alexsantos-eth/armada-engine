@@ -92,6 +92,13 @@ vi.mock("pixi.js", () => {
 
   return {
     Container,
+    BufferImageSource: class {
+      public update = vi.fn();
+      public resource: Uint8ClampedArray;
+      constructor(options: { resource: Uint8ClampedArray }) {
+        this.resource = options.resource;
+      }
+    },
     Matrix,
     Rectangle,
     RenderTexture: {
@@ -475,4 +482,18 @@ describe("createReceivedShadows", () => {
       ).toBeGreaterThan(atlasOrder),
     );
   });
+});
+
+it("composes a height-aware terrain mask with entity casters and reuses its texture", () => {
+  const receiver = twoReceivers()[0];
+  const renderer = { render: vi.fn() };
+  const rig = createReceivedShadowRig(renderer as never, []);
+  const shadows = createReceivedShadows([receiver], rig, createTexturePool());
+  const sample = vi.fn((_own, _x, y: number) => (y > 0 ? 1 : 0));
+  shadows.draw(null, sample);
+  expect(sample).toHaveBeenCalledTimes(128);
+  shadows.draw(null, sample);
+  expect(sample).toHaveBeenCalledTimes(256);
+  shadows.destroy();
+  rig.destroy();
 });

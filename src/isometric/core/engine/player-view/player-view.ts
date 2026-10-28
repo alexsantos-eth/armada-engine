@@ -23,22 +23,24 @@ import {
 } from "./walk";
 
 const TERRAIN_SHADOW_BANDS = 16;
-const terrainShadowTextures = new WeakMap<Texture, Texture[]>();
+const terrainShadowTextures = new WeakMap<Texture, Map<number, Texture[]>>();
 
 /** Vertical texture slices, cached per animation frame to fade the shadow at block height. */
-function bottomBandTextures(texture: Texture): Texture[] {
-  const cached = terrainShadowTextures.get(texture);
+function bottomBandTextures(texture: Texture, fraction: number): Texture[] {
+  const crops = terrainShadowTextures.get(texture) ?? new Map<number, Texture[]>();
+  terrainShadowTextures.set(texture, crops);
+  const cached = crops.get(fraction);
   if (cached) return cached;
   const frame = texture.frame;
   const bands = Array.from({ length: TERRAIN_SHADOW_BANDS }, (_, index) => {
-    const start = Math.round(frame.height * (1 - (index + 1) / TERRAIN_SHADOW_BANDS));
-    const end = Math.round(frame.height * (1 - index / TERRAIN_SHADOW_BANDS));
+    const start = Math.round(frame.height * (1 - (fraction * (index + 1)) / TERRAIN_SHADOW_BANDS));
+    const end = Math.round(frame.height * (1 - (fraction * index) / TERRAIN_SHADOW_BANDS));
     return new Texture({
       source: texture.source,
       frame: new Rectangle(frame.x, frame.y + start, frame.width, Math.max(1, end - start)),
     });
   });
-  terrainShadowTextures.set(texture, bands);
+  crops.set(fraction, bands);
   return bands;
 }
 
@@ -152,15 +154,12 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
         const scaleY = Math.abs(view.scale.y) || 1;
         const width = view.width / scaleX;
         const height = view.height / scaleY;
-        const shadedHeight = Math.min(height, metrics.boxHeight / scaleY);
+        const shadedHeight = height;
         const bandHeight = shadedHeight / TERRAIN_SHADOW_BANDS;
-        const textures = bottomBandTextures(view.texture);
+        const textures = bottomBandTextures(view.texture, shadedHeight / height);
         terrainShadowOverlays.forEach((overlay, index) => {
           overlay.texture = textures[index];
-          overlay.position.set(
-            -view.anchor.x * width,
-            -view.anchor.y * height + height - (index + 1) * bandHeight,
-          );
+          overlay.position.set(-view.anchor.x * width, -view.anchor.y * height + height - (index + 1) * bandHeight);
           overlay.width = width;
           overlay.height = bandHeight;
         });
@@ -204,6 +203,16 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
         terrainShadowOverlay.alpha = alpha;
         terrainShadowOverlay.visible = alpha > 0.005;
       };
+      const receiveTerrainShadowBands = (samples: ArrayLike<number>) => {
+        terrainShadowOverlay.alpha = 1;
+        let visible = false;
+        terrainShadowOverlays.forEach((overlay, index) => {
+          const alpha = samples[index];
+          if (overlay.alpha !== alpha) overlay.alpha = alpha;
+          visible ||= alpha > 0.005;
+        });
+        if (terrainShadowOverlay.visible !== visible) terrainShadowOverlay.visible = visible;
+      };
       // Where its feet are in the world for its shadow: lifted by a jump's height, as if it stood higher.
       let castFrom = { x: drawnAt.x, y: drawnAt.y, elevation: drawnAt.elevation };
       let drawnDepth: number | undefined;
@@ -241,7 +250,14 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
       return {
         provides: {
           focus: { ground: () => getGroundPointBelow(player, level, projection) },
-          movingCasters: [{ view, foot: () => ({ ground: castFrom, screen: drawnFoot }), receiveTerrainShadow }],
+          movingCasters: [
+            {
+              view,
+              foot: () => ({ ground: castFrom, screen: drawnFoot }),
+              receiveTerrainShadow,
+              receiveTerrainShadowBands,
+            },
+          ],
         },
         start: (built) => {
           scene = built;

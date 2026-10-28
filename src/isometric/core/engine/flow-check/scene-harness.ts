@@ -14,6 +14,7 @@
 import { vi } from "vitest";
 import type * as ColorModule from "../render/color";
 import { Entity } from "../entities";
+import { SHADOW_BLUR, SHADOW_MAP_PIXELS_PER_TILE } from "../lighting";
 import { chunksInRect } from "../grid";
 import { createPlayer, createPlayerPart } from "../player";
 import { DEFAULT_WORLD_SEED } from "../random";
@@ -51,10 +52,12 @@ export function resetHarness(): void {
 /** The default implementation of the mocked `Assets.load`. */
 export const loadTexture = (asset: string | { src: string }) => {
   const source = typeof asset === "string" ? asset : asset.src;
-  const texture = { source };
+  const texture = { source, frame: { x: 0, y: 0, width: 16, height: 16 } };
   loadedTextures.set(source, texture);
   return Promise.resolve(texture);
 };
+
+let makeSprite: (texture: unknown) => object;
 
 /** A mock of the parts of `pixi.js` the scene and its modules use. */
 export function mockPixi() {
@@ -68,7 +71,12 @@ export function mockPixi() {
     public visibleWrites: boolean[] = [];
     public eventMode = "passive";
     public position = { x: 0, y: 0, set: vi.fn((x: number, y: number) => Object.assign(this.position, { x, y })) };
-    public scale = { x: 1, y: 1, set: vi.fn((value: number) => Object.assign(this.scale, { x: value, y: value })) };
+    public scale = {
+      x: 1,
+      y: 1,
+      value: 1,
+      set: vi.fn((value: number) => Object.assign(this.scale, { x: value, y: value, value })),
+    };
     public destroy = vi.fn();
 
     constructor(options: { isRenderGroup?: boolean } = {}) {
@@ -114,6 +122,20 @@ export function mockPixi() {
     }
   }
 
+  class Sprite extends Container {
+    public setSize = vi.fn();
+    public setFromMatrix = vi.fn();
+    public texture: unknown;
+    public anchor = { x: 0, y: 0 };
+    public width = 30;
+    public height = 30;
+    constructor(texture?: unknown) {
+      super();
+      this.texture = texture;
+    }
+  }
+  makeSprite = (texture) => new Sprite(texture);
+
   return {
     Assets: { load: vi.fn(loadTexture), unload: vi.fn(() => Promise.resolve(undefined)) },
     Container,
@@ -138,16 +160,29 @@ export function mockPixi() {
         this.frame = frame;
       }
     },
-    Sprite: class {
-      public scale = {
-        value: 1,
-        set: vi.fn(function (this: { value: number }, value: number) {
-          this.value = value;
-        }),
-      };
-      public texture: unknown;
-      constructor(texture: unknown) {
-        this.texture = texture;
+    Sprite,
+    Matrix: class {
+      public a: number;
+      public b: number;
+      public c: number;
+      public d: number;
+      public tx: number;
+      public ty: number;
+      constructor(a = 1, b = 0, c = 0, d = 1, tx = 0, ty = 0) {
+        this.a = a;
+        this.b = b;
+        this.c = c;
+        this.d = d;
+        this.tx = tx;
+        this.ty = ty;
+      }
+    },
+    MeshSimple: class extends Container {
+      public autoUpdate = true;
+      public geometry: { uvs: Float32Array; getBuffer: ReturnType<typeof vi.fn>; destroy: ReturnType<typeof vi.fn> };
+      constructor(options: { uvs: Float32Array }) {
+        super();
+        this.geometry = { uvs: options.uvs, getBuffer: vi.fn(() => ({ update: vi.fn() })), destroy: vi.fn() };
       }
     },
     BufferImageSource: class {
@@ -237,7 +272,7 @@ export async function mockRender() {
         };
         return [
           {
-            view: {
+            view: Object.assign(makeSprite(texture), {
               cullable: false,
               source: texture.source,
               texture,
@@ -246,7 +281,7 @@ export async function mockRender() {
               position,
               scale,
               destroy: vi.fn(),
-            },
+            }),
             depth: box.baseScreenY,
           },
         ];
@@ -258,7 +293,12 @@ export async function mockRender() {
       const cut =
         sheetFrames.get(texture) ??
         Array.from({ length: layout.rows }, (_, row) =>
-          Array.from({ length: layout.columns }, (_, column) => ({ source: texture.source, row, column })),
+          Array.from({ length: layout.columns }, (_, column) => ({
+            source: texture.source,
+            row,
+            column,
+            frame: { x: 0, y: 0, width: 16, height: 16 },
+          })),
         );
       sheetFrames.set(texture, cut);
       return cut;
@@ -283,8 +323,15 @@ export async function mockRender() {
 /** A mock of `shadows/silhouette`: ground shadow views and one silhouette per entity, marked for tests. */
 export function mockSilhouette() {
   return {
-    SHADOW_MAP_PIXELS_PER_TILE: 16,
-    SHADOW_BLUR: 2,
+    SHADOW_MAP_PIXELS_PER_TILE,
+    SHADOW_BLUR,
+    cropSilhouetteAbove: vi.fn((shape: { display: { height: number } }, below: number) =>
+      below <= 0
+        ? shape
+        : shape.display.height > below
+          ? { ...shape, display: { ...shape.display, height: shape.display.height - below } }
+          : undefined,
+    ),
     createGroundShadowView: vi.fn(
       (
         texture: { source: unknown; frame: unknown },
@@ -310,7 +357,7 @@ export function mockSilhouette() {
         {
           texture: { silhouetteOf: box.box },
           sources: [views[0].view],
-          body: { bodyOf: box.box },
+          body: (views[0].view as { texture: unknown }).texture,
           bodyDisplay: { left: 0, top: 0, width: 1, height: 1 },
           depth: views[0].depth,
           worldFoot: { x: box.x, y: box.y },
@@ -322,7 +369,14 @@ export function mockSilhouette() {
     // The shared caster sprites: `container.shown` is how many the last draw showed.
     createCasterSprites: vi.fn((filters: unknown[]) => {
       const sprites: Array<{ casterSprite: true; texture: unknown }> = [];
-      const container = { filters, filterArea: undefined as unknown, shown: 0, children: sprites, destroy: vi.fn() };
+      const container = {
+        filters,
+        filterArea: undefined as unknown,
+        shown: 0,
+        children: sprites,
+        destroy: vi.fn(),
+        addChild: vi.fn(),
+      };
       return {
         container,
         sprite: vi.fn((index: number, texture: unknown) => {
@@ -621,3 +675,19 @@ export const createColorizedEntities: EntityFactory = (boxes) =>
         box.elevation,
       ),
   );
+
+/** Wall atlas mock for shadow orchestration tests; its projection and lifecycle have their own tests. */
+export function mockTerrainFaces() {
+  return {
+    createTerrainFaceShadows: vi.fn(() => ({
+      views: [],
+      levels: [],
+      clear: vi.fn(),
+      begin: vi.fn(),
+      commit: vi.fn(),
+      cancel: vi.fn(),
+      draw: vi.fn(),
+      destroy: vi.fn(),
+    })),
+  };
+}

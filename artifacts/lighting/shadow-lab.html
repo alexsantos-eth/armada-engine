@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Armada · Proyección de sombras</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #111;
+        font:
+          12px system-ui,
+          sans-serif;
+      }
+      #game {
+        position: absolute;
+        inset: 0;
+      }
+      #clock {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        padding: 6px 10px;
+        border-radius: 6px;
+        color: white;
+        background: #20331dc9;
+        pointer-events: none;
+      }
+      nav {
+        position: absolute;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 4px;
+        padding: 5px;
+        border-radius: 12px;
+        background: #1e2b23e8;
+        box-shadow: 0 5px 20px #0003;
+      }
+      button {
+        border: 0;
+        border-radius: 8px;
+        padding: 9px 14px;
+        background: transparent;
+        color: #d7dfd5;
+        cursor: pointer;
+        font: inherit;
+      }
+      button[aria-pressed="true"] {
+        background: #ecf3d7;
+        color: #263622;
+      }
+      button:focus-visible {
+        outline: 2px solid #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <div id="clock"></div>
+    <nav aria-label="Fase de iluminación">
+      <button data-phase="dawn" aria-pressed="false">Amanecer</button>
+      <button data-phase="day" aria-pressed="true">Día</button>
+      <button data-phase="sunset" aria-pressed="false">Atardecer</button>
+      <button data-phase="night" aria-pressed="false">Noche</button>
+    </nav>
+    <script type="module">
+      import { Application } from "pixi.js";
+      import { startPerfMonitor } from "/src/isometric/game/perf.ts";
+      import { TERRAIN_APPEARANCE } from "/src/isometric/content/index.ts";
+      import {
+        Box,
+        Entity,
+        createWorld,
+        createFixedChunkSource,
+        createClockPart,
+        createScene,
+        createTerrainView,
+        createEntityView,
+        createAmbientLight,
+        createShadows,
+        createCameraView,
+        createPhaseLighting,
+        bindCameraControls,
+      } from "/src/isometric/core/engine/index.ts";
+      const lighting = createPhaseLighting();
+      const app = new Application();
+      await app.init({
+        resizeTo: window,
+        resolution: window.devicePixelRatio,
+        autoDensity: true,
+        antialias: true,
+        background: "#283228",
+      });
+      document.querySelector("#game").appendChild(app.canvas);
+      const monitor = startPerfMonitor(app, {
+        now: () => performance.now(),
+        log: console.info,
+        heapBytes: () => performance.memory?.usedJSHeapSize,
+      });
+      const columns = [];
+      for (let y = 0; y < 20; y += 1)
+        for (let x = 0; x < 22; x += 1) {
+          const elevation = x >= 12 ? 4 : y >= 12 ? 1 : 0;
+          columns.push(new Box(x, y, { elevation, type: "grass" }));
+        }
+      const tree = { id: "tree", textureSource: "/assets/tree/block.svg", height: 2, spawnChance: 1, surface: "grass" };
+      const tall = { id: "tree", textureSource: "/assets/tree/block.svg", height: 2, spawnChance: 1, surface: "grass" };
+      const house = {
+        id: "house",
+        textureSource: "/assets/house/block.svg",
+        height: 1,
+        spawnChance: 1,
+        surface: "grass",
+      };
+      const entities = [
+        new Entity(11, 7, tall, 0),
+        new Entity(11, 9, tree, 0),
+        new Entity(12, 9, tree, 4),
+        new Entity(9, 12, tree, 1),
+        new Entity(10, 11, house, 0),
+        new Entity(15, 7, tree, 4),
+      ];
+      const world = createWorld({
+        seed: 1337,
+        bounds: { minX: 0, minY: 0, maxX: 21, maxY: 19 },
+        source: createFixedChunkSource(columns, entities),
+        parts: [createClockPart()],
+      });
+      const scene = await createScene(
+        app,
+        world,
+        [
+          createTerrainView(),
+          createEntityView(),
+          createAmbientLight(lighting),
+          createShadows(lighting),
+          createCameraView({ start: { x: 11, y: 8.5, zoom: 4 } }),
+        ],
+        { terrain: TERRAIN_APPEARANCE, profiler: monitor.profiler },
+      );
+      monitor.watch(scene);
+      const unbind = bindCameraControls(app.stage, app.renderer.screen, scene.services.camera, app.canvas);
+      document.querySelector("#clock").textContent = "Terreno ↔ entidades";
+      document.querySelectorAll("button[data-phase]").forEach((button) =>
+        button.addEventListener("click", () => {
+          lighting.transitionTo(button.dataset.phase, 3000);
+          document
+            .querySelectorAll("button[data-phase]")
+            .forEach((other) => other.setAttribute("aria-pressed", String(other === button)));
+        }),
+      );
+      window.addEventListener(
+        "pagehide",
+        () => {
+          unbind();
+          monitor.destroy();
+          scene.destroy();
+          app.destroy(true, { children: true });
+        },
+        { once: true },
+      );
+    </script>
+  </body>
+</html>

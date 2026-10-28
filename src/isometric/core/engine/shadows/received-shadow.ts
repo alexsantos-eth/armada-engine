@@ -1,4 +1,13 @@
-import { Container, type Filter, Rectangle, RenderTexture, type Renderer, Sprite, Texture } from "pixi.js";
+import {
+  BufferImageSource,
+  Container,
+  type Filter,
+  Rectangle,
+  RenderTexture,
+  type Renderer,
+  Sprite,
+  Texture,
+} from "pixi.js";
 import type { DepthView } from "../render";
 import { type CasterSprites, createCasterSprites, displayOf, type PlanePoint, type Silhouette } from "./silhouette";
 import type { TextureFrame, TexturePool } from "./texture-pool";
@@ -28,6 +37,9 @@ export type ShadowReceiver = {
   readonly own: Silhouette;
   readonly casters: readonly ShadowCaster[];
 };
+
+/** Terrain visibility at a receiver's screen pixel, with the same world light used by its casters. */
+export type TerrainReceiverSample = (own: Silhouette, screenX: number, screenY: number) => number;
 
 /**
  * Where a caster's silhouette lands on a receiver: screen pixels to add to the silhouette,
@@ -122,7 +134,7 @@ export type ReceivedShadows = {
   readonly views: readonly DepthView[];
   readonly atlas: RenderTexture;
   /** Places the casters with `offsetOf` (none when not given) and draws the atlas. */
-  draw(offsetOf: CastShadowOffset | null): void;
+  draw(offsetOf: CastShadowOffset | null, terrainAt?: TerrainReceiverSample): void;
   /**
    * Leans the view over the top part of each sprite cut in two as that part leans (its `skew`,
    * e.g. a canopy in the wind), so its shadows stay on it. Writes only what changed.
@@ -256,6 +268,45 @@ export function createReceivedShadows(
     });
   });
 
+  // Terrain and entity casters are composed under the same alpha filter: an overlap never doubles darkness.
+  const terrainReceivers = receivers.map(({ own }) => own);
+  let terrainMask: { texture: Texture; source: BufferImageSource; pixels: Uint8ClampedArray } | undefined;
+  const paintTerrain = (sample: TerrainReceiverSample, spriteIndex: number) => {
+    if (!terrainMask) {
+      const pixels = new Uint8ClampedArray(width * height * 4);
+      const source = new BufferImageSource({ resource: pixels, width, height });
+      terrainMask = { pixels, source, texture: new Texture({ source }) };
+    }
+    const { pixels, source, texture } = terrainMask;
+    pixels.fill(0);
+    terrainReceivers.forEach((own, index) => {
+      const slot = slots[index];
+      const display = own.bodyDisplay;
+      // A bounded 8×16 visibility grid per receiver, linearly filtered after composition.
+      for (let row = 0; row < 16; row += 1) {
+        const y0 = Math.floor(slot.y + (slot.height * row) / 16);
+        const y1 = Math.floor(slot.y + (slot.height * (row + 1)) / 16);
+        for (let column = 0; column < 8; column += 1) {
+          const x0 = Math.floor(slot.x + (slot.width * column) / 8);
+          const x1 = Math.floor(slot.x + (slot.width * (column + 1)) / 8);
+          const alpha = Math.round(
+            255 *
+              sample(
+                own,
+                display.left + ((column + 0.5) * display.width) / 8,
+                display.top + ((row + 0.5) * display.height) / 16,
+              ),
+          );
+          for (let y = y0; y < y1; y += 1) for (let x = x0; x < x1; x += 1) pixels[(y * width + x) * 4 + 3] = alpha;
+        }
+      }
+    });
+    source.update();
+    const sprite = casters.sprite(spriteIndex, texture);
+    sprite.position.set(0, 0);
+    sprite.scale.set(1);
+  };
+
   // The textures a draw borrowed, given back once it is rendered.
   const borrowed: Texture[] = [];
   /** Lays the pair on the draw's sprite number `index`; whether it shades its receiver. */
@@ -292,9 +343,13 @@ export function createReceivedShadows(
   return {
     views,
     atlas,
-    draw(offsetOf) {
+    draw(offsetOf, terrainAt) {
       let shown = 0;
       if (offsetOf) for (let index = 0; index < count; index += 1) if (place(index, shown, offsetOf)) shown += 1;
+      if (terrainAt) {
+        paintTerrain(terrainAt, shown);
+        shown += 1;
+      }
       casters.show(shown);
       casters.container.filterArea = filterArea;
       rig.drawMask(width, height, cutouts, cutoutRects);
@@ -312,6 +367,7 @@ export function createReceivedShadows(
     destroy() {
       // The atlas first: destroying its source drops the listeners of the views' textures at once.
       atlas.destroy(true);
+      terrainMask?.texture.destroy(true);
       views.forEach(({ view }) => view.texture.destroy());
     },
   };

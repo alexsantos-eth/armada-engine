@@ -2,11 +2,7 @@ import { Container, type Filter, Matrix, Rectangle, Sprite, Texture } from "pixi
 import type { Affine2D, AffineTarget, EntityLengthAxis, IsoScreenBox, TileMetrics } from "../../types";
 import { type DepthView, getFootprintSliceTiles, NEW_SPRITES, type SpriteSource } from "../render";
 
-/** Resolution of the shadow maps: texels per world tile along each axis. */
-export const SHADOW_MAP_PIXELS_PER_TILE = 16;
-
-/** Blur strength (texels) applied to the silhouettes in the shadow maps: soft shadow edges. */
-export const SHADOW_BLUR = 2;
+export { SHADOW_BLUR, SHADOW_MAP_PIXELS_PER_TILE } from "../lighting";
 
 /** A 2D point: screen pixels or world tiles, as each function documents. */
 export type PlanePoint = { readonly x: number; readonly y: number };
@@ -143,6 +139,18 @@ function cropTexture(texture: Texture, fraction: number): Texture {
   const cropped = new Texture({ source: texture.source, frame: new Rectangle(x, y, width, height) });
   byCrop.set(height, cropped);
   return cropped;
+}
+
+/** Crops only caster pixels above the receiving plane; lower trunks cannot project backwards onto a cliff top. */
+export function cropSilhouetteAbove(silhouette: Silhouette, pixelsBelow: number): Silhouette | undefined {
+  if (pixelsBelow <= 0) return silhouette;
+  const height = silhouette.display.height - pixelsBelow;
+  if (height <= 0) return undefined;
+  return {
+    ...silhouette,
+    texture: cropTexture(silhouette.texture, height / silhouette.display.height),
+    display: { ...silhouette.display, height },
+  };
 }
 
 const stackTextures = new WeakMap<Texture, Texture>();

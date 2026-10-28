@@ -6,14 +6,14 @@ import type { TerrainAppearance } from "../core/types";
  */
 
 /** Darkening per level below the highest elevation, for blocks above water. */
-const HEIGHT_TINT_STEP = 0.05;
+const HEIGHT_TINT_STEP = 0.025;
 
 /** Green-yellow light on the top levels of grass and ground. */
-const LAND_TOP_TINT = 0xe8ffb0;
+const LAND_TOP_TINT = 0xf5ffdc;
 /** Color multipliers chosen by broad seeded noise, so neighboring columns share subtle land tones. */
 const LAND_NOISE_TINTS = {
   scale: 11,
-  colors: [0xffffff, 0xfff5d8, 0xe5f3bd, 0xe5e9a8],
+  colors: [0xffffff, 0xfffbea, 0xf4f9df, 0xf2f5d6],
 } as const;
 
 const GRASS_VARIANT_FRAMES = [

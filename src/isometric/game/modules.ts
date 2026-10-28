@@ -8,6 +8,8 @@ import {
   createPlayerPart,
   createPlayerSystem,
   createPlayerView,
+  createPhaseLighting,
+  type PhaseLighting,
   createShadows,
   createSurfaceBands,
   createTerrainView,
@@ -29,16 +31,17 @@ import type { WorldSystem } from "../core/types";
  */
 export function createSceneModules(
   disabled: ReadonlySet<string> = new Set(),
-  options: { readonly cull?: boolean } = {},
+  options: { readonly lighting?: PhaseLighting; readonly cull?: boolean } = {},
 ): SceneModule[] {
+  const lighting = options.lighting ?? createPhaseLighting();
   const modules = [
     createSurfaceBands(),
     createTerrainView(),
     createEntityView(),
     createFoliageWind(),
     createPlayerView(PLAYER_APPEARANCE),
-    createShadows(),
-    createAmbientLight(),
+    createAmbientLight(lighting),
+    createShadows(lighting),
     createCameraView({ cull: options.cull }),
   ];
   return modules.filter(({ id }) => !disabled.has(id));

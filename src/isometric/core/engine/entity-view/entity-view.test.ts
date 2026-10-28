@@ -46,7 +46,11 @@ describe("createEntityView", () => {
       data: expect.anything(),
     });
     expect(renderCalls).toEqual([
-      expect.objectContaining({ texture: { source: "/assets/statue/block.svg" }, height: 1, length: 2 }),
+      expect.objectContaining({
+        texture: expect.objectContaining({ source: "/assets/statue/block.svg" }),
+        height: 1,
+        length: 2,
+      }),
     ]);
     expect(root.children).toHaveLength(1);
     scene.destroy();

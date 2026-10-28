@@ -5,6 +5,9 @@ vi.mock("../core/engine/render", async () => (await import("../core/engine/flow-
 vi.mock("../core/engine/shadows/silhouette", async () =>
   (await import("../core/engine/flow-check/scene-harness")).mockSilhouette(),
 );
+vi.mock("../core/engine/shadows/terrain-faces", async () =>
+  (await import("../core/engine/flow-check/scene-harness")).mockTerrainFaces(),
+);
 vi.mock("../core/engine/shadows/received-shadow", async () =>
   (await import("../core/engine/flow-check/scene-harness")).mockReceivedShadow(),
 );
@@ -20,8 +23,8 @@ const SCENE_IDS = [
   "entities",
   "foliage-wind",
   "player",
-  "shadows",
   "ambient-light",
+  "shadows",
   "camera",
 ];
 

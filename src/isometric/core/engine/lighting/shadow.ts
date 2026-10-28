@@ -20,14 +20,10 @@ export const SHADOW_ALPHA = 0.32;
 /** Sun elevation (sine of its altitude) from which shadows reach full opacity. */
 export const SHADOW_FADE_ELEVATION = 0.25;
 
-/**
- * Ticks between shadow redraws (half a second of game time at real speed): the sun moves a
- * fraction of a degree in that time, so redrawing every tick would cost without showing.
- */
-export const SHADOW_REFRESH_TICKS = 10;
-
-/** Fraction of a sun change applied at each cached shadow redraw. */
-export const SHADOW_PROJECTION_EASE = 0.35;
+/** Texels per tile of the static bake; 24 keeps a full chunk and blur below 1024 texels. */
+export const SHADOW_MAP_PIXELS_PER_TILE = 24;
+/** Bake-time penumbra in map texels: defined silhouettes with a soft edge. */
+export const SHADOW_BLUR = 1.2;
 
 function smoothstep(edge0: number, edge1: number, value: number): number {
   const t = Math.min(Math.max((value - edge0) / (edge1 - edge0), 0), 1);
@@ -49,25 +45,6 @@ export function getShadowProjection(sun: SunState): ShadowProjection | null {
     dirY: horizontal > 0 ? -sun.direction.y / horizontal : 0,
     stretch: Math.min(horizontal / sun.elevation, MAX_SHADOW_STRETCH),
     alpha: SHADOW_ALPHA * smoothstep(0, SHADOW_FADE_ELEVATION, sun.elevation),
-  };
-}
-
-/** Eases a cached shadow projection toward the current sun while preserving a unit direction. */
-export function easeShadowProjection(
-  previous: ShadowProjection | null | undefined,
-  next: ShadowProjection | null,
-  amount = SHADOW_PROJECTION_EASE,
-): ShadowProjection | null {
-  if (!previous || !next) return next;
-  const mix = Math.min(Math.max(amount, 0), 1);
-  const x = previous.dirX + (next.dirX - previous.dirX) * mix;
-  const y = previous.dirY + (next.dirY - previous.dirY) * mix;
-  const length = Math.hypot(x, y) || 1;
-  return {
-    dirX: x / length,
-    dirY: y / length,
-    stretch: previous.stretch + (next.stretch - previous.stretch) * mix,
-    alpha: previous.alpha + (next.alpha - previous.alpha) * mix,
   };
 }
 

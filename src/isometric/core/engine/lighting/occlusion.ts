@@ -1,5 +1,6 @@
 import type { OcclusionTerrain, ShadowProjection } from "../../types";
 import { SHADOW_ALPHA } from "./shadow";
+import { createTerrainShadowSampler, TERRAIN_RAY_REACH } from "./terrain-shadow";
 
 /** Darkness at the foot of a wall one block (or more) tall. */
 export const AO_WALL_ALPHA = 0.12;
@@ -19,7 +20,7 @@ export const AO_ENTITY_ALPHA = 0.45;
 export const AO_ENTITY_RADIUS = 0.3;
 
 /** Maximum world distance sampled toward the sun for a terrain shadow. */
-export const AO_TERRAIN_SHADOW_REACH = 8;
+export const AO_TERRAIN_SHADOW_REACH = TERRAIN_RAY_REACH;
 /** Distance between terrain height samples along a light ray, in tiles. */
 export const AO_TERRAIN_SHADOW_STEP = 0.5;
 /** Darkness of a terrain shadow in full sun. */
@@ -138,11 +139,12 @@ export function buildOcclusionMap(
   const cachedHeightAt = (x: number, y: number): number | undefined => {
     const localX = x - heightsMinX;
     const localY = y - heightsMinY;
-    if (localX < 0 || localX >= heightsWidth || localY < 0 || localY * heightsWidth + localX >= heights.length) return undefined;
     const value = heights[localY * heightsWidth + localX];
     return Number.isNaN(value) ? undefined : value;
   };
 
+  const sample = projection && createTerrainShadowSampler({ bounds: terrain.bounds, topHeightAt: cachedHeightAt });
+  const point = { x: 0, y: 0, elevation: 0 };
   for (let y = minY; y <= maxY; y += 1) {
     for (let x = minX; x <= maxX; x += 1) {
       const steps = tallerNeighbours(terrain, x, y);
@@ -151,21 +153,13 @@ export function buildOcclusionMap(
         for (let i = 0; i < pixelsPerTile; i += 2) {
           const u = (i + 1) / pixelsPerTile;
           const v = (j + 1) / pixelsPerTile;
-          let terrainShadow = false;
-          if (projection && ownHeight !== undefined && projection.stretch > 0) {
-            for (let distance = AO_TERRAIN_SHADOW_STEP; distance <= AO_TERRAIN_SHADOW_REACH; distance += AO_TERRAIN_SHADOW_STEP) {
-              const sourceX = Math.floor(x + u - projection.dirX * distance);
-              const sourceY = Math.floor(y + v - projection.dirY * distance);
-              const sourceHeight = cachedHeightAt(sourceX, sourceY);
-              // Ignore half-height surface offsets: they create isolated specks at sand/grass
-              // transitions instead of a readable block-cast shadow.
-              const requiredHeight = ownHeight + Math.max(1, distance / projection.stretch);
-              if (sourceHeight === undefined || sourceHeight < requiredHeight) continue;
-              terrainShadow = true;
-              break;
-            }
+          let strength = 0;
+          if (projection && sample && ownHeight !== undefined) {
+            point.x = x + u - 0.5;
+            point.y = y + v - 0.5;
+            point.elevation = ownHeight;
+            strength = (sample(point, projection) * AO_TERRAIN_SHADOW_ALPHA * projection.alpha) / SHADOW_ALPHA;
           }
-          const strength = terrainShadow ? AO_TERRAIN_SHADOW_ALPHA * (projection?.alpha ?? 0) / SHADOW_ALPHA : 0;
           for (let dy = 0; dy < 2 && j + dy < pixelsPerTile; dy += 1) {
             for (let dx = 0; dx < 2 && i + dx < pixelsPerTile; dx += 1) {
               const sampleU = (i + dx + 0.5) / pixelsPerTile;
@@ -173,7 +167,7 @@ export function buildOcclusionMap(
               const occlusion = steps === undefined ? 0 : occlusionAt(steps, sampleU, sampleV);
               const texel = ((y - minY) * pixelsPerTile + j + dy) * width + (x - minX) * pixelsPerTile + i + dx;
               pixels[texel * 4 + 3] = Math.round(occlusion * 255);
-              if (strength > 0 && terrainShadowAlpha) terrainShadowAlpha[texel] = Math.round(strength * 255);
+              if (terrainShadowAlpha) terrainShadowAlpha[texel] = Math.round(strength * 255);
             }
           }
         }
@@ -187,6 +181,10 @@ export function buildOcclusionMap(
     const weights = [1, 2, 1];
     for (let py = 0; py < height; py += 1) {
       for (let px = 0; px < width; px += 1) {
+        const receiverHeight = cachedHeightAt(
+          minX + Math.floor(px / pixelsPerTile),
+          minY + Math.floor(py / pixelsPerTile),
+        );
         let weighted = 0;
         let total = 0;
         for (let dy = -1; dy <= 1; dy += 1) {
@@ -195,6 +193,11 @@ export function buildOcclusionMap(
           for (let dx = -1; dx <= 1; dx += 1) {
             const sx = px + dx;
             if (sx < 0 || sx >= width) continue;
+            if (
+              cachedHeightAt(minX + Math.floor(sx / pixelsPerTile), minY + Math.floor(sy / pixelsPerTile)) !==
+              receiverHeight
+            )
+              continue;
             const weight = weights[dx + 1] * weights[dy + 1];
             weighted += terrainShadowAlpha[sy * width + sx] * weight;
             total += weight;
@@ -203,11 +206,11 @@ export function buildOcclusionMap(
         if (weighted === 0) continue;
         const index = (py * width + px) * 4 + 3;
         const shadow = weighted / total / 255;
+        if (terrainShadowOutput) terrainShadowOutput[py * width + px] = Math.round(shadow * 255);
         const existing = pixels[index] / 255;
         pixels[index] = Math.round((1 - (1 - existing) * (1 - shadow)) * 255);
       }
     }
-    terrainShadowOutput?.set(terrainShadowAlpha);
   }
 
   // Bake static entity contact into the same low-resolution map. Visit only the small texel
