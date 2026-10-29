@@ -725,12 +725,12 @@ describe("createPlayerView feedback", () => {
   });
 
   type Shape = TestView & {
-    circle?: ReturnType<typeof vi.fn>;
+    poly?: ReturnType<typeof vi.fn>;
     scale: { x: number; y: number };
     tint: number;
   };
   const dustOf = (root: { children: TestView[] }) =>
-    (root.children as Shape[]).filter(({ circle }) => circle?.mock.calls.length);
+    (root.children as Shape[]).filter(({ poly }) => poly?.mock.calls.length);
   const JUMP = { source: "/assets/player/jump.svg", poses: { takeoff: 0, rise: 1, apex: 2, fall: 3, landing: 4 } };
 
   it("shows the jump sheet's pose for each part of a jump, and the air pose without it", async () => {
@@ -816,6 +816,25 @@ describe("createPlayerView feedback", () => {
     ticker.frame(16);
     expect(dustOf(root)).toHaveLength(2);
     expect(takeoff.visible).toBe(true);
+    scene.destroy();
+  });
+
+  it("raises the dust of a double jump where its feet are, in the air", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, root, scene } = await sceneOf(world);
+    const player = world.parts.get(PLAYER_PART);
+    player.feedback.jumps += 1;
+    ticker.frame(16);
+    const [puff] = dustOf(root);
+    const ground = puff.position.y;
+    for (let ms = 0; ms < DUST_MS; ms += 50) ticker.frame(50);
+
+    const position = { x: 1, y: 1, elevation: 1, inset: 0, height: 0.75 };
+    Object.assign(player, position, { previous: position, verticalSpeed: 0.2 });
+    player.feedback.jumps += 1;
+    ticker.frame(16);
+    expect(puff.visible).toBe(true);
+    expect(puff.position.y).toBeCloseTo(ground - 0.75 * TILE_METRICS.boxHeight);
     scene.destroy();
   });
 

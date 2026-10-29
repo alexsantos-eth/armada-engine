@@ -12,7 +12,7 @@ import { projectBoxesToIsometric, projectGridPoint } from "../projection";
 import { createBlockViews, getBlockDepth, getSheetFrames, showFrame } from "../render";
 import { SCENE_LAYER, type BuiltScene, type SceneModule } from "../scene";
 import type { GridPoint, PlayerAppearance, PlayerRenderPosition } from "../../types";
-import { DUST_MIN_IMPACT, getBodyScale, getDust } from "./feedback";
+import { DUST_MIN_IMPACT, getBodyScale, getDust, getVoxelFaces } from "./feedback";
 import {
   getClimbPose,
   getClimbSheetLayout,
@@ -29,16 +29,26 @@ import {
 const TERRAIN_SHADOW_BANDS = 16;
 const SHADOW_COLUMNS = 8;
 
-/** Colour of the dust it raises. */
-const DUST_COLOR = 0xe2d3b0;
+/** Colours of the dust it raises, nearly white: the lit top of each voxel, its left side and its right side. */
+const DUST_COLORS = { top: 0xfbf9f4, left: 0xe6e2d8, right: 0xcfcabd };
 
-/** Clods of a puff of dust: centre (in tiles across and down from the feet) and radius (in tiles). */
-const DUST_CLODS: ReadonlyArray<readonly [number, number, number]> = [
-  [-0.12, 0, 0.05],
-  [0.12, 0, 0.05],
-  [-0.06, -0.035, 0.04],
-  [0.07, 0.035, 0.045],
-  [0, 0.05, 0.035],
+/**
+ * Voxels of a puff of dust, back to front: bottom centre (in tiles across and down from the feet)
+ * and size (in tiles).
+ */
+const DUST_VOXELS: ReadonlyArray<readonly [number, number, number]> = [
+  [-0.03, -0.07, 0.04],
+  [0.09, -0.055, 0.05],
+  [-0.06, -0.04, 0.06],
+  [0.17, -0.02, 0.045],
+  [-0.19, -0.01, 0.05],
+  [-0.13, 0, 0.08],
+  [0.13, 0, 0.08],
+  [0.03, 0.02, 0.05],
+  [0.07, 0.035, 0.07],
+  [-0.1, 0.04, 0.055],
+  [0.16, 0.05, 0.04],
+  [0, 0.06, 0.06],
 ];
 
 /**
@@ -273,21 +283,25 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
       let sinceLanding = Infinity;
       let impact = 0;
       let body: GridPoint = { x: 1, y: 1 };
-      // Two puffs of dust, made when first raised: one for take-offs, one for landings.
+      // Two puffs of dust, made when first raised: one for take-offs (in the air too, where the feet
+      // are, for a double jump), one for landings.
       const puffs: Array<{ view: Graphics; ms: number } | undefined> = [undefined, undefined];
       const raiseDust = (index: number, at: PlayerRenderPosition) => {
         let puff = puffs[index];
         if (!puff) {
           const dust = new Graphics();
-          for (const [x, y, radius] of DUST_CLODS)
-            dust.circle(x * metrics.tileWidth, y * metrics.tileWidth, radius * metrics.tileWidth);
-          dust.fill({ color: DUST_COLOR });
+          for (const [x, y, size] of DUST_VOXELS) {
+            const faces = getVoxelFaces(x, y, size, metrics);
+            dust.poly(faces.top).fill({ color: DUST_COLORS.top });
+            dust.poly(faces.left).fill({ color: DUST_COLORS.left });
+            dust.poly(faces.right).fill({ color: DUST_COLORS.right });
+          }
           dust.cullable = false;
           puff = puffs[index] = { view: dust, ms: 0 };
         }
         puff.ms = 0;
         const screen = projectGridPoint(at, projection);
-        puff.view.position.set(screen.x, screen.y - (at.elevation - at.inset) * metrics.boxHeight);
+        puff.view.position.set(screen.x, screen.y - (at.elevation - at.inset + at.height) * metrics.boxHeight);
         scene.placeAt(puff.view, depth);
       };
       const settleDust = (elapsedMs: number) => {

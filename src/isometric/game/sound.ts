@@ -15,11 +15,13 @@ export type Tone = {
 };
 
 /**
- * What the player sounds like, without audio files: a rising chirp as it takes off, a low thud as it
- * lands (louder the harder it lands) and a short low buzz when a jump press is rejected.
+ * What the player sounds like, without audio files: a rising chirp as it takes off, a higher one for
+ * a double jump, a low thud as it lands (louder the harder it lands) and a short low buzz when a
+ * jump press is rejected.
  */
-export const PLAYER_SOUNDS: Readonly<Record<"jump" | "land" | "reject", Tone>> = {
+export const PLAYER_SOUNDS: Readonly<Record<"jump" | "airJump" | "land" | "reject", Tone>> = {
   jump: { wave: "triangle", from: 300, to: 620, ms: 110, gain: 0.12 },
+  airJump: { wave: "triangle", from: 480, to: 960, ms: 100, gain: 0.1 },
   land: { wave: "sine", from: 170, to: 60, ms: 100, gain: 0.22 },
   reject: { wave: "square", from: 150, to: 120, ms: 120, gain: 0.05 },
 };
@@ -63,7 +65,7 @@ export function bindPlayerSounds(events: EventBus<SimulationEvents>, audio: () =
     if (output) playTone(output, tone, volume);
   };
   const unsubscribe = [
-    events.on("playerJumped", () => play(PLAYER_SOUNDS.jump)),
+    events.on("playerJumped", ({ air }) => play(air ? PLAYER_SOUNDS.airJump : PLAYER_SOUNDS.jump)),
     events.on("playerLanded", ({ impact }) => {
       if (impact >= LAND_SOUND_MIN_IMPACT) play(PLAYER_SOUNDS.land, Math.min(1, impact / PLAYER_JUMP_SPEED));
     }),

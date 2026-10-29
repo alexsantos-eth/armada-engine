@@ -71,29 +71,31 @@ describe("playTone", () => {
 });
 
 describe("bindPlayerSounds", () => {
-  it("chirps at a take-off, thuds at a landing by its impact and buzzes at a rejected press", () => {
+  it("chirps at a take-off (higher in the air), thuds at a landing by its impact and buzzes at a rejected press", () => {
     const events = createEventBus<SimulationEvents>();
     const { output, played } = createOutput();
     const unbind = bindPlayerSounds(events, () => output);
 
-    events.emit("playerJumped", { x: 0, y: 0, feet: 0 });
+    events.emit("playerJumped", { x: 0, y: 0, feet: 0, air: false });
+    events.emit("playerJumped", { x: 0, y: 0, feet: 1, air: true });
     events.emit("playerLanded", { x: 0, y: 0, feet: 0, impact: PLAYER_JUMP_SPEED / 2 });
     events.emit("playerLanded", { x: 0, y: 0, feet: 0, impact: PLAYER_JUMP_SPEED * 2 });
     events.emit("playerLanded", { x: 0, y: 0, feet: 0, impact: LAND_SOUND_MIN_IMPACT / 2 });
     events.emit("playerJumpRejected", { reason: "airborne" });
 
-    expect(played.map(({ wave }) => wave)).toEqual(["triangle", "sine", "sine", "square"]);
-    expect(played[1].gain).toBeCloseTo(PLAYER_SOUNDS.land.gain / 2);
-    expect(played[2].gain).toBeCloseTo(PLAYER_SOUNDS.land.gain);
+    expect(played.map(({ wave }) => wave)).toEqual(["triangle", "triangle", "sine", "sine", "square"]);
+    expect(played[1].from).toBe(PLAYER_SOUNDS.airJump.from);
+    expect(played[2].gain).toBeCloseTo(PLAYER_SOUNDS.land.gain / 2);
+    expect(played[3].gain).toBeCloseTo(PLAYER_SOUNDS.land.gain);
     unbind();
-    events.emit("playerJumped", { x: 0, y: 0, feet: 0 });
-    expect(played).toHaveLength(4);
+    events.emit("playerJumped", { x: 0, y: 0, feet: 0, air: false });
+    expect(played).toHaveLength(5);
   });
 
   it("plays nothing without an output", () => {
     const events = createEventBus<SimulationEvents>();
     bindPlayerSounds(events, () => undefined);
-    expect(() => events.emit("playerJumped", { x: 0, y: 0, feet: 0 })).not.toThrow();
+    expect(() => events.emit("playerJumped", { x: 0, y: 0, feet: 0, air: false })).not.toThrow();
   });
 });
 

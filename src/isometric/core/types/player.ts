@@ -55,6 +55,8 @@ export type PlayerState = {
   coyoteTicks: number;
   /** Whether the jump key is held; releasing it cuts upward speed. Not saved. */
   jumpHeld: boolean;
+  /** Jumps it can still take in the air before it lands (`PLAYER_AIR_JUMPS` on the ground). Not saved. */
+  airJumps: number;
   /** Horizontal velocity in world columns per tick. Derived from input; not saved. */
   velocity: GridPoint;
   /**
@@ -99,6 +101,8 @@ export type PlayerFeedback = {
   impact: number;
   /** Whether its feet are in the air because it jumped (not because it walked off an edge). */
   leap: boolean;
+  /** Whether its last take-off was a jump in the air (a double jump) rather than from the ground. */
+  airJump: boolean;
 };
 
 /**

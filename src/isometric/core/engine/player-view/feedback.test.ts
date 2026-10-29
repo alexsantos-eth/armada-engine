@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { TILE_METRICS } from "../constants";
 import { PLAYER_JUMP_SPEED } from "../player";
-import { DUST_MS, getBodyScale, getDust, LANDING_SQUASH_MS, TAKEOFF_STRETCH_MS } from "./feedback";
+import { DUST_MS, getBodyScale, getDust, getVoxelFaces, LANDING_SQUASH_MS, TAKEOFF_STRETCH_MS } from "./feedback";
 
 describe("getBodyScale", () => {
   it("is the body's own scale when nothing happened", () => {
@@ -29,5 +30,50 @@ describe("getDust", () => {
     expect(getDust(0)).toEqual({ scale: 0.6, alpha: 0.55 });
     expect(getDust(DUST_MS / 2)).toEqual({ scale: expect.closeTo(1), alpha: expect.closeTo(0.275) });
     expect(getDust(DUST_MS)).toBeUndefined();
+  });
+});
+
+describe("getVoxelFaces", () => {
+  it("draws a voxel standing on the point, with the proportions of a terrain block", () => {
+    const { tileWidth, tileHeight, boxHeight } = TILE_METRICS;
+    const faces = getVoxelFaces(0, 0, 1, TILE_METRICS);
+    expect(faces.top).toEqual([
+      0,
+      -boxHeight - tileHeight / 2,
+      tileWidth / 2,
+      -boxHeight,
+      0,
+      -boxHeight + tileHeight / 2,
+      -tileWidth / 2,
+      -boxHeight,
+    ]);
+    expect(faces.left).toEqual([
+      -tileWidth / 2,
+      -boxHeight,
+      0,
+      -boxHeight + tileHeight / 2,
+      0,
+      tileHeight / 2,
+      -tileWidth / 2,
+      0,
+    ]);
+    expect(faces.right).toEqual([
+      0,
+      -boxHeight + tileHeight / 2,
+      tileWidth / 2,
+      -boxHeight,
+      tileWidth / 2,
+      0,
+      0,
+      tileHeight / 2,
+    ]);
+  });
+
+  it("is placed by tiles from the point and scaled by its size", () => {
+    const small = getVoxelFaces(0.5, 0.25, 0.1, TILE_METRICS);
+    expect(small.left.slice(4, 6)).toEqual([
+      0.5 * TILE_METRICS.tileWidth,
+      0.25 * TILE_METRICS.tileWidth + (0.1 * TILE_METRICS.tileHeight) / 2,
+    ]);
   });
 });

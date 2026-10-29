@@ -73,6 +73,13 @@ export const PLAYER_JUMP_BUFFER_TICKS = 2;
 /** Ticks for which jumping remains possible after leaving a ledge (100 ms). */
 export const PLAYER_COYOTE_TICKS = 2;
 
+/**
+ * Jumps the player can take in the air before it lands: one, a double jump. It takes off again at
+ * {@link PLAYER_JUMP_SPEED} wherever its feet are, so two held jumps reach a top one block higher
+ * (twice {@link PLAYER_JUMP_HEIGHT}) without climbing.
+ */
+export const PLAYER_AIR_JUMPS = 1;
+
 /** Blocks per tick the feet rise at take-off, so a jump peaks at {@link PLAYER_JUMP_HEIGHT}. */
 export const PLAYER_JUMP_SPEED = (4 * PLAYER_JUMP_HEIGHT) / PLAYER_JUMP_TICKS;
 
@@ -402,6 +409,7 @@ export function createPlayer(ground: PlayerGround, at: GridPoint): PlayerState {
     jumpBufferTicks: 0,
     coyoteTicks: 0,
     jumpHeld: false,
+    airJumps: PLAYER_AIR_JUMPS,
     velocity: { x: 0, y: 0 },
     climb: undefined,
     previous: { ...position, inset: 0, height: 0 },
@@ -421,6 +429,7 @@ function createPlayerFeedback(): PlayerFeedback {
     landingTicks: 0,
     impact: 0,
     leap: false,
+    airJump: false,
   };
 }
 
@@ -440,8 +449,12 @@ export function getPlayerJumpPhase(player: PlayerState): PlayerJumpPhase {
   return verticalSpeed > 0 ? "rise" : "fall";
 }
 
-/** The player takes off: its feet rise at {@link PLAYER_JUMP_SPEED}, the press is used up. */
-function takeOff(player: PlayerState): void {
+/**
+ * The player takes off, from the ground or, with `air`, in the air (using up one of its
+ * {@link PLAYER_AIR_JUMPS}): its feet rise at {@link PLAYER_JUMP_SPEED}, the press is used up.
+ */
+function takeOff(player: PlayerState, air = false): void {
+  if (air) player.airJumps -= 1;
   player.verticalSpeed = PLAYER_JUMP_SPEED;
   player.wantsJump = false;
   player.jumpBufferTicks = 0;
@@ -451,6 +464,7 @@ function takeOff(player: PlayerState): void {
   feedback.airTicks = 0;
   feedback.landingTicks = 0;
   feedback.leap = true;
+  feedback.airJump = air;
 }
 
 /** A jump press did not make the player jump, for `reason`. */
@@ -843,7 +857,10 @@ export function stepPlayer(
       player.verticalSpeed === undefined && player.height === 0 && supportAt(ground, player) !== undefined;
     if (groundedAtStart) player.coyoteTicks = PLAYER_COYOTE_TICKS;
     const tookOff = player.jumpBufferTicks > 0 && (groundedAtStart || player.coyoteTicks > 0);
-    if (tookOff) takeOff(player);
+    // In the air, past the coyote ticks, a press is a double jump while it has one left.
+    const airJumped =
+      !tookOff && player.jumpBufferTicks > 0 && player.verticalSpeed !== undefined && player.airJumps > 0;
+    if (tookOff || airJumped) takeOff(player, airJumped);
     acceleratePlayer(player);
     const blockReason = stepOnce(player, ground, topInset, probe !== undefined);
     const airResult = player.climb === undefined ? stepAir(player, ground, topInset) : undefined;
@@ -859,7 +876,7 @@ export function stepPlayer(
       takeOff(player);
     } else {
       if (airResult === "landed") land(player);
-      else if (airResult === "ceiling" && tookOff) {
+      else if (airResult === "ceiling" && (tookOff || airJumped)) {
         // A ceiling right overhead stops the jump as it takes off: a bump, not a jump.
         feedback.jumps -= 1;
         feedback.leap = false;
@@ -876,6 +893,7 @@ export function stepPlayer(
     if (player.verticalSpeed === undefined && supportAt(ground, player))
       player.lastSafe = { x: player.x, y: player.y, elevation: player.elevation, inset: player.inset, height: 0 };
     feedback.airTicks = player.verticalSpeed === undefined ? 0 : feedback.airTicks + 1;
+    if (player.verticalSpeed === undefined) player.airJumps = PLAYER_AIR_JUMPS;
     updateMotion(player);
     if (probe && input)
       probe({
@@ -890,12 +908,13 @@ export function stepPlayer(
   }
 }
 
-/** The player landed: its landing pose starts and the jump it was in is over. */
+/** The player landed: its landing pose starts, the jump it was in is over and its double jump is back. */
 function land(player: PlayerState): void {
   const { feedback } = player;
   feedback.landings += 1;
   feedback.landingTicks = PLAYER_LANDING_TICKS;
   feedback.leap = false;
+  player.airJumps = PLAYER_AIR_JUMPS;
 }
 
 /**
@@ -986,7 +1005,8 @@ function emitPlayerFeedback(
   const feet = player.elevation - player.inset + player.height;
   if (feedback.landings !== landings && events.has("playerLanded"))
     events.emit("playerLanded", { x, y, feet: player.elevation - player.inset, impact: feedback.impact });
-  if (feedback.jumps !== jumps && events.has("playerJumped")) events.emit("playerJumped", { x, y, feet });
+  if (feedback.jumps !== jumps && events.has("playerJumped"))
+    events.emit("playerJumped", { x, y, feet, air: feedback.airJump });
   if (feedback.rejections !== rejections && events.has("playerJumpRejected"))
     events.emit("playerJumpRejected", { reason: feedback.rejected as PlayerJumpRejection });
 }

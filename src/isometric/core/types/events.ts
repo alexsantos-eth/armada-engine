@@ -47,8 +47,11 @@ export type SimulationEvents = {
   hourChanged: { readonly tick: number; readonly day: number; readonly hour: number };
   /** The world clock entered a new day (00:00). Emitted after `hourChanged` of hour `0`. */
   dayChanged: { readonly tick: number; readonly day: number };
-  /** The player took off; `feet` is the world height of its feet as it left the ground. */
-  playerJumped: { readonly x: number; readonly y: number; readonly feet: number };
+  /**
+   * The player took off; `feet` is the world height of its feet as it jumped, and `air` whether it
+   * jumped in the air (a double jump) rather than from the ground.
+   */
+  playerJumped: { readonly x: number; readonly y: number; readonly feet: number; readonly air: boolean };
   /** The player landed after a jump or a fall, its feet falling `impact` blocks per tick. */
   playerLanded: { readonly x: number; readonly y: number; readonly feet: number; readonly impact: number };
   /** A jump press did not make the player jump, and why. */

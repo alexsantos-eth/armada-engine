@@ -159,7 +159,7 @@ export function mockPixi() {
       public alpha = 1;
       public cullable = true;
       public rect = vi.fn(() => this);
-      public circle = vi.fn(() => this);
+      public poly = vi.fn(() => this);
       public fill = vi.fn(() => this);
     },
     Rectangle: class {
