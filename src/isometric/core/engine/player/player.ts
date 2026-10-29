@@ -30,11 +30,24 @@ export const PLAYER_SPEED = 3;
 /** Maximum horizontal columns a walking player moves in one tick. */
 export const PLAYER_STEP = PLAYER_SPEED / TICKS_PER_SECOND;
 
-/** Horizontal velocity change per tick while starting or redirecting on land. */
-export const PLAYER_GROUND_ACCEL = 0.09;
+/** Running speed of the player (run key held), in columns per second of simulation. */
+export const PLAYER_RUN_SPEED = 5;
 
-/** Horizontal velocity removed per tick when releasing movement on land. */
-export const PLAYER_GROUND_BRAKE = 0.12;
+/** Maximum horizontal columns a running player moves in one tick. */
+export const PLAYER_RUN_STEP = PLAYER_RUN_SPEED / TICKS_PER_SECOND;
+
+/**
+ * Horizontal velocity change per tick while starting or redirecting on land: a walk is at full
+ * speed in 3 ticks, a run in 5, so the body has some weight.
+ */
+export const PLAYER_GROUND_ACCEL = 0.05;
+
+/**
+ * Horizontal velocity removed per tick when releasing movement on land, or when it goes faster than
+ * it wants (letting go of the run key): it slides to a stop, about 0.4 columns from a walk and
+ * 1 from a run.
+ */
+export const PLAYER_GROUND_BRAKE = 0.03;
 
 /** Horizontal velocity change per tick while steering in the air. */
 export const PLAYER_AIR_ACCEL = 0.04;
@@ -409,6 +422,7 @@ export function createPlayer(ground: PlayerGround, at: GridPoint): PlayerState {
     jumpBufferTicks: 0,
     coyoteTicks: 0,
     jumpHeld: false,
+    running: false,
     airJumps: PLAYER_AIR_JUMPS,
     velocity: { x: 0, y: 0 },
     climb: undefined,
@@ -514,6 +528,23 @@ export function getPlayerFacing(walk: GridPoint): number | undefined {
 /** Sets the direction the player walks in from the screen directions held (the input). */
 export function setPlayerWalk(player: PlayerState, directions: ScreenDirections): void {
   player.walk = getWalkDirection(directions);
+}
+
+/** Whether the player runs (the run key is held): it then goes up to {@link PLAYER_RUN_STEP} per tick. */
+export function setPlayerRun(player: PlayerState, running: boolean): void {
+  player.running = running;
+}
+
+/**
+ * Whether the player runs this tick: on the ground, not climbing, faster than a walk
+ * ({@link PLAYER_STEP}). Letting go of the run key it still runs until it slows down to a walk.
+ */
+export function isPlayerRunning(player: PlayerState): boolean {
+  return (
+    player.verticalSpeed === undefined &&
+    player.climb === undefined &&
+    Math.hypot(player.velocity.x, player.velocity.y) > PLAYER_STEP + 1e-9
+  );
 }
 
 /** Buffers one fresh jump press for a short, deterministic interval. */
@@ -640,8 +671,11 @@ function approachVelocity(current: GridPoint, desired: GridPoint, rate: number):
 /** Acceleration and braking use the physical contact state, while input stays a unit direction. */
 function acceleratePlayer(player: PlayerState): void {
   const airborne = player.verticalSpeed !== undefined;
-  const desired = { x: player.walk.x * PLAYER_STEP, y: player.walk.y * PLAYER_STEP };
+  const step = player.running ? PLAYER_RUN_STEP : PLAYER_STEP;
+  const desired = { x: player.walk.x * step, y: player.walk.y * step };
   const turning = player.velocity.x * desired.x + player.velocity.y * desired.y < 0;
+  // Slowing down to a walk after a run brakes, like letting go: it does not stop dead.
+  const slowing = Math.hypot(player.velocity.x, player.velocity.y) > step + 1e-9;
   const rate = airborne
     ? desired.x === 0 && desired.y === 0
       ? PLAYER_AIR_BRAKE
@@ -652,7 +686,9 @@ function acceleratePlayer(player: PlayerState): void {
       ? PLAYER_GROUND_BRAKE
       : turning
         ? PLAYER_GROUND_ACCEL + PLAYER_GROUND_BRAKE
-        : PLAYER_GROUND_ACCEL;
+        : slowing
+          ? PLAYER_GROUND_BRAKE
+          : PLAYER_GROUND_ACCEL;
   player.velocity = approachVelocity(player.velocity, desired, rate);
 }
 

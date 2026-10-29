@@ -26,6 +26,10 @@ import {
   PLAYER_STEP,
   PLAYER_GROUND_ACCEL,
   PLAYER_GROUND_BRAKE,
+  PLAYER_RUN_SPEED,
+  PLAYER_RUN_STEP,
+  isPlayerRunning,
+  setPlayerRun,
   PLAYER_AIR_ACCEL,
   PLAYER_AIR_BRAKE,
   PLAYER_CORNER_NUDGE,
@@ -197,6 +201,7 @@ describe("createPlayer", () => {
       jumpBufferTicks: 0,
       coyoteTicks: 0,
       jumpHeld: false,
+      running: false,
       airJumps: 1,
       velocity: { x: 0, y: 0 },
       climb: undefined,
@@ -271,11 +276,13 @@ describe("horizontal control", () => {
     const player = walking(field, { x: 1, y: 1 }, east);
     stepPlayer(player, field);
     expect(player.velocity.x).toBeCloseTo(PLAYER_GROUND_ACCEL);
-    stepPlayer(player, field);
+    stepPlayer(player, field, 2);
     expect(player.velocity.x).toBeCloseTo(PLAYER_STEP);
     setPlayerWalk(player, still);
     stepPlayer(player, field);
     expect(player.velocity.x).toBeCloseTo(PLAYER_STEP - PLAYER_GROUND_BRAKE);
+    stepPlayer(player, field, 3);
+    expect(player.velocity.x).toBeGreaterThan(0);
     stepPlayer(player, field);
     expect(player.velocity).toEqual({ x: 0, y: 0 });
     setPlayerWalk(player, { ...still, down: true, left: true });
@@ -297,9 +304,52 @@ describe("horizontal control", () => {
     expect(player.verticalSpeed).toBeDefined();
   });
 
+  it("runs up to PLAYER_RUN_STEP while the run key is held, and slides back to a walk without it", () => {
+    const player = walking(field, { x: 1, y: 1 }, east);
+    setPlayerRun(player, true);
+    expect(PLAYER_RUN_STEP * TICKS_PER_SECOND).toBeCloseTo(PLAYER_RUN_SPEED);
+    stepPlayer(player, field, 3);
+    expect(player.velocity.x).toBeCloseTo(PLAYER_STEP);
+    expect(isPlayerRunning(player)).toBe(false);
+    stepPlayer(player, field);
+    expect(isPlayerRunning(player)).toBe(true);
+    stepPlayer(player, field);
+    expect(player.velocity.x).toBeCloseTo(PLAYER_RUN_STEP);
+    stepPlayer(player, field);
+    expect(player.velocity.x).toBeCloseTo(PLAYER_RUN_STEP);
+
+    setPlayerRun(player, false);
+    stepPlayer(player, field);
+    expect(player.velocity.x).toBeCloseTo(PLAYER_RUN_STEP - PLAYER_GROUND_BRAKE);
+    expect(isPlayerRunning(player)).toBe(true);
+    stepPlayer(player, field, 3);
+    expect(player.velocity.x).toBeCloseTo(PLAYER_STEP);
+    expect(isPlayerRunning(player)).toBe(false);
+  });
+
+  it("does not count as running in the air or climbing, and jumps farther from a run", () => {
+    const distance = (run: boolean) => {
+      const player = walking(field, { x: 0, y: 1 }, east);
+      setPlayerRun(player, run);
+      stepPlayer(player, field, 6);
+      jumpPlayer(player);
+      stepPlayer(player, field);
+      expect(isPlayerRunning(player)).toBe(false);
+      const from = player.x;
+      for (let tick = 0; tick < 30 && player.verticalSpeed !== undefined; tick += 1) stepPlayer(player, field);
+      return player.x - from;
+    };
+    expect(distance(true)).toBeGreaterThan(distance(false) + 0.5);
+    const climber = walking(groundFrom(["01"]), { x: 0.3, y: 0 }, { right: true, up: true });
+    setPlayerRun(climber, true);
+    for (let tick = 0; tick < 20 && !climber.climb; tick += 1) stepPlayer(climber, groundFrom(["01"]));
+    expect(climber.climb).toBeDefined();
+    expect(isPlayerRunning(climber)).toBe(false);
+  });
+
   it("keeps diagonal movement at the same maximum speed as axial movement", () => {
     const player = walking(field, { x: 1, y: 1 }, { right: true });
-    stepPlayer(player, field, 2);
+    stepPlayer(player, field, 3);
     expect(Math.hypot(player.velocity.x, player.velocity.y)).toBeCloseTo(PLAYER_STEP);
   });
 
@@ -308,6 +358,8 @@ describe("horizontal control", () => {
     const groundPlayer = walking(field, { x: 1, y: 1 }, east);
     stepPlayer(groundPlayer, field, 2);
     setPlayerWalk(groundPlayer, reverse);
+    stepPlayer(groundPlayer, field);
+    expect(groundPlayer.velocity.x).toBeCloseTo(2 * PLAYER_GROUND_ACCEL - (PLAYER_GROUND_ACCEL + PLAYER_GROUND_BRAKE));
     stepPlayer(groundPlayer, field);
     expect(groundPlayer.velocity.x).toBeLessThan(0);
 
@@ -332,6 +384,14 @@ describe("horizontal control", () => {
     stepPlayer(other, blocked, 2);
     expect(other.y).toBeCloseTo(0.29);
     expect(other.x).toBeLessThan(player.x);
+  });
+
+  it("nudges sideways along x around a corner when it walks along y", () => {
+    const passable = groundFrom(["00", "t0", "00", "00"]);
+    const player = walking(passable, { x: 0.29, y: 0.6 }, { up: true, left: true });
+    stepPlayer(player, passable, 2);
+    expect(player.x).toBeCloseTo(0.29 + PLAYER_CORNER_NUDGE);
+    expect(player.y).toBeGreaterThan(0.7);
   });
 
   it("removes blocked velocity so a wall does not store momentum", () => {
@@ -613,7 +673,7 @@ describe("jumping", () => {
   it("crosses a one-column gap while jumping and lands on the far side", () => {
     const ground = step("00.000");
     const player = walking(ground, { x: 1, y: 1 }, { up: true, right: true });
-    stepPlayer(player, ground, 2); // Reach running speed before the edge.
+    stepPlayer(player, ground, 3); // Reach walking speed before the edge.
     jumpPlayer(player);
     stepPlayer(player, ground, PLAYER_JUMP_TICKS);
 
@@ -942,9 +1002,12 @@ describe("stepPlayer", () => {
     expect(player.y).toBe(2);
     expect(player.previous).toEqual({ x: 1, y: 2, elevation: 0, inset: 0, height: 0 });
 
+    stepPlayer(player, field, 2);
+    const started = 1 + PLAYER_GROUND_ACCEL * 6;
+    expect(player.x).toBeCloseTo(started);
     stepPlayer(player, field, 3);
-    expect(player.x).toBeCloseTo(1 + PLAYER_GROUND_ACCEL + 3 * PLAYER_STEP);
-    expect(player.previous.x).toBeCloseTo(1 + PLAYER_GROUND_ACCEL + 2 * PLAYER_STEP);
+    expect(player.x).toBeCloseTo(started + 3 * PLAYER_STEP);
+    expect(player.previous.x).toBeCloseTo(started + 2 * PLAYER_STEP);
   });
 
   it("standing still only settles the previous position", () => {
@@ -1069,6 +1132,7 @@ describe("getPlayerRenderPosition", () => {
     jumpBufferTicks: 0,
     coyoteTicks: 0,
     jumpHeld: false,
+    running: false,
     airJumps: 1,
     velocity: { x: 0, y: 0 },
     climb: undefined,

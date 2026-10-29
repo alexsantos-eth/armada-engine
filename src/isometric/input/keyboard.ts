@@ -11,15 +11,18 @@ export const WALK_KEYS: Readonly<Record<keyof ScreenDirections, readonly string[
 /** Keys that make the player jump (`KeyboardEvent.code`). */
 export const JUMP_KEYS: readonly string[] = ["Space"];
 
-/**
- * Which keys do what (`KeyboardEvent.code`): walking by screen direction and jumping. The game's
- * defaults are {@link WALK_KEYS} and {@link JUMP_KEYS}; `bindKeyboardControls()` takes another map,
- * whole or in part, so the controls can be configured.
- */
-export type KeyMap = Readonly<Record<keyof ScreenDirections | "jump", readonly string[]>>;
+/** Keys that make the player run while held (`KeyboardEvent.code`). */
+export const RUN_KEYS: readonly string[] = ["ShiftLeft", "ShiftRight"];
 
-/** The default {@link KeyMap}: arrows or WASD walk, the space bar jumps. */
-export const DEFAULT_KEY_MAP: KeyMap = { ...WALK_KEYS, jump: JUMP_KEYS };
+/**
+ * Which keys do what (`KeyboardEvent.code`): walking by screen direction, jumping and running. The
+ * game's defaults are {@link WALK_KEYS}, {@link JUMP_KEYS} and {@link RUN_KEYS};
+ * `bindKeyboardControls()` takes another map, whole or in part, so the controls can be configured.
+ */
+export type KeyMap = Readonly<Record<keyof ScreenDirections | "jump" | "run", readonly string[]>>;
+
+/** The default {@link KeyMap}: arrows or WASD walk, the space bar jumps, Shift runs. */
+export const DEFAULT_KEY_MAP: KeyMap = { ...WALK_KEYS, jump: JUMP_KEYS, run: RUN_KEYS };
 
 /** Zoom factor of one press of `+` (`−` divides by it). */
 export const KEYBOARD_ZOOM_STEP = 1.25;
@@ -79,6 +82,11 @@ export function jumpBinding(
   };
 }
 
+/** Running: whether any of `keys` (Shift by default) is held, on every change (`false` on blur). */
+export function runBinding(run: (held: boolean) => void, keys: readonly string[] = RUN_KEYS): KeyBinding {
+  return { kind: "hold", keys, hold: (held) => run(held.size > 0) };
+}
+
 /** Zoom: `+` multiplies the zoom by {@link KEYBOARD_ZOOM_STEP}, `−` divides by it (main and numeric keypads). */
 export function zoomBinding(zoom: (factor: number) => void): KeyBinding {
   return { kind: "press", keys: [...ZOOM_KEYS.keys()], press: (code) => zoom(ZOOM_KEYS.get(code) as number) };
@@ -94,6 +102,8 @@ export type KeyboardControls = {
   readonly jumpHeld?: (held: boolean) => void;
   /** Clears a queued jump when the window loses focus. */
   readonly cancelJump?: () => void;
+  /** Whether the run key is held, on every change. */
+  readonly run?: (held: boolean) => void;
   /** One zoom step by `factor` (the app picks the anchor, e.g. the centre of the view). */
   readonly zoom: (factor: number) => void;
 };
@@ -156,8 +166,8 @@ export function bindKeyboard(target: KeyboardTarget, bindings: readonly KeyBindi
 
 /**
  * Reads the keyboard on `target` for the game: the walk keys of `keys` walk (held keys, combined),
- * its jump keys jump, `+`/`−` zoom (main and numeric keypads), with {@link bindKeyboard}. `keys`
- * replaces any entry of {@link DEFAULT_KEY_MAP} (arrows/WASD and the space bar). Returns a function
+ * its jump keys jump, its run keys run (with `controls.run`), `+`/`−` zoom (main and numeric keypads), with {@link bindKeyboard}. `keys`
+ * replaces any entry of {@link DEFAULT_KEY_MAP} (arrows/WASD, the space bar and Shift). Returns a function
  * that unbinds it.
  */
 export function bindKeyboardControls(
@@ -169,6 +179,7 @@ export function bindKeyboardControls(
   return bindKeyboard(target, [
     walkBinding(controls.walk, map),
     jumpBinding(controls.jump, controls.jumpHeld, controls.cancelJump, map.jump),
+    ...(controls.run ? [runBinding(controls.run, map.run)] : []),
     zoomBinding(controls.zoom),
   ]);
 }

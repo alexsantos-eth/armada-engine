@@ -76,7 +76,7 @@ Archivos principales: `src/isometric/core/engine/player/player.ts`, `src/isometr
 
 **Termina cuando:** soltar o invertir la dirección tiene un resultado repetible, se puede corregir un aterrizaje en el aire y el jugador no se engancha en esquinas menores.
 
-**Implementado:** velocidad máxima de 0,15 columnas/tick (3 columnas/s). En tierra acelera 0,09 y frena 0,12 columnas/tick²; en el aire acelera 0,04 y frena 0,025. Invertir la dirección suma aceleración y frenado para no dejar el control bloqueado. El vector se normaliza también en diagonal; una colisión quita el componente bloqueado y una corrección lateral de hasta 0,04 columnas solo ocurre si tanto el desvío como el destino están libres. Un hueco de una columna requiere dos ticks de carrera antes del salto. La velocidad horizontal es transitoria, no se guarda, y aparece en las trazas del laboratorio.
+**Implementado:** velocidad máxima de 0,15 columnas/tick (3 columnas/s). En tierra acelera 0,09 y frena 0,12 columnas/tick² (después, a petición de Alex, 0,05 y 0,03 para darle inercia y que patine, con carrera a 5 columnas/s con Shift); en el aire acelera 0,04 y frena 0,025. Invertir la dirección suma aceleración y frenado para no dejar el control bloqueado. El vector se normaliza también en diagonal; una colisión quita el componente bloqueado y una corrección lateral de hasta 0,04 columnas solo ocurre si tanto el desvío como el destino están libres. Un hueco de una columna requiere dos ticks de carrera antes del salto. La velocidad horizontal es transitoria, no se guarda, y aparece en las trazas del laboratorio.
 
 ## Fase 5 — Lectura visual, respuesta y accesibilidad
 

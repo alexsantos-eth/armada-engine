@@ -350,7 +350,7 @@ describe("mountGame", () => {
     expect(onClockChange).toHaveBeenCalledTimes(2);
   });
 
-  it("walks and jumps the player with the keyboard and zooms at the centre of the view", async () => {
+  it("walks, runs and jumps the player with the keyboard and zooms at the centre of the view", async () => {
     const { window, game } = mount();
     await game.ready;
     const { world, scene } = started();
@@ -366,8 +366,11 @@ describe("mountGame", () => {
     expect(world.parts.get(PLAYER_PART).jumpHeld).toBe(true);
     window.release("Space");
     expect(world.parts.get(PLAYER_PART).jumpHeld).toBe(false);
+    window.press("ShiftLeft");
+    expect(world.parts.get(PLAYER_PART).running).toBe(true);
     window.blur();
     expect(world.parts.get(PLAYER_PART).jumpBufferTicks).toBe(0);
+    expect(world.parts.get(PLAYER_PART).running).toBe(false);
 
     window.press("Equal");
     expect(camera.zoomAt).toHaveBeenCalledWith(KEYBOARD_ZOOM_STEP, { x: 400, y: 300 });

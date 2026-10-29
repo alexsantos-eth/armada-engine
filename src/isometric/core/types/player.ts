@@ -55,6 +55,8 @@ export type PlayerState = {
   coyoteTicks: number;
   /** Whether the jump key is held; releasing it cuts upward speed. Not saved. */
   jumpHeld: boolean;
+  /** Whether the run key is held: it goes up to `PLAYER_RUN_STEP` per tick. Input, like `walk`. Not saved. */
+  running: boolean;
   /** Jumps it can still take in the air before it lands (`PLAYER_AIR_JUMPS` on the ground). Not saved. */
   airJumps: number;
   /** Horizontal velocity in world columns per tick. Derived from input; not saved. */

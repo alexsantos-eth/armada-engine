@@ -838,6 +838,30 @@ describe("createPlayerView feedback", () => {
     scene.destroy();
   });
 
+  it("kicks up a small puff of dust every few columns it runs, and none walking or with its effects off", async () => {
+    const puffs = async (speed: number, options?: PlayerViewOptions) => {
+      resetHarness();
+      const world = fieldWithPlayer();
+      const { ticker, root, scene } = await sceneOf(world, undefined, options);
+      const player = world.parts.get(PLAYER_PART);
+      ticker.frame(16);
+      for (let tick = 1; tick <= 6; tick += 1) {
+        const previous = { x: 0.5 + speed * (tick - 1), y: 1, elevation: 1, inset: 0, height: 0 };
+        Object.assign(player, { x: previous.x + speed, previous, velocity: { x: speed, y: 0 } });
+        ticker.frame(50);
+      }
+      const raised = dustOf(root);
+      scene.destroy();
+      return raised;
+    };
+
+    const running = await puffs(0.25);
+    expect(running).toHaveLength(2);
+    expect(running[0].poly).toHaveBeenCalledTimes(4 * 3);
+    expect(await puffs(0.15)).toHaveLength(0);
+    expect(await puffs(0.25, { effects: false })).toHaveLength(0);
+  });
+
   it("raises no dust and keeps its shape with its effects off", async () => {
     const world = fieldWithPlayer();
     const { ticker, root, view, scene } = await sceneOf(world, undefined, { effects: false });

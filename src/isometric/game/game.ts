@@ -14,6 +14,7 @@ import {
   cancelPlayerJump,
   jumpPlayer,
   setPlayerJumpHeld,
+  setPlayerRun,
   setPlayerWalk,
   type RandomSource,
   type PhaseLighting,
@@ -168,6 +169,7 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
           },
           jumpHeld: (held) => setPlayerJumpHeld(world.parts.get(PLAYER_PART), held),
           cancelJump: () => cancelPlayerJump(world.parts.get(PLAYER_PART)),
+          run: (held) => setPlayerRun(world.parts.get(PLAYER_PART), held),
           zoom: (factor) => {
             const { width, height } = app.renderer.screen;
             camera?.zoomAt(factor, { x: width / 2, y: height / 2 });

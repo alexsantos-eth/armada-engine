@@ -6,6 +6,7 @@ import {
   getPlayerFacing,
   getPlayerJumpPhase,
   getPlayerRenderPosition,
+  isPlayerRunning,
   PLAYER_PART,
 } from "../player";
 import { projectBoxesToIsometric, projectGridPoint } from "../projection";
@@ -51,6 +52,20 @@ const DUST_VOXELS: ReadonlyArray<readonly [number, number, number]> = [
   [0, 0.06, 0.06],
 ];
 
+/** Voxels of the small puff a running player kicks up, back to front, like {@link DUST_VOXELS}. */
+const RUN_DUST_VOXELS: ReadonlyArray<readonly [number, number, number]> = [
+  [0.05, -0.03, 0.04],
+  [-0.07, 0, 0.05],
+  [0.08, 0.02, 0.045],
+  [-0.01, 0.04, 0.04],
+];
+
+/** Columns a running player covers between two puffs of dust. */
+const RUN_DUST_EVERY = 0.7;
+
+/** Puffs of running dust drawn at most at once (reused in turn). */
+const RUN_PUFFS = 3;
+
 /**
  * How the player view answers what the player does (`createPlayerView()`). Every field is optional;
  * the game sets them from its launch options (`?effects=off`) and the reduced-motion preference.
@@ -78,7 +93,8 @@ export type PlayerViewOptions = {
  *
  * With `effects`, it answers take-offs and landings from the counters in `player.feedback` (no
  * events): dust at a take-off and at a hard landing (`getDust()`), a stretch at take-off and a squash
- * at landing (`getBodyScale()`).
+ * at landing (`getBodyScale()`); and while it runs (`isPlayerRunning()`), a small puff of dust every
+ * {@link RUN_DUST_EVERY} columns.
  *
  * With a walk sheet (`appearance.walk`) the sprite shows one of its cells: turned to the facing
  * nearest the way the player walks (`getPlayerFacing()`; standing, the last one, at first
@@ -283,14 +299,14 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
       let sinceLanding = Infinity;
       let impact = 0;
       let body: GridPoint = { x: 1, y: 1 };
-      // Two puffs of dust, made when first raised: one for take-offs (in the air too, where the feet
-      // are, for a double jump), one for landings.
-      const puffs: Array<{ view: Graphics; ms: number } | undefined> = [undefined, undefined];
+      // Puffs of dust, made when first raised: one for take-offs (in the air too, where the feet are,
+      // for a double jump), one for landings, then {@link RUN_PUFFS} small ones for running, in turn.
+      const puffs: Array<{ view: Graphics; ms: number } | undefined> = [];
       const raiseDust = (index: number, at: PlayerRenderPosition) => {
         let puff = puffs[index];
         if (!puff) {
           const dust = new Graphics();
-          for (const [x, y, size] of DUST_VOXELS) {
+          for (const [x, y, size] of index < 2 ? DUST_VOXELS : RUN_DUST_VOXELS) {
             const faces = getVoxelFaces(x, y, size, metrics);
             dust.poly(faces.top).fill({ color: DUST_COLORS.top });
             dust.poly(faces.left).fill({ color: DUST_COLORS.left });
@@ -303,6 +319,20 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         const screen = projectGridPoint(at, projection);
         puff.view.position.set(screen.x, screen.y - (at.elevation - at.inset + at.height) * metrics.boxHeight);
         scene.placeAt(puff.view, depth);
+      };
+      // Columns run since the last puff of running dust, and the puff it raises next.
+      let ran = 0;
+      let runPuff = 0;
+      const kickDust = (at: PlayerRenderPosition) => {
+        if (!isPlayerRunning(player)) {
+          ran = 0;
+          return;
+        }
+        ran += Math.hypot(at.x - drawnAt.x, at.y - drawnAt.y);
+        if (ran < RUN_DUST_EVERY) return;
+        ran -= RUN_DUST_EVERY;
+        raiseDust(2 + runPuff, at);
+        runPuff = (runPuff + 1) % RUN_PUFFS;
       };
       const settleDust = (elapsedMs: number) => {
         for (const puff of puffs) {
@@ -335,6 +365,7 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
           sinceTakeoff = 0;
           raiseDust(0, at);
         }
+        kickDust(at);
         Object.assign(seen, feedback);
         const next = getBodyScale(sinceTakeoff, sinceLanding, impact);
         if (next.x === body.x && next.y === body.y) return false;

@@ -57,6 +57,31 @@ describe("bindKeyboardControls", () => {
     expect(DEFAULT_KEY_MAP.jump).toEqual(["Space"]);
   });
 
+  it("runs while Shift (or a run key of the map) is held, and stops on blur", () => {
+    const target = createTarget();
+    const controls = { walk: vi.fn(), jump: vi.fn(), zoom: vi.fn(), run: vi.fn() };
+    bindKeyboardControls(target as never, controls);
+    target.emit("keydown", key("ShiftLeft"));
+    expect(controls.run).toHaveBeenLastCalledWith(true);
+    target.emit("keydown", key("ShiftRight"));
+    target.emit("keyup", key("ShiftLeft"));
+    expect(controls.run).toHaveBeenLastCalledWith(true);
+    target.emit("keyup", key("ShiftRight"));
+    expect(controls.run).toHaveBeenLastCalledWith(false);
+    target.emit("keydown", key("ShiftLeft"));
+    target.emit("blur");
+    expect(controls.run).toHaveBeenLastCalledWith(false);
+    expect(DEFAULT_KEY_MAP.run).toEqual(["ShiftLeft", "ShiftRight"]);
+
+    const remapped = createTarget();
+    const other = { walk: vi.fn(), jump: vi.fn(), zoom: vi.fn(), run: vi.fn() };
+    bindKeyboardControls(remapped as never, other, { run: ["KeyR"] });
+    remapped.emit("keydown", key("ShiftLeft"));
+    expect(other.run).not.toHaveBeenCalled();
+    remapped.emit("keydown", key("KeyR"));
+    expect(other.run).toHaveBeenLastCalledWith(true);
+  });
+
   it("walks while arrows or WASD are held, combining directions", () => {
     const { target, controls } = setup();
 
