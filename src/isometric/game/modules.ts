@@ -3,6 +3,7 @@ import {
   createAmbientLight,
   createCameraView,
   createClockPart,
+  createCloudShadows,
   createEntityView,
   createFoliageWind,
   createPlayerPart,
@@ -43,6 +44,7 @@ export function createSceneModules(
     createAmbientLight(lighting),
     createShadows(lighting),
     createCameraView({ cull: options.cull }),
+    createCloudShadows(),
   ];
   return modules.filter(({ id }) => !disabled.has(id));
 }

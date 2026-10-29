@@ -137,6 +137,21 @@ export function mockPixi() {
   }
   makeSprite = (texture) => new Sprite(texture);
 
+  class TilingSprite extends Sprite {
+    public tilePosition = {
+      x: 0,
+      y: 0,
+      set: vi.fn((x: number, y: number) => Object.assign(this.tilePosition, { x, y })),
+    };
+    public tileScale = { x: 1, y: 1, set: vi.fn((x: number, y: number) => Object.assign(this.tileScale, { x, y })) };
+    public alpha = 1;
+    constructor(options: { texture: unknown; width: number; height: number }) {
+      super(options.texture);
+      this.width = options.width;
+      this.height = options.height;
+    }
+  }
+
   return {
     Assets: { load: vi.fn(loadTexture), unload: vi.fn(() => Promise.resolve(undefined)) },
     Container,
@@ -169,6 +184,7 @@ export function mockPixi() {
       }
     },
     Sprite,
+    TilingSprite,
     Matrix: class {
       public a: number;
       public b: number;
@@ -606,7 +622,10 @@ export async function mountScene(
     screen: renderer.screen,
     ticker,
     renderer,
-    stage: { addChild: (child: TestRoot) => stage.push(child) },
+    stage: {
+      addChild: (child: TestRoot) => stage.push(child),
+      removeChild: (child: TestRoot) => stage.splice(stage.indexOf(child), 1),
+    },
   };
   const scene = await createScene(app as never, world, modules, { terrain: TEST_TERRAIN, ...options });
   return { app, ticker, renderer, root: drawnRoot(stage[0]), scene };

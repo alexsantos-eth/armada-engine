@@ -119,3 +119,11 @@ Pendiente: sostener 60 fps durante transición y caminata simultáneas en el zoo
 La prueba real de GPU del build final devuelve cero bytes diferentes y diferencia máxima cero en reposo, tras tres ciclos día/atardecer/día y tras veinte repintados, tanto con el zoom inicial del laboratorio como después de alejarlo y reducir la densidad. Evidencia: `artifacts/lighting/stability-verification.json` y `stability-verified.jpg`. El grafo se actualizó con `graphify update .` (AST, sin coste de API).
 
 La comparación A/B con margen general del 25 % tampoco sostuvo 60 fps (58.4 fps durante la ventana de movimiento), elevó las llamadas medias de dibujo a 224 y las de reposo a 157. Se conserva el 10 %: el margen mayor no resuelve el caso extremo y aumenta el trabajo fuera de pantalla.
+
+## Revisión de sombras de nubes · 2026-10-28
+
+Corregido (Media, `src/isometric/core/engine/cloud-shadows/cloud-shadows.ts`): la escena carecía de una sombra ambiental móvil que no multiplicara el trabajo por tile o chunk. `cloud-shadows` usa el `TilingSprite` nativo de Pixi con una única textura SVG y alinea su patrón con la cámara; solo cambia dos puntos por frame. Se libera al destruir la escena y el asset queda bajo el ciclo de vida común de `SceneAssets`. El módulo no toca dominio, simulación ni atlas de sombras.
+
+Validación: `pnpm lint`, 1 679 pruebas, cobertura del 100 % en las cuatro métricas y `pnpm build`. En la vista previa de producción, con semilla 1337, cinco o seis chunks y después de la carga inicial, reposo y caminata sostuvieron 60.0 fps; `update:cloud-shadows` midió 0.00–0.10 ms por frame. La ventana que incorporó un chunk registró 58.4 fps y un frame de 150.1 ms; sigue pendiente la deuda ya descrita sobre los tirones al incorporar chunks y el caso extremo de zoom mínimo. La medición corresponde al navegador de vista previa, no sustituye perfiles de GPU en el equipo objetivo.
+
+Ajuste visual: la opacidad de la única máscara subió de 0.20 a 0.27 para hacer perceptibles las nubes sin añadir trabajo al frame. La revisión del core no encontró nuevas dependencias ni invalidaciones de atlas.

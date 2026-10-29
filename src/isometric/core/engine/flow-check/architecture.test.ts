@@ -52,6 +52,7 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   "surface-bands": ["scene", "waves"],
   "ambient-light": ["lighting", "render", "scene"],
   "camera-view": ["camera", "scene"],
+  "cloud-shadows": ["scene"],
   "player-view": ["camera", "player", "projection", "render", "scene"],
 };
 
@@ -64,6 +65,7 @@ const SCENE_MODULES = new Set([
   "shadows",
   "ambient-light",
   "camera-view",
+  "cloud-shadows",
   "player-view",
 ]);
 

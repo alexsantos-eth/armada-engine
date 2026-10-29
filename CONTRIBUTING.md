@@ -16,6 +16,8 @@ Para el render, usa lo que PixiJS ya resuelve antes que código propio (tabla en
 
 Las dependencias entre módulos están fijadas en `engine/flow-check/architecture.test.ts` (tabla en `ARCHITECTURE.md`). Si un módulo nuevo necesita otra dependencia, añádela a esa tabla de forma explícita y justificada; un módulo nuevo debe aparecer en ella o el test falla.
 
+La sombra de nubes vive en `engine/cloud-shadows` y usa un solo `TilingSprite` de Pixi sobre el viewport. Para ajustar su aspecto, edita `public/assets/cloud-shadow.svg`; para cambiar velocidad, escala u opacidad, usa las constantes de `cloud-shadows.ts`. Comprueba el efecto durante panorámica, zoom y `?modules=cloud-shadows`; no generes una sombra por tile ni invalides los mapas de sombra horneados para animarla.
+
 Los tipos compartidos viven en `src/isometric/core/types` y se exportan desde `core/types/index.ts`. No se crean tests runtime para archivos que solo contienen tipos.
 
 `Box` vive en `engine/terrain` y está reservado para bloques de terreno (`grass`, `ground`, `water` y `sand`). Las entidades de juego se declaran como datos en `src/isometric/content/entities.ts` (`ENTITY_CONFIG`, fuera del motor) y se crean con `createEntitiesFromConfig()`. No se deben añadir entidades concretas a `Box`, a la escena ni a sus módulos. La apariencia de cada material de terreno (SVG, tinte, `topInset`, `bands`) es contenido: `TERRAIN_APPEARANCE` en `content/terrain.ts`.

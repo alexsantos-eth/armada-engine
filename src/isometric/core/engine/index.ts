@@ -1,6 +1,7 @@
 export * from "./ambient-light";
 export * from "./camera";
 export * from "./camera-view";
+export * from "./cloud-shadows";
 export * from "./constants";
 export * from "./entities";
 export * from "./entity-view";

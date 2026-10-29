@@ -188,6 +188,7 @@ describe("mountGame", () => {
       "ambient-light",
       "shadows",
       "camera",
+      "cloud-shadows",
     ]);
     expect(options.terrain).toBe(TERRAIN_APPEARANCE);
     expect(options.interpolation?.()).toBe(0);
@@ -284,6 +285,7 @@ describe("mountGame", () => {
       "foliage-wind",
       "ambient-light",
       "camera",
+      "cloud-shadows",
     ]);
     expect(world.parts.get(PLAYER_PART).previous).toEqual({
       x: world.parts.get(PLAYER_PART).x,
