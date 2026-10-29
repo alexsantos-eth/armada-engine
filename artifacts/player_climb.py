@@ -1,4 +1,4 @@
-# player_climb.py — climb sheet of the voxel clay player (player_walk.py's figure), in 8 facings.
+# player_climb.py — climb sheet of the player (monkey.py's monkey), in 8 facings.
 # One row per facing, in the walk sheet's order (east, north-east, north, north-west, west,
 # south-west, south, south-east); FRAMES columns of one climb onto a block one higher, from
 # reaching up to standing on top. The engine raises the feet (the climb's height in the
@@ -7,15 +7,11 @@
 # Every cell is the walk sheet's window (CELL, GAP), so the engine draws all the sheets with the same
 # cell and the feet never move. Requires shapely (see iso_lib.py).
 import math
-from player_walk import FACINGS, GAP, Part, draw_parts, facing_yaw, rot_pitch, PANTS, SHIRT, SKIN, HAIR, EYE
+import monkey
+from player_walk import CELL, CELL_STYLE, FACINGS, GAP, TOP, Part, draw_parts, facing_yaw, rot_pitch
 
-# The walk sheet's window (data-cell of walk.svg, canvas units from the top of the 1024 x 853
-# canvas) and the canvas's top in the figure's units.
-CELL = (312, 186, 400, 462)
-TOP = -341
-
-HIP = (0, 96)           # pivot of the legs and of the body leaning in (x forward, z up)
-SHOULDER = (0, 196)     # pivot of the arms
+HIP = monkey.HIP            # pivot of the legs and of the body leaning in (x forward, z up)
+SHOULDER = monkey.SHOULDER  # pivot of the arms
 
 # Poses of one climb, in order (degrees; a negative swing takes a limb forward, a positive lean
 # takes the body forward): (lean, left arm, right arm, left leg, right leg).
@@ -65,13 +61,10 @@ def pose(index):
 
     parts = []
     for side, leg in ((-1, leg_l), (1, leg_r)):
-        parts.append((ClimbPart(0, side * 38, 0, 34, 32, 48, PANTS, 16, turns=((*HIP, math.radians(leg)),)), 0.0))
-    parts.append(turned(0, 0, 100, 58, 82, 52, SHIRT, 24))
-    parts.append(turned(0, 0, 208, 66, 66, 46, SKIN, 28))
-    parts.append(turned(-8, 0, 302, 60, 62, 19, HAIR, 16))
+        parts += [(ClimbPart(*p, turns=((*HIP, math.radians(leg)),)), 0.0) for p in monkey.leg(side)]
+    parts += [turned(*p) for p in monkey.body() + monkey.head() + monkey.tail()]
     for side, arm in ((-1, arm_l), (1, arm_r)):
-        parts.append(turned(0, side * 110, 110, 24, 24, 46, SHIRT, 11, swing=(SHOULDER, arm)))
-        parts.append(turned(64, side * 24, 246, 8, 10, 13, EYE, 6))
+        parts += [turned(*p, swing=(SHOULDER, arm)) for p in monkey.arm(side)]
     return parts
 
 
@@ -85,7 +78,7 @@ def main():
             paths, points = draw_parts(pose(c), yaw)
             every += points
             tx, ty = c * (w + GAP) - x0, r * (h + GAP) - y0
-            body.append(f'<g id="{facing}-{c}" transform="translate({tx} {ty})">\n    ' + "\n    ".join(paths) + "\n  </g>")
+            body.append(f'<g id="{facing}-{c}" transform="translate({tx} {ty})" {CELL_STYLE}>\n    ' + "\n    ".join(paths) + "\n  </g>")
     # every pose must fit the walk sheet's window
     xs, ys = [p[0] for p in every], [p[1] for p in every]
     assert min(xs) >= x0 and max(xs) <= x0 + w, (min(xs), max(xs))

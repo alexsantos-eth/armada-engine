@@ -1,31 +1,34 @@
-# player_jump.py — jump sheet of the voxel clay player (player_walk.py's figure), in 8 facings.
+# player_jump.py — jump sheet of the player (monkey.py's monkey), in 8 facings.
 # One row per facing, in the walk sheet's order (east, north-east, north, north-west, west,
 # south-west, south, south-east); one column per part of a jump, in the order of POSES: taking off
-# (crouched, arms back), rising (stretched, arms up), at the apex (legs tucked forward), falling
+# (crouched, arms back), rising (stretched, arms up), at the apex (legs tucked forward, arms up and out), falling
 # (arms up, legs reaching down) and landing (crouched, arms forward). The engine lifts the feet (the
 # jump's height in the simulation), so every pose keeps its feet where the walk sheet's are; a
-# crouch lowers the body onto the legs instead. Every cell is the walk sheet's window (CELL, GAP), so
-# the engine draws all the sheets with the same cell. Requires shapely (see iso_lib.py).
+# crouch lowers the body onto the legs and squashes it, a stretch makes it taller, and the tail
+# swings. Every cell is the walk sheet's window (CELL, GAP), so the engine draws all the sheets with
+# the same cell. Requires shapely (see iso_lib.py).
 import math
-from player_walk import FACINGS, GAP, draw_parts, facing_yaw, PANTS, SHIRT, SKIN, HAIR, EYE
-from player_climb import CELL, TOP, HIP, SHOULDER, ClimbPart
+import monkey
+from player_walk import CELL, CELL_STYLE, FACINGS, GAP, TOP, draw_parts, facing_yaw
+from player_climb import HIP, SHOULDER, ClimbPart
 
 # Poses of a jump, in order (degrees; a negative swing takes a limb forward, a positive lean takes
-# the body forward; `drop` lowers the body onto the legs, in the figure's units):
-# (name, lean, left arm, right arm, left leg, right leg, drop).
+# the body forward; `drop` lowers the body onto the legs and `squash` flattens it, a negative one
+# stretching it, in the figure's units; `tail` swings the tail's tip):
+# (name, lean, left arm, right arm, left leg, right leg, drop, squash, tail).
 POSES = [
-    ("takeoff", 12, 38, 30, 18, 6, 14),       # crouched, pushing off, arms swung back
-    ("rise", -2, -150, -140, 14, 24, -4),     # stretched up, arms reaching, legs trailing
-    ("apex", 4, -36, -30, -26, -14, 0),       # legs tucked forward, arms out in front
-    ("fall", -4, -150, -140, -8, 12, 0),      # arms up for balance, legs reaching for the ground
-    ("landing", 10, -26, -32, -12, 8, 18),    # crouched on landing, arms forward
+    ("takeoff", 12, 44, 38, 18, 10, 9, 8, -12),        # crouched, pushing off, arms swung back
+    ("rise", -2, -160, -150, 18, 28, -3, -5, 12),      # stretched up, arms reaching, legs trailing
+    ("apex", 4, -130, -120, -28, -18, 0, 0, 26),       # legs tucked forward, arms up and out
+    ("fall", -4, -165, -155, -8, 14, 0, -3, -18),      # arms up for balance, legs reaching down
+    ("landing", 10, -30, -36, -14, 8, 11, 10, 6),      # crouched on landing, arms forward
 ]
 FRAMES = len(POSES)
 
 
 def pose(index):
     """The figure's parts in jump pose `index`, each with how far it rises (the body drops in a crouch)."""
-    _, lean, arm_l, arm_r, leg_l, leg_r, drop = POSES[index]
+    _, lean, arm_l, arm_r, leg_l, leg_r, drop, squash, sway = POSES[index]
     body = (*HIP, math.radians(lean))
 
     def turned(*args, swing=None):
@@ -34,13 +37,10 @@ def pose(index):
 
     parts = []
     for side, leg in ((-1, leg_l), (1, leg_r)):
-        parts.append((ClimbPart(0, side * 38, 0, 34, 32, 48, PANTS, 16, turns=((*HIP, math.radians(leg)),)), 0.0))
-    parts.append(turned(0, 0, 100, 58, 82, 52, SHIRT, 24))
-    parts.append(turned(0, 0, 208, 66, 66, 46, SKIN, 28))
-    parts.append(turned(-8, 0, 302, 60, 62, 19, HAIR, 16))
+        parts += [(ClimbPart(*p, turns=((*HIP, math.radians(leg)),)), 0.0) for p in monkey.leg(side)]
+    parts += [turned(*p) for p in monkey.body(squash=squash) + monkey.head(-2 * squash) + monkey.tail(sway)]
     for side, arm in ((-1, arm_l), (1, arm_r)):
-        parts.append(turned(0, side * 110, 110, 24, 24, 46, SHIRT, 11, swing=(SHOULDER, arm)))
-        parts.append(turned(64, side * 24, 246, 8, 10, 13, EYE, 6))
+        parts += [turned(*p, swing=(SHOULDER, arm)) for p in monkey.arm(side)]
     return parts
 
 
@@ -54,7 +54,7 @@ def main():
             paths, points = draw_parts(pose(c), yaw)
             every += points
             tx, ty = c * (w + GAP) - x0, r * (h + GAP) - y0
-            body.append(f'<g id="{facing}-{POSES[c][0]}" transform="translate({tx} {ty})">\n    ' + "\n    ".join(paths) + "\n  </g>")
+            body.append(f'<g id="{facing}-{POSES[c][0]}" transform="translate({tx} {ty})" {CELL_STYLE}>\n    ' + "\n    ".join(paths) + "\n  </g>")
     # every pose must fit the walk sheet's window
     xs, ys = [p[0] for p in every], [p[1] for p in every]
     assert min(xs) >= x0 and max(xs) <= x0 + w, (min(xs), max(xs))

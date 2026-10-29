@@ -1,36 +1,42 @@
-# player_walk.py — walk sheet of the voxel clay player (player.py's figure), in 8 facings.
+# player_walk.py — walk sheet of the player, the voxel clay monkey of monkey.py, in 8 facings.
 # One row per facing, in the order the engine reads them (PLAYER_FACINGS in content/player.ts):
 # east, north-east, north, north-west, west, south-west, south, south-east (screen directions;
 # north is up). Column 0 is the figure standing, then FRAMES poses of one walk cycle (two steps).
 # Every cell is the same window CELL of a one-tile canvas (1024 x 853, viewBox 0 -341), so the
 # figure's feet stay at the tile's centre in every cell. The parts are clay voxels turned towards
 # the facing (yaw) and, for legs and arms, swung about the hip or shoulder (pitch): the shading
-# follows each facet's turned normal, so the light stays fixed while the figure turns.
+# follows each facet's turned normal, so the light stays fixed while the figure turns. While it
+# walks the monkey bobs, its body squashes a little at each step and its tail swings side to side.
 # No cast shadow: the engine projects shadows. Requires shapely (see iso_lib.py).
 import math
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
-from iso_lib import P, VIEW, fmt, light, tint, falloff, seam
-
-SKIN = "#f2c79b"
-SHIRT = "#e8574a"
-PANTS = "#4f6aa8"
-HAIR = "#6b4a2f"
-EYE = "#3a2c2a"
+from iso_lib import P, VIEW, fmt, light, tint, falloff
+import monkey
 
 FRAMES = 8              # walk poses per cycle (after the standing one)
-LEG_SWING = 30          # degrees the legs swing forward and back at the end of a step
-ARM_SWING = 34          # degrees the arms swing, opposite to the legs
+LEG_SWING = 32          # degrees the legs swing forward and back at the end of a step
+ARM_SWING = 40          # degrees the arms swing, opposite to the legs
 BOB = 10                # units the body rises at the passing pose
-FOOT_LIFT = 18          # units a leg lifts while it swings forward (seen from the front and back)
-SEGMENTS = 16           # facets per quarter of a voxel's rounding
+FOOT_LIFT = 14          # units a leg lifts while it swings forward (seen from the front and back)
+SQUASH = 4              # units the body flattens as a foot lands
+TAIL_SWAY = 30          # units the tail's tip swings to each side over a cycle
+SEGMENTS = 16           # most facets per quarter of a voxel's rounding (the head's)
+SEGMENT_SIZE = 5        # units of rounding per facet: small voxels get fewer facets
+MIN_AREA = 3            # canvas units² below which a shape (or what shows of it) is left out
 FACINGS = ["east", "north-east", "north", "north-west", "west", "south-west", "south", "south-east"]
 
 # Window of the tile canvas each cell shows (canvas units: x from the left, y from the top of the
-# 1024 x 853 canvas), found from the extent of every pose plus a margin; and the gap between cells,
-# so mipmaps never mix two cells.
-CELL = None             # filled by main()
+# 1024 x 853 canvas): the extent of every pose of every player sheet (walk, idle, jump, climb) plus
+# a margin of 8, so all of them share it (each generator asserts its poses fit). Kept under 412 wide
+# so the walk sheet's nine columns stay under a 4096 px texture. And the gap between cells, so
+# mipmaps never mix two cells.
+CELL = (313, 271, 398, 399)
 GAP = 48
+TOP = -341              # the canvas's top, in the figure's screen units
+# What every path of a cell shares (iso_lib's seam: a thin stroke of the fill closes the hairlines
+# between shapes), set once on the cell's group.
+CELL_STYLE = 'fill-rule="evenodd" stroke-width=".75" stroke-linejoin="round"'
 
 
 def facing_yaw(index):
@@ -42,9 +48,12 @@ def facing_yaw(index):
     return math.atan2(fy, fx)
 
 
-def rbox_local(hx, hy, hz, r, k=SEGMENTS):
-    """Facets of a rounded box centred on the origin (all of them, unculled): (points, normal)."""
+def rbox_local(hx, hy, hz, r, k=None):
+    """Facets of a rounded box centred on the origin (all of them, unculled): (points, normal).
+    Without `k`, a facet per SEGMENT_SIZE units of rounding, at most SEGMENTS per quarter."""
     r = min(r, hx, hy, hz)
+    if k is None:
+        k = max(4, min(SEGMENTS, math.ceil(r / SEGMENT_SIZE)))
     core = (hx - r, hy - r, hz - r)
     lats = [(-90 + 90 * i / k, -1) for i in range(k + 1)] + [(90 * i / k, 1) for i in range(k + 1)]
     quads = [(1, 1), (-1, 1), (-1, -1), (1, -1)]
@@ -109,27 +118,23 @@ class Part:
 
 
 def pose(phase, walking):
-    """The figure's parts at `phase` (0–1) of the walk cycle, and how far its body rises."""
+    """The monkey's parts at `phase` (0–1) of the walk cycle, each with how far it rises."""
     s = math.sin(2 * math.pi * phase) if walking else 0.0
     leg = math.radians(LEG_SWING) * s
     arm = math.radians(ARM_SWING) * s
     lift = BOB * (1 + math.cos(4 * math.pi * phase)) / 2 if walking else 0.0
+    squash = SQUASH * (1 - math.cos(4 * math.pi * phase)) / 2 if walking else 0.0
     parts = []
     # legs, side by side across the body, swinging about the hip (opposite to each other); the
-    # body rises at the passing pose, the legs stay on the ground
+    # body rises at the passing pose and squashes as a foot lands, the legs stay on the ground
     for side in (-1, 1):
         # the leg swinging forward (its swing growing) is off the ground
         forward = side * math.cos(2 * math.pi * phase) if walking else 0.0
         raise_by = FOOT_LIFT * max(0.0, forward)
-        parts.append((Part(0, side * 38, 0, 34, 32, 48, PANTS, 16, pivot=(0, 96), swing=side * leg), raise_by))
-    upper = [
-        Part(0, 0, 100, 58, 82, 52, SHIRT, 24),
-        Part(0, 0, 208, 66, 66, 46, SKIN, 28),
-        Part(-8, 0, 302, 60, 62, 19, HAIR, 16),
-    ]
+        parts += [(Part(*p, pivot=monkey.HIP, swing=side * leg), raise_by) for p in monkey.leg(side)]
+    upper = [Part(*p) for p in monkey.body(squash=squash) + monkey.head(-2 * squash) + monkey.tail(TAIL_SWAY * s)]
     for side in (-1, 1):
-        upper.append(Part(0, side * 110, 110, 24, 24, 46, SHIRT, 11, pivot=(0, 196), swing=-side * arm))
-        upper.append(Part(64, side * 24, 246, 8, 10, 13, EYE, 6))
+        upper += [Part(*p, pivot=monkey.SHOULDER, swing=-side * arm) for p in monkey.arm(side)]
     parts += [(p, lift) for p in upper]
     return parts
 
@@ -158,18 +163,27 @@ def draw_parts(parts, yaw):
         depth = sum(centre)
         drawn.append((depth, part, lift, groups, points))
     drawn.sort(key=lambda d: d[0])
-    paths, every = [], []
+    # each part's shapes by light level, back to front
+    shapes, every = [], []
     for _, part, lift, groups, points in drawn:
         every += points
         for level in sorted(groups):
             geom = unary_union(groups[level]).simplify(0.4, preserve_topology=True)
             fill = tint(part.color, level * falloff(part.top + lift))
             for pg in ([geom] if geom.geom_type == "Polygon" else list(getattr(geom, "geoms", []))):
-                if pg.is_empty or pg.geom_type != "Polygon":
-                    continue
-                d = " ".join("M" + " L".join(fmt(p) for p in list(ring.coords)[:-1]) + "Z"
-                             for ring in [pg.exterior, *pg.interiors])
-                paths.append(f'<path d="{d}" fill="{fill}" fill-rule="evenodd" {seam(fill)}/>')
+                if not pg.is_empty and pg.geom_type == "Polygon" and pg.area >= MIN_AREA:
+                    shapes.append((pg, fill))
+    # leave out what the parts in front cover completely: it would never show
+    kept, cover = [], None
+    for pg, fill in reversed(shapes):
+        if cover is None or pg.difference(cover).area >= MIN_AREA:
+            kept.append((pg, fill))
+        cover = pg if cover is None else cover.union(pg)
+    paths = []
+    for pg, fill in reversed(kept):
+        d = " ".join("M" + " ".join(fmt(p) for p in list(ring.coords)[:-1]) + "Z"
+                     for ring in [pg.exterior, *pg.interiors])
+        paths.append(f'<path d="{d}" fill="{fill}" stroke="{fill}"/>')
     return paths, every
 
 
@@ -184,26 +198,24 @@ def main():
             row.append(paths)
             every += pts
         frames.append(row)
-    # the window every pose fits in, with a margin, in canvas units (the canvas's top is y = −341)
-    m = 8
-    x0 = math.floor(min(p[0] for p in every) - m)
-    x1 = math.ceil(max(p[0] for p in every) + m)
-    y0 = math.floor(min(p[1] for p in every) - m)
-    y1 = math.ceil(max(p[1] for p in every) + m)
-    assert x0 >= 0 and x1 <= 1024 and y0 >= -341 and y1 <= 512, (x0, x1, y0, y1)
-    w, h = x1 - x0, y1 - y0
+    # every pose must fit the window
+    x0, y0c, w, h = CELL
+    y0 = y0c + TOP
+    xs, ys = [p[0] for p in every], [p[1] for p in every]
+    assert min(xs) >= x0 and max(xs) <= x0 + w, (min(xs), max(xs))
+    assert min(ys) >= y0 and max(ys) <= y0 + h, (min(ys), max(ys))
     cols, rows = len(poses), len(FACINGS)
     sheet_w, sheet_h = cols * (w + GAP) - GAP, rows * (h + GAP) - GAP
     body = []
     for r, row in enumerate(frames):
         for c, paths in enumerate(row):
             tx, ty = c * (w + GAP) - x0, r * (h + GAP) - y0
-            body.append(f'<g id="{FACINGS[r]}-{c}" transform="translate({tx} {ty})">\n    ' + "\n    ".join(paths) + "\n  </g>")
+            body.append(f'<g id="{FACINGS[r]}-{c}" transform="translate({tx} {ty})" {CELL_STYLE}>\n    ' + "\n    ".join(paths) + "\n  </g>")
     svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{sheet_w}" height="{sheet_h}" '
-           f'viewBox="0 0 {sheet_w} {sheet_h}" data-cell="{x0} {y0 + 341} {w} {h}" data-gap="{GAP}" '
+           f'viewBox="0 0 {sheet_w} {sheet_h}" data-cell="{x0} {y0c} {w} {h}" data-gap="{GAP}" '
            f'data-frames="{cols}" data-facings="{" ".join(FACINGS)}">\n  ' + "\n  ".join(body) + "\n</svg>\n")
     open("walk.svg", "w").write(svg)
-    print(f"ok walk.svg {sheet_w}x{sheet_h}, cell x={x0} y={y0 + 341} w={w} h={h}, gap {GAP}, {cols} columns x {rows} rows")
+    print(f"ok walk.svg {sheet_w}x{sheet_h}, cell x={x0} y={y0c} w={w} h={h}, gap {GAP}, {cols} columns x {rows} rows")
 
 
 if __name__ == "__main__":
