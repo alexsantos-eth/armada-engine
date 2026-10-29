@@ -1,6 +1,6 @@
 import { PLAYER_FACINGS } from "../player";
 import type { SheetCell, SheetLayout } from "../render";
-import type { PlayerClimbSheet, PlayerIdleSheet, PlayerWalkSheet } from "../../types";
+import type { PlayerClimbSheet, PlayerIdleSheet, PlayerJumpPhase, PlayerJumpSheet, PlayerWalkSheet } from "../../types";
 
 /** Facing the player starts with, before it walks: towards the camera. */
 export const PLAYER_START_FACING = PLAYER_FACINGS.indexOf("south");
@@ -24,6 +24,16 @@ export function getIdleSheetLayout(sheet: PlayerWalkSheet, idle: PlayerIdleSheet
 /** How `climb`, the climb sheet of `sheet`, is laid out: like `sheet`, one column per pose of a climb. */
 export function getClimbSheetLayout(sheet: PlayerWalkSheet, climb: PlayerClimbSheet): SheetLayout {
   return { ...getWalkSheetLayout(sheet), columns: climb.frames };
+}
+
+/** How `jump`, the jump sheet of `sheet`, is laid out: like `sheet`, one column per pose of a jump. */
+export function getJumpSheetLayout(sheet: PlayerWalkSheet, jump: PlayerJumpSheet): SheetLayout {
+  return { ...getWalkSheetLayout(sheet), columns: Math.max(...Object.values(jump.poses)) + 1 };
+}
+
+/** Column of a jump sheet showing a player in `phase` of a jump, or `undefined` on the ground. */
+export function getJumpPose(phase: PlayerJumpPhase, jump: PlayerJumpSheet): number | undefined {
+  return phase === "ground" ? undefined : jump.poses[phase];
 }
 
 /**

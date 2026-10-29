@@ -10,6 +10,7 @@ import {
   createPlayerSystem,
   createPlayerView,
   createPhaseLighting,
+  type PlayerViewOptions,
   type PhaseLighting,
   createShadows,
   createSurfaceBands,
@@ -28,11 +29,12 @@ import type { WorldSystem } from "../core/types";
  * player), and every frame they update in this order (the canopies lean before their shadows
  * follow them; the player moves before its shadow and the camera follow it). Any of them can be
  * left out (`disabled`, by id) and the rest keep working. With `cull: false` the camera draws
- * every view of the shown chunks (`?cull=off`, to measure what culling saves).
+ * every view of the shown chunks (`?cull=off`, to measure what culling saves). `player` sets how the
+ * player's view answers its actions (its effects).
  */
 export function createSceneModules(
   disabled: ReadonlySet<string> = new Set(),
-  options: { readonly lighting?: PhaseLighting; readonly cull?: boolean } = {},
+  options: { readonly lighting?: PhaseLighting; readonly cull?: boolean; readonly player?: PlayerViewOptions } = {},
 ): SceneModule[] {
   const lighting = options.lighting ?? createPhaseLighting();
   const modules = [
@@ -40,7 +42,7 @@ export function createSceneModules(
     createTerrainView(),
     createEntityView(),
     createFoliageWind(),
-    createPlayerView(PLAYER_APPEARANCE),
+    createPlayerView(PLAYER_APPEARANCE, options.player),
     createAmbientLight(lighting),
     createShadows(lighting),
     createCameraView({ cull: options.cull }),

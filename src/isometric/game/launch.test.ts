@@ -6,13 +6,20 @@ describe("resolveLaunchOptions", () => {
   it("reads the seed, the starting hour and the time scale from the URL query", () => {
     const random = vi.fn(() => 0.5);
 
-    expect(resolveLaunchOptions("?seed=1337&hour=15&timeScale=0&modules=-shadows&perf&cull=off", random)).toEqual({
+    expect(
+      resolveLaunchOptions(
+        "?seed=1337&hour=15&timeScale=0&modules=-shadows&perf&cull=off&effects=off&sound=off",
+        random,
+      ),
+    ).toEqual({
       seed: 1337,
       startTick: 15 * TICKS_PER_HOUR,
       timeScale: 0,
       disabledModules: new Set(["shadows"]),
       perf: true,
       cull: false,
+      effects: false,
+      sound: false,
     });
     expect(random).not.toHaveBeenCalled();
   });
@@ -25,7 +32,14 @@ describe("resolveLaunchOptions", () => {
       disabledModules: new Set(),
       perf: false,
       cull: true,
+      effects: true,
+      sound: true,
     });
+  });
+
+  it("leaves out the effects for a player who prefers reduced motion, unless asked", () => {
+    expect(resolveLaunchOptions("", () => 0.25, true)).toMatchObject({ effects: false });
+    expect(resolveLaunchOptions("?effects", () => 0.25, true)).toMatchObject({ effects: true });
   });
 });
 

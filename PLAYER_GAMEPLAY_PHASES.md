@@ -1,6 +1,6 @@
 # Fases para perfeccionar el control del jugador
 
-**Estado:** fases 0 a 4 implementadas. El laboratorio reproducible está en `artifacts/player-movement-lab.html`; las fases 5 y 6 siguen pendientes.
+**Estado:** fases 0 a 5 implementadas. El laboratorio reproducible está en `artifacts/player-movement-lab.html`; la fase 6 sigue pendiente.
 
 Plan para Armada Engine, ordenado por dependencias. Los valores propuestos son puntos de partida para probar en juego, no constantes definitivas.
 
@@ -89,6 +89,8 @@ Archivos principales: `src/isometric/core/engine/player/player.ts`, `src/isometr
 - Hacer configurables los efectos de cámara y los controles; probar con teclado y con las modalidades de entrada que se incorporen.
 
 **Termina cuando:** en una prueba sin indicadores de depuración se puede anticipar dónde caerá el personaje y distinguir visualmente un salto aceptado de uno bloqueado.
+
+**Implementado:** la simulación cuenta despegues, aterrizajes y rechazos en `PlayerState.feedback` (transitorio, no se guarda) y los anuncia como `playerJumped`, `playerLanded` (con su impacto en bloques/tick) y `playerJumpRejected` (`airborne`, `climbing` o `ceiling`). `getPlayerJumpPhase()` deriva la fase del salto (despegue 2 ticks, subida, ápice mientras la velocidad vertical cabe en ±2 veces la gravedad, caída, aterrizaje 3 ticks) sin retrasar la física. La vista usa `public/assets/player/jump.svg` (5 poses, generado por `artifacts/player_jump.py`). La sombra del jugador sigue siendo la referencia de los pies. Despegar estira el cuerpo 120 ms, aterrizar lo aplasta 180 ms según el impacto y levanta polvo 360 ms; un salto rechazado solo suena (un zumbido grave, distinto del chirrido del despegue y del golpe del aterrizaje). La cámara sigue como antes de esta fase: no sube con el salto y sigue los pies en una caída. Tras probarlo en juego, Alex prefirió quitar la elipse bajo los pies, la animación del salto rechazado (tinte y sacudida) y el adelanto y encuadre de la cámara. Se configuran por URL (`?effects=off`, `?sound=off`), `prefers-reduced-motion` apaga el estiramiento y el polvo, y `mountGame()` acepta un `keys` con otro mapa de teclas. Solo existe el teclado: el mando u otras entradas quedan para cuando se incorporen.
 
 ## Fase 6 — Ajuste con pruebas de juego
 

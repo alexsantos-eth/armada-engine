@@ -24,7 +24,7 @@ export const PLAYER_WALK: PlayerWalkSheet = {
   gap: 48,
   frames: 8,
   stride: 1.4,
-  // In the air: the pose with the legs furthest apart, a leap.
+  // In the air without the jump sheet: the pose with the legs furthest apart, a leap.
   airPose: 3,
   // Standing still: `idle.svg`, made by `Claude outputs/player_idle.py` in this sheet's window. Every
   // 3.2 s it breathes twice (the chest growing, the head and arms rising) and looks to one side and
@@ -33,6 +33,9 @@ export const PLAYER_WALK: PlayerWalkSheet = {
   // Climbing onto a higher top: `climb.svg`, made by `Claude outputs/player_climb.py` in this sheet's
   // window. It reaches up, pulls itself up, puts a knee on the top, pushes on its hands and stands.
   climb: { source: "/assets/player/climb.svg", frames: 6 },
+  // Jumping: `jump.svg`, made by `artifacts/player_jump.py` in this sheet's window. Crouched and arms
+  // back to take off, stretched up rising, legs tucked at the apex, arms up falling, crouched landing.
+  jump: { source: "/assets/player/jump.svg", poses: { takeoff: 0, rise: 1, apex: 2, fall: 3, landing: 4 } },
 };
 
 /**

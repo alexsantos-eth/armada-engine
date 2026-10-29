@@ -5,6 +5,8 @@ import {
   getClimbSheetLayout,
   getIdlePose,
   getIdleSheetLayout,
+  getJumpPose,
+  getJumpSheetLayout,
   getWalkPose,
   getWalkSheetCell,
   getWalkSheetLayout,
@@ -67,5 +69,13 @@ describe("player walk sheet", () => {
     const poses = [0, 0.24, 0.25, 0.5, 0.99, 1, -0.1].map((progress) => getClimbPose(progress, CLIMB));
 
     expect(poses).toEqual([0, 0, 1, 2, 3, 3, 0]);
+  });
+
+  it("lays out a jump sheet like the walk sheet, one column per pose of a jump, and picks its pose by phase", () => {
+    const jump = { source: "/assets/player/jump.svg", poses: { takeoff: 0, rise: 1, apex: 2, fall: 3, landing: 4 } };
+    expect(getJumpSheetLayout(SHEET, jump)).toEqual({ ...getWalkSheetLayout(SHEET), columns: 5 });
+    expect(getJumpPose("ground", jump)).toBeUndefined();
+    expect(getJumpPose("apex", jump)).toBe(2);
+    expect(getJumpPose("landing", jump)).toBe(4);
   });
 });

@@ -11,6 +11,16 @@ export const WALK_KEYS: Readonly<Record<keyof ScreenDirections, readonly string[
 /** Keys that make the player jump (`KeyboardEvent.code`). */
 export const JUMP_KEYS: readonly string[] = ["Space"];
 
+/**
+ * Which keys do what (`KeyboardEvent.code`): walking by screen direction and jumping. The game's
+ * defaults are {@link WALK_KEYS} and {@link JUMP_KEYS}; `bindKeyboardControls()` takes another map,
+ * whole or in part, so the controls can be configured.
+ */
+export type KeyMap = Readonly<Record<keyof ScreenDirections | "jump", readonly string[]>>;
+
+/** The default {@link KeyMap}: arrows or WASD walk, the space bar jumps. */
+export const DEFAULT_KEY_MAP: KeyMap = { ...WALK_KEYS, jump: JUMP_KEYS };
+
 /** Zoom factor of one press of `+` (`−` divides by it). */
 export const KEYBOARD_ZOOM_STEP = 1.25;
 
@@ -32,31 +42,34 @@ export type KeyBinding = (
   | { readonly kind: "hold"; readonly keys: readonly string[]; readonly hold: (held: ReadonlySet<string>) => void }
 ) & { readonly blur?: () => void };
 
-/** Walking: arrows/WASD held, combined into the screen directions held now (`WALK_KEYS`). */
-export function walkBinding(walk: (directions: ScreenDirections) => void): KeyBinding {
+/** Walking: the keys of `keys` held (arrows/WASD by default), combined into the screen directions held now. */
+export function walkBinding(
+  walk: (directions: ScreenDirections) => void,
+  keys: Readonly<Record<keyof ScreenDirections, readonly string[]>> = WALK_KEYS,
+): KeyBinding {
   return {
     kind: "hold",
-    keys: Object.values(WALK_KEYS).flat(),
+    keys: [...keys.up, ...keys.down, ...keys.left, ...keys.right],
     hold: (held) => {
       const holds = (codes: readonly string[]) => codes.some((code) => held.has(code));
-      walk({
-        up: holds(WALK_KEYS.up),
-        down: holds(WALK_KEYS.down),
-        left: holds(WALK_KEYS.left),
-        right: holds(WALK_KEYS.right),
-      });
+      walk({ up: holds(keys.up), down: holds(keys.down), left: holds(keys.left), right: holds(keys.right) });
     },
   };
 }
 
 /** Reports a new jump press and held/released transitions without treating key repeat as another press. */
-export function jumpBinding(jump: () => void, jumpHeld?: (held: boolean) => void, cancelJump?: () => void): KeyBinding {
+export function jumpBinding(
+  jump: () => void,
+  jumpHeld?: (held: boolean) => void,
+  cancelJump?: () => void,
+  keys: readonly string[] = JUMP_KEYS,
+): KeyBinding {
   let wasHeld = false;
   return {
     kind: "hold",
-    keys: JUMP_KEYS,
+    keys,
     hold: (held) => {
-      const isHeld = JUMP_KEYS.some((code) => held.has(code));
+      const isHeld = keys.some((code) => held.has(code));
       if (isHeld === wasHeld) return;
       wasHeld = isHeld;
       jumpHeld?.(isHeld);
@@ -142,14 +155,20 @@ export function bindKeyboard(target: KeyboardTarget, bindings: readonly KeyBindi
 }
 
 /**
- * Reads the keyboard on `target` for the game: arrows/WASD walk (held keys, combined), the space
- * bar jumps, `+`/`−` zoom (main and numeric keypads), with {@link bindKeyboard}. Returns a function
+ * Reads the keyboard on `target` for the game: the walk keys of `keys` walk (held keys, combined),
+ * its jump keys jump, `+`/`−` zoom (main and numeric keypads), with {@link bindKeyboard}. `keys`
+ * replaces any entry of {@link DEFAULT_KEY_MAP} (arrows/WASD and the space bar). Returns a function
  * that unbinds it.
  */
-export function bindKeyboardControls(target: KeyboardTarget, controls: KeyboardControls): () => void {
+export function bindKeyboardControls(
+  target: KeyboardTarget,
+  controls: KeyboardControls,
+  keys: Partial<KeyMap> = {},
+): () => void {
+  const map = { ...DEFAULT_KEY_MAP, ...keys };
   return bindKeyboard(target, [
-    walkBinding(controls.walk),
-    jumpBinding(controls.jump, controls.jumpHeld, controls.cancelJump),
+    walkBinding(controls.walk, map),
+    jumpBinding(controls.jump, controls.jumpHeld, controls.cancelJump, map.jump),
     zoomBinding(controls.zoom),
   ]);
 }

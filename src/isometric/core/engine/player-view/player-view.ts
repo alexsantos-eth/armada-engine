@@ -1,21 +1,25 @@
-import { BufferImageSource, Container, Sprite, Texture } from "pixi.js";
+import { BufferImageSource, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { getGroundPointBelow } from "../camera";
 import {
   getPlayerClimbProgress,
   getPlayerColumn,
   getPlayerFacing,
+  getPlayerJumpPhase,
   getPlayerRenderPosition,
   PLAYER_PART,
 } from "../player";
 import { projectBoxesToIsometric, projectGridPoint } from "../projection";
 import { createBlockViews, getBlockDepth, getSheetFrames, showFrame } from "../render";
 import { SCENE_LAYER, type BuiltScene, type SceneModule } from "../scene";
-import type { PlayerAppearance, PlayerRenderPosition } from "../../types";
+import type { GridPoint, PlayerAppearance, PlayerRenderPosition } from "../../types";
+import { DUST_MIN_IMPACT, getBodyScale, getDust } from "./feedback";
 import {
   getClimbPose,
   getClimbSheetLayout,
   getIdlePose,
   getIdleSheetLayout,
+  getJumpPose,
+  getJumpSheetLayout,
   getWalkPose,
   getWalkSheetCell,
   getWalkSheetLayout,
@@ -24,6 +28,27 @@ import {
 
 const TERRAIN_SHADOW_BANDS = 16;
 const SHADOW_COLUMNS = 8;
+
+/** Colour of the dust it raises. */
+const DUST_COLOR = 0xe2d3b0;
+
+/** Clods of a puff of dust: centre (in tiles across and down from the feet) and radius (in tiles). */
+const DUST_CLODS: ReadonlyArray<readonly [number, number, number]> = [
+  [-0.12, 0, 0.05],
+  [0.12, 0, 0.05],
+  [-0.06, -0.035, 0.04],
+  [0.07, 0.035, 0.045],
+  [0, 0.05, 0.035],
+];
+
+/**
+ * How the player view answers what the player does (`createPlayerView()`). Every field is optional;
+ * the game sets them from its launch options (`?effects=off`) and the reduced-motion preference.
+ */
+export type PlayerViewOptions = {
+  /** Squash and stretch at take-off and landing, and dust. Defaults to `true`. */
+  readonly effects?: boolean;
+};
 
 /**
  * Scene module of the player: draws the world's player (`PLAYER_PART`) with `appearance` (game
@@ -41,11 +66,16 @@ const SHADOW_COLUMNS = 8;
  * stands on, or at its feet while they are below where they left the ground: a jump does not bob the
  * camera, and a fall to a lower top is followed as it falls, not in one jolt when it lands.
  *
+ * With `effects`, it answers take-offs and landings from the counters in `player.feedback` (no
+ * events): dust at a take-off and at a hard landing (`getDust()`), a stretch at take-off and a squash
+ * at landing (`getBodyScale()`).
+ *
  * With a walk sheet (`appearance.walk`) the sprite shows one of its cells: turned to the facing
  * nearest the way the player walks (`getPlayerFacing()`; standing, the last one, at first
  * `PLAYER_START_FACING`), the standing pose on a frame it did not move and, while it moves, the walk
  * pose for how far it has gone since it set off (`getWalkPose()`), so its feet keep pace with the
- * ground; in the jumping or falling motion states, the sheet's
+ * ground; in the air or just landed, with the sheet's `jump` sheet, the pose of its jump phase
+ * (`getPlayerJumpPhase()`, `getJumpPose()`: take-off, rise, apex, fall, landing), or else the sheet's
  * `airPose`; standing still on the ground, with the sheet's `idle` sheet, the pose of its idle cycle
  * (breathing, looking around) for how long it has stood (`getIdlePose()`, by real time), from the
  * standing pose; climbing onto a higher top (`player.climb`), turned the way it climbs, with the
@@ -60,7 +90,8 @@ const SHADOW_COLUMNS = 8;
  * the one `movingCasters`, so `shadows` lays its shadow where its feet are drawn. When the world
  * has no player part or its SVG cannot be loaded, nothing is drawn or followed.
  */
-export function createPlayerView(appearance: PlayerAppearance): SceneModule {
+export function createPlayerView(appearance: PlayerAppearance, options: PlayerViewOptions = {}): SceneModule {
+  const { effects = true } = options;
   return {
     id: "player",
     async setup({ world, projection, metrics, columnAt, assets, services }) {
@@ -85,6 +116,13 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
       const climb =
         walk && climbSheet && climbTexture
           ? { sheet: climbSheet, frames: getSheetFrames(climbTexture, getClimbSheetLayout(walk.sheet, climbSheet)) }
+          : undefined;
+      // Its jump, from a fourth sheet laid out like the first: take-off, rise, apex, fall, landing.
+      const jumpSheet = walk?.sheet.jump;
+      const jumpTexture = jumpSheet && (await assets.loadSvg(jumpSheet.source, { scale }));
+      const jump =
+        walk && jumpSheet && jumpTexture
+          ? { sheet: jumpSheet, frames: getSheetFrames(jumpTexture, getJumpSheetLayout(walk.sheet, jumpSheet)) }
           : undefined;
       let facing = PLAYER_START_FACING;
       const texture =
@@ -116,6 +154,8 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
       view.cullable = false;
       // Scaled about the feet, which stand on the column's top (`projected.screenY`).
       view.scale.set(view.scale.x * scale, view.scale.y * scale);
+      // Its scale before any squash or stretch.
+      const base = { x: view.scale.x, y: view.scale.y };
       const terrainShadowOverlay = new Container();
       terrainShadowOverlay.alpha = 0;
       terrainShadowOverlay.visible = false;
@@ -172,7 +212,12 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
         const walking = player.motion.type === "walking";
         const flying = player.motion.type === "jumping" || player.motion.type === "falling";
         walked = walking ? walked + Math.hypot(at.x - drawnAt.x, at.y - drawnAt.y) : 0;
-        stood = walking || flying ? 0 : stood + elapsedMs;
+        const jumpPose = jump && getJumpPose(getPlayerJumpPhase(player), jump.sheet);
+        stood = walking || flying || jumpPose !== undefined ? 0 : stood + elapsedMs;
+        if (jump && jumpPose !== undefined) {
+          showFrame(view, jump.frames[facing][jumpPose]);
+          return;
+        }
         if (idle && !walking && !flying) {
           showFrame(view, idle.frames[facing][getIdlePose(stood, idle.sheet)]);
           return;
@@ -220,6 +265,70 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
       let depth = 0;
       // Set by `start()`, before the first `place()`.
       let scene!: BuiltScene;
+
+      // Answers to what the player did (`player.feedback`): real milliseconds since its last take-off
+      // and landing (at `impact`), the counters seen so far, and what they do to the body.
+      const seen = { ...player.feedback };
+      let sinceTakeoff = Infinity;
+      let sinceLanding = Infinity;
+      let impact = 0;
+      let body: GridPoint = { x: 1, y: 1 };
+      // Two puffs of dust, made when first raised: one for take-offs, one for landings.
+      const puffs: Array<{ view: Graphics; ms: number } | undefined> = [undefined, undefined];
+      const raiseDust = (index: number, at: PlayerRenderPosition) => {
+        let puff = puffs[index];
+        if (!puff) {
+          const dust = new Graphics();
+          for (const [x, y, radius] of DUST_CLODS)
+            dust.circle(x * metrics.tileWidth, y * metrics.tileWidth, radius * metrics.tileWidth);
+          dust.fill({ color: DUST_COLOR });
+          dust.cullable = false;
+          puff = puffs[index] = { view: dust, ms: 0 };
+        }
+        puff.ms = 0;
+        const screen = projectGridPoint(at, projection);
+        puff.view.position.set(screen.x, screen.y - (at.elevation - at.inset) * metrics.boxHeight);
+        scene.placeAt(puff.view, depth);
+      };
+      const settleDust = (elapsedMs: number) => {
+        for (const puff of puffs) {
+          if (!puff || puff.ms === Infinity) continue;
+          puff.ms += elapsedMs;
+          const look = getDust(puff.ms);
+          if (!look) puff.ms = Infinity;
+          if (puff.view.visible !== (look !== undefined)) puff.view.visible = look !== undefined;
+          if (!look) continue;
+          puff.view.alpha = look.alpha;
+          puff.view.scale.set(look.scale, look.scale);
+        }
+      };
+      /**
+       * Notices what the player did since the last frame (`player.feedback`), raises its dust and
+       * gives the body its squash and stretch for this frame, `elapsedMs` after the last. Whether
+       * the body's scale changed, so it is placed again.
+       */
+      const react = (at: PlayerRenderPosition, elapsedMs: number) => {
+        if (!effects) return false;
+        sinceTakeoff += elapsedMs;
+        sinceLanding += elapsedMs;
+        const { feedback } = player;
+        if (feedback.landings !== seen.landings) {
+          sinceLanding = 0;
+          impact = feedback.impact;
+          if (impact >= DUST_MIN_IMPACT) raiseDust(1, at);
+        }
+        if (feedback.jumps !== seen.jumps) {
+          sinceTakeoff = 0;
+          raiseDust(0, at);
+        }
+        Object.assign(seen, feedback);
+        const next = getBodyScale(sinceTakeoff, sinceLanding, impact);
+        if (next.x === body.x && next.y === body.y) return false;
+        body = next;
+        view.scale.set(base.x * body.x, base.y * body.y);
+        return true;
+      };
+
       const place = (at: PlayerRenderPosition) => {
         const column = getPlayerColumn(at);
         const screen = projectGridPoint(at, projection);
@@ -227,7 +336,7 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
         const lifted = at.elevation + at.height;
         drawnFoot.y = screen.y - (lifted - at.inset) * metrics.boxHeight;
         castFrom = { x: at.x, y: at.y, elevation: lifted };
-        view.position.set(drawnFoot.x + offset.x, drawnFoot.y + offset.y);
+        view.position.set(drawnFoot.x + offset.x * body.x, drawnFoot.y + offset.y * body.y);
         // In the draw order by the column it stands on, at that column's top: computed, and the
         // view moved, only when that column or the side of its middle changes, not on every frame.
         const elevation = columnAt.get(column.x, column.y)?.elevation ?? player.elevation;
@@ -273,10 +382,11 @@ export function createPlayerView(appearance: PlayerAppearance): SceneModule {
             at.inset !== drawnAt.inset ||
             at.height !== drawnAt.height;
           animate(at, alpha, elapsedMs);
+          const reshaped = react(at, elapsedMs);
+          settleDust(elapsedMs);
           syncTerrainShadowOverlay();
-          if (!moved) return;
-          place(at);
-          services.get("camera")?.follow(ground(at));
+          if (moved || reshaped) place(at);
+          if (moved) services.get("camera")?.follow(ground(at));
         },
         destroy: () => {
           shadowBody.mask = null;

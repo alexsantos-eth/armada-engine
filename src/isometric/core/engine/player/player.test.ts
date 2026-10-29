@@ -1,5 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ITerrainColumn, PlayerState, ScreenDirections, TerrainMaterial, WorldPartKey } from "../../types";
+import type {
+  ITerrainColumn,
+  PlayerJumpPhase,
+  PlayerState,
+  SimulationEvents,
+  ScreenDirections,
+  TerrainMaterial,
+  WorldPartKey,
+} from "../../types";
+import { createEventBus } from "../events";
 import { CellMap, SpatialIndex } from "../grid";
 import { TICKS_PER_SECOND } from "../time";
 import {
@@ -32,7 +41,11 @@ import {
   getPlayerCells,
   getPlayerColumn,
   getPlayerRenderPosition,
+  getPlayerJumpPhase,
   getJumpHeight,
+  PLAYER_LANDING_TICKS,
+  PLAYER_TAKEOFF_TICKS,
+  PLAYER_APEX_SPEED,
   getPlayerFacing,
   jumpPlayer,
   PLAYER_JUMP_HEIGHT,
@@ -186,6 +199,7 @@ describe("createPlayer", () => {
       velocity: { x: 0, y: 0 },
       climb: undefined,
       previous: { x: 1.2, y: 0, elevation: 3, inset: 0, height: 0 },
+      feedback: expect.objectContaining({ jumps: 0, landings: 0, rejections: 0 }),
       walk: { x: 0, y: 0 },
     });
   });
@@ -1051,6 +1065,16 @@ describe("getPlayerRenderPosition", () => {
     velocity: { x: 0, y: 0 },
     climb: undefined,
     previous: { x: 1, y: 4, elevation: 0 },
+    feedback: {
+      jumps: 0,
+      landings: 0,
+      rejections: 0,
+      rejected: undefined,
+      airTicks: 0,
+      landingTicks: 0,
+      impact: 0,
+      leap: false,
+    },
     walk: { x: 1, y: 0 },
   };
 
@@ -1189,5 +1213,176 @@ describe("climbing", () => {
     expect(getPlayerClimbProgress(player, 0.5)).toBe(2.5 / PLAYER_CLIMB_TICKS);
     expect(getPlayerClimbProgress(player, Number.NaN)).toBe(3 / PLAYER_CLIMB_TICKS);
     expect(getPlayerClimbProgress(player, 5)).toBe(3 / PLAYER_CLIMB_TICKS);
+  });
+});
+
+describe("jump feedback", () => {
+  const flat = groundFrom(["000", "000", "000"]);
+
+  /** Phases of `player` after each of `ticks` ticks. */
+  const phases = (player: PlayerState, ground: PlayerGround, ticks: number) => {
+    const out: PlayerJumpPhase[] = [];
+    for (let tick = 0; tick < ticks; tick += 1) {
+      stepPlayer(player, ground);
+      out.push(getPlayerJumpPhase(player));
+    }
+    return out;
+  };
+
+  it("starts with nothing done", () => {
+    expect(createPlayer(flat, { x: 1, y: 1 }).feedback).toEqual({
+      jumps: 0,
+      landings: 0,
+      rejections: 0,
+      rejected: undefined,
+      airTicks: 0,
+      landingTicks: 0,
+      impact: 0,
+      leap: false,
+    });
+    expect(PLAYER_TAKEOFF_TICKS).toBe(2);
+    expect(PLAYER_LANDING_TICKS).toBe(3);
+    expect(PLAYER_APEX_SPEED).toBe(PLAYER_GRAVITY);
+  });
+
+  it("goes through take-off, rise, apex, fall and landing in a held jump, the physics never waiting", () => {
+    const player = createPlayer(flat, { x: 1, y: 1 });
+    jumpPlayer(player);
+
+    expect(phases(player, flat, PLAYER_JUMP_TICKS + PLAYER_LANDING_TICKS + 1)).toEqual([
+      "takeoff",
+      "takeoff",
+      "rise",
+      "apex",
+      "apex",
+      "apex",
+      "fall",
+      "fall",
+      "fall",
+      "landing",
+      "landing",
+      "landing",
+      "ground",
+      "ground",
+    ]);
+    expect(player.feedback).toMatchObject({ jumps: 1, landings: 1, rejections: 0, airTicks: 0, leap: false });
+    expect(player.feedback.impact).toBeCloseTo(PLAYER_JUMP_SPEED - PLAYER_GRAVITY / 2);
+  });
+
+  it("falls at once without an apex when it walks off an edge, and lands", () => {
+    const ledge = groundFrom(["1100", "1100", "1100"]);
+    const player = walking(ledge, { x: 1.3, y: 1 }, { right: true, up: true });
+    while (player.verticalSpeed === undefined) stepPlayer(player, ledge);
+
+    expect(getPlayerJumpPhase(player)).toBe("fall");
+    setPlayerWalk(player, still);
+    while (player.verticalSpeed !== undefined) {
+      expect(getPlayerJumpPhase(player)).toBe("fall");
+      stepPlayer(player, ledge);
+    }
+    expect(getPlayerJumpPhase(player)).toBe("landing");
+    expect(player.feedback).toMatchObject({ jumps: 0, landings: 1, landingTicks: PLAYER_LANDING_TICKS });
+    expect(player.feedback.impact).toBeGreaterThan(0);
+  });
+
+  it("is on the ground while it climbs", () => {
+    const stairs = groundFrom(["01"]);
+    const climber = walking(stairs, { x: 0.3, y: 0 }, { right: true, up: true });
+    while (!climber.climb) stepPlayer(climber, stairs);
+    expect(getPlayerJumpPhase(climber)).toBe("ground");
+  });
+
+  it("rejects a press it cannot use: in the air, climbing, or under a ceiling right overhead", () => {
+    const jumper = createPlayer(flat, { x: 1, y: 1 });
+    jumpPlayer(jumper);
+    stepPlayer(jumper, flat, 2);
+    jumpPlayer(jumper);
+    stepPlayer(jumper, flat);
+    expect(jumper.feedback.rejections).toBe(0);
+    stepPlayer(jumper, flat);
+    expect(jumper.feedback).toMatchObject({ jumps: 1, rejections: 1, rejected: "airborne" });
+
+    const stairs = groundFrom(["01"]);
+    const climber = walking(stairs, { x: 0.3, y: 0 }, { right: true, up: true });
+    while (!climber.climb) stepPlayer(climber, stairs);
+    jumpPlayer(climber);
+    stepPlayer(climber, stairs);
+    expect(climber.feedback).toMatchObject({ jumps: 0, rejections: 1, rejected: "climbing" });
+
+    const roof: PlayerGround = {
+      ...flat,
+      occupancy: { at: (x, y) => (x === 1 && y === 1 ? [{ walkable: false, elevation: 0.7, height: 1 }] : []) },
+    };
+    const bumped = createPlayer(roof, { x: 1, y: 1 });
+    jumpPlayer(bumped);
+    stepPlayer(bumped, roof);
+    expect(bumped.feedback).toMatchObject({ jumps: 0, rejections: 1, rejected: "ceiling", leap: false });
+    expect(getPlayerJumpPhase(bumped)).toBe("fall");
+  });
+
+  it("lands and takes off again on the same tick with a buffered press", () => {
+    const player = createPlayer(flat, { x: 1, y: 1 });
+    jumpPlayer(player);
+    stepPlayer(player, flat, PLAYER_JUMP_TICKS - 1);
+    jumpPlayer(player);
+    stepPlayer(player, flat);
+
+    expect(player.feedback).toMatchObject({ jumps: 2, landings: 1, landingTicks: 0, airTicks: 1, leap: true });
+    expect(getPlayerJumpPhase(player)).toBe("takeoff");
+  });
+
+  it("announces landings, take-offs and rejected presses on the simulation events, the same every run", () => {
+    const run = () => {
+      const player = createPlayer(flat, { x: 1, y: 1 });
+      const world = {
+        ...flat,
+        movers: new SpatialIndex<object>(),
+        parts: { get: <T>(key: WorldPartKey<T>) => (key.id === PLAYER_PART.id ? player : null) as T },
+      };
+      const events = createEventBus<SimulationEvents>();
+      const heard: Array<[string, object]> = [];
+      events.on("playerJumped", (payload) => heard.push(["jumped", payload]));
+      events.on("playerLanded", (payload) => heard.push(["landed", payload]));
+      events.on("playerJumpRejected", (payload) => heard.push(["rejected", payload]));
+      const system = createPlayerSystem();
+      jumpPlayer(player);
+      for (let tick = 0; tick < PLAYER_JUMP_TICKS - 1; tick += 1) system.step(world, events);
+      jumpPlayer(player);
+      system.step(world, events);
+      for (let tick = 0; tick < 3; tick += 1) system.step(world, events);
+      jumpPlayer(player);
+      for (let tick = 0; tick < 3; tick += 1) system.step(world, events);
+      return heard;
+    };
+    const heard = run();
+
+    expect(heard.map(([name]) => name)).toEqual(["jumped", "landed", "jumped", "rejected"]);
+    expect(heard[0][1]).toEqual({ x: 1, y: 1, feet: expect.closeTo(PLAYER_JUMP_SPEED - PLAYER_GRAVITY / 2) });
+    expect(heard[1][1]).toEqual({
+      x: 1,
+      y: 1,
+      feet: 0,
+      impact: expect.closeTo(PLAYER_JUMP_SPEED - PLAYER_GRAVITY / 2),
+    });
+    expect(heard[3][1]).toEqual({ reason: "airborne" });
+    expect(run()).toEqual(heard);
+  });
+
+  it("builds no payload nobody listens to", () => {
+    const player = createPlayer(flat, { x: 1, y: 1 });
+    const world = {
+      ...flat,
+      movers: new SpatialIndex<object>(),
+      parts: { get: <T>(key: WorldPartKey<T>) => (key.id === PLAYER_PART.id ? player : null) as T },
+    };
+    const events = createEventBus<SimulationEvents>();
+    const emit = vi.spyOn(events, "emit");
+    jumpPlayer(player);
+    for (let tick = 0; tick < PLAYER_JUMP_TICKS + 4; tick += 1) {
+      if (tick === 3) jumpPlayer(player);
+      createPlayerSystem().step(world, events);
+    }
+    expect(player.feedback).toMatchObject({ jumps: 1, landings: 1, rejections: 1 });
+    expect(emit).not.toHaveBeenCalled();
   });
 });

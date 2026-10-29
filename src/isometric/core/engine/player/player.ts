@@ -1,13 +1,18 @@
 import type {
   GridPoint,
   ChunkCoord,
+  EventBus,
   PlayerClimb,
+  PlayerFeedback,
+  PlayerJumpPhase,
+  PlayerJumpRejection,
   ITerrainColumn,
   PlayerFacing,
   PlayerPosition,
   PlayerRenderPosition,
   PlayerState,
   ScreenDirections,
+  SimulationEvents,
   TerrainMaterial,
   WorldCoord,
   WorldPartKey,
@@ -142,6 +147,18 @@ export function getClimbRise(progress: number): number {
 export function getClimbAdvance(progress: number): number {
   return smoothstep((progress - PLAYER_CLIMB_RISE_SHARE) / (1 - PLAYER_CLIMB_RISE_SHARE));
 }
+
+/** Ticks the player shows its landing pose after it lands (the physics does not wait for it). */
+export const PLAYER_LANDING_TICKS = 3;
+
+/** Ticks after a take-off it shows its take-off pose, before its rising one. */
+export const PLAYER_TAKEOFF_TICKS = 2;
+
+/**
+ * Vertical speed, in blocks per tick, under which a jump is at its apex (rising or falling no
+ * faster than one tick of gravity): about three ticks of a held jump.
+ */
+export const PLAYER_APEX_SPEED = PLAYER_GRAVITY;
 
 /** Key of the player part (`createPlayerPart()`): read it with `world.parts.get(PLAYER_PART)`. */
 export const PLAYER_PART: WorldPartKey<PlayerState> = { id: "player" };
@@ -388,8 +405,58 @@ export function createPlayer(ground: PlayerGround, at: GridPoint): PlayerState {
     velocity: { x: 0, y: 0 },
     climb: undefined,
     previous: { ...position, inset: 0, height: 0 },
+    feedback: createPlayerFeedback(),
     walk: { x: 0, y: 0 },
   };
+}
+
+/** Feedback of a player that has not jumped yet. */
+function createPlayerFeedback(): PlayerFeedback {
+  return {
+    jumps: 0,
+    landings: 0,
+    rejections: 0,
+    rejected: undefined,
+    airTicks: 0,
+    landingTicks: 0,
+    impact: 0,
+    leap: false,
+  };
+}
+
+/**
+ * Part of a jump the player is in (see `PlayerJumpPhase`): `"takeoff"` for the first
+ * {@link PLAYER_TAKEOFF_TICKS} ticks of a jump, then `"rise"`, `"apex"` while its vertical speed is
+ * at most {@link PLAYER_APEX_SPEED} (only in a jump: walking off an edge it falls at once) and
+ * `"fall"`; back on the ground, `"landing"` for {@link PLAYER_LANDING_TICKS} ticks and then
+ * `"ground"`. Climbing is `"ground"`: it has its own pose.
+ */
+export function getPlayerJumpPhase(player: PlayerState): PlayerJumpPhase {
+  const { verticalSpeed, feedback, climb } = player;
+  if (climb !== undefined) return "ground";
+  if (verticalSpeed === undefined) return feedback.landingTicks > 0 ? "landing" : "ground";
+  if (feedback.leap && verticalSpeed > 0 && feedback.airTicks <= PLAYER_TAKEOFF_TICKS) return "takeoff";
+  if (feedback.leap && Math.abs(verticalSpeed) <= PLAYER_APEX_SPEED + LANDING) return "apex";
+  return verticalSpeed > 0 ? "rise" : "fall";
+}
+
+/** The player takes off: its feet rise at {@link PLAYER_JUMP_SPEED}, the press is used up. */
+function takeOff(player: PlayerState): void {
+  player.verticalSpeed = PLAYER_JUMP_SPEED;
+  player.wantsJump = false;
+  player.jumpBufferTicks = 0;
+  player.coyoteTicks = 0;
+  const { feedback } = player;
+  feedback.jumps += 1;
+  feedback.airTicks = 0;
+  feedback.landingTicks = 0;
+  feedback.leap = true;
+}
+
+/** A jump press did not make the player jump, for `reason`. */
+function rejectJump(player: PlayerState, reason: PlayerJumpRejection): void {
+  player.feedback.rejections += 1;
+  player.feedback.rejected = reason;
 }
 
 /**
@@ -530,6 +597,7 @@ function stepAir(
   player.height = landed ? 0 : nextFeet - (player.elevation - player.inset);
   player.verticalSpeed = landed ? undefined : nextSpeed;
   if (landed && support) {
+    player.feedback.impact = Math.max(0, -(speed + nextSpeed) / 2);
     player.elevation = support.elevation;
     player.inset = topInset(support.type);
     player.lastSafe = { x: player.x, y: player.y, elevation: player.elevation, inset: player.inset, height: 0 };
@@ -740,11 +808,13 @@ export function stepPlayer(
     if (resting && tick > 0) return;
     // On the ground its feet are on the top under it (a new or restored player starts at `0`).
     if (player.verticalSpeed === undefined && climb === undefined) player.inset = insetAt(ground, player, topInset);
-    const { x, y, elevation, inset, height } = player;
+    const { x, y, elevation, inset, height, feedback } = player;
     player.previous = { x, y, elevation, inset, height };
+    if (feedback.landingTicks > 0) feedback.landingTicks -= 1;
     const input = probe ? { walk: { ...player.walk }, jump: player.wantsJump } : undefined;
     if (climb) {
       // Climbing ignores queued presses; a late press near its end cannot cause a surprise jump.
+      if (player.wantsJump) rejectJump(player, "climbing");
       player.wantsJump = false;
       player.jumpBufferTicks = 0;
       player.coyoteTicks = 0;
@@ -772,12 +842,8 @@ export function stepPlayer(
     const groundedAtStart =
       player.verticalSpeed === undefined && player.height === 0 && supportAt(ground, player) !== undefined;
     if (groundedAtStart) player.coyoteTicks = PLAYER_COYOTE_TICKS;
-    if (player.jumpBufferTicks > 0 && (groundedAtStart || player.coyoteTicks > 0)) {
-      player.verticalSpeed = PLAYER_JUMP_SPEED;
-      player.wantsJump = false;
-      player.jumpBufferTicks = 0;
-      player.coyoteTicks = 0;
-    }
+    const tookOff = player.jumpBufferTicks > 0 && (groundedAtStart || player.coyoteTicks > 0);
+    if (tookOff) takeOff(player);
     acceleratePlayer(player);
     const blockReason = stepOnce(player, ground, topInset, probe !== undefined);
     const airResult = player.climb === undefined ? stepAir(player, ground, topInset) : undefined;
@@ -789,20 +855,27 @@ export function stepPlayer(
       cancelPlayerJump(player);
       player.velocity = { x: 0, y: 0 };
     } else if (airResult === "landed" && player.jumpBufferTicks > 0) {
-      player.verticalSpeed = PLAYER_JUMP_SPEED;
-      player.wantsJump = false;
-      player.jumpBufferTicks = 0;
-      player.coyoteTicks = 0;
+      land(player);
+      takeOff(player);
     } else {
+      if (airResult === "landed") land(player);
+      else if (airResult === "ceiling" && tookOff) {
+        // A ceiling right overhead stops the jump as it takes off: a bump, not a jump.
+        feedback.jumps -= 1;
+        feedback.leap = false;
+        rejectJump(player, "ceiling");
+      }
       if (player.jumpBufferTicks > 0) {
         player.jumpBufferTicks -= 1;
         player.wantsJump = player.jumpBufferTicks > 0;
+        if (!player.wantsJump) rejectJump(player, "airborne");
       }
       if (player.verticalSpeed === undefined && supportAt(ground, player)) player.coyoteTicks = PLAYER_COYOTE_TICKS;
       else if (!groundedAtStart && player.coyoteTicks > 0) player.coyoteTicks -= 1;
     }
     if (player.verticalSpeed === undefined && supportAt(ground, player))
       player.lastSafe = { x: player.x, y: player.y, elevation: player.elevation, inset: player.inset, height: 0 };
+    feedback.airTicks = player.verticalSpeed === undefined ? 0 : feedback.airTicks + 1;
     updateMotion(player);
     if (probe && input)
       probe({
@@ -815,6 +888,14 @@ export function stepPlayer(
         ...(blockReason || airResult === "ceiling" ? { blockReason: blockReason ?? "ceiling" } : {}),
       });
   }
+}
+
+/** The player landed: its landing pose starts and the jump it was in is over. */
+function land(player: PlayerState): void {
+  const { feedback } = player;
+  feedback.landings += 1;
+  feedback.landingTicks = PLAYER_LANDING_TICKS;
+  feedback.leap = false;
 }
 
 /**
@@ -866,9 +947,11 @@ export function createPlayerSystem(
   let placed: { movers: PlayerMovers; player: PlayerState; cells: WorldRect } | undefined;
   return {
     id: "player",
-    step: (world) => {
+    step: (world, events) => {
       const player = world.parts.get(PLAYER_PART);
+      const { jumps, landings, rejections } = player.feedback;
       stepPlayer(player, world, 1, options.topInset, options.probe);
+      if (events) emitPlayerFeedback(player, events, jumps, landings, rejections);
       const cells = getPlayerCells(player);
       if (
         placed?.movers === world.movers &&
@@ -886,6 +969,26 @@ export function createPlayerSystem(
       placed = { movers: world.movers, player, cells };
     },
   };
+}
+
+/**
+ * Announces on `events` what the player's last tick did, from its feedback counters before it
+ * (`jumps`, `landings`, `rejections`): a landing before a take-off on the same tick.
+ */
+function emitPlayerFeedback(
+  player: PlayerState,
+  events: EventBus<SimulationEvents>,
+  jumps: number,
+  landings: number,
+  rejections: number,
+): void {
+  const { feedback, x, y } = player;
+  const feet = player.elevation - player.inset + player.height;
+  if (feedback.landings !== landings && events.has("playerLanded"))
+    events.emit("playerLanded", { x, y, feet: player.elevation - player.inset, impact: feedback.impact });
+  if (feedback.jumps !== jumps && events.has("playerJumped")) events.emit("playerJumped", { x, y, feet });
+  if (feedback.rejections !== rejections && events.has("playerJumpRejected"))
+    events.emit("playerJumpRejected", { reason: feedback.rejected as PlayerJumpRejection });
 }
 
 /**

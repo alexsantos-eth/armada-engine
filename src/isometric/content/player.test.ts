@@ -88,4 +88,23 @@ describe("PLAYER_APPEARANCE", () => {
     expect(Math.max(width, height)).toBeLessThan(4096);
     expect(svg.toLowerCase()).not.toContain("#1e2a10");
   });
+
+  it("jumps with a sheet in the walk sheet's window, a named column per part of a jump", () => {
+    const svg = ASSET_SOURCES[`/public${PLAYER_WALK.jump?.source}`] ?? "";
+    const { cell, gap, jump } = PLAYER_WALK;
+    const poses = Object.entries(jump?.poses ?? {}).sort(([, a], [, b]) => a - b);
+    const frames = poses.length;
+
+    expect(poses.map(([, column]) => column)).toEqual([0, 1, 2, 3, 4]);
+    expect(svg).toContain(`data-poses="${poses.map(([name]) => name).join(" ")}"`);
+    expect(svg).toContain(`data-facings="${PLAYER_FACINGS.join(" ")}"`);
+    expect(svg).toContain(`data-cell="${cell.x} ${cell.y} ${cell.width} ${cell.height}"`);
+    expect(svg).toContain(`data-gap="${gap}"`);
+    expect(svg).toContain(`data-frames="${frames}"`);
+    const width = frames * (cell.width + gap) - gap;
+    const height = PLAYER_FACINGS.length * (cell.height + gap) - gap;
+    expect(svg).toContain(`viewBox="0 0 ${width} ${height}"`);
+    expect(Math.max(width, height)).toBeLessThan(4096);
+    expect(svg.toLowerCase()).not.toContain("#1e2a10");
+  });
 });

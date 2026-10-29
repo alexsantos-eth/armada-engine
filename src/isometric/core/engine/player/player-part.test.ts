@@ -64,6 +64,16 @@ describe("createPlayerPart", () => {
       velocity: { x: 0, y: 0 },
       climb: undefined,
       previous: { x: 0.8, y: 0, elevation: 2, inset: 0, height: 0 },
+      feedback: {
+        jumps: 0,
+        landings: 0,
+        rejections: 0,
+        rejected: undefined,
+        airTicks: 0,
+        landingTicks: 0,
+        impact: 0,
+        leap: false,
+      },
       walk: { x: 0, y: 0 },
     });
     expect(world.chunks.loadAround).toHaveBeenCalledWith({ x: 0.8, y: 0 });

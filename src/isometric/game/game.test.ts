@@ -17,7 +17,9 @@ import {
 import { KEYBOARD_ZOOM_STEP } from "../input";
 import type { ChunkRequest } from "./chunk-generator";
 import type { ChunkWorker } from "./chunk-prefetch";
-import { mountGame } from "./game";
+import { mountGame, type GameOptions } from "./game";
+import { createSceneModules } from "./modules";
+import type * as Modules from "./modules";
 
 const mocks = vi.hoisted(() => ({
   /** Every teardown, in order, so a test can check what is undone first. */
@@ -72,13 +74,21 @@ vi.mock("../core/engine", async (importOriginal) => ({
   bindCameraControls: vi.fn(() => () => mocks.teardowns.push("pointer")),
 }));
 
+vi.mock("./modules", async (importOriginal) => {
+  const original = await importOriginal<typeof Modules>();
+  return { ...original, createSceneModules: vi.fn(original.createSceneModules) };
+});
+
 type Listener = (event: unknown) => void;
 
 /** A window that records its listeners, so a test can press keys by hand. */
-const createWindow = (search = "?seed=1337&hour=15") => {
+const createWindow = (search = "?seed=1337&hour=15", reducedMotion?: boolean) => {
   const listeners = new Map<string, Set<Listener>>();
   return {
     location: { search },
+    ...(reducedMotion === undefined
+      ? {}
+      : { matchMedia: vi.fn((query: string) => ({ matches: reducedMotion && query.includes("reduce") })) }),
     devicePixelRatio: 2,
     performance: { now: vi.fn(() => 0), memory: { usedJSHeapSize: 2 * 1024 * 1024 } },
     addEventListener: vi.fn((type: string, fn: Listener) =>
@@ -106,8 +116,9 @@ const deferred = <T>() => {
   return { promise, resolve };
 };
 
-const mount = (search?: string) => {
-  const window = createWindow(search);
+const mount = (search?: string, extra: Partial<GameOptions> & { reducedMotion?: boolean } = {}) => {
+  const { reducedMotion, ...more } = extra;
+  const window = createWindow(search, reducedMotion);
   const container = createContainer();
   const onClockChange = vi.fn();
   const log = vi.fn();
@@ -117,6 +128,7 @@ const mount = (search?: string) => {
     log,
     random: () => 0.5,
     chunkWorker: () => new FakeWorker(),
+    ...more,
   });
   return { window, container, onClockChange, log, game };
 };
@@ -359,6 +371,39 @@ describe("mountGame", () => {
 
     window.press("Equal");
     expect(camera.zoomAt).toHaveBeenCalledWith(KEYBOARD_ZOOM_STEP, { x: 400, y: 300 });
+  });
+
+  it("jumps with the keys of its options and plays the player's sounds, unless ?sound=off", async () => {
+    for (const [search, heard] of [
+      ["?seed=1337", true],
+      ["?seed=1337&sound=off", false],
+    ] as const) {
+      const audio = vi.fn(() => undefined);
+      const { window, game } = mount(search, { audio, keys: { jump: ["KeyK"] } });
+      await game.ready;
+      const { app, world } = started();
+      window.press("Space");
+      expect(world.parts.get(PLAYER_PART).wantsJump).toBe(false);
+      window.press("KeyK");
+      onTick(app)({ elapsedMS: STEP_MS });
+      expect(world.parts.get(PLAYER_PART).feedback.jumps).toBe(1);
+      expect(audio).toHaveBeenCalledTimes(heard ? 1 : 0);
+      game.destroy();
+    }
+  });
+
+  it("sets the player's effects from the URL, off for a player who prefers reduced motion", async () => {
+    const options = async (search: string, reducedMotion?: boolean) => {
+      const { game } = mount(search, { reducedMotion });
+      await game.ready;
+      game.destroy();
+      return vi.mocked(createSceneModules).mock.lastCall?.[1]?.player;
+    };
+
+    expect(await options("?seed=1")).toEqual({ effects: true });
+    expect(await options("?seed=1", false)).toEqual({ effects: true });
+    expect(await options("?seed=1", true)).toEqual({ effects: false });
+    expect(await options("?seed=1&effects=off")).toEqual({ effects: false });
   });
 
   it("does not queue a jump while the simulation is frozen", async () => {

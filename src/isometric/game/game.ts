@@ -18,11 +18,12 @@ import {
   type RandomSource,
   type PhaseLighting,
 } from "../core/engine";
-import { bindKeyboardControls } from "../input";
+import { bindKeyboardControls, type KeyMap } from "../input";
 import { type ChunkWorker, createChunkPrefetch, startChunkWorker } from "./chunk-prefetch";
 import { formatClockLabel, resolveLaunchOptions } from "./launch";
 import { createSceneModules, createWorldParts, createWorldSystems, findUnknownModules } from "./modules";
 import { PERF_REPORT_MS, startPerfMonitor } from "./perf";
+import { type AudioOutput, bindPlayerSounds, createAudioOutput } from "./sound";
 
 /** Where and how a game runs. */
 export type GameOptions = {
@@ -41,6 +42,10 @@ export type GameOptions = {
   readonly chunkWorker?: () => ChunkWorker;
   /** Optional shared phase controller for explicit lighting transitions. Defaults to stable daylight. */
   readonly lighting?: PhaseLighting;
+  /** Keys that replace the default controls (`DEFAULT_KEY_MAP`), whole or in part. */
+  readonly keys?: Partial<KeyMap>;
+  /** Where the player's sounds play. Defaults to the window's `AudioContext`, made at the first sound. */
+  readonly audio?: () => AudioOutput | undefined;
 };
 
 /** A running game (`mountGame()`). */
@@ -92,9 +97,11 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     if (destroyed) return;
 
     container.appendChild(app.canvas);
-    const { seed, startTick, timeScale, disabledModules, perf, cull } = resolveLaunchOptions(
+    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    const { seed, startTick, timeScale, disabledModules, perf, cull, effects, sound } = resolveLaunchOptions(
       window.location.search,
       random,
+      reducedMotion,
     );
     log(`Armada world seed: ${seed}`);
     const unknown = findUnknownModules(disabledModules);
@@ -122,7 +129,11 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     const scene = await createScene(
       app,
       world,
-      createSceneModules(disabledModules, { cull, lighting: options.lighting }),
+      createSceneModules(disabledModules, {
+        cull,
+        lighting: options.lighting,
+        player: { effects },
+      }),
       {
         terrain: TERRAIN_APPEARANCE,
         profiler: monitor?.profiler,
@@ -146,21 +157,30 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     const { camera } = scene.services;
     if (camera) teardowns.push(bindCameraControls(app.stage, app.renderer.screen, camera, app.canvas));
     teardowns.push(
-      bindKeyboardControls(window, {
-        walk: (directions) => setPlayerWalk(world.parts.get(PLAYER_PART), directions),
-        jump: () => {
-          const player = world.parts.get(PLAYER_PART);
-          if (simulation.stepper.paused || simulation.stepper.timeScale === 0) cancelPlayerJump(player);
-          else jumpPlayer(player);
+      bindKeyboardControls(
+        window,
+        {
+          walk: (directions) => setPlayerWalk(world.parts.get(PLAYER_PART), directions),
+          jump: () => {
+            const player = world.parts.get(PLAYER_PART);
+            if (simulation.stepper.paused || simulation.stepper.timeScale === 0) cancelPlayerJump(player);
+            else jumpPlayer(player);
+          },
+          jumpHeld: (held) => setPlayerJumpHeld(world.parts.get(PLAYER_PART), held),
+          cancelJump: () => cancelPlayerJump(world.parts.get(PLAYER_PART)),
+          zoom: (factor) => {
+            const { width, height } = app.renderer.screen;
+            camera?.zoomAt(factor, { x: width / 2, y: height / 2 });
+          },
         },
-        jumpHeld: (held) => setPlayerJumpHeld(world.parts.get(PLAYER_PART), held),
-        cancelJump: () => cancelPlayerJump(world.parts.get(PLAYER_PART)),
-        zoom: (factor) => {
-          const { width, height } = app.renderer.screen;
-          camera?.zoomAt(factor, { x: width / 2, y: height / 2 });
-        },
-      }),
+        options.keys,
+      ),
     );
+    // The player's take-offs, landings and rejected presses, heard (`?sound=off` mutes them).
+    if (sound) {
+      const audio = options.audio ?? createAudioOutput(window as { AudioContext?: new () => AudioOutput });
+      teardowns.push(bindPlayerSounds(simulation.events, audio));
+    }
 
     const onTick = (ticker: Ticker) => {
       const { steps, tick } = simulation.frame(ticker.elapsedMS);

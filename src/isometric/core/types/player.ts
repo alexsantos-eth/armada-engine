@@ -64,6 +64,8 @@ export type PlayerState = {
   climb: PlayerClimb | undefined;
   /** Where the player stood one tick earlier, so the render can interpolate. Not saved. */
   previous: PlayerPosition;
+  /** What it just did with its jumps, for poses, effects and sound (`PlayerFeedback`). Not saved. */
+  feedback: PlayerFeedback;
   /**
    * Desired direction in world columns (a unit vector, or `(0, 0)` standing still).
    * Input from the app (`setPlayerWalk()`), accelerated toward by the next ticks.
@@ -71,6 +73,39 @@ export type PlayerState = {
    */
   walk: GridPoint;
 };
+
+/** Why a jump press did not make the player jump: in the air, climbing, or a ceiling right overhead. */
+export type PlayerJumpRejection = "airborne" | "climbing" | "ceiling";
+
+/**
+ * What the player's jumps just did, kept by the simulation so the view and the app can answer each
+ * action (poses, dust, sound) without inferring it: counters that grow by one per take-off, landing
+ * and rejected press, and short timers in ticks. Transient, like the input: not saved.
+ */
+export type PlayerFeedback = {
+  /** Take-offs so far. */
+  jumps: number;
+  /** Landings so far, after a jump or a fall. */
+  landings: number;
+  /** Jump presses rejected so far. */
+  rejections: number;
+  /** Why the last press was rejected; `undefined` before any. */
+  rejected: PlayerJumpRejection | undefined;
+  /** Ticks its feet have been in the air (`1` on the tick it takes off, `0` on the ground). */
+  airTicks: number;
+  /** Ticks left of the landing pose (`PLAYER_LANDING_TICKS` after it lands, `0` otherwise); the physics never waits for it. */
+  landingTicks: number;
+  /** Blocks per tick its feet were falling at the last landing. */
+  impact: number;
+  /** Whether its feet are in the air because it jumped (not because it walked off an edge). */
+  leap: boolean;
+};
+
+/**
+ * Part of a jump the player is in, for its pose (`getPlayerJumpPhase()`): on the ground, taking
+ * off, rising, at the apex, falling, or landing (a few ticks on the ground after it lands).
+ */
+export type PlayerJumpPhase = "ground" | "takeoff" | "rise" | "apex" | "fall" | "landing";
 
 /** Discrete locomotion states used by the player simulation and its view. */
 export type PlayerMotion =
@@ -146,8 +181,10 @@ export type PlayerWalkSheet = {
   readonly frames: number;
   /** Columns the player walks in one cycle: how far it goes per two steps, so its feet do not slide. */
   readonly stride: number;
-  /** Column of the sheet shown in the air, while it jumps. Defaults to `0`, standing. */
+  /** Column of the sheet shown in the air, while it jumps, when there is no `jump` sheet. Defaults to `0`, standing. */
   readonly airPose?: number;
+  /** Taking off, rising, at the apex, falling and landing. Without it, `airPose` in the air. */
+  readonly jump?: PlayerJumpSheet;
   /** Breathing and looking around while it stands still. Without it, it stands still on column `0`. */
   readonly idle?: PlayerIdleSheet;
   /** Climbing onto a higher top. Without it, it climbs in its standing pose. */
@@ -165,6 +202,18 @@ export type PlayerClimbSheet = {
   readonly source: string;
   /** Poses of a climb. */
   readonly frames: number;
+};
+
+/**
+ * The player jumping, drawn from another SVG sheet laid out like its walk sheet (the same canvas,
+ * cell and gap; one row per facing): one column per part of a jump. Its feet stay where the walk
+ * sheet's are: the engine lifts them.
+ */
+export type PlayerJumpSheet = {
+  /** SVG of the sheet (e.g. `/assets/player/jump.svg`). */
+  readonly source: string;
+  /** Column of each part of a jump (`getPlayerJumpPhase()`, but `"ground"`). */
+  readonly poses: Readonly<Record<Exclude<PlayerJumpPhase, "ground">, number>>;
 };
 
 /**

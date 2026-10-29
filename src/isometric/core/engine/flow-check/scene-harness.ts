@@ -76,7 +76,7 @@ export function mockPixi() {
       x: 1,
       y: 1,
       value: 1,
-      set: vi.fn((value: number) => Object.assign(this.scale, { x: value, y: value, value })),
+      set: vi.fn((value: number, y: number = value) => Object.assign(this.scale, { x: value, y, value })),
     };
     public destroy = vi.fn();
 
@@ -156,7 +156,10 @@ export function mockPixi() {
     Assets: { load: vi.fn(loadTexture), unload: vi.fn(() => Promise.resolve(undefined)) },
     Container,
     Graphics: class extends Container {
+      public alpha = 1;
+      public cullable = true;
       public rect = vi.fn(() => this);
+      public circle = vi.fn(() => this);
       public fill = vi.fn(() => this);
     },
     Rectangle: class {

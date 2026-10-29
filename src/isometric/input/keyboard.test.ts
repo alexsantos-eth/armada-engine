@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { bindKeyboard, bindKeyboardControls, KEYBOARD_ZOOM_STEP, type KeyBinding } from "./keyboard";
+import { bindKeyboard, bindKeyboardControls, DEFAULT_KEY_MAP, KEYBOARD_ZOOM_STEP, type KeyBinding } from "./keyboard";
 
 type Listener = (event: unknown) => void;
 
@@ -39,6 +39,24 @@ const setup = () => {
 const still = { up: false, down: false, left: false, right: false };
 
 describe("bindKeyboardControls", () => {
+  it("walks and jumps with other keys when given a key map, keeping the defaults it does not replace", () => {
+    const target = createTarget();
+    const controls = { walk: vi.fn(), jump: vi.fn(), zoom: vi.fn() };
+    bindKeyboardControls(target as never, controls, { jump: ["KeyK"], up: ["KeyI"] });
+
+    target.emit("keydown", key("Space"));
+    expect(controls.jump).not.toHaveBeenCalled();
+    target.emit("keydown", key("KeyK"));
+    expect(controls.jump).toHaveBeenCalledTimes(1);
+    target.emit("keydown", key("KeyW"));
+    expect(controls.walk).not.toHaveBeenCalled();
+    target.emit("keydown", key("KeyI"));
+    expect(controls.walk).toHaveBeenLastCalledWith({ ...still, up: true });
+    target.emit("keydown", key("ArrowLeft"));
+    expect(controls.walk).toHaveBeenLastCalledWith({ ...still, up: true, left: true });
+    expect(DEFAULT_KEY_MAP.jump).toEqual(["Space"]);
+  });
+
   it("walks while arrows or WASD are held, combining directions", () => {
     const { target, controls } = setup();
 

@@ -25,13 +25,22 @@ export type LaunchOptions = {
   readonly perf: boolean;
   /** Whether the camera culls what is off screen; `?cull=off` draws everything (to measure culling). */
   readonly cull: boolean;
+  /**
+   * The player's squash and stretch and dust: `?effects=off` leaves them out. Off by default when
+   * the player prefers reduced motion.
+   */
+  readonly effects: boolean;
+  /** The player's sounds: `?sound=off` mutes them. */
+  readonly sound: boolean;
 };
 
 /**
  * Reads the launch options from a URL query (`location.search`). `random` only draws a new
- * seed when the query has none; the app passes `Math.random`, the one non-seeded source.
+ * seed when the query has none; the app passes `Math.random`, the one non-seeded source. With
+ * `reducedMotion` (the player's `prefers-reduced-motion`), the effects are off unless the query
+ * turns them on.
  */
-export function resolveLaunchOptions(search: string, random: RandomSource): LaunchOptions {
+export function resolveLaunchOptions(search: string, random: RandomSource, reducedMotion = false): LaunchOptions {
   return {
     seed: resolveWorldSeed(search, random),
     startTick: resolveStartTick(search),
@@ -39,6 +48,8 @@ export function resolveLaunchOptions(search: string, random: RandomSource): Laun
     disabledModules: resolveDisabledModules(search),
     perf: resolveSwitch(search, "perf", false),
     cull: resolveSwitch(search, "cull", true),
+    effects: resolveSwitch(search, "effects", !reducedMotion),
+    sound: resolveSwitch(search, "sound", true),
   };
 }
 

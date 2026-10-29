@@ -9,6 +9,7 @@ import { createCameraView } from "../camera-view";
 import { TILE_METRICS } from "../constants";
 import { WorldParts } from "../parts";
 import { createPlayer, PLAYER_FACINGS, PLAYER_PART, stepPlayer } from "../player";
+import { DUST_MS } from "./feedback";
 import { createClockPart } from "../time";
 import { projectGridPoint } from "../projection";
 import { createBlockViews, getBlockDepth, getSvgResolution } from "../render";
@@ -24,7 +25,7 @@ import {
 import { createTerrainView } from "../terrain-view";
 import type { World } from "../world";
 import type { SceneCamera } from "../../types";
-import { createPlayerView } from "./player-view";
+import { createPlayerView, type PlayerViewOptions } from "./player-view";
 import { getClimbPose, getIdlePose, getWalkPose, getWalkSheetCell } from "./walk";
 
 const PLAYER = { textureSource: "/assets/player/block.svg", height: 1 } as const;
@@ -63,10 +64,12 @@ const standing = (world: World, at: { x: number; y: number }): World => {
 };
 
 /** The terrain, the player and the camera, as the game draws them. */
-const sceneOf = async (world: World, interpolation?: () => number) => {
-  const mounted = await mountScene(world, [createTerrainView(), createPlayerView(PLAYER), createCameraView()], {
-    interpolation,
-  });
+const sceneOf = async (world: World, interpolation?: () => number, options?: PlayerViewOptions) => {
+  const mounted = await mountScene(
+    world,
+    [createTerrainView(), createPlayerView(PLAYER, options), createCameraView()],
+    { interpolation },
+  );
   const view = mounted.root.children.find(({ source }) => source === PLAYER.textureSource) as TestView;
   return { ...mounted, view, camera: mounted.scene.services.camera as SceneCamera };
 };
@@ -76,6 +79,10 @@ const spriteAt = (at: { x: number; y: number; elevation: number }) => {
   const ground = projectGridPoint(at, projection);
   return { x: ground.x, y: ground.y - at.elevation * TILE_METRICS.boxHeight - 30 };
 };
+
+/** The player's sprite among the views of `root`: the one with a texture (the ground marker has none). */
+const spriteOf = (root: { children: TestView[] }) =>
+  root.children.find(({ texture }) => texture !== undefined) as TestView;
 
 /** Terrain blocks in the world container, by column. */
 const blocksOf = (children: TestView[], player: TestView) =>
@@ -456,7 +463,7 @@ describe("createPlayerView", () => {
       };
       player.motion = { type: "climbing" };
       ticker.frame();
-      expect(cellOf(root.children[0])).toMatchObject({ source: SHEET.source, row: facing("north-west"), column: 0 });
+      expect(cellOf(spriteOf(root))).toMatchObject({ source: SHEET.source, row: facing("north-west"), column: 0 });
       scene.destroy();
     }
   });
@@ -574,7 +581,7 @@ describe("createPlayerView", () => {
       Object.assign(world.parts.get(PLAYER_PART), { height });
       world.parts.get(PLAYER_PART).motion = { type: "jumping" };
       ticker.frame();
-      const cell = cellOf(root.children[0]);
+      const cell = cellOf(spriteOf(root));
       scene.destroy();
       return cell;
     };
@@ -704,4 +711,134 @@ it("clips a two-dimensional shadow mask to the current player pose and uploads o
   scene.destroy();
   expect(body.mask).toBeNull();
   expect(mask.texture.destroy).toHaveBeenCalledWith(true);
+});
+
+describe("createPlayerView feedback", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  beforeEach(() => {
+    resetHarness();
+    vi.clearAllMocks();
+    vi.mocked(Assets.load).mockImplementation(loadTexture as never);
+  });
+
+  type Shape = TestView & {
+    circle?: ReturnType<typeof vi.fn>;
+    scale: { x: number; y: number };
+    tint: number;
+  };
+  const dustOf = (root: { children: TestView[] }) =>
+    (root.children as Shape[]).filter(({ circle }) => circle?.mock.calls.length);
+  const JUMP = { source: "/assets/player/jump.svg", poses: { takeoff: 0, rise: 1, apex: 2, fall: 3, landing: 4 } };
+
+  it("shows the jump sheet's pose for each part of a jump, and the air pose without it", async () => {
+    const poseOf = async (walk: typeof SHEET & { jump?: typeof JUMP }, failing?: string) => {
+      resetHarness();
+      vi.mocked(Assets.load).mockImplementation((asset) =>
+        (asset as unknown as { src: string }).src === failing
+          ? Promise.resolve(undefined as never)
+          : loadTexture(asset as never),
+      );
+      const world = fieldWithPlayer();
+      const { ticker, root, scene } = await mountScene(world, [createPlayerView({ ...PLAYER, walk })]);
+      const player = world.parts.get(PLAYER_PART);
+      const cells: Array<{ source: string; column: number }> = [];
+      const show = (state: Partial<typeof player>) => {
+        Object.assign(player, state);
+        ticker.frame();
+        cells.push(cellOf(spriteOf(root)));
+      };
+      Object.assign(player.feedback, { leap: true, airTicks: 1 });
+      show({ height: 0.3, verticalSpeed: 0.3, motion: { type: "jumping" } });
+      Object.assign(player.feedback, { airTicks: 5 });
+      show({ height: 0.6, verticalSpeed: 0.2 });
+      show({ height: 0.8, verticalSpeed: 0 });
+      show({ height: 0.5, verticalSpeed: -0.3, motion: { type: "falling" } });
+      Object.assign(player.feedback, { leap: false, airTicks: 0, landingTicks: 2 });
+      show({ height: 0, verticalSpeed: undefined, motion: { type: "idle" } });
+      Object.assign(player.feedback, { landingTicks: 0 });
+      show({});
+      scene.destroy();
+      return cells.map(({ source, column }) => `${source.split("/").pop()}:${column}`);
+    };
+
+    expect(await poseOf({ ...SHEET, jump: JUMP })).toEqual([
+      "jump.svg:0",
+      "jump.svg:1",
+      "jump.svg:2",
+      "jump.svg:3",
+      "jump.svg:4",
+      "walk.svg:0",
+    ]);
+    expect(await poseOf({ ...SHEET, jump: JUMP }, JUMP.source)).toEqual([
+      "walk.svg:3",
+      "walk.svg:3",
+      "walk.svg:3",
+      "walk.svg:3",
+      "walk.svg:0",
+      "walk.svg:0",
+    ]);
+  });
+
+  it("raises dust and stretches as it takes off, and squashes as it lands hard, about its feet", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, root, view, scene } = await sceneOf(world);
+    const player = world.parts.get(PLAYER_PART);
+    const shape = view as Shape;
+    const feet = { ...view.position };
+
+    player.feedback.jumps += 1;
+    ticker.frame(16);
+    const [takeoff] = dustOf(root);
+    expect(takeoff.visible).toBe(true);
+    expect(takeoff.cullable).toBe(false);
+    expect(shape.scale.y).toBeGreaterThan(shape.scale.x);
+    for (let ms = 0; ms < DUST_MS; ms += 50) ticker.frame(50);
+    expect(takeoff.visible).toBe(false);
+    expect(shape.scale).toMatchObject({ x: 1, y: 1 });
+    expect(view.position).toMatchObject(feet);
+
+    Object.assign(player.feedback, { landings: 1, impact: 0.3 });
+    ticker.frame(16);
+    expect(dustOf(root)).toHaveLength(2);
+    expect(shape.scale.y).toBeLessThan(1);
+    // Squashed about its feet: the sprite comes down with it.
+    expect(view.position.y).toBeGreaterThan(feet.y);
+    for (let ms = 0; ms < DUST_MS; ms += 50) ticker.frame(50);
+
+    // A soft landing, a step down onto sand, raises none; a take-off raises the same puff again.
+    Object.assign(player.feedback, { landings: 2, impact: 0.05 });
+    ticker.frame(16);
+    expect(dustOf(root).filter(({ visible }) => visible)).toHaveLength(0);
+    player.feedback.jumps += 1;
+    ticker.frame(16);
+    expect(dustOf(root)).toHaveLength(2);
+    expect(takeoff.visible).toBe(true);
+    scene.destroy();
+  });
+
+  it("raises no dust and keeps its shape with its effects off", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, root, view, scene } = await sceneOf(world, undefined, { effects: false });
+    const player = world.parts.get(PLAYER_PART);
+    Object.assign(player.feedback, { jumps: 1, landings: 1, impact: 0.5 });
+    ticker.frame(16);
+    expect(dustOf(root)).toHaveLength(0);
+    expect((view as Shape).scale).toMatchObject({ x: 1, y: 1 });
+    scene.destroy();
+  });
+
+  it("keeps its colour, shape and place at a rejected press", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, view, scene } = await sceneOf(world);
+    const still = { ...view.position };
+    ticker.frame(16);
+    world.parts.get(PLAYER_PART).feedback.rejections += 1;
+    ticker.frame(16);
+    expect(view as Shape).toMatchObject({ tint: 0xffffff, scale: { x: 1, y: 1 } });
+    expect(view.position).toMatchObject(still);
+    scene.destroy();
+  });
 });
