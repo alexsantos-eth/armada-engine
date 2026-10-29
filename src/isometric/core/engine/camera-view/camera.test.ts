@@ -79,6 +79,13 @@ describe("createSceneCamera", () => {
     ]);
   });
 
+  it("accepts a tighter margin for receivers recomputed every frame", () => {
+    const { camera, screen } = setup();
+    const view = {} as never;
+    camera.cullViews([{ view, depth: 0, layer: 0 }], 0.03);
+    expect(Culler.shared.cull).toHaveBeenLastCalledWith(view, getCullRect(screen, 0.03), false);
+  });
+
   it("pans without culling until the scene moved past half the margin", () => {
     const { world, camera } = setup({ x: 0, y: 0, zoom: 1 }, [band(1)]);
 

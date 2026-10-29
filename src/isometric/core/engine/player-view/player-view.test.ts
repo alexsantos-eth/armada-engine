@@ -630,7 +630,7 @@ describe("terrain shadow receiver", () => {
     resetHarness();
     vi.clearAllMocks();
   });
-  it("fades only the bottom part of the player and follows the receiver callback", async () => {
+  it("receives uniform shadow opacity through the scalar compatibility callback", async () => {
     const { root, scene } = await mountScene(fieldWithPlayer(), [createPlayerView({ ...PLAYER, scale: 0 })]);
     const sprite = root.children[0] as unknown as Sprite;
     const overlay = sprite.children[0];
@@ -650,12 +650,14 @@ describe("terrain shadow receiver", () => {
     caster.receiveTerrainShadowBands!(new Float32Array(16).fill(0.3));
     expect(overlay.visible).toBe(true);
     expect(overlay.alpha).toBe(1);
-    expect((overlay.children[0] as Sprite).alpha).toBeCloseTo(0.3);
+    expect(
+      ((overlay.children[1] as Sprite).texture.source as unknown as { resource: Uint8ClampedArray }).resource[3],
+    ).toBe(77);
     caster.receiveTerrainShadowBands!(new Float32Array(16));
     expect(overlay.visible).toBe(false);
     scene.destroy();
   });
-  it("reuses the bottom crop when sprites share the same texture and display scale", async () => {
+  it("reuses the original pose texture for the masked shadow body", async () => {
     const shared = { source: PLAYER.textureSource, frame: { x: 0, y: 0, width: 16, height: 16 } };
     vi.mocked(Assets.load).mockResolvedValueOnce(shared);
     const first = await mountScene(fieldWithPlayer(), [createPlayerView(PLAYER)]);
@@ -664,7 +666,7 @@ describe("terrain shadow receiver", () => {
     const bottom = (root: typeof first.root) =>
       ((root.children[0] as unknown as Sprite).children[0].children[0] as Sprite).texture;
     expect(bottom(first.root)).toBe(bottom(second.root));
-    expect(bottom(first.root).frame.y).toBeGreaterThan(0);
+    expect(bottom(first.root).frame).toBe(shared.frame);
     first.scene.destroy();
     second.scene.destroy();
   });
@@ -674,4 +676,32 @@ describe("terrain shadow receiver", () => {
     expect(scene.services.movingCasters).toBeUndefined();
     scene.destroy();
   });
+});
+
+it("clips a two-dimensional shadow mask to the current player pose and uploads only changed coverage", async () => {
+  resetHarness();
+  vi.clearAllMocks();
+  const { root, scene } = await mountScene(fieldWithPlayer(), [createPlayerView(PLAYER)]);
+  const view = root.children[0] as unknown as Sprite;
+  const overlay = view.children[0];
+  const body = overlay.children[0] as Sprite;
+  const mask = overlay.children[1] as Sprite;
+  const source = mask.texture.source as unknown as { resource: Uint8ClampedArray; update: ReturnType<typeof vi.fn> };
+  const grid = new Float32Array(128);
+  grid[0] = 0.8;
+  grid[127] = 0.2;
+  const receive = scene.services.movingCasters![0].receiveShadowGrid!;
+  receive(grid);
+  expect(body.texture).toBe(view.texture);
+  expect(body.setMask).toHaveBeenCalledWith({ mask, channel: "alpha" });
+  expect(source.resource[15 * 8 * 4 + 3]).toBe(204);
+  expect(source.resource[7 * 4 + 3]).toBe(51);
+  expect(source.update).toHaveBeenCalledTimes(1);
+  receive(grid);
+  expect(source.update).toHaveBeenCalledTimes(1);
+  receive([]);
+  expect(overlay.visible).toBe(false);
+  scene.destroy();
+  expect(body.mask).toBeNull();
+  expect(mask.texture.destroy).toHaveBeenCalledWith(true);
 });

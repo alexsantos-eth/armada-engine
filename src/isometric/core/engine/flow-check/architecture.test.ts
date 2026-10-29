@@ -45,7 +45,7 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   scene: ["camera", "constants", "entities", "grid", "render", "terrain", "time", "world"],
   "terrain-view": ["projection", "render", "scene", "terrain"],
   "entity-view": ["entities", "projection", "render", "scene"],
-  shadows: ["lighting", "projection", "render", "scene", "terrain", "world"],
+  shadows: ["camera", "lighting", "projection", "render", "scene", "terrain", "world"],
   wind: ["random"],
   "foliage-wind": ["scene", "wind"],
   waves: [],

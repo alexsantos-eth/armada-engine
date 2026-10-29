@@ -359,7 +359,7 @@ describe("createReceivedShadows", () => {
     expect(target).toBe(shadows.atlas);
     expect({ clear, clearColor }).toEqual({ clear: true, clearColor: [0, 0, 0, 0] });
     // Inset by the filters' padding, which Pixi adds back: the filtered area is the atlas, no wider.
-    expect(casters.filterArea).toEqual(new Rectangle(4, 4, shadows.atlas.width - 8, shadows.atlas.height - 8));
+    expect(casters.filterArea).toEqual(new Rectangle(12, 12, shadows.atlas.width - 24, shadows.atlas.height - 24));
     expect(rig.eraser.texture).toBe(renderer.render.mock.calls[0][0].target);
     // At night nothing is laid: no caster has a sprite yet, and the casters are hidden.
     expect(casters.children).toHaveLength(0);
@@ -472,7 +472,7 @@ describe("createReceivedShadows", () => {
     lent.forEach((texture) => expect(texture.destroy).not.toHaveBeenCalled());
     expect(textures.size).toBe(2);
     shadows.views.forEach(({ view }) => expect((view as Sprite).texture.destroy).toHaveBeenCalled());
-    expect(mask.destroy).not.toHaveBeenCalled();
+    expect(mask.destroy).toHaveBeenCalledWith(true);
     expect(shadows.atlas.destroy).toHaveBeenCalledWith(true);
     // The atlas goes before the views' textures: its source drops their listeners at once.
     const atlasOrder = (shadows.atlas.destroy as unknown as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0];
@@ -491,9 +491,74 @@ it("composes a height-aware terrain mask with entity casters and reuses its text
   const shadows = createReceivedShadows([receiver], rig, createTexturePool());
   const sample = vi.fn((_own, _x, y: number) => (y > 0 ? 1 : 0));
   shadows.draw(null, sample);
-  expect(sample).toHaveBeenCalledTimes(128);
+  expect(sample).toHaveBeenCalledTimes(50);
   shadows.draw(null, sample);
-  expect(sample).toHaveBeenCalledTimes(256);
+  expect(sample).toHaveBeenCalledTimes(100);
   shadows.destroy();
   rig.destroy();
+});
+
+it("composes moving casters into the same received atlas before shadow opacity is applied", () => {
+  const own = silhouetteOf(100, 0, 20, 40, { x: 2, y: 2 }, 7);
+  const { shadows, rig } = atlasOf([{ own, casters: [] }]);
+  const offset = vi.fn(() => ({ x: 0, y: 0 }));
+  const additional = vi.fn(() => [{ silhouette: own, lift: 2 }]);
+  shadows.draw(offset, undefined, additional);
+  expect(additional).toHaveBeenCalledWith(own);
+  expect(offset).toHaveBeenCalledWith(own.worldFoot, own.worldFoot, 2);
+  expect(spritesOf(rig)[0].visible).toBe(true);
+  shadows.draw(() => null, undefined, additional);
+  expect(spritesOf(rig)[0].visible).toBe(false);
+  shadows.draw(null, undefined, additional);
+  shadows.destroy();
+  rig.destroy();
+});
+
+it("reuses static terrain coverage while moving casters redraw, and refreshes it for another phase", () => {
+  const own = silhouetteOf(100, 0, 20, 40, { x: 2, y: 2 }, 7);
+  const { shadows, rig } = atlasOf([{ own, casters: [] }]);
+  const terrain = vi.fn(() => 0.5);
+  const day = {};
+  shadows.draw(null, terrain, undefined, day);
+  expect(terrain).toHaveBeenCalledTimes(50);
+  shadows.draw(null, terrain, undefined, day);
+  expect(terrain).toHaveBeenCalledTimes(50);
+  shadows.draw(null, terrain, undefined, {});
+  expect(terrain).toHaveBeenCalledTimes(100);
+  shadows.destroy();
+  rig.destroy();
+});
+
+it("skips hidden receivers and refreshes their terrain visibility when the camera reveals them", () => {
+  const { shadows, renderer } = atlasOf(twoReceivers());
+  const sample = vi.fn(() => 1);
+  const offset = vi.fn(() => null);
+  const additional = vi.fn(() => []);
+  const light = {};
+  shadows.views[1].view.culled = true;
+  shadows.draw(offset, sample, additional, light);
+  expect(sample).toHaveBeenCalledTimes(50);
+  expect(offset).toHaveBeenCalledTimes(1);
+  expect(additional).toHaveBeenCalledTimes(1);
+  shadows.draw(offset, sample, additional, light);
+  expect(sample).toHaveBeenCalledTimes(50);
+  shadows.views[0].view.culled = true;
+  shadows.views[1].view.culled = false;
+  shadows.draw(offset, sample, additional, light);
+  expect(sample).toHaveBeenCalledTimes(114);
+  const drawn = renderer.render.mock.calls.length;
+  shadows.views[1].view.culled = true;
+  shadows.draw(offset, sample, additional, light);
+  expect(renderer.render).toHaveBeenCalledTimes(drawn);
+  shadows.destroy();
+});
+
+it("retains terrain coverage for receivers narrower than one terrain-mask texel", () => {
+  const own = silhouetteOf(0, 0, 3, 12);
+  const { shadows } = atlasOf([{ own, casters: [] }]);
+  const sample = vi.fn((_own: Silhouette) => 1);
+  shadows.draw(null, sample);
+  expect(sample).toHaveBeenCalledTimes(3);
+  expect(sample.mock.calls.every(([receiver]) => receiver === own)).toBe(true);
+  shadows.destroy();
 });

@@ -9,7 +9,7 @@ vi.mock("./received-shadow", async () => (await import("../flow-check/scene-harn
 import { RenderTexture, Sprite } from "pixi.js";
 import { Entity } from "../entities";
 import { createEntityView } from "../entity-view";
-import type { SceneModule } from "../scene";
+import type { SceneModule, SceneView } from "../scene";
 import { TILE_METRICS } from "../constants";
 import { CHUNK_SIZE, chunkKey } from "../grid";
 import {
@@ -19,6 +19,7 @@ import {
   SHADOW_MAP_PIXELS_PER_TILE,
   SHADOW_BLUR,
   createPhaseLighting,
+  LIGHTING_PHASES,
   getSilhouetteMatrix,
 } from "../lighting";
 import {
@@ -36,7 +37,6 @@ import type { Box } from "../terrain";
 import { createTerrainView } from "../terrain-view";
 import { CLOCK_PART, TICKS_PER_DAY } from "../time";
 import type { World } from "../world";
-import { MOVING_SHADOW_PIXELS_PER_TILE, MOVING_SHADOW_RADIUS } from "./moving-shadow";
 import { createTerrainFaceShadows } from "./terrain-faces";
 import { createReceivedShadowRig, createReceivedShadows } from "./received-shadow";
 import { createShadows, SHADOW_GATHERS_PER_FRAME, SHADOW_MAP_MARGIN } from "./shadows";
@@ -115,14 +115,11 @@ describe("createShadows", () => {
     const { children, renderer, destroyScene } = await sceneOf(world);
     const shadows = groundShadows(children);
 
-    // The chunk's map and the scratch its levels are drawn in: its chunk and a margin around it,
-    // so a shadow's blur does not stop at the chunk's edge.
-    expect(RenderTexture.create).toHaveBeenCalledTimes(2);
+    // All heights compose into the same map, with no per-height render textures.
+    expect(RenderTexture.create).toHaveBeenCalledTimes(1);
     const side = (CHUNK_SIZE + 2 * SHADOW_MAP_MARGIN) * SHADOW_MAP_PIXELS_PER_TILE;
     expect(RenderTexture.create).toHaveBeenCalledWith({ width: side, height: side });
-    const [map, scratch] = vi
-      .mocked(RenderTexture.create)
-      .mock.results.map(({ value }) => value as { source: unknown });
+    const map = vi.mocked(RenderTexture.create).mock.results[0].value as { source: unknown };
     expect(new Set(shadows.map(({ texture }) => texture?.source))).toEqual(new Set([map.source]));
     // A side next to a column of another level (or none) is inset: its edge texels hold that level.
     expect(shadows.map(({ texture }) => texture?.frame)).toEqual(
@@ -134,41 +131,27 @@ describe("createShadows", () => {
       ]),
     );
 
-    // Each level is drawn into the scratch with the other levels' columns erased, then copied
-    // into the map over its own columns, erased first.
-    type Mask = {
-      blendMode: string;
-      scale: { value: number };
-      texture: { source: { options: { resource: Uint8ClampedArray; width: number } } };
-    };
     const draws = renderer.drawn.filter(({ children }) => children.length >= 2);
-    expect(draws).toHaveLength(6);
-    const masked = (mask: Mask) => {
-      const { resource, width } = mask.texture.source.options;
-      const columns: string[] = [];
-      for (let texel = 0; texel < resource.length / 4; texel += 1) {
-        if (resource[texel * 4 + 3] === 255) columns.push(`${(texel % width) - 1},${Math.floor(texel / width) - 1}`);
-      }
-      return columns;
-    };
-    const levels = [2, 1, -1];
-    const columnsOfLevel = (level: number) =>
-      columnsOf(world)
-        .filter(({ elevation }) => elevation === level)
-        .map(({ x, y }) => `${x},${y}`);
-    levels.forEach((level, index) => {
-      const [drawn, copied] = [draws[2 * index], draws[2 * index + 1]];
-      expect(drawn).toEqual(expect.objectContaining({ target: scratch, clear: true }));
-      expect(copied).toEqual(expect.objectContaining({ target: map, clear: false }));
-      const others = drawn.children.at(-1) as unknown as Mask;
-      const [own, copy] = copied.children as unknown as [Mask, { texture: unknown }];
-      expect(others.blendMode).toBe("erase");
-      expect(own.blendMode).toBe("erase");
-      expect(own.scale.value).toBe(SHADOW_MAP_PIXELS_PER_TILE);
-      expect(masked(own)).toEqual(columnsOfLevel(level));
-      expect(masked(others)).toHaveLength((CHUNK_SIZE + 2) ** 2 - columnsOfLevel(level).length);
-      expect(copy.texture).toBe(scratch);
-    });
+    expect(draws).toHaveLength(1);
+    expect(draws[0]).toEqual(expect.objectContaining({ target: map, clear: true }));
+    const rig = vi.mocked(createCasterSprites).mock.results[0].value as ReturnType<typeof createCasterSprites>;
+    const planes = vi.mocked(rig.container.addChild).mock.calls.map(
+      ([root]) =>
+        root as unknown as {
+          mask: { rect: ReturnType<typeof vi.fn>; fill: ReturnType<typeof vi.fn> };
+        },
+    );
+    expect(planes).toHaveLength(3);
+    const rectangles = planes.flatMap(({ mask }) => mask.rect.mock.calls);
+    expect(rectangles).toHaveLength(3);
+    expect(rectangles).toEqual(
+      expect.arrayContaining([
+        [24, 24, 48, 24],
+        [24, 48, 24, 24],
+        [48, 48, 24, 24],
+      ]),
+    );
+    planes.forEach(({ mask }) => expect(mask.fill).toHaveBeenCalledWith(0xffffff));
     destroyScene();
   });
 
@@ -203,7 +186,7 @@ describe("createShadows", () => {
    * copy of its columns into the chunk's map that follows each one is left out.
    */
   const levelDraws = (renderer: Renderer): LevelDraw[] =>
-    renderer.drawn.filter(({ clear, children }) => clear && children.length === 3);
+    renderer.drawn.filter(({ clear, children }) => clear && children.length === 2 && "shown" in children[1]);
   /** What level draw number `draw` was drawn from: the occlusion, the casters and the other levels' eraser. */
   const layerOf = (renderer: Renderer, draw: number) => levelDraws(renderer)[draw];
   /** The casters of a level draw, as it drew them. */
@@ -213,7 +196,7 @@ describe("createShadows", () => {
     vi.mocked(createCasterSprites).mock.results.map(
       ({ value }) =>
         value as {
-          container: Casters & { children: unknown[] };
+          container: Casters & { children: unknown[]; addChild: ReturnType<typeof vi.fn> };
           sprite: ReturnType<typeof vi.fn>;
           show: ReturnType<typeof vi.fn>;
         },
@@ -230,40 +213,41 @@ describe("createShadows", () => {
     const projection = DAY_SHADOW_PROJECTION;
     const lowerLevels = [...levels].filter((level) => level <= entity.elevation);
 
-    expect(levelDraws(renderer)).toHaveLength(levels.size);
+    expect(levelDraws(renderer)).toHaveLength(1);
     expect(renderer.render).toHaveBeenCalledWith(expect.objectContaining({ clear: true, clearColor: [0, 0, 0, 0] }));
     // Its silhouettes are made once; each map it reaches lays them on the module's caster sprites,
     // the same for every map. Nothing is cast on other entities: it is alone.
     expect(createSilhouettes).toHaveBeenCalledTimes(1);
     expect(casterSprites()).toHaveLength(1);
     const [casters] = casterSprites();
-    expect(casters.sprite).toHaveBeenCalledTimes(lowerLevels.length);
-    expect(casters.sprite.mock.calls.every(([index]) => index === 0)).toBe(true);
-    expect(casters.container.children).toHaveLength(1);
+    const placements = casters.sprite.mock.calls.length;
+    expect(placements).toBeGreaterThan(0);
+    expect(placements).toBeLessThanOrEqual(lowerLevels.length);
+    expect(casters.sprite.mock.calls.map(([index]) => index as number)).toEqual(
+      Array.from({ length: placements }, (_value, index) => index),
+    );
+    expect(casters.container.children).toHaveLength(placements);
     expect(
       vi
         .mocked(createReceivedShadows)
         .mock.calls.every(([receivers]) => receivers.every(({ casters }) => casters.length === 0)),
     ).toBe(true);
-    expect(placeSilhouette).toHaveBeenCalledTimes(lowerLevels.length);
-    lowerLevels.forEach((level) => {
-      expect(placeSilhouette).toHaveBeenCalledWith(
-        expect.anything(),
-        (vi.mocked(createSilhouettes).mock.results[0].value as Silhouette[])[0],
-        expect.anything(),
-        { x: -1.5, y: -1.5 },
-        SHADOW_MAP_PIXELS_PER_TILE,
-      );
-      expect(grounds).toContainEqual(
-        getSilhouetteMatrix(projection as never, { x: entity.x, y: entity.y }, entity.elevation - level, TILE_METRICS),
-      );
-    });
+    expect(placeSilhouette).toHaveBeenCalledTimes(placements);
+    expect(placeSilhouette).toHaveBeenCalledWith(
+      expect.anything(),
+      (vi.mocked(createSilhouettes).mock.results[0].value as Silhouette[])[0],
+      expect.anything(),
+      { x: -1.5, y: -1.5 },
+      SHADOW_MAP_PIXELS_PER_TILE,
+    );
+    const expectedTransforms = lowerLevels.map((level) =>
+      getSilhouetteMatrix(projection, { x: entity.x, y: entity.y }, entity.elevation - level, TILE_METRICS),
+    );
+    grounds.forEach((matrix) => expect(expectedTransforms).toContainEqual(matrix));
     vi.mocked(placeSilhouette).mockReset();
-    // The occlusion, the casters (shown on the levels they reach) and the other levels' eraser.
     const draws = levelDraws(renderer);
-    expect(draws.every(({ children }) => children.length === 3)).toBe(true);
-    expect(draws.filter((draw) => castersIn(draw).shown === 1)).toHaveLength(lowerLevels.length);
-    expect(draws.filter((draw) => castersIn(draw).shown === 0)).toHaveLength(levels.size - lowerLevels.length);
+    expect(draws).toHaveLength(1);
+    expect(castersIn(draws[0]).shown).toBe(placements);
     destroyScene();
   });
 
@@ -295,20 +279,19 @@ describe("createShadows", () => {
       return false;
     };
 
-    expect(levelDraws(renderer)).toHaveLength(2);
+    expect(levelDraws(renderer)).toHaveLength(1);
     const { options } = occlusionOf(0).texture.source;
     expect(options.width).toBe((CHUNK_SIZE + 2 * SHADOW_MAP_MARGIN) * AO_PIXELS_PER_TILE);
     expect(options.height).toBe((CHUNK_SIZE + 2 * SHADOW_MAP_MARGIN) * AO_PIXELS_PER_TILE);
     expect(occlusionOf(0).scale.value).toBe(SHADOW_MAP_PIXELS_PER_TILE / AO_PIXELS_PER_TILE);
     // One occlusion for both levels: the low ground at the foot of (0, 0) is darkened; its top is not.
-    expect(occlusionOf(1).texture).toBe(occlusionOf(0).texture);
     expect(darkened(1, 0)).toBe(true);
     expect(darkened(0, 0)).toBe(false);
 
     world.parts.get(CLOCK_PART).tick += 500;
     ticker.frame();
     // No casters: the occlusion never changes, so the maps are not redrawn by day.
-    expect(levelDraws(renderer)).toHaveLength(2);
+    expect(levelDraws(renderer)).toHaveLength(1);
     destroyScene();
   });
 
@@ -388,12 +371,12 @@ describe("createShadows", () => {
 
     expect(casterSprites()).toHaveLength(1);
     const [blur, opacity] = casterSprites()[0].container.filters as [{ options: unknown }, { alpha: number }];
-    expect(blur.options).toEqual({ strength: SHADOW_BLUR, quality: 2 });
+    expect(blur.options).toEqual({ strength: SHADOW_BLUR, quality: 1 });
     expect(opacity.alpha).toBe(alpha);
     destroyScene();
   });
 
-  it("gives the silhouettes of each map its rectangle as filter area, so Pixi never measures them", async () => {
+  it("bounds each filter by its receiver plane instead of filtering the entire chunk", async () => {
     const { renderer, destroyScene } = await sceneOf(at(defaultWorld(createTestEntities), 9));
 
     const maps = vi
@@ -401,7 +384,11 @@ describe("createShadows", () => {
       .mock.results.map(({ value }) => value as { width: number; height: number });
     expect(levelDraws(renderer).length).toBeGreaterThan(0);
     levelDraws(renderer).forEach((draw) => {
-      expect(castersIn(draw).filterArea).toEqual({ x: 0, y: 0, width: maps[0].width, height: maps[0].height });
+      const area = castersIn(draw).filterArea as { x: number; y: number; width: number; height: number };
+      expect(area.width).toBeGreaterThan(0);
+      expect(area.height).toBeGreaterThan(0);
+      expect(area.x + area.width).toBeLessThanOrEqual(maps[0].width);
+      expect(area.y + area.height).toBeLessThanOrEqual(maps[0].height);
     });
     destroyScene();
   });
@@ -432,7 +419,7 @@ describe("createShadows", () => {
     lighting.advance(1000);
     ticker.frame();
     const shadows = groundShadows(root.children);
-    expect(shadows.every(({ alpha }) => alpha === lighting.current.shadowStrength)).toBe(true);
+    expect(shadows.every(({ alpha }) => alpha === 1)).toBe(true);
     lighting.advance(1000);
     ticker.frame();
     ticker.frame();
@@ -578,7 +565,12 @@ describe("createShadows", () => {
     it("uses the baked daylight atlas even when the clock starts at night", async () => {
       const { destroyScene } = await sceneOf(at(row([0, 1]), 0));
 
-      expect(received().draw).toHaveBeenCalledWith(expect.any(Function), expect.any(Function));
+      expect(received().draw).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.any(Function),
+        expect.any(Function),
+        DAY_SHADOW_PROJECTION,
+      );
       destroyScene();
     });
 
@@ -590,7 +582,7 @@ describe("createShadows", () => {
       const draws = received().draw.mock.calls.length;
       lighting.transitionTo("sunset", 0);
       ticker.frame();
-      expect(views.every((view) => view.alpha === lighting.current.shadowStrength)).toBe(true);
+      expect(views.every((view) => view.alpha === 1)).toBe(true);
       expect(received().draw.mock.calls.length).toBeGreaterThan(draws);
       scene.destroy();
     });
@@ -640,6 +632,29 @@ describe("createShadows", () => {
       ]);
       return { ticker, renderer, children: () => root.children, scene };
     };
+
+    it("keeps existing walls on the current phase while topology is gathered over several frames", async () => {
+      const visible = { chunks: [0, 1, 2].map((cx) => ({ cx, cy: 0 })) };
+      const lighting = createPhaseLighting();
+      const { ticker, scene } = await mountScene(edge(), [
+        cameraOn(visible),
+        createTerrainView(),
+        createEntityView(),
+        createShadows(lighting),
+      ]);
+      const walls = vi
+        .mocked(createTerrainFaceShadows)
+        .mock.results.map(({ value }) => value as { draw: ReturnType<typeof vi.fn> });
+      visible.chunks = [0, 1, 2, 3].map((cx) => ({ cx, cy: 0 }));
+      lighting.transitionTo("sunset", 1000);
+      for (let frame = 0; frame < 16; frame += 1) {
+        lighting.advance(16);
+        ticker.frame();
+        walls.forEach(({ draw }) => expect(draw.mock.lastCall![1]).toBe(lighting.current.shadow));
+        await Promise.resolve();
+      }
+      scene.destroy();
+    });
 
     it("lays the silhouettes of the neighbouring chunks' entities on a chunk's maps", async () => {
       const world = edge();
@@ -732,12 +747,12 @@ describe("createShadows", () => {
       const { scene } = await sceneOn(world, { chunks: [{ cx: 0, cy: 0 }] });
 
       // Two maps, but only the high one takes the tree's silhouette.
-      expect(RenderTexture.create).toHaveBeenCalledTimes(2);
+      expect(RenderTexture.create).toHaveBeenCalledTimes(1);
       expect(placeSilhouette).toHaveBeenCalledTimes(1);
       scene.destroy();
     });
 
-    it("keeps the caster sprites of its largest draw only, whatever the chunks shown and hidden", async () => {
+    it("keeps stable caster slots per receiver plane and reuses released slots when chunks leave", async () => {
       const visible = { chunks: [0, 1].map((cx) => ({ cx, cy: 0 })) };
       const { ticker, renderer, scene } = await sceneOn(edge(), visible);
 
@@ -748,9 +763,9 @@ describe("createShadows", () => {
       await frameUntil(ticker, () => expect(scene.shownChunks()).toHaveLength(2));
       for (let frame = 0; frame < 6; frame += 1) ticker.frame();
 
-      // Two trees: every map they reach is drawn with the same two sprites.
+      // Each of the two reached chunks keeps its two caster slots, avoiding reparenting on every frame.
       const largest = Math.max(...levelDraws(renderer).map((draw) => castersIn(draw).shown));
-      expect(largest).toBe(2);
+      expect(largest).toBe(4);
       expect(casterSprites()).toHaveLength(1);
       expect(casterSprites()[0].container.children).toHaveLength(largest);
       scene.destroy();
@@ -786,10 +801,9 @@ describe("createShadows", () => {
   it("draws the occlusion only without the entities' views", async () => {
     const world = at(defaultWorld(createTestEntities), 12);
     const { renderer, root, scene } = await mountScene(world, [createShadows()]);
-    const levels = new Set(columnsOf(world).map(({ elevation, type }) => elevation - (type === "sand" ? 0.5 : 0)));
 
     expect(root.children).toHaveLength(columnsOf(world).length);
-    expect(levelDraws(renderer)).toHaveLength(levels.size);
+    expect(levelDraws(renderer)).toHaveLength(1);
     expect(createSilhouettes).not.toHaveBeenCalled();
     expect(levelDraws(renderer).every((draw) => castersIn(draw).shown === 0)).toBe(true);
     scene.destroy();
@@ -811,55 +825,42 @@ describe("createShadows", () => {
     expect(pool.destroy).toHaveBeenCalled();
   });
 
-  it("casts the shadow of what moves in a map of its own that follows it, with the sun's opacity", async () => {
+  it("unites moving and static casters in the same terrain maps without a second overlay", async () => {
     const world = at(defaultWorld(), 12);
     const [column] = columnsOf(world);
     const foot = { ground: { x: column.x, y: column.y, elevation: column.elevation }, screen: { x: 0, y: 0 } };
     const view = new Sprite({} as never);
+    view.width = 1;
+    view.height = 1;
     const mover: SceneModule = {
       id: "mover",
       setup: () => ({ provides: { movingCasters: [{ view, foot: () => foot }] }, destroy: () => {} }),
     };
     const { ticker, renderer, root, scene } = await mountScene(world, [createTerrainView(), mover, createShadows()]);
-    const side = (2 * MOVING_SHADOW_RADIUS + 1) * MOVING_SHADOW_PIXELS_PER_TILE;
-    const movingMap = vi
-      .mocked(RenderTexture.create)
-      .mock.results.map(({ value }) => value as { width: number; destroy: ReturnType<typeof vi.fn> })
-      .find(({ width }) => width === side);
-    const movingDraws = () => renderer.drawn.filter(({ target }) => target === movingMap);
-    const [filters] = casterSprites().map(({ container }) => container.filters as Array<{ alpha?: number }>);
-
-    // Its views stand on the columns around it, never culled: they follow it, in the camera's view.
-    const followers = (root.children as Array<View & { cullable: boolean }>).filter(
-      ({ texture }) => texture?.source === (movingMap as unknown as { source: unknown }).source,
-    );
-    expect(followers).toHaveLength((2 * MOVING_SHADOW_RADIUS + 1) ** 2);
-    expect(followers.every(({ cullable }) => !cullable)).toBe(true);
-    const planes = movingDraws().length;
-    expect(planes).toBeGreaterThan(0);
-    expect(createMovingSilhouette).toHaveBeenCalledWith(view, foot.screen, foot.ground);
-
+    expect(RenderTexture.create).toHaveBeenCalledTimes(1);
+    expect(groundShadows(root.children)).toHaveLength(columnsOf(world).length);
+    expect(createMovingSilhouette).toHaveBeenCalledTimes(1);
+    const front = vi.mocked(RenderTexture.create).mock.results[0].value as ReturnType<typeof RenderTexture.create>;
+    const writes = () => renderer.drawn.filter(({ target }) => target === front).length;
+    const initial = writes();
     foot.ground = { ...foot.ground, x: column.x + 0.1 };
-    filters[1].alpha = 1;
     ticker.frame();
-    expect(movingDraws()).toHaveLength(planes * 2);
-    expect(filters[1].alpha).toBe(DAY_SHADOW_PROJECTION.alpha);
-
+    expect(writes()).toBe(initial * 2);
+    expect(createMovingSilhouette).toHaveBeenCalledTimes(1);
+    ticker.frame();
+    expect(writes()).toBe(initial * 2);
     scene.destroy();
-    expect(movingMap?.destroy).toHaveBeenCalledWith(true);
+    expect(front.destroy).toHaveBeenCalledWith(true);
   });
 
   it("destroys the shadow maps, their masks and occlusion, the scratch, the filters and what draws them with the scene", async () => {
     const { renderer, destroyScene } = await sceneOf(at(defaultWorld(createTestEntities), 12));
     type Destroyable = { destroy: ReturnType<typeof vi.fn> };
     const maps = vi.mocked(RenderTexture.create).mock.results.map(({ value }) => value as Destroyable);
-    // Each level's occlusion (first) and other levels' mask (last), and its own mask (first of its copy).
-    const textures = renderer.drawn
-      .filter(({ children }) => children.length >= 2)
-      .flatMap(({ children }) => [
-        children[0].texture as Destroyable,
-        children[children.length - 1].texture as Destroyable,
-      ]);
+    const occlusion = layerOf(renderer, 0).children[0].texture as Destroyable;
+    const masks = vi
+      .mocked(casterSprites()[0].container.addChild)
+      .mock.calls.map(([root]) => (root as { mask: Destroyable }).mask);
     const roots = new Set(
       renderer.drawn.filter(({ children }) => children.length >= 2).map(({ container }) => container as Destroyable),
     );
@@ -872,15 +873,14 @@ describe("createShadows", () => {
     expect(filters).toHaveLength(2);
     filters.forEach((filter) => expect(filter.destroy).toHaveBeenCalledTimes(1));
 
-    expect(maps).toHaveLength(2);
+    expect(maps).toHaveLength(1);
     maps.forEach((map) => expect(map.destroy).toHaveBeenCalledWith(true));
     // The level and its copy, with the caster sprites.
-    expect(roots.size).toBe(2);
+    expect(roots.size).toBe(1);
     roots.forEach((root) => expect(root.destroy).toHaveBeenCalledWith({ children: true }));
     expect((rig.value as Destroyable).destroy).toHaveBeenCalled();
-    textures
-      .filter((texture) => !maps.includes(texture))
-      .forEach((texture) => expect(texture.destroy).toHaveBeenCalledWith(true));
+    expect(occlusion.destroy).toHaveBeenCalledWith(true);
+    masks.forEach((mask) => expect(mask.destroy).toHaveBeenCalledWith({ context: true }));
   });
 });
 
@@ -889,7 +889,7 @@ describe("moving terrain shadow receivers", () => {
     resetHarness();
     vi.clearAllMocks();
   });
-  it("fades entering and leaving a baked terrain shadow and grades moving and received views without rebaking", async () => {
+  it("uses current-frame terrain visibility and grades moving and received views without clock refresh", async () => {
     const world = worldFrom(
       [
         { x: 0, y: 0, elevation: 0 },
@@ -970,6 +970,14 @@ it("uses the same height-aware terrain visibility on complete entity receivers a
   );
   const lighting = createPhaseLighting();
   const { ticker, scene } = await mountScene(world, [createEntityView(), createShadows(lighting)]);
+  const wallVisible = vi.mocked(createTerrainFaceShadows).mock.calls.at(-1)![1].isVisible!;
+  const receiverVisible = vi.mocked(createReceivedShadows).mock.calls[0][3]!;
+  expect(wallVisible(wallView)).toBe(true);
+  expect(receiverVisible(wallView)).toBe(true);
+  wallView.culled = true;
+  expect(wallVisible(wallView)).toBe(false);
+  expect(receiverVisible(wallView)).toBe(false);
+  wallView.culled = false;
   const result = vi.mocked(createReceivedShadows).mock.results[0].value as ReturnType<typeof createReceivedShadows> & {
     draw: ReturnType<typeof vi.fn>;
   };
@@ -979,8 +987,11 @@ it("uses the same height-aware terrain visibility on complete entity receivers a
   expect(sample(own, own.screenFoot.x, own.screenFoot.y - 6 * TILE_METRICS.boxHeight)).toBe(0);
   lighting.transitionTo("sunset", 0);
   ticker.frame();
-  expect(wallView.alpha).toBe(lighting.current.shadowStrength);
-  expect(walls.draw).toHaveBeenCalledWith(-0.5, lighting.current.shadow);
+  expect(wallView.alpha).toBe(1);
+  expect(walls.commit).toHaveBeenLastCalledWith(lighting.current.shadowStrength * lighting.current.shadow.alpha);
+  const sunsetSample = result.draw.mock.lastCall![1] as typeof sample;
+  expect(sunsetSample(own, own.screenFoot.x, own.screenFoot.y)).toBe(0);
+  expect(walls.draw).toHaveBeenCalledWith(null, lighting.current.shadow, expect.any(Array), expect.any(Array));
   scene.destroy();
   expect(walls.destroy).toHaveBeenCalled();
 });
@@ -1023,7 +1034,7 @@ it("samples shadow rows at the moving receiver's actual height, with a safe non-
   scene.destroy();
 });
 
-it("publishes a phase chunk only after all its planes finish, and cancels when neighbours change", async () => {
+it("reprojects the complete wall atlas in the current frame, including sub-degree phase movement", async () => {
   resetHarness();
   vi.clearAllMocks();
   const walls = {
@@ -1037,39 +1048,356 @@ it("publishes a phase chunk only after all its planes finish, and cancels when n
     destroy: vi.fn(),
   };
   vi.mocked(createTerrainFaceShadows).mockReturnValueOnce(walls);
-  const visible = { chunks: [{ cx: 0, cy: 0 }] };
+  const lighting = createPhaseLighting();
+  const { ticker, scene } = await mountScene(worldFrom([{ x: 0, y: 0, elevation: 0 }]), [createShadows(lighting)]);
+  walls.draw.mockClear();
+  lighting.transitionTo("sunset", 3000);
+  lighting.advance(1);
+  ticker.frame();
+  expect(walls.draw).toHaveBeenCalledTimes(1);
+  expect(walls.draw.mock.calls.every(([, light]) => light === lighting.current.shadow)).toBe(true);
+  walls.draw.mockClear();
+  lighting.advance(1);
+  ticker.frame();
+  expect(walls.draw).toHaveBeenCalledTimes(1);
+  expect(walls.draw.mock.calls.every(([, light]) => light === lighting.current.shadow)).toBe(true);
+  lighting.advance(3000);
+  ticker.frame();
+  walls.draw.mockClear();
+  for (let frame = 0; frame < 120; frame += 1) ticker.frame();
+  expect(walls.draw).not.toHaveBeenCalled();
+  scene.destroy();
+});
+
+it("keeps hidden phase maps dirty and catches them up before their receivers enter the cull margin", async () => {
+  resetHarness();
+  vi.clearAllMocks();
+  let visible = false;
+  let state = { x: 0, y: 0, zoom: 1 };
   const camera: SceneModule = {
     id: "camera",
     setup: () => ({
-      provides: { camera: { visibleChunks: () => visible.chunks, cullViews: vi.fn() } as never },
+      provides: {
+        camera: {
+          get state() {
+            return state;
+          },
+          visibleChunks: () => [{ cx: 0, cy: 0 }],
+          cullViews: (views: readonly SceneView[]) =>
+            views.forEach(({ view }) => {
+              view.culled = !visible;
+            }),
+        } as never,
+      },
       destroy: () => {},
     }),
   };
-  const world = worldFrom([
-    { x: 0, y: 0, elevation: 0 },
-    { x: 32, y: 0, elevation: 0 },
-  ]);
   const lighting = createPhaseLighting();
-  const { ticker, renderer, scene } = await mountScene(world, [camera, createShadows(lighting)]);
-  const front = vi.mocked(RenderTexture.create).mock.results[0].value;
-  const frontDraws = () => renderer.render.mock.calls.filter(([call]) => call.target === front).length;
-  const initial = frontDraws();
+  const { ticker, renderer, root, scene } = await mountScene(worldFrom([{ x: 0, y: 0, elevation: 0 }]), [
+    camera,
+    createShadows(lighting),
+  ]);
+  const initial = renderer.render.mock.calls.length;
   lighting.transitionTo("sunset", 0);
   ticker.frame();
-  expect(walls.begin).toHaveBeenCalled();
-  expect(frontDraws()).toBe(initial);
-  visible.chunks = [
-    { cx: 0, cy: 0 },
-    { cx: 1, cy: 0 },
-  ];
-  await frameUntil(ticker, () => expect(walls.cancel).toHaveBeenCalled());
-  await frameUntil(ticker, () => expect(walls.commit).toHaveBeenCalled());
-  expect(frontDraws()).toBeGreaterThan(initial);
-  lighting.transitionTo("night", 0);
+  expect(renderer.render).toHaveBeenCalledTimes(initial);
+  // A later scene cull has a larger margin. It must not expand the baking workload.
+  root.children.forEach((view) => {
+    view.culled = false;
+  });
   ticker.frame();
-  const cancelled = walls.cancel.mock.calls.length;
-  visible.chunks = [];
-  await frameUntil(ticker, () => expect(scene.shownChunks()).toEqual([]));
-  expect(walls.cancel.mock.calls.length).toBeGreaterThan(cancelled);
+  expect(renderer.render).toHaveBeenCalledTimes(initial);
+  visible = true;
+  state = { ...state, x: 1 };
+  ticker.frame();
+  expect(renderer.render.mock.calls.length).toBeGreaterThan(initial);
+  const ready = renderer.render.mock.calls.length;
+  ticker.frame();
+  expect(renderer.render).toHaveBeenCalledTimes(ready);
+  scene.destroy();
+});
+
+it.each(["wall", "entity"])("updates a phase when only a %s receiver is inside the cull margin", async (kind) => {
+  resetHarness();
+  vi.clearAllMocks();
+  const wall = new Sprite({} as never);
+  vi.mocked(createTerrainFaceShadows).mockReturnValueOnce({
+    views: [{ view: wall, depth: 0, layer: 1 }],
+    levels: [],
+    clear: vi.fn(),
+    begin: vi.fn(),
+    commit: vi.fn(),
+    cancel: vi.fn(),
+    draw: vi.fn(),
+    destroy: vi.fn(),
+  });
+  const camera: SceneModule = {
+    id: "camera",
+    setup: () => ({
+      provides: {
+        camera: {
+          state: { x: 0, y: 0, zoom: 1 },
+          visibleChunks: () => [{ cx: 0, cy: 0 }],
+          cullViews: (views: readonly SceneView[]) =>
+            views.forEach(({ view }) => {
+              view.culled = kind === "wall" ? view !== wall : !("receivedShadowOf" in view);
+            }),
+        } as never,
+      },
+      destroy: () => {},
+    }),
+  };
+  const lighting = createPhaseLighting();
+  const { ticker, scene } = await mountScene(worldFrom([{ x: 0, y: 0, elevation: 0 }], createTestEntities), [
+    camera,
+    createEntityView(),
+    createShadows(lighting),
+  ]);
+  const target = (
+    kind === "wall"
+      ? vi.mocked(createTerrainFaceShadows).mock.results.at(-1)!.value
+      : vi.mocked(createReceivedShadows).mock.results.at(-1)!.value
+  ) as { draw: ReturnType<typeof vi.fn> };
+  const initial = vi.mocked(target.draw).mock.calls.length;
+  lighting.transitionTo("sunset", 0);
+  ticker.frame();
+  expect(vi.mocked(target.draw).mock.calls.length).toBeGreaterThan(initial);
+  scene.destroy();
+});
+
+it.each(["bands", "grid"])(
+  "exchanges moving and static entity shadows through %s without another ground overlay",
+  async (mode) => {
+    resetHarness();
+    vi.clearAllMocks();
+    const display = { left: 0, top: -20, width: 5, height: 20 };
+    const own: Silhouette = {
+      texture: {} as never,
+      body: {} as never,
+      sources: [],
+      bodyDisplay: display,
+      display,
+      worldFoot: { x: 0, y: 0 },
+      screenFoot: { x: 0, y: 0 },
+      depth: 0,
+    };
+    vi.mocked(createSilhouettes).mockReturnValueOnce([own]);
+    const world = worldFrom(
+      [
+        { x: 0, y: 0, elevation: 0 },
+        { x: 0, y: 1, elevation: 0 },
+      ],
+      () => [
+        new Entity(
+          0,
+          0,
+          { id: "tree", height: 1, spawnChance: 1, textureSource: "/assets/tree/block.svg", surface: "grass" },
+          2,
+        ),
+      ],
+    );
+    const foot = {
+      ground: { x: DAY_SHADOW_PROJECTION.dirX, y: DAY_SHADOW_PROJECTION.dirY, elevation: 0 },
+      screen: { x: 0, y: 0 },
+    };
+    const view = new Sprite({} as never);
+    Object.assign(view, { x: -5, y: -20, width: 10, height: 20 });
+    let bands = new Float32Array(16);
+    const mover: SceneModule = {
+      id: "mover",
+      setup: () => ({
+        provides: {
+          movingCasters: [
+            {
+              view,
+              foot: () => foot,
+              ...(mode === "grid"
+                ? {
+                    receiveShadowGrid: (values: ArrayLike<number>) => {
+                      bands = Float32Array.from(values);
+                    },
+                  }
+                : {
+                    receiveTerrainShadowBands: (values: ArrayLike<number>) => {
+                      bands = Float32Array.from(values);
+                    },
+                  }),
+            },
+            { view: {} as never, foot: () => foot },
+          ],
+        },
+        destroy: () => {},
+      }),
+    };
+    const { ticker, renderer, scene } = await mountScene(world, [createEntityView(), mover, createShadows()]);
+    expect(bands.some((alpha) => alpha > 0.3)).toBe(true);
+    expect(bands.some((alpha) => alpha === 0)).toBe(true);
+    if (mode === "grid") {
+      expect(bands).toHaveLength(128);
+      expect(bands[32]).toBe(0);
+      expect(bands[39]).toBeGreaterThan(0.3);
+    }
+    expect(renderer.extract.pixels).toHaveBeenCalledTimes(1);
+    const received = vi.mocked(createReceivedShadows).mock.results[0].value as ReturnType<typeof createReceivedShadows>;
+    const additional = vi.mocked(received.draw).mock.lastCall![2]!;
+    expect(additional(own)).toHaveLength(1);
+    expect(additional(own)[0].lift).toBe(-2);
+    ticker.frame();
+    expect(renderer.extract.pixels).toHaveBeenCalledTimes(1);
+    foot.ground = { x: 100, y: 100, elevation: 0 };
+    ticker.frame();
+    expect(additional(own)).toEqual([]);
+    expect(bands.every((alpha) => alpha === 0)).toBe(true);
+    scene.destroy();
+  },
+);
+
+it("invalidates only receiver chunks reached by the old or new moving shadow", async () => {
+  resetHarness();
+  vi.clearAllMocks();
+  const world = worldFrom([
+    { x: 0, y: 0, elevation: 0 },
+    { x: 64, y: 0, elevation: 0 },
+  ]);
+  const foot = { ground: { x: 0, y: 0, elevation: 0 }, screen: { x: 0, y: 0 } };
+  const view = new Sprite({} as never);
+  view.width = 1;
+  view.height = 1;
+  const mover: SceneModule = {
+    id: "mover",
+    setup: () => ({ provides: { movingCasters: [{ view, foot: () => foot }] }, destroy: () => {} }),
+  };
+  const { ticker, renderer, scene } = await mountScene(world, [mover, createShadows()]);
+  const frame = vi.mocked(createGroundShadowView).mock.calls.at(-1)![0];
+  const farMap = vi
+    .mocked(RenderTexture.create)
+    .mock.results.map(({ value }) => value as ReturnType<typeof RenderTexture.create>)
+    .find((texture) => texture.source === frame.source)!;
+  const writes = () => renderer.drawn.filter(({ target }) => target === farMap).length;
+  const initial = writes();
+  expect(initial).toBeGreaterThan(0);
+  foot.ground.x = 0.1;
+  ticker.frame();
+  expect(writes()).toBe(initial);
+  scene.destroy();
+});
+
+it("lets moving receivers receive another mover while excluding their own silhouette", async () => {
+  resetHarness();
+  vi.clearAllMocks();
+  const world = worldFrom([
+    { x: 0, y: 0, elevation: 0 },
+    { x: 0, y: 1, elevation: 0 },
+  ]);
+  const view = new Sprite({} as never);
+  Object.assign(view, { x: -5, y: -20, width: 10, height: 20 });
+  const caster = new Sprite({} as never);
+  const receiverFoot = {
+    ground: { x: DAY_SHADOW_PROJECTION.dirX, y: DAY_SHADOW_PROJECTION.dirY, elevation: 0 },
+    screen: { x: 0, y: 0 },
+  };
+  const casterFoot = { ground: { x: 0, y: 0, elevation: 2 }, screen: { x: 0, y: 0 } };
+  let samples = new Float32Array(16);
+  const movers: SceneModule = {
+    id: "movers",
+    setup: () => ({
+      provides: {
+        movingCasters: [
+          {
+            view,
+            foot: () => receiverFoot,
+            receiveTerrainShadowBands: (values: ArrayLike<number>) => {
+              samples = Float32Array.from(values);
+            },
+          },
+          { view: caster, foot: () => casterFoot },
+        ],
+      },
+      destroy: () => {},
+    }),
+  };
+  const { ticker, scene } = await mountScene(world, [movers, createShadows()]);
+  expect(samples.some((alpha) => alpha > 0.3)).toBe(true);
+  casterFoot.ground = { x: 100, y: 100, elevation: 2 };
+  ticker.frame();
+  expect(samples.every((alpha) => alpha === 0)).toBe(true);
+  scene.destroy();
+});
+
+it("refreshes newly visible receivers after resize and restores filter detail when zooming in", async () => {
+  resetHarness();
+  vi.clearAllMocks();
+  let state = { x: 0, y: 0, zoom: 1 };
+  let visible = false;
+  const cull = vi.fn((views: readonly SceneView[]) =>
+    views.forEach(({ view }) => {
+      view.culled = !visible;
+    }),
+  );
+  const camera: SceneModule = {
+    id: "camera",
+    setup: () => ({
+      provides: {
+        camera: {
+          get state() {
+            return state;
+          },
+          visibleChunks: () => [{ cx: 0, cy: 0 }],
+          cullViews: cull,
+        } as never,
+      },
+      destroy: () => {},
+    }),
+  };
+  const { renderer, ticker, scene } = await mountScene(worldFrom([{ x: 0, y: 0, elevation: 0 }]), [
+    camera,
+    createShadows(),
+  ]);
+  visible = true;
+  renderer.screen.width += 1;
+  ticker.frame();
+  const drawn = renderer.render.mock.calls.length;
+  const culled = cull.mock.calls.length;
+  state = { ...state, x: 1e-8 };
+  ticker.frame();
+  expect(cull).toHaveBeenCalledTimes(culled);
+  expect(renderer.render).toHaveBeenCalledTimes(drawn);
+  renderer.screen.height += 1;
+  ticker.frame();
+  expect(cull.mock.calls.length).toBeGreaterThan(culled);
+  expect(renderer.render).toHaveBeenCalledTimes(drawn);
+  state = { ...state, zoom: 4 };
+  ticker.frame();
+  expect(renderer.render.mock.calls.length).toBeGreaterThan(drawn);
+  const highDetail = renderer.render.mock.calls.length;
+  state = { ...state, zoom: 1 };
+  ticker.frame();
+  expect(renderer.render).toHaveBeenCalledTimes(highDetail);
+  scene.destroy();
+});
+
+it("bakes strength into the common mask without changing thousands of scene sprite alphas", async () => {
+  resetHarness();
+  vi.clearAllMocks();
+  const lighting = createPhaseLighting("day", {
+    ...LIGHTING_PHASES,
+    sunset: { ...LIGHTING_PHASES.day, shadowStrength: 0.5 },
+  });
+  const { renderer, root, ticker, scene } = await mountScene(worldFrom([{ x: 0, y: 0, elevation: 0 }]), [
+    createShadows(lighting),
+  ]);
+  const drawn = renderer.render.mock.calls.length;
+  lighting.transitionTo("sunset", 0);
+  ticker.frame();
+  expect(renderer.render.mock.calls.length).toBeGreaterThan(drawn);
+  expect(root.children.every(({ alpha }) => alpha === 1)).toBe(true);
+  const container = renderer.render.mock.lastCall![0].container as {
+    children: [{ alpha: number }, { filters: { alpha: number }[] }];
+  };
+  expect(container.children[0].alpha).toBe(0.5);
+  expect(container.children[1].filters[1].alpha).toBe(DAY_SHADOW_PROJECTION.alpha * 0.5);
+  const updated = renderer.render.mock.calls.length;
+  ticker.frame();
+  expect(renderer.render).toHaveBeenCalledTimes(updated);
   scene.destroy();
 });

@@ -10,7 +10,7 @@ export type TerrainShadowFace = {
   readonly axis: "x" | "y";
 };
 
-/** Only the shell toward the camera, in half-block bands so a low caster cannot shade the whole cliff. */
+/** Only the shell toward the camera, split only at block boundaries for the scene draw order. */
 export function getTerrainFaces(
   columns: readonly { readonly x: number; readonly y: number; readonly elevation: number }[],
   heightAt: (x: number, y: number) => number | undefined,
@@ -22,7 +22,7 @@ export function getTerrainFaces(
       const neighbour = heightAt(x - Number(axis === "x"), y - Number(axis === "y")) ?? minimum - 1;
       const floor = Math.max(minimum - 1, neighbour);
       for (let top = elevation; top > floor;) {
-        const bottom = Math.max(floor, (Math.ceil(top * 2) - 1) / 2);
+        const bottom = Math.max(floor, Math.ceil(top) - 1);
         faces.push({ x, y, axis, top, bottom });
         top = bottom;
       }

@@ -5,3 +5,5 @@ export * from "./phases";
 export * from "./terrain-shadow";
 
 export * from "./faces";
+
+export * from "./wall";

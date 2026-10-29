@@ -100,9 +100,9 @@ export function createSceneCamera(
     resize() {
       apply(true);
     },
-    cullViews(views) {
+    cullViews(views, margin) {
       if (!cull) return;
-      const rect = getCullRect(screen);
+      const rect = getCullRect(screen, margin);
       views.forEach(({ view }) => Culler.shared.cull(view, rect, false));
     },
     visibleChunks() {

@@ -67,6 +67,7 @@ export function mockPixi() {
     public isRenderGroup: boolean;
     public tintWrites: number[] = [];
     public filters: unknown[] | undefined;
+    public setMask = vi.fn();
     public filterArea: unknown;
     public visibleWrites: boolean[] = [];
     public eventMode = "passive";
@@ -139,6 +140,10 @@ export function mockPixi() {
   return {
     Assets: { load: vi.fn(loadTexture), unload: vi.fn(() => Promise.resolve(undefined)) },
     Container,
+    Graphics: class extends Container {
+      public rect = vi.fn(() => this);
+      public fill = vi.fn(() => this);
+    },
     Rectangle: class {
       public x: number;
       public y: number;
@@ -155,6 +160,7 @@ export function mockPixi() {
       public source: unknown;
       public frame: unknown;
       public destroy = vi.fn();
+      public updateUvs = vi.fn();
       constructor({ source, frame }: { source: unknown; frame?: unknown }) {
         this.source = source;
         this.frame = frame;
@@ -179,10 +185,22 @@ export function mockPixi() {
     },
     MeshSimple: class extends Container {
       public autoUpdate = true;
-      public geometry: { uvs: Float32Array; getBuffer: ReturnType<typeof vi.fn>; destroy: ReturnType<typeof vi.fn> };
-      constructor(options: { uvs: Float32Array }) {
+      public geometry: {
+        uvs: Float32Array;
+        positions: Float32Array;
+        indices: Uint32Array;
+        getBuffer: ReturnType<typeof vi.fn>;
+        destroy: ReturnType<typeof vi.fn>;
+      };
+      constructor(options: { uvs: Float32Array; vertices: Float32Array; indices: Uint32Array }) {
         super();
-        this.geometry = { uvs: options.uvs, getBuffer: vi.fn(() => ({ update: vi.fn() })), destroy: vi.fn() };
+        this.geometry = {
+          positions: options.vertices,
+          indices: options.indices,
+          uvs: options.uvs,
+          getBuffer: vi.fn(() => ({ update: vi.fn() })),
+          destroy: vi.fn(),
+        };
       }
     },
     BufferImageSource: class {
@@ -484,6 +502,7 @@ export const createRenderer = (resolution = 1) => {
   const drawn: RenderedDraw[] = [];
   return {
     resolution,
+    extract: { pixels: vi.fn(() => ({ pixels: new Uint8ClampedArray(64 * 64 * 4).fill(255) })) },
     screen: { x: 0, y: 0, width: 1300, height: 1000 },
     drawn,
     render: vi.fn((options: { container: { children?: unknown[] }; target: unknown; clear?: boolean }) => {
@@ -531,6 +550,7 @@ export type TestView = {
   texture?: { source: unknown; frame: { x: number; y: number; width: number; height: number } };
   visible?: boolean;
   alpha?: number;
+  culled?: boolean;
 };
 
 /** Terrain appearance for tests: the game's, without depending on its content. */

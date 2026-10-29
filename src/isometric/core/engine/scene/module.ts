@@ -30,9 +30,9 @@ export type SceneView = DepthView & { readonly layer: SceneLayer };
 export type SceneCameraService = SceneCamera & {
   /**
    * Culls only `views`, just added to the scene, against what the camera shows now: the rest is
-   * as the last cull left it, and culling the whole scene again took ~20 ms with the zoom out.
+   * as the last cull left it. Optional `margin` supports tighter offscreen baking without reculling the whole scene.
    */
-  cullViews(views: readonly SceneView[]): void;
+  cullViews(views: readonly SceneView[], margin?: number): void;
 };
 
 /** An entity with the views `entity-view` drew for it. */
@@ -76,6 +76,8 @@ export type SceneMovingCaster = {
   readonly receiveTerrainShadow?: (alpha: number) => void;
   /** Optional height-resolved shadow rows, bottom first, in final opacity. */
   readonly receiveTerrainShadowBands?: (alpha: ArrayLike<number>) => void;
+  /** Full shadow coverage: 8 columns × 16 rows, bottom row first, in final opacity. */
+  readonly receiveShadowGrid?: (alpha: ArrayLike<number>) => void;
   /**
    * Where its feet are as drawn this frame: `ground` in world columns with the top elevation of
    * the column it stands on, and `screen` that point in scene pixels.

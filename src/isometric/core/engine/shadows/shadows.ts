@@ -3,6 +3,8 @@ import {
   BlurFilter,
   BufferImageSource,
   Container,
+  Graphics,
+  MeshSimple,
   Rectangle,
   RenderTexture,
   Sprite,
@@ -10,12 +12,14 @@ import {
 } from "pixi.js";
 import {
   AO_PIXELS_PER_TILE,
-  AO_TERRAIN_SHADOW_ALPHA,
-  SHADOW_ALPHA,
+  TERRAIN_RAY_REACH,
   createTerrainShadowSampler,
+  createTerrainShadowGeometry,
+  type TerrainShadowGeometry,
   getReceiverPoint,
   getTerrainFaces,
-  type TerrainShadowSampler,
+  type TerrainShadowField,
+  sampleTerrainHorizon,
   type ShadowPoint,
   buildOcclusionMap,
   getCastShadowOffset,
@@ -24,6 +28,7 @@ import {
   createPhaseLighting,
   type PhaseLighting,
 } from "../lighting";
+import { needsCull } from "../camera";
 import { DEFAULT_MIN_ELEVATION } from "../terrain";
 import { createTerrainFaceShadows, type TerrainFaceShadows } from "./terrain-faces";
 import { projectBoxesToIsometric } from "../projection";
@@ -38,7 +43,7 @@ import {
 } from "../scene";
 
 import type { WorldChunk } from "../world";
-import type { AffineTarget, ChunkKey, OcclusionTerrain, ShadowProjection, WorldRect } from "../../types";
+import type { AffineTarget, Camera, ChunkKey, OcclusionTerrain, ShadowProjection, WorldRect } from "../../types";
 import { pairShadows } from "./pairs";
 import {
   createReceivedShadowRig,
@@ -46,7 +51,8 @@ import {
   type ReceivedShadows,
   type ShadowReceiver,
 } from "./received-shadow";
-import { createMovingShadow } from "./moving-shadow";
+import { createMovingCasters } from "./moving-shadow";
+import { createSpriteShadowSampler } from "./sprite-sample";
 import { createTexturePool } from "./texture-pool";
 import {
   createCasterSprites,
@@ -75,8 +81,6 @@ export const SHADOW_MAP_MARGIN = 1;
  * frames.
  */
 export const SHADOW_GATHERS_PER_FRAME = 1;
-/** Receiver planes baked per frame while a phase changes; completed chunks publish atomically. */
-export const SHADOW_PLANES_PER_FRAME = 8;
 
 /** The gathering step a chunk is waiting for: see {@link SHADOW_GATHERS_PER_FRAME}. */
 export type ShadowGathering = "maps" | "pairs" | "received";
@@ -85,34 +89,27 @@ export type ShadowGathering = "maps" | "pairs" | "received";
 type ShadowTargetKind = Exclude<ShadowGathering, "pairs">;
 
 /**
- * One level of a chunk's shadow map, as data: the level is drawn whole into the module's scratch
- * texture (the chunk's ambient occlusion, then the casters, then the other levels' columns
- * erased), then copied into the chunk's map over its own columns only, so one map holds every
- * level (#53). Every level of every chunk is drawn with the same sprites, one draw after another.
+ * One receiver height, isolated by a native stencil mask inside the chunk's common shadow pass.
+ * Stable caster slots avoid reparenting sprites or replacing GPU buffers each animation frame.
  */
 type ShadowLayer = {
   readonly level: number;
-  readonly hasGround: boolean;
   /**
    * The chunk's columns of this level, as a rectangle: only their squares of the map show, so a
    * caster whose shadow cannot reach it is left out of the map.
    */
   readonly bounds: WorldRect;
-  /** Mask of its own columns: erased in the map before the copy. */
-  readonly own: Texture;
-  /** Mask of the other levels' columns: erased in the scratch texture. */
-  readonly others: Texture;
+  /** Native stencil mask and its plane group, authored once from the receiver columns. */
+  readonly root: Container;
+  readonly mask: Graphics;
+  readonly sprites: { index: number; sprite: Sprite }[];
+  shown: number;
+  readonly clip: { minX: number; minY: number; maxX: number; maxY: number };
+  terrain?: MeshSimple;
   /** Silhouettes of the entities on this level or higher that may reach the map. */
   casters: readonly Silhouette[];
   /** Blocks each of `casters` stands above the level. */
   lifts: readonly number[];
-};
-
-/** A texture levels are drawn whole into, shared by the maps of its size. */
-type Scratch = {
-  readonly texture: RenderTexture;
-  /** The whole texture, the casters' filter area: known up front, so Pixi never measures them. */
-  readonly area: Rectangle;
 };
 
 /** Something drawn from the sun into a texture: a shadow map, or the shadows entities receive. */
@@ -138,20 +135,22 @@ type ShadowChunk = {
   readonly chunk: WorldChunk;
   /** Its shadow map: every column's square shows the shadows of its own level. */
   readonly map: RenderTexture;
-  /** Where its levels are drawn whole, before each is copied into the map. */
-  readonly scratch: Scratch;
   /** Its ambient occlusion, at the bottom of every level. */
   readonly occlusion: Texture;
   readonly area: WorldRect;
-  readonly terrainShadow: Uint8Array;
-  readonly directional: Texture;
-  readonly directionalSource: BufferImageSource;
-  readonly directionalPixels: Uint8ClampedArray;
-  readonly sampleTerrain: TerrainShadowSampler;
+  readonly terrainGeometry: TerrainShadowGeometry;
+  readonly sampleTerrain: TerrainShadowField;
   readonly faces: TerrainFaceShadows;
   drawnLight: ShadowProjection;
-  drawnKey: string;
-  bakeTarget?: RenderTexture;
+  drawnStrength: number;
+  drawnResolution: number;
+  movingDirty: boolean;
+  readonly minimumReceiver: number;
+  cullCamera?: Camera;
+  cullWidth?: number;
+  cullHeight?: number;
+  readonly bakedVisibility: Set<SceneView["view"]>;
+  visibleReceivers?: Set<SceneView["view"]>;
   readonly gradeViews: readonly SceneView[];
   readonly layers: readonly ShadowLayer[];
   received?: { readonly shadows: ReceivedShadows; readonly views: readonly SceneView[]; readonly target: ShadowTarget };
@@ -173,49 +172,27 @@ const RECEIVER_SPAN = 1;
 
 /**
  * Bakes static daylight shadows when chunk dependencies change. Maps and received atlases share
- * one projection; explicit phase transitions grade existing views without redrawing textures.
- * Moving casters retain a small map of their own, invalidated only by position or pose changes.
+ * one projection; explicit transitions reproject all receivers together in the current frame.
+ * Moving casters join the common maps; only receivers reached by their old or current pose are invalidated.
  */
 export function createShadows(lighting: PhaseLighting = createPhaseLighting()): SceneModule {
   return {
     id: "shadows",
     setup({ app, columnAt, topInsetAt, projection, metrics, services, profile }) {
       const pixelsPerTile = SHADOW_MAP_PIXELS_PER_TILE;
-      // Where each level is drawn whole before its columns are copied into its chunk's map: one per
-      // size of map (all chunks but those cut by the edge of a bounded world share one), shared by
-      // the chunks, since the draws run one after the other.
-      const scratches = new Map<string, Scratch>();
-      const scratchFor = ({ width, height }: RenderTexture) => {
-        const size = `${width}×${height}`;
-        const existing = scratches.get(size);
-        if (existing) return existing;
-        const made = { texture: RenderTexture.create({ width, height }), area: new Rectangle(0, 0, width, height) };
-        scratches.set(size, made);
-        return made;
-      };
       // Silhouettes are drawn into shadow textures, never into the scene: blurred for soft edges,
       // with the sun's opacity applied to each group as a whole so overlaps do not darken twice.
-      const blurFilter = new BlurFilter({ strength: SHADOW_BLUR, quality: 2 });
+      const blurFilter = new BlurFilter({ strength: SHADOW_BLUR, quality: 1 });
       const alphaFilter = new AlphaFilter({ alpha: 1 });
-      // What every level of every map is drawn with, one after another: into the scratch, the
-      // chunk's occlusion, the casters and the eraser of the other levels' columns; then, into the
-      // map, the eraser of the level's own columns and the scratch over them.
+      // Receiver planes share one filtered caster group; the static AO is composed beneath it.
       const casters = createCasterSprites([blurFilter, alphaFilter]);
       const occlusionSprite = new Sprite();
       occlusionSprite.scale.set(pixelsPerTile / AO_PIXELS_PER_TILE);
-      const eraser = () => {
-        const sprite = new Sprite();
-        sprite.blendMode = "erase";
-        sprite.scale.set(pixelsPerTile);
-        return sprite;
-      };
-      const othersEraser = eraser();
-      const ownEraser = eraser();
-      const scratchSprite = new Sprite();
+      let nextCaster = 0;
+      const freeCasters: number[] = [];
+      const activeRoots = new Set<Container>();
       const levelRoot = new Container();
-      levelRoot.addChild(occlusionSprite, casters.container, othersEraser);
-      const copyRoot = new Container();
-      copyRoot.addChild(ownEraser, scratchSprite);
+      levelRoot.addChild(occlusionSprite, casters.container);
       // The atlases of received shadows have their own, with the same filters.
       const receivedRig = createReceivedShadowRig(app.renderer, [blurFilter, alphaFilter]);
       // Caster textures of the received shadows, reused from draw to draw.
@@ -223,37 +200,16 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
       // Sprites of the ground shadows, a chunk's given back when it is hidden for the next one.
       const groundSprites = createSpritePool();
       const chunks = new Map<ChunkKey, ShadowChunk>();
-      // The shadows of what moves (the player), each in a small map of its own that follows it (#58).
-      const moving = (services.get("movingCasters") ?? []).map((caster) =>
-        createMovingShadow(caster, {
-          renderer: app.renderer,
-          filters: [blurFilter, alphaFilter],
-          elevationAt: (x, y) => columnAt.get(x, y)?.elevation,
-          topInsetAt,
-          projection,
-          metrics,
-          strength: () => lighting.current.shadowStrength,
-        }),
+      const moving = createMovingCasters(
+        services.get("movingCasters") ?? [],
+        (x, y) => columnAt.get(x, y) !== undefined,
       );
-      const movingViews = moving.flatMap(({ views }) => views);
-      const updateMoving = () => {
-        alphaFilter.alpha = sun.alpha;
-        moving.forEach((shadow) => shadow.update(scene, sun));
-      };
+      const spriteSampler = createSpriteShadowSampler(app.renderer);
       // Set by `start()`, before any chunk gathers its casters.
       let scene!: BuiltScene;
       let sun = lighting.current.shadow;
       let building = true;
-      let appliedStrength = lighting.current.shadowStrength;
-      const phaseMaps = new Map<string, RenderTexture>();
-      const phaseClear = new Container();
-      let phaseBake: { shadow: ShadowChunk; light: ShadowProjection; map: RenderTexture; next: number } | undefined;
-      const cancelPhaseBake = () => {
-        if (!phaseBake) return;
-        phaseBake.shadow.bakeTarget = undefined;
-        phaseBake.shadow.faces.cancel();
-        phaseBake = undefined;
-      };
+      let filterResolution = 1;
 
       const areaOf = ({ minX, minY, maxX, maxY }: WorldRect): WorldRect => ({
         minX: minX - SHADOW_MAP_MARGIN,
@@ -261,13 +217,27 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
         maxX: maxX + SHADOW_MAP_MARGIN,
         maxY: maxY + SHADOW_MAP_MARGIN,
       });
-      const occlusionTerrain = (bounds: WorldRect): OcclusionTerrain => ({
-        bounds,
-        topHeightAt: (x, y) => {
-          const column = columnAt.get(x, y);
-          return column === undefined ? undefined : column.elevation - topInsetAt(x, y);
-        },
-      });
+      const occlusionTerrain = (bounds: WorldRect): OcclusionTerrain => {
+        const halo = TERRAIN_RAY_REACH + 1;
+        const minX = bounds.minX - halo,
+          minY = bounds.minY - halo;
+        const width = bounds.maxX - minX + halo + 1,
+          height = bounds.maxY - minY + halo + 1;
+        const heights = new Float32Array(width * height);
+        heights.fill(NaN);
+        for (let y = 0; y < height; y += 1)
+          for (let x = 0; x < width; x += 1) {
+            const column = columnAt.get(minX + x, minY + y);
+            if (column) heights[y * width + x] = column.elevation - topInsetAt(minX + x, minY + y);
+          }
+        return {
+          bounds,
+          topHeightAt: (x, y) => {
+            const value = heights[(y - minY) * width + x - minX];
+            return Number.isFinite(value) ? value : undefined;
+          },
+        };
+      };
 
       /** The shown chunks next to `chunk` (diagonals included), and itself. */
       const around = ({ coord }: WorldChunk) =>
@@ -314,129 +284,299 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
       const offset = { x: 0, y: 0 };
       const movingTerrainAlphas = new WeakMap<SceneMovingCaster, number>();
       const movingTerrainBands = new WeakMap<SceneMovingCaster, Float32Array>();
-      const lightKey = (light: ShadowProjection) =>
-        `${Math.round(Math.atan2(light.dirY, light.dirX) * 40)},${Math.round(light.stretch * 24)},${Math.round(light.alpha * 255)}`;
-      const directionalSprite = new Sprite();
-      casters.container.addChild(directionalSprite);
-      const bakeTerrain = (shadow: ShadowChunk, light: ShadowProjection) => {
-        buildOcclusionMap(occlusionTerrain(shadow.area), AO_PIXELS_PER_TILE, [], light, shadow.terrainShadow);
-        const pixels = shadow.directionalPixels;
-        const maximum = Math.max(Number.EPSILON, (AO_TERRAIN_SHADOW_ALPHA * light.alpha) / SHADOW_ALPHA);
-        for (let i = 0; i < shadow.terrainShadow.length; i += 1)
-          pixels[i * 4 + 3] = Math.round(shadow.terrainShadow[i] / maximum);
-        shadow.directionalSource.resource = pixels;
-        shadow.directionalSource.update();
-      };
       const receiverPoint = { x: 0, y: 0, elevation: 0 };
-      const terrainOnReceiver = (shadow: ShadowChunk, light: ShadowProjection, own: Silhouette, x: number, y: number) =>
-        shadow.sampleTerrain(
-          getReceiverPoint(receiverFeet.get(own)!, own.screenFoot, x, y, light, metrics, receiverPoint),
-          light,
-        );
-      const drawLayer = (shadow: ShadowChunk, layer: ShadowLayer, area: WorldRect, light: ShadowProjection) => {
-        const shown = layer.casters.length;
-        const mapOrigin = { x: area.minX - 0.5, y: area.minY - 0.5 };
-        for (let index = 0; index < shown; index += 1) {
-          const silhouette = layer.casters[index];
-          getSilhouetteMatrix(light, silhouette.worldFoot, layer.lifts[index], metrics, ground);
-          placeSilhouette(casters.sprite(index, silhouette.texture), silhouette, ground, mapOrigin, pixelsPerTile);
+      const receiverHorizons = new WeakMap<
+        Silhouette,
+        { light: ShadowProjection; sampled: Uint8Array; elevations: Float64Array; widths: Float64Array }
+      >();
+      const horizon = { elevation: 0, width: 0.1 };
+      const terrainOnReceiver = (
+        shadow: ShadowChunk,
+        light: ShadowProjection,
+        own: Silhouette,
+        x: number,
+        y: number,
+      ) => {
+        const point = getReceiverPoint(receiverFeet.get(own)!, own.screenFoot, x, y, light, metrics, receiverPoint);
+        let cache = receiverHorizons.get(own);
+        if (!cache) {
+          cache = { light, sampled: new Uint8Array(8), elevations: new Float64Array(8), widths: new Float64Array(8) };
+          receiverHorizons.set(own, cache);
         }
-        casters.show(shown);
-        directionalSprite.visible = false;
-        casters.container.filterArea = shadow.scratch.area;
-        alphaFilter.alpha = 1;
-        app.renderer.render({
-          container: casters.container,
-          target: shadow.scratch.texture,
-          clear: true,
-          clearColor: [0, 0, 0, 0],
+        if (cache.light !== light) {
+          cache.light = light;
+          cache.sampled.fill(0);
+        }
+        const column = Math.max(0, Math.min(7, Math.floor(((x - own.bodyDisplay.left) * 8) / own.bodyDisplay.width)));
+        if (!cache.sampled[column]) {
+          shadow.sampleTerrain.horizon(point.x, point.y, light, horizon);
+          cache.elevations[column] = horizon.elevation;
+          cache.widths[column] = horizon.width;
+          cache.sampled[column] = 1;
+        }
+        horizon.elevation = cache.elevations[column];
+        horizon.width = cache.widths[column];
+        return sampleTerrainHorizon(horizon, point.elevation);
+      };
+      const isVisible = (shadow: ShadowChunk, view: SceneView["view"]) =>
+        shadow.visibleReceivers?.has(view) ?? !view.culled;
+      const drawGround = (shadow: ShadowChunk, light: ShadowProjection) => {
+        let planes = 0;
+        let minX = Infinity,
+          minY = Infinity,
+          maxX = -Infinity,
+          maxY = -Infinity;
+        activeRoots.forEach((root) => {
+          root.visible = false;
         });
-        alphaFilter.alpha = light.alpha;
-        shadow.faces.draw(layer.level, light);
-        if (!layer.hasGround) return;
-        directionalSprite.visible = true;
-        directionalSprite.texture = shadow.directional;
-        directionalSprite.scale.set(pixelsPerTile / AO_PIXELS_PER_TILE);
-        casters.show(shown);
+        activeRoots.clear();
+        const mapOrigin = { x: shadow.area.minX - 0.5, y: shadow.area.minY - 0.5 };
+        for (const layer of shadow.layers) {
+          let visible = false;
+          let receiverMinX = Infinity,
+            receiverMinY = Infinity,
+            receiverMaxX = -Infinity,
+            receiverMaxY = -Infinity;
+          shadow.chunk.columns.forEach((column, index) => {
+            if (
+              column.elevation - topInsetAt(column.x, column.y) !== layer.level ||
+              !isVisible(shadow, shadow.gradeViews[index].view)
+            )
+              return;
+            visible = true;
+            receiverMinX = Math.min(receiverMinX, column.x);
+            receiverMinY = Math.min(receiverMinY, column.y);
+            receiverMaxX = Math.max(receiverMaxX, column.x);
+            receiverMaxY = Math.max(receiverMaxY, column.y);
+            minX = Math.min(minX, column.x);
+            minY = Math.min(minY, column.y);
+            maxX = Math.max(maxX, column.x);
+            maxY = Math.max(maxY, column.y);
+          });
+          if (!visible) continue;
+          layer.root.visible = true;
+          activeRoots.add(layer.root);
+          let layerShown = 0;
+          const place = (silhouette: Silhouette, lift: number) => {
+            getSilhouetteMatrix(light, silhouette.worldFoot, lift, metrics, ground);
+            const x = silhouette.display.left - silhouette.screenFoot.x,
+              y = silhouette.display.top - silhouette.screenFoot.y;
+            const baseX = ground.a * x + ground.c * y + ground.tx,
+              baseY = ground.b * x + ground.d * y + ground.ty;
+            const ax = ground.a * silhouette.display.width,
+              ay = ground.b * silhouette.display.width;
+            const bx = ground.c * silhouette.display.height,
+              by = ground.d * silhouette.display.height;
+            // Reject projected quads outside visible receiver bounds, retaining blur and edge neighbours.
+            if (
+              baseX + Math.max(0, ax) + Math.max(0, bx) < receiverMinX - 1.5 ||
+              baseX + Math.min(0, ax) + Math.min(0, bx) > receiverMaxX + 1.5 ||
+              baseY + Math.max(0, ay) + Math.max(0, by) < receiverMinY - 1.5 ||
+              baseY + Math.min(0, ay) + Math.min(0, by) > receiverMaxY + 1.5
+            )
+              return;
+            let kept = layer.sprites[layerShown];
+            if (!kept) {
+              const index = freeCasters.pop() ?? nextCaster++;
+              kept = { index, sprite: casters.sprite(index, silhouette.texture) };
+              casters.show(nextCaster);
+              layer.sprites.push(kept);
+              layer.root.addChild(kept.sprite);
+            }
+            const sprite = kept.sprite;
+            sprite.texture = silhouette.texture;
+            if (!sprite.visible) sprite.visible = true;
+            placeSilhouette(sprite, silhouette, ground, mapOrigin, pixelsPerTile);
+            layerShown += 1;
+          };
+          layer.casters.forEach((silhouette, index) => place(silhouette, layer.lifts[index]));
+          for (const state of moving.states) {
+            if (!state.shape) continue;
+            const lift = state.elevation - layer.level;
+            const silhouette = cropSilhouetteAbove(state.shape, -lift * metrics.boxHeight);
+            if (silhouette && reaches(silhouette, lift, layer.bounds)) place(silhouette, lift);
+          }
+          for (let index = layerShown; index < layer.shown; index += 1) layer.sprites[index].sprite.visible = false;
+          layer.shown = layerShown;
+          layer.clip.minX = receiverMinX - 1.5;
+          layer.clip.minY = receiverMinY - 1.5;
+          layer.clip.maxX = receiverMaxX + 1.5;
+          layer.clip.maxY = receiverMaxY + 1.5;
+          const changed = profile("shadows:terrain-project", () =>
+            shadow.terrainGeometry.project(layer.level, light, mapOrigin, pixelsPerTile, layer.clip),
+          );
+          let mesh = layer.terrain;
+          if (!mesh) {
+            mesh = new MeshSimple({
+              texture: Texture.WHITE,
+              vertices: shadow.terrainGeometry.vertices,
+              uvs: shadow.terrainGeometry.uvs,
+              indices: shadow.terrainGeometry.indices,
+            });
+            mesh.autoUpdate = false;
+            mesh.tint = 0;
+            layer.terrain = mesh;
+            layer.root.addChild(mesh);
+          }
+          if (mesh.geometry.positions !== shadow.terrainGeometry.vertices)
+            mesh.geometry.positions = shadow.terrainGeometry.vertices;
+          else if (changed) mesh.geometry.getBuffer("aPosition").update();
+          if (mesh.geometry.indices.length !== shadow.terrainGeometry.indices.length)
+            mesh.geometry.indices = shadow.terrainGeometry.indices;
+          mesh.visible = shadow.terrainGeometry.indices.length > 0;
+          planes += 1;
+        }
+        if (!planes) return;
+
         casters.container.visible = true;
-        casters.container.filterArea = shadow.scratch.area;
+        const left = Math.max(shadow.area.minX, minX - 1),
+          top = Math.max(shadow.area.minY, minY - 1);
+        casters.container.filterArea = new Rectangle(
+          (left - shadow.area.minX) * pixelsPerTile,
+          (top - shadow.area.minY) * pixelsPerTile,
+          (Math.min(shadow.area.maxX, maxX + 1) - left + 1) * pixelsPerTile,
+          (Math.min(shadow.area.maxY, maxY + 1) - top + 1) * pixelsPerTile,
+        );
+        // Native stencil masks select each height before one common blur/opacity pass.
         occlusionSprite.texture = shadow.occlusion;
-        othersEraser.texture = layer.others;
-        ownEraser.texture = layer.own;
-        scratchSprite.texture = shadow.scratch.texture;
-        app.renderer.render({
-          container: levelRoot,
-          target: shadow.scratch.texture,
-          clear: true,
-          clearColor: [0, 0, 0, 0],
-        });
-        app.renderer.render({ container: copyRoot, target: shadow.bakeTarget ?? shadow.map, clear: false });
+        occlusionSprite.alpha = lighting.current.shadowStrength;
+        profile("shadows:ground-paint", () =>
+          app.renderer.render({ container: levelRoot, target: shadow.map, clear: true, clearColor: [0, 0, 0, 0] }),
+        );
       };
 
+      type MovingHit = { shape: Silhouette; left: number; top: number };
+      const receiverHits = new WeakMap<SceneMovingCaster, MovingHit[]>();
+      const movingHorizons = new WeakMap<SceneMovingCaster, Float64Array>();
+      const movingOcclusion = (hits: readonly MovingHit[], x: number, y: number, coverage: number) => {
+        for (const hit of hits)
+          coverage = Math.max(
+            coverage,
+            spriteSampler.sample(hit.shape, hit.shape.display.left + x - hit.left, hit.shape.display.top + y - hit.top),
+          );
+        return coverage;
+      };
       const updateMovingReceiverShadows = () => {
         const receivers = services.get("movingCasters") ?? [];
-        receivers.forEach((receiver) => {
-          if (!receiver.receiveTerrainShadow && !receiver.receiveTerrainShadowBands) return;
-          const { ground } = receiver.foot();
-          const tileX = Math.round(ground.x);
-          const tileY = Math.round(ground.y);
+        receivers.forEach((receiver, receiverIndex) => {
+          if (!receiver.receiveTerrainShadow && !receiver.receiveTerrainShadowBands && !receiver.receiveShadowGrid)
+            return;
+          const foot = receiver.foot();
+          const { ground } = foot;
+          const tileX = Math.round(ground.x),
+            tileY = Math.round(ground.y);
           let shadow: ShadowChunk | undefined;
           for (const candidate of chunks.values()) {
             const { rect } = candidate.chunk;
-            if (tileX < rect.minX || tileX > rect.maxX || tileY < rect.minY || tileY > rect.maxY) continue;
-            shadow = candidate;
-            break;
-          }
-          if (receiver.receiveTerrainShadowBands && receiver.view instanceof Sprite) {
-            const samples = movingTerrainBands.get(receiver) ?? new Float32Array(16);
-            movingTerrainBands.set(receiver, samples);
-            const { view } = receiver;
-            const { screen } = receiver.foot();
-            const left = view.x - view.anchor.x * view.width;
-            const top = view.y - view.anchor.y * view.height;
-            for (let band = 0; band < samples.length; band += 1) {
-              const point = getReceiverPoint(
-                ground,
-                screen,
-                left + view.width / 2,
-                top + view.height * (1 - (band + 0.5) / samples.length),
-                sun,
-                metrics,
-                receiverPoint,
-              );
-              const target = shadow
-                ? shadow.sampleTerrain(point, shadow.drawnLight) *
-                  shadow.drawnLight.alpha *
-                  lighting.current.shadowStrength
-                : 0;
-              samples[band] += (target - samples[band]) * 0.16;
+            if (tileX >= rect.minX && tileX <= rect.maxX && tileY >= rect.minY && tileY <= rect.maxY) {
+              shadow = candidate;
+              break;
             }
-            receiver.receiveTerrainShadowBands(samples);
+          }
+          const sprite = receiver.view instanceof Sprite ? receiver.view : undefined;
+          const left = sprite ? sprite.x - sprite.anchor.x * sprite.width : foot.screen.x;
+          const top = sprite ? sprite.y - sprite.anchor.y * sprite.height : foot.screen.y;
+          const right = left + (sprite?.width ?? 0),
+            bottom = top + (sprite?.height ?? 0);
+          const hits = receiverHits.get(receiver) ?? [];
+          receiverHits.set(receiver, hits);
+          let count = 0;
+          const addHit = (shape: Silhouette, elevation: number) => {
+            const hit = getCastShadowOffset(
+              sun,
+              shape.worldFoot,
+              ground,
+              elevation - ground.elevation,
+              metrics,
+              offset,
+            );
+            if (!hit) return;
+            const x = foot.screen.x + shape.display.left - shape.screenFoot.x + hit.x;
+            const y = foot.screen.y + shape.display.top - shape.screenFoot.y + hit.y;
+            if (x > right || x + shape.display.width < left || y > bottom || y + shape.display.height < top) return;
+            const entry = hits[count];
+            if (entry) {
+              entry.shape = shape;
+              entry.left = x;
+              entry.top = y;
+            } else hits.push({ shape, left: x, top: y });
+            count += 1;
+          };
+          for (const view of shadow ? nearbyViews(shadow.chunk).near : [])
+            for (const shape of silhouettesOf(view)) addHit(shape, view.entity.box.elevation);
+          moving.states.forEach((state, index) => {
+            if (index !== receiverIndex && state.shape) addHit(state.shape, state.elevation);
+          });
+          hits.length = count;
+          if ((receiver.receiveShadowGrid || receiver.receiveTerrainShadowBands) && sprite) {
+            const columns = receiver.receiveShadowGrid ? 8 : 1;
+            const samples = movingTerrainBands.get(receiver) ?? new Float32Array(16 * columns);
+            movingTerrainBands.set(receiver, samples);
+            const skylines = movingHorizons.get(receiver) ?? new Float64Array(columns * 2);
+            movingHorizons.set(receiver, skylines);
+            for (let band = 0; band < 16; band += 1)
+              for (let column = 0; column < columns; column += 1) {
+                const x = left + (sprite.width * (column + 0.5)) / columns;
+                const y = top + sprite.height * (1 - (band + 0.5) / 16);
+                const point = getReceiverPoint(ground, foot.screen, x, y, sun, metrics, receiverPoint);
+                if (band === 0 && shadow) {
+                  shadow.sampleTerrain.horizon(point.x, point.y, sun, horizon);
+                  skylines[column * 2] = horizon.elevation;
+                  skylines[column * 2 + 1] = horizon.width;
+                }
+                horizon.elevation = skylines[column * 2];
+                horizon.width = skylines[column * 2 + 1];
+                const coverage = movingOcclusion(
+                  hits,
+                  x,
+                  y,
+                  shadow ? sampleTerrainHorizon(horizon, point.elevation) : 0,
+                );
+                samples[band * columns + column] = coverage * sun.alpha * lighting.current.shadowStrength;
+              }
+            if (receiver.receiveShadowGrid) receiver.receiveShadowGrid(samples);
+            else receiver.receiveTerrainShadowBands!(samples);
             return;
           }
-          const target = shadow
-            ? shadow.sampleTerrain(ground, shadow.drawnLight) *
-              shadow.drawnLight.alpha *
-              lighting.current.shadowStrength
-            : 0;
+          const coverage = movingOcclusion(
+            hits,
+            foot.screen.x,
+            foot.screen.y,
+            shadow ? shadow.sampleTerrain(ground, sun) : 0,
+          );
+          const next = coverage * sun.alpha * lighting.current.shadowStrength;
           const current = movingTerrainAlphas.get(receiver) ?? 0;
-          const alpha = current + (target - current) * 0.16;
-          const next = Math.abs(alpha - target) < 0.005 ? target : alpha;
           movingTerrainAlphas.set(receiver, next);
           if (Math.abs(next - current) > 0.001) receiver.receiveTerrainShadow?.(next);
         });
       };
       const drawTarget = (target: ShadowTarget, light: ShadowProjection) => {
-        alphaFilter.alpha = light.alpha;
+        alphaFilter.alpha = light.alpha * lighting.current.shadowStrength;
         profile(DRAW_LABEL[target.kind], () => target.draw(light));
       };
 
       /** Gathers the casters of a chunk's maps again; returns the maps, to draw. */
+      const wallShapes: Silhouette[] = [];
+      const wallHeights: number[] = [];
+      const extraPairs: { silhouette: Silhouette; lift: number }[] = [];
+      const additionalCasters = (own: Silhouette) => {
+        let count = 0;
+        for (const state of moving.states) {
+          if (!state.shape) continue;
+          const pair = extraPairs[count];
+          const lift = state.elevation - receiverFeet.get(own)!.elevation;
+          if (pair) {
+            pair.silhouette = state.shape;
+            pair.lift = lift;
+          } else extraPairs.push({ silhouette: state.shape, lift });
+          count += 1;
+        }
+        extraPairs.length = count;
+        return extraPairs;
+      };
       const gatherMaps = (shadow: ShadowChunk): ShadowTarget[] => {
-        const area = areaOf(shadow.chunk.rect);
         const { near } = nearbyViews(shadow.chunk);
-        shadow.faces.clear();
-        shadow.maps = shadow.layers.map((layer) => {
+        shadow.layers.forEach((layer) => {
           // Casters standing on this level or higher (shadows onto higher ground are not drawn)
           // whose shadow may reach a column of the level.
           const reaching: Silhouette[] = [];
@@ -452,10 +592,37 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
           });
           layer.casters = reaching;
           layer.lifts = lifts;
-          return {
-            kind: "maps",
-            draw: (light) => drawLayer(shadow, layer, area, light),
-          };
+        });
+        shadow.maps = [{ kind: "maps", draw: (light) => profile("shadows:ground", () => drawGround(shadow, light)) }];
+        const wallCasters = near.flatMap((view) => silhouettesOf(view));
+        const wallElevations = near.flatMap((view) => silhouettesOf(view).map(() => view.entity.box.elevation));
+        shadow.maps.push({
+          kind: "maps",
+          draw: (light) =>
+            profile("shadows:walls", () => {
+              shadow.faces.begin();
+              wallShapes.length = 0;
+              wallHeights.length = 0;
+              wallCasters.forEach((shape, index) => {
+                wallShapes.push(shape);
+                wallHeights.push(wallElevations[index]);
+              });
+              moving.states.forEach((state) => {
+                if (state.shape) {
+                  wallShapes.push(state.shape);
+                  wallHeights.push(state.elevation);
+                }
+              });
+              shadow.faces.draw(null, light, wallShapes, wallHeights);
+              shadow.faces.commit(light.alpha * lighting.current.shadowStrength);
+              shadow.drawnLight = light;
+              shadow.drawnStrength = lighting.current.shadowStrength;
+              shadow.drawnResolution = filterResolution;
+              shadow.movingDirty = false;
+              shadow.bakedVisibility.clear();
+              for (const { view } of [...shadow.gradeViews, ...shadow.faces.views, ...(shadow.received?.views ?? [])])
+                if (isVisible(shadow, view)) shadow.bakedVisibility.add(view);
+            }),
         });
         return shadow.maps;
       };
@@ -493,10 +660,11 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
         const receivers = shadow.pairs as readonly ShadowReceiver[];
         shadow.pairs = undefined;
         if (receivers.length === 0) return [];
-        const shadows = createReceivedShadows(receivers, receivedRig, textures);
+        const shadows = createReceivedShadows(receivers, receivedRig, textures, (view) => isVisible(shadow, view));
+        shadow.cullWidth = undefined;
         const views = shadows.views.map((view) => ({ ...view, layer: SCENE_LAYER.onObject }));
         views.forEach(({ view }) => {
-          view.alpha = lighting.current.shadowStrength;
+          view.alpha = 1;
         });
         scene.add(views);
         const target: ShadowTarget = {
@@ -505,6 +673,8 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
             shadows.draw(
               (caster, receiver, lift) => getCastShadowOffset(light, caster, receiver, lift, metrics, offset),
               (own, x, y) => terrainOnReceiver(shadow, light, own, x, y),
+              additionalCasters,
+              light,
             ),
         };
         shadow.received = { shadows, views, target };
@@ -535,29 +705,12 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
           other.gathering = "maps";
         });
 
-      /**
-       * A mask of the columns of `area`, a texel per column (scaled up to the map's squares when
-       * drawn): opaque where `holds` says (fully transparent elsewhere), to erase with.
-       */
-      const columnMask = (area: WorldRect, holds: (level: number | undefined) => boolean) => {
-        const width = area.maxX - area.minX + 1;
-        const height = area.maxY - area.minY + 1;
-        const alpha = new Uint8ClampedArray(width * height * 4);
-        for (let y = area.minY; y <= area.maxY; y += 1) {
-          for (let x = area.minX; x <= area.maxX; x += 1) {
-            const column = columnAt.get(x, y);
-            if (holds(column && column.elevation - topInsetAt(x, y)))
-              alpha[((y - area.minY) * width + x - area.minX) * 4 + 3] = 255;
-          }
-        }
-        return new Texture({ source: new BufferImageSource({ resource: alpha, width, height, scaleMode: "nearest" }) });
-      };
-
       const showChunk = (chunk: WorldChunk) => {
         // The shadow map: one render texture for the chunk, a square of `SHADOW_MAP_PIXELS_PER_TILE`
         // texels per column of its area, texel (0, 0) at its corner. Each column's square shows
         // the shadows of its own elevation (one level of the map per top elevation of the chunk).
         const area = areaOf(chunk.rect);
+        const terrain = occlusionTerrain(area);
         const columnsWide = area.maxX - area.minX + 1;
         const columnsDeep = area.maxY - area.minY + 1;
         const map = RenderTexture.create({ width: columnsWide * pixelsPerTile, height: columnsDeep * pixelsPerTile });
@@ -593,10 +746,9 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
             y: y + index * alongY,
           }));
         });
-        const terrainShadow = new Uint8Array(columnsWide * columnsDeep * AO_PIXELS_PER_TILE * AO_PIXELS_PER_TILE);
         const occlusionSource = new BufferImageSource({
           resource: buildOcclusionMap(
-            occlusionTerrain(area),
+            terrain,
             AO_PIXELS_PER_TILE,
 
             occlusionContacts,
@@ -620,62 +772,82 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
         });
         // The masks cover the margin too (the neighbours' columns, at their own level): the edge
         // texels of a square blend with the next square's, so the map has no seam at chunk edges.
-        const sampleTerrain = createTerrainShadowSampler(occlusionTerrain(area));
+        const sampleTerrain = createTerrainShadowSampler(terrain);
         const faceGeometry = getTerrainFaces(
           chunk.columns.map(({ x, y, elevation }) => ({ x, y, elevation: elevation - topInsetAt(x, y) })),
-          (x, y) => occlusionTerrain(area).topHeightAt(x, y),
+          (x, y) => terrain.topHeightAt(x, y),
           DEFAULT_MIN_ELEVATION,
         );
+        let minimumReceiver = Infinity;
+        bounds.forEach((_rect, level) => {
+          minimumReceiver = Math.min(minimumReceiver, level);
+        });
+        faceGeometry.forEach(({ bottom }) => {
+          minimumReceiver = Math.min(minimumReceiver, bottom);
+        });
         const faces = createTerrainFaceShadows(faceGeometry, {
           renderer: app.renderer,
-          scratch: scratchFor(map).texture,
-          filters: [blurFilter, alphaFilter],
-          area,
+          // Blur the complete wall mask once, then grade its scene views.
+          filters: [blurFilter],
           projection,
           metrics,
           sampleTerrain,
+          isVisible: (view) => isVisible(shadow, view),
         });
-        const levels = [...new Set([...bounds.keys(), ...faces.levels])];
-        const layers: ShadowLayer[] = levels.map((level) => ({
-          level,
-          hasGround: bounds.has(level),
-          bounds: bounds.get(level) ?? chunk.rect,
-          own: columnMask(area, (other) => other === level),
-          others: columnMask(area, (other) => other !== level),
-          casters: [],
-          lifts: [],
-        }));
+        const layers: ShadowLayer[] = [...bounds.entries()].map(([level, bounds]) => {
+          const root = new Container();
+          const mask = new Graphics();
+          for (let y = area.minY; y <= area.maxY; y += 1) {
+            let start: number | undefined;
+            for (let x = area.minX; x <= area.maxX + 1; x += 1) {
+              const column = x <= area.maxX ? columnAt.get(x, y) : undefined;
+              const matches = column && column.elevation - topInsetAt(x, y) === level;
+              if (matches && start === undefined) start = x;
+              if (!matches && start !== undefined) {
+                mask.rect(
+                  (start - area.minX) * pixelsPerTile,
+                  (y - area.minY) * pixelsPerTile,
+                  (x - start) * pixelsPerTile,
+                  pixelsPerTile,
+                );
+                start = undefined;
+              }
+            }
+          }
+          mask.fill(0xffffff);
+          root.addChild(mask);
+          root.mask = mask;
+          root.visible = false;
+          casters.container.addChild(root);
+          return { level, bounds, root, mask, sprites: [], shown: 0, clip: { ...bounds }, casters: [], lifts: [] };
+        });
 
-        [...views, ...faces.views].forEach(({ view }) => {
-          view.alpha = lighting.current.shadowStrength;
+        views.forEach(({ view }) => {
+          view.alpha = 1;
         });
-        const directionalPixels = new Uint8ClampedArray(terrainShadow.length * 4);
-        const directionalSource = new BufferImageSource({
-          resource: directionalPixels,
-          width: columnsWide * AO_PIXELS_PER_TILE,
-          height: columnsDeep * AO_PIXELS_PER_TILE,
+        faces.views.forEach(({ view }) => {
+          view.alpha = 1;
         });
         const shadow: ShadowChunk = {
           chunk,
           map,
-          scratch: scratchFor(map),
           occlusion,
           area,
-          terrainShadow,
-          directional: new Texture({ source: directionalSource }),
-          directionalSource,
-          directionalPixels,
+          terrainGeometry: createTerrainShadowGeometry(terrain),
           sampleTerrain,
           faces,
           drawnLight: sun,
-          drawnKey: lightKey(sun),
+          drawnStrength: lighting.current.shadowStrength,
+          drawnResolution: filterResolution,
+          movingDirty: false,
+          bakedVisibility: new Set(),
+          minimumReceiver,
           gradeViews: views,
           layers,
           maps: [],
           gathering: "maps",
           gathered: false,
         };
-        bakeTerrain(shadow, sun);
         faces.clear();
         chunks.set(chunk.key, shadow);
         touch(chunk);
@@ -690,12 +862,24 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
               shadow.received.shadows.destroy();
               scene.remove(shadow.received.views);
             }
-            layers.forEach(({ own, others }) => {
-              own.destroy(true);
-              others.destroy(true);
+            layers.forEach(({ root, mask, sprites, terrain }) => {
+              sprites.forEach(({ index, sprite }) => {
+                sprite.visible = false;
+                casters.container.addChild(sprite);
+                freeCasters.push(index);
+              });
+              if (terrain) {
+                terrain.geometry.destroy(true);
+                terrain.destroy({ texture: false });
+              }
+              activeRoots.delete(root);
+              root.mask = null;
+              // Caster sprites and meshes are borrowed from the module's pools.
+              root.removeChildren();
+              root.destroy();
+              mask.destroy({ context: true });
             });
             occlusion.destroy(true);
-            shadow.directional.destroy(true);
             faces.destroy();
             // Its views' textures go with the map's source.
             map.destroy(true);
@@ -708,120 +892,109 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
         for (const { received } of chunks.values()) received?.shadows.follow();
       };
 
-      const applyGrade = () => {
-        const strength = lighting.current.shadowStrength;
-        if (strength === appliedStrength) return;
-        for (const shadow of chunks.values()) {
-          shadow.faces.views.forEach(({ view }) => {
-            view.alpha = strength;
+      const hasVisibleReceivers = (shadow: ShadowChunk) => {
+        const camera = services.get("camera");
+        if (
+          camera &&
+          (shadow.cullWidth !== app.screen.width ||
+            shadow.cullHeight !== app.screen.height ||
+            needsCull(shadow.cullCamera, camera.state, app.screen, projection, 0.015))
+        ) {
+          const views = [...shadow.gradeViews, ...shadow.faces.views, ...(shadow.received?.views ?? [])];
+          const previous = views.map(({ view }) => view.culled);
+          camera.cullViews(views, 0.03);
+          const visible = (shadow.visibleReceivers ??= new Set());
+          visible.clear();
+          views.forEach(({ view }, index) => {
+            if (!view.culled) {
+              visible.add(view);
+              if (!shadow.bakedVisibility.has(view)) shadow.movingDirty = true;
+            }
+            // Scene streaming uses a larger cull margin; it must not overwrite baking visibility.
+            view.culled = previous[index];
           });
-          shadow.gradeViews.forEach(({ view }) => {
-            view.alpha = strength;
-          });
-          shadow.received?.views.forEach(({ view }) => {
-            view.alpha = strength;
-          });
+          shadow.cullCamera = camera.state;
+          shadow.cullWidth = app.screen.width;
+          shadow.cullHeight = app.screen.height;
         }
-        movingViews.forEach(({ view }) => {
-          view.alpha = strength;
-        });
-        appliedStrength = strength;
+
+        return (
+          shadow.gradeViews.some(({ view }) => isVisible(shadow, view)) ||
+          shadow.faces.views.some(({ view }) => isVisible(shadow, view)) ||
+          Boolean(shadow.received?.views.some(({ view }) => isVisible(shadow, view)))
+        );
       };
 
       const update = () => {
         sun = lighting.current.shadow;
+        // Spatial filtering follows screen density; the light still advances on every frame.
+        filterResolution = Math.min(1, (services.get("camera")?.state?.zoom ?? 2) / 2);
+        blurFilter.resolution = filterResolution;
+        alphaFilter.resolution = filterResolution;
+        const movingChanged = profile("shadows:moving", () => moving.update());
+        if (movingChanged)
+          for (const shadow of chunks.values()) {
+            for (const state of moving.states) {
+              if (!state.changed) continue;
+              if (
+                (state.shape && reaches(state.shape, state.elevation - shadow.minimumReceiver, shadow.chunk.rect)) ||
+                (state.previous &&
+                  reaches(state.previous, state.previousElevation - shadow.minimumReceiver, shadow.chunk.rect))
+              )
+                shadow.movingDirty = true;
+            }
+          }
         // Topology and authored phase changes invalidate light; the world clock never does.
         const stale = [...chunks.values()]
           .filter(({ gathering }) => gathering !== undefined)
           .sort((a, b) => Number(a.gathered) - Number(b.gathered));
-        if (phaseBake && stale.includes(phaseBake.shadow)) cancelPhaseBake();
-        const fresh = building
-          ? stale.flatMap((shadow) => [...gather(shadow), ...gather(shadow), ...gather(shadow)])
-          : stale.slice(0, SHADOW_GATHERS_PER_FRAME).flatMap(gather);
-        fresh.forEach((target) => drawTarget(target, sun));
+        const gatherChunk = (shadow: ShadowChunk) => {
+          if (gather(shadow).length > 0) shadow.movingDirty = true;
+        };
+        if (building)
+          stale.forEach((shadow) => {
+            while (shadow.gathering !== undefined) gatherChunk(shadow);
+          });
+        else stale.slice(0, SHADOW_GATHERS_PER_FRAME).forEach(gatherChunk);
+        chunks.forEach(hasVisibleReceivers);
         building = false;
-        // Bake into back buffers in bounded slices. A chunk's top, walls and entity atlas are
-        // published together only when complete, so no half-updated shadow is visible.
-        if (phaseBake && !chunks.has(phaseBake.shadow.chunk.key)) cancelPhaseBake();
-        if (!phaseBake) {
-          const shadow = [...chunks.values()].find(
-            (candidate) =>
-              candidate.gathered &&
-              candidate.gathering === undefined &&
-              (candidate.drawnKey !== lightKey(sun) || (!lighting.transitioning && candidate.drawnLight !== sun)),
-          );
-          if (shadow) {
-            const key = `${shadow.map.width}×${shadow.map.height}`;
-            let map = phaseMaps.get(key);
-            if (!map) {
-              map = RenderTexture.create({ width: shadow.map.width, height: shadow.map.height });
-              phaseMaps.set(key, map);
-            }
-            app.renderer.render({ container: phaseClear, target: map, clear: true, clearColor: [0, 0, 0, 0] });
-            shadow.bakeTarget = map;
-            shadow.faces.begin();
-            bakeTerrain(shadow, sun);
-            phaseBake = { shadow, light: sun, map, next: 0 };
-          }
-        }
-        if (phaseBake) {
-          const job = phaseBake;
-          // At most eight receiver planes per frame; typical chunks finish in one frame.
-          const end = Math.min(job.shadow.maps.length, job.next + SHADOW_PLANES_PER_FRAME);
-          while (job.next < end) {
-            drawTarget(job.shadow.maps[job.next], job.light);
-            job.next += 1;
-          }
-          if (job.next === job.shadow.maps.length) {
-            scratchSprite.texture = job.map;
-            app.renderer.render({
-              container: scratchSprite,
-              target: job.shadow.map,
-              clear: true,
-              clearColor: [0, 0, 0, 0],
-            });
-            job.shadow.faces.commit();
-            if (job.shadow.received) drawTarget(job.shadow.received.target, job.light);
-            job.shadow.drawnLight = job.light;
-            job.shadow.drawnKey = lightKey(job.light);
-            job.shadow.bakeTarget = undefined;
-            phaseBake = undefined;
-          }
+        // A phase is one frame-wide light snapshot, shared by every chunk, wall and moving caster.
+        // Never quantize the angle or publish receivers on different frames.
+        for (const shadow of chunks.values()) {
+          if (shadow.maps.length === 0 || !hasVisibleReceivers(shadow)) continue;
+          if (
+            shadow.drawnLight === sun &&
+            shadow.drawnStrength === lighting.current.shadowStrength &&
+            shadow.drawnResolution >= filterResolution &&
+            !shadow.movingDirty
+          )
+            continue;
+          shadow.maps.forEach((target) => drawTarget(target, sun));
+          if (shadow.received) drawTarget(shadow.received.target, sun);
+          shadow.drawnLight = sun;
         }
         updateMovingReceiverShadows();
-        applyGrade();
       };
 
       return {
-        views: movingViews,
+        views: [],
         showChunk,
         start: (built) => {
           scene = built;
-          // They follow what casts them, which the camera keeps in view.
-          movingViews.forEach(({ view }) => {
-            view.cullable = false;
-          });
           update();
-          updateMoving();
         },
         update: () => {
           update();
           profile("shadows:follow", follow);
-          profile("shadows:moving", updateMoving);
         },
         destroy: () => {
-          cancelPhaseBake();
-          moving.forEach((shadow) => shadow.destroy());
+          spriteSampler.destroy();
           // The caster sprites with their containers and filters; their textures are the entities' and the chunks'.
           levelRoot.destroy({ children: true });
-          copyRoot.destroy({ children: true });
           receivedRig.destroy();
           blurFilter.destroy();
           alphaFilter.destroy();
           groundSprites.destroy();
-          scratches.forEach(({ texture }) => texture.destroy(true));
-          phaseMaps.forEach((texture) => texture.destroy(true));
-          phaseClear.destroy();
         },
       };
     },
