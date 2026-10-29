@@ -72,6 +72,7 @@ export function mockPixi() {
     public visibleWrites: boolean[] = [];
     public eventMode = "passive";
     public position = { x: 0, y: 0, set: vi.fn((x: number, y: number) => Object.assign(this.position, { x, y })) };
+    public skew = { x: 0, y: 0 };
     public scale = {
       x: 1,
       y: 1,

@@ -13,6 +13,7 @@ import { projectBoxesToIsometric, projectGridPoint } from "../projection";
 import { createBlockViews, getBlockDepth, getSheetFrames, showFrame } from "../render";
 import { SCENE_LAYER, type BuiltScene, type SceneModule } from "../scene";
 import type { GridPoint, PlayerAppearance, PlayerRenderPosition } from "../../types";
+import { getBodyShape, getLeanTarget, stepBodyLean, type BodyLean } from "./body-motion";
 import { DUST_MIN_IMPACT, getBodyScale, getDust, getVoxelFaces } from "./feedback";
 import {
   getClimbPose,
@@ -299,6 +300,13 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
       let sinceLanding = Infinity;
       let impact = 0;
       let body: GridPoint = { x: 1, y: 1 };
+      // How it leans (a spring toward its speed and acceleration across the screen), as drawn, and
+      // the velocity and tick it last saw, to tell how fast it speeds up.
+      const lean: BodyLean = { angle: 0, speed: 0 };
+      let tilt = 0;
+      let seenTick: number | undefined;
+      let seenVelocity: GridPoint = { x: 0, y: 0 };
+      let acceleration: GridPoint = { x: 0, y: 0 };
       // Puffs of dust, made when first raised: one for take-offs (in the air too, where the feet are,
       // for a double jump), one for landings, then {@link RUN_PUFFS} small ones for running, in turn.
       const puffs: Array<{ view: Graphics; ms: number } | undefined> = [];
@@ -348,10 +356,13 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
       };
       /**
        * Notices what the player did since the last frame (`player.feedback`), raises its dust and
-       * gives the body its squash and stretch for this frame, `elapsedMs` after the last. Whether
-       * the body's scale changed, so it is placed again.
+       * gives the body its shape for this frame, `elapsedMs` after the last, on tick `tick`
+       * (`alpha` of the way to the next): the squash and stretch of a take-off or a landing, times
+       * the bob, air stretch or climb stretch of its state (`getBodyShape()`), and its lean into how
+       * it moves across the screen (`getLeanTarget()`, `stepBodyLean()`). Only transforms of the
+       * one sprite: no pose is added. Whether the body's scale or lean changed, so it is placed again.
        */
-      const react = (at: PlayerRenderPosition, elapsedMs: number) => {
+      const react = (at: PlayerRenderPosition, tick: number, alpha: number, elapsedMs: number) => {
         if (!effects) return false;
         sinceTakeoff += elapsedMs;
         sinceLanding += elapsedMs;
@@ -367,9 +378,35 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         }
         kickDust(at);
         Object.assign(seen, feedback);
-        const next = getBodyScale(sinceTakeoff, sinceLanding, impact);
-        if (next.x === body.x && next.y === body.y) return false;
+        const { velocity } = player;
+        if (tick !== seenTick) {
+          const ticks = seenTick === undefined ? 0 : tick - seenTick;
+          acceleration =
+            ticks > 0
+              ? { x: (velocity.x - seenVelocity.x) / ticks, y: (velocity.y - seenVelocity.y) / ticks }
+              : { x: 0, y: 0 };
+          seenVelocity = { ...velocity };
+          seenTick = tick;
+        }
+        const climbing = player.motion.type === "climbing" ? getPlayerClimbProgress(player, alpha) : undefined;
+        stepBodyLean(lean, climbing === undefined ? getLeanTarget(velocity, acceleration) : 0, elapsedMs);
+        const pulse = getBodyScale(sinceTakeoff, sinceLanding, impact);
+        const shape = getBodyShape({
+          motion: player.motion.type,
+          speed: Math.hypot(velocity.x, velocity.y),
+          walked,
+          stride: walk?.sheet.stride ?? 0,
+          verticalSpeed: player.verticalSpeed,
+          climb: climbing,
+        });
+        const next = { x: pulse.x * shape.x, y: pulse.y * shape.y };
+        if (next.x === body.x && next.y === body.y && lean.angle === tilt) return false;
         body = next;
+        if (lean.angle !== tilt) {
+          tilt = lean.angle;
+          // Skewed about its feet (see `place()`): the head leans `tilt` to the right.
+          view.skew.x = -tilt;
+        }
         view.scale.set(base.x * body.x, base.y * body.y);
         return true;
       };
@@ -381,7 +418,14 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         const lifted = at.elevation + at.height;
         drawnFoot.y = screen.y - (lifted - at.inset) * metrics.boxHeight;
         castFrom = { x: at.x, y: at.y, elevation: lifted };
-        view.position.set(drawnFoot.x + offset.x * body.x, drawnFoot.y + offset.y * body.y);
+        // Scaled and leant about its feet: a skew of `−tilt` moves a point `d` below the sprite's
+        // origin by `sin(tilt) × d` to the left and raises it by `(1 − cos(tilt)) × d`, so the
+        // origin moves the other way and the feet stay where they stand.
+        const below = offset.y * body.y;
+        view.position.set(
+          drawnFoot.x + offset.x * body.x - Math.sin(tilt) * below,
+          drawnFoot.y + Math.cos(tilt) * below,
+        );
         // In the draw order by the column it stands on, at that column's top: computed, and the
         // view moved, only when that column or the side of its middle changes, not on every frame.
         const elevation = columnAt.get(column.x, column.y)?.elevation ?? player.elevation;
@@ -418,7 +462,7 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
           place(drawnAt);
           services.get("camera")?.follow(ground(drawnAt));
         },
-        update: ({ alpha, elapsedMs }) => {
+        update: ({ tick, alpha, elapsedMs }) => {
           const at = getPlayerRenderPosition(player, alpha);
           const moved =
             at.x !== drawnAt.x ||
@@ -427,7 +471,7 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
             at.inset !== drawnAt.inset ||
             at.height !== drawnAt.height;
           animate(at, alpha, elapsedMs);
-          const reshaped = react(at, elapsedMs);
+          const reshaped = react(at, tick, alpha, elapsedMs);
           settleDust(elapsedMs);
           syncTerrainShadowOverlay();
           if (moved || reshaped) place(at);

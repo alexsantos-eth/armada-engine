@@ -10,7 +10,7 @@ import { TILE_METRICS } from "../constants";
 import { WorldParts } from "../parts";
 import { createPlayer, PLAYER_FACINGS, PLAYER_PART, stepPlayer } from "../player";
 import { DUST_MS } from "./feedback";
-import { createClockPart } from "../time";
+import { CLOCK_PART, createClockPart } from "../time";
 import { projectGridPoint } from "../projection";
 import { createBlockViews, getBlockDepth, getSvgResolution } from "../render";
 import { SCENE_LAYER, type BuiltScene, type SceneModule } from "../scene";
@@ -882,6 +882,129 @@ describe("createPlayerView feedback", () => {
     ticker.frame(16);
     expect(view as Shape).toMatchObject({ tint: 0xffffff, scale: { x: 1, y: 1 } });
     expect(view.position).toMatchObject(still);
+    scene.destroy();
+  });
+});
+
+describe("createPlayerView body motion", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  beforeEach(() => {
+    resetHarness();
+    vi.clearAllMocks();
+    vi.mocked(Assets.load).mockImplementation(loadTexture as never);
+  });
+
+  type Body = TestView & { skew: { x: number }; scale: { x: number; y: number } };
+  /** A ground velocity of `speed` columns per tick straight to the right of the screen. */
+  const right = (speed: number) => ({ x: speed / Math.SQRT2, y: -speed / Math.SQRT2 });
+  /** Where the sprite's feet are: its origin back down its (scaled, skewed) height. */
+  const feetOf = (view: Body, height: number) => ({
+    x: view.position.x + Math.sin(view.skew.x) * height * view.scale.y,
+    y: view.position.y + Math.cos(view.skew.x) * height * view.scale.y,
+  });
+
+  it("leans into a run and back against the stop, then stands upright, about its feet", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, view, scene } = await sceneOf(world);
+    const body = view as Body;
+    const player = world.parts.get(PLAYER_PART);
+    const clock = world.parts.get(CLOCK_PART);
+    const feet = feetOf(body, 30);
+    const upright = { ...body.position };
+    ticker.frame(16);
+    expect(body.skew.x).toBe(0);
+
+    // Sets off to the right of the screen, speeding up for a few ticks, in place (only the lean).
+    const leans: number[] = [];
+    for (let tick = 1; tick <= 6; tick += 1) {
+      clock.tick += 1;
+      player.velocity = right(Math.min(0.25, 0.05 * tick));
+      ticker.frame(50);
+      leans.push(-body.skew.x);
+    }
+    expect(leans[0]).toBeGreaterThan(0);
+    expect(Math.max(...leans)).toBeLessThan(0.17);
+    // The head leans right; the feet stay where they stand.
+    expect(feetOf(body, 30).x).toBeCloseTo(feet.x);
+    expect(feetOf(body, 30).y).toBeCloseTo(feet.y);
+
+    // Stops at once: it swings back past upright before it settles.
+    clock.tick += 1;
+    player.velocity = { x: 0, y: 0 };
+    let least = Infinity;
+    for (let frame = 0; frame < 20; frame += 1) {
+      // A tick every three frames: the stop's deceleration lasts its tick.
+      if (frame % 3 === 2) clock.tick += 1;
+      ticker.frame(16);
+      least = Math.min(least, -body.skew.x);
+    }
+    expect(least).toBeLessThan(0);
+    for (let frame = 0; frame < 40; frame += 1) ticker.frame(100);
+    expect(Math.abs(body.skew.x)).toBe(0);
+    expect(body.position).toMatchObject(upright);
+    scene.destroy();
+  });
+
+  it("does not lean or reshape with its effects off", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, view, scene } = await sceneOf(world, undefined, { effects: false });
+    world.parts.get(CLOCK_PART).tick += 1;
+    world.parts.get(PLAYER_PART).velocity = right(0.25);
+    ticker.frame(50);
+    expect((view as Body).skew.x).toBe(0);
+    expect((view as Body).scale).toMatchObject({ x: 1, y: 1 });
+    scene.destroy();
+  });
+
+  it("bobs with its footfalls walking, stretches in the air and while it climbs", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, root, scene } = await mountScene(world, [createPlayerView(WALKER)]);
+    const body = spriteOf(root) as Body;
+    const player = world.parts.get(PLAYER_PART);
+
+    // Walking toward the camera's right: a quarter of a step in, the body is taller and thinner.
+    const step = SHEET.stride / 8;
+    Object.assign(player, { motion: { type: "walking" }, velocity: { x: 0.15, y: 0 } });
+    Object.assign(player, { previous: { ...player.previous, x: 1 }, x: 1 + step });
+    ticker.frame(16);
+    expect(body.scale.y).toBeGreaterThan(1);
+    expect(body.scale.x).toBeLessThan(1);
+
+    // Rising fast in the air: stretched; at the apex, back to its own shape.
+    const still = { x: 1 + step, y: 1, elevation: 1, inset: 0, height: 0.4 };
+    Object.assign(player, still, {
+      previous: still,
+      velocity: { x: 0, y: 0 },
+      motion: { type: "jumping" },
+      verticalSpeed: 0.3,
+    });
+    ticker.frame(16);
+    expect(body.scale.y).toBeGreaterThan(1);
+    player.verticalSpeed = 0;
+    ticker.frame(16);
+    expect(body.scale.y).toBeCloseTo(1);
+
+    // Halfway through a climb: stretched as it pulls itself up, and upright.
+    Object.assign(player, {
+      motion: { type: "climbing" },
+      verticalSpeed: undefined,
+      height: 0,
+      previous: { ...still, height: 0 },
+      climb: {
+        from: { x: 1, y: 1 },
+        to: { x: 2, y: 1 },
+        direction: { x: 1, y: 0 },
+        feet: 1,
+        rise: 1,
+        ticks: 12,
+        tick: 6,
+      },
+    });
+    ticker.frame(16);
+    expect(body.scale.y).toBeGreaterThan(1);
     scene.destroy();
   });
 });
