@@ -33,7 +33,7 @@ export type TerrainFaceShadows = {
   readonly views: readonly SceneView[];
   readonly levels: readonly number[];
   clear(): void;
-  begin(): void;
+  begin(resolution?: number): void;
   commit(opacity?: number): void;
   cancel(): void;
   draw(level: number | null, light: ShadowProjection, casters?: readonly Silhouette[], lifts?: readonly number[]): void;
@@ -95,6 +95,7 @@ export function createTerrainFaceShadows(
   const views = faces.map((face, index) => {
     const frame = new Texture({
       source: atlas.source,
+      dynamic: true,
       frame: new Rectangle((index % COLUMNS) * STRIDE + 3, Math.floor(index / COLUMNS) * STRIDE + 3, PIXELS, PIXELS),
     });
     const sprite = new Sprite(frame);
@@ -144,8 +145,10 @@ export function createTerrainFaceShadows(
     levels,
     clear: () =>
       renderer.render({ container: empty, target: working ? work : atlas, clear: true, clearColor: [0, 0, 0, 0] }),
-    begin() {
-      work ??= RenderTexture.create({ width, height });
+    begin(resolution = 1) {
+      work ??= RenderTexture.create({ width, height, resolution, dynamic: true });
+      if (work.source.resolution !== resolution) work.resize(width, height, resolution);
+      if (atlas.source.resolution !== resolution) atlas.resize(width, height, resolution);
       working = true;
       renderer.render({ container: empty, target: work, clear: true, clearColor: [0, 0, 0, 0] });
     },
@@ -177,9 +180,6 @@ export function createTerrainFaceShadows(
         visibility[index] = visible;
       });
       if (terrainChanged) pixels.fill(0);
-      meshes.forEach((mesh) => {
-        mesh.visible = false;
-      });
       let shown = 0;
       const paintCaster = (face: TerrainShadowFace, index: number, caster: Silhouette, casterIndex: number) => {
         const count = projector(face, caster, (level ?? 0) + (lifts[casterIndex] ?? 0), light);
@@ -241,6 +241,7 @@ export function createTerrainFaceShadows(
             paintCaster(face, index, caster, casterIndex);
         }
       });
+      for (let index = shown; index < meshes.length; index += 1) meshes[index].visible = false;
       faces.forEach((face, index) => {
         const shows = isVisible(views[index].view) && (level === null || face.bottom === level);
         erasers[index].visible = shows;

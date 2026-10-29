@@ -1,65 +1,102 @@
 {
-  "scenario": "production, seed 1337, 7 chunks, sunset to day and walking left",
-  "reports": [
-    {
-      "level": "info",
-      "message": "Armada perf · 5.0 s · 300 frames · 60.0 fps · chunks 7\nframe ms p50 16.7 · p95 16.8 · max 17.7 · over 33.4 ms: 0\ncpu ms p50 7.0 · p95 13.4 · max 15.4 · draw calls avg 87 · max 206\ntextures 261.8 MB (render 134.1 · svg 124.3 · buffer 3.5) in 192 · js heap 149.2 MB\nlargest textures: svg 720×1000 ×6 = 22.0 MB · svg 720×840 ×7 = 21.5 MB · render 816×816 ×7 = 17.8 MB\nsteps ms avg/max per frame: update:shadows 5.05/10.10 · shadows:maps 3.34/2.20 · shadows:ground 2.48/2.10 · update:camera 0.17/1.80 · shadows:received 0.92/1.80 · shadows:walls 0.86/1.20 · shadows:ground-paint 0.73/0.80 · shadows:follow 0.11/0.30 · shadows:terrain-project 0.62/0.30 · foliage-wind:sway 0.04/0.30 · update:foliage-wind 0.04/0.30 · stream 0.06/0.20 · update:surface-bands 0.02/0.20 · update:player 0.01/0.20 · surface-bands:draw 0.02/0.20 · update:ambient-light 0.01/0.10 · shadows:moving 0.00/0.10",
-      "timestamp": "2026-10-29T01:58:32.306Z",
-      "url": "http://127.0.0.1:4173/assets/perf-DCUL7bQO.js"
-    },
-    {
-      "level": "info",
-      "message": "Armada perf · 5.0 s · 300 frames · 60.0 fps · chunks 7\nframe ms p50 16.7 · p95 16.8 · max 17.5 · over 33.4 ms: 0\ncpu ms p50 1.0 · p95 2.6 · max 6.8 · draw calls avg 12 · max 51\ntextures 261.8 MB (render 134.1 · svg 124.3 · buffer 3.5) in 192 · js heap 158.7 MB\nlargest textures: svg 720×1000 ×6 = 22.0 MB · svg 720×840 ×7 = 21.5 MB · render 816×816 ×7 = 17.8 MB\nsteps ms avg/max per frame: update:shadows 0.64/6.20 · shadows:ground 0.09/2.80 · shadows:maps 0.14/2.80 · shadows:received 0.05/1.80 · shadows:walls 0.06/1.70 · shadows:ground-paint 0.03/1.20 · shadows:follow 0.14/0.40 · surface-bands:draw 0.03/0.30 · update:surface-bands 0.03/0.30 · foliage-wind:sway 0.05/0.30 · update:foliage-wind 0.06/0.30 · stream 0.11/0.30 · update:player 0.01/0.10 · update:ambient-light 0.00/0.10 · shadows:moving 0.00/0.10 · update:camera 0.00/0.10 · shadows:terrain-project 0.00/0.00",
-      "timestamp": "2026-10-29T01:58:37.312Z",
-      "url": "http://127.0.0.1:4173/assets/perf-DCUL7bQO.js"
-    },
-    {
-      "level": "info",
-      "message": "Armada perf · 5.0 s · 301 frames · 60.0 fps · chunks 7\nframe ms p50 16.7 · p95 16.8 · max 17.6 · over 33.4 ms: 0\ncpu ms p50 1.1 · p95 2.2 · max 7.4 · draw calls avg 12 · max 51\ntextures 261.8 MB (render 134.1 · svg 124.3 · buffer 3.5) in 192 · js heap 142.2 MB\nlargest textures: svg 720×1000 ×6 = 22.0 MB · svg 720×840 ×7 = 21.5 MB · render 816×816 ×7 = 17.8 MB\nsteps ms avg/max per frame: update:shadows 0.69/6.00 · shadows:ground 0.10/2.60 · shadows:maps 0.15/2.60 · shadows:walls 0.05/1.70 · shadows:received 0.05/1.40 · shadows:ground-paint 0.04/1.20 · update:foliage-wind 0.06/0.40 · foliage-wind:sway 0.06/0.40 · shadows:follow 0.15/0.40 · stream 0.12/0.30 · update:surface-bands 0.04/0.30 · surface-bands:draw 0.04/0.30 · update:player 0.01/0.20 · update:ambient-light 0.00/0.10 · shadows:moving 0.00/0.10 · update:camera 0.00/0.10 · shadows:terrain-project 0.00/0.00",
-      "timestamp": "2026-10-29T01:58:42.325Z",
-      "url": "http://127.0.0.1:4173/assets/perf-DCUL7bQO.js"
-    },
-    {
-      "level": "info",
-      "message": "Armada perf · 5.0 s · 301 frames · 60.0 fps · chunks 7\nframe ms p50 16.7 · p95 16.8 · max 17.7 · over 33.4 ms: 0\ncpu ms p50 1.0 · p95 2.0 · max 6.9 · draw calls avg 12 · max 51\ntextures 261.8 MB (render 134.1 · svg 124.3 · buffer 3.5) in 192 · js heap 151.1 MB\nlargest textures: svg 720×1000 ×6 = 22.0 MB · svg 720×840 ×7 = 21.5 MB · render 816×816 ×7 = 17.8 MB\nsteps ms avg/max per frame: update:shadows 0.66/5.90 · shadows:ground 0.09/2.50 · shadows:maps 0.15/2.50 · shadows:walls 0.06/1.60 · shadows:received 0.05/1.30 · shadows:ground-paint 0.04/1.20 · foliage-wind:sway 0.06/0.40 · update:foliage-wind 0.06/0.40 · shadows:follow 0.14/0.40 · stream 0.12/0.20 · update:surface-bands 0.03/0.20 · update:player 0.01/0.20 · surface-bands:draw 0.03/0.20 · update:ambient-light 0.00/0.10 · shadows:moving 0.00/0.10 · update:camera 0.00/0.10 · shadows:terrain-project 0.00/0.00",
-      "timestamp": "2026-10-29T01:58:47.341Z",
-      "url": "http://127.0.0.1:4173/assets/perf-DCUL7bQO.js"
-    },
-    {
-      "level": "info",
-      "message": "Armada perf · 5.0 s · 301 frames · 60.0 fps · chunks 7\nframe ms p50 16.7 · p95 17.6 · max 17.7 · over 33.4 ms: 0\ncpu ms p50 1.1 · p95 2.2 · max 7.4 · draw calls avg 12 · max 51\ntextures 261.8 MB (render 134.1 · svg 124.3 · buffer 3.5) in 192 · js heap 159.6 MB\nlargest textures: svg 720×1000 ×6 = 22.0 MB · svg 720×840 ×7 = 21.5 MB · render 816×816 ×7 = 17.8 MB\nsteps ms avg/max per frame: update:shadows 0.69/6.30 · shadows:ground 0.09/2.80 · shadows:maps 0.15/2.80 · shadows:walls 0.06/1.70 · shadows:received 0.05/1.40 · shadows:ground-paint 0.04/1.10 · update:surface-bands 0.04/0.40 · update:foliage-wind 0.06/0.40 · foliage-wind:sway 0.06/0.40 · surface-bands:draw 0.03/0.40 · shadows:follow 0.15/0.30 · stream 0.12/0.20 · update:player 0.01/0.10 · update:ambient-light 0.00/0.10 · shadows:moving 0.00/0.10 · update:camera 0.00/0.10 · shadows:terrain-project 0.00/0.00",
-      "timestamp": "2026-10-29T01:58:52.359Z",
-      "url": "http://127.0.0.1:4173/assets/perf-DCUL7bQO.js"
-    },
-    {
-      "level": "info",
-      "message": "Armada perf · 5.0 s · 300 frames · 60.0 fps · chunks 7\nframe ms p50 16.7 · p95 16.8 · max 17.8 · over 33.4 ms: 0\ncpu ms p50 1.1 · p95 2.4 · max 6.8 · draw calls avg 12 · max 51\ntextures 261.8 MB (render 134.1 · svg 124.3 · buffer 3.5) in 192 · js heap 143.3 MB\nlargest textures: svg 720×1000 ×6 = 22.0 MB · svg 720×840 ×7 = 21.5 MB · render 816×816 ×7 = 17.8 MB\nsteps ms avg/max per frame: update:shadows 0.71/5.70 · shadows:ground 0.10/2.40 · shadows:maps 0.16/2.40 · shadows:walls 0.06/1.60 · shadows:received 0.05/1.30 · shadows:ground-paint 0.04/1.00 · shadows:follow 0.15/0.40 · update:surface-bands 0.03/0.30 · foliage-wind:sway 0.07/0.30 · update:foliage-wind 0.07/0.30 · surface-bands:draw 0.03/0.30 · stream 0.12/0.30 · update:player 0.01/0.10 · update:ambient-light 0.00/0.10 · shadows:moving 0.00/0.10 · update:camera 0.00/0.10 · shadows:terrain-project 0.00/0.00",
-      "timestamp": "2026-10-29T01:58:57.357Z",
-      "url": "http://127.0.0.1:4173/assets/perf-DCUL7bQO.js"
-    },
-    {
-      "level": "info",
-      "message": "Armada perf · 5.0 s · 300 frames · 60.0 fps · chunks 7\nframe ms p50 16.7 · p95 16.8 · max 17.4 · over 33.4 ms: 0\ncpu ms p50 1.1 · p95 2.3 · max 7.1 · draw calls avg 12 · max 51\ntextures 261.8 MB (render 134.1 · svg 124.3 · buffer 3.5) in 192 · js heap 151.7 MB\nlargest textures: svg 720×1000 ×6 = 22.0 MB · svg 720×840 ×7 = 21.5 MB · render 816×816 ×7 = 17.8 MB\nsteps ms avg/max per frame: update:shadows 0.69/6.10 · shadows:ground 0.09/2.90 · shadows:maps 0.15/2.90 · shadows:walls 0.06/1.50 · shadows:received 0.05/1.30 · shadows:ground-paint 0.03/1.10 · stream 0.12/0.50 · update:surface-bands 0.04/0.50 · surface-bands:draw 0.04/0.50 · update:foliage-wind 0.07/0.40 · shadows:follow 0.15/0.40 · foliage-wind:sway 0.06/0.40 · update:player 0.01/0.10 · update:ambient-light 0.00/0.10 · shadows:moving 0.00/0.10 · update:camera 0.00/0.10 · shadows:terrain-project 0.00/0.00",
-      "timestamp": "2026-10-29T01:59:02.357Z",
-      "url": "http://127.0.0.1:4173/assets/perf-DCUL7bQO.js"
-    },
-    {
-      "level": "info",
-      "message": "Armada perf · 5.0 s · 301 frames · 60.0 fps · chunks 7\nframe ms p50 16.7 · p95 16.8 · max 17.5 · over 33.4 ms: 0\ncpu ms p50 1.1 · p95 2.4 · max 6.7 · draw calls avg 12 · max 51\ntextures 261.8 MB (render 134.1 · svg 124.3 · buffer 3.5) in 192 · js heap 160.4 MB\nlargest textures: svg 720×1000 ×6 = 22.0 MB · svg 720×840 ×7 = 21.5 MB · render 816×816 ×7 = 17.8 MB\nsteps ms avg/max per frame: update:shadows 0.70/6.10 · shadows:ground 0.09/2.70 · shadows:maps 0.15/2.70 · shadows:walls 0.06/1.50 · shadows:received 0.05/1.30 · shadows:ground-paint 0.03/0.90 · shadows:follow 0.15/0.40 · update:foliage-wind 0.06/0.40 · foliage-wind:sway 0.06/0.40 · stream 0.12/0.30 · update:surface-bands 0.03/0.30 · surface-bands:draw 0.03/0.30 · update:player 0.01/0.10 · update:ambient-light 0.00/0.10 · shadows:moving 0.00/0.10 · update:camera 0.00/0.10 · shadows:terrain-project 0.00/0.00",
-      "timestamp": "2026-10-29T01:59:07.373Z",
-      "url": "http://127.0.0.1:4173/assets/perf-DCUL7bQO.js"
-    },
-    {
-      "level": "info",
-      "message": "Armada perf · 5.0 s · 301 frames · 60.0 fps · chunks 7\nframe ms p50 16.7 · p95 16.8 · max 17.3 · over 33.4 ms: 0\ncpu ms p50 1.1 · p95 2.3 · max 6.9 · draw calls avg 12 · max 51\ntextures 261.8 MB (render 134.1 · svg 124.3 · buffer 3.5) in 192 · js heap 143.8 MB\nlargest textures: svg 720×1000 ×6 = 22.0 MB · svg 720×840 ×7 = 21.5 MB · render 816×816 ×7 = 17.8 MB\nsteps ms avg/max per frame: update:shadows 0.72/6.00 · shadows:ground 0.09/2.60 · shadows:maps 0.14/2.60 · shadows:walls 0.05/1.50 · shadows:ground-paint 0.03/1.30 · shadows:received 0.05/1.30 · update:surface-bands 0.04/0.50 · surface-bands:draw 0.04/0.50 · foliage-wind:sway 0.07/0.40 · update:foliage-wind 0.07/0.40 · shadows:follow 0.16/0.40 · stream 0.12/0.20 · update:player 0.01/0.10 · update:ambient-light 0.00/0.10 · shadows:moving 0.00/0.10 · update:camera 0.00/0.10 · shadows:terrain-project 0.00/0.00",
-      "timestamp": "2026-10-29T01:59:12.390Z",
-      "url": "http://127.0.0.1:4173/assets/perf-DCUL7bQO.js"
-    },
-    {
-      "level": "info",
-      "message": "Armada perf · 5.0 s · 301 frames · 60.0 fps · chunks 7\nframe ms p50 16.7 · p95 16.8 · max 17.7 · over 33.4 ms: 0\ncpu ms p50 0.9 · p95 2.2 · max 7.2 · draw calls avg 12 · max 51\ntextures 261.8 MB (render 134.1 · svg 124.3 · buffer 3.5) in 192 · js heap 152.5 MB\nlargest textures: svg 720×1000 ×6 = 22.0 MB · svg 720×840 ×7 = 21.5 MB · render 816×816 ×7 = 17.8 MB\nsteps ms avg/max per frame: update:shadows 0.59/6.10 · shadows:ground 0.08/2.60 · shadows:maps 0.13/2.60 · shadows:walls 0.05/1.70 · shadows:received 0.04/1.30 · shadows:ground-paint 0.03/1.30 · foliage-wind:sway 0.05/0.40 · update:foliage-wind 0.05/0.40 · update:surface-bands 0.03/0.30 · shadows:follow 0.13/0.30 · surface-bands:draw 0.03/0.30 · stream 0.10/0.20 · update:player 0.01/0.10 · update:ambient-light 0.00/0.10 · shadows:moving 0.01/0.10 · update:camera 0.00/0.10 · shadows:terrain-project 0.00/0.10",
-      "timestamp": "2026-10-29T01:59:17.406Z",
-      "url": "http://127.0.0.1:4173/assets/perf-DCUL7bQO.js"
-    }
-  ]
+  "capturedAt": "2026-10-29T04:36:58.974Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "seed": 1337,
+  "timeScale": 1,
+  "normal": {
+    "description": "Zoom inicial 5, transición de 3 s y caminar 3.5 s; build final con consulta auxiliar nativa",
+    "reports": [
+      {
+        "level": "info",
+        "message": "Armada perf · 5.0 s · 300 frames · 60.0 fps · chunks 5\nframe ms p50 16.7 · p95 18.6 · max 18.7 · over 33.4 ms: 0\ncpu ms p50 1.0 · p95 2.3 · max 5.7 · draw calls avg 3 · max 27\ntextures 93.6 MB (svg 58.8 · render 34.3 · buffer 0.6) in 47 · js heap 63.0 MB\nlargest textures: render 2048×512 ×3 = 12.0 MB · svg 480×560 ×8 = 10.9 MB · svg 1440×1200 ×1 = 8.8 MB\nsteps ms avg/max per frame: update:shadows 0.73/3.90 · shadows:received 0.03/1.40 · shadows:ground 0.05/1.30 · shadows:maps 0.09/1.30 · shadows:walls 0.05/1.20 · shadows:ground-paint 0.02/0.60 · stream 0.13/0.30 · surface-bands:draw 0.05/0.30 · update:surface-bands 0.05/0.30 · foliage-wind:sway 0.03/0.30 · update:foliage-wind 0.03/0.30 · shadows:follow 0.09/0.30 · shadows:terrain-project 0.00/0.20 · update:player 0.01/0.10 · update:ambient-light 0.00/0.10 · shadows:moving 0.00/0.10 · update:camera 0.01/0.10",
+        "timestamp": "2026-10-29T04:36:21.708Z",
+        "url": "http://127.0.0.1:4173/assets/perf-Jr0syXCt.js"
+      },
+      {
+        "level": "info",
+        "message": "Armada perf · 5.0 s · 300 frames · 60.0 fps · chunks 5\nframe ms p50 16.7 · p95 18.6 · max 18.7 · over 33.4 ms: 0\ncpu ms p50 2.7 · p95 7.2 · max 10.4 · draw calls avg 19 · max 30\ntextures 93.6 MB (svg 58.8 · render 34.3 · buffer 0.6) in 50 · js heap 62.4 MB\nlargest textures: render 2048×512 ×3 = 12.0 MB · svg 480×560 ×8 = 10.9 MB · svg 1440×1200 ×1 = 8.8 MB\nsteps ms avg/max per frame: update:shadows 2.33/7.50 · update:camera 0.52/2.10 · shadows:maps 0.70/1.20 · shadows:walls 0.39/1.20 · shadows:ground 0.32/1.10 · shadows:received 0.36/0.80 · update:surface-bands 0.03/0.40 · shadows:ground-paint 0.15/0.40 · surface-bands:draw 0.03/0.40 · shadows:follow 0.06/0.30 · stream 0.07/0.20 · foliage-wind:sway 0.02/0.20 · update:foliage-wind 0.02/0.20 · shadows:terrain-project 0.02/0.20 · update:player 0.02/0.20 · update:ambient-light 0.01/0.10 · shadows:moving 0.01/0.10",
+        "timestamp": "2026-10-29T04:36:26.708Z",
+        "url": "http://127.0.0.1:4173/assets/perf-Jr0syXCt.js"
+      },
+      {
+        "level": "info",
+        "message": "Armada perf · 5.0 s · 300 frames · 60.0 fps · chunks 5\nframe ms p50 16.7 · p95 18.7 · max 18.7 · over 33.4 ms: 0\ncpu ms p50 1.9 · p95 2.7 · max 4.8 · draw calls avg 5 · max 26\ntextures 93.6 MB (svg 58.8 · render 34.3 · buffer 0.6) in 50 · js heap 66.9 MB\nlargest textures: render 2048×512 ×3 = 12.0 MB · svg 480×560 ×8 = 10.9 MB · svg 1440×1200 ×1 = 8.8 MB\nsteps ms avg/max per frame: update:shadows 1.20/4.20 · shadows:maps 0.08/1.30 · shadows:walls 0.05/1.30 · shadows:ground 0.03/1.10 · shadows:received 0.02/0.70 · shadows:ground-paint 0.01/0.50 · stream 0.13/0.30 · update:surface-bands 0.06/0.30 · surface-bands:draw 0.05/0.30 · shadows:follow 0.12/0.30 · update:foliage-wind 0.04/0.20 · update:player 0.02/0.20 · foliage-wind:sway 0.04/0.20 · update:ambient-light 0.00/0.10 · shadows:moving 0.01/0.10 · update:camera 0.01/0.10 · shadows:terrain-project 0.00/0.10",
+        "timestamp": "2026-10-29T04:36:31.709Z",
+        "url": "http://127.0.0.1:4173/assets/perf-Jr0syXCt.js"
+      }
+    ]
+  },
+  "wide": {
+    "description": "Zoom mínimo, transición de 3 s y caminar 3.5 s; build con consulta auxiliar nativa",
+    "reports": [
+      {
+        "level": "info",
+        "message": "Armada perf · 5.0 s · 297 frames · 59.2 fps · chunks 13\nframe ms p50 16.7 · p95 16.8 · max 50.0 · over 33.4 ms: 1\ncpu ms p50 2.5 · p95 13.2 · max 38.6 · draw calls avg 141 · max 333\ntextures 191.3 MB (svg 120.6 · render 66.6 · buffer 4.1) in 166 · js heap 150.3 MB\nlargest textures: svg 720×840 ×7 = 21.5 MB · svg 720×1000 ×5 = 18.3 MB · svg 480×560 ×10 = 13.7 MB\nsteps ms avg/max per frame: update:shadows 2.85/30.50 · shadows:received 0.60/5.90 · shadows:ground 0.54/3.90 · shadows:maps 1.14/3.90 · shadows:walls 0.60/2.60 · shadows:ground-paint 0.15/1.50 · shadows:follow 0.30/0.90 · foliage-wind:sway 0.11/0.60 · update:foliage-wind 0.11/0.60 · shadows:terrain-project 0.13/0.60 · update:player 0.01/0.50 · stream 0.22/0.40 · update:surface-bands 0.03/0.30 · surface-bands:draw 0.03/0.30 · update:ambient-light 0.01/0.10 · shadows:moving 0.01/0.10 · update:camera 0.01/0.10",
+        "timestamp": "2026-10-29T04:30:15.754Z",
+        "url": "http://127.0.0.1:4173/assets/perf-Jr0syXCt.js"
+      },
+      {
+        "level": "info",
+        "message": "Armada perf · 5.0 s · 293 frames · 58.4 fps · chunks 13\nframe ms p50 16.7 · p95 17.3 · max 33.9 · over 33.4 ms: 4\ncpu ms p50 5.9 · p95 21.0 · max 26.3 · draw calls avg 183 · max 326\ntextures 191.6 MB (svg 120.6 · render 66.7 · buffer 4.3) in 169 · js heap 173.5 MB\nlargest textures: svg 720×840 ×7 = 21.5 MB · svg 720×1000 ×5 = 18.3 MB · svg 480×560 ×10 = 13.7 MB\nsteps ms avg/max per frame: update:shadows 6.23/18.10 · shadows:received 1.88/2.60 · shadows:maps 3.20/2.30 · shadows:walls 1.76/2.30 · update:camera 0.23/2.00 · shadows:ground 1.43/1.90 · shadows:terrain-project 0.33/1.00 · shadows:follow 0.25/0.90 · shadows:ground-paint 0.42/0.70 · surface-bands:draw 0.02/0.40 · update:surface-bands 0.02/0.40 · foliage-wind:sway 0.07/0.40 · update:foliage-wind 0.07/0.40 · stream 0.12/0.30 · update:player 0.02/0.20 · update:ambient-light 0.00/0.10 · shadows:moving 0.00/0.10",
+        "timestamp": "2026-10-29T04:30:20.759Z",
+        "url": "http://127.0.0.1:4173/assets/perf-Jr0syXCt.js"
+      },
+      {
+        "level": "info",
+        "message": "Armada perf · 5.0 s · 301 frames · 60.0 fps · chunks 13\nframe ms p50 16.7 · p95 16.8 · max 17.6 · over 33.4 ms: 0\ncpu ms p50 2.2 · p95 4.5 · max 13.1 · draw calls avg 83 · max 157\ntextures 191.6 MB (svg 120.6 · render 66.7 · buffer 4.3) in 169 · js heap 178.5 MB\nlargest textures: svg 720×840 ×7 = 21.5 MB · svg 720×1000 ×5 = 18.3 MB · svg 480×560 ×10 = 13.7 MB\nsteps ms avg/max per frame: update:shadows 1.51/11.20 · shadows:received 0.12/2.80 · shadows:maps 0.22/2.60 · shadows:walls 0.15/2.60 · shadows:ground 0.07/1.50 · shadows:follow 0.30/0.80 · update:foliage-wind 0.11/0.60 · foliage-wind:sway 0.11/0.50 · stream 0.19/0.40 · update:surface-bands 0.03/0.30 · surface-bands:draw 0.03/0.30 · shadows:ground-paint 0.02/0.30 · update:camera 0.01/0.20 · update:player 0.01/0.10 · update:ambient-light 0.00/0.10 · shadows:moving 0.01/0.10 · shadows:terrain-project 0.00/0.10",
+        "timestamp": "2026-10-29T04:30:25.775Z",
+        "url": "http://127.0.0.1:4173/assets/perf-Jr0syXCt.js"
+      }
+    ]
+  },
+  "stationaryWide": {
+    "description": "Zoom mínimo, transición de 3 s con cámara quieta; build previo a consulta auxiliar",
+    "reports": [
+      {
+        "level": "info",
+        "message": "Armada perf · 5.0 s · 300 frames · 60.0 fps · chunks 13\nframe ms p50 16.7 · p95 18.6 · max 18.8 · over 33.4 ms: 0\ncpu ms p50 12.0 · p95 13.5 · max 21.1 · draw calls avg 228 · max 326\ntextures 189.7 MB (svg 113.2 · render 72.3 · buffer 4.3) in 179 · js heap 176.3 MB\nlargest textures: svg 720×840 ×7 = 21.5 MB · svg 720×1000 ×5 = 18.3 MB · svg 480×560 ×10 = 13.7 MB\nsteps ms avg/max per frame: update:shadows 7.50/19.90 · shadows:received 2.26/3.50 · shadows:maps 4.24/2.20 · shadows:walls 2.28/2.20 · shadows:ground 1.96/2.00 · shadows:ground-paint 0.58/0.90 · shadows:follow 0.27/0.70 · shadows:terrain-project 0.46/0.70 · stream 0.15/0.50 · foliage-wind:sway 0.07/0.50 · update:foliage-wind 0.07/0.50 · surface-bands:draw 0.02/0.30 · update:surface-bands 0.02/0.30 · update:player 0.01/0.10 · update:ambient-light 0.01/0.10 · shadows:moving 0.01/0.10 · update:camera 0.00/0.10",
+        "timestamp": "2026-10-29T04:26:19.372Z",
+        "url": "http://127.0.0.1:4173/assets/perf-BByBj-4i.js"
+      },
+      {
+        "level": "info",
+        "message": "Armada perf · 5.0 s · 300 frames · 60.0 fps · chunks 13\nframe ms p50 16.7 · p95 18.5 · max 18.7 · over 33.4 ms: 0\ncpu ms p50 2.0 · p95 4.4 · max 15.1 · draw calls avg 106 · max 322\ntextures 189.7 MB (svg 113.2 · render 72.3 · buffer 4.3) in 179 · js heap 163.3 MB\nlargest textures: svg 720×840 ×7 = 21.5 MB · svg 720×1000 ×5 = 18.3 MB · svg 480×560 ×10 = 13.7 MB\nsteps ms avg/max per frame: update:shadows 1.38/14.00 · shadows:maps 0.25/2.70 · shadows:walls 0.15/2.70 · shadows:received 0.15/2.60 · shadows:ground 0.10/1.50 · shadows:follow 0.30/0.60 · foliage-wind:sway 0.08/0.50 · update:foliage-wind 0.08/0.50 · shadows:ground-paint 0.03/0.50 · stream 0.16/0.40 · update:surface-bands 0.03/0.20 · surface-bands:draw 0.03/0.20 · update:player 0.01/0.10 · update:ambient-light 0.00/0.10 · shadows:moving 0.01/0.10 · shadows:terrain-project 0.02/0.10 · update:camera 0.00/0.10",
+        "timestamp": "2026-10-29T04:26:24.361Z",
+        "url": "http://127.0.0.1:4173/assets/perf-BByBj-4i.js"
+      },
+      {
+        "level": "info",
+        "message": "Armada perf · 5.0 s · 300 frames · 60.0 fps · chunks 13\nframe ms p50 16.7 · p95 18.2 · max 18.8 · over 33.4 ms: 0\ncpu ms p50 2.5 · p95 4.3 · max 8.3 · draw calls avg 102 · max 139\ntextures 189.7 MB (svg 113.2 · render 72.3 · buffer 4.3) in 179 · js heap 167.6 MB\nlargest textures: svg 720×840 ×7 = 21.5 MB · svg 720×1000 ×5 = 18.3 MB · svg 480×560 ×10 = 13.7 MB\nsteps ms avg/max per frame: update:shadows 1.41/7.30 · shadows:maps 0.13/2.80 · shadows:walls 0.09/2.80 · shadows:received 0.07/2.20 · shadows:ground 0.04/1.10 · shadows:follow 0.32/0.90 · update:foliage-wind 0.11/0.60 · foliage-wind:sway 0.11/0.60 · stream 0.22/0.50 · shadows:ground-paint 0.01/0.30 · update:surface-bands 0.03/0.30 · surface-bands:draw 0.03/0.30 · update:player 0.01/0.10 · update:ambient-light 0.00/0.10 · shadows:moving 0.01/0.10 · update:camera 0.00/0.10 · shadows:terrain-project 0.00/0.00",
+        "timestamp": "2026-10-29T04:26:29.360Z",
+        "url": "http://127.0.0.1:4173/assets/perf-BByBj-4i.js"
+      }
+    ]
+  },
+  "limitation": "60 fps verificados en el zoom de juego y en transición amplia con cámara fija; la transición caminando a zoom mínimo todavía registra 58–59 fps.",
+  "cullMarginComparison": {
+    "description": "Prueba A/B con margen general 25 %; se conserva el 10 % en el código final",
+    "reports": [
+      {
+        "level": "info",
+        "message": "Armada perf · 5.0 s · 299 frames · 59.8 fps · chunks 13\nframe ms p50 16.7 · p95 18.6 · max 33.3 · over 33.4 ms: 0\ncpu ms p50 2.6 · p95 17.9 · max 29.4 · draw calls avg 226 · max 384\ntextures 203.3 MB (svg 122.4 · render 76.8 · buffer 4.1) in 172 · js heap 171.2 MB\nlargest textures: svg 720×840 ×7 = 21.5 MB · svg 720×1000 ×5 = 18.3 MB · svg 480×560 ×10 = 13.7 MB\nsteps ms avg/max per frame: update:shadows 4.29/23.70 · shadows:received 1.12/2.80 · shadows:ground 1.00/2.00 · shadows:maps 2.15/2.00 · shadows:walls 1.14/1.90 · stream 0.15/0.80 · shadows:ground-paint 0.29/0.60 · shadows:follow 0.27/0.50 · update:foliage-wind 0.10/0.40 · foliage-wind:sway 0.10/0.40 · shadows:terrain-project 0.24/0.40 · update:surface-bands 0.03/0.20 · update:player 0.01/0.20 · surface-bands:draw 0.03/0.20 · update:ambient-light 0.01/0.10 · shadows:moving 0.01/0.10 · update:camera 0.00/0.10",
+        "timestamp": "2026-10-29T04:38:57.028Z",
+        "url": "http://127.0.0.1:4173/assets/perf-gyMwwYlo.js"
+      },
+      {
+        "level": "info",
+        "message": "Armada perf · 5.0 s · 292 frames · 58.4 fps · chunks 13\nframe ms p50 16.7 · p95 18.2 · max 33.4 · over 33.4 ms: 1\ncpu ms p50 3.1 · p95 23.3 · max 30.9 · draw calls avg 224 · max 381\ntextures 203.5 MB (svg 122.4 · render 76.9 · buffer 4.3) in 174 · js heap 184.9 MB\nlargest textures: svg 720×840 ×7 = 21.5 MB · svg 720×1000 ×5 = 18.3 MB · svg 480×560 ×10 = 13.7 MB\nsteps ms avg/max per frame: update:shadows 4.62/18.40 · shadows:received 1.31/2.20 · shadows:maps 2.22/2.10 · shadows:walls 1.24/2.10 · update:camera 0.06/1.40 · shadows:ground 0.98/1.10 · shadows:follow 0.26/0.70 · shadows:ground-paint 0.29/0.60 · shadows:terrain-project 0.20/0.50 · stream 0.12/0.40 · foliage-wind:sway 0.09/0.40 · update:foliage-wind 0.09/0.40 · surface-bands:draw 0.02/0.20 · update:surface-bands 0.03/0.20 · update:player 0.01/0.10 · update:ambient-light 0.01/0.10 · shadows:moving 0.01/0.10",
+        "timestamp": "2026-10-29T04:39:02.007Z",
+        "url": "http://127.0.0.1:4173/assets/perf-gyMwwYlo.js"
+      },
+      {
+        "level": "info",
+        "message": "Armada perf · 5.0 s · 301 frames · 60.0 fps · chunks 13\nframe ms p50 16.7 · p95 18.0 · max 18.7 · over 33.4 ms: 0\ncpu ms p50 2.5 · p95 3.8 · max 12.4 · draw calls avg 157 · max 234\ntextures 203.5 MB (svg 122.4 · render 76.9 · buffer 4.3) in 174 · js heap 191.9 MB\nlargest textures: svg 720×840 ×7 = 21.5 MB · svg 720×1000 ×5 = 18.3 MB · svg 480×560 ×10 = 13.7 MB\nsteps ms avg/max per frame: update:shadows 1.38/10.40 · shadows:maps 0.20/2.70 · shadows:walls 0.14/2.70 · shadows:received 0.11/2.30 · shadows:ground 0.06/1.20 · shadows:follow 0.30/0.80 · stream 0.18/0.40 · foliage-wind:sway 0.12/0.40 · update:foliage-wind 0.13/0.40 · shadows:ground-paint 0.01/0.30 · update:surface-bands 0.03/0.20 · surface-bands:draw 0.03/0.20 · update:player 0.00/0.10 · update:ambient-light 0.00/0.10 · shadows:moving 0.01/0.10 · update:camera 0.01/0.10 · shadows:terrain-project 0.00/0.10",
+        "timestamp": "2026-10-29T04:39:07.025Z",
+        "url": "http://127.0.0.1:4173/assets/perf-gyMwwYlo.js"
+      }
+    ]
+  }
 }

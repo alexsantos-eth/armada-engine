@@ -159,11 +159,13 @@ export function mockPixi() {
     Texture: class {
       public source: unknown;
       public frame: unknown;
+      public dynamic: boolean;
       public destroy = vi.fn();
       public updateUvs = vi.fn();
-      constructor({ source, frame }: { source: unknown; frame?: unknown }) {
+      constructor({ source, frame, dynamic = false }: { source: unknown; frame?: unknown; dynamic?: boolean }) {
         this.source = source;
         this.frame = frame;
+        this.dynamic = dynamic;
       }
     },
     Sprite,
@@ -228,9 +230,19 @@ export function mockPixi() {
     },
     Culler: { shared: { cull: vi.fn() } },
     RenderTexture: {
-      create: vi.fn((options: { width: number; height: number }) => ({
+      create: vi.fn((options: { width: number; height: number; resolution?: number }) => ({
         ...options,
-        source: { renderTarget: true },
+        source: { renderTarget: true, resolution: options.resolution ?? 1 },
+        resize: vi.fn(function (
+          this: { width: number; height: number; source: { resolution: number } },
+          width: number,
+          height: number,
+          resolution: number,
+        ) {
+          this.width = width;
+          this.height = height;
+          this.source.resolution = resolution;
+        }),
         destroy: vi.fn(),
       })),
     },
@@ -441,7 +453,19 @@ export function mockReceivedShadow() {
         view: { cullable: false, source: "received-shadow", receivedShadowOf: own.sources[0], destroy: vi.fn() },
         depth: own.depth,
       })),
-      atlas: {},
+      atlas: {
+        width: 1,
+        height: 1,
+        source: { resolution: 1 },
+        resize: vi.fn(function (
+          this: { source: { resolution: number } },
+          _width: number,
+          _height: number,
+          resolution: number,
+        ) {
+          this.source.resolution = resolution;
+        }),
+      },
       draw: vi.fn(),
       follow: vi.fn(),
       destroy: vi.fn(),

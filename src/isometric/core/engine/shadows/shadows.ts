@@ -99,6 +99,8 @@ type ShadowLayer = {
    * caster whose shadow cannot reach it is left out of the map.
    */
   readonly bounds: WorldRect;
+  /** Column indexes at this height, retained instead of querying every height on each frame. */
+  readonly receivers: readonly number[];
   /** Native stencil mask and its plane group, authored once from the receiver columns. */
   readonly root: Container;
   readonly mask: Graphics;
@@ -137,6 +139,9 @@ type ShadowChunk = {
   readonly map: RenderTexture;
   /** Its ambient occlusion, at the bottom of every level. */
   readonly occlusion: Texture;
+  readonly paint: Container;
+  readonly casterRoot: Container;
+  readonly occlusionView: Sprite;
   readonly area: WorldRect;
   readonly terrainGeometry: TerrainShadowGeometry;
   readonly sampleTerrain: TerrainShadowField;
@@ -186,13 +191,8 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
       const alphaFilter = new AlphaFilter({ alpha: 1 });
       // Receiver planes share one filtered caster group; the static AO is composed beneath it.
       const casters = createCasterSprites([blurFilter, alphaFilter]);
-      const occlusionSprite = new Sprite();
-      occlusionSprite.scale.set(pixelsPerTile / AO_PIXELS_PER_TILE);
       let nextCaster = 0;
       const freeCasters: number[] = [];
-      const activeRoots = new Set<Container>();
-      const levelRoot = new Container();
-      levelRoot.addChild(occlusionSprite, casters.container);
       // The atlases of received shadows have their own, with the same filters.
       const receivedRig = createReceivedShadowRig(app.renderer, [blurFilter, alphaFilter]);
       // Caster textures of the received shadows, reused from draw to draw.
@@ -326,10 +326,6 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
           minY = Infinity,
           maxX = -Infinity,
           maxY = -Infinity;
-        activeRoots.forEach((root) => {
-          root.visible = false;
-        });
-        activeRoots.clear();
         const mapOrigin = { x: shadow.area.minX - 0.5, y: shadow.area.minY - 0.5 };
         for (const layer of shadow.layers) {
           let visible = false;
@@ -337,12 +333,9 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
             receiverMinY = Infinity,
             receiverMaxX = -Infinity,
             receiverMaxY = -Infinity;
-          shadow.chunk.columns.forEach((column, index) => {
-            if (
-              column.elevation - topInsetAt(column.x, column.y) !== layer.level ||
-              !isVisible(shadow, shadow.gradeViews[index].view)
-            )
-              return;
+          layer.receivers.forEach((index) => {
+            if (!isVisible(shadow, shadow.gradeViews[index].view)) return;
+            const column = shadow.chunk.columns[index];
             visible = true;
             receiverMinX = Math.min(receiverMinX, column.x);
             receiverMinY = Math.min(receiverMinY, column.y);
@@ -353,9 +346,11 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
             maxX = Math.max(maxX, column.x);
             maxY = Math.max(maxY, column.y);
           });
-          if (!visible) continue;
+          if (!visible) {
+            layer.root.visible = false;
+            continue;
+          }
           layer.root.visible = true;
-          activeRoots.add(layer.root);
           let layerShown = 0;
           const place = (silhouette: Silhouette, lift: number) => {
             getSilhouetteMatrix(light, silhouette.worldFoot, lift, metrics, ground);
@@ -428,20 +423,21 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
         }
         if (!planes) return;
 
-        casters.container.visible = true;
+        if (shadow.map.source.resolution !== filterResolution)
+          shadow.map.resize(shadow.map.width, shadow.map.height, filterResolution);
+
         const left = Math.max(shadow.area.minX, minX - 1),
           top = Math.max(shadow.area.minY, minY - 1);
-        casters.container.filterArea = new Rectangle(
+        shadow.casterRoot.filterArea = new Rectangle(
           (left - shadow.area.minX) * pixelsPerTile,
           (top - shadow.area.minY) * pixelsPerTile,
           (Math.min(shadow.area.maxX, maxX + 1) - left + 1) * pixelsPerTile,
           (Math.min(shadow.area.maxY, maxY + 1) - top + 1) * pixelsPerTile,
         );
         // Native stencil masks select each height before one common blur/opacity pass.
-        occlusionSprite.texture = shadow.occlusion;
-        occlusionSprite.alpha = lighting.current.shadowStrength;
+        shadow.occlusionView.alpha = lighting.current.shadowStrength;
         profile("shadows:ground-paint", () =>
-          app.renderer.render({ container: levelRoot, target: shadow.map, clear: true, clearColor: [0, 0, 0, 0] }),
+          app.renderer.render({ container: shadow.paint, target: shadow.map, clear: true, clearColor: [0, 0, 0, 0] }),
         );
       };
 
@@ -600,7 +596,7 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
           kind: "maps",
           draw: (light) =>
             profile("shadows:walls", () => {
-              shadow.faces.begin();
+              shadow.faces.begin(filterResolution);
               wallShapes.length = 0;
               wallHeights.length = 0;
               wallCasters.forEach((shape, index) => {
@@ -669,13 +665,16 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
         scene.add(views);
         const target: ShadowTarget = {
           kind: "received",
-          draw: (light) =>
+          draw: (light) => {
+            if (shadows.atlas.source.resolution !== filterResolution)
+              shadows.atlas.resize(shadows.atlas.width, shadows.atlas.height, filterResolution);
             shadows.draw(
               (caster, receiver, lift) => getCastShadowOffset(light, caster, receiver, lift, metrics, offset),
               (own, x, y) => terrainOnReceiver(shadow, light, own, x, y),
               additionalCasters,
               light,
-            ),
+            );
+          },
         };
         shadow.received = { shadows, views, target };
         return [target];
@@ -724,6 +723,7 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
           const up = inset(x, y - 1, box.elevation);
           const frame = new Texture({
             source: map.source,
+            dynamic: true,
             frame: new Rectangle(
               (x - area.minX) * pixelsPerTile + left,
               (y - area.minY) * pixelsPerTile + up,
@@ -758,9 +758,20 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
           height: columnsDeep * AO_PIXELS_PER_TILE,
         });
         const occlusion = new Texture({ source: occlusionSource });
+        // Persistent roots keep each chunk's native render instructions independent of its neighbours.
+        const occlusionView = new Sprite(occlusion);
+        occlusionView.scale.set(pixelsPerTile / AO_PIXELS_PER_TILE);
+        const casterRoot = new Container();
+        casterRoot.filters = [blurFilter, alphaFilter];
+        const paint = new Container();
+        paint.addChild(occlusionView, casterRoot);
         const bounds = new Map<number, { minX: number; minY: number; maxX: number; maxY: number }>();
-        chunk.columns.forEach(({ x, y, elevation: raw }) => {
+        const receivers = new Map<number, number[]>();
+        chunk.columns.forEach(({ x, y, elevation: raw }, index) => {
           const elevation = raw - topInsetAt(x, y);
+          const indices = receivers.get(elevation);
+          if (indices) indices.push(index);
+          else receivers.set(elevation, [index]);
           const rect = bounds.get(elevation);
           if (!rect) bounds.set(elevation, { minX: x, minY: y, maxX: x, maxY: y });
           else {
@@ -818,8 +829,19 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
           root.addChild(mask);
           root.mask = mask;
           root.visible = false;
-          casters.container.addChild(root);
-          return { level, bounds, root, mask, sprites: [], shown: 0, clip: { ...bounds }, casters: [], lifts: [] };
+          casterRoot.addChild(root);
+          return {
+            level,
+            bounds,
+            receivers: receivers.get(level)!,
+            root,
+            mask,
+            sprites: [],
+            shown: 0,
+            clip: { ...bounds },
+            casters: [],
+            lifts: [],
+          };
         });
 
         views.forEach(({ view }) => {
@@ -832,6 +854,9 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
           chunk,
           map,
           occlusion,
+          paint,
+          casterRoot,
+          occlusionView,
           area,
           terrainGeometry: createTerrainShadowGeometry(terrain),
           sampleTerrain,
@@ -872,13 +897,13 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
                 terrain.geometry.destroy(true);
                 terrain.destroy({ texture: false });
               }
-              activeRoots.delete(root);
               root.mask = null;
               // Caster sprites and meshes are borrowed from the module's pools.
               root.removeChildren();
               root.destroy();
               mask.destroy({ context: true });
             });
+            paint.destroy({ children: true });
             occlusion.destroy(true);
             faces.destroy();
             // Its views' textures go with the map's source.
@@ -901,17 +926,14 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
             needsCull(shadow.cullCamera, camera.state, app.screen, projection, 0.015))
         ) {
           const views = [...shadow.gradeViews, ...shadow.faces.views, ...(shadow.received?.views ?? [])];
-          const previous = views.map(({ view }) => view.culled);
-          camera.cullViews(views, 0.03);
+          const visibility = camera.cullViews(views, 0.03, true);
           const visible = (shadow.visibleReceivers ??= new Set());
           visible.clear();
           views.forEach(({ view }, index) => {
-            if (!view.culled) {
+            if (visibility[index]) {
               visible.add(view);
               if (!shadow.bakedVisibility.has(view)) shadow.movingDirty = true;
             }
-            // Scene streaming uses a larger cull margin; it must not overwrite baking visibility.
-            view.culled = previous[index];
           });
           shadow.cullCamera = camera.state;
           shadow.cullWidth = app.screen.width;
@@ -928,8 +950,10 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
       const update = () => {
         sun = lighting.current.shadow;
         // Spatial filtering follows screen density; the light still advances on every frame.
-        filterResolution = Math.min(1, (services.get("camera")?.state?.zoom ?? 2) / 2);
+        filterResolution = Math.min(1, (services.get("camera")?.state?.zoom ?? 4) / 4);
         blurFilter.resolution = filterResolution;
+        // Below half a stored texel, linear reconstruction already softens the edge.
+        blurFilter.enabled = SHADOW_BLUR * filterResolution >= 0.5;
         alphaFilter.resolution = filterResolution;
         const movingChanged = profile("shadows:moving", () => moving.update());
         if (movingChanged)
@@ -990,7 +1014,7 @@ export function createShadows(lighting: PhaseLighting = createPhaseLighting()): 
         destroy: () => {
           spriteSampler.destroy();
           // The caster sprites with their containers and filters; their textures are the entities' and the chunks'.
-          levelRoot.destroy({ children: true });
+          casters.container.destroy({ children: true });
           receivedRig.destroy();
           blurFilter.destroy();
           alphaFilter.destroy();

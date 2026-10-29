@@ -328,12 +328,12 @@ describe("createReceivedShadows", () => {
     expect((low as unknown as { skewWrites: number[] }).skewWrites).toEqual([]);
   });
 
-  it("draws its receivers' cutouts into the rig's mask before each draw, keeping no mask of its own", () => {
+  it("caches its receiver cutouts before drawing shaded atlases", () => {
     const receivers = twoReceivers();
     const { rig, renderer, shadows } = atlasOf(receivers);
     expect(renderer.render).not.toHaveBeenCalled();
 
-    shadows.draw(null);
+    shadows.draw(() => ({ x: 0, y: 0 }));
     const [{ container, target }] = renderer.render.mock.calls[0];
     const cutouts = container.children as MockSprite[];
 
@@ -342,6 +342,8 @@ describe("createReceivedShadows", () => {
     expect(cutouts.map(({ texture }) => texture)).toEqual(receivers.map(({ own }) => own.body));
     expect(cutouts[1]).toMatchObject({ x: 2 * PAD + 20 * RES, y: PAD, width: 30 * RES, height: 30 * RES });
     expect(renderer.render.mock.calls[1][0].target).toBe(shadows.atlas);
+    shadows.draw(() => ({ x: 0, y: 0 }));
+    expect(renderer.render).toHaveBeenCalledTimes(3);
   });
 
   it("draws the rig's black casters, then erases its own mask, into the atlas", () => {
@@ -351,7 +353,7 @@ describe("createReceivedShadows", () => {
     ];
     const { rig, renderer, shadows } = atlasOf(twoReceivers(), createRenderer(), createTexturePool(), filters);
 
-    shadows.draw(null);
+    shadows.draw(() => ({ x: 0, y: 0 }));
     const { container, target, clear, clearColor } = renderer.render.mock.calls[1][0];
     const casters = rig.casters.container as unknown as MockContainer & { visible: boolean };
 
@@ -361,9 +363,8 @@ describe("createReceivedShadows", () => {
     // Inset by the filters' padding, which Pixi adds back: the filtered area is the atlas, no wider.
     expect(casters.filterArea).toEqual(new Rectangle(12, 12, shadows.atlas.width - 24, shadows.atlas.height - 24));
     expect(rig.eraser.texture).toBe(renderer.render.mock.calls[0][0].target);
-    // At night nothing is laid: no caster has a sprite yet, and the casters are hidden.
-    expect(casters.children).toHaveLength(0);
-    expect(casters.visible).toBe(false);
+    expect(casters.children).toHaveLength(2);
+    expect(casters.visible).toBe(true);
   });
 
   it("lends a black sprite and a pooled texture to each pair a draw shows, and takes the texture back", () => {
@@ -525,6 +526,26 @@ it("reuses static terrain coverage while moving casters redraw, and refreshes it
   expect(terrain).toHaveBeenCalledTimes(50);
   shadows.draw(null, terrain, undefined, {});
   expect(terrain).toHaveBeenCalledTimes(100);
+  shadows.destroy();
+  rig.destroy();
+});
+
+it("keeps an unshaded atlas clear without repainting transparent masks every phase frame", () => {
+  const { shadows, renderer, rig } = atlasOf([{ own: silhouetteOf(0, 0, 20, 40), casters: [] }]);
+  const light = {};
+  shadows.draw(null, () => 0, undefined, light);
+  expect(renderer.render).toHaveBeenCalledTimes(1);
+  shadows.draw(null, () => 0, undefined, light);
+  expect(renderer.render).toHaveBeenCalledTimes(1);
+  shadows.draw(null, () => 1, undefined, {});
+  expect(renderer.render).toHaveBeenCalledTimes(3);
+  shadows.draw(null, () => 0, undefined, {});
+  expect(renderer.render).toHaveBeenCalledTimes(4);
+  shadows.draw(null, () => 0, undefined, {});
+  expect(renderer.render).toHaveBeenCalledTimes(4);
+  shadows.atlas.source.resolution = 0.5;
+  shadows.draw(null, () => 0, undefined, {});
+  expect(renderer.render).toHaveBeenCalledTimes(5);
   shadows.destroy();
   rig.destroy();
 });

@@ -31,8 +31,10 @@ export type SceneCameraService = SceneCamera & {
   /**
    * Culls only `views`, just added to the scene, against what the camera shows now: the rest is
    * as the last cull left it. Optional `margin` supports tighter offscreen baking without reculling the whole scene.
+   * With `query`, tests native global bounds on a detached probe and leaves scene flags unchanged.
+   * Returns visibility in input order, including when culling is disabled.
    */
-  cullViews(views: readonly SceneView[], margin?: number): void;
+  cullViews(views: readonly SceneView[], margin?: number, query?: boolean): readonly boolean[];
 };
 
 /** An entity with the views `entity-view` drew for it. */

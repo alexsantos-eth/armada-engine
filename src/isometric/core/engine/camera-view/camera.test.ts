@@ -1,6 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("pixi.js", () => ({ Culler: { shared: { cull: vi.fn() } } }));
+vi.mock("pixi.js", () => ({
+  Culler: { shared: { cull: vi.fn() } },
+  Bounds: class {},
+  Container: class {
+    cullable = false;
+    cullableChildren = true;
+    culled = false;
+  },
+}));
 
 import { Culler } from "pixi.js";
 import type { CameraLimits } from "../../types";
@@ -86,15 +94,51 @@ describe("createSceneCamera", () => {
     expect(Culler.shared.cull).toHaveBeenLastCalledWith(view, getCullRect(screen, 0.03), false);
   });
 
+  it("queries native visibility without writing the scene's culled flags", () => {
+    const { camera, screen } = setup();
+    const rectangle = { x: 20, y: 30, width: 40, height: 50 };
+    const first = {
+      cullable: true,
+      measurable: true,
+      includeInBuild: true,
+      culled: false,
+      getBounds: vi.fn(() => ({ rectangle })),
+    };
+    const second = { ...first, culled: true };
+    vi.mocked(Culler.shared.cull).mockImplementation((probe) => {
+      probe.culled = true;
+    });
+    const result = camera.cullViews(
+      [first, second].map((view) => ({ view: view as never, depth: 0, layer: 0 })),
+      0.03,
+      true,
+    );
+    expect(result).toEqual([false, false]);
+    expect(first.culled).toBe(false);
+    expect(second.culled).toBe(true);
+    expect(first.getBounds).toHaveBeenCalledTimes(2);
+    const probe = vi.mocked(Culler.shared.cull).mock.lastCall![0];
+    expect(probe).not.toBe(first);
+    expect(probe.cullArea).toBe(rectangle);
+    expect(Culler.shared.cull).toHaveBeenLastCalledWith(probe, getCullRect(screen, 0.03), false);
+    vi.mocked(Culler.shared.cull).mockReset();
+  });
+
+  it.each(["cullable", "measurable", "includeInBuild"])("does not query views excluded by %s", (flag) => {
+    const { camera } = setup();
+    const view = { cullable: true, measurable: true, includeInBuild: true, [flag]: false };
+    expect(camera.cullViews([{ view: view as never, depth: 0, layer: 0 }], 0.03, true)).toEqual([true]);
+  });
+
   it("pans without culling until the scene moved past half the margin", () => {
     const { world, camera } = setup({ x: 0, y: 0, zoom: 1 }, [band(1)]);
 
-    camera.pan({ x: 90, y: 0 });
-    expect(world.position.x).toBeCloseTo(490);
+    camera.pan({ x: 30, y: 0 });
+    expect(world.position.x).toBeCloseTo(430);
     expect(world.position.y).toBeCloseTo(300);
     expect(Culler.shared.cull).toHaveBeenCalledTimes(1);
 
-    // The margin is 200 screen pixels across: 110 in total is past its half.
+    // The margin is 80 screen pixels across: 50 in total is past its half.
     camera.pan({ x: 20, y: 0 });
     expect(Culler.shared.cull).toHaveBeenCalledTimes(2);
   });

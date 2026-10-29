@@ -40,7 +40,7 @@ export const CAMERA_WHEEL_SENSITIVITY = 0.0015;
  * Part of the viewport, on every side, that culling keeps alive around the screen. The scene
  * culls again only once the camera moved further than it, not on every frame of a pan.
  */
-export const CAMERA_CULL_MARGIN = 0.25;
+export const CAMERA_CULL_MARGIN = 0.1;
 
 /** Pixels per wheel line and per wheel page, for wheels that report `deltaMode` 1 or 2. */
 const WHEEL_PIXELS_PER_MODE = [1, 40, 800];

@@ -214,6 +214,9 @@ export function createReceivedShadows(
   const { renderer, casters, padding, root } = rig;
   const { slots, width, height } = packSlots(receivers);
   const atlas = RenderTexture.create({ width, height });
+  const empty = new Container();
+  let blank = false;
+  let blankResolution: number | undefined;
   let receiverMask: RenderTexture | undefined;
 
   // Static cutouts are rendered once into this atlas's cached transparency mask.
@@ -268,7 +271,11 @@ export function createReceivedShadows(
       const top = slot.y + (display.top - body.top) * resolution;
       const bottom = partIndex === 0 ? slot.y + slot.height : top + display.height * resolution;
       const sprite = new Sprite(
-        new Texture({ source: atlas.source, frame: new Rectangle(slot.x, top, slot.width, bottom - top) }),
+        new Texture({
+          source: atlas.source,
+          dynamic: true,
+          frame: new Rectangle(slot.x, top, slot.width, bottom - top),
+        }),
       );
       sprite.scale.set(1 / resolution);
       if (partIndex === 0) {
@@ -294,6 +301,7 @@ export function createReceivedShadows(
   const terrainHeight = Math.ceil(height / terrainScale);
   let terrainMask: { texture: Texture; source: BufferImageSource; pixels: Uint8ClampedArray } | undefined;
   let terrainVersion: object | undefined;
+  let terrainCovered = false;
   const visibility = new Uint8Array(receivers.length);
   const placeTerrain = (spriteIndex: number) => {
     const sprite = casters.sprite(spriteIndex, terrainMask!.texture);
@@ -308,6 +316,7 @@ export function createReceivedShadows(
     }
     const { pixels, source } = terrainMask;
     pixels.fill(0);
+    terrainCovered = false;
     terrainReceivers.forEach((own, index) => {
       if (!visibility[index]) return;
       const slot = slots[index];
@@ -335,13 +344,16 @@ export function createReceivedShadows(
                 display.top + ((row + 0.5) * display.height) / rows,
               ),
           );
+          if (alpha > 0) terrainCovered = true;
           for (let y = y0; y < y1; y += 1)
             for (let x = x0; x < x1; x += 1) pixels[(y * terrainWidth + x) * 4 + 3] = alpha;
         }
       }
     });
-    source.update();
-    placeTerrain(spriteIndex);
+    if (terrainCovered) {
+      source.update();
+      placeTerrain(spriteIndex);
+    }
   };
 
   // The textures a draw borrowed, given back once it is rendered.
@@ -441,10 +453,18 @@ export function createReceivedShadows(
         if (!terrainMask || visibilityChanged || terrainKey === undefined || terrainKey !== terrainVersion) {
           paintTerrain(terrainAt, shown);
           terrainVersion = terrainKey;
-        } else placeTerrain(shown);
-        shown += 1;
+        } else if (terrainCovered) placeTerrain(shown);
+        if (terrainCovered) shown += 1;
       }
       casters.show(shown);
+      if (shown === 0) {
+        if (!blank || blankResolution !== atlas.source.resolution)
+          renderer.render({ container: empty, target: atlas, clear: true, clearColor: [0, 0, 0, 0] });
+        blank = true;
+        blankResolution = atlas.source.resolution;
+        return;
+      }
+      blank = false;
       casters.container.filterArea = new Rectangle(
         Math.max(padding, left - RECEIVED_SHADOW_BLEED),
         Math.max(padding, top - RECEIVED_SHADOW_BLEED),
@@ -469,6 +489,7 @@ export function createReceivedShadows(
     destroy() {
       // The atlas first: destroying its source drops the listeners of the views' textures at once.
       atlas.destroy(true);
+      empty.destroy();
       receiverMask?.destroy(true);
       terrainMask?.texture.destroy(true);
       views.forEach(({ view }) => view.texture.destroy());

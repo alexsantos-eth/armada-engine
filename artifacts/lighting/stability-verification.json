@@ -1,24 +1,55 @@
 {
-  "idle": {
-    "changed": 0,
-    "maximum": 0
+  "build": "perf-Jr0syXCt.js",
+  "viewport": {
+    "width": 1280,
+    "height": 720
   },
-  "cycles": [
-    {
+  "initialZoom": {
+    "idle": {
       "changed": 0,
       "maximum": 0
     },
-    {
-      "changed": 0,
-      "maximum": 0
-    },
-    {
+    "cycles": [
+      {
+        "changed": 0,
+        "maximum": 0
+      },
+      {
+        "changed": 0,
+        "maximum": 0
+      },
+      {
+        "changed": 0,
+        "maximum": 0
+      }
+    ],
+    "atlasRedraw": {
       "changed": 0,
       "maximum": 0
     }
-  ],
-  "atlasRedraw": {
-    "changed": 0,
-    "maximum": 0
+  },
+  "zoomedOut": {
+    "idle": {
+      "changed": 0,
+      "maximum": 0
+    },
+    "cycles": [
+      {
+        "changed": 0,
+        "maximum": 0
+      },
+      {
+        "changed": 0,
+        "maximum": 0
+      },
+      {
+        "changed": 0,
+        "maximum": 0
+      }
+    ],
+    "atlasRedraw": {
+      "changed": 0,
+      "maximum": 0
+    }
   }
 }

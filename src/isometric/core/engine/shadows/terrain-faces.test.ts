@@ -35,6 +35,32 @@ it("bakes both exposed wall orientations with height-aware terrain rays", () => 
   atlas.destroy();
 });
 
+it("changes physical atlas density without changing receiver frames", () => {
+  const renderer = { render: vi.fn() };
+  const atlas = createTerrainFaceShadows([{ x: 0, y: 0, axis: "x", top: 1, bottom: 0 }], {
+    renderer: renderer as never,
+    filters: [],
+    metrics: TILE_METRICS,
+    projection: { ...TILE_METRICS, originX: 0, originY: 0 },
+  });
+  const texture = (atlas.views[0].view as Sprite).texture;
+  expect(texture.dynamic).toBe(true);
+  const frame = texture.frame;
+  atlas.begin(0.25);
+  atlas.commit();
+  expect(texture.source.resolution).toBe(0.25);
+  const { target } = renderer.render.mock.calls[0][0] as { target: { source: { resolution: number } } };
+  expect(target.source.resolution).toBe(0.25);
+  atlas.begin(0.25);
+  atlas.commit();
+  atlas.begin(1);
+  atlas.commit();
+  expect(texture.source.resolution).toBe(1);
+  expect(texture.frame).toBe(frame);
+  expect(texture.frame.width).toBe(24);
+  atlas.destroy();
+});
+
 describe("empty face atlas", () => {
   it("has no receiver levels and can be released safely", () => {
     const atlas = createTerrainFaceShadows([], {
@@ -163,6 +189,13 @@ it("reuses clipped caster meshes directly on walls instead of sampling a lower h
   const mesh = container.children[1].children[1];
   expect(mesh.tint).toBe(0);
   expect(mesh.visible).toBe(true);
+  let visible = true;
+  const visibility = vi.fn((next: boolean) => {
+    visible = next;
+  });
+  Object.defineProperty(mesh, "visible", { get: () => visible, set: visibility });
+  atlas.draw(null, { ...light, stretch: 2.1 }, [caster], [0]);
+  expect(visibility).not.toHaveBeenCalledWith(false);
   atlas.draw(0, { ...light, dirX: -1 }, [caster], [0]);
   expect(mesh.visible).toBe(false);
   atlas.destroy();

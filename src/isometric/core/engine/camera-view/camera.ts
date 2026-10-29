@@ -1,4 +1,4 @@
-import { type Container, Culler, type Rectangle } from "pixi.js";
+import { Bounds, Container, Culler, type Rectangle } from "pixi.js";
 import {
   CAMERA_CULL_MARGIN,
   createCamera,
@@ -45,6 +45,8 @@ export function createSceneCamera(
   let culledFor: Camera | undefined;
   let pending: PendingCull | undefined;
   let target: GridPoint | undefined;
+  let probe: Container | undefined;
+  let bounds: Bounds | undefined;
   // The scene asks on every frame: computed again only when the camera or the screen changed.
   let seen: { camera: Camera; width: number; height: number; chunks: readonly ChunkCoord[] } | undefined;
 
@@ -100,10 +102,24 @@ export function createSceneCamera(
     resize() {
       apply(true);
     },
-    cullViews(views, margin) {
-      if (!cull) return;
+    cullViews(views, margin, query = false) {
       const rect = getCullRect(screen, margin);
-      views.forEach(({ view }) => Culler.shared.cull(view, rect, false));
+      return views.map(({ view }) => {
+        if (!cull) return true;
+        if (!query) {
+          Culler.shared.cull(view, rect, false);
+          return !view.culled;
+        }
+        if (!view.cullable || !view.measurable || !view.includeInBuild) return true;
+        // Reusing a detached native cullArea avoids marking the world's render group dirty.
+        probe ??= new Container();
+        bounds ??= new Bounds();
+        probe.cullable = true;
+        probe.cullableChildren = false;
+        probe.cullArea = view.getBounds(false, bounds).rectangle;
+        Culler.shared.cull(probe, rect, false);
+        return !probe.culled;
+      });
     },
     visibleChunks() {
       const { width, height } = screen;

@@ -221,7 +221,7 @@ describe("followCamera", () => {
 describe("getCullRect and needsCull", () => {
   it("culls against the viewport grown by the margin on every side", () => {
     expect(getCullRect(viewport, 0.25)).toEqual({ x: -200, y: -150, width: 1200, height: 900 });
-    expect(getCullRect(viewport)).toEqual(getCullRect(viewport, 0.25));
+    expect(getCullRect(viewport)).toEqual({ x: -80, y: -60, width: 960, height: 720 });
   });
 
   it("culls again when nothing was culled yet or the zoom changed", () => {
