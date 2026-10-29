@@ -61,6 +61,7 @@ describe("createPlayerPart", () => {
       jumpBufferTicks: 0,
       coyoteTicks: 0,
       jumpHeld: false,
+      velocity: { x: 0, y: 0 },
       climb: undefined,
       previous: { x: 0.8, y: 0, elevation: 2, inset: 0, height: 0 },
       walk: { x: 0, y: 0 },

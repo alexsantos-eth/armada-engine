@@ -55,6 +55,8 @@ export type PlayerState = {
   coyoteTicks: number;
   /** Whether the jump key is held; releasing it cuts upward speed. Not saved. */
   jumpHeld: boolean;
+  /** Horizontal velocity in world columns per tick. Derived from input; not saved. */
+  velocity: GridPoint;
   /**
    * Climbing onto a higher top (`PlayerClimb`), its walk and jumps ignored until it stands there;
    * `undefined` otherwise. Not saved: a restored player stands where it was.
@@ -63,8 +65,8 @@ export type PlayerState = {
   /** Where the player stood one tick earlier, so the render can interpolate. Not saved. */
   previous: PlayerPosition;
   /**
-   * Direction the player walks in, in world columns per column moved (a unit vector, or
-   * `(0, 0)` standing still). Input from the app (`setPlayerWalk()`), read by the next ticks.
+   * Desired direction in world columns (a unit vector, or `(0, 0)` standing still).
+   * Input from the app (`setPlayerWalk()`), accelerated toward by the next ticks.
    * Not saved.
    */
   walk: GridPoint;

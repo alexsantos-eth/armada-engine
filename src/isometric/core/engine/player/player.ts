@@ -22,8 +22,23 @@ import { transitionPlayerMotion, type PlayerMotionEvent } from "./motion";
 /** Walking speed of the player, in columns per second of simulation (`TICKS_PER_SECOND` ticks). */
 export const PLAYER_SPEED = 3;
 
-/** Columns a walking player moves in one tick. */
+/** Maximum horizontal columns a walking player moves in one tick. */
 export const PLAYER_STEP = PLAYER_SPEED / TICKS_PER_SECOND;
+
+/** Horizontal velocity change per tick while starting or redirecting on land. */
+export const PLAYER_GROUND_ACCEL = 0.09;
+
+/** Horizontal velocity removed per tick when releasing movement on land. */
+export const PLAYER_GROUND_BRAKE = 0.12;
+
+/** Horizontal velocity change per tick while steering in the air. */
+export const PLAYER_AIR_ACCEL = 0.04;
+
+/** Horizontal velocity removed per tick when releasing movement in the air. */
+export const PLAYER_AIR_BRAKE = 0.025;
+
+/** Maximum sideways displacement used to clear a small corner. */
+export const PLAYER_CORNER_NUDGE = 0.04;
 
 /**
  * Half the side of the square the player's feet take on the ground, in columns. Every column
@@ -171,6 +186,7 @@ export type PlayerStepSample = {
   readonly contact: "ground" | "air" | "climbing";
   readonly position: PlayerPosition;
   readonly verticalSpeed: number | undefined;
+  readonly horizontalVelocity: GridPoint;
   readonly blockReason?: PlayerBlockReason;
 };
 
@@ -369,6 +385,7 @@ export function createPlayer(ground: PlayerGround, at: GridPoint): PlayerState {
     jumpBufferTicks: 0,
     coyoteTicks: 0,
     jumpHeld: false,
+    velocity: { x: 0, y: 0 },
     climb: undefined,
     previous: { ...position, inset: 0, height: 0 },
     walk: { x: 0, y: 0 },
@@ -529,34 +546,83 @@ function stepAir(
   }
 }
 
-/** Moves the player one tick along its walk; blocked moves slide along the free axis. */
+/** Moves a velocity toward a desired vector by at most `rate` columns per tick. */
+function approachVelocity(current: GridPoint, desired: GridPoint, rate: number): GridPoint {
+  const dx = desired.x - current.x;
+  const dy = desired.y - current.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance <= rate) return { x: desired.x, y: desired.y };
+  return { x: current.x + (dx / distance) * rate, y: current.y + (dy / distance) * rate };
+}
+
+/** Acceleration and braking use the physical contact state, while input stays a unit direction. */
+function acceleratePlayer(player: PlayerState): void {
+  const airborne = player.verticalSpeed !== undefined;
+  const desired = { x: player.walk.x * PLAYER_STEP, y: player.walk.y * PLAYER_STEP };
+  const turning = player.velocity.x * desired.x + player.velocity.y * desired.y < 0;
+  const rate = airborne
+    ? desired.x === 0 && desired.y === 0
+      ? PLAYER_AIR_BRAKE
+      : turning
+        ? PLAYER_AIR_ACCEL + PLAYER_AIR_BRAKE
+        : PLAYER_AIR_ACCEL
+    : desired.x === 0 && desired.y === 0
+      ? PLAYER_GROUND_BRAKE
+      : turning
+        ? PLAYER_GROUND_ACCEL + PLAYER_GROUND_BRAKE
+        : PLAYER_GROUND_ACCEL;
+  player.velocity = approachVelocity(player.velocity, desired, rate);
+}
+
+/** Moves the player one tick along its velocity; blocked moves slide along the free axis. */
 function stepOnce(
   player: PlayerState,
   ground: PlayerGround,
   topInset: PlayerTopInset,
   diagnose: boolean,
 ): PlayerBlockReason | undefined {
-  const { walk } = player;
-  if (walk.x === 0 && walk.y === 0) return;
+  const { velocity } = player;
+  if (velocity.x === 0 && velocity.y === 0) return;
   const from = { x: player.x, y: player.y };
   const moves = [
-    { x: from.x + walk.x * PLAYER_STEP, y: from.y + walk.y * PLAYER_STEP },
-    { x: from.x + walk.x * PLAYER_STEP, y: from.y },
-    { x: from.x, y: from.y + walk.y * PLAYER_STEP },
+    { x: from.x + velocity.x, y: from.y + velocity.y },
+    { x: from.x + velocity.x, y: from.y },
+    { x: from.x, y: from.y + velocity.y },
   ];
   const airborne = player.verticalSpeed !== undefined;
   const feet = player.elevation - player.inset + player.height;
   const clearanceFeet =
     airborne && player.verticalSpeed! > 0 ? feet + player.verticalSpeed! - PLAYER_GRAVITY / 2 : feet;
-  const next = moves.find(
-    (move) =>
-      (move.x !== from.x || move.y !== from.y) &&
-      (airborne
-        ? fitsInAir(ground, move, clearanceFeet, topInset)
-        : fitsAt(ground, move, player.elevation) || canLeaveEdge(ground, move, feet, topInset)),
-  );
-  if (next === undefined)
+  const fits = (point: GridPoint) =>
+    airborne
+      ? fitsInAir(ground, point, clearanceFeet, topInset)
+      : fitsAt(ground, point, player.elevation) || canLeaveEdge(ground, point, feet, topInset);
+  let next = moves.find((move) => (move.x !== from.x || move.y !== from.y) && fits(move));
+  if (!next) {
+    const nudges =
+      Math.abs(velocity.x) >= Math.abs(velocity.y)
+        ? [
+            { x: 0, y: PLAYER_CORNER_NUDGE },
+            { x: 0, y: -PLAYER_CORNER_NUDGE },
+          ]
+        : [
+            { x: PLAYER_CORNER_NUDGE, y: 0 },
+            { x: -PLAYER_CORNER_NUDGE, y: 0 },
+          ];
+    for (const nudge of nudges) {
+      const aside = { x: from.x + nudge.x, y: from.y + nudge.y };
+      const around = { x: moves[0].x + nudge.x, y: moves[0].y + nudge.y };
+      if (fits(aside) && fits(around)) {
+        next = around;
+        break;
+      }
+    }
+  }
+  if (!next) {
+    player.velocity = { x: 0, y: 0 };
     return diagnose ? blockReasonAt(ground, moves[0], player.elevation, clearanceFeet, airborne, topInset) : undefined;
+  }
+  player.velocity = { x: next.x - from.x, y: next.y - from.y };
   // The feet keep their height in the world: over a lower top (a lower column, or sand's sunken
   // one) they are higher above it and fall; onto a slightly higher one they step up on it, and onto
   // a higher one they climb, from where they are.
@@ -567,6 +633,7 @@ function stepOnce(
   if (!airborne && rise > PLAYER_STEP_HEIGHT) {
     player.climb = startClimb(ground, from, next, elevation, feet, rise);
     player.verticalSpeed = undefined;
+    player.velocity = { x: 0, y: 0 };
     return;
   }
   player.x = next.x;
@@ -632,9 +699,10 @@ function stepClimb(player: PlayerState, climb: PlayerClimb, ground: PlayerGround
 
 /**
  * The player system: runs `ticks` simulation ticks (default `1`) of the player walking at
- * {@link PLAYER_SPEED}. Each tick it moves along `player.walk` if its feet fit there (land,
+ * {@link PLAYER_SPEED}. Each tick it accelerates `player.velocity` toward `player.walk` and moves
+ * by that velocity if its feet fit there (land,
  * a climb of at most {@link PLAYER_MAX_CLIMB}, nothing in the way); otherwise it slides along
- * whichever axis is free, or stays. It jumps too: asked to (`jumpPlayer()`) on the ground, its
+ * whichever axis is free, nudges around a small clear corner, or stays. It jumps too: asked to (`jumpPlayer()`) on the ground, its
  * feet take off at {@link PLAYER_JUMP_SPEED} and gravity ({@link PLAYER_GRAVITY}) brings them down,
  * after {@link PLAYER_JUMP_TICKS} ticks on flat ground (`getJumpHeight()`). Its feet keep their
  * height when it walks onto a lower top (a lower column, or the sunken top of `topInset`, e.g. sand),
@@ -664,6 +732,8 @@ export function stepPlayer(
     const resting =
       player.walk.x === 0 &&
       player.walk.y === 0 &&
+      player.velocity.x === 0 &&
+      player.velocity.y === 0 &&
       player.verticalSpeed === undefined &&
       player.jumpBufferTicks === 0 &&
       climb === undefined;
@@ -678,6 +748,7 @@ export function stepPlayer(
       player.wantsJump = false;
       player.jumpBufferTicks = 0;
       player.coyoteTicks = 0;
+      player.velocity = { x: 0, y: 0 };
       stepClimb(player, climb, ground, topInset);
       updateMotion(player);
       if (probe && input)
@@ -693,6 +764,7 @@ export function stepPlayer(
             height: player.height,
           },
           verticalSpeed: player.verticalSpeed,
+          horizontalVelocity: { ...player.velocity },
           blockReason: "climbing",
         });
       continue;
@@ -706,6 +778,7 @@ export function stepPlayer(
       player.jumpBufferTicks = 0;
       player.coyoteTicks = 0;
     }
+    acceleratePlayer(player);
     const blockReason = stepOnce(player, ground, topInset, probe !== undefined);
     const airResult = player.climb === undefined ? stepAir(player, ground, topInset) : undefined;
     if (player.climb) {
@@ -714,6 +787,7 @@ export function stepPlayer(
       player.coyoteTicks = 0;
     } else if (airResult === "rescued") {
       cancelPlayerJump(player);
+      player.velocity = { x: 0, y: 0 };
     } else if (airResult === "landed" && player.jumpBufferTicks > 0) {
       player.verticalSpeed = PLAYER_JUMP_SPEED;
       player.wantsJump = false;
@@ -737,6 +811,7 @@ export function stepPlayer(
         contact: player.verticalSpeed === undefined ? "ground" : "air",
         position: { x: player.x, y: player.y, elevation: player.elevation, inset: player.inset, height: player.height },
         verticalSpeed: player.verticalSpeed,
+        horizontalVelocity: { ...player.velocity },
         ...(blockReason || airResult === "ceiling" ? { blockReason: blockReason ?? "ceiling" } : {}),
       });
   }

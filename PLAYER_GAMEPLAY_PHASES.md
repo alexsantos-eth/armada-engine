@@ -1,6 +1,6 @@
 # Fases para perfeccionar el control del jugador
 
-**Estado:** fases 0 a 3 implementadas. El laboratorio reproducible está en `artifacts/player-movement-lab.html`; las fases 4 a 6 siguen pendientes.
+**Estado:** fases 0 a 4 implementadas. El laboratorio reproducible está en `artifacts/player-movement-lab.html`; las fases 5 y 6 siguen pendientes.
 
 Plan para Armada Engine, ordenado por dependencias. Los valores propuestos son puntos de partida para probar en juego, no constantes definitivas.
 
@@ -75,6 +75,8 @@ Archivos principales: `src/isometric/core/engine/player/player.ts`, `src/isometr
 - Afinar conjuntamente velocidad horizontal y arco vertical para que las distancias de salto correspondan con el terreno disponible.
 
 **Termina cuando:** soltar o invertir la dirección tiene un resultado repetible, se puede corregir un aterrizaje en el aire y el jugador no se engancha en esquinas menores.
+
+**Implementado:** velocidad máxima de 0,15 columnas/tick (3 columnas/s). En tierra acelera 0,09 y frena 0,12 columnas/tick²; en el aire acelera 0,04 y frena 0,025. Invertir la dirección suma aceleración y frenado para no dejar el control bloqueado. El vector se normaliza también en diagonal; una colisión quita el componente bloqueado y una corrección lateral de hasta 0,04 columnas solo ocurre si tanto el desvío como el destino están libres. Un hueco de una columna requiere dos ticks de carrera antes del salto. La velocidad horizontal es transitoria, no se guarda, y aparece en las trazas del laboratorio.
 
 ## Fase 5 — Lectura visual, respuesta y accesibilidad
 

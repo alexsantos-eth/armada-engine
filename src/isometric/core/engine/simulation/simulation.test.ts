@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { createEventBus } from "../events";
-import { createPlayerPart, createPlayerSystem, PLAYER_PART, PLAYER_STEP, setPlayerWalk } from "../player";
+import {
+  createPlayerPart,
+  createPlayerSystem,
+  PLAYER_GROUND_ACCEL,
+  PLAYER_PART,
+  PLAYER_STEP,
+  setPlayerWalk,
+} from "../player";
 import { CLOCK_PART, createClockPart, TICKS_PER_DAY, TICKS_PER_SECOND } from "../time";
 import type { SimulationEvents, WorldSystem } from "../../types";
 import { generateWorld, type World } from "../world";
@@ -67,7 +74,7 @@ describe("stepWorld", () => {
     };
 
     const { start, player } = walked(false);
-    expect(Math.hypot(player.x - start.x, player.y - start.y)).toBeCloseTo(2 * PLAYER_STEP);
+    expect(Math.hypot(player.x - start.x, player.y - start.y)).toBeCloseTo(PLAYER_GROUND_ACCEL + PLAYER_STEP);
     expect(walked(true).player).toEqual(player);
   });
 
@@ -149,7 +156,7 @@ describe("createSimulation", () => {
     simulation.frame(100);
 
     expect(Math.hypot(world.parts.get(PLAYER_PART).x - start.x, world.parts.get(PLAYER_PART).y - start.y)).toBeCloseTo(
-      2 * PLAYER_STEP,
+      PLAYER_GROUND_ACCEL + PLAYER_STEP,
     );
   });
 

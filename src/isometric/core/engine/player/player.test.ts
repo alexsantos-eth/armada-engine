@@ -15,6 +15,11 @@ import {
   PLAYER_RADIUS,
   PLAYER_SPEED,
   PLAYER_STEP,
+  PLAYER_GROUND_ACCEL,
+  PLAYER_GROUND_BRAKE,
+  PLAYER_AIR_ACCEL,
+  PLAYER_AIR_BRAKE,
+  PLAYER_CORNER_NUDGE,
   type PlayerGround,
   type PlayerObstacle,
   type PlayerStepSample,
@@ -178,6 +183,7 @@ describe("createPlayer", () => {
       jumpBufferTicks: 0,
       coyoteTicks: 0,
       jumpHeld: false,
+      velocity: { x: 0, y: 0 },
       climb: undefined,
       previous: { x: 1.2, y: 0, elevation: 3, inset: 0, height: 0 },
       walk: { x: 0, y: 0 },
@@ -241,6 +247,89 @@ describe("getWalkDirection", () => {
   });
 });
 
+describe("horizontal control", () => {
+  const field = groundFrom(["00000", "00000", "00000"]);
+  const east = { up: true, right: true };
+
+  it("accelerates, brakes and reverses on the ground with bounded velocity", () => {
+    const player = walking(field, { x: 1, y: 1 }, east);
+    stepPlayer(player, field);
+    expect(player.velocity.x).toBeCloseTo(PLAYER_GROUND_ACCEL);
+    stepPlayer(player, field);
+    expect(player.velocity.x).toBeCloseTo(PLAYER_STEP);
+    setPlayerWalk(player, still);
+    stepPlayer(player, field);
+    expect(player.velocity.x).toBeCloseTo(PLAYER_STEP - PLAYER_GROUND_BRAKE);
+    stepPlayer(player, field);
+    expect(player.velocity).toEqual({ x: 0, y: 0 });
+    setPlayerWalk(player, { ...still, down: true, left: true });
+    stepPlayer(player, field);
+    expect(player.velocity.x).toBeLessThan(0);
+  });
+
+  it("uses softer acceleration and braking in the air, and can steer to a landing", () => {
+    const player = walking(field, { x: 1, y: 1 }, east);
+    jumpPlayer(player);
+    stepPlayer(player, field);
+    expect(player.velocity.x).toBeCloseTo(PLAYER_AIR_ACCEL);
+    setPlayerWalk(player, still);
+    stepPlayer(player, field);
+    expect(player.velocity.x).toBeCloseTo(PLAYER_AIR_ACCEL - PLAYER_AIR_BRAKE);
+    setPlayerWalk(player, { ...still, ...east });
+    stepPlayer(player, field, 5);
+    expect(player.x).toBeGreaterThan(1 + PLAYER_STEP);
+    expect(player.verticalSpeed).toBeDefined();
+  });
+
+  it("keeps diagonal movement at the same maximum speed as axial movement", () => {
+    const player = walking(field, { x: 1, y: 1 }, { right: true });
+    stepPlayer(player, field, 2);
+    expect(Math.hypot(player.velocity.x, player.velocity.y)).toBeCloseTo(PLAYER_STEP);
+  });
+
+  it("turns against existing momentum on land and in the air", () => {
+    const reverse = { ...still, down: true, left: true };
+    const groundPlayer = walking(field, { x: 1, y: 1 }, east);
+    stepPlayer(groundPlayer, field, 2);
+    setPlayerWalk(groundPlayer, reverse);
+    stepPlayer(groundPlayer, field);
+    expect(groundPlayer.velocity.x).toBeLessThan(0);
+
+    const jumper = walking(field, { x: 1, y: 1 }, east);
+    jumpPlayer(jumper);
+    stepPlayer(jumper, field);
+    setPlayerWalk(jumper, reverse);
+    stepPlayer(jumper, field);
+    expect(jumper.velocity.x).toBeLessThan(0);
+    expect(jumper.verticalSpeed).toBeDefined();
+  });
+
+  it("nudges around a minor corner only when both the nudge and destination fit", () => {
+    const passable = groundFrom(["0t00", "0000"]);
+    const player = walking(passable, { x: 0.6, y: 0.29 }, east);
+    stepPlayer(player, passable, 2);
+    expect(player.y).toBeCloseTo(0.29 + PLAYER_CORNER_NUDGE);
+    expect(player.x).toBeGreaterThan(0.7);
+
+    const blocked = groundFrom(["0t00", "~~~~"]);
+    const other = walking(blocked, { x: 0.6, y: 0.29 }, east);
+    stepPlayer(other, blocked, 2);
+    expect(other.y).toBeCloseTo(0.29);
+    expect(other.x).toBeLessThan(player.x);
+  });
+
+  it("removes blocked velocity so a wall does not store momentum", () => {
+    const wall = groundFrom(["0T0"]);
+    const player = walking(wall, { x: 0.3, y: 0 }, east);
+    stepPlayer(player, wall);
+    expect(player.x).toBeCloseTo(0.3);
+    expect(player.velocity).toEqual({ x: 0, y: 0 });
+    setPlayerWalk(player, { ...still, down: true, left: true });
+    stepPlayer(player, wall);
+    expect(player.x).toBeLessThan(0.3);
+  });
+});
+
 describe("createPlayerSystem", () => {
   it("walks the world's player one tick on the world's ground", () => {
     const field = groundFrom(["00000", "00000", "00000", "00000", "00000"]);
@@ -254,7 +343,7 @@ describe("createPlayerSystem", () => {
     });
 
     expect(system.id).toBe("player");
-    expect(player.x).toBeCloseTo(1 + PLAYER_STEP);
+    expect(player.x).toBeCloseTo(1 + PLAYER_GROUND_ACCEL);
     expect(player.previous).toEqual({ x: 1, y: 2, elevation: 0, inset: 0, height: 0 });
   });
 
@@ -418,7 +507,7 @@ describe("jumping", () => {
     };
     const player = jump();
 
-    expect(player.x - player.y).toBeCloseTo(1 - 1 + 4 * PLAYER_STEP * Math.SQRT2);
+    expect(player.x - player.y).toBeCloseTo((PLAYER_AIR_ACCEL * 6 + PLAYER_STEP) * Math.SQRT2);
     expect(player.height).toBeCloseTo(getJumpHeight(4));
     expect(jump()).toEqual(player);
   });
@@ -506,11 +595,13 @@ describe("jumping", () => {
 
   it("crosses a one-column gap while jumping and lands on the far side", () => {
     const ground = step("00.000");
-    const player = walking(ground, { x: 1.3, y: 1 }, { up: true, right: true });
+    const player = walking(ground, { x: 1, y: 1 }, { up: true, right: true });
+    stepPlayer(player, ground, 2); // Reach running speed before the edge.
     jumpPlayer(player);
-    stepPlayer(player, ground, PLAYER_JUMP_TICKS + 4);
+    stepPlayer(player, ground, PLAYER_JUMP_TICKS);
 
-    expect(player.x).toBeGreaterThan(2);
+    expect(player.x).toBeGreaterThan(2.7);
+    expect(player.lastSafe.x).toBeGreaterThan(2.7);
     expect(player).toMatchObject({ elevation: 0, height: 0, verticalSpeed: undefined });
   });
 
@@ -763,6 +854,7 @@ describe("movement diagnostics", () => {
     expect(samples).toEqual(run());
     expect(samples).toHaveLength(PLAYER_JUMP_TICKS);
     expect(samples[0]).toMatchObject({ step: 0, input: { jump: true }, contact: "air" });
+    expect(samples[0].horizontalVelocity).toEqual({ x: 0, y: 0 });
     expect(samples[0].position.height).toBeCloseTo(getJumpHeight(1));
     expect(samples[PLAYER_JUMP_TICKS - 1]).toMatchObject({ step: 9, contact: "ground", verticalSpeed: undefined });
     expect(Math.max(...samples.map((sample) => sample.position.height ?? 0))).toBeCloseTo(PLAYER_JUMP_HEIGHT);
@@ -825,13 +917,13 @@ describe("stepPlayer", () => {
   it("walks PLAYER_STEP per tick along its walk, keeping the previous position", () => {
     const player = walking(field, { x: 1, y: 2 }, { up: true, right: true });
     stepPlayer(player, field);
-    expect(player.x).toBeCloseTo(1 + PLAYER_STEP);
+    expect(player.x).toBeCloseTo(1 + PLAYER_GROUND_ACCEL);
     expect(player.y).toBe(2);
     expect(player.previous).toEqual({ x: 1, y: 2, elevation: 0, inset: 0, height: 0 });
 
     stepPlayer(player, field, 3);
-    expect(player.x).toBeCloseTo(1 + 4 * PLAYER_STEP);
-    expect(player.previous.x).toBeCloseTo(1 + 3 * PLAYER_STEP);
+    expect(player.x).toBeCloseTo(1 + PLAYER_GROUND_ACCEL + 3 * PLAYER_STEP);
+    expect(player.previous.x).toBeCloseTo(1 + PLAYER_GROUND_ACCEL + 2 * PLAYER_STEP);
   });
 
   it("standing still only settles the previous position", () => {
@@ -956,6 +1048,7 @@ describe("getPlayerRenderPosition", () => {
     jumpBufferTicks: 0,
     coyoteTicks: 0,
     jumpHeld: false,
+    velocity: { x: 0, y: 0 },
     climb: undefined,
     previous: { x: 1, y: 4, elevation: 0 },
     walk: { x: 1, y: 0 },
