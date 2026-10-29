@@ -15,15 +15,27 @@ const TREE_GROVE_FORMATION: EntityFormation = {
   rotate: true,
 };
 
+/** Three homes around one residential lot; members may be omitted on unsuitable ground. */
+const HOUSE_CLUSTER_FORMATION: EntityFormation = {
+  map: ["X.....X", ".......", ".......", ".......", ".......", ".......", "X......"],
+  minMembers: 1,
+};
+
+/** A second home along the same street, when its column is available. */
+const HOUSE_ROW_FORMATION: EntityFormation = { map: ["X.....X"], minMembers: 1 };
+const HOUSE_COLUMN_FORMATION: EntityFormation = {
+  map: ["X", ".", ".", ".", ".", ".", "X"],
+  minMembers: 1,
+};
+
 /**
- * Forests: every tree kind grows in the same large noise patches (about a third of the land),
- * thinning at their edges, with a few lone trees between them.
+ * Forests: every tree kind grows in the same large noise patches, thinning at their edges.
  */
 const TREE_FOREST_PATCHES: EntityPatches = {
   field: "forest",
   scale: 96,
   threshold: -0.05,
-  outside: 0.03,
+  outside: 0.1,
 };
 
 /**
@@ -40,7 +52,7 @@ const BUSH_PATCH_FORMATION: EntityFormation = {
 };
 
 /** Side of a structured neighborhood, in world columns. */
-const SETTLEMENT_REGION_SIZE = 64;
+const SETTLEMENT_REGION_SIZE = 32;
 
 /**
  * Where neighbourhoods are built: in the clearings of the forests' noise field, well below the
@@ -52,6 +64,12 @@ export const SETTLEMENT_ZONE: SettlementZone = {
   below: -0.15,
 };
 
+/** Rare dense cores inside the same broad clearings as ordinary neighbourhoods. */
+const CITY_CORE_ZONE: SettlementZone = {
+  ...SETTLEMENT_ZONE,
+  below: -0.35,
+};
+
 /**
  * Creates one fixed building lot while keeping all structures on the same settlement grid. No cross
  * is reserved: the paths are planned (`createSettlementPaths()`) and nothing grows on them.
@@ -60,6 +78,13 @@ const settlementLot = (x: number, y: number) => ({
   regionSize: SETTLEMENT_REGION_SIZE,
   offset: { x, y },
   zone: SETTLEMENT_ZONE,
+});
+
+/** A fixed lot for a tall building, present only in the deepest urban clearing. */
+const cityLot = (x: number, y: number) => ({
+  regionSize: SETTLEMENT_REGION_SIZE,
+  offset: { x, y },
+  zone: CITY_CORE_ZONE,
 });
 
 /**
@@ -161,9 +186,10 @@ const SETTLEMENT_ENTITIES: readonly EntityDefinition[] = [
     spawnChance: 1,
     gap: 2,
     surface: "grass",
-    surfaceElevation: [1, 2],
+    surfaceElevation: [0, 1, 2],
     colorReplacements: HOUSE_COLOR_REPLACEMENTS,
-    settlementLot: settlementLot(12, 12),
+    formation: HOUSE_CLUSTER_FORMATION,
+    settlementLot: settlementLot(6, 6),
   },
   {
     id: "house_2x1",
@@ -173,9 +199,10 @@ const SETTLEMENT_ENTITIES: readonly EntityDefinition[] = [
     spawnChance: 1,
     gap: 2,
     surface: "grass",
-    surfaceElevation: [1, 2],
+    surfaceElevation: [0, 1, 2],
     colorReplacements: HOUSE_COLOR_REPLACEMENTS,
-    settlementLot: settlementLot(44, 12),
+    formation: HOUSE_COLUMN_FORMATION,
+    settlementLot: settlementLot(24, 6),
   },
   {
     id: "house_balcony",
@@ -185,9 +212,10 @@ const SETTLEMENT_ENTITIES: readonly EntityDefinition[] = [
     gap: 2,
     spawnChance: 1,
     surface: "grass",
-    surfaceElevation: [1, 2],
+    surfaceElevation: [0, 1, 2],
     colorReplacements: HOUSE_BALCONY_ROOF_COLOR_REPLACEMENTS,
-    settlementLot: settlementLot(12, 44),
+    formation: HOUSE_ROW_FORMATION,
+    settlementLot: settlementLot(6, 24),
   },
   {
     id: "hospital",
@@ -196,7 +224,7 @@ const SETTLEMENT_ENTITIES: readonly EntityDefinition[] = [
     spawnChance: 1,
     gap: 2,
     surface: "grass",
-    settlementLot: settlementLot(44, 44),
+    settlementLot: settlementLot(24, 24),
   },
   {
     id: "restaurant",
@@ -205,7 +233,7 @@ const SETTLEMENT_ENTITIES: readonly EntityDefinition[] = [
     spawnChance: 1,
     gap: 2,
     surface: "grass",
-    settlementLot: settlementLot(12, 26),
+    settlementLot: settlementLot(6, 16),
   },
   {
     id: "market",
@@ -214,7 +242,7 @@ const SETTLEMENT_ENTITIES: readonly EntityDefinition[] = [
     spawnChance: 1,
     gap: 2,
     surface: "grass",
-    settlementLot: settlementLot(44, 26),
+    settlementLot: settlementLot(24, 16),
   },
   {
     id: "townhall",
@@ -223,7 +251,7 @@ const SETTLEMENT_ENTITIES: readonly EntityDefinition[] = [
     spawnChance: 1,
     gap: 2,
     surface: "grass",
-    settlementLot: settlementLot(26, 12),
+    settlementLot: settlementLot(16, 6),
   },
 ];
 
@@ -369,8 +397,9 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     gap: 1,
     spawnChance: 0.01,
     surface: "grass",
-    surfaceElevation: 0,
+    surfaceElevation: [0, 1, 2],
     colorReplacements: TOWER_ROOF_COLOR_REPLACEMENTS,
+    settlementLot: cityLot(12, 12),
   },
   {
     id: "apartments_x",
@@ -381,8 +410,9 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     gap: 2,
     spawnChance: 0.008,
     surface: "grass",
-    surfaceElevation: 0,
+    surfaceElevation: [0, 1, 2],
     colorReplacements: APARTMENTS_ROOF_COLOR_REPLACEMENTS,
+    settlementLot: cityLot(20, 12),
   },
   {
     id: "apartments_y",
@@ -393,8 +423,9 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     gap: 2,
     spawnChance: 0.008,
     surface: "grass",
-    surfaceElevation: 0,
+    surfaceElevation: [0, 1, 2],
     colorReplacements: APARTMENTS_ROOF_COLOR_REPLACEMENTS,
+    settlementLot: cityLot(12, 20),
   },
   {
     id: "skyscraper",
@@ -404,8 +435,9 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     gap: 2,
     spawnChance: 0.004,
     surface: "grass",
-    surfaceElevation: 0,
+    surfaceElevation: [0, 1, 2],
     colorReplacements: SKYSCRAPER_ROOF_COLOR_REPLACEMENTS,
+    settlementLot: cityLot(20, 20),
   },
   {
     id: "hotel_x",
@@ -416,8 +448,9 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     gap: 2,
     spawnChance: 0.004,
     surface: "grass",
-    surfaceElevation: 0,
+    surfaceElevation: [0, 1, 2],
     colorReplacements: HOTEL_ROOF_COLOR_REPLACEMENTS,
+    settlementLot: cityLot(4, 12),
   },
   {
     id: "hotel_y",
@@ -428,8 +461,9 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     gap: 2,
     spawnChance: 0.004,
     surface: "grass",
-    surfaceElevation: 0,
+    surfaceElevation: [0, 1, 2],
     colorReplacements: HOTEL_ROOF_COLOR_REPLACEMENTS,
+    settlementLot: cityLot(28, 12),
   },
   {
     id: "office_x",
@@ -440,8 +474,9 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     gap: 2,
     spawnChance: 0.003,
     surface: "grass",
-    surfaceElevation: 0,
+    surfaceElevation: [0, 1, 2],
     colorReplacements: OFFICE_ROOF_COLOR_REPLACEMENTS,
+    settlementLot: cityLot(4, 20),
   },
   {
     id: "office_y",
@@ -452,8 +487,9 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     gap: 2,
     spawnChance: 0.003,
     surface: "grass",
-    surfaceElevation: 0,
+    surfaceElevation: [0, 1, 2],
     colorReplacements: OFFICE_ROOF_COLOR_REPLACEMENTS,
+    settlementLot: cityLot(28, 20),
   },
   {
     id: "boat",

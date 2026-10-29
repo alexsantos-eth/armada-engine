@@ -89,34 +89,84 @@ describe("ENTITY_CONFIG", () => {
     const lots = buildings.map(({ settlementLot }) => settlementLot);
 
     expect(buildings.map(({ id }) => id)).toEqual(ids);
-    expect(lots.every((lot) => lot?.regionSize === 64)).toBe(true);
+    expect(lots.every((lot) => lot?.regionSize === 32)).toBe(true);
     expect(new Set(lots.map((lot) => `${lot?.offset.x}:${lot?.offset.y}`)).size).toBe(ids.length);
     expect(buildings.every(({ spawnChance }) => spawnChance === 1)).toBe(true);
   });
 
   it("generates all neighborhood structures of a settled region", () => {
-    const columns = Array.from({ length: 64 }, (_, x) =>
-      Array.from({ length: 64 }, (__, y) => new Box(x, y, { elevation: 1 })),
+    const columns = Array.from({ length: 32 }, (_, x) =>
+      Array.from({ length: 32 }, (__, y) => new Box(x, y, { elevation: 1 })),
     ).flat();
-    const settlementDefinitions = ENTITY_CONFIG.filter(({ settlementLot }) => settlementLot !== undefined).map(
-      (definition) => ({ ...definition, settlementLot: { ...definition.settlementLot!, zone: undefined } }),
-    );
+    const settlementDefinitions = ENTITY_CONFIG.filter(
+      ({ settlementLot }) => settlementLot?.zone === SETTLEMENT_ZONE,
+    ).map((definition) => ({ ...definition, settlementLot: { ...definition.settlementLot!, zone: undefined } }));
     const buildings = createEntitiesFromConfig(columns, settlementDefinitions, () => 0);
 
     expect(buildings.map(({ id }) => id)).toEqual([
-      "house@12,12",
-      "house_2x1@44,12",
-      "house_balcony@12,44",
-      "hospital@44,44",
-      "restaurant@12,26",
-      "market@44,26",
-      "townhall@26,12",
+      "house@6,6",
+      "house@12,6",
+      "house@6,12",
+      "house_2x1@24,6",
+      "house_2x1@24,12",
+      "house_balcony@6,24",
+      "house_balcony@12,24",
+      "hospital@24,24",
+      "restaurant@6,16",
+      "market@24,16",
+      "townhall@16,6",
     ]);
   });
 
+  it("clusters tall buildings in rare urban clearings instead of scattering them across grass", () => {
+    const tall = ENTITY_CONFIG.filter(({ textureSource }) => textureSource.startsWith("/assets/building/")).filter(
+      ({ height }) => height >= 3,
+    );
+    expect(tall).toHaveLength(8);
+    expect(tall.every(({ settlementLot }) => settlementLot?.regionSize === 32)).toBe(true);
+    expect(tall.every(({ settlementLot }) => (settlementLot?.zone?.below ?? 0) < SETTLEMENT_ZONE.below)).toBe(true);
+    expect(new Set(tall.map(({ settlementLot }) => `${settlementLot?.offset.x}:${settlementLot?.offset.y}`)).size).toBe(
+      tall.length,
+    );
+  });
+
+  it("places tall buildings beside paths in a sampled world", () => {
+    const source = createSeededChunkSource({ seed: 1337, entityDefinitions: ENTITY_CONFIG });
+    const chunks = Array.from({ length: 10 }, (_, ix) => ix - 5).flatMap((cx) =>
+      Array.from({ length: 10 }, (_, iy) => source.generate({ cx, cy: iy - 5 })),
+    );
+    const tall = new Set([
+      "tower",
+      "apartments_x",
+      "apartments_y",
+      "skyscraper",
+      "hotel_x",
+      "hotel_y",
+      "office_x",
+      "office_y",
+    ]);
+    const landmarks = chunks.flatMap(({ entities }) => entities).filter(({ type }) => tall.has(type));
+    const paths = new Set(
+      chunks.flatMap(({ columns }) => columns.filter(({ type }) => type === "path").map(({ x, y }) => `${x}:${y}`)),
+    );
+    expect(landmarks.length).toBeGreaterThan(0);
+    expect(
+      landmarks.some((building) =>
+        getEntityFootprint(building).some(({ x, y }) =>
+          [
+            [1, 0],
+            [-1, 0],
+            [0, 1],
+            [0, -1],
+          ].some(([dx, dy]) => paths.has(`${x + dx}:${y + dy}`)),
+        ),
+      ),
+    ).toBe(true);
+  }, 15_000);
+
   it("builds the neighbourhoods in the clearings of the forests' noise", () => {
     const forest = ENTITY_CONFIG.find(({ id }) => id === "tree")?.patches;
-    const buildings = ENTITY_CONFIG.filter(({ settlementLot }) => settlementLot !== undefined);
+    const buildings = ENTITY_CONFIG.filter(({ settlementLot }) => settlementLot?.zone === SETTLEMENT_ZONE);
     const source = createSeededChunkSource({ seed: 1337, entityDefinitions: ENTITY_CONFIG });
     const field = createPatchFields(1337)(SETTLEMENT_ZONE.field, SETTLEMENT_ZONE.scale);
     const ids = new Set(buildings.map(({ id }) => id));
@@ -130,9 +180,13 @@ describe("ENTITY_CONFIG", () => {
       scale: forest?.scale,
     });
     expect(SETTLEMENT_ZONE.below).toBeLessThan(forest?.threshold ?? -1);
-    expect(buildings.every(({ settlementLot }) => settlementLot?.zone === SETTLEMENT_ZONE)).toBe(true);
+    expect(buildings).toHaveLength(7);
     expect(placed.length).toBeGreaterThan(3);
-    expect(placed.every(({ x, y }) => field(x, y) < SETTLEMENT_ZONE.below)).toBe(true);
+    expect(
+      placed.every(
+        ({ x, y }) => field(Math.floor(x / 32) * 32 + 16, Math.floor(y / 32) * 32 + 16) < SETTLEMENT_ZONE.below,
+      ),
+    ).toBe(true);
   });
 
   it("connects every building of a neighbourhood to the paths of its settlement", () => {
@@ -292,7 +346,7 @@ describe("ENTITY_CONFIG", () => {
       ENTITY_CONFIG.filter(({ textureSource }) => textureSource.startsWith("/assets/tree/")).map(({ id }) => id),
     );
     expect(new Set(forests.map(({ patches }) => patches)).size).toBe(1);
-    expect(forests[0].patches?.outside).toBeGreaterThan(0);
+    expect(forests[0].patches?.outside).toBeGreaterThanOrEqual(0.1);
   });
 
   it("groups the pine, cypress and birch in groves of three", () => {

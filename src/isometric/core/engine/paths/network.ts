@@ -18,7 +18,7 @@ export const PATH_REUSE_COST = 0.3;
 /** Extra cost of a step onto a column next to the network (but not on it): no paths two columns wide. */
 export const PATH_BESIDE_COST = 1.5;
 /** Most a column's `wiggle` adds to a step onto it: what makes paths meander. */
-export const PATH_WIGGLE_COST = 2.5;
+export const PATH_WIGGLE_COST = 1;
 /** How far from the wanted hub (in columns, ring by ring) the network looks for ground to start from. */
 export const PATH_HUB_RADIUS = 6;
 

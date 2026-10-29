@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { Box, createTerrainColumns } from "../terrain";
 import { Entity, createEntitiesFromConfig, getEntityFootprint, getFootprint, indexEntities } from "./entities";
-import { createPatchChances } from "./patches";
+import { createPatchChances, createPatchFields } from "./patches";
 
 describe("createEntitiesFromConfig formations", () => {
   const tree = {
@@ -213,6 +213,27 @@ describe("createEntitiesFromConfig formations", () => {
 
     const negativeRegion = grid(64, 64).map((box) => new Box(box.x - 64, box.y - 64, { elevation: box.elevation }));
     expect(positions(createEntitiesFromConfig(negativeRegion, [definition], () => 0))).toEqual(["-40:-40"]);
+  });
+
+  it("decides every lot of a neighborhood from the region center", () => {
+    const size = 16;
+    const zone = { field: "neighborhoods", scale: 40, below: 0 };
+    const field = createPatchFields(17)(zone.field, zone.scale);
+    const region = Array.from({ length: 20 }, (_, ix) => ix - 10)
+      .flatMap((rx) => Array.from({ length: 20 }, (_, iy) => ({ rx, ry: iy - 10 })))
+      .find(({ rx, ry }) => field(rx * size + 8, ry * size + 8) < 0 && field(rx * size + 2, ry * size + 2) >= 0);
+    expect(region).toBeDefined();
+    const { rx, ry } = region!;
+    const boxes = [
+      new Box(rx * size + 2, ry * size + 2, { elevation: 1 }),
+      new Box(rx * size + 12, ry * size + 12, { elevation: 1 }),
+    ];
+    const definitions = [
+      { ...tree, id: "home", spawnChance: 1, settlementLot: { regionSize: size, offset: { x: 2, y: 2 }, zone } },
+      { ...tree, id: "shop", spawnChance: 1, settlementLot: { regionSize: size, offset: { x: 12, y: 12 }, zone } },
+    ];
+    const entities = createEntitiesFromConfig(boxes, definitions, () => 0, undefined, 17);
+    expect(positions(entities)).toEqual(boxes.map(({ x, y }) => `${x}:${y}`));
   });
 
   it("keeps random entities out of reserved settlement paths", () => {

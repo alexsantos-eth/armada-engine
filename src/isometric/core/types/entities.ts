@@ -54,7 +54,7 @@ export type GridOffset = {
 };
 
 /**
- * Where the settlements are: the lots whose column is below `below` in a patch noise field (the
+ * Where the settlements are: the regions whose center is below `below` in a patch noise field (the
  * same field as {@link EntityPatches} with that `field` and `scale`), so sharing the forests' field
  * puts the neighbourhoods in the clearings between forests.
  */
@@ -63,7 +63,7 @@ export type SettlementZone = {
   readonly field: string;
   /** Sampling distance of the noise, in columns (as in `EntityPatches.scale`). */
   readonly scale: number;
-  /** Noise value (`-1`–`1`) under which a lot is built: lower, fewer and smaller settled areas. */
+  /** Noise value (`-1`–`1`) under which a region is settled: lower, fewer settled areas. */
   readonly below: number;
 };
 

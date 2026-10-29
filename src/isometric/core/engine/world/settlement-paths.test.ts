@@ -47,10 +47,7 @@ describe("createSettlementPaths", () => {
       settlementLot: { ...definition.settlementLot!, zone },
     }));
     const field = createPatchFields(SEED)(zone.field, zone.scale);
-    const settled = (rx: number, ry: number) =>
-      [HOUSE, SHOP].some(
-        ({ settlementLot }) => field(rx * 64 + settlementLot!.offset.x, ry * 64 + settlementLot!.offset.y) < 0,
-      );
+    const settled = (rx: number, ry: number) => field(rx * 64 + 32, ry * 64 + 32) < 0;
     const paths = createSettlementPaths({ seed: SEED, entityDefinitions: zoned });
     const regions = [-3, -2, -1, 0, 1, 2].flatMap((rx) => [-3, -2, -1, 0, 1, 2].map((ry) => ({ rx, ry })));
     const rectOf = ({ rx, ry }: { rx: number; ry: number }) => ({

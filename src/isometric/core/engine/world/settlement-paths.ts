@@ -19,7 +19,7 @@ export type SettlementPathsOptions = {
 /** Regions whose paths are kept once planned, the most recent ones: a chunk asks its own region again and again. */
 export const SETTLEMENT_PATH_REGIONS_KEPT = 16;
 /** Sampling distance of the noise that makes paths meander, in columns. */
-export const SETTLEMENT_PATH_WIGGLE_SCALE = 6;
+export const SETTLEMENT_PATH_WIGGLE_SCALE = 10;
 /**
  * Offsets from the middle of a region's side, in order, tried for the column where a path leaves
  * it: the first one with open ground on both sides of the edge.
@@ -55,10 +55,12 @@ export function createSettlementPaths({ seed, entityDefinitions, clip }: Settlem
   /** Whether region `(rx, ry)` of `size` has a lot inside its zone. */
   const isSettled = (size: number, rx: number, ry: number): boolean =>
     settlements.some(({ settlementLot }) => {
-      const { regionSize, offset, zone } = settlementLot as NonNullable<EntityDefinition["settlementLot"]>;
+      const { regionSize, zone } = settlementLot as NonNullable<EntityDefinition["settlementLot"]>;
       return (
         regionSize === size &&
-        (!zone || patchFields(zone.field, zone.scale)(rx * size + offset.x, ry * size + offset.y) < zone.below)
+        (!zone ||
+          patchFields(zone.field, zone.scale)(rx * size + Math.floor(size / 2), ry * size + Math.floor(size / 2)) <
+            zone.below)
       );
     });
 

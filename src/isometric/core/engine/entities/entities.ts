@@ -344,7 +344,7 @@ function crossesSettlementPath(
 
 /**
  * Whether a column is the absolute, region-relative anchor for this settlement lot, inside its
- * `zone` if it has one.
+ * region's `zone` if it has one. All lots in a neighborhood sample the same central column.
  */
 function isSettlementLot(
   box: ITerrainColumn,
@@ -355,7 +355,9 @@ function isSettlementLot(
   const regionY = Math.floor(box.y / lot.regionSize) * lot.regionSize;
   if (box.x !== regionX + lot.offset.x || box.y !== regionY + lot.offset.y) return false;
   const { zone } = lot;
-  return !zone || patchFields(zone.field, zone.scale)(box.x, box.y) < zone.below;
+  const centerX = regionX + Math.floor(lot.regionSize / 2);
+  const centerY = regionY + Math.floor(lot.regionSize / 2);
+  return !zone || patchFields(zone.field, zone.scale)(centerX, centerY) < zone.below;
 }
 
 /** Whether column `(x, y)` is taken: by an entity placed before, or by the current group. */
