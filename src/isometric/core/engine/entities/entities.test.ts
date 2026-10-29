@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { Box, createTerrainColumns } from "../terrain";
 import { Entity, createEntitiesFromConfig, getEntityFootprint, getFootprint, indexEntities } from "./entities";
+import { createPatchChances } from "./patches";
 
 describe("createEntitiesFromConfig formations", () => {
   const tree = {
@@ -38,6 +39,74 @@ describe("createEntitiesFromConfig formations", () => {
     expect(entities.every(({ type }) => type === "tree")).toBe(true);
     // The anchor rolls once, then each of the 13 columns left free; members never roll.
     expect(calls).toBe(1 + 16 - 3);
+  });
+
+  it("spawns entities with patches only where their factor gives a chance, from the patch seed", () => {
+    const patches = { field: "forest", scale: 6, threshold: 0.2 };
+    const boxes = grid(40, 40);
+    const factors = createPatchChances(9)(patches, boxes);
+    const inside = new Set(boxes.filter((_, index) => factors[index] > 0).map(({ x, y }) => `${x}:${y}`));
+    const definition = { ...tree, spawnChance: 1, patches };
+    const entities = createEntitiesFromConfig(
+      boxes,
+      [definition],
+      () => 0,
+      () => 0,
+      9,
+    );
+
+    expect(entities.length).toBeGreaterThan(0);
+    expect(inside.size).toBeLessThan(boxes.length);
+    expect(positions(entities).every((position) => inside.has(position))).toBe(true);
+    expect(
+      positions(
+        createEntitiesFromConfig(
+          boxes,
+          [definition],
+          () => 0,
+          () => 0,
+          9,
+        ),
+      ),
+    ).toEqual(positions(entities));
+    expect(
+      positions(
+        createEntitiesFromConfig(
+          boxes,
+          [definition],
+          () => 0,
+          () => 0,
+          10,
+        ),
+      ),
+    ).not.toEqual(positions(entities));
+    // The roll is against spawnChance times the factor: a 0.99 roll passes only past the edge.
+    const whole = createEntitiesFromConfig(
+      boxes,
+      [{ ...definition, spawnChance: 1 }],
+      () => 0.99,
+      () => 0,
+      9,
+    );
+    const index = (x: number, y: number) => boxes.findIndex((box) => box.x === x && box.y === y);
+    expect(whole.length).toBeGreaterThan(0);
+    expect(whole.every(({ x, y }) => factors[index(x, y)] > 0.99)).toBe(true);
+  });
+
+  it("keeps a few instances outside the patches with outside", () => {
+    const patches = { field: "forest", scale: 6, threshold: 0.2, outside: 0.5 };
+    const boxes = grid(40, 40);
+    const factors = createPatchChances(9)(patches, boxes);
+    const entities = createEntitiesFromConfig(
+      boxes,
+      [{ ...tree, spawnChance: 1, patches }],
+      () => 0.4,
+      () => 0,
+      9,
+    );
+    const index = (x: number, y: number) => boxes.findIndex((box) => box.x === x && box.y === y);
+
+    expect(entities.some(({ x, y }) => factors[index(x, y)] === 0.5)).toBe(true);
   });
 
   it("discards a group when fewer than minMembers fit", () => {

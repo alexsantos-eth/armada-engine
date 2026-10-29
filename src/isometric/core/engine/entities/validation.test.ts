@@ -34,6 +34,7 @@ describe("validateEntityDefinitions", () => {
           surfaceElevation: [0, 1],
           gap: 2,
           formation: { map: ["XX", "X."], minMembers: 2, rotate: true },
+          patches: { field: "forest", scale: 20, threshold: 0.2, outside: 0.1 },
           settlementLot: { regionSize: 64, offset: { x: 24, y: 24 }, reservedPathWidth: 8 },
           contactShadow: false,
           colorReplacements: { "#9f4b2f": ["#111111", "#222222"], "#abc": ["#333", "#444"] },
@@ -111,6 +112,24 @@ describe("validateEntityDefinitions", () => {
       'rock: formation: Invalid formation map character "?" at row 0, column 1: use "X" or ".".',
       "b: formation.minMembers must be an integer between 1 and 2 (got 3)",
       "c: formation.minMembers must be an integer between 1 and 2 (got 0)",
+    ]);
+  });
+
+  it("reports invalid patches", () => {
+    expect(
+      issuesOf([
+        { ...VALID, patches: { field: " ", scale: 0, threshold: 1.5, outside: -0.1 } },
+        { ...VALID, id: "b", patches: { field: "forest", scale: Infinity, threshold: Number.NaN, outside: 2 } },
+        { ...VALID, id: "c", patches: { field: "forest", scale: 4, threshold: -1 } },
+      ]),
+    ).toEqual([
+      "rock: patches.field must not be empty",
+      "rock: patches.scale must be a positive number (got 0)",
+      "rock: patches.threshold must be between -1 and 1 (got 1.5)",
+      "rock: patches.outside must be between 0 and 1 (got -0.1)",
+      "b: patches.scale must be a positive number (got Infinity)",
+      "b: patches.threshold must be between -1 and 1 (got NaN)",
+      "b: patches.outside must be between 0 and 1 (got 2)",
     ]);
   });
 

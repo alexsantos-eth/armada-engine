@@ -237,6 +237,16 @@ describe("ENTITY_CONFIG", () => {
     expect(() => resolveFormation(definition.formation)).not.toThrow();
   });
 
+  it("grows every tree, and only the trees, in the same forests", () => {
+    const forests = ENTITY_CONFIG.filter(({ patches }) => patches !== undefined);
+
+    expect(forests.map(({ id }) => id)).toEqual(
+      ENTITY_CONFIG.filter(({ textureSource }) => textureSource.startsWith("/assets/tree/")).map(({ id }) => id),
+    );
+    expect(new Set(forests.map(({ patches }) => patches)).size).toBe(1);
+    expect(forests[0].patches?.outside).toBeGreaterThan(0);
+  });
+
   it("groups the pine, cypress and birch in groves of three", () => {
     const groves = ENTITY_CONFIG.filter(({ formation }) => formation !== undefined);
 

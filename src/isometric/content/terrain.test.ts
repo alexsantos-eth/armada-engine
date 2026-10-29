@@ -35,6 +35,21 @@ describe("TERRAIN_APPEARANCE", () => {
     expect(sources.every((source) => source === "/assets/grass/grass_variants.svg")).toBe(true);
   });
 
+  it("paints grass zones by noise in visible tones: darker, plain and yellower", () => {
+    const colors = TERRAIN_APPEARANCE.grass.noiseTints?.colors ?? [];
+    const channels = (color: number) => [(color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff];
+
+    expect(TERRAIN_APPEARANCE.grass.noiseTints?.scale).toBeGreaterThan(0);
+    expect(colors).toContain(0xffffff);
+    // Darker: every channel well under white. Yellower: red kept, blue well under green.
+    expect(colors.some((color) => channels(color).every((channel) => channel < 0xe0))).toBe(true);
+    expect(colors.some((color) => channels(color)[0] === 0xff && channels(color)[2] < channels(color)[1] - 0x30)).toBe(
+      true,
+    );
+    // Ground keeps a subtler palette of its own.
+    expect(TERRAIN_APPEARANCE.ground.noiseTints).not.toEqual(TERRAIN_APPEARANCE.grass.noiseTints);
+  });
+
   it("sinks only sand, half a block, and darkens only water with depth", () => {
     expect(TERRAIN_APPEARANCE.sand.topInset).toBe(0.5);
     expect(["grass", "ground", "water"].map((material) => TERRAIN_APPEARANCE[material as "grass"].topInset)).toEqual([

@@ -21,7 +21,8 @@ const overlaps = (a: WorldRect, b: WorldRect) =>
  * Chunks generated from the world seed, each on its own: the terrain of the chunk
  * (`generateTerrainColumns()`, seamless with its neighbours) and its entities
  * (`createEntitiesFromConfig()` on the chunk's columns, from the streams
- * `deriveSeed(seed, "entities@<chunk key>")` and `"entity-color-variants@<chunk key>"`). The same
+ * `deriveSeed(seed, "entities@<chunk key>")` and `"entity-color-variants@<chunk key>"`, and the world
+ * seed for patches). The same
  * chunk is the same whatever else is loaded and in whatever order.
  *
  * An entity's footprint and formation stay inside its chunk, and `gap` is kept among the
@@ -38,6 +39,7 @@ export function createSeededChunkSource({ seed, entityDefinitions, bounds }: See
         entityDefinitions,
         createSeededRandom(deriveSeed(seed, `entities@${key}`)),
         createSeededRandom(deriveSeed(seed, `entity-color-variants@${key}`)),
+        seed,
       );
       return { columns, entities };
     },

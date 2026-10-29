@@ -12,6 +12,7 @@ import type {
 import { CellMap, SpatialIndex, type ReadonlyCellMap } from "../grid";
 import { createSeededRandom, DEFAULT_WORLD_SEED, deriveSeed, type RandomSource } from "../random";
 import { pickFormationOffsets, resolveFormation } from "./formation";
+import { createPatchChances } from "./patches";
 import { pickColorVariation } from "./variants";
 
 function matchesSurfaceElevation(elevation: number, surfaceElevation: EntityDefinition["surfaceElevation"]): boolean {
@@ -235,6 +236,11 @@ const NO_CELLS: ReadonlyCellMap<true> = new CellMap<true>();
  * anchor column and then every member of the formation map is validated with the same rules.
  * The group spawns only when at least `minMembers` fit; the `gap` applies between groups.
  *
+ * A definition with `patches` spawns in large seeded noise patches (forests): its chance on
+ * each column is `spawnChance` times the factor of `createPatchChances(patchSeed)`, and columns
+ * with no chance are skipped before anything else. `patchSeed` is the world seed (not a chunk's),
+ * so patches cross chunks.
+ *
  * Occupancy and `gap` are answered by a {@link SpatialIndex} of the entities placed so far.
  *
  * Placement is deterministic for a given `random` source: pass one derived from the world
@@ -248,6 +254,7 @@ export function createEntitiesFromConfig(
   definitions: readonly EntityDefinition[],
   random: RandomSource = createSeededRandom(DEFAULT_WORLD_SEED),
   variantRandom: RandomSource = createSeededRandom(deriveSeed(DEFAULT_WORLD_SEED, "entity-color-variants")),
+  patchSeed: number = DEFAULT_WORLD_SEED,
 ): Entity[] {
   const entities: Entity[] = [];
   const settlementPaths: SettlementPath[] = [];
@@ -264,14 +271,21 @@ export function createEntitiesFromConfig(
     placed: new SpatialIndex<Entity>(),
   };
 
+  const patchChances = createPatchChances(patchSeed);
+
   for (const definition of definitions) {
     const formation = resolveFormation(definition.formation);
+    const factors = definition.patches && patchChances(definition.patches, boxes);
 
-    for (const box of boxes) {
+    for (let index = 0; index < boxes.length; index += 1) {
+      const box = boxes[index];
+      const chance = factors ? definition.spawnChance * factors[index] : definition.spawnChance;
+      // Only patches skip early: without them the random stream stays as it was.
+      if (factors && chance <= 0) continue;
       if (definition.settlementLot && !isSettlementLot(box, definition.settlementLot)) continue;
       if (crossesSettlementPath(box, definition, paths)) continue;
       if (!findPlacement(box, definition, context, NO_CELLS)) continue;
-      if (random() >= definition.spawnChance) continue;
+      if (random() >= chance) continue;
 
       // The anchor sits at offset (0, 0), so it is always the first member placed.
       const groupCells = new CellMap<true>();

@@ -1,4 +1,4 @@
-import type { EntityDefinition, EntityFormation } from "../core/types";
+import type { EntityDefinition, EntityFormation, EntityPatches } from "../core/types";
 
 /*
  * Game content: the entities that populate the world. This is data, not engine code — the
@@ -13,6 +13,17 @@ import type { EntityDefinition, EntityFormation } from "../core/types";
 const TREE_GROVE_FORMATION: EntityFormation = {
   map: ["XX", "X."],
   rotate: true,
+};
+
+/**
+ * Forests: every tree kind grows in the same large noise patches (about a third of the land),
+ * thinning at their edges, with a few lone trees between them.
+ */
+const TREE_FOREST_PATCHES: EntityPatches = {
+  field: "forest",
+  scale: 26,
+  threshold: 0.2,
+  outside: 0.08,
 };
 
 /**
@@ -238,89 +249,97 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
     id: "tree",
     textureSource: "/assets/tree/block.svg",
     height: 2,
-    spawnChance: 0.01,
+    spawnChance: 0.06,
     gap: 1,
     surface: "grass",
     sway: { cut: 0.58, amplitude: 1.5, period: 3400 },
     collision: TREE_TRUNK_COLLISION,
     formation: TREE_GROVE_FORMATION,
+    patches: TREE_FOREST_PATCHES,
   },
   {
     id: "tree_2",
     textureSource: "/assets/tree/block_2.svg",
     height: 2,
-    spawnChance: 0.015,
+    spawnChance: 0.09,
     gap: 1,
     surface: "grass",
     sway: { cut: 0.69, amplitude: 1.5, period: 3800 },
     collision: TREE_TRUNK_COLLISION,
     formation: TREE_GROVE_FORMATION,
+    patches: TREE_FOREST_PATCHES,
   },
   {
     id: "tree_3",
     textureSource: "/assets/tree/block_3.svg",
     height: 2,
-    spawnChance: 0.006,
+    spawnChance: 0.036,
     gap: 1,
     surface: "grass",
     sway: { cut: 0.76, amplitude: 1, period: 3000 },
     collision: TREE_TRUNK_COLLISION,
     formation: TREE_GROVE_FORMATION,
+    patches: TREE_FOREST_PATCHES,
   },
   {
     id: "tree_4",
     textureSource: "/assets/tree/block_4.svg",
     height: 2,
-    spawnChance: 0.01,
+    spawnChance: 0.06,
     gap: 1,
     surface: "grass",
     sway: { cut: 0.61, amplitude: 2, period: 4200 },
     collision: TREE_TRUNK_COLLISION,
     formation: TREE_GROVE_FORMATION,
+    patches: TREE_FOREST_PATCHES,
   },
   {
     id: "tree_5",
     textureSource: "/assets/tree/block_5.svg",
     height: 2,
-    spawnChance: 0.01,
+    spawnChance: 0.06,
     gap: 1,
     surface: "grass",
     sway: { cut: 0.67, amplitude: 2, period: 3200 },
     collision: TREE_TRUNK_COLLISION,
     formation: TREE_GROVE_FORMATION,
+    patches: TREE_FOREST_PATCHES,
   },
   {
     id: "tree_6",
     textureSource: "/assets/tree/block_6.svg",
     height: 2,
-    spawnChance: 0.01,
+    spawnChance: 0.06,
     gap: 1,
     surface: "grass",
     sway: { cut: 0.61, amplitude: 1.5, period: 3600 },
     collision: TREE_TRUNK_COLLISION,
     formation: TREE_GROVE_FORMATION,
+    patches: TREE_FOREST_PATCHES,
   },
   {
     id: "tree_7",
     textureSource: "/assets/tree/block_7.svg",
     height: 2,
-    spawnChance: 0.004,
+    spawnChance: 0.024,
     gap: 1,
     surface: "grass",
     sway: { cut: 0.72, amplitude: 1, period: 2800 },
     collision: TREE_TRUNK_COLLISION,
     formation: TREE_GROVE_FORMATION,
+    patches: TREE_FOREST_PATCHES,
   },
   {
     id: "tree_8",
     textureSource: "/assets/tree/block_8.svg",
     height: 2,
-    spawnChance: 0.004,
+    spawnChance: 0.024,
     gap: 1,
     surface: "grass",
     sway: { cut: 0.74, amplitude: 1.5, period: 3000 },
     collision: TREE_TRUNK_COLLISION,
     formation: TREE_GROVE_FORMATION,
+    patches: TREE_FOREST_PATCHES,
   },
   {
     id: "statue",

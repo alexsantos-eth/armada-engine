@@ -116,6 +116,19 @@ function checkDefinition(definition: EntityDefinition, report: (issue: string) =
     }
   }
 
+  if (definition.patches) {
+    const { field, scale, threshold, outside } = definition.patches;
+    if (field.trim() === "") report("patches.field must not be empty");
+    if (!(scale > 0 && Number.isFinite(scale)))
+      report(`patches.scale must be a positive number (got ${String(scale)})`);
+    if (!(threshold >= -1 && threshold <= 1)) {
+      report(`patches.threshold must be between -1 and 1 (got ${String(threshold)})`);
+    }
+    if (outside !== undefined && !(outside >= 0 && outside <= 1)) {
+      report(`patches.outside must be between 0 and 1 (got ${String(outside)})`);
+    }
+  }
+
   const variationLengths = new Set<number>();
   Object.entries(definition.colorReplacements ?? {}).forEach(([source, target]) => {
     if (!HEX_COLOR.test(source)) report(`colorReplacements key "${source}" must be a hex color`);
@@ -139,7 +152,7 @@ function checkDefinition(definition: EntityDefinition, report: (issue: string) =
 /**
  * Validates entity definitions when content is loaded, so a typo in the data fails early
  * with a clear message instead of silently spawning nothing (or garbage). Checks ids,
- * texture paths, numeric ranges, surfaces, axes, footprints, formations, color replacements,
+ * texture paths, numeric ranges, surfaces, axes, footprints, formations, patches, color replacements,
  * sway and collision.
  *
  * @throws {@link EntityConfigError} listing every issue found.

@@ -88,6 +88,24 @@ export type EntityFormation = {
   rotate?: boolean;
 };
 
+/**
+ * Large seeded noise patches where an entity spawns (forests): the chance of each column is
+ * `spawnChance` inside a patch, thinning towards its edge, and `spawnChance × outside` elsewhere.
+ * Definitions with the same `field` and `scale` share the same patches, so different trees
+ * grow in the same forests. The noise is sampled at absolute positions: a patch crosses chunks
+ * without seams.
+ */
+export type EntityPatches = {
+  /** Name of the noise field; definitions that share it (and `scale`) share the patches. */
+  readonly field: string;
+  /** Sampling distance of the noise, in columns: about the size of a patch. */
+  readonly scale: number;
+  /** Noise value (`-1`–`1`) above which a column is inside a patch: higher, fewer and smaller patches. */
+  readonly threshold: number;
+  /** Fraction of `spawnChance` outside the patches (`0`–`1`), for a few lone instances. Defaults to `0`. */
+  readonly outside?: number;
+};
+
 export type GridObjectData = {
   elevation: number;
   metadata: BoxMetadata;
@@ -135,6 +153,8 @@ export type EntityDefinition = {
    * applies between groups, not between members of the same group.
    */
   formation?: EntityFormation;
+  /** Spawns only (or mostly) inside large noise patches, like forests (see {@link EntityPatches}). */
+  patches?: EntityPatches;
   /** Places the entity only at this deterministic lot in each region, leaving room for paths. */
   settlementLot?: SettlementLot;
   debug?: boolean;

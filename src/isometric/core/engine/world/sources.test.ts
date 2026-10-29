@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { EntityDefinition } from "../../types";
-import { Entity } from "../entities";
+import { createPatchChances, Entity } from "../entities";
 import { CHUNK_SIZE } from "../grid";
 import { Box, generateTerrainColumns } from "../terrain";
 import { createFixedChunkSource, createSeededChunkSource } from "./sources";
@@ -29,6 +29,22 @@ describe("createSeededChunkSource", () => {
 
     expect(source.has({ cx: 1, cy: -1 })).toBe(true);
     expect(source.generate({ cx: 1, cy: -1 }).columns).toEqual(generateTerrainColumns(area, { seed: 8 }));
+  });
+
+  it("grows patches from the world seed, seamless across chunks", () => {
+    const forest = {
+      ...BUSH,
+      spawnChance: 1,
+      colorReplacements: undefined,
+      patches: { field: "f", scale: 6, threshold: 0 },
+    };
+    const source = createSeededChunkSource({ seed: 8, entityDefinitions: [forest] });
+    const entities = [0, 1].flatMap((cx) => source.generate({ cx, cy: 0 }).entities);
+    const factors = (entity: Entity) =>
+      createPatchChances(8)(forest.patches, [new Box(entity.x, entity.y, { elevation: 1 })])[0];
+
+    expect(entities.length).toBeGreaterThan(0);
+    expect(entities.every((entity) => factors(entity) > 0)).toBe(true);
   });
 
   it("places each chunk's entities from its own seeded streams, never with Math.random", () => {
