@@ -46,10 +46,15 @@ export type PlayerState = {
   /** Last stable land position for deterministic recovery after falling into water or the void. */
   lastSafe: PlayerRenderPosition;
   /**
-   * The app asked it to jump (`jumpPlayer()`): the next tick takes off if it stands on the ground,
-   * and clears it either way. Input, like `walk`. Not saved.
+   * Whether a jump press is buffered (`jumpBufferTicks > 0`). Input, like `walk`. Not saved.
    */
   wantsJump: boolean;
+  /** Simulation ticks for which the latest jump press remains valid. Not saved. */
+  jumpBufferTicks: number;
+  /** Simulation ticks after leaving land during which a jump may still start. Not saved. */
+  coyoteTicks: number;
+  /** Whether the jump key is currently held, reserved for variable-height jumping. Not saved. */
+  jumpHeld: boolean;
   /**
    * Climbing onto a higher top (`PlayerClimb`), its walk and jumps ignored until it stands there;
    * `undefined` otherwise. Not saved: a restored player stands where it was.

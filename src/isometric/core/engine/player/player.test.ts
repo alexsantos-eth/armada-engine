@@ -34,6 +34,9 @@ import {
   PLAYER_JUMP_TICKS,
   PLAYER_JUMP_SPEED,
   PLAYER_GRAVITY,
+  PLAYER_COYOTE_TICKS,
+  PLAYER_JUMP_BUFFER_TICKS,
+  cancelPlayerJump,
   getWalkDirection,
   PLAYER_FACINGS,
   setPlayerWalk,
@@ -168,6 +171,9 @@ describe("createPlayer", () => {
       verticalSpeed: undefined,
       lastSafe: { x: 1.2, y: 0, elevation: 3, inset: 0, height: 0 },
       wantsJump: false,
+      jumpBufferTicks: 0,
+      coyoteTicks: 0,
+      jumpHeld: false,
       climb: undefined,
       previous: { x: 1.2, y: 0, elevation: 3, inset: 0, height: 0 },
       walk: { x: 0, y: 0 },
@@ -384,7 +390,7 @@ describe("jumping", () => {
     expect(player.previous.height).toBeCloseTo(getJumpHeight(PLAYER_JUMP_TICKS - 1));
   });
 
-  it("does not jump again in the air: asking then is forgotten", () => {
+  it("does not jump again in the air when the buffered press expires before landing", () => {
     const player = createPlayer(field, { x: 1, y: 1 });
     jumpPlayer(player);
     stepPlayer(player, field, 3);
@@ -392,7 +398,8 @@ describe("jumping", () => {
     stepPlayer(player, field);
 
     expect(player.height).toBeCloseTo(getJumpHeight(4));
-    expect(player.wantsJump).toBe(false);
+    expect(player.wantsJump).toBe(true);
+    expect(player.jumpBufferTicks).toBe(1);
     stepPlayer(player, field, PLAYER_JUMP_TICKS);
     expect(player.height).toBe(0);
   });
@@ -423,7 +430,7 @@ describe("jumping", () => {
   const step = (row: string) => groundFrom([row, row, row]);
 
   it("falls onto a lower column it walks onto, instead of dropping there in one tick", () => {
-    const ground = step("2211");
+    const ground = step("221111");
     const player = walking(ground, { x: 1, y: 1 }, { up: true, right: true });
     const feet: number[] = [];
     for (let tick = 0; tick < 20; tick += 1) {
@@ -534,6 +541,93 @@ describe("jumping", () => {
   });
 });
 
+describe("jump forgiveness", () => {
+  const ledge = groundFrom(["00.000", "00.000", "00.000"]);
+  const toward = { up: true, right: true };
+
+  it("starts a coyote window after walking off a real edge and consumes it on jump", () => {
+    const player = walking(ledge, { x: 1.3, y: 1 }, toward);
+    while (player.verticalSpeed === undefined) stepPlayer(player, ledge);
+    expect(player.coyoteTicks).toBe(PLAYER_COYOTE_TICKS);
+    jumpPlayer(player);
+    stepPlayer(player, ledge);
+    expect(player.verticalSpeed).toBeGreaterThan(0);
+    expect(player.coyoteTicks).toBe(0);
+    expect(player.jumpBufferTicks).toBe(0);
+    expect(player.wantsJump).toBe(false);
+  });
+
+  it("expires coyote time after two airborne ticks and does not grant a double jump", () => {
+    const player = walking(ledge, { x: 1.3, y: 1 }, toward);
+    while (player.verticalSpeed === undefined) stepPlayer(player, ledge);
+    stepPlayer(player, ledge, PLAYER_COYOTE_TICKS);
+    expect(player.coyoteTicks).toBe(0);
+    jumpPlayer(player);
+    stepPlayer(player, ledge);
+    expect(player.verticalSpeed).toBeLessThan(0);
+
+    const flat = groundFrom(["000"]);
+    const jumper = createPlayer(flat, { x: 1, y: 0 });
+    jumpPlayer(jumper);
+    stepPlayer(jumper, flat);
+    jumpPlayer(jumper);
+    stepPlayer(jumper, flat);
+    expect(jumper.verticalSpeed).toBeLessThan(PLAYER_JUMP_SPEED);
+    expect(jumper.coyoteTicks).toBe(0);
+  });
+
+  it("buffers an early press and launches once on landing, even on the final buffer tick", () => {
+    const flat = groundFrom(["000"]);
+    const player = createPlayer(flat, { x: 1, y: 0 });
+    jumpPlayer(player);
+    stepPlayer(player, flat, PLAYER_JUMP_TICKS - 2);
+    jumpPlayer(player);
+    stepPlayer(player, flat);
+    expect(player.jumpBufferTicks).toBe(PLAYER_JUMP_BUFFER_TICKS - 1);
+    stepPlayer(player, flat);
+    expect(player.verticalSpeed).toBe(PLAYER_JUMP_SPEED);
+    expect(player.height).toBe(0);
+    expect(player.jumpBufferTicks).toBe(0);
+    stepPlayer(player, flat);
+    expect(player.height).toBeGreaterThan(0);
+  });
+
+  it("discards expired input, and cancellation clears a pending jump on blur or pause", () => {
+    const flat = groundFrom(["000"]);
+    const player = createPlayer(flat, { x: 1, y: 0 });
+    jumpPlayer(player);
+    stepPlayer(player, flat, 2);
+    jumpPlayer(player);
+    stepPlayer(player, flat, PLAYER_JUMP_BUFFER_TICKS);
+    expect(player.jumpBufferTicks).toBe(0);
+    expect(player.wantsJump).toBe(false);
+    jumpPlayer(player);
+    cancelPlayerJump(player);
+    expect(player.jumpBufferTicks).toBe(0);
+    expect(player.jumpHeld).toBe(false);
+    stepPlayer(player, flat, PLAYER_JUMP_TICKS);
+    expect(player.verticalSpeed).toBeUndefined();
+  });
+
+  it("does not carry a buffered jump through climbing or rescue", () => {
+    const stairs = groundFrom(["01"]);
+    const climber = walking(stairs, { x: 0.3, y: 0 }, toward);
+    while (!climber.climb) stepPlayer(climber, stairs);
+    jumpPlayer(climber);
+    stepPlayer(climber, stairs);
+    expect(climber.jumpBufferTicks).toBe(0);
+
+    const water = groundFrom(["00~~~"]);
+    const falling = walking(water, { x: 1.3, y: 0 }, toward);
+    jumpPlayer(falling);
+    stepPlayer(falling, water, PLAYER_JUMP_TICKS + 5);
+    jumpPlayer(falling);
+    stepPlayer(falling, water, 30);
+    expect(falling.jumpBufferTicks).toBe(0);
+    expect(falling.verticalSpeed).toBeUndefined();
+  });
+});
+
 describe("movement diagnostics", () => {
   it("records a deterministic tick-by-tick jump profile and input latency", () => {
     const run = () => {
@@ -637,19 +731,22 @@ describe("stepPlayer", () => {
     expect(run()).toEqual(run());
   });
 
-  it("stops at the edge of the land and of the world", () => {
-    const shore = groundFrom(["00~"]);
-    const player = walking(shore, { x: 0, y: 0 }, { up: true, right: true });
-    stepPlayer(player, shore, ticksFor(4));
-    expect(player.x).toBeLessThanOrEqual(1.5 - PLAYER_RADIUS + 1e-9);
-    expect(player.x).toBeGreaterThan(1.5 - PLAYER_RADIUS - PLAYER_STEP);
+  it("can walk off a void ledge and recovers after the fall", () => {
+    const voidEdge = groundFrom(["00."]);
+    const player = walking(voidEdge, { x: 0, y: 0 }, { up: true, right: true });
+    stepPlayer(player, voidEdge, ticksFor(1.8));
+    expect(player.x).toBeGreaterThan(1.5);
+    expect(player.verticalSpeed).toBeDefined();
+    setPlayerWalk(player, still);
+    stepPlayer(player, voidEdge, 30);
+    expect(player.verticalSpeed).toBeUndefined();
 
-    // Down-right walks along −y, off the world: the feet stop at the edge of column y = 0.
-    const edge = walking(shore, { x: 0, y: 0 }, { down: true, right: true });
-    stepPlayer(edge, shore, ticksFor(2));
+    // Down-right walks along −y, off the loaded world.
+    const edge = walking(voidEdge, { x: 0, y: 0 }, { down: true, right: true });
+    stepPlayer(edge, voidEdge, ticksFor(1));
     expect(edge.x).toBe(0);
-    expect(edge.y).toBeGreaterThan(-0.5 + PLAYER_RADIUS - PLAYER_STEP);
-    expect(edge.y).toBeLessThan(0);
+    expect(edge.y).toBeLessThan(-0.5);
+    expect(edge.verticalSpeed).toBeDefined();
   });
 
   it("does not walk into a non-walkable occupant, but walks over a walkable one", () => {
@@ -735,6 +832,9 @@ describe("getPlayerRenderPosition", () => {
     verticalSpeed: 0.1,
     lastSafe: { x: 1, y: 4, elevation: 0, inset: 0, height: 0 },
     wantsJump: false,
+    jumpBufferTicks: 0,
+    coyoteTicks: 0,
+    jumpHeld: false,
     climb: undefined,
     previous: { x: 1, y: 4, elevation: 0 },
     walk: { x: 1, y: 0 },

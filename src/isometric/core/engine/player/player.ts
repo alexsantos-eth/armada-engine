@@ -47,6 +47,12 @@ export const PLAYER_JUMP_HEIGHT = 0.75;
 /** Ticks a jump lasts on flat ground, from take-off to landing (half a second). */
 export const PLAYER_JUMP_TICKS = 10;
 
+/** Ticks for which a jump press can wait for landing (100 ms at 20 ticks/s). */
+export const PLAYER_JUMP_BUFFER_TICKS = 2;
+
+/** Ticks for which jumping remains possible after leaving a ledge (100 ms). */
+export const PLAYER_COYOTE_TICKS = 2;
+
 /** Blocks per tick the feet rise at take-off, so a jump peaks at {@link PLAYER_JUMP_HEIGHT}. */
 export const PLAYER_JUMP_SPEED = (4 * PLAYER_JUMP_HEIGHT) / PLAYER_JUMP_TICKS;
 
@@ -224,6 +230,20 @@ function fitsInAir(ground: PlayerGround, point: GridPoint, feet: number, topInse
   return blockReasonAt(ground, point, 0, feet, true, topInset) === undefined;
 }
 
+/** Walking may leave a real void edge, but water remains a shore and unloaded cells remain solid. */
+function canLeaveEdge(ground: PlayerGround, point: GridPoint, feet: number, topInset: PlayerTopInset): boolean {
+  const cells = getPlayerCells(point);
+  let missing = false;
+  for (let x = cells.minX; x <= cells.maxX; x += 1) {
+    for (let y = cells.minY; y <= cells.maxY; y += 1) {
+      const column = ground.columnIndex.get(x, y);
+      if (column?.type === "water") return false;
+      if (!column) missing = true;
+    }
+  }
+  return missing && fitsInAir(ground, point, feet, topInset);
+}
+
 /** Diagnoses a rejected step only when tracing is enabled. */
 function blockReasonAt(
   ground: PlayerGround,
@@ -328,6 +348,9 @@ export function createPlayer(ground: PlayerGround, at: GridPoint): PlayerState {
     verticalSpeed: undefined,
     lastSafe: { ...position, inset: 0, height: 0 },
     wantsJump: false,
+    jumpBufferTicks: 0,
+    coyoteTicks: 0,
+    jumpHeld: false,
     climb: undefined,
     previous: { ...position, inset: 0, height: 0 },
     walk: { x: 0, y: 0 },
@@ -377,9 +400,23 @@ export function setPlayerWalk(player: PlayerState, directions: ScreenDirections)
   player.walk = getWalkDirection(directions);
 }
 
-/** Asks the player to jump (the input): it takes off on the next tick if it is on the ground. */
+/** Buffers one fresh jump press for a short, deterministic interval. */
 export function jumpPlayer(player: PlayerState): void {
   player.wantsJump = true;
+  player.jumpBufferTicks = PLAYER_JUMP_BUFFER_TICKS;
+}
+
+/** Tracks the held jump key; releasing it does not cancel a buffered press. */
+export function setPlayerJumpHeld(player: PlayerState, held: boolean): void {
+  player.jumpHeld = held;
+}
+
+/** Clears transient jump input and grace, for focus loss, pause or fall recovery. */
+export function cancelPlayerJump(player: PlayerState): void {
+  player.wantsJump = false;
+  player.jumpBufferTicks = 0;
+  player.coyoteTicks = 0;
+  player.jumpHeld = false;
 }
 
 /** Converts the physical result of this tick to one event for the XState motion machine. */
@@ -403,8 +440,11 @@ function updateMotion(player: PlayerState): void {
  * One tick in the air: takes off if asked to on the ground, starts falling if the ground dropped
  * away under its feet, rises and falls under {@link PLAYER_GRAVITY}, and lands on the column under it.
  */
-function stepAir(player: PlayerState, ground: PlayerGround, topInset: PlayerTopInset): void {
-  player.wantsJump = false;
+function stepAir(
+  player: PlayerState,
+  ground: PlayerGround,
+  topInset: PlayerTopInset,
+): "landed" | "rescued" | undefined {
   const support = supportAt(ground, player);
   const top = support ? support.elevation - topInset(support.type) : undefined;
   const feet = player.elevation - player.inset + player.height;
@@ -421,6 +461,7 @@ function stepAir(player: PlayerState, ground: PlayerGround, topInset: PlayerTopI
     player.elevation = support.elevation;
     player.inset = topInset(support.type);
     player.lastSafe = { x: player.x, y: player.y, elevation: player.elevation, inset: player.inset, height: 0 };
+    return "landed";
   } else if (nextFeet < player.lastSafe.elevation - player.lastSafe.inset - PLAYER_RESCUE_DROP) {
     const safe = player.lastSafe;
     player.x = safe.x;
@@ -429,6 +470,7 @@ function stepAir(player: PlayerState, ground: PlayerGround, topInset: PlayerTopI
     player.inset = safe.inset;
     player.height = 0;
     player.verticalSpeed = undefined;
+    return "rescued";
   }
 }
 
@@ -454,7 +496,9 @@ function stepOnce(
   const next = moves.find(
     (move) =>
       (move.x !== from.x || move.y !== from.y) &&
-      (airborne ? fitsInAir(ground, move, clearanceFeet, topInset) : fitsAt(ground, move, player.elevation)),
+      (airborne
+        ? fitsInAir(ground, move, clearanceFeet, topInset)
+        : fitsAt(ground, move, player.elevation) || canLeaveEdge(ground, move, feet, topInset)),
   );
   if (next === undefined)
     return diagnose ? blockReasonAt(ground, moves[0], player.elevation, clearanceFeet, airborne, topInset) : undefined;
@@ -544,8 +588,9 @@ function stepClimb(player: PlayerState, climb: PlayerClimb, ground: PlayerGround
  * a full top from sand) it climbs (`player.climb`): it stops at the foot of it, its feet rise to the
  * top in the first {@link PLAYER_CLIMB_RISE_SHARE} of {@link PLAYER_CLIMB_TICKS} ticks per block
  * and then it steps {@link PLAYER_CLIMB_REACH} columns onto it, its walk and jumps ignored until it
- * stands there. In the air it walks as on the
- * ground (a jump does not clear obstacles or reach higher columns yet). Keeps
+ * stands there. In the air it checks body clearance separately from support, so it can cross
+ * real void gaps and short obstacles. A fresh press can wait for landing, and a press shortly
+ * after leaving a void edge can still start a jump. Keeps
  * `player.previous` one tick behind for interpolation. Deterministic: the same walk and jumps on
  * the same ground give the same path.
  */
@@ -565,7 +610,7 @@ export function stepPlayer(
       player.walk.x === 0 &&
       player.walk.y === 0 &&
       player.verticalSpeed === undefined &&
-      !player.wantsJump &&
+      player.jumpBufferTicks === 0 &&
       climb === undefined;
     if (resting && tick > 0) return;
     // On the ground its feet are on the top under it (a new or restored player starts at `0`).
@@ -574,8 +619,10 @@ export function stepPlayer(
     player.previous = { x, y, elevation, inset, height };
     const input = probe ? { walk: { ...player.walk }, jump: player.wantsJump } : undefined;
     if (climb) {
-      // Climbing, it neither walks nor jumps: asking to is forgotten.
+      // Climbing ignores queued presses; a late press near its end cannot cause a surprise jump.
       player.wantsJump = false;
+      player.jumpBufferTicks = 0;
+      player.coyoteTicks = 0;
       stepClimb(player, climb, ground, topInset);
       updateMotion(player);
       if (probe && input)
@@ -595,12 +642,36 @@ export function stepPlayer(
         });
       continue;
     }
-    if (player.wantsJump && player.verticalSpeed === undefined && supportAt(ground, player)) {
+    const groundedAtStart =
+      player.verticalSpeed === undefined && player.height === 0 && supportAt(ground, player) !== undefined;
+    if (groundedAtStart) player.coyoteTicks = PLAYER_COYOTE_TICKS;
+    if (player.jumpBufferTicks > 0 && (groundedAtStart || player.coyoteTicks > 0)) {
       player.verticalSpeed = PLAYER_JUMP_SPEED;
       player.wantsJump = false;
+      player.jumpBufferTicks = 0;
+      player.coyoteTicks = 0;
     }
     const blockReason = stepOnce(player, ground, topInset, probe !== undefined);
-    if (player.climb === undefined) stepAir(player, ground, topInset);
+    const airResult = player.climb === undefined ? stepAir(player, ground, topInset) : undefined;
+    if (player.climb) {
+      player.wantsJump = false;
+      player.jumpBufferTicks = 0;
+      player.coyoteTicks = 0;
+    } else if (airResult === "rescued") {
+      cancelPlayerJump(player);
+    } else if (airResult === "landed" && player.jumpBufferTicks > 0) {
+      player.verticalSpeed = PLAYER_JUMP_SPEED;
+      player.wantsJump = false;
+      player.jumpBufferTicks = 0;
+      player.coyoteTicks = 0;
+    } else {
+      if (player.jumpBufferTicks > 0) {
+        player.jumpBufferTicks -= 1;
+        player.wantsJump = player.jumpBufferTicks > 0;
+      }
+      if (player.verticalSpeed === undefined && supportAt(ground, player)) player.coyoteTicks = PLAYER_COYOTE_TICKS;
+      else if (!groundedAtStart && player.coyoteTicks > 0) player.coyoteTicks -= 1;
+    }
     if (player.verticalSpeed === undefined && supportAt(ground, player))
       player.lastSafe = { x: player.x, y: player.y, elevation: player.elevation, inset: player.inset, height: 0 };
     updateMotion(player);

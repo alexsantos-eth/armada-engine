@@ -96,7 +96,9 @@
       import { CellMap } from "../src/isometric/core/engine/grid";
       import {
         createPlayer,
+        cancelPlayerJump,
         jumpPlayer,
+        setPlayerJumpHeld,
         setPlayerWalk,
         stepPlayer,
         PLAYER_RADIUS,
@@ -189,6 +191,8 @@
           walk: { ...player.walk },
           climb: player.climb ? { ...player.climb } : undefined,
           wantsJump: false,
+          jumpBufferTicks: 0,
+          coyoteTicks: 0,
         };
         for (let i = 0; i < 80; i++) {
           stepPlayer(copy, ground);
@@ -255,8 +259,8 @@
         ctx.fill();
         const peak = Math.max(0, ...samples.map((s) => s.position.height));
         const blocked = samples.filter((s) => s.blockReason).length;
-        const jumped = samples.find((s) => s.input.jump && s.contact === "air");
-        metrics.innerHTML = `<div><span>Tick</span> ${tick}</div><div><span>Posición</span> ${player.x.toFixed(2)}, ${player.y.toFixed(2)}</div><div><span>Altura</span> ${player.height.toFixed(2)}</div><div><span>Pico</span> ${peak.toFixed(2)}</div><div><span>Bloqueos</span> ${blocked}</div><div><span>Primer despegue</span> ${jumped ? jumped.tick : "—"}</div>`;
+        const jumped = samples.find((s) => s.verticalSpeed > 0);
+        metrics.innerHTML = `<div><span>Tick</span> ${tick}</div><div><span>Posición</span> ${player.x.toFixed(2)}, ${player.y.toFixed(2)}</div><div><span>Altura</span> ${player.height.toFixed(2)}</div><div><span>Pico</span> ${peak.toFixed(2)}</div><div><span>Bloqueos</span> ${blocked}</div><div><span>Coyote</span> ${player.coyoteTicks}</div><div><span>Cola</span> ${player.jumpBufferTicks}</div><div><span>Primer despegue</span> ${jumped ? jumped.tick : "—"}</div>`;
         trace.textContent = samples
           .slice(-16)
           .map(
@@ -270,6 +274,7 @@
       document.querySelector("#reset").addEventListener("click", reset);
       document.querySelector("#pause").addEventListener("click", (event) => {
         paused = !paused;
+        if (paused) cancelPlayerJump(player);
         event.currentTarget.textContent = paused ? "Continuar" : "Pausar";
       });
       document.querySelector("#step").addEventListener("click", advance);
@@ -293,11 +298,21 @@
           return;
         event.preventDefault();
         if (event.code === "Space") {
-          if (!event.repeat) jumpPlayer(player);
+          if (!event.repeat && !held.has("Space")) {
+            held.add("Space");
+            setPlayerJumpHeld(player, true);
+            if (!paused) jumpPlayer(player);
+          }
         } else held.add(event.code);
       });
-      window.addEventListener("keyup", (event) => held.delete(event.code));
-      window.addEventListener("blur", () => held.clear());
+      window.addEventListener("keyup", (event) => {
+        held.delete(event.code);
+        if (event.code === "Space") setPlayerJumpHeld(player, false);
+      });
+      window.addEventListener("blur", () => {
+        held.clear();
+        cancelPlayerJump(player);
+      });
       function frame(time) {
         if (previousTime) accumulator += Math.min(time - previousTime, 250);
         previousTime = time;

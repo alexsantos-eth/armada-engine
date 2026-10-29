@@ -11,7 +11,9 @@ import {
   generateWorld,
   getInterpolationAlpha,
   PLAYER_PART,
+  cancelPlayerJump,
   jumpPlayer,
+  setPlayerJumpHeld,
   setPlayerWalk,
   type RandomSource,
   type PhaseLighting,
@@ -146,7 +148,13 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     teardowns.push(
       bindKeyboardControls(window, {
         walk: (directions) => setPlayerWalk(world.parts.get(PLAYER_PART), directions),
-        jump: () => jumpPlayer(world.parts.get(PLAYER_PART)),
+        jump: () => {
+          const player = world.parts.get(PLAYER_PART);
+          if (simulation.stepper.paused || simulation.stepper.timeScale === 0) cancelPlayerJump(player);
+          else jumpPlayer(player);
+        },
+        jumpHeld: (held) => setPlayerJumpHeld(world.parts.get(PLAYER_PART), held),
+        cancelJump: () => cancelPlayerJump(world.parts.get(PLAYER_PART)),
         zoom: (factor) => {
           const { width, height } = app.renderer.screen;
           camera?.zoomAt(factor, { x: width / 2, y: height / 2 });

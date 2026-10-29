@@ -91,6 +91,8 @@ const createWindow = (search = "?seed=1337&hour=15") => {
       listeners
         .get("keydown")
         ?.forEach((fn) => fn({ code, altKey: false, ctrlKey: false, metaKey: false, preventDefault: vi.fn() })),
+    release: (code: string) => listeners.get("keyup")?.forEach((fn) => fn({ code })),
+    blur: () => listeners.get("blur")?.forEach((fn) => fn({})),
     listenerCount: () => [...listeners.values()].reduce((total, set) => total + set.size, 0),
   };
 };
@@ -349,9 +351,22 @@ describe("mountGame", () => {
 
     window.press("Space");
     expect(world.parts.get(PLAYER_PART).wantsJump).toBe(true);
+    expect(world.parts.get(PLAYER_PART).jumpHeld).toBe(true);
+    window.release("Space");
+    expect(world.parts.get(PLAYER_PART).jumpHeld).toBe(false);
+    window.blur();
+    expect(world.parts.get(PLAYER_PART).jumpBufferTicks).toBe(0);
 
     window.press("Equal");
     expect(camera.zoomAt).toHaveBeenCalledWith(KEYBOARD_ZOOM_STEP, { x: 400, y: 300 });
+  });
+
+  it("does not queue a jump while the simulation is frozen", async () => {
+    const { window, game } = mount("?seed=1337&timeScale=0");
+    await game.ready;
+    const { world } = started();
+    window.press("Space");
+    expect(world.parts.get(PLAYER_PART).jumpBufferTicks).toBe(0);
   });
 
   it("moves the camera with the pointer on the stage", async () => {

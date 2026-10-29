@@ -16,18 +16,22 @@ const createTarget = () => {
   };
 };
 
-const key = (code: string, modifiers: { altKey?: boolean; ctrlKey?: boolean; metaKey?: boolean } = {}) => ({
+const key = (
+  code: string,
+  modifiers: { altKey?: boolean; ctrlKey?: boolean; metaKey?: boolean; repeat?: boolean } = {},
+) => ({
   code,
   altKey: false,
   ctrlKey: false,
   metaKey: false,
+  repeat: false,
   ...modifiers,
   preventDefault: vi.fn(),
 });
 
 const setup = () => {
   const target = createTarget();
-  const controls = { walk: vi.fn(), jump: vi.fn(), zoom: vi.fn() };
+  const controls = { walk: vi.fn(), jump: vi.fn(), jumpHeld: vi.fn(), cancelJump: vi.fn(), zoom: vi.fn() };
   const unbind = bindKeyboardControls(target as never, controls);
   return { target, controls, unbind };
 };
@@ -85,6 +89,8 @@ describe("bindKeyboardControls", () => {
     const { target, controls } = setup();
 
     for (const code of ["Equal", "NumpadAdd"]) target.emit("keydown", key(code));
+    target.emit("keydown", key("Equal", { repeat: true }));
+    target.emit("keydown", key("Equal"));
     for (const code of ["Minus", "NumpadSubtract"]) target.emit("keydown", key(code));
 
     expect(controls.zoom.mock.calls).toEqual([
@@ -101,12 +107,28 @@ describe("bindKeyboardControls", () => {
 
     const space = key("Space");
     target.emit("keydown", space);
+    target.emit("keydown", key("Space", { repeat: true }));
+    target.emit("keydown", key("Space"));
     target.emit("keyup", key("Space"));
     target.emit("keydown", key("Space"));
 
     expect(controls.jump).toHaveBeenCalledTimes(2);
+    expect(controls.jumpHeld.mock.calls).toEqual([[true], [false], [true]]);
     expect(space.preventDefault).toHaveBeenCalled();
     expect(controls.walk).not.toHaveBeenCalled();
+  });
+
+  it("releases held jump and clears a pending request on blur", () => {
+    const { target, controls } = setup();
+    target.emit("keydown", key("Space"));
+    target.emit("blur");
+    expect(controls.jumpHeld).toHaveBeenLastCalledWith(false);
+    expect(controls.cancelJump).toHaveBeenCalledTimes(1);
+    target.emit("keydown", key("Space", { repeat: true }));
+    expect(controls.jump).toHaveBeenCalledTimes(1);
+    target.emit("keyup", key("Space"));
+    target.emit("keydown", key("Space"));
+    expect(controls.jump).toHaveBeenCalledTimes(2);
   });
 
   it("leaves other keys and browser shortcuts alone", () => {

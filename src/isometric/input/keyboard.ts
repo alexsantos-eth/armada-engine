@@ -27,9 +27,10 @@ const ZOOM_KEYS = new Map<string, number>([
  * `"hold"` binding is told which of its keys are held every time that changes (and with none
  * when the window loses focus). A new action is a new binding, not a change to the keyboard.
  */
-export type KeyBinding =
+export type KeyBinding = (
   | { readonly kind: "press"; readonly keys: readonly string[]; readonly press: (code: string) => void }
-  | { readonly kind: "hold"; readonly keys: readonly string[]; readonly hold: (held: ReadonlySet<string>) => void };
+  | { readonly kind: "hold"; readonly keys: readonly string[]; readonly hold: (held: ReadonlySet<string>) => void }
+) & { readonly blur?: () => void };
 
 /** Walking: arrows/WASD held, combined into the screen directions held now (`WALK_KEYS`). */
 export function walkBinding(walk: (directions: ScreenDirections) => void): KeyBinding {
@@ -48,9 +49,21 @@ export function walkBinding(walk: (directions: ScreenDirections) => void): KeyBi
   };
 }
 
-/** Jumping: a jump per press of {@link JUMP_KEYS} (held, the key repeats and it hops again on landing). */
-export function jumpBinding(jump: () => void): KeyBinding {
-  return { kind: "press", keys: JUMP_KEYS, press: () => jump() };
+/** Reports a new jump press and held/released transitions without treating key repeat as another press. */
+export function jumpBinding(jump: () => void, jumpHeld?: (held: boolean) => void, cancelJump?: () => void): KeyBinding {
+  let wasHeld = false;
+  return {
+    kind: "hold",
+    keys: JUMP_KEYS,
+    hold: (held) => {
+      const isHeld = JUMP_KEYS.some((code) => held.has(code));
+      if (isHeld === wasHeld) return;
+      wasHeld = isHeld;
+      jumpHeld?.(isHeld);
+      if (isHeld) jump();
+    },
+    blur: cancelJump,
+  };
 }
 
 /** Zoom: `+` multiplies the zoom by {@link KEYBOARD_ZOOM_STEP}, `−` divides by it (main and numeric keypads). */
@@ -64,6 +77,10 @@ export type KeyboardControls = {
   readonly walk: (directions: ScreenDirections) => void;
   /** One jump, on each press of the space bar. */
   readonly jump: () => void;
+  /** Held state changes, including release on blur. */
+  readonly jumpHeld?: (held: boolean) => void;
+  /** Clears a queued jump when the window loses focus. */
+  readonly cancelJump?: () => void;
   /** One zoom step by `factor` (the app picks the anchor, e.g. the centre of the view). */
   readonly zoom: (factor: number) => void;
 };
@@ -90,10 +107,15 @@ export function bindKeyboard(target: KeyboardTarget, bindings: readonly KeyBindi
     const binding = bindingOf.get(event.code);
     if (binding === undefined) return;
     if (binding.kind === "press") {
-      binding.press(event.code);
+      if (!event.repeat && !held.has(event.code)) {
+        held.add(event.code);
+        binding.press(event.code);
+      }
     } else {
-      held.add(event.code);
-      report(binding);
+      if (!event.repeat && !held.has(event.code)) {
+        held.add(event.code);
+        report(binding);
+      }
     }
     event.preventDefault();
   };
@@ -103,7 +125,10 @@ export function bindKeyboard(target: KeyboardTarget, bindings: readonly KeyBindi
   };
   const release = () => {
     held.clear();
-    bindings.forEach(report);
+    bindings.forEach((binding) => {
+      report(binding);
+      binding.blur?.();
+    });
   };
 
   target.addEventListener("keydown", onKeyDown);
@@ -122,5 +147,9 @@ export function bindKeyboard(target: KeyboardTarget, bindings: readonly KeyBindi
  * that unbinds it.
  */
 export function bindKeyboardControls(target: KeyboardTarget, controls: KeyboardControls): () => void {
-  return bindKeyboard(target, [walkBinding(controls.walk), jumpBinding(controls.jump), zoomBinding(controls.zoom)]);
+  return bindKeyboard(target, [
+    walkBinding(controls.walk),
+    jumpBinding(controls.jump, controls.jumpHeld, controls.cancelJump),
+    zoomBinding(controls.zoom),
+  ]);
 }
