@@ -16,7 +16,7 @@ Para el render, usa lo que PixiJS ya resuelve antes que código propio (tabla en
 
 Las dependencias entre módulos están fijadas en `engine/flow-check/architecture.test.ts` (tabla en `ARCHITECTURE.md`). Si un módulo nuevo necesita otra dependencia, añádela a esa tabla de forma explícita y justificada; un módulo nuevo debe aparecer en ella o el test falla.
 
-La sombra de nubes vive en `engine/cloud-shadows` y usa un solo `TilingSprite` de Pixi sobre el viewport. Para ajustar su aspecto, edita `public/assets/cloud-shadow.svg`; para cambiar velocidad, escala u opacidad, usa las constantes de `cloud-shadows.ts`. Comprueba el efecto durante panorámica, zoom y `?modules=cloud-shadows`; no generes una sombra por tile ni invalides los mapas de sombra horneados para animarla.
+La sombra de nubes vive en `engine/cloud-shadows` y usa un solo `TilingSprite` de Pixi sobre el viewport. Para cambiar la forma, el tamaño o el reparto de las nubes, edita `artifacts/cloud_shadow.py` y ejecútalo (`python3 artifacts/cloud_shadow.py`), que reescribe `public/assets/cloud-shadow.svg`; no edites el SVG a mano. Las nubes se hacen de rombos de media casilla para seguir la estética vóxel de los assets: no vuelvas a degradados ni elipses. Para cambiar velocidad u opacidad, usa las constantes de `cloud-shadows.ts`; si cambias las unidades por casilla del SVG, cambia también `CLOUD_SHADOW_TILE_UNITS`. Comprueba el efecto durante panorámica, zoom y `?modules=-cloud-shadows`; no generes una sombra por tile ni invalides los mapas de sombra horneados para animarla.
 
 Los tipos compartidos viven en `src/isometric/core/types` y se exportan desde `core/types/index.ts`. No se crean tests runtime para archivos que solo contienen tipos.
 

@@ -52,7 +52,7 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   "surface-bands": ["scene", "waves"],
   "ambient-light": ["lighting", "render", "scene"],
   "camera-view": ["camera", "scene"],
-  "cloud-shadows": ["scene"],
+  "cloud-shadows": ["constants", "scene"],
   "player-view": ["camera", "player", "projection", "render", "scene"],
 };
 

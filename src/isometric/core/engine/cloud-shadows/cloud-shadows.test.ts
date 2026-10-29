@@ -4,7 +4,15 @@ vi.mock("pixi.js", async () => (await import("../flow-check/scene-harness")).moc
 
 import { TilingSprite } from "pixi.js";
 import { containers, createRenderer, resetHarness } from "../flow-check/scene-harness";
-import { CLOUD_SHADOW_SOURCE, createCloudShadows } from "./cloud-shadows";
+import { TILE_WIDTH } from "../constants";
+import {
+  CLOUD_SHADOW_ALPHA,
+  CLOUD_SHADOW_SCALE,
+  CLOUD_SHADOW_SOURCE,
+  CLOUD_SHADOW_SPEED,
+  CLOUD_SHADOW_TILE_UNITS,
+  createCloudShadows,
+} from "./cloud-shadows";
 
 const setup = async (texture: unknown = { source: CLOUD_SHADOW_SOURCE }) => {
   const renderer = createRenderer();
@@ -30,7 +38,7 @@ describe("createCloudShadows", () => {
     expect(stage.addChild).toHaveBeenCalledWith(overlay);
     expect(overlay?.width).toBe(renderer.screen.width);
     expect(overlay?.height).toBe(renderer.screen.height);
-    expect(overlay?.alpha).toBe(0.27);
+    expect(overlay?.alpha).toBe(CLOUD_SHADOW_ALPHA);
 
     part.start?.({} as never);
     part.update?.({ elapsedMs: 1000, tick: 0, alpha: 0 });
@@ -56,9 +64,25 @@ describe("createCloudShadows", () => {
     root.scale.x = 2;
     root.scale.y = 2;
     part.start?.({} as never);
-    expect(overlay?.tileScale.x).toBe(1);
+    expect(overlay?.tileScale.x).toBe(2 * CLOUD_SHADOW_SCALE);
+    expect(overlay?.tileScale.y).toBe(2 * CLOUD_SHADOW_SCALE);
     expect(overlay?.tilePosition.x).toBe(120);
     expect(overlay?.tilePosition.y).toBe(80);
+    part.destroy();
+  });
+
+  it("draws one tile of the pattern as one tile of the world, faint and drifting slowly", async () => {
+    expect(CLOUD_SHADOW_TILE_UNITS * CLOUD_SHADOW_SCALE).toBe(TILE_WIDTH);
+    expect(CLOUD_SHADOW_ALPHA).toBeLessThan(0.34);
+    // Under a tenth of a tile per second, mostly sideways.
+    expect(Math.hypot(CLOUD_SHADOW_SPEED.x, CLOUD_SHADOW_SPEED.y)).toBeLessThan(TILE_WIDTH / 10);
+    expect(CLOUD_SHADOW_SPEED.y).toBeLessThan(CLOUD_SHADOW_SPEED.x);
+
+    const { overlay, part } = await setup();
+    part.start?.({} as never);
+    part.update?.({ elapsedMs: 2000, tick: 0, alpha: 0 });
+    expect(overlay?.tilePosition.x).toBeCloseTo(-2 * CLOUD_SHADOW_SPEED.x);
+    expect(overlay?.tilePosition.y).toBeCloseTo(-2 * CLOUD_SHADOW_SPEED.y);
     part.destroy();
   });
 
