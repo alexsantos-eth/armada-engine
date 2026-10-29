@@ -1,5 +1,6 @@
 import type {
   GridPoint,
+  ChunkCoord,
   PlayerClimb,
   ITerrainColumn,
   PlayerFacing,
@@ -14,7 +15,7 @@ import type {
   WorldRect,
   WorldSystem,
 } from "../../types";
-import type { ReadonlyCellMap } from "../grid";
+import { toChunkCoord, type ReadonlyCellMap } from "../grid";
 import { TICKS_PER_SECOND } from "../time";
 import { transitionPlayerMotion, type PlayerMotionEvent } from "./motion";
 
@@ -30,6 +31,12 @@ export const PLAYER_STEP = PLAYER_SPEED / TICKS_PER_SECOND;
  * occupant blocks (`collisionAt()`), so the sprite never stands half inside a tree's trunk.
  */
 export const PLAYER_RADIUS = 0.2;
+
+/** Vertical extent of the player's collision body above its feet, in blocks. */
+export const PLAYER_BODY_HEIGHT = 0.6;
+
+/** Distance below the last stable surface at which a fall is rescued. */
+export const PLAYER_RESCUE_DROP = 2;
 
 /** Most blocks the player climbs up or down from one column to the next. */
 export const PLAYER_MAX_CLIMB = 1;
@@ -118,6 +125,10 @@ export const PLAYER_PART: WorldPartKey<PlayerState> = { id: "player" };
  */
 export type PlayerObstacle = {
   readonly walkable: boolean;
+  /** Height of its solid body; omitted means it blocks upward without a height limit. */
+  readonly height?: number;
+  /** World elevation at the bottom of its solid body; defaults to the column's elevation. */
+  readonly elevation?: number;
   /**
    * Side of the square it blocks centred on column `(x, y)`, as a fraction of the block (`0` for
    * nothing, `1` for the whole block). Without it, the whole block.
@@ -134,7 +145,25 @@ export type PlayerGround = {
   readonly columnIndex: ReadonlyCellMap<ITerrainColumn>;
   /** Things standing on each cell; the player's feet cannot overlap the square one blocks. */
   readonly occupancy: { at(x: number, y: number): readonly PlayerObstacle[] };
+  /** Loaded chunks, when terrain is streamed; an unloaded cell is not an intentional gap. */
+  readonly chunks?: { has?(coord: ChunkCoord): boolean; loadAround?(point: GridPoint): void };
 };
+
+/** Why a requested walking step could not advance. */
+export type PlayerBlockReason = "terrain" | "obstacle" | "climbing";
+
+/** One deterministic simulation sample for movement diagnostics and scenario comparisons. */
+export type PlayerStepSample = {
+  readonly step: number;
+  readonly input: { readonly walk: GridPoint; readonly jump: boolean };
+  readonly contact: "ground" | "air" | "climbing";
+  readonly position: PlayerPosition;
+  readonly verticalSpeed: number | undefined;
+  readonly blockReason?: PlayerBlockReason;
+};
+
+/** Receives samples without changing the simulation; callers can retain or aggregate them. */
+export type PlayerStepProbe = (sample: PlayerStepSample) => void;
 
 /** Side of the square `obstacle` blocks centred on column `(x, y)`: `0` when it is walkable. */
 function blockedSide(obstacle: PlayerObstacle, x: number, y: number): number {
@@ -170,21 +199,65 @@ export function canStandOn(ground: PlayerGround, x: number, y: number, fromEleva
  * block (touching their edge is allowed).
  */
 function fitsAt(ground: PlayerGround, point: GridPoint, fromElevation: number): boolean {
-  const min = getPlayerColumn({ x: point.x - PLAYER_RADIUS, y: point.y - PLAYER_RADIUS });
-  const max = getPlayerColumn({ x: point.x + PLAYER_RADIUS, y: point.y + PLAYER_RADIUS });
-  for (let x = min.x; x <= max.x; x += 1) {
-    for (let y = min.y; y <= max.y; y += 1) {
-      if (!isSteppable(ground, x, y, fromElevation)) return false;
-      const occupants = ground.occupancy.at(x, y);
-      for (let index = 0; index < occupants.length; index += 1) {
-        const side = blockedSide(occupants[index], x, y);
-        if (side <= 0) continue;
-        const reach = PLAYER_RADIUS + side / 2;
-        if (Math.abs(point.x - x) < reach && Math.abs(point.y - y) < reach) return false;
+  return blockReasonAt(ground, point, fromElevation, 0, false, NO_INSET) === undefined;
+}
+
+/** Land under the centre of the feet; the surrounding square is checked for side clearance. */
+function supportAt(ground: PlayerGround, point: GridPoint): ITerrainColumn | undefined {
+  const { x, y } = getPlayerColumn(point);
+  const column = ground.columnIndex.get(x, y);
+  if (!column || column.type === "water") return undefined;
+  for (const obstacle of ground.occupancy.at(x, y)) {
+    const side = blockedSide(obstacle, x, y);
+    if (
+      side > 0 &&
+      Math.abs(point.x - x) < PLAYER_RADIUS + side / 2 &&
+      Math.abs(point.y - y) < PLAYER_RADIUS + side / 2
+    )
+      return undefined;
+  }
+  return column;
+}
+
+/** Checks side clearance at the world height of the feet, independently of ground support. */
+function fitsInAir(ground: PlayerGround, point: GridPoint, feet: number, topInset: PlayerTopInset): boolean {
+  return blockReasonAt(ground, point, 0, feet, true, topInset) === undefined;
+}
+
+/** Diagnoses a rejected step only when tracing is enabled. */
+function blockReasonAt(
+  ground: PlayerGround,
+  point: GridPoint,
+  elevation: number,
+  feet: number,
+  airborne: boolean,
+  topInset: PlayerTopInset,
+): PlayerBlockReason | undefined {
+  const cells = getPlayerCells(point);
+  for (let x = cells.minX; x <= cells.maxX; x += 1) {
+    for (let y = cells.minY; y <= cells.maxY; y += 1) {
+      const column = ground.columnIndex.get(x, y);
+      if (!column && ground.chunks?.has && !ground.chunks.has(toChunkCoord({ x, y }))) return "terrain";
+      if (airborne) {
+        if (column && column.type !== "water" && feet < column.elevation - topInset(column.type) - LANDING)
+          return "terrain";
+      } else if (!isSteppable(ground, x, y, elevation)) return "terrain";
+      for (const obstacle of ground.occupancy.at(x, y)) {
+        const side = blockedSide(obstacle, x, y);
+        if (
+          side <= 0 ||
+          Math.abs(point.x - x) >= PLAYER_RADIUS + side / 2 ||
+          Math.abs(point.y - y) >= PLAYER_RADIUS + side / 2
+        )
+          continue;
+        if (!airborne) return "obstacle";
+        const base = obstacle.elevation ?? column?.elevation ?? 0;
+        if (feet < base + (obstacle.height ?? Infinity) - LANDING && feet + PLAYER_BODY_HEIGHT > base + LANDING)
+          return "obstacle";
       }
     }
   }
-  return true;
+  return undefined;
 }
 
 /**
@@ -253,6 +326,7 @@ export function createPlayer(ground: PlayerGround, at: GridPoint): PlayerState {
     inset: 0,
     height: 0,
     verticalSpeed: undefined,
+    lastSafe: { ...position, inset: 0, height: 0 },
     wantsJump: false,
     climb: undefined,
     previous: { ...position, inset: 0, height: 0 },
@@ -329,23 +403,42 @@ function updateMotion(player: PlayerState): void {
  * One tick in the air: takes off if asked to on the ground, starts falling if the ground dropped
  * away under its feet, rises and falls under {@link PLAYER_GRAVITY}, and lands on the column under it.
  */
-function stepAir(player: PlayerState): void {
-  const wants = player.wantsJump;
+function stepAir(player: PlayerState, ground: PlayerGround, topInset: PlayerTopInset): void {
   player.wantsJump = false;
+  const support = supportAt(ground, player);
+  const top = support ? support.elevation - topInset(support.type) : undefined;
+  const feet = player.elevation - player.inset + player.height;
   if (player.verticalSpeed === undefined) {
-    if (player.height > 0) player.verticalSpeed = 0;
-    else if (wants) player.verticalSpeed = PLAYER_JUMP_SPEED;
+    if (player.height > 0 || top === undefined) player.verticalSpeed = 0;
     else return;
   }
   // The exact distance of a tick of constant gravity, so a jump on flat ground is `getJumpHeight()`.
-  const height = player.height + player.verticalSpeed - PLAYER_GRAVITY / 2;
-  const landed = height <= LANDING;
-  player.height = landed ? 0 : height;
+  const nextFeet = feet + player.verticalSpeed - PLAYER_GRAVITY / 2;
+  const landed = top !== undefined && player.verticalSpeed <= 0 && feet >= top - LANDING && nextFeet <= top + LANDING;
+  player.height = landed ? 0 : nextFeet - (player.elevation - player.inset);
   player.verticalSpeed = landed ? undefined : player.verticalSpeed - PLAYER_GRAVITY;
+  if (landed && support) {
+    player.elevation = support.elevation;
+    player.inset = topInset(support.type);
+    player.lastSafe = { x: player.x, y: player.y, elevation: player.elevation, inset: player.inset, height: 0 };
+  } else if (nextFeet < player.lastSafe.elevation - player.lastSafe.inset - PLAYER_RESCUE_DROP) {
+    const safe = player.lastSafe;
+    player.x = safe.x;
+    player.y = safe.y;
+    player.elevation = safe.elevation;
+    player.inset = safe.inset;
+    player.height = 0;
+    player.verticalSpeed = undefined;
+  }
 }
 
 /** Moves the player one tick along its walk; blocked moves slide along the free axis. */
-function stepOnce(player: PlayerState, ground: PlayerGround, topInset: PlayerTopInset): void {
+function stepOnce(
+  player: PlayerState,
+  ground: PlayerGround,
+  topInset: PlayerTopInset,
+  diagnose: boolean,
+): PlayerBlockReason | undefined {
   const { walk } = player;
   if (walk.x === 0 && walk.y === 0) return;
   const from = { x: player.x, y: player.y };
@@ -354,16 +447,25 @@ function stepOnce(player: PlayerState, ground: PlayerGround, topInset: PlayerTop
     { x: from.x + walk.x * PLAYER_STEP, y: from.y },
     { x: from.x, y: from.y + walk.y * PLAYER_STEP },
   ];
-  const next = moves.find((move) => (move.x !== from.x || move.y !== from.y) && fitsAt(ground, move, player.elevation));
-  if (next === undefined) return;
+  const airborne = player.verticalSpeed !== undefined;
+  const feet = player.elevation - player.inset + player.height;
+  const clearanceFeet =
+    airborne && player.verticalSpeed! > 0 ? feet + player.verticalSpeed! - PLAYER_GRAVITY / 2 : feet;
+  const next = moves.find(
+    (move) =>
+      (move.x !== from.x || move.y !== from.y) &&
+      (airborne ? fitsInAir(ground, move, clearanceFeet, topInset) : fitsAt(ground, move, player.elevation)),
+  );
+  if (next === undefined)
+    return diagnose ? blockReasonAt(ground, moves[0], player.elevation, clearanceFeet, airborne, topInset) : undefined;
   // The feet keep their height in the world: over a lower top (a lower column, or sand's sunken
   // one) they are higher above it and fall; onto a slightly higher one they step up on it, and onto
   // a higher one they climb, from where they are.
-  const feet = player.elevation - player.inset + player.height;
-  const elevation = elevationAt(ground, next);
-  const inset = insetAt(ground, next, topInset);
+  const surface = supportAt(ground, next);
+  const elevation = surface?.elevation ?? player.elevation;
+  const inset = surface ? topInset(surface.type) : player.inset;
   const rise = elevation - inset - feet;
-  if (rise > PLAYER_STEP_HEIGHT) {
+  if (!airborne && rise > PLAYER_STEP_HEIGHT) {
     player.climb = startClimb(ground, from, next, elevation, feet, rise);
     player.verticalSpeed = undefined;
     return;
@@ -372,8 +474,8 @@ function stepOnce(player: PlayerState, ground: PlayerGround, topInset: PlayerTop
   player.y = next.y;
   player.elevation = elevation;
   player.inset = inset;
-  player.height = Math.max(0, feet - (elevation - inset));
-  if (player.height === 0) player.verticalSpeed = undefined;
+  player.height = airborne ? feet - (elevation - inset) : Math.max(0, feet - (elevation - inset));
+  if (!airborne && player.height === 0) player.verticalSpeed = undefined;
 }
 
 /**
@@ -447,7 +549,13 @@ function stepClimb(player: PlayerState, climb: PlayerClimb, ground: PlayerGround
  * `player.previous` one tick behind for interpolation. Deterministic: the same walk and jumps on
  * the same ground give the same path.
  */
-export function stepPlayer(player: PlayerState, ground: PlayerGround, ticks = 1, topInset = NO_INSET): void {
+export function stepPlayer(
+  player: PlayerState,
+  ground: PlayerGround,
+  ticks = 1,
+  topInset = NO_INSET,
+  probe?: PlayerStepProbe,
+): void {
   for (let tick = 0; tick < ticks; tick += 1) {
     // A climb is over the tick after its last one, so that one is drawn as part of it.
     if (player.climb && player.climb.tick >= player.climb.ticks) player.climb = undefined;
@@ -464,16 +572,47 @@ export function stepPlayer(player: PlayerState, ground: PlayerGround, ticks = 1,
     if (player.verticalSpeed === undefined && climb === undefined) player.inset = insetAt(ground, player, topInset);
     const { x, y, elevation, inset, height } = player;
     player.previous = { x, y, elevation, inset, height };
+    const input = probe ? { walk: { ...player.walk }, jump: player.wantsJump } : undefined;
     if (climb) {
       // Climbing, it neither walks nor jumps: asking to is forgotten.
       player.wantsJump = false;
       stepClimb(player, climb, ground, topInset);
       updateMotion(player);
+      if (probe && input)
+        probe({
+          step: tick,
+          input,
+          contact: "climbing",
+          position: {
+            x: player.x,
+            y: player.y,
+            elevation: player.elevation,
+            inset: player.inset,
+            height: player.height,
+          },
+          verticalSpeed: player.verticalSpeed,
+          blockReason: "climbing",
+        });
       continue;
     }
-    stepOnce(player, ground, topInset);
-    if (player.climb === undefined) stepAir(player);
+    if (player.wantsJump && player.verticalSpeed === undefined && supportAt(ground, player)) {
+      player.verticalSpeed = PLAYER_JUMP_SPEED;
+      player.wantsJump = false;
+    }
+    const blockReason = stepOnce(player, ground, topInset, probe !== undefined);
+    if (player.climb === undefined) stepAir(player, ground, topInset);
+    if (player.verticalSpeed === undefined && supportAt(ground, player))
+      player.lastSafe = { x: player.x, y: player.y, elevation: player.elevation, inset: player.inset, height: 0 };
     updateMotion(player);
+    if (probe && input)
+      probe({
+        step: tick,
+        input,
+        contact: player.verticalSpeed === undefined ? "ground" : "air",
+        position: { x: player.x, y: player.y, elevation: player.elevation, inset: player.inset, height: player.height },
+        verticalSpeed: player.verticalSpeed,
+        ...(blockReason ? { blockReason } : {}),
+      });
   }
 }
 
@@ -519,14 +658,16 @@ export type PlayerWorld = PlayerGround & { readonly movers: PlayerMovers; readon
  *
  * @throws On a step, when the world has no player part.
  */
-export function createPlayerSystem(options: { readonly topInset?: PlayerTopInset } = {}): WorldSystem<PlayerWorld> {
+export function createPlayerSystem(
+  options: { readonly topInset?: PlayerTopInset; readonly probe?: PlayerStepProbe } = {},
+): WorldSystem<PlayerWorld> {
   // Where the player was last put in which index: a restored world has a new one of both.
   let placed: { movers: PlayerMovers; player: PlayerState; cells: WorldRect } | undefined;
   return {
     id: "player",
     step: (world) => {
       const player = world.parts.get(PLAYER_PART);
-      stepPlayer(player, world, 1, options.topInset);
+      stepPlayer(player, world, 1, options.topInset, options.probe);
       const cells = getPlayerCells(player);
       if (
         placed?.movers === world.movers &&

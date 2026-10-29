@@ -43,6 +43,8 @@ export type PlayerState = {
    * `undefined` on the ground. Not saved.
    */
   verticalSpeed: number | undefined;
+  /** Last stable land position for deterministic recovery after falling into water or the void. */
+  lastSafe: PlayerRenderPosition;
   /**
    * The app asked it to jump (`jumpPlayer()`): the next tick takes off if it stands on the ground,
    * and clears it either way. Input, like `walk`. Not saved.

@@ -1,5 +1,7 @@
 # Fases para perfeccionar el control del jugador
 
+**Estado:** fases 0 y 1 implementadas. El laboratorio reproducible está en `artifacts/player-movement-lab.html`; las fases 2 a 6 siguen pendientes.
+
 Plan para Armada Engine, ordenado por dependencias. Los valores propuestos son puntos de partida para probar en juego, no constantes definitivas.
 
 ## Estado inicial

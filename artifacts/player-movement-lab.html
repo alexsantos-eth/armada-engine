@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Armada · laboratorio del jugador</title>
+    <style>
+      body {
+        margin: 0;
+        background: #171a1a;
+        color: #e9efea;
+        font:
+          14px system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 1100px;
+        margin: auto;
+        padding: 24px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 8px;
+      }
+      p {
+        color: #b7c4bd;
+        line-height: 1.5;
+      }
+      .controls {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin: 16px 0;
+      }
+      select,
+      button {
+        background: #26322b;
+        border: 1px solid #52675a;
+        color: #e9efea;
+        padding: 8px 12px;
+        border-radius: 4px;
+      }
+      button {
+        cursor: pointer;
+      }
+      canvas {
+        width: 100%;
+        background: #101612;
+        border: 1px solid #52675a;
+      }
+      #metrics {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px;
+        margin: 16px 0;
+        font-variant-numeric: tabular-nums;
+      }
+      #metrics span {
+        color: #b7c4bd;
+      }
+      pre {
+        max-height: 260px;
+        overflow: auto;
+        background: #101612;
+        padding: 14px;
+        font:
+          12px ui-monospace,
+          monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Laboratorio del movimiento del jugador</h1>
+      <p>
+        Recorridos reproducibles a 20 ticks/s. WASD o flechas mueven, Espacio salta. El círculo claro marca los pies
+        sobre el plano del suelo; el anillo naranja indica el aterrizaje previsto si se mantiene la dirección actual. El
+        registro conserva los últimos 2 400 ticks de simulación.
+      </p>
+      <div class="controls">
+        <label
+          >Escenario
+          <select id="scenario"></select
+        ></label>
+        <button id="reset">Reiniciar</button>
+        <button id="pause">Pausar</button>
+        <button id="step">Un tick</button>
+        <button id="export">Exportar registro JSON</button>
+      </div>
+      <canvas id="view" width="1050" height="500"></canvas>
+      <div id="metrics"></div>
+      <pre id="trace"></pre>
+    </main>
+    <script type="module">
+      import { CellMap } from "../src/isometric/core/engine/grid";
+      import {
+        createPlayer,
+        jumpPlayer,
+        setPlayerWalk,
+        stepPlayer,
+        PLAYER_RADIUS,
+      } from "../src/isometric/core/engine/player";
+
+      const scenarios = [
+        { name: "Suelo plano", rows: ["000000", "000000", "000000"], start: { x: 1, y: 1 } },
+        { name: "Hueco de una columna", rows: ["00.000", "00.000", "00.000"], start: { x: 1.3, y: 1 } },
+        { name: "Obstáculo bajo", rows: ["00l00", "00l00", "00l00"], start: { x: 1.3, y: 1 } },
+        { name: "Obstáculo alto", rows: ["00T00", "00T00", "00T00"], start: { x: 1.3, y: 1 } },
+        { name: "Desnivel", rows: ["221100", "221100", "221100"], start: { x: 1.2, y: 1 } },
+        { name: "Agua y recuperación", rows: ["00~~~", "00~~~", "00~~~"], start: { x: 1.3, y: 1 } },
+      ];
+      const select = document.querySelector("#scenario");
+      const canvas = document.querySelector("#view");
+      const ctx = canvas.getContext("2d");
+      const metrics = document.querySelector("#metrics");
+      const trace = document.querySelector("#trace");
+      const held = new Set();
+      let ground,
+        player,
+        rows,
+        samples,
+        tick,
+        paused = false,
+        accumulator = 0,
+        previousTime = 0;
+      scenarios.forEach((scenario, index) => select.add(new Option(scenario.name, String(index))));
+
+      function makeGround(lines) {
+        const columns = [];
+        const obstacles = new Map();
+        lines.forEach((row, y) =>
+          [...row].forEach((cell, x) => {
+            if (cell === ".") return;
+            columns.push({
+              x,
+              y,
+              elevation: /\d/.test(cell) ? Number(cell) : cell === "~" ? -1 : 0,
+              type: cell === "~" ? "water" : "grass",
+              metadata: {},
+            });
+            if (cell === "l") obstacles.set(`${x},${y}`, [{ walkable: false, height: 0.25 }]);
+            if (cell === "T") obstacles.set(`${x},${y}`, [{ walkable: false, height: 2 }]);
+          }),
+        );
+        return {
+          columnIndex: CellMap.from(columns, (column) => column),
+          occupancy: { at: (x, y) => obstacles.get(`${x},${y}`) ?? [] },
+        };
+      }
+
+      function reset() {
+        const scenario = scenarios[Number(select.value)];
+        rows = scenario.rows;
+        ground = makeGround(rows);
+        player = createPlayer(ground, scenario.start);
+        held.clear();
+        samples = [];
+        tick = 0;
+        accumulator = 0;
+        draw();
+      }
+
+      function directions() {
+        return {
+          up: held.has("ArrowUp") || held.has("KeyW"),
+          down: held.has("ArrowDown") || held.has("KeyS"),
+          left: held.has("ArrowLeft") || held.has("KeyA"),
+          right: held.has("ArrowRight") || held.has("KeyD"),
+        };
+      }
+
+      function advance() {
+        setPlayerWalk(player, directions());
+        stepPlayer(player, ground, 1, undefined, (sample) => {
+          samples.push({ tick, ...sample });
+          if (samples.length > 2400) samples.shift();
+        });
+        tick++;
+        draw();
+      }
+
+      function landingPreview() {
+        if (player.verticalSpeed === undefined) return null;
+        const copy = {
+          ...player,
+          previous: { ...player.previous },
+          lastSafe: { ...player.lastSafe },
+          walk: { ...player.walk },
+          climb: player.climb ? { ...player.climb } : undefined,
+          wantsJump: false,
+        };
+        for (let i = 0; i < 80; i++) {
+          stepPlayer(copy, ground);
+          if (copy.verticalSpeed === undefined) return { x: copy.x, y: copy.y, rescued: copy.height === 0 && i > 20 };
+        }
+        return null;
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const tile = 95,
+          left = 115,
+          top = 95;
+        rows.forEach((row, y) =>
+          [...row].forEach((cell, x) => {
+            const px = left + x * tile,
+              py = top + y * tile;
+            ctx.fillStyle =
+              cell === "."
+                ? "#101612"
+                : cell === "~"
+                  ? "#315d72"
+                  : cell === "T"
+                    ? "#58483a"
+                    : cell === "l"
+                      ? "#6f5a39"
+                      : "#345943";
+            ctx.fillRect(px, py, tile - 2, tile - 2);
+            ctx.fillStyle = "#d9e6dc";
+            ctx.font = "13px system-ui";
+            ctx.fillText(
+              cell === "."
+                ? "hueco"
+                : cell === "~"
+                  ? "agua"
+                  : cell === "T"
+                    ? "alto"
+                    : cell === "l"
+                      ? "bajo"
+                      : `z ${cell}`,
+              px + 7,
+              py + 18,
+            );
+          }),
+        );
+        const toPixel = (point) => ({ x: left + (point.x + 0.5) * tile, y: top + (point.y + 0.5) * tile });
+        const foot = toPixel(player);
+        const landing = landingPreview();
+        if (landing) {
+          const p = toPixel(landing);
+          ctx.strokeStyle = "#f0a64e";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, PLAYER_RADIUS * tile, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.fillStyle = "#e9efea";
+        ctx.beginPath();
+        ctx.arc(foot.x, foot.y, PLAYER_RADIUS * tile, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#f0a64e";
+        ctx.beginPath();
+        ctx.arc(foot.x, foot.y - player.height * tile, 10, 0, Math.PI * 2);
+        ctx.fill();
+        const peak = Math.max(0, ...samples.map((s) => s.position.height));
+        const blocked = samples.filter((s) => s.blockReason).length;
+        const jumped = samples.find((s) => s.input.jump && s.contact === "air");
+        metrics.innerHTML = `<div><span>Tick</span> ${tick}</div><div><span>Posición</span> ${player.x.toFixed(2)}, ${player.y.toFixed(2)}</div><div><span>Altura</span> ${player.height.toFixed(2)}</div><div><span>Pico</span> ${peak.toFixed(2)}</div><div><span>Bloqueos</span> ${blocked}</div><div><span>Primer despegue</span> ${jumped ? jumped.tick : "—"}</div>`;
+        trace.textContent = samples
+          .slice(-16)
+          .map(
+            (s) =>
+              `${String(s.tick).padStart(3)}  ${s.contact.padEnd(8)}  x=${s.position.x.toFixed(2)} y=${s.position.y.toFixed(2)} h=${s.position.height.toFixed(2)} v=${s.verticalSpeed?.toFixed(2) ?? "—"} ${s.blockReason ?? ""}`,
+          )
+          .join("\n");
+      }
+
+      select.addEventListener("change", reset);
+      document.querySelector("#reset").addEventListener("click", reset);
+      document.querySelector("#pause").addEventListener("click", (event) => {
+        paused = !paused;
+        event.currentTarget.textContent = paused ? "Continuar" : "Pausar";
+      });
+      document.querySelector("#step").addEventListener("click", advance);
+      document.querySelector("#export").addEventListener("click", () => {
+        const blob = new Blob([JSON.stringify({ scenario: scenarios[Number(select.value)].name, samples }, null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = "player-movement-trace.json";
+        anchor.click();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+      });
+      window.addEventListener("keydown", (event) => {
+        if (
+          !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD", "Space"].includes(
+            event.code,
+          )
+        )
+          return;
+        event.preventDefault();
+        if (event.code === "Space") {
+          if (!event.repeat) jumpPlayer(player);
+        } else held.add(event.code);
+      });
+      window.addEventListener("keyup", (event) => held.delete(event.code));
+      window.addEventListener("blur", () => held.clear());
+      function frame(time) {
+        if (previousTime) accumulator += Math.min(time - previousTime, 250);
+        previousTime = time;
+        if (!paused)
+          while (accumulator >= 50) {
+            advance();
+            accumulator -= 50;
+          }
+        else accumulator = 0;
+        requestAnimationFrame(frame);
+      }
+      reset();
+      requestAnimationFrame(frame);
+    </script>
+  </body>
+</html>
