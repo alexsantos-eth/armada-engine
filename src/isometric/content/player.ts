@@ -9,7 +9,7 @@ import type { PlayerAppearance, PlayerWalkSheet } from "../core/types";
  * Size the player is drawn at against its tile. The figure fills its tile; a one-block house fills
  * it with its walls and puts its roof on top, so at this size the player reaches about its eaves.
  */
-export const PLAYER_SCALE = 0.7;
+export const PLAYER_SCALE = 0.75;
 
 /**
  * The player walking: `walk.svg`, made by `artifacts/player_walk.py` from `monkey.py`'s voxel
