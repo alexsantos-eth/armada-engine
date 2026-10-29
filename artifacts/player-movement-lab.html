@@ -86,10 +86,12 @@
         <button id="reset">Reiniciar</button>
         <button id="pause">Pausar</button>
         <button id="step">Un tick</button>
+        <button id="compare">Comparar toque y pulsación mantenida</button>
         <button id="export">Exportar registro JSON</button>
       </div>
       <canvas id="view" width="1050" height="500"></canvas>
       <div id="metrics"></div>
+      <p id="comparison"></p>
       <pre id="trace"></pre>
     </main>
     <script type="module">
@@ -109,6 +111,7 @@
         { name: "Hueco de una columna", rows: ["00.000", "00.000", "00.000"], start: { x: 1.3, y: 1 } },
         { name: "Obstáculo bajo", rows: ["00l00", "00l00", "00l00"], start: { x: 1.3, y: 1 } },
         { name: "Obstáculo alto", rows: ["00T00", "00T00", "00T00"], start: { x: 1.3, y: 1 } },
+        { name: "Techo bajo", rows: ["00000", "00r00", "00000"], start: { x: 2, y: 1 } },
         { name: "Desnivel", rows: ["221100", "221100", "221100"], start: { x: 1.2, y: 1 } },
         { name: "Agua y recuperación", rows: ["00~~~", "00~~~", "00~~~"], start: { x: 1.3, y: 1 } },
       ];
@@ -143,6 +146,7 @@
             });
             if (cell === "l") obstacles.set(`${x},${y}`, [{ walkable: false, height: 0.25 }]);
             if (cell === "T") obstacles.set(`${x},${y}`, [{ walkable: false, height: 2 }]);
+            if (cell === "r") obstacles.set(`${x},${y}`, [{ walkable: false, elevation: 0.9, height: 0.2 }]);
           }),
         );
         return {
@@ -217,9 +221,11 @@
                   ? "#315d72"
                   : cell === "T"
                     ? "#58483a"
-                    : cell === "l"
-                      ? "#6f5a39"
-                      : "#345943";
+                    : cell === "r"
+                      ? "#6c6a40"
+                      : cell === "l"
+                        ? "#6f5a39"
+                        : "#345943";
             ctx.fillRect(px, py, tile - 2, tile - 2);
             ctx.fillStyle = "#d9e6dc";
             ctx.font = "13px system-ui";
@@ -230,9 +236,11 @@
                   ? "agua"
                   : cell === "T"
                     ? "alto"
-                    : cell === "l"
-                      ? "bajo"
-                      : `z ${cell}`,
+                    : cell === "r"
+                      ? "techo"
+                      : cell === "l"
+                        ? "bajo"
+                        : `z ${cell}`,
               px + 7,
               py + 18,
             );
@@ -278,6 +286,31 @@
         event.currentTarget.textContent = paused ? "Continuar" : "Pausar";
       });
       document.querySelector("#step").addEventListener("click", advance);
+      document.querySelector("#compare").addEventListener("click", () => {
+        const field = makeGround(["000", "000", "000"]);
+        const run = (held) => {
+          const jumper = createPlayer(field, { x: 1, y: 1 });
+          jumpPlayer(jumper);
+          if (!held) setPlayerJumpHeld(jumper, false);
+          let peak = 0;
+          let apexTick = 0;
+          let duration = 0;
+          do {
+            stepPlayer(jumper, field);
+            duration++;
+            if (jumper.height > peak) {
+              peak = jumper.height;
+              apexTick = duration;
+            }
+          } while (jumper.verticalSpeed !== undefined && duration < 30);
+          return { peak, apexTick, duration };
+        };
+        const tap = run(false);
+        const full = run(true);
+        document.querySelector("#comparison").textContent =
+          `Toque: pico ${tap.peak.toFixed(2)} bloques en tick ${tap.apexTick}, aterriza en tick ${tap.duration}. ` +
+          `Mantenido: pico ${full.peak.toFixed(2)} bloques en tick ${full.apexTick}, aterriza en tick ${full.duration}.`;
+      });
       document.querySelector("#export").addEventListener("click", () => {
         const blob = new Blob([JSON.stringify({ scenario: scenarios[Number(select.value)].name, samples }, null, 2)], {
           type: "application/json",

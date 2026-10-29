@@ -1,13 +1,13 @@
 # Fases para perfeccionar el control del jugador
 
-**Estado:** fases 0, 1 y 2 implementadas. El laboratorio reproducible está en `artifacts/player-movement-lab.html`; las fases 3 a 6 siguen pendientes.
+**Estado:** fases 0 a 3 implementadas. El laboratorio reproducible está en `artifacts/player-movement-lab.html`; las fases 4 a 6 siguen pendientes.
 
 Plan para Armada Engine, ordenado por dependencias. Los valores propuestos son puntos de partida para probar en juego, no constantes definitivas.
 
 ## Diagnóstico inicial (antes de las fases)
 
 - La simulación avanza a **20 ticks por segundo** (50 ms por tick).
-- El salto actual alcanza **0,75 bloques** y dura **10 ticks** (0,5 s) sobre terreno plano.
+- El salto inicial alcanzaba **0,75 bloques** y dura **10 ticks** (0,5 s) sobre terreno plano.
 - El jugador puede cambiar de dirección en el aire, pero se mueve horizontalmente igual que en tierra.
 - `wantsJump` se descarta después de un tick si no se puede saltar; mantener Espacio no controla la altura y la repetición de `keydown` puede generar nuevas peticiones.
 - El movimiento exige terreno transitable bajo toda la huella del jugador incluso durante el salto. Antes de diseñar huecos o saltos sobre obstáculos hay que separar la colisión aérea de la comprobación de apoyo.
@@ -61,6 +61,8 @@ Archivos principales: `src/isometric/core/engine/player/player.ts`, `src/isometr
 - Comprobar que soltar y volver a pulsar en el aire no reinicia el impulso y que golpear un techo cancela correctamente la subida.
 
 **Termina cuando:** un toque corto y una pulsación mantenida producen alturas claramente distintas, ambas previsibles, sin saltos automáticos al aterrizar.
+
+**Implementado:** soltar Espacio recorta la velocidad ascendente a 0,204 bloques/tick. En suelo plano, un toque previo al primer tick alcanza 0,306 bloques y aterriza en 6 ticks; mantenerlo alcanza 0,85 bloques y 10 ticks. La gravedad es 0,068 bloques/tick² en subida y bajada: se conserva la curva larga ya calibrada; no se añadió flotación en el ápice. La caída se limita a 0,6 bloques/tick. Un techo detiene la subida en su cara inferior. El laboratorio compara ambos perfiles y tiene un escenario de techo.
 
 ## Fase 4 — Control horizontal en tierra y aire
 

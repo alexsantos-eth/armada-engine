@@ -42,7 +42,7 @@ export const PLAYER_RESCUE_DROP = 2;
 export const PLAYER_MAX_CLIMB = 1;
 
 /** Blocks the player's feet rise at the top of a jump. */
-export const PLAYER_JUMP_HEIGHT = 0.75;
+export const PLAYER_JUMP_HEIGHT = 0.85;
 
 /** Ticks a jump lasts on flat ground, from take-off to landing (half a second). */
 export const PLAYER_JUMP_TICKS = 10;
@@ -55,6 +55,12 @@ export const PLAYER_COYOTE_TICKS = 2;
 
 /** Blocks per tick the feet rise at take-off, so a jump peaks at {@link PLAYER_JUMP_HEIGHT}. */
 export const PLAYER_JUMP_SPEED = (4 * PLAYER_JUMP_HEIGHT) / PLAYER_JUMP_TICKS;
+
+/** Upward speed retained when a jump key is released, yielding a short tap jump. */
+export const PLAYER_JUMP_CUT_SPEED = PLAYER_JUMP_SPEED * 0.6;
+
+/** Fastest downward speed in blocks per simulation tick. */
+export const PLAYER_MAX_FALL_SPEED = 0.6;
 
 /**
  * Blocks per tick its feet's upward speed drops each tick in the air: what brings a jump down after
@@ -156,7 +162,7 @@ export type PlayerGround = {
 };
 
 /** Why a requested walking step could not advance. */
-export type PlayerBlockReason = "terrain" | "obstacle" | "climbing";
+export type PlayerBlockReason = "terrain" | "obstacle" | "climbing" | "ceiling";
 
 /** One deterministic simulation sample for movement diagnostics and scenario comparisons. */
 export type PlayerStepSample = {
@@ -175,6 +181,11 @@ export type PlayerStepProbe = (sample: PlayerStepSample) => void;
 function blockedSide(obstacle: PlayerObstacle, x: number, y: number): number {
   if (obstacle.walkable) return 0;
   return obstacle.collisionAt ? obstacle.collisionAt(x, y) : 1;
+}
+
+/** An elevated obstacle leaves enough room for a standing player's whole body below it. */
+function clearsStandingBody(obstacle: PlayerObstacle, column: ITerrainColumn): boolean {
+  return obstacle.elevation !== undefined && obstacle.elevation >= column.elevation + PLAYER_BODY_HEIGHT - LANDING;
 }
 
 /** Whether the player's terrain lets it onto column `(x, y)` from `fromElevation` (occupants aside). */
@@ -196,7 +207,10 @@ export function getPlayerColumn(point: GridPoint): WorldCoord {
  */
 export function canStandOn(ground: PlayerGround, x: number, y: number, fromElevation: number): boolean {
   if (!isSteppable(ground, x, y, fromElevation)) return false;
-  return ground.occupancy.at(x, y).every((occupant) => blockedSide(occupant, x, y) <= 0);
+  const column = ground.columnIndex.get(x, y) as ITerrainColumn;
+  return ground.occupancy
+    .at(x, y)
+    .every((occupant) => blockedSide(occupant, x, y) <= 0 || clearsStandingBody(occupant, column));
 }
 
 /**
@@ -217,6 +231,7 @@ function supportAt(ground: PlayerGround, point: GridPoint): ITerrainColumn | und
     const side = blockedSide(obstacle, x, y);
     if (
       side > 0 &&
+      !clearsStandingBody(obstacle, column) &&
       Math.abs(point.x - x) < PLAYER_RADIUS + side / 2 &&
       Math.abs(point.y - y) < PLAYER_RADIUS + side / 2
     )
@@ -270,7 +285,10 @@ function blockReasonAt(
           Math.abs(point.y - y) >= PLAYER_RADIUS + side / 2
         )
           continue;
-        if (!airborne) return "obstacle";
+        if (!airborne) {
+          if (!clearsStandingBody(obstacle, column as ITerrainColumn)) return "obstacle";
+          continue;
+        }
         const base = obstacle.elevation ?? column?.elevation ?? 0;
         if (feet < base + (obstacle.height ?? Infinity) - LANDING && feet + PLAYER_BODY_HEIGHT > base + LANDING)
           return "obstacle";
@@ -404,6 +422,7 @@ export function setPlayerWalk(player: PlayerState, directions: ScreenDirections)
 export function jumpPlayer(player: PlayerState): void {
   player.wantsJump = true;
   player.jumpBufferTicks = PLAYER_JUMP_BUFFER_TICKS;
+  player.jumpHeld = true;
 }
 
 /** Tracks the held jump key; releasing it does not cancel a buffered press. */
@@ -436,6 +455,30 @@ function updateMotion(player: PlayerState): void {
   player.motion = { type };
 }
 
+/** Lowest obstacle underside crossed by the player's head while rising this tick. */
+function ceilingAt(ground: PlayerGround, point: GridPoint, head: number, nextHead: number): number | undefined {
+  const cells = getPlayerCells(point);
+  let ceiling: number | undefined;
+  for (let x = cells.minX; x <= cells.maxX; x += 1) {
+    for (let y = cells.minY; y <= cells.maxY; y += 1) {
+      const column = ground.columnIndex.get(x, y);
+      for (const obstacle of ground.occupancy.at(x, y)) {
+        const side = blockedSide(obstacle, x, y);
+        if (
+          side <= 0 ||
+          Math.abs(point.x - x) >= PLAYER_RADIUS + side / 2 ||
+          Math.abs(point.y - y) >= PLAYER_RADIUS + side / 2
+        )
+          continue;
+        const base = obstacle.elevation ?? column?.elevation ?? 0;
+        if (head <= base + LANDING && nextHead > base + LANDING && (ceiling === undefined || base < ceiling))
+          ceiling = base;
+      }
+    }
+  }
+  return ceiling;
+}
+
 /**
  * One tick in the air: takes off if asked to on the ground, starts falling if the ground dropped
  * away under its feet, rises and falls under {@link PLAYER_GRAVITY}, and lands on the column under it.
@@ -444,7 +487,7 @@ function stepAir(
   player: PlayerState,
   ground: PlayerGround,
   topInset: PlayerTopInset,
-): "landed" | "rescued" | undefined {
+): "landed" | "rescued" | "ceiling" | undefined {
   const support = supportAt(ground, player);
   const top = support ? support.elevation - topInset(support.type) : undefined;
   const feet = player.elevation - player.inset + player.height;
@@ -452,11 +495,23 @@ function stepAir(
     if (player.height > 0 || top === undefined) player.verticalSpeed = 0;
     else return;
   }
-  // The exact distance of a tick of constant gravity, so a jump on flat ground is `getJumpHeight()`.
-  const nextFeet = feet + player.verticalSpeed - PLAYER_GRAVITY / 2;
-  const landed = top !== undefined && player.verticalSpeed <= 0 && feet >= top - LANDING && nextFeet <= top + LANDING;
+  const speed =
+    player.verticalSpeed > 0 && !player.jumpHeld
+      ? Math.min(player.verticalSpeed, PLAYER_JUMP_CUT_SPEED)
+      : player.verticalSpeed;
+  const nextSpeed = Math.max(-PLAYER_MAX_FALL_SPEED, speed - PLAYER_GRAVITY);
+  // Trapezoidal integration preserves the original held-jump parabola until terminal speed.
+  const nextFeet = feet + (speed + nextSpeed) / 2;
+  const ceiling =
+    speed > 0 ? ceilingAt(ground, player, feet + PLAYER_BODY_HEIGHT, nextFeet + PLAYER_BODY_HEIGHT) : undefined;
+  if (ceiling !== undefined) {
+    player.height = ceiling - PLAYER_BODY_HEIGHT - (player.elevation - player.inset);
+    player.verticalSpeed = 0;
+    return "ceiling";
+  }
+  const landed = top !== undefined && speed <= 0 && feet >= top - LANDING && nextFeet <= top + LANDING;
   player.height = landed ? 0 : nextFeet - (player.elevation - player.inset);
-  player.verticalSpeed = landed ? undefined : player.verticalSpeed - PLAYER_GRAVITY;
+  player.verticalSpeed = landed ? undefined : nextSpeed;
   if (landed && support) {
     player.elevation = support.elevation;
     player.inset = topInset(support.type);
@@ -682,7 +737,7 @@ export function stepPlayer(
         contact: player.verticalSpeed === undefined ? "ground" : "air",
         position: { x: player.x, y: player.y, elevation: player.elevation, inset: player.inset, height: player.height },
         verticalSpeed: player.verticalSpeed,
-        ...(blockReason ? { blockReason } : {}),
+        ...(blockReason || airResult === "ceiling" ? { blockReason: blockReason ?? "ceiling" } : {}),
       });
   }
 }

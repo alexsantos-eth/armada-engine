@@ -33,6 +33,9 @@ import {
   PLAYER_JUMP_HEIGHT,
   PLAYER_JUMP_TICKS,
   PLAYER_JUMP_SPEED,
+  PLAYER_BODY_HEIGHT,
+  PLAYER_JUMP_CUT_SPEED,
+  PLAYER_MAX_FALL_SPEED,
   PLAYER_GRAVITY,
   PLAYER_COYOTE_TICKS,
   PLAYER_JUMP_BUFFER_TICKS,
@@ -40,6 +43,7 @@ import {
   getWalkDirection,
   PLAYER_FACINGS,
   setPlayerWalk,
+  setPlayerJumpHeld,
   stepPlayer,
 } from "./player";
 
@@ -370,8 +374,9 @@ describe("jumping", () => {
   };
 
   it("derives its take-off speed and gravity from the height and length of a jump", () => {
-    expect(PLAYER_JUMP_SPEED).toBeCloseTo(0.3);
-    expect(PLAYER_GRAVITY).toBeCloseTo(0.06);
+    expect(PLAYER_JUMP_HEIGHT).toBeCloseTo(0.85);
+    expect(PLAYER_JUMP_SPEED).toBeCloseTo(0.34);
+    expect(PLAYER_GRAVITY).toBeCloseTo(0.068);
   });
 
   it("takes off on the next tick when asked on the ground, and lands after PLAYER_JUMP_TICKS", () => {
@@ -538,6 +543,122 @@ describe("jumping", () => {
     expect(swimmer.height).toBe(0);
     expect(swimmer.verticalSpeed).toBeUndefined();
     expect(swimmer.x).toBeLessThan(2);
+  });
+});
+
+describe("variable jump", () => {
+  const flat = groundFrom(["000"]);
+
+  const profile = (releaseAfterTicks: number) => {
+    const player = createPlayer(flat, { x: 1, y: 0 });
+    jumpPlayer(player);
+    const heights: number[] = [];
+    for (let tick = 0; tick < 20; tick += 1) {
+      if (tick === releaseAfterTicks) setPlayerJumpHeld(player, false);
+      stepPlayer(player, flat);
+      heights.push(player.height);
+      if (player.verticalSpeed === undefined) break;
+    }
+    return { player, heights };
+  };
+
+  it("makes a tap shorter than a held jump without delaying take-off", () => {
+    const tap = profile(0);
+    const held = profile(20);
+    expect(PLAYER_JUMP_CUT_SPEED).toBeLessThan(PLAYER_JUMP_SPEED);
+    expect(tap.heights[0]).toBeGreaterThan(0);
+    expect(Math.max(...tap.heights)).toBeCloseTo(0.306);
+    expect(Math.max(...held.heights)).toBeCloseTo(PLAYER_JUMP_HEIGHT);
+    expect(tap.heights).toHaveLength(6);
+    expect(tap.heights.length).toBeLessThan(held.heights.length);
+    expect(held.heights).toHaveLength(PLAYER_JUMP_TICKS);
+  });
+
+  it("cuts the rising speed on release and does not restore it on a new air press", () => {
+    const player = createPlayer(flat, { x: 1, y: 0 });
+    jumpPlayer(player);
+    stepPlayer(player, flat);
+    setPlayerJumpHeld(player, false);
+    stepPlayer(player, flat);
+    const cutSpeed = player.verticalSpeed;
+    if (cutSpeed === undefined) throw new Error("The player landed before the second tick");
+    expect(cutSpeed).toBeLessThan(PLAYER_JUMP_CUT_SPEED);
+    jumpPlayer(player);
+    stepPlayer(player, flat);
+    expect(player.verticalSpeed).toBeLessThan(cutSpeed);
+    stepPlayer(player, flat, 20);
+    expect(player.height).toBe(0);
+  });
+
+  it("does not cut the jump when released after its apex", () => {
+    const late = profile(6);
+    const held = profile(20);
+    expect(late.heights).toEqual(held.heights);
+  });
+
+  it("stops upward motion at an overhead obstacle and then lands", () => {
+    const base = groundFrom(["000"]);
+    const roof: PlayerGround = {
+      ...base,
+      occupancy: { at: (x, y) => (x === 1 && y === 0 ? [{ walkable: false, elevation: 0.9, height: 0.2 }] : []) },
+    };
+    expect(canStandOn(roof, 1, 0, 0)).toBe(true);
+    expect(fitsPlayerAt(roof, { x: 1, y: 0 })).toBe(true);
+    const player = createPlayer(roof, { x: 1, y: 0 });
+    const samples: PlayerStepSample[] = [];
+    jumpPlayer(player);
+    stepPlayer(player, roof, 1, undefined, (sample) => samples.push(sample));
+    expect(player.height).toBeCloseTo(0.9 - 0.6);
+    expect(player.verticalSpeed).toBe(0);
+    expect(samples[0].blockReason).toBe("ceiling");
+    stepPlayer(player, roof, 20);
+    expect(player.height).toBe(0);
+    expect(player.verticalSpeed).toBeUndefined();
+  });
+
+  it("uses the nearest underside when several ceilings are crossed in one tick", () => {
+    const base = groundFrom(["000"]);
+    const ground: PlayerGround = {
+      ...base,
+      occupancy: {
+        at: (x, y) =>
+          x === 1 && y === 0
+            ? [
+                { walkable: false, elevation: 0.8, height: 0.1 },
+                { walkable: false, elevation: 0.7, height: 0.1 },
+              ]
+            : [],
+      },
+    };
+    const player = createPlayer(ground, { x: 1, y: 0 });
+    jumpPlayer(player);
+    stepPlayer(player, ground);
+    expect(player.height).toBeCloseTo(0.7 - 0.6);
+    expect(player.verticalSpeed).toBe(0);
+  });
+
+  it("resolves an overhead obstacle without a terrain column", () => {
+    const base = groundFrom([]);
+    const ground: PlayerGround = {
+      ...base,
+      occupancy: { at: () => [{ walkable: false, height: 0.1 }] },
+    };
+    const player = createPlayer(ground, { x: 0, y: 0 });
+    player.height = -0.7;
+    player.verticalSpeed = PLAYER_JUMP_SPEED;
+    player.jumpHeld = true;
+    stepPlayer(player, ground);
+    expect(player.height).toBeCloseTo(-PLAYER_BODY_HEIGHT);
+    expect(player.verticalSpeed).toBe(0);
+  });
+
+  it("caps vertical fall speed in a long unsupported drop", () => {
+    const voidGround = groundFrom([]);
+    const player = createPlayer(voidGround, { x: 0, y: 0 });
+    player.lastSafe = { x: 0, y: 0, elevation: -100, inset: 0, height: 0 };
+    stepPlayer(player, voidGround, 30);
+    expect(player.verticalSpeed).toBe(-PLAYER_MAX_FALL_SPEED);
+    expect(player.height).toBeLessThan(-10);
   });
 });
 

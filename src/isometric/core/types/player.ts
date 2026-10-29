@@ -53,7 +53,7 @@ export type PlayerState = {
   jumpBufferTicks: number;
   /** Simulation ticks after leaving land during which a jump may still start. Not saved. */
   coyoteTicks: number;
-  /** Whether the jump key is currently held, reserved for variable-height jumping. Not saved. */
+  /** Whether the jump key is held; releasing it cuts upward speed. Not saved. */
   jumpHeld: boolean;
   /**
    * Climbing onto a higher top (`PlayerClimb`), its walk and jumps ignored until it stands there;
