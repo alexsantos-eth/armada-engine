@@ -9,6 +9,7 @@ import { createCameraView } from "../camera-view";
 import { TILE_METRICS } from "../constants";
 import { WorldParts } from "../parts";
 import { createPlayer, PLAYER_FACINGS, PLAYER_PART, stepPlayer } from "../player";
+import { DANCE_DELAY_MS, DANCE_FADE_MS } from "./body-motion";
 import { DUST_MS } from "./feedback";
 import { CLOCK_PART, createClockPart } from "../time";
 import { projectGridPoint } from "../projection";
@@ -945,6 +946,93 @@ describe("createPlayerView body motion", () => {
     for (let frame = 0; frame < 40; frame += 1) ticker.frame(100);
     expect(Math.abs(body.skew.x)).toBe(0);
     expect(body.position).toMatchObject(upright);
+    scene.destroy();
+  });
+
+  it("dances standing still, in step with its idle sheet, about its feet; walking it stops", async () => {
+    const dance = { beat: 400, lean: 0.2, bounce: 0.1 };
+    const idle = { source: "/assets/player/idle.svg", frames: 4, period: 2 * dance.beat };
+    const world = fieldWithPlayer();
+    const { ticker, root, scene } = await mountScene(world, [
+      createPlayerView({ ...PLAYER, walk: { ...SHEET, idle }, dance }),
+    ]);
+    const body = spriteOf(root) as Body;
+    const player = world.parts.get(PLAYER_PART);
+    const feet = feetOf(body, 30);
+
+    // A short stop: still standing, upright.
+    ticker.frame(DANCE_DELAY_MS - 50);
+    expect(cellOf(body)).toMatchObject({ source: idle.source, column: 0 });
+    expect(body.skew.x).toBe(0);
+    expect(body.scale).toMatchObject({ x: 1, y: 1 });
+
+    // Then it dances: leaning both ways, dipping and stretching, its feet where they stand, and its
+    // idle sheet in step with the dance (a cycle every two beats from when it starts).
+    let stood = DANCE_DELAY_MS - 50;
+    for (let frame = 0; frame * 50 < DANCE_FADE_MS; frame += 1) {
+      ticker.frame(50);
+      stood += 50;
+    }
+    const leans: number[] = [];
+    const heights: number[] = [];
+    for (let frame = 0; frame < 16; frame += 1) {
+      ticker.frame(50);
+      stood += 50;
+      leans.push(-body.skew.x);
+      heights.push(body.scale.y);
+      expect(cellOf(body)).toMatchObject({ column: getIdlePose(stood - DANCE_DELAY_MS, idle) });
+      expect(feetOf(body, 30).x).toBeCloseTo(feet.x);
+      expect(feetOf(body, 30).y).toBeCloseTo(feet.y);
+    }
+    expect(Math.max(...leans)).toBeGreaterThan(0.15);
+    expect(Math.min(...leans)).toBeLessThan(-0.15);
+    expect(Math.min(...heights)).toBeLessThan(0.95);
+    expect(Math.max(...heights)).toBeGreaterThan(1.05);
+
+    // Walking: no dance; standing again, a short stop does not dance.
+    Object.assign(player, { previous: { x: 1, y: 1, elevation: 1 }, x: 1.3, motion: { type: "walking" } });
+    ticker.frame(16);
+    Object.assign(player, { previous: { x: 1.3, y: 1, elevation: 1 }, motion: { type: "idle" } });
+    for (let frame = 0; frame < 30; frame += 1) ticker.frame(100);
+    Object.assign(player, { previous: { x: 1.3, y: 1, elevation: 1 }, motion: { type: "walking" } });
+    ticker.frame(16);
+    player.motion = { type: "idle" };
+    ticker.frame(100);
+    expect(cellOf(body)).toMatchObject({ source: idle.source, column: 0 });
+    for (let frame = 0; frame < 40; frame += 1) {
+      player.motion = { type: "walking" };
+      ticker.frame(100);
+    }
+    expect(Math.abs(body.skew.x)).toBe(0);
+    scene.destroy();
+  });
+
+  it("dances in profile without leaning across the screen: only its dip shows", async () => {
+    const dance = { beat: 400, lean: 0.2, bounce: 0.1 };
+    const world = fieldWithPlayer();
+    const { ticker, root, scene } = await mountScene(world, [createPlayerView({ ...WALKER, dance })]);
+    const body = spriteOf(root) as Body;
+    // Turned to the right of the screen (east), standing still.
+    world.parts.get(PLAYER_PART).walk = { x: 1, y: -1 };
+    const heights: number[] = [];
+    for (let frame = 0; frame < 30; frame += 1) {
+      ticker.frame(50);
+      heights.push(body.scale.y);
+    }
+    expect(cellOf(body)).toMatchObject({ row: facing("east") });
+    expect(body.skew.x).toBe(0);
+    expect(Math.min(...heights)).toBeLessThan(0.95);
+    scene.destroy();
+  });
+
+  it("dances without a walk sheet too", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, root, scene } = await mountScene(world, [
+      createPlayerView({ ...PLAYER, dance: { beat: 400, lean: 0.2, bounce: 0.1 } }),
+    ]);
+    const body = spriteOf(root) as Body;
+    for (let frame = 0; frame < 20; frame += 1) ticker.frame(100);
+    expect(body.skew.x).not.toBe(0);
     scene.destroy();
   });
 

@@ -4,7 +4,11 @@ import {
   BODY_CLIMB_STRETCH,
   BODY_MAX_AIR_STRETCH,
   BODY_MAX_LEAN,
+  DANCE_DELAY_MS,
+  DANCE_FADE_MS,
   getBodyShape,
+  getIdleDance,
+  getSideLeanShare,
   getLeanTarget,
   getScreenDrift,
   stepBodyLean,
@@ -124,5 +128,46 @@ describe("getBodyShape", () => {
     expect(climb(0).y).toBe(1);
     expect(climb(0.5).y).toBeCloseTo(1 + BODY_CLIMB_STRETCH);
     expect(climb(1).y).toBeCloseTo(1);
+  });
+});
+
+describe("getIdleDance", () => {
+  const DANCE = { beat: 400, lean: 0.2, bounce: 0.1 };
+  /** `beats` beats into the dance, once it has grown to its full size (a whole number of cycles). */
+  const at = (beats: number) => getIdleDance(DANCE_DELAY_MS + 2 * DANCE.beat * 10 + beats * DANCE.beat, DANCE);
+
+  it("does nothing for a short stop, then grows into the dance from upright, leaning right first", () => {
+    expect(10 * 2 * DANCE.beat).toBeGreaterThan(DANCE_FADE_MS);
+    expect(getIdleDance(0, DANCE)).toEqual({ lean: 0, shape: { x: 1, y: 1 } });
+    expect(getIdleDance(DANCE_DELAY_MS, DANCE)).toEqual({ lean: 0, shape: { x: 1, y: 1 } });
+    const early = getIdleDance(DANCE_DELAY_MS + 100, DANCE);
+    expect(early.lean).toBeGreaterThan(0);
+    expect(early.lean).toBeLessThan(DANCE.lean / 4);
+  });
+
+  it("leans fully over one foot and then the other, one each beat, dipping as the weight lands", () => {
+    expect(at(0.5).lean).toBeCloseTo(DANCE.lean);
+    expect(at(1.5).lean).toBeCloseTo(-DANCE.lean);
+    expect(at(2.5).lean).toBeCloseTo(DANCE.lean);
+    expect(at(0.5).shape.y).toBeCloseTo(1 - DANCE.bounce);
+    expect(at(0.5).shape.x).toBeCloseTo(1 + DANCE.bounce / 2);
+    // Between beats: upright and stretched as much.
+    expect(at(1).lean).toBeCloseTo(0);
+    expect(at(1).shape.y).toBeCloseTo(1 + DANCE.bounce);
+  });
+
+  it("steps from foot to foot: a quarter beat from the middle it leans further than a plain sway", () => {
+    expect(at(1.25).lean).toBeLessThan(-Math.SQRT1_2 * DANCE.lean);
+  });
+});
+
+describe("getSideLeanShare", () => {
+  it("shows a sideways lean fully facing the camera or away, partly on a diagonal, not in profile", () => {
+    // Facings: east, north-east, north, north-west, west, south-west, south, south-east.
+    expect(getSideLeanShare(6, 8)).toBeCloseTo(1);
+    expect(getSideLeanShare(2, 8)).toBeCloseTo(1);
+    expect(getSideLeanShare(7, 8)).toBeCloseTo(Math.SQRT1_2);
+    expect(getSideLeanShare(0, 8)).toBe(0);
+    expect(getSideLeanShare(4, 8)).toBeCloseTo(0);
   });
 });

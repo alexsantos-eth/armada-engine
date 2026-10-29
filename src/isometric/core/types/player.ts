@@ -236,6 +236,20 @@ export type PlayerIdleSheet = {
   readonly period: number;
 };
 
+/**
+ * How the player dances while it stands still: only transforms of its sprite, on top of its idle
+ * sheet. On every beat its weight lands on one foot and then the other: the body leans that way
+ * about its feet and dips, and rises again between beats.
+ */
+export type PlayerIdleDance = {
+  /** Real milliseconds between two beats: the weight changes foot on each one. */
+  readonly beat: number;
+  /** How far the body leans over the foot its weight is on, in radians. */
+  readonly lean: number;
+  /** How much it dips as its weight lands, as a share of its height (it rises as much between). */
+  readonly bounce: number;
+};
+
 /** How the scene draws the player (game content, like an entity definition). */
 export type PlayerAppearance = {
   /** SVG of the character, one tile wide (e.g. `/assets/player/block.svg`). */
@@ -252,4 +266,6 @@ export type PlayerAppearance = {
    * drawing `textureSource` still. `textureSource` is still loaded if the sheet cannot be.
    */
   readonly walk?: PlayerWalkSheet;
+  /** Dances while it stands still on the ground. Without it, it stands upright. */
+  readonly dance?: PlayerIdleDance;
 };

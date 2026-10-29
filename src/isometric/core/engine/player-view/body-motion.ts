@@ -1,4 +1,4 @@
-import type { GridPoint, PlayerMotionType } from "../../types";
+import type { GridPoint, PlayerIdleDance, PlayerMotionType } from "../../types";
 
 /**
  * Lean of the body, in radians (head to the right on screen when positive), per column per tick
@@ -35,6 +35,18 @@ export const BODY_MAX_AIR_STRETCH = 0.12;
 
 /** Stretch of the body halfway through a climb, as it pulls itself up. */
 export const BODY_CLIMB_STRETCH = 0.05;
+
+/** Real milliseconds the player stands still before it starts to dance: a short stop does not. */
+export const DANCE_DELAY_MS = 300;
+
+/** Real milliseconds its dance takes to grow to its full size once it starts. */
+export const DANCE_FADE_MS = 700;
+
+/**
+ * How sharply the dance snaps from one foot to the other: `1` sways smoothly, less holds each side
+ * longer and crosses faster, a marked step rather than a rocking.
+ */
+export const DANCE_SNAP = 0.8;
 
 /** Longest step, in real milliseconds, the lean spring takes at once: a long frame takes several. */
 const LEAN_STEP_MS = 16;
@@ -112,4 +124,38 @@ export function getBodyShape(input: BodyShapeInput): GridPoint {
   else if (input.motion === "walking" && input.stride > 0)
     stretch = BODY_BOB_PER_SPEED * input.speed * Math.sin((4 * Math.PI * input.walked) / input.stride);
   return { x: 1 - stretch / 2, y: 1 + stretch };
+}
+
+/** The dance's part of a frame ({@link getIdleDance}): its lean (radians) and the body's scale. */
+export type IdleDanceFrame = { readonly lean: number; readonly shape: GridPoint };
+
+/**
+ * Where the dance `dance` is after the player has stood still `ms` real milliseconds: nothing for
+ * the first {@link DANCE_DELAY_MS}, then growing over {@link DANCE_FADE_MS}. It starts upright between
+ * two beats, and its idle sheet's cycle (two beats) starts with it. Half a beat in, its weight lands
+ * on the foot to the right of the screen, and a beat later on the left one: on each, the body leans
+ * over that foot (`lean`, snapped by {@link DANCE_SNAP}) and dips (`bounce`, wider and shorter);
+ * between beats it stands upright and stretched as much. Each dip and stretch keeps its volume, like
+ * {@link getBodyShape}.
+ */
+export function getIdleDance(ms: number, dance: PlayerIdleDance): IdleDanceFrame {
+  const since = ms - DANCE_DELAY_MS;
+  if (since <= 0) return { lean: 0, shape: { x: 1, y: 1 } };
+  const grown = Math.min(1, since / DANCE_FADE_MS);
+  const size = grown * grown * (3 - 2 * grown);
+  const beats = since / dance.beat;
+  const side = Math.sin(Math.PI * beats);
+  const lean = size * dance.lean * Math.sign(side) * Math.abs(side) ** DANCE_SNAP;
+  const stretch = size * dance.bounce * Math.cos(2 * Math.PI * beats);
+  return { lean, shape: { x: 1 - stretch / 2, y: 1 + stretch } };
+}
+
+/**
+ * How much of a lean to its own sides shows as a lean across the screen for a player turned to
+ * facing `facing` of `facings` (a turn of `360° / facings` each, the first to the right of the
+ * screen): all of it facing the camera or away from it, about 70 % on a diagonal and none in
+ * profile, where a sideways lean would read as a lean forward or back.
+ */
+export function getSideLeanShare(facing: number, facings: number): number {
+  return Math.abs(Math.sin((2 * Math.PI * facing) / facings));
 }

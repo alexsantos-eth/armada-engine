@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PLAYER_FACINGS } from "../core/engine/player";
-import { PLAYER_APPEARANCE, PLAYER_SCALE, PLAYER_WALK } from "./player";
+import { PLAYER_APPEARANCE, PLAYER_DANCE, PLAYER_SCALE, PLAYER_WALK } from "./player";
 
 const ASSET_SOURCES = import.meta.glob<string>("/public/assets/player/*.svg", {
   query: "?raw",
@@ -28,6 +28,18 @@ describe("PLAYER_APPEARANCE", () => {
     expect(ASSET_SOURCES[`/public${PLAYER_APPEARANCE.textureSource}`]?.toLowerCase()).not.toContain("#1e2a10");
   });
 
+  it("dances while it stands still: a gentle lean and a dip on a beat a bit faster than two a second", () => {
+    expect(PLAYER_APPEARANCE.dance).toBe(PLAYER_DANCE);
+    expect(PLAYER_DANCE.beat).toBeGreaterThan(300);
+    expect(PLAYER_DANCE.beat).toBeLessThan(600);
+    expect(PLAYER_DANCE.lean).toBeGreaterThan(0.05);
+    expect(PLAYER_DANCE.lean).toBeLessThan(0.15);
+    expect(PLAYER_DANCE.bounce).toBeGreaterThan(0);
+    expect(PLAYER_DANCE.bounce).toBeLessThan(0.1);
+    // Its idle sheet dances in step: a cycle every two beats.
+    expect(PLAYER_WALK.idle?.period).toBe(2 * PLAYER_DANCE.beat);
+  });
+
   it("walks with a sheet laid out as the generator says: its facings, cell, gap and poses", () => {
     const svg = ASSET_SOURCES[`/public${PLAYER_WALK.source}`] ?? "";
     const { cell, gap, frames } = PLAYER_WALK;
@@ -46,7 +58,7 @@ describe("PLAYER_APPEARANCE", () => {
     expect(svg.toLowerCase()).not.toContain("#1e2a10");
   });
 
-  it("breathes standing still with a sheet in the walk sheet's window, starting from its standing pose", () => {
+  it("dances standing still with a sheet in the walk sheet's window, starting from its standing pose", () => {
     const svg = ASSET_SOURCES[`/public${PLAYER_WALK.idle?.source}`] ?? "";
     const walk = ASSET_SOURCES[`/public${PLAYER_WALK.source}`] ?? "";
     const { cell, gap, idle } = PLAYER_WALK;

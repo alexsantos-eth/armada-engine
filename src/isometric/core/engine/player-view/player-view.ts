@@ -7,13 +7,22 @@ import {
   getPlayerJumpPhase,
   getPlayerRenderPosition,
   isPlayerRunning,
+  PLAYER_FACINGS,
   PLAYER_PART,
 } from "../player";
 import { projectBoxesToIsometric, projectGridPoint } from "../projection";
 import { createBlockViews, getBlockDepth, getSheetFrames, showFrame } from "../render";
 import { SCENE_LAYER, type BuiltScene, type SceneModule } from "../scene";
 import type { GridPoint, PlayerAppearance, PlayerRenderPosition } from "../../types";
-import { getBodyShape, getLeanTarget, stepBodyLean, type BodyLean } from "./body-motion";
+import {
+  DANCE_DELAY_MS,
+  getBodyShape,
+  getIdleDance,
+  getSideLeanShare,
+  getLeanTarget,
+  stepBodyLean,
+  type BodyLean,
+} from "./body-motion";
 import { DUST_MIN_IMPACT, getBodyScale, getDust, getVoxelFaces } from "./feedback";
 import {
   getClimbPose,
@@ -29,6 +38,9 @@ import {
 } from "./walk";
 
 const TERRAIN_SHADOW_BANDS = 16;
+
+/** The body's own shape, without a dance. */
+const UPRIGHT: GridPoint = { x: 1, y: 1 };
 const SHADOW_COLUMNS = 8;
 
 /** Colours of the dust it raises, nearly white: the lit top of each voxel, its left side and its right side. */
@@ -95,7 +107,9 @@ export type PlayerViewOptions = {
  * With `effects`, it answers take-offs and landings from the counters in `player.feedback` (no
  * events): dust at a take-off and at a hard landing (`getDust()`), a stretch at take-off and a squash
  * at landing (`getBodyScale()`); and while it runs (`isPlayerRunning()`), a small puff of dust every
- * {@link RUN_DUST_EVERY} columns.
+ * {@link RUN_DUST_EVERY} columns. Standing still with `appearance.dance`, it dances: on every beat
+ * its weight lands on one foot and then the other, the body leaning over it and dipping
+ * (`getIdleDance()`), on top of its idle sheet.
  *
  * With a walk sheet (`appearance.walk`) the sprite shows one of its cells: turned to the facing
  * nearest the way the player walks (`getPlayerFacing()`; standing, the last one, at first
@@ -219,7 +233,7 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
 
       let drawnAt = getPlayerRenderPosition(player, 1);
       // Columns walked since the player last stood still, for its walk pose, and real milliseconds
-      // it has stood still on the ground, for its idle cycle.
+      // it has stood still on the ground, for its idle cycle and its dance.
       let walked = 0;
       let stood = 0;
       /**
@@ -227,26 +241,27 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
        * at `at`, after `drawnAt`.
        */
       const animate = (at: PlayerRenderPosition, alpha: number, elapsedMs: number) => {
-        if (!walk) return;
         const climbing = getPlayerClimbProgress(player, alpha);
+        const walking = player.motion.type === "walking";
+        const flying = player.motion.type === "jumping" || player.motion.type === "falling";
+        const jumpPose = jump && getJumpPose(getPlayerJumpPhase(player), jump.sheet);
+        stood = climbing !== undefined || walking || flying || jumpPose !== undefined ? 0 : stood + elapsedMs;
+        if (!walk) return;
         facing = getPlayerFacing(player.climb?.direction ?? player.walk) ?? facing;
         if (climbing !== undefined) {
           walked = 0;
-          stood = 0;
           showFrame(view, climb ? climb.frames[facing][getClimbPose(climbing, climb.sheet)] : walk.frames[facing][0]);
           return;
         }
-        const walking = player.motion.type === "walking";
-        const flying = player.motion.type === "jumping" || player.motion.type === "falling";
         walked = walking ? walked + Math.hypot(at.x - drawnAt.x, at.y - drawnAt.y) : 0;
-        const jumpPose = jump && getJumpPose(getPlayerJumpPhase(player), jump.sheet);
-        stood = walking || flying || jumpPose !== undefined ? 0 : stood + elapsedMs;
         if (jump && jumpPose !== undefined) {
           showFrame(view, jump.frames[facing][jumpPose]);
           return;
         }
         if (idle && !walking && !flying) {
-          showFrame(view, idle.frames[facing][getIdlePose(stood, idle.sheet)]);
+          // Dancing, its cycle is the dance's: standing until the dance starts, then in step with it.
+          const ms = appearance.dance ? Math.max(0, stood - DANCE_DELAY_MS) : stood;
+          showFrame(view, idle.frames[facing][getIdlePose(ms, idle.sheet)]);
           return;
         }
         const pose = flying ? (walk.sheet.airPose ?? 0) : walking ? getWalkPose(walked, walk.sheet) : 0;
@@ -359,8 +374,10 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
        * gives the body its shape for this frame, `elapsedMs` after the last, on tick `tick`
        * (`alpha` of the way to the next): the squash and stretch of a take-off or a landing, times
        * the bob, air stretch or climb stretch of its state (`getBodyShape()`), and its lean into how
-       * it moves across the screen (`getLeanTarget()`, `stepBodyLean()`). Only transforms of the
-       * one sprite: no pose is added. Whether the body's scale or lean changed, so it is placed again.
+       * it moves across the screen (`getLeanTarget()`, `stepBodyLean()`); standing still, with
+       * `appearance.dance`, its dance on top (`getIdleDance()`: the lean the spring follows, to its own
+       * sides as far as they show across the screen for its facing (`getSideLeanShare()`), and a dip
+       * on each beat). Only transforms of the one sprite: no pose is added. Whether the body's scale or lean changed, so it is placed again.
        */
       const react = (at: PlayerRenderPosition, tick: number, alpha: number, elapsedMs: number) => {
         if (!effects) return false;
@@ -389,7 +406,11 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
           seenTick = tick;
         }
         const climbing = player.motion.type === "climbing" ? getPlayerClimbProgress(player, alpha) : undefined;
-        stepBodyLean(lean, climbing === undefined ? getLeanTarget(velocity, acceleration) : 0, elapsedMs);
+        const dance = appearance.dance && getIdleDance(stood, appearance.dance);
+        // The dance leans to the monkey's own sides: across the screen only as far as they show.
+        const sway = (dance?.lean ?? 0) * getSideLeanShare(facing, PLAYER_FACINGS.length);
+        const target = climbing === undefined ? getLeanTarget(velocity, acceleration) + sway : 0;
+        stepBodyLean(lean, target, elapsedMs);
         const pulse = getBodyScale(sinceTakeoff, sinceLanding, impact);
         const shape = getBodyShape({
           motion: player.motion.type,
@@ -399,7 +420,8 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
           verticalSpeed: player.verticalSpeed,
           climb: climbing,
         });
-        const next = { x: pulse.x * shape.x, y: pulse.y * shape.y };
+        const swing = dance?.shape ?? UPRIGHT;
+        const next = { x: pulse.x * shape.x * swing.x, y: pulse.y * shape.y * swing.y };
         if (next.x === body.x && next.y === body.y && lean.angle === tilt) return false;
         body = next;
         if (lean.angle !== tilt) {

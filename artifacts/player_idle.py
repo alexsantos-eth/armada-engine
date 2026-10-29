@@ -1,95 +1,96 @@
-# player_idle.py — idle sheet of the player (monkey.py's monkey, as player_walk.py draws it), in 8 facings.
+# player_idle.py — idle sheet of the player (monkey.py's monkey, as player_walk.py draws it), in 8 facings:
+# the monkey dancing while it stands still.
 # One row per facing, in the walk sheet's order (east, north-east, north, north-west, west,
 # south-west, south, south-east); FRAMES columns of one cycle, column 0 the walk sheet's standing
-# pose, so the figure starts breathing from where it stopped. Every cell is the walk sheet's window
+# pose, so the figure starts dancing from where it stopped. Every cell is the walk sheet's window
 # (CELL, GAP), so the engine draws both sheets with the same cell and the feet never move.
-# Each cycle the monkey breathes twice (the body swells, the head and arms rise with it, the arms
-# swinging a little forward) and looks to one side and then the other, leaning a little that way
-# while its tail swings the other way. Requires shapely (see iso_lib.py).
+# A cycle is two beats of the engine's dance (PLAYER_DANCE in content/player.ts; the period there is
+# two beats): it starts upright between beats; on the first beat its weight lands on the foot on the
+# right of the screen and on the second on the left one, while the engine leans and dips the whole
+# sprite that way. The free foot taps straight up, the arm on its side lifts out to its side over
+# the head and the tail swings away from the foot it stands on. Nothing moves forward and the head
+# keeps still, so the figure never seems to bow.
+# Requires shapely (see iso_lib.py).
 import math
 import monkey
-from player_walk import CELL, CELL_STYLE, FACINGS, GAP, TOP, Part, draw_parts, facing_yaw, rot_pitch
+from player_walk import CELL, CELL_STYLE, FACINGS, GAP, TOP, Part, draw_parts, facing_yaw
 
-FRAMES = 8              # poses per cycle (column 0 standing)
-BREATH = 5              # units the body swells at the top of a breath
-BREATHS = 2             # breaths per cycle
-HEAD_RISE = 4           # units the head rises at the top of a breath
-ARM_RISE = 3            # units the arms rise at the top of a breath
-ARM_SWAY = 6            # degrees the arms swing forward at the top of a breath
-LOOK = 24               # degrees the head turns to each side (about its vertical axis), once per cycle
-LEAN = 2                # degrees the figure leans to the side it looks at, from its feet
-TAIL_SWAY = 16          # units the tail's tip swings away from the side it looks at
+FRAMES = 8              # poses per cycle of two beats (column 0 standing)
+FOOT_TAP = 24           # units the free foot lifts on a beat
+ARM_PUMP = 150          # degrees the arm on the free foot's side lifts out to its side on a beat
+ARM_SWAY = 18           # degrees the other arm lifts out with it
+SHOULDER_Y = 58         # how far to each side of the middle the arms lift about
+ARM_RISE = 4            # units the pumping arm rises with its shoulder
+TAIL_SWAY = 26          # units the tail's tip swings away from the foot it stands on
+SNAP = 0.6              # how sharply it moves from beat to beat: 1 smooth, less holds each beat longer
 
 
-def rot_roll(p, a):
-    """Turns `p` about the figure's forward (x) axis by `a`: positive leans its top towards +y."""
+def rot_raise(p, a):
+    """Turns `p` about the figure's forward (x) axis by `a`: positive swings a point below the
+    origin out to +y and up."""
     x, y, z = p
     c, s = math.cos(a), math.sin(a)
-    return (x, y * c + z * s, -y * s + z * c)
+    return (x, y * c - z * s, y * s + z * c)
 
 
 class IdlePart(Part):
-    """A Part that may also turn about the head's vertical axis (`turn`) and leans with the figure
-    about its feet (`lean`), both before the figure turns to its facing."""
+    """A Part that may also raise out to its side about `shoulder` (y, z) by `raise_by` (an arm
+    lifted sideways), before the figure turns to its facing."""
 
-    def __init__(self, *args, turn=0.0, lean=0.0, **kwargs):
+    def __init__(self, *args, shoulder=None, raise_by=0.0, **kwargs):
         super().__init__(*args, **kwargs)
-        self.turn, self.lean = turn, lean
+        self.shoulder, self.raise_by = shoulder, raise_by
 
     def world(self, p, yaw, lift):
         x, y, z = p[0] + self.c[0], p[1] + self.c[1], p[2] + self.c[2]
-        if self.pivot is not None and self.swing:
-            px, pz = self.pivot
-            dx, dy, dz = rot_pitch((x - px, y, z - pz), self.swing)
-            x, y, z = dx + px, dy, dz + pz
-        z += lift
-        if self.turn:
-            c, s = math.cos(self.turn), math.sin(self.turn)
-            x, y = x * c - y * s, x * s + y * c
-        if self.lean:
-            x, y, z = rot_roll((x, y, z), self.lean)
+        if self.raise_by:
+            sy, sz = self.shoulder
+            dx, dy, dz = rot_raise((x, y - sy, z - sz), self.raise_by)
+            x, y, z = dx, dy + sy, dz + sz
         c, s = math.cos(yaw), math.sin(yaw)
-        return (x * c - y * s, x * s + y * c, z)
+        return (x * c - y * s, x * s + y * c, z + lift)
 
     def normal(self, n, yaw):
-        if self.pivot is not None and self.swing:
-            n = rot_pitch(n, self.swing)
-        if self.turn:
-            c, s = math.cos(self.turn), math.sin(self.turn)
-            n = (n[0] * c - n[1] * s, n[0] * s + n[1] * c, n[2])
-        if self.lean:
-            n = rot_roll(n, self.lean)
+        if self.raise_by:
+            n = rot_raise(n, self.raise_by)
         c, s = math.cos(yaw), math.sin(yaw)
         return (n[0] * c - n[1] * s, n[0] * s + n[1] * c, n[2])
 
 
-def rise(phase):
-    """How far through a breath the chest is risen at `phase` (0–1): 0 at the start, 1 halfway."""
-    return (1 - math.cos(2 * math.pi * phase)) / 2
+def screen_right(yaw):
+    """Which side of the figure (−1 or 1, its −y or +y) is on the right of the screen when it faces
+    `yaw`: iso_lib's screen right is x − y. Facing straight across the screen, +y."""
+    across = -math.sin(yaw) - math.cos(yaw)
+    return -1 if across < -1e-9 else 1
 
 
-def pose(phase):
-    """The monkey's parts at `phase` of the cycle, each with how far it rises. Over one cycle it
-    breathes BREATHS times and looks to one side and then the other, leaning a little with its
-    look; everything is at rest at phase 0, the walk sheet's standing pose (same parts, same order)."""
-    breath = rise(BREATHS * phase)
-    side = math.sin(2 * math.pi * phase)
-    sway = math.radians(ARM_SWAY) * breath
-    look = math.radians(LOOK) * side
-    lean = math.radians(LEAN) * side
+def pose(phase, yaw):
+    """The monkey's parts at `phase` of the cycle (two beats), facing `yaw`, each with how far it
+    rises. `side` is where its weight is, as the engine leans it: + on the screen's right foot, −
+    on the left; 0 (between beats) is the standing pose (same parts, same order)."""
+    wave = math.sin(2 * math.pi * phase)
+    side = math.copysign(abs(wave) ** SNAP, wave)
+    right = screen_right(yaw)
 
-    def part(spec, lift=0.0, turn=0.0, **kwargs):
-        return (IdlePart(*spec, turn=turn, lean=lean, **kwargs), lift)
+    def free(s):
+        """How free the foot on the figure's side `s` is (0–1): the one its weight is not on."""
+        return max(0.0, -s * right * side)
+
+    def part(spec, lift=0.0, **kwargs):
+        return (IdlePart(*spec, **kwargs), lift)
 
     parts = []
     for s in (-1, 1):
-        parts += [part(p) for p in monkey.leg(s)]
-    parts += [part(p) for p in monkey.body(breath=BREATH * breath)]
-    # the head, face, eyes and ears turn together about the head's vertical axis
-    parts += [part(p, lift=HEAD_RISE * breath, turn=look) for p in monkey.head()]
-    parts += [part(p) for p in monkey.tail(-TAIL_SWAY * side)]
+        f = free(s)
+        parts += [part(p, lift=FOOT_TAP * f) for p in monkey.leg(s)]
+    parts += [part(p) for p in monkey.body()]
+    parts += [part(p) for p in monkey.head()]
+    parts += [part(p) for p in monkey.tail(-TAIL_SWAY * right * side)]
     for s in (-1, 1):
-        parts += [part(p, pivot=monkey.SHOULDER, swing=-sway, lift=ARM_RISE * breath) for p in monkey.arm(s)]
+        f, other = free(s), free(-s)
+        out = s * math.radians(ARM_PUMP * f + ARM_SWAY * other)
+        joint = (s * SHOULDER_Y, monkey.SHOULDER[1])
+        parts += [part(p, shoulder=joint, raise_by=out, lift=ARM_RISE * f) for p in monkey.arm(s)]
     return parts
 
 
@@ -100,13 +101,14 @@ def main():
     for r, facing in enumerate(FACINGS):
         yaw = facing_yaw(r)
         for c in range(FRAMES):
-            paths, points = draw_parts(pose(c / FRAMES), yaw)
+            paths, points = draw_parts(pose(c / FRAMES, yaw), yaw)
             every += points
             tx, ty = c * (w + GAP) - x0, r * (h + GAP) - y0
             body.append(f'<g id="{facing}-{c}" transform="translate({tx} {ty})" {CELL_STYLE}>\n    ' + "\n    ".join(paths) + "\n  </g>")
     # every pose must fit the walk sheet's window
-    assert min(p[0] for p in every) >= x0 and max(p[0] for p in every) <= x0 + w
-    assert min(p[1] for p in every) >= y0 and max(p[1] for p in every) <= y0 + h
+    xs, ys = [p[0] for p in every], [p[1] for p in every]
+    assert min(xs) >= x0 and max(xs) <= x0 + w, (min(xs), max(xs))
+    assert min(ys) >= y0 and max(ys) <= y0 + h, (min(ys), max(ys))
     sheet_w, sheet_h = FRAMES * (w + GAP) - GAP, len(FACINGS) * (h + GAP) - GAP
     svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{sheet_w}" height="{sheet_h}" '
            f'viewBox="0 0 {sheet_w} {sheet_h}" data-cell="{x0} {y0c} {w} {h}" data-gap="{GAP}" '

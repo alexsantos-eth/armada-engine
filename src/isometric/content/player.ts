@@ -1,4 +1,4 @@
-import type { PlayerAppearance, PlayerWalkSheet } from "../core/types";
+import type { PlayerAppearance, PlayerIdleDance, PlayerWalkSheet } from "../core/types";
 
 /*
  * Game content: how the player character looks. The engine receives it through
@@ -26,10 +26,10 @@ export const PLAYER_WALK: PlayerWalkSheet = {
   stride: 1.4,
   // In the air without the jump sheet: the pose with the legs furthest apart, a leap.
   airPose: 3,
-  // Standing still: `idle.svg`, made by `artifacts/player_idle.py` in this sheet's window. Every
-  // 3.2 s it breathes twice (the body swelling, the head and arms rising) and looks to one side and
-  // then the other, leaning a little that way while its tail swings.
-  idle: { source: "/assets/player/idle.svg", frames: 8, period: 3200 },
+  // Standing still: `idle.svg`, made by `artifacts/player_idle.py` in this sheet's window: the monkey
+  // dancing, a cycle every two beats of `PLAYER_DANCE` (keep `period` at twice its `beat`). Its weight
+  // lands on one foot and then the other; the free foot taps up and the arm on its side pumps up.
+  idle: { source: "/assets/player/idle.svg", frames: 8, period: 900 },
   // Climbing onto a higher top: `climb.svg`, made by `artifacts/player_climb.py` in this sheet's
   // window. It reaches up, pulls itself up, puts a knee on the top, pushes on its hands and stands.
   climb: { source: "/assets/player/climb.svg", frames: 6 },
@@ -40,13 +40,22 @@ export const PLAYER_WALK: PlayerWalkSheet = {
 };
 
 /**
+ * The monkey dancing while it stands still, on top of its idle sheet (`PLAYER_WALK.idle`, a cycle
+ * every two beats): a beat every 450 ms (about 133 per minute), its weight landing on one foot and
+ * then the other, leaning about 5° over it and dipping 7 % on each beat.
+ */
+export const PLAYER_DANCE: PlayerIdleDance = { beat: 450, lean: 0.09, bounce: 0.07 };
+
+/**
  * The player character: a one-tile voxel-clay monkey (brown fur, big toon eyes, a red scarf) drawn
  * at {@link PLAYER_SCALE} of its tile so it stands a little shorter than a one-block house, walking with {@link PLAYER_WALK}'s poses in
- * eight facings; `block.svg` is the still figure, drawn if the sheet cannot be loaded.
+ * eight facings and dancing with {@link PLAYER_DANCE} while it stands still; `block.svg` is the still
+ * figure, drawn if the sheet cannot be loaded.
  */
 export const PLAYER_APPEARANCE: PlayerAppearance = {
   textureSource: "/assets/player/block.svg",
   height: 1,
   scale: PLAYER_SCALE,
   walk: PLAYER_WALK,
+  dance: PLAYER_DANCE,
 };
