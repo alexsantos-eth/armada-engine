@@ -603,6 +603,7 @@ export const TEST_TERRAIN: TerrainAppearance = {
     tint: { kind: "height", topTint: 0xffffff, step: 0.05 },
     topInset: 0.5,
   },
+  path: { textureSource: "/assets/path/block.svg", tint: { kind: "height", topTint: 0xe8ffb0, step: 0.05 } },
 };
 
 /**

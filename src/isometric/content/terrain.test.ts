@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateTerrainBands, validateTerrainVariants } from "../core/engine";
+import { validateTerrainBands, validateTerrainConnections, validateTerrainVariants } from "../core/engine";
 import { TERRAIN_APPEARANCE } from "./terrain";
 
 const ASSET_SOURCES = import.meta.glob<string>("/public/assets/*/*.svg", {
@@ -23,6 +23,25 @@ describe("TERRAIN_APPEARANCE", () => {
     variants.forEach(({ textureSource }) => expect(ASSET_SOURCES[`/public${textureSource}`]).toBeDefined());
     // Most of the grass stays plain.
     expect(variants.reduce((sum, { chance }) => sum + chance, 0)).toBeLessThan(0.5);
+  });
+
+  it("joins path blocks with sixteen frames of one sheet, each a block's canvas in the generated atlas", () => {
+    const connections = TERRAIN_APPEARANCE.path.connections;
+    const sheet = ASSET_SOURCES[`/public${connections?.textureSource}`];
+
+    expect(connections && validateTerrainConnections(connections)).toEqual([]);
+    expect(sheet).toContain('viewBox="0 -341 4096 3412"');
+    connections?.frames.forEach((frame, mask) => {
+      expect(frame).toEqual({ x: (mask % 4) * 1024, y: Math.floor(mask / 4) * 853, width: 1024, height: 853 });
+      expect(sheet).toContain(`<g id="path-${mask}" transform="translate(${frame.x} ${frame.y})">`);
+    });
+  });
+
+  it("tints a path's grass edges with the grass zones around it", () => {
+    const { field, ...tints } = TERRAIN_APPEARANCE.path.noiseTints ?? {};
+    expect(field).toBe("grass");
+    expect(tints).toEqual(TERRAIN_APPEARANCE.grass.noiseTints);
+    expect(TERRAIN_APPEARANCE.path.tint).toEqual(TERRAIN_APPEARANCE.grass.tint);
   });
 
   it("keeps wildflowers, pebbles and mushrooms as clustered grass-top variations", () => {

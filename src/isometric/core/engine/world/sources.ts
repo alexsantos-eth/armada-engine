@@ -4,6 +4,7 @@ import { chunkKey, chunkRect, toChunkCoord } from "../grid";
 import { createSeededRandom, deriveSeed } from "../random";
 import { type Box, generateTerrainColumns } from "../terrain";
 import type { ChunkContent, ChunkSource } from "./chunks";
+import { createSettlementPaths } from "./settlement-paths";
 
 /** Options of {@link createSeededChunkSource}. */
 export type SeededChunkSourceOptions = {
@@ -19,7 +20,8 @@ const overlaps = (a: WorldRect, b: WorldRect) =>
 
 /**
  * Chunks generated from the world seed, each on its own: the terrain of the chunk
- * (`generateTerrainColumns()`, seamless with its neighbours) and its entities
+ * (`generateTerrainColumns()`, seamless with its neighbours, with the settlements' paths of
+ * `createSettlementPaths()`, so nothing that grows on grass spawns on them) and its entities
  * (`createEntitiesFromConfig()` on the chunk's columns, from the streams
  * `deriveSeed(seed, "entities@<chunk key>")` and `"entity-color-variants@<chunk key>"`, and the world
  * seed for patches). The same
@@ -29,10 +31,11 @@ const overlaps = (a: WorldRect, b: WorldRect) =>
  * instances of one chunk: two chunks never wait for each other.
  */
 export function createSeededChunkSource({ seed, entityDefinitions, bounds }: SeededChunkSourceOptions): ChunkSource {
+  const paths = createSettlementPaths({ seed, entityDefinitions, clip: bounds });
   return {
     has: (coord) => bounds === undefined || overlaps(chunkRect(coord), bounds),
     generate: (coord) => {
-      const columns = generateTerrainColumns(chunkRect(coord), { seed, clip: bounds });
+      const columns = generateTerrainColumns(chunkRect(coord), { seed, clip: bounds, paths });
       const key = chunkKey(coord.cx, coord.cy);
       const entities = createEntitiesFromConfig(
         columns,

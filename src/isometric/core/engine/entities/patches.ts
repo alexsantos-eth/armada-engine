@@ -16,6 +16,27 @@ export function getPatchFactor({ threshold, outside = 0 }: EntityPatches, value:
   return outside + (1 - outside) * depth;
 }
 
+/** The noise field of patches named `field` at `scale` (see {@link createPatchFields}). */
+export type PatchFields = (field: string, scale: number) => NoiseField;
+
+/**
+ * The patch noise fields of a world seed: each `field` (and `scale`) is a simplex field of its own
+ * stream (`deriveSeed(seed, "entity-patches:<field>")`), created once. Forests (`patches`) and
+ * settlement zones (`settlementLot.zone`) that name the same field read the same noise.
+ */
+export function createPatchFields(seed: number): PatchFields {
+  const fields = new Map<string, NoiseField>();
+  return (name, scale) => {
+    const key = `${name}@${scale}`;
+    let field = fields.get(key);
+    if (!field) {
+      field = createNoiseField(seed, `entity-patches:${name}`, { scale });
+      fields.set(key, field);
+    }
+    return field;
+  };
+}
+
 /**
  * Spawn chance factors of patches from the world seed: each `field` (and `scale`) is a simplex
  * field of its own stream (`deriveSeed(seed, "entity-patches:<field>")`), sampled at absolute
@@ -23,15 +44,11 @@ export function getPatchFactor({ threshold, outside = 0 }: EntityPatches, value:
  * samples a list of columns once: definitions that share it reuse the values.
  */
 export function createPatchChances(seed: number): PatchChances {
-  const fields = new Map<string, NoiseField>();
+  const fieldOf = createPatchFields(seed);
   const values = new Map<string, { readonly columns: readonly IGridObject[]; readonly values: Float64Array }>();
   return (patches, columns) => {
     const key = `${patches.field}@${patches.scale}`;
-    let field = fields.get(key);
-    if (!field) {
-      field = createNoiseField(seed, `entity-patches:${patches.field}`, { scale: patches.scale });
-      fields.set(key, field);
-    }
+    const field = fieldOf(patches.field, patches.scale);
     let cached = values.get(key);
     if (cached?.columns !== columns) {
       const sampled = new Float64Array(columns.length);

@@ -202,4 +202,25 @@ describe("generateTerrainColumns", () => {
     expect(shape(clipped)).toEqual(shape(createTerrainColumns(points, createBareGroundField(seed))));
     expect(generateTerrainColumns({ minX: 20, minY: 0, maxX: 30, maxY: 5 }, { seed, clip })).toEqual([]);
   });
+
+  it("types the area's grass and ground on a path as path, and only asks for the area's columns", () => {
+    const plain = generateTerrainColumns(area, { seed });
+    const asked: number[][] = [];
+    const paths = (x: number, y: number) => {
+      asked.push([x, y]);
+      return x === y;
+    };
+    const withPaths = generateTerrainColumns(area, { seed, paths });
+
+    expect(withPaths.map(({ x, y, elevation }) => [x, y, elevation])).toEqual(
+      plain.map(({ x, y, elevation }) => [x, y, elevation]),
+    );
+    withPaths.forEach((column, index) => {
+      const land = plain[index].type === "grass" || plain[index].type === "ground";
+      expect(column.type).toBe(land && column.x === column.y ? "path" : plain[index].type);
+    });
+    expect(withPaths.some(({ type }) => type === "path")).toBe(true);
+    expect(withPaths.some(({ type }) => type === "sand")).toBe(true);
+    expect(asked.every(([x, y]) => x >= 0 && x <= 15 && y >= 0 && y <= 15)).toBe(true);
+  });
 });

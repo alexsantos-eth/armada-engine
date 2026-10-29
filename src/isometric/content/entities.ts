@@ -1,4 +1,4 @@
-import type { EntityDefinition, EntityFormation, EntityPatches } from "../core/types";
+import type { EntityDefinition, EntityFormation, EntityPatches, SettlementZone } from "../core/types";
 
 /*
  * Game content: the entities that populate the world. This is data, not engine code — the
@@ -21,9 +21,9 @@ const TREE_GROVE_FORMATION: EntityFormation = {
  */
 const TREE_FOREST_PATCHES: EntityPatches = {
   field: "forest",
-  scale: 26,
-  threshold: 0.2,
-  outside: 0.08,
+  scale: 96,
+  threshold: -0.05,
+  outside: 0.03,
 };
 
 /**
@@ -40,13 +40,26 @@ const BUSH_PATCH_FORMATION: EntityFormation = {
 };
 
 /** Side of a structured neighborhood, in world columns. */
-const SETTLEMENT_REGION_SIZE = 128;
+const SETTLEMENT_REGION_SIZE = 64;
 
-/** Creates one fixed building lot while keeping all structures on the same settlement grid. */
+/**
+ * Where neighbourhoods are built: in the clearings of the forests' noise field, well below the
+ * forests' threshold, so towns and forests never overlap and the towns group in large areas.
+ */
+export const SETTLEMENT_ZONE: SettlementZone = {
+  field: TREE_FOREST_PATCHES.field,
+  scale: TREE_FOREST_PATCHES.scale,
+  below: -0.15,
+};
+
+/**
+ * Creates one fixed building lot while keeping all structures on the same settlement grid. No cross
+ * is reserved: the paths are planned (`createSettlementPaths()`) and nothing grows on them.
+ */
 const settlementLot = (x: number, y: number) => ({
   regionSize: SETTLEMENT_REGION_SIZE,
   offset: { x, y },
-  reservedPathWidth: 8,
+  zone: SETTLEMENT_ZONE,
 });
 
 /**
@@ -150,7 +163,7 @@ const SETTLEMENT_ENTITIES: readonly EntityDefinition[] = [
     surface: "grass",
     surfaceElevation: [1, 2],
     colorReplacements: HOUSE_COLOR_REPLACEMENTS,
-    settlementLot: settlementLot(24, 24),
+    settlementLot: settlementLot(12, 12),
   },
   {
     id: "house_2x1",
@@ -162,7 +175,7 @@ const SETTLEMENT_ENTITIES: readonly EntityDefinition[] = [
     surface: "grass",
     surfaceElevation: [1, 2],
     colorReplacements: HOUSE_COLOR_REPLACEMENTS,
-    settlementLot: settlementLot(88, 24),
+    settlementLot: settlementLot(44, 12),
   },
   {
     id: "house_balcony",
@@ -174,7 +187,7 @@ const SETTLEMENT_ENTITIES: readonly EntityDefinition[] = [
     surface: "grass",
     surfaceElevation: [1, 2],
     colorReplacements: HOUSE_BALCONY_ROOF_COLOR_REPLACEMENTS,
-    settlementLot: settlementLot(24, 88),
+    settlementLot: settlementLot(12, 44),
   },
   {
     id: "hospital",
@@ -183,7 +196,7 @@ const SETTLEMENT_ENTITIES: readonly EntityDefinition[] = [
     spawnChance: 1,
     gap: 2,
     surface: "grass",
-    settlementLot: settlementLot(88, 88),
+    settlementLot: settlementLot(44, 44),
   },
   {
     id: "restaurant",
@@ -192,7 +205,7 @@ const SETTLEMENT_ENTITIES: readonly EntityDefinition[] = [
     spawnChance: 1,
     gap: 2,
     surface: "grass",
-    settlementLot: settlementLot(24, 52),
+    settlementLot: settlementLot(12, 26),
   },
   {
     id: "market",
@@ -201,7 +214,7 @@ const SETTLEMENT_ENTITIES: readonly EntityDefinition[] = [
     spawnChance: 1,
     gap: 2,
     surface: "grass",
-    settlementLot: settlementLot(88, 52),
+    settlementLot: settlementLot(44, 26),
   },
   {
     id: "townhall",
@@ -210,7 +223,7 @@ const SETTLEMENT_ENTITIES: readonly EntityDefinition[] = [
     spawnChance: 1,
     gap: 2,
     surface: "grass",
-    settlementLot: settlementLot(52, 24),
+    settlementLot: settlementLot(26, 12),
   },
 ];
 

@@ -4,8 +4,14 @@ import { createBlockViews, createSpritePool } from "../render";
 import { SCENE_LAYER, type SceneModule, type SceneView } from "../scene";
 import { type Box, createVisibleBlocks, DEFAULT_MAX_ELEVATION, DEFAULT_MIN_ELEVATION } from "../terrain";
 import { createNoiseField, type NoiseField } from "../terrain";
-import type { TerrainMaterial, TerrainTint } from "../../types";
-import { createVariantPicker, type VariantPicker, validateTerrainVariants } from "./variants";
+import { type Connects, getConnectionMask, PATH_MAX_CLIMB } from "../paths";
+import type { TerrainFrame, TerrainMaterial, TerrainTint } from "../../types";
+import {
+  createVariantPicker,
+  validateTerrainConnections,
+  type VariantPicker,
+  validateTerrainVariants,
+} from "./variants";
 
 /** Darkest a tinted block gets: the factor of its colour never goes under it. */
 const MIN_TINT_FACTOR = 0.35;
@@ -40,6 +46,39 @@ export function applyNoiseTint(base: number | undefined, color: number): number 
   return (red << 16) | (green << 8) | blue;
 }
 
+/** Size, in source pixels, of the spritesheet that holds `frames`: their furthest extent. */
+function sheetExtent(frames: readonly (TerrainFrame | undefined)[]): {
+  readonly width: number;
+  readonly height: number;
+} {
+  return {
+    width: Math.max(...frames.map((frame) => (frame?.x ?? 0) + (frame?.width ?? 0))),
+    height: Math.max(...frames.map((frame) => (frame?.y ?? 0) + (frame?.height ?? 0))),
+  };
+}
+
+/**
+ * Frame `frame` (in the source pixels of a sheet of size `extent`) of the spritesheet `sheet`, as
+ * `loadSvg()` gave it; without a frame, the whole sheet.
+ */
+function cropFrame(
+  sheet: Texture | undefined,
+  frame: TerrainFrame | undefined,
+  extent: { readonly width: number; readonly height: number },
+): Texture | undefined {
+  return sheet && frame && sheet.frame
+    ? new Texture({
+        source: sheet.source,
+        frame: new Rectangle(
+          sheet.frame.x + (frame.x * sheet.frame.width) / extent.width,
+          sheet.frame.y + (frame.y * sheet.frame.height) / extent.height,
+          (frame.width * sheet.frame.width) / extent.width,
+          (frame.height * sheet.frame.height) / extent.height,
+        ),
+      })
+    : sheet;
+}
+
 /**
  * Scene module of the terrain, chunk by chunk: one sprite per visible block, with the texture and
  * the tint of its material (`context.terrain`, game content). Every column is filled down to
@@ -52,9 +91,13 @@ export function applyNoiseTint(base: number | undefined, color: number): number 
  * animated water of `surface-bands`), if any, instead of its material's own. The top block of a
  * column whose material has `variants` shows the one `createVariantPicker()` picks for it from the
  * world seed (flowers, leaves, in clumps), if any; the blocks under it keep the material's texture.
+ * The top block of a column whose material has `connections` (paths) shows the frame of the
+ * neighbours it joins (`getConnectionMask()`: same material, at most `PATH_MAX_CLIMB` apart), read
+ * live from `context.columnAt`, so a path crosses chunk edges unbroken.
  *
- * When a material's SVG cannot be loaded, no terrain is drawn; a variant that cannot be loaded is
- * left out. Invalid `variants` (game content) fail the scene's setup.
+ * When a material's SVG cannot be loaded, no terrain is drawn; a variant or a connection sheet that
+ * cannot be loaded is left out. Invalid `variants` or `connections` (game content) fail the scene's
+ * setup.
  */
 export function createTerrainView(): SceneModule {
   return {
@@ -62,15 +105,25 @@ export function createTerrainView(): SceneModule {
     async setup({ world, terrain, projection, metrics, columnAt, assets, services }) {
       const materials = Object.keys(terrain) as TerrainMaterial[];
       materials.forEach((material) => {
-        const issues = validateTerrainVariants(terrain[material].variants ?? []);
+        const { variants: list = [], connections } = terrain[material];
+        const issues = [
+          ...validateTerrainVariants(list),
+          ...(connections ? validateTerrainConnections(connections) : []),
+        ];
         if (issues.length > 0) throw new Error(`Terrain "${material}": ${issues.join("; ")}`);
       });
-      const [loaded, loadedVariants] = await Promise.all([
+      const [loaded, loadedVariants, loadedConnections] = await Promise.all([
         Promise.all(materials.map((material) => assets.loadSvg(terrain[material].textureSource))),
         Promise.all(
           materials.map((material) =>
             Promise.all((terrain[material].variants ?? []).map(({ textureSource }) => assets.loadSvg(textureSource))),
           ),
+        ),
+        Promise.all(
+          materials.map((material) => {
+            const connections = terrain[material].connections;
+            return connections ? assets.loadSvg(connections.textureSource) : Promise.resolve(undefined);
+          }),
         ),
       ]);
       const textures = new Map<TerrainMaterial, Texture>();
@@ -86,32 +139,32 @@ export function createTerrainView(): SceneModule {
         { readonly pick: VariantPicker; readonly looks: (Texture | undefined)[] }
       >();
       const tintFields = new Map<TerrainMaterial, { readonly field: NoiseField; readonly colors: readonly number[] }>();
+      // The looks of each material with connections, by mask.
+      const connected = new Map<TerrainMaterial, readonly (Texture | undefined)[]>();
       materials.forEach((material, index) => {
         const list = terrain[material].variants ?? [];
         if (list.length > 0) {
           const pick = createVariantPicker(list, world.seed, `terrain-variants:${material}`);
-          const atlasWidth = Math.max(...list.map(({ frame }) => (frame?.x ?? 0) + (frame?.width ?? 0)));
-          const atlasHeight = Math.max(...list.map(({ frame }) => (frame?.y ?? 0) + (frame?.height ?? 0)));
-          const looks = loadedVariants[index].map((sheet, frameIndex) => {
-            const frame = list[frameIndex].frame;
-            return sheet && frame && sheet.frame
-              ? new Texture({
-                  source: sheet.source,
-                  frame: new Rectangle(
-                    sheet.frame.x + (frame.x * sheet.frame.width) / atlasWidth,
-                    sheet.frame.y + (frame.y * sheet.frame.height) / atlasHeight,
-                    (frame.width * sheet.frame.width) / atlasWidth,
-                    (frame.height * sheet.frame.height) / atlasHeight,
-                  ),
-                })
-              : sheet;
-          });
+          const extent = sheetExtent(list.map(({ frame }) => frame));
+          const looks = loadedVariants[index].map((sheet, frameIndex) =>
+            cropFrame(sheet, list[frameIndex].frame, extent),
+          );
           variants.set(material, { pick, looks });
+        }
+        const connections = terrain[material].connections;
+        const sheet = loadedConnections[index];
+        if (connections && sheet) {
+          const extent = sheetExtent(connections.frames);
+          connected.set(
+            material,
+            connections.frames.map((frame) => cropFrame(sheet, frame, extent)),
+          );
         }
         const noiseTints = terrain[material].noiseTints;
         if (noiseTints && noiseTints.colors.length > 0) {
+          const name = noiseTints.field ?? material;
           tintFields.set(material, {
-            field: createNoiseField(world.seed, `terrain-tints:${material}`, { scale: noiseTints.scale }),
+            field: createNoiseField(world.seed, `terrain-tints:${name}`, { scale: noiseTints.scale }),
             colors: noiseTints.colors,
           });
         }
@@ -130,6 +183,22 @@ export function createTerrainView(): SceneModule {
         if (!material || elevation !== Math.floor((columnAt.get(x, y) as Box).elevation)) return undefined;
         const index = material.pick(x, y);
         return index < 0 ? undefined : material.looks[index];
+      };
+      /** Whether column `(x, y)` joins `(nx, ny)`: tops of one material, a walkable step apart. */
+      const joins: Connects = (x, y, nx, ny) => {
+        const column = columnAt.get(x, y) as Box;
+        const neighbour = columnAt.get(nx, ny);
+        return (
+          neighbour !== undefined &&
+          neighbour.type === column.type &&
+          Math.abs(neighbour.elevation - column.elevation) <= PATH_MAX_CLIMB
+        );
+      };
+      /** The texture of `block` when it is the top of its column and its material has connections. */
+      const connectionOf = ({ type, x, y, elevation }: Box): Texture | undefined => {
+        const looks = connected.get(type);
+        if (!looks || elevation !== Math.floor((columnAt.get(x, y) as Box).elevation)) return undefined;
+        return looks[getConnectionMask(x, y, joins)];
       };
       // A hidden chunk's blocks are given back for the next chunk shown (#94).
       const sprites = createSpritePool();
@@ -160,6 +229,7 @@ export function createTerrainView(): SceneModule {
             createBlockViews({
               texture:
                 surfaces?.textureAt(box.box.type, box.box.x, box.box.y, box.box.elevation) ??
+                connectionOf(box.box) ??
                 variantOf(box.box) ??
                 (textures.get(box.box.type) as Texture),
               box,

@@ -12,7 +12,7 @@ import type {
 import { CellMap, SpatialIndex, type ReadonlyCellMap } from "../grid";
 import { createSeededRandom, DEFAULT_WORLD_SEED, deriveSeed, type RandomSource } from "../random";
 import { pickFormationOffsets, resolveFormation } from "./formation";
-import { createPatchChances } from "./patches";
+import { createPatchChances, createPatchFields, type PatchFields } from "./patches";
 import { pickColorVariation } from "./variants";
 
 function matchesSurfaceElevation(elevation: number, surfaceElevation: EntityDefinition["surfaceElevation"]): boolean {
@@ -239,7 +239,8 @@ const NO_CELLS: ReadonlyCellMap<true> = new CellMap<true>();
  * A definition with `patches` spawns in large seeded noise patches (forests): its chance on
  * each column is `spawnChance` times the factor of `createPatchChances(patchSeed)`, and columns
  * with no chance are skipped before anything else. `patchSeed` is the world seed (not a chunk's),
- * so patches cross chunks.
+ * so patches cross chunks. A `settlementLot` with a `zone` is built only where that patch field
+ * (from `patchSeed` too) is below `zone.below`: no random roll, so every lot is known in advance.
  *
  * Occupancy and `gap` are answered by a {@link SpatialIndex} of the entities placed so far.
  *
@@ -272,6 +273,7 @@ export function createEntitiesFromConfig(
   };
 
   const patchChances = createPatchChances(patchSeed);
+  const patchFields = createPatchFields(patchSeed);
 
   for (const definition of definitions) {
     const formation = resolveFormation(definition.formation);
@@ -282,7 +284,7 @@ export function createEntitiesFromConfig(
       const chance = factors ? definition.spawnChance * factors[index] : definition.spawnChance;
       // Only patches skip early: without them the random stream stays as it was.
       if (factors && chance <= 0) continue;
-      if (definition.settlementLot && !isSettlementLot(box, definition.settlementLot)) continue;
+      if (definition.settlementLot && !isSettlementLot(box, definition.settlementLot, patchFields)) continue;
       if (crossesSettlementPath(box, definition, paths)) continue;
       if (!findPlacement(box, definition, context, NO_CELLS)) continue;
       if (random() >= chance) continue;
@@ -340,11 +342,20 @@ function crossesSettlementPath(
   return false;
 }
 
-/** Whether a column is the absolute, region-relative anchor for this settlement lot. */
-function isSettlementLot(box: ITerrainColumn, lot: NonNullable<EntityDefinition["settlementLot"]>): boolean {
+/**
+ * Whether a column is the absolute, region-relative anchor for this settlement lot, inside its
+ * `zone` if it has one.
+ */
+function isSettlementLot(
+  box: ITerrainColumn,
+  lot: NonNullable<EntityDefinition["settlementLot"]>,
+  patchFields: PatchFields,
+): boolean {
   const regionX = Math.floor(box.x / lot.regionSize) * lot.regionSize;
   const regionY = Math.floor(box.y / lot.regionSize) * lot.regionSize;
-  return box.x === regionX + lot.offset.x && box.y === regionY + lot.offset.y;
+  if (box.x !== regionX + lot.offset.x || box.y !== regionY + lot.offset.y) return false;
+  const { zone } = lot;
+  return !zone || patchFields(zone.field, zone.scale)(box.x, box.y) < zone.below;
 }
 
 /** Whether column `(x, y)` is taken: by an entity placed before, or by the current group. */

@@ -301,6 +301,126 @@ describe("createTerrainView", () => {
     });
   });
 
+  describe("connections", () => {
+    // Frame `mask` of the sheet is at x = 10 · mask, so a cropped texture tells its mask.
+    const frames = Array.from({ length: 16 }, (_, mask) => ({ x: mask * 10, y: 0, width: 10, height: 10 }));
+    const connections = { textureSource: "/assets/path/sheet.svg", frames };
+    const terrain = { ...TEST_TERRAIN, path: { ...TEST_TERRAIN.path, connections } };
+    const loadSheet = ((asset: string | { src: string }) => {
+      const source = typeof asset === "string" ? asset : asset.src;
+      return Promise.resolve(
+        source === connections.textureSource ? { source, frame: { x: 0, y: 0, width: 160, height: 10 } } : { source },
+      );
+    }) as never;
+    // A 5×5 plateau one block high; a 2 rises two levels at (4, 4).
+    const points = Array.from({ length: 25 }, (_, index) => {
+      const x = index % 5;
+      const y = Math.floor(index / 5);
+      return { x, y, elevation: x === 4 && y === 4 ? 3 : 1 };
+    });
+    // A tee at (1, 1): +x, +y and −x; a straight along x; an end; a lone path; a path a cliff away.
+    const PATH = [
+      [0, 1],
+      [1, 1],
+      [2, 1],
+      [1, 2],
+      [1, 3],
+      [3, 3],
+      [4, 3],
+      [4, 4],
+    ];
+    const masks = () =>
+      new Map(
+        vi
+          .mocked(createBlockViews)
+          .mock.calls.map(([options]) => options)
+          .filter(({ texture }) => (texture as unknown as { source: string }).source === connections.textureSource)
+          .map(({ box, texture }) => [
+            `${box.box.x},${box.box.y}`,
+            (texture as unknown as { frame: { x: number } }).frame.x / 10,
+          ]),
+      );
+
+    it("draws each path top with the frame of the neighbours it joins, across a walkable step only", async () => {
+      vi.mocked(Assets.load).mockImplementation(loadSheet);
+      const world = worldFrom(points);
+      columnsOf(world).forEach((column) => {
+        if (PATH.some(([x, y]) => column.x === x && column.y === y)) column.update({ type: "path" });
+      });
+
+      const { scene } = await mountScene(world, [createTerrainView()], { terrain });
+
+      expect(Object.fromEntries(masks())).toEqual({
+        "0,1": 1,
+        "1,1": 1 | 2 | 4,
+        "2,1": 4,
+        "1,2": 2 | 8,
+        "1,3": 8,
+        "3,3": 1,
+        "4,3": 4,
+        "4,4": 0,
+      });
+      // The ground under a path keeps its own texture.
+      expect(
+        renderCalls
+          .filter(({ elevation }) => elevation === 0)
+          .every(({ texture }) => texture.source.includes("ground")),
+      ).toBe(true);
+      scene.destroy();
+      vi.mocked(Assets.load).mockImplementation(loadTexture as never);
+    });
+
+    it("keeps the material's own texture when the sheet cannot be loaded", async () => {
+      vi.mocked(Assets.load).mockImplementation(((asset: string | { src: string }) => {
+        const source = typeof asset === "string" ? asset : asset.src;
+        return Promise.resolve(source === connections.textureSource ? undefined : { source });
+      }) as never);
+      const world = worldFrom(points);
+      columnsOf(world)[0].update({ type: "path" });
+
+      const { scene } = await mountScene(world, [createTerrainView()], { terrain });
+
+      expect(renderCalls.some(({ texture }) => texture.source === "/assets/path/block.svg")).toBe(true);
+      expect(masks().size).toBe(0);
+      scene.destroy();
+      vi.mocked(Assets.load).mockImplementation(loadTexture as never);
+    });
+
+    it("tints a path like the grass around it when they share a noise field", async () => {
+      const noiseTints = { scale: 3, colors: [0xff0000, 0x00ff00, 0x0000ff] };
+      const shared = {
+        ...TEST_TERRAIN,
+        grass: { ...TEST_TERRAIN.grass, noiseTints },
+        path: {
+          ...TEST_TERRAIN.grass,
+          textureSource: "/assets/path/block.svg",
+          noiseTints: { ...noiseTints, field: "grass" },
+        },
+      };
+      const grassWorld = worldFrom(points);
+      const { scene } = await mountScene(grassWorld, [createTerrainView()], { terrain: shared });
+      const grassTints = renderCalls.filter(({ elevation }) => elevation === 1).map(({ tint }) => tint);
+      scene.destroy();
+      renderCalls.splice(0);
+
+      const pathWorld = worldFrom(points);
+      columnsOf(pathWorld).forEach((column) => column.update({ type: "path" }));
+      const { scene: pathScene } = await mountScene(pathWorld, [createTerrainView()], { terrain: shared });
+
+      expect(new Set(grassTints).size).toBeGreaterThan(1);
+      expect(renderCalls.filter(({ elevation }) => elevation === 1).map(({ tint }) => tint)).toEqual(grassTints);
+      pathScene.destroy();
+    });
+
+    it("fails the setup with invalid connections", async () => {
+      const invalid = { ...TEST_TERRAIN, path: { ...TEST_TERRAIN.path, connections: { ...connections, frames: [] } } };
+
+      await expect(mountScene(worldFrom(points), [createTerrainView()], { terrain: invalid })).rejects.toThrow(
+        'Terrain "path": connections.frames must have one frame per mask, 16 (got 0)',
+      );
+    });
+  });
+
   it("lets blocks behind a sunken top show", async () => {
     // A 3×3 plateau whose front corner is sand: half a block lower, it hides nothing behind it.
     const points = Array.from({ length: 9 }, (_, index) => ({ x: index % 3, y: Math.floor(index / 3), elevation: 2 }));

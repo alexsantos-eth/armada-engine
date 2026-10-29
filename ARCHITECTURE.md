@@ -194,6 +194,14 @@ src/isometric/core/
       parts.ts           # WorldParts: estado de cada parte del mundo, guardado y restauración
       parts.test.ts
       index.ts
+    paths/
+      astar.ts           # findPath(): A* determinista entre vecinos de lado, PATH_STEPS
+      astar.test.ts
+      connections.ts     # getConnectionMask() (bits +x 1, +y 2, −x 4, −y 8) y getPathShape()
+      connections.test.ts
+      network.ts         # planPathNetwork(): red de caminos de una casilla de ancho (plaza, salidas, puertas)
+      network.test.ts
+      index.ts
     player/
       player.ts          # sistema del jugador: aparición, marcha, colisiones, interpolación
       player.test.ts
@@ -295,7 +303,7 @@ src/isometric/core/
     terrain-view/        # módulo de escena: bloques de terreno con textura y tinte por material
       terrain-view.ts
       terrain-view.test.ts
-      variants.ts        # variantes de la cima en grupos (validateTerrainVariants, createVariantPicker)
+      variants.ts        # variantes de la cima en grupos (validateTerrainVariants, createVariantPicker) y validateTerrainConnections
       variants.test.ts
       index.ts
     world/
@@ -303,6 +311,8 @@ src/isometric/core/
       chunk-data.test.ts
       chunks.ts          # WorldChunks: chunks cargados, índices, streaming y entidades editadas
       chunks.test.ts
+      settlement-paths.ts # createSettlementPaths(): los caminos de cada barrio, planificados por región y cacheados
+      settlement-paths.test.ts
       sources.ts         # createSeededChunkSource() (por semilla) y createFixedChunkSource() (a mano)
       sources.test.ts
       world.ts
@@ -372,19 +382,20 @@ Responsabilidades y dependencias permitidas (entre módulos solo a través de su
 | `terrain`       | `Box`, ruido y sus valores por defecto, relleno de columnas (`fillElevations`), bloques visibles (`createVisibleBlocks`, `removeHiddenBlocks`) y superficies                                                            | `grid`, `random`                                                                |
 | `entities`      | `Entity`, huellas, colocación, formaciones, variantes de color, validación de definiciones y su huella de contenido (`fingerprintEntityDefinitions()`)                                                                  | `grid`, `random`, `terrain`                                                     |
 | `parts`         | `WorldParts`: el estado de cada parte del mundo registrada, leído por clave, y su guardado y restauración con versión propia                                                                                            | —                                                                               |
+| `paths`         | Caminos como datos: A* determinista (`findPath`), redes de caminos de una casilla de ancho (`planPathNetwork`) y máscaras de conexión (`getConnectionMask`, `getPathShape`)                                             | `grid`                                                                          |
 | `time`          | Reloj de juego (ticks) y su parte del mundo (`CLOCK_PART`), hora del día y estado del sol                                                                                                                               | —                                                                               |
 | `events`        | Bus de eventos tipado y síncrono entre sistemas (`createEventBus`)                                                                                                                                                      | —                                                                               |
 | `wind`          | Viento como datos: fase de cada entidad (`getSwayPhase`) y desplazamiento de su copa en un instante (`getSwayOffset`), en tiempo real de vista                                                                          | `random`                                                                        |
 | `waves`         | Bandas de luz del agua como datos: perfil de una banda (`getBandLight`), su deriva en el tiempo (`getBandDrift`), agua honda (`isDeepSurface`) y validación (`validateTerrainBands`)                                    | —                                                                               |
 | `lighting`      | Proyección de las sombras: dirección, alargamiento y opacidad según el sol; silueta tumbada en el suelo o llevada a otra entidad                                                                                        | `constants`                                                                     |
 | `player`        | Sistema del jugador: aparición, movimiento por tick con colisiones, máquina de locomoción XState (`motion.ts`) e interpolación (`createPlayerSystem()`), y su parte (`PLAYER_PART`)                                     | `grid`, `time`, `xstate`                                                        |
-| `world`         | Modelo `World` por chunks (carga, descarga y streaming), fuentes de chunks, generación y guardado; no nombra ninguna parte                                                                                              | `entities`, `grid`, `parts`, `random`, `terrain`                                |
+| `world`         | Modelo `World` por chunks (carga, descarga y streaming), fuentes de chunks, caminos de los barrios, generación y guardado; no nombra ninguna parte                                                                      | `entities`, `grid`, `parts`, `paths`, `random`, `terrain`                       |
 | `projection`    | Rejilla → coordenadas de pantalla isométricas (`projectBoxesToIsometric`, `projectGridPoint`) y su inversa en el suelo (`unprojectScreenDelta`)                                                                         | —                                                                               |
 | `camera`        | Cámara como datos: punto del suelo y zoom, límites, desplazamiento, zoom en un punto, seguimiento, transformación, chunks a la vista y cuándo cullear                                                                   | `grid`, `projection`                                                            |
 | `render`        | Primitivas Pixi: sprites con profundidad (`createBlockViews`, `getBlockDepth`), pool de sprites (`createSpritePool`), recoloreado y resolución SVG, tinte de luz                                                        | —                                                                               |
 | `simulation`    | Bucle de paso fijo: convierte tiempo real en ticks, ejecuta los sistemas de juego que recibe, avanza el reloj y emite sus eventos                                                                                       | `events`, `time`, `world`                                                       |
 | `scene`         | Compositor: contrato `SceneModule`, contenedor del mundo, orden de dibujo, servicios, frames y destrucción. No dibuja nada                                                                                              | `camera`, `constants`, `entities`, `grid`, `render`, `terrain`, `time`, `world` |
-| `terrain-view`  | Módulo de escena: bloques de terreno visibles con la textura (o la de `terrainSurfaces`) y el tinte de su material                                                                                                      | `projection`, `render`, `scene`, `terrain`                                      |
+| `terrain-view`  | Módulo de escena: bloques de terreno visibles con la textura (o la de `terrainSurfaces`, o la de sus conexiones) y el tinte de su material                                                                              | `paths`, `projection`, `render`, `scene`, `terrain`                             |
 | `surface-bands` | Módulo de escena: atlas animado de las bandas de luz del agua, redibujado cada 50 ms; servicio `terrainSurfaces`                                                                                                        | `scene`, `waves`                                                                |
 | `entity-view`   | Módulo de escena: sprites de las entidades, una textura por (tipo, variación); servicio `entityViews`                                                                                                                   | `entities`, `projection`, `render`, `scene`                                     |
 | `shadows`       | Módulo de escena: siluetas, un mapa de sombra por chunk (un nivel por elevación) con oclusión ambiental, sombras recibidas por chunk y horneado al cambiar dependencias                                                 | `camera`, `lighting`, `projection`, `render`, `scene`, `terrain`, `world`       |
@@ -431,7 +442,19 @@ Para añadir un módulo de escena: crea `engine/<nombre>/` con su `createX(): Sc
 
 `createEntitiesFromConfig()` usa un `SpatialIndex` de las entidades ya colocadas para la ocupación y para `gap` (`anyInRect` filtrando por tipo), y `getFootprint()`/`getEntityFootprint()` calculan las celdas de una huella. `indexEntities(entities)` construye el índice de cualquier lista de entidades.
 
-Las entidades estructurales de `content/entities.ts` usan `settlementLot`: solares en coordenadas absolutas dentro de regiones de 128 × 128 columnas. Cada barrio reserva lotes para tres viviendas, un hospital, un restaurante, un mercado y un ayuntamiento, además de una cruz central de ocho columnas para senderos y plaza. La factory excluye de esa cruz también las huellas de otras entidades, incluidas las que cruzan entre chunks. Las estructuras se colocan antes de la vegetación para proteger sus solares. La elegibilidad del terreno, la elevación y la ocupación se siguen validando; las coordenadas son estables con chunks en cualquier orden, semilla y región negativa.
+Las entidades estructurales de `content/entities.ts` usan `settlementLot`: solares en coordenadas absolutas dentro de regiones de 64 × 64 columnas (`SETTLEMENT_REGION_SIZE`; con 128 había cuatro veces menos barrios). Cada barrio reserva lotes para tres viviendas, un hospital, un restaurante, un mercado y un ayuntamiento. Con `settlementLot.zone` (`SettlementZone`: `field`, `scale`, `below`) un solar solo se construye donde el campo de parches de ese nombre y escala (el mismo de `patches`, de `createPatchFields(seed)`) queda por debajo de `below`, sin tirada de azar: el contenido usa el campo de los bosques (`SETTLEMENT_ZONE`: `forest`, 96, `below` −0.15, bajo el umbral −0.05 de los bosques), así que los barrios se agrupan en los claros y nunca se mezclan con los bosques. Un solar puede reservar además una cruz central (`reservedPathWidth`) de la que la factory excluye las huellas de otras entidades; el contenido ya no la usa, porque los caminos se trazan (abajo) y nada crece sobre ellos. Las estructuras se colocan antes de la vegetación para proteger sus solares. La elegibilidad del terreno, la elevación y la ocupación se siguen validando; las coordenadas son estables con chunks en cualquier orden, semilla y región negativa.
+
+**Caminos de los barrios.** `createSettlementPaths({ seed, entityDefinitions, clip })` (`world/settlement-paths.ts`) traza los caminos de cada región de cada `settlementLot.regionSize` la primera vez que se pregunta por una columna suya, y guarda las últimas `SETTLEMENT_PATH_REGIONS_KEPT` (16). Para planificar una región genera su terreno con una columna más por lado (`generateTerrainColumns()`, sin caminos), coloca solo las definiciones con solar de ese tamaño (`createEntitiesFromConfig(…, () => 0)`: siempre aparecen si el terreno lo permite, igual que en los chunks) y llama a `planPathNetwork()` (`paths/network.ts`) con lo de abajo. Solo tienen caminos las regiones pobladas: las que tienen algún solar dentro de su `zone` (o sin `zone`), sabido solo por el ruido; una región sin poblar queda sin red sin generar su terreno, y una poblada solo sale por los lados cuya vecina también lo está, así que los caminos de un pueblo se unen y no se pierden en el campo.
+
+Los datos de la red:
+
+- `hub`: el centro de la región (la plaza); la red empieza en la columna abierta más cercana, anillo a anillo hasta `PATH_HUB_RADIUS` (6), o queda vacía.
+- `exits`: una columna por lado (`+x`, `+y`, `−x`, `−y`), la primera de `EXIT_OFFSETS` (0, ±1, ±2, ±3 desde el centro del lado) con suelo abierto a ambos lados del borde y un escalón caminable. Las dos regiones de un borde eligen el mismo par de columnas, así que sus redes se unen cuando las dos llegan a él; si una no llega, el camino de la otra termina en el borde.
+- `sites`: las huellas de los edificios colocados; un camino sale de cualquier columna abierta junto a la huella (la puerta) hasta la red más cercana.
+
+`findPath()` (`paths/astar.ts`) es un A* entre vecinos de lado, dentro de un rectángulo, con varios inicios y un objetivo por predicado, montículo binario y costes en arrays tipados; los empates se rompen por orden de llegada y los vecinos se prueban en `PATH_STEPS` (`+x`, `+y`, `−x`, `−y`), así que es determinista. `planPathNetwork()` lee el terreno una vez en arrays y solo pisa `PATH_GROUND_TYPES` (`grass` y `ground`: ni agua, ni arena, ni edificios) con escalones de como mucho `PATH_MAX_CLIMB` (1, lo que el jugador trepa). El coste de un paso es `PATH_STEP_COST` (1) + `PATH_CLIMB_COST` (3) por nivel + `PATH_WIGGLE_COST` (2,5) × `wiggle` (ruido `"settlement-paths"` de escala `SETTLEMENT_PATH_WIGGLE_SCALE`, 6: los caminos serpentean) + `PATH_BESIDE_COST` (1,5) si la columna toca la red sin estar en ella; sobre un camino ya trazado cuesta `PATH_REUSE_COST` (0,3). Así los caminos posteriores se unen a los anteriores en esquinas y T en vez de correr a su lado, y la red tiene una casilla de ancho. Un objetivo inalcanzable se omite.
+
+`createSeededChunkSource()` crea los caminos una vez por fuente y los pasa a `generateTerrainColumns(área, { seed, clip, paths })`, que tipa como `path` el pasto y la tierra del área que estén en un camino (solo pregunta por las columnas del área, no por el halo, para no planificar regiones vecinas sin necesidad). Como `path` es una superficie más, nada con `surface: "grass"` aparece encima (árboles, arbustos, casas) y el jugador lo pisa como cualquier tierra. Planificar una región cuesta ~45 ms en Node (~17 ms de terreno, el resto colocación y búsquedas): en el worker de chunks una vez por región (16 chunks), y en el hilo principal solo para los chunks de respaldo y los del arranque (#109).
 
 ## Modelo World
 
@@ -564,13 +587,13 @@ Una definición puede declarar `patches` (`EntityPatches`, `engine/entities/patc
 ```ts
 patches: {
   field: "forest", // nombre del campo: las definiciones con el mismo campo y escala comparten las manchas
-  scale: 26,       // tamaño aproximado de una mancha, en columnas
-  threshold: 0.2,  // valor del ruido (-1–1) desde el que una columna está dentro
-  outside: 0.08,   // opcional; fracción de spawnChance fuera de las manchas (por defecto 0)
+  scale: 96,       // tamaño aproximado de una mancha, en columnas
+  threshold: -0.05, // valor del ruido (-1–1) desde el que una columna está dentro
+  outside: 0.03,   // opcional; fracción de spawnChance fuera de las manchas (por defecto 0)
 }
 ```
 
-`createPatchChances(seed)` crea un campo simplex por nombre y escala (`deriveSeed(seed, "entity-patches:<field>")`) y da por columna un factor de `spawnChance` con `getPatchFactor()`: `outside` bajo el umbral, entero a `PATCH_EDGE` (0,15) por encima y lineal en medio, así los bosques se aclaran en el borde. `createEntitiesFromConfig(…, patchSeed)` recibe la semilla del mundo (no la del chunk) y la fuente sembrada se la pasa, así que una mancha cruza chunks sin costuras; las columnas sin probabilidad se saltan antes de validar. Las definiciones sin `patches` consumen `random` igual que antes. Las ocho especies de árbol comparten `TREE_FOREST_PATCHES` (`content/entities.ts`): bosques extensos con sus arboledas de tres, praderas abiertas entre ellos y algún árbol suelto; dentro de los bosques su `spawnChance` es seis veces la de antes.
+`createPatchChances(seed)` crea un campo simplex por nombre y escala (`deriveSeed(seed, "entity-patches:<field>")`) y da por columna un factor de `spawnChance` con `getPatchFactor()`: `outside` bajo el umbral, entero a `PATCH_EDGE` (0,15) por encima y lineal en medio, así los bosques se aclaran en el borde. `createEntitiesFromConfig(…, patchSeed)` recibe la semilla del mundo (no la del chunk) y la fuente sembrada se la pasa, así que una mancha cruza chunks sin costuras; las columnas sin probabilidad se saltan antes de validar. Las definiciones sin `patches` consumen `random` igual que antes. Las ocho especies de árbol comparten `TREE_FOREST_PATCHES` (`content/entities.ts`): bosques extensos con sus arboledas de tres, praderas abiertas entre ellos y algún árbol suelto; dentro de los bosques su `spawnChance` es seis veces la de antes. Con escala 96 y umbral −0,05 los bosques miden decenas de columnas y cubren ~30 % del pasto; con la semilla 1337 (12 × 12 chunks) un chunk tiene ~150 árboles de media y hasta ~380 si es todo bosque (antes de los bosques, ~95 y ~155).
 
 El decorado pequeño se dibuja como variante de la cima del pasto, no como entidad: el ruido existente forma parches de flores, piedras, setas, hojas y arbustos bajos; el terreno conserva la misma colisión, oclusión y render por bloque.
 
@@ -586,7 +609,7 @@ Las rocas grandes sí son entidades (`large_rock`, `large_rock_2`, `large_rock_3
 4. Combina amplitud con `persistence` y frecuencia con `lacunarity`.
 5. Normaliza el ruido a `[0, 1]` y lo convierte al rango `[minElevation, maxElevation]`.
 
-`generatePerlinTerrain()` es una función pura: no hay caché de módulo, y el ruido se muestrea en coordenadas absolutas, así que un área da lo mismo sola que dentro de otra mayor. `generateTerrainColumns(area, { seed, clip? })` (`terrain/surfaces.ts`) genera las columnas tipadas de un área (un chunk) **sin costuras**: muestrea el área ampliada `SURFACE_REACH` (2) columnas, porque la superficie de una columna depende de sus vecinas y de las de estas (la arena), la clasifica y se queda con las del área (recortada a `clip`, los límites de un mundo acotado). Así dos chunks vecinos clasifican igual su borde.
+`generatePerlinTerrain()` es una función pura: no hay caché de módulo, y el ruido se muestrea en coordenadas absolutas, así que un área da lo mismo sola que dentro de otra mayor. `generateTerrainColumns(area, { seed, clip?, paths? })` (`terrain/surfaces.ts`) genera las columnas tipadas de un área (un chunk) **sin costuras**: muestrea el área ampliada `SURFACE_REACH` (2) columnas, porque la superficie de una columna depende de sus vecinas y de las de estas (la arena), la clasifica y se queda con las del área (recortada a `clip`, los límites de un mundo acotado). Así dos chunks vecinos clasifican igual su borde. Con `paths` (un `PathField`, los caminos de los barrios), el pasto y la tierra del área que estén en un camino pasan a `path`.
 
 ## Construcción de columnas
 
@@ -654,6 +677,7 @@ public/assets/grass/block.svg
 public/assets/ground/block.svg
 public/assets/water/block.svg
 public/assets/sand/block.svg
+public/assets/path/block.svg
 ```
 
 La selección vive en `engine/terrain/surfaces.ts`, sin dependencias de Pixi, se hace en dos pasos y cada uno se ejecuta una sola vez:
@@ -667,7 +691,7 @@ Después, `createTerrainColumns(points, bareGround?)` convierte en `ground` el p
 
 2. `getBlockMaterial(elevation, topElevation, surface)` elige el material de cada bloque; `fillElevations()` y `createVisibleBlocks()` lo aplican al materializar cada nivel y lo guarda como `type` del bloque, que la escena usa directamente para elegir textura y tinte:
    - elevación negativa: `water`;
-   - bloque superior de la columna: la superficie de la columna (`grass`, `sand` o `ground`);
+   - bloque superior de la columna: la superficie de la columna (`grass`, `sand`, `ground` o `path`);
    - cualquier bloque inferior no negativo: `ground`.
 
 El SVG de arena ocupa la mitad del alto del bloque (su cima está a z = 170 de 341 dentro del mismo lienzo `1024×853`), de modo que la orilla baja en dos escalones suaves: agua → arena (medio bloque) → pasto (bloque completo). El renderer no cambia, porque la geometría reducida vive en el asset. Las entidades se siguen alineando a la altura completa del bloque, así que una entidad con `surface: "sand"` necesitará desplazarse medio bloque hacia abajo cuando se añada la primera. La arena recibe el mismo oscurecimiento por altura que el pasto, pero con un tinte neutro en lugar del verdoso, y declara `topInset: 0.5` (su cima medio bloque más baja), que las sombras, la oclusión y el jugador leen con `topInsetAt()`. `createEntitiesFromConfig()` compara `surface` con el `type` de cada columna (sin volver a clasificar), por lo que las entidades de `grass` no aparecen sobre arena y existe la superficie `"sand"` para entidades de playa.
@@ -675,6 +699,10 @@ El SVG de arena ocupa la mitad del alto del bloque (su cima está a z = 170 de 3
 El agua reutiliza la misma textura SVG para todos sus niveles. Cada material declara su tinte en `TERRAIN_APPEARANCE` (`TerrainTint`: `depth`, más oscuro cuanto mayor es `Math.abs(elevation)`, para el agua; `height`, más oscuro cuanto más bajo respecto a `DEFAULT_MAX_ELEVATION`, para pasto, tierra y arena: una referencia fija, no la cima más alta cargada, para que un mismo bloque tenga el mismo tinte en cualquier chunk), y `getTerrainTint()` (`terrain-view`) lo aplica. `noiseTints` puede añadir una paleta de multiplicadores escogida por columna (el pasto la usa para zonas más oscuras y más amarillas; la tierra, una casi blanca) con un campo simplex propio de la semilla y el material; todas las capas de una columna comparten tono y el ruido usa coordenadas absolutas, así que los chunks no tienen costuras. No se generan texturas nuevas para cada profundidad ni tono. Si hay servicio `terrainSurfaces`, `terrain-view` le pide la textura de cada bloque (`textureAt(material, x, y, elevation)`) y usa la suya cuando devuelve `undefined`: así el agua toma las copias animadas del atlas de `surface-bands` (ver [Agua animada](#agua-animada)).
 
 **Variantes de la cima.** Un material puede declarar `variants` en `TERRAIN_APPEARANCE` (`TerrainVariant`: `textureSource`, `chance` y, opcionalmente, un `frame` en píxeles fuente dentro de una hoja compartida; las chances suman como mucho `1`). Las nueve apariencias del pasto (`public/assets/grass/grass_variants.svg`) comparten una hoja SVG 3×3; `artifacts/grass_clutter.py` genera la hoja y conserva los SVG individuales para previsualización. `terrain-view` carga el mismo origen y crea texturas recortadas que comparten su `TextureSource`. El bloque superior de cada columna toma la variante que el `createVariantPicker(variants, world.seed, "terrain-variants:<material>")` elige **en grupos**: dos `createNoiseField()` (`terrain/noise-field.ts`, el mismo ruido simplex por semilla y etiqueta que usan los parches de tierra) con sus propios flujos. Donde el campo de parches (escala `VARIANT_PATCH_SCALE`, 6 columnas) es alto hay matas, y `VARIANT_PATCH_FILL` (0,7) de sus columnas, por `hashColumn()`, muestran una variante; el campo de tipos, más lento (`VARIANT_KIND_SCALE`, 24), decide cuál, así que las matas vecinas son de la misma clase. Los umbrales se miden una vez al montar sobre una rejilla fija de los campos (96 × 96 muestras), así cada variante sigue cubriendo más o menos su `chance`. Igual en cualquier orden de carga, sin `Math.random()`. Es presentación: no cambia el `type` de la columna ni el guardado.
+
+**Conexiones (caminos).** Un material puede declarar `connections` (`TerrainConnections`: una hoja SVG y un `frame` por máscara, 16). La cima de una columna de ese material muestra el marco de su máscara de conexión: `getConnectionMask()` (`paths/connections.ts`) pone el bit de cada vecino de lado (`+x` 1, `+y` 2, `−x` 4, `−y` 8) cuya cima es del mismo material y está a como mucho `PATH_MAX_CLIMB` niveles, leído en vivo de `context.columnAt`, así que un camino cruza los bordes de chunk sin cortes. Las formas (`getPathShape()`): suelto (0), final (1 vecino, 4 máscaras), recto (2 opuestos, 2), esquina (2 contiguos, 4), T (3, 4) y cruce (4, 1). Las conexiones tienen prioridad sobre `variants`; los bloques bajo la cima siguen siendo `ground`. Si la hoja no carga, la cima usa el `textureSource` del material. `validateTerrainConnections()` exige un SVG absoluto y 16 marcos válidos; una hoja inválida hace fallar el `setup()` de la escena. `noiseTints.field` permite compartir el campo de tintes entre materiales (por defecto, el nombre del material): `path` usa el del pasto, así que el césped de los bordes del camino toma el tono de la zona de pasto que cruza.
+
+Los caminos del contenido (`TERRAIN_APPEARANCE.path`) salen de `public/assets/path/path_tiles.svg`, una hoja 4×4 de lienzos de bloque (`1024×853`; la máscara `m` en la columna `m % 4`, fila `⌊m / 4⌋`), y `public/assets/path/block.svg` es el suelto. Los genera `artifacts/path_tiles.py` (`python3 path_tiles.py ../public/assets/grass/block.svg ../public/assets/path`, necesita shapely): el bloque de pasto con tierra pisada en la cima, una franja del centro al centro de cada borde unido, en escalones vóxel gruesos de 32 unidades con bordes deshilachados por ruido suave, hundida un poco bajo el pasto (el borde del fondo muestra el escalón), con manchas anchas más oscuras y piedras y losas chunky, en estilo toon. El fondo hundido sigue más allá de cada borde unido, así que el escalón solo aparece contra el pasto. El deshilachado se apaga cerca de los bordes de la casilla, así que todas las franjas salen con el mismo ancho y dos casillas vecinas se unen sin costura. En el plano de la cima del asset, `+x` del motor es `−y`, `+y` es `−x`, `−x` es `+y` y `−y` es `+x`.
 
 El módulo `terrain-view` dibuja chunk a chunk: rellena las columnas del chunk y las de sus vecinos en los bordes `−x` y `−y` (`columnAt`), que tapan sus bloques de ese lado, quita los bloques ocultos y se queda con los suyos, así que dos chunks se juntan como si el terreno fuera uno.
 

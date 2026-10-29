@@ -37,6 +37,20 @@ const GRASS_VARIANT_FRAMES = [
   { chance: 0.02, column: 2, row: 2 },
 ] as const;
 
+/** Side of a frame of the path spritesheet, in source pixels: the canvas of a block. */
+const PATH_FRAME = { width: 1024, height: 853 } as const;
+
+/**
+ * The sixteen looks of a path block in `path_tiles.svg` (made by `artifacts/path_tiles.py`), by
+ * connection mask (`+x` 1, `+y` 2, `−x` 4, `−y` 8): four per row, mask `m` at column `m % 4`, row
+ * `⌊m / 4⌋`.
+ */
+const PATH_FRAMES = Array.from({ length: 16 }, (_, mask) => ({
+  x: (mask % 4) * PATH_FRAME.width,
+  y: Math.floor(mask / 4) * PATH_FRAME.height,
+  ...PATH_FRAME,
+}));
+
 /**
  * The terrain materials: grass and ground share the land tint (grass with flowers, sprouts or
  * fallen leaves on some columns), sand keeps its colour, water darkens with depth and has bands of
@@ -67,6 +81,14 @@ export const TERRAIN_APPEARANCE: TerrainAppearance = {
     // Soft light drifting across the water: three bands every two tiles, two tiles in 9 s; under
     // the first level, fainter and slower.
     bands: { count: 3, width: 0.45, alpha: 0.16, period: 9000, deepBelow: -1, deep: 0.45 },
+  },
+  // A grass block with a strip of trodden earth across its top, joined to the paths around it. Its
+  // grass edges take the tint of the grass zone it crosses.
+  path: {
+    textureSource: "/assets/path/block.svg",
+    tint: { kind: "height", topTint: LAND_TOP_TINT, step: HEIGHT_TINT_STEP },
+    noiseTints: { ...GRASS_NOISE_TINTS, field: "grass" },
+    connections: { textureSource: "/assets/path/path_tiles.svg", frames: PATH_FRAMES },
   },
   // Neutral: the same height darkening as grass, without the green cast. Its top is half a block lower.
   sand: {

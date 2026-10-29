@@ -25,6 +25,15 @@ describe("toChunkData / fromChunkData", () => {
     expect(rebuilt).toStrictEqual(source.generate(coord));
   });
 
+  it("keeps every terrain type, paths included", () => {
+    const types = ["grass", "ground", "sand", "water", "path"] as const;
+    const columns = types.map((type, x) => new Box(x, 0, { elevation: type === "water" ? -1 : 0, type }));
+
+    const rebuilt = fromChunkData(structuredClone(toChunkData({ columns, entities: [] })));
+
+    expect(rebuilt.columns.map(({ type }) => type)).toEqual(types);
+  });
+
   it("packs the columns in typed arrays: a generated chunk crosses with no object per column (#96)", () => {
     const generated = createSeededChunkSource({ seed: 1337, entityDefinitions: [] }).generate({ cx: 0, cy: 0 });
 

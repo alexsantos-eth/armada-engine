@@ -39,9 +39,9 @@ export type PerlinTerrainOptions = {
 
 /**
  * Material of the top block of a terrain column: `ground` on the patches of the lowest land
- * where grass did not grow.
+ * where grass did not grow, `path` where a settlement's paths run.
  */
-export type TerrainSurface = "grass" | "water" | "sand" | "ground";
+export type TerrainSurface = "grass" | "water" | "sand" | "ground" | "path";
 
 /** Material used to render a single terrain block (any surface; `ground` also under the top). */
 export type TerrainMaterial = TerrainSurface;
@@ -91,7 +91,28 @@ export type TerrainVariant = {
   /** Share of the columns that show it, in `[0, 1]`; the shares of a material add up to at most `1`. */
   readonly chance: number;
   /** Optional source-pixel rectangle for a frame in a shared SVG spritesheet. */
-  readonly frame?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+  readonly frame?: TerrainFrame;
+};
+
+/** A rectangle of source pixels of an SVG spritesheet: one block's canvas in it. */
+export type TerrainFrame = {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+};
+
+/**
+ * Looks of a material's top blocks by which of their four edge neighbours they join (paths: a
+ * straight stretch, a corner, a tee…). A column joins a neighbour whose top block is of the same
+ * material and at most one level higher or lower. The joined neighbours make a mask: `+x` is `1`,
+ * `+y` is `2`, `−x` is `4` and `−y` is `8`, and the top block shows `frames[mask]`.
+ */
+export type TerrainConnections = {
+  /** SVG spritesheet of the looks, under `public/`, each frame with the canvas of a block. */
+  readonly textureSource: string;
+  /** The frame of each mask, from `0` (joins nothing) to `15` (joins all four): sixteen frames. */
+  readonly frames: readonly TerrainFrame[];
 };
 
 /** How the blocks of one terrain material are drawn (game content). */
@@ -100,8 +121,12 @@ export type TerrainMaterialAppearance = {
   readonly textureSource: string;
   /** Tint by elevation. */
   readonly tint: TerrainTint;
-  /** Subtle per-column tint palette selected by seeded noise; each color multiplies the height tint. */
-  readonly noiseTints?: { readonly scale: number; readonly colors: readonly number[] };
+  /**
+   * Subtle per-column tint palette selected by seeded noise; each color multiplies the height tint.
+   * Materials with the same `field` (by default, their own name) share the noise, so a path's grass
+   * edges take the tint of the grass around them.
+   */
+  readonly noiseTints?: { readonly scale: number; readonly colors: readonly number[]; readonly field?: string };
   /**
    * Blocks the top of the block sits below the top of its cell (sand: `0.5`). Things standing on
    * it and the shadows on it sink by as much, and a block with an inset never hides the blocks
@@ -112,6 +137,8 @@ export type TerrainMaterialAppearance = {
   readonly bands?: TerrainBands;
   /** Other looks of its top blocks, each on a share of the columns. Without it, every top is the same. */
   readonly variants?: readonly TerrainVariant[];
+  /** Looks of its top blocks by the neighbours they join (paths). They take precedence over `variants`. */
+  readonly connections?: TerrainConnections;
 };
 
 /** How every terrain material is drawn: the scene receives it as content. */

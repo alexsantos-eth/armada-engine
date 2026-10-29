@@ -1,5 +1,5 @@
 import { createNoiseField } from "../terrain";
-import type { TerrainVariant } from "../../types";
+import type { TerrainConnections, TerrainFrame, TerrainVariant } from "../../types";
 
 /** Size of a clump of variants, in columns: where the plants grow together. */
 export const VARIANT_PATCH_SCALE = 6;
@@ -12,6 +12,28 @@ const CALIBRATION_SIDE = 96;
 /** Columns between two calibration samples, so the grid spans many clumps and zones. */
 const CALIBRATION_STEP = 5;
 
+/** Masks a material's `connections` have a frame for: every set of the four edge neighbours. */
+export const CONNECTION_MASKS = 16;
+
+/** Whether `frame` is a rectangle of the sheet: non-negative corner, positive size. */
+const isFrame = (frame: TerrainFrame) => frame.x >= 0 && frame.y >= 0 && frame.width > 0 && frame.height > 0;
+
+/** The problems of a material's `connections` (game content), one message each; none when they can be drawn. */
+export function validateTerrainConnections({ textureSource, frames }: TerrainConnections): string[] {
+  const issues: string[] = [];
+  if (!/^\/.+\.svg$/.test(textureSource)) {
+    issues.push(`connections.textureSource must be an absolute SVG path (got "${textureSource}")`);
+  }
+  if (frames.length !== CONNECTION_MASKS) {
+    issues.push(`connections.frames must have one frame per mask, ${CONNECTION_MASKS} (got ${frames.length})`);
+  }
+  frames.forEach((frame, index) => {
+    if (!isFrame(frame))
+      issues.push(`connections.frames[${index}] must have non-negative coordinates and positive dimensions`);
+  });
+  return issues;
+}
+
 /** The problems of a material's `variants` (game content), one message each; none when they can be drawn. */
 export function validateTerrainVariants(variants: readonly TerrainVariant[]): string[] {
   const issues: string[] = [];
@@ -21,7 +43,7 @@ export function validateTerrainVariants(variants: readonly TerrainVariant[]): st
       issues.push(`variants[${index}].textureSource must be an absolute SVG path (got "${textureSource}")`);
     }
     const frame = variants[index].frame;
-    if (frame && (!(frame.x >= 0) || !(frame.y >= 0) || !(frame.width > 0) || !(frame.height > 0))) {
+    if (frame && !isFrame(frame)) {
       issues.push(`variants[${index}].frame must have non-negative coordinates and positive dimensions`);
     }
     if (!(chance >= 0 && chance <= 1))

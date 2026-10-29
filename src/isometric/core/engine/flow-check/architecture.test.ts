@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
  * `PLAYER_PART`), so the world never names them: the app registers them (`generateWorld({ parts })`).
  * player uses XState's pure transition API for deterministic locomotion ticks.
  * The simulation runs the game systems the app hands it (`WorldSystem`), e.g. `createPlayerSystem()`.
+ * grid → paths (A* and path networks, connection masks) → world (the settlements' paths) and terrain-view
  * constants (view metrics) → lighting (shadow geometry)
  * projection, grid → camera (view maths on the ground plane, and the chunks in view)
  * render (Pixi primitives) → scene (the compositor and the `SceneModule` contract)
@@ -39,11 +40,12 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   terrain: ["grid", "random"],
   entities: ["grid", "random", "terrain"],
   player: ["grid", "time", "xstate"],
-  world: ["entities", "grid", "parts", "random", "terrain"],
+  paths: ["grid"],
+  world: ["entities", "grid", "parts", "paths", "random", "terrain"],
   render: [],
   simulation: ["events", "time", "world"],
   scene: ["camera", "constants", "entities", "grid", "render", "terrain", "time", "world"],
-  "terrain-view": ["projection", "render", "scene", "terrain"],
+  "terrain-view": ["paths", "projection", "render", "scene", "terrain"],
   "entity-view": ["entities", "projection", "render", "scene"],
   shadows: ["camera", "lighting", "projection", "render", "scene", "terrain", "world"],
   wind: ["random"],

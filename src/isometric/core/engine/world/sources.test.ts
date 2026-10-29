@@ -3,6 +3,7 @@ import type { EntityDefinition } from "../../types";
 import { createPatchChances, Entity } from "../entities";
 import { CHUNK_SIZE } from "../grid";
 import { Box, generateTerrainColumns } from "../terrain";
+import { createSettlementPaths } from "./settlement-paths";
 import { createFixedChunkSource, createSeededChunkSource } from "./sources";
 
 const BUSH: EntityDefinition = {
@@ -29,6 +30,26 @@ describe("createSeededChunkSource", () => {
 
     expect(source.has({ cx: 1, cy: -1 })).toBe(true);
     expect(source.generate({ cx: 1, cy: -1 }).columns).toEqual(generateTerrainColumns(area, { seed: 8 }));
+  });
+
+  it("lays the settlements' paths on the terrain, where nothing that grows on grass spawns", () => {
+    const house: EntityDefinition = {
+      ...BUSH,
+      id: "house",
+      spawnChance: 1,
+      colorReplacements: undefined,
+      settlementLot: { regionSize: 64, offset: { x: 12, y: 12 }, reservedPathWidth: 4 },
+    };
+    const bush = { ...BUSH, spawnChance: 1, colorReplacements: undefined };
+    const paths = createSettlementPaths({ seed: 21, entityDefinitions: [house] });
+    const source = createSeededChunkSource({ seed: 21, entityDefinitions: [house, bush] });
+    const chunks = [0, 1].flatMap((cx) => [0, 1].map((cy) => source.generate({ cx, cy })));
+    const columns = chunks.flatMap((chunk) => chunk.columns);
+    const onPath = new Set(columns.filter(({ type }) => type === "path").map(({ x, y }) => x * 1000 + y));
+
+    expect(onPath.size).toBeGreaterThan(0);
+    columns.forEach(({ x, y, type }) => expect(type === "path").toBe(paths(x, y)));
+    expect(chunks.flatMap((chunk) => chunk.entities).some(({ x, y }) => onPath.has(x * 1000 + y))).toBe(false);
   });
 
   it("grows patches from the world seed, seamless across chunks", () => {

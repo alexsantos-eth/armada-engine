@@ -83,6 +83,9 @@ export function getBlockMaterial(elevation: number, topElevation: number, surfac
   return elevation === topElevation ? surface : "ground";
 }
 
+/** Whether column `(x, y)` is on a path (a settlement's paths, from the world module). */
+export type PathField = (x: number, y: number) => boolean;
+
 /**
  * The terrain columns of a height map: one `Box` per point, typed with its column's surface
  * ({@link classifyColumnSurfaces}, computed once here). With `bareGround`, grass at
@@ -115,17 +118,20 @@ export type TerrainAreaOptions = {
   readonly seed: number;
   /** Edge of a bounded world: no column exists outside it. Defaults to none (unbounded). */
   readonly clip?: WorldRect;
+  /** The world's paths: their grass and ground columns become `path`. Defaults to none. */
+  readonly paths?: PathField;
 };
 
 /**
  * The terrain columns of one area of the world (a chunk), typed with their surface exactly as if
  * the whole world had been generated at once: the height map is sampled {@link SURFACE_REACH}
  * columns past the area on every side, classified (with the world's patches of bare ground,
- * {@link createBareGroundField}), and only the area is kept. Areas generated on their own
+ * {@link createBareGroundField}), and only the area is kept, with its grass and ground on `paths`
+ * typed `path`. Areas generated on their own
  * therefore meet without seams. Columns come `x`-major, like `generatePerlinTerrain()`.
  * Nothing is generated outside `clip`.
  */
-export function generateTerrainColumns(area: WorldRect, { seed, clip }: TerrainAreaOptions): Box[] {
+export function generateTerrainColumns(area: WorldRect, { seed, clip, paths }: TerrainAreaOptions): Box[] {
   const inside = clip ? intersectRects(area, clip) : area;
   if (!inside) return [];
   const reach = SURFACE_REACH;
@@ -139,5 +145,12 @@ export function generateTerrainColumns(area: WorldRect, { seed, clip }: TerrainA
     height: sampled.maxY - sampled.minY + 1,
   });
   const keep = ({ x, y }: TerrainPoint) => x >= inside.minX && x <= inside.maxX && y >= inside.minY && y <= inside.maxY;
-  return createTerrainColumns(points, createBareGroundField(seed)).filter(keep);
+  const columns = createTerrainColumns(points, createBareGroundField(seed)).filter(keep);
+  if (!paths) return columns;
+  // Only the area's columns are asked: the halo's may belong to paths not planned yet.
+  return columns.map((column) =>
+    (column.type === "grass" || column.type === "ground") && paths(column.x, column.y)
+      ? new Box(column.x, column.y, { elevation: column.elevation, type: "path" })
+      : column,
+  );
 }

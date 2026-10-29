@@ -94,10 +94,10 @@ describe("validateEntityDefinitions", () => {
       ]),
     ).toEqual([
       'rock: textureSource must be an absolute SVG path such as "/assets/<name>/block.svg" (got "rock.svg")',
-      'rock: surface must be one of grass, water, sand, ground (got "lava")',
+      'rock: surface must be one of grass, water, sand, ground, path (got "lava")',
       'rock: lengthAxis must be "x" or "y" (got "z")',
       "rock: footprintSurfaces lists 3 surfaces for a footprint of 2 blocks",
-      'rock: footprintSurfaces[1] must be one of grass, water, sand, ground (got "snow")',
+      'rock: footprintSurfaces[1] must be one of grass, water, sand, ground, path (got "snow")',
     ]);
   });
 
@@ -142,6 +142,20 @@ describe("validateEntityDefinitions", () => {
     expect(
       issuesOf([{ ...VALID, settlementLot: { regionSize: 8, offset: { x: 2, y: 2 }, reservedPathWidth: 8 } }]),
     ).toEqual(["rock: settlementLot.reservedPathWidth must be a positive integer smaller than the region (got 8)"]);
+    const lot = { regionSize: 8, offset: { x: 2, y: 2 } };
+    expect(
+      issuesOf([
+        { ...VALID, settlementLot: { ...lot, zone: { field: " ", scale: 0, below: 2 } } },
+        { ...VALID, id: "b", settlementLot: { ...lot, zone: { field: "forest", scale: Infinity, below: Number.NaN } } },
+        { ...VALID, id: "c", settlementLot: { ...lot, zone: { field: "forest", scale: 4, below: -1 } } },
+      ]),
+    ).toEqual([
+      "rock: settlementLot.zone.field must not be empty",
+      "rock: settlementLot.zone.scale must be a positive number (got 0)",
+      "rock: settlementLot.zone.below must be between -1 and 1 (got 2)",
+      "b: settlementLot.zone.scale must be a positive number (got Infinity)",
+      "b: settlementLot.zone.below must be between -1 and 1 (got NaN)",
+    ]);
   });
 
   it("reports invalid color replacements", () => {

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { createVariantPicker, hashColumn, VARIANT_PATCH_FILL, validateTerrainVariants } from "./variants";
+import {
+  CONNECTION_MASKS,
+  createVariantPicker,
+  hashColumn,
+  VARIANT_PATCH_FILL,
+  validateTerrainConnections,
+  validateTerrainVariants,
+} from "./variants";
 
 const VARIANTS = [
   { textureSource: "/assets/grass/block_flowers.svg", chance: 0.1 },
@@ -25,6 +32,24 @@ describe("validateTerrainVariants", () => {
       "variants[1].chance must be in [0, 1] (got -0.1)",
       "variants[3].frame must have non-negative coordinates and positive dimensions",
       "the chances of the variants add up to more than 1 (got 1.2000000000000002)",
+    ]);
+  });
+});
+
+describe("validateTerrainConnections", () => {
+  const frames = Array.from({ length: CONNECTION_MASKS }, (_, mask) => ({ x: mask * 10, y: 0, width: 10, height: 10 }));
+
+  it("accepts an SVG sheet with one valid frame per mask", () => {
+    expect(CONNECTION_MASKS).toBe(16);
+    expect(validateTerrainConnections({ textureSource: "/assets/path/tiles.svg", frames })).toEqual([]);
+  });
+
+  it("reports a wrong source, a missing mask and invalid frames", () => {
+    const broken = [...frames.slice(0, 14), { x: -1, y: 0, width: 10, height: 10 }];
+    expect(validateTerrainConnections({ textureSource: "path.png", frames: broken })).toEqual([
+      'connections.textureSource must be an absolute SVG path (got "path.png")',
+      "connections.frames must have one frame per mask, 16 (got 15)",
+      "connections.frames[14] must have non-negative coordinates and positive dimensions",
     ]);
   });
 });

@@ -1,7 +1,7 @@
 import type { EntityDefinition, TerrainSurface } from "../../types";
 import { parseFormationMap } from "./formation";
 
-const SURFACES: readonly TerrainSurface[] = ["grass", "water", "sand", "ground"];
+const SURFACES: readonly TerrainSurface[] = ["grass", "water", "sand", "ground", "path"];
 const HEX_COLOR = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 const TEXTURE_SOURCE = /^\/.+\.svg$/;
 
@@ -62,6 +62,15 @@ function checkDefinition(definition: EntityDefinition, report: (issue: string) =
       report(
         `settlementLot.reservedPathWidth must be a positive integer smaller than the region (got ${reservedPathWidth})`,
       );
+    }
+    const { zone } = definition.settlementLot;
+    if (zone) {
+      if (zone.field.trim() === "") report("settlementLot.zone.field must not be empty");
+      if (!(zone.scale > 0 && Number.isFinite(zone.scale)))
+        report(`settlementLot.zone.scale must be a positive number (got ${String(zone.scale)})`);
+      if (!(zone.below >= -1 && zone.below <= 1)) {
+        report(`settlementLot.zone.below must be between -1 and 1 (got ${String(zone.below)})`);
+      }
     }
   }
 

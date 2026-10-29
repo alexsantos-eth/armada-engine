@@ -10,6 +10,7 @@ export * from "./foliage-wind";
 export * from "./grid";
 export * from "./lighting";
 export * from "./parts";
+export * from "./paths";
 export * from "./player";
 export * from "./player-view";
 export * from "./projection";

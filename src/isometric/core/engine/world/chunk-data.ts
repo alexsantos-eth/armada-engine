@@ -4,7 +4,7 @@ import { Box } from "../terrain";
 import type { ChunkContent, SavedEntity } from "./chunks";
 
 /** Index of each terrain type in {@link PackedColumns.type}: every `BoxType` has one. */
-const TYPE_INDEX: Readonly<Record<BoxType, number>> = { grass: 0, ground: 1, sand: 2, water: 3 };
+const TYPE_INDEX: Readonly<Record<BoxType, number>> = { grass: 0, ground: 1, sand: 2, water: 3, path: 4 };
 
 /** The terrain types by their index in {@link PackedColumns.type}. */
 const TYPES = (Object.keys(TYPE_INDEX) as BoxType[]).sort((a, b) => TYPE_INDEX[a] - TYPE_INDEX[b]);
