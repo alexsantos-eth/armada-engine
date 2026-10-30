@@ -19,6 +19,7 @@ import { createBlockViews, getBlockDepth, getSheetFrames, showFrame } from "../r
 import { SCENE_LAYER, type BuiltScene, type SceneModule } from "../scene";
 import type { GridPoint, PlayerAppearance, PlayerRenderPosition } from "../../types";
 import {
+  BODY_FLY_ROLL_SPRING,
   DANCE_DELAY_MS,
   getBodyShape,
   getIdleDance,
@@ -26,6 +27,7 @@ import {
   getForwardLeanShare,
   getSideLeanShare,
   getLeanTarget,
+  getRollTarget,
   stepBodyLean,
   type BodyLean,
 } from "./body-motion";
@@ -84,6 +86,9 @@ const SKID_DUST_EVERY = 0.2;
 
 /** Puffs of running or skidding dust drawn at most at once (reused in turn). */
 const RUN_PUFFS = 6;
+
+/** Blocks over its feet the middle of the player's body is, which it turns about while it flies. */
+export const BODY_ROLL_PIVOT = 0.28;
 
 /** Real milliseconds between two puffs of a jetpack's flame while the player flies. */
 export const JET_FIRE_EVERY_MS = 40;
@@ -394,6 +399,9 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
       // the velocity and tick it last saw, to tell how fast it speeds up.
       const lean: BodyLean = { angle: 0, speed: 0 };
       let tilt = 0;
+      // How the whole body turns while it flies, head first, on a spring of its own, as drawn.
+      const roll: BodyLean = { angle: 0, speed: 0 };
+      let turned = 0;
       let seenTick: number | undefined;
       let seenVelocity: GridPoint = { x: 0, y: 0 };
       let acceleration: GridPoint = { x: 0, y: 0 };
@@ -575,8 +583,16 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         const dance = appearance.dance && getIdleDance(stood, appearance.dance);
         // The dance leans to the monkey's own sides: across the screen only as far as they show.
         const sway = (dance?.lean ?? 0) * getSideLeanShare(facing, PLAYER_FACINGS.length);
+        // Flying, the whole body turns into where it goes instead of leaning, feet rising behind it,
+        // swinging under its jetpack; out of the air it turns back upright.
+        const flying = player.motion.type === "flying";
+        stepBodyLean(roll, flying ? getRollTarget(velocity, acceleration) : 0, elapsedMs, BODY_FLY_ROLL_SPRING);
         if (climbing === undefined)
-          stepBodyLean(lean, getLeanTarget(velocity, acceleration, isPlayerSkidding(player)) + sway, elapsedMs);
+          stepBodyLean(
+            lean,
+            flying ? 0 : getLeanTarget(velocity, acceleration, isPlayerSkidding(player)) + sway,
+            elapsedMs,
+          );
         else {
           // Climbing, it leans in over the edge, in step with its climb sheet's poses.
           lean.angle = getClimbLean(climbing) * getForwardLeanShare(facing, PLAYER_FACINGS.length);
@@ -593,8 +609,13 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         });
         const swing = dance?.shape ?? UPRIGHT;
         const next = { x: pulse.x * shape.x * swing.x, y: pulse.y * shape.y * swing.y };
-        if (next.x === body.x && next.y === body.y && lean.angle === tilt) return false;
+        if (next.x === body.x && next.y === body.y && lean.angle === tilt && roll.angle === turned) return false;
         body = next;
+        if (roll.angle !== turned) {
+          turned = roll.angle;
+          // Turned about the middle of its body (see `place()`): the head to the right for a positive roll.
+          view.rotation = turned;
+        }
         if (lean.angle !== tilt) {
           tilt = lean.angle;
           // Skewed about its feet (see `place()`): the head leans `tilt` to the right.
@@ -615,10 +636,16 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         // origin by `sin(tilt) × d` to the left and raises it by `(1 − cos(tilt)) × d`, so the
         // origin moves the other way and the feet stay where they stand.
         const below = offset.y * body.y;
-        view.position.set(
-          drawnFoot.x + offset.x * body.x - Math.sin(tilt) * below,
-          drawnFoot.y + Math.cos(tilt) * below,
-        );
+        const x = drawnFoot.x + offset.x * body.x - Math.sin(tilt) * below;
+        const y = drawnFoot.y + Math.cos(tilt) * below;
+        // Turned by `turned` about the middle of its body, {@link BODY_ROLL_PIVOT} blocks over its
+        // feet: the origin turns about it too, so that point stays where it is.
+        const pivotY = drawnFoot.y - BODY_ROLL_PIVOT * metrics.boxHeight;
+        const cos = Math.cos(turned);
+        const sin = Math.sin(turned);
+        const dx = drawnFoot.x - x;
+        const dy = pivotY - y;
+        view.position.set(drawnFoot.x - (dx * cos - dy * sin), pivotY - (dx * sin + dy * cos));
         // In the draw order by the column it stands on, at that column's top: computed, and the
         // view moved, only when that column or the side of its middle changes, not on every frame.
         const elevation = columnAt.get(column.x, column.y)?.elevation ?? player.elevation;

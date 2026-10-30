@@ -7,6 +7,8 @@ import {
   CLIMB_HANDS_SHARE,
   CLIMB_PUSH_SHARE,
   BODY_MAX_AIR_STRETCH,
+  BODY_FLY_ROLL_SPRING,
+  BODY_MAX_FLY_ROLL,
   BODY_MAX_LEAN,
   BODY_SKID_LEAN_PER_SPEED,
   DANCE_DELAY_MS,
@@ -17,6 +19,7 @@ import {
   getIdleDance,
   getSideLeanShare,
   getLeanTarget,
+  getRollTarget,
   getScreenDrift,
   stepBodyLean,
   type BodyLean,
@@ -62,6 +65,18 @@ describe("getLeanTarget", () => {
   });
 });
 
+describe("getRollTarget", () => {
+  it("turns far more into where it flies than a lean on foot, up to BODY_MAX_FLY_ROLL, and upright still", () => {
+    const foot = getLeanTarget(right(PLAYER_STEP), STILL);
+    const fly = getRollTarget(right(PLAYER_STEP), STILL);
+    expect(fly).toBeGreaterThan(5 * foot);
+    expect(getRollTarget(right(PLAYER_STEP), right(PLAYER_GROUND_ACCEL))).toBeGreaterThan(fly);
+    expect(getRollTarget(right(-1), STILL)).toBe(-BODY_MAX_FLY_ROLL);
+    expect(getRollTarget({ x: 0.2, y: 0.2 }, STILL)).toBe(0);
+    expect(getRollTarget(STILL, STILL)).toBe(0);
+  });
+});
+
 describe("stepBodyLean", () => {
   it("follows its target along a spring that overshoots, then settles on it", () => {
     const lean: BodyLean = { angle: 0, speed: 0 };
@@ -88,6 +103,17 @@ describe("stepBodyLean", () => {
     expect(least).toBeLessThan(0);
     stepBodyLean(lean, 0, 5000);
     expect(lean).toEqual({ angle: 0, speed: 0 });
+  });
+
+  it("swings slower on the flying spring, and still settles upright", () => {
+    const foot: BodyLean = { angle: 0, speed: 0 };
+    const fly: BodyLean = { angle: 0, speed: 0 };
+    stepBodyLean(foot, 0.3, 80);
+    stepBodyLean(fly, 0.3, 80, BODY_FLY_ROLL_SPRING);
+    expect(fly.angle).toBeGreaterThan(0);
+    expect(fly.angle).toBeLessThan(foot.angle);
+    stepBodyLean(fly, 0, 8000, BODY_FLY_ROLL_SPRING);
+    expect(fly).toEqual({ angle: 0, speed: 0 });
   });
 
   it("stays put over no time, or time going back", () => {

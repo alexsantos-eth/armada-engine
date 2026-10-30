@@ -22,11 +22,37 @@ export const BODY_SKID_LEAN_PER_SPEED = 0.8;
 /** Most the body ever leans, in radians (about 9°): a stop against a wall leans no further. */
 export const BODY_MAX_LEAN = 0.16;
 
+/**
+ * Roll of the body while it flies (`flying`): how far the whole body turns, in radians, per column
+ * per tick it drifts across the screen, head first and feet rising behind it, pulled by its
+ * jetpack: about 20° at a walk's speed (0.15), up to {@link BODY_MAX_FLY_ROLL} faster.
+ */
+export const BODY_FLY_ROLL_PER_SPEED = 2.3;
+
+/** Roll while it flies, in radians per column per tick² it speeds up across the screen. */
+export const BODY_FLY_ROLL_PER_ACCEL = 4;
+
+/** Most the body turns while it flies, in radians (about 34°). */
+export const BODY_MAX_FLY_ROLL = 0.6;
+
 /** Angular frequency of the spring the lean follows its target with, in radians per second. */
 export const BODY_LEAN_STIFFNESS = 18;
 
 /** Damping ratio of that spring: under `1`, so a stop overshoots into a short wobble. */
 export const BODY_LEAN_DAMPING = 0.45;
+
+/** How the lean follows its target: the angular frequency and damping ratio of a spring. */
+export type LeanSpring = { readonly stiffness: number; readonly damping: number };
+
+/** The spring of the lean on foot ({@link BODY_LEAN_STIFFNESS}, {@link BODY_LEAN_DAMPING}). */
+export const BODY_LEAN_SPRING: LeanSpring = { stiffness: BODY_LEAN_STIFFNESS, damping: BODY_LEAN_DAMPING };
+
+/**
+ * The spring of the roll while it flies: slower and floatier than the lean on foot, the body
+ * swinging under its jetpack into a turn and settling back upright, with a gentle overshoot, when it
+ * stops.
+ */
+export const BODY_FLY_ROLL_SPRING: LeanSpring = { stiffness: 8, damping: 0.5 };
 
 /**
  * Footfall bob of the body on the ground, as a share of its height per column per tick it moves: a
@@ -96,17 +122,29 @@ export function getLeanTarget(velocity: GridPoint, acceleration: GridPoint, skid
 }
 
 /**
- * Moves `lean` toward `target` for `ms` real milliseconds, along a damped spring
- * ({@link BODY_LEAN_STIFFNESS}, {@link BODY_LEAN_DAMPING}), in steps of at most 16 ms so a long
- * frame does not blow it up. Once it rests on a target of `0` it is exactly `0`. Nothing is created.
+ * The angle the whole body turns toward while it flies (radians, head to the right on screen when
+ * positive), moving at `velocity` and speeding up by `acceleration`: head first into where it
+ * flies across the screen, its feet rising behind it ({@link BODY_FLY_ROLL_PER_SPEED},
+ * {@link BODY_FLY_ROLL_PER_ACCEL}), never past {@link BODY_MAX_FLY_ROLL}; upright standing still.
  */
-export function stepBodyLean(lean: BodyLean, target: number, ms: number): void {
+export function getRollTarget(velocity: GridPoint, acceleration: GridPoint): number {
+  const target =
+    BODY_FLY_ROLL_PER_SPEED * getScreenDrift(velocity) + BODY_FLY_ROLL_PER_ACCEL * getScreenDrift(acceleration);
+  return Math.max(-BODY_MAX_FLY_ROLL, Math.min(BODY_MAX_FLY_ROLL, target));
+}
+
+/**
+ * Moves `lean` toward `target` for `ms` real milliseconds, along the damped `spring` (on foot's,
+ * {@link BODY_LEAN_SPRING}, by default), in steps of at most 16 ms so a long frame does not blow it
+ * up. Once it rests on a target of `0` it is exactly `0`. Nothing is created.
+ */
+export function stepBodyLean(lean: BodyLean, target: number, ms: number, spring = BODY_LEAN_SPRING): void {
   let left = Math.max(0, ms);
   while (left > 0) {
     const dt = Math.min(left, LEAN_STEP_MS) / 1000;
     left -= LEAN_STEP_MS;
-    const pull = BODY_LEAN_STIFFNESS ** 2 * (target - lean.angle);
-    const drag = 2 * BODY_LEAN_DAMPING * BODY_LEAN_STIFFNESS * lean.speed;
+    const pull = spring.stiffness ** 2 * (target - lean.angle);
+    const drag = 2 * spring.damping * spring.stiffness * lean.speed;
     lean.speed += (pull - drag) * dt;
     lean.angle += lean.speed * dt;
   }

@@ -1259,6 +1259,30 @@ describe("createPlayerView body motion", () => {
     scene.destroy();
   });
 
+  it("turns its whole body into where it flies, feet rising behind, and back upright when it stops", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, view, scene } = await sceneOf(world);
+    const player = world.parts.get(PLAYER_PART);
+    const sprite = view as unknown as { rotation?: number; skew: { x: number } };
+    const at = { x: 1, y: 1, elevation: 1, inset: 0, height: 2 };
+    const velocity = { x: 0.25 / Math.SQRT2, y: -0.25 / Math.SQRT2 };
+    // Upright, where the sprite stands across the screen.
+    const startX = view.position.x;
+    Object.assign(player, at, { previous: at, motion: { type: "flying" }, velocity, walk: { x: 1, y: -1 } });
+    for (let ms = 0; ms < 1500; ms += 16) ticker.frame(16);
+    // Head first to the right, as it flies right on the screen, turned rather than skewed.
+    expect(sprite.rotation).toBeGreaterThan(0.4);
+    expect(Math.abs(sprite.skew.x)).toBeLessThan(1e-3);
+    // Turned about the middle of its body, not its origin: the origin swings with it.
+    expect(view.position.x).not.toBeCloseTo(startX);
+
+    Object.assign(player, { velocity: { x: 0, y: 0 }, walk: { x: 0, y: 0 } });
+    for (let ms = 0; ms < 6000; ms += 16) ticker.frame(16);
+    expect(sprite.rotation).toBe(0);
+    expect(view.position.x).toBeCloseTo(startX);
+    scene.destroy();
+  });
+
   it("leans back against a skid, its heels dug in, and forward again walking on", async () => {
     const world = fieldWithPlayer();
     const { ticker, view, scene } = await sceneOf(world);
