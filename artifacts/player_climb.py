@@ -4,8 +4,10 @@
 # reaching up to standing on top. The engine raises the feet (the climb's height in the
 # simulation), so every pose keeps its feet where the walk sheet's are: the figure raises one hand
 # to grab the edge and swings on it like a pendulum (harmonic, back and then forward, wider each
-# time), then pushes down on the edge with that hand to heave itself up, brings a knee over the top
-# and stands up.
+# time), its free arm, its legs (a scissor) and its feet waving after the body, each a little later;
+# then pushes down on the edge with that hand, flat on the top, to heave itself up, brings a knee
+# over the top while the other foot pushes off with its toes, and stands up. Hands bend at the
+# wrists and feet at the ankles.
 # Every cell is the walk sheet's window (CELL, GAP), so the engine draws all the sheets with the same
 # cell and the feet never move. Requires shapely (see iso_lib.py).
 import math
