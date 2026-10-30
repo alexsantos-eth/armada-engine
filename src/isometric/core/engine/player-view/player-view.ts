@@ -1,6 +1,7 @@
-import { BufferImageSource, Container, Graphics, Sprite, Texture } from "pixi.js";
+import { BufferImageSource, Container, Graphics, GraphicsContext, Sprite, Texture } from "pixi.js";
 import { getGroundPointBelow } from "../camera";
 import {
+  getClimbRise,
   getPlayerClimbProgress,
   getPlayerColumn,
   getPlayerFacing,
@@ -8,10 +9,12 @@ import {
   getPlayerRenderPosition,
   isPlayerRunning,
   isPlayerSkidding,
+  PLAYER_CLIMB_MS,
   PLAYER_FACINGS,
   PLAYER_PART,
 } from "../player";
 import { projectBoxesToIsometric, projectGridPoint } from "../projection";
+import { createSeededRandom } from "../random";
 import { createBlockViews, getBlockDepth, getSheetFrames, showFrame } from "../render";
 import { SCENE_LAYER, type BuiltScene, type SceneModule } from "../scene";
 import type { GridPoint, PlayerAppearance, PlayerRenderPosition } from "../../types";
@@ -19,12 +22,25 @@ import {
   DANCE_DELAY_MS,
   getBodyShape,
   getIdleDance,
+  getClimbLean,
+  getForwardLeanShare,
   getSideLeanShare,
   getLeanTarget,
   stepBodyLean,
   type BodyLean,
 } from "./body-motion";
-import { DUST_MIN_IMPACT, getBodyScale, getDust, getVoxelFaces } from "./feedback";
+import {
+  BURST_DUST,
+  DUST_MIN_IMPACT,
+  getBodyScale,
+  getDust,
+  getDustColumn,
+  getDustVoxelAt,
+  getDustVoxels,
+  getVoxelFaces,
+  KICK_DUST,
+  type DustVoxel,
+} from "./feedback";
 import {
   getClimbPose,
   getClimbSheetLayout,
@@ -48,31 +64,11 @@ const SHADOW_COLUMNS = 8;
 const DUST_COLORS = { top: 0xfbf9f4, left: 0xe6e2d8, right: 0xcfcabd };
 
 /**
- * Voxels of a puff of dust, back to front: bottom centre (in tiles across and down from the feet)
- * and size (in tiles).
+ * Draw depth added to the dust in front of the feet over a column, so it stays after the player
+ * (and whatever stands there) placed at that column's depth later: well below the step between
+ * two columns' depths (`getBlockDepth()`).
  */
-const DUST_VOXELS: ReadonlyArray<readonly [number, number, number]> = [
-  [-0.03, -0.07, 0.04],
-  [0.09, -0.055, 0.05],
-  [-0.06, -0.04, 0.06],
-  [0.17, -0.02, 0.045],
-  [-0.19, -0.01, 0.05],
-  [-0.13, 0, 0.08],
-  [0.13, 0, 0.08],
-  [0.03, 0.02, 0.05],
-  [0.07, 0.035, 0.07],
-  [-0.1, 0.04, 0.055],
-  [0.16, 0.05, 0.04],
-  [0, 0.06, 0.06],
-];
-
-/** Voxels of the small puff a running player kicks up, back to front, like {@link DUST_VOXELS}. */
-const RUN_DUST_VOXELS: ReadonlyArray<readonly [number, number, number]> = [
-  [0.05, -0.03, 0.04],
-  [-0.07, 0, 0.05],
-  [0.08, 0.02, 0.045],
-  [-0.01, 0.04, 0.04],
-];
+const DUST_FRONT_DEPTH = 0.00001;
 
 /** Columns a running player covers between two puffs of dust. */
 const RUN_DUST_EVERY = 0.7;
@@ -88,6 +84,12 @@ const RUN_PUFFS = 6;
  * backwards against the slide; held the other way, they run that way while it slides on.
  */
 const SKID_PEDAL = 2;
+
+/**
+ * Real milliseconds the camera takes to rise one block onto a higher top it did not climb (a jump
+ * onto it): as long as a climb of one block, on the same curve (`getClimbRise()`).
+ */
+export const CAMERA_RISE_MS_PER_BLOCK = PLAYER_CLIMB_MS;
 
 /**
  * How the player view answers what the player does (`createPlayerView()`). Every field is optional;
@@ -112,7 +114,9 @@ export type PlayerViewOptions = {
  * While it jumps or falls (`height`), the sprite and the feet it gives the shadow rise that many
  * blocks; its place in the draw order stays with the ground below it. The camera looks at the top it
  * stands on, or at its feet while they are below where they left the ground: a jump does not bob the
- * camera, and a fall to a lower top is followed as it falls, not in one jolt when it lands.
+ * camera, and a fall to a lower top is followed as it falls, not in one jolt when it lands. A jump
+ * onto a higher top raises the camera once it lands on the climb's curve ({@link CAMERA_RISE_MS_PER_BLOCK}
+ * per block, `getClimbRise()`), as smoothly as a climb, not in one jolt.
  *
  * With `effects`, it answers take-offs and landings from the counters in `player.feedback` (no
  * events): dust at a take-off and at a hard landing (`getDust()`), a stretch at take-off and a squash
@@ -181,13 +185,27 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         walk?.frames[facing][0] ?? (player && (await assets.loadSvg(appearance.textureSource, { scale })));
       if (!player || !texture) return { destroy: () => {} };
 
-      // Blocks above elevation `0` the camera looks at: the top the player stands on or, while its
+      // Blocks above elevation `0` the camera aims at: the top the player stands on or, while its
       // feet are below where they left the ground or it climbs, its feet.
-      let level = player.elevation - player.inset;
-      const ground = (at: PlayerRenderPosition) => {
+      let aim = player.elevation - player.inset;
+      // Blocks above elevation `0` it looks at: the aim, but rising to a higher one it did not climb
+      // to (a jump onto a higher top) on a climb's curve, from where it was, instead of in one jolt.
+      let level = aim;
+      let rise: { from: number; to: number; ms: number } | undefined;
+      const ground = (at: PlayerRenderPosition, elapsedMs: number) => {
         const top = at.elevation - at.inset;
-        if (player.motion.type === "climbing") level = top + at.height;
-        else level = at.height > 0 ? Math.min(level, top + at.height) : top;
+        if (player.motion.type === "climbing") aim = top + at.height;
+        else aim = at.height > 0 ? Math.min(aim, top + at.height) : top;
+        if (player.motion.type === "climbing" || aim <= level) {
+          level = aim;
+          rise = undefined;
+        } else {
+          if (rise?.to !== aim) rise = { from: level, to: aim, ms: 0 };
+          rise.ms += elapsedMs;
+          const risen = getClimbRise(rise.ms / ((rise.to - rise.from) * CAMERA_RISE_MS_PER_BLOCK));
+          // Risen all the way: on the aim itself, so the next frame ends the rise.
+          level = risen < 1 ? rise.from + (rise.to - rise.from) * risen : aim;
+        }
         return getGroundPointBelow(at, level, projection);
       };
       const [projected] = projectBoxesToIsometric(
@@ -258,8 +276,9 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         const flying = player.motion.type === "jumping" || player.motion.type === "falling";
         const jumpPose = jump && getJumpPose(getPlayerJumpPhase(player), jump.sheet);
         stood = climbing !== undefined || walking || flying || jumpPose !== undefined ? 0 : stood + elapsedMs;
-        if (!walk) return;
+        // Turned the way it climbs or walks, also without a walk sheet: its lean follows its facing.
         facing = getPlayerFacing(player.climb?.direction ?? player.walk) ?? facing;
+        if (!walk) return;
         if (climbing !== undefined) {
           walked = 0;
           showFrame(view, climb ? climb.frames[facing][getClimbPose(climbing, climb.sheet)] : walk.frames[facing][0]);
@@ -338,26 +357,66 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
       let seenTick: number | undefined;
       let seenVelocity: GridPoint = { x: 0, y: 0 };
       let acceleration: GridPoint = { x: 0, y: 0 };
+      // The one voxel every puff of dust is made of, a tile wide: each voxel of a puff is a view of
+      // it, scaled to its size and tinted to its shade, so its geometry is built once.
+      const faces = getVoxelFaces(0, 0, 1, metrics);
+      const voxel = new GraphicsContext()
+        .poly(faces.top)
+        .fill({ color: DUST_COLORS.top })
+        .poly(faces.left)
+        .fill({ color: DUST_COLORS.left })
+        .poly(faces.right)
+        .fill({ color: DUST_COLORS.right });
       // Puffs of dust, made when first raised: one for take-offs (in the air too, where the feet are,
       // for a double jump), one for landings, then {@link RUN_PUFFS} small ones for running, in turn.
-      const puffs: Array<{ view: Graphics; ms: number } | undefined> = [];
-      const raiseDust = (index: number, at: PlayerRenderPosition) => {
+      // Each voxel is a view of its own in the draw order, by the column it drifts over, so the
+      // player, the blocks and what stands on them hide the dust behind them.
+      type Puff = {
+        readonly views: Graphics[];
+        voxels: readonly DustVoxel[];
+        // The feet it rose from, on the ground and on the screen, and blocks above `0` they were.
+        feet: GridPoint;
+        screen: GridPoint;
+        level: number;
+        ms: number;
+      };
+      const puffs: Array<Puff | undefined> = [];
+      // Puffs raised so far: the seed of the next one's scatter, so no two look alike.
+      let raised = 0;
+      const voxelAt = { x: 0, y: 0, height: 0, size: 0 };
+      const topAt = (x: number, y: number) => columnAt.get(x, y)?.elevation;
+      // Puts a voxel of `puff` in the draw order by the column it is over halfway through its life.
+      const placeVoxel = (view: Graphics, puff: Puff, dust: DustVoxel) => {
+        getDustVoxelAt(dust, 0.5, voxelAt);
+        const point = { x: puff.feet.x + voxelAt.x, y: puff.feet.y + voxelAt.y };
+        const { x, y, elevation, behind } = getDustColumn(point, puff.feet, puff.level, topAt);
+        const [top] = projectBoxesToIsometric([{ x, y, elevation, metadata: {} }], projection);
+        const voxelDepth = getBlockDepth(top, metrics);
+        if (behind) scene.move({ view, depth: voxelDepth, layer: SCENE_LAYER.ground });
+        else scene.placeAt(view, voxelDepth + DUST_FRONT_DEPTH);
+      };
+      const raiseDust = (index: number, at: PlayerRenderPosition, kick?: GridPoint) => {
+        const shape = index < 2 ? BURST_DUST : KICK_DUST;
         let puff = puffs[index];
         if (!puff) {
-          const dust = new Graphics();
-          for (const [x, y, size] of index < 2 ? DUST_VOXELS : RUN_DUST_VOXELS) {
-            const faces = getVoxelFaces(x, y, size, metrics);
-            dust.poly(faces.top).fill({ color: DUST_COLORS.top });
-            dust.poly(faces.left).fill({ color: DUST_COLORS.left });
-            dust.poly(faces.right).fill({ color: DUST_COLORS.right });
-          }
-          dust.cullable = false;
-          puff = puffs[index] = { view: dust, ms: 0 };
+          const views = Array.from({ length: shape.voxels }, () => {
+            const dust = new Graphics(voxel);
+            dust.cullable = false;
+            return dust;
+          });
+          puff = puffs[index] = { views, voxels: [], feet: at, screen: at, level: 0, ms: 0 };
         }
+        raised += 1;
+        puff.voxels = getDustVoxels(shape, createSeededRandom(raised), kick);
+        puff.feet = { x: at.x, y: at.y };
+        puff.screen = projectGridPoint(at, projection);
+        puff.level = at.elevation - at.inset + at.height;
         puff.ms = 0;
-        const screen = projectGridPoint(at, projection);
-        puff.view.position.set(screen.x, screen.y - (at.elevation - at.inset + at.height) * metrics.boxHeight);
-        scene.placeAt(puff.view, depth);
+        for (let voxelIndex = 0; voxelIndex < puff.views.length; voxelIndex += 1) {
+          const view = puff.views[voxelIndex];
+          view.tint = puff.voxels[voxelIndex].shade;
+          placeVoxel(view, puff, puff.voxels[voxelIndex]);
+        }
       };
       // Columns run or slid since the last puff of running dust, and the puff it raises next.
       let ran = 0;
@@ -371,19 +430,32 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         ran += Math.hypot(at.x - drawnAt.x, at.y - drawnAt.y);
         if (ran < every) return;
         ran %= every;
-        raiseDust(2 + runPuff, at);
+        // Kicked back, away from where it slides or runs (nowhere, at no speed).
+        const { velocity } = player;
+        const speed = Math.hypot(velocity.x, velocity.y) || 1;
+        raiseDust(2 + runPuff, at, { x: -velocity.x / speed, y: -velocity.y / speed });
         runPuff = (runPuff + 1) % RUN_PUFFS;
       };
+      // Every frame, only each live voxel's position, size and opacity change; it shows or hides only
+      // as its puff rises or ends.
       const settleDust = (elapsedMs: number) => {
         for (const puff of puffs) {
           if (!puff || puff.ms === Infinity) continue;
           puff.ms += elapsedMs;
           const look = getDust(puff.ms);
           if (!look) puff.ms = Infinity;
-          if (puff.view.visible !== (look !== undefined)) puff.view.visible = look !== undefined;
-          if (!look) continue;
-          puff.view.alpha = look.alpha;
-          puff.view.scale.set(look.scale, look.scale);
+          for (let index = 0; index < puff.views.length; index += 1) {
+            const view = puff.views[index];
+            if (view.visible !== (look !== undefined)) view.visible = look !== undefined;
+            if (!look) continue;
+            const { x, y, height, size } = getDustVoxelAt(puff.voxels[index], look.progress, voxelAt);
+            view.alpha = look.alpha;
+            view.scale.set(size, size);
+            view.position.set(
+              puff.screen.x + ((x - y) * projection.tileWidth) / 2,
+              puff.screen.y - ((x + y) * projection.tileHeight) / 2 - (puff.level + height) * metrics.boxHeight,
+            );
+          }
         }
       };
       /**
@@ -404,7 +476,8 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         if (feedback.landings !== seen.landings) {
           sinceLanding = 0;
           impact = feedback.impact;
-          if (impact >= DUST_MIN_IMPACT) raiseDust(1, at);
+          // On the ground it landed on: drawn between ticks, the feet may still be a little above it.
+          if (impact >= DUST_MIN_IMPACT) raiseDust(1, { ...at, height: 0 });
         }
         if (feedback.jumps !== seen.jumps) {
           sinceTakeoff = 0;
@@ -426,9 +499,13 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         const dance = appearance.dance && getIdleDance(stood, appearance.dance);
         // The dance leans to the monkey's own sides: across the screen only as far as they show.
         const sway = (dance?.lean ?? 0) * getSideLeanShare(facing, PLAYER_FACINGS.length);
-        const target =
-          climbing === undefined ? getLeanTarget(velocity, acceleration, isPlayerSkidding(player)) + sway : 0;
-        stepBodyLean(lean, target, elapsedMs);
+        if (climbing === undefined)
+          stepBodyLean(lean, getLeanTarget(velocity, acceleration, isPlayerSkidding(player)) + sway, elapsedMs);
+        else {
+          // Climbing, it leans in over the edge, in step with its climb sheet's poses.
+          lean.angle = getClimbLean(climbing) * getForwardLeanShare(facing, PLAYER_FACINGS.length);
+          lean.speed = 0;
+        }
         const pulse = getBodyScale(sinceTakeoff, sinceLanding, impact);
         const shape = getBodyShape({
           motion: player.motion.type,
@@ -500,7 +577,7 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         start: (built) => {
           scene = built;
           place(drawnAt);
-          services.get("camera")?.follow(ground(drawnAt));
+          services.get("camera")?.follow(ground(drawnAt, 0));
         },
         update: ({ tick, alpha, elapsedMs }) => {
           const at = getPlayerRenderPosition(player, alpha);
@@ -515,9 +592,10 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
           settleDust(elapsedMs);
           syncTerrainShadowOverlay();
           if (moved || reshaped) place(at);
-          if (moved) services.get("camera")?.follow(ground(at));
+          if (moved || rise) services.get("camera")?.follow(ground(at, elapsedMs));
         },
         destroy: () => {
+          voxel.destroy();
           shadowBody.mask = null;
           shadowTexture.destroy(true);
         },

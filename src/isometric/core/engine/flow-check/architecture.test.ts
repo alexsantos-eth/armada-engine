@@ -55,7 +55,7 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   "ambient-light": ["lighting", "render", "scene"],
   "camera-view": ["camera", "scene"],
   "cloud-shadows": ["constants", "scene"],
-  "player-view": ["camera", "player", "projection", "render", "scene"],
+  "player-view": ["camera", "player", "projection", "random", "render", "scene"],
 };
 
 /** Scene modules: drawn by the scene from the list the app gives it. */

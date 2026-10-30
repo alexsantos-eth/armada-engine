@@ -2,12 +2,18 @@ import { describe, expect, it } from "vitest";
 import { PLAYER_GROUND_ACCEL, PLAYER_JUMP_SPEED, PLAYER_RUN_STEP, PLAYER_STEP } from "../player";
 import {
   BODY_CLIMB_STRETCH,
+  BODY_CLIMB_LEAN,
+  CLIMB_GRAB_SHARE,
+  CLIMB_HANDS_SHARE,
+  CLIMB_PUSH_SHARE,
   BODY_MAX_AIR_STRETCH,
   BODY_MAX_LEAN,
   BODY_SKID_LEAN_PER_SPEED,
   DANCE_DELAY_MS,
   DANCE_FADE_MS,
   getBodyShape,
+  getClimbLean,
+  getForwardLeanShare,
   getIdleDance,
   getSideLeanShare,
   getLeanTarget,
@@ -182,5 +188,27 @@ describe("getSideLeanShare", () => {
     expect(getSideLeanShare(7, 8)).toBeCloseTo(Math.SQRT1_2);
     expect(getSideLeanShare(0, 8)).toBe(0);
     expect(getSideLeanShare(4, 8)).toBeCloseTo(0);
+  });
+});
+
+describe("getClimbLean", () => {
+  it("hangs upright, leans in over the edge as it pulls itself up, and pushes itself upright", () => {
+    expect(getClimbLean(0)).toBe(0);
+    expect(getClimbLean(CLIMB_GRAB_SHARE)).toBeCloseTo(0);
+    expect(getClimbLean((CLIMB_GRAB_SHARE + CLIMB_HANDS_SHARE) / 2)).toBeCloseTo(BODY_CLIMB_LEAN / 2);
+    expect(getClimbLean(CLIMB_HANDS_SHARE)).toBeCloseTo(BODY_CLIMB_LEAN);
+    expect(getClimbLean((CLIMB_HANDS_SHARE + CLIMB_PUSH_SHARE) / 2)).toBeCloseTo(BODY_CLIMB_LEAN / 2);
+    expect(getClimbLean(CLIMB_PUSH_SHARE)).toBeCloseTo(0);
+    expect(getClimbLean(1)).toBeCloseTo(0);
+  });
+});
+
+describe("getForwardLeanShare", () => {
+  it("shows a lean forward across the screen in profile, signed by the side it faces, and none head on", () => {
+    expect(getForwardLeanShare(0, 8)).toBeCloseTo(1);
+    expect(getForwardLeanShare(4, 8)).toBeCloseTo(-1);
+    expect(getForwardLeanShare(1, 8)).toBeCloseTo(Math.SQRT1_2);
+    expect(getForwardLeanShare(2, 8)).toBeCloseTo(0);
+    expect(getForwardLeanShare(6, 8)).toBeCloseTo(0);
   });
 });

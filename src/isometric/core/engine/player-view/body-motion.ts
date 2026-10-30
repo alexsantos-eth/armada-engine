@@ -43,6 +43,20 @@ export const BODY_MAX_AIR_STRETCH = 0.12;
 /** Stretch of the body halfway through a climb, as it pulls itself up. */
 export const BODY_CLIMB_STRETCH = 0.05;
 
+/**
+ * Most the body leans forward during a climb, in radians (about 6°): its chest over the edge as it
+ * pulls itself up and pushes on its hands, across the screen as far as its facing shows it.
+ */
+export const BODY_CLIMB_LEAN = 0.1;
+
+/**
+ * Shares of a climb by which it has grabbed the edge with both hands, brought them to the middle of
+ * its body and pushed itself up on them: the key poses of `artifacts/player_climb.py`.
+ */
+export const CLIMB_GRAB_SHARE = 0.12;
+export const CLIMB_HANDS_SHARE = 0.6;
+export const CLIMB_PUSH_SHARE = 0.78;
+
 /** Real milliseconds the player stands still before it starts to dance: a short stop does not. */
 export const DANCE_DELAY_MS = 300;
 
@@ -138,6 +152,20 @@ export function getBodyShape(input: BodyShapeInput): GridPoint {
   return { x: 1 - stretch / 2, y: 1 + stretch };
 }
 
+/**
+ * Lean of the body forward (radians, positive with its head ahead of its feet) at `progress`
+ * (`0`–`1`) of a climb: upright hanging from both hands, leaning in up to {@link BODY_CLIMB_LEAN}
+ * as it pulls itself up until its hands are at the middle of its body ({@link CLIMB_HANDS_SHARE}),
+ * and upright again as it pushes itself up on them ({@link CLIMB_PUSH_SHARE}), each along half a
+ * harmonic cycle.
+ */
+export function getClimbLean(progress: number): number {
+  const ease = (t: number) => (1 - Math.cos(Math.PI * Math.min(Math.max(t, 0), 1))) / 2;
+  if (progress < CLIMB_HANDS_SHARE)
+    return BODY_CLIMB_LEAN * ease((progress - CLIMB_GRAB_SHARE) / (CLIMB_HANDS_SHARE - CLIMB_GRAB_SHARE));
+  return BODY_CLIMB_LEAN * (1 - ease((progress - CLIMB_HANDS_SHARE) / (CLIMB_PUSH_SHARE - CLIMB_HANDS_SHARE)));
+}
+
 /** The dance's part of a frame ({@link getIdleDance}): its lean (radians) and the body's scale. */
 export type IdleDanceFrame = { readonly lean: number; readonly shape: GridPoint };
 
@@ -170,4 +198,14 @@ export function getIdleDance(ms: number, dance: PlayerIdleDance): IdleDanceFrame
  */
 export function getSideLeanShare(facing: number, facings: number): number {
   return Math.abs(Math.sin((2 * Math.PI * facing) / facings));
+}
+
+/**
+ * How much of a lean forward shows as a lean across the screen for a player turned to facing
+ * `facing` of `facings` (see {@link getSideLeanShare}), and to which side: all of it to the right in
+ * profile facing right, to the left facing left, about 70 % on a diagonal and none facing the camera
+ * or away from it, where it would read as a lean to its sides.
+ */
+export function getForwardLeanShare(facing: number, facings: number): number {
+  return Math.cos((2 * Math.PI * facing) / facings);
 }

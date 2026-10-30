@@ -1208,11 +1208,13 @@ describe("climbing", () => {
   const sunken = (depth: number) => (type: TerrainMaterial) => (type === "sand" ? depth : 0);
 
   it("eases the feet up over the first share of a climb and then steps onto the top", () => {
-    expect([0, PLAYER_CLIMB_RISE_SHARE / 2, PLAYER_CLIMB_RISE_SHARE, 1, -1].map(getClimbRise)).toEqual([
-      0, 0.5, 1, 1, 0,
-    ]);
+    const rise = [0, PLAYER_CLIMB_RISE_SHARE / 4, PLAYER_CLIMB_RISE_SHARE / 2, PLAYER_CLIMB_RISE_SHARE, 1, -1];
+    // Half a harmonic cycle: (1 − cos πt) / 2.
+    [0, (1 - Math.SQRT1_2) / 2, 0.5, 1, 1, 0].forEach((share, i) => expect(getClimbRise(rise[i])).toBeCloseTo(share));
     const halfway = PLAYER_CLIMB_RISE_SHARE + (1 - PLAYER_CLIMB_RISE_SHARE) / 2;
-    expect([0, PLAYER_CLIMB_RISE_SHARE, halfway, 1, 2].map(getClimbAdvance)).toEqual([0, 0, 0.5, 1, 1]);
+    [0, 0, 0.5, 1, 1].forEach((share, i) =>
+      expect(getClimbAdvance([0, PLAYER_CLIMB_RISE_SHARE, halfway, 1, 2][i])).toBeCloseTo(share),
+    );
     expect(PLAYER_STEP_HEIGHT).toBeLessThan(0.5);
   });
 
@@ -1523,7 +1525,7 @@ describe("jump feedback", () => {
     expect(getPlayerJumpPhase(player)).toBe("takeoff");
   });
 
-  it("announces landings, take-offs and rejected presses on the simulation events, the same every run", () => {
+  it("announces landings, take-offs, rejected presses and motion changes on the simulation events, the same every run", () => {
     const run = () => {
       const player = createPlayer(flat, { x: 1, y: 1 });
       const world = {
@@ -1536,6 +1538,7 @@ describe("jump feedback", () => {
       events.on("playerJumped", (payload) => heard.push(["jumped", payload]));
       events.on("playerLanded", (payload) => heard.push(["landed", payload]));
       events.on("playerJumpRejected", (payload) => heard.push(["rejected", payload]));
+      events.on("playerMotionChanged", (payload) => heard.push(["motion", payload]));
       const system = createPlayerSystem();
       jumpPlayer(player);
       for (let tick = 0; tick < PLAYER_JUMP_TICKS - 1; tick += 1) system.step(world, events);
@@ -1548,8 +1551,13 @@ describe("jump feedback", () => {
       for (let tick = 0; tick < 3; tick += 1) system.step(world, events);
       return heard;
     };
-    const heard = run();
+    const all = run();
+    const heard = all.filter(([name]) => name !== "motion");
 
+    expect(all.filter(([name]) => name === "motion").map(([, payload]) => payload)).toEqual([
+      { from: "idle", to: "jumping" },
+      { from: "jumping", to: "falling" },
+    ]);
     expect(heard.map(([name]) => name)).toEqual(["jumped", "landed", "jumped", "rejected"]);
     expect(heard[0][1]).toEqual({
       x: 1,
@@ -1564,7 +1572,7 @@ describe("jump feedback", () => {
       impact: expect.closeTo(PLAYER_JUMP_SPEED - PLAYER_GRAVITY / 2),
     });
     expect(heard[3][1]).toEqual({ reason: "airborne" });
-    expect(run()).toEqual(heard);
+    expect(run()).toEqual(all);
   });
 
   it("builds no payload nobody listens to", () => {

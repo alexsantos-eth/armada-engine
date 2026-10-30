@@ -1,0 +1,7 @@
+// Correr (en bucle mientras corre): seis pasos por segundo, más brillantes y fuertes.
+s("brown*6")
+  .attack(0.001)
+  .decay(0.03)
+  .sustain(0)
+  .lpf(1200)
+  .gain("0.45 0.32")

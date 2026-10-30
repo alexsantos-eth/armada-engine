@@ -1,5 +1,5 @@
 import { Application, type Ticker, UPDATE_PRIORITY } from "pixi.js";
-import { ENTITY_CONFIG, TERRAIN_APPEARANCE } from "../content";
+import { ENTITY_CONFIG, PLAYER_SOUND_PATTERNS, TERRAIN_APPEARANCE } from "../content";
 import {
   bindCameraControls,
   CHUNK_PREFETCH_RADIUS,
@@ -24,7 +24,7 @@ import { type ChunkWorker, createChunkPrefetch, startChunkWorker } from "./chunk
 import { formatClockLabel, resolveLaunchOptions } from "./launch";
 import { createSceneModules, createWorldParts, createWorldSystems, findUnknownModules } from "./modules";
 import { PERF_REPORT_MS, startPerfMonitor } from "./perf";
-import { type AudioOutput, bindPlayerSounds, createAudioOutput } from "./sound";
+import { bindPlayerSounds, createStrudelSounds, type PlayerSounds } from "./sound";
 
 /** Where and how a game runs. */
 export type GameOptions = {
@@ -45,8 +45,11 @@ export type GameOptions = {
   readonly lighting?: PhaseLighting;
   /** Keys that replace the default controls (`DEFAULT_KEY_MAP`), whole or in part. */
   readonly keys?: Partial<KeyMap>;
-  /** Where the player's sounds play. Defaults to the window's `AudioContext`, made at the first sound. */
-  readonly audio?: () => AudioOutput | undefined;
+  /**
+   * Makes the player's sounds. Defaults to `PLAYER_SOUND_PATTERNS` played with Strudel
+   * (`createStrudelSounds()`), which loads at the first sound.
+   */
+  readonly sounds?: () => PlayerSounds;
 };
 
 /** A running game (`mountGame()`). */
@@ -178,10 +181,11 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
         options.keys,
       ),
     );
-    // The player's take-offs, landings and rejected presses, heard (`?sound=off` mutes them).
+    // The player's jumps, landings, steps and dance, heard (`?sound=off` mutes them).
     if (sound) {
-      const audio = options.audio ?? createAudioOutput(window as { AudioContext?: new () => AudioOutput });
-      teardowns.push(bindPlayerSounds(simulation.events, audio));
+      const sounds = (options.sounds ?? (() => createStrudelSounds(PLAYER_SOUND_PATTERNS)))();
+      teardowns.push(() => sounds.destroy());
+      teardowns.push(bindPlayerSounds(simulation.events, sounds, window));
     }
 
     const onTick = (ticker: Ticker) => {

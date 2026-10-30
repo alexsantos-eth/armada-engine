@@ -8,7 +8,7 @@ import { CAMERA_MAX_ZOOM, CAMERA_START_ZOOM, getGroundPointBelow } from "../came
 import { createCameraView } from "../camera-view";
 import { TILE_METRICS } from "../constants";
 import { WorldParts } from "../parts";
-import { createPlayer, PLAYER_FACINGS, PLAYER_PART, PLAYER_STEP, stepPlayer } from "../player";
+import { createPlayer, getClimbRise, PLAYER_FACINGS, PLAYER_PART, PLAYER_STEP, stepPlayer } from "../player";
 import { DANCE_DELAY_MS, DANCE_FADE_MS } from "./body-motion";
 import { DUST_MS } from "./feedback";
 import { CLOCK_PART, createClockPart } from "../time";
@@ -26,7 +26,7 @@ import {
 import { createTerrainView } from "../terrain-view";
 import type { World } from "../world";
 import type { SceneCamera } from "../../types";
-import { createPlayerView, type PlayerViewOptions } from "./player-view";
+import { CAMERA_RISE_MS_PER_BLOCK, createPlayerView, type PlayerViewOptions } from "./player-view";
 import { getClimbPose, getIdlePose, getWalkPose, getWalkSheetCell } from "./walk";
 
 const PLAYER = { textureSource: "/assets/player/block.svg", height: 1 } as const;
@@ -576,6 +576,53 @@ describe("createPlayerView", () => {
     scene.destroy();
   });
 
+  it("raises the camera onto a higher top it jumped onto on the climb's curve, not in one jolt", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, camera, scene } = await sceneOf(world);
+    const player = world.parts.get(PLAYER_PART);
+    const focus = () => scene.services.focus?.ground();
+    const lookingAt = (level: number) => getGroundPointBelow({ x: 1, y: 1 }, level, projection);
+    const at = (position: { elevation: number; height: number }) => {
+      const full = { x: 1, y: 1, inset: 0, ...position };
+      Object.assign(player, full, { previous: full });
+    };
+
+    // Up in the air over its own top, then over a block higher: the camera stays on the top it left.
+    player.motion = { type: "jumping" };
+    at({ elevation: 1, height: 0.9 });
+    ticker.frame(50);
+    at({ elevation: 2, height: 0.2 });
+    ticker.frame(50);
+    expect(focus()).toEqual(lookingAt(1));
+
+    // Landed: it rises on the climb's curve, also while the player stands still.
+    player.motion = { type: "idle" };
+    at({ elevation: 2, height: 0 });
+    ticker.frame(0);
+    expect(focus()).toEqual(lookingAt(1));
+    ticker.frame(CAMERA_RISE_MS_PER_BLOCK / 4);
+    const quarter = 1 + getClimbRise(0.25);
+    expect(focus()?.x).toBeCloseTo(lookingAt(quarter).x);
+    expect(quarter).toBeGreaterThan(1);
+    expect(quarter).toBeLessThan(2);
+    for (let frame = 0; frame < 50; frame += 1) ticker.frame(50);
+    expect(focus()).toEqual(lookingAt(2));
+    expect(camera.state).toMatchObject(lookingAt(2));
+
+    // A higher top again while it still rises restarts the rise from where the camera is.
+    at({ elevation: 3, height: 0 });
+    ticker.frame(CAMERA_RISE_MS_PER_BLOCK / 4);
+    at({ elevation: 4, height: 0 });
+    ticker.frame(CAMERA_RISE_MS_PER_BLOCK / 4);
+    expect(focus()?.x).toBeGreaterThan(lookingAt(2).x);
+    expect(focus()?.x).toBeLessThan(lookingAt(4).x);
+    // Down again: straight there, as a fall.
+    at({ elevation: 1, height: 0 });
+    ticker.frame(50);
+    expect(focus()).toEqual(lookingAt(1));
+    scene.destroy();
+  });
+
   it("follows a fall with the camera as it falls, from where its feet left the ground", async () => {
     const world = fieldWithPlayer();
     const { ticker, camera, scene } = await sceneOf(world);
@@ -753,8 +800,11 @@ describe("createPlayerView feedback", () => {
     scale: { x: number; y: number };
     tint: number;
   };
+  type Voxel = Shape & { context?: { poly: ReturnType<typeof vi.fn> } };
+  /** The voxels of dust in the draw order: views of the one shared voxel geometry. */
   const dustOf = (root: { children: TestView[] }) =>
-    (root.children as Shape[]).filter(({ poly }) => poly?.mock.calls.length);
+    (root.children as Voxel[]).filter(({ context }) => context !== undefined);
+  const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
   const JUMP = { source: "/assets/player/jump.svg", poses: { takeoff: 0, rise: 1, apex: 2, fall: 3, landing: 4 } };
 
   it("shows the jump sheet's pose for each part of a jump, and the air pose without it", async () => {
@@ -815,18 +865,21 @@ describe("createPlayerView feedback", () => {
 
     player.feedback.jumps += 1;
     ticker.frame(16);
-    const [takeoff] = dustOf(root);
-    expect(takeoff.visible).toBe(true);
-    expect(takeoff.cullable).toBe(false);
+    const takeoff = dustOf(root);
+    expect(takeoff).toHaveLength(12);
+    expect(takeoff.every(({ visible, cullable }) => visible && !cullable)).toBe(true);
+    // One geometry, drawn once, shared by every voxel.
+    expect(new Set(takeoff.map(({ context }) => context)).size).toBe(1);
+    expect(takeoff[0].context?.poly).toHaveBeenCalledTimes(3);
     expect(shape.scale.y).toBeGreaterThan(shape.scale.x);
     for (let ms = 0; ms < DUST_MS; ms += 50) ticker.frame(50);
-    expect(takeoff.visible).toBe(false);
+    expect(takeoff.some(({ visible }) => visible)).toBe(false);
     expect(shape.scale).toMatchObject({ x: 1, y: 1 });
     expect(view.position).toMatchObject(feet);
 
     Object.assign(player.feedback, { landings: 1, impact: 0.3 });
     ticker.frame(16);
-    expect(dustOf(root)).toHaveLength(2);
+    expect(dustOf(root)).toHaveLength(24);
     expect(shape.scale.y).toBeLessThan(1);
     // Squashed about its feet: the sprite comes down with it.
     expect(view.position.y).toBeGreaterThan(feet.y);
@@ -838,8 +891,100 @@ describe("createPlayerView feedback", () => {
     expect(dustOf(root).filter(({ visible }) => visible)).toHaveLength(0);
     player.feedback.jumps += 1;
     ticker.frame(16);
-    expect(dustOf(root)).toHaveLength(2);
-    expect(takeoff.visible).toBe(true);
+    expect(dustOf(root)).toHaveLength(24);
+    expect(takeoff.every(({ visible }) => visible)).toBe(true);
+    scene.destroy();
+  });
+
+  it("scatters each puff of dust anew: voxels of their own size, shade and place, drifting out and rising", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, root, scene } = await sceneOf(world);
+    const player = world.parts.get(PLAYER_PART);
+    const look = () =>
+      dustOf(root).map(({ position, scale, tint }) => ({ x: position.x, y: position.y, size: scale.x, tint }));
+    player.feedback.jumps += 1;
+    ticker.frame(16);
+    const first = look();
+    expect(new Set(first.map(({ size }) => size)).size).toBe(first.length);
+    expect(new Set(first.map(({ tint }) => tint)).size).toBeGreaterThan(1);
+    ticker.frame(100);
+    const later = look();
+    // Further apart, and higher up the screen, a little later.
+    const spread = (points: Array<{ x: number }>) =>
+      mean(points.map(({ x }) => Math.abs(x - mean(points.map((p) => p.x)))));
+    expect(spread(later)).toBeGreaterThan(spread(first));
+    expect(mean(later.map(({ y }) => y))).toBeLessThan(mean(first.map(({ y }) => y)));
+    expect(mean(later.map(({ size }) => size))).toBeLessThan(mean(first.map(({ size }) => size)));
+    for (let ms = 0; ms < DUST_MS; ms += 50) ticker.frame(50);
+
+    player.feedback.jumps += 1;
+    ticker.frame(16);
+    expect(look()).not.toEqual(first);
+    scene.destroy();
+  });
+
+  it("draws the dust behind its feet under the player, the dust in front over it, each voxel by its column", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, root, view, scene } = await sceneOf(world);
+    const player = world.parts.get(PLAYER_PART);
+    player.feedback.jumps += 1;
+    ticker.frame(16);
+    const order = root.children;
+    const voxels = dustOf(root);
+    const before = voxels.filter((voxel) => order.indexOf(voxel) < order.indexOf(view));
+    const after = voxels.filter((voxel) => order.indexOf(voxel) > order.indexOf(view));
+    expect(before.length).toBeGreaterThan(0);
+    expect(after.length).toBeGreaterThan(0);
+    // The player placed again on its column stays between them.
+    Object.assign(player, { x: 1.1, previous: { x: 1, y: 1, elevation: 1, inset: 0, height: 0 } });
+    ticker.frame(16);
+    expect(dustOf(root).filter((voxel) => root.children.indexOf(voxel) > root.children.indexOf(view))).toEqual(after);
+    // Every voxel is drawn after the top of its own column.
+    const blocks = blocksOf(root.children, view);
+    const own = blocks.find((block) => block.x === 1 && block.y === 1) as TestView;
+    expect(before.every((voxel) => root.children.indexOf(voxel) > root.children.indexOf(own))).toBe(true);
+    scene.destroy();
+  });
+
+  it("draws the dust that drifts into a higher column at the block level with its feet, under the blocks above", async () => {
+    const points = Array.from({ length: 16 }, (_, index) => {
+      const x = index % 4;
+      return { x, y: Math.floor(index / 4), elevation: x === 2 ? 3 : 1 };
+    });
+    const world = standing(worldFrom(points), { x: 1, y: 1 });
+    const player = world.parts.get(PLAYER_PART);
+    const position = { x: 1.45, y: 1, elevation: 1, inset: 0, height: 0 };
+    Object.assign(player, position, { previous: position });
+    const { ticker, scene } = await sceneOf(world);
+    ticker.frame(16);
+    vi.mocked(getBlockDepth).mockClear();
+    player.feedback.jumps += 1;
+    ticker.frame(16);
+    const placed = vi.mocked(getBlockDepth).mock.calls.map(([{ box }]) => box);
+    expect(placed).toHaveLength(12);
+    expect(placed.some(({ x, elevation }) => x === 2 && elevation === 1)).toBe(true);
+    expect(placed.every(({ elevation }) => elevation === 1)).toBe(true);
+    scene.destroy();
+  });
+
+  it("raises the dust of a landing on the ground, though the feet are drawn a little above it", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, root, scene } = await sceneOf(world, () => 0.5);
+    const player = world.parts.get(PLAYER_PART);
+    player.feedback.jumps += 1;
+    ticker.frame(16);
+    const ground = mean(dustOf(root).map(({ position }) => position.y));
+    for (let ms = 0; ms < DUST_MS; ms += 50) ticker.frame(50);
+
+    // Drawn halfway between its last tick in the air and the one it landed on.
+    const position = { x: 1, y: 1, elevation: 1, inset: 0 };
+    Object.assign(player, { ...position, height: 0, previous: { ...position, height: 0.8 } });
+    Object.assign(player.feedback, { landings: player.feedback.landings + 1, impact: 0.3 });
+    ticker.frame(16);
+    const landing = dustOf(root).filter(({ visible }) => visible);
+    expect(landing).toHaveLength(12);
+    const raised = ground - mean(landing.map(({ position }) => position.y));
+    expect(Math.abs(raised)).toBeLessThan(0.2 * TILE_METRICS.boxHeight);
     scene.destroy();
   });
 
@@ -849,16 +994,18 @@ describe("createPlayerView feedback", () => {
     const player = world.parts.get(PLAYER_PART);
     player.feedback.jumps += 1;
     ticker.frame(16);
-    const [puff] = dustOf(root);
-    const ground = puff.position.y;
+    const puff = dustOf(root).slice(0, 12);
+    const ground = mean(puff.map(({ position }) => position.y));
     for (let ms = 0; ms < DUST_MS; ms += 50) ticker.frame(50);
 
     const position = { x: 1, y: 1, elevation: 1, inset: 0, height: 0.75 };
     Object.assign(player, position, { previous: position, verticalSpeed: 0.2 });
     player.feedback.jumps += 1;
     ticker.frame(16);
-    expect(puff.visible).toBe(true);
-    expect(puff.position.y).toBeCloseTo(ground - 0.75 * TILE_METRICS.boxHeight);
+    expect(puff.every(({ visible }) => visible)).toBe(true);
+    // Scattered anew, so only about as high as the feet.
+    const raised = ground - mean(puff.map(({ position }) => position.y));
+    expect(Math.abs(raised - 0.75 * TILE_METRICS.boxHeight)).toBeLessThan(0.2 * TILE_METRICS.boxHeight);
     scene.destroy();
   });
 
@@ -905,10 +1052,27 @@ describe("createPlayerView feedback", () => {
     expect((await skidding()).length).toBeGreaterThanOrEqual(3);
 
     const running = await puffs(0.25);
-    expect(running).toHaveLength(2);
-    expect(running[0].poly).toHaveBeenCalledTimes(4 * 3);
+    // Two puffs of four voxels, kicked back from where it runs (+x): left on the screen and down.
+    expect(running).toHaveLength(2 * 4);
     expect(await puffs(0.15)).toHaveLength(0);
     expect(await puffs(0.25, { effects: false })).toHaveLength(0);
+  });
+
+  it("kicks the dust nowhere in particular when it slides at no speed", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, root, scene } = await sceneOf(world);
+    const player = world.parts.get(PLAYER_PART);
+    ticker.frame(16);
+    Object.assign(player, { walk: { x: 0, y: 0 }, motion: { type: "skidding" }, velocity: { x: 0, y: 0 } });
+    for (let tick = 1; tick <= 4; tick += 1) {
+      const previous = { x: 0.5 + 0.15 * (tick - 1), y: 1, elevation: 1, inset: 0, height: 0 };
+      Object.assign(player, { x: previous.x + 0.15, previous });
+      ticker.frame(50);
+    }
+    const kicked = dustOf(root);
+    expect(kicked.length).toBeGreaterThanOrEqual(4);
+    expect(kicked.every(({ position }) => Number.isFinite(position.x) && Number.isFinite(position.y))).toBe(true);
+    scene.destroy();
   });
 
   it("raises no dust and keeps its shape with its effects off", async () => {
@@ -1161,6 +1325,27 @@ describe("createPlayerView body motion", () => {
     });
     ticker.frame(16);
     expect(body.scale.y).toBeGreaterThan(1);
+    scene.destroy();
+  });
+
+  it("leans in over the edge while it climbs, about its feet, and ends upright", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, view, scene } = await sceneOf(world);
+    const body = view as Body;
+    const player = world.parts.get(PLAYER_PART);
+    ticker.frame(16);
+    const feet = feetOf(body, 30);
+    // Climbing toward the right of the screen (facing east), its hands at the middle of its body:
+    // the head leans ahead, to the right, and the feet stay where they are.
+    const climb = { from: { x: 1, y: 1 }, to: { x: 2, y: 1 }, direction: { x: 1, y: -1 }, feet: 1, rise: 0 };
+    Object.assign(player, { motion: { type: "climbing" }, climb: { ...climb, ticks: 10, tick: 6 } });
+    ticker.frame(16);
+    expect(-body.skew.x).toBeGreaterThan(0.08);
+    expect(feetOf(body, 30).x).toBeCloseTo(feet.x);
+    // Pushed up on its hands: upright again.
+    player.climb = { ...climb, ticks: 10, tick: 10 };
+    ticker.frame(16);
+    expect(body.skew.x).toBeCloseTo(0);
     scene.destroy();
   });
 });

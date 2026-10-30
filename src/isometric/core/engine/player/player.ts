@@ -6,6 +6,7 @@ import type {
   PlayerFeedback,
   PlayerJumpPhase,
   PlayerJumpRejection,
+  PlayerMotionType,
   ITerrainColumn,
   PlayerFacing,
   PlayerPosition,
@@ -127,6 +128,9 @@ export const PLAYER_STEP_HEIGHT = 0.25;
 /** Ticks a climb of one block lasts (0.6 s); a lower one, its share of them. */
 export const PLAYER_CLIMB_TICKS = 12;
 
+/** Real milliseconds a climb of one block lasts: {@link PLAYER_CLIMB_TICKS} ticks. */
+export const PLAYER_CLIMB_MS = (PLAYER_CLIMB_TICKS * 1000) / TICKS_PER_SECOND;
+
 /** Share of a climb its feet take to rise to the top; in the rest it steps onto it. */
 export const PLAYER_CLIMB_RISE_SHARE = 0.7;
 
@@ -146,10 +150,10 @@ export function getJumpHeight(tick: number): number {
   return (4 * PLAYER_JUMP_HEIGHT * t * (PLAYER_JUMP_TICKS - t)) / PLAYER_JUMP_TICKS ** 2;
 }
 
-/** Eases `t` (`0`–`1`) in and out: slow at both ends. */
-function smoothstep(t: number): number {
+/** Eases `t` (`0`–`1`) in and out on half a harmonic cycle: slow at both ends, fastest midway. */
+function harmonic(t: number): number {
   const clamped = Math.min(Math.max(t, 0), 1);
-  return clamped * clamped * (3 - 2 * clamped);
+  return (1 - Math.cos(Math.PI * clamped)) / 2;
 }
 
 /**
@@ -157,15 +161,15 @@ function smoothstep(t: number): number {
  * its first {@link PLAYER_CLIMB_RISE_SHARE}, then all of it.
  */
 export function getClimbRise(progress: number): number {
-  return smoothstep(progress / PLAYER_CLIMB_RISE_SHARE);
+  return harmonic(progress / PLAYER_CLIMB_RISE_SHARE);
 }
 
 /**
  * Share of the way from `from` to `to` a climb has gone at `progress` (`0`–`1`) of it: none while
- * its feet rise, then eased in and out until it stands on the top.
+ * its feet rise, then eased harmonically in and out until it stands on the top.
  */
 export function getClimbAdvance(progress: number): number {
-  return smoothstep((progress - PLAYER_CLIMB_RISE_SHARE) / (1 - PLAYER_CLIMB_RISE_SHARE));
+  return harmonic((progress - PLAYER_CLIMB_RISE_SHARE) / (1 - PLAYER_CLIMB_RISE_SHARE));
 }
 
 /** Ticks the player shows its landing pose after it lands (the physics does not wait for it). */
@@ -1033,8 +1037,9 @@ export function createPlayerSystem(
     step: (world, events) => {
       const player = world.parts.get(PLAYER_PART);
       const { jumps, landings, rejections } = player.feedback;
+      const motion = player.motion.type;
       stepPlayer(player, world, 1, options.topInset, options.probe);
-      if (events) emitPlayerFeedback(player, events, jumps, landings, rejections);
+      if (events) emitPlayerFeedback(player, events, jumps, landings, rejections, motion);
       const cells = getPlayerCells(player);
       if (
         placed?.movers === world.movers &&
@@ -1056,7 +1061,8 @@ export function createPlayerSystem(
 
 /**
  * Announces on `events` what the player's last tick did, from its feedback counters before it
- * (`jumps`, `landings`, `rejections`): a landing before a take-off on the same tick.
+ * (`jumps`, `landings`, `rejections`) and its `motion` state: a landing before a take-off on the same
+ * tick, and the change of motion state last.
  */
 function emitPlayerFeedback(
   player: PlayerState,
@@ -1064,6 +1070,7 @@ function emitPlayerFeedback(
   jumps: number,
   landings: number,
   rejections: number,
+  motion: PlayerMotionType,
 ): void {
   const { feedback, x, y } = player;
   const feet = player.elevation - player.inset + player.height;
@@ -1073,6 +1080,8 @@ function emitPlayerFeedback(
     events.emit("playerJumped", { x, y, feet, air: feedback.airJump });
   if (feedback.rejections !== rejections && events.has("playerJumpRejected"))
     events.emit("playerJumpRejected", { reason: feedback.rejected as PlayerJumpRejection });
+  if (player.motion.type !== motion && events.has("playerMotionChanged"))
+    events.emit("playerMotionChanged", { from: motion, to: player.motion.type });
 }
 
 /**

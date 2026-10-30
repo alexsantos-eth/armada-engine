@@ -90,6 +90,8 @@ const createWindow = (search = "?seed=1337&hour=15", reducedMotion?: boolean) =>
       ? {}
       : { matchMedia: vi.fn((query: string) => ({ matches: reducedMotion && query.includes("reduce") })) }),
     devicePixelRatio: 2,
+    setTimeout: vi.fn(),
+    clearTimeout: vi.fn(),
     performance: { now: vi.fn(() => 0), memory: { usedJSHeapSize: 2 * 1024 * 1024 } },
     addEventListener: vi.fn((type: string, fn: Listener) =>
       listeners.set(type, (listeners.get(type) ?? new Set()).add(fn)),
@@ -108,6 +110,9 @@ const createWindow = (search = "?seed=1337&hour=15", reducedMotion?: boolean) =>
 };
 
 const createContainer = () => ({ appendChild: vi.fn() });
+
+/** Player sounds that only record what they are asked to play. */
+const createSounds = () => ({ play: vi.fn(), loop: vi.fn(), destroy: vi.fn() });
 
 /** A promise the test resolves by hand, to unmount while the game is still starting. */
 const deferred = <T>() => {
@@ -128,6 +133,7 @@ const mount = (search?: string, extra: Partial<GameOptions> & { reducedMotion?: 
     log,
     random: () => 0.5,
     chunkWorker: () => new FakeWorker(),
+    sounds: createSounds,
     ...more,
   });
   return { window, container, onClockChange, log, game };
@@ -381,8 +387,8 @@ describe("mountGame", () => {
       ["?seed=1337", true],
       ["?seed=1337&sound=off", false],
     ] as const) {
-      const audio = vi.fn(() => undefined);
-      const { window, game } = mount(search, { audio, keys: { jump: ["KeyK"] } });
+      const sounds = createSounds();
+      const { window, game } = mount(search, { sounds: () => sounds, keys: { jump: ["KeyK"] } });
       await game.ready;
       const { app, world } = started();
       window.press("Space");
@@ -390,9 +396,19 @@ describe("mountGame", () => {
       window.press("KeyK");
       onTick(app)({ elapsedMS: STEP_MS });
       expect(world.parts.get(PLAYER_PART).feedback.jumps).toBe(1);
-      expect(audio).toHaveBeenCalledTimes(heard ? 1 : 0);
+      expect(sounds.play).toHaveBeenCalledTimes(heard ? 1 : 0);
+      if (heard) expect(sounds.play).toHaveBeenCalledWith("jump");
       game.destroy();
+      expect(sounds.destroy).toHaveBeenCalledTimes(heard ? 1 : 0);
+      if (heard) expect(sounds.loop).toHaveBeenLastCalledWith(undefined);
+      else expect(sounds.loop).not.toHaveBeenCalled();
     }
+  });
+
+  it("plays the player's sounds with Strudel unless told otherwise", async () => {
+    const { game } = mount("?seed=1337", { sounds: undefined });
+    await game.ready;
+    game.destroy();
   });
 
   it("sets the player's effects from the URL, off for a player who prefers reduced motion", async () => {
