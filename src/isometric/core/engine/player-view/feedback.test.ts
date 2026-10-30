@@ -217,6 +217,18 @@ describe("getVoxelFaces", () => {
   });
 });
 
+describe("getDustVoxels origin", () => {
+  it("raises a puff from its origin instead of the feet, the same puff shifted", () => {
+    const at = getDustVoxels(JET_FIRE, createSeededRandom(5), undefined, { x: 0.1, y: -0.2 });
+    const feet = getDustVoxels(JET_FIRE, createSeededRandom(5));
+    at.forEach((voxel, index) => {
+      expect(voxel.x).toBeCloseTo(feet[index].x + 0.1);
+      expect(voxel.y).toBeCloseTo(feet[index].y - 0.2);
+      expect({ ...voxel, x: 0, y: 0 }).toEqual({ ...feet[index], x: 0, y: 0 });
+    });
+  });
+});
+
 describe("getJetNozzle", () => {
   it("puts the nozzles JET_NOZZLE_BACK columns behind the feet, the other way from where it faces", () => {
     const facings = 8;

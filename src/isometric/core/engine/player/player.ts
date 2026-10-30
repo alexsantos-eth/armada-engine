@@ -182,9 +182,9 @@ export const PLAYER_FLY_SPEED = 0.15;
 export const PLAYER_FLY_THRUST = 0.04;
 
 /**
- * Highest a flying player's feet go above the top under them (over water or the void, above the
- * last land it stood on), in blocks: higher up, its jetpack only holds it, or lowers it at
- * {@link PLAYER_FLY_SPEED}.
+ * Highest a flying player's feet go above the last land it stood on (where it took off), in blocks:
+ * a ceiling at one height in the world, whatever the terrain under it does. Higher up, its jetpack
+ * only holds it, or lowers it at {@link PLAYER_FLY_SPEED}.
  */
 export const PLAYER_FLY_MAX_HEIGHT = 10;
 
@@ -690,7 +690,7 @@ function isFlying(player: PlayerState): boolean {
  * One tick in the air: takes off if asked to on the ground, starts falling if the ground dropped
  * away under its feet, rises and falls under {@link PLAYER_GRAVITY}, and lands on the column under it.
  * `flying`, its jetpack speeds its feet up by {@link PLAYER_FLY_THRUST} instead, to at most
- * {@link PLAYER_FLY_SPEED}, and no higher than {@link PLAYER_FLY_MAX_HEIGHT} above the top under it.
+ * {@link PLAYER_FLY_SPEED}, and no higher than {@link PLAYER_FLY_MAX_HEIGHT} above where it took off.
  */
 function stepAir(
   player: PlayerState,
@@ -709,7 +709,7 @@ function stepAir(
     player.verticalSpeed > 0 && !player.jumpHeld
       ? Math.min(player.verticalSpeed, PLAYER_JUMP_CUT_SPEED)
       : player.verticalSpeed;
-  const roof = (top ?? player.lastSafe.elevation - player.lastSafe.inset) + PLAYER_FLY_MAX_HEIGHT;
+  const roof = player.lastSafe.elevation - player.lastSafe.inset + PLAYER_FLY_MAX_HEIGHT;
   const nextSpeed = flying
     ? Math.min(PLAYER_FLY_SPEED, speed + PLAYER_FLY_THRUST, Math.max(-PLAYER_FLY_SPEED, roof - feet))
     : Math.max(-PLAYER_MAX_FALL_SPEED, speed - PLAYER_GRAVITY);

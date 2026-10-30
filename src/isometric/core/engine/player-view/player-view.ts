@@ -436,7 +436,13 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         if (behind) scene.move({ view, depth: voxelDepth, layer: SCENE_LAYER.ground });
         else scene.placeAt(view, voxelDepth + DUST_FRONT_DEPTH);
       };
-      const raiseDust = (index: number, shape: DustShape, at: PlayerRenderPosition, kick?: GridPoint) => {
+      const raiseDust = (
+        index: number,
+        shape: DustShape,
+        at: PlayerRenderPosition,
+        kick?: GridPoint,
+        origin?: GridPoint,
+      ) => {
         let puff = puffs[index];
         if (!puff) {
           const views = Array.from({ length: shape.voxels }, () => {
@@ -448,7 +454,7 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         }
         raised += 1;
         puff.shape = shape;
-        puff.voxels = getDustVoxels(shape, createSeededRandom(raised), kick);
+        puff.voxels = getDustVoxels(shape, createSeededRandom(raised), kick, origin);
         puff.feet = { x: at.x, y: at.y };
         puff.screen = projectGridPoint(at, projection);
         puff.level = at.elevation - at.inset + at.height;
@@ -479,24 +485,29 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
       };
       // Real milliseconds flown since the last puff of flame and of smoke, and the puffs they raise next.
       const jet = { fire: Infinity, smoke: Infinity, firePuff: 0, smokePuff: 0 };
-      /** Puffs flame and smoke out of the jetpack's nozzles, on its back, while the player flies. */
+      /**
+       * Puffs flame and smoke out of the jetpack's nozzles, on its back, while the player flies: from
+       * the feet, so they are drawn behind the body or in front of it by where they are from the feet.
+       */
       const burnJet = (at: PlayerRenderPosition, elapsedMs: number) => {
         if (player.motion.type !== "flying") {
           jet.fire = jet.smoke = Infinity;
           return;
         }
         const back = getJetNozzle(facing, PLAYER_FACINGS.length);
-        const nozzle = { ...at, x: at.x + back.x, y: at.y + back.y, height: at.height + JET_NOZZLE_LIFT };
+        const length = Math.hypot(back.x, back.y);
+        const away = { x: back.x / length, y: back.y / length };
+        const nozzle = { ...at, height: at.height + JET_NOZZLE_LIFT };
         jet.fire += elapsedMs;
         jet.smoke += elapsedMs;
         if (jet.fire >= JET_FIRE_EVERY_MS) {
           jet.fire = 0;
-          raiseDust(2 + RUN_PUFFS + jet.firePuff, JET_FIRE, nozzle);
+          raiseDust(2 + RUN_PUFFS + jet.firePuff, JET_FIRE, nozzle, away, back);
           jet.firePuff = (jet.firePuff + 1) % JET_FIRE_PUFFS;
         }
         if (jet.smoke >= JET_SMOKE_EVERY_MS) {
           jet.smoke = 0;
-          raiseDust(2 + RUN_PUFFS + JET_FIRE_PUFFS + jet.smokePuff, JET_SMOKE, nozzle);
+          raiseDust(2 + RUN_PUFFS + JET_FIRE_PUFFS + jet.smokePuff, JET_SMOKE, nozzle, away, back);
           jet.smokePuff = (jet.smokePuff + 1) % JET_SMOKE_PUFFS;
         }
       };

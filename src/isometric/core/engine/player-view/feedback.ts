@@ -118,7 +118,7 @@ export const JET_FIRE: DustShape = {
 
 /**
  * The smoke a jetpack leaves behind it while the player flies: big grey to nearly black voxels
- * that spread out and rise slowly, lasting about a second.
+ * that spread out and rise slowly, lasting about a second, pushed back from its nozzles (`kick`).
  */
 export const JET_SMOKE: DustShape = {
   voxels: 3,
@@ -127,7 +127,7 @@ export const JET_SMOKE: DustShape = {
   size: [0.08, 0.14],
   lift: -0.15,
   rise: 0.3,
-  kick: 0,
+  kick: 0.15,
   colors: [0x9a9a9a, 0x3c3c3c],
   ms: 900,
   alpha: 0.7,
@@ -163,9 +163,15 @@ function mixColor([from, to]: readonly [number, number], share: number): number 
 /**
  * The voxels of a puff of dust of `shape`, scattered by `random`: spread round the feet at even
  * angles, each turned, sized, lifted and shaded on its own, so no two puffs look alike. `kick`, a
- * direction on the ground (unit or zero), shifts the puff that way and pushes it on as it drifts.
+ * direction on the ground (unit or zero), shifts the puff that way and pushes it on as it drifts;
+ * `origin`, in columns from the feet, is where it rises (a jetpack's nozzles), the feet by default.
  */
-export function getDustVoxels(shape: DustShape, random: RandomSource, kick: GridPoint = { x: 0, y: 0 }): DustVoxel[] {
+export function getDustVoxels(
+  shape: DustShape,
+  random: RandomSource,
+  kick: GridPoint = { x: 0, y: 0 },
+  origin: GridPoint = { x: 0, y: 0 },
+): DustVoxel[] {
   const between = ([low, high]: readonly [number, number]) => low + (high - low) * random();
   const turn = random();
   return Array.from({ length: shape.voxels }, (_, index) => {
@@ -175,8 +181,8 @@ export function getDustVoxels(shape: DustShape, random: RandomSource, kick: Grid
     const drift = between(shape.drift);
     const shade = mixColor(shape.colors, random());
     return {
-      x: across.x * radius + kick.x * shape.kick * 0.3,
-      y: across.y * radius + kick.y * shape.kick * 0.3,
+      x: origin.x + across.x * radius + kick.x * shape.kick * 0.3,
+      y: origin.y + across.y * radius + kick.y * shape.kick * 0.3,
       driftX: across.x * drift + kick.x * shape.kick,
       driftY: across.y * drift + kick.y * shape.kick,
       lift: shape.lift * random(),

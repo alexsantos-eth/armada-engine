@@ -1140,6 +1140,21 @@ describe("createPlayerView feedback", () => {
     expect((await burn({ effects: false })).all).toHaveLength(0);
   });
 
+  it("draws the jetpack's flame and smoke behind a player flying towards the camera", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, root, view, scene } = await sceneOf(world);
+    const player = world.parts.get(PLAYER_PART);
+    // Facing south, down the screen: its back, and the nozzles, are up the screen.
+    const flying = { x: 1, y: 1, elevation: 1, inset: 0, height: 2 };
+    Object.assign(player, flying, { previous: flying, verticalSpeed: 0, motion: { type: "flying" } });
+    for (let ms = 0; ms < 400; ms += 20) ticker.frame(20);
+    const order = root.children;
+    const jet = dustOf(root);
+    expect(jet.length).toBeGreaterThan(JET_FIRE.voxels + JET_SMOKE.voxels);
+    expect(jet.every((voxel) => order.indexOf(voxel) < order.indexOf(view))).toBe(true);
+    scene.destroy();
+  });
+
   it("kicks the dust nowhere in particular when it slides at no speed", async () => {
     const world = fieldWithPlayer();
     const { ticker, root, scene } = await sceneOf(world);

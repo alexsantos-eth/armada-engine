@@ -967,6 +967,28 @@ describe("flying", () => {
     }
   });
 
+  it("keeps its ceiling at one height in the world, over higher and lower ground", () => {
+    const hills = groundFrom(["0000", "0300", "0000"]);
+    const player = flier(hills, { x: 0, y: 1 });
+    stepPlayer(player, hills, 120);
+    const feet = () => player.elevation - player.inset + player.height;
+    expect(feet()).toBeCloseTo(PLAYER_FLY_MAX_HEIGHT);
+    // Along +x, over the hill and down the other side.
+    setPlayerWalk(player, { ...still, up: true, right: true });
+    const heights: number[] = [];
+    const tops = new Set<number>();
+    for (let tick = 0; tick < 25; tick += 1) {
+      stepPlayer(player, hills);
+      heights.push(feet());
+      tops.add(player.elevation);
+    }
+    expect(tops).toEqual(new Set([0, 3]));
+    expect(player.x).toBeGreaterThan(2);
+    // It crossed the hill and kept its feet where they were.
+    expect(new Set(heights.map((height) => height.toFixed(6)))).toEqual(new Set([PLAYER_FLY_MAX_HEIGHT.toFixed(6)]));
+    expect(player.motion.type).toBe("flying");
+  });
+
   it("over water, flies no higher than PLAYER_FLY_MAX_HEIGHT above the last land", () => {
     const lake = groundFrom(["1~~~~"]);
     const player = flier(lake, { x: 0, y: 0 });
