@@ -3,6 +3,7 @@ import { PLAYER_FACINGS } from "../player";
 import {
   getClimbPose,
   getClimbSheetLayout,
+  getJetpackSheetLayout,
   getIdlePose,
   getIdleSheetLayout,
   getJumpPose,
@@ -65,6 +66,10 @@ describe("player walk sheet", () => {
       cellHeight: 400,
       gap: 40,
     });
+  });
+
+  it("lays out the jetpack sheet like the walk sheet, one column", () => {
+    expect(getJetpackSheetLayout(SHEET)).toEqual({ columns: 1, rows: 8, cellWidth: 400, cellHeight: 400, gap: 40 });
   });
 
   it("steps through the poses of a climb in order, an equal share of it each", () => {

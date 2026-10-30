@@ -55,7 +55,14 @@ describe("bindPlayerSounds", () => {
     move("walking", "running");
     move("running", "jumping");
     expect(sounds.loop.mock.calls).toEqual([["walk"], ["run"], [undefined]]);
-    expect(PLAYER_MOTION_LOOPS).toEqual({ walking: "walk", running: "run" });
+    expect(PLAYER_MOTION_LOOPS).toEqual({ walking: "walk", running: "run", flying: "jetpack" });
+  });
+
+  it("roars with the jetpack while the player flies, and stops as it falls", () => {
+    const { sounds, move } = setup();
+    move("jumping", "flying");
+    move("flying", "falling");
+    expect(sounds.loop.mock.calls).toEqual([["jetpack"], [undefined]]);
   });
 
   it("skids and climbs once, as the player starts to", () => {

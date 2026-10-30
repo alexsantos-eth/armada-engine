@@ -1,6 +1,7 @@
 import airJump from "./sounds/air-jump.strudel?raw";
 import climb from "./sounds/climb.strudel?raw";
 import dance from "./sounds/dance.strudel?raw";
+import jetpack from "./sounds/jetpack.strudel?raw";
 import jump from "./sounds/jump.strudel?raw";
 import land from "./sounds/land.strudel?raw";
 import reject from "./sounds/reject.strudel?raw";
@@ -17,11 +18,11 @@ import walk from "./sounds/walk.strudel?raw";
 /**
  * The player's sounds, by name. `shots` play once, from the start of their first cycle, when
  * something happens (a take-off, a landing, a skid); `loops` play over and over while the player
- * is in a state (walking, running, dancing).
+ * is in a state (walking, running, dancing, flying).
  */
 export const PLAYER_SOUND_PATTERNS = {
   shots: { jump, airJump, land, reject, skid, climb },
-  loops: { walk, run, dance },
+  loops: { walk, run, dance, jetpack },
 } as const;
 
 /** A sound the player makes once. */

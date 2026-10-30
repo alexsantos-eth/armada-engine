@@ -34,19 +34,26 @@ export function getBodyScale(sinceTakeoff: number, sinceLanding: number, impact:
 }
 
 /**
- * A puff of dust `ms` real milliseconds after it rose: how far through its life it is (`0` → `1`)
- * and how opaque it is, or `undefined` once it is gone ({@link DUST_MS}).
+ * A puff of dust `ms` real milliseconds after it rose: how far through its life of `duration`
+ * ({@link DUST_MS} by default) it is (`0` → `1`) and how opaque it is, fading from `alpha`
+ * ({@link DUST_ALPHA}), or `undefined` once it is gone.
  */
-export function getDust(ms: number): { readonly progress: number; readonly alpha: number } | undefined {
-  const left = remaining(ms, DUST_MS);
+export function getDust(
+  ms: number,
+  duration: number = DUST_MS,
+  alpha: number = DUST_ALPHA,
+): { readonly progress: number; readonly alpha: number } | undefined {
+  const left = remaining(ms, duration);
   if (left === 0) return undefined;
-  return { progress: 1 - left, alpha: DUST_ALPHA * left };
+  return { progress: 1 - left, alpha: alpha * left };
 }
 
 /**
  * How the voxels of a kind of puff of dust are scattered: how many, how far from the feet they
  * start and drift outward (in columns), how big (in tiles), how high they start and rise (in
- * blocks), and how far a kick pushes them (`kick`, in columns: back from where the player runs).
+ * blocks; a negative `rise` sinks), how far a kick pushes them (`kick`, in columns: back from where
+ * the player runs), the two tints their shades are mixed from (`colors`), how long the puff lasts
+ * (`ms`, real milliseconds) and how opaque it starts (`alpha`).
  */
 export type DustShape = {
   readonly voxels: number;
@@ -56,7 +63,13 @@ export type DustShape = {
   readonly lift: number;
   readonly rise: number;
   readonly kick: number;
+  readonly colors: readonly [number, number];
+  readonly ms: number;
+  readonly alpha: number;
 };
+
+/** Shades of dust: white to a light grey. */
+const DUST_COLORS: readonly [number, number] = [0xffffff, 0xdbdbdb];
 
 /** The puff of a take-off or a landing: a ring of voxels that bursts out from the feet. */
 export const BURST_DUST: DustShape = {
@@ -67,6 +80,9 @@ export const BURST_DUST: DustShape = {
   lift: 0.08,
   rise: 0.14,
   kick: 0,
+  colors: DUST_COLORS,
+  ms: DUST_MS,
+  alpha: DUST_ALPHA,
 };
 
 /** The small puff a running or skidding player kicks up behind its feet. */
@@ -78,12 +94,49 @@ export const KICK_DUST: DustShape = {
   lift: 0.05,
   rise: 0.1,
   kick: 0.22,
+  colors: DUST_COLORS,
+  ms: DUST_MS,
+  alpha: DUST_ALPHA,
+};
+
+/**
+ * The flame of a jetpack, puffed out of its nozzles a few times a tick while the player flies:
+ * small yellow to orange voxels that shoot down from the nozzles and burn out fast.
+ */
+export const JET_FIRE: DustShape = {
+  voxels: 4,
+  radius: [0, 0.05],
+  drift: [0.02, 0.06],
+  size: [0.04, 0.065],
+  lift: 0.03,
+  rise: -0.4,
+  kick: 0,
+  colors: [0xffd23f, 0xff6a1a],
+  ms: 200,
+  alpha: 1,
+};
+
+/**
+ * The smoke a jetpack leaves behind it while the player flies: big grey to nearly black voxels
+ * that spread out and rise slowly, lasting about a second.
+ */
+export const JET_SMOKE: DustShape = {
+  voxels: 3,
+  radius: [0.02, 0.08],
+  drift: [0.08, 0.2],
+  size: [0.08, 0.14],
+  lift: -0.15,
+  rise: 0.3,
+  kick: 0,
+  colors: [0x9a9a9a, 0x3c3c3c],
+  ms: 900,
+  alpha: 0.7,
 };
 
 /**
  * A voxel of a puff of dust: where it starts, in columns from the feet (`x`, `y`) and in blocks
  * above them (`lift`), the columns it drifts (`driftX`, `driftY`) and blocks it rises (`rise`) over
- * the puff's life, its size in tiles and its `shade`, a light grey tint.
+ * the puff's life, its size in tiles and its `shade`, a tint between its shape's two `colors`.
  */
 export type DustVoxel = {
   readonly x: number;
@@ -96,8 +149,16 @@ export type DustVoxel = {
   readonly shade: number;
 };
 
-/** Darkest a voxel's shade gets, per channel, below white. */
-const DUST_SHADE_RANGE = 0x24;
+/** The colour `share` (`0` → `1`) of the way from `from` to `to`, channel by channel, rounded towards `from`. */
+function mixColor([from, to]: readonly [number, number], share: number): number {
+  let color = 0;
+  for (let shift = 16; shift >= 0; shift -= 8) {
+    const a = (from >> shift) & 0xff;
+    const b = (to >> shift) & 0xff;
+    color |= (a + Math.trunc((b - a) * share)) << shift;
+  }
+  return color;
+}
 
 /**
  * The voxels of a puff of dust of `shape`, scattered by `random`: spread round the feet at even
@@ -112,7 +173,7 @@ export function getDustVoxels(shape: DustShape, random: RandomSource, kick: Grid
     const across = { x: Math.cos(angle), y: Math.sin(angle) };
     const radius = between(shape.radius);
     const drift = between(shape.drift);
-    const grey = 0xff - Math.floor(DUST_SHADE_RANGE * random());
+    const shade = mixColor(shape.colors, random());
     return {
       x: across.x * radius + kick.x * shape.kick * 0.3,
       y: across.y * radius + kick.y * shape.kick * 0.3,
@@ -121,9 +182,27 @@ export function getDustVoxels(shape: DustShape, random: RandomSource, kick: Grid
       lift: shape.lift * random(),
       rise: shape.rise * (0.5 + random()),
       size: between(shape.size),
-      shade: grey * 0x010101,
+      shade,
     };
   });
+}
+
+/** Columns behind the feet a jetpack's nozzles are, on the player's back. */
+export const JET_NOZZLE_BACK = 0.12;
+
+/** Blocks above the feet a jetpack's nozzles are. */
+export const JET_NOZZLE_LIFT = 0.1;
+
+/**
+ * Where a jetpack's nozzles are, in columns from the feet, on the back of a player facing `facing`
+ * of `facings` screen directions (counter-clockwise from east, up on screen being `+x +y`):
+ * {@link JET_NOZZLE_BACK} columns the other way.
+ */
+export function getJetNozzle(facing: number, facings: number): GridPoint {
+  const angle = (facing / facings) * 2 * Math.PI;
+  const across = Math.cos(angle);
+  const up = Math.sin(angle);
+  return { x: (-(across + up) * JET_NOZZLE_BACK) / Math.SQRT2, y: (-(up - across) * JET_NOZZLE_BACK) / Math.SQRT2 };
 }
 
 /** Where a voxel of dust is and how big, as {@link getDustVoxelAt} writes it. */

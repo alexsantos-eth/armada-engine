@@ -63,6 +63,10 @@ import {
   PLAYER_COYOTE_TICKS,
   PLAYER_AIR_JUMPS,
   PLAYER_JUMP_BUFFER_TICKS,
+  PLAYER_FLY_MAX_HEIGHT,
+  PLAYER_FLY_SPEED,
+  PLAYER_FLY_THRUST,
+  setPlayerJetpack,
   cancelPlayerJump,
   getWalkDirection,
   PLAYER_FACINGS,
@@ -204,6 +208,7 @@ describe("createPlayer", () => {
       jumpHeld: false,
       running: false,
       airJumps: 1,
+      jetpack: false,
       velocity: { x: 0, y: 0 },
       climb: undefined,
       previous: { x: 1.2, y: 0, elevation: 3, inset: 0, height: 0 },
@@ -858,6 +863,142 @@ describe("variable jump", () => {
   });
 });
 
+describe("flying", () => {
+  const flat = groundFrom(["000"]);
+
+  /** A player on `ground` at `at` wearing a jetpack, holding the jump key since it pressed it. */
+  const flier = (ground: PlayerGround, at = { x: 1, y: 0 }) => {
+    const player = createPlayer(ground, at);
+    setPlayerJetpack(player, true);
+    jumpPlayer(player);
+    return player;
+  };
+
+  /** Steps `player` `ticks` ticks, returning its motion state after each. */
+  const motions = (player: PlayerState, ground: PlayerGround, ticks: number) =>
+    Array.from({ length: ticks }, () => {
+      stepPlayer(player, ground);
+      return player.motion.type;
+    });
+
+  it("wears no jetpack until the app gives it one", () => {
+    const player = createPlayer(flat, { x: 1, y: 0 });
+    expect(player.jetpack).toBe(false);
+    setPlayerJetpack(player, true);
+    expect(player.jetpack).toBe(true);
+  });
+
+  it("only jumps when the jump key is tapped or there is no jetpack", () => {
+    const tapped = flier(flat);
+    setPlayerJumpHeld(tapped, false);
+    const held = createPlayer(flat, { x: 1, y: 0 });
+    jumpPlayer(held);
+    for (const player of [tapped, held]) {
+      expect(motions(player, flat, 30)).not.toContain("flying");
+      expect(player.motion.type).toBe("idle");
+    }
+  });
+
+  it("jumps, then flies from the apex while the key is held, up to PLAYER_FLY_MAX_HEIGHT", () => {
+    const player = flier(flat);
+    const states = motions(player, flat, 4);
+    expect(states).toEqual(["jumping", "jumping", "jumping", "jumping"]);
+    stepPlayer(player, flat);
+    expect(player.motion.type).toBe("flying");
+    expect(getPlayerJumpPhase(player)).toBe("apex");
+    const heights: number[] = [];
+    for (let tick = 0; tick < 120; tick += 1) {
+      stepPlayer(player, flat);
+      heights.push(player.height);
+    }
+    expect(Math.max(...heights.slice(1).map((height, tick) => height - heights[tick]))).toBeCloseTo(PLAYER_FLY_SPEED);
+    expect(player.height).toBeCloseTo(PLAYER_FLY_MAX_HEIGHT);
+    expect(player.verticalSpeed).toBe(0);
+    expect(player.motion.type).toBe("flying");
+  });
+
+  it("speeds up by PLAYER_FLY_THRUST a tick from where it starts flying", () => {
+    const player = flier(flat);
+    stepPlayer(player, flat, 4);
+    const before = player.verticalSpeed as number;
+    stepPlayer(player, flat);
+    expect(player.verticalSpeed).toBeCloseTo(before + PLAYER_FLY_THRUST);
+  });
+
+  it("falls when the key is let go, and lands", () => {
+    const player = flier(flat);
+    stepPlayer(player, flat, 30);
+    setPlayerJumpHeld(player, false);
+    const states = motions(player, flat, 60);
+    // Still rising as it lets go, it coasts up and falls.
+    expect(states[0]).toBe("jumping");
+    expect(states).toContain("falling");
+    expect(states).not.toContain("flying");
+    expect(states.at(-1)).toBe("idle");
+    expect(player.height).toBe(0);
+    expect(player.feedback.landings).toBe(1);
+  });
+
+  it("flies on again holding the key after a fall, from where it is", () => {
+    const player = flier(flat);
+    stepPlayer(player, flat, 30);
+    setPlayerJumpHeld(player, false);
+    stepPlayer(player, flat, 3);
+    setPlayerJumpHeld(player, true);
+    stepPlayer(player, flat);
+    expect(player.motion.type).toBe("flying");
+  });
+
+  it("flies again on a new press in the air, every time, without a double jump", () => {
+    const player = flier(flat);
+    for (let round = 0; round < 2; round += 1) {
+      stepPlayer(player, flat, 30);
+      // Let go, it coasts up and starts to fall; pressed again, it flies on.
+      setPlayerJumpHeld(player, false);
+      stepPlayer(player, flat, 4);
+      expect(player.motion.type).toBe("falling");
+      jumpPlayer(player);
+      const states = motions(player, flat, 3);
+      expect(states).not.toContain("jumping");
+      expect(states.at(-1)).toBe("flying");
+      expect(player.feedback.jumps).toBe(1);
+      expect(player.feedback.rejections).toBe(0);
+      expect(player.wantsJump).toBe(false);
+    }
+  });
+
+  it("over water, flies no higher than PLAYER_FLY_MAX_HEIGHT above the last land", () => {
+    const lake = groundFrom(["1~~~~"]);
+    const player = flier(lake, { x: 0, y: 0 });
+    setPlayerWalk(player, { ...still, right: true, up: true });
+    stepPlayer(player, lake, 200);
+    expect(player.x).toBeGreaterThan(1);
+    expect(player.motion.type).toBe("flying");
+    expect(player.elevation - player.inset + player.height).toBeCloseTo(1 + PLAYER_FLY_MAX_HEIGHT);
+  });
+
+  it("comes down at PLAYER_FLY_SPEED to PLAYER_FLY_MAX_HEIGHT over a lower top", () => {
+    const player = flier(flat);
+    stepPlayer(player, flat, 5);
+    player.height = PLAYER_FLY_MAX_HEIGHT + 2;
+    stepPlayer(player, flat);
+    expect(player.verticalSpeed).toBeCloseTo(-PLAYER_FLY_SPEED);
+    stepPlayer(player, flat, 40);
+    expect(player.height).toBeCloseTo(PLAYER_FLY_MAX_HEIGHT);
+  });
+
+  it("keeps flying under a ceiling it bumps into", () => {
+    const roof: PlayerGround = {
+      ...flat,
+      occupancy: { at: (x, y) => (x === 1 && y === 0 ? [{ walkable: false, elevation: 2, height: 1 }] : []) },
+    };
+    const player = flier(roof);
+    const states = motions(player, roof, 40);
+    expect(states.slice(4)).not.toContain("falling");
+    expect(player.height + PLAYER_BODY_HEIGHT).toBeCloseTo(2);
+  });
+});
+
 describe("jump forgiveness", () => {
   const ledge = groundFrom(["00.000", "00.000", "00.000"]);
   const toward = { up: true, right: true };
@@ -1161,6 +1302,7 @@ describe("getPlayerRenderPosition", () => {
     jumpHeld: false,
     running: false,
     airJumps: 1,
+    jetpack: false,
     velocity: { x: 0, y: 0 },
     climb: undefined,
     previous: { x: 1, y: 4, elevation: 0 },

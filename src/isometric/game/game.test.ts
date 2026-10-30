@@ -382,6 +382,18 @@ describe("mountGame", () => {
     expect(camera.zoomAt).toHaveBeenCalledWith(KEYBOARD_ZOOM_STEP, { x: 400, y: 300 });
   });
 
+  it("gives the player a jetpack with ?jetpack, and none without it", async () => {
+    for (const [search, jetpack] of [
+      ["?seed=7&jetpack", true],
+      ["?seed=7", false],
+    ] as const) {
+      const { game } = mount(search);
+      await game.ready;
+      expect(started().world.parts.get(PLAYER_PART).jetpack).toBe(jetpack);
+      game.destroy();
+    }
+  });
+
   it("jumps with the keys of its options and plays the player's sounds, unless ?sound=off", async () => {
     for (const [search, heard] of [
       ["?seed=1337", true],

@@ -8,7 +8,7 @@ describe("resolveLaunchOptions", () => {
 
     expect(
       resolveLaunchOptions(
-        "?seed=1337&hour=15&timeScale=0&modules=-shadows&perf&cull=off&effects=off&sound=off",
+        "?seed=1337&hour=15&timeScale=0&modules=-shadows&perf&cull=off&effects=off&sound=off&jetpack",
         random,
       ),
     ).toEqual({
@@ -20,6 +20,7 @@ describe("resolveLaunchOptions", () => {
       cull: false,
       effects: false,
       sound: false,
+      jetpack: true,
     });
     expect(random).not.toHaveBeenCalled();
   });
@@ -34,6 +35,7 @@ describe("resolveLaunchOptions", () => {
       cull: true,
       effects: true,
       sound: true,
+      jetpack: false,
     });
   });
 

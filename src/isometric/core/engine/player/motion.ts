@@ -9,6 +9,7 @@ export type PlayerMotionEvent =
   | { readonly type: "STOP" }
   | { readonly type: "JUMP" }
   | { readonly type: "FALL" }
+  | { readonly type: "FLY" }
   | { readonly type: "LAND_IDLE" }
   | { readonly type: "LAND_WALKING" }
   | { readonly type: "LAND_RUNNING" }
@@ -29,9 +30,10 @@ const GROUND = {
   CLIMB: "climbing",
 } as const;
 
-/** Transitions out of the air, jumping or falling. */
+/** Transitions out of the air: jumping, falling or flying. */
 const AIR = {
   FALL: "falling",
+  FLY: "flying",
   LAND_IDLE: "idle",
   LAND_WALKING: "walking",
   LAND_RUNNING: "running",
@@ -54,6 +56,7 @@ export const playerMotionMachine = setup({
     skidding: { on: GROUND },
     jumping: { on: { JUMP: "jumping", ...AIR } },
     falling: { on: AIR },
+    flying: { on: { JUMP: "jumping", ...AIR } },
     climbing: {
       on: { CLIMB_TICK: "climbing", CLIMB_DONE_IDLE: "idle", CLIMB_DONE_WALKING: "walking" },
     },

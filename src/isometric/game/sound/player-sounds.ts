@@ -13,6 +13,7 @@ export const LAND_SOUND_MIN_IMPACT = 0.1;
 export const PLAYER_MOTION_LOOPS: Readonly<Partial<Record<PlayerMotionType, PlayerSoundLoop>>> = {
   walking: "walk",
   running: "run",
+  flying: "jetpack",
 };
 
 /** The sound the player makes once as it enters each motion state that has one. */

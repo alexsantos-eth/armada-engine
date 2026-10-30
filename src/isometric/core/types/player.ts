@@ -59,6 +59,11 @@ export type PlayerState = {
   running: boolean;
   /** Jumps it can still take in the air before it lands (`PLAYER_AIR_JUMPS` on the ground). Not saved. */
   airJumps: number;
+  /**
+   * Whether it wears a jetpack: holding the jump key in the air, past a jump's apex, it flies
+   * (`flying`). Equipment the app sets (`setPlayerJetpack()`); not saved yet.
+   */
+  jetpack: boolean;
   /** Horizontal velocity in world columns per tick. Derived from input; not saved. */
   velocity: GridPoint;
   /**
@@ -124,6 +129,7 @@ export type PlayerMotion =
   | { readonly type: "skidding" }
   | { readonly type: "jumping" }
   | { readonly type: "falling" }
+  | { readonly type: "flying" }
   | { readonly type: "climbing" };
 
 /** State keys recognized by the player's XState motion machine. */
@@ -200,6 +206,18 @@ export type PlayerWalkSheet = {
   readonly idle?: PlayerIdleSheet;
   /** Climbing onto a higher top. Without it, it climbs in its standing pose. */
   readonly climb?: PlayerClimbSheet;
+  /** The jetpack it wears on its back, drawn over the body. Without it, no jetpack shows. */
+  readonly jetpack?: PlayerJetpackSheet;
+};
+
+/**
+ * The jetpack on the player's back, drawn from another SVG sheet laid out like its walk sheet (the
+ * same canvas, cell and gap; one row per facing) with one column: only the jetpack, already cut
+ * where the standing body hides it, so it is drawn over every pose.
+ */
+export type PlayerJetpackSheet = {
+  /** SVG of the sheet (e.g. `/assets/player/jetpack.svg`). */
+  readonly source: string;
 };
 
 /**

@@ -37,8 +37,13 @@ import {
   getDustColumn,
   getDustVoxelAt,
   getDustVoxels,
+  getJetNozzle,
   getVoxelFaces,
+  JET_FIRE,
+  JET_NOZZLE_LIFT,
+  JET_SMOKE,
   KICK_DUST,
+  type DustShape,
   type DustVoxel,
 } from "./feedback";
 import {
@@ -46,6 +51,7 @@ import {
   getClimbSheetLayout,
   getIdlePose,
   getIdleSheetLayout,
+  getJetpackSheetLayout,
   getJumpPose,
   getJumpSheetLayout,
   getWalkPose,
@@ -78,6 +84,18 @@ const SKID_DUST_EVERY = 0.2;
 
 /** Puffs of running or skidding dust drawn at most at once (reused in turn). */
 const RUN_PUFFS = 6;
+
+/** Real milliseconds between two puffs of a jetpack's flame while the player flies. */
+export const JET_FIRE_EVERY_MS = 40;
+
+/** Real milliseconds between two puffs of a jetpack's smoke while the player flies. */
+export const JET_SMOKE_EVERY_MS = 90;
+
+/** Puffs of a jetpack's flame drawn at most at once (reused in turn): more than live at once. */
+const JET_FIRE_PUFFS = Math.ceil(JET_FIRE.ms / JET_FIRE_EVERY_MS) + 1;
+
+/** Puffs of a jetpack's smoke drawn at most at once (reused in turn): more than live at once. */
+const JET_SMOKE_PUFFS = Math.ceil(JET_SMOKE.ms / JET_SMOKE_EVERY_MS) + 1;
 
 /**
  * How fast its feet pedal while it skids, as columns of walk cycle per column slid: let go, they run
@@ -180,6 +198,11 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         walk && jumpSheet && jumpTexture
           ? { sheet: jumpSheet, frames: getSheetFrames(jumpTexture, getJumpSheetLayout(walk.sheet, jumpSheet)) }
           : undefined;
+      // The jetpack on its back, from a fifth sheet laid out like the first, one cell per facing.
+      const jetpackSheet = walk?.sheet.jetpack;
+      const jetpackTexture = jetpackSheet && (await assets.loadSvg(jetpackSheet.source, { scale }));
+      const jetpackFrames =
+        walk && jetpackTexture ? getSheetFrames(jetpackTexture, getJetpackSheetLayout(walk.sheet)) : undefined;
       let facing = PLAYER_START_FACING;
       const texture =
         walk?.frames[facing][0] ?? (player && (await assets.loadSvg(appearance.textureSource, { scale })));
@@ -194,9 +217,11 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
       let rise: { from: number; to: number; ms: number } | undefined;
       const ground = (at: PlayerRenderPosition, elapsedMs: number) => {
         const top = at.elevation - at.inset;
-        if (player.motion.type === "climbing") aim = top + at.height;
+        // Climbing or flying, it follows the feet up as they go; a jump does not bob it.
+        const following = player.motion.type === "climbing" || player.motion.type === "flying";
+        if (following) aim = top + at.height;
         else aim = at.height > 0 ? Math.min(aim, top + at.height) : top;
-        if (player.motion.type === "climbing" || aim <= level) {
+        if (following || aim <= level) {
           level = aim;
           rise = undefined;
         } else {
@@ -226,6 +251,16 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
       view.scale.set(view.scale.x * scale, view.scale.y * scale);
       // Its scale before any squash or stretch.
       const base = { x: view.scale.x, y: view.scale.y };
+      // Drawn over the body, scaled and leant with it: the sheet already leaves out what the body hides.
+      const pack = jetpackFrames && new Sprite(jetpackFrames[facing][0]);
+      if (pack) {
+        pack.position.set(
+          (-view.anchor.x * view.width) / Math.abs(view.scale.x),
+          (-view.anchor.y * view.height) / Math.abs(view.scale.y),
+        );
+        pack.visible = player.jetpack;
+        view.addChild(pack);
+      }
       const terrainShadowOverlay = new Container();
       terrainShadowOverlay.alpha = 0;
       terrainShadowOverlay.visible = false;
@@ -273,11 +308,16 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         const climbing = getPlayerClimbProgress(player, alpha);
         const walking =
           player.motion.type === "walking" || player.motion.type === "running" || player.motion.type === "skidding";
-        const flying = player.motion.type === "jumping" || player.motion.type === "falling";
+        const flying =
+          player.motion.type === "jumping" || player.motion.type === "falling" || player.motion.type === "flying";
         const jumpPose = jump && getJumpPose(getPlayerJumpPhase(player), jump.sheet);
         stood = climbing !== undefined || walking || flying || jumpPose !== undefined ? 0 : stood + elapsedMs;
         // Turned the way it climbs or walks, also without a walk sheet: its lean follows its facing.
         facing = getPlayerFacing(player.climb?.direction ?? player.walk) ?? facing;
+        if (pack) {
+          if (pack.visible !== player.jetpack) pack.visible = player.jetpack;
+          showFrame(pack, jetpackFrames[facing][0]);
+        }
         if (!walk) return;
         if (climbing !== undefined) {
           walked = 0;
@@ -373,6 +413,7 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
       // player, the blocks and what stands on them hide the dust behind them.
       type Puff = {
         readonly views: Graphics[];
+        shape: DustShape;
         voxels: readonly DustVoxel[];
         // The feet it rose from, on the ground and on the screen, and blocks above `0` they were.
         feet: GridPoint;
@@ -395,8 +436,7 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         if (behind) scene.move({ view, depth: voxelDepth, layer: SCENE_LAYER.ground });
         else scene.placeAt(view, voxelDepth + DUST_FRONT_DEPTH);
       };
-      const raiseDust = (index: number, at: PlayerRenderPosition, kick?: GridPoint) => {
-        const shape = index < 2 ? BURST_DUST : KICK_DUST;
+      const raiseDust = (index: number, shape: DustShape, at: PlayerRenderPosition, kick?: GridPoint) => {
         let puff = puffs[index];
         if (!puff) {
           const views = Array.from({ length: shape.voxels }, () => {
@@ -404,9 +444,10 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
             dust.cullable = false;
             return dust;
           });
-          puff = puffs[index] = { views, voxels: [], feet: at, screen: at, level: 0, ms: 0 };
+          puff = puffs[index] = { views, shape, voxels: [], feet: at, screen: at, level: 0, ms: 0 };
         }
         raised += 1;
+        puff.shape = shape;
         puff.voxels = getDustVoxels(shape, createSeededRandom(raised), kick);
         puff.feet = { x: at.x, y: at.y };
         puff.screen = projectGridPoint(at, projection);
@@ -433,8 +474,31 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         // Kicked back, away from where it slides or runs (nowhere, at no speed).
         const { velocity } = player;
         const speed = Math.hypot(velocity.x, velocity.y) || 1;
-        raiseDust(2 + runPuff, at, { x: -velocity.x / speed, y: -velocity.y / speed });
+        raiseDust(2 + runPuff, KICK_DUST, at, { x: -velocity.x / speed, y: -velocity.y / speed });
         runPuff = (runPuff + 1) % RUN_PUFFS;
+      };
+      // Real milliseconds flown since the last puff of flame and of smoke, and the puffs they raise next.
+      const jet = { fire: Infinity, smoke: Infinity, firePuff: 0, smokePuff: 0 };
+      /** Puffs flame and smoke out of the jetpack's nozzles, on its back, while the player flies. */
+      const burnJet = (at: PlayerRenderPosition, elapsedMs: number) => {
+        if (player.motion.type !== "flying") {
+          jet.fire = jet.smoke = Infinity;
+          return;
+        }
+        const back = getJetNozzle(facing, PLAYER_FACINGS.length);
+        const nozzle = { ...at, x: at.x + back.x, y: at.y + back.y, height: at.height + JET_NOZZLE_LIFT };
+        jet.fire += elapsedMs;
+        jet.smoke += elapsedMs;
+        if (jet.fire >= JET_FIRE_EVERY_MS) {
+          jet.fire = 0;
+          raiseDust(2 + RUN_PUFFS + jet.firePuff, JET_FIRE, nozzle);
+          jet.firePuff = (jet.firePuff + 1) % JET_FIRE_PUFFS;
+        }
+        if (jet.smoke >= JET_SMOKE_EVERY_MS) {
+          jet.smoke = 0;
+          raiseDust(2 + RUN_PUFFS + JET_FIRE_PUFFS + jet.smokePuff, JET_SMOKE, nozzle);
+          jet.smokePuff = (jet.smokePuff + 1) % JET_SMOKE_PUFFS;
+        }
       };
       // Every frame, only each live voxel's position, size and opacity change; it shows or hides only
       // as its puff rises or ends.
@@ -442,7 +506,7 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         for (const puff of puffs) {
           if (!puff || puff.ms === Infinity) continue;
           puff.ms += elapsedMs;
-          const look = getDust(puff.ms);
+          const look = getDust(puff.ms, puff.shape.ms, puff.shape.alpha);
           if (!look) puff.ms = Infinity;
           for (let index = 0; index < puff.views.length; index += 1) {
             const view = puff.views[index];
@@ -477,13 +541,14 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
           sinceLanding = 0;
           impact = feedback.impact;
           // On the ground it landed on: drawn between ticks, the feet may still be a little above it.
-          if (impact >= DUST_MIN_IMPACT) raiseDust(1, { ...at, height: 0 });
+          if (impact >= DUST_MIN_IMPACT) raiseDust(1, BURST_DUST, { ...at, height: 0 });
         }
         if (feedback.jumps !== seen.jumps) {
           sinceTakeoff = 0;
-          raiseDust(0, at);
+          raiseDust(0, BURST_DUST, at);
         }
         kickDust(at);
+        burnJet(at, elapsedMs);
         Object.assign(seen, feedback);
         const { velocity } = player;
         if (tick !== seenTick) {

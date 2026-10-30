@@ -119,4 +119,18 @@ describe("PLAYER_APPEARANCE", () => {
     expect(Math.max(width, height)).toBeLessThan(4096);
     expect(svg.toLowerCase()).not.toContain("#1e2a10");
   });
+
+  it("wears a jetpack drawn from a sheet in the walk sheet's window, one column per facing", () => {
+    const svg = ASSET_SOURCES[`/public${PLAYER_WALK.jetpack?.source}`] ?? "";
+    const { cell, gap } = PLAYER_WALK;
+
+    expect(svg).toContain(`data-facings="${PLAYER_FACINGS.join(" ")}"`);
+    expect(svg).toContain(`data-cell="${cell.x} ${cell.y} ${cell.width} ${cell.height}"`);
+    expect(svg).toContain(`data-gap="${gap}"`);
+    expect(svg).toContain(`data-frames="1"`);
+    const height = PLAYER_FACINGS.length * (cell.height + gap) - gap;
+    expect(svg).toContain(`viewBox="0 0 ${cell.width} ${height}"`);
+    expect(height).toBeLessThan(4096);
+    expect(svg.toLowerCase()).not.toContain("#1e2a10");
+  });
 });

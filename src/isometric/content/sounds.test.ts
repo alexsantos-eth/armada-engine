@@ -7,7 +7,7 @@ const patterns = Object.entries({ ...PLAYER_SOUND_PATTERNS.shots, ...PLAYER_SOUN
 describe("PLAYER_SOUND_PATTERNS", () => {
   it("names the player's shots and loops", () => {
     expect(Object.keys(PLAYER_SOUND_PATTERNS.shots)).toEqual(["jump", "airJump", "land", "reject", "skid", "climb"]);
-    expect(Object.keys(PLAYER_SOUND_PATTERNS.loops)).toEqual(["walk", "run", "dance"]);
+    expect(Object.keys(PLAYER_SOUND_PATTERNS.loops)).toEqual(["walk", "run", "dance", "jetpack"]);
   });
 
   it.each(patterns)("loads %s from its .strudel file, explained and with an output", (_, code) => {

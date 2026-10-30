@@ -32,6 +32,8 @@ export type LaunchOptions = {
   readonly effects: boolean;
   /** The player's sounds: `?sound=off` mutes them. */
   readonly sound: boolean;
+  /** Whether the player starts wearing a jetpack (until it is an item to pick up): `?jetpack`. */
+  readonly jetpack: boolean;
 };
 
 /**
@@ -50,6 +52,7 @@ export function resolveLaunchOptions(search: string, random: RandomSource, reduc
     cull: resolveSwitch(search, "cull", true),
     effects: resolveSwitch(search, "effects", !reducedMotion),
     sound: resolveSwitch(search, "sound", true),
+    jetpack: resolveSwitch(search, "jetpack", false),
   };
 }
 

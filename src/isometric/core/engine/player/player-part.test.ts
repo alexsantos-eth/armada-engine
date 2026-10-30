@@ -63,6 +63,7 @@ describe("createPlayerPart", () => {
       jumpHeld: false,
       running: false,
       airJumps: 1,
+      jetpack: false,
       velocity: { x: 0, y: 0 },
       climb: undefined,
       previous: { x: 0.8, y: 0, elevation: 2, inset: 0, height: 0 },

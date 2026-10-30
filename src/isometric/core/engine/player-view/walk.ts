@@ -26,6 +26,11 @@ export function getClimbSheetLayout(sheet: PlayerWalkSheet, climb: PlayerClimbSh
   return { ...getWalkSheetLayout(sheet), columns: climb.frames };
 }
 
+/** How the jetpack sheet of `sheet` is laid out: like `sheet`, one column, the jetpack on its own. */
+export function getJetpackSheetLayout(sheet: PlayerWalkSheet): SheetLayout {
+  return { ...getWalkSheetLayout(sheet), columns: 1 };
+}
+
 /** How `jump`, the jump sheet of `sheet`, is laid out: like `sheet`, one column per pose of a jump. */
 export function getJumpSheetLayout(sheet: PlayerWalkSheet, jump: PlayerJumpSheet): SheetLayout {
   return { ...getWalkSheetLayout(sheet), columns: Math.max(...Object.values(jump.poses)) + 1 };

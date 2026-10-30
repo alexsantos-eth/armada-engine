@@ -72,3 +72,21 @@ def tail(sway=0.0):
         size = 18 - 4 * k
         parts.append((x, sway * k * k, z - size, size, size, size, DARK if i == len(beads) - 1 else FUR, size - 1))
     return parts
+
+
+ROCKET = "#c8412f"      # the jetpack's tanks
+METAL = "#a9b0b8"       # its caps and nozzles
+STRAP = "#4a4f57"       # the plate on the back that holds the tanks
+
+
+def jetpack():
+    """A jetpack on the back (−x): a plate between the shoulder blades, two rocket tanks side by
+    side with metal caps, and a nozzle under each (where the engine puffs its flame and smoke)."""
+    parts = [(-62, 0, 72, 8, 40, 32, STRAP, 7)]
+    for side in (-1, 1):
+        parts += [
+            (-82, side * 32, 64, 18, 18, 44, ROCKET, 16),
+            (-82, side * 32, 150, 12, 12, 8, METAL, 7),
+            (-82, side * 32, 44, 12, 12, 11, METAL, 8),
+        ]
+    return parts

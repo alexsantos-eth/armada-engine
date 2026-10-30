@@ -172,6 +172,22 @@ export function getClimbAdvance(progress: number): number {
   return harmonic((progress - PLAYER_CLIMB_RISE_SHARE) / (1 - PLAYER_CLIMB_RISE_SHARE));
 }
 
+/**
+ * Blocks per tick a flying player's feet rise at most, holding the jump key with a jetpack: about
+ * three blocks a second.
+ */
+export const PLAYER_FLY_SPEED = 0.15;
+
+/** Blocks per tick its jetpack speeds a flying player's feet up by each tick, gravity included. */
+export const PLAYER_FLY_THRUST = 0.04;
+
+/**
+ * Highest a flying player's feet go above the top under them (over water or the void, above the
+ * last land it stood on), in blocks: higher up, its jetpack only holds it, or lowers it at
+ * {@link PLAYER_FLY_SPEED}.
+ */
+export const PLAYER_FLY_MAX_HEIGHT = 10;
+
 /** Ticks the player shows its landing pose after it lands (the physics does not wait for it). */
 export const PLAYER_LANDING_TICKS = 3;
 
@@ -428,6 +444,7 @@ export function createPlayer(ground: PlayerGround, at: GridPoint): PlayerState {
     jumpHeld: false,
     running: false,
     airJumps: PLAYER_AIR_JUMPS,
+    jetpack: false,
     velocity: { x: 0, y: 0 },
     climb: undefined,
     previous: { ...position, inset: 0, height: 0 },
@@ -455,13 +472,14 @@ function createPlayerFeedback(): PlayerFeedback {
  * Part of a jump the player is in (see `PlayerJumpPhase`): `"takeoff"` for the first
  * {@link PLAYER_TAKEOFF_TICKS} ticks of a jump, then `"rise"`, `"apex"` while its vertical speed is
  * at most {@link PLAYER_APEX_SPEED} (only in a jump: walking off an edge it falls at once) and
- * `"fall"`; back on the ground, `"landing"` for {@link PLAYER_LANDING_TICKS} ticks and then
+ * `"fall"`; flying, `"apex"`; back on the ground, `"landing"` for {@link PLAYER_LANDING_TICKS} ticks and then
  * `"ground"`. Climbing is `"ground"`: it has its own pose.
  */
 export function getPlayerJumpPhase(player: PlayerState): PlayerJumpPhase {
   const { verticalSpeed, feedback, climb } = player;
   if (climb !== undefined) return "ground";
   if (verticalSpeed === undefined) return feedback.landingTicks > 0 ? "landing" : "ground";
+  if (player.motion.type === "flying") return "apex";
   if (feedback.leap && verticalSpeed > 0 && feedback.airTicks <= PLAYER_TAKEOFF_TICKS) return "takeoff";
   if (feedback.leap && Math.abs(verticalSpeed) <= PLAYER_APEX_SPEED + LANDING) return "apex";
   return verticalSpeed > 0 ? "rise" : "fall";
@@ -534,6 +552,14 @@ export function setPlayerWalk(player: PlayerState, directions: ScreenDirections)
   player.walk = getWalkDirection(directions);
 }
 
+/**
+ * Whether the player wears a jetpack (equipment): with it, holding the jump key in the air past a
+ * jump's apex, it flies (`flying`).
+ */
+export function setPlayerJetpack(player: PlayerState, jetpack: boolean): void {
+  player.jetpack = jetpack;
+}
+
 /** Whether the player runs (the run key is held): it then goes up to {@link PLAYER_RUN_STEP} per tick. */
 export function setPlayerRun(player: PlayerState, running: boolean): void {
   player.running = running;
@@ -589,16 +615,25 @@ export function cancelPlayerJump(player: PlayerState): void {
   player.jumpHeld = false;
 }
 
-/** Converts the physical result of this tick to one event for the XState motion machine. */
-function getMotionEvent(player: PlayerState): PlayerMotionEvent {
+/**
+ * Converts the physical result of this tick, in which it flew (`flying`) or not, to one event for
+ * the XState motion machine.
+ */
+function getMotionEvent(player: PlayerState, flying: boolean): PlayerMotionEvent {
   const moved = player.x !== player.previous.x || player.y !== player.previous.y;
   if (player.climb) return { type: player.motion.type === "climbing" ? "CLIMB_TICK" : "CLIMB" };
   if (player.motion.type === "climbing") return { type: moved ? "CLIMB_DONE_WALKING" : "CLIMB_DONE_IDLE" };
-  if (player.verticalSpeed !== undefined) return { type: player.verticalSpeed > 0 ? "JUMP" : "FALL" };
+  if (player.verticalSpeed !== undefined) {
+    if (flying) return { type: "FLY" };
+    return { type: player.verticalSpeed > 0 ? "JUMP" : "FALL" };
+  }
   const gait = getGait(player, moved);
-  if (player.motion.type === "jumping" || player.motion.type === "falling") return { type: `LAND_${gait}` };
+  if (AIR_MOTIONS.has(player.motion.type)) return { type: `LAND_${gait}` };
   return { type: GAIT_EVENTS[gait] };
 }
+
+/** Motion states in the air, which a tick on the ground ends with a landing. */
+const AIR_MOTIONS: ReadonlySet<PlayerMotionType> = new Set(["jumping", "falling", "flying"]);
 
 /** Event on the ground for each gait. */
 const GAIT_EVENTS = { IDLE: "STOP", WALKING: "WALK", RUNNING: "RUN", SKIDDING: "SKID" } as const;
@@ -611,8 +646,8 @@ function getGait(player: PlayerState, moved: boolean): keyof typeof GAIT_EVENTS 
 }
 
 /** Advances locomotion through the XState machine and stores only its serializable state key. */
-function updateMotion(player: PlayerState): void {
-  const type = transitionPlayerMotion(player.motion.type, getMotionEvent(player));
+function updateMotion(player: PlayerState, flying = false): void {
+  const type = transitionPlayerMotion(player.motion.type, getMotionEvent(player, flying));
   player.motion = { type };
 }
 
@@ -641,13 +676,27 @@ function ceilingAt(ground: PlayerGround, point: GridPoint, head: number, nextHea
 }
 
 /**
+ * Whether the player flies this tick: it wears a jetpack and holds the jump key in the air, either
+ * flying already or past the apex of a jump or a fall (rising no faster than {@link PLAYER_APEX_SPEED}),
+ * so a tap still jumps and holding it on jumps and then flies.
+ */
+function isFlying(player: PlayerState): boolean {
+  const { verticalSpeed } = player;
+  if (!player.jetpack || !player.jumpHeld || verticalSpeed === undefined) return false;
+  return player.motion.type === "flying" || verticalSpeed <= PLAYER_APEX_SPEED + LANDING;
+}
+
+/**
  * One tick in the air: takes off if asked to on the ground, starts falling if the ground dropped
  * away under its feet, rises and falls under {@link PLAYER_GRAVITY}, and lands on the column under it.
+ * `flying`, its jetpack speeds its feet up by {@link PLAYER_FLY_THRUST} instead, to at most
+ * {@link PLAYER_FLY_SPEED}, and no higher than {@link PLAYER_FLY_MAX_HEIGHT} above the top under it.
  */
 function stepAir(
   player: PlayerState,
   ground: PlayerGround,
   topInset: PlayerTopInset,
+  flying: boolean,
 ): "landed" | "rescued" | "ceiling" | undefined {
   const support = supportAt(ground, player);
   const top = support ? support.elevation - topInset(support.type) : undefined;
@@ -660,11 +709,17 @@ function stepAir(
     player.verticalSpeed > 0 && !player.jumpHeld
       ? Math.min(player.verticalSpeed, PLAYER_JUMP_CUT_SPEED)
       : player.verticalSpeed;
-  const nextSpeed = Math.max(-PLAYER_MAX_FALL_SPEED, speed - PLAYER_GRAVITY);
-  // Trapezoidal integration preserves the original held-jump parabola until terminal speed.
-  const nextFeet = feet + (speed + nextSpeed) / 2;
+  const roof = (top ?? player.lastSafe.elevation - player.lastSafe.inset) + PLAYER_FLY_MAX_HEIGHT;
+  const nextSpeed = flying
+    ? Math.min(PLAYER_FLY_SPEED, speed + PLAYER_FLY_THRUST, Math.max(-PLAYER_FLY_SPEED, roof - feet))
+    : Math.max(-PLAYER_MAX_FALL_SPEED, speed - PLAYER_GRAVITY);
+  // Trapezoidal integration preserves the original held-jump parabola until terminal speed; flying,
+  // the feet move at the new speed, so they stop right at the roof.
+  const nextFeet = flying ? feet + nextSpeed : feet + (speed + nextSpeed) / 2;
   const ceiling =
-    speed > 0 ? ceilingAt(ground, player, feet + PLAYER_BODY_HEIGHT, nextFeet + PLAYER_BODY_HEIGHT) : undefined;
+    (flying ? nextSpeed : speed) > 0
+      ? ceilingAt(ground, player, feet + PLAYER_BODY_HEIGHT, nextFeet + PLAYER_BODY_HEIGHT)
+      : undefined;
   if (ceiling !== undefined) {
     player.height = ceiling - PLAYER_BODY_HEIGHT - (player.elevation - player.inset);
     player.verticalSpeed = 0;
@@ -925,13 +980,19 @@ export function stepPlayer(
       player.verticalSpeed === undefined && player.height === 0 && supportAt(ground, player) !== undefined;
     if (groundedAtStart) player.coyoteTicks = PLAYER_COYOTE_TICKS;
     const tookOff = player.jumpBufferTicks > 0 && (groundedAtStart || player.coyoteTicks > 0);
+    const airborne = player.verticalSpeed !== undefined;
+    // With a jetpack, a press in the air is to fly (holding it), never a double jump.
+    if (!tookOff && airborne && player.jetpack) {
+      player.wantsJump = false;
+      player.jumpBufferTicks = 0;
+    }
     // In the air, past the coyote ticks, a press is a double jump while it has one left.
-    const airJumped =
-      !tookOff && player.jumpBufferTicks > 0 && player.verticalSpeed !== undefined && player.airJumps > 0;
+    const airJumped = !tookOff && player.jumpBufferTicks > 0 && airborne && player.airJumps > 0;
     if (tookOff || airJumped) takeOff(player, airJumped);
+    const flying = isFlying(player);
     acceleratePlayer(player);
     const blockReason = stepOnce(player, ground, topInset, probe !== undefined);
-    const airResult = player.climb === undefined ? stepAir(player, ground, topInset) : undefined;
+    const airResult = player.climb === undefined ? stepAir(player, ground, topInset, flying) : undefined;
     if (player.climb) {
       player.wantsJump = false;
       player.jumpBufferTicks = 0;
@@ -962,7 +1023,7 @@ export function stepPlayer(
       player.lastSafe = { x: player.x, y: player.y, elevation: player.elevation, inset: player.inset, height: 0 };
     feedback.airTicks = player.verticalSpeed === undefined ? 0 : feedback.airTicks + 1;
     if (player.verticalSpeed === undefined) player.airJumps = PLAYER_AIR_JUMPS;
-    updateMotion(player);
+    updateMotion(player, flying);
     if (probe && input)
       probe({
         step: tick,

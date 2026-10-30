@@ -43,11 +43,19 @@ describe("player motion machine", () => {
     ["falling", { type: "LAND_RUNNING" }, "running"],
     ["falling", { type: "LAND_SKIDDING" }, "skidding"],
     ["falling", { type: "CLIMB" }, "climbing"],
+    ["jumping", { type: "FLY" }, "flying"],
+    ["falling", { type: "FLY" }, "flying"],
+    ["flying", { type: "FLY" }, "flying"],
+    ["flying", { type: "JUMP" }, "jumping"],
+    ["flying", { type: "FALL" }, "falling"],
+    ["flying", { type: "LAND_IDLE" }, "idle"],
+    ["flying", { type: "LAND_WALKING" }, "walking"],
+    ["flying", { type: "CLIMB" }, "climbing"],
     ["climbing", { type: "CLIMB_TICK" }, "climbing"],
     ["climbing", { type: "CLIMB_DONE_IDLE" }, "idle"],
     ["climbing", { type: "CLIMB_DONE_WALKING" }, "walking"],
   ] as const satisfies readonly (readonly [
-    "idle" | "walking" | "running" | "skidding" | "jumping" | "falling" | "climbing",
+    "idle" | "walking" | "running" | "skidding" | "jumping" | "falling" | "flying" | "climbing",
     PlayerMotionEvent,
     string,
   ])[])("%s + %o -> %s", (state, event, expected) => {
@@ -56,6 +64,8 @@ describe("player motion machine", () => {
 
   it("ignores events that are invalid for the current state", () => {
     expect(transitionPlayerMotion("idle", { type: "CLIMB_TICK" })).toBe("idle");
+    expect(transitionPlayerMotion("idle", { type: "FLY" })).toBe("idle");
+    expect(transitionPlayerMotion("flying", { type: "STOP" })).toBe("flying");
     expect(transitionPlayerMotion("climbing", { type: "JUMP" })).toBe("climbing");
     expect(transitionPlayerMotion("climbing", { type: "RUN" })).toBe("climbing");
     expect(transitionPlayerMotion("falling", { type: "SKID" })).toBe("falling");

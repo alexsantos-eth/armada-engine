@@ -38,6 +38,9 @@ export const PLAYER_WALK: PlayerWalkSheet = {
   // back to take off, stretched up rising, legs tucked at the apex, arms up falling, crouched landing;
   // the body squashes and stretches with it.
   jump: { source: "/assets/player/jump.svg", poses: { takeoff: 0, rise: 1, apex: 2, fall: 3, landing: 4 } },
+  // Wearing a jetpack (`?jetpack`): `jetpack.svg`, made by `artifacts/player_jetpack.py` in this
+  // sheet's window, one cell per facing: two rocket tanks on its back, cut where the body hides them.
+  jetpack: { source: "/assets/player/jetpack.svg" },
 };
 
 /**

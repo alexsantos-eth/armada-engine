@@ -14,6 +14,7 @@ import {
   cancelPlayerJump,
   jumpPlayer,
   setPlayerJumpHeld,
+  setPlayerJetpack,
   setPlayerRun,
   setPlayerWalk,
   type RandomSource,
@@ -102,7 +103,7 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
 
     container.appendChild(app.canvas);
     const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-    const { seed, startTick, timeScale, disabledModules, perf, cull, effects, sound } = resolveLaunchOptions(
+    const { seed, startTick, timeScale, disabledModules, perf, cull, effects, sound, jetpack } = resolveLaunchOptions(
       window.location.search,
       random,
       reducedMotion,
@@ -111,6 +112,8 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     const unknown = findUnknownModules(disabledModules);
     if (unknown.length > 0) log(`Armada ?modules= names no module: ${unknown.join(", ")}`);
     const world = generateWorld({ seed, entityDefinitions: ENTITY_CONFIG, parts: createWorldParts(startTick) });
+    // `?jetpack`: the player starts wearing one, until it is an item found in the world.
+    setPlayerJetpack(world.parts.get(PLAYER_PART), jetpack);
     const simulation = createSimulation(world, { timeScale, systems: createWorldSystems(disabledModules) });
     const prefetch = createChunkPrefetch(world, chunkWorker());
     teardowns.push(prefetch.destroy);

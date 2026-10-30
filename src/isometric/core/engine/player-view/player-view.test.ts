@@ -10,7 +10,7 @@ import { TILE_METRICS } from "../constants";
 import { WorldParts } from "../parts";
 import { createPlayer, getClimbRise, PLAYER_FACINGS, PLAYER_PART, PLAYER_STEP, stepPlayer } from "../player";
 import { DANCE_DELAY_MS, DANCE_FADE_MS } from "./body-motion";
-import { DUST_MS } from "./feedback";
+import { DUST_MS, JET_FIRE, JET_SMOKE } from "./feedback";
 import { CLOCK_PART, createClockPart } from "../time";
 import { projectGridPoint } from "../projection";
 import { createBlockViews, getBlockDepth, getSvgResolution } from "../render";
@@ -26,7 +26,13 @@ import {
 import { createTerrainView } from "../terrain-view";
 import type { World } from "../world";
 import type { SceneCamera } from "../../types";
-import { CAMERA_RISE_MS_PER_BLOCK, createPlayerView, type PlayerViewOptions } from "./player-view";
+import {
+  CAMERA_RISE_MS_PER_BLOCK,
+  createPlayerView,
+  JET_FIRE_EVERY_MS,
+  JET_SMOKE_EVERY_MS,
+  type PlayerViewOptions,
+} from "./player-view";
 import { getClimbPose, getIdlePose, getWalkPose, getWalkSheetCell } from "./walk";
 
 const PLAYER = { textureSource: "/assets/player/block.svg", height: 1 } as const;
@@ -511,6 +517,46 @@ describe("createPlayerView", () => {
     for (let frame = 0; frame < 50; frame += 1) ticker.frame(50);
 
     expect(camera.state).toMatchObject(getGroundPointBelow({ x: 1, y: 1 }, 1.6, projection));
+    scene.destroy();
+  });
+
+  it("follows the feet up with the camera while it flies, and back down as it falls", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, camera, scene } = await sceneOf(world);
+    const player = world.parts.get(PLAYER_PART);
+    // Low enough for the small field's camera limits.
+    const flying = { x: 1, y: 1, elevation: 1, inset: 0, height: 1.2 };
+    Object.assign(player, flying, { previous: flying, verticalSpeed: 0, motion: { type: "flying" } });
+    for (let frame = 0; frame < 50; frame += 1) ticker.frame(50);
+    expect(camera.state).toMatchObject(getGroundPointBelow({ x: 1, y: 1 }, 2.2, projection));
+
+    const falling = { ...flying, height: 0.4 };
+    Object.assign(player, falling, { previous: falling, verticalSpeed: -0.3, motion: { type: "falling" } });
+    for (let frame = 0; frame < 50; frame += 1) ticker.frame(50);
+    expect(camera.state).toMatchObject(getGroundPointBelow({ x: 1, y: 1 }, 1.4, projection));
+    scene.destroy();
+  });
+
+  it("wears its jetpack over its body, turned with it, only while the player has one", async () => {
+    const JETPACK = { source: "/assets/player/jetpack.svg" };
+    const world = fieldWithPlayer();
+    const player = world.parts.get(PLAYER_PART);
+    player.jetpack = true;
+    const { ticker, root, scene } = await mountScene(world, [
+      createPlayerView({ ...WALKER, walk: { ...SHEET, jetpack: JETPACK } }),
+    ]);
+    const sprite = spriteOf(root) as unknown as Sprite;
+    const pack = sprite.children[0] as unknown as TestView;
+
+    expect(Assets.load).toHaveBeenCalledWith(expect.objectContaining({ src: JETPACK.source }));
+    expect(cellOf(pack)).toMatchObject({ source: JETPACK.source, row: facing("south"), column: 0 });
+    expect(pack.visible).toBe(true);
+    player.walk = { x: 1, y: -1 };
+    ticker.frame(16);
+    expect(cellOf(pack)).toMatchObject({ row: facing("east"), column: 0 });
+    player.jetpack = false;
+    ticker.frame(16);
+    expect(pack.visible).toBe(false);
     scene.destroy();
   });
 
@@ -1056,6 +1102,42 @@ describe("createPlayerView feedback", () => {
     expect(running).toHaveLength(2 * 4);
     expect(await puffs(0.15)).toHaveLength(0);
     expect(await puffs(0.25, { effects: false })).toHaveLength(0);
+  });
+
+  it("burns flame and smoke out of the jetpack on its back while it flies, and none on landing", async () => {
+    const burn = async (options?: PlayerViewOptions) => {
+      resetHarness();
+      const world = fieldWithPlayer();
+      const { ticker, root, view, scene } = await sceneOf(world, undefined, options);
+      const player = world.parts.get(PLAYER_PART);
+      const flying = { x: 1, y: 1, elevation: 1, inset: 0, height: 2 };
+      Object.assign(player, flying, { previous: flying, verticalSpeed: 0, motion: { type: "flying" } });
+      ticker.frame(16);
+      const first = dustOf(root);
+      for (let ms = 0; ms < 2000; ms += 20) ticker.frame(20);
+      const all = dustOf(root);
+      const live = all.filter(({ visible }) => visible).length;
+      Object.assign(player, { height: 0, verticalSpeed: undefined, motion: { type: "idle" } });
+      for (let ms = 0; ms < 1000; ms += 50) ticker.frame(50);
+      const after = dustOf(root).filter(({ visible }) => visible).length;
+      const feet = view.position.y;
+      scene.destroy();
+      return { first, all, live, after, feet };
+    };
+
+    const { first, all, live, after } = await burn();
+    // At once a puff of flame and one of smoke: four warm voxels and three grey ones.
+    expect(first).toHaveLength(JET_FIRE.voxels + JET_SMOKE.voxels);
+    const warm = first.filter(({ tint }) => tint >> 16 > (tint & 0xff) + 0x40);
+    expect(warm).toHaveLength(JET_FIRE.voxels);
+    // A ring of puffs of each kind, reused in turn: no more views than it can show at once.
+    expect(all.length).toBeLessThanOrEqual(
+      (Math.ceil(JET_FIRE.ms / JET_FIRE_EVERY_MS) + 1) * JET_FIRE.voxels +
+        (Math.ceil(JET_SMOKE.ms / JET_SMOKE_EVERY_MS) + 1) * JET_SMOKE.voxels,
+    );
+    expect(live).toBeGreaterThan(first.length);
+    expect(after).toBe(0);
+    expect((await burn({ effects: false })).all).toHaveLength(0);
   });
 
   it("kicks the dust nowhere in particular when it slides at no speed", async () => {

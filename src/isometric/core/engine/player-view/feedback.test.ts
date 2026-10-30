@@ -4,6 +4,10 @@ import { PLAYER_JUMP_SPEED } from "../player";
 import { createSeededRandom } from "../random";
 import {
   BURST_DUST,
+  JET_FIRE,
+  JET_NOZZLE_BACK,
+  JET_SMOKE,
+  getJetNozzle,
   DUST_ALPHA,
   DUST_MS,
   getBodyScale,
@@ -45,9 +49,36 @@ describe("getDust", () => {
     expect(getDust(DUST_MS / 2)).toEqual({ progress: expect.closeTo(0.5), alpha: expect.closeTo(DUST_ALPHA / 2) });
     expect(getDust(DUST_MS)).toBeUndefined();
   });
+
+  it("lasts and fades as long as asked, from the opacity asked", () => {
+    expect(getDust(0, JET_SMOKE.ms, JET_SMOKE.alpha)).toEqual({ progress: 0, alpha: JET_SMOKE.alpha });
+    expect(getDust(DUST_MS, JET_SMOKE.ms, JET_SMOKE.alpha)?.progress).toBeCloseTo(DUST_MS / JET_SMOKE.ms);
+    expect(getDust(JET_SMOKE.ms, JET_SMOKE.ms, JET_SMOKE.alpha)).toBeUndefined();
+  });
 });
 
 describe("getDustVoxels", () => {
+  /** The red, green and blue of `color`. */
+  const channels = (color: number) => [(color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff];
+
+  it("shades a jetpack's flame yellow to orange and its smoke grey, sinking the flame and lifting the smoke", () => {
+    for (const shape of [JET_FIRE, JET_SMOKE]) {
+      const voxels = getDustVoxels(shape, createSeededRandom(3));
+      expect(voxels).toHaveLength(shape.voxels);
+      const [from, to] = shape.colors.map(channels);
+      for (const voxel of voxels) {
+        channels(voxel.shade).forEach((channel, index) => {
+          expect(channel).toBeGreaterThanOrEqual(Math.min(from[index], to[index]));
+          expect(channel).toBeLessThanOrEqual(Math.max(from[index], to[index]));
+        });
+        expect(Math.sign(voxel.rise)).toBe(shape === JET_FIRE ? -1 : 1);
+      }
+    }
+    // The flame is small and short-lived, the smoke big and lasting.
+    expect(JET_FIRE.size[1]).toBeLessThan(JET_SMOKE.size[0]);
+    expect(JET_FIRE.ms).toBeLessThan(JET_SMOKE.ms);
+  });
+
   it("scatters a ring of voxels round the feet, each sized, lifted and shaded on its own", () => {
     const voxels = getDustVoxels(BURST_DUST, createSeededRandom(1));
     expect(voxels).toHaveLength(BURST_DUST.voxels);
@@ -183,5 +214,23 @@ describe("getVoxelFaces", () => {
       0.5 * TILE_METRICS.tileWidth,
       0.25 * TILE_METRICS.tileWidth + (0.1 * TILE_METRICS.tileHeight) / 2,
     ]);
+  });
+});
+
+describe("getJetNozzle", () => {
+  it("puts the nozzles JET_NOZZLE_BACK columns behind the feet, the other way from where it faces", () => {
+    const facings = 8;
+    const south = getJetNozzle(6, facings);
+    // Facing south (down the screen, −x −y), its back is to the north, +x +y.
+    expect(south.x).toBeCloseTo(JET_NOZZLE_BACK / Math.SQRT2);
+    expect(south.y).toBeCloseTo(JET_NOZZLE_BACK / Math.SQRT2);
+    // Facing east (right, +x −y), its back is to the west.
+    const east = getJetNozzle(0, facings);
+    expect(east.x).toBeCloseTo(-JET_NOZZLE_BACK / Math.SQRT2);
+    expect(east.y).toBeCloseTo(JET_NOZZLE_BACK / Math.SQRT2);
+    for (let facing = 0; facing < facings; facing += 1) {
+      const { x, y } = getJetNozzle(facing, facings);
+      expect(Math.hypot(x, y)).toBeCloseTo(JET_NOZZLE_BACK);
+    }
   });
 });
