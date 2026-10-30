@@ -8,7 +8,7 @@ import { CAMERA_MAX_ZOOM, CAMERA_START_ZOOM, getGroundPointBelow } from "../came
 import { createCameraView } from "../camera-view";
 import { TILE_METRICS } from "../constants";
 import { WorldParts } from "../parts";
-import { createPlayer, PLAYER_FACINGS, PLAYER_PART, PLAYER_STEP, stepPlayer } from "../player";
+import { createPlayer, getClimbRise, PLAYER_FACINGS, PLAYER_PART, PLAYER_STEP, stepPlayer } from "../player";
 import { DANCE_DELAY_MS, DANCE_FADE_MS } from "./body-motion";
 import { DUST_MS } from "./feedback";
 import { CLOCK_PART, createClockPart } from "../time";
@@ -26,7 +26,7 @@ import {
 import { createTerrainView } from "../terrain-view";
 import type { World } from "../world";
 import type { SceneCamera } from "../../types";
-import { createPlayerView, type PlayerViewOptions } from "./player-view";
+import { CAMERA_RISE_MS_PER_BLOCK, createPlayerView, type PlayerViewOptions } from "./player-view";
 import { getClimbPose, getIdlePose, getWalkPose, getWalkSheetCell } from "./walk";
 
 const PLAYER = { textureSource: "/assets/player/block.svg", height: 1 } as const;
@@ -573,6 +573,53 @@ describe("createPlayerView", () => {
     expect(caster.foot().ground).toEqual({ x: 1, y: 1, elevation: 1.5 });
     for (let frame = 0; frame < 50; frame += 1) ticker.frame(50);
     expect(camera.state).toMatchObject(getGroundPointBelow({ x: 1, y: 1 }, 1, projection));
+    scene.destroy();
+  });
+
+  it("raises the camera onto a higher top it jumped onto on the climb's curve, not in one jolt", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, camera, scene } = await sceneOf(world);
+    const player = world.parts.get(PLAYER_PART);
+    const focus = () => scene.services.focus?.ground();
+    const lookingAt = (level: number) => getGroundPointBelow({ x: 1, y: 1 }, level, projection);
+    const at = (position: { elevation: number; height: number }) => {
+      const full = { x: 1, y: 1, inset: 0, ...position };
+      Object.assign(player, full, { previous: full });
+    };
+
+    // Up in the air over its own top, then over a block higher: the camera stays on the top it left.
+    player.motion = { type: "jumping" };
+    at({ elevation: 1, height: 0.9 });
+    ticker.frame(50);
+    at({ elevation: 2, height: 0.2 });
+    ticker.frame(50);
+    expect(focus()).toEqual(lookingAt(1));
+
+    // Landed: it rises on the climb's curve, also while the player stands still.
+    player.motion = { type: "idle" };
+    at({ elevation: 2, height: 0 });
+    ticker.frame(0);
+    expect(focus()).toEqual(lookingAt(1));
+    ticker.frame(CAMERA_RISE_MS_PER_BLOCK / 4);
+    const quarter = 1 + getClimbRise(0.25);
+    expect(focus()?.x).toBeCloseTo(lookingAt(quarter).x);
+    expect(quarter).toBeGreaterThan(1);
+    expect(quarter).toBeLessThan(2);
+    for (let frame = 0; frame < 50; frame += 1) ticker.frame(50);
+    expect(focus()).toEqual(lookingAt(2));
+    expect(camera.state).toMatchObject(lookingAt(2));
+
+    // A higher top again while it still rises restarts the rise from where the camera is.
+    at({ elevation: 3, height: 0 });
+    ticker.frame(CAMERA_RISE_MS_PER_BLOCK / 4);
+    at({ elevation: 4, height: 0 });
+    ticker.frame(CAMERA_RISE_MS_PER_BLOCK / 4);
+    expect(focus()?.x).toBeGreaterThan(lookingAt(2).x);
+    expect(focus()?.x).toBeLessThan(lookingAt(4).x);
+    // Down again: straight there, as a fall.
+    at({ elevation: 1, height: 0 });
+    ticker.frame(50);
+    expect(focus()).toEqual(lookingAt(1));
     scene.destroy();
   });
 

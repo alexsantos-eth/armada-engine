@@ -1,6 +1,7 @@
 import { BufferImageSource, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { getGroundPointBelow } from "../camera";
 import {
+  getClimbRise,
   getPlayerClimbProgress,
   getPlayerColumn,
   getPlayerFacing,
@@ -8,6 +9,7 @@ import {
   getPlayerRenderPosition,
   isPlayerRunning,
   isPlayerSkidding,
+  PLAYER_CLIMB_MS,
   PLAYER_FACINGS,
   PLAYER_PART,
 } from "../player";
@@ -90,6 +92,12 @@ const RUN_PUFFS = 6;
 const SKID_PEDAL = 2;
 
 /**
+ * Real milliseconds the camera takes to rise one block onto a higher top it did not climb (a jump
+ * onto it): as long as a climb of one block, on the same curve (`getClimbRise()`).
+ */
+export const CAMERA_RISE_MS_PER_BLOCK = PLAYER_CLIMB_MS;
+
+/**
  * How the player view answers what the player does (`createPlayerView()`). Every field is optional;
  * the game sets them from its launch options (`?effects=off`) and the reduced-motion preference.
  */
@@ -112,7 +120,9 @@ export type PlayerViewOptions = {
  * While it jumps or falls (`height`), the sprite and the feet it gives the shadow rise that many
  * blocks; its place in the draw order stays with the ground below it. The camera looks at the top it
  * stands on, or at its feet while they are below where they left the ground: a jump does not bob the
- * camera, and a fall to a lower top is followed as it falls, not in one jolt when it lands.
+ * camera, and a fall to a lower top is followed as it falls, not in one jolt when it lands. A jump
+ * onto a higher top raises the camera once it lands on the climb's curve ({@link CAMERA_RISE_MS_PER_BLOCK}
+ * per block, `getClimbRise()`), as smoothly as a climb, not in one jolt.
  *
  * With `effects`, it answers take-offs and landings from the counters in `player.feedback` (no
  * events): dust at a take-off and at a hard landing (`getDust()`), a stretch at take-off and a squash
@@ -181,13 +191,27 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         walk?.frames[facing][0] ?? (player && (await assets.loadSvg(appearance.textureSource, { scale })));
       if (!player || !texture) return { destroy: () => {} };
 
-      // Blocks above elevation `0` the camera looks at: the top the player stands on or, while its
+      // Blocks above elevation `0` the camera aims at: the top the player stands on or, while its
       // feet are below where they left the ground or it climbs, its feet.
-      let level = player.elevation - player.inset;
-      const ground = (at: PlayerRenderPosition) => {
+      let aim = player.elevation - player.inset;
+      // Blocks above elevation `0` it looks at: the aim, but rising to a higher one it did not climb
+      // to (a jump onto a higher top) on a climb's curve, from where it was, instead of in one jolt.
+      let level = aim;
+      let rise: { from: number; to: number; ms: number } | undefined;
+      const ground = (at: PlayerRenderPosition, elapsedMs: number) => {
         const top = at.elevation - at.inset;
-        if (player.motion.type === "climbing") level = top + at.height;
-        else level = at.height > 0 ? Math.min(level, top + at.height) : top;
+        if (player.motion.type === "climbing") aim = top + at.height;
+        else aim = at.height > 0 ? Math.min(aim, top + at.height) : top;
+        if (player.motion.type === "climbing" || aim <= level) {
+          level = aim;
+          rise = undefined;
+        } else {
+          if (rise?.to !== aim) rise = { from: level, to: aim, ms: 0 };
+          rise.ms += elapsedMs;
+          const risen = getClimbRise(rise.ms / ((rise.to - rise.from) * CAMERA_RISE_MS_PER_BLOCK));
+          // Risen all the way: on the aim itself, so the next frame ends the rise.
+          level = risen < 1 ? rise.from + (rise.to - rise.from) * risen : aim;
+        }
         return getGroundPointBelow(at, level, projection);
       };
       const [projected] = projectBoxesToIsometric(
@@ -500,7 +524,7 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         start: (built) => {
           scene = built;
           place(drawnAt);
-          services.get("camera")?.follow(ground(drawnAt));
+          services.get("camera")?.follow(ground(drawnAt, 0));
         },
         update: ({ tick, alpha, elapsedMs }) => {
           const at = getPlayerRenderPosition(player, alpha);
@@ -515,7 +539,7 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
           settleDust(elapsedMs);
           syncTerrainShadowOverlay();
           if (moved || reshaped) place(at);
-          if (moved) services.get("camera")?.follow(ground(at));
+          if (moved || rise) services.get("camera")?.follow(ground(at, elapsedMs));
         },
         destroy: () => {
           shadowBody.mask = null;

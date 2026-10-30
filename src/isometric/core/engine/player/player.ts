@@ -127,6 +127,9 @@ export const PLAYER_STEP_HEIGHT = 0.25;
 /** Ticks a climb of one block lasts (0.6 s); a lower one, its share of them. */
 export const PLAYER_CLIMB_TICKS = 12;
 
+/** Real milliseconds a climb of one block lasts: {@link PLAYER_CLIMB_TICKS} ticks. */
+export const PLAYER_CLIMB_MS = (PLAYER_CLIMB_TICKS * 1000) / TICKS_PER_SECOND;
+
 /** Share of a climb its feet take to rise to the top; in the rest it steps onto it. */
 export const PLAYER_CLIMB_RISE_SHARE = 0.7;
 
