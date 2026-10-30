@@ -19,6 +19,7 @@ import type { ChunkRequest } from "./chunk-generator";
 import type { ChunkWorker } from "./chunk-prefetch";
 import { mountGame, type GameOptions } from "./game";
 import { createSceneModules } from "./modules";
+import { bindTouchControls } from "./touch-controls";
 import type * as Modules from "./modules";
 
 const mocks = vi.hoisted(() => ({
@@ -72,6 +73,10 @@ vi.mock("../core/engine", async (importOriginal) => ({
     }),
   ),
   bindCameraControls: vi.fn(() => () => mocks.teardowns.push("pointer")),
+}));
+
+vi.mock("./touch-controls", () => ({
+  bindTouchControls: vi.fn(() => () => mocks.teardowns.push("touch")),
 }));
 
 vi.mock("./modules", async (importOriginal) => {
@@ -403,6 +408,39 @@ describe("mountGame", () => {
 
     window.press("Equal");
     expect(camera.zoomAt).toHaveBeenCalledWith(KEYBOARD_ZOOM_STEP, { x: 400, y: 300 });
+  });
+
+  it("puts a joystick and a jump button over the canvas on phones, driving the player like the keyboard", async () => {
+    const { game } = mount("?seed=1337", { mobile: true });
+    await game.ready;
+    const { app, world } = started();
+
+    expect(bindTouchControls).toHaveBeenCalledWith(app.stage, app.renderer, expect.any(Object), app.canvas);
+    const controls = vi.mocked(bindTouchControls).mock.lastCall![2];
+    controls.walk({ up: false, down: false, left: true, right: false });
+    expect(world.parts.get(PLAYER_PART).walk).toEqual(
+      getWalkDirection({ up: false, down: false, left: true, right: false }),
+    );
+    controls.run(true);
+    expect(world.parts.get(PLAYER_PART).running).toBe(true);
+    controls.jumpHeld(true);
+    controls.jump();
+    expect(world.parts.get(PLAYER_PART).wantsJump).toBe(true);
+    expect(world.parts.get(PLAYER_PART).jumpHeld).toBe(true);
+
+    game.destroy();
+    expect(teardowns).toEqual(["ticker", "touch", "keyboard", "pointer", "scene", "worker", "app"]);
+  });
+
+  it("shows no touch controls on desktop, and shows them there with ?mobile", async () => {
+    const { game } = mount("?seed=1337");
+    await game.ready;
+    expect(bindTouchControls).not.toHaveBeenCalled();
+    game.destroy();
+
+    const forced = mount("?seed=1337&mobile");
+    await forced.game.ready;
+    expect(bindTouchControls).toHaveBeenCalledTimes(1);
   });
 
   it("gives the player a jetpack with ?jetpack, and none without it", async () => {

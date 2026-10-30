@@ -20,6 +20,7 @@ import {
   type RandomSource,
   type PhaseLighting,
 } from "../core/engine";
+import type { ScreenDirections } from "../core/types";
 import { bindKeyboardControls, type KeyMap } from "../input";
 import { type ChunkWorker, createChunkPrefetch, startChunkWorker } from "./chunk-prefetch";
 import { isMobileDevice, resolveRenderProfile } from "./device";
@@ -27,6 +28,7 @@ import { formatClockLabel, resolveLaunchOptions } from "./launch";
 import { createSceneModules, createWorldParts, createWorldSystems, findUnknownModules } from "./modules";
 import { PERF_REPORT_MS, startPerfMonitor } from "./perf";
 import { bindPlayerSounds, createStrudelSounds, type PlayerSounds } from "./sound";
+import { bindTouchControls } from "./touch-controls";
 
 /** Where and how a game runs. */
 export type GameOptions = {
@@ -59,7 +61,7 @@ export type Game = {
   /** Settles when the game has started, or stopped starting because it was destroyed; rejects if starting failed. */
   readonly ready: Promise<void>;
   /**
-   * Stops the game and frees it: simulation, keyboard and pointer controls, scene, chunk worker and
+   * Stops the game and frees it: simulation, touch, keyboard and pointer controls, scene, chunk worker and
    * Pixi app, in that order. Safe to call at any time and more than once; while the game is still starting, the
    * teardown waits for the step in progress, so nothing is created on a destroyed app.
    */
@@ -76,8 +78,9 @@ export type Game = {
  * `createSceneModules()` while streaming the chunks around the player and those the camera sees
  * (`world.chunks.stream()`, a few per frame once started, those ahead generated in a worker:
  * `createChunkPrefetch()`), and binds
- * the controls: pointer on the stage (drag, wheel, pinch, when the scene has a camera) and
- * keyboard on the window (walk, zoom at the centre of the view).
+ * the controls: pointer on the stage (drag, wheel, pinch, when the scene has a camera),
+ * keyboard on the window (walk, zoom at the centre of the view) and, on phones and tablets,
+ * a joystick and a jump button over the canvas (`bindTouchControls()`).
  */
 export function mountGame(container: HTMLElement, options: GameOptions): Game {
   const { window, onClockChange, random = Math.random, log = console.info, chunkWorker = startChunkWorker } = options;
@@ -166,19 +169,23 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
 
     const { camera } = scene.services;
     if (camera) teardowns.push(bindCameraControls(app.stage, app.renderer.screen, camera, app.canvas));
+    // The keyboard and, on phones, the touch controls drive the player the same way.
+    const player = {
+      walk: (directions: ScreenDirections) => setPlayerWalk(world.parts.get(PLAYER_PART), directions),
+      jump: () => {
+        const state = world.parts.get(PLAYER_PART);
+        if (simulation.stepper.paused || simulation.stepper.timeScale === 0) cancelPlayerJump(state);
+        else jumpPlayer(state);
+      },
+      jumpHeld: (held: boolean) => setPlayerJumpHeld(world.parts.get(PLAYER_PART), held),
+      run: (held: boolean) => setPlayerRun(world.parts.get(PLAYER_PART), held),
+    };
     teardowns.push(
       bindKeyboardControls(
         window,
         {
-          walk: (directions) => setPlayerWalk(world.parts.get(PLAYER_PART), directions),
-          jump: () => {
-            const player = world.parts.get(PLAYER_PART);
-            if (simulation.stepper.paused || simulation.stepper.timeScale === 0) cancelPlayerJump(player);
-            else jumpPlayer(player);
-          },
-          jumpHeld: (held) => setPlayerJumpHeld(world.parts.get(PLAYER_PART), held),
+          ...player,
           cancelJump: () => cancelPlayerJump(world.parts.get(PLAYER_PART)),
-          run: (held) => setPlayerRun(world.parts.get(PLAYER_PART), held),
           zoom: (factor) => {
             const { width, height } = app.renderer.screen;
             camera?.zoomAt(factor, { x: width / 2, y: height / 2 });
@@ -187,6 +194,8 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
         options.keys,
       ),
     );
+    // Phones have no keyboard: a joystick and a jump button over the canvas (`?mobile` forces them).
+    if (mobile) teardowns.push(bindTouchControls(app.stage, app.renderer, player, app.canvas));
     // The player's jumps, landings, steps and dance, heard (`?sound=off` mutes them).
     if (sound) {
       const sounds = (options.sounds ?? (() => createStrudelSounds(PLAYER_SOUND_PATTERNS)))();
