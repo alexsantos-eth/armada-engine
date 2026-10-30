@@ -44,17 +44,18 @@ export const BODY_MAX_AIR_STRETCH = 0.12;
 export const BODY_CLIMB_STRETCH = 0.05;
 
 /**
- * Widest swing of the body, in radians, hanging from its raised hand during a climb (its last,
- * widest swing forward), across the screen as far as its facing shows it.
+ * Most the body leans forward during a climb, in radians (about 6°): its chest over the edge as it
+ * pulls itself up and pushes on its hands, across the screen as far as its facing shows it.
  */
-export const BODY_CLIMB_SWING = 0.14;
+export const BODY_CLIMB_LEAN = 0.1;
 
 /**
- * Share of a climb the body swings on its hand, and share by which it has pushed itself up on it:
- * the phases of `artifacts/player_climb.py`, whose poses the swing follows.
+ * Shares of a climb by which it has grabbed the edge with both hands, brought them to the middle of
+ * its body and pushed itself up on them: the key poses of `artifacts/player_climb.py`.
  */
-export const CLIMB_SWING_SHARE = 0.5;
-export const CLIMB_PUSH_SHARE = 0.75;
+export const CLIMB_GRAB_SHARE = 0.12;
+export const CLIMB_HANDS_SHARE = 0.6;
+export const CLIMB_PUSH_SHARE = 0.78;
 
 /** Real milliseconds the player stands still before it starts to dance: a short stop does not. */
 export const DANCE_DELAY_MS = 300;
@@ -153,18 +154,16 @@ export function getBodyShape(input: BodyShapeInput): GridPoint {
 
 /**
  * Lean of the body forward (radians, positive with its head ahead of its feet) at `progress`
- * (`0`–`1`) of a climb, hanging from its raised hand like a pendulum: harmonically, back first and
- * then forward, wider each time, up to {@link BODY_CLIMB_SWING} at the end of the swing
- * ({@link CLIMB_SWING_SHARE}); then back upright along half a harmonic cycle as it pushes itself
- * up on that hand ({@link CLIMB_PUSH_SHARE}), and upright for the rest.
+ * (`0`–`1`) of a climb: upright hanging from both hands, leaning in up to {@link BODY_CLIMB_LEAN}
+ * as it pulls itself up until its hands are at the middle of its body ({@link CLIMB_HANDS_SHARE}),
+ * and upright again as it pushes itself up on them ({@link CLIMB_PUSH_SHARE}), each along half a
+ * harmonic cycle.
  */
-export function getClimbSwing(progress: number): number {
-  if (progress < CLIMB_SWING_SHARE) {
-    const swung = Math.max(0, progress) / CLIMB_SWING_SHARE;
-    return -BODY_CLIMB_SWING * Math.sin(1.5 * Math.PI * swung) * (0.4 + 0.6 * swung);
-  }
-  const pushed = Math.min(1, (progress - CLIMB_SWING_SHARE) / (CLIMB_PUSH_SHARE - CLIMB_SWING_SHARE));
-  return (BODY_CLIMB_SWING * (1 + Math.cos(Math.PI * pushed))) / 2;
+export function getClimbLean(progress: number): number {
+  const ease = (t: number) => (1 - Math.cos(Math.PI * Math.min(Math.max(t, 0), 1))) / 2;
+  if (progress < CLIMB_HANDS_SHARE)
+    return BODY_CLIMB_LEAN * ease((progress - CLIMB_GRAB_SHARE) / (CLIMB_HANDS_SHARE - CLIMB_GRAB_SHARE));
+  return BODY_CLIMB_LEAN * (1 - ease((progress - CLIMB_HANDS_SHARE) / (CLIMB_PUSH_SHARE - CLIMB_HANDS_SHARE)));
 }
 
 /** The dance's part of a frame ({@link getIdleDance}): its lean (radians) and the body's scale. */

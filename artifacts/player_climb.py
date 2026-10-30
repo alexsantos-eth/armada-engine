@@ -2,12 +2,11 @@
 # One row per facing, in the walk sheet's order (east, north-east, north, north-west, west,
 # south-west, south, south-east); FRAMES columns of one climb onto a block one higher, from
 # reaching up to standing on top. The engine raises the feet (the climb's height in the
-# simulation), so every pose keeps its feet where the walk sheet's are: the figure raises one hand
-# to grab the edge and swings on it like a pendulum (harmonic, back and then forward, wider each
-# time), its free arm, its legs (a scissor) and its feet waving after the body, each a little later;
-# then pushes down on the edge with that hand, flat on the top, to heave itself up, brings a knee
-# over the top while the other foot pushes off with its toes, and stands up. Hands bend at the
-# wrists and feet at the ankles.
+# simulation), so every pose keeps its feet where the walk sheet's are: the figure grabs the edge
+# of the block with both hands, hooked over it, and hangs from them, feet down; pulls itself up
+# with its chest to the edge; brings its hands down to the middle of its body, flat on the top, and
+# pushes itself up on them, a knee over the top while the other foot pushes off; and stands up.
+# Hands bend at the wrists and feet at the ankles.
 # Every cell is the walk sheet's window (CELL, GAP), so the engine draws all the sheets with the same
 # cell and the feet never move. Requires shapely (see iso_lib.py).
 import math
@@ -18,7 +17,6 @@ HIP = monkey.HIP            # pivot of the legs and of the body leaning in (x fo
 SHOULDER = monkey.SHOULDER  # pivot of the arms
 
 FRAMES = 9                  # the most columns under the 4 096 px a GPU texture may measure
-SWING = 12                  # widest swing of the body on the raised hand, in degrees
 WRIST = (0, 64)             # pivot of the hand on the arm, before the arm swings (x forward, z up)
 ANKLE = (4, 16)             # pivot of the foot on the leg, before the leg swings
 
@@ -27,9 +25,16 @@ ANKLE = (4, 16)             # pivot of the foot on the leg, before the leg swing
 # swing takes a limb forward, a positive lean takes the body forward, a positive turn of a hand or
 # a foot takes its tip back, so a hanging foot points its toes down).
 STAND = (6, -8, 6, 0, 0, -6, 4, 0, 0)   # the walk sheet's standing pose
-# Pushed up on the top: the raised hand flat on it, the other reaching for it, the left knee over
-# the edge and the right foot pushing off with its toes.
-PUSHED = (6, -26, -10, -30, -40, -6, 10, -10, 16)
+
+# Key poses of one climb and the share of it each is reached at; between two, eased in and out.
+KEYS = [
+    (0.00, (4, -150, -150, 20, 20, 0, 0, 8, 8)),        # reaching up for the edge
+    (0.12, (2, -172, -168, 30, 30, 0, 0, 12, 12)),      # both hands hooked over it, hanging
+    (0.49, (10, -160, -156, 30, 30, -14, -8, 14, 12)),  # pulled up, chest to the edge
+    (0.60, (12, -30, -26, -55, -55, -10, -4, 10, 14)),  # hands to the middle of the body, flat
+    (0.78, (8, -14, -10, -40, -40, -30, 10, -8, 18)),   # pushing up on them, a knee over the top
+    (1.00, STAND),                                      # standing on the top
+]
 
 
 def ease(u):
@@ -37,44 +42,13 @@ def ease(u):
     return (1 - math.cos(math.pi * min(max(u, 0.0), 1.0))) / 2
 
 
-def swing(s):
-    """Lean of the body hanging from its hand at `s` (0–1, clamped) of its swing: a sine growing
-    wider, back first and ending on its widest swing forward."""
-    s = min(max(s, 0.0), 1.0)
-    return -SWING * math.sin(1.5 * math.pi * s) * (0.4 + 0.6 * s)
-
-
-def hanging(s):
-    """The pose at `s` (0–1) of the swing. The raised arm stays upright (its swing undoes the lean)
-    with its hand hooked over the edge; everything else hangs and follows the body a little late,
-    each limb later than the one before, so they wave after it: the free arm and its hand, the left
-    leg, then the right one (a scissor), and their feet last, toes down."""
-    lean = swing(s)
-    return (lean, 10 - 2.0 * swing(s - 0.12), -176 - lean, 0.8 * swing(s - 0.25), 30,
-            2.4 * swing(s - 0.08), 2.0 * swing(s - 0.16), 12 + 0.8 * swing(s - 0.2), 12 + 0.8 * swing(s - 0.28))
-
-
-def blend(a, b, u):
-    return tuple(x + (y - x) * u for x, y in zip(a, b))
-
-
 def climb_pose(t):
-    """The pose at `t` (0–1) of a climb. The right hand grabs the edge and stays up while the body
-    swings on it like a pendulum, harmonically, back and then forward, wider each time; at the top
-    of the forward swing the arm pushes down on the edge and heaves the body up, the left knee comes
-    up over the top, the right foot pushes off, and it stands."""
-    if t < 0.5:
-        return hanging(t / 0.5)
-    if t < 0.75:
-        # pushing up on the hand: the arm sweeps down to the top as the body rises, slowly and then
-        # all at once (the push), while the knee comes up and over
-        u = ease((t - 0.5) / 0.25)
-        pose = list(blend(hanging(1.0), PUSHED, u))
-        pose[2] = -176 - SWING + (PUSHED[2] + 176 + SWING) * u * u
-        pose[5] -= 14 * math.sin(math.pi * (t - 0.5) / 0.25)
-        return tuple(pose)
-    # stepping onto the top and standing up
-    return blend(PUSHED, STAND, ease((t - 0.75) / 0.25))
+    """The pose at `t` (0–1) of a climb: between the two key poses around it, eased."""
+    for (t0, a), (t1, b) in zip(KEYS, KEYS[1:]):
+        if t <= t1:
+            u = ease((t - t0) / (t1 - t0))
+            return tuple(x + (y - x) * u for x, y in zip(a, b))
+    return STAND
 
 
 # Poses of one climb, in order: each frame at the middle of its share of the climb.

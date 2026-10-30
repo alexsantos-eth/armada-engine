@@ -1328,24 +1328,22 @@ describe("createPlayerView body motion", () => {
     scene.destroy();
   });
 
-  it("swings on its raised hand while it climbs, about the top of its cell, and ends upright", async () => {
+  it("leans in over the edge while it climbs, about its feet, and ends upright", async () => {
     const world = fieldWithPlayer();
     const { ticker, view, scene } = await sceneOf(world);
     const body = view as Body;
     const player = world.parts.get(PLAYER_PART);
     ticker.frame(16);
-    const upright = { ...body.position };
     const feet = feetOf(body, 30);
-    // Climbing toward the right of the screen (facing east), at the end of its swing: the head
-    // leans ahead, to the right, and the feet swing back under its hand, which stays.
+    // Climbing toward the right of the screen (facing east), its hands at the middle of its body:
+    // the head leans ahead, to the right, and the feet stay where they are.
     const climb = { from: { x: 1, y: 1 }, to: { x: 2, y: 1 }, direction: { x: 1, y: -1 }, feet: 1, rise: 0 };
-    Object.assign(player, { motion: { type: "climbing" }, climb: { ...climb, ticks: 12, tick: 6 } });
+    Object.assign(player, { motion: { type: "climbing" }, climb: { ...climb, ticks: 10, tick: 6 } });
     ticker.frame(16);
-    expect(-body.skew.x).toBeGreaterThan(0.1);
-    expect(body.position.x).toBeCloseTo(upright.x);
-    expect(feetOf(body, 30).x).toBeLessThan(feet.x - 1);
-    // Pushed up on that hand: upright again.
-    player.climb = { ...climb, ticks: 12, tick: 11 };
+    expect(-body.skew.x).toBeGreaterThan(0.08);
+    expect(feetOf(body, 30).x).toBeCloseTo(feet.x);
+    // Pushed up on its hands: upright again.
+    player.climb = { ...climb, ticks: 10, tick: 10 };
     ticker.frame(16);
     expect(body.skew.x).toBeCloseTo(0);
     scene.destroy();
