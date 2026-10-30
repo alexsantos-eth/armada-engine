@@ -547,6 +547,18 @@ export function isPlayerRunning(player: PlayerState): boolean {
   );
 }
 
+/**
+ * Whether the player skids this tick: on the ground, not climbing, still sliding although it let go
+ * of the walk keys or holds the other way (its walk against its velocity), so its momentum carries
+ * it on while it brakes ({@link PLAYER_GROUND_BRAKE}).
+ */
+export function isPlayerSkidding(player: PlayerState): boolean {
+  const { velocity, walk } = player;
+  if (player.verticalSpeed !== undefined || player.climb !== undefined) return false;
+  if (velocity.x === 0 && velocity.y === 0) return false;
+  return (walk.x === 0 && walk.y === 0) || velocity.x * walk.x + velocity.y * walk.y < 0;
+}
+
 /** Buffers one fresh jump press for a short, deterministic interval. */
 export function jumpPlayer(player: PlayerState): void {
   player.wantsJump = true;

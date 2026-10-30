@@ -29,6 +29,7 @@ import {
   PLAYER_RUN_SPEED,
   PLAYER_RUN_STEP,
   isPlayerRunning,
+  isPlayerSkidding,
   setPlayerRun,
   PLAYER_AIR_ACCEL,
   PLAYER_AIR_BRAKE,
@@ -325,6 +326,24 @@ describe("horizontal control", () => {
     stepPlayer(player, field, 3);
     expect(player.velocity.x).toBeCloseTo(PLAYER_STEP);
     expect(isPlayerRunning(player)).toBe(false);
+  });
+
+  it("skids while it slides on after letting go or holding the other way, not walking on or standing", () => {
+    const player = walking(field, { x: 1, y: 1 }, east);
+    expect(isPlayerSkidding(player)).toBe(false);
+    stepPlayer(player, field, 3);
+    expect(isPlayerSkidding(player)).toBe(false);
+    setPlayerWalk(player, still);
+    stepPlayer(player, field);
+    expect(isPlayerSkidding(player)).toBe(true);
+    setPlayerWalk(player, { ...still, down: true, left: true });
+    expect(isPlayerSkidding(player)).toBe(true);
+    for (let tick = 0; tick < 10 && player.velocity.x > 0; tick += 1) stepPlayer(player, field);
+    expect(isPlayerSkidding(player)).toBe(false);
+    jumpPlayer(player);
+    setPlayerWalk(player, still);
+    stepPlayer(player, field);
+    expect(isPlayerSkidding(player)).toBe(false);
   });
 
   it("does not count as running in the air or climbing, and jumps farther from a run", () => {

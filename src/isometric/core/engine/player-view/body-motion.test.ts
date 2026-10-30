@@ -4,6 +4,7 @@ import {
   BODY_CLIMB_STRETCH,
   BODY_MAX_AIR_STRETCH,
   BODY_MAX_LEAN,
+  BODY_SKID_LEAN_PER_SPEED,
   DANCE_DELAY_MS,
   DANCE_FADE_MS,
   getBodyShape,
@@ -44,6 +45,14 @@ describe("getLeanTarget", () => {
     expect(getLeanTarget(right(0.05), right(-PLAYER_GROUND_ACCEL))).toBeLessThan(0);
     expect(getLeanTarget(right(1), right(1))).toBe(BODY_MAX_LEAN);
     expect(getLeanTarget(right(-1), STILL)).toBe(-BODY_MAX_LEAN);
+  });
+
+  it("leans back against a skid instead of into it, more from a run, never past its limit", () => {
+    const walk = getLeanTarget(right(PLAYER_STEP), STILL, true);
+    expect(walk).toBeCloseTo(-BODY_SKID_LEAN_PER_SPEED * PLAYER_STEP);
+    expect(getLeanTarget(right(PLAYER_RUN_STEP), STILL, true)).toBeLessThan(walk);
+    expect(getLeanTarget(right(-PLAYER_STEP), STILL, true)).toBeCloseTo(-walk);
+    expect(getLeanTarget(right(1), right(-1), true)).toBe(-BODY_MAX_LEAN);
   });
 });
 

@@ -70,6 +70,6 @@ export function getWalkSheetCell(sheet: PlayerWalkSheet): SheetCell {
  * By distance, not time, so the feet keep pace with the ground at any speed.
  */
 export function getWalkPose(distance: number, sheet: Pick<PlayerWalkSheet, "frames" | "stride">): number {
-  const cycle = (distance / sheet.stride) % 1;
+  const cycle = (((distance / sheet.stride) % 1) + 1) % 1;
   return 1 + Math.min(sheet.frames - 1, Math.floor(cycle * sheet.frames));
 }

@@ -183,3 +183,7 @@ Nuevo (a petición de Alex): un salto en el aire (`PLAYER_AIR_JUMPS` = 1, `playe
 ## Correr e inercia · 2026-10-29
 
 Nuevo (a petición de Alex): correr con Shift (`player.running`, entrada transitoria; `PLAYER_RUN_STEP` 0,25 columnas/tick), inercia en tierra (aceleración 0,09 → 0,05 y frenado 0,12 → 0,03 columnas/tick², que patine al soltar; al pasar de correr a caminar frena en vez de cortar) y polvo de vóxeles cada 0,7 columnas de carrera, leído con `isPlayerRunning()`. Todo en el paso fijo, sin tocar la parte guardada. El hueco de una columna necesita ahora tres ticks de carrera antes del salto (antes dos). Pendiente: probar en juego si la inercia nueva entorpece la precisión en bordes y actualizar el laboratorio, que no conoce la carrera.
+
+## Patinazo · 2026-10-29
+
+Nuevo (a petición de Alex): `isPlayerSkidding()` en el dominio (deslizándose sin teclas o contra la velocidad). La vista pedalea los pies contra el patinazo (ciclo de caminar al revés, el doble de rápido, al soltar; hacia la nueva dirección al girar) y levanta polvo cada 0,2 columnas, con un pool de seis nubes pequeñas. Sin hoja de pose propia de frenado: si se queda corto, una pose inclinada hacia atrás sería el siguiente paso.

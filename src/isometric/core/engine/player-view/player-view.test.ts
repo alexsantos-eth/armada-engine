@@ -379,6 +379,29 @@ describe("createPlayerView", () => {
     scene.destroy();
   });
 
+  it("pedals its feet against a skid: backwards when it let go, the held way when it turns", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, root, scene } = await mountScene(world, [createPlayerView(WALKER)]);
+    const [view] = root.children;
+    const player = world.parts.get(PLAYER_PART);
+    const slide = (x: number) => {
+      Object.assign(player, { previous: { x: player.x, y: player.y, elevation: 1 }, x });
+      ticker.frame();
+    };
+    player.motion = { type: "walking" };
+    player.walk = { x: 0, y: 0 };
+    player.velocity = { x: 0.1, y: 0 };
+    slide(1.1);
+    expect(cellOf(view)).toMatchObject({ column: getWalkPose(-0.2, SHEET) });
+    slide(1.2);
+    expect(cellOf(view)).toMatchObject({ column: getWalkPose(-0.4, SHEET) });
+
+    player.walk = { x: -1, y: 0 };
+    slide(1.3);
+    expect(cellOf(view)).toMatchObject({ row: facing("south-west"), column: getWalkPose(-0.4 + 0.2, SHEET) });
+    scene.destroy();
+  });
+
   it("breathes standing still, from the standing pose, by time; walking and in the air it does not", async () => {
     const idle = { source: "/assets/player/idle.svg", frames: 4, period: 400 };
     const world = fieldWithPlayer();
@@ -848,13 +871,31 @@ describe("createPlayerView feedback", () => {
       ticker.frame(16);
       for (let tick = 1; tick <= 6; tick += 1) {
         const previous = { x: 0.5 + speed * (tick - 1), y: 1, elevation: 1, inset: 0, height: 0 };
-        Object.assign(player, { x: previous.x + speed, previous, velocity: { x: speed, y: 0 } });
+        Object.assign(player, { x: previous.x + speed, previous, velocity: { x: speed, y: 0 }, walk: { x: 1, y: 0 } });
         ticker.frame(50);
       }
       const raised = dustOf(root);
       scene.destroy();
       return raised;
     };
+
+    const skidding = async () => {
+      resetHarness();
+      const world = fieldWithPlayer();
+      const { ticker, root, scene } = await sceneOf(world);
+      const player = world.parts.get(PLAYER_PART);
+      ticker.frame(16);
+      Object.assign(player, { walk: { x: 0, y: 0 } });
+      for (let tick = 1; tick <= 4; tick += 1) {
+        const previous = { x: 0.5 + 0.15 * (tick - 1), y: 1, elevation: 1, inset: 0, height: 0 };
+        Object.assign(player, { x: previous.x + 0.15, previous, velocity: { x: 0.15, y: 0 } });
+        ticker.frame(50);
+      }
+      const raised = dustOf(root);
+      scene.destroy();
+      return raised;
+    };
+    expect((await skidding()).length).toBeGreaterThanOrEqual(3);
 
     const running = await puffs(0.25);
     expect(running).toHaveLength(2);
@@ -920,6 +961,7 @@ describe("createPlayerView body motion", () => {
 
     // Sets off to the right of the screen, speeding up for a few ticks, in place (only the lean).
     const leans: number[] = [];
+    player.walk = right(1);
     for (let tick = 1; tick <= 6; tick += 1) {
       clock.tick += 1;
       player.velocity = right(Math.min(0.25, 0.05 * tick));
@@ -946,6 +988,25 @@ describe("createPlayerView body motion", () => {
     for (let frame = 0; frame < 40; frame += 1) ticker.frame(100);
     expect(Math.abs(body.skew.x)).toBe(0);
     expect(body.position).toMatchObject(upright);
+    scene.destroy();
+  });
+
+  it("leans back against a skid, its heels dug in, and forward again walking on", async () => {
+    const world = fieldWithPlayer();
+    const { ticker, view, scene } = await sceneOf(world);
+    const body = view as Body;
+    const player = world.parts.get(PLAYER_PART);
+    const clock = world.parts.get(CLOCK_PART);
+    const settle = () => {
+      for (let frame = 0; frame < 30; frame += 1) ticker.frame(16);
+      return -body.skew.x;
+    };
+    clock.tick += 1;
+    Object.assign(player, { velocity: right(0.15), walk: { x: 0, y: 0 } });
+    expect(settle()).toBeLessThan(0);
+    clock.tick += 1;
+    player.walk = right(1);
+    expect(settle()).toBeGreaterThan(0);
     scene.destroy();
   });
 
@@ -1055,7 +1116,7 @@ describe("createPlayerView body motion", () => {
 
     // Walking toward the camera's right: a quarter of a step in, the body is taller and thinner.
     const step = SHEET.stride / 8;
-    Object.assign(player, { motion: { type: "walking" }, velocity: { x: 0.15, y: 0 } });
+    Object.assign(player, { motion: { type: "walking" }, velocity: { x: 0.15, y: 0 }, walk: { x: 1, y: 0 } });
     Object.assign(player, { previous: { ...player.previous, x: 1 }, x: 1 + step });
     ticker.frame(16);
     expect(body.scale.y).toBeGreaterThan(1);

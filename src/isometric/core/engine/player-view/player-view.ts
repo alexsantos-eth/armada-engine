@@ -7,6 +7,7 @@ import {
   getPlayerJumpPhase,
   getPlayerRenderPosition,
   isPlayerRunning,
+  isPlayerSkidding,
   PLAYER_FACINGS,
   PLAYER_PART,
 } from "../player";
@@ -76,8 +77,17 @@ const RUN_DUST_VOXELS: ReadonlyArray<readonly [number, number, number]> = [
 /** Columns a running player covers between two puffs of dust. */
 const RUN_DUST_EVERY = 0.7;
 
-/** Puffs of running dust drawn at most at once (reused in turn). */
-const RUN_PUFFS = 3;
+/** Columns a skidding player slides between two puffs of dust: more often than running. */
+const SKID_DUST_EVERY = 0.2;
+
+/** Puffs of running or skidding dust drawn at most at once (reused in turn). */
+const RUN_PUFFS = 6;
+
+/**
+ * How fast its feet pedal while it skids, as columns of walk cycle per column slid: let go, they run
+ * backwards against the slide; held the other way, they run that way while it slides on.
+ */
+const SKID_PEDAL = 2;
 
 /**
  * How the player view answers what the player does (`createPlayerView()`). Every field is optional;
@@ -107,7 +117,8 @@ export type PlayerViewOptions = {
  * With `effects`, it answers take-offs and landings from the counters in `player.feedback` (no
  * events): dust at a take-off and at a hard landing (`getDust()`), a stretch at take-off and a squash
  * at landing (`getBodyScale()`); and while it runs (`isPlayerRunning()`), a small puff of dust every
- * {@link RUN_DUST_EVERY} columns. Standing still with `appearance.dance`, it dances: on every beat
+ * {@link RUN_DUST_EVERY} columns, every {@link SKID_DUST_EVERY} while it skids (`isPlayerSkidding()`).
+ * Skidding, its feet pedal against the slide ({@link SKID_PEDAL}): backwards if it let go. Standing still with `appearance.dance`, it dances: on every beat
  * its weight lands on one foot and then the other, the body leaning over it and dipping
  * (`getIdleDance()`), on top of its idle sheet.
  *
@@ -253,7 +264,11 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
           showFrame(view, climb ? climb.frames[facing][getClimbPose(climbing, climb.sheet)] : walk.frames[facing][0]);
           return;
         }
-        walked = walking ? walked + Math.hypot(at.x - drawnAt.x, at.y - drawnAt.y) : 0;
+        const moved = Math.hypot(at.x - drawnAt.x, at.y - drawnAt.y);
+        // Skidding, the feet pedal against the slide (backwards, if it let go), as if trying to run.
+        const skidding = walking && isPlayerSkidding(player);
+        const pedal = !skidding ? 1 : player.walk.x === 0 && player.walk.y === 0 ? -SKID_PEDAL : SKID_PEDAL;
+        walked = walking ? walked + moved * pedal : 0;
         if (jump && jumpPose !== undefined) {
           showFrame(view, jump.frames[facing][jumpPose]);
           return;
@@ -343,17 +358,18 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         puff.view.position.set(screen.x, screen.y - (at.elevation - at.inset + at.height) * metrics.boxHeight);
         scene.placeAt(puff.view, depth);
       };
-      // Columns run since the last puff of running dust, and the puff it raises next.
+      // Columns run or slid since the last puff of running dust, and the puff it raises next.
       let ran = 0;
       let runPuff = 0;
       const kickDust = (at: PlayerRenderPosition) => {
-        if (!isPlayerRunning(player)) {
+        const every = isPlayerSkidding(player) ? SKID_DUST_EVERY : isPlayerRunning(player) ? RUN_DUST_EVERY : 0;
+        if (every === 0) {
           ran = 0;
           return;
         }
         ran += Math.hypot(at.x - drawnAt.x, at.y - drawnAt.y);
-        if (ran < RUN_DUST_EVERY) return;
-        ran -= RUN_DUST_EVERY;
+        if (ran < every) return;
+        ran %= every;
         raiseDust(2 + runPuff, at);
         runPuff = (runPuff + 1) % RUN_PUFFS;
       };
@@ -409,7 +425,8 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         const dance = appearance.dance && getIdleDance(stood, appearance.dance);
         // The dance leans to the monkey's own sides: across the screen only as far as they show.
         const sway = (dance?.lean ?? 0) * getSideLeanShare(facing, PLAYER_FACINGS.length);
-        const target = climbing === undefined ? getLeanTarget(velocity, acceleration) + sway : 0;
+        const target =
+          climbing === undefined ? getLeanTarget(velocity, acceleration, isPlayerSkidding(player)) + sway : 0;
         stepBodyLean(lean, target, elapsedMs);
         const pulse = getBodyScale(sinceTakeoff, sinceLanding, impact);
         const shape = getBodyShape({

@@ -39,6 +39,8 @@ describe("player walk sheet", () => {
     const poses = [0, 0.49, 0.5, 1, 1.5, 1.99, 2, 2.5].map((distance) => getWalkPose(distance, SHEET));
 
     expect(poses).toEqual([1, 1, 2, 3, 4, 4, 1, 2]);
+    // Backwards (negative distance, feet pedalling against a skid), the same cycle in reverse.
+    expect([-0.25, -0.75, -2.25].map((distance) => getWalkPose(distance, SHEET))).toEqual([4, 3, 4]);
   });
 
   const IDLE = { source: "/assets/player/idle.svg", frames: 4, period: 2000 };

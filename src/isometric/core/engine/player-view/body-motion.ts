@@ -12,6 +12,13 @@ export const BODY_LEAN_PER_SPEED = 0.35;
  */
 export const BODY_LEAN_PER_ACCEL = 1.2;
 
+/**
+ * Lean back, in radians per column per tick it drifts across the screen, while it skids
+ * (`isPlayerSkidding()`): instead of leaning into its speed it leans against the slide, heels dug
+ * in, about 5° from a walk and 8° from a run (with the brake's lean, up to {@link BODY_MAX_LEAN}).
+ */
+export const BODY_SKID_LEAN_PER_SPEED = 0.8;
+
 /** Most the body ever leans, in radians (about 9°): a stop against a wall leans no further. */
 export const BODY_MAX_LEAN = 0.16;
 
@@ -65,10 +72,12 @@ export function getScreenDrift(velocity: GridPoint): number {
 /**
  * The angle the body leans toward (radians, see {@link BodyLean}) moving at `velocity` and speeding
  * up by `acceleration` (columns per tick, and per tick²): forward with its speed, more while it
- * speeds up and back while it brakes, never past {@link BODY_MAX_LEAN}.
+ * speeds up and back while it brakes, never past {@link BODY_MAX_LEAN}. `skidding`, it leans back
+ * against its slide ({@link BODY_SKID_LEAN_PER_SPEED}) instead of into it.
  */
-export function getLeanTarget(velocity: GridPoint, acceleration: GridPoint): number {
-  const target = BODY_LEAN_PER_SPEED * getScreenDrift(velocity) + BODY_LEAN_PER_ACCEL * getScreenDrift(acceleration);
+export function getLeanTarget(velocity: GridPoint, acceleration: GridPoint, skidding = false): number {
+  const perSpeed = skidding ? -BODY_SKID_LEAN_PER_SPEED : BODY_LEAN_PER_SPEED;
+  const target = perSpeed * getScreenDrift(velocity) + BODY_LEAN_PER_ACCEL * getScreenDrift(acceleration);
   return Math.max(-BODY_MAX_LEAN, Math.min(BODY_MAX_LEAN, target));
 }
 
