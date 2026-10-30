@@ -1,4 +1,4 @@
-import { BufferImageSource, Container, Graphics, Sprite, Texture } from "pixi.js";
+import { BufferImageSource, Container, Graphics, GraphicsContext, Sprite, Texture } from "pixi.js";
 import { getGroundPointBelow } from "../camera";
 import {
   getClimbRise,
@@ -14,6 +14,7 @@ import {
   PLAYER_PART,
 } from "../player";
 import { projectBoxesToIsometric, projectGridPoint } from "../projection";
+import { createSeededRandom } from "../random";
 import { createBlockViews, getBlockDepth, getSheetFrames, showFrame } from "../render";
 import { SCENE_LAYER, type BuiltScene, type SceneModule } from "../scene";
 import type { GridPoint, PlayerAppearance, PlayerRenderPosition } from "../../types";
@@ -26,7 +27,18 @@ import {
   stepBodyLean,
   type BodyLean,
 } from "./body-motion";
-import { DUST_MIN_IMPACT, getBodyScale, getDust, getVoxelFaces } from "./feedback";
+import {
+  BURST_DUST,
+  DUST_MIN_IMPACT,
+  getBodyScale,
+  getDust,
+  getDustColumn,
+  getDustVoxelAt,
+  getDustVoxels,
+  getVoxelFaces,
+  KICK_DUST,
+  type DustVoxel,
+} from "./feedback";
 import {
   getClimbPose,
   getClimbSheetLayout,
@@ -50,31 +62,11 @@ const SHADOW_COLUMNS = 8;
 const DUST_COLORS = { top: 0xfbf9f4, left: 0xe6e2d8, right: 0xcfcabd };
 
 /**
- * Voxels of a puff of dust, back to front: bottom centre (in tiles across and down from the feet)
- * and size (in tiles).
+ * Draw depth added to the dust in front of the feet over a column, so it stays after the player
+ * (and whatever stands there) placed at that column's depth later: well below the step between
+ * two columns' depths (`getBlockDepth()`).
  */
-const DUST_VOXELS: ReadonlyArray<readonly [number, number, number]> = [
-  [-0.03, -0.07, 0.04],
-  [0.09, -0.055, 0.05],
-  [-0.06, -0.04, 0.06],
-  [0.17, -0.02, 0.045],
-  [-0.19, -0.01, 0.05],
-  [-0.13, 0, 0.08],
-  [0.13, 0, 0.08],
-  [0.03, 0.02, 0.05],
-  [0.07, 0.035, 0.07],
-  [-0.1, 0.04, 0.055],
-  [0.16, 0.05, 0.04],
-  [0, 0.06, 0.06],
-];
-
-/** Voxels of the small puff a running player kicks up, back to front, like {@link DUST_VOXELS}. */
-const RUN_DUST_VOXELS: ReadonlyArray<readonly [number, number, number]> = [
-  [0.05, -0.03, 0.04],
-  [-0.07, 0, 0.05],
-  [0.08, 0.02, 0.045],
-  [-0.01, 0.04, 0.04],
-];
+const DUST_FRONT_DEPTH = 0.00001;
 
 /** Columns a running player covers between two puffs of dust. */
 const RUN_DUST_EVERY = 0.7;
@@ -362,26 +354,66 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
       let seenTick: number | undefined;
       let seenVelocity: GridPoint = { x: 0, y: 0 };
       let acceleration: GridPoint = { x: 0, y: 0 };
+      // The one voxel every puff of dust is made of, a tile wide: each voxel of a puff is a view of
+      // it, scaled to its size and tinted to its shade, so its geometry is built once.
+      const faces = getVoxelFaces(0, 0, 1, metrics);
+      const voxel = new GraphicsContext()
+        .poly(faces.top)
+        .fill({ color: DUST_COLORS.top })
+        .poly(faces.left)
+        .fill({ color: DUST_COLORS.left })
+        .poly(faces.right)
+        .fill({ color: DUST_COLORS.right });
       // Puffs of dust, made when first raised: one for take-offs (in the air too, where the feet are,
       // for a double jump), one for landings, then {@link RUN_PUFFS} small ones for running, in turn.
-      const puffs: Array<{ view: Graphics; ms: number } | undefined> = [];
-      const raiseDust = (index: number, at: PlayerRenderPosition) => {
+      // Each voxel is a view of its own in the draw order, by the column it drifts over, so the
+      // player, the blocks and what stands on them hide the dust behind them.
+      type Puff = {
+        readonly views: Graphics[];
+        voxels: readonly DustVoxel[];
+        // The feet it rose from, on the ground and on the screen, and blocks above `0` they were.
+        feet: GridPoint;
+        screen: GridPoint;
+        level: number;
+        ms: number;
+      };
+      const puffs: Array<Puff | undefined> = [];
+      // Puffs raised so far: the seed of the next one's scatter, so no two look alike.
+      let raised = 0;
+      const voxelAt = { x: 0, y: 0, height: 0, size: 0 };
+      const topAt = (x: number, y: number) => columnAt.get(x, y)?.elevation;
+      // Puts a voxel of `puff` in the draw order by the column it is over halfway through its life.
+      const placeVoxel = (view: Graphics, puff: Puff, dust: DustVoxel) => {
+        getDustVoxelAt(dust, 0.5, voxelAt);
+        const point = { x: puff.feet.x + voxelAt.x, y: puff.feet.y + voxelAt.y };
+        const { x, y, elevation, behind } = getDustColumn(point, puff.feet, puff.level, topAt);
+        const [top] = projectBoxesToIsometric([{ x, y, elevation, metadata: {} }], projection);
+        const voxelDepth = getBlockDepth(top, metrics);
+        if (behind) scene.move({ view, depth: voxelDepth, layer: SCENE_LAYER.ground });
+        else scene.placeAt(view, voxelDepth + DUST_FRONT_DEPTH);
+      };
+      const raiseDust = (index: number, at: PlayerRenderPosition, kick?: GridPoint) => {
+        const shape = index < 2 ? BURST_DUST : KICK_DUST;
         let puff = puffs[index];
         if (!puff) {
-          const dust = new Graphics();
-          for (const [x, y, size] of index < 2 ? DUST_VOXELS : RUN_DUST_VOXELS) {
-            const faces = getVoxelFaces(x, y, size, metrics);
-            dust.poly(faces.top).fill({ color: DUST_COLORS.top });
-            dust.poly(faces.left).fill({ color: DUST_COLORS.left });
-            dust.poly(faces.right).fill({ color: DUST_COLORS.right });
-          }
-          dust.cullable = false;
-          puff = puffs[index] = { view: dust, ms: 0 };
+          const views = Array.from({ length: shape.voxels }, () => {
+            const dust = new Graphics(voxel);
+            dust.cullable = false;
+            return dust;
+          });
+          puff = puffs[index] = { views, voxels: [], feet: at, screen: at, level: 0, ms: 0 };
         }
+        raised += 1;
+        puff.voxels = getDustVoxels(shape, createSeededRandom(raised), kick);
+        puff.feet = { x: at.x, y: at.y };
+        puff.screen = projectGridPoint(at, projection);
+        puff.level = at.elevation - at.inset + at.height;
         puff.ms = 0;
-        const screen = projectGridPoint(at, projection);
-        puff.view.position.set(screen.x, screen.y - (at.elevation - at.inset + at.height) * metrics.boxHeight);
-        scene.placeAt(puff.view, depth);
+        for (let voxelIndex = 0; voxelIndex < puff.views.length; voxelIndex += 1) {
+          const view = puff.views[voxelIndex];
+          view.tint = puff.voxels[voxelIndex].shade;
+          placeVoxel(view, puff, puff.voxels[voxelIndex]);
+        }
       };
       // Columns run or slid since the last puff of running dust, and the puff it raises next.
       let ran = 0;
@@ -395,19 +427,32 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         ran += Math.hypot(at.x - drawnAt.x, at.y - drawnAt.y);
         if (ran < every) return;
         ran %= every;
-        raiseDust(2 + runPuff, at);
+        // Kicked back, away from where it slides or runs (nowhere, at no speed).
+        const { velocity } = player;
+        const speed = Math.hypot(velocity.x, velocity.y) || 1;
+        raiseDust(2 + runPuff, at, { x: -velocity.x / speed, y: -velocity.y / speed });
         runPuff = (runPuff + 1) % RUN_PUFFS;
       };
+      // Every frame, only each live voxel's position, size and opacity change; it shows or hides only
+      // as its puff rises or ends.
       const settleDust = (elapsedMs: number) => {
         for (const puff of puffs) {
           if (!puff || puff.ms === Infinity) continue;
           puff.ms += elapsedMs;
           const look = getDust(puff.ms);
           if (!look) puff.ms = Infinity;
-          if (puff.view.visible !== (look !== undefined)) puff.view.visible = look !== undefined;
-          if (!look) continue;
-          puff.view.alpha = look.alpha;
-          puff.view.scale.set(look.scale, look.scale);
+          for (let index = 0; index < puff.views.length; index += 1) {
+            const view = puff.views[index];
+            if (view.visible !== (look !== undefined)) view.visible = look !== undefined;
+            if (!look) continue;
+            const { x, y, height, size } = getDustVoxelAt(puff.voxels[index], look.progress, voxelAt);
+            view.alpha = look.alpha;
+            view.scale.set(size, size);
+            view.position.set(
+              puff.screen.x + ((x - y) * projection.tileWidth) / 2,
+              puff.screen.y - ((x + y) * projection.tileHeight) / 2 - (puff.level + height) * metrics.boxHeight,
+            );
+          }
         }
       };
       /**
@@ -428,7 +473,8 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         if (feedback.landings !== seen.landings) {
           sinceLanding = 0;
           impact = feedback.impact;
-          if (impact >= DUST_MIN_IMPACT) raiseDust(1, at);
+          // On the ground it landed on: drawn between ticks, the feet may still be a little above it.
+          if (impact >= DUST_MIN_IMPACT) raiseDust(1, { ...at, height: 0 });
         }
         if (feedback.jumps !== seen.jumps) {
           sinceTakeoff = 0;
@@ -542,6 +588,7 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
           if (moved || rise) services.get("camera")?.follow(ground(at, elapsedMs));
         },
         destroy: () => {
+          voxel.destroy();
           shadowBody.mask = null;
           shadowTexture.destroy(true);
         },

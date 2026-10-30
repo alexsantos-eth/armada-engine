@@ -162,6 +162,18 @@ export function mockPixi() {
       public rect = vi.fn(() => this);
       public poly = vi.fn(() => this);
       public fill = vi.fn(() => this);
+      /** The shared geometry it draws, when made from a `GraphicsContext`. */
+      public context: unknown;
+
+      constructor(context?: unknown) {
+        super();
+        this.context = context;
+      }
+    },
+    GraphicsContext: class {
+      public poly = vi.fn(() => this);
+      public fill = vi.fn(() => this);
+      public destroy = vi.fn();
     },
     Rectangle: class {
       public x: number;
