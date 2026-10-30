@@ -82,14 +82,18 @@ vi.mock("./modules", async (importOriginal) => {
 type Listener = (event: unknown) => void;
 
 /** A window that records its listeners, so a test can press keys by hand. */
-const createWindow = (search = "?seed=1337&hour=15", reducedMotion?: boolean) => {
+const createWindow = (search = "?seed=1337&hour=15", reducedMotion?: boolean, mobile?: boolean) => {
   const listeners = new Map<string, Set<Listener>>();
   return {
     location: { search },
-    ...(reducedMotion === undefined
+    ...(reducedMotion === undefined && mobile === undefined
       ? {}
-      : { matchMedia: vi.fn((query: string) => ({ matches: reducedMotion && query.includes("reduce") })) }),
-    devicePixelRatio: 2,
+      : {
+          matchMedia: vi.fn((query: string) => ({
+            matches: query.includes("reduce") ? reducedMotion === true : mobile === true,
+          })),
+        }),
+    devicePixelRatio: mobile ? 3 : 2,
     setTimeout: vi.fn(),
     clearTimeout: vi.fn(),
     performance: { now: vi.fn(() => 0), memory: { usedJSHeapSize: 2 * 1024 * 1024 } },
@@ -121,9 +125,9 @@ const deferred = <T>() => {
   return { promise, resolve };
 };
 
-const mount = (search?: string, extra: Partial<GameOptions> & { reducedMotion?: boolean } = {}) => {
-  const { reducedMotion, ...more } = extra;
-  const window = createWindow(search, reducedMotion);
+const mount = (search?: string, extra: Partial<GameOptions> & { reducedMotion?: boolean; mobile?: boolean } = {}) => {
+  const { reducedMotion, mobile, ...more } = extra;
+  const window = createWindow(search, reducedMotion, mobile);
   const container = createContainer();
   const onClockChange = vi.fn();
   const log = vi.fn();
@@ -189,6 +193,25 @@ describe("mountGame", () => {
       autoDensity: true,
     });
     expect(container.appendChild).toHaveBeenCalledWith(app.canvas);
+    expect(started().options.svgDetail).toBeUndefined();
+  });
+
+  it("draws phones with the mobile profile: canvas at most at 2×, no antialiasing, SVGs at their drawn size", async () => {
+    const { window, game, log } = mount("?seed=1&perf", { mobile: true });
+    await game.ready;
+    const { app, options } = started();
+    expect(log).toHaveBeenCalledWith("Armada perf: a report every 5 s, culling on, mobile profile");
+
+    expect(window.devicePixelRatio).toBe(3);
+    expect(app.init).toHaveBeenCalledWith(expect.objectContaining({ antialias: false, resolution: 2 }));
+    expect(options.svgDetail).toBe(1);
+    game.destroy();
+
+    // `?mobile=off` keeps a phone on the desktop profile, at its full pixel ratio.
+    const forced = mount("?seed=1&mobile=off", { mobile: true });
+    await forced.game.ready;
+    expect(started().app.init).toHaveBeenCalledWith(expect.objectContaining({ antialias: true, resolution: 3 }));
+    expect(started().options.svgDetail).toBeUndefined();
   });
 
   it("generates the world of the URL's seed and hour, logs the seed and renders it", async () => {
@@ -256,7 +279,7 @@ describe("mountGame", () => {
     const { game, log, window } = mount("?seed=1&perf");
     await game.ready;
     const { app, options } = started();
-    expect(log).toHaveBeenCalledWith("Armada perf: a report every 5 s, culling on");
+    expect(log).toHaveBeenCalledWith("Armada perf: a report every 5 s, culling on, desktop profile");
     expect(options.profiler?.now).toBeTypeOf("function");
 
     // The monitor's listeners: the first of a frame and the last, after the render.
@@ -281,7 +304,7 @@ describe("mountGame", () => {
   it("profiles nothing without ?perf, and draws everything with ?cull=off", async () => {
     const { game, log } = mount("?seed=1&cull=off&perf");
     await game.ready;
-    expect(log).toHaveBeenCalledWith("Armada perf: a report every 5 s, culling off");
+    expect(log).toHaveBeenCalledWith("Armada perf: a report every 5 s, culling off, desktop profile");
     game.destroy();
 
     const plain = mount("?seed=1");

@@ -23,6 +23,10 @@ describe("getSvgResolution", () => {
     expect(getSvgResolution(40, 2)).toBeCloseTo(2 * getSvgResolution(40, 1));
   });
 
+  it("takes less detail when asked, down to exactly the drawn size", () => {
+    expect(getSvgResolution(320, 2, 1)).toBeCloseTo((320 * 2) / 1024);
+  });
+
   it("never rasterizes above the canvas's own size", () => {
     expect(getSvgResolution(1024, 1)).toBe(1);
     expect(getSvgResolution(2048, 3)).toBe(1);

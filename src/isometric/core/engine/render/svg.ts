@@ -12,11 +12,12 @@ export const SVG_DETAIL = 1.5;
 /**
  * Resolution to rasterize the SVG assets at (`data.resolution` of `Assets.load()`), so their
  * textures match the size they are drawn at instead of their 1024 px canvas: the on-screen tile
- * width × the device pixel ratio × {@link SVG_DETAIL}, relative to {@link SVG_TILE_WIDTH}, and
- * never above `1`. If the tile grows on screen (camera zoom), pass the largest expected width.
+ * width × the device pixel ratio × `detail` ({@link SVG_DETAIL} by default; `1` for exactly the
+ * drawn size, which saves memory), relative to {@link SVG_TILE_WIDTH}, and never above `1`. If the
+ * tile grows on screen (camera zoom), pass the largest expected width.
  */
-export function getSvgResolution(tileWidth: number, deviceResolution = 1): number {
-  return Math.min(1, (tileWidth * deviceResolution * SVG_DETAIL) / SVG_TILE_WIDTH);
+export function getSvgResolution(tileWidth: number, deviceResolution = 1, detail = SVG_DETAIL): number {
+  return Math.min(1, (tileWidth * deviceResolution * detail) / SVG_TILE_WIDTH);
 }
 
 const SVG_COLOR_ATTRIBUTE_PATTERN = /(fill|stroke)\s*=\s*(["'])#([0-9a-fA-F]{3,8})\2/g;

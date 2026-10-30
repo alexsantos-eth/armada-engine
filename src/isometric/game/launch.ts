@@ -34,15 +34,26 @@ export type LaunchOptions = {
   readonly sound: boolean;
   /** Whether the player starts wearing a jetpack (until it is an item to pick up): `?jetpack`. */
   readonly jetpack: boolean;
+  /**
+   * Whether the game draws with the mobile profile, which takes less memory (`MOBILE_RENDER`): on
+   * by default on phones and tablets, `?mobile` or `?mobile=off` forces it either way.
+   */
+  readonly mobile: boolean;
 };
 
 /**
  * Reads the launch options from a URL query (`location.search`). `random` only draws a new
  * seed when the query has none; the app passes `Math.random`, the one non-seeded source. With
  * `reducedMotion` (the player's `prefers-reduced-motion`), the effects are off unless the query
- * turns them on.
+ * turns them on; with `mobileDevice` (`isMobileDevice()`), the mobile profile is on unless the
+ * query turns it off.
  */
-export function resolveLaunchOptions(search: string, random: RandomSource, reducedMotion = false): LaunchOptions {
+export function resolveLaunchOptions(
+  search: string,
+  random: RandomSource,
+  reducedMotion = false,
+  mobileDevice = false,
+): LaunchOptions {
   return {
     seed: resolveWorldSeed(search, random),
     startTick: resolveStartTick(search),
@@ -53,6 +64,7 @@ export function resolveLaunchOptions(search: string, random: RandomSource, reduc
     effects: resolveSwitch(search, "effects", !reducedMotion),
     sound: resolveSwitch(search, "sound", true),
     jetpack: resolveSwitch(search, "jetpack", false),
+    mobile: resolveSwitch(search, "mobile", mobileDevice),
   };
 }
 

@@ -22,6 +22,7 @@ import {
 } from "../core/engine";
 import { bindKeyboardControls, type KeyMap } from "../input";
 import { type ChunkWorker, createChunkPrefetch, startChunkWorker } from "./chunk-prefetch";
+import { isMobileDevice, resolveRenderProfile } from "./device";
 import { formatClockLabel, resolveLaunchOptions } from "./launch";
 import { createSceneModules, createWorldParts, createWorldSystems, findUnknownModules } from "./modules";
 import { PERF_REPORT_MS, startPerfMonitor } from "./perf";
@@ -91,23 +92,22 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
   };
 
   const start = async () => {
+    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    const { seed, startTick, timeScale, disabledModules, perf, cull, effects, sound, jetpack, mobile } =
+      resolveLaunchOptions(window.location.search, random, reducedMotion, isMobileDevice(window));
+    // Phones get the mobile profile, which takes a third of the memory; desktop draws as always.
+    const render = resolveRenderProfile(mobile);
     await app.init({
       resizeTo: window,
       background: "#111111",
-      antialias: true,
-      resolution: window.devicePixelRatio,
+      antialias: render.antialias,
+      resolution: Math.min(window.devicePixelRatio, render.maxResolution),
       autoDensity: true,
     });
     teardowns.push(() => app.destroy(true));
     if (destroyed) return;
 
     container.appendChild(app.canvas);
-    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-    const { seed, startTick, timeScale, disabledModules, perf, cull, effects, sound, jetpack } = resolveLaunchOptions(
-      window.location.search,
-      random,
-      reducedMotion,
-    );
     log(`Armada world seed: ${seed}`);
     const unknown = findUnknownModules(disabledModules);
     if (unknown.length > 0) log(`Armada ?modules= names no module: ${unknown.join(", ")}`);
@@ -127,7 +127,9 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
       : undefined;
     if (monitor) {
       teardowns.push(monitor.destroy);
-      log(`Armada perf: a report every ${PERF_REPORT_MS / 1000} s, culling ${cull ? "on" : "off"}`);
+      log(
+        `Armada perf: a report every ${PERF_REPORT_MS / 1000} s, culling ${cull ? "on" : "off"}, ${mobile ? "mobile" : "desktop"} profile`,
+      );
     }
     // The scene draws the player between its last two ticks, and the camera follows it. The world
     // keeps loaded the ground around the player first and what the camera sees, wherever the
@@ -144,6 +146,7 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
       {
         terrain: TERRAIN_APPEARANCE,
         profiler: monitor?.profiler,
+        svgDetail: render.svgDetail,
         interpolation: () => getInterpolationAlpha(simulation.stepper),
         stream: (visible, building) => {
           const focus = [chunkOfPoint(world.parts.get(PLAYER_PART)), ...visible];

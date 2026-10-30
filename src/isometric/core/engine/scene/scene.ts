@@ -99,6 +99,12 @@ export type SceneOptions = {
   readonly stream?: (visible: readonly ChunkCoord[], building: boolean) => void;
   /** Times each step of every frame (see {@link SceneProfiler}). Defaults to none: nothing is timed. */
   readonly profiler?: SceneProfiler;
+  /**
+   * Extra detail the SVGs are rasterized with over their size on screen at the largest zoom
+   * (`getSvgResolution()`'s `detail`). Defaults to `SVG_DETAIL`; `1` (exactly the drawn size) takes
+   * less than half the texture memory, for devices that have little.
+   */
+  readonly svgDetail?: number;
 };
 
 /** A rendered world: the services its modules provide, and the cleanup that destroys it. */
@@ -165,7 +171,7 @@ export async function createScene(
   /** Records the time since `start` under `label`, when the scene is profiled. */
   const since = (label: string, start: number) => profiler?.record(label, profiler.now() - start);
   const loaded = new Set<string>();
-  const resolution = getSvgResolution(TILE_WIDTH * CAMERA_MAX_ZOOM, app.renderer.resolution);
+  const resolution = getSvgResolution(TILE_WIDTH * CAMERA_MAX_ZOOM, app.renderer.resolution, options.svgDetail);
   const services: Partial<SceneServices> = {};
   const providers = new Map<SceneServiceKey, string>();
   const columnAt = world.columnIndex;

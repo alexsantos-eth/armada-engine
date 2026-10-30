@@ -8,7 +8,7 @@ describe("resolveLaunchOptions", () => {
 
     expect(
       resolveLaunchOptions(
-        "?seed=1337&hour=15&timeScale=0&modules=-shadows&perf&cull=off&effects=off&sound=off&jetpack",
+        "?seed=1337&hour=15&timeScale=0&modules=-shadows&perf&cull=off&effects=off&sound=off&jetpack&mobile",
         random,
       ),
     ).toEqual({
@@ -21,6 +21,7 @@ describe("resolveLaunchOptions", () => {
       effects: false,
       sound: false,
       jetpack: true,
+      mobile: true,
     });
     expect(random).not.toHaveBeenCalled();
   });
@@ -36,12 +37,18 @@ describe("resolveLaunchOptions", () => {
       effects: true,
       sound: true,
       jetpack: false,
+      mobile: false,
     });
   });
 
   it("leaves out the effects for a player who prefers reduced motion, unless asked", () => {
     expect(resolveLaunchOptions("", () => 0.25, true)).toMatchObject({ effects: false });
     expect(resolveLaunchOptions("?effects", () => 0.25, true)).toMatchObject({ effects: true });
+  });
+
+  it("uses the mobile profile on a mobile device, unless the query turns it off", () => {
+    expect(resolveLaunchOptions("", () => 0.25, false, true)).toMatchObject({ mobile: true });
+    expect(resolveLaunchOptions("?mobile=off", () => 0.25, false, true)).toMatchObject({ mobile: false });
   });
 });
 

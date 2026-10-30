@@ -117,6 +117,19 @@ describe("createScene", () => {
     expect(Assets.unload).toHaveBeenCalledWith("/assets/a.svg");
   });
 
+  it("loads SVGs with the detail of the options (the mobile profile's less memory)", async () => {
+    const { module, seen } = probe("a");
+    const { scene } = await mountScene(shore(), [module], { resolution: 2, svgDetail: 1 });
+
+    await seen.context?.assets.loadSvg("/assets/a.svg");
+    expect(Assets.load).toHaveBeenCalledWith({
+      src: "/assets/a.svg",
+      parser: "svg",
+      data: { resolution: getSvgResolution(TILE_METRICS.tileWidth * CAMERA_MAX_ZOOM, 2, 1), autoGenerateMipmaps: true },
+    });
+    scene.destroy();
+  });
+
   it("loads an SVG drawn smaller than its tile at that much less resolution, never more", async () => {
     const { module, seen } = probe("a");
     const { scene } = await mountScene(shore(), [module], { resolution: 2 });

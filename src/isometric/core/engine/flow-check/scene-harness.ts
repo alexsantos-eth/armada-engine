@@ -378,7 +378,9 @@ export async function mockRender() {
         destroy: vi.fn(),
       };
     }),
-    getSvgResolution: vi.fn((tileWidth: number, resolution = 1) => (tileWidth * resolution * 1.5) / 1024),
+    getSvgResolution: vi.fn(
+      (tileWidth: number, resolution = 1, detail = 1.5) => (tileWidth * resolution * detail) / 1024,
+    ),
   };
 }
 
