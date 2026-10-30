@@ -3,6 +3,7 @@ import {
   createSvgColorVariant,
   getSvgResolution,
   releaseSvgColorVariant,
+  releaseSvgPixels,
   replaceSvgColors,
   SVG_DETAIL,
   SVG_TILE_WIDTH,
@@ -30,6 +31,25 @@ describe("getSvgResolution", () => {
   it("never rasterizes above the canvas's own size", () => {
     expect(getSvgResolution(1024, 1)).toBe(1);
     expect(getSvgResolution(2048, 3)).toBe(1);
+  });
+});
+
+describe("releaseSvgPixels", () => {
+  it("uploads the texture now, keeps it out of the GC and empties its canvas", () => {
+    const renderer = { texture: { initSource: vi.fn() } };
+    const source = { autoGarbageCollect: true, resource: { width: 640, height: 747 } };
+
+    releaseSvgPixels(renderer, source as never);
+    expect(renderer.texture.initSource).toHaveBeenCalledWith(source);
+    expect(source).toEqual({ autoGarbageCollect: false, resource: { width: 0, height: 0 } });
+  });
+
+  it("leaves a resource that is not a canvas alone", () => {
+    const renderer = { texture: { initSource: vi.fn() } };
+    const source = { autoGarbageCollect: true, resource: null };
+
+    releaseSvgPixels(renderer, source as never);
+    expect(source).toEqual({ autoGarbageCollect: false, resource: null });
   });
 });
 

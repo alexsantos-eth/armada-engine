@@ -6,7 +6,7 @@ vi.mock("../render", async () => (await import("../flow-check/scene-harness")).m
 import { Assets } from "pixi.js";
 import { CAMERA_MAX_ZOOM } from "../camera";
 import { TILE_METRICS } from "../constants";
-import { getSvgResolution } from "../render";
+import { getSvgResolution, releaseSvgPixels } from "../render";
 import { WorldParts } from "../parts";
 import { CLOCK_PART } from "../time";
 import type { BuiltScene, SceneContext, SceneFrame, SceneModule, SceneModulePart, SceneView } from "./module";
@@ -115,6 +115,22 @@ describe("createScene", () => {
 
     scene.destroy();
     expect(Assets.unload).toHaveBeenCalledWith("/assets/a.svg");
+  });
+
+  it("frees each SVG's pixels once on the GPU when the options ask for it", async () => {
+    const { module, seen } = probe("a");
+    const { scene, renderer } = await mountScene(shore(), [module], { releaseSvgPixels: true });
+
+    const texture = await seen.context?.assets.loadSvg("/assets/a.svg");
+    expect(releaseSvgPixels).toHaveBeenCalledWith(renderer, texture?.source);
+    scene.destroy();
+
+    const plain = probe("b");
+    const kept = await mountScene(shore(), [plain.module]);
+    vi.mocked(releaseSvgPixels).mockClear();
+    await plain.seen.context?.assets.loadSvg("/assets/b.svg");
+    expect(releaseSvgPixels).not.toHaveBeenCalled();
+    kept.scene.destroy();
   });
 
   it("loads SVGs with the detail of the options (the mobile profile's less memory)", async () => {

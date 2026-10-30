@@ -23,7 +23,7 @@ import {
 import type { ScreenDirections } from "../core/types";
 import { bindKeyboardControls, type KeyMap } from "../input";
 import { type ChunkWorker, createChunkPrefetch, startChunkWorker } from "./chunk-prefetch";
-import { isMobileDevice, resolveRenderProfile } from "./device";
+import { isMobileDevice, resolveDeviceProfile } from "./device";
 import { formatClockLabel, resolveLaunchOptions } from "./launch";
 import { createSceneModules, createWorldParts, createWorldSystems, findUnknownModules } from "./modules";
 import { PERF_REPORT_MS, startPerfMonitor } from "./perf";
@@ -98,19 +98,25 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
     const { seed, startTick, timeScale, disabledModules, perf, cull, effects, sound, jetpack, mobile } =
       resolveLaunchOptions(window.location.search, random, reducedMotion, isMobileDevice(window));
-    // Phones get the mobile profile, which takes a third of the memory; desktop draws as always.
-    const render = resolveRenderProfile(mobile);
+    // Phones get the mobile profile, which takes much less memory; desktop runs as always.
+    const device = resolveDeviceProfile(mobile);
     await app.init({
       resizeTo: window,
       background: "#111111",
-      antialias: render.antialias,
-      resolution: Math.min(window.devicePixelRatio, render.maxResolution),
+      antialias: device.antialias,
+      resolution: Math.min(window.devicePixelRatio, device.maxResolution),
       autoDensity: true,
     });
     teardowns.push(() => app.destroy(true));
     if (destroyed) return;
 
     container.appendChild(app.canvas);
+    if (device.releaseSvgPixels) {
+      // The SVGs' pixels are only on the GPU: a context lost and restored would draw them empty.
+      const reload = () => window.location.reload();
+      app.canvas.addEventListener("webglcontextrestored", reload);
+      teardowns.push(() => app.canvas.removeEventListener("webglcontextrestored", reload));
+    }
     log(`Armada world seed: ${seed}`);
     const unknown = findUnknownModules(disabledModules);
     if (unknown.length > 0) log(`Armada ?modules= names no module: ${unknown.join(", ")}`);
@@ -149,13 +155,16 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
       {
         terrain: TERRAIN_APPEARANCE,
         profiler: monitor?.profiler,
-        svgDetail: render.svgDetail,
+        svgDetail: device.svgDetail,
+        releaseSvgPixels: device.releaseSvgPixels,
         interpolation: () => getInterpolationAlpha(simulation.stepper),
         stream: (visible, building) => {
           const focus = [chunkOfPoint(world.parts.get(PLAYER_PART)), ...visible];
-          if (building) return world.chunks.stream(focus);
+          const keepRadius = device.chunkKeepRadius;
+          if (building) return world.chunks.stream(focus, { keepRadius });
           prefetch.request(focus);
           return world.chunks.stream(focus, {
+            keepRadius,
             prefetchRadius: CHUNK_PREFETCH_RADIUS,
             maxLoads: CHUNKS_LOADED_PER_FRAME,
             prefetchPrepared: true,

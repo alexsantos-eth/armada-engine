@@ -35,7 +35,7 @@ export type LaunchOptions = {
   /** Whether the player starts wearing a jetpack (until it is an item to pick up): `?jetpack`. */
   readonly jetpack: boolean;
   /**
-   * Whether the game draws with the mobile profile, which takes less memory (`MOBILE_RENDER`): on
+   * Whether the game draws with the mobile profile, which takes less memory (`MOBILE_PROFILE`): on
    * by default on phones and tablets, `?mobile` or `?mobile=off` forces it either way.
    */
   readonly mobile: boolean;

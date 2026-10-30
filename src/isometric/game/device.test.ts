@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { DESKTOP_RENDER, isMobileDevice, MOBILE_RENDER, resolveRenderProfile } from "./device";
+import { DESKTOP_PROFILE, isMobileDevice, MOBILE_PROFILE, resolveDeviceProfile } from "./device";
 
 describe("isMobileDevice", () => {
   it("is a device whose main pointer is a finger that cannot hover", () => {
@@ -15,11 +15,17 @@ describe("isMobileDevice", () => {
   });
 });
 
-describe("resolveRenderProfile", () => {
+describe("resolveDeviceProfile", () => {
   it("keeps desktop as it was and lowers what takes memory on mobile", () => {
-    expect(resolveRenderProfile(false)).toBe(DESKTOP_RENDER);
-    expect(DESKTOP_RENDER).toEqual({ maxResolution: Infinity, antialias: true });
-    expect(resolveRenderProfile(true)).toBe(MOBILE_RENDER);
-    expect(MOBILE_RENDER).toEqual({ maxResolution: 2, antialias: false, svgDetail: 1 });
+    expect(resolveDeviceProfile(false)).toBe(DESKTOP_PROFILE);
+    expect(DESKTOP_PROFILE).toEqual({ maxResolution: Infinity, antialias: true, releaseSvgPixels: false });
+    expect(resolveDeviceProfile(true)).toBe(MOBILE_PROFILE);
+    expect(MOBILE_PROFILE).toEqual({
+      maxResolution: 2,
+      antialias: false,
+      svgDetail: 1,
+      releaseSvgPixels: true,
+      chunkKeepRadius: 2,
+    });
   });
 });

@@ -1,3 +1,4 @@
+import type { TextureSource } from "pixi.js";
 import type { SvgColorReplacements } from "../../types";
 
 /** Width in px of the tile in the SVG assets' canvas (a block's diamond spans its full width). */
@@ -75,4 +76,22 @@ export async function createSvgColorVariant(
  */
 export function releaseSvgColorVariant(url: string): void {
   if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+}
+
+/** What {@link releaseSvgPixels} needs of a renderer: its texture system, to upload a texture now. */
+export type TextureUploader = { readonly texture: { initSource(source: TextureSource): void } };
+
+/**
+ * Uploads a rasterized SVG to the GPU now and frees its pixels in memory: Pixi keeps the canvas
+ * it rasterized the SVG on as the texture's resource, a second copy as big as the texture. The
+ * texture is left out of Pixi's garbage collector, which would unload it and upload it again from
+ * that canvas. A lost WebGL context cannot upload it again either: the app reloads then.
+ */
+export function releaseSvgPixels(renderer: TextureUploader, source: TextureSource): void {
+  renderer.texture.initSource(source);
+  source.autoGarbageCollect = false;
+  const canvas = source.resource as { width?: unknown; height?: unknown } | null;
+  if (typeof canvas?.width !== "number") return;
+  canvas.width = 0;
+  canvas.height = 0;
 }

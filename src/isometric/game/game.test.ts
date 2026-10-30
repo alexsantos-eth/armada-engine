@@ -52,7 +52,7 @@ class FakeWorker {
 vi.mock("pixi.js", () => {
   class Application {
     init = vi.fn(() => mocks.nextInit ?? Promise.resolve());
-    canvas = { nodeName: "CANVAS" };
+    canvas = { nodeName: "CANVAS", addEventListener: vi.fn(), removeEventListener: vi.fn() };
     stage = { label: "stage" };
     renderer = { screen: { x: 0, y: 0, width: 800, height: 600 } };
     ticker = { add: vi.fn(), remove: vi.fn(() => mocks.teardowns.push("ticker")) };
@@ -90,7 +90,7 @@ type Listener = (event: unknown) => void;
 const createWindow = (search = "?seed=1337&hour=15", reducedMotion?: boolean, mobile?: boolean) => {
   const listeners = new Map<string, Set<Listener>>();
   return {
-    location: { search },
+    location: { search, reload: vi.fn() },
     ...(reducedMotion === undefined && mobile === undefined
       ? {}
       : {
@@ -150,7 +150,7 @@ const mount = (search?: string, extra: Partial<GameOptions> & { reducedMotion?: 
 
 type MockApp = {
   init: ReturnType<typeof vi.fn>;
-  canvas: object;
+  canvas: { addEventListener: ReturnType<typeof vi.fn>; removeEventListener: ReturnType<typeof vi.fn> };
   stage: object;
   renderer: { screen: { width: number; height: number } };
   ticker: { add: ReturnType<typeof vi.fn>; remove: ReturnType<typeof vi.fn> };
@@ -210,13 +210,30 @@ describe("mountGame", () => {
     expect(window.devicePixelRatio).toBe(3);
     expect(app.init).toHaveBeenCalledWith(expect.objectContaining({ antialias: false, resolution: 2 }));
     expect(options.svgDetail).toBe(1);
+    expect(options.releaseSvgPixels).toBe(true);
+
+    // Chunks are kept loaded only 2 chunks around each focus, as the building load too.
+    const world = started().world;
+    const stream = vi.spyOn(world.chunks, "stream");
+    options.stream?.([{ cx: 0, cy: 0 }], true);
+    options.stream?.([{ cx: 0, cy: 0 }], false);
+    expect(stream.mock.calls[0][1]).toEqual({ keepRadius: 2 });
+    expect(stream.mock.calls[1][1]).toMatchObject({ keepRadius: 2 });
+
+    // The SVGs' pixels are only on the GPU: a restored WebGL context reloads the page.
+    const [type, reload] = app.canvas.addEventListener.mock.lastCall as [string, () => void];
+    expect(type).toBe("webglcontextrestored");
+    reload();
+    expect(window.location.reload).toHaveBeenCalled();
     game.destroy();
+    expect(app.canvas.removeEventListener).toHaveBeenCalledWith("webglcontextrestored", reload);
 
     // `?mobile=off` keeps a phone on the desktop profile, at its full pixel ratio.
     const forced = mount("?seed=1&mobile=off", { mobile: true });
     await forced.game.ready;
     expect(started().app.init).toHaveBeenCalledWith(expect.objectContaining({ antialias: true, resolution: 3 }));
-    expect(started().options.svgDetail).toBeUndefined();
+    expect(started().options).toMatchObject({ svgDetail: undefined, releaseSvgPixels: false });
+    expect(started().app.canvas.addEventListener).not.toHaveBeenCalled();
   });
 
   it("generates the world of the URL's seed and hour, logs the seed and renders it", async () => {

@@ -2,7 +2,7 @@ import { type Application, Assets, Container, type Texture, type Ticker, UPDATE_
 import { CAMERA_MAX_ZOOM } from "../camera";
 import { BOX_HEIGHT, TILE_HEIGHT, TILE_METRICS, TILE_WIDTH } from "../constants";
 import { CHUNK_SIZE, chunkKey, MAX_GRID_COORD } from "../grid";
-import { getSvgResolution } from "../render";
+import { getSvgResolution, releaseSvgPixels } from "../render";
 import { CLOCK_PART } from "../time";
 import type { World, WorldChunk } from "../world";
 import type { ChunkCoord, ChunkKey, TerrainAppearance, WorldRect } from "../../types";
@@ -105,6 +105,12 @@ export type SceneOptions = {
    * less than half the texture memory, for devices that have little.
    */
   readonly svgDetail?: number;
+  /**
+   * Frees each SVG's pixels in memory once it is on the GPU (`releaseSvgPixels()`): half the memory
+   * of the SVGs, but after a lost WebGL context the textures cannot come back, so the app must
+   * reload. Defaults to `false`.
+   */
+  readonly releaseSvgPixels?: boolean;
 };
 
 /** A rendered world: the services its modules provide, and the cleanup that destroys it. */
@@ -191,10 +197,12 @@ export async function createScene(
     assets: {
       // Mipmaps keep the edges smooth when the camera zooms out and the texture is drawn smaller.
       // Always Pixi's SVG parser: a recoloured variant comes as a `blob:` URL, with no extension.
-      loadSvg: (src, { scale = 1 } = {}) => {
+      loadSvg: async (src, { scale = 1 } = {}) => {
         loaded.add(src);
         const data = { resolution: resolution * Math.min(1, scale), autoGenerateMipmaps: true };
-        return Assets.load<Texture>({ src, parser: "svg", data });
+        const texture = await Assets.load<Texture>({ src, parser: "svg", data });
+        if (options.releaseSvgPixels) releaseSvgPixels(app.renderer, texture.source);
+        return texture;
       },
     },
     services: { get: (key) => services[key] },

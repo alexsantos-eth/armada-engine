@@ -381,6 +381,7 @@ export async function mockRender() {
     getSvgResolution: vi.fn(
       (tileWidth: number, resolution = 1, detail = 1.5) => (tileWidth * resolution * detail) / 1024,
     ),
+    releaseSvgPixels: vi.fn(),
   };
 }
 
