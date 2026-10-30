@@ -1,7 +1,7 @@
 // Patinazo: un siseo de ruido blanco, filtrado hacia los agudos, de un cuarto de segundo.
-s("white ~ ~ ~")
-  .attack(0.005)
-  .decay(0.22)
+s("brown ~ ~ ~")
+  .attack(0.002)
+  .decay(0.1)
   .sustain(0)
-  .hpf(2500)
-  .gain(0.2)
+  .lpf(500)
+  .gain(0.6)

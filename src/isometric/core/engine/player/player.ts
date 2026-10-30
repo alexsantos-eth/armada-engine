@@ -150,10 +150,10 @@ export function getJumpHeight(tick: number): number {
   return (4 * PLAYER_JUMP_HEIGHT * t * (PLAYER_JUMP_TICKS - t)) / PLAYER_JUMP_TICKS ** 2;
 }
 
-/** Eases `t` (`0`–`1`) in and out: slow at both ends. */
-function smoothstep(t: number): number {
+/** Eases `t` (`0`–`1`) in and out on half a harmonic cycle: slow at both ends, fastest midway. */
+function harmonic(t: number): number {
   const clamped = Math.min(Math.max(t, 0), 1);
-  return clamped * clamped * (3 - 2 * clamped);
+  return (1 - Math.cos(Math.PI * clamped)) / 2;
 }
 
 /**
@@ -161,15 +161,15 @@ function smoothstep(t: number): number {
  * its first {@link PLAYER_CLIMB_RISE_SHARE}, then all of it.
  */
 export function getClimbRise(progress: number): number {
-  return smoothstep(progress / PLAYER_CLIMB_RISE_SHARE);
+  return harmonic(progress / PLAYER_CLIMB_RISE_SHARE);
 }
 
 /**
  * Share of the way from `from` to `to` a climb has gone at `progress` (`0`–`1`) of it: none while
- * its feet rise, then eased in and out until it stands on the top.
+ * its feet rise, then eased harmonically in and out until it stands on the top.
  */
 export function getClimbAdvance(progress: number): number {
-  return smoothstep((progress - PLAYER_CLIMB_RISE_SHARE) / (1 - PLAYER_CLIMB_RISE_SHARE));
+  return harmonic((progress - PLAYER_CLIMB_RISE_SHARE) / (1 - PLAYER_CLIMB_RISE_SHARE));
 }
 
 /** Ticks the player shows its landing pose after it lands (the physics does not wait for it). */

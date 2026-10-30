@@ -1208,11 +1208,13 @@ describe("climbing", () => {
   const sunken = (depth: number) => (type: TerrainMaterial) => (type === "sand" ? depth : 0);
 
   it("eases the feet up over the first share of a climb and then steps onto the top", () => {
-    expect([0, PLAYER_CLIMB_RISE_SHARE / 2, PLAYER_CLIMB_RISE_SHARE, 1, -1].map(getClimbRise)).toEqual([
-      0, 0.5, 1, 1, 0,
-    ]);
+    const rise = [0, PLAYER_CLIMB_RISE_SHARE / 4, PLAYER_CLIMB_RISE_SHARE / 2, PLAYER_CLIMB_RISE_SHARE, 1, -1];
+    // Half a harmonic cycle: (1 − cos πt) / 2.
+    [0, (1 - Math.SQRT1_2) / 2, 0.5, 1, 1, 0].forEach((share, i) => expect(getClimbRise(rise[i])).toBeCloseTo(share));
     const halfway = PLAYER_CLIMB_RISE_SHARE + (1 - PLAYER_CLIMB_RISE_SHARE) / 2;
-    expect([0, PLAYER_CLIMB_RISE_SHARE, halfway, 1, 2].map(getClimbAdvance)).toEqual([0, 0, 0.5, 1, 1]);
+    [0, 0, 0.5, 1, 1].forEach((share, i) =>
+      expect(getClimbAdvance([0, PLAYER_CLIMB_RISE_SHARE, halfway, 1, 2][i])).toBeCloseTo(share),
+    );
     expect(PLAYER_STEP_HEIGHT).toBeLessThan(0.5);
   });
 

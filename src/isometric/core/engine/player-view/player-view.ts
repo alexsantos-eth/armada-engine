@@ -22,6 +22,8 @@ import {
   DANCE_DELAY_MS,
   getBodyShape,
   getIdleDance,
+  getClimbSwing,
+  getForwardLeanShare,
   getSideLeanShare,
   getLeanTarget,
   stepBodyLean,
@@ -274,8 +276,9 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         const flying = player.motion.type === "jumping" || player.motion.type === "falling";
         const jumpPose = jump && getJumpPose(getPlayerJumpPhase(player), jump.sheet);
         stood = climbing !== undefined || walking || flying || jumpPose !== undefined ? 0 : stood + elapsedMs;
-        if (!walk) return;
+        // Turned the way it climbs or walks, also without a walk sheet: its lean follows its facing.
         facing = getPlayerFacing(player.climb?.direction ?? player.walk) ?? facing;
+        if (!walk) return;
         if (climbing !== undefined) {
           walked = 0;
           showFrame(view, climb ? climb.frames[facing][getClimbPose(climbing, climb.sheet)] : walk.frames[facing][0]);
@@ -351,6 +354,8 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
       // the velocity and tick it last saw, to tell how fast it speeds up.
       const lean: BodyLean = { angle: 0, speed: 0 };
       let tilt = 0;
+      // Climbing, it hangs from its raised hand: it leans about the top of its cell, not its feet.
+      let hanging = false;
       let seenTick: number | undefined;
       let seenVelocity: GridPoint = { x: 0, y: 0 };
       let acceleration: GridPoint = { x: 0, y: 0 };
@@ -496,9 +501,14 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         const dance = appearance.dance && getIdleDance(stood, appearance.dance);
         // The dance leans to the monkey's own sides: across the screen only as far as they show.
         const sway = (dance?.lean ?? 0) * getSideLeanShare(facing, PLAYER_FACINGS.length);
-        const target =
-          climbing === undefined ? getLeanTarget(velocity, acceleration, isPlayerSkidding(player)) + sway : 0;
-        stepBodyLean(lean, target, elapsedMs);
+        hanging = climbing !== undefined;
+        if (climbing === undefined)
+          stepBodyLean(lean, getLeanTarget(velocity, acceleration, isPlayerSkidding(player)) + sway, elapsedMs);
+        else {
+          // Climbing, its swing on its hand is the lean itself, in step with its climb sheet's poses.
+          lean.angle = getClimbSwing(climbing) * getForwardLeanShare(facing, PLAYER_FACINGS.length);
+          lean.speed = 0;
+        }
         const pulse = getBodyScale(sinceTakeoff, sinceLanding, impact);
         const shape = getBodyShape({
           motion: player.motion.type,
@@ -514,7 +524,8 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         body = next;
         if (lean.angle !== tilt) {
           tilt = lean.angle;
-          // Skewed about its feet (see `place()`): the head leans `tilt` to the right.
+          // Skewed about its feet, or hanging about the top of its cell (see `place()`): the head
+          // leans `tilt` to the right of the feet.
           view.skew.x = -tilt;
         }
         view.scale.set(base.x * body.x, base.y * body.y);
@@ -530,11 +541,12 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         castFrom = { x: at.x, y: at.y, elevation: lifted };
         // Scaled and leant about its feet: a skew of `−tilt` moves a point `d` below the sprite's
         // origin by `sin(tilt) × d` to the left and raises it by `(1 − cos(tilt)) × d`, so the
-        // origin moves the other way and the feet stay where they stand.
+        // origin moves the other way and the feet stay where they stand. Hanging from its hand, the
+        // origin, at the top of its cell, stays and the feet swing under it like a pendulum's bob.
         const below = offset.y * body.y;
         view.position.set(
-          drawnFoot.x + offset.x * body.x - Math.sin(tilt) * below,
-          drawnFoot.y + Math.cos(tilt) * below,
+          drawnFoot.x + offset.x * body.x - (hanging ? 0 : Math.sin(tilt) * below),
+          drawnFoot.y + (hanging ? 1 : Math.cos(tilt)) * below,
         );
         // In the draw order by the column it stands on, at that column's top: computed, and the
         // view moved, only when that column or the side of its middle changes, not on every frame.

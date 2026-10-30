@@ -31,8 +31,9 @@ export const PLAYER_WALK: PlayerWalkSheet = {
   // lands on one foot and then the other; the free foot taps up and the arm on its side pumps up.
   idle: { source: "/assets/player/idle.svg", frames: 8, period: 900 },
   // Climbing onto a higher top: `climb.svg`, made by `artifacts/player_climb.py` in this sheet's
-  // window. It reaches up, pulls itself up, puts a knee on the top, pushes on its hands and stands.
-  climb: { source: "/assets/player/climb.svg", frames: 6 },
+  // window (9 columns, the most under 4 096 px). It grabs the edge with one hand and swings on it like a
+  // pendulum, back and then forward, wider each time; then pushes down on that hand and stands up.
+  climb: { source: "/assets/player/climb.svg", frames: 9 },
   // Jumping: `jump.svg`, made by `artifacts/player_jump.py` in this sheet's window. Crouched and arms
   // back to take off, stretched up rising, legs tucked at the apex, arms up falling, crouched landing;
   // the body squashes and stretches with it.
