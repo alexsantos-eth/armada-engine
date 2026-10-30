@@ -113,10 +113,15 @@ export type PlayerFeedback = {
  */
 export type PlayerJumpPhase = "ground" | "takeoff" | "rise" | "apex" | "fall" | "landing";
 
-/** Discrete locomotion states used by the player simulation and its view. */
+/**
+ * Discrete locomotion states used by the player simulation and its view. Every player behaviour is
+ * one of these states (running included), never another boolean the view reads.
+ */
 export type PlayerMotion =
   | { readonly type: "idle" }
   | { readonly type: "walking" }
+  | { readonly type: "running" }
+  | { readonly type: "skidding" }
   | { readonly type: "jumping" }
   | { readonly type: "falling" }
   | { readonly type: "climbing" };

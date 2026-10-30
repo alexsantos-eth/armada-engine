@@ -8,7 +8,7 @@ import { CAMERA_MAX_ZOOM, CAMERA_START_ZOOM, getGroundPointBelow } from "../came
 import { createCameraView } from "../camera-view";
 import { TILE_METRICS } from "../constants";
 import { WorldParts } from "../parts";
-import { createPlayer, PLAYER_FACINGS, PLAYER_PART, stepPlayer } from "../player";
+import { createPlayer, PLAYER_FACINGS, PLAYER_PART, PLAYER_STEP, stepPlayer } from "../player";
 import { DANCE_DELAY_MS, DANCE_FADE_MS } from "./body-motion";
 import { DUST_MS } from "./feedback";
 import { CLOCK_PART, createClockPart } from "../time";
@@ -388,7 +388,7 @@ describe("createPlayerView", () => {
       Object.assign(player, { previous: { x: player.x, y: player.y, elevation: 1 }, x });
       ticker.frame();
     };
-    player.motion = { type: "walking" };
+    player.motion = { type: "skidding" };
     player.walk = { x: 0, y: 0 };
     player.velocity = { x: 0.1, y: 0 };
     slide(1.1);
@@ -871,7 +871,14 @@ describe("createPlayerView feedback", () => {
       ticker.frame(16);
       for (let tick = 1; tick <= 6; tick += 1) {
         const previous = { x: 0.5 + speed * (tick - 1), y: 1, elevation: 1, inset: 0, height: 0 };
-        Object.assign(player, { x: previous.x + speed, previous, velocity: { x: speed, y: 0 }, walk: { x: 1, y: 0 } });
+        const motion = { type: speed > PLAYER_STEP ? "running" : "walking" } as const;
+        Object.assign(player, {
+          x: previous.x + speed,
+          previous,
+          motion,
+          velocity: { x: speed, y: 0 },
+          walk: { x: 1, y: 0 },
+        });
         ticker.frame(50);
       }
       const raised = dustOf(root);
@@ -885,7 +892,7 @@ describe("createPlayerView feedback", () => {
       const { ticker, root, scene } = await sceneOf(world);
       const player = world.parts.get(PLAYER_PART);
       ticker.frame(16);
-      Object.assign(player, { walk: { x: 0, y: 0 } });
+      Object.assign(player, { walk: { x: 0, y: 0 }, motion: { type: "skidding" } });
       for (let tick = 1; tick <= 4; tick += 1) {
         const previous = { x: 0.5 + 0.15 * (tick - 1), y: 1, elevation: 1, inset: 0, height: 0 };
         Object.assign(player, { x: previous.x + 0.15, previous, velocity: { x: 0.15, y: 0 } });
@@ -1002,10 +1009,10 @@ describe("createPlayerView body motion", () => {
       return -body.skew.x;
     };
     clock.tick += 1;
-    Object.assign(player, { velocity: right(0.15), walk: { x: 0, y: 0 } });
+    Object.assign(player, { velocity: right(0.15), walk: { x: 0, y: 0 }, motion: { type: "skidding" } });
     expect(settle()).toBeLessThan(0);
     clock.tick += 1;
-    player.walk = right(1);
+    Object.assign(player, { walk: right(1), motion: { type: "walking" } });
     expect(settle()).toBeGreaterThan(0);
     scene.destroy();
   });

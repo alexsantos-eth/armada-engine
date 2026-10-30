@@ -536,25 +536,31 @@ export function setPlayerRun(player: PlayerState, running: boolean): void {
 }
 
 /**
- * Whether the player runs this tick: on the ground, not climbing, faster than a walk
- * ({@link PLAYER_STEP}). Letting go of the run key it still runs until it slows down to a walk.
+ * Whether the player is in its `running` motion state: after a tick on the ground, not climbing,
+ * faster than a walk ({@link PLAYER_STEP}). Letting go of the run key it still runs until it slows
+ * down to a walk.
  */
 export function isPlayerRunning(player: PlayerState): boolean {
-  return (
-    player.verticalSpeed === undefined &&
-    player.climb === undefined &&
-    Math.hypot(player.velocity.x, player.velocity.y) > PLAYER_STEP + 1e-9
-  );
+  return player.motion.type === "running";
+}
+
+/** Whether the player moves faster than a walk this tick: the physics behind the `running` state. */
+function isFasterThanWalk(player: PlayerState): boolean {
+  return Math.hypot(player.velocity.x, player.velocity.y) > PLAYER_STEP + 1e-9;
 }
 
 /**
- * Whether the player skids this tick: on the ground, not climbing, still sliding although it let go
- * of the walk keys or holds the other way (its walk against its velocity), so its momentum carries
- * it on while it brakes ({@link PLAYER_GROUND_BRAKE}).
+ * Whether the player is in its `skidding` motion state: after a tick on the ground, not climbing,
+ * still sliding although it let go of the walk keys or holds the other way (its walk against its
+ * velocity), so its momentum carries it on while it brakes ({@link PLAYER_GROUND_BRAKE}).
  */
 export function isPlayerSkidding(player: PlayerState): boolean {
+  return player.motion.type === "skidding";
+}
+
+/** Whether its momentum carries it against what it wants this tick: the physics behind `skidding`. */
+function isSliding(player: PlayerState): boolean {
   const { velocity, walk } = player;
-  if (player.verticalSpeed !== undefined || player.climb !== undefined) return false;
   if (velocity.x === 0 && velocity.y === 0) return false;
   return (walk.x === 0 && walk.y === 0) || velocity.x * walk.x + velocity.y * walk.y < 0;
 }
@@ -585,9 +591,19 @@ function getMotionEvent(player: PlayerState): PlayerMotionEvent {
   if (player.climb) return { type: player.motion.type === "climbing" ? "CLIMB_TICK" : "CLIMB" };
   if (player.motion.type === "climbing") return { type: moved ? "CLIMB_DONE_WALKING" : "CLIMB_DONE_IDLE" };
   if (player.verticalSpeed !== undefined) return { type: player.verticalSpeed > 0 ? "JUMP" : "FALL" };
-  if (player.motion.type === "jumping" || player.motion.type === "falling")
-    return { type: moved ? "LAND_WALKING" : "LAND_IDLE" };
-  return { type: moved ? "WALK" : "STOP" };
+  const gait = getGait(player, moved);
+  if (player.motion.type === "jumping" || player.motion.type === "falling") return { type: `LAND_${gait}` };
+  return { type: GAIT_EVENTS[gait] };
+}
+
+/** Event on the ground for each gait. */
+const GAIT_EVENTS = { IDLE: "STOP", WALKING: "WALK", RUNNING: "RUN", SKIDDING: "SKID" } as const;
+
+/** How the player moved on the ground this tick: still, skidding, running or walking. */
+function getGait(player: PlayerState, moved: boolean): keyof typeof GAIT_EVENTS {
+  if (!moved) return "IDLE";
+  if (isSliding(player)) return "SKIDDING";
+  return isFasterThanWalk(player) ? "RUNNING" : "WALKING";
 }
 
 /** Advances locomotion through the XState machine and stores only its serializable state key. */

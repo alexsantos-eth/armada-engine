@@ -312,8 +312,10 @@ describe("horizontal control", () => {
     stepPlayer(player, field, 3);
     expect(player.velocity.x).toBeCloseTo(PLAYER_STEP);
     expect(isPlayerRunning(player)).toBe(false);
+    expect(player.motion).toEqual({ type: "walking" });
     stepPlayer(player, field);
     expect(isPlayerRunning(player)).toBe(true);
+    expect(player.motion).toEqual({ type: "running" });
     stepPlayer(player, field);
     expect(player.velocity.x).toBeCloseTo(PLAYER_RUN_STEP);
     stepPlayer(player, field);
@@ -326,6 +328,11 @@ describe("horizontal control", () => {
     stepPlayer(player, field, 3);
     expect(player.velocity.x).toBeCloseTo(PLAYER_STEP);
     expect(isPlayerRunning(player)).toBe(false);
+    expect(player.motion).toEqual({ type: "walking" });
+    setPlayerWalk(player, still);
+    for (let tick = 0; tick < 10 && player.velocity.x > 0; tick += 1) stepPlayer(player, field);
+    stepPlayer(player, field);
+    expect(player.motion).toEqual({ type: "idle" });
   });
 
   it("skids while it slides on after letting go or holding the other way, not walking on or standing", () => {
@@ -336,6 +343,7 @@ describe("horizontal control", () => {
     setPlayerWalk(player, still);
     stepPlayer(player, field);
     expect(isPlayerSkidding(player)).toBe(true);
+    expect(player.motion).toEqual({ type: "skidding" });
     setPlayerWalk(player, { ...still, down: true, left: true });
     expect(isPlayerSkidding(player)).toBe(true);
     for (let tick = 0; tick < 10 && player.velocity.x > 0; tick += 1) stepPlayer(player, field);

@@ -253,7 +253,8 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
        */
       const animate = (at: PlayerRenderPosition, alpha: number, elapsedMs: number) => {
         const climbing = getPlayerClimbProgress(player, alpha);
-        const walking = player.motion.type === "walking";
+        const walking =
+          player.motion.type === "walking" || player.motion.type === "running" || player.motion.type === "skidding";
         const flying = player.motion.type === "jumping" || player.motion.type === "falling";
         const jumpPose = jump && getJumpPose(getPlayerJumpPhase(player), jump.sheet);
         stood = climbing !== undefined || walking || flying || jumpPose !== undefined ? 0 : stood + elapsedMs;
@@ -266,7 +267,7 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
         }
         const moved = Math.hypot(at.x - drawnAt.x, at.y - drawnAt.y);
         // Skidding, the feet pedal against the slide (backwards, if it let go), as if trying to run.
-        const skidding = walking && isPlayerSkidding(player);
+        const skidding = isPlayerSkidding(player);
         const pedal = !skidding ? 1 : player.walk.x === 0 && player.walk.y === 0 ? -SKID_PEDAL : SKID_PEDAL;
         walked = walking ? walked + moved * pedal : 0;
         if (jump && jumpPose !== undefined) {

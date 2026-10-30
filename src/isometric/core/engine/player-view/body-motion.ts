@@ -102,6 +102,9 @@ export function stepBodyLean(lean: BodyLean, target: number, ms: number): void {
   }
 }
 
+/** Motion states that move on the ground, step by step: the ones that bob. */
+const GAITS: ReadonlySet<PlayerMotionType> = new Set(["walking", "running", "skidding"]);
+
 /** What the body's shape answers to in a frame ({@link getBodyShape}). */
 export type BodyShapeInput = {
   /** Its locomotion state. */
@@ -130,7 +133,7 @@ export function getBodyShape(input: BodyShapeInput): GridPoint {
   if (input.climb !== undefined) stretch = BODY_CLIMB_STRETCH * Math.sin(Math.PI * input.climb);
   else if (input.motion === "jumping" || input.motion === "falling")
     stretch = Math.min(BODY_MAX_AIR_STRETCH, BODY_AIR_STRETCH_PER_SPEED * Math.abs(input.verticalSpeed ?? 0));
-  else if (input.motion === "walking" && input.stride > 0)
+  else if (GAITS.has(input.motion) && input.stride > 0)
     stretch = BODY_BOB_PER_SPEED * input.speed * Math.sin((4 * Math.PI * input.walked) / input.stride);
   return { x: 1 - stretch / 2, y: 1 + stretch };
 }

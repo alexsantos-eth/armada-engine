@@ -116,6 +116,10 @@ describe("getBodyShape", () => {
     expect(walkDown.y).toBeCloseTo(2 - walkUp.y);
     expect(step(PLAYER_STEP, 1.4 / 8 + 0.7).y).toBeCloseTo(walkUp.y);
     expect(step(PLAYER_RUN_STEP, 1.4 / 8).y).toBeGreaterThan(walkUp.y);
+    const run = getBodyShape({ ...STAND, motion: "running", speed: PLAYER_RUN_STEP, walked: 1.4 / 8 });
+    expect(run).toEqual(step(PLAYER_RUN_STEP, 1.4 / 8));
+    const skid = getBodyShape({ ...STAND, motion: "skidding", speed: PLAYER_STEP, walked: 1.4 / 8 });
+    expect(skid).toEqual(walkUp);
     expect(getBodyShape({ ...STAND, motion: "walking", speed: PLAYER_STEP, walked: 0.35, stride: 0 })).toEqual({
       x: 1,
       y: 1,
