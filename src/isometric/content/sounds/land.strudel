@@ -1,0 +1,16 @@
+// Aterrizaje: un golpe grave que baja y un soplo de ruido marrón (el polvo).
+// El juego escala su volumen con la fuerza del impacto.
+stack(
+  note("[g2 c2] ~ ~ ~ ~ ~ ~ ~")
+    .s("sine")
+    .attack(0.001)
+    .decay(0.09)
+    .sustain(0)
+    .gain(0.8),
+  s("brown ~ ~ ~ ~ ~ ~ ~")
+    .attack(0.001)
+    .decay(0.05)
+    .sustain(0)
+    .lpf(900)
+    .gain(0.35),
+)

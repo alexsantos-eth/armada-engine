@@ -1,0 +1,9 @@
+// Despegue desde el suelo: un gorjeo de onda triangular que sube una quinta.
+// Un ciclo dura 1 s; el sonido ocupa su primer octavo (dos notas de ~60 ms).
+note("[e5 b5] ~ ~ ~ ~ ~ ~ ~")
+  .s("triangle")
+  .attack(0.002)
+  .decay(0.07)
+  .sustain(0)
+  .release(0.02)
+  .gain(0.35)

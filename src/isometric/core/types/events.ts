@@ -1,4 +1,4 @@
-import type { PlayerJumpRejection } from "./player";
+import type { PlayerJumpRejection, PlayerMotionType } from "./player";
 
 /**
  * Typed communication between game systems. A system announces what happened on an event
@@ -56,4 +56,9 @@ export type SimulationEvents = {
   playerLanded: { readonly x: number; readonly y: number; readonly feet: number; readonly impact: number };
   /** A jump press did not make the player jump, and why. */
   playerJumpRejected: { readonly reason: PlayerJumpRejection };
+  /**
+   * The player's locomotion state (its motion machine) changed on this tick, `from` one state `to`
+   * another: it started walking, running, skidding, climbing, or stood still.
+   */
+  playerMotionChanged: { readonly from: PlayerMotionType; readonly to: PlayerMotionType };
 };

@@ -1,0 +1,8 @@
+// Salto doble en el aire: el mismo gorjeo, una octava más alto y con una nota más.
+note("[b5 e6 b6] ~ ~ ~ ~ ~ ~ ~")
+  .s("triangle")
+  .attack(0.002)
+  .decay(0.05)
+  .sustain(0)
+  .release(0.02)
+  .gain(0.3)

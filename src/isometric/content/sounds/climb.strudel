@@ -1,0 +1,7 @@
+// Trepar a una cima más alta: tres notas rápidas que suben, como un "hop".
+note("[c5 e5 g5] ~ ~ ~ ~ ~ ~ ~")
+  .s("triangle")
+  .attack(0.002)
+  .decay(0.04)
+  .sustain(0)
+  .gain(0.22)

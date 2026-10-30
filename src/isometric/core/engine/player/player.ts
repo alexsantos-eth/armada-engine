@@ -6,6 +6,7 @@ import type {
   PlayerFeedback,
   PlayerJumpPhase,
   PlayerJumpRejection,
+  PlayerMotionType,
   ITerrainColumn,
   PlayerFacing,
   PlayerPosition,
@@ -1036,8 +1037,9 @@ export function createPlayerSystem(
     step: (world, events) => {
       const player = world.parts.get(PLAYER_PART);
       const { jumps, landings, rejections } = player.feedback;
+      const motion = player.motion.type;
       stepPlayer(player, world, 1, options.topInset, options.probe);
-      if (events) emitPlayerFeedback(player, events, jumps, landings, rejections);
+      if (events) emitPlayerFeedback(player, events, jumps, landings, rejections, motion);
       const cells = getPlayerCells(player);
       if (
         placed?.movers === world.movers &&
@@ -1059,7 +1061,8 @@ export function createPlayerSystem(
 
 /**
  * Announces on `events` what the player's last tick did, from its feedback counters before it
- * (`jumps`, `landings`, `rejections`): a landing before a take-off on the same tick.
+ * (`jumps`, `landings`, `rejections`) and its `motion` state: a landing before a take-off on the same
+ * tick, and the change of motion state last.
  */
 function emitPlayerFeedback(
   player: PlayerState,
@@ -1067,6 +1070,7 @@ function emitPlayerFeedback(
   jumps: number,
   landings: number,
   rejections: number,
+  motion: PlayerMotionType,
 ): void {
   const { feedback, x, y } = player;
   const feet = player.elevation - player.inset + player.height;
@@ -1076,6 +1080,8 @@ function emitPlayerFeedback(
     events.emit("playerJumped", { x, y, feet, air: feedback.airJump });
   if (feedback.rejections !== rejections && events.has("playerJumpRejected"))
     events.emit("playerJumpRejected", { reason: feedback.rejected as PlayerJumpRejection });
+  if (player.motion.type !== motion && events.has("playerMotionChanged"))
+    events.emit("playerMotionChanged", { from: motion, to: player.motion.type });
 }
 
 /**
