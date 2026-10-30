@@ -1,5 +1,5 @@
 # monkey.py — the player character: a chunky toon monkey of voxel clay (design approved 2026-10-29:
-# brown fur, light face mask, two big oval eyes with a white dot, a red scarf). Every player sheet
+# brown fur, light face mask, two big oval eyes with a white dot). Every player sheet
 # (player.py, player_walk.py, player_idle.py, player_jump.py, player_climb.py) builds its poses from
 # these parts, so the monkey looks the same in all of them.
 # Figure space: +x forward (the face), +y to its side, z up from the feet; one tile spans ±256.
@@ -11,7 +11,6 @@ FACE = "#f1cb9f"        # face mask, ear lobes, belly, hands and feet
 SHADE = "#d9a878"       # toes and knuckles
 EYE = "#1f1614"
 SHINE = "#ffffff"
-SCARF = "#e8574a"       # the accent: red reads well on grass and sand
 
 HIP = (0, 48)           # pivot of the legs (x forward, z up)
 SHOULDER = (0, 132)     # pivot of the arms
@@ -38,14 +37,11 @@ def arm(side):
 
 
 def body(breath=0.0, squash=0.0):
-    """Body, belly and scarf. `breath` swells the chest; `squash` flattens it (keeping its feet)."""
+    """Body and belly. `breath` swells the chest; `squash` flattens it (keeping its feet)."""
     b, s = breath, squash
     return [
         (-4, 0, 40, 58 + b + s, 66 + b + s, 50 + b / 2 - s, FUR, 44),
         (28, 0, 46, 32 + b, 50 + b, 44 - s, FACE, 30),
-        (0, 0, 110 - 2 * s, 56, 64, 13, SCARF, 13),
-        (50, 26, 92 - 2 * s, 14, 16, 14, SCARF, 10),
-        (60, 32, 58 - 2 * s, 7, 12, 24, SCARF, 6),
     ]
 
 
