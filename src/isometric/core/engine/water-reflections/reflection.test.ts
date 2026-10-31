@@ -214,6 +214,8 @@ describe("getReflectedFaces", () => {
       ...texel(2.5, 3.5, 1),
     ]);
     expect(faces.every(({ cut }) => cut[0] === 0 && cut[1] === 1)).toBe(true);
+    // Each face knows its column and how high its edges stand above the water, for the waves.
+    expect(faces[3]).toMatchObject({ x: 3, y: 4, heights: [2, 1] });
     expect(getReflectedFaces(AREA, columns, TILE_METRICS, undefined, P / 2)[3].corners[0]).toBeCloseTo(
       faces[3].corners[0] / 2,
     );

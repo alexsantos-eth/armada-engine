@@ -16,6 +16,7 @@ import { describe, expect, it } from "vitest";
  * projection, grid → camera (view maths on the ground plane, and the chunks in view)
  * render (Pixi primitives) → scene (the compositor and the `SceneModule` contract)
  * random → wind (how swaying entities lean, from their sway and the time)
+ * waves (how the water's waves lift it, from the column and the time)
  * scene → scene modules: terrain-view, entity-view, foliage-wind, water-reflections, shadows,
  * ambient-light, player-view, camera-view
  *
@@ -49,7 +50,8 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   shadows: ["camera", "lighting", "projection", "render", "scene", "terrain", "world"],
   wind: ["random"],
   "foliage-wind": ["scene", "wind"],
-  "water-reflections": ["grid", "projection", "render", "scene", "terrain"],
+  waves: [],
+  "water-reflections": ["grid", "projection", "render", "scene", "terrain", "waves"],
   "ambient-light": ["lighting", "render", "scene"],
   "camera-view": ["camera", "scene"],
   "cloud-shadows": ["constants", "scene"],

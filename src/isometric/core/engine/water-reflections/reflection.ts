@@ -176,6 +176,11 @@ export type ReflectedFace = {
   readonly side: BlockSide;
   readonly corners: readonly [number, number, number, number, number, number, number, number];
   readonly cut: readonly [number, number];
+  /** The column of the block. */
+  readonly x: number;
+  readonly y: number;
+  /** How far its top and bottom edges stand above the water, in blocks. */
+  readonly heights: readonly [number, number];
 };
 
 /**
@@ -223,6 +228,9 @@ export function getReflectedFaces(
         side,
         corners: corners as unknown as ReflectedFace["corners"],
         cut: [block - high, block - low],
+        x,
+        y,
+        heights: [high - level, low - level],
         order: x + y,
       });
     }
@@ -235,9 +243,7 @@ export function getReflectedFaces(
       addSide(column, "right", columnAt.get(x, y - 1));
     }
   }
-  return faces
-    .sort((behind, front) => front.order - behind.order)
-    .map(({ material, side, corners, cut }) => ({ material, side, corners, cut }));
+  return faces.sort((behind, front) => front.order - behind.order).map(({ order: _order, ...face }) => face);
 }
 
 /**

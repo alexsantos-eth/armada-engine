@@ -23,5 +23,6 @@ export * from "./terrain";
 export * from "./terrain-view";
 export * from "./time";
 export * from "./water-reflections";
+export * from "./waves";
 export * from "./wind";
 export * from "./world";

@@ -26,7 +26,11 @@ vi.mock("pixi.js", async () => {
   return { ...pixi, Container, MeshSimple, Sprite };
 });
 
+// Still water unless a test lifts it: the matrices then are the mirrors' own.
+vi.mock("../waves", () => ({ getWaveLift: vi.fn(() => 0) }));
+
 import { Assets, Container, RenderTexture, Sprite } from "pixi.js";
+import { getWaveLift } from "../waves";
 import { Entity } from "../entities";
 import {
   frameUntil,
@@ -47,6 +51,8 @@ import {
   REFLECTION_BAKES_PER_FRAME,
   REFLECTION_TINT,
   SKY_REFLECTION,
+  REFLECTION_RIPPLE,
+  WAVE_REFRESH_MS,
 } from "./water-reflections";
 
 /**
@@ -145,6 +151,7 @@ describe("createWaterReflections", () => {
     resetHarness();
     vi.clearAllMocks();
     vi.mocked(Assets.load).mockImplementation(loadTexture as never);
+    vi.mocked(getWaveLift).mockReturnValue(0);
   });
 
   it("lays a map of each water level on its columns' tops, drawn once with the sky", async () => {
@@ -320,28 +327,28 @@ describe("createWaterReflections", () => {
       [KEY, [entityView(1, 4, [{ view: spriteOf("a") }])]],
     ]);
     const { scene, renderer, ticker } = await mount([provider(entityViews)]);
-    ticker.frame();
+    ticker.frame(1);
     const drawn = renderer.drawn.length;
 
     // Nothing changed: nothing is drawn again.
-    ticker.frame();
+    ticker.frame(1);
     expect(renderer.drawn).toHaveLength(drawn);
 
     // A chunk shown beside it: the chunk's maps are drawn again with what it brings.
     entityViews.set(chunkKey(1, 0), [entityView(33, 1, [{ view: spriteOf("b") }])]);
-    ticker.frame();
+    ticker.frame(1);
     expect(renderer.drawn.length - drawn).toBe(2 * REFLECTION_BAKES_PER_FRAME);
-    ticker.frame();
+    ticker.frame(1);
     expect(renderer.drawn.length - drawn).toBe(2 * REFLECTION_BAKES_PER_FRAME);
 
     // The chunk's own entities replaced, then a neighbour hidden.
     entityViews.set(KEY, [entityView(1, 4, [{ view: spriteOf("c") }])]);
-    ticker.frame();
+    ticker.frame(1);
     expect(
       renderer.drawn.at(-1)?.children.map(({ texture }) => (texture as { source: string } | undefined)?.source),
     ).toContain("c");
     entityViews.delete(chunkKey(1, 0));
-    ticker.frame();
+    ticker.frame(1);
     expect(renderer.drawn.length - drawn).toBe(6);
     scene.destroy();
   });
@@ -411,6 +418,81 @@ describe("createWaterReflections", () => {
     ticker.frame();
     expect(renderer.drawn).toHaveLength(shown);
     scene.destroy();
+  });
+
+  describe("waves", () => {
+    it("sways the mirrored entities with the waves, leaning about their waterline", async () => {
+      vi.mocked(getWaveLift).mockReturnValue(2);
+      const { scene, renderer } = await mount([
+        provider(new Map([[KEY, [entityView(1, 4, [{ view: spriteOf("a") }])]]])),
+      ]);
+      const [mirror] = renderer.drawn[1].children.filter((child) => !("geometry" in child));
+      const area = { level: -1, rect: { minX: 0, minY: 0, maxX: 3, maxY: 2 }, columns: [] };
+      const foot = { x: 1, y: 4, elevation: 1, screenX: -60, screenY: -50 - 40 / 3 };
+      const lean = REFLECTION_RIPPLE * 2;
+      // The waterline: the water under the foot, two blocks below it.
+      const line = foot.screenY + 2 * TILE_METRICS.boxHeight;
+      const shear = { a: 1, b: 0, c: -lean, d: 1, tx: lean * line, ty: 0 };
+      const expected = composeInto(getReflectionMatrix(foot, area, TILE_METRICS, blank()), shear, blank());
+      Object.entries(expected).forEach(([key, value]) =>
+        expect((mirror.matrix as Record<string, number>)[key]).toBeCloseTo(value),
+      );
+      expect(getWaveLift).toHaveBeenCalledWith(1, 4, expect.any(Number));
+      scene.destroy();
+    });
+
+    it("sways the mirrored sides of the terrain by their height above the water", async () => {
+      const lift = vi.mocked(getWaveLift).mockReturnValue(0);
+      const { scene, renderer, ticker } = await mount([]);
+      const [mesh] = renderer.drawn[1].children.filter((child) => "geometry" in child) as unknown as Array<{
+        geometry: { positions: Float32Array; getBuffer: ReturnType<typeof vi.fn> };
+      }>;
+      const rest = mesh.geometry.positions.slice();
+      lift.mockReturnValue(3);
+      ticker.frame(WAVE_REFRESH_MS);
+
+      // The first face: the ground under the bank's grass, from the water up one block.
+      const shift = (height: number) =>
+        REFLECTION_RIPPLE * 3 * height * TILE_METRICS.boxHeight * (REFLECTION_PIXELS_PER_TILE / TILE_METRICS.tileWidth);
+      const moved = mesh.geometry.positions;
+      [1, 1, 0, 0].forEach((height, corner) => {
+        expect(moved[corner * 2] - rest[corner * 2]).toBeCloseTo(shift(height));
+        expect(moved[corner * 2 + 1] - rest[corner * 2 + 1]).toBeCloseTo(-shift(height));
+      });
+      expect(mesh.geometry.getBuffer).toHaveBeenCalledWith("aPosition");
+      scene.destroy();
+    });
+
+    it("draws again every refresh the maps in view that hold something that sways", async () => {
+      const { scene, renderer, ticker } = await mount([], POINTS);
+      const drawn = renderer.drawn.length;
+      ticker.frame(WAVE_REFRESH_MS - 1);
+      expect(renderer.drawn).toHaveLength(drawn);
+      ticker.frame(1);
+      // Both maps hold the bank's sides.
+      expect(renderer.drawn.length - drawn).toBe(2);
+      scene.destroy();
+    });
+
+    it("leaves still the maps out of view, and those with nothing to sway", async () => {
+      const points = Array.from({ length: 12 }, (_, index) => ({
+        x: index % 4,
+        y: Math.floor(index / 4),
+        elevation: -1,
+      }));
+      const open = await mount([], points);
+      const drawn = open.renderer.drawn.length;
+      open.ticker.frame(WAVE_REFRESH_MS);
+      expect(open.renderer.drawn).toHaveLength(drawn);
+      open.scene.destroy();
+
+      const hidden = await mount([], POINTS);
+      hidden.reflections().forEach((view) => Object.assign(view, { culled: true }));
+      const before = hidden.renderer.drawn.length;
+      hidden.ticker.frame(WAVE_REFRESH_MS);
+      expect(hidden.renderer.drawn).toHaveLength(before);
+      hidden.scene.destroy();
+    });
   });
 
   it("frees its maps, frames and sprites when the chunk is hidden", async () => {
