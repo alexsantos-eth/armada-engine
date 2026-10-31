@@ -111,11 +111,12 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     if (destroyed) return;
 
     container.appendChild(app.canvas);
-    // The SVGs' pixels are only on the GPU (`releaseSvgPixels`): a context lost and restored
-    // would draw them empty, so the page reloads.
-    const reload = () => window.location.reload();
-    app.canvas.addEventListener("webglcontextrestored", reload);
-    teardowns.push(() => app.canvas.removeEventListener("webglcontextrestored", reload));
+    if (device.releaseSvgPixels) {
+      // The SVGs' pixels are only on the GPU: a context lost and restored would draw them empty.
+      const reload = () => window.location.reload();
+      app.canvas.addEventListener("webglcontextrestored", reload);
+      teardowns.push(() => app.canvas.removeEventListener("webglcontextrestored", reload));
+    }
     log(`Armada world seed: ${seed}`);
     const unknown = findUnknownModules(disabledModules);
     if (unknown.length > 0) log(`Armada ?modules= names no module: ${unknown.join(", ")}`);

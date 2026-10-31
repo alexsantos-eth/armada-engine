@@ -23,6 +23,7 @@ describe("resolveDeviceProfile", () => {
       antialias: true,
       svgDetail: 1,
       chunkKeepRadius: 2,
+      releaseSvgPixels: false,
     });
     expect(resolveDeviceProfile(true)).toBe(MOBILE_PROFILE);
     expect(MOBILE_PROFILE).toEqual({
@@ -30,6 +31,7 @@ describe("resolveDeviceProfile", () => {
       antialias: false,
       svgDetail: 1,
       chunkKeepRadius: 2,
+      releaseSvgPixels: true,
     });
   });
 });

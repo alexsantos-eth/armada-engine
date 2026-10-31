@@ -200,11 +200,12 @@ describe("mountGame", () => {
     expect(container.appendChild).toHaveBeenCalledWith(app.canvas);
   });
 
-  it("keeps the SVGs only on the GPU, at their drawn size, and reloads when the WebGL context comes back", async () => {
-    const { window, game } = mount("?seed=1");
+  it("rasterizes the SVGs at their drawn size, keeps their pixels on desktop and fewer chunks loaded", async () => {
+    const { game } = mount("?seed=1");
     await game.ready;
     const { app, options } = started();
-    expect(options).toMatchObject({ svgDetail: 1, releaseSvgPixels: true });
+    expect(options).toMatchObject({ svgDetail: 1, releaseSvgPixels: false });
+    expect(app.canvas.addEventListener).not.toHaveBeenCalled();
 
     // Chunks are kept loaded only 2 chunks around each focus, as the building load too.
     const stream = vi.spyOn(started().world.chunks, "stream");
@@ -212,24 +213,26 @@ describe("mountGame", () => {
     options.stream?.([{ cx: 0, cy: 0 }], false);
     expect(stream.mock.calls[0][1]).toEqual({ keepRadius: 2 });
     expect(stream.mock.calls[1][1]).toMatchObject({ keepRadius: 2 });
+    game.destroy();
+  });
 
+  it("draws phones with the mobile profile: canvas at most at 2×, no antialiasing, SVGs only on the GPU", async () => {
+    const { window, game, log } = mount("?seed=1&perf", { mobile: true });
+    await game.ready;
+    const { app, options } = started();
+    expect(log).toHaveBeenCalledWith("Armada perf: a report every 5 s, culling on, mobile profile");
+
+    expect(window.devicePixelRatio).toBe(3);
+    expect(app.init).toHaveBeenCalledWith(expect.objectContaining({ antialias: false, resolution: 2 }));
+    expect(options.releaseSvgPixels).toBe(true);
+
+    // The SVGs' pixels are only on the GPU: a restored WebGL context reloads the page.
     const [type, reload] = app.canvas.addEventListener.mock.lastCall as [string, () => void];
     expect(type).toBe("webglcontextrestored");
     reload();
     expect(window.location.reload).toHaveBeenCalled();
     game.destroy();
     expect(app.canvas.removeEventListener).toHaveBeenCalledWith("webglcontextrestored", reload);
-  });
-
-  it("draws phones with the mobile profile: canvas at most at 2×, no antialiasing", async () => {
-    const { window, game, log } = mount("?seed=1&perf", { mobile: true });
-    await game.ready;
-    const { app } = started();
-    expect(log).toHaveBeenCalledWith("Armada perf: a report every 5 s, culling on, mobile profile");
-
-    expect(window.devicePixelRatio).toBe(3);
-    expect(app.init).toHaveBeenCalledWith(expect.objectContaining({ antialias: false, resolution: 2 }));
-    game.destroy();
 
     // `?mobile=off` keeps a phone on the desktop profile, at its full pixel ratio.
     const forced = mount("?seed=1&mobile=off", { mobile: true });

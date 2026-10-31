@@ -16,7 +16,8 @@ export type DeviceProfile = {
 };
 
 /**
- * Desktop: the full device pixel ratio and antialiasing. Like mobile, the SVGs are rasterized at
+ * Desktop: the full device pixel ratio and antialiasing, and the SVGs' pixels kept in memory (Pixi
+ * can unload unused textures and upload them again). Like mobile, the SVGs are rasterized at
  * exactly the size they are drawn at the largest zoom, and the chunks are kept loaded only as far
  * as those loaded ahead (2, not 3: about half as many).
  */
@@ -29,9 +30,9 @@ export const DESKTOP_PROFILE: DeviceProfile = {
 };
 
 /**
- * Phones and tablets, which close a tab that runs out of memory: as {@link DESKTOP_PROFILE}, and
+ * Phones and tablets, which close a tab that runs out of memory: as {@link DESKTOP_PROFILE}, but
  * the canvas at most at 2× (a 3× screen draws 2.25 times the pixels for a barely visible
- * difference) with no MSAA buffers.
+ * difference), no MSAA buffers, and the SVGs kept only on the GPU.
  */
 export const MOBILE_PROFILE: DeviceProfile = {
   maxResolution: 2,
