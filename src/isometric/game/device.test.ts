@@ -16,15 +16,19 @@ describe("isMobileDevice", () => {
 });
 
 describe("resolveDeviceProfile", () => {
-  it("keeps desktop as it was and lowers what takes memory on mobile", () => {
+  it("keeps desktop's full resolution and antialiasing, and lowers them on mobile", () => {
     expect(resolveDeviceProfile(false)).toBe(DESKTOP_PROFILE);
-    expect(DESKTOP_PROFILE).toEqual({ maxResolution: Infinity, antialias: true, releaseSvgPixels: false });
+    expect(DESKTOP_PROFILE).toEqual({
+      maxResolution: Infinity,
+      antialias: true,
+      svgDetail: 1,
+      chunkKeepRadius: 2,
+    });
     expect(resolveDeviceProfile(true)).toBe(MOBILE_PROFILE);
     expect(MOBILE_PROFILE).toEqual({
       maxResolution: 2,
       antialias: false,
       svgDetail: 1,
-      releaseSvgPixels: true,
       chunkKeepRadius: 2,
     });
   });

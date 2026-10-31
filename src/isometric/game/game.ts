@@ -98,7 +98,7 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
     const { seed, startTick, timeScale, disabledModules, perf, cull, effects, sound, jetpack, mobile } =
       resolveLaunchOptions(window.location.search, random, reducedMotion, isMobileDevice(window));
-    // Phones get the mobile profile, which takes much less memory; desktop runs as always.
+    // Phones get the mobile profile, which lowers the resolution and antialiasing too.
     const device = resolveDeviceProfile(mobile);
     await app.init({
       resizeTo: window,
@@ -111,12 +111,11 @@ export function mountGame(container: HTMLElement, options: GameOptions): Game {
     if (destroyed) return;
 
     container.appendChild(app.canvas);
-    if (device.releaseSvgPixels) {
-      // The SVGs' pixels are only on the GPU: a context lost and restored would draw them empty.
-      const reload = () => window.location.reload();
-      app.canvas.addEventListener("webglcontextrestored", reload);
-      teardowns.push(() => app.canvas.removeEventListener("webglcontextrestored", reload));
-    }
+    // The SVGs' pixels are only on the GPU (`releaseSvgPixels`): a context lost and restored
+    // would draw them empty, so the page reloads.
+    const reload = () => window.location.reload();
+    app.canvas.addEventListener("webglcontextrestored", reload);
+    teardowns.push(() => app.canvas.removeEventListener("webglcontextrestored", reload));
     log(`Armada world seed: ${seed}`);
     const unknown = findUnknownModules(disabledModules);
     if (unknown.length > 0) log(`Armada ?modules= names no module: ${unknown.join(", ")}`);
