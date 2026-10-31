@@ -181,6 +181,13 @@ export type EntityDefinition = {
   collision?: EntityCollision;
   /** Whether to add a dark contact mark at the entity's ground footprint. Defaults to `true`. */
   contactShadow?: boolean;
+  /**
+   * SVG of the entity as the water mirrors it (its model flipped about the water top by its
+   * generator), on its own canvas grown downward from the same top: the `water-reflections` scene
+   * module draws it in the water in place of flipping the sprite, which can't tell a deck from a
+   * post. Entities of several tiles only. Without it, the sprite is turned half a circle.
+   */
+  reflectionSource?: string;
 };
 
 export type EntityData = GridObjectData & {
@@ -211,6 +218,8 @@ export type EntityData = GridObjectData & {
   collision?: EntityCollision;
   /** Whether this entity's footprint adds a static ground contact shadow. Defaults to `true`. */
   contactShadow?: boolean;
+  /** Its reflection in the water; see `EntityDefinition.reflectionSource`. */
+  reflectionSource?: string;
 };
 
 /** Optional identity data when creating an {@link IEntity} instance. */
@@ -297,6 +306,8 @@ export interface IEntity extends IGridObject {
   readonly collision?: EntityCollision;
   /** Whether this entity's footprint adds a static ground contact shadow. Defaults to `true`. */
   readonly contactShadow?: boolean;
+  /** Its reflection in the water; see `EntityDefinition.reflectionSource`. */
+  readonly reflectionSource?: string;
   /**
    * Side of the square, centred on column `(x, y)`, the entity blocks movement in there, as a
    * fraction of the block (see {@link EntityCollision}); `0` off its footprint or where it does

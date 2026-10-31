@@ -53,8 +53,8 @@ const PATH_FRAMES = Array.from({ length: 16 }, (_, mask) => ({
 
 /**
  * The terrain materials: grass and ground share the land tint (grass with flowers, sprouts or
- * fallen leaves on some columns), sand keeps its colour, water darkens with depth and has bands of
- * light drifting across it.
+ * fallen leaves on some columns), sand keeps its colour, water darkens with depth (and reflects what
+ * stands around it: the `water-reflections` scene module).
  */
 export const TERRAIN_APPEARANCE: TerrainAppearance = {
   grass: {
@@ -78,9 +78,6 @@ export const TERRAIN_APPEARANCE: TerrainAppearance = {
   water: {
     textureSource: "/assets/water/block.svg",
     tint: { kind: "depth", step: 0.15 },
-    // Soft light drifting across the water: three bands every two tiles, two tiles in 9 s; under
-    // the first level, fainter and slower.
-    bands: { count: 3, width: 0.45, alpha: 0.16, period: 9000, deepBelow: -1, deep: 0.45 },
   },
   // A grass block with a strip of trodden earth across its top, joined to the paths around it. Its
   // grass edges take the tint of the grass zone it crosses.

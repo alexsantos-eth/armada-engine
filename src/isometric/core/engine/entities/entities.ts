@@ -65,6 +65,7 @@ export class Entity implements IEntity {
       ...(definition.sway ? { sway: definition.sway } : {}),
       ...(definition.collision !== undefined ? { collision: definition.collision } : {}),
       ...(definition.contactShadow !== undefined ? { contactShadow: definition.contactShadow } : {}),
+      ...(definition.reflectionSource ? { reflectionSource: definition.reflectionSource } : {}),
       metadata: {},
     };
   }
@@ -142,6 +143,10 @@ export class Entity implements IEntity {
 
   get contactShadow(): IEntity["contactShadow"] {
     return this.data.contactShadow;
+  }
+
+  get reflectionSource(): IEntity["reflectionSource"] {
+    return this.data.reflectionSource;
   }
 
   collisionAt(x: number, y: number): number {

@@ -87,9 +87,7 @@ function cropFrame(
  * whose material has a `topInset` covers nothing behind it. The blocks along a
  * chunk's `−x`/`−y` edges are covered by the neighbour chunk's columns (`context.columnAt`), so
  * chunks meet as if the terrain were one. Tints by height count from `DEFAULT_MAX_ELEVATION`, the
- * same in every chunk. A block takes the texture the `terrainSurfaces` service gives it (the
- * animated water of `surface-bands`), if any, instead of its material's own. The top block of a
- * column whose material has `variants` shows the one `createVariantPicker()` picks for it from the
+ * same in every chunk. The top block of a column whose material has `variants` shows the one `createVariantPicker()` picks for it from the
  * world seed (flowers, leaves, in clumps), if any; the blocks under it keep the material's texture.
  * The top block of a column whose material has `connections` (paths) shows the frame of the
  * neighbours it joins (`getConnectionMask()`: same material, at most `PATH_MAX_CLIMB` apart), read
@@ -102,7 +100,7 @@ function cropFrame(
 export function createTerrainView(): SceneModule {
   return {
     id: "terrain",
-    async setup({ world, terrain, projection, metrics, columnAt, assets, services }) {
+    async setup({ world, terrain, projection, metrics, columnAt, assets }) {
       const materials = Object.keys(terrain) as TerrainMaterial[];
       materials.forEach((material) => {
         const { variants: list = [], connections } = terrain[material];
@@ -202,8 +200,6 @@ export function createTerrainView(): SceneModule {
       };
       // A hidden chunk's blocks are given back for the next chunk shown (#94).
       const sprites = createSpritePool();
-      // Textures that replace a material's own (the animated water), when a module provides them.
-      const surfaces = services.get("terrainSurfaces");
 
       return {
         showChunk: ({ rect, columns }) => {
@@ -227,11 +223,7 @@ export function createTerrainView(): SceneModule {
           const views: SceneView[] = projectBoxesToIsometric(visible, projection).flatMap((box) =>
             // Typed once by `createVisibleBlocks()`: water, ground, or the column's surface on top.
             createBlockViews({
-              texture:
-                surfaces?.textureAt(box.box.type, box.box.x, box.box.y, box.box.elevation) ??
-                connectionOf(box.box) ??
-                variantOf(box.box) ??
-                (textures.get(box.box.type) as Texture),
+              texture: connectionOf(box.box) ?? variantOf(box.box) ?? (textures.get(box.box.type) as Texture),
               box,
               metrics,
               tint: tintOf(box.box),

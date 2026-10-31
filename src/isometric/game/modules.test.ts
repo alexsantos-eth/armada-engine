@@ -18,11 +18,11 @@ import { createTestEntities, defaultWorld, mountScene, resetHarness } from "../c
 import { createSceneModules, createWorldParts, createWorldSystems, findUnknownModules } from "./modules";
 
 const SCENE_IDS = [
-  "surface-bands",
   "terrain",
   "entities",
   "foliage-wind",
   "player",
+  "water-reflections",
   "ambient-light",
   "shadows",
   "camera",
@@ -45,11 +45,11 @@ describe("createSceneModules", () => {
 
   it("leaves out the disabled modules", () => {
     expect(createSceneModules(new Set(["shadows", "camera"])).map(({ id }) => id)).toEqual([
-      "surface-bands",
       "terrain",
       "entities",
       "foliage-wind",
       "player",
+      "water-reflections",
       "ambient-light",
       "cloud-shadows",
     ]);

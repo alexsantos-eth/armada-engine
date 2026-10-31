@@ -128,7 +128,9 @@ export function mockPixi() {
     public setSize = vi.fn();
     public setFromMatrix = vi.fn();
     public texture: unknown;
-    public anchor = { x: 0, y: 0 };
+    public anchor = { x: 0, y: 0, set: vi.fn((x: number, y: number) => Object.assign(this.anchor, { x, y })) };
+    public localTransform = { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 };
+    public updateLocalTransform = vi.fn();
     public width = 30;
     public height = 30;
     constructor(texture?: unknown) {
@@ -373,7 +375,7 @@ export async function mockRender() {
       const kept: unknown[] = [];
       return {
         kept,
-        take: vi.fn(),
+        take: vi.fn((texture: unknown) => makeSprite(texture)),
         give: vi.fn((views: readonly unknown[]) => kept.push(...views)),
         destroy: vi.fn(),
       };

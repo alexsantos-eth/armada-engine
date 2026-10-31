@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateTerrainBands, validateTerrainConnections, validateTerrainVariants } from "../core/engine";
+import { validateTerrainConnections, validateTerrainVariants } from "../core/engine";
 import { TERRAIN_APPEARANCE } from "./terrain";
 
 const ASSET_SOURCES = import.meta.glob<string>("/public/assets/*/*.svg", {
@@ -79,15 +79,5 @@ describe("TERRAIN_APPEARANCE", () => {
     expect(Object.entries(TERRAIN_APPEARANCE).filter(([, { tint }]) => tint.kind === "depth")).toEqual([
       ["water", expect.anything()],
     ]);
-  });
-
-  it("animates light bands only on water, with valid bands that move less in deep water", () => {
-    const bands = TERRAIN_APPEARANCE.water.bands;
-
-    expect(Object.entries(TERRAIN_APPEARANCE).filter(([, appearance]) => appearance.bands)).toEqual([
-      ["water", expect.anything()],
-    ]);
-    expect(bands && validateTerrainBands(bands)).toEqual([]);
-    expect(bands?.deep).toBeLessThan(1);
   });
 });

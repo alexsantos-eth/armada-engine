@@ -11,7 +11,6 @@ import type {
   IsoScreenBox,
   SceneCamera,
   TerrainAppearance,
-  TerrainMaterial,
   TileMetrics,
   WorldRect,
 } from "../../types";
@@ -66,8 +65,6 @@ export type SceneServices = {
   readonly focus: SceneFocus;
   /** What moves and casts a shadow of its own, e.g. to lay it on the ground (`player-view`: the player). */
   readonly movingCasters: readonly SceneMovingCaster[];
-  /** Textures that replace a terrain material's own, block by block (`surface-bands`: the animated water). */
-  readonly terrainSurfaces: SceneTerrainSurfaces;
 };
 
 /** Something that moves through the scene and casts a shadow: its sprite and where its feet are. */
@@ -88,15 +85,6 @@ export type SceneMovingCaster = {
     readonly ground: { readonly x: number; readonly y: number; readonly elevation: number };
     readonly screen: { readonly x: number; readonly y: number };
   };
-};
-
-/** Textures for terrain blocks, provided by a module that draws them (e.g. animated). */
-export type SceneTerrainSurfaces = {
-  /**
-   * The texture of the block of `material` at column `(x, y)` and `elevation`, or `undefined` to
-   * draw it with its material's own texture.
-   */
-  textureAt(material: TerrainMaterial, x: number, y: number, elevation: number): Texture | undefined;
 };
 
 /** Name of a {@link SceneServices} entry. */

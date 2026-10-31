@@ -16,9 +16,8 @@ import { describe, expect, it } from "vitest";
  * projection, grid → camera (view maths on the ground plane, and the chunks in view)
  * render (Pixi primitives) → scene (the compositor and the `SceneModule` contract)
  * random → wind (how swaying entities lean, from their sway and the time)
- * waves (how bands of light drift across the terrain, from their bands and the time)
- * scene → scene modules: surface-bands, terrain-view, entity-view, foliage-wind, shadows, ambient-light,
- * player-view, camera-view
+ * scene → scene modules: terrain-view, entity-view, foliage-wind, water-reflections, shadows,
+ * ambient-light, player-view, camera-view
  *
  * The scene draws nothing itself: the app hands it a list of scene modules. A scene module never
  * imports another one (they share services through the scene), and the scene never imports them.
@@ -50,8 +49,7 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   shadows: ["camera", "lighting", "projection", "render", "scene", "terrain", "world"],
   wind: ["random"],
   "foliage-wind": ["scene", "wind"],
-  waves: [],
-  "surface-bands": ["scene", "waves"],
+  "water-reflections": ["grid", "projection", "render", "scene", "terrain"],
   "ambient-light": ["lighting", "render", "scene"],
   "camera-view": ["camera", "scene"],
   "cloud-shadows": ["constants", "scene"],
@@ -60,11 +58,11 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
 
 /** Scene modules: drawn by the scene from the list the app gives it. */
 const SCENE_MODULES = new Set([
-  "surface-bands",
   "terrain-view",
   "entity-view",
   "foliage-wind",
   "shadows",
+  "water-reflections",
   "ambient-light",
   "camera-view",
   "cloud-shadows",

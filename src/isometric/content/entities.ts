@@ -262,6 +262,8 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
   {
     id: "pier_x_reverse",
     textureSource: "/assets/pier/block_1x3_over_water.svg",
+    // Its model mirrored about the water by `artifacts/pier.py x back water reflection`.
+    reflectionSource: "/assets/pier/block_1x3_over_water_reflection.svg",
     height: 1,
     length: 3,
     lengthAxis: "x",
@@ -276,6 +278,7 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
   {
     id: "pier_y_reverse",
     textureSource: "/assets/pier/block_3x1_over_water.svg",
+    reflectionSource: "/assets/pier/block_3x1_over_water_reflection.svg",
     height: 1,
     length: 3,
     lengthAxis: "y",
@@ -496,6 +499,8 @@ export const ENTITY_CONFIG: readonly EntityDefinition[] = [
   {
     id: "boat",
     textureSource: "/assets/boat/block_2.svg",
+    // Its hull mirrored about the water by `artifacts/boat.py reflection`.
+    reflectionSource: "/assets/boat/block_2_reflection.svg",
     height: 1,
     length: 2,
     gap: 10,

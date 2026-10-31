@@ -29,6 +29,19 @@ describe("ENTITY_CONFIG", () => {
     expect(() => validateEntityDefinitions(ENTITY_CONFIG)).not.toThrow();
   });
 
+  it("gives every reflection SVG its sprite's footprint, width and canvas top, grown only downward", () => {
+    const reflected = ENTITY_CONFIG.filter(({ reflectionSource }) => reflectionSource !== undefined);
+    expect(reflected.map(({ id }) => id).sort()).toEqual(["boat", "pier_x_reverse", "pier_y_reverse"]);
+    const viewBox = (svg: string) => (/viewbox="([^"]+)"/.exec(svg) as RegExpExecArray)[1].split(" ").map(Number);
+    reflected.forEach(({ textureSource, reflectionSource = "" }) => {
+      const [x, top, width, height] = viewBox(readSvg(textureSource));
+      const [mirrorX, mirrorTop, mirrorWidth, mirrorHeight] = viewBox(readSvg(reflectionSource));
+      expect(readTiles(reflectionSource)).toEqual(readTiles(textureSource));
+      expect([mirrorX, mirrorTop, mirrorWidth]).toEqual([x, top, width]);
+      expect(mirrorHeight).toBeGreaterThan(height);
+    });
+  });
+
   it("blocks only the trunk of every tree, the same for all", () => {
     const trees = ENTITY_CONFIG.filter(({ textureSource }) => textureSource.startsWith("/assets/tree/"));
     expect(trees.length).toBeGreaterThan(0);

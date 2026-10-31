@@ -14,7 +14,6 @@ import type {
   SceneServiceKey,
   SceneServiceRegistry,
   SceneServices,
-  SceneTerrainSurfaces,
 } from "./module";
 import { SCENE_LAYER } from "./scene";
 
@@ -27,16 +26,13 @@ describe("scene module contract", () => {
   });
 
   it("names the services modules share, each with its type", () => {
-    expectTypeOf<SceneServiceKey>().toEqualTypeOf<
-      "camera" | "entityViews" | "focus" | "movingCasters" | "terrainSurfaces"
-    >();
+    expectTypeOf<SceneServiceKey>().toEqualTypeOf<"camera" | "entityViews" | "focus" | "movingCasters">();
     expectTypeOf<SceneServices["camera"]>().toEqualTypeOf<SceneCameraService>();
     // The camera of the core types, plus culling the views just added.
     expectTypeOf<SceneCameraService>().toExtend<SceneCamera>();
     expectTypeOf<SceneServices["entityViews"]>().toEqualTypeOf<ReadonlyMap<ChunkKey, readonly EntityView[]>>();
     expectTypeOf<SceneServices["focus"]>().toEqualTypeOf<SceneFocus>();
     expectTypeOf<SceneServices["movingCasters"]>().toEqualTypeOf<readonly SceneMovingCaster[]>();
-    expectTypeOf<SceneServices["terrainSurfaces"]>().toEqualTypeOf<SceneTerrainSurfaces>();
   });
 
   it("reads a service by name, `undefined` when no module provides it", () => {

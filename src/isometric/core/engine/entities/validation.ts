@@ -86,6 +86,15 @@ function checkDefinition(definition: EntityDefinition, report: (issue: string) =
     }
   }
 
+  if (definition.reflectionSource !== undefined) {
+    if (length === 1) report("reflectionSource is for entities of several tiles (got length 1)");
+    if (!TEXTURE_SOURCE.test(definition.reflectionSource)) {
+      report(
+        `reflectionSource must be an absolute SVG path such as "/assets/<name>/block_reflection.svg" (got "${definition.reflectionSource}")`,
+      );
+    }
+  }
+
   if (definition.collision !== undefined) {
     const sizes = typeof definition.collision === "number" ? [definition.collision] : definition.collision;
     if (sizes.length > length) report(`collision lists ${sizes.length} sizes for a footprint of ${length} blocks`);

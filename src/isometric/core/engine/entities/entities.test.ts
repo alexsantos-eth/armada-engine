@@ -349,6 +349,22 @@ describe("Entity and createEntitiesFromConfig", () => {
     expect(Entity.fromData(2, 3, pier.getData()).contactShadow).toBe(false);
   });
 
+  it("keeps how it mirrors in the water through entity data", () => {
+    const definition = {
+      id: "pier",
+      textureSource: "/assets/pier.svg",
+      height: 1,
+      spawnChance: 1,
+      surface: "sand",
+    } as const;
+    const reflectionSource = "/assets/pier_reflection.svg";
+    const pier = new Entity(2, 3, { ...definition, length: 3, reflectionSource }, 0);
+
+    expect(pier.reflectionSource).toBe(reflectionSource);
+    expect(Entity.fromData(2, 3, pier.getData()).reflectionSource).toBe(reflectionSource);
+    expect(new Entity(2, 3, definition, 0).reflectionSource).toBeUndefined();
+  });
+
   it("keeps an explicit id, so restored entities keep their identity after moving", () => {
     const entity = new Entity(
       9,

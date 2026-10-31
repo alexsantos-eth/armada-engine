@@ -249,11 +249,11 @@ describe("mountGame", () => {
     expect(world.seed).toBe(1337);
     expect(world.parts.get(CLOCK_PART).tick).toBe(15 * TICKS_PER_HOUR);
     expect(modules.map(({ id }) => id)).toEqual([
-      "surface-bands",
       "terrain",
       "entities",
       "foliage-wind",
       "player",
+      "water-reflections",
       "ambient-light",
       "shadows",
       "camera",
@@ -348,10 +348,10 @@ describe("mountGame", () => {
     onTick(app)({ elapsedMS: 1000 });
 
     expect(modules.map(({ id }) => id)).toEqual([
-      "surface-bands",
       "terrain",
       "entities",
       "foliage-wind",
+      "water-reflections",
       "ambient-light",
       "camera",
       "cloud-shadows",

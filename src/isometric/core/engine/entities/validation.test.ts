@@ -37,6 +37,7 @@ describe("validateEntityDefinitions", () => {
           patches: { field: "forest", scale: 20, threshold: 0.2, outside: 0.1 },
           settlementLot: { regionSize: 64, offset: { x: 24, y: 24 }, reservedPathWidth: 8 },
           contactShadow: false,
+          reflectionSource: "/assets/pier/block_reflection.svg",
           colorReplacements: { "#9f4b2f": ["#111111", "#222222"], "#abc": ["#333", "#444"] },
           debug: true,
         },
@@ -177,6 +178,15 @@ describe("validateEntityDefinitions", () => {
       'rock: colorReplacements["#000000"] must be hex colors (got "blue")',
       'rock: colorReplacements["#111111"] must not be an empty list',
       "rock: colorReplacements variation lists must all have the same length (got 2, 1)",
+    ]);
+  });
+
+  it("reports a reflection SVG on one tile or that is not an absolute SVG path", () => {
+    expect(issuesOf([{ ...VALID, reflectionSource: "/assets/rock/block_reflection.svg" }])).toEqual([
+      "rock: reflectionSource is for entities of several tiles (got length 1)",
+    ]);
+    expect(issuesOf([{ ...VALID, length: 2, reflectionSource: "rock.png" }])).toEqual([
+      'rock: reflectionSource must be an absolute SVG path such as "/assets/<name>/block_reflection.svg" (got "rock.png")',
     ]);
   });
 

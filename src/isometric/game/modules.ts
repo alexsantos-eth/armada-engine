@@ -13,8 +13,8 @@ import {
   type PlayerViewOptions,
   type PhaseLighting,
   createShadows,
-  createSurfaceBands,
   createTerrainView,
+  createWaterReflections,
   type PlayerTopInset,
   type SceneModule,
   type World,
@@ -24,8 +24,8 @@ import type { WorldSystem } from "../core/types";
 
 /**
  * The scene modules the game draws with, in order: each one may use the services of those
- * before it (the terrain draws the water with the light of the surface bands; the wind and the
- * shadows use the entities' views, and the shadows the player's; the camera starts on the
+ * before it (the wind, the water's reflections and the shadows use the entities' views, and the
+ * reflections and the shadows the player's; the camera starts on the
  * player), and every frame they update in this order (the canopies lean before their shadows
  * follow them; the player moves before its shadow and the camera follow it). Any of them can be
  * left out (`disabled`, by id) and the rest keep working. With `cull: false` the camera draws
@@ -38,11 +38,11 @@ export function createSceneModules(
 ): SceneModule[] {
   const lighting = options.lighting ?? createPhaseLighting();
   const modules = [
-    createSurfaceBands(),
     createTerrainView(),
     createEntityView(),
     createFoliageWind(),
     createPlayerView(PLAYER_APPEARANCE, options.player),
+    createWaterReflections(),
     createAmbientLight(lighting),
     createShadows(lighting),
     createCameraView({ cull: options.cull }),
