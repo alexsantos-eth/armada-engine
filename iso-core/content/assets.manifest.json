@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "atlas": "content/atlas.png",
+  "atlasSize": { "width": 256, "height": 256 },
+  "entries": [
+    {
+      "id": "block",
+      "kind": "block",
+      "source": "/assets/house/block.svg",
+      "dataTiles": "1x1x1",
+      "frame": { "x": 0, "y": 0, "width": 64, "height": 64 },
+      "anchor": { "x": 0.5, "y": 1.0 },
+      "colorVariants": 1
+    },
+    {
+      "id": "tree",
+      "kind": "entity",
+      "source": "/assets/tree/block.svg",
+      "dataTiles": "1x1x2",
+      "frame": { "x": 64, "y": 0, "width": 64, "height": 64 },
+      "anchor": { "x": 0.5, "y": 1.0 },
+      "colorVariants": 4,
+      "sway": { "cut": 0.58, "amplitude": 1.5, "period": 3400 }
+    },
+    {
+      "id": "player",
+      "kind": "player",
+      "source": "/assets/player/block.svg",
+      "dataTiles": "1x1x1",
+      "frames": [
+        { "x": 128, "y": 0, "width": 64, "height": 64 }
+      ],
+      "anchor": { "x": 0.5, "y": 1.0 },
+      "colorVariants": 1
+    }
+  ]
+}

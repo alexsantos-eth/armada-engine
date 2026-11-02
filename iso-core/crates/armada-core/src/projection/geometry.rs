@@ -1,6 +1,6 @@
 //! Isometric projection using `f64`, matching JavaScript's numeric precision.
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct GridPoint {
     pub x: f64,
     pub y: f64,

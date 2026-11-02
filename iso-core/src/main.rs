@@ -50,6 +50,14 @@ impl PlayerGround for ChunkGround<'_> {
 async fn main() {
     // Load the versioned entity catalog (embedded at compile time).
     let catalog_json = include_str!("../../src/isometric/content/entities.v2.json");
+
+    // Load the asset manifest and atlas (P6 prototype).
+    let manifest_json = include_str!("../../iso-core/content/assets.manifest.json");
+    let manifest: armada_core::assets::AssetManifest =
+        serde_json::from_str(manifest_json).expect("asset manifest is valid JSON");
+    armada_core::assets::validate_manifest(&manifest).expect("asset manifest validates");
+    // Macroquad loads the atlas as a single texture; sprites are addressed by frame rect.
+    let atlas = load_texture(&format!("content/{}", manifest.atlas)).await.unwrap();
     let catalog: EntityCatalogV2 =
         serde_json::from_str(catalog_json).expect("entity catalog is valid JSON");
     validate_catalog(&catalog).expect("entity catalog validates");
@@ -194,6 +202,29 @@ async fn main() {
         );
         let marker = vec2(marker.screen_x as f32, marker.screen_y as f32);
         draw_circle(marker.x, marker.y, 12.0, GOLD);
+
+        // P6 prototype: draw the first atlas sprite (block) at the player's position.
+        if let Some(entry) = manifest.entries.iter().find(|e| e.id == "block")
+            && let Some(frame) = entry.primary_frame()
+        {
+            let src = Rect::new(
+                frame.x as f32,
+                frame.y as f32,
+                frame.width as f32,
+                frame.height as f32,
+            );
+            draw_texture_ex(
+                &atlas,
+                marker.x - 32.0,
+                marker.y - 64.0,
+                WHITE,
+                DrawTextureParams {
+                    source: Some(src),
+                    dest_size: Some(vec2(64.0, 64.0)),
+                    ..Default::default()
+                },
+            );
+        }
 
         // HUD.
         draw_rectangle(20.0, 20.0, 510.0, 80.0, Color::from_rgba(21, 29, 42, 205));
