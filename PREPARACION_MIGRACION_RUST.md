@@ -2,7 +2,7 @@
 
 Este documento convierte el [plan de migración](MIGRATION_RUST_MACROQUAD.md) en cambios pequeños sobre el juego TypeScript. La meta es conservar un juego funcional después de cada cambio y dejar claros los contratos que sí interesa llevar a Rust. **Armada Engine 2 rediseñará la generación, la colocación de entidades y los guardados. No necesita regenerar el mundo desde una semilla ni importar partidas de la versión actual.** Este documento es una guía de trabajo; no supone que los cambios descritos ya estén implementados.
 
-**Estado:** P1–P3 implementados como preparación del código TypeScript. P4 y posteriores siguen pendientes. Los fixtures iniciales de P1 cubren coordenadas, proyección, rutas, transiciones, paso fijo y una trayectoria corta de marcha y salto. Los escenarios físicos más extensos del jugador siguen en sus tests co-localizados y podrán añadirse al contrato de migración cuando empiece su port a Rust.
+**Estado:** P1–P3 implementados. P4 y P4b tienen contratos TypeScript ejecutables y documentados en [V2_DATA_CONTRACTS.md](V2_DATA_CONTRACTS.md); su integración en Rust queda para el port. P5 y posteriores siguen pendientes. Los fixtures iniciales de P1 cubren coordenadas, proyección, rutas, transiciones, paso fijo y una trayectoria corta de marcha y salto. Los escenarios físicos más extensos del jugador siguen en sus tests co-localizados y podrán añadirse al contrato de migración cuando empiece su port a Rust.
 
 ## Diagnóstico que determina las prioridades
 
@@ -72,7 +72,7 @@ Este documento convierte el [plan de migración](MIGRATION_RUST_MACROQUAD.md) en
 
 ## Orden de ejecución y tamaño de los cambios
 
-Aplicar P1 → P2 → P3 antes de portar el modelo del terreno. Diseñar P4 al empezar la nueva colocación de entidades en Rust; resolver P4b antes de integrar guardados. P5 avanza en paralelo con el primer renderer Macroquad, por vista o cálculo. P6 comienza con el manifiesto de assets y continúa cuando el prototipo gráfico indique qué formato conviene. Cada PR debe tener un contrato concreto; evitar un PR que mueva carpetas, cambie la API y modifique el comportamiento a la vez.
+P1 → P4b ya ofrecen contratos para iniciar el port. Al integrar P4 en Rust faltará diseñar y ajustar las reglas de aparición; al integrar P4b faltará almacenamiento físico, mediciones y una decisión de compresión. P5 avanza en paralelo con el primer renderer Macroquad, por vista o cálculo. P6 comienza con el manifiesto de assets y continúa cuando el prototipo gráfico indique qué formato conviene. Cada PR debe tener un contrato concreto; evitar un PR que mueva carpetas, cambie la API y modifique el comportamiento a la vez.
 
 ## Reglas para cada PR preparatorio
 

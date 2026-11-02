@@ -190,6 +190,35 @@ export type EntityDefinition = {
   reflectionSource?: string;
 };
 
+/** Version 2 entity catalog: visual identity and physical shape are separate from placement rules. */
+export type EntityCatalogV2 = {
+  readonly schemaVersion: 1;
+  readonly entities: readonly EntityBlueprintV2[];
+};
+
+/** Entity description for Armada Engine 2. Placement density and grouping are designed in Rust. */
+export type EntityBlueprintV2 = {
+  readonly id: string;
+  readonly asset: {
+    readonly sprite: string;
+    readonly reflection?: string;
+    readonly colorReplacements?: SvgColorReplacements;
+    readonly sway?: EntitySway;
+    readonly contactShadow?: boolean;
+  };
+  readonly shape: {
+    readonly height: number;
+    readonly length: number;
+    readonly axis: EntityLengthAxis;
+    /** One collision size per occupied cell. */
+    readonly collision: readonly number[];
+  };
+  readonly placement: {
+    /** Required surface beneath each footprint cell, starting at the anchor. */
+    readonly surfaces: readonly EntitySurface[];
+  };
+};
+
 export type EntityData = GridObjectData & {
   /**
    * Stable identifier of this instance, unique within a world. It is assigned once at

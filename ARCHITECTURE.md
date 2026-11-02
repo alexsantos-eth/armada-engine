@@ -1,5 +1,7 @@
 # Arquitectura de Armada Engine
 
+La preparación de Armada Engine 2 define un [catálogo de entidades y un guardado V2 independientes](V2_DATA_CONTRACTS.md). El juego PixiJS descrito aquí continúa usando `entities.ts` y `WorldSnapshot` versión 7. El catálogo V2 mantiene identidad, assets y huella sin trasladar las probabilidades de colocación; el guardado V2 persiste chunks descubiertos completos sin necesitar regeneración desde una semilla.
+
 ## Propósito
 
 Armada Engine dibuja un terreno discreto en una vista isométrica. El terreno se modela como columnas de bloques; cada columna tiene una coordenada de cuadrícula `(x, y)` y una elevación entera. La escena convierte esas columnas en sprites PixiJS ordenados por profundidad.
