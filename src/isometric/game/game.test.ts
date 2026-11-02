@@ -3,7 +3,6 @@ import { TERRAIN_APPEARANCE } from "../content";
 import {
   bindCameraControls,
   chunkOfPoint,
-  CHUNKS_LOADED_PER_FRAME,
   CLOCK_PART,
   createScene,
   getWalkDirection,
@@ -14,6 +13,7 @@ import {
   type SceneOptions,
   type World,
 } from "../core/engine";
+import { CHUNKS_LOADED_PER_FRAME } from "../core/engine/scene-order";
 import { KEYBOARD_ZOOM_STEP } from "../input";
 import type { ChunkRequest } from "./chunk-generator";
 import type { ChunkWorker } from "./chunk-prefetch";

@@ -17,6 +17,7 @@ export * from "./projection";
 export * from "./random";
 export * from "./render";
 export * from "./scene";
+export * from "./scene-order";
 export * from "./shadows";
 export * from "./simulation";
 export * from "./terrain";

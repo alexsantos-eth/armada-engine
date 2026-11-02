@@ -18,6 +18,7 @@ import type {
   SceneView,
 } from "./module";
 import { createDrawOrder } from "./draw-order";
+import { CHUNKS_HIDDEN_PER_FRAME, CHUNKS_SHOWN_PER_FRAME } from "../scene-order";
 
 /** The {@link SceneLayer}s, by what they hold. */
 export const SCENE_LAYER = {
@@ -35,21 +36,6 @@ export const SCENE_LAYER = {
   /** What lies on what stands: the shadows entities receive. */
   onObject: 4,
 } as const;
-
-/**
- * Chunks the scene starts showing per frame once it is built, so walking or panning into new
- * ground never builds several chunks in one frame. The first chunks are all shown before the
- * scene starts; after that, each module draws its part of a chunk in a frame of its own.
- */
-export const CHUNKS_SHOWN_PER_FRAME = 1;
-
-/**
- * Chunks out of view the scene hides per frame: hiding one takes its ~2 500 views out of the draw
- * order and frees what its modules made, and walking with the zoom out a row of chunks leaves the
- * view at once (16–26 ms in one frame, #44). The others wait, out of view and culled. A chunk whose
- * ground the world unloaded is hidden at once.
- */
-export const CHUNKS_HIDDEN_PER_FRAME = 1;
 
 /**
  * Where the camera of an unbounded world may go: all of the grid but a margin of chunks at its far

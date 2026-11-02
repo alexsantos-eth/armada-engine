@@ -61,7 +61,7 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   entities: ["grid", "random", "terrain"],
   player: ["grid", "time", "xstate"],
   paths: ["grid"],
-  world: ["entities", "grid", "parts", "paths", "random", "terrain"],
+  world: ["entities", "grid", "parts", "paths", "random", "scene-order", "terrain"],
   render: ["scene-order"],
   simulation: ["events", "time", "world"],
   scene: ["camera", "constants", "entities", "grid", "render", "scene-order", "terrain", "time", "world"],

@@ -12,7 +12,8 @@ import { CLOCK_PART } from "../time";
 import type { BuiltScene, SceneContext, SceneFrame, SceneModule, SceneModulePart, SceneView } from "./module";
 import type { ChunkCoord } from "../../types";
 import type { WorldChunk } from "../world";
-import { CHUNKS_HIDDEN_PER_FRAME, CHUNKS_SHOWN_PER_FRAME, SCENE_LAYER, UNBOUNDED_CAMERA_BOUNDS } from "./scene";
+import { CHUNKS_HIDDEN_PER_FRAME, CHUNKS_SHOWN_PER_FRAME } from "../scene-order";
+import { SCENE_LAYER, UNBOUNDED_CAMERA_BOUNDS } from "./scene";
 import { columnsOf, mountScene, resetHarness, TEST_TERRAIN, worldFrom } from "../flow-check/scene-harness";
 
 /** A module that records what the scene does with it. */

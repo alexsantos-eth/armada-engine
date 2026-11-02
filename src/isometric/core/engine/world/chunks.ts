@@ -11,6 +11,7 @@ import {
   toChunkCoord,
 } from "../grid";
 import type { Box } from "../terrain";
+import { CHUNK_KEEP_RADIUS, CHUNK_LOAD_RADIUS } from "../scene-order";
 
 /** What one chunk holds when it is generated: its terrain columns and its entities. */
 export type ChunkContent = {
@@ -51,30 +52,6 @@ export type SavedChunk = {
   readonly cy: number;
   readonly entities: readonly SavedEntity[];
 };
-
-/** Chunks loaded around each focus chunk (`stream()`): the ring a shown chunk needs for its edges. */
-export const CHUNK_LOAD_RADIUS = 1;
-
-/**
- * Chunks the game loads ahead around each focus chunk (`stream()` with `prefetchRadius`), with
- * the load budget the needed ones leave: the ground is generated a few frames before the camera
- * reaches it, never all at once.
- */
-export const CHUNK_PREFETCH_RADIUS = 2;
-
-/**
- * Chunks kept loaded around each focus chunk (`stream()`), past those loaded ahead: a chunk is
- * unloaded only once it is further than this from every focus, so a focus going back and forth
- * over a chunk edge does not unload and generate the same chunks again (hysteresis).
- */
-export const CHUNK_KEEP_RADIUS = 3;
-
-/**
- * Chunks the game generates per frame (`stream()` with `maxLoads`): generating one takes tens of
- * milliseconds on a slow machine, so one per frame. The prefetch ring keeps the stream ahead of
- * the camera: a row of chunks crossing into view was generated frames before.
- */
-export const CHUNKS_LOADED_PER_FRAME = 1;
 
 /** What one `stream()` call did. */
 export type ChunkStreamResult = {

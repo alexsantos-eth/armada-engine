@@ -120,5 +120,32 @@
     "framesMs": [16, 16, 16, 16],
     "steps": [0, 0, 0, 1],
     "alpha": [0.32, 0.64, 0.96, 0.28]
+  },
+  "chunkBudgets": {
+    "chunkLoadRadius": 1,
+    "chunkPrefetchRadius": 2,
+    "chunkKeepRadius": 3,
+    "chunksLoadedPerFrame": 1,
+    "chunksShownPerFrame": 1,
+    "chunksHiddenPerFrame": 1
+  },
+  "culling": {
+    "viewport": { "width": 800, "height": 600 },
+    "projection": { "tileWidth": 40, "tileHeight": 20, "originX": 0, "originY": 0 },
+    "cullRect": [
+      { "margin": 0.25, "expected": { "x": -200, "y": -150, "width": 1200, "height": 900 } },
+      { "margin": 0.1, "expected": { "x": -80, "y": -60, "width": 960, "height": 720 } }
+    ],
+    "needsCull": [
+      { "previous": null, "camera": { "x": 0, "y": 0, "zoom": 1 }, "margin": 0.1, "expected": true },
+      { "previous": { "x": 0, "y": 0, "zoom": 1 }, "camera": { "x": 0, "y": 0, "zoom": 1.1 }, "margin": 0.1, "expected": true },
+      { "previous": { "x": 0, "y": 0, "zoom": 2 }, "camera": { "x": 2.5, "y": -2.5, "zoom": 2 }, "margin": 0.25, "expected": false },
+      { "previous": { "x": 0, "y": 0, "zoom": 2 }, "camera": { "x": 2.6, "y": -2.6, "zoom": 2 }, "margin": 0.25, "expected": true }
+    ],
+    "visibleChunks": [
+      { "camera": { "x": 15.5, "y": 15.5, "zoom": 4 }, "margin": 0.1, "expected": [{ "cx": 0, "cy": 0 }] },
+      { "camera": { "x": 31.5, "y": 31.5, "zoom": 4 }, "margin": 0, "expected": [{ "cx": 0, "cy": 0 }, { "cx": 1, "cy": 0 }, { "cx": 0, "cy": 1 }, { "cx": 1, "cy": 1 }] },
+      { "camera": { "x": 15.5, "y": 15.5, "zoom": 1 }, "margin": 0.1, "expected": [{ "cx": 0, "cy": 0 }, { "cx": 0, "cy": -1 }, { "cx": -1, "cy": 0 }, { "cx": 1, "cy": 0 }, { "cx": 0, "cy": 1 }, { "cx": -1, "cy": -1 }, { "cx": 1, "cy": 1 }] }
+    ]
   }
 }

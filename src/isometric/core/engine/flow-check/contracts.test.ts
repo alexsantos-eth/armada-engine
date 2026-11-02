@@ -21,9 +21,18 @@ import {
   getIdlePose,
   getJumpPose,
   getWalkPose,
+  getVisibleChunks,
+  getCullRect,
+  needsCull,
   selectPlayerFrame,
+  CHUNK_LOAD_RADIUS,
+  CHUNK_PREFETCH_RADIUS,
+  CHUNK_KEEP_RADIUS,
+  CHUNKS_SHOWN_PER_FRAME,
+  CHUNKS_HIDDEN_PER_FRAME,
+  CHUNKS_LOADED_PER_FRAME,
 } from "../domain";
-import type { PlayerMotionType } from "../../types";
+import type { Camera, IsoProjectionConfig, PlayerMotionType } from "../../types";
 import type { PlayerMotionEvent } from "../player/motion";
 
 describe("versioned migration contracts", () => {
@@ -138,5 +147,29 @@ describe("versioned migration contracts", () => {
       });
     }
     expect(actual).toEqual(fixtures.player);
+  });
+
+  it("keeps chunk load/show/hide budgets", () => {
+    const { chunkBudgets } = fixtures;
+    expect(chunkBudgets.chunkLoadRadius).toBe(CHUNK_LOAD_RADIUS);
+    expect(chunkBudgets.chunkPrefetchRadius).toBe(CHUNK_PREFETCH_RADIUS);
+    expect(chunkBudgets.chunkKeepRadius).toBe(CHUNK_KEEP_RADIUS);
+    expect(chunkBudgets.chunksLoadedPerFrame).toBe(CHUNKS_LOADED_PER_FRAME);
+    expect(chunkBudgets.chunksShownPerFrame).toBe(CHUNKS_SHOWN_PER_FRAME);
+    expect(chunkBudgets.chunksHiddenPerFrame).toBe(CHUNKS_HIDDEN_PER_FRAME);
+  });
+
+  it("keeps camera culling decisions: cull rect, re-cull trigger and visible chunks", () => {
+    const { viewport, projection, cullRect, needsCull: cullSamples, visibleChunks: viewSamples } = fixtures.culling;
+    const proj: IsoProjectionConfig = projection;
+    for (const { margin, expected } of cullRect) {
+      expect(getCullRect(viewport, margin)).toEqual(expected);
+    }
+    for (const { previous, camera, margin, expected } of cullSamples) {
+      expect(needsCull(previous ?? undefined, camera as Camera, viewport, proj, margin)).toBe(expected);
+    }
+    for (const { camera, margin, expected } of viewSamples) {
+      expect(getVisibleChunks(camera as Camera, viewport, proj, margin)).toEqual(expected);
+    }
   });
 });

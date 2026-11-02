@@ -8,6 +8,8 @@ import {
   CHUNK_LOAD_RADIUS,
   CHUNK_PREFETCH_RADIUS,
   CHUNKS_LOADED_PER_FRAME,
+} from "../scene-order";
+import {
   type ChunkSource,
   chunkOfPoint,
   type SavedChunk,

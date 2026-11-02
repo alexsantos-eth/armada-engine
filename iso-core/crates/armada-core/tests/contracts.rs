@@ -1,11 +1,13 @@
+use armada_core::camera::{Camera, ScreenSize, cull_rect, needs_cull, visible_chunks};
 use armada_core::grid::{
     CHUNK_SIZE, ChunkCoord, LocalCoord, WorldCoord, to_chunk_coord, to_local_coord, to_world_coord,
 };
 use armada_core::projection::{GridPoint, ProjectionConfig, project_block};
 use armada_core::scene_order::{
-    DrawKey, JumpPhase, JumpPoses, LengthAxis, PlayerFrame, PlayerFrameInput, PlayerSheet,
-    climb_pose, compare_draw_keys, get_draw_depth, idle_pose, jump_pose, select_player_frame,
-    walk_pose,
+    CHUNK_KEEP_RADIUS, CHUNK_LOAD_RADIUS, CHUNK_PREFETCH_RADIUS, CHUNKS_HIDDEN_PER_FRAME,
+    CHUNKS_LOADED_PER_FRAME, CHUNKS_SHOWN_PER_FRAME, DrawKey, JumpPhase, JumpPoses, LengthAxis,
+    PlayerFrame, PlayerFrameInput, PlayerSheet, climb_pose, compare_draw_keys, get_draw_depth,
+    idle_pose, jump_pose, select_player_frame, walk_pose,
 };
 use serde_json::Value;
 
@@ -235,5 +237,80 @@ fn player_sheet_selection_matches_typescript_fixture() {
             "{}",
             sample["id"].as_str().unwrap()
         );
+    }
+}
+
+#[test]
+fn chunk_budgets_match_typescript_fixture() {
+    let fixture = fixture();
+    let budgets = &fixture["chunkBudgets"];
+    assert_eq!(CHUNK_LOAD_RADIUS, integer(&budgets["chunkLoadRadius"]));
+    assert_eq!(CHUNK_PREFETCH_RADIUS, integer(&budgets["chunkPrefetchRadius"]));
+    assert_eq!(CHUNK_KEEP_RADIUS, integer(&budgets["chunkKeepRadius"]));
+    assert_eq!(CHUNKS_LOADED_PER_FRAME, integer(&budgets["chunksLoadedPerFrame"]));
+    assert_eq!(CHUNKS_SHOWN_PER_FRAME, integer(&budgets["chunksShownPerFrame"]));
+    assert_eq!(CHUNKS_HIDDEN_PER_FRAME, integer(&budgets["chunksHiddenPerFrame"]));
+}
+
+#[test]
+fn camera_culling_matches_typescript_fixture() {
+    let fixture = fixture();
+    let culling = &fixture["culling"];
+    let viewport = ScreenSize {
+        width: number(&culling["viewport"]["width"]),
+        height: number(&culling["viewport"]["height"]),
+    };
+    let proj = ProjectionConfig {
+        tile_width: number(&culling["projection"]["tileWidth"]),
+        tile_height: number(&culling["projection"]["tileHeight"]),
+        elevation_step: None,
+        origin_x: number(&culling["projection"]["originX"]),
+        origin_y: number(&culling["projection"]["originY"]),
+    };
+    for sample in culling["cullRect"].as_array().unwrap() {
+        let rect = cull_rect(viewport, number(&sample["margin"]));
+        let exp = &sample["expected"];
+        assert_eq!(rect.x, number(&exp["x"]));
+        assert_eq!(rect.y, number(&exp["y"]));
+        assert_eq!(rect.width, number(&exp["width"]));
+        assert_eq!(rect.height, number(&exp["height"]));
+    }
+    for sample in culling["needsCull"].as_array().unwrap() {
+        let previous = if sample["previous"].is_null() {
+            None
+        } else {
+            Some(Camera {
+                x: number(&sample["previous"]["x"]),
+                y: number(&sample["previous"]["y"]),
+                zoom: number(&sample["previous"]["zoom"]),
+            })
+        };
+        let camera = Camera {
+            x: number(&sample["camera"]["x"]),
+            y: number(&sample["camera"]["y"]),
+            zoom: number(&sample["camera"]["zoom"]),
+        };
+        assert_eq!(
+            needs_cull(previous, camera, viewport, proj, number(&sample["margin"])),
+            sample["expected"].as_bool().unwrap()
+        );
+    }
+    for sample in culling["visibleChunks"].as_array().unwrap() {
+        let camera = Camera {
+            x: number(&sample["camera"]["x"]),
+            y: number(&sample["camera"]["y"]),
+            zoom: number(&sample["camera"]["zoom"]),
+        };
+        let result = visible_chunks(camera, viewport, proj, number(&sample["margin"]));
+        let expected: Vec<ChunkCoord> = sample["expected"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| ChunkCoord {
+                cx: integer(&c["cx"]),
+                cy: integer(&c["cy"]),
+            })
+            .collect();
+        assert_eq!(result, expected);
     }
 }
