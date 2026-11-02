@@ -205,6 +205,8 @@ La generación de un chunk se inicia desde el flujo de mundo, no desde una vista
 
 La muestra actual descubre cuatro chunks en `TerrainWorld` desde `game::preview` y entrega sus columnas ordenadas de lejos a cerca a `terrain_view::preview`. Usa `armada-core::scene_order` para profundidad por posición proyectada, elevación y casilla de la huella, seguida de capa; el fixture de migración comprueba el mismo orden estable en TypeScript y Rust. La vista únicamente proyecta y dibuja las columnas y consulta alturas vecinas para las caras expuestas. Usa colores de depuración para agua, arena, suelo e hierba; la vista con assets y la composición de `scene` siguen pendientes. La muestra no establece todavía un contrato de streaming, guardado ni colocación de entidades.
 
+`scene_order::poses` también contiene las columnas puras de las hojas de caminar, reposar, trepar y saltar. Las comprueba el mismo fixture TypeScript/Rust antes de que el cliente Macroquad tenga sprites de jugador. La selección de hoja, atlas y textura pertenece al cliente.
+
 ### `assets` y `render` (previstos)
 
 `assets` mantiene un catálogo de identificadores, metadatos de dimensiones/huella y texturas compartidas. Los SVG existentes pueden servir de fuente para generar atlas rasterizados antes de ejecutar el juego; el runtime WASM carga formatos compatibles con Macroquad. `render` convierte materiales, entidades y capas decididos previamente en llamadas de dibujo; reutiliza texturas y limita recursos visibles. No contiene reglas de generación, colisión o colocación. Probar el catálogo y el orden de comandos de dibujo sin GPU; revisar composición y escala en nativo y navegador.

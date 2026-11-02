@@ -28,6 +28,16 @@
     ],
     "expected": ["farY", "farX", "ground", "back", "front", "frontLater"]
   },
+  "framePoses": {
+    "walk": { "frames": 4, "stride": 2, "distances": [0, 0.5, 1.5, 2, -0.25, -2.25], "expected": [1, 2, 4, 1, 4, 4] },
+    "idle": { "frames": 4, "period": 2000, "milliseconds": [0, 500, 1999, 2000, -5], "expected": [0, 1, 3, 0, 0] },
+    "climb": { "frames": 4, "progress": [-0.1, 0, 0.25, 0.99, 1], "expected": [0, 0, 1, 3, 3] },
+    "jump": {
+      "poses": { "takeoff": 0, "rise": 1, "apex": 2, "fall": 3, "landing": 4 },
+      "phases": ["ground", "takeoff", "apex", "landing"],
+      "expected": [null, 0, 2, 4]
+    }
+  },
   "motion": [
     { "state": "idle", "event": "RUN", "next": "running" },
     { "state": "running", "event": "SKID", "next": "skidding" },

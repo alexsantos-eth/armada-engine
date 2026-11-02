@@ -2,7 +2,7 @@
 
 Este documento convierte el [plan de migración](MIGRATION_RUST_MACROQUAD.md) en cambios pequeños sobre el juego TypeScript. La meta es conservar un juego funcional después de cada cambio y dejar claros los contratos que sí interesa llevar a Rust. **La nueva implementación rediseñará la generación, la colocación de entidades y los guardados. No necesita regenerar el mundo desde una semilla ni importar partidas de la versión actual.** Este documento es una guía de trabajo; no supone que los cambios descritos ya estén implementados.
 
-**Estado:** P1–P3 implementados. P4 y P4b tienen contratos TypeScript ejecutables y documentados en [V2_DATA_CONTRACTS.md](V2_DATA_CONTRACTS.md); su integración en Rust queda para el port. P5 está en curso: profundidad y desempate por capa son datos puros con fixture compartido y la muestra Macroquad ya usa esa regla. Quedan selección de frames, culling y presupuestos de chunks. P6 sigue pendiente. Los fixtures iniciales de P1 cubren coordenadas, proyección, rutas, transiciones, paso fijo y una trayectoria corta de marcha y salto. Los escenarios físicos más extensos del jugador siguen en sus tests co-localizados y podrán añadirse al contrato de migración cuando empiece su port a Rust.
+**Estado:** P1–P3 implementados. P4 y P4b tienen contratos TypeScript ejecutables y documentados en [V2_DATA_CONTRACTS.md](V2_DATA_CONTRACTS.md); su integración en Rust queda para el port. P5 está en curso: profundidad, capa y columnas de poses del jugador son datos puros con fixtures compartidos; la muestra Macroquad ya usa la regla de profundidad. Quedan la elección de hoja/textura, culling y presupuestos de chunks. P6 sigue pendiente. Los fixtures iniciales de P1 cubren coordenadas, proyección, rutas, transiciones, paso fijo y una trayectoria corta de marcha y salto. Los escenarios físicos más extensos del jugador siguen en sus tests co-localizados y podrán añadirse al contrato de migración cuando empiece su port a Rust.
 
 ## Diagnóstico que determina las prioridades
 
@@ -63,6 +63,8 @@ Este documento convierte el [plan de migración](MIGRATION_RUST_MACROQUAD.md) en
 **Criterio de cierre:** la lógica extraída da el mismo orden de dibujo, culling y selección de frames; la escena Pixi conserva sus capturas y perfiles de referencia.
 
 **Primer corte implementado:** `engine/scene-order` calcula profundidad y compara profundidad/capa sin importar Pixi; `render` y `scene/draw-order` lo usan. El fixture `flow-check/contracts.v1.json` comprueba el mismo orden en TypeScript y `armada-core::scene_order`; la muestra Macroquad ordena columnas con esa función. Los contratos Pixi de `SceneContext` y `SceneModule` permanecen. P5 sigue abierto hasta extraer y comprobar las demás decisiones indicadas arriba y revisar las capturas y perfiles.
+
+**Segundo corte implementado:** las columnas de pose para caminar, reposar, trepar y saltar viven en `engine/scene-order/poses.ts` y `armada-core::scene_order::poses`. La vista Pixi lee esas decisiones y conserva la carga, el recorte y el cambio de `Texture`. El fixture compartido cubre ciclos, límites y movimiento hacia atrás. La elección de hoja y frame efectivo a partir del estado completo del jugador sigue en la vista y será el siguiente corte.
 
 ### P6. Preparar recursos y servicios del borde de aplicación
 

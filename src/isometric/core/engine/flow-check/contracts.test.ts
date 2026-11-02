@@ -17,6 +17,10 @@ import {
   stepPlayer,
   compareDrawKeys,
   getDrawDepth,
+  getClimbPose,
+  getIdlePose,
+  getJumpPose,
+  getWalkPose,
 } from "../domain";
 import type { PlayerMotionType } from "../../types";
 import type { PlayerMotionEvent } from "../player/motion";
@@ -61,6 +65,16 @@ describe("versioned migration contracts", () => {
       .sort(compareDrawKeys)
       .map(({ id }) => id);
     expect(ordered).toEqual(expected);
+  });
+
+  it("keeps player pose columns independent of sprites", () => {
+    const { walk, idle, climb, jump } = fixtures.framePoses;
+    expect(walk.distances.map((distance) => getWalkPose(distance, walk))).toEqual(walk.expected);
+    expect(idle.milliseconds.map((ms) => getIdlePose(ms, idle))).toEqual(idle.expected);
+    expect(climb.progress.map((progress) => getClimbPose(progress, climb))).toEqual(climb.expected);
+    expect(jump.phases.map((phase) => getJumpPose(phase as keyof typeof jump.poses | "ground", jump))).toEqual(
+      jump.expected.map((pose) => pose ?? undefined),
+    );
   });
 
   it("keeps representative player motion transitions, including an invalid event", () => {

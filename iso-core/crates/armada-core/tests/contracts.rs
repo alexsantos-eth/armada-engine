@@ -2,7 +2,10 @@ use armada_core::grid::{
     CHUNK_SIZE, ChunkCoord, LocalCoord, WorldCoord, to_chunk_coord, to_local_coord, to_world_coord,
 };
 use armada_core::projection::{GridPoint, ProjectionConfig, project_block};
-use armada_core::scene_order::{DrawKey, LengthAxis, compare_draw_keys, get_draw_depth};
+use armada_core::scene_order::{
+    DrawKey, JumpPhase, JumpPoses, LengthAxis, climb_pose, compare_draw_keys, get_draw_depth,
+    idle_pose, jump_pose, walk_pose,
+};
 use serde_json::Value;
 
 fn fixture() -> Value {
@@ -107,4 +110,83 @@ fn scene_depth_and_layer_match_typescript_fixture() {
         .map(|id| id.as_str().unwrap())
         .collect();
     assert_eq!(ids, expected);
+}
+
+#[test]
+fn player_pose_columns_match_typescript_fixture() {
+    let fixture = fixture();
+    let frames = &fixture["framePoses"];
+    let walk = &frames["walk"];
+    for (distance, expected) in walk["distances"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .zip(walk["expected"].as_array().unwrap())
+    {
+        assert_eq!(
+            walk_pose(
+                number(distance),
+                integer(&walk["frames"]),
+                number(&walk["stride"])
+            ),
+            integer(expected)
+        );
+    }
+    let idle = &frames["idle"];
+    for (ms, expected) in idle["milliseconds"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .zip(idle["expected"].as_array().unwrap())
+    {
+        assert_eq!(
+            idle_pose(
+                number(ms),
+                integer(&idle["frames"]),
+                number(&idle["period"])
+            ),
+            integer(expected)
+        );
+    }
+    let climb = &frames["climb"];
+    for (progress, expected) in climb["progress"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .zip(climb["expected"].as_array().unwrap())
+    {
+        assert_eq!(
+            climb_pose(number(progress), integer(&climb["frames"])),
+            integer(expected)
+        );
+    }
+    let jump = &frames["jump"];
+    let poses = &jump["poses"];
+    let poses = JumpPoses {
+        takeoff: integer(&poses["takeoff"]),
+        rise: integer(&poses["rise"]),
+        apex: integer(&poses["apex"]),
+        fall: integer(&poses["fall"]),
+        landing: integer(&poses["landing"]),
+    };
+    for (phase, expected) in jump["phases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .zip(jump["expected"].as_array().unwrap())
+    {
+        let phase = match phase.as_str().unwrap() {
+            "ground" => JumpPhase::Ground,
+            "takeoff" => JumpPhase::Takeoff,
+            "rise" => JumpPhase::Rise,
+            "apex" => JumpPhase::Apex,
+            "fall" => JumpPhase::Fall,
+            "landing" => JumpPhase::Landing,
+            other => panic!("unexpected jump phase: {other}"),
+        };
+        assert_eq!(
+            jump_pose(phase, poses),
+            expected.as_i64().map(|value| value as i32)
+        );
+    }
 }

@@ -16,6 +16,7 @@ import {
 import { projectBoxesToIsometric, projectGridPoint } from "../projection";
 import { createSeededRandom } from "../random";
 import { createBlockViews, getBlockDepth, getSheetFrames, showFrame } from "../render";
+import { getClimbPose, getIdlePose, getJumpPose, getWalkPose } from "../scene-order";
 import { SCENE_LAYER, type BuiltScene, type SceneModule } from "../scene";
 import type { GridPoint, PlayerAppearance, PlayerRenderPosition } from "../../types";
 import {
@@ -49,14 +50,10 @@ import {
   type DustVoxel,
 } from "./feedback";
 import {
-  getClimbPose,
   getClimbSheetLayout,
-  getIdlePose,
   getIdleSheetLayout,
   getJetpackSheetLayout,
-  getJumpPose,
   getJumpSheetLayout,
-  getWalkPose,
   getWalkSheetCell,
   getWalkSheetLayout,
   PLAYER_START_FACING,
