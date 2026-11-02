@@ -2,5 +2,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod camera;
 pub mod grid;
+pub mod paths;
 pub mod projection;

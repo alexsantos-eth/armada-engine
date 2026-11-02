@@ -4,6 +4,10 @@ Este directorio contiene la nueva implementación. `iso-core` es el cliente Macr
 
 La [arquitectura por módulo](ARCHITECTURE.md) documenta los contratos del dominio y del cliente, el flujo de un fotograma y las prácticas de código, pruebas y calidad.
 
+El dominio conserva la organización por carpetas de responsabilidad del motor TypeScript: `grid/`, `paths/`, `projection/` y `camera/` ya están separados; los módulos de terreno, mundo, entidades y simulación seguirán el mismo patrón. `mod.rs` define la entrada de cada carpeta y `lib.rs` expone solo los módulos del dominio.
+
+Las pruebas unitarias también están colocalizadas: `grid/coords.rs` se prueba en `grid/coords.test.rs`, y el mismo patrón se aplica a los demás módulos y a `main.rs`. Rust las incluye con `#[cfg(test)]` y `#[path = "..."]`; `crates/armada-core/tests/` conserva los contratos que atraviesan módulos o comparan el fixture de migración.
+
 ## Ejecutar
 
 Desde `iso-core/`:
@@ -33,7 +37,7 @@ El contrato ejecutable del juego actual está en `../src/isometric/core/engine/f
 
 La generación de terreno, distribución de entidades y resultados de una semilla pueden cambiar. Los nuevos guardados almacenarán el contenido descubierto, sin depender de regenerarlo.
 
-El primer corte de la fase 1 está en `crates/armada-core/src/grid.rs` y `projection.rs`: coordenadas de mundo/chunk/local, claves numéricas, rangos de chunks y proyección de bloques/puntos. Los tests Rust leen directamente el fixture JSON de TypeScript y añaden bordes negativos, extremos de clave, direcciones y puntos fraccionarios. `WorldCoord` usa `i32`; las claves se validan dentro de ±1 048 575 y se empaquetan en `u64` sin perder precisión al compararlas con los enteros seguros de JavaScript. La proyección usa `f64` para conservar el redondeo observable del contrato. La demo usa las funciones del crate para dibujar una rejilla y convertir la posición del ratón de pantalla a mundo.
+La fase 1 ya incluye `grid`, `paths`, `projection` y geometría básica de `camera` en sus carpetas de `crates/armada-core/src/`. Hay coordenadas de mundo/chunk/local, claves numéricas, índice espacial de huellas, búsqueda de rutas con desempate estable, proyección de bloques/puntos, desplazamiento y zoom de cámara. Los tests Rust leen directamente el fixture JSON de TypeScript para coordenadas, proyección y rutas, y añaden bordes negativos, extremos de clave, direcciones, puntos fraccionarios, ocupación y zoom anclado. `WorldCoord` usa `i32`; las claves se validan dentro de ±1 048 575 y se empaquetan en `u64` sin perder precisión al compararlas con los enteros seguros de JavaScript. La proyección usa `f64` para conservar el redondeo observable del contrato. La demo usa las funciones del crate para dibujar una rejilla y convertir la posición del ratón de pantalla a mundo.
 
 ## Referencia visual y de rendimiento
 
@@ -44,4 +48,4 @@ El primer corte de la fase 1 está en `crates/armada-core/src/grid.rs` y `projec
 - Workspace, versiones y target WASM fijados; Cargo comprueba ambos crates.
 - Demo compilada nativamente y para WASM. La ventana nativa arrancó y el navegador mostró la demo WASM; teclado y ratón están conectados al marcador.
 - Página de carga, instrucciones y referencia PixiJS registradas.
-- Primer corte de fase 1 completo: `grid` y proyección portados y comparados con el fixture JSON. Siguen el índice espacial, rutas, cálculos de cámara y demás lógica pura.
+- Fase 1 en curso: coordenadas, proyección, índice espacial, rutas y geometría básica de cámara portados. Siguen `CellMap`, selección de chunks visibles y las funciones puras de tiempo y ambiente.

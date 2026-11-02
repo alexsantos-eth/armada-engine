@@ -177,3 +177,7 @@ pub fn chunks_in_rect(rect: WorldRect) -> Vec<ChunkCoord> {
     }
     chunks
 }
+
+#[cfg(test)]
+#[path = "coords.test.rs"]
+mod tests;

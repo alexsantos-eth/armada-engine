@@ -4,25 +4,51 @@ Este documento define los límites, contratos y prácticas de la implementación
 
 ## Estado y estructura
 
-**Implementado:** el workspace `iso-core`, el crate `armada-core` sin dependencias gráficas, `grid`, `projection`, sus pruebas de contrato y una demo Macroquad nativa y WASM. **Previsto:** los demás módulos descritos abajo. Una sección prevista es un contrato de diseño, no una afirmación de que su código ya existe.
+**Implementado:** el workspace `iso-core`, el crate `armada-core` sin dependencias gráficas, coordenadas y claves de `grid`, índice espacial, `paths`, `projection`, geometría básica de `camera`, sus pruebas y una demo Macroquad nativa y WASM. **Previsto:** los demás módulos descritos abajo, incluido el mapa de celdas por chunk y el cálculo de chunks visibles. Una sección prevista es un contrato de diseño, no una afirmación de que su código ya existe.
 
 ```text
 iso-core/
   Cargo.toml                  # workspace y cliente Macroquad
   ARCHITECTURE.md             # este contrato
   crates/armada-core/
-    src/lib.rs                # API pública del dominio
-    src/grid.rs               # implementado
-    src/projection.rs         # implementado
-    src/{world,terrain,...}.rs # previstos; se crean al implementarlos
-    tests/                    # contratos e integración del dominio
+    src/lib.rs                # entrada pública del dominio
+    src/grid/                # coordenadas e índice espacial; implementado
+      mod.rs
+      coords.rs
+      coords.test.rs
+      spatial_index.rs
+      spatial_index.test.rs
+    src/paths/               # búsqueda de rutas; implementado
+      mod.rs
+      astar.rs
+      astar.test.rs
+    src/projection/          # proyección; implementado
+      mod.rs
+      geometry.rs
+      geometry.test.rs
+    src/camera/              # geometría de cámara; implementado
+      mod.rs
+      geometry.rs
+      geometry.test.rs
+    src/{terrain,entities,world,...}/ # previstos; se crean al implementarlos
+    tests/contracts.rs        # contratos entre módulos y fixture de migración
   src/main.rs                 # entrada nativa/WASM, demo actual
-  src/{app,input,scene,...}.rs # previstos; se crean al implementarlos
+  src/main.test.rs            # prueba colocalizada de entrada de la demo
+  src/{game,input,scene,render,...}/ # cliente, previstos
+  content/                    # catálogos y configuración, previsto
   web/                        # cargador WASM y archivos web
   reference/                  # capturas y medidas de referencia
 ```
 
 La regla de dependencia es `iso-core → armada-core`. `armada-core` no importa Macroquad, navegador, audio ni archivos de la escena. El cliente puede usar tipos y decisiones del dominio; el dominio no conoce sprites, texturas ni resolución de pantalla. Si una regla necesita pruebas sin GPU o navegador, normalmente pertenece al dominio. No se añaden crates o módulos vacíos para anticipar fases futuras.
+
+### Correspondencia con la organización anterior
+
+`crates/armada-core/src/` cumple el papel de `src/isometric/core/engine/` y conserva carpetas por responsabilidad (`grid`, `paths`, `projection`, `camera`, y después `terrain`, `entities`, `world`, `player`, `time`, `events`, `simulation`, etc.). Cada carpeta tiene un `mod.rs` que define su API y archivos separados para cálculos o tipos con responsabilidades distintas. Los tipos compartidos viven junto al módulo que los posee; `grid::WorldCoord` es el ejemplo. Un tipo pasa a un módulo común solo cuando varios módulos lo necesitan y queda claro quién mantiene su contrato.
+
+El cliente `iso-core/src/` mantendrá la separación de `game` (composición y arranque), `input` y módulos de escena y vistas. `scene` registrará módulos de presentación de forma explícita, como hace `game/modules.ts`; cada vista tendrá su propia carpeta y pruebas, y dependerá del dominio y de `render`, nunca al revés. `content/` conservará catálogos y configuración fuera de la lógica de colocación. No se copian carpetas de Pixi que no tengan equivalente funcional en Macroquad: se crean al llegar su fase y se nombran por la responsabilidad que cumplen.
+
+Un módulo nuevo debe ofrecer una entrada pequeña en `mod.rs` y colocar sus pruebas junto al archivo que contiene la regla: `coords.rs` con `coords.test.rs`, por ejemplo. El archivo de producción registra el test con `#[cfg(test)] #[path = "coords.test.rs"] mod tests;`. `tests/` queda para contratos que crucen módulos, fixtures de migración y recorridos de integración. El punto de composición del juego se actualiza cuando se registra un sistema o una vista. Esta organización permite añadir módulos sin ampliar `main.rs`, `World` ni un renderer monolítico.
 
 ## Invariantes compartidas
 
@@ -32,6 +58,14 @@ La regla de dependencia es `iso-core → armada-core`. `armada-core` no importa 
 - La simulación avanza en ticks fijos de 50 ms. El tiempo del fotograma alimenta un acumulador y un factor de interpolación para dibujar; no altera las reglas de juego según los FPS.
 - Las decisiones que afecten al juego usan un orden estable de iteración, desempate y eventos. No se exige que una semilla reproduzca el mundo anterior ni que vuelva a generar un mundo guardado.
 - Los datos persistidos tienen versión y validación. Índices espaciales, GPU, cámara, listeners y cachés se reconstruyen; no se serializan.
+
+### Sistema de coordenadas que se conserva
+
+La referencia exacta es [Sistema de coordenadas](../ARCHITECTURE.md#sistema-de-coordenadas). En el mundo, `x` crece hacia el noreste de la pantalla (arriba a la derecha), `y` hacia el noroeste (arriba a la izquierda), y `x+y` creciente se aleja de la cámara. `(0, 0)` es la columna del vértice sur, la más cercana a la cámara en el diagrama de referencia. `z` o `elevation` crece verticalmente hacia arriba; el nivel `0` corresponde al nivel del mar y los niveles negativos quedan bajo él. Una columna `(x, y)` va hasta `(x+1, y+1)` y su centro es `(x+0.5, y+0.5)`.
+
+La pantalla tiene origen arriba a la izquierda, `screen_x` a la derecha y `screen_y` hacia abajo. El origen de proyección sitúa la columna `(0, 0)` dentro del canvas y no cambia los ejes del mundo. Los chunks repiten esos ejes: `(0, 0)` cubre `0..31` y una coordenada `-1` cae en el chunk `-1` con local `31`. Los assets SVG existentes usan otro convenio de ejes; su orientación y `data-tiles` se convierten al preparar atlas, sin cambiar el convenio del dominio.
+
+**Ya cubierto en Rust:** tipos de mundo/chunk/local, división euclídea con negativos, proyección de puntos y elevación, inversa de desplazamientos, orden de vecinos de rutas y desplazamiento/zoom de cámara. **Pendiente de aplicar y probar:** terreno y nivel del mar, huellas de entidades, profundidad de render, mapas de sombras y conversión de orientación de assets. Cada módulo nuevo debe probar sus direcciones contra este contrato antes de integrarse en la escena.
 
 ## Flujo de un fotograma
 
@@ -47,7 +81,7 @@ La generación de un chunk se inicia desde el flujo de mundo, no desde una vista
 
 ### `grid` e índice espacial
 
-**Responsabilidad.** Tipos distintos para coordenada de mundo, chunk y celda local; conversión entre ellas; rectángulos y claves; `CellMap` e índice de ocupación para entidades de varias celdas. `grid.rs` ya implementa el primer conjunto de conversiones y claves. El índice se incorporará cuando exista el modelo de entidades.
+**Responsabilidad.** Tipos distintos para coordenada de mundo, chunk y celda local; conversión entre ellas; rectángulos y claves; `CellMap` e índice de ocupación para entidades de varias celdas. `grid/coords.rs` implementa conversiones y claves; `grid/spatial_index.rs` implementa `SpatialIndex`. `CellMap` por chunk queda pendiente.
 
 **Contrato.** La conversión conserva el recorrido por coordenadas negativas y límites de chunk. Las claves tienen rango validado antes de empaquetarse. Una consulta espacial devuelve resultados en orden estable y distingue la huella de una entidad de su punto de anclaje. El índice es derivado y se reconstruye al cargar.
 
@@ -77,9 +111,9 @@ La generación de un chunk se inicia desde el flujo de mundo, no desde una vista
 
 **Pruebas.** Alturas y materiales válidos, capas coherentes, bordes entre chunks, agua y costas, casos de elevación y consulta de transitabilidad. Usar mapas pequeños construidos a mano para las reglas de bloques visibles.
 
-### `paths` (previsto)
+### `paths` (implementado: búsqueda básica)
 
-**Responsabilidad.** Búsqueda de rutas y costes de movimiento sobre un mapa de transitabilidad. Recibe consultas del mundo sin conocer la escena ni los controles.
+**Responsabilidad.** Búsqueda de rutas y costes de movimiento sobre un mapa de transitabilidad. Recibe consultas del mundo sin conocer la escena ni los controles. Ya existe `find_path`; la integración con terreno y los caminos visibles queda pendiente.
 
 **Contrato.** El coste, los vecinos permitidos y el desempate son explícitos. El recorrido lateral `+x, +y, -x, -y` del juego anterior es una referencia cuando no hay razón para cambiarlo. Los diseños de caminos y asentamientos del generador anterior no son un requisito de compatibilidad.
 
@@ -139,9 +173,9 @@ La generación de un chunk se inicia desde el flujo de mundo, no desde una vista
 
 `app` compone el mundo, sistemas, escena y ciclo principal; `main.rs` queda como entrada corta cuando se sustituya la demo. `input` convierte teclas, ratón y eventos de ventana en comandos. Configurar atajos en un lugar y mantener igual el movimiento nativo/WASM. Probar la traducción de comandos como función pura y comprobar manualmente foco, flechas, WASD y puntero en navegador.
 
-### `camera` y `streaming` (previstos)
+### `camera` y `streaming` (geometría básica implementada)
 
-`camera` guarda centro, zoom y seguimiento como estado de vista. El zoom alrededor de un ancla conserva el punto del mundo bajo el cursor. `streaming` calcula chunks visibles, programa carga/descarga con presupuesto por fotograma y separa visibilidad de persistencia. Probar matemáticamente cámara y selección de chunks; probar el presupuesto con una escena falsa.
+`camera` guarda centro, zoom y seguimiento como estado de vista. La geometría básica ya vive en `armada-core::camera`: desplazamiento, conversión pantalla/suelo, zoom alrededor de un ancla, seguimiento y transformación. El cálculo de chunks visibles y `streaming` quedan pendientes; programarán carga/descarga con presupuesto por fotograma y separarán visibilidad de persistencia. Probar matemáticamente cámara y selección de chunks; probar el presupuesto con una escena falsa.
 
 ### `scene` y vistas (previstos)
 
@@ -170,7 +204,7 @@ Estos módulos consumen estado y parámetros del dominio para presentar luz ambi
 
 ## Tests y puertas de calidad
 
-**Dominio:** tests unitarios junto al módulo para invariantes locales; tests de integración en `crates/armada-core/tests/` para relaciones entre módulos; casos de borde y propiedades para coordenadas, guardado y generación. Los fixtures TypeScript existentes sirven para preservar coordenadas, proyección, movimiento, rutas y reloj durante el port. Los resultados exactos del terreno y entidades nuevos se prueban con fixtures Rust propios, no con las salidas antiguas.
+**Dominio:** pruebas unitarias colocalizadas como `<archivo>.test.rs` para invariantes locales; cada archivo de producción las incluye solo bajo `#[cfg(test)]`. Las pruebas de integración en `crates/armada-core/tests/` verifican relaciones entre módulos y contratos externos. Probar bordes y propiedades para coordenadas, guardado y generación. Los fixtures TypeScript existentes sirven para preservar coordenadas, proyección, movimiento, rutas y reloj durante el port. Los resultados exactos del terreno y entidades nuevos se prueban con fixtures Rust propios, no con las salidas antiguas.
 
 **Cliente:** probar transformaciones y composición con datos pequeños sin abrir GPU cuando sea posible. Usar pruebas visuales y recorridos manuales en nativo y WASM para profundidad, elevación, carga de assets, cámara, controles y persistencia. Guardar capturas de referencia de escenas concretas y registrar ventana, resolución y condiciones al comparar rendimiento. Las cifras de PixiJS son referencia observada, no umbrales automáticos.
 

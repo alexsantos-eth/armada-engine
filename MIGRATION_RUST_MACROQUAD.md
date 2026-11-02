@@ -59,7 +59,7 @@ El núcleo recibe entrada, tiempo transcurrido y una fuente de generación confi
 
 **Orden.** Bucle de frame y entrada básica → cámara y culling → terreno y caminos → entidades → jugador y animación básica.
 
-**Trabajo.** Crear `armada-game` sobre el núcleo. Mantener el paso de simulación fijo y dibujar con interpolación. Adaptar `scene` a una lista de comandos de dibujo con profundidad y capas, conservando el orden de terreno, sombras, objetos y jugador. Llevar la carga/descarga de chunks con presupuesto por frame. Convertir los SVG actuales fuera del runtime a atlas rasterizados y metadatos de frames, escala, anclajes y variantes; comprobar especialmente `data-tiles`, proporciones isométricas y orientaciones. No depender de que Macroquad rasterice SVG en tiempo de ejecución.
+**Trabajo.** Desarrollar el cliente `iso-core` sobre `crates/armada-core`, manteniendo carpetas por responsabilidad como en el motor actual: `game` para composición, `input`, `scene`, `render` y vistas separadas para terreno, entidades y jugador. Mantener el paso de simulación fijo y dibujar con interpolación. Adaptar `scene` a una lista de comandos de dibujo con profundidad y capas, conservando el orden de terreno, sombras, objetos y jugador. Llevar la carga/descarga de chunks con presupuesto por frame. Convertir los SVG actuales fuera del runtime a atlas rasterizados y metadatos de frames, escala, anclajes y variantes; comprobar especialmente `data-tiles`, proporciones isométricas y orientaciones. No depender de que Macroquad rasterice SVG en tiempo de ejecución.
 
 **Salida.** Se puede recorrer un mundo infinito en nativo y WASM con cámara, jugador, terreno, caminos y entidades. Capturas de referencia revisadas en ambos destinos.
 

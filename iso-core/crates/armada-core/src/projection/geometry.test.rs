@@ -1,4 +1,4 @@
-use armada_core::projection::{
+use crate::projection::{
     GridPoint, ProjectionConfig, ScreenPoint, project_block, project_grid_point,
     unproject_screen_delta,
 };

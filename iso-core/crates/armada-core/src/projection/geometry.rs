@@ -53,3 +53,7 @@ pub fn unproject_screen_delta(delta: ScreenPoint, config: ProjectionConfig) -> G
         y: -across - up,
     }
 }
+
+#[cfg(test)]
+#[path = "geometry.test.rs"]
+mod tests;
