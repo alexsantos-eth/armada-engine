@@ -3,8 +3,9 @@ use armada_core::grid::{
 };
 use armada_core::projection::{GridPoint, ProjectionConfig, project_block};
 use armada_core::scene_order::{
-    DrawKey, JumpPhase, JumpPoses, LengthAxis, climb_pose, compare_draw_keys, get_draw_depth,
-    idle_pose, jump_pose, walk_pose,
+    DrawKey, JumpPhase, JumpPoses, LengthAxis, PlayerFrame, PlayerFrameInput, PlayerSheet,
+    climb_pose, compare_draw_keys, get_draw_depth, idle_pose, jump_pose, select_player_frame,
+    walk_pose,
 };
 use serde_json::Value;
 
@@ -187,6 +188,52 @@ fn player_pose_columns_match_typescript_fixture() {
         assert_eq!(
             jump_pose(phase, poses),
             expected.as_i64().map(|value| value as i32)
+        );
+    }
+}
+
+#[test]
+fn player_sheet_selection_matches_typescript_fixture() {
+    let fixture = fixture();
+    let poses = &fixture["framePoses"];
+    for sample in fixture["frameSelection"].as_array().unwrap() {
+        let has = |name: &str| sample[name].as_bool().unwrap();
+        let frame = select_player_frame(PlayerFrameInput {
+            walk_frames: integer(&poses["walk"]["frames"]),
+            walk_stride: number(&poses["walk"]["stride"]),
+            climb_frames: has("hasClimb").then(|| integer(&poses["climb"]["frames"])),
+            idle: has("hasIdle").then(|| {
+                (
+                    integer(&poses["idle"]["frames"]),
+                    number(&poses["idle"]["period"]),
+                )
+            }),
+            jump_pose: has("hasJump")
+                .then(|| sample["jumpPose"].as_i64().map(|value| value as i32))
+                .flatten(),
+            climbing: sample["climbing"].as_f64(),
+            walking: sample["walking"].as_bool().unwrap(),
+            flying: sample["flying"].as_bool().unwrap(),
+            walked: sample["walked"].as_f64().unwrap(),
+            stood_ms: sample["stoodMs"].as_f64().unwrap(),
+            air_pose: sample["airPose"].as_i64().map(|value| value as i32),
+        });
+        let expected = &sample["expected"];
+        let sheet = match expected["sheet"].as_str().unwrap() {
+            "walk" => PlayerSheet::Walk,
+            "climb" => PlayerSheet::Climb,
+            "jump" => PlayerSheet::Jump,
+            "idle" => PlayerSheet::Idle,
+            other => panic!("unexpected player sheet: {other}"),
+        };
+        assert_eq!(
+            frame,
+            PlayerFrame {
+                sheet,
+                pose: integer(&expected["pose"])
+            },
+            "{}",
+            sample["id"].as_str().unwrap()
         );
     }
 }

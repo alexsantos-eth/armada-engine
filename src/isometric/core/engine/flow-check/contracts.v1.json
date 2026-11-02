@@ -38,6 +38,67 @@
       "expected": [null, 0, 2, 4]
     }
   },
+  "frameSelection": [
+    {
+      "id": "climb",
+      "climbing": 0.5,
+      "walking": true,
+      "flying": false,
+      "walked": 1,
+      "stoodMs": 0,
+      "hasClimb": true,
+      "hasJump": true,
+      "hasIdle": true,
+      "jumpPose": 2,
+      "expected": { "sheet": "climb", "pose": 2 }
+    },
+    {
+      "id": "jump",
+      "walking": true,
+      "flying": true,
+      "walked": 1,
+      "stoodMs": 0,
+      "hasClimb": true,
+      "hasJump": true,
+      "hasIdle": true,
+      "jumpPose": 2,
+      "expected": { "sheet": "jump", "pose": 2 }
+    },
+    {
+      "id": "idle",
+      "walking": false,
+      "flying": false,
+      "walked": 0,
+      "stoodMs": 500,
+      "hasClimb": true,
+      "hasJump": true,
+      "hasIdle": true,
+      "expected": { "sheet": "idle", "pose": 1 }
+    },
+    {
+      "id": "air",
+      "walking": false,
+      "flying": true,
+      "walked": 0,
+      "stoodMs": 0,
+      "hasClimb": true,
+      "hasJump": true,
+      "hasIdle": true,
+      "airPose": 3,
+      "expected": { "sheet": "walk", "pose": 3 }
+    },
+    {
+      "id": "walkFallback",
+      "walking": true,
+      "flying": false,
+      "walked": 1.5,
+      "stoodMs": 0,
+      "hasClimb": false,
+      "hasJump": false,
+      "hasIdle": false,
+      "expected": { "sheet": "walk", "pose": 4 }
+    }
+  ],
   "motion": [
     { "state": "idle", "event": "RUN", "next": "running" },
     { "state": "running", "event": "SKID", "next": "skidding" },

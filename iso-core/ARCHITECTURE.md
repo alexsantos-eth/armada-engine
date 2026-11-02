@@ -207,6 +207,8 @@ La muestra actual descubre cuatro chunks en `TerrainWorld` desde `game::preview`
 
 `scene_order::poses` también contiene las columnas puras de las hojas de caminar, reposar, trepar y saltar. Las comprueba el mismo fixture TypeScript/Rust antes de que el cliente Macroquad tenga sprites de jugador. La selección de hoja, atlas y textura pertenece al cliente.
 
+`scene_order::select_player_frame` ya decide la prioridad entre hojas (`climb`, `jump`, `idle`, `walk`) y su columna. Cada cliente convierte ese resultado a una textura de la orientación actual; el atlas y el recurso siguen siendo responsabilidad del cliente.
+
 ### `assets` y `render` (previstos)
 
 `assets` mantiene un catálogo de identificadores, metadatos de dimensiones/huella y texturas compartidas. Los SVG existentes pueden servir de fuente para generar atlas rasterizados antes de ejecutar el juego; el runtime WASM carga formatos compatibles con Macroquad. `render` convierte materiales, entidades y capas decididos previamente en llamadas de dibujo; reutiliza texturas y limita recursos visibles. No contiene reglas de generación, colisión o colocación. Probar el catálogo y el orden de comandos de dibujo sin GPU; revisar composición y escala en nativo y navegador.

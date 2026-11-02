@@ -4,7 +4,7 @@
 
 Migrar el juego de TypeScript, PixiJS y Preact a un núcleo de Rust y un cliente de Macroquad que compile tanto de forma nativa como a `wasm32-unknown-unknown`. Esta nueva implementación conservará las funciones esenciales de juego, controles, presentación y sonido, pero podrá cambiar generación, colocación de entidades y formato de partidas. No se exige regenerar un mundo desde una semilla. Cada fase deja una versión ejecutable; PixiJS sirve como referencia funcional y visual, no como patrón obligatorio para el mundo generado.
 
-**Estado:** fase 0 completada en [`iso-core/`](iso-core/README.md): workspace Cargo, demo Macroquad nativa y WASM comprobada en navegador, referencia visual y perfiles PixiJS guardados. La fase 1 ya incluye `grid`, rutas, proyección, cámara geométrica, reloj y paso fijo. La fase 2 comenzó con generación de terreno y un `TerrainWorld` en memoria que conserva chunks descubiertos y editados al ocultarlos; siguen pendientes entidades, streaming y guardado. En paralelo, P5 comparte profundidad, capa y columnas de poses del jugador entre TypeScript y Rust mediante fixtures de contrato.
+**Estado:** fase 0 completada en [`iso-core/`](iso-core/README.md): workspace Cargo, demo Macroquad nativa y WASM comprobada en navegador, referencia visual y perfiles PixiJS guardados. La fase 1 ya incluye `grid`, rutas, proyección, cámara geométrica, reloj y paso fijo. La fase 2 comenzó con generación de terreno y un `TerrainWorld` en memoria que conserva chunks descubiertos y editados al ocultarlos; siguen pendientes entidades, streaming y guardado. En paralelo, P5 comparte profundidad, capa, columnas de poses y prioridad de hojas del jugador entre TypeScript y Rust mediante fixtures de contrato.
 
 ## Punto de partida comprobado
 

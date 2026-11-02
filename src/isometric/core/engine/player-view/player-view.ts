@@ -16,7 +16,7 @@ import {
 import { projectBoxesToIsometric, projectGridPoint } from "../projection";
 import { createSeededRandom } from "../random";
 import { createBlockViews, getBlockDepth, getSheetFrames, showFrame } from "../render";
-import { getClimbPose, getIdlePose, getJumpPose, getWalkPose } from "../scene-order";
+import { getJumpPose, selectPlayerFrame } from "../scene-order";
 import { SCENE_LAYER, type BuiltScene, type SceneModule } from "../scene";
 import type { GridPoint, PlayerAppearance, PlayerRenderPosition } from "../../types";
 import {
@@ -321,28 +321,34 @@ export function createPlayerView(appearance: PlayerAppearance, options: PlayerVi
           showFrame(pack, jetpackFrames[facing][0]);
         }
         if (!walk) return;
-        if (climbing !== undefined) {
-          walked = 0;
-          showFrame(view, climb ? climb.frames[facing][getClimbPose(climbing, climb.sheet)] : walk.frames[facing][0]);
-          return;
-        }
         const moved = Math.hypot(at.x - drawnAt.x, at.y - drawnAt.y);
         // Skidding, the feet pedal against the slide (backwards, if it let go), as if trying to run.
         const skidding = isPlayerSkidding(player);
         const pedal = !skidding ? 1 : player.walk.x === 0 && player.walk.y === 0 ? -SKID_PEDAL : SKID_PEDAL;
-        walked = walking ? walked + moved * pedal : 0;
-        if (jump && jumpPose !== undefined) {
-          showFrame(view, jump.frames[facing][jumpPose]);
-          return;
-        }
-        if (idle && !walking && !flying) {
-          // Dancing, its cycle is the dance's: standing until the dance starts, then in step with it.
-          const ms = appearance.dance ? Math.max(0, stood - DANCE_DELAY_MS) : stood;
-          showFrame(view, idle.frames[facing][getIdlePose(ms, idle.sheet)]);
-          return;
-        }
-        const pose = flying ? (walk.sheet.airPose ?? 0) : walking ? getWalkPose(walked, walk.sheet) : 0;
-        showFrame(view, walk.frames[facing][pose]);
+        walked = climbing === undefined && walking ? walked + moved * pedal : 0;
+        // Dancing begins after its delay, but the choice of sheet and column stays renderer-free.
+        const idleMs = appearance.dance ? Math.max(0, stood - DANCE_DELAY_MS) : stood;
+        const frame = selectPlayerFrame({
+          walk: walk.sheet,
+          climb: climb?.sheet,
+          idle: idle?.sheet,
+          jumpPose,
+          climbing,
+          walking,
+          flying,
+          walked,
+          stoodMs: idleMs,
+          airPose: walk.sheet.airPose,
+        });
+        const texture =
+          frame.sheet === "climb"
+            ? climb!.frames[facing][frame.pose]
+            : frame.sheet === "jump"
+              ? jump!.frames[facing][frame.pose]
+              : frame.sheet === "idle"
+                ? idle!.frames[facing][frame.pose]
+                : walk.frames[facing][frame.pose];
+        showFrame(view, texture);
       };
       // Where its feet are on screen: written by `place()`, read by whoever casts its shadow.
       const drawnFoot = { x: 0, y: 0 };

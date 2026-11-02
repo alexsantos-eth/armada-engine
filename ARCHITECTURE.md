@@ -133,7 +133,7 @@ Con `?perf`, `mountGame()` arranca `startPerfMonitor(app, { now, log, heapBytes 
 
 `src/isometric/core/engine/domain/index.ts` es la entrada del dominio para el juego y sus herramientas: exporta mundo, terreno, jugador, simulación, coordenadas, rutas, proyección, cámara geométrica y las decisiones puras de `scene-order` sin importar Pixi, Preact ni sonido. El barrel general `engine/index.ts` sigue exportando también escena y vistas. `domain/index.test.ts` recorre sus imports para proteger esa frontera; el worker puede seguir usando la entrada más estrecha de `engine/world`.
 
-Los contratos que se quieren llevar a Rust están en `core/engine/flow-check/contracts.v1.json` y los comprueba `pnpm test:migration`. Cubren coordenadas con signo, proyección, desempate de rutas, profundidad y capa de dibujo, columnas de poses del jugador, transiciones representativas del jugador y acumulación del paso fijo. No fijan el terreno ni las entidades que generará Armada Engine 2.
+Los contratos que se quieren llevar a Rust están en `core/engine/flow-check/contracts.v1.json` y los comprueba `pnpm test:migration`. Cubren coordenadas con signo, proyección, desempate de rutas, profundidad y capa de dibujo, columnas y prioridad de hojas del jugador, transiciones representativas del jugador y acumulación del paso fijo. No fijan el terreno ni las entidades que generará Armada Engine 2.
 
 Cada responsabilidad tiene una carpeta y un barrel `index.ts`:
 

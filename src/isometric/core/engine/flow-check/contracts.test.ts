@@ -21,6 +21,7 @@ import {
   getIdlePose,
   getJumpPose,
   getWalkPose,
+  selectPlayerFrame,
 } from "../domain";
 import type { PlayerMotionType } from "../../types";
 import type { PlayerMotionEvent } from "../player/motion";
@@ -75,6 +76,26 @@ describe("versioned migration contracts", () => {
     expect(jump.phases.map((phase) => getJumpPose(phase as keyof typeof jump.poses | "ground", jump))).toEqual(
       jump.expected.map((pose) => pose ?? undefined),
     );
+  });
+
+  it("keeps the player's sheet priority independent of textures", () => {
+    for (const sample of fixtures.frameSelection) {
+      const frame = selectPlayerFrame({
+        walk: { frames: fixtures.framePoses.walk.frames, stride: fixtures.framePoses.walk.stride },
+        climb: sample.hasClimb ? { frames: fixtures.framePoses.climb.frames } : undefined,
+        idle: sample.hasIdle
+          ? { frames: fixtures.framePoses.idle.frames, period: fixtures.framePoses.idle.period }
+          : undefined,
+        jumpPose: sample.hasJump ? sample.jumpPose : undefined,
+        climbing: sample.climbing,
+        walking: sample.walking,
+        flying: sample.flying,
+        walked: sample.walked,
+        stoodMs: sample.stoodMs,
+        airPose: sample.airPose,
+      });
+      expect(frame, sample.id).toEqual(sample.expected);
+    }
   });
 
   it("keeps representative player motion transitions, including an invalid event", () => {
