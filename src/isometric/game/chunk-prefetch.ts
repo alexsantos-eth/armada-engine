@@ -5,7 +5,7 @@ import {
   chunksAround,
   fromChunkData,
   type World,
-} from "../core/engine";
+} from "../core/engine/domain";
 import type { ChunkCoord, ChunkKey } from "../core/types";
 import type { ChunkAnswer, ChunkRequest } from "./chunk-generator";
 

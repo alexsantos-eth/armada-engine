@@ -2,12 +2,9 @@ import { PLAYER_APPEARANCE, TERRAIN_APPEARANCE } from "../content";
 import {
   createAmbientLight,
   createCameraView,
-  createClockPart,
   createCloudShadows,
   createEntityView,
   createFoliageWind,
-  createPlayerPart,
-  createPlayerSystem,
   createPlayerView,
   createPhaseLighting,
   type PlayerViewOptions,
@@ -15,11 +12,16 @@ import {
   createShadows,
   createTerrainView,
   createWaterReflections,
-  type PlayerTopInset,
   type SceneModule,
+} from "../core/engine";
+import {
+  createClockPart,
+  createPlayerPart,
+  createPlayerSystem,
+  type PlayerTopInset,
   type World,
   type WorldPartOf,
-} from "../core/engine";
+} from "../core/engine/domain";
 import type { WorldSystem } from "../core/types";
 
 /**

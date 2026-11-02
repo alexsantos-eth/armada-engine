@@ -41,6 +41,20 @@ const AIR = {
   CLIMB: "climbing",
 } as const;
 
+/** Portable transition table; XState executes this same data in the TypeScript game. */
+export const PLAYER_MOTION_TRANSITIONS = {
+  idle: { on: GROUND },
+  walking: { on: GROUND },
+  running: { on: GROUND },
+  skidding: { on: GROUND },
+  jumping: { on: { JUMP: "jumping", ...AIR } },
+  falling: { on: AIR },
+  flying: { on: { JUMP: "jumping", ...AIR } },
+  climbing: {
+    on: { CLIMB_TICK: "climbing", CLIMB_DONE_IDLE: "idle", CLIMB_DONE_WALKING: "walking" },
+  },
+} as const;
+
 /** XState machine describing valid player locomotion transitions. */
 export const playerMotionMachine = setup({
   types: {
@@ -49,18 +63,7 @@ export const playerMotionMachine = setup({
 }).createMachine({
   id: "player-motion",
   initial: "idle",
-  states: {
-    idle: { on: GROUND },
-    walking: { on: GROUND },
-    running: { on: GROUND },
-    skidding: { on: GROUND },
-    jumping: { on: { JUMP: "jumping", ...AIR } },
-    falling: { on: AIR },
-    flying: { on: { JUMP: "jumping", ...AIR } },
-    climbing: {
-      on: { CLIMB_TICK: "climbing", CLIMB_DONE_IDLE: "idle", CLIMB_DONE_WALKING: "walking" },
-    },
-  },
+  states: PLAYER_MOTION_TRANSITIONS,
 });
 
 /** Applies one event through XState's pure transition API and returns the resulting state key. */

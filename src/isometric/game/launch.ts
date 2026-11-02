@@ -5,7 +5,7 @@ import {
   resolveTimeScale,
   resolveWorldSeed,
   type RandomSource,
-} from "../core/engine";
+} from "../core/engine/domain";
 
 /**
  * How a game starts, read from the page's URL. Each option is read by the module that owns it

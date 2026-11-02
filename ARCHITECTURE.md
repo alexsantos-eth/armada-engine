@@ -127,6 +127,10 @@ Con `?perf`, `mountGame()` arranca `startPerfMonitor(app, { now, log, heapBytes 
 
 ## Organización de módulos
 
+`src/isometric/core/engine/domain/index.ts` es la entrada del dominio para el juego y sus herramientas: exporta mundo, terreno, jugador, simulación, coordenadas, rutas, proyección y cámara geométrica sin importar Pixi, Preact ni sonido. El barrel general `engine/index.ts` sigue exportando también escena y vistas. `domain/index.test.ts` recorre sus imports para proteger esa frontera; el worker puede seguir usando la entrada más estrecha de `engine/world`.
+
+Los contratos que se quieren llevar a Rust están en `core/engine/flow-check/contracts.v1.json` y los comprueba `pnpm test:migration`. Cubren coordenadas con signo, proyección, desempate de rutas, transiciones representativas del jugador y acumulación del paso fijo. No fijan el terreno ni las entidades que generará Armada Engine 2.
+
 Cada responsabilidad tiene una carpeta y un barrel `index.ts`:
 
 ```text
@@ -558,6 +562,8 @@ Todo el mundo se deriva de una sola semilla numérica. `engine/random` expone:
 La lógica de dominio y generación nunca llama a `Math.random()` ni usa el reloj: recibe un `RandomSource` creado a partir de la semilla. Con la misma semilla, terreno, entidades, IDs y variantes de color son idénticos, lo que es requisito para guardar y cargar partidas.
 
 ## Modelo de terreno y entidades
+
+La capa de terreno distingue muestras de altura (`TerrainPoint`), una fuente de alturas por área (`TerrainHeightSource`) y la columna materializada (`TerrainColumn`, que `Box` implementa). `generateTerrainColumns()` usa por defecto el generador simplex actual, pero acepta `heightSource` para clasificar alturas de otra fuente con las mismas reglas de materiales y el margen de columnas necesario para costas. Esta separación permite probar o sustituir la generación sin cambiar el modelo de bloques ni las vistas. La versión 2 podrá elegir otro generador y otra configuración de entidades.
 
 `Box` (`engine/terrain/box.ts`) representa exclusivamente una celda materializada de terreno. Sus coordenadas `x` e `y` son inmutables; sus datos (`type`, `walkable`, `elevation` y `metadata`) pueden actualizarse mediante `update()`. `type` (`BoxType`, igual a `TerrainMaterial`: `grass`, `water`, `sand` o `ground`) es el material del bloque y se asigna **una sola vez**, al crearlo: sin `type`, toma el de su elevación inicial (`getElevationMaterial()`: `water` bajo cero, si no `grass`); la arena y el `ground` dependen de las vecinas y de la columna, así que los asignan `createTerrainColumns()`, `fillElevations()` y `createVisibleBlocks()`. El resto del motor lee `box.type` y no vuelve a clasificar.
 

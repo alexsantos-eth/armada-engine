@@ -1,0 +1,41 @@
+{
+  "coordinates": [
+    { "world": { "x": 0, "y": 0 }, "chunk": { "cx": 0, "cy": 0 }, "local": { "lx": 0, "ly": 0 } },
+    { "world": { "x": -1, "y": -32 }, "chunk": { "cx": -1, "cy": -1 }, "local": { "lx": 31, "ly": 0 } },
+    { "world": { "x": -33, "y": 32 }, "chunk": { "cx": -2, "cy": 1 }, "local": { "lx": 31, "ly": 0 } }
+  ],
+  "projection": {
+    "config": { "tileWidth": 40, "tileHeight": 20, "elevationStep": 10, "originX": 100, "originY": 200 },
+    "blocks": [
+      { "x": 0, "y": 0, "elevation": 0, "screenX": 100, "baseScreenY": 200, "screenY": 200 },
+      { "x": 2, "y": -1, "elevation": 3, "screenX": 160, "baseScreenY": 190, "screenY": 160 }
+    ]
+  },
+  "path": [
+    { "x": 0, "y": 0 },
+    { "x": 1, "y": 0 },
+    { "x": 1, "y": 1 }
+  ],
+  "motion": [
+    { "state": "idle", "event": "RUN", "next": "running" },
+    { "state": "running", "event": "SKID", "next": "skidding" },
+    { "state": "skidding", "event": "JUMP", "next": "jumping" },
+    { "state": "jumping", "event": "FLY", "next": "flying" },
+    { "state": "flying", "event": "LAND_IDLE", "next": "idle" },
+    { "state": "idle", "event": "FLY", "next": "idle" }
+  ],
+  "player": [
+    { "x": 2.035355, "y": 2.035355, "height": 0, "motion": "walking", "jumps": 0 },
+    { "x": 2.106066, "y": 2.106066, "height": 0, "motion": "walking", "jumps": 0 },
+    { "x": 2.212132, "y": 2.212132, "height": 0, "motion": "walking", "jumps": 0 },
+    { "x": 2.318198, "y": 2.318198, "height": 0.306, "motion": "jumping", "jumps": 1 },
+    { "x": 2.424264, "y": 2.424264, "height": 0.544, "motion": "jumping", "jumps": 1 },
+    { "x": 2.53033, "y": 2.53033, "height": 0.714, "motion": "jumping", "jumps": 1 }
+  ],
+  "stepper": {
+    "stepMs": 50,
+    "framesMs": [16, 16, 16, 16],
+    "steps": [0, 0, 0, 1],
+    "alpha": [0.32, 0.64, 0.96, 0.28]
+  }
+}

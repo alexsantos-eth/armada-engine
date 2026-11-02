@@ -1,12 +1,10 @@
 import { Application, type Ticker, UPDATE_PRIORITY } from "pixi.js";
 import { ENTITY_CONFIG, PLAYER_SOUND_PATTERNS, TERRAIN_APPEARANCE } from "../content";
 import {
-  bindCameraControls,
   CHUNK_PREFETCH_RADIUS,
   chunkOfPoint,
   CHUNKS_LOADED_PER_FRAME,
   CLOCK_PART,
-  createScene,
   createSimulation,
   generateWorld,
   getInterpolationAlpha,
@@ -18,8 +16,8 @@ import {
   setPlayerRun,
   setPlayerWalk,
   type RandomSource,
-  type PhaseLighting,
-} from "../core/engine";
+} from "../core/engine/domain";
+import { bindCameraControls, createScene, type PhaseLighting } from "../core/engine";
 import type { ScreenDirections } from "../core/types";
 import { bindKeyboardControls, type KeyMap } from "../input";
 import { type ChunkWorker, createChunkPrefetch, startChunkWorker } from "./chunk-prefetch";

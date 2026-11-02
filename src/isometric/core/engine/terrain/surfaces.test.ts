@@ -181,6 +181,29 @@ describe("generateTerrainColumns", () => {
   const seed = 1337;
   const area = { minX: 0, minY: 0, maxX: 15, maxY: 15 };
 
+  it("classifies an injected height source without coupling the model to simplex noise", () => {
+    const requested: number[][] = [];
+    const heightSource = ({ minX, minY, maxX, maxY }: typeof area) => {
+      requested.push([minX, minY, maxX, maxY]);
+      const points = [];
+      for (let x = minX; x <= maxX; x += 1) {
+        for (let y = minY; y <= maxY; y += 1) points.push({ x, y, elevation: x < 0 ? -1 : x });
+      }
+      return points;
+    };
+    const coast = { minX: -1, minY: 0, maxX: 1, maxY: 0 };
+
+    const columns = generateTerrainColumns(coast, { seed: 1337, heightSource });
+
+    expect(requested).toEqual([[-3, -2, 3, 2]]);
+    expect(shape(columns)).toEqual([
+      [-1, 0, -1, "water"],
+      [0, 0, 0, "sand"],
+      [1, 0, 1, "grass"],
+    ]);
+    expect(getBlockMaterial(0, 1, columns[2].type)).toBe("ground");
+  });
+
   it("types an area's columns as if the whole world had been generated at once", () => {
     const whole = createTerrainColumns(
       generatePerlinTerrain({ seed, originX: -8, originY: -8, width: 32, height: 32 }),

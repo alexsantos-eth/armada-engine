@@ -1,4 +1,12 @@
-import type { BoxType, IGridObject, TerrainMaterial, TerrainPoint, TerrainSurface, WorldRect } from "../../types";
+import type {
+  BoxType,
+  IGridObject,
+  TerrainHeightSource,
+  TerrainMaterial,
+  TerrainPoint,
+  TerrainSurface,
+  WorldRect,
+} from "../../types";
 import { CellMap } from "../grid";
 import { type BareGroundField, BARE_GROUND_ELEVATION, createBareGroundField } from "./bare-ground";
 import { Box } from "./box";
@@ -116,6 +124,8 @@ function intersectRects(a: WorldRect, b: WorldRect): WorldRect | undefined {
 export type TerrainAreaOptions = {
   /** World seed of the height map. */
   readonly seed: number;
+  /** Alternative height samples for the requested area including its classification halo. Defaults to the current simplex generator. */
+  readonly heightSource?: TerrainHeightSource;
   /** Edge of a bounded world: no column exists outside it. Defaults to none (unbounded). */
   readonly clip?: WorldRect;
   /** The world's paths: their grass and ground columns become `path`. Defaults to none. */
@@ -131,19 +141,24 @@ export type TerrainAreaOptions = {
  * therefore meet without seams. Columns come `x`-major, like `generatePerlinTerrain()`.
  * Nothing is generated outside `clip`.
  */
-export function generateTerrainColumns(area: WorldRect, { seed, clip, paths }: TerrainAreaOptions): Box[] {
+export function generateTerrainColumns(
+  area: WorldRect,
+  { seed, heightSource, clip, paths }: TerrainAreaOptions,
+): Box[] {
   const inside = clip ? intersectRects(area, clip) : area;
   if (!inside) return [];
   const reach = SURFACE_REACH;
   const grown = { minX: area.minX - reach, minY: area.minY - reach, maxX: area.maxX + reach, maxY: area.maxY + reach };
   const sampled = clip ? (intersectRects(grown, clip) as WorldRect) : grown;
-  const points = generatePerlinTerrain({
-    seed,
-    originX: sampled.minX,
-    originY: sampled.minY,
-    width: sampled.maxX - sampled.minX + 1,
-    height: sampled.maxY - sampled.minY + 1,
-  });
+  const points =
+    heightSource?.(sampled) ??
+    generatePerlinTerrain({
+      seed,
+      originX: sampled.minX,
+      originY: sampled.minY,
+      width: sampled.maxX - sampled.minX + 1,
+      height: sampled.maxY - sampled.minY + 1,
+    });
   const keep = ({ x, y }: TerrainPoint) => x >= inside.minX && x <= inside.maxX && y >= inside.minY && y <= inside.maxY;
   const columns = createTerrainColumns(points, createBareGroundField(seed)).filter(keep);
   if (!paths) return columns;

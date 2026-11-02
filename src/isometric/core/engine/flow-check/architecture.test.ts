@@ -28,6 +28,23 @@ import { describe, expect, it } from "vitest";
  * imports core types; the app wires both together.
  */
 const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
+  domain: [
+    "camera",
+    "entities",
+    "events",
+    "grid",
+    "parts",
+    "paths",
+    "player",
+    "projection",
+    "random",
+    "simulation",
+    "terrain",
+    "time",
+    "waves",
+    "wind",
+    "world",
+  ],
   constants: [],
   camera: ["grid", "projection"],
   random: [],

@@ -1,3 +1,5 @@
+import type { WorldRect } from "./grid";
+
 /** A terrain cell in the generated height map. */
 export type TerrainPoint = {
   /** Horizontal grid coordinate. */
@@ -7,6 +9,9 @@ export type TerrainPoint = {
   /** Height level used to build the column at this coordinate. */
   elevation: number;
 };
+
+/** Height samples for every coordinate in an area, ordered x-major. The generator may change independently of terrain materials. */
+export type TerrainHeightSource = (area: WorldRect) => readonly TerrainPoint[];
 
 /** Parameters used to generate seeded multi-octave terrain noise. */
 export type PerlinTerrainOptions = {
@@ -42,6 +47,12 @@ export type PerlinTerrainOptions = {
  * where grass did not grow, `path` where a settlement's paths run.
  */
 export type TerrainSurface = "grass" | "water" | "sand" | "ground" | "path";
+
+/** Materialized top column consumed by world and view code, independent of the height algorithm. */
+export type TerrainColumn = TerrainPoint & {
+  readonly type: TerrainSurface;
+  readonly walkable: boolean;
+};
 
 /** Material used to render a single terrain block (any surface; `ground` also under the top). */
 export type TerrainMaterial = TerrainSurface;

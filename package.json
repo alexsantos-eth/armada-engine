@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:migration": "vitest run src/isometric/core/engine/flow-check/contracts.test.ts src/isometric/core/engine/domain/index.test.ts",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint .",
     "format": "prettier --write .",

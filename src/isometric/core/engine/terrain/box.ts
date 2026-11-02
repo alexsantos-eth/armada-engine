@@ -1,4 +1,4 @@
-import type { BoxData, BoxMetadata, BoxType, IBox } from "../../types";
+import type { BoxData, BoxMetadata, BoxType, IBox, TerrainColumn } from "../../types";
 
 /**
  * Metadata of every box created without any: one shared, frozen object, so a terrain column is a
@@ -29,7 +29,7 @@ export const getElevationMaterial = (elevation: number): BoxType => (elevation <
  * the boxes without any): a box is one object. Change the metadata with `update()`; `getData()`
  * returns a copy.
  */
-export class Box implements IBox {
+export class Box implements IBox, TerrainColumn {
   public readonly x: number;
   public readonly y: number;
 

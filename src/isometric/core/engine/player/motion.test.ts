@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { transitionPlayerMotion, type PlayerMotionEvent } from "./motion";
+import { PLAYER_MOTION_TRANSITIONS, transitionPlayerMotion, type PlayerMotionEvent } from "./motion";
 
 describe("player motion machine", () => {
+  it("exposes its transition table as portable data", () => {
+    expect(PLAYER_MOTION_TRANSITIONS.idle.on.RUN).toBe("running");
+    expect(PLAYER_MOTION_TRANSITIONS.jumping.on.FLY).toBe("flying");
+    expect(PLAYER_MOTION_TRANSITIONS.climbing.on.CLIMB_DONE_IDLE).toBe("idle");
+  });
   it.each([
     ["idle", { type: "WALK" }, "walking"],
     ["idle", { type: "RUN" }, "running"],
