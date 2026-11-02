@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
  * grid → paths (A* and path networks, connection masks) → world (the settlements' paths) and terrain-view
  * constants (view metrics) → lighting (shadow geometry)
  * projection, grid → camera (view maths on the ground plane, and the chunks in view)
+ * scene-order (pure depth and layer decisions) → render and scene
  * render (Pixi primitives) → scene (the compositor and the `SceneModule` contract)
  * random → wind (how swaying entities lean, from their sway and the time)
  * waves (how the water's waves lift it, from the column and the time)
@@ -38,6 +39,7 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
     "player",
     "projection",
     "random",
+    "scene-order",
     "simulation",
     "terrain",
     "time",
@@ -52,6 +54,7 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   parts: [],
   time: [],
   projection: [],
+  "scene-order": [],
   grid: [],
   lighting: ["constants"],
   terrain: ["grid", "random"],
@@ -59,9 +62,9 @@ const ALLOWED_DEPENDENCIES: Record<string, readonly string[]> = {
   player: ["grid", "time", "xstate"],
   paths: ["grid"],
   world: ["entities", "grid", "parts", "paths", "random", "terrain"],
-  render: [],
+  render: ["scene-order"],
   simulation: ["events", "time", "world"],
-  scene: ["camera", "constants", "entities", "grid", "render", "terrain", "time", "world"],
+  scene: ["camera", "constants", "entities", "grid", "render", "scene-order", "terrain", "time", "world"],
   "terrain-view": ["paths", "projection", "render", "scene", "terrain"],
   "entity-view": ["entities", "projection", "render", "scene"],
   shadows: ["camera", "lighting", "projection", "render", "scene", "terrain", "world"],

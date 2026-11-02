@@ -2,6 +2,7 @@ use armada_core::grid::{
     CHUNK_SIZE, ChunkCoord, LocalCoord, WorldCoord, to_chunk_coord, to_local_coord, to_world_coord,
 };
 use armada_core::projection::{GridPoint, ProjectionConfig, project_block};
+use armada_core::scene_order::{DrawKey, LengthAxis, compare_draw_keys, get_draw_depth};
 use serde_json::Value;
 
 fn fixture() -> Value {
@@ -63,4 +64,47 @@ fn isometric_blocks_match_typescript_fixture() {
         assert_eq!(result.base_screen_y, number(&block["baseScreenY"]));
         assert_eq!(result.screen_y, number(&block["screenY"]));
     }
+}
+
+#[test]
+fn scene_depth_and_layer_match_typescript_fixture() {
+    let fixture = fixture();
+    let order = &fixture["drawOrder"];
+    let height = number(&order["tileHeight"]);
+    let mut entries: Vec<_> = order["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|entry| {
+            let axis = if entry["axis"] == "x" {
+                LengthAxis::X
+            } else {
+                LengthAxis::Y
+            };
+            let depth = get_draw_depth(
+                number(&entry["baseScreenY"]),
+                number(&entry["elevation"]),
+                number(&entry["x"]),
+                height,
+                integer(&entry["tile"]),
+                axis,
+            );
+            (
+                entry["id"].as_str().unwrap(),
+                DrawKey {
+                    depth,
+                    layer: integer(&entry["layer"]),
+                },
+            )
+        })
+        .collect();
+    entries.sort_by(|a, b| compare_draw_keys(&a.1, &b.1));
+    let ids: Vec<_> = entries.into_iter().map(|entry| entry.0).collect();
+    let expected: Vec<_> = order["expected"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|id| id.as_str().unwrap())
+        .collect();
+    assert_eq!(ids, expected);
 }

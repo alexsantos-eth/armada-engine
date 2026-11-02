@@ -147,13 +147,15 @@ La generación de un chunk se inicia desde el flujo de mundo, no desde una vista
 
 **Pruebas.** Validación de definiciones, huellas de varios bloques, límites de colisión, rechazo de solapamiento, colocación en superficie permitida y carga/guardado de instancias.
 
-### `world` y chunks (previstos)
+### `world` y chunks (primer modelo en memoria)
 
 **Responsabilidad.** Poseer chunks descubiertos, columnas, entidades e índices derivados; coordinar generación inicial y cambios posteriores. Expone consultas y mutaciones controladas para los sistemas.
 
 **Contrato.** Generar un chunk nuevo y volver a cargar uno descubierto son operaciones distintas. La carga no aplica de nuevo el generador sobre contenido persistido. Un chunk puede salir de la vista y seguir en memoria o en almacenamiento según la política de streaming. La generación nunca depende del orden en que la cámara pide chunks.
 
 **Pruebas.** Generar, editar, ocultar, recuperar y conservar contenido; consultas entre chunks; reconstrucción de índices tras carga; invariantes de identidad y ocupación.
+
+`TerrainWorld` ya conserva en memoria los chunks descubiertos aunque se oculten. `show_chunk()` solo genera el primer descubrimiento; `edit_column()` valida la relación entre agua y nivel del mar y actualiza la transitabilidad. La muestra Macroquad lee sus cuatro chunks de ese mundo. Aún faltan entidades, presupuesto de streaming, descarga de memoria y almacenamiento persistente; ocultar un chunk no equivale a guardarlo en disco.
 
 ### `parts` y `save` (previstos)
 
@@ -201,7 +203,7 @@ La generación de un chunk se inicia desde el flujo de mundo, no desde una vista
 
 `scene` compone módulos visuales (terreno, entidades, jugador, efectos, interfaz), resuelve su orden de montaje y los destruye en orden inverso. Cada vista sincroniza el estado de `World` con recursos visibles; no genera ni modifica terreno. El orden de dibujo es estable por profundidad y capa declarada. Probar el montaje y la sincronización de un módulo aislado, además de la composición completa con datos de mundo pequeños.
 
-La muestra actual crea cuatro chunks una vez en `game::preview` y entrega sus columnas ordenadas de lejos a cerca a `terrain_view::preview`. Esa vista únicamente proyecta y dibuja las columnas y consulta alturas vecinas para las caras expuestas. Usa colores de depuración para agua, arena, suelo e hierba; la vista con assets y la composición de `scene` siguen pendientes. La muestra no establece todavía un contrato de streaming, guardado ni colocación de entidades.
+La muestra actual descubre cuatro chunks en `TerrainWorld` desde `game::preview` y entrega sus columnas ordenadas de lejos a cerca a `terrain_view::preview`. Usa `armada-core::scene_order` para profundidad por posición proyectada, elevación y casilla de la huella, seguida de capa; el fixture de migración comprueba el mismo orden estable en TypeScript y Rust. La vista únicamente proyecta y dibuja las columnas y consulta alturas vecinas para las caras expuestas. Usa colores de depuración para agua, arena, suelo e hierba; la vista con assets y la composición de `scene` siguen pendientes. La muestra no establece todavía un contrato de streaming, guardado ni colocación de entidades.
 
 ### `assets` y `render` (previstos)
 

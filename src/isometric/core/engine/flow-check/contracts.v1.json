@@ -16,6 +16,18 @@
     { "x": 1, "y": 0 },
     { "x": 1, "y": 1 }
   ],
+  "drawOrder": {
+    "tileHeight": 20,
+    "entries": [
+      { "id": "front", "x": 2, "baseScreenY": 100, "elevation": 1, "tile": 0, "axis": "x", "layer": 3 },
+      { "id": "farX", "x": 4, "baseScreenY": 100, "elevation": 0, "tile": 2, "axis": "x", "layer": 0 },
+      { "id": "ground", "x": 2, "baseScreenY": 100, "elevation": 0, "tile": 0, "axis": "x", "layer": 0 },
+      { "id": "back", "x": 2, "baseScreenY": 100, "elevation": 1, "tile": 0, "axis": "x", "layer": 0 },
+      { "id": "farY", "x": 4, "baseScreenY": 100, "elevation": 0, "tile": 2, "axis": "y", "layer": 0 },
+      { "id": "frontLater", "x": 2, "baseScreenY": 100, "elevation": 1, "tile": 0, "axis": "x", "layer": 3 }
+    ],
+    "expected": ["farY", "farX", "ground", "back", "front", "frontLater"]
+  },
   "motion": [
     { "state": "idle", "event": "RUN", "next": "running" },
     { "state": "running", "event": "SKID", "next": "skidding" },

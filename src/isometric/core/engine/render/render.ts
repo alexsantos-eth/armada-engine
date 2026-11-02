@@ -1,5 +1,6 @@
 import { type Container, Graphics, Rectangle, Sprite, Texture } from "pixi.js";
 import { NEW_SPRITES, type SpriteSource } from "./sprite-pool";
+import { getDrawDepth } from "../scene-order";
 import type { EntityLengthAxis, IsoScreenBox, TileMetrics } from "../../types";
 
 /**
@@ -79,11 +80,11 @@ export function getBlockDepth(
   tile = 0,
   lengthAxis: EntityLengthAxis = "x",
 ): number {
-  return (
-    box.baseScreenY -
-    tile * (metrics.tileHeight / 2) +
-    box.box.elevation * 0.001 +
-    (box.x + (lengthAxis === "x" ? tile : 0)) * 0.0001
+  return getDrawDepth(
+    { x: box.x, baseScreenY: box.baseScreenY, elevation: box.box.elevation },
+    metrics.tileHeight,
+    tile,
+    lengthAxis,
   );
 }
 

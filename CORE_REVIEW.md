@@ -219,3 +219,15 @@ Revisados el workspace `iso-core`, su crate de dominio y la demo Macroquad. El j
 Revisados `armada-core/grid`, `armada-core/projection`, sus tests y la demo Macroquad. Sin hallazgos Bloqueante, Alta ni Media en este corte: la división euclidiana conserva los chunks negativos; las claves de celda y chunk son tipos distintos y quedan dentro del rango seguro de JavaScript; la proyección usa `f64` y coincide con el fixture TypeScript. La demo usa la proyección del crate para dibujo y entrada, sin llevar Macroquad al dominio. Los tipos enteros y los rangos de clave describen el mundo que el motor admite; los rangos que generan colecciones grandes deben recibir límites de presupuesto cuando se conecte el streaming. El juego PixiJS permanece sin cambios.
 
 Corrección de entrada: `Down`/`S` sumaba `y` mientras restaba `x`, desplazando el marcador a la izquierda. Las cuatro direcciones de teclado convierten ahora un delta de pantalla mediante `unproject_screen_delta()`, con test de regresión para cada dirección. Comprobadas `Down` y `S` en el navegador WASM.
+
+## Port Rust: mundo de terreno en memoria · 2026-11-02
+
+Revisados `armada-core/world`, su integración con la muestra Macroquad y los tests nuevos. Sin hallazgos Bloqueante, Alta ni Media locales: el mundo conserva el contenido descubierto al ocultarlo, consulta columnas en coordenadas negativas y no vuelve a generar un chunk editado. La edición mantiene coherentes agua, elevación y transitabilidad. El cliente sigue siendo solo consumidor de columnas. No cambió ninguna API ni lógica de PixiJS.
+
+Pendiente de fase 2: `TerrainWorld` retiene todos los chunks descubiertos en memoria. Antes de añadir expulsión o streaming prolongado, implementar almacenamiento de chunks materializados y una prueba de guardar, expulsar y recuperar; luego medir memoria con cientos de chunks. También faltan entidades e índices derivados tras carga. Este corte no afirma persistencia entre procesos.
+
+## Preparación P5: orden de escena compartido · 2026-11-02
+
+Revisados `engine/scene-order`, la delegación desde `render/getBlockDepth()` y `scene/compareViews()`, y `armada-core::scene_order`. Sin hallazgos Bloqueante, Alta ni Media locales: la profundidad y el desempate por capa son cálculos puros, con un fixture común que conserva el orden y los empates estables; Pixi sigue administrando sus contenedores. La muestra Macroquad usa la misma regla para ordenar columnas. `SceneContext` y `SceneModule` no cambiaron.
+
+P5 continúa abierto para selección de frames, culling y presupuesto de chunks; hay que comparar capturas y perfiles cuando esas decisiones se trasladen. La [guía de contenedores de PixiJS](https://pixijs.com/8.x/guides/components/scene-objects/container) advierte del coste de ordenar muchos hijos; [RenderLayer](https://pixijs.com/8.x/guides/concepts/render-layers) permite prioridades gráficas independientes, pero este cambio no introduce una capa nueva ni altera el orden por franjas ya medido. No hace falta modificar `armada-engine-dev` para esta regla local.

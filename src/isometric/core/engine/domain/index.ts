@@ -8,6 +8,7 @@ export * from "../paths";
 export * from "../player";
 export * from "../projection";
 export * from "../random";
+export * from "../scene-order";
 export * from "../simulation";
 export * from "../terrain";
 export * from "../time";

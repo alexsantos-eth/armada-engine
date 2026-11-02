@@ -6,7 +6,7 @@ use armada_core::projection::{
     GridPoint, ProjectionConfig, ScreenPoint, project_block, project_grid_point,
     unproject_screen_delta,
 };
-use game::preview::{PREVIEW_CENTRE, PreviewWorld};
+use game::preview::{PREVIEW_CENTRE, PREVIEW_TILE_HEIGHT, PreviewWorld};
 use macroquad::prelude::*;
 use terrain_view::preview::draw_terrain_preview;
 
@@ -36,7 +36,7 @@ async fn main() {
         let height = screen_height();
         let projection = ProjectionConfig {
             tile_width: 80.0,
-            tile_height: 40.0,
+            tile_height: PREVIEW_TILE_HEIGHT,
             elevation_step: None,
             origin_x: f64::from(width / 2.0)
                 - (f64::from(PREVIEW_CENTRE.x) - f64::from(PREVIEW_CENTRE.y)) * 40.0,

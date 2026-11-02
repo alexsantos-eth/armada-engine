@@ -15,6 +15,8 @@ import {
   setPlayerWalk,
   jumpPlayer,
   stepPlayer,
+  compareDrawKeys,
+  getDrawDepth,
 } from "../domain";
 import type { PlayerMotionType } from "../../types";
 import type { PlayerMotionEvent } from "../player/motion";
@@ -46,6 +48,19 @@ describe("versioned migration contracts", () => {
       cost: () => 1,
     });
     expect(path).toEqual(fixtures.path);
+  });
+
+  it("keeps scene depth, layer order and stable ties", () => {
+    const { tileHeight, entries, expected } = fixtures.drawOrder;
+    const ordered = entries
+      .map(({ id, x, baseScreenY, elevation, tile, axis, layer }) => ({
+        id,
+        depth: getDrawDepth({ x, baseScreenY, elevation }, tileHeight, tile, axis as "x" | "y"),
+        layer,
+      }))
+      .sort(compareDrawKeys)
+      .map(({ id }) => id);
+    expect(ordered).toEqual(expected);
   });
 
   it("keeps representative player motion transitions, including an invalid event", () => {

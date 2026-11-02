@@ -1,5 +1,6 @@
 import { Container } from "pixi.js";
 import { TILE_HEIGHT } from "../constants";
+import { compareDrawKeys } from "../scene-order";
 import type { SceneLayer, SceneView } from "./module";
 
 /**
@@ -11,7 +12,7 @@ export const DRAW_BAND_DEPTH = TILE_HEIGHT / 2;
 
 /** Draw order of two views: by depth, then layer (negative when `a` goes first). */
 export function compareViews(a: SceneView, b: SceneView): number {
-  return a.depth - b.depth || a.layer - b.layer;
+  return compareDrawKeys(a, b);
 }
 
 /**
