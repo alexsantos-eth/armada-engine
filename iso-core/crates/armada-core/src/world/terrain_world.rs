@@ -28,6 +28,17 @@ impl TerrainWorld {
         }
     }
 
+    /// Injects a previously saved chunk's terrain, bypassing generation. Used when restoring
+    /// a save. Returns true only when the chunk was not already discovered.
+    pub fn load_chunk(&mut self, coord: ChunkCoord, columns: Vec<TerrainColumn>) -> bool {
+        let newly_discovered = !self.discovered.contains_key(&coord);
+        if newly_discovered {
+            self.discovered.insert(coord, columns);
+        }
+        self.visible.insert(coord);
+        newly_discovered
+    }
+
     /// Materializes a chunk at most once. Returns true only for first discovery.
     pub fn show_chunk(&mut self, coord: ChunkCoord) -> bool {
         let newly_discovered = if self.discovered.contains_key(&coord) {
@@ -105,6 +116,13 @@ impl TerrainWorld {
     /// Visible chunk coordinates in a stable order, regardless of discovery order.
     pub fn visible_chunks(&self) -> Vec<ChunkCoord> {
         let mut chunks: Vec<_> = self.visible.iter().copied().collect();
+        chunks.sort_by_key(|coord| (coord.cx, coord.cy));
+        chunks
+    }
+
+    /// All discovered chunk coordinates in a stable order.
+    pub fn discovered_chunks(&self) -> Vec<ChunkCoord> {
+        let mut chunks: Vec<_> = self.discovered.keys().copied().collect();
         chunks.sort_by_key(|coord| (coord.cx, coord.cy));
         chunks
     }

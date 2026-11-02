@@ -117,6 +117,12 @@ impl Entity {
         Self { x, y, data }
     }
 
+    pub fn x(&self) -> i32 {
+        self.x
+    }
+    pub fn y(&self) -> i32 {
+        self.y
+    }
     pub fn id(&self) -> &str {
         &self.data.id
     }

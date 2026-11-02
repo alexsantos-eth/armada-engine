@@ -7,7 +7,7 @@ use crate::grid::{chunk_key, ChunkCoord, ChunkKey};
 use crate::terrain::TerrainMaterial;
 
 /// One saved terrain block.
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SavedBlock {
     pub elevation: i32,
     pub material: TerrainMaterial,
@@ -95,6 +95,39 @@ impl std::fmt::Display for SaveError {
 
 impl std::error::Error for SaveError {}
 
+/// Default floor used when materializing a column's blocks for saving. Matches the default
+/// terrain generator's minimum elevation.
+pub const SAVE_BLOCK_FLOOR: i32 = -3;
+
+/// Converts a materialized terrain column into its saved form, storing every block from
+/// `floor` through the top elevation.
+pub fn terrain_column_to_saved(column: &crate::terrain::TerrainColumn, floor: i32) -> SavedColumn {
+    SavedColumn {
+        x: column.coord.x,
+        y: column.coord.y,
+        walkable: column.walkable,
+        blocks: column.blocks_from(floor).map(|block| SavedBlock {
+            elevation: block.elevation,
+            material: block.material,
+        }).collect(),
+    }
+}
+
+/// Reconstructs a terrain column from its saved form, using the top block as the surface.
+pub fn saved_to_terrain_column(saved: &SavedColumn) -> crate::terrain::TerrainColumn {
+    let top = saved.blocks.iter().max_by_key(|b| b.elevation).copied();
+    let (elevation, surface) = match top {
+        Some(block) => (block.elevation, block.material),
+        None => (0, crate::terrain::TerrainMaterial::Grass),
+    };
+    crate::terrain::TerrainColumn {
+        coord: crate::grid::WorldCoord { x: saved.x, y: saved.y },
+        elevation,
+        surface,
+        walkable: saved.walkable,
+    }
+}
+
 /// Owns every discovered chunk, including chunks currently unloaded from the scene.
 #[derive(Clone, Debug, Default)]
 pub struct ChunkArchive {
@@ -151,6 +184,13 @@ impl ChunkArchive {
             player,
             systems,
         }
+    }
+
+    /// Iterates over every discovered chunk in stable order.
+    pub fn chunks(&self) -> impl Iterator<Item = &SavedChunk> {
+        let mut chunks: Vec<_> = self.chunks.values().collect();
+        chunks.sort_by_key(|c| (c.cy, c.cx));
+        chunks.into_iter()
     }
 
     /// Restores an archive from a parsed save.

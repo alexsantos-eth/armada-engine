@@ -91,3 +91,31 @@
         // store something (maybe empty) for the chunk.
         let _ = manager.entities_chunk(ChunkCoord { cx: 0, cy: 0 });
     }
+
+    #[test]
+    fn save_and_restore_round_trip() {
+        let mut manager = ChunkManager::new(generator(), catalog());
+        manager.set_focus(vec![ChunkCoord { cx: 0, cy: 0 }]);
+        manager.tick();
+        manager.tick();
+
+        // Save discovered chunks.
+        let saved = manager.save_all();
+        assert!(!saved.is_empty());
+
+        // Build an archive and restore into a fresh manager.
+        let mut archive = crate::world::save::ChunkArchive::new();
+        for chunk in saved {
+            archive.put(chunk);
+        }
+        let save = archive.snapshot(
+            serde_json::json!({}),
+            serde_json::json!({}),
+        );
+
+        let mut restored = ChunkManager::new(generator(), catalog());
+        restored.load_from_save(&save);
+
+        // Discovered count should match.
+        assert_eq!(restored.discovered_count(), manager.discovered_count());
+    }

@@ -10,3 +10,4 @@ resolver = "2"
 [dependencies]
 armada-core = { path = "crates/armada-core" }
 macroquad = "0.4.16"
+serde_json = "1"

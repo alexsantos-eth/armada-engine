@@ -116,6 +116,95 @@ impl ChunkManager {
         self.entities.get(&coord).map(Vec::as_slice)
     }
 
+    /// Converts a discovered chunk into its saved form, storing terrain and entities.
+    /// Returns `None` when the chunk was never discovered.
+    pub fn save_chunk(&self, coord: ChunkCoord) -> Option<crate::world::save::SavedChunk> {
+        let columns = self.world.chunk(coord)?;
+        let saved_columns: Vec<crate::world::save::SavedColumn> = columns
+            .iter()
+            .map(|c| crate::world::save::terrain_column_to_saved(c, crate::world::save::SAVE_BLOCK_FLOOR))
+            .collect();
+        let saved_entities: Vec<crate::world::save::SavedEntity> = self
+            .entities
+            .get(&coord)
+            .map(|ents| {
+                ents.iter()
+                    .map(|e| crate::world::save::SavedEntity {
+                        instance_id: e.id().to_owned(),
+                        blueprint_id: e.type_().to_owned(),
+                        x: e.x(),
+                        y: e.y(),
+                        elevation: e.elevation(),
+                        state: serde_json::json!({}),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        Some(crate::world::save::SavedChunk {
+            cx: coord.cx,
+            cy: coord.cy,
+            columns: saved_columns,
+            entities: saved_entities,
+            changes: serde_json::json!({}),
+        })
+    }
+
+    /// Converts every discovered chunk into saved form.
+    /// Converts every discovered chunk into saved form.
+    pub fn save_all(&self) -> Vec<crate::world::save::SavedChunk> {
+        let mut chunks = Vec::new();
+        for coord in self.world.discovered_chunks() {
+            if let Some(saved) = self.save_chunk(coord) {
+                chunks.push(saved);
+            }
+        }
+        chunks.sort_by_key(|c| (c.cy, c.cx));
+        chunks
+    }
+
+    /// Restores chunks from a save into this manager, bypassing generation.
+    pub fn load_from_save(&mut self, save: &crate::world::save::WorldSave) {
+        for chunk in &save.chunks {
+            let coord = ChunkCoord { cx: chunk.cx, cy: chunk.cy };
+            let columns: Vec<crate::terrain::TerrainColumn> = chunk
+                .columns
+                .iter()
+                .map(crate::world::save::saved_to_terrain_column)
+                .collect();
+            self.world.load_chunk(coord, columns);
+            // Reconstruct entities from saved instances, looking up blueprints.
+            let mut entities = Vec::new();
+            for saved in &chunk.entities {
+                if let Some(blueprint) = self.catalog.entities.iter().find(|b| b.id == saved.blueprint_id) {
+                    let data = crate::entities::entity::EntityData {
+                        id: saved.instance_id.clone(),
+                        type_: blueprint.id.clone(),
+                        walkable: false,
+                        elevation: saved.elevation,
+                        height: blueprint.shape.height,
+                        length: blueprint.shape.length,
+                        length_axis: Some(blueprint.shape.axis),
+                        gap: None,
+                        texture_source: blueprint.asset.sprite.clone(),
+                        debug: None,
+                        color_replacements: blueprint.asset.color_replacements.clone(),
+                        color_variant: saved.state.get("colorVariant").and_then(|v| v.as_u64()).map(|v| v as u32),
+                        sway: blueprint.asset.sway.clone(),
+                        collision: match blueprint.shape.collision.as_slice() {
+                            [size] => Some(crate::entities::entity::EntityCollision::Uniform(*size)),
+                            sizes => Some(crate::entities::entity::EntityCollision::PerCell(sizes.to_vec())),
+                        },
+                        contact_shadow: blueprint.asset.contact_shadow,
+                        reflection_source: blueprint.asset.reflection.clone(),
+                        metadata: saved.state.clone(),
+                    };
+                    entities.push(crate::entities::entity::Entity::from_data(saved.x, saved.y, data));
+                }
+            }
+            self.entities.insert(coord, entities);
+        }
+    }
+
     /// Visible chunk coordinates in stable order.
     pub fn visible_chunks(&self) -> Vec<ChunkCoord> {
         self.world.visible_chunks()
