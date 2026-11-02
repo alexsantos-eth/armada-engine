@@ -1,36 +1,1080 @@
 {
   "schemaVersion": 1,
   "atlas": "content/atlas.png",
-  "atlasSize": { "width": 256, "height": 256 },
+  "atlasSize": {
+    "width": 1024,
+    "height": 1024
+  },
   "entries": [
     {
-      "id": "block",
-      "kind": "block",
-      "source": "/assets/house/block.svg",
+      "id": "boat_block",
+      "kind": "entity",
+      "source": "/assets/boat/block.svg",
       "dataTiles": "1x1x1",
-      "frame": { "x": 0, "y": 0, "width": 64, "height": 64 },
-      "anchor": { "x": 0.5, "y": 1.0 },
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
       "colorVariants": 1
     },
     {
-      "id": "tree",
+      "id": "boat_block_2",
       "kind": "entity",
-      "source": "/assets/tree/block.svg",
-      "dataTiles": "1x1x2",
-      "frame": { "x": 64, "y": 0, "width": 64, "height": 64 },
-      "anchor": { "x": 0.5, "y": 1.0 },
-      "colorVariants": 4,
-      "sway": { "cut": 0.58, "amplitude": 1.5, "period": 3400 }
+      "source": "/assets/boat/block/2.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 128,
+        "y": 0,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
     },
     {
-      "id": "player",
-      "kind": "player",
+      "id": "boat_block_2_reflection",
+      "kind": "entity",
+      "source": "/assets/boat/block/2/reflection.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 256,
+        "y": 0,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "building_block_apartments_1x2",
+      "kind": "entity",
+      "source": "/assets/building/block/apartments/1x2.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 384,
+        "y": 0,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "building_block_apartments_2x1",
+      "kind": "entity",
+      "source": "/assets/building/block/apartments/2x1.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 512,
+        "y": 0,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "building_block_hospital",
+      "kind": "entity",
+      "source": "/assets/building/block/hospital.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 640,
+        "y": 0,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "building_block_hotel_1x2",
+      "kind": "entity",
+      "source": "/assets/building/block/hotel/1x2.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 768,
+        "y": 0,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "building_block_hotel_2x1",
+      "kind": "entity",
+      "source": "/assets/building/block/hotel/2x1.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 896,
+        "y": 0,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "building_block_market",
+      "kind": "entity",
+      "source": "/assets/building/block/market.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 0,
+        "y": 128,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "building_block_office_1x3",
+      "kind": "entity",
+      "source": "/assets/building/block/office/1x3.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 128,
+        "y": 128,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "building_block_office_3x1",
+      "kind": "entity",
+      "source": "/assets/building/block/office/3x1.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 256,
+        "y": 128,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "building_block_restaurant",
+      "kind": "entity",
+      "source": "/assets/building/block/restaurant.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 384,
+        "y": 128,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "building_block_skyscraper",
+      "kind": "entity",
+      "source": "/assets/building/block/skyscraper.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 512,
+        "y": 128,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "building_block_tower",
+      "kind": "entity",
+      "source": "/assets/building/block/tower.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 640,
+        "y": 128,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "building_block_townhall",
+      "kind": "entity",
+      "source": "/assets/building/block/townhall.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 768,
+        "y": 128,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "bush_block",
+      "kind": "entity",
+      "source": "/assets/bush/block.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 896,
+        "y": 128,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "car_block",
+      "kind": "entity",
+      "source": "/assets/car/block.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 0,
+        "y": 256,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "cloud-shadow",
+      "kind": "entity",
+      "source": "/assets/cloud-shadow.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 128,
+        "y": 256,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "grass_block",
+      "kind": "entity",
+      "source": "/assets/grass/block.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 256,
+        "y": 256,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "grass_block_bushes",
+      "kind": "entity",
+      "source": "/assets/grass/block/bushes.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 384,
+        "y": 256,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "grass_block_flowers",
+      "kind": "entity",
+      "source": "/assets/grass/block/flowers.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 512,
+        "y": 256,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "grass_block_flowers_2",
+      "kind": "entity",
+      "source": "/assets/grass/block/flowers/2.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 640,
+        "y": 256,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "grass_block_leaves",
+      "kind": "entity",
+      "source": "/assets/grass/block/leaves.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 768,
+        "y": 256,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "grass_block_mushrooms",
+      "kind": "entity",
+      "source": "/assets/grass/block/mushrooms.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 896,
+        "y": 256,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "grass_block_pebbles",
+      "kind": "entity",
+      "source": "/assets/grass/block/pebbles.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 0,
+        "y": 384,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "grass_block_sprouts",
+      "kind": "entity",
+      "source": "/assets/grass/block/sprouts.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 128,
+        "y": 384,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "grass_block_wildflowers_red",
+      "kind": "entity",
+      "source": "/assets/grass/block/wildflowers/red.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 256,
+        "y": 384,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "grass_block_wildflowers_white",
+      "kind": "entity",
+      "source": "/assets/grass/block/wildflowers/white.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 384,
+        "y": 384,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "grass_grass_variants",
+      "kind": "entity",
+      "source": "/assets/grass/grass/variants.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 512,
+        "y": 384,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "ground_block",
+      "kind": "entity",
+      "source": "/assets/ground/block.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 640,
+        "y": 384,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "house_block",
+      "kind": "entity",
+      "source": "/assets/house/block.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 768,
+        "y": 384,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "house_block_2x1",
+      "kind": "entity",
+      "source": "/assets/house/block/2x1.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 896,
+        "y": 384,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "house_block_balcony",
+      "kind": "entity",
+      "source": "/assets/house/block/balcony.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 0,
+        "y": 512,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "path_block",
+      "kind": "entity",
+      "source": "/assets/path/block.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 128,
+        "y": 512,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "path_path_tiles",
+      "kind": "entity",
+      "source": "/assets/path/path/tiles.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 256,
+        "y": 512,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "pier_block_1x3_land_end",
+      "kind": "entity",
+      "source": "/assets/pier/block/1x3/land/end.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 384,
+        "y": 512,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "pier_block_1x3_land_start",
+      "kind": "entity",
+      "source": "/assets/pier/block/1x3/land/start.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 512,
+        "y": 512,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "pier_block_1x3_over_water",
+      "kind": "entity",
+      "source": "/assets/pier/block/1x3/over/water.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 640,
+        "y": 512,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "pier_block_1x3_over_water_reflection",
+      "kind": "entity",
+      "source": "/assets/pier/block/1x3/over/water/reflection.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 768,
+        "y": 512,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "pier_block_3x1_land_end",
+      "kind": "entity",
+      "source": "/assets/pier/block/3x1/land/end.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 896,
+        "y": 512,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "pier_block_3x1_land_start",
+      "kind": "entity",
+      "source": "/assets/pier/block/3x1/land/start.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 0,
+        "y": 640,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "pier_block_3x1_over_water",
+      "kind": "entity",
+      "source": "/assets/pier/block/3x1/over/water.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 128,
+        "y": 640,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "pier_block_3x1_over_water_reflection",
+      "kind": "entity",
+      "source": "/assets/pier/block/3x1/over/water/reflection.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 256,
+        "y": 640,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "player_block",
+      "kind": "entity",
       "source": "/assets/player/block.svg",
       "dataTiles": "1x1x1",
-      "frames": [
-        { "x": 128, "y": 0, "width": 64, "height": 64 }
-      ],
-      "anchor": { "x": 0.5, "y": 1.0 },
+      "frame": {
+        "x": 384,
+        "y": 640,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "player_climb",
+      "kind": "entity",
+      "source": "/assets/player/climb.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 512,
+        "y": 640,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "player_idle",
+      "kind": "entity",
+      "source": "/assets/player/idle.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 640,
+        "y": 640,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "player_jetpack",
+      "kind": "entity",
+      "source": "/assets/player/jetpack.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 768,
+        "y": 640,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "player_jump",
+      "kind": "entity",
+      "source": "/assets/player/jump.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 896,
+        "y": 640,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "player_walk",
+      "kind": "entity",
+      "source": "/assets/player/walk.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 0,
+        "y": 768,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "rock_block",
+      "kind": "entity",
+      "source": "/assets/rock/block.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 128,
+        "y": 768,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "rock_block_2",
+      "kind": "entity",
+      "source": "/assets/rock/block/2.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 256,
+        "y": 768,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "rock_block_3",
+      "kind": "entity",
+      "source": "/assets/rock/block/3.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 384,
+        "y": 768,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "sand_block",
+      "kind": "entity",
+      "source": "/assets/sand/block.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 512,
+        "y": 768,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "statue_block",
+      "kind": "entity",
+      "source": "/assets/statue/block.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 640,
+        "y": 768,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "tree_block",
+      "kind": "entity",
+      "source": "/assets/tree/block.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 768,
+        "y": 768,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "tree_block_2",
+      "kind": "entity",
+      "source": "/assets/tree/block/2.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 896,
+        "y": 768,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "tree_block_3",
+      "kind": "entity",
+      "source": "/assets/tree/block/3.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 0,
+        "y": 896,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "tree_block_4",
+      "kind": "entity",
+      "source": "/assets/tree/block/4.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 128,
+        "y": 896,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "tree_block_5",
+      "kind": "entity",
+      "source": "/assets/tree/block/5.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 256,
+        "y": 896,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "tree_block_6",
+      "kind": "entity",
+      "source": "/assets/tree/block/6.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 384,
+        "y": 896,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "tree_block_7",
+      "kind": "entity",
+      "source": "/assets/tree/block/7.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 512,
+        "y": 896,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "tree_block_8",
+      "kind": "entity",
+      "source": "/assets/tree/block/8.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 640,
+        "y": 896,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1
+    },
+    {
+      "id": "water_block",
+      "kind": "entity",
+      "source": "/assets/water/block.svg",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 768,
+        "y": 896,
+        "width": 128,
+        "height": 128
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
       "colorVariants": 1
     }
   ]

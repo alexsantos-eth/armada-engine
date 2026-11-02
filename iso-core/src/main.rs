@@ -219,7 +219,7 @@ async fn main() {
         draw_circle(marker.x, marker.y, 12.0, GOLD);
 
         // P6 prototype: draw the first atlas sprite (block) at the player's position.
-        if let Some(entry) = manifest.entries.iter().find(|e| e.id == "block")
+        if let Some(entry) = manifest.entries.first()
             && let Some(frame) = entry.primary_frame()
         {
             let src = Rect::new(
