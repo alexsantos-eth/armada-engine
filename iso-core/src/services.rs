@@ -1,7 +1,7 @@
 //! Concrete implementations of the armada-core service traits for the Macroquad client.
 
 use armada_core::grid::ChunkCoord;
-use armada_core::projection::GridPoint;
+use armada_core::player::physics::{ScreenDirections, get_walk_direction};
 use armada_core::services::{AudioService, ChunkLoader, InputService, NormalizedInput, SoundEvent, UiEvent, UiService};
 use armada_core::terrain::TerrainColumn;
 use armada_core::world::ChunkManager;
@@ -12,18 +12,13 @@ pub struct MacroquadInput;
 
 impl InputService for MacroquadInput {
     fn poll(&mut self) -> NormalizedInput {
-        let left = is_key_down(KeyCode::Left) || is_key_down(KeyCode::A);
-        let right = is_key_down(KeyCode::Right) || is_key_down(KeyCode::D);
-        let up = is_key_down(KeyCode::Up) || is_key_down(KeyCode::W);
-        let down = is_key_down(KeyCode::Down) || is_key_down(KeyCode::S);
-        let across: f64 = if right { 1.0 } else { 0.0 } - if left { 1.0 } else { 0.0 };
-        let vertical: f64 = if up { 1.0 } else { 0.0 } - if down { 1.0 } else { 0.0 };
-        let len: f64 = (across * across + vertical * vertical).sqrt();
-        let walk = if len > 0.0 {
-            GridPoint { x: across / len, y: vertical / len }
-        } else {
-            GridPoint { x: 0.0, y: 0.0 }
+        let directions = ScreenDirections {
+            up: is_key_down(KeyCode::Up) || is_key_down(KeyCode::W),
+            down: is_key_down(KeyCode::Down) || is_key_down(KeyCode::S),
+            left: is_key_down(KeyCode::Left) || is_key_down(KeyCode::A),
+            right: is_key_down(KeyCode::Right) || is_key_down(KeyCode::D),
         };
+        let walk = get_walk_direction(&directions);
         NormalizedInput {
             walk,
             jump_pressed: is_key_pressed(KeyCode::Space),
