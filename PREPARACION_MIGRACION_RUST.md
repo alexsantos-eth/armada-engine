@@ -1,6 +1,6 @@
 # Preparar el código actual para migrarlo a Rust
 
-Este documento convierte el [plan de migración](MIGRATION_RUST_MACROQUAD.md) en cambios pequeños sobre el juego TypeScript. La meta es conservar un juego funcional después de cada cambio y dejar claros los contratos que sí interesa llevar a Rust. **Armada Engine 2 rediseñará la generación, la colocación de entidades y los guardados. No necesita regenerar el mundo desde una semilla ni importar partidas de la versión actual.** Este documento es una guía de trabajo; no supone que los cambios descritos ya estén implementados.
+Este documento convierte el [plan de migración](MIGRATION_RUST_MACROQUAD.md) en cambios pequeños sobre el juego TypeScript. La meta es conservar un juego funcional después de cada cambio y dejar claros los contratos que sí interesa llevar a Rust. **La nueva implementación rediseñará la generación, la colocación de entidades y los guardados. No necesita regenerar el mundo desde una semilla ni importar partidas de la versión actual.** Este documento es una guía de trabajo; no supone que los cambios descritos ya estén implementados.
 
 **Estado:** P1–P3 implementados. P4 y P4b tienen contratos TypeScript ejecutables y documentados en [V2_DATA_CONTRACTS.md](V2_DATA_CONTRACTS.md); su integración en Rust queda para el port. P5 y posteriores siguen pendientes. Los fixtures iniciales de P1 cubren coordenadas, proyección, rutas, transiciones, paso fijo y una trayectoria corta de marcha y salto. Los escenarios físicos más extensos del jugador siguen en sus tests co-localizados y podrán añadirse al contrato de migración cuando empiece su port a Rust.
 
@@ -46,7 +46,7 @@ Este documento convierte el [plan de migración](MIGRATION_RUST_MACROQUAD.md) en
 
 **Criterio de cierre:** el nuevo esquema de configuración y su validador se pueden probar con entidades de una casilla, varias casillas, árboles agrupados y estructuras de costa. La colocación Rust puede cambiar resultados sin exigir igualdad con `createEntitiesFromConfig()`.
 
-### P4b. Diseñar guardados propios de Armada Engine 2
+### P4b. Diseñar guardados propios de la nueva implementación
 
 **Archivos a revisar:** `core/engine/world/world.ts`, `core/engine/world/chunk-data.ts`, `core/engine/entities/fingerprint.ts` y `core/engine/parts/parts.ts`.
 

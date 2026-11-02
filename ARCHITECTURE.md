@@ -1,6 +1,6 @@
 # Arquitectura de Armada Engine
 
-La preparación de Armada Engine 2 define un [catálogo de entidades y un guardado V2 independientes](V2_DATA_CONTRACTS.md). El juego PixiJS descrito aquí continúa usando `entities.ts` y `WorldSnapshot` versión 7. El catálogo V2 mantiene identidad, assets y huella sin trasladar las probabilidades de colocación; el guardado V2 persiste chunks descubiertos completos sin necesitar regeneración desde una semilla.
+La preparación de la [nueva implementación Rust](iso-core/README.md) define un [catálogo de entidades y un guardado nuevos](V2_DATA_CONTRACTS.md). El juego PixiJS descrito aquí continúa usando `entities.ts` y `WorldSnapshot` versión 7. El catálogo nuevo mantiene identidad, assets y huella sin trasladar las probabilidades de colocación; el nuevo guardado persiste chunks descubiertos completos sin necesitar regeneración desde una semilla.
 
 ## Propósito
 

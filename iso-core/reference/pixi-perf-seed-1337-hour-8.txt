@@ -1,0 +1,42 @@
+Armada perf · 5.0 s · 300 frames · 60.0 fps · chunks 1
+frame ms p50 16.7 · p95 17.7 · max 17.7 · over 33.4 ms: 0
+cpu ms p50 1.2 · p95 2.4 · max 6.5 · draw calls avg 28 · max 28
+textures 155.9 MB (svg 135.6 · render 19.8 · buffer 0.5) in 46 · js heap 38.5 MB
+largest textures: svg 2560×2133 ×1 = 27.8 MB · svg 640×747 ×11 = 26.7 MB · svg 1860×1654 ×1 = 15.6 MB
+steps ms avg/max per frame: water-reflections:player 0.28/3.90 · update:water-reflections 0.32/3.90 · update:shadows 0.82/3.20 · shadows:maps 0.56/2.20 · shadows:walls 0.26/2.20 · shadows:ground 0.29/1.90 · shadows:ground-paint 0.16/1.70 · shadows:received 0.13/1.20 · stream 0.07/0.30 · update:player 0.03/0.30 · foliage-wind:sway 0.01/0.20 · update:foliage-wind 0.02/0.20 · shadows:moving 0.01/0.20 · water-reflections:waves 0.00/0.10 · update:ambient-light 0.00/0.10 · shadows:terrain-project 0.00/0.10 · shadows:follow 0.01/0.10 · update:camera 0.00/0.10 · update:cloud-shadows 0.00/0.10
+
+---
+
+Armada perf · 5.0 s · 301 frames · 60.0 fps · chunks 1
+frame ms p50 16.7 · p95 17.6 · max 17.7 · over 33.4 ms: 0
+cpu ms p50 1.1 · p95 1.7 · max 3.2 · draw calls avg 28 · max 28
+textures 155.9 MB (svg 135.6 · render 19.8 · buffer 0.5) in 46 · js heap 32.1 MB
+largest textures: svg 2560×2133 ×1 = 27.8 MB · svg 640×747 ×11 = 26.7 MB · svg 1860×1654 ×1 = 15.6 MB
+steps ms avg/max per frame: update:shadows 0.66/2.00 · stream 0.07/1.00 · shadows:ground 0.24/0.80 · shadows:maps 0.45/0.80 · update:water-reflections 0.26/0.70 · water-reflections:player 0.23/0.60 · shadows:walls 0.21/0.60 · shadows:ground-paint 0.12/0.50 · shadows:received 0.09/0.50 · update:player 0.03/0.20 · update:ambient-light 0.00/0.20 · shadows:follow 0.01/0.20 · update:foliage-wind 0.01/0.10 · shadows:moving 0.01/0.10 · shadows:terrain-project 0.00/0.10 · update:camera 0.00/0.10 · update:cloud-shadows 0.00/0.10 · foliage-wind:sway 0.01/0.10 · water-reflections:waves 0.00/0.10
+
+---
+
+Armada perf · 5.0 s · 301 frames · 60.0 fps · chunks 1
+frame ms p50 16.7 · p95 17.6 · max 17.7 · over 33.4 ms: 0
+cpu ms p50 1.0 · p95 1.6 · max 2.8 · draw calls avg 28 · max 28
+textures 155.9 MB (svg 135.6 · render 19.8 · buffer 0.5) in 46 · js heap 38.3 MB
+largest textures: svg 2560×2133 ×1 = 27.8 MB · svg 640×747 ×11 = 26.7 MB · svg 1860×1654 ×1 = 15.6 MB
+steps ms avg/max per frame: update:shadows 0.64/1.70 · shadows:ground 0.23/0.70 · shadows:maps 0.44/0.70 · update:water-reflections 0.26/0.60 · shadows:received 0.09/0.60 · water-reflections:player 0.22/0.50 · shadows:walls 0.21/0.50 · shadows:ground-paint 0.11/0.40 · stream 0.07/0.30 · update:player 0.03/0.20 · shadows:moving 0.01/0.20 · update:foliage-wind 0.01/0.10 · update:ambient-light 0.00/0.10 · shadows:terrain-project 0.00/0.10 · shadows:follow 0.01/0.10 · update:camera 0.00/0.10 · update:cloud-shadows 0.00/0.10 · foliage-wind:sway 0.01/0.10 · water-reflections:waves 0.00/0.10
+
+---
+
+Armada perf · 5.0 s · 300 frames · 60.0 fps · chunks 1
+frame ms p50 16.7 · p95 17.6 · max 17.7 · over 33.4 ms: 0
+cpu ms p50 1.0 · p95 1.3 · max 1.6 · draw calls avg 28 · max 28
+textures 155.9 MB (svg 135.6 · render 19.8 · buffer 0.5) in 46 · js heap 31.9 MB
+largest textures: svg 2560×2133 ×1 = 27.8 MB · svg 640×747 ×11 = 26.7 MB · svg 1860×1654 ×1 = 15.6 MB
+steps ms avg/max per frame: update:shadows 0.60/0.90 · water-reflections:player 0.20/0.50 · update:water-reflections 0.23/0.50 · shadows:ground 0.21/0.50 · shadows:maps 0.41/0.50 · shadows:walls 0.20/0.40 · stream 0.05/0.20 · update:player 0.03/0.20 · shadows:ground-paint 0.11/0.20 · shadows:received 0.08/0.20 · foliage-wind:sway 0.01/0.10 · update:foliage-wind 0.01/0.10 · water-reflections:waves 0.00/0.10 · update:ambient-light 0.00/0.10 · shadows:moving 0.01/0.10 · shadows:terrain-project 0.00/0.10 · shadows:follow 0.01/0.10 · update:camera 0.00/0.10 · update:cloud-shadows 0.00/0.10
+
+---
+
+Armada perf · 5.0 s · 301 frames · 60.0 fps · chunks 1
+frame ms p50 16.7 · p95 17.7 · max 17.7 · over 33.4 ms: 0
+cpu ms p50 1.0 · p95 1.2 · max 3.7 · draw calls avg 28 · max 28
+textures 126.7 MB (svg 106.4 · render 19.8 · buffer 0.5) in 41 · js heap 28.8 MB
+largest textures: svg 2560×2133 ×1 = 27.8 MB · svg 640×747 ×9 = 21.9 MB · svg 1920×1600 ×1 = 15.6 MB
+steps ms avg/max per frame: water-reflections:player 0.21/2.80 · update:water-reflections 0.24/2.80 · update:shadows 0.58/0.80 · shadows:ground 0.21/0.40 · shadows:maps 0.40/0.40 · shadows:walls 0.18/0.30 · shadows:received 0.09/0.30 · stream 0.04/0.20 · update:foliage-wind 0.02/0.20 · shadows:ground-paint 0.10/0.20 · foliage-wind:sway 0.01/0.20 · update:player 0.02/0.10 · update:ambient-light 0.00/0.10 · shadows:moving 0.01/0.10 · shadows:terrain-project 0.00/0.10 · shadows:follow 0.01/0.10 · update:camera 0.01/0.10 · update:cloud-shadows 0.00/0.10 · water-reflections:waves 0.00/0.10

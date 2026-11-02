@@ -2,7 +2,9 @@
 
 ## Objetivo y criterio de éxito
 
-Migrar el juego de TypeScript, PixiJS y Preact a un núcleo de Rust y un cliente de Macroquad que compile tanto de forma nativa como a `wasm32-unknown-unknown`. Este será **Armada Engine 2**: conservará las funciones esenciales de juego, controles, presentación y sonido, pero podrá cambiar generación, colocación de entidades y formato de partidas. No se exige regenerar un mundo desde una semilla. Cada fase deja una versión ejecutable; PixiJS sirve como referencia funcional y visual, no como patrón obligatorio para el mundo generado.
+Migrar el juego de TypeScript, PixiJS y Preact a un núcleo de Rust y un cliente de Macroquad que compile tanto de forma nativa como a `wasm32-unknown-unknown`. Esta nueva implementación conservará las funciones esenciales de juego, controles, presentación y sonido, pero podrá cambiar generación, colocación de entidades y formato de partidas. No se exige regenerar un mundo desde una semilla. Cada fase deja una versión ejecutable; PixiJS sirve como referencia funcional y visual, no como patrón obligatorio para el mundo generado.
+
+**Estado:** fase 0 iniciada en [`iso-core/`](iso-core/README.md): workspace Cargo, demo Macroquad nativa y WASM comprobada en navegador, referencia visual y perfiles PixiJS guardados. La fase 1 comienza con `grid` y proyección.
 
 ## Punto de partida comprobado
 
@@ -10,7 +12,7 @@ Migrar el juego de TypeScript, PixiJS y Preact a un núcleo de Rust y un cliente
 - El dominio ya se organiza en `src/isometric/core/engine/`: `grid`, `random`, `terrain`, `paths`, `entities`, `world`, `parts`, `time`, `events`, `simulation`, `player`, `projection` y `camera`. Es la secuencia de migración principal.
 - No todo el dominio carece de dependencias externas: `terrain/terrain.ts` usa `simplex-noise` y `player/motion.ts` usa XState. El ruido se podrá sustituir al rediseñar la generación; las transiciones del jugador sí requieren pruebas de comportamiento.
 - El render usa Pixi de forma extensa: `render`, `scene`, `terrain-view`, `entity-view`, `player-view`, `camera-view`, `shadows`, `water-reflections`, `foliage-wind` y módulos de luz. El audio actual usa Strudel en `game/sound/`.
-- El mundo actual es ilimitado y usa chunks de 32 × 32; el guardado serializa semilla, chunks editados y partes del mundo. La generación anticipada usa un Web Worker y datos empaquetados transferibles. Armada Engine 2 tendrá formato de partida propio y conservará el contenido generado de los chunks descubiertos cuando sea necesario para que una partida continúe igual.
+- El mundo actual es ilimitado y usa chunks de 32 × 32; el guardado serializa semilla, chunks editados y partes del mundo. La generación anticipada usa un Web Worker y datos empaquetados transferibles. La implementación Rust tendrá formato de partida propio y conservará el contenido generado de los chunks descubiertos cuando sea necesario para que una partida continúe igual.
 
 ## Arquitectura objetivo
 
@@ -73,20 +75,20 @@ El núcleo recibe entrada, tiempo transcurrido y una fuente de generación confi
 
 **Trabajo.** Ejecutar una batería de mundos de prueba, partidas guardadas, acciones y dispositivos; usar la versión anterior para comparar jugabilidad y presentación, no la disposición exacta del mundo. Publicar primero una versión WASM de prueba; medir arranque, tamaño descargado, memoria, p95 y tirones de chunks frente a la referencia. Adaptar empaquetado, caché y hosting para servir `.wasm` y atlas. Cambiar el punto de entrada web cuando los criterios funcionales estén cerrados. Retirar PixiJS, Preact, Strudel, Vite y el código TypeScript únicamente cuando ya no tengan consumidores.
 
-**Salida.** Armada Engine 2 completo en nativo y web desde Rust/Macroquad, con guardados nuevos versionados y documentación y comandos de desarrollo actualizados.
+**Salida.** Armada Engine completo en nativo y web desde Rust/Macroquad, con guardados nuevos versionados y documentación y comandos de desarrollo actualizados.
 
 ## Pruebas y puertas de salida
 
 1. **Invariantes del terreno nuevo:** alturas diferentes, continuidad en bordes y coordenadas negativas, y materiales `sand`/`water`/`ground`/`grass` coherentes.
 2. **Colocación nueva de entidades:** configuración validada, huellas libres, elevación y separación válidas, densidad ajustable y revisión visual de escenarios representativos.
 3. **Simulación conservada:** sobre escenarios de terreno controlados, entradas grabadas → ticks, eventos, estados de locomoción y colisiones esperados; comprobar saltos, trepa, vuelo y bordes.
-4. **Guardados de la versión 2:** guardar y reabrir terreno, entidades y cambios de chunks descubiertos, además del jugador y otros sistemas; descargar y volver a cargar chunks sin cambiar el mundo ya visto.
+4. **Guardados nuevos:** guardar y reabrir terreno, entidades y cambios de chunks descubiertos, además del jugador y otros sistemas; descargar y volver a cargar chunks sin cambiar el mundo ya visto.
 5. **Paridad visual:** capturas en horas y zoom comparables; inspección de sombras, oclusión, profundidad y animaciones, incluidos bordes de chunk.
 6. **Rendimiento y web:** arranque en navegador, teclado y multitáctil, audio tras gesto, cambio de tamaño, streaming prolongado y memoria estable. Usar los escenarios `?perf` documentados como referencia; fijar umbrales con las mediciones de la fase 0, no inventarlos.
 
 ## Riesgos que deben resolverse antes del cambio final
 
-- **Persistencia de chunks:** el sistema actual puede regenerar chunks descargados desde la semilla. En la versión 2, el contenido descubierto debe persistirse antes de expulsarlo de memoria y recuperarse sin cambios. Medir crecimiento del guardado y establecer una estrategia de almacenamiento por chunks.
+- **Persistencia de chunks:** el sistema actual puede regenerar chunks descargados desde la semilla. En Rust, el contenido descubierto debe persistirse antes de expulsarlo de memoria y recuperarse sin cambios. Medir crecimiento del guardado y establecer una estrategia de almacenamiento por chunks.
 - **Calidad de generación:** la nueva colocación debe evaluarse con múltiples semillas, bordes de chunk y distribución de biomas; no basta una captura atractiva de una sola zona.
 - **Sombras y memoria:** el render actual usa mapas y atlas por chunk; una traducción directa puede multiplicar texturas o bloquear frames. Validar el prototipo gráfico antes de portar todos los efectos.
 - **Web Workers:** el prefetch actual mueve datos empaquetados entre hilos. En WASM hay que probar si un worker separado aporta beneficio en el despliegue elegido; mientras tanto, presupuestar generación por frame sin bloquear la interacción.
