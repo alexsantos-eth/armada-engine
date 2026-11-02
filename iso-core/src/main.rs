@@ -1,19 +1,20 @@
 mod save;
 mod terrain_view;
 
-use armada_core::entities::{EntityCatalogV2, validate_catalog};
 use armada_core::grid::{WorldCoord, to_chunk_coord};
-use armada_core::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block, project_grid_point, unproject_screen_delta};
+use armada_core::player::physics::{
+    PlayerGround, ScreenDirections, create_player, find_player_spawn,
+    get_player_render_position, jump_player, no_top_inset, set_player_jump_held,
+    set_player_run, set_player_walk, step_player,
+};
+use armada_core::projection::{GridPoint, ProjectionConfig, project_block, project_grid_point};
 use armada_core::scene_order::{DrawKey, LengthAxis, compare_draw_keys, get_draw_depth};
 use armada_core::terrain::{TerrainColumn, TerrainConfig, TerrainGenerator};
 use armada_core::world::ChunkManager;
-/// Diagnostic area where the initial generator shows all four core materials.
-const PREVIEW_CENTRE: WorldCoord = WorldCoord { x: 16, y: 88 };
-/// Tile height used by the diagnostic projection and its draw-depth keys.
-const PREVIEW_TILE_HEIGHT: f64 = 40.0;
-use macroquad::prelude::*;
+use armada_core::entities::{EntityCatalogV2, validate_catalog};
 use save::{load_archive_into_manager, load_save, restore_archive, save_archive, sync_manager_to_archive};
 use terrain_view::preview::draw_terrain_preview;
+use macroquad::prelude::*;
 
 fn window_conf() -> Conf {
     Conf {
@@ -21,6 +22,27 @@ fn window_conf() -> Conf {
         window_width: 960,
         window_height: 600,
         ..Default::default()
+    }
+}
+
+/// Diagnostic centre of the world; the player spawns near here.
+const PREVIEW_CENTRE: WorldCoord = WorldCoord { x: 16, y: 88 };
+const PREVIEW_TILE_HEIGHT: f64 = 40.0;
+
+/// Wraps a `ChunkManager` so it satisfies `PlayerGround` for locomotion.
+struct ChunkGround<'a> {
+    manager: &'a ChunkManager,
+}
+
+impl PlayerGround for ChunkGround<'_> {
+    fn column_at(&self, x: i32, y: i32) -> Option<TerrainColumn> {
+        self.manager.column_at(x, y)
+    }
+    fn occupancy_at(&self, _x: i32, _y: i32) -> Vec<armada_core::player::physics::PlayerObstacle> {
+        Vec::new()
+    }
+    fn chunk_has(&self, coord: armada_core::grid::ChunkCoord) -> bool {
+        self.manager.is_discovered(coord)
     }
 }
 
@@ -32,25 +54,32 @@ async fn main() {
         serde_json::from_str(catalog_json).expect("entity catalog is valid JSON");
     validate_catalog(&catalog).expect("entity catalog validates");
 
-    // Terrain generator for newly discovered chunks.
     let generator = TerrainGenerator::new(TerrainConfig::default())
         .expect("default terrain configuration is valid");
 
-    // Chunk manager drives streaming with per-frame budgets.
     let mut manager = ChunkManager::new(generator, catalog);
 
     // Try to restore a previous save.
     let save = load_save().await;
     let mut archive = restore_archive(save);
-    if !archive.chunks().count().eq(&0) {
+    if archive.chunks().count() > 0 {
         load_archive_into_manager(&mut manager, &archive);
     }
 
-    // Initial focus around the preview centre.
-    let mut cursor = GridPoint {
-        x: f64::from(PREVIEW_CENTRE.x) + 0.5,
-        y: f64::from(PREVIEW_CENTRE.y) + 0.5,
-    };
+    // Load enough chunks around the centre to find a spawn point.
+    let centre_chunk = to_chunk_coord(PREVIEW_CENTRE);
+    manager.set_focus(vec![centre_chunk]);
+    for _ in 0..20 {
+        manager.tick();
+    }
+
+    // Find a spawn point and create the player.
+    let ground = ChunkGround { manager: &manager };
+    let spawn = find_player_spawn(&ground, GridPoint {
+        x: f64::from(PREVIEW_CENTRE.x),
+        y: f64::from(PREVIEW_CENTRE.y),
+    });
+    let mut player = create_player(&ground, GridPoint { x: spawn.x, y: spawn.y });
 
     let mut show_terrain = true;
     let mut last_save = get_time();
@@ -76,34 +105,38 @@ async fn main() {
             origin_y: f64::from(height / 2.0 + 50.0)
                 + (f64::from(PREVIEW_CENTRE.x) + f64::from(PREVIEW_CENTRE.y)) * 20.0,
         };
-        let speed = 2.0 * f64::from(get_frame_time());
-        let horizontal = i32::from(is_key_down(KeyCode::Right) || is_key_down(KeyCode::D))
-            - i32::from(is_key_down(KeyCode::Left) || is_key_down(KeyCode::A));
-        let vertical = i32::from(is_key_down(KeyCode::Down) || is_key_down(KeyCode::S))
-            - i32::from(is_key_down(KeyCode::Up) || is_key_down(KeyCode::W));
-        let movement = movement_delta(horizontal, vertical, speed, projection);
-        cursor.x += movement.x;
-        cursor.y += movement.y;
-        if is_mouse_button_down(MouseButton::Left) {
-            let (x, y) = mouse_position();
-            cursor = unproject_screen_delta(
-                ScreenPoint {
-                    x: f64::from(x) - projection.origin_x,
-                    y: f64::from(y) - projection.origin_y,
-                },
-                projection,
-            );
-        }
 
-        // Update streaming focus around the cursor.
+        // Input: walk direction.
+        let directions = ScreenDirections {
+            up: is_key_down(KeyCode::Up) || is_key_down(KeyCode::W),
+            down: is_key_down(KeyCode::Down) || is_key_down(KeyCode::S),
+            left: is_key_down(KeyCode::Left) || is_key_down(KeyCode::A),
+            right: is_key_down(KeyCode::Right) || is_key_down(KeyCode::D),
+        };
+        set_player_walk(&mut player, directions);
+        set_player_run(&mut player, is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift));
+
+        // Jump input.
+        if is_key_pressed(KeyCode::Space) {
+            jump_player(&mut player);
+        }
+        set_player_jump_held(&mut player, is_key_down(KeyCode::Space));
+
+        // Update streaming focus around the player.
         let focus = to_chunk_coord(WorldCoord {
-            x: cursor.x.floor() as i32,
-            y: cursor.y.floor() as i32,
+            x: player.x.floor() as i32,
+            y: player.y.floor() as i32,
         });
         manager.set_focus(vec![focus]);
+
+        // Step the player (1 tick per frame).
+        let mut ground = ChunkGround { manager: &manager };
+        step_player(&mut player, &mut ground, 1, no_top_inset);
+
+        // Tick streaming.
         manager.tick();
 
-        // Periodically sync and save (every 10 seconds).
+        // Periodically sync and save.
         if get_time() - last_save > 10.0 {
             sync_manager_to_archive(&manager, &mut archive);
             save_archive(&archive);
@@ -132,6 +165,10 @@ async fn main() {
             compare_draw_keys(&key(a), &key(b))
         });
 
+        // Render position for smooth drawing.
+        let rp = get_player_render_position(&player, 0.0);
+        let elevation = player.elevation as i32;
+
         clear_background(Color::from_rgba(21, 29, 42, 255));
         draw_rectangle_lines(16.0, 16.0, width - 32.0, height - 32.0, 2.0, SKYBLUE);
         if show_terrain {
@@ -148,25 +185,24 @@ async fn main() {
         } else {
             draw_grid(projection, PREVIEW_CENTRE);
         }
-        let elevation = manager
-            .terrain_chunk(focus)
-            .and_then(|chunk| {
-                chunk
-                    .iter()
-                    .find(|c| c.coord.x == cursor.x.floor() as i32 && c.coord.y == cursor.y.floor() as i32)
-                    .map(|c| c.elevation)
-            })
-            .unwrap_or(0);
-        let marker = project_block(cursor, f64::from(elevation), projection);
+
+        // Draw player marker.
+        let marker = project_block(
+            GridPoint { x: rp.x + 0.5, y: rp.y + 0.5 },
+            rp.elevation + rp.height,
+            projection,
+        );
         let marker = vec2(marker.screen_x as f32, marker.screen_y as f32);
         draw_circle(marker.x, marker.y, 12.0, GOLD);
+
+        // HUD.
         draw_rectangle(20.0, 20.0, 510.0, 80.0, Color::from_rgba(21, 29, 42, 205));
         draw_text("Armada Engine / Macroquad", 32.0, 58.0, 32.0, WHITE);
         draw_text(
-            "Flechas/WASD | raton | T: terreno/rejilla | S: guardar",
+            "WASD/Flechas | Espacio: saltar | Shift: correr | T: terreno | S: guardar",
             32.0,
             89.0,
-            22.0,
+            18.0,
             LIGHTGRAY,
         );
         draw_rectangle(
@@ -178,9 +214,11 @@ async fn main() {
         );
         draw_text(
             format!(
-                "Mundo: ({:.2}, {:.2}, {elevation}) | Ventana: {width:.0} x {height:.0} | chunks: {}",
-                cursor.x,
-                cursor.y,
+                "Mundo: ({:.2}, {:.2}, {}) | {:?} | chunks: {}",
+                player.x,
+                player.y,
+                elevation,
+                player.motion,
                 manager.discovered_count(),
             ),
             32.0,
@@ -190,21 +228,6 @@ async fn main() {
         );
         next_frame().await;
     }
-}
-
-fn movement_delta(
-    horizontal: i32,
-    vertical: i32,
-    speed: f64,
-    projection: ProjectionConfig,
-) -> GridPoint {
-    unproject_screen_delta(
-        ScreenPoint {
-            x: f64::from(horizontal) * speed * projection.tile_width,
-            y: f64::from(vertical) * speed * projection.tile_height,
-        },
-        projection,
-    )
 }
 
 fn screen_point(point: GridPoint, projection: ProjectionConfig) -> Vec2 {
@@ -243,6 +266,3 @@ fn draw_grid(projection: ProjectionConfig, centre: WorldCoord) {
     }
 }
 
-#[cfg(test)]
-#[path = "main.test.rs"]
-mod tests;

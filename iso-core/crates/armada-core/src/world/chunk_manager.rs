@@ -111,6 +111,21 @@ impl ChunkManager {
         self.world.chunk(coord)
     }
 
+    /// Terrain column at an absolute world coordinate, or `None` when its chunk was never
+    /// discovered.
+    pub fn column_at(&self, x: i32, y: i32) -> Option<crate::terrain::TerrainColumn> {
+        let coord = crate::grid::to_chunk_coord(crate::grid::WorldCoord { x, y });
+        let chunk = self.world.chunk(coord)?;
+        let local = crate::grid::to_local_coord(crate::grid::WorldCoord { x, y });
+        let index = (local.lx * crate::grid::CHUNK_SIZE + local.ly) as usize;
+        chunk.get(index).copied()
+    }
+
+    /// Whether a chunk has been discovered.
+    pub fn is_discovered(&self, coord: ChunkCoord) -> bool {
+        self.world.is_discovered(coord)
+    }
+
     /// Placed entities of a discovered chunk, or `None` when it was never discovered.
     pub fn entities_chunk(&self, coord: ChunkCoord) -> Option<&[Entity]> {
         self.entities.get(&coord).map(Vec::as_slice)
