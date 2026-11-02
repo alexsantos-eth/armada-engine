@@ -4,7 +4,7 @@ Este documento define los límites, contratos y prácticas de la implementación
 
 ## Estado y estructura
 
-**Implementado:** el workspace `iso-core`, el crate `armada-core` sin dependencias gráficas, `grid` con mapa de celdas e índice espacial, búsqueda `paths`, `projection`, geometría y visibilidad básica de `camera`, reloj `time`, acumulador de paso fijo `simulation`, modelo y primer generador de `terrain`, sus pruebas y una demo Macroquad nativa y WASM. **Previsto:** los demás módulos descritos abajo, la composición de sistemas de simulación y la vista del terreno. Una sección prevista es un contrato de diseño, no una afirmación de que su código ya existe.
+**Implementado:** el workspace `iso-core`, el crate `armada-core` sin dependencias gráficas, `grid` con mapa de celdas e índice espacial, búsqueda `paths`, `projection`, geometría y visibilidad básica de `camera`, reloj `time`, acumulador de paso fijo `simulation`, modelo y primer generador de `terrain`, sus pruebas y una muestra de terreno visible en la demo Macroquad nativa y WASM. **Previsto:** los demás módulos descritos abajo, la composición de sistemas de simulación y la vista definitiva con assets. Una sección prevista es un contrato de diseño, no una afirmación de que su código ya existe.
 
 ```text
 iso-core/
@@ -49,7 +49,12 @@ iso-core/
     tests/contracts.rs        # contratos entre módulos y fixture de migración
   src/main.rs                 # entrada nativa/WASM, demo actual
   src/main.test.rs            # prueba colocalizada de entrada de la demo
-  src/{game,input,scene,render,...}/ # cliente, previstos
+  src/game/                  # muestra de chunks generados; implementado
+    preview.rs
+    preview.test.rs
+  src/terrain_view/          # dibujo temporal de terreno; implementado
+    preview.rs
+  src/{input,scene,render,...}/ # cliente, previstos
   content/                    # catálogos y configuración, previsto
   web/                        # cargador WASM y archivos web
   reference/                  # capturas y medidas de referencia
@@ -192,9 +197,11 @@ La generación de un chunk se inicia desde el flujo de mundo, no desde una vista
 
 `camera` guarda centro, zoom y seguimiento como estado de vista. La geometría y la selección de chunks visibles ya viven en `armada-core::camera`: desplazamiento, conversión pantalla/suelo, zoom alrededor de un ancla, seguimiento, transformación y visibilidad con margen y elevaciones. `streaming` queda pendiente; programará carga/descarga con presupuesto por fotograma y separará visibilidad de persistencia. Probar el presupuesto con una escena falsa.
 
-### `scene` y vistas (previstos)
+### `scene` y vistas (muestra de terreno implementada)
 
 `scene` compone módulos visuales (terreno, entidades, jugador, efectos, interfaz), resuelve su orden de montaje y los destruye en orden inverso. Cada vista sincroniza el estado de `World` con recursos visibles; no genera ni modifica terreno. El orden de dibujo es estable por profundidad y capa declarada. Probar el montaje y la sincronización de un módulo aislado, además de la composición completa con datos de mundo pequeños.
+
+La muestra actual crea cuatro chunks una vez en `game::preview` y entrega sus columnas ordenadas de lejos a cerca a `terrain_view::preview`. Esa vista únicamente proyecta y dibuja las columnas y consulta alturas vecinas para las caras expuestas. Usa colores de depuración para agua, arena, suelo e hierba; la vista con assets y la composición de `scene` siguen pendientes. La muestra no establece todavía un contrato de streaming, guardado ni colocación de entidades.
 
 ### `assets` y `render` (previstos)
 

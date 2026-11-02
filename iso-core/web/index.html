@@ -23,7 +23,11 @@
     <canvas id="glcanvas" tabindex="0"></canvas>
     <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script>
     <script>
-      load("../target/wasm32-unknown-unknown/release/iso-core.wasm");
+      const wasmUrl = new URL("../target/wasm32-unknown-unknown/release/iso-core.wasm", location.href);
+      if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
+        wasmUrl.searchParams.set("dev", Date.now().toString());
+      }
+      load(wasmUrl.href);
     </script>
   </body>
 </html>
