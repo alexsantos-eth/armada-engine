@@ -58,6 +58,16 @@ impl TerrainWorld {
             .and_then(|chunk| chunk.get(index))
     }
 
+    /// Whether a chunk has been discovered (materialized at least once).
+    pub fn is_discovered(&self, coord: ChunkCoord) -> bool {
+        self.discovered.contains_key(&coord)
+    }
+
+    /// Whether a chunk is currently visible.
+    pub fn is_visible(&self, coord: ChunkCoord) -> bool {
+        self.visible.contains(&coord)
+    }
+
     /// Edits a discovered column; passability follows its surface material.
     pub fn edit_column(
         &mut self,
