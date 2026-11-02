@@ -4,7 +4,7 @@ Este documento define los límites, contratos y prácticas de la implementación
 
 ## Estado y estructura
 
-**Implementado:** el workspace `iso-core`, el crate `armada-core` sin dependencias gráficas, `grid` con mapa de celdas e índice espacial, búsqueda `paths`, `projection`, geometría y visibilidad básica de `camera`, reloj `time`, acumulador de paso fijo `simulation`, sus pruebas y una demo Macroquad nativa y WASM. **Previsto:** los demás módulos descritos abajo y la composición de sistemas de simulación. Una sección prevista es un contrato de diseño, no una afirmación de que su código ya existe.
+**Implementado:** el workspace `iso-core`, el crate `armada-core` sin dependencias gráficas, `grid` con mapa de celdas e índice espacial, búsqueda `paths`, `projection`, geometría y visibilidad básica de `camera`, reloj `time`, acumulador de paso fijo `simulation`, modelo y primer generador de `terrain`, sus pruebas y una demo Macroquad nativa y WASM. **Previsto:** los demás módulos descritos abajo, la composición de sistemas de simulación y la vista del terreno. Una sección prevista es un contrato de diseño, no una afirmación de que su código ya existe.
 
 ```text
 iso-core/
@@ -40,7 +40,12 @@ iso-core/
     src/simulation/          # paso fijo; implementado parcialmente
       stepper.rs
       stepper.test.rs
-    src/{terrain,entities,world,...}/ # previstos; se crean al implementarlos
+    src/terrain/             # columnas, ruido y generador inicial
+      columns.rs
+      noise.rs
+      generation.rs
+      *.test.rs
+    src/{entities,world,...}/ # previstos; se crean al implementarlos
     tests/contracts.rs        # contratos entre módulos y fixture de migración
   src/main.rs                 # entrada nativa/WASM, demo actual
   src/main.test.rs            # prueba colocalizada de entrada de la demo
@@ -75,7 +80,7 @@ La referencia exacta es [Sistema de coordenadas](../ARCHITECTURE.md#sistema-de-c
 
 La pantalla tiene origen arriba a la izquierda, `screen_x` a la derecha y `screen_y` hacia abajo. El origen de proyección sitúa la columna `(0, 0)` dentro del canvas y no cambia los ejes del mundo. Los chunks repiten esos ejes: `(0, 0)` cubre `0..31` y una coordenada `-1` cae en el chunk `-1` con local `31`. Los assets SVG existentes usan otro convenio de ejes; su orientación y `data-tiles` se convierten al preparar atlas, sin cambiar el convenio del dominio.
 
-**Ya cubierto en Rust:** tipos de mundo/chunk/local, división euclídea con negativos, proyección de puntos y elevación, inversa de desplazamientos, orden de vecinos de rutas, desplazamiento/zoom de cámara y selección de chunks visibles. **Pendiente de aplicar y probar:** terreno y nivel del mar, huellas de entidades, profundidad de render, mapas de sombras y conversión de orientación de assets. Cada módulo nuevo debe probar sus direcciones contra este contrato antes de integrarse en la escena.
+**Ya cubierto en Rust:** tipos de mundo/chunk/local, división euclídea con negativos, proyección de puntos y elevación, inversa de desplazamientos, orden de vecinos de rutas, desplazamiento/zoom de cámara, selección de chunks visibles y columnas de terreno con nivel del mar `0`. **Pendiente de aplicar y probar:** huellas de entidades, profundidad de render, mapas de sombras y conversión de orientación de assets. Cada módulo nuevo debe probar sus direcciones contra este contrato antes de integrarse en la escena.
 
 ## Flujo de un fotograma
 
@@ -113,11 +118,11 @@ La generación de un chunk se inicia desde el flujo de mundo, no desde una vista
 
 **Pruebas.** Muestras conocidas del algoritmo nuevo, independencia del orden de petición de chunks y continuidad en límites.
 
-### `terrain` y materiales (previstos)
+### `terrain` y materiales (modelo y primer generador implementados)
 
-**Responsabilidad.** Generar columnas con distintas alturas y clasificar cada bloque y superficie como agua, arena, suelo, hierba u otro material declarado. Expone altura, superficie, transitabilidad y geometría de columna a otros módulos. La elección de textura y tinte queda en el cliente.
+**Responsabilidad.** Generar columnas con distintas alturas y clasificar cada bloque y superficie como agua, arena, suelo, hierba u otro material declarado. `columns.rs` define `TerrainColumn`, `TerrainBlock` y `TerrainMaterial`, separados del ruido (`noise.rs`) y del generador (`generation.rs`). Expone altura, superficie y transitabilidad a otros módulos. La elección de textura y tinte queda en el cliente.
 
-**Contrato.** Los bloques de una columna ocupan niveles explícitos; el bloque superior y los laterales visibles se derivan de las columnas y sus vecinas. El ruido y las reglas de materiales funcionan al cruzar chunks. Los parámetros y la distribución visual se ajustarán en Rust; no se trasladan posiciones ni salidas exactas del generador anterior.
+**Contrato.** Los bloques de una columna ocupan niveles explícitos: agua bajo `0`, arena en la orilla, soporte `ground` bajo cimas secas y `grass` o `ground` en otras superficies. El generador inicial usa ruido de valor con coordenadas absolutas y consulta vecinas para clasificar costas sin costuras. La semilla sirve para reproducir escenarios de prueba; los guardados almacenarán chunks materializados. Los parámetros iniciales (`min_elevation = -3`, `max_elevation = 4`, escalas `48` y `16`) se ajustarán al revisar el paisaje en pantalla. Los laterales visibles y la optimización de bloques ocultos quedan para la vista del terreno. No se trasladan posiciones ni salidas exactas del generador anterior.
 
 **Pruebas.** Alturas y materiales válidos, capas coherentes, bordes entre chunks, agua y costas, casos de elevación y consulta de transitabilidad. Usar mapas pequeños construidos a mano para las reglas de bloques visibles.
 
