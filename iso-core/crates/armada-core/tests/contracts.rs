@@ -9,6 +9,7 @@ use armada_core::scene_order::{
     PlayerFrame, PlayerFrameInput, PlayerSheet, climb_pose, compare_draw_keys, get_draw_depth,
     idle_pose, jump_pose, select_player_frame, walk_pose,
 };
+use armada_core::simulation::{FixedStepper, StepperOptions};
 use serde_json::Value;
 
 fn fixture() -> Value {
@@ -312,5 +313,46 @@ fn camera_culling_matches_typescript_fixture() {
             })
             .collect();
         assert_eq!(result, expected);
+    }
+}
+
+#[test]
+fn stepper_matches_typescript_fixture() {
+    let fixture = fixture();
+    let stepper = &fixture["stepper"];
+    let step_ms = number(&stepper["stepMs"]);
+    let frames_ms: Vec<f64> = stepper["framesMs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(number)
+        .collect();
+    let steps: Vec<u64> = stepper["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_u64().expect("step count"))
+        .collect();
+    let alpha: Vec<f64> = stepper["alpha"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(number)
+        .collect();
+
+    let mut stepper = FixedStepper::new(StepperOptions {
+        step_ms,
+        max_frame_ms: 250.0,
+        time_scale: 1.0,
+    })
+    .expect("valid stepper options");
+
+    for i in 0..frames_ms.len() {
+        let got_steps = stepper.consume_frame(frames_ms[i]);
+        assert_eq!(got_steps, steps[i], "steps at frame {i}");
+        assert!(
+            (stepper.interpolation_alpha() - alpha[i]).abs() < 1e-9,
+            "alpha at frame {i}"
+        );
     }
 }
