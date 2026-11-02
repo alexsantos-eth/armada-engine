@@ -1,4 +1,3 @@
-mod game;
 mod save;
 mod terrain_view;
 
@@ -8,7 +7,10 @@ use armada_core::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_
 use armada_core::scene_order::{DrawKey, LengthAxis, compare_draw_keys, get_draw_depth};
 use armada_core::terrain::{TerrainColumn, TerrainConfig, TerrainGenerator};
 use armada_core::world::ChunkManager;
-use game::preview::{PREVIEW_CENTRE, PREVIEW_TILE_HEIGHT};
+/// Diagnostic area where the initial generator shows all four core materials.
+const PREVIEW_CENTRE: WorldCoord = WorldCoord { x: 16, y: 88 };
+/// Tile height used by the diagnostic projection and its draw-depth keys.
+const PREVIEW_TILE_HEIGHT: f64 = 40.0;
 use macroquad::prelude::*;
 use save::{load_archive_into_manager, load_save, restore_archive, save_archive, sync_manager_to_archive};
 use terrain_view::preview::draw_terrain_preview;
