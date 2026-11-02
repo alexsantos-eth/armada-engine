@@ -57,7 +57,8 @@ async fn main() {
         serde_json::from_str(manifest_json).expect("asset manifest is valid JSON");
     armada_core::assets::validate_manifest(&manifest).expect("asset manifest validates");
     // Macroquad loads the atlas as a single texture; sprites are addressed by frame rect.
-    let atlas = load_texture(&format!("content/{}", manifest.atlas)).await.unwrap();
+    // The manifest path is already relative to the client root (iso-core/).
+    let atlas = load_texture(&manifest.atlas).await.unwrap();
     let catalog: EntityCatalogV2 =
         serde_json::from_str(catalog_json).expect("entity catalog is valid JSON");
     validate_catalog(&catalog).expect("entity catalog validates");
