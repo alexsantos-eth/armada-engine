@@ -23,25 +23,15 @@ svg_dir="../public/assets"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
-if ! command -v qlmanage >/dev/null 2>&1; then
-  echo "error: qlmanage not found (macOS only)" >&2
-  exit 1
+# cairosvg needs libcairo; the poppler runtime ships one.
+cairo_lib=/Users/alex/.cache/codex-runtimes/codex-primary-runtime/dependencies/native/poppler/poppler/lib
+if [ -d "$cairo_lib" ]; then
+  export DYLD_LIBRARY_PATH="$cairo_lib:${DYLD_LIBRARY_PATH:-}"
 fi
 
-echo "Rasterizing SVGs..."
-count=0
-for f in $(find "$svg_dir" -name "*.svg" | sort); do
-  base=$(basename "$f")
-  name=$(echo "$f" | sed 's|../public/assets/||; s|/|_|g; s|.svg$||')
-  qlmanage -t -s 512 -o "$tmp_dir" "$f" >/dev/null 2>&1
-  if [ -f "$tmp_dir/${base}.png" ]; then
-    mv "$tmp_dir/${base}.png" "$tmp_dir/${name}.png"
-    count=$((count + 1))
-  else
-    echo "warning: failed to rasterize $f" >&2
-  fi
-done
-echo "Rasterized $count SVGs."
+echo "Rasterizing SVGs with cairosvg..."
+python3 rasterize.py "$svg_dir" "$tmp_dir"
+echo "Done rasterizing."
 
 echo "Compiling pack_atlas..."
 cargo build --bin pack_atlas --quiet
