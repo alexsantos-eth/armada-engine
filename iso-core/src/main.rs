@@ -1,12 +1,15 @@
 mod save;
+mod services;
 mod terrain_view;
 
 use armada_core::grid::{WorldCoord, to_chunk_coord};
 use armada_core::player::physics::{
-    PlayerGround, ScreenDirections, create_player, find_player_spawn,
+    PlayerGround, create_player, find_player_spawn,
     get_player_render_position, jump_player, no_top_inset, set_player_jump_held,
-    set_player_run, set_player_walk, step_player,
+    set_player_run, step_player,
 };
+use armada_core::services::{InputService, NormalizedInput, UiService, UiEvent, AudioService, SoundEvent};
+use services::{MacroquadInput, MacroquadAudio, MacroquadUi};
 use armada_core::projection::{GridPoint, ProjectionConfig, project_block, project_grid_point};
 use armada_core::scene_order::{DrawKey, LengthAxis, compare_draw_keys, get_draw_depth};
 use armada_core::terrain::{TerrainColumn, TerrainConfig, TerrainGenerator};
@@ -93,6 +96,10 @@ async fn main() {
     let mut show_terrain = true;
     let mut last_save = get_time();
 
+    // Services.
+    let mut audio = MacroquadAudio::default();
+    let mut ui = MacroquadUi::default();
+
     loop {
         if is_key_pressed(KeyCode::T) {
             show_terrain = !show_terrain;
@@ -115,21 +122,17 @@ async fn main() {
                 + (f64::from(PREVIEW_CENTRE.x) + f64::from(PREVIEW_CENTRE.y)) * 20.0,
         };
 
-        // Input: walk direction.
-        let directions = ScreenDirections {
-            up: is_key_down(KeyCode::Up) || is_key_down(KeyCode::W),
-            down: is_key_down(KeyCode::Down) || is_key_down(KeyCode::S),
-            left: is_key_down(KeyCode::Left) || is_key_down(KeyCode::A),
-            right: is_key_down(KeyCode::Right) || is_key_down(KeyCode::D),
-        };
-        set_player_walk(&mut player, directions);
-        set_player_run(&mut player, is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift));
+        // Input via the normalized service.
+        let mut input_service = MacroquadInput;
+        let input: NormalizedInput = input_service.poll();
+        player.walk = input.walk;
+        set_player_run(&mut player, input.run);
 
         // Jump input.
-        if is_key_pressed(KeyCode::Space) {
+        if input.jump_pressed {
             jump_player(&mut player);
         }
-        set_player_jump_held(&mut player, is_key_down(KeyCode::Space));
+        set_player_jump_held(&mut player, input.jump_held);
 
         // Update streaming focus around the player.
         let focus = to_chunk_coord(WorldCoord {
@@ -139,8 +142,16 @@ async fn main() {
         manager.set_focus(vec![focus]);
 
         // Step the player (1 tick per frame).
+        let jumps_before = player.feedback.jumps;
+        let landings_before = player.feedback.landings;
         let mut ground = ChunkGround { manager: &manager };
         step_player(&mut player, &mut ground, 1, no_top_inset);
+        if player.feedback.jumps > jumps_before {
+            audio.play(SoundEvent::Jump);
+        }
+        if player.feedback.landings > landings_before {
+            audio.play(SoundEvent::Land);
+        }
 
         // Tick streaming.
         manager.tick();
@@ -227,6 +238,15 @@ async fn main() {
             );
         }
 
+        // Push HUD update via the UI service.
+        ui.push(UiEvent::HudUpdate {
+            x: player.x,
+            y: player.y,
+            elevation,
+            motion: format!("{:?}", player.motion),
+            chunks: manager.discovered_count(),
+        });
+
         // HUD.
         draw_rectangle(20.0, 20.0, 510.0, 80.0, Color::from_rgba(21, 29, 42, 205));
         draw_text("Armada Engine / Macroquad", 32.0, 58.0, 32.0, WHITE);
@@ -244,20 +264,22 @@ async fn main() {
             48.0,
             Color::from_rgba(21, 29, 42, 205),
         );
-        draw_text(
-            format!(
-                "Mundo: ({:.2}, {:.2}, {}) | {:?} | chunks: {}",
-                player.x,
-                player.y,
-                elevation,
-                player.motion,
-                manager.discovered_count(),
-            ),
-            32.0,
-            height - 42.0,
-            22.0,
-            LIGHTGRAY,
-        );
+        if let Some((x, y, elev, motion, chunks)) = &ui.hud {
+            let text = format!("Mundo: ({:.2}, {:.2}, {}) | {} | chunks: {}", x, y, elev, motion, chunks);
+            draw_text(
+                &text,
+                32.0,
+                height - 42.0,
+                22.0,
+                LIGHTGRAY,
+            );
+        }
+
+        // Draw any UI messages.
+        for (i, msg) in ui.messages.iter().enumerate() {
+            draw_text(msg, 32.0, 120.0 + i as f32 * 20.0, 18.0, YELLOW);
+        }
+        ui.messages.clear();
         next_frame().await;
     }
 }
