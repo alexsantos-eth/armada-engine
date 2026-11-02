@@ -8,6 +8,16 @@ El dominio conserva la organización por carpetas de responsabilidad del motor T
 
 Las pruebas unitarias también están colocalizadas: `grid/coords.rs` se prueba en `grid/coords.test.rs`, y el mismo patrón se aplica a los demás módulos y a `main.rs`. Rust las incluye con `#[cfg(test)]` y `#[path = "..."]`; `crates/armada-core/tests/` conserva los contratos que atraviesan módulos o comparan el fixture de migración.
 
+## Generar el atlas de assets
+
+Los SVG de `../public/assets/` se rasterizan y empaquetan en `content/atlas.png` con su manifiesto `content/assets.manifest.json`:
+
+```sh
+./build-atlas.sh
+```
+
+El script usa `qlmanage` (macOS) para rasterizar cada SVG a 128×128 y luego compila/ejecuta `pack_atlas` para empaquetarlos. El `build.rs` verifica que ambos archivos existen al compilar.
+
 ## Ejecutar
 
 Desde `iso-core/`, para abrir la demo **nativa**:
