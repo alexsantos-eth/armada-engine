@@ -1,3 +1,6 @@
-//! Game domain. The first portable contracts will move here in phase 1.
+//! Game domain shared by native and WebAssembly clients.
 
 #![forbid(unsafe_code)]
+
+pub mod grid;
+pub mod projection;

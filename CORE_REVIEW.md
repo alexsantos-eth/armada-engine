@@ -213,3 +213,9 @@ Pendiente para la integración Rust: completar reglas de colocación y estado de
 ## Port Rust: fase 0 · 2026-11-01
 
 Revisados el workspace `iso-core`, su crate de dominio y la demo Macroquad. El juego PixiJS no se modificó. La demo usa el bucle, entrada y dibujo de Macroquad; no duplica todavía lógica de mundo o proyección. Compiló nativamente y a `wasm32-unknown-unknown`, se abrió en navegador y respondió al teclado. El ejecutable nativo arrancó al ejecutarlo fuera del sandbox. La captura y cinco perfiles en reposo del build PixiJS quedan en `iso-core/reference/`; la vista medida tiene un solo chunk, así que no debe usarse como umbral de streaming. Pendiente de fase 1: portar y comparar contratos de `grid` y proyección. La página web carga por ahora el puente JavaScript oficial desde un servidor externo; empaquetarlo localmente antes de distribución.
+
+## Port Rust: primer corte de fase 1 · 2026-11-02
+
+Revisados `armada-core/grid`, `armada-core/projection`, sus tests y la demo Macroquad. Sin hallazgos Bloqueante, Alta ni Media en este corte: la división euclidiana conserva los chunks negativos; las claves de celda y chunk son tipos distintos y quedan dentro del rango seguro de JavaScript; la proyección usa `f64` y coincide con el fixture TypeScript. La demo usa la proyección del crate para dibujo y entrada, sin llevar Macroquad al dominio. Los tipos enteros y los rangos de clave describen el mundo que el motor admite; los rangos que generan colecciones grandes deben recibir límites de presupuesto cuando se conecte el streaming. El juego PixiJS permanece sin cambios.
+
+Corrección de entrada: `Down`/`S` sumaba `y` mientras restaba `x`, desplazando el marcador a la izquierda. Las cuatro direcciones de teclado convierten ahora un delta de pantalla mediante `unproject_screen_delta()`, con test de regresión para cada dirección. Comprobadas `Down` y `S` en el navegador WASM.

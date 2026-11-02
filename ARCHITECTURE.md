@@ -2,6 +2,8 @@
 
 La preparación de la [nueva implementación Rust](iso-core/README.md) define un [catálogo de entidades y un guardado nuevos](V2_DATA_CONTRACTS.md). El juego PixiJS descrito aquí continúa usando `entities.ts` y `WorldSnapshot` versión 7. El catálogo nuevo mantiene identidad, assets y huella sin trasladar las probabilidades de colocación; el nuevo guardado persiste chunks descubiertos completos sin necesitar regeneración desde una semilla.
 
+El workspace `iso-core/` separa `armada-core` (dominio Rust sin Macroquad) del cliente `iso-core` (bucle, entrada y dibujo Macroquad). Su primer corte implementa coordenadas y proyección; las pruebas Rust leen el mismo fixture de contratos que las pruebas TypeScript.
+
 ## Propósito
 
 Armada Engine dibuja un terreno discreto en una vista isométrica. El terreno se modela como columnas de bloques; cada columna tiene una coordenada de cuadrícula `(x, y)` y una elevación entera. La escena convierte esas columnas en sprites PixiJS ordenados por profundidad.
