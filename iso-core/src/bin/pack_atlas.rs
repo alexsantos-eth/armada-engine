@@ -94,25 +94,66 @@ fn main() {
         let x = col * cell_size;
         let y = row * cell_size;
 
-        // Resize image to cell_size if needed.
-        let resized = if img.width() != cell_size || img.height() != cell_size {
-            image::imageops::resize(img, cell_size, cell_size, image::imageops::FilterType::Lanczos3)
+        // Trim transparent padding: find the bounding box of non-transparent pixels.
+        let mut min_x = img.width();
+        let mut min_y = img.height();
+        let mut max_x = 0u32;
+        let mut max_y = 0u32;
+        for py in 0..img.height() {
+            for px in 0..img.width() {
+                if img.get_pixel(px, py)[3] > 10 {
+                    min_x = min_x.min(px);
+                    min_y = min_y.min(py);
+                    max_x = max_x.max(px);
+                    max_y = max_y.max(py);
+                }
+            }
+        }
+
+        let trimmed = if min_x < max_x && min_y < max_y {
+            let w = max_x - min_x + 1;
+            let h = max_y - min_y + 1;
+            image::imageops::crop_imm(img, min_x, min_y, w, h).to_image()
         } else {
             img.clone()
         };
 
-        // Copy into atlas.
-        for py in 0..cell_size {
-            for px in 0..cell_size {
+        // Scale to fit the cell while preserving aspect ratio.
+        let scale = (cell_size as f64 / trimmed.width() as f64)
+            .min(cell_size as f64 / trimmed.height() as f64);
+        let new_w = (trimmed.width() as f64 * scale).round().max(1.0) as u32;
+        let new_h = (trimmed.height() as f64 * scale).round().max(1.0) as u32;
+        let resized = image::imageops::resize(
+            &trimmed,
+            new_w,
+            new_h,
+            image::imageops::FilterType::Lanczos3,
+        );
+
+        // Center in the cell with transparent padding.
+        let off_x = (cell_size - new_w) / 2;
+        let off_y = (cell_size - new_h) / 2;
+        for py in 0..new_h {
+            for px in 0..new_w {
                 let p = resized.get_pixel(px, py);
-                atlas.put_pixel(x + px, y + py, *p);
+                atlas.put_pixel(x + off_x + px, y + off_y + py, *p);
             }
         }
 
         manifest_entries.push(AssetEntry {
             id: name.clone(),
             kind: "entity".to_owned(),
-            source: format!("/assets/{}.svg", name.replace('_', "/")),
+            source: {
+                // Only the first underscore separates directory from file name.
+                let mut parts = name.splitn(2, '_');
+                let dir = parts.next().unwrap_or(name.as_str());
+                let file = parts.next().unwrap_or("");
+                if file.is_empty() {
+                    format!("/assets/{}.svg", dir)
+                } else {
+                    format!("/assets/{}/{}.svg", dir, file)
+                }
+            },
             data_tiles: "1x1x1".to_owned(),
             frame: SpriteFrame {
                 x,

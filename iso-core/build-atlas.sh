@@ -33,7 +33,7 @@ count=0
 for f in $(find "$svg_dir" -name "*.svg" | sort); do
   base=$(basename "$f")
   name=$(echo "$f" | sed 's|../public/assets/||; s|/|_|g; s|.svg$||')
-  qlmanage -t -s 128 -o "$tmp_dir" "$f" >/dev/null 2>&1
+  qlmanage -t -s 512 -o "$tmp_dir" "$f" >/dev/null 2>&1
   if [ -f "$tmp_dir/${base}.png" ]; then
     mv "$tmp_dir/${base}.png" "$tmp_dir/${name}.png"
     count=$((count + 1))
