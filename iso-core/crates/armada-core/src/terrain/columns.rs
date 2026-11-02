@@ -3,7 +3,8 @@
 use crate::grid::WorldCoord;
 
 /// One block material. The generator does not place paths; a later world system may.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum TerrainMaterial {
     Water,
     Sand,
