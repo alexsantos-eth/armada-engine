@@ -117,9 +117,9 @@ async fn main() {
             tile_height: PREVIEW_TILE_HEIGHT,
             elevation_step: None,
             origin_x: f64::from(width / 2.0)
-                - (f64::from(PREVIEW_CENTRE.x) - f64::from(PREVIEW_CENTRE.y)) * 40.0,
+                - (player.x - player.y) * 40.0,
             origin_y: f64::from(height / 2.0 + 50.0)
-                + (f64::from(PREVIEW_CENTRE.x) + f64::from(PREVIEW_CENTRE.y)) * 20.0,
+                + (player.x + player.y) * 20.0,
         };
 
         // Input via the normalized service.
@@ -203,7 +203,10 @@ async fn main() {
                     })
             });
         } else {
-            draw_grid(projection, PREVIEW_CENTRE);
+            draw_grid(projection, WorldCoord {
+                x: player.x.floor() as i32,
+                y: player.y.floor() as i32,
+            });
         }
 
         // Draw player marker.
