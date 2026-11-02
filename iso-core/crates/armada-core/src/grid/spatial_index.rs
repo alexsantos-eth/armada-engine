@@ -153,9 +153,9 @@ impl<T: Eq + Hash + Clone> SpatialIndex<T> {
         if rect.max_x < rect.min_x || rect.max_y < rect.min_y {
             return false;
         }
-        let width = i64::from(rect.max_x) - i64::from(rect.min_x) + 1;
-        let height = i64::from(rect.max_y) - i64::from(rect.min_y) + 1;
-        if width * height <= self.by_cell.len() as i64 {
+        let width = i128::from(rect.max_x) - i128::from(rect.min_x) + 1;
+        let height = i128::from(rect.max_y) - i128::from(rect.min_y) + 1;
+        if width * height <= self.by_cell.len() as i128 {
             for x in rect.min_x..=rect.max_x {
                 for y in rect.min_y..=rect.max_y {
                     if self.at(WorldCoord { x, y }).iter().any(&mut filter) {

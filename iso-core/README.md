@@ -10,19 +10,30 @@ Las pruebas unitarias también están colocalizadas: `grid/coords.rs` se prueba 
 
 ## Ejecutar
 
-Desde `iso-core/`:
+Desde `iso-core/`, para abrir la demo **nativa**:
 
 ```sh
-cargo test --workspace --locked
-cargo test -p armada-core --locked
-cargo run --locked
+./run-native.sh
+```
+
+El script ejecuta `cargo run --locked` por defecto. También acepta cualquier subcomando de Cargo:
+
+```sh
+./run-native.sh run --release --locked
+./run-native.sh test --workspace --locked
+./run-native.sh clippy --workspace --all-targets --locked -- -D warnings
+```
+
+Para compilar y servir el **WASM**:
+
+```sh
 cargo build --release --target wasm32-unknown-unknown --locked
 python3 -m http.server 8765 --bind 127.0.0.1
 ```
 
 Abrir `http://127.0.0.1:8765/web/`. El servidor debe iniciarse en `iso-core/` para que la página encuentre `target/wasm32-unknown-unknown/release/iso-core.wasm`. No abrir el HTML con `file://`. La página carga el puente JavaScript oficial de Macroquad desde `not-fl3.github.io`; antes de publicar, incluir una copia versionada junto a los assets del juego y fijar sus cabeceras de caché. El artefacto WASM de esta demo ocupa aproximadamente 614 KiB antes de compresión.
 
-En esta máquina, el SDK de Command Line Tools macOS 27 falla al enlazar con el clang instalado. Los comandos Cargo funcionan con `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk` delante. Es un ajuste del entorno local, no una dependencia del proyecto.
+En esta máquina, el SDK de Command Line Tools macOS 27 falla al enlazar con el clang instalado. `run-native.sh` selecciona el SDK 26.5 instalado si se ejecuta en macOS y `SDKROOT` no está definido; en otros entornos deja la selección de SDK intacta. También se puede ejecutar Cargo directamente con `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk cargo run --locked`. Es un ajuste del entorno local, no una dependencia del proyecto.
 
 ## Referencia para el port
 
@@ -37,7 +48,7 @@ El contrato ejecutable del juego actual está en `../src/isometric/core/engine/f
 
 La generación de terreno, distribución de entidades y resultados de una semilla pueden cambiar. Los nuevos guardados almacenarán el contenido descubierto, sin depender de regenerarlo.
 
-La fase 1 ya incluye `grid`, `paths`, `projection` y geometría básica de `camera` en sus carpetas de `crates/armada-core/src/`. Hay coordenadas de mundo/chunk/local, claves numéricas, índice espacial de huellas, búsqueda de rutas con desempate estable, proyección de bloques/puntos, desplazamiento y zoom de cámara. Los tests Rust leen directamente el fixture JSON de TypeScript para coordenadas, proyección y rutas, y añaden bordes negativos, extremos de clave, direcciones, puntos fraccionarios, ocupación y zoom anclado. `WorldCoord` usa `i32`; las claves se validan dentro de ±1 048 575 y se empaquetan en `u64` sin perder precisión al compararlas con los enteros seguros de JavaScript. La proyección usa `f64` para conservar el redondeo observable del contrato. La demo usa las funciones del crate para dibujar una rejilla y convertir la posición del ratón de pantalla a mundo.
+La fase 1 ya incluye `grid`, `paths`, `projection`, `camera`, `time` y el acumulador de `simulation` en carpetas de `crates/armada-core/src/`. Hay coordenadas de mundo/chunk/local, mapa de celdas e índice espacial, búsqueda de rutas con desempate estable, proyección de bloques/puntos, geometría de cámara y selección de chunks visibles, reloj lógico y paso fijo de 50 ms. Los tests Rust leen el fixture JSON de TypeScript para coordenadas, proyección, rutas y paso fijo, y añaden bordes negativos, extremos de clave, direcciones, puntos fraccionarios, ocupación, zoom anclado y visibilidad. `WorldCoord` usa `i32`; las claves se validan dentro de ±1 048 575 y se empaquetan en `u64` sin perder precisión al compararlas con los enteros seguros de JavaScript. La proyección usa `f64` para conservar el redondeo observable del contrato. La demo usa las funciones del crate para dibujar una rejilla y convertir la posición del ratón de pantalla a mundo.
 
 ## Referencia visual y de rendimiento
 
@@ -48,4 +59,4 @@ La fase 1 ya incluye `grid`, `paths`, `projection` y geometría básica de `came
 - Workspace, versiones y target WASM fijados; Cargo comprueba ambos crates.
 - Demo compilada nativamente y para WASM. La ventana nativa arrancó y el navegador mostró la demo WASM; teclado y ratón están conectados al marcador.
 - Página de carga, instrucciones y referencia PixiJS registradas.
-- Fase 1 en curso: coordenadas, proyección, índice espacial, rutas y geometría básica de cámara portados. Siguen `CellMap`, selección de chunks visibles y las funciones puras de tiempo y ambiente.
+- Fase 1 en curso: coordenadas, mapa e índice espacial, rutas, proyección, geometría y visibilidad de cámara, reloj y paso fijo portados. Siguen las funciones puras de ambiente y la integración del mundo, terreno y sistemas de simulación.

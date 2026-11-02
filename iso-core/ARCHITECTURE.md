@@ -4,7 +4,7 @@ Este documento define los límites, contratos y prácticas de la implementación
 
 ## Estado y estructura
 
-**Implementado:** el workspace `iso-core`, el crate `armada-core` sin dependencias gráficas, coordenadas y claves de `grid`, índice espacial, `paths`, `projection`, geometría básica de `camera`, sus pruebas y una demo Macroquad nativa y WASM. **Previsto:** los demás módulos descritos abajo, incluido el mapa de celdas por chunk y el cálculo de chunks visibles. Una sección prevista es un contrato de diseño, no una afirmación de que su código ya existe.
+**Implementado:** el workspace `iso-core`, el crate `armada-core` sin dependencias gráficas, `grid` con mapa de celdas e índice espacial, búsqueda `paths`, `projection`, geometría y visibilidad básica de `camera`, reloj `time`, acumulador de paso fijo `simulation`, sus pruebas y una demo Macroquad nativa y WASM. **Previsto:** los demás módulos descritos abajo y la composición de sistemas de simulación. Una sección prevista es un contrato de diseño, no una afirmación de que su código ya existe.
 
 ```text
 iso-core/
@@ -16,6 +16,8 @@ iso-core/
       mod.rs
       coords.rs
       coords.test.rs
+      cell_map.rs
+      cell_map.test.rs
       spatial_index.rs
       spatial_index.test.rs
     src/paths/               # búsqueda de rutas; implementado
@@ -30,6 +32,14 @@ iso-core/
       mod.rs
       geometry.rs
       geometry.test.rs
+      visibility.rs
+      visibility.test.rs
+    src/time/                # reloj lógico; implementado
+      clock.rs
+      clock.test.rs
+    src/simulation/          # paso fijo; implementado parcialmente
+      stepper.rs
+      stepper.test.rs
     src/{terrain,entities,world,...}/ # previstos; se crean al implementarlos
     tests/contracts.rs        # contratos entre módulos y fixture de migración
   src/main.rs                 # entrada nativa/WASM, demo actual
@@ -65,7 +75,7 @@ La referencia exacta es [Sistema de coordenadas](../ARCHITECTURE.md#sistema-de-c
 
 La pantalla tiene origen arriba a la izquierda, `screen_x` a la derecha y `screen_y` hacia abajo. El origen de proyección sitúa la columna `(0, 0)` dentro del canvas y no cambia los ejes del mundo. Los chunks repiten esos ejes: `(0, 0)` cubre `0..31` y una coordenada `-1` cae en el chunk `-1` con local `31`. Los assets SVG existentes usan otro convenio de ejes; su orientación y `data-tiles` se convierten al preparar atlas, sin cambiar el convenio del dominio.
 
-**Ya cubierto en Rust:** tipos de mundo/chunk/local, división euclídea con negativos, proyección de puntos y elevación, inversa de desplazamientos, orden de vecinos de rutas y desplazamiento/zoom de cámara. **Pendiente de aplicar y probar:** terreno y nivel del mar, huellas de entidades, profundidad de render, mapas de sombras y conversión de orientación de assets. Cada módulo nuevo debe probar sus direcciones contra este contrato antes de integrarse en la escena.
+**Ya cubierto en Rust:** tipos de mundo/chunk/local, división euclídea con negativos, proyección de puntos y elevación, inversa de desplazamientos, orden de vecinos de rutas, desplazamiento/zoom de cámara y selección de chunks visibles. **Pendiente de aplicar y probar:** terreno y nivel del mar, huellas de entidades, profundidad de render, mapas de sombras y conversión de orientación de assets. Cada módulo nuevo debe probar sus direcciones contra este contrato antes de integrarse en la escena.
 
 ## Flujo de un fotograma
 
@@ -81,7 +91,7 @@ La generación de un chunk se inicia desde el flujo de mundo, no desde una vista
 
 ### `grid` e índice espacial
 
-**Responsabilidad.** Tipos distintos para coordenada de mundo, chunk y celda local; conversión entre ellas; rectángulos y claves; `CellMap` e índice de ocupación para entidades de varias celdas. `grid/coords.rs` implementa conversiones y claves; `grid/spatial_index.rs` implementa `SpatialIndex`. `CellMap` por chunk queda pendiente.
+**Responsabilidad.** Tipos distintos para coordenada de mundo, chunk y celda local; conversión entre ellas; rectángulos y claves; `CellMap` e índice de ocupación para entidades de varias celdas. `grid/coords.rs` implementa conversiones y claves; `grid/cell_map.rs` almacena valores por chunk en orden de inserción; `grid/spatial_index.rs` implementa `SpatialIndex`.
 
 **Contrato.** La conversión conserva el recorrido por coordenadas negativas y límites de chunk. Las claves tienen rango validado antes de empaquetarse. Una consulta espacial devuelve resultados en orden estable y distingue la huella de una entidad de su punto de anclaje. El índice es derivado y se reconstruye al cargar.
 
@@ -143,9 +153,9 @@ La generación de un chunk se inicia desde el flujo de mundo, no desde una vista
 
 **Pruebas.** Ida y vuelta de mundos editados, partes ausentes u opcionales, versión desconocida, archivo malformado, recuperación de un chunk ya descubierto y ausencia de recursos de presentación en el archivo.
 
-### `time`, `events` y `simulation` (previstos)
+### `time`, `events` y `simulation` (reloj y paso fijo implementados)
 
-**Responsabilidad.** `time` guarda el tick lógico y deriva hora/día; `events` distribuye eventos tipados síncronos; `simulation` registra y ejecuta sistemas en un orden declarado.
+**Responsabilidad.** `time` guarda el tick lógico y deriva hora/día; su reloj ya está implementado. `events` distribuirá eventos tipados síncronos; `simulation` ya tiene el acumulador de paso fijo y registrará y ejecutará sistemas en un orden declarado.
 
 **Contrato.** Un tick dura 50 ms; el ciclo día/noche usa 24 000 ticks mientras no se cambie deliberadamente el diseño. Un fotograma largo tiene límite de acumulación y la simulación produce un `alpha` de interpolación entre `0` y `1`. Los listeners se ejecutan en orden de registro y no se guardan. Pausa y delta inválido no avanzan el mundo. Los sistemas no llaman a otros sistemas para comunicar acontecimientos: emiten eventos de dominio.
 
@@ -175,7 +185,7 @@ La generación de un chunk se inicia desde el flujo de mundo, no desde una vista
 
 ### `camera` y `streaming` (geometría básica implementada)
 
-`camera` guarda centro, zoom y seguimiento como estado de vista. La geometría básica ya vive en `armada-core::camera`: desplazamiento, conversión pantalla/suelo, zoom alrededor de un ancla, seguimiento y transformación. El cálculo de chunks visibles y `streaming` quedan pendientes; programarán carga/descarga con presupuesto por fotograma y separarán visibilidad de persistencia. Probar matemáticamente cámara y selección de chunks; probar el presupuesto con una escena falsa.
+`camera` guarda centro, zoom y seguimiento como estado de vista. La geometría y la selección de chunks visibles ya viven en `armada-core::camera`: desplazamiento, conversión pantalla/suelo, zoom alrededor de un ancla, seguimiento, transformación y visibilidad con margen y elevaciones. `streaming` queda pendiente; programará carga/descarga con presupuesto por fotograma y separará visibilidad de persistencia. Probar el presupuesto con una escena falsa.
 
 ### `scene` y vistas (previstos)
 
