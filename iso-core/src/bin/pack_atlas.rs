@@ -16,7 +16,7 @@
 
 use armada_core::assets::{
     AssetEntry, AssetKind, AssetManifest, MANIFEST_SCHEMA_VERSION, SpriteAnchor, SpriteFrame,
-    asset_ink,
+    asset_ink, data_tiles,
 };
 use image::RgbaImage;
 use std::fs;
@@ -140,7 +140,7 @@ fn main() {
             id: name.clone(),
             kind: AssetKind::Entity,
             source,
-            data_tiles: attribute(&svg, "data-tiles").map(str::to_owned),
+            data_tiles: data_tiles(&svg).map(str::to_owned),
             // The frame is the artwork, not the cell it was centred in: the padding is what the
             // trim removed, and drawing it back in would scale every sprite down to fit it.
             frame: Some(SpriteFrame {
@@ -171,10 +171,4 @@ fn main() {
     let json = serde_json::to_string_pretty(&manifest).expect("serialize manifest");
     fs::write(output_manifest, json).expect("write manifest");
     println!("Manifest saved: {} ({} entries)", output_manifest, manifest.entries.len());
-}
-
-/// The value of `name="..."`, for the one attribute this tool copies through.
-fn attribute<'a>(svg: &'a str, name: &str) -> Option<&'a str> {
-    let at = svg.find(&format!("{name}=\""))?;
-    svg[at + name.len() + 2..].split('"').next()
 }

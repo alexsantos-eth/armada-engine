@@ -87,14 +87,40 @@ fn sheets_and_transformed_drawings_are_not_measured() {
 
 /// A footprint of more than one tile is exactly what `data-tiles` declares, and the box says
 /// which way it runs: the drawing extends past the anchor tile on one side only.
+/// The generator draws a footprint running towards the viewer; the engine's cells run away from
+/// it. So the drawing is moved a whole cell along the engine axis for each cell past the first,
+/// onto the cells it is said to cover. Up the screen alone is not enough — it would then lie
+/// over the next column of cells, which sort after it and paint over its near end.
+#[test]
+fn a_footprint_is_moved_onto_the_cells_it_covers() {
+    let one = r##"<svg viewBox="0 -341 1024 853" data-tiles="1x1">
+      <path fill="#8a8" d="M256.0,128.0 768.0,128.0 768.0,384.0 256.0,384.0 Z" /></svg>"##;
+    let tiles = |t: &str| {
+        asset_ink(&one.replace(r#"data-tiles="1x1""#, &format!(r#"data-tiles="{t}""#)))
+            .expect("measured")
+    };
+    let (one_cell, along_x, along_y) = (tiles("1x1"), tiles("3x1x5"), tiles("1x3x5"));
+
+    // Two cells further on, and a cell is half a tile across and a quarter of one up.
+    assert_eq!(along_x.y, one_cell.y - 0.5, "away from the viewer");
+    assert_eq!(along_y.y, one_cell.y - 0.5, "whichever axis it runs along");
+    // A run along the drawing's x is a footprint along the engine's y, which goes the other way
+    // across the screen: the two must not land on the same cells.
+    assert_eq!(along_x.x, one_cell.x - 1.0);
+    assert_eq!(along_y.x, one_cell.x + 1.0);
+    assert_eq!(along_x.height, one_cell.height, "only moved, never resized");
+    assert_eq!(along_x.width, one_cell.width);
+}
+
 #[test]
 fn a_multi_tile_footprint_is_measured_from_its_anchor() {
     let svg = r##"<svg width="1536" height="853" viewBox="0 -341 1536 853" data-tiles="2x1">
       <path fill="transparent" d="M512.0,0.0 1024.0,256.0" opacity=".28" />
       <path fill="#8a8" d="M0.0,256.0 1536.0,256.0 1536.0,512.0 0.0,512.0 Z" /></svg>"##;
     let ink = asset_ink(svg).expect("measured");
-    assert_eq!(ink.x, -0.5);
     assert_eq!(ink.width, 1.5, "a tile and a half across");
+    assert_eq!(ink.y, 0.0 - 0.25, "a two-cell run moves up one row");
+    assert_eq!(ink.x, -0.5 - 0.5, "and half a tile across, onto its own footprint");
 }
 
 #[test]

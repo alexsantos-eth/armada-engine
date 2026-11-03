@@ -12,7 +12,7 @@
 //! Writing the manifest is safe to repeat: measuring the opaque pixels of a frame that is
 //! already their bounding box gives the same frame back.
 
-use armada_core::assets::{AssetManifest, InkBox, SpriteFrame, asset_ink};
+use armada_core::assets::{AssetManifest, InkBox, SpriteFrame, asset_ink, data_tiles};
 use image::RgbaImage;
 
 /// Bounding box of everything that is not fully transparent inside `frame`.
@@ -60,7 +60,10 @@ fn main() {
             entry.frame = Some(frame);
         }
         let svg = std::fs::read_to_string(format!("{svg_root}{}", entry.source));
-        match svg.ok().as_deref().and_then(asset_ink) {
+        let svg = svg.ok();
+        // The packer used to hard-code this; the asset says what it really is.
+        entry.data_tiles = svg.as_deref().and_then(data_tiles).map(str::to_owned);
+        match svg.as_deref().and_then(asset_ink) {
             Some(ink) => {
                 entry.ink = Some(round(ink));
                 measured += 1;

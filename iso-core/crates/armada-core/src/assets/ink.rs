@@ -13,6 +13,20 @@
 //! system (`artifacts/iso_lib.py`): the anchor cell's ground centre is at `(512, 256)`, one
 //! tile is 1024 units across and 512 down, and one elevation step is 341 units. Dividing by the
 //! tile width turns that into a box the client can scale by its own tile width.
+//!
+//! **One correction is applied on the way out.** The generator draws for a camera on the
+//! opposite corner to the engine's: `P(x, y, z)` there puts larger `x + y` *lower* on the
+//! screen, while the projection puts it higher. Left and right agree, so a single tile is
+//! unaffected, but a footprint of several tiles runs towards the viewer in the drawing and away
+//! from the viewer in the world. A three-tile pier anchored at a cell would be drawn across the
+//! two cells in front of it, where the ground sorts nearer than the pier and paints over it.
+//! Moving the drawing one whole cell along the engine axis for each tile past the first — up the
+//! screen, and sideways towards the axis the drawing does not run along — puts it exactly on the
+//! cells the blueprint says it covers, which is where its collision is and where its depth key
+//! sorts it. Lifting it only up the screen is not enough: the drawing then lies over the next
+//! column of cells, and those sort after it on the `x` tie-break and paint over its near end. So the box this returns is in
+//! the *engine's* axes: comparing it against the SVG, a multi-tile asset sits a row or more
+//! lower there, and half a tile to one side.
 
 /// Width of one tile in the SVG's own units.
 pub const SVG_TILE_WIDTH: f64 = 1024.0;
@@ -22,6 +36,13 @@ pub const SVG_ANCHOR: (f64, f64) = (512.0, 256.0);
 
 /// Height of one block's body in the SVG's own units: how far one elevation step rises.
 pub const SVG_BLOCK_HEIGHT: f64 = 341.0;
+
+/// How far one cell along either axis moves *down* the screen, in tile widths: half a tile
+/// height, and a tile height is half a tile width.
+const ROW: f64 = 0.25;
+
+/// How far one cell along either axis moves *across* the screen, in tile widths.
+const HALF_TILE: f64 = 0.5;
 
 /// How far one elevation step rises on screen, for artwork drawn to this template.
 ///
@@ -111,12 +132,44 @@ pub fn asset_ink(svg: &str) -> Option<InkBox> {
     if min_x > max_x || min_y > max_y {
         return None;
     }
+    // Move the drawing onto the cells the entity is said to occupy, which is one whole step
+    // along the engine axis for each cell past the first: up the screen either way, and sideways
+    // towards the axis the drawing does *not* run along.
+    let (run, along_drawing_x) = footprint(svg);
+    let steps = f64::from(run - 1);
+    let sideways = if along_drawing_x { -steps } else { steps } * HALF_TILE;
     Some(InkBox {
-        x: (min_x - SVG_ANCHOR.0) / SVG_TILE_WIDTH,
-        y: (min_y - SVG_ANCHOR.1) / SVG_TILE_WIDTH,
+        x: (min_x - SVG_ANCHOR.0) / SVG_TILE_WIDTH + sideways,
+        y: (min_y - SVG_ANCHOR.1) / SVG_TILE_WIDTH - steps * ROW,
         width: (max_x - min_x) / SVG_TILE_WIDTH,
         height: (max_y - min_y) / SVG_TILE_WIDTH,
     })
+}
+
+/// The asset's declared footprint and height, `"3x1x5"`, if it has one.
+pub fn data_tiles(svg: &str) -> Option<&str> {
+    attribute(svg, "data-tiles")
+}
+
+/// How far the footprint runs from its anchor and along which of the *drawing's* axes, out of
+/// `data-tiles` (`"3x1x5"` is three cells along the drawing's x, one across, five blocks tall).
+/// One cell along x for anything that declares nothing, which needs no correction either way.
+///
+/// The drawing's axes are the engine's negated, so a run along the drawing's x is a footprint
+/// along the engine's y and the other way round. The catalog already pairs them that way: the
+/// `1x3` artwork belongs to the blueprint whose `axis` is `x`.
+fn footprint(svg: &str) -> (i32, bool) {
+    let Some(tiles) = attribute(svg, "data-tiles") else {
+        return (1, true);
+    };
+    let mut counts = tiles.split('x').map(str::parse::<i32>);
+    let along = counts.next().and_then(Result::ok).unwrap_or(1).max(1);
+    let across = counts.next().and_then(Result::ok).unwrap_or(1).max(1);
+    if along >= across {
+        (along, true)
+    } else {
+        (across, false)
+    }
 }
 
 /// Containers whose contents describe nothing that is drawn: filters and gradients, and the

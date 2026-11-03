@@ -12,7 +12,7 @@
       "id": "boat_block",
       "kind": "entity",
       "source": "/assets/boat/block.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "2x1",
       "frame": {
         "x": 0,
         "y": 26,
@@ -25,8 +25,8 @@
         "y": 1.0
       },
       "ink": {
-        "x": -0.335645,
-        "y": -0.27793,
+        "x": -0.835645,
+        "y": -0.52793,
         "width": 1.080859,
         "height": 0.64502
       },
@@ -37,7 +37,7 @@
       "id": "boat_block_2",
       "kind": "entity",
       "source": "/assets/boat/block_2.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "2x1",
       "frame": {
         "x": 128,
         "y": 22,
@@ -50,8 +50,8 @@
         "y": 1.0
       },
       "ink": {
-        "x": -0.191113,
-        "y": -0.26123,
+        "x": -0.691113,
+        "y": -0.51123,
         "width": 0.954297,
         "height": 0.624902
       },
@@ -62,7 +62,7 @@
       "id": "boat_block_2_reflection",
       "kind": "entity",
       "source": "/assets/boat/block_2_reflection.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "2x1",
       "frame": {
         "x": 256,
         "y": 22,
@@ -75,8 +75,8 @@
         "y": 1.0
       },
       "ink": {
-        "x": -0.191113,
-        "y": -0.077637,
+        "x": -0.691113,
+        "y": -0.327637,
         "width": 0.954297,
         "height": 0.624902
       },
@@ -87,7 +87,7 @@
       "id": "building_block_apartments_1x2",
       "kind": "entity",
       "source": "/assets/building/block_apartments_1x2.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x2x3",
       "frame": {
         "x": 389,
         "y": 0,
@@ -100,8 +100,8 @@
         "y": 1.0
       },
       "ink": {
-        "x": -0.989258,
-        "y": -1.133496,
+        "x": -0.489258,
+        "y": -1.383496,
         "width": 1.478516,
         "height": 1.622363
       },
@@ -112,7 +112,7 @@
       "id": "building_block_apartments_2x1",
       "kind": "entity",
       "source": "/assets/building/block_apartments_2x1.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "2x1x3",
       "frame": {
         "x": 517,
         "y": 0,
@@ -125,8 +125,8 @@
         "y": 1.0
       },
       "ink": {
-        "x": -0.489258,
-        "y": -1.133496,
+        "x": -0.989258,
+        "y": -1.383496,
         "width": 1.478516,
         "height": 1.622363
       },
@@ -137,7 +137,7 @@
       "id": "building_block_hospital",
       "kind": "entity",
       "source": "/assets/building/block_hospital.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x1x2",
       "frame": {
         "x": 649,
         "y": 0,
@@ -162,7 +162,7 @@
       "id": "building_block_hotel_1x2",
       "kind": "entity",
       "source": "/assets/building/block_hotel_1x2.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x2x4",
       "frame": {
         "x": 785,
         "y": 0,
@@ -175,8 +175,8 @@
         "y": 1.0
       },
       "ink": {
-        "x": -0.989258,
-        "y": -1.55127,
+        "x": -0.489258,
+        "y": -1.80127,
         "width": 1.478516,
         "height": 2.040137
       },
@@ -187,7 +187,7 @@
       "id": "building_block_hotel_2x1",
       "kind": "entity",
       "source": "/assets/building/block_hotel_2x1.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "2x1x4",
       "frame": {
         "x": 913,
         "y": 0,
@@ -200,8 +200,8 @@
         "y": 1.0
       },
       "ink": {
-        "x": -0.489258,
-        "y": -1.55127,
+        "x": -0.989258,
+        "y": -1.80127,
         "width": 1.478516,
         "height": 2.040137
       },
@@ -212,7 +212,7 @@
       "id": "building_block_market",
       "kind": "entity",
       "source": "/assets/building/block_market.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 0,
         "y": 142,
@@ -237,7 +237,7 @@
       "id": "building_block_office_1x3",
       "kind": "entity",
       "source": "/assets/building/block_office_1x3.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x3x5",
       "frame": {
         "x": 142,
         "y": 128,
@@ -250,8 +250,8 @@
         "y": 1.0
       },
       "ink": {
-        "x": -1.489258,
-        "y": -1.802832,
+        "x": -0.489258,
+        "y": -2.302832,
         "width": 1.978516,
         "height": 2.541699
       },
@@ -262,7 +262,7 @@
       "id": "building_block_office_3x1",
       "kind": "entity",
       "source": "/assets/building/block_office_3x1.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "3x1x5",
       "frame": {
         "x": 270,
         "y": 128,
@@ -275,8 +275,8 @@
         "y": 1.0
       },
       "ink": {
-        "x": -0.489258,
-        "y": -1.802832,
+        "x": -1.489258,
+        "y": -2.302832,
         "width": 1.978516,
         "height": 2.541699
       },
@@ -287,7 +287,7 @@
       "id": "building_block_restaurant",
       "kind": "entity",
       "source": "/assets/building/block_restaurant.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 384,
         "y": 141,
@@ -312,7 +312,7 @@
       "id": "building_block_skyscraper",
       "kind": "entity",
       "source": "/assets/building/block_skyscraper.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x1x6",
       "frame": {
         "x": 548,
         "y": 128,
@@ -337,7 +337,7 @@
       "id": "building_block_tower",
       "kind": "entity",
       "source": "/assets/building/block_tower.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x1x3",
       "frame": {
         "x": 654,
         "y": 128,
@@ -362,7 +362,7 @@
       "id": "building_block_townhall",
       "kind": "entity",
       "source": "/assets/building/block_townhall.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x1x2",
       "frame": {
         "x": 776,
         "y": 128,
@@ -387,7 +387,7 @@
       "id": "bush_block",
       "kind": "entity",
       "source": "/assets/bush/block.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 896,
         "y": 158,
@@ -412,7 +412,7 @@
       "id": "car_block",
       "kind": "entity",
       "source": "/assets/car/block.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x2",
       "frame": {
         "x": 0,
         "y": 273,
@@ -425,8 +425,8 @@
         "y": 1.0
       },
       "ink": {
-        "x": -0.718848,
-        "y": -0.334473,
+        "x": -0.218848,
+        "y": -0.584473,
         "width": 0.937695,
         "height": 0.677832
       },
@@ -437,7 +437,7 @@
       "id": "cloud-shadow",
       "kind": "entity",
       "source": "/assets/cloud-shadow.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 128,
         "y": 299,
@@ -456,7 +456,7 @@
       "id": "grass_block",
       "kind": "entity",
       "source": "/assets/grass/block.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 256,
         "y": 268,
@@ -481,7 +481,7 @@
       "id": "grass_block_bushes",
       "kind": "entity",
       "source": "/assets/grass/block_bushes.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 384,
         "y": 268,
@@ -506,7 +506,7 @@
       "id": "grass_block_flowers",
       "kind": "entity",
       "source": "/assets/grass/block_flowers.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 512,
         "y": 268,
@@ -531,7 +531,7 @@
       "id": "grass_block_flowers_2",
       "kind": "entity",
       "source": "/assets/grass/block_flowers_2.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 640,
         "y": 268,
@@ -556,7 +556,7 @@
       "id": "grass_block_leaves",
       "kind": "entity",
       "source": "/assets/grass/block_leaves.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 768,
         "y": 268,
@@ -581,7 +581,7 @@
       "id": "grass_block_mushrooms",
       "kind": "entity",
       "source": "/assets/grass/block_mushrooms.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 896,
         "y": 268,
@@ -606,7 +606,7 @@
       "id": "grass_block_pebbles",
       "kind": "entity",
       "source": "/assets/grass/block_pebbles.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 0,
         "y": 396,
@@ -631,7 +631,7 @@
       "id": "grass_block_sprouts",
       "kind": "entity",
       "source": "/assets/grass/block_sprouts.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 128,
         "y": 396,
@@ -656,7 +656,7 @@
       "id": "grass_block_wildflowers_red",
       "kind": "entity",
       "source": "/assets/grass/block_wildflowers_red.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 256,
         "y": 396,
@@ -681,7 +681,7 @@
       "id": "grass_block_wildflowers_white",
       "kind": "entity",
       "source": "/assets/grass/block_wildflowers_white.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 384,
         "y": 396,
@@ -706,7 +706,7 @@
       "id": "grass_grass_variants",
       "kind": "entity",
       "source": "/assets/grass/grass_variants.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 512,
         "y": 395,
@@ -725,7 +725,7 @@
       "id": "ground_block",
       "kind": "entity",
       "source": "/assets/ground/block.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 640,
         "y": 396,
@@ -750,7 +750,7 @@
       "id": "house_block",
       "kind": "entity",
       "source": "/assets/house/block.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 768,
         "y": 398,
@@ -775,7 +775,7 @@
       "id": "house_block_2x1",
       "kind": "entity",
       "source": "/assets/house/block_2x1.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x1x2",
       "frame": {
         "x": 902,
         "y": 384,
@@ -800,7 +800,7 @@
       "id": "house_block_balcony",
       "kind": "entity",
       "source": "/assets/house/block_balcony.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x1x2",
       "frame": {
         "x": 6,
         "y": 512,
@@ -825,7 +825,7 @@
       "id": "path_block",
       "kind": "entity",
       "source": "/assets/path/block.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 128,
         "y": 524,
@@ -850,7 +850,7 @@
       "id": "path_path_tiles",
       "kind": "entity",
       "source": "/assets/path/path_tiles.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 256,
         "y": 523,
@@ -869,7 +869,7 @@
       "id": "pier_block_1x3_land_end",
       "kind": "entity",
       "source": "/assets/pier/block_1x3_land_end.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x3",
       "frame": {
         "x": 384,
         "y": 539,
@@ -882,8 +882,8 @@
         "y": 1.0
       },
       "ink": {
-        "x": -1.364258,
-        "y": -0.034863,
+        "x": -0.364258,
+        "y": -0.534863,
         "width": 1.367188,
         "height": 0.793848
       },
@@ -894,7 +894,7 @@
       "id": "pier_block_1x3_land_start",
       "kind": "entity",
       "source": "/assets/pier/block_1x3_land_start.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x3",
       "frame": {
         "x": 512,
         "y": 533,
@@ -907,8 +907,8 @@
         "y": 1.0
       },
       "ink": {
-        "x": -1.00293,
-        "y": -0.415723,
+        "x": -0.00293,
+        "y": -0.915723,
         "width": 1.367188,
         "height": 0.90752
       },
@@ -919,7 +919,7 @@
       "id": "pier_block_1x3_over_water",
       "kind": "entity",
       "source": "/assets/pier/block_1x3_over_water.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x3",
       "frame": {
         "x": 640,
         "y": 531,
@@ -932,8 +932,8 @@
         "y": 1.0
       },
       "ink": {
-        "x": -1.364258,
-        "y": -0.034863,
+        "x": -0.364258,
+        "y": -0.534863,
         "width": 1.367188,
         "height": 0.959863
       },
@@ -944,7 +944,7 @@
       "id": "pier_block_1x3_over_water_reflection",
       "kind": "entity",
       "source": "/assets/pier/block_1x3_over_water_reflection.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x3",
       "frame": {
         "x": 768,
         "y": 538,
@@ -957,8 +957,8 @@
         "y": 1.0
       },
       "ink": {
-        "x": -1.364258,
-        "y": 0.662891,
+        "x": -0.364258,
+        "y": 0.162891,
         "width": 1.367188,
         "height": 0.80166
       },
@@ -969,7 +969,7 @@
       "id": "pier_block_3x1_land_end",
       "kind": "entity",
       "source": "/assets/pier/block_3x1_land_end.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "3x1",
       "frame": {
         "x": 896,
         "y": 539,
@@ -982,8 +982,8 @@
         "y": 1.0
       },
       "ink": {
-        "x": -0.00293,
-        "y": -0.034863,
+        "x": -1.00293,
+        "y": -0.534863,
         "width": 1.367188,
         "height": 0.793848
       },
@@ -994,7 +994,7 @@
       "id": "pier_block_3x1_land_start",
       "kind": "entity",
       "source": "/assets/pier/block_3x1_land_start.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "3x1",
       "frame": {
         "x": 0,
         "y": 661,
@@ -1007,8 +1007,8 @@
         "y": 1.0
       },
       "ink": {
-        "x": -0.364258,
-        "y": -0.415723,
+        "x": -1.364258,
+        "y": -0.915723,
         "width": 1.367188,
         "height": 0.90752
       },
@@ -1019,7 +1019,7 @@
       "id": "pier_block_3x1_over_water",
       "kind": "entity",
       "source": "/assets/pier/block_3x1_over_water.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "3x1",
       "frame": {
         "x": 128,
         "y": 659,
@@ -1032,8 +1032,8 @@
         "y": 1.0
       },
       "ink": {
-        "x": -0.00293,
-        "y": -0.034863,
+        "x": -1.00293,
+        "y": -0.534863,
         "width": 1.367188,
         "height": 0.959863
       },
@@ -1044,7 +1044,7 @@
       "id": "pier_block_3x1_over_water_reflection",
       "kind": "entity",
       "source": "/assets/pier/block_3x1_over_water_reflection.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "3x1",
       "frame": {
         "x": 256,
         "y": 666,
@@ -1057,8 +1057,8 @@
         "y": 1.0
       },
       "ink": {
-        "x": -0.00293,
-        "y": 0.662891,
+        "x": -1.00293,
+        "y": 0.162891,
         "width": 1.367188,
         "height": 0.80166
       },
@@ -1069,7 +1069,7 @@
       "id": "player_block",
       "kind": "entity",
       "source": "/assets/player/block.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 397,
         "y": 640,
@@ -1094,7 +1094,7 @@
       "id": "player_climb",
       "kind": "entity",
       "source": "/assets/player/climb.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 512,
         "y": 646,
@@ -1113,7 +1113,7 @@
       "id": "player_idle",
       "kind": "entity",
       "source": "/assets/player/idle.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 640,
         "y": 640,
@@ -1132,7 +1132,7 @@
       "id": "player_jetpack",
       "kind": "entity",
       "source": "/assets/player/jetpack.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 826,
         "y": 640,
@@ -1151,7 +1151,7 @@
       "id": "player_jump",
       "kind": "entity",
       "source": "/assets/player/jump.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 920,
         "y": 640,
@@ -1170,7 +1170,7 @@
       "id": "player_walk",
       "kind": "entity",
       "source": "/assets/player/walk.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 0,
         "y": 774,
@@ -1189,7 +1189,7 @@
       "id": "rock_block",
       "kind": "entity",
       "source": "/assets/rock/block.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 128,
         "y": 776,
@@ -1214,7 +1214,7 @@
       "id": "rock_block_2",
       "kind": "entity",
       "source": "/assets/rock/block_2.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 256,
         "y": 786,
@@ -1239,7 +1239,7 @@
       "id": "rock_block_3",
       "kind": "entity",
       "source": "/assets/rock/block_3.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 384,
         "y": 775,
@@ -1264,7 +1264,7 @@
       "id": "sand_block",
       "kind": "entity",
       "source": "/assets/sand/block.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 512,
         "y": 791,
@@ -1289,7 +1289,7 @@
       "id": "statue_block",
       "kind": "entity",
       "source": "/assets/statue/block.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 640,
         "y": 768,
@@ -1314,7 +1314,7 @@
       "id": "tree_block",
       "kind": "entity",
       "source": "/assets/tree/block.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x1x2",
       "frame": {
         "x": 778,
         "y": 768,
@@ -1339,7 +1339,7 @@
       "id": "tree_block_2",
       "kind": "entity",
       "source": "/assets/tree/block_2.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x1x2",
       "frame": {
         "x": 902,
         "y": 768,
@@ -1364,7 +1364,7 @@
       "id": "tree_block_3",
       "kind": "entity",
       "source": "/assets/tree/block_3.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x1x2",
       "frame": {
         "x": 15,
         "y": 896,
@@ -1389,7 +1389,7 @@
       "id": "tree_block_4",
       "kind": "entity",
       "source": "/assets/tree/block_4.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x1x2",
       "frame": {
         "x": 128,
         "y": 896,
@@ -1414,7 +1414,7 @@
       "id": "tree_block_5",
       "kind": "entity",
       "source": "/assets/tree/block_5.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x1x2",
       "frame": {
         "x": 287,
         "y": 896,
@@ -1439,7 +1439,7 @@
       "id": "tree_block_6",
       "kind": "entity",
       "source": "/assets/tree/block_6.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x1x2",
       "frame": {
         "x": 400,
         "y": 896,
@@ -1464,7 +1464,7 @@
       "id": "tree_block_7",
       "kind": "entity",
       "source": "/assets/tree/block_7.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x1x2",
       "frame": {
         "x": 543,
         "y": 896,
@@ -1489,7 +1489,7 @@
       "id": "tree_block_8",
       "kind": "entity",
       "source": "/assets/tree/block_8.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": "1x1x2",
       "frame": {
         "x": 649,
         "y": 896,
@@ -1514,7 +1514,7 @@
       "id": "water_block",
       "kind": "entity",
       "source": "/assets/water/block.svg",
-      "dataTiles": "1x1x1",
+      "dataTiles": null,
       "frame": {
         "x": 768,
         "y": 906,
