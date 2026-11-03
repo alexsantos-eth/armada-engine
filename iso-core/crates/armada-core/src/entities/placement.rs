@@ -26,7 +26,44 @@ pub struct PlacementResult {
 
 /// Minimum free blocks between instances of the same entity when the catalog does not say
 /// otherwise. Zero means instances may touch.
-const DEFAULT_GAP: i32 = 0;
+const DEFAULT_GAP: i32 = 1;
+
+/// Columns per instance of one blueprint, on average.
+///
+/// Without a density rule placement fills every column a blueprint accepts, which is what it
+/// means to be a pure validity pass: a chunk of 1024 columns came back carrying 514 entities
+/// and the world was a solid carpet of houses with the player buried under it. The V2 catalog
+/// carries no spawn chance, so until it does, one rate applies to every blueprint. It is a
+/// placeholder, not a design: biomes, clearings and forest patches are what should decide this.
+const DEFAULT_DENSITY: u64 = 400;
+
+/// Deterministic roll for one blueprint at one column, used as its spawn chance.
+///
+/// This is FNV-1a over the blueprint id and the column, finished with a bit mixer, rather than
+/// the standard library's hasher: `DefaultHasher` is explicitly not stable between Rust
+/// releases, and a world has to generate the same way on every build and every machine.
+fn placement_roll(id: &str, x: i32, y: i32) -> u64 {
+    const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
+    const PRIME: u64 = 0x1000_0000_01b3;
+    let mut hash = OFFSET;
+    for byte in id
+        .as_bytes()
+        .iter()
+        .copied()
+        .chain(x.to_le_bytes())
+        .chain(y.to_le_bytes())
+    {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(PRIME);
+    }
+    // splitmix64's finalizer: FNV leaves the low bits poorly mixed, and the low bits are
+    // exactly what a modulo looks at.
+    hash ^= hash >> 30;
+    hash = hash.wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    hash ^= hash >> 27;
+    hash = hash.wrapping_mul(0x94d0_49bb_1331_11eb);
+    hash ^ (hash >> 31)
+}
 
 /// Lookups shared by every placement check of one placement pass.
 pub struct PlacementContext<'a> {
@@ -58,19 +95,46 @@ pub struct Placement {
     pub elevation: i32,
 }
 
-/// Places every eligible entity over `columns`, one instance per valid anchor column.
+/// How thickly the world is populated, and how close instances of one type may stand.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlacementRules {
+    /// Free blocks required between instances of the same type (Chebyshev, diagonals included).
+    pub gap: i32,
+    /// Columns per instance of one blueprint, on average. One always places.
+    pub density: u64,
+}
+
+impl Default for PlacementRules {
+    fn default() -> Self {
+        Self {
+            gap: DEFAULT_GAP,
+            density: DEFAULT_DENSITY,
+        }
+    }
+}
+
+/// Places entities over `columns` with the default rules.
+pub fn place_entities(columns: &[TerrainColumn], catalog: &EntityCatalogV2) -> PlacementResult {
+    place_entities_with(columns, catalog, PlacementRules::default())
+}
+
+/// Places entities over `columns`, one instance per valid anchor column the density lets
+/// through.
 ///
 /// Rules:
 /// * the anchor's surface must match the definition's first footprint surface;
 /// * every footprint cell must exist, match its required surface, be flat (one shared
 ///   elevation) and be free of other entities;
-/// * instances of the same type respect `gap` (Chebyshev, diagonals included).
+/// * instances of the same type respect `gap` (Chebyshev, diagonals included);
+/// * a column only anchors one in `density` of the instances it would otherwise accept.
 ///
 /// Placement is deterministic: definitions are visited in catalog order and columns in slice
-/// order, so the same input always yields the same world.
-pub fn place_entities(
+/// order, the density roll depends only on the blueprint and the column, so the same input
+/// always yields the same world.
+pub fn place_entities_with(
     columns: &[TerrainColumn],
     catalog: &EntityCatalogV2,
+    rules: PlacementRules,
 ) -> PlacementResult {
     let mut columns_map = CellMap::new();
     for column in columns {
@@ -102,8 +166,17 @@ pub fn place_entities(
         let anchors = by_surface.get(anchor_surface).unwrap_or(&empty);
         for column in anchors {
             let anchor = column.coord;
+            // The density roll comes first: it rejects most columns, and it costs a few
+            // multiplications where the validity pass costs a footprint walk and an index
+            // lookup per cell.
+            if rules.density > 1
+                && !placement_roll(&blueprint.id, anchor.x, anchor.y)
+                    .is_multiple_of(rules.density)
+            {
+                continue;
+            }
             let mut context = PlacementContext::new(&columns_map, &mut placed);
-            let Some(placement) = find_placement(anchor, blueprint, &mut context, DEFAULT_GAP)
+            let Some(placement) = find_placement(anchor, blueprint, &mut context, rules.gap)
             else {
                 continue;
             };

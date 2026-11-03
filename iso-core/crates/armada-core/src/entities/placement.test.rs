@@ -45,6 +45,12 @@
         }
     }
 
+    /// Every instance the validity rules allow, which is what these tests are about; the
+    /// world's own density and gap are covered by their own tests.
+    fn dense() -> PlacementRules {
+        PlacementRules { gap: 0, density: 1 }
+    }
+
     fn catalog(blueprints: Vec<EntityBlueprintV2>) -> EntityCatalogV2 {
         EntityCatalogV2 {
             schema_version: CATALOG_SCHEMA_VERSION,
@@ -60,7 +66,7 @@
             column(0, 1, water(), -1),
         ];
         let catalog = catalog(vec![blueprint("house", 1, vec![grass()])]);
-        let result = place_entities(&columns, &catalog);
+        let result = place_entities_with(&columns, &catalog, dense());
         assert_eq!(result.entities.len(), 2);
         assert!(result
             .entities
@@ -89,7 +95,7 @@
             blueprint("pier", 3, vec![water(), sand(), grass()]),
             blueprint("house", 1, vec![grass()]),
         ]);
-        let result = place_entities(&columns, &catalog);
+        let result = place_entities_with(&columns, &catalog, dense());
         assert_eq!(result.entities.len(), 2);
 
         for entity in &result.entities {
@@ -109,7 +115,7 @@
     fn does_not_place_on_wrong_surface() {
         let columns = vec![column(0, 0, water(), -1)];
         let catalog = catalog(vec![blueprint("house", 1, vec![grass()])]);
-        let result = place_entities(&columns, &catalog);
+        let result = place_entities_with(&columns, &catalog, dense());
         assert!(result.entities.is_empty());
     }
 
@@ -121,7 +127,7 @@
             column(2, 0, grass(), 0),
         ];
         let catalog = catalog(vec![blueprint("pier", 3, vec![water(), sand(), grass()])]);
-        let result = place_entities(&columns, &catalog);
+        let result = place_entities_with(&columns, &catalog, dense());
         assert_eq!(result.entities.len(), 1);
         assert_eq!(result.entities[0].id(), "pier@0,0");
         assert_eq!(result.entities[0].elevation(), 0);
@@ -160,6 +166,61 @@
     fn entity_id_matches_blueprint_and_anchor() {
         let columns = vec![column(5, -3, grass(), 0)];
         let catalog = catalog(vec![blueprint("tree", 1, vec![grass()])]);
-        let result = place_entities(&columns, &catalog);
+        let result = place_entities_with(&columns, &catalog, dense());
         assert_eq!(result.entities[0].id(), "tree@5,-3");
     }
+
+/// The density rule thins placement without making it random: the same blueprint and column
+/// decide the same way on every run, and the rate is roughly what was asked for.
+#[test]
+fn density_thins_placement_deterministically() {
+    let columns: Vec<TerrainColumn> = (0..64)
+        .flat_map(|x| (0..64).map(move |y| column(x, y, grass(), 0)))
+        .collect();
+    let catalog = catalog(vec![blueprint("tree", 1, vec![grass()])]);
+
+    let rules = PlacementRules { gap: 0, density: 50 };
+    let result = place_entities_with(&columns, &catalog, rules);
+    // 4096 columns at one in fifty: enough placed to be a world, nowhere near a carpet.
+    assert!(
+        (40..=130).contains(&result.entities.len()),
+        "{} entities placed, expected around 82",
+        result.entities.len()
+    );
+    let again = place_entities_with(&columns, &catalog, rules);
+    let ids: Vec<&str> = result.entities.iter().map(|e| e.id()).collect();
+    let ids_again: Vec<&str> = again.entities.iter().map(|e| e.id()).collect();
+    assert_eq!(ids, ids_again, "the same world must generate the same way twice");
+
+    // And a denser rule is a superset: raising the rate only ever adds instances, because the
+    // roll of a column does not depend on the rate.
+    let denser = place_entities_with(&columns, &catalog, PlacementRules { gap: 0, density: 25 });
+    assert!(denser.entities.len() > result.entities.len());
+}
+
+/// The default rules leave room between instances of a type, so a forest cannot grow into a
+/// solid block of trunks.
+#[test]
+fn the_default_gap_keeps_instances_of_a_type_apart() {
+    let columns: Vec<TerrainColumn> = (0..32)
+        .flat_map(|x| (0..32).map(move |y| column(x, y, grass(), 0)))
+        .collect();
+    let catalog = catalog(vec![blueprint("tree", 1, vec![grass()])]);
+    let result = place_entities_with(
+        &columns,
+        &catalog,
+        PlacementRules {
+            density: 1,
+            ..PlacementRules::default()
+        },
+    );
+    for a in &result.entities {
+        for b in &result.entities {
+            if a.id() == b.id() {
+                continue;
+            }
+            let apart = (a.x() - b.x()).abs().max((a.y() - b.y()).abs());
+            assert!(apart > 1, "{} and {} are touching", a.id(), b.id());
+        }
+    }
+}
