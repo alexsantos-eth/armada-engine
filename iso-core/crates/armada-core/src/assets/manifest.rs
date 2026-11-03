@@ -1,5 +1,7 @@
 //! Versioned asset manifest types and validation.
 
+use super::ink::InkBox;
+
 /// A frame rectangle inside the atlas, in pixels.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SpriteFrame {
@@ -52,6 +54,14 @@ pub struct AssetEntry {
     #[serde(default)]
     pub frames: Option<Vec<SpriteFrame>>,
     pub anchor: SpriteAnchor,
+    /// Where the artwork in the frame belongs in the world: its bounding box in tile widths,
+    /// relative to the ground centre of the cell the asset stands on. See
+    /// [`crate::assets::ink`] for why the frame alone cannot say.
+    ///
+    /// Absent for sprite sheets and anything else the pipeline could not measure, which the
+    /// client places by [`anchor`](Self::anchor) instead.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ink: Option<InkBox>,
     #[serde(default, rename = "colorVariants")]
     pub color_variants: u32,
     #[serde(default)]
@@ -172,6 +182,7 @@ mod tests {
                     frame: Some(SpriteFrame { x: 0, y: 0, width: 64, height: 64 }),
                     frames: None,
                     anchor: SpriteAnchor { x: 0.5, y: 1.0 },
+                    ink: None,
                     color_variants: 1,
                     sway: None,
                 },
@@ -183,6 +194,7 @@ mod tests {
                     frame: Some(SpriteFrame { x: 64, y: 0, width: 64, height: 64 }),
                     frames: None,
                     anchor: SpriteAnchor { x: 0.5, y: 1.0 },
+                    ink: Some(InkBox { x: -0.3085, y: -0.7127, width: 0.617, height: 0.7313 }),
                     color_variants: 4,
                     sway: Some(SwayParams { cut: 0.58, amplitude: 1.5, period: 3400.0 }),
                 },
@@ -194,6 +206,7 @@ mod tests {
                     frame: None,
                     frames: Some(vec![SpriteFrame { x: 128, y: 0, width: 64, height: 64 }]),
                     anchor: SpriteAnchor { x: 0.5, y: 1.0 },
+                    ink: None,
                     color_variants: 1,
                     sway: None,
                 },

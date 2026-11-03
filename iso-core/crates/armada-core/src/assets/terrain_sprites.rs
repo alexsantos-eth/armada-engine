@@ -43,6 +43,16 @@ mod tests {
                 entry.primary_frame().is_some(),
                 "{source} has no frame in the atlas"
             );
+            // Without the measurement the client cannot put the block on the ground, so it
+            // draws no terrain at all rather than drawing it half a tile out.
+            let ink = entry
+                .ink
+                .unwrap_or_else(|| panic!("{source} was never measured; re-run remeasure_atlas"));
+            assert!(ink.width > 0.5, "{source} is narrower than half a tile: {ink:?}");
+            assert!(
+                ink.y < 0.0 && ink.y + ink.height > 0.0,
+                "{source} does not straddle the ground it stands on: {ink:?}"
+            );
         }
     }
 }

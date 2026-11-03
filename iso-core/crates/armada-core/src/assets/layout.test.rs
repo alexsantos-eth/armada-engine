@@ -1,97 +1,105 @@
-use super::{SpriteLayout, sprite_layout};
-use crate::entities::EntityLengthAxis;
-use crate::projection::{ProjectionConfig, ScreenPoint};
+use super::{SpriteLayout, ink_layout};
+use crate::assets::ink::{InkBox, asset_ink};
+use crate::projection::ScreenPoint;
 
-fn config() -> ProjectionConfig {
-    ProjectionConfig {
-        tile_width: 80.0,
-        tile_height: 40.0,
-        elevation_step: Some(25.0),
-        origin_x: 0.0,
-        origin_y: 0.0,
-    }
-}
+const TILE_WIDTH: f64 = 80.0;
 
 fn ground() -> ScreenPoint {
     ScreenPoint { x: 0.0, y: 0.0 }
 }
 
-/// The artwork's bottom is the south corner of the ground diamond and its top is one tile plus
-/// `height` steps above that, whatever the frame's own aspect ratio is.
-fn artwork_bounds(layout: SpriteLayout, artwork_height: f64) -> (f64, f64) {
-    let centre_y = layout.y + layout.size / 2.0;
-    (centre_y - artwork_height / 2.0, centre_y + artwork_height / 2.0)
+/// A block drawn over the whole tile: a tile across, from half a tile height below the ground
+/// centre up over the block's body.
+#[test]
+fn a_full_block_covers_its_tile_and_stands_on_it() {
+    let ink = InkBox {
+        x: -0.5,
+        y: -0.583008,
+        width: 1.0,
+        height: 0.833008,
+    };
+    let layout = ink_layout(ground(), ink, TILE_WIDTH);
+    assert_eq!(layout.x, -40.0, "half a tile either side of the ground centre");
+    assert_eq!(layout.width, 80.0);
+    assert!(
+        (layout.y + layout.height - 20.0).abs() < 1e-9,
+        "the bottom is the ground diamond's south corner: {}",
+        layout.y + layout.height
+    );
 }
 
+/// The reason this exists: a tree's drawing stops at the foot of its trunk, so it stands at the
+/// centre of its tile, not on the south corner the template reaches down to.
 #[test]
-fn a_single_block_is_drawn_one_tile_wide_over_the_ground_it_stands_on() {
-    let layout = sprite_layout(ground(), 1, 1, EntityLengthAxis::X, config());
-    // One tile across, so the square is a tile wide; the artwork is 40 + 25 = 65 tall inside it.
-    assert_eq!(layout, SpriteLayout { x: -40.0, y: -52.5, size: 80.0 });
-    let (top, bottom) = artwork_bounds(layout, 65.0);
-    assert_eq!(bottom, 20.0, "artwork rests on the ground diamond's south corner");
-    assert_eq!(top, -45.0, "one tile height plus one elevation step above it");
+fn a_tree_stands_at_the_centre_of_its_tile() {
+    let tree = InkBox {
+        x: -0.308496,
+        y: -0.712695,
+        width: 0.616992,
+        height: 0.731348,
+    };
+    let layout = ink_layout(ground(), tree, TILE_WIDTH);
+    let foot = layout.y + layout.height;
+    assert!(foot.abs() < 2.0, "the trunk meets the ground centre, not {foot} below it");
+    assert!(layout.width < TILE_WIDTH, "narrower than its tile: {}", layout.width);
 }
 
+/// And a boulder is knee high: a frame placed as a whole block would draw it several times over.
 #[test]
-fn a_tall_block_is_sized_by_its_height_not_by_its_footprint() {
-    // Six storeys: 40 + 6 * 25 = 190 tall, taller than the 80 it is wide, so the frame — which
-    // was fitted to the artwork's longer side — is drawn 190 across.
-    let layout = sprite_layout(ground(), 1, 6, EntityLengthAxis::X, config());
-    assert_eq!(layout.size, 190.0);
-    let (top, bottom) = artwork_bounds(layout, 190.0);
-    assert_eq!((top, bottom), (-170.0, 20.0));
-    assert_eq!(layout.x, -95.0, "still centred over its one cell");
-}
-
-#[test]
-fn a_long_footprint_widens_the_sprite_and_shifts_it_along_its_axis() {
-    let along_x = sprite_layout(ground(), 3, 1, EntityLengthAxis::X, config());
-    let along_y = sprite_layout(ground(), 3, 1, EntityLengthAxis::Y, config());
-    // Three cells span four half-tiles across: 160 wide, 105 tall, so the square is 160.
-    assert_eq!(along_x.size, 160.0);
-    assert_eq!(along_y.size, 160.0);
-    // The two run in opposite screen directions from the same anchor cell.
-    let centre_x = |l: SpriteLayout| l.x + l.size / 2.0;
-    assert_eq!(centre_x(along_x), 40.0);
-    assert_eq!(centre_x(along_y), -40.0);
-    // Both reach the same height, since x and y rise equally on screen.
-    assert_eq!(along_x.y, along_y.y);
-    assert_eq!(artwork_bounds(along_x, 105.0), (-85.0, 20.0));
+fn a_small_drawing_stays_small() {
+    let rock = InkBox {
+        x: -0.259082,
+        y: -0.267676,
+        width: 0.428711,
+        height: 0.372656,
+    };
+    let layout = ink_layout(ground(), rock, TILE_WIDTH);
+    assert!((layout.width - 34.29688).abs() < 1e-9, "{}", layout.width);
+    assert!(layout.height < TILE_WIDTH / 2.0, "{}", layout.height);
 }
 
 #[test]
 fn ground_position_translates_the_sprite_unchanged() {
-    let at_origin = sprite_layout(ground(), 2, 2, EntityLengthAxis::X, config());
-    let moved = sprite_layout(
-        ScreenPoint { x: 300.0, y: -120.0 },
-        2,
-        2,
-        EntityLengthAxis::X,
-        config(),
-    );
-    assert_eq!(moved.size, at_origin.size);
+    let ink = InkBox { x: -0.25, y: -0.5, width: 0.5, height: 0.75 };
+    let at_origin = ink_layout(ground(), ink, TILE_WIDTH);
+    let moved = ink_layout(ScreenPoint { x: 300.0, y: -120.0 }, ink, TILE_WIDTH);
+    assert_eq!(moved.width, at_origin.width);
+    assert_eq!(moved.height, at_origin.height);
     assert_eq!(moved.x - at_origin.x, 300.0);
     assert_eq!(moved.y - at_origin.y, -120.0);
 }
 
+/// Zooming is the tile width changing, so everything has to scale with it and nothing may drift.
 #[test]
-fn missing_elevation_step_falls_back_to_half_a_tile_height() {
-    let config = ProjectionConfig {
-        elevation_step: None,
-        ..config()
-    };
-    let layout = sprite_layout(ground(), 1, 1, EntityLengthAxis::X, config);
-    // 40 + 20 = 60 tall, still 80 wide.
-    assert_eq!(layout.size, 80.0);
-    assert_eq!(artwork_bounds(layout, 60.0), (-40.0, 20.0));
+fn the_tile_width_scales_the_whole_rectangle() {
+    let ink = InkBox { x: -0.25, y: -0.5, width: 0.5, height: 0.75 };
+    let small = ink_layout(ground(), ink, 40.0);
+    let large = ink_layout(ground(), ink, 80.0);
+    assert_eq!(
+        large,
+        SpriteLayout {
+            x: small.x * 2.0,
+            y: small.y * 2.0,
+            width: small.width * 2.0,
+            height: small.height * 2.0,
+        }
+    );
 }
 
-/// A blueprint with a nonsensical footprint must not produce a sprite of zero or negative size.
+/// The measurement and the placement have to agree about the anchor, so this goes from a source
+/// asset's own coordinates all the way to pixels: a drawing covering the quarter tile north of
+/// the anchor lands exactly there.
 #[test]
-fn degenerate_footprints_are_clamped() {
-    let flat = sprite_layout(ground(), 1, 0, EntityLengthAxis::X, config());
-    assert_eq!(flat.size, 80.0);
-    let broken = sprite_layout(ground(), -4, -4, EntityLengthAxis::X, config());
-    assert_eq!(broken, sprite_layout(ground(), 1, 0, EntityLengthAxis::X, config()));
+fn a_measured_asset_lands_where_it_was_drawn() {
+    let svg = concat!(
+        r#"<svg viewBox="0 -341 1024 853">"#,
+        r#"<path fill="transparent" d="M512.0,0.0 1024.0,256.0 512.0,512.0 0.0,256.0 Z" />"#,
+        r#"<path d="M256.0,0.0 768.0,0.0 768.0,256.0 256.0,256.0 Z" /></svg>"#,
+    );
+    let ink = asset_ink(svg).expect("measured");
+    let layout = ink_layout(ScreenPoint { x: 100.0, y: 200.0 }, ink, TILE_WIDTH);
+    assert_eq!(layout.x, 100.0 - 20.0, "a quarter tile left of the anchor");
+    assert_eq!(layout.width, 40.0, "half a tile across");
+    assert_eq!(layout.y, 200.0 - 20.0, "reaching a quarter tile above the ground");
+    assert_eq!(layout.y + layout.height, 200.0, "down to the ground centre");
 }

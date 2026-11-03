@@ -2,65 +2,38 @@
 //!
 //! Usage: cargo run --bin pack_atlas -- <input_dir> <output_atlas> <output_manifest>
 //!
-//! Input: directory of PNG files (produced by qlmanage or similar).
+//! Usage: cargo run --bin pack_atlas -- <input_dir> <output_atlas> <output_manifest> [svg_root]
+//!
+//! Input: directory of PNG files (produced by qlmanage or similar), and the SVG sources those
+//! thumbnails were rendered from, under `svg_root` (default `public`).
 //! Output: a packed atlas PNG and a manifest JSON.
+//!
+//! Each sprite is trimmed to its opaque pixels before being fitted into a cell, which is what
+//! keeps the atlas small — and what loses the only thing that says where the drawing belongs in
+//! the world, since the transparent margin around it *was* the tile. So the geometry is read
+//! back out of the SVG and written into the manifest beside the frame; see
+//! `armada_core::assets::ink`.
 
+use armada_core::assets::{
+    AssetEntry, AssetKind, AssetManifest, MANIFEST_SCHEMA_VERSION, SpriteAnchor, SpriteFrame,
+    asset_ink,
+};
 use image::RgbaImage;
-use serde::Serialize;
 use std::fs;
-
-#[derive(Serialize)]
-struct SpriteFrame {
-    x: u32,
-    y: u32,
-    width: u32,
-    height: u32,
-}
-
-#[derive(Serialize)]
-struct SpriteAnchor {
-    x: f64,
-    y: f64,
-}
-
-#[derive(Serialize)]
-struct AssetEntry {
-    id: String,
-    kind: String,
-    source: String,
-    #[serde(rename = "dataTiles")]
-    data_tiles: String,
-    frame: SpriteFrame,
-    anchor: SpriteAnchor,
-    #[serde(rename = "colorVariants")]
-    color_variants: u32,
-}
-
-#[derive(Serialize)]
-struct AtlasSize {
-    width: u32,
-    height: u32,
-}
-
-#[derive(Serialize)]
-struct Manifest {
-    #[serde(rename = "schemaVersion")]
-    schema_version: u32,
-    atlas: String,
-    #[serde(rename = "atlasSize")]
-    atlas_size: AtlasSize,
-    entries: Vec<AssetEntry>,
-}
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 4 {
-        eprintln!("Usage: {} <input_dir> <output_atlas> <output_manifest>", args[0]);
+        eprintln!(
+            "Usage: {} <input_dir> <output_atlas> <output_manifest> [svg_root]",
+            args[0]
+        );
         std::process::exit(1);
     }
     let input_dir = &args[1];
     let output_atlas = &args[2];
     let output_manifest = &args[3];
+    let svg_root = args.get(4).map(String::as_str).unwrap_or("public");
 
     // Read all PNGs from input dir, sorted by name.
     let mut files: Vec<(String, RgbaImage)> = Vec::new();
@@ -140,29 +113,47 @@ fn main() {
             }
         }
 
+        let source = {
+            // Only the first underscore separates directory from file name.
+            let mut parts = name.splitn(2, '_');
+            let dir = parts.next().unwrap_or(name.as_str());
+            let file = parts.next().unwrap_or("");
+            if file.is_empty() {
+                format!("/assets/{dir}.svg")
+            } else {
+                format!("/assets/{dir}/{file}.svg")
+            }
+        };
+        let svg = fs::read_to_string(format!("{svg_root}{source}"));
+        let svg = svg.unwrap_or_else(|err| {
+            eprintln!("warning: no source for {source}: {err}");
+            String::new()
+        });
+        let ink = asset_ink(&svg);
+        if ink.is_none() {
+            // A sheet, or anything else that is not one drawing in the template: the client
+            // places these by their anchor.
+            println!("  {name}: no measurable geometry, placed by anchor");
+        }
+
         manifest_entries.push(AssetEntry {
             id: name.clone(),
-            kind: "entity".to_owned(),
-            source: {
-                // Only the first underscore separates directory from file name.
-                let mut parts = name.splitn(2, '_');
-                let dir = parts.next().unwrap_or(name.as_str());
-                let file = parts.next().unwrap_or("");
-                if file.is_empty() {
-                    format!("/assets/{}.svg", dir)
-                } else {
-                    format!("/assets/{}/{}.svg", dir, file)
-                }
-            },
-            data_tiles: "1x1x1".to_owned(),
-            frame: SpriteFrame {
-                x,
-                y,
-                width: cell_size,
-                height: cell_size,
-            },
+            kind: AssetKind::Entity,
+            source,
+            data_tiles: attribute(&svg, "data-tiles").map(str::to_owned),
+            // The frame is the artwork, not the cell it was centred in: the padding is what the
+            // trim removed, and drawing it back in would scale every sprite down to fit it.
+            frame: Some(SpriteFrame {
+                x: x + off_x,
+                y: y + off_y,
+                width: new_w,
+                height: new_h,
+            }),
+            frames: None,
             anchor: SpriteAnchor { x: 0.5, y: 1.0 },
+            ink,
             color_variants: 1,
+            sway: None,
         });
     }
 
@@ -171,13 +162,19 @@ fn main() {
     println!("Atlas saved: {} ({}x{})", output_atlas, atlas_w, atlas_h);
 
     // Save manifest.
-    let manifest = Manifest {
-        schema_version: 1,
+    let manifest = AssetManifest {
+        schema_version: MANIFEST_SCHEMA_VERSION,
         atlas: output_atlas.to_string(),
-        atlas_size: AtlasSize { width: atlas_w, height: atlas_h },
+        atlas_size: SpriteFrame { x: 0, y: 0, width: atlas_w, height: atlas_h },
         entries: manifest_entries,
     };
     let json = serde_json::to_string_pretty(&manifest).expect("serialize manifest");
     fs::write(output_manifest, json).expect("write manifest");
     println!("Manifest saved: {} ({} entries)", output_manifest, manifest.entries.len());
+}
+
+/// The value of `name="..."`, for the one attribute this tool copies through.
+fn attribute<'a>(svg: &'a str, name: &str) -> Option<&'a str> {
+    let at = svg.find(&format!("{name}=\""))?;
+    svg[at + name.len() + 2..].split('"').next()
 }

@@ -3,7 +3,7 @@
 //! Every sprite the client draws comes out of one texture, so the whole scene — terrain,
 //! entities and the player — is one batch of textured quads.
 
-use armada_core::assets::{AssetManifest, SpriteAnchor, SpriteFrame, SpriteLayout};
+use armada_core::assets::{AssetManifest, InkBox, SpriteAnchor, SpriteFrame, SpriteLayout, ink_layout};
 use armada_core::projection::ScreenPoint;
 use armada_core::scene_order::{DrawKey, LengthAxis, compare_draw_keys, get_draw_depth};
 use macroquad::prelude::*;
@@ -18,7 +18,17 @@ use std::collections::HashMap;
 /// were not named alike.
 pub struct SpriteAtlas {
     texture: Texture2D,
-    by_source: HashMap<String, (SpriteFrame, SpriteAnchor)>,
+    by_source: HashMap<String, SpriteAsset>,
+}
+
+/// What the manifest knows about one sprite: the pixels, and where they belong.
+#[derive(Clone, Copy)]
+pub struct SpriteAsset {
+    pub frame: SpriteFrame,
+    pub anchor: SpriteAnchor,
+    /// The artwork's place in the world, for everything the pipeline could measure. Sprite
+    /// sheets have none, and are placed by their anchor instead.
+    pub ink: Option<InkBox>,
 }
 
 impl SpriteAtlas {
@@ -26,24 +36,48 @@ impl SpriteAtlas {
         let by_source = manifest
             .entries
             .iter()
-            .filter_map(|entry| Some((entry.source.clone(), (entry.primary_frame()?, entry.anchor))))
+            .filter_map(|entry| {
+                Some((
+                    entry.source.clone(),
+                    SpriteAsset {
+                        frame: entry.primary_frame()?,
+                        anchor: entry.anchor,
+                        ink: entry.ink,
+                    },
+                ))
+            })
             .collect();
         Self { texture, by_source }
     }
 
+    pub fn asset(&self, source: &str) -> Option<SpriteAsset> {
+        self.by_source.get(source).copied()
+    }
+
     /// Frame of the asset rasterized from `source`, or `None` if the atlas has no such asset.
     pub fn frame(&self, source: &str) -> Option<SpriteFrame> {
-        self.by_source.get(source).map(|(frame, _)| *frame)
+        self.by_source.get(source).map(|asset| asset.frame)
     }
 
     /// The manifest's anchor for an asset, as a fraction of its frame.
     ///
-    /// This is only meaningful for artwork that fills its frame: the rasterizer fits each
-    /// drawing into a square and centres it, so for anything else the padding around the
-    /// drawing is part of what the anchor points at. Block artwork is placed from the world
-    /// instead, by [`armada_core::assets::sprite_layout`].
+    /// Used for the sprites the pipeline could not measure, where the frame is all there is to
+    /// go on. Everything else is placed by its [`InkBox`], which says where the artwork was
+    /// drawn rather than where its pixels happen to sit in the atlas.
     pub fn anchor(&self, source: &str) -> Option<SpriteAnchor> {
-        self.by_source.get(source).map(|(_, anchor)| *anchor)
+        self.by_source.get(source).map(|asset| asset.anchor)
+    }
+
+    /// The frame for something standing on `ground` and the rectangle to draw it into, or
+    /// `None` if the atlas has no such asset or the pipeline never measured it.
+    pub fn standing(
+        &self,
+        source: &str,
+        ground: ScreenPoint,
+        tile_width: f64,
+    ) -> Option<(SpriteFrame, SpriteLayout)> {
+        let asset = self.by_source.get(source)?;
+        Some((asset.frame, ink_layout(ground, asset.ink?, tile_width)))
     }
 
     /// Draws one frame into the square `layout` describes.
@@ -65,7 +99,7 @@ impl SpriteAtlas {
                     frame.width as f32 - INSET * 2.0,
                     frame.height as f32 - INSET * 2.0,
                 )),
-                dest_size: Some(vec2(layout.size as f32, layout.size as f32)),
+                dest_size: Some(vec2(layout.width as f32, layout.height as f32)),
                 ..Default::default()
             },
         );
@@ -73,22 +107,28 @@ impl SpriteAtlas {
 
     /// Whether `layout` would land anywhere on screen.
     pub fn on_screen(layout: SpriteLayout) -> bool {
-        let (x, y, size) = (layout.x as f32, layout.y as f32, layout.size as f32);
-        x + size >= 0.0 && y + size >= 0.0 && x <= screen_width() && y <= screen_height()
+        let (x, y) = (layout.x as f32, layout.y as f32);
+        x + layout.width as f32 >= 0.0
+            && y + layout.height as f32 >= 0.0
+            && x <= screen_width()
+            && y <= screen_height()
     }
 }
 
-/// Places a square frame of `size` so that its `anchor` lands on `at`.
+/// Places `frame` at `size` along its longer side, so that its `anchor` lands on `at`.
 ///
-/// For artwork that fills its frame this is the whole placement rule, and it is what the
-/// manifest's anchor is for. The player is drawn this way: its drawing is square rather than
-/// the two-diamond block template, so the template would stand it half a tile too low, where
-/// the column in front of it paints over everything but its head.
-pub fn anchored(at: ScreenPoint, size: f64, anchor: SpriteAnchor) -> SpriteLayout {
+/// This is the placement for a sprite drawn at a size the game chooses rather than the size the
+/// artwork was drawn at. The player is the one: it is deliberately drawn at a fraction of a
+/// tile, so its own measurements would make it twice the size the game wants it.
+pub fn anchored(at: ScreenPoint, size: f64, anchor: SpriteAnchor, frame: SpriteFrame) -> SpriteLayout {
+    let longest = f64::from(frame.width.max(frame.height).max(1));
+    let width = size * f64::from(frame.width) / longest;
+    let height = size * f64::from(frame.height) / longest;
     SpriteLayout {
-        x: at.x - anchor.x * size,
-        y: at.y - anchor.y * size,
-        size,
+        x: at.x - anchor.x * width,
+        y: at.y - anchor.y * height,
+        width,
+        height,
     }
 }
 

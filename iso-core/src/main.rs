@@ -4,8 +4,6 @@ mod services;
 mod sprites;
 mod terrain_view;
 
-use armada_core::assets::sprite_layout;
-use armada_core::entities::EntityLengthAxis;
 use armada_core::grid::{WorldCoord, to_chunk_coord};
 use armada_core::player::physics::{
     PlayerGround, create_player, find_player_spawn, get_player_column,
@@ -20,6 +18,7 @@ use armada_core::projection::{
 use armada_core::simulation::FixedStepper;
 use armada_core::terrain::{TerrainColumn, TerrainConfig, TerrainGenerator};
 use armada_core::world::ChunkManager;
+use armada_core::assets::{SVG_BLOCK_HEIGHT, SVG_TILE_WIDTH};
 use armada_core::entities::{EntityCatalogV2, validate_catalog};
 use armada_core::camera::{Camera, ScreenSize, visible_chunks as camera_visible_chunks};
 use save::{
@@ -44,18 +43,14 @@ fn window_conf() -> Conf {
 const PREVIEW_CENTRE: WorldCoord = WorldCoord { x: 16, y: 88 };
 const PREVIEW_TILE_WIDTH: f64 = 80.0;
 const PREVIEW_TILE_HEIGHT: f64 = PREVIEW_TILE_WIDTH / 2.0;
-/// One level of elevation, in screen pixels.
-///
-/// The block artwork is drawn to a fixed ratio: a block's body is 40 pixels tall where its top
-/// face is 128 wide, so a level has to be 40/128 of the tile width for stacked blocks to meet.
-/// The projection's own default (half the tile height) is shallower than the artwork and left
-/// every cliff face overlapping the block below it.
-const PREVIEW_ELEVATION_STEP: f64 = PREVIEW_TILE_WIDTH * 40.0 / 128.0;
+/// One level of elevation, in screen pixels: as tall as the artwork draws a block's body, so
+/// that a stack of them meets. See [`armada_core::assets::elevation_step`].
+const PREVIEW_ELEVATION_STEP: f64 = PREVIEW_TILE_WIDTH * SVG_BLOCK_HEIGHT / SVG_TILE_WIDTH;
 /// Entities draw above the terrain of the same depth, and the player above the entities.
 const ENTITY_LAYER: i32 = 1;
 const PLAYER_LAYER: i32 = 2;
-/// How tall the player is drawn. Its artwork fills a square frame, so this is both its height
-/// and its width; it is placed by the manifest's anchor rather than the block template.
+/// How tall the player is drawn, deliberately rather than at the size its artwork was drawn
+/// at: it is placed by the manifest's anchor, not by its own measurements.
 const PLAYER_SIZE: f64 = PREVIEW_TILE_WIDTH * 0.6;
 /// Source path of the player's sprite in the asset manifest.
 const PLAYER_SPRITE: &str = "/assets/player/block.svg";
@@ -364,23 +359,22 @@ async fn main() {
                 continue;
             };
             for entity in entities {
-                let Some(frame) = atlas.frame(entity.texture_source()) else {
-                    continue;
-                };
                 let x = f64::from(entity.x()) + 0.5;
                 let y = f64::from(entity.y()) + 0.5;
                 let elevation = f64::from(entity.elevation());
                 let ground = project_block(GridPoint { x, y }, elevation, projection);
-                let layout = sprite_layout(
-                    ScreenPoint {
-                        x: ground.screen_x,
-                        y: ground.screen_y,
-                    },
-                    entity.length(),
-                    entity.height(),
-                    entity.length_axis().unwrap_or(EntityLengthAxis::X),
-                    projection,
-                );
+                // The sprite goes where its artwork was drawn over the cell it stands on. The
+                // footprint and height the blueprint declares describe the template the artwork
+                // was drawn inside, not the artwork, so sizing a sprite from them drew a
+                // knee-high boulder as a whole block and stood every tree on the south corner
+                // of its tile.
+                let Some((frame, layout)) = atlas.standing(
+                    entity.texture_source(),
+                    ScreenPoint { x: ground.screen_x, y: ground.screen_y },
+                    projection.tile_width,
+                ) else {
+                    continue;
+                };
                 if !SpriteAtlas::on_screen(layout) {
                     continue;
                 }
@@ -421,7 +415,7 @@ async fn main() {
                     )
                 },
                 frame,
-                layout: anchored(feet, PLAYER_SIZE, player_anchor),
+                layout: anchored(feet, PLAYER_SIZE, player_anchor, frame),
             }),
             // A marker while the atlas has no player sprite, drawn straight away: it is not a
             // sprite, so it cannot go through the sorted list.
