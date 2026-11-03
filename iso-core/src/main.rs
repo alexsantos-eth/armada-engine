@@ -17,7 +17,7 @@ use armada_core::projection::{
 };
 use armada_core::simulation::FixedStepper;
 use armada_core::terrain::{TerrainColumn, TerrainConfig, TerrainGenerator};
-use armada_core::world::ChunkManager;
+use armada_core::world::{ChunkManager, ChunkRadii};
 use armada_core::assets::{SVG_BLOCK_HEIGHT, SVG_TILE_WIDTH};
 use armada_core::entities::{EntityCatalogV2, validate_catalog};
 use armada_core::camera::{Camera, ScreenSize, visible_chunks as camera_visible_chunks};
@@ -41,7 +41,12 @@ fn window_conf() -> Conf {
 
 /// Diagnostic centre of the world; the player spawns near here.
 const PREVIEW_CENTRE: WorldCoord = WorldCoord { x: 16, y: 88 };
-const PREVIEW_TILE_WIDTH: f64 = 80.0;
+/// The scene's zoom: how wide one tile is drawn, in screen pixels. Everything else in the view
+/// is derived from it — the elevation step, the player's size, the projection origin — so this is
+/// the one knob to turn. Raising it zooms in, which also shrinks the camera's chunk cull and so
+/// draws fewer chunks. `Camera::zoom` is left at 1.0 and only feeds that cull; the draw path
+/// does not scale by it.
+const PREVIEW_TILE_WIDTH: f64 = 150.0;
 const PREVIEW_TILE_HEIGHT: f64 = PREVIEW_TILE_WIDTH / 2.0;
 /// One level of elevation, in screen pixels: as tall as the artwork draws a block's body, so
 /// that a stack of them meets. See [`armada_core::assets::elevation_step`].
@@ -49,9 +54,12 @@ const PREVIEW_ELEVATION_STEP: f64 = PREVIEW_TILE_WIDTH * SVG_BLOCK_HEIGHT / SVG_
 /// Entities draw above the terrain of the same depth, and the player above the entities.
 const ENTITY_LAYER: i32 = 1;
 const PLAYER_LAYER: i32 = 2;
-/// How tall the player is drawn, deliberately rather than at the size its artwork was drawn
-/// at: it is placed by the manifest's anchor, not by its own measurements.
-const PLAYER_SIZE: f64 = PREVIEW_TILE_WIDTH * 0.6;
+/// How tall the player is drawn, as a fraction of a tile: the same scale the TypeScript client
+/// uses (`PLAYER_SCALE` in `src/isometric/content/player.ts`), so the two look alike. It is a
+/// deliberate size rather than the size its artwork was drawn at, because the player is placed
+/// by the manifest's anchor, not by its own measurements.
+const PLAYER_SCALE: f64 = 0.3;
+const PLAYER_SIZE: f64 = PREVIEW_TILE_WIDTH * PLAYER_SCALE;
 /// Source path of the player's sprite in the asset manifest.
 const PLAYER_SPRITE: &str = "/assets/player/block.svg";
 /// Extra view the chunk cull keeps around the screen, as a fraction of it.
@@ -60,6 +68,20 @@ const PLAYER_SPRITE: &str = "/assets/player/block.svg";
 /// screen and there is nothing for a margin to cover. `CHUNK_VIEW_MARGIN` exists for a client
 /// that caches its cull between frames and needs the ring ahead of the camera.
 const CHUNK_CULL_MARGIN: f64 = 0.0;
+
+/// How far this client streams chunks, below the shared defaults (1 / 2 / 3).
+///
+/// A chunk is 32 columns square and the player is drawn at [`PLAYER_SCALE`] of a tile, so at
+/// most a few columns beyond the focus chunk are ever on screen: the outer rings were generated,
+/// placed with entities, held in memory and written to the save without ever being drawn.
+/// `load` stays at 1, which is the ring a shown chunk needs for its edges; `prefetch` and `keep`
+/// each drop by one, taking the chunks discovered around a standing player from 25 to 9 and the
+/// chunks kept from 49 to 25.
+const CHUNK_RADII: ChunkRadii = ChunkRadii {
+    load: 1,
+    prefetch: 1,
+    keep: 2,
+};
 
 /// Safety-net interval for the periodic save; the real save happens on quit and on request.
 const AUTOSAVE_SECONDS: f64 = 120.0;
@@ -117,7 +139,7 @@ async fn main() {
     let generator = TerrainGenerator::new(TerrainConfig::default())
         .expect("default terrain configuration is valid");
 
-    let mut manager = ChunkManager::new(generator, catalog);
+    let mut manager = ChunkManager::with_radii(generator, catalog, CHUNK_RADII);
 
     // Try to restore a previous save.
     let save = load_save().await;
@@ -262,8 +284,10 @@ async fn main() {
             tile_width: PREVIEW_TILE_WIDTH,
             tile_height: PREVIEW_TILE_HEIGHT,
             elevation_step: Some(PREVIEW_ELEVATION_STEP),
-            origin_x: f64::from(width / 2.0) - (rp.x - rp.y) * 40.0,
-            origin_y: f64::from(height / 2.0 + 50.0) + (rp.x + rp.y) * 20.0,
+            // Derived from the tile size, not written out: with the numbers inlined, changing
+            // `PREVIEW_TILE_WIDTH` moved the world under the player instead of zooming.
+            origin_x: f64::from(width / 2.0) - (rp.x - rp.y) * (PREVIEW_TILE_WIDTH / 2.0),
+            origin_y: f64::from(height / 2.0 + 50.0) + (rp.x + rp.y) * (PREVIEW_TILE_HEIGHT / 2.0),
         };
 
         // Tick streaming, then give any chunk the archive already holds its stored contents back

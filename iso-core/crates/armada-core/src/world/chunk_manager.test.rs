@@ -335,3 +335,40 @@
         assert_eq!(entity.color_variant(), Some(2));
         assert_eq!(entity.metadata()["planted"], true);
     }
+
+    /// A client that draws a small view can stream less than the shared defaults, and then no
+    /// chunk is discovered past the radius it asked for.
+    #[test]
+    fn streams_only_as_far_as_the_requested_radii() {
+        let radii = ChunkRadii { load: 1, prefetch: 1, keep: 2 };
+        let mut manager = ChunkManager::with_radii(generator(), catalog(), radii);
+        assert_eq!(manager.radii(), radii);
+        manager.set_focus(vec![ChunkCoord { cx: 0, cy: 0 }]);
+        for _ in 0..(2 * CHUNK_PREFETCH_RADIUS + 1).pow(2) {
+            manager.tick();
+        }
+        assert_eq!(manager.discovered_count(), 9);
+        assert!(!manager.is_discovered(ChunkCoord { cx: 2, cy: 0 }));
+    }
+
+    /// Whatever a client asks for, the radii still grow outwards: a keep radius under the
+    /// prefetch radius would unload a chunk the streamer is still asking for every frame.
+    #[test]
+    fn radii_are_clamped_so_they_grow_outwards() {
+        assert_eq!(
+            ChunkRadii { load: 0, prefetch: 0, keep: 0 }.normalized(),
+            ChunkRadii { load: 1, prefetch: 1, keep: 1 }
+        );
+        assert_eq!(
+            ChunkRadii { load: 2, prefetch: 1, keep: 1 }.normalized(),
+            ChunkRadii { load: 2, prefetch: 2, keep: 2 }
+        );
+        assert_eq!(
+            ChunkRadii::default(),
+            ChunkRadii {
+                load: CHUNK_LOAD_RADIUS,
+                prefetch: CHUNK_PREFETCH_RADIUS,
+                keep: CHUNK_KEEP_RADIUS,
+            }
+        );
+    }

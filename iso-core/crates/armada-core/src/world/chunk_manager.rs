@@ -16,6 +16,47 @@ use crate::scene_order::{
 use crate::terrain::TerrainGenerator;
 use crate::world::TerrainWorld;
 
+/// How far the streamer loads, prefetches and keeps chunks around each focus.
+///
+/// The defaults are the shared budgets, the same numbers the TypeScript client uses. A client
+/// may ask for less: a client that draws a small view (one zoomed in, or one whose player is
+/// drawn large) never reaches the outer rings, and every chunk it loads anyway costs terrain
+/// generation, entity placement, memory and save size.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ChunkRadii {
+    /// Chunks needed around each focus; these are the ones made visible.
+    pub load: i32,
+    /// Chunks discovered ahead of the focus, once the needed ones are in.
+    pub prefetch: i32,
+    /// Chunks kept loaded before they are offered for unloading (hysteresis).
+    pub keep: i32,
+}
+
+impl Default for ChunkRadii {
+    fn default() -> Self {
+        Self {
+            load: CHUNK_LOAD_RADIUS,
+            prefetch: CHUNK_PREFETCH_RADIUS,
+            keep: CHUNK_KEEP_RADIUS,
+        }
+    }
+}
+
+impl ChunkRadii {
+    /// Clamps the radii so they still grow outwards, whatever a caller asked for: a keep radius
+    /// below the prefetch radius would unload a chunk the streamer is still asking for, and the
+    /// two would fight every frame.
+    pub fn normalized(self) -> Self {
+        let load = self.load.max(1);
+        let prefetch = self.prefetch.max(load);
+        Self {
+            load,
+            prefetch,
+            keep: self.keep.max(prefetch),
+        }
+    }
+}
+
 /// Manages which chunks are discovered, visible and unloaded, plus the entities living on
 /// discovered chunks.
 pub struct ChunkManager {
@@ -25,17 +66,33 @@ pub struct ChunkManager {
     focus: Vec<ChunkCoord>,
     /// Chunks discovered this frame but not yet shown; kept so entities are generated once.
     pending_entities: Vec<ChunkCoord>,
+    radii: ChunkRadii,
 }
 
 impl ChunkManager {
     pub fn new(generator: TerrainGenerator, catalog: EntityCatalogV2) -> Self {
+        Self::with_radii(generator, catalog, ChunkRadii::default())
+    }
+
+    /// Same as [`Self::new`] with streaming radii of the client's choosing.
+    pub fn with_radii(
+        generator: TerrainGenerator,
+        catalog: EntityCatalogV2,
+        radii: ChunkRadii,
+    ) -> Self {
         Self {
             world: TerrainWorld::new(generator),
             catalog,
             entities: HashMap::new(),
             focus: Vec::new(),
             pending_entities: Vec::new(),
+            radii: radii.normalized(),
         }
+    }
+
+    /// The radii this streamer is using, already normalized.
+    pub fn radii(&self) -> ChunkRadii {
+        self.radii
     }
 
     /// Sets the focus chunks (typically around the camera/player). The streamer keeps chunks
@@ -58,8 +115,8 @@ impl ChunkManager {
         //    before the ring loaded ahead of the camera. Both share one budget, which is what
         //    keeps generation spread over frames instead of landing in one.
         let mut loads_left = CHUNKS_LOADED_PER_FRAME;
-        let wanted_loaded = self.chunks_within(CHUNK_LOAD_RADIUS);
-        for coord in self.chunks_within(CHUNK_PREFETCH_RADIUS) {
+        let wanted_loaded = self.chunks_within(self.radii.load);
+        for coord in self.chunks_within(self.radii.prefetch) {
             if loads_left <= 0 {
                 break;
             }
@@ -280,7 +337,7 @@ impl ChunkManager {
     fn is_within_keep(&self, coord: ChunkCoord) -> bool {
         self.focus
             .iter()
-            .any(|&focus| distance(focus, coord) <= CHUNK_KEEP_RADIUS)
+            .any(|&focus| distance(focus, coord) <= self.radii.keep)
     }
 
     /// Discovered chunks further than `CHUNK_KEEP_RADIUS` from every focus, nearest first.
