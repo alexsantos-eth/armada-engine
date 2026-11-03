@@ -18,8 +18,8 @@ use armada_core::projection::{
 use armada_core::simulation::FixedStepper;
 use armada_core::terrain::{TerrainColumn, TerrainConfig, TerrainGenerator};
 use armada_core::world::{ChunkManager, ChunkRadii};
-use armada_core::assets::{SVG_BLOCK_HEIGHT, SVG_TILE_WIDTH};
-use armada_core::entities::{EntityCatalogV2, validate_catalog};
+use armada_core::assets::{SVG_BLOCK_HEIGHT, SVG_TILE_WIDTH, footprint_slice};
+use armada_core::entities::{EntityCatalogV2, EntityLengthAxis, validate_catalog};
 use armada_core::camera::{Camera, ScreenSize, visible_chunks as camera_visible_chunks};
 use save::{
     load_archive_into_manager, load_save, restore_archive, restore_discovered_from_archive,
@@ -402,13 +402,41 @@ async fn main() {
                 if !SpriteAtlas::on_screen(layout) {
                     continue;
                 }
-                // The anchor is the cell of the footprint nearest the camera, so it is the
-                // cell the whole sprite sorts by.
-                draws.push(SpriteDraw {
-                    key: scene_key(x, y, elevation, ENTITY_LAYER, projection.tile_height),
-                    frame,
-                    layout,
-                });
+                // One drawing, one depth each. A sprite covering several cells is nearer the
+                // camera at one end than at the other, so no single key is right for all of
+                // it: keyed by its near cell it was painted over a tree standing beside its
+                // far one, and keyed by its far cell the ground in front of its near one
+                // painted over its base. It is cut where its cells meet instead, and each band
+                // sorts by the cell it stands on. A single cell is one band, uncut.
+                let cells = entity.length().max(1);
+                let along_y = entity.length_axis() == Some(EntityLengthAxis::Y);
+                // Consecutive cells are half a tile apart across the screen, rightwards along
+                // the engine's x and leftwards along its y.
+                let across = if along_y { -1.0 } else { 1.0 } * projection.tile_width / 2.0;
+                for index in 0..cells {
+                    let step = f64::from(index);
+                    let (cell_x, cell_y) = if along_y { (x, y + step) } else { (x + step, y) };
+                    let Some(slice) =
+                        footprint_slice(layout, ground.screen_x, index, cells, across)
+                    else {
+                        continue;
+                    };
+                    if !SpriteAtlas::on_screen(slice.layout) {
+                        continue;
+                    }
+                    draws.push(SpriteDraw {
+                        key: scene_key(
+                            cell_x,
+                            cell_y,
+                            elevation,
+                            ENTITY_LAYER,
+                            projection.tile_height,
+                        ),
+                        frame,
+                        layout: slice.layout,
+                        u: slice.u,
+                    });
+                }
             }
         }
 
@@ -422,13 +450,13 @@ async fn main() {
         );
         let feet = ScreenPoint { x: feet.screen_x, y: feet.screen_y };
         match player_frame {
-            Some(frame) => draws.push(SpriteDraw {
+            Some(frame) => draws.push(SpriteDraw::whole(
                 // Sorted by the cell the player stands on, not by its exact position: the
                 // player walks across a cell continuously, so its own depth would drift past
                 // its column's and the block it is standing on would be drawn over it for
                 // half of every cell. `get_player_column` is the same rule the physics uses
                 // to decide which column holds the player up.
-                key: {
+                {
                     let cell = get_player_column(GridPoint { x: rp.x, y: rp.y });
                     scene_key(
                         f64::from(cell.x) + 0.5,
@@ -439,8 +467,8 @@ async fn main() {
                     )
                 },
                 frame,
-                layout: anchored(feet, PLAYER_SIZE, player_anchor, frame),
-            }),
+                anchored(feet, PLAYER_SIZE, player_anchor, frame),
+            )),
             // A marker while the atlas has no player sprite, drawn straight away: it is not a
             // sprite, so it cannot go through the sorted list.
             None => draw_circle(feet.x as f32, feet.y as f32, 12.0, GOLD),

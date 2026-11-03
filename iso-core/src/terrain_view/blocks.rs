@@ -162,8 +162,8 @@ pub fn collect_terrain_sprites(
             if !SpriteAtlas::on_screen(layout) {
                 continue;
             }
-            out.push(SpriteDraw {
-                key: scene_key(
+            out.push(SpriteDraw::whole(
+                scene_key(
                     centre.x,
                     centre.y,
                     f64::from(block.elevation),
@@ -172,7 +172,7 @@ pub fn collect_terrain_sprites(
                 ),
                 frame,
                 layout,
-            });
+            ));
         }
     }
 }

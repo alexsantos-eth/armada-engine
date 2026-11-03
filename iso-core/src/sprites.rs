@@ -3,7 +3,9 @@
 //! Every sprite the client draws comes out of one texture, so the whole scene — terrain,
 //! entities and the player — is one batch of textured quads.
 
-use armada_core::assets::{AssetManifest, InkBox, SpriteAnchor, SpriteFrame, SpriteLayout, ink_layout};
+use armada_core::assets::{
+    AssetManifest, InkBox, SpriteAnchor, SpriteFrame, SpriteLayout, ink_layout,
+};
 use armada_core::projection::ScreenPoint;
 use armada_core::scene_order::{DrawKey, LengthAxis, compare_draw_keys, get_draw_depth};
 use macroquad::prelude::*;
@@ -80,13 +82,19 @@ impl SpriteAtlas {
         Some((asset.frame, ink_layout(ground, asset.ink?, tile_width)))
     }
 
-    /// Draws one frame into the square `layout` describes.
-    pub fn draw(&self, frame: SpriteFrame, layout: SpriteLayout) {
+    /// Draws the `u` range of one frame into the rectangle `layout` describes.
+    ///
+    /// `u` is a horizontal range of the frame, as fractions of its width: the whole of it for
+    /// most sprites, and one band of it for a sprite cut up across its footprint (see
+    /// [`armada_core::assets::footprint_slice`]).
+    pub fn draw(&self, frame: SpriteFrame, layout: SpriteLayout, u: (f64, f64)) {
         // Frames sit edge to edge in the atlas and some artwork reaches its frame's border, so
         // sampling the outermost half texel of a frame blends in the neighbouring sprite. Half
         // a texel in from every side keeps a block's edge clean at the cost of 1/256 of the
         // artwork, which is below a pixel on screen.
         const INSET: f32 = 0.5;
+        let left = frame.x as f32 + INSET;
+        let usable = frame.width as f32 - INSET * 2.0;
         draw_texture_ex(
             &self.texture,
             layout.x as f32,
@@ -94,9 +102,9 @@ impl SpriteAtlas {
             WHITE,
             DrawTextureParams {
                 source: Some(Rect::new(
-                    frame.x as f32 + INSET,
+                    left + u.0 as f32 * usable,
                     frame.y as f32 + INSET,
-                    frame.width as f32 - INSET * 2.0,
+                    (u.1 - u.0) as f32 * usable,
                     frame.height as f32 - INSET * 2.0,
                 )),
                 dest_size: Some(vec2(layout.width as f32, layout.height as f32)),
@@ -142,6 +150,16 @@ pub struct SpriteDraw {
     pub key: DrawKey,
     pub frame: SpriteFrame,
     pub layout: SpriteLayout,
+    /// The horizontal range of the frame this draw shows, as fractions of the frame's width.
+    /// `(0.0, 1.0)` for everything that is drawn in one piece.
+    pub u: (f64, f64),
+}
+
+impl SpriteDraw {
+    /// A sprite drawn whole, which is everything standing on a single cell.
+    pub fn whole(key: DrawKey, frame: SpriteFrame, layout: SpriteLayout) -> Self {
+        Self { key, frame, layout, u: (0.0, 1.0) }
+    }
 }
 
 /// Sorts the queued sprites far to near and draws them.
@@ -150,7 +168,7 @@ pub fn draw_sorted(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
     // what stacks a column's own blocks bottom first.
     draws.sort_by(|a, b| compare_draw_keys(&a.key, &b.key));
     for draw in draws.iter() {
-        atlas.draw(draw.frame, draw.layout);
+        atlas.draw(draw.frame, draw.layout, draw.u);
     }
 }
 

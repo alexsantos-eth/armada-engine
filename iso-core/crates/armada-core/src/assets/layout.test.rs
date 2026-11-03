@@ -1,4 +1,4 @@
-use super::{SpriteLayout, ink_layout};
+use super::{SpriteLayout, footprint_slice, ink_layout};
 use crate::assets::ink::{InkBox, asset_ink};
 use crate::projection::ScreenPoint;
 
@@ -102,4 +102,65 @@ fn a_measured_asset_lands_where_it_was_drawn() {
     assert_eq!(layout.width, 40.0, "half a tile across");
     assert_eq!(layout.y, 200.0 - 20.0, "reaching a quarter tile above the ground");
     assert_eq!(layout.y + layout.height, 200.0, "down to the ground centre");
+}
+
+/// A three-cell building anchored at a cell, drawn two tiles wide and standing a tile proud of
+/// its own footprint on each side. Its footprint runs rightwards (half a tile a cell), so the
+/// bands run rightwards too and together they cover the whole drawing exactly once.
+#[test]
+fn the_bands_of_a_footprint_tile_the_whole_drawing() {
+    let layout = SpriteLayout { x: -60.0, y: -200.0, width: 160.0, height: 240.0 };
+    let bands: Vec<_> = (0..3)
+        .map(|k| footprint_slice(layout, 0.0, k, 3, TILE_WIDTH / 2.0).expect("a band"))
+        .collect();
+    assert_eq!(bands[0].layout.x, layout.x, "the first band reaches the left edge");
+    let right = |b: &super::SpriteSlice| b.layout.x + b.layout.width;
+    assert_eq!(right(&bands[2]), layout.x + layout.width, "and the last the right edge");
+    for pair in bands.windows(2) {
+        assert_eq!(right(&pair[0]), pair[1].layout.x, "no gap and no overlap");
+    }
+    // The middle band is exactly the cell it stands on: half a tile wide, centred on that
+    // cell's own centre, which is half a tile right of the anchor's.
+    assert_eq!(bands[1].layout.x + bands[1].layout.width / 2.0, 40.0);
+    assert_eq!(bands[1].layout.width, 40.0);
+    for band in &bands {
+        assert_eq!(band.layout.y, layout.y, "only cut across, never up or down");
+        assert_eq!(band.layout.height, layout.height);
+    }
+}
+
+/// The band has to show the part of the frame that lands in it, or the drawing is smeared.
+#[test]
+fn a_band_samples_its_own_part_of_the_frame() {
+    let layout = SpriteLayout { x: 0.0, y: 0.0, width: 100.0, height: 50.0 };
+    let band = footprint_slice(layout, 50.0, 1, 2, 50.0).expect("a band");
+    assert_eq!(band.layout.x, 75.0, "from the midpoint between the two cells");
+    assert_eq!(band.u, (0.75, 1.0), "the right quarter of the frame");
+}
+
+/// A footprint along the engine's y runs the other way across the screen, so its bands do too.
+#[test]
+fn a_footprint_the_other_way_runs_leftwards() {
+    let layout = SpriteLayout { x: -100.0, y: 0.0, width: 140.0, height: 50.0 };
+    let anchor = footprint_slice(layout, 0.0, 0, 3, -40.0).expect("a band");
+    let far = footprint_slice(layout, 0.0, 2, 3, -40.0).expect("a band");
+    assert_eq!(anchor.layout.x + anchor.layout.width, layout.x + layout.width);
+    assert_eq!(far.layout.x, layout.x, "the far cell is the leftmost band");
+    assert!(far.layout.x < anchor.layout.x);
+}
+
+#[test]
+fn a_single_cell_sprite_is_not_cut() {
+    let layout = SpriteLayout { x: 10.0, y: 20.0, width: 30.0, height: 40.0 };
+    let whole = footprint_slice(layout, 25.0, 0, 1, 40.0).expect("the whole sprite");
+    assert_eq!(whole.layout, layout);
+    assert_eq!(whole.u, (0.0, 1.0));
+}
+
+/// A long footprint under a drawing that covers only part of it: the bands with no artwork in
+/// them are nothing to draw, and saying so keeps them out of the sorted list.
+#[test]
+fn a_band_with_nothing_in_it_is_none() {
+    let layout = SpriteLayout { x: -20.0, y: 0.0, width: 40.0, height: 40.0 };
+    assert!(footprint_slice(layout, 0.0, 4, 6, 40.0).is_none());
 }
