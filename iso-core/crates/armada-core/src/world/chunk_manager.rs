@@ -142,7 +142,7 @@ impl ChunkManager {
         let columns = self.world.chunk(coord)?;
         let saved_columns: Vec<crate::world::save::SavedColumn> = columns
             .iter()
-            .map(|c| crate::world::save::terrain_column_to_saved(c, crate::world::save::SAVE_BLOCK_FLOOR))
+            .map(crate::world::save::terrain_column_to_saved)
             .collect();
         let saved_entities: Vec<crate::world::save::SavedEntity> = self
             .entities
@@ -306,6 +306,25 @@ impl ChunkManager {
             (std::cmp::Reverse(dist), coord.cx, coord.cy)
         });
         stale
+    }
+
+    /// The one chunk [`Self::unload_candidates`] would hand back first, without building the
+    /// list. A client calls this every frame, and the list costs two allocations and a sort.
+    ///
+    /// Ties break on coordinates, so the choice does not depend on hash order.
+    pub fn next_unload_candidate(&self) -> Option<ChunkCoord> {
+        self.world
+            .discovered_chunks_unordered()
+            .filter(|&coord| !self.is_within_keep(coord))
+            .max_by_key(|coord| {
+                let dist = self
+                    .focus
+                    .iter()
+                    .map(|f| distance(*f, *coord))
+                    .min()
+                    .unwrap_or(i32::MAX);
+                (dist, std::cmp::Reverse(coord.cx), std::cmp::Reverse(coord.cy))
+            })
     }
 
     /// Drops a chunk's terrain and entities from memory, returning its saved form.

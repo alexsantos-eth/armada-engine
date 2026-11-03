@@ -1,3 +1,4 @@
+mod perf;
 mod save;
 mod services;
 mod sprites;
@@ -7,7 +8,7 @@ use armada_core::assets::sprite_layout;
 use armada_core::entities::EntityLengthAxis;
 use armada_core::grid::{WorldCoord, to_chunk_coord};
 use armada_core::player::physics::{
-    PlayerGround, create_player, find_player_spawn,
+    PlayerGround, create_player, find_player_spawn, get_player_column,
     get_player_render_position, jump_player, no_top_inset, set_player_jump_held,
     set_player_run, step_player,
 };
@@ -25,6 +26,7 @@ use save::{
     load_archive_into_manager, load_save, restore_archive, restore_discovered_from_archive,
     save_archive, sync_manager_to_archive,
 };
+use perf::{FrameSample, PerfLog};
 use sprites::{SpriteAtlas, SpriteDraw, anchored, draw_sorted, scene_key};
 use terrain_view::blocks::{TerrainFrames, collect_terrain_sprites};
 use macroquad::prelude::*;
@@ -57,6 +59,13 @@ const PLAYER_LAYER: i32 = 2;
 const PLAYER_SIZE: f64 = PREVIEW_TILE_WIDTH * 0.6;
 /// Source path of the player's sprite in the asset manifest.
 const PLAYER_SPRITE: &str = "/assets/player/block.svg";
+/// Extra view the chunk cull keeps around the screen, as a fraction of it.
+///
+/// Zero: this client culls every frame, so a chunk is included on the frame it first touches the
+/// screen and there is nothing for a margin to cover. `CHUNK_VIEW_MARGIN` exists for a client
+/// that caches its cull between frames and needs the ring ahead of the camera.
+const CHUNK_CULL_MARGIN: f64 = 0.0;
+
 /// Safety-net interval for the periodic save; the real save happens on quit and on request.
 const AUTOSAVE_SECONDS: f64 = 120.0;
 
@@ -175,16 +184,17 @@ async fn main() {
     // The quit is intercepted so the final save gets a frame to run before the window closes.
     prevent_quit();
 
-    // Frame-time readout state.
-    let mut frame_peak_ms: f64 = 0.0;
-    let mut worst_ms: f64 = 0.0;
-    let mut peak_since = get_time();
+    // Frame timings over a rolling window. The phases are kept beside the frame total: if the
+    // three add up to much less than the frame took, the time went on the GPU or on waiting for
+    // the display, and no amount of work removed from this loop will show up.
+    let mut perf = PerfLog::default();
 
     // Services.
     let mut audio = MacroquadAudio::default();
     let mut ui = MacroquadUi::default();
 
     loop {
+        let frame_start = get_time();
         if is_key_pressed(KeyCode::T) {
             show_terrain = !show_terrain;
         }
@@ -225,14 +235,6 @@ async fn main() {
         // `max_frame_ms` already caps a long frame, so the count always fits; saturating keeps
         // that an invariant of this call rather than an assumption about the stepper.
         let frame_ms = f64::from(get_frame_time()) * 1000.0;
-        // Worst frame of the last second: a stutter is a few slow frames, and an average or an
-        // instantaneous fps reading hides exactly those.
-        frame_peak_ms = frame_peak_ms.max(frame_ms);
-        if get_time() - peak_since > 1.0 {
-            worst_ms = frame_peak_ms;
-            frame_peak_ms = 0.0;
-            peak_since = get_time();
-        }
         let ticks = u32::try_from(stepper.consume_frame(frame_ms)).unwrap_or(u32::MAX);
         if ticks > 0 {
             let jumps_before = player.feedback.jumps;
@@ -284,7 +286,7 @@ async fn main() {
         // Drop chunks the player has left behind, after storing them: hiding a chunk keeps its
         // terrain and entities in memory, so without this a long session grows without bound.
         // One per frame, matching the load budget.
-        if let Some(&stale) = manager.unload_candidates().first()
+        if let Some(stale) = manager.next_unload_candidate()
             && let Some(saved) = manager.unload_chunk(stale)
         {
             archive.put(saved);
@@ -306,17 +308,14 @@ async fn main() {
             return;
         }
 
+        let after_simulation = get_time();
+
         // Camera culling: determine which chunks are in the viewport.
         let viewport = ScreenSize {
             width: f64::from(width),
             height: f64::from(height),
         };
-        let culled = camera_visible_chunks(
-            camera,
-            viewport,
-            projection,
-            armada_core::camera::CHUNK_VIEW_MARGIN,
-        );
+        let culled = camera_visible_chunks(camera, viewport, projection, CHUNK_CULL_MARGIN);
         // Intersect with discovered chunks.
         let visible_set: std::collections::HashSet<_> = culled.into_iter().collect();
 
@@ -329,14 +328,21 @@ async fn main() {
         // Everything visible is queued into one list and sorted once, so a sprite covers
         // exactly what is behind it: the ground, what stands on the ground, and the player.
         draws.clear();
-        if show_terrain {
-            for coord in manager.visible_chunks() {
-                if !visible_set.contains(&coord) {
-                    continue;
-                }
-                let Some(chunk) = manager.terrain_chunk(coord) else {
-                    continue;
-                };
+        if !show_terrain {
+            draw_grid(projection, WorldCoord {
+                x: player.x.floor() as i32,
+                y: player.y.floor() as i32,
+            });
+        }
+        // One pass over the visible chunks for both, rather than one each: `visible_chunks`
+        // builds a vector every call.
+        let mut chunks_drawn = 0usize;
+        for coord in manager.visible_chunks() {
+            if !visible_set.contains(&coord) {
+                continue;
+            }
+            chunks_drawn += 1;
+            if show_terrain && let Some(chunk) = manager.terrain_chunk(coord) {
                 // `column_at` indexes straight into the chunk. Scanning the chunk for a
                 // matching coordinate searched up to 1024 columns per lookup, and the view
                 // asks for two neighbour heights per drawn column: ~4 ms a frame, for a
@@ -349,22 +355,11 @@ async fn main() {
                     &mut draws,
                 );
             }
-        } else {
-            draw_grid(projection, WorldCoord {
-                x: player.x.floor() as i32,
-                y: player.y.floor() as i32,
-            });
-        }
-
-        // Entities from the same visible chunks. Each one is drawn from its own blueprint:
-        // the sprite its `asset.sprite` names, sized by the footprint and height the blueprint
-        // declares. The first version guessed the sprite from the entity's id and drew every
-        // one of them as a fixed 64x64 square, so a three-cell pier and a six-storey tower
-        // came out the same size as a bush.
-        for coord in manager.visible_chunks() {
-            if !visible_set.contains(&coord) {
-                continue;
-            }
+            // Entities of the same chunk. Each one is drawn from its own blueprint: the sprite
+            // its `asset.sprite` names, sized by the footprint and height the blueprint
+            // declares. The first version guessed the sprite from the entity's id and drew
+            // every one of them as a fixed 64x64 square, so a three-cell pier and a
+            // six-storey tower came out the same size as a bush.
             let Some(entities) = manager.entities_chunk(coord) else {
                 continue;
             };
@@ -410,13 +405,21 @@ async fn main() {
         let feet = ScreenPoint { x: feet.screen_x, y: feet.screen_y };
         match player_frame {
             Some(frame) => draws.push(SpriteDraw {
-                key: scene_key(
-                    rp.x + 0.5,
-                    rp.y + 0.5,
-                    rp.elevation + rp.height,
-                    PLAYER_LAYER,
-                    projection.tile_height,
-                ),
+                // Sorted by the cell the player stands on, not by its exact position: the
+                // player walks across a cell continuously, so its own depth would drift past
+                // its column's and the block it is standing on would be drawn over it for
+                // half of every cell. `get_player_column` is the same rule the physics uses
+                // to decide which column holds the player up.
+                key: {
+                    let cell = get_player_column(GridPoint { x: rp.x, y: rp.y });
+                    scene_key(
+                        f64::from(cell.x) + 0.5,
+                        f64::from(cell.y) + 0.5,
+                        rp.elevation + rp.height,
+                        PLAYER_LAYER,
+                        projection.tile_height,
+                    )
+                },
                 frame,
                 layout: anchored(feet, PLAYER_SIZE, player_anchor),
             }),
@@ -425,7 +428,23 @@ async fn main() {
             None => draw_circle(feet.x as f32, feet.y as f32, 12.0, GOLD),
         }
 
+        let after_collect = get_time();
+        let sprites = draws.len();
         draw_sorted(&atlas, &mut draws);
+        let after_draw = get_time();
+        perf.push(FrameSample {
+            frame_ms,
+            simulation_ms: (after_simulation - frame_start) * 1000.0,
+            scene_ms: (after_collect - after_simulation) * 1000.0,
+            draw_ms: (after_draw - after_collect) * 1000.0,
+            sprites,
+            chunks: chunks_drawn,
+            chunks_alive: manager.discovered_count(),
+        });
+        // The whole report, in the same shape as the TypeScript client's, for comparing the two.
+        if is_key_pressed(KeyCode::P) {
+            info!("{}", perf.summary());
+        }
 
         // Push HUD update via the UI service.
         ui.push(UiEvent::HudUpdate {
@@ -440,7 +459,7 @@ async fn main() {
         draw_rectangle(20.0, 20.0, 510.0, 80.0, Color::from_rgba(21, 29, 42, 205));
         draw_text("Armada Engine / Macroquad", 32.0, 58.0, 32.0, WHITE);
         draw_text(
-            "WASD/Flechas | Espacio: saltar | Shift: correr | T: terreno | F5: guardar",
+            "WASD/Flechas | Espacio: saltar | Shift: correr | T: terreno | P: perf | F5: guardar",
             32.0,
             89.0,
             18.0,
@@ -468,20 +487,51 @@ async fn main() {
             );
         }
 
-        // Frame-time readout, top right. The worst frame of the last second is what shows a
-        // stutter; an fps average smooths exactly the spikes worth seeing.
-        let fps_text = format!("{} fps", get_fps());
-        let worst_text = format!("peor {worst_ms:.1} ms");
-        let readout_colour = if worst_ms > 33.0 {
+        // Frame-time readout, top right. Percentiles over the window rather than an average:
+        // a stutter is a handful of frames, and an average hides exactly those.
+        let (_, frame_p95, frame_max) = perf.frame_ms();
+        let (_, cpu_p95, _) = perf.cpu_ms();
+        let readout_colour = if frame_max > 33.4 {
             RED
-        } else if worst_ms > 20.0 {
+        } else if frame_max > 20.0 {
             ORANGE
         } else {
             LIME
         };
-        draw_rectangle(width - 190.0, 20.0, 170.0, 58.0, Color::from_rgba(21, 29, 42, 205));
-        draw_text(&fps_text, width - 178.0, 46.0, 28.0, readout_colour);
-        draw_text(&worst_text, width - 178.0, 68.0, 18.0, readout_colour);
+        draw_rectangle(width - 230.0, 20.0, 210.0, 92.0, Color::from_rgba(21, 29, 42, 205));
+        draw_text(
+            format!("{} fps", get_fps()),
+            width - 218.0,
+            46.0,
+            28.0,
+            readout_colour,
+        );
+        draw_text(
+            format!("frame p95 {frame_p95:.1} max {frame_max:.1}"),
+            width - 218.0,
+            66.0,
+            15.0,
+            readout_colour,
+        );
+        draw_text(
+            format!("cpu p95 {cpu_p95:.1} ms · {} caidos", perf.dropped()),
+            width - 218.0,
+            82.0,
+            15.0,
+            LIGHTGRAY,
+        );
+        // Where the worst frame of the window went: simulation, sprite list, drawing.
+        let worst = perf.worst();
+        draw_text(
+            format!(
+                "peor: sim {:.1} esc {:.1} dib {:.1}",
+                worst.simulation_ms, worst.scene_ms, worst.draw_ms
+            ),
+            width - 218.0,
+            98.0,
+            15.0,
+            LIGHTGRAY,
+        );
 
         // Draw any UI messages.
         for (i, msg) in ui.messages.iter().enumerate() {

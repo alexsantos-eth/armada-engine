@@ -185,6 +185,30 @@
         assert!(manager.unload_chunk(ChunkCoord { cx: 7, cy: 7 }).is_none());
     }
 
+    /// The client asks for one candidate a frame, so it uses the allocation-free form; it has
+    /// to agree with the list, including when a focus moves and the distances change.
+    #[test]
+    fn the_next_candidate_is_the_first_of_the_list() {
+        let mut manager = ChunkManager::new(generator(), catalog());
+        manager.set_focus(vec![ChunkCoord { cx: 0, cy: 0 }]);
+        for _ in 0..12 {
+            manager.tick();
+        }
+        for focus in [
+            ChunkCoord { cx: 0, cy: 0 },
+            ChunkCoord { cx: 5, cy: 0 },
+            ChunkCoord { cx: -4, cy: 6 },
+            ChunkCoord { cx: 40, cy: 40 },
+        ] {
+            manager.set_focus(vec![focus]);
+            assert_eq!(
+                manager.next_unload_candidate(),
+                manager.unload_candidates().first().copied(),
+                "disagreed with the list at focus {focus:?}"
+            );
+        }
+    }
+
     /// A chunk kept near a focus is never offered for unloading, which is the hysteresis that
     /// stops a focus crossing a chunk edge from unloading and regenerating the same ground.
     #[test]

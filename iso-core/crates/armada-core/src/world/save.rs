@@ -95,21 +95,26 @@ impl std::fmt::Display for SaveError {
 
 impl std::error::Error for SaveError {}
 
-/// Default floor used when materializing a column's blocks for saving. Matches the default
-/// terrain generator's minimum elevation.
-pub const SAVE_BLOCK_FLOOR: i32 = -3;
-
-/// Converts a materialized terrain column into its saved form, storing every block from
-/// `floor` through the top elevation.
-pub fn terrain_column_to_saved(column: &crate::terrain::TerrainColumn, floor: i32) -> SavedColumn {
+/// Converts a materialized terrain column into its saved form.
+///
+/// Only the surface block is written. A column is elevation plus surface material, and
+/// everything below it is derived by [`crate::terrain::TerrainColumn::material_at`] — dirt
+/// under a dry surface, water under water — which is exactly what [`saved_to_terrain_column`]
+/// rebuilds from the top block. Writing the whole stack from the generator's floor stored five
+/// blocks per column that were thrown away on load: 7 MB and 25 ms of main-thread
+/// serialization for 30 chunks, which is a visible freeze every time the world is saved.
+///
+/// A save written by an older build still carries the full stack, and still loads: the reader
+/// takes the highest block and ignores the rest.
+pub fn terrain_column_to_saved(column: &crate::terrain::TerrainColumn) -> SavedColumn {
     SavedColumn {
         x: column.coord.x,
         y: column.coord.y,
         walkable: column.walkable,
-        blocks: column.blocks_from(floor).map(|block| SavedBlock {
-            elevation: block.elevation,
-            material: block.material,
-        }).collect(),
+        blocks: vec![SavedBlock {
+            elevation: column.elevation,
+            material: column.surface,
+        }],
     }
 }
 
@@ -783,4 +788,56 @@ mod tests {
             SaveError::InvalidEntity { .. }
         ));
     }
+    /// A column is written as one block and comes back whole: the save stores what a column is
+    /// (elevation, surface, walkable) and the stack under it is derived, not stored.
+    #[test]
+    fn a_column_survives_a_round_trip_through_one_saved_block() {
+        use crate::grid::WorldCoord;
+        use crate::terrain::TerrainColumn;
+        for (elevation, surface, walkable) in [
+            (0, TerrainMaterial::Grass, true),
+            (4, TerrainMaterial::Path, true),
+            (-2, TerrainMaterial::Water, false),
+            (1, TerrainMaterial::Sand, true),
+        ] {
+            let column = TerrainColumn {
+                coord: WorldCoord { x: 7, y: -3 },
+                elevation,
+                surface,
+                walkable,
+            };
+            let saved = terrain_column_to_saved(&column);
+            assert_eq!(saved.blocks.len(), 1, "only the surface block is written");
+            assert_eq!(saved_to_terrain_column(&saved), column);
+        }
+    }
+
+    /// Saves written before the format stopped storing the whole stack still load, and still
+    /// give back the same column.
+    #[test]
+    fn a_save_carrying_the_whole_stack_still_loads() {
+        use crate::grid::WorldCoord;
+        use crate::terrain::TerrainColumn;
+        let old = SavedColumn {
+            x: 7,
+            y: -3,
+            walkable: true,
+            blocks: vec![
+                SavedBlock { elevation: -3, material: TerrainMaterial::Ground },
+                SavedBlock { elevation: -2, material: TerrainMaterial::Ground },
+                SavedBlock { elevation: -1, material: TerrainMaterial::Ground },
+                SavedBlock { elevation: 0, material: TerrainMaterial::Grass },
+            ],
+        };
+        assert_eq!(
+            saved_to_terrain_column(&old),
+            TerrainColumn {
+                coord: WorldCoord { x: 7, y: -3 },
+                elevation: 0,
+                surface: TerrainMaterial::Grass,
+                walkable: true,
+            }
+        );
+    }
+
 }

@@ -11,6 +11,7 @@ use armada_core::entities::EntityLengthAxis;
 use armada_core::grid::WorldCoord;
 use armada_core::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
 use armada_core::terrain::{TerrainColumn, TerrainMaterial};
+use macroquad::prelude::{screen_height, screen_width};
 
 use crate::sprites::{SpriteAtlas, SpriteDraw, scene_key};
 
@@ -74,11 +75,33 @@ pub fn collect_terrain_sprites(
     height_at: impl Fn(WorldCoord) -> Option<i32>,
     out: &mut Vec<SpriteDraw>,
 ) {
+    let step = projection
+        .elevation_step
+        .unwrap_or(projection.tile_height / 2.0);
+    // Chunks are culled against the camera, but a chunk is 32x32 columns and only a fraction of
+    // one is ever on screen: a frame walks ~12 000 columns of which ~600 are visible. So the
+    // projected point is tested against these bounds before anything else is computed — the two
+    // neighbour lookups per column alone cost over a millisecond a frame when every column paid
+    // for them.
+    let (screen_w, screen_h) = (f64::from(screen_width()), f64::from(screen_height()));
+    let half_tile = projection.tile_width / 2.0;
+    let above = projection.tile_height / 2.0;
+    let below = f64::from(MAX_EXPOSED_BLOCKS + 1) * step + projection.tile_height / 2.0;
+
     for &column in columns {
         let centre = GridPoint {
             x: f64::from(column.coord.x) + 0.5,
             y: f64::from(column.coord.y) + 0.5,
         };
+        let top = project_block(centre, f64::from(column.elevation), projection);
+        if top.screen_x + half_tile < 0.0
+            || top.screen_x - half_tile > screen_w
+            || top.screen_y + below < 0.0
+            || top.screen_y - above > screen_h
+        {
+            continue;
+        }
+
         // The two faces that can be seen are the ones towards the camera, where x and y
         // decrease; a column is exposed as far down as the lower of those neighbours.
         let in_front = [
@@ -102,12 +125,12 @@ pub fn collect_terrain_sprites(
             let Some(frame) = frames.frame(block.material) else {
                 continue;
             };
-            // A block stands on the top face of the block below it.
-            let under = project_block(centre, f64::from(block.elevation - 1), projection);
+            // A block stands on the top face of the block below it, which is `step` further
+            // down the screen for each level below the column's own surface.
             let layout = sprite_layout(
                 ScreenPoint {
-                    x: under.screen_x,
-                    y: under.screen_y,
+                    x: top.screen_x,
+                    y: top.screen_y + f64::from(column.elevation - block.elevation + 1) * step,
                 },
                 1,
                 1,

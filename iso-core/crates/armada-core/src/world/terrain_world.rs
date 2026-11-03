@@ -145,6 +145,11 @@ impl TerrainWorld {
         chunks.sort_by_key(|coord| (coord.cx, coord.cy));
         chunks
     }
+
+    /// Discovered chunks in no particular order, for callers that only scan them.
+    pub fn discovered_chunks_unordered(&self) -> impl Iterator<Item = ChunkCoord> + '_ {
+        self.discovered.keys().copied()
+    }
 }
 
 #[cfg(test)]
