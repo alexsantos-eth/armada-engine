@@ -18,7 +18,7 @@ use armada_core::projection::{
 use armada_core::simulation::FixedStepper;
 use armada_core::terrain::{TerrainColumn, TerrainConfig, TerrainGenerator};
 use armada_core::world::{ChunkManager, ChunkRadii};
-use armada_core::assets::{SVG_BLOCK_HEIGHT, SVG_TILE_WIDTH, footprint_slice};
+use armada_core::assets::{SVG_BLOCK_HEIGHT, SVG_TILE_WIDTH, footprint_band};
 use armada_core::entities::{EntityCatalogV2, EntityLengthAxis, validate_catalog};
 use armada_core::camera::{Camera, ScreenSize, visible_chunks as camera_visible_chunks};
 use save::{
@@ -50,6 +50,17 @@ const PREVIEW_TILE_WIDTH: f64 = 150.0;
 const PREVIEW_TILE_HEIGHT: f64 = PREVIEW_TILE_WIDTH / 2.0;
 /// One level of elevation, in screen pixels: as tall as the artwork draws a block's body, so
 /// that a stack of them meets. See [`armada_core::assets::elevation_step`].
+/// How far each band of a multi-cell sprite reaches past its cut, as a fraction of a tile.
+///
+/// The cut follows the edge the two cells share, and the ground on the other side of that edge
+/// reaches a little past it: the blocks are clay with rounded corners, so their artwork is
+/// almost four percent narrower than a tile and the terrain stretches it to the tile to close
+/// the seams between neighbours (`InkBox::fitted_to_tiles`), which leaves every ground diamond
+/// about two percent of a tile oversized. Without this the nearer ground drew a hairline of
+/// itself along the cut, across the face of every long building. Bands may overlap freely: they
+/// are parts of one drawing, and the one drawn second is the one nearer the camera.
+const BAND_BLEED: f64 = 0.03;
+
 const PREVIEW_ELEVATION_STEP: f64 = PREVIEW_TILE_WIDTH * SVG_BLOCK_HEIGHT / SVG_TILE_WIDTH;
 /// Entities draw above the terrain of the same depth, and the player above the entities.
 const ENTITY_LAYER: i32 = 1;
@@ -410,20 +421,32 @@ async fn main() {
                 // sorts by the cell it stands on. A single cell is one band, uncut.
                 let cells = entity.length().max(1);
                 let along_y = entity.length_axis() == Some(EntityLengthAxis::Y);
-                // Consecutive cells are half a tile apart across the screen, rightwards along
-                // the engine's x and leftwards along its y.
-                let across = if along_y { -1.0 } else { 1.0 } * projection.tile_width / 2.0;
+                // One cell along the engine's x is half a tile right and a quarter of one up
+                // the screen; one along its y is half a tile left and the same quarter up.
+                let (half, quarter) = (projection.tile_width / 2.0, projection.tile_height / 2.0);
+                let (step, other) = if along_y {
+                    ((-half, -quarter), (half, -quarter))
+                } else {
+                    ((half, -quarter), (-half, -quarter))
+                };
+                let anchor = ScreenPoint { x: ground.screen_x, y: ground.screen_y };
                 for index in 0..cells {
-                    let step = f64::from(index);
-                    let (cell_x, cell_y) = if along_y { (x, y + step) } else { (x + step, y) };
-                    let Some(slice) =
-                        footprint_slice(layout, ground.screen_x, index, cells, across)
+                    let offset = f64::from(index);
+                    let (cell_x, cell_y) =
+                        if along_y { (x, y + offset) } else { (x + offset, y) };
+                    let Some(band) =
+                        footprint_band(
+                            layout,
+                            anchor,
+                            step,
+                            other,
+                            index,
+                            cells,
+                            projection.tile_width * BAND_BLEED,
+                        )
                     else {
                         continue;
                     };
-                    if !SpriteAtlas::on_screen(slice.layout) {
-                        continue;
-                    }
                     draws.push(SpriteDraw {
                         key: scene_key(
                             cell_x,
@@ -433,8 +456,8 @@ async fn main() {
                             projection.tile_height,
                         ),
                         frame,
-                        layout: slice.layout,
-                        u: slice.u,
+                        layout,
+                        band: (cells > 1).then_some(band),
                     });
                 }
             }

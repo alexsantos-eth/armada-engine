@@ -40,13 +40,21 @@ pub fn ink_layout(ground: ScreenPoint, ink: InkBox, tile_width: f64) -> SpriteLa
     }
 }
 
-/// One vertical band of a sprite: part of its artwork, and the part of the frame to sample.
+/// One band of a sprite's artwork: the part of it that stands on a single cell.
 ///
-/// `u` is the horizontal range of the frame the band shows, as fractions of the frame's width.
+/// A convex polygon in screen pixels, with at most eight corners. Its corners carry no texture
+/// coordinates because they are implied: the artwork maps linearly onto the sprite's rectangle,
+/// so a corner at `(x, y)` samples `((x - layout.x) / width, (y - layout.y) / height)`.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct SpriteSlice {
-    pub layout: SpriteLayout,
-    pub u: (f64, f64),
+pub struct SpriteBand {
+    corners: [(f64, f64); 8],
+    len: usize,
+}
+
+impl SpriteBand {
+    pub fn corners(&self) -> &[(f64, f64)] {
+        &self.corners[..self.len]
+    }
 }
 
 /// The band of a multi-cell sprite that stands on the `index`-th cell of its footprint.
@@ -59,51 +67,114 @@ pub struct SpriteSlice {
 /// ground in front of the near one paint over its base.
 ///
 /// Cutting the drawing where the cells meet gives each part the depth of the cell it stands on.
-/// The cut is vertical because that is how the cells divide on screen: consecutive cells of a
-/// footprint are half a tile apart across the screen, in the direction `across` gives
-/// (rightwards for a footprint along the engine's x, leftwards along its y), so the band between
-/// the midpoints either side of a cell's centre contains that cell and no other. The bands at
-/// the two ends run out to the drawing's own edges, so nothing is lost: the artwork overhangs
-/// its footprint wherever it is taller than a block.
+/// **The cut follows the cells' shared edge, not a vertical line.** What one cell can hide is
+/// everything in the column of space above its own diamond, and on screen two neighbouring
+/// columns overlap by half a tile: the artwork in that overlap belongs to the nearer cell, which
+/// is in front. Cutting straight down instead handed the near cell's own corner to the band
+/// behind it, and the ground in front of that corner — a whole row nearer — then painted over
+/// it, taking a bite out of the base of every long building, one per cell.
 ///
-/// `anchor_x` is the projected screen x of the anchor cell's centre. Returns `None` when the
-/// band falls outside the drawing altogether.
-pub fn footprint_slice(
+/// So the boundary is the line through the midpoint of the two cells' centres, parallel to the
+/// footprint's other axis, which is exactly the diamond edge the two cells share, continued up
+/// the screen. `step` is the screen offset from one footprint cell to the next and `other` the
+/// offset along the axis the footprint does not run along; `centre` is the anchor cell's
+/// projected ground centre. The two end bands are cut on their inner side only, so the artwork
+/// that overhangs the footprint stays with the cell it overhangs from.
+///
+/// `bleed` widens every band by that many screen pixels on each cut, so that neighbouring bands
+/// overlap instead of meeting exactly: two polygons sharing an edge leave a hairline of whatever
+/// is behind them showing through, and half a pixel of overlap costs nothing, since the band
+/// drawn second is the one nearer the camera.
+///
+/// Returns `None` when no part of the drawing falls in that band.
+pub fn footprint_band(
     layout: SpriteLayout,
-    anchor_x: f64,
+    centre: ScreenPoint,
+    step: (f64, f64),
+    other: (f64, f64),
     index: i32,
     cells: i32,
-    across: f64,
-) -> Option<SpriteSlice> {
-    if layout.width <= 0.0 || cells <= 1 {
-        return Some(SpriteSlice { layout, u: (0.0, 1.0) });
+    bleed: f64,
+) -> Option<SpriteBand> {
+    let mut band = SpriteBand {
+        corners: [
+            (layout.x, layout.y),
+            (layout.x + layout.width, layout.y),
+            (layout.x + layout.width, layout.y + layout.height),
+            (layout.x, layout.y + layout.height),
+            (0.0, 0.0),
+            (0.0, 0.0),
+            (0.0, 0.0),
+            (0.0, 0.0),
+        ],
+        len: 4,
+    };
+    if cells <= 1 {
+        return Some(band);
     }
-    let edge = |at: f64| anchor_x + (f64::from(index) + at) * across;
-    let (mut left, mut right) = (edge(-0.5), edge(0.5));
-    if left > right {
-        std::mem::swap(&mut left, &mut right);
+    // How far the next cell lies from this one, measured across the shared edge. Positive on the
+    // far side, so the band keeps what is within half a cell of its own centre.
+    let span = other.0 * step.1 - other.1 * step.0;
+    if span == 0.0 {
+        return Some(band);
     }
-    // The outermost bands take whatever the drawing reaches beyond the footprint.
-    let last = cells - 1;
-    let (first_on_screen, last_on_screen) = if across >= 0.0 { (0, last) } else { (last, 0) };
-    if index == first_on_screen {
-        left = left.min(layout.x);
+    let at = (
+        centre.x + f64::from(index) * step.0,
+        centre.y + f64::from(index) * step.1,
+    );
+    // Distance across the footprint, as a positive measure growing towards the far side. The
+    // cross product grows by the length of `other` for each pixel away from the cut, which is
+    // what turns the bleed from pixels into the same measure.
+    let sign = span.signum();
+    let across =
+        move |p: (f64, f64)| (other.0 * (p.1 - at.1) - other.1 * (p.0 - at.0)) * sign;
+    let limit = (span / 2.0).abs() + bleed * other.0.hypot(other.1);
+    // Towards the far side: drop everything past the edge this cell shares with the next one.
+    if index < cells - 1 {
+        band = clip(band, |p| limit - across(p))?;
     }
-    if index == last_on_screen {
-        right = right.max(layout.x + layout.width);
+    // And towards the camera, the edge it shares with the cell in front.
+    if index > 0 {
+        band = clip(band, |p| across(p) + limit)?;
     }
-    let left = left.max(layout.x);
-    let right = right.min(layout.x + layout.width);
-    if right <= left {
-        return None;
+    Some(band)
+}
+
+/// Sutherland–Hodgman: the part of a convex polygon where `inside` is not negative.
+fn clip(band: SpriteBand, inside: impl Fn((f64, f64)) -> f64) -> Option<SpriteBand> {
+    let mut out = SpriteBand { corners: [(0.0, 0.0); 8], len: 0 };
+    let corners = band.corners();
+    for (i, &to) in corners.iter().enumerate() {
+        let from = corners[(i + corners.len() - 1) % corners.len()];
+        let (d_from, d_to) = (inside(from), inside(to));
+        if (d_from < 0.0) != (d_to < 0.0) {
+            // The edge crosses the cut: keep the crossing point.
+            let t = d_from / (d_from - d_to);
+            out.push((
+                from.0 + (to.0 - from.0) * t,
+                from.1 + (to.1 - from.1) * t,
+            ));
+        }
+        if d_to >= 0.0 {
+            out.push(to);
+        }
     }
-    Some(SpriteSlice {
-        layout: SpriteLayout { x: left, y: layout.y, width: right - left, height: layout.height },
-        u: (
-            (left - layout.x) / layout.width,
-            (right - layout.x) / layout.width,
-        ),
-    })
+    (out.len >= 3).then_some(out)
+}
+
+impl SpriteBand {
+    fn push(&mut self, corner: (f64, f64)) {
+        // A corner sitting exactly on the cut is found twice, once as a crossing and once as
+        // itself; keeping it twice would leave a triangle with no area in the mesh.
+        let same = |a: (f64, f64)| (a.0 - corner.0).abs() < 1e-9 && (a.1 - corner.1).abs() < 1e-9;
+        if self.len > 0 && (same(self.corners[self.len - 1]) || same(self.corners[0])) {
+            return;
+        }
+        if self.len < self.corners.len() {
+            self.corners[self.len] = corner;
+            self.len += 1;
+        }
+    }
 }
 
 #[cfg(test)]

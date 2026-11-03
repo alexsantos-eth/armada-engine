@@ -1,4 +1,4 @@
-use super::{SpriteLayout, footprint_slice, ink_layout};
+use super::{SpriteBand, SpriteLayout, footprint_band, ink_layout};
 use crate::assets::ink::{InkBox, asset_ink};
 use crate::projection::ScreenPoint;
 
@@ -104,63 +104,143 @@ fn a_measured_asset_lands_where_it_was_drawn() {
     assert_eq!(layout.y + layout.height, 200.0, "down to the ground centre");
 }
 
-/// A three-cell building anchored at a cell, drawn two tiles wide and standing a tile proud of
-/// its own footprint on each side. Its footprint runs rightwards (half a tile a cell), so the
-/// bands run rightwards too and together they cover the whole drawing exactly once.
+/// A footprint along the engine's x: each cell is half a tile to the right and a quarter of
+/// one up the screen.
+const STEP_X: (f64, f64) = (TILE_WIDTH / 2.0, -TILE_WIDTH / 4.0);
+/// The axis it does not run along goes the other way across the screen.
+const OTHER_Y: (f64, f64) = (-TILE_WIDTH / 2.0, -TILE_WIDTH / 4.0);
+
+fn anchor() -> ScreenPoint {
+    ScreenPoint { x: 0.0, y: 0.0 }
+}
+
+/// How far a point lies across the footprint, in cells, from the anchor cell's centre: the
+/// measure the cut is made in. Whole numbers land on cell centres.
+fn cells_across(p: (f64, f64)) -> f64 {
+    let span = OTHER_Y.0 * STEP_X.1 - OTHER_Y.1 * STEP_X.0;
+    (OTHER_Y.0 * p.1 - OTHER_Y.1 * p.0) / span
+}
+
+fn band(layout: SpriteLayout, index: i32, cells: i32) -> SpriteBand {
+    footprint_band(layout, anchor(), STEP_X, OTHER_Y, index, cells, 0.0).expect("a band")
+}
+
+/// The whole point of the diagonal cut: a band holds what stands on its own cell and nothing
+/// that stands on the cell in front, however far up the screen the artwork reaches.
 #[test]
-fn the_bands_of_a_footprint_tile_the_whole_drawing() {
-    let layout = SpriteLayout { x: -60.0, y: -200.0, width: 160.0, height: 240.0 };
-    let bands: Vec<_> = (0..3)
-        .map(|k| footprint_slice(layout, 0.0, k, 3, TILE_WIDTH / 2.0).expect("a band"))
+fn a_band_holds_only_its_own_cell() {
+    // A three-cell building, two tiles across and standing well above its footprint.
+    let layout = SpriteLayout { x: -40.0, y: -200.0, width: 160.0, height: 240.0 };
+    for index in 0..3 {
+        let band = band(layout, index, 3);
+        for &corner in band.corners() {
+            let across = cells_across(corner);
+            let bounds = (f64::from(index) - 0.5, f64::from(index) + 0.5);
+            // The end bands are cut on their inner side only.
+            if index > 0 {
+                assert!(across >= bounds.0 - 1e-9, "band {index} reaches cell {across}");
+            }
+            if index < 2 {
+                assert!(across <= bounds.1 + 1e-9, "band {index} reaches cell {across}");
+            }
+        }
+    }
+}
+
+/// A cut that fell straight down the screen gave the cell behind the near cell's own corner,
+/// and the ground a row in front then painted over it. The corner of the anchor cell's ground
+/// diamond — half a tile right of its centre, a quarter of one down — must stay in band 0.
+#[test]
+fn the_near_cell_keeps_its_own_corner() {
+    let layout = SpriteLayout { x: -40.0, y: -200.0, width: 160.0, height: 240.0 };
+    let corner = (TILE_WIDTH / 4.0, TILE_WIDTH / 8.0);
+    assert!(cells_across(corner) < 0.5, "the corner is the anchor cell's");
+    let first = band(layout, 0, 3);
+    assert!(
+        inside(&first, corner),
+        "band 0 must hold {corner:?}: {:?}",
+        first.corners()
+    );
+    assert!(!inside(&band(layout, 1, 3), corner), "and band 1 must not");
+}
+
+/// Whether a convex polygon, wound either way, contains a point.
+fn inside(band: &SpriteBand, p: (f64, f64)) -> bool {
+    let corners = band.corners();
+    let side = |a: (f64, f64), b: (f64, f64)| {
+        (b.0 - a.0) * (p.1 - a.1) - (b.1 - a.1) * (p.0 - a.0)
+    };
+    let signs: Vec<f64> = (0..corners.len())
+        .map(|i| side(corners[i], corners[(i + 1) % corners.len()]))
         .collect();
-    assert_eq!(bands[0].layout.x, layout.x, "the first band reaches the left edge");
-    let right = |b: &super::SpriteSlice| b.layout.x + b.layout.width;
-    assert_eq!(right(&bands[2]), layout.x + layout.width, "and the last the right edge");
-    for pair in bands.windows(2) {
-        assert_eq!(right(&pair[0]), pair[1].layout.x, "no gap and no overlap");
-    }
-    // The middle band is exactly the cell it stands on: half a tile wide, centred on that
-    // cell's own centre, which is half a tile right of the anchor's.
-    assert_eq!(bands[1].layout.x + bands[1].layout.width / 2.0, 40.0);
-    assert_eq!(bands[1].layout.width, 40.0);
-    for band in &bands {
-        assert_eq!(band.layout.y, layout.y, "only cut across, never up or down");
-        assert_eq!(band.layout.height, layout.height);
-    }
+    signs.iter().all(|s| *s >= -1e-9) || signs.iter().all(|s| *s <= 1e-9)
 }
 
-/// The band has to show the part of the frame that lands in it, or the drawing is smeared.
+/// Nothing may be lost or drawn twice: every band's area together is the whole rectangle.
 #[test]
-fn a_band_samples_its_own_part_of_the_frame() {
-    let layout = SpriteLayout { x: 0.0, y: 0.0, width: 100.0, height: 50.0 };
-    let band = footprint_slice(layout, 50.0, 1, 2, 50.0).expect("a band");
-    assert_eq!(band.layout.x, 75.0, "from the midpoint between the two cells");
-    assert_eq!(band.u, (0.75, 1.0), "the right quarter of the frame");
+fn the_bands_cover_the_drawing_once() {
+    let layout = SpriteLayout { x: -40.0, y: -200.0, width: 160.0, height: 240.0 };
+    let total: f64 = (0..3).map(|k| area(&band(layout, k, 3))).sum();
+    assert!(
+        (total - layout.width * layout.height).abs() < 1e-6,
+        "{total} of {}",
+        layout.width * layout.height
+    );
 }
 
-/// A footprint along the engine's y runs the other way across the screen, so its bands do too.
-#[test]
-fn a_footprint_the_other_way_runs_leftwards() {
-    let layout = SpriteLayout { x: -100.0, y: 0.0, width: 140.0, height: 50.0 };
-    let anchor = footprint_slice(layout, 0.0, 0, 3, -40.0).expect("a band");
-    let far = footprint_slice(layout, 0.0, 2, 3, -40.0).expect("a band");
-    assert_eq!(anchor.layout.x + anchor.layout.width, layout.x + layout.width);
-    assert_eq!(far.layout.x, layout.x, "the far cell is the leftmost band");
-    assert!(far.layout.x < anchor.layout.x);
+fn area(band: &SpriteBand) -> f64 {
+    let corners = band.corners();
+    let mut sum = 0.0;
+    for i in 0..corners.len() {
+        let (a, b) = (corners[i], corners[(i + 1) % corners.len()]);
+        sum += a.0 * b.1 - b.0 * a.1;
+    }
+    sum.abs() / 2.0
 }
 
 #[test]
 fn a_single_cell_sprite_is_not_cut() {
     let layout = SpriteLayout { x: 10.0, y: 20.0, width: 30.0, height: 40.0 };
-    let whole = footprint_slice(layout, 25.0, 0, 1, 40.0).expect("the whole sprite");
-    assert_eq!(whole.layout, layout);
-    assert_eq!(whole.u, (0.0, 1.0));
+    let whole = band(layout, 0, 1);
+    assert_eq!(whole.corners().len(), 4);
+    assert!((area(&whole) - 30.0 * 40.0).abs() < 1e-9);
 }
 
-/// A long footprint under a drawing that covers only part of it: the bands with no artwork in
-/// them are nothing to draw, and saying so keeps them out of the sorted list.
+/// A footprint running along the engine's y goes the other way across the screen, so its bands
+/// lean the other way too — and the anchor cell is still the one nearest the camera.
+#[test]
+fn a_footprint_the_other_way_leans_the_other_way() {
+    let layout = SpriteLayout { x: -120.0, y: -200.0, width: 160.0, height: 240.0 };
+    let step = (-TILE_WIDTH / 2.0, -TILE_WIDTH / 4.0);
+    let other = (TILE_WIDTH / 2.0, -TILE_WIDTH / 4.0);
+    let far = footprint_band(layout, anchor(), step, other, 2, 3, 0.0).expect("a band");
+    let near = footprint_band(layout, anchor(), step, other, 0, 3, 0.0).expect("a band");
+    // These bands lean the other way, so they stack up the screen instead of across it.
+    let mean = |b: &SpriteBand| {
+        b.corners().iter().map(|c| c.1).sum::<f64>() / b.corners().len() as f64
+    };
+    assert!(mean(&far) < mean(&near), "the far cell is higher up the screen");
+    let total: f64 = (0..3)
+        .map(|k| area(&footprint_band(layout, anchor(), step, other, k, 3, 0.0).expect("a band")))
+        .sum();
+    assert!((total - layout.width * layout.height).abs() < 1e-6, "{total}");
+}
+
+/// A footprint longer than the drawing: the bands with nothing in them are nothing to draw.
 #[test]
 fn a_band_with_nothing_in_it_is_none() {
-    let layout = SpriteLayout { x: -20.0, y: 0.0, width: 40.0, height: 40.0 };
-    assert!(footprint_slice(layout, 0.0, 4, 6, 40.0).is_none());
+    let layout = SpriteLayout { x: -20.0, y: -20.0, width: 40.0, height: 40.0 };
+    assert!(footprint_band(layout, anchor(), STEP_X, OTHER_Y, 5, 7, 0.0).is_none());
+}
+
+/// The bleed is in screen pixels, measured across the cut, and it only ever grows a band.
+#[test]
+fn the_bleed_overlaps_neighbouring_bands() {
+    let layout = SpriteLayout { x: -40.0, y: -200.0, width: 160.0, height: 240.0 };
+    let tight = band(layout, 1, 3);
+    let loose = footprint_band(layout, anchor(), STEP_X, OTHER_Y, 1, 3, 0.5).expect("a band");
+    let widened = area(&loose) - area(&tight);
+    // Half a pixel on each of two cuts, along the width the band spans.
+    assert!(widened > 0.0, "the bleed must grow the band: {widened}");
+    assert!(widened < layout.width * 2.0, "but only by a pixel: {widened}");
 }

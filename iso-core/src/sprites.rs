@@ -4,7 +4,7 @@
 //! entities and the player — is one batch of textured quads.
 
 use armada_core::assets::{
-    AssetManifest, InkBox, SpriteAnchor, SpriteFrame, SpriteLayout, ink_layout,
+    AssetManifest, InkBox, SpriteAnchor, SpriteBand, SpriteFrame, SpriteLayout, ink_layout,
 };
 use armada_core::projection::ScreenPoint;
 use armada_core::scene_order::{DrawKey, LengthAxis, compare_draw_keys, get_draw_depth};
@@ -82,35 +82,73 @@ impl SpriteAtlas {
         Some((asset.frame, ink_layout(ground, asset.ink?, tile_width)))
     }
 
-    /// Draws the `u` range of one frame into the rectangle `layout` describes.
-    ///
-    /// `u` is a horizontal range of the frame, as fractions of its width: the whole of it for
-    /// most sprites, and one band of it for a sprite cut up across its footprint (see
-    /// [`armada_core::assets::footprint_slice`]).
-    pub fn draw(&self, frame: SpriteFrame, layout: SpriteLayout, u: (f64, f64)) {
-        // Frames sit edge to edge in the atlas and some artwork reaches its frame's border, so
-        // sampling the outermost half texel of a frame blends in the neighbouring sprite. Half
-        // a texel in from every side keeps a block's edge clean at the cost of 1/256 of the
-        // artwork, which is below a pixel on screen.
-        const INSET: f32 = 0.5;
-        let left = frame.x as f32 + INSET;
-        let usable = frame.width as f32 - INSET * 2.0;
+    /// Draws one frame into the rectangle `layout` describes.
+    pub fn draw(&self, frame: SpriteFrame, layout: SpriteLayout) {
+        let source = self.source(frame);
         draw_texture_ex(
             &self.texture,
             layout.x as f32,
             layout.y as f32,
             WHITE,
             DrawTextureParams {
-                source: Some(Rect::new(
-                    left + u.0 as f32 * usable,
-                    frame.y as f32 + INSET,
-                    (u.1 - u.0) as f32 * usable,
-                    frame.height as f32 - INSET * 2.0,
-                )),
+                source: Some(source),
                 dest_size: Some(vec2(layout.width as f32, layout.height as f32)),
                 ..Default::default()
             },
         );
+    }
+
+    /// Draws the part of a frame that falls inside `band`, which is a piece of the same
+    /// rectangle `layout` describes.
+    ///
+    /// The artwork maps linearly onto that rectangle, so each corner of the band samples the
+    /// frame at its own position within it — the band is a window on the drawing, never a
+    /// squeezed copy of it.
+    pub fn draw_band(&self, frame: SpriteFrame, layout: SpriteLayout, band: &SpriteBand) {
+        let source = self.source(frame);
+        let (width, height) = (self.texture.width(), self.texture.height());
+        let corners = band.corners();
+        let vertices: Vec<Vertex> = corners
+            .iter()
+            .map(|&(x, y)| {
+                let along = ((x - layout.x) / layout.width) as f32;
+                let down = ((y - layout.y) / layout.height) as f32;
+                Vertex::new(
+                    x as f32,
+                    y as f32,
+                    0.0,
+                    (source.x + along * source.w) / width,
+                    (source.y + down * source.h) / height,
+                    WHITE,
+                )
+            })
+            .collect();
+        // A fan: the band is convex, so every triangle from its first corner lies inside it.
+        let mut indices = Vec::with_capacity((corners.len() - 2) * 3);
+        for i in 1..corners.len() - 1 {
+            indices.extend_from_slice(&[0, i as u16, i as u16 + 1]);
+        }
+        draw_mesh(&Mesh {
+            vertices,
+            indices,
+            texture: Some(self.texture.clone()),
+        });
+    }
+
+    /// The frame's pixels in the atlas, pulled in by half a texel on every side.
+    ///
+    /// Frames sit edge to edge in the atlas and some artwork reaches its frame's border, so
+    /// sampling the outermost half texel of a frame blends in the neighbouring sprite. Half a
+    /// texel in keeps a block's edge clean at the cost of 1/256 of the artwork, which is below
+    /// a pixel on screen.
+    fn source(&self, frame: SpriteFrame) -> Rect {
+        const INSET: f32 = 0.5;
+        Rect::new(
+            frame.x as f32 + INSET,
+            frame.y as f32 + INSET,
+            frame.width as f32 - INSET * 2.0,
+            frame.height as f32 - INSET * 2.0,
+        )
     }
 
     /// Whether `layout` would land anywhere on screen.
@@ -150,15 +188,15 @@ pub struct SpriteDraw {
     pub key: DrawKey,
     pub frame: SpriteFrame,
     pub layout: SpriteLayout,
-    /// The horizontal range of the frame this draw shows, as fractions of the frame's width.
-    /// `(0.0, 1.0)` for everything that is drawn in one piece.
-    pub u: (f64, f64),
+    /// The piece of the drawing this draw shows, for a sprite cut up across its footprint;
+    /// `None` for everything drawn in one piece.
+    pub band: Option<SpriteBand>,
 }
 
 impl SpriteDraw {
     /// A sprite drawn whole, which is everything standing on a single cell.
     pub fn whole(key: DrawKey, frame: SpriteFrame, layout: SpriteLayout) -> Self {
-        Self { key, frame, layout, u: (0.0, 1.0) }
+        Self { key, frame, layout, band: None }
     }
 }
 
@@ -168,7 +206,10 @@ pub fn draw_sorted(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
     // what stacks a column's own blocks bottom first.
     draws.sort_by(|a, b| compare_draw_keys(&a.key, &b.key));
     for draw in draws.iter() {
-        atlas.draw(draw.frame, draw.layout, draw.u);
+        match &draw.band {
+            Some(band) => atlas.draw_band(draw.frame, draw.layout, band),
+            None => atlas.draw(draw.frame, draw.layout),
+        }
     }
 }
 
