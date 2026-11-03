@@ -15,6 +15,8 @@ use armada_core::scene_order::{DrawKey, LengthAxis, compare_draw_keys, get_draw_
 use armada_core::terrain::{TerrainColumn, TerrainConfig, TerrainGenerator};
 use armada_core::world::ChunkManager;
 use armada_core::entities::{EntityCatalogV2, validate_catalog};
+use armada_core::camera::{Camera, ScreenSize, visible_chunks as camera_visible_chunks};
+use std::collections::HashMap;
 use save::{load_archive_into_manager, load_save, restore_archive, save_archive, sync_manager_to_archive};
 use terrain_view::preview::draw_terrain_preview;
 use macroquad::prelude::*;
@@ -85,6 +87,31 @@ async fn main() {
         manager.tick();
     }
 
+    // Build a lookup from entity type to atlas entry.
+    let mut entity_atlas: HashMap<String, (u32, u32, u32, u32)> = HashMap::new();
+    for entry in &manifest.entries {
+        if let Some(frame) = entry.primary_frame() {
+            // Entity type is the source filename without directory and extension.
+            let entity_type = entry.source
+                .trim_start_matches("/assets/")
+                .trim_end_matches(".svg")
+                .rsplit('/')
+                .next()
+                .unwrap_or(&entry.id)
+                .to_string();
+            // Strip "_block" suffix to get the entity type.
+            let entity_type = entity_type.trim_end_matches("_block").to_string();
+            entity_atlas.insert(entity_type, (frame.x, frame.y, frame.width, frame.height));
+        }
+    }
+
+    // Camera state.
+    let mut camera = Camera {
+        x: f64::from(PREVIEW_CENTRE.x),
+        y: f64::from(PREVIEW_CENTRE.y),
+        zoom: 1.0,
+    };
+
     // Find a spawn point and create the player.
     let ground = ChunkGround { manager: &manager };
     let spawn = find_player_spawn(&ground, GridPoint {
@@ -141,6 +168,10 @@ async fn main() {
         });
         manager.set_focus(vec![focus]);
 
+        // Update camera to follow the player.
+        camera.x = player.x;
+        camera.y = player.y;
+
         // Step the player (1 tick per frame).
         let jumps_before = player.feedback.jumps;
         let landings_before = player.feedback.landings;
@@ -163,9 +194,26 @@ async fn main() {
             last_save = get_time();
         }
 
+        // Camera culling: determine which chunks are in the viewport.
+        let viewport = ScreenSize {
+            width: f64::from(width),
+            height: f64::from(height),
+        };
+        let culled = camera_visible_chunks(
+            camera,
+            viewport,
+            projection,
+            armada_core::camera::CHUNK_VIEW_MARGIN,
+        );
+        // Intersect with discovered chunks.
+        let visible_set: std::collections::HashSet<_> = culled.into_iter().collect();
+
         // Collect visible columns for drawing.
         let mut columns: Vec<TerrainColumn> = Vec::new();
         for coord in manager.visible_chunks() {
+            if !visible_set.contains(&coord) {
+                continue;
+            }
             if let Some(chunk) = manager.terrain_chunk(coord) {
                 columns.extend(chunk.iter().copied());
             }
@@ -209,14 +257,87 @@ async fn main() {
             });
         }
 
-        // Draw player marker.
+        // Draw entities from visible (culled) chunks.
+        let mut entity_draws: Vec<(f64, f64, f64, u32, u32, u32, u32)> = Vec::new();
+        for coord in manager.visible_chunks() {
+            if !visible_set.contains(&coord) {
+                continue;
+            }
+            if let Some(entities) = manager.entities_chunk(coord) {
+                for entity in entities {
+                    let ex = entity.x() as f64 + 0.5;
+                    let ey = entity.y() as f64 + 0.5;
+                    let elev = entity.elevation() as f64;
+                    let entity_type = entity.type_();
+                    if let Some(&(ax, ay, aw, ah)) = entity_atlas.get(entity_type) {
+                        entity_draws.push((ex, ey, elev, ax, ay, aw, ah));
+                    }
+                }
+            }
+        }
+        // Sort by screen Y for approximate depth order.
+        entity_draws.sort_by(|a, b| {
+            let sa = a.1 + a.2; // y + elevation as proxy for depth
+            let sb = b.1 + b.2;
+            sa.partial_cmp(&sb).unwrap_or(std::cmp::Ordering::Equal)
+        });
+        for (ex, ey, elev, ax, ay, aw, ah) in &entity_draws {
+            let pos = project_block(
+                GridPoint { x: *ex, y: *ey },
+                *elev,
+                projection,
+            );
+            let sx = pos.screen_x as f32;
+            let sy = pos.screen_y as f32;
+            let src = Rect::new(*ax as f32, *ay as f32, *aw as f32, *ah as f32);
+            draw_texture_ex(
+                &atlas,
+                sx - 32.0,
+                sy - 64.0,
+                WHITE,
+                DrawTextureParams {
+                    source: Some(src),
+                    dest_size: Some(vec2(64.0, 64.0)),
+                    ..Default::default()
+                },
+            );
+        }
+
+        // Draw player sprite from atlas.
         let marker = project_block(
             GridPoint { x: rp.x + 0.5, y: rp.y + 0.5 },
             rp.elevation + rp.height,
             projection,
         );
         let marker = vec2(marker.screen_x as f32, marker.screen_y as f32);
-        draw_circle(marker.x, marker.y, 12.0, GOLD);
+
+        // Look up player atlas entry.
+        let player_frame = manifest.entries.iter().find(|e| {
+            e.id.contains("player") || e.source.contains("player")
+        });
+        if let Some(entry) = player_frame {
+            if let Some(frame) = entry.primary_frame() {
+                let src = Rect::new(
+                    frame.x as f32,
+                    frame.y as f32,
+                    frame.width as f32,
+                    frame.height as f32,
+                );
+                draw_texture_ex(
+                    &atlas,
+                    marker.x - 32.0,
+                    marker.y - 64.0,
+                    WHITE,
+                    DrawTextureParams {
+                        source: Some(src),
+                        dest_size: Some(vec2(64.0, 64.0)),
+                        ..Default::default()
+                    },
+                );
+            }
+        } else {
+            draw_circle(marker.x, marker.y, 12.0, GOLD);
+        }
 
         // P6 prototype: draw the first atlas sprite (block) at the player's position.
         if let Some(entry) = manifest.entries.first()
