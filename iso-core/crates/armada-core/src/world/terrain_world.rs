@@ -30,24 +30,43 @@ impl TerrainWorld {
 
     /// Injects a previously saved chunk's terrain, bypassing generation. Used when restoring
     /// a save. Returns true only when the chunk was not already discovered.
+    ///
+    /// Saved terrain always wins over generated terrain: a chunk the generator already
+    /// materialized is replaced, because the save holds the player's edits and the generator
+    /// does not. Keeping the generated copy would silently discard those edits.
     pub fn load_chunk(&mut self, coord: ChunkCoord, columns: Vec<TerrainColumn>) -> bool {
-        let newly_discovered = !self.discovered.contains_key(&coord);
-        if newly_discovered {
-            self.discovered.insert(coord, columns);
-        }
+        let newly_discovered = self.discovered.insert(coord, columns).is_none();
         self.visible.insert(coord);
         newly_discovered
     }
 
-    /// Materializes a chunk at most once. Returns true only for first discovery.
+    /// Drops a chunk's terrain from memory, so a long session does not grow without bound.
+    ///
+    /// Unlike [`Self::hide_chunk`], this forgets the chunk was ever discovered: revisiting it
+    /// generates it again. The caller must therefore persist the chunk first (see
+    /// `ChunkManager::unload_chunk`), or edits made to it are lost.
+    pub fn unload_chunk(&mut self, coord: ChunkCoord) -> Option<Vec<TerrainColumn>> {
+        self.visible.remove(&coord);
+        self.discovered.remove(&coord)
+    }
+
+    /// Materializes a chunk at most once, without showing it. Returns true only for first
+    /// discovery.
+    ///
+    /// This is what chunks loaded ahead of the camera use: their terrain exists so the edges of
+    /// shown chunks resolve, but they cost nothing to draw until they are shown.
+    pub fn discover_chunk(&mut self, coord: ChunkCoord) -> bool {
+        if self.discovered.contains_key(&coord) {
+            return false;
+        }
+        self.discovered
+            .insert(coord, self.generator.generate_chunk(coord));
+        true
+    }
+
+    /// Materializes a chunk at most once and shows it. Returns true only for first discovery.
     pub fn show_chunk(&mut self, coord: ChunkCoord) -> bool {
-        let newly_discovered = if self.discovered.contains_key(&coord) {
-            false
-        } else {
-            self.discovered
-                .insert(coord, self.generator.generate_chunk(coord));
-            true
-        };
+        let newly_discovered = self.discover_chunk(coord);
         self.visible.insert(coord);
         newly_discovered
     }

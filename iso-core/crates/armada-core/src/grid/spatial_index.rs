@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 use std::fmt;
-use std::hash::Hash;
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 use super::coords::{GridCoordOutOfRange, WorldCoord, WorldRect, assert_grid_coord};
 
@@ -11,21 +11,44 @@ use super::coords::{GridCoordOutOfRange, WorldCoord, WorldRect, assert_grid_coor
 /// Several items may share a cell. Rectangular results preserve item insertion order,
 /// including after an item is moved (moving places it last). Rebuild this index from
 /// world entities after loading; do not serialize it.
+///
+/// Each item is stored exactly once, in `items`, and everything else refers to it by slot. The
+/// earlier layout kept a clone per footprint cell plus one as a map key, so indexing an entity
+/// with a three-cell footprint stored five copies of it. For entities that carry blueprint data
+/// that is the difference between an index that costs a pointer per cell and one that deep-copies
+/// a JSON tree per cell.
 #[derive(Debug)]
 pub struct SpatialIndex<T: Eq + Hash + Clone> {
-    by_cell: HashMap<WorldCoord, Vec<T>>,
-    cells_by_item: HashMap<T, Vec<WorldCoord>>,
-    order: Vec<T>,
+    /// One slot per insertion, in order. `None` marks a removed item; [`Self::compact`] reclaims
+    /// the holes once they outnumber the live items.
+    items: Vec<Option<T>>,
+    /// Footprint of the item in the matching slot.
+    cells: Vec<Vec<WorldCoord>>,
+    /// Slots occupying each cell, in insertion order.
+    by_cell: HashMap<WorldCoord, Vec<usize>>,
+    /// Slots whose item has this hash. Lookup by item hashes, then confirms by equality, which
+    /// is what lets the index find an item without keeping a copy of it as a key.
+    slots_by_hash: HashMap<u64, Vec<usize>>,
+    /// Live items, which is `items.len()` minus the holes.
+    len: usize,
 }
 
 impl<T: Eq + Hash + Clone> Default for SpatialIndex<T> {
     fn default() -> Self {
         Self {
+            items: Vec::new(),
+            cells: Vec::new(),
             by_cell: HashMap::new(),
-            cells_by_item: HashMap::new(),
-            order: Vec::new(),
+            slots_by_hash: HashMap::new(),
+            len: 0,
         }
     }
+}
+
+fn hash_of<T: Hash>(item: &T) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    item.hash(&mut hasher);
+    hasher.finish()
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -51,15 +74,32 @@ impl<T: Eq + Hash + Clone> SpatialIndex<T> {
     }
 
     pub fn len(&self) -> usize {
-        self.order.len()
+        self.len
     }
 
     pub fn is_empty(&self) -> bool {
-        self.order.is_empty()
+        self.len == 0
+    }
+
+    /// Slot holding `item`, found by hash and confirmed by equality.
+    fn slot_of(&self, item: &T) -> Option<usize> {
+        self.slots_by_hash
+            .get(&hash_of(item))?
+            .iter()
+            .copied()
+            .find(|&slot| self.items[slot].as_ref() == Some(item))
     }
 
     pub fn contains(&self, item: &T) -> bool {
-        self.cells_by_item.contains_key(item)
+        self.slot_of(item).is_some()
+    }
+
+    /// Live items with their slot, in insertion order.
+    fn live(&self) -> impl Iterator<Item = (usize, &T)> {
+        self.items
+            .iter()
+            .enumerate()
+            .filter_map(|(slot, item)| item.as_ref().map(|item| (slot, item)))
     }
 
     /// Insert an item, ignoring repeated cells in its footprint.
@@ -68,6 +108,8 @@ impl<T: Eq + Hash + Clone> SpatialIndex<T> {
         if self.contains(&item) {
             return Err(SpatialIndexError::AlreadyIndexed);
         }
+        // Every coordinate is validated before anything is written, so a rejected footprint
+        // leaves the index exactly as it was.
         let mut unique = Vec::with_capacity(cells.len());
         for &cell in cells {
             assert_grid_coord(cell).map_err(SpatialIndexError::CoordinateOutOfRange)?;
@@ -75,28 +117,71 @@ impl<T: Eq + Hash + Clone> SpatialIndex<T> {
                 unique.push(cell);
             }
         }
+        let slot = self.items.len();
         for &cell in &unique {
-            self.by_cell.entry(cell).or_default().push(item.clone());
+            self.by_cell.entry(cell).or_default().push(slot);
         }
-        self.cells_by_item.insert(item.clone(), unique);
-        self.order.push(item);
+        self.slots_by_hash
+            .entry(hash_of(&item))
+            .or_default()
+            .push(slot);
+        self.cells.push(unique);
+        self.items.push(Some(item));
+        self.len += 1;
         Ok(())
     }
 
     pub fn remove(&mut self, item: &T) -> bool {
-        let Some(cells) = self.cells_by_item.remove(item) else {
+        let Some(slot) = self.slot_of(item) else {
             return false;
         };
-        for cell in cells {
-            if let Some(items) = self.by_cell.get_mut(&cell) {
-                items.retain(|other| other != item);
-                if items.is_empty() {
+        for cell in std::mem::take(&mut self.cells[slot]) {
+            if let Some(slots) = self.by_cell.get_mut(&cell) {
+                slots.retain(|&other| other != slot);
+                if slots.is_empty() {
                     self.by_cell.remove(&cell);
                 }
             }
         }
-        self.order.retain(|other| other != item);
+        let hash = hash_of(item);
+        if let Some(slots) = self.slots_by_hash.get_mut(&hash) {
+            slots.retain(|&other| other != slot);
+            if slots.is_empty() {
+                self.slots_by_hash.remove(&hash);
+            }
+        }
+        self.items[slot] = None;
+        self.len -= 1;
+        self.compact_if_sparse();
         true
+    }
+
+    /// Reclaims removed slots once they outnumber the live items, so an index that is moved
+    /// through repeatedly does not grow without bound. Insertion order is preserved.
+    fn compact_if_sparse(&mut self) {
+        if self.items.len() < 32 || self.len * 2 > self.items.len() {
+            return;
+        }
+        let mut items = Vec::with_capacity(self.len);
+        let mut cells = Vec::with_capacity(self.len);
+        for (slot, _) in self.live().map(|(slot, _)| (slot, ())).collect::<Vec<_>>() {
+            items.push(self.items[slot].take());
+            cells.push(std::mem::take(&mut self.cells[slot]));
+        }
+        self.by_cell.clear();
+        self.slots_by_hash.clear();
+        for (slot, footprint) in cells.iter().enumerate() {
+            for &cell in footprint {
+                self.by_cell.entry(cell).or_default().push(slot);
+            }
+            let item = items[slot].as_ref().expect("compacted slots are live");
+            self.slots_by_hash
+                .entry(hash_of(item))
+                .or_default()
+                .push(slot);
+        }
+        self.items = items;
+        self.cells = cells;
     }
 
     /// Move an existing item or insert a missing one. Invalid coordinates leave the index intact.
@@ -108,8 +193,14 @@ impl<T: Eq + Hash + Clone> SpatialIndex<T> {
         self.insert(item, cells)
     }
 
-    pub fn at(&self, cell: WorldCoord) -> &[T] {
-        self.by_cell.get(&cell).map(Vec::as_slice).unwrap_or(&[])
+    /// Items occupying `cell`, in insertion order.
+    pub fn at(&self, cell: WorldCoord) -> impl Iterator<Item = &T> {
+        self.by_cell
+            .get(&cell)
+            .map(Vec::as_slice)
+            .unwrap_or(&[])
+            .iter()
+            .filter_map(|&slot| self.items[slot].as_ref())
     }
 
     pub fn is_occupied(&self, cell: WorldCoord) -> bool {
@@ -117,14 +208,13 @@ impl<T: Eq + Hash + Clone> SpatialIndex<T> {
     }
 
     pub fn cells_of(&self, item: &T) -> &[WorldCoord] {
-        self.cells_by_item
-            .get(item)
-            .map(Vec::as_slice)
+        self.slot_of(item)
+            .map(|slot| self.cells[slot].as_slice())
             .unwrap_or(&[])
     }
 
     pub fn items(&self) -> impl Iterator<Item = &T> {
-        self.order.iter()
+        self.live().map(|(_, item)| item)
     }
 
     pub fn query_rect(&self, rect: WorldRect) -> Vec<&T> {
@@ -135,17 +225,17 @@ impl<T: Eq + Hash + Clone> SpatialIndex<T> {
         if rect.max_x < rect.min_x || rect.max_y < rect.min_y {
             return Vec::new();
         }
-        self.order
-            .iter()
-            .filter(|item| {
+        self.live()
+            .filter(|(slot, item)| {
                 filter(item)
-                    && self.cells_by_item[*item].iter().any(|cell| {
+                    && self.cells[*slot].iter().any(|cell| {
                         cell.x >= rect.min_x
                             && cell.x <= rect.max_x
                             && cell.y >= rect.min_y
                             && cell.y <= rect.max_y
                     })
             })
+            .map(|(_, item)| item)
             .collect()
     }
 
@@ -158,16 +248,16 @@ impl<T: Eq + Hash + Clone> SpatialIndex<T> {
         if width * height <= self.by_cell.len() as i128 {
             for x in rect.min_x..=rect.max_x {
                 for y in rect.min_y..=rect.max_y {
-                    if self.at(WorldCoord { x, y }).iter().any(&mut filter) {
+                    if self.at(WorldCoord { x, y }).any(&mut filter) {
                         return true;
                     }
                 }
             }
             return false;
         }
-        self.order.iter().any(|item| {
+        self.live().any(|(slot, item)| {
             filter(item)
-                && self.cells_by_item[item].iter().any(|cell| {
+                && self.cells[slot].iter().any(|cell| {
                     cell.x >= rect.min_x
                         && cell.x <= rect.max_x
                         && cell.y >= rect.min_y

@@ -41,7 +41,12 @@ pub struct EntityData {
     /// Debug flag, only for definitions that asked for it.
     pub debug: Option<bool>,
     /// Color replacement lists, if the definition has any.
-    pub color_replacements: Option<serde_json::Value>,
+    ///
+    /// Shared with the blueprint rather than copied: this is definition data, identical for
+    /// every instance, and `serde_json::Value` clones node by node. The catalog's largest list
+    /// is 57 nodes, and a chunk places hundreds of entities that the spatial index copies
+    /// several times over, so deep-copying it dominated the cost of discovering a chunk.
+    pub color_replacements: Option<std::sync::Arc<serde_json::Value>>,
     /// Chosen color variation index, kept in the data so it survives saves.
     pub color_variant: Option<u32>,
     /// Wind sway parameters, single-tile entities only.
@@ -117,6 +122,29 @@ impl Entity {
         Self { x, y, data }
     }
 
+    /// Restores a saved instance of `blueprint`.
+    ///
+    /// The blueprint supplies every field derived from the definition and the save supplies the
+    /// three that belong to the instance: its stable id, its chosen colour variation and its
+    /// metadata. Going through [`Self::new`] is deliberate — it keeps a reloaded entity
+    /// identical to a freshly placed one, which hand-copying the blueprint fields into a
+    /// `EntityData` at the call site did not: `walkable` and `collision` silently drifted.
+    pub fn restore(
+        x: i32,
+        y: i32,
+        blueprint: &EntityBlueprintV2,
+        elevation: i32,
+        id: String,
+        color_variant: Option<u32>,
+        metadata: serde_json::Value,
+    ) -> Self {
+        let mut entity = Self::new(x, y, blueprint, elevation);
+        entity.data.id = id;
+        entity.data.color_variant = color_variant;
+        entity.data.metadata = metadata;
+        entity
+    }
+
     pub fn x(&self) -> i32 {
         self.x
     }
@@ -154,7 +182,7 @@ impl Entity {
         self.data.debug
     }
     pub fn color_replacements(&self) -> Option<&serde_json::Value> {
-        self.data.color_replacements.as_ref()
+        self.data.color_replacements.as_deref()
     }
     pub fn color_variant(&self) -> Option<u32> {
         self.data.color_variant

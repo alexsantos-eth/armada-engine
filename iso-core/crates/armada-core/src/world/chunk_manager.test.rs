@@ -114,8 +114,200 @@
         );
 
         let mut restored = ChunkManager::new(generator(), catalog());
-        restored.load_from_save(&save);
+        assert!(restored.load_from_save(&save).is_empty());
 
         // Discovered count should match.
         assert_eq!(restored.discovered_count(), manager.discovered_count());
+    }
+
+    /// Streaming reaches past the load radius so the ground is generated before the camera gets
+    /// there, which is what `CHUNK_PREFETCH_RADIUS` is for.
+    #[test]
+    fn loads_ahead_up_to_the_prefetch_radius() {
+        let mut manager = ChunkManager::new(generator(), catalog());
+        manager.set_focus(vec![ChunkCoord { cx: 0, cy: 0 }]);
+        let wanted = (2 * CHUNK_PREFETCH_RADIUS + 1).pow(2);
+        for _ in 0..wanted {
+            manager.tick();
+        }
+        assert_eq!(manager.discovered_count(), wanted as usize);
+        // A chunk loaded ahead exists but is not drawn until it comes within the load radius.
+        let ahead = ChunkCoord { cx: CHUNK_PREFETCH_RADIUS, cy: 0 };
+        assert!(manager.is_discovered(ahead));
+        assert!(!manager.visible_chunks().contains(&ahead));
+    }
+
+    /// The nearest missing chunk is always generated first, so the ground under the camera never
+    /// waits behind one loaded ahead of it.
+    #[test]
+    fn loads_the_nearest_missing_chunk_first() {
+        let mut manager = ChunkManager::new(generator(), catalog());
+        manager.set_focus(vec![ChunkCoord { cx: 0, cy: 0 }]);
+        let mut order = Vec::new();
+        for _ in 0..(2 * CHUNK_PREFETCH_RADIUS + 1).pow(2) {
+            order.extend(manager.tick());
+        }
+        let distances: Vec<i32> = order
+            .iter()
+            .map(|c| c.cx.abs().max(c.cy.abs()))
+            .collect();
+        assert!(
+            distances.windows(2).all(|pair| pair[0] <= pair[1]),
+            "chunks were not generated nearest first: {distances:?}"
+        );
+    }
+
+    /// Hiding a chunk keeps it in memory; unloading is what bounds a long session.
+    #[test]
+    fn unloading_frees_terrain_and_entities_and_returns_the_saved_chunk() {
+        let mut manager = ChunkManager::new(generator(), catalog());
+        let origin = ChunkCoord { cx: 0, cy: 0 };
+        manager.set_focus(vec![origin]);
+        manager.tick();
+        assert!(manager.is_discovered(origin));
+
+        manager.set_focus(vec![ChunkCoord { cx: 40, cy: 40 }]);
+        let candidates = manager.unload_candidates();
+        assert!(candidates.contains(&origin));
+
+        let before = manager.discovered_count();
+        let saved = manager.unload_chunk(origin).expect("origin was discovered");
+        assert_eq!((saved.cx, saved.cy), (origin.cx, origin.cy));
+        assert_eq!(manager.discovered_count(), before - 1);
+        assert!(!manager.is_discovered(origin));
+        assert!(manager.entities_chunk(origin).is_none());
+        assert!(manager.terrain_chunk(origin).is_none());
+    }
+
+    #[test]
+    fn unloading_an_undiscovered_chunk_returns_none() {
+        let mut manager = ChunkManager::new(generator(), catalog());
+        assert!(manager.unload_chunk(ChunkCoord { cx: 7, cy: 7 }).is_none());
+    }
+
+    /// A chunk kept near a focus is never offered for unloading, which is the hysteresis that
+    /// stops a focus crossing a chunk edge from unloading and regenerating the same ground.
+    #[test]
+    fn chunks_within_the_keep_radius_are_never_unload_candidates() {
+        let mut manager = ChunkManager::new(generator(), catalog());
+        let origin = ChunkCoord { cx: 0, cy: 0 };
+        manager.set_focus(vec![origin]);
+        for _ in 0..9 {
+            manager.tick();
+        }
+        for coord in manager.unload_candidates() {
+            assert!(coord.cx.abs().max(coord.cy.abs()) > CHUNK_KEEP_RADIUS);
+        }
+    }
+
+    /// Unloading then restoring from the archive must give back the same ground, which is the
+    /// whole point of persisting a chunk before dropping it.
+    #[test]
+    fn an_unloaded_chunk_comes_back_unchanged_from_its_archive() {
+        let mut manager = ChunkManager::new(generator(), catalog());
+        let origin = ChunkCoord { cx: 0, cy: 0 };
+        manager.set_focus(vec![origin]);
+        manager.tick();
+        let columns_before = manager.terrain_chunk(origin).expect("discovered").to_vec();
+        let entities_before = manager.entities_chunk(origin).unwrap_or_default().len();
+
+        manager.set_focus(vec![ChunkCoord { cx: 40, cy: 40 }]);
+        let mut archive = crate::world::save::ChunkArchive::new();
+        archive.put(manager.unload_chunk(origin).expect("discovered"));
+        let save = archive.snapshot(serde_json::json!({}), serde_json::json!({}));
+
+        assert!(manager.load_from_save(&save).is_empty());
+        assert_eq!(manager.terrain_chunk(origin), Some(columns_before.as_slice()));
+        assert_eq!(
+            manager.entities_chunk(origin).unwrap_or_default().len(),
+            entities_before
+        );
+    }
+
+    /// Saved terrain has to win over generated terrain, or restoring a save over a chunk the
+    /// generator already touched would silently throw the save away.
+    #[test]
+    fn a_save_replaces_terrain_the_generator_already_produced() {
+        let mut manager = ChunkManager::new(generator(), catalog());
+        let origin = ChunkCoord { cx: 0, cy: 0 };
+        manager.set_focus(vec![origin]);
+        manager.tick();
+
+        let generated = manager.terrain_chunk(origin).expect("discovered")[0].walkable;
+        let mut saved = manager.save_chunk(origin).expect("discovered");
+        saved.columns[0].walkable = !generated;
+        let mut archive = crate::world::save::ChunkArchive::new();
+        archive.put(saved);
+        let save = archive.snapshot(serde_json::json!({}), serde_json::json!({}));
+
+        assert!(manager.load_from_save(&save).is_empty());
+        assert_eq!(
+            manager.terrain_chunk(origin).expect("loaded")[0].walkable,
+            !generated,
+            "the generated chunk was kept instead of the saved one"
+        );
+    }
+
+    /// A save naming a blueprint the catalog no longer defines is reported, not swallowed.
+    #[test]
+    fn restoring_reports_blueprints_the_catalog_does_not_define() {
+        let mut manager = ChunkManager::new(generator(), catalog());
+        let save = crate::world::save::WorldSave {
+            format: crate::world::save::SAVE_FORMAT.to_owned(),
+            schema_version: crate::world::save::SAVE_SCHEMA_VERSION,
+            chunks: vec![crate::world::save::SavedChunk {
+                cx: 0,
+                cy: 0,
+                columns: Vec::new(),
+                entities: vec![crate::world::save::SavedEntity {
+                    instance_id: "ghost@0,0".to_owned(),
+                    blueprint_id: "ghost".to_owned(),
+                    x: 0,
+                    y: 0,
+                    elevation: 0,
+                    state: serde_json::json!({}),
+                }],
+                changes: serde_json::json!({}),
+            }],
+            player: serde_json::json!({}),
+            systems: serde_json::json!({}),
+        };
+        assert_eq!(manager.load_from_save(&save), vec!["ghost".to_owned()]);
+        assert!(manager.entities_chunk(ChunkCoord { cx: 0, cy: 0 }).unwrap().is_empty());
+    }
+
+    /// An entity's colour variation and metadata have to survive a save, because the restore
+    /// path reads them back out of the saved state.
+    #[test]
+    fn entity_state_survives_a_save_round_trip() {
+        let mut manager = ChunkManager::new(generator(), catalog());
+        let origin = ChunkCoord { cx: 0, cy: 0 };
+        manager.world.load_chunk(origin, Vec::new());
+        manager.entities.insert(
+            origin,
+            vec![crate::entities::Entity::restore(
+                3,
+                4,
+                &catalog().entities[0],
+                1,
+                "tree@3,4".to_owned(),
+                Some(2),
+                serde_json::json!({ "planted": true }),
+            )],
+        );
+
+        let saved = manager.save_chunk(origin).expect("discovered");
+        assert_eq!(saved.entities[0].state["colorVariant"], 2);
+        assert_eq!(saved.entities[0].state["planted"], true);
+
+        let mut archive = crate::world::save::ChunkArchive::new();
+        archive.put(saved);
+        let save = archive.snapshot(serde_json::json!({}), serde_json::json!({}));
+        let mut restored = ChunkManager::new(generator(), catalog());
+        assert!(restored.load_from_save(&save).is_empty());
+
+        let entity = &restored.entities_chunk(origin).expect("restored")[0];
+        assert_eq!(entity.id(), "tree@3,4");
+        assert_eq!(entity.color_variant(), Some(2));
+        assert_eq!(entity.metadata()["planted"], true);
     }

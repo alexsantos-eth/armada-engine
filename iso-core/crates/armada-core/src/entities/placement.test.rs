@@ -74,6 +74,37 @@
         assert!(!result.index.is_occupied(WorldCoord { x: 0, y: 1 }));
     }
 
+    /// The returned index is the one built during the pass rather than a second one rebuilt from
+    /// the entities, so it has to cover every entity over its whole footprint — including the
+    /// multi-cell ones, where the two could most easily disagree.
+    #[test]
+    fn the_returned_index_covers_every_entity_footprint() {
+        let columns = vec![
+            column(0, 0, water(), -1),
+            column(1, 0, sand(), 0),
+            column(2, 0, grass(), 0),
+            column(3, 0, grass(), 0),
+        ];
+        let catalog = catalog(vec![
+            blueprint("pier", 3, vec![water(), sand(), grass()]),
+            blueprint("house", 1, vec![grass()]),
+        ]);
+        let result = place_entities(&columns, &catalog);
+        assert_eq!(result.entities.len(), 2);
+
+        for entity in &result.entities {
+            for cell in crate::entities::entity::get_entity_footprint_for(entity) {
+                assert!(
+                    result.index.is_occupied(cell),
+                    "{} is missing from the index at {cell:?}",
+                    entity.id()
+                );
+            }
+        }
+        // And nothing beyond those footprints is claimed.
+        assert!(!result.index.is_occupied(WorldCoord { x: 4, y: 0 }));
+    }
+
     #[test]
     fn does_not_place_on_wrong_surface() {
         let columns = vec![column(0, 0, water(), -1)];

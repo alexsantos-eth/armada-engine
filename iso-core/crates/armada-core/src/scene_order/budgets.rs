@@ -25,17 +25,14 @@ pub const CHUNKS_SHOWN_PER_FRAME: i32 = 1;
 /** Chunks out of view the scene hides per frame; the others wait, out of view and culled. */
 pub const CHUNKS_HIDDEN_PER_FRAME: i32 = 1;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn budgets_are_positive() {
-        assert!(CHUNK_LOAD_RADIUS > 0);
-        assert!(CHUNK_PREFETCH_RADIUS > 0);
-        assert!(CHUNK_KEEP_RADIUS > 0);
-        assert!(CHUNKS_LOADED_PER_FRAME > 0);
-        assert!(CHUNKS_SHOWN_PER_FRAME > 0);
-        assert!(CHUNKS_HIDDEN_PER_FRAME > 0);
-    }
-}
+// Every budget is positive and the radii grow outwards, checked at compile time so a bad edit
+// never reaches a client: a keep radius below the prefetch radius would unload a chunk the
+// streamer is still asking for, and the two would fight every frame.
+const _: () = {
+    assert!(CHUNK_LOAD_RADIUS > 0);
+    assert!(CHUNK_PREFETCH_RADIUS >= CHUNK_LOAD_RADIUS);
+    assert!(CHUNK_KEEP_RADIUS >= CHUNK_PREFETCH_RADIUS);
+    assert!(CHUNKS_LOADED_PER_FRAME > 0);
+    assert!(CHUNKS_SHOWN_PER_FRAME > 0);
+    assert!(CHUNKS_HIDDEN_PER_FRAME > 0);
+};

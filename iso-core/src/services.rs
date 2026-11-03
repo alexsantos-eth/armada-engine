@@ -85,9 +85,13 @@ impl ChunkLoader for MacroquadChunkLoader<'_> {
         if self.manager.is_discovered(coord) {
             return self.manager.terrain_chunk(coord).map(|c| c.to_vec());
         }
-        // Trigger discovery by setting focus and ticking.
+        // Discovery goes through the focus list, so the caller's focus has to be put back:
+        // leaving `coord` as the only focus would move streaming away from the player and
+        // unload the ground under them on the next tick.
+        let previous: Vec<ChunkCoord> = self.manager.focus().to_vec();
         self.manager.set_focus(vec![coord]);
         self.manager.tick();
+        self.manager.set_focus(previous);
         self.manager.terrain_chunk(coord).map(|c| c.to_vec())
     }
 }

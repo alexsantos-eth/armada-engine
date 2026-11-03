@@ -40,7 +40,9 @@ pub fn save_archive(archive: &ChunkArchive) {
         serde_json::json!({}),
         serde_json::json!({}),
     );
-    let json = match serde_json::to_string_pretty(&save) {
+    // Compact, not pretty: nobody reads a save by hand, and the indentation was 60% of the file
+    // (16.6 MB vs 6.6 MB for 25 chunks). Serializing it is pure main-thread time.
+    let json = match serde_json::to_string(&save) {
         Ok(j) => j,
         Err(_) => return,
     };
@@ -63,11 +65,43 @@ pub fn sync_manager_to_archive(manager: &ChunkManager, archive: &mut ChunkArchiv
 }
 
 /// Loads saved chunks from an archive into a `ChunkManager`, bypassing terrain generation.
-pub fn load_archive_into_manager(manager: &mut ChunkManager, archive: &ChunkArchive) {
+///
+/// Returns the blueprint ids the archive referred to but the catalog does not define.
+pub fn load_archive_into_manager(
+    manager: &mut ChunkManager,
+    archive: &ChunkArchive,
+) -> Vec<String> {
     // Reconstruct a WorldSave from the archive to feed load_from_save.
     let save = archive.snapshot(
         serde_json::json!({}),
         serde_json::json!({}),
     );
-    manager.load_from_save(&save);
+    manager.load_from_save(&save)
+}
+
+/// Replaces freshly generated chunks with their archived copy, where the archive has one.
+///
+/// A chunk the player walks back into is generated again from scratch. That matches the
+/// generator's output, but not the chunk as the player left it: edits and entity state live only
+/// in the archive. Restoring here keeps the promise that a discovered chunk looks the same when
+/// it comes back, which is what lets chunks be unloaded at all.
+pub fn restore_discovered_from_archive(
+    manager: &mut ChunkManager,
+    archive: &ChunkArchive,
+    discovered: &[armada_core::grid::ChunkCoord],
+) -> Vec<String> {
+    let chunks: Vec<_> = discovered
+        .iter()
+        .filter_map(|coord| archive.get(coord.cx, coord.cy))
+        .collect();
+    if chunks.is_empty() {
+        return Vec::new();
+    }
+    manager.load_from_save(&WorldSave {
+        format: armada_core::world::SAVE_FORMAT.to_owned(),
+        schema_version: armada_core::world::SAVE_SCHEMA_VERSION,
+        chunks,
+        player: serde_json::json!({}),
+        systems: serde_json::json!({}),
+    })
 }

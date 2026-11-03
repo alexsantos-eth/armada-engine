@@ -10,7 +10,9 @@
 use crate::entities::blueprint::{
     EntityBlueprintV2, EntityCatalogV2, EntityLengthAxis,
 };
-use crate::entities::entity::{get_entity_footprint, index_entities, Entity};
+use crate::entities::entity::{get_entity_footprint, Entity};
+use std::collections::HashMap;
+
 use crate::grid::{CellMap, SpatialIndex, WorldCoord};
 use crate::terrain::{TerrainColumn, TerrainMaterial};
 
@@ -77,30 +79,62 @@ pub fn place_entities(
     let mut placed = SpatialIndex::new();
     let mut entities = Vec::new();
 
+    // A blueprint can only be anchored on a column whose surface equals its first required
+    // surface, and `find_placement` rejects every other column on its first check. Grouping the
+    // columns by surface once lets each blueprint walk only the columns that can possibly accept
+    // it, instead of all 1024: with this catalog that is 31 x 1024 = 31 744 validity checks per
+    // chunk, which cost ~12 ms — a dropped frame every time streaming discovered a chunk.
+    //
+    // Columns keep their slice order inside each group, and blueprints are still visited in
+    // catalog order, so the entities placed and the order they are placed in do not change.
+    let mut by_surface: HashMap<TerrainMaterial, Vec<&TerrainColumn>> = HashMap::new();
+    for column in columns {
+        by_surface.entry(column.surface).or_default().push(column);
+    }
+    let empty: Vec<&TerrainColumn> = Vec::new();
+
     for blueprint in &catalog.entities {
-        for column in columns {
+        // A blueprint with no required surfaces cannot be anchored anywhere; `validate_catalog`
+        // rejects one, and skipping it here keeps this function safe on its own.
+        let Some(anchor_surface) = blueprint.placement.surfaces.first() else {
+            continue;
+        };
+        let anchors = by_surface.get(anchor_surface).unwrap_or(&empty);
+        for column in anchors {
             let anchor = column.coord;
-            let context = &mut PlacementContext::new(&columns_map, &mut placed);
-            if let Some(placement) = find_placement(anchor, blueprint, context, DEFAULT_GAP) {
-                let entity = Entity::new(
-                    placement.anchor.x,
-                    placement.anchor.y,
-                    blueprint,
-                    placement.elevation,
-                );
-                let footprint = get_entity_footprint(
-                    placement.anchor,
-                    placement.footprint.len() as i32,
-                    blueprint.shape.axis,
-                );
-                let _ = placed.insert(entity.clone(), &footprint);
-                entities.push(entity);
+            let mut context = PlacementContext::new(&columns_map, &mut placed);
+            let Some(placement) = find_placement(anchor, blueprint, &mut context, DEFAULT_GAP)
+            else {
+                continue;
+            };
+            let entity = Entity::new(
+                placement.anchor.x,
+                placement.anchor.y,
+                blueprint,
+                placement.elevation,
+            );
+            let footprint = get_entity_footprint(
+                placement.anchor,
+                placement.footprint.len() as i32,
+                blueprint.shape.axis,
+            );
+            // An entity that could not be indexed must not be placed either: `is_taken` reads
+            // the index, so keeping it in `entities` while the index does not know about it
+            // would let later entities overlap it, and the overlap rules would quietly stop
+            // holding for the rest of the pass.
+            if placed.insert(entity.clone(), &footprint).is_err() {
+                continue;
             }
+            entities.push(entity);
         }
     }
 
-    let index = index_entities(&entities);
-    PlacementResult { entities, index }
+    // `placed` already indexes every entity over the same footprints `index_entities` would use,
+    // so returning it avoids cloning all 376 entities into a second, identical index.
+    PlacementResult {
+        entities,
+        index: placed,
+    }
 }
 
 /// Validates one instance of `blueprint` anchored on `column`.

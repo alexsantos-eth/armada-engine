@@ -10,8 +10,8 @@ use crate::entities::placement::place_entities;
 use crate::entities::{Entity, EntityCatalogV2};
 use crate::grid::{chunks_around, ChunkCoord};
 use crate::scene_order::{
-    CHUNK_KEEP_RADIUS, CHUNK_LOAD_RADIUS, CHUNKS_HIDDEN_PER_FRAME, CHUNKS_LOADED_PER_FRAME,
-    CHUNKS_SHOWN_PER_FRAME,
+    CHUNK_KEEP_RADIUS, CHUNK_LOAD_RADIUS, CHUNK_PREFETCH_RADIUS, CHUNKS_HIDDEN_PER_FRAME,
+    CHUNKS_LOADED_PER_FRAME, CHUNKS_SHOWN_PER_FRAME,
 };
 use crate::terrain::TerrainGenerator;
 use crate::world::TerrainWorld;
@@ -51,17 +51,22 @@ impl ChunkManager {
     pub fn tick(&mut self) -> Vec<ChunkCoord> {
         let mut newly_discovered = Vec::new();
 
-        // 1. Load: discover chunks within load radius of any focus, up to the per-frame budget.
+        // 1. Load: discover chunks around every focus, up to the per-frame budget.
+        //
+        //    The candidate list reaches out to `CHUNK_PREFETCH_RADIUS` and is sorted by
+        //    distance, so the ring a shown chunk needs for its edges is always discovered
+        //    before the ring loaded ahead of the camera. Both share one budget, which is what
+        //    keeps generation spread over frames instead of landing in one.
         let mut loads_left = CHUNKS_LOADED_PER_FRAME;
-        let wanted_loaded = self.wanted_loaded();
-        for &coord in &wanted_loaded {
+        let wanted_loaded = self.chunks_within(CHUNK_LOAD_RADIUS);
+        for coord in self.chunks_within(CHUNK_PREFETCH_RADIUS) {
             if loads_left <= 0 {
                 break;
             }
             if self.world.is_discovered(coord) {
                 continue;
             }
-            self.world.show_chunk(coord);
+            self.world.discover_chunk(coord);
             newly_discovered.push(coord);
             self.pending_entities.push(coord);
             loads_left -= 1;
@@ -150,7 +155,10 @@ impl ChunkManager {
                         x: e.x(),
                         y: e.y(),
                         elevation: e.elevation(),
-                        state: serde_json::json!({}),
+                        // The instance's own state, so the round trip is lossless. Writing an
+                        // empty object here while `load_from_save` read `colorVariant` back out
+                        // of it meant a saved colour variation could never survive a reload.
+                        state: saved_entity_state(e),
                     })
                     .collect()
             })
@@ -165,7 +173,6 @@ impl ChunkManager {
     }
 
     /// Converts every discovered chunk into saved form.
-    /// Converts every discovered chunk into saved form.
     pub fn save_all(&self) -> Vec<crate::world::save::SavedChunk> {
         let mut chunks = Vec::new();
         for coord in self.world.discovered_chunks() {
@@ -178,7 +185,21 @@ impl ChunkManager {
     }
 
     /// Restores chunks from a save into this manager, bypassing generation.
-    pub fn load_from_save(&mut self, save: &crate::world::save::WorldSave) {
+    ///
+    /// Returns the blueprint ids the save referred to but the catalog does not define. Those
+    /// entities are skipped: reporting them is what lets a client tell a catalog that moved on
+    /// from a corrupt save, instead of silently reopening a world with missing scenery.
+    pub fn load_from_save(&mut self, save: &crate::world::save::WorldSave) -> Vec<String> {
+        // One index for the whole save. Scanning the catalog per saved entity was
+        // O(entities x blueprints): 21 589 entities against 63 blueprints in a 42-chunk world.
+        let blueprints: HashMap<&str, &crate::entities::EntityBlueprintV2> = self
+            .catalog
+            .entities
+            .iter()
+            .map(|blueprint| (blueprint.id.as_str(), blueprint))
+            .collect();
+        let mut unknown: HashSet<String> = HashSet::new();
+
         for chunk in &save.chunks {
             let coord = ChunkCoord { cx: chunk.cx, cy: chunk.cy };
             let columns: Vec<crate::terrain::TerrainColumn> = chunk
@@ -187,37 +208,33 @@ impl ChunkManager {
                 .map(crate::world::save::saved_to_terrain_column)
                 .collect();
             self.world.load_chunk(coord, columns);
-            // Reconstruct entities from saved instances, looking up blueprints.
-            let mut entities = Vec::new();
+
+            let mut entities = Vec::with_capacity(chunk.entities.len());
             for saved in &chunk.entities {
-                if let Some(blueprint) = self.catalog.entities.iter().find(|b| b.id == saved.blueprint_id) {
-                    let data = crate::entities::entity::EntityData {
-                        id: saved.instance_id.clone(),
-                        type_: blueprint.id.clone(),
-                        walkable: false,
-                        elevation: saved.elevation,
-                        height: blueprint.shape.height,
-                        length: blueprint.shape.length,
-                        length_axis: Some(blueprint.shape.axis),
-                        gap: None,
-                        texture_source: blueprint.asset.sprite.clone(),
-                        debug: None,
-                        color_replacements: blueprint.asset.color_replacements.clone(),
-                        color_variant: saved.state.get("colorVariant").and_then(|v| v.as_u64()).map(|v| v as u32),
-                        sway: blueprint.asset.sway.clone(),
-                        collision: match blueprint.shape.collision.as_slice() {
-                            [size] => Some(crate::entities::entity::EntityCollision::Uniform(*size)),
-                            sizes => Some(crate::entities::entity::EntityCollision::PerCell(sizes.to_vec())),
-                        },
-                        contact_shadow: blueprint.asset.contact_shadow,
-                        reflection_source: blueprint.asset.reflection.clone(),
-                        metadata: saved.state.clone(),
-                    };
-                    entities.push(crate::entities::entity::Entity::from_data(saved.x, saved.y, data));
-                }
+                let Some(blueprint) = blueprints.get(saved.blueprint_id.as_str()) else {
+                    unknown.insert(saved.blueprint_id.clone());
+                    continue;
+                };
+                entities.push(crate::entities::Entity::restore(
+                    saved.x,
+                    saved.y,
+                    blueprint,
+                    saved.elevation,
+                    saved.instance_id.clone(),
+                    saved
+                        .state
+                        .get("colorVariant")
+                        .and_then(serde_json::Value::as_u64)
+                        .map(|variant| variant as u32),
+                    saved.state.clone(),
+                ));
             }
             self.entities.insert(coord, entities);
         }
+
+        let mut unknown: Vec<String> = unknown.into_iter().collect();
+        unknown.sort();
+        unknown
     }
 
     /// Visible chunk coordinates in stable order.
@@ -235,11 +252,15 @@ impl ChunkManager {
         &self.focus
     }
 
-    /// Chunks that should be loaded: every chunk within load radius of any focus, deduplicated.
-    fn wanted_loaded(&self) -> Vec<ChunkCoord> {
+    /// Every chunk within `radius` of any focus, deduplicated and sorted nearest first.
+    ///
+    /// The order is what makes the per-frame budget fair: the nearest missing chunk is always
+    /// the one generated next, so the ground under the camera never waits behind a chunk loaded
+    /// ahead of it. Ties break on coordinates so the sequence does not depend on hash order.
+    fn chunks_within(&self, radius: i32) -> Vec<ChunkCoord> {
         let mut wanted: HashSet<ChunkCoord> = HashSet::new();
         for &focus in &self.focus {
-            for coord in chunks_around(focus, CHUNK_LOAD_RADIUS) {
+            for coord in chunks_around(focus, radius) {
                 wanted.insert(coord);
             }
         }
@@ -261,6 +282,57 @@ impl ChunkManager {
             .iter()
             .any(|&focus| distance(focus, coord) <= CHUNK_KEEP_RADIUS)
     }
+
+    /// Discovered chunks further than `CHUNK_KEEP_RADIUS` from every focus, nearest first.
+    ///
+    /// Hiding a chunk stops drawing it but keeps its terrain and entities in memory, so a
+    /// session that explores far enough grows without bound: the save written from a 42-chunk
+    /// world already weighs tens of megabytes. These are the chunks a client should persist and
+    /// then hand to [`Self::unload_chunk`].
+    pub fn unload_candidates(&self) -> Vec<ChunkCoord> {
+        let mut stale: Vec<ChunkCoord> = self
+            .world
+            .discovered_chunks()
+            .into_iter()
+            .filter(|&coord| !self.is_within_keep(coord))
+            .collect();
+        stale.sort_by_key(|coord| {
+            let dist = self
+                .focus
+                .iter()
+                .map(|f| distance(*f, *coord))
+                .min()
+                .unwrap_or(i32::MAX);
+            (std::cmp::Reverse(dist), coord.cx, coord.cy)
+        });
+        stale
+    }
+
+    /// Drops a chunk's terrain and entities from memory, returning its saved form.
+    ///
+    /// The returned [`SavedChunk`] is the only remaining copy: revisiting the chunk generates it
+    /// again unless the caller stores it (`ChunkArchive::put`) and feeds it back through
+    /// [`Self::load_from_save`]. Returns `None` for a chunk that was never discovered.
+    #[must_use = "the returned chunk is the only copy left; store it or its edits are lost"]
+    pub fn unload_chunk(&mut self, coord: ChunkCoord) -> Option<crate::world::save::SavedChunk> {
+        let saved = self.save_chunk(coord)?;
+        self.world.unload_chunk(coord);
+        self.entities.remove(&coord);
+        Some(saved)
+    }
+}
+
+/// The per-instance state a save has to carry: everything `Entity::restore` cannot rebuild from
+/// the blueprint. An entity with no state of its own saves as an empty object.
+fn saved_entity_state(entity: &Entity) -> serde_json::Value {
+    let mut state = match entity.metadata().clone() {
+        serde_json::Value::Object(map) => map,
+        _ => serde_json::Map::new(),
+    };
+    if let Some(variant) = entity.color_variant() {
+        state.insert("colorVariant".to_owned(), variant.into());
+    }
+    serde_json::Value::Object(state)
 }
 
 /// Chebyshev distance between two chunk coordinates.

@@ -34,7 +34,7 @@ pub struct EntityAsset {
     pub sprite: String,
     pub reflection: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none", rename = "colorReplacements")]
-    pub color_replacements: Option<serde_json::Value>,
+    pub color_replacements: Option<std::sync::Arc<serde_json::Value>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sway: Option<EntitySway>,
     #[serde(default, skip_serializing_if = "Option::is_none", rename = "contactShadow")]

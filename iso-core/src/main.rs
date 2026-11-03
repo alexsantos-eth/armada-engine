@@ -2,6 +2,7 @@ mod save;
 mod services;
 mod terrain_view;
 
+use armada_core::assets::{AssetEntry, SpriteFrame};
 use armada_core::grid::{WorldCoord, to_chunk_coord};
 use armada_core::player::physics::{
     PlayerGround, create_player, find_player_spawn,
@@ -12,12 +13,16 @@ use armada_core::services::{InputService, NormalizedInput, UiService, UiEvent, A
 use services::{MacroquadInput, MacroquadAudio, MacroquadUi};
 use armada_core::projection::{GridPoint, ProjectionConfig, project_block, project_grid_point};
 use armada_core::scene_order::{DrawKey, LengthAxis, compare_draw_keys, get_draw_depth};
+use armada_core::simulation::FixedStepper;
 use armada_core::terrain::{TerrainColumn, TerrainConfig, TerrainGenerator};
 use armada_core::world::ChunkManager;
 use armada_core::entities::{EntityCatalogV2, validate_catalog};
 use armada_core::camera::{Camera, ScreenSize, visible_chunks as camera_visible_chunks};
 use std::collections::HashMap;
-use save::{load_archive_into_manager, load_save, restore_archive, save_archive, sync_manager_to_archive};
+use save::{
+    load_archive_into_manager, load_save, restore_archive, restore_discovered_from_archive,
+    save_archive, sync_manager_to_archive,
+};
 use terrain_view::preview::draw_terrain_preview;
 use macroquad::prelude::*;
 
@@ -33,6 +38,34 @@ fn window_conf() -> Conf {
 /// Diagnostic centre of the world; the player spawns near here.
 const PREVIEW_CENTRE: WorldCoord = WorldCoord { x: 16, y: 88 };
 const PREVIEW_TILE_HEIGHT: f64 = 40.0;
+/// Entities draw above the terrain of the same depth.
+const ENTITY_LAYER: i32 = 1;
+/// Safety-net interval for the periodic save; the real save happens on quit and on request.
+const AUTOSAVE_SECONDS: f64 = 120.0;
+
+/// One entity queued for drawing this frame, with the depth key it sorts by.
+struct EntityDraw {
+    key: DrawKey,
+    x: f64,
+    y: f64,
+    elevation: f64,
+    frame: SpriteFrame,
+}
+
+/// Depth key of a terrain column under the preview projection.
+fn terrain_draw_key(column: &TerrainColumn) -> DrawKey {
+    DrawKey {
+        depth: get_draw_depth(
+            -(PREVIEW_TILE_HEIGHT / 2.0) * f64::from(column.coord.x + column.coord.y + 1),
+            f64::from(column.elevation),
+            f64::from(column.coord.x),
+            PREVIEW_TILE_HEIGHT,
+            0,
+            LengthAxis::X,
+        ),
+        layer: 0,
+    }
+}
 
 /// Wraps a `ChunkManager` so it satisfies `PlayerGround` for locomotion.
 struct ChunkGround<'a> {
@@ -57,13 +90,24 @@ async fn main() {
     let catalog_json = include_str!("../../src/isometric/content/entities.v2.json");
 
     // Load the asset manifest and atlas (P6 prototype).
-    let manifest_json = include_str!("../../iso-core/content/assets.manifest.json");
+    let manifest_json = include_str!("../content/assets.manifest.json");
     let manifest: armada_core::assets::AssetManifest =
         serde_json::from_str(manifest_json).expect("asset manifest is valid JSON");
     armada_core::assets::validate_manifest(&manifest).expect("asset manifest validates");
     // Macroquad loads the atlas as a single texture; sprites are addressed by frame rect.
-    // The manifest path is already relative to the client root (iso-core/).
-    let atlas = load_texture(&manifest.atlas).await.unwrap();
+    //
+    // The manifest path is relative to the client root (iso-core/), which is the working
+    // directory natively. On the web the fetch resolves against the page instead, and the page
+    // lives in `web/`, so it needs one level up — without this the request went to
+    // `web/content/atlas.png`, 404'd, and the client panicked before its first frame.
+    let atlas_path = if cfg!(target_arch = "wasm32") {
+        format!("../{}", manifest.atlas)
+    } else {
+        manifest.atlas.clone()
+    };
+    let atlas = load_texture(&atlas_path)
+        .await
+        .unwrap_or_else(|err| panic!("could not load the atlas at {atlas_path}: {err}"));
     let catalog: EntityCatalogV2 =
         serde_json::from_str(catalog_json).expect("entity catalog is valid JSON");
     validate_catalog(&catalog).expect("entity catalog validates");
@@ -77,7 +121,9 @@ async fn main() {
     let save = load_save().await;
     let mut archive = restore_archive(save);
     if archive.chunks().count() > 0 {
-        load_archive_into_manager(&mut manager, &archive);
+        for id in load_archive_into_manager(&mut manager, &archive) {
+            eprintln!("warning: save refers to unknown entity blueprint {id}; skipped");
+        }
     }
 
     // Load enough chunks around the centre to find a spawn point.
@@ -87,21 +133,20 @@ async fn main() {
         manager.tick();
     }
 
-    // Build a lookup from entity type to atlas entry.
-    let mut entity_atlas: HashMap<String, (u32, u32, u32, u32)> = HashMap::new();
+    // Build a lookup from entity type to atlas frame.
+    let mut entity_atlas: HashMap<String, SpriteFrame> = HashMap::new();
     for entry in &manifest.entries {
         if let Some(frame) = entry.primary_frame() {
-            // Entity type is the source filename without directory and extension.
-            let entity_type = entry.source
-                .trim_start_matches("/assets/")
+            // Entity type is the source filename without directory, extension or `_block` suffix.
+            let entity_type = entry
+                .source
                 .trim_end_matches(".svg")
                 .rsplit('/')
                 .next()
                 .unwrap_or(&entry.id)
-                .to_string();
-            // Strip "_block" suffix to get the entity type.
-            let entity_type = entity_type.trim_end_matches("_block").to_string();
-            entity_atlas.insert(entity_type, (frame.x, frame.y, frame.width, frame.height));
+                .trim_end_matches("_block")
+                .to_owned();
+            entity_atlas.insert(entity_type, frame);
         }
     }
 
@@ -122,6 +167,31 @@ async fn main() {
 
     let mut show_terrain = true;
     let mut last_save = get_time();
+    // A saved world is only rewritten when something changed, so an idle player does not pay
+    // for a full archive serialization every interval.
+    let mut unsaved_changes = false;
+
+    // The player sprite's atlas frame never changes, so it is resolved once here instead of
+    // scanning all 63 manifest entries every frame.
+    let player_frame = manifest
+        .entries
+        .iter()
+        .find(|entry| entry.id.contains("player") || entry.source.contains("player"))
+        .and_then(AssetEntry::primary_frame);
+
+    // Fixed simulation step, variable frame rate. `FixedStepper` is the same accumulator the
+    // TypeScript game uses and is checked against its fixture; stepping once per frame instead
+    // tied the player's speed to the frame rate, so the same walk covered twice the ground at
+    // 60 fps as at 30.
+    let mut stepper = FixedStepper::default();
+
+    // The quit is intercepted so the final save gets a frame to run before the window closes.
+    prevent_quit();
+
+    // Frame-time readout state.
+    let mut frame_peak_ms: f64 = 0.0;
+    let mut worst_ms: f64 = 0.0;
+    let mut peak_since = get_time();
 
     // Services.
     let mut audio = MacroquadAudio::default();
@@ -131,23 +201,19 @@ async fn main() {
         if is_key_pressed(KeyCode::T) {
             show_terrain = !show_terrain;
         }
-        if is_key_pressed(KeyCode::S) {
+        // Not plain `S`: that walks the player south.
+        let save_requested = is_key_pressed(KeyCode::F5)
+            || (is_key_pressed(KeyCode::S)
+                && (is_key_down(KeyCode::LeftControl) || is_key_down(KeyCode::RightControl)));
+        if save_requested {
             sync_manager_to_archive(&manager, &mut archive);
             save_archive(&archive);
+            unsaved_changes = false;
             last_save = get_time();
         }
 
         let width = screen_width();
         let height = screen_height();
-        let projection = ProjectionConfig {
-            tile_width: 80.0,
-            tile_height: PREVIEW_TILE_HEIGHT,
-            elevation_step: None,
-            origin_x: f64::from(width / 2.0)
-                - (player.x - player.y) * 40.0,
-            origin_y: f64::from(height / 2.0 + 50.0)
-                + (player.x + player.y) * 20.0,
-        };
 
         // Input via the normalized service.
         let mut input_service = MacroquadInput;
@@ -168,30 +234,89 @@ async fn main() {
         });
         manager.set_focus(vec![focus]);
 
-        // Update camera to follow the player.
-        camera.x = player.x;
-        camera.y = player.y;
-
-        // Step the player (1 tick per frame).
-        let jumps_before = player.feedback.jumps;
-        let landings_before = player.feedback.landings;
-        let mut ground = ChunkGround { manager: &manager };
-        step_player(&mut player, &mut ground, 1, no_top_inset);
-        if player.feedback.jumps > jumps_before {
-            audio.play(SoundEvent::Jump);
+        // Step the player: as many fixed ticks as the elapsed frame time earned.
+        // `max_frame_ms` already caps a long frame, so the count always fits; saturating keeps
+        // that an invariant of this call rather than an assumption about the stepper.
+        let frame_ms = f64::from(get_frame_time()) * 1000.0;
+        // Worst frame of the last second: a stutter is a few slow frames, and an average or an
+        // instantaneous fps reading hides exactly those.
+        frame_peak_ms = frame_peak_ms.max(frame_ms);
+        if get_time() - peak_since > 1.0 {
+            worst_ms = frame_peak_ms;
+            frame_peak_ms = 0.0;
+            peak_since = get_time();
         }
-        if player.feedback.landings > landings_before {
-            audio.play(SoundEvent::Land);
+        let ticks = u32::try_from(stepper.consume_frame(frame_ms)).unwrap_or(u32::MAX);
+        if ticks > 0 {
+            let jumps_before = player.feedback.jumps;
+            let landings_before = player.feedback.landings;
+            let mut ground = ChunkGround { manager: &manager };
+            step_player(&mut player, &mut ground, ticks, no_top_inset);
+            if player.feedback.jumps > jumps_before {
+                audio.play(SoundEvent::Jump);
+            }
+            if player.feedback.landings > landings_before {
+                audio.play(SoundEvent::Land);
+            }
         }
 
-        // Tick streaming.
-        manager.tick();
+        // Everything drawn this frame is placed from the interpolated position, never from
+        // `player` directly.
+        //
+        // The simulation runs at 20 ticks a second and the screen at 60 or more, so `player.x`
+        // only changes on one frame in three. Drawing the sprite from the interpolated position
+        // while the camera and the projection used the raw one made the world jump in 20 Hz
+        // steps and the player slide smoothly against it: the whole scene appeared to shake,
+        // and it looked like the game ran at a fraction of its real frame rate.
+        let rp = get_player_render_position(&player, stepper.interpolation_alpha());
 
-        // Periodically sync and save.
-        if get_time() - last_save > 10.0 {
+        // The camera and the projection origin follow that same interpolated position, so the
+        // player, the terrain and the entities all move as one.
+        camera.x = rp.x;
+        camera.y = rp.y;
+        let projection = ProjectionConfig {
+            tile_width: 80.0,
+            tile_height: PREVIEW_TILE_HEIGHT,
+            elevation_step: None,
+            origin_x: f64::from(width / 2.0) - (rp.x - rp.y) * 40.0,
+            origin_y: f64::from(height / 2.0 + 50.0) + (rp.x + rp.y) * 20.0,
+        };
+
+        // Tick streaming, then give any chunk the archive already holds its stored contents back
+        // instead of the freshly generated ones.
+        let discovered = manager.tick();
+        if !discovered.is_empty() {
+            unsaved_changes = true;
+            for id in restore_discovered_from_archive(&mut manager, &archive, &discovered) {
+                ui.push(UiEvent::Message {
+                    text: format!("partida guardada con una entidad desconocida: {id}"),
+                });
+            }
+        }
+
+        // Drop chunks the player has left behind, after storing them: hiding a chunk keeps its
+        // terrain and entities in memory, so without this a long session grows without bound.
+        // One per frame, matching the load budget.
+        if let Some(&stale) = manager.unload_candidates().first()
+            && let Some(saved) = manager.unload_chunk(stale)
+        {
+            archive.put(saved);
+            unsaved_changes = true;
+        }
+
+        // Writing the save is one synchronous pass over the whole archive on the main thread:
+        // ~25 ms at 42 chunks and growing with every chunk explored, which is a visible freeze.
+        // So it happens on quit, on request, and otherwise only as an infrequent safety net.
+        // Unloaded chunks are already safe in `archive` in the meantime.
+        let quitting = is_quit_requested();
+        if unsaved_changes && (quitting || get_time() - last_save > AUTOSAVE_SECONDS) {
             sync_manager_to_archive(&manager, &mut archive);
             save_archive(&archive);
+            unsaved_changes = false;
             last_save = get_time();
+        }
+        if quitting {
+            return;
         }
 
         // Camera culling: determine which chunks are in the viewport.
@@ -218,37 +343,27 @@ async fn main() {
                 columns.extend(chunk.iter().copied());
             }
         }
-        columns.sort_by(|a, b| {
-            let key = |column: &TerrainColumn| DrawKey {
-                depth: get_draw_depth(
-                    -(PREVIEW_TILE_HEIGHT / 2.0) * f64::from(column.coord.x + column.coord.y + 1),
-                    f64::from(column.elevation),
-                    f64::from(column.coord.x),
-                    PREVIEW_TILE_HEIGHT,
-                    0,
-                    LengthAxis::X,
-                ),
-                layer: 0,
-            };
-            compare_draw_keys(&key(a), &key(b))
-        });
+        // Sort by precomputed keys. `sort_by` recomputed `get_draw_depth` on both sides of every
+        // comparison, so a chunk's worth of columns paid O(n log n) depth computations instead
+        // of one per column.
+        let mut ordered: Vec<(DrawKey, TerrainColumn)> = columns
+            .into_iter()
+            .map(|column| (terrain_draw_key(&column), column))
+            .collect();
+        ordered.sort_by(|a, b| compare_draw_keys(&a.0, &b.0));
+        let columns: Vec<TerrainColumn> = ordered.into_iter().map(|(_, column)| column).collect();
 
-        // Render position for smooth drawing.
-        let rp = get_player_render_position(&player, 0.0);
-        let elevation = player.elevation as i32;
+        // Render position, interpolated by how far into the current tick the frame sits.
+        let elevation = player.elevation.floor() as i32;
 
         clear_background(Color::from_rgba(21, 29, 42, 255));
         draw_rectangle_lines(16.0, 16.0, width - 32.0, height - 32.0, 2.0, SKYBLUE);
         if show_terrain {
+            // `column_at` indexes straight into the chunk. Scanning the chunk for a matching
+            // coordinate searched up to 1024 columns per lookup, and the view asks for two
+            // neighbour heights per drawn column: ~4 ms a frame, for a lookup that is O(1).
             draw_terrain_preview(&columns, projection, |point| {
-                manager
-                    .terrain_chunk(to_chunk_coord(point))
-                    .and_then(|chunk| {
-                        chunk
-                            .iter()
-                            .find(|c| c.coord == point)
-                            .map(|c| c.elevation)
-                    })
+                manager.column_at(point.x, point.y).map(|c| c.elevation)
             });
         } else {
             draw_grid(projection, WorldCoord {
@@ -258,48 +373,49 @@ async fn main() {
         }
 
         // Draw entities from visible (culled) chunks.
-        let mut entity_draws: Vec<(f64, f64, f64, u32, u32, u32, u32)> = Vec::new();
+        let mut entity_draws: Vec<EntityDraw> = Vec::new();
         for coord in manager.visible_chunks() {
             if !visible_set.contains(&coord) {
                 continue;
             }
             if let Some(entities) = manager.entities_chunk(coord) {
                 for entity in entities {
-                    let ex = entity.x() as f64 + 0.5;
-                    let ey = entity.y() as f64 + 0.5;
-                    let elev = entity.elevation() as f64;
-                    let entity_type = entity.type_();
-                    if let Some(&(ax, ay, aw, ah)) = entity_atlas.get(entity_type) {
-                        entity_draws.push((ex, ey, elev, ax, ay, aw, ah));
-                    }
+                    let Some(&frame) = entity_atlas.get(entity.type_()) else {
+                        continue;
+                    };
+                    let x = f64::from(entity.x()) + 0.5;
+                    let y = f64::from(entity.y()) + 0.5;
+                    let elevation = f64::from(entity.elevation());
+                    entity_draws.push(EntityDraw {
+                        key: DrawKey {
+                            depth: get_draw_depth(
+                                -(PREVIEW_TILE_HEIGHT / 2.0) * (x + y + 1.0),
+                                elevation,
+                                x,
+                                PREVIEW_TILE_HEIGHT,
+                                0,
+                                LengthAxis::X,
+                            ),
+                            layer: ENTITY_LAYER,
+                        },
+                        x,
+                        y,
+                        elevation,
+                        frame,
+                    });
                 }
             }
         }
-        // Sort by screen Y for approximate depth order.
-        entity_draws.sort_by(|a, b| {
-            let sa = a.1 + a.2; // y + elevation as proxy for depth
-            let sb = b.1 + b.2;
-            sa.partial_cmp(&sb).unwrap_or(std::cmp::Ordering::Equal)
-        });
-        for (ex, ey, elev, ax, ay, aw, ah) in &entity_draws {
-            let pos = project_block(
-                GridPoint { x: *ex, y: *ey },
-                *elev,
-                projection,
-            );
-            let sx = pos.screen_x as f32;
-            let sy = pos.screen_y as f32;
-            let src = Rect::new(*ax as f32, *ay as f32, *aw as f32, *ah as f32);
-            draw_texture_ex(
+        // Order entities with the same depth function the terrain uses. `y + elevation` was a
+        // proxy that disagreed with it: a taller entity one column further back could sort in
+        // front of a shorter one, and the engine already has the tested rule for this.
+        entity_draws.sort_by(|a, b| compare_draw_keys(&a.key, &b.key));
+        for EntityDraw { x: ex, y: ey, elevation: elev, frame, .. } in &entity_draws {
+            let pos = project_block(GridPoint { x: *ex, y: *ey }, *elev, projection);
+            draw_atlas_frame(
                 &atlas,
-                sx - 32.0,
-                sy - 64.0,
-                WHITE,
-                DrawTextureParams {
-                    source: Some(src),
-                    dest_size: Some(vec2(64.0, 64.0)),
-                    ..Default::default()
-                },
+                *frame,
+                vec2(pos.screen_x as f32, pos.screen_y as f32),
             );
         }
 
@@ -311,55 +427,14 @@ async fn main() {
         );
         let marker = vec2(marker.screen_x as f32, marker.screen_y as f32);
 
-        // Look up player atlas entry.
-        let player_frame = manifest.entries.iter().find(|e| {
-            e.id.contains("player") || e.source.contains("player")
-        });
-        if let Some(entry) = player_frame {
-            if let Some(frame) = entry.primary_frame() {
-                let src = Rect::new(
-                    frame.x as f32,
-                    frame.y as f32,
-                    frame.width as f32,
-                    frame.height as f32,
-                );
-                draw_texture_ex(
-                    &atlas,
-                    marker.x - 32.0,
-                    marker.y - 64.0,
-                    WHITE,
-                    DrawTextureParams {
-                        source: Some(src),
-                        dest_size: Some(vec2(64.0, 64.0)),
-                        ..Default::default()
-                    },
-                );
-            }
+        // The player sprite, or a marker while the atlas has no player frame.
+        //
+        // The leftover P6 prototype that drew the first atlas entry at this same position used
+        // to run right after this, covering the player with a terrain block every frame.
+        if let Some(frame) = player_frame {
+            draw_atlas_frame(&atlas, frame, marker);
         } else {
             draw_circle(marker.x, marker.y, 12.0, GOLD);
-        }
-
-        // P6 prototype: draw the first atlas sprite (block) at the player's position.
-        if let Some(entry) = manifest.entries.first()
-            && let Some(frame) = entry.primary_frame()
-        {
-            let src = Rect::new(
-                frame.x as f32,
-                frame.y as f32,
-                frame.width as f32,
-                frame.height as f32,
-            );
-            draw_texture_ex(
-                &atlas,
-                marker.x - 32.0,
-                marker.y - 64.0,
-                WHITE,
-                DrawTextureParams {
-                    source: Some(src),
-                    dest_size: Some(vec2(64.0, 64.0)),
-                    ..Default::default()
-                },
-            );
         }
 
         // Push HUD update via the UI service.
@@ -375,7 +450,7 @@ async fn main() {
         draw_rectangle(20.0, 20.0, 510.0, 80.0, Color::from_rgba(21, 29, 42, 205));
         draw_text("Armada Engine / Macroquad", 32.0, 58.0, 32.0, WHITE);
         draw_text(
-            "WASD/Flechas | Espacio: saltar | Shift: correr | T: terreno | S: guardar",
+            "WASD/Flechas | Espacio: saltar | Shift: correr | T: terreno | F5: guardar",
             32.0,
             89.0,
             18.0,
@@ -389,7 +464,11 @@ async fn main() {
             Color::from_rgba(21, 29, 42, 205),
         );
         if let Some((x, y, elev, motion, chunks)) = &ui.hud {
-            let text = format!("Mundo: ({:.2}, {:.2}, {}) | {} | chunks: {}", x, y, elev, motion, chunks);
+            let text = format!(
+                "Mundo: ({x:.2}, {y:.2}, {elev}) | {motion} | chunks: {chunks} | {fps} fps ({frame_ms:.1} ms)",
+                fps = get_fps(),
+                frame_ms = frame_ms,
+            );
             draw_text(
                 &text,
                 32.0,
@@ -399,6 +478,21 @@ async fn main() {
             );
         }
 
+        // Frame-time readout, top right. The worst frame of the last second is what shows a
+        // stutter; an fps average smooths exactly the spikes worth seeing.
+        let fps_text = format!("{} fps", get_fps());
+        let worst_text = format!("peor {worst_ms:.1} ms");
+        let readout_colour = if worst_ms > 33.0 {
+            RED
+        } else if worst_ms > 20.0 {
+            ORANGE
+        } else {
+            LIME
+        };
+        draw_rectangle(width - 190.0, 20.0, 170.0, 58.0, Color::from_rgba(21, 29, 42, 205));
+        draw_text(&fps_text, width - 178.0, 46.0, 28.0, readout_colour);
+        draw_text(&worst_text, width - 178.0, 68.0, 18.0, readout_colour);
+
         // Draw any UI messages.
         for (i, msg) in ui.messages.iter().enumerate() {
             draw_text(msg, 32.0, 120.0 + i as f32 * 20.0, 18.0, YELLOW);
@@ -406,6 +500,27 @@ async fn main() {
         ui.messages.clear();
         next_frame().await;
     }
+}
+
+/// Draws one atlas frame with its bottom centre near `at`, the anchor every sprite shares until
+/// the manifest's per-entry anchors are wired in.
+fn draw_atlas_frame(atlas: &Texture2D, frame: SpriteFrame, at: Vec2) {
+    draw_texture_ex(
+        atlas,
+        at.x - 32.0,
+        at.y - 64.0,
+        WHITE,
+        DrawTextureParams {
+            source: Some(Rect::new(
+                frame.x as f32,
+                frame.y as f32,
+                frame.width as f32,
+                frame.height as f32,
+            )),
+            dest_size: Some(vec2(64.0, 64.0)),
+            ..Default::default()
+        },
+    );
 }
 
 fn screen_point(point: GridPoint, projection: ProjectionConfig) -> Vec2 {
