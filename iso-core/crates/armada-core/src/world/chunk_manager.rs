@@ -67,6 +67,10 @@ pub struct ChunkManager {
     /// Chunks discovered this frame but not yet shown; kept so entities are generated once.
     pending_entities: Vec<ChunkCoord>,
     radii: ChunkRadii,
+    /// Cached, distance-sorted stream targets. They only change when the camera crosses a chunk
+    /// boundary, not on every rendered frame.
+    wanted_loaded: Vec<ChunkCoord>,
+    wanted_prefetch: Vec<ChunkCoord>,
 }
 
 impl ChunkManager {
@@ -87,6 +91,8 @@ impl ChunkManager {
             focus: Vec::new(),
             pending_entities: Vec::new(),
             radii: radii.normalized(),
+            wanted_loaded: Vec::new(),
+            wanted_prefetch: Vec::new(),
         }
     }
 
@@ -98,7 +104,23 @@ impl ChunkManager {
     /// Sets the focus chunks (typically around the camera/player). The streamer keeps chunks
     /// around them loaded and visible, within the per-frame budgets.
     pub fn set_focus(&mut self, focus: Vec<ChunkCoord>) {
+        if self.focus == focus {
+            return;
+        }
         self.focus = focus;
+        self.wanted_loaded = self.chunks_within(self.radii.load);
+        self.wanted_prefetch = self.chunks_within(self.radii.prefetch);
+    }
+
+    /// Sets a single focus without allocating a new vector every rendered frame.
+    pub fn set_single_focus(&mut self, focus: ChunkCoord) {
+        if self.focus.as_slice() == [focus] {
+            return;
+        }
+        self.focus.clear();
+        self.focus.push(focus);
+        self.wanted_loaded = self.chunks_within(self.radii.load);
+        self.wanted_prefetch = self.chunks_within(self.radii.prefetch);
     }
 
     /// Advances one frame: loads, shows and hides chunks respecting per-frame budgets.
@@ -115,8 +137,7 @@ impl ChunkManager {
         //    before the ring loaded ahead of the camera. Both share one budget, which is what
         //    keeps generation spread over frames instead of landing in one.
         let mut loads_left = CHUNKS_LOADED_PER_FRAME;
-        let wanted_loaded = self.chunks_within(self.radii.load);
-        for coord in self.chunks_within(self.radii.prefetch) {
+        for &coord in &self.wanted_prefetch {
             if loads_left <= 0 {
                 break;
             }
@@ -140,7 +161,7 @@ impl ChunkManager {
         // 3. Show: make discovered chunks within load radius visible, up to the per-frame budget.
         //     Only chunks already discovered are shown here; new chunks are discovered in step 1.
         let mut shown_left = CHUNKS_SHOWN_PER_FRAME;
-        for &coord in &wanted_loaded {
+        for &coord in &self.wanted_loaded {
             if shown_left <= 0 {
                 break;
             }
@@ -191,6 +212,11 @@ impl ChunkManager {
     /// Placed entities of a discovered chunk, or `None` when it was never discovered.
     pub fn entities_chunk(&self, coord: ChunkCoord) -> Option<&[Entity]> {
         self.entities.get(&coord).map(Vec::as_slice)
+    }
+
+    /// Whether a chunk is part of the stream currently shown by the client.
+    pub fn is_visible(&self, coord: ChunkCoord) -> bool {
+        self.world.is_visible(coord)
     }
 
     /// Converts a discovered chunk into its saved form, storing terrain and entities.

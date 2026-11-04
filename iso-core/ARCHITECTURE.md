@@ -157,6 +157,8 @@ La generación de un chunk se inicia desde el flujo de mundo, no desde una vista
 
 `TerrainWorld` ya conserva en memoria los chunks descubiertos aunque se oculten. `show_chunk()` solo genera el primer descubrimiento; `edit_column()` valida la relación entre agua y nivel del mar y actualiza la transitabilidad. La muestra Macroquad lee sus cuatro chunks de ese mundo. Aún faltan entidades, presupuesto de streaming, descarga de memoria y almacenamiento persistente; ocultar un chunk no equivale a guardarlo en disco.
 
+El `ChunkManager` calcula y ordena sus anillos de carga y prefetch únicamente cuando cambia el chunk de foco. En cada frame reutiliza esos objetivos y el cliente Macroquad itera directamente los chunks que devuelve el cull de cámara, consultando la visibilidad del stream sin materializar conjuntos auxiliares. Así el movimiento dentro del mismo chunk no añade asignaciones ni ordenaciones al camino de render.
+
 ### `parts` y `save` (previstos)
 
 **Responsabilidad.** Estado propio de sistemas que no pertenece al núcleo de `World`, formato de archivo, validación y migraciones del formato de guardado.

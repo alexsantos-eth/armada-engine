@@ -274,7 +274,7 @@ async fn main() {
             x: player.x.floor() as i32,
             y: player.y.floor() as i32,
         });
-        manager.set_focus(vec![focus]);
+        manager.set_single_focus(focus);
 
         // Step the player: as many fixed ticks as the elapsed frame time earned.
         // `max_frame_ms` already caps a long frame, so the count always fits; saturating keeps
@@ -363,8 +363,6 @@ async fn main() {
             height: f64::from(height),
         };
         let culled = camera_visible_chunks(camera, viewport, projection, CHUNK_CULL_MARGIN);
-        // Intersect with discovered chunks.
-        let visible_set: std::collections::HashSet<_> = culled.into_iter().collect();
 
         // Render position, interpolated by how far into the current tick the frame sits.
         let elevation = player.elevation.floor() as i32;
@@ -381,11 +379,12 @@ async fn main() {
                 y: player.y.floor() as i32,
             });
         }
-        // One pass over the visible chunks for both, rather than one each: `visible_chunks`
-        // builds a vector every call.
+        // The camera already returns its small, ordered cull list. Iterating it directly avoids
+        // allocating and sorting the stream's visible chunk set every frame; check the stream
+        // membership without asking it to materialize that set.
         let mut chunks_drawn = 0usize;
-        for coord in manager.visible_chunks() {
-            if !visible_set.contains(&coord) {
+        for coord in culled {
+            if !manager.is_visible(coord) {
                 continue;
             }
             chunks_drawn += 1;

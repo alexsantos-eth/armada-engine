@@ -50,6 +50,8 @@
         assert!(!discovered.is_empty());
         // The first discovered chunk is immediately visible.
         assert!(manager.visible_chunks().contains(&discovered[0]));
+        assert!(manager.is_visible(discovered[0]));
+        assert!(!manager.is_visible(ChunkCoord { cx: 9, cy: 9 }));
     }
 
     #[test]
@@ -62,6 +64,17 @@
         assert_eq!(first.len(), 1);
         assert_eq!(second.len(), 1);
         assert_ne!(first[0], second[0]);
+    }
+
+    #[test]
+    fn single_focus_reuses_the_existing_stream_target() {
+        let mut manager = ChunkManager::new(generator(), catalog());
+        let focus = ChunkCoord { cx: -2, cy: 3 };
+
+        manager.set_single_focus(focus);
+        manager.set_single_focus(focus);
+
+        assert_eq!(manager.focus(), &[focus]);
     }
 
     #[test]
