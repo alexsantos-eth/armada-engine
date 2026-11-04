@@ -56,18 +56,15 @@ const PREVIEW_TILE_WIDTH: f64 = 280.0;
 const PREVIEW_TILE_HEIGHT: f64 = PREVIEW_TILE_WIDTH / 2.0;
 /// One level of elevation, in screen pixels: as tall as the artwork draws a block's body, so
 /// that a stack of them meets. See [`armada_core::assets::elevation_step`].
-/// How far each band of a multi-cell sprite reaches past its cut, as a fraction of a tile.
-///
-/// The cut follows the edge the two cells share, and the ground on the other side of that edge
-/// reaches a little past it: the blocks are clay with rounded corners, so their artwork is
-/// almost four percent narrower than a tile and the terrain stretches it to the tile to close
-/// the seams between neighbours (`InkBox::fitted_to_tiles`), which leaves every ground diamond
-/// about two percent of a tile oversized. Without this the nearer ground drew a hairline of
-/// itself along the cut, across the face of every long building. Bands may overlap freely: they
-/// are parts of one drawing, and the one drawn second is the one nearer the camera.
-const BAND_BLEED: f64 = 0.03;
-
 const PREVIEW_ELEVATION_STEP: f64 = PREVIEW_TILE_WIDTH * SVG_BLOCK_HEIGHT / SVG_TILE_WIDTH;
+
+/// How far each band of a multi-cell sprite reaches past its cut, in screen pixels.
+///
+/// Two polygons that meet exactly along an edge leave a hairline of whatever is behind them
+/// showing through. Half a pixel of overlap closes it and costs nothing: the bands are parts of
+/// one drawing sampled the same way, so an overlapping band paints the very same pixels.
+const BAND_BLEED: f64 = 0.5;
+
 /// Entities draw above the terrain of the same depth, and the player either side of them.
 ///
 /// The player shares a column with whatever stands on it, so one fixed order cannot be right:
@@ -539,7 +536,7 @@ async fn main() {
                             step,
                             index,
                             cells,
-                            projection.tile_width * BAND_BLEED,
+                            BAND_BLEED,
                         )
                     else {
                         continue;

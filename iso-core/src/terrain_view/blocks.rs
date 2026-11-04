@@ -55,10 +55,15 @@ impl TerrainFrames {
             // ground, and guessing would put it half a tile out.
             match atlas
                 .asset(terrain_sprite_source(material))
-                // A terrain block covers exactly one tile and has to meet the blocks beside it,
-                // so its drawing is stretched to the tile rather than drawn at the size it was
-                // drawn at. See `InkBox::fitted_to_tiles`.
-                .and_then(|asset| Some((asset.frame, asset.ink?.fitted_to_tiles(1.0))))
+                // Drawn at the size it was drawn at, like every other sprite and like the
+                // TypeScript client, which draws the block's whole template one tile wide. The
+                // blocks are clay with rounded corners, so the drawing is about four percent
+                // narrower than the tile it covers and a field of them shows a groove along
+                // every edge — that groove is how both clients look. Stretching the drawing to
+                // the tile instead closed the grooves but left every ground diamond two percent
+                // oversized, and the tile in front of the player then painted that overshoot
+                // over its feet.
+                .and_then(|asset| Some((asset.frame, asset.ink?)))
             {
                 Some(frame) => frames[slot(material)] = Some(frame),
                 None => missing.push(material),

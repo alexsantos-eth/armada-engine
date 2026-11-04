@@ -76,19 +76,6 @@ impl InkBox {
         }
     }
 
-    /// The same drawing stretched to span `tiles` tiles across.
-    ///
-    /// Terrain is the one thing that has to meet its neighbours, and the blocks are clay: their
-    /// corners are rounded off, so a block's drawing is a couple of percent narrower than the
-    /// tile it covers and a field of them laid out at their drawn size shows a gap along every
-    /// edge. Stretching the drawing to the tile closes them, and two percent is far less
-    /// visible on a block than a dark seam between every pair.
-    pub fn fitted_to_tiles(self, tiles: f64) -> Self {
-        if self.width <= 0.0 {
-            return self;
-        }
-        self.scaled(tiles / self.width)
-    }
 }
 
 /// Measures the artwork in `svg`, or `None` if it is not one asset drawn in the template.
