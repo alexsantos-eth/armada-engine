@@ -80,6 +80,23 @@ const PLAYER_SPRITE: &str = "/assets/player/block.svg";
 /// that caches its cull between frames and needs the ring ahead of the camera.
 const CHUNK_CULL_MARGIN: f64 = 0.0;
 
+/// Projects the point where the player's feet meet the top of its current column.
+///
+/// Player coordinates identify a column by its integer coordinate: physics resolves it by
+/// rounding them. Terrain projects that column from its visual centre, half a cell along each
+/// axis, so the feet use that same point and cannot fall under a neighbouring tile.
+fn player_feet(position: GridPoint, elevation: f64, projection: ProjectionConfig) -> ScreenPoint {
+    let projected = project_block(
+        GridPoint {
+            x: position.x + 0.5,
+            y: position.y + 0.5,
+        },
+        elevation,
+        projection,
+    );
+    ScreenPoint { x: projected.screen_x, y: projected.screen_y }
+}
+
 /// How far this client streams chunks, below the shared defaults (1 / 2 / 3).
 ///
 /// A chunk is 32 columns square and the player is drawn at [`PLAYER_SCALE`] of a tile, so at
@@ -466,12 +483,11 @@ async fn main() {
         // The player, standing on the ground it is over, raised by however far into a jump it
         // is. It joins the same list, so it passes behind what is in front of it instead of
         // being painted over the whole scene.
-        let feet = project_block(
-            GridPoint { x: rp.x + 0.5, y: rp.y + 0.5 },
+        let feet = player_feet(
+            GridPoint { x: rp.x, y: rp.y },
             rp.elevation + rp.height,
             projection,
         );
-        let feet = ScreenPoint { x: feet.screen_x, y: feet.screen_y };
         match player_frame {
             Some(frame) => draws.push(SpriteDraw::whole(
                 // Sorted by the cell the player stands on, not by its exact position: the
@@ -644,6 +660,29 @@ fn draw_grid(projection: ProjectionConfig, centre: WorldCoord) {
             draw_line(corner.x, corner.y, along_x.x, along_x.y, 1.0, color);
             draw_line(corner.x, corner.y, along_y.x, along_y.y, 1.0, color);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn player_feet_stay_at_their_terrain_column_centre() {
+        let projection = ProjectionConfig {
+            tile_width: 150.0,
+            tile_height: 75.0,
+            elevation_step: Some(50.0),
+            origin_x: 400.0,
+            origin_y: 300.0,
+        };
+        let position = GridPoint { x: 12.0, y: 7.0 };
+
+        assert_eq!(
+            player_feet(position, 0.0, projection),
+            ScreenPoint { x: 775.0, y: -450.0 },
+            "player feet use the same projected centre as their supporting terrain column"
+        );
     }
 }
 
