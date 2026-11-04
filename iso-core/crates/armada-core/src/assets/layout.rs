@@ -67,19 +67,24 @@ impl SpriteBand {
 /// ground in front of the near one paint over its base.
 ///
 /// Cutting the drawing where the cells meet gives each part the depth of the cell it stands on.
-/// **The cut follows the cells' shared edge, not a vertical line.** What one cell can hide is
-/// everything in the column of space above its own diamond, and on screen two neighbouring
-/// columns overlap by half a tile: the artwork in that overlap belongs to the nearer cell, which
-/// is in front. Cutting straight down instead handed the near cell's own corner to the band
-/// behind it, and the ground in front of that corner — a whole row nearer — then painted over
-/// it, taking a bite out of the base of every long building, one per cell.
+/// **The cut falls straight down the screen, half a tile past the cell's own centre** — the
+/// vertical through the far vertex of its ground diamond. `step` is the screen offset from one
+/// footprint cell to the next, so band `index` keeps the drawing between `index` and
+/// `index + 1` steps of `step.x` from the anchor's centre, and the two end bands are cut on
+/// their inner side only.
 ///
-/// So the boundary is the line through the midpoint of the two cells' centres, parallel to the
-/// footprint's other axis, which is exactly the diamond edge the two cells share, continued up
-/// the screen. `step` is the screen offset from one footprint cell to the next and `other` the
-/// offset along the axis the footprint does not run along; `centre` is the anchor cell's
-/// projected ground centre. The two end bands are cut on their inner side only, so the artwork
-/// that overhangs the footprint stays with the cell it overhangs from.
+/// Half a tile past the centre, and not at it: on screen two neighbouring columns overlap by
+/// half a tile, and the artwork in that overlap belongs to the nearer cell, which is in front.
+/// Cutting at the centre instead handed the near cell's own corner to the band behind it, and
+/// the ground in front of that corner — a whole row nearer — then painted over it, taking a
+/// bite out of the base of every long building, one per cell.
+///
+/// The cut is vertical rather than along the cells' shared diamond edge because that is where
+/// the TypeScript client cuts (`createBlockViews` slices the texture into `length + 1`
+/// half-tile strips and keys them `[0, 0, 1, …]`), and the two disagree over a wedge that
+/// widens the higher up the artwork reaches: the diagonal gives the far cell screen area the
+/// strips give to the near one, so a player standing level with the far cell showed through the
+/// upper half of a tall building in fragments the other client hides.
 ///
 /// `bleed` widens every band by that many screen pixels on each cut, so that neighbouring bands
 /// overlap instead of meeting exactly: two polygons sharing an edge leave a hairline of whatever
@@ -91,7 +96,6 @@ pub fn footprint_band(
     layout: SpriteLayout,
     centre: ScreenPoint,
     step: (f64, f64),
-    other: (f64, f64),
     index: i32,
     cells: i32,
     bleed: f64,
@@ -109,33 +113,22 @@ pub fn footprint_band(
         ],
         len: 4,
     };
-    if cells <= 1 {
+    if cells <= 1 || step.0 == 0.0 {
         return Some(band);
     }
-    // How far the next cell lies from this one, measured across the shared edge. Positive on the
-    // far side, so the band keeps what is within half a cell of its own centre.
-    let span = other.0 * step.1 - other.1 * step.0;
-    if span == 0.0 {
-        return Some(band);
-    }
-    let at = (
-        centre.x + f64::from(index) * step.0,
-        centre.y + f64::from(index) * step.1,
-    );
-    // Distance across the footprint, as a positive measure growing towards the far side. The
-    // cross product grows by the length of `other` for each pixel away from the cut, which is
-    // what turns the bleed from pixels into the same measure.
-    let sign = span.signum();
-    let across =
-        move |p: (f64, f64)| (other.0 * (p.1 - at.1) - other.1 * (p.0 - at.0)) * sign;
-    let limit = (span / 2.0).abs() + bleed * other.0.hypot(other.1);
-    // Towards the far side: drop everything past the edge this cell shares with the next one.
+    // How far across the screen a point lies from the anchor's centre, measured in the
+    // direction the footprint runs, so that a band always keeps the stretch between `index` and
+    // `index + 1`, whichever way the footprint leans.
+    let sign = step.0.signum();
+    let along = move |p: (f64, f64)| (p.0 - centre.x) * sign;
+    let cell = step.0.abs();
+    // Towards the far side: drop everything past the cut this cell shares with the next one.
     if index < cells - 1 {
-        band = clip(band, |p| limit - across(p))?;
+        band = clip(band, |p| f64::from(index + 1) * cell + bleed - along(p))?;
     }
-    // And towards the camera, the edge it shares with the cell in front.
+    // And towards the camera, the cut it shares with the cell in front.
     if index > 0 {
-        band = clip(band, |p| across(p) + limit)?;
+        band = clip(band, |p| along(p) - f64::from(index) * cell + bleed)?;
     }
     Some(band)
 }

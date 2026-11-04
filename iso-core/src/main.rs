@@ -529,11 +529,7 @@ async fn main() {
                 // One cell along the engine's x is half a tile right and a quarter of one up
                 // the screen; one along its y is half a tile left and the same quarter up.
                 let (half, quarter) = (projection.tile_width / 2.0, projection.tile_height / 2.0);
-                let (step, other) = if along_y {
-                    ((-half, -quarter), (half, -quarter))
-                } else {
-                    ((half, -quarter), (-half, -quarter))
-                };
+                let step = if along_y { (-half, -quarter) } else { (half, -quarter) };
                 let anchor = ScreenPoint { x: ground.screen_x, y: ground.screen_y };
                 for index in 0..cells {
                     let Some(band) =
@@ -541,7 +537,6 @@ async fn main() {
                             layout,
                             anchor,
                             step,
-                            other,
                             index,
                             cells,
                             projection.tile_width * BAND_BLEED,
