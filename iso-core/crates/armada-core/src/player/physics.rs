@@ -137,19 +137,17 @@ pub struct PlayerObstacle {
     pub walkable: bool,
     pub height: Option<f64>,
     pub elevation: Option<f64>,
-    /// Side of the square it blocks, as a fraction of the block. Without it, the whole block.
-    pub collision_at: Option<fn(f64, f64) -> f64>,
+    /// Side of the square it blocks, as a fraction of the block, precomputed for the column
+    /// the obstacle stands on. Without it, the whole block blocks.
+    pub collision_at: Option<f64>,
 }
 
 impl PlayerObstacle {
-    pub fn blocked_side(&self, x: f64, y: f64) -> f64 {
+    pub fn blocked_side(&self, _x: f64, _y: f64) -> f64 {
         if self.walkable {
             return 0.0;
         }
-        match self.collision_at {
-            Some(f) => f(x, y),
-            None => 1.0,
-        }
+        self.collision_at.unwrap_or(1.0)
     }
 }
 

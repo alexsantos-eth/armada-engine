@@ -137,3 +137,59 @@ fn step_player_moves_on_ground() {
     // At minimum, previous should be set.
     assert!(player.previous.x >= 0.0);
 }
+
+/// An obstacle standing on a column, like the entities the client reads out of a chunk.
+fn obstacle(side: f64) -> PlayerObstacle {
+    PlayerObstacle {
+        walkable: false,
+        height: Some(1.0),
+        elevation: Some(0.0),
+        collision_at: Some(side),
+    }
+}
+
+/// Walks the player straight along `+y` into the middle of `(1, 1)` and reports where it came
+/// to rest. Walking on one axis only keeps it from sliding around the obstacle.
+fn walk_into_centre(side: f64) -> GridPoint {
+    let mut ground = ground_from(&["000", "000", "000"]);
+    ground.occupancy.insert(WorldCoord { x: 1, y: 1 }, vec![obstacle(side)]);
+    let mut player = create_player(&ground, GridPoint { x: 1.0, y: 0.0 });
+    set_player_walk(
+        &mut player,
+        ScreenDirections { up: true, left: true, ..Default::default() },
+    );
+    step_player(&mut player, &mut ground, 20, no_top_inset);
+    GridPoint { x: player.x, y: player.y }
+}
+
+#[test]
+fn a_trunk_sized_collision_lets_the_player_onto_the_cell_it_stands_on() {
+    // The side the content gives every tree (`TREE_TRUNK_COLLISION` in
+    // `src/isometric/content/entities.ts`): only its trunk blocks.
+    const TRUNK: f64 = 0.15;
+    let at = walk_into_centre(TRUNK);
+
+    // It is stopped by the trunk, not by the cell: half the collision square plus the player's
+    // own radius away from the middle, which is still inside the cell.
+    let stop = PLAYER_RADIUS + TRUNK / 2.0;
+    assert!(
+        (at.x - 1.0).abs() < 1e-9 && (at.y - (1.0 - stop)).abs() < 0.05,
+        "stopped at the trunk, at {at:?}"
+    );
+    assert_eq!(
+        get_player_column(at),
+        WorldCoord { x: 1, y: 1 },
+        "it walks onto the cell the tree grows on, as the TypeScript client does"
+    );
+}
+
+#[test]
+fn a_whole_block_collision_keeps_the_player_off_the_cell() {
+    let at = walk_into_centre(1.0);
+
+    assert_eq!(
+        get_player_column(at),
+        WorldCoord { x: 1, y: 0 },
+        "a house fills its cell, so the player never steps onto it"
+    );
+}

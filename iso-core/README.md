@@ -66,9 +66,18 @@ La fase 1 ya incluye `grid`, `paths`, `projection`, `camera`, `time` y el acumul
 
 `reference/pixi-seed-1337-hour-8.png` es una captura del build PixiJS en reposo con `?seed=1337&hour=8&timeScale=0&perf`. `reference/pixi-perf-seed-1337-hour-8.txt` contiene cinco informes de la misma sesión. `reference/macroquad-phase0-wasm.png` muestra la demo inicial y `reference/macroquad-grid-wasm.png` la rejilla proyectada por el dominio Rust. En la vista PixiJS capturada había un chunk, 60 fps, 28 llamadas de dibujo de media y 155.9 MB de texturas; son observaciones de esa ventana y hardware, no umbrales para Macroquad. Sirven para comparar experiencia, composición y orden visual, sin exigir las mismas posiciones del mundo.
 
-## Estado de la fase 0
+## Estado de la fase 0 y fase 1
 
 - Workspace, versiones y target WASM fijados; Cargo comprueba ambos crates.
 - Demo compilada nativamente y para WASM. La ventana nativa arrancó y el navegador mostró la demo WASM; teclado y ratón están conectados al marcador.
 - Página de carga, instrucciones y referencia PixiJS registradas.
-- Fase 1 en curso: coordenadas, mapa e índice espacial, rutas, proyección, geometría y visibilidad de cámara, reloj y paso fijo portados. El modelo y generador inicial de terreno ya están en el dominio y una muestra se dibuja en el cliente. Siguen las funciones puras de ambiente y la integración de mundo, escena y sistemas de simulación.
+- Fase 1 completa: `grid`, `paths`, `projection`, `camera`, `time` y el acumulador de `simulation` portados en `crates/armada-core/src/` y verificados contra el fixture TypeScript.
+- Fase 2 en curso: el modelo y generador inicial de terreno (`terrain/columns.rs`, `noise.rs`, `generation.rs`) ya están en el dominio y la muestra se dibuja en el cliente; faltan el guardado persistente de chunks descubiertos, las entidades y la integración de sistemas de simulación y escena.
+
+## Estado de P6 (recursos y servicios del borde)
+
+- Manifiesto de assets (`content/assets.manifest.json`) y atlas rasterizado (`content/atlas.png`, 63 SVGs) generados con `pack_atlas` / `remeasure_atlas`.
+- Servicios de borde implementados en `src/services.rs`: `MacroquadInput`, `MacroquadAudio`, `MacroquadUi`, `MacroquadChunkLoader`.
+- Guardado en WASM: `src/save.rs` persiste en `window.localStorage` bajo la clave `armada_save.json` (no es no-op en `wasm32-unknown-unknown`).
+- `ChunkGround` en `src/main.rs` expone los ocupantes de cada columna: `occupancy_at` devuelve los `PlayerObstacle` de las entidades que pisan esa casilla, con su colisión precalculada.
+- Pendiente: elección de textura concreta por orientación, integración de vistas, reglas de densidad/bioma/vecindad y escritor de guardado en segundo plano (#111).

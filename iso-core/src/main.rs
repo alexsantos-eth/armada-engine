@@ -7,7 +7,7 @@ mod terrain_view;
 use armada_core::grid::{WorldCoord, to_chunk_coord};
 use armada_core::player::physics::{
     PlayerGround, create_player, find_player_spawn, get_player_column,
-    get_player_render_position, jump_player, no_top_inset, set_player_jump_held,
+    get_player_render_position, jump_player, set_player_jump_held,
     set_player_run, step_player,
 };
 use armada_core::services::{InputService, NormalizedInput, UiService, UiEvent, AudioService, SoundEvent};
@@ -16,17 +16,18 @@ use armada_core::projection::{
     GridPoint, ProjectionConfig, ScreenPoint, project_block, project_grid_point,
 };
 use armada_core::simulation::FixedStepper;
-use armada_core::terrain::{TerrainColumn, TerrainConfig, TerrainGenerator};
+use armada_core::terrain::{TerrainColumn, TerrainConfig, TerrainGenerator, TerrainMaterial};
 use armada_core::world::{ChunkManager, ChunkRadii};
-use armada_core::assets::{SVG_BLOCK_HEIGHT, SVG_TILE_WIDTH, footprint_band};
+use armada_core::assets::{InkBox, SVG_BLOCK_HEIGHT, SVG_TILE_WIDTH, SpriteFrame, footprint_band, ink_layout};
 use armada_core::entities::{EntityCatalogV2, EntityLengthAxis, validate_catalog};
+use armada_core::player::physics::PlayerObstacle;
 use armada_core::camera::{Camera, ScreenSize, visible_chunks as camera_visible_chunks};
 use save::{
     load_archive_into_manager, load_save, restore_archive, restore_discovered_from_archive,
     save_archive, sync_manager_to_archive,
 };
 use perf::{FrameSample, PerfLog};
-use sprites::{SpriteAtlas, SpriteDraw, anchored, draw_sorted, scene_key};
+use sprites::{SpriteAtlas, SpriteDraw, draw_sorted, scene_key};
 use terrain_view::blocks::{TerrainFrames, collect_terrain_sprites};
 use macroquad::prelude::*;
 
@@ -46,7 +47,12 @@ const PREVIEW_CENTRE: WorldCoord = WorldCoord { x: 16, y: 88 };
 /// the one knob to turn. Raising it zooms in, which also shrinks the camera's chunk cull and so
 /// draws fewer chunks. `Camera::zoom` is left at 1.0 and only feeds that cull; the draw path
 /// does not scale by it.
-const PREVIEW_TILE_WIDTH: f64 = 150.0;
+///
+/// It is the TypeScript client's own view: its tile is 40 px (`TILE_WIDTH`) and its camera
+/// starts at a zoom of 7 (`CAMERA_START_ZOOM`), so a tile reaches the screen 280 px across.
+/// Drawing the tile smaller than that shows more world, but it also draws the player smaller
+/// than the other client draws it, which is the thing this view is compared against.
+const PREVIEW_TILE_WIDTH: f64 = 280.0;
 const PREVIEW_TILE_HEIGHT: f64 = PREVIEW_TILE_WIDTH / 2.0;
 /// One level of elevation, in screen pixels: as tall as the artwork draws a block's body, so
 /// that a stack of them meets. See [`armada_core::assets::elevation_step`].
@@ -62,15 +68,29 @@ const PREVIEW_TILE_HEIGHT: f64 = PREVIEW_TILE_WIDTH / 2.0;
 const BAND_BLEED: f64 = 0.03;
 
 const PREVIEW_ELEVATION_STEP: f64 = PREVIEW_TILE_WIDTH * SVG_BLOCK_HEIGHT / SVG_TILE_WIDTH;
-/// Entities draw above the terrain of the same depth, and the player above the entities.
-const ENTITY_LAYER: i32 = 1;
-const PLAYER_LAYER: i32 = 2;
-/// How tall the player is drawn, as a fraction of a tile: the same scale the TypeScript client
-/// uses (`PLAYER_SCALE` in `src/isometric/content/player.ts`), so the two look alike. It is a
-/// deliberate size rather than the size its artwork was drawn at, because the player is placed
-/// by the manifest's anchor, not by its own measurements.
-const PLAYER_SCALE: f64 = 0.3;
-const PLAYER_SIZE: f64 = PREVIEW_TILE_WIDTH * PLAYER_SCALE;
+/// Entities draw above the terrain of the same depth, and the player either side of them.
+///
+/// The player shares a column with whatever stands on it, so one fixed order cannot be right:
+/// walking along the back of a column it belongs behind the tree that grows there, and along
+/// the front of the same column it belongs in front of it. The TypeScript client gives it two
+/// layers for that (`SCENE_LAYER.behindObject` and the entities' own), and this is the same
+/// pair: [`PLAYER_BEHIND_LAYER`] under the entities and [`PLAYER_FRONT_LAYER`] over them.
+const ENTITY_LAYER: i32 = 2;
+/// The player on the half of its column furthest from the camera: over the ground, under what
+/// stands on it, so it walks behind a tree's trunk.
+const PLAYER_BEHIND_LAYER: i32 = 1;
+/// The player on the half of its column nearest the camera: over what stands there.
+const PLAYER_FRONT_LAYER: i32 = 3;
+/// How big the player is drawn, as a fraction of the size its artwork was drawn at: the same
+/// scale the TypeScript client uses (`PLAYER_SCALE` in `src/isometric/content/player.ts`), so
+/// the two look alike.
+///
+/// It scales the measured artwork about the ground point the player stands on, exactly as the
+/// TypeScript client scales its sprite about that same point, so the figure keeps its place on
+/// the tile at any scale. Sizing it against the tile instead — the frame's longest side at a
+/// fraction of a tile width, centred on the feet — drew it almost three times too large and
+/// put half of it below the ground it stands on.
+const PLAYER_SCALE: f64 = 0.75;
 /// Source path of the player's sprite in the asset manifest.
 const PLAYER_SPRITE: &str = "/assets/player/block.svg";
 /// Extra view the chunk cull keeps around the screen, as a fraction of it.
@@ -79,6 +99,46 @@ const PLAYER_SPRITE: &str = "/assets/player/block.svg";
 /// screen and there is nothing for a margin to cover. `CHUNK_VIEW_MARGIN` exists for a client
 /// that caches its cull between frames and needs the ring ahead of the camera.
 const CHUNK_CULL_MARGIN: f64 = 0.0;
+
+/// How far under its cell's own plane a material's top is drawn, in blocks.
+///
+/// Sand's artwork is a shallow slab rather than a full block, so the surface a walker sees is
+/// half a block below the plane its elevation names. The TypeScript content says the same
+/// (`TERRAIN_APPEARANCE.sand.topInset` in `src/isometric/content/terrain.ts`), and its player
+/// stands and falls onto that sunken top. Without it the player walks half a block over every
+/// beach — about 47 px at this tile size — which is what it did here.
+fn preview_top_inset(material: TerrainMaterial) -> f64 {
+    match material {
+        TerrainMaterial::Sand => SAND_TOP_INSET,
+        _ => 0.0,
+    }
+}
+
+/// Blocks sand's drawn top lies below its cell's plane; see [`preview_top_inset`].
+const SAND_TOP_INSET: f64 = 0.5;
+
+/// The player's artwork: its frame in the atlas and where that drawing belongs over the ground
+/// it stands on, both read from the manifest once at start-up.
+#[derive(Clone, Copy)]
+struct PlayerSprite {
+    frame: SpriteFrame,
+    ink: InkBox,
+}
+
+/// Which layer the player draws in over the column it stands on.
+///
+/// The player and whatever stands on its column are at the same depth, so the layer is what
+/// decides between them, and neither answer is right for the whole cell: past the centre of the
+/// column the player is further from the camera than the tree that grows there and belongs
+/// behind its trunk; before it, in front of it. The TypeScript client splits the cell the same
+/// way (`at.x + at.y > column.x + column.y` in `player-view.ts`).
+fn player_layer(position: GridPoint, column: WorldCoord) -> i32 {
+    if position.x + position.y > f64::from(column.x) + f64::from(column.y) {
+        PLAYER_BEHIND_LAYER
+    } else {
+        PLAYER_FRONT_LAYER
+    }
+}
 
 /// Projects the point where the player's feet meet the top of its current column.
 ///
@@ -123,8 +183,35 @@ impl PlayerGround for ChunkGround<'_> {
     fn column_at(&self, x: i32, y: i32) -> Option<TerrainColumn> {
         self.manager.column_at(x, y)
     }
-    fn occupancy_at(&self, _x: i32, _y: i32) -> Vec<armada_core::player::physics::PlayerObstacle> {
-        Vec::new()
+    fn occupancy_at(&self, x: i32, y: i32) -> Vec<PlayerObstacle> {
+        let coord = armada_core::grid::to_chunk_coord(armada_core::grid::WorldCoord { x, y });
+        let Some(entities) = self.manager.entities_chunk(coord) else {
+            return Vec::new();
+        };
+        entities
+            .iter()
+            .filter(|entity| {
+                let axis = entity.length_axis().unwrap_or(EntityLengthAxis::X);
+                let length = entity.length().max(1);
+                (0..length).any(|i| {
+                    let (cx, cy) = if axis == EntityLengthAxis::X {
+                        (entity.x() + i, entity.y())
+                    } else {
+                        (entity.x(), entity.y() + i)
+                    };
+                    cx == x && cy == y
+                })
+            })
+            .map(|entity| {
+                let collision = entity.collision_at(x, y);
+                PlayerObstacle {
+                    walkable: entity.walkable(),
+                    height: Some(entity.height() as f64),
+                    elevation: Some(entity.elevation() as f64),
+                    collision_at: Some(collision),
+                }
+            })
+            .collect()
     }
     fn chunk_has(&self, coord: armada_core::grid::ChunkCoord) -> bool {
         self.manager.is_discovered(coord)
@@ -206,14 +293,16 @@ async fn main() {
     // for a full archive serialization every interval.
     let mut unsaved_changes = false;
 
-    // The player sprite's atlas frame never changes, so it is resolved once here instead of
-    // scanning all 63 manifest entries every frame.
-    let player_frame = atlas.frame(PLAYER_SPRITE);
-    let player_anchor = atlas
-        .anchor(PLAYER_SPRITE)
-        .unwrap_or(armada_core::assets::SpriteAnchor { x: 0.5, y: 1.0 });
-    if player_frame.is_none() {
-        eprintln!("warning: the atlas has no player sprite at {PLAYER_SPRITE}");
+    // The player sprite's atlas frame and its measured artwork never change, so they are
+    // resolved once here instead of scanning all 63 manifest entries every frame.
+    let player_asset = atlas.asset(PLAYER_SPRITE).and_then(|asset| {
+        Some(PlayerSprite {
+            frame: asset.frame,
+            ink: asset.ink?,
+        })
+    });
+    if player_asset.is_none() {
+        eprintln!("warning: the atlas has no measured player sprite at {PLAYER_SPRITE}");
     }
 
     // Every sprite drawn in a frame goes through this one list, which is reused so a frame
@@ -285,7 +374,7 @@ async fn main() {
             let jumps_before = player.feedback.jumps;
             let landings_before = player.feedback.landings;
             let mut ground = ChunkGround { manager: &manager };
-            step_player(&mut player, &mut ground, ticks, no_top_inset);
+            step_player(&mut player, &mut ground, ticks, preview_top_inset);
             if player.feedback.jumps > jumps_before {
                 audio.play(SoundEvent::Jump);
             }
@@ -447,9 +536,6 @@ async fn main() {
                 };
                 let anchor = ScreenPoint { x: ground.screen_x, y: ground.screen_y };
                 for index in 0..cells {
-                    let offset = f64::from(index);
-                    let (cell_x, cell_y) =
-                        if along_y { (x, y + offset) } else { (x + offset, y) };
                     let Some(band) =
                         footprint_band(
                             layout,
@@ -462,6 +548,17 @@ async fn main() {
                         )
                     else {
                         continue;
+                    };
+                    // Depth from the cell this band stands on, the same key the terrain and the
+                    // player use. The band's own centre on screen was used here, which is as far
+                    // above that cell as the artwork is tall: a tree then sorted a third of a
+                    // tile further from the camera than its cell, so the player sharing that
+                    // cell always came out in front of it however the layers were set. Keyed by
+                    // the cell, the two tie and the layer decides.
+                    let (cell_x, cell_y) = if along_y {
+                        (x, y + f64::from(index))
+                    } else {
+                        (x + f64::from(index), y)
                     };
                     draws.push(SpriteDraw {
                         key: scene_key(
@@ -482,33 +579,37 @@ async fn main() {
         // The player, standing on the ground it is over, raised by however far into a jump it
         // is. It joins the same list, so it passes behind what is in front of it instead of
         // being painted over the whole scene.
+        //
+        // Drawn from its exact position so that walking is smooth, but sorted by the column it
+        // stands on, like the TypeScript client: a key built from the exact position puts the
+        // player behind its own ground for the half of every cell where its position sits past
+        // that cell's centre.
+        // Its feet stand on the top it is actually drawn on: the plane of its column, lowered
+        // by that top's inset (sand), raised by however far into a jump it is. The same sum as
+        // `drawnFoot` in the TypeScript client's `player-view.ts`.
         let feet = player_feet(
             GridPoint { x: rp.x, y: rp.y },
-            rp.elevation + rp.height,
+            rp.elevation - rp.inset + rp.height,
             projection,
         );
-        match player_frame {
-            Some(frame) => draws.push(SpriteDraw::whole(
-                // Sorted by the cell the player stands on, not by its exact position: the
-                // player walks across a cell continuously, so its own depth would drift past
-                // its column's and the block it is standing on would be drawn over it for
-                // half of every cell. `get_player_column` is the same rule the physics uses
-                // to decide which column holds the player up.
-                {
-                    let cell = get_player_column(GridPoint { x: rp.x, y: rp.y });
-                    scene_key(
-                        f64::from(cell.x) + 0.5,
-                        f64::from(cell.y) + 0.5,
-                        rp.elevation + rp.height,
-                        PLAYER_LAYER,
-                        projection.tile_height,
-                    )
-                },
-                frame,
-                anchored(feet, PLAYER_SIZE, player_anchor, frame),
+        let column = get_player_column(GridPoint { x: rp.x, y: rp.y });
+        let column_elevation = manager
+            .column_at(column.x, column.y)
+            .map_or(rp.elevation, |c| f64::from(c.elevation));
+        match player_asset {
+            Some(asset) => draws.push(SpriteDraw::whole(
+                scene_key(
+                    f64::from(column.x) + 0.5,
+                    f64::from(column.y) + 0.5,
+                    column_elevation,
+                    player_layer(GridPoint { x: rp.x, y: rp.y }, column),
+                    projection.tile_height,
+                ),
+                asset.frame,
+                ink_layout(feet, asset.ink.scaled(PLAYER_SCALE), projection.tile_width),
             )),
-            // A marker while the atlas has no player sprite, drawn straight away: it is not a
-            // sprite, so it cannot go through the sorted list.
+            // A marker while the atlas has no measured player sprite, drawn straight away: it
+            // is not a sprite, so it cannot go through the sorted list.
             None => draw_circle(feet.x as f32, feet.y as f32, 12.0, GOLD),
         }
 
@@ -682,6 +783,120 @@ mod tests {
             ScreenPoint { x: 775.0, y: -450.0 },
             "player feet use the same projected centre as their supporting terrain column"
         );
+    }
+
+    #[test]
+    fn the_player_is_drawn_at_its_measured_artwork_scaled_about_its_feet() {
+        // The manifest's box for `/assets/player/block.svg`, in tile widths.
+        let ink = InkBox {
+            x: -0.128_125,
+            y: -0.278_809,
+            width: 0.263_086,
+            height: 0.332_91,
+        };
+        let feet = ScreenPoint { x: 400.0, y: 300.0 };
+
+        let layout = ink_layout(feet, ink.scaled(PLAYER_SCALE), PREVIEW_TILE_WIDTH);
+
+        // What the TypeScript client draws: the same box, three quarters of its measured size,
+        // scaled about the ground point, so the figure stands on the middle of its tile.
+        let expect = |value: f64| value * PLAYER_SCALE * PREVIEW_TILE_WIDTH;
+        assert!((layout.x - (feet.x + expect(ink.x))).abs() < 1e-9);
+        assert!((layout.y - (feet.y + expect(ink.y))).abs() < 1e-9);
+        assert!((layout.width - expect(ink.width)).abs() < 1e-9);
+        assert!((layout.height - expect(ink.height)).abs() < 1e-9);
+        assert!(
+            layout.width < PREVIEW_TILE_WIDTH,
+            "the figure is narrower than the tile it stands on"
+        );
+    }
+
+    #[test]
+    fn the_player_and_what_stands_on_its_column_sort_by_the_same_point() {
+        use armada_core::scene_order::compare_draw_keys;
+        use terrain_view::blocks::TERRAIN_LAYER;
+
+        let (x, y, elevation) = (12.5, 7.5, 2.0);
+        let key = |layer| scene_key(x, y, elevation, layer, PREVIEW_TILE_HEIGHT);
+
+        // All three are keyed by the same cell, so only the layer separates them: the entity
+        // draws between the player's two layers whichever side of the cell it is on.
+        let entity = key(ENTITY_LAYER);
+        let behind = key(PLAYER_BEHIND_LAYER);
+        let front = key(PLAYER_FRONT_LAYER);
+
+        assert_eq!(behind.depth, entity.depth, "one cell is one depth");
+        assert_eq!(
+            compare_draw_keys(&behind, &entity),
+            std::cmp::Ordering::Less,
+            "walking along the back of the column it goes under the tree"
+        );
+        assert_eq!(
+            compare_draw_keys(&front, &entity),
+            std::cmp::Ordering::Greater,
+            "along the front of the same column it goes over it"
+        );
+
+        // The ground of its own cell is under both, and the ground of the cell nearer the
+        // camera is drawn after everything standing a row further away, so it hides it.
+        let own_ground = key(TERRAIN_LAYER);
+        let in_front = scene_key(x - 1.0, y, elevation, TERRAIN_LAYER, PREVIEW_TILE_HEIGHT);
+        assert_eq!(
+            compare_draw_keys(&own_ground, &behind),
+            std::cmp::Ordering::Less,
+            "the player stands on its column's top, not under it"
+        );
+        assert_eq!(
+            compare_draw_keys(&in_front, &front),
+            std::cmp::Ordering::Greater,
+            "a terrain block nearer the camera covers the player behind it"
+        );
+    }
+
+    #[test]
+    fn the_player_stands_on_the_top_sand_is_drawn_at() {
+        assert_eq!(
+            preview_top_inset(TerrainMaterial::Sand),
+            0.5,
+            "sand's slab is drawn half a block under its cell, as `TERRAIN_APPEARANCE` says"
+        );
+        for material in [
+            TerrainMaterial::Grass,
+            TerrainMaterial::Ground,
+            TerrainMaterial::Path,
+            TerrainMaterial::Water,
+        ] {
+            assert_eq!(
+                preview_top_inset(material),
+                0.0,
+                "every other material fills its block, so its top is its own plane"
+            );
+        }
+    }
+
+    #[test]
+    fn the_player_passes_behind_what_stands_on_the_far_half_of_its_column() {
+        let column = WorldCoord { x: 12, y: 7 };
+
+        assert_eq!(
+            player_layer(GridPoint { x: 12.3, y: 7.0 }, column),
+            PLAYER_BEHIND_LAYER,
+            "past the column's centre it is further from the camera than the tree on it"
+        );
+        assert_eq!(
+            player_layer(GridPoint { x: 11.7, y: 7.0 }, column),
+            PLAYER_FRONT_LAYER,
+            "before the centre it is nearer the camera and covers what stands there"
+        );
+        assert_eq!(
+            player_layer(GridPoint { x: 12.0, y: 7.0 }, column),
+            PLAYER_FRONT_LAYER,
+            "on the centre it stands in front, like the TypeScript client"
+        );
+        const {
+            // The entities of a column are drawn between the player's two layers.
+            assert!(PLAYER_BEHIND_LAYER < ENTITY_LAYER && ENTITY_LAYER < PLAYER_FRONT_LAYER);
+        }
     }
 }
 

@@ -4,7 +4,7 @@
 //! entities and the player — is one batch of textured quads.
 
 use armada_core::assets::{
-    AssetManifest, InkBox, SpriteAnchor, SpriteBand, SpriteFrame, SpriteLayout, ink_layout,
+    AssetManifest, InkBox, SpriteBand, SpriteFrame, SpriteLayout, ink_layout,
 };
 use armada_core::projection::ScreenPoint;
 use armada_core::scene_order::{DrawKey, LengthAxis, compare_draw_keys, get_draw_depth};
@@ -27,7 +27,6 @@ pub struct SpriteAtlas {
 #[derive(Clone, Copy)]
 pub struct SpriteAsset {
     pub frame: SpriteFrame,
-    pub anchor: SpriteAnchor,
     /// The artwork's place in the world, for everything the pipeline could measure. Sprite
     /// sheets have none, and are placed by their anchor instead.
     pub ink: Option<InkBox>,
@@ -43,7 +42,6 @@ impl SpriteAtlas {
                     entry.source.clone(),
                     SpriteAsset {
                         frame: entry.primary_frame()?,
-                        anchor: entry.anchor,
                         ink: entry.ink,
                     },
                 ))
@@ -54,20 +52,6 @@ impl SpriteAtlas {
 
     pub fn asset(&self, source: &str) -> Option<SpriteAsset> {
         self.by_source.get(source).copied()
-    }
-
-    /// Frame of the asset rasterized from `source`, or `None` if the atlas has no such asset.
-    pub fn frame(&self, source: &str) -> Option<SpriteFrame> {
-        self.by_source.get(source).map(|asset| asset.frame)
-    }
-
-    /// The manifest's anchor for an asset, as a fraction of its frame.
-    ///
-    /// Used for the sprites the pipeline could not measure, where the frame is all there is to
-    /// go on. Everything else is placed by its [`InkBox`], which says where the artwork was
-    /// drawn rather than where its pixels happen to sit in the atlas.
-    pub fn anchor(&self, source: &str) -> Option<SpriteAnchor> {
-        self.by_source.get(source).map(|asset| asset.anchor)
     }
 
     /// The frame for something standing on `ground` and the rectangle to draw it into, or
@@ -158,23 +142,6 @@ impl SpriteAtlas {
             && y + layout.height as f32 >= 0.0
             && x <= screen_width()
             && y <= screen_height()
-    }
-}
-
-/// Places `frame` at `size` along its longer side, so that its `anchor` lands on `at`.
-///
-/// This is the placement for a sprite drawn at a size the game chooses rather than the size the
-/// artwork was drawn at. The player is the one: it is deliberately drawn at a fraction of a
-/// tile, so its own measurements would make it twice the size the game wants it.
-pub fn anchored(at: ScreenPoint, size: f64, anchor: SpriteAnchor, frame: SpriteFrame) -> SpriteLayout {
-    let longest = f64::from(frame.width.max(frame.height).max(1));
-    let width = size * f64::from(frame.width) / longest;
-    let height = size * f64::from(frame.height) / longest;
-    SpriteLayout {
-        x: at.x - anchor.x * width,
-        y: at.y - anchor.y * height,
-        width,
-        height,
     }
 }
 

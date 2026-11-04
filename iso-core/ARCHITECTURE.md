@@ -4,7 +4,7 @@ Este documento define los límites, contratos y prácticas de la implementación
 
 ## Estado y estructura
 
-**Implementado:** el workspace `iso-core`, el crate `armada-core` sin dependencias gráficas, `grid` con mapa de celdas e índice espacial, búsqueda `paths`, `projection`, geometría y visibilidad básica de `camera`, reloj `time`, acumulador de paso fijo `simulation`, modelo y primer generador de `terrain`, sus pruebas y una muestra de terreno visible en la demo Macroquad nativa y WASM. **Previsto:** los demás módulos descritos abajo, la composición de sistemas de simulación y la vista definitiva con assets. Una sección prevista es un contrato de diseño, no una afirmación de que su código ya existe.
+**Implementado:** el workspace `iso-core`, el crate `armada-core` sin dependencias gráficas, `grid` con mapa de celdas e índice espacial, búsqueda `paths`, `projection`, geometría y visibilidad básica de `camera`, reloj `time`, acumulador de paso fijo `simulation`, modelo y primer generador de `terrain`, el modelo de mundo `world` en memoria con chunks descubiertos, sus pruebas y una muestra de terreno visible en la demo Macroquad nativa y WASM. El contrato V2 de catálogo de entidades y guardado está definido en TypeScript (`V2_DATA_CONTRACTS.md`) y pendiente de integración en Rust. **Previsto:** los demás módulos descritos abajo, la composición de sistemas de simulación, las reglas de colocación de entidades, el guardado persistente de chunks y la vista definitiva con assets. Una sección prevista es un contrato de diseño, no una afirmación de que su código ya existe.
 
 ```text
 iso-core/
@@ -37,7 +37,7 @@ iso-core/
     src/time/                # reloj lógico; implementado
       clock.rs
       clock.test.rs
-    src/simulation/          # paso fijo; implementado parcialmente
+    src/simulation/          # paso fijo; implementado (stepper y acumulador)
       stepper.rs
       stepper.test.rs
     src/terrain/             # columnas, ruido y generador inicial
@@ -45,7 +45,11 @@ iso-core/
       noise.rs
       generation.rs
       *.test.rs
-    src/{entities,world,...}/ # previstos; se crean al implementarlos
+    src/world/               # modelo en memoria; primeros chunks implementados
+      mod.rs
+      chunks.rs
+      *.test.rs
+    src/{entities,parts,...}/ # previstos; se crean al implementarlos (catálogo V2 definido en TypeScript)
     tests/contracts.rs        # contratos entre módulos y fixture de migración
   src/main.rs                 # entrada nativa/WASM, demo actual
   src/main.test.rs            # prueba colocalizada de entrada de la demo
@@ -55,7 +59,7 @@ iso-core/
   src/terrain_view/          # dibujo temporal de terreno; implementado
     preview.rs
   src/{input,scene,render,...}/ # cliente, previstos
-  content/                    # catálogos y configuración, previsto
+  content/                    # manifiesto de assets y atlas (63 SVGs rasterizados en curso)
   web/                        # cargador WASM y archivos web
   reference/                  # capturas y medidas de referencia
 ```
@@ -210,6 +214,8 @@ La muestra actual descubre cuatro chunks en `TerrainWorld` desde `game::preview`
 `scene_order::poses` también contiene las columnas puras de las hojas de caminar, reposar, trepar y saltar. Las comprueba el mismo fixture TypeScript/Rust antes de que el cliente Macroquad tenga sprites de jugador. La selección de hoja, atlas y textura pertenece al cliente.
 
 `scene_order::select_player_frame` ya decide la prioridad entre hojas (`climb`, `jump`, `idle`, `walk`) y su columna. Cada cliente convierte ese resultado a una textura de la orientación actual; el atlas y el recurso siguen siendo responsabilidad del cliente.
+
+El cliente dibuja al jugador igual que el cliente TypeScript: su `InkBox` del manifiesto escalada por `PLAYER_SCALE` (0.75) alrededor del punto de suelo proyectado de su casilla, nunca ajustada al ancho del tile, de modo que la figura queda centrada en el rombo a cualquier zoom. Se dibuja en su posición exacta e interpolada, pero se ordena por la casilla en la que está: una clave construida con la posición fraccionaria deja al jugador detrás de su propio suelo en la mitad de cada casilla. Sobre esa casilla ocupa dos capas, una por debajo de las entidades y otra por encima (`PLAYER_BEHIND_LAYER` < `ENTITY_LAYER` < `PLAYER_FRONT_LAYER`), según esté más allá del centro de la casilla (`x + y`) o antes: así camina detrás del tronco de un árbol y por delante cuando lo rodea, como `SCENE_LAYER.behindObject` en TypeScript. Para que ese empate exista, terreno, entidades y jugador comparten una sola clave, `sprites::scene_key`, alimentada siempre con el centro de la casilla y su elevación. Antes convivían dos: el terreno ordenaba en coordenadas de mundo y las entidades y el jugador por su posición en pantalla, escalas que no se pueden comparar, así que ningún bloque de terreno llegaba a cubrir al jugador; y cada banda de una entidad usaba el centro de su dibujo, que queda tan por encima del suelo como alto sea el sprite, de modo que un árbol se ordenaba un tercio de tile más lejos que su casilla y el jugador que la comparte siempre salía por delante. Sus pies se apoyan en el techo que se dibuja, no en el plano de la casilla: la arena se dibuja como una losa baja, así que `preview_top_inset` la hunde medio bloque y el cliente resta ese `inset` al proyectar y al caminar (`step_player`), igual que `TERRAIN_APPEARANCE.sand.topInset` y `drawnFoot` en TypeScript.
 
 ### `assets` y `render` (previstos)
 

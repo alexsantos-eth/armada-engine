@@ -1,13 +1,38 @@
 //! Save and load for the Macroquad client.
 //!
 //! On native targets the save file lives next to the executable. On WebAssembly the file
-//! system is unavailable, so loading falls back to `macroquad::file::load_file` (an HTTP
-//! request) and saving is a no-op until a JavaScript bridge is wired up.
+//! system is unavailable, so the save persists in `window.localStorage` under the same key.
 
 use armada_core::world::{ChunkArchive, WorldSave, parse_world_save};
 use armada_core::world::ChunkManager;
 
 const SAVE_PATH: &str = "armada_save.json";
+
+/// Reads a JSON string from `window.localStorage` on WASM.
+#[cfg(target_arch = "wasm32")]
+fn local_storage_get(key: &str) -> Option<String> {
+    web_sys::window()
+        .and_then(|win| win.local_storage().ok().flatten())
+        .and_then(|store| store.get_item(key).ok().flatten())
+}
+
+/// Writes a JSON string to `window.localStorage` on WASM.
+#[cfg(target_arch = "wasm32")]
+fn local_storage_set(key: &str, value: &str) -> bool {
+    web_sys::window()
+        .and_then(|win| win.local_storage().ok().flatten())
+        .map(|store| store.set_item(key, value).is_ok())
+        .unwrap_or(false)
+}
+
+/// Removes a key from `window.localStorage` on WASM.
+#[cfg(target_arch = "wasm32")]
+fn local_storage_remove(key: &str) -> bool {
+    web_sys::window()
+        .and_then(|win| win.local_storage().ok().flatten())
+        .map(|store| store.remove_item(key).is_ok())
+        .unwrap_or(false)
+}
 
 /// Tries to load a save file from disk. Returns `None` on any error or when running on WASM.
 pub async fn load_save() -> Option<WorldSave> {
@@ -19,9 +44,8 @@ pub async fn load_save() -> Option<WorldSave> {
     }
     #[cfg(target_arch = "wasm32")]
     {
-        // WASM: try fetching the save file over HTTP (may not exist).
-        let data = macroquad::file::load_file(SAVE_PATH).await.ok()?;
-        let json: serde_json::Value = serde_json::from_slice(&data).ok()?;
+        let contents = local_storage_get(SAVE_PATH)?;
+        let json: serde_json::Value = serde_json::from_str(&contents).ok()?;
         parse_world_save(json).ok()
     }
 }
@@ -52,7 +76,7 @@ pub fn save_archive(archive: &ChunkArchive) {
     }
     #[cfg(target_arch = "wasm32")]
     {
-        let _ = json;
+        let _ = local_storage_set(SAVE_PATH, &json);
     }
 }
 
