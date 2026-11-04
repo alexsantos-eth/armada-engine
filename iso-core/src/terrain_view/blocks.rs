@@ -127,8 +127,12 @@ pub fn collect_terrain_sprites(
             continue;
         }
 
-        // The two faces that can be seen are the ones towards the camera, where x and y
-        // decrease; a column is exposed as far down as the lower of those neighbours.
+        // The faces that can be seen are the ones towards the camera, where x and y decrease;
+        // a column is exposed as far down as the lowest of those neighbours. **The diagonal
+        // counts too**, which is what `COVERING_CELLS` says in TypeScript (`[-1, -1, 1]`):
+        // where two columns of the same height meet a lower one across the corner, the corner
+        // is open, and the blocks are clay with rounded corners, so nothing covers it. Left
+        // out, a square of background showed at every such corner.
         let in_front = [
             WorldCoord {
                 x: column.coord.x,
@@ -138,17 +142,12 @@ pub fn collect_terrain_sprites(
                 x: column.coord.x.saturating_sub(1),
                 y: column.coord.y,
             },
+            WorldCoord {
+                x: column.coord.x.saturating_sub(1),
+                y: column.coord.y.saturating_sub(1),
+            },
         ];
-        let exposed_to = in_front
-            .into_iter()
-            .filter_map(&height_at)
-            .min()
-            .unwrap_or(column.elevation);
-        // One block past the drop, not level with it: not every material's artwork fills a whole
-        // block (sand is a shallow slab), so a stack that stopped at the neighbour's own surface
-        // left a wedge of background showing at the foot of every cliff. On level ground the
-        // clamp makes this the one surface block, so it costs nothing where nothing is exposed.
-        let floor = exposed_to.clamp(column.elevation - MAX_EXPOSED_BLOCKS, column.elevation);
+        let floor = exposed_floor(column.elevation, in_front.into_iter().map(&height_at));
 
         for block in column.blocks_from(floor) {
             let Some((frame, ink)) = frames.frame(block.material) else {
@@ -181,3 +180,24 @@ pub fn collect_terrain_sprites(
         }
     }
 }
+
+/// The lowest block of a column that still has to be drawn: as far down as the lowest of the
+/// columns in front of it, which is one block past the drop rather than level with it.
+///
+/// Past it, not level with it, because not every material's artwork fills a whole block (sand is
+/// a shallow slab), so a stack that stopped at the neighbour's own surface left a wedge of
+/// background showing at the foot of every cliff. On level ground the clamp makes this the one
+/// surface block, so it costs nothing where nothing is exposed; an unknown neighbour (a chunk
+/// still loading) counts as level ground rather than growing a wall.
+fn exposed_floor(elevation: i32, in_front: impl IntoIterator<Item = Option<i32>>) -> i32 {
+    in_front
+        .into_iter()
+        .flatten()
+        .min()
+        .unwrap_or(elevation)
+        .clamp(elevation - MAX_EXPOSED_BLOCKS, elevation)
+}
+
+#[cfg(test)]
+#[path = "blocks.test.rs"]
+mod tests;
