@@ -66,6 +66,21 @@ pub struct InkBox {
 }
 
 impl InkBox {
+    /// The box rounded to six decimals of a tile width, for writing into the manifest.
+    ///
+    /// Six decimals is a thousandth of a pixel on screen at any sane tile size, and it keeps
+    /// the file readable instead of full of seventeen-digit tails that also differ between the
+    /// tool that packs an atlas and the one that measures it again.
+    pub fn rounded(self) -> Self {
+        let place = |value: f64| (value * 1e6).round() / 1e6;
+        Self {
+            x: place(self.x),
+            y: place(self.y),
+            width: place(self.width),
+            height: place(self.height),
+        }
+    }
+
     /// The same drawing scaled about the ground it stands on, so that it stays on its spot.
     pub fn scaled(self, by: f64) -> Self {
         Self {
@@ -189,7 +204,10 @@ fn visible_elements(svg: &str) -> impl Iterator<Item = &str> {
 }
 
 /// The value of `name="..."` in `text`, matching the whole attribute name.
-fn attribute<'a>(text: &'a str, name: &str) -> Option<&'a str> {
+///
+/// Shared with [`super::sheet`], which reads the grid attributes of the player sheets out of the
+/// same generated files.
+pub(super) fn attribute<'a>(text: &'a str, name: &str) -> Option<&'a str> {
     let mut from = 0;
     while let Some(at) = text[from..].find(name) {
         let start = from + at;

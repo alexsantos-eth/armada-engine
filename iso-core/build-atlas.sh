@@ -2,11 +2,12 @@
 # Builds the asset atlas from the SVG sources.
 #
 # Steps:
-#   1. Rasterize every SVG under public/assets/ to a 128x128 PNG using qlmanage.
-#   2. Compile and run the pack_atlas tool to pack them into content/atlas.png
-#      and generate content/assets.manifest.json.
+#   1. Rasterize every SVG under public/assets/ with cairosvg, at a fixed number of pixels per
+#      tile of world, and cut each of the player's sheets into one PNG per pose.
+#   2. Compile and run the pack_atlas tool to pack them into content/atlas.png, one texture per
+#      sheet beside it, and generate content/assets.manifest.json.
 #
-# Requires: macOS with qlmanage (Quick Look) and a working Rust toolchain.
+# Requires: python3 with cairosvg and a working Rust toolchain.
 # Run from iso-core/:  ./build-atlas.sh
 
 set -euo pipefail
@@ -37,6 +38,6 @@ echo "Compiling pack_atlas..."
 cargo build --bin pack_atlas --quiet
 
 echo "Packing atlas..."
-./target/debug/pack_atlas "$tmp_dir" content/atlas.png content/assets.manifest.json
+./target/debug/pack_atlas "$tmp_dir" content/atlas.png content/assets.manifest.json ../public
 
-echo "Done. Atlas: content/atlas.png, Manifest: content/assets.manifest.json"
+echo "Done. Atlas: content/atlas.png, sheets: content/player_*.png, manifest: content/assets.manifest.json"

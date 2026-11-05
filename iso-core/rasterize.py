@@ -1,31 +1,157 @@
 #!/usr/bin/env python3
-"""Rasterize all SVGs under a directory to PNGs using cairosvg."""
-import os, sys, glob
+"""Rasterize the game's SVG assets for the atlas packer.
 
-# Find cairosvg
-cairosvg_path = None
-for root, dirs, files in os.walk('/'):
-    if 'cairosvg' in dirs and os.path.exists(os.path.join(root, 'cairosvg', '__init__.py')):
-        cairosvg_path = root
-        break
-if cairosvg_path:
-    sys.path.insert(0, cairosvg_path)
+Every asset is drawn in one coordinate system (``artifacts/iso_lib.py``): one tile is 1024
+units across, so rasterizing at ``PIXELS_PER_TILE / 1024`` of the SVG's own size gives every
+sprite the same resolution per tile of world, whatever its size. The packer then only trims and
+places what it is given: nothing is scaled twice, and a three-cell pier no longer comes out at a
+third of the detail of a bush because both were squeezed into the same cell.
 
-import cairosvg
+The player's poses are sheets (``data-frames``), one cell per facing and pose with a gap between
+the cells, and every cell is a window on the same character template. Fitting a whole sheet into
+one cell left a pose about sixteen pixels across, so the sheets are cut here, one PNG per cell,
+into ``sheets/<name>/<facing>-<pose>.png``; the packer gives each sheet a texture of its own.
 
-svg_dir = sys.argv[1]
-out_dir = sys.argv[2]
-os.makedirs(out_dir, exist_ok=True)
+Usage: rasterize.py <svg_dir> <out_dir> [pixels_per_tile]
+"""
+import glob
+import os
+import re
+import sys
 
-count = 0
-for f in sorted(glob.glob(os.path.join(svg_dir, '**', '*.svg'), recursive=True)):
-    rel = os.path.relpath(f, svg_dir)
-    name = rel.replace(os.sep, '_').replace('.svg', '')
-    out = os.path.join(out_dir, f"{name}.png")
+
+def import_cairosvg():
+    """cairosvg, looked for outside the import path if it is not on it.
+
+    It is not installed system-wide on the machine this is run from: it comes with another
+    runtime, so the package is found by searching for it and putting its directory on the path,
+    the likely places first. `build-atlas.sh` points the dynamic loader at a libcairo of its own
+    before calling this.
+    """
     try:
-        cairosvg.svg2png(url=f, write_to=out, output_width=512)
-        count += 1
-    except Exception as e:
-        print(f"warning: failed to rasterize {f}: {e}", file=sys.stderr)
+        return __import__("cairosvg")
+    except ImportError:
+        pass
+    roots = [os.path.expanduser("~/.cache"), "/opt", "/usr", "/Library", "/"]
+    for root in roots:
+        for directory, names, _ in os.walk(root):
+            if "cairosvg" in names and os.path.exists(
+                os.path.join(directory, "cairosvg", "__init__.py")
+            ):
+                sys.path.insert(0, directory)
+                return __import__("cairosvg")
+    raise SystemExit("cairosvg not found: install it, or run the atlas build where it lives")
 
-print(f"Rasterized {count} SVGs.")
+
+cairosvg = import_cairosvg()
+
+# Width of one tile in the SVGs' own units.
+SVG_TILE_WIDTH = 1024
+# Top of the character template's canvas in those units: it reaches one block above the ground
+# plane, and a sheet's `data-cell` is measured from there.
+SVG_CANVAS_TOP = -341
+# How many pixels wide one tile of world is rasterized at. The client draws a tile 280 px wide,
+# so this leaves a little room to zoom in without the artwork going soft; raising it costs atlas
+# area in proportion to its square.
+PIXELS_PER_TILE = 320
+
+
+def attribute(svg, name):
+    """The value of one attribute of the root element."""
+    found = re.search(r'\b%s="([^"]*)"' % re.escape(name), svg[: svg.find(">") + 1])
+    return found.group(1) if found else None
+
+
+def sheet_grid(svg):
+    """The grid of a sprite sheet, or None if the file is not one."""
+    frames = attribute(svg, "data-frames")
+    cell = attribute(svg, "data-cell")
+    facings = attribute(svg, "data-facings")
+    if not (frames and cell and facings):
+        return None
+    x, y, width, height = (float(n) for n in cell.split())
+    poses = (attribute(svg, "data-poses") or "").split()
+    return {
+        "cell": (x, y + SVG_CANVAS_TOP, width, height),
+        "columns": int(frames),
+        "facings": facings.split(),
+        "poses": poses,
+    }
+
+
+def pixels(units, scale):
+    """`units` of the SVG's own space, in pixels, never zero."""
+    return max(1, round(units * scale))
+
+
+def render_asset(path, svg, out_dir, name, scale):
+    """Draws one whole asset at `scale` of its own size."""
+    width = float(attribute(svg, "viewBox").split()[2])
+    out = os.path.join(out_dir, "%s.png" % name)
+    cairosvg.svg2png(url=path, write_to=out, output_width=pixels(width, scale))
+    return 1
+
+
+def render_sheet(svg, grid, out_dir, name, scale):
+    """Draws every cell of a sheet on its own, in the window the cells share.
+
+    Each pose is one `<g id="facing-pose">` whose geometry is in the character template's own
+    coordinates; the group's `transform` is what places it in the sheet's grid. So a cell is
+    drawn by taking its group, dropping that transform and showing the template through the
+    `data-cell` window — which is both simpler and sharper than rasterizing the whole sheet and
+    cutting the pixels up, because no cell boundary ever falls between two pixels.
+    """
+    groups = dict(re.findall(r'<g id="([^"]+)"[^>]*>(.*?)</g>', svg, re.S))
+    x, y, width, height = grid["cell"]
+    directory = os.path.join(out_dir, "sheets", name)
+    os.makedirs(directory, exist_ok=True)
+    written = 0
+    for row, facing in enumerate(grid["facings"]):
+        for column in range(grid["columns"]):
+            pose = grid["poses"][column] if grid["poses"] else column
+            body = groups.get("%s-%s" % (facing, pose))
+            if body is None:
+                print("warning: %s has no cell %s-%s" % (name, facing, pose), file=sys.stderr)
+                continue
+            cell = (
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="%g %g %g %g">'
+                '<g fill-rule="evenodd" stroke-width=".75" stroke-linejoin="round">%s</g></svg>'
+            ) % (x, y, width, height, body)
+            cairosvg.svg2png(
+                bytestring=cell.encode(),
+                write_to=os.path.join(directory, "%d-%d.png" % (row, column)),
+                output_width=pixels(width, scale),
+                output_height=pixels(height, scale),
+            )
+            written += 1
+    return written
+
+
+def main():
+    svg_dir, out_dir = sys.argv[1], sys.argv[2]
+    per_tile = float(sys.argv[3]) if len(sys.argv) > 3 else PIXELS_PER_TILE
+    scale = per_tile / SVG_TILE_WIDTH
+    os.makedirs(out_dir, exist_ok=True)
+
+    assets = sheets = cells = 0
+    for path in sorted(glob.glob(os.path.join(svg_dir, "**", "*.svg"), recursive=True)):
+        name = os.path.relpath(path, svg_dir).replace(os.sep, "_")[: -len(".svg")]
+        svg = open(path, encoding="utf-8").read()
+        try:
+            grid = sheet_grid(svg)
+            if grid:
+                cells += render_sheet(svg, grid, out_dir, name, scale)
+                sheets += 1
+            else:
+                assets += render_asset(path, svg, out_dir, name, scale)
+        except Exception as error:  # a broken file must not stop the rest of the atlas
+            print("warning: failed to rasterize %s: %s" % (path, error), file=sys.stderr)
+
+    print(
+        "Rasterized %d assets and %d sheets (%d cells) at %g px per tile."
+        % (assets, sheets, cells, per_tile)
+    )
+
+
+if __name__ == "__main__":
+    main()

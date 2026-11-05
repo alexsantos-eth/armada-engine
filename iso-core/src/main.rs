@@ -1,4 +1,5 @@
 mod perf;
+mod player_view;
 mod save;
 mod services;
 mod sprites;
@@ -30,6 +31,10 @@ use save::{
     save_archive, sync_manager_to_archive,
 };
 use perf::{FrameSample, PerfLog};
+use player_view::{PlayerAnimation, PlayerMoment, PlayerSheets, jump_poses};
+use armada_core::player::physics::get_player_climb_progress;
+use armada_core::player::get_player_jump_phase;
+use armada_core::scene_order::PlayerSheet;
 use sprites::{SpriteAtlas, SpriteDraw, draw_sorted, scene_key};
 use terrain_view::blocks::{TerrainFrames, collect_terrain_sprites};
 use macroquad::prelude::*;
@@ -91,8 +96,17 @@ const PLAYER_FRONT_LAYER: i32 = 3;
 /// fraction of a tile width, centred on the feet — drew it almost three times too large and
 /// put half of it below the ground it stands on.
 const PLAYER_SCALE: f64 = 0.75;
-/// Source path of the player's sprite in the asset manifest.
+/// Source path of the player's still figure in the asset manifest, drawn if a sheet is missing.
 const PLAYER_SPRITE: &str = "/assets/player/block.svg";
+/// The player's sheets of poses, in the manifest: walking, standing, jumping and climbing.
+///
+/// Each is 8 facings by several poses and has a texture of its own, because one of them
+/// squeezed into a cell of the shared atlas left a pose sixteen pixels across. The still figure
+/// above is the fallback, and is drawn without animation.
+const PLAYER_WALK_SHEET: &str = "/assets/player/walk.svg";
+const PLAYER_IDLE_SHEET: &str = "/assets/player/idle.svg";
+const PLAYER_JUMP_SHEET: &str = "/assets/player/jump.svg";
+const PLAYER_CLIMB_SHEET: &str = "/assets/player/climb.svg";
 /// Extra view the chunk cull keeps around the screen, as a fraction of it.
 ///
 /// Zero: this client culls every frame, so a chunk is included on the frame it first touches the
@@ -139,6 +153,39 @@ const SAND_TOP_INSET: f64 = 0.5;
 struct PlayerSprite {
     frame: SpriteFrame,
     ink: InkBox,
+    /// Which of the atlas's textures that frame is cut from.
+    texture: usize,
+}
+
+/// Where a manifest path is fetched from.
+///
+/// The manifest's paths are relative to the client root (`iso-core/`), which is the working
+/// directory natively. On the web the fetch resolves against the page instead, and the page
+/// lives in `web/`, so it needs one level up — without this the request went to
+/// `web/content/atlas.png`, 404'd, and the client panicked before its first frame.
+fn client_path(path: &str) -> String {
+    if cfg!(target_arch = "wasm32") {
+        format!("../{path}")
+    } else {
+        path.to_owned()
+    }
+}
+
+/// How many poses each of the player's sheets holds, out of the atlas.
+///
+/// The walk sheet's first column is the standing pose, so it has one column more than it has
+/// walk poses. A sheet the atlas does not hold leaves its field empty, and the animation falls
+/// back to the sheet that is there.
+fn player_sheets(atlas: &SpriteAtlas) -> PlayerSheets {
+    let columns = |source| atlas.sheet(source).map(|sheet| sheet.columns());
+    PlayerSheets {
+        walk_poses: columns(PLAYER_WALK_SHEET).map(|columns| columns as i32 - 1),
+        idle_poses: columns(PLAYER_IDLE_SHEET).map(|columns| columns as i32),
+        climb_poses: columns(PLAYER_CLIMB_SHEET).map(|columns| columns as i32),
+        jump_poses: atlas
+            .sheet(PLAYER_JUMP_SHEET)
+            .and_then(|sheet| jump_poses(sheet.poses(), sheet.columns())),
+    }
 }
 
 /// Which layer the player draws in over the column it stands on.
@@ -250,15 +297,28 @@ async fn main() {
     // directory natively. On the web the fetch resolves against the page instead, and the page
     // lives in `web/`, so it needs one level up — without this the request went to
     // `web/content/atlas.png`, 404'd, and the client panicked before its first frame.
-    let atlas_path = if cfg!(target_arch = "wasm32") {
-        format!("../{}", manifest.atlas)
-    } else {
-        manifest.atlas.clone()
-    };
+    let atlas_path = client_path(&manifest.atlas);
     let texture = load_texture(&atlas_path)
         .await
         .unwrap_or_else(|err| panic!("could not load the atlas at {atlas_path}: {err}"));
-    let atlas = SpriteAtlas::new(texture, &manifest);
+    // The player's sheets have textures of their own. A sheet that fails to load costs the
+    // player its animation, not the scene, so these are warnings rather than panics.
+    let mut sheet_textures = Vec::new();
+    let mut sheet_paths: Vec<&String> = manifest
+        .entries
+        .iter()
+        .filter_map(|entry| entry.texture.as_ref())
+        .collect();
+    sheet_paths.sort();
+    sheet_paths.dedup();
+    for path in sheet_paths {
+        let loaded = load_texture(&client_path(path)).await;
+        match loaded {
+            Ok(texture) => sheet_textures.push((path.clone(), texture)),
+            Err(err) => eprintln!("warning: could not load the sheet at {path}: {err}"),
+        }
+    }
+    let atlas = SpriteAtlas::new(texture, sheet_textures, &manifest);
     let (terrain_frames, missing_terrain) = TerrainFrames::new(&atlas);
     for material in &missing_terrain {
         eprintln!("warning: the atlas has no block for {material:?}; it will not be drawn");
@@ -319,11 +379,19 @@ async fn main() {
         Some(PlayerSprite {
             frame: asset.frame,
             ink: asset.ink?,
+            texture: asset.texture,
         })
     });
     if player_asset.is_none() {
         eprintln!("warning: the atlas has no measured player sprite at {PLAYER_SPRITE}");
     }
+    // The sheets of poses, and the walk cycle's and idle cycle's memory between frames.
+    let sheets = player_sheets(&atlas);
+    if sheets.walk_poses.is_none() {
+        eprintln!("warning: the atlas has no player sheets; the still figure will be drawn");
+    }
+    let mut animation = PlayerAnimation::default();
+    let mut drawn_at = (spawned.x, spawned.y);
 
     // Every sprite drawn in a frame goes through this one list, which is reused so a frame
     // costs no allocation.
@@ -559,6 +627,9 @@ async fn main() {
                 // was drawn inside, not the artwork, so sizing a sprite from them drew a
                 // knee-high boulder as a whole block and stood every tree on the south corner
                 // of its tile.
+                let entity_texture = atlas
+                    .asset(entity.texture_source())
+                    .map_or(0, |asset| asset.texture);
                 let Some((frame, layout)) = atlas.standing(
                     entity.texture_source(),
                     ScreenPoint { x: ground.screen_x, y: ground.screen_y },
@@ -614,6 +685,7 @@ async fn main() {
                             ENTITY_LAYER,
                             projection.tile_height,
                         ),
+                        texture: entity_texture,
                         frame,
                         layout,
                         band: (cells > 1).then_some(band),
@@ -642,21 +714,57 @@ async fn main() {
         let column_elevation = manager
             .column_at(column.x, column.y)
             .map_or(rp.elevation, |c| f64::from(c.elevation));
-        match player_asset {
-            Some(asset) => draws.push(SpriteDraw::whole(
-                scene_key(
-                    f64::from(column.x) + 0.5,
-                    f64::from(column.y) + 0.5,
-                    column_elevation,
-                    player_layer(GridPoint { x: rp.x, y: rp.y }, column),
-                    projection.tile_height,
-                ),
+        let key = scene_key(
+            f64::from(column.x) + 0.5,
+            f64::from(column.y) + 0.5,
+            column_elevation,
+            player_layer(GridPoint { x: rp.x, y: rp.y }, column),
+            projection.tile_height,
+        );
+        // Which pose it is in: the walk cycle turns with the ground covered since the last
+        // frame, the idle cycle with the real time it has stood still, and a climb or a jump
+        // with the phase the physics is in. The figure is placed by the window its sheet's
+        // cells share, which is the same box for every pose, so changing pose moves the
+        // drawing inside the window and never the player.
+        let climbing = get_player_climb_progress(&player, stepper.interpolation_alpha());
+        let pose = animation.advance(
+            PlayerMoment {
+                climbing,
+                motion: player.motion,
+                direction: player
+                    .climb
+                    .as_ref()
+                    .map_or(player.walk, |climb| climb.direction),
+                moved: (rp.x - drawn_at.0).hypot(rp.y - drawn_at.1),
+                jump_phase: get_player_jump_phase(&player),
+                elapsed_ms: frame_ms,
+            },
+            sheets,
+        );
+        drawn_at = (rp.x, rp.y);
+        let sheet = atlas.sheet(match pose.sheet {
+            PlayerSheet::Walk => PLAYER_WALK_SHEET,
+            PlayerSheet::Idle => PLAYER_IDLE_SHEET,
+            PlayerSheet::Jump => PLAYER_JUMP_SHEET,
+            PlayerSheet::Climb => PLAYER_CLIMB_SHEET,
+        });
+        match (sheet, player_asset) {
+            (Some(sheet), _) => draws.push(SpriteDraw::whole(
+                key,
+                sheet.texture,
+                sheet.frame(pose.facing, pose.pose),
+                ink_layout(feet, sheet.ink.scaled(PLAYER_SCALE), projection.tile_width),
+            )),
+            // No sheet: the still figure, facing the camera whatever it does.
+            (None, Some(asset)) => draws.push(SpriteDraw::whole(
+                key,
+                asset.texture,
                 asset.frame,
                 ink_layout(feet, asset.ink.scaled(PLAYER_SCALE), projection.tile_width),
             )),
-            // A marker while the atlas has no measured player sprite, drawn straight away: it
-            // is not a sprite, so it cannot go through the sorted list.
-            None => draw_circle(feet.x as f32, feet.y as f32, 12.0, GOLD),
+            // A marker while the atlas has neither, drawn straight away: it is not a sprite, so
+            // it cannot go through the sorted list.
+            (None, None) => draw_circle(feet.x as f32, feet.y as f32, 12.0, GOLD),
         }
 
         let after_collect = get_time();
@@ -682,7 +790,7 @@ async fn main() {
             x: player.x,
             y: player.y,
             elevation,
-            motion: format!("{:?}", player.motion),
+            motion: format!("{:?} {}", player.motion, animation.facing_name()),
             chunks: manager.discovered_count(),
         });
 

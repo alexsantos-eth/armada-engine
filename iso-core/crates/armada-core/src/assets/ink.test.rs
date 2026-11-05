@@ -135,3 +135,15 @@ fn the_elevation_step_matches_the_block_body() {
     assert!((elevation_step(1024.0) - 341.0).abs() < 1e-9);
     assert!((elevation_step(80.0) - 26.640625).abs() < 1e-9);
 }
+
+/// The manifest keeps six decimals of a tile width, which is a thousandth of a pixel on screen
+/// and the same whether the box came from the packer or from a later measurement.
+#[test]
+fn rounds_for_the_manifest() {
+    let box_ = InkBox { x: -0.83564453125, y: -0.5279296875, width: 1.080859375, height: 0.64501953125 };
+    assert_eq!(
+        box_.rounded(),
+        InkBox { x: -0.835645, y: -0.52793, width: 1.080859, height: 0.64502 }
+    );
+    assert_eq!(box_.rounded().rounded(), box_.rounded(), "rounding again changes nothing");
+}

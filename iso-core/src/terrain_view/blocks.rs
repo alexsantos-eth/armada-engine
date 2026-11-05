@@ -12,7 +12,7 @@ use armada_core::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_
 use armada_core::terrain::{AroundHeights, TerrainColumn, TerrainMaterial, top_is_flush};
 use macroquad::prelude::{screen_height, screen_width};
 
-use crate::sprites::{SpriteAtlas, SpriteDraw, scene_key};
+use crate::sprites::{ATLAS_TEXTURE, SpriteAtlas, SpriteDraw, scene_key};
 
 /// Terrain draws below everything that stands on it.
 pub const TERRAIN_LAYER: i32 = 0;
@@ -202,6 +202,7 @@ pub fn collect_terrain_sprites(
                 // drawing, so the overlap paints the same pixels.
                 out.push(SpriteDraw::whole(
                     key,
+                    ATLAS_TEXTURE,
                     frame,
                     ink_layout(
                         ScreenPoint {
@@ -214,7 +215,7 @@ pub fn collect_terrain_sprites(
                     ),
                 ));
             }
-            out.push(SpriteDraw::whole(key, frame, layout));
+            out.push(SpriteDraw::whole(key, ATLAS_TEXTURE, frame, layout));
         }
     }
 }

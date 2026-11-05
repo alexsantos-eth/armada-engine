@@ -12,7 +12,7 @@
 //! Writing the manifest is safe to repeat: measuring the opaque pixels of a frame that is
 //! already their bounding box gives the same frame back.
 
-use armada_core::assets::{AssetManifest, InkBox, SpriteFrame, asset_ink, data_tiles};
+use armada_core::assets::{AssetManifest, SpriteFrame, asset_ink, data_tiles};
 use image::RgbaImage;
 
 /// Bounding box of everything that is not fully transparent inside `frame`.
@@ -54,8 +54,16 @@ fn main() {
     let mut manifest: AssetManifest = serde_json::from_str(&json).expect("parse manifest");
     let atlas = image::open(atlas_path).expect("open atlas").to_rgba8();
 
-    let (mut measured, mut unmeasured) = (0, Vec::new());
+    let (mut measured, mut unmeasured, mut sheets) = (0, Vec::new(), Vec::new());
     for entry in &mut manifest.entries {
+        // A sheet of player poses lives in a texture of its own, as a grid of equal cells whose
+        // frames are the grid, not the artwork inside it: trimming them to their opaque pixels
+        // would make every pose a different size and move the figure about as it animates. Its
+        // box is the window its cells share, which `pack_atlas` read from the artwork.
+        if entry.sheet.is_some() {
+            sheets.push(entry.id.clone());
+            continue;
+        }
         if let Some(frame) = entry.frame.and_then(|frame| opaque_bounds(&atlas, frame)) {
             entry.frame = Some(frame);
         }
@@ -65,7 +73,7 @@ fn main() {
         entry.data_tiles = svg.as_deref().and_then(data_tiles).map(str::to_owned);
         match svg.as_deref().and_then(asset_ink) {
             Some(ink) => {
-                entry.ink = Some(round(ink));
+                entry.ink = Some(ink.rounded());
                 measured += 1;
             }
             None => {
@@ -81,20 +89,12 @@ fn main() {
     )
     .expect("write manifest");
     println!("{manifest_path}: {measured} of {} measured", manifest.entries.len());
+    if !sheets.is_empty() {
+        println!("left as packed (sheets of poses): {}", sheets.join(", "));
+    }
     if !unmeasured.is_empty() {
         // Sheets and anything drawn with transforms: the client places these by their anchor.
         println!("placed by anchor: {}", unmeasured.join(", "));
     }
 }
 
-/// Six decimals of a tile width is a thousandth of a pixel on screen, and keeps the manifest
-/// readable instead of full of 17-digit tails.
-fn round(ink: InkBox) -> InkBox {
-    let r = |v: f64| (v * 1e6).round() / 1e6;
-    InkBox {
-        x: r(ink.x),
-        y: r(ink.y),
-        width: r(ink.width),
-        height: r(ink.height),
-    }
-}
