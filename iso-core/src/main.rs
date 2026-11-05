@@ -160,12 +160,11 @@ struct PlayerSprite {
 /// Where a manifest path is fetched from.
 ///
 /// The manifest's paths are relative to the client root (`iso-core/`), which is the working
-/// directory natively. On the web the fetch resolves against the page instead, and the page
-/// lives in `web/`, so it needs one level up — without this the request went to
-/// `web/content/atlas.png`, 404'd, and the client panicked before its first frame.
+/// directory natively. On the web the page is served from the repository root, so keep the
+/// client-root prefix in the URL; this also works when serving `iso-core/web/` directly.
 fn client_path(path: &str) -> String {
     if cfg!(target_arch = "wasm32") {
-        format!("../{path}")
+        format!("/iso-core/{path}")
     } else {
         path.to_owned()
     }
@@ -1053,4 +1052,3 @@ mod tests {
         }
     }
 }
-
