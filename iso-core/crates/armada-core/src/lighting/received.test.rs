@@ -1,0 +1,164 @@
+use super::*;
+use crate::lighting::bake::{ShadowCaster, SpriteExtent};
+use crate::lighting::shadow::ShadowProjection;
+
+const TILE: f64 = 100.0;
+const BOX: f64 = 100.0 / 3.0;
+
+fn behind_the_camera() -> ShadowProjection {
+    let half = std::f64::consts::FRAC_1_SQRT_2;
+    ShadowProjection { dir_x: half, dir_y: half, stretch: 1.0, alpha: 1.0 }
+}
+
+/// A sprite one tile wide and `height` px tall standing on `foot`.
+fn standing(foot: (f64, f64), elevation: f64, height: f64) -> SpriteExtent {
+    let _ = (foot, elevation);
+    SpriteExtent { left: -TILE / 2.0, top: -height, width: TILE, height }
+}
+
+fn caster(foot: (f64, f64), elevation: f64, height: f64) -> ShadowCaster {
+    ShadowCaster { foot, elevation, extent: standing(foot, elevation, height), silhouette: 0 }
+}
+
+fn receiver(foot: (f64, f64), elevation: f64, height: f64) -> ShadowReceiver {
+    ShadowReceiver { foot, elevation, extent: standing(foot, elevation, height) }
+}
+
+fn solid() -> impl Fn(u32, f64, f64) -> f64 {
+    |_, _, _| 1.0
+}
+
+#[allow(clippy::too_many_arguments)]
+fn grid_of(
+    receiver: &ShadowReceiver,
+    casters: &[ShadowCaster],
+    light: &ShadowProjection,
+    alpha: &dyn Fn(u32, f64, f64) -> f64,
+) -> Option<ShadeGrid> {
+    shade_grid(
+        receiver,
+        casters,
+        light,
+        1.0,
+        TILE,
+        BOX,
+        alpha,
+        SHADE_COLUMNS,
+        SHADE_ROWS,
+    )
+}
+
+#[test]
+fn nothing_up_light_of_a_receiver_shades_it() {
+    let light = behind_the_camera();
+    let it = receiver((0.0, 0.0), 0.0, 80.0);
+    // Down the shadow from the receiver, so the receiver is between the sun and it.
+    let behind = caster((light.dir_x * 2.0, light.dir_y * 2.0), 0.0, 80.0);
+
+    assert_eq!(grid_of(&it, &[behind], &light, &solid()), None);
+}
+
+#[test]
+fn a_caster_just_up_light_shades_the_receiver() {
+    let light = behind_the_camera();
+    let it = receiver((light.dir_x, light.dir_y), 0.0, 80.0);
+    let post = caster((0.0, 0.0), 0.0, 80.0);
+
+    let grid = grid_of(&it, &[post], &light, &solid()).expect("a shadow lands on it");
+    assert_eq!(grid.columns(), SHADE_COLUMNS);
+    assert_eq!(grid.rows(), SHADE_ROWS);
+    assert!(!grid.is_clear());
+    // The shadow slides down the receiver as it travels, so its foot is darker than its head.
+    assert!(grid.at(SHADE_COLUMNS / 2, SHADE_ROWS) >= grid.at(SHADE_COLUMNS / 2, 0));
+}
+
+#[test]
+fn the_opacity_of_the_phase_is_already_in_the_grid() {
+    let light = behind_the_camera();
+    let it = receiver((light.dir_x * 0.5, light.dir_y * 0.5), 0.0, 80.0);
+    let post = caster((0.0, 0.0), 0.0, 80.0);
+
+    let full = grid_of(&it, &[post], &light, &solid()).unwrap();
+    let half = shade_grid(&it, &[post], &light, 0.5, TILE, BOX, &solid(), SHADE_COLUMNS, SHADE_ROWS)
+        .unwrap();
+
+    let brightest = |grid: &ShadeGrid| {
+        (0..=SHADE_ROWS)
+            .flat_map(|row| (0..=SHADE_COLUMNS).map(move |column| (column, row)))
+            .map(|(column, row)| grid.at(column, row))
+            .fold(0.0_f32, f32::max)
+    };
+    assert!((brightest(&full) * 0.5 - brightest(&half)).abs() < 1e-6);
+    assert!(brightest(&full) <= 1.0);
+}
+
+#[test]
+fn a_caster_far_down_the_light_misses_the_receiver_altogether() {
+    let light = behind_the_camera();
+    let it = receiver((light.dir_x * 40.0, light.dir_y * 40.0), 0.0, 80.0);
+    let post = caster((0.0, 0.0), 0.0, 80.0);
+
+    // The shadow has long since slid off the bottom of the receiver.
+    assert_eq!(grid_of(&it, &[post], &light, &solid()), None);
+}
+
+#[test]
+fn a_transparent_caster_shades_nothing() {
+    let light = behind_the_camera();
+    let it = receiver((light.dir_x, light.dir_y), 0.0, 80.0);
+    let post = caster((0.0, 0.0), 0.0, 80.0);
+
+    assert_eq!(grid_of(&it, &[post], &light, &|_, _, _| 0.0), None);
+}
+
+#[test]
+fn only_the_part_of_a_caster_above_its_own_foot_is_cast() {
+    let light = behind_the_camera();
+    let it = receiver((light.dir_x, light.dir_y), 0.0, 80.0);
+    // A drawing that lies entirely below its ground point casts nothing on anything.
+    let puddle = ShadowCaster {
+        extent: SpriteExtent { left: -50.0, top: 0.0, width: TILE, height: 30.0 },
+        ..caster((0.0, 0.0), 0.0, 30.0)
+    };
+
+    assert_eq!(grid_of(&it, &[puddle], &light, &solid()), None);
+}
+
+#[test]
+fn a_receiver_with_no_artwork_has_no_grid() {
+    let light = behind_the_camera();
+    let nothing = ShadowReceiver {
+        extent: SpriteExtent { left: 0.0, top: 0.0, width: 0.0, height: 0.0 },
+        ..receiver((light.dir_x, light.dir_y), 0.0, 0.0)
+    };
+
+    assert_eq!(grid_of(&nothing, &[caster((0.0, 0.0), 0.0, 80.0)], &light, &solid()), None);
+}
+
+#[test]
+fn two_casters_on_one_receiver_read_as_one_shadow() {
+    let light = behind_the_camera();
+    let it = receiver((light.dir_x, light.dir_y), 0.0, 80.0);
+    let one = caster((0.0, 0.0), 0.0, 80.0);
+    let two = caster((0.05, -0.05), 0.0, 80.0);
+
+    let single = grid_of(&it, &[one], &light, &solid()).unwrap();
+    let pair = grid_of(&it, &[one, two], &light, &solid()).unwrap();
+
+    let darkest = |grid: &ShadeGrid| {
+        (0..=SHADE_ROWS)
+            .flat_map(|row| (0..=SHADE_COLUMNS).map(move |column| (column, row)))
+            .map(|(column, row)| grid.at(column, row))
+            .fold(0.0_f32, f32::max)
+    };
+    assert_eq!(darkest(&single), darkest(&pair));
+}
+
+#[test]
+fn reading_past_the_edge_of_a_grid_gives_its_edge() {
+    let light = behind_the_camera();
+    let it = receiver((light.dir_x, light.dir_y), 0.0, 80.0);
+    let grid = grid_of(&it, &[caster((0.0, 0.0), 0.0, 80.0)], &light, &solid()).unwrap();
+
+    assert_eq!(grid.at(SHADE_COLUMNS + 5, SHADE_ROWS + 5), grid.at(SHADE_COLUMNS, SHADE_ROWS));
+}

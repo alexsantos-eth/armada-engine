@@ -4,7 +4,7 @@ Este documento define los límites, contratos y prácticas de la implementación
 
 ## Estado y estructura
 
-**Implementado:** el workspace `iso-core`, el crate `armada-core` sin dependencias gráficas, `grid` con mapa de celdas e índice espacial, búsqueda `paths`, `projection`, geometría y visibilidad básica de `camera`, reloj `time`, acumulador de paso fijo `simulation`, modelo y primer generador de `terrain`, el modelo de mundo `world` en memoria con chunks descubiertos, sus pruebas y una muestra de terreno visible en la demo Macroquad nativa y WASM. El contrato V2 de catálogo de entidades y guardado está definido en TypeScript (`V2_DATA_CONTRACTS.md`) y pendiente de integración en Rust. **Previsto:** los demás módulos descritos abajo, la composición de sistemas de simulación, las reglas de colocación de entidades, el guardado persistente de chunks y la vista definitiva con assets. Una sección prevista es un contrato de diseño, no una afirmación de que su código ya existe.
+**Implementado:** el workspace `iso-core`, el crate `armada-core` sin dependencias gráficas, `grid` con mapa de celdas e índice espacial, búsqueda `paths`, `projection`, geometría y visibilidad básica de `camera`, reloj `time`, acumulador de paso fijo `simulation`, modelo y primer generador de `terrain`, el modelo de mundo `world` en memoria con chunks descubiertos, la geometría de sombras y las fases de luz de `lighting` con el horneado del mapa de sombras de una fase, sus pruebas y una muestra de terreno visible en la demo Macroquad nativa y WASM. El contrato V2 de catálogo de entidades y guardado está definido en TypeScript (`V2_DATA_CONTRACTS.md`) y pendiente de integración en Rust. **Previsto:** los demás módulos descritos abajo, la composición de sistemas de simulación, las reglas de colocación de entidades, el guardado persistente de chunks y la vista definitiva con assets. Una sección prevista es un contrato de diseño, no una afirmación de que su código ya existe.
 
 ```text
 iso-core/
@@ -49,6 +49,13 @@ iso-core/
       mod.rs
       chunks.rs
       *.test.rs
+    src/lighting/            # geometría de sombras, fases y horneado; implementado
+      mod.rs
+      shadow.rs
+      phases.rs
+      bake.rs
+      received.rs
+      *.test.rs
     src/{entities,parts,...}/ # previstos; se crean al implementarlos (catálogo V2 definido en TypeScript)
     tests/contracts.rs        # contratos entre módulos y fixture de migración
   src/main.rs                 # entrada nativa/WASM, demo actual
@@ -58,6 +65,10 @@ iso-core/
     preview.test.rs
   src/terrain_view/          # dibujo temporal de terreno; implementado
     preview.rs
+  src/shadow_view/           # sombras horneadas por chunk; implementado
+    mod.rs
+    masks.rs
+    *.test.rs
   src/{input,scene,render,...}/ # cliente, previstos
   content/                    # manifiesto de assets y atlas (63 SVGs rasterizados en curso)
   web/                        # cargador WASM y archivos web
@@ -89,7 +100,7 @@ La referencia exacta es [Sistema de coordenadas](../ARCHITECTURE.md#sistema-de-c
 
 La pantalla tiene origen arriba a la izquierda, `screen_x` a la derecha y `screen_y` hacia abajo. El origen de proyección sitúa la columna `(0, 0)` dentro del canvas y no cambia los ejes del mundo. Los chunks repiten esos ejes: `(0, 0)` cubre `0..31` y una coordenada `-1` cae en el chunk `-1` con local `31`. Los assets SVG existentes usan otro convenio de ejes; su orientación y `data-tiles` se convierten al preparar atlas, sin cambiar el convenio del dominio.
 
-**Ya cubierto en Rust:** tipos de mundo/chunk/local, división euclídea con negativos, proyección de puntos y elevación, inversa de desplazamientos, orden de vecinos de rutas, desplazamiento/zoom de cámara, selección de chunks visibles y columnas de terreno con nivel del mar `0`. **Pendiente de aplicar y probar:** huellas de entidades, profundidad de render, mapas de sombras y conversión de orientación de assets. Cada módulo nuevo debe probar sus direcciones contra este contrato antes de integrarse en la escena.
+**Ya cubierto en Rust:** tipos de mundo/chunk/local, división euclídea con negativos, proyección de puntos y elevación, inversa de desplazamientos, orden de vecinos de rutas, desplazamiento/zoom de cámara, selección de chunks visibles y columnas de terreno con nivel del mar `0`. **Pendiente de aplicar y probar:** huellas de entidades, profundidad de render y conversión de orientación de assets. Los mapas de sombras ya siguen el contrato: la matriz de silueta y el desplazamiento de sombra proyectada se portaron de `lighting/shadow.ts` con las mismas unidades. Cada módulo nuevo debe probar sus direcciones contra este contrato antes de integrarse en la escena.
 
 ## Flujo de un fotograma
 
@@ -229,9 +240,23 @@ El cliente dibuja al jugador igual que el cliente TypeScript: el `InkBox` del ma
 
 **Dieciséis orientaciones, y son de este cliente.** Las hojas que dibuja están en `public/assets/player-16/` y tienen una fila por cada punto de la rosa de los dieciséis vientos, en sentido antihorario desde el este (`PLAYER_FACINGS` en `player::physics`), o sea un giro de 22.5° entre filas en vez de los 45° que se leían como un salto. Las genera `artifacts/player_walk.py` —las demás hojas leen de ahí la lista— con `PLAYER_FACINGS=16` en el entorno, que es su valor por omisión; con `PLAYER_FACINGS=8` saca exactamente las ocho de antes, que son las que sigue usando el cliente Pixi en `public/assets/player/` porque carga la hoja entera como una sola textura y dieciséis filas se la doblarían. Este cliente no paga eso: corta cada celda por separado. `rasterize.py` se salta las hojas de ocho (`SKIPPED_SHEETS`) para no empaquetar cinco texturas que nadie pide. Las celdas de dieciséis son un poco más anchas (408 unidades frente a 398) porque el baile del reposo se inclina más en las orientaciones intermedias; cada hoja lleva su `data-cell`, así que las dos conviven y la ventana ancha contiene a la estrecha centrada en el mismo punto. Como el teclado solo apunta a ocho direcciones, un giro recorre las intermedias a razón de `TURN_MS_PER_FACING` (35 ms) por fila y por el lado corto, que es para lo que están: sin eso las filas nuevas no se verían nunca. `render` convierte materiales, entidades y capas decididos previamente en llamadas de dibujo; reutiliza texturas y limita recursos visibles. No contiene reglas de generación, colisión o colocación. Probar el catálogo y el orden de comandos de dibujo sin GPU; revisar composición y escala en nativo y navegador. `render` convierte materiales, entidades y capas decididos previamente en llamadas de dibujo; reutiliza texturas y limita recursos visibles. No contiene reglas de generación, colisión o colocación. Probar el catálogo y el orden de comandos de dibujo sin GPU; revisar composición y escala en nativo y navegador.
 
-### `lighting`, `water`, `effects`, `audio` y `ui` (previstos)
+### `lighting` y `shadow_view` (sombras de una fase, horneadas; implementado)
 
-Estos módulos consumen estado y parámetros del dominio para presentar luz ambiente, sombras, agua, viento, sonidos e interfaz. Los render targets, texturas y audio pertenecen al cliente y tienen propietario y ciclo de vida explícitos. Su trabajo por fotograma y memoria se miden con escenas representativas. `ui` emite comandos; no edita `World` por fuera del flujo de simulación.
+**Responsabilidad.** `armada-core::lighting` es la geometría pura de la luz, sin GPU: `shadow.rs` porta `lighting/shadow.ts` —`ShadowProjection`, la matriz de silueta que lleva píxeles de pantalla a casillas de mundo, el desplazamiento de una sombra proyectada de emisor a receptor y su alcance—; `phases.rs` guarda las cuatro fases autorizadas con los mismos números que `lighting/phases.ts` (`DAWN`, `DAY`, `SUNSET`, `NIGHT`); `bake.rs` hornea un mapa de cobertura por chunk a `SHADOW_MAP_PIXELS_PER_TILE` téxeles por casilla; `received.rs` calcula la rejilla de sombra que recibe un sprite, el equivalente de `receiveShadowGrid`.
+
+**Este cliente hornea; el de Pixi no.** El cliente TypeScript interpola entre fases cuando el juego se lo pide, así que recalcula sus mapas de sombra en render targets de GPU. Aquí la sombra se hornea en CPU una vez por chunk y se queda quieta en una fase: cambiar de fase obligaría a rehornear todos los chunks. Por eso solo `DAWN` está conectada, y por eso el mapa es una textura de un canal de alfa y no un render target: no necesita shaders, recorta por columna gratis y es estático. Las otras tres fases se conservan con sus constantes para que la fase de una escena sea un cambio de una línea.
+
+**Cómo llega a la pantalla.** `shadow_view` es del cliente. `masks.rs` reduce el atlas a siluetas de alfa a un cuarto de resolución (`MASK_SCALE`), que es lo que proyecta cada emisor. `mod.rs` hornea un chunk por fotograma como mucho, con los emisores del propio chunk y de sus ocho vecinos, y rehornea cuando cambia qué vecinos están cargados. El mapa de un chunk se dibuja como una capa propia (`GROUND_SHADOW_LAYER`, por debajo del jugador y de las entidades) con un cuadrilátero por columna cubierta, apoyado en el techo que se dibuja, y la columna sin suelo —agua, hueco— se limpia después del desenfoque para que la sombra no se derrame por el acantilado. Entidades y jugador no se dibujan con una máscara aparte: reciben una rejilla de sombra que se convierte en colores de vértice sobre el propio sprite (`sprites::ShadeLattice`, `SpriteAtlas::draw_shaded`), así que el alfa del dibujo confina el sombreado sin un paso de máscara. La del jugador se muestrea cada fotograma porque se mueve; la de una entidad se hornea con el chunk.
+
+**Fuera de alcance esta vuelta.** El jugador no proyecta sombra; el terreno y los acantilados tampoco; las entidades de varias casillas proyectan pero no reciben rejilla; y solo el amanecer está conectado.
+
+**Una sombra se corta al techo que se dibuja, no a la casilla.** El cuadrilátero de cada columna usa el rombo con el que el bloque está dibujado: `TerrainFrames::top_width` de ancho y hundido por el inset de su material, que es la misma regla que contestan los pies del jugador y el propio bloque, ahora en un solo sitio (`preview_top_level`). Un bloque es unos puntos porcentuales más estrecho que su casilla y la arena, que es una losa baja, un siete por ciento; cortado a la casilla entera, el cuadrilátero colgaba sobre los surcos y sobre el costado de la propia losa, y en la fila de terraza —la que el terreno dibuja a ras de su casilla— caía medio bloque por debajo de la arena a la que pertenece. Las coordenadas de textura se encogen con el cuadrilátero, así que la sombra no se mueve: solo queda recortada a la cara sobre la que se apoya.
+
+**Las texturas del mapa se reciclan, nunca se destruyen.** Macroquad libera los huecos de textura al final del fotograma: crear una textura por rehorneado y soltar la vieja en el mismo fotograma reutiliza el hueco y deja las sombras invisibles (`glBindTexture called with an already deleted texture ID`). `ShadowScene` guarda un fondo de texturas libres y actualiza la que ya tiene con `Texture2D::update`.
+
+### `water`, `effects`, `audio` y `ui` (previstos)
+
+Estos módulos consumen estado y parámetros del dominio para presentar agua, viento, sonidos e interfaz. Los render targets, texturas y audio pertenecen al cliente y tienen propietario y ciclo de vida explícitos. Su trabajo por fotograma y memoria se miden con escenas representativas. `ui` emite comandos; no edita `World` por fuera del flujo de simulación.
 
 ### `web` y almacenamiento (previstos)
 

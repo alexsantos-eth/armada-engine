@@ -4,7 +4,7 @@ Este directorio contiene la nueva implementación. `iso-core` es el cliente Macr
 
 La [arquitectura por módulo](ARCHITECTURE.md) documenta los contratos del dominio y del cliente, el flujo de un fotograma y las prácticas de código, pruebas y calidad.
 
-El dominio conserva la organización por carpetas de responsabilidad del motor TypeScript: `grid/`, `paths/`, `projection/`, `camera/`, `time/`, `simulation/`, `terrain/` y `world/` ya están separados; el módulo de entidades seguirá el mismo patrón. El cliente separa la preparación de la muestra en `src/game/` de su dibujo en `src/terrain_view/`. `mod.rs` define la entrada de cada carpeta y `lib.rs` expone solo los módulos del dominio.
+El dominio conserva la organización por carpetas de responsabilidad del motor TypeScript: `grid/`, `paths/`, `projection/`, `camera/`, `time/`, `simulation/`, `terrain/`, `world/` y `lighting/` ya están separados; el módulo de entidades seguirá el mismo patrón. El cliente separa la preparación de la muestra en `src/game/` de su dibujo en `src/terrain_view/`, y las sombras horneadas en `src/shadow_view/`. `mod.rs` define la entrada de cada carpeta y `lib.rs` expone solo los módulos del dominio.
 
 Las pruebas unitarias también están colocalizadas: `grid/coords.rs` se prueba en `grid/coords.test.rs`, y el mismo patrón se aplica a los demás módulos y a `main.rs`. Rust las incluye con `#[cfg(test)]` y `#[path = "..."]`; `crates/armada-core/tests/` conserva los contratos que atraviesan módulos o comparan el fixture de migración.
 
@@ -96,3 +96,7 @@ La fase 1 ya incluye `grid`, `paths`, `projection`, `camera`, `time` y el acumul
 - `ChunkGround` en `src/main.rs` expone los ocupantes de cada columna: `occupancy_at` devuelve los `PlayerObstacle` de las entidades que pisan esa casilla, con su colisión precalculada.
 - Animación del jugador: `src/player_view.rs` elige hoja, pose y orientación cada fotograma y el cliente dibuja esa celda; las hojas viven en texturas propias junto al atlas Son 16 orientaciones y un giro las recorre de una en una.
 - Pendiente: integración de vistas, reglas de densidad/bioma/vecindad y escritor de guardado en segundo plano (#111).
+
+## Sombras horneadas (amanecer)
+
+Las sombras de este cliente son estáticas: se hornean una vez por chunk en CPU y no cambian con el reloj. `crates/armada-core/src/lighting/` porta la geometría de `src/isometric/core/engine/lighting/` —la matriz de silueta, el desplazamiento de sombra proyectada y las cuatro fases con sus mismos números— y `src/shadow_view/` la lleva a pantalla: un mapa de alfa por chunk para el suelo y una rejilla de sombra recibida que se dibuja como colores de vértice sobre entidades y jugador, así que un árbol se sombrea a sí mismo, a sus vecinos y al jugador que pasa por debajo. Solo está conectada la fase de amanecer (`DAWN`); las otras tres se conservan en `lighting/phases.rs` para que cambiar de fase sea una línea, a costa de rehornear los chunks. El jugador y el terreno no proyectan sombra todavía. Los detalles y las razones están en [ARCHITECTURE.md](ARCHITECTURE.md).

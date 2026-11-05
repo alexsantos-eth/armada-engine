@@ -6,6 +6,7 @@ pub mod assets;
 pub mod camera;
 pub mod entities;
 pub mod grid;
+pub mod lighting;
 pub mod paths;
 pub mod player;
 pub mod projection;

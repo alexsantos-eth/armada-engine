@@ -2,6 +2,7 @@ mod perf;
 mod player_view;
 mod save;
 mod services;
+mod shadow_view;
 mod sprites;
 mod terrain_view;
 
@@ -17,7 +18,9 @@ use armada_core::projection::{
     GridPoint, ProjectionConfig, ScreenPoint, project_block, project_grid_point,
 };
 use armada_core::simulation::FixedStepper;
-use armada_core::terrain::{TerrainColumn, TerrainConfig, TerrainGenerator, TerrainMaterial};
+use armada_core::terrain::{
+    TerrainColumn, TerrainConfig, TerrainGenerator, TerrainMaterial, top_is_flush,
+};
 use armada_core::world::{ChunkManager, ChunkRadii};
 use armada_core::assets::{InkBox, SVG_BLOCK_HEIGHT, SVG_TILE_WIDTH, SpriteFrame, footprint_band, ink_layout};
 use armada_core::entities::{EntityCatalogV2, EntityLengthAxis, validate_catalog};
@@ -26,6 +29,9 @@ use armada_core::camera::{
     CAMERA_LEVEL_SMOOTH_MS, Camera, CameraFocus, ScreenSize,
     visible_chunks as camera_visible_chunks,
 };
+use armada_core::lighting::DAWN;
+use shadow_view::ShadowScene;
+use shadow_view::masks::SilhouetteMasks;
 use save::{
     load_archive_into_manager, load_save, restore_archive, restore_discovered_from_archive,
     save_archive, sync_manager_to_archive,
@@ -75,17 +81,21 @@ const BAND_BLEED: f64 = 0.5;
 
 /// Entities draw above the terrain of the same depth, and the player either side of them.
 ///
+/// A column's baked shadow goes between the two
+/// ([`shadow_view::GROUND_SHADOW_LAYER`]): on the ground it was baked for, under the player
+/// walking over it and under whatever grows on it.
+///
 /// The player shares a column with whatever stands on it, so one fixed order cannot be right:
 /// walking along the back of a column it belongs behind the tree that grows there, and along
 /// the front of the same column it belongs in front of it. The TypeScript client gives it two
 /// layers for that (`SCENE_LAYER.behindObject` and the entities' own), and this is the same
 /// pair: [`PLAYER_BEHIND_LAYER`] under the entities and [`PLAYER_FRONT_LAYER`] over them.
-const ENTITY_LAYER: i32 = 2;
+const ENTITY_LAYER: i32 = 3;
 /// The player on the half of its column furthest from the camera: over the ground, under what
 /// stands on it, so it walks behind a tree's trunk.
-const PLAYER_BEHIND_LAYER: i32 = 1;
+const PLAYER_BEHIND_LAYER: i32 = 2;
 /// The player on the half of its column nearest the camera: over what stands there.
-const PLAYER_FRONT_LAYER: i32 = 3;
+const PLAYER_FRONT_LAYER: i32 = 4;
 /// How big the player is drawn, as a fraction of the size its artwork was drawn at: the same
 /// scale the TypeScript client uses (`PLAYER_SCALE` in `src/isometric/content/player.ts`), so
 /// the two look alike.
@@ -141,7 +151,7 @@ fn preview_projection(origin_x: f64, origin_y: f64) -> ProjectionConfig {
 /// (`TERRAIN_APPEARANCE.sand.topInset` in `src/isometric/content/terrain.ts`), and its player
 /// stands and falls onto that sunken top. Without it the player walks half a block over every
 /// beach — about 47 px at this tile size — which is what it did here.
-fn preview_top_inset(material: TerrainMaterial) -> f64 {
+pub(crate) fn preview_top_inset(material: TerrainMaterial) -> f64 {
     match material {
         TerrainMaterial::Sand => SAND_TOP_INSET,
         _ => 0.0,
@@ -150,6 +160,38 @@ fn preview_top_inset(material: TerrainMaterial) -> f64 {
 
 /// Blocks sand's drawn top lies below its cell's plane; see [`preview_top_inset`].
 const SAND_TOP_INSET: f64 = 0.5;
+
+/// The level a column's top is actually drawn at, in blocks: the plane anything resting on that
+/// column sits on.
+///
+/// It is the column's elevation less the inset its material is drawn with, except on the terrace
+/// row against a step up, whose top the view draws flush with its cell
+/// ([`top_is_flush`](armada_core::terrain::top_is_flush)). Everything that has to meet the ground
+/// asks this one question: the player's feet (`drawn_inset` in `player::physics`), the blocks
+/// themselves (`drawn_lift` in `terrain_view::blocks`) and the shadows baked onto them. A shadow
+/// answered with the plain inset lands half a block under the terrace row it belongs to, which
+/// reads as the beach's shadows being a tile out of place.
+pub(crate) fn preview_top_level(
+    column: TerrainColumn,
+    height_at: impl Fn(WorldCoord) -> Option<i32>,
+) -> f64 {
+    let elevation = f64::from(column.elevation);
+    let inset = preview_top_inset(column.surface);
+    if inset == 0.0 {
+        return elevation;
+    }
+    let around = [(1, 0), (-1, 0), (0, 1), (0, -1)].map(|(dx, dy)| {
+        height_at(WorldCoord {
+            x: column.coord.x.saturating_add(dx),
+            y: column.coord.y.saturating_add(dy),
+        })
+    });
+    if top_is_flush(column.surface, column.elevation, around) {
+        elevation
+    } else {
+        elevation - inset
+    }
+}
 
 /// The player's artwork: its frame in the atlas and where that drawing belongs over the ground
 /// it stands on, both read from the manifest once at start-up.
@@ -322,6 +364,18 @@ async fn main() {
         }
     }
     let atlas = SpriteAtlas::new(texture, sheet_textures, &manifest);
+    // The silhouettes shadows are sampled from: the atlas image decoded a second time, on the
+    // CPU, because the copy that is on the GPU cannot be read back here. Without it the scene
+    // simply has no shadows, which is worth a warning and not a panic.
+    let masks = SilhouetteMasks::load(&atlas_path, &manifest).await;
+    if masks.is_none() {
+        eprintln!("warning: could not read {atlas_path} for the shadow silhouettes; no shadows");
+    }
+    // Dawn, baked: one sun, one bake per chunk, and nothing to advance per frame. See
+    // `shadow_view` for what casts and what receives.
+    let mut shadows = masks.map(|masks| {
+        ShadowScene::new(DAWN, masks, PREVIEW_TILE_WIDTH, PREVIEW_ELEVATION_STEP)
+    });
     let (terrain_frames, missing_terrain) = TerrainFrames::new(&atlas);
     for material in &missing_terrain {
         eprintln!("warning: the atlas has no block for {material:?}; it will not be drawn");
@@ -574,6 +628,11 @@ async fn main() {
             height: f64::from(height),
         };
         let culled = camera_visible_chunks(camera, viewport, projection, CHUNK_CULL_MARGIN);
+        // The shadows of the chunks on screen, brought up to date a chunk at a time: baking is
+        // what a shown chunk costs once, not what a frame costs.
+        if let Some(shadows) = shadows.as_mut() {
+            shadows.update(&manager, &culled);
+        }
 
         // Render position, interpolated by how far into the current tick the frame sits.
         let elevation = player.elevation.floor() as i32;
@@ -594,7 +653,7 @@ async fn main() {
         // allocating and sorting the stream's visible chunk set every frame; check the stream
         // membership without asking it to materialize that set.
         let mut chunks_drawn = 0usize;
-        for coord in culled {
+        for &coord in &culled {
             if !manager.is_visible(coord) {
                 continue;
             }
@@ -611,6 +670,18 @@ async fn main() {
                     |point| manager.column_at(point.x, point.y).map(|c| c.elevation),
                     &mut draws,
                 );
+                // And the shadows baked onto those columns, one quad each, keyed by the column
+                // so the ground in front of a shadow still covers it.
+                if let Some(shadows) = shadows.as_ref() {
+                    shadows.collect_ground(
+                        coord,
+                        chunk,
+                        projection,
+                        &terrain_frames,
+                        |point| manager.column_at(point.x, point.y).map(|c| c.elevation),
+                        &mut draws,
+                    );
+                }
             }
             // Entities of the same chunk. Each one is drawn from its own blueprint: the sprite
             // its `asset.sprite` names, sized by the footprint and height the blueprint
@@ -650,6 +721,18 @@ async fn main() {
                 // painted over its base. It is cut where its cells meet instead, and each band
                 // sorts by the cell it stands on. A single cell is one band, uncut.
                 let cells = entity.length().max(1);
+                // The shadows other entities throw on this one, baked with its chunk. Only a
+                // sprite standing on a single cell has them: a longer footprint is cut into a
+                // band per cell, and a lattice over the whole drawing would have to be cut the
+                // same way.
+                let shade = (cells == 1)
+                    .then(|| {
+                        shadows
+                            .as_ref()
+                            .and_then(|shadows| shadows.shade_of(coord, (entity.x(), entity.y())))
+                            .and_then(shadow_view::lattice_of)
+                    })
+                    .flatten();
                 let along_y = entity.length_axis() == Some(EntityLengthAxis::Y);
                 // One cell along the engine's x is half a tile right and a quarter of one up
                 // the screen; one along its y is half a tile left and the same quarter up.
@@ -680,19 +763,29 @@ async fn main() {
                     } else {
                         (x + f64::from(index), y)
                     };
-                    draws.push(SpriteDraw {
-                        key: scene_key(
-                            cell_x,
-                            cell_y,
-                            elevation,
-                            ENTITY_LAYER,
-                            projection.tile_height,
-                        ),
-                        texture: entity_texture,
-                        frame,
-                        layout,
-                        band: (cells > 1).then_some(band),
-                    });
+                    let key = scene_key(
+                        cell_x,
+                        cell_y,
+                        elevation,
+                        ENTITY_LAYER,
+                        projection.tile_height,
+                    );
+                    match &shade {
+                        Some(shade) => draws.push(SpriteDraw::shaded(
+                            key,
+                            entity_texture,
+                            frame,
+                            layout,
+                            shade.clone(),
+                        )),
+                        None => draws.push(SpriteDraw::band(
+                            key,
+                            entity_texture,
+                            frame,
+                            layout,
+                            (cells > 1).then_some(band),
+                        )),
+                    }
                 }
             }
         }
@@ -751,23 +844,47 @@ async fn main() {
             PlayerSheet::Jump => PLAYER_JUMP_SHEET,
             PlayerSheet::Climb => PLAYER_CLIMB_SHEET,
         });
-        match (sheet, player_asset) {
-            (Some(sheet), _) => draws.push(SpriteDraw::whole(
-                key,
+        let drawn = match (sheet, player_asset) {
+            (Some(sheet), _) => Some((
                 sheet.texture,
                 sheet.frame(pose.facing, pose.pose),
-                ink_layout(feet, sheet.ink.scaled(PLAYER_SCALE), projection.tile_width),
+                sheet.ink.scaled(PLAYER_SCALE),
             )),
             // No sheet: the still figure, facing the camera whatever it does.
-            (None, Some(asset)) => draws.push(SpriteDraw::whole(
-                key,
-                asset.texture,
-                asset.frame,
-                ink_layout(feet, asset.ink.scaled(PLAYER_SCALE), projection.tile_width),
-            )),
+            (None, Some(asset)) => {
+                Some((asset.texture, asset.frame, asset.ink.scaled(PLAYER_SCALE)))
+            }
+            (None, None) => None,
+        };
+        match drawn {
+            Some((texture, frame, ink)) => {
+                let layout = ink_layout(feet, ink, projection.tile_width);
+                // The shadows falling on the player are the one thing here that is not baked:
+                // it walks, so its lattice is sampled again every frame, from the casters of
+                // the chunks around it. Its own ground is where its feet are drawn, jump
+                // included, so a shadow climbs the figure as it rises out of one.
+                let shade = shadows.as_ref().and_then(|shadows| {
+                    let receiver = shadow_view::receiver_of(
+                        layout,
+                        feet,
+                        (rp.x + 0.5, rp.y + 0.5),
+                        rp.elevation - rp.inset + rp.height,
+                    );
+                    shadows
+                        .shade_moving(&receiver)
+                        .as_ref()
+                        .and_then(shadow_view::lattice_of)
+                });
+                match shade {
+                    Some(shade) => {
+                        draws.push(SpriteDraw::shaded(key, texture, frame, layout, shade));
+                    }
+                    None => draws.push(SpriteDraw::whole(key, texture, frame, layout)),
+                }
+            }
             // A marker while the atlas has neither, drawn straight away: it is not a sprite, so
             // it cannot go through the sorted list.
-            (None, None) => draw_circle(feet.x as f32, feet.y as f32, 12.0, GOLD),
+            None => draw_circle(feet.x as f32, feet.y as f32, 12.0, GOLD),
         }
 
         let after_collect = get_time();
@@ -923,6 +1040,55 @@ fn draw_grid(projection: ProjectionConfig, centre: WorldCoord) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn sand_at(x: i32, y: i32, elevation: i32) -> TerrainColumn {
+        TerrainColumn {
+            coord: WorldCoord { x, y },
+            elevation,
+            surface: TerrainMaterial::Sand,
+            walkable: true,
+        }
+    }
+
+    #[test]
+    fn open_beach_keeps_the_sunken_top_its_slab_is_drawn_with() {
+        let column = sand_at(4, 9, 0);
+
+        assert_eq!(
+            preview_top_level(column, |_| Some(0)),
+            -SAND_TOP_INSET,
+            "nothing around is higher, so the slab keeps the top the beach is drawn with"
+        );
+    }
+
+    #[test]
+    fn the_terrace_row_against_a_step_up_is_level_with_its_cell() {
+        let column = sand_at(4, 9, 0);
+
+        // The view lifts this row's top ([`top_is_flush`]) and the player walks on it, so a
+        // shadow answered with the plain inset would land half a block under the sand it
+        // belongs to.
+        assert_eq!(
+            preview_top_level(column, |point| Some(i32::from(point.x == 5))),
+            0.0,
+            "the one neighbour a block higher makes this the terrace row"
+        );
+    }
+
+    #[test]
+    fn ground_with_no_inset_never_asks_about_its_neighbours() {
+        let column = TerrainColumn {
+            coord: WorldCoord { x: 4, y: 9 },
+            elevation: 3,
+            surface: TerrainMaterial::Grass,
+            walkable: true,
+        };
+
+        assert_eq!(
+            preview_top_level(column, |_| panic!("a full block is drawn at its own cell")),
+            3.0
+        );
+    }
 
     #[test]
     fn player_feet_stay_at_their_terrain_column_centre() {

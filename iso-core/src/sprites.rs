@@ -9,6 +9,7 @@
 use armada_core::assets::{
     AssetEntry, AssetManifest, InkBox, SpriteBand, SpriteFrame, SpriteLayout, ink_layout,
 };
+use armada_core::lighting::ShadeGrid;
 use armada_core::projection::ScreenPoint;
 use armada_core::scene_order::{DrawKey, LengthAxis, compare_draw_keys, get_draw_depth};
 use macroquad::prelude::*;
@@ -203,6 +204,54 @@ impl SpriteAtlas {
         });
     }
 
+    /// Draws one frame as a lattice of quads, each corner darkened by the shadows falling on it.
+    ///
+    /// The drawing is the same as [`Self::draw`] puts on screen — the lattice spans exactly the
+    /// rectangle `layout` describes and samples the frame linearly across it — so a sprite that
+    /// starts being shaded does not move or change size. What changes is its colour, corner by
+    /// corner, and the sprite's own transparency keeps the shading inside its silhouette.
+    pub fn draw_shaded(
+        &self,
+        texture: usize,
+        frame: SpriteFrame,
+        layout: SpriteLayout,
+        shade: &ShadeLattice,
+    ) {
+        let source = self.source(frame);
+        let texture = self.texture(texture);
+        let (width, height) = (texture.width(), texture.height());
+        let (columns, rows) = (shade.columns, shade.rows);
+        let mut vertices = Vec::with_capacity(((columns + 1) * (rows + 1)) as usize);
+        for row in 0..=rows {
+            let down = f32::from(row as u16) / rows as f32;
+            for column in 0..=columns {
+                let along = f32::from(column as u16) / columns as f32;
+                let light = shade.light_at(column, row);
+                vertices.push(Vertex::new(
+                    layout.x as f32 + along * layout.width as f32,
+                    layout.y as f32 + down * layout.height as f32,
+                    0.0,
+                    (source.x + along * source.w) / width,
+                    (source.y + down * source.h) / height,
+                    Color::new(light, light, light, 1.0),
+                ));
+            }
+        }
+        let mut indices = Vec::with_capacity((columns * rows * 6) as usize);
+        for row in 0..rows {
+            for column in 0..columns {
+                let corner = (row * (columns + 1) + column) as u16;
+                let next = corner + columns as u16 + 1;
+                indices.extend_from_slice(&[corner, corner + 1, next + 1, corner, next + 1, next]);
+            }
+        }
+        draw_mesh(&Mesh {
+            vertices,
+            indices,
+            texture: Some(texture.clone()),
+        });
+    }
+
     /// The frame's pixels in the atlas, pulled in by half a texel on every side.
     ///
     /// Frames sit edge to edge in the atlas and some artwork reaches its frame's border, so
@@ -229,27 +278,133 @@ impl SpriteAtlas {
     }
 }
 
+/// How dark each corner of a lattice over a sprite is: the shadows falling on it.
+///
+/// The shadows another sprite throws on a standing one cannot be a quad on the ground, because
+/// what they land on has a silhouette of its own and the shadow has to stop where it stops. So
+/// the sprite is drawn as a lattice of quads instead of one, each corner carrying how dark the
+/// sprite is there, and the sprite's own pixels mask the shading for nothing: the shading *is*
+/// the sprite, drawn darker. See [`armada_core::lighting::received`].
+#[derive(Clone, Debug)]
+pub struct ShadeLattice {
+    columns: u32,
+    rows: u32,
+    /// One factor to multiply the artwork by per corner, row by row from its top left.
+    light: Vec<f32>,
+}
+
+impl ShadeLattice {
+    /// The lattice that draws `grid`: a corner shaded `v` keeps `1 − v` of its colour.
+    pub fn new(grid: &ShadeGrid) -> Self {
+        let (columns, rows) = (grid.columns(), grid.rows());
+        let mut light = Vec::with_capacity(((columns + 1) * (rows + 1)) as usize);
+        for row in 0..=rows {
+            for column in 0..=columns {
+                light.push((1.0 - grid.at(column, row)).clamp(0.0, 1.0));
+            }
+        }
+        Self { columns, rows, light }
+    }
+
+    fn light_at(&self, column: u32, row: u32) -> f32 {
+        self.light[(row * (self.columns + 1) + column) as usize]
+    }
+}
+
+/// What one queued draw puts on screen.
+pub enum DrawKind {
+    /// An atlas sprite, whole or cut to the band of its footprint standing on one cell.
+    Sprite {
+        /// Which of the atlas's textures the frame is cut from; `0` is the shared atlas.
+        texture: usize,
+        frame: SpriteFrame,
+        layout: SpriteLayout,
+        /// The piece of the drawing this draw shows, for a sprite cut up across its footprint;
+        /// `None` for everything drawn in one piece.
+        band: Option<SpriteBand>,
+    },
+    /// An atlas sprite drawn as a lattice, darkened by the shadows falling on it.
+    Shaded {
+        texture: usize,
+        frame: SpriteFrame,
+        layout: SpriteLayout,
+        shade: ShadeLattice,
+    },
+    /// A column's square of its chunk's baked shadow map, laid on that column's top face.
+    ///
+    /// The quad is the diamond itself, so the shadow cannot spill over the cliff beside it, and
+    /// it carries the column's own depth, so the ground in front of it still covers it.
+    GroundShadow {
+        texture: Texture2D,
+        /// The diamond's corners on screen, from its north corner clockwise.
+        corners: [(f64, f64); 4],
+        /// The same four points in the map's own texture coordinates.
+        uvs: [(f32, f32); 4],
+        /// How dark the shadow is drawn: the lighting phase's own opacity.
+        opacity: f32,
+    },
+}
+
 /// One sprite queued for this frame, with the key it sorts by.
 ///
-/// Terrain, entities and the player all go into the same list, so one depth sort decides what
-/// covers what. Drawing the terrain in a pass of its own, as the first version did, made every
-/// entity draw over ground that is in front of it: a tree at the foot of a cliff was painted on
-/// top of the cliff.
+/// Terrain, entities, their shadows and the player all go into the same list, so one depth sort
+/// decides what covers what. Drawing the terrain in a pass of its own, as the first version did,
+/// made every entity draw over ground that is in front of it: a tree at the foot of a cliff was
+/// painted on top of the cliff.
 pub struct SpriteDraw {
     pub key: DrawKey,
-    /// Which of the atlas's textures the frame is cut from; `0` is the shared atlas.
-    pub texture: usize,
-    pub frame: SpriteFrame,
-    pub layout: SpriteLayout,
-    /// The piece of the drawing this draw shows, for a sprite cut up across its footprint;
-    /// `None` for everything drawn in one piece.
-    pub band: Option<SpriteBand>,
+    pub kind: DrawKind,
 }
 
 impl SpriteDraw {
     /// A sprite drawn whole, which is everything standing on a single cell.
     pub fn whole(key: DrawKey, texture: usize, frame: SpriteFrame, layout: SpriteLayout) -> Self {
-        Self { key, texture, frame, layout, band: None }
+        Self {
+            key,
+            kind: DrawKind::Sprite { texture, frame, layout, band: None },
+        }
+    }
+
+    /// One band of a sprite whose footprint covers several cells.
+    pub fn band(
+        key: DrawKey,
+        texture: usize,
+        frame: SpriteFrame,
+        layout: SpriteLayout,
+        band: Option<SpriteBand>,
+    ) -> Self {
+        Self {
+            key,
+            kind: DrawKind::Sprite { texture, frame, layout, band },
+        }
+    }
+
+    /// A sprite darkened by the shadows falling on it.
+    pub fn shaded(
+        key: DrawKey,
+        texture: usize,
+        frame: SpriteFrame,
+        layout: SpriteLayout,
+        shade: ShadeLattice,
+    ) -> Self {
+        Self {
+            key,
+            kind: DrawKind::Shaded { texture, frame, layout, shade },
+        }
+    }
+
+    /// A baked shadow on one column's top face.
+    pub fn ground_shadow(
+        key: DrawKey,
+        texture: Texture2D,
+        corners: [(f64, f64); 4],
+        uvs: [(f32, f32); 4],
+        opacity: f32,
+    ) -> Self {
+        Self {
+            key,
+            kind: DrawKind::GroundShadow { texture, corners, uvs, opacity },
+        }
     }
 }
 
@@ -259,11 +414,42 @@ pub fn draw_sorted(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
     // what stacks a column's own blocks bottom first.
     draws.sort_by(|a, b| compare_draw_keys(&a.key, &b.key));
     for draw in draws.iter() {
-        match &draw.band {
-            Some(band) => atlas.draw_band(draw.texture, draw.frame, draw.layout, band),
-            None => atlas.draw(draw.texture, draw.frame, draw.layout),
+        match &draw.kind {
+            DrawKind::Sprite { texture, frame, layout, band: Some(band) } => {
+                atlas.draw_band(*texture, *frame, *layout, band);
+            }
+            DrawKind::Sprite { texture, frame, layout, band: None } => {
+                atlas.draw(*texture, *frame, *layout);
+            }
+            DrawKind::Shaded { texture, frame, layout, shade } => {
+                atlas.draw_shaded(*texture, *frame, *layout, shade);
+            }
+            DrawKind::GroundShadow { texture, corners, uvs, opacity } => {
+                draw_ground_shadow(texture, corners, uvs, *opacity);
+            }
         }
     }
+}
+
+/// Draws one quad of a baked shadow map: black at the coverage baked into the texture, scaled by
+/// the phase's opacity.
+fn draw_ground_shadow(
+    texture: &Texture2D,
+    corners: &[(f64, f64); 4],
+    uvs: &[(f32, f32); 4],
+    opacity: f32,
+) {
+    let colour = Color::new(1.0, 1.0, 1.0, opacity);
+    let vertices: Vec<Vertex> = corners
+        .iter()
+        .zip(uvs)
+        .map(|(&(x, y), &(u, v))| Vertex::new(x as f32, y as f32, 0.0, u, v, colour))
+        .collect();
+    draw_mesh(&Mesh {
+        vertices,
+        indices: vec![0, 1, 2, 0, 2, 3],
+        texture: Some(texture.clone()),
+    });
 }
 
 /// Depth key of something standing on the cell whose centre is `(x, y)`, at `elevation`.

@@ -87,6 +87,19 @@ impl TerrainFrames {
         self.frames[slot(material)]
     }
 
+    /// How wide a material's top face is drawn, in tile widths, which is how wide the whole
+    /// drawing is: a block's widest points are the left and right corners its top face shares
+    /// with its sides.
+    ///
+    /// Blocks are clay with rounded corners and are drawn at the size they were drawn at, so a
+    /// top face is a few percent narrower than the cell it stands on — sand, the shallowest
+    /// slab, by about seven. Anything laid flat on that face has to be cut to the same diamond
+    /// or it hangs over the groove between the blocks. One tile wide for a material the atlas
+    /// never measured, which is the full cell and the old behaviour.
+    pub fn top_width(&self, material: TerrainMaterial) -> f64 {
+        self.frames[slot(material)].map_or(1.0, |(_, ink, _)| ink.width)
+    }
+
     /// How far the artwork of any of these materials reaches above and below the ground it
     /// stands on, in screen pixels. The cull needs it: a column whose ground is just off the
     /// bottom of the screen still shows the block standing on it.
