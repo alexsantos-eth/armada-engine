@@ -93,9 +93,9 @@ impl TerrainFrames {
     ///
     /// Blocks are clay with rounded corners and are drawn at the size they were drawn at, so a
     /// top face is a few percent narrower than the cell it stands on — sand, the shallowest
-    /// slab, by about seven. Anything laid flat on that face has to be cut to the same diamond
-    /// or it hangs over the groove between the blocks. One tile wide for a material the atlas
-    /// never measured, which is the full cell and the old behaviour.
+    /// slab, by about seven. Anything laid flat on that face has to be placed against the face
+    /// and not the cell. One tile wide for a material the atlas never measured, which is the
+    /// cell itself.
     pub fn top_width(&self, material: TerrainMaterial) -> f64 {
         self.frames[slot(material)].map_or(1.0, |(_, ink, _)| ink.width)
     }

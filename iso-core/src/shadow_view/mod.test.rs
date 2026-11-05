@@ -90,15 +90,22 @@ fn a_clear_grid_asks_for_no_lattice() {
     assert!(solid.is_none());
 }
 
-/// The shadow laid on a block has to be cut to the face the block is actually drawn with, or it
-/// hangs over the groove between the blocks and down the slab's own side — which is what the
-/// shadows on the beach looked like.
+/// The quad is a whole cell wide but slid onto the face its block is drawn with, so that two
+/// neighbours meet in the groove between them exactly once: cut instead, the groove stayed lit,
+/// and left on the cell, each far corner laid a second shadow on the block behind it.
 #[test]
-fn a_quad_is_cut_to_the_face_its_block_is_drawn_with() {
+fn a_quad_slides_onto_the_face_its_block_is_drawn_with() {
     // The manifest's measured widths, in tile widths: sand is the shallowest slab and the
     // narrowest block there is, grass a full one.
-    assert!((drawn_margin(0.934_375) - 0.032_812_5).abs() < 1e-12, "sand keeps three percent of the cell on each side");
-    assert!((drawn_margin(0.963_672) - 0.018_164).abs() < 1e-6, "grass, drawn wider, keeps less");
-    assert_eq!(drawn_margin(1.0), 0.0, "a drawing that fills its cell is cut to the cell");
-    assert_eq!(drawn_margin(1.4), 0.0, "and one wider than its cell is not allowed to grow it");
+    let sand = drawn_margin(0.934_375);
+    assert!((sand - 0.032_812_5).abs() < 1e-12, "sand's face falls three percent short of its cell on each side");
+    assert!((drawn_margin(0.963_672) - 0.018_164).abs() < 1e-6, "grass, drawn wider, falls less short");
+    assert_eq!(drawn_margin(1.0), 0.0, "a drawing that fills its cell does not move");
+    assert_eq!(drawn_margin(1.4), 0.0, "and one wider than its cell is not allowed to move it");
+
+    // Slid by its own margin, a quad's far corner lands on the far corner of its own face, and
+    // its near corner on the far corner of the face in front: `0.5 + 0.5 * width` measured from
+    // the cell's centre, one cell further along.
+    assert!(((1.0 - sand) - (0.5 + 0.5 * 0.934_375)).abs() < 1e-12);
+    assert!(((0.0 - sand) - ((0.5 + 0.5 * 0.934_375) - 1.0)).abs() < 1e-12);
 }

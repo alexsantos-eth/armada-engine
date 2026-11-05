@@ -392,13 +392,14 @@ impl ShadowScene {
     /// the diamond, so a shadow cannot spill over the cliff beside it, and it carries the
     /// column's own depth so the ground in front of it still covers it.
     ///
-    /// The diamond is the one the block is actually drawn with, `top_width` wide and sunk by the
-    /// inset its material is drawn with ([`crate::preview_top_level`]), not the cell's own. A
-    /// block is a few percent narrower than its cell and the beach is a shallow slab, so a quad
-    /// cut to the cell hung over the grooves and over the slab's own side — which is what the
-    /// shadows on the sand looked like. The quad shrinks around the cell's centre and its
-    /// texture coordinates shrink with it, so the shadow does not move: it is only cut to the
-    /// face it lies on.
+    /// The quad is a whole cell wide, at the level the column's top is actually drawn at
+    /// ([`crate::preview_top_level`]), but slid towards the camera onto the face the block is
+    /// actually drawn with ([`drawn_margin`]). Left on the cell, its far corner stuck out past
+    /// the top of its own slab onto the one behind, which had already laid its own shadow
+    /// there, and the two added up into a bright seam along every far edge. Cut to the face
+    /// instead, the grooves between the blocks stayed lit and a shadow over a field of beach
+    /// came out as a grid of seams. Slid, it reaches from its own far corner to the far corner
+    /// of the block in front, so neighbours meet in the groove exactly once.
     pub fn collect_ground(
         &self,
         coord: ChunkCoord,
@@ -427,14 +428,14 @@ impl ShadowScene {
                 continue;
             }
             let level = crate::preview_top_level(*column, &height_at);
-            // Half the width the block's own drawing leaves out, on each side of the cell.
-            let margin = drawn_margin(frames.top_width(column.surface));
-            let (near, far) = (margin, 1.0 - margin);
+            // Towards the camera is `-x -y`, so one margin off both axes slides the quad
+            // straight down the screen onto the drawn face.
+            let slide = drawn_margin(frames.top_width(column.surface));
             let corner = |dx: f64, dy: f64| {
                 let point = project_block(
                     GridPoint {
-                        x: f64::from(column.coord.x) + dx,
-                        y: f64::from(column.coord.y) + dy,
+                        x: f64::from(column.coord.x) + dx - slide,
+                        y: f64::from(column.coord.y) + dy - slide,
                     },
                     level,
                     projection,
@@ -445,8 +446,7 @@ impl ShadowScene {
             // (the column's own coordinate, which is also lowest on screen) and going round.
             // The projection puts a larger `x + y` higher up, so the corner opposite it is the
             // cell past it along both axes.
-            let corners =
-                [corner(near, near), corner(far, near), corner(far, far), corner(near, far)];
+            let corners = [corner(0.0, 0.0), corner(1.0, 0.0), corner(1.0, 1.0), corner(0.0, 1.0)];
             // The near corner sits on the diamond's own centre line, so it gives the column's
             // horizontal place directly; the near and far corners bound it vertically.
             if corners[0].0 + half_tile < 0.0
@@ -480,19 +480,18 @@ impl ShadowScene {
                 ),
                 texture.clone(),
                 corners,
-                [uv(near, near), uv(far, near), uv(far, far), uv(near, far)],
+                [uv(0.0, 0.0), uv(1.0, 0.0), uv(1.0, 1.0), uv(0.0, 1.0)],
                 opacity,
             ));
         }
     }
 }
 
-/// How far inside its cell each side of a block's drawn top face is, in tiles.
+/// How far short of its cell each side of a block's drawn top face falls, in tiles.
 ///
 /// `top_width` is how wide the block is actually drawn, in tile widths. The face is centred on
 /// the cell, so what it leaves out is shared between the two sides. A drawing wider than its
-/// cell would push the margin negative and hang the shadow over its neighbour, so it is clamped
-/// to the cell.
+/// cell would push the margin negative, so it is clamped to nothing.
 fn drawn_margin(top_width: f64) -> f64 {
     ((1.0 - top_width) / 2.0).max(0.0)
 }
