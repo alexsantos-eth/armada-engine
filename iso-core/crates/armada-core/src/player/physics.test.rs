@@ -193,3 +193,66 @@ fn a_whole_block_collision_keeps_the_player_off_the_cell() {
         "a house fills its cell, so the player never steps onto it"
     );
 }
+
+/// A beach of sand with a step up along the right: the row against that step is the terrace,
+/// and the player stands on its lifted top rather than on the sunken one the rest of the beach
+/// is drawn with.
+fn beach_with_a_step() -> CellGround {
+    let mut ground = CellGround::new();
+    for x in 0..4 {
+        for y in 0..3 {
+            let step = x == 3;
+            ground.columns.insert(
+                WorldCoord { x, y },
+                TerrainColumn {
+                    coord: WorldCoord { x, y },
+                    elevation: i32::from(step),
+                    surface: if step {
+                        TerrainMaterial::Grass
+                    } else {
+                        TerrainMaterial::Sand
+                    },
+                    walkable: true,
+                },
+            );
+        }
+    }
+    ground
+}
+
+fn sand_inset(_: TerrainMaterial) -> f64 {
+    0.5
+}
+
+#[test]
+fn the_player_stands_on_the_lifted_top_of_the_terrace_row() {
+    let ground = beach_with_a_step();
+    let terrace = ground.column_at(2, 1).expect("the row against the step");
+    let open_beach = ground.column_at(0, 1).expect("the open beach");
+    assert_eq!(
+        drawn_inset(&ground, terrace, sand_inset),
+        0.0,
+        "the terrace row's top is drawn at its own plane, so the feet rise with it"
+    );
+    assert_eq!(
+        drawn_inset(&ground, open_beach, sand_inset),
+        0.5,
+        "the rest of the beach keeps the sunken top sand is drawn with"
+    );
+}
+
+#[test]
+fn the_feet_follow_the_terrace_row_up() {
+    let mut ground = beach_with_a_step();
+    let mut on_terrace = create_player(&ground, GridPoint { x: 2.5, y: 1.5 });
+    let mut on_beach = create_player(&ground, GridPoint { x: 0.5, y: 1.5 });
+    step_player(&mut on_terrace, &mut ground, 1, sand_inset);
+    step_player(&mut on_beach, &mut ground, 1, sand_inset);
+    let feet = |p: &PlayerState| p.elevation - p.inset;
+    assert!(
+        feet(&on_terrace) > feet(&on_beach),
+        "the terrace stands {} above the beach's {}",
+        feet(&on_terrace),
+        feet(&on_beach)
+    );
+}

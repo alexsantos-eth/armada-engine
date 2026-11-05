@@ -9,7 +9,7 @@
 use armada_core::assets::{InkBox, SpriteFrame, ink_layout, terrain_sprite_source};
 use armada_core::grid::WorldCoord;
 use armada_core::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
-use armada_core::terrain::{TerrainColumn, TerrainMaterial};
+use armada_core::terrain::{AroundHeights, TerrainColumn, TerrainMaterial, top_is_flush};
 use macroquad::prelude::{screen_height, screen_width};
 
 use crate::sprites::{SpriteAtlas, SpriteDraw, scene_key};
@@ -24,7 +24,7 @@ const MAX_EXPOSED_BLOCKS: i32 = 10;
 /// The atlas frame for each terrain material and where its artwork sits, resolved once at
 /// startup: the alternative is a hash lookup per drawn block, several hundred a frame.
 pub struct TerrainFrames {
-    frames: [Option<(SpriteFrame, InkBox)>; 5],
+    frames: [Option<(SpriteFrame, InkBox, f64)>; 5],
 }
 
 fn slot(material: TerrainMaterial) -> usize {
@@ -65,14 +65,25 @@ impl TerrainFrames {
                 // over its feet.
                 .and_then(|asset| Some((asset.frame, asset.ink?)))
             {
-                Some(frame) => frames[slot(material)] = Some(frame),
+                Some((frame, ink)) => frames[slot(material)] = Some((frame, ink, 0.0)),
                 None => missing.push(material),
             }
+        }
+        // How far a material's top face is drawn under the plane its elevation names, measured
+        // against the tallest artwork there is so that the rounded corners every block has
+        // cancel out. Sand is a shallow slab and the only one with any.
+        let full_top = frames
+            .iter()
+            .flatten()
+            .map(|(_, ink, _)| ink.y)
+            .fold(f64::INFINITY, f64::min);
+        for entry in frames.iter_mut().flatten() {
+            entry.2 = (entry.1.y - full_top).max(0.0);
         }
         (Self { frames }, missing)
     }
 
-    pub fn frame(&self, material: TerrainMaterial) -> Option<(SpriteFrame, InkBox)> {
+    pub fn frame(&self, material: TerrainMaterial) -> Option<(SpriteFrame, InkBox, f64)> {
         self.frames[slot(material)]
     }
 
@@ -80,12 +91,15 @@ impl TerrainFrames {
     /// stands on, in screen pixels. The cull needs it: a column whose ground is just off the
     /// bottom of the screen still shows the block standing on it.
     fn reach(&self, tile_width: f64) -> (f64, f64) {
-        self.frames.iter().flatten().fold((0.0f64, 0.0f64), |(up, down), (_, ink)| {
-            (
-                up.max(-ink.y * tile_width),
-                down.max((ink.y + ink.height) * tile_width),
-            )
-        })
+        self.frames
+            .iter()
+            .flatten()
+            .fold((0.0f64, 0.0f64), |(up, down), (_, ink, sink)| {
+                (
+                    up.max((-ink.y + sink) * tile_width),
+                    down.max((ink.y + ink.height) * tile_width),
+                )
+            })
     }
 }
 
@@ -149,16 +163,25 @@ pub fn collect_terrain_sprites(
         ];
         let floor = exposed_floor(column.elevation, in_front.into_iter().map(&height_at));
 
+        // The second step of the shore terrace: a beach row standing against a step up keeps
+        // its elevation and draws its top at its cell's plane, so what is left of the climb is
+        // split into two smaller steps. The cost is four neighbour lookups, and only sand ever
+        // pays them.
+        let flush_top = column.surface == TerrainMaterial::Sand
+            && top_is_flush(column.surface, column.elevation, around_heights(column, &height_at));
+
         for block in column.blocks_from(floor) {
-            let Some((frame, ink)) = frames.frame(block.material) else {
+            let Some((frame, ink, sink)) = frames.frame(block.material) else {
                 continue;
             };
+            let lift = drawn_lift(block.elevation, column, flush_top, sink, projection.tile_width);
             // A block stands on the top face of the block below it, which is `step` further
             // down the screen for each level below the column's own surface.
             let layout = ink_layout(
                 ScreenPoint {
                     x: top.screen_x,
-                    y: top.screen_y + f64::from(column.elevation - block.elevation + 1) * step,
+                    y: top.screen_y + f64::from(column.elevation - block.elevation + 1) * step
+                        - lift,
                 },
                 ink,
                 projection.tile_width,
@@ -166,18 +189,70 @@ pub fn collect_terrain_sprites(
             if !SpriteAtlas::on_screen(layout) {
                 continue;
             }
-            out.push(SpriteDraw::whole(
-                scene_key(
-                    centre.x,
-                    centre.y,
-                    f64::from(block.elevation),
-                    TERRAIN_LAYER,
-                    projection.tile_height,
-                ),
-                frame,
-                layout,
-            ));
+            let key = scene_key(
+                centre.x,
+                centre.y,
+                f64::from(block.elevation),
+                TERRAIN_LAYER,
+                projection.tile_height,
+            );
+            if lift > 0.0 {
+                // The lifted copy closes the join with the block above; this one, in the slab's
+                // own place, still closes the join with whatever is below. They are the same
+                // drawing, so the overlap paints the same pixels.
+                out.push(SpriteDraw::whole(
+                    key,
+                    frame,
+                    ink_layout(
+                        ScreenPoint {
+                            x: top.screen_x,
+                            y: top.screen_y
+                                + f64::from(column.elevation - block.elevation + 1) * step,
+                        },
+                        ink,
+                        projection.tile_width,
+                    ),
+                ));
+            }
+            out.push(SpriteDraw::whole(key, frame, layout));
         }
+    }
+}
+
+/// The four orthogonal neighbours' elevations, for [`top_is_flush`].
+fn around_heights(
+    column: TerrainColumn,
+    height_at: impl Fn(WorldCoord) -> Option<i32>,
+) -> AroundHeights {
+    [(1, 0), (-1, 0), (0, 1), (0, -1)].map(|(dx, dy)| {
+        height_at(WorldCoord {
+            x: column.coord.x.saturating_add(dx),
+            y: column.coord.y.saturating_add(dy),
+        })
+    })
+}
+
+/// How far up a block is drawn from the plane it stands on, which is nothing at all unless its
+/// top has to meet something: the block above it, or the step its column stands against.
+///
+/// Sand's artwork is a shallow slab, so along the left and right corners of a cell it covers only
+/// its own body: two sand blocks stacked a level apart left a notch at each corner and the upper
+/// one read as a plate floating over the one below. Lifted by the slab's `sink` — how far its top
+/// face is drawn under its cell's plane — a buried slab's top meets the base of the block above it
+/// exactly. A column's own top keeps the sunken top the material is drawn with, which is the
+/// beach's look and what the player walks on, unless `flush_top` says this is the terrace row
+/// against a step up ([`top_is_flush`]).
+fn drawn_lift(
+    elevation: i32,
+    column: TerrainColumn,
+    flush_top: bool,
+    sink: f64,
+    tile_width: f64,
+) -> f64 {
+    if elevation < column.elevation || flush_top {
+        sink * tile_width
+    } else {
+        0.0
     }
 }
 

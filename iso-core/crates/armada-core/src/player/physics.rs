@@ -8,7 +8,7 @@ use crate::time::TICKS_PER_SECOND;
 use crate::grid::{ChunkCoord, WorldCoord, WorldRect};
 use crate::player::motion::{PlayerMotionEvent, PlayerMotionType, transition_player_motion};
 use crate::projection::GridPoint;
-use crate::terrain::{TerrainColumn, TerrainMaterial};
+use crate::terrain::{TerrainColumn, TerrainMaterial, top_is_flush};
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -379,7 +379,7 @@ fn block_reason_at<G: PlayerGround>(
             if airborne {
                 if let Some(col) = column
                     && col.surface != TerrainMaterial::Water
-                    && feet < col.elevation as f64 - top_inset(col.surface) - LANDING
+                    && feet < col.elevation as f64 - drawn_inset(ground, col, top_inset) - LANDING
                 {
                     return Some(PlayerBlockReason::Terrain);
                 }
@@ -428,8 +428,38 @@ fn inset_at<G: PlayerGround>(ground: &G, point: GridPoint, top_inset: PlayerTopI
     let (x, y) = (get_player_column(point).x, get_player_column(point).y);
     ground
         .column_at(x, y)
-        .map(|c| top_inset(c.surface))
+        .map(|c| drawn_inset(ground, c, top_inset))
         .unwrap_or(0.0)
+}
+
+/// How far under its cell's plane the top of `column` is actually drawn, which is what the
+/// player stands on.
+///
+/// It is the material's own inset, except on the terrace row against a step up, whose top is
+/// drawn flush with its cell ([`top_is_flush`]): the view lifts that top, so the feet have to
+/// rise with it or the player walks inside the step.
+fn drawn_inset<G: PlayerGround>(
+    ground: &G,
+    column: TerrainColumn,
+    top_inset: PlayerTopInset,
+) -> f64 {
+    let inset = top_inset(column.surface);
+    if inset == 0.0 {
+        return 0.0;
+    }
+    let around = [(1, 0), (-1, 0), (0, 1), (0, -1)].map(|(dx, dy)| {
+        ground
+            .column_at(
+                column.coord.x.saturating_add(dx),
+                column.coord.y.saturating_add(dy),
+            )
+            .map(|c| c.elevation)
+    });
+    if top_is_flush(column.surface, column.elevation, around) {
+        0.0
+    } else {
+        inset
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -870,7 +900,9 @@ fn step_once<G: PlayerGround>(
     };
     let surface = support_at(ground, next);
     let elevation = surface.map(|s| s.elevation as f64).unwrap_or(player.elevation);
-    let inset = surface.map(|s| top_inset(s.surface)).unwrap_or(player.inset);
+    let inset = surface
+        .map(|s| drawn_inset(ground, s, top_inset))
+        .unwrap_or(player.inset);
     let rise = elevation - inset - feet;
     if !airborne && rise > PLAYER_STEP_HEIGHT {
         // start climb
@@ -931,7 +963,7 @@ fn step_air<G: PlayerGround>(
         x: player.x,
         y: player.y,
     });
-    let top = support.map(|s| s.elevation as f64 - top_inset(s.surface));
+    let top = support.map(|s| s.elevation as f64 - drawn_inset(ground, s, top_inset));
     let feet = player.elevation - player.inset + player.height;
     if player.vertical_speed.is_none() {
         if player.height > 0.0 || top.is_none() {
@@ -985,7 +1017,7 @@ fn step_air<G: PlayerGround>(
         if let Some(s) = support {
             player.feedback.impact = (-(speed + next_speed) / 2.0).max(0.0);
             player.elevation = s.elevation as f64;
-            player.inset = top_inset(s.surface);
+            player.inset = drawn_inset(ground, s, top_inset);
             player.last_safe = PlayerPosition {
                 x: player.x,
                 y: player.y,
