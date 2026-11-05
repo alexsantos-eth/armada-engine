@@ -54,26 +54,69 @@ fn places_every_cell_by_the_window_it_shows() {
     assert!(ink.y + ink.height >= figure.y + figure.height);
 }
 
+/// The sheets as they are drawn: this client's own, of sixteen facings, and the Pixi client's
+/// eight-facing ones beside them, read the same way. Every sheet of one set shows the same
+/// window; the two sets differ, because the intermediate facings reach a little wider and each
+/// sheet carries the window it was drawn with.
+///
+/// Read from disk rather than included: a sheet is megabytes of path data, and nothing here
+/// needs it in the test binary.
 #[test]
 fn reads_the_real_sheets() {
-    for (svg, columns, poses) in [
-        (include_str!("../../../../../public/assets/player/walk.svg"), 9, 0),
-        (include_str!("../../../../../public/assets/player/idle.svg"), 8, 0),
-        (include_str!("../../../../../public/assets/player/climb.svg"), 9, 0),
-        (include_str!("../../../../../public/assets/player/jump.svg"), 5, 5),
-        (include_str!("../../../../../public/assets/player/jetpack.svg"), 1, 0),
-    ] {
-        let grid = parse_sheet(svg).expect("a generated player sheet");
-        assert_eq!(grid.columns, columns);
-        assert_eq!(grid.poses.len(), poses);
-        assert_eq!(grid.rows(), 8);
-        assert_eq!(grid.ink(), parse_sheet(WALK).expect("sheet").ink(), "one window");
+    for (directory, rows) in [("player-16", 16), ("player", 8)] {
+        let mut window = None;
+        for (file, columns, poses) in [
+            ("walk", 9, 0),
+            ("idle", 8, 0),
+            ("climb", 9, 0),
+            ("jump", 5, 5),
+            ("jetpack", 1, 0),
+        ] {
+            let path = format!(
+                "{}/../../../public/assets/{directory}/{file}.svg",
+                env!("CARGO_MANIFEST_DIR")
+            );
+            let svg = std::fs::read_to_string(&path).unwrap_or_else(|err| panic!("{path}: {err}"));
+            let grid = parse_sheet(&svg).expect("a generated player sheet");
+            assert_eq!(grid.columns, columns, "{directory}/{file}");
+            assert_eq!(grid.poses.len(), poses, "{directory}/{file}");
+            assert_eq!(grid.rows(), rows, "{directory}/{file}");
+            let shared = *window.get_or_insert(grid.ink());
+            assert_eq!(grid.ink(), shared, "{directory}/{file} shows the same window");
+            assert_eq!(grid.facings[0], "east", "counter-clockwise from east");
+        }
     }
+}
+
+/// The sixteen-facing window is the eight-facing one widened, so the figure keeps its place: a
+/// pose drawn in either set stands on the same spot over its tile.
+#[test]
+fn the_wider_window_holds_the_narrower_one() {
+    let read = |path: &str| {
+        let svg = std::fs::read_to_string(format!("{}/../../../{path}", env!("CARGO_MANIFEST_DIR")))
+            .expect("a sheet");
+        parse_sheet(&svg).expect("a sheet").ink()
+    };
+    let (wide, narrow) = (
+        read("public/assets/player-16/walk.svg"),
+        read("public/assets/player/walk.svg"),
+    );
+    assert!(wide.x <= narrow.x && wide.x + wide.width >= narrow.x + narrow.width);
+    assert_eq!((wide.y, wide.height), (narrow.y, narrow.height), "same rows");
+    assert!(
+        (wide.x + wide.width / 2.0 - (narrow.x + narrow.width / 2.0)).abs() < 1e-9,
+        "widened evenly, so the figure does not shift"
+    );
 }
 
 #[test]
 fn rejects_what_is_not_a_sheet() {
-    assert!(parse_sheet(include_str!("../../../../../public/assets/player/block.svg")).is_none());
+    let block = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../public/assets/player/block.svg"
+    ))
+    .expect("the still figure");
+    assert!(parse_sheet(&block).is_none(), "one drawing, not a sheet");
     assert!(parse_sheet(r#"<svg data-frames="9"/>"#).is_none(), "no cell");
     assert!(
         parse_sheet(r#"<svg data-cell="0 0 10 10" data-frames="9"/>"#).is_none(),

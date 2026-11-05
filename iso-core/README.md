@@ -16,7 +16,7 @@ Los SVG de `../public/assets/` se rasterizan y empaquetan en `content/atlas.png`
 ./build-atlas.sh
 ```
 
-El script rasteriza cada SVG con `cairosvg` (`rasterize.py`) y luego compila y ejecuta `pack_atlas`. Cada dibujo se rasteriza a 320 px por tile de mundo, así que llega al empaquetador al tamaño al que se dibuja y este solo recorta y coloca: el atlas mide 4096 px de ancho y lo que haga falta de alto. Las hojas de poses del jugador (`walk`, `idle`, `jump`, `climb`, `jetpack`) no caben en el atlas sin perder su detalle —una pose quedaba en unos dieciséis píxeles— así que se cortan celda a celda y cada una recibe su textura, `content/player_<hoja>.png`, con su rejilla descrita en el manifiesto (esquema 2). El `build.rs` verifica que el atlas y el manifiesto existen al compilar.
+El script rasteriza cada SVG con `cairosvg` (`rasterize.py`) y luego compila y ejecuta `pack_atlas`. Cada dibujo se rasteriza a 320 px por tile de mundo, así que llega al empaquetador al tamaño al que se dibuja y este solo recorta y coloca: el atlas mide 4096 px de ancho y lo que haga falta de alto. Las hojas de poses del jugador (`walk`, `idle`, `jump`, `climb`, `jetpack`) no caben en el atlas sin perder su detalle —una pose quedaba en unos dieciséis píxeles— así que se cortan celda a celda y cada una recibe su textura, `content/player-16_<hoja>.png`, con su rejilla descrita en el manifiesto (esquema 2). Este cliente dibuja las hojas de dieciséis orientaciones de `public/assets/player-16/`; las de ocho de `public/assets/player/` son del cliente Pixi y `rasterize.py` las omite. El `build.rs` verifica que el atlas y el manifiesto existen al compilar.
 
 `cargo run --bin remeasure_atlas -- content/assets.manifest.json content/atlas.png ../public` reescribe la geometría de un atlas ya empaquetado sin rasterizar nada; deja intactas las hojas, cuyas celdas son una rejilla y no un recorte.
 
@@ -94,5 +94,5 @@ La fase 1 ya incluye `grid`, `paths`, `projection`, `camera`, `time` y el acumul
 - Servicios de borde implementados en `src/services.rs`: `MacroquadInput`, `MacroquadAudio`, `MacroquadUi`, `MacroquadChunkLoader`.
 - Guardado en WASM: `src/save.rs` persiste en `window.localStorage` bajo la clave `armada_save.json` (no es no-op en `wasm32-unknown-unknown`).
 - `ChunkGround` en `src/main.rs` expone los ocupantes de cada columna: `occupancy_at` devuelve los `PlayerObstacle` de las entidades que pisan esa casilla, con su colisión precalculada.
-- Animación del jugador: `src/player_view.rs` elige hoja, pose y orientación cada fotograma y el cliente dibuja esa celda; las hojas viven en texturas propias junto al atlas.
+- Animación del jugador: `src/player_view.rs` elige hoja, pose y orientación cada fotograma y el cliente dibuja esa celda; las hojas viven en texturas propias junto al atlas Son 16 orientaciones y un giro las recorre de una en una.
 - Pendiente: integración de vistas, reglas de densidad/bioma/vecindad y escritor de guardado en segundo plano (#111).

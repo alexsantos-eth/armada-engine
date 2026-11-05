@@ -50,6 +50,13 @@ SVG_TILE_WIDTH = 1024
 # Top of the character template's canvas in those units: it reaches one block above the ground
 # plane, and a sheet's `data-cell` is measured from there.
 SVG_CANVAS_TOP = -341
+# Sheets this client does not draw from: the eight-facing player sheets under `player/` belong to
+# the Pixi client, which loads each SVG whole as one texture. This client reads the sixteen-facing
+# ones under `player-16/`, so cutting the others would pack five textures nothing asks for.
+SKIPPED_SHEETS = frozenset(
+    "player_%s" % name for name in ("walk", "idle", "jump", "climb", "jetpack")
+)
+
 # How many pixels wide one tile of world is rasterized at. The client draws a tile 280 px wide,
 # so this leaves a little room to zoom in without the artwork going soft; raising it costs atlas
 # area in proportion to its square.
@@ -139,6 +146,8 @@ def main():
         svg = open(path, encoding="utf-8").read()
         try:
             grid = sheet_grid(svg)
+            if grid and name in SKIPPED_SHEETS:
+                continue
             if grid:
                 cells += render_sheet(svg, grid, out_dir, name, scale)
                 sheets += 1

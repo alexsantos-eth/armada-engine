@@ -70,6 +70,21 @@ fn get_player_facing_east() {
     assert_eq!(get_player_facing(GridPoint { x: 1.0, y: -1.0 }), Some(0));
 }
 
+/// The sixteen facings divide the turn evenly, counter-clockwise on screen from east, and a
+/// direction between two of them takes the nearer.
+#[test]
+fn get_player_facing_takes_the_nearest_of_sixteen() {
+    let index = |x: f64, y: f64| PLAYER_FACINGS[get_player_facing(GridPoint { x, y }).unwrap()];
+    assert_eq!(index(1.0, 1.0), "north", "up the screen");
+    assert_eq!(index(-1.0, 1.0), "west");
+    assert_eq!(index(-1.0, -1.0), "south", "towards the camera");
+    assert_eq!(index(1.0, 0.0), "north-east");
+    // Half way between east and north-east, which eight facings could not tell apart.
+    assert_eq!(index(1.0, -0.4142), "east-north-east");
+    assert_eq!(index(0.4142, -1.0), "east-south-east");
+    assert_eq!(index(-1.0, -0.4142), "south-south-west");
+}
+
 #[test]
 fn get_player_cells_radius() {
     let cells = get_player_cells(GridPoint { x: 0.0, y: 0.0 });

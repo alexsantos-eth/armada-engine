@@ -100,13 +100,17 @@ const PLAYER_SCALE: f64 = 0.75;
 const PLAYER_SPRITE: &str = "/assets/player/block.svg";
 /// The player's sheets of poses, in the manifest: walking, standing, jumping and climbing.
 ///
-/// Each is 8 facings by several poses and has a texture of its own, because one of them
+/// Each is 16 facings by several poses and has a texture of its own, because one of them
 /// squeezed into a cell of the shared atlas left a pose sixteen pixels across. The still figure
 /// above is the fallback, and is drawn without animation.
-const PLAYER_WALK_SHEET: &str = "/assets/player/walk.svg";
-const PLAYER_IDLE_SHEET: &str = "/assets/player/idle.svg";
-const PLAYER_JUMP_SHEET: &str = "/assets/player/jump.svg";
-const PLAYER_CLIMB_SHEET: &str = "/assets/player/climb.svg";
+///
+/// They come from `player-16/` and not from `player/`: this client cuts a sheet cell by cell, so
+/// the sixteen facings cost it only the cells they add, while the Pixi client loads a sheet as
+/// one texture and keeps the eight-facing sheets of the other directory.
+const PLAYER_WALK_SHEET: &str = "/assets/player-16/walk.svg";
+const PLAYER_IDLE_SHEET: &str = "/assets/player-16/idle.svg";
+const PLAYER_JUMP_SHEET: &str = "/assets/player-16/jump.svg";
+const PLAYER_CLIMB_SHEET: &str = "/assets/player-16/climb.svg";
 /// Extra view the chunk cull keeps around the screen, as a fraction of it.
 ///
 /// Zero: this client culls every frame, so a chunk is included on the frame it first touches the

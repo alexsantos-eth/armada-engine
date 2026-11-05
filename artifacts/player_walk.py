@@ -1,7 +1,21 @@
-# player_walk.py — walk sheet of the player, the voxel clay monkey of monkey.py, in 8 facings.
-# One row per facing, in the order the engine reads them (PLAYER_FACINGS in content/player.ts):
-# east, north-east, north, north-west, west, south-west, south, south-east (screen directions;
-# north is up). Column 0 is the figure standing, then FRAMES poses of one walk cycle (two steps).
+# player_walk.py — walk sheet of the player, the voxel clay monkey of monkey.py, one row per facing.
+# The facings are points of the compass counter-clockwise on screen from east (north is up), in the
+# order the engine reads them (PLAYER_FACINGS): with sixteen of them east, east-north-east,
+# north-east, … , a turn of 22.5° between one row and the next; with eight, every other one of
+# those, which is the 45° jump that reads as the figure snapping round as it turns.
+#
+# How many is PLAYER_FACINGS in the environment, sixteen by default:
+#
+#   python3 player_walk.py                     -> 16 rows, for the Macroquad client
+#                                                 (public/assets/player-16/walk.svg)
+#   PLAYER_FACINGS=8 python3 player_walk.py    -> 8 rows, for the Pixi client
+#                                                 (public/assets/player/walk.svg)
+#
+# The Macroquad client cuts every cell of a sheet on its own and packs them into a texture of its
+# own, so a sheet of sixteen rows costs it nothing but the cells it holds. The Pixi client loads
+# the whole SVG as one texture, and sixteen rows would be twice the texture it has now, so it
+# keeps the eight-row sheets. The other player sheets (idle, jump, climb, jetpack) read the list
+# from here, so they follow whichever count this is run with. Column 0 is the figure standing, then FRAMES poses of one walk cycle (two steps).
 # Every cell is the same window CELL of a one-tile canvas (1024 x 853, viewBox 0 -341), so the
 # figure's feet stay at the tile's centre in every cell. The parts are clay voxels turned towards
 # the facing (yaw) and, for legs and arms, swung about the hip or shoulder (pitch): the shading
@@ -9,6 +23,7 @@
 # walks the monkey bobs, its body squashes a little at each step and its tail swings side to side.
 # No cast shadow: the engine projects shadows. Requires shapely (see iso_lib.py).
 import math
+import os
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 from iso_lib import P, VIEW, fmt, light, tint, falloff
@@ -24,14 +39,28 @@ TAIL_SWAY = 30          # units the tail's tip swings to each side over a cycle
 SEGMENTS = 16           # most facets per quarter of a voxel's rounding (the head's)
 SEGMENT_SIZE = 5        # units of rounding per facet: small voxels get fewer facets
 MIN_AREA = 3            # canvas units² below which a shape (or what shows of it) is left out
-FACINGS = ["east", "north-east", "north", "north-west", "west", "south-west", "south", "south-east"]
+# The sixteen points, and the facings of this run: every (16 / count)-th of them, so eight gives
+# back exactly the list the first sheets were drawn with.
+POINTS = ["east", "east-north-east", "north-east", "north-north-east",
+          "north", "north-north-west", "north-west", "west-north-west",
+          "west", "west-south-west", "south-west", "south-south-west",
+          "south", "south-south-east", "south-east", "east-south-east"]
+COUNT = int(os.environ.get("PLAYER_FACINGS", "16"))
+assert COUNT in (2, 4, 8, 16), "the facings have to divide the sixteen points evenly"
+FACINGS = POINTS[:: len(POINTS) // COUNT]
 
 # Window of the tile canvas each cell shows (canvas units: x from the left, y from the top of the
 # 1024 x 853 canvas): the extent of every pose of every player sheet (walk, idle, jump, climb) plus
-# a margin of 8, so all of them share it (each generator asserts its poses fit). Kept under 412 wide
-# so the walk sheet's nine columns stay under a 4096 px texture. And the gap between cells, so
-# mipmaps never mix two cells.
-CELL = (313, 271, 398, 399)
+# a margin, so all the sheets of one run share it (each generator asserts its poses fit). The
+# intermediate facings reach a little wider than the eight did — the idle dance leans across the
+# screen — so this is 408 wide where the eight-facing sheets have 398. Each sheet carries its own
+# `data-cell`, so the two live side by side; the Pixi client's copy of the window is written out
+# in `PLAYER_WALK.cell` (`src/isometric/content/player.ts`) and only has to change if those
+# eight-row sheets are drawn again. Kept under 412 wide so nine columns stay under a 4096 px
+# texture; the sixteen-row sheets are taller than that, which only a client that loads a whole
+# sheet as one texture feels — the Macroquad pipeline cuts every cell on its own. And the gap
+# between cells, so mipmaps never mix two of them.
+CELL = (308, 271, 408, 399)
 GAP = 48
 TOP = -341              # the canvas's top, in the figure's screen units
 # What every path of a cell shares (iso_lib's seam: a thin stroke of the fill closes the hairlines
@@ -40,8 +69,9 @@ CELL_STYLE = 'fill-rule="evenodd" stroke-width=".75" stroke-linejoin="round"'
 
 
 def facing_yaw(index):
-    """Yaw (radians, in iso_lib's x/y) of facing `index`: screen angle 45° × index, east first."""
-    d = math.radians(45 * index)
+    """Yaw (radians, in iso_lib's x/y) of facing `index`: the index-th of len(FACINGS) equal turns
+    counter-clockwise on screen, east first (22.5° apart for sixteen facings)."""
+    d = math.radians(360 * index / len(FACINGS))
     right, up = math.cos(d), math.sin(d)
     # iso_lib: screen right = x − y, screen up = −(x + y)
     fx, fy = (right - up) / 2, (-right - up) / 2

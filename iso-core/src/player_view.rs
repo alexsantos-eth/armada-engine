@@ -36,8 +36,19 @@ pub const AIR_POSE: i32 = 3;
 /// has let go of the controls and is only sliding.
 pub const SKID_PEDAL: f64 = 2.0;
 
-/// The facing the player starts with, before it has walked anywhere: towards the camera.
-pub const START_FACING: usize = 6;
+/// The facing the player starts with, before it has walked anywhere: towards the camera, which
+/// is `south` in [`PLAYER_FACINGS`].
+pub const START_FACING: usize = 12;
+
+/// Real milliseconds the figure spends on each facing it passes through while it turns.
+///
+/// The controls only ever point in eight directions, so without this the sixteen rows of the
+/// sheets would never show their intermediate ones: a turn would jump between the same eight
+/// facings as before, by two rows at a time. Turning through them instead is what the extra
+/// rows are for — the monkey swings round rather than snapping — and at this rate the longest
+/// turn there is, a half turn of eight facings, takes a little over a quarter of a second,
+/// which is about two walking steps.
+pub const TURN_MS_PER_FACING: f64 = 35.0;
 
 /// What one frame does to the animation: where the player is going, what it is doing, and how
 /// far it moved since the frame before.
@@ -104,13 +115,15 @@ pub struct PlayerPose {
 #[derive(Clone, Copy, Debug)]
 pub struct PlayerAnimation {
     facing: usize,
+    /// Milliseconds banked towards the next facing of a turn in progress.
+    turning_ms: f64,
     walked: f64,
     stood_ms: f64,
 }
 
 impl Default for PlayerAnimation {
     fn default() -> Self {
-        Self { facing: START_FACING, walked: 0.0, stood_ms: 0.0 }
+        Self { facing: START_FACING, turning_ms: 0.0, walked: 0.0, stood_ms: 0.0 }
     }
 }
 
@@ -136,8 +149,10 @@ impl PlayerAnimation {
         } else {
             self.stood_ms + moment.elapsed_ms.max(0.0)
         };
-        // Turned the way it climbs or walks; standing still it keeps the way it faced.
-        self.facing = get_player_facing(moment.direction).unwrap_or(self.facing);
+        // Turned the way it climbs or walks, a facing at a time; standing still it keeps the way
+        // it faced.
+        let target = get_player_facing(moment.direction).unwrap_or(self.facing);
+        self.turn_towards(target, moment.elapsed_ms);
         // Skidding, the feet pedal against the slide, backwards if the controls were let go.
         let pedal = match moment.motion {
             PlayerMotionType::Skidding if moment.direction.x == 0.0 && moment.direction.y == 0.0 => {
@@ -165,6 +180,34 @@ impl PlayerAnimation {
             air_pose: Some(AIR_POSE),
         });
         self.pose(frame)
+    }
+
+    /// Steps the facing towards `target` by the shorter way round, one facing per
+    /// [`TURN_MS_PER_FACING`].
+    ///
+    /// Time that does not add up to a whole step is kept for the next frame, so the turn takes
+    /// the same time however often this is called; arriving clears it, so a figure that has
+    /// stood still does not snap a facing the instant it is asked to turn.
+    fn turn_towards(&mut self, target: usize, elapsed_ms: f64) {
+        let facings = PLAYER_FACINGS.len();
+        if target == self.facing {
+            self.turning_ms = 0.0;
+            return;
+        }
+        self.turning_ms += elapsed_ms.max(0.0);
+        let steps = (self.turning_ms / TURN_MS_PER_FACING).floor();
+        if steps < 1.0 {
+            return;
+        }
+        self.turning_ms -= steps * TURN_MS_PER_FACING;
+        // The shorter way round: the difference brought into −half .. half a turn.
+        let half = (facings / 2) as i32;
+        let apart = (target as i32 - self.facing as i32 + half).rem_euclid(facings as i32) - half;
+        let step = (steps as i32).min(apart.abs()) * apart.signum();
+        self.facing = (self.facing as i32 + step).rem_euclid(facings as i32) as usize;
+        if self.facing == target {
+            self.turning_ms = 0.0;
+        }
     }
 
     /// The name of the facing the player is drawn with, for the heads-up display.

@@ -82,9 +82,30 @@ pub const PLAYER_TAKEOFF_TICKS: i32 = 2;
 pub const PLAYER_APEX_SPEED: f64 = PLAYER_GRAVITY;
 /// Key of the player part.
 pub const PLAYER_PART_ID: &str = "player";
-/// The eight facings, counter-clockwise on screen from east.
-pub const PLAYER_FACINGS: [&str; 8] = [
-    "east", "north-east", "north", "north-west", "west", "south-west", "south", "south-east",
+/// The facings the player is drawn in: the sixteen points of the compass, counter-clockwise on
+/// screen from east, which are the rows of its sheets of poses.
+///
+/// Eight of them turned the figure 45° from one row to the next, which reads as a snap as it
+/// turns; sixteen halve that. The sheets this client draws from (`public/assets/player-16/`)
+/// have one row per name here and in this order. The Pixi client keeps eight-row sheets of its
+/// own, because it loads a sheet as one texture and sixteen rows would double it.
+pub const PLAYER_FACINGS: [&str; 16] = [
+    "east",
+    "east-north-east",
+    "north-east",
+    "north-north-east",
+    "north",
+    "north-north-west",
+    "north-west",
+    "west-north-west",
+    "west",
+    "west-south-west",
+    "south-west",
+    "south-south-west",
+    "south",
+    "south-south-east",
+    "south-east",
+    "east-south-east",
 ];
 /// Columns around the centre a new player's spawn is searched in.
 pub const PLAYER_SPAWN_RADIUS: i32 = 32;
@@ -602,8 +623,12 @@ pub fn get_player_facing(walk: GridPoint) -> Option<usize> {
     if across == 0.0 && up == 0.0 {
         return None;
     }
-    let octant = (up.atan2(across) / (std::f64::consts::PI / 4.0)).round() as i32;
-    Some(((octant + PLAYER_FACINGS.len() as i32) as usize) % PLAYER_FACINGS.len())
+    // The facings divide the turn evenly, so the nearest one is the angle over that step,
+    // rounded. Reading the step off the list rather than writing it out is what lets the number
+    // of facings change in one place.
+    let step = std::f64::consts::TAU / PLAYER_FACINGS.len() as f64;
+    let turn = (up.atan2(across) / step).round() as i32;
+    Some(turn.rem_euclid(PLAYER_FACINGS.len() as i32) as usize)
 }
 
 pub fn set_player_walk(player: &mut PlayerState, directions: ScreenDirections) {
