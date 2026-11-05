@@ -184,7 +184,7 @@ fn a_shorter_step_is_smoothed_over_the_same_time_as_a_longer_one() {
         let mut focus = CameraFocus::new(&at(drop, 0.0, 0.0));
         let landed = at(0.0, 0.0, 0.0);
         let frame = 1000.0 / 60.0;
-        let mut frames = 0;
+        let mut frames: i32 = 0;
         while focus.advance(&landed, PlayerMotionType::Falling, frame, CAMERA_LEVEL_SMOOTH_MS) > 0.0 {
             frames += 1;
             assert!(frames < 600, "a {drop} block step never settled");
@@ -193,7 +193,7 @@ fn a_shorter_step_is_smoothed_over_the_same_time_as_a_longer_one() {
     };
     let (half, whole) = (settle(0.5), settle(1.0));
     assert!(
-        (half as i32 - whole as i32).abs() <= 2,
+        (half - whole).abs() <= 2,
         "half a block took {half} frames and a whole one {whole}",
     );
 }
