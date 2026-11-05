@@ -28,7 +28,7 @@ iso-core/
       mod.rs
       geometry.rs
       geometry.test.rs
-    src/camera/              # geometría de cámara; implementado
+    src/camera/              # geometría de cámara y nivel que mira al seguir; implementado
       mod.rs
       geometry.rs
       geometry.test.rs
@@ -203,7 +203,7 @@ El `ChunkManager` calcula y ordena sus anillos de carga y prefetch únicamente c
 
 ### `camera` y `streaming` (geometría básica implementada)
 
-`camera` guarda centro, zoom y seguimiento como estado de vista. La geometría y la selección de chunks visibles ya viven en `armada-core::camera`: desplazamiento, conversión pantalla/suelo, zoom alrededor de un ancla, seguimiento, transformación y visibilidad con margen y elevaciones. `streaming` queda pendiente; programará carga/descarga con presupuesto por fotograma y separará visibilidad de persistencia. Probar el presupuesto con una escena falsa.
+`camera` guarda centro, zoom y seguimiento como estado de vista. La geometría y la selección de chunks visibles ya viven en `armada-core::camera`: desplazamiento, conversión pantalla/suelo, zoom alrededor de un ancla, seguimiento, transformación y visibilidad con margen y elevaciones. `camera::focus` guarda a qué altura mira una cámara que sigue al jugador, como el cierre `ground()` de `createPlayerView()` en TypeScript: fija el nivel en la cima que pisa, no lo mueve durante un salto, baja con los pies en una caída y sube a una cima más alta sobre la curva de una escalada (`CAMERA_RISE_MS_PER_BLOCK`). `advance()` devuelve el nivel que se muestra, llevado al nivel al que apunta por un resorte críticamente amortiguado (`CAMERA_LEVEL_SMOOTH_MS`, 65 ms), y `ground()` lo convierte sin suavizar en el punto de suelo que usa el otro cliente. El cliente Macroquad pone el centro de la cámara en la columna del propio jugador y suma ese nivel al origen de la proyección, así que lo único suavizado es la altura. Las tres decisiones están medidas: sin suavizar la altura, un cambio de nivel desplaza el mundo un escalón entero en un solo fotograma; suavizando también el avance por el suelo con `follow_camera()` —lo que hace TypeScript— el retardo es lo único contra lo que se dibuja al jugador, así que cada cambio de su velocidad se ve como un deslizamiento suyo (±32 px de brinco al subir un escalón, el doble al bajarlo, unos 50 px de disparo en la dirección de una escalada); y el suavizado es un resorte y no una persecución por medio-tiempo porque una persecución responde a toda velocidad, lo que pone una esquina al principio de cada movimiento, y un movimiento corto —medio bloque de arena— es casi todo ese principio. La tabla con el desplazamiento del jugador y el golpe de cámara medidos para cada forma de suavizado está en la documentación de `CAMERA_LEVEL_SMOOTH_MS`, que es el único sitio donde se ajusta. `streaming` queda pendiente; programará carga/descarga con presupuesto por fotograma y separará visibilidad de persistencia. Probar el presupuesto con una escena falsa.
 
 ### `scene` y vistas (muestra de terreno implementada)
 

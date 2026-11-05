@@ -21,7 +21,10 @@ use armada_core::world::{ChunkManager, ChunkRadii};
 use armada_core::assets::{InkBox, SVG_BLOCK_HEIGHT, SVG_TILE_WIDTH, SpriteFrame, footprint_band, ink_layout};
 use armada_core::entities::{EntityCatalogV2, EntityLengthAxis, validate_catalog};
 use armada_core::player::physics::PlayerObstacle;
-use armada_core::camera::{Camera, ScreenSize, visible_chunks as camera_visible_chunks};
+use armada_core::camera::{
+    CAMERA_LEVEL_SMOOTH_MS, Camera, CameraFocus, ScreenSize,
+    visible_chunks as camera_visible_chunks,
+};
 use save::{
     load_archive_into_manager, load_save, restore_archive, restore_discovered_from_archive,
     save_archive, sync_manager_to_archive,
@@ -96,6 +99,22 @@ const PLAYER_SPRITE: &str = "/assets/player/block.svg";
 /// screen and there is nothing for a margin to cover. `CHUNK_VIEW_MARGIN` exists for a client
 /// that caches its cull between frames and needs the ring ahead of the camera.
 const CHUNK_CULL_MARGIN: f64 = 0.0;
+
+/// This view's projection with its origin at `(origin_x, origin_y)`: the tile size and the
+/// elevation step are the view's own constants, so only the origin ever changes.
+///
+/// With the origin at zero it is also the projection to measure a lift with
+/// (`ground_point_below()` reads only the elevation step and the tile height), which is how the
+/// camera's focus is asked where to look before the origin that focus decides is known.
+fn preview_projection(origin_x: f64, origin_y: f64) -> ProjectionConfig {
+    ProjectionConfig {
+        tile_width: PREVIEW_TILE_WIDTH,
+        tile_height: PREVIEW_TILE_HEIGHT,
+        elevation_step: Some(PREVIEW_ELEVATION_STEP),
+        origin_x,
+        origin_y,
+    }
+}
 
 /// How far under its cell's own plane a material's top is drawn, in blocks.
 ///
@@ -269,13 +288,6 @@ async fn main() {
         manager.tick();
     }
 
-    // Camera state.
-    let mut camera = Camera {
-        x: f64::from(PREVIEW_CENTRE.x),
-        y: f64::from(PREVIEW_CENTRE.y),
-        zoom: 1.0,
-    };
-
     // Find a spawn point and create the player.
     let ground = ChunkGround { manager: &manager };
     let spawn = find_player_spawn(&ground, GridPoint {
@@ -283,6 +295,17 @@ async fn main() {
         y: f64::from(PREVIEW_CENTRE.y),
     });
     let mut player = create_player(&ground, GridPoint { x: spawn.x, y: spawn.y });
+
+    // Camera state: where it looks (the level under the player, eased when that changes) and the
+    // centre it has eased to, started on the spawn so the first frame is not a swoop across the
+    // world.
+    let spawned = get_player_render_position(&player, 1.0);
+    let mut camera_focus = CameraFocus::new(&spawned);
+    let mut camera = Camera {
+        x: spawned.x,
+        y: spawned.y,
+        zoom: 1.0,
+    };
 
     let mut show_terrain = true;
     let mut last_save = get_time();
@@ -390,19 +413,50 @@ async fn main() {
         // and it looked like the game ran at a fraction of its real frame rate.
         let rp = get_player_render_position(&player, stepper.interpolation_alpha());
 
-        // The camera and the projection origin follow that same interpolated position, so the
-        // player, the terrain and the entities all move as one.
+        // The camera sits on that same interpolated position, and the projection origin follows the
+        // camera, so the player, the terrain and the entities all move as one.
+        //
+        // Only the height it looks at is smoothed, and it is smoothed on its own, outside the
+        // camera's centre. That is the whole of this view's camera motion, and the two halves of
+        // the choice were each measured against the other client:
+        //
+        // * The height has to be smoothed. Reading it straight off the player moved the whole world
+        //   a full elevation step on the one frame the player changed level, and let every tick of a
+        //   fall or a climb through unsmoothed. `CameraFocus` is the other client's answer
+        //   (the `ground()` closure of `createPlayerView()`): it holds the level at the top the
+        //   player stands on, does not let a jump bob it, follows the feet down a fall, and rises
+        //   onto a higher top it did not climb to on a climb's own curve.
+        // * The ground motion must not be. The other client eases its centre onto the point it
+        //   looks at as well (`followCamera()`, half the distance left every 90 ms), and that lag is
+        //   the one thing the player is drawn against, so every change in its own speed reads as the
+        //   player sliding across the screen: it hopped a third of a block on a step up (±32 px) and
+        //   two thirds on a step down, and during a climb it shot about 50 px the way it was
+        //   climbing and drifted back. The player's own position is already interpolated every
+        //   frame, so easing it again buys nothing.
+        // * The height is smoothed twice over, and the second one is a spring
+        //   ([`CAMERA_LEVEL_SMOOTH_MS`]). The level a camera aims at is as abrupt as the feet it
+        //   follows, which accelerate under gravity and stop dead the frame the player lands, and
+        //   the view arrives with a knock; smoothing rounds that off, at the price of the player
+        //   drifting by whatever the smoothing is behind by. It is a critically damped spring and
+        //   not a half-life chase because a chase answers at full speed, which puts a corner at the
+        //   start of every move, and a short move — half a block of sand — is mostly made of that
+        //   start. That constant's own documentation has the measured trade-off and is the one place
+        //   to turn it.
+        // So the centre is the player's column itself, and the level is added to the projection's
+        // origin: the same shift `ground_point_below()` makes along both axes, without a lag of its
+        // own. On screen the player then holds its place while the world moves under it, and the
+        // only thing that moves it is a change of level, on the eased curve.
         camera.x = rp.x;
         camera.y = rp.y;
-        let projection = ProjectionConfig {
-            tile_width: PREVIEW_TILE_WIDTH,
-            tile_height: PREVIEW_TILE_HEIGHT,
-            elevation_step: Some(PREVIEW_ELEVATION_STEP),
-            // Derived from the tile size, not written out: with the numbers inlined, changing
-            // `PREVIEW_TILE_WIDTH` moved the world under the player instead of zooming.
-            origin_x: f64::from(width / 2.0) - (rp.x - rp.y) * (PREVIEW_TILE_WIDTH / 2.0),
-            origin_y: f64::from(height / 2.0 + 50.0) + (rp.x + rp.y) * (PREVIEW_TILE_HEIGHT / 2.0),
-        };
+        let level = camera_focus.advance(&rp, player.motion, frame_ms, CAMERA_LEVEL_SMOOTH_MS);
+        // Derived from the tile size, not written out: with the numbers inlined, changing
+        // `PREVIEW_TILE_WIDTH` moved the world under the player instead of zooming.
+        let projection = preview_projection(
+            f64::from(width / 2.0) - (camera.x - camera.y) * (PREVIEW_TILE_WIDTH / 2.0),
+            f64::from(height / 2.0 + 50.0)
+                + (camera.x + camera.y) * (PREVIEW_TILE_HEIGHT / 2.0)
+                + level * PREVIEW_ELEVATION_STEP,
+        );
 
         // Tick streaming, then give any chunk the archive already holds its stored contents back
         // instead of the freshly generated ones.
