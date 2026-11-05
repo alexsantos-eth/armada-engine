@@ -47,6 +47,18 @@ Abrir `http://127.0.0.1:8765/web/`. El servidor debe iniciarse en `iso-core/` pa
 
 La muestra genera cuatro chunks al arrancar. Flechas o WASD mueven el marcador en pantalla; el clic lo sitúa sobre el plano del mundo. `T` alterna entre terreno y rejilla. En localhost, la página añade un parámetro a la URL del WASM para cargar la compilación más reciente al recargar.
 
+Para desplegar en Netlify sin Rust/Cargo en el entorno de build, el repositorio conserva el WASM
+publicado en `public/iso-core/iso-core.wasm`. El build Node copia el contenido Rust a
+`public/iso-core/content/` y Vite publica ambos bajo `dist/iso-core/`. Después de cambiar el
+cliente Rust, regenera y sincroniza el artefacto desde la raíz:
+
+```sh
+pnpm build:wasm
+pnpm build
+```
+
+Netlify solo necesita ejecutar `pnpm build`; no necesita instalar Rust.
+
 En esta máquina, el SDK de Command Line Tools macOS 27 falla al enlazar con el clang instalado. `run-native.sh` selecciona el SDK 26.5 instalado si se ejecuta en macOS y `SDKROOT` no está definido; en otros entornos deja la selección de SDK intacta. También se puede ejecutar Cargo directamente con `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk cargo run --locked`. Es un ajuste del entorno local, no una dependencia del proyecto.
 
 ## Referencia para el port

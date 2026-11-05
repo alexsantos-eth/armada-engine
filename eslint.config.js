@@ -36,7 +36,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["**/*.js"],
+    files: ["**/*.js", "**/*.mjs"],
     extends: [tseslint.configs.disableTypeChecked],
   },
   // Last: turns off stylistic rules that would fight Prettier's output.

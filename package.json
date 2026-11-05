@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build:wasm": "cargo build --manifest-path iso-core/Cargo.toml --release --target wasm32-unknown-unknown --locked && node scripts/sync-rust-web-assets.mjs --wasm",
+    "build:web-assets": "node scripts/sync-rust-web-assets.mjs",
+    "build": "pnpm build:web-assets && tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:migration": "vitest run src/isometric/core/engine/flow-check/contracts.test.ts src/isometric/core/engine/domain/index.test.ts",
