@@ -43,7 +43,7 @@ cargo build --release --target wasm32-unknown-unknown --locked
 python3 -m http.server 8765 --bind 127.0.0.1
 ```
 
-Abrir `http://127.0.0.1:8765/web/`. El servidor debe iniciarse en `iso-core/` para que la página encuentre `target/wasm32-unknown-unknown/release/iso-core.wasm`. No abrir el HTML con `file://`. La página carga el puente JavaScript oficial de Macroquad desde `not-fl3.github.io`; antes de publicar, incluir una copia versionada junto a los assets del juego y fijar sus cabeceras de caché. El artefacto WASM de esta demo ocupa aproximadamente 614 KiB antes de compresión.
+Abrir `http://127.0.0.1:8765/web/`. El servidor debe iniciarse en `iso-core/` para que la página encuentre `target/wasm32-unknown-unknown/release/iso-core.wasm`. No abrir el HTML con `file://`. La página carga el puente JavaScript oficial de Macroquad desde `not-fl3.github.io` y registra en su import `env` las operaciones de `localStorage`; antes de publicar, incluir una copia versionada del puente junto a los assets del juego y fijar sus cabeceras de caché. El cliente no usa `web-sys`, porque su glue code de `wasm-bindgen` no es compatible con el cargador raw de Macroquad. El artefacto WASM de esta demo ocupa aproximadamente 614 KiB antes de compresión.
 
 La muestra genera cuatro chunks al arrancar. Flechas o WASD mueven el marcador en pantalla; el clic lo sitúa sobre el plano del mundo. `T` alterna entre terreno y rejilla. En localhost, la página añade un parámetro a la URL del WASM para cargar la compilación más reciente al recargar.
 

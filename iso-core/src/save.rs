@@ -3,35 +3,54 @@
 //! On native targets the save file lives next to the executable. On WebAssembly the file
 //! system is unavailable, so the save persists in `window.localStorage` under the same key.
 
-use armada_core::world::{ChunkArchive, WorldSave, parse_world_save};
 use armada_core::world::ChunkManager;
+use armada_core::world::{ChunkArchive, WorldSave, parse_world_save};
 
 const SAVE_PATH: &str = "armada_save.json";
+
+#[cfg(target_arch = "wasm32")]
+#[link(wasm_import_module = "env")]
+unsafe extern "C" {
+    fn armada_storage_get(
+        key_ptr: *const u8,
+        key_len: usize,
+        output_ptr: *mut u8,
+        output_capacity: usize,
+    ) -> isize;
+    fn armada_storage_set(
+        key_ptr: *const u8,
+        key_len: usize,
+        value_ptr: *const u8,
+        value_len: usize,
+    ) -> i32;
+}
 
 /// Reads a JSON string from `window.localStorage` on WASM.
 #[cfg(target_arch = "wasm32")]
 fn local_storage_get(key: &str) -> Option<String> {
-    web_sys::window()
-        .and_then(|win| win.local_storage().ok().flatten())
-        .and_then(|store| store.get_item(key).ok().flatten())
+    const OUTPUT_CAPACITY: usize = 32 * 1024 * 1024;
+    let mut output = Vec::with_capacity(OUTPUT_CAPACITY);
+    let length = unsafe {
+        armada_storage_get(
+            key.as_ptr(),
+            key.len(),
+            output.as_mut_ptr(),
+            OUTPUT_CAPACITY,
+        )
+    };
+    if length < 0 || length as usize > OUTPUT_CAPACITY {
+        return None;
+    }
+    unsafe {
+        output.set_len(length as usize);
+    }
+    String::from_utf8(output).ok()
 }
 
 /// Writes a JSON string to `window.localStorage` on WASM.
 #[cfg(target_arch = "wasm32")]
 fn local_storage_set(key: &str, value: &str) -> bool {
-    web_sys::window()
-        .and_then(|win| win.local_storage().ok().flatten())
-        .map(|store| store.set_item(key, value).is_ok())
-        .unwrap_or(false)
-}
-
-/// Removes a key from `window.localStorage` on WASM.
-#[cfg(target_arch = "wasm32")]
-fn local_storage_remove(key: &str) -> bool {
-    web_sys::window()
-        .and_then(|win| win.local_storage().ok().flatten())
-        .map(|store| store.remove_item(key).is_ok())
-        .unwrap_or(false)
+    unsafe { armada_storage_set(key.as_ptr(), key.len(), value.as_ptr(), value.len()) != 0 }
 }
 
 /// Tries to load a save file from disk. Returns `None` on any error or when running on WASM.
@@ -58,12 +77,9 @@ pub fn restore_archive(save: Option<WorldSave>) -> ChunkArchive {
     }
 }
 
-/// Persists the archive to disk. No-op on WASM.
+/// Persists the archive to disk or to browser storage on WASM.
 pub fn save_archive(archive: &ChunkArchive) {
-    let save = archive.snapshot(
-        serde_json::json!({}),
-        serde_json::json!({}),
-    );
+    let save = archive.snapshot(serde_json::json!({}), serde_json::json!({}));
     // Compact, not pretty: nobody reads a save by hand, and the indentation was 60% of the file
     // (16.6 MB vs 6.6 MB for 25 chunks). Serializing it is pure main-thread time.
     let json = match serde_json::to_string(&save) {
@@ -96,10 +112,7 @@ pub fn load_archive_into_manager(
     archive: &ChunkArchive,
 ) -> Vec<String> {
     // Reconstruct a WorldSave from the archive to feed load_from_save.
-    let save = archive.snapshot(
-        serde_json::json!({}),
-        serde_json::json!({}),
-    );
+    let save = archive.snapshot(serde_json::json!({}), serde_json::json!({}));
     manager.load_from_save(&save)
 }
 

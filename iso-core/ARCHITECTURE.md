@@ -233,7 +233,7 @@ Estos módulos consumen estado y parámetros del dominio para presentar luz ambi
 
 ### `web` y almacenamiento (previstos)
 
-`web/` aloja el cargador WASM, recursos y puente mínimo con el navegador. La persistencia web implementa una interfaz de almacenamiento usada por `save`; una implementación nativa puede usar archivos sin cambiar el formato lógico. Los errores de carga y guardado se muestran al usuario. Probar un guardado y recuperación reales en navegador, incluido cierre y reapertura de la página.
+`web/` aloja el cargador WASM, recursos y puente mínimo con el navegador. El cargador raw de Macroquad recibe las operaciones de `localStorage` mediante imports propios de `env`; no se usa `web-sys` ni glue code de `wasm-bindgen`, porque el bundle de Macroquad no instancia ese ABI. La persistencia web implementa una interfaz de almacenamiento usada por `save`; una implementación nativa puede usar archivos sin cambiar el formato lógico. Los errores de carga y guardado se muestran al usuario. Probar un guardado y recuperación reales en navegador, incluido cierre y reapertura de la página.
 
 ## Prácticas de código y documentación
 
