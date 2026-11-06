@@ -4,12 +4,12 @@ import { constants } from "node:fs";
 import process from "node:process";
 
 const root = resolve(import.meta.dirname, "..");
-const contentSource = resolve(root, "iso-core", "content");
-const publicRoot = resolve(root, "public", "iso-core");
+const contentSource = resolve(root, "lib", "content");
+const publicRoot = resolve(root, "public", "lib");
 const contentDestination = resolve(publicRoot, "content");
 const wasmSource = resolve(
   root,
-  "iso-core",
+  "lib",
   "target",
   "wasm32-unknown-unknown",
   "release",

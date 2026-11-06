@@ -16,7 +16,7 @@ Para el render, usa lo que PixiJS ya resuelve antes que código propio (tabla en
 
 Las dependencias entre módulos están fijadas en `engine/flow-check/architecture.test.ts` (tabla en `ARCHITECTURE.md`). Si un módulo nuevo necesita otra dependencia, añádela a esa tabla de forma explícita y justificada; un módulo nuevo debe aparecer en ella o el test falla.
 
-Las decisiones de profundidad, capa, columnas de poses y prioridad de hojas del jugador se implementan en `engine/scene-order` como datos puros; `render`, `scene` y `player-view` las consumen. Si cambias esas reglas, actualiza el fixture compartido `engine/flow-check/contracts.v1.json` y ejecuta `pnpm test:migration` y las pruebas Rust de `iso-core`. No introduzcas objetos Pixi en `scene-order`.
+Las decisiones de profundidad, capa, columnas de poses y prioridad de hojas del jugador se implementan en `engine/scene-order` como datos puros; `render`, `scene` y `player-view` las consumen. Si cambias esas reglas, actualiza el fixture compartido `engine/flow-check/contracts.v1.json` y ejecuta `pnpm test:migration` y las pruebas Rust de `lib` (paquete `iso-core`). No introduzcas objetos Pixi en `scene-order`.
 
 La sombra de nubes vive en `engine/cloud-shadows` y usa un solo `TilingSprite` de Pixi sobre el viewport. Para cambiar la forma, el tamaño o el reparto de las nubes, edita `artifacts/cloud_shadow.py` y ejecútalo (`python3 artifacts/cloud_shadow.py`), que reescribe `public/assets/cloud-shadow.svg`; no edites el SVG a mano. Las nubes se hacen de rombos de media casilla para seguir la estética vóxel de los assets: no vuelvas a degradados ni elipses. Para cambiar velocidad u opacidad, usa las constantes de `cloud-shadows.ts`; si cambias las unidades por casilla del SVG, cambia también `CLOUD_SHADOW_TILE_UNITS`. Comprueba el efecto durante panorámica, zoom y `?modules=-cloud-shadows`; no generes una sombra por tile ni invalides los mapas de sombra horneados para animarla.
 
@@ -42,9 +42,9 @@ Todo archivo de `src` lleva su test al lado, incluidos los que solo declaran tip
 
 ## Determinismo
 
-Para preparar la migración a Rust, ejecuta `pnpm test:migration`: compara los contratos conservados de coordenadas, proyección, rutas, locomoción y paso fijo con `core/engine/flow-check/contracts.v1.json`, y comprueba que la entrada `core/engine/domain` no arrastre render, UI ni audio. Esos fixtures se cambian solo si se decide cambiar explícitamente uno de esos contratos. La generación de terreno y la colocación de entidades de la nueva implementación se podrán rediseñar; compruébalas con propiedades del mundo nuevo, no con igualdad frente a una semilla TypeScript. La [fase 0 del port Rust](iso-core/README.md) contiene los comandos Cargo y WASM y la referencia visual de PixiJS.
+Para preparar la migración a Rust, ejecuta `pnpm test:migration`: compara los contratos conservados de coordenadas, proyección, rutas, locomoción y paso fijo con `core/engine/flow-check/contracts.v1.json`, y comprueba que la entrada `core/engine/domain` no arrastre render, UI ni audio. Esos fixtures se cambian solo si se decide cambiar explícitamente uno de esos contratos. La generación de terreno y la colocación de entidades de la nueva implementación se podrán rediseñar; compruébalas con propiedades del mundo nuevo, no con igualdad frente a una semilla TypeScript. La [fase 0 del port Rust](lib/README.md) contiene los comandos Cargo y WASM y la referencia visual de PixiJS.
 
-Para comprobar el primer corte Rust, desde `iso-core/` ejecuta `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace --locked` y `cargo build --release --target wasm32-unknown-unknown --locked`. En esta máquina macOS, ante el error de enlace con el SDK 27, fija `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk` para los comandos Cargo. Los tests de `armada-core` comparan `grid` y proyección con el fixture TypeScript y sus bordes.
+Para comprobar el primer corte Rust, desde `lib/` ejecuta `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace --locked` y `cargo build --release --target wasm32-unknown-unknown --locked`. En esta máquina macOS, ante el error de enlace con el SDK 27, fija `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk` para los comandos Cargo. Los tests de `iso` comparan `grid` y proyección con el fixture TypeScript y sus bordes.
 
 Los [contratos de datos V2](V2_DATA_CONTRACTS.md) están en `content/entities.v2.json` y `world/save-v2.ts`, con tests co-localizados. Edita el catálogo JSON para contenido nuevo; `entities.ts` sigue sirviendo al juego PixiJS. Si cambia el formato, incrementa `schemaVersion` y actualiza su validador, los tests y la documentación. El archivo V2 de guardado debe conservar el contenido de todo chunk descubierto aunque la escena lo descargue.
 
@@ -110,7 +110,7 @@ pnpm build
 `pnpm lint` ejecuta ESLint (`eslint.config.js`: reglas recomendadas de typescript-eslint con información de tipos, imports de tipo en línea y `eqeqeq`) y debe terminar sin errores; corrige el código en lugar de desactivar reglas. El formato lo decide Prettier (`.prettierrc.json`, `.prettierignore`): `pnpm format` reescribe todo el proyecto y `pnpm format:check` lo comprueba; ESLint incluye `eslint-config-prettier` al final para no chocar con él. Los commits y el push a la rama `iso` solo se hacen al invocar la skill `armada-commit`, que valida todo esto antes.
 
 El build web de producción (`pnpm build`) es Node-only: sincroniza los assets Rust y usa el
-WASM versionado en `public/iso-core/iso-core.wasm`, por lo que Netlify no necesita Cargo.
+WASM versionado en `public/lib/iso-core.wasm`, por lo que Netlify no necesita Cargo.
 Después de cambiar el cliente Rust, ejecuta `pnpm build:wasm` antes de validar el build web.
 
 Las APIs públicas y los tipos deben tener comentarios TSDoc concisos.

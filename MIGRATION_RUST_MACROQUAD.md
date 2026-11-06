@@ -17,7 +17,7 @@ Migrar el juego de TypeScript, PixiJS y Preact a un núcleo de Rust y un cliente
 ## Arquitectura objetivo
 
 ```text
-armada-core (crate Rust, sin Macroquad)
+iso (crate Rust, sin Macroquad)
   tipos, rejilla, generación, entidades, mundo, partes, jugador, tiempo,
   simulación, cámara geométrica, proyección y cálculos de luz
         │
@@ -45,7 +45,7 @@ El núcleo recibe entrada, tiempo transcurrido y una fuente de generación confi
 
 **Trabajo.** Portar los contratos públicos que se conservarán y sus tests como pruebas Rust. Comparar salidas de coordenadas, rutas y proyección con fixtures de TypeScript. Definir explícitamente enteros, redondeo, orden estable, operaciones de bits y precisión de coma flotante. El PRNG actual solo se porta si otro sistema lo necesita; no se requiere para reproducir mundos anteriores.
 
-**Salida.** `armada-core` compila sin Macroquad y supera las pruebas de los contratos conservados de esta capa.
+**Salida.** `iso` compila sin Macroquad y supera las pruebas de los contratos conservados de esta capa.
 
 ### 2. Migrar generación, mundo y simulación
 
@@ -59,7 +59,7 @@ El núcleo recibe entrada, tiempo transcurrido y una fuente de generación confi
 
 **Orden.** Bucle de frame y entrada básica → cámara y culling → terreno y caminos → entidades → jugador y animación básica.
 
-**Trabajo.** Desarrollar el cliente `iso-core` sobre `crates/armada-core`, manteniendo carpetas por responsabilidad como en el motor actual: `game` para composición, `input`, `scene`, `render` y vistas separadas para terreno, entidades y jugador. Mantener el paso de simulación fijo y dibujar con interpolación. Adaptar `scene` a una lista de comandos de dibujo con profundidad y capas, conservando el orden de terreno, sombras, objetos y jugador. Llevar la carga/descarga de chunks con presupuesto por frame. Convertir los SVG actuales fuera del runtime a atlas rasterizados y metadatos de frames, escala, anclajes y variantes; comprobar especialmente `data-tiles`, proporciones isométricas y orientaciones. No depender de que Macroquad rasterice SVG en tiempo de ejecución.
+**Trabajo.** Desarrollar el cliente en `lib/` (paquete `iso-core`) sobre `crates/iso`, manteniendo carpetas por responsabilidad como en el motor actual: `game` para composición, `input`, `scene`, `render` y vistas separadas para terreno, entidades y jugador. Mantener el paso de simulación fijo y dibujar con interpolación. Adaptar `scene` a una lista de comandos de dibujo con profundidad y capas, conservando el orden de terreno, sombras, objetos y jugador. Llevar la carga/descarga de chunks con presupuesto por frame. Convertir los SVG actuales fuera del runtime a atlas rasterizados y metadatos de frames, escala, anclajes y variantes; comprobar especialmente `data-tiles`, proporciones isométricas y orientaciones. No depender de que Macroquad rasterice SVG en tiempo de ejecución.
 
 **Salida.** Se puede recorrer un mundo infinito en nativo y WASM con cámara, jugador, terreno, caminos y entidades. Capturas de referencia revisadas en ambos destinos.
 
