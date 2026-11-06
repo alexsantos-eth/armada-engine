@@ -60,8 +60,8 @@ fn the_mask_is_the_atlas_reduced_and_keeps_solid_areas_solid() {
 
     // The left half of the artwork is solid, the right half empty: averaging a block of opaque
     // texels must come back fully opaque rather than a sixteenth short.
-    assert!((masks.alpha_at(index, 0.1, 0.5) - 1.0).abs() < 1e-9);
-    assert_eq!(masks.alpha_at(index, 0.9, 0.5), 0.0);
+    assert!((masks.silhouette_of(index).map_or(0.0, |mask| mask.at(0.1, 0.5)) - 1.0).abs() < 1e-9);
+    assert_eq!(masks.silhouette_of(index).map_or(0.0, |mask| mask.at(0.9, 0.5)), 0.0);
 }
 
 #[test]
@@ -72,8 +72,8 @@ fn sampling_outside_the_artwork_reads_nothing() {
     );
     let index = masks.index_of("/assets/tree/block.svg").unwrap();
 
-    assert_eq!(masks.alpha_at(index, -0.1, 0.5), 0.0);
-    assert_eq!(masks.alpha_at(index, 0.5, 1.4), 0.0);
+    assert_eq!(masks.silhouette_of(index).map_or(0.0, |mask| mask.at(-0.1, 0.5)), 0.0);
+    assert_eq!(masks.silhouette_of(index).map_or(0.0, |mask| mask.at(0.5, 1.4)), 0.0);
 }
 
 #[test]
@@ -81,7 +81,7 @@ fn an_unknown_silhouette_reads_nothing_instead_of_panicking() {
     let masks = SilhouetteMasks::from_image(&chequered(), &manifest(&[]));
 
     assert_eq!(masks.index_of("/assets/tree/block.svg"), None);
-    assert_eq!(masks.alpha_at(7, 0.5, 0.5), 0.0);
+    assert_eq!(masks.silhouette_of(7).map_or(0.0, |mask| mask.at(0.5, 0.5)), 0.0);
 }
 
 #[test]

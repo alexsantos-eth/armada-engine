@@ -26,12 +26,23 @@ use super::terrain::{HeightField, Horizon};
 
 /// Texels of a shadow map per tile of world.
 ///
-/// The TypeScript client bakes at 24 so a whole chunk and its blur stay inside one 1024-texel
-/// render texture. Here the map is a plain image, so the number is only about memory and
-/// sharpness: twelve texels a tile keeps a 32-column chunk with its margin at 408 texels square
-/// (666 KB as RGBA) and still resolves a trunk, and dawn's shadows are long and soft rather than
-/// detailed.
-pub const SHADOW_MAP_PIXELS_PER_TILE: u32 = 12;
+/// This is a shadow's own detail: a tile is a few hundred pixels wide on screen, so at twelve
+/// texels a tile a tree's crown landed as one soft blob, and at twenty-four its leaves were
+/// still a straight edge seen from close up. The TypeScript client bakes at 24 because that is
+/// as far as a chunk and its blur fit in one 1024-texel render texture; here the map is a plain
+/// image, so the number is only memory and time, and the ceiling is instead the silhouettes it
+/// samples ([`Silhouette`]), which the client keeps at 80 texels a tile.
+///
+/// Thirty-six keeps a 32-column chunk with its margin at 1224 texels square (1.4 MB of
+/// coverage, a scratch buffer the client reuses chunk after chunk) and a bake at about twice
+/// what twenty-four cost: forty-eight was tried and gives a visibly harder edge again, but its
+/// bake is twice this one and it was judged not worth the hitch when a chunk streams in.
+///
+/// Nothing in the bake scales with this that did not have to: the walk back to the sun is a
+/// rate over the world ([`TERRAIN_SAMPLES_PER_TILE`]), the horizon and the silhouette are
+/// carried along each row rather than worked out per texel, and the blur runs along the rows
+/// the map is stored in.
+pub const SHADOW_MAP_PIXELS_PER_TILE: u32 = 36;
 
 /// Tiles a chunk's map reaches past the chunk on every side, so the blur of a shadow crossing a
 /// chunk edge does not fade at the edge of the map.
@@ -39,8 +50,10 @@ pub const SHADOW_MAP_MARGIN: i32 = 1;
 
 /// Radius of the box blur the bake finishes with, in texels: the penumbra.
 ///
-/// The TypeScript client blurs by 1.2 texels at 24 texels a tile. One texel at twelve is the
-/// same width of world, and a radius of one is the cheapest blur there is.
+/// One texel, and the sharpest penumbra the map can draw. The TypeScript client blurs 1.2 texels
+/// at 24 a tile, half as much world again as this: a shadow here has a harder edge, which is
+/// the point of baking finer than 24. Raising it would give that back and cost the lattice its
+/// thinning, because a wider penumbra is a gentler ramp but over more texels.
 pub const SHADOW_BLUR_TEXELS: u32 = 1;
 
 /// Rectangle of columns a map covers, inclusive.
@@ -168,9 +181,58 @@ impl ShadowMap {
 /// How far a receiving column's drawn top lies, in blocks; `None` where there is no column.
 pub type ReceivingLevel<'a> = &'a dyn Fn(i32, i32) -> Option<f64>;
 
-/// Coverage in `[0, 1]` of silhouette `index` at `(u, v)`, both in `[0, 1]` over the sprite's
-/// own artwork: `(0, 0)` is its top left corner.
-pub type SilhouetteAlpha<'a> = &'a dyn Fn(u32, f64, f64) -> f64;
+/// One caster's silhouette: the plane of coverage it lives in, and its own box inside it.
+///
+/// The bake is handed the plane rather than asked for a texel at a time, because at 36 texels a
+/// tile one tree is a few hundred thousand questions and the answer is a byte out of a slice.
+/// A client keeps every silhouette in one plane (the whole atlas, reduced), so this borrows that
+/// plane and says where in it the artwork sits — `left`/`top` is where `(0, 0)` of the artwork
+/// lands and `right`/`bottom` where `(1, 1)` does, both in plane texels.
+#[derive(Clone, Copy, Debug)]
+pub struct Silhouette<'a> {
+    /// The plane, row by row, one byte of coverage per texel.
+    pub alpha: &'a [u8],
+    /// Texels per row of the plane, and how many rows it has.
+    pub stride: u32,
+    pub rows: u32,
+    pub left: f64,
+    pub top: f64,
+    pub right: f64,
+    pub bottom: f64,
+}
+
+impl Silhouette<'_> {
+    /// Coverage in `[0, 1]` at `(u, v)`, both in `[0, 1]` over the artwork, `(0, 0)` being its
+    /// top left corner. Zero outside it.
+    pub fn at(&self, u: f64, v: f64) -> f64 {
+        if !(0.0..=1.0).contains(&u) || !(0.0..=1.0).contains(&v) {
+            return 0.0;
+        }
+        self.at_texel(self.left + u * (self.right - self.left), self.top + v * (self.bottom - self.top))
+    }
+
+    /// Coverage at a place already in plane texels, which is how the bake walks it: the place
+    /// moves by a fixed step per texel of map, so it is carried rather than worked out again.
+    pub fn at_texel(&self, x: f64, y: f64) -> f64 {
+        // Nearest texel: the frames of two sprites touch in a packed atlas, so a sample that ran
+        // over the edge would read the neighbouring artwork.
+        let (x, y) = (x.floor(), y.floor());
+        if x < 0.0 || y < 0.0 {
+            return 0.0;
+        }
+        let (x, y) = (x as u32, y as u32);
+        if x >= self.stride || y >= self.rows {
+            return 0.0;
+        }
+        f64::from(self.alpha[(y * self.stride + x) as usize]) / 255.0
+    }
+}
+
+/// The silhouette a caster's index names, or `None` for one the client has no artwork for.
+///
+/// The plane's own lifetime is kept apart from the borrow of the lookup, so a client whose
+/// masks outlive the bake — all of them do — can hand over a closure made on the spot.
+pub type SilhouetteOf<'a, 'plane> = &'a dyn Fn(u32) -> Option<Silhouette<'plane>>;
 
 /// Bakes `casters` into `map`, then blurs it.
 ///
@@ -189,11 +251,11 @@ pub fn bake_ground_shadows(
     tile_width: f64,
     box_height: f64,
     level_at: ReceivingLevel<'_>,
-    alpha_at: SilhouetteAlpha<'_>,
+    silhouette_of: SilhouetteOf<'_, '_>,
 ) {
     let mut levels = LevelCache::new(map.area, level_at);
     for caster in casters {
-        lay_caster(map, caster, light, tile_width, box_height, &mut levels, alpha_at);
+        lay_caster(map, caster, light, tile_width, box_height, &mut levels, silhouette_of);
     }
     if let Some(ground) = ground {
         lay_terrain(map, ground, light, tile_width, box_height, &levels);
@@ -206,14 +268,38 @@ pub fn bake_ground_shadows(
     clear_columns_without_ground(map, &levels);
 }
 
-/// How many texels apart the ground's horizon is asked about.
+/// The steps `0..=steps` of a walk starting at `from` and moving by `step` that stay in
+/// `[low, high]`, or `None` when none of them do.
+fn within(from: f64, step: f64, low: f64, high: f64, steps: u32) -> Option<(u32, u32)> {
+    if step == 0.0 {
+        return (from >= low && from <= high).then_some((0, steps));
+    }
+    let (a, b) = ((low - from) / step, (high - from) / step);
+    let (a, b) = if step > 0.0 { (a, b) } else { (b, a) };
+    let first = a.max(0.0).ceil();
+    let last = b.min(f64::from(steps)).floor();
+    (first <= last).then_some((first as u32, last as u32))
+}
+
+/// The steps both runs hold, or `None` when they share none.
+fn meet(one: (u32, u32), other: (u32, u32)) -> Option<(u32, u32)> {
+    let run = (one.0.max(other.0), one.1.min(other.1));
+    (run.0 <= run.1).then_some(run)
+}
+
+/// How often across a tile the ground's horizon is asked about.
 ///
 /// The walk back to the sun is the expensive part of a bake, and a horizon moves slowly: it
 /// changes where a cliff's edge crosses, and that edge is soft to begin with
-/// ([`Horizon::width`]). Asking every third of a tile and reading between the answers costs a
-/// sixteenth of asking every texel and is not told apart on screen. Must divide
-/// [`SHADOW_MAP_PIXELS_PER_TILE`], so that a column's own corners are always asked directly.
-const TERRAIN_SAMPLE_TEXELS: u32 = 4;
+/// ([`Horizon::width`]). Asking three times a tile and reading between the answers costs a
+/// sixteenth of asking every texel and is not told apart on screen.
+///
+/// This is a rate over the **world**, not over the map, so sharpening the map
+/// ([`SHADOW_MAP_PIXELS_PER_TILE`]) does not drag the walk along with it: the ground's own
+/// shadow is already as soft as its horizon and gains nothing from more samples, while a
+/// sprite's silhouette gains everything. Must divide [`SHADOW_MAP_PIXELS_PER_TILE`], so that a
+/// column's own corners are always asked directly.
+const TERRAIN_SAMPLES_PER_TILE: u32 = 3;
 
 /// Lays the shadow the ground casts on itself over every texel.
 ///
@@ -233,7 +319,7 @@ fn lay_terrain(
         return;
     }
     let per_tile = f64::from(map.pixels_per_tile);
-    let step = TERRAIN_SAMPLE_TEXELS.max(1);
+    let step = (map.pixels_per_tile / TERRAIN_SAMPLES_PER_TILE.max(1)).max(1);
     let (across, down) = (map.width.div_ceil(step) + 1, map.height.div_ceil(step) + 1);
     let mut lattice = Vec::with_capacity((across * down) as usize);
     for row in 0..down {
@@ -250,8 +336,15 @@ fn lay_terrain(
     // corner from another column is not read at all — the texel takes the value of the corner
     // on its own side instead.
     let column_of = |corner: u32| (corner * step) / map.pixels_per_tile;
-    // Kept inside the texel's own column on one axis, which may collapse the pair of corners.
-    let keep = |low: u32, span: u32, own: u32, t: f64| {
+    // Which pair of lattice corners a texel reads on one axis, and how far between them.
+    //
+    // This is worked out once for each of a column's rows and once for each of its columns of
+    // texels, not once per texel: a map texel asks nothing of the other axis, so the square of
+    // a column needs `2 * pixels_per_tile` of this and not `pixels_per_tile²`. At 24 texels a
+    // tile that is the difference between 48 divisions and 576.
+    let blend = |texel: u32, span: u32, own: u32| {
+        let low = texel / step;
+        let t = f64::from(texel % step) / f64::from(step);
         let high = (low + 1).min(span - 1);
         if column_of(low) != own {
             (high, high, 0.0)
@@ -261,40 +354,73 @@ fn lay_terrain(
             (low, high, t)
         }
     };
-    let read = |texel_x: u32, texel_y: u32| -> Horizon {
-        let (fx, fy) = (f64::from(texel_x) / f64::from(step), f64::from(texel_y) / f64::from(step));
-        let (cx, cy) = (fx.floor() as u32, fy.floor() as u32);
-        let (tx, ty) = (fx - f64::from(cx), fy - f64::from(cy));
-        let (x0, x1, tx) = keep(cx, across, texel_x / map.pixels_per_tile, tx);
-        let (y0, y1, ty) = keep(cy, down, texel_y / map.pixels_per_tile, ty);
-        let corner = |x: u32, y: u32| lattice[(y * across + x) as usize];
-        let mix = |a: Horizon, b: Horizon, t: f64| Horizon {
-            elevation: a.elevation + (b.elevation - a.elevation) * t,
-            width: a.width + (b.width - a.width) * t,
-        };
-        // A corner the walk found no ground for stays at minus infinity, and reading towards it
-        // would drag its neighbours down with it; the nearest answer is better than a number.
-        let top = mix(corner(x0, y0), corner(x1, y0), tx);
-        let bottom = mix(corner(x0, y1), corner(x1, y1), tx);
-        if !top.elevation.is_finite() || !bottom.elevation.is_finite() {
-            return corner(if tx >= 0.5 { x1 } else { x0 }, if ty >= 0.5 { y1 } else { y0 });
-        }
-        mix(top, bottom, ty)
+    let mix = |a: Horizon, b: Horizon, t: f64| Horizon {
+        elevation: a.elevation + (b.elevation - a.elevation) * t,
+        width: a.width + (b.width - a.width) * t,
     };
     let width = map.width as usize;
+    let per_tile_texels = map.pixels_per_tile as usize;
+    let mut across_blend = vec![(0u32, 0u32, 0.0f64); per_tile_texels];
     for y in map.area.min_y..=map.area.max_y {
         for x in map.area.min_x..=map.area.max_x {
             let (Some(level), Some((from_x, from_y))) = (levels.at(x, y), map.square_of(x, y))
             else {
                 continue;
             };
-            for texel_y in from_y..from_y + map.pixels_per_tile {
-                for texel_x in from_x..from_x + map.pixels_per_tile {
-                    let coverage = read(texel_x, texel_y).coverage(level);
+            let own_x = from_x / map.pixels_per_tile;
+            for (offset, slot) in across_blend.iter_mut().enumerate() {
+                *slot = blend(from_x + offset as u32, across, own_x);
+            }
+            let own_y = from_y / map.pixels_per_tile;
+            for offset in 0..map.pixels_per_tile {
+                let texel_y = from_y + offset;
+                let (y0, y1, ty) = blend(texel_y, down, own_y);
+                let (top_row, bottom_row) = ((y0 * across) as usize, (y1 * across) as usize);
+                let row = texel_y as usize * width;
+                // Between one pair of lattice corners and the next the horizon is a straight
+                // ramp, so it is worked out at the first texel of each run and then carried
+                // along: four corners and three mixes once a run, two additions a texel. A run
+                // is a whole sample cell, so at three samples a tile that is most of them.
+                let (mut held, mut carried) = ((u32::MAX, u32::MAX), Horizon::CLEAR);
+                let (mut elevation, mut width_of) = (0.0, 0.0);
+                for (across_offset, &(x0, x1, tx)) in across_blend.iter().enumerate() {
+                    if held != (x0, x1) {
+                        held = (x0, x1);
+                        // A corner the walk found no ground for stays at minus infinity, and
+                        // reading towards it would drag its neighbours down with it, so a run
+                        // that touches one is taken corner by corner instead of ramped.
+                        let corners = [
+                            lattice[top_row + x0 as usize],
+                            lattice[top_row + x1 as usize],
+                            lattice[bottom_row + x0 as usize],
+                            lattice[bottom_row + x1 as usize],
+                        ];
+                        carried = if corners.iter().all(|c| c.elevation.is_finite()) {
+                            let at = |t: f64| {
+                                mix(mix(corners[0], corners[1], t), mix(corners[2], corners[3], t), ty)
+                            };
+                            let (low, high) = (at(0.0), at(1.0));
+                            elevation = high.elevation - low.elevation;
+                            width_of = high.width - low.width;
+                            low
+                        } else {
+                            Horizon::CLEAR
+                        };
+                    }
+                    let horizon = if carried.elevation.is_finite() {
+                        Horizon {
+                            elevation: carried.elevation + elevation * tx,
+                            width: carried.width + width_of * tx,
+                        }
+                    } else {
+                        let corner_x = if tx >= 0.5 { x1 } else { x0 } as usize;
+                        lattice[if ty >= 0.5 { bottom_row } else { top_row } + corner_x]
+                    };
+                    let coverage = horizon.coverage(level);
                     if coverage <= 0.0 {
                         continue;
                     }
-                    let index = texel_y as usize * width + texel_x as usize;
+                    let index = row + from_x as usize + across_offset;
                     let value = (coverage * 255.0).round().clamp(0.0, 255.0) as u8;
                     map.alpha[index] = map.alpha[index].max(value);
                 }
@@ -385,12 +511,15 @@ fn lay_caster(
     tile_width: f64,
     box_height: f64,
     levels: &mut LevelCache,
-    alpha_at: SilhouetteAlpha<'_>,
+    silhouette_of: SilhouetteOf<'_, '_>,
 ) {
     let extent = caster.extent;
     if extent.width <= 0.0 || extent.height <= 0.0 || !levels.any() {
         return;
     }
+    let Some(silhouette) = silhouette_of(caster.silhouette) else {
+        return;
+    };
     // Cropped at its own foot: only what stands above the ground casts anything.
     let above_foot = (-extent.top).clamp(0.0, extent.height);
     if above_foot <= 0.0 {
@@ -442,20 +571,44 @@ fn lay_caster(
             else {
                 continue;
             };
+            // Where the silhouette is read moves by the same step for every texel of a row, so
+            // the place walks along with the row instead of being mapped back one by one — and
+            // it walks in the plane's own texels, so the artwork's `u` and `v` never appear:
+            // the box the artwork occupies there is what the bounds are tested against.
+            let (across, down) = (silhouette.right - silhouette.left, silhouette.bottom - silhouette.top);
+            let (step_x, step_y) = (
+                to_sprite.a / f64::from(per_tile) / extent.width * across,
+                to_sprite.b / f64::from(per_tile) / extent.height * down,
+            );
+            let foot_of_standing = silhouette.top + standing / extent.height * down;
             for texel_y in from_y..=to_y {
                 let world_y =
                     f64::from(map.area.min_y) + (f64::from(texel_y) + 0.5) / f64::from(per_tile);
-                for texel_x in from_x..=to_x {
-                    let world_x =
-                        f64::from(map.area.min_x) + (f64::from(texel_x) + 0.5) / f64::from(per_tile);
-                    let (sprite_x, sprite_y) = to_sprite
-                        .apply((world_x - shift * light.dir_x, world_y - shift * light.dir_y));
-                    let u = (sprite_x - extent.left) / extent.width;
-                    let v = (sprite_y - extent.top) / extent.height;
-                    if !(0.0..=1.0).contains(&u) || v < 0.0 || v > standing / extent.height {
-                        continue;
-                    }
-                    let coverage = alpha_at(caster.silhouette, u, v).clamp(0.0, 1.0);
+                let world_x =
+                    f64::from(map.area.min_x) + (f64::from(from_x) + 0.5) / f64::from(per_tile);
+                let (sprite_x, sprite_y) = to_sprite
+                    .apply((world_x - shift * light.dir_x, world_y - shift * light.dir_y));
+                let plane_x = silhouette.left + (sprite_x - extent.left) / extent.width * across;
+                let plane_y = silhouette.top + (sprite_y - extent.top) / extent.height * down;
+                // Which stretch of the row lands on the artwork at all. The shadow is a turned
+                // quadrilateral inside an upright box of texels, so most of the box misses it;
+                // solving for the stretch skips those instead of testing them one by one.
+                let steps = to_x - from_x;
+                let Some((first, last)) =
+                    within(plane_x, step_x, silhouette.left, silhouette.right, steps).and_then(
+                        |run| {
+                            meet(run, within(plane_y, step_y, silhouette.top, foot_of_standing, steps)?)
+                        },
+                    )
+                else {
+                    continue;
+                };
+                let (mut at_x, mut at_y) =
+                    (plane_x + step_x * f64::from(first), plane_y + step_y * f64::from(first));
+                for texel_x in from_x + first..=from_x + last {
+                    let coverage = silhouette.at_texel(at_x, at_y).clamp(0.0, 1.0);
+                    at_x += step_x;
+                    at_y += step_y;
                     if coverage <= 0.0 {
                         continue;
                     }
@@ -579,75 +732,134 @@ fn blur_within_levels(map: &mut ShadowMap, radius: u32, levels: &LevelCache) {
     let (width, height) = (map.width as usize, map.height as usize);
     let span = radius as usize;
     let per_tile = map.pixels_per_tile as usize;
+    debug_assert!(per_tile > 2 * span, "a texel's window must not reach two column edges at once");
     // Whether the two columns either side of a texel boundary are drawn flush with each other,
     // asked once per pair rather than per texel.
     let joined = |a: Option<f64>, b: Option<f64>| matches!((a, b), (Some(a), Some(b)) if a == b);
     // Where the cuts fall depends only on which columns a line crosses, so it is worked out
-    // once per row of columns rather than once per row of texels — twelve times fewer.
-    let mut cuts = vec![false; width.max(height) + 1];
-    let mut row = vec![0u8; width.max(height)];
+    // once per row of columns rather than once per row of texels — as many times fewer as a
+    // tile has texels.
+    let mut cuts = vec![false; width + 1];
+    let mut row = vec![0u8; width];
     for y in 0..height {
         if y % per_tile == 0 {
             let world_y = map.area.min_y + (y / per_tile) as i32;
-            mark_cuts(&mut cuts[..=width], per_tile, |column| {
+            mark_cuts(&mut cuts, per_tile, |column| {
                 let x = map.area.min_x + column as i32;
                 joined(levels.at(x - 1, world_y), levels.at(x, world_y))
             });
         }
-        row[..width].copy_from_slice(&map.alpha[y * width..(y + 1) * width]);
+        row.copy_from_slice(&map.alpha[y * width..(y + 1) * width]);
+        let out = &mut map.alpha[y * width..(y + 1) * width];
+        // The window slides by one texel, so it is carried along the row rather than summed
+        // again at every step, and only the few texels whose window reaches a cut are redone.
+        let mut running: u32 = row[..=span.min(width - 1)].iter().map(|&v| u32::from(v)).sum();
         for x in 0..width {
-            map.alpha[y * width + x] = mean_within(&row[..width], x, span, &cuts[..=width], per_tile);
+            let (from, to) = (x.saturating_sub(span), (x + span).min(width - 1));
+            out[x] = (running / (to - from + 1) as u32) as u8;
+            if x + span + 1 < width {
+                running += u32::from(row[x + span + 1]);
+            }
+            if x >= span {
+                running -= u32::from(row[x - span]);
+            }
+        }
+        for edge in (per_tile..width).step_by(per_tile) {
+            if !cuts[edge] {
+                continue;
+            }
+            let touching = edge.saturating_sub(span)..(edge + span).min(width);
+            for (x, texel) in touching.clone().zip(out[touching].iter_mut()) {
+                let (from, to) = if x < edge {
+                    (x.saturating_sub(span), edge - 1)
+                } else {
+                    (edge, (x + span).min(width - 1))
+                };
+                let total: u32 = row[from..=to].iter().map(|&v| u32::from(v)).sum();
+                *texel = (total / (to - from + 1) as u32) as u8;
+            }
         }
     }
-    for x in 0..width {
-        if x % per_tile == 0 {
-            let world_x = map.area.min_x + (x / per_tile) as i32;
-            mark_cuts(&mut cuts[..=height], per_tile, |column| {
-                let y = map.area.min_y + column as i32;
-                joined(levels.at(world_x, y - 1), levels.at(world_x, y))
-            });
+    blur_down_within_levels(map, span, levels, &joined);
+}
+
+/// The second pass of [`blur_within_levels`], down the map, run a row at a time.
+///
+/// Walking a column of a map steps a whole row through memory per texel, which at 36 texels a
+/// tile throws away a cache line each time; the rows this reads are the rows the map is stored
+/// in. A texel's window is the `2 * span + 1` rows around it, so that many are kept in a ring as
+/// the pass walks down — the originals, because the row being written is one of them.
+///
+/// A cut can only fall on a column edge, and a window is narrower than a column, so a row's
+/// window crosses at most one edge and most rows cross none at all: at 36 texels a tile, 34 of
+/// every 36 rows are a plain mean of three rows with nothing to ask.
+fn blur_down_within_levels(
+    map: &mut ShadowMap,
+    span: usize,
+    levels: &LevelCache,
+    joined: &dyn Fn(Option<f64>, Option<f64>) -> bool,
+) {
+    let (width, height) = (map.width as usize, map.height as usize);
+    let per_tile = map.pixels_per_tile as usize;
+    let keep = 2 * span + 1;
+    let mut ring = vec![vec![0u8; width]; keep];
+    let mut sums = vec![0u32; width];
+    // Which texels of a row may not read across the edge above them. Worked out when the pass
+    // reaches that edge and reused by every row whose window crosses it.
+    let mut cut_above = vec![false; width];
+    let (mut marked, mut loaded) = (usize::MAX, 0usize);
+    for y in 0..height {
+        let to = (y + span).min(height - 1);
+        while loaded <= to {
+            ring[loaded % keep].copy_from_slice(&map.alpha[loaded * width..(loaded + 1) * width]);
+            loaded += 1;
         }
-        for (y, value) in row[..height].iter_mut().enumerate() {
-            *value = map.alpha[y * width + x];
+        let from = y.saturating_sub(span);
+        sums[..width].fill(0);
+        for source in from..=to {
+            let line = &ring[source % keep];
+            for (sum, value) in sums.iter_mut().zip(line.iter()) {
+                *sum += u32::from(*value);
+            }
         }
-        for y in 0..height {
-            map.alpha[y * width + x] = mean_within(&row[..height], y, span, &cuts[..=height], per_tile);
+        let rows = (to - from + 1) as u32;
+        let out = &mut map.alpha[y * width..(y + 1) * width];
+        for (texel, sum) in out.iter_mut().zip(sums.iter()) {
+            *texel = (*sum / rows) as u8;
+        }
+        // The one column edge this row's window might cross, if there is one.
+        let edge = (from / per_tile + 1) * per_tile;
+        if edge > to {
+            continue;
+        }
+        if marked != edge {
+            marked = edge;
+            let world_y = map.area.min_y + (edge / per_tile) as i32;
+            for (x, cut) in cut_above.iter_mut().enumerate() {
+                let world_x = map.area.min_x + (x / per_tile) as i32;
+                *cut = !joined(levels.at(world_x, world_y - 1), levels.at(world_x, world_y));
+            }
+        }
+        let (kept_from, kept_to) = if y < edge { (from, edge - 1) } else { (edge, to) };
+        let rows = (kept_to - kept_from + 1) as u32;
+        for x in 0..width {
+            if !cut_above[x] {
+                continue;
+            }
+            let mut total = 0u32;
+            for source in kept_from..=kept_to {
+                total += u32::from(ring[source % keep][x]);
+            }
+            map.alpha[y * width + x] = (total / rows) as u8;
         }
     }
 }
 
-/// Marks every texel index the blur may not read across: the ends of the line, and each column
-/// boundary `flush` says the two sides are not drawn flush over.
 fn mark_cuts(cuts: &mut [bool], per_tile: usize, flush: impl Fn(usize) -> bool) {
     let last = cuts.len() - 1;
     for (index, cut) in cuts.iter_mut().enumerate() {
         *cut = index == 0 || index == last || (index % per_tile == 0 && !flush(index / per_tile));
     }
-}
-
-/// The mean of `line` over `at ± span`, stopping at the nearest cut on either side.
-///
-/// A cut only ever falls on a column boundary or an end of the line, so a texel further than
-/// `span` from both is blurred by the plain mean without reading `cuts` at all — eleven of every
-/// twelve, which is what keeps the cut from costing a fifth of a bake.
-fn mean_within(line: &[u8], at: usize, span: usize, cuts: &[bool], per_tile: usize) -> u8 {
-    let near = at % per_tile;
-    if at >= span && at + span < line.len() && near > span && near + span < per_tile {
-        return mean(line, at, span);
-    }
-    let mut from = at;
-    while from > at.saturating_sub(span) && !cuts[from] {
-        from -= 1;
-    }
-    let mut to = at;
-    while to < (at + span).min(line.len() - 1) && !cuts[to + 1] {
-        to += 1;
-    }
-    let mut total = 0u32;
-    for value in &line[from..=to] {
-        total += u32::from(*value);
-    }
-    (total / (to - from + 1) as u32) as u8
 }
 
 /// The mean of `line` over `at ± span`, with the ends clamped.

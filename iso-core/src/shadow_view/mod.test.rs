@@ -102,7 +102,7 @@ fn a_clear_grid_asks_for_no_lattice() {
         light.opacity(),
         280.0,
         93.0,
-        &|_, _, _| 1.0,
+        &|_| Some(armada_core::lighting::Silhouette { alpha: &[255], stride: 1, rows: 1, left: 0.0, top: 0.0, right: 0.0, bottom: 0.0 }),
         None,
         SHADE_COLUMNS,
         SHADE_ROWS,
@@ -147,4 +147,38 @@ fn every_terrain_block_is_drawn_at_least_a_whole_cell_wide() {
             ink.width
         );
     }
+}
+
+#[test]
+fn a_lattice_of_one_value_is_thinned_to_its_corners() {
+    let (steps, coverage) = coarsened(8, vec![0.5; 81]);
+
+    assert_eq!(steps, 1, "nothing varies, so four corners draw it exactly");
+    assert_eq!(coverage, vec![0.5; 4]);
+}
+
+#[test]
+fn a_lattice_that_ramps_is_thinned_and_still_reads_the_same() {
+    let steps = 8;
+    let ramp = |corner: u32| f32::from(u8::try_from(corner).unwrap()) / f32::from(steps as u8);
+    let coverage: Vec<f32> =
+        (0..=steps).flat_map(|row| (0..=steps).map(move |column| ramp(row) * ramp(column))).collect();
+
+    let (thinner, kept) = coarsened(steps, coverage);
+
+    assert!(thinner < steps, "a ramp is read back exactly between any two of its corners");
+    assert_eq!(kept.first(), Some(&0.0));
+    assert_eq!(kept.last(), Some(&1.0), "and the far corner is still the far corner");
+}
+
+#[test]
+fn a_lattice_with_detail_between_its_corners_keeps_them_all() {
+    let steps = 8;
+    // A chequer: every other corner is the opposite of the two beside it, which is exactly what
+    // reading between them cannot reproduce.
+    let coverage: Vec<f32> = (0..=steps)
+        .flat_map(|row| (0..=steps).map(move |column| f32::from(u8::from((row + column) % 2 == 0))))
+        .collect();
+
+    assert_eq!(coarsened(steps, coverage.clone()), (steps, coverage));
 }

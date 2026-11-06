@@ -17,6 +17,7 @@
 //! off the GPU; this reads the file instead, because every caster here is in one atlas.
 
 use armada_core::assets::{AssetManifest, InkBox, SpriteFrame};
+use armada_core::lighting::Silhouette;
 use macroquad::prelude::{Image, load_image};
 use std::collections::HashMap;
 
@@ -108,26 +109,27 @@ impl SilhouetteMasks {
         self.by_source.get(source).copied()
     }
 
-    /// Coverage in `[0, 1]` of silhouette `index` at `(u, v)` over its own artwork, `(0, 0)`
-    /// being the artwork's top left corner. Zero outside it, and for an index it does not hold.
-    pub fn alpha_at(&self, index: u32, u: f64, v: f64) -> f64 {
-        if !(0.0..=1.0).contains(&u) || !(0.0..=1.0).contains(&v) {
-            return 0.0;
-        }
-        let Some(frame) = self.frames.get(index as usize) else {
-            return 0.0;
-        };
-        // Nearest texel of the mask, inside the frame: the frames of two sprites touch in the
-        // atlas, so a sample that ran over the edge would read the neighbouring artwork.
+    /// The silhouette of `index` as a window on the one plane every mask lives in, or `None`
+    /// for an index this holds no frame for.
+    ///
+    /// The bake walks the plane itself, so this hands it over once per caster instead of
+    /// answering a texel at a time: the box is where the artwork's own `(0, 0)` and `(1, 1)`
+    /// land in plane texels. The frames of two sprites touch in the atlas, so the far corner is
+    /// the frame's last texel and not the first of the next one.
+    pub fn silhouette_of(&self, index: u32) -> Option<Silhouette<'_>> {
+        let frame = self.frames.get(index as usize)?;
         let scale = f64::from(MASK_SCALE);
-        let x = (f64::from(frame.x) + u * f64::from(frame.width.saturating_sub(1))) / scale;
-        let y = (f64::from(frame.y) + v * f64::from(frame.height.saturating_sub(1))) / scale;
-        let (x, y) = (x.floor().max(0.0) as u32, y.floor().max(0.0) as u32);
-        if x >= self.width || y >= self.height {
-            return 0.0;
-        }
-        f64::from(self.alpha[(y * self.width + x) as usize]) / 255.0
+        Some(Silhouette {
+            alpha: &self.alpha,
+            stride: self.width,
+            rows: self.height,
+            left: f64::from(frame.x) / scale,
+            top: f64::from(frame.y) / scale,
+            right: f64::from(frame.x + frame.width.saturating_sub(1)) / scale,
+            bottom: f64::from(frame.y + frame.height.saturating_sub(1)) / scale,
+        })
     }
+
 }
 
 #[cfg(test)]

@@ -1,4 +1,5 @@
 use super::*;
+use crate::lighting::Silhouette;
 use crate::lighting::bake::{ShadowCaster, SpriteExtent};
 use crate::lighting::shadow::ShadowProjection;
 
@@ -24,8 +25,18 @@ fn receiver(foot: (f64, f64), elevation: f64, height: f64) -> ShadowReceiver {
     ShadowReceiver { foot, elevation, extent: standing(foot, elevation, height) }
 }
 
-fn solid() -> impl Fn(u32, f64, f64) -> f64 {
-    |_, _, _| 1.0
+static OPAQUE: [u8; 4] = [255; 4];
+static CLEAR: [u8; 4] = [0; 4];
+
+fn window(plane: &'static [u8; 4]) -> impl Fn(u32) -> Option<Silhouette<'static>> {
+    move |_| {
+        Some(Silhouette { alpha: plane, stride: 2, rows: 2, left: 0.0, top: 0.0, right: 1.0, bottom: 1.0 })
+    }
+}
+
+/// A silhouette that is opaque everywhere.
+fn solid() -> impl Fn(u32) -> Option<Silhouette<'static>> {
+    window(&OPAQUE)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -33,7 +44,7 @@ fn grid_of(
     receiver: &ShadowReceiver,
     casters: &[ShadowCaster],
     light: &ShadowProjection,
-    alpha: &dyn Fn(u32, f64, f64) -> f64,
+    alpha: &dyn Fn(u32) -> Option<Silhouette<'static>>,
 ) -> Option<ShadeGrid> {
     shade_grid(
         receiver,
@@ -109,7 +120,7 @@ fn a_transparent_caster_shades_nothing() {
     let it = receiver((light.dir_x, light.dir_y), 0.0, 80.0);
     let post = caster((0.0, 0.0), 0.0, 80.0);
 
-    assert_eq!(grid_of(&it, &[post], &light, &|_, _, _| 0.0), None);
+    assert_eq!(grid_of(&it, &[post], &light, &window(&CLEAR)), None);
 }
 
 #[test]

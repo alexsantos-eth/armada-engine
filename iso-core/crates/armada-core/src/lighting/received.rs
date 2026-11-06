@@ -94,7 +94,7 @@ pub fn shade_grid(
     opacity: f64,
     tile_width: f64,
     box_height: f64,
-    alpha_at: super::bake::SilhouetteAlpha<'_>,
+    silhouette_of: super::bake::SilhouetteOf<'_, '_>,
     ground: Option<&HeightField>,
     columns: u32,
     rows: u32,
@@ -156,7 +156,8 @@ pub fn shade_grid(
                 if !(0.0..=1.0).contains(&u) || v < 0.0 || v > above_foot / at.height {
                     continue;
                 }
-                coverage = coverage.max(alpha_at(*silhouette, u, v).clamp(0.0, 1.0));
+                let at_uv = silhouette_of(*silhouette).map_or(0.0, |mask| mask.at(u, v));
+                coverage = coverage.max(at_uv.clamp(0.0, 1.0));
             }
             if let Some(field) = ground {
                 let point = receiver_point(foot, (0.0, 0.0), (x, y), light, tile_width, box_height);
@@ -186,7 +187,7 @@ pub fn shaded_at(
     light: &ShadowProjection,
     tile_width: f64,
     box_height: f64,
-    alpha_at: super::bake::SilhouetteAlpha<'_>,
+    silhouette_of: super::bake::SilhouetteOf<'_, '_>,
     ground: Option<&HeightField>,
 ) -> f64 {
     let mut coverage = 0.0_f64;
@@ -212,7 +213,8 @@ pub fn shaded_at(
         if !(0.0..=1.0).contains(&u) || v < 0.0 || v > above_foot / caster.extent.height {
             continue;
         }
-        coverage = coverage.max(alpha_at(caster.silhouette, u, v).clamp(0.0, 1.0));
+        let at_uv = silhouette_of(caster.silhouette).map_or(0.0, |mask| mask.at(u, v));
+        coverage = coverage.max(at_uv.clamp(0.0, 1.0));
         if coverage >= 1.0 {
             return 1.0;
         }

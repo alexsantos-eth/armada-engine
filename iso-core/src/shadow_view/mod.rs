@@ -68,9 +68,14 @@ const FACE_SHADE_STEPS: u32 = 3;
 /// Corners across a column's top face, and down it, for the shadow baked on it.
 ///
 /// The map holds [`SHADOW_MAP_PIXELS_PER_TILE`] texels a tile and the bake blurs it by one, so
-/// half that many corners, read between, is not told apart from the map on screen. It is also
-/// what a column costs to draw — every corner is a vertex the frame pushes — and a draw call
-/// holds ten thousand of them, so this is the knob to turn if the ground ever splits a batch.
+/// half that many corners, read between, is not told apart from the map on screen. It follows
+/// the map rather than standing on its own: the lattice is how the map is read, so a sharper
+/// map read through a coarser lattice would be thrown away again.
+///
+/// This is the *finest* a column is drawn at, not what it costs. Every corner is a vertex the
+/// frame pushes, and at 36 texels a tile that would be 361 of them for a column with a flat
+/// shadow on it, so [`coarsened`] halves the lattice back down for each column as far as its
+/// own shadow allows.
 const GROUND_SHADE_STEPS: u32 = SHADOW_MAP_PIXELS_PER_TILE / 2;
 
 /// How far down a column's exposed side a shadow is worked out, in blocks.
@@ -201,7 +206,7 @@ impl ShadowScene {
             self.tile_width,
             self.box_height,
             &level_at,
-            &|index, u, v| masks.alpha_at(index, u, v),
+            &|index| masks.silhouette_of(index),
         );
 
         let ground_shade = self.ground_shade(manager, coord);
@@ -273,6 +278,7 @@ impl ShadowScene {
                 }
                 // A column the sun reaches everywhere draws nothing at all, which is most of a
                 // bare chunk and the difference between a quad per column and a quad per shadow.
+                let (steps, coverage) = coarsened(steps, coverage);
                 any.then(|| Rc::new(ShadeLattice::from_coverage(steps, steps, coverage)))
             })
             .collect()
@@ -373,7 +379,7 @@ impl ShadowScene {
                 self.light.opacity(),
                 self.tile_width,
                 self.box_height,
-                &|index, u, v| masks.alpha_at(index, u, v),
+                &|index| masks.silhouette_of(index),
                 Some(ground),
                 ENTITY_SHADE_COLUMNS,
                 ENTITY_SHADE_ROWS,
@@ -426,7 +432,7 @@ impl ShadowScene {
                         &self.light.shadow,
                         self.tile_width,
                         self.box_height,
-                        &|index, u, v| masks.alpha_at(index, u, v),
+                        &|index| masks.silhouette_of(index),
                         Some(ground),
                     );
                     any |= coverage > 0.0;
@@ -526,7 +532,7 @@ impl ShadowScene {
             self.light.opacity(),
             self.tile_width,
             self.box_height,
-            &|index, u, v| masks.alpha_at(index, u, v),
+            &|index| masks.silhouette_of(index),
             Some(&ground),
             SHADE_COLUMNS,
             SHADE_ROWS,
@@ -661,6 +667,57 @@ fn neighbours_loaded(manager: &ChunkManager, coord: ChunkCoord) -> u16 {
         .fold(0, |bits, (at, _)| bits | 1 << at)
 }
 
+
+
+/// Drops every other corner of a square lattice while what is dropped can be read back between
+/// the ones kept, and gives what is left.
+///
+/// Every corner is a vertex the frame pushes, and most shaded columns need very few: one deep
+/// inside a tree's shadow is the same value in all directions, and one the shadow misses
+/// entirely is already gone. Only the columns an edge crosses pay for the fine lattice, so the
+/// map can be read as sharply as it likes without the whole ground paying for it.
+///
+/// `steps` halves while it stays even, so what comes back still divides
+/// [`SHADOW_MAP_PIXELS_PER_TILE`] — the corners are still read at texel centres.
+fn coarsened(steps: u32, coverage: Vec<f32>) -> (u32, Vec<f32>) {
+    /// How far a corner read between its neighbours may fall from its own value, in coverage.
+    /// A shadow is drawn at about a third opacity, so this is well under one step of a byte.
+    const TOLERANCE: f32 = 8.0 / 255.0;
+    let (mut steps, mut coverage) = (steps, coverage);
+    while steps >= 2 && steps % 2 == 0 {
+        let across = (steps + 1) as usize;
+        let half = steps as usize / 2;
+        // A corner that survives this halving, by its place in the thinner lattice.
+        let kept = |row: usize, column: usize| coverage[row * 2 * across + column * 2];
+        let between = |row: usize, column: usize| {
+            let (low_row, low_column) = (row / 2, column / 2);
+            let (high_row, high_column) = (low_row + row % 2, low_column + column % 2);
+            let mix = |a: f32, b: f32| if a == b { a } else { (a + b) / 2.0 };
+            mix(
+                mix(kept(low_row, low_column), kept(low_row, high_column)),
+                mix(kept(high_row, low_column), kept(high_row, high_column)),
+            )
+        };
+        let fits = (0..=steps as usize).all(|row| {
+            (0..=steps as usize).all(|column| {
+                row % 2 == 0 && column % 2 == 0
+                    || (between(row, column) - coverage[row * across + column]).abs() <= TOLERANCE
+            })
+        });
+        if !fits {
+            break;
+        }
+        let mut thinner = Vec::with_capacity((half + 1) * (half + 1));
+        for row in 0..=half {
+            for column in 0..=half {
+                thinner.push(kept(row, column));
+            }
+        }
+        steps /= 2;
+        coverage = thinner;
+    }
+    (steps, coverage)
+}
 
 #[cfg(test)]
 #[path = "mod.test.rs"]

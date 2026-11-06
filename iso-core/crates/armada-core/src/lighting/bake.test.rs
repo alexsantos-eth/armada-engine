@@ -21,9 +21,19 @@ fn post(foot: (f64, f64), elevation: f64, height: f64) -> ShadowCaster {
     }
 }
 
+/// A silhouette plane the whole of which is opaque, as a 2 x 2 window on it.
+static OPAQUE: [u8; 4] = [255; 4];
+static CLEAR: [u8; 4] = [0; 4];
+
+fn window(plane: &'static [u8; 4]) -> impl Fn(u32) -> Option<Silhouette<'static>> {
+    move |_| {
+        Some(Silhouette { alpha: plane, stride: 2, rows: 2, left: 0.0, top: 0.0, right: 1.0, bottom: 1.0 })
+    }
+}
+
 /// A silhouette that is opaque everywhere.
-fn solid() -> impl Fn(u32, f64, f64) -> f64 {
-    |_, _, _| 1.0
+fn solid() -> impl Fn(u32) -> Option<Silhouette<'static>> {
+    window(&OPAQUE)
 }
 
 fn flat(level: f64) -> impl Fn(i32, i32) -> Option<f64> {
@@ -43,6 +53,18 @@ fn coverage_at(map: &ShadowMap, x: f64, y: f64) -> u8 {
         return 0;
     }
     map.alpha[texel_y as usize * map.width as usize + texel_x as usize]
+}
+
+#[test]
+fn the_horizon_is_asked_about_on_the_maps_own_grid() {
+    const { assert!(TERRAIN_SAMPLES_PER_TILE > 0) };
+    assert_eq!(
+        SHADOW_MAP_PIXELS_PER_TILE % TERRAIN_SAMPLES_PER_TILE,
+        0,
+        "{TERRAIN_SAMPLES_PER_TILE} samples do not divide {SHADOW_MAP_PIXELS_PER_TILE} texels a \
+         tile, so a column's own corners would not be asked about directly and the horizon \
+         would be read across a column edge — the dark band down every sunny lip, again"
+    );
 }
 
 #[test]
@@ -194,7 +216,9 @@ fn the_silhouette_is_sampled_over_its_own_artwork() {
     let light = behind_the_camera();
     let mut map = map_over(-4, 6);
     // Opaque only down the right-hand half of the drawing.
-    let half = |_: u32, u: f64, _: f64| if u > 0.5 { 1.0 } else { 0.0 };
+    // Opaque only down its right half: a plane of two texels across, the far one solid.
+    static RIGHT_HALF: [u8; 4] = [0, 255, 0, 255];
+    let half = window(&RIGHT_HALF);
     bake_ground_shadows(&mut map, &[post((0.5, 0.5), 0.0, 60.0)], None, &light, TILE, BOX, &flat(0.0), &half);
 
     // Across the shadow is (dir_y, −dir_x); the sprite's right-hand side lands on that side.
