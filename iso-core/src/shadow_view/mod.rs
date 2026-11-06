@@ -90,7 +90,7 @@ const FACE_SHADE_STEPS: u32 = 3;
 /// The same depth the terrain itself stacks to
 /// ([`MAX_EXPOSED_BLOCKS`](crate::terrain_view::blocks)): past it the wall is behind the ground
 /// in front of it anyway.
-const FACE_FLOOR: f64 = 10.0;
+pub const FACE_FLOOR: f64 = 10.0;
 
 /// Corners across an entity's artwork, and down it, for the shadows it receives.
 ///

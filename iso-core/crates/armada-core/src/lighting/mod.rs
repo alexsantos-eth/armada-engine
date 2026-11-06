@@ -10,9 +10,11 @@
 //! * [`received`] — the shadows a standing sprite receives, as a lattice over its artwork.
 //! * [`terrain`] — the shadow the ground casts, which is a horizon rather than a silhouette.
 //! * [`faces`] — the ground's exposed vertical sides, the other surface a shadow lands on.
+//! * [`moving`] — the shadow of something that walks, laid on the ground instead of baked.
 
 pub mod bake;
 pub mod faces;
+pub mod moving;
 pub mod phases;
 pub mod received;
 pub mod shadow;
@@ -20,6 +22,7 @@ pub mod terrain;
 
 pub use bake::*;
 pub use faces::*;
+pub use moving::*;
 pub use phases::*;
 pub use received::*;
 pub use shadow::*;

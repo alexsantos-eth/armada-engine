@@ -1,3 +1,5 @@
+mod cloud_shadows;
+mod moving_shadow;
 mod perf;
 mod player_view;
 mod save;
@@ -31,6 +33,8 @@ use armada_core::camera::{
     visible_chunks as camera_visible_chunks,
 };
 use armada_core::lighting::DAWN;
+use cloud_shadows::{CLOUD_SHADOW_SOURCE, CloudShadows};
+use moving_shadow::{CellGround, collect_moving_shadow};
 use scene_material::SceneMaterial;
 use shadow_view::ShadowScene;
 use shadow_view::atlas::ShadowAtlas;
@@ -367,6 +371,15 @@ async fn main() {
         }
     }
     let atlas = SpriteAtlas::new(texture, sheet_textures, &manifest);
+    // The cloud shadows' pattern, which is a texture of its own rather than a frame of the atlas
+    // (see `cloud_shadows`). Without it the sky is simply clear, so a failure is a warning.
+    let mut clouds = match load_texture(&client_path(CLOUD_SHADOW_SOURCE)).await {
+        Ok(texture) => Some(CloudShadows::new(texture)),
+        Err(err) => {
+            eprintln!("warning: could not load the cloud shadows at {CLOUD_SHADOW_SOURCE}: {err}");
+            None
+        }
+    };
     // The silhouettes shadows are sampled from: the atlas image decoded a second time, on the
     // CPU, because the copy that is on the GPU cannot be read back here. Without it the scene
     // simply has no shadows, which is worth a warning and not a panic.
@@ -901,6 +914,30 @@ async fn main() {
                         .as_ref()
                         .and_then(shadow_view::lattice_of)
                 });
+                // Its own shadow, laid on the ground it is over. The one shadow in the
+                // scene that is not baked, because it walks: `moving_shadow` cuts the
+                // silhouette to the cells it crosses so that each piece sorts with its own
+                // cell, under the figure and over the ground it lies on.
+                collect_moving_shadow(
+                    &DAWN,
+                    texture,
+                    frame,
+                    layout,
+                    feet,
+                    (rp.x + 0.5, rp.y + 0.5),
+                    rp.elevation - rp.inset + rp.height,
+                    projection,
+                    |x, y| {
+                        manager.column_at(x, y).map(|column| CellGround {
+                            level: preview_top_level(column, |point| {
+                                manager.column_at(point.x, point.y).map(|c| c.elevation)
+                            }),
+                            elevation: f64::from(column.elevation),
+                            material: column.surface,
+                        })
+                    },
+                    &mut draws,
+                );
                 match shade {
                     Some(shade) => {
                         draws.push(SpriteDraw::shaded(key, texture, frame, layout, shade));
@@ -916,6 +953,16 @@ async fn main() {
         let after_collect = get_time();
         let sprites = draws.len();
         draw_sorted(&atlas, material.as_ref(), &mut draws);
+        // The clouds' shadows, over the finished scene and under the HUD: one pattern that
+        // belongs to no cell, drifting with real time. See `cloud_shadows`.
+        if let Some(clouds) = clouds.as_mut() {
+            clouds.advance(frame_ms);
+            clouds.draw(
+                (projection.origin_x, projection.origin_y),
+                (projection.tile_width, projection.tile_height),
+                (f64::from(width), f64::from(height)),
+            );
+        }
         let after_draw = get_time();
         perf.push(FrameSample {
             frame_ms,

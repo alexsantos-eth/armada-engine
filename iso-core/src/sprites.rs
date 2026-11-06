@@ -408,6 +408,58 @@ impl SpriteAtlas {
         });
     }
 
+    /// Draws a sprite's silhouette flat on the ground as a shadow: the polygon `points` on
+    /// screen, each corner reading the artwork at the matching `uv`.
+    ///
+    /// This is the one shadow in the client that is not baked, because what throws it walks
+    /// ([`armada_core::lighting::moving`]). The mesh samples the caster's own frame and draws it
+    /// black at `opacity`, so the artwork's transparency is the shadow's shape: a figure's shadow
+    /// has its arms and its legs, and it changes with its pose for nothing. The polygon is convex
+    /// and is drawn as a fan from its first corner.
+    pub fn draw_silhouette(
+        &self,
+        texture: usize,
+        frame: SpriteFrame,
+        points: &[(f64, f64)],
+        uv: &[(f64, f64)],
+        opacity: f32,
+    ) {
+        if points.len() < 3 || points.len() != uv.len() {
+            return;
+        }
+        let source = self.source(frame);
+        let texture = self.texture(texture);
+        let (width, height) = (texture.width(), texture.height());
+        // Flat black: the alpha the artwork carries at that point is what shapes the shadow.
+        let colour = Color::new(0.0, 0.0, 0.0, opacity);
+        let vertices: Vec<Vertex> = points
+            .iter()
+            .zip(uv)
+            .map(|(point, read)| {
+                vertex(
+                    (point.0 as f32, point.1 as f32),
+                    (
+                        (source.x + read.0 as f32 * source.w) / width,
+                        (source.y + read.1 as f32 * source.h) / height,
+                    ),
+                    colour,
+                    (0.0, 0.0),
+                    scene_material::SPRITE,
+                )
+            })
+            .collect();
+        let mut indices = Vec::with_capacity((points.len() - 2) * 3);
+        for corner in 1..points.len() - 1 {
+            let corner = corner as u16;
+            indices.extend_from_slice(&[0, corner, corner + 1]);
+        }
+        draw_mesh(&Mesh {
+            vertices,
+            indices,
+            texture: Some(texture.clone()),
+        });
+    }
+
     /// The frame's pixels in the atlas, pulled in by half a texel on every side.
     ///
     /// Frames sit edge to edge in the atlas and some artwork reaches its frame's border, so
@@ -526,6 +578,20 @@ pub enum DrawKind {
         /// How dark the shadow is drawn: the lighting phase's own opacity.
         opacity: f32,
     },
+    /// The shadow a moving caster lays on one cell of ground: its own silhouette, drawn flat.
+    ///
+    /// Not baked, and cut to one cell, so the terrain in front of it still covers it. See
+    /// [`armada_core::lighting::moving`] and [`crate::moving_shadow`].
+    Silhouette {
+        texture: usize,
+        frame: SpriteFrame,
+        /// The piece on screen, convex, as a fan from its first corner.
+        points: Vec<(f64, f64)>,
+        /// Where each of those corners reads the artwork, in `[0, 1]`.
+        uv: Vec<(f64, f64)>,
+        /// How dark the shadow is drawn: the lighting phase's own opacity.
+        opacity: f32,
+    },
     /// The baked shadow on one exposed vertical face of the ground.
     ///
     /// A face does not stand in the shadow map — the map is cast onto level ground — so its
@@ -617,6 +683,21 @@ impl SpriteDraw {
         }
     }
 
+    /// One cell's worth of the shadow a moving caster lays on the ground.
+    pub fn silhouette(
+        key: DrawKey,
+        texture: usize,
+        frame: SpriteFrame,
+        points: Vec<(f64, f64)>,
+        uv: Vec<(f64, f64)>,
+        opacity: f32,
+    ) -> Self {
+        Self {
+            key,
+            kind: DrawKind::Silhouette { texture, frame, points, uv, opacity },
+        }
+    }
+
     /// A shadow on one exposed vertical face of the ground.
     pub fn face_shadow(
         key: DrawKey,
@@ -672,6 +753,9 @@ fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
             }
             DrawKind::GroundShadow { corners, map_uv, opacity } => {
                 atlas.draw_ground_shadow(corners, map_uv, *opacity);
+            }
+            DrawKind::Silhouette { texture, frame, points, uv, opacity } => {
+                atlas.draw_silhouette(*texture, *frame, points, uv, *opacity);
             }
             DrawKind::FaceShadow { corners, shade, opacity } => {
                 atlas.draw_face_shadow(corners, shade, *opacity);

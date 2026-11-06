@@ -1,8 +1,11 @@
 """Generates public/assets/cloud-shadow.svg: small voxel cloud shadows on the isometric grid.
 
 Each cloud is a set of half-tile diamonds (the tile's 2:1 rhombus at half size), so its edges run
-along the tile edges like the voxel assets, then the whole shape is blurred once, so the edges fade
-softly and overlapping cells never add up their opacity. The pattern repeats every PERIOD_TILES tiles in both screen directions, so a GPU TilingSprite can
+along the tile edges like the voxel assets. Its outline is then rounded (ROUND) the way a clay
+voxel's corners are, by stroking the same path in the same colour with a round join: the stroke
+grows the shape by half its width and turns every convex corner into an arc, while the strokes
+along the seams between two touching cells fall under the fill and never show. Finally the whole
+shape is blurred once, so the edges fade softly and overlapping cells never add up their opacity. The pattern repeats every PERIOD_TILES tiles in both screen directions, so a GPU TilingSprite can
 cover the viewport with it seamlessly.
 
 Units: the SVG is drawn at SVG_PER_PX SVG units per scene pixel (one tile = 40 x 20 scene px), so
@@ -17,8 +20,9 @@ TILE_W, TILE_H = 40, 20  # scene px (TILE_WIDTH, TILE_HEIGHT)
 CELL = 0.5  # cell size in tiles
 SVG_PER_PX = 4  # SVG units per scene pixel; TILE_W * SVG_PER_PX must equal CLOUD_SHADOW_TILE_UNITS
 PERIOD_TILES = 12  # pattern period, in tiles along each screen axis
-COLOR = "#17242c"
-BLUR = 3.5  # Gaussian blur, in scene px
+COLOR = "#000000"
+BLUR = 1.2  # Gaussian blur, in scene px: just enough to take the stair off the edge
+ROUND = 4.0  # corner radius of the cloud's outline, in scene px
 SEED = 7
 
 # Each cloud is a few round puffs: (across, down, radius) in tiles, measured on the ground along the
@@ -63,8 +67,9 @@ def diamond(i: int, j: int, width: float, height: float) -> list[str]:
         for dy in (-height, 0, height):
             px, py = x % width + dx, y % height + dy
             pts = [(px, py), (px + hw, py + hh), (px, py + 2 * hh), (px - hw, py + hh)]
-            # Copies just outside the pattern still blur into it, so its edges stay seamless.
-            reach = 3 * BLUR
+            # Copies just outside the pattern still reach into it — the stroke grows them and
+            # the blur spreads them — so they are kept and its edges stay seamless.
+            reach = 3 * BLUR + ROUND
             if max(p[0] for p in pts) < -reach or min(p[0] for p in pts) > width + reach:
                 continue
             if max(p[1] for p in pts) < -reach or min(p[1] for p in pts) > height + reach:
@@ -88,7 +93,8 @@ def main() -> None:
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">\n'
         f'  <filter id="soft" x="0" y="0" width="{w}" height="{h}" filterUnits="userSpaceOnUse">'
         f'<feGaussianBlur stdDeviation="{BLUR * SVG_PER_PX:g}"/></filter>\n'
-        f'  <path filter="url(#soft)" fill="{COLOR}" d="{" ".join(shape)}"/>\n'
+        f'  <path filter="url(#soft)" fill="{COLOR}" stroke="{COLOR}" stroke-width="{2 * ROUND * SVG_PER_PX:g}"'
+        f' stroke-linejoin="round" stroke-linecap="round" d="{" ".join(shape)}"/>\n'
         "</svg>\n"
     )
     out = Path(__file__).resolve().parent.parent / "public" / "assets" / "cloud-shadow.svg"
