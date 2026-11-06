@@ -180,7 +180,7 @@ fn walk_into_centre(side: f64) -> GridPoint {
 #[test]
 fn a_trunk_sized_collision_lets_the_player_onto_the_cell_it_stands_on() {
     // The side the content gives every tree (`TREE_TRUNK_COLLISION` in
-    // `src/isometric/content/entities.ts`): only its trunk blocks.
+    // `web/src/isometric/content/entities.ts`): only its trunk blocks.
     const TRUNK: f64 = 0.15;
     let at = walk_into_centre(TRUNK);
 

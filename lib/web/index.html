@@ -61,7 +61,7 @@
         }
       };
 
-      const wasmUrl = new URL("../target/wasm32-unknown-unknown/release/iso-core.wasm", location.href);
+      const wasmUrl = new URL("./iso-core.wasm", location.href);
       if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
         wasmUrl.searchParams.set("dev", Date.now().toString());
       }

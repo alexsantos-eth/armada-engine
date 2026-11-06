@@ -13,7 +13,7 @@
 //! poses (the columns) and the window every cell shows.
 //!
 //! The geometry is the same the TypeScript client reads out of `PLAYER_WALK`
-//! (`src/isometric/content/player.ts`), except that it is read from the artwork itself rather
+//! (`web/src/isometric/content/player.ts`), except that it is read from the artwork itself rather
 //! than written out beside it, so a regenerated sheet cannot disagree with its description.
 
 use super::ink::{InkBox, SVG_ANCHOR, SVG_BLOCK_HEIGHT, SVG_TILE_WIDTH, attribute};

@@ -28,7 +28,7 @@ fn keeps_neighbour_order_and_typescript_tie_fixture() {
     )
     .unwrap();
     let fixture: Value = serde_json::from_str(include_str!(
-        "../../../../../src/isometric/core/engine/flow-check/contracts.v1.json"
+        "../../../../../web/src/isometric/core/engine/flow-check/contracts.v1.json"
     ))
     .unwrap();
     let expected: Vec<_> = fixture["path"]

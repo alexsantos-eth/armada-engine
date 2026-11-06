@@ -86,7 +86,7 @@ pub const PLAYER_PART_ID: &str = "player";
 /// screen from east, which are the rows of its sheets of poses.
 ///
 /// Eight of them turned the figure 45° from one row to the next, which reads as a snap as it
-/// turns; sixteen halve that. The sheets this client draws from (`public/assets/player-16/`)
+/// turns; sixteen halve that. The sheets this client draws from (`web/public/assets/player-16/`)
 /// have one row per name here and in this order. The Pixi client keeps eight-row sheets of its
 /// own, because it loads a sheet as one texture and sixteen rows would double it.
 pub const PLAYER_FACINGS: [&str; 16] = [

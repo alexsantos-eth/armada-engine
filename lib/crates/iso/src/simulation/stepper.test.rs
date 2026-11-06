@@ -4,7 +4,7 @@ use serde_json::Value;
 #[test]
 fn matches_typescript_frame_fixture() {
     let fixture: Value = serde_json::from_str(include_str!(
-        "../../../../../src/isometric/core/engine/flow-check/contracts.v1.json"
+        "../../../../../web/src/isometric/core/engine/flow-check/contracts.v1.json"
     ))
     .unwrap();
     let sample = &fixture["stepper"];

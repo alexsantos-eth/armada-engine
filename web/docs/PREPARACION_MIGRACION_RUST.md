@@ -7,7 +7,7 @@ Este documento convierte el [plan de migración](MIGRATION_RUST_MACROQUAD.md) en
 ## Diagnóstico que determina las prioridades
 
 - `world`, `simulation`, `player`, `grid` y `paths` ya concentran el estado y el comportamiento sin depender de Pixi. `createSimulation()` recibe `elapsedMs` del exterior y `stepWorld()` fija el orden de sistemas, reloj y eventos. Mantener estas propiedades.
-- El barrel `src/isometric/core/engine/index.ts` exporta a la vez dominio y vistas Pixi. `game/game.ts` y `game/launch.ts` importan desde ese barrel; `game/chunk-generator.ts` ya evita hacerlo para que el worker solo cargue generación. Este patrón es el punto de partida para una frontera de dominio.
+- El barrel `web/src/isometric/core/engine/index.ts` exporta a la vez dominio y vistas Pixi. `game/game.ts` y `game/launch.ts` importan desde ese barrel; `game/chunk-generator.ts` ya evita hacerlo para que el worker solo cargue generación. Este patrón es el punto de partida para una frontera de dominio.
 - `terrain/terrain.ts` y `terrain/noise-field.ts` llaman a `simplex-noise`; `player/motion.ts` usa `xstate`. El ruido y las reglas de distribución pueden cambiar. La locomoción debe describirse como comportamiento para poder implementarla en Rust.
 - `scene/module.ts` incluye `Application`, `Container` y `Texture` de Pixi en sus contratos. No es todavía una interfaz de render independiente. `game/modules.ts` registra tanto módulos gráficos como sistemas del mundo, aunque las factorías están separadas.
 - `world/chunk-data.ts` ya define un formato empaquetado para el worker, mientras `world/world.ts` define el snapshot versión 7, basado en semilla y deltas. Ambos son referencias para el diseño nuevo; ninguno obliga a conservar su formato.
@@ -24,7 +24,7 @@ Este documento convierte el [plan de migración](MIGRATION_RUST_MACROQUAD.md) en
 
 ### P2. Establecer una entrada de dominio que no arrastre el render
 
-**Archivos a tocar:** `src/isometric/core/engine/index.ts`, barrels de módulos, `src/isometric/game/game.ts`, `src/isometric/game/launch.ts` y `src/isometric/game/chunk-generator.ts`.
+**Archivos a tocar:** `web/src/isometric/core/engine/index.ts`, barrels de módulos, `web/src/isometric/game/game.ts`, `web/src/isometric/game/launch.ts` y `web/src/isometric/game/chunk-generator.ts`.
 
 **Cambio:** ofrecer una entrada de dominio que exporte solo tipos y funciones de `grid`, `random`, `terrain`, `entities`, `world`, `parts`, `time`, `events`, `simulation`, `player`, `paths`, `projection` y cámara geométrica. La entrada gráfica conserva `scene`, `render` y las vistas. Cambiar imports de consumidores de dominio al nuevo punto de entrada sin mover toda la estructura ni alterar el comportamiento. El worker debe seguir pudiendo importar generación sin resolver Pixi. Añadir una comprobación de arquitectura que falle si la entrada de dominio llega a `pixi.js`, `preact`, `@strudel/web`, `window` o un archivo de vista.
 
@@ -40,7 +40,7 @@ Este documento convierte el [plan de migración](MIGRATION_RUST_MACROQUAD.md) en
 
 ### P4. Preparar un archivo de configuración de entidades con contrato revisable
 
-**Archivos a tocar:** `src/isometric/content/entities.ts`, `core/types/entities.ts`, `core/engine/entities/validation.ts`, `core/engine/entities/entities.ts` y tests relacionados. El formato nuevo se puede definir como manifiesto independiente antes de cambiar estos archivos.
+**Archivos a tocar:** `web/src/isometric/content/entities.ts`, `core/types/entities.ts`, `core/engine/entities/validation.ts`, `core/engine/entities/entities.ts` y tests relacionados. El formato nuevo se puede definir como manifiesto independiente antes de cambiar estos archivos.
 
 **Cambio:** conservar el principio de `content/entities.ts`: las entidades se describen en datos y el motor las valida y coloca. Diseñar para Rust un archivo de configuración legible y versionado, por ejemplo `content/entities.ron` deserializado y validado al arrancar, con identificador estable, asset/animación, tamaño y huella, colisión, variantes visuales y restricciones de colocación. El contrato puede sustituir `spawnChance`, `formation`, `patches`, `gap` y `footprintSurfaces` por campos que permitan ajustar mejor bioma, pendiente, vecindad, densidad y separación. Mantener separadas **definición de entidad**, **reglas de colocación** e **instancia generada**. Preparar una conversión inicial desde TypeScript para reutilizar datos útiles y luego ajustar cada familia en Rust; no mantener dos configuraciones editadas a mano indefinidamente. El archivo de configuración es requisito; su esquema actual no lo es.
 
@@ -70,7 +70,7 @@ Este documento convierte el [plan de migración](MIGRATION_RUST_MACROQUAD.md) en
 
 ### P6. Preparar recursos y servicios del borde de aplicación
 
-**Archivos a tocar:** `src/isometric/content/`, `public/assets/`, `core/engine/render/svg.ts`, `game/sound/`, `game/chunk-prefetch.ts`, `game/chunk-worker.ts`, `game/launch.ts` y `game/game.ts`.
+**Archivos a tocar:** `web/src/isometric/content/`, `web/public/assets/`, `core/engine/render/svg.ts`, `game/sound/`, `game/chunk-prefetch.ts`, `game/chunk-worker.ts`, `game/launch.ts` y `game/game.ts`.
 
 **Cambio:** generar un manifiesto de assets con rutas, tamaño lógico, `data-tiles`, frames, anclajes y variantes de color; comprobarlo contra los SVG existentes. Usarlo después para producir atlas rasterizados, sin modificar los SVG fuente. Mantener entrada, audio, URL, worker y medición de rendimiento como servicios de aplicación, fuera del núcleo. Describir las operaciones que necesitará el cliente Macroquad: entrada normalizada del jugador, carga de chunks, emisión de sonido y eventos de UI. Prototipar cada sustitución antes de modificar su implementación Pixi/Strudel actual.
 

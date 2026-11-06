@@ -2,7 +2,7 @@
 
 ## Catálogo de entidades (P4)
 
-`src/isometric/content/entities.v2.json` es el punto de partida versionado para el contenido Rust. Tiene `schemaVersion: 1` y 31 definiciones convertidas desde `entities.ts`. Cada definición separa:
+`web/src/isometric/content/entities.v2.json` es el punto de partida versionado para el contenido Rust. Tiene `schemaVersion: 1` y 31 definiciones convertidas desde `entities.ts`. Cada definición separa:
 
 - `id`: identidad estable del prototipo; una instancia guardada usa además su propio `instanceId`.
 - `asset`: SVG original, reflejo y variantes visuales opcionales. El empaquetado de texturas para Macroquad podrá transformar estas rutas.

@@ -104,7 +104,7 @@ const PLAYER_BEHIND_LAYER: i32 = 2;
 /// The player on the half of its column nearest the camera: over what stands there.
 const PLAYER_FRONT_LAYER: i32 = 4;
 /// How big the player is drawn, as a fraction of the size its artwork was drawn at: the same
-/// scale the TypeScript client uses (`PLAYER_SCALE` in `src/isometric/content/player.ts`), so
+/// scale the TypeScript client uses (`PLAYER_SCALE` in `web/src/isometric/content/player.ts`), so
 /// the two look alike.
 ///
 /// It scales the measured artwork about the ground point the player stands on, exactly as the
@@ -155,7 +155,7 @@ fn preview_projection(origin_x: f64, origin_y: f64) -> ProjectionConfig {
 ///
 /// Sand's artwork is a shallow slab rather than a full block, so the surface a walker sees is
 /// half a block below the plane its elevation names. The TypeScript content says the same
-/// (`TERRAIN_APPEARANCE.sand.topInset` in `src/isometric/content/terrain.ts`), and its player
+/// (`TERRAIN_APPEARANCE.sand.topInset` in `web/src/isometric/content/terrain.ts`), and its player
 /// stands and falls onto that sunken top. Without it the player walks half a block over every
 /// beach — about 47 px at this tile size — which is what it did here.
 pub(crate) fn preview_top_inset(material: TerrainMaterial) -> f64 {
@@ -213,11 +213,10 @@ struct PlayerSprite {
 /// Where a manifest path is fetched from.
 ///
 /// The manifest's paths are relative to the client root (`lib/`), which is the working
-/// directory natively. On the web the page is served from the repository root, so keep the
-/// client-root prefix in the URL; this also works when serving `lib/web/` directly.
+/// directory natively. The published web client keeps its assets beside its HTML entry point.
 fn client_path(path: &str) -> String {
     if cfg!(target_arch = "wasm32") {
-        format!("/lib/{path}")
+        format!("./{path}")
     } else {
         path.to_owned()
     }
@@ -336,7 +335,7 @@ impl PlayerGround for ChunkGround<'_> {
 #[macroquad::main(window_conf)]
 async fn main() {
     // Load the versioned entity catalog (embedded at compile time).
-    let catalog_json = include_str!("../../src/isometric/content/entities.v2.json");
+    let catalog_json = include_str!("../../web/src/isometric/content/entities.v2.json");
 
     // Load the asset manifest and atlas (P6 prototype).
     let manifest_json = include_str!("../content/assets.manifest.json");

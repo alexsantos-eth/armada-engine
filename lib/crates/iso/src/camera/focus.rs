@@ -1,7 +1,7 @@
 //! What a following camera looks at while the player moves, and how it eases onto a new level.
 //!
 //! Mirrors the `ground()` closure of `createPlayerView()` in
-//! `src/isometric/core/engine/player-view/player-view.ts`: the camera does not aim at the player's
+//! `web/src/isometric/core/engine/player-view/player-view.ts`: the camera does not aim at the player's
 //! feet from one frame to the next, because that moves the whole world by a full elevation step the
 //! instant the player changes level. It aims at the top the player stands on, holds that level
 //! while a jump arcs over it, follows the feet down a fall as they fall, and rises onto a higher

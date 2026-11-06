@@ -1,10 +1,10 @@
 # large_rocks.py — three single-tile boulder silhouettes for the game.
-# Run from artifacts/: python3 large_rocks.py ../public/assets/rock
+# Run from artifacts/: python3 large_rocks.py ../web/public/assets/rock
 import os
 import sys
 from iso_lib import *
 
-OUT_DIR = sys.argv[1] if len(sys.argv) > 1 else "../public/assets/rock"
+OUT_DIR = sys.argv[1] if len(sys.argv) > 1 else "../web/public/assets/rock"
 os.makedirs(OUT_DIR, exist_ok=True)
 
 

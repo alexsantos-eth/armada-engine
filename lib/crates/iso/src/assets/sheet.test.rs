@@ -73,7 +73,7 @@ fn reads_the_real_sheets() {
             ("jetpack", 1, 0),
         ] {
             let path = format!(
-                "{}/../../../public/assets/{directory}/{file}.svg",
+                "{}/../../../web/public/assets/{directory}/{file}.svg",
                 env!("CARGO_MANIFEST_DIR")
             );
             let svg = std::fs::read_to_string(&path).unwrap_or_else(|err| panic!("{path}: {err}"));
@@ -98,8 +98,8 @@ fn the_wider_window_holds_the_narrower_one() {
         parse_sheet(&svg).expect("a sheet").ink()
     };
     let (wide, narrow) = (
-        read("public/assets/player-16/walk.svg"),
-        read("public/assets/player/walk.svg"),
+        read("web/public/assets/player-16/walk.svg"),
+        read("web/public/assets/player/walk.svg"),
     );
     assert!(wide.x <= narrow.x && wide.x + wide.width >= narrow.x + narrow.width);
     assert_eq!((wide.y, wide.height), (narrow.y, narrow.height), "same rows");
@@ -113,7 +113,7 @@ fn the_wider_window_holds_the_narrower_one() {
 fn rejects_what_is_not_a_sheet() {
     let block = std::fs::read_to_string(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../../public/assets/player/block.svg"
+        "/../../../web/public/assets/player/block.svg"
     ))
     .expect("the still figure");
     assert!(parse_sheet(&block).is_none(), "one drawing, not a sheet");

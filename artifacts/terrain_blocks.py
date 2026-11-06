@@ -1,6 +1,6 @@
 # terrain_blocks.py — the ground blocks, each one filling its whole cell.
 #
-# Run from artifacts/:  python3 terrain_blocks.py ../public/assets
+# Run from artifacts/:  python3 terrain_blocks.py ../web/public/assets
 #
 # A terrain block is a prism of exactly one cell: its top is the cell's own diamond and its two
 # drawn sides fall straight to the plane of the block below, so two neighbours meet edge to edge
@@ -16,7 +16,7 @@ import sys
 
 from iso_lib import *
 
-OUT_DIR = sys.argv[1] if len(sys.argv) > 1 else "../public/assets"
+OUT_DIR = sys.argv[1] if len(sys.argv) > 1 else "../web/public/assets"
 
 #: How far the darker rim reaches in from the edge of a top face, in asset units.
 #:

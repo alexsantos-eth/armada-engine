@@ -29,7 +29,7 @@ pub const ATLAS_TEXTURE: usize = 0;
 /// two draw calls, and a scene that used to be one batch became a hundred and thirty. Sampling
 /// one white texel of the atlas instead leaves the texture alone, so the shadows go into the
 /// same batch as the ground they fall on. `artifacts` has no generator for it: it is a plain
-/// white square (`public/assets/shadow/white.svg`).
+/// white square (`web/public/assets/shadow/white.svg`).
 ///
 /// The shadows on the ground no longer need it — they read the shadow atlas through
 /// [`crate::scene_material`] and ignore their own texture coordinate — but the shadows on the

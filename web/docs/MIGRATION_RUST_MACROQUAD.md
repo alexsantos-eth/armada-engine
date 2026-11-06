@@ -8,8 +8,8 @@ Migrar el juego de TypeScript, PixiJS y Preact a un núcleo de Rust y un cliente
 
 ## Punto de partida comprobado
 
-- El arranque está en `src/main.tsx` → `src/isometric/page.tsx` → `src/isometric/game/game.ts`. `mountGame()` conecta Pixi, simulación, mundo, entrada, carga de chunks, audio y diagnóstico.
-- El dominio ya se organiza en `src/isometric/core/engine/`: `grid`, `random`, `terrain`, `paths`, `entities`, `world`, `parts`, `time`, `events`, `simulation`, `player`, `projection` y `camera`. Es la secuencia de migración principal.
+- El arranque está en `src/main.tsx` → `web/src/isometric/page.tsx` → `web/src/isometric/game/game.ts`. `mountGame()` conecta Pixi, simulación, mundo, entrada, carga de chunks, audio y diagnóstico.
+- El dominio ya se organiza en `web/src/isometric/core/engine/`: `grid`, `random`, `terrain`, `paths`, `entities`, `world`, `parts`, `time`, `events`, `simulation`, `player`, `projection` y `camera`. Es la secuencia de migración principal.
 - No todo el dominio carece de dependencias externas: `terrain/terrain.ts` usa `simplex-noise` y `player/motion.ts` usa XState. El ruido se podrá sustituir al rediseñar la generación; las transiciones del jugador sí requieren pruebas de comportamiento.
 - El render usa Pixi de forma extensa: `render`, `scene`, `terrain-view`, `entity-view`, `player-view`, `camera-view`, `shadows`, `water-reflections`, `foliage-wind` y módulos de luz. El audio actual usa Strudel en `game/sound/`.
 - El mundo actual es ilimitado y usa chunks de 32 × 32; el guardado serializa semilla, chunks editados y partes del mundo. La generación anticipada usa un Web Worker y datos empaquetados transferibles. La implementación Rust tendrá formato de partida propio y conservará el contenido generado de los chunks descubiertos cuando sea necesario para que una partida continúe igual.

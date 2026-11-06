@@ -1,5 +1,5 @@
 # path_tiles.py — the sixteen looks of a path block, one per connection mask.
-# Run from artifacts/: python3 path_tiles.py ../public/assets/grass/block.svg ../public/assets/path
+# Run from artifacts/: python3 path_tiles.py ../web/public/assets/grass/block.svg ../web/public/assets/path
 # Writes block.svg (a lone patch of earth, the material's own texture) and the 4×4 path_tiles.svg
 # atlas, frame `mask` at column mask % 4, row mask // 4, each with the canvas of a block.
 #
@@ -18,8 +18,8 @@ from shapely.geometry import box as square
 from shapely.ops import unary_union
 from iso_lib import *
 
-BASE_SVG = sys.argv[1] if len(sys.argv) > 1 else "../public/assets/grass/block.svg"
-OUT_DIR = sys.argv[2] if len(sys.argv) > 2 else "../public/assets/path"
+BASE_SVG = sys.argv[1] if len(sys.argv) > 1 else "../web/public/assets/grass/block.svg"
+OUT_DIR = sys.argv[2] if len(sys.argv) > 2 else "../web/public/assets/path"
 
 TOP = H
 CELL = 32                 # side of an earth voxel step, in asset units (16 per tile)

@@ -1,5 +1,5 @@
 # grass_clutter.py — additional top-of-grass appearances, generated from the base grass SVG.
-# Run from artifacts/: python3 grass_clutter.py ../public/assets/grass/block.svg ../public/assets/grass
+# Run from artifacts/: python3 grass_clutter.py ../web/public/assets/grass/block.svg ../web/public/assets/grass
 # Writes the individual SVGs for preview and one 3×3 grass_variants.svg atlas for runtime.
 # The terrain remains one grass block; only its top decoration changes, so no entities,
 # collision, extra footprints or per-instance shadows are added.
@@ -8,8 +8,8 @@ import re
 import sys
 from iso_lib import *
 
-BASE_SVG = sys.argv[1] if len(sys.argv) > 1 else "../public/assets/grass/block.svg"
-OUT_DIR = sys.argv[2] if len(sys.argv) > 2 else "../public/assets/grass"
+BASE_SVG = sys.argv[1] if len(sys.argv) > 1 else "../web/public/assets/grass/block.svg"
+OUT_DIR = sys.argv[2] if len(sys.argv) > 2 else "../web/public/assets/grass"
 TOP = H
 LEAF = "#6fb81e"
 SPOTS = [(-120, -110), (90, -140), (-150, 70), (40, 20), (140, 110), (-40, 150)]

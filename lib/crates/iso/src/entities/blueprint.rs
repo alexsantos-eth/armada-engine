@@ -1,7 +1,7 @@
 //! Version 2 entity blueprint types.
 //!
 //! Mirrors `core/types/entities.ts` (`EntityBlueprintV2`) and the versioned catalog
-//! `src/isometric/content/entities.v2.json`. Visual identity (`asset`), physical footprint
+//! `web/src/isometric/content/entities.v2.json`. Visual identity (`asset`), physical footprint
 //! (`shape`) and placement rules (`placement`) are kept separate, so Rust can design its own
 //! density, grouping and biome rules without touching this file.
 

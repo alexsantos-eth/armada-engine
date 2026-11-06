@@ -25,7 +25,7 @@ if [[ "$(uname -s)" == Darwin && -z "${SDKROOT:-}" && -d "$compatible_sdk" ]]; t
   export SDKROOT="$compatible_sdk"
 fi
 
-svg_dir="../public/assets"
+svg_dir="../web/public/assets"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
@@ -43,7 +43,7 @@ echo "Compiling pack_atlas..."
 cargo build --bin pack_atlas --quiet
 
 echo "Packing atlas..."
-./target/debug/pack_atlas "$tmp_dir" content/atlas.png content/assets.manifest.json ../public
+./target/debug/pack_atlas "$tmp_dir" content/atlas.png content/assets.manifest.json ../web/public
 
 # The cloud shadows' pattern, whole and untrimmed: one texel per SVG unit, so a copy is
 # 1920 x 960 and spans the twelve tiles the pattern repeats over. It goes through

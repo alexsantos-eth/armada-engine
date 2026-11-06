@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build:wasm": "cargo build --manifest-path lib/Cargo.toml --release --target wasm32-unknown-unknown --locked && node scripts/sync-rust-web-assets.mjs --wasm",
+    "build:wasm": "cargo build --manifest-path ../lib/Cargo.toml --release --target wasm32-unknown-unknown --locked && node scripts/sync-rust-web-assets.mjs --wasm",
     "build:web-assets": "node scripts/sync-rust-web-assets.mjs",
     "build": "pnpm build:web-assets && tsc -b && vite build",
     "preview": "vite preview",
