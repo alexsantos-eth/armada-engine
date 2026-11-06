@@ -80,6 +80,23 @@ impl MapArea {
         self.max_x - self.min_x + 1
     }
 
+    /// The texel square of column `(x, y)` within an area drawn at `pixels_per_tile`, as
+    /// `(x, y)` of its corner counted from the area's own corner. `None` outside the area.
+    ///
+    /// The map owns one such square per column and so does the client's shadow atlas, which
+    /// holds a chunk's map in a slot of a texture. Both read it from here, because a client
+    /// computing the same arithmetic itself is a second source of truth for where a column's
+    /// shadow lives, and the two drifting apart moves every shadow by a texel.
+    pub fn square_of(&self, x: i32, y: i32, pixels_per_tile: u32) -> Option<(u32, u32)> {
+        if x < self.min_x || x > self.max_x || y < self.min_y || y > self.max_y {
+            return None;
+        }
+        Some((
+            (x - self.min_x) as u32 * pixels_per_tile,
+            (y - self.min_y) as u32 * pixels_per_tile,
+        ))
+    }
+
     pub fn rows(&self) -> i32 {
         self.max_y - self.min_y + 1
     }
@@ -162,14 +179,7 @@ impl ShadowMap {
     /// The texel square of one column, as `(x, y)` of its corner in texels. `None` outside the
     /// area.
     pub fn square_of(&self, x: i32, y: i32) -> Option<(u32, u32)> {
-        if x < self.area.min_x || x > self.area.max_x || y < self.area.min_y || y > self.area.max_y
-        {
-            return None;
-        }
-        Some((
-            (x - self.area.min_x) as u32 * self.pixels_per_tile,
-            (y - self.area.min_y) as u32 * self.pixels_per_tile,
-        ))
+        self.area.square_of(x, y, self.pixels_per_tile)
     }
 
     /// Whether any texel carries coverage, so the client can skip a chunk nothing shades.

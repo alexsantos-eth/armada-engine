@@ -2,10 +2,15 @@
 //!
 //! The sun holds still, so shadows are computed once and drawn from the result. This module owns
 //! that result and nothing else: when a chunk is shown, its ground shadows are baked into a map
-//! and read back as a lattice per column ([`armada_core::lighting::bake`]), and the shadows its entities
-//! throw on each other are baked into a lattice per entity
-//! ([`armada_core::lighting::received`]). Both are then pure lookups, frame after frame, until
-//! the chunk is dropped.
+//! of texels ([`armada_core::lighting::bake`]) which goes to the GPU as a slot of the shadow
+//! atlas ([`atlas`]), and the shadows its entities throw on each other are baked into a lattice
+//! per entity ([`armada_core::lighting::received`]). Both are then pure lookups, frame after
+//! frame, until the chunk is dropped.
+//!
+//! A column's shadow is therefore four vertices naming its square of the atlas, and all this
+//! module keeps per column is whether there is anything to draw at all. It used to read the map
+//! back as a lattice of corners and carry the shading as vertex colour, which batched but cost
+//! 221 vertices a column — 96 % of everything a frame drew. [`atlas`] has that story.
 //!
 //! The player is the one thing that cannot be baked, because it walks: its lattice is sampled
 //! again every frame, from the casters of the chunks around it. That is one lattice a frame.
@@ -22,6 +27,7 @@
 //! it was baked against and bakes again when that changes. A bake is spread over frames, a
 //! piece at a time, within [`BAKE_BUDGET_MS`].
 
+pub mod atlas;
 pub mod masks;
 
 use armada_core::assets::{InkBox, SpriteLayout};
@@ -40,6 +46,8 @@ use macroquad::prelude::{get_time, screen_height, screen_width};
 use masks::SilhouetteMasks;
 use std::collections::HashMap;
 use std::rc::Rc;
+
+use atlas::{ShadowAtlas, atlas_uv, square_in_slot};
 
 use crate::sprites::{ShadeLattice, SpriteDraw, scene_key};
 
@@ -60,7 +68,7 @@ pub const BAKE_BUDGET_MS: f64 = 3.0;
 
 /// Columns whose lattice is read off the map in one piece of work.
 ///
-/// A chunk is 1024 of them and reading one back is a few hundred samples of the map, so this is
+/// A chunk is 1024 of them and each one scans its own square of the map for coverage, so this is
 /// the knob that keeps that stage inside the budget rather than its own hitch.
 const GROUND_SHADE_COLUMNS: usize = 128;
 
@@ -76,19 +84,6 @@ pub const GROUND_SHADOW_LAYER: i32 = 1;
 /// A face is at most one block tall and one cell wide, so three either way is finer than a
 /// texel of the ground's own map.
 const FACE_SHADE_STEPS: u32 = 3;
-
-/// Corners across a column's top face, and down it, for the shadow baked on it.
-///
-/// The map holds [`SHADOW_MAP_PIXELS_PER_TILE`] texels a tile and the bake blurs it by one, so
-/// half that many corners, read between, is not told apart from the map on screen. It follows
-/// the map rather than standing on its own: the lattice is how the map is read, so a sharper
-/// map read through a coarser lattice would be thrown away again.
-///
-/// This is the *finest* a column is drawn at, not what it costs. Every corner is a vertex the
-/// frame pushes, and at 36 texels a tile that would be 361 of them for a column with a flat
-/// shadow on it, so [`coarsened`] halves the lattice back down for each column as far as its
-/// own shadow allows.
-const GROUND_SHADE_STEPS: u32 = SHADOW_MAP_PIXELS_PER_TILE / 2;
 
 /// How far down a column's exposed side a shadow is worked out, in blocks.
 ///
@@ -107,11 +102,14 @@ pub const ENTITY_SHADE_ROWS: u32 = 10;
 
 /// What one shown chunk's shadows amount to.
 struct Baked {
-    /// The shadow on each column's top face, read off the baked map at the column's own
-    /// corners. `None` where the column carries no coverage at all, which is most of a bare
-    /// chunk and is what keeps a frame from drawing a transparent quad per column. Indexed as
-    /// the chunk's own columns are.
-    ground: Vec<Option<Rc<ShadeLattice>>>,
+    /// Whether each column's top face carries any coverage at all, indexed as the chunk's own
+    /// columns are.
+    ///
+    /// The shading itself lives in the chunk's slot of the shadow atlas, where the sampler reads
+    /// it, so all a frame needs from the CPU is whether there is anything to draw: most of a
+    /// bare chunk is in full sun, and this is what keeps a frame from drawing a transparent quad
+    /// per column.
+    ground: Vec<bool>,
     /// The shadows falling on the chunk's own entities, by the cell each one stands on.
     shaded: HashMap<(i32, i32), ShadeGrid>,
     /// The chunk's own entities as casters, for its neighbours' bakes and for the player.
@@ -130,6 +128,8 @@ pub struct ShadowScene {
     /// One map, reused by every bake: it is over a megabyte of texels and only one chunk bakes
     /// at a time. While [`working`](Self::working) holds a job, the map belongs to that job.
     scratch: ShadowMap,
+    /// The maps of the shown chunks, on the GPU: the texture the scene's material samples.
+    atlas: ShadowAtlas,
     working: Option<Pending>,
     tile_width: f64,
     box_height: f64,
@@ -149,7 +149,7 @@ struct Pending {
     casters: Vec<ShadowCaster>,
     ground: HeightField,
     map: GroundBake,
-    shade: Vec<Option<Rc<ShadeLattice>>>,
+    shade: Vec<bool>,
     shaded: HashMap<(i32, i32), ShadeGrid>,
     faces: Vec<(TerrainFace, Rc<ShadeLattice>)>,
     stage: Reading,
@@ -160,7 +160,9 @@ struct Pending {
 enum Reading {
     /// Laying the map itself, caster by caster.
     Map,
-    /// Reading it back as a lattice per column, from this one on.
+    /// Sending the laid map to the chunk's slot of the shadow atlas.
+    Upload,
+    /// Reading back which columns carry any coverage, from this one on.
     Ground(usize),
     Entities,
     Faces,
@@ -168,12 +170,19 @@ enum Reading {
 
 impl ShadowScene {
     /// An empty scene lit by `light`, sampling `masks`.
-    pub fn new(light: PhaseLight, masks: SilhouetteMasks, tile_width: f64, box_height: f64) -> Self {
+    pub fn new(
+        light: PhaseLight,
+        masks: SilhouetteMasks,
+        atlas: ShadowAtlas,
+        tile_width: f64,
+        box_height: f64,
+    ) -> Self {
         Self {
             light,
             masks,
             chunks: HashMap::new(),
             scratch: ShadowMap::new(MapArea::around(0, 0, CHUNK_SIZE - 1, CHUNK_SIZE - 1), SHADOW_MAP_PIXELS_PER_TILE),
+            atlas,
             working: None,
             tile_width,
             box_height,
@@ -194,6 +203,21 @@ impl ShadowScene {
             .collect();
         for coord in dropped {
             self.chunks.remove(&coord);
+            self.atlas.release(coord);
+        }
+        // Counts every shown chunk as a use of its slot, so the one the atlas turns out when it
+        // runs short is one the camera is not looking at. That only holds while the camera
+        // shows fewer chunks than the atlas has slots, which the client's own zoom guarantees
+        // with room to spare (`the_atlas_holds_more_chunks_than_the_camera_can_show`); past it
+        // the atlas would turn out a chunk that is on screen and bake it again every frame.
+        debug_assert!(
+            shown.len() <= atlas::SLOT_COUNT,
+            "{} chunks shown against {} shadow slots: the atlas will thrash",
+            shown.len(),
+            atlas::SLOT_COUNT
+        );
+        for coord in shown {
+            self.atlas.touch(*coord);
         }
         // A job whose chunk went away, or whose neighbours changed under it, is thrown away: it
         // was being baked against something that is no longer true.
@@ -236,7 +260,11 @@ impl ShadowScene {
         let mut again = None;
         for coord in shown.iter().filter(|coord| manager.is_visible(**coord)) {
             match self.chunks.get(coord) {
-                Some(baked) if baked.baked_against == neighbours_loaded(manager, *coord) => {}
+                // Its map has to be in the atlas as well as baked: a chunk whose slot was taken
+                // while it was off screen has nothing left to sample.
+                Some(baked)
+                    if baked.baked_against == neighbours_loaded(manager, *coord)
+                        && self.atlas.holds(*coord) => {}
                 Some(_) => again = again.or(Some(*coord)),
                 None => {
                     first_time = Some(*coord);
@@ -268,12 +296,24 @@ impl ShadowScene {
                     &|index| masks.silhouette_of(index),
                 );
                 if !more {
-                    job.stage = Reading::Ground(0);
+                    job.stage = Reading::Upload;
                 }
             }
+            Reading::Upload => {
+                // One upload of the whole slot, and a step of its own: it is a megabyte and a
+                // half, and the budget is checked between steps.
+                //
+                // A chunk turned out to make room is forgotten rather than refilled, because
+                // keeping its texels to refill from would cost as much memory again. It bakes
+                // afresh if the camera comes back to it.
+                if let Some(turned_out) = self.atlas.put(job.coord, &self.scratch) {
+                    self.chunks.remove(&turned_out);
+                }
+                job.stage = Reading::Ground(0);
+            }
             Reading::Ground(from) => {
-                let done =
-                    self.ground_shade(manager, job.coord, from, GROUND_SHADE_COLUMNS, &mut job.shade);
+                let done = self
+                    .ground_cover(manager, job.coord, from, GROUND_SHADE_COLUMNS, &mut job.shade);
                 job.stage =
                     if done == 0 { Reading::Entities } else { Reading::Ground(from + done) };
             }
@@ -352,90 +392,49 @@ impl ShadowScene {
         })
     }
 
-    /// Reads the baked map back into one lattice of coverage per column of the chunk.
+    /// Reads back which of `count` columns from `from` carry any coverage at all, appends the
+    /// answers to `out`, and says how many columns it got through — fewer at the chunk's end.
     ///
-    /// The map used to be uploaded as a texture per chunk and each column drawn as a quad of
-    /// it. That was a texture of its own between every two blocks of ground, and Macroquad
-    /// starts a new draw call whenever the bound texture changes: a scene that was one batch
-    /// became a hundred and thirty. The shadows are static, so the same texels are read here
-    /// once, at bake time, and carried as the colour of a lattice drawn out of the shared atlas
-    /// ([`crate::sprites::WHITE_PATCH`]) — which costs nothing to bind, because the ground is
-    /// already drawn from it.
-    /// Reads the baked map back as a lattice for `count` of the chunk's columns, starting at
-    /// `from`, and appends them to `out`. Gives how many it did, which is fewer at the end.
-    fn ground_shade(
+    /// Only the flag: the shading itself stays in the chunk's slot of the shadow atlas, where
+    /// the sampler reads it. The first version read a lattice of corners back here instead, and
+    /// that lattice was what every frame then had to push as vertices.
+    ///
+    /// The whole of a column's square is scanned, not just the corners its quad reads between: a
+    /// shadow that only clips the square's outer half texel draws a quad that shows almost
+    /// nothing, and that is cheaper than missing one that does show.
+    fn ground_cover(
         &self,
         manager: &ChunkManager,
         coord: ChunkCoord,
         from: usize,
         count: usize,
-        out: &mut Vec<Option<Rc<ShadeLattice>>>,
+        out: &mut Vec<bool>,
     ) -> usize {
         let columns = manager.terrain_chunk(coord).map_or(0, <[TerrainColumn]>::len);
         let Some(chunk) = manager.terrain_chunk(coord).filter(|_| !self.scratch.is_empty()) else {
             let blank = columns.saturating_sub(from).min(count);
-            out.extend(std::iter::repeat_n(None, blank));
+            out.extend(std::iter::repeat_n(false, blank));
             return blank;
         };
-        let steps = GROUND_SHADE_STEPS.max(1);
-        let per_tile = f64::from(self.scratch.pixels_per_tile);
-        // A corner of the lattice, in texels along the column's own square. The two at the ends
-        // are pulled in to the middle of the column's outermost texel instead of sitting on its
-        // edge, because an edge reads half of the next column's texel — and that column is at
-        // another level, drawn somewhere else. The texture did the same thing, but only in its
-        // outermost row of pixels; a lattice spreads it over the sixth of a cell up to the next
-        // corner, which put the pale line back at the foot of every step.
-        let along = |corner: u32| {
-            (f64::from(corner) / f64::from(steps) * per_tile).clamp(0.5, per_tile - 0.5)
-        };
+        let per_tile = self.scratch.pixels_per_tile;
+        let width = self.scratch.width;
         let mut done = 0;
         for column in chunk.iter().skip(from).take(count) {
             done += 1;
             let Some((from_x, from_y)) = self.scratch.square_of(column.coord.x, column.coord.y)
             else {
-                out.push(None);
+                out.push(false);
                 continue;
             };
-            let mut coverage = Vec::with_capacity(((steps + 1) * (steps + 1)) as usize);
-            let mut any = false;
-            for row in 0..=steps {
-                let y = f64::from(from_y) + along(row);
-                for across in 0..=steps {
-                    let x = f64::from(from_x) + along(across);
-                    let value = self.coverage_at(x, y);
-                    any |= value > 0.0;
-                    coverage.push(value);
-                }
-            }
-            // A column the sun reaches everywhere draws nothing at all, which is most of a bare
-            // chunk and the difference between a quad per column and a quad per shadow.
-            let (steps, coverage) = coarsened(steps, coverage);
-            out.push(any.then(|| Rc::new(ShadeLattice::from_coverage(steps, steps, coverage))));
+            let any = (from_y..from_y + per_tile).any(|y| {
+                let row = (y * width) as usize;
+                self.scratch.alpha[row + from_x as usize..row + (from_x + per_tile) as usize]
+                    .iter()
+                    .any(|&texel| texel > 0)
+            });
+            out.push(any);
         }
         done
-    }
-
-    /// The map's coverage at a point of it, in `[0, 1]`, read between the four texels around it.
-    ///
-    /// `x` and `y` are in texels of the map, counted from its corner, so a texel's own middle is
-    /// at its index plus a half — which is the convention a texture sampler reads by, and what
-    /// keeps the lattice showing what the texture used to.
-    fn coverage_at(&self, x: f64, y: f64) -> f32 {
-        let (width, height) = (self.scratch.width, self.scratch.height);
-        if width == 0 || height == 0 {
-            return 0.0;
-        }
-        let place = |value: f64, span: u32| {
-            let shifted = (value - 0.5).clamp(0.0, f64::from(span - 1));
-            let first = shifted.floor() as u32;
-            (first, (first + 1).min(span - 1), shifted - f64::from(first))
-        };
-        let (x0, x1, tx) = place(x, width);
-        let (y0, y1, ty) = place(y, height);
-        let at = |x: u32, y: u32| f64::from(self.scratch.alpha[(y * width + x) as usize]) / 255.0;
-        let top = at(x0, y0) + (at(x1, y0) - at(x0, y0)) * tx;
-        let bottom = at(x0, y1) + (at(x1, y1) - at(x0, y1)) * tx;
-        (top + (bottom - top) * ty) as f32
     }
 
     /// The chunk's entities as casters, in the drawing's own measurements.
@@ -612,7 +611,7 @@ impl ShadowScene {
             if right < 0.0 || left > screen_w || bottom < 0.0 || top > screen_h {
                 continue;
             }
-            out.push(SpriteDraw::shadow(
+            out.push(SpriteDraw::face_shadow(
                 scene_key(
                     f64::from(face.x) + 0.5,
                     f64::from(face.y) + 0.5,
@@ -696,11 +695,26 @@ impl ShadowScene {
         let Some(baked) = self.chunks.get(&coord) else {
             return;
         };
+        // No slot, nothing to sample: a chunk whose map was turned out of the atlas draws no
+        // ground shadows until it is baked again, which `next_to_bake` already asks for.
+        let Some(slot) = self.atlas.slot_of(coord) else {
+            return;
+        };
         let opacity = self.light.opacity() as f32;
         let (screen_w, screen_h) = (f64::from(screen_width()), f64::from(screen_height()));
         let half_tile = projection.tile_width / 2.0;
+        // Where in its own square a corner reads the map: the middle of the square's outermost
+        // texel, not its edge. An edge reads half of the next column's texel, and that column is
+        // at another level and drawn somewhere else, which put a pale line at the foot of every
+        // step.
+        let per_tile = f64::from(SHADOW_MAP_PIXELS_PER_TILE);
+        let (near, far) = (0.5, per_tile - 0.5);
         for (index, column) in columns.iter().enumerate() {
-            let Some(shade) = baked.ground.get(index).and_then(Option::as_ref) else {
+            if !baked.ground.get(index).copied().unwrap_or(false) {
+                continue;
+            }
+            let Some((square_x, square_y)) = square_in_slot(coord, column.coord.x, column.coord.y)
+            else {
                 continue;
             };
             let level = crate::preview_top_level(*column, &height_at);
@@ -729,7 +743,13 @@ impl ShadowScene {
             {
                 continue;
             }
-            out.push(SpriteDraw::shadow(
+            // Each corner reads the map at its own place in the square, in the same order: along
+            // the square's x with the grid's x, and down its y with the grid's y.
+            let texel = |dx: f64, dy: f64| {
+                atlas_uv(slot, (f64::from(square_x) + dx, f64::from(square_y) + dy))
+            };
+            let map_uv = [texel(near, near), texel(far, near), texel(far, far), texel(near, far)];
+            out.push(SpriteDraw::ground_shadow(
                 scene_key(
                     f64::from(column.coord.x) + 0.5,
                     f64::from(column.coord.y) + 0.5,
@@ -738,7 +758,7 @@ impl ShadowScene {
                     projection.tile_height,
                 ),
                 corners,
-                Rc::clone(shade),
+                map_uv,
                 opacity,
             ));
         }
@@ -799,56 +819,6 @@ fn neighbours_loaded(manager: &ChunkManager, coord: ChunkCoord) -> u16 {
 }
 
 
-
-/// Drops every other corner of a square lattice while what is dropped can be read back between
-/// the ones kept, and gives what is left.
-///
-/// Every corner is a vertex the frame pushes, and most shaded columns need very few: one deep
-/// inside a tree's shadow is the same value in all directions, and one the shadow misses
-/// entirely is already gone. Only the columns an edge crosses pay for the fine lattice, so the
-/// map can be read as sharply as it likes without the whole ground paying for it.
-///
-/// `steps` halves while it stays even, so what comes back still divides
-/// [`SHADOW_MAP_PIXELS_PER_TILE`] — the corners are still read at texel centres.
-fn coarsened(steps: u32, coverage: Vec<f32>) -> (u32, Vec<f32>) {
-    /// How far a corner read between its neighbours may fall from its own value, in coverage.
-    /// A shadow is drawn at about a third opacity, so this is well under one step of a byte.
-    const TOLERANCE: f32 = 8.0 / 255.0;
-    let (mut steps, mut coverage) = (steps, coverage);
-    while steps >= 2 && steps % 2 == 0 {
-        let across = (steps + 1) as usize;
-        let half = steps as usize / 2;
-        // A corner that survives this halving, by its place in the thinner lattice.
-        let kept = |row: usize, column: usize| coverage[row * 2 * across + column * 2];
-        let between = |row: usize, column: usize| {
-            let (low_row, low_column) = (row / 2, column / 2);
-            let (high_row, high_column) = (low_row + row % 2, low_column + column % 2);
-            let mix = |a: f32, b: f32| if a == b { a } else { (a + b) / 2.0 };
-            mix(
-                mix(kept(low_row, low_column), kept(low_row, high_column)),
-                mix(kept(high_row, low_column), kept(high_row, high_column)),
-            )
-        };
-        let fits = (0..=steps as usize).all(|row| {
-            (0..=steps as usize).all(|column| {
-                row % 2 == 0 && column % 2 == 0
-                    || (between(row, column) - coverage[row * across + column]).abs() <= TOLERANCE
-            })
-        });
-        if !fits {
-            break;
-        }
-        let mut thinner = Vec::with_capacity((half + 1) * (half + 1));
-        for row in 0..=half {
-            for column in 0..=half {
-                thinner.push(kept(row, column));
-            }
-        }
-        steps /= 2;
-        coverage = thinner;
-    }
-    (steps, coverage)
-}
 
 #[cfg(test)]
 #[path = "mod.test.rs"]

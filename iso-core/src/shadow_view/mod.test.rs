@@ -36,17 +36,20 @@ fn the_nine_chunks_around_one_include_it_once() {
     assert!(all.contains(&ChunkCoord { cx: 4, cy: -1 }));
 }
 
-/// The lattice stands in for the map's own texels, so its corners have to land on them: a
-/// resolution that does not divide the map reads between two texels everywhere and softens the
-/// whole shadow instead of only where it is soft.
+/// A column's quad reads the map at the middle of the square's outermost texels and not at its
+/// edges, because an edge blends in half of the next column's texel — and that column stands at
+/// another level and is drawn somewhere else. The ground used to read the map through a lattice
+/// of corners and had the same rule for the same reason; now the sampler does it, and this is
+/// the arithmetic that still has to hold.
 #[test]
-fn the_ground_lattice_divides_the_map() {
-    const { assert!(GROUND_SHADE_STEPS > 0) };
-    assert_eq!(
-        SHADOW_MAP_PIXELS_PER_TILE % GROUND_SHADE_STEPS,
-        0,
-        "{GROUND_SHADE_STEPS} corners do not divide {SHADOW_MAP_PIXELS_PER_TILE} texels a tile"
-    );
+fn a_columns_quad_reads_inside_its_own_square_of_the_map() {
+    let per_tile = f64::from(SHADOW_MAP_PIXELS_PER_TILE);
+    let (near, far) = (0.5, per_tile - 0.5);
+
+    assert!(near > 0.0, "the near corner would read the previous column");
+    assert!(far < per_tile, "the far corner would read the next column");
+    // Half a texel in at each end, so the pair spans all but one texel of the square.
+    assert_eq!(far - near, per_tile - 1.0);
 }
 
 /// Every shadow is drawn out of the shared atlas, so that binding it changes nothing and the
@@ -147,38 +150,4 @@ fn every_terrain_block_is_drawn_at_least_a_whole_cell_wide() {
             ink.width
         );
     }
-}
-
-#[test]
-fn a_lattice_of_one_value_is_thinned_to_its_corners() {
-    let (steps, coverage) = coarsened(8, vec![0.5; 81]);
-
-    assert_eq!(steps, 1, "nothing varies, so four corners draw it exactly");
-    assert_eq!(coverage, vec![0.5; 4]);
-}
-
-#[test]
-fn a_lattice_that_ramps_is_thinned_and_still_reads_the_same() {
-    let steps = 8;
-    let ramp = |corner: u32| f32::from(u8::try_from(corner).unwrap()) / f32::from(steps as u8);
-    let coverage: Vec<f32> =
-        (0..=steps).flat_map(|row| (0..=steps).map(move |column| ramp(row) * ramp(column))).collect();
-
-    let (thinner, kept) = coarsened(steps, coverage);
-
-    assert!(thinner < steps, "a ramp is read back exactly between any two of its corners");
-    assert_eq!(kept.first(), Some(&0.0));
-    assert_eq!(kept.last(), Some(&1.0), "and the far corner is still the far corner");
-}
-
-#[test]
-fn a_lattice_with_detail_between_its_corners_keeps_them_all() {
-    let steps = 8;
-    // A chequer: every other corner is the opposite of the two beside it, which is exactly what
-    // reading between them cannot reproduce.
-    let coverage: Vec<f32> = (0..=steps)
-        .flat_map(|row| (0..=steps).map(move |column| f32::from(u8::from((row + column) % 2 == 0))))
-        .collect();
-
-    assert_eq!(coarsened(steps, coverage.clone()), (steps, coverage));
 }

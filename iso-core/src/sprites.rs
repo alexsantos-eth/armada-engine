@@ -16,6 +16,8 @@ use macroquad::prelude::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use crate::scene_material::{self, vertex};
+
 /// The shared atlas, which is the texture of everything that is not a sheet of player poses.
 pub const ATLAS_TEXTURE: usize = 0;
 
@@ -28,6 +30,11 @@ pub const ATLAS_TEXTURE: usize = 0;
 /// one white texel of the atlas instead leaves the texture alone, so the shadows go into the
 /// same batch as the ground they fall on. `artifacts` has no generator for it: it is a plain
 /// white square (`public/assets/shadow/white.svg`).
+///
+/// The shadows on the ground no longer need it — they read the shadow atlas through
+/// [`crate::scene_material`] and ignore their own texture coordinate — but the shadows on the
+/// ground's vertical faces still do, because a face's shading is worked out at its corners and
+/// carried as vertex colour.
 pub const WHITE_PATCH: &str = "/assets/shadow/white.svg";
 
 /// The rasterized atlas plus the lookup from an asset's source path to its frame.
@@ -230,13 +237,15 @@ impl SpriteAtlas {
                         Color::new(light, light, light, 1.0)
                     }
                 };
-                Vertex::new(
-                    x as f32,
-                    y as f32,
-                    0.0,
-                    (source.x + along * source.w) / width,
-                    (source.y + down * source.h) / height,
+                vertex(
+                    (x as f32, y as f32),
+                    (
+                        (source.x + along * source.w) / width,
+                        (source.y + down * source.h) / height,
+                    ),
                     colour,
+                    (0.0, 0.0),
+                    scene_material::SPRITE,
                 )
             })
             .collect();
@@ -275,13 +284,18 @@ impl SpriteAtlas {
             for column in 0..=columns {
                 let along = f32::from(column as u16) / columns as f32;
                 let light = shade.light_at(column, row);
-                vertices.push(Vertex::new(
-                    layout.x as f32 + along * layout.width as f32,
-                    layout.y as f32 + down * layout.height as f32,
-                    0.0,
-                    (source.x + along * source.w) / width,
-                    (source.y + down * source.h) / height,
+                vertices.push(vertex(
+                    (
+                        layout.x as f32 + along * layout.width as f32,
+                        layout.y as f32 + down * layout.height as f32,
+                    ),
+                    (
+                        (source.x + along * source.w) / width,
+                        (source.y + down * source.h) / height,
+                    ),
                     Color::new(light, light, light, 1.0),
+                    (0.0, 0.0),
+                    scene_material::SPRITE,
                 ));
             }
         }
@@ -308,7 +322,7 @@ impl SpriteAtlas {
     /// [`WHITE_PATCH`] rather than carrying no texture, so it joins the batch the ground is
     /// drawn in; with no patch in the atlas it falls back to an untextured mesh, which draws
     /// the same pixels but costs a draw call of its own.
-    pub fn draw_shadow(&self, corners: &[(f64, f64); 4], shade: &ShadeLattice, opacity: f32) {
+    pub fn draw_face_shadow(&self, corners: &[(f64, f64); 4], shade: &ShadeLattice, opacity: f32) {
         let (columns, rows) = (shade.columns, shade.rows);
         let (u, v) = self.white.unwrap_or((0.0, 0.0));
         let mut vertices = Vec::with_capacity(((columns + 1) * (rows + 1)) as usize);
@@ -327,13 +341,15 @@ impl SpriteAtlas {
                 );
                 // The lattice carries light; what a shadow draws is the dark that is left.
                 let alpha = (1.0 - shade.light_at(column, row)) * opacity;
-                vertices.push(Vertex::new(
-                    (top.0 + (bottom.0 - top.0) * down) as f32,
-                    (top.1 + (bottom.1 - top.1) * down) as f32,
-                    0.0,
-                    u,
-                    v,
+                vertices.push(vertex(
+                    (
+                        (top.0 + (bottom.0 - top.0) * down) as f32,
+                        (top.1 + (bottom.1 - top.1) * down) as f32,
+                    ),
+                    (u, v),
                     Color::new(0.0, 0.0, 0.0, alpha),
+                    (0.0, 0.0),
+                    scene_material::SPRITE,
                 ));
             }
         }
@@ -349,6 +365,46 @@ impl SpriteAtlas {
             vertices,
             indices,
             texture: self.white.map(|_| self.textures[ATLAS_TEXTURE].clone()),
+        });
+    }
+
+    /// Draws the shadow baked on a column's top face: one quad, shaded by the shadow atlas.
+    ///
+    /// `corners` is the cell on screen, from the corner towards the camera clockwise, and
+    /// `map_uv` is where each of those corners reads the atlas. The projection is affine, so
+    /// interpolating the coordinate across the quad lands on the same texels the lattice used to
+    /// read on the CPU — only the sampler does it now, and between the texels rather than
+    /// between a lattice's corners.
+    ///
+    /// The mesh binds the sprite atlas, not the shadow atlas: that is what keeps it in the same
+    /// batch as the ground it falls on. [`crate::scene_material`] reads the shadow atlas through
+    /// a sampler of its own, and the vertex's own texture coordinate is never looked at — it
+    /// points at [`WHITE_PATCH`] so that the draw is still correct if it ever is.
+    pub fn draw_ground_shadow(
+        &self,
+        corners: &[(f64, f64); 4],
+        map_uv: &[(f32, f32); 4],
+        opacity: f32,
+    ) {
+        let white = self.white.unwrap_or((0.0, 0.0));
+        // The phase's opacity rides in the alpha; the shader multiplies the map's coverage by it.
+        let colour = Color::new(0.0, 0.0, 0.0, opacity);
+        let vertices: Vec<Vertex> = (0..4)
+            .map(|corner| {
+                let (x, y) = corners[corner];
+                vertex(
+                    (x as f32, y as f32),
+                    white,
+                    colour,
+                    map_uv[corner],
+                    scene_material::SHADOW,
+                )
+            })
+            .collect();
+        draw_mesh(&Mesh {
+            vertices,
+            indices: vec![0, 1, 2, 0, 2, 3],
+            texture: Some(self.textures[ATLAS_TEXTURE].clone()),
         });
     }
 
@@ -456,14 +512,27 @@ pub enum DrawKind {
         /// The piece of the drawing this draw shows, as in [`DrawKind::Sprite`].
         band: Option<SpriteBand>,
     },
-    /// A baked shadow on one surface of the ground: a column's top face, or one exposed
-    /// vertical face of it.
+    /// The baked shadow on a column's top face: the flat quad of its own cell, shaded from the
+    /// chunk's square of the shadow atlas.
     ///
-    /// Both are the same thing — a flat quad of the world carrying how dark each of its corners
-    /// is — so both are drawn the same way, as a lattice of flat black over the quad. The
-    /// lattice is baked with the chunk and shared by reference, because the shadows are static
-    /// and only the phase's opacity is decided at draw time.
-    Shadow {
+    /// Four vertices, because the shading is a texture lookup ([`crate::scene_material`]). It
+    /// used to be a lattice of corners read off the map on the CPU, and at 36 texels a tile that
+    /// was 221 vertices a column after thinning — 96 % of everything the frame drew.
+    GroundShadow {
+        /// The quad's four corners on screen, from the one towards the camera, clockwise.
+        corners: [(f64, f64); 4],
+        /// Where each of those corners reads the shadow atlas.
+        map_uv: [(f32, f32); 4],
+        /// How dark the shadow is drawn: the lighting phase's own opacity.
+        opacity: f32,
+    },
+    /// The baked shadow on one exposed vertical face of the ground.
+    ///
+    /// A face does not stand in the shadow map — the map is cast onto level ground — so its
+    /// shading is worked out at its own corners when the chunk bakes and carried as vertex
+    /// colour over a lattice. A face is one cell wide and one block tall, so that lattice is
+    /// sixteen vertices, which is why it stayed as it was.
+    FaceShadow {
         /// The quad's four corners on screen, from the one towards the camera, clockwise.
         corners: [(f64, f64); 4],
         shade: Rc<ShadeLattice>,
@@ -535,8 +604,21 @@ impl SpriteDraw {
         }
     }
 
+    /// The shadow baked on a column's top face, read from the shadow atlas.
+    pub fn ground_shadow(
+        key: DrawKey,
+        corners: [(f64, f64); 4],
+        map_uv: [(f32, f32); 4],
+        opacity: f32,
+    ) -> Self {
+        Self {
+            key,
+            kind: DrawKind::GroundShadow { corners, map_uv, opacity },
+        }
+    }
+
     /// A shadow on one exposed vertical face of the ground.
-    pub fn shadow(
+    pub fn face_shadow(
         key: DrawKey,
         corners: [(f64, f64); 4],
         shade: Rc<ShadeLattice>,
@@ -544,13 +626,33 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
-            kind: DrawKind::Shadow { corners, shade, opacity },
+            kind: DrawKind::FaceShadow { corners, shade, opacity },
         }
     }
 }
 
-/// Sorts the queued sprites far to near and draws them.
-pub fn draw_sorted(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
+/// Sorts the queued sprites far to near and draws them, with `material` bound throughout.
+///
+/// The material is bound once around the whole list and let go after it, because switching
+/// pipelines breaks the batch exactly as switching textures does: binding it per shadow would
+/// undo the batching the shadow atlas exists for. Without a material the ground shadows have no
+/// way to read their map, so the scene is drawn without them — which is what the client does
+/// when the shader will not load.
+pub fn draw_sorted(
+    atlas: &SpriteAtlas,
+    material: Option<&crate::scene_material::SceneMaterial>,
+    draws: &mut [SpriteDraw],
+) {
+    if let Some(material) = material {
+        material.bind();
+    }
+    draw_queue(atlas, draws);
+    if let Some(material) = material {
+        material.release();
+    }
+}
+
+fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
     // A stable sort, so sprites that share a key keep the order they were queued in: that is
     // what stacks a column's own blocks bottom first.
     draws.sort_by(|a, b| compare_draw_keys(&a.key, &b.key));
@@ -568,8 +670,11 @@ pub fn draw_sorted(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
             DrawKind::Shaded { texture, frame, layout, shade, band: None } => {
                 atlas.draw_shaded(*texture, *frame, *layout, shade);
             }
-            DrawKind::Shadow { corners, shade, opacity } => {
-                atlas.draw_shadow(corners, shade, *opacity);
+            DrawKind::GroundShadow { corners, map_uv, opacity } => {
+                atlas.draw_ground_shadow(corners, map_uv, *opacity);
+            }
+            DrawKind::FaceShadow { corners, shade, opacity } => {
+                atlas.draw_face_shadow(corners, shade, *opacity);
             }
         }
     }

@@ -1,6 +1,7 @@
 mod perf;
 mod player_view;
 mod save;
+mod scene_material;
 mod services;
 mod shadow_view;
 mod sprites;
@@ -30,7 +31,9 @@ use armada_core::camera::{
     visible_chunks as camera_visible_chunks,
 };
 use armada_core::lighting::DAWN;
+use scene_material::SceneMaterial;
 use shadow_view::ShadowScene;
+use shadow_view::atlas::ShadowAtlas;
 use shadow_view::masks::SilhouetteMasks;
 use save::{
     load_archive_into_manager, load_save, restore_archive, restore_discovered_from_archive,
@@ -378,10 +381,22 @@ async fn main() {
             crate::sprites::WHITE_PATCH
         );
     }
+    // The scene's own shader, and the texture the baked shadows live in. The material has to
+    // exist before the shadows do: a ground shadow is four vertices carrying where to read that
+    // texture, and only this material knows how to read it. Without it the client runs with no
+    // baked shadows rather than drawing them wrong — see `scene_material`.
+    let shadow_atlas = ShadowAtlas::new();
+    let material = match SceneMaterial::load(shadow_atlas.texture()) {
+        Ok(material) => Some(material),
+        Err(reason) => {
+            eprintln!("warning: {reason}; se dibujara sin sombras horneadas");
+            None
+        }
+    };
     // Dawn, baked: one sun, one bake per chunk, and nothing to advance per frame. See
     // `shadow_view` for what casts and what receives.
-    let mut shadows = masks.map(|masks| {
-        ShadowScene::new(DAWN, masks, PREVIEW_TILE_WIDTH, PREVIEW_ELEVATION_STEP)
+    let mut shadows = masks.filter(|_| material.is_some()).map(|masks| {
+        ShadowScene::new(DAWN, masks, shadow_atlas, PREVIEW_TILE_WIDTH, PREVIEW_ELEVATION_STEP)
     });
     let (terrain_frames, missing_terrain) = TerrainFrames::new(&atlas);
     for material in &missing_terrain {
@@ -900,7 +915,7 @@ async fn main() {
 
         let after_collect = get_time();
         let sprites = draws.len();
-        draw_sorted(&atlas, &mut draws);
+        draw_sorted(&atlas, material.as_ref(), &mut draws);
         let after_draw = get_time();
         perf.push(FrameSample {
             frame_ms,
@@ -1051,6 +1066,32 @@ fn draw_grid(projection: ProjectionConfig, centre: WorldCoord) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use shadow_view::atlas::SLOT_COUNT;
+
+    /// The shadow atlas holds nine chunks, and the chunk whose slot it turns out is the one
+    /// least recently shown. That is only safe while the camera never shows more chunks than
+    /// there are slots: past that the atlas would evict a chunk that is on screen, bake it
+    /// again the next frame, and evict another — shadows flickering and a bake every frame.
+    ///
+    /// The cull is what decides, and it is decided by the zoom: a chunk is 32 tiles and
+    /// [`PREVIEW_TILE_WIDTH`] draws a tile 280 px across, so a chunk is thousands of pixels
+    /// wide and even a very large window sees a handful. This is the guard on anyone zooming
+    /// out: if this fails, raise the slots or shrink the map before changing the tile width.
+    #[test]
+    fn the_atlas_holds_more_chunks_than_the_camera_can_show() {
+        // Comfortably past any display this runs on, and the cull adds its own margin.
+        let viewport = ScreenSize { width: 3840.0, height: 2160.0 };
+        let projection = preview_projection(0.0, 0.0);
+        let camera = Camera { x: 0.0, y: 0.0, zoom: 1.0 };
+
+        let culled = camera_visible_chunks(camera, viewport, projection, CHUNK_CULL_MARGIN);
+
+        assert!(
+            culled.len() <= SLOT_COUNT,
+            "the camera shows {} chunks and the shadow atlas holds {SLOT_COUNT}",
+            culled.len()
+        );
+    }
 
     fn sand_at(x: i32, y: i32, elevation: i32) -> TerrainColumn {
         TerrainColumn {
