@@ -15,10 +15,14 @@ that is not black leaks its own hue into the half-transparent edge.
 
 Usage: cloud_pattern.py <cloud-shadow.svg> <out.png> [width] [height] [blur]
 """
+import os
 import re
 import sys
 
-sys.path.insert(0, __file__.rsplit("/", 1)[0])
+# cairosvg is imported through the Rust client's rasterizer, which lives beside the atlas build
+# and knows how to find the package when it is not on the import path. This script sits in
+# artifacts/ with the other generators, a sibling of lib/.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib", "scripts"))
 from rasterize import cairosvg  # noqa: E402  (it looks for the package off the import path)
 
 # One texel per SVG unit, which is the pattern's own size.

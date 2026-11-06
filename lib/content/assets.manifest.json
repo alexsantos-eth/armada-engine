@@ -5,7 +5,7 @@
     "x": 0,
     "y": 0,
     "width": 4096,
-    "height": 2752
+    "height": 2758
   },
   "entries": [
     {
@@ -39,7 +39,7 @@
       "source": "/assets/boat/block_2.svg",
       "dataTiles": "2x1",
       "frame": {
-        "x": 3070,
+        "x": 3671,
         "y": 2300,
         "width": 307,
         "height": 202
@@ -64,8 +64,8 @@
       "source": "/assets/boat/block_2_reflection.svg",
       "dataTiles": "2x1",
       "frame": {
-        "x": 3378,
-        "y": 2300,
+        "x": 1,
+        "y": 2556,
         "width": 307,
         "height": 201
       },
@@ -389,7 +389,7 @@
       "source": "/assets/bush/block.svg",
       "dataTiles": null,
       "frame": {
-        "x": 742,
+        "x": 449,
         "y": 2556,
         "width": 210,
         "height": 112
@@ -439,10 +439,10 @@
       "source": "/assets/cloud-shadow.svg",
       "dataTiles": null,
       "frame": {
-        "x": 1,
-        "y": 2556,
+        "x": 3070,
+        "y": 2300,
         "width": 600,
-        "height": 195
+        "height": 205
       },
       "frames": null,
       "anchor": {
@@ -4400,7 +4400,7 @@
       "source": "/assets/player/block.svg",
       "dataTiles": null,
       "frame": {
-        "x": 953,
+        "x": 660,
         "y": 2556,
         "width": 86,
         "height": 107
@@ -4425,7 +4425,7 @@
       "source": "/assets/rock/block.svg",
       "dataTiles": null,
       "frame": {
-        "x": 602,
+        "x": 309,
         "y": 2556,
         "width": 139,
         "height": 121
@@ -4450,7 +4450,7 @@
       "source": "/assets/rock/block_2.svg",
       "dataTiles": null,
       "frame": {
-        "x": 1155,
+        "x": 862,
         "y": 2556,
         "width": 127,
         "height": 90
@@ -4475,7 +4475,7 @@
       "source": "/assets/rock/block_3.svg",
       "dataTiles": null,
       "frame": {
-        "x": 1040,
+        "x": 747,
         "y": 2556,
         "width": 114,
         "height": 101
@@ -4525,7 +4525,7 @@
       "source": "/assets/shadow/white.svg",
       "dataTiles": null,
       "frame": {
-        "x": 1283,
+        "x": 990,
         "y": 2556,
         "width": 20,
         "height": 20

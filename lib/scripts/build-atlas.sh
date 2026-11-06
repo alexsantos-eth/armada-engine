@@ -9,7 +9,7 @@
 #   3. Rasterize the cloud shadows' pattern on its own, into content/cloud-shadow.png. It is not
 #      packed: the packer trims every sprite's transparent border, and a trimmed pattern no
 #      longer repeats (see src/cloud_shadows.rs), and it is softened there because cairosvg
-#      ignores the blur the artwork asks for (see cloud_pattern.py).
+#      ignores the blur the artwork asks for (see ../artifacts/cloud_pattern.py).
 #
 # Requires: a Python with cairosvg (any version: the script looks for one) and a Rust toolchain.
 # Set PYTHON=/path/to/python3 to choose the interpreter yourself.
@@ -67,11 +67,37 @@ for candidate in "${pythons[@]}"; do
   fi
 done
 
-# None has it installed: fall back to the chosen interpreter and let rasterize.py look for a
-# copy that came with some other runtime. If it finds none, it says what it tried and stops.
+# Still nothing: build the pipeline its own virtualenv and install what it needs there. A
+# Homebrew or system Python refuses `pip install --user` (PEP 668), and borrowing another
+# runtime's copy is what breaks in the first place, so owning the environment is the only
+# arrangement that keeps working. It lives in .venv/ (ignored by git) and is reused after that.
+# NumPy and Pillow are not optional here: without them artifacts/cloud_pattern.py cannot apply
+# the blur and the shadow pattern comes out with hard edges.
+venv_dir="${ATLAS_VENV:-.venv}"
+
+if [ -z "$python" ] && [ -x "$venv_dir/bin/python" ] \
+  && "$venv_dir/bin/python" -c "import cairosvg, numpy, PIL" >/dev/null 2>&1; then
+  python="$venv_dir/bin/python"
+fi
+
 if [ -z "$python" ]; then
-  python="${PYTHON:-python3}"
-  echo "No Python here imports cairosvg directly; searching for a copy off the import path." >&2
+  base="${PYTHON:-python3}"
+  echo "No Python here has cairosvg. Setting up $venv_dir with $("$base" -V 2>&1)..." >&2
+  "$base" -m venv "$venv_dir"
+  "$venv_dir/bin/python" -m pip install --quiet --disable-pip-version-check \
+    cairosvg numpy pillow
+  if "$venv_dir/bin/python" -c "import cairosvg, numpy, PIL" >/dev/null 2>&1; then
+    python="$venv_dir/bin/python"
+    echo "Done. Later runs reuse it; delete $venv_dir to start over." >&2
+  else
+    echo "" >&2
+    echo "$venv_dir was created but cairosvg still does not import there:" >&2
+    "$venv_dir/bin/python" -c "import cairosvg" >&2 || true
+    echo "" >&2
+    echo "cairosvg needs the libcairo library, which pip does not install." >&2
+    echo "On macOS: brew install cairo. On Debian/Ubuntu: apt install libcairo2." >&2
+    exit 1
+  fi
 fi
 
 echo "Rasterizing SVGs with cairosvg ($("$python" -V 2>&1), $(command -v "$python"))..."
@@ -86,9 +112,9 @@ echo "Packing atlas..."
 
 # The cloud shadows' pattern, whole and untrimmed: one texel per SVG unit, so a copy is
 # 1920 x 960 and spans the twelve tiles the pattern repeats over. It goes through
-# cloud_pattern.py rather than rasterize.py, which scales by tile of world and would give the
+# artifacts/cloud_pattern.py rather than rasterize.py, which scales by tile of world and would
 # pattern the resolution of a sprite, and which would also leave the artwork's blur unapplied.
 echo "Rasterizing the cloud shadow pattern..."
-"$python" scripts/cloud_pattern.py "$svg_dir/cloud-shadow.svg" content/cloud-shadow.png
+"$python" ../artifacts/cloud_pattern.py "$svg_dir/cloud-shadow.svg" content/cloud-shadow.png
 
 echo "Done. Atlas: content/atlas.png, sheets: content/player_*.png, clouds: content/cloud-shadow.png, manifest: content/assets.manifest.json"

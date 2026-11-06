@@ -75,6 +75,12 @@ Netlify **no** regenera el atlas: eso necesita `cairosvg` y el `pack_atlas` nati
 scripts/build-atlas.sh
 ```
 
+El script elige un Python que pueda importar `cairosvg`; si no hay ninguno, se monta su propio
+entorno en `lib/.venv/` (ignorado por git) con `cairosvg`, NumPy y Pillow, y lo reutiliza después.
+Con `PYTHON=/ruta/a/python3` eliges tú el intérprete base, y con `ATLAS_VENV` dónde va el entorno.
+`cairosvg` necesita además la librería libcairo, que pip no instala: en macOS, `brew install
+cairo`; en Debian o Ubuntu, `libcairo2`.
+
 El script rasteriza cada SVG con `cairosvg` (`scripts/rasterize.py`) a 320 px por tile de mundo y
 después compila y ejecuta `pack_atlas`, que empaqueta `content/atlas.png` (4096 px de ancho) con
 su `content/assets.manifest.json`. Las hojas de poses del jugador no caben en el atlas sin perder
@@ -82,7 +88,7 @@ detalle, así que se cortan celda a celda y cada hoja recibe su textura,
 `content/player-16_<hoja>.png`, con su rejilla descrita en el manifiesto (esquema 2); se usan las
 de dieciséis orientaciones de `../web/public/assets/player-16/`, no las de ocho del cliente Pixi.
 El patrón de sombras de nubes no se empaqueta —el empaquetador recorta el borde transparente de
-cada sprite y un patrón recortado deja de repetir—, así que `scripts/cloud_pattern.py` lo
+cada sprite y un patrón recortado deja de repetir—, así que `../artifacts/cloud_pattern.py` lo
 rasteriza entero aparte en `content/cloud-shadow.png` y le aplica ahí el desenfoque que cairosvg
 ignora. Después de tocar los bloques de terreno (`../artifacts/terrain_blocks.py`) hay que
 regenerar también las variantes de hierba (`grass_clutter.py`) y los dieciséis tiles de camino
