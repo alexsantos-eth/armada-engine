@@ -388,3 +388,119 @@ fn level_ground_casts_nothing_on_itself() {
 
     assert!(map.is_empty(), "a plain has no horizon to hide behind");
 }
+
+/// The ground layouts a blur is tested over: flush everywhere, and stepped everywhere.
+type Layouts = [Box<dyn Fn(i32, i32) -> Option<f64>>; 2];
+
+/// Ground that steps at every column edge on both axes, so the blur is cut everywhere it can be.
+fn terraced() -> impl Fn(i32, i32) -> Option<f64> {
+    move |x, y| Some(f64::from((x + y).rem_euclid(3)))
+}
+
+/// A map of pseudo-random texels, for comparing a blur against a mean worked out by hand.
+///
+/// The fast paths of the blur turn on runs of equal texels, so the noise is laid in runs of a
+/// few texels: a map of pure noise would never take them and a map of flat ground would never
+/// leave them.
+fn noisy_map(area: MapArea, per_tile: u32) -> ShadowMap {
+    let mut map = ShadowMap::new(area, per_tile);
+    let mut seed = 0x2545_F491_4F6C_DD1Du64;
+    let mut held = (0u8, 0usize);
+    for texel in &mut map.alpha {
+        if held.1 == 0 {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            let roll = (seed >> 11) as u32;
+            held = (
+                match roll % 5 {
+                    0 => 0,
+                    1 => 255,
+                    other => (other * 61) as u8,
+                },
+                1 + (roll / 5) as usize % 7,
+            );
+        }
+        *texel = held.0;
+        held.1 -= 1;
+    }
+    map
+}
+
+/// The mean of `line` over `at ± span`, cut at `cut`: the plainest reading of the blur, one
+/// texel at a time, for the fast paths to be measured against.
+fn mean_cut_at(line: &[u8], at: usize, span: usize, per_tile: usize, cut: &dyn Fn(usize) -> bool) -> u8 {
+    let mut from = at.saturating_sub(span);
+    let mut to = (at + span).min(line.len() - 1);
+    for edge in (per_tile..line.len()).step_by(per_tile) {
+        if !cut(edge) {
+            continue;
+        }
+        if edge <= at && edge > from {
+            from = edge;
+        }
+        if edge > at && edge - 1 < to {
+            to = edge - 1;
+        }
+    }
+    let total: u32 = line[from..=to].iter().map(|&value| u32::from(value)).sum();
+    (total / (to - from + 1) as u32) as u8
+}
+
+#[test]
+fn the_blur_across_is_a_mean_of_its_window_texel_by_texel() {
+    let area = MapArea { min_x: 0, min_y: 0, max_x: 3, max_y: 2 };
+    let cases: Layouts = [Box::new(flat(0.0)), Box::new(terraced())];
+    for levels in cases {
+        let cache = LevelCache::new(area, levels.as_ref());
+        let before = noisy_map(area, 12);
+        let mut after = before.clone();
+        blur_across_within_levels(&mut after, 1, &cache);
+
+        let width = before.width as usize;
+        for y in 0..before.height as usize {
+            let row = &before.alpha[y * width..(y + 1) * width];
+            let world_y = area.min_y + (y / 12) as i32;
+            let cut = |edge: usize| {
+                let x = area.min_x + (edge / 12) as i32;
+                levels(x - 1, world_y) != levels(x, world_y)
+            };
+            for x in 0..width {
+                assert_eq!(
+                    after.alpha[y * width + x],
+                    mean_cut_at(row, x, 1, 12, &cut),
+                    "texel ({x}, {y})"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn the_blur_down_is_a_mean_of_its_window_texel_by_texel() {
+    let area = MapArea { min_x: 0, min_y: 0, max_x: 3, max_y: 2 };
+    let cases: Layouts = [Box::new(flat(0.0)), Box::new(terraced())];
+    for levels in cases {
+        let cache = LevelCache::new(area, levels.as_ref());
+        let before = noisy_map(area, 12);
+        let mut after = before.clone();
+        blur_down_within_levels(&mut after, 1, &cache);
+
+        let (width, height) = (before.width as usize, before.height as usize);
+        for x in 0..width {
+            let column: Vec<u8> = (0..height).map(|y| before.alpha[y * width + x]).collect();
+            let world_x = area.min_x + (x / 12) as i32;
+            let cut = |edge: usize| {
+                let y = area.min_y + (edge / 12) as i32;
+                levels(world_x, y - 1) != levels(world_x, y)
+            };
+            for y in 0..height {
+                assert_eq!(
+                    after.alpha[y * width + x],
+                    mean_cut_at(&column, y, 1, 12, &cut),
+                    "texel ({x}, {y})"
+                );
+            }
+        }
+    }
+}

@@ -558,6 +558,12 @@ fn lay_terrain_rows(
                 // is a whole sample cell, so at three samples a tile that is most of them.
                 let (mut held, mut carried) = ((u32::MAX, u32::MAX), Horizon::CLEAR);
                 let (mut elevation, mut width_of) = (0.0, 0.0);
+                // What the run comes to at both of its ends, when that already answers every
+                // texel in between: the horizon ramps, so a run the sun clears at both ends is
+                // lit the whole way along and one buried at both ends is fully shaded. That
+                // spares the division in `coverage`, which is the whole cost of this pass and
+                // which all but a few per cent of a map's texels were paying to be told 0.
+                let (mut run_lit, mut run_full) = (false, false);
                 for (across_offset, &(x0, x1, tx)) in across_blend.iter().enumerate() {
                     if held != (x0, x1) {
                         held = (x0, x1);
@@ -577,10 +583,22 @@ fn lay_terrain_rows(
                             let (low, high) = (at(0.0), at(1.0));
                             elevation = high.elevation - low.elevation;
                             width_of = high.width - low.width;
+                            let (ends_low, ends_high) = (low.coverage(level), high.coverage(level));
+                            run_lit = ends_low <= 0.0 && ends_high <= 0.0;
+                            run_full = ends_low >= 1.0 && ends_high >= 1.0;
                             low
                         } else {
+                            run_lit = false;
+                            run_full = false;
                             Horizon::CLEAR
                         };
+                    }
+                    if run_lit {
+                        continue;
+                    }
+                    if run_full {
+                        map.alpha[row + from_x as usize + across_offset] = u8::MAX;
+                        continue;
                     }
                     let horizon = if carried.elevation.is_finite() {
                         Horizon {
@@ -915,6 +933,7 @@ fn blur_across_within_levels(map: &mut ShadowMap, radius: u32, levels: &LevelCac
     // Where the cuts fall depends only on which columns a line crosses, so it is worked out
     // once per row of columns rather than once per row of texels — as many times fewer as a
     // tile has texels.
+    let means = full_window_means(span);
     let mut cuts = vec![false; width + 1];
     let mut row = vec![0u8; width];
     for y in 0..height {
@@ -927,18 +946,25 @@ fn blur_across_within_levels(map: &mut ShadowMap, radius: u32, levels: &LevelCac
         }
         row.copy_from_slice(&map.alpha[y * width..(y + 1) * width]);
         let out = &mut map.alpha[y * width..(y + 1) * width];
-        // The window slides by one texel, so it is carried along the row rather than summed
-        // again at every step, and only the few texels whose window reaches a cut are redone.
-        let mut running: u32 = row[..=span.min(width - 1)].iter().map(|&v| u32::from(v)).sum();
-        for x in 0..width {
-            let (from, to) = (x.saturating_sub(span), (x + span).min(width - 1));
-            out[x] = (running / (to - from + 1) as u32) as u8;
-            if x + span + 1 < width {
-                running += u32::from(row[x + span + 1]);
+        // The mean of a window whose texels are all the same is that value, and all but a few
+        // per cent of a map's texels are either untouched or fully shaded: the row is walked as
+        // runs of equal values, and only a window straddling the end of a run is averaged.
+        let mut start = 0;
+        while start < width {
+            let value = row[start];
+            let end = row[start..].iter().position(|&texel| texel != value).map_or(width, |run| start + run);
+            // The texels whose whole window, ends clamped, lies inside the run are the run's
+            // own value, written in one go; the few either side of its ends are averaged.
+            let inside = if start == 0 { start } else { (start + span).min(end) };
+            let until = if end == width { end } else { end.saturating_sub(span).max(inside) };
+            for (x, texel) in out[start..inside].iter_mut().enumerate() {
+                *texel = window_mean(&row, start + x, span, &means);
             }
-            if x >= span {
-                running -= u32::from(row[x - span]);
+            out[inside..until].fill(value);
+            for (x, texel) in out[until..end].iter_mut().enumerate() {
+                *texel = window_mean(&row, until + x, span, &means);
             }
+            start = end;
         }
         for edge in (per_tile..width).step_by(per_tile) {
             if !cuts[edge] {
@@ -976,30 +1002,50 @@ fn blur_down_within_levels(map: &mut ShadowMap, span: usize, levels: &LevelCache
     let (width, height) = (map.width as usize, map.height as usize);
     let per_tile = map.pixels_per_tile as usize;
     let keep = 2 * span + 1;
+    let means = full_window_means(span);
     let mut ring = vec![vec![0u8; width]; keep];
     let mut sums = vec![0u32; width];
     // Which texels of a row may not read across the edge above them. Worked out when the pass
     // reaches that edge and reused by every row whose window crosses it.
     let mut cut_above = vec![false; width];
     let (mut marked, mut loaded) = (usize::MAX, 0usize);
+    // The window moves down by one row, so the sums are carried: the row that enters is added
+    // and the row that leaves subtracted, instead of summing the window again at every step.
+    // The row leaving is still the oldest in the ring, so it is taken out before the row
+    // entering is read over it.
+    let (mut held_from, mut held_to) = (0usize, usize::MAX);
     for y in 0..height {
-        let to = (y + span).min(height - 1);
+        let (from, to) = (y.saturating_sub(span), (y + span).min(height - 1));
+        if held_to == usize::MAX {
+            sums[..width].fill(0);
+        } else if from > held_from {
+            let line = &ring[held_from % keep];
+            for (sum, value) in sums.iter_mut().zip(line.iter()) {
+                *sum -= u32::from(*value);
+            }
+        }
         while loaded <= to {
             ring[loaded % keep].copy_from_slice(&map.alpha[loaded * width..(loaded + 1) * width]);
             loaded += 1;
         }
-        let from = y.saturating_sub(span);
-        sums[..width].fill(0);
-        for source in from..=to {
+        let first_new = if held_to == usize::MAX { from } else { held_to + 1 };
+        for source in first_new..=to {
             let line = &ring[source % keep];
             for (sum, value) in sums.iter_mut().zip(line.iter()) {
                 *sum += u32::from(*value);
             }
         }
+        (held_from, held_to) = (from, to);
         let rows = (to - from + 1) as u32;
         let out = &mut map.alpha[y * width..(y + 1) * width];
-        for (texel, sum) in out.iter_mut().zip(sums.iter()) {
-            *texel = (*sum / rows) as u8;
+        if rows == keep as u32 {
+            for (texel, sum) in out.iter_mut().zip(sums.iter()) {
+                *texel = means[*sum as usize];
+            }
+        } else {
+            for (texel, sum) in out.iter_mut().zip(sums.iter()) {
+                *texel = (*sum / rows) as u8;
+            }
         }
         // The one column edge this row's window might cross, if there is one.
         let edge = (from / per_tile + 1) * per_tile;
@@ -1033,6 +1079,29 @@ fn mark_cuts(cuts: &mut [bool], per_tile: usize, flush: impl Fn(usize) -> bool) 
     let last = cuts.len() - 1;
     for (index, cut) in cuts.iter_mut().enumerate() {
         *cut = index == 0 || index == last || (index % per_tile == 0 && !flush(index / per_tile));
+    }
+}
+
+/// Every quotient a full window of the blur can come to, worked out once.
+///
+/// A box blur divides once a texel and a map is a million and a half of them, but a full window
+/// is `2 * span + 1` texels of at most 255 each, so there are only ever a few hundred sums it
+/// can have. Looking the answer up spares the division; the handful of texels at the map's own
+/// edge, whose window is clamped short, still divide.
+fn full_window_means(span: usize) -> Vec<u8> {
+    let full = 2 * span + 1;
+    (0..=255 * full).map(|sum| (sum / full) as u8).collect()
+}
+
+/// The mean of `line` over `at ± span`, with the ends clamped and `means` for a full window.
+fn window_mean(line: &[u8], at: usize, span: usize, means: &[u8]) -> u8 {
+    let from = at.saturating_sub(span);
+    let to = (at + span).min(line.len() - 1);
+    let total: u32 = line[from..=to].iter().map(|&value| u32::from(value)).sum();
+    if to - from == 2 * span {
+        means[total as usize]
+    } else {
+        (total / (to - from + 1) as u32) as u8
     }
 }
 
