@@ -19,8 +19,8 @@
 //! **Why a chunk rebakes.** A caster near a chunk edge throws its shadow into the next chunk, so
 //! a chunk is baked against the entities of itself and its eight neighbours. Until those
 //! neighbours have streamed in the bake is incomplete, so each chunk remembers which neighbours
-//! it was baked against and bakes again when that changes. [`BAKES_PER_FRAME`] caps how many do
-//! so in one frame.
+//! it was baked against and bakes again when that changes. A bake is spread over frames, a
+//! piece at a time, within [`BAKE_BUDGET_MS`].
 
 pub mod masks;
 
@@ -31,26 +31,38 @@ use armada_core::lighting::{
     HeightField, MapArea, PhaseLight, SHADE_COLUMNS, SHADE_ROWS, SHADOW_MAP_PIXELS_PER_TILE,
     ShadeGrid, ShadowCaster, ShadowMap, ShadowPoint, ShadowReceiver, SpriteExtent,
     TerrainFace,
-    bake_ground_shadows, shade_grid, shaded_at, terrain_faces,
+    GroundBake, shade_grid, shaded_at, terrain_faces,
 };
 use armada_core::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
 use armada_core::terrain::TerrainColumn;
 use armada_core::world::ChunkManager;
-use macroquad::prelude::{screen_height, screen_width};
+use macroquad::prelude::{get_time, screen_height, screen_width};
 use masks::SilhouetteMasks;
 use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::sprites::{ShadeLattice, SpriteDraw, scene_key};
 
-/// Chunks baked in one frame.
+/// How long a frame may spend baking shadows.
 ///
-/// One. Baking is a few milliseconds of walking texels, and showing a chunk asks it and its
-/// eight neighbours to bake again; doing all nine in the frame the player crosses a chunk border
-/// is a visible stutter, while doing one a frame fills them in over a seventh of a second with
-/// the old shadows still on screen. The TypeScript client stages its own gathering the same way
-/// (`SHADOW_GATHERS_PER_FRAME`).
-pub const BAKES_PER_FRAME: usize = 1;
+/// A whole chunk is tens of milliseconds, more than a frame has, and a step across a chunk
+/// border reveals several chunks at once and makes all of their neighbours stale with them — so
+/// a chunk a frame was a run of dropped frames, which is what walking felt like. The bake is cut
+/// into pieces instead ([`GroundBake`] for the map, a band of columns for the lattices read off
+/// it) and a frame does as many as fit here, with the chunk's previous shadows still on screen
+/// until the last piece lands. The TypeScript client has no such cost: it gathers its shadows
+/// into a render texture on the GPU.
+///
+/// Three milliseconds leaves most of a sixty-hertz frame to the rest of the scene, and fills a
+/// chunk in over a few frames. It is checked between pieces, not inside one, so a frame can
+/// overrun it by whatever the largest piece costs.
+pub const BAKE_BUDGET_MS: f64 = 3.0;
+
+/// Columns whose lattice is read off the map in one piece of work.
+///
+/// A chunk is 1024 of them and reading one back is a few hundred samples of the map, so this is
+/// the knob that keeps that stage inside the budget rather than its own hitch.
+const GROUND_SHADE_COLUMNS: usize = 128;
 
 /// Ground shadows draw over the terrain of their own column and under anything standing on it.
 ///
@@ -115,10 +127,43 @@ pub struct ShadowScene {
     light: PhaseLight,
     masks: SilhouetteMasks,
     chunks: HashMap<ChunkCoord, Baked>,
-    /// One map, reused by every bake: it is 666 KB of texels and only one chunk bakes at a time.
+    /// One map, reused by every bake: it is over a megabyte of texels and only one chunk bakes
+    /// at a time. While [`working`](Self::working) holds a job, the map belongs to that job.
     scratch: ShadowMap,
+    working: Option<Pending>,
     tile_width: f64,
     box_height: f64,
+}
+
+/// A chunk's bake, part way through.
+///
+/// Each piece of it is small enough to fit in a frame beside everything else, and the chunk's
+/// previous shadows stay on screen until the last piece lands.
+struct Pending {
+    coord: ChunkCoord,
+    /// The neighbours it is being baked against. If that changes under it, it starts again.
+    against: u16,
+    /// The chunk's own entities as casters, kept for the [`Baked`] it becomes.
+    own: Vec<ShadowCaster>,
+    /// Those of the chunk and of its eight neighbours, which is what the map is laid from.
+    casters: Vec<ShadowCaster>,
+    ground: HeightField,
+    map: GroundBake,
+    shade: Vec<Option<Rc<ShadeLattice>>>,
+    shaded: HashMap<(i32, i32), ShadeGrid>,
+    faces: Vec<(TerrainFace, Rc<ShadeLattice>)>,
+    stage: Reading,
+}
+
+/// What a [`Pending`] does next once its map is laid.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Reading {
+    /// Laying the map itself, caster by caster.
+    Map,
+    /// Reading it back as a lattice per column, from this one on.
+    Ground(usize),
+    Entities,
+    Faces,
 }
 
 impl ShadowScene {
@@ -129,13 +174,14 @@ impl ShadowScene {
             masks,
             chunks: HashMap::new(),
             scratch: ShadowMap::new(MapArea::around(0, 0, CHUNK_SIZE - 1, CHUNK_SIZE - 1), SHADOW_MAP_PIXELS_PER_TILE),
+            working: None,
             tile_width,
             box_height,
         }
     }
 
-    /// Brings the bake up to date for `shown`, at most [`BAKES_PER_FRAME`] chunks of it, and
-    /// forgets the chunks the stream has dropped.
+    /// Spends up to [`BAKE_BUDGET_MS`] bringing the bake up to date for `shown`, and forgets
+    /// the chunks the stream has dropped.
     ///
     /// Chunks never baked go first, so a chunk the player has just walked into gets its shadows
     /// before a chunk that only needs them refreshed.
@@ -149,30 +195,110 @@ impl ShadowScene {
         for coord in dropped {
             self.chunks.remove(&coord);
         }
-        let mut stale: Vec<(ChunkCoord, bool)> = shown
-            .iter()
-            .filter(|coord| manager.is_visible(**coord))
-            .filter_map(|coord| {
-                let against = neighbours_loaded(manager, *coord);
-                match self.chunks.get(coord) {
-                    Some(baked) if baked.baked_against == against => None,
-                    Some(_) => Some((*coord, false)),
-                    None => Some((*coord, true)),
-                }
-            })
-            .collect();
-        stale.sort_by_key(|(_, first_time)| !first_time);
-        for (coord, _) in stale.into_iter().take(BAKES_PER_FRAME) {
-            self.bake(manager, coord);
+        // A job whose chunk went away, or whose neighbours changed under it, is thrown away: it
+        // was being baked against something that is no longer true.
+        if let Some(job) = &self.working {
+            let stale = !manager.is_discovered(job.coord)
+                || neighbours_loaded(manager, job.coord) != job.against;
+            if stale {
+                self.working = None;
+            }
+        }
+        let until = get_time() + BAKE_BUDGET_MS / 1000.0;
+        loop {
+            if self.working.is_none() {
+                let Some(coord) = self.next_to_bake(manager, shown) else {
+                    return;
+                };
+                self.start(manager, coord);
+            }
+            if self.advance(manager) {
+                let Some(job) = self.working.take() else { return };
+                let Pending { coord, against, own, shade, shaded, faces, .. } = job;
+                self.chunks.insert(coord, Baked {
+                    ground: shade,
+                    shaded,
+                    casters: own,
+                    faces,
+                    baked_against: against,
+                });
+            }
+            if get_time() >= until {
+                return;
+            }
         }
     }
 
-    /// Bakes one chunk: its ground map, and the lattices of its own entities.
-    fn bake(&mut self, manager: &ChunkManager, coord: ChunkCoord) {
+    /// The chunk most worth baking next: one that has no shadows at all before one that has
+    /// shadows baked against fewer neighbours than it has now.
+    fn next_to_bake(&self, manager: &ChunkManager, shown: &[ChunkCoord]) -> Option<ChunkCoord> {
+        let mut first_time = None;
+        let mut again = None;
+        for coord in shown.iter().filter(|coord| manager.is_visible(**coord)) {
+            match self.chunks.get(coord) {
+                Some(baked) if baked.baked_against == neighbours_loaded(manager, *coord) => {}
+                Some(_) => again = again.or(Some(*coord)),
+                None => {
+                    first_time = Some(*coord);
+                    break;
+                }
+            }
+        }
+        first_time.or(again)
+    }
+
+    /// Does one piece of the job in hand, and says whether that was the last of it.
+    ///
+    /// The job is taken out of the scene for the duration so that each piece can read the
+    /// scene — its masks, its light, the map it is laying into — without borrowing the job
+    /// through it.
+    fn advance(&mut self, manager: &ChunkManager) -> bool {
+        let Some(mut job) = self.working.take() else { return false };
+        let mut finished = false;
+        match job.stage {
+            Reading::Map => {
+                let masks = &self.masks;
+                let more = job.map.step(
+                    &mut self.scratch,
+                    &job.casters,
+                    Some(&job.ground),
+                    &self.light.shadow,
+                    self.tile_width,
+                    self.box_height,
+                    &|index| masks.silhouette_of(index),
+                );
+                if !more {
+                    job.stage = Reading::Ground(0);
+                }
+            }
+            Reading::Ground(from) => {
+                let done =
+                    self.ground_shade(manager, job.coord, from, GROUND_SHADE_COLUMNS, &mut job.shade);
+                job.stage =
+                    if done == 0 { Reading::Entities } else { Reading::Ground(from + done) };
+            }
+            Reading::Entities => {
+                job.shaded = self.shade_entities(manager, job.coord, &job.casters, &job.ground);
+                job.stage = Reading::Faces;
+            }
+            Reading::Faces => {
+                job.faces = self.shade_faces(manager, job.coord, &job.casters, &job.ground);
+                finished = true;
+            }
+        }
+        self.working = Some(job);
+        finished
+    }
+
+    /// Opens a bake of `coord`, up to the point where there is a map to lay into.
+    ///
+    /// Everything that has to be read out of the world in one go happens here — which entities
+    /// cast, how high the ground stands — so that the pieces that follow only touch the job's
+    /// own numbers.
+    fn start(&mut self, manager: &ChunkManager, coord: ChunkCoord) {
         let min_x = coord.cx * CHUNK_SIZE;
         let min_y = coord.cy * CHUNK_SIZE;
         let area = MapArea::around(min_x, min_y, min_x + CHUNK_SIZE - 1, min_y + CHUNK_SIZE - 1);
-        self.chunks.remove(&coord);
         let own = self.casters_of(manager, coord);
         // Its neighbours' casters as well: a tree a column from the edge throws most of its
         // shadow into the next chunk.
@@ -188,7 +314,6 @@ impl ShadowScene {
         }
 
         self.scratch.move_to(area);
-        let masks = &self.masks;
         // The level a shadow lands on is the top the view actually draws, not the plane the
         // column's elevation names: the beach is a shallow slab drawn half a block under its
         // cell, except on the terrace row, where the view lifts it back ([`preview_top_level`]).
@@ -198,31 +323,22 @@ impl ShadowScene {
         // The ground casts too, and a cliff that shades this chunk's edge usually stands in the
         // next one, so the field reaches past the area the map covers.
         let ground = Self::ground_field(manager, area.min_x, area.min_y, area.max_x, area.max_y);
-        bake_ground_shadows(
-            &mut self.scratch,
-            &casters,
-            Some(&ground),
-            &self.light.shadow,
-            self.tile_width,
-            self.box_height,
-            &level_at,
-            &|index| masks.silhouette_of(index),
-        );
-
-        let ground_shade = self.ground_shade(manager, coord);
-        let shaded = self.shade_entities(manager, coord, &casters, &ground);
-        let faces = self.shade_faces(manager, coord, &casters, &ground);
-        self.chunks.insert(coord, Baked {
-            ground: ground_shade,
-            shaded,
-            casters: own,
-            faces,
-            baked_against: neighbours_loaded(manager, coord),
+        let map = GroundBake::new(&self.scratch, &level_at);
+        let columns = manager.terrain_chunk(coord).map_or(0, <[TerrainColumn]>::len);
+        self.working = Some(Pending {
+            coord,
+            against: neighbours_loaded(manager, coord),
+            own,
+            casters,
+            ground,
+            map,
+            shade: Vec::with_capacity(columns),
+            shaded: HashMap::new(),
+            faces: Vec::new(),
+            stage: Reading::Map,
         });
     }
 
-    /// The drawn heights of an area of ground, which is what the ground casts its own shadow
-    /// from. [`HeightField`] grows the area by the ray's reach itself.
     fn ground_field(
         manager: &ChunkManager,
         min_x: i32,
@@ -245,10 +361,21 @@ impl ShadowScene {
     /// once, at bake time, and carried as the colour of a lattice drawn out of the shared atlas
     /// ([`crate::sprites::WHITE_PATCH`]) — which costs nothing to bind, because the ground is
     /// already drawn from it.
-    fn ground_shade(&self, manager: &ChunkManager, coord: ChunkCoord) -> Vec<Option<Rc<ShadeLattice>>> {
+    /// Reads the baked map back as a lattice for `count` of the chunk's columns, starting at
+    /// `from`, and appends them to `out`. Gives how many it did, which is fewer at the end.
+    fn ground_shade(
+        &self,
+        manager: &ChunkManager,
+        coord: ChunkCoord,
+        from: usize,
+        count: usize,
+        out: &mut Vec<Option<Rc<ShadeLattice>>>,
+    ) -> usize {
         let columns = manager.terrain_chunk(coord).map_or(0, <[TerrainColumn]>::len);
         let Some(chunk) = manager.terrain_chunk(coord).filter(|_| !self.scratch.is_empty()) else {
-            return vec![None; columns];
+            let blank = columns.saturating_sub(from).min(count);
+            out.extend(std::iter::repeat_n(None, blank));
+            return blank;
         };
         let steps = GROUND_SHADE_STEPS.max(1);
         let per_tile = f64::from(self.scratch.pixels_per_tile);
@@ -261,27 +388,31 @@ impl ShadowScene {
         let along = |corner: u32| {
             (f64::from(corner) / f64::from(steps) * per_tile).clamp(0.5, per_tile - 0.5)
         };
-        chunk
-            .iter()
-            .map(|column| {
-                let (from_x, from_y) = self.scratch.square_of(column.coord.x, column.coord.y)?;
-                let mut coverage = Vec::with_capacity(((steps + 1) * (steps + 1)) as usize);
-                let mut any = false;
-                for row in 0..=steps {
-                    let y = f64::from(from_y) + along(row);
-                    for across in 0..=steps {
-                        let x = f64::from(from_x) + along(across);
-                        let value = self.coverage_at(x, y);
-                        any |= value > 0.0;
-                        coverage.push(value);
-                    }
+        let mut done = 0;
+        for column in chunk.iter().skip(from).take(count) {
+            done += 1;
+            let Some((from_x, from_y)) = self.scratch.square_of(column.coord.x, column.coord.y)
+            else {
+                out.push(None);
+                continue;
+            };
+            let mut coverage = Vec::with_capacity(((steps + 1) * (steps + 1)) as usize);
+            let mut any = false;
+            for row in 0..=steps {
+                let y = f64::from(from_y) + along(row);
+                for across in 0..=steps {
+                    let x = f64::from(from_x) + along(across);
+                    let value = self.coverage_at(x, y);
+                    any |= value > 0.0;
+                    coverage.push(value);
                 }
-                // A column the sun reaches everywhere draws nothing at all, which is most of a
-                // bare chunk and the difference between a quad per column and a quad per shadow.
-                let (steps, coverage) = coarsened(steps, coverage);
-                any.then(|| Rc::new(ShadeLattice::from_coverage(steps, steps, coverage)))
-            })
-            .collect()
+            }
+            // A column the sun reaches everywhere draws nothing at all, which is most of a bare
+            // chunk and the difference between a quad per column and a quad per shadow.
+            let (steps, coverage) = coarsened(steps, coverage);
+            out.push(any.then(|| Rc::new(ShadeLattice::from_coverage(steps, steps, coverage))));
+        }
+        done
     }
 
     /// The map's coverage at a point of it, in `[0, 1]`, read between the four texels around it.

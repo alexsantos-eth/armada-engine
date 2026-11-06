@@ -23,7 +23,6 @@ fn post(foot: (f64, f64), elevation: f64, height: f64) -> ShadowCaster {
 
 /// A silhouette plane the whole of which is opaque, as a 2 x 2 window on it.
 static OPAQUE: [u8; 4] = [255; 4];
-static CLEAR: [u8; 4] = [0; 4];
 
 fn window(plane: &'static [u8; 4]) -> impl Fn(u32) -> Option<Silhouette<'static>> {
     move |_| {

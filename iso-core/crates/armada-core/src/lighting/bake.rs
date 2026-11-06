@@ -253,19 +253,153 @@ pub fn bake_ground_shadows(
     level_at: ReceivingLevel<'_>,
     silhouette_of: SilhouetteOf<'_, '_>,
 ) {
-    let mut levels = LevelCache::new(map.area, level_at);
-    for caster in casters {
-        lay_caster(map, caster, light, tile_width, box_height, &mut levels, silhouette_of);
+    let mut bake = GroundBake::new(map, level_at);
+    while bake.step(map, casters, ground, light, tile_width, box_height, silhouette_of) {}
+}
+
+/// One chunk's ground bake, carried across frames a piece at a time.
+///
+/// A whole bake is tens of milliseconds and a frame is sixteen, so doing one in a frame drops
+/// that frame — which is what a walk across a chunk border felt like, because every chunk a step
+/// reveals makes its eight neighbours stale as well. The work splits cleanly: each caster is laid
+/// on its own, the ground's own shadow is one pass and the blur another, and none of them reads
+/// what a later one writes. So the caller runs [`step`](Self::step) until its own budget for the
+/// frame is spent and picks up where it left off in the next one, with the chunk's previous
+/// shadows still on screen meanwhile.
+///
+/// The map belongs to the bake until it is done: nothing else may write to it in between.
+pub struct GroundBake {
+    levels: LevelCache,
+    /// The caster to lay next; past the end of the list, the ground's turn.
+    next_caster: usize,
+    /// The ground's horizon, as far as it has been walked.
+    horizon: Vec<Horizon>,
+    stage: Stage,
+}
+
+/// Lattice rows walked, and rows of columns shaded, in one piece of work.
+///
+/// Both are a few per cent of a chunk, so no one piece is a frame's worth on its own, and both
+/// are far more than one, so the book-keeping around a piece stays noise.
+const HORIZON_ROWS_PER_STEP: u32 = 8;
+const TERRAIN_ROWS_PER_STEP: i32 = 4;
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Stage {
+    Casters,
+    /// Walking the horizon lattice back to the sun, from this row on.
+    Horizon(u32),
+    /// Shading the ground from it, from this row of columns on.
+    Terrain(i32),
+    /// The two passes of the blur, which are a pass over the whole map each.
+    BlurAcross,
+    BlurDown,
+    Done,
+}
+
+impl GroundBake {
+    /// Reads the levels `map`'s area receives shadows on, which every later step needs.
+    ///
+    /// `map` is expected to be fresh or [`ShadowMap::clear`]ed: the bake adds to it.
+    pub fn new(map: &ShadowMap, level_at: ReceivingLevel<'_>) -> Self {
+        Self {
+            levels: LevelCache::new(map.area, level_at),
+            next_caster: 0,
+            horizon: Vec::new(),
+            stage: Stage::Casters,
+        }
     }
-    if let Some(ground) = ground {
-        lay_terrain(map, ground, light, tile_width, box_height, &levels);
+
+    pub fn is_done(&self) -> bool {
+        self.stage == Stage::Done
     }
-    blur_within_levels(map, SHADOW_BLUR_TEXELS, &levels);
-    // The blur does not know about levels, so it spreads a shadow a texel past the column it
-    // was laid on. Between two columns of solid ground that is the penumbra and exactly what is
-    // wanted; over a hole — water, an unloaded neighbour, the air beside a cliff — it would
-    // leave a shadow hanging in nothing, so those columns are wiped again afterwards.
-    clear_columns_without_ground(map, &levels);
+
+
+    /// Does the next piece of work, and says whether any was left to do.
+    ///
+    /// A piece is one caster, the ground's own shadow, or the blur that finishes the map. The
+    /// pieces are not the same size — a caster is the smallest by far — so a caller with a
+    /// budget checks the clock between calls rather than counting them.
+    #[allow(clippy::too_many_arguments)]
+    pub fn step(
+        &mut self,
+        map: &mut ShadowMap,
+        casters: &[ShadowCaster],
+        ground: Option<&HeightField>,
+        light: &ShadowProjection,
+        tile_width: f64,
+        box_height: f64,
+        silhouette_of: SilhouetteOf<'_, '_>,
+    ) -> bool {
+        match self.stage {
+            Stage::Casters => {
+                if let Some(caster) = casters.get(self.next_caster) {
+                    self.next_caster += 1;
+                    lay_caster(
+                        map,
+                        caster,
+                        light,
+                        tile_width,
+                        box_height,
+                        &mut self.levels,
+                        silhouette_of,
+                    );
+                } else {
+                    self.stage = Stage::Horizon(0);
+                }
+            }
+            Stage::Horizon(from) => {
+                let walked = ground.map_or(0, |ground| {
+                    horizon_rows(
+                        map,
+                        ground,
+                        light,
+                        tile_width,
+                        box_height,
+                        from,
+                        HORIZON_ROWS_PER_STEP,
+                        &mut self.horizon,
+                    )
+                });
+                self.stage = if walked == 0 {
+                    Stage::Terrain(0)
+                } else {
+                    Stage::Horizon(from + walked)
+                };
+            }
+            Stage::Terrain(from) => {
+                let laid = lay_terrain_rows(
+                    map,
+                    &self.horizon,
+                    &self.levels,
+                    from,
+                    TERRAIN_ROWS_PER_STEP,
+                );
+                self.stage = if laid == 0 || from + laid > map.area.rows() {
+                    self.horizon = Vec::new();
+                    Stage::BlurAcross
+                } else {
+                    Stage::Terrain(from + laid)
+                };
+            }
+            Stage::BlurAcross => {
+                blur_across_within_levels(map, SHADOW_BLUR_TEXELS, &self.levels);
+                self.stage = Stage::BlurDown;
+            }
+            Stage::BlurDown => {
+                blur_down_within_levels(map, SHADOW_BLUR_TEXELS as usize, &self.levels);
+                // The blur does not know about levels, so it spreads a shadow a texel past the
+                // column it was laid on. Between two columns of solid ground that is the
+                // penumbra and exactly what is wanted; over a hole — water, an unloaded
+                // neighbour, the air beside a cliff — it would leave a shadow hanging in
+                // nothing, so those columns are wiped again afterwards.
+                clear_columns_without_ground(map, &self.levels);
+                self.stage = Stage::Done;
+            }
+            Stage::Done => return false,
+        }
+        true
+    }
 }
 
 /// The steps `0..=steps` of a walk starting at `from` and moving by `step` that stay in
@@ -307,28 +441,57 @@ const TERRAIN_SAMPLES_PER_TILE: u32 = 3;
 /// anything between it and the sun stands high enough, which [`HeightField::horizon`] answers
 /// for every height at a horizontal place at once. The horizons are taken on a coarse lattice
 /// and read between, and each texel then asks its own column's level.
-fn lay_terrain(
-    map: &mut ShadowMap,
+/// How many corners apart the horizon lattice is sampled, and how wide and tall it is.
+///
+/// `step` must divide [`ShadowMap::pixels_per_tile`], so that a column's own corners are always
+/// asked about directly; [`TERRAIN_SAMPLES_PER_TILE`] says why.
+fn horizon_lattice_shape(map: &ShadowMap) -> (u32, u32, u32) {
+    let step = (map.pixels_per_tile / TERRAIN_SAMPLES_PER_TILE.max(1)).max(1);
+    (step, map.width.div_ceil(step) + 1, map.height.div_ceil(step) + 1)
+}
+
+/// Walks `rows` rows of the horizon lattice back to the sun, starting at `from`, and appends
+/// them to `out`. Gives how many it did, which is fewer at the bottom and none past it.
+///
+/// This is the expensive half of the ground's own shadow and the one that does not depend on
+/// the map's resolution, so it is the half a caller spreads over frames.
+#[allow(clippy::too_many_arguments)]
+fn horizon_rows(
+    map: &ShadowMap,
     ground: &HeightField,
     light: &ShadowProjection,
     tile_width: f64,
     box_height: f64,
-    levels: &LevelCache,
-) {
-    if map.width == 0 || map.height == 0 || ground.is_empty() || !levels.any() {
-        return;
-    }
+    from: u32,
+    rows: u32,
+    out: &mut Vec<Horizon>,
+) -> u32 {
+    let (step, across, down) = horizon_lattice_shape(map);
     let per_tile = f64::from(map.pixels_per_tile);
-    let step = (map.pixels_per_tile / TERRAIN_SAMPLES_PER_TILE.max(1)).max(1);
-    let (across, down) = (map.width.div_ceil(step) + 1, map.height.div_ceil(step) + 1);
-    let mut lattice = Vec::with_capacity((across * down) as usize);
-    for row in 0..down {
+    let last = (from + rows).min(down);
+    for row in from..last {
         let world_y = f64::from(map.area.min_y) + f64::from(row * step) / per_tile;
         for column in 0..across {
             let world_x = f64::from(map.area.min_x) + f64::from(column * step) / per_tile;
-            lattice.push(ground.horizon(world_x, world_y, light, box_height, tile_width));
+            out.push(ground.horizon(world_x, world_y, light, box_height, tile_width));
         }
     }
+    last.saturating_sub(from)
+}
+
+/// Lays the ground's own shadow over `rows` rows of columns, starting at the row `from` of the
+/// map's area. Gives how many rows it did.
+fn lay_terrain_rows(
+    map: &mut ShadowMap,
+    lattice: &[Horizon],
+    levels: &LevelCache,
+    from: i32,
+    rows: i32,
+) -> i32 {
+    if map.width == 0 || map.height == 0 || lattice.is_empty() || !levels.any() {
+        return 0;
+    }
+    let (step, across, down) = horizon_lattice_shape(map);
     // Which column a lattice corner stands in. A corner is always inside one, but the two
     // corners either side of a texel need not be inside the *same* one, and the horizon jumps
     // at a column's edge: a cliff is on the horizon of the ground below it and not of its own
@@ -361,7 +524,9 @@ fn lay_terrain(
     let width = map.width as usize;
     let per_tile_texels = map.pixels_per_tile as usize;
     let mut across_blend = vec![(0u32, 0u32, 0.0f64); per_tile_texels];
-    for y in map.area.min_y..=map.area.max_y {
+    let first = map.area.min_y + from;
+    let last = (first + rows - 1).min(map.area.max_y);
+    for y in first..=last {
         for x in map.area.min_x..=map.area.max_x {
             let (Some(level), Some((from_x, from_y))) = (levels.at(x, y), map.square_of(x, y))
             else {
@@ -427,6 +592,7 @@ fn lay_terrain(
             }
         }
     }
+    (last - first + 1).max(0)
 }
 
 /// Blanks the square of every column the world has no ground for.
@@ -725,7 +891,7 @@ pub fn blur(map: &mut ShadowMap, radius: u32) {
 /// So the blur is cut at a boundary between columns of different level, and at one where either
 /// side has no ground at all. Columns at the same level are drawn flush and coplanar, so the
 /// blur runs through them untouched and a shadow crossing a field still has its soft edge.
-fn blur_within_levels(map: &mut ShadowMap, radius: u32, levels: &LevelCache) {
+fn blur_across_within_levels(map: &mut ShadowMap, radius: u32, levels: &LevelCache) {
     if radius == 0 || map.width == 0 || map.height == 0 {
         return;
     }
@@ -780,7 +946,6 @@ fn blur_within_levels(map: &mut ShadowMap, radius: u32, levels: &LevelCache) {
             }
         }
     }
-    blur_down_within_levels(map, span, levels, &joined);
 }
 
 /// The second pass of [`blur_within_levels`], down the map, run a row at a time.
@@ -793,12 +958,11 @@ fn blur_within_levels(map: &mut ShadowMap, radius: u32, levels: &LevelCache) {
 /// A cut can only fall on a column edge, and a window is narrower than a column, so a row's
 /// window crosses at most one edge and most rows cross none at all: at 36 texels a tile, 34 of
 /// every 36 rows are a plain mean of three rows with nothing to ask.
-fn blur_down_within_levels(
-    map: &mut ShadowMap,
-    span: usize,
-    levels: &LevelCache,
-    joined: &dyn Fn(Option<f64>, Option<f64>) -> bool,
-) {
+fn blur_down_within_levels(map: &mut ShadowMap, span: usize, levels: &LevelCache) {
+    if span == 0 || map.width == 0 || map.height == 0 {
+        return;
+    }
+    let joined = |a: Option<f64>, b: Option<f64>| matches!((a, b), (Some(a), Some(b)) if a == b);
     let (width, height) = (map.width as usize, map.height as usize);
     let per_tile = map.pixels_per_tile as usize;
     let keep = 2 * span + 1;
