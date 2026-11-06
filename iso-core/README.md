@@ -2,7 +2,7 @@
 
 Este directorio contiene la nueva implementación. `iso-core` es el cliente Macroquad; `crates/armada-core` contiene el dominio sin dependencias gráficas. El workspace fija Rust 1.99.1 y Macroquad 0.4.16. La demo actual muestra una muestra de terreno generado para verificar alturas y materiales, además de la proyección isométrica, teclado, ratón, escalado con la ventana y arranque web. La vista usa colores y geometría temporales; todavía no representa el juego completo.
 
-La [arquitectura por módulo](ARCHITECTURE.md) documenta los contratos del dominio y del cliente, el flujo de un fotograma y las prácticas de código, pruebas y calidad.
+La [arquitectura por módulo](docs/ARCHITECTURE.md) documenta los contratos del dominio y del cliente, el flujo de un fotograma y las prácticas de código, pruebas y calidad.
 
 El dominio conserva la organización por carpetas de responsabilidad del motor TypeScript: `grid/`, `paths/`, `projection/`, `camera/`, `time/`, `simulation/`, `terrain/`, `world/` y `lighting/` ya están separados; el módulo de entidades seguirá el mismo patrón. El cliente separa la preparación de la muestra en `src/game/` de su dibujo en `src/terrain_view/`, y las sombras horneadas en `src/shadow_view/`. `mod.rs` define la entrada de cada carpeta y `lib.rs` expone solo los módulos del dominio.
 
@@ -13,10 +13,10 @@ Las pruebas unitarias también están colocalizadas: `grid/coords.rs` se prueba 
 Los SVG de `../public/assets/` se rasterizan y empaquetan en `content/atlas.png` con su manifiesto `content/assets.manifest.json`:
 
 ```sh
-./build-atlas.sh
+scripts/build-atlas.sh
 ```
 
-El script rasteriza cada SVG con `cairosvg` (`rasterize.py`) y luego compila y ejecuta `pack_atlas`. Cada dibujo se rasteriza a 320 px por tile de mundo, así que llega al empaquetador al tamaño al que se dibuja y este solo recorta y coloca: el atlas mide 4096 px de ancho y lo que haga falta de alto. Las hojas de poses del jugador (`walk`, `idle`, `jump`, `climb`, `jetpack`) no caben en el atlas sin perder su detalle —una pose quedaba en unos dieciséis píxeles— así que se cortan celda a celda y cada una recibe su textura, `content/player-16_<hoja>.png`, con su rejilla descrita en el manifiesto (esquema 2). Este cliente dibuja las hojas de dieciséis orientaciones de `public/assets/player-16/`; las de ocho de `public/assets/player/` son del cliente Pixi y `rasterize.py` las omite. El `build.rs` verifica que el atlas y el manifiesto existen al compilar. El patrón de sombras de nubes (`public/assets/cloud-shadow.svg`) no se empaqueta: el empaquetador recorta el borde transparente de cada sprite y un patrón recortado deja de repetir, así que el script lo rasteriza entero aparte, a un téxel por unidad del SVG, en `content/cloud-shadow.png`, con `cloud_pattern.py`: cairosvg ignora el `feGaussianBlur` del dibujo —el cliente Pixi lo recibe del navegador—, así que el desenfoque se aplica ahí sobre la imagen envuelta en sí misma, para que el borde suave cruce la costura del patrón como cualquier otro borde.
+El script rasteriza cada SVG con `cairosvg` (`scripts/rasterize.py`) y luego compila y ejecuta `pack_atlas`. Cada dibujo se rasteriza a 320 px por tile de mundo, así que llega al empaquetador al tamaño al que se dibuja y este solo recorta y coloca: el atlas mide 4096 px de ancho y lo que haga falta de alto. Las hojas de poses del jugador (`walk`, `idle`, `jump`, `climb`, `jetpack`) no caben en el atlas sin perder su detalle —una pose quedaba en unos dieciséis píxeles— así que se cortan celda a celda y cada una recibe su textura, `content/player-16_<hoja>.png`, con su rejilla descrita en el manifiesto (esquema 2). Este cliente dibuja las hojas de dieciséis orientaciones de `public/assets/player-16/`; las de ocho de `public/assets/player/` son del cliente Pixi y `scripts/rasterize.py` las omite. El `build.rs` verifica que el atlas y el manifiesto existen al compilar. El patrón de sombras de nubes (`public/assets/cloud-shadow.svg`) no se empaqueta: el empaquetador recorta el borde transparente de cada sprite y un patrón recortado deja de repetir, así que el script lo rasteriza entero aparte, a un téxel por unidad del SVG, en `content/cloud-shadow.png`, con `scripts/cloud_pattern.py`: cairosvg ignora el `feGaussianBlur` del dibujo —el cliente Pixi lo recibe del navegador—, así que el desenfoque se aplica ahí sobre la imagen envuelta en sí misma, para que el borde suave cruce la costura del patrón como cualquier otro borde.
 
 Los bloques de terreno (hierba, tierra y arena) los genera `artifacts/terrain_blocks.py`, y cada uno **llena su casilla entera**: su techo es el rombo de la casilla y sus dos caras visibles caen rectas hasta el plano del bloque de abajo, de modo que dos vecinos se tocan y una columna se apila sin hueco. Las esquinas redondeadas de arcilla que conservan los demás assets dejaban un surco de fondo en cada borde del campo, y una sombra puesta sobre la casilla se veía atravesada por esa rejilla de líneas claras. El borde de la casilla se sigue leyendo, pero como un reborde más oscuro pintado dentro del techo (`RIM`). Después de tocar esos SVG hay que regenerar las variantes de hierba (`grass_clutter.py`) y los dieciséis tiles de camino (`path_tiles.py`), y volver a empaquetar el atlas.
 
@@ -29,15 +29,15 @@ Los bloques de terreno (hierba, tierra y arena) los genera `artifacts/terrain_bl
 Desde `iso-core/`, para abrir la demo **nativa**:
 
 ```sh
-./run-native.sh
+scripts/run-native.sh
 ```
 
 El script ejecuta `cargo run --locked` por defecto. También acepta cualquier subcomando de Cargo:
 
 ```sh
-./run-native.sh run --release --locked
-./run-native.sh test --workspace --locked
-./run-native.sh clippy --workspace --all-targets --locked -- -D warnings
+scripts/run-native.sh run --release --locked
+scripts/run-native.sh test --workspace --locked
+scripts/run-native.sh clippy --workspace --all-targets --locked -- -D warnings
 ```
 
 Para compilar y servir el **WASM**:
@@ -63,7 +63,7 @@ pnpm build
 
 Netlify solo necesita ejecutar `pnpm build`; no necesita instalar Rust.
 
-En esta máquina, el SDK de Command Line Tools macOS 27 falla al enlazar con el clang instalado. `run-native.sh` selecciona el SDK 26.5 instalado si se ejecuta en macOS y `SDKROOT` no está definido; en otros entornos deja la selección de SDK intacta. También se puede ejecutar Cargo directamente con `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk cargo run --locked`. Es un ajuste del entorno local, no una dependencia del proyecto.
+En esta máquina, el SDK de Command Line Tools macOS 27 falla al enlazar con el clang instalado. `scripts/run-native.sh` selecciona el SDK 26.5 instalado si se ejecuta en macOS y `SDKROOT` no está definido; en otros entornos deja la selección de SDK intacta. También se puede ejecutar Cargo directamente con `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk cargo run --locked`. Es un ajuste del entorno local, no una dependencia del proyecto.
 
 ## Referencia para el port
 
@@ -96,11 +96,11 @@ La fase 1 ya incluye `grid`, `paths`, `projection`, `camera`, `time` y el acumul
 
 - Manifiesto de assets (`content/assets.manifest.json`) y atlas rasterizado (`content/atlas.png`, 64 SVGs) generados con `pack_atlas` / `remeasure_atlas`.
 - Servicios de borde implementados en `src/services.rs`: `MacroquadInput`, `MacroquadAudio`, `MacroquadUi`, `MacroquadChunkLoader`.
-- Guardado en WASM: `src/save.rs` persiste en `window.localStorage` bajo la clave `armada_save.json` (no es no-op en `wasm32-unknown-unknown`).
+- Guardado: `src/save.rs` persiste en `saves/armada_save.json` en nativo y en `window.localStorage` bajo esa misma clave en WASM (no es no-op en `wasm32-unknown-unknown`).
 - `ChunkGround` en `src/main.rs` expone los ocupantes de cada columna: `occupancy_at` devuelve los `PlayerObstacle` de las entidades que pisan esa casilla, con su colisión precalculada.
 - Animación del jugador: `src/player_view.rs` elige hoja, pose y orientación cada fotograma y el cliente dibuja esa celda; las hojas viven en texturas propias junto al atlas Son 16 orientaciones y un giro las recorre de una en una.
 - Pendiente: integración de vistas, reglas de densidad/bioma/vecindad y escritor de guardado en segundo plano (#111).
 
 ## Sombras horneadas (amanecer)
 
-Las sombras de este cliente son estáticas: se hornean una vez por chunk en CPU y no cambian con el reloj. `crates/armada-core/src/lighting/` porta la geometría de `src/isometric/core/engine/lighting/` —la matriz de silueta, el desplazamiento de sombra proyectada y las cuatro fases con sus mismos números— y `src/shadow_view/` la lleva a pantalla: un mapa de alfa por chunk para el suelo y una rejilla de sombra recibida que se dibuja como colores de vértice sobre entidades y jugador, así que un árbol se sombrea a sí mismo, a sus vecinos y al jugador que pasa por debajo. El terreno también emite: cada punto pregunta qué altura le tapa el sol (`lighting/terrain.rs`), de modo que una duna sombrea la playa de atrás y el jugador se oscurece al entrar bajo un escalón. Las caras verticales expuestas de las columnas (`lighting/faces.rs`) se dibujan con su propia rejilla, así que una sombra que llega a un acantilado lo sube, y las entidades de varias casillas reciben una sola rejilla para todo el dibujo. Solo está conectada la fase de amanecer (`DAWN`); las otras tres se conservan en `lighting/phases.rs` para que cambiar de fase sea una línea, a costa de rehornear los chunks. El jugador no proyecta sombra todavía. Los detalles y las razones están en [ARCHITECTURE.md](ARCHITECTURE.md).
+Las sombras de este cliente son estáticas: se hornean una vez por chunk en CPU y no cambian con el reloj. `crates/armada-core/src/lighting/` porta la geometría de `src/isometric/core/engine/lighting/` —la matriz de silueta, el desplazamiento de sombra proyectada y las cuatro fases con sus mismos números— y `src/shadow_view/` la lleva a pantalla: un mapa de alfa por chunk para el suelo y una rejilla de sombra recibida que se dibuja como colores de vértice sobre entidades y jugador, así que un árbol se sombrea a sí mismo, a sus vecinos y al jugador que pasa por debajo. El terreno también emite: cada punto pregunta qué altura le tapa el sol (`lighting/terrain.rs`), de modo que una duna sombrea la playa de atrás y el jugador se oscurece al entrar bajo un escalón. Las caras verticales expuestas de las columnas (`lighting/faces.rs`) se dibujan con su propia rejilla, así que una sombra que llega a un acantilado lo sube, y las entidades de varias casillas reciben una sola rejilla para todo el dibujo. Solo está conectada la fase de amanecer (`DAWN`); las otras tres se conservan en `lighting/phases.rs` para que cambiar de fase sea una línea, a costa de rehornear los chunks. El jugador no proyecta sombra todavía. Los detalles y las razones están en [ARCHITECTURE.md](docs/ARCHITECTURE.md).

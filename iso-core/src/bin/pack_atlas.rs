@@ -2,7 +2,7 @@
 //!
 //! Usage: cargo run --bin pack_atlas -- <input_dir> <output_atlas> <output_manifest> [svg_root]
 //!
-//! Input: the directory `rasterize.py` wrote — one PNG per asset, plus one directory per player
+//! Input: the directory `scripts/rasterize.py` wrote — one PNG per asset, plus one directory per player
 //! sheet under `sheets/`, holding a PNG per cell named `<facing>-<pose>.png` — and the SVG
 //! sources those PNGs were rendered from, under `svg_root` (default `public`).
 //! Output: the packed atlas PNG, one texture per sheet beside it, and the manifest JSON.

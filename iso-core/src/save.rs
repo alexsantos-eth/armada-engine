@@ -6,7 +6,7 @@
 use armada_core::world::ChunkManager;
 use armada_core::world::{ChunkArchive, WorldSave, parse_world_save};
 
-const SAVE_PATH: &str = "armada_save.json";
+const SAVE_PATH: &str = "saves/armada_save.json";
 
 #[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "env")]
@@ -88,6 +88,9 @@ pub fn save_archive(archive: &ChunkArchive) {
     };
     #[cfg(not(target_arch = "wasm32"))]
     {
+        if let Some(directory) = std::path::Path::new(SAVE_PATH).parent() {
+            let _ = std::fs::create_dir_all(directory);
+        }
         let _ = std::fs::write(SAVE_PATH, json.as_bytes());
     }
     #[cfg(target_arch = "wasm32")]

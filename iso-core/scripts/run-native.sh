@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd "$(dirname "$0")"
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+cd "$script_dir/.."
 
 # This macOS Command Line Tools installation ships an SDK 27 that the installed
 # linker cannot parse. Prefer its compatible SDK when no SDK was chosen by the user.

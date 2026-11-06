@@ -12,11 +12,12 @@
 #      ignores the blur the artwork asks for (see cloud_pattern.py).
 #
 # Requires: python3 with cairosvg and a working Rust toolchain.
-# Run from iso-core/:  ./build-atlas.sh
+# Run from anywhere: iso-core/scripts/build-atlas.sh
 
 set -euo pipefail
 
-cd "$(dirname "$0")"
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+cd "$script_dir/.."
 
 # Prefer the compatible SDK on macOS.
 compatible_sdk=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk
@@ -35,7 +36,7 @@ if [ -d "$cairo_lib" ]; then
 fi
 
 echo "Rasterizing SVGs with cairosvg..."
-python3 rasterize.py "$svg_dir" "$tmp_dir"
+python3 scripts/rasterize.py "$svg_dir" "$tmp_dir"
 echo "Done rasterizing."
 
 echo "Compiling pack_atlas..."
@@ -49,6 +50,6 @@ echo "Packing atlas..."
 # cloud_pattern.py rather than rasterize.py, which scales by tile of world and would give the
 # pattern the resolution of a sprite, and which would also leave the artwork's blur unapplied.
 echo "Rasterizing the cloud shadow pattern..."
-python3 cloud_pattern.py "$svg_dir/cloud-shadow.svg" content/cloud-shadow.png
+python3 scripts/cloud_pattern.py "$svg_dir/cloud-shadow.svg" content/cloud-shadow.png
 
 echo "Done. Atlas: content/atlas.png, sheets: content/player_*.png, clouds: content/cloud-shadow.png, manifest: content/assets.manifest.json"

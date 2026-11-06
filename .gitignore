@@ -15,7 +15,7 @@ graphify-out
 *.local
 
 # Rust client save files
-armada_save.json
+/iso-core/saves/armada_save.json
 iso-core/armada_save.json
 
 # Editor directories and files
