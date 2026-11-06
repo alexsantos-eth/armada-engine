@@ -1,4 +1,19 @@
+# The only site published from this repo: the Rust (macroquad) client in lib/.
+#
+# The build needs no Node: Netlify's image preinstalls rustup and cargo, and
+# runs no dependency install because lib/ has no package.json or lockfile.
+# The toolchain comes from lib/rust-toolchain.toml and is cached between
+# builds, as are ~/.cargo/registry and lib/target.
+#
+# The PixiJS client in web/ is not deployed any more -- it is run locally
+# (pnpm dev) for testing.
+
 [build]
   base = "lib"
-  command = "true"
-  publish = "web"
+  command = "bash scripts/build-web.sh dist"
+  publish = "dist"
+
+[[headers]]
+  for = "/*.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"

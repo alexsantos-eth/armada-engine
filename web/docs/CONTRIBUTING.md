@@ -109,9 +109,9 @@ pnpm build
 
 `pnpm lint` ejecuta ESLint (`eslint.config.js`: reglas recomendadas de typescript-eslint con información de tipos, imports de tipo en línea y `eqeqeq`) y debe terminar sin errores; corrige el código en lugar de desactivar reglas. El formato lo decide Prettier (`.prettierrc.json`, `.prettierignore`): `pnpm format` reescribe todo el proyecto y `pnpm format:check` lo comprueba; ESLint incluye `eslint-config-prettier` al final para no chocar con él. Los commits y el push a la rama `iso` solo se hacen al invocar la skill `armada-commit`, que valida todo esto antes.
 
-El build web de producción (`pnpm build`) es Node-only: sincroniza los assets Rust y usa el
-WASM versionado en `public/lib/iso-core.wasm`, por lo que Netlify no necesita Cargo.
-Después de cambiar el cliente Rust, ejecuta `pnpm build:wasm` antes de validar el build web.
+Este cliente ya no se despliega: se corre en local (`pnpm dev`) para probar y comparar contra el
+cliente Rust, que es el que se publica (ver `../lib/README.md`). `pnpm build` sigue sirviendo para
+comprobar que compila.
 
 Las APIs públicas y los tipos deben tener comentarios TSDoc concisos.
 

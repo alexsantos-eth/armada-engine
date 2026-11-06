@@ -3,73 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Armada Engine · Macroquad</title>
-    <style>
-      html,
-      body,
-      canvas {
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        overflow: hidden;
-        background: #151d2a;
-      }
-
-      canvas {
-        display: block;
-      }
-    </style>
+    <title>Armada Engine · PixiJS</title>
   </head>
   <body>
-    <canvas id="glcanvas" tabindex="0"></canvas>
-    <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script>
-    <script>
-      const utf8Decoder = new TextDecoder();
-      const utf8Encoder = new TextEncoder();
-
-      importObject.env.armada_storage_get = (keyPtr, keyLength, outputPtr, outputCapacity) => {
-        try {
-          const key = utf8Decoder.decode(
-            new Uint8Array(wasm_memory.buffer, keyPtr, keyLength),
-          );
-          const value = window.localStorage.getItem(key);
-          if (value === null) {
-            return -1;
-          }
-          const encoded = utf8Encoder.encode(value);
-          if (encoded.length > outputCapacity) {
-            return -2;
-          }
-          new Uint8Array(wasm_memory.buffer, outputPtr, encoded.length).set(encoded);
-          return encoded.length;
-        } catch {
-          return -1;
-        }
-      };
-
-      importObject.env.armada_storage_set = (keyPtr, keyLength, valuePtr, valueLength) => {
-        try {
-          const key = utf8Decoder.decode(
-            new Uint8Array(wasm_memory.buffer, keyPtr, keyLength),
-          );
-          const value = utf8Decoder.decode(
-            new Uint8Array(wasm_memory.buffer, valuePtr, valueLength),
-          );
-          window.localStorage.setItem(key, value);
-          return 1;
-        } catch {
-          return 0;
-        }
-      };
-
-      const wasmUrl = new URL(
-        "./lib/iso-core.wasm",
-        location.href,
-      );
-      if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
-        wasmUrl.searchParams.set("dev", Date.now().toString());
-      }
-      load(wasmUrl.href);
-    </script>
+    <div id="app"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

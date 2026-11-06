@@ -20,27 +20,71 @@ import re
 import sys
 
 
+def cairosvg_candidates():
+    """Directories that may hold a `cairosvg` package, likeliest first.
+
+    The cheap guesses come first — a user install of Python, Homebrew, /usr/local — and only
+    then the walk over the whole filesystem, which on macOS also reaches the same files a
+    second time through /System/Volumes/Data.
+    """
+    for pattern in (
+        "~/Library/Python/*/lib/python/site-packages",
+        "~/.local/lib/python*/site-packages",
+        "/opt/homebrew/lib/python*/site-packages",
+        "/usr/local/lib/python*/site-packages",
+        "/usr/lib/python*/site-packages",
+        "/usr/lib/python3/dist-packages",
+    ):
+        for directory in sorted(glob.glob(os.path.expanduser(pattern)), reverse=True):
+            yield directory
+    for root in (os.path.expanduser("~/.cache"), "/opt", "/usr", "/Library", "/"):
+        for directory, names, _ in os.walk(root, onerror=lambda _error: None):
+            if "cairosvg" in names:
+                yield directory
+
+
 def import_cairosvg():
     """cairosvg, looked for outside the import path if it is not on it.
 
-    It is not installed system-wide on the machine this is run from: it comes with another
-    runtime, so the package is found by searching for it and putting its directory on the path,
-    the likely places first. `build-atlas.sh` points the dynamic loader at a libcairo of its own
-    before calling this.
+    It may not be installed for the interpreter running this: it can come with another runtime,
+    so the package is searched for and its directory put on the path. A copy installed for a
+    different version of Python imports its own compiled parts (cffi, cairocffi) and fails here
+    with `ModuleNotFoundError: No module named '_cffi_backend'` or a bad magic number, so a
+    candidate that does not import is undone and the search goes on. `build-atlas.sh` picks an
+    interpreter that can import it, and points the dynamic loader at a libcairo, before calling
+    this.
     """
     try:
         return __import__("cairosvg")
     except ImportError:
         pass
-    roots = [os.path.expanduser("~/.cache"), "/opt", "/usr", "/Library", "/"]
-    for root in roots:
-        for directory, names, _ in os.walk(root):
-            if "cairosvg" in names and os.path.exists(
-                os.path.join(directory, "cairosvg", "__init__.py")
-            ):
-                sys.path.insert(0, directory)
-                return __import__("cairosvg")
-    raise SystemExit("cairosvg not found: install it, or run the atlas build where it lives")
+    tried, rejected = set(), []
+    for directory in cairosvg_candidates():
+        if directory in tried:
+            continue
+        tried.add(directory)
+        if not os.path.exists(os.path.join(directory, "cairosvg", "__init__.py")):
+            continue
+        sys.path.insert(0, directory)
+        try:
+            return __import__("cairosvg")
+        except Exception as error:  # noqa: BLE001  (any failure means: not this copy)
+            sys.path.remove(directory)
+            for name in [
+                module
+                for module in sys.modules
+                if module.split(".")[0] in ("cairosvg", "cairocffi", "cffi", "tinycss2")
+            ]:
+                del sys.modules[name]
+            rejected.append("  %s\n    %s" % (directory, error))
+    detail = "\n".join(rejected) or "  (no copy of cairosvg was found)"
+    raise SystemExit(
+        "cairosvg does not work under %s.\nCopies tried:\n%s\n"
+        "Install it for this interpreter, for example:\n"
+        "  python3 -m pip install --user cairosvg\n"
+        "On macOS it also needs libcairo (`brew install cairo`), and on Linux libcairo2."
+        % (sys.executable, detail)
+    )
 
 
 cairosvg = import_cairosvg()
