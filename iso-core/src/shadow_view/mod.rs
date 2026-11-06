@@ -2,7 +2,7 @@
 //!
 //! The sun holds still, so shadows are computed once and drawn from the result. This module owns
 //! that result and nothing else: when a chunk is shown, its ground shadows are baked into a map
-//! and uploaded as one texture ([`armada_core::lighting::bake`]), and the shadows its entities
+//! and read back as a lattice per column ([`armada_core::lighting::bake`]), and the shadows its entities
 //! throw on each other are baked into a lattice per entity
 //! ([`armada_core::lighting::received`]). Both are then pure lookups, frame after frame, until
 //! the chunk is dropped.
@@ -36,9 +36,10 @@ use armada_core::lighting::{
 use armada_core::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
 use armada_core::terrain::TerrainColumn;
 use armada_core::world::ChunkManager;
-use macroquad::prelude::{FilterMode, Image, Texture2D, screen_height, screen_width};
+use macroquad::prelude::{screen_height, screen_width};
 use masks::SilhouetteMasks;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use crate::sprites::{ShadeLattice, SpriteDraw, scene_key};
 
@@ -64,6 +65,14 @@ pub const GROUND_SHADOW_LAYER: i32 = 1;
 /// texel of the ground's own map.
 const FACE_SHADE_STEPS: u32 = 3;
 
+/// Corners across a column's top face, and down it, for the shadow baked on it.
+///
+/// The map holds [`SHADOW_MAP_PIXELS_PER_TILE`] texels a tile and the bake blurs it by one, so
+/// half that many corners, read between, is not told apart from the map on screen. It is also
+/// what a column costs to draw — every corner is a vertex the frame pushes — and a draw call
+/// holds ten thousand of them, so this is the knob to turn if the ground ever splits a batch.
+const GROUND_SHADE_STEPS: u32 = SHADOW_MAP_PIXELS_PER_TILE / 2;
+
 /// How far down a column's exposed side a shadow is worked out, in blocks.
 ///
 /// The same depth the terrain itself stacks to
@@ -81,19 +90,17 @@ pub const ENTITY_SHADE_ROWS: u32 = 10;
 
 /// What one shown chunk's shadows amount to.
 struct Baked {
-    area: MapArea,
-    /// The map, as a texture of black at the coverage baked into it. `None` while nothing in
-    /// range casts anything, which is most of a bare chunk.
-    texture: Option<Texture2D>,
-    /// Whether each column of the chunk has any coverage at all, so a frame does not read the
-    /// map back to find out. Indexed as the chunk's own columns are.
-    covered: Vec<bool>,
+    /// The shadow on each column's top face, read off the baked map at the column's own
+    /// corners. `None` where the column carries no coverage at all, which is most of a bare
+    /// chunk and is what keeps a frame from drawing a transparent quad per column. Indexed as
+    /// the chunk's own columns are.
+    ground: Vec<Option<Rc<ShadeLattice>>>,
     /// The shadows falling on the chunk's own entities, by the cell each one stands on.
     shaded: HashMap<(i32, i32), ShadeGrid>,
     /// The chunk's own entities as casters, for its neighbours' bakes and for the player.
     casters: Vec<ShadowCaster>,
     /// The shadow on each of the chunk's exposed vertical faces, as coverage at its corners.
-    faces: Vec<(TerrainFace, ShadeLattice)>,
+    faces: Vec<(TerrainFace, Rc<ShadeLattice>)>,
     /// Which of the nine chunks around it (itself included) were loaded when it was baked.
     baked_against: u16,
 }
@@ -105,14 +112,6 @@ pub struct ShadowScene {
     chunks: HashMap<ChunkCoord, Baked>,
     /// One map, reused by every bake: it is 666 KB of texels and only one chunk bakes at a time.
     scratch: ShadowMap,
-    /// Shadow-map textures a dropped chunk has given back, waiting for the next chunk to bake.
-    ///
-    /// Macroquad frees a texture's slot at the end of the frame its last handle is dropped, and
-    /// a texture made in the meantime can be given that same slot and then deleted with it: a
-    /// chunk that rebaked drew with a texture the driver had already thrown away, and its
-    /// shadows simply did not appear. Every map is the same size, so none of them is ever
-    /// destroyed — they are handed back here and filled again.
-    free: Vec<Texture2D>,
     tile_width: f64,
     box_height: f64,
 }
@@ -125,7 +124,6 @@ impl ShadowScene {
             masks,
             chunks: HashMap::new(),
             scratch: ShadowMap::new(MapArea::around(0, 0, CHUNK_SIZE - 1, CHUNK_SIZE - 1), SHADOW_MAP_PIXELS_PER_TILE),
-            free: Vec::new(),
             tile_width,
             box_height,
         }
@@ -144,9 +142,7 @@ impl ShadowScene {
             .filter(|coord| !manager.is_discovered(*coord))
             .collect();
         for coord in dropped {
-            if let Some(texture) = self.chunks.remove(&coord).and_then(|baked| baked.texture) {
-                self.free.push(texture);
-            }
+            self.chunks.remove(&coord);
         }
         let mut stale: Vec<(ChunkCoord, bool)> = shown
             .iter()
@@ -171,12 +167,7 @@ impl ShadowScene {
         let min_x = coord.cx * CHUNK_SIZE;
         let min_y = coord.cy * CHUNK_SIZE;
         let area = MapArea::around(min_x, min_y, min_x + CHUNK_SIZE - 1, min_y + CHUNK_SIZE - 1);
-        // Its own texture back first, if it had one: a rebake fills the map it already has.
-        let reuse = self
-            .chunks
-            .remove(&coord)
-            .and_then(|baked| baked.texture)
-            .or_else(|| self.free.pop());
+        self.chunks.remove(&coord);
         let own = self.casters_of(manager, coord);
         // Its neighbours' casters as well: a tree a column from the edge throws most of its
         // shadow into the next chunk.
@@ -213,13 +204,11 @@ impl ShadowScene {
             &|index, u, v| masks.alpha_at(index, u, v),
         );
 
-        let (texture, covered) = self.upload(manager, coord, reuse);
+        let ground_shade = self.ground_shade(manager, coord);
         let shaded = self.shade_entities(manager, coord, &casters, &ground);
         let faces = self.shade_faces(manager, coord, &casters, &ground);
         self.chunks.insert(coord, Baked {
-            area,
-            texture,
-            covered,
+            ground: ground_shade,
             shaded,
             casters: own,
             faces,
@@ -242,69 +231,74 @@ impl ShadowScene {
         })
     }
 
-    /// Uploads the scratch map as a texture of black at its coverage, and says which columns of
-    /// the chunk carry any.
-    fn upload(
-        &mut self,
-        manager: &ChunkManager,
-        coord: ChunkCoord,
-        reuse: Option<Texture2D>,
-    ) -> (Option<Texture2D>, Vec<bool>) {
+    /// Reads the baked map back into one lattice of coverage per column of the chunk.
+    ///
+    /// The map used to be uploaded as a texture per chunk and each column drawn as a quad of
+    /// it. That was a texture of its own between every two blocks of ground, and Macroquad
+    /// starts a new draw call whenever the bound texture changes: a scene that was one batch
+    /// became a hundred and thirty. The shadows are static, so the same texels are read here
+    /// once, at bake time, and carried as the colour of a lattice drawn out of the shared atlas
+    /// ([`crate::sprites::WHITE_PATCH`]) — which costs nothing to bind, because the ground is
+    /// already drawn from it.
+    fn ground_shade(&self, manager: &ChunkManager, coord: ChunkCoord) -> Vec<Option<Rc<ShadeLattice>>> {
         let columns = manager.terrain_chunk(coord).map_or(0, <[TerrainColumn]>::len);
-        let mut covered = vec![false; columns];
-        if self.scratch.is_empty() {
-            // Nothing to show, but the texture is kept: destroying it is what the pool exists
-            // to avoid.
-            if let Some(texture) = reuse {
-                self.free.push(texture);
-            }
-            return (None, covered);
-        }
-        if let Some(chunk) = manager.terrain_chunk(coord) {
-            for (index, column) in chunk.iter().enumerate() {
-                covered[index] = self.any_coverage(column.coord);
-            }
-        }
-        // Black everywhere, transparent where nothing is shaded: drawn with the phase's opacity
-        // as the vertex colour, so one texture serves any strength of light.
-        let mut rgba = vec![0u8; self.scratch.alpha.len() * 4];
-        for (texel, &alpha) in self.scratch.alpha.iter().enumerate() {
-            rgba[texel * 4 + 3] = alpha;
-        }
-        let image = Image {
-            bytes: rgba,
-            width: self.scratch.width as u16,
-            height: self.scratch.height as u16,
+        let Some(chunk) = manager.terrain_chunk(coord).filter(|_| !self.scratch.is_empty()) else {
+            return vec![None; columns];
         };
-        let texture = match reuse {
-            Some(texture) => {
-                texture.update(&image);
-                texture
-            }
-            None => {
-                let texture =
-                    Texture2D::from_rgba8(image.width, image.height, &image.bytes);
-                // Linear, so the map's twelve texels a tile read as a soft shadow rather than
-                // as twelve steps across a tile that is 280 px wide on screen.
-                texture.set_filter(FilterMode::Linear);
-                texture
-            }
+        let steps = GROUND_SHADE_STEPS.max(1);
+        let per_tile = f64::from(self.scratch.pixels_per_tile);
+        // A corner of the lattice, in texels along the column's own square. The two at the ends
+        // are pulled in to the middle of the column's outermost texel instead of sitting on its
+        // edge, because an edge reads half of the next column's texel — and that column is at
+        // another level, drawn somewhere else. The texture did the same thing, but only in its
+        // outermost row of pixels; a lattice spreads it over the sixth of a cell up to the next
+        // corner, which put the pale line back at the foot of every step.
+        let along = |corner: u32| {
+            (f64::from(corner) / f64::from(steps) * per_tile).clamp(0.5, per_tile - 0.5)
         };
-        (Some(texture), covered)
+        chunk
+            .iter()
+            .map(|column| {
+                let (from_x, from_y) = self.scratch.square_of(column.coord.x, column.coord.y)?;
+                let mut coverage = Vec::with_capacity(((steps + 1) * (steps + 1)) as usize);
+                let mut any = false;
+                for row in 0..=steps {
+                    let y = f64::from(from_y) + along(row);
+                    for across in 0..=steps {
+                        let x = f64::from(from_x) + along(across);
+                        let value = self.coverage_at(x, y);
+                        any |= value > 0.0;
+                        coverage.push(value);
+                    }
+                }
+                // A column the sun reaches everywhere draws nothing at all, which is most of a
+                // bare chunk and the difference between a quad per column and a quad per shadow.
+                any.then(|| Rc::new(ShadeLattice::from_coverage(steps, steps, coverage)))
+            })
+            .collect()
     }
 
-    /// Whether any texel of a column's square carries coverage.
-    fn any_coverage(&self, coord: WorldCoord) -> bool {
-        let Some((from_x, from_y)) = self.scratch.square_of(coord.x, coord.y) else {
-            return false;
+    /// The map's coverage at a point of it, in `[0, 1]`, read between the four texels around it.
+    ///
+    /// `x` and `y` are in texels of the map, counted from its corner, so a texel's own middle is
+    /// at its index plus a half — which is the convention a texture sampler reads by, and what
+    /// keeps the lattice showing what the texture used to.
+    fn coverage_at(&self, x: f64, y: f64) -> f32 {
+        let (width, height) = (self.scratch.width, self.scratch.height);
+        if width == 0 || height == 0 {
+            return 0.0;
+        }
+        let place = |value: f64, span: u32| {
+            let shifted = (value - 0.5).clamp(0.0, f64::from(span - 1));
+            let first = shifted.floor() as u32;
+            (first, (first + 1).min(span - 1), shifted - f64::from(first))
         };
-        let per_tile = self.scratch.pixels_per_tile;
-        (from_y..from_y + per_tile).any(|y| {
-            let row = y as usize * self.scratch.width as usize;
-            self.scratch.alpha[row + from_x as usize..row + (from_x + per_tile) as usize]
-                .iter()
-                .any(|&value| value > 0)
-        })
+        let (x0, x1, tx) = place(x, width);
+        let (y0, y1, ty) = place(y, height);
+        let at = |x: u32, y: u32| f64::from(self.scratch.alpha[(y * width + x) as usize]) / 255.0;
+        let top = at(x0, y0) + (at(x1, y0) - at(x0, y0)) * tx;
+        let bottom = at(x0, y1) + (at(x1, y1) - at(x0, y1)) * tx;
+        (top + (bottom - top) * ty) as f32
     }
 
     /// The chunk's entities as casters, in the drawing's own measurements.
@@ -402,7 +396,7 @@ impl ShadowScene {
         coord: ChunkCoord,
         casters: &[ShadowCaster],
         ground: &HeightField,
-    ) -> Vec<(TerrainFace, ShadeLattice)> {
+    ) -> Vec<(TerrainFace, Rc<ShadeLattice>)> {
         let Some(columns) = manager.terrain_chunk(coord) else {
             return Vec::new();
         };
@@ -440,7 +434,10 @@ impl ShadowScene {
                 }
             }
             if any {
-                shaded.push((face, ShadeLattice::from_coverage(FACE_SHADE_STEPS, FACE_SHADE_STEPS, grid)));
+                shaded.push((
+                    face,
+                    Rc::new(ShadeLattice::from_coverage(FACE_SHADE_STEPS, FACE_SHADE_STEPS, grid)),
+                ));
             }
         }
         shaded
@@ -478,7 +475,7 @@ impl ShadowScene {
             if right < 0.0 || left > screen_w || bottom < 0.0 || top > screen_h {
                 continue;
             }
-            out.push(SpriteDraw::face_shadow(
+            out.push(SpriteDraw::shadow(
                 scene_key(
                     f64::from(face.x) + 0.5,
                     f64::from(face.y) + 0.5,
@@ -487,7 +484,7 @@ impl ShadowScene {
                     projection.tile_height,
                 ),
                 corners,
-                shade.clone(),
+                Rc::clone(shade),
                 opacity,
             ));
         }
@@ -539,15 +536,18 @@ impl ShadowScene {
     /// Queues the ground shadow of every shaded column of `chunk`, to be sorted and drawn with
     /// everything else.
     ///
-    /// One quad per column, laid on that column's own top face at its own level: the quad *is*
-    /// the diamond, so a shadow cannot spill over the cliff beside it, and it carries the
-    /// column's own depth so the ground in front of it still covers it.
+    /// One quad per column that carries any shadow, laid on that column's own top face at its
+    /// own level: the quad *is* the diamond, so a shadow cannot spill over the cliff beside it,
+    /// and it carries the column's own depth so the ground in front of it still covers it.
     ///
     /// The quad is the cell itself, at the level the column's top is actually drawn at
     /// ([`crate::preview_top_level`]). That only works because a terrain block fills its whole
     /// cell (`artifacts/terrain_blocks.py`): while the blocks were a few percent narrower, a
     /// quad on the cell overhung its own slab onto the one behind and the two shadows added up
     /// into a seam, and a quad cut to the drawing left every groove between the blocks lit.
+    ///
+    /// How dark it is comes from the lattice baked with the chunk, not from a texture, so the
+    /// quad is drawn out of the shared atlas and costs no draw call of its own.
     pub fn collect_ground(
         &self,
         coord: ChunkCoord,
@@ -559,21 +559,13 @@ impl ShadowScene {
         let Some(baked) = self.chunks.get(&coord) else {
             return;
         };
-        let Some(texture) = &baked.texture else {
-            return;
-        };
         let opacity = self.light.opacity() as f32;
-        let per_tile = f64::from(SHADOW_MAP_PIXELS_PER_TILE);
-        let (map_width, map_height) = (
-            f64::from(baked.area.columns()) * per_tile,
-            f64::from(baked.area.rows()) * per_tile,
-        );
         let (screen_w, screen_h) = (f64::from(screen_width()), f64::from(screen_height()));
         let half_tile = projection.tile_width / 2.0;
         for (index, column) in columns.iter().enumerate() {
-            if !baked.covered.get(index).copied().unwrap_or(false) {
+            let Some(shade) = baked.ground.get(index).and_then(Option::as_ref) else {
                 continue;
-            }
+            };
             let level = crate::preview_top_level(*column, &height_at);
             let corner = |dx: f64, dy: f64| {
                 let point = project_block(
@@ -600,21 +592,7 @@ impl ShadowScene {
             {
                 continue;
             }
-            let Some((from_x, from_y)) = square_of(baked.area, column.coord) else {
-                continue;
-            };
-            // The same four points of the column's square of the map. Not inset: the map is one
-            // continuous rectangle of the world, so a linear sample at the edge of a square
-            // blends into the neighbouring column's texels, which is where the shadow really
-            // does continue. Insetting by half a texel instead stretched every square by a
-            // twelfth and moved the shadow by half a texel at the edges.
-            let uv = |dx: f64, dy: f64| {
-                (
-                    ((f64::from(from_x) + dx * per_tile) / map_width) as f32,
-                    ((f64::from(from_y) + dy * per_tile) / map_height) as f32,
-                )
-            };
-            out.push(SpriteDraw::ground_shadow(
+            out.push(SpriteDraw::shadow(
                 scene_key(
                     f64::from(column.coord.x) + 0.5,
                     f64::from(column.coord.y) + 0.5,
@@ -622,9 +600,8 @@ impl ShadowScene {
                     GROUND_SHADOW_LAYER,
                     projection.tile_height,
                 ),
-                texture.clone(),
                 corners,
-                [uv(0.0, 0.0), uv(1.0, 0.0), uv(1.0, 1.0), uv(0.0, 1.0)],
+                Rc::clone(shade),
                 opacity,
             ));
         }
@@ -684,16 +661,6 @@ fn neighbours_loaded(manager: &ChunkManager, coord: ChunkCoord) -> u16 {
         .fold(0, |bits, (at, _)| bits | 1 << at)
 }
 
-/// The corner, in texels, of a column's square of a map over `area`.
-fn square_of(area: MapArea, coord: WorldCoord) -> Option<(u32, u32)> {
-    if coord.x < area.min_x || coord.x > area.max_x || coord.y < area.min_y || coord.y > area.max_y {
-        return None;
-    }
-    Some((
-        (coord.x - area.min_x) as u32 * SHADOW_MAP_PIXELS_PER_TILE,
-        (coord.y - area.min_y) as u32 * SHADOW_MAP_PIXELS_PER_TILE,
-    ))
-}
 
 #[cfg(test)]
 #[path = "mod.test.rs"]

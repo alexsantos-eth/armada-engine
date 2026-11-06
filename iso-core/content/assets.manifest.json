@@ -4520,6 +4520,25 @@
       "sway": null
     },
     {
+      "id": "shadow_white",
+      "kind": "entity",
+      "source": "/assets/shadow/white.svg",
+      "dataTiles": null,
+      "frame": {
+        "x": 1283,
+        "y": 2556,
+        "width": 20,
+        "height": 20
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
       "id": "statue_block",
       "kind": "entity",
       "source": "/assets/statue/block.svg",

@@ -20,6 +20,8 @@ El script rasteriza cada SVG con `cairosvg` (`rasterize.py`) y luego compila y e
 
 Los bloques de terreno (hierba, tierra y arena) los genera `artifacts/terrain_blocks.py`, y cada uno **llena su casilla entera**: su techo es el rombo de la casilla y sus dos caras visibles caen rectas hasta el plano del bloque de abajo, de modo que dos vecinos se tocan y una columna se apila sin hueco. Las esquinas redondeadas de arcilla que conservan los demás assets dejaban un surco de fondo en cada borde del campo, y una sombra puesta sobre la casilla se veía atravesada por esa rejilla de líneas claras. El borde de la casilla se sigue leyendo, pero como un reborde más oscuro pintado dentro del techo (`RIM`). Después de tocar esos SVG hay que regenerar las variantes de hierba (`grass_clutter.py`) y los dieciséis tiles de camino (`path_tiles.py`), y volver a empaquetar el atlas.
 
+`public/assets/shadow/white.svg` no es arte: es un cuadrado blanco opaco, y está ahí para que las sombras se dibujen muestreando el propio atlas en vez de ligar una textura suya. Macroquad abre una llamada de dibujo cada vez que cambia la textura, y una sombra va entre dos bloques de suelo, así que sin este parche la escena pasa de 3 llamadas a 134. No lo borres del atlas; el cliente avisa por consola si falta.
+
 `cargo run --bin remeasure_atlas -- content/assets.manifest.json content/atlas.png ../public` reescribe la geometría de un atlas ya empaquetado sin rasterizar nada; deja intactas las hojas, cuyas celdas son una rejilla y no un recorte.
 
 ## Ejecutar
@@ -92,7 +94,7 @@ La fase 1 ya incluye `grid`, `paths`, `projection`, `camera`, `time` y el acumul
 
 ## Estado de P6 (recursos y servicios del borde)
 
-- Manifiesto de assets (`content/assets.manifest.json`) y atlas rasterizado (`content/atlas.png`, 63 SVGs) generados con `pack_atlas` / `remeasure_atlas`.
+- Manifiesto de assets (`content/assets.manifest.json`) y atlas rasterizado (`content/atlas.png`, 64 SVGs) generados con `pack_atlas` / `remeasure_atlas`.
 - Servicios de borde implementados en `src/services.rs`: `MacroquadInput`, `MacroquadAudio`, `MacroquadUi`, `MacroquadChunkLoader`.
 - Guardado en WASM: `src/save.rs` persiste en `window.localStorage` bajo la clave `armada_save.json` (no es no-op en `wasm32-unknown-unknown`).
 - `ChunkGround` en `src/main.rs` expone los ocupantes de cada columna: `occupancy_at` devuelve los `PlayerObstacle` de las entidades que pisan esa casilla, con su colisión precalculada.

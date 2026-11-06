@@ -371,6 +371,13 @@ async fn main() {
     if masks.is_none() {
         eprintln!("warning: could not read {atlas_path} for the shadow silhouettes; no shadows");
     }
+    if !atlas.has_white_patch() {
+        eprintln!(
+            "warning: the atlas has no {}; the shadows still draw, but each one binds a texture \
+             of its own and the scene is no longer one batch",
+            crate::sprites::WHITE_PATCH
+        );
+    }
     // Dawn, baked: one sun, one bake per chunk, and nothing to advance per frame. See
     // `shadow_view` for what casts and what receives.
     let mut shadows = masks.map(|masks| {

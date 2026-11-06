@@ -36,16 +36,37 @@ fn the_nine_chunks_around_one_include_it_once() {
     assert!(all.contains(&ChunkCoord { cx: 4, cy: -1 }));
 }
 
+/// The lattice stands in for the map's own texels, so its corners have to land on them: a
+/// resolution that does not divide the map reads between two texels everywhere and softens the
+/// whole shadow instead of only where it is soft.
 #[test]
-fn a_columns_square_is_measured_from_the_areas_corner() {
-    let area = MapArea::around(0, 0, 31, 31);
-
-    assert_eq!(square_of(area, WorldCoord { x: -1, y: -1 }), Some((0, 0)));
+fn the_ground_lattice_divides_the_map() {
+    const { assert!(GROUND_SHADE_STEPS > 0) };
     assert_eq!(
-        square_of(area, WorldCoord { x: 0, y: 0 }),
-        Some((SHADOW_MAP_PIXELS_PER_TILE, SHADOW_MAP_PIXELS_PER_TILE))
+        SHADOW_MAP_PIXELS_PER_TILE % GROUND_SHADE_STEPS,
+        0,
+        "{GROUND_SHADE_STEPS} corners do not divide {SHADOW_MAP_PIXELS_PER_TILE} texels a tile"
     );
-    assert_eq!(square_of(area, WorldCoord { x: 40, y: 0 }), None);
+}
+
+/// Every shadow is drawn out of the shared atlas, so that binding it changes nothing and the
+/// ground and its shadows stay one batch. Without the patch each shadow would bind a texture of
+/// its own, which is a draw call per shadow and what this whole arrangement exists to avoid.
+#[test]
+fn the_atlas_carries_the_white_patch_the_shadows_are_drawn_from() {
+    use armada_core::assets::AssetManifest;
+
+    let manifest: AssetManifest =
+        serde_json::from_str(include_str!("../../content/assets.manifest.json"))
+            .expect("the asset manifest is valid JSON");
+    let patch = manifest
+        .entries
+        .iter()
+        .find(|entry| entry.source == crate::sprites::WHITE_PATCH)
+        .unwrap_or_else(|| panic!("the atlas has no {}", crate::sprites::WHITE_PATCH));
+
+    assert!(patch.primary_frame().is_some(), "the white patch was packed with no frame");
+    assert!(patch.texture.is_none(), "the white patch belongs in the shared atlas, not a sheet");
 }
 
 #[test]

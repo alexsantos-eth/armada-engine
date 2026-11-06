@@ -312,7 +312,8 @@ mod tests {
         let manifest: AssetManifest = serde_json::from_str(json).expect("manifest deserializes");
         assert_eq!(manifest.schema_version, MANIFEST_SCHEMA_VERSION);
         validate_manifest(&manifest).expect("shared manifest validates");
-        assert_eq!(manifest.entries.len(), 63);
+        // 63 pieces of artwork plus the flat white patch the shadows are drawn from.
+        assert_eq!(manifest.entries.len(), 64);
         for entry in &manifest.entries {
             assert!(entry.primary_frame().is_some(), "entry {} has no frame", entry.id);
         }
