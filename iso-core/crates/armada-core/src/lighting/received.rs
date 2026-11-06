@@ -20,6 +20,7 @@
 
 use super::bake::{ShadowCaster, SpriteExtent};
 use super::shadow::{ShadowProjection, cast_shadow_offset};
+use super::terrain::{HeightField, ShadowPoint, receiver_point};
 
 /// Corners across a receiver's artwork, and down it.
 ///
@@ -71,11 +72,17 @@ pub struct ShadowReceiver {
     pub extent: SpriteExtent,
 }
 
-/// The shadows `casters` cast on `receiver`, as a lattice of `columns` × `rows` quads.
+/// The shadows `casters` and the ground cast on `receiver`, as a lattice of `columns` × `rows`
+/// quads.
 ///
 /// Coverage is the largest any one caster contributes, as on the ground: two shadows crossing a
 /// trunk read as one. `opacity` is the phase's own ([`super::PhaseLight::opacity`]), applied
 /// here so the client has nothing left to scale.
+///
+/// `ground` is the shadow the terrain itself casts. A sprite is an upright cut-out facing the
+/// sun, so each corner of the lattice is a real place in the world
+/// ([`receiver_point`]) and the ground's horizon is asked about it at its own height: that is
+/// how a tree standing in a cliff's shadow comes out dark at the trunk and lit at the crown.
 ///
 /// `None` when nothing reaches it, which is the common case and the one worth not allocating
 /// for.
@@ -88,6 +95,7 @@ pub fn shade_grid(
     tile_width: f64,
     box_height: f64,
     alpha_at: super::bake::SilhouetteAlpha<'_>,
+    ground: Option<&HeightField>,
     columns: u32,
     rows: u32,
 ) -> Option<ShadeGrid> {
@@ -129,9 +137,11 @@ pub fn shade_grid(
             Some((caster.silhouette, at, above_foot))
         })
         .collect();
-    if placed.is_empty() {
+    let ground = ground.filter(|field| !field.is_empty());
+    if placed.is_empty() && ground.is_none() {
         return None;
     }
+    let foot = ShadowPoint { x: receiver.foot.0, y: receiver.foot.1, elevation: receiver.elevation };
 
     let mut values = Vec::with_capacity(((columns + 1) * (rows + 1)) as usize);
     let mut any = false;
@@ -148,12 +158,70 @@ pub fn shade_grid(
                 }
                 coverage = coverage.max(alpha_at(*silhouette, u, v).clamp(0.0, 1.0));
             }
+            if let Some(field) = ground {
+                let point = receiver_point(foot, (0.0, 0.0), (x, y), light, tile_width, box_height);
+                let horizon = field.horizon(point.x, point.y, light, box_height, tile_width);
+                coverage = coverage.max(horizon.coverage(point.elevation));
+            }
             let value = coverage * opacity;
             any |= value > 0.0;
             values.push(value as f32);
         }
     }
     any.then_some(ShadeGrid { columns, rows, values })
+}
+
+/// How shaded one point of the world is, by the casters around it and by the ground.
+///
+/// The lattice over a sprite ([`shade_grid`]) is this question asked over a rectangle of
+/// artwork; a vertical face of ground has no artwork, only real points, so it asks directly.
+/// The answer is coverage in `[0, 1]` before the phase's opacity.
+///
+/// Each caster is the same upright cut-out it is everywhere else: the ray from `point` back to
+/// the sun meets its silhouette at one place, which is where its own foot's shadow would have
+/// to move to land on this point.
+pub fn shaded_at(
+    point: ShadowPoint,
+    casters: &[ShadowCaster],
+    light: &ShadowProjection,
+    tile_width: f64,
+    box_height: f64,
+    alpha_at: super::bake::SilhouetteAlpha<'_>,
+    ground: Option<&HeightField>,
+) -> f64 {
+    let mut coverage = 0.0_f64;
+    for caster in casters {
+        let above_foot = (-caster.extent.top).clamp(0.0, caster.extent.height);
+        if above_foot <= 0.0 || caster.extent.width <= 0.0 || caster.extent.height <= 0.0 {
+            continue;
+        }
+        let Some((x, y)) = cast_shadow_offset(
+            light,
+            caster.foot,
+            (point.x, point.y),
+            caster.elevation - point.elevation,
+            tile_width,
+            box_height,
+        ) else {
+            continue;
+        };
+        // The point itself is the receiver's own ground point, so the silhouette has landed on
+        // it when its placed rectangle contains the origin.
+        let u = -(caster.extent.left + x) / caster.extent.width;
+        let v = -(caster.extent.top + y) / caster.extent.height;
+        if !(0.0..=1.0).contains(&u) || v < 0.0 || v > above_foot / caster.extent.height {
+            continue;
+        }
+        coverage = coverage.max(alpha_at(caster.silhouette, u, v).clamp(0.0, 1.0));
+        if coverage >= 1.0 {
+            return 1.0;
+        }
+    }
+    if let Some(field) = ground {
+        let horizon = field.horizon(point.x, point.y, light, box_height, tile_width);
+        coverage = coverage.max(horizon.coverage(point.elevation));
+    }
+    coverage
 }
 
 #[cfg(test)]

@@ -11,9 +11,10 @@
 //! again every frame, from the casters of the chunks around it. That is one lattice a frame.
 //!
 //! **What casts and what receives.** Entities cast, onto the ground, onto other entities and
-//! onto the player. The player does not cast: its shadow would move, and this scene is a bake.
-//! Terrain does not cast either — a cliff shading the beach below it is the TypeScript client's
-//! `terrain-shadow.ts` and a module of its own.
+//! onto the player. The ground casts too, as a horizon rather than as a silhouette
+//! ([`armada_core::lighting::terrain`]), onto itself, onto its own exposed vertical faces
+//! ([`armada_core::lighting::faces`]) and onto whatever stands on it. The player does not cast:
+//! its shadow would move, and this scene is a bake.
 //!
 //! **Why a chunk rebakes.** A caster near a chunk edge throws its shadow into the next chunk, so
 //! a chunk is baked against the entities of itself and its eight neighbours. Until those
@@ -27,8 +28,10 @@ use armada_core::assets::{InkBox, SpriteLayout};
 use armada_core::entities::Entity;
 use armada_core::grid::{CHUNK_SIZE, ChunkCoord, WorldCoord, to_chunk_coord};
 use armada_core::lighting::{
-    MapArea, PhaseLight, SHADE_COLUMNS, SHADE_ROWS, SHADOW_MAP_PIXELS_PER_TILE, ShadeGrid,
-    ShadowCaster, ShadowMap, ShadowReceiver, SpriteExtent, bake_ground_shadows, shade_grid,
+    HeightField, MapArea, PhaseLight, SHADE_COLUMNS, SHADE_ROWS, SHADOW_MAP_PIXELS_PER_TILE,
+    ShadeGrid, ShadowCaster, ShadowMap, ShadowPoint, ShadowReceiver, SpriteExtent,
+    TerrainFace,
+    bake_ground_shadows, shade_grid, shaded_at, terrain_faces,
 };
 use armada_core::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
 use armada_core::terrain::TerrainColumn;
@@ -38,7 +41,6 @@ use masks::SilhouetteMasks;
 use std::collections::HashMap;
 
 use crate::sprites::{ShadeLattice, SpriteDraw, scene_key};
-use crate::terrain_view::blocks::TerrainFrames;
 
 /// Chunks baked in one frame.
 ///
@@ -55,6 +57,19 @@ pub const BAKES_PER_FRAME: usize = 1;
 /// `PLAYER_BEHIND_LAYER`, so a shadow lies on the ground it was baked for, the player walks over
 /// it and a tree growing on that column covers it.
 pub const GROUND_SHADOW_LAYER: i32 = 1;
+
+/// Quads across an exposed vertical face of ground, and down it, for the shadow on it.
+///
+/// A face is at most one block tall and one cell wide, so three either way is finer than a
+/// texel of the ground's own map.
+const FACE_SHADE_STEPS: u32 = 3;
+
+/// How far down a column's exposed side a shadow is worked out, in blocks.
+///
+/// The same depth the terrain itself stacks to
+/// ([`MAX_EXPOSED_BLOCKS`](crate::terrain_view::blocks)): past it the wall is behind the ground
+/// in front of it anyway.
+const FACE_FLOOR: f64 = 10.0;
 
 /// Corners across an entity's artwork, and down it, for the shadows it receives.
 ///
@@ -77,6 +92,8 @@ struct Baked {
     shaded: HashMap<(i32, i32), ShadeGrid>,
     /// The chunk's own entities as casters, for its neighbours' bakes and for the player.
     casters: Vec<ShadowCaster>,
+    /// The shadow on each of the chunk's exposed vertical faces, as coverage at its corners.
+    faces: Vec<(TerrainFace, ShadeLattice)>,
     /// Which of the nine chunks around it (itself included) were loaded when it was baked.
     baked_against: u16,
 }
@@ -182,9 +199,13 @@ impl ShadowScene {
         let height_at = |point: WorldCoord| manager.column_at(point.x, point.y).map(|c| c.elevation);
         let level_at =
             |x: i32, y: i32| manager.column_at(x, y).map(|c| crate::preview_top_level(c, height_at));
+        // The ground casts too, and a cliff that shades this chunk's edge usually stands in the
+        // next one, so the field reaches past the area the map covers.
+        let ground = Self::ground_field(manager, area.min_x, area.min_y, area.max_x, area.max_y);
         bake_ground_shadows(
             &mut self.scratch,
             &casters,
+            Some(&ground),
             &self.light.shadow,
             self.tile_width,
             self.box_height,
@@ -193,15 +214,32 @@ impl ShadowScene {
         );
 
         let (texture, covered) = self.upload(manager, coord, reuse);
-        let shaded = self.shade_entities(manager, coord, &casters);
+        let shaded = self.shade_entities(manager, coord, &casters, &ground);
+        let faces = self.shade_faces(manager, coord, &casters, &ground);
         self.chunks.insert(coord, Baked {
             area,
             texture,
             covered,
             shaded,
             casters: own,
+            faces,
             baked_against: neighbours_loaded(manager, coord),
         });
+    }
+
+    /// The drawn heights of an area of ground, which is what the ground casts its own shadow
+    /// from. [`HeightField`] grows the area by the ray's reach itself.
+    fn ground_field(
+        manager: &ChunkManager,
+        min_x: i32,
+        min_y: i32,
+        max_x: i32,
+        max_y: i32,
+    ) -> HeightField {
+        let height_at = |point: WorldCoord| manager.column_at(point.x, point.y).map(|c| c.elevation);
+        HeightField::new(min_x, min_y, max_x, max_y, |x, y| {
+            manager.column_at(x, y).map(|c| crate::preview_top_level(c, height_at))
+        })
     }
 
     /// Uploads the scratch map as a texture of black at its coverage, and says which columns of
@@ -303,13 +341,16 @@ impl ShadowScene {
 
     /// The lattices of the chunk's own entities, for the ones something shades.
     ///
-    /// Only entities standing on a single cell get one: a longer footprint is drawn as a band
-    /// per cell, and a lattice over the whole drawing would have to be cut the same way.
+    /// One lattice covers the whole drawing, however many cells its footprint spans: the
+    /// measured box already spans every cell, and the bands a long sprite is cut into read
+    /// their own part out of it. Cutting a lattice per band instead would step the shadow at
+    /// every cut.
     fn shade_entities(
         &self,
         manager: &ChunkManager,
         coord: ChunkCoord,
         casters: &[ShadowCaster],
+        ground: &HeightField,
     ) -> HashMap<(i32, i32), ShadeGrid> {
         let Some(entities) = manager.entities_chunk(coord) else {
             return HashMap::new();
@@ -317,9 +358,6 @@ impl ShadowScene {
         let masks = &self.masks;
         let mut shaded = HashMap::new();
         for entity in entities {
-            if entity.length().max(1) > 1 {
-                continue;
-            }
             let Some(extent) = self.extent_of(entity) else {
                 continue;
             };
@@ -342,6 +380,7 @@ impl ShadowScene {
                 self.tile_width,
                 self.box_height,
                 &|index, u, v| masks.alpha_at(index, u, v),
+                Some(ground),
                 ENTITY_SHADE_COLUMNS,
                 ENTITY_SHADE_ROWS,
             ) {
@@ -349,6 +388,109 @@ impl ShadowScene {
             }
         }
         shaded
+    }
+
+    /// The shadow on each exposed vertical face of the chunk's ground.
+    ///
+    /// A face has no artwork to carry a lattice, so each corner is a real point of the world and
+    /// is asked directly ([`shaded_at`]): the casters around it, and the ground's own horizon,
+    /// which is what darkens a cliff standing in another cliff's shadow. The phase's opacity is
+    /// left off here and applied when the face is drawn, so the lattice is plain coverage.
+    fn shade_faces(
+        &self,
+        manager: &ChunkManager,
+        coord: ChunkCoord,
+        casters: &[ShadowCaster],
+        ground: &HeightField,
+    ) -> Vec<(TerrainFace, ShadeLattice)> {
+        let Some(columns) = manager.terrain_chunk(coord) else {
+            return Vec::new();
+        };
+        let height_at = |point: WorldCoord| manager.column_at(point.x, point.y).map(|c| c.elevation);
+        let level_at =
+            |x: i32, y: i32| manager.column_at(x, y).map(|c| crate::preview_top_level(c, height_at));
+        let walls = terrain_faces(
+            columns
+                .iter()
+                .map(|c| (c.coord.x, c.coord.y, crate::preview_top_level(*c, height_at), c.surface)),
+            level_at,
+            FACE_FLOOR,
+        );
+        let masks = &self.masks;
+        let mut shaded = Vec::new();
+        for face in walls {
+            let mut grid = Vec::with_capacity(((FACE_SHADE_STEPS + 1) * (FACE_SHADE_STEPS + 1)) as usize);
+            let mut any = false;
+            for row in 0..=FACE_SHADE_STEPS {
+                let down = f64::from(row) / f64::from(FACE_SHADE_STEPS);
+                for column in 0..=FACE_SHADE_STEPS {
+                    let along = f64::from(column) / f64::from(FACE_SHADE_STEPS);
+                    let (x, y, elevation) = face.point(along, down);
+                    let coverage = shaded_at(
+                        ShadowPoint { x, y, elevation },
+                        casters,
+                        &self.light.shadow,
+                        self.tile_width,
+                        self.box_height,
+                        &|index, u, v| masks.alpha_at(index, u, v),
+                        Some(ground),
+                    );
+                    any |= coverage > 0.0;
+                    grid.push(coverage as f32);
+                }
+            }
+            if any {
+                shaded.push((face, ShadeLattice::from_coverage(FACE_SHADE_STEPS, FACE_SHADE_STEPS, grid)));
+            }
+        }
+        shaded
+    }
+
+    /// Queues the shadow on every exposed vertical face of `coord`'s ground.
+    ///
+    /// A face is drawn with its own column, one layer over the terrain, so the column in front
+    /// of it still covers whatever of it that column hides.
+    pub fn collect_faces(
+        &self,
+        coord: ChunkCoord,
+        projection: ProjectionConfig,
+        out: &mut Vec<SpriteDraw>,
+    ) {
+        let Some(baked) = self.chunks.get(&coord) else {
+            return;
+        };
+        let opacity = self.light.opacity() as f32;
+        let (screen_w, screen_h) = (f64::from(screen_width()), f64::from(screen_height()));
+        for (face, shade) in &baked.faces {
+            // The wall the player sees is the block's own drawing, and a terrain block fills
+            // its cell exactly (`artifacts/terrain_blocks.py`), so the quad is the cell's own
+            // edge from the top down to the neighbour's level.
+            let corner = |along: f64, down: f64| {
+                let (x, y, level) = face.point(along, down);
+                let point = project_block(GridPoint { x, y }, level, projection);
+                (point.screen_x, point.screen_y)
+            };
+            let corners = [corner(0.0, 0.0), corner(1.0, 0.0), corner(1.0, 1.0), corner(0.0, 1.0)];
+            let left = corners.iter().fold(f64::INFINITY, |l, c| l.min(c.0));
+            let right = corners.iter().fold(f64::NEG_INFINITY, |r, c| r.max(c.0));
+            let top = corners.iter().fold(f64::INFINITY, |t, c| t.min(c.1));
+            let bottom = corners.iter().fold(f64::NEG_INFINITY, |b, c| b.max(c.1));
+            if right < 0.0 || left > screen_w || bottom < 0.0 || top > screen_h {
+                continue;
+            }
+            out.push(SpriteDraw::face_shadow(
+                scene_key(
+                    f64::from(face.x) + 0.5,
+                    f64::from(face.y) + 0.5,
+                    face.top,
+                    GROUND_SHADOW_LAYER,
+                    projection.tile_height,
+                ),
+                corners,
+                shade.clone(),
+                opacity,
+            ));
+        }
     }
 
     /// The shadows falling on the entity standing at `cell`, if any were baked.
@@ -361,11 +503,19 @@ impl ShadowScene {
     /// The player moves, so this is the one lattice that is not baked. It reads the casters of
     /// the chunk it stands in and the eight around it, which is the same neighbourhood a chunk
     /// bakes its ground against.
-    pub fn shade_moving(&self, receiver: &ShadowReceiver) -> Option<ShadeGrid> {
-        let home = to_chunk_coord(WorldCoord {
+    pub fn shade_moving(
+        &self,
+        manager: &ChunkManager,
+        receiver: &ShadowReceiver,
+    ) -> Option<ShadeGrid> {
+        let cell = WorldCoord {
             x: receiver.foot.0.floor() as i32,
             y: receiver.foot.1.floor() as i32,
-        });
+        };
+        let home = to_chunk_coord(cell);
+        // The ground it stands on casts too, and its own field is small: a height field grows
+        // itself by the ray's reach, so one cell is all this has to ask for.
+        let ground = Self::ground_field(manager, cell.x, cell.y, cell.x, cell.y);
         let casters: Vec<ShadowCaster> = around(home)
             .into_iter()
             .filter_map(|coord| self.chunks.get(&coord))
@@ -380,6 +530,7 @@ impl ShadowScene {
             self.tile_width,
             self.box_height,
             &|index, u, v| masks.alpha_at(index, u, v),
+            Some(&ground),
             SHADE_COLUMNS,
             SHADE_ROWS,
         )
@@ -392,20 +543,16 @@ impl ShadowScene {
     /// the diamond, so a shadow cannot spill over the cliff beside it, and it carries the
     /// column's own depth so the ground in front of it still covers it.
     ///
-    /// The quad is a whole cell wide, at the level the column's top is actually drawn at
-    /// ([`crate::preview_top_level`]), but slid towards the camera onto the face the block is
-    /// actually drawn with ([`drawn_margin`]). Left on the cell, its far corner stuck out past
-    /// the top of its own slab onto the one behind, which had already laid its own shadow
-    /// there, and the two added up into a bright seam along every far edge. Cut to the face
-    /// instead, the grooves between the blocks stayed lit and a shadow over a field of beach
-    /// came out as a grid of seams. Slid, it reaches from its own far corner to the far corner
-    /// of the block in front, so neighbours meet in the groove exactly once.
+    /// The quad is the cell itself, at the level the column's top is actually drawn at
+    /// ([`crate::preview_top_level`]). That only works because a terrain block fills its whole
+    /// cell (`artifacts/terrain_blocks.py`): while the blocks were a few percent narrower, a
+    /// quad on the cell overhung its own slab onto the one behind and the two shadows added up
+    /// into a seam, and a quad cut to the drawing left every groove between the blocks lit.
     pub fn collect_ground(
         &self,
         coord: ChunkCoord,
         columns: &[TerrainColumn],
         projection: ProjectionConfig,
-        frames: &TerrainFrames,
         height_at: impl Fn(WorldCoord) -> Option<i32>,
         out: &mut Vec<SpriteDraw>,
     ) {
@@ -428,14 +575,11 @@ impl ShadowScene {
                 continue;
             }
             let level = crate::preview_top_level(*column, &height_at);
-            // Towards the camera is `-x -y`, so one margin off both axes slides the quad
-            // straight down the screen onto the drawn face.
-            let slide = drawn_margin(frames.top_width(column.surface));
             let corner = |dx: f64, dy: f64| {
                 let point = project_block(
                     GridPoint {
-                        x: f64::from(column.coord.x) + dx - slide,
-                        y: f64::from(column.coord.y) + dy - slide,
+                        x: f64::from(column.coord.x) + dx,
+                        y: f64::from(column.coord.y) + dy,
                     },
                     level,
                     projection,
@@ -485,15 +629,6 @@ impl ShadowScene {
             ));
         }
     }
-}
-
-/// How far short of its cell each side of a block's drawn top face falls, in tiles.
-///
-/// `top_width` is how wide the block is actually drawn, in tile widths. The face is centred on
-/// the cell, so what it leaves out is shared between the two sides. A drawing wider than its
-/// cell would push the margin negative, so it is clamped to nothing.
-fn drawn_margin(top_width: f64) -> f64 {
-    ((1.0 - top_width) / 2.0).max(0.0)
 }
 
 /// Where a measured drawing is drawn around the ground point it stands on, in screen pixels.

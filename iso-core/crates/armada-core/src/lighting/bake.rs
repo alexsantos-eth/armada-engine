@@ -22,6 +22,7 @@
 //! of something `lift` blocks above it lands `lift` blocks further down the shadow.
 
 use super::shadow::{ShadowProjection, lift_reach, silhouette_matrix};
+use super::terrain::{HeightField, Horizon};
 
 /// Texels of a shadow map per tile of world.
 ///
@@ -179,9 +180,11 @@ pub type SilhouetteAlpha<'a> = &'a dyn Fn(u32, f64, f64) -> f64;
 ///
 /// * `tile_width`, `box_height` — the client's own drawing scale: a tile's width and a block's
 ///   body in screen pixels.
+#[allow(clippy::too_many_arguments)]
 pub fn bake_ground_shadows(
     map: &mut ShadowMap,
     casters: &[ShadowCaster],
+    ground: Option<&HeightField>,
     light: &ShadowProjection,
     tile_width: f64,
     box_height: f64,
@@ -192,12 +195,112 @@ pub fn bake_ground_shadows(
     for caster in casters {
         lay_caster(map, caster, light, tile_width, box_height, &mut levels, alpha_at);
     }
-    blur(map, SHADOW_BLUR_TEXELS);
+    if let Some(ground) = ground {
+        lay_terrain(map, ground, light, tile_width, box_height, &levels);
+    }
+    blur_within_levels(map, SHADOW_BLUR_TEXELS, &levels);
     // The blur does not know about levels, so it spreads a shadow a texel past the column it
     // was laid on. Between two columns of solid ground that is the penumbra and exactly what is
     // wanted; over a hole — water, an unloaded neighbour, the air beside a cliff — it would
     // leave a shadow hanging in nothing, so those columns are wiped again afterwards.
     clear_columns_without_ground(map, &levels);
+}
+
+/// How many texels apart the ground's horizon is asked about.
+///
+/// The walk back to the sun is the expensive part of a bake, and a horizon moves slowly: it
+/// changes where a cliff's edge crosses, and that edge is soft to begin with
+/// ([`Horizon::width`]). Asking every third of a tile and reading between the answers costs a
+/// sixteenth of asking every texel and is not told apart on screen. Must divide
+/// [`SHADOW_MAP_PIXELS_PER_TILE`], so that a column's own corners are always asked directly.
+const TERRAIN_SAMPLE_TEXELS: u32 = 4;
+
+/// Lays the shadow the ground casts on itself over every texel.
+///
+/// Unlike a sprite, the ground is not laid out as a silhouette: what shades a point is whether
+/// anything between it and the sun stands high enough, which [`HeightField::horizon`] answers
+/// for every height at a horizontal place at once. The horizons are taken on a coarse lattice
+/// and read between, and each texel then asks its own column's level.
+fn lay_terrain(
+    map: &mut ShadowMap,
+    ground: &HeightField,
+    light: &ShadowProjection,
+    tile_width: f64,
+    box_height: f64,
+    levels: &LevelCache,
+) {
+    if map.width == 0 || map.height == 0 || ground.is_empty() || !levels.any() {
+        return;
+    }
+    let per_tile = f64::from(map.pixels_per_tile);
+    let step = TERRAIN_SAMPLE_TEXELS.max(1);
+    let (across, down) = (map.width.div_ceil(step) + 1, map.height.div_ceil(step) + 1);
+    let mut lattice = Vec::with_capacity((across * down) as usize);
+    for row in 0..down {
+        let world_y = f64::from(map.area.min_y) + f64::from(row * step) / per_tile;
+        for column in 0..across {
+            let world_x = f64::from(map.area.min_x) + f64::from(column * step) / per_tile;
+            lattice.push(ground.horizon(world_x, world_y, light, box_height, tile_width));
+        }
+    }
+    // Which column a lattice corner stands in. A corner is always inside one, but the two
+    // corners either side of a texel need not be inside the *same* one, and the horizon jumps
+    // at a column's edge: a cliff is on the horizon of the ground below it and not of its own
+    // top. Reading across that edge laid a dark band along the sunny lip of every cliff, so a
+    // corner from another column is not read at all — the texel takes the value of the corner
+    // on its own side instead.
+    let column_of = |corner: u32| (corner * step) / map.pixels_per_tile;
+    // Kept inside the texel's own column on one axis, which may collapse the pair of corners.
+    let keep = |low: u32, span: u32, own: u32, t: f64| {
+        let high = (low + 1).min(span - 1);
+        if column_of(low) != own {
+            (high, high, 0.0)
+        } else if column_of(high) != own {
+            (low, low, 0.0)
+        } else {
+            (low, high, t)
+        }
+    };
+    let read = |texel_x: u32, texel_y: u32| -> Horizon {
+        let (fx, fy) = (f64::from(texel_x) / f64::from(step), f64::from(texel_y) / f64::from(step));
+        let (cx, cy) = (fx.floor() as u32, fy.floor() as u32);
+        let (tx, ty) = (fx - f64::from(cx), fy - f64::from(cy));
+        let (x0, x1, tx) = keep(cx, across, texel_x / map.pixels_per_tile, tx);
+        let (y0, y1, ty) = keep(cy, down, texel_y / map.pixels_per_tile, ty);
+        let corner = |x: u32, y: u32| lattice[(y * across + x) as usize];
+        let mix = |a: Horizon, b: Horizon, t: f64| Horizon {
+            elevation: a.elevation + (b.elevation - a.elevation) * t,
+            width: a.width + (b.width - a.width) * t,
+        };
+        // A corner the walk found no ground for stays at minus infinity, and reading towards it
+        // would drag its neighbours down with it; the nearest answer is better than a number.
+        let top = mix(corner(x0, y0), corner(x1, y0), tx);
+        let bottom = mix(corner(x0, y1), corner(x1, y1), tx);
+        if !top.elevation.is_finite() || !bottom.elevation.is_finite() {
+            return corner(if tx >= 0.5 { x1 } else { x0 }, if ty >= 0.5 { y1 } else { y0 });
+        }
+        mix(top, bottom, ty)
+    };
+    let width = map.width as usize;
+    for y in map.area.min_y..=map.area.max_y {
+        for x in map.area.min_x..=map.area.max_x {
+            let (Some(level), Some((from_x, from_y))) = (levels.at(x, y), map.square_of(x, y))
+            else {
+                continue;
+            };
+            for texel_y in from_y..from_y + map.pixels_per_tile {
+                for texel_x in from_x..from_x + map.pixels_per_tile {
+                    let coverage = read(texel_x, texel_y).coverage(level);
+                    if coverage <= 0.0 {
+                        continue;
+                    }
+                    let index = texel_y as usize * width + texel_x as usize;
+                    let value = (coverage * 255.0).round().clamp(0.0, 255.0) as u8;
+                    map.alpha[index] = map.alpha[index].max(value);
+                }
+            }
+        }
+    }
 }
 
 /// Blanks the square of every column the world has no ground for.
@@ -456,6 +559,95 @@ pub fn blur(map: &mut ShadowMap, radius: u32) {
             map.alpha[y * width + x] = mean(&row[..height], y, span);
         }
     }
+}
+
+/// The same blur, but never reading across a step in the ground.
+///
+/// Two columns drawn at different levels are drawn in different places on screen, so a texel of
+/// one says nothing about the other. Blurred together, the texel against the foot of a cliff
+/// took a third of its alpha from the lit top above it and the shadow pulled away from the wall
+/// it belongs to: a pale line along the base of every step, which is what the beach looked like.
+/// Over the same step in the other direction it darkened the sunny lip of the top instead.
+///
+/// So the blur is cut at a boundary between columns of different level, and at one where either
+/// side has no ground at all. Columns at the same level are drawn flush and coplanar, so the
+/// blur runs through them untouched and a shadow crossing a field still has its soft edge.
+fn blur_within_levels(map: &mut ShadowMap, radius: u32, levels: &LevelCache) {
+    if radius == 0 || map.width == 0 || map.height == 0 {
+        return;
+    }
+    let (width, height) = (map.width as usize, map.height as usize);
+    let span = radius as usize;
+    let per_tile = map.pixels_per_tile as usize;
+    // Whether the two columns either side of a texel boundary are drawn flush with each other,
+    // asked once per pair rather than per texel.
+    let joined = |a: Option<f64>, b: Option<f64>| matches!((a, b), (Some(a), Some(b)) if a == b);
+    // Where the cuts fall depends only on which columns a line crosses, so it is worked out
+    // once per row of columns rather than once per row of texels — twelve times fewer.
+    let mut cuts = vec![false; width.max(height) + 1];
+    let mut row = vec![0u8; width.max(height)];
+    for y in 0..height {
+        if y % per_tile == 0 {
+            let world_y = map.area.min_y + (y / per_tile) as i32;
+            mark_cuts(&mut cuts[..=width], per_tile, |column| {
+                let x = map.area.min_x + column as i32;
+                joined(levels.at(x - 1, world_y), levels.at(x, world_y))
+            });
+        }
+        row[..width].copy_from_slice(&map.alpha[y * width..(y + 1) * width]);
+        for x in 0..width {
+            map.alpha[y * width + x] = mean_within(&row[..width], x, span, &cuts[..=width], per_tile);
+        }
+    }
+    for x in 0..width {
+        if x % per_tile == 0 {
+            let world_x = map.area.min_x + (x / per_tile) as i32;
+            mark_cuts(&mut cuts[..=height], per_tile, |column| {
+                let y = map.area.min_y + column as i32;
+                joined(levels.at(world_x, y - 1), levels.at(world_x, y))
+            });
+        }
+        for (y, value) in row[..height].iter_mut().enumerate() {
+            *value = map.alpha[y * width + x];
+        }
+        for y in 0..height {
+            map.alpha[y * width + x] = mean_within(&row[..height], y, span, &cuts[..=height], per_tile);
+        }
+    }
+}
+
+/// Marks every texel index the blur may not read across: the ends of the line, and each column
+/// boundary `flush` says the two sides are not drawn flush over.
+fn mark_cuts(cuts: &mut [bool], per_tile: usize, flush: impl Fn(usize) -> bool) {
+    let last = cuts.len() - 1;
+    for (index, cut) in cuts.iter_mut().enumerate() {
+        *cut = index == 0 || index == last || (index % per_tile == 0 && !flush(index / per_tile));
+    }
+}
+
+/// The mean of `line` over `at ± span`, stopping at the nearest cut on either side.
+///
+/// A cut only ever falls on a column boundary or an end of the line, so a texel further than
+/// `span` from both is blurred by the plain mean without reading `cuts` at all — eleven of every
+/// twelve, which is what keeps the cut from costing a fifth of a bake.
+fn mean_within(line: &[u8], at: usize, span: usize, cuts: &[bool], per_tile: usize) -> u8 {
+    let near = at % per_tile;
+    if at >= span && at + span < line.len() && near > span && near + span < per_tile {
+        return mean(line, at, span);
+    }
+    let mut from = at;
+    while from > at.saturating_sub(span) && !cuts[from] {
+        from -= 1;
+    }
+    let mut to = at;
+    while to < (at + span).min(line.len() - 1) && !cuts[to + 1] {
+        to += 1;
+    }
+    let mut total = 0u32;
+    for value in &line[from..=to] {
+        total += u32::from(*value);
+    }
+    (total / (to - from + 1) as u32) as u8
 }
 
 /// The mean of `line` over `at ± span`, with the ends clamped.

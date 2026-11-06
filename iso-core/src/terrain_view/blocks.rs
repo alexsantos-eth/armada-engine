@@ -56,13 +56,13 @@ impl TerrainFrames {
             match atlas
                 .asset(terrain_sprite_source(material))
                 // Drawn at the size it was drawn at, like every other sprite and like the
-                // TypeScript client, which draws the block's whole template one tile wide. The
-                // blocks are clay with rounded corners, so the drawing is about four percent
-                // narrower than the tile it covers and a field of them shows a groove along
-                // every edge — that groove is how both clients look. Stretching the drawing to
-                // the tile instead closed the grooves but left every ground diamond two percent
-                // oversized, and the tile in front of the player then painted that overshoot
-                // over its feet.
+                // TypeScript client, which draws the block's whole template one tile wide. A
+                // terrain block is generated to fill its cell exactly
+                // (`artifacts/terrain_blocks.py`), so a field of them has no groove to show the
+                // ground through. Stretching the drawing to the tile instead — which is what
+                // closed those grooves while the blocks were clay with rounded corners — left
+                // every ground diamond two percent oversized, and the tile in front of the
+                // player then painted that overshoot over its feet.
                 .and_then(|asset| Some((asset.frame, asset.ink?)))
             {
                 Some((frame, ink)) => frames[slot(material)] = Some((frame, ink, 0.0)),
@@ -70,8 +70,8 @@ impl TerrainFrames {
             }
         }
         // How far a material's top face is drawn under the plane its elevation names, measured
-        // against the tallest artwork there is so that the rounded corners every block has
-        // cancel out. Sand is a shallow slab and the only one with any.
+        // against the tallest artwork there is. Sand is a shallow slab, half a block deep, and
+        // the only one with any.
         let full_top = frames
             .iter()
             .flatten()
@@ -85,19 +85,6 @@ impl TerrainFrames {
 
     pub fn frame(&self, material: TerrainMaterial) -> Option<(SpriteFrame, InkBox, f64)> {
         self.frames[slot(material)]
-    }
-
-    /// How wide a material's top face is drawn, in tile widths, which is how wide the whole
-    /// drawing is: a block's widest points are the left and right corners its top face shares
-    /// with its sides.
-    ///
-    /// Blocks are clay with rounded corners and are drawn at the size they were drawn at, so a
-    /// top face is a few percent narrower than the cell it stands on — sand, the shallowest
-    /// slab, by about seven. Anything laid flat on that face has to be placed against the face
-    /// and not the cell. One tile wide for a material the atlas never measured, which is the
-    /// cell itself.
-    pub fn top_width(&self, material: TerrainMaterial) -> f64 {
-        self.frames[slot(material)].map_or(1.0, |(_, ink, _)| ink.width)
     }
 
     /// How far the artwork of any of these materials reaches above and below the ground it

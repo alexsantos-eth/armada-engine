@@ -82,6 +82,7 @@ fn a_clear_grid_asks_for_no_lattice() {
         280.0,
         93.0,
         &|_, _, _| 1.0,
+        None,
         SHADE_COLUMNS,
         SHADE_ROWS,
     );
@@ -90,22 +91,39 @@ fn a_clear_grid_asks_for_no_lattice() {
     assert!(solid.is_none());
 }
 
-/// The quad is a whole cell wide but slid onto the face its block is drawn with, so that two
-/// neighbours meet in the groove between them exactly once: cut instead, the groove stayed lit,
-/// and left on the cell, each far corner laid a second shadow on the block behind it.
+/// A shadow is laid on the cell itself, which only works while every terrain block is drawn at
+/// least a whole cell wide. When the blocks were clay with rounded corners this was false by a
+/// few percent, and the grooves between them showed through a shadow as a lattice of light
+/// lines; the quad had to be slid onto the drawn face to hide them, and the slide then left
+/// thin unshaded lines of its own. The generator (`artifacts/terrain_blocks.py`) is what makes
+/// it true, and this is the manifest saying so.
 #[test]
-fn a_quad_slides_onto_the_face_its_block_is_drawn_with() {
-    // The manifest's measured widths, in tile widths: sand is the shallowest slab and the
-    // narrowest block there is, grass a full one.
-    let sand = drawn_margin(0.934_375);
-    assert!((sand - 0.032_812_5).abs() < 1e-12, "sand's face falls three percent short of its cell on each side");
-    assert!((drawn_margin(0.963_672) - 0.018_164).abs() < 1e-6, "grass, drawn wider, falls less short");
-    assert_eq!(drawn_margin(1.0), 0.0, "a drawing that fills its cell does not move");
-    assert_eq!(drawn_margin(1.4), 0.0, "and one wider than its cell is not allowed to move it");
+fn every_terrain_block_is_drawn_at_least_a_whole_cell_wide() {
+    use armada_core::assets::{AssetManifest, terrain_sprite_source};
+    use armada_core::terrain::TerrainMaterial;
 
-    // Slid by its own margin, a quad's far corner lands on the far corner of its own face, and
-    // its near corner on the far corner of the face in front: `0.5 + 0.5 * width` measured from
-    // the cell's centre, one cell further along.
-    assert!(((1.0 - sand) - (0.5 + 0.5 * 0.934_375)).abs() < 1e-12);
-    assert!(((0.0 - sand) - ((0.5 + 0.5 * 0.934_375) - 1.0)).abs() < 1e-12);
+    let manifest: AssetManifest =
+        serde_json::from_str(include_str!("../../content/assets.manifest.json"))
+            .expect("the asset manifest is valid JSON");
+
+    for material in [
+        TerrainMaterial::Water,
+        TerrainMaterial::Sand,
+        TerrainMaterial::Ground,
+        TerrainMaterial::Grass,
+        TerrainMaterial::Path,
+    ] {
+        let source = terrain_sprite_source(material);
+        let entry = manifest
+            .entries
+            .iter()
+            .find(|entry| entry.source == source)
+            .unwrap_or_else(|| panic!("the atlas has no {source}"));
+        let ink = entry.ink.unwrap_or_else(|| panic!("{source} was never measured"));
+        assert!(
+            ink.width >= 1.0,
+            "{source} is drawn {} of a cell wide, so a field of it has gaps",
+            ink.width
+        );
+    }
 }

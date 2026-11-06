@@ -172,7 +172,14 @@ impl SpriteAtlas {
     /// The artwork maps linearly onto that rectangle, so each corner of the band samples the
     /// frame at its own position within it — the band is a window on the drawing, never a
     /// squeezed copy of it.
-    pub fn draw_band(&self, texture: usize, frame: SpriteFrame, layout: SpriteLayout, band: &SpriteBand) {
+    pub fn draw_band(
+        &self,
+        texture: usize,
+        frame: SpriteFrame,
+        layout: SpriteLayout,
+        band: &SpriteBand,
+        shade: Option<&ShadeLattice>,
+    ) {
         let source = self.source(frame);
         let texture = self.texture(texture);
         let (width, height) = (texture.width(), texture.height());
@@ -182,13 +189,23 @@ impl SpriteAtlas {
             .map(|&(x, y)| {
                 let along = ((x - layout.x) / layout.width) as f32;
                 let down = ((y - layout.y) / layout.height) as f32;
+                // A band is a slice of the same drawing, so it reads its shading out of the
+                // lattice over the whole sprite rather than carrying one of its own: the
+                // shadow then runs across a long building instead of stepping at every cut.
+                let colour = match shade {
+                    None => WHITE,
+                    Some(shade) => {
+                        let light = shade.light_in(along, down);
+                        Color::new(light, light, light, 1.0)
+                    }
+                };
                 Vertex::new(
                     x as f32,
                     y as f32,
                     0.0,
                     (source.x + along * source.w) / width,
                     (source.y + down * source.h) / height,
-                    WHITE,
+                    colour,
                 )
             })
             .collect();
@@ -306,6 +323,30 @@ impl ShadeLattice {
         Self { columns, rows, light }
     }
 
+    /// A lattice straight from coverage values, row by row, for a surface that has no artwork
+    /// of its own: the shadow on a vertical face of ground is worked out at its corners.
+    pub fn from_coverage(columns: u32, rows: u32, coverage: Vec<f32>) -> Self {
+        let light = coverage.into_iter().map(|value| (1.0 - value).clamp(0.0, 1.0)).collect();
+        Self { columns, rows, light }
+    }
+
+    /// The light `along` across the lattice and `down` it, both in `[0, 1]`, read between the
+    /// corners around that point.
+    fn light_in(&self, along: f32, down: f32) -> f32 {
+        let place = |value: f32, count: u32| {
+            let scaled = (value.clamp(0.0, 1.0)) * count as f32;
+            let first = (scaled.floor() as u32).min(count.saturating_sub(1));
+            (first, scaled - first as f32)
+        };
+        let (column, tx) = place(along, self.columns);
+        let (row, ty) = place(down, self.rows);
+        let top = self.light_at(column, row)
+            + (self.light_at(column + 1, row) - self.light_at(column, row)) * tx;
+        let bottom = self.light_at(column, row + 1)
+            + (self.light_at(column + 1, row + 1) - self.light_at(column, row + 1)) * tx;
+        top + (bottom - top) * ty
+    }
+
     fn light_at(&self, column: u32, row: u32) -> f32 {
         self.light[(row * (self.columns + 1) + column) as usize]
     }
@@ -329,11 +370,24 @@ pub enum DrawKind {
         frame: SpriteFrame,
         layout: SpriteLayout,
         shade: ShadeLattice,
+        /// The piece of the drawing this draw shows, as in [`DrawKind::Sprite`].
+        band: Option<SpriteBand>,
     },
     /// A column's square of its chunk's baked shadow map, laid on that column's top face.
     ///
     /// The quad is the diamond itself, so the shadow cannot spill over the cliff beside it, and
     /// it carries the column's own depth, so the ground in front of it still covers it.
+    /// The shadow on one exposed vertical face of the ground, as a lattice of its own.
+    ///
+    /// A wall is not in the baked map — the map has one surface per column and that is the top
+    /// — so its shading is worked out at the face's own corners and carried as colour.
+    FaceShadow {
+        /// The face's four corners on screen: top near, top far, bottom far, bottom near.
+        corners: [(f64, f64); 4],
+        shade: ShadeLattice,
+        /// How dark the shadow is drawn: the lighting phase's own opacity.
+        opacity: f32,
+    },
     GroundShadow {
         texture: Texture2D,
         /// The diamond's corners on screen, from its north corner clockwise.
@@ -389,7 +443,35 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
-            kind: DrawKind::Shaded { texture, frame, layout, shade },
+            kind: DrawKind::Shaded { texture, frame, layout, shade, band: None },
+        }
+    }
+
+    /// One band of a sprite that spans several cells, darkened by the shadows falling on it.
+    pub fn shaded_band(
+        key: DrawKey,
+        texture: usize,
+        frame: SpriteFrame,
+        layout: SpriteLayout,
+        shade: ShadeLattice,
+        band: SpriteBand,
+    ) -> Self {
+        Self {
+            key,
+            kind: DrawKind::Shaded { texture, frame, layout, shade, band: Some(band) },
+        }
+    }
+
+    /// A shadow on one exposed vertical face of the ground.
+    pub fn face_shadow(
+        key: DrawKey,
+        corners: [(f64, f64); 4],
+        shade: ShadeLattice,
+        opacity: f32,
+    ) -> Self {
+        Self {
+            key,
+            kind: DrawKind::FaceShadow { corners, shade, opacity },
         }
     }
 
@@ -416,16 +498,22 @@ pub fn draw_sorted(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
     for draw in draws.iter() {
         match &draw.kind {
             DrawKind::Sprite { texture, frame, layout, band: Some(band) } => {
-                atlas.draw_band(*texture, *frame, *layout, band);
+                atlas.draw_band(*texture, *frame, *layout, band, None);
             }
             DrawKind::Sprite { texture, frame, layout, band: None } => {
                 atlas.draw(*texture, *frame, *layout);
             }
-            DrawKind::Shaded { texture, frame, layout, shade } => {
+            DrawKind::Shaded { texture, frame, layout, shade, band: Some(band) } => {
+                atlas.draw_band(*texture, *frame, *layout, band, Some(shade));
+            }
+            DrawKind::Shaded { texture, frame, layout, shade, band: None } => {
                 atlas.draw_shaded(*texture, *frame, *layout, shade);
             }
             DrawKind::GroundShadow { texture, corners, uvs, opacity } => {
                 draw_ground_shadow(texture, corners, uvs, *opacity);
+            }
+            DrawKind::FaceShadow { corners, shade, opacity } => {
+                draw_face_shadow(corners, shade, *opacity);
             }
         }
     }
@@ -433,6 +521,50 @@ pub fn draw_sorted(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
 
 /// Draws one quad of a baked shadow map: black at the coverage baked into the texture, scaled by
 /// the phase's opacity.
+/// Draws one vertical face's shadow: a lattice of black quads over the face, each corner as
+/// opaque as that corner is shaded.
+///
+/// The projection is affine, so a face's quad maps a lattice of `(along, down)` straight onto
+/// the screen and the corners can be read between.
+fn draw_face_shadow(corners: &[(f64, f64); 4], shade: &ShadeLattice, opacity: f32) {
+    let (columns, rows) = (shade.columns, shade.rows);
+    let mut vertices = Vec::with_capacity(((columns + 1) * (rows + 1)) as usize);
+    for row in 0..=rows {
+        let down = f64::from(row) / f64::from(rows);
+        for column in 0..=columns {
+            let along = f64::from(column) / f64::from(columns);
+            // Bilinear between the four corners, which on an affine projection is the face.
+            let top = (
+                corners[0].0 + (corners[1].0 - corners[0].0) * along,
+                corners[0].1 + (corners[1].1 - corners[0].1) * along,
+            );
+            let bottom = (
+                corners[3].0 + (corners[2].0 - corners[3].0) * along,
+                corners[3].1 + (corners[2].1 - corners[3].1) * along,
+            );
+            // The lattice carries light; what a shadow draws is the dark that is left.
+            let alpha = (1.0 - shade.light_at(column, row)) * opacity;
+            vertices.push(Vertex::new(
+                (top.0 + (bottom.0 - top.0) * down) as f32,
+                (top.1 + (bottom.1 - top.1) * down) as f32,
+                0.0,
+                0.0,
+                0.0,
+                Color::new(0.0, 0.0, 0.0, alpha),
+            ));
+        }
+    }
+    let mut indices = Vec::with_capacity((columns * rows * 6) as usize);
+    for row in 0..rows {
+        for column in 0..columns {
+            let corner = (row * (columns + 1) + column) as u16;
+            let next = corner + columns as u16 + 1;
+            indices.extend_from_slice(&[corner, corner + 1, next + 1, corner, next + 1, next]);
+        }
+    }
+    draw_mesh(&Mesh { vertices, indices, texture: None });
+}
+
 fn draw_ground_shadow(
     texture: &Texture2D,
     corners: &[(f64, f64); 4],

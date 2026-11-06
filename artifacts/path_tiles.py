@@ -23,7 +23,7 @@ OUT_DIR = sys.argv[2] if len(sys.argv) > 2 else "../public/assets/path"
 
 TOP = H
 CELL = 32                 # side of an earth voxel step, in asset units (16 per tile)
-EDGE = 254                # the earth reaches the edge of the top, so joined tiles meet
+EDGE = 256              # the earth reaches the edge of the top, so joined tiles meet
 HALF_WIDTH = 132          # half the width of a strip where it leaves the tile
 BLOB = 150                # radius of the earth in the middle of the tile
 FRAY = 40                 # most the fraying moves an edge

@@ -677,10 +677,10 @@ async fn main() {
                         coord,
                         chunk,
                         projection,
-                        &terrain_frames,
                         |point| manager.column_at(point.x, point.y).map(|c| c.elevation),
                         &mut draws,
                     );
+                    shadows.collect_faces(coord, projection, &mut draws);
                 }
             }
             // Entities of the same chunk. Each one is drawn from its own blueprint: the sprite
@@ -721,18 +721,14 @@ async fn main() {
                 // painted over its base. It is cut where its cells meet instead, and each band
                 // sorts by the cell it stands on. A single cell is one band, uncut.
                 let cells = entity.length().max(1);
-                // The shadows other entities throw on this one, baked with its chunk. Only a
-                // sprite standing on a single cell has them: a longer footprint is cut into a
-                // band per cell, and a lattice over the whole drawing would have to be cut the
-                // same way.
-                let shade = (cells == 1)
-                    .then(|| {
-                        shadows
-                            .as_ref()
-                            .and_then(|shadows| shadows.shade_of(coord, (entity.x(), entity.y())))
-                            .and_then(shadow_view::lattice_of)
-                    })
-                    .flatten();
+                // The shadows the other entities and the ground throw on this one, baked with
+                // its chunk. One lattice covers the whole drawing however many cells it spans:
+                // a band reads its own part out of it, so a shadow runs across a long building
+                // instead of stepping at every cut.
+                let shade = shadows
+                    .as_ref()
+                    .and_then(|shadows| shadows.shade_of(coord, (entity.x(), entity.y())))
+                    .and_then(shadow_view::lattice_of);
                 let along_y = entity.length_axis() == Some(EntityLengthAxis::Y);
                 // One cell along the engine's x is half a tile right and a quarter of one up
                 // the screen; one along its y is half a tile left and the same quarter up.
@@ -770,20 +766,28 @@ async fn main() {
                         ENTITY_LAYER,
                         projection.tile_height,
                     );
-                    match &shade {
-                        Some(shade) => draws.push(SpriteDraw::shaded(
+                    match (&shade, cells > 1) {
+                        (Some(shade), false) => draws.push(SpriteDraw::shaded(
                             key,
                             entity_texture,
                             frame,
                             layout,
                             shade.clone(),
                         )),
-                        None => draws.push(SpriteDraw::band(
+                        (Some(shade), true) => draws.push(SpriteDraw::shaded_band(
                             key,
                             entity_texture,
                             frame,
                             layout,
-                            (cells > 1).then_some(band),
+                            shade.clone(),
+                            band,
+                        )),
+                        (None, cut) => draws.push(SpriteDraw::band(
+                            key,
+                            entity_texture,
+                            frame,
+                            layout,
+                            cut.then_some(band),
                         )),
                     }
                 }
@@ -871,7 +875,7 @@ async fn main() {
                         rp.elevation - rp.inset + rp.height,
                     );
                     shadows
-                        .shade_moving(&receiver)
+                        .shade_moving(&manager, &receiver)
                         .as_ref()
                         .and_then(shadow_view::lattice_of)
                 });

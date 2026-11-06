@@ -77,6 +77,7 @@ fn a_posts_shadow_falls_down_the_light_and_nowhere_else() {
     bake_ground_shadows(
         &mut map,
         &[post((0.5, 0.5), 0.0, 50.0)],
+        None,
         &light,
         TILE,
         BOX,
@@ -107,9 +108,9 @@ fn a_taller_caster_throws_a_longer_shadow() {
     let far = (0.5 + light.dir_x * 1.2, 0.5 + light.dir_y * 1.2);
 
     let mut short = map_over(-2, 6);
-    bake_ground_shadows(&mut short, &[post((0.5, 0.5), 0.0, 30.0)], &light, TILE, BOX, &flat(0.0), &solid());
+    bake_ground_shadows(&mut short, &[post((0.5, 0.5), 0.0, 30.0)], None, &light, TILE, BOX, &flat(0.0), &solid());
     let mut tall = map_over(-2, 6);
-    bake_ground_shadows(&mut tall, &[post((0.5, 0.5), 0.0, 120.0)], &light, TILE, BOX, &flat(0.0), &solid());
+    bake_ground_shadows(&mut tall, &[post((0.5, 0.5), 0.0, 120.0)], None, &light, TILE, BOX, &flat(0.0), &solid());
 
     assert_eq!(coverage_at(&short, far.0, far.1), 0);
     assert!(coverage_at(&tall, far.0, far.1) > 0);
@@ -119,10 +120,10 @@ fn a_taller_caster_throws_a_longer_shadow() {
 fn a_caster_standing_higher_lands_its_shadow_further_down_the_light() {
     let light = behind_the_camera();
     let mut level = map_over(-2, 8);
-    bake_ground_shadows(&mut level, &[post((0.5, 0.5), 0.0, 60.0)], &light, TILE, BOX, &flat(0.0), &solid());
+    bake_ground_shadows(&mut level, &[post((0.5, 0.5), 0.0, 60.0)], None, &light, TILE, BOX, &flat(0.0), &solid());
     let mut raised = map_over(-2, 8);
     // The same post two blocks up, shading ground still at zero.
-    bake_ground_shadows(&mut raised, &[post((0.5, 0.5), 2.0, 60.0)], &light, TILE, BOX, &flat(0.0), &solid());
+    bake_ground_shadows(&mut raised, &[post((0.5, 0.5), 2.0, 60.0)], None, &light, TILE, BOX, &flat(0.0), &solid());
 
     let shift = lift_reach(&light, 2.0, TILE, BOX);
     let near = (0.5 + light.dir_x * 0.2, 0.5 + light.dir_y * 0.2);
@@ -142,6 +143,7 @@ fn only_the_part_standing_above_the_receiving_ground_casts() {
     bake_ground_shadows(
         &mut map,
         &[post((0.5, 0.5), -1.0, BOX)],
+        None,
         &light,
         TILE,
         BOX,
@@ -158,7 +160,7 @@ fn a_hole_in_the_ground_receives_nothing() {
     let mut map = map_over(-2, 6);
     // Only the caster's own column exists; everything down the shadow is empty space.
     let level = |x: i32, y: i32| (x == 0 && y == 0).then_some(0.0);
-    bake_ground_shadows(&mut map, &[post((0.5, 0.5), 0.0, 60.0)], &light, TILE, BOX, &level, &solid());
+    bake_ground_shadows(&mut map, &[post((0.5, 0.5), 0.0, 60.0)], None, &light, TILE, BOX, &level, &solid());
 
     let reach = 60.0 * tiles_per_pixel_of_height(TILE);
     assert_eq!(
@@ -175,9 +177,9 @@ fn two_shadows_crossing_read_as_one() {
     let casters = [post((0.5, 0.5), 0.0, 60.0), post((0.6, 0.4), 0.0, 60.0)];
 
     let mut one = map_over(-2, 6);
-    bake_ground_shadows(&mut one, &casters[..1], &light, TILE, BOX, &flat(0.0), &solid());
+    bake_ground_shadows(&mut one, &casters[..1], None, &light, TILE, BOX, &flat(0.0), &solid());
     let mut both = map_over(-2, 6);
-    bake_ground_shadows(&mut both, &casters, &light, TILE, BOX, &flat(0.0), &solid());
+    bake_ground_shadows(&mut both, &casters, None, &light, TILE, BOX, &flat(0.0), &solid());
 
     // Coverage is the larger of the two, never their sum: an overlap would otherwise darken
     // twice and read as a blotch.
@@ -193,7 +195,7 @@ fn the_silhouette_is_sampled_over_its_own_artwork() {
     let mut map = map_over(-4, 6);
     // Opaque only down the right-hand half of the drawing.
     let half = |_: u32, u: f64, _: f64| if u > 0.5 { 1.0 } else { 0.0 };
-    bake_ground_shadows(&mut map, &[post((0.5, 0.5), 0.0, 60.0)], &light, TILE, BOX, &flat(0.0), &half);
+    bake_ground_shadows(&mut map, &[post((0.5, 0.5), 0.0, 60.0)], None, &light, TILE, BOX, &flat(0.0), &half);
 
     // Across the shadow is (dir_y, −dir_x); the sprite's right-hand side lands on that side.
     let reach = 60.0 * tiles_per_pixel_of_height(TILE) * 0.5;
@@ -212,6 +214,7 @@ fn a_caster_whose_shadow_misses_the_map_costs_nothing() {
     bake_ground_shadows(
         &mut map,
         &[post((-40.5, -40.5), 0.0, 60.0), post((80.5, 80.5), 0.0, 60.0)],
+        None,
         &light,
         TILE,
         BOX,
@@ -230,7 +233,7 @@ fn an_artwork_with_no_size_casts_nothing() {
         extent: SpriteExtent { left: 0.0, top: 0.0, width: 0.0, height: 0.0 },
         ..post((0.5, 0.5), 0.0, 10.0)
     };
-    bake_ground_shadows(&mut map, &[flat_sprite], &light, TILE, BOX, &flat(0.0), &solid());
+    bake_ground_shadows(&mut map, &[flat_sprite], None, &light, TILE, BOX, &flat(0.0), &solid());
 
     assert!(map.is_empty());
 }
@@ -244,7 +247,7 @@ fn a_caster_drawn_entirely_below_its_foot_casts_nothing() {
         extent: SpriteExtent { left: -TILE / 2.0, top: 0.0, width: TILE, height: 20.0 },
         ..post((0.5, 0.5), 0.0, 10.0)
     };
-    bake_ground_shadows(&mut map, &[puddle], &light, TILE, BOX, &flat(0.0), &solid());
+    bake_ground_shadows(&mut map, &[puddle], None, &light, TILE, BOX, &flat(0.0), &solid());
 
     assert!(map.is_empty());
 }
@@ -256,6 +259,7 @@ fn an_empty_world_bakes_nothing() {
     bake_ground_shadows(
         &mut map,
         &[post((0.5, 0.5), 0.0, 60.0)],
+        None,
         &light,
         TILE,
         BOX,
@@ -306,4 +310,58 @@ fn clearing_a_map_keeps_it_the_same_size() {
 
     assert_eq!(map.alpha.len(), size);
     assert!(map.is_empty());
+}
+
+/// A cliff is a caster like any other, except that it is in the map rather than in front of it.
+#[test]
+fn a_step_in_the_ground_lays_its_own_shadow_down_the_light() {
+    // Straight down `+x`, so a wall of columns at x = 3 shades the ground at x > 4 and nothing
+    // else.
+    let light = ShadowProjection { dir_x: 1.0, dir_y: 0.0, stretch: 1.0, alpha: 1.0 };
+    let mut map = map_over(-2, 10);
+    let steps = |x: i32, _: i32| Some(if x == 3 { 2.0 } else { 0.0 });
+    let field = HeightField::new(-2, -2, 10, 10, steps);
+    bake_ground_shadows(&mut map, &[], Some(&field), &light, TILE, BOX, &steps, &solid());
+
+    assert_eq!(coverage_at(&map, 2.5, 0.5), 0, "the low ground towards the sun is lit");
+    assert!(coverage_at(&map, 4.5, 0.5) > 0, "the low ground behind the step is shaded");
+    assert!(
+        coverage_at(&map, 4.5, 0.5) >= coverage_at(&map, 6.5, 0.5),
+        "and the further from the step, the less of it is left above the horizon"
+    );
+    assert_eq!(coverage_at(&map, 9.5, 0.5), 0, "out of its reach there is sun again");
+}
+
+/// The blur must not reach across a step: it would lift the shadow off the wall that casts it.
+#[test]
+fn the_shadow_at_the_foot_of_a_step_is_as_solid_as_the_rest_of_it() {
+    // The same wall at x = 3, with the sun at `-x`: the ground from x = 4 on is in its shadow
+    // and the wall's own top is lit.
+    let light = ShadowProjection { dir_x: 1.0, dir_y: 0.0, stretch: 1.0, alpha: 1.0 };
+    let mut map = map_over(-2, 10);
+    let steps = |x: i32, _: i32| Some(if x == 3 { 2.0 } else { 0.0 });
+    let field = HeightField::new(-2, -2, 10, 10, steps);
+    bake_ground_shadows(&mut map, &[], Some(&field), &light, TILE, BOX, &steps, &solid());
+
+    let (at_the_foot, well_inside) = (coverage_at(&map, 4.01, 0.5), coverage_at(&map, 4.5, 0.5));
+    assert!(at_the_foot > 0, "the texel against the wall is shaded at all");
+    assert_eq!(
+        at_the_foot, well_inside,
+        "and as solid as the middle of its own column, instead of fading into the lit top above it"
+    );
+    assert_eq!(
+        coverage_at(&map, 3.99, 0.5),
+        0,
+        "and the sunny lip of the wall's own top keeps its light"
+    );
+}
+
+#[test]
+fn level_ground_casts_nothing_on_itself() {
+    let light = behind_the_camera();
+    let mut map = map_over(-2, 6);
+    let field = HeightField::new(-2, -2, 6, 6, |_, _| Some(1.0));
+    bake_ground_shadows(&mut map, &[], Some(&field), &light, TILE, BOX, &flat(1.0), &solid());
+
+    assert!(map.is_empty(), "a plain has no horizon to hide behind");
 }
