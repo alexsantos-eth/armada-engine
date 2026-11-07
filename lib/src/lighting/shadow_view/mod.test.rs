@@ -60,13 +60,13 @@ fn the_atlas_carries_the_white_patch_the_shadows_are_drawn_from() {
     use iso::assets::AssetManifest;
 
     let manifest: AssetManifest =
-        serde_json::from_str(include_str!("../../content/assets.manifest.json"))
+        serde_json::from_str(include_str!("../../../content/assets.manifest.json"))
             .expect("the asset manifest is valid JSON");
     let patch = manifest
         .entries
         .iter()
-        .find(|entry| entry.source == crate::sprites::WHITE_PATCH)
-        .unwrap_or_else(|| panic!("the atlas has no {}", crate::sprites::WHITE_PATCH));
+        .find(|entry| entry.source == crate::assets::sprites::WHITE_PATCH)
+        .unwrap_or_else(|| panic!("the atlas has no {}", crate::assets::sprites::WHITE_PATCH));
 
     assert!(patch.primary_frame().is_some(), "the white patch was packed with no frame");
     assert!(patch.texture.is_none(), "the white patch belongs in the shared atlas, not a sheet");
@@ -74,7 +74,7 @@ fn the_atlas_carries_the_white_patch_the_shadows_are_drawn_from() {
 
 #[test]
 fn the_ground_shadow_lies_over_the_terrain_and_under_what_stands_on_it() {
-    use crate::terrain_view::blocks::TERRAIN_LAYER;
+    use crate::terrain::terrain_view::blocks::TERRAIN_LAYER;
 
     const { assert!(GROUND_SHADOW_LAYER > TERRAIN_LAYER) };
     const { assert!(GROUND_SHADOW_LAYER < crate::ENTITY_LAYER) };
@@ -127,7 +127,7 @@ fn every_terrain_block_is_drawn_at_least_a_whole_cell_wide() {
     use iso::terrain::TerrainMaterial;
 
     let manifest: AssetManifest =
-        serde_json::from_str(include_str!("../../content/assets.manifest.json"))
+        serde_json::from_str(include_str!("../../../content/assets.manifest.json"))
             .expect("the asset manifest is valid JSON");
 
     for material in [

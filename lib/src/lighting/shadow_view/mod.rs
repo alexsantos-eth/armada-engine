@@ -49,7 +49,7 @@ use std::rc::Rc;
 
 use atlas::{ShadowAtlas, atlas_uv, square_in_slot};
 
-use crate::sprites::{ShadeLattice, SpriteDraw, ground_key};
+use crate::assets::sprites::{ShadeLattice, SpriteDraw, ground_key};
 
 /// How long a frame may spend baking shadows.
 ///
@@ -74,7 +74,7 @@ const GROUND_SHADE_COLUMNS: usize = 128;
 
 /// Ground shadows draw over the terrain of their own column and under anything standing on it.
 ///
-/// One above [`crate::terrain_view::blocks::TERRAIN_LAYER`] and below
+/// One above [`crate::terrain::terrain_view::blocks::TERRAIN_LAYER`] and below
 /// `PLAYER_BEHIND_LAYER`, so a shadow lies on the ground it was baked for, the player walks over
 /// it and a tree growing on that column covers it.
 pub const GROUND_SHADOW_LAYER: i32 = 1;
@@ -88,7 +88,7 @@ const FACE_SHADE_STEPS: u32 = 3;
 /// How far down a column's exposed side a shadow is worked out, in blocks.
 ///
 /// The same depth the terrain itself stacks to
-/// ([`MAX_EXPOSED_BLOCKS`](crate::terrain_view::blocks)): past it the wall is behind the ground
+/// ([`MAX_EXPOSED_BLOCKS`](crate::terrain::terrain_view::blocks)): past it the wall is behind the ground
 /// in front of it anyway.
 pub const FACE_FLOOR: f64 = 10.0;
 

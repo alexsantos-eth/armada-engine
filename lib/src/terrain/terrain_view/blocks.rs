@@ -14,7 +14,7 @@ use macroquad::prelude::{screen_height, screen_width};
 
 use super::appearance::TerrainLook;
 use super::{MATERIAL_SLOTS, MATERIALS, slot};
-use crate::sprites::{ATLAS_TEXTURE, SpriteAtlas, SpriteDraw, ground_key};
+use crate::assets::sprites::{ATLAS_TEXTURE, SpriteAtlas, SpriteDraw, ground_key};
 
 /// Terrain draws below everything that stands on it.
 pub const TERRAIN_LAYER: i32 = 0;

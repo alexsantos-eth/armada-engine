@@ -14,7 +14,7 @@
 //! a voxel of dust is queued like any other sprite, and the crate buys nothing.
 //!
 //! One puff of twelve cubes is 36 triangles out of the shared atlas's white texel, which joins
-//! the batch the ground is drawn in (see [`crate::sprites::SpriteAtlas::draw_voxel`]).
+//! the batch the ground is drawn in (see [`crate::assets::sprites::SpriteAtlas::draw_voxel`]).
 
 use iso::player::{
     BURST_DUST, DUST_MIN_IMPACT, DustShape, DustVoxel, KICK_DUST, PlayerMotionType, PlayerState,
@@ -24,7 +24,7 @@ use iso::projection::{GridPoint, ProjectionConfig, project_grid_point};
 use iso::scene_order::DrawKey;
 use macroquad::prelude::Color;
 
-use crate::sprites::SpriteDraw;
+use crate::assets::sprites::SpriteDraw;
 
 /// The colours of a voxel of dust, nearly white: its lit top, its left side and its right side.
 ///
@@ -41,7 +41,7 @@ pub const DUST_RIGHT: u32 = 0xcfcabd;
 /// It is the layer the TypeScript client uses for the same voxels (`SCENE_LAYER.ground`), and it
 /// is shared with the baked ground shadows on purpose: a cube of dust is queued after them, and
 /// the sort is stable, so the dust lies over the shadow it drifts across.
-pub const DUST_BEHIND_LAYER: i32 = crate::shadow_view::GROUND_SHADOW_LAYER;
+pub const DUST_BEHIND_LAYER: i32 = crate::lighting::shadow_view::GROUND_SHADOW_LAYER;
 
 /// Depth added to a cube of dust in front of the feet, so it draws after the column it is over
 /// and after everything standing on it, the player included.
@@ -276,7 +276,7 @@ fn voxel_key(
     let at = get_dust_voxel_at(voxel, 0.5);
     let point = GridPoint { x: feet.x + at.x, y: feet.y + at.y };
     let column = get_dust_column(point, feet, level, top_at);
-    let key = crate::sprites::scene_key(
+    let key = crate::assets::sprites::scene_key(
         f64::from(column.x) + 0.5,
         f64::from(column.y) + 0.5,
         column.elevation,

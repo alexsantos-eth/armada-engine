@@ -165,7 +165,7 @@ fn a_cube_is_drawn_white_and_fades_with_its_puff() {
     let mut draws = Vec::new();
     dust.collect(projection, &mut draws);
     let first = match &draws[0].kind {
-        crate::sprites::DrawKind::Voxel { colours, faces } => (*colours, *faces),
+        crate::assets::sprites::DrawKind::Voxel { colours, faces } => (*colours, *faces),
         _ => panic!("dust is queued as voxels"),
     };
     let (colours, faces) = first;
@@ -182,7 +182,7 @@ fn a_cube_is_drawn_white_and_fades_with_its_puff() {
     draws.clear();
     dust.collect(projection, &mut draws);
     let faded = match &draws[0].kind {
-        crate::sprites::DrawKind::Voxel { colours, .. } => colours[0].a,
+        crate::assets::sprites::DrawKind::Voxel { colours, .. } => colours[0].a,
         _ => unreachable!(),
     };
     assert!(faded < colours[0].a, "it fades as it rises");
@@ -197,8 +197,8 @@ fn dust_behind_the_feet_sorts_under_the_player_and_dust_in_front_over_it() {
     player.feedback = PlayerFeedback { jumps: 1, ..PlayerFeedback::default() };
     react(&mut dust, &player, 0.0);
 
-    let behind = crate::sprites::scene_key(4.5, 4.5, 2.0, crate::PLAYER_BEHIND_LAYER, TILE / 2.0);
-    let front = crate::sprites::scene_key(4.5, 4.5, 2.0, crate::PLAYER_FRONT_LAYER, TILE / 2.0);
+    let behind = crate::assets::sprites::scene_key(4.5, 4.5, 2.0, crate::PLAYER_BEHIND_LAYER, TILE / 2.0);
+    let front = crate::assets::sprites::scene_key(4.5, 4.5, 2.0, crate::PLAYER_FRONT_LAYER, TILE / 2.0);
     let projection = ProjectionConfig {
         tile_width: TILE,
         tile_height: TILE / 2.0,
@@ -224,7 +224,7 @@ fn dust_behind_the_feet_sorts_under_the_player_and_dust_in_front_over_it() {
 
 #[test]
 fn the_dust_layer_sits_between_the_ground_and_the_player() {
-    use crate::terrain_view::blocks::TERRAIN_LAYER;
+    use crate::terrain::terrain_view::blocks::TERRAIN_LAYER;
     const {
         assert!(DUST_BEHIND_LAYER > TERRAIN_LAYER);
         assert!(DUST_BEHIND_LAYER < crate::PLAYER_BEHIND_LAYER);

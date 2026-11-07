@@ -26,8 +26,8 @@ use iso::lighting::{
 use iso::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
 use iso::terrain::TerrainMaterial;
 
-use crate::shadow_view::{FACE_FLOOR, GROUND_SHADOW_LAYER};
-use crate::sprites::{SpriteDraw, ground_key};
+use crate::lighting::shadow_view::{FACE_FLOOR, GROUND_SHADOW_LAYER};
+use crate::assets::sprites::{SpriteDraw, ground_key};
 
 /// What the ground of one cell is, to a shadow being laid on it.
 ///
@@ -35,7 +35,7 @@ use crate::sprites::{SpriteDraw, ground_key};
 /// surface is half a block below the elevation it has ([`crate::preview_top_level`]), and a
 /// shadow laid at the elevation floats over every beach; but the depth the scene sorts by is the
 /// column's own elevation, which is what the terrain and the baked shadows use
-/// ([`crate::shadow_view::ShadowScene::collect_ground`]).
+/// ([`crate::lighting::shadow_view::ShadowScene::collect_ground`]).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CellGround {
     /// The level the cell's top is drawn at, in blocks.

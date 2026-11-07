@@ -17,7 +17,7 @@ use macroquad::prelude::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::scene_material::{self, vertex};
+use crate::rendering::scene_material::vertex;
 
 /// The shared atlas, which is the texture of everything that is not a sheet of player poses.
 pub const ATLAS_TEXTURE: usize = 0;
@@ -249,7 +249,7 @@ impl SpriteAtlas {
                     ),
                     colour,
                     (0.0, 0.0),
-                    scene_material::SPRITE,
+                    crate::rendering::scene_material::SPRITE,
                 )
             })
             .collect();
@@ -299,7 +299,7 @@ impl SpriteAtlas {
                     ),
                     Color::new(light, light, light, 1.0),
                     (0.0, 0.0),
-                    scene_material::SPRITE,
+                    crate::rendering::scene_material::SPRITE,
                 ));
             }
         }
@@ -353,7 +353,7 @@ impl SpriteAtlas {
                     (u, v),
                     Color::new(0.0, 0.0, 0.0, alpha),
                     (0.0, 0.0),
-                    scene_material::SPRITE,
+                    crate::rendering::scene_material::SPRITE,
                 ));
             }
         }
@@ -391,7 +391,7 @@ impl SpriteAtlas {
                     (u, v),
                     *colour,
                     (0.0, 0.0),
-                    scene_material::SPRITE,
+                    crate::rendering::scene_material::SPRITE,
                 ));
             }
             indices.extend_from_slice(&[
@@ -439,7 +439,7 @@ impl SpriteAtlas {
                     white,
                     colour,
                     map_uv[corner],
-                    scene_material::SHADOW,
+                    crate::rendering::scene_material::SHADOW,
                 )
             })
             .collect();
@@ -525,7 +525,7 @@ impl SpriteAtlas {
                     ),
                     colour,
                     (0.0, 0.0),
-                    scene_material::SPRITE,
+                    crate::rendering::scene_material::SPRITE,
                 )
             })
             .collect();
@@ -869,7 +869,7 @@ impl SpriteDraw {
 /// when the shader will not load.
 pub fn draw_sorted(
     atlas: &SpriteAtlas,
-    material: Option<&crate::scene_material::SceneMaterial>,
+    material: Option<&crate::rendering::scene_material::SceneMaterial>,
     draws: &mut [SpriteDraw],
 ) {
     if let Some(material) = material {

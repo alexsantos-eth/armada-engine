@@ -3,7 +3,7 @@
 //! Macroquad starts a new draw call whenever the bound texture **or the pipeline** changes
 //! (`QuadGl::geometry` compares both), and a ground shadow sits between the block it lies on and
 //! the next one. So a material used for the shadows alone would break the batch at every shadow,
-//! which is the very thing [`crate::shadow_view::atlas`] exists to avoid. One material draws
+//! which is the very thing [`crate::lighting::shadow_view::atlas`] exists to avoid. One material draws
 //! everything instead, and each vertex says what it is.
 //!
 //! **What a vertex carries.** Macroquad's vertex layout is `position`, `texcoord`, `color0` and

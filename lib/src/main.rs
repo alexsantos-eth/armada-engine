@@ -1,15 +1,12 @@
-mod cloud_shadows;
-mod dust_view;
-mod moving_shadow;
+mod assets;
+mod lighting;
+mod player;
 mod perf;
-mod player_view;
-mod reflection_view;
+mod rendering;
 mod save;
-mod scene_material;
 mod services;
-mod shadow_view;
-mod sprites;
-mod terrain_view;
+mod terrain;
+mod water;
 
 use iso::grid::{WorldCoord, to_chunk_coord};
 use iso::player::physics::{
@@ -35,26 +32,26 @@ use iso::camera::{
     visible_chunks as camera_visible_chunks,
 };
 use iso::lighting::DAWN;
-use cloud_shadows::{CLOUD_SHADOW_SOURCE, CloudShadows};
-use dust_view::{DustGround, DustPuffs};
-use moving_shadow::{CellGround, collect_moving_shadow};
-use scene_material::SceneMaterial;
-use shadow_view::ShadowScene;
-use shadow_view::atlas::ShadowAtlas;
-use shadow_view::masks::SilhouetteMasks;
+use lighting::cloud_shadows::{CLOUD_SHADOW_SOURCE, CloudShadows};
+use player::dust_view::{DustGround, DustPuffs};
+use lighting::moving_shadow::{CellGround, collect_moving_shadow};
+use rendering::scene_material::SceneMaterial;
+use lighting::shadow_view::ShadowScene;
+use lighting::shadow_view::atlas::ShadowAtlas;
+use lighting::shadow_view::masks::SilhouetteMasks;
 use save::{
     load_archive_into_manager, load_save, restore_archive, restore_discovered_from_archive,
     save_archive, sync_manager_to_archive,
 };
 use perf::{FrameSample, PerfLog};
-use player_view::{PlayerAnimation, PlayerMoment, PlayerSheets, jump_poses};
-use reflection_view::{Reflected, WaterCell, collect_reflection};
+use player::player_view::{PlayerAnimation, PlayerMoment, PlayerSheets, jump_poses};
+use water::reflection_view::{Reflected, WaterCell, collect_reflection};
 use iso::player::physics::get_player_climb_progress;
 use iso::player::get_player_jump_phase;
 use iso::scene_order::PlayerSheet;
-use sprites::{SpriteAtlas, SpriteDraw, draw_sorted, scene_key};
-use terrain_view::appearance::TerrainLook;
-use terrain_view::blocks::{TerrainFrames, collect_terrain_sprites};
+use assets::sprites::{SpriteAtlas, SpriteDraw, draw_sorted, scene_key};
+use terrain::terrain_view::appearance::TerrainLook;
+use terrain::terrain_view::blocks::{TerrainFrames, collect_terrain_sprites};
 use macroquad::prelude::*;
 
 fn window_conf() -> Conf {
@@ -211,7 +208,7 @@ pub(crate) fn preview_top_level(
 /// The level and the elevation are the same number for water, which is drawn as a full block,
 /// but they are asked for apart because the reflections take the level as the plane they mirror
 /// in and the elevation as the depth they sort by — the same pair, for the same reason, as
-/// [`moving_shadow::CellGround`].
+/// [`lighting::moving_shadow::CellGround`].
 fn water_cell(manager: &ChunkManager, x: i32, y: i32) -> Option<WaterCell> {
     let column = manager.column_at(x, y)?;
     if column.surface != TerrainMaterial::Water {
@@ -415,7 +412,7 @@ async fn main() {
         eprintln!(
             "warning: the atlas has no {}; the shadows still draw, but each one binds a texture \
              of its own and the scene is no longer one batch",
-            crate::sprites::WHITE_PATCH
+            crate::assets::sprites::WHITE_PATCH
         );
     }
     // The scene's own shader, and the texture the baked shadows live in. The material has to
@@ -800,7 +797,7 @@ async fn main() {
                 let shade = shadows
                     .as_ref()
                     .and_then(|shadows| shadows.shade_of(coord, (entity.x(), entity.y())))
-                    .and_then(shadow_view::lattice_of);
+                    .and_then(lighting::shadow_view::lattice_of);
                 let along_y = entity.length_axis() == Some(EntityLengthAxis::Y);
                 // One cell along the engine's x is half a tile right and a quarter of one up
                 // the screen; one along its y is half a tile left and the same quarter up.
@@ -972,7 +969,7 @@ async fn main() {
                 // the chunks around it. Its own ground is where its feet are drawn, jump
                 // included, so a shadow climbs the figure as it rises out of one.
                 let shade = shadows.as_ref().and_then(|shadows| {
-                    let receiver = shadow_view::receiver_of(
+                    let receiver = lighting::shadow_view::receiver_of(
                         layout,
                         feet,
                         (rp.x + 0.5, rp.y + 0.5),
@@ -981,7 +978,7 @@ async fn main() {
                     shadows
                         .shade_moving(&manager, &receiver)
                         .as_ref()
-                        .and_then(shadow_view::lattice_of)
+                        .and_then(lighting::shadow_view::lattice_of)
                 });
                 // Its own shadow, laid on the ground it is over. The one shadow in the
                 // scene that is not baked, because it walks: `moving_shadow` cuts the
@@ -1219,7 +1216,7 @@ fn draw_grid(projection: ProjectionConfig, centre: WorldCoord) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use shadow_view::atlas::SLOT_COUNT;
+    use lighting::shadow_view::atlas::SLOT_COUNT;
 
     /// The shadow atlas holds nine chunks, and the chunk whose slot it turns out is the one
     /// least recently shown. That is only safe while the camera never shows more chunks than
@@ -1341,9 +1338,9 @@ mod tests {
 
     #[test]
     fn the_player_and_what_stands_on_its_column_sort_by_the_same_point() {
-        use crate::sprites::ground_key;
+        use crate::assets::sprites::ground_key;
         use iso::scene_order::compare_draw_keys;
-        use terrain_view::blocks::TERRAIN_LAYER;
+        use terrain::terrain_view::blocks::TERRAIN_LAYER;
 
         let (x, y, elevation) = (12.5, 7.5, 2.0);
         let key = |layer| scene_key(x, y, elevation, layer, PREVIEW_TILE_HEIGHT);
@@ -1383,10 +1380,10 @@ mod tests {
     /// meet. Level ground never covers the player; ground that rises above it still does.
     #[test]
     fn level_ground_towards_the_camera_never_covers_the_player_and_a_step_still_does() {
-        use crate::sprites::ground_key;
+        use crate::assets::sprites::ground_key;
         use iso::scene_order::compare_draw_keys;
         use std::cmp::Ordering;
-        use terrain_view::blocks::TERRAIN_LAYER;
+        use terrain::terrain_view::blocks::TERRAIN_LAYER;
 
         let (x, y, elevation) = (12.5, 7.5, 2.0);
         for layer in [PLAYER_BEHIND_LAYER, PLAYER_FRONT_LAYER] {
@@ -1456,11 +1453,11 @@ mod tests {
     /// terrain drawn over the cells towards the camera, as rectangles of shade on their tops.
     #[test]
     fn what_is_painted_on_the_ground_sorts_with_the_ground_it_lies_on() {
-        use crate::shadow_view::GROUND_SHADOW_LAYER;
-        use crate::sprites::ground_key;
+        use crate::lighting::shadow_view::GROUND_SHADOW_LAYER;
+        use crate::assets::sprites::ground_key;
         use iso::scene_order::compare_draw_keys;
         use std::cmp::Ordering;
-        use terrain_view::blocks::TERRAIN_LAYER;
+        use terrain::terrain_view::blocks::TERRAIN_LAYER;
 
         let (x, y, elevation) = (12.5, 7.5, 2.0);
         let shadow = ground_key(x, y, elevation, GROUND_SHADOW_LAYER, PREVIEW_TILE_HEIGHT);
@@ -1502,9 +1499,9 @@ mod tests {
     /// itself: a cliff's wall still draws over the ground at its foot.
     #[test]
     fn the_terrain_keeps_its_order_among_itself() {
-        use crate::sprites::ground_key;
+        use crate::assets::sprites::ground_key;
         use iso::scene_order::compare_draw_keys;
-        use terrain_view::blocks::TERRAIN_LAYER;
+        use terrain::terrain_view::blocks::TERRAIN_LAYER;
 
         let cells = [(4.5, 9.5, 0.0), (3.5, 9.5, 1.0), (4.5, 8.5, -2.0), (3.5, 8.5, 3.0)];
         for &(ax, ay, ae) in &cells {

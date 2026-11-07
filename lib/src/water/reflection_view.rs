@@ -28,7 +28,7 @@ use iso::water::{
 };
 use macroquad::prelude::Color;
 
-use crate::sprites::{SpriteDraw, ground_key};
+use crate::assets::sprites::{SpriteDraw, ground_key};
 
 /// How opaque what the water mirrors is drawn.
 ///
@@ -53,7 +53,7 @@ pub const REFLECTION_TINT: Color = Color::new(
 /// water top and a reflection on it are never both dark: the sun is low and the shadows that
 /// reach open water are the long ones. What matters is that neither draws over what stands in
 /// front of it, and that is the depth, not the layer.
-pub const REFLECTION_LAYER: i32 = crate::shadow_view::GROUND_SHADOW_LAYER;
+pub const REFLECTION_LAYER: i32 = crate::lighting::shadow_view::GROUND_SHADOW_LAYER;
 
 /// How far below something the water still shows it, in blocks.
 ///

@@ -1,5 +1,5 @@
 use super::*;
-use crate::sprites::DrawKind;
+use crate::assets::sprites::DrawKind;
 use iso::lighting::{DAWN, ShadowProjection};
 
 const TILE_WIDTH: f64 = 280.0;
