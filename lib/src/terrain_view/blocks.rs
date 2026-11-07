@@ -14,7 +14,7 @@ use macroquad::prelude::{screen_height, screen_width};
 
 use super::appearance::TerrainLook;
 use super::{MATERIAL_SLOTS, MATERIALS, slot};
-use crate::sprites::{ATLAS_TEXTURE, SpriteAtlas, SpriteDraw, scene_key};
+use crate::sprites::{ATLAS_TEXTURE, SpriteAtlas, SpriteDraw, ground_key};
 
 /// Terrain draws below everything that stands on it.
 pub const TERRAIN_LAYER: i32 = 0;
@@ -190,7 +190,7 @@ pub fn collect_terrain_sprites(
             if !SpriteAtlas::on_screen(layout) {
                 continue;
             }
-            let key = scene_key(
+            let key = ground_key(
                 centre.x,
                 centre.y,
                 f64::from(block.elevation),

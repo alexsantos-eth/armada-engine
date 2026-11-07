@@ -1341,6 +1341,7 @@ mod tests {
 
     #[test]
     fn the_player_and_what_stands_on_its_column_sort_by_the_same_point() {
+        use crate::sprites::ground_key;
         use iso::scene_order::compare_draw_keys;
         use terrain_view::blocks::TERRAIN_LAYER;
 
@@ -1365,20 +1366,113 @@ mod tests {
             "along the front of the same column it goes over it"
         );
 
-        // The ground of its own cell is under both, and the ground of the cell nearer the
-        // camera is drawn after everything standing a row further away, so it hides it.
-        let own_ground = key(TERRAIN_LAYER);
-        let in_front = scene_key(x - 1.0, y, elevation, TERRAIN_LAYER, PREVIEW_TILE_HEIGHT);
+        // The ground of its own cell is under both: a tile is keyed by the far corner of its
+        // cell, so it is drawn before anything standing anywhere on it.
+        let own_ground = ground_key(x, y, elevation, TERRAIN_LAYER, PREVIEW_TILE_HEIGHT);
         assert_eq!(
             compare_draw_keys(&own_ground, &behind),
             std::cmp::Ordering::Less,
             "the player stands on its column's top, not under it"
         );
-        assert_eq!(
-            compare_draw_keys(&in_front, &front),
-            std::cmp::Ordering::Greater,
-            "a terrain block nearer the camera covers the player behind it"
+    }
+
+    /// The bug Alex saw as "the sprite is cut at the joins": the player is drawn at its exact
+    /// position but keyed by its column, so near a cell's edge it stands in the screen diamond
+    /// of the cell towards the camera — which, keyed by its centre, was drawn after the player
+    /// and painted over its legs, and over the whole figure at the corner where four cells
+    /// meet. Level ground never covers the player; ground that rises above it still does.
+    #[test]
+    fn level_ground_towards_the_camera_never_covers_the_player_and_a_step_still_does() {
+        use crate::sprites::ground_key;
+        use iso::scene_order::compare_draw_keys;
+        use std::cmp::Ordering;
+        use terrain_view::blocks::TERRAIN_LAYER;
+
+        let (x, y, elevation) = (12.5, 7.5, 2.0);
+        for layer in [PLAYER_BEHIND_LAYER, PLAYER_FRONT_LAYER] {
+            let player = scene_key(x, y, elevation, layer, PREVIEW_TILE_HEIGHT);
+            // The two cells towards the camera whose diamonds reach over the player's feet.
+            for (dx, dy) in [(-1.0, 0.0), (0.0, -1.0)] {
+                let level = ground_key(
+                    x + dx,
+                    y + dy,
+                    elevation,
+                    TERRAIN_LAYER,
+                    PREVIEW_TILE_HEIGHT,
+                );
+                assert_eq!(
+                    compare_draw_keys(&level, &player),
+                    Ordering::Less,
+                    "ground level with the player's at ({dx}, {dy}) is drawn under it"
+                );
+                let step = ground_key(
+                    x + dx,
+                    y + dy,
+                    elevation + 1.0,
+                    TERRAIN_LAYER,
+                    PREVIEW_TILE_HEIGHT,
+                );
+                assert_eq!(
+                    compare_draw_keys(&step, &player),
+                    Ordering::Greater,
+                    "a step up at ({dx}, {dy}) still hides the player behind it"
+                );
+            }
+        }
+    }
+
+    /// The cell across the corner is the one tile towards the camera still drawn after the
+    /// player, and it is the one tile that cannot reach it: the far vertex of its diamond lands
+    /// exactly on the lowest point the player's feet can reach, the corner where the four cells
+    /// meet. Pulling the terrain back a second cell to put it under the player would take the
+    /// step in front out with it.
+    #[test]
+    fn the_cell_across_the_corner_only_ever_touches_the_players_feet() {
+        let projection = ProjectionConfig {
+            origin_x: 0.0,
+            origin_y: 0.0,
+            tile_width: PREVIEW_TILE_WIDTH,
+            tile_height: PREVIEW_TILE_HEIGHT,
+            elevation_step: Some(PREVIEW_ELEVATION_STEP),
+        };
+        let (cx, cy, elevation) = (12.0, 7.0, 2.0);
+        // The player at the corner of its cell nearest the camera, which is as far down the
+        // screen as it can stand on this column.
+        let feet = player_feet(GridPoint { x: cx - 0.5, y: cy - 0.5 }, elevation, projection);
+        // The topmost point of the diamond of the cell across that corner.
+        let across = project_block(
+            GridPoint { x: cx - 0.5, y: cy - 0.5 },
+            elevation,
+            projection,
         );
+        assert!(
+            (across.screen_y - PREVIEW_TILE_HEIGHT / 2.0 - feet.y).abs() < 1e-9,
+            "the diamond starts where the feet stop"
+        );
+    }
+
+    /// Moving every block of the terrain back by the same cell cannot change its order among
+    /// itself: a cliff's wall still draws over the ground at its foot.
+    #[test]
+    fn the_terrain_keeps_its_order_among_itself() {
+        use crate::sprites::ground_key;
+        use iso::scene_order::compare_draw_keys;
+        use terrain_view::blocks::TERRAIN_LAYER;
+
+        let cells = [(4.5, 9.5, 0.0), (3.5, 9.5, 1.0), (4.5, 8.5, -2.0), (3.5, 8.5, 3.0)];
+        for &(ax, ay, ae) in &cells {
+            for &(bx, by, be) in &cells {
+                let before = compare_draw_keys(
+                    &scene_key(ax, ay, ae, TERRAIN_LAYER, PREVIEW_TILE_HEIGHT),
+                    &scene_key(bx, by, be, TERRAIN_LAYER, PREVIEW_TILE_HEIGHT),
+                );
+                let after = compare_draw_keys(
+                    &ground_key(ax, ay, ae, TERRAIN_LAYER, PREVIEW_TILE_HEIGHT),
+                    &ground_key(bx, by, be, TERRAIN_LAYER, PREVIEW_TILE_HEIGHT),
+                );
+                assert_eq!(before, after, "({ax}, {ay}, {ae}) against ({bx}, {by}, {be})");
+            }
+        }
     }
 
     #[test]

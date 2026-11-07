@@ -937,3 +937,24 @@ pub fn scene_key(x: f64, y: f64, elevation: f64, layer: i32, tile_height: f64) -
         layer,
     }
 }
+
+/// Depth key of a terrain block: a *surface*, not something standing on one.
+///
+/// A column's top is drawn as a whole diamond, and half of that diamond lies nearer the camera
+/// than the cell's centre — the corner where four cells meet projects half a tile height below
+/// it. Keyed by its centre, like everything that stands on it, a tile towards the camera
+/// therefore sorted **after** a player standing anywhere in the near half of its own cell and
+/// was painted over it: over the legs at the shared edge, over the whole figure at the shared
+/// corner. Nothing was ever clipped; the next tile was simply drawn on top, and only near a
+/// cell's edges, which is where it was seen.
+///
+/// So a tile sorts by the **far corner of its cell**, one whole cell further from the camera
+/// than its centre. It is then drawn before anything standing anywhere on it, and before
+/// anything standing on the cells towards it whose ground is level with it or lower, while a
+/// cell that rises above still sorts after it on the elevation term — a step in front of the
+/// player goes on hiding the player behind it. Terrain keeps its order among itself, because
+/// every block of it moves by the same one cell.
+pub fn ground_key(x: f64, y: f64, elevation: f64, layer: i32, tile_height: f64) -> DrawKey {
+    let key = scene_key(x, y, elevation, layer, tile_height);
+    DrawKey { depth: key.depth - tile_height / 2.0, ..key }
+}
