@@ -204,7 +204,7 @@ fn a_piece_sorts_by_the_water_it_lies_on() {
         depths.windows(2).any(|pair| pair[0] != pair[1]),
         "the pieces do not all share one depth: {depths:?}",
     );
-    let own = scene_key(0.5, 0.5, 0.0, REFLECTION_LAYER, projection().tile_height);
+    let own = ground_key(0.5, 0.5, 0.0, REFLECTION_LAYER, projection().tile_height);
     assert!(
         depths.iter().any(|&depth| depth > own.depth),
         "and some of them are nearer the camera than the caster's own cell",

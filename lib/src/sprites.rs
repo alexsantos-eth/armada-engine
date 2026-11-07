@@ -938,7 +938,9 @@ pub fn scene_key(x: f64, y: f64, elevation: f64, layer: i32, tile_height: f64) -
     }
 }
 
-/// Depth key of a terrain block: a *surface*, not something standing on one.
+/// Depth key of a cell's surface: the terrain itself, and what is painted onto it — a baked
+/// shadow, the player's moving shadow, a reflection on the water. Not for what *stands* on a
+/// cell, which keys by its centre with [`scene_key`].
 ///
 /// A column's top is drawn as a whole diamond, and half of that diamond lies nearer the camera
 /// than the cell's centre — the corner where four cells meet projects half a tile height below
@@ -954,6 +956,10 @@ pub fn scene_key(x: f64, y: f64, elevation: f64, layer: i32, tile_height: f64) -
 /// cell that rises above still sorts after it on the elevation term — a step in front of the
 /// player goes on hiding the player behind it. Terrain keeps its order among itself, because
 /// every block of it moves by the same one cell.
+///
+/// Everything lying **on** that surface moves with it, or it is left half a cell in front of
+/// the ground it belongs to and shows through the terrain drawn over that ground: that is what
+/// the stray rectangles of shadow on the sand steps were.
 pub fn ground_key(x: f64, y: f64, elevation: f64, layer: i32, tile_height: f64) -> DrawKey {
     let key = scene_key(x, y, elevation, layer, tile_height);
     DrawKey { depth: key.depth - tile_height / 2.0, ..key }

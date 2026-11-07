@@ -28,7 +28,7 @@ use iso::water::{
 };
 use macroquad::prelude::Color;
 
-use crate::sprites::{SpriteDraw, scene_key};
+use crate::sprites::{SpriteDraw, ground_key};
 
 /// How opaque what the water mirrors is drawn.
 ///
@@ -152,7 +152,7 @@ pub fn collect_reflection(
                 continue;
             };
             out.push(SpriteDraw::reflection(
-                scene_key(
+                ground_key(
                     f64::from(x) + 0.5,
                     f64::from(y) + 0.5,
                     water.elevation,

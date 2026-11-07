@@ -1451,6 +1451,53 @@ mod tests {
         );
     }
 
+    /// A shadow is painted on a cell's top, so it moves back with that top: left keyed by the
+    /// cell's centre it sorted half a step in front of its own ground and showed through the
+    /// terrain drawn over the cells towards the camera, as rectangles of shade on their tops.
+    #[test]
+    fn what_is_painted_on_the_ground_sorts_with_the_ground_it_lies_on() {
+        use crate::shadow_view::GROUND_SHADOW_LAYER;
+        use crate::sprites::ground_key;
+        use iso::scene_order::compare_draw_keys;
+        use std::cmp::Ordering;
+        use terrain_view::blocks::TERRAIN_LAYER;
+
+        let (x, y, elevation) = (12.5, 7.5, 2.0);
+        let shadow = ground_key(x, y, elevation, GROUND_SHADOW_LAYER, PREVIEW_TILE_HEIGHT);
+        assert_eq!(
+            compare_draw_keys(
+                &ground_key(x, y, elevation, TERRAIN_LAYER, PREVIEW_TILE_HEIGHT),
+                &shadow,
+            ),
+            Ordering::Less,
+            "it lies on its own ground",
+        );
+        for (dx, dy) in [(-1.0, 0.0), (0.0, -1.0), (-1.0, -1.0)] {
+            assert_eq!(
+                compare_draw_keys(
+                    &ground_key(
+                        x + dx,
+                        y + dy,
+                        elevation,
+                        TERRAIN_LAYER,
+                        PREVIEW_TILE_HEIGHT,
+                    ),
+                    &shadow,
+                ),
+                Ordering::Greater,
+                "and the ground at ({dx}, {dy}) covers it, as it covered it before",
+            );
+        }
+        assert_eq!(
+            compare_draw_keys(
+                &shadow,
+                &scene_key(x, y, elevation, PLAYER_BEHIND_LAYER, PREVIEW_TILE_HEIGHT),
+            ),
+            Ordering::Less,
+            "and the player walks over it",
+        );
+    }
+
     /// Moving every block of the terrain back by the same cell cannot change its order among
     /// itself: a cliff's wall still draws over the ground at its foot.
     #[test]

@@ -49,7 +49,7 @@ use std::rc::Rc;
 
 use atlas::{ShadowAtlas, atlas_uv, square_in_slot};
 
-use crate::sprites::{ShadeLattice, SpriteDraw, scene_key};
+use crate::sprites::{ShadeLattice, SpriteDraw, ground_key};
 
 /// How long a frame may spend baking shadows.
 ///
@@ -612,7 +612,7 @@ impl ShadowScene {
                 continue;
             }
             out.push(SpriteDraw::face_shadow(
-                scene_key(
+                ground_key(
                     f64::from(face.x) + 0.5,
                     f64::from(face.y) + 0.5,
                     face.top,
@@ -750,7 +750,7 @@ impl ShadowScene {
             };
             let map_uv = [texel(near, near), texel(far, near), texel(far, far), texel(near, far)];
             out.push(SpriteDraw::ground_shadow(
-                scene_key(
+                ground_key(
                     f64::from(column.coord.x) + 0.5,
                     f64::from(column.coord.y) + 0.5,
                     f64::from(column.elevation),

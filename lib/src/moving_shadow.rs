@@ -27,7 +27,7 @@ use iso::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
 use iso::terrain::TerrainMaterial;
 
 use crate::shadow_view::{FACE_FLOOR, GROUND_SHADOW_LAYER};
-use crate::sprites::{SpriteDraw, scene_key};
+use crate::sprites::{SpriteDraw, ground_key};
 
 /// What the ground of one cell is, to a shadow being laid on it.
 ///
@@ -135,7 +135,7 @@ pub fn collect_moving_shadow(
             })
             .collect();
         out.push(SpriteDraw::silhouette(
-            scene_key(
+            ground_key(
                 f64::from(cell.0) + 0.5,
                 f64::from(cell.1) + 0.5,
                 ground.elevation,
