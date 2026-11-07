@@ -15,4 +15,5 @@ pub mod services;
 pub mod simulation;
 pub mod terrain;
 pub mod time;
+pub mod water;
 pub mod world;

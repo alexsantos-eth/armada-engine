@@ -466,14 +466,53 @@ impl SpriteAtlas {
         uv: &[(f64, f64)],
         opacity: f32,
     ) {
+        // Flat black: the alpha the artwork carries at that point is what shapes the shadow.
+        self.draw_polygon(
+            texture,
+            frame,
+            points,
+            uv,
+            Color::new(0.0, 0.0, 0.0, opacity),
+        );
+    }
+
+    /// Draws a sprite's artwork as the water shows it: the polygon `points` on a water top, each
+    /// corner reading the artwork at the matching `uv`, multiplied by `colour`.
+    ///
+    /// The same mesh a silhouette is drawn as, in the water's own colour instead of black. The
+    /// reflection is cut to one water cell ([`iso::water::reflection_piece`]), so it sorts with
+    /// that cell and the land drawn in front of the water covers it. See
+    /// [`crate::reflection_view`].
+    pub fn draw_reflection(
+        &self,
+        texture: usize,
+        frame: SpriteFrame,
+        points: &[(f64, f64)],
+        uv: &[(f64, f64)],
+        colour: Color,
+    ) {
+        self.draw_polygon(texture, frame, points, uv, colour);
+    }
+
+    /// Draws `frame`'s artwork over the convex polygon `points`, each corner reading it at the
+    /// matching `uv` (in `[0, 1]`), multiplied by `colour`.
+    ///
+    /// The polygon is drawn as a fan from its first corner, which is exact because every polygon
+    /// that gets here is convex: a sprite's rectangle cut by straight lines.
+    fn draw_polygon(
+        &self,
+        texture: usize,
+        frame: SpriteFrame,
+        points: &[(f64, f64)],
+        uv: &[(f64, f64)],
+        colour: Color,
+    ) {
         if points.len() < 3 || points.len() != uv.len() {
             return;
         }
         let source = self.source(frame);
         let texture = self.texture(texture);
         let (width, height) = (texture.width(), texture.height());
-        // Flat black: the alpha the artwork carries at that point is what shapes the shadow.
-        let colour = Color::new(0.0, 0.0, 0.0, opacity);
         let vertices: Vec<Vertex> = points
             .iter()
             .zip(uv)
@@ -637,6 +676,22 @@ pub enum DrawKind {
         /// How dark the shadow is drawn: the lighting phase's own opacity.
         opacity: f32,
     },
+    /// What the water shows of one sprite, on one cell of water: the artwork again, cut to that
+    /// cell and drawn in the water's own colour.
+    ///
+    /// Not baked either, and for the same reason the moving shadow is not: a reflection follows
+    /// whatever it mirrors, and the things that stand around water walk about. It is the same
+    /// mesh as a silhouette with a colour instead of black. See [`crate::reflection_view`].
+    Reflection {
+        texture: usize,
+        frame: SpriteFrame,
+        /// The piece on screen, convex, as a fan from its first corner.
+        points: Vec<(f64, f64)>,
+        /// Where each of those corners reads the artwork, in `[0, 1]`.
+        uv: Vec<(f64, f64)>,
+        /// The tint and opacity the water lays over what it mirrors.
+        colour: Color,
+    },
     /// One voxel of a puff of the player's dust: three flat-coloured faces of a small block.
     ///
     /// It carries no artwork, so its faces sample [`WHITE_PATCH`] and wear their colour as
@@ -768,6 +823,21 @@ impl SpriteDraw {
         }
     }
 
+    /// One water cell's share of what the water mirrors.
+    pub fn reflection(
+        key: DrawKey,
+        texture: usize,
+        frame: SpriteFrame,
+        points: Vec<(f64, f64)>,
+        uv: Vec<(f64, f64)>,
+        colour: Color,
+    ) -> Self {
+        Self {
+            key,
+            kind: DrawKind::Reflection { texture, frame, points, uv, colour },
+        }
+    }
+
     /// One voxel of a puff of the player's dust.
     pub fn voxel(key: DrawKey, faces: VoxelFaces, colours: [Color; 3]) -> Self {
         Self {
@@ -834,6 +904,9 @@ fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
             }
             DrawKind::Silhouette { texture, frame, points, uv, opacity } => {
                 atlas.draw_silhouette(*texture, *frame, points, uv, *opacity);
+            }
+            DrawKind::Reflection { texture, frame, points, uv, colour } => {
+                atlas.draw_reflection(*texture, *frame, points, uv, *colour);
             }
             DrawKind::Voxel { faces, colours } => {
                 atlas.draw_voxel(faces, colours);

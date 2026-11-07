@@ -3,6 +3,7 @@ mod dust_view;
 mod moving_shadow;
 mod perf;
 mod player_view;
+mod reflection_view;
 mod save;
 mod scene_material;
 mod services;
@@ -47,6 +48,7 @@ use save::{
 };
 use perf::{FrameSample, PerfLog};
 use player_view::{PlayerAnimation, PlayerMoment, PlayerSheets, jump_poses};
+use reflection_view::{Reflected, WaterCell, collect_reflection};
 use iso::player::physics::get_player_climb_progress;
 use iso::player::get_player_jump_phase;
 use iso::scene_order::PlayerSheet;
@@ -201,6 +203,26 @@ pub(crate) fn preview_top_level(
     } else {
         elevation - inset
     }
+}
+
+/// The water of the cell `(x, y)`, or `None` where there is none: what a reflection asks the
+/// world for ([`reflection_view::collect_reflection`]).
+///
+/// The level and the elevation are the same number for water, which is drawn as a full block,
+/// but they are asked for apart because the reflections take the level as the plane they mirror
+/// in and the elevation as the depth they sort by — the same pair, for the same reason, as
+/// [`moving_shadow::CellGround`].
+fn water_cell(manager: &ChunkManager, x: i32, y: i32) -> Option<WaterCell> {
+    let column = manager.column_at(x, y)?;
+    if column.surface != TerrainMaterial::Water {
+        return None;
+    }
+    Some(WaterCell {
+        level: preview_top_level(column, |point| {
+            manager.column_at(point.x, point.y).map(|c| c.elevation)
+        }),
+        elevation: f64::from(column.elevation),
+    })
 }
 
 /// The player's artwork: its frame in the atlas and where that drawing belongs over the ground
@@ -841,6 +863,37 @@ async fn main() {
                         )),
                     }
                 }
+                // And what the water in front of it shows of it: the same artwork a second time,
+                // upside down under the waterline and cut to the water cells it falls on. An
+                // entity whose generator drew its own reflection — a pier's posts hanging under
+                // themselves, a boat's hull — carries that drawing instead, laid where it was
+                // put rather than mirrored. See `reflection_view`.
+                let mirrored = entity
+                    .reflection_source()
+                    .and_then(|source| {
+                        let (drawn, laid) = atlas.standing(source, anchor, projection.tile_width)?;
+                        let texture = atlas.asset(source).map_or(0, |asset| asset.texture);
+                        Some((texture, drawn, laid, Reflected::AsDrawn))
+                    })
+                    .unwrap_or_else(|| {
+                        // A footprint over several cells is turned half a circle about the middle
+                        // of its own run rather than flipped, because a flip reverses the
+                        // diagonal that run lies along.
+                        let turn_at =
+                            (cells > 1).then(|| anchor.x + step.0 * f64::from(cells - 1) / 2.0);
+                        (entity_texture, frame, layout, Reflected::Standing { turn_at })
+                    });
+                collect_reflection(
+                    mirrored.0,
+                    mirrored.1,
+                    mirrored.2,
+                    anchor,
+                    elevation,
+                    mirrored.3,
+                    projection,
+                    |x, y| water_cell(&manager, x, y),
+                    &mut draws,
+                );
             }
         }
 
@@ -952,6 +1005,21 @@ async fn main() {
                             material: column.surface,
                         })
                     },
+                    &mut draws,
+                );
+                // And what the water shows of it, which like its shadow is gathered per frame
+                // from the pose it is drawn in: the figure upside down under the waterline, cut
+                // to the water cells in front of it. A jump lifts its feet, so its reflection
+                // sinks away from it exactly as its shadow slides out from under it.
+                collect_reflection(
+                    texture,
+                    frame,
+                    layout,
+                    feet,
+                    rp.elevation - rp.inset + rp.height,
+                    Reflected::Standing { turn_at: None },
+                    projection,
+                    |x, y| water_cell(&manager, x, y),
                     &mut draws,
                 );
                 match shade {
