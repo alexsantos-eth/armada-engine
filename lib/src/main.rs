@@ -1,4 +1,5 @@
 mod cloud_shadows;
+mod dust_view;
 mod moving_shadow;
 mod perf;
 mod player_view;
@@ -34,6 +35,7 @@ use iso::camera::{
 };
 use iso::lighting::DAWN;
 use cloud_shadows::{CLOUD_SHADOW_SOURCE, CloudShadows};
+use dust_view::{DustGround, DustPuffs};
 use moving_shadow::{CellGround, collect_moving_shadow};
 use scene_material::SceneMaterial;
 use shadow_view::ShadowScene;
@@ -493,6 +495,9 @@ async fn main() {
     }
     let mut animation = PlayerAnimation::default();
     let mut drawn_at = (spawned.x, spawned.y);
+    // The dust the player kicks up: a pool of puffs that outlives the frame, raised by what the
+    // player does and queued into the scene like any other geometry. See `dust_view`.
+    let mut dust = DustPuffs::new();
 
     // Every sprite drawn in a frame goes through this one list, which is reused so a frame
     // costs no allocation.
@@ -872,6 +877,7 @@ async fn main() {
         // cells share, which is the same box for every pose, so changing pose moves the
         // drawing inside the window and never the player.
         let climbing = get_player_climb_progress(&player, stepper.interpolation_alpha());
+        let moved = (rp.x - drawn_at.0).hypot(rp.y - drawn_at.1);
         let pose = animation.advance(
             PlayerMoment {
                 climbing,
@@ -880,7 +886,7 @@ async fn main() {
                     .climb
                     .as_ref()
                     .map_or(player.walk, |climb| climb.direction),
-                moved: (rp.x - drawn_at.0).hypot(rp.y - drawn_at.1),
+                moved,
                 jump_phase: get_player_jump_phase(&player),
                 elapsed_ms: frame_ms,
             },
@@ -959,6 +965,24 @@ async fn main() {
             // it cannot go through the sorted list.
             None => draw_circle(feet.x as f32, feet.y as f32, 12.0, GOLD),
         }
+
+        // The dust it kicks up, after the figure so that a cube sharing a cube's depth with a
+        // baked shadow lies over it. Each cube sorts by the column it drifts across, so the
+        // player runs through its own dust and a block hides the part that blows into it.
+        let elevation_at = |x: i32, y: i32| manager.column_at(x, y).map(|c| f64::from(c.elevation));
+        dust.advance(frame_ms);
+        dust.react(
+            &player,
+            DustGround {
+                feet: GridPoint { x: rp.x, y: rp.y },
+                level: rp.elevation - rp.inset + rp.height,
+                ground: rp.elevation - rp.inset,
+                moved,
+                tile_height: projection.tile_height,
+            },
+            &elevation_at,
+        );
+        dust.collect(projection, &mut draws);
 
         let after_collect = get_time();
         let sprites = draws.len();
@@ -1056,7 +1080,11 @@ async fn main() {
             readout_colour,
         );
         draw_text(
-            format!("cpu p95 {cpu_p95:.1} ms · {} caidos", perf.dropped()),
+            format!(
+                "cpu p95 {cpu_p95:.1} ms · {} caidos · polvo {}",
+                perf.dropped(),
+                dust.live()
+            ),
             width - 218.0,
             82.0,
             15.0,

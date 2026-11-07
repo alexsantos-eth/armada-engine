@@ -10,6 +10,7 @@ use iso::assets::{
     AssetEntry, AssetManifest, InkBox, SpriteBand, SpriteFrame, SpriteLayout, ink_layout,
 };
 use iso::lighting::ShadeGrid;
+use iso::player::VoxelFaces;
 use iso::projection::ScreenPoint;
 use iso::scene_order::{DrawKey, LengthAxis, compare_draw_keys, get_draw_depth};
 use macroquad::prelude::*;
@@ -371,6 +372,44 @@ impl SpriteAtlas {
         });
     }
 
+    /// Draws one voxel of dust: its three visible faces in flat colour, as one mesh.
+    ///
+    /// Three quads in a single mesh rather than three meshes, and out of the atlas's own
+    /// [`WHITE_PATCH`] rather than untextured, so a puff of twelve cubes adds twelve meshes to
+    /// the batch the scene is already drawing and no draw call of its own. With no patch in the
+    /// atlas it falls back to an untextured mesh, which draws the same pixels and breaks the
+    /// batch — the same trade-off the shadows make.
+    pub fn draw_voxel(&self, faces: &VoxelFaces, colours: &[Color; 3]) {
+        let (u, v) = self.white.unwrap_or((0.0, 0.0));
+        let mut vertices = Vec::with_capacity(12);
+        let mut indices = Vec::with_capacity(18);
+        for (face, colour) in [faces.top, faces.left, faces.right].iter().zip(colours) {
+            let corner = vertices.len() as u16;
+            for point in face {
+                vertices.push(vertex(
+                    (point.0 as f32, point.1 as f32),
+                    (u, v),
+                    *colour,
+                    (0.0, 0.0),
+                    scene_material::SPRITE,
+                ));
+            }
+            indices.extend_from_slice(&[
+                corner,
+                corner + 1,
+                corner + 2,
+                corner,
+                corner + 2,
+                corner + 3,
+            ]);
+        }
+        draw_mesh(&Mesh {
+            vertices,
+            indices,
+            texture: self.white.map(|_| self.textures[ATLAS_TEXTURE].clone()),
+        });
+    }
+
     /// Draws the shadow baked on a column's top face: one quad, shaded by the shadow atlas.
     ///
     /// `corners` is the cell on screen, from the corner towards the camera clockwise, and
@@ -598,6 +637,20 @@ pub enum DrawKind {
         /// How dark the shadow is drawn: the lighting phase's own opacity.
         opacity: f32,
     },
+    /// One voxel of a puff of the player's dust: three flat-coloured faces of a small block.
+    ///
+    /// It carries no artwork, so its faces sample [`WHITE_PATCH`] and wear their colour as
+    /// vertex colour, exactly as a face shadow does: that is what keeps a cloud of dust in the
+    /// same batch as the ground it rises from instead of costing a draw call per cube. See
+    /// [`crate::dust_view`].
+    Voxel {
+        /// Where the voxel's faces are on screen, from [`iso::player::voxel_faces`] offset to
+        /// the point it stands on.
+        faces: VoxelFaces,
+        /// The colour of the top, the left face and the right face, each already the voxel's
+        /// own shade and the puff's opacity.
+        colours: [Color; 3],
+    },
     /// The baked shadow on one exposed vertical face of the ground.
     ///
     /// A face does not stand in the shadow map — the map is cast onto level ground — so its
@@ -715,6 +768,14 @@ impl SpriteDraw {
         }
     }
 
+    /// One voxel of a puff of the player's dust.
+    pub fn voxel(key: DrawKey, faces: VoxelFaces, colours: [Color; 3]) -> Self {
+        Self {
+            key,
+            kind: DrawKind::Voxel { faces, colours },
+        }
+    }
+
     /// A shadow on one exposed vertical face of the ground.
     pub fn face_shadow(
         key: DrawKey,
@@ -773,6 +834,9 @@ fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
             }
             DrawKind::Silhouette { texture, frame, points, uv, opacity } => {
                 atlas.draw_silhouette(*texture, *frame, points, uv, *opacity);
+            }
+            DrawKind::Voxel { faces, colours } => {
+                atlas.draw_voxel(faces, colours);
             }
             DrawKind::FaceShadow { corners, shade, opacity } => {
                 atlas.draw_face_shadow(corners, shade, *opacity);
