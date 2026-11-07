@@ -37,8 +37,8 @@ use player::dust_view::{DustGround, DustPuffs};
 use lighting::moving_shadow::{CellGround, collect_moving_shadow};
 use rendering::scene_material::SceneMaterial;
 use lighting::shadow_view::ShadowScene;
-use lighting::shadow_view::atlas::ShadowAtlas;
-use lighting::shadow_view::masks::SilhouetteMasks;
+use lighting::shadow_view_atlas::ShadowAtlas;
+use lighting::shadow_view_masks::SilhouetteMasks;
 use save::{
     load_archive_into_manager, load_save, restore_archive, restore_discovered_from_archive,
     save_archive, sync_manager_to_archive,
@@ -50,8 +50,8 @@ use iso::player::physics::get_player_climb_progress;
 use iso::player::get_player_jump_phase;
 use iso::scene_order::PlayerSheet;
 use assets::sprites::{SpriteAtlas, SpriteDraw, draw_sorted, scene_key};
-use terrain::terrain_view::appearance::TerrainLook;
-use terrain::terrain_view::blocks::{TerrainFrames, collect_terrain_sprites};
+use terrain::terrain_view_appearance::TerrainLook;
+use terrain::terrain_view_blocks::{TerrainFrames, collect_terrain_sprites};
 use macroquad::prelude::*;
 
 fn window_conf() -> Conf {
@@ -177,7 +177,7 @@ const SAND_TOP_INSET: f64 = 0.5;
 /// row against a step up, whose top the view draws flush with its cell
 /// ([`top_is_flush`](iso::terrain::top_is_flush)). Everything that has to meet the ground
 /// asks this one question: the player's feet (`drawn_inset` in `player::physics`), the blocks
-/// themselves (`drawn_lift` in `terrain_view::blocks`) and the shadows baked onto them. A shadow
+/// themselves (`drawn_lift` in `terrain_view_blocks`) and the shadows baked onto them. A shadow
 /// answered with the plain inset lands half a block under the terrace row it belongs to, which
 /// reads as the beach's shadows being a tile out of place.
 pub(crate) fn preview_top_level(
@@ -1216,7 +1216,7 @@ fn draw_grid(projection: ProjectionConfig, centre: WorldCoord) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lighting::shadow_view::atlas::SLOT_COUNT;
+    use lighting::shadow_view_atlas::SLOT_COUNT;
 
     /// The shadow atlas holds nine chunks, and the chunk whose slot it turns out is the one
     /// least recently shown. That is only safe while the camera never shows more chunks than
@@ -1340,7 +1340,7 @@ mod tests {
     fn the_player_and_what_stands_on_its_column_sort_by_the_same_point() {
         use crate::assets::sprites::ground_key;
         use iso::scene_order::compare_draw_keys;
-        use terrain::terrain_view::blocks::TERRAIN_LAYER;
+        use terrain::terrain_view_blocks::TERRAIN_LAYER;
 
         let (x, y, elevation) = (12.5, 7.5, 2.0);
         let key = |layer| scene_key(x, y, elevation, layer, PREVIEW_TILE_HEIGHT);
@@ -1383,7 +1383,7 @@ mod tests {
         use crate::assets::sprites::ground_key;
         use iso::scene_order::compare_draw_keys;
         use std::cmp::Ordering;
-        use terrain::terrain_view::blocks::TERRAIN_LAYER;
+        use terrain::terrain_view_blocks::TERRAIN_LAYER;
 
         let (x, y, elevation) = (12.5, 7.5, 2.0);
         for layer in [PLAYER_BEHIND_LAYER, PLAYER_FRONT_LAYER] {
@@ -1457,7 +1457,7 @@ mod tests {
         use crate::assets::sprites::ground_key;
         use iso::scene_order::compare_draw_keys;
         use std::cmp::Ordering;
-        use terrain::terrain_view::blocks::TERRAIN_LAYER;
+        use terrain::terrain_view_blocks::TERRAIN_LAYER;
 
         let (x, y, elevation) = (12.5, 7.5, 2.0);
         let shadow = ground_key(x, y, elevation, GROUND_SHADOW_LAYER, PREVIEW_TILE_HEIGHT);
@@ -1501,7 +1501,7 @@ mod tests {
     fn the_terrain_keeps_its_order_among_itself() {
         use crate::assets::sprites::ground_key;
         use iso::scene_order::compare_draw_keys;
-        use terrain::terrain_view::blocks::TERRAIN_LAYER;
+        use terrain::terrain_view_blocks::TERRAIN_LAYER;
 
         let cells = [(4.5, 9.5, 0.0), (3.5, 9.5, 1.0), (4.5, 8.5, -2.0), (3.5, 8.5, 3.0)];
         for &(ax, ay, ae) in &cells {

@@ -133,5 +133,5 @@ impl SilhouetteMasks {
 }
 
 #[cfg(test)]
-#[path = "masks.test.rs"]
+#[path = "shadow_view_masks.test.rs"]
 mod tests;

@@ -27,9 +27,6 @@
 //! it was baked against and bakes again when that changes. A bake is spread over frames, a
 //! piece at a time, within [`BAKE_BUDGET_MS`].
 
-pub mod atlas;
-pub mod masks;
-
 use iso::assets::{InkBox, SpriteLayout};
 use iso::entities::Entity;
 use iso::grid::{CHUNK_SIZE, ChunkCoord, WorldCoord, to_chunk_coord};
@@ -43,11 +40,11 @@ use iso::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
 use iso::terrain::TerrainColumn;
 use iso::world::ChunkManager;
 use macroquad::prelude::{get_time, screen_height, screen_width};
-use masks::SilhouetteMasks;
+use super::shadow_view_atlas;
+use super::shadow_view_atlas::{ShadowAtlas, atlas_uv, square_in_slot};
+use super::shadow_view_masks::SilhouetteMasks;
 use std::collections::HashMap;
 use std::rc::Rc;
-
-use atlas::{ShadowAtlas, atlas_uv, square_in_slot};
 
 use crate::assets::sprites::{ShadeLattice, SpriteDraw, ground_key};
 
@@ -211,10 +208,10 @@ impl ShadowScene {
         // with room to spare (`the_atlas_holds_more_chunks_than_the_camera_can_show`); past it
         // the atlas would turn out a chunk that is on screen and bake it again every frame.
         debug_assert!(
-            shown.len() <= atlas::SLOT_COUNT,
+            shown.len() <= shadow_view_atlas::SLOT_COUNT,
             "{} chunks shown against {} shadow slots: the atlas will thrash",
             shown.len(),
-            atlas::SLOT_COUNT
+            shadow_view_atlas::SLOT_COUNT
         );
         for coord in shown {
             self.atlas.touch(*coord);
@@ -821,5 +818,5 @@ fn neighbours_loaded(manager: &ChunkManager, coord: ChunkCoord) -> u16 {
 
 
 #[cfg(test)]
-#[path = "mod.test.rs"]
+#[path = "shadow_view_mod.test.rs"]
 mod tests;

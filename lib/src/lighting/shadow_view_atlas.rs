@@ -248,5 +248,5 @@ impl ShadowAtlas {
 }
 
 #[cfg(test)]
-#[path = "atlas.test.rs"]
+#[path = "shadow_view_atlas.test.rs"]
 mod tests;

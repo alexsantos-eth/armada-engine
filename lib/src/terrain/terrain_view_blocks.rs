@@ -12,8 +12,8 @@ use iso::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
 use iso::terrain::{AroundHeights, TerrainColumn, TerrainMaterial, top_is_flush};
 use macroquad::prelude::{screen_height, screen_width};
 
-use super::appearance::TerrainLook;
-use super::{MATERIAL_SLOTS, MATERIALS, slot};
+use crate::terrain::terrain_view::{MATERIAL_SLOTS, MATERIALS, slot};
+use crate::terrain::terrain_view_appearance::TerrainLook;
 use crate::assets::sprites::{ATLAS_TEXTURE, SpriteAtlas, SpriteDraw, ground_key};
 
 /// Terrain draws below everything that stands on it.
@@ -277,5 +277,5 @@ fn exposed_floor(elevation: i32, in_front: impl IntoIterator<Item = Option<i32>>
 }
 
 #[cfg(test)]
-#[path = "blocks.test.rs"]
+#[path = "terrain_view_blocks.test.rs"]
 mod tests;

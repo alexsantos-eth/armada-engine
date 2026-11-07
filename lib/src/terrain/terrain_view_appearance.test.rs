@@ -6,7 +6,7 @@ const SEED: u64 = 1337;
 /// The shipped atlas, read as the client reads it, so these checks fail when a top is dropped
 /// from the pipeline rather than when the ground quietly stops growing anything.
 fn shipped() -> AssetManifest {
-    serde_json::from_str(include_str!("../../../content/assets.manifest.json"))
+    serde_json::from_str(include_str!("../../content/assets.manifest.json"))
         .expect("the asset manifest is valid JSON")
 }
 

@@ -2,9 +2,6 @@
 
 use iso::terrain::TerrainMaterial;
 
-pub mod appearance;
-pub mod blocks;
-
 /// Every terrain material, in the order the view's arrays index them.
 pub const MATERIALS: [TerrainMaterial; 5] = [
     TerrainMaterial::Water,

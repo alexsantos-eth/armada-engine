@@ -10,7 +10,7 @@ use iso::assets::{InkBox, SpriteFrame};
 use iso::terrain::{TerrainMaterial, TintZones, VariantPicker, tint_channels};
 use macroquad::prelude::{Color, WHITE};
 
-use super::MATERIAL_SLOTS;
+use crate::terrain::terrain_view::{MATERIAL_SLOTS, slot};
 
 /// Grass zones, from the lowest noise to the highest: lush and darker, slightly darker, plain,
 /// yellowish, dry yellow. Ordered so that neighbouring zones blend instead of clashing.
@@ -63,7 +63,7 @@ impl TerrainLook {
     ) -> (Self, Vec<&'static str>) {
         let mut tints = [const { None }; MATERIAL_SLOTS];
         let mut zone = |material: TerrainMaterial, label: &str, (scale, colors): (f64, &[u32])| {
-            tints[super::slot(material)] = TintZones::new(seed, label, scale, colors);
+            tints[slot(material)] = TintZones::new(seed, label, scale, colors);
         };
         // Grass and the paths cut through it share one field, so a path's grass edges take the
         // colour of the meadow it crosses instead of being a stripe of another zone.
@@ -92,7 +92,7 @@ impl TerrainLook {
 
     /// What a block of `material` standing on column `(x, y)` is multiplied by.
     pub fn tint(&self, material: TerrainMaterial, x: i32, y: i32) -> Color {
-        let Some(zones) = &self.tints[super::slot(material)] else {
+        let Some(zones) = &self.tints[slot(material)] else {
             return WHITE;
         };
         let (red, green, blue) = tint_channels(zones.at(x, y));
@@ -113,5 +113,5 @@ impl TerrainLook {
 }
 
 #[cfg(test)]
-#[path = "appearance.test.rs"]
+#[path = "terrain_view_appearance.test.rs"]
 mod tests;

@@ -224,7 +224,7 @@ fn dust_behind_the_feet_sorts_under_the_player_and_dust_in_front_over_it() {
 
 #[test]
 fn the_dust_layer_sits_between_the_ground_and_the_player() {
-    use crate::terrain::terrain_view::blocks::TERRAIN_LAYER;
+    use crate::terrain::terrain_view_blocks::TERRAIN_LAYER;
     const {
         assert!(DUST_BEHIND_LAYER > TERRAIN_LAYER);
         assert!(DUST_BEHIND_LAYER < crate::PLAYER_BEHIND_LAYER);
