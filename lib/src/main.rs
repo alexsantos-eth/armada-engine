@@ -49,6 +49,7 @@ use iso::player::physics::get_player_climb_progress;
 use iso::player::get_player_jump_phase;
 use iso::scene_order::PlayerSheet;
 use sprites::{SpriteAtlas, SpriteDraw, draw_sorted, scene_key};
+use terrain_view::appearance::TerrainLook;
 use terrain_view::blocks::{TerrainFrames, collect_terrain_sprites};
 use macroquad::prelude::*;
 
@@ -414,12 +415,21 @@ async fn main() {
     for material in &missing_terrain {
         eprintln!("warning: the atlas has no block for {material:?}; it will not be drawn");
     }
+    // How the ground is dressed: the colour zone each column stands in and the extra top it
+    // grows. Both read the world seed, so a world always looks the way it looked.
+    let terrain_config = TerrainConfig::default();
+    let (terrain_look, missing_tops) = TerrainLook::new(terrain_config.seed, |source| {
+        atlas.asset(source).and_then(|asset| Some((asset.frame, asset.ink?)))
+    });
+    for source in &missing_tops {
+        eprintln!("warning: the atlas has no measured artwork for {source}; it will not grow");
+    }
     let catalog: EntityCatalogV2 =
         serde_json::from_str(catalog_json).expect("entity catalog is valid JSON");
     validate_catalog(&catalog).expect("entity catalog validates");
 
-    let generator = TerrainGenerator::new(TerrainConfig::default())
-        .expect("default terrain configuration is valid");
+    let generator =
+        TerrainGenerator::new(terrain_config).expect("default terrain configuration is valid");
 
     let mut manager = ChunkManager::with_radii(generator, catalog, CHUNK_RADII);
 
@@ -701,6 +711,7 @@ async fn main() {
                     chunk,
                     projection,
                     &terrain_frames,
+                    &terrain_look,
                     |point| manager.column_at(point.x, point.y).map(|c| c.elevation),
                     &mut draws,
                 );

@@ -188,14 +188,17 @@ impl SpriteAtlas {
         self.textures.get(index).unwrap_or(&self.textures[0])
     }
 
-    /// Draws one frame of `texture` into the rectangle `layout` describes.
-    pub fn draw(&self, texture: usize, frame: SpriteFrame, layout: SpriteLayout) {
+    /// Draws one frame of `texture` into the rectangle `layout` describes, multiplied by `tint`.
+    ///
+    /// The tint is a per-draw colour, not a pipeline change, so a tinted sprite stays in the same
+    /// batch as an untinted one: the terrain's colour zones cost nothing in draw calls.
+    pub fn draw(&self, texture: usize, frame: SpriteFrame, layout: SpriteLayout, tint: Color) {
         let source = self.source(frame);
         draw_texture_ex(
             self.texture(texture),
             layout.x as f32,
             layout.y as f32,
-            WHITE,
+            tint,
             DrawTextureParams {
                 source: Some(source),
                 dest_size: Some(vec2(layout.width as f32, layout.height as f32)),
@@ -554,6 +557,9 @@ pub enum DrawKind {
         /// The piece of the drawing this draw shows, for a sprite cut up across its footprint;
         /// `None` for everything drawn in one piece.
         band: Option<SpriteBand>,
+        /// What the artwork is multiplied by: the colour zone the ground stands in, or [`WHITE`]
+        /// for a sprite drawn as it was painted.
+        tint: Color,
     },
     /// An atlas sprite drawn as a lattice, darkened by the shadows falling on it.
     Shaded {
@@ -621,9 +627,20 @@ pub struct SpriteDraw {
 impl SpriteDraw {
     /// A sprite drawn whole, which is everything standing on a single cell.
     pub fn whole(key: DrawKey, texture: usize, frame: SpriteFrame, layout: SpriteLayout) -> Self {
+        Self::tinted(key, texture, frame, layout, WHITE)
+    }
+
+    /// A sprite drawn whole and multiplied by `tint`: a block of ground in a colour zone.
+    pub fn tinted(
+        key: DrawKey,
+        texture: usize,
+        frame: SpriteFrame,
+        layout: SpriteLayout,
+        tint: Color,
+    ) -> Self {
         Self {
             key,
-            kind: DrawKind::Sprite { texture, frame, layout, band: None },
+            kind: DrawKind::Sprite { texture, frame, layout, band: None, tint },
         }
     }
 
@@ -637,7 +654,7 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
-            kind: DrawKind::Sprite { texture, frame, layout, band },
+            kind: DrawKind::Sprite { texture, frame, layout, band, tint: WHITE },
         }
     }
 
@@ -739,11 +756,11 @@ fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
     draws.sort_by(|a, b| compare_draw_keys(&a.key, &b.key));
     for draw in draws.iter() {
         match &draw.kind {
-            DrawKind::Sprite { texture, frame, layout, band: Some(band) } => {
+            DrawKind::Sprite { texture, frame, layout, band: Some(band), .. } => {
                 atlas.draw_band(*texture, *frame, *layout, band, None);
             }
-            DrawKind::Sprite { texture, frame, layout, band: None } => {
-                atlas.draw(*texture, *frame, *layout);
+            DrawKind::Sprite { texture, frame, layout, band: None, tint } => {
+                atlas.draw(*texture, *frame, *layout, *tint);
             }
             DrawKind::Shaded { texture, frame, layout, shade, band: Some(band) } => {
                 atlas.draw_band(*texture, *frame, *layout, band, Some(shade));

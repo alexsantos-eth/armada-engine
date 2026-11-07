@@ -13,6 +13,12 @@ fn lattice(seed: u64, x: i64, y: i64) -> f64 {
     (hash(seed, x, y) >> 11) as f64 / ((1_u64 << 53) - 1) as f64
 }
 
+/// The lattice value of one integer point, for anything that wants an unrelated number per column
+/// rather than a smooth field: the scatter inside a clump of plants, say. Same point, same number.
+pub fn lattice_at(seed: u64, x: i64, y: i64) -> f64 {
+    lattice(seed, x, y)
+}
+
 fn smooth(t: f64) -> f64 {
     t * t * (3.0 - 2.0 * t)
 }

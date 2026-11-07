@@ -12,6 +12,8 @@ use iso::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
 use iso::terrain::{AroundHeights, TerrainColumn, TerrainMaterial, top_is_flush};
 use macroquad::prelude::{screen_height, screen_width};
 
+use super::appearance::TerrainLook;
+use super::{MATERIAL_SLOTS, MATERIALS, slot};
 use crate::sprites::{ATLAS_TEXTURE, SpriteAtlas, SpriteDraw, scene_key};
 
 /// Terrain draws below everything that stands on it.
@@ -24,33 +26,16 @@ const MAX_EXPOSED_BLOCKS: i32 = 10;
 /// The atlas frame for each terrain material and where its artwork sits, resolved once at
 /// startup: the alternative is a hash lookup per drawn block, several hundred a frame.
 pub struct TerrainFrames {
-    frames: [Option<(SpriteFrame, InkBox, f64)>; 5],
-}
-
-fn slot(material: TerrainMaterial) -> usize {
-    match material {
-        TerrainMaterial::Water => 0,
-        TerrainMaterial::Sand => 1,
-        TerrainMaterial::Ground => 2,
-        TerrainMaterial::Grass => 3,
-        TerrainMaterial::Path => 4,
-    }
+    frames: [Option<(SpriteFrame, InkBox, f64)>; MATERIAL_SLOTS],
 }
 
 impl TerrainFrames {
     /// Resolves every material against the atlas. Returns the materials the atlas has no
     /// artwork for, so the client can say so instead of drawing invisible ground.
     pub fn new(atlas: &SpriteAtlas) -> (Self, Vec<TerrainMaterial>) {
-        let materials = [
-            TerrainMaterial::Water,
-            TerrainMaterial::Sand,
-            TerrainMaterial::Ground,
-            TerrainMaterial::Grass,
-            TerrainMaterial::Path,
-        ];
-        let mut frames = [None; 5];
+        let mut frames = [None; MATERIAL_SLOTS];
         let mut missing = Vec::new();
-        for material in materials {
+        for material in MATERIALS {
             // Both or neither: a frame the pipeline never measured cannot be placed on the
             // ground, and guessing would put it half a tile out.
             match atlas
@@ -90,6 +75,10 @@ impl TerrainFrames {
     /// How far the artwork of any of these materials reaches above and below the ground it
     /// stands on, in screen pixels. The cull needs it: a column whose ground is just off the
     /// bottom of the screen still shows the block standing on it.
+    ///
+    /// A dressed grass top ([`TerrainLook::top`]) is drawn on the plain block's own template and
+    /// measures the same, so it needs no margin of its own; artwork that grew out of that
+    /// template would have to be counted here.
     fn reach(&self, tile_width: f64) -> (f64, f64) {
         self.frames
             .iter()
@@ -111,6 +100,7 @@ pub fn collect_terrain_sprites(
     columns: &[TerrainColumn],
     projection: ProjectionConfig,
     frames: &TerrainFrames,
+    look: &TerrainLook,
     height_at: impl Fn(WorldCoord) -> Option<i32>,
     out: &mut Vec<SpriteDraw>,
 ) {
@@ -171,9 +161,20 @@ pub fn collect_terrain_sprites(
             && top_is_flush(column.surface, column.elevation, around_heights(column, &height_at));
 
         for block in column.blocks_from(floor) {
-            let Some((frame, ink, sink)) = frames.frame(block.material) else {
+            let Some((plain, plain_ink, sink)) = frames.frame(block.material) else {
                 continue;
             };
+            // What grows on the ground only ever dresses a column's own surface: a dressed block
+            // buried in a cliff would hide its flowers inside the block standing on it. The top
+            // is a whole block of its own, so it brings its own artwork and its own measurement.
+            let (frame, ink) = match (block.elevation == column.elevation)
+                .then(|| look.top(block.material, column.coord.x, column.coord.y))
+                .flatten()
+            {
+                Some(top) => top,
+                None => (plain, plain_ink),
+            };
+            let tint = look.tint(block.material, column.coord.x, column.coord.y);
             let lift = drawn_lift(block.elevation, column, flush_top, sink, projection.tile_width);
             // A block stands on the top face of the block below it, which is `step` further
             // down the screen for each level below the column's own surface.
@@ -200,7 +201,7 @@ pub fn collect_terrain_sprites(
                 // The lifted copy closes the join with the block above; this one, in the slab's
                 // own place, still closes the join with whatever is below. They are the same
                 // drawing, so the overlap paints the same pixels.
-                out.push(SpriteDraw::whole(
+                out.push(SpriteDraw::tinted(
                     key,
                     ATLAS_TEXTURE,
                     frame,
@@ -213,9 +214,10 @@ pub fn collect_terrain_sprites(
                         ink,
                         projection.tile_width,
                     ),
+                    tint,
                 ));
             }
-            out.push(SpriteDraw::whole(key, ATLAS_TEXTURE, frame, layout));
+            out.push(SpriteDraw::tinted(key, ATLAS_TEXTURE, frame, layout, tint));
         }
     }
 }
