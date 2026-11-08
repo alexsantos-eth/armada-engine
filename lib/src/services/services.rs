@@ -2,7 +2,9 @@
 
 use iso::grid::ChunkCoord;
 use iso::player::physics::{ScreenDirections, get_walk_direction};
-use iso::services::{AudioService, ChunkLoader, InputService, NormalizedInput, SoundEvent, UiEvent, UiService};
+use iso::services::{
+    AudioService, ChunkLoader, InputService, NormalizedInput, SoundEvent, UiEvent, UiService,
+};
 use iso::terrain::TerrainColumn;
 use iso::world::ChunkManager;
 use macroquad::prelude::*;
@@ -38,7 +40,10 @@ pub struct MacroquadAudio {
 
 impl Default for MacroquadAudio {
     fn default() -> Self {
-        Self { volume: 1.0, events: Vec::new() }
+        Self {
+            volume: 1.0,
+            events: Vec::new(),
+        }
     }
 }
 
@@ -63,7 +68,13 @@ impl UiService for MacroquadUi {
     fn push(&mut self, event: UiEvent) {
         match event {
             UiEvent::Message { text } => self.messages.push(text),
-            UiEvent::HudUpdate { x, y, elevation, motion, chunks } => {
+            UiEvent::HudUpdate {
+                x,
+                y,
+                elevation,
+                motion,
+                chunks,
+            } => {
                 self.hud = Some((x, y, elevation, motion, chunks));
             }
             UiEvent::ChunkDiscovered { .. } => {}

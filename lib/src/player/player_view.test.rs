@@ -32,7 +32,14 @@ fn advances_the_walk_cycle_with_the_distance_covered() {
         ..moment()
     };
     // It starts facing the camera, so give it the time to turn east before the cycle is read.
-    animation.advance(PlayerMoment { elapsed_ms: 1_000.0, moved: 0.0, ..walking }, SHEETS);
+    animation.advance(
+        PlayerMoment {
+            elapsed_ms: 1_000.0,
+            moved: 0.0,
+            ..walking
+        },
+        SHEETS,
+    );
     let mut poses = Vec::new();
     for _ in 0..8 {
         let pose = animation.advance(walking, SHEETS);
@@ -43,25 +50,43 @@ fn advances_the_walk_cycle_with_the_distance_covered() {
     // The first frame has already covered an eighth of the stride, so the cycle starts on its
     // second pose and comes back round to the first; column zero, standing, is never used.
     assert_eq!(poses, vec![2, 3, 4, 5, 6, 7, 8, 1], "one full cycle");
-    assert_eq!(animation.advance(walking, SHEETS).pose, 2, "and round again");
+    assert_eq!(
+        animation.advance(walking, SHEETS).pose,
+        2,
+        "and round again"
+    );
 }
 
 /// Standing still holds the first idle pose for the delay, then dances through the cycle.
 #[test]
 fn starts_the_idle_cycle_after_the_delay() {
     let mut animation = PlayerAnimation::default();
-    let still = PlayerMoment { elapsed_ms: IDLE_DELAY_MS, ..moment() };
+    let still = PlayerMoment {
+        elapsed_ms: IDLE_DELAY_MS,
+        ..moment()
+    };
     let first = animation.advance(still, SHEETS);
     assert_eq!(first.sheet, PlayerSheet::Idle);
     assert_eq!(first.pose, 0);
     assert_eq!(first.facing, START_FACING, "it keeps facing the camera");
     let mut animation = PlayerAnimation::default();
     animation.advance(
-        PlayerMoment { elapsed_ms: IDLE_DELAY_MS + IDLE_PERIOD_MS / 2.0, ..moment() },
+        PlayerMoment {
+            elapsed_ms: IDLE_DELAY_MS + IDLE_PERIOD_MS / 2.0,
+            ..moment()
+        },
         SHEETS,
     );
     assert_eq!(
-        animation.advance(PlayerMoment { elapsed_ms: 0.0, ..moment() }, SHEETS).pose,
+        animation
+            .advance(
+                PlayerMoment {
+                    elapsed_ms: 0.0,
+                    ..moment()
+                },
+                SHEETS
+            )
+            .pose,
         4,
         "half way through the cycle"
     );
@@ -71,7 +96,13 @@ fn starts_the_idle_cycle_after_the_delay() {
 #[test]
 fn walking_resets_the_idle_cycle() {
     let mut animation = PlayerAnimation::default();
-    animation.advance(PlayerMoment { elapsed_ms: 10_000.0, ..moment() }, SHEETS);
+    animation.advance(
+        PlayerMoment {
+            elapsed_ms: 10_000.0,
+            ..moment()
+        },
+        SHEETS,
+    );
     animation.advance(
         PlayerMoment {
             motion: PlayerMotionType::Walking,
@@ -82,7 +113,13 @@ fn walking_resets_the_idle_cycle() {
         },
         SHEETS,
     );
-    let pose = animation.advance(PlayerMoment { elapsed_ms: IDLE_DELAY_MS, ..moment() }, SHEETS);
+    let pose = animation.advance(
+        PlayerMoment {
+            elapsed_ms: IDLE_DELAY_MS,
+            ..moment()
+        },
+        SHEETS,
+    );
     assert_eq!((pose.sheet, pose.pose), (PlayerSheet::Idle, 0));
     assert_eq!(pose.facing, 4, "north, the way it last walked");
 }
@@ -98,14 +135,27 @@ fn runs_the_climb_sheet_over_the_climb() {
         jump_phase: PlayerJumpPhase::Rise,
         ..moment()
     };
-    animation.advance(PlayerMoment { elapsed_ms: 1_000.0, ..climbing(0.0) }, SHEETS);
-    assert_eq!(animation.advance(climbing(0.0), SHEETS), PlayerPose {
-        sheet: PlayerSheet::Climb,
-        pose: 0,
-        facing: 10,
-    });
+    animation.advance(
+        PlayerMoment {
+            elapsed_ms: 1_000.0,
+            ..climbing(0.0)
+        },
+        SHEETS,
+    );
+    assert_eq!(
+        animation.advance(climbing(0.0), SHEETS),
+        PlayerPose {
+            sheet: PlayerSheet::Climb,
+            pose: 0,
+            facing: 10,
+        }
+    );
     assert_eq!(animation.advance(climbing(0.5), SHEETS).pose, 4);
-    assert_eq!(animation.advance(climbing(1.0), SHEETS).pose, 8, "the last pose, not past it");
+    assert_eq!(
+        animation.advance(climbing(1.0), SHEETS).pose,
+        8,
+        "the last pose, not past it"
+    );
 }
 
 /// In the air the jump sheet shows the phase the physics is in.
@@ -120,7 +170,11 @@ fn shows_the_phase_of_a_jump() {
         (PlayerJumpPhase::Landing, 4),
     ] {
         let frame = animation.advance(
-            PlayerMoment { motion: PlayerMotionType::Jumping, jump_phase: phase, ..moment() },
+            PlayerMoment {
+                motion: PlayerMotionType::Jumping,
+                jump_phase: phase,
+                ..moment()
+            },
             SHEETS,
         );
         assert_eq!((frame.sheet, frame.pose), (PlayerSheet::Jump, pose));
@@ -133,7 +187,11 @@ fn shows_the_phase_of_a_jump() {
 /// Without a jump sheet, an airborne player takes the leaping pose of the walk sheet.
 #[test]
 fn falls_back_to_the_walk_sheet_in_the_air() {
-    let sheets = PlayerSheets { jump_poses: None, idle_poses: None, ..SHEETS };
+    let sheets = PlayerSheets {
+        jump_poses: None,
+        idle_poses: None,
+        ..SHEETS
+    };
     let mut animation = PlayerAnimation::default();
     let frame = animation.advance(
         PlayerMoment {
@@ -143,7 +201,10 @@ fn falls_back_to_the_walk_sheet_in_the_air() {
         },
         sheets,
     );
-    assert_eq!((frame.sheet, frame.pose), (PlayerSheet::Walk, AIR_POSE as usize));
+    assert_eq!(
+        (frame.sheet, frame.pose),
+        (PlayerSheet::Walk, AIR_POSE as usize)
+    );
     // And with no idle sheet either, standing still is the walk sheet's own standing column.
     let standing = animation.advance(moment(), sheets);
     assert_eq!((standing.sheet, standing.pose), (PlayerSheet::Walk, 0));
@@ -159,10 +220,17 @@ fn pedals_against_a_skid() {
         ..moment()
     };
     let mut forwards = PlayerAnimation::default();
-    assert_eq!(forwards.advance(skid(GridPoint { x: 1.0, y: -1.0 }), SHEETS).pose, 3);
+    assert_eq!(
+        forwards
+            .advance(skid(GridPoint { x: 1.0, y: -1.0 }), SHEETS)
+            .pose,
+        3
+    );
     let mut backwards = PlayerAnimation::default();
     assert_eq!(
-        backwards.advance(skid(GridPoint { x: 0.0, y: 0.0 }), SHEETS).pose,
+        backwards
+            .advance(skid(GridPoint { x: 0.0, y: 0.0 }), SHEETS)
+            .pose,
         7,
         "the cycle runs backwards from its end"
     );
@@ -194,8 +262,16 @@ fn reads_the_jump_columns_by_name() {
         .map(|pose| (*pose).to_owned())
         .collect();
     assert_eq!(jump_poses(&named, 5), Some([1, 3, 0, 4, 2]));
-    assert_eq!(jump_poses(&[], 5), Some([0, 1, 2, 3, 4]), "the declared order");
-    assert_eq!(jump_poses(&[], 4), None, "a sheet too short to hold the phases");
+    assert_eq!(
+        jump_poses(&[], 5),
+        Some([0, 1, 2, 3, 4]),
+        "the declared order"
+    );
+    assert_eq!(
+        jump_poses(&[], 4),
+        None,
+        "a sheet too short to hold the phases"
+    );
     assert_eq!(
         jump_poses(&["takeoff".to_owned()], 1),
         None,
@@ -221,7 +297,11 @@ fn turns_through_the_facings_between() {
     for _ in 0..5 {
         facings.push(animation.advance(east, SHEETS).facing);
     }
-    assert_eq!(facings, vec![13, 14, 15, 0, 0], "south-south-east, south-east, east-south-east");
+    assert_eq!(
+        facings,
+        vec![13, 14, 15, 0, 0],
+        "south-south-east, south-east, east-south-east"
+    );
 }
 
 /// It turns the shorter way round, and the time it takes does not depend on the frame rate.
@@ -235,14 +315,28 @@ fn turns_the_short_way_at_a_steady_rate() {
     };
     // South (12) to west (8) is four facings the other way: 11, 10, 9, 8.
     let mut animation = PlayerAnimation::default();
-    assert_eq!(animation.advance(west(TURN_MS_PER_FACING), SHEETS).facing, 11);
+    assert_eq!(
+        animation.advance(west(TURN_MS_PER_FACING), SHEETS).facing,
+        11
+    );
     // Four facings' worth of time in one frame arrives at once, and not past the target.
     let mut quick = PlayerAnimation::default();
-    assert_eq!(quick.advance(west(TURN_MS_PER_FACING * 10.0), SHEETS).facing, 8);
+    assert_eq!(
+        quick
+            .advance(west(TURN_MS_PER_FACING * 10.0), SHEETS)
+            .facing,
+        8
+    );
     // Time under a whole facing is kept rather than dropped: three thirds make one step.
     let mut slow = PlayerAnimation::default();
     for _ in 0..2 {
-        assert_eq!(slow.advance(west(TURN_MS_PER_FACING / 3.0), SHEETS).facing, 12);
+        assert_eq!(
+            slow.advance(west(TURN_MS_PER_FACING / 3.0), SHEETS).facing,
+            12
+        );
     }
-    assert_eq!(slow.advance(west(TURN_MS_PER_FACING / 3.0), SHEETS).facing, 11);
+    assert_eq!(
+        slow.advance(west(TURN_MS_PER_FACING / 3.0), SHEETS).facing,
+        11
+    );
 }

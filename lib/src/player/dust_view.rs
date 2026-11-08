@@ -137,7 +137,11 @@ impl DustPuffs {
 
     /// How many puffs are still rising, for the heads-up display and the tests.
     pub fn live(&self) -> usize {
-        self.puffs.iter().flatten().filter(|puff| puff.ms.is_some()).count()
+        self.puffs
+            .iter()
+            .flatten()
+            .filter(|puff| puff.ms.is_some())
+            .count()
     }
 
     /// Notices what the player has done since the last frame and raises the dust for it: a puff
@@ -156,10 +160,28 @@ impl DustPuffs {
         if feedback.landings != self.seen_landings && feedback.impact >= DUST_MIN_IMPACT {
             // On the ground it landed on: drawn between ticks, the feet may still be a little
             // above it.
-            self.raise(LANDING_PUFF, BURST_DUST, at.feet, at.ground, ZERO, ZERO, at.tile_height, top_at);
+            self.raise(
+                LANDING_PUFF,
+                BURST_DUST,
+                at.feet,
+                at.ground,
+                ZERO,
+                ZERO,
+                at.tile_height,
+                top_at,
+            );
         }
         if feedback.jumps != self.seen_jumps {
-            self.raise(TAKEOFF_PUFF, BURST_DUST, at.feet, at.level, ZERO, ZERO, at.tile_height, top_at);
+            self.raise(
+                TAKEOFF_PUFF,
+                BURST_DUST,
+                at.feet,
+                at.level,
+                ZERO,
+                ZERO,
+                at.tile_height,
+                top_at,
+            );
         }
         self.seen_landings = feedback.landings;
         self.seen_jumps = feedback.jumps;
@@ -193,9 +215,21 @@ impl DustPuffs {
         let velocity = player.velocity;
         let speed = velocity.x.hypot(velocity.y);
         let speed = if speed == 0.0 { 1.0 } else { speed };
-        let kick = GridPoint { x: -velocity.x / speed, y: -velocity.y / speed };
+        let kick = GridPoint {
+            x: -velocity.x / speed,
+            y: -velocity.y / speed,
+        };
         let index = 2 + self.run_puff;
-        self.raise(index, KICK_DUST, at.feet, at.level, kick, ZERO, at.tile_height, top_at);
+        self.raise(
+            index,
+            KICK_DUST,
+            at.feet,
+            at.level,
+            kick,
+            ZERO,
+            at.tile_height,
+            top_at,
+        );
         self.run_puff = (self.run_puff + 1) % RUN_PUFFS;
     }
 
@@ -220,7 +254,14 @@ impl DustPuffs {
             .iter()
             .map(|voxel| voxel_key(*voxel, feet, level, tile_height, top_at))
             .collect();
-        self.puffs[index] = Some(Puff { shape, voxels, keys, feet, level, ms: Some(0.0) });
+        self.puffs[index] = Some(Puff {
+            shape,
+            voxels,
+            keys,
+            feet,
+            level,
+            ms: Some(0.0),
+        });
     }
 
     /// Ages every live puff by `elapsed_ms` of real time, ending the ones whose life is over.
@@ -238,10 +279,15 @@ impl DustPuffs {
         let box_height = projection.elevation_step.unwrap_or(projection.tile_height);
         for puff in self.puffs.iter().flatten() {
             let Some(ms) = puff.ms else { continue };
-            let Some(look) = get_dust(ms, puff.shape.ms, puff.shape.alpha) else { continue };
+            let Some(look) = get_dust(ms, puff.shape.ms, puff.shape.alpha) else {
+                continue;
+            };
             // The feet's own cell centre, as everything else standing on a column is projected.
             let screen = project_grid_point(
-                GridPoint { x: puff.feet.x + 0.5, y: puff.feet.y + 0.5 },
+                GridPoint {
+                    x: puff.feet.x + 0.5,
+                    y: puff.feet.y + 0.5,
+                },
                 projection,
             );
             for (voxel, key) in puff.voxels.iter().zip(&puff.keys) {
@@ -251,11 +297,20 @@ impl DustPuffs {
                     - (at.x + at.y) * (projection.tile_height / 2.0)
                     - (puff.level + at.height) * box_height;
                 let faces = offset(
-                    voxel_faces(at.size, projection.tile_width, projection.tile_height, box_height),
+                    voxel_faces(
+                        at.size,
+                        projection.tile_width,
+                        projection.tile_height,
+                        box_height,
+                    ),
                     x,
                     y,
                 );
-                draws.push(SpriteDraw::voxel(*key, faces, colours(voxel.shade, look.alpha)));
+                draws.push(SpriteDraw::voxel(
+                    *key,
+                    faces,
+                    colours(voxel.shade, look.alpha),
+                ));
             }
         }
     }
@@ -274,7 +329,10 @@ fn voxel_key(
     top_at: &impl Fn(i32, i32) -> Option<f64>,
 ) -> DrawKey {
     let at = get_dust_voxel_at(voxel, 0.5);
-    let point = GridPoint { x: feet.x + at.x, y: feet.y + at.y };
+    let point = GridPoint {
+        x: feet.x + at.x,
+        y: feet.y + at.y,
+    };
     let column = get_dust_column(point, feet, level, top_at);
     let key = crate::assets::sprites::scene_key(
         f64::from(column.x) + 0.5,
@@ -286,7 +344,10 @@ fn voxel_key(
     if column.behind {
         key
     } else {
-        DrawKey { depth: key.depth + DUST_FRONT_DEPTH, layer: key.layer }
+        DrawKey {
+            depth: key.depth + DUST_FRONT_DEPTH,
+            layer: key.layer,
+        }
     }
 }
 

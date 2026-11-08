@@ -13,7 +13,10 @@ fn shipped() -> AssetManifest {
 /// The lookup the client gives `TerrainLook::new`, over a manifest instead of a GPU atlas.
 fn artwork(manifest: &AssetManifest) -> impl Fn(&str) -> Option<(SpriteFrame, InkBox)> + '_ {
     move |source: &str| {
-        let entry = manifest.entries.iter().find(|entry| entry.source == source)?;
+        let entry = manifest
+            .entries
+            .iter()
+            .find(|entry| entry.source == source)?;
         Some((entry.primary_frame()?, entry.ink?))
     }
 }
@@ -38,10 +41,17 @@ fn every_grass_top_is_in_the_shipped_atlas() {
 #[test]
 fn a_top_stands_in_its_cell_exactly_where_the_plain_block_does() {
     let manifest = shipped();
-    let plain = artwork(&manifest)("/assets/grass/block.svg").expect("the plain grass block").1;
+    let plain = artwork(&manifest)("/assets/grass/block.svg")
+        .expect("the plain grass block")
+        .1;
     for (source, _) in GRASS_TOPS {
-        let ink = artwork(&manifest)(source).unwrap_or_else(|| panic!("{source}")).1;
-        assert_eq!(ink, plain, "{source} is not drawn on the plain block's template");
+        let ink = artwork(&manifest)(source)
+            .unwrap_or_else(|| panic!("{source}"))
+            .1;
+        assert_eq!(
+            ink, plain,
+            "{source} is not drawn on the plain block's template"
+        );
     }
 }
 
@@ -50,7 +60,10 @@ fn a_top_stands_in_its_cell_exactly_where_the_plain_block_does() {
 #[test]
 fn the_tops_dress_about_a_third_of_the_grass() {
     let total: f64 = GRASS_TOPS.iter().map(|(_, chance)| chance).sum();
-    assert!((0.2..0.4).contains(&total), "{total} of the grass would be dressed");
+    assert!(
+        (0.2..0.4).contains(&total),
+        "{total} of the grass would be dressed"
+    );
     assert!(
         GRASS_TOPS.iter().all(|(_, chance)| *chance > 0.0),
         "a top with no chance is a top that never shows; drop it instead"
@@ -82,7 +95,11 @@ fn a_top_the_atlas_lacks_is_left_out_and_the_others_still_grow() {
     let manifest = shipped();
     let full = artwork(&manifest);
     let (look, missing) = TerrainLook::new(SEED, |source| {
-        if source == GRASS_TOPS[0].0 { None } else { full(source) }
+        if source == GRASS_TOPS[0].0 {
+            None
+        } else {
+            full(source)
+        }
     });
     assert_eq!(missing, vec![GRASS_TOPS[0].0]);
     let (_, looks) = look.grass_tops.as_ref().expect("the rest still grow");
@@ -90,7 +107,10 @@ fn a_top_the_atlas_lacks_is_left_out_and_the_others_still_grow() {
     let dressed = columns(200).filter(|(x, y)| look.top(TerrainMaterial::Grass, *x, *y).is_some());
     let share = dressed.count() as f64 / 40_000.0;
     let asked: f64 = GRASS_TOPS.iter().skip(1).map(|(_, chance)| chance).sum();
-    assert!((share - asked).abs() < 0.05, "{share} dressed, {asked} asked for");
+    assert!(
+        (share - asked).abs() < 0.05,
+        "{share} dressed, {asked} asked for"
+    );
 }
 
 /// With no artwork at all the ground is plain grass, not invisible: the picker is skipped.
@@ -116,7 +136,11 @@ fn only_the_land_materials_are_tinted_and_never_brightened() {
             "{material:?} keeps its own colour"
         );
     }
-    for material in [TerrainMaterial::Grass, TerrainMaterial::Ground, TerrainMaterial::Path] {
+    for material in [
+        TerrainMaterial::Grass,
+        TerrainMaterial::Ground,
+        TerrainMaterial::Path,
+    ] {
         let mut seen = Vec::new();
         for (x, y) in columns(80) {
             let tint = look.tint(material, x, y);
@@ -126,7 +150,10 @@ fn only_the_land_materials_are_tinted_and_never_brightened() {
                 seen.push([tint.r, tint.g, tint.b]);
             }
         }
-        assert!(seen.len() > 1, "{material:?} has zones but shows one colour");
+        assert!(
+            seen.len() > 1,
+            "{material:?} has zones but shows one colour"
+        );
     }
 }
 
@@ -143,8 +170,10 @@ fn a_path_takes_the_colour_of_the_grass_it_crosses() {
         );
     }
     // The bare ground has its own, much subtler palette, and does not follow the grass.
-    assert!(columns(60).any(|(x, y)| look.tint(TerrainMaterial::Ground, x, y)
-        != look.tint(TerrainMaterial::Grass, x, y)));
+    assert!(
+        columns(60).any(|(x, y)| look.tint(TerrainMaterial::Ground, x, y)
+            != look.tint(TerrainMaterial::Grass, x, y))
+    );
 }
 
 /// The grass palette has to read through the baked shadows and the day's light, so its ends are
@@ -156,11 +185,17 @@ fn the_grass_zones_read_and_the_ground_zones_whisper() {
     assert!(darkest.0 < 0.8, "the lush zone barely darkens: {darkest:?}");
     let driest = tint_channels(grass[grass.len() - 1]);
     assert!(driest.2 < 0.7, "the dry zone barely yellows: {driest:?}");
-    assert!(grass.contains(&0xffffff), "one zone has to be the grass as painted");
+    assert!(
+        grass.contains(&0xffffff),
+        "one zone has to be the grass as painted"
+    );
     let (_, ground) = LAND_TINTS;
     for color in ground {
         let (red, green, blue) = tint_channels(*color);
-        assert!(red.min(green).min(blue) > 0.8, "{color:#08x} is not a whisper");
+        assert!(
+            red.min(green).min(blue) > 0.8,
+            "{color:#08x} is not a whisper"
+        );
     }
 }
 
@@ -177,7 +212,8 @@ fn the_dressing_follows_the_world_seed() {
             .map(|(x, y)| {
                 (
                     look.tint(TerrainMaterial::Grass, x, y).g,
-                    look.top(TerrainMaterial::Grass, x, y).map(|(frame, _)| frame.x),
+                    look.top(TerrainMaterial::Grass, x, y)
+                        .map(|(frame, _)| frame.x),
                 )
             })
             .collect()

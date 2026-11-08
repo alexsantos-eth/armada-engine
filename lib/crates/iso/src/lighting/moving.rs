@@ -16,11 +16,10 @@
 //! drawn in front of it covers: the shadow of a figure two tiles long came out as a stub under
 //! its feet.
 //!
-//! **No terrain occlusion.** Every visible surface reads the part of the silhouette that reaches
-//! its own plane. A step can therefore show the projection on its top, its vertical face and the
-//! next top without subtracting a rectangular occluder from a level that only overlaps in the
-//! depth sort. The scene owns which pieces cover one another; this module only deforms and cuts
-//! them to their receiving surfaces.
+//! **Steps stop only the ground behind them.** A higher top catches the rays that would continue
+//! onto lower ground past its wall. The wall itself remains a receiver, so the shadow deforms over
+//! it instead of extending onto a second horizontal silhouette beyond the level change. Equal
+//! levels never occlude one another.
 //!
 //! **Walls.** The TypeScript client bends its shadow onto the vertical sides of the ground, and
 //! so does this: a wall is just another surface with its own two parameters, and because the map
@@ -39,10 +38,10 @@ use super::shadow::{lift_reach, silhouette_matrix, Affine2D, ShadowProjection};
 /// How far below a moving caster's own ground its shadow is still laid, in blocks.
 ///
 /// A lift carries the shadow [`lift_reach`] further along its direction — at dawn about one and
-/// three quarter tiles a block — so what is past this is both far from the figure and outside the
-/// useful moving-shadow area. It also bounds the square of cells a frame looks at. There is no
-/// cap the other way: ground that rises towards the caster takes whatever part of it still stands
-/// above that plane, which runs out on its own.
+/// three quarter tiles a block — so what is past this is both far from the figure and, after a
+/// step catches it, outside the useful moving-shadow area. It also bounds the square of cells a
+/// frame looks at. There is no cap the other way: ground that rises towards the caster takes
+/// whatever part of it still stands above that plane, which runs out on its own.
 pub const MAX_SHADOW_LIFT: f64 = 2.0;
 
 /// Area, in a surface's own parameters, below which a piece is dropped rather than drawn.
@@ -50,6 +49,9 @@ pub const MAX_SHADOW_LIFT: f64 = 2.0;
 /// A piece that merely touches a cell's edge clips to a sliver of a few millionths of it; it
 /// draws nothing and costs a mesh.
 const MIN_PIECE_AREA: f64 = 1e-6;
+
+/// Bound the fragments left when nearby higher tops remove regions from lower ground.
+const MAX_PIECES_PER_SURFACE: usize = 24;
 
 /// A surface a shadow can land on: the top of a cell, or one exposed vertical face of the ground.
 ///
@@ -157,6 +159,8 @@ struct SurfaceReading {
     across: (f64, f64),
     /// What one unit of `down` adds to it.
     down: (f64, f64),
+    /// The surface in world tiles, as `(origin, across, down)`.
+    world: ((f64, f64), (f64, f64), (f64, f64)),
     /// The surface's height in blocks, as `(origin, across, down)`.
     height: (f64, f64, f64),
 }
@@ -237,6 +241,8 @@ pub fn moving_shadow_area(
 /// * `level` — the level it is drawn standing on, in blocks, a jump included.
 /// * `surfaces` — every cell top and face the shadow may land on, which is what
 ///   [`moving_shadow_area`] bounds.
+/// * `blockers` — cell tops which stop rays before they reach lower ground. Faces are never
+///   blocked here: they are the deliberately retained deformation at a level transition.
 #[allow(clippy::too_many_arguments)]
 pub fn moving_shadow_pieces(
     light: &ShadowProjection,
@@ -246,6 +252,7 @@ pub fn moving_shadow_pieces(
     tile_width: f64,
     box_height: f64,
     surfaces: &[ShadowSurface],
+    blockers: &[((i32, i32), f64)],
     out: &mut Vec<ShadowPiece>,
 ) {
     let above_foot = (-extent.top).clamp(0.0, extent.height);
@@ -288,6 +295,20 @@ pub fn moving_shadow_pieces(
         }
         if pieces.is_empty() {
             continue;
+        }
+        // A level transition ends the horizontal run, but its exposed wall keeps the same
+        // deformed projection. Applying this only to ground also means a flat neighbouring tile
+        // can never punch a rectangle through the shadow.
+        if matches!(surface, ShadowSurface::Ground { .. }) {
+            for &(cell, blocker) in blockers {
+                if blocker <= surface.bottom() + f64::EPSILON {
+                    continue;
+                }
+                blocked_by(&mut pieces, &reading, light, per_block, cell, blocker);
+                if pieces.is_empty() {
+                    break;
+                }
+            }
         }
         for piece in pieces.drain(..) {
             if piece.len() < 3 || area(&piece).abs() < MIN_PIECE_AREA {
@@ -337,8 +358,87 @@ fn read_surface(
         origin,
         across: (at_across.0 - origin.0, at_across.1 - origin.1),
         down: (at_down.0 - origin.0, at_down.1 - origin.1),
+        world: (
+            (corner.0, corner.1),
+            (across.0 - corner.0, across.1 - corner.1),
+            (down.0 - corner.0, down.1 - corner.1),
+        ),
         height: (corner.2, across.2 - corner.2, down.2 - corner.2),
     }
+}
+
+/// Removes from lower ground the rays whose path already met the top of `cell`.
+fn blocked_by(
+    pieces: &mut Vec<Vec<(f64, f64)>>,
+    reading: &SurfaceReading,
+    light: &ShadowProjection,
+    per_block: f64,
+    cell: (i32, i32),
+    blocker: f64,
+) {
+    let (origin, across, down) = reading.world;
+    let (height, height_across, height_down) = reading.height;
+    let ray = |axis: usize| {
+        let (world, raised, direction) = match axis {
+            0 => (
+                (origin.0, across.0, down.0),
+                (0.0, height_across, height_down),
+                light.dir_x,
+            ),
+            _ => (
+                (origin.1, across.1, down.1),
+                (0.0, height_across, height_down),
+                light.dir_y,
+            ),
+        };
+        let drop = per_block * (blocker - height);
+        Plane {
+            a: world.1 + per_block * raised.1 * direction,
+            b: world.2 + per_block * raised.2 * direction,
+            c: world.0 - drop * direction,
+        }
+    };
+    let (at_x, at_y) = (ray(0), ray(1));
+    let inside = [
+        offset(at_x, -f64::from(cell.0)),
+        offset(at_x, -(f64::from(cell.0) + 1.0)).flipped(),
+        offset(at_y, -f64::from(cell.1)),
+        offset(at_y, -(f64::from(cell.1) + 1.0)).flipped(),
+        Plane {
+            a: -height_across,
+            b: -height_down,
+            c: blocker - height,
+        },
+    ];
+    subtract(pieces, &inside);
+}
+
+/// Removes a convex blocked region from every convex piece.
+fn subtract(pieces: &mut Vec<Vec<(f64, f64)>>, inside: &[Plane]) {
+    let mut kept = Vec::with_capacity(pieces.len());
+    for piece in pieces.drain(..) {
+        if inside
+            .iter()
+            .any(|plane| piece.iter().all(|&corner| plane.at(corner) < 0.0))
+        {
+            kept.push(piece);
+            continue;
+        }
+        let mut left = piece;
+        for &plane in inside {
+            let mut outside = left.clone();
+            clip(&mut outside, plane.flipped());
+            if outside.len() >= 3 && area(&outside).abs() >= MIN_PIECE_AREA {
+                kept.push(outside);
+            }
+            clip(&mut left, plane);
+            if left.len() < 3 {
+                break;
+            }
+        }
+    }
+    kept.truncate(MAX_PIECES_PER_SURFACE);
+    *pieces = kept;
 }
 
 /// Cuts `polygon` down to the side of `plane` where it is positive, in place.

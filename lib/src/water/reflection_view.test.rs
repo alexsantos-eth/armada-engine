@@ -16,7 +16,12 @@ fn projection() -> ProjectionConfig {
 }
 
 fn frame() -> SpriteFrame {
-    SpriteFrame { x: 0, y: 0, width: 64, height: 64 }
+    SpriteFrame {
+        x: 0,
+        y: 0,
+        width: 64,
+        height: 64,
+    }
 }
 
 /// Where the client puts the ground point of the cell `(x, y)` at `elevation`.
@@ -29,7 +34,10 @@ fn feet(cell: (i32, i32), elevation: f64) -> ScreenPoint {
         elevation,
         projection(),
     );
-    ScreenPoint { x: at.screen_x, y: at.screen_y }
+    ScreenPoint {
+        x: at.screen_x,
+        y: at.screen_y,
+    }
 }
 
 /// A sprite standing on `at`, a tile wide and `tall` pixels high, as the atlas would place it.
@@ -133,7 +141,12 @@ fn the_pieces_lie_in_front_of_what_they_mirror() {
 /// Dry land shows nothing, however much stands on it.
 #[test]
 fn dry_land_mirrors_nothing() {
-    let draws = collect((0, 0), 0.0, Reflected::Standing { turn_at: None }, |_, _| None);
+    let draws = collect(
+        (0, 0),
+        0.0,
+        Reflected::Standing { turn_at: None },
+        |_, _| None,
+    );
     assert!(draws.is_empty());
 }
 
@@ -150,7 +163,10 @@ fn water_above_the_caster_mirrors_nothing() {
 fn something_on_a_bank_is_mirrored_further_out() {
     let on_water = collect((0, 0), 0.0, Reflected::Standing { turn_at: None }, sea(0.0));
     let on_bank = collect((0, 0), 2.0, Reflected::Standing { turn_at: None }, sea(0.0));
-    assert!(!on_bank.is_empty(), "the water two blocks below still shows it");
+    assert!(
+        !on_bank.is_empty(),
+        "the water two blocks below still shows it"
+    );
     let lowest = |draws: &[SpriteDraw]| {
         draws
             .iter()
@@ -217,13 +233,23 @@ fn a_piece_sorts_by_the_water_it_lies_on() {
 fn the_pieces_read_the_casters_own_artwork_in_the_waters_colour() {
     let draws = collect((0, 0), 0.0, Reflected::Standing { turn_at: None }, sea(0.0));
     for draw in &draws {
-        let DrawKind::Reflection { texture, frame: drawn, uv, points, colour } = &draw.kind else {
+        let DrawKind::Reflection {
+            texture,
+            frame: drawn,
+            uv,
+            points,
+            colour,
+        } = &draw.kind
+        else {
             unreachable!()
         };
         assert_eq!(*texture, 3, "the caster's own texture");
         assert_eq!(*drawn, frame(), "and its own frame");
         assert_eq!(uv.len(), points.len());
-        assert!(uv.iter().all(|&(u, v)| (0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v)));
+        assert!(
+            uv.iter()
+                .all(|&(u, v)| (0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v))
+        );
         assert_eq!(*colour, REFLECTION_TINT);
     }
 }
@@ -236,7 +262,12 @@ fn a_sprite_with_no_area_mirrors_nothing() {
     collect_reflection(
         0,
         frame(),
-        SpriteLayout { x: at.x, y: at.y, width: 0.0, height: 0.0 },
+        SpriteLayout {
+            x: at.x,
+            y: at.y,
+            width: 0.0,
+            height: 0.0,
+        },
         at,
         0.0,
         Reflected::Standing { turn_at: None },
@@ -260,7 +291,11 @@ fn a_projection_with_no_tile_height_mirrors_nothing() {
         at,
         0.0,
         Reflected::Standing { turn_at: None },
-        ProjectionConfig { tile_height: 0.0, elevation_step: None, ..projection() },
+        ProjectionConfig {
+            tile_height: 0.0,
+            elevation_step: None,
+            ..projection()
+        },
         sea(0.0),
         &mut out,
     );

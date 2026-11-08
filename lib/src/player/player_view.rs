@@ -12,9 +12,7 @@
 //! covered rather than with time, so it does not slide when the frame rate changes and a
 //! running player's feet turn over faster on their own.
 
-use iso::player::{
-    PLAYER_FACINGS, PlayerJumpPhase, PlayerMotionType, get_player_facing,
-};
+use iso::player::{PLAYER_FACINGS, PlayerJumpPhase, PlayerMotionType, get_player_facing};
 use iso::projection::GridPoint;
 use iso::scene_order::{PlayerFrame, PlayerFrameInput, PlayerSheet, select_player_frame};
 
@@ -90,10 +88,7 @@ pub fn jump_poses(poses: &[String], columns: usize) -> Option<[usize; 5]> {
     const PHASES: [&str; 5] = ["takeoff", "rise", "apex", "fall", "landing"];
     let mut found = [0usize; 5];
     for (index, (slot, phase)) in found.iter_mut().zip(PHASES).enumerate() {
-        *slot = poses
-            .iter()
-            .position(|pose| pose == phase)
-            .unwrap_or(index);
+        *slot = poses.iter().position(|pose| pose == phase).unwrap_or(index);
         if *slot >= columns {
             return None;
         }
@@ -123,7 +118,12 @@ pub struct PlayerAnimation {
 
 impl Default for PlayerAnimation {
     fn default() -> Self {
-        Self { facing: START_FACING, turning_ms: 0.0, walked: 0.0, stood_ms: 0.0 }
+        Self {
+            facing: START_FACING,
+            turning_ms: 0.0,
+            walked: 0.0,
+            stood_ms: 0.0,
+        }
     }
 }
 
@@ -155,7 +155,9 @@ impl PlayerAnimation {
         self.turn_towards(target, moment.elapsed_ms);
         // Skidding, the feet pedal against the slide, backwards if the controls were let go.
         let pedal = match moment.motion {
-            PlayerMotionType::Skidding if moment.direction.x == 0.0 && moment.direction.y == 0.0 => {
+            PlayerMotionType::Skidding
+                if moment.direction.x == 0.0 && moment.direction.y == 0.0 =>
+            {
                 -SKID_PEDAL
             }
             PlayerMotionType::Skidding => SKID_PEDAL,

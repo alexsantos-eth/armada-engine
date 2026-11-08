@@ -40,7 +40,10 @@ fn player_at(x: f64, y: f64) -> PlayerState {
 
 fn react(dust: &mut DustPuffs, player: &PlayerState, moved: f64) {
     let at = DustGround {
-        feet: GridPoint { x: player.x, y: player.y },
+        feet: GridPoint {
+            x: player.x,
+            y: player.y,
+        },
         level: 2.0,
         ground: 2.0,
         moved,
@@ -56,13 +59,25 @@ fn a_take_off_and_a_hard_landing_each_raise_a_puff() {
     react(&mut dust, &player, 0.0);
     assert_eq!(dust.live(), 0, "standing still raises nothing");
 
-    player.feedback = PlayerFeedback { jumps: 1, ..PlayerFeedback::default() };
+    player.feedback = PlayerFeedback {
+        jumps: 1,
+        ..PlayerFeedback::default()
+    };
     react(&mut dust, &player, 0.0);
     assert_eq!(dust.live(), 1, "a take-off puffs");
 
-    player.feedback = PlayerFeedback { jumps: 1, landings: 1, impact: 0.4, ..PlayerFeedback::default() };
+    player.feedback = PlayerFeedback {
+        jumps: 1,
+        landings: 1,
+        impact: 0.4,
+        ..PlayerFeedback::default()
+    };
     react(&mut dust, &player, 0.0);
-    assert_eq!(dust.live(), 2, "and so does the landing, in a slot of its own");
+    assert_eq!(
+        dust.live(),
+        2,
+        "and so does the landing, in a slot of its own"
+    );
 }
 
 #[test]
@@ -96,7 +111,11 @@ fn only_running_and_skidding_leave_a_trail() {
 
     player.motion = PlayerMotionType::Skidding;
     react(&mut dust, &player, SKID_DUST_EVERY);
-    assert_eq!(dust.live(), 2, "a skid puffs more often, into the next slot");
+    assert_eq!(
+        dust.live(),
+        2,
+        "a skid puffs more often, into the next slot"
+    );
 }
 
 #[test]
@@ -108,20 +127,31 @@ fn the_trail_reuses_its_slots_in_turn_and_never_grows() {
     for _ in 0..RUN_PUFFS * 3 {
         react(&mut dust, &player, RUN_DUST_EVERY);
     }
-    assert_eq!(dust.live(), RUN_PUFFS, "a long run keeps the pool's worth of puffs, no more");
+    assert_eq!(
+        dust.live(),
+        RUN_PUFFS,
+        "a long run keeps the pool's worth of puffs, no more"
+    );
 }
 
 #[test]
 fn a_puff_ends_when_its_life_is_over() {
     let mut dust = DustPuffs::new();
     let mut player = player_at(4.0, 4.0);
-    player.feedback = PlayerFeedback { jumps: 1, ..PlayerFeedback::default() };
+    player.feedback = PlayerFeedback {
+        jumps: 1,
+        ..PlayerFeedback::default()
+    };
     react(&mut dust, &player, 0.0);
     assert_eq!(dust.live(), 1);
     dust.advance(BURST_DUST.ms / 2.0);
     assert_eq!(dust.live(), 1, "halfway through it is still rising");
     dust.advance(BURST_DUST.ms);
-    assert_eq!(dust.live(), 0, "past its life it is gone, and its slot is free");
+    assert_eq!(
+        dust.live(),
+        0,
+        "past its life it is gone, and its slot is free"
+    );
 }
 
 #[test]
@@ -135,12 +165,19 @@ fn a_live_puff_queues_one_cube_per_voxel_and_a_dead_one_queues_none() {
     };
     let mut dust = DustPuffs::new();
     let mut player = player_at(4.0, 4.0);
-    player.feedback = PlayerFeedback { jumps: 1, ..PlayerFeedback::default() };
+    player.feedback = PlayerFeedback {
+        jumps: 1,
+        ..PlayerFeedback::default()
+    };
     react(&mut dust, &player, 0.0);
 
     let mut draws = Vec::new();
     dust.collect(projection, &mut draws);
-    assert_eq!(draws.len(), BURST_DUST.voxels, "one cube per voxel of the puff");
+    assert_eq!(
+        draws.len(),
+        BURST_DUST.voxels,
+        "one cube per voxel of the puff"
+    );
 
     dust.advance(BURST_DUST.ms * 2.0);
     draws.clear();
@@ -159,7 +196,10 @@ fn a_cube_is_drawn_white_and_fades_with_its_puff() {
     };
     let mut dust = DustPuffs::new();
     let mut player = player_at(4.0, 4.0);
-    player.feedback = PlayerFeedback { jumps: 1, ..PlayerFeedback::default() };
+    player.feedback = PlayerFeedback {
+        jumps: 1,
+        ..PlayerFeedback::default()
+    };
     react(&mut dust, &player, 0.0);
 
     let mut draws = Vec::new();
@@ -170,9 +210,15 @@ fn a_cube_is_drawn_white_and_fades_with_its_puff() {
     };
     let (colours, faces) = first;
     for colour in colours {
-        assert!(colour.r > 0.65 && colour.g > 0.65 && colour.b > 0.65, "dust is near white");
+        assert!(
+            colour.r > 0.65 && colour.g > 0.65 && colour.b > 0.65,
+            "dust is near white"
+        );
     }
-    assert!(colours[0].r > colours[1].r && colours[1].r > colours[2].r, "the top is the lit face");
+    assert!(
+        colours[0].r > colours[1].r && colours[1].r > colours[2].r,
+        "the top is the lit face"
+    );
     assert!(colours[0].a > 0.5, "a fresh puff is nearly opaque");
     // The three faces meet along the cube's near vertical edge, so it reads as one block.
     assert_eq!(faces.left[1], faces.right[0]);
@@ -194,11 +240,16 @@ fn dust_behind_the_feet_sorts_under_the_player_and_dust_in_front_over_it() {
     // behind what stands on the column and some in front of it.
     let mut dust = DustPuffs::new();
     let mut player = player_at(4.0, 4.0);
-    player.feedback = PlayerFeedback { jumps: 1, ..PlayerFeedback::default() };
+    player.feedback = PlayerFeedback {
+        jumps: 1,
+        ..PlayerFeedback::default()
+    };
     react(&mut dust, &player, 0.0);
 
-    let behind = crate::assets::sprites::scene_key(4.5, 4.5, 2.0, crate::PLAYER_BEHIND_LAYER, TILE / 2.0);
-    let front = crate::assets::sprites::scene_key(4.5, 4.5, 2.0, crate::PLAYER_FRONT_LAYER, TILE / 2.0);
+    let behind =
+        crate::assets::sprites::scene_key(4.5, 4.5, 2.0, crate::PLAYER_BEHIND_LAYER, TILE / 2.0);
+    let front =
+        crate::assets::sprites::scene_key(4.5, 4.5, 2.0, crate::PLAYER_FRONT_LAYER, TILE / 2.0);
     let projection = ProjectionConfig {
         tile_width: TILE,
         tile_height: TILE / 2.0,
@@ -217,9 +268,16 @@ fn dust_behind_the_feet_sorts_under_the_player_and_dust_in_front_over_it() {
         .iter()
         .filter(|draw| compare_draw_keys(&draw.key, &front) == std::cmp::Ordering::Greater)
         .count();
-    assert!(under > 0, "the dust behind the feet is drawn before the figure");
+    assert!(
+        under > 0,
+        "the dust behind the feet is drawn before the figure"
+    );
     assert!(over > 0, "and the dust in front of them after it");
-    assert_eq!(under + over, draws.len(), "every cube is on one side or the other");
+    assert_eq!(
+        under + over,
+        draws.len(),
+        "every cube is on one side or the other"
+    );
 }
 
 #[test]
@@ -233,6 +291,9 @@ fn the_dust_layer_sits_between_the_ground_and_the_player() {
     // The nudge that puts a cube in front can only reorder things sharing one cell: it is far
     // below what a block of elevation adds to a depth, let alone a row of columns.
     const {
-        assert!(DUST_FRONT_DEPTH < 0.001, "the nudge never jumps a cube to another column");
+        assert!(
+            DUST_FRONT_DEPTH < 0.001,
+            "the nudge never jumps a cube to another column"
+        );
     };
 }

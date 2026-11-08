@@ -3,7 +3,12 @@ use iso::assets::InkBox;
 
 #[test]
 fn an_inks_extent_is_the_rectangle_the_sprite_is_drawn_into() {
-    let ink = InkBox { x: -0.2, y: -0.5, width: 0.4, height: 0.6 };
+    let ink = InkBox {
+        x: -0.2,
+        y: -0.5,
+        width: 0.4,
+        height: 0.6,
+    };
     let extent = extent_of_ink(ink, 200.0);
 
     // The same numbers `ink_layout` draws with, measured from the ground point instead of from
@@ -17,7 +22,12 @@ fn an_inks_extent_is_the_rectangle_the_sprite_is_drawn_into() {
 #[test]
 fn a_receiver_keeps_its_artwork_relative_to_its_feet() {
     let feet = ScreenPoint { x: 500.0, y: 300.0 };
-    let layout = SpriteLayout { x: 460.0, y: 200.0, width: 80.0, height: 120.0 };
+    let layout = SpriteLayout {
+        x: 460.0,
+        y: 200.0,
+        width: 80.0,
+        height: 120.0,
+    };
     let receiver = receiver_of(layout, feet, (4.5, 7.5), 2.0);
 
     assert_eq!(receiver.foot, (4.5, 7.5));
@@ -31,7 +41,12 @@ fn the_nine_chunks_around_one_include_it_once() {
     let all = around(ChunkCoord { cx: 3, cy: -2 });
 
     assert_eq!(all.len(), 9);
-    assert_eq!(all.iter().filter(|c| **c == ChunkCoord { cx: 3, cy: -2 }).count(), 1);
+    assert_eq!(
+        all.iter()
+            .filter(|c| **c == ChunkCoord { cx: 3, cy: -2 })
+            .count(),
+        1
+    );
     assert!(all.contains(&ChunkCoord { cx: 2, cy: -3 }));
     assert!(all.contains(&ChunkCoord { cx: 4, cy: -1 }));
 }
@@ -68,8 +83,14 @@ fn the_atlas_carries_the_white_patch_the_shadows_are_drawn_from() {
         .find(|entry| entry.source == crate::assets::sprites::WHITE_PATCH)
         .unwrap_or_else(|| panic!("the atlas has no {}", crate::assets::sprites::WHITE_PATCH));
 
-    assert!(patch.primary_frame().is_some(), "the white patch was packed with no frame");
-    assert!(patch.texture.is_none(), "the white patch belongs in the shared atlas, not a sheet");
+    assert!(
+        patch.primary_frame().is_some(),
+        "the white patch was packed with no frame"
+    );
+    assert!(
+        patch.texture.is_none(),
+        "the white patch belongs in the shared atlas, not a sheet"
+    );
 }
 
 #[test]
@@ -89,12 +110,22 @@ fn a_clear_grid_asks_for_no_lattice() {
     let receiver = ShadowReceiver {
         foot: (1.0, 1.0),
         elevation: 0.0,
-        extent: SpriteExtent { left: -50.0, top: -100.0, width: 100.0, height: 100.0 },
+        extent: SpriteExtent {
+            left: -50.0,
+            top: -100.0,
+            width: 100.0,
+            height: 100.0,
+        },
     };
     let caster = ShadowCaster {
         foot: (0.0, 0.0),
         elevation: 0.0,
-        extent: SpriteExtent { left: -50.0, top: -100.0, width: 100.0, height: 100.0 },
+        extent: SpriteExtent {
+            left: -50.0,
+            top: -100.0,
+            width: 100.0,
+            height: 100.0,
+        },
         silhouette: 0,
     };
     let light = iso::lighting::DAWN;
@@ -105,7 +136,17 @@ fn a_clear_grid_asks_for_no_lattice() {
         light.opacity(),
         280.0,
         93.0,
-        &|_| Some(iso::lighting::Silhouette { alpha: &[255], stride: 1, rows: 1, left: 0.0, top: 0.0, right: 0.0, bottom: 0.0 }),
+        &|_| {
+            Some(iso::lighting::Silhouette {
+                alpha: &[255],
+                stride: 1,
+                rows: 1,
+                left: 0.0,
+                top: 0.0,
+                right: 0.0,
+                bottom: 0.0,
+            })
+        },
         None,
         SHADE_COLUMNS,
         SHADE_ROWS,
@@ -143,7 +184,9 @@ fn every_terrain_block_is_drawn_at_least_a_whole_cell_wide() {
             .iter()
             .find(|entry| entry.source == source)
             .unwrap_or_else(|| panic!("the atlas has no {source}"));
-        let ink = entry.ink.unwrap_or_else(|| panic!("{source} was never measured"));
+        let ink = entry
+            .ink
+            .unwrap_or_else(|| panic!("{source} was never measured"));
         assert!(
             ink.width >= 1.0,
             "{source} is drawn {} of a cell wide, so a field of it has gaps",

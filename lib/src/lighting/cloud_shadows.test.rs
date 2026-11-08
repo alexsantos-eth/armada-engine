@@ -48,7 +48,11 @@ fn the_pattern_holds_its_place_on_the_ground() {
     // A copy's offset within the period is all that is visible of the anchor, so an anchor and
     // the same anchor a whole period away place their copies identically.
     let near = cloud_copies((37.0, 11.0), period, screen);
-    let away = cloud_copies((37.0 + period.0 * 5.0, 11.0 - period.1 * 3.0), period, screen);
+    let away = cloud_copies(
+        (37.0 + period.0 * 5.0, 11.0 - period.1 * 3.0),
+        period,
+        screen,
+    );
     assert_eq!(near, away);
 }
 

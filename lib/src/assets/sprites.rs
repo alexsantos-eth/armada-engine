@@ -103,7 +103,11 @@ impl SheetAsset {
 impl SpriteAtlas {
     /// Builds the lookup over the textures the manifest names: the shared atlas, and then the
     /// sheet textures in `extra`, each under the path the manifest gave it.
-    pub fn new(atlas: Texture2D, extra: Vec<(String, Texture2D)>, manifest: &AssetManifest) -> Self {
+    pub fn new(
+        atlas: Texture2D,
+        extra: Vec<(String, Texture2D)>,
+        manifest: &AssetManifest,
+    ) -> Self {
         let mut textures = vec![atlas];
         debug_assert_eq!(ATLAS_TEXTURE, 0, "the shared atlas is the first texture");
         let mut indices: HashMap<&str, usize> = HashMap::new();
@@ -126,35 +130,47 @@ impl SpriteAtlas {
             if let (Some(sheet), Some(frames)) = (&entry.sheet, &entry.frames)
                 && let Some(ink) = entry.ink
             {
-                sheets.insert(entry.source.clone(), SheetAsset {
-                    ink,
-                    texture,
-                    columns: sheet.columns as usize,
-                    rows: sheet.rows as usize,
-                    frames: frames.clone(),
-                    poses: sheet.poses.clone(),
-                });
+                sheets.insert(
+                    entry.source.clone(),
+                    SheetAsset {
+                        ink,
+                        texture,
+                        columns: sheet.columns as usize,
+                        rows: sheet.rows as usize,
+                        frames: frames.clone(),
+                        poses: sheet.poses.clone(),
+                    },
+                );
             }
             if let Some(frame) = entry.primary_frame() {
-                by_source.insert(entry.source.clone(), SpriteAsset {
-                    frame,
-                    ink: entry.ink,
-                    texture,
-                });
+                by_source.insert(
+                    entry.source.clone(),
+                    SpriteAsset {
+                        frame,
+                        ink: entry.ink,
+                        texture,
+                    },
+                );
             }
         }
         // The middle of the patch, so that however the sampler filters it the answer is the
         // one texel's own white.
-        let white = by_source.get(WHITE_PATCH).filter(|asset| asset.texture == ATLAS_TEXTURE).map(
-            |asset| {
+        let white = by_source
+            .get(WHITE_PATCH)
+            .filter(|asset| asset.texture == ATLAS_TEXTURE)
+            .map(|asset| {
                 let texture = &textures[ATLAS_TEXTURE];
                 (
                     (asset.frame.x as f32 + asset.frame.width as f32 / 2.0) / texture.width(),
                     (asset.frame.y as f32 + asset.frame.height as f32 / 2.0) / texture.height(),
                 )
-            },
-        );
-        Self { textures, by_source, sheets, white }
+            });
+        Self {
+            textures,
+            by_source,
+            sheets,
+            white,
+        }
     }
 
     /// Whether the atlas carries [`WHITE_PATCH`]. Without it the shadows still draw, but each
@@ -592,14 +608,25 @@ impl ShadeLattice {
                 light.push((1.0 - grid.at(column, row)).clamp(0.0, 1.0));
             }
         }
-        Self { columns, rows, light }
+        Self {
+            columns,
+            rows,
+            light,
+        }
     }
 
     /// A lattice straight from coverage values, row by row, for a surface that has no artwork
     /// of its own: the shadow on a vertical face of ground is worked out at its corners.
     pub fn from_coverage(columns: u32, rows: u32, coverage: Vec<f32>) -> Self {
-        let light = coverage.into_iter().map(|value| (1.0 - value).clamp(0.0, 1.0)).collect();
-        Self { columns, rows, light }
+        let light = coverage
+            .into_iter()
+            .map(|value| (1.0 - value).clamp(0.0, 1.0))
+            .collect();
+        Self {
+            columns,
+            rows,
+            light,
+        }
     }
 
     /// The light `along` across the lattice and `down` it, both in `[0, 1]`, read between the
@@ -748,7 +775,13 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
-            kind: DrawKind::Sprite { texture, frame, layout, band: None, tint },
+            kind: DrawKind::Sprite {
+                texture,
+                frame,
+                layout,
+                band: None,
+                tint,
+            },
         }
     }
 
@@ -762,7 +795,13 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
-            kind: DrawKind::Sprite { texture, frame, layout, band, tint: WHITE },
+            kind: DrawKind::Sprite {
+                texture,
+                frame,
+                layout,
+                band,
+                tint: WHITE,
+            },
         }
     }
 
@@ -776,7 +815,13 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
-            kind: DrawKind::Shaded { texture, frame, layout, shade, band: None },
+            kind: DrawKind::Shaded {
+                texture,
+                frame,
+                layout,
+                shade,
+                band: None,
+            },
         }
     }
 
@@ -791,7 +836,13 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
-            kind: DrawKind::Shaded { texture, frame, layout, shade, band: Some(band) },
+            kind: DrawKind::Shaded {
+                texture,
+                frame,
+                layout,
+                shade,
+                band: Some(band),
+            },
         }
     }
 
@@ -804,7 +855,11 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
-            kind: DrawKind::GroundShadow { corners, map_uv, opacity },
+            kind: DrawKind::GroundShadow {
+                corners,
+                map_uv,
+                opacity,
+            },
         }
     }
 
@@ -819,7 +874,13 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
-            kind: DrawKind::Silhouette { texture, frame, points, uv, opacity },
+            kind: DrawKind::Silhouette {
+                texture,
+                frame,
+                points,
+                uv,
+                opacity,
+            },
         }
     }
 
@@ -834,7 +895,13 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
-            kind: DrawKind::Reflection { texture, frame, points, uv, colour },
+            kind: DrawKind::Reflection {
+                texture,
+                frame,
+                points,
+                uv,
+                colour,
+            },
         }
     }
 
@@ -855,7 +922,11 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
-            kind: DrawKind::FaceShadow { corners, shade, opacity },
+            kind: DrawKind::FaceShadow {
+                corners,
+                shade,
+                opacity,
+            },
         }
     }
 }
@@ -887,31 +958,75 @@ fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
     draws.sort_by(|a, b| compare_draw_keys(&a.key, &b.key));
     for draw in draws.iter() {
         match &draw.kind {
-            DrawKind::Sprite { texture, frame, layout, band: Some(band), .. } => {
+            DrawKind::Sprite {
+                texture,
+                frame,
+                layout,
+                band: Some(band),
+                ..
+            } => {
                 atlas.draw_band(*texture, *frame, *layout, band, None);
             }
-            DrawKind::Sprite { texture, frame, layout, band: None, tint } => {
+            DrawKind::Sprite {
+                texture,
+                frame,
+                layout,
+                band: None,
+                tint,
+            } => {
                 atlas.draw(*texture, *frame, *layout, *tint);
             }
-            DrawKind::Shaded { texture, frame, layout, shade, band: Some(band) } => {
+            DrawKind::Shaded {
+                texture,
+                frame,
+                layout,
+                shade,
+                band: Some(band),
+            } => {
                 atlas.draw_band(*texture, *frame, *layout, band, Some(shade));
             }
-            DrawKind::Shaded { texture, frame, layout, shade, band: None } => {
+            DrawKind::Shaded {
+                texture,
+                frame,
+                layout,
+                shade,
+                band: None,
+            } => {
                 atlas.draw_shaded(*texture, *frame, *layout, shade);
             }
-            DrawKind::GroundShadow { corners, map_uv, opacity } => {
+            DrawKind::GroundShadow {
+                corners,
+                map_uv,
+                opacity,
+            } => {
                 atlas.draw_ground_shadow(corners, map_uv, *opacity);
             }
-            DrawKind::Silhouette { texture, frame, points, uv, opacity } => {
+            DrawKind::Silhouette {
+                texture,
+                frame,
+                points,
+                uv,
+                opacity,
+            } => {
                 atlas.draw_silhouette(*texture, *frame, points, uv, *opacity);
             }
-            DrawKind::Reflection { texture, frame, points, uv, colour } => {
+            DrawKind::Reflection {
+                texture,
+                frame,
+                points,
+                uv,
+                colour,
+            } => {
                 atlas.draw_reflection(*texture, *frame, points, uv, *colour);
             }
             DrawKind::Voxel { faces, colours } => {
                 atlas.draw_voxel(faces, colours);
             }
-            DrawKind::FaceShadow { corners, shade, opacity } => {
+            DrawKind::FaceShadow {
+                corners,
+                shade,
+                opacity,
+            } => {
                 atlas.draw_face_shadow(corners, shade, *opacity);
             }
         }
@@ -962,5 +1077,8 @@ pub fn scene_key(x: f64, y: f64, elevation: f64, layer: i32, tile_height: f64) -
 /// the stray rectangles of shadow on the sand steps were.
 pub fn ground_key(x: f64, y: f64, elevation: f64, layer: i32, tile_height: f64) -> DrawKey {
     let key = scene_key(x, y, elevation, layer, tile_height);
-    DrawKey { depth: key.depth - tile_height / 2.0, ..key }
+    DrawKey {
+        depth: key.depth - tile_height / 2.0,
+        ..key
+    }
 }

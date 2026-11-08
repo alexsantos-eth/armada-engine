@@ -103,10 +103,16 @@ impl CloudShadows {
             period,
             screen,
         ) {
-            draw_texture_ex(&self.texture, x as f32, y as f32, colour, DrawTextureParams {
-                dest_size: Some(vec2(period.0 as f32, period.1 as f32)),
-                ..Default::default()
-            });
+            draw_texture_ex(
+                &self.texture,
+                x as f32,
+                y as f32,
+                colour,
+                DrawTextureParams {
+                    dest_size: Some(vec2(period.0 as f32, period.1 as f32)),
+                    ..Default::default()
+                },
+            );
         }
     }
 }

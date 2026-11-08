@@ -27,22 +27,21 @@
 //! it was baked against and bakes again when that changes. A bake is spread over frames, a
 //! piece at a time, within [`BAKE_BUDGET_MS`].
 
+use super::shadow_view_atlas;
+use super::shadow_view_atlas::{ShadowAtlas, atlas_uv, square_in_slot};
+use super::shadow_view_masks::SilhouetteMasks;
 use iso::assets::{InkBox, SpriteLayout};
 use iso::entities::Entity;
 use iso::grid::{CHUNK_SIZE, ChunkCoord, WorldCoord, to_chunk_coord};
 use iso::lighting::{
-    HeightField, MapArea, PhaseLight, SHADE_COLUMNS, SHADE_ROWS, SHADOW_MAP_PIXELS_PER_TILE,
-    ShadeGrid, ShadowCaster, ShadowMap, ShadowPoint, ShadowReceiver, SpriteExtent,
-    TerrainFace,
-    GroundBake, shade_grid, shaded_at, terrain_faces,
+    GroundBake, HeightField, MapArea, PhaseLight, SHADE_COLUMNS, SHADE_ROWS,
+    SHADOW_MAP_PIXELS_PER_TILE, ShadeGrid, ShadowCaster, ShadowMap, ShadowPoint, ShadowReceiver,
+    SpriteExtent, TerrainFace, shade_grid, shaded_at, terrain_faces,
 };
 use iso::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
 use iso::terrain::TerrainColumn;
 use iso::world::ChunkManager;
 use macroquad::prelude::{get_time, screen_height, screen_width};
-use super::shadow_view_atlas;
-use super::shadow_view_atlas::{ShadowAtlas, atlas_uv, square_in_slot};
-use super::shadow_view_masks::SilhouetteMasks;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -178,7 +177,10 @@ impl ShadowScene {
             light,
             masks,
             chunks: HashMap::new(),
-            scratch: ShadowMap::new(MapArea::around(0, 0, CHUNK_SIZE - 1, CHUNK_SIZE - 1), SHADOW_MAP_PIXELS_PER_TILE),
+            scratch: ShadowMap::new(
+                MapArea::around(0, 0, CHUNK_SIZE - 1, CHUNK_SIZE - 1),
+                SHADOW_MAP_PIXELS_PER_TILE,
+            ),
             atlas,
             working: None,
             tile_width,
@@ -234,15 +236,28 @@ impl ShadowScene {
                 self.start(manager, coord);
             }
             if self.advance(manager) {
-                let Some(job) = self.working.take() else { return };
-                let Pending { coord, against, own, shade, shaded, faces, .. } = job;
-                self.chunks.insert(coord, Baked {
-                    ground: shade,
+                let Some(job) = self.working.take() else {
+                    return;
+                };
+                let Pending {
+                    coord,
+                    against,
+                    own,
+                    shade,
                     shaded,
-                    casters: own,
                     faces,
-                    baked_against: against,
-                });
+                    ..
+                } = job;
+                self.chunks.insert(
+                    coord,
+                    Baked {
+                        ground: shade,
+                        shaded,
+                        casters: own,
+                        faces,
+                        baked_against: against,
+                    },
+                );
             }
             if get_time() >= until {
                 return;
@@ -278,7 +293,9 @@ impl ShadowScene {
     /// scene — its masks, its light, the map it is laying into — without borrowing the job
     /// through it.
     fn advance(&mut self, manager: &ChunkManager) -> bool {
-        let Some(mut job) = self.working.take() else { return false };
+        let Some(mut job) = self.working.take() else {
+            return false;
+        };
         let mut finished = false;
         match job.stage {
             Reading::Map => {
@@ -309,10 +326,18 @@ impl ShadowScene {
                 job.stage = Reading::Ground(0);
             }
             Reading::Ground(from) => {
-                let done = self
-                    .ground_cover(manager, job.coord, from, GROUND_SHADE_COLUMNS, &mut job.shade);
-                job.stage =
-                    if done == 0 { Reading::Entities } else { Reading::Ground(from + done) };
+                let done = self.ground_cover(
+                    manager,
+                    job.coord,
+                    from,
+                    GROUND_SHADE_COLUMNS,
+                    &mut job.shade,
+                );
+                job.stage = if done == 0 {
+                    Reading::Entities
+                } else {
+                    Reading::Ground(from + done)
+                };
             }
             Reading::Entities => {
                 job.shaded = self.shade_entities(manager, job.coord, &job.casters, &job.ground);
@@ -354,14 +379,20 @@ impl ShadowScene {
         // The level a shadow lands on is the top the view actually draws, not the plane the
         // column's elevation names: the beach is a shallow slab drawn half a block under its
         // cell, except on the terrace row, where the view lifts it back ([`preview_top_level`]).
-        let height_at = |point: WorldCoord| manager.column_at(point.x, point.y).map(|c| c.elevation);
-        let level_at =
-            |x: i32, y: i32| manager.column_at(x, y).map(|c| crate::preview_top_level(c, height_at));
+        let height_at =
+            |point: WorldCoord| manager.column_at(point.x, point.y).map(|c| c.elevation);
+        let level_at = |x: i32, y: i32| {
+            manager
+                .column_at(x, y)
+                .map(|c| crate::preview_top_level(c, height_at))
+        };
         // The ground casts too, and a cliff that shades this chunk's edge usually stands in the
         // next one, so the field reaches past the area the map covers.
         let ground = Self::ground_field(manager, area.min_x, area.min_y, area.max_x, area.max_y);
         let map = GroundBake::new(&self.scratch, &level_at);
-        let columns = manager.terrain_chunk(coord).map_or(0, <[TerrainColumn]>::len);
+        let columns = manager
+            .terrain_chunk(coord)
+            .map_or(0, <[TerrainColumn]>::len);
         self.working = Some(Pending {
             coord,
             against: neighbours_loaded(manager, coord),
@@ -383,9 +414,12 @@ impl ShadowScene {
         max_x: i32,
         max_y: i32,
     ) -> HeightField {
-        let height_at = |point: WorldCoord| manager.column_at(point.x, point.y).map(|c| c.elevation);
+        let height_at =
+            |point: WorldCoord| manager.column_at(point.x, point.y).map(|c| c.elevation);
         HeightField::new(min_x, min_y, max_x, max_y, |x, y| {
-            manager.column_at(x, y).map(|c| crate::preview_top_level(c, height_at))
+            manager
+                .column_at(x, y)
+                .map(|c| crate::preview_top_level(c, height_at))
         })
     }
 
@@ -407,8 +441,13 @@ impl ShadowScene {
         count: usize,
         out: &mut Vec<bool>,
     ) -> usize {
-        let columns = manager.terrain_chunk(coord).map_or(0, <[TerrainColumn]>::len);
-        let Some(chunk) = manager.terrain_chunk(coord).filter(|_| !self.scratch.is_empty()) else {
+        let columns = manager
+            .terrain_chunk(coord)
+            .map_or(0, <[TerrainColumn]>::len);
+        let Some(chunk) = manager
+            .terrain_chunk(coord)
+            .filter(|_| !self.scratch.is_empty())
+        else {
             let blank = columns.saturating_sub(from).min(count);
             out.extend(std::iter::repeat_n(false, blank));
             return blank;
@@ -533,20 +572,30 @@ impl ShadowScene {
         let Some(columns) = manager.terrain_chunk(coord) else {
             return Vec::new();
         };
-        let height_at = |point: WorldCoord| manager.column_at(point.x, point.y).map(|c| c.elevation);
-        let level_at =
-            |x: i32, y: i32| manager.column_at(x, y).map(|c| crate::preview_top_level(c, height_at));
+        let height_at =
+            |point: WorldCoord| manager.column_at(point.x, point.y).map(|c| c.elevation);
+        let level_at = |x: i32, y: i32| {
+            manager
+                .column_at(x, y)
+                .map(|c| crate::preview_top_level(c, height_at))
+        };
         let walls = terrain_faces(
-            columns
-                .iter()
-                .map(|c| (c.coord.x, c.coord.y, crate::preview_top_level(*c, height_at), c.surface)),
+            columns.iter().map(|c| {
+                (
+                    c.coord.x,
+                    c.coord.y,
+                    crate::preview_top_level(*c, height_at),
+                    c.surface,
+                )
+            }),
             level_at,
             FACE_FLOOR,
         );
         let masks = &self.masks;
         let mut shaded = Vec::new();
         for face in walls {
-            let mut grid = Vec::with_capacity(((FACE_SHADE_STEPS + 1) * (FACE_SHADE_STEPS + 1)) as usize);
+            let mut grid =
+                Vec::with_capacity(((FACE_SHADE_STEPS + 1) * (FACE_SHADE_STEPS + 1)) as usize);
             let mut any = false;
             for row in 0..=FACE_SHADE_STEPS {
                 let down = f64::from(row) / f64::from(FACE_SHADE_STEPS);
@@ -569,7 +618,11 @@ impl ShadowScene {
             if any {
                 shaded.push((
                     face,
-                    Rc::new(ShadeLattice::from_coverage(FACE_SHADE_STEPS, FACE_SHADE_STEPS, grid)),
+                    Rc::new(ShadeLattice::from_coverage(
+                        FACE_SHADE_STEPS,
+                        FACE_SHADE_STEPS,
+                        grid,
+                    )),
                 ));
             }
         }
@@ -600,7 +653,12 @@ impl ShadowScene {
                 let point = project_block(GridPoint { x, y }, level, projection);
                 (point.screen_x, point.screen_y)
             };
-            let corners = [corner(0.0, 0.0), corner(1.0, 0.0), corner(1.0, 1.0), corner(0.0, 1.0)];
+            let corners = [
+                corner(0.0, 0.0),
+                corner(1.0, 0.0),
+                corner(1.0, 1.0),
+                corner(0.0, 1.0),
+            ];
             let left = corners.iter().fold(f64::INFINITY, |l, c| l.min(c.0));
             let right = corners.iter().fold(f64::NEG_INFINITY, |r, c| r.max(c.0));
             let top = corners.iter().fold(f64::INFINITY, |t, c| t.min(c.1));
@@ -730,7 +788,12 @@ impl ShadowScene {
             // (the column's own coordinate, which is also lowest on screen) and going round.
             // The projection puts a larger `x + y` higher up, so the corner opposite it is the
             // cell past it along both axes.
-            let corners = [corner(0.0, 0.0), corner(1.0, 0.0), corner(1.0, 1.0), corner(0.0, 1.0)];
+            let corners = [
+                corner(0.0, 0.0),
+                corner(1.0, 0.0),
+                corner(1.0, 1.0),
+                corner(0.0, 1.0),
+            ];
             // The near corner sits on the diamond's own centre line, so it gives the column's
             // horizontal place directly; the near and far corners bound it vertically.
             if corners[0].0 + half_tile < 0.0
@@ -745,7 +808,12 @@ impl ShadowScene {
             let texel = |dx: f64, dy: f64| {
                 atlas_uv(slot, (f64::from(square_x) + dx, f64::from(square_y) + dy))
             };
-            let map_uv = [texel(near, near), texel(far, near), texel(far, far), texel(near, far)];
+            let map_uv = [
+                texel(near, near),
+                texel(far, near),
+                texel(far, far),
+                texel(near, far),
+            ];
             out.push(SpriteDraw::ground_shadow(
                 ground_key(
                     f64::from(column.coord.x) + 0.5,
@@ -774,7 +842,12 @@ pub fn extent_of_ink(ink: InkBox, tile_width: f64) -> SpriteExtent {
 }
 
 /// The receiver a sprite drawn into `layout` standing on `foot` at `elevation` makes.
-pub fn receiver_of(layout: SpriteLayout, feet: ScreenPoint, foot: (f64, f64), elevation: f64) -> ShadowReceiver {
+pub fn receiver_of(
+    layout: SpriteLayout,
+    feet: ScreenPoint,
+    foot: (f64, f64),
+    elevation: f64,
+) -> ShadowReceiver {
     ShadowReceiver {
         foot,
         elevation,
@@ -798,7 +871,10 @@ fn around(coord: ChunkCoord) -> [ChunkCoord; 9] {
     let mut at = 0;
     for dy in -1..=1 {
         for dx in -1..=1 {
-            all[at] = ChunkCoord { cx: coord.cx + dx, cy: coord.cy + dy };
+            all[at] = ChunkCoord {
+                cx: coord.cx + dx,
+                cy: coord.cy + dy,
+            };
             at += 1;
         }
     }
@@ -814,8 +890,6 @@ fn neighbours_loaded(manager: &ChunkManager, coord: ChunkCoord) -> u16 {
         .filter(|(_, other)| manager.is_discovered(**other))
         .fold(0, |bits, (at, _)| bits | 1 << at)
 }
-
-
 
 #[cfg(test)]
 #[path = "shadow_view_mod.test.rs"]

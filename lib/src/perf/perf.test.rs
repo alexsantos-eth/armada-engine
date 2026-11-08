@@ -53,7 +53,11 @@ fn reports_percentiles_the_worst_frame_and_dropped_frames() {
     assert_eq!(log.dropped(), 5, "frames over {DROPPED_FRAME_MS} ms");
     assert_eq!(log.worst().frame_ms, 50.0);
     // The span comes from the frames themselves: 95 * 16 + 5 * 50 ms.
-    assert!((log.span_seconds() - 1.77).abs() < 0.001, "{}", log.span_seconds());
+    assert!(
+        (log.span_seconds() - 1.77).abs() < 0.001,
+        "{}",
+        log.span_seconds()
+    );
 }
 
 /// The CPU figure is this loop's own work. When it is far below the frame time, the frame was
@@ -99,6 +103,9 @@ fn the_summary_carries_every_figure_it_claims_to() {
         "cpu split avg",
         "peor frame 16.0 ms",
     ] {
-        assert!(summary.contains(expected), "missing {expected:?} in:\n{summary}");
+        assert!(
+            summary.contains(expected),
+            "missing {expected:?} in:\n{summary}"
+        );
     }
 }

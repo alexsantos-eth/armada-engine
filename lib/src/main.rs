@@ -1,58 +1,57 @@
 mod assets;
 mod lighting;
-mod player;
 mod perf;
+mod player;
 mod rendering;
 mod save;
 mod services;
 mod terrain;
 mod water;
 
-use iso::grid::{WorldCoord, to_chunk_coord};
-use iso::player::physics::{
-    PlayerGround, create_player, find_player_spawn, get_player_column,
-    get_player_render_position, jump_player, set_player_jump_held,
-    set_player_run, step_player,
+use assets::sprites::{SpriteAtlas, SpriteDraw, draw_sorted, scene_key};
+use iso::assets::{
+    InkBox, SVG_BLOCK_HEIGHT, SVG_TILE_WIDTH, SpriteFrame, footprint_band, ink_layout,
 };
-use iso::services::{InputService, NormalizedInput, UiService, UiEvent, AudioService, SoundEvent};
-use services::{MacroquadInput, MacroquadAudio, MacroquadUi};
-use iso::projection::{
-    GridPoint, ProjectionConfig, ScreenPoint, project_block, project_grid_point,
-};
-use iso::simulation::FixedStepper;
-use iso::terrain::{
-    TerrainColumn, TerrainConfig, TerrainGenerator, TerrainMaterial, top_is_flush,
-};
-use iso::world::{ChunkManager, ChunkRadii};
-use iso::assets::{InkBox, SVG_BLOCK_HEIGHT, SVG_TILE_WIDTH, SpriteFrame, footprint_band, ink_layout};
-use iso::entities::{EntityCatalogV2, EntityLengthAxis, validate_catalog};
-use iso::player::physics::PlayerObstacle;
 use iso::camera::{
     CAMERA_LEVEL_SMOOTH_MS, Camera, CameraFocus, ScreenSize,
     visible_chunks as camera_visible_chunks,
 };
+use iso::entities::{EntityCatalogV2, EntityLengthAxis, validate_catalog};
+use iso::grid::{WorldCoord, to_chunk_coord};
 use iso::lighting::DAWN;
+use iso::player::get_player_jump_phase;
+use iso::player::physics::PlayerObstacle;
+use iso::player::physics::get_player_climb_progress;
+use iso::player::physics::{
+    PlayerGround, create_player, find_player_spawn, get_player_column, get_player_render_position,
+    jump_player, set_player_jump_held, set_player_run, step_player,
+};
+use iso::projection::{
+    GridPoint, ProjectionConfig, ScreenPoint, project_block, project_grid_point,
+};
+use iso::scene_order::PlayerSheet;
+use iso::services::{AudioService, InputService, NormalizedInput, SoundEvent, UiEvent, UiService};
+use iso::simulation::FixedStepper;
+use iso::terrain::{TerrainColumn, TerrainConfig, TerrainGenerator, TerrainMaterial, top_is_flush};
+use iso::world::{ChunkManager, ChunkRadii};
 use lighting::cloud_shadows::{CLOUD_SHADOW_SOURCE, CloudShadows};
-use player::dust_view::{DustGround, DustPuffs};
-use lighting::moving_shadow::{CellGround, collect_moving_shadow};
-use rendering::scene_material::SceneMaterial;
+use lighting::moving_shadow::{CellGround, MovingShadowReceiver, collect_moving_shadow};
 use lighting::shadow_view::ShadowScene;
 use lighting::shadow_view_atlas::ShadowAtlas;
 use lighting::shadow_view_masks::SilhouetteMasks;
+use macroquad::prelude::*;
+use perf::{FrameSample, PerfLog};
+use player::dust_view::{DustGround, DustPuffs};
+use player::player_view::{PlayerAnimation, PlayerMoment, PlayerSheets, jump_poses};
+use rendering::scene_material::SceneMaterial;
 use save::{
     load_archive_into_manager, load_save, restore_archive, restore_discovered_from_archive,
     save_archive, sync_manager_to_archive,
 };
-use perf::{FrameSample, PerfLog};
-use player::player_view::{PlayerAnimation, PlayerMoment, PlayerSheets, jump_poses};
-use water::reflection_view::{Reflected, WaterCell, collect_reflection};
-use iso::player::physics::get_player_climb_progress;
-use iso::player::get_player_jump_phase;
-use iso::scene_order::PlayerSheet;
-use assets::sprites::{SpriteAtlas, SpriteDraw, draw_sorted, scene_key};
+use services::{MacroquadAudio, MacroquadInput, MacroquadUi};
 use terrain::terrain_view_appearance::TerrainLook;
 use terrain::terrain_view_blocks::{TerrainFrames, collect_terrain_sprites};
-use macroquad::prelude::*;
+use water::reflection_view::{Reflected, WaterCell, collect_reflection};
 
 fn window_conf() -> Conf {
     Conf {
@@ -290,7 +289,10 @@ fn player_feet(position: GridPoint, elevation: f64, projection: ProjectionConfig
         elevation,
         projection,
     );
-    ScreenPoint { x: projected.screen_x, y: projected.screen_y }
+    ScreenPoint {
+        x: projected.screen_x,
+        y: projected.screen_y,
+    }
 }
 
 /// How far this client streams chunks, below the shared defaults (1 / 2 / 3).
@@ -430,7 +432,13 @@ async fn main() {
     // Dawn, baked: one sun, one bake per chunk, and nothing to advance per frame. See
     // `shadow_view` for what casts and what receives.
     let mut shadows = masks.filter(|_| material.is_some()).map(|masks| {
-        ShadowScene::new(DAWN, masks, shadow_atlas, PREVIEW_TILE_WIDTH, PREVIEW_ELEVATION_STEP)
+        ShadowScene::new(
+            DAWN,
+            masks,
+            shadow_atlas,
+            PREVIEW_TILE_WIDTH,
+            PREVIEW_ELEVATION_STEP,
+        )
     });
     let (terrain_frames, missing_terrain) = TerrainFrames::new(&atlas);
     for material in &missing_terrain {
@@ -440,7 +448,9 @@ async fn main() {
     // grows. Both read the world seed, so a world always looks the way it looked.
     let terrain_config = TerrainConfig::default();
     let (terrain_look, missing_tops) = TerrainLook::new(terrain_config.seed, |source| {
-        atlas.asset(source).and_then(|asset| Some((asset.frame, asset.ink?)))
+        atlas
+            .asset(source)
+            .and_then(|asset| Some((asset.frame, asset.ink?)))
     });
     for source in &missing_tops {
         eprintln!("warning: the atlas has no measured artwork for {source}; it will not grow");
@@ -472,11 +482,21 @@ async fn main() {
 
     // Find a spawn point and create the player.
     let ground = ChunkGround { manager: &manager };
-    let spawn = find_player_spawn(&ground, GridPoint {
-        x: f64::from(PREVIEW_CENTRE.x),
-        y: f64::from(PREVIEW_CENTRE.y),
-    });
-    let mut player = create_player(&ground, GridPoint { x: spawn.x, y: spawn.y });
+    let spawn = find_player_spawn(
+        &ground,
+        GridPoint {
+            x: f64::from(PREVIEW_CENTRE.x),
+            y: f64::from(PREVIEW_CENTRE.y),
+        },
+    );
+    let mut player = create_player(
+        &ground,
+        GridPoint {
+            x: spawn.x,
+            y: spawn.y,
+        },
+    );
+    let mut moving_shadow_receiver = MovingShadowReceiver::default();
 
     // Camera state: where it looks (the level under the player, eased when that changes) and the
     // centre it has eased to, started on the spawn so the first frame is not a swoop across the
@@ -712,10 +732,13 @@ async fn main() {
         // exactly what is behind it: the ground, what stands on the ground, and the player.
         draws.clear();
         if !show_terrain {
-            draw_grid(projection, WorldCoord {
-                x: player.x.floor() as i32,
-                y: player.y.floor() as i32,
-            });
+            draw_grid(
+                projection,
+                WorldCoord {
+                    x: player.x.floor() as i32,
+                    y: player.y.floor() as i32,
+                },
+            );
         }
         // The camera already returns its small, ordered cull list. Iterating it directly avoids
         // allocating and sorting the stream's visible chunk set every frame; check the stream
@@ -775,7 +798,10 @@ async fn main() {
                     .map_or(0, |asset| asset.texture);
                 let Some((frame, layout)) = atlas.standing(
                     entity.texture_source(),
-                    ScreenPoint { x: ground.screen_x, y: ground.screen_y },
+                    ScreenPoint {
+                        x: ground.screen_x,
+                        y: ground.screen_y,
+                    },
                     projection.tile_width,
                 ) else {
                     continue;
@@ -802,18 +828,17 @@ async fn main() {
                 // One cell along the engine's x is half a tile right and a quarter of one up
                 // the screen; one along its y is half a tile left and the same quarter up.
                 let (half, quarter) = (projection.tile_width / 2.0, projection.tile_height / 2.0);
-                let step = if along_y { (-half, -quarter) } else { (half, -quarter) };
-                let anchor = ScreenPoint { x: ground.screen_x, y: ground.screen_y };
+                let step = if along_y {
+                    (-half, -quarter)
+                } else {
+                    (half, -quarter)
+                };
+                let anchor = ScreenPoint {
+                    x: ground.screen_x,
+                    y: ground.screen_y,
+                };
                 for index in 0..cells {
-                    let Some(band) =
-                        footprint_band(
-                            layout,
-                            anchor,
-                            step,
-                            index,
-                            cells,
-                            BAND_BLEED,
-                        )
+                    let Some(band) = footprint_band(layout, anchor, step, index, cells, BAND_BLEED)
                     else {
                         continue;
                     };
@@ -868,7 +893,8 @@ async fn main() {
                 let mirrored = entity
                     .reflection_source()
                     .and_then(|source| {
-                        let (drawn, laid) = atlas.standing(source, anchor, projection.tile_width)?;
+                        let (drawn, laid) =
+                            atlas.standing(source, anchor, projection.tile_width)?;
                         let texture = atlas.asset(source).map_or(0, |asset| asset.texture);
                         Some((texture, drawn, laid, Reflected::AsDrawn))
                     })
@@ -878,7 +904,12 @@ async fn main() {
                         // diagonal that run lies along.
                         let turn_at =
                             (cells > 1).then(|| anchor.x + step.0 * f64::from(cells - 1) / 2.0);
-                        (entity_texture, frame, layout, Reflected::Standing { turn_at })
+                        (
+                            entity_texture,
+                            frame,
+                            layout,
+                            Reflected::Standing { turn_at },
+                        )
                     });
                 collect_reflection(
                     mirrored.0,
@@ -980,10 +1011,28 @@ async fn main() {
                         .as_ref()
                         .and_then(lighting::shadow_view::lattice_of)
                 });
-                // Its own shadow, laid on the ground it is over. The one shadow in the
-                // scene that is not baked, because it walks: `moving_shadow` cuts the
-                // silhouette to the cells it crosses so that each piece sorts with its own
-                // cell, under the figure and over the ground it lies on.
+                // Its own one-piece shadow follows the same interpolation as the player. Blend
+                // the old and new receiver heights through a step so it does not teleport down
+                // the light when the feet enter the next level.
+                let ground_at = |x, y| {
+                    manager.column_at(x, y).map(|column| CellGround {
+                        level: preview_top_level(column, |point| {
+                            manager.column_at(point.x, point.y).map(|c| c.elevation)
+                        }),
+                        elevation: f64::from(column.elevation),
+                        material: column.surface,
+                    })
+                };
+                // `get_player_column` rounds to the nearest column centre. The shadow must use
+                // the same boundary; using `floor` delayed its receiver change until halfway
+                // across the new tile.
+                let current_column = get_player_column(GridPoint {
+                    x: player.x,
+                    y: player.y,
+                });
+                let current_ground = ground_at(current_column.x, current_column.y);
+                let shadow_ground = moving_shadow_receiver
+                    .update(current_ground, f64::from(get_frame_time()));
                 collect_moving_shadow(
                     &DAWN,
                     texture,
@@ -993,15 +1042,7 @@ async fn main() {
                     (rp.x + 0.5, rp.y + 0.5),
                     rp.elevation - rp.inset + rp.height,
                     projection,
-                    |x, y| {
-                        manager.column_at(x, y).map(|column| CellGround {
-                            level: preview_top_level(column, |point| {
-                                manager.column_at(point.x, point.y).map(|c| c.elevation)
-                            }),
-                            elevation: f64::from(column.elevation),
-                            material: column.surface,
-                        })
-                    },
+                    shadow_ground,
                     &mut draws,
                 );
                 // And what the water shows of it, which like its shadow is gathered per frame
@@ -1109,13 +1150,7 @@ async fn main() {
                 fps = get_fps(),
                 frame_ms = frame_ms,
             );
-            draw_text(
-                &text,
-                32.0,
-                height - 42.0,
-                22.0,
-                LIGHTGRAY,
-            );
+            draw_text(&text, 32.0, height - 42.0, 22.0, LIGHTGRAY);
         }
 
         // Frame-time readout, top right. Percentiles over the window rather than an average:
@@ -1129,7 +1164,13 @@ async fn main() {
         } else {
             LIME
         };
-        draw_rectangle(width - 230.0, 20.0, 210.0, 92.0, Color::from_rgba(21, 29, 42, 205));
+        draw_rectangle(
+            width - 230.0,
+            20.0,
+            210.0,
+            92.0,
+            Color::from_rgba(21, 29, 42, 205),
+        );
         draw_text(
             format!("{} fps", get_fps()),
             width - 218.0,
@@ -1230,9 +1271,16 @@ mod tests {
     #[test]
     fn the_atlas_holds_more_chunks_than_the_camera_can_show() {
         // Comfortably past any display this runs on, and the cull adds its own margin.
-        let viewport = ScreenSize { width: 3840.0, height: 2160.0 };
+        let viewport = ScreenSize {
+            width: 3840.0,
+            height: 2160.0,
+        };
         let projection = preview_projection(0.0, 0.0);
-        let camera = Camera { x: 0.0, y: 0.0, zoom: 1.0 };
+        let camera = Camera {
+            x: 0.0,
+            y: 0.0,
+            zoom: 1.0,
+        };
 
         let culled = camera_visible_chunks(camera, viewport, projection, CHUNK_CULL_MARGIN);
 
@@ -1305,7 +1353,10 @@ mod tests {
 
         assert_eq!(
             player_feet(position, 0.0, projection),
-            ScreenPoint { x: 775.0, y: -450.0 },
+            ScreenPoint {
+                x: 775.0,
+                y: -450.0
+            },
             "player feet use the same projected centre as their supporting terrain column"
         );
     }
@@ -1435,10 +1486,20 @@ mod tests {
         let (cx, cy, elevation) = (12.0, 7.0, 2.0);
         // The player at the corner of its cell nearest the camera, which is as far down the
         // screen as it can stand on this column.
-        let feet = player_feet(GridPoint { x: cx - 0.5, y: cy - 0.5 }, elevation, projection);
+        let feet = player_feet(
+            GridPoint {
+                x: cx - 0.5,
+                y: cy - 0.5,
+            },
+            elevation,
+            projection,
+        );
         // The topmost point of the diamond of the cell across that corner.
         let across = project_block(
-            GridPoint { x: cx - 0.5, y: cy - 0.5 },
+            GridPoint {
+                x: cx - 0.5,
+                y: cy - 0.5,
+            },
             elevation,
             projection,
         );
@@ -1453,8 +1514,8 @@ mod tests {
     /// terrain drawn over the cells towards the camera, as rectangles of shade on their tops.
     #[test]
     fn what_is_painted_on_the_ground_sorts_with_the_ground_it_lies_on() {
-        use crate::lighting::shadow_view::GROUND_SHADOW_LAYER;
         use crate::assets::sprites::ground_key;
+        use crate::lighting::shadow_view::GROUND_SHADOW_LAYER;
         use iso::scene_order::compare_draw_keys;
         use std::cmp::Ordering;
         use terrain::terrain_view_blocks::TERRAIN_LAYER;
@@ -1503,7 +1564,12 @@ mod tests {
         use iso::scene_order::compare_draw_keys;
         use terrain::terrain_view_blocks::TERRAIN_LAYER;
 
-        let cells = [(4.5, 9.5, 0.0), (3.5, 9.5, 1.0), (4.5, 8.5, -2.0), (3.5, 8.5, 3.0)];
+        let cells = [
+            (4.5, 9.5, 0.0),
+            (3.5, 9.5, 1.0),
+            (4.5, 8.5, -2.0),
+            (3.5, 8.5, 3.0),
+        ];
         for &(ax, ay, ae) in &cells {
             for &(bx, by, be) in &cells {
                 let before = compare_draw_keys(
@@ -1514,7 +1580,10 @@ mod tests {
                     &ground_key(ax, ay, ae, TERRAIN_LAYER, PREVIEW_TILE_HEIGHT),
                     &ground_key(bx, by, be, TERRAIN_LAYER, PREVIEW_TILE_HEIGHT),
                 );
-                assert_eq!(before, after, "({ax}, {ay}, {ae}) against ({bx}, {by}, {be})");
+                assert_eq!(
+                    before, after,
+                    "({ax}, {ay}, {ae}) against ({bx}, {by}, {be})"
+                );
             }
         }
     }

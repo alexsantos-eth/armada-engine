@@ -54,7 +54,7 @@ fn collect(
         (10.5, 20.5),
         level,
         projection(),
-        ground_at,
+        ground_at(10, 20),
         &mut out,
     );
     out
@@ -73,14 +73,20 @@ fn flat() -> impl Fn(i32, i32) -> Option<CellGround> {
 }
 
 #[test]
-fn the_shadow_is_queued_a_piece_per_surface_it_lands_on() {
+fn the_shadow_is_queued_once_for_the_player() {
     let draws = collect(&DAWN, 2.0, flat());
-    assert!(draws.len() > 1, "a figure a block tall crosses more than one cell at dawn");
+    assert_eq!(draws.len(), 1, "the player has one projected silhouette");
     for draw in &draws {
         match &draw.kind {
-            DrawKind::Silhouette { texture, points, uv, opacity, .. } => {
+            DrawKind::Silhouette {
+                texture,
+                points,
+                uv,
+                opacity,
+                ..
+            } => {
                 assert_eq!(*texture, 3, "it is drawn from the caster's own texture");
-                assert!(points.len() >= 3);
+                assert_eq!(points.len(), 4, "one uncut projection quad");
                 assert_eq!(points.len(), uv.len());
                 assert!((f64::from(*opacity) - DAWN.opacity()).abs() < 1e-6);
             }
@@ -92,20 +98,19 @@ fn the_shadow_is_queued_a_piece_per_surface_it_lands_on() {
 
 #[test]
 fn a_flat_tile_towards_the_camera_does_not_cut_the_shadow() {
-    let (x, y, elevation) = (12.5, 7.5, 2.0);
-    let shadow = scene_key(x, y, elevation, GROUND_SHADOW_LAYER, TILE_WIDTH / 2.0);
-    let flat_front = ground_key(x - 1.0, y, elevation, TERRAIN_LAYER, TILE_WIDTH / 2.0);
-    let raised_front = ground_key(x - 1.0, y, elevation + 1.0, TERRAIN_LAYER, TILE_WIDTH / 2.0);
+    let shadow = &collect(&DAWN, 2.0, flat())[0].key;
+    let player = scene_key(10.5, 20.5, 2.0, GROUND_SHADOW_LAYER, TILE_WIDTH / 2.0);
+    let flat_front = ground_key(9.5, 20.5, 2.0, TERRAIN_LAYER, TILE_WIDTH / 2.0);
 
     assert_eq!(
-        compare_draw_keys(&flat_front, &shadow),
+        compare_draw_keys(&player, shadow),
         Ordering::Less,
-        "the flat tile immediately in front draws below the shadow instead of cutting it"
+        "the one shadow is keyed from its nearest corner, ahead of the player"
     );
     assert_eq!(
-        compare_draw_keys(&raised_front, &shadow),
-        Ordering::Greater,
-        "a real level change still covers the shadow"
+        compare_draw_keys(&flat_front, shadow),
+        Ordering::Less,
+        "the flat tile immediately in front draws below the shadow instead of cutting it"
     );
 }
 
@@ -124,9 +129,12 @@ fn a_piece_is_projected_onto_the_level_its_cell_is_drawn_at() {
         draws
             .iter()
             .filter_map(|draw| match &draw.kind {
-                DrawKind::Silhouette { points, .. } => {
-                    Some(points.iter().map(|point| point.1).fold(f64::NEG_INFINITY, f64::max))
-                }
+                DrawKind::Silhouette { points, .. } => Some(
+                    points
+                        .iter()
+                        .map(|point| point.1)
+                        .fold(f64::NEG_INFINITY, f64::max),
+                ),
                 _ => None,
             })
             .fold(f64::NEG_INFINITY, f64::max)
@@ -138,22 +146,30 @@ fn a_piece_is_projected_onto_the_level_its_cell_is_drawn_at() {
 }
 
 #[test]
-fn a_step_in_the_ground_takes_the_shadow_down_its_wall() {
-    // A step up across the light's way: the wall between the two levels is one the camera sees,
-    // and the shadow climbs it instead of jumping the gap.
+fn a_level_change_eases_the_shadow_receiver_across_frames() {
+    let mut receiver = MovingShadowReceiver::default();
+    assert_eq!(receiver.update(Some(at(2.0)), 0.0), Some(at(2.0)));
+    let first = receiver
+        .update(Some(at(3.0)), 1.0 / 60.0)
+        .expect("a receiver");
+    assert!(
+        first.level > 2.0 && first.level < 3.0,
+        "the first frame does not snap"
+    );
+    let later = receiver
+        .update(Some(at(3.0)), 1.0 / 60.0)
+        .expect("a receiver");
+    assert!(
+        later.level > first.level && later.level < 3.0,
+        "it continues towards the new level"
+    );
+}
+
+#[test]
+fn a_step_in_the_ground_does_not_duplicate_the_shadow() {
+    // Terrain changes do not split the player shadow into a top, wall and lower-ground piece.
     let draws = collect(&DAWN, 2.0, |_, y| Some(at(if y >= 21 { 3.0 } else { 2.0 })));
-    // A wall piece is one whose corners span more than one level, which a flat cell's cannot.
-    let projection = projection();
-    let spans_a_wall = draws.iter().any(|draw| match &draw.kind {
-        DrawKind::Silhouette { points, .. } => {
-            let high = points.iter().map(|p| p.1).fold(f64::INFINITY, f64::min);
-            let low = points.iter().map(|p| p.1).fold(f64::NEG_INFINITY, f64::max);
-            // A cell's own top is at most half a tile tall on screen; a wall is a whole block.
-            low - high > projection.tile_height / 2.0 + 1.0
-        }
-        _ => false,
-    });
-    assert!(spans_a_wall, "the shadow is laid down the face of the step");
+    assert_eq!(draws.len(), 1, "the step cannot create extra shadow pieces");
 }
 
 #[test]
@@ -166,7 +182,11 @@ fn a_cell_the_world_has_not_loaded_takes_no_piece() {
         let DrawKind::Silhouette { points, .. } = &draw.kind else {
             panic!("a moving shadow is a silhouette");
         };
-        assert!(points.iter().all(|point| point.0 <= left + projection.tile_width * 6.0));
+        assert!(
+            points
+                .iter()
+                .all(|point| point.0 <= left + projection.tile_width * 6.0)
+        );
     }
 }
 
@@ -200,7 +220,7 @@ fn a_sprite_with_no_artwork_above_its_feet_queues_nothing() {
         (10.5, 20.5),
         2.0,
         projection(),
-        flat(),
+        Some(at(2.0)),
         &mut out,
     );
     assert!(out.is_empty());

@@ -1,4 +1,4 @@
-//! The shadow of the player, laid on the ground and the walls every frame.
+//! The one projected shadow of the player, queued every frame.
 //!
 //! Every other shadow in the client is baked ([`crate::shadow_view`]): the sun holds still, so a
 //! chunk's shadows are computed when it is shown and read back for as long as it is. The player
@@ -7,27 +7,17 @@
 //! again (`shadows/moving-shadow.ts`); here a chunk's bake is tens of milliseconds, so doing that
 //! per step would stutter.
 //!
-//! So this shadow is geometry, not a texture. [`iso::lighting::moving`] owns the
-//! geometry — which surfaces take which part of the silhouette, and what each of them reads of
-//! the artwork — and this module is what gathers the surfaces for it and puts the answer on
-//! screen: the tops of the cells around the player and the exposed walls between them, and then
-//! one mesh per piece, sorted by the cell it lies on.
-//!
-//! A piece therefore sorts like the baked shadow of that cell — over its terrain, under what
-//! stands on it, under the player — and the ground drawn in front of the shadow still covers it.
-//! What the shadow does not do is fall on anything but the ground: it stops at a tree instead of
-//! climbing it, where a baked caster's would be read by the tree's own lattice.
+//! It is geometry, not a texture, but intentionally has just one quad: the entire silhouette is
+//! projected on the ground beneath the player. It does not split across tiles, climb walls or
+//! continue onto another level. That keeps the player readable without duplicated fragments.
 
 use iso::assets::{SpriteFrame, SpriteLayout};
-use iso::lighting::{
-    PhaseLight, ShadowSurface, SpriteExtent, TerrainFace, moving_shadow_area,
-    moving_shadow_pieces, terrain_faces,
-};
+use iso::lighting::{PhaseLight, SpriteExtent, silhouette_matrix};
 use iso::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
 use iso::terrain::TerrainMaterial;
 
 use crate::assets::sprites::{SpriteDraw, scene_key};
-use crate::lighting::shadow_view::{FACE_FLOOR, GROUND_SHADOW_LAYER};
+use crate::lighting::shadow_view::GROUND_SHADOW_LAYER;
 
 /// What the ground of one cell is, to a shadow being laid on it.
 ///
@@ -46,13 +36,47 @@ pub struct CellGround {
     pub material: TerrainMaterial,
 }
 
-/// Queues the shadow of a sprite drawn into `layout` standing on `foot`, cut to the surfaces it
-/// lands on.
+/// Smoothed receiver for the player's one-piece shadow.
+///
+/// Simulation ground changes at 20 Hz, while rendering happens between its ticks. Keeping the
+/// receiver here makes a level change continuous even when it occurs at the end of a tick.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct MovingShadowReceiver {
+    shown: Option<CellGround>,
+}
+
+impl MovingShadowReceiver {
+    /// Advances the displayed receiver toward the player's current ground.
+    pub fn update(
+        &mut self,
+        target: Option<CellGround>,
+        elapsed_seconds: f64,
+    ) -> Option<CellGround> {
+        let target = target?;
+        let Some(shown) = self.shown else {
+            self.shown = Some(target);
+            return self.shown;
+        };
+        // A 45 ms time constant is visibly smooth over several rendered frames without making
+        // the shadow trail behind a walking player.
+        let seconds = elapsed_seconds.max(0.0).min(0.1);
+        let blend = 1.0 - (-seconds / 0.045).exp();
+        let next = CellGround {
+            level: shown.level + (target.level - shown.level) * blend,
+            elevation: shown.elevation + (target.elevation - shown.elevation) * blend,
+            material: target.material,
+        };
+        self.shown = Some(next);
+        self.shown
+    }
+}
+
+/// Queues the single shadow of a sprite drawn into `layout` standing on `foot`.
 ///
 /// * `feet` — where that ground point is on screen, which is what `layout` was placed around.
 /// * `level` — the level its feet are drawn on, in blocks, a jump included: in the air the
 ///   shadow slides away down the light, which is what tells a jump from a step.
-/// * `ground_at` — the ground of a cell, or `None` where the world is not loaded there.
+/// * `ground` — the smoothed ground receiver, or `None` where the player's world is not loaded.
 #[allow(clippy::too_many_arguments)]
 pub fn collect_moving_shadow(
     light: &PhaseLight,
@@ -63,7 +87,7 @@ pub fn collect_moving_shadow(
     foot: (f64, f64),
     level: f64,
     projection: ProjectionConfig,
-    ground_at: impl Fn(i32, i32) -> Option<CellGround>,
+    ground: Option<CellGround>,
     out: &mut Vec<SpriteDraw>,
 ) {
     let opacity = light.opacity() as f32;
@@ -76,86 +100,62 @@ pub fn collect_moving_shadow(
         width: layout.width,
         height: layout.height,
     };
+    let above_foot = (-extent.top).clamp(0.0, extent.height);
+    if above_foot <= 0.0 || extent.width <= 0.0 || light.shadow.stretch <= 0.0 {
+        return;
+    }
+    let Some(ground) = ground else {
+        return;
+    };
     let box_height = projection
         .elevation_step
         .unwrap_or(projection.tile_height / 2.0);
-    let Some(((min_x, min_y), (max_x, max_y))) = moving_shadow_area(
+    let matrix = silhouette_matrix(
         &light.shadow,
-        extent,
         foot,
+        level - ground.level,
         projection.tile_width,
         box_height,
-    ) else {
-        return;
-    };
-    // Every surface the shadow could reach: the tops of the cells around the player, and the
-    // walls between them that the camera can see. Both come from the same levels the view draws
-    // them at, so a piece lands exactly where its surface is drawn.
-    let mut tops = Vec::new();
-    let mut surfaces = Vec::new();
-    for y in min_y..=max_y {
-        for x in min_x..=max_x {
-            let Some(ground) = ground_at(x, y) else {
-                continue;
-            };
-            tops.push((x, y, ground.level, ground.material));
-            surfaces.push(ShadowSurface::Ground {
-                cell: (x, y),
-                level: ground.level,
-            });
-        }
-    }
-    let walls: Vec<TerrainFace> = terrain_faces(
-        tops,
-        |x, y| ground_at(x, y).map(|ground| ground.level),
-        FACE_FLOOR,
     );
-    surfaces.extend(walls.into_iter().map(ShadowSurface::Face));
-    let mut pieces = Vec::new();
-    moving_shadow_pieces(
-        &light.shadow,
-        extent,
-        foot,
-        level,
-        projection.tile_width,
-        box_height,
-        &surfaces,
-        &mut pieces,
-    );
-    for piece in pieces {
-        let cell = piece.surface.cell();
-        // The same cell the level came from, so the depth and the geometry cannot disagree.
-        let Some(ground) = ground_at(cell.0, cell.1) else {
-            continue;
-        };
-        let points: Vec<(f64, f64)> = piece
-            .points
-            .iter()
-            .map(|&(across, down)| {
-                let (x, y, level) = piece.surface.point(across, down);
-                let at = project_block(GridPoint { x, y }, level, projection);
-                (at.screen_x, at.screen_y)
-            })
-            .collect();
-        out.push(SpriteDraw::silhouette(
-            // A moving silhouette reaches the next flat tile towards the camera. Its own key
-            // sits half a tile in front of a ground key, so that tile cannot punch an invisible
-            // rectangle through the continuous shadow; a genuinely higher block still sorts in
-            // front of it.
-            scene_key(
-                f64::from(cell.0) + 0.5,
-                f64::from(cell.1) + 0.5,
-                ground.elevation,
-                GROUND_SHADOW_LAYER,
-                projection.tile_height,
-            ),
-            texture,
-            frame,
-            points,
-            piece.uv,
-            opacity,
-        ));
-    }
+    let corners = [
+        (extent.left, extent.top),
+        (extent.left + extent.width, extent.top),
+        (extent.left + extent.width, 0.0),
+        (extent.left, 0.0),
+    ];
+    let world_points: Vec<(f64, f64)> = corners
+        .into_iter()
+        .map(|corner| matrix.apply(corner))
+        .collect();
+    let points = world_points
+        .iter()
+        .map(|&(x, y)| {
+            let at = project_block(GridPoint { x, y }, ground.level, projection);
+            (at.screen_x, at.screen_y)
+        })
+        .collect();
+    // A single quad spans several cells but has only one depth key. Give it the depth of its
+    // corner nearest the camera, so every flat terrain tile it crosses is drawn first instead of
+    // punching a diamond-shaped hole through the silhouette.
+    let (front_x, front_y) = world_points
+        .iter()
+        .copied()
+        .min_by(|left, right| (left.0 + left.1).total_cmp(&(right.0 + right.1)))
+        .expect("a shadow quad has four corners");
+    out.push(SpriteDraw::silhouette(
+        scene_key(
+            front_x,
+            front_y,
+            ground.elevation,
+            GROUND_SHADOW_LAYER,
+            projection.tile_height,
+        ),
+        texture,
+        frame,
+        points,
+        vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+        opacity,
+    ));
 }
 
 #[cfg(test)]

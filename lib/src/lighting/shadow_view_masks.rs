@@ -95,7 +95,14 @@ impl SilhouetteMasks {
             frames.push(frame);
             inks.push(entry.ink);
         }
-        Self { width, height, alpha, frames, inks, by_source }
+        Self {
+            width,
+            height,
+            alpha,
+            frames,
+            inks,
+            by_source,
+        }
     }
 
     /// Where the artwork at `source` belongs around the ground it stands on, or `None` when the
@@ -129,7 +136,6 @@ impl SilhouetteMasks {
             bottom: f64::from(frame.y + frame.height.saturating_sub(1)) / scale,
         })
     }
-
 }
 
 #[cfg(test)]

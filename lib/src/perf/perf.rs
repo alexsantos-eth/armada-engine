@@ -150,7 +150,11 @@ impl PerfLog {
         }
         let span = self.span_seconds();
         let frames = self.len();
-        let fps = if span > 0.0 { frames as f64 / span } else { 0.0 };
+        let fps = if span > 0.0 {
+            frames as f64 / span
+        } else {
+            0.0
+        };
         let (f50, f95, fmax) = self.frame_ms();
         let (c50, c95, cmax) = self.cpu_ms();
         let worst = self.worst();

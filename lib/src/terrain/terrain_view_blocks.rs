@@ -12,9 +12,9 @@ use iso::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
 use iso::terrain::{AroundHeights, TerrainColumn, TerrainMaterial, top_is_flush};
 use macroquad::prelude::{screen_height, screen_width};
 
+use crate::assets::sprites::{ATLAS_TEXTURE, SpriteAtlas, SpriteDraw, ground_key};
 use crate::terrain::terrain_view::{MATERIAL_SLOTS, MATERIALS, slot};
 use crate::terrain::terrain_view_appearance::TerrainLook;
-use crate::assets::sprites::{ATLAS_TEXTURE, SpriteAtlas, SpriteDraw, ground_key};
 
 /// Terrain draws below everything that stands on it.
 pub const TERRAIN_LAYER: i32 = 0;
@@ -158,7 +158,11 @@ pub fn collect_terrain_sprites(
         // split into two smaller steps. The cost is four neighbour lookups, and only sand ever
         // pays them.
         let flush_top = column.surface == TerrainMaterial::Sand
-            && top_is_flush(column.surface, column.elevation, around_heights(column, &height_at));
+            && top_is_flush(
+                column.surface,
+                column.elevation,
+                around_heights(column, &height_at),
+            );
 
         for block in column.blocks_from(floor) {
             let Some((plain, plain_ink, sink)) = frames.frame(block.material) else {
@@ -175,7 +179,13 @@ pub fn collect_terrain_sprites(
                 None => (plain, plain_ink),
             };
             let tint = look.tint(block.material, column.coord.x, column.coord.y);
-            let lift = drawn_lift(block.elevation, column, flush_top, sink, projection.tile_width);
+            let lift = drawn_lift(
+                block.elevation,
+                column,
+                flush_top,
+                sink,
+                projection.tile_width,
+            );
             // A block stands on the top face of the block below it, which is `step` further
             // down the screen for each level below the column's own surface.
             let layout = ink_layout(
