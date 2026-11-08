@@ -59,7 +59,7 @@ impl MovingShadowReceiver {
         };
         // Going down is slower than going up: a fall in receiver height otherwise reads as a
         // snap because the projection lengthens at the same time.
-        let seconds = elapsed_seconds.max(0.0).min(0.1);
+        let seconds = elapsed_seconds.clamp(0.0, 0.1);
         let time_constant = if target.level < shown.level { 0.13 } else { 0.05 };
         let blend = 1.0 - (-seconds / time_constant).exp();
         let next = CellGround {

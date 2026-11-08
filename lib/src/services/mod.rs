@@ -1,2 +1,3 @@
-pub mod services;
-pub use services::*;
+#[path = "services.rs"]
+mod implementation;
+pub use implementation::*;

@@ -1,2 +1,3 @@
-pub mod save;
-pub use save::*;
+#[path = "save.rs"]
+mod implementation;
+pub use implementation::*;

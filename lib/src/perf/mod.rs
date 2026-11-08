@@ -1,2 +1,3 @@
-pub mod perf;
-pub use perf::*;
+#[path = "perf.rs"]
+mod implementation;
+pub use implementation::*;
