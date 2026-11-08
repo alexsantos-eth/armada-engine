@@ -24,16 +24,12 @@ use crate::lighting::shadow_view::GROUND_SHADOW_LAYER;
 
 /// What the ground of one cell is, to a shadow being laid on it.
 ///
-/// The level and the elevation are not the same number. Sand is drawn as a shallow slab, so its
-/// surface is half a block below the elevation it has ([`crate::preview_top_level`]), and a
-/// shadow laid at the elevation floats over every beach; but the depth the scene sorts by is the
-/// column's own elevation, which is what the terrain and the baked shadows use
+/// Every material fills its block, so the cell's elevation is both the level its top is drawn
+/// at and the depth the scene sorts by — the same number the terrain and the baked shadows use
 /// ([`crate::lighting::shadow_view::ShadowScene::collect_ground`]).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CellGround {
     /// The level the cell's top is drawn at, in blocks.
-    pub level: f64,
-    /// The elevation it sorts by, in blocks.
     pub elevation: f64,
     /// What it is made of, which is what its walls are made of.
     pub material: TerrainMaterial,
@@ -63,10 +59,9 @@ impl MovingShadowReceiver {
         // Going down is slower than going up: a fall in receiver height otherwise reads as a
         // snap because the projection lengthens at the same time.
         let seconds = elapsed_seconds.clamp(0.0, 0.1);
-        let time_constant = if target.level < shown.level { 0.13 } else { 0.05 };
+        let time_constant = if target.elevation < shown.elevation { 0.13 } else { 0.05 };
         let blend = 1.0 - (-seconds / time_constant).exp();
         let next = CellGround {
-            level: shown.level + (target.level - shown.level) * blend,
             elevation: shown.elevation + (target.elevation - shown.elevation) * blend,
             material: target.material,
         };
@@ -124,7 +119,7 @@ pub fn collect_moving_shadow(
     let matrix = silhouette_matrix(
         &light.shadow,
         foot,
-        level - ground.level,
+        level - ground.elevation,
         projection.tile_width,
         box_height,
     );
@@ -141,7 +136,7 @@ pub fn collect_moving_shadow(
     let points = world_points
         .iter()
         .map(|&(x, y)| {
-            let at = project_block(GridPoint { x, y }, ground.level, projection);
+            let at = project_block(GridPoint { x, y }, ground.elevation, projection);
             (at.screen_x, at.screen_y)
         })
         .collect();

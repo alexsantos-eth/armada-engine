@@ -114,34 +114,15 @@ fn config_rejects_invalid_height_and_noise_ranges() {
     );
 }
 
-/// The last row of beach before the land steps up is two blocks of sand tall, so the climb from
-/// the beach is split in two instead of reading as one and a half blocks of wall.
+/// The elevation of a column is its raw height: the beach is one block of sand everywhere, so no
+/// two neighbours end up more than a block apart.
 #[test]
-fn the_beach_row_against_a_step_is_a_block_taller() {
+fn columns_stand_on_the_raw_height_field() {
     let generator = TerrainGenerator::new(TerrainConfig::default()).unwrap();
-    let mut doubled = 0;
     for cx in -2..=2 {
         for cy in -2..=2 {
             for column in generator.generate_chunk(ChunkCoord { cx, cy }) {
-                let raw = generator.height_at(column.coord);
-                let around = [(-1, 0), (1, 0), (0, -1), (0, 1)].map(|(dx, dy)| {
-                    generator.height_at(WorldCoord {
-                        x: column.coord.x + dx,
-                        y: column.coord.y + dy,
-                    })
-                });
-                let raised = column.elevation - raw;
-                assert!((0..=1).contains(&raised), "{column:?} raised by {raised}");
-                if raised == 1 {
-                    doubled += 1;
-                    assert_eq!(column.surface, TerrainMaterial::Sand, "only the beach rises");
-                    assert!(around.iter().any(|h| *h > raw), "{column:?} has no step to meet");
-                    assert!(
-                        around.iter().all(|h| *h >= raw),
-                        "{column:?} would grow a two-block cliff over what is lower"
-                    );
-                }
-                // Whatever the row does, no two neighbours may end up more than a block apart.
+                assert_eq!(column.elevation, generator.height_at(column.coord));
                 for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
                     let neighbour = generator.column_at(WorldCoord {
                         x: column.coord.x + dx,
@@ -155,5 +136,4 @@ fn the_beach_row_against_a_step_is_a_block_taller() {
             }
         }
     }
-    assert!(doubled > 0, "no beach row met a step in the sampled chunks");
 }

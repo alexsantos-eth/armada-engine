@@ -23,7 +23,7 @@ pub const DUST_MS: f64 = 360.0;
 /// Opacity of a puff of dust as it rises, fading to `0` over [`DUST_MS`].
 pub const DUST_ALPHA: f64 = 0.85;
 
-/// Landings softer than this, in blocks per tick (a step down onto sand), raise no dust.
+/// Landings softer than this, in blocks per tick (a small step down), raise no dust.
 pub const DUST_MIN_IMPACT: f64 = 0.1;
 
 /// How much of an effect lasting `duration` is left `ms` after it started: `1` → `0`, `0` after.

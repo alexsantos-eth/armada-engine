@@ -73,10 +73,9 @@ fn collect(
     out
 }
 
-fn at(level: f64) -> CellGround {
+fn at(elevation: f64) -> CellGround {
     CellGround {
-        level,
-        elevation: level,
+        elevation,
         material: TerrainMaterial::Grass,
     }
 }
@@ -137,16 +136,9 @@ fn the_shadow_sorts_with_the_player_it_was_cast_from() {
 }
 
 #[test]
-fn a_piece_is_projected_onto_the_level_its_cell_is_drawn_at() {
-    // Sand: its top is drawn half a block under the elevation it sorts by, so the shadow on it
-    // is drawn half an elevation step lower than the same shadow on a cell that is not sunken.
-    let sunken = collect(&DAWN, 2.0, |_, _| {
-        Some(CellGround {
-            level: 1.5,
-            elevation: 2.0,
-            material: TerrainMaterial::Sand,
-        })
-    });
+fn the_shadow_is_laid_on_the_level_of_the_ground_it_falls_on() {
+    // A cell drawn lower puts the shadow lower on screen.
+    let lower = collect(&DAWN, 2.0, |_, _| Some(at(1.0)));
     let lowest = |draws: &[SpriteDraw]| {
         draws
             .iter()
@@ -162,8 +154,8 @@ fn a_piece_is_projected_onto_the_level_its_cell_is_drawn_at() {
             .fold(f64::NEG_INFINITY, f64::max)
     };
     assert!(
-        lowest(&sunken) > lowest(&collect(&DAWN, 2.0, flat())),
-        "a sunken top puts the shadow lower on screen"
+        lowest(&lower) > lowest(&collect(&DAWN, 2.0, flat())),
+        "a lower top puts the shadow lower on screen"
     );
 }
 
@@ -175,14 +167,14 @@ fn a_level_change_eases_the_shadow_receiver_across_frames() {
         .update(Some(at(3.0)), 1.0 / 60.0)
         .expect("a receiver");
     assert!(
-        first.level > 2.0 && first.level < 3.0,
+        first.elevation > 2.0 && first.elevation < 3.0,
         "the first frame does not snap"
     );
     let later = receiver
         .update(Some(at(3.0)), 1.0 / 60.0)
         .expect("a receiver");
     assert!(
-        later.level > first.level && later.level < 3.0,
+        later.elevation > first.elevation && later.elevation < 3.0,
         "it continues towards the new level"
     );
 }
@@ -196,7 +188,7 @@ fn a_step_down_eases_more_slowly_than_a_step_up() {
     falling.update(Some(at(3.0)), 0.0);
     let down = falling.update(Some(at(2.0)), 1.0 / 60.0).expect("a receiver");
     assert!(
-        3.0 - down.level < up.level - 2.0,
+        3.0 - down.elevation < up.elevation - 2.0,
         "the receiver travels less in its first downward frame"
     );
 }

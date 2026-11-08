@@ -5,12 +5,12 @@
   <path id="lower-shadow" fill="transparent" d="M512 0 1024 256 512 512 0 256Z" opacity=".28" />
   <path id="upper-shadow" fill="transparent" d="M512 -341 1024 -85 512 171 0 -85Z" opacity=".2" />
   <g id="figure">
-    <polygon points="0.0,146.0 512.0,402.0 512.0,512.0 0.0,256.0" fill="#89784c" stroke="#89784c" stroke-width=".75" stroke-linejoin="round"/>
-    <polygon points="1024.0,146.0 512.0,402.0 512.0,512.0 1024.0,256.0" fill="#b8a066" stroke="#b8a066" stroke-width=".75" stroke-linejoin="round"/>
-    <polygon points="512.0,-110.0 1024.0,146.0 512.0,402.0 0.0,146.0" fill="#c6ac6e" stroke="#c6ac6e" stroke-width=".75" stroke-linejoin="round"/>
-    <polygon points="0.0,86.0 512.0,342.0 512.0,402.0 0.0,146.0" fill="#9c8d60" stroke="#9c8d60" stroke-width=".75" stroke-linejoin="round"/>
-    <polygon points="1024.0,86.0 512.0,342.0 512.0,402.0 1024.0,146.0" fill="#d1bd81" stroke="#d1bd81" stroke-width=".75" stroke-linejoin="round"/>
-    <polygon points="512.0,-170.0 1024.0,86.0 512.0,342.0 0.0,86.0" fill="#d1bd81" stroke="#d1bd81" stroke-width=".75" stroke-linejoin="round"/>
-    <polygon points="512.0,-156.0 996.0,86.0 512.0,328.0 28.0,86.0" fill="#e1cb8b" stroke="#e1cb8b" stroke-width=".75" stroke-linejoin="round"/>
+    <polygon points="0.0,-25.0 512.0,231.0 512.0,512.0 0.0,256.0" fill="#948252" stroke="#948252" stroke-width=".75" stroke-linejoin="round"/>
+    <polygon points="1024.0,-25.0 512.0,231.0 512.0,512.0 1024.0,256.0" fill="#c7ae6e" stroke="#c7ae6e" stroke-width=".75" stroke-linejoin="round"/>
+    <polygon points="512.0,-281.0 1024.0,-25.0 512.0,231.0 0.0,-25.0" fill="#d6bb77" stroke="#d6bb77" stroke-width=".75" stroke-linejoin="round"/>
+    <polygon points="0.0,-85.0 512.0,171.0 512.0,231.0 0.0,-25.0" fill="#a89868" stroke="#a89868" stroke-width=".75" stroke-linejoin="round"/>
+    <polygon points="1024.0,-85.0 512.0,171.0 512.0,231.0 1024.0,-25.0" fill="#e2cd8c" stroke="#e2cd8c" stroke-width=".75" stroke-linejoin="round"/>
+    <polygon points="512.0,-341.0 1024.0,-85.0 512.0,171.0 0.0,-85.0" fill="#e2cd8c" stroke="#e2cd8c" stroke-width=".75" stroke-linejoin="round"/>
+    <polygon points="512.0,-327.0 996.0,-85.0 512.0,157.0 28.0,-85.0" fill="#f3dc96" stroke="#f3dc96" stroke-width=".75" stroke-linejoin="round"/>
   </g>
 </svg>

@@ -31,14 +31,11 @@ RIM_SHADE = 0.93
 SAND_TOP, SAND_BODY = "#f3dc96", "#dcc07a"
 
 #: Each ground material: how far its top stands over the plane of the block below, how thick its
-#: top layer is, and the two colours.
-#:
-#: Sand is a beach: its top sits half a block under its own cell, which is the inset the view and
-#: the player's feet both ask about (`preview_top_inset`). Everything else fills its block.
+#: top layer is, and the two colours. Every ground block fills its cell, sand included.
 BLOCKS = {
     "grass/block.svg": (H, 96, GRASS, DIRT),
     "ground/block.svg": (H, 0, DIRT, DIRT),
-    "sand/block.svg": (round(H / 2), 60, SAND_TOP, SAND_BODY),
+    "sand/block.svg": (H, 60, SAND_TOP, SAND_BODY),
 }
 
 

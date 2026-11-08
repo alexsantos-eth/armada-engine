@@ -8,7 +8,7 @@ use crate::time::TICKS_PER_SECOND;
 use crate::grid::{ChunkCoord, WorldCoord, WorldRect};
 use crate::player::motion::{PlayerMotionEvent, PlayerMotionType, transition_player_motion};
 use crate::projection::GridPoint;
-use crate::terrain::{TerrainColumn, TerrainMaterial, top_is_flush};
+use crate::terrain::{TerrainColumn, TerrainMaterial};
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -172,14 +172,6 @@ impl PlayerObstacle {
     }
 }
 
-/// Top inset function type.
-pub type PlayerTopInset = fn(TerrainMaterial) -> f64;
-
-/// No inset: every top at its column's elevation.
-pub fn no_top_inset(_: TerrainMaterial) -> f64 {
-    0.0
-}
-
 /// A climb in progress.
 #[derive(Clone, Debug)]
 pub struct PlayerClimb {
@@ -212,7 +204,6 @@ pub struct PlayerState {
     pub x: f64,
     pub y: f64,
     pub elevation: f64,
-    pub inset: f64,
     pub height: f64,
     pub vertical_speed: Option<f64>,
     pub last_safe: PlayerPosition,
@@ -229,7 +220,6 @@ pub struct PlayerState {
     pub feedback: PlayerFeedback,
     pub walk: GridPoint,
     pub motion: PlayerMotionType,
-    pub inset_prev: f64,
     pub height_prev: f64,
 }
 
@@ -238,7 +228,6 @@ pub struct PlayerPosition {
     pub x: f64,
     pub y: f64,
     pub elevation: f64,
-    pub inset: f64,
     pub height: f64,
 }
 
@@ -248,7 +237,6 @@ pub struct PlayerRenderPosition {
     pub x: f64,
     pub y: f64,
     pub elevation: f64,
-    pub inset: f64,
     pub height: f64,
 }
 
@@ -348,21 +336,11 @@ fn support_at<G: PlayerGround>(ground: &G, point: GridPoint) -> Option<TerrainCo
     Some(column)
 }
 
-fn fits_in_air<G: PlayerGround>(
-    ground: &G,
-    point: GridPoint,
-    feet: f64,
-    top_inset: PlayerTopInset,
-) -> bool {
-    block_reason_at(ground, point, 0.0, feet, true, top_inset).is_none()
+fn fits_in_air<G: PlayerGround>(ground: &G, point: GridPoint, feet: f64) -> bool {
+    block_reason_at(ground, point, 0.0, feet, true).is_none()
 }
 
-fn can_leave_edge<G: PlayerGround>(
-    ground: &G,
-    point: GridPoint,
-    feet: f64,
-    top_inset: PlayerTopInset,
-) -> bool {
+fn can_leave_edge<G: PlayerGround>(ground: &G, point: GridPoint, feet: f64) -> bool {
     let cells = get_player_cells(point);
     let mut missing = false;
     for x in cells.min_x..=cells.max_x {
@@ -376,7 +354,7 @@ fn can_leave_edge<G: PlayerGround>(
             }
         }
     }
-    missing && fits_in_air(ground, point, feet, top_inset)
+    missing && fits_in_air(ground, point, feet)
 }
 
 fn block_reason_at<G: PlayerGround>(
@@ -385,7 +363,6 @@ fn block_reason_at<G: PlayerGround>(
     elevation: f64,
     feet: f64,
     airborne: bool,
-    top_inset: PlayerTopInset,
 ) -> Option<PlayerBlockReason> {
     let cells = get_player_cells(point);
     for x in cells.min_x..=cells.max_x {
@@ -400,7 +377,7 @@ fn block_reason_at<G: PlayerGround>(
             if airborne {
                 if let Some(col) = column
                     && col.surface != TerrainMaterial::Water
-                    && feet < col.elevation as f64 - drawn_inset(ground, col, top_inset) - LANDING
+                    && feet < col.elevation as f64 - LANDING
                 {
                     return Some(PlayerBlockReason::Terrain);
                 }
@@ -437,50 +414,12 @@ fn block_reason_at<G: PlayerGround>(
 }
 
 fn fits_at<G: PlayerGround>(ground: &G, point: GridPoint, from_elevation: f64) -> bool {
-    block_reason_at(ground, point, from_elevation, 0.0, false, no_top_inset).is_none()
+    block_reason_at(ground, point, from_elevation, 0.0, false).is_none()
 }
 
 fn elevation_at<G: PlayerGround>(ground: &G, point: GridPoint) -> f64 {
     let (x, y) = (get_player_column(point).x, get_player_column(point).y);
     ground.column_at(x, y).map(|c| c.elevation as f64).unwrap_or(0.0)
-}
-
-fn inset_at<G: PlayerGround>(ground: &G, point: GridPoint, top_inset: PlayerTopInset) -> f64 {
-    let (x, y) = (get_player_column(point).x, get_player_column(point).y);
-    ground
-        .column_at(x, y)
-        .map(|c| drawn_inset(ground, c, top_inset))
-        .unwrap_or(0.0)
-}
-
-/// How far under its cell's plane the top of `column` is actually drawn, which is what the
-/// player stands on.
-///
-/// It is the material's own inset, except on the terrace row against a step up, whose top is
-/// drawn flush with its cell ([`top_is_flush`]): the view lifts that top, so the feet have to
-/// rise with it or the player walks inside the step.
-fn drawn_inset<G: PlayerGround>(
-    ground: &G,
-    column: TerrainColumn,
-    top_inset: PlayerTopInset,
-) -> f64 {
-    let inset = top_inset(column.surface);
-    if inset == 0.0 {
-        return 0.0;
-    }
-    let around = [(1, 0), (-1, 0), (0, 1), (0, -1)].map(|(dx, dy)| {
-        ground
-            .column_at(
-                column.coord.x.saturating_add(dx),
-                column.coord.y.saturating_add(dy),
-            )
-            .map(|c| c.elevation)
-    });
-    if top_is_flush(column.surface, column.elevation, around) {
-        0.0
-    } else {
-        inset
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -545,14 +484,12 @@ pub fn find_player_spawn<G: PlayerGround>(ground: &G, centre: GridPoint) -> Play
             x: s.coord.x as f64,
             y: s.coord.y as f64,
             elevation: s.elevation as f64,
-            inset: 0.0,
             height: 0.0,
         },
         None => PlayerPosition {
             x: centre.x,
             y: centre.y,
             elevation: 0.0,
-            inset: 0.0,
             height: 0.0,
         },
     }
@@ -563,14 +500,12 @@ pub fn create_player<G: PlayerGround>(ground: &G, at: GridPoint) -> PlayerState 
         x: at.x,
         y: at.y,
         elevation: elevation_at(ground, at),
-        inset: 0.0,
         height: 0.0,
     };
     PlayerState {
         x: at.x,
         y: at.y,
         elevation: elevation_at(ground, at),
-        inset: 0.0,
         height: 0.0,
         vertical_speed: None,
         last_safe: position,
@@ -587,7 +522,6 @@ pub fn create_player<G: PlayerGround>(ground: &G, at: GridPoint) -> PlayerState 
         feedback: PlayerFeedback::default(),
         walk: GridPoint { x: 0.0, y: 0.0 },
         motion: PlayerMotionType::Idle,
-        inset_prev: 0.0,
         height_prev: 0.0,
     }
 }
@@ -829,7 +763,6 @@ fn accelerate_player(player: &mut PlayerState) {
 fn step_once<G: PlayerGround>(
     player: &mut PlayerState,
     ground: &G,
-    top_inset: PlayerTopInset,
     diagnose: bool,
 ) -> Option<PlayerBlockReason> {
     let velocity = player.velocity;
@@ -855,7 +788,7 @@ fn step_once<G: PlayerGround>(
         },
     ];
     let airborne = player.vertical_speed.is_some();
-    let feet = player.elevation - player.inset + player.height;
+    let feet = player.elevation + player.height;
     let vs = player.vertical_speed.unwrap_or(0.0);
     let clearance_feet = if airborne && vs > 0.0 {
         feet + vs - PLAYER_GRAVITY / 2.0
@@ -864,9 +797,9 @@ fn step_once<G: PlayerGround>(
     };
     let fits = |point: GridPoint| -> bool {
         if airborne {
-            fits_in_air(ground, point, clearance_feet, top_inset)
+            fits_in_air(ground, point, clearance_feet)
         } else {
-            fits_at(ground, point, player.elevation) || can_leave_edge(ground, point, feet, top_inset)
+            fits_at(ground, point, player.elevation) || can_leave_edge(ground, point, feet)
         }
     };
     let mut next: Option<GridPoint> = None;
@@ -914,7 +847,7 @@ fn step_once<G: PlayerGround>(
         None => {
             player.velocity = GridPoint { x: 0.0, y: 0.0 };
             if diagnose {
-                return block_reason_at(ground, moves[0], player.elevation, clearance_feet, airborne, top_inset);
+                return block_reason_at(ground, moves[0], player.elevation, clearance_feet, airborne);
             }
             return None;
         }
@@ -925,10 +858,7 @@ fn step_once<G: PlayerGround>(
     };
     let surface = support_at(ground, next);
     let elevation = surface.map(|s| s.elevation as f64).unwrap_or(player.elevation);
-    let inset = surface
-        .map(|s| drawn_inset(ground, s, top_inset))
-        .unwrap_or(player.inset);
-    let rise = elevation - inset - feet;
+    let rise = elevation - feet;
     if !airborne && rise > PLAYER_STEP_HEIGHT {
         // start climb
         let length = (next.x - from.x).hypot(next.y - from.y);
@@ -966,11 +896,10 @@ fn step_once<G: PlayerGround>(
     player.x = next.x;
     player.y = next.y;
     player.elevation = elevation;
-    player.inset = inset;
     player.height = if airborne {
-        feet - (elevation - inset)
+        feet - elevation
     } else {
-        (feet - (elevation - inset)).max(0.0)
+        (feet - elevation).max(0.0)
     };
     if !airborne && player.height == 0.0 {
         player.vertical_speed = None;
@@ -981,15 +910,14 @@ fn step_once<G: PlayerGround>(
 fn step_air<G: PlayerGround>(
     player: &mut PlayerState,
     ground: &G,
-    top_inset: PlayerTopInset,
     flying: bool,
 ) -> Option<&'static str> {
     let support = support_at(ground, GridPoint {
         x: player.x,
         y: player.y,
     });
-    let top = support.map(|s| s.elevation as f64 - drawn_inset(ground, s, top_inset));
-    let feet = player.elevation - player.inset + player.height;
+    let top = support.map(|s| s.elevation as f64);
+    let feet = player.elevation + player.height;
     if player.vertical_speed.is_none() {
         if player.height > 0.0 || top.is_none() {
             player.vertical_speed = Some(0.0);
@@ -1003,7 +931,7 @@ fn step_air<G: PlayerGround>(
     } else {
         vs
     };
-    let roof = player.last_safe.elevation - player.last_safe.inset + PLAYER_FLY_MAX_HEIGHT;
+    let roof = player.last_safe.elevation + PLAYER_FLY_MAX_HEIGHT;
     let next_speed = if flying {
         (PLAYER_FLY_SPEED).min(speed + PLAYER_FLY_THRUST).min((roof - feet).max(-PLAYER_FLY_SPEED))
     } else {
@@ -1025,7 +953,7 @@ fn step_air<G: PlayerGround>(
         None
     };
     if let Some(ceil) = ceiling {
-        player.height = ceil - PLAYER_BODY_HEIGHT - (player.elevation - player.inset);
+        player.height = ceil - PLAYER_BODY_HEIGHT - player.elevation;
         player.vertical_speed = Some(0.0);
         return Some("ceiling");
     }
@@ -1035,29 +963,26 @@ fn step_air<G: PlayerGround>(
     player.height = if landed {
         0.0
     } else {
-        next_feet - (player.elevation - player.inset)
+        next_feet - player.elevation
     };
     player.vertical_speed = if landed { None } else { Some(next_speed) };
     if landed {
         if let Some(s) = support {
             player.feedback.impact = (-(speed + next_speed) / 2.0).max(0.0);
             player.elevation = s.elevation as f64;
-            player.inset = drawn_inset(ground, s, top_inset);
             player.last_safe = PlayerPosition {
                 x: player.x,
                 y: player.y,
                 elevation: player.elevation,
-                inset: player.inset,
                 height: 0.0,
             };
             return Some("landed");
         }
-    } else if next_feet < player.last_safe.elevation - player.last_safe.inset - PLAYER_RESCUE_DROP {
+    } else if next_feet < player.last_safe.elevation - PLAYER_RESCUE_DROP {
         let safe = player.last_safe;
         player.x = safe.x;
         player.y = safe.y;
         player.elevation = safe.elevation;
-        player.inset = safe.inset;
         player.height = 0.0;
         player.vertical_speed = None;
         return Some("rescued");
@@ -1115,12 +1040,7 @@ fn is_flying(player: &PlayerState) -> bool {
 // stepPlayer
 // ---------------------------------------------------------------------------
 
-pub fn step_player<G: PlayerGround>(
-    player: &mut PlayerState,
-    ground: &mut G,
-    ticks: u32,
-    top_inset: PlayerTopInset,
-) {
+pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ticks: u32) {
     for tick in 0..ticks {
         // A climb is over the tick after its last one.
         if player.climb.as_ref().map(|c| c.tick >= c.ticks).unwrap_or(false) {
@@ -1138,16 +1058,11 @@ pub fn step_player<G: PlayerGround>(
         if resting && tick > 0 {
             return;
         }
-        // On the ground its feet are on the top under it.
-        if player.vertical_speed.is_none() && climb.is_none() {
-            player.inset = inset_at(ground, GridPoint { x: player.x, y: player.y }, top_inset);
-        }
-        let (x, y, elevation, inset, height) = (player.x, player.y, player.elevation, player.inset, player.height);
+        let (x, y, elevation, height) = (player.x, player.y, player.elevation, player.height);
         player.previous = PlayerPosition {
             x,
             y,
             elevation,
-            inset,
             height,
         };
         if player.feedback.landing_ticks > 0 {
@@ -1174,8 +1089,7 @@ pub fn step_player<G: PlayerGround>(
             player.x = point.x;
             player.y = point.y;
             player.elevation = elevation_at(ground, point);
-            player.inset = inset_at(ground, point, top_inset);
-            let h = feet - (player.elevation - player.inset);
+            let h = feet - player.elevation;
             player.height = if h > LANDING { h } else { 0.0 };
             player.climb = Some(climb);
             update_motion(player, false);
@@ -1204,9 +1118,9 @@ pub fn step_player<G: PlayerGround>(
         }
         let flying = is_flying(player);
         accelerate_player(player);
-        let block_reason = step_once(player, ground, top_inset, false);
+        let block_reason = step_once(player, ground, false);
         let air_result = if player.climb.is_none() {
-            step_air(player, ground, top_inset, flying)
+            step_air(player, ground, flying)
         } else {
             None
         };
@@ -1250,7 +1164,6 @@ pub fn step_player<G: PlayerGround>(
                 x: player.x,
                 y: player.y,
                 elevation: player.elevation,
-                inset: player.inset,
                 height: 0.0,
             };
         }
@@ -1332,7 +1245,6 @@ pub fn get_player_render_position(player: &PlayerState, alpha: f64) -> PlayerRen
         x: lerp(player.previous.x, player.x),
         y: lerp(player.previous.y, player.y),
         elevation: lerp(player.previous.elevation, player.elevation),
-        inset: lerp(player.previous.inset, player.inset),
         height: lerp(player.previous.height, player.height),
     }
 }

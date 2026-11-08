@@ -32,7 +32,7 @@ use iso::projection::{
 use iso::scene_order::PlayerSheet;
 use iso::services::{AudioService, InputService, NormalizedInput, SoundEvent, UiEvent, UiService};
 use iso::simulation::FixedStepper;
-use iso::terrain::{TerrainColumn, TerrainConfig, TerrainGenerator, TerrainMaterial, top_is_flush};
+use iso::terrain::{TerrainColumn, TerrainConfig, TerrainGenerator, TerrainMaterial};
 use iso::world::{ChunkManager, ChunkRadii};
 use lighting::cloud_shadows::{CLOUD_SHADOW_SOURCE, CloudShadows};
 use lighting::moving_shadow::{CellGround, MovingShadowReceiver, collect_moving_shadow};
@@ -152,71 +152,19 @@ fn preview_projection(origin_x: f64, origin_y: f64) -> ProjectionConfig {
     }
 }
 
-/// How far under its cell's own plane a material's top is drawn, in blocks.
-///
-/// Sand's artwork is a shallow slab rather than a full block, so the surface a walker sees is
-/// half a block below the plane its elevation names. The TypeScript content says the same
-/// (`TERRAIN_APPEARANCE.sand.topInset` in `web/src/isometric/content/terrain.ts`), and its player
-/// stands and falls onto that sunken top. Without it the player walks half a block over every
-/// beach — about 47 px at this tile size — which is what it did here.
-pub(crate) fn preview_top_inset(material: TerrainMaterial) -> f64 {
-    match material {
-        TerrainMaterial::Sand => SAND_TOP_INSET,
-        _ => 0.0,
-    }
-}
-
-/// Blocks sand's drawn top lies below its cell's plane; see [`preview_top_inset`].
-const SAND_TOP_INSET: f64 = 0.5;
-
-/// The level a column's top is actually drawn at, in blocks: the plane anything resting on that
-/// column sits on.
-///
-/// It is the column's elevation less the inset its material is drawn with, except on the terrace
-/// row against a step up, whose top the view draws flush with its cell
-/// ([`top_is_flush`](iso::terrain::top_is_flush)). Everything that has to meet the ground
-/// asks this one question: the player's feet (`drawn_inset` in `player::physics`), the blocks
-/// themselves (`drawn_lift` in `terrain_view_blocks`) and the shadows baked onto them. A shadow
-/// answered with the plain inset lands half a block under the terrace row it belongs to, which
-/// reads as the beach's shadows being a tile out of place.
-pub(crate) fn preview_top_level(
-    column: TerrainColumn,
-    height_at: impl Fn(WorldCoord) -> Option<i32>,
-) -> f64 {
-    let elevation = f64::from(column.elevation);
-    let inset = preview_top_inset(column.surface);
-    if inset == 0.0 {
-        return elevation;
-    }
-    let around = [(1, 0), (-1, 0), (0, 1), (0, -1)].map(|(dx, dy)| {
-        height_at(WorldCoord {
-            x: column.coord.x.saturating_add(dx),
-            y: column.coord.y.saturating_add(dy),
-        })
-    });
-    if top_is_flush(column.surface, column.elevation, around) {
-        elevation
-    } else {
-        elevation - inset
-    }
-}
-
 /// The water of the cell `(x, y)`, or `None` where there is none: what a reflection asks the
 /// world for ([`reflection_view::collect_reflection`]).
 ///
-/// The level and the elevation are the same number for water, which is drawn as a full block,
-/// but they are asked for apart because the reflections take the level as the plane they mirror
-/// in and the elevation as the depth they sort by — the same pair, for the same reason, as
-/// [`lighting::moving_shadow::CellGround`].
+/// The level and the elevation are the same number for water, which fills its block, but they
+/// are asked for apart because the reflections take the level as the plane they mirror in and
+/// the elevation as the depth they sort by.
 fn water_cell(manager: &ChunkManager, x: i32, y: i32) -> Option<WaterCell> {
     let column = manager.column_at(x, y)?;
     if column.surface != TerrainMaterial::Water {
         return None;
     }
     Some(WaterCell {
-        level: preview_top_level(column, |point| {
-            manager.column_at(point.x, point.y).map(|c| c.elevation)
-        }),
+        level: f64::from(column.elevation),
         elevation: f64::from(column.elevation),
     })
 }
@@ -607,7 +555,7 @@ async fn main() {
             let jumps_before = player.feedback.jumps;
             let landings_before = player.feedback.landings;
             let mut ground = ChunkGround { manager: &manager };
-            step_player(&mut player, &mut ground, ticks, preview_top_inset);
+            step_player(&mut player, &mut ground, ticks);
             if player.feedback.jumps > jumps_before {
                 audio.play(SoundEvent::Jump);
             }
@@ -652,9 +600,8 @@ async fn main() {
         //   the view arrives with a knock; smoothing rounds that off, at the price of the player
         //   drifting by whatever the smoothing is behind by. It is a critically damped spring and
         //   not a half-life chase because a chase answers at full speed, which puts a corner at the
-        //   start of every move, and a short move — half a block of sand — is mostly made of that
-        //   start. That constant's own documentation has the measured trade-off and is the one place
-        //   to turn it.
+        //   start of every move, and a short move is mostly made of that start. That constant's
+        //   own documentation has the measured trade-off and is the one place to turn it.
         // So the centre is the player's column itself, and the level is added to the projection's
         // origin: the same shift `ground_point_below()` makes along both axes, without a lag of its
         // own. On screen the player then holds its place while the world moves under it, and the
@@ -765,13 +712,7 @@ async fn main() {
                 // And the shadows baked onto those columns, one quad each, keyed by the column
                 // so the ground in front of a shadow still covers it.
                 if let Some(shadows) = shadows.as_ref() {
-                    shadows.collect_ground(
-                        coord,
-                        chunk,
-                        projection,
-                        |point| manager.column_at(point.x, point.y).map(|c| c.elevation),
-                        &mut draws,
-                    );
+                    shadows.collect_ground(coord, chunk, projection, &mut draws);
                     shadows.collect_faces(coord, projection, &mut draws);
                 }
             }
@@ -933,12 +874,12 @@ async fn main() {
         // stands on, like the TypeScript client: a key built from the exact position puts the
         // player behind its own ground for the half of every cell where its position sits past
         // that cell's centre.
-        // Its feet stand on the top it is actually drawn on: the plane of its column, lowered
-        // by that top's inset (sand), raised by however far into a jump it is. The same sum as
-        // `drawnFoot` in the TypeScript client's `player-view.ts`.
+        // Its feet stand on the top it is actually drawn on: the plane of its column, raised
+        // by however far into a jump it is. The same sum as `drawnFoot` in the TypeScript
+        // client's `player-view.ts`.
         let feet = player_feet(
             GridPoint { x: rp.x, y: rp.y },
-            rp.elevation - rp.inset + rp.height,
+            rp.elevation + rp.height,
             projection,
         );
         let column = get_player_column(GridPoint { x: rp.x, y: rp.y });
@@ -1004,7 +945,7 @@ async fn main() {
                         layout,
                         feet,
                         (rp.x + 0.5, rp.y + 0.5),
-                        rp.elevation - rp.inset + rp.height,
+                        rp.elevation + rp.height,
                     );
                     shadows
                         .shade_moving(&manager, &receiver)
@@ -1016,9 +957,6 @@ async fn main() {
                 // the light when the feet enter the next level.
                 let ground_at = |x, y| {
                     manager.column_at(x, y).map(|column| CellGround {
-                        level: preview_top_level(column, |point| {
-                            manager.column_at(point.x, point.y).map(|c| c.elevation)
-                        }),
                         elevation: f64::from(column.elevation),
                         material: column.surface,
                     })
@@ -1042,7 +980,7 @@ async fn main() {
                     layout,
                     feet,
                     (rp.x + 0.5, rp.y + 0.5),
-                    rp.elevation - rp.inset + rp.height,
+                    rp.elevation + rp.height,
                     projection,
                     shadow_ground,
                     key,
@@ -1057,7 +995,7 @@ async fn main() {
                     frame,
                     layout,
                     feet,
-                    rp.elevation - rp.inset + rp.height,
+                    rp.elevation + rp.height,
                     Reflected::Standing { turn_at: None },
                     projection,
                     |x, y| water_cell(&manager, x, y),
@@ -1084,8 +1022,8 @@ async fn main() {
             &player,
             DustGround {
                 feet: GridPoint { x: rp.x, y: rp.y },
-                level: rp.elevation - rp.inset + rp.height,
-                ground: rp.elevation - rp.inset,
+                level: rp.elevation + rp.height,
+                ground: rp.elevation,
                 moved,
                 tile_height: projection.tile_height,
             },
@@ -1291,55 +1229,6 @@ mod tests {
             culled.len() <= SLOT_COUNT,
             "the camera shows {} chunks and the shadow atlas holds {SLOT_COUNT}",
             culled.len()
-        );
-    }
-
-    fn sand_at(x: i32, y: i32, elevation: i32) -> TerrainColumn {
-        TerrainColumn {
-            coord: WorldCoord { x, y },
-            elevation,
-            surface: TerrainMaterial::Sand,
-            walkable: true,
-        }
-    }
-
-    #[test]
-    fn open_beach_keeps_the_sunken_top_its_slab_is_drawn_with() {
-        let column = sand_at(4, 9, 0);
-
-        assert_eq!(
-            preview_top_level(column, |_| Some(0)),
-            -SAND_TOP_INSET,
-            "nothing around is higher, so the slab keeps the top the beach is drawn with"
-        );
-    }
-
-    #[test]
-    fn the_terrace_row_against_a_step_up_is_level_with_its_cell() {
-        let column = sand_at(4, 9, 0);
-
-        // The view lifts this row's top ([`top_is_flush`]) and the player walks on it, so a
-        // shadow answered with the plain inset would land half a block under the sand it
-        // belongs to.
-        assert_eq!(
-            preview_top_level(column, |point| Some(i32::from(point.x == 5))),
-            0.0,
-            "the one neighbour a block higher makes this the terrace row"
-        );
-    }
-
-    #[test]
-    fn ground_with_no_inset_never_asks_about_its_neighbours() {
-        let column = TerrainColumn {
-            coord: WorldCoord { x: 4, y: 9 },
-            elevation: 3,
-            surface: TerrainMaterial::Grass,
-            walkable: true,
-        };
-
-        assert_eq!(
-            preview_top_level(column, |_| panic!("a full block is drawn at its own cell")),
-            3.0
         );
     }
 
@@ -1588,27 +1477,6 @@ mod tests {
                     "({ax}, {ay}, {ae}) against ({bx}, {by}, {be})"
                 );
             }
-        }
-    }
-
-    #[test]
-    fn the_player_stands_on_the_top_sand_is_drawn_at() {
-        assert_eq!(
-            preview_top_inset(TerrainMaterial::Sand),
-            0.5,
-            "sand's slab is drawn half a block under its cell, as `TERRAIN_APPEARANCE` says"
-        );
-        for material in [
-            TerrainMaterial::Grass,
-            TerrainMaterial::Ground,
-            TerrainMaterial::Path,
-            TerrainMaterial::Water,
-        ] {
-            assert_eq!(
-                preview_top_inset(material),
-                0.0,
-                "every other material fills its block, so its top is its own plane"
-            );
         }
     }
 

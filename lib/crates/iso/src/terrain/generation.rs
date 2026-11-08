@@ -112,35 +112,10 @@ impl TerrainGenerator {
         };
         TerrainColumn {
             coord,
-            elevation: elevation + self.shore_step(coord, elevation, surface),
+            elevation,
             surface,
             walkable: surface != TerrainMaterial::Water,
         }
-    }
-
-    /// One extra block of sand under the last row of beach before the land steps up, or none.
-    ///
-    /// Sand is drawn as a shallow slab, about two thirds of a block below the plane its
-    /// elevation names, so the first step up from a beach read as one and a half blocks and
-    /// looked like a wall. This gives that row a second block of sand, splitting the climb in
-    /// two: the beach stays a single block of sand and only the row against the step is double.
-    ///
-    /// Only where nothing around the row is lower, so the beach never grows a two-block cliff
-    /// over the sea, and only from the raw heights, so a raised row never lifts the row behind
-    /// it in turn.
-    fn shore_step(&self, coord: WorldCoord, elevation: i32, surface: TerrainMaterial) -> i32 {
-        if surface != TerrainMaterial::Sand {
-            return 0;
-        }
-        let around = [(-1, 0), (1, 0), (0, -1), (0, 1)].map(|(dx, dy)| {
-            self.height_at(WorldCoord {
-                x: coord.x.saturating_add(dx),
-                y: coord.y.saturating_add(dy),
-            })
-        });
-        let steps_up = around.iter().any(|height| *height > elevation);
-        let nothing_lower = around.iter().all(|height| *height >= elevation);
-        i32::from(steps_up && nothing_lower)
     }
 
     /// Columns in x-major order, including chunk boundaries and signed coordinates.

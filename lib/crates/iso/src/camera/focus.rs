@@ -46,11 +46,9 @@ pub const CAMERA_RISE_MS_PER_BLOCK: f64 = PLAYER_CLIMB_MS;
 /// | 100 ms spring        | 62 px  |  73 px/s       |
 ///
 /// A spring beats a half-life chase at every drift, because a chase answers a change at full speed
-/// and so puts a corner at the start of every move — which is what a short move is mostly made of,
-/// and why half a block of sand read as a flick while a whole block read as smooth. 65 ms is slow
-/// enough that a half-block step takes about 450 ms, and holds the player's own drift to a fifth of
-/// a block over it. A clamp on that drift is not the answer: clamping is itself a corner, and it
-/// took the knock back up to 430 px/s.
+/// and so puts a corner at the start of every move — which is what a short move is mostly made of.
+/// 65 ms is slow enough and holds the player's drift to a fifth of a block over it. A clamp on that
+/// drift is not the answer: clamping is itself a corner, and it took the knock back up to 430 px/s.
 ///
 /// The TypeScript client has no smoothing of the level at all: its 90 ms is on the camera's whole
 /// centre, which is where its player's hop comes from.
@@ -88,7 +86,7 @@ pub struct CameraFocus {
 impl CameraFocus {
     /// A focus already settled on the top `at` stands on, so a session does not open with a swoop.
     pub fn new(at: &PlayerRenderPosition) -> Self {
-        let top = at.elevation - at.inset;
+        let top = at.elevation;
         Self {
             aim: top,
             eased: top,
@@ -127,7 +125,7 @@ impl CameraFocus {
         elapsed_ms: f64,
         smooth_ms: f64,
     ) -> f64 {
-        let top = at.elevation - at.inset;
+        let top = at.elevation;
         // Climbing or flying, it follows the feet up as they go; a jump does not bob it.
         let following = matches!(
             motion,

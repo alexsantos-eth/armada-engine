@@ -13,60 +13,59 @@ const PROJECTION: ProjectionConfig = ProjectionConfig {
 /// Blocks of level the projection turns into one block of lift along both world axes.
 const LIFT_PER_LEVEL: f64 = 0.5;
 
-fn at(elevation: f64, inset: f64, height: f64) -> PlayerRenderPosition {
+fn at(elevation: f64, height: f64) -> PlayerRenderPosition {
     PlayerRenderPosition {
         x: 4.0,
         y: 6.0,
         elevation,
-        inset,
         height,
     }
 }
 
 #[test]
 fn opens_on_the_top_the_player_stands_on() {
-    let focus = CameraFocus::new(&at(3.0, 0.5, 0.0));
-    assert_eq!(focus.level(), 2.5, "a session opens settled, with no swoop");
+    let focus = CameraFocus::new(&at(3.0, 0.0));
+    assert_eq!(focus.level(), 3.0, "a session opens settled, with no swoop");
     assert!(!focus.rising());
 }
 
 #[test]
 fn looks_at_the_players_column_lifted_by_its_level() {
-    let mut focus = CameraFocus::new(&at(2.0, 0.0, 0.0));
-    let ground = focus.ground(&at(2.0, 0.0, 0.0), PlayerMotionType::Walking, 16.0, PROJECTION);
+    let mut focus = CameraFocus::new(&at(2.0, 0.0));
+    let ground = focus.ground(&at(2.0, 0.0), PlayerMotionType::Walking, 16.0, PROJECTION);
     assert_eq!(ground.x, 4.0 + 2.0 * LIFT_PER_LEVEL);
     assert_eq!(ground.y, 6.0 + 2.0 * LIFT_PER_LEVEL);
 }
 
 #[test]
 fn a_jump_does_not_bob_the_camera() {
-    let mut focus = CameraFocus::new(&at(2.0, 0.0, 0.0));
+    let mut focus = CameraFocus::new(&at(2.0, 0.0));
     for height in [0.2, 0.5, 0.75, 0.5, 0.2] {
-        focus.ground(&at(2.0, 0.0, height), PlayerMotionType::Jumping, 16.0, PROJECTION);
+        focus.ground(&at(2.0, height), PlayerMotionType::Jumping, 16.0, PROJECTION);
         assert_eq!(focus.level(), 2.0, "the level stays on the top it took off from");
     }
-    focus.ground(&at(2.0, 0.0, 0.0), PlayerMotionType::Idle, 16.0, PROJECTION);
+    focus.ground(&at(2.0, 0.0), PlayerMotionType::Idle, 16.0, PROJECTION);
     assert_eq!(focus.level(), 2.0);
 }
 
 #[test]
 fn a_fall_is_followed_down_as_the_feet_fall() {
-    let mut focus = CameraFocus::new(&at(4.0, 0.0, 0.0));
+    let mut focus = CameraFocus::new(&at(4.0, 0.0));
     // Walking off a ledge: the column under it is already the lower top, and its feet are the two
     // blocks of `height` above that top they fall through.
-    focus.ground(&at(2.0, 0.0, 2.0), PlayerMotionType::Falling, 16.0, PROJECTION);
+    focus.ground(&at(2.0, 2.0), PlayerMotionType::Falling, 16.0, PROJECTION);
     assert_eq!(focus.level(), 4.0, "it starts where the feet left the ground");
-    focus.ground(&at(2.0, 0.0, 1.0), PlayerMotionType::Falling, 16.0, PROJECTION);
+    focus.ground(&at(2.0, 1.0), PlayerMotionType::Falling, 16.0, PROJECTION);
     assert_eq!(focus.level(), 3.0, "the camera is half way down with the feet, not waiting to land");
-    focus.ground(&at(2.0, 0.0, 0.0), PlayerMotionType::Idle, 16.0, PROJECTION);
+    focus.ground(&at(2.0, 0.0), PlayerMotionType::Idle, 16.0, PROJECTION);
     assert_eq!(focus.level(), 2.0, "landing on the lower top is no jolt, it was on the way");
     assert!(!focus.rising());
 }
 
 #[test]
 fn a_jump_onto_a_higher_top_rises_on_the_climbs_curve() {
-    let mut focus = CameraFocus::new(&at(2.0, 0.0, 0.0));
-    let landed = at(3.0, 0.0, 0.0);
+    let mut focus = CameraFocus::new(&at(2.0, 0.0));
+    let landed = at(3.0, 0.0);
     let mut levels = vec![];
     let step = CAMERA_RISE_MS_PER_BLOCK / 10.0;
     for frame in 1..=10 {
@@ -89,14 +88,14 @@ fn a_jump_onto_a_higher_top_rises_on_the_climbs_curve() {
 
 #[test]
 fn a_higher_top_part_way_up_a_rise_restarts_it_from_where_it_is() {
-    let mut focus = CameraFocus::new(&at(0.0, 0.0, 0.0));
-    focus.ground(&at(1.0, 0.0, 0.0), PlayerMotionType::Idle, CAMERA_RISE_MS_PER_BLOCK / 2.0, PROJECTION);
+    let mut focus = CameraFocus::new(&at(0.0, 0.0));
+    focus.ground(&at(1.0, 0.0), PlayerMotionType::Idle, CAMERA_RISE_MS_PER_BLOCK / 2.0, PROJECTION);
     let part_way = focus.level();
     assert!(part_way > 0.0 && part_way < 1.0);
-    focus.ground(&at(2.0, 0.0, 0.0), PlayerMotionType::Idle, 0.0, PROJECTION);
+    focus.ground(&at(2.0, 0.0), PlayerMotionType::Idle, 0.0, PROJECTION);
     assert_eq!(focus.level(), part_way, "the new rise starts where the old one had got to");
     for _ in 0..40 {
-        focus.ground(&at(2.0, 0.0, 0.0), PlayerMotionType::Idle, CAMERA_RISE_MS_PER_BLOCK / 4.0, PROJECTION);
+        focus.ground(&at(2.0, 0.0), PlayerMotionType::Idle, CAMERA_RISE_MS_PER_BLOCK / 4.0, PROJECTION);
     }
     assert_eq!(focus.level(), 2.0);
 }
@@ -104,8 +103,8 @@ fn a_higher_top_part_way_up_a_rise_restarts_it_from_where_it_is() {
 #[test]
 fn climbing_and_flying_follow_the_feet_up_without_a_rise() {
     for motion in [PlayerMotionType::Climbing, PlayerMotionType::Flying] {
-        let mut focus = CameraFocus::new(&at(2.0, 0.0, 0.0));
-        focus.ground(&at(2.0, 0.0, 0.4), motion, 16.0, PROJECTION);
+        let mut focus = CameraFocus::new(&at(2.0, 0.0));
+        focus.ground(&at(2.0, 0.4), motion, 16.0, PROJECTION);
         assert_eq!(focus.level(), 2.4, "{motion:?} follows the feet as they go");
         assert!(!focus.rising(), "{motion:?} needs no rise, it is already following");
     }
@@ -113,25 +112,18 @@ fn climbing_and_flying_follow_the_feet_up_without_a_rise() {
 
 #[test]
 fn a_frame_with_no_time_does_not_advance_a_rise() {
-    let mut focus = CameraFocus::new(&at(0.0, 0.0, 0.0));
+    let mut focus = CameraFocus::new(&at(0.0, 0.0));
     for elapsed in [0.0, -16.0, f64::NAN, f64::INFINITY] {
-        focus.ground(&at(1.0, 0.0, 0.0), PlayerMotionType::Idle, elapsed, PROJECTION);
+        focus.ground(&at(1.0, 0.0), PlayerMotionType::Idle, elapsed, PROJECTION);
         assert_eq!(focus.level(), 0.0, "{elapsed} is not a frame's worth of time");
     }
 }
 
 #[test]
-fn a_sunken_top_lowers_the_level_it_looks_at() {
-    let mut focus = CameraFocus::new(&at(2.0, 0.5, 0.0));
-    focus.ground(&at(2.0, 0.5, 0.0), PlayerMotionType::Idle, 16.0, PROJECTION);
-    assert_eq!(focus.level(), 1.5, "sand's drawn top is half a block under its cell's plane");
-}
-
-#[test]
 fn advance_is_the_level_and_ground_is_that_level_as_a_lift() {
-    let mut eased = CameraFocus::new(&at(0.0, 0.0, 0.0));
-    let mut lifted = CameraFocus::new(&at(0.0, 0.0, 0.0));
-    let higher = at(1.0, 0.0, 0.0);
+    let mut eased = CameraFocus::new(&at(0.0, 0.0));
+    let mut lifted = CameraFocus::new(&at(0.0, 0.0));
+    let higher = at(1.0, 0.0);
     let step = CAMERA_RISE_MS_PER_BLOCK / 3.0;
     for _ in 0..2 {
         let level = eased.advance(&higher, PlayerMotionType::Idle, step, 0.0);
@@ -148,8 +140,8 @@ fn the_level_shown_settles_on_the_level_aimed_at_without_a_corner() {
     // Landing on the top a block down: the aim is the feet, and it drops to the lower top the frame
     // the player lands, so the smoothing is the only thing the camera is behind by — and the only
     // thing the player moves on screen by.
-    let mut focus = CameraFocus::new(&at(1.0, 0.0, 0.0));
-    let landed = at(0.0, 0.0, 0.0);
+    let mut focus = CameraFocus::new(&at(1.0, 0.0));
+    let landed = at(0.0, 0.0);
     let frame = 1000.0 / 60.0;
     let mut shown = vec![];
     for _ in 0..60 {
@@ -178,11 +170,10 @@ fn the_level_shown_settles_on_the_level_aimed_at_without_a_corner() {
 
 #[test]
 fn a_shorter_step_is_smoothed_over_the_same_time_as_a_longer_one() {
-    // What a half block of sand needs: the same unhurried motion a whole block gets, not a flick
-    // because there is less of it to cover.
+    // The same unhurried motion whatever the drop, not a flick because there is less of it to cover.
     let settle = |drop: f64| {
-        let mut focus = CameraFocus::new(&at(drop, 0.0, 0.0));
-        let landed = at(0.0, 0.0, 0.0);
+        let mut focus = CameraFocus::new(&at(drop, 0.0));
+        let landed = at(0.0, 0.0);
         let frame = 1000.0 / 60.0;
         let mut frames: i32 = 0;
         while focus.advance(&landed, PlayerMotionType::Falling, frame, CAMERA_LEVEL_SMOOTH_MS) > 0.0 {
@@ -201,8 +192,8 @@ fn a_shorter_step_is_smoothed_over_the_same_time_as_a_longer_one() {
 #[test]
 fn no_smoothing_shows_the_level_itself() {
     for smooth_ms in [0.0, -30.0, f64::NAN] {
-        let mut focus = CameraFocus::new(&at(1.0, 0.0, 0.0));
-        let shown = focus.advance(&at(0.0, 0.0, 0.0), PlayerMotionType::Falling, 16.0, smooth_ms);
+        let mut focus = CameraFocus::new(&at(1.0, 0.0));
+        let shown = focus.advance(&at(0.0, 0.0), PlayerMotionType::Falling, 16.0, smooth_ms);
         assert_eq!(shown, 0.0, "{smooth_ms} is no spring, so the player never drifts");
         assert_eq!(focus.level(), focus.aim_level());
     }
@@ -210,7 +201,7 @@ fn no_smoothing_shows_the_level_itself() {
 
 #[test]
 fn a_frame_with_no_time_does_not_advance_the_smoothing() {
-    let mut focus = CameraFocus::new(&at(1.0, 0.0, 0.0));
-    let shown = focus.advance(&at(0.0, 0.0, 0.0), PlayerMotionType::Falling, 0.0, CAMERA_LEVEL_SMOOTH_MS);
+    let mut focus = CameraFocus::new(&at(1.0, 0.0));
+    let shown = focus.advance(&at(0.0, 0.0), PlayerMotionType::Falling, 0.0, CAMERA_LEVEL_SMOOTH_MS);
     assert_eq!(shown, 0.0, "with no frame to smooth over it shows the level it aims at");
 }

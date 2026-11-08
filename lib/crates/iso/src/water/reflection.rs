@@ -120,8 +120,9 @@ pub fn lay_on_water(layout: SpriteLayout) -> ReflectedSprite {
 /// The four corners of a cell's top face on screen, from the corner towards the camera.
 ///
 /// `level` is the level the top is drawn at, in blocks, which is not always the cell's elevation:
-/// a material drawn as a shallow slab has its top below its own plane. Water is drawn as a full
-/// block, so for water the two agree.
+/// a material drawn with a sunken top would have its below its own plane. Every terrain block
+/// fills its cell now, so the two agree — but the parameter stays, because a reflection mirrors
+/// in the drawn plane, not in the elevation.
 pub fn cell_top(cell: (i32, i32), level: f64, projection: ProjectionConfig) -> [(f64, f64); 4] {
     // The cell towards the camera is the one with the smallest `x + y`, so its own corner comes
     // first and the rest follow round the diamond.

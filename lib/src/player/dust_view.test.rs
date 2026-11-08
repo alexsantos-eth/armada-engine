@@ -33,9 +33,7 @@ impl PlayerGround for Lawn {
 }
 
 fn player_at(x: f64, y: f64) -> PlayerState {
-    let mut player = create_player(&Lawn, GridPoint { x, y });
-    player.inset = 0.0;
-    player
+    create_player(&Lawn, GridPoint { x, y })
 }
 
 fn react(dust: &mut DustPuffs, player: &PlayerState, moved: f64) {
@@ -90,7 +88,7 @@ fn a_landing_too_soft_to_feel_raises_none() {
         ..PlayerFeedback::default()
     };
     react(&mut dust, &player, 0.0);
-    assert_eq!(dust.live(), 0, "a step down onto sand kicks up nothing");
+    assert_eq!(dust.live(), 0, "a small step down kicks up nothing");
 }
 
 #[test]

@@ -40,7 +40,8 @@ fn a_tall_cliff_is_cut_into_blocks_so_the_scene_can_sort_it() {
     assert_eq!(faces[2].bottom, 0.0);
 }
 
-/// A beach's top is drawn half a block under its cell, so its walls are not whole blocks either.
+/// A drawn level between two block planes still cuts the faces at the block boundaries, not at
+/// the drawn level itself.
 #[test]
 fn a_drawn_level_between_blocks_cuts_at_the_block_boundary() {
     let map = [(0, 0, 1.5), (-1, 0, 0.0), (0, -1, 1.5)];

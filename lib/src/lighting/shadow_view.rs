@@ -376,16 +376,10 @@ impl ShadowScene {
         }
 
         self.scratch.move_to(area);
-        // The level a shadow lands on is the top the view actually draws, not the plane the
-        // column's elevation names: the beach is a shallow slab drawn half a block under its
-        // cell, except on the terrace row, where the view lifts it back ([`preview_top_level`]).
-        let height_at =
-            |point: WorldCoord| manager.column_at(point.x, point.y).map(|c| c.elevation);
-        let level_at = |x: i32, y: i32| {
-            manager
-                .column_at(x, y)
-                .map(|c| crate::preview_top_level(c, height_at))
-        };
+        // Every material fills its block, so the level a shadow lands on is the column's own
+        // elevation.
+        let level_at =
+            |x: i32, y: i32| manager.column_at(x, y).map(|c| f64::from(c.elevation));
         // The ground casts too, and a cliff that shades this chunk's edge usually stands in the
         // next one, so the field reaches past the area the map covers.
         let ground = Self::ground_field(manager, area.min_x, area.min_y, area.max_x, area.max_y);
@@ -414,12 +408,8 @@ impl ShadowScene {
         max_x: i32,
         max_y: i32,
     ) -> HeightField {
-        let height_at =
-            |point: WorldCoord| manager.column_at(point.x, point.y).map(|c| c.elevation);
         HeightField::new(min_x, min_y, max_x, max_y, |x, y| {
-            manager
-                .column_at(x, y)
-                .map(|c| crate::preview_top_level(c, height_at))
+            manager.column_at(x, y).map(|c| f64::from(c.elevation))
         })
     }
 
@@ -572,19 +562,14 @@ impl ShadowScene {
         let Some(columns) = manager.terrain_chunk(coord) else {
             return Vec::new();
         };
-        let height_at =
-            |point: WorldCoord| manager.column_at(point.x, point.y).map(|c| c.elevation);
-        let level_at = |x: i32, y: i32| {
-            manager
-                .column_at(x, y)
-                .map(|c| crate::preview_top_level(c, height_at))
-        };
+        let level_at =
+            |x: i32, y: i32| manager.column_at(x, y).map(|c| f64::from(c.elevation));
         let walls = terrain_faces(
             columns.iter().map(|c| {
                 (
                     c.coord.x,
                     c.coord.y,
-                    crate::preview_top_level(*c, height_at),
+                    f64::from(c.elevation),
                     c.surface,
                 )
             }),
@@ -731,11 +716,12 @@ impl ShadowScene {
     /// own level: the quad *is* the diamond, so a shadow cannot spill over the cliff beside it,
     /// and it carries the column's own depth so the ground in front of it still covers it.
     ///
-    /// The quad is the cell itself, at the level the column's top is actually drawn at
-    /// ([`crate::preview_top_level`]). That only works because a terrain block fills its whole
-    /// cell (`artifacts/terrain_blocks.py`): while the blocks were a few percent narrower, a
-    /// quad on the cell overhung its own slab onto the one behind and the two shadows added up
-    /// into a seam, and a quad cut to the drawing left every groove between the blocks lit.
+    /// The quad is the cell itself, at the level the column's top is drawn at, which is its
+    /// elevation now that every terrain block fills its cell (`artifacts/terrain_blocks.py`).
+    /// That only works because a terrain block fills its whole cell: while the blocks were a
+    /// few percent narrower, a quad on the cell overhung onto the one behind and the two
+    /// shadows added up into a seam, and a quad cut to the drawing left every groove between
+    /// the blocks lit.
     ///
     /// How dark it is comes from the lattice baked with the chunk, not from a texture, so the
     /// quad is drawn out of the shared atlas and costs no draw call of its own.
@@ -744,7 +730,6 @@ impl ShadowScene {
         coord: ChunkCoord,
         columns: &[TerrainColumn],
         projection: ProjectionConfig,
-        height_at: impl Fn(WorldCoord) -> Option<i32>,
         out: &mut Vec<SpriteDraw>,
     ) {
         let Some(baked) = self.chunks.get(&coord) else {
@@ -772,7 +757,7 @@ impl ShadowScene {
             else {
                 continue;
             };
-            let level = crate::preview_top_level(*column, &height_at);
+            let level = f64::from(column.elevation);
             let corner = |dx: f64, dy: f64| {
                 let point = project_block(
                     GridPoint {

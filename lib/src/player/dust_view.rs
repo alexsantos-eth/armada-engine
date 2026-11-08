@@ -77,7 +77,7 @@ const PUFFS: usize = 2 + RUN_PUFFS;
 pub struct DustGround {
     /// The feet, in columns.
     pub feet: GridPoint,
-    /// The plane the feet are drawn on, jump included (`elevation − inset + height`).
+    /// The plane the feet are drawn on, jump included (`elevation + height`).
     pub level: f64,
     /// That plane without the jump: the ground a landing puffs from.
     pub ground: f64,
