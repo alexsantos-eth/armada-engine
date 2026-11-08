@@ -166,6 +166,20 @@ fn a_level_change_eases_the_shadow_receiver_across_frames() {
 }
 
 #[test]
+fn a_step_down_eases_more_slowly_than_a_step_up() {
+    let mut rising = MovingShadowReceiver::default();
+    rising.update(Some(at(2.0)), 0.0);
+    let up = rising.update(Some(at(3.0)), 1.0 / 60.0).expect("a receiver");
+    let mut falling = MovingShadowReceiver::default();
+    falling.update(Some(at(3.0)), 0.0);
+    let down = falling.update(Some(at(2.0)), 1.0 / 60.0).expect("a receiver");
+    assert!(
+        3.0 - down.level < up.level - 2.0,
+        "the receiver travels less in its first downward frame"
+    );
+}
+
+#[test]
 fn a_step_in_the_ground_does_not_duplicate_the_shadow() {
     // Terrain changes do not split the player shadow into a top, wall and lower-ground piece.
     let draws = collect(&DAWN, 2.0, |_, y| Some(at(if y >= 21 { 3.0 } else { 2.0 })));

@@ -57,10 +57,11 @@ impl MovingShadowReceiver {
             self.shown = Some(target);
             return self.shown;
         };
-        // A 45 ms time constant is visibly smooth over several rendered frames without making
-        // the shadow trail behind a walking player.
+        // Going down is slower than going up: a fall in receiver height otherwise reads as a
+        // snap because the projection lengthens at the same time.
         let seconds = elapsed_seconds.max(0.0).min(0.1);
-        let blend = 1.0 - (-seconds / 0.045).exp();
+        let time_constant = if target.level < shown.level { 0.13 } else { 0.05 };
+        let blend = 1.0 - (-seconds / time_constant).exp();
         let next = CellGround {
             level: shown.level + (target.level - shown.level) * blend,
             elevation: shown.elevation + (target.elevation - shown.elevation) * blend,
