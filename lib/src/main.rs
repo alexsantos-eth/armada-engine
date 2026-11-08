@@ -1033,6 +1033,8 @@ async fn main() {
                 let current_ground = ground_at(current_column.x, current_column.y);
                 let shadow_ground = moving_shadow_receiver
                     .update(current_ground, f64::from(get_frame_time()));
+                // The shadow sorts at the player's own key: however far the light throws it
+                // from the feet, it never draws ahead of what is in front of the figure.
                 collect_moving_shadow(
                     &DAWN,
                     texture,
@@ -1043,6 +1045,7 @@ async fn main() {
                     rp.elevation - rp.inset + rp.height,
                     projection,
                     shadow_ground,
+                    key,
                     &mut draws,
                 );
                 // And what the water shows of it, which like its shadow is gathered per frame

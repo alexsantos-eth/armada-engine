@@ -38,6 +38,18 @@ fn frame() -> SpriteFrame {
     }
 }
 
+/// The key the player's own sprite is queued with: sorted by the column it stands on, on the
+/// away layer, like the client draws it.
+fn player_key() -> iso::scene_order::DrawKey {
+    scene_key(
+        10.5,
+        20.5,
+        2.0,
+        crate::PLAYER_BEHIND_LAYER,
+        TILE_WIDTH / 2.0,
+    )
+}
+
 fn collect(
     light: &PhaseLight,
     level: f64,
@@ -55,6 +67,7 @@ fn collect(
         level,
         projection(),
         ground_at(10, 20),
+        player_key(),
         &mut out,
     );
     out
@@ -93,19 +106,28 @@ fn the_shadow_is_queued_once_for_the_player() {
             _ => panic!("a moving shadow is a silhouette"),
         }
         assert_eq!(draw.key.layer, GROUND_SHADOW_LAYER);
+        assert_eq!(
+            draw.key.depth,
+            player_key().depth,
+            "the shadow sorts at the player's depth, however far the light throws it"
+        );
     }
 }
 
 #[test]
-fn a_flat_tile_towards_the_camera_does_not_cut_the_shadow() {
+fn the_shadow_sorts_with_the_player_it_was_cast_from() {
     let shadow = &collect(&DAWN, 2.0, flat())[0].key;
-    let player = scene_key(10.5, 20.5, 2.0, GROUND_SHADOW_LAYER, TILE_WIDTH / 2.0);
+    let player = player_key();
     let flat_front = ground_key(9.5, 20.5, 2.0, TERRAIN_LAYER, TILE_WIDTH / 2.0);
 
     assert_eq!(
-        compare_draw_keys(&player, shadow),
+        shadow.depth, player.depth,
+        "the shadow keeps the player's depth wherever the quad lands"
+    );
+    assert_eq!(
+        compare_draw_keys(shadow, &player),
         Ordering::Less,
-        "the one shadow is keyed from its nearest corner, ahead of the player"
+        "on the ground layer it draws before the sprite that casts it"
     );
     assert_eq!(
         compare_draw_keys(&flat_front, shadow),
@@ -235,6 +257,7 @@ fn a_sprite_with_no_artwork_above_its_feet_queues_nothing() {
         2.0,
         projection(),
         Some(at(2.0)),
+        player_key(),
         &mut out,
     );
     assert!(out.is_empty());

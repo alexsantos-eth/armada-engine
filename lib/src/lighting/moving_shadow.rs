@@ -9,14 +9,17 @@
 //!
 //! It is geometry, not a texture, but intentionally has just one quad: the entire silhouette is
 //! projected on the ground beneath the player. It does not split across tiles, climb walls or
-//! continue onto another level. That keeps the player readable without duplicated fragments.
+//! continue onto another level. That keeps the player readable without duplicated fragments. It
+//! draws at the depth of the sprite it was cast from ([`GROUND_SHADOW_LAYER`]), so however far
+//! the light throws it from the feet, it never jumps ahead of what is in front of the player.
 
 use iso::assets::{SpriteFrame, SpriteLayout};
 use iso::lighting::{PhaseLight, SpriteExtent, silhouette_matrix};
 use iso::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
+use iso::scene_order::DrawKey;
 use iso::terrain::TerrainMaterial;
 
-use crate::assets::sprites::{SpriteDraw, scene_key};
+use crate::assets::sprites::SpriteDraw;
 use crate::lighting::shadow_view::GROUND_SHADOW_LAYER;
 
 /// What the ground of one cell is, to a shadow being laid on it.
@@ -78,6 +81,12 @@ impl MovingShadowReceiver {
 /// * `level` — the level its feet are drawn on, in blocks, a jump included: in the air the
 ///   shadow slides away down the light, which is what tells a jump from a step.
 /// * `ground` — the smoothed ground receiver, or `None` where the player's world is not loaded.
+/// * `caster` — the key the sprite itself was queued with. The shadow draws at that same depth,
+///   on [`GROUND_SHADOW_LAYER`] (over the ground it was baked for, under whatever stands in it):
+///   it is one quad that stretches far beyond the caster's cell, and keyed to its own nearest
+///   corner it jumped ahead of everything between itself and the camera however far the light
+///   threw it. Whatever tile towards the camera it falls on may now paint over it — the price
+///   of sorting it with the caster it belongs to.
 #[allow(clippy::too_many_arguments)]
 pub fn collect_moving_shadow(
     light: &PhaseLight,
@@ -89,6 +98,7 @@ pub fn collect_moving_shadow(
     level: f64,
     projection: ProjectionConfig,
     ground: Option<CellGround>,
+    caster: DrawKey,
     out: &mut Vec<SpriteDraw>,
 ) {
     let opacity = light.opacity() as f32;
@@ -135,22 +145,11 @@ pub fn collect_moving_shadow(
             (at.screen_x, at.screen_y)
         })
         .collect();
-    // A single quad spans several cells but has only one depth key. Give it the depth of its
-    // corner nearest the camera, so every flat terrain tile it crosses is drawn first instead of
-    // punching a diamond-shaped hole through the silhouette.
-    let (front_x, front_y) = world_points
-        .iter()
-        .copied()
-        .min_by(|left, right| (left.0 + left.1).total_cmp(&(right.0 + right.1)))
-        .expect("a shadow quad has four corners");
     out.push(SpriteDraw::silhouette(
-        scene_key(
-            front_x,
-            front_y,
-            ground.elevation,
-            GROUND_SHADOW_LAYER,
-            projection.tile_height,
-        ),
+        DrawKey {
+            depth: caster.depth,
+            layer: GROUND_SHADOW_LAYER,
+        },
         texture,
         frame,
         points,
