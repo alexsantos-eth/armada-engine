@@ -1,6 +1,11 @@
 use super::*;
-use crate::assets::sprites::DrawKind;
+use crate::assets::sprites::{DrawKind, ground_key, scene_key};
+use crate::lighting::shadow_view::GROUND_SHADOW_LAYER;
+use crate::terrain::terrain_view_blocks::TERRAIN_LAYER;
 use iso::lighting::{DAWN, ShadowProjection};
+use iso::scene_order::compare_draw_keys;
+use iso::terrain::TerrainMaterial;
+use std::cmp::Ordering;
 
 const TILE_WIDTH: f64 = 280.0;
 
@@ -86,6 +91,25 @@ fn the_shadow_is_queued_a_piece_per_surface_it_lands_on() {
 }
 
 #[test]
+fn a_flat_tile_towards_the_camera_does_not_cut_the_shadow() {
+    let (x, y, elevation) = (12.5, 7.5, 2.0);
+    let shadow = scene_key(x, y, elevation, GROUND_SHADOW_LAYER, TILE_WIDTH / 2.0);
+    let flat_front = ground_key(x - 1.0, y, elevation, TERRAIN_LAYER, TILE_WIDTH / 2.0);
+    let raised_front = ground_key(x - 1.0, y, elevation + 1.0, TERRAIN_LAYER, TILE_WIDTH / 2.0);
+
+    assert_eq!(
+        compare_draw_keys(&flat_front, &shadow),
+        Ordering::Less,
+        "the flat tile immediately in front draws below the shadow instead of cutting it"
+    );
+    assert_eq!(
+        compare_draw_keys(&raised_front, &shadow),
+        Ordering::Greater,
+        "a real level change still covers the shadow"
+    );
+}
+
+#[test]
 fn a_piece_is_projected_onto_the_level_its_cell_is_drawn_at() {
     // Sand: its top is drawn half a block under the elevation it sorts by, so the shadow on it
     // is drawn half an elevation step lower than the same shadow on a cell that is not sunken.
@@ -117,9 +141,7 @@ fn a_piece_is_projected_onto_the_level_its_cell_is_drawn_at() {
 fn a_step_in_the_ground_takes_the_shadow_down_its_wall() {
     // A step up across the light's way: the wall between the two levels is one the camera sees,
     // and the shadow climbs it instead of jumping the gap.
-    let draws = collect(&DAWN, 2.0, |_, y| {
-        Some(at(if y >= 21 { 3.0 } else { 2.0 }))
-    });
+    let draws = collect(&DAWN, 2.0, |_, y| Some(at(if y >= 21 { 3.0 } else { 2.0 })));
     // A wall piece is one whose corners span more than one level, which a flat cell's cannot.
     let projection = projection();
     let spans_a_wall = draws.iter().any(|draw| match &draw.kind {

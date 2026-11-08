@@ -16,13 +16,11 @@
 //! drawn in front of it covers: the shadow of a figure two tiles long came out as a stub under
 //! its feet.
 //!
-//! **A ray lands once.** The silhouette is a bundle of sun rays, and a ray stops at the first
-//! surface it meets. Laying the whole silhouette on every level it passes over draws the figure
-//! again at each step of a beach, which is what the first version did and what it looked like.
-//! So every surface takes only the rays that nothing nearer the sun already caught: a cell's top
-//! blocks whatever is further down the light and lower than it ([`blocked_by`]). What is left is
-//! one shadow that steps down the terrain — over a top, down the wall under it, on along the next
-//! top — instead of one copy per level.
+//! **No terrain occlusion.** Every visible surface reads the part of the silhouette that reaches
+//! its own plane. A step can therefore show the projection on its top, its vertical face and the
+//! next top without subtracting a rectangular occluder from a level that only overlaps in the
+//! depth sort. The scene owns which pieces cover one another; this module only deforms and cuts
+//! them to their receiving surfaces.
 //!
 //! **Walls.** The TypeScript client bends its shadow onto the vertical sides of the ground, and
 //! so does this: a wall is just another surface with its own two parameters, and because the map
@@ -36,15 +34,15 @@
 
 use super::bake::SpriteExtent;
 use super::faces::TerrainFace;
-use super::shadow::{Affine2D, ShadowProjection, lift_reach, silhouette_matrix};
+use super::shadow::{lift_reach, silhouette_matrix, Affine2D, ShadowProjection};
 
 /// How far below a moving caster's own ground its shadow is still laid, in blocks.
 ///
 /// A lift carries the shadow [`lift_reach`] further along its direction — at dawn about one and
-/// three quarter tiles a block — so what is past this is both far from the figure and, after
-/// [`blocked_by`], only the little the nearer ground did not already catch. It also bounds the
-/// square of cells a frame looks at. There is no cap the other way: ground that rises towards the
-/// caster takes whatever part of it still stands above that plane, which runs out on its own.
+/// three quarter tiles a block — so what is past this is both far from the figure and outside the
+/// useful moving-shadow area. It also bounds the square of cells a frame looks at. There is no
+/// cap the other way: ground that rises towards the caster takes whatever part of it still stands
+/// above that plane, which runs out on its own.
 pub const MAX_SHADOW_LIFT: f64 = 2.0;
 
 /// Area, in a surface's own parameters, below which a piece is dropped rather than drawn.
@@ -52,13 +50,6 @@ pub const MAX_SHADOW_LIFT: f64 = 2.0;
 /// A piece that merely touches a cell's edge clips to a sliver of a few millionths of it; it
 /// draws nothing and costs a mesh.
 const MIN_PIECE_AREA: f64 = 1e-6;
-
-/// How many pieces one surface may be cut into before the rest are dropped.
-///
-/// Each blocker can cut a piece into four, so the count is bounded by the blockers in the worst
-/// case only. Terrain does not do that — a surface has one or two blockers over it — and this is
-/// here so that a strange one cannot cost a frame.
-const MAX_PIECES_PER_SURFACE: usize = 24;
 
 /// A surface a shadow can land on: the top of a cell, or one exposed vertical face of the ground.
 ///
@@ -80,11 +71,9 @@ impl ShadowSurface {
     /// ([`TerrainFace::point`]).
     pub fn point(&self, across: f64, down: f64) -> (f64, f64, f64) {
         match self {
-            Self::Ground { cell, level } => (
-                f64::from(cell.0) + across,
-                f64::from(cell.1) + down,
-                *level,
-            ),
+            Self::Ground { cell, level } => {
+                (f64::from(cell.0) + across, f64::from(cell.1) + down, *level)
+            }
             Self::Face(face) => face.point(across, down),
         }
     }
@@ -168,8 +157,6 @@ struct SurfaceReading {
     across: (f64, f64),
     /// What one unit of `down` adds to it.
     down: (f64, f64),
-    /// The surface in the world, in tiles, as `(origin, across, down)`.
-    world: ((f64, f64), (f64, f64), (f64, f64)),
     /// The surface's height in blocks, as `(origin, across, down)`.
     height: (f64, f64, f64),
 }
@@ -237,10 +224,7 @@ pub fn moving_shadow_area(
         }
     }
     let cell = |value: f64| i32::try_from(value.floor() as i64).ok();
-    Some((
-        (cell(min_x)?, cell(min_y)?),
-        (cell(max_x)?, cell(max_y)?),
-    ))
+    Some(((cell(min_x)?, cell(min_y)?), (cell(max_x)?, cell(max_y)?)))
 }
 
 /// Lays `extent`'s silhouette on `surfaces` as the shadow of something standing on `foot`, and
@@ -253,8 +237,6 @@ pub fn moving_shadow_area(
 /// * `level` — the level it is drawn standing on, in blocks, a jump included.
 /// * `surfaces` — every cell top and face the shadow may land on, which is what
 ///   [`moving_shadow_area`] bounds.
-/// * `blockers` — the cells whose tops catch rays, as `(cell, level)`: the same cell tops, and
-///   nothing else, because a wall catches only what its own top already let past.
 #[allow(clippy::too_many_arguments)]
 pub fn moving_shadow_pieces(
     light: &ShadowProjection,
@@ -264,7 +246,6 @@ pub fn moving_shadow_pieces(
     tile_width: f64,
     box_height: f64,
     surfaces: &[ShadowSurface],
-    blockers: &[((i32, i32), f64)],
     out: &mut Vec<ShadowPiece>,
 ) {
     let above_foot = (-extent.top).clamp(0.0, extent.height);
@@ -307,16 +288,6 @@ pub fn moving_shadow_pieces(
         }
         if pieces.is_empty() {
             continue;
-        }
-        // And nothing nearer the sun caught the ray first.
-        for &(cell, blocker) in blockers {
-            if blocker <= surface.bottom() + f64::EPSILON {
-                continue;
-            }
-            blocked_by(&mut pieces, &reading, light, per_block, cell, blocker);
-            if pieces.is_empty() {
-                break;
-            }
         }
         for piece in pieces.drain(..) {
             if piece.len() < 3 || area(&piece).abs() < MIN_PIECE_AREA {
@@ -366,102 +337,8 @@ fn read_surface(
         origin,
         across: (at_across.0 - origin.0, at_across.1 - origin.1),
         down: (at_down.0 - origin.0, at_down.1 - origin.1),
-        world: (
-            (corner.0, corner.1),
-            (across.0 - corner.0, across.1 - corner.1),
-            (down.0 - corner.0, down.1 - corner.1),
-        ),
         height: (corner.2, across.2 - corner.2, down.2 - corner.2),
     }
-}
-
-/// Cuts out of `pieces` whatever the top of `cell`, at `blocker` blocks, catches first.
-///
-/// The ray that reaches a point of the surface was, when it was level with the blocker's top,
-/// further back up the light by what the drop between the two is worth; if that place is inside
-/// the blocker's own cell, the ground there took the ray and this surface never saw it. Every
-/// step of that is affine in the surface's parameters, so what it removes is the inside of four
-/// straight lines — the cell's four sides — and of a fifth that drops the part of the surface
-/// standing above the blocker, which nothing up there can catch.
-fn blocked_by(
-    pieces: &mut Vec<Vec<(f64, f64)>>,
-    reading: &SurfaceReading,
-    light: &ShadowProjection,
-    per_block: f64,
-    cell: (i32, i32),
-    blocker: f64,
-) {
-    let (origin, across, down) = reading.world;
-    let (height, height_across, height_down) = reading.height;
-    // The ray's place at the blocker's height, as an affine function of the parameters.
-    let ray = |axis: usize| {
-        let (world, raised, direction) = match axis {
-            0 => (
-                (origin.0, across.0, down.0),
-                (0.0, height_across, height_down),
-                light.dir_x,
-            ),
-            _ => (
-                (origin.1, across.1, down.1),
-                (0.0, height_across, height_down),
-                light.dir_y,
-            ),
-        };
-        let drop = per_block * (blocker - height);
-        Plane {
-            a: world.1 + per_block * raised.1 * direction,
-            b: world.2 + per_block * raised.2 * direction,
-            c: world.0 - drop * direction,
-        }
-    };
-    let (at_x, at_y) = (ray(0), ray(1));
-    let inside = [
-        offset(at_x, -f64::from(cell.0)),
-        offset(at_x, -(f64::from(cell.0) + 1.0)).flipped(),
-        offset(at_y, -f64::from(cell.1)),
-        offset(at_y, -(f64::from(cell.1) + 1.0)).flipped(),
-        // Nothing is caught by ground below it.
-        Plane {
-            a: -height_across,
-            b: -height_down,
-            c: blocker - height,
-        },
-    ];
-    subtract(pieces, &inside);
-}
-
-/// Takes the part of every piece that is inside all of `inside` away, leaving the rest.
-///
-/// A convex region cut out of a convex piece leaves up to one piece per side of the cut, each
-/// convex and none overlapping another: the part outside the first line, then the part inside
-/// that one but outside the second, and so on. The piece that is inside all of them is the one
-/// that was caught, and it is the one dropped.
-fn subtract(pieces: &mut Vec<Vec<(f64, f64)>>, inside: &[Plane]) {
-    let mut kept: Vec<Vec<(f64, f64)>> = Vec::with_capacity(pieces.len());
-    for piece in pieces.drain(..) {
-        // Wholly on the outer side of any one line: the cut takes nothing from it.
-        if inside
-            .iter()
-            .any(|plane| piece.iter().all(|&corner| plane.at(corner) < 0.0))
-        {
-            kept.push(piece);
-            continue;
-        }
-        let mut left = piece;
-        for &plane in inside {
-            let mut outside = left.clone();
-            clip(&mut outside, plane.flipped());
-            if outside.len() >= 3 && area(&outside).abs() >= MIN_PIECE_AREA {
-                kept.push(outside);
-            }
-            clip(&mut left, plane);
-            if left.len() < 3 {
-                break;
-            }
-        }
-    }
-    kept.truncate(MAX_PIECES_PER_SURFACE);
-    *pieces = kept;
 }
 
 /// Cuts `polygon` down to the side of `plane` where it is positive, in place.

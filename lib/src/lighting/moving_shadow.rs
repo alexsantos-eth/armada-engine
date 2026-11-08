@@ -26,8 +26,8 @@ use iso::lighting::{
 use iso::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
 use iso::terrain::TerrainMaterial;
 
+use crate::assets::sprites::{SpriteDraw, scene_key};
 use crate::lighting::shadow_view::{FACE_FLOOR, GROUND_SHADOW_LAYER};
-use crate::assets::sprites::{SpriteDraw, ground_key};
 
 /// What the ground of one cell is, to a shadow being laid on it.
 ///
@@ -76,10 +76,16 @@ pub fn collect_moving_shadow(
         width: layout.width,
         height: layout.height,
     };
-    let box_height = projection.elevation_step.unwrap_or(projection.tile_height / 2.0);
-    let Some(((min_x, min_y), (max_x, max_y))) =
-        moving_shadow_area(&light.shadow, extent, foot, projection.tile_width, box_height)
-    else {
+    let box_height = projection
+        .elevation_step
+        .unwrap_or(projection.tile_height / 2.0);
+    let Some(((min_x, min_y), (max_x, max_y))) = moving_shadow_area(
+        &light.shadow,
+        extent,
+        foot,
+        projection.tile_width,
+        box_height,
+    ) else {
         return;
     };
     // Every surface the shadow could reach: the tops of the cells around the player, and the
@@ -87,7 +93,6 @@ pub fn collect_moving_shadow(
     // them at, so a piece lands exactly where its surface is drawn.
     let mut tops = Vec::new();
     let mut surfaces = Vec::new();
-    let mut blockers = Vec::new();
     for y in min_y..=max_y {
         for x in min_x..=max_x {
             let Some(ground) = ground_at(x, y) else {
@@ -98,7 +103,6 @@ pub fn collect_moving_shadow(
                 cell: (x, y),
                 level: ground.level,
             });
-            blockers.push(((x, y), ground.level));
         }
     }
     let walls: Vec<TerrainFace> = terrain_faces(
@@ -116,7 +120,6 @@ pub fn collect_moving_shadow(
         projection.tile_width,
         box_height,
         &surfaces,
-        &blockers,
         &mut pieces,
     );
     for piece in pieces {
@@ -135,7 +138,11 @@ pub fn collect_moving_shadow(
             })
             .collect();
         out.push(SpriteDraw::silhouette(
-            ground_key(
+            // A moving silhouette reaches the next flat tile towards the camera. Its own key
+            // sits half a tile in front of a ground key, so that tile cannot punch an invisible
+            // rectangle through the continuous shadow; a genuinely higher block still sorts in
+            // front of it.
+            scene_key(
                 f64::from(cell.0) + 0.5,
                 f64::from(cell.1) + 0.5,
                 ground.elevation,

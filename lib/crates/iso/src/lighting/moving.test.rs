@@ -22,30 +22,24 @@ fn area_of() -> ((i32, i32), (i32, i32)) {
         .expect("a figure at dawn throws a shadow")
 }
 
-/// The surfaces a scene offers, and the cell tops that can catch a ray before them.
-type Scene = (Vec<ShadowSurface>, Vec<((i32, i32), f64)>);
-
 /// Every cell of the area at the level `level_at` gives it, as ground surfaces.
-fn ground(level_at: impl Fn(i32, i32) -> Option<f64>) -> Scene {
+fn ground(level_at: impl Fn(i32, i32) -> Option<f64>) -> Vec<ShadowSurface> {
     let ((min_x, min_y), (max_x, max_y)) = area_of();
     let mut surfaces = Vec::new();
-    let mut blockers = Vec::new();
     for y in min_y..=max_y {
         for x in min_x..=max_x {
             if let Some(level) = level_at(x, y) {
-                surfaces.push(ShadowSurface::Ground { cell: (x, y), level });
-                blockers.push(((x, y), level));
+                surfaces.push(ShadowSurface::Ground {
+                    cell: (x, y),
+                    level,
+                });
             }
         }
     }
-    (surfaces, blockers)
+    surfaces
 }
 
-fn lay(
-    level: f64,
-    surfaces: &[ShadowSurface],
-    blockers: &[((i32, i32), f64)],
-) -> Vec<ShadowPiece> {
+fn lay(level: f64, surfaces: &[ShadowSurface]) -> Vec<ShadowPiece> {
     let mut out = Vec::new();
     moving_shadow_pieces(
         &DAWN.shadow,
@@ -55,7 +49,6 @@ fn lay(
         TILE_WIDTH,
         BOX_HEIGHT,
         surfaces,
-        blockers,
         &mut out,
     );
     out
@@ -65,7 +58,10 @@ fn lay(
 fn tiles(piece: &ShadowPiece) -> f64 {
     let mut sum = 0.0;
     for index in 0..piece.points.len() {
-        let (a, b) = (piece.points[index], piece.points[(index + 1) % piece.points.len()]);
+        let (a, b) = (
+            piece.points[index],
+            piece.points[(index + 1) % piece.points.len()],
+        );
         sum += a.0 * b.1 - b.0 * a.1;
     }
     (sum / 2.0).abs()
@@ -91,9 +87,12 @@ fn whole_area() -> f64 {
 
 #[test]
 fn on_level_ground_the_pieces_are_the_whole_silhouette_cut_up() {
-    let (surfaces, blockers) = ground(|_, _| Some(3.0));
-    let pieces = lay(3.0, &surfaces, &blockers);
-    assert!(pieces.len() > 1, "a figure a block tall crosses more than one cell");
+    let surfaces = ground(|_, _| Some(3.0));
+    let pieces = lay(3.0, &surfaces);
+    assert!(
+        pieces.len() > 1,
+        "a figure a block tall crosses more than one cell"
+    );
     let laid: f64 = pieces.iter().map(tiles).sum();
     assert!(
         (laid - whole_area()).abs() < 1e-6,
@@ -103,18 +102,17 @@ fn on_level_ground_the_pieces_are_the_whole_silhouette_cut_up() {
 }
 
 #[test]
-fn a_step_down_does_not_lay_the_figure_a_second_time() {
+fn a_step_down_keeps_the_projection_on_both_levels() {
     // Half the world a block lower, the half the shadow runs into.
     let level_at = |x: i32, _: i32| Some(if x < 10 { 2.0 } else { 3.0 });
-    let (surfaces, blockers) = ground(level_at);
-    let pieces = lay(3.0, &surfaces, &blockers);
+    let surfaces = ground(level_at);
+    let pieces = lay(3.0, &surfaces);
     let laid: f64 = pieces.iter().map(tiles).sum();
-    // The two levels share the rays out between them. A bundle of parallel rays cuts the same
-    // area out of any horizontal plane, so the two levels together are exactly one silhouette —
-    // the test that it is not drawn twice, and that nothing of it is lost at the step either.
+    // Each receiver keeps the part that reaches its own plane; the moving shadow deliberately
+    // does not subtract a level's rectangle from another level.
     assert!(
-        (laid - whole_area()).abs() < 1e-6,
-        "one silhouette over two levels: {laid} against {}",
+        laid > whole_area(),
+        "both levels retain their projection: {laid} against {}",
         whole_area()
     );
     assert!(
@@ -125,26 +123,25 @@ fn a_step_down_does_not_lay_the_figure_a_second_time() {
 }
 
 #[test]
-fn ground_in_the_lee_of_higher_ground_takes_nothing() {
-    // A wall of higher ground across the shadow's way: it catches the rays, and the low ground
-    // behind it never sees them.
+fn ground_in_the_lee_of_higher_ground_keeps_its_projection() {
+    // A wall no longer erases the shadow from the lower ground behind it.
     let level_at = |_: i32, y: i32| Some(if (21..=22).contains(&y) { 3.0 } else { 2.0 });
-    let (surfaces, blockers) = ground(level_at);
-    let pieces = lay(2.0, &surfaces, &blockers);
+    let surfaces = ground(level_at);
+    let pieces = lay(2.0, &surfaces);
     assert!(
-        pieces.iter().all(|piece| piece.surface.cell().1 <= 22),
-        "nothing is laid on the ground behind the step"
+        pieces.iter().any(|piece| piece.surface.top() == 2.0),
+        "the lower ground around the step retains its shadow"
     );
     assert!(
         pieces.iter().any(|piece| piece.surface.top() == 3.0),
-        "the step itself takes what it caught"
+        "the step also retains its projected portion"
     );
 }
 
 #[test]
 fn every_piece_stays_inside_its_own_surface_and_artwork() {
-    let (surfaces, blockers) = ground(|x, _| Some(if x < 10 { 2.0 } else { 3.0 }));
-    for piece in lay(3.0, &surfaces, &blockers) {
+    let surfaces = ground(|x, _| Some(if x < 10 { 2.0 } else { 3.0 }));
+    for piece in lay(3.0, &surfaces) {
         assert_eq!(piece.points.len(), piece.uv.len());
         for point in &piece.points {
             assert!(
@@ -163,8 +160,8 @@ fn every_piece_stays_inside_its_own_surface_and_artwork() {
 
 #[test]
 fn nothing_is_laid_below_the_caster_s_own_feet() {
-    let (surfaces, blockers) = ground(|_, _| Some(3.0));
-    for piece in lay(3.0, &surfaces, &blockers) {
+    let surfaces = ground(|_, _| Some(3.0));
+    for piece in lay(3.0, &surfaces) {
         assert!(
             piece.uv.iter().all(|uv| uv.1 <= 1.0 + 1e-9),
             "the rows under the feet are inside the ground"
@@ -174,8 +171,8 @@ fn nothing_is_laid_below_the_caster_s_own_feet() {
 
 #[test]
 fn the_shadow_runs_the_way_the_light_lays_it() {
-    let (surfaces, blockers) = ground(|_, _| Some(3.0));
-    let pieces = lay(3.0, &surfaces, &blockers);
+    let surfaces = ground(|_, _| Some(3.0));
+    let pieces = lay(3.0, &surfaces);
     let along = |piece: &ShadowPiece| {
         piece
             .points
@@ -187,34 +184,40 @@ fn the_shadow_runs_the_way_the_light_lays_it() {
             .fold(f64::NEG_INFINITY, f64::max)
     };
     let furthest = pieces.iter().map(along).fold(f64::NEG_INFINITY, f64::max);
-    assert!(furthest > 1.0, "a figure a block tall throws a shadow over a tile long at dawn");
+    assert!(
+        furthest > 1.0,
+        "a figure a block tall throws a shadow over a tile long at dawn"
+    );
 }
 
 #[test]
 fn ground_above_the_caster_takes_only_what_stands_over_it() {
     // The figure is 200 px tall and a block is 140, so half a block up it is cut to the top
     // 130 px of itself: 65 % of its artwork.
-    let (surfaces, blockers) = ground(|_, _| Some(3.5));
-    let pieces = lay(3.0, &surfaces, &blockers);
+    let surfaces = ground(|_, _| Some(3.5));
+    let pieces = lay(3.0, &surfaces);
     assert!(!pieces.is_empty());
     let deepest = pieces
         .iter()
         .flat_map(|piece| piece.uv.iter())
         .map(|uv| uv.1)
         .fold(0.0, f64::max);
-    assert!((deepest - 0.65).abs() < 1e-6, "read down to the plane and no further: {deepest}");
+    assert!(
+        (deepest - 0.65).abs() < 1e-6,
+        "read down to the plane and no further: {deepest}"
+    );
 }
 
 #[test]
 fn ground_above_the_whole_figure_receives_nothing() {
-    let (surfaces, blockers) = ground(|_, _| Some(3.0 + 200.0 / BOX_HEIGHT));
-    assert!(lay(3.0, &surfaces, &blockers).is_empty());
+    let surfaces = ground(|_, _| Some(3.0 + 200.0 / BOX_HEIGHT));
+    assert!(lay(3.0, &surfaces).is_empty());
 }
 
 #[test]
 fn cells_the_world_has_not_loaded_receive_nothing() {
-    let (surfaces, blockers) = ground(|x, _| (x == 10).then_some(3.0));
-    let pieces = lay(3.0, &surfaces, &blockers);
+    let surfaces = ground(|x, _| (x == 10).then_some(3.0));
+    let pieces = lay(3.0, &surfaces);
     assert!(!pieces.is_empty());
     assert!(pieces.iter().all(|piece| piece.surface.cell().0 == 10));
 }
@@ -224,7 +227,7 @@ fn a_wall_the_light_reaches_takes_the_shadow_that_climbs_it() {
     // A step up across the shadow's way. The light runs along `+y` at dawn, so the side a
     // column shows towards `-y` is lit, and a shadow running into it climbs it.
     let level_at = |_: i32, y: i32| Some(if y >= 21 { 3.0 } else { 2.0 });
-    let (mut surfaces, blockers) = ground(level_at);
+    let mut surfaces = ground(level_at);
     let walls: Vec<ShadowSurface> = (6..=14)
         .map(|x| {
             ShadowSurface::Face(TerrainFace {
@@ -238,7 +241,7 @@ fn a_wall_the_light_reaches_takes_the_shadow_that_climbs_it() {
         })
         .collect();
     surfaces.extend(walls.iter().copied());
-    let pieces = lay(2.0, &surfaces, &blockers);
+    let pieces = lay(2.0, &surfaces);
     let on_walls: Vec<&ShadowPiece> = pieces
         .iter()
         .filter(|piece| matches!(piece.surface, ShadowSurface::Face(_)))
@@ -261,15 +264,16 @@ fn a_wall_the_light_reaches_takes_the_shadow_that_climbs_it() {
         .flat_map(|piece| piece.uv.iter())
         .map(|uv| uv.1)
         .fold(0.0_f64, f64::max);
-    assert!(underfoot > 0.99, "and they are on the ground before it: {underfoot}");
+    assert!(
+        underfoot > 0.99,
+        "and they are on the ground before it: {underfoot}"
+    );
 }
 
 #[test]
-fn a_wall_facing_away_from_the_light_takes_nothing() {
-    // The side a column shows towards `-x` is in its own shade at dawn: every ray that would
-    // reach it has already landed on the top it hangs from.
-    let level_at = |x: i32, _: i32| Some(if x < 10 { 2.0 } else { 3.0 });
-    let (_, blockers) = ground(level_at);
+fn a_wall_facing_away_from_the_light_keeps_its_projection() {
+    // The side a column shows towards `-x` may overlap its top in depth, but that overlap is no
+    // longer an occluder: it retains the deformed piece it receives.
     let walls: Vec<ShadowSurface> = (18..=23)
         .map(|y| {
             ShadowSurface::Face(TerrainFace {
@@ -282,11 +286,16 @@ fn a_wall_facing_away_from_the_light_takes_nothing() {
             })
         })
         .collect();
-    let pieces = lay(3.0, &walls, &blockers);
+    let pieces = lay(3.0, &walls);
     assert!(
-        pieces.is_empty(),
-        "a wall under its own lit top sees nothing: {} pieces",
-        pieces.len()
+        !pieces.is_empty(),
+        "the vertical face retains its deformed projection"
+    );
+    assert!(
+        pieces
+            .iter()
+            .all(|piece| matches!(piece.surface, ShadowSurface::Face(_))),
+        "the piece stays on the vertical face"
     );
 }
 
@@ -305,8 +314,10 @@ fn a_sun_overhead_lays_nothing() {
         3.0,
         TILE_WIDTH,
         BOX_HEIGHT,
-        &[ShadowSurface::Ground { cell: (10, 20), level: 3.0 }],
-        &[((10, 20), 3.0)],
+        &[ShadowSurface::Ground {
+            cell: (10, 20),
+            level: 3.0,
+        }],
         &mut out,
     );
     assert!(out.is_empty());
@@ -336,8 +347,10 @@ fn artwork_with_nothing_above_its_feet_lays_nothing() {
         3.0,
         TILE_WIDTH,
         BOX_HEIGHT,
-        &[ShadowSurface::Ground { cell: (10, 20), level: 3.0 }],
-        &[],
+        &[ShadowSurface::Ground {
+            cell: (10, 20),
+            level: 3.0,
+        }],
         &mut out,
     );
     assert!(out.is_empty());
@@ -347,8 +360,8 @@ fn artwork_with_nothing_above_its_feet_lays_nothing() {
 fn a_surface_reads_the_same_artwork_from_either_side_of_a_cut() {
     // Two cells at the same level: where a piece ends on one and starts on the next, both read
     // the same point of the figure. That is what makes the cut invisible.
-    let (surfaces, blockers) = ground(|_, _| Some(3.0));
-    let pieces = lay(3.0, &surfaces, &blockers);
+    let surfaces = ground(|_, _| Some(3.0));
+    let pieces = lay(3.0, &surfaces);
     for piece in &pieces {
         for (point, uv) in piece.points.iter().zip(&piece.uv) {
             let (x, y, _) = piece.surface.point(point.0, point.1);
@@ -372,10 +385,9 @@ fn a_surface_reads_the_same_artwork_from_either_side_of_a_cut() {
 #[test]
 fn the_area_covers_every_cell_a_piece_lands_on() {
     let ((min_x, min_y), (max_x, max_y)) = area_of();
-    let (surfaces, blockers) = ground(|_, _| Some(3.0));
-    for piece in lay(3.0, &surfaces, &blockers) {
+    let surfaces = ground(|_, _| Some(3.0));
+    for piece in lay(3.0, &surfaces) {
         let (x, y) = piece.surface.cell();
         assert!((min_x..=max_x).contains(&x) && (min_y..=max_y).contains(&y));
     }
 }
-
