@@ -183,10 +183,14 @@ fn a_level_change_eases_the_shadow_receiver_across_frames() {
 fn a_step_down_eases_more_slowly_than_a_step_up() {
     let mut rising = MovingShadowReceiver::default();
     rising.update(Some(at(2.0)), 0.0);
-    let up = rising.update(Some(at(3.0)), 1.0 / 60.0).expect("a receiver");
+    let up = rising
+        .update(Some(at(3.0)), 1.0 / 60.0)
+        .expect("a receiver");
     let mut falling = MovingShadowReceiver::default();
     falling.update(Some(at(3.0)), 0.0);
-    let down = falling.update(Some(at(2.0)), 1.0 / 60.0).expect("a receiver");
+    let down = falling
+        .update(Some(at(2.0)), 1.0 / 60.0)
+        .expect("a receiver");
     assert!(
         3.0 - down.elevation < up.elevation - 2.0,
         "the receiver travels less in its first downward frame"
@@ -253,4 +257,157 @@ fn a_sprite_with_no_artwork_above_its_feet_queues_nothing() {
         &mut out,
     );
     assert!(out.is_empty());
+}
+fn key(depth: f64) -> iso::scene_order::DrawKey {
+    iso::scene_order::DrawKey {
+        depth,
+        layer: crate::PLAYER_BEHIND_LAYER,
+    }
+}
+
+#[test]
+fn the_shadow_key_commits_immediately_until_a_level_changes() {
+    let mut hold = MovingShadowKey::default();
+    assert_eq!(
+        hold.update(key(1.0), false, false, 1.0 / 60.0),
+        key(1.0),
+        "the first key is committed straight away"
+    );
+    assert_eq!(
+        hold.update(key(2.0), false, false, 1.0 / 60.0).depth,
+        2.0,
+        "a walk without a level change commits at once"
+    );
+}
+
+#[test]
+fn the_shadow_key_lingers_for_a_few_milliseconds_after_a_level_change() {
+    let mut hold = MovingShadowKey::default();
+    hold.update(key(1.0), false, false, 1.0 / 60.0);
+    let frame = 1.0 / 60.0;
+    let armed = hold.update(key(9.0), false, true, frame);
+    assert_eq!(
+        armed.depth, 1.0,
+        "the arming frame still sorts where the shadow drew before the change"
+    );
+    let mut lingering = 0;
+    while hold.update(key(9.0), false, false, frame).depth != 9.0 {
+        lingering += 1;
+        assert!(lingering < 60, "the hold ends");
+    }
+    assert!(
+        lingering >= 6,
+        "the shadow lingers for at least a few frames, not just the arming one"
+    );
+    assert!(
+        (lingering as f64 * frame) + frame >= SHADOW_KEY_DELAY_SECONDS - 1e-6,
+        "and no further than the delay it was held for"
+    );
+}
+
+#[test]
+fn a_walk_during_the_hold_is_masked_until_the_deadline() {
+    let mut hold = MovingShadowKey::default();
+    let frame = 1.0 / 60.0;
+    hold.update(key(10.0), false, false, frame);
+    hold.update(key(30.0), false, true, frame);
+    assert_eq!(
+        hold.update(key(40.0), false, false, frame).depth,
+        10.0,
+        "a walk while a level change is pending keeps the committed key"
+    );
+    let mut shown = 10.0;
+    for _ in 0..60 {
+        shown = hold.update(key(40.0), false, false, frame).depth;
+        if shown != 10.0 {
+            break;
+        }
+    }
+    assert_eq!(
+        shown, 30.0,
+        "it adopts the pending key at the deadline, not the walked-to one"
+    );
+    assert_eq!(
+        hold.update(key(40.0), false, false, frame).depth,
+        40.0,
+        "and the walk commits on the next frame"
+    );
+}
+
+#[test]
+fn a_level_change_never_advances_while_the_player_is_in_the_air() {
+    let mut hold = MovingShadowKey::default();
+    let frame = 1.0 / 60.0;
+    hold.update(key(1.0), false, false, frame);
+    // The feet cross into the landing cell mid-jump; the signal cannot advance the shadow.
+    for _ in 0..120 {
+        assert_eq!(
+            hold.update(key(9.0), true, false, frame).depth,
+            1.0,
+            "while the player is in the air the committed key is kept"
+        );
+    }
+    // Landing: the physics commits the new level, and the hold counts down from there.
+    let landing = hold.update(key(9.0), false, true, frame);
+    assert_eq!(landing.depth, 1.0, "the landing frame still sorts at the old key");
+    let mut lingering = 0;
+    while hold.update(key(9.0), false, false, frame).depth != 9.0 {
+        lingering += 1;
+        assert!(lingering < 60, "the hold ends");
+    }
+    assert!(
+        lingering >= 6,
+        "the shadow lingers a few frames after the landing, not only before it"
+    );
+}
+
+#[test]
+fn a_second_level_change_re_arms_the_hold_with_the_newest_key() {
+    let mut hold = MovingShadowKey::default();
+    let frame = 1.0 / 60.0;
+    hold.update(key(1.0), false, false, frame);
+    hold.update(key(2.0), false, true, frame);
+    assert_eq!(
+        hold.update(key(3.0), false, true, frame).depth,
+        1.0,
+        "the arming frame keeps the committed key"
+    );
+    let mut seen = Vec::new();
+    for _ in 0..120 {
+        let shown = hold.update(key(3.0), false, false, frame);
+        seen.push(shown.depth);
+        if shown.depth == 3.0 {
+            break;
+        }
+    }
+    assert!(
+        seen.contains(&3.0),
+        "the shadow does end up sorting by the newest key"
+    );
+    assert!(
+        !seen.contains(&2.0),
+        "the superseded pending key never becomes the shown key"
+    );
+}
+
+#[test]
+fn a_change_of_layer_alone_arms_no_hold() {
+    let mut hold = MovingShadowKey::default();
+    let frame = 1.0 / 60.0;
+    let behind = key(5.0);
+    let front = iso::scene_order::DrawKey {
+        depth: 5.0,
+        layer: crate::PLAYER_FRONT_LAYER,
+    };
+    assert_eq!(hold.update(behind, false, false, frame), behind);
+    assert_eq!(
+        hold.update(front, true, false, frame).depth,
+        5.0,
+        "a layer flip inside the same depth commits at once, even in the air"
+    );
+    assert_eq!(
+        hold.update(front, false, true, frame).depth,
+        5.0,
+        "and a level signal with the same depth commits at once"
+    );
 }

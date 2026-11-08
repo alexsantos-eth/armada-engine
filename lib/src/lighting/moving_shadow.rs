@@ -12,6 +12,11 @@
 //! continue onto another level. That keeps the player readable without duplicated fragments. It
 //! draws at the depth of the sprite it was cast from ([`GROUND_SHADOW_LAYER`]), so however far
 //! the light throws it from the feet, it never jumps ahead of what is in front of the player.
+//! Sorting it with the sprite has one sharp edge: a level change that puts the sprite behind a
+//! block puts the quad behind it too, on the same frame, and it is long enough that most of it
+//! goes with them. [`MovingShadowKey`] holds the key for a few milliseconds after a level
+//! change, and always while the player is in the air, so the shadow does not vanish on the
+//! frame the feet cross into the cell they are about to land in.
 
 use iso::assets::{SpriteFrame, SpriteLayout};
 use iso::lighting::{PhaseLight, SpriteExtent, silhouette_matrix};
@@ -59,7 +64,11 @@ impl MovingShadowReceiver {
         // Going down is slower than going up: a fall in receiver height otherwise reads as a
         // snap because the projection lengthens at the same time.
         let seconds = elapsed_seconds.clamp(0.0, 0.1);
-        let time_constant = if target.elevation < shown.elevation { 0.13 } else { 0.05 };
+        let time_constant = if target.elevation < shown.elevation {
+            0.13
+        } else {
+            0.05
+        };
         let blend = 1.0 - (-seconds / time_constant).exp();
         let next = CellGround {
             elevation: shown.elevation + (target.elevation - shown.elevation) * blend,
@@ -70,13 +79,93 @@ impl MovingShadowReceiver {
     }
 }
 
+/// How long the shadow keeps the draw position it had before the player changed level.
+///
+/// A level change snaps the sprite's key to the new column's level, and with it the depth of
+/// the shadow. For a few frames the shadow therefore paints where it did just before the
+/// change, over whatever hides the player at the new level, instead of vanishing on the same
+/// frame the player disappears behind a block. Longer than a walk's worth of interpolation,
+/// shorter than the receiver's slower downhill constant (0.13 s) would be.
+pub const SHADOW_KEY_DELAY_SECONDS: f64 = 0.2;
+
+/// Delayed copy of the player's draw key, for the shadow it casts.
+///
+/// The shadow shares the depth of the sprite it was cast from, so a level change that puts the
+/// sprite behind a block puts the shadow behind it too, on the same frame. This holds the
+/// committed key for [`SHADOW_KEY_DELAY_SECONDS`] after a level change, then snaps to the
+/// pending one, so the quad lingers where it was instead of blinking out whole. Walks and flips
+/// between the player's two depth layers take effect at once: only a level change is held. The
+/// pending key is the latest seen, so a second level change inside the hold re-arms the delay
+/// with it. Nothing is interpolated: keys are positions in the draw order, not pixels.
+///
+/// While the player is in the air (`held`), the key never advances at all: the feet cross the
+/// boundary of the landing cell while the sprite is still drawn in the air above it, and a
+/// shadow committed to that cell disappears behind whatever it stands behind until it lands.
+/// The committed key is kept, whatever the caller signals, until the player lands.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct MovingShadowKey {
+    shown: Option<DrawKey>,
+    pending: Option<DrawKey>,
+    delay_seconds: f64,
+}
+
+impl MovingShadowKey {
+    /// Advances the displayed key toward `target`.
+    ///
+    /// * `held` — the player is in the air: the committed key is kept, whatever `target` is,
+    ///   until the player lands.
+    /// * `level_changed` — `target` was built from a different level than the one it was last
+    ///   fed: the change is held for [`SHADOW_KEY_DELAY_SECONDS`] and then adopted, whatever the
+    ///   caller signals in between; a further level change replaces the pending key and starts
+    ///   the delay over. Frames with nothing to hold count the delay down.
+    /// * anything else commits at once, unless a level change is pending, in which case it waits
+    ///   for that hold's deadline; a level change whose depth did not move commits at once,
+    ///   like a layer flip.
+    pub fn update(
+        &mut self,
+        target: DrawKey,
+        held: bool,
+        level_changed: bool,
+        elapsed_seconds: f64,
+    ) -> DrawKey {
+        let Some(shown) = self.shown else {
+            self.shown = Some(target);
+            return target;
+        };
+        if held && target.depth != shown.depth {
+            // In the air the feet cross the boundary of the landing cell while the sprite is
+            // still drawn in the air; the shadow keeps the committed depth until landing.
+            return shown;
+        }
+        if level_changed && target.depth != shown.depth {
+            self.pending = Some(target);
+            self.delay_seconds = SHADOW_KEY_DELAY_SECONDS;
+            return shown;
+        }
+        if let Some(pending) = self.pending {
+            self.delay_seconds -= elapsed_seconds.clamp(0.0, 0.1);
+            if self.delay_seconds <= 0.0 {
+                self.pending = None;
+                self.shown = Some(pending);
+                return pending;
+            }
+            return shown;
+        }
+        self.pending = None;
+        self.shown = Some(target);
+        target
+    }
+}
+
 /// Queues the single shadow of a sprite drawn into `layout` standing on `foot`.
 ///
 /// * `feet` — where that ground point is on screen, which is what `layout` was placed around.
 /// * `level` — the level its feet are drawn on, in blocks, a jump included: in the air the
 ///   shadow slides away down the light, which is what tells a jump from a step.
 /// * `ground` — the smoothed ground receiver, or `None` where the player's world is not loaded.
-/// * `caster` — the key the sprite itself was queued with. The shadow draws at that same depth,
+/// * `caster` — the key the sprite itself was queued with, normally the one [`MovingShadowKey`]
+///   commits rather than the raw one, so a level change does not bury the quad on the same
+///   frame the player disappears. The shadow draws at its depth,
 ///   on [`GROUND_SHADOW_LAYER`] (over the ground it was baked for, under whatever stands in it):
 ///   it is one quad that stretches far beyond the caster's cell, and keyed to its own nearest
 ///   corner it jumped ahead of everything between itself and the camera however far the light
