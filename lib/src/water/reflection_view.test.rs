@@ -99,7 +99,6 @@ fn kind_name(kind: &DrawKind) -> &'static str {
         DrawKind::Sprite { .. } => "a sprite",
         DrawKind::Shaded { .. } => "a shaded sprite",
         DrawKind::GroundShadow { .. } => "a ground shadow",
-        DrawKind::Silhouette { .. } => "a silhouette",
         DrawKind::Reflection { .. } => "a reflection",
         DrawKind::Voxel { .. } => "a voxel",
         DrawKind::FaceShadow { .. } => "a face shadow",

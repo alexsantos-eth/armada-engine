@@ -20,8 +20,7 @@
 //!
 //! So this client needs no render texture: it mirrors the rectangle a sprite was drawn into and
 //! **cuts the result to the water cells it covers** ([`reflection_piece`]), one convex piece per
-//! cell, exactly as [`crate::lighting::moving`] cuts a walking shadow to the surfaces it lands
-//! on. Each piece can then be sorted by its own cell, so the land drawn in front of the water
+//! cell. Each piece can then be sorted by its own cell, so the land drawn in front of the water
 //! covers the reflection on it and no mask is needed either.
 //!
 //! What is left out, and what the TypeScript client has: the camera-facing sides of the terrain
@@ -142,8 +141,8 @@ pub fn cell_top(cell: (i32, i32), level: f64, projection: ProjectionConfig) -> [
 /// The cells whose tops a reflection could fall on, as inclusive `((min_x, min_y), (max_x,
 /// max_y))`, or `None` when it falls nowhere a cell could be.
 ///
-/// The client has to offer the surfaces, so it needs the range before the pieces — the same
-/// division of labour as [`crate::lighting::moving::moving_shadow_area`]. The reflection lies in
+/// The client has to offer the surfaces, so it needs the range before the pieces. The reflection
+/// lies in
 /// the water's own plane, so its rectangle's four corners unproject onto that plane exactly, and
 /// the box around them covers every cell any part of it touches. The range is clamped to
 /// [`MAX_REFLECTION_CELLS`] from the first cell along either axis.

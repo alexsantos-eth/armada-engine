@@ -35,9 +35,6 @@ use iso::simulation::FixedStepper;
 use iso::terrain::{TerrainColumn, TerrainConfig, TerrainGenerator, TerrainMaterial};
 use iso::world::{ChunkManager, ChunkRadii};
 use lighting::cloud_shadows::{CLOUD_SHADOW_SOURCE, CloudShadows};
-use lighting::moving_shadow::{
-    CellGround, MovingShadowKey, MovingShadowReceiver, collect_moving_shadow,
-};
 use lighting::shadow_view::ShadowScene;
 use lighting::shadow_view_atlas::ShadowAtlas;
 use lighting::shadow_view_masks::SilhouetteMasks;
@@ -446,12 +443,6 @@ async fn main() {
             y: spawn.y,
         },
     );
-    let mut moving_shadow_receiver = MovingShadowReceiver::default();
-    // The shadow's draw position is held for a few milliseconds after the player changes level,
-    // so a level change that puts the sprite behind a block does not take the quad with it on
-    // the same frame. See `MovingShadowKey`.
-    let mut moving_shadow_key = MovingShadowKey::default();
-    let mut last_player_elevation: Option<f64> = None;
 
     // Camera state: where it looks (the level under the player, eased when that changes) and the
     // centre it has eased to, started on the spawn so the first frame is not a swoop across the
@@ -959,60 +950,9 @@ async fn main() {
                         .as_ref()
                         .and_then(lighting::shadow_view::lattice_of)
                 });
-                // Its own one-piece shadow follows the same interpolation as the player. Blend
-                // the old and new receiver heights through a step so it does not teleport down
-                // the light when the feet enter the next level.
-                let ground_at = |x, y| {
-                    manager.column_at(x, y).map(|column| CellGround {
-                        elevation: f64::from(column.elevation),
-                        material: column.surface,
-                    })
-                };
-                // `get_player_column` rounds to the nearest column centre. The shadow must use
-                // the same boundary; using `floor` delayed its receiver change until halfway
-                // across the new tile.
-                let current_column = get_player_column(GridPoint {
-                    x: player.x,
-                    y: player.y,
-                });
-                let current_ground = ground_at(current_column.x, current_column.y);
-                let shadow_ground =
-                    moving_shadow_receiver.update(current_ground, f64::from(get_frame_time()));
-                // A level change is the one the key holds back: walks take effect at once.
-                // The trigger is the level the physics committed, not the height of the cell the
-                // feet are over, so a fall re-arms the hold at the landing rather than mid-air.
-                // In the air the feet cross into the landing cell while the sprite is still up
-                // there: `held` keeps the committed key until touchdown.
-                let shadow_level_changed =
-                    last_player_elevation.is_some_and(|elevation| elevation != player.elevation);
-                last_player_elevation = Some(player.elevation);
-                let shadow_key = moving_shadow_key.update(
-                    key,
-                    player.height > 0.0,
-                    shadow_level_changed,
-                    f64::from(get_frame_time()),
-                );
-                // The shadow sorts at the player's own key: however far the light throws it
-                // from the feet, it never draws ahead of what is in front of the figure. For a
-                // few milliseconds after a level change it still sorts where it did, so the
-                // level change does not make it vanish on the same frame as the sprite.
-                collect_moving_shadow(
-                    &DAWN,
-                    texture,
-                    frame,
-                    layout,
-                    feet,
-                    (rp.x + 0.5, rp.y + 0.5),
-                    rp.elevation + rp.height,
-                    projection,
-                    shadow_ground,
-                    shadow_key,
-                    &mut draws,
-                );
-                // And what the water shows of it, which like its shadow is gathered per frame
-                // from the pose it is drawn in: the figure upside down under the waterline, cut
-                // to the water cells in front of it. A jump lifts its feet, so its reflection
-                // sinks away from it exactly as its shadow slides out from under it.
+                // And what the water shows of it: the figure upside down under the waterline,
+                // cut to the water cells in front of it. A jump lifts its feet, so its
+                // reflection sinks away from it as its feet rise.
                 collect_reflection(
                     texture,
                     frame,

@@ -466,36 +466,10 @@ impl SpriteAtlas {
         });
     }
 
-    /// Draws a sprite's silhouette flat on the ground as a shadow: the polygon `points` on
-    /// screen, each corner reading the artwork at the matching `uv`.
-    ///
-    /// This is the one shadow in the client that is not baked, because what throws it walks
-    /// ([`iso::lighting::moving`]). The mesh samples the caster's own frame and draws it
-    /// black at `opacity`, so the artwork's transparency is the shadow's shape: a figure's shadow
-    /// has its arms and its legs, and it changes with its pose for nothing. The polygon is convex
-    /// and is drawn as a fan from its first corner.
-    pub fn draw_silhouette(
-        &self,
-        texture: usize,
-        frame: SpriteFrame,
-        points: &[(f64, f64)],
-        uv: &[(f64, f64)],
-        opacity: f32,
-    ) {
-        // Flat black: the alpha the artwork carries at that point is what shapes the shadow.
-        self.draw_polygon(
-            texture,
-            frame,
-            points,
-            uv,
-            Color::new(0.0, 0.0, 0.0, opacity),
-        );
-    }
-
     /// Draws a sprite's artwork as the water shows it: the polygon `points` on a water top, each
     /// corner reading the artwork at the matching `uv`, multiplied by `colour`.
     ///
-    /// The same mesh a silhouette is drawn as, in the water's own colour instead of black. The
+    /// The same convex mesh, in the water's own colour instead of black. The
     /// reflection is cut to one water cell ([`iso::water::reflection_piece`]), so it sorts with
     /// that cell and the land drawn in front of the water covers it. See
     /// [`crate::reflection_view`].
@@ -689,26 +663,11 @@ pub enum DrawKind {
         /// How dark the shadow is drawn: the lighting phase's own opacity.
         opacity: f32,
     },
-    /// The shadow a moving caster lays on one cell of ground: its own silhouette, drawn flat.
-    ///
-    /// Not baked, and cut to one cell, so the terrain in front of it still covers it. See
-    /// [`iso::lighting::moving`] and [`crate::moving_shadow`].
-    Silhouette {
-        texture: usize,
-        frame: SpriteFrame,
-        /// The piece on screen, convex, as a fan from its first corner.
-        points: Vec<(f64, f64)>,
-        /// Where each of those corners reads the artwork, in `[0, 1]`.
-        uv: Vec<(f64, f64)>,
-        /// How dark the shadow is drawn: the lighting phase's own opacity.
-        opacity: f32,
-    },
     /// What the water shows of one sprite, on one cell of water: the artwork again, cut to that
     /// cell and drawn in the water's own colour.
     ///
-    /// Not baked either, and for the same reason the moving shadow is not: a reflection follows
-    /// whatever it mirrors, and the things that stand around water walk about. It is the same
-    /// mesh as a silhouette with a colour instead of black. See [`crate::reflection_view`].
+    /// Not baked either: a reflection follows whatever it mirrors, and the things that stand
+    /// around water walk about. See [`crate::reflection_view`].
     Reflection {
         texture: usize,
         frame: SpriteFrame,
@@ -863,27 +822,6 @@ impl SpriteDraw {
         }
     }
 
-    /// One cell's worth of the shadow a moving caster lays on the ground.
-    pub fn silhouette(
-        key: DrawKey,
-        texture: usize,
-        frame: SpriteFrame,
-        points: Vec<(f64, f64)>,
-        uv: Vec<(f64, f64)>,
-        opacity: f32,
-    ) -> Self {
-        Self {
-            key,
-            kind: DrawKind::Silhouette {
-                texture,
-                frame,
-                points,
-                uv,
-                opacity,
-            },
-        }
-    }
-
     /// One water cell's share of what the water mirrors.
     pub fn reflection(
         key: DrawKey,
@@ -1000,15 +938,6 @@ fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
                 opacity,
             } => {
                 atlas.draw_ground_shadow(corners, map_uv, *opacity);
-            }
-            DrawKind::Silhouette {
-                texture,
-                frame,
-                points,
-                uv,
-                opacity,
-            } => {
-                atlas.draw_silhouette(*texture, *frame, points, uv, *opacity);
             }
             DrawKind::Reflection {
                 texture,

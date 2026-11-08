@@ -9,11 +9,10 @@
 //! This client has no render texture for it, and needs none. A reflection is a flip of the
 //! sprite's own rectangle about the waterline ([`iso::water`] explains why that is the whole of
 //! the matrix pair), so it is **cut to the water cells it covers** instead, one convex piece per
-//! cell, exactly as the walking shadow is cut to the surfaces it lands on
-//! ([`crate::moving_shadow`]). Each piece carries the depth of its own water cell and
-//! [`REFLECTION_LAYER`], so it draws over that water and under everything the scene puts in
-//! front of it: the bank between the viewer and the water covers the reflection on it, and the
-//! land behind the water never shows one.
+//! cell. Each piece carries the depth of its own water cell and [`REFLECTION_LAYER`], so it
+//! draws over that water and under everything the scene puts in front of it: the bank between
+//! the viewer and the water covers the reflection on it, and the land behind the water never
+//! shows one.
 //!
 //! Nothing here is baked. A reflection follows what it mirrors and the things that stand around
 //! water walk about, so the pieces are gathered per frame from the same frame, layout and feet
