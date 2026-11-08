@@ -42,6 +42,7 @@ echo "==> Assembling $out_dir"
 rm -rf "$out_dir"
 mkdir -p "$out_dir"
 cp web/index.html "$out_dir/index.html"
+cp web/mq_js_bundle.js "$out_dir/mq_js_bundle.js"
 cp -R content "$out_dir/content"
 cp "target/$target/release/iso-core.wasm" "$out_dir/iso-core.wasm"
 
