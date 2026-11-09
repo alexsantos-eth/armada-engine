@@ -14,7 +14,7 @@ use serde_json::Value;
 
 fn fixture() -> Value {
     serde_json::from_str(include_str!(
-        "../../../../web/src/isometric/core/engine/flow-check/contracts.v1.json"
+        "../../../../web_deprecated/src/isometric/core/engine/flow-check/contracts.v1.json"
     ))
     .expect("migration fixture is valid JSON")
 }

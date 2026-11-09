@@ -5,7 +5,7 @@ use iso::entities::{validate_catalog, CATALOG_SCHEMA_VERSION};
 
 fn fixture() -> serde_json::Value {
     serde_json::from_str(include_str!(
-        "../../../../web/src/isometric/content/entities.v2.json"
+        "../../../../web_deprecated/src/isometric/content/entities.v2.json"
     ))
     .expect("migration fixture is valid JSON")
 }

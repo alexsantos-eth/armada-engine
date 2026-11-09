@@ -225,7 +225,7 @@ impl PlayerGround for ChunkGround<'_> {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let catalog_json = include_str!("../../web/src/isometric/content/entities.v2.json");
+    let catalog_json = include_str!("../../web_deprecated/src/isometric/content/entities.v2.json");
 
     let manifest_json = include_str!("../content/assets.manifest.json");
     let manifest: iso::assets::AssetManifest =
