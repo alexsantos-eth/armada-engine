@@ -12,7 +12,7 @@
 #      Netlify ships rustup and cargo but no toolchain at all, so this is what
 #      makes the build work there; locally it is a no-op.
 #   2. Compile the client to WebAssembly (release, locked).
-#   3. Copy the loader page, content/ and the .wasm into the output directory.
+#   3. Copy the loader page, its adapter, content/ and the .wasm into the output directory.
 #   4. Emit the same loader page also at playground/index.html: `/playground` is the
 #      development surface with the GUI; `/` paints no GUI at all. The page's
 #      <base href="/"> makes every relative URL resolve against the site root, so the
@@ -44,6 +44,7 @@ cp web/index.html "$out_dir/index.html"
 mkdir -p "$out_dir/playground"
 cp web/index.html "$out_dir/playground/index.html"
 cp web/mq_js_bundle.js "$out_dir/mq_js_bundle.js"
+cp web/adapter.js "$out_dir/adapter.js"
 cp -R content "$out_dir/content"
 cp "target/$target/release/iso-core.wasm" "$out_dir/iso-core.wasm"
 
