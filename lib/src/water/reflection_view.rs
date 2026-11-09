@@ -1,4 +1,6 @@
-//! What the water shows of the scene: the reflections of the things standing around it.
+//! What the water shows of the scene: the reflections of the things standing around it. A sprite
+//! drawn above its ground (a jump) is mirrored the same lift deeper in the water, so the arc
+//! reads in the reflection too.
 
 use iso::assets::{SpriteFrame, SpriteLayout};
 use iso::projection::{ProjectionConfig, ScreenPoint};
@@ -47,6 +49,12 @@ pub enum Reflected {
 }
 
 /// Queues what the water shows of the sprite drawn into `layout`, cut to the water cells it
+/// falls on.
+///
+/// `feet` and `elevation` are where the caster is drawn, jump included; `lift` is how many
+/// blocks the caster is above the ground it stands on. The waterline does not rise with the
+/// jump — the reflection hangs from it — but the mirrored artwork sinks below it by the same
+/// lift, so the arc reads in the water too. Pass `0.0` for anything standing on the ground.
 #[allow(clippy::too_many_arguments)]
 pub fn collect_reflection(
     texture: usize,
@@ -54,6 +62,7 @@ pub fn collect_reflection(
     layout: SpriteLayout,
     feet: ScreenPoint,
     elevation: f64,
+    lift: f64,
     reflected: Reflected,
     projection: ProjectionConfig,
     water_at: impl Fn(i32, i32) -> Option<WaterCell>,
@@ -66,7 +75,8 @@ pub fn collect_reflection(
         match reflected {
             Reflected::Standing { turn_at } => {
                 let surface = waterline(feet.y, elevation, level, box_height);
-                mirror_sprite(layout, (feet.y + surface) / 2.0, turn_at)
+                let grounded = feet.y + lift * box_height;
+                mirror_sprite(layout, (grounded + surface) / 2.0, turn_at)
             }
             Reflected::AsDrawn => lay_on_water(layout),
         }

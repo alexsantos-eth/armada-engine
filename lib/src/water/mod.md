@@ -16,7 +16,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 #### Funciones y métodos
 
 - [`collect_reflection`](reflection_view.rs#L50) — Genera o calcula «reflection» a partir de los datos de entrada.
-  - Firma: `pub fn collect_reflection( texture: usize, frame: SpriteFrame, layout: SpriteLayout, feet: ScreenPoint, elevation: f64, reflected: Reflected, projection: ProjectionConfig, water_at: impl Fn(i32, i32) -> Option<WaterCell>, out: &mut Vec<SpriteDraw>, ) {`
+  - Firma: `pub fn collect_reflection( texture: usize, frame: SpriteFrame, layout: SpriteLayout, feet: ScreenPoint, elevation: f64, lift: f64, reflected: Reflected, projection: ProjectionConfig, water_at: impl Fn(i32, i32) -> Option<WaterCell>, out: &mut Vec<SpriteDraw>, ) {`
 
 #### Constantes
 

@@ -65,6 +65,7 @@ fn collect(
         layout(at, BOX_HEIGHT),
         at,
         elevation,
+        0.0,
         reflected,
         projection(),
         water_at,
@@ -154,6 +155,19 @@ fn water_above_the_caster_mirrors_nothing() {
     assert!(draws.is_empty());
 }
 
+/// The highest point of the mirrored drawing, across every piece it was cut into.
+fn topmost(draws: &[SpriteDraw]) -> f64 {
+    draws
+        .iter()
+        .map(|draw| match &draw.kind {
+            DrawKind::Reflection { points, .. } => {
+                points.iter().map(|&(_, y)| y).fold(f64::INFINITY, f64::min)
+            }
+            other => panic!("a reflection is not {}", kind_name(other)),
+        })
+        .fold(f64::INFINITY, f64::min)
+}
+
 /// Something on a bank is still mirrored, hanging from the same waterline as the water itself:
 /// the reflection stays flush with the shore no matter how high above the water it stands.
 #[test]
@@ -164,21 +178,43 @@ fn something_on_a_bank_hangs_flush_with_the_waterline() {
         !on_bank.is_empty(),
         "the water two blocks below still shows it"
     );
-    let topmost = |draws: &[SpriteDraw]| {
-        draws
-            .iter()
-            .map(|draw| match &draw.kind {
-                DrawKind::Reflection { points, .. } => {
-                    points.iter().map(|&(_, y)| y).fold(f64::INFINITY, f64::min)
-                }
-                _ => unreachable!(),
-            })
-            .fold(f64::INFINITY, f64::min)
-    };
     assert_eq!(
         topmost(&on_bank),
         topmost(&on_water),
         "a reflection hangs from the waterline flush with the shore",
+    );
+}
+
+/// A sprite drawn above the ground it stands on — a jump — is mirrored the same lift deeper in
+/// the water: the reflection arcs with the jump instead of sliding along the surface.
+#[test]
+fn a_jumping_sprite_sinks_its_reflection_by_the_lift() {
+    let grounded = collect((0, 0), 0.0, Reflected::Standing { turn_at: None }, sea(0.0));
+    let lift = 0.8;
+    let at = feet((0, 0), 0.0);
+    let risen = ScreenPoint {
+        x: at.x,
+        y: at.y - lift * BOX_HEIGHT,
+    };
+    let mut airborne = Vec::new();
+    collect_reflection(
+        3,
+        frame(),
+        layout(risen, BOX_HEIGHT),
+        risen,
+        lift,
+        lift,
+        Reflected::Standing { turn_at: None },
+        projection(),
+        sea(0.0),
+        &mut airborne,
+    );
+    assert!(!airborne.is_empty(), "the water still shows it");
+    assert!(
+        (topmost(&airborne) - (topmost(&grounded) + lift * BOX_HEIGHT)).abs() < 1e-6,
+        "the reflection sinks by the lift: {} vs {}",
+        topmost(&airborne),
+        topmost(&grounded) + lift * BOX_HEIGHT,
     );
 }
 
@@ -262,6 +298,7 @@ fn a_sprite_with_no_area_mirrors_nothing() {
         },
         at,
         0.0,
+        0.0,
         Reflected::Standing { turn_at: None },
         projection(),
         sea(0.0),
@@ -280,6 +317,7 @@ fn a_projection_with_no_tile_height_mirrors_nothing() {
         frame(),
         layout(at, 10.0),
         at,
+        0.0,
         0.0,
         Reflected::Standing { turn_at: None },
         ProjectionConfig {
