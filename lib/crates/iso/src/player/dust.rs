@@ -76,7 +76,10 @@ pub fn get_dust(ms: f64, duration: f64, alpha: f64) -> Option<DustLook> {
     if left == 0.0 {
         return None;
     }
-    Some(DustLook { progress: 1.0 - left, alpha: alpha * left })
+    Some(DustLook {
+        progress: 1.0 - left,
+        alpha: alpha * left,
+    })
 }
 
 /// A voxel of a puff of dust: where it starts, in columns from the feet (`x`, `y`) and in blocks
@@ -114,7 +117,9 @@ pub struct DustRandom {
 impl DustRandom {
     /// The stream of `seed`, which is the count of puffs raised so far.
     pub fn new(seed: u64) -> Self {
-        Self { state: seed.wrapping_mul(0x9e37_79b9_7f4a_7c15) ^ 0x6a09_e667_f3bc_c909 }
+        Self {
+            state: seed.wrapping_mul(0x9e37_79b9_7f4a_7c15) ^ 0x6a09_e667_f3bc_c909,
+        }
     }
 
     /// The next number of the stream, in `[0, 1)`. SplitMix64, as `terrain::noise` hashes.
@@ -209,7 +214,10 @@ pub fn get_dust_column(
     let centre = if column.x == own.x && column.y == own.y {
         feet
     } else {
-        GridPoint { x: f64::from(column.x), y: f64::from(column.y) }
+        GridPoint {
+            x: f64::from(column.x),
+            y: f64::from(column.y),
+        }
     };
     let found = top.or_else(|| top_at(own.x, own.y)).unwrap_or(reach);
     DustColumn {

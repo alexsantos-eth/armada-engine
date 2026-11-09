@@ -54,7 +54,14 @@ pub fn terrain_faces(
             let mut upper = top;
             while upper > bottom + f64::EPSILON {
                 let lower = bottom.max(upper.ceil() - 1.0);
-                faces.push(TerrainFace { x, y, axis, top: upper, bottom: lower, material });
+                faces.push(TerrainFace {
+                    x,
+                    y,
+                    axis,
+                    top: upper,
+                    bottom: lower,
+                    material,
+                });
                 upper = lower;
             }
         }

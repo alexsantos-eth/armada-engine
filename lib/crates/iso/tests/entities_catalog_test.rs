@@ -1,13 +1,11 @@
 //! Integration test for the entity catalog.
 //! Loads the catalog the client ships (`content/entities.json`) and validates it.
 
-use iso::entities::{validate_catalog, CATALOG_SCHEMA_VERSION};
+use iso::entities::{CATALOG_SCHEMA_VERSION, validate_catalog};
 
 fn fixture() -> serde_json::Value {
-    serde_json::from_str(include_str!(
-        "../../../content/entities.json"
-    ))
-    .expect("catalog fixture is valid JSON")
+    serde_json::from_str(include_str!("../../../content/entities.json"))
+        .expect("catalog fixture is valid JSON")
 }
 
 #[test]
@@ -21,24 +19,44 @@ fn entity_catalog_matches_contract_fixture() {
 
     let mut ids = std::collections::HashSet::new();
     for blueprint in &catalog.entities {
-        assert!(ids.insert(blueprint.id.clone()), "duplicate id: {}", blueprint.id);
+        assert!(
+            ids.insert(blueprint.id.clone()),
+            "duplicate id: {}",
+            blueprint.id
+        );
         assert!(!blueprint.id.is_empty(), "empty id");
-        assert!(blueprint.shape.height >= 1, "height >= 1 for {}", blueprint.id);
-        assert!(blueprint.shape.length >= 1, "length >= 1 for {}", blueprint.id);
+        assert!(
+            blueprint.shape.height >= 1,
+            "height >= 1 for {}",
+            blueprint.id
+        );
+        assert!(
+            blueprint.shape.length >= 1,
+            "length >= 1 for {}",
+            blueprint.id
+        );
         assert_eq!(
             blueprint.shape.collision.len(),
             blueprint.shape.length as usize,
             "collision per footprint cell for {}",
             blueprint.id
         );
-        assert!(!blueprint.placement.surfaces.is_empty(), "surfaces for {}", blueprint.id);
+        assert!(
+            !blueprint.placement.surfaces.is_empty(),
+            "surfaces for {}",
+            blueprint.id
+        );
         assert_eq!(
             blueprint.placement.surfaces.len(),
             blueprint.shape.length as usize,
             "one surface per footprint cell for {}",
             blueprint.id
         );
-        assert!(!blueprint.asset.sprite.is_empty(), "sprite for {}", blueprint.id);
+        assert!(
+            !blueprint.asset.sprite.is_empty(),
+            "sprite for {}",
+            blueprint.id
+        );
     }
 
     validate_catalog(&catalog).expect("the catalog fixture must validate");
@@ -65,6 +83,9 @@ fn entity_catalog_rejects_unsupported_schema() {
     let err = validate_catalog(&catalog).unwrap_err();
     assert!(matches!(
         err,
-        iso::entities::CatalogError::UnsupportedSchema { found: 2, expected: 1 }
+        iso::entities::CatalogError::UnsupportedSchema {
+            found: 2,
+            expected: 1
+        }
     ));
 }

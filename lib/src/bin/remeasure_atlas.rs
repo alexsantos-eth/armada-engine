@@ -1,7 +1,7 @@
 //! Build tool: write the geometry of an existing atlas back into its manifest.
 
-use iso::assets::{AssetManifest, SpriteFrame, asset_ink, data_tiles};
 use image::RgbaImage;
+use iso::assets::{AssetManifest, SpriteFrame, asset_ink, data_tiles};
 
 /// Bounding box of everything that is not fully transparent inside `frame`.
 fn opaque_bounds(atlas: &RgbaImage, frame: SpriteFrame) -> Option<SpriteFrame> {
@@ -67,7 +67,10 @@ fn main() {
         serde_json::to_string_pretty(&manifest).expect("serialize manifest"),
     )
     .expect("write manifest");
-    println!("{manifest_path}: {measured} of {} measured", manifest.entries.len());
+    println!(
+        "{manifest_path}: {measured} of {} measured",
+        manifest.entries.len()
+    );
     if !sheets.is_empty() {
         println!("left as packed (sheets of poses): {}", sheets.join(", "));
     }
@@ -75,4 +78,3 @@ fn main() {
         println!("placed by anchor: {}", unmeasured.join(", "));
     }
 }
-

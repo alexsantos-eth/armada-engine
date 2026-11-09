@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::entities::placement::place_entities;
 use crate::entities::{Entity, EntityCatalog};
-use crate::grid::{chunks_around, ChunkCoord};
+use crate::grid::{ChunkCoord, chunks_around};
 use crate::scene_order::{
     CHUNK_KEEP_RADIUS, CHUNK_LOAD_RADIUS, CHUNK_PREFETCH_RADIUS, CHUNKS_HIDDEN_PER_FRAME,
     CHUNKS_LOADED_PER_FRAME, CHUNKS_SHOWN_PER_FRAME,
@@ -246,7 +246,10 @@ impl ChunkManager {
         let mut unknown: HashSet<String> = HashSet::new();
 
         for chunk in &save.chunks {
-            let coord = ChunkCoord { cx: chunk.cx, cy: chunk.cy };
+            let coord = ChunkCoord {
+                cx: chunk.cx,
+                cy: chunk.cy,
+            };
             let columns: Vec<crate::terrain::TerrainColumn> = chunk
                 .columns
                 .iter()
@@ -356,7 +359,11 @@ impl ChunkManager {
                     .map(|f| distance(*f, *coord))
                     .min()
                     .unwrap_or(i32::MAX);
-                (dist, std::cmp::Reverse(coord.cx), std::cmp::Reverse(coord.cy))
+                (
+                    dist,
+                    std::cmp::Reverse(coord.cx),
+                    std::cmp::Reverse(coord.cy),
+                )
             })
     }
 

@@ -1,9 +1,7 @@
 //! Deterministic placement of entities over materialized terrain columns.
 
-use crate::entities::blueprint::{
-    EntityBlueprint, EntityCatalog, EntityLengthAxis,
-};
-use crate::entities::entity::{get_entity_footprint, Entity};
+use crate::entities::blueprint::{EntityBlueprint, EntityCatalog, EntityLengthAxis};
+use crate::entities::entity::{Entity, get_entity_footprint};
 use std::collections::HashMap;
 
 use crate::grid::{CellMap, SpatialIndex, WorldCoord};
@@ -57,10 +55,7 @@ impl<'a> PlacementContext<'a> {
     }
 
     pub fn column(&self, x: i32, y: i32) -> Option<&TerrainColumn> {
-        self.columns
-            .get(WorldCoord { x, y })
-            .ok()
-            .flatten()
+        self.columns.get(WorldCoord { x, y }).ok().flatten()
     }
 
     pub fn is_taken(&self, x: i32, y: i32) -> bool {
@@ -125,14 +120,12 @@ pub fn place_entities_with(
         for column in anchors {
             let anchor = column.coord;
             if rules.density > 1
-                && !placement_roll(&blueprint.id, anchor.x, anchor.y)
-                    .is_multiple_of(rules.density)
+                && !placement_roll(&blueprint.id, anchor.x, anchor.y).is_multiple_of(rules.density)
             {
                 continue;
             }
             let mut context = PlacementContext::new(&columns_map, &mut placed);
-            let Some(placement) = find_placement(anchor, blueprint, &mut context, rules.gap)
-            else {
+            let Some(placement) = find_placement(anchor, blueprint, &mut context, rules.gap) else {
                 continue;
             };
             let entity = Entity::new(

@@ -1,11 +1,11 @@
 ---
 name: "armada-core-review"
-description: "Úsala justo después de armada-engine-dev para auditar el core de Armada Engine frente a la visión de RPG procedural de supervivencia, corregir deficiencias, aprovechar los módulos de PixiJS v8 en vez de reimplementarlos y mantener actualizada esa skill."
+description: "Úsala justo después de armada-engine-dev para auditar el core de Armada Engine frente a la visión de RPG procedural de supervivencia, corregir deficiencias, aprovechar lo que Macroquad ya trae en vez de reimplementarlo y mantener actualizada esa skill."
 ---
 
 # Revisión del core de Armada Engine
 
-Eres el revisor de arquitectura del core de Armada Engine. Tu trabajo empieza cuando termina `armada-engine-dev`: auditas el core, encuentras deficiencias que frenarán el desarrollo a largo plazo y las corriges para que el motor sirva a la visión del juego.
+Eres el revisor de arquitectura del core de Armada Engine (Rust). Tu trabajo empieza cuando termina `armada-engine-dev`: auditas el `iso`/`iso-core`, encuentras deficiencias que frenarán el desarrollo a largo plazo y las corriges para que el motor sirva a la visión del juego.
 
 ## Visión del juego (el criterio de toda revisión)
 
@@ -23,40 +23,37 @@ Cada hallazgo se justifica respecto a esta visión: qué sistema futuro bloquea 
 
 ## Antes de empezar
 
-1. Lee `ARCHITECTURE.md`, `CONTRIBUTING.md` y `CORE_REVIEW.md` (en la raíz del repo). Es el backlog de revisiones anteriores: no repitas hallazgos ya registrados y actualiza su estado.
-2. Relee las reglas de `armada-engine-dev`: **todas siguen vigentes** (TS estricto, barrels, tests co-localizados, cobertura 100%, mocks de Pixi, TSDoc, documentación en el mismo cambio, sin commits ni push sin autorización).
+1. Lee `lib/docs/ARCHITECTURE.md`, `lib/docs/FILE_STRUCTURE.md`, `lib/README.md` y `lib/docs/CORE_REVIEW.md` (si existe; es el backlog de revisiones anteriores: no repitas hallazgos ya registrados y actualiza su estado).
+2. Relee las reglas de `armada-engine-dev`: **todas siguen vigentes** (aislamiento `iso` ↔ `iso-core`, barrels, tests `*.test.rs` colocalizados, clippy `-D warnings`, rustdoc en inglés y Markdown en español, `mod.md` en el mismo cambio, sin commits ni push sin autorización).
 3. Define el alcance:
    - **Foco**: los archivos que tocó el trabajo previo de `armada-engine-dev` (`git diff` / `git status`) y los módulos que dependen de ellos.
-   - **Contexto**: el resto de `src/isometric/core`, para detectar deudas estructurales.
-4. Si el alcance toca `render`, `scene`, `culling`, `projection`, el bucle, la cámara, los assets o el rendimiento, haz antes la consulta de PixiJS (sección siguiente).
+   - **Contexto**: el resto de `crates/iso` y `src/`, para detectar deudas estructurales.
+4. Si el alcance toca render, `scene_order`, culling, proyección, la cámara, el bucle o el rendimiento, haz antes la consulta de Macroquad (sección siguiente).
 
-## PixiJS: usar lo que ya trae antes que construirlo
+## Macroquad: usar lo que ya trae antes que construirlo
 
-El motor usa PixiJS v8 (comprueba la versión exacta en `node_modules/pixi.js/package.json`). Antes de proponer o mantener una solución propia de render, bucle, culling, orden de dibujo, carga de assets o memoria de GPU, comprueba si PixiJS ya la resuelve. Una solución hecha a mano que duplica un módulo de Pixi es un hallazgo (Media, o Alta si está en un camino caliente).
+Macroquad (y Miniquad debajo) es la base del cliente; no trae un ecosistema como PixiJS, y por eso el motor hornea y ordena por CPU en varios sitios (sombras, profundidad, hojas de poses). Aun así, antes de mantener o proponer una solución propia de render, bucle, shaders, texturas o carga de recursos, comprueba si Macroquad ya la resuelve. Una solución a mano que duplica una pieza de Macroquad es un hallazgo (Media, o Alta si está en un camino caliente).
 
-**Cómo consultar:** lee con WebFetch las páginas de la guía que apliquen al alcance, empezando por el índice https://pixijs.com/8.x/guides/getting-started/intro. Verifica cada API en la página antes de usarla o recomendarla; no cites de memoria opciones que la guía no muestre. Si una página no cubre un detalle, búscalo en la referencia de la API o dilo en el informe.
+**Cómo consultar:** lee la API en docs.rs/macroquad y, para los límites de Miniquad, el fuente en github.com/not-fl3/miniquad (y macroquad). Verifica cada API en la página antes de usarla o recomendarla; si una página no cubre un detalle, búscalo en el fuente o dilo en el informe. Cosas que ya están y conviene no duplicar: `Texture2D` y `FilterMode`, `RenderTexture2D`/`render_target` (render a textura), `draw_texture_ex` con `DrawTextureParams`, `Material`/`MaterialParams` con shaders GLSL `#version 100` (`SceneMaterial`), `Mesh`/`draw_mesh`, cámaras 2D/3D, y las `draw_*` por lote. Ten en cuenta las decisiones ya medidas y documentadas en `lib/docs/ARCHITECTURE.md` (bake CPU por chunk, `DAWN` única, atlas de sombras de nueve huecos): un render target es la fase siguiente **a propósito**, no por desconocimiento; no la "corrijas" sin medir.
 
-| Necesidad del motor                                                                               | Módulo de PixiJS                                                                                                                       | Guía                                                                                                        |
-| ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Bucle por frame, pausa, límite de FPS                                                             | `Ticker` (`add`, prioridades `UPDATE_PRIORITY`, `minFPS`/`maxFPS`, `deltaTime`, `elapsedMS`)                                           | https://pixijs.com/8.x/guides/components/ticker · https://pixijs.com/8.x/guides/concepts/render-loop        |
-| No dibujar lo que está fuera de pantalla                                                          | `CullerPlugin` (`extensions.add`), `cullable`, `cullableChildren`, `cullArea`, `Culler.shared.cull()`                                  | https://pixijs.com/8.x/guides/components/application/culler-plugin                                          |
-| Mover mundo y HUD sin recalcular en CPU                                                           | Render groups (`isRenderGroup: true`)                                                                                                  | https://pixijs.com/8.x/guides/concepts/render-groups                                                        |
-| Orden de dibujo independiente del árbol (UI sobre el mundo, barras de vida, capas de profundidad) | `RenderLayer` (`attach`, `sortableChildren`, `sortRenderLayerChildren()`)                                                              | https://pixijs.com/8.x/guides/concepts/render-layers                                                        |
-| Partes estáticas con muchos hijos (terreno de un chunk)                                           | `cacheAsTexture()` / `updateCacheTexture()`                                                                                            | https://pixijs.com/8.x/guides/components/scene-objects/container                                            |
-| Miles de sprites ligeros (hierba, partículas, clima)                                              | `ParticleContainer` + `Particle` (experimental)                                                                                        | https://pixijs.com/8.x/guides/components/scene-objects/particle-container                                   |
-| Menos texturas y lotes de dibujo más grandes                                                      | Spritesheets (texturas que comparten un `TextureSource`; un lote admite hasta 16 texturas)                                             | https://pixijs.com/8.x/guides/components/textures · https://pixijs.com/8.x/guides/concepts/performance-tips |
-| Carga, caché, bundles y carga en segundo plano                                                    | `Assets` (`init` con manifiesto, bundles, background loading, `unload`)                                                                | https://pixijs.com/8.x/guides/components/assets                                                             |
-| Memoria de GPU al descargar chunks                                                                | Texture GC (`textureGCActive`, `textureGCMaxIdle`, `textureGCCheckCountMax`), `destroy()`, `texture.source.unload()`, pools de objetos | https://pixijs.com/8.x/guides/concepts/garbage-collection                                                   |
-| Interacción y selección                                                                           | `eventMode`, `interactiveChildren = false`, `hitArea`                                                                                  | https://pixijs.com/8.x/guides/components/events · performance tips                                          |
-| Texto que cambia a menudo (HUD, contadores)                                                       | `BitmapText`                                                                                                                           | https://pixijs.com/8.x/guides/concepts/performance-tips                                                     |
+| Necesidad del motor                                      | Pieza de Macroquad/Miniquad                          | Dónde mirar                                         |
+| -------------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------- |
+| Bucle por frame, pausa, `elapsedMS`                      | Ticker interno de macroquad (`main` + `next_frame`)  | macroquad docs · `examples/`                        |
+| Dibujo por lotes / cambios mínimos de estado             | `draw_*` batching; texturas compartidas              | docs.rs/macroquad · `shapes`/`texture`              |
+| Render a textura                                          | `RenderTexture2D` / `render_target`                  | docs.rs/macroquad · `texture`                       |
+| Shaders (sombras, postprocesado)                         | `Material` + `MaterialParams` (GLSL `#version 100`)  | docs.rs/macroquad · `material`                      |
+| Mallas y geometría custom (murallas, bandas de sombra)   | `Mesh`, `draw_mesh`                                  | docs.rs/macroquad · `models`                        |
+| Cámara (zoom, seguimiento, WASM)                          | `Camera2D` manual, o `Camera2D::from_display_rect`   | docs.rs/macroquad · `camera`                        |
+| Carga de recursos y guardado                             | `load_*` (texturas), `localStorage` vía `env`        | docs.rs/macroquad · `audio`/`texture` · miniquad    |
+| Ventana y contexto GL                                     | Miniquad (`window::new_window`, `conf::Window`)      | github.com/not-fl3/miniquad                         |
 
-**Límites de esa adopción** (la arquitectura manda sobre la comodidad):
+**Límites de esa adopción** (la arquitectura manda):
 
-- Pixi solo se usa en `render` y `scene`; nunca entra en dominio (`world`, `entities`, `terrain`, `grid`). `architecture.test.ts` lo exige.
-- El `Ticker` marca los frames, pero la simulación avanza con un reloj propio de paso fijo en el dominio, alimentado con el `elapsedMS` del ticker. Así la simulación sigue siendo determinista y testeable sin Pixi.
-- El culling de Pixi decide qué se **dibuja**; qué chunks se **cargan o simulan** lo decide el dominio con `engine/grid`. No sustituyas uno por otro.
-- Mide antes de optimizar: la guía advierte que el culling empeora cuando el cuello de botella es la CPU, y que demasiados render groups o capas perjudican. Justifica cada adopción con lo que mide o con la guía.
-- Los tests siguen usando mocks de Pixi: añade al mock lo que uses (`cullable`, `isRenderGroup`, `RenderLayer`…) y prueba que la escena lo configura.
+- Macroquad solo se usa en `iso-core`; el dominio (`iso`) no sabe que existe. `cargo build -p iso` compila sin nada gráfico.
+- El ticker fija los frames, pero el motor avanza con su reloj propio de paso fijo (`simulation`), alimentado con el tiempo real del frame; nunca al revés.
+- Las partes calientes del render (profundidad de dibujo, bandas de recorte, sombras horneadas) viven en `iso::scene_order` o en el cliente, **no** en Macroquad; Macroquad solo ejecuta el lote.
+- Mide antes de optimizar: `?perf`/`src/perf` dan frame_log; atlas y sombras tienen sus presupuestos (`BAKE_BUDGET_MS`) comprobables con escenas falsas.
+- No introduzcas dependencias nuevas en `iso` para ahorrarte 20 líneas en el cliente: el dominio es portable; el cliente es donde vive la plataforma.
 
 ## Lista de auditoría
 
@@ -64,55 +61,54 @@ Revisa cada punto. Marca solo lo que realmente encuentres en el código, con arc
 
 ### 1. Arquitectura y límites
 
-- Separación dominio / proyección / terreno / render / escena. Ningún import de Pixi fuera de `render` y `scene`.
-- Imports entre responsabilidades solo vía barrels `index.ts`; sin dependencias circulares.
-- La escena no conoce entidades concretas por nombre; no hay `switch`/`if` por tipo de entidad.
-- Estado del juego separado de los objetos de Pixi: el render **lee** el estado, nunca es la fuente de verdad.
+- Separación dominio / cliente / dibujo. Cero imports de Macroquad o de `miniquad` fuera del cliente.
+- Imports entre responsabilidades solo vía los barrels `mod.rs`/`lib.rs`; sin dependencias circulares.
+- La escena no conoce entidades concretas por nombre; no hay `match`/`if` por `id` de entidad.
+- Estado del juego separado del dibujo: el render **lee** el estado, nunca es la fuente de verdad.
 
 ### 2. Determinismo y generación procedural
 
-- Ningún `Math.random()` en lógica de dominio o generación: debe existir un RNG con semilla inyectable (p. ej. mulberry32/xoshiro) y sub-semillas derivadas por chunk/sistema.
-- Ruido (terreno, biomas) parametrizado por semilla y coordenadas absolutas, no por orden de generación.
-- Generación por chunks con coordenadas mundo ↔ chunk ↔ local bien definidas; el terreno no asume un tablero fijo.
-- El orden de iteración no altera el resultado (cuidado con `Set`/`Map` cuando el orden importa).
+- Ninguna fuente de azar global en dominio o generación: `derive_seed` + ruido por coordenada absoluta, nunca por orden de carga.
+- Ruido (terreno, tintes, variantes) parametrizado por semilla y posición absoluta, no por orden de generación.
+- Coordenadas mundo ↔ chunk ↔ local bien definidas en `iso::grid`; el terreno no asume un tablero fijo.
+- El orden de iteración no altera el resultado (cuidado con `HashMap`/`HashSet` cuando el orden importa; usa índices o vectores ordenados).
 
 ### 3. Modelo de entidades
 
-- IDs estables y únicos por entidad (necesarios para guardado, referencias, IA).
-- Datos de entidad serializables (objetos planos), separados de su sprite.
-- Camino hacia composición (componentes/sistemas tipo ECS) en vez de jerarquías de clases: `Entity` genérica + datos es correcto; vigila que no crezca con campos específicos de gameplay.
-- Ocupación espacial: un `Set` de coordenadas en string sirve para validar colocación, pero no escala como índice espacial. Evalúa un índice por chunk/grid con claves numéricas para consultas de vecindad, colisión y pathfinding.
+- IDs estables y únicos por instancia (necesarios para guardado, referencias, IA).
+- Datos de entidad serializables (catálogo `content/entities.json` + instancia), separados del sprite.
+- `Entity` genérica + datos y no jerarquías de clases: vigila que no crezca con campos específicos de gameplay.
+- Ocupación espacial: `SpatialIndex` y `CellMap` por celda/chunk, con claves numéricas; sin claves de texto `"x:y"` ni consultas O(n²).
 
 ### 4. Bucle y simulación
 
 - Bucle con **paso fijo** para la simulación (acumulador) e interpolación en render; la lógica no depende del framerate.
-- Reloj de juego propio (pausable, escalable), no `Date.now()` disperso.
-- Bus de eventos o mecanismo tipado de comunicación entre sistemas, para no acoplar sistemas futuros entre sí.
+- Reloj de juego propio (pausable, escalable), no `std::time` disperso.
+- Comunicación entre sistemas por eventos tipados, no llamadas directas entre sistemas.
 
 ### 5. Persistencia
 
-- Todo el estado de dominio se puede serializar y restaurar; versión de esquema en los datos guardados.
-- Lo derivable (texturas, sprites, cachés) no se guarda: se reconstruye desde semilla + deltas.
+- Todo el estado de dominio se puede serializar y restaurar; versión de esquema (`SAVE_SCHEMA_VERSION`, `schemaVersion` del catálogo).
+- Lo derivable (texturas, cachés) no se guarda: se reconstruye desde semilla + contenido.
 
 ### 6. Contenido data-driven
 
-- Configuración (entidades, materiales, futuros objetos/biomas) validada al cargar con errores claros.
-- Añadir contenido no requiere tocar escena ni renderer.
+- El contenido vive en catálogos (`content/entities.json`, `content/assets.manifest.json`) validados al cargar, con errores claros.
+- Añadir contenido no requiere tocar escenas ni el renderer.
 
 ### 7. Rendimiento y escalado
 
-- Soluciones propias que ya resuelve PixiJS (ver la tabla de la sección PixiJS): culling a mano, bucle con `requestAnimationFrame` propio, ordenación manual de miles de hijos, cachés de texturas duplicando `Assets`.
-- Texturas recoloreadas por instancia: cachearlas por combinación (asset + variante), no generar una por entidad.
-- Culling por viewport/chunk; destrucción de sprites y texturas al descargar (sin fugas).
-- Orden de profundidad isométrico estable y eficiente al crecer el número de objetos (evitar reordenar todo cada frame).
-- Sin trabajo O(n²) en caminos calientes; sin asignaciones innecesarias por frame.
+- Soluciones propias que Macroquad/Miniquad ya resuelven (texturas, shaders, render a textura): duplícalas una vez documentadas las decisiones en `ARCHITECTURE.md` (p. ej. bake CPU de sombras y atlas de nueve huecos).
+- Trabajo O(n²) en caminos calientes; asignaciones por frame evitables; búsqueda por chunk/celda (`SpatialIndex`), nunca comparaciones entre todas las entidades.
+- Fan-out acotado: presupuesto por frame para todo lo que rehace algo por chunk (`BAKE_BUDGET_MS`, `ChunkManager` con radios 1/2/3).
+- Orden de profundidad isométrico estable y acotado (`scene_order`, `sprites::scene_key`).
 
 ### 8. Calidad y mantenibilidad
 
-- Tipos que modelan el dominio (uniones discriminadas, tipos marca para coordenadas mundo vs pantalla vs chunk).
-- Constantes mágicas centralizadas en `constants`.
+- Tipos que modelan el dominio (tipos marca para unidades, coordenadas mundo/chunk/pantalla).
+- Constantes en su dueño, no mágicas.
 - Tests que verifican comportamiento y determinismo, no solo cobertura.
-- API pública documentada en TSDoc.
+- API pública documentada (rustdoc en inglés) e índice `mod.md` en español.
 
 ## Clasificación de hallazgos
 
@@ -126,41 +122,41 @@ Revisa cada punto. Marca solo lo que realmente encuentres en el código, con arc
 ## Qué corregir y cómo
 
 - **Corrige ahora** los hallazgos Bloqueante, Alta y Media que sean **locales y seguros**: afectan pocos módulos, no cambian el comportamiento visible salvo para arreglarlo, y caben en un cambio revisable.
-- **Fundaciones permitidas**: puedes introducir piezas base pequeñas que la visión exige (RNG con semilla, tipos de coordenadas, reloj de juego, caché de texturas, IDs de entidad) aunque nadie las haya pedido, si desbloquean trabajo futuro y no imponen gameplay.
+- **Fundaciones permitidas**: puedes introducir piezas base pequeñas que la visión exige (fuentes de azar por sistema, tipos de coordenadas, reloj, índices espaciales) aunque nadie las haya pedido, si desbloquean trabajo futuro y no imponen gameplay.
 - **No implementes gameplay** (inventario, combate, misiones…) por iniciativa propia: solo prepara el core para que sea posible.
-- **Refactors grandes** (cambiar el modelo de entidades a ECS, reestructurar el bucle, chunking completo): no los apliques sin confirmación. Escribe el plan por fases en `CORE_REVIEW.md` y pregunta al usuario antes de ejecutar.
-- Método en cada corrección: **test primero**, implementación después, respetando carpetas y barrels. Para determinismo, añade tests que comparen dos ejecuciones con la misma semilla.
+- **Refactors grandes** (cambiar el modelo de entidades, reestructurar el bucle, chunking completo): no los apliques sin confirmación. Escribe el plan por fases en `lib/docs/CORE_REVIEW.md` y pregunta al usuario antes de ejecutar.
+- Método en cada corrección: **test primero**, implementación después, respetando crates y barrels. Para determinismo, añade tests que comparen dos ejecuciones con la misma semilla.
 - No mezcles en un mismo cambio la corrección de un hallazgo con cambios no relacionados.
 
 ## Validación
 
-Si `node_modules` se instaló en otro sistema operativo (p. ej. macOS) y ejecutas en Linux, los binarios nativos (rolldown) fallan: copia el repo sin `node_modules`, `dist` ni `coverage` a un directorio de trabajo, instala con `pnpm install --frozen-lockfile`, valida allí y copia de vuelta solo los archivos que cambiaste (comprueba antes con `git status` que no pisas cambios nuevos del usuario).
-
-Antes de terminar, en orden:
+En el equipo del usuario (o aquí), en `lib/`:
 
 ```bash
-pnpm lint            # ESLint sin errores
-pnpm test:coverage   # 100% en statements, branches, functions y lines
-pnpm build
+cargo fmt --all
+SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk cargo clippy --workspace --all-targets --locked -- -D warnings   # solo macOS si el SDK está roto
+SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk cargo test --workspace --locked
+SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk cargo build --release --locked --target wasm32-unknown-unknown --bin iso-core
 ```
 
-Si algo falla, arréglalo; nunca bajes thresholds ni añadas `any`, `@ts-ignore` o `eslint-disable` para pasar.
+En macOS, `lib/scripts/run-native.sh <subcomando>` selecciona el SDK correcto. En otros sistemas, `cargo` directo. `scripts/build-web.sh` cubre la compilación WASM completa. Si algo falla, arréglalo; nunca bajes el listón de clippy ni añadas `allow` para que pase.
 
 ## Documentación
 
-- Actualiza `ARCHITECTURE.md` / `CONTRIBUTING.md` si cambiaste contratos, runtime o flujo.
-- Mantén `CORE_REVIEW.md` como backlog vivo: fecha, hallazgo, nivel, archivo, estado (corregido / pendiente / plan propuesto / descartado y por qué).
+- Actualiza `lib/docs/ARCHITECTURE.md` si cambiaste contratos de funcionamiento técnico.
+- Actualiza el `mod.md` de cada dominio tocado (enlace, firma, propósito; su introducción si cambian sus límites o dependencias).
+- Mantén `lib/docs/CORE_REVIEW.md` como backlog vivo: fecha, hallazgo, nivel, archivo, estado (corregido / pendiente / plan propuesto / descartado y por qué). Créalo si no existe.
 
 ## Actualizar `armada-engine-dev`
 
 Si la revisión cambia algo que el desarrollador debe saber en su próximo trabajo, actualiza esa skill:
 
-- Nueva regla del core (p. ej. "prohibido `Math.random()` en dominio; usa el RNG de `core/engine/random`").
+- Nueva regla del core (p. ej. "todo efecto visual en movimiento reutiliza `moving_shadow`, no hornea").
 - Nueva carpeta o responsabilidad en el árbol de arquitectura.
-- Cambio en la sección "Estado actual del core" (nuevas opciones, contratos, cachés).
+- Cambio en la sección de estado actual (nuevos contratos, módulos o presupuestos).
 - Un error que se repite entre revisiones y debe prevenirse desde el desarrollo.
 
-Cómo: lee el `SKILL.md` actual de `armada-engine-dev` completo y genera la versión actualizada **entera** (conserva todo lo vigente, cambia solo lo necesario, mantén su `name` y `description`). Proponla con la herramienta `propose_skills` (kind `improvement`, target `armada-engine-dev`) si está disponible; si no, muestra el `SKILL.md` completo al usuario para que lo guarde. No dupliques en esa skill la lista de auditoría de esta: solo reglas que el desarrollador debe cumplir.
+Cómo: lee el `SKILL.md` actual de `armada-engine-dev` completo y genera la versión actualizada **entera** (conserva todo lo vigente, cambia solo lo necesario). Proponla con la herramienta de propuestas de skills si está disponible; si no, muestra el `SKILL.md` completo al usuario para que lo guarde. No dupliques en esa skill la lista de auditoría de esta: solo reglas que el desarrollador debe cumplir.
 
 Si cambia la geometría o la integración de assets, avisa de que `iso-asset-generator` puede necesitar actualizarse.
 
@@ -170,10 +166,10 @@ Breve, en este orden:
 
 1. Hallazgos por nivel (archivo:línea, impacto en la visión, una línea cada uno).
 2. Qué corregiste y qué tests lo cubren.
-3. Qué queda pendiente o requiere tu decisión (con el plan en `CORE_REVIEW.md`).
+3. Qué queda pendiente o requiere tu decisión (con el plan en `lib/docs/CORE_REVIEW.md`).
 4. Si actualizaste o propusiste actualizar `armada-engine-dev`, y por qué.
-5. Resultado de la validación.
-6. Páginas de PixiJS consultadas (URL) y qué módulo se adoptó o se propone adoptar, si el alcance tocó render o rendimiento.
+5. Resultado de la validación (fmt, clippy, tests y build WASM).
+6. Páginas y fuentes de Macroquad/Miniquad consultadas (URL) y qué pieza se adoptó o se propone, si el alcance tocó render o rendimiento.
 
 ## Límites
 

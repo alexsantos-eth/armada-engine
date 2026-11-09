@@ -76,17 +76,17 @@ pub fn footprint_band(
 
 /// Sutherland–Hodgman: the part of a convex polygon where `inside` is not negative.
 fn clip(band: SpriteBand, inside: impl Fn((f64, f64)) -> f64) -> Option<SpriteBand> {
-    let mut out = SpriteBand { corners: [(0.0, 0.0); 8], len: 0 };
+    let mut out = SpriteBand {
+        corners: [(0.0, 0.0); 8],
+        len: 0,
+    };
     let corners = band.corners();
     for (i, &to) in corners.iter().enumerate() {
         let from = corners[(i + corners.len() - 1) % corners.len()];
         let (d_from, d_to) = (inside(from), inside(to));
         if (d_from < 0.0) != (d_to < 0.0) {
             let t = d_from / (d_from - d_to);
-            out.push((
-                from.0 + (to.0 - from.0) * t,
-                from.1 + (to.1 - from.1) * t,
-            ));
+            out.push((from.0 + (to.0 - from.0) * t, from.1 + (to.1 - from.1) * t));
         }
         if d_to >= 0.0 {
             out.push(to);

@@ -102,7 +102,11 @@ pub fn shade_grid(
     if placed.is_empty() && ground.is_none() {
         return None;
     }
-    let foot = ShadowPoint { x: receiver.foot.0, y: receiver.foot.1, elevation: receiver.elevation };
+    let foot = ShadowPoint {
+        x: receiver.foot.0,
+        y: receiver.foot.1,
+        elevation: receiver.elevation,
+    };
 
     let mut values = Vec::with_capacity(((columns + 1) * (rows + 1)) as usize);
     let mut any = false;
@@ -130,7 +134,11 @@ pub fn shade_grid(
             values.push(value as f32);
         }
     }
-    any.then_some(ShadeGrid { columns, rows, values })
+    any.then_some(ShadeGrid {
+        columns,
+        rows,
+        values,
+    })
 }
 
 /// How shaded one point of the world is, by the casters around it and by the ground.

@@ -3,7 +3,12 @@ use super::*;
 /// Every phase's direction is written out as two constants, so the one thing to check is that
 #[test]
 fn shadow_direction_is_a_unit_vector() {
-    for (name, phase) in [("dawn", DAWN), ("day", DAY), ("sunset", SUNSET), ("night", NIGHT)] {
+    for (name, phase) in [
+        ("dawn", DAWN),
+        ("day", DAY),
+        ("sunset", SUNSET),
+        ("night", NIGHT),
+    ] {
         let length = phase.shadow.dir_x.hypot(phase.shadow.dir_y);
         assert!((length - 1.0).abs() < 1e-12, "{name} points {length} long");
     }

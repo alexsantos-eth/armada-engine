@@ -1,11 +1,10 @@
 //! Player locomotion physics, independent of rendering and of the world's storage.
 
-use crate::time::TICKS_PER_SECOND;
 use crate::grid::{ChunkCoord, WorldCoord, WorldRect};
 use crate::player::motion::{PlayerMotionEvent, PlayerMotionType, transition_player_motion};
 use crate::projection::GridPoint;
 use crate::terrain::{TerrainColumn, TerrainMaterial};
-
+use crate::time::TICKS_PER_SECOND;
 
 /// Walking speed of the player, in columns per second of simulation.
 pub const PLAYER_SPEED: f64 = 3.0;
@@ -50,7 +49,8 @@ pub const PLAYER_JUMP_CUT_SPEED: f64 = PLAYER_JUMP_SPEED * 0.6;
 /// Fastest downward speed in blocks per simulation tick.
 pub const PLAYER_MAX_FALL_SPEED: f64 = 0.6;
 /// Blocks per tick its feet's upward speed drops each tick in the air.
-pub const PLAYER_GRAVITY: f64 = (8.0 * PLAYER_JUMP_HEIGHT) / ((PLAYER_JUMP_TICKS as f64) * (PLAYER_JUMP_TICKS as f64));
+pub const PLAYER_GRAVITY: f64 =
+    (8.0 * PLAYER_JUMP_HEIGHT) / ((PLAYER_JUMP_TICKS as f64) * (PLAYER_JUMP_TICKS as f64));
 /// Blocks a top may stand above the player's feet and still be stepped onto in one tick.
 pub const PLAYER_STEP_HEIGHT: f64 = 0.25;
 /// Ticks a climb of one block lasts.
@@ -99,12 +99,11 @@ pub const PLAYER_SPAWN_RADIUS: i32 = 32;
 
 const LANDING: f64 = 1e-9;
 
-
-
 /// Height of the feet above flat ground `tick` ticks into a jump.
 pub fn get_jump_height(tick: f64) -> f64 {
     let t = tick.clamp(0.0, PLAYER_JUMP_TICKS as f64);
-    (4.0 * PLAYER_JUMP_HEIGHT * t * (PLAYER_JUMP_TICKS as f64 - t)) / (PLAYER_JUMP_TICKS as f64).powi(2)
+    (4.0 * PLAYER_JUMP_HEIGHT * t * (PLAYER_JUMP_TICKS as f64 - t))
+        / (PLAYER_JUMP_TICKS as f64).powi(2)
 }
 
 fn harmonic(t: f64) -> f64 {
@@ -121,7 +120,6 @@ pub fn get_climb_rise(progress: f64) -> f64 {
 pub fn get_climb_advance(progress: f64) -> f64 {
     harmonic((progress - PLAYER_CLIMB_RISE_SHARE) / (1.0 - PLAYER_CLIMB_RISE_SHARE))
 }
-
 
 /// Why a requested walking step could not advance.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -241,7 +239,6 @@ pub trait PlayerGround {
     fn load_around(&mut self, _point: GridPoint) {}
 }
 
-
 /// Column the ground point `point` belongs to.
 pub fn get_player_column(point: GridPoint) -> WorldCoord {
     WorldCoord {
@@ -262,18 +259,15 @@ pub fn can_stand_on<G: PlayerGround>(ground: &G, x: i32, y: i32, from_elevation:
     if (column.elevation as f64 - from_elevation).abs() > PLAYER_MAX_CLIMB {
         return false;
     }
-    ground
-        .occupancy_at(x, y)
-        .iter()
-        .all(|occ| {
-            let side = occ.blocked_side(x as f64, y as f64);
-            if side <= 0.0 {
-                return true;
-            }
-            occ.elevation
-                .map(|e| e >= column.elevation as f64 + PLAYER_BODY_HEIGHT - LANDING)
-                .unwrap_or(false)
-        })
+    ground.occupancy_at(x, y).iter().all(|occ| {
+        let side = occ.blocked_side(x as f64, y as f64);
+        if side <= 0.0 {
+            return true;
+        }
+        occ.elevation
+            .map(|e| e >= column.elevation as f64 + PLAYER_BODY_HEIGHT - LANDING)
+            .unwrap_or(false)
+    })
 }
 
 fn is_steppable<G: PlayerGround>(ground: &G, x: i32, y: i32, from_elevation: f64) -> bool {
@@ -322,7 +316,10 @@ fn can_leave_edge<G: PlayerGround>(ground: &G, point: GridPoint, feet: f64) -> b
     for x in cells.min_x..=cells.max_x {
         for y in cells.min_y..=cells.max_y {
             let column = ground.column_at(x, y);
-            if column.map(|c| c.surface == TerrainMaterial::Water).unwrap_or(false) {
+            if column
+                .map(|c| c.surface == TerrainMaterial::Water)
+                .unwrap_or(false)
+            {
                 return false;
             }
             if column.is_none() {
@@ -378,7 +375,9 @@ fn block_reason_at<G: PlayerGround>(
                     }
                     continue;
                 }
-                let base = occ.elevation.unwrap_or(column.map(|c| c.elevation as f64).unwrap_or(0.0));
+                let base = occ
+                    .elevation
+                    .unwrap_or(column.map(|c| c.elevation as f64).unwrap_or(0.0));
                 let height = occ.height.unwrap_or(f64::INFINITY);
                 if feet < base + height - LANDING && feet + PLAYER_BODY_HEIGHT > base + LANDING {
                     return Some(PlayerBlockReason::Obstacle);
@@ -395,9 +394,11 @@ fn fits_at<G: PlayerGround>(ground: &G, point: GridPoint, from_elevation: f64) -
 
 fn elevation_at<G: PlayerGround>(ground: &G, point: GridPoint) -> f64 {
     let (x, y) = (get_player_column(point).x, get_player_column(point).y);
-    ground.column_at(x, y).map(|c| c.elevation as f64).unwrap_or(0.0)
+    ground
+        .column_at(x, y)
+        .map(|c| c.elevation as f64)
+        .unwrap_or(0.0)
 }
-
 
 pub fn find_player_spawn<G: PlayerGround>(ground: &G, centre: GridPoint) -> PlayerPosition {
     let distance = |column: &TerrainColumn| -> f64 {
@@ -445,7 +446,14 @@ pub fn find_player_spawn<G: PlayerGround>(ground: &G, centre: GridPoint) -> Play
                 if before(&column, any.as_ref()) {
                     any = Some(column);
                 }
-                if before(&column, walkable.as_ref()) && can_stand_on(ground, column.coord.x, column.coord.y, column.elevation as f64) {
+                if before(&column, walkable.as_ref())
+                    && can_stand_on(
+                        ground,
+                        column.coord.x,
+                        column.coord.y,
+                        column.elevation as f64,
+                    )
+                {
                     walkable = Some(column);
                 }
             }
@@ -499,7 +507,6 @@ pub fn create_player<G: PlayerGround>(ground: &G, at: GridPoint) -> PlayerState 
     }
 }
 
-
 pub fn get_walk_direction(directions: &ScreenDirections) -> GridPoint {
     let across = if directions.right { 1.0 } else { 0.0 } - if directions.left { 1.0 } else { 0.0 };
     let up = if directions.up { 1.0 } else { 0.0 } - if directions.down { 1.0 } else { 0.0 };
@@ -509,7 +516,10 @@ pub fn get_walk_direction(directions: &ScreenDirections) -> GridPoint {
     if length == 0.0 {
         GridPoint { x: 0.0, y: 0.0 }
     } else {
-        GridPoint { x: x / length, y: y / length }
+        GridPoint {
+            x: x / length,
+            y: y / length,
+        }
     }
 }
 
@@ -569,7 +579,6 @@ pub fn cancel_player_jump(player: &mut PlayerState) {
     player.jump_held = false;
 }
 
-
 fn approach_velocity(current: GridPoint, desired: GridPoint, rate: f64) -> GridPoint {
     let dx = desired.x - current.x;
     let dy = desired.y - current.y;
@@ -584,7 +593,8 @@ fn approach_velocity(current: GridPoint, desired: GridPoint, rate: f64) -> GridP
 }
 
 fn is_faster_than_walk(player: &PlayerState) -> bool {
-    (player.velocity.x * player.velocity.x + player.velocity.y * player.velocity.y).sqrt() > PLAYER_STEP + 1e-9
+    (player.velocity.x * player.velocity.x + player.velocity.y * player.velocity.y).sqrt()
+        > PLAYER_STEP + 1e-9
 }
 
 fn is_sliding(player: &PlayerState) -> bool {
@@ -776,8 +786,14 @@ fn step_once<G: PlayerGround>(
     if next.is_none() {
         let nudges = if velocity.x.abs() >= velocity.y.abs() {
             vec![
-                GridPoint { x: 0.0, y: PLAYER_CORNER_NUDGE },
-                GridPoint { x: 0.0, y: -PLAYER_CORNER_NUDGE },
+                GridPoint {
+                    x: 0.0,
+                    y: PLAYER_CORNER_NUDGE,
+                },
+                GridPoint {
+                    x: 0.0,
+                    y: -PLAYER_CORNER_NUDGE,
+                },
             ]
         } else {
             vec![
@@ -811,7 +827,13 @@ fn step_once<G: PlayerGround>(
         None => {
             player.velocity = GridPoint { x: 0.0, y: 0.0 };
             if diagnose {
-                return block_reason_at(ground, moves[0], player.elevation, clearance_feet, airborne);
+                return block_reason_at(
+                    ground,
+                    moves[0],
+                    player.elevation,
+                    clearance_feet,
+                    airborne,
+                );
             }
             return None;
         }
@@ -821,7 +843,9 @@ fn step_once<G: PlayerGround>(
         y: next.y - from.y,
     };
     let surface = support_at(ground, next);
-    let elevation = surface.map(|s| s.elevation as f64).unwrap_or(player.elevation);
+    let elevation = surface
+        .map(|s| s.elevation as f64)
+        .unwrap_or(player.elevation);
     let rise = elevation - feet;
     if !airborne && rise > PLAYER_STEP_HEIGHT {
         let length = (next.x - from.x).hypot(next.y - from.y);
@@ -839,9 +863,8 @@ fn step_once<G: PlayerGround>(
         };
         let column = get_player_column(next);
         let on_top = get_player_column(further);
-        let fits_top = on_top.x == column.x
-            && on_top.y == column.y
-            && fits_at(ground, further, elevation);
+        let fits_top =
+            on_top.x == column.x && on_top.y == column.y && fits_at(ground, further, elevation);
         let to = if fits_top { further } else { next };
         player.climb = Some(PlayerClimb {
             from,
@@ -875,10 +898,13 @@ fn step_air<G: PlayerGround>(
     ground: &G,
     flying: bool,
 ) -> Option<&'static str> {
-    let support = support_at(ground, GridPoint {
-        x: player.x,
-        y: player.y,
-    });
+    let support = support_at(
+        ground,
+        GridPoint {
+            x: player.x,
+            y: player.y,
+        },
+    );
     let top = support.map(|s| s.elevation as f64);
     let feet = player.elevation + player.height;
     if player.vertical_speed.is_none() {
@@ -896,7 +922,9 @@ fn step_air<G: PlayerGround>(
     };
     let roof = player.last_safe.elevation + PLAYER_FLY_MAX_HEIGHT;
     let next_speed = if flying {
-        (PLAYER_FLY_SPEED).min(speed + PLAYER_FLY_THRUST).min((roof - feet).max(-PLAYER_FLY_SPEED))
+        (PLAYER_FLY_SPEED)
+            .min(speed + PLAYER_FLY_THRUST)
+            .min((roof - feet).max(-PLAYER_FLY_SPEED))
     } else {
         (speed - PLAYER_GRAVITY).max(-PLAYER_MAX_FALL_SPEED)
     };
@@ -908,7 +936,10 @@ fn step_air<G: PlayerGround>(
     let ceiling = if (if flying { next_speed } else { speed }) > 0.0 {
         ceiling_at(
             ground,
-            GridPoint { x: player.x, y: player.y },
+            GridPoint {
+                x: player.x,
+                y: player.y,
+            },
             feet + PLAYER_BODY_HEIGHT,
             next_feet + PLAYER_BODY_HEIGHT,
         )
@@ -975,7 +1006,9 @@ fn ceiling_at<G: PlayerGround>(
                 if (point.y - y as f64).abs() >= PLAYER_RADIUS + side / 2.0 {
                     continue;
                 }
-                let base = occ.elevation.unwrap_or(column.map(|c| c.elevation as f64).unwrap_or(0.0));
+                let base = occ
+                    .elevation
+                    .unwrap_or(column.map(|c| c.elevation as f64).unwrap_or(0.0));
                 if head <= base + LANDING
                     && next_head > base + LANDING
                     && (ceiling.is_none() || base < ceiling.unwrap())
@@ -999,10 +1032,14 @@ fn is_flying(player: &PlayerState) -> bool {
     player.motion == PlayerMotionType::Flying || vs <= PLAYER_APEX_SPEED + LANDING
 }
 
-
 pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ticks: u32) {
     for tick in 0..ticks {
-        if player.climb.as_ref().map(|c| c.tick >= c.ticks).unwrap_or(false) {
+        if player
+            .climb
+            .as_ref()
+            .map(|c| c.tick >= c.ticks)
+            .unwrap_or(false)
+        {
             player.climb = None;
         }
         let climb = player.climb.clone();
@@ -1055,21 +1092,26 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
 
         let grounded_at_start = player.vertical_speed.is_none()
             && player.height == 0.0
-            && support_at(ground, GridPoint { x: player.x, y: player.y }).is_some();
+            && support_at(
+                ground,
+                GridPoint {
+                    x: player.x,
+                    y: player.y,
+                },
+            )
+            .is_some();
         if grounded_at_start {
             player.coyote_ticks = PLAYER_COYOTE_TICKS;
         }
-        let took_off = player.jump_buffer_ticks > 0
-            && (grounded_at_start || player.coyote_ticks > 0);
+        let took_off =
+            player.jump_buffer_ticks > 0 && (grounded_at_start || player.coyote_ticks > 0);
         let airborne = player.vertical_speed.is_some();
         if !took_off && airborne && player.jetpack {
             player.wants_jump = false;
             player.jump_buffer_ticks = 0;
         }
-        let air_jumped = !took_off
-            && player.jump_buffer_ticks > 0
-            && airborne
-            && player.air_jumps > 0;
+        let air_jumped =
+            !took_off && player.jump_buffer_ticks > 0 && airborne && player.air_jumps > 0;
         if took_off || air_jumped {
             take_off(player, air_jumped);
         }
@@ -1107,7 +1149,14 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
                 }
             }
             if player.vertical_speed.is_none()
-                && support_at(ground, GridPoint { x: player.x, y: player.y }).is_some()
+                && support_at(
+                    ground,
+                    GridPoint {
+                        x: player.x,
+                        y: player.y,
+                    },
+                )
+                .is_some()
             {
                 player.coyote_ticks = PLAYER_COYOTE_TICKS;
             } else if !grounded_at_start && player.coyote_ticks > 0 {
@@ -1115,7 +1164,14 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
             }
         }
         if player.vertical_speed.is_none()
-            && support_at(ground, GridPoint { x: player.x, y: player.y }).is_some()
+            && support_at(
+                ground,
+                GridPoint {
+                    x: player.x,
+                    y: player.y,
+                },
+            )
+            .is_some()
         {
             player.last_safe = PlayerPosition {
                 x: player.x,
@@ -1137,7 +1193,6 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
     }
 }
 
-
 pub fn get_player_jump_phase(player: &PlayerState) -> PlayerJumpPhase {
     if player.climb.is_some() {
         return PlayerJumpPhase::Ground;
@@ -1154,7 +1209,8 @@ pub fn get_player_jump_phase(player: &PlayerState) -> PlayerJumpPhase {
             if player.motion == PlayerMotionType::Flying {
                 return PlayerJumpPhase::Apex;
             }
-            if player.feedback.leap && vs > 0.0 && player.feedback.air_ticks <= PLAYER_TAKEOFF_TICKS {
+            if player.feedback.leap && vs > 0.0 && player.feedback.air_ticks <= PLAYER_TAKEOFF_TICKS
+            {
                 return PlayerJumpPhase::Takeoff;
             }
             if player.feedback.leap && vs.abs() <= PLAYER_APEX_SPEED + LANDING {
@@ -1169,7 +1225,6 @@ pub fn get_player_jump_phase(player: &PlayerState) -> PlayerJumpPhase {
     }
 }
 
-
 pub fn get_player_climb_progress(player: &PlayerState, alpha: f64) -> Option<f64> {
     let climb = player.climb.as_ref()?;
     let t = if alpha.is_finite() {
@@ -1180,7 +1235,6 @@ pub fn get_player_climb_progress(player: &PlayerState, alpha: f64) -> Option<f64
     let progress = ((climb.tick as f64 - 1.0 + t) / climb.ticks as f64).clamp(0.0, 1.0);
     Some(progress)
 }
-
 
 pub fn get_player_render_position(player: &PlayerState, alpha: f64) -> PlayerRenderPosition {
     let t = if alpha.is_finite() {
@@ -1196,7 +1250,6 @@ pub fn get_player_render_position(player: &PlayerState, alpha: f64) -> PlayerRen
         height: lerp(player.previous.height, player.height),
     }
 }
-
 
 pub fn get_player_cells(point: GridPoint) -> crate::grid::WorldRect {
     let min = get_player_column(GridPoint {
@@ -1215,15 +1268,18 @@ pub fn get_player_cells(point: GridPoint) -> crate::grid::WorldRect {
     }
 }
 
-
-pub fn can_stand_on_public<G: PlayerGround>(ground: &G, x: i32, y: i32, from_elevation: f64) -> bool {
+pub fn can_stand_on_public<G: PlayerGround>(
+    ground: &G,
+    x: i32,
+    y: i32,
+    from_elevation: f64,
+) -> bool {
     can_stand_on(ground, x, y, from_elevation)
 }
 
 pub fn fits_player_at<G: PlayerGround>(ground: &G, point: GridPoint) -> bool {
     fits_at(ground, point, elevation_at(ground, point))
 }
-
 
 #[cfg(test)]
 #[path = "physics.test.rs"]

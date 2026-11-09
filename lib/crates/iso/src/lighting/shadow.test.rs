@@ -3,7 +3,12 @@ use super::*;
 /// A sun straight behind the camera: shadows run up the screen along `+x +y`, which is the one
 fn behind_the_camera() -> ShadowProjection {
     let half = std::f64::consts::FRAC_1_SQRT_2;
-    ShadowProjection { dir_x: half, dir_y: half, stretch: 1.0, alpha: 0.5 }
+    ShadowProjection {
+        dir_x: half,
+        dir_y: half,
+        stretch: 1.0,
+        alpha: 0.5,
+    }
 }
 
 const TILE: f64 = 100.0;
@@ -58,7 +63,10 @@ fn a_lower_receiving_plane_pushes_the_whole_shadow_further_away() {
     let expected = lift_reach(&light, 2.0, TILE, BOX);
     assert!((lower.tx - own.tx - expected * light.dir_x).abs() < 1e-12);
     assert!((lower.ty - own.ty - expected * light.dir_y).abs() < 1e-12);
-    assert!(expected > 0.0, "a plane further below is further down the shadow");
+    assert!(
+        expected > 0.0,
+        "a plane further below is further down the shadow"
+    );
 }
 
 #[test]
@@ -74,20 +82,38 @@ fn stretch_scales_how_far_height_reaches() {
 
 #[test]
 fn the_silhouette_matrix_inverts_back_to_the_sprite() {
-    let light = ShadowProjection { dir_x: -0.92, dir_y: 0.391_918_358_845_308_46, stretch: 2.2, alpha: 0.34 };
+    let light = ShadowProjection {
+        dir_x: -0.92,
+        dir_y: 0.391_918_358_845_308_46,
+        stretch: 2.2,
+        alpha: 0.34,
+    };
     let matrix = silhouette_matrix(&light, (12.5, -3.5), 1.0, TILE, BOX);
-    let back = matrix.inverse().expect("a shadow with any length is invertible");
+    let back = matrix
+        .inverse()
+        .expect("a shadow with any length is invertible");
 
     for point in [(0.0, 0.0), (17.0, -40.0), (-9.5, 3.25)] {
         let round_trip = back.apply(matrix.apply(point));
-        assert!((round_trip.0 - point.0).abs() < 1e-9, "{round_trip:?} from {point:?}");
-        assert!((round_trip.1 - point.1).abs() < 1e-9, "{round_trip:?} from {point:?}");
+        assert!(
+            (round_trip.0 - point.0).abs() < 1e-9,
+            "{round_trip:?} from {point:?}"
+        );
+        assert!(
+            (round_trip.1 - point.1).abs() < 1e-9,
+            "{round_trip:?} from {point:?}"
+        );
     }
 }
 
 #[test]
 fn a_sun_straight_overhead_has_no_shadow_to_invert() {
-    let light = ShadowProjection { dir_x: 1.0, dir_y: 0.0, stretch: 0.0, alpha: 0.0 };
+    let light = ShadowProjection {
+        dir_x: 1.0,
+        dir_y: 0.0,
+        stretch: 0.0,
+        alpha: 0.0,
+    };
     let matrix = silhouette_matrix(&light, (0.0, 0.0), 0.0, TILE, BOX);
 
     assert_eq!(matrix.inverse(), None);
@@ -106,7 +132,10 @@ fn nothing_beside_or_towards_the_sun_is_shaded() {
         cast_shadow_offset(&light, caster, (1.0, -1.0), 0.0, TILE, BOX),
         None
     );
-    let overhead = ShadowProjection { stretch: 0.0, ..light };
+    let overhead = ShadowProjection {
+        stretch: 0.0,
+        ..light
+    };
     assert_eq!(
         cast_shadow_offset(&overhead, caster, (2.0, 2.0), 0.0, TILE, BOX),
         None
@@ -123,7 +152,10 @@ fn a_receiver_down_the_shadow_is_offset_along_it_and_not_across() {
 
     assert!(x.abs() < 1e-9, "nothing across the shadow: {x}");
     assert!((y - along / (light.stretch * tiles_per_pixel_of_height(TILE))).abs() < 1e-9);
-    assert!(y > 0.0, "the silhouette slides down the receiver as it travels");
+    assert!(
+        y > 0.0,
+        "the silhouette slides down the receiver as it travels"
+    );
 }
 
 #[test]
@@ -133,8 +165,14 @@ fn standing_higher_than_the_receiver_lifts_the_shadow_up_it() {
     let level = cast_shadow_offset(&light, (0.0, 0.0), receiver, 0.0, TILE, BOX).unwrap();
     let above = cast_shadow_offset(&light, (0.0, 0.0), receiver, 1.0, TILE, BOX).unwrap();
 
-    assert!((level.0 - above.0).abs() < 1e-12, "a lift moves nothing across the shadow");
-    assert!((level.1 - above.1 - BOX).abs() < 1e-12, "one block higher is one block up");
+    assert!(
+        (level.0 - above.0).abs() < 1e-12,
+        "a lift moves nothing across the shadow"
+    );
+    assert!(
+        (level.1 - above.1 - BOX).abs() < 1e-12,
+        "one block higher is one block up"
+    );
 }
 
 #[test]

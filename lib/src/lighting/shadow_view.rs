@@ -279,8 +279,7 @@ impl ShadowScene {
         }
 
         self.scratch.move_to(area);
-        let level_at =
-            |x: i32, y: i32| manager.column_at(x, y).map(|c| f64::from(c.elevation));
+        let level_at = |x: i32, y: i32| manager.column_at(x, y).map(|c| f64::from(c.elevation));
         let ground = Self::ground_field(manager, area.min_x, area.min_y, area.max_x, area.max_y);
         let map = GroundBake::new(&self.scratch, &level_at);
         let columns = manager
@@ -437,17 +436,11 @@ impl ShadowScene {
         let Some(columns) = manager.terrain_chunk(coord) else {
             return Vec::new();
         };
-        let level_at =
-            |x: i32, y: i32| manager.column_at(x, y).map(|c| f64::from(c.elevation));
+        let level_at = |x: i32, y: i32| manager.column_at(x, y).map(|c| f64::from(c.elevation));
         let walls = terrain_faces(
-            columns.iter().map(|c| {
-                (
-                    c.coord.x,
-                    c.coord.y,
-                    f64::from(c.elevation),
-                    c.surface,
-                )
-            }),
+            columns
+                .iter()
+                .map(|c| (c.coord.x, c.coord.y, f64::from(c.elevation), c.surface)),
             level_at,
             FACE_FLOOR,
         );

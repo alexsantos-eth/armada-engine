@@ -1,9 +1,7 @@
 //! What a following camera looks at while the player moves, and how it eases onto a new level.
 
 use crate::camera::ground_point_below;
-use crate::player::{
-    PLAYER_CLIMB_MS, PlayerMotionType, PlayerRenderPosition, get_climb_rise,
-};
+use crate::player::{PLAYER_CLIMB_MS, PlayerMotionType, PlayerRenderPosition, get_climb_rise};
 use crate::projection::{GridPoint, ProjectionConfig};
 
 /// Real milliseconds the camera takes to rise one block onto a higher top the player did not climb
@@ -106,7 +104,8 @@ impl CameraFocus {
                 },
             };
             rise.ms += elapsed;
-            let risen = get_climb_rise(rise.ms / ((rise.to - rise.from) * CAMERA_RISE_MS_PER_BLOCK));
+            let risen =
+                get_climb_rise(rise.ms / ((rise.to - rise.from) * CAMERA_RISE_MS_PER_BLOCK));
             self.eased = if risen < 1.0 {
                 rise.from + (rise.to - rise.from) * risen
             } else {
@@ -114,10 +113,8 @@ impl CameraFocus {
             };
             self.rise = Some(rise);
         }
-        let smoothing = smooth_ms.is_finite()
-            && smooth_ms > 0.0
-            && elapsed_ms.is_finite()
-            && elapsed_ms > 0.0;
+        let smoothing =
+            smooth_ms.is_finite() && smooth_ms > 0.0 && elapsed_ms.is_finite() && elapsed_ms > 0.0;
         if smoothing {
             let dt = elapsed_ms / 1000.0;
             let omega = 2.0 / (smooth_ms / 1000.0);

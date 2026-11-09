@@ -13,10 +13,7 @@ use iso::simulation::{FixedStepper, StepperOptions};
 use serde_json::Value;
 
 fn fixture() -> Value {
-    serde_json::from_str(include_str!(
-        "./contracts.json"
-    ))
-    .expect("contract fixture is valid JSON")
+    serde_json::from_str(include_str!("./contracts.json")).expect("contract fixture is valid JSON")
 }
 
 fn integer(value: &Value) -> i32 {
@@ -246,11 +243,23 @@ fn chunk_budgets_match_contract_fixture() {
     let fixture = fixture();
     let budgets = &fixture["chunkBudgets"];
     assert_eq!(CHUNK_LOAD_RADIUS, integer(&budgets["chunkLoadRadius"]));
-    assert_eq!(CHUNK_PREFETCH_RADIUS, integer(&budgets["chunkPrefetchRadius"]));
+    assert_eq!(
+        CHUNK_PREFETCH_RADIUS,
+        integer(&budgets["chunkPrefetchRadius"])
+    );
     assert_eq!(CHUNK_KEEP_RADIUS, integer(&budgets["chunkKeepRadius"]));
-    assert_eq!(CHUNKS_LOADED_PER_FRAME, integer(&budgets["chunksLoadedPerFrame"]));
-    assert_eq!(CHUNKS_SHOWN_PER_FRAME, integer(&budgets["chunksShownPerFrame"]));
-    assert_eq!(CHUNKS_HIDDEN_PER_FRAME, integer(&budgets["chunksHiddenPerFrame"]));
+    assert_eq!(
+        CHUNKS_LOADED_PER_FRAME,
+        integer(&budgets["chunksLoadedPerFrame"])
+    );
+    assert_eq!(
+        CHUNKS_SHOWN_PER_FRAME,
+        integer(&budgets["chunksShownPerFrame"])
+    );
+    assert_eq!(
+        CHUNKS_HIDDEN_PER_FRAME,
+        integer(&budgets["chunksHiddenPerFrame"])
+    );
 }
 
 #[test]

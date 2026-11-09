@@ -22,7 +22,10 @@ impl std::fmt::Display for CatalogError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             CatalogError::UnsupportedSchema { found, expected } => {
-                write!(f, "unsupported catalog schema version {found}, expected {expected}")
+                write!(
+                    f,
+                    "unsupported catalog schema version {found}, expected {expected}"
+                )
             }
             CatalogError::EmptyId => write!(f, "entity id must not be empty"),
             CatalogError::DuplicateId { id } => write!(f, "duplicate entity id: {id}"),

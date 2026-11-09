@@ -1,10 +1,10 @@
 //! Build tool: pack the rasterized assets into the atlas and the player's sheet textures.
 
-use iso::assets::{
-    AssetEntry, AssetKind, AssetManifest, InkBox, MANIFEST_SCHEMA_VERSION, SheetLayout, SpriteAnchor,
-    SpriteFrame, asset_ink, data_tiles, parse_sheet,
-};
 use image::RgbaImage;
+use iso::assets::{
+    AssetEntry, AssetKind, AssetManifest, InkBox, MANIFEST_SCHEMA_VERSION, SheetLayout,
+    SpriteAnchor, SpriteFrame, asset_ink, data_tiles, parse_sheet,
+};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -56,7 +56,11 @@ fn main() {
 }
 
 /// Packs every single-asset PNG into one atlas and appends an entry for each.
-fn pack_assets(input_dir: &Path, svg_root: &str, entries: &mut Vec<AssetEntry>) -> (RgbaImage, SpriteFrame) {
+fn pack_assets(
+    input_dir: &Path,
+    svg_root: &str,
+    entries: &mut Vec<AssetEntry>,
+) -> (RgbaImage, SpriteFrame) {
     let mut sprites: Vec<(String, RgbaImage)> = read_pngs(input_dir)
         .into_iter()
         .map(|(name, image)| {
@@ -66,7 +70,11 @@ fn pack_assets(input_dir: &Path, svg_root: &str, entries: &mut Vec<AssetEntry>) 
         .collect();
     sprites.sort_by(|a, b| b.1.height().cmp(&a.1.height()).then(a.0.cmp(&b.0)));
 
-    let places = shelve(sprites.iter().map(|(_, image)| (image.width(), image.height())));
+    let places = shelve(
+        sprites
+            .iter()
+            .map(|(_, image)| (image.width(), image.height())),
+    );
     let height = places
         .iter()
         .zip(&sprites)
@@ -83,7 +91,12 @@ fn pack_assets(input_dir: &Path, svg_root: &str, entries: &mut Vec<AssetEntry>) 
             kind: AssetKind::Entity,
             source,
             data_tiles: data_tiles(&svg).map(str::to_owned),
-            frame: Some(SpriteFrame { x, y, width: image.width(), height: image.height() }),
+            frame: Some(SpriteFrame {
+                x,
+                y,
+                width: image.width(),
+                height: image.height(),
+            }),
             frames: None,
             texture: None,
             texture_size: None,
@@ -100,13 +113,29 @@ fn pack_assets(input_dir: &Path, svg_root: &str, entries: &mut Vec<AssetEntry>) 
         .map(|entry| entry.id.as_str())
         .collect();
     if !unmeasured.is_empty() {
-        println!("  placed by anchor (no measurable geometry): {}", unmeasured.join(", "));
+        println!(
+            "  placed by anchor (no measurable geometry): {}",
+            unmeasured.join(", ")
+        );
     }
-    (atlas, SpriteFrame { x: 0, y: 0, width: ATLAS_WIDTH, height })
+    (
+        atlas,
+        SpriteFrame {
+            x: 0,
+            y: 0,
+            width: ATLAS_WIDTH,
+            height,
+        },
+    )
 }
 
 /// Packs each sheet of player poses into a texture of its own and appends its entry.
-fn pack_sheets(input_dir: &Path, output_atlas: &Path, svg_root: &str, entries: &mut Vec<AssetEntry>) {
+fn pack_sheets(
+    input_dir: &Path,
+    output_atlas: &Path,
+    svg_root: &str,
+    entries: &mut Vec<AssetEntry>,
+) {
     let sheets_dir = input_dir.join("sheets");
     let Ok(dirs) = fs::read_dir(&sheets_dir) else {
         println!("no sheets in {}", sheets_dir.display());
@@ -137,15 +166,27 @@ fn pack_sheets(input_dir: &Path, output_atlas: &Path, svg_root: &str, entries: &
         };
         let (columns, rows) = (grid.columns as u32, grid.rows() as u32);
         let mut texture = RgbaImage::new(columns * cell_width, rows * cell_height);
-        let mut frames = vec![SpriteFrame { x: 0, y: 0, width: cell_width, height: cell_height }; (columns * rows) as usize];
+        let mut frames = vec![
+            SpriteFrame {
+                x: 0,
+                y: 0,
+                width: cell_width,
+                height: cell_height
+            };
+            (columns * rows) as usize
+        ];
         let mut drawn = 0;
         for (cell, image) in &cells {
             let Some((row, column)) = cell
                 .split_once('-')
-                .and_then(|(row, column)| Some((row.parse::<u32>().ok()?, column.parse::<u32>().ok()?)))
+                .and_then(|(row, column)| {
+                    Some((row.parse::<u32>().ok()?, column.parse::<u32>().ok()?))
+                })
                 .filter(|&(row, column)| row < rows && column < columns)
             else {
-                eprintln!("warning: {name} has a cell named {cell}, which is not a row and column of its grid");
+                eprintln!(
+                    "warning: {name} has a cell named {cell}, which is not a row and column of its grid"
+                );
                 continue;
             };
             let (x, y) = (column * cell_width, row * cell_height);
@@ -184,7 +225,11 @@ fn pack_sheets(input_dir: &Path, output_atlas: &Path, svg_root: &str, entries: &
             sheet: Some(SheetLayout {
                 columns,
                 rows,
-                facings: grid.facings.iter().map(|facing| (*facing).to_owned()).collect(),
+                facings: grid
+                    .facings
+                    .iter()
+                    .map(|facing| (*facing).to_owned())
+                    .collect(),
                 poses: grid.poses.iter().map(|pose| (*pose).to_owned()).collect(),
             }),
             anchor: SpriteAnchor { x: 0.5, y: 1.0 },

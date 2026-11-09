@@ -1,6 +1,6 @@
 use super::{
-    MAX_REFLECTION_CELLS, ReflectedSprite, cell_top, lay_on_water, mirror_sprite,
-    reflection_cells, reflection_piece, waterline,
+    MAX_REFLECTION_CELLS, ReflectedSprite, cell_top, lay_on_water, mirror_sprite, reflection_cells,
+    reflection_piece, waterline,
 };
 use crate::assets::SpriteLayout;
 use crate::projection::ProjectionConfig;
@@ -62,9 +62,18 @@ fn a_mirrored_sprite_hangs_from_the_waterline_at_its_own_width() {
 /// A footprint running over several cells is turned half a circle instead of flipped, about the
 #[test]
 fn a_long_sprite_is_turned_about_the_middle_of_its_run() {
-    let layout = SpriteLayout { x: -40.0, y: 40.0, width: 160.0, height: 60.0 };
+    let layout = SpriteLayout {
+        x: -40.0,
+        y: 40.0,
+        width: 160.0,
+        height: 60.0,
+    };
     let turned = mirror_sprite(layout, 100.0, Some(40.0));
-    assert_eq!(turned.rect.x, 2.0 * 40.0 - (-40.0 + 160.0), "mirrored about x = 40");
+    assert_eq!(
+        turned.rect.x,
+        2.0 * 40.0 - (-40.0 + 160.0),
+        "mirrored about x = 40"
+    );
     assert_eq!(turned.rect.width, layout.width);
     assert!(turned.flip_u && turned.flip_v, "a half turn is both");
 }
@@ -90,7 +99,11 @@ fn a_cells_top_is_the_diamond_the_projection_draws_it_as() {
     };
     assert_eq!(span(&xs), TILE_WIDTH);
     assert_eq!(span(&ys), TILE_HEIGHT);
-    assert_eq!(corners[0], (0.0, 0.0), "the corner towards the camera comes first");
+    assert_eq!(
+        corners[0],
+        (0.0, 0.0),
+        "the corner towards the camera comes first"
+    );
 }
 
 /// The reflection of something standing beside the water falls on the cells in front of it,
@@ -109,27 +122,46 @@ fn a_reflection_falls_on_the_cells_in_front_of_what_casts_it() {
     let mirrored = mirror_sprite(standing(feet, 2.0 * BOX_HEIGHT), line, None);
     let ((min_x, min_y), (max_x, max_y)) =
         reflection_cells(&mirrored, 0.0, projection).expect("a reflection with an area");
-    assert!(max_x <= 2 && max_y <= 2, "nothing behind the caster: {max_x}, {max_y}");
-    assert!(min_x < 2 && min_y < 2, "and it reaches in front of it: {min_x}, {min_y}");
+    assert!(
+        max_x <= 2 && max_y <= 2,
+        "nothing behind the caster: {max_x}, {max_y}"
+    );
+    assert!(
+        min_x < 2 && min_y < 2,
+        "and it reaches in front of it: {min_x}, {min_y}"
+    );
 }
 
 /// A sprite with no area reflects nothing, rather than a cell range around a point.
 #[test]
 fn a_sprite_with_no_area_has_no_cells() {
     let empty = ReflectedSprite {
-        rect: SpriteLayout { x: 0.0, y: 0.0, width: 0.0, height: 10.0 },
+        rect: SpriteLayout {
+            x: 0.0,
+            y: 0.0,
+            width: 0.0,
+            height: 10.0,
+        },
         flip_u: false,
         flip_v: true,
     };
     assert_eq!(reflection_cells(&empty, 0.0, projection()), None);
-    assert_eq!(reflection_piece(&empty, &cell_top((0, 0), 0.0, projection())), None);
+    assert_eq!(
+        reflection_piece(&empty, &cell_top((0, 0), 0.0, projection())),
+        None
+    );
 }
 
 /// However long the mirrored drawing is, one sprite only ever asks about so many cells.
 #[test]
 fn the_cell_range_is_bounded() {
     let huge = ReflectedSprite {
-        rect: SpriteLayout { x: -1e6, y: -1e6, width: 2e6, height: 2e6 },
+        rect: SpriteLayout {
+            x: -1e6,
+            y: -1e6,
+            width: 2e6,
+            height: 2e6,
+        },
         flip_u: false,
         flip_v: true,
     };
@@ -142,10 +174,16 @@ fn the_cell_range_is_bounded() {
 /// A projection with no tile has no cells to answer with, rather than dividing by zero.
 #[test]
 fn a_projection_with_no_tile_has_no_cells() {
-    let flat = ProjectionConfig { tile_width: 0.0, ..projection() };
+    let flat = ProjectionConfig {
+        tile_width: 0.0,
+        ..projection()
+    };
     let sprite = mirror_sprite(standing((0.0, 0.0), 40.0), 0.0, None);
     assert_eq!(reflection_cells(&sprite, 0.0, flat), None);
-    let thin = ProjectionConfig { tile_height: 0.0, ..projection() };
+    let thin = ProjectionConfig {
+        tile_height: 0.0,
+        ..projection()
+    };
     assert_eq!(reflection_cells(&sprite, 0.0, thin), None);
 }
 
@@ -176,7 +214,12 @@ fn a_piece_reads_the_artwork_upside_down() {
         highest,
         lowest,
     );
-    assert!(piece.uv.iter().all(|&(u, v)| (0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v)));
+    assert!(
+        piece
+            .uv
+            .iter()
+            .all(|&(u, v)| (0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v))
+    );
 }
 
 /// A cell the reflection does not reach takes nothing, so no mesh is queued for it.
@@ -184,7 +227,10 @@ fn a_piece_reads_the_artwork_upside_down() {
 fn a_cell_the_reflection_misses_takes_nothing() {
     let projection = projection();
     let mirrored = mirror_sprite(standing((0.0, 0.0), 40.0), 0.0, None);
-    assert_eq!(reflection_piece(&mirrored, &cell_top((20, 20), 0.0, projection)), None);
+    assert_eq!(
+        reflection_piece(&mirrored, &cell_top((20, 20), 0.0, projection)),
+        None
+    );
 }
 
 /// A cell the drawing only grazes is dropped: the sliver draws nothing and costs a mesh.

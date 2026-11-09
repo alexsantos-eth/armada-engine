@@ -17,7 +17,10 @@ pub struct Horizon {
 
 impl Horizon {
     /// A horizon that shades nothing, for a point the walk never found ground for.
-    pub const CLEAR: Self = Self { elevation: f64::NEG_INFINITY, width: 0.1 };
+    pub const CLEAR: Self = Self {
+        elevation: f64::NEG_INFINITY,
+        width: 0.1,
+    };
 
     /// How shaded a receiver `elevation` blocks up is, in `[0, 1]`.
     pub fn coverage(&self, elevation: f64) -> f64 {
@@ -61,7 +64,14 @@ impl HeightField {
                 levels.push(level);
             }
         }
-        Self { min_x, min_y, width, height, levels, highest }
+        Self {
+            min_x,
+            min_y,
+            width,
+            height,
+            levels,
+            highest,
+        }
     }
 
     /// Whether no column of the field has any ground, so every walk would come back clear.
@@ -77,7 +87,14 @@ impl HeightField {
     }
 
     /// Walks back towards the sun from the cell under `(px, py)` and returns what it finds.
-    pub fn horizon(&self, px: f64, py: f64, light: &ShadowProjection, box_height: f64, tile_width: f64) -> Horizon {
+    pub fn horizon(
+        &self,
+        px: f64,
+        py: f64,
+        light: &ShadowProjection,
+        box_height: f64,
+        tile_width: f64,
+    ) -> Horizon {
         let mut found = Horizon::CLEAR;
         if light.stretch <= 0.0 || self.is_empty() {
             return found;
@@ -86,8 +103,16 @@ impl HeightField {
         let (step_x, step_y) = (signum(ray_x), signum(ray_y));
         let mut x = px.floor() as i32 - self.min_x;
         let mut y = py.floor() as i32 - self.min_y;
-        let delta_x = if step_x == 0 { f64::INFINITY } else { 1.0 / ray_x.abs() };
-        let delta_y = if step_y == 0 { f64::INFINITY } else { 1.0 / ray_y.abs() };
+        let delta_x = if step_x == 0 {
+            f64::INFINITY
+        } else {
+            1.0 / ray_x.abs()
+        };
+        let delta_y = if step_y == 0 {
+            f64::INFINITY
+        } else {
+            1.0 / ray_y.abs()
+        };
         let mut next_x = if step_x == 0 {
             f64::INFINITY
         } else {
@@ -109,7 +134,10 @@ impl HeightField {
             }
             let elevation = self.level(x, y) - distance / per_tile;
             if elevation > found.elevation {
-                found = Horizon { elevation, width: 0.1 + distance * 0.02 };
+                found = Horizon {
+                    elevation,
+                    width: 0.1 + distance * 0.02,
+                };
             }
             distance = next_x.min(next_y);
             if self.highest - distance / per_tile <= found.elevation {

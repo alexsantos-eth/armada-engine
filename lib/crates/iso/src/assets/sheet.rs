@@ -36,7 +36,9 @@ impl SheetGrid<'_> {
         if self.poses.is_empty() {
             (column < self.columns).then(|| format!("{facing}-{column}"))
         } else {
-            self.poses.get(column).map(|pose| format!("{facing}-{pose}"))
+            self.poses
+                .get(column)
+                .map(|pose| format!("{facing}-{pose}"))
         }
     }
 

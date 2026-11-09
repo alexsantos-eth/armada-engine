@@ -38,7 +38,8 @@ fn measures_the_artwork_and_not_the_template() {
 /// The whole point of measuring: a tall drawing standing on the ground reaches far above the
 #[test]
 fn a_tall_drawing_reaches_above_the_anchor() {
-    let svg = asset(r##"<path fill="#333" d="M480.0,-480.0 544.0,-480.0 544.0,272.0 480.0,272.0 Z" />"##);
+    let svg =
+        asset(r##"<path fill="#333" d="M480.0,-480.0 544.0,-480.0 544.0,272.0 480.0,272.0 Z" />"##);
     let ink = asset_ink(&svg).expect("measured");
     assert!(ink.y < -0.7, "top well above the ground: {}", ink.y);
     assert!(
@@ -50,7 +51,8 @@ fn a_tall_drawing_reaches_above_the_anchor() {
 
 #[test]
 fn reads_polygons_as_well_as_paths() {
-    let svg = asset(r##"<polygon fill="#8a8" points="512.0,0.0 1024.0,256.0 512.0,512.0 0.0,256.0" />"##);
+    let svg =
+        asset(r##"<polygon fill="#8a8" points="512.0,0.0 1024.0,256.0 512.0,512.0 0.0,256.0" />"##);
     let ink = asset_ink(&svg).expect("measured");
     assert_eq!(ink.width, 1.0, "the full tile diamond");
     assert_eq!(ink.x, -0.5);
@@ -60,7 +62,11 @@ fn reads_polygons_as_well_as_paths() {
 fn negative_coordinates_parse() {
     let svg = asset(r##"<path fill="#333" d="M-20.5,-18.1 100.0,-18.1 100.0,0.0 -20.5,0.0 Z" />"##);
     let ink = asset_ink(&svg).expect("measured");
-    assert!((ink.x - (-20.5 - 512.0) / SVG_TILE_WIDTH).abs() < 1e-9, "{}", ink.x);
+    assert!(
+        (ink.x - (-20.5 - 512.0) / SVG_TILE_WIDTH).abs() < 1e-9,
+        "{}",
+        ink.x
+    );
 }
 
 /// A sprite sheet is many drawings in one file, laid out by transforms. One box cannot describe
@@ -75,7 +81,11 @@ fn sheets_and_transformed_drawings_are_not_measured() {
     assert_eq!(asset_ink(transformed), None, "coordinates we would misread");
 
     let wide = r##"<svg viewBox="0 -341 3072 2559"><path d="M10.0,10.0 20.0,20.0" /></svg>"##;
-    assert_eq!(asset_ink(wide), None, "several tiles wide without a footprint");
+    assert_eq!(
+        asset_ink(wide),
+        None,
+        "several tiles wide without a footprint"
+    );
 }
 
 /// A footprint of more than one tile is exactly what `data-tiles` declares, and the box says
@@ -105,7 +115,11 @@ fn a_multi_tile_footprint_is_measured_from_its_anchor() {
     let ink = asset_ink(svg).expect("measured");
     assert_eq!(ink.width, 1.5, "a tile and a half across");
     assert_eq!(ink.y, 0.0 - 0.25, "a two-cell run moves up one row");
-    assert_eq!(ink.x, -0.5 - 0.5, "and half a tile across, onto its own footprint");
+    assert_eq!(
+        ink.x,
+        -0.5 - 0.5,
+        "and half a tile across, onto its own footprint"
+    );
 }
 
 #[test]
@@ -124,10 +138,24 @@ fn the_elevation_step_matches_the_block_body() {
 /// The manifest keeps six decimals of a tile width, which is a thousandth of a pixel on screen
 #[test]
 fn rounds_for_the_manifest() {
-    let box_ = InkBox { x: -0.83564453125, y: -0.5279296875, width: 1.080859375, height: 0.64501953125 };
+    let box_ = InkBox {
+        x: -0.83564453125,
+        y: -0.5279296875,
+        width: 1.080859375,
+        height: 0.64501953125,
+    };
     assert_eq!(
         box_.rounded(),
-        InkBox { x: -0.835645, y: -0.52793, width: 1.080859, height: 0.64502 }
+        InkBox {
+            x: -0.835645,
+            y: -0.52793,
+            width: 1.080859,
+            height: 0.64502
+        }
     );
-    assert_eq!(box_.rounded().rounded(), box_.rounded(), "rounding again changes nothing");
+    assert_eq!(
+        box_.rounded().rounded(),
+        box_.rounded(),
+        "rounding again changes nothing"
+    );
 }

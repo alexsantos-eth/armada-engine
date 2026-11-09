@@ -130,7 +130,7 @@ El reflejo es el mismo sprite dibujado bocabajo colgando de la línea de agua, s
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
-cargo build --release --target wasm32-unknown-unknown --locked
+cargo build --release --locked --target wasm32-unknown-unknown --bin iso-core
 ```
 
 Cuando se modifique el fixture de contrato, ejecutar la suite del crate (`cargo test -p iso`). La cobertura del dominio Rust sirve para localizar huecos, con especial atención a ramas de error, límites y persistencia; no se impone un porcentaje global que incentive tests redundantes. Antes de cerrar una fase de cliente, arrancar el binario nativo y el WASM servido por HTTP y comprobar la interacción real.

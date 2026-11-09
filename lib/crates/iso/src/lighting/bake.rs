@@ -151,7 +151,10 @@ impl Silhouette<'_> {
         if !(0.0..=1.0).contains(&u) || !(0.0..=1.0).contains(&v) {
             return 0.0;
         }
-        self.at_texel(self.left + u * (self.right - self.left), self.top + v * (self.bottom - self.top))
+        self.at_texel(
+            self.left + u * (self.right - self.left),
+            self.top + v * (self.bottom - self.top),
+        )
     }
 
     /// Coverage at a place already in plane texels, which is how the bake walks it: the place
@@ -184,7 +187,15 @@ pub fn bake_ground_shadows(
     silhouette_of: SilhouetteOf<'_, '_>,
 ) {
     let mut bake = GroundBake::new(map, level_at);
-    while bake.step(map, casters, ground, light, tile_width, box_height, silhouette_of) {}
+    while bake.step(
+        map,
+        casters,
+        ground,
+        light,
+        tile_width,
+        box_height,
+        silhouette_of,
+    ) {}
 }
 
 /// One chunk's ground bake, carried across frames a piece at a time.
@@ -228,7 +239,6 @@ impl GroundBake {
     pub fn is_done(&self) -> bool {
         self.stage == Stage::Done
     }
-
 
     /// Does the next piece of work, and says whether any was left to do.
     #[allow(clippy::too_many_arguments)]
@@ -332,7 +342,11 @@ const TERRAIN_SAMPLES_PER_TILE: u32 = 3;
 /// Lays the shadow the ground casts on itself over every texel.
 fn horizon_lattice_shape(map: &ShadowMap) -> (u32, u32, u32) {
     let step = (map.pixels_per_tile / TERRAIN_SAMPLES_PER_TILE.max(1)).max(1);
-    (step, map.width.div_ceil(step) + 1, map.height.div_ceil(step) + 1)
+    (
+        step,
+        map.width.div_ceil(step) + 1,
+        map.height.div_ceil(step) + 1,
+    )
 }
 
 /// Walks `rows` rows of the horizon lattice back to the sun, starting at `from`, and appends
@@ -424,7 +438,11 @@ fn lay_terrain_rows(
                         ];
                         carried = if corners.iter().all(|c| c.elevation.is_finite()) {
                             let at = |t: f64| {
-                                mix(mix(corners[0], corners[1], t), mix(corners[2], corners[3], t), ty)
+                                mix(
+                                    mix(corners[0], corners[1], t),
+                                    mix(corners[2], corners[3], t),
+                                    ty,
+                                )
                             };
                             let (low, high) = (at(0.0), at(1.0));
                             elevation = high.elevation - low.elevation;
@@ -512,7 +530,12 @@ impl LevelCache {
                 levels.push(level);
             }
         }
-        Self { area, levels, lowest, highest }
+        Self {
+            area,
+            levels,
+            lowest,
+            highest,
+        }
     }
 
     fn at(&self, x: i32, y: i32) -> Option<f64> {
@@ -592,7 +615,10 @@ fn lay_caster(
             else {
                 continue;
             };
-            let (across, down) = (silhouette.right - silhouette.left, silhouette.bottom - silhouette.top);
+            let (across, down) = (
+                silhouette.right - silhouette.left,
+                silhouette.bottom - silhouette.top,
+            );
             let (step_x, step_y) = (
                 to_sprite.a / f64::from(per_tile) / extent.width * across,
                 to_sprite.b / f64::from(per_tile) / extent.height * down,
@@ -603,22 +629,27 @@ fn lay_caster(
                     f64::from(map.area.min_y) + (f64::from(texel_y) + 0.5) / f64::from(per_tile);
                 let world_x =
                     f64::from(map.area.min_x) + (f64::from(from_x) + 0.5) / f64::from(per_tile);
-                let (sprite_x, sprite_y) = to_sprite
-                    .apply((world_x - shift * light.dir_x, world_y - shift * light.dir_y));
+                let (sprite_x, sprite_y) =
+                    to_sprite.apply((world_x - shift * light.dir_x, world_y - shift * light.dir_y));
                 let plane_x = silhouette.left + (sprite_x - extent.left) / extent.width * across;
                 let plane_y = silhouette.top + (sprite_y - extent.top) / extent.height * down;
                 let steps = to_x - from_x;
                 let Some((first, last)) =
                     within(plane_x, step_x, silhouette.left, silhouette.right, steps).and_then(
                         |run| {
-                            meet(run, within(plane_y, step_y, silhouette.top, foot_of_standing, steps)?)
+                            meet(
+                                run,
+                                within(plane_y, step_y, silhouette.top, foot_of_standing, steps)?,
+                            )
                         },
                     )
                 else {
                     continue;
                 };
-                let (mut at_x, mut at_y) =
-                    (plane_x + step_x * f64::from(first), plane_y + step_y * f64::from(first));
+                let (mut at_x, mut at_y) = (
+                    plane_x + step_x * f64::from(first),
+                    plane_y + step_y * f64::from(first),
+                );
                 for texel_x in from_x + first..=from_x + last {
                     let coverage = silhouette.at_texel(at_x, at_y).clamp(0.0, 1.0);
                     at_x += step_x;
@@ -644,7 +675,12 @@ type WorldBox = (f64, f64, f64, f64);
 fn shadow_box(laid: &[(f64, f64); 4], shift: f64, light: &ShadowProjection) -> WorldBox {
     let (dx, dy) = (shift * light.dir_x, shift * light.dir_y);
     laid.iter().fold(
-        (f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY),
+        (
+            f64::INFINITY,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            f64::NEG_INFINITY,
+        ),
         |(min_x, min_y, max_x, max_y), &(x, y)| {
             (
                 min_x.min(x + dx),
@@ -732,7 +768,10 @@ fn blur_across_within_levels(map: &mut ShadowMap, radius: u32, levels: &LevelCac
     let (width, height) = (map.width as usize, map.height as usize);
     let span = radius as usize;
     let per_tile = map.pixels_per_tile as usize;
-    debug_assert!(per_tile > 2 * span, "a texel's window must not reach two column edges at once");
+    debug_assert!(
+        per_tile > 2 * span,
+        "a texel's window must not reach two column edges at once"
+    );
     let joined = |a: Option<f64>, b: Option<f64>| matches!((a, b), (Some(a), Some(b)) if a == b);
     let means = full_window_means(span);
     let mut cuts = vec![false; width + 1];
@@ -750,9 +789,20 @@ fn blur_across_within_levels(map: &mut ShadowMap, radius: u32, levels: &LevelCac
         let mut start = 0;
         while start < width {
             let value = row[start];
-            let end = row[start..].iter().position(|&texel| texel != value).map_or(width, |run| start + run);
-            let inside = if start == 0 { start } else { (start + span).min(end) };
-            let until = if end == width { end } else { end.saturating_sub(span).max(inside) };
+            let end = row[start..]
+                .iter()
+                .position(|&texel| texel != value)
+                .map_or(width, |run| start + run);
+            let inside = if start == 0 {
+                start
+            } else {
+                (start + span).min(end)
+            };
+            let until = if end == width {
+                end
+            } else {
+                end.saturating_sub(span).max(inside)
+            };
             for (x, texel) in out[start..inside].iter_mut().enumerate() {
                 *texel = window_mean(&row, start + x, span, &means);
             }
@@ -809,7 +859,11 @@ fn blur_down_within_levels(map: &mut ShadowMap, span: usize, levels: &LevelCache
             ring[loaded % keep].copy_from_slice(&map.alpha[loaded * width..(loaded + 1) * width]);
             loaded += 1;
         }
-        let first_new = if held_to == usize::MAX { from } else { held_to + 1 };
+        let first_new = if held_to == usize::MAX {
+            from
+        } else {
+            held_to + 1
+        };
         for source in first_new..=to {
             let line = &ring[source % keep];
             for (sum, value) in sums.iter_mut().zip(line.iter()) {
@@ -840,7 +894,11 @@ fn blur_down_within_levels(map: &mut ShadowMap, span: usize, levels: &LevelCache
                 *cut = !joined(levels.at(world_x, world_y - 1), levels.at(world_x, world_y));
             }
         }
-        let (kept_from, kept_to) = if y < edge { (from, edge - 1) } else { (edge, to) };
+        let (kept_from, kept_to) = if y < edge {
+            (from, edge - 1)
+        } else {
+            (edge, to)
+        };
         let rows = (kept_to - kept_from + 1) as u32;
         for x in 0..width {
             if !cut_above[x] {

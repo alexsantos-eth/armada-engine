@@ -13,7 +13,10 @@ fn indexes_multicell_footprints_across_negative_chunk_boundary() {
     index.insert("boat", &[point(0, 0), point(1, 0)]).unwrap();
     assert_eq!(index.len(), 2);
     assert_eq!(index.cells_of(&"tree"), &[point(-1, 0), point(0, 0)]);
-    assert_eq!(index.at(point(0, 0)).copied().collect::<Vec<_>>(), vec!["tree", "boat"]);
+    assert_eq!(
+        index.at(point(0, 0)).copied().collect::<Vec<_>>(),
+        vec!["tree", "boat"]
+    );
     assert_eq!(index.query_radius(point(-1, 0), 1), vec![&"tree", &"boat"]);
     assert_eq!(
         index.query_rect(WorldRect {
@@ -38,7 +41,10 @@ fn move_and_remove_update_order_and_occupancy() {
         Err(SpatialIndexError::AlreadyIndexed)
     );
     index.move_item(1, &[point(0, 0), point(1, 0)]).unwrap();
-    assert_eq!(index.at(point(0, 0)).copied().collect::<Vec<_>>(), vec![2, 1]);
+    assert_eq!(
+        index.at(point(0, 0)).copied().collect::<Vec<_>>(),
+        vec![2, 1]
+    );
     assert_eq!(
         index.query_rect(WorldRect {
             min_x: 0,

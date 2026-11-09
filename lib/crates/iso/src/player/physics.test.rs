@@ -13,9 +13,15 @@ fn ground_from(rows: &[&str]) -> CellGround {
                 TerrainMaterial::Grass
             };
             ground.columns.insert(
-                WorldCoord { x: x as i32, y: y as i32 },
+                WorldCoord {
+                    x: x as i32,
+                    y: y as i32,
+                },
                 TerrainColumn {
-                    coord: WorldCoord { x: x as i32, y: y as i32 },
+                    coord: WorldCoord {
+                        x: x as i32,
+                        y: y as i32,
+                    },
                     elevation,
                     surface,
                     walkable,
@@ -52,12 +58,29 @@ impl PlayerGround for CellGround {
 
 #[test]
 fn get_walk_direction_basic() {
-    assert_eq!(get_walk_direction(&ScreenDirections { up: true, ..Default::default() }), GridPoint { x: 1.0 / 2.0_f64.sqrt(), y: 1.0 / 2.0_f64.sqrt() });
+    assert_eq!(
+        get_walk_direction(&ScreenDirections {
+            up: true,
+            ..Default::default()
+        }),
+        GridPoint {
+            x: 1.0 / 2.0_f64.sqrt(),
+            y: 1.0 / 2.0_f64.sqrt()
+        }
+    );
 }
 
 #[test]
 fn get_walk_direction_diagonal_cancels() {
-    assert_eq!(get_walk_direction(&ScreenDirections { up: true, down: true, left: true, right: true }), GridPoint { x: 0.0, y: 0.0 });
+    assert_eq!(
+        get_walk_direction(&ScreenDirections {
+            up: true,
+            down: true,
+            left: true,
+            right: true
+        }),
+        GridPoint { x: 0.0, y: 0.0 }
+    );
 }
 
 #[test]
@@ -125,7 +148,12 @@ fn get_player_jump_phase_ground() {
 fn get_player_render_position_interpolates() {
     let ground = ground_from(&["0"]);
     let mut player = create_player(&ground, GridPoint { x: 0.0, y: 0.0 });
-    player.previous = PlayerPosition { x: 0.0, y: 0.0, elevation: 0.0, height: 0.0 };
+    player.previous = PlayerPosition {
+        x: 0.0,
+        y: 0.0,
+        elevation: 0.0,
+        height: 0.0,
+    };
     player.x = 1.0;
     player.y = 1.0;
     let rp = get_player_render_position(&player, 0.5);
@@ -144,7 +172,13 @@ fn get_player_climb_progress_none_when_not_climbing() {
 fn step_player_moves_on_ground() {
     let mut ground = ground_from(&["00", "00"]);
     let mut player = create_player(&ground, GridPoint { x: 0.5, y: 0.5 });
-    set_player_walk(&mut player, ScreenDirections { right: true, ..Default::default() });
+    set_player_walk(
+        &mut player,
+        ScreenDirections {
+            right: true,
+            ..Default::default()
+        },
+    );
     step_player(&mut player, &mut ground, 1);
     assert!(player.previous.x >= 0.0);
 }
@@ -162,14 +196,23 @@ fn obstacle(side: f64) -> PlayerObstacle {
 /// Walks the player straight along `+y` into the middle of `(1, 1)` and reports where it came
 fn walk_into_centre(side: f64) -> GridPoint {
     let mut ground = ground_from(&["000", "000", "000"]);
-    ground.occupancy.insert(WorldCoord { x: 1, y: 1 }, vec![obstacle(side)]);
+    ground
+        .occupancy
+        .insert(WorldCoord { x: 1, y: 1 }, vec![obstacle(side)]);
     let mut player = create_player(&ground, GridPoint { x: 1.0, y: 0.0 });
     set_player_walk(
         &mut player,
-        ScreenDirections { up: true, left: true, ..Default::default() },
+        ScreenDirections {
+            up: true,
+            left: true,
+            ..Default::default()
+        },
     );
     step_player(&mut player, &mut ground, 20);
-    GridPoint { x: player.x, y: player.y }
+    GridPoint {
+        x: player.x,
+        y: player.y,
+    }
 }
 
 #[test]

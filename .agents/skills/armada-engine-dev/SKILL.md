@@ -1,225 +1,109 @@
 ---
 name: "armada-engine-dev"
-description: "Úsala al modificar, extender o revisar código del motor isométrico Armada Engine (TypeScript, Preact, PixiJS, Vite, Vitest): core, entidades, terreno, proyección, render o assets."
+description: "Úsala al modificar, extender o revisar código del motor isométrico Armada Engine (Rust: crate `iso` sin gráficos + cliente Macroquad `iso-core`): dominio, entidades, terreno, proyección, render o assets."
 ---
 
 # Desarrollo en Armada Engine
 
-Armada Engine es un motor isométrico construido con TypeScript, Preact, PixiJS, Vite y Vitest. Todo cambio debe conservar la separación entre **lógica de dominio, proyección, generación de terreno y renderizado**.
+Armada Engine es un motor isométrico en **Rust**: el crate `iso` (dominio portable, sin Macroquad ni GPU) y el binario `iso-core` (el cliente Macroquad, nativo y WASM) en el workspace `lib/`. Todo cambio debe conservar la separación **dominio → cliente → dibujo** descrita en `lib/docs/ARCHITECTURE.md`.
 
 ## Visión del juego
 
 El motor sostiene un **RPG isométrico muy completo, procedural y de supervivencia**: mundo generado por semilla y por chunks, simulación determinista y persistente (tiempo, clima, necesidades), sistemas RPG data-driven y guardado/carga del mundo completo. Cada cambio debe acercar el core a esa visión, o como mínimo no alejarlo:
 
-- No introducir aleatoriedad no reproducible en lógica de dominio o generación: nada de `Math.random()` ni del reloj; recibe un `RandomSource` de `engine/random` (`createSeededRandom(deriveSeed(seed, "<sistema>"))`), con una etiqueta propia por sistema. Solo la capa de aplicación `src/isometric/game` elige una semilla nueva (`resolveLaunchOptions()` → `resolveWorldSeed()`, acepta `?seed=`).
-- El estado del juego es datos serializables en un `World` (`engine/world`); Pixi solo lo representa. La lógica de juego actúa sobre `World`, nunca sobre objetos de Pixi ni dentro de la escena.
-- El estado de cada sistema es una **parte del mundo** (`WorldPart`, `engine/parts`), nunca un campo nuevo de `World`: se lee con `world.parts.get(X_PART)` y se guarda sola, con su propia versión (ver «Partes del mundo»).
-- El tiempo de juego es `world.parts.get(CLOCK_PART).tick` (entero). Solo el paso fijo de simulación lo avanza (`stepWorld()` de `engine/simulation`, que llama a `advanceClock()`); nunca `Date.now()`, `performance.now()` ni el delta de un frame. Hora y luz se derivan del tick (`getTimeOfDay()`, `getClockTime()`, `getSunState()` de `engine/time`); la lógica de juego que dependa de la hora decide con el tick entero, no con los flotantes del sol.
-- El core no lee `window` ni otras APIs del navegador (los tests corren en Node sin shim); las medidas de la vista son constantes (`WIDTH` = 1300) o llegan desde `mountGame()` (`src/isometric/game`), que recibe `window` de la página.
-- El contenido nuevo se añade como datos en `src/isometric/content/`, no como ramas en escena o renderer. El motor (`core/`) nunca importa contenido: lo recibe como parámetro.
+- No introducir aleatoriedad no reproducible en el dominio o la generación: las fuentes son explícitas (`terrain::noise`, `derive_seed`, FNV-1a) y se muestrean en coordenadas absolutas. Nada de azar global ni de `std::time`.
+- El estado del juego son datos serializables en un `World` (`iso::world`); el cliente solo lo representa. La lógica de juego actúa sobre `World`, nunca dentro de la escena ni sobre objetos de Macroquad.
+- El tiempo de juego son ticks enteros (`time::clock`, `TICKS_PER_SECOND` = 20, `TICKS_PER_DAY` = 24 000, `WORLD_START_TICK` = 08:00). Solo el paso fijo avanza el reloj (`simulation::FixedStepper`); nunca el delta de un frame. La hora y la luz se derivan del tick.
+- El core (`crates/iso`) no lee archivos, red, audio ni APIs del navegador: solo tipos, cálculos y reglas en `f64`/`i32`. Lo que toca plataforma vive en el cliente como adapters o en traits de `iso::services`.
+- El contenido nuevo es datos (`content/entities.json` u otro catálogo), no ramas en vistas ni en el renderer. El motor nunca importa contenido: lo recibe como parámetro.
+- Nada de estado de sistemas como campos de `World`: cada sistema declara su propia parte/datos, la guarda con su versión y se reconstruye desde el guardado.
+- Cada cambio que toque el core termina con la skill **`armada-core-review`** (ver Flujo de trabajo).
 
-Al terminar cualquier trabajo en el core, invoca la skill **`armada-core-review`** (ver Flujo de trabajo).
+Antes de tocar código, lee:
 
-Antes de tocar código, lee en la raíz del repo:
-
-- `ARCHITECTURE.md` — flujo runtime completo.
-- `CONTRIBUTING.md` — contribución y validación.
-- `CORE_REVIEW.md` (si existe) — deudas conocidas y planes pendientes del core.
+- `lib/docs/ARCHITECTURE.md` — funcionamiento técnico y contratos del juego.
+- `lib/docs/FILE_STRUCTURE.md` — estructura de archivos y política de pruebas.
+- `lib/README.md` — cómo correrlo y cómo se despliega.
+- El `mod.md` del dominio que tocas — catálogo de su API con firmas y enlaces.
 
 Si el trabajo implica crear o modificar assets isométricos (geometría, proporciones, multi-bloque, `data-tiles`), invoca la skill **`iso-asset-generator`**: es la única fuente de las reglas de assets.
 
 ## Arquitectura
 
-La lógica principal vive en `src/isometric/core`:
+Dos crates, en `lib/`:
 
 ```text
-core/
-  engine/
-    ambient-light/  # módulo de escena
-    camera/
-    camera-view/    # módulo de escena (+ createSceneCamera, bindCameraControls)
-    cloud-shadows/  # módulo de escena (TilingSprite de nubes)
-    constants/
-    entities/
-    entity-view/    # módulo de escena
-    events/
-    foliage-wind/   # módulo de escena (vaivén de copas)
-    grid/
-    lighting/
-    parts/          # WorldParts: estado de las partes del mundo, guardado y restauración
-    paths/          # A* (findPath), redes de caminos (planPathNetwork), máscaras de conexión
-    player/         # + player-part.ts, motion.ts (máquina XState de locomoción)
-    player-view/    # módulo de escena (+ walk.ts hojas, feedback.ts polvo, body-motion.ts cuerpo y baile)
-    projection/
-    random/
-    render/
-    scene/          # compositor: SceneModule, createScene
-    shadows/        # módulo de escena (+ siluetas y sombras recibidas)
-    simulation/
-    terrain/
-    terrain-view/   # módulo de escena
-    time/           # + clock-part.ts (createClockPart, CLOCK_PART)
-    water-reflections/  # módulo de escena (reflejos del agua: reflection.ts puro + el módulo)
-    waves/ wind/    # funciones puras de las olas y del viento
-    world/          # + chunks.ts, sources.ts, settlement-paths.ts (caminos de los barrios)
-    flow-check/     # architecture.test.ts, simulation-events.test.ts, scene-harness.ts (fuera de la cobertura)
-    index.ts
-  types/            # camera, entities, events, grid, iso, lighting, parts (WorldPart, WorldPartKey, WorldPartReader), player, simulation, terrain, time
-src/isometric/content/
-  entities.ts     # ENTITY_CONFIG (barrios, bosques, rocas)
-  player.ts       # PLAYER_APPEARANCE (el mono), PLAYER_WALK, PLAYER_DANCE
-  terrain.ts      # TERRAIN_APPEARANCE: SVG, tinte y topInset de cada material
-  sounds.ts       # PLAYER_SOUND_PATTERNS: shots y loops de sounds/*.strudel
-  index.ts
-src/isometric/input/
-  keyboard.ts     # bindKeyboard() con KeyBindings (press/hold); bindKeyboardControls(): caminar y zoom
-  index.ts
-src/isometric/game/
-  game.ts         # mountGame(): arranque y desmontaje del juego
-  chunk-generator.ts  # createChunkGenerator(): los chunks del juego como datos (lo que corre el worker)
-  chunk-worker.ts     # entrada del Web Worker de chunks
-  chunk-prefetch.ts   # createChunkPrefetch()/startChunkWorker(): pide al worker los chunks de delante
-  launch.ts       # resolveLaunchOptions() (URL, ?modules=) y formatClockLabel()
-  modules.ts      # createSceneModules(), createWorldParts() y createWorldSystems(): de qué está hecho el juego, en orden
-  sound/          # Strudel: createStrudelSounds() (carga perezosa) y bindPlayerSounds()
-  perf.ts         # monitor de ?perf (frames, texturas, draw calls)
-  index.ts
-src/isometric/page.tsx   # declarativa: maqueta + useEffect(() => mountGame(...).destroy, [])
+lib/
+  crates/iso/    # `iso`: dominio portable. Sin Macroquad, GPU, navegador ni archivos.
+    src/{grid,paths,projection,camera,time,simulation,terrain,entities,world,
+         lighting,scene_order,water,services}/
+    tests/        # solo contratos que cruzan módulos y fixtures (fixtures/contracts.json)
+  src/           # `iso-core`: el cliente. main.rs es la composición actual.
+    assets, lighting, perf, player, rendering, save, services, terrain, water/
+  content/       # entities.json, assets.manifest.json, atlas.png, player-16_*.png
+  assets-src/    # SVG fuente del atlas (commiteado; no se despliega)
+  scripts/       # build-web.sh (WASM), build-atlas.sh, run-native.sh
 ```
 
-- Cada responsabilidad permanece en su propia carpeta:
-  - `grid`: coordenadas tipadas (`WorldCoord`, `ChunkCoord`, `LocalCoord`, `WorldRect`), claves numéricas (`cellKey`, `chunkKey`, `assertGridCoord`), rangos de chunks (`chunksAround`, `chunksInRect`), `CellMap` (guardado por chunk, con índices locales) y `SpatialIndex` (sobre un `CellMap`).
-  - `terrain`: `Box`, ruido, columnas tipadas con su superficie (`createTerrainColumns`, `generateTerrainColumns` para un área sin costuras), relleno de columnas (`fillElevations`), bloques visibles (`createVisibleBlocks`, que solo crea los visibles; `removeHiddenBlocks` es la referencia) y superficies.
-  - `entities`: `Entity`, colocación, formaciones, variantes de color, validación de definiciones (`validateEntityDefinitions`) y su huella (`fingerprintEntityDefinitions`).
-  - `time`: reloj de juego (`WorldClock`, `createWorldClock`, `advanceClock`, `assertClockStep`, `TICKS_PER_SECOND` = 20, `TICKS_PER_HOUR` = 1 000, `TICKS_PER_DAY` = 24 000, `WORLD_START_TICK` = 08:00; la parte `createClockPart(startTick)`/`CLOCK_PART`), hora del día (`getTimeOfDay`, `getClockTime`, `formatClockTime`, `resolveStartTick` para `?hour=`) y estado del sol (`getSunState`, `sampleSkyPalette`, `DEFAULT_SKY_PALETTE`). Sin dependencias.
-  - `lighting`: proyección de las sombras (`getShadowProjection`: dirección, `stretch` y `alpha` según el sol; `getSilhouetteMatrix`: tumba en el suelo los píxeles de un sprite relativos a su pie, girado hacia el sol), `BLOCK_HEIGHT_IN_TILES`, `MAX_SHADOW_STRETCH`, `SHADOW_ALPHA`, `SHADOW_FADE_ELEVATION`, `SHADOW_MAP_PIXELS_PER_TILE`, `SHADOW_BLUR`; oclusión ambiental (`getOcclusion`, `buildOcclusionMap`, `OcclusionTerrain`, `AO_*`). Fases visuales: `createPhaseLighting()`, `PhaseLight` (`phases.ts`). Depende de `constants`; sin Pixi.
-  - `events`: bus de eventos tipado y síncrono entre sistemas (`createEventBus<Events>()`: `on` devuelve la baja, `off`, `emit`, `has`, `clear`). Sin dependencias del motor; sin Pixi.
-  - `simulation`: bucle de paso fijo (`createFixedStepper`, `consumeFrame`, `setTimeScale`, `getInterpolationAlpha`, `STEP_MS`, `DEFAULT_MAX_FRAME_MS`), `stepWorld(world, ticks, { systems, events })` (único punto de entrada de la simulación: por tick ejecuta los `WorldSystem`s en orden, avanza el reloj y emite sus eventos), `createSimulation(world, { systems, … })` (expone `simulation.events`) y `resolveTimeScale()` (`?timeScale=`). Depende de `events`, `time` y `world`; sin Pixi.
-  - `parts`: `WorldParts`, el contenedor de `world.parts` (`get`, `find`, `has`, `ids`, `serialize`; `WorldParts.create`/`restore`). Sin dependencias.
-  - `player`: sistema del jugador (`createPlayerSystem()`, sobre un `PlayerWorld` que lee `PLAYER_PART` de `parts`), aparición en anillos (`findPlayerSpawn`, `PLAYER_SPAWN_RADIUS`), si sus pies caben en un punto (`fitsPlayerAt`), su parte (`createPlayerPart()`/`PLAYER_PART`) y máquina de movimiento (`motion.ts`, XState v5 con `transition()` puro). Depende de `grid`, `time` y `xstate`; no guarda actores ni snapshots en `World`.
-  - `world`: modelo `World` por chunks (`WorldChunks`: carga, descarga, `stream()` con presupuesto y carga por delante, `isReady()`, `setEntities()`, `prepare()`/`isPrepared()` para chunks generados en otro hilo; `toChunkData()`/`fromChunkData()`/`chunkDataTransfer()`, con las columnas en arrays tipados (`PackedColumns`); fuentes `createSeededChunkSource()`/`createFixedChunkSource()`; `createWorld()`, `chunkOfPoint()`), generación y guardado. No importa `player` ni `time`: no nombra ninguna parte.
-  - `paths`: caminos como datos: A* determinista (`findPath`, arrays tipados), redes de una casilla (`planPathNetwork`) y máscaras de conexión (`getConnectionMask`, `getPathShape`). Depende solo de `grid`.
-  - `projection`: rejilla → pantalla (`projectBoxesToIsometric`).
-  - `camera`: cámara como datos, límites, culling bajo demanda y chunks a la vista (`getVisibleChunks`, `CHUNK_VIEW_RISE`/`DROP`/`MARGIN`). Depende de `grid` y `projection`; sin Pixi.
-  - `render`: sprites Pixi, SVG (`getSvgResolution`, `SVG_TILE_WIDTH`, `SVG_DETAIL`, `createSvgColorVariant`), `rgbToTint()` (luz `Rgb` → tinte Pixi), `getBlockDepth()` (profundidad de dibujo de una casilla) y `createSpritePool()` (`SpritePool`: `take(texture)`, `give(views)`, `destroy()`; `NEW_SPRITES` da sprites nuevos).
-  - `scene`: compositor de módulos de escena (`createScene`, `SceneModule`, `SceneContext`, `SceneServices`, `SCENE_LAYER`, `CHUNKS_SHOWN_PER_FRAME`; orden de dibujo por franjas `createDrawOrder()`, `DRAW_BAND_DEPTH`, `compareViews`); no dibuja nada por sí mismo (ver «Escena modular»).
-  - Módulos de escena (hermanos, cada uno con su `createX(): SceneModule`): `terrain-view` (bloques por chunk con `getTerrainTint()`, cubiertos por los bordes de los vecinos; un material con `connections` muestra el marco de su máscara, como los caminos), `entity-view` (provee `entityViews`), `shadows`, `ambient-light` (avanza `PhaseLighting` y tiñe el render group), `cloud-shadows` (un `TilingSprite` del viewport con `cloud-shadow.svg`, anclado al mundo, dos puntos por frame), `player-view` (provee `focus` y `movingCasters`), `foliage-wind` (copas con `sway`), `water-reflections` (por chunk con agua, un `RenderTexture` por nivel en el plano del agua, con el cielo, las caras de la orilla en una `MeshSimple` por material y espejos de los sprites de `entityViews`; una vista por columna de agua en la capa `ground`; se hornea al mostrar, al cambiar las entidades vecinas, `REFLECTION_BAKES_PER_FRAME` por frame, con el jugador cerca, cada frame; olas: ondula los reflejos, no el agua, con `getWaveLift()`) y `camera-view` (`createSceneCamera`, `bindCameraControls`, que suelta los toques que el canvas cancela porque Pixi 8.22 no reenvía `pointercancel`; provee `camera`).
-- Grafo de dependencias acíclico: `grid` no depende de nada; `random`/`grid` → `terrain` → `entities` → `world` (que también usa `paths`) → `scene` ← `projection`, `render`, `camera` (que usa `grid` y `projection`), `constants`; `parts` → `world` → `simulation` (que también usa `events` y `time`, y no conoce ningún sistema concreto); `time` y `player` definen sus partes sin importar `world`; los módulos de escena dependen de `scene` y de los módulos de dominio que dibujan (`shadows` también de `world`, por `WorldChunk`), **nunca unos de otros**, y `scene` no depende de ninguno. Cada constante vive en su dueño (`CHUNK_SIZE` en `grid`, ruido en `terrain`, carga de chunks en `world`); `constants` solo guarda las medidas de la vista. `engine/flow-check/architecture.test.ts` lo hace cumplir (dependencias, barrels, Pixi solo en `render`, `scene` y `SCENE_MODULES`, sin APIs del navegador ni claves `"x:y"`). Un módulo nuevo o una dependencia nueva se añade de forma explícita a su tabla `ALLOWED_DEPENDENCIES` (y a la de `ARCHITECTURE.md`); nunca se relaja el test para que pase.
-- Los `index.ts` son barrels públicos: los imports entre responsabilidades deben usarlos (p. ej. `../entities`, `./core/engine`), no apuntar a archivos internos.
-- La UI de entrada está en `src/isometric/page.tsx`; `src/main.tsx` solo monta esa página.
-- **Capa de aplicación (`src/isometric/game`)**: une core, contenido (`content`) y entrada (`input`); el motor no la importa. `mountGame(container, { window, onClockChange, random?, log? })` crea la `Application`, lee la URL (`resolveLaunchOptions()`), genera el mundo, registra la simulación en el ticker, crea la escena (con `stream(visibles, construyendo)`: primero el chunk del jugador y luego lo que ve la cámara; por frame, `CHUNKS_LOADED_PER_FRAME`), arranca el **worker de chunks** (`createChunkPrefetch()`, con `startChunkWorker()`: pide los chunks cercanos que faltan, como mucho `CHUNKS_IN_FLIGHT`, y entran con `world.chunks.prepare()`) y enlaza los controles, y devuelve `{ ready, destroy }`. El worker importa del barrel `../core/engine/world`, no del de `engine`, para no cargar Pixi; en los tests, `GameOptions.chunkWorker` da un worker falso. Cada paso registra su desmontaje en cuanto existe y comprueba tras cada `await` si el juego se destruyó; `destroy()` deshace en orden inverso. Un paso nuevo del arranque (guardado, HUD, sonido) va aquí con su test (mocks de Pixi y un `window` falso), nunca en `page.tsx`.
-- **`page.tsx` es declarativa**: solo importa `preact/hooks` y `./game` (lo exige `page.test.ts`), tiene un único `useEffect` que devuelve `mountGame(...).destroy` y recibe lo que muestra por callbacks de `GameOptions` con datos planos o ya formateados (nunca objetos de Pixi ni el `World`). Un dato nuevo para la UI se añade como callback en `GameOptions`.
+- La dependencia es `iso-core → iso`, nunca al revés. El dominio no conoce sprites, texturas ni Macroquad; si una regla necesita pruebas sin GPU, vive en `iso`.
+- `mod.rs` y `lib.rs` son barrels: declaran módulos y reexportan la API; nada de lógica. Los consumidores usan el barrel (`iso::terrain`).
+- Cada carpeta con API pública mantiene un `mod.md` en **español** con sus funciones, métodos y constantes. Al añadir, renombrar, mover o eliminar algo público, se actualiza su enlace, firma y propósito en el mismo cambio.
+- La pose exacta (constantes, firmas, enlaces) vive en el `mod.md` del dominio: no la dupliques aquí ni la cites de memoria.
 
-### Escena modular
+Contratos clave (el detalle está en el `mod.md` correspondiente):
 
-- La escena compone `SceneModule`s (`{ id, requires?, setup(context) }`); `setup()` devuelve `{ views?, showChunk?, provides?, start?, update?, destroy }`. Algo que se dibuja es un módulo nuevo en `engine/<nombre>/`, con barrel y test; nunca una rama en `scene.ts`. Añádelo a `ALLOWED_DEPENDENCIES` y `SCENE_MODULES` (`architecture.test.ts`), a la tabla de `ARCHITECTURE.md` y a `createSceneModules()` (`game/modules.ts`, el orden importa: un módulo lee los servicios de los anteriores y se actualiza en ese orden).
-- Un módulo **nunca importa otro módulo de escena**: comparte datos solo por servicios con nombre (`SceneServices`: `camera`, `entityViews`, `focus`, `movingCasters`). Un servicio nuevo se declara en `SceneServices`; cada servicio tiene un solo dueño (`createScene()` lanza si dos módulos lo dan, y si dos módulos comparten `id`). Lee los opcionales con `services.get(…)` y degrada si faltan; usa `requires` solo si sin él el módulo no tiene sentido.
-- **Lo del terreno y las entidades se dibuja por chunk**: el módulo devuelve `showChunk(chunk)` (puede ser asíncrono) con las `views` del chunk y un `destroy()` que libera lo que creó; `views` de `setup()` es solo para lo de toda la escena. La escena muestra los chunks **listos** (`world.chunks.isReady()`: él y sus vecinos cargados) que ve la cámara, uno por frame y **cada módulo en un frame propio** (las vistas del chunk entran juntas al final), y oculta de uno en uno (`CHUNKS_HIDDEN_PER_FRAME`) los que dejan de verse. `showChunk` se llama muchas veces, nada debe filtrarse al ocultar y debe caber en un frame (si es caro: cálculo por columna, cachés, trabajo repartido en `update()`). Lo que dependa de los vecinos léelo de `context.columnAt` o de servicios por `ChunkKey`, nunca de «todas las columnas». Tras construir, `built.add(views)`/`built.remove(views)` (`remove` destruye). Las vistas de una parte con `keepsViews: true` las recupera su `destroy()` (p. ej. `pool.give(views)`). Lo que un chunk crea por miles sale de un `SpritePool` del módulo; quien toma un sprite pone todo lo que dibuja (el pool solo restablece textura, `visible`, `alpha` y `culled`).
-- Cada vista lleva `depth` y `layer` (`SCENE_LAYER`: `terrain`, `ground`, `object`, `onObject`); la escena las ordena una vez. Una vista que se mueve se recoloca con `built.placeAt(view, depth)` (o `built.move(vista)`, por profundidad y capa, para una del suelo) (desde `start()`/`update()`), nunca con `zIndex`. No registres listeners del ticker en un módulo: usa `update(frame)` (`tick`, `elapsedMs`, `alpha`), que la escena llama desde su único listener (`UPDATE_PRIORITY.NORMAL`). Carga los SVG con `context.assets.loadSvg()` (resolución de pantalla, descarga automática al destruir). Para que `?perf` muestre una parte de tu `update()` por separado, envuélvela en `context.profile("<id>:<qué>", () => …)` (sin profiler solo la ejecuta; usa etiquetas constantes, no plantillas por llamada). `destroy()` libera lo que el módulo creó fuera del contenedor del mundo (listeners del renderer, render textures).
-- Prueba cada módulo solo con `mountScene(world, [módulo])` y los mocks de `engine/flow-check/scene-harness.ts` (`mockPixi()`, `mockRender()`, `mockSilhouette()`, `mockReceivedShadow()`; `worldFrom()` y `defaultWorld()` ya traen reloj y jugador, `columnsOf()`/`entitiesOf()` leen sus chunks; el `root` de `mountScene()` da en `children` las vistas en orden de dibujo, a través de las franjas, y en `bands` las franjas; `mockRender().createSpritePool` guarda en `kept` lo que se le devuelve); para probar el streaming, un módulo de cámara falso con `visibleChunks()` y `frameUntil(ticker, comprobación)` del harness (avanza frames hasta que se cumple), porque tras el arranque un chunk se dibuja en tantos frames como módulos con `showChunk` tenga; `vi.waitFor()` sin frames no basta. `flow-check/` queda fuera de la cobertura. `game/modules.test.ts` monta la escena real sin cada módulo: un módulo nuevo debe pasar ese test, y los demás deben seguir funcionando sin él.
-- Para trabajar en un módulo aislado: `?modules=-shadows,-ambient-light` (ids de módulos de escena y sistemas; un id desconocido se avisa en el log).
-- Un sistema de juego es un `WorldSystem` (`{ id, step(world, events?) }`, tipo en `core/types/simulation.ts`) en su módulo de dominio, sin Pixi, añadido a `createWorldSystems()`; no edites `simulation` para añadirlo.
-- Un módulo de escena lee las partes del mundo por su clave (`world.parts.get(CLOCK_PART)`, `world.parts.find(PLAYER_PART)`) y degrada si una opcional falta (`player-view` no dibuja nada sin jugador). El tick del frame ya llega en `update(frame).tick`.
-
-### Partes del mundo
-
-- Un sistema con estado (clima, necesidades, inventario…) define en su módulo de dominio una parte: la clave `X_PART: WorldPartKey<Estado>` (`{ id }`) y la factoría `createXPart(...): WorldPart<Estado, Guardado, Contexto>` (`id`, `version`, `create(context)`, `serialize(state)`, `restore(saved, context)`), en un archivo `x-part.ts` con su test. La registra en `createWorldParts()` (`game/modules.ts`). **Nunca añadas un campo a `World` ni toques `serializeWorld()`/`restoreWorld()`/`WORLD_SNAPSHOT_VERSION` para guardar el estado de un sistema.**
-- `context` es `WorldPartContext` (terreno, entidades, `centre`, `chunks`, `contentFingerprint` y `contentChanged`); una parte no lee otras partes al crearse ni al restaurarse, y carga con `chunks.loadAround(punto)` los chunks que necesita (el jugador, los de alrededor de donde aparece o estaba). Declara solo lo que necesita del contexto (como `PlayerSpawnGround`), así no depende de `world`.
-- `serialize()` devuelve JSON plano sin lo derivado ni lo transitorio (entrada, `previous`, cachés); `create()` es determinista (azar solo con `deriveSeed(context.seed, id)`). Si cambia la forma de lo que guarda, sube su `version`; el sobre (`WORLD_SNAPSHOT_VERSION`, hoy 7) solo cambia si cambian semilla, tamaño, la huella del contenido, los chunks editados o el mapa `parts`.
-- Si una parte guarda una posición o algo que dependa de las entidades, su `restore()` comprueba que siga siendo válido: un guardado restaurado con otro contenido regenera los chunks sin editar (`context.contentChanged`). El jugador lo hace con `fitsPlayerAt()` y, si no cabe, se coloca con `findPlayerSpawn()` alrededor del punto guardado.
-- Su test comprueba: estado de un mundo nuevo, ida y vuelta por `JSON.parse(JSON.stringify(...))`, y que lo transitorio no se guarda. Para leer una parte sin depender de `world`, recibe un `WorldPartReader` (`{ get(key) }`).
-- Al restaurar, una parte sin datos guardados se crea como nueva, una con otra versión se rechaza y los datos de una parte no registrada se conservan; las partes no se desactivan con `?modules=`.
-
-### Bloques de terreno
-
-- Los bloques visibles se cargan como SVG desde `public/assets/<material>/block.svg`.
-- El renderer usa **una textura por bloque**; `terrain-view` aplica el tinte de cada material (`getTerrainTint()`, por altura contra `DEFAULT_MAX_ELEVATION`, igual en cualquier chunk). La apariencia de cada material (SVG, `tint` por profundidad o altura, `topInset` si su cima es más baja, como la arena) es contenido: `TERRAIN_APPEARANCE` en `content/terrain.ts`, que la app pasa a `createScene(…, { terrain })`. Un material nuevo añade ahí su entrada (el tipo la exige); nada de constantes de material en el motor. Lee la altura de una cima con `context.topInsetAt(x, y)`, nunca con `type === "sand"`. No reintroducir composición de caras separadas.
-- `Box` (en `engine/terrain`) se usa exclusivamente para bloques de terreno (`grass`, `ground`, `water` y `sand`). Es **un solo objeto**: sus datos son campos propios y su `metadata` está congelada (las cajas sin metadatos comparten un objeto vacío). Cambiar `box.metadata` lanza `TypeError`: usa `update({ metadata })`. No le añadas campos objeto: un chunk carga 1 024 cajas y el recolector recorre cada una (#96).
-- **El material de un bloque es su `type`** (`BoxType` = `TerrainMaterial`) y se asigna una sola vez: `createTerrainColumns()`/`generateTerrainColumns()` clasifican las superficies y las guardan en el `type` de cada columna; `fillElevations()` y `createVisibleBlocks()` guardan el material de cada nivel (agua bajo cero, la superficie en la cima, `ground` debajo). Lee `box.type`; no vuelvas a llamar a `classifyColumnSurfaces()` ni a `getBlockMaterial()` fuera de `terrain`. Un `Box` sin `type` toma el de su elevación (`water` bajo cero, si no `grass`); en tests que necesiten arena, crea las columnas con `createTerrainColumns()` o pasa `type` explícito. `update({ elevation })` no vuelve a tipar el bloque.
-
-### Entidades (no-terreno)
-
-- Se declaran en `src/isometric/content/entities.ts` (`ENTITY_CONFIG`) y se crean con `createEntitiesFromConfig(boxes, definitions, …)`, chunk a chunk; `mountGame()` las pasa a `generateWorld({ entityDefinitions })`.
-- `generateWorld()` valida las definiciones con `validateEntityDefinitions()`, que lanza `EntityConfigError` con todos los problemas. Si añades una opción de definición, añade también su regla de validación y su test.
-- La escena **no** debe conocer nombres concretos (como `tree`) ni contener ramas, constantes o assets específicos de una entidad.
-- Para añadir una entidad: agrega su definición en `content/entities.ts` y su asset (genera el asset con la skill `iso-asset-generator`); usa la clase genérica `Entity`. Cambiar las definiciones cambia su huella (`fingerprintEntityDefinitions()`): las partidas guardadas siguen cargando y sus chunks sin editar se regeneran con el contenido nuevo.
-- Los assets no llevan sombra proyectada en el suelo (ningún polígono translúcido `#1e2a10`): el motor proyecta la silueta de los sprites de cada entidad sobre el terreno.
-
-## Estado actual del core
-
-- Opciones de configuración de entidad: `surface`, `footprintSurfaces`, `surfaceElevation`, `length`, `lengthAxis`, `gap`, `formation` (grupos según un mapa de texto, `spawnChance` por grupo), `patches` (manchas de ruido), `settlementLot` (solar fijo de un barrio), `colorReplacements`, `collision` (cuadrado por bloque de la huella, `Entity.collisionAt()`, sin altura, #103), `contactShadow`, `reflectionSource` (SVG de su reflejo, entidades largas), `sway`, `debug`.
-- Contenido del mundo (`content/entities.ts`): **barrios** con `settlementLot` en regiones de 32 × 32 (`SETTLEMENT_REGION_SIZE`), habilitados sin azar cuando el campo `forest` queda bajo `SETTLEMENT_ZONE.below` en el centro de la región (en los claros): hasta siete viviendas (formaciones fijas de 3, 2 y 2 con `minMembers: 1`, elevaciones 0–2; `house` mide un bloque), hospital, restaurante, mercado, ayuntamiento y edificios altos en los claros más profundos; las estructuras se colocan antes que la vegetación. **Caminos**: `createSettlementPaths()` (`world/settlement-paths.ts`) planifica cada región poblada una vez (`planPathNetwork()`, costes `PATH_*`, caché `SETTLEMENT_PATH_REGIONS_KEPT`) y `generateTerrainColumns({ paths })` tipa como `path` el pasto y la tierra del camino (nada con `surface: "grass"` crece encima); `createSeededChunkSource()` ya los crea (#109). **Bosques**: `patches` (`createPatchChances(seed)`, campo simplex por nombre y escala con la semilla del mundo, sin costuras) con `TREE_FOREST_PATCHES` en las ocho especies de árbol (#108). El decorado pequeño son variantes de la cima del pasto; las rocas grandes, entidades.
-- Búsquedas por posición: siempre con `engine/grid`. `CellMap` para un valor por columna, `SpatialIndex` para qué ocupa cada celda (`at`, `isOccupied`, `queryRect`, `anyInRect`, `queryRadius`, deterministas). Nunca claves de texto `"x:y"`. Para pasar de mundo a chunk usa `toChunkCoord()`/`toLocalCoord()`/`toWorldCoord()`/`chunkOfPoint()` (`CHUNK_SIZE` = 32), nunca divisiones a mano.
-- `createEntitiesFromConfig()` valida superficie y elevación de toda la huella (`getFootprint()`), registra las entidades en un `SpatialIndex` y evita solapamientos; `gap` se resuelve con `anyInRect`. Es el grueso de generar un chunk: `findPlacement()` solo crea objetos para una colocación válida; no añadas a ese camino arrays, closures ni `Array.from` por columna (la basura acaba en pausas de recolección), y en bucles calientes sobre `SpatialIndex`/`CellMap` recorre con índices. `CellMap` guarda cada chunk aparte (#95) y recuerda el último chunk consultado; no supongas el orden de inserción global. Lo que se mueve va en `world.movers` (`movers.move()` solo al cambiar de columnas). `World.occupancy` es derivado y nunca se guarda; para cambiar entidades usa `world.chunks.setEntities(coord, entidades)` (marca el chunk como editado; aún no redibuja, #83). Cada chunk coloca sus entidades solo: huellas y formaciones no cruzan su borde (#89).
-- Assets multi-bloque declaran su geometría con `data-tiles`. `lengthAxis: "x"` es el valor por defecto; `lengthAxis: "y"` orienta la huella hacia el eje `y`.
-- Render: `createBlockViews(options)` devuelve las vistas de un bloque o entidad con su profundidad (`DepthView`), sin añadirlas; `options` es `RenderBlockOptions` (`texture`, `box`, `metrics: TileMetrics` y opcionales `tint`, `height`, `surfaceAligned`, `length`, `lengthAxis`, `debug`; la escena pasa `TILE_METRICS`). Una opción nueva se añade como campo opcional con valor por defecto. `sprites` (opcional) es de dónde salen sus sprites (un `SpritePool`); el tinte se pone siempre (blanco sin `tint`), porque un sprite reutilizado trae el de antes. La escena mete las vistas en su orden de dibujo (`createDrawOrder()`): una franja (`Container`) por cada `DRAW_BAND_DEPTH` de profundidades, de atrás hacia delante, y en cada franja las vistas por profundidad y capa; añadir o quitar una vista solo mueve los hijos de su franja. No añadas vistas al contenedor del mundo por tu cuenta ni supongas que `view.parent` es ese contenedor. El renderer aplica la orientación al sprite y, con `debug`, dibuja un rombo por bloque ocupado en sus niveles inferior y superior.
-- **No crees vistas de bloques enterrados, ni sus cajas**: `terrain-view` llama a `createVisibleBlocks(columnas, bordes, DEFAULT_MIN_ELEVATION, fillsCell)` con las columnas del chunk y las de los bordes `−x`/`−y` de sus vecinos (que las tapan): da lo mismo que `removeHiddenBlocks(fillElevations(…), fillsCell)` quedándose con las del chunk, pero solo crea las cajas visibles (lee si una celda está llena de la cima de su columna). Si cambias la regla de ocultación, cámbiala en las dos funciones: los tests comparan `createVisibleBlocks()` con la referencia. Un bloque se quita si tiene uno encima y, hacia la cámara (`−x`, `−y` y su diagonal), bloques en su nivel y en el siguiente; `fillsCell` excluye los que no llenan su celda (cimas de arena). Si cambias el arte o la altura de los bloques, compara capturas antes y después; con terreno editable, recalcula solo las columnas afectadas.
-- **Nunca asignes `zIndex` a vistas del mundo ni actives `sortableChildren` en la escena**: en PixiJS v8 asignar `zIndex` activa `sortableChildren` en el padre y reordena miles de hijos ante cualquier cambio. El orden sale de la profundidad (`DepthView.depth`).
-- **Nada de trabajo masivo en un frame al mostrar u ocultar chunks.** Generación: en el worker del juego (`game/chunk-prefetch.ts`); el hilo principal solo genera, como respaldo, un chunk necesario que el worker aún no trajo, así que nada que genere chunks va en un camino por frame. `stream()` con `maxLoads` (`CHUNKS_LOADED_PER_FRAME` = 1), los necesarios (`CHUNK_LOAD_RADIUS` = 1) antes que los de por delante (`CHUNK_PREFETCH_RADIUS` = 2), y `CHUNK_KEEP_RADIUS` = 3 de histéresis; sombras: los chunks pendientes reúnen siluetas en tres pasos (`ShadowGathering`), `SHADOW_GATHERS_PER_FRAME` (1) por frame, los nunca reunidos primero. Lo que quizá nunca se vea se crea al necesitarlo, no al reunir. Algo nuevo que dependa de los vecinos sigue ese patrón (marcar pendiente y procesar por turnos), nunca «todos los vecinos en este frame». Lo que el worker devuelve cruza como arrays tipados transferidos (`postMessage(respuesta, chunkDataTransfer(datos))`), nunca como un objeto por columna: si añades datos por columna a un chunk, añádelos a `PackedColumns`.
-- **No crees y destruyas en masa `Texture`s sobre una fuente compartida.** Toda `Texture` de Pixi escucha a su `TextureSource`, y `destroy()` recorre la lista de oyentes de la fuente: destruir miles sobre el SVG de un árbol es cuadrático (congelaba el juego 3 s). Usa `createTexturePool()` (`acquire(source, frame)`/`release(texture)`) o recorta con un solo `Texture` cacheado (como `cropTexture()`); y destruye una `RenderTexture` antes que las texturas que la muestran. Mide con un perfil de CPU (`removeListener` en lo alto es la señal).
-- **No compares todas las entidades entre sí** en algo que se rehace al mostrar chunks: usa celdas (como `pairShadows()`, `SHADOW_PAIR_CELL`, que solo apunta candidatos en las celdas donde hay receptores) o `SpatialIndex`, y comprueba con un test que el resultado es el mismo que comparar todos los pares.
-- **No cambies `visible` ni `renderable` de muchos hijos de un render group en un camino caliente** (por frame o por tick): en PixiJS 8.22 cada cambio marca `structureDidChange` y el grupo entero reconstruye sus instrucciones de dibujo. Usa conjuntos fijos (un contenedor por caso) y asigna `alpha`/`visible` solo cuando el valor cambie. Reparte entre frames el trabajo periódico caro (renders a textura, mostrar chunks) en lugar de hacerlo todo en un frame.
-- **No filtres por viewport a mano**: qué chunks se cargan y muestran lo decide el dominio (`getVisibleChunks()` y `world.chunks.stream()`); dentro de ellos todas las vistas son `cullable` y `camera-view` cullea con `Culler.shared.cull(…, getCullRect(screen), false)` solo cuando cambia lo visible (al construir, zoom, `resize`, vistas nuevas con `cullViews()`, y al mover más de medio margen, por porciones de `CAMERA_CULL_VIEWS_PER_FRAME`, #44). No registres el `CullerPlugin`. Cuidado con `Container.removeChildren(begin, end)` en Pixi 8.22 (`end` es un número de hijos): usa `removeChild`.
-- **Carga los SVG a la resolución de pantalla** y siempre con el cargador SVG: desde un módulo de escena, `context.assets.loadSvg(src)` (`getSvgResolution(TILE_WIDTH, renderer.resolution)`; a 1024 px ocupaban ~217 MB). Se rasterizan para `CAMERA_MAX_ZOOM` (8): la memoria crece con su cuadrado (#105). Un sprite dibujado más pequeño que su casilla se carga con `loadSvg(src, { scale })` (el jugador, a `PLAYER_SCALE`). Antes de cerrar un cambio de render, mide (CPU por frame, memoria de texturas, draw calls con `?perf`). Antes de construir algo de render, bucle, cámara o carga de assets, comprueba si PixiJS v8 ya lo trae (tabla en `armada-core-review`).
-- `colorReplacements` acepta colores individuales o listas de variantes. Cada instancia guarda su variación en `colorVariant` (elegida al crearla con `pickColorVariation()` de `entities/variants`) y `entity-view` crea **una textura por (tipo, variación)**, la primera vez que un chunk la necesita, compartida entre instancias y chunks. No volver a crear texturas por instancia ni por chunk. `createSvgColorVariant()` devuelve una URL `blob:`, nunca una `data:` con el SVG dentro (Pixi analiza la URL varias veces); cárgala con `loadSvg()` y libérala con `releaseSvgColorVariant()` cuando la textura esté cargada.
-- `World` es la fuente de verdad y es **por chunks** de `CHUNK_SIZE` columnas, sin borde por defecto: `generateWorld({ seed, size?, entityDefinitions, parts })` (`size` acota para tests; el juego pasa `createWorldParts(startTick)`) carga los chunks alrededor de `world.centre` y crea cada parte. Cada chunk se genera solo desde la semilla y su coordenada (ruido en coordenadas absolutas con halo `SURFACE_REACH`, sin costuras), cargue lo que cargue antes. `world.columnIndex` y `world.occupancy` solo cubren los chunks cargados: nada del core supone un tamaño fijo ni recorre todas las columnas. La app carga con `createScene(…, { stream })` → `world.chunks.stream(focos, { prefetchRadius, maxLoads })` (`loaded`, `unloaded`, `pending`). `serializeWorld()`/`restoreWorld(snapshot, { entityDefinitions, parts })`: `WorldSnapshot` versión 7 (semilla, `size`, `contentFingerprint`, solo los chunks editados y `parts` como `id → { version, data }`); si la huella no coincide, `world.contentChanged` y los chunks sin editar se regeneran. `createScene()` solo lee y renderiza y exige `CLOCK_PART`. Tests con columnas a mano: `createWorld({ seed, source: createFixedChunkSource(…), bounds })` o `worldFrom()`/`defaultWorld()`.
-- Sol (estado de simulación; la luz que se ve sale de las fases, no del tick): `getSunState(tick, palette?)` da `direction` (sale por el este, `+x −y`, a las 06:00, culmina al sur a 60° y se pone por el oeste, `−x +y`, a las 18:00; nunca ilumina desde detrás), `elevation`, `daylight` y `ambient`. La paleta de cielo es un parámetro.
-- Todo el mundo se deriva de la semilla: cada chunk deriva un `RandomSource` por sistema y chunk (`"entities@<clave del chunk>"`, `"entity-color-variants@<clave>"`); lo nuevo que se genere por chunk sigue ese patrón y nunca depende del orden de carga. Los tests de generación deben comprobar determinismo (misma semilla → mismo resultado, sin `Math.random()`), también que un chunk sale igual solo que junto a sus vecinos. Una optimización de la generación debe dar exactamente lo mismo: compáralo antes y después (ids, variaciones y elevaciones de varios chunks).
-- Cada `Entity` tiene un `id` de instancia estable (`<tipo>@<x>,<y>` al crearse, vía `createEntityId()`); el constructor acepta `{ id, colorVariant }`. No recalcular ids a partir de la posición actual.
-- **Comunicación entre sistemas por eventos tipados**: un sistema nunca importa ni llama al módulo de otro sistema para enterarse de sus cambios; se suscribe a un `EventBus` (`engine/events`). Los eventos del reloj llegan por `simulation.events` (`SimulationEvents`): tras cada tick, `hourChanged` `{ tick, day, hour }` al entrar en una hora, `dayChanged` `{ tick, day }` a las 00:00 y `tick` `{ tick }`, en ese orden. Un sistema nuevo declara sus eventos como tipo en `core/types/events.ts` (payloads de datos planos y `readonly`; hoy amplía `SimulationEvents`, que recibe `WorldSystem.step()`, ver #81 de `CORE_REVIEW.md`) y recibe el bus por parámetro. El bus es síncrono y sin colas ni temporizadores (determinista): no emitas con `setTimeout`/promesas. Guarda funciones, no estado: no se serializa; tras restaurar un mundo, los sistemas se suscriben de nuevo. Crea payloads caros solo si `has(type)`. Los tests de un sistema que emite comprueban el orden de sus eventos y que dos ejecuciones iguales emiten lo mismo.
-- Bucle: `mountGame()` crea `createSimulation(world, { timeScale, systems: createWorldSystems(…) })` y registra en `app.ticker` (`UPDATE_PRIORITY.HIGH`, antes del render) un listener que llama a `simulation.frame(ticker.elapsedMS)`. Un sistema de juego nuevo es un `WorldSystem` que `stepWorld()` ejecuta tick a tick en orden fijo; nunca un listener del ticker ni código de la escena. Lo que se actualice por frame (tinte, interpolación) va en el `update(frame)` de un módulo de escena y solo lee el `World`. No uses `requestAnimationFrame` propio. Para revisar la independencia del reloj, abre la app con `?timeScale=60`: debe mantenerse la fase visual de día.
-- Iluminación por fases (`lighting/phases.ts`): `createPhaseLighting()` mantiene `dawn`, `day`, `sunset` y `night` (`PhaseLight`: `ambient`, `shadowStrength`, `shadow` con dirección, longitud y alfa), **independiente del tick**; `transitionTo("sunset", 3000)` interpola color, intensidad, longitud y ángulo por el arco corto desde la luz actual (`transitioning`). `ambient-light` lo avanza una vez por frame antes de `shadows` y tiñe el render group (`root.tint`) solo cuando cambia el color. La app lo comparte con `GameOptions.lighting`. No apliques luz sprite a sprite ni crees más render groups sin medir.
-- Sombras (módulo `shadows`, por chunk mostrado; lee `entityViews` y `movingCasters`): mapas horneados fijos en una fase estable; los invalidan la topología o la proyección. En una transición se actualizan todos los receptores visibles con la luz exacta del frame (sin claves angulares ni turnos) y al terminar se hornea el preset. **No reintroducir refrescos por tick.** Reunión por turnos (`maps`, `pairs`, `received`; `SHADOW_GATHERS_PER_FRAME`). Un solo mapa por chunk (`SHADOW_MAP_PIXELS_PER_TILE` 24, `SHADOW_BLUR` 1.2): terreno (`createTerrainShadowGeometry()`, volumen de columnas en un `MeshSimple`, rayos DDA de `createTerrainShadowSampler()`/`horizon()`) y siluetas (`getSilhouetteMatrix()`, `cropSilhouetteAbove()`) se componen antes de un `AlphaFilter` común, así un cruce no duplica oscuridad; AO y contacto van en una textura estática aparte. Paredes: `getTerrainFaces()` + `createWallShadowProjector()` en un atlas por chunk (`createTerrainFaceShadows()`, borra sus slots antes de escribir; sin paredes, sin atlas). Entidades y móviles: visibilidad 8×16 por receptor en el mismo atlas; el jugador recibe `receiveShadowGrid` con una máscara alfa nativa; `sprite-sample` lee alfa 64×64 una vez por textura. Usa `out` reutilizados en bucles por píxel (`getReceiverPoint(…, out)`); profundidades solo con `getBlockDepth()`; libera máscaras, buffers y texturas propias (nunca fuentes de Assets). Mide con `?perf` (`shadows:*`).
-- Jugador (`engine/player`: `PLAYER_PART`, `createPlayerSystem({ topInset, probe })`): física en el paso fijo. Velocidad horizontal con inercia (`PLAYER_STEP`; aceleración y frenado distintos en tierra y aire; correr con Shift hasta `PLAYER_RUN_STEP`), pies (`PLAYER_RADIUS`) en columnas pisables y fuera de `collisionAt()`, salto con cola y gracia de 2 ticks, salto variable (`PLAYER_JUMP_CUT_SPEED`), salto doble (`PLAYER_AIR_JUMPS`), `fitsInAir()`/`supportAt()`/`stepAir()` con `PLAYER_BODY_HEIGHT`, trepa (`player.climb`) y rescate a `lastSafe` tras `PLAYER_RESCUE_DROP` (#110). Solo se guarda `{ x, y }`. `player.feedback` cuenta despegues, aterrizajes y rechazos (eventos al bus solo si hay oyentes); `probe` emite `PlayerStepSample`. **La locomoción es la máquina XState de `player/motion.ts`** (`idle`, `walking`, `running`, `skidding`, `jumping`, `falling`, `flying`, `climbing`; transiciones compartidas `GROUND` y `AIR`; `transitionPlayerMotion()` con `transition()` puro): `stepPlayer()` traduce cada tick a un evento (`RUN` al acabar en el suelo más rápido que caminar, `SKID` al deslizarse sin teclas o contra la velocidad, `LAND_*`). **Todo comportamiento nuevo del jugador (nadar, agacharse, rodar…) es un estado de esa máquina**, con sus eventos y su test en `motion.test.ts`: nunca otro booleano ni otra regla en `player-view`. `isPlayerRunning()`/`isPlayerSkidding()` solo leen `player.motion`; la entrada (`walk`, `running`, `wantsJump`) solo pide (#104).
-- Vista del jugador (`player-view`): el personaje es un **mono** voxel clay de un bloque (`content/player.ts`, `PLAYER_SCALE` 0.75; generadores `artifacts/monkey.py` y `player_*.py`). Una hoja SVG por animación con la misma ventana de celda (`walk.svg`, `idle.svg`, `jump.svg`, `climb.svg`, y `jetpack.svg`, una capa hija del sprite con solo el jetpack recortado; fila por orientación de `PLAYER_FACINGS`; `content/player.test.ts` comprueba `data-cell`/`data-gap`/`data-frames`), cortadas con `getSheetFrames()` y mostradas con `showFrame()` (en Pixi 8.22 asignar `texture` reaplica el último `width`/`height`). `walking`, `running` y `skidding` usan la hoja de caminar por distancia (`getWalkPose()`); al patinar los pies pedalean al revés (`SKID_PEDAL`). Quieto en el suelo **baila**: `idle.svg` más `getIdleDance()` al compás de `PLAYER_DANCE` (`beat`, `lean`, `bounce`) tras `DANCE_DELAY_MS`, en milisegundos reales (es solo vista). `body-motion.ts` inclina y deforma el sprite alrededor de los pies (muelle `stepBodyLean()`, `getBodyShape()`: rebote, estiramiento en el aire, inclinación atrás al patinar); `feedback.ts` da el polvo de vóxeles al despegar, aterrizar, correr y patinar, y el fuego y el humo del jetpack al volar (`JET_FIRE`, `JET_SMOKE`; cada `DustShape` con sus `colors`, `ms` y `alpha`): cada nube se esparce con `getDustVoxels()` (semilla por nube, `createSeededRandom`) y se anima con `getDustVoxelAt()`; cada vóxel es un `Graphics` reutilizado sobre un `GraphicsContext` compartido y una vista propia en el orden de dibujo, colocada solo al levantarse por su columna (`getDustColumn()`: detrás de los pies en la capa `ground`, delante con `DUST_FRONT_DEPTH`), sin filtros ni `zIndex`. Efectos apagables (`PlayerViewOptions.effects`, URL, `prefers-reduced-motion`); el sonido va en `game/sound/` (Strudel, por `playerMotionChanged` y los eventos del salto): un sonido nuevo es un `.strudel` en `content/sounds/` y su entrada en `PLAYER_SOUND_PATTERNS`. Una animación nueva es otra hoja (< 4 096 px), nunca filas nuevas (#105).
-- Terreno por coordenada absoluta: tierra a elevación 0 por ruido (`createBareGroundField(seed)`, #100) y variantes de la cima (`TerrainAppearance.variants`, `createVariantPicker()` con dos campos de `createNoiseField()`, #101). Lo nuevo que varíe por columna sigue ese patrón: semilla + coordenada, nunca `Math.random()` ni orden de carga.
-- Oclusión ambiental: `getOcclusion()` (solo del terreno; `buildOcclusionMap()` añade los contactos de entidades) y `buildOcclusionMap()` se calculan **una vez** por chunk al mostrarlo (con las columnas de los vecinos en el margen): `buildOcclusionMap(terreno, AO_PIXELS_PER_TILE)` escribe cada columna con la oclusión de su propia cima, y esa única textura (`BufferImageSource`) va al fondo de la capa de cada nivel del mapa de sombras. No añadas sprites por casilla para efectos de suelo: compónlos en esos mapas. Depende del terreno y de los contactos: si cambia su topología, reconstruye las columnas y contactos afectados.
-- UI de `page.tsx` (Preact): no pongas hijos condicionales sin `key` junto al contenedor del canvas; Preact puede reutilizar su elemento y mover el canvas. Monta los overlays siempre y ocúltalos con estilo, después del contenedor. La maqueta no tiene tests de render: verifica en el navegador sus cambios visuales.
-- Deuda conocida del core (bordes de chunk #89, `setEntities()` sin redibujo #83, partes sin migración #88, eventos en un solo tipo #81, límites del salto #106, bosques densos #108, caminos #109, política de caída #110, hoja propia para correr): ver `CORE_REVIEW.md` antes de ampliarla.
+- **Tiempo**: 50 ms por tick fijo; `WORLD_START_TICK` 08:00; el reloj avanza solo en el paso fijo.
+- **Rejilla**: chunk de 32 × 32 (`CHUNK_SIZE`); división euclídea para negativos; claves numéricas (`cellKey`), nunca `"x:y"`.
+- **Orden de dibujo**: `scene_order` asigna a cada elemento profundidad + capa (`PLAYER_BEHIND_LAYER` < `ENTITY_LAYER` < `PLAYER_FRONT_LAYER`). Terreno, entidades y jugador comparten **una** clave (`sprites::scene_key`), alimentada con el centro de la casilla.
+- **Simulación**: `simulation::FixedStepper` con acumulador y `alpha` de interpolación; un tick no se puede saltar ni duplicar aunque caiga a 1 fps.
+- **Sombras**: `iso::lighting` es geometría pura (sin GPU). El cliente **hornea** una fase (`DAWN`) en CPU por chunk (mapa de 36 px/tile, máquina de estados `GroundBake` con presupuesto de 3 ms por frame). No hornear entidades ni el jugador.
+- **El mundo**: `TerrainWorld` conserva los chunks descubiertos; `ChunkManager` calcula carga/prefetch/conservación (1/2/3) **solo al cambiar el chunk de foco**; `save` persiste chunks y estado (`SAVE_FORMAT`, `SAVE_SCHEMA_VERSION`) y el guardado es la autoridad al reabrir.
+- **Contenido**: `content/entities.json` es el catálogo de entidades (`schemaVersion` 1), validado al cargar con `validate_catalog`; la colocación es determinista y consulta solo el terreno.
+- **Determinismo**: misma semilla + mismas coordenadas → mismo mundo. Un chunk sale igual solo que junto a sus vecinos. Nada en la generación depende del orden de carga ni de `HashMap`.
 
 ## Reglas de cambios
 
-- TypeScript estricto; no introducir `any` para ocultar errores.
-- ESLint sin errores (`pnpm lint`, configurado en `eslint.config.js`: typescript-eslint con tipos, imports de tipo en línea, `eqeqeq`, `console` solo `info`/`warn`/`error`). Corrige el código; nunca añadas `eslint-disable` ni relajes la configuración para que pase.
-- No mezclar terreno, proyección, entidades y Pixi en un mismo módulo.
-- Crear o actualizar el `index.ts` de la responsabilidad al exponer un símbolo nuevo.
-- Todo archivo de comportamiento en `src` lleva un test co-localizado: `foo.ts` junto a `foo.test.ts`.
-- Archivos que solo declaran tipos no necesitan tests runtime (se validan con `tsc`).
-- Tests de escena o renderer usan mocks de Pixi; nunca depender de WebGL ni de un navegador real.
-- Cobertura al 100% en statements, branches, functions y lines. Nunca bajar los thresholds para que pase un cambio.
-- No editar a mano `dist/` ni `coverage/`.
-- Los SVG de `public/assets` son la fuente de los bloques; conservar sus proporciones isométricas.
-- Comentarios públicos en formato TSDoc.
+- Sin `unsafe` en `iso`. En el cliente, `unsafe` solo para el FFI con `localStorage` (guardado WASM), acotado y comentado.
+- Errores con `Result` y contexto; nada de `panic!` ante datos externos (catálogos, guardados). `assert!` solo para invariantes internas.
+- `clippy --workspace --all-targets --locked -- -D warnings` en verde; `cargo fmt --all` limpio.
+- No mezclar dominio y cliente en un mismo módulo ni importar Macroquad/`winit`-like crates en `iso`.
+- Todo archivo de comportamiento lleva su `*.test.rs` colocalizado; `tests/` solo para contratos que cruzan módulos y fixtures. Las pruebas de dominio usan datos construidos a mano o el fixture de contrato.
+- Los **comentarios de documentación** (rustdoc `///`, `//!`) van en **inglés**; la documentación Markdown va en **español**.
+- No editar a mano `content/atlas.png`, `content/assets.manifest.json` ni `content/player-16_*.png`: se generan con `scripts/build-atlas.sh` desde `assets-src/assets/`.
+- Los SVG son la fuente; `assets-src/` es su copia local. Un SVG nuevo para atlas se comprueba contra `assets.manifest.json` con los tests de `iso::assets`.
+- Nada de estado de sistema como campos sueltos de `World`; nada de reimplementar lo que `iso` ya expone.
 
 ## Flujo de trabajo
 
-1. Lee `ARCHITECTURE.md` (y `CONTRIBUTING.md` si aplica). Si hay assets de por medio, invoca `iso-asset-generator`.
+1. Lee `lib/docs/ARCHITECTURE.md` y el `mod.md` del dominio antes de tocar nada.
 2. Si añades comportamiento, **escribe primero el test** que lo define y después implementa.
-3. Implementa respetando las carpetas y barrels.
+3. Implementa respetando crates, barrels y la regla de dependencia.
 4. Antes de terminar, ejecuta en orden:
 
    ```bash
-   pnpm lint            # ESLint sin errores
-   pnpm test:coverage   # debe dar 100% en las cuatro métricas
-   pnpm build
+   cd lib
+   cargo fmt --all
+   SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk cargo clippy --workspace --all-targets --locked -- -D warnings
+   SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk cargo test --workspace --locked
+   SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk cargo build --release --locked --target wasm32-unknown-unknown --bin iso-core
    ```
 
-   `pnpm build` corre `tsc -b`, que también comprueba los tests: los mocks deben cumplir los tipos (`SceneCamera`, `Scene`) aunque Vitest pase. Si `node_modules` es de otro sistema operativo (rolldown falla), valida en una copia sin `node_modules`, `dist` ni `coverage` con `pnpm install --frozen-lockfile`; edita siempre en el repo del usuario. No ejecutes comandos de git que escriban (`stash`, `checkout`, `reset`) en el repo del usuario: si el borrado no está permitido dejan `.git/index.lock`; para comparar con la versión anterior usa `git show HEAD:<ruta>`.
-
-5. Para revisión visual: `pnpm dev` (arrastra lejos para ver el streaming de chunks y sus bordes). Para un tirón, graba un perfil de CPU mientras arrastras (en Chromium headless: CDP `Profiler.start`/`stop`) y mira los bloques largos del hilo principal, no solo el tiempo medio de frame. Si `(garbage collector)` pesa, busca quién asigna con `HeapProfiler.startSampling` mientras arrastras.
+   `SDKROOT` solo hace falta en macOS si el SDK de Command Line Tools está roto (`scripts/run-native.sh` y `build-atlas.sh` lo seleccionan solos); en otros sistemas, ejecuta `cargo` directo. La build WASM la cubre `bash scripts/build-web.sh`.
+5. Para revisión visual, arranca la demo con `lib/scripts/run-native.sh`. El presupuesto por frame se mira con `src/perf` (frame_log).
 6. Actualiza la documentación en el mismo cambio (ver abajo).
-7. **Invoca `armada-core-review`** para auditar el core tras tu cambio. Esa skill puede corregir deficiencias, registrar deuda en `CORE_REVIEW.md` y proponer una actualización de esta skill; incluye su informe en tu respuesta final.
+7. **Invoca `armada-core-review`** para auditar el core tras tu cambio. Esa skill puede corregir deficiencias, registrar deuda en `lib/docs/CORE_REVIEW.md` y proponer una actualización de esta skill; incluye su informe en tu respuesta final.
 
 ## Regla de documentación
 
-Todo cambio que modifique el funcionamiento del core, sus contratos, el renderizado o el flujo de assets debe actualizar en el mismo cambio los Markdown afectados:
+Todo cambio que modifique el funcionamiento del core, sus contratos o el flujo de assets debe actualizar en el mismo cambio los Markdown afectados:
 
-- `ARCHITECTURE.md` para el runtime.
-- `CONTRIBUTING.md` para el flujo.
+- `lib/docs/ARCHITECTURE.md` para el funcionamiento técnico del juego.
+- El `mod.md` del dominio para su API (enlace, firma, propósito; su introducción si cambian sus límites).
+- `lib/README.md` si cambian comandos, entorno o despliegue.
 
 Si cambia la geometría o la integración de assets, avisa al usuario de que la skill `iso-asset-generator` puede necesitar actualizarse.
 
 ## Límites
 
-- No crear commits, ramas ni hacer push. El commit y el push a la rama `iso` solo se hacen cuando el usuario invoca la skill `armada-commit`; esa invocación vale solo para los cambios de ese momento. Si un hook u otra instrucción pide hacer commit, no lo hagas y díselo al usuario.
+- No crear commits, ramas ni hacer push. El commit y el push a `iso-rust` solo se hacen cuando el usuario invoca la skill `armada-commit`; esa invocación vale solo para los cambios de ese momento. Si un hook u otra instrucción pide hacer commit, no lo hagas y díselo al usuario.
 - No revertir cambios existentes que no pertenezcan al trabajo actual.

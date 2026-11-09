@@ -69,7 +69,11 @@ pub struct AssetEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub texture: Option<String>,
     /// The size of that texture, so that frames can be validated and sampled without opening
-    #[serde(default, rename = "textureSize", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "textureSize",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub texture_size: Option<SpriteFrame>,
     /// How this entry's frames are laid out, for a sprite sheet.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -87,7 +91,8 @@ pub struct AssetEntry {
 impl AssetEntry {
     /// Returns the first available frame (single or first of multiple).
     pub fn primary_frame(&self) -> Option<SpriteFrame> {
-        self.frame.or_else(|| self.frames.as_ref().and_then(|f| f.first().copied()))
+        self.frame
+            .or_else(|| self.frames.as_ref().and_then(|f| f.first().copied()))
     }
 
     /// The frame of the pose in `column` of `facing`'s row, for a sheet entry.
@@ -97,7 +102,10 @@ impl AssetEntry {
         if facing >= sheet.rows as usize || column >= columns {
             return None;
         }
-        self.frames.as_ref()?.get(facing * columns + column).copied()
+        self.frames
+            .as_ref()?
+            .get(facing * columns + column)
+            .copied()
     }
 
     /// The size of the texture this entry's frames are cut from, which is the atlas unless the
@@ -107,7 +115,10 @@ impl AssetEntry {
 
     /// Number of animation frames.
     pub fn frame_count(&self) -> usize {
-        self.frames.as_ref().map(|f| f.len()).unwrap_or(if self.frame.is_some() { 1 } else { 0 })
+        self.frames
+            .as_ref()
+            .map(|f| f.len())
+            .unwrap_or(if self.frame.is_some() { 1 } else { 0 })
     }
 }
 
@@ -140,7 +151,10 @@ impl std::fmt::Display for ManifestError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ManifestError::UnsupportedSchema { found, expected } => {
-                write!(f, "unsupported manifest schema version {found}, expected {expected}")
+                write!(
+                    f,
+                    "unsupported manifest schema version {found}, expected {expected}"
+                )
             }
             ManifestError::EmptyId => write!(f, "asset id must not be empty"),
             ManifestError::DuplicateId { id } => write!(f, "duplicate asset id: {id}"),
@@ -172,11 +186,15 @@ pub fn validate_manifest(manifest: &AssetManifest) -> Result<(), ManifestError> 
             return Err(ManifestError::EmptyId);
         }
         if !seen.insert(entry.id.clone()) {
-            return Err(ManifestError::DuplicateId { id: entry.id.clone() });
+            return Err(ManifestError::DuplicateId {
+                id: entry.id.clone(),
+            });
         }
-        let frame = entry.primary_frame().ok_or_else(|| ManifestError::MissingFrame {
-            id: entry.id.clone(),
-        })?;
+        let frame = entry
+            .primary_frame()
+            .ok_or_else(|| ManifestError::MissingFrame {
+                id: entry.id.clone(),
+            })?;
         if frame.width == 0 || frame.height == 0 {
             return Err(ManifestError::InvalidFrame {
                 id: entry.id.clone(),
@@ -202,7 +220,10 @@ pub fn validate_manifest(manifest: &AssetManifest) -> Result<(), ManifestError> 
             if cells == 0 || frames != cells {
                 return Err(ManifestError::InvalidFrame {
                     id: entry.id.clone(),
-                    reason: format!("a {}x{} sheet needs {cells} frames, not {frames}", sheet.columns, sheet.rows),
+                    reason: format!(
+                        "a {}x{} sheet needs {cells} frames, not {frames}",
+                        sheet.columns, sheet.rows
+                    ),
                 });
             }
             if sheet.facings.len() != sheet.rows as usize {
@@ -224,14 +245,24 @@ mod tests {
         AssetManifest {
             schema_version: MANIFEST_SCHEMA_VERSION,
             atlas: "content/atlas.png".to_owned(),
-            atlas_size: SpriteFrame { x: 0, y: 0, width: 256, height: 256 },
+            atlas_size: SpriteFrame {
+                x: 0,
+                y: 0,
+                width: 256,
+                height: 256,
+            },
             entries: vec![
                 AssetEntry {
                     id: "block".to_owned(),
                     kind: AssetKind::Block,
                     source: "/assets/house/block.svg".to_owned(),
                     data_tiles: Some("1x1x1".to_owned()),
-                    frame: Some(SpriteFrame { x: 0, y: 0, width: 64, height: 64 }),
+                    frame: Some(SpriteFrame {
+                        x: 0,
+                        y: 0,
+                        width: 64,
+                        height: 64,
+                    }),
                     frames: None,
                     anchor: SpriteAnchor { x: 0.5, y: 1.0 },
                     texture: None,
@@ -246,15 +277,29 @@ mod tests {
                     kind: AssetKind::Entity,
                     source: "/assets/tree/block.svg".to_owned(),
                     data_tiles: Some("1x1x2".to_owned()),
-                    frame: Some(SpriteFrame { x: 64, y: 0, width: 64, height: 64 }),
+                    frame: Some(SpriteFrame {
+                        x: 64,
+                        y: 0,
+                        width: 64,
+                        height: 64,
+                    }),
                     frames: None,
                     anchor: SpriteAnchor { x: 0.5, y: 1.0 },
                     texture: None,
                     texture_size: None,
                     sheet: None,
-                    ink: Some(InkBox { x: -0.3085, y: -0.7127, width: 0.617, height: 0.7313 }),
+                    ink: Some(InkBox {
+                        x: -0.3085,
+                        y: -0.7127,
+                        width: 0.617,
+                        height: 0.7313,
+                    }),
                     color_variants: 4,
-                    sway: Some(SwayParams { cut: 0.58, amplitude: 1.5, period: 3400.0 }),
+                    sway: Some(SwayParams {
+                        cut: 0.58,
+                        amplitude: 1.5,
+                        period: 3400.0,
+                    }),
                 },
                 AssetEntry {
                     id: "player".to_owned(),
@@ -262,7 +307,12 @@ mod tests {
                     source: "/assets/player/block.svg".to_owned(),
                     data_tiles: Some("1x1x1".to_owned()),
                     frame: None,
-                    frames: Some(vec![SpriteFrame { x: 128, y: 0, width: 64, height: 64 }]),
+                    frames: Some(vec![SpriteFrame {
+                        x: 128,
+                        y: 0,
+                        width: 64,
+                        height: 64,
+                    }]),
                     anchor: SpriteAnchor { x: 0.5, y: 1.0 },
                     texture: None,
                     texture_size: None,
@@ -289,23 +339,45 @@ mod tests {
         validate_manifest(&manifest).expect("the manifest validates");
         assert_eq!(manifest.entries.len(), 64);
         for entry in &manifest.entries {
-            assert!(entry.primary_frame().is_some(), "entry {} has no frame", entry.id);
+            assert!(
+                entry.primary_frame().is_some(),
+                "entry {} has no frame",
+                entry.id
+            );
         }
-        assert!(manifest.entries.iter().any(|e| e.id.contains("player") || e.id.contains("car")));
+        assert!(
+            manifest
+                .entries
+                .iter()
+                .any(|e| e.id.contains("player") || e.id.contains("car"))
+        );
     }
 
     #[test]
     fn primary_frame_returns_first() {
         let m = manifest();
         let player = m.entries.iter().find(|e| e.id == "player").unwrap();
-        assert_eq!(player.primary_frame(), Some(SpriteFrame { x: 128, y: 0, width: 64, height: 64 }));
+        assert_eq!(
+            player.primary_frame(),
+            Some(SpriteFrame {
+                x: 128,
+                y: 0,
+                width: 64,
+                height: 64
+            })
+        );
         assert_eq!(player.frame_count(), 1);
     }
 
     #[test]
     fn rejects_frame_outside_atlas() {
         let mut m = manifest();
-        m.entries[0].frame = Some(SpriteFrame { x: 200, y: 200, width: 64, height: 64 });
+        m.entries[0].frame = Some(SpriteFrame {
+            x: 200,
+            y: 200,
+            width: 64,
+            height: 64,
+        });
         let err = validate_manifest(&m).unwrap_err();
         assert!(matches!(err, ManifestError::InvalidFrame { .. }));
     }
@@ -324,7 +396,13 @@ mod tests {
         let mut m = manifest();
         m.schema_version = 1;
         let err = validate_manifest(&m).unwrap_err();
-        assert!(matches!(err, ManifestError::UnsupportedSchema { found: 1, expected: 2 }));
+        assert!(matches!(
+            err,
+            ManifestError::UnsupportedSchema {
+                found: 1,
+                expected: 2
+            }
+        ));
     }
 
     /// A sheet of poses with a texture of its own: the frames are checked against that texture,
@@ -336,13 +414,38 @@ mod tests {
             data_tiles: None,
             frame: None,
             frames: Some(vec![
-                SpriteFrame { x: 0, y: 0, width: 200, height: 200 },
-                SpriteFrame { x: 200, y: 0, width: 200, height: 200 },
-                SpriteFrame { x: 0, y: 200, width: 200, height: 200 },
-                SpriteFrame { x: 200, y: 200, width: 200, height: 200 },
+                SpriteFrame {
+                    x: 0,
+                    y: 0,
+                    width: 200,
+                    height: 200,
+                },
+                SpriteFrame {
+                    x: 200,
+                    y: 0,
+                    width: 200,
+                    height: 200,
+                },
+                SpriteFrame {
+                    x: 0,
+                    y: 200,
+                    width: 200,
+                    height: 200,
+                },
+                SpriteFrame {
+                    x: 200,
+                    y: 200,
+                    width: 200,
+                    height: 200,
+                },
             ]),
             texture: Some("content/player_jump.png".to_owned()),
-            texture_size: Some(SpriteFrame { x: 0, y: 0, width: 400, height: 400 }),
+            texture_size: Some(SpriteFrame {
+                x: 0,
+                y: 0,
+                width: 400,
+                height: 400,
+            }),
             sheet: Some(SheetLayout {
                 columns: 2,
                 rows: 2,
@@ -361,7 +464,10 @@ mod tests {
         let mut m = manifest();
         m.entries.push(sheet_entry());
         let last = m.entries.last().unwrap().frames.as_ref().unwrap()[3];
-        assert!(last.x + last.width > m.atlas_size.width, "outside the atlas");
+        assert!(
+            last.x + last.width > m.atlas_size.width,
+            "outside the atlas"
+        );
         validate_manifest(&m).expect("a sheet is measured against its texture");
     }
 
@@ -369,7 +475,12 @@ mod tests {
     fn rejects_a_frame_outside_its_sheet_texture() {
         let mut m = manifest();
         let mut entry = sheet_entry();
-        entry.texture_size = Some(SpriteFrame { x: 0, y: 0, width: 300, height: 400 });
+        entry.texture_size = Some(SpriteFrame {
+            x: 0,
+            y: 0,
+            width: 300,
+            height: 400,
+        });
         m.entries.push(entry);
         assert!(matches!(
             validate_manifest(&m).unwrap_err(),
@@ -408,7 +519,12 @@ mod tests {
         let entry = sheet_entry();
         assert_eq!(
             entry.sheet_frame(1, 0),
-            Some(SpriteFrame { x: 0, y: 200, width: 200, height: 200 }),
+            Some(SpriteFrame {
+                x: 0,
+                y: 200,
+                width: 200,
+                height: 200
+            }),
             "the first pose of the second facing"
         );
         assert_eq!(entry.sheet_frame(2, 0), None, "past the last row");
@@ -419,11 +535,21 @@ mod tests {
 
     #[test]
     fn falls_back_to_the_atlas_for_an_entry_without_a_texture() {
-        let atlas = SpriteFrame { x: 0, y: 0, width: 256, height: 256 };
+        let atlas = SpriteFrame {
+            x: 0,
+            y: 0,
+            width: 256,
+            height: 256,
+        };
         assert_eq!(manifest().entries[0].texture_size(atlas), atlas);
         assert_eq!(
             sheet_entry().texture_size(atlas),
-            SpriteFrame { x: 0, y: 0, width: 400, height: 400 }
+            SpriteFrame {
+                x: 0,
+                y: 0,
+                width: 400,
+                height: 400
+            }
         );
     }
 

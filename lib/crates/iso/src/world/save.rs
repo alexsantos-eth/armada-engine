@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::grid::{chunk_key, ChunkCoord, ChunkKey};
+use crate::grid::{ChunkCoord, ChunkKey, chunk_key};
 use crate::terrain::TerrainMaterial;
 
 /// One saved terrain block.
@@ -80,7 +80,10 @@ impl std::fmt::Display for SaveError {
                 write!(f, "unsupported save format {found}, expected {expected}")
             }
             SaveError::UnsupportedVersion { found, expected } => {
-                write!(f, "unsupported save schema version {found}, expected {expected}")
+                write!(
+                    f,
+                    "unsupported save schema version {found}, expected {expected}"
+                )
             }
             SaveError::InvalidStructure { detail } => write!(f, "invalid save structure: {detail}"),
             SaveError::DuplicateChunk { cx, cy } => {
@@ -115,7 +118,10 @@ pub fn saved_to_terrain_column(saved: &SavedColumn) -> crate::terrain::TerrainCo
         None => (0, crate::terrain::TerrainMaterial::Grass),
     };
     crate::terrain::TerrainColumn {
-        coord: crate::grid::WorldCoord { x: saved.x, y: saved.y },
+        coord: crate::grid::WorldCoord {
+            x: saved.x,
+            y: saved.y,
+        },
         elevation,
         surface,
         walkable: saved.walkable,
@@ -150,7 +156,12 @@ impl ChunkArchive {
     }
 
     /// Returns the discovered chunk, or generates and stores it once when absent.
-    pub fn get_or_generate<F>(&mut self, cx: i32, cy: i32, generate: F) -> Result<SavedChunk, SaveError>
+    pub fn get_or_generate<F>(
+        &mut self,
+        cx: i32,
+        cy: i32,
+        generate: F,
+    ) -> Result<SavedChunk, SaveError>
     where
         F: FnOnce(i32, i32) -> SavedChunk,
     {
@@ -204,10 +215,7 @@ pub fn parse_world_save(value: serde_json::Value) -> Result<WorldSave, SaveError
         _ => return Err(SaveError::NotAnObject),
     };
 
-    let format = obj
-        .get("format")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
+    let format = obj.get("format").and_then(|v| v.as_str()).unwrap_or("");
     if format != SAVE_FORMAT {
         return Err(SaveError::UnsupportedFormat {
             found: format.to_owned(),
@@ -255,12 +263,18 @@ pub fn parse_world_save(value: serde_json::Value) -> Result<WorldSave, SaveError
     let mut parsed_chunks = Vec::with_capacity(chunks.len());
     for (index, chunk_value) in chunks.iter().enumerate() {
         let chunk = parse_chunk(chunk_value, index)?;
-        let key = chunk_key(ChunkCoord { cx: chunk.cx, cy: chunk.cy })
-            .map_err(|_| SaveError::InvalidColumn {
-                detail: format!("chunk ({}, {}) out of grid range", chunk.cx, chunk.cy),
-            })?;
+        let key = chunk_key(ChunkCoord {
+            cx: chunk.cx,
+            cy: chunk.cy,
+        })
+        .map_err(|_| SaveError::InvalidColumn {
+            detail: format!("chunk ({}, {}) out of grid range", chunk.cx, chunk.cy),
+        })?;
         if !seen_chunks.insert(key) {
-            return Err(SaveError::DuplicateChunk { cx: chunk.cx, cy: chunk.cy });
+            return Err(SaveError::DuplicateChunk {
+                cx: chunk.cx,
+                cy: chunk.cy,
+            });
         }
         parsed_chunks.push(chunk);
     }
@@ -275,9 +289,11 @@ pub fn parse_world_save(value: serde_json::Value) -> Result<WorldSave, SaveError
 }
 
 fn parse_chunk(value: &serde_json::Value, index: usize) -> Result<SavedChunk, SaveError> {
-    let obj = value.as_object().ok_or_else(|| SaveError::InvalidStructure {
-        detail: format!("chunk {index} must be an object"),
-    })?;
+    let obj = value
+        .as_object()
+        .ok_or_else(|| SaveError::InvalidStructure {
+            detail: format!("chunk {index} must be an object"),
+        })?;
 
     let cx = obj
         .get("cx")
@@ -319,12 +335,12 @@ fn parse_columns(
     cx: i32,
     cy: i32,
 ) -> Result<Vec<SavedColumn>, SaveError> {
-    let values = obj
-        .get(key)
-        .and_then(|v| v.as_array())
-        .ok_or_else(|| SaveError::InvalidStructure {
-            detail: format!("chunk ({cx},{cy}) {key} must be an array"),
-        })?;
+    let values =
+        obj.get(key)
+            .and_then(|v| v.as_array())
+            .ok_or_else(|| SaveError::InvalidStructure {
+                detail: format!("chunk ({cx},{cy}) {key} must be an array"),
+            })?;
     let mut columns = Vec::with_capacity(values.len());
     for (index, column_value) in values.iter().enumerate() {
         let column = parse_column(column_value, cx, cy, index)?;
@@ -393,14 +409,12 @@ fn parse_blocks(
     cy: i32,
     column_index: usize,
 ) -> Result<Vec<SavedBlock>, SaveError> {
-    let values = obj
-        .get(key)
-        .and_then(|v| v.as_array())
-        .ok_or_else(|| SaveError::InvalidColumn {
-            detail: format!(
-                "chunk ({cx},{cy}) column {column_index} {key} must be an array"
-            ),
-        })?;
+    let values =
+        obj.get(key)
+            .and_then(|v| v.as_array())
+            .ok_or_else(|| SaveError::InvalidColumn {
+                detail: format!("chunk ({cx},{cy}) column {column_index} {key} must be an array"),
+            })?;
     let mut blocks = Vec::with_capacity(values.len());
     for (index, block_value) in values.iter().enumerate() {
         let block = parse_block(block_value, cx, cy, column_index, index)?;
@@ -451,11 +465,14 @@ fn parse_block(
                 detail: format!(
                     "chunk ({cx},{cy}) column {column_index} block {block_index} unknown material '{other}'"
                 ),
-            })
+            });
         }
     };
 
-    Ok(SavedBlock { elevation, material })
+    Ok(SavedBlock {
+        elevation,
+        material,
+    })
 }
 
 fn parse_entities(
@@ -464,12 +481,12 @@ fn parse_entities(
     cx: i32,
     cy: i32,
 ) -> Result<Vec<SavedEntity>, SaveError> {
-    let values = obj
-        .get(key)
-        .and_then(|v| v.as_array())
-        .ok_or_else(|| SaveError::InvalidStructure {
-            detail: format!("chunk ({cx},{cy}) {key} must be an array"),
-        })?;
+    let values =
+        obj.get(key)
+            .and_then(|v| v.as_array())
+            .ok_or_else(|| SaveError::InvalidStructure {
+                detail: format!("chunk ({cx},{cy}) {key} must be an array"),
+            })?;
     let mut entities = Vec::with_capacity(values.len());
     for (index, entity_value) in values.iter().enumerate() {
         let entity = parse_entity(entity_value, cx, cy, index)?;
@@ -492,11 +509,15 @@ fn parse_entity(
         .get("instanceId")
         .and_then(|v| v.as_str())
         .ok_or_else(|| SaveError::InvalidEntity {
-            detail: format!("chunk ({cx},{cy}) entity {index} instanceId must be a non-empty string"),
+            detail: format!(
+                "chunk ({cx},{cy}) entity {index} instanceId must be a non-empty string"
+            ),
         })?;
     if instance_id.is_empty() {
         return Err(SaveError::InvalidEntity {
-            detail: format!("chunk ({cx},{cy}) entity {index} instanceId must be a non-empty string"),
+            detail: format!(
+                "chunk ({cx},{cy}) entity {index} instanceId must be a non-empty string"
+            ),
         });
     }
 
@@ -504,11 +525,15 @@ fn parse_entity(
         .get("blueprintId")
         .and_then(|v| v.as_str())
         .ok_or_else(|| SaveError::InvalidEntity {
-            detail: format!("chunk ({cx},{cy}) entity {index} blueprintId must be a non-empty string"),
+            detail: format!(
+                "chunk ({cx},{cy}) entity {index} blueprintId must be a non-empty string"
+            ),
         })?;
     if blueprint_id.is_empty() {
         return Err(SaveError::InvalidEntity {
-            detail: format!("chunk ({cx},{cy}) entity {index} blueprintId must be a non-empty string"),
+            detail: format!(
+                "chunk ({cx},{cy}) entity {index} blueprintId must be a non-empty string"
+            ),
         });
     }
 
@@ -608,7 +633,10 @@ mod tests {
             .unwrap();
         let first_block = first.columns[0].blocks[0].material;
         let _ = first_block;
-        assert_eq!(archive.get(-1, 2).unwrap().columns[0].blocks[0].material, TerrainMaterial::Ground);
+        assert_eq!(
+            archive.get(-1, 2).unwrap().columns[0].blocks[0].material,
+            TerrainMaterial::Ground
+        );
         let again = archive.get_or_generate(-1, 2, |_, _| chunk(0, 0)).unwrap();
         assert_eq!(again.entities[0].instance_id, "tree-1");
         assert_eq!(calls, 1);
@@ -617,15 +645,19 @@ mod tests {
             serde_json::json!({ "x": 3, "y": 4, "inventory": ["axe"] }),
             serde_json::json!({ "clock": { "tick": 42 } }),
         );
-        let mut reopened = ChunkArchive::restore(&parse_world_save(save_value(saved.clone())).unwrap());
+        let mut reopened =
+            ChunkArchive::restore(&parse_world_save(save_value(saved.clone())).unwrap());
         assert_eq!(reopened.get(-1, 2), Some(chunk(-1, 2)));
         assert_eq!(reopened.get(0, 0), None);
+        assert_eq!(reopened.get_or_generate(0, 0, chunk).unwrap(), chunk(0, 0));
         assert_eq!(
-            reopened.get_or_generate(0, 0, chunk).unwrap(),
-            chunk(0, 0)
+            saved.player,
+            serde_json::json!({ "x": 3, "y": 4, "inventory": ["axe"] })
         );
-        assert_eq!(saved.player, serde_json::json!({ "x": 3, "y": 4, "inventory": ["axe"] }));
-        assert_eq!(saved.systems, serde_json::json!({ "clock": { "tick": 42 } }));
+        assert_eq!(
+            saved.systems,
+            serde_json::json!({ "clock": { "tick": 42 } })
+        );
     }
 
     #[test]
@@ -728,12 +760,19 @@ mod tests {
         let chunk_obj = obj.get_mut("chunks").unwrap().as_array_mut().unwrap()[0]
             .as_object_mut()
             .unwrap();
-        let blocks = chunk_obj.get_mut("columns").unwrap().as_array_mut().unwrap()[0]
+        let blocks = chunk_obj
+            .get_mut("columns")
+            .unwrap()
+            .as_array_mut()
+            .unwrap()[0]
             .get_mut("blocks")
             .unwrap()
             .as_array_mut()
             .unwrap();
-        blocks[0].as_object_mut().unwrap().insert("material".to_owned(), serde_json::json!("lava"));
+        blocks[0]
+            .as_object_mut()
+            .unwrap()
+            .insert("material".to_owned(), serde_json::json!("lava"));
         let value = serde_json::Value::Object(obj.clone());
         assert!(matches!(
             parse_world_save(value).unwrap_err(),
@@ -803,10 +842,22 @@ mod tests {
             y: -3,
             walkable: true,
             blocks: vec![
-                SavedBlock { elevation: -3, material: TerrainMaterial::Ground },
-                SavedBlock { elevation: -2, material: TerrainMaterial::Ground },
-                SavedBlock { elevation: -1, material: TerrainMaterial::Ground },
-                SavedBlock { elevation: 0, material: TerrainMaterial::Grass },
+                SavedBlock {
+                    elevation: -3,
+                    material: TerrainMaterial::Ground,
+                },
+                SavedBlock {
+                    elevation: -2,
+                    material: TerrainMaterial::Ground,
+                },
+                SavedBlock {
+                    elevation: -1,
+                    material: TerrainMaterial::Ground,
+                },
+                SavedBlock {
+                    elevation: 0,
+                    material: TerrainMaterial::Grass,
+                },
             ],
         };
         assert_eq!(
@@ -819,7 +870,6 @@ mod tests {
             }
         );
     }
-
 }
 
 #[cfg(test)]

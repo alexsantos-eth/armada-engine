@@ -42,7 +42,10 @@ mod tests {
             let ink = entry
                 .ink
                 .unwrap_or_else(|| panic!("{source} was never measured; re-run remeasure_atlas"));
-            assert!(ink.width > 0.5, "{source} is narrower than half a tile: {ink:?}");
+            assert!(
+                ink.width > 0.5,
+                "{source} is narrower than half a tile: {ink:?}"
+            );
             assert!(
                 ink.y < 0.0 && ink.y + ink.height > 0.0,
                 "{source} does not straddle the ground it stands on: {ink:?}"

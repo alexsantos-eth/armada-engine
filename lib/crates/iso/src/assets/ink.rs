@@ -50,7 +50,6 @@ impl InkBox {
             height: self.height * by,
         }
     }
-
 }
 
 /// Measures the artwork in `svg`, or `None` if it is not one asset drawn in the template.

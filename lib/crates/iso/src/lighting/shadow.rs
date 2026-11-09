@@ -97,12 +97,7 @@ pub fn silhouette_matrix(
 }
 
 /// How far down the shadow a plane `lift` blocks below the caster's own ground moves it, in
-pub fn lift_reach(
-    light: &ShadowProjection,
-    lift: f64,
-    tile_width: f64,
-    box_height: f64,
-) -> f64 {
+pub fn lift_reach(light: &ShadowProjection, lift: f64, tile_width: f64, box_height: f64) -> f64 {
     light.stretch * lift * box_height * tiles_per_pixel_of_height(tile_width)
 }
 

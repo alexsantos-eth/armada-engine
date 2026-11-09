@@ -6,7 +6,13 @@ pub enum UiEvent {
     /// Show a text message.
     Message { text: String },
     /// Update the HUD with the player's state.
-    HudUpdate { x: f64, y: f64, elevation: i32, motion: String, chunks: usize },
+    HudUpdate {
+        x: f64,
+        y: f64,
+        elevation: i32,
+        motion: String,
+        chunks: usize,
+    },
     /// A chunk was discovered.
     ChunkDiscovered { cx: i32, cy: i32 },
 }

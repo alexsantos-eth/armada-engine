@@ -27,10 +27,7 @@ fn keeps_neighbour_order_and_contract_tie_fixture() {
         |_| 0.0,
     )
     .unwrap();
-    let fixture: Value = serde_json::from_str(include_str!(
-        "../../tests/contracts.json"
-    ))
-    .unwrap();
+    let fixture: Value = serde_json::from_str(include_str!("../../tests/contracts.json")).unwrap();
     let expected: Vec<_> = fixture["path"]
         .as_array()
         .unwrap()

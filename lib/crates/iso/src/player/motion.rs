@@ -57,15 +57,17 @@ const AIR: &[(PlayerMotionEvent, PlayerMotionType)] = &[
 ];
 
 /// A jump press while already airborne keeps the player jumping or flying.
-const AIR_JUMP: &[(PlayerMotionEvent, PlayerMotionType)] = &[
-    (PlayerMotionEvent::Jump, PlayerMotionType::Jumping),
-];
+const AIR_JUMP: &[(PlayerMotionEvent, PlayerMotionType)] =
+    &[(PlayerMotionEvent::Jump, PlayerMotionType::Jumping)];
 
 /// Transitions out of climbing.
 const CLIMBING: &[(PlayerMotionEvent, PlayerMotionType)] = &[
     (PlayerMotionEvent::ClimbTick, PlayerMotionType::Climbing),
     (PlayerMotionEvent::ClimbDoneIdle, PlayerMotionType::Idle),
-    (PlayerMotionEvent::ClimbDoneWalking, PlayerMotionType::Walking),
+    (
+        PlayerMotionEvent::ClimbDoneWalking,
+        PlayerMotionType::Walking,
+    ),
 ];
 
 /// Finds the next state for `event` in `transitions`, or `None` when the event is not handled.

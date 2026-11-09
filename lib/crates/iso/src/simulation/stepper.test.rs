@@ -3,10 +3,7 @@ use serde_json::Value;
 
 #[test]
 fn matches_contract_frame_fixture() {
-    let fixture: Value = serde_json::from_str(include_str!(
-        "../../tests/contracts.json"
-    ))
-    .unwrap();
+    let fixture: Value = serde_json::from_str(include_str!("../../tests/contracts.json")).unwrap();
     let sample = &fixture["stepper"];
     let mut stepper = FixedStepper::default();
     assert_eq!(stepper.step_ms, sample["stepMs"].as_f64().unwrap());

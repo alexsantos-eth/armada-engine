@@ -108,10 +108,7 @@ pub fn reflection_cells(
             .ok()
             .map(|to| to.min(from.saturating_add(MAX_REFLECTION_CELLS)))
     };
-    Some((
-        (min_x, min_y),
-        (high(max_x, min_x)?, high(max_y, min_y)?),
-    ))
+    Some(((min_x, min_y), (high(max_x, min_x)?, high(max_y, min_y)?)))
 }
 
 /// One cell's share of a reflection: where it is on screen and what it reads of the artwork.

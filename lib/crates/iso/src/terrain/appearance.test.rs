@@ -52,7 +52,11 @@ fn a_zone_index_stays_inside_the_palette() {
     assert_eq!(zone_index(0.0, 5), 0);
     assert_eq!(zone_index(0.19, 5), 0);
     assert_eq!(zone_index(0.5, 5), 2);
-    assert_eq!(zone_index(1.0, 5), 4, "the top of the range is the last zone");
+    assert_eq!(
+        zone_index(1.0, 5),
+        4,
+        "the top of the range is the last zone"
+    );
     assert_eq!(zone_index(0.5, 1), 0);
 }
 
@@ -78,7 +82,10 @@ fn the_middle_zone_is_the_common_one_and_the_extremes_are_accents() {
     let mut counts = [0usize; 5];
     for (x, y) in columns(200) {
         let color = zones.at(x, y);
-        counts[GRASS.iter().position(|c| *c == color).expect("a palette colour")] += 1;
+        counts[GRASS
+            .iter()
+            .position(|c| *c == color)
+            .expect("a palette colour")] += 1;
     }
     let share = counts.map(|count| count as f64 / 40_000.0);
     assert!(share[2] > 0.25 && share[2] < 0.40, "middle: {:?}", share);
@@ -179,7 +186,10 @@ fn the_variants_come_in_clumps_of_one_kind() {
         "only {together} of a dressed column's neighbours were dressed: that is sprinkled, not clumped"
     );
     let agree = f64::from(neighbour_same) / f64::from(neighbour_dressed);
-    assert!(agree > 0.8, "neighbouring tops agreed only {agree} of the time");
+    assert!(
+        agree > 0.8,
+        "neighbouring tops agreed only {agree} of the time"
+    );
 }
 
 /// The scatter is what keeps a clump from being a solid blob of flowers.
@@ -189,7 +199,9 @@ fn a_clump_is_scattered_rather_than_solid() {
     let patched = columns(300)
         .filter(|(x, y)| picker.patches.sample(*x, *y) > picker.patch_above)
         .count();
-    let dressed = columns(300).filter(|(x, y)| picker.pick(*x, *y).is_some()).count();
+    let dressed = columns(300)
+        .filter(|(x, y)| picker.pick(*x, *y).is_some())
+        .count();
     let fill = dressed as f64 / patched as f64;
     assert!(
         (fill - VARIANT_PATCH_FILL).abs() < 0.05,
@@ -201,7 +213,9 @@ fn a_clump_is_scattered_rather_than_solid() {
 #[test]
 fn one_variant_asked_for_everything_fills_every_clump() {
     let picker = VariantPicker::new(SEED, "terrain-variants:grass", &[1.0]).expect("a picker");
-    let dressed = columns(200).filter(|(x, y)| picker.pick(*x, *y) == Some(0)).count();
+    let dressed = columns(200)
+        .filter(|(x, y)| picker.pick(*x, *y) == Some(0))
+        .count();
     let share = dressed as f64 / 40_000.0;
     assert!(
         (share - VARIANT_PATCH_FILL).abs() < 0.02,
@@ -212,8 +226,8 @@ fn one_variant_asked_for_everything_fills_every_clump() {
 /// A chance of zero is a variant that is off, not one that quietly shows anyway.
 #[test]
 fn a_variant_with_no_chance_never_shows() {
-    let picker = VariantPicker::new(SEED, "terrain-variants:grass", &[0.1, 0.0, 0.1])
-        .expect("a picker");
+    let picker =
+        VariantPicker::new(SEED, "terrain-variants:grass", &[0.1, 0.0, 0.1]).expect("a picker");
     assert!(columns(300).all(|(x, y)| picker.pick(x, y) != Some(1)));
     assert!(columns(300).any(|(x, y)| picker.pick(x, y) == Some(0)));
     assert!(columns(300).any(|(x, y)| picker.pick(x, y) == Some(2)));

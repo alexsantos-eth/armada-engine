@@ -19,7 +19,12 @@ fn reads_the_grid_of_a_numbered_sheet() {
     assert!(grid.poses.is_empty());
     assert_eq!(
         grid.cell,
-        SheetCell { x: 313.0, y: 271.0, width: 398.0, height: 399.0 }
+        SheetCell {
+            x: 313.0,
+            y: 271.0,
+            width: 398.0,
+            height: 399.0
+        }
     );
 }
 
@@ -45,8 +50,16 @@ fn places_every_cell_by_the_window_it_shows() {
     assert!((ink.y - (271.0 - 341.0 - 256.0) / 1024.0).abs() < 1e-9);
     assert!((ink.width - 398.0 / 1024.0).abs() < 1e-9);
     assert!((ink.height - 399.0 / 1024.0).abs() < 1e-9);
-    let figure = InkBox { x: -0.128125, y: -0.278809, width: 0.263086, height: 0.33291 };
-    assert!(ink.x <= figure.x, "the window reaches past the figure on the left");
+    let figure = InkBox {
+        x: -0.128125,
+        y: -0.278809,
+        width: 0.263086,
+        height: 0.33291,
+    };
+    assert!(
+        ink.x <= figure.x,
+        "the window reaches past the figure on the left"
+    );
     assert!(ink.y <= figure.y, "and above it");
     assert!(ink.x + ink.width >= figure.x + figure.width);
     assert!(ink.y + ink.height >= figure.y + figure.height);
@@ -74,7 +87,11 @@ fn reads_the_real_sheets() {
             assert_eq!(grid.poses.len(), poses, "{directory}/{file}");
             assert_eq!(grid.rows(), rows, "{directory}/{file}");
             let shared = *window.get_or_insert(grid.ink());
-            assert_eq!(grid.ink(), shared, "{directory}/{file} shows the same window");
+            assert_eq!(
+                grid.ink(),
+                shared,
+                "{directory}/{file} shows the same window"
+            );
             assert_eq!(grid.facings[0], "east", "counter-clockwise from east");
         }
     }
@@ -93,7 +110,11 @@ fn the_wider_window_holds_the_narrower_one() {
         read("../../assets-src/assets/player/walk.svg"),
     );
     assert!(wide.x <= narrow.x && wide.x + wide.width >= narrow.x + narrow.width);
-    assert_eq!((wide.y, wide.height), (narrow.y, narrow.height), "same rows");
+    assert_eq!(
+        (wide.y, wide.height),
+        (narrow.y, narrow.height),
+        "same rows"
+    );
     assert!(
         (wide.x + wide.width / 2.0 - (narrow.x + narrow.width / 2.0)).abs() < 1e-9,
         "widened evenly, so the figure does not shift"
@@ -108,7 +129,10 @@ fn rejects_what_is_not_a_sheet() {
     ))
     .expect("the still figure");
     assert!(parse_sheet(&block).is_none(), "one drawing, not a sheet");
-    assert!(parse_sheet(r#"<svg data-frames="9"/>"#).is_none(), "no cell");
+    assert!(
+        parse_sheet(r#"<svg data-frames="9"/>"#).is_none(),
+        "no cell"
+    );
     assert!(
         parse_sheet(r#"<svg data-cell="0 0 10 10" data-frames="9"/>"#).is_none(),
         "no facings"
