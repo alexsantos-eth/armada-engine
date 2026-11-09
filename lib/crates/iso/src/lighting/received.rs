@@ -1,37 +1,14 @@
 //! The shadows one sprite receives from the others, as a grid over its own artwork.
-//!
-//! A shadow falling on the ground is a map ([`super::bake`]); a shadow falling on something
-//! standing up is not, because the thing it lands on is an upright cut-out with its own
-//! silhouette and the shadow has to stop where that silhouette does. The TypeScript client
-//! solves it with a render texture per receiver, masked by the receiver's own alpha
-//! (`core/engine/shadows/received-shadow.ts`), and for the player — which moves, so nothing
-//! about it can be baked — with a grid of coverage samples the player's view then shades its
-//! sprite by (`receiveShadowGrid`).
-//!
-//! This client uses the grid for both. A grid needs no texture, no mask and no render target:
-//! the sprite is drawn as a small lattice of quads instead of one, each corner carrying how dark
-//! it is there, and the sprite's own pixels mask the shading for free because the shading *is*
-//! the sprite, drawn darker. Entities never move, so their grids are baked with the chunk; the
-//! player's is sampled again each frame, which is one grid.
-//!
-//! The grid's cost is its resolution: a shadow edge crossing a receiver lands between two
-//! corners and is smoothed across the quad between them. At the sizes these sprites are drawn,
-//! soft is what dawn's shadows look like anyway.
 
 use super::bake::{ShadowCaster, SpriteExtent};
 use super::shadow::{ShadowProjection, cast_shadow_offset};
 use super::terrain::{HeightField, ShadowPoint, receiver_point};
 
 /// Corners across a receiver's artwork, and down it.
-///
-/// The TypeScript client samples the player at 8 × 16 (`receiveShadowGrid`), so its lattice is
-/// eight quads across and sixteen down; these are the corners of that same lattice.
 pub const SHADE_COLUMNS: u32 = 8;
 pub const SHADE_ROWS: u32 = 16;
 
 /// What shades one sprite: how dark each corner of a lattice over its artwork is, in `[0, 1]`.
-///
-/// Stored row by row from the artwork's top left corner, `(columns + 1) × (rows + 1)` values.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ShadeGrid {
     columns: u32,
@@ -73,19 +50,6 @@ pub struct ShadowReceiver {
 }
 
 /// The shadows `casters` and the ground cast on `receiver`, as a lattice of `columns` × `rows`
-/// quads.
-///
-/// Coverage is the largest any one caster contributes, as on the ground: two shadows crossing a
-/// trunk read as one. `opacity` is the phase's own ([`super::PhaseLight::opacity`]), applied
-/// here so the client has nothing left to scale.
-///
-/// `ground` is the shadow the terrain itself casts. A sprite is an upright cut-out facing the
-/// sun, so each corner of the lattice is a real place in the world
-/// ([`receiver_point`]) and the ground's horizon is asked about it at its own height: that is
-/// how a tree standing in a cliff's shadow comes out dark at the trunk and lit at the crown.
-///
-/// `None` when nothing reaches it, which is the common case and the one worth not allocating
-/// for.
 #[allow(clippy::too_many_arguments)]
 pub fn shade_grid(
     receiver: &ShadowReceiver,
@@ -103,8 +67,6 @@ pub fn shade_grid(
     if extent.width <= 0.0 || extent.height <= 0.0 {
         return None;
     }
-    // Where each caster's silhouette lands on this receiver, in screen pixels relative to the
-    // receiver's own ground point, plus how much of it stands above its own foot.
     let placed: Vec<(u32, SpriteExtent, f64)> = casters
         .iter()
         .filter_map(|caster| {
@@ -126,7 +88,6 @@ pub fn shade_grid(
                 width: caster.extent.width,
                 height: caster.extent.height,
             };
-            // Nowhere near it: the whole silhouette misses the receiver's rectangle.
             if at.left > extent.left + extent.width
                 || at.left + at.width < extent.left
                 || at.top > extent.top + extent.height
@@ -173,14 +134,6 @@ pub fn shade_grid(
 }
 
 /// How shaded one point of the world is, by the casters around it and by the ground.
-///
-/// The lattice over a sprite ([`shade_grid`]) is this question asked over a rectangle of
-/// artwork; a vertical face of ground has no artwork, only real points, so it asks directly.
-/// The answer is coverage in `[0, 1]` before the phase's opacity.
-///
-/// Each caster is the same upright cut-out it is everywhere else: the ray from `point` back to
-/// the sun meets its silhouette at one place, which is where its own foot's shadow would have
-/// to move to land on this point.
 pub fn shaded_at(
     point: ShadowPoint,
     casters: &[ShadowCaster],
@@ -206,8 +159,6 @@ pub fn shaded_at(
         ) else {
             continue;
         };
-        // The point itself is the receiver's own ground point, so the silhouette has landed on
-        // it when its placed rectangle contains the origin.
         let u = -(caster.extent.left + x) / caster.extent.width;
         let v = -(caster.extent.top + y) / caster.extent.height;
         if !(0.0..=1.0).contains(&u) || v < 0.0 || v > above_foot / caster.extent.height {

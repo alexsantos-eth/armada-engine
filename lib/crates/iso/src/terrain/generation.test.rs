@@ -115,7 +115,6 @@ fn config_rejects_invalid_height_and_noise_ranges() {
 }
 
 /// The elevation of a column is its raw height: the beach is one block of sand everywhere, so no
-/// two neighbours end up more than a block apart.
 #[test]
 fn columns_stand_on_the_raw_height_field() {
     let generator = TerrainGenerator::new(TerrainConfig::default()).unwrap();

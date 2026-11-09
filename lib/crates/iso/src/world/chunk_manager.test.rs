@@ -48,7 +48,6 @@
         manager.set_focus(vec![ChunkCoord { cx: 0, cy: 0 }]);
         let discovered = manager.tick();
         assert!(!discovered.is_empty());
-        // The first discovered chunk is immediately visible.
         assert!(manager.visible_chunks().contains(&discovered[0]));
         assert!(manager.is_visible(discovered[0]));
         assert!(!manager.is_visible(ChunkCoord { cx: 9, cy: 9 }));
@@ -58,7 +57,6 @@
     fn respects_load_budget_one_chunk_per_frame() {
         let mut manager = ChunkManager::new(generator(), catalog());
         manager.set_focus(vec![ChunkCoord { cx: 0, cy: 0 }]);
-        // Many chunks are wanted but only one is loaded per frame.
         let first = manager.tick();
         let second = manager.tick();
         assert_eq!(first.len(), 1);
@@ -83,7 +81,6 @@
         manager.set_focus(vec![ChunkCoord { cx: 0, cy: 0 }]);
         manager.tick();
         manager.set_focus(vec![ChunkCoord { cx: 10, cy: 10 }]);
-        // Hide up to CHUNKS_HIDDEN_PER_FRAME per frame; repeat until origin is hidden.
         for _ in 0..10 {
             manager.tick();
             if !manager.visible_chunks().contains(&ChunkCoord { cx: 0, cy: 0 }) {
@@ -91,7 +88,6 @@
             }
         }
         assert!(!manager.visible_chunks().contains(&ChunkCoord { cx: 0, cy: 0 }));
-        // Discovery is not undone by hiding.
         assert!(manager.discovered_count() > 0);
     }
 
@@ -100,8 +96,6 @@
         let mut manager = ChunkManager::new(generator(), catalog());
         manager.set_focus(vec![ChunkCoord { cx: 0, cy: 0 }]);
         manager.tick();
-        // The origin chunk may or may not have grass; placement must run without panicking and
-        // store something (maybe empty) for the chunk.
         let _ = manager.entities_chunk(ChunkCoord { cx: 0, cy: 0 });
     }
 
@@ -112,11 +106,9 @@
         manager.tick();
         manager.tick();
 
-        // Save discovered chunks.
         let saved = manager.save_all();
         assert!(!saved.is_empty());
 
-        // Build an archive and restore into a fresh manager.
         let mut archive = crate::world::save::ChunkArchive::new();
         for chunk in saved {
             archive.put(chunk);
@@ -129,12 +121,10 @@
         let mut restored = ChunkManager::new(generator(), catalog());
         assert!(restored.load_from_save(&save).is_empty());
 
-        // Discovered count should match.
         assert_eq!(restored.discovered_count(), manager.discovered_count());
     }
 
     /// Streaming reaches past the load radius so the ground is generated before the camera gets
-    /// there, which is what `CHUNK_PREFETCH_RADIUS` is for.
     #[test]
     fn loads_ahead_up_to_the_prefetch_radius() {
         let mut manager = ChunkManager::new(generator(), catalog());
@@ -144,14 +134,12 @@
             manager.tick();
         }
         assert_eq!(manager.discovered_count(), wanted as usize);
-        // A chunk loaded ahead exists but is not drawn until it comes within the load radius.
         let ahead = ChunkCoord { cx: CHUNK_PREFETCH_RADIUS, cy: 0 };
         assert!(manager.is_discovered(ahead));
         assert!(!manager.visible_chunks().contains(&ahead));
     }
 
     /// The nearest missing chunk is always generated first, so the ground under the camera never
-    /// waits behind one loaded ahead of it.
     #[test]
     fn loads_the_nearest_missing_chunk_first() {
         let mut manager = ChunkManager::new(generator(), catalog());
@@ -199,7 +187,6 @@
     }
 
     /// The client asks for one candidate a frame, so it uses the allocation-free form; it has
-    /// to agree with the list, including when a focus moves and the distances change.
     #[test]
     fn the_next_candidate_is_the_first_of_the_list() {
         let mut manager = ChunkManager::new(generator(), catalog());
@@ -223,7 +210,6 @@
     }
 
     /// A chunk kept near a focus is never offered for unloading, which is the hysteresis that
-    /// stops a focus crossing a chunk edge from unloading and regenerating the same ground.
     #[test]
     fn chunks_within_the_keep_radius_are_never_unload_candidates() {
         let mut manager = ChunkManager::new(generator(), catalog());
@@ -238,7 +224,6 @@
     }
 
     /// Unloading then restoring from the archive must give back the same ground, which is the
-    /// whole point of persisting a chunk before dropping it.
     #[test]
     fn an_unloaded_chunk_comes_back_unchanged_from_its_archive() {
         let mut manager = ChunkManager::new(generator(), catalog());
@@ -262,7 +247,6 @@
     }
 
     /// Saved terrain has to win over generated terrain, or restoring a save over a chunk the
-    /// generator already touched would silently throw the save away.
     #[test]
     fn a_save_replaces_terrain_the_generator_already_produced() {
         let mut manager = ChunkManager::new(generator(), catalog());
@@ -314,7 +298,6 @@
     }
 
     /// An entity's colour variation and metadata have to survive a save, because the restore
-    /// path reads them back out of the saved state.
     #[test]
     fn entity_state_survives_a_save_round_trip() {
         let mut manager = ChunkManager::new(generator(), catalog());
@@ -350,7 +333,6 @@
     }
 
     /// A client that draws a small view can stream less than the shared defaults, and then no
-    /// chunk is discovered past the radius it asked for.
     #[test]
     fn streams_only_as_far_as_the_requested_radii() {
         let radii = ChunkRadii { load: 1, prefetch: 1, keep: 2 };
@@ -365,7 +347,6 @@
     }
 
     /// Whatever a client asks for, the radii still grow outwards: a keep radius under the
-    /// prefetch radius would unload a chunk the streamer is still asking for every frame.
     #[test]
     fn radii_are_clamped_so_they_grow_outwards() {
         assert_eq!(

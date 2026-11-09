@@ -60,7 +60,6 @@ pub fn needs_cull(
 }
 
 /// Chunks intersecting the view, including raised terrain/entities and low water.
-/// Results are nearest the camera first, then by `cy` and `cx`.
 pub fn visible_chunks(
     camera: Camera,
     viewport: ScreenSize,

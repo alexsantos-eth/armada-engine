@@ -1,8 +1,4 @@
 //! Player locomotion physics, independent of rendering and of the world's storage.
-//!
-//! Mirrors `engine/player/player.ts` in the TypeScript game. The machine of motion states
-//! already lives in `motion`; this module holds the deterministic step, the constants and
-//! the helpers the view and the simulation use.
 
 use crate::time::TICKS_PER_SECOND;
 use crate::grid::{ChunkCoord, WorldCoord, WorldRect};
@@ -10,9 +6,6 @@ use crate::player::motion::{PlayerMotionEvent, PlayerMotionType, transition_play
 use crate::projection::GridPoint;
 use crate::terrain::{TerrainColumn, TerrainMaterial};
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
 
 /// Walking speed of the player, in columns per second of simulation.
 pub const PLAYER_SPEED: f64 = 3.0;
@@ -83,12 +76,6 @@ pub const PLAYER_APEX_SPEED: f64 = PLAYER_GRAVITY;
 /// Key of the player part.
 pub const PLAYER_PART_ID: &str = "player";
 /// The facings the player is drawn in: the sixteen points of the compass, counter-clockwise on
-/// screen from east, which are the rows of its sheets of poses.
-///
-/// Eight of them turned the figure 45° from one row to the next, which reads as a snap as it
-/// turns; sixteen halve that. The sheets this client draws from (`web/public/assets/player-16/`)
-/// have one row per name here and in this order. The Pixi client keeps eight-row sheets of its
-/// own, because it loads a sheet as one texture and sixteen rows would double it.
 pub const PLAYER_FACINGS: [&str; 16] = [
     "east",
     "east-north-east",
@@ -113,9 +100,6 @@ pub const PLAYER_SPAWN_RADIUS: i32 = 32;
 const LANDING: f64 = 1e-9;
 
 
-// ---------------------------------------------------------------------------
-// Helper math
-// ---------------------------------------------------------------------------
 
 /// Height of the feet above flat ground `tick` ticks into a jump.
 pub fn get_jump_height(tick: f64) -> f64 {
@@ -138,9 +122,6 @@ pub fn get_climb_advance(progress: f64) -> f64 {
     harmonic((progress - PLAYER_CLIMB_RISE_SHARE) / (1.0 - PLAYER_CLIMB_RISE_SHARE))
 }
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 /// Why a requested walking step could not advance.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -159,7 +140,6 @@ pub struct PlayerObstacle {
     pub height: Option<f64>,
     pub elevation: Option<f64>,
     /// Side of the square it blocks, as a fraction of the block, precomputed for the column
-    /// the obstacle stands on. Without it, the whole block blocks.
     pub collision_at: Option<f64>,
 }
 
@@ -261,9 +241,6 @@ pub trait PlayerGround {
     fn load_around(&mut self, _point: GridPoint) {}
 }
 
-// ---------------------------------------------------------------------------
-// Basic helpers
-// ---------------------------------------------------------------------------
 
 /// Column the ground point `point` belongs to.
 pub fn get_player_column(point: GridPoint) -> WorldCoord {
@@ -293,7 +270,6 @@ pub fn can_stand_on<G: PlayerGround>(ground: &G, x: i32, y: i32, from_elevation:
             if side <= 0.0 {
                 return true;
             }
-            // elevated obstacle leaves enough room
             occ.elevation
                 .map(|e| e >= column.elevation as f64 + PLAYER_BODY_HEIGHT - LANDING)
                 .unwrap_or(false)
@@ -422,9 +398,6 @@ fn elevation_at<G: PlayerGround>(ground: &G, point: GridPoint) -> f64 {
     ground.column_at(x, y).map(|c| c.elevation as f64).unwrap_or(0.0)
 }
 
-// ---------------------------------------------------------------------------
-// Spawn
-// ---------------------------------------------------------------------------
 
 pub fn find_player_spawn<G: PlayerGround>(ground: &G, centre: GridPoint) -> PlayerPosition {
     let distance = |column: &TerrainColumn| -> f64 {
@@ -526,9 +499,6 @@ pub fn create_player<G: PlayerGround>(ground: &G, at: GridPoint) -> PlayerState 
     }
 }
 
-// ---------------------------------------------------------------------------
-// Walk direction and facing
-// ---------------------------------------------------------------------------
 
 pub fn get_walk_direction(directions: &ScreenDirections) -> GridPoint {
     let across = if directions.right { 1.0 } else { 0.0 } - if directions.left { 1.0 } else { 0.0 };
@@ -557,9 +527,6 @@ pub fn get_player_facing(walk: GridPoint) -> Option<usize> {
     if across == 0.0 && up == 0.0 {
         return None;
     }
-    // The facings divide the turn evenly, so the nearest one is the angle over that step,
-    // rounded. Reading the step off the list rather than writing it out is what lets the number
-    // of facings change in one place.
     let step = std::f64::consts::TAU / PLAYER_FACINGS.len() as f64;
     let turn = (up.atan2(across) / step).round() as i32;
     Some(turn.rem_euclid(PLAYER_FACINGS.len() as i32) as usize)
@@ -602,9 +569,6 @@ pub fn cancel_player_jump(player: &mut PlayerState) {
     player.jump_held = false;
 }
 
-// ---------------------------------------------------------------------------
-// Internal physics helpers
-// ---------------------------------------------------------------------------
 
 fn approach_velocity(current: GridPoint, desired: GridPoint, rate: f64) -> GridPoint {
     let dx = desired.x - current.x;
@@ -860,7 +824,6 @@ fn step_once<G: PlayerGround>(
     let elevation = surface.map(|s| s.elevation as f64).unwrap_or(player.elevation);
     let rise = elevation - feet;
     if !airborne && rise > PLAYER_STEP_HEIGHT {
-        // start climb
         let length = (next.x - from.x).hypot(next.y - from.y);
         let direction = if length > 0.0 {
             GridPoint {
@@ -1036,18 +999,13 @@ fn is_flying(player: &PlayerState) -> bool {
     player.motion == PlayerMotionType::Flying || vs <= PLAYER_APEX_SPEED + LANDING
 }
 
-// ---------------------------------------------------------------------------
-// stepPlayer
-// ---------------------------------------------------------------------------
 
 pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ticks: u32) {
     for tick in 0..ticks {
-        // A climb is over the tick after its last one.
         if player.climb.as_ref().map(|c| c.tick >= c.ticks).unwrap_or(false) {
             player.climb = None;
         }
         let climb = player.climb.clone();
-        // Resting shortcut.
         let resting = player.walk.x == 0.0
             && player.walk.y == 0.0
             && player.velocity.x == 0.0
@@ -1077,7 +1035,6 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
             player.jump_buffer_ticks = 0;
             player.coyote_ticks = 0;
             player.velocity = GridPoint { x: 0.0, y: 0.0 };
-            // step climb
             climb.tick += 1;
             let progress = climb.tick as f64 / climb.ticks as f64;
             let advance = get_climb_advance(progress);
@@ -1180,9 +1137,6 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
     }
 }
 
-// ---------------------------------------------------------------------------
-// Jump phase
-// ---------------------------------------------------------------------------
 
 pub fn get_player_jump_phase(player: &PlayerState) -> PlayerJumpPhase {
     if player.climb.is_some() {
@@ -1215,9 +1169,6 @@ pub fn get_player_jump_phase(player: &PlayerState) -> PlayerJumpPhase {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Climb progress
-// ---------------------------------------------------------------------------
 
 pub fn get_player_climb_progress(player: &PlayerState, alpha: f64) -> Option<f64> {
     let climb = player.climb.as_ref()?;
@@ -1230,9 +1181,6 @@ pub fn get_player_climb_progress(player: &PlayerState, alpha: f64) -> Option<f64
     Some(progress)
 }
 
-// ---------------------------------------------------------------------------
-// Render position
-// ---------------------------------------------------------------------------
 
 pub fn get_player_render_position(player: &PlayerState, alpha: f64) -> PlayerRenderPosition {
     let t = if alpha.is_finite() {
@@ -1249,9 +1197,6 @@ pub fn get_player_render_position(player: &PlayerState, alpha: f64) -> PlayerRen
     }
 }
 
-// ---------------------------------------------------------------------------
-// Cells
-// ---------------------------------------------------------------------------
 
 pub fn get_player_cells(point: GridPoint) -> crate::grid::WorldRect {
     let min = get_player_column(GridPoint {
@@ -1270,9 +1215,6 @@ pub fn get_player_cells(point: GridPoint) -> crate::grid::WorldRect {
     }
 }
 
-// ---------------------------------------------------------------------------
-// canStandOn / fitsPlayerAt (public)
-// ---------------------------------------------------------------------------
 
 pub fn can_stand_on_public<G: PlayerGround>(ground: &G, x: i32, y: i32, from_elevation: f64) -> bool {
     can_stand_on(ground, x, y, from_elevation)
@@ -1282,9 +1224,6 @@ pub fn fits_player_at<G: PlayerGround>(ground: &G, point: GridPoint) -> bool {
     fits_at(ground, point, elevation_at(ground, point))
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
 
 #[cfg(test)]
 #[path = "physics.test.rs"]

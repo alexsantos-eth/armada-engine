@@ -1,22 +1,8 @@
 //! How the ground is dressed: the colour zones laid over it, and which top a column grows.
-//!
-//! Both are presentation, and both are decided by broad seeded noise rather than per column, so
-//! that what they produce reads as geography — a dry yellow meadow, a corner of darker lawn, a
-//! clump of flowers — instead of salt and pepper. Nothing here knows about sprites, textures or
-//! screens: a tint is a colour multiplier and a variant is an index into whatever list of looks
-//! the client resolved, which is why the rule lives in the domain and can be tested without a GPU.
-//!
-//! This is the port of the TypeScript client's `terrain-view/variants.ts` and the `noiseTints`
-//! half of `terrain-view/terrain-view.ts`, with the same content numbers (`content/terrain.ts`).
 
 use super::noise::{lattice_at, value_noise};
 
 /// A smooth field over the world, in `[0, 1]`, sampled at absolute column coordinates.
-///
-/// Absolute, so a column reads the same value whatever chunk asks for it and whatever order the
-/// chunks arrive in: a meadow runs across a chunk border without a seam, and a reloaded world
-/// looks the same. Each field takes its own stream from the world seed and a label
-/// ([`derive_seed`]), so adding one never moves what another already decided.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct NoiseField {
     seed: u64,
@@ -26,7 +12,6 @@ pub struct NoiseField {
 
 impl NoiseField {
     /// `scale` is about the width of a blob of the field, in columns; `detail` is the weight of a
-    /// second octave at twice the frequency, which frays the blobs' edges (`0.0` for none).
     pub fn new(seed: u64, label: &str, scale: f64, detail: f64) -> Self {
         Self {
             seed: derive_seed(seed, label),
@@ -42,15 +27,12 @@ impl NoiseField {
         if self.detail == 0.0 {
             return base;
         }
-        // Sampling at half the scale is sampling at twice the frequency, which is what the
-        // TypeScript field does with `noise(x * 2, y * 2)`.
         let fine = value_noise(self.seed, sx, sy, self.scale / 2.0);
         (base + self.detail * fine) / (1.0 + self.detail)
     }
 }
 
 /// A stream of its own for `label` in the world of `seed`: FNV-1a over the label, mixed into the
-/// seed. Two labels never share a stream, and a label keeps its stream across runs and platforms.
 pub fn derive_seed(seed: u64, label: &str) -> u64 {
     let mut value: u64 = 0xcbf2_9ce4_8422_2325;
     for byte in label.as_bytes() {
@@ -63,13 +45,6 @@ pub fn derive_seed(seed: u64, label: &str) -> u64 {
 }
 
 /// Colour zones laid over the world by one broad field: which multiplier a column's material is
-/// drawn with.
-///
-/// The colours are ordered from the lowest value of the field to the highest, so neighbouring
-/// zones blend: a lush dark lawn gives way to plain grass and then to dry yellow, never from dark
-/// straight to yellow. The value is cut into equal shares of its range, which over this noise
-/// lands at roughly 9/26/31/25/9 per cent for five colours — the middle zone is the common one and
-/// the extremes are accents, which is the look the TypeScript client gets from its own noise.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TintZones {
     field: NoiseField,
@@ -118,16 +93,6 @@ const CALIBRATION_SIDE: i32 = 96;
 const CALIBRATION_STEP: i32 = 5;
 
 /// Which extra top a column grows, picked in clumps rather than one column at a time.
-///
-/// Three streams do it. The **patch** field says where things grow at all, at a few columns across
-/// ([`VARIANT_PATCH_SCALE`]), and inside a patch only [`VARIANT_PATCH_FILL`] of the columns grow
-/// anything — chosen by a hash of the column, so a clump is scattered rather than a solid blob.
-/// The much slower **kind** field ([`VARIANT_KIND_SCALE`]) says *which* top, so neighbouring
-/// clumps match and a stretch of ground reads as one kind of meadow.
-///
-/// The two thresholds are measured once, on a fixed grid of the fields, rather than assumed: the
-/// noise is not uniform, so a plain "value above `1 - chance`" would miss the asked-for share by a
-/// factor of two. Deterministic, and the same in any chunk order.
 #[derive(Clone, Debug)]
 pub struct VariantPicker {
     patches: NoiseField,
@@ -142,8 +107,6 @@ pub struct VariantPicker {
 
 impl VariantPicker {
     /// `chances` is the share of all columns each variant should cover, in order. `None` when
-    /// nothing is asked for, so the caller skips the lookup entirely rather than calling a picker
-    /// that always answers nothing.
     pub fn new(seed: u64, label: &str, chances: &[f64]) -> Option<Self> {
         let total: f64 = chances.iter().filter(|chance| **chance > 0.0).sum();
         if total <= 0.0 {
@@ -153,8 +116,6 @@ impl VariantPicker {
         let kinds = NoiseField::new(seed, &format!("{label}:kinds"), VARIANT_KIND_SCALE, 0.0);
         let patch_samples = sorted_samples(&patches);
         let kind_samples = sorted_samples(&kinds);
-        // The clumps cover `total / FILL` of the columns, so that FILL of those columns — the
-        // share the scatter keeps — comes to `total`.
         let patch_above = quantile(&patch_samples, 1.0 - total / VARIANT_PATCH_FILL);
         let mut below = 0.0;
         let mut kind_below: Vec<f64> = chances
@@ -164,7 +125,6 @@ impl VariantPicker {
                 quantile(&kind_samples, below / total)
             })
             .collect();
-        // The last variant that shows at all takes the rest, however the sum of chances rounded.
         let last = chances
             .iter()
             .rposition(|chance| *chance > 0.0)

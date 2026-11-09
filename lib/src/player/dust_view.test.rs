@@ -1,5 +1,4 @@
 //! Tests for the pool of puffs: what raises dust, what reuses a slot, how a cube sorts and
-//! what it is drawn in.
 
 use super::*;
 use iso::grid::WorldCoord;
@@ -218,7 +217,6 @@ fn a_cube_is_drawn_white_and_fades_with_its_puff() {
         "the top is the lit face"
     );
     assert!(colours[0].a > 0.5, "a fresh puff is nearly opaque");
-    // The three faces meet along the cube's near vertical edge, so it reads as one block.
     assert_eq!(faces.left[1], faces.right[0]);
     assert_eq!(faces.top[2], faces.left[1]);
 
@@ -234,8 +232,6 @@ fn a_cube_is_drawn_white_and_fades_with_its_puff() {
 
 #[test]
 fn dust_behind_the_feet_sorts_under_the_player_and_dust_in_front_over_it() {
-    // One puff of dust round the feet: its voxels spread all the way round, so some belong
-    // behind what stands on the column and some in front of it.
     let mut dust = DustPuffs::new();
     let mut player = player_at(4.0, 4.0);
     player.feedback = PlayerFeedback {
@@ -286,8 +282,6 @@ fn the_dust_layer_sits_between_the_ground_and_the_player() {
         assert!(DUST_BEHIND_LAYER < crate::PLAYER_BEHIND_LAYER);
         assert!(DUST_BEHIND_LAYER < crate::ENTITY_LAYER);
     };
-    // The nudge that puts a cube in front can only reorder things sharing one cell: it is far
-    // below what a block of elevation adds to a depth, let alone a row of columns.
     const {
         assert!(
             DUST_FRONT_DEPTH < 0.001,

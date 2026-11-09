@@ -14,7 +14,6 @@ fn frame(frame_ms: f64) -> FrameSample {
 
 #[test]
 fn percentiles_pick_the_ranked_value() {
-    // 101 values so each percentile lands on a value rather than between two.
     let values: Vec<f64> = (0..=100).map(f64::from).collect();
     assert_eq!(percentile(&values, 0.0), 0.0);
     assert_eq!(percentile(&values, 0.5), 50.0);
@@ -25,7 +24,6 @@ fn percentiles_pick_the_ranked_value() {
 }
 
 /// The window keeps the last frames and forgets the rest, so a stutter minutes ago does not
-/// still colour the reading.
 #[test]
 fn the_window_holds_only_the_last_frames() {
     let mut log = PerfLog::new(4);
@@ -52,7 +50,6 @@ fn reports_percentiles_the_worst_frame_and_dropped_frames() {
     assert!((16.0..=50.0).contains(&p95), "p95 was {p95}");
     assert_eq!(log.dropped(), 5, "frames over {DROPPED_FRAME_MS} ms");
     assert_eq!(log.worst().frame_ms, 50.0);
-    // The span comes from the frames themselves: 95 * 16 + 5 * 50 ms.
     assert!(
         (log.span_seconds() - 1.77).abs() < 0.001,
         "{}",
@@ -61,7 +58,6 @@ fn reports_percentiles_the_worst_frame_and_dropped_frames() {
 }
 
 /// The CPU figure is this loop's own work. When it is far below the frame time, the frame was
-/// waiting on something else, and that is the whole reason the two are reported apart.
 #[test]
 fn cpu_time_is_the_sum_of_the_phases() {
     let mut log = PerfLog::new(10);

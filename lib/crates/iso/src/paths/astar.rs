@@ -44,11 +44,6 @@ impl Ord for QueueEntry {
 }
 
 /// Find a cheapest side-neighbour path inside an inclusive rectangle.
-///
-/// `cost` returns a positive finite step cost, or infinity for a blocked step.
-/// `heuristic` must not overestimate the remaining cost if optimality is required;
-/// pass `|_| 0.0` for Dijkstra search. Invalid or oversized rectangles return `None`.
-/// The path includes its start and goal.
 pub fn find_path<G, C, H>(
     area: WorldRect,
     starts: &[WorldCoord],
@@ -67,7 +62,6 @@ where
         return None;
     }
     let size = usize::try_from(width.checked_mul(height)?).ok()?;
-    // A path search is local. Refuse an accidental world-sized allocation.
     if size > 4_194_304 {
         return None;
     }

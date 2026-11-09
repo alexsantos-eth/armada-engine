@@ -1,5 +1,4 @@
 //! Saved world format (Armada Engine 2): complete discovered chunks, player and systems.
-//! Independent of rendering; serializes to and from JSON.
 
 use std::collections::{HashMap, HashSet};
 
@@ -96,16 +95,6 @@ impl std::fmt::Display for SaveError {
 impl std::error::Error for SaveError {}
 
 /// Converts a materialized terrain column into its saved form.
-///
-/// Only the surface block is written. A column is elevation plus surface material, and
-/// everything below it is derived by [`crate::terrain::TerrainColumn::material_at`] — dirt
-/// under a dry surface, water under water — which is exactly what [`saved_to_terrain_column`]
-/// rebuilds from the top block. Writing the whole stack from the generator's floor stored five
-/// blocks per column that were thrown away on load: 7 MB and 25 ms of main-thread
-/// serialization for 30 chunks, which is a visible freeze every time the world is saved.
-///
-/// A save written by an older build still carries the full stack, and still loads: the reader
-/// takes the highest block and ignores the rest.
 pub fn terrain_column_to_saved(column: &crate::terrain::TerrainColumn) -> SavedColumn {
     SavedColumn {
         x: column.coord.x,
@@ -617,7 +606,6 @@ mod tests {
                 chunk(cx, cy)
             })
             .unwrap();
-        // Mutating the returned chunk must not affect the stored copy.
         let first_block = first.columns[0].blocks[0].material;
         let _ = first_block;
         assert_eq!(archive.get(-1, 2).unwrap().columns[0].blocks[0].material, TerrainMaterial::Ground);
@@ -688,7 +676,6 @@ mod tests {
 
     #[test]
     fn rejects_duplicate_chunks_and_malformed_terrain_or_entities() {
-        // duplicate chunks
         let mut archive = ChunkArchive::new();
         archive.put(chunk(-1, 2));
         let mut save = archive.snapshot(serde_json::json!({}), serde_json::json!({}));
@@ -699,7 +686,6 @@ mod tests {
             SaveError::DuplicateChunk { cx: -1, cy: 2 }
         ));
 
-        // column whose coordinates do not belong to the chunk
         let mut bad = chunk(-1, 2);
         bad.columns[0].x = 0;
         let value = serde_json::to_value(&WorldSave {
@@ -715,7 +701,6 @@ mod tests {
             SaveError::InvalidColumn { .. }
         ));
 
-        // empty blocks array
         let mut bad = chunk(-1, 2);
         bad.columns[0].blocks = vec![];
         let value = serde_json::to_value(&WorldSave {
@@ -731,7 +716,6 @@ mod tests {
             SaveError::InvalidColumn { .. }
         ));
 
-        // unknown material
         let mut saved = serde_json::to_value(&WorldSave {
             format: SAVE_FORMAT.to_owned(),
             schema_version: SAVE_SCHEMA_VERSION,
@@ -756,7 +740,6 @@ mod tests {
             SaveError::InvalidColumn { .. }
         ));
 
-        // entity with empty instanceId
         let mut bad = chunk(-1, 2);
         bad.entities[0].instance_id = String::new();
         let value = serde_json::to_value(&WorldSave {
@@ -772,7 +755,6 @@ mod tests {
             SaveError::InvalidEntity { .. }
         ));
 
-        // entity with state that is not an object
         let mut bad = chunk(-1, 2);
         bad.entities[0].state = serde_json::json!([1, 2, 3]);
         let value = serde_json::to_value(&WorldSave {
@@ -789,7 +771,6 @@ mod tests {
         ));
     }
     /// A column is written as one block and comes back whole: the save stores what a column is
-    /// (elevation, surface, walkable) and the stack under it is derived, not stored.
     #[test]
     fn a_column_survives_a_round_trip_through_one_saved_block() {
         use crate::grid::WorldCoord;
@@ -813,7 +794,6 @@ mod tests {
     }
 
     /// Saves written before the format stopped storing the whole stack still load, and still
-    /// give back the same column.
     #[test]
     fn a_save_carrying_the_whole_stack_still_loads() {
         use crate::grid::WorldCoord;

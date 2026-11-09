@@ -71,7 +71,6 @@ fn get_player_facing_east() {
 }
 
 /// The sixteen facings divide the turn evenly, counter-clockwise on screen from east, and a
-/// direction between two of them takes the nearer.
 #[test]
 fn get_player_facing_takes_the_nearest_of_sixteen() {
     let index = |x: f64, y: f64| PLAYER_FACINGS[get_player_facing(GridPoint { x, y }).unwrap()];
@@ -79,7 +78,6 @@ fn get_player_facing_takes_the_nearest_of_sixteen() {
     assert_eq!(index(-1.0, 1.0), "west");
     assert_eq!(index(-1.0, -1.0), "south", "towards the camera");
     assert_eq!(index(1.0, 0.0), "north-east");
-    // Half way between east and north-east, which eight facings could not tell apart.
     assert_eq!(index(1.0, -0.4142), "east-north-east");
     assert_eq!(index(0.4142, -1.0), "east-south-east");
     assert_eq!(index(-1.0, -0.4142), "south-south-west");
@@ -148,8 +146,6 @@ fn step_player_moves_on_ground() {
     let mut player = create_player(&ground, GridPoint { x: 0.5, y: 0.5 });
     set_player_walk(&mut player, ScreenDirections { right: true, ..Default::default() });
     step_player(&mut player, &mut ground, 1);
-    // Player should have moved (velocity applied).
-    // At minimum, previous should be set.
     assert!(player.previous.x >= 0.0);
 }
 
@@ -164,7 +160,6 @@ fn obstacle(side: f64) -> PlayerObstacle {
 }
 
 /// Walks the player straight along `+y` into the middle of `(1, 1)` and reports where it came
-/// to rest. Walking on one axis only keeps it from sliding around the obstacle.
 fn walk_into_centre(side: f64) -> GridPoint {
     let mut ground = ground_from(&["000", "000", "000"]);
     ground.occupancy.insert(WorldCoord { x: 1, y: 1 }, vec![obstacle(side)]);
@@ -179,13 +174,9 @@ fn walk_into_centre(side: f64) -> GridPoint {
 
 #[test]
 fn a_trunk_sized_collision_lets_the_player_onto_the_cell_it_stands_on() {
-    // The side the content gives every tree (`TREE_TRUNK_COLLISION` in
-    // `web/src/isometric/content/entities.ts`): only its trunk blocks.
     const TRUNK: f64 = 0.15;
     let at = walk_into_centre(TRUNK);
 
-    // It is stopped by the trunk, not by the cell: half the collision square plus the player's
-    // own radius away from the middle, which is still inside the cell.
     let stop = PLAYER_RADIUS + TRUNK / 2.0;
     assert!(
         (at.x - 1.0).abs() < 1e-9 && (at.y - (1.0 - stop)).abs() < 0.05,

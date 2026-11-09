@@ -1,9 +1,4 @@
 //! Player locomotion motion-state transitions, portable and dependency-free.
-//!
-//! Mirrors `engine/player/motion.ts` in the TypeScript game. The transition table is the same
-//! data the XState machine executes there; here it is a plain function so it can be tested and
-//! carried to Rust without a state-machine library. An event with no transition for the current
-//! state leaves the state unchanged.
 
 /// A player's motion state on the ground or in the air.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

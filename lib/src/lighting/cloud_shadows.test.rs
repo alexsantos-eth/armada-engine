@@ -6,7 +6,6 @@ fn the_copies_cover_the_view() {
     let screen = (1280.0, 800.0);
     let copies = cloud_copies((500.0, 200.0), period, screen);
     assert!(!copies.is_empty());
-    // Every point of the view is inside some copy.
     for &(x, y) in &[(0.0, 0.0), (1279.0, 799.0), (640.0, 400.0), (0.0, 799.0)] {
         assert!(
             copies.iter().any(|&(left, top)| x >= left
@@ -45,8 +44,6 @@ fn a_camera_far_from_the_origin_still_draws_a_handful_of_copies() {
 fn the_pattern_holds_its_place_on_the_ground() {
     let period = (400.0, 200.0);
     let screen = (800.0, 400.0);
-    // A copy's offset within the period is all that is visible of the anchor, so an anchor and
-    // the same anchor a whole period away place their copies identically.
     let near = cloud_copies((37.0, 11.0), period, screen);
     let away = cloud_copies(
         (37.0 + period.0 * 5.0, 11.0 - period.1 * 3.0),
@@ -64,8 +61,6 @@ fn a_period_of_nothing_draws_nothing() {
 
 #[test]
 fn the_drift_is_wrapped_at_the_period() {
-    // `CloudShadows` needs a texture, so the drift is checked on the same arithmetic: a long
-    // session must not end up placing its copies from a number the size of its own run time.
     let mut drift: f64 = 0.0;
     for _ in 0..100_000 {
         drift += CLOUD_DRIFT.0;

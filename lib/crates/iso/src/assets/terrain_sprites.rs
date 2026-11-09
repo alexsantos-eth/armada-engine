@@ -1,8 +1,4 @@
 //! Which rasterized asset draws each terrain material.
-//!
-//! The source path is the join between the terrain generator, which knows materials, and the
-//! asset manifest, which knows frames. Keeping the mapping here means a renamed or dropped
-//! asset fails this module's test instead of quietly leaving holes in the ground.
 
 use crate::terrain::TerrainMaterial;
 
@@ -43,8 +39,6 @@ mod tests {
                 entry.primary_frame().is_some(),
                 "{source} has no frame in the atlas"
             );
-            // Without the measurement the client cannot put the block on the ground, so it
-            // draws no terrain at all rather than drawing it half a tile out.
             let ink = entry
                 .ink
                 .unwrap_or_else(|| panic!("{source} was never measured; re-run remeasure_atlas"));

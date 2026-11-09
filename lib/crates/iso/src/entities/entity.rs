@@ -1,14 +1,9 @@
 //! Entity instances and their spatial footprint, independent of rendering.
-//!
-//! Mirrors `engine/entities/entities.ts` in the TypeScript game. An entity occupies one or more
-//! world columns and can block movement. Instances are identified by their stable `id`, so they
-//! survive saves and can be referenced by AI, events and the view layer.
 
 use crate::entities::blueprint::{EntityBlueprintV2, EntityLengthAxis, EntitySway};
 use crate::grid::{SpatialIndex, WorldCoord};
 
 /// How an entity blocks movement, block by block: a single fraction for the whole footprint, or
-/// one fraction per occupied cell along the footprint axis.
 #[derive(Clone, Debug, PartialEq)]
 pub enum EntityCollision {
     /// Same fraction for every occupied cell.
@@ -41,11 +36,6 @@ pub struct EntityData {
     /// Debug flag, only for definitions that asked for it.
     pub debug: Option<bool>,
     /// Color replacement lists, if the definition has any.
-    ///
-    /// Shared with the blueprint rather than copied: this is definition data, identical for
-    /// every instance, and `serde_json::Value` clones node by node. The catalog's largest list
-    /// is 57 nodes, and a chunk places hundreds of entities that the spatial index copies
-    /// several times over, so deep-copying it dominated the cost of discovering a chunk.
     pub color_replacements: Option<std::sync::Arc<serde_json::Value>>,
     /// Chosen color variation index, kept in the data so it survives saves.
     pub color_variant: Option<u32>,
@@ -74,8 +64,6 @@ pub struct Entity {
     data: EntityData,
 }
 
-// Entity instances are identified by their stable id. Metadata and collision values are not
-// part of identity: two handles with the same id are the same entity.
 impl PartialEq for Entity {
     fn eq(&self, other: &Self) -> bool {
         self.data.id == other.data.id
@@ -123,12 +111,6 @@ impl Entity {
     }
 
     /// Restores a saved instance of `blueprint`.
-    ///
-    /// The blueprint supplies every field derived from the definition and the save supplies the
-    /// three that belong to the instance: its stable id, its chosen colour variation and its
-    /// metadata. Going through [`Self::new`] is deliberate — it keeps a reloaded entity
-    /// identical to a freshly placed one, which hand-copying the blueprint fields into a
-    /// `EntityData` at the call site did not: `walkable` and `collision` silently drifted.
     pub fn restore(
         x: i32,
         y: i32,
@@ -204,7 +186,6 @@ impl Entity {
     }
 
     /// Side of the square, centred on column `(x, y)`, the entity blocks movement in, as a
-    /// fraction of the block. `0` off the footprint or where it does not block.
     pub fn collision_at(&self, x: i32, y: i32) -> f64 {
         let along_x = self.data.length_axis != Some(EntityLengthAxis::Y);
         let index = if along_x { x - self.x } else { y - self.y };
@@ -233,7 +214,6 @@ impl Entity {
 }
 
 /// Columns covered by a footprint of `length` blocks anchored at `anchor`, along `lengthAxis`
-/// (`"x"` by default), in order from the anchor.
 pub fn get_entity_footprint(
     anchor: WorldCoord,
     length: i32,
@@ -270,8 +250,6 @@ pub fn get_entity_footprint_for(entity: &Entity) -> Vec<WorldCoord> {
 }
 
 /// Builds the spatial index of `entities` over their whole footprints: what occupies each
-/// column, for collision, neighbourhood and placement queries. Derived data — rebuild it from
-/// the entities, never serialize it.
 pub fn index_entities(entities: &[Entity]) -> SpatialIndex<Entity> {
     let mut index = SpatialIndex::new();
     for entity in entities {

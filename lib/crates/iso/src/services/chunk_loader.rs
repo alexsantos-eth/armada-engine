@@ -4,7 +4,6 @@ use crate::grid::ChunkCoord;
 use crate::terrain::TerrainColumn;
 
 /// Chunk loading contract. The core requests chunks; the client provides them from
-/// its cache or generates them.
 pub trait ChunkLoader {
     /// Returns the columns of a discovered chunk, or `None` when not yet discovered.
     fn chunk(&self, coord: ChunkCoord) -> Option<&[TerrainColumn]>;

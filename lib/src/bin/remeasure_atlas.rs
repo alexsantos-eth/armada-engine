@@ -1,25 +1,9 @@
 //! Build tool: write the geometry of an existing atlas back into its manifest.
-//!
-//! Usage: cargo run --bin remeasure_atlas -- <manifest> <atlas> [svg_root]
-//!
-//! [`pack_atlas`](../bin/pack_atlas.rs) now records where each sprite's artwork sits in the
-//! world, but it only runs over the PNG thumbnails, and those are not kept in the repository —
-//! the atlas and its manifest are. So this tool brings an atlas that was packed without that
-//! geometry up to date without rasterizing anything: it measures each frame's opaque pixels in
-//! the atlas, which is where the artwork actually is, and reads the artwork's position in the
-//! world out of the SVG it came from.
-//!
-//! Writing the manifest is safe to repeat: measuring the opaque pixels of a frame that is
-//! already their bounding box gives the same frame back.
 
 use iso::assets::{AssetManifest, SpriteFrame, asset_ink, data_tiles};
 use image::RgbaImage;
 
 /// Bounding box of everything that is not fully transparent inside `frame`.
-///
-/// Any alpha at all counts: the rasterizer's antialiasing reaches a pixel past the artwork's
-/// edge, and cutting it off would both fray the outline and shrink the frame a little more
-/// every time this tool ran.
 fn opaque_bounds(atlas: &RgbaImage, frame: SpriteFrame) -> Option<SpriteFrame> {
     let (mut min_x, mut min_y) = (u32::MAX, u32::MAX);
     let (mut max_x, mut max_y) = (0u32, 0u32);
@@ -56,10 +40,6 @@ fn main() {
 
     let (mut measured, mut unmeasured, mut sheets) = (0, Vec::new(), Vec::new());
     for entry in &mut manifest.entries {
-        // A sheet of player poses lives in a texture of its own, as a grid of equal cells whose
-        // frames are the grid, not the artwork inside it: trimming them to their opaque pixels
-        // would make every pose a different size and move the figure about as it animates. Its
-        // box is the window its cells share, which `pack_atlas` read from the artwork.
         if entry.sheet.is_some() {
             sheets.push(entry.id.clone());
             continue;
@@ -69,7 +49,6 @@ fn main() {
         }
         let svg = std::fs::read_to_string(format!("{svg_root}{}", entry.source));
         let svg = svg.ok();
-        // The packer used to hard-code this; the asset says what it really is.
         entry.data_tiles = svg.as_deref().and_then(data_tiles).map(str::to_owned);
         match svg.as_deref().and_then(asset_ink) {
             Some(ink) => {
@@ -93,7 +72,6 @@ fn main() {
         println!("left as packed (sheets of poses): {}", sheets.join(", "));
     }
     if !unmeasured.is_empty() {
-        // Sheets and anything drawn with transforms: the client places these by their anchor.
         println!("placed by anchor: {}", unmeasured.join(", "));
     }
 }

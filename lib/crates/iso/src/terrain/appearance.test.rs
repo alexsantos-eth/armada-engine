@@ -17,7 +17,6 @@ fn a_label_gets_its_own_stream_and_keeps_it() {
     assert_ne!(derive_seed(SEED, "tints"), derive_seed(SEED, "variants"));
     assert_ne!(derive_seed(SEED, "tints"), derive_seed(SEED + 1, "tints"));
     assert_eq!(derive_seed(SEED, "tints"), derive_seed(SEED, "tints"));
-    // A label's stream does not drift with the label's length alone.
     assert_ne!(derive_seed(SEED, "a"), derive_seed(SEED, "b"));
 }
 
@@ -28,13 +27,11 @@ fn a_field_is_smooth_bounded_and_the_same_at_a_column_every_time() {
         let value = field.sample(x, y);
         assert!((0.0..=1.0).contains(&value), "{value} out of range");
         assert_eq!(value, field.sample(x, y), "a column is answered the same");
-        // Ten columns across a blob, so one step never jumps the whole range.
         assert!((value - field.sample(x + 1, y)).abs() < 0.5);
     }
 }
 
 /// The second octave is what frays the edge of a clump; it must still land in range, and it must
-/// actually change the field, or a patch field would be as round as a tint zone.
 #[test]
 fn detail_frays_the_field_without_leaving_its_range() {
     let plain = NoiseField::new(SEED, "patches", 6.0, 0.0);
@@ -75,7 +72,6 @@ fn a_palette_needs_a_colour() {
 }
 
 /// The point of the zones: the plain middle colour is the common one and the extremes are accents,
-/// so a field of grass is grass with a dry corner rather than a patchwork.
 #[test]
 fn the_middle_zone_is_the_common_one_and_the_extremes_are_accents() {
     let zones = TintZones::new(SEED, "terrain-tints:grass", 10.0, &GRASS).expect("a palette");
@@ -88,12 +84,10 @@ fn the_middle_zone_is_the_common_one_and_the_extremes_are_accents() {
     assert!(share[2] > 0.25 && share[2] < 0.40, "middle: {:?}", share);
     assert!(share[0] > 0.04 && share[0] < 0.16, "darkest: {:?}", share);
     assert!(share[4] > 0.04 && share[4] < 0.16, "driest: {:?}", share);
-    // And every colour shows somewhere, or the palette would be carrying a colour for nothing.
     assert!(counts.iter().all(|count| *count > 0), "{:?}", counts);
 }
 
 /// A zone is a region, not a speckle: a column almost always shares its colour with its
-/// neighbour, which is what makes the tint read as geography.
 #[test]
 fn a_tint_zone_is_a_region_rather_than_a_speckle() {
     let zones = TintZones::new(SEED, "terrain-tints:grass", 10.0, &GRASS).expect("a palette");
@@ -103,7 +97,6 @@ fn a_tint_zone_is_a_region_rather_than_a_speckle() {
             same += 1;
         }
     }
-    // Sprinkled colours would agree about a quarter of the time: these agree six times in seven.
     assert!(same > 8_000, "neighbours agreed only {same}/10000 times");
 }
 
@@ -128,12 +121,10 @@ fn a_column_is_always_answered_the_same_whatever_the_order() {
         backwards.into_iter().rev().collect::<Vec<_>>(),
         "a column's top cannot depend on when it was asked for"
     );
-    // Negative coordinates are ordinary world columns, not a special case.
     assert_eq!(picker.pick(-500, -700), picker.pick(-500, -700));
 }
 
 /// Each variant covers about the share the content asked for. This is what the calibration buys:
-/// without it the shares come out a factor off, because the noise is not uniform.
 #[test]
 fn every_variant_covers_about_the_share_it_asked_for() {
     let picker = VariantPicker::new(SEED, "terrain-variants:grass", &CHANCES).expect("a picker");
@@ -164,7 +155,6 @@ fn every_variant_covers_about_the_share_it_asked_for() {
 }
 
 /// Grouped, not sprinkled: a dressed column's neighbours are far likelier to be dressed too than
-/// the overall share would give, and far likelier to grow the same kind.
 #[test]
 fn the_variants_come_in_clumps_of_one_kind() {
     let picker = VariantPicker::new(SEED, "terrain-variants:grass", &CHANCES).expect("a picker");
@@ -189,7 +179,6 @@ fn the_variants_come_in_clumps_of_one_kind() {
         "only {together} of a dressed column's neighbours were dressed: that is sprinkled, not clumped"
     );
     let agree = f64::from(neighbour_same) / f64::from(neighbour_dressed);
-    // Only the columns straddling a kind zone's edge disagree, and a zone is 24 columns across.
     assert!(agree > 0.8, "neighbouring tops agreed only {agree} of the time");
 }
 
@@ -209,7 +198,6 @@ fn a_clump_is_scattered_rather_than_solid() {
 }
 
 /// A single variant asked for more than the clumps can hold: it takes every clumped column rather
-/// than silently covering less than asked.
 #[test]
 fn one_variant_asked_for_everything_fills_every_clump() {
     let picker = VariantPicker::new(SEED, "terrain-variants:grass", &[1.0]).expect("a picker");

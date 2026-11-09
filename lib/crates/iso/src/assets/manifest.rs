@@ -40,13 +40,6 @@ pub enum AssetKind {
 }
 
 /// The grid of a sprite sheet packed into a texture of its own: one row per facing, one column
-/// per pose.
-///
-/// The player's poses come as sheets of 8 facings by several poses, and fitting a whole sheet
-/// into one atlas cell left a pose about sixteen pixels across. Each sheet is packed into its
-/// own texture instead, at the same resolution as everything else, and this says how to read
-/// it: [`frames`](AssetEntry::frames) holds one frame per cell, row by row, so the frame of a
-/// pose is `facing * columns + pose`.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SheetLayout {
     pub columns: u32,
@@ -54,7 +47,6 @@ pub struct SheetLayout {
     /// The facings, in the order their rows appear: counter-clockwise on screen from east.
     pub facings: Vec<String>,
     /// The names of the columns, where the artwork names them (a jump's phases); empty when the
-    /// columns are a numbered cycle.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub poses: Vec<String>,
 }
@@ -74,11 +66,9 @@ pub struct AssetEntry {
     #[serde(default)]
     pub frames: Option<Vec<SpriteFrame>>,
     /// The texture this entry's frames are cut from, when it is not the shared atlas: a path
-    /// like `content/player_walk.png`, relative to the client root.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub texture: Option<String>,
     /// The size of that texture, so that frames can be validated and sampled without opening
-    /// it.
     #[serde(default, rename = "textureSize", skip_serializing_if = "Option::is_none")]
     pub texture_size: Option<SpriteFrame>,
     /// How this entry's frames are laid out, for a sprite sheet.
@@ -86,11 +76,6 @@ pub struct AssetEntry {
     pub sheet: Option<SheetLayout>,
     pub anchor: SpriteAnchor,
     /// Where the artwork in the frame belongs in the world: its bounding box in tile widths,
-    /// relative to the ground centre of the cell the asset stands on. See
-    /// [`crate::assets::ink`] for why the frame alone cannot say.
-    ///
-    /// Absent for sprite sheets and anything else the pipeline could not measure, which the
-    /// client places by [`anchor`](Self::anchor) instead.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ink: Option<InkBox>,
     #[serde(default, rename = "colorVariants")]
@@ -106,10 +91,6 @@ impl AssetEntry {
     }
 
     /// The frame of the pose in `column` of `facing`'s row, for a sheet entry.
-    ///
-    /// `None` when this entry is not a sheet, or when either index is past its grid: a facing
-    /// the artwork does not hold is a bug in the caller's sheet description, not a frame to
-    /// guess at.
     pub fn sheet_frame(&self, facing: usize, column: usize) -> Option<SpriteFrame> {
         let sheet = self.sheet.as_ref()?;
         let columns = sheet.columns as usize;
@@ -120,7 +101,6 @@ impl AssetEntry {
     }
 
     /// The size of the texture this entry's frames are cut from, which is the atlas unless the
-    /// entry carries a texture of its own.
     pub fn texture_size(&self, atlas: SpriteFrame) -> SpriteFrame {
         self.texture_size.unwrap_or(atlas)
     }
@@ -143,11 +123,6 @@ pub struct AssetManifest {
 }
 
 /// Manifest schema version this crate understands.
-///
-/// Version 2 added the textures of their own that the player's sheets are packed into
-/// ([`AssetEntry::texture`] and [`AssetEntry::sheet`]); version 1 held every sprite in the one
-/// atlas and had no grid for the sheets, so a manifest of that version cannot say where a pose
-/// is.
 pub const MANIFEST_SCHEMA_VERSION: u32 = 2;
 
 /// Errors validating a manifest.
@@ -312,12 +287,10 @@ mod tests {
         let manifest: AssetManifest = serde_json::from_str(json).expect("manifest deserializes");
         assert_eq!(manifest.schema_version, MANIFEST_SCHEMA_VERSION);
         validate_manifest(&manifest).expect("shared manifest validates");
-        // 63 pieces of artwork plus the flat white patch the shadows are drawn from.
         assert_eq!(manifest.entries.len(), 64);
         for entry in &manifest.entries {
             assert!(entry.primary_frame().is_some(), "entry {} has no frame", entry.id);
         }
-        // The manifest has no "player" entry (it has rasterized SVG names).
         assert!(manifest.entries.iter().any(|e| e.id.contains("player") || e.id.contains("car")));
     }
 
@@ -346,7 +319,6 @@ mod tests {
     }
 
     /// Version 1 held every sprite in the one atlas and gave the player's sheets no grid, so a
-    /// manifest of that version cannot say where a pose is and is refused rather than guessed at.
     #[test]
     fn rejects_unsupported_schema() {
         let mut m = manifest();
@@ -356,7 +328,6 @@ mod tests {
     }
 
     /// A sheet of poses with a texture of its own: the frames are checked against that texture,
-    /// not against the atlas, and its grid has to describe them.
     fn sheet_entry() -> AssetEntry {
         AssetEntry {
             id: "player_jump".to_owned(),
@@ -389,7 +360,6 @@ mod tests {
     fn validates_a_sheet_against_its_own_texture() {
         let mut m = manifest();
         m.entries.push(sheet_entry());
-        // The frames fall outside the small atlas, but inside the sheet's own texture.
         let last = m.entries.last().unwrap().frames.as_ref().unwrap()[3];
         assert!(last.x + last.width > m.atlas_size.width, "outside the atlas");
         validate_manifest(&m).expect("a sheet is measured against its texture");

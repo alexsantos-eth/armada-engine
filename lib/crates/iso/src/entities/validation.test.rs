@@ -71,7 +71,7 @@
     #[test]
     fn rejects_collision_length_mismatch() {
         let mut bp = blueprint("tree", 2, vec![TerrainMaterial::Grass, TerrainMaterial::Grass]);
-        bp.shape.collision = vec![0.15]; // one value for two cells
+        bp.shape.collision = vec![0.15];
         let catalog = catalog(vec![bp]);
         let err = validate_catalog(&catalog).unwrap_err();
         assert!(matches!(err, CatalogError::InvalidShape { id, .. } if id == "tree"));
@@ -79,7 +79,7 @@
 
     #[test]
     fn rejects_surfaces_length_mismatch() {
-        let bp = blueprint("tree", 2, vec![TerrainMaterial::Grass]); // one surface for two cells
+        let bp = blueprint("tree", 2, vec![TerrainMaterial::Grass]);
         let catalog = catalog(vec![bp]);
         let err = validate_catalog(&catalog).unwrap_err();
         assert!(matches!(err, CatalogError::InvalidPlacement { id, .. } if id == "tree"));
@@ -96,7 +96,6 @@
 
     #[test]
     fn accepts_single_surface_for_multi_cell() {
-        // A single surface value is not enough: every cell needs its own entry.
         let bp = blueprint("house_2x1", 2, vec![TerrainMaterial::Grass, TerrainMaterial::Grass]);
         let catalog = catalog(vec![bp]);
         assert!(validate_catalog(&catalog).is_ok());

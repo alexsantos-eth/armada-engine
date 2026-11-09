@@ -1,9 +1,4 @@
 //! Frame timing log, reported in the same shape as the TypeScript client's.
-//!
-//! The point of the window is that a stutter is a handful of frames: an average, or the
-//! instantaneous frame rate, smooths away exactly the frames worth looking at. So the log keeps
-//! the last few seconds and reports percentiles, the worst frame and how many frames missed
-//! two display refreshes.
 
 use std::collections::VecDeque;
 
@@ -11,7 +6,6 @@ use std::collections::VecDeque;
 pub const WINDOW_FRAMES: usize = 300;
 
 /// Two refreshes of a 60 Hz display. A frame over this dropped one, which is what reads as a
-/// stutter rather than as a slower frame rate.
 pub const DROPPED_FRAME_MS: f64 = 33.4;
 
 /// One frame's measurements, in milliseconds.
@@ -30,13 +24,11 @@ pub struct FrameSample {
     /// Chunks drawn this frame.
     pub chunks: usize,
     /// Chunks held in memory, drawn or not. Reported beside the drawn count because they are
-    /// different things: what is drawn is the camera's doing, what is held is the streamer's.
     pub chunks_alive: usize,
 }
 
 impl FrameSample {
     /// What this loop spent on the CPU. The rest of `frame_ms` went to the GPU or to waiting
-    /// for the display, and no work removed from this loop can win it back.
     pub fn cpu_ms(&self) -> f64 {
         self.simulation_ms + self.scene_ms + self.draw_ms
     }
@@ -55,7 +47,6 @@ impl Default for PerfLog {
 }
 
 /// Value at `fraction` of the way through `values` once sorted, nearest rank. `values` is
-/// sorted in place, which is why this takes it by value from the caller's scratch buffer.
 fn percentile(sorted: &[f64], fraction: f64) -> f64 {
     if sorted.is_empty() {
         return 0.0;
@@ -88,7 +79,6 @@ impl PerfLog {
     }
 
     /// Seconds the window covers, taken from the frames themselves rather than a clock, so the
-    /// span always matches the frames counted.
     pub fn span_seconds(&self) -> f64 {
         self.samples.iter().map(|s| s.frame_ms).sum::<f64>() / 1000.0
     }

@@ -1,10 +1,4 @@
 //! Terrain drawn with the atlas block sprites.
-//!
-//! A column is one block sprite standing on the column in front of it. Where the ground drops
-//! away, the column is stacked down past the lowest neighbour it is exposed to, so a cliff shows
-//! a wall of blocks rather than one block floating over a gap. `TerrainColumn::material_at`
-//! decides what each level is made of — dirt under a dry surface, water under water — so the
-//! stack matches what the world says is there.
 
 use iso::assets::{InkBox, SpriteFrame, ink_layout, terrain_sprite_source};
 use iso::grid::WorldCoord;
@@ -20,34 +14,21 @@ use crate::terrain::terrain_view_appearance::TerrainLook;
 pub const TERRAIN_LAYER: i32 = 0;
 
 /// How far below its surface a column is ever stacked. A column beside a deep sea trench would
-/// otherwise queue a sprite per level of the drop, most of them off screen.
 const MAX_EXPOSED_BLOCKS: i32 = 10;
 
 /// The atlas frame for each terrain material and where its artwork sits, resolved once at
-/// startup: the alternative is a hash lookup per drawn block, several hundred a frame.
 pub struct TerrainFrames {
     frames: [Option<(SpriteFrame, InkBox)>; MATERIAL_SLOTS],
 }
 
 impl TerrainFrames {
     /// Resolves every material against the atlas. Returns the materials the atlas has no
-    /// artwork for, so the client can say so instead of drawing invisible ground.
     pub fn new(atlas: &SpriteAtlas) -> (Self, Vec<TerrainMaterial>) {
         let mut frames = [None; MATERIAL_SLOTS];
         let mut missing = Vec::new();
         for material in MATERIALS {
-            // Both or neither: a frame the pipeline never measured cannot be placed on the
-            // ground, and guessing would put it half a tile out.
             match atlas
                 .asset(terrain_sprite_source(material))
-                // Drawn at the size it was drawn at, like every other sprite and like the
-                // TypeScript client, which draws the block's whole template one tile wide. A
-                // terrain block is generated to fill its cell exactly
-                // (`artifacts/terrain_blocks.py`), so a field of them has no groove to show the
-                // ground through. Stretching the drawing to the tile instead — which is what
-                // closed those grooves while the blocks were clay with rounded corners — left
-                // every ground diamond two percent oversized, and the tile in front of the
-                // player then painted that overshoot over its feet.
                 .and_then(|asset| Some((asset.frame, asset.ink?)))
             {
                 Some((frame, ink)) => frames[slot(material)] = Some((frame, ink)),
@@ -62,12 +43,6 @@ impl TerrainFrames {
     }
 
     /// How far the artwork of any of these materials reaches above and below the ground it
-    /// stands on, in screen pixels. The cull needs it: a column whose ground is just off the
-    /// bottom of the screen still shows the block standing on it.
-    ///
-    /// A dressed grass top ([`TerrainLook::top`]) is drawn on the plain block's own template and
-    /// measures the same, so it needs no margin of its own; artwork that grew out of that
-    /// template would have to be counted here.
     fn reach(&self, tile_width: f64) -> (f64, f64) {
         self.frames
             .iter()
@@ -82,9 +57,6 @@ impl TerrainFrames {
 }
 
 /// Queues the sprites for `columns`, which the caller sorts and draws with everything else.
-///
-/// `height_at` answers for any column, loaded or not; an unknown neighbour counts as level
-/// ground, which is what keeps a chunk edge from growing a wall while the next chunk loads.
 pub fn collect_terrain_sprites(
     columns: &[TerrainColumn],
     projection: ProjectionConfig,
@@ -96,11 +68,6 @@ pub fn collect_terrain_sprites(
     let step = projection
         .elevation_step
         .unwrap_or(projection.tile_height / 2.0);
-    // Chunks are culled against the camera, but a chunk is 32x32 columns and only a fraction of
-    // one is ever on screen: a frame walks ~12 000 columns of which ~600 are visible. So the
-    // projected point is tested against these bounds before anything else is computed — the two
-    // neighbour lookups per column alone cost over a millisecond a frame when every column paid
-    // for them.
     let (screen_w, screen_h) = (f64::from(screen_width()), f64::from(screen_height()));
     let half_tile = projection.tile_width / 2.0;
     let (above, below) = frames.reach(projection.tile_width);
@@ -120,11 +87,6 @@ pub fn collect_terrain_sprites(
             continue;
         }
 
-        // The faces that can be seen are the ones towards the camera, where x and y decrease;
-        // a column is exposed as far down as the lowest of those neighbours. **The diagonal
-        // counts too**, which is what `COVERING_CELLS` says in TypeScript (`[-1, -1, 1]`):
-        // where two columns of the same height meet a lower one across the corner, the corner
-        // is open. A prism closes it, but the rule is the one the TypeScript client uses.
         let in_front = [
             WorldCoord {
                 x: column.coord.x,
@@ -145,9 +107,6 @@ pub fn collect_terrain_sprites(
             let Some((frame, ink)) = frames.frame(block.material) else {
                 continue;
             };
-            // What grows on the ground only ever dresses a column's own surface: a dressed block
-            // buried in a cliff would hide its flowers inside the block standing on it. The top
-            // is a whole block of its own, so it brings its own artwork and its own measurement.
             let (frame, ink) = match (block.elevation == column.elevation)
                 .then(|| look.top(block.material, column.coord.x, column.coord.y))
                 .flatten()
@@ -156,8 +115,6 @@ pub fn collect_terrain_sprites(
                 None => (frame, ink),
             };
             let tint = look.tint(block.material, column.coord.x, column.coord.y);
-            // A block stands on the top face of the block below it, which is `step` further
-            // down the screen for each level below the column's own surface.
             let layout = ink_layout(
                 ScreenPoint {
                     x: top.screen_x,
@@ -182,12 +139,6 @@ pub fn collect_terrain_sprites(
 }
 
 /// The lowest block of a column that still has to be drawn: as far down as the lowest of the
-/// columns in front of it, which is one block past the drop rather than level with it.
-///
-/// Past it, not level with it, because a stack that stops at the neighbour's own surface can
-/// leave a wedge of background showing at the foot of a cliff. On level ground the clamp makes
-/// this the one surface block, so it costs nothing where nothing is exposed; an unknown neighbour
-/// (a chunk still loading) counts as level ground rather than growing a wall.
 fn exposed_floor(elevation: i32, in_front: impl IntoIterator<Item = Option<i32>>) -> i32 {
     in_front
         .into_iter()

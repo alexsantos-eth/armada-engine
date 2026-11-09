@@ -9,7 +9,6 @@ fn ground() -> ScreenPoint {
 }
 
 /// A block drawn over the whole tile: a tile across, from half a tile height below the ground
-/// centre up over the block's body.
 #[test]
 fn a_full_block_covers_its_tile_and_stands_on_it() {
     let ink = InkBox {
@@ -29,7 +28,6 @@ fn a_full_block_covers_its_tile_and_stands_on_it() {
 }
 
 /// The reason this exists: a tree's drawing stops at the foot of its trunk, so it stands at the
-/// centre of its tile, not on the south corner the template reaches down to.
 #[test]
 fn a_tree_stands_at_the_centre_of_its_tile() {
     let tree = InkBox {
@@ -87,8 +85,6 @@ fn the_tile_width_scales_the_whole_rectangle() {
 }
 
 /// The measurement and the placement have to agree about the anchor, so this goes from a source
-/// asset's own coordinates all the way to pixels: a drawing covering the quarter tile north of
-/// the anchor lands exactly there.
 #[test]
 fn a_measured_asset_lands_where_it_was_drawn() {
     let svg = concat!(
@@ -105,7 +101,6 @@ fn a_measured_asset_lands_where_it_was_drawn() {
 }
 
 /// A footprint along the engine's x: each cell is half a tile to the right and a quarter of
-/// one up the screen.
 const STEP_X: (f64, f64) = (TILE_WIDTH / 2.0, -TILE_WIDTH / 4.0);
 
 fn anchor() -> ScreenPoint {
@@ -113,7 +108,6 @@ fn anchor() -> ScreenPoint {
 }
 
 /// How far a point lies along the footprint, in cells, from the anchor cell's centre: the
-/// measure the cut is made in. The cuts fall on whole numbers, half a tile past each centre.
 fn cells_along(p: (f64, f64)) -> f64 {
     (p.0 - anchor().x) / STEP_X.0
 }
@@ -123,16 +117,13 @@ fn band(layout: SpriteLayout, index: i32, cells: i32) -> SpriteBand {
 }
 
 /// A band holds the drawing over its own cell and no more: the stretch of screen between the
-/// cuts half a tile past its centre and half a tile past the one in front of it.
 #[test]
 fn a_band_holds_only_its_own_cell() {
-    // A three-cell building, two tiles across and standing well above its footprint.
     let layout = SpriteLayout { x: -40.0, y: -200.0, width: 160.0, height: 240.0 };
     for index in 0..3 {
         let band = band(layout, index, 3);
         for &corner in band.corners() {
             let along = cells_along(corner);
-            // The end bands are cut on their inner side only.
             if index > 0 {
                 assert!(along >= f64::from(index) - 1e-9, "band {index} reaches cell {along}");
             }
@@ -144,14 +135,11 @@ fn a_band_holds_only_its_own_cell() {
 }
 
 /// The cut is vertical, like the strips the TypeScript client cuts its texture into, and not
-/// along the cells' shared diamond edge: the two disagree over a wedge that widens up the
-/// screen, and there a player level with the far cell showed through the artwork.
 #[test]
 fn the_cut_falls_straight_down_the_screen() {
     let layout = SpriteLayout { x: -40.0, y: -200.0, width: 160.0, height: 240.0 };
     let first = band(layout, 0, 3);
     let cut = STEP_X.0;
-    // High above the footprint, where a diagonal cut would have leaned far to the right.
     for height in [-200.0, -120.0, -20.0] {
         assert!(inside(&first, (cut - 1.0, height)), "{cut} at {height}");
         assert!(!inside(&first, (cut + 1.0, height)), "{cut} at {height}");
@@ -159,8 +147,6 @@ fn the_cut_falls_straight_down_the_screen() {
 }
 
 /// A cut at the cell's own centre gave the cell behind the near cell's own corner, and the
-/// ground a row in front then painted over it. The corner of the anchor cell's ground diamond —
-/// half a tile right of its centre, a quarter of one down — must stay in band 0.
 #[test]
 fn the_near_cell_keeps_its_own_corner() {
     let layout = SpriteLayout { x: -40.0, y: -200.0, width: 160.0, height: 240.0 };
@@ -218,7 +204,6 @@ fn a_single_cell_sprite_is_not_cut() {
 }
 
 /// A footprint running along the engine's y goes the other way across the screen, so its cuts
-/// march the other way too — and the anchor cell is still the one nearest the camera.
 #[test]
 fn a_footprint_the_other_way_is_cut_the_other_way() {
     let layout = SpriteLayout { x: -120.0, y: -200.0, width: 160.0, height: 240.0 };
@@ -254,7 +239,6 @@ fn the_bleed_overlaps_neighbouring_bands() {
     let tight = band(layout, 1, 3);
     let loose = footprint_band(layout, anchor(), STEP_X, 1, 3, 0.5).expect("a band");
     let widened = area(&loose) - area(&tight);
-    // Half a pixel on each of two cuts, along the width the band spans.
     assert!(widened > 0.0, "the bleed must grow the band: {widened}");
     assert!(widened < layout.width * 2.0, "but only by a pixel: {widened}");
 }

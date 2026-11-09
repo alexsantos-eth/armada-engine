@@ -14,7 +14,6 @@ fn lattice(seed: u64, x: i64, y: i64) -> f64 {
 }
 
 /// The lattice value of one integer point, for anything that wants an unrelated number per column
-/// rather than a smooth field: the scatter inside a clump of plants, say. Same point, same number.
 pub fn lattice_at(seed: u64, x: i64, y: i64) -> f64 {
     lattice(seed, x, y)
 }

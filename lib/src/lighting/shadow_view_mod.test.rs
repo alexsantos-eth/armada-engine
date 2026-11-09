@@ -11,8 +11,6 @@ fn an_inks_extent_is_the_rectangle_the_sprite_is_drawn_into() {
     };
     let extent = extent_of_ink(ink, 200.0);
 
-    // The same numbers `ink_layout` draws with, measured from the ground point instead of from
-    // the screen's origin: that is what a caster is.
     assert_eq!(extent.left, -40.0);
     assert_eq!(extent.top, -100.0);
     assert_eq!(extent.width, 80.0);
@@ -52,10 +50,6 @@ fn the_nine_chunks_around_one_include_it_once() {
 }
 
 /// A column's quad reads the map at the middle of the square's outermost texels and not at its
-/// edges, because an edge blends in half of the next column's texel — and that column stands at
-/// another level and is drawn somewhere else. The ground used to read the map through a lattice
-/// of corners and had the same rule for the same reason; now the sampler does it, and this is
-/// the arithmetic that still has to hold.
 #[test]
 fn a_columns_quad_reads_inside_its_own_square_of_the_map() {
     let per_tile = f64::from(SHADOW_MAP_PIXELS_PER_TILE);
@@ -63,13 +57,10 @@ fn a_columns_quad_reads_inside_its_own_square_of_the_map() {
 
     assert!(near > 0.0, "the near corner would read the previous column");
     assert!(far < per_tile, "the far corner would read the next column");
-    // Half a texel in at each end, so the pair spans all but one texel of the square.
     assert_eq!(far - near, per_tile - 1.0);
 }
 
 /// Every shadow is drawn out of the shared atlas, so that binding it changes nothing and the
-/// ground and its shadows stay one batch. Without the patch each shadow would bind a texture of
-/// its own, which is a draw call per shadow and what this whole arrangement exists to avoid.
 #[test]
 fn the_atlas_carries_the_white_patch_the_shadows_are_drawn_from() {
     use iso::assets::AssetManifest;
@@ -106,7 +97,6 @@ fn the_ground_shadow_lies_over_the_terrain_and_under_what_stands_on_it() {
 fn a_clear_grid_asks_for_no_lattice() {
     use iso::lighting::{SHADE_COLUMNS, SHADE_ROWS, ShadowCaster, SpriteExtent, shade_grid};
 
-    // A caster that covers the receiver, but is transparent everywhere.
     let receiver = ShadowReceiver {
         foot: (1.0, 1.0),
         elevation: 0.0,
@@ -152,16 +142,10 @@ fn a_clear_grid_asks_for_no_lattice() {
         SHADE_ROWS,
     );
 
-    // Dawn's light runs along −x, so a caster at the origin shades nothing at (1, 1).
     assert!(solid.is_none());
 }
 
 /// A shadow is laid on the cell itself, which only works while every terrain block is drawn at
-/// least a whole cell wide. When the blocks were clay with rounded corners this was false by a
-/// few percent, and the grooves between them showed through a shadow as a lattice of light
-/// lines; the quad had to be slid onto the drawn face to hide them, and the slide then left
-/// thin unshaded lines of its own. The generator (`artifacts/terrain_blocks.py`) is what makes
-/// it true, and this is the manifest saying so.
 #[test]
 fn every_terrain_block_is_drawn_at_least_a_whole_cell_wide() {
     use iso::assets::{AssetManifest, terrain_sprite_source};

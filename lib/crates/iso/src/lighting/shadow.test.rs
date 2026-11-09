@@ -1,7 +1,6 @@
 use super::*;
 
 /// A sun straight behind the camera: shadows run up the screen along `+x +y`, which is the one
-/// case where the silhouette on the ground is the sprite exactly as it is drawn.
 fn behind_the_camera() -> ShadowProjection {
     let half = std::f64::consts::FRAC_1_SQRT_2;
     ShadowProjection { dir_x: half, dir_y: half, stretch: 1.0, alpha: 0.5 }
@@ -12,8 +11,6 @@ const BOX: f64 = 100.0 / 3.0;
 
 #[test]
 fn a_pixel_of_height_is_the_same_length_either_way_round() {
-    // The two scales a silhouette uses: along the shadow and across it. Across is shorter,
-    // because a tile edge spans half a tile on screen at 45° while a vertical unit does not.
     assert!((tiles_per_pixel_of_height(TILE) - 2.5_f64.sqrt() / TILE).abs() < 1e-15);
     assert!((tiles_per_pixel_across(TILE) - std::f64::consts::SQRT_2 / TILE).abs() < 1e-15);
     assert!(tiles_per_pixel_across(TILE) < tiles_per_pixel_of_height(TILE));
@@ -21,8 +18,6 @@ fn a_pixel_of_height_is_the_same_length_either_way_round() {
 
 #[test]
 fn a_block_is_about_half_a_tile_of_world_length() {
-    // The TypeScript engine's own number (`BLOCK_HEIGHT_IN_TILES`), which is where a wall's
-    // shadow starts from: a block's body is a third of a tile width on screen.
     assert!((block_height_in_tiles(BOX, TILE) - 0.527_046_276_694_73).abs() < 1e-12);
 }
 
@@ -31,7 +26,6 @@ fn the_silhouette_stands_on_its_foot() {
     let light = behind_the_camera();
     let matrix = silhouette_matrix(&light, (4.0, 7.0), 0.0, TILE, BOX);
 
-    // The foot of the sprite is the ground point itself: nothing is displaced at zero lift.
     let at_foot = matrix.apply((0.0, 0.0));
     assert!((at_foot.0 - 4.0).abs() < 1e-12);
     assert!((at_foot.1 - 7.0).abs() < 1e-12);
@@ -42,18 +36,15 @@ fn height_is_laid_down_the_shadow_and_width_across_it() {
     let light = behind_the_camera();
     let matrix = silhouette_matrix(&light, (0.0, 0.0), 0.0, TILE, BOX);
 
-    // A pixel 10 px above the foot lands 10 px of height down the shadow direction.
     let up = matrix.apply((0.0, -10.0));
     let reach = 10.0 * tiles_per_pixel_of_height(TILE);
     assert!((up.0 - reach * light.dir_x).abs() < 1e-12);
     assert!((up.1 - reach * light.dir_y).abs() < 1e-12);
 
-    // A pixel 10 px to its right lands across the shadow, at (dir_y, −dir_x).
     let right = matrix.apply((10.0, 0.0));
     let across = 10.0 * tiles_per_pixel_across(TILE);
     assert!((right.0 - across * light.dir_y).abs() < 1e-12);
     assert!((right.1 + across * light.dir_x).abs() < 1e-12);
-    // And nowhere down the shadow: a sprite's width never lengthens its shadow.
     assert!((right.0 * light.dir_x + right.1 * light.dir_y).abs() < 1e-12);
 }
 
@@ -63,7 +54,6 @@ fn a_lower_receiving_plane_pushes_the_whole_shadow_further_away() {
     let own = silhouette_matrix(&light, (0.0, 0.0), 0.0, TILE, BOX);
     let lower = silhouette_matrix(&light, (0.0, 0.0), 2.0, TILE, BOX);
 
-    // Only the translation moves, and it moves along the shadow by two blocks of height.
     assert!((lower.a - own.a).abs() < 1e-15 && (lower.d - own.d).abs() < 1e-15);
     let expected = lift_reach(&light, 2.0, TILE, BOX);
     assert!((lower.tx - own.tx - expected * light.dir_x).abs() < 1e-12);
@@ -108,17 +98,14 @@ fn nothing_beside_or_towards_the_sun_is_shaded() {
     let light = behind_the_camera();
     let caster = (0.0, 0.0);
 
-    // Towards the sun: the receiver is up-light of the caster.
     assert_eq!(
         cast_shadow_offset(&light, caster, (-2.0, -2.0), 0.0, TILE, BOX),
         None
     );
-    // Exactly beside it: the ray through the caster never reaches it.
     assert_eq!(
         cast_shadow_offset(&light, caster, (1.0, -1.0), 0.0, TILE, BOX),
         None
     );
-    // And a sun overhead casts on nothing at all.
     let overhead = ShadowProjection { stretch: 0.0, ..light };
     assert_eq!(
         cast_shadow_offset(&overhead, caster, (2.0, 2.0), 0.0, TILE, BOX),
@@ -129,7 +116,6 @@ fn nothing_beside_or_towards_the_sun_is_shaded() {
 #[test]
 fn a_receiver_down_the_shadow_is_offset_along_it_and_not_across() {
     let light = behind_the_camera();
-    // Two tiles straight down the shadow direction.
     let along = 2.0;
     let receiver = (light.dir_x * along, light.dir_y * along);
     let (x, y) = cast_shadow_offset(&light, (0.0, 0.0), receiver, 0.0, TILE, BOX)
@@ -159,6 +145,5 @@ fn reach_grows_with_height_and_with_the_lift_and_is_never_negative() {
 
     assert!(tall > short && lifted > short);
     assert!((tall - MAX_SHADOW_STRETCH * tiles_per_pixel_of_height(TILE) * 40.0).abs() < 1e-12);
-    // A caster below the ground it would shade reaches nothing, rather than a negative distance.
     assert_eq!(shadow_reach(10.0, -10.0, TILE, BOX), 0.0);
 }

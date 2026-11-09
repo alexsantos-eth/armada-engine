@@ -36,15 +36,12 @@ fn the_waterline_of_something_in_the_water_is_where_it_stands() {
 }
 
 /// On a bank the mirror hangs from the water, which is as far below the feet as the bank is
-/// high: that is the lift the TypeScript client applies before it mirrors.
 #[test]
 fn the_waterline_of_something_on_a_bank_is_the_water_under_its_cell() {
-    // Screen `y` grows downwards and the water is lower, so its plane is further down.
     assert!((waterline(100.0, 3.0, 1.0, BOX_HEIGHT) - (100.0 + 2.0 * BOX_HEIGHT)).abs() < 1e-9);
 }
 
 /// The reflection is the same drawing, the same size, hanging from the waterline: a point `h`
-/// above the water shows `h` below it, at the same screen `x`.
 #[test]
 fn a_mirrored_sprite_hangs_from_the_waterline_at_its_own_width() {
     let layout = standing((0.0, 100.0), 60.0);
@@ -63,7 +60,6 @@ fn a_mirrored_sprite_hangs_from_the_waterline_at_its_own_width() {
 }
 
 /// A footprint running over several cells is turned half a circle instead of flipped, about the
-/// middle of its own run: a flip alone would reverse the diagonal its row lies along.
 #[test]
 fn a_long_sprite_is_turned_about_the_middle_of_its_run() {
     let layout = SpriteLayout { x: -40.0, y: 40.0, width: 160.0, height: 60.0 };
@@ -74,7 +70,6 @@ fn a_long_sprite_is_turned_about_the_middle_of_its_run() {
 }
 
 /// An asset that carries its own reflection is placed where its generator put it: the client has
-/// nothing to mirror and must not flip it.
 #[test]
 fn an_asset_drawn_as_the_water_shows_it_is_laid_where_it_is() {
     let layout = standing((0.0, 100.0), 60.0);
@@ -84,7 +79,6 @@ fn an_asset_drawn_as_the_water_shows_it_is_laid_where_it_is() {
 }
 
 /// A cell's top face is its own diamond: a tile across, half a tile down, around the point the
-/// projection puts its centre at.
 #[test]
 fn a_cells_top_is_the_diamond_the_projection_draws_it_as() {
     let corners = cell_top((0, 0), 0.0, projection());
@@ -100,11 +94,9 @@ fn a_cells_top_is_the_diamond_the_projection_draws_it_as() {
 }
 
 /// The reflection of something standing beside the water falls on the cells in front of it,
-/// which is where the water is: towards `−x` and `−y`, down the screen.
 #[test]
 fn a_reflection_falls_on_the_cells_in_front_of_what_casts_it() {
     let projection = projection();
-    // Standing on cell (2, 2) at elevation 1, over water at level 0.
     let feet = {
         let at = crate::projection::project_block(
             crate::projection::GridPoint { x: 2.5, y: 2.5 },
@@ -158,13 +150,11 @@ fn a_projection_with_no_tile_has_no_cells() {
 }
 
 /// A cell under the middle of the mirrored drawing takes a piece of it, and that piece reads the
-/// artwork upside down: the part of it nearest the waterline is the top of the sprite.
 #[test]
 fn a_piece_reads_the_artwork_upside_down() {
     let projection = projection();
     let feet = (0.0, 0.0);
     let mirrored = mirror_sprite(standing(feet, 2.0 * TILE_HEIGHT), 0.0, None);
-    // The cell the caster stands on, at the same level: the reflection starts on it.
     let piece = reflection_piece(&mirrored, &cell_top((-1, -1), 0.0, projection))
         .expect("the first cell under the waterline takes a piece");
     assert_eq!(piece.points.len(), piece.uv.len());
@@ -204,7 +194,6 @@ fn a_cell_the_drawing_only_grazes_is_dropped() {
     let mirrored = mirror_sprite(standing((0.0, 0.0), 40.0), 0.0, None);
     let ((min_x, min_y), (max_x, max_y)) =
         reflection_cells(&mirrored, 0.0, projection).expect("an area");
-    // The corner cells of the range are the ones the rectangle's own corners only touch.
     let pieces = (min_x..=max_x)
         .flat_map(|x| (min_y..=max_y).map(move |y| (x, y)))
         .filter(|&cell| reflection_piece(&mirrored, &cell_top(cell, 0.0, projection)).is_some())
@@ -215,7 +204,6 @@ fn a_cell_the_drawing_only_grazes_is_dropped() {
 }
 
 /// The pieces a reflection is cut into tile it exactly: no cell takes a second copy of the same
-/// pixels, and nothing is lost between two cells.
 #[test]
 fn the_pieces_add_up_to_the_whole_reflection() {
     let projection = projection();

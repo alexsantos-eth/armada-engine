@@ -7,7 +7,6 @@ fn level_ground_draws_only_its_surface() {
 }
 
 /// The corner case: both columns in front are level, and only the one across the corner is
-/// lower, so the diagonal has to count towards the exposed floor as well.
 #[test]
 fn a_lower_column_across_the_corner_opens_the_stack() {
     assert_eq!(exposed_floor(3, [Some(3), Some(3), Some(1)]), 1);

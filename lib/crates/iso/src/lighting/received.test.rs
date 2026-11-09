@@ -64,7 +64,6 @@ fn grid_of(
 fn nothing_up_light_of_a_receiver_shades_it() {
     let light = behind_the_camera();
     let it = receiver((0.0, 0.0), 0.0, 80.0);
-    // Down the shadow from the receiver, so the receiver is between the sun and it.
     let behind = caster((light.dir_x * 2.0, light.dir_y * 2.0), 0.0, 80.0);
 
     assert_eq!(grid_of(&it, &[behind], &light, &solid()), None);
@@ -80,7 +79,6 @@ fn a_caster_just_up_light_shades_the_receiver() {
     assert_eq!(grid.columns(), SHADE_COLUMNS);
     assert_eq!(grid.rows(), SHADE_ROWS);
     assert!(!grid.is_clear());
-    // The shadow slides down the receiver as it travels, so its foot is darker than its head.
     assert!(grid.at(SHADE_COLUMNS / 2, SHADE_ROWS) >= grid.at(SHADE_COLUMNS / 2, 0));
 }
 
@@ -110,7 +108,6 @@ fn a_caster_far_down_the_light_misses_the_receiver_altogether() {
     let it = receiver((light.dir_x * 40.0, light.dir_y * 40.0), 0.0, 80.0);
     let post = caster((0.0, 0.0), 0.0, 80.0);
 
-    // The shadow has long since slid off the bottom of the receiver.
     assert_eq!(grid_of(&it, &[post], &light, &solid()), None);
 }
 
@@ -127,7 +124,6 @@ fn a_transparent_caster_shades_nothing() {
 fn only_the_part_of_a_caster_above_its_own_foot_is_cast() {
     let light = behind_the_camera();
     let it = receiver((light.dir_x, light.dir_y), 0.0, 80.0);
-    // A drawing that lies entirely below its ground point casts nothing on anything.
     let puddle = ShadowCaster {
         extent: SpriteExtent { left: -50.0, top: 0.0, width: TILE, height: 30.0 },
         ..caster((0.0, 0.0), 0.0, 30.0)
@@ -179,7 +175,6 @@ fn reading_past_the_edge_of_a_grid_gives_its_edge() {
 #[test]
 fn a_point_is_shaded_by_a_caster_standing_up_the_light_from_it() {
     let light = ShadowProjection { dir_x: -1.0, dir_y: 0.0, stretch: 2.2, alpha: 0.34 };
-    // A post one tile up the light from the point, tall enough to reach it.
     let post = ShadowCaster {
         foot: (5.5, 2.5),
         elevation: 0.0,
@@ -195,7 +190,6 @@ fn a_point_is_shaded_by_a_caster_standing_up_the_light_from_it() {
 }
 
 /// The ground reaches a point with no caster at all, which is what shades a cliff standing in
-/// another cliff's shadow.
 #[test]
 fn a_point_is_shaded_by_the_ground_alone() {
     let light = ShadowProjection { dir_x: -1.0, dir_y: 0.0, stretch: 2.2, alpha: 0.34 };

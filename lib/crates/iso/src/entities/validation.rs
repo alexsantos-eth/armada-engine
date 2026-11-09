@@ -97,7 +97,6 @@ fn validate_blueprint(blueprint: &EntityBlueprintV2) -> Result<(), CatalogError>
             reason: "surfaces must have one value per footprint cell".to_owned(),
         });
     }
-    // Every `TerrainMaterial` variant is a valid placement surface.
     let _ = &blueprint.placement.surfaces;
     if blueprint.asset.sprite.is_empty() {
         return Err(CatalogError::InvalidAsset {

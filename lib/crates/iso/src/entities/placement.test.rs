@@ -46,7 +46,6 @@
     }
 
     /// Every instance the validity rules allow, which is what these tests are about; the
-    /// world's own density and gap are covered by their own tests.
     fn dense() -> PlacementRules {
         PlacementRules { gap: 0, density: 1 }
     }
@@ -81,8 +80,6 @@
     }
 
     /// The returned index is the one built during the pass rather than a second one rebuilt from
-    /// the entities, so it has to cover every entity over its whole footprint — including the
-    /// multi-cell ones, where the two could most easily disagree.
     #[test]
     fn the_returned_index_covers_every_entity_footprint() {
         let columns = vec![
@@ -107,7 +104,6 @@
                 );
             }
         }
-        // And nothing beyond those footprints is claimed.
         assert!(!result.index.is_occupied(WorldCoord { x: 4, y: 0 }));
     }
 
@@ -142,7 +138,6 @@
             column(3, 0, grass(), 0),
         ];
         let catalog = catalog(vec![blueprint("tree", 1, vec![grass()])]);
-        // Use a gap of 1 so adjacent columns cannot both host a tree.
         let mut columns_map = CellMap::new();
         for column in &columns {
             let _ = columns_map.insert(column.coord, *column);
@@ -154,10 +149,8 @@
         let placement = p0.unwrap();
         let entity = Entity::new(placement.anchor.x, placement.anchor.y, bp, placement.elevation);
         let _ = placed.insert(entity, &placement.footprint);
-        // After placing at (0,0) with gap 1, (1,0) is within the gap rectangle.
         let p1 = find_placement(WorldCoord { x: 1, y: 0 }, bp, &mut PlacementContext::new(&columns_map, &mut placed), 1);
         assert!(p1.is_none());
-        // (2,0) is at Chebyshev distance 2 from (0,0), outside gap 1.
         let p2 = find_placement(WorldCoord { x: 2, y: 0 }, bp, &mut PlacementContext::new(&columns_map, &mut placed), 1);
         assert!(p2.is_some());
     }
@@ -171,7 +164,6 @@
     }
 
 /// The density rule thins placement without making it random: the same blueprint and column
-/// decide the same way on every run, and the rate is roughly what was asked for.
 #[test]
 fn density_thins_placement_deterministically() {
     let columns: Vec<TerrainColumn> = (0..64)
@@ -181,7 +173,6 @@ fn density_thins_placement_deterministically() {
 
     let rules = PlacementRules { gap: 0, density: 50 };
     let result = place_entities_with(&columns, &catalog, rules);
-    // 4096 columns at one in fifty: enough placed to be a world, nowhere near a carpet.
     assert!(
         (40..=130).contains(&result.entities.len()),
         "{} entities placed, expected around 82",
@@ -192,14 +183,11 @@ fn density_thins_placement_deterministically() {
     let ids_again: Vec<&str> = again.entities.iter().map(|e| e.id()).collect();
     assert_eq!(ids, ids_again, "the same world must generate the same way twice");
 
-    // And a denser rule is a superset: raising the rate only ever adds instances, because the
-    // roll of a column does not depend on the rate.
     let denser = place_entities_with(&columns, &catalog, PlacementRules { gap: 0, density: 25 });
     assert!(denser.entities.len() > result.entities.len());
 }
 
 /// The default rules leave room between instances of a type, so a forest cannot grow into a
-/// solid block of trunks.
 #[test]
 fn the_default_gap_keeps_instances_of_a_type_apart() {
     let columns: Vec<TerrainColumn> = (0..32)

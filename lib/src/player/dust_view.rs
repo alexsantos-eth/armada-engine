@@ -1,20 +1,4 @@
 //! The puffs of dust the player kicks up, raised, settled and queued for the scene.
-//!
-//! The maths is the domain's ([`iso::player::dust`]); this is the bookkeeping and the drawing:
-//! a fixed pool of puffs reused in turn, a trigger per thing the player does (a take-off, a
-//! landing, each stretch of ground run or slid), and a queue of three-faced cubes.
-//!
-//! **Why no particle crate.** `macroquad-particles` is the obvious thing to reach for, and it
-//! does not fit: an emitter is drawn whole by one `Emitter::draw(pos)` with no per-particle
-//! depth, so a puff would land either entirely in front of the player or entirely behind it,
-//! and its particles are textured or flat quads rather than blocks. The dust in the TypeScript
-//! client is the opposite of that on both counts — each cube is a voxel in the world, sorted by
-//! the column it drifts over, so the player runs *through* its own dust and a wall hides the
-//! part that blows into it. What that needs already exists here: the scene's own draw order. So
-//! a voxel of dust is queued like any other sprite, and the crate buys nothing.
-//!
-//! One puff of twelve cubes is 36 triangles out of the shared atlas's white texel, which joins
-//! the batch the ground is drawn in (see [`crate::assets::sprites::SpriteAtlas::draw_voxel`]).
 
 use iso::player::{
     BURST_DUST, DUST_MIN_IMPACT, DustShape, DustVoxel, KICK_DUST, PlayerMotionType, PlayerState,
@@ -27,37 +11,20 @@ use macroquad::prelude::Color;
 use crate::assets::sprites::SpriteDraw;
 
 /// The colours of a voxel of dust, nearly white: its lit top, its left side and its right side.
-///
-/// The same three as the TypeScript client's `DUST_COLORS`, and the same relation to each other
-/// as a terrain block's faces: the dust is lit like the world it rises from, which is what makes
-/// a cloud of it read as cubes rather than as a flat blob.
 pub const DUST_TOP: u32 = 0xfbf9f4;
 pub const DUST_LEFT: u32 = 0xe6e2d8;
 pub const DUST_RIGHT: u32 = 0xcfcabd;
 
 /// The layer dust drawn behind what stands on its column goes in: the one a column's top wears
-/// its shadows in, under the player and under whatever grows there.
-///
-/// It is the layer the TypeScript client uses for the same voxels (`SCENE_LAYER.ground`), and it
-/// is shared with the baked ground shadows on purpose: a cube of dust is queued after them, and
-/// the sort is stable, so the dust lies over the shadow it drifts across.
 pub const DUST_BEHIND_LAYER: i32 = crate::lighting::shadow_view::GROUND_SHADOW_LAYER;
 
 /// Depth added to a cube of dust in front of the feet, so it draws after the column it is over
-/// and after everything standing on it, the player included.
-///
-/// A nudge rather than a layer, because there is no layer above the player's front one; it is
-/// far below the step between two columns' depths (half a tile) and below what a block of
-/// elevation adds (`0.001` in [`iso::scene_order::get_draw_depth`]), so it can only ever
-/// reorder things sharing one cell. The TypeScript client nudges by the same amount
-/// (`DUST_FRONT_DEPTH`).
 pub const DUST_FRONT_DEPTH: f64 = 0.00001;
 
 /// Columns a running player covers between two puffs of dust.
 pub const RUN_DUST_EVERY: f64 = 0.7;
 
 /// Columns a skidding player slides between two puffs: more often than running, because a skid
-/// is shorter and should still leave a trail.
 pub const SKID_DUST_EVERY: f64 = 0.2;
 
 /// Puffs of running or skidding dust alive at once, reused in turn.
@@ -93,8 +60,6 @@ struct Puff {
     shape: DustShape,
     voxels: Vec<DustVoxel>,
     /// Where each voxel sorts in the scene, worked out once when the puff rose from the column
-    /// the voxel drifts over halfway through its life — as the TypeScript client does, so a
-    /// cube does not hop between a tree's front and its back as it drifts.
     keys: Vec<DrawKey>,
     /// The feet it rose from, in columns, and the blocks above `0` they were.
     feet: GridPoint,
@@ -145,11 +110,6 @@ impl DustPuffs {
     }
 
     /// Notices what the player has done since the last frame and raises the dust for it: a puff
-    /// at a take-off (`feedback.jumps`), a puff at a landing hard enough to raise one
-    /// (`feedback.landings` and [`DUST_MIN_IMPACT`]), and a small puff behind the feet every
-    /// stretch of ground run or slid ([`DustGround::moved`]).
-    ///
-    /// `top_at` gives a column's elevation, for the depth each cube sorts at.
     pub fn react(
         &mut self,
         player: &PlayerState,
@@ -158,8 +118,6 @@ impl DustPuffs {
     ) {
         let feedback = &player.feedback;
         if feedback.landings != self.seen_landings && feedback.impact >= DUST_MIN_IMPACT {
-            // On the ground it landed on: drawn between ticks, the feet may still be a little
-            // above it.
             self.raise(
                 LANDING_PUFF,
                 BURST_DUST,
@@ -189,8 +147,6 @@ impl DustPuffs {
     }
 
     /// The trail a running or skidding player kicks up behind its feet, a puff every stretch of
-    /// ground covered. Walking raises none, and the distance it has banked is dropped so that
-    /// the next run starts its trail from nothing.
     fn kick(
         &mut self,
         player: &PlayerState,
@@ -211,7 +167,6 @@ impl DustPuffs {
             return;
         }
         self.ran %= every;
-        // Kicked back, away from where it runs or slides (nowhere, at no speed).
         let velocity = player.velocity;
         let speed = velocity.x.hypot(velocity.y);
         let speed = if speed == 0.0 { 1.0 } else { speed };
@@ -234,8 +189,6 @@ impl DustPuffs {
     }
 
     /// Raises the puff in slot `index`, replacing whatever was there: a fresh scatter of
-    /// `shape`'s voxels from `feet`, `level` blocks up, pushed by `kick` and rising from
-    /// `origin` (in columns from the feet).
     #[allow(clippy::too_many_arguments)]
     fn raise(
         &mut self,
@@ -274,7 +227,6 @@ impl DustPuffs {
     }
 
     /// Queues every live cube of dust into `draws`, each at the depth it took when its puff
-    /// rose and at the place, size and opacity it has now.
     pub fn collect(&self, projection: ProjectionConfig, draws: &mut Vec<SpriteDraw>) {
         let box_height = projection.elevation_step.unwrap_or(projection.tile_height);
         for puff in self.puffs.iter().flatten() {
@@ -282,7 +234,6 @@ impl DustPuffs {
             let Some(look) = get_dust(ms, puff.shape.ms, puff.shape.alpha) else {
                 continue;
             };
-            // The feet's own cell centre, as everything else standing on a column is projected.
             let screen = project_grid_point(
                 GridPoint {
                     x: puff.feet.x + 0.5,
@@ -320,7 +271,6 @@ impl DustPuffs {
 const ZERO: GridPoint = GridPoint { x: 0.0, y: 0.0 };
 
 /// Where a cube of dust sorts in the scene: the column it is over halfway through its life, and
-/// the side of it the cube is on.
 fn voxel_key(
     voxel: DustVoxel,
     feet: GridPoint,
@@ -362,7 +312,6 @@ fn offset(faces: VoxelFaces, x: f64, y: f64) -> VoxelFaces {
 }
 
 /// The three faces' colours for a cube of `shade` at `alpha`: each face's own near-white
-/// multiplied by the cube's shade, as the TypeScript client tints one drawing per voxel.
 fn colours(shade: u32, alpha: f64) -> [Color; 3] {
     [DUST_TOP, DUST_LEFT, DUST_RIGHT].map(|face| {
         let channel = |shift: u32| {

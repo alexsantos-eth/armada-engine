@@ -2,13 +2,11 @@ use super::*;
 use iso::assets::{AssetKind, SpriteAnchor};
 
 /// An image with one opaque square in the middle of a transparent field, four mask texels
-/// across, so a mask texel is one block of the source.
 fn chequered() -> Image {
     let (width, height) = (8u16, 8u16);
     let mut bytes = vec![0u8; usize::from(width) * usize::from(height) * 4];
     for y in 0..u32::from(height) {
         for x in 0..u32::from(width) {
-            // Opaque over the left half only.
             let alpha = if x < 4 { 255 } else { 0 };
             bytes[((y * u32::from(width) + x) * 4 + 3) as usize] = alpha;
         }
@@ -82,8 +80,6 @@ fn the_mask_is_the_atlas_reduced_and_keeps_solid_areas_solid() {
         .index_of("/assets/tree/block.svg")
         .expect("the atlas holds it");
 
-    // The left half of the artwork is solid, the right half empty: averaging a block of opaque
-    // texels must come back fully opaque rather than a sixteenth short.
     assert!(
         (masks
             .silhouette_of(index)
@@ -143,7 +139,6 @@ fn an_unknown_silhouette_reads_nothing_instead_of_panicking() {
 
 #[test]
 fn a_sprite_sheet_is_not_a_silhouette() {
-    // The player's sheets have textures of their own, and the player never casts here.
     let mut manifest = manifest(&[(
         "/assets/player-16/walk.svg",
         SpriteFrame {

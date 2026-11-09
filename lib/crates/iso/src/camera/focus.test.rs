@@ -51,8 +51,6 @@ fn a_jump_does_not_bob_the_camera() {
 #[test]
 fn a_fall_is_followed_down_as_the_feet_fall() {
     let mut focus = CameraFocus::new(&at(4.0, 0.0));
-    // Walking off a ledge: the column under it is already the lower top, and its feet are the two
-    // blocks of `height` above that top they fall through.
     focus.ground(&at(2.0, 2.0), PlayerMotionType::Falling, 16.0, PROJECTION);
     assert_eq!(focus.level(), 4.0, "it starts where the feet left the ground");
     focus.ground(&at(2.0, 1.0), PlayerMotionType::Falling, 16.0, PROJECTION);
@@ -137,9 +135,6 @@ fn advance_is_the_level_and_ground_is_that_level_as_a_lift() {
 
 #[test]
 fn the_level_shown_settles_on_the_level_aimed_at_without_a_corner() {
-    // Landing on the top a block down: the aim is the feet, and it drops to the lower top the frame
-    // the player lands, so the smoothing is the only thing the camera is behind by — and the only
-    // thing the player moves on screen by.
     let mut focus = CameraFocus::new(&at(1.0, 0.0));
     let landed = at(0.0, 0.0);
     let frame = 1000.0 / 60.0;
@@ -170,7 +165,6 @@ fn the_level_shown_settles_on_the_level_aimed_at_without_a_corner() {
 
 #[test]
 fn a_shorter_step_is_smoothed_over_the_same_time_as_a_longer_one() {
-    // The same unhurried motion whatever the drop, not a flick because there is less of it to cover.
     let settle = |drop: f64| {
         let mut focus = CameraFocus::new(&at(drop, 0.0));
         let landed = at(0.0, 0.0);

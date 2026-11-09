@@ -6,9 +6,6 @@ fn chunk(cx: i32, cy: i32) -> ChunkCoord {
 
 #[test]
 fn a_slot_holds_a_chunks_map_with_its_margin() {
-    // The bake lays a margin of columns around the chunk so that a caster just outside it still
-    // throws its shadow in, and the slot has to hold all of it or the edge columns read the
-    // neighbouring slot.
     assert_eq!(
         SLOT_TEXELS,
         (CHUNK_SIZE + 2 * SHADOW_MAP_MARGIN) as u32 * SHADOW_MAP_PIXELS_PER_TILE
@@ -89,7 +86,6 @@ fn a_full_atlas_turns_out_the_chunk_wanted_longest_ago() {
     for n in 0..SLOT_COUNT as i32 {
         slots.claim(chunk(n, 0));
     }
-    // Every chunk but the first is drawn again, so the first is the stalest.
     for n in 1..SLOT_COUNT as i32 {
         assert!(slots.touch(chunk(n, 0)).is_some());
     }
@@ -143,7 +139,6 @@ fn a_default_slot_map_is_empty() {
 }
 
 /// The whole point of asking the area rather than computing the arithmetic twice: a column's
-/// square inside a slot is the same square the bake laid it in.
 #[test]
 fn a_columns_square_is_the_one_the_bake_laid_it_in() {
     let coord = chunk(2, -3);
@@ -171,8 +166,6 @@ fn a_columns_square_is_the_one_the_bake_laid_it_in() {
 fn the_margin_column_outside_a_chunk_still_has_a_square() {
     let coord = chunk(0, 0);
 
-    // One column before the chunk starts is inside the map's margin, and that is the first
-    // square of the slot.
     assert_eq!(square_in_slot(coord, -1, -1), Some((0, 0)));
     assert_eq!(
         square_in_slot(coord, 0, 0),

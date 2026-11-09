@@ -106,7 +106,6 @@ fn kind_name(kind: &DrawKind) -> &'static str {
 }
 
 /// Something standing in the water is mirrored in it, in several pieces, each a convex polygon
-/// in the reflections' own layer.
 #[test]
 fn something_standing_in_the_water_is_mirrored_in_it() {
     let draws = collect((0, 0), 0.0, Reflected::Standing { turn_at: None }, sea(0.0));
@@ -118,7 +117,6 @@ fn something_standing_in_the_water_is_mirrored_in_it() {
 }
 
 /// The pieces are cut to cells in front of the caster, which is where its reflection hangs: down
-/// the screen is towards the camera, and that is `−x` and `−y`.
 #[test]
 fn the_pieces_lie_in_front_of_what_they_mirror() {
     let draws = collect((4, 4), 0.0, Reflected::Standing { turn_at: None }, sea(0.0));
@@ -157,7 +155,6 @@ fn water_above_the_caster_mirrors_nothing() {
 }
 
 /// Something on a bank is still mirrored, in the water further in front of it: the drop between
-/// it and the water is what carries its reflection there.
 #[test]
 fn something_on_a_bank_is_mirrored_further_out() {
     let on_water = collect((0, 0), 0.0, Reflected::Standing { turn_at: None }, sea(0.0));
@@ -187,7 +184,6 @@ fn something_on_a_bank_is_mirrored_further_out() {
 }
 
 /// An asset that is already its own reflection is laid where it was drawn, so its pieces stay
-/// around the sprite's own rectangle instead of hanging below it.
 #[test]
 fn an_asset_drawn_as_the_water_shows_it_stays_where_it_is() {
     let draws = collect((0, 0), 0.0, Reflected::AsDrawn, sea(0.0));
@@ -210,7 +206,6 @@ fn an_asset_drawn_as_the_water_shows_it_stays_where_it_is() {
 }
 
 /// The water of a cell sorts the piece on it, so the land in front of that cell covers it: the
-/// depth is the cell's, not the caster's.
 #[test]
 fn a_piece_sorts_by_the_water_it_lies_on() {
     let draws = collect((0, 0), 0.0, Reflected::Standing { turn_at: None }, sea(0.0));
@@ -227,7 +222,6 @@ fn a_piece_sorts_by_the_water_it_lies_on() {
 }
 
 /// Only what the water mirrors is drawn, in the water's colour: the artwork is read a second
-/// time rather than rendered again, so what the water shows is what the scene drew.
 #[test]
 fn the_pieces_read_the_casters_own_artwork_in_the_waters_colour() {
     let draws = collect((0, 0), 0.0, Reflected::Standing { turn_at: None }, sea(0.0));
@@ -278,7 +272,6 @@ fn a_sprite_with_no_area_mirrors_nothing() {
 }
 
 /// A projection with no tile height still answers, rather than dividing by zero when it widens
-/// the search for lower water.
 #[test]
 fn a_projection_with_no_tile_height_mirrors_nothing() {
     let at = ScreenPoint { x: 0.0, y: 0.0 };
@@ -302,7 +295,6 @@ fn a_projection_with_no_tile_height_mirrors_nothing() {
 }
 
 /// A footprint that runs over several cells is turned about its own run, so the reflection of a
-/// long thing is not the mirror image its diagonal would make.
 #[test]
 fn a_long_sprite_is_turned_rather_than_flipped() {
     let flipped = collect((0, 0), 0.0, Reflected::Standing { turn_at: None }, sea(0.0));

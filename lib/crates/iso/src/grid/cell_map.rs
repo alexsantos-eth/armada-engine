@@ -14,8 +14,6 @@ struct Bucket<T> {
 }
 
 /// A chunk-local map whose iteration visits chunks, then cells, in insertion order.
-/// Replacing a cell preserves its position. Empty chunks are forgotten, so a later
-/// insertion into the same chunk places it at the end of the chunk order.
 pub struct CellMap<T> {
     buckets: Vec<Bucket<T>>,
     by_chunk: HashMap<ChunkCoord, usize>,

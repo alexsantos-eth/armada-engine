@@ -5,7 +5,6 @@ const TILE: f64 = 100.0;
 const BOX: f64 = 100.0 / 3.0;
 
 /// Shadows straight up the screen, one tile of ground per tile of height: the easiest sun to
-/// reason about on paper.
 fn behind_the_camera() -> ShadowProjection {
     let half = std::f64::consts::FRAC_1_SQRT_2;
     ShadowProjection { dir_x: half, dir_y: half, stretch: 1.0, alpha: 1.0 }
@@ -94,7 +93,6 @@ fn a_columns_square_is_its_own_corner_of_the_map() {
 fn a_posts_shadow_falls_down_the_light_and_nowhere_else() {
     let light = behind_the_camera();
     let mut map = map_over(-2, 4);
-    // 50 px tall, which at this sun reaches 50 px of height × √(5/2)/100 ≈ 0.79 tiles.
     bake_ground_shadows(
         &mut map,
         &[post((0.5, 0.5), 0.0, 50.0)],
@@ -106,11 +104,9 @@ fn a_posts_shadow_falls_down_the_light_and_nowhere_else() {
         &solid(),
     );
 
-    // Up the shadow from the foot: shaded.
     let reach = 50.0 * tiles_per_pixel_of_height(TILE);
     let along = (0.5 + light.dir_x * reach * 0.5, 0.5 + light.dir_y * reach * 0.5);
     assert!(coverage_at(&map, along.0, along.1) > 0, "the shadow covers its own direction");
-    // Past where it reaches, and the other way: clear.
     assert_eq!(
         coverage_at(&map, 0.5 + light.dir_x * (reach + 1.0), 0.5 + light.dir_y * (reach + 1.0)),
         0,
@@ -143,7 +139,6 @@ fn a_caster_standing_higher_lands_its_shadow_further_down_the_light() {
     let mut level = map_over(-2, 8);
     bake_ground_shadows(&mut level, &[post((0.5, 0.5), 0.0, 60.0)], None, &light, TILE, BOX, &flat(0.0), &solid());
     let mut raised = map_over(-2, 8);
-    // The same post two blocks up, shading ground still at zero.
     bake_ground_shadows(&mut raised, &[post((0.5, 0.5), 2.0, 60.0)], None, &light, TILE, BOX, &flat(0.0), &solid());
 
     let shift = lift_reach(&light, 2.0, TILE, BOX);
@@ -158,8 +153,6 @@ fn a_caster_standing_higher_lands_its_shadow_further_down_the_light() {
 #[test]
 fn only_the_part_standing_above_the_receiving_ground_casts() {
     let light = behind_the_camera();
-    // A post one block tall standing a block *below* the ground it would shade: nothing of it
-    // rises above that plane, so it casts nothing.
     let mut map = map_over(-2, 6);
     bake_ground_shadows(
         &mut map,
@@ -179,7 +172,6 @@ fn only_the_part_standing_above_the_receiving_ground_casts() {
 fn a_hole_in_the_ground_receives_nothing() {
     let light = behind_the_camera();
     let mut map = map_over(-2, 6);
-    // Only the caster's own column exists; everything down the shadow is empty space.
     let level = |x: i32, y: i32| (x == 0 && y == 0).then_some(0.0);
     bake_ground_shadows(&mut map, &[post((0.5, 0.5), 0.0, 60.0)], None, &light, TILE, BOX, &level, &solid());
 
@@ -202,8 +194,6 @@ fn two_shadows_crossing_read_as_one() {
     let mut both = map_over(-2, 6);
     bake_ground_shadows(&mut both, &casters, None, &light, TILE, BOX, &flat(0.0), &solid());
 
-    // Coverage is the larger of the two, never their sum: an overlap would otherwise darken
-    // twice and read as a blotch.
     assert_eq!(
         both.alpha.iter().copied().max(),
         one.alpha.iter().copied().max()
@@ -214,13 +204,10 @@ fn two_shadows_crossing_read_as_one() {
 fn the_silhouette_is_sampled_over_its_own_artwork() {
     let light = behind_the_camera();
     let mut map = map_over(-4, 6);
-    // Opaque only down the right-hand half of the drawing.
-    // Opaque only down its right half: a plane of two texels across, the far one solid.
     static RIGHT_HALF: [u8; 4] = [0, 255, 0, 255];
     let half = window(&RIGHT_HALF);
     bake_ground_shadows(&mut map, &[post((0.5, 0.5), 0.0, 60.0)], None, &light, TILE, BOX, &flat(0.0), &half);
 
-    // Across the shadow is (dir_y, −dir_x); the sprite's right-hand side lands on that side.
     let reach = 60.0 * tiles_per_pixel_of_height(TILE) * 0.5;
     let middle = (0.5 + light.dir_x * reach, 0.5 + light.dir_y * reach);
     let across = tiles_per_pixel_across(TILE) * TILE * 0.3;
@@ -265,7 +252,6 @@ fn an_artwork_with_no_size_casts_nothing() {
 fn a_caster_drawn_entirely_below_its_foot_casts_nothing() {
     let light = behind_the_camera();
     let mut map = map_over(-2, 4);
-    // A drawing that starts at the ground point and goes down the screen: a puddle, not a post.
     let puddle = ShadowCaster {
         extent: SpriteExtent { left: -TILE / 2.0, top: 0.0, width: TILE, height: 20.0 },
         ..post((0.5, 0.5), 0.0, 10.0)
@@ -297,7 +283,6 @@ fn an_empty_world_bakes_nothing() {
 fn the_blur_softens_an_edge_and_keeps_the_middle() {
     let area = MapArea { min_x: 0, min_y: 0, max_x: 1, max_y: 1 };
     let mut map = ShadowMap::new(area, 4);
-    // A solid block over the left half.
     for y in 0..map.height {
         for x in 0..map.width / 2 {
             map.alpha[(y * map.width + x) as usize] = 255;
@@ -338,8 +323,6 @@ fn clearing_a_map_keeps_it_the_same_size() {
 /// A cliff is a caster like any other, except that it is in the map rather than in front of it.
 #[test]
 fn a_step_in_the_ground_lays_its_own_shadow_down_the_light() {
-    // Straight down `+x`, so a wall of columns at x = 3 shades the ground at x > 4 and nothing
-    // else.
     let light = ShadowProjection { dir_x: 1.0, dir_y: 0.0, stretch: 1.0, alpha: 1.0 };
     let mut map = map_over(-2, 10);
     let steps = |x: i32, _: i32| Some(if x == 3 { 2.0 } else { 0.0 });
@@ -358,8 +341,6 @@ fn a_step_in_the_ground_lays_its_own_shadow_down_the_light() {
 /// The blur must not reach across a step: it would lift the shadow off the wall that casts it.
 #[test]
 fn the_shadow_at_the_foot_of_a_step_is_as_solid_as_the_rest_of_it() {
-    // The same wall at x = 3, with the sun at `-x`: the ground from x = 4 on is in its shadow
-    // and the wall's own top is lit.
     let light = ShadowProjection { dir_x: 1.0, dir_y: 0.0, stretch: 1.0, alpha: 1.0 };
     let mut map = map_over(-2, 10);
     let steps = |x: i32, _: i32| Some(if x == 3 { 2.0 } else { 0.0 });
@@ -398,10 +379,6 @@ fn terraced() -> impl Fn(i32, i32) -> Option<f64> {
 }
 
 /// A map of pseudo-random texels, for comparing a blur against a mean worked out by hand.
-///
-/// The fast paths of the blur turn on runs of equal texels, so the noise is laid in runs of a
-/// few texels: a map of pure noise would never take them and a map of flat ground would never
-/// leave them.
 fn noisy_map(area: MapArea, per_tile: u32) -> ShadowMap {
     let mut map = ShadowMap::new(area, per_tile);
     let mut seed = 0x2545_F491_4F6C_DD1Du64;
@@ -428,7 +405,6 @@ fn noisy_map(area: MapArea, per_tile: u32) -> ShadowMap {
 }
 
 /// The mean of `line` over `at ± span`, cut at `cut`: the plainest reading of the blur, one
-/// texel at a time, for the fast paths to be measured against.
 fn mean_cut_at(line: &[u8], at: usize, span: usize, per_tile: usize, cut: &dyn Fn(usize) -> bool) -> u8 {
     let mut from = at.saturating_sub(span);
     let mut to = (at + span).min(line.len() - 1);

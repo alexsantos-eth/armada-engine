@@ -1,8 +1,4 @@
 //! Chunk streaming with per-frame budgets, independent of rendering.
-//!
-//! Coordinates a `TerrainWorld` (discovered terrain) and placed entities, loading, showing and
-//! hiding chunks at the rates documented in `scene_order::budgets`. The same code runs on the
-//! native and WASM clients; the Macroquad client drives it once per frame.
 
 use std::collections::{HashMap, HashSet};
 
@@ -17,11 +13,6 @@ use crate::terrain::TerrainGenerator;
 use crate::world::TerrainWorld;
 
 /// How far the streamer loads, prefetches and keeps chunks around each focus.
-///
-/// The defaults are the shared budgets, the same numbers the TypeScript client uses. A client
-/// may ask for less: a client that draws a small view (one zoomed in, or one whose player is
-/// drawn large) never reaches the outer rings, and every chunk it loads anyway costs terrain
-/// generation, entity placement, memory and save size.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ChunkRadii {
     /// Chunks needed around each focus; these are the ones made visible.
@@ -44,8 +35,6 @@ impl Default for ChunkRadii {
 
 impl ChunkRadii {
     /// Clamps the radii so they still grow outwards, whatever a caller asked for: a keep radius
-    /// below the prefetch radius would unload a chunk the streamer is still asking for, and the
-    /// two would fight every frame.
     pub fn normalized(self) -> Self {
         let load = self.load.max(1);
         let prefetch = self.prefetch.max(load);
@@ -58,7 +47,6 @@ impl ChunkRadii {
 }
 
 /// Manages which chunks are discovered, visible and unloaded, plus the entities living on
-/// discovered chunks.
 pub struct ChunkManager {
     world: TerrainWorld,
     catalog: EntityCatalogV2,
@@ -68,7 +56,6 @@ pub struct ChunkManager {
     pending_entities: Vec<ChunkCoord>,
     radii: ChunkRadii,
     /// Cached, distance-sorted stream targets. They only change when the camera crosses a chunk
-    /// boundary, not on every rendered frame.
     wanted_loaded: Vec<ChunkCoord>,
     wanted_prefetch: Vec<ChunkCoord>,
 }
@@ -102,7 +89,6 @@ impl ChunkManager {
     }
 
     /// Sets the focus chunks (typically around the camera/player). The streamer keeps chunks
-    /// around them loaded and visible, within the per-frame budgets.
     pub fn set_focus(&mut self, focus: Vec<ChunkCoord>) {
         if self.focus == focus {
             return;
@@ -124,18 +110,9 @@ impl ChunkManager {
     }
 
     /// Advances one frame: loads, shows and hides chunks respecting per-frame budgets.
-    ///
-    /// Returns the chunks that were newly discovered this frame, so the client can refresh its
-    /// views.
     pub fn tick(&mut self) -> Vec<ChunkCoord> {
         let mut newly_discovered = Vec::new();
 
-        // 1. Load: discover chunks around every focus, up to the per-frame budget.
-        //
-        //    The candidate list reaches out to `CHUNK_PREFETCH_RADIUS` and is sorted by
-        //    distance, so the ring a shown chunk needs for its edges is always discovered
-        //    before the ring loaded ahead of the camera. Both share one budget, which is what
-        //    keeps generation spread over frames instead of landing in one.
         let mut loads_left = CHUNKS_LOADED_PER_FRAME;
         for &coord in &self.wanted_prefetch {
             if loads_left <= 0 {
@@ -150,7 +127,6 @@ impl ChunkManager {
             loads_left -= 1;
         }
 
-        // 2. Generate entities for chunks discovered this frame.
         for coord in self.pending_entities.drain(..) {
             if let Some(columns) = self.world.chunk(coord) {
                 let result = place_entities(columns, &self.catalog);
@@ -158,8 +134,6 @@ impl ChunkManager {
             }
         }
 
-        // 3. Show: make discovered chunks within load radius visible, up to the per-frame budget.
-        //     Only chunks already discovered are shown here; new chunks are discovered in step 1.
         let mut shown_left = CHUNKS_SHOWN_PER_FRAME;
         for &coord in &self.wanted_loaded {
             if shown_left <= 0 {
@@ -172,7 +146,6 @@ impl ChunkManager {
             shown_left -= 1;
         }
 
-        // 4. Hide: hide visible chunks outside the keep radius, up to the per-frame budget.
         let mut hidden_left = CHUNKS_HIDDEN_PER_FRAME;
         let visible: Vec<ChunkCoord> = self.world.visible_chunks();
         for &coord in &visible {
@@ -195,7 +168,6 @@ impl ChunkManager {
     }
 
     /// Terrain column at an absolute world coordinate, or `None` when its chunk was never
-    /// discovered.
     pub fn column_at(&self, x: i32, y: i32) -> Option<crate::terrain::TerrainColumn> {
         let coord = crate::grid::to_chunk_coord(crate::grid::WorldCoord { x, y });
         let chunk = self.world.chunk(coord)?;
@@ -220,7 +192,6 @@ impl ChunkManager {
     }
 
     /// Converts a discovered chunk into its saved form, storing terrain and entities.
-    /// Returns `None` when the chunk was never discovered.
     pub fn save_chunk(&self, coord: ChunkCoord) -> Option<crate::world::save::SavedChunk> {
         let columns = self.world.chunk(coord)?;
         let saved_columns: Vec<crate::world::save::SavedColumn> = columns
@@ -238,9 +209,6 @@ impl ChunkManager {
                         x: e.x(),
                         y: e.y(),
                         elevation: e.elevation(),
-                        // The instance's own state, so the round trip is lossless. Writing an
-                        // empty object here while `load_from_save` read `colorVariant` back out
-                        // of it meant a saved colour variation could never survive a reload.
                         state: saved_entity_state(e),
                     })
                     .collect()
@@ -268,13 +236,7 @@ impl ChunkManager {
     }
 
     /// Restores chunks from a save into this manager, bypassing generation.
-    ///
-    /// Returns the blueprint ids the save referred to but the catalog does not define. Those
-    /// entities are skipped: reporting them is what lets a client tell a catalog that moved on
-    /// from a corrupt save, instead of silently reopening a world with missing scenery.
     pub fn load_from_save(&mut self, save: &crate::world::save::WorldSave) -> Vec<String> {
-        // One index for the whole save. Scanning the catalog per saved entity was
-        // O(entities x blueprints): 21 589 entities against 63 blueprints in a 42-chunk world.
         let blueprints: HashMap<&str, &crate::entities::EntityBlueprintV2> = self
             .catalog
             .entities
@@ -336,10 +298,6 @@ impl ChunkManager {
     }
 
     /// Every chunk within `radius` of any focus, deduplicated and sorted nearest first.
-    ///
-    /// The order is what makes the per-frame budget fair: the nearest missing chunk is always
-    /// the one generated next, so the ground under the camera never waits behind a chunk loaded
-    /// ahead of it. Ties break on coordinates so the sequence does not depend on hash order.
     fn chunks_within(&self, radius: i32) -> Vec<ChunkCoord> {
         let mut wanted: HashSet<ChunkCoord> = HashSet::new();
         for &focus in &self.focus {
@@ -367,11 +325,6 @@ impl ChunkManager {
     }
 
     /// Discovered chunks further than `CHUNK_KEEP_RADIUS` from every focus, nearest first.
-    ///
-    /// Hiding a chunk stops drawing it but keeps its terrain and entities in memory, so a
-    /// session that explores far enough grows without bound: the save written from a 42-chunk
-    /// world already weighs tens of megabytes. These are the chunks a client should persist and
-    /// then hand to [`Self::unload_chunk`].
     pub fn unload_candidates(&self) -> Vec<ChunkCoord> {
         let mut stale: Vec<ChunkCoord> = self
             .world
@@ -392,9 +345,6 @@ impl ChunkManager {
     }
 
     /// The one chunk [`Self::unload_candidates`] would hand back first, without building the
-    /// list. A client calls this every frame, and the list costs two allocations and a sort.
-    ///
-    /// Ties break on coordinates, so the choice does not depend on hash order.
     pub fn next_unload_candidate(&self) -> Option<ChunkCoord> {
         self.world
             .discovered_chunks_unordered()
@@ -411,10 +361,6 @@ impl ChunkManager {
     }
 
     /// Drops a chunk's terrain and entities from memory, returning its saved form.
-    ///
-    /// The returned [`SavedChunk`] is the only remaining copy: revisiting the chunk generates it
-    /// again unless the caller stores it (`ChunkArchive::put`) and feeds it back through
-    /// [`Self::load_from_save`]. Returns `None` for a chunk that was never discovered.
     #[must_use = "the returned chunk is the only copy left; store it or its edits are lost"]
     pub fn unload_chunk(&mut self, coord: ChunkCoord) -> Option<crate::world::save::SavedChunk> {
         let saved = self.save_chunk(coord)?;
@@ -425,7 +371,6 @@ impl ChunkManager {
 }
 
 /// The per-instance state a save has to carry: everything `Entity::restore` cannot rebuild from
-/// the blueprint. An entity with no state of its own saves as an empty object.
 fn saved_entity_state(entity: &Entity) -> serde_json::Value {
     let mut state = match entity.metadata().clone() {
         serde_json::Value::Object(map) => map,

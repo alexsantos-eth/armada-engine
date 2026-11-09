@@ -1,9 +1,4 @@
 //! Version 2 entity blueprint types.
-//!
-//! Mirrors `core/types/entities.ts` (`EntityBlueprintV2`) and the versioned catalog
-//! `web/src/isometric/content/entities.v2.json`. Visual identity (`asset`), physical footprint
-//! (`shape`) and placement rules (`placement`) are kept separate, so Rust can design its own
-//! density, grouping and biome rules without touching this file.
 
 use crate::terrain::TerrainMaterial;
 
@@ -17,7 +12,6 @@ pub enum EntityLengthAxis {
 }
 
 /// How an entity sways in the wind (a tree): its sprite is cut in two at `cut`, the trunk stays
-/// still and the canopy leans. Single-tile entities only.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct EntitySway {
     /// Where the sprite is cut, as a fraction of its height from its top (`0`–`1`, both excluded).

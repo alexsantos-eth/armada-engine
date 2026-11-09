@@ -1,18 +1,4 @@
 //! The puffs of dust the player kicks up, as voxels rather than as a smear of circles.
-//!
-//! This is the TypeScript client's `player-view/feedback.ts`, carried over whole: the same
-//! shapes, the same scatter and the same easing, so a jump raises the same ring of near-white
-//! cubes in both clients. Nothing here draws or knows about a window — a puff is a list of
-//! voxels, each with where it starts, where it drifts to and how big and bright it is, and the
-//! view asks where a voxel is at a point in its life.
-//!
-//! Why voxels and not a particle crate: `macroquad-particles` draws a whole emitter in one
-//! call, with no per-particle depth, so every particle of a puff would land either wholly in
-//! front of the player or wholly behind it. Dust that a player runs *through* needs each cube
-//! sorted on its own, by the column it drifts over, which is exactly what the scene's draw
-//! order already does for terrain, entities and the figure itself. So the dust joins that list
-//! as ordinary geometry, and [`get_dust_column`] answers which column and which side of it a
-//! cube belongs to.
 
 use crate::player::physics::get_player_column;
 use crate::projection::GridPoint;
@@ -32,10 +18,6 @@ fn remaining(ms: f64, duration: f64) -> f64 {
 }
 
 /// How the voxels of a kind of puff of dust are scattered: how many, how far from the feet they
-/// start and drift outward (in columns), how big (in tiles), how high they start and rise (in
-/// blocks; a negative `rise` sinks), how far a kick pushes them (`kick`, in columns: back from
-/// where the player runs), the two tints their shades are mixed from (`colors`), how long the
-/// puff lasts (`ms`, real milliseconds) and how opaque it starts (`alpha`).
 #[derive(Clone, Copy, Debug)]
 pub struct DustShape {
     pub voxels: usize,
@@ -89,7 +71,6 @@ pub struct DustLook {
 }
 
 /// A puff of dust `ms` real milliseconds after it rose: how far through its life of `duration`
-/// it is (`0` → `1`) and how opaque it is, fading from `alpha`, or `None` once it is gone.
 pub fn get_dust(ms: f64, duration: f64, alpha: f64) -> Option<DustLook> {
     let left = remaining(ms, duration);
     if left == 0.0 {
@@ -99,9 +80,6 @@ pub fn get_dust(ms: f64, duration: f64, alpha: f64) -> Option<DustLook> {
 }
 
 /// A voxel of a puff of dust: where it starts, in columns from the feet (`x`, `y`) and in blocks
-/// above them (`lift`), the columns it drifts (`drift_x`, `drift_y`) and blocks it rises (`rise`)
-/// over the puff's life, its size in tiles and its `shade`, a tint between its shape's two
-/// `colors`.
 #[derive(Clone, Copy, Debug)]
 pub struct DustVoxel {
     pub x: f64,
@@ -115,7 +93,6 @@ pub struct DustVoxel {
 }
 
 /// The colour `share` (`0` → `1`) of the way from `from` to `to`, channel by channel, rounded
-/// towards `from`: the TypeScript client's `mixColor()`.
 pub fn mix_color(colors: (u32, u32), share: f64) -> u32 {
     let (from, to) = colors;
     let mut color = 0u32;
@@ -129,11 +106,6 @@ pub fn mix_color(colors: (u32, u32), share: f64) -> u32 {
 }
 
 /// A stream of numbers in `[0, 1)` from one seed, so that a puff raised with the same seed
-/// scatters the same way twice.
-///
-/// It stands in for the TypeScript client's `createSeededRandom()`: the point is only that two
-/// puffs raised one after another look unalike and that a replay of the same frame draws the
-/// same dust, not that the two clients produce the very same numbers.
 #[derive(Clone, Copy, Debug)]
 pub struct DustRandom {
     state: u64,
@@ -157,9 +129,6 @@ impl DustRandom {
 }
 
 /// The voxels of a puff of dust of `shape`, scattered by the stream of `seed`: spread round the
-/// feet at even angles, each turned, sized, lifted and shaded on its own, so no two puffs look
-/// alike. `kick`, a direction on the ground (unit or zero), shifts the puff that way and pushes
-/// it on as it drifts; `origin`, in columns from the feet, is where it rises.
 pub fn get_dust_voxels(
     shape: DustShape,
     seed: u64,
@@ -205,8 +174,6 @@ pub struct DustVoxelState {
 }
 
 /// Where `voxel` is `progress` of the way through its puff's life (`0` → `1`): in columns from
-/// the feet and blocks above them, drifting and rising fast at first and slowing down, and
-/// shrinking as it fades.
 pub fn get_dust_voxel_at(voxel: DustVoxel, progress: f64) -> DustVoxelState {
     let eased = 1.0 - (1.0 - progress) * (1.0 - progress);
     DustVoxelState {
@@ -224,15 +191,10 @@ pub struct DustColumn {
     pub y: i32,
     pub elevation: f64,
     /// Further from the camera than the feet (in their own column) or than the column's centre
-    /// (in any other): drawn before what stands there, else after.
     pub behind: bool,
 }
 
 /// The column a voxel of dust at `point` (on the ground, in columns) is drawn with, for feet at
-/// `feet` and `level` blocks up, `top_at` giving a column's elevation (`None` where there is
-/// none): the column it is over (the feet's own where there is none), at that column's top or,
-/// if the top is higher than the feet (a wall), at the block the feet are level with, so the
-/// blocks above hide the dust that drifts into the wall.
 pub fn get_dust_column(
     point: GridPoint,
     feet: GridPoint,
@@ -259,7 +221,6 @@ pub fn get_dust_column(
 }
 
 /// The three faces of a voxel seen from the camera, as four screen points each, clockwise from
-/// the one furthest from the camera.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct VoxelFaces {
     pub top: [(f64, f64); 4],
@@ -268,12 +229,6 @@ pub struct VoxelFaces {
 }
 
 /// A small voxel standing on the ground, `size` tiles wide, its bottom centred on a point: its
-/// top and its two sides facing the camera, in screen pixels from that point, with the
-/// proportions of a terrain block, so a puff of dust looks like the world's own voxels.
-///
-/// The same geometry as the TypeScript client's `getVoxelFaces()`, which builds it once at size
-/// `1` and scales the drawing; here each voxel is cut to its own size, because the scene draws
-/// geometry rather than keeping a display object per voxel.
 pub fn voxel_faces(size: f64, tile_width: f64, tile_height: f64, box_height: f64) -> VoxelFaces {
     let w = size * tile_width / 2.0;
     let t = size * tile_height / 2.0;

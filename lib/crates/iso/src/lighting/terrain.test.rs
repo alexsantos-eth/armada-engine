@@ -5,7 +5,6 @@ const TILE: f64 = 280.0;
 const BOX: f64 = 280.0 * 341.0 / 1024.0;
 
 /// A sun straight along world `-x`, so the arithmetic of a walk is readable: a shadow runs one
-/// way and `stretch` tiles of it come from one block of height.
 fn straight(stretch: f64) -> ShadowProjection {
     ShadowProjection { dir_x: -1.0, dir_y: 0.0, stretch, alpha: 0.34 }
 }
@@ -30,11 +29,9 @@ fn open_ground_shades_nothing() {
 
 #[test]
 fn a_column_shades_the_ground_behind_it_and_not_in_front() {
-    // One tower at x = 5, four blocks over a plain at zero.
     let field = HeightField::new(0, 0, 10, 2, |x, _| Some(if x == 5 { 4.0 } else { 0.0 }));
     let light = straight(2.2);
 
-    // Shadows fall along -x, so the ground that loses the sun is at smaller x.
     let behind = field.horizon(4.5, 1.5, &light, BOX, TILE);
     let front = field.horizon(6.5, 1.5, &light, BOX, TILE);
 
@@ -56,7 +53,6 @@ fn a_shadow_reaches_as_far_as_the_light_stretches_it() {
 }
 
 /// The point of a horizon: one walk answers for every height at that place, which is how a tree
-/// standing in a cliff's shadow comes out shaded and its crown does not.
 #[test]
 fn a_horizon_answers_for_every_height_at_its_place() {
     let field = HeightField::new(0, 0, 10, 2, |x, _| Some(if x == 5 { 4.0 } else { 0.0 }));
@@ -101,7 +97,6 @@ fn a_far_occluder_has_a_softer_edge_than_a_near_one() {
 }
 
 /// A shadow that goes through a corner must not jump: the walk crosses column boundaries, so a
-/// ray along the diagonal touches every column it really passes through.
 #[test]
 fn a_diagonal_ray_crosses_every_column_it_passes() {
     let light = ShadowProjection {
@@ -110,7 +105,6 @@ fn a_diagonal_ray_crosses_every_column_it_passes() {
         stretch: 2.2,
         alpha: 0.34,
     };
-    // A single tall column up the diagonal from the point asked about.
     let field = HeightField::new(0, 0, 8, 8, |x, y| Some(if x == 4 && y == 4 { 4.0 } else { 0.0 }));
 
     let under = field.horizon(2.5, 2.5, &light, BOX, TILE);
@@ -132,7 +126,6 @@ fn a_receiver_point_rises_with_the_artwork_and_moves_across_the_light() {
     assert!((above.elevation - 3.0).abs() < 1e-12, "a box height up is a block up");
     assert_eq!((above.x, above.y), (foot.x, foot.y), "and straight up moves nowhere");
     assert_eq!(under.elevation, foot.elevation, "artwork under the foot rests on the ground");
-    // Across the sprite is across the light: perpendicular to the direction it falls.
     let (dx, dy) = (across.x - foot.x, across.y - foot.y);
     assert!((dx * light.dir_x + dy * light.dir_y).abs() < 1e-12);
     assert!((dx.hypot(dy) - std::f64::consts::SQRT_2).abs() < 1e-12, "a tile of screen is √2 tiles across");

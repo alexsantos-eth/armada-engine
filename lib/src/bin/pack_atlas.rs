@@ -1,25 +1,4 @@
 //! Build tool: pack the rasterized assets into the atlas and the player's sheet textures.
-//!
-//! Usage: cargo run --bin pack_atlas -- <input_dir> <output_atlas> <output_manifest> [svg_root]
-//!
-//! Input: the directory `scripts/rasterize.py` wrote — one PNG per asset, plus one directory per player
-//! sheet under `sheets/`, holding a PNG per cell named `<facing>-<pose>.png` — and the SVG
-//! sources those PNGs were rendered from, under `svg_root` (default `public`).
-//! Output: the packed atlas PNG, one texture per sheet beside it, and the manifest JSON.
-//!
-//! **Nothing is resized here.** The rasterizer draws every asset at the same number of pixels
-//! per tile of world, so a sprite's pixels already match the size it is drawn at, whether it is
-//! a boulder or a three-cell pier. Fitting each sprite into a cell of one fixed size, as this
-//! used to, gave a bush and a six-storey tower the same pixels: the tower was drawn at a third
-//! of the detail, and a whole 8x9 sheet of player poses came out at about sixteen pixels a
-//! pose. Sprites are trimmed to their artwork and packed in shelves instead, and the sheets get
-//! textures of their own.
-//!
-//! Each sprite is trimmed to its opaque pixels, which is what loses the only thing that says
-//! where the drawing belongs in the world, since the transparent margin around it *was* the
-//! tile. So the geometry is read back out of the SVG and written into the manifest beside the
-//! frame; see `iso::assets::ink` for a single asset and `iso::assets::sheet`
-//! for the window a sheet's cells share.
 
 use iso::assets::{
     AssetEntry, AssetKind, AssetManifest, InkBox, MANIFEST_SCHEMA_VERSION, SheetLayout, SpriteAnchor,
@@ -30,14 +9,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// Width of the atlas, in pixels. Both dimensions stay within the 4096 px a texture is safe at
-/// everywhere; the height grows with the shelves and is reported when the atlas is written.
 const ATLAS_WIDTH: u32 = 4096;
 
 /// Transparent border left around every sprite in the atlas.
-///
-/// Frames are sampled half a texel in from their edges, but a sprite drawn larger than its
-/// frame still reaches past that, and without a gap it would pick up the neighbour packed
-/// against it. One transparent pixel on each side is cheaper than the artefact.
 const PADDING: u32 = 1;
 
 fn main() {
@@ -83,8 +57,6 @@ fn main() {
 
 /// Packs every single-asset PNG into one atlas and appends an entry for each.
 fn pack_assets(input_dir: &Path, svg_root: &str, entries: &mut Vec<AssetEntry>) -> (RgbaImage, SpriteFrame) {
-    // Tallest first, so that a shelf is filled by sprites of a similar height and little of it
-    // is left empty above the short ones.
     let mut sprites: Vec<(String, RgbaImage)> = read_pngs(input_dir)
         .into_iter()
         .map(|(name, image)| {
@@ -111,8 +83,6 @@ fn pack_assets(input_dir: &Path, svg_root: &str, entries: &mut Vec<AssetEntry>) 
             kind: AssetKind::Entity,
             source,
             data_tiles: data_tiles(&svg).map(str::to_owned),
-            // The frame is the artwork, not a cell it was centred in: the padding is what the
-            // trim removed, and drawing it back in would scale every sprite down to fit it.
             frame: Some(SpriteFrame { x, y, width: image.width(), height: image.height() }),
             frames: None,
             texture: None,
@@ -136,10 +106,6 @@ fn pack_assets(input_dir: &Path, svg_root: &str, entries: &mut Vec<AssetEntry>) 
 }
 
 /// Packs each sheet of player poses into a texture of its own and appends its entry.
-///
-/// A sheet keeps its grid rather than being shelved: every cell is the same window on the
-/// character, so the cells are equal and a grid wastes nothing, and the frame of a pose is then
-/// the cell at `facing * columns + pose`.
 fn pack_sheets(input_dir: &Path, output_atlas: &Path, svg_root: &str, entries: &mut Vec<AssetEntry>) {
     let sheets_dir = input_dir.join("sheets");
     let Ok(dirs) = fs::read_dir(&sheets_dir) else {
@@ -222,8 +188,6 @@ fn pack_sheets(input_dir: &Path, output_atlas: &Path, svg_root: &str, entries: &
                 poses: grid.poses.iter().map(|pose| (*pose).to_owned()).collect(),
             }),
             anchor: SpriteAnchor { x: 0.5, y: 1.0 },
-            // Every cell shows the same window of the character's template, so one box places
-            // the whole sheet and the figure keeps its spot as the pose changes.
             ink: Some(grid.ink().rounded()),
             color_variants: 1,
             sway: None,
@@ -255,8 +219,6 @@ fn trim(image: &RgbaImage) -> RgbaImage {
     let (mut max_x, mut max_y) = (0u32, 0u32);
     for y in 0..image.height() {
         for x in 0..image.width() {
-            // Any alpha at all: the rasterizer's antialiasing reaches a pixel past the artwork,
-            // and cutting that off frays every outline.
             if image.get_pixel(x, y)[3] > 0 {
                 min_x = min_x.min(x);
                 min_y = min_y.min(y);
@@ -272,10 +234,6 @@ fn trim(image: &RgbaImage) -> RgbaImage {
 }
 
 /// Where each sprite goes in an atlas [`ATLAS_WIDTH`] wide: left to right along a shelf, then a
-/// new shelf under the tallest sprite of the one before it.
-///
-/// The sprites come tallest first, so a shelf holds sprites of a similar height; the waste is
-/// the ragged right edge of each shelf and the strip under its shorter sprites.
 fn shelve(sizes: impl Iterator<Item = (u32, u32)>) -> Vec<(u32, u32)> {
     let (mut x, mut y, mut shelf) = (PADDING, PADDING, 0);
     sizes
@@ -294,7 +252,6 @@ fn shelve(sizes: impl Iterator<Item = (u32, u32)>) -> Vec<(u32, u32)> {
 }
 
 /// The asset source path a rasterized file's name came from: only the first underscore
-/// separates the directory from the file name.
 fn source_path(name: &str) -> String {
     let mut parts = name.splitn(2, '_');
     let directory = parts.next().unwrap_or(name);
@@ -305,7 +262,6 @@ fn source_path(name: &str) -> String {
 }
 
 /// The SVG an asset was rasterized from, or an empty document if it cannot be read: a missing
-/// source costs the asset its measured geometry, not the whole atlas.
 fn read_svg(svg_root: &str, source: &str) -> String {
     fs::read_to_string(format!("{svg_root}{source}")).unwrap_or_else(|err| {
         eprintln!("warning: no source for {source}: {err}");
@@ -314,7 +270,6 @@ fn read_svg(svg_root: &str, source: &str) -> String {
 }
 
 /// A written file's path as the manifest records it: relative to the client root, with forward
-/// slashes, which is what the client passes to the loader.
 fn path_for_manifest(path: &Path) -> String {
     path.components()
         .map(|component| component.as_os_str().to_string_lossy())

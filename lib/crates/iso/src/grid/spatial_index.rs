@@ -7,27 +7,15 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use super::coords::{GridCoordOutOfRange, WorldCoord, WorldRect, assert_grid_coord};
 
 /// A derived lookup of items that occupy one or more world columns.
-///
-/// Several items may share a cell. Rectangular results preserve item insertion order,
-/// including after an item is moved (moving places it last). Rebuild this index from
-/// world entities after loading; do not serialize it.
-///
-/// Each item is stored exactly once, in `items`, and everything else refers to it by slot. The
-/// earlier layout kept a clone per footprint cell plus one as a map key, so indexing an entity
-/// with a three-cell footprint stored five copies of it. For entities that carry blueprint data
-/// that is the difference between an index that costs a pointer per cell and one that deep-copies
-/// a JSON tree per cell.
 #[derive(Debug)]
 pub struct SpatialIndex<T: Eq + Hash + Clone> {
     /// One slot per insertion, in order. `None` marks a removed item; [`Self::compact`] reclaims
-    /// the holes once they outnumber the live items.
     items: Vec<Option<T>>,
     /// Footprint of the item in the matching slot.
     cells: Vec<Vec<WorldCoord>>,
     /// Slots occupying each cell, in insertion order.
     by_cell: HashMap<WorldCoord, Vec<usize>>,
     /// Slots whose item has this hash. Lookup by item hashes, then confirms by equality, which
-    /// is what lets the index find an item without keeping a copy of it as a key.
     slots_by_hash: HashMap<u64, Vec<usize>>,
     /// Live items, which is `items.len()` minus the holes.
     len: usize,
@@ -103,13 +91,10 @@ impl<T: Eq + Hash + Clone> SpatialIndex<T> {
     }
 
     /// Insert an item, ignoring repeated cells in its footprint.
-    /// An empty footprint is allowed, matching the domain index contract.
     pub fn insert(&mut self, item: T, cells: &[WorldCoord]) -> Result<(), SpatialIndexError> {
         if self.contains(&item) {
             return Err(SpatialIndexError::AlreadyIndexed);
         }
-        // Every coordinate is validated before anything is written, so a rejected footprint
-        // leaves the index exactly as it was.
         let mut unique = Vec::with_capacity(cells.len());
         for &cell in cells {
             assert_grid_coord(cell).map_err(SpatialIndexError::CoordinateOutOfRange)?;
@@ -157,7 +142,6 @@ impl<T: Eq + Hash + Clone> SpatialIndex<T> {
     }
 
     /// Reclaims removed slots once they outnumber the live items, so an index that is moved
-    /// through repeatedly does not grow without bound. Insertion order is preserved.
     fn compact_if_sparse(&mut self) {
         if self.items.len() < 32 || self.len * 2 > self.items.len() {
             return;

@@ -1,7 +1,6 @@
 use super::{InkBox, SVG_TILE_WIDTH, asset_ink, elevation_step};
 
 /// One asset drawn in the template: a view box one tile wide, the invisible bounds diamonds the
-/// generator always writes, and a figure that only covers part of the tile.
 fn asset(figure: &str) -> String {
     format!(
         r##"<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="853" viewBox="0 -341 1024 853">
@@ -20,7 +19,6 @@ fn asset(figure: &str) -> String {
 
 #[test]
 fn measures_the_artwork_and_not_the_template() {
-    // A box from a quarter to three quarters across the tile, from the ground up a little.
     let svg = asset(
         r##"<path fill="#8a8" stroke="none" d="M256.0,128.0 768.0,128.0 768.0,384.0 256.0,384.0 Z" />"##,
     );
@@ -28,10 +26,8 @@ fn measures_the_artwork_and_not_the_template() {
     assert_eq!(
         ink,
         InkBox {
-            // 256..768 across, which is a quarter either side of the anchor at 512.
             x: -0.25,
             width: 0.5,
-            // 128..384 down, from an eighth above the anchor at 256 to an eighth below.
             y: -0.125,
             height: 0.25,
         },
@@ -40,7 +36,6 @@ fn measures_the_artwork_and_not_the_template() {
 }
 
 /// The whole point of measuring: a tall drawing standing on the ground reaches far above the
-/// anchor and barely below it, so its box is nothing like the tile it stands on.
 #[test]
 fn a_tall_drawing_reaches_above_the_anchor() {
     let svg = asset(r##"<path fill="#333" d="M480.0,-480.0 544.0,-480.0 544.0,272.0 480.0,272.0 Z" />"##);
@@ -69,8 +64,6 @@ fn negative_coordinates_parse() {
 }
 
 /// A sprite sheet is many drawings in one file, laid out by transforms. One box cannot describe
-/// it, so it is better to say nothing than to say something wrong: the client then falls back to
-/// placing the frame by its anchor.
 #[test]
 fn sheets_and_transformed_drawings_are_not_measured() {
     let sheet = r##"<svg viewBox="0 0 3966 3528" data-frames="9" data-facings="east north">
@@ -86,11 +79,6 @@ fn sheets_and_transformed_drawings_are_not_measured() {
 }
 
 /// A footprint of more than one tile is exactly what `data-tiles` declares, and the box says
-/// which way it runs: the drawing extends past the anchor tile on one side only.
-/// The generator draws a footprint running towards the viewer; the engine's cells run away from
-/// it. So the drawing is moved a whole cell along the engine axis for each cell past the first,
-/// onto the cells it is said to cover. Up the screen alone is not enough — it would then lie
-/// over the next column of cells, which sort after it and paint over its near end.
 #[test]
 fn a_footprint_is_moved_onto_the_cells_it_covers() {
     let one = r##"<svg viewBox="0 -341 1024 853" data-tiles="1x1">
@@ -101,11 +89,8 @@ fn a_footprint_is_moved_onto_the_cells_it_covers() {
     };
     let (one_cell, along_x, along_y) = (tiles("1x1"), tiles("3x1x5"), tiles("1x3x5"));
 
-    // Two cells further on, and a cell is half a tile across and a quarter of one up.
     assert_eq!(along_x.y, one_cell.y - 0.5, "away from the viewer");
     assert_eq!(along_y.y, one_cell.y - 0.5, "whichever axis it runs along");
-    // A run along the drawing's x is a footprint along the engine's y, which goes the other way
-    // across the screen: the two must not land on the same cells.
     assert_eq!(along_x.x, one_cell.x - 1.0);
     assert_eq!(along_y.x, one_cell.x + 1.0);
     assert_eq!(along_x.height, one_cell.height, "only moved, never resized");
@@ -137,7 +122,6 @@ fn the_elevation_step_matches_the_block_body() {
 }
 
 /// The manifest keeps six decimals of a tile width, which is a thousandth of a pixel on screen
-/// and the same whether the box came from the packer or from a later measurement.
 #[test]
 fn rounds_for_the_manifest() {
     let box_ = InkBox { x: -0.83564453125, y: -0.5279296875, width: 1.080859375, height: 0.64501953125 };

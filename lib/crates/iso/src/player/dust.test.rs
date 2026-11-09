@@ -1,5 +1,4 @@
 //! Tests for the puffs of dust, against the behaviour of the TypeScript client's
-//! `player-view/feedback.ts`: the fade, the scatter, the easing, the depth and the geometry.
 
 use super::*;
 
@@ -35,7 +34,6 @@ fn a_burst_scatters_its_voxels_round_the_feet() {
         );
         assert!(voxel.rise > 0.0, "a burst of dust rises");
     }
-    // Even angles: the twelve voxels of a burst are spread round the feet rather than bunched.
     let mut angles: Vec<f64> = voxels.iter().map(|voxel| voxel.y.atan2(voxel.x)).collect();
     angles.sort_by(f64::total_cmp);
     for pair in angles.windows(2) {
@@ -60,7 +58,6 @@ fn two_puffs_raised_in_turn_do_not_look_alike() {
 
 #[test]
 fn a_kick_pushes_the_puff_away_from_where_the_player_runs() {
-    // Running towards +x: the kick points back, so the dust leaves behind the feet.
     let kick = GridPoint { x: -1.0, y: 0.0 };
     let voxels = get_dust_voxels(KICK_DUST, 3, kick, ZERO);
     let middle: f64 = voxels.iter().map(|voxel| voxel.x).sum::<f64>() / voxels.len() as f64;
@@ -127,7 +124,6 @@ fn dust_over_the_far_half_of_a_column_is_drawn_behind_what_stands_there() {
 #[test]
 fn dust_that_drifts_onto_a_neighbour_takes_that_column_and_its_top() {
     let feet = GridPoint { x: 4.0, y: 4.0 };
-    // A step up to the east: the dust that drifts onto it is drawn on its own higher top.
     let stepped = |x: i32, _y: i32| Some(if x >= 5 { 3.0 } else { 2.0 });
     let onto = get_dust_column(GridPoint { x: 4.6, y: 4.0 }, feet, 2.0, stepped);
     assert_eq!((onto.x, onto.y), (5, 4), "it is over the neighbour now");
@@ -136,7 +132,6 @@ fn dust_that_drifts_onto_a_neighbour_takes_that_column_and_its_top() {
         "a top above the feet is cut to the block the feet are level with, so the wall hides it"
     );
 
-    // Dust that drifts off the edge of the loaded world keeps the feet's own column.
     let edge = |x: i32, _y: i32| (x < 5).then_some(2.0);
     let off = get_dust_column(GridPoint { x: 4.6, y: 4.0 }, feet, 2.0, edge);
     assert_eq!((off.x, off.y), (4, 4), "with no column there it stays with the feet");
@@ -151,10 +146,8 @@ fn a_voxel_is_drawn_as_the_three_faces_of_a_block() {
     assert_eq!(faces.top[1], (w, -v), "and its sides are half a tile across");
     assert_eq!(faces.left[2], (0.0, t), "the left face reaches down to the near corner");
     assert_eq!(faces.right[2], (w, 0.0), "and the right one to the cell's east corner");
-    // The two side faces meet along the voxel's front edge, so there is no seam between them.
     assert_eq!(faces.left[1], faces.right[0]);
     assert_eq!(faces.left[2], faces.right[3]);
-    // The top's near corner is the top of that shared edge.
     assert_eq!(faces.top[2], faces.left[1]);
 
     let bigger = voxel_faces(1.0, 280.0, 140.0, 160.0);

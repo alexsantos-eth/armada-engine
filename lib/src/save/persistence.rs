@@ -1,7 +1,4 @@
 //! Save and load for the Macroquad client.
-//!
-//! On native targets the save file lives next to the executable. On WebAssembly the file
-//! system is unavailable, so the save persists in `window.localStorage` under the same key.
 
 use iso::world::ChunkManager;
 use iso::world::{ChunkArchive, WorldSave, parse_world_save};
@@ -80,8 +77,6 @@ pub fn restore_archive(save: Option<WorldSave>) -> ChunkArchive {
 /// Persists the archive to disk or to browser storage on WASM.
 pub fn save_archive(archive: &ChunkArchive) {
     let save = archive.snapshot(serde_json::json!({}), serde_json::json!({}));
-    // Compact, not pretty: nobody reads a save by hand, and the indentation was 60% of the file
-    // (16.6 MB vs 6.6 MB for 25 chunks). Serializing it is pure main-thread time.
     let json = match serde_json::to_string(&save) {
         Ok(j) => j,
         Err(_) => return,
@@ -100,7 +95,6 @@ pub fn save_archive(archive: &ChunkArchive) {
 }
 
 /// Syncs discovered chunks from a `ChunkManager` into a `ChunkArchive`, replacing any
-/// previously stored copy of the same chunk.
 pub fn sync_manager_to_archive(manager: &ChunkManager, archive: &mut ChunkArchive) {
     for saved in manager.save_all() {
         archive.put(saved);
@@ -108,23 +102,15 @@ pub fn sync_manager_to_archive(manager: &ChunkManager, archive: &mut ChunkArchiv
 }
 
 /// Loads saved chunks from an archive into a `ChunkManager`, bypassing terrain generation.
-///
-/// Returns the blueprint ids the archive referred to but the catalog does not define.
 pub fn load_archive_into_manager(
     manager: &mut ChunkManager,
     archive: &ChunkArchive,
 ) -> Vec<String> {
-    // Reconstruct a WorldSave from the archive to feed load_from_save.
     let save = archive.snapshot(serde_json::json!({}), serde_json::json!({}));
     manager.load_from_save(&save)
 }
 
 /// Replaces freshly generated chunks with their archived copy, where the archive has one.
-///
-/// A chunk the player walks back into is generated again from scratch. That matches the
-/// generator's output, but not the chunk as the player left it: edits and entity state live only
-/// in the archive. Restoring here keeps the promise that a discovered chunk looks the same when
-/// it comes back, which is what lets chunks be unloaded at all.
 pub fn restore_discovered_from_archive(
     manager: &mut ChunkManager,
     archive: &ChunkArchive,

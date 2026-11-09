@@ -32,7 +32,6 @@ impl InputService for MacroquadInput {
 }
 
 /// Audio service. Macroquad has no bundled sound files yet, so events are recorded
-/// and (when sounds are available) played back. Volume is clamped to [0, 1].
 pub struct MacroquadAudio {
     pub volume: f64,
     pub events: Vec<SoundEvent>,
@@ -50,7 +49,6 @@ impl Default for MacroquadAudio {
 impl AudioService for MacroquadAudio {
     fn play(&mut self, event: SoundEvent) {
         self.events.push(event);
-        // TODO: play the corresponding macroquad::audio::Sound once assets exist.
     }
     fn set_volume(&mut self, volume: f64) {
         self.volume = volume.clamp(0.0, 1.0);
@@ -96,9 +94,6 @@ impl ChunkLoader for MacroquadChunkLoader<'_> {
         if self.manager.is_discovered(coord) {
             return self.manager.terrain_chunk(coord).map(|c| c.to_vec());
         }
-        // Discovery goes through the focus list, so the caller's focus has to be put back:
-        // leaving `coord` as the only focus would move streaming away from the player and
-        // unload the ground under them on the next tick.
         let previous: Vec<ChunkCoord> = self.manager.focus().to_vec();
         self.manager.set_focus(vec![coord]);
         self.manager.tick();

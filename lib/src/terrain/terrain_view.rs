@@ -15,10 +15,6 @@ pub const MATERIALS: [TerrainMaterial; 5] = [
 pub const MATERIAL_SLOTS: usize = MATERIALS.len();
 
 /// Where `material` sits in such an array.
-///
-/// The views keep what they know about a material in a fixed array rather than a map: the frame
-/// and the colour zone of a material are asked for once per drawn block, several hundred a frame,
-/// and a hash lookup each was measurable.
 pub const fn slot(material: TerrainMaterial) -> usize {
     match material {
         TerrainMaterial::Water => 0,

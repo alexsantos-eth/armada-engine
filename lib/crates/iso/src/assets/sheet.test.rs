@@ -38,7 +38,6 @@ fn names_the_group_of_each_cell() {
 }
 
 /// The whole sheet shares one box, and it has to agree with the still figure's own: `block.svg`
-/// is drawn in the same template, so its artwork falls inside the window the cells show.
 #[test]
 fn places_every_cell_by_the_window_it_shows() {
     let ink = parse_sheet(WALK).expect("sheet").ink();
@@ -46,7 +45,6 @@ fn places_every_cell_by_the_window_it_shows() {
     assert!((ink.y - (271.0 - 341.0 - 256.0) / 1024.0).abs() < 1e-9);
     assert!((ink.width - 398.0 / 1024.0).abs() < 1e-9);
     assert!((ink.height - 399.0 / 1024.0).abs() < 1e-9);
-    // The still figure, measured from `player/block.svg`.
     let figure = InkBox { x: -0.128125, y: -0.278809, width: 0.263086, height: 0.33291 };
     assert!(ink.x <= figure.x, "the window reaches past the figure on the left");
     assert!(ink.y <= figure.y, "and above it");
@@ -55,12 +53,6 @@ fn places_every_cell_by_the_window_it_shows() {
 }
 
 /// The sheets as they are drawn: this client's own, of sixteen facings, and the Pixi client's
-/// eight-facing ones beside them, read the same way. Every sheet of one set shows the same
-/// window; the two sets differ, because the intermediate facings reach a little wider and each
-/// sheet carries the window it was drawn with.
-///
-/// Read from disk rather than included: a sheet is megabytes of path data, and nothing here
-/// needs it in the test binary.
 #[test]
 fn reads_the_real_sheets() {
     for (directory, rows) in [("player-16", 16), ("player", 8)] {
@@ -89,7 +81,6 @@ fn reads_the_real_sheets() {
 }
 
 /// The sixteen-facing window is the eight-facing one widened, so the figure keeps its place: a
-/// pose drawn in either set stands on the same spot over its tile.
 #[test]
 fn the_wider_window_holds_the_narrower_one() {
     let read = |path: &str| {

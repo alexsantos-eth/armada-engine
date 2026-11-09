@@ -1,62 +1,37 @@
 //! Which pose of which sheet the player is drawn with, and which way it faces.
-//!
-//! The pose itself is chosen by the domain (`iso::scene_order::select_player_frame`),
-//! which knows the priority between climbing, jumping, standing and walking but nothing about
-//! time or distance. This keeps the two things it needs from one frame to the next — the
-//! columns walked since the player last stood still, which drives the walk cycle, and the real
-//! milliseconds it has stood still, which drives the idle one — and turns the answer into a
-//! row and a column of a sheet.
-//!
-//! It is the same bookkeeping the TypeScript client does in `player-view.ts`, kept apart from
-//! the drawing so it can be tested without a window: the walk cycle advances with the distance
-//! covered rather than with time, so it does not slide when the frame rate changes and a
-//! running player's feet turn over faster on their own.
 
 use iso::player::{PLAYER_FACINGS, PlayerJumpPhase, PlayerMotionType, get_player_facing};
 use iso::projection::GridPoint;
 use iso::scene_order::{PlayerFrame, PlayerFrameInput, PlayerSheet, select_player_frame};
 
 /// Columns walked per cycle of the walk sheet, from the TypeScript content (`PLAYER_WALK`):
-/// at the walking speed of three columns a second that is about four steps a second.
 pub const WALK_STRIDE: f64 = 1.4;
 
 /// Real milliseconds one cycle of the idle sheet lasts: two beats of the monkey's dance.
 pub const IDLE_PERIOD_MS: f64 = 900.0;
 
 /// Milliseconds the player stands still before its idle cycle starts, so that stopping for an
-/// instant between two steps does not make it dance.
 pub const IDLE_DELAY_MS: f64 = 300.0;
 
 /// The walk pose used in the air when there is no jump sheet: the legs furthest apart, a leap.
 pub const AIR_POSE: i32 = 3;
 
 /// How fast the feet pedal while the player skids: twice walking pace, and backwards when it
-/// has let go of the controls and is only sliding.
 pub const SKID_PEDAL: f64 = 2.0;
 
 /// The facing the player starts with, before it has walked anywhere: towards the camera, which
-/// is `south` in [`PLAYER_FACINGS`].
 pub const START_FACING: usize = 12;
 
 /// Real milliseconds the figure spends on each facing it passes through while it turns.
-///
-/// The controls only ever point in eight directions, so without this the sixteen rows of the
-/// sheets would never show their intermediate ones: a turn would jump between the same eight
-/// facings as before, by two rows at a time. Turning through them instead is what the extra
-/// rows are for — the monkey swings round rather than snapping — and at this rate the longest
-/// turn there is, a half turn of eight facings, takes a little over a quarter of a second,
-/// which is about two walking steps.
 pub const TURN_MS_PER_FACING: f64 = 35.0;
 
 /// What one frame does to the animation: where the player is going, what it is doing, and how
-/// far it moved since the frame before.
 #[derive(Clone, Copy, Debug)]
 pub struct PlayerMoment {
     /// How far into a climb the player is, or `None` if it is not climbing.
     pub climbing: Option<f64>,
     pub motion: PlayerMotionType,
     /// The way the player is heading: where it climbs to, or the direction it is walking in.
-    /// `(0, 0)` while it stands still, which leaves it facing the way it already did.
     pub direction: GridPoint,
     /// Columns covered since the frame before, for the walk cycle.
     pub moved: f64,
@@ -66,10 +41,6 @@ pub struct PlayerMoment {
 }
 
 /// How many poses each of the player's sheets holds, read from the manifest once.
-///
-/// The walk sheet's first column is the standing pose, so it holds one more column than it has
-/// walk poses; the others are all cycles or sequences. A sheet the atlas does not have is
-/// `None`, and the player falls back to standing or to the generic airborne pose.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct PlayerSheets {
     pub walk_poses: Option<i32>,
@@ -80,10 +51,6 @@ pub struct PlayerSheets {
 }
 
 /// The columns of the five jump phases in a sheet that names its columns (`data-poses`).
-///
-/// Looked up by name rather than taken in order, so that a sheet regenerated with its phases in
-/// another order still shows the right one; a sheet that names nothing is taken in the order
-/// the phases are declared in, which is how it was drawn.
 pub fn jump_poses(poses: &[String], columns: usize) -> Option<[usize; 5]> {
     const PHASES: [&str; 5] = ["takeoff", "rise", "apex", "fall", "landing"];
     let mut found = [0usize; 5];
@@ -142,18 +109,13 @@ impl PlayerAnimation {
             (_, PlayerJumpPhase::Ground) | (None, _) => None,
             (Some(poses), phase) => Some(poses[phase_column(phase)] as i32),
         };
-        // Standing still is the only thing that feeds the idle cycle: anything else resets it,
-        // so the dance always starts from its first pose.
         self.stood_ms = if moment.climbing.is_some() || walking || flying || jump_pose.is_some() {
             0.0
         } else {
             self.stood_ms + moment.elapsed_ms.max(0.0)
         };
-        // Turned the way it climbs or walks, a facing at a time; standing still it keeps the way
-        // it faced.
         let target = get_player_facing(moment.direction).unwrap_or(self.facing);
         self.turn_towards(target, moment.elapsed_ms);
-        // Skidding, the feet pedal against the slide, backwards if the controls were let go.
         let pedal = match moment.motion {
             PlayerMotionType::Skidding
                 if moment.direction.x == 0.0 && moment.direction.y == 0.0 =>
@@ -185,11 +147,6 @@ impl PlayerAnimation {
     }
 
     /// Steps the facing towards `target` by the shorter way round, one facing per
-    /// [`TURN_MS_PER_FACING`].
-    ///
-    /// Time that does not add up to a whole step is kept for the next frame, so the turn takes
-    /// the same time however often this is called; arriving clears it, so a figure that has
-    /// stood still does not snap a facing the instant it is asked to turn.
     fn turn_towards(&mut self, target: usize, elapsed_ms: f64) {
         let facings = PLAYER_FACINGS.len();
         if target == self.facing {
@@ -202,7 +159,6 @@ impl PlayerAnimation {
             return;
         }
         self.turning_ms -= steps * TURN_MS_PER_FACING;
-        // The shorter way round: the difference brought into −half .. half a turn.
         let half = (facings / 2) as i32;
         let apart = (target as i32 - self.facing as i32 + half).rem_euclid(facings as i32) - half;
         let step = (steps as i32).min(apart.abs()) * apart.signum();
@@ -227,7 +183,6 @@ impl PlayerAnimation {
 }
 
 /// Which of the five jump columns a phase uses; `Ground` never reaches here and takes the
-/// first, the same column a take-off shows.
 fn phase_column(phase: PlayerJumpPhase) -> usize {
     match phase {
         PlayerJumpPhase::Ground | PlayerJumpPhase::Takeoff => 0,

@@ -21,7 +21,6 @@ fn moment() -> PlayerMoment {
 }
 
 /// Walking east: one step of the stride is one pose further through the cycle, and column zero
-/// is the standing pose, so a walk pose is never zero.
 #[test]
 fn advances_the_walk_cycle_with_the_distance_covered() {
     let mut animation = PlayerAnimation::default();
@@ -31,7 +30,6 @@ fn advances_the_walk_cycle_with_the_distance_covered() {
         moved: WALK_STRIDE / 8.0,
         ..moment()
     };
-    // It starts facing the camera, so give it the time to turn east before the cycle is read.
     animation.advance(
         PlayerMoment {
             elapsed_ms: 1_000.0,
@@ -47,8 +45,6 @@ fn advances_the_walk_cycle_with_the_distance_covered() {
         assert_eq!(pose.facing, 0, "east");
         poses.push(pose.pose);
     }
-    // The first frame has already covered an eighth of the stride, so the cycle starts on its
-    // second pose and comes back round to the first; column zero, standing, is never used.
     assert_eq!(poses, vec![2, 3, 4, 5, 6, 7, 8, 1], "one full cycle");
     assert_eq!(
         animation.advance(walking, SHEETS).pose,
@@ -179,7 +175,6 @@ fn shows_the_phase_of_a_jump() {
         );
         assert_eq!((frame.sheet, frame.pose), (PlayerSheet::Jump, pose));
     }
-    // On the ground the jump sheet is not used at all.
     let standing = animation.advance(moment(), SHEETS);
     assert_eq!(standing.sheet, PlayerSheet::Idle);
 }
@@ -205,7 +200,6 @@ fn falls_back_to_the_walk_sheet_in_the_air() {
         (frame.sheet, frame.pose),
         (PlayerSheet::Walk, AIR_POSE as usize)
     );
-    // And with no idle sheet either, standing still is the walk sheet's own standing column.
     let standing = animation.advance(moment(), sheets);
     assert_eq!((standing.sheet, standing.pose), (PlayerSheet::Walk, 0));
 }
@@ -254,7 +248,6 @@ fn names_the_facing_it_turned_to() {
 }
 
 /// The jump sheet's columns are found by name, so a sheet drawn in another order still shows
-/// the right phase; one that names nothing keeps the declared order.
 #[test]
 fn reads_the_jump_columns_by_name() {
     let named: Vec<String> = ["apex", "takeoff", "landing", "rise", "fall"]
@@ -280,12 +273,9 @@ fn reads_the_jump_columns_by_name() {
 }
 
 /// Turning goes through the facings between, one every `TURN_MS_PER_FACING`, which is what the
-/// sixteen rows are for: the controls only point in eight directions, so a turn that jumped
-/// straight to its target would never show an intermediate row.
 #[test]
 fn turns_through_the_facings_between() {
     let mut animation = PlayerAnimation::default();
-    // From south (12) to east (0): four facings the short way round, through the south-east side.
     let east = PlayerMoment {
         motion: PlayerMotionType::Walking,
         direction: GridPoint { x: 1.0, y: -1.0 },
@@ -313,13 +303,11 @@ fn turns_the_short_way_at_a_steady_rate() {
         elapsed_ms,
         ..moment()
     };
-    // South (12) to west (8) is four facings the other way: 11, 10, 9, 8.
     let mut animation = PlayerAnimation::default();
     assert_eq!(
         animation.advance(west(TURN_MS_PER_FACING), SHEETS).facing,
         11
     );
-    // Four facings' worth of time in one frame arrives at once, and not past the target.
     let mut quick = PlayerAnimation::default();
     assert_eq!(
         quick
@@ -327,7 +315,6 @@ fn turns_the_short_way_at_a_steady_rate() {
             .facing,
         8
     );
-    // Time under a whole facing is kept rather than dropped: three thirds make one step.
     let mut slow = PlayerAnimation::default();
     for _ in 0..2 {
         assert_eq!(

@@ -4,7 +4,6 @@ use iso::assets::AssetManifest;
 const SEED: u64 = 1337;
 
 /// The shipped atlas, read as the client reads it, so these checks fail when a top is dropped
-/// from the pipeline rather than when the ground quietly stops growing anything.
 fn shipped() -> AssetManifest {
     serde_json::from_str(include_str!("../../content/assets.manifest.json"))
         .expect("the asset manifest is valid JSON")
@@ -26,7 +25,6 @@ fn columns(side: i32) -> impl Iterator<Item = (i32, i32)> {
 }
 
 /// Every top the content asks for is in the shipped atlas and was measured. Dressing the ground
-/// costs no extra texture: these are packed with the plain block.
 #[test]
 fn every_grass_top_is_in_the_shipped_atlas() {
     let manifest = shipped();
@@ -37,7 +35,6 @@ fn every_grass_top_is_in_the_shipped_atlas() {
 }
 
 /// A top is a whole grass block with clutter painted on, so it occupies its cell exactly as the
-/// plain block does. If it did not, a dressed column would sit out of line with its neighbours.
 #[test]
 fn a_top_stands_in_its_cell_exactly_where_the_plain_block_does() {
     let manifest = shipped();
@@ -56,7 +53,6 @@ fn a_top_stands_in_its_cell_exactly_where_the_plain_block_does() {
 }
 
 /// The shares are content, and they have to leave most of the grass plain: dressing all of it
-/// would read as a texture rather than as meadows.
 #[test]
 fn the_tops_dress_about_a_third_of_the_grass() {
     let total: f64 = GRASS_TOPS.iter().map(|(_, chance)| chance).sum();
@@ -89,7 +85,6 @@ fn only_the_grass_grows_anything() {
 }
 
 /// A missing top is left out and the rest take its share, rather than the ground showing a hole
-/// or the grass going plain altogether.
 #[test]
 fn a_top_the_atlas_lacks_is_left_out_and_the_others_still_grow() {
     let manifest = shipped();
@@ -120,12 +115,10 @@ fn no_artwork_at_all_leaves_the_grass_plain() {
     assert_eq!(missing.len(), GRASS_TOPS.len());
     assert!(look.grass_tops.is_none());
     assert!(columns(40).all(|(x, y)| look.top(TerrainMaterial::Grass, x, y).is_none()));
-    // And the colour zones are untouched by the tops: they need no artwork.
     assert_ne!(look.tint(TerrainMaterial::Grass, 0, 0), WHITE);
 }
 
 /// The materials that have no zones are drawn as painted; the ones that do are never drawn
-/// brighter than painted, because a zone is a multiplier.
 #[test]
 fn only_the_land_materials_are_tinted_and_never_brightened() {
     let manifest = shipped();
@@ -158,7 +151,6 @@ fn only_the_land_materials_are_tinted_and_never_brightened() {
 }
 
 /// A path is grass with earth trodden across it, so its grass edges have to take the colour of
-/// the meadow it crosses instead of being a stripe of some other zone.
 #[test]
 fn a_path_takes_the_colour_of_the_grass_it_crosses() {
     let manifest = shipped();
@@ -169,7 +161,6 @@ fn a_path_takes_the_colour_of_the_grass_it_crosses() {
             look.tint(TerrainMaterial::Grass, x, y)
         );
     }
-    // The bare ground has its own, much subtler palette, and does not follow the grass.
     assert!(
         columns(60).any(|(x, y)| look.tint(TerrainMaterial::Ground, x, y)
             != look.tint(TerrainMaterial::Grass, x, y))
@@ -177,7 +168,6 @@ fn a_path_takes_the_colour_of_the_grass_it_crosses() {
 }
 
 /// The grass palette has to read through the baked shadows and the day's light, so its ends are
-/// a visible distance from plain white; the bare ground's is deliberately faint.
 #[test]
 fn the_grass_zones_read_and_the_ground_zones_whisper() {
     let (_, grass) = GRASS_TINTS;
@@ -200,7 +190,6 @@ fn the_grass_zones_read_and_the_ground_zones_whisper() {
 }
 
 /// Both halves follow the world seed, so a world always looks the way it looked, and two worlds
-/// do not share one set of meadows.
 #[test]
 fn the_dressing_follows_the_world_seed() {
     let manifest = shipped();

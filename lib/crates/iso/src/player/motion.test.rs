@@ -1,5 +1,4 @@
 //! Tests for `transition_player_motion`, mirroring the `motion` section of the shared
-//! fixture `flow-check/contracts.v1.json`.
 
 use super::*;
 
@@ -29,7 +28,6 @@ fn air_transitions_match_typescript_fixture() {
         transition_player_motion(PlayerMotionType::Flying, PlayerMotionEvent::LandIdle),
         PlayerMotionType::Idle
     );
-    // An unhandled event leaves the state unchanged: idle has no fly transition.
     assert_eq!(
         transition_player_motion(PlayerMotionType::Idle, PlayerMotionEvent::Fly),
         PlayerMotionType::Idle

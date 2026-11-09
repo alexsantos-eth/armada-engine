@@ -28,12 +28,10 @@ fn a_shadow_vertex_carries_where_to_read_the_map() {
     );
 
     assert_eq!(v.normal, vec4(0.125, 0.75, SHADOW, 0.0));
-    // The phase's opacity rides in the alpha; the shader multiplies the map's coverage by it.
     assert_eq!(v.color[3], 127);
 }
 
 /// The names Macroquad reserves. Passing either as a material texture panics inside
-/// `make_pipeline`, so this is the test that the one we chose is not one of them.
 #[test]
 fn the_shadow_map_does_not_use_a_reserved_texture_name() {
     assert_ne!(SHADOW_MAP, "Texture");
@@ -41,7 +39,6 @@ fn the_shadow_map_does_not_use_a_reserved_texture_name() {
 }
 
 /// Both stages have to declare the same varyings, and the fragment stage has to sample the
-/// texture the material binds by the name the material gives it.
 #[test]
 fn the_two_stages_agree_on_what_they_pass_between_them() {
     assert!(VERTEX.contains("varying vec4 data;"));

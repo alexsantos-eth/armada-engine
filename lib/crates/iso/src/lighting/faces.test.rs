@@ -41,7 +41,6 @@ fn a_tall_cliff_is_cut_into_blocks_so_the_scene_can_sort_it() {
 }
 
 /// A drawn level between two block planes still cuts the faces at the block boundaries, not at
-/// the drawn level itself.
 #[test]
 fn a_drawn_level_between_blocks_cuts_at_the_block_boundary() {
     let map = [(0, 0, 1.5), (-1, 0, 0.0), (0, -1, 1.5)];

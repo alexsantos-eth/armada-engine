@@ -54,14 +54,12 @@ fn move_and_remove_update_order_and_occupancy() {
 }
 
 /// Items are found by hashing and then confirming by equality, so two items that hash alike must
-/// still be told apart.
 #[test]
 fn distinguishes_items_whose_hashes_collide() {
     #[derive(Clone, PartialEq, Eq, Debug)]
     struct Collides(u32);
     impl std::hash::Hash for Collides {
         fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-            // Every value lands in the same bucket.
             0u8.hash(state);
         }
     }
@@ -80,13 +78,11 @@ fn distinguishes_items_whose_hashes_collide() {
 
     assert!(index.remove(&Collides(1)));
     assert!(!index.contains(&Collides(1)));
-    // Removing one must not take its bucket neighbour with it.
     assert!(index.contains(&Collides(2)));
     assert_eq!(index.cells_of(&Collides(2)), &[point(1, 0)]);
 }
 
 /// Removed slots are reclaimed once they outnumber the live items, and the survivors keep their
-/// order, their footprints and their occupancy across that rebuild.
 #[test]
 fn reclaims_removed_slots_without_disturbing_the_survivors() {
     let mut index = SpatialIndex::new();
@@ -95,7 +91,6 @@ fn reclaims_removed_slots_without_disturbing_the_survivors() {
     }
     assert_eq!(index.len(), 60);
 
-    // Drop every odd item, which crosses the compaction threshold.
     for i in (1..60i32).step_by(2) {
         assert!(index.remove(&i));
     }
@@ -112,7 +107,6 @@ fn reclaims_removed_slots_without_disturbing_the_survivors() {
     for i in (1..60i32).step_by(2) {
         assert!(!index.is_occupied(point(i, 0)));
     }
-    // And the index still works normally afterwards.
     index.insert(1000, &[point(0, 0)]).unwrap();
     assert_eq!(
         index.at(point(0, 0)).copied().collect::<Vec<_>>(),
