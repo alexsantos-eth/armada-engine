@@ -5,7 +5,7 @@ use super::noise::value_noise;
 use crate::grid::{ChunkCoord, WorldCoord, chunk_rect};
 
 /// The seed of the world the game boots with: the domain default and the client's configuration pin it.
-pub const WORLD_SEED: u64 = 09543;
+pub const WORLD_SEED: u64 = 9543;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TerrainConfig {

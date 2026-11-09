@@ -32,10 +32,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`push_hud_update`](hud.rs#L42) — Encola `UiEvent::HudUpdate` con la posición, la elevación, el movimiento y los chunks descubiertos.
+- [`push_hud_update`](hud.rs#L52) — Encola `UiEvent::HudUpdate` con la posición, la elevación, el movimiento y los chunks descubiertos.
   - Firma: `pub(crate) fn push_hud_update(ui: &mut MacroquadUi, player: &PlayerState, animation: &PlayerAnimation, elevation: i32, chunks: usize) {`
-- [`draw_hud`](hud.rs#L59) — Dibuja el título y la ayuda, el estado del mundo con `ui.hud`, el panel de rendimiento (fps, p95 y máximo de frame y CPU, peor fotograma) y los mensajes, vaciándolos al pintarlos.
-  - Firma: `pub(crate) fn draw_hud(ui: &mut MacroquadUi, perf: &PerfLog, dust_live: usize, frame_ms: f64) {`
+- [`draw_hud`](hud.rs#L70) — Dibuja el título y la ayuda (teclado o táctil según `touch_visible`), el estado del mundo con `ui.hud`, el panel de rendimiento (fps, p95 y máximo de frame y CPU, peor fotograma) y los mensajes, vaciándolos al pintarlos.
+  - Firma: `pub(crate) fn draw_hud(ui: &mut MacroquadUi, perf: &PerfLog, dust_live: usize, frame_ms: f64, touch_visible: bool) {`
 
 ## Detalles de implementación
 
@@ -56,3 +56,5 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `fn world_readout_line(x: f64, y: f64, elevation: i32, motion: &str, chunks: usize, fps: i32, frame_ms: f64) -> String {`
 - [`readout_colour`](hud.rs#L31) — Colour del readout: `LIME` hasta 20 ms, `ORANGE` hasta 33.4 ms, `RED` por encima.
   - Firma: `fn readout_colour(frame_max: f64) -> Color {`
+- [`help_line`](hud.rs#L43) — La línea de controles del título: los atajos de teclado, o los del táctil (joystick y SALTAR) cuando los controles están visibles. Se prueba en `hud.test.rs`.
+  - Firma: `fn help_line(touch_visible: bool) -> &'static str {`

@@ -37,6 +37,7 @@ use crate::save::{load_archive_into_manager, load_save, restore_archive};
 use crate::services::{MacroquadAudio, MacroquadUi};
 use crate::terrain::terrain_view_appearance::TerrainLook;
 use crate::terrain::terrain_view_blocks::TerrainFrames;
+use crate::touch::{TouchControls, coarse_pointer};
 
 /// Where a manifest path is fetched from.
 fn client_path(path: &str) -> String {
@@ -73,6 +74,7 @@ pub(crate) struct Game {
     pub(crate) perf: PerfLog,
     pub(crate) audio: MacroquadAudio,
     pub(crate) ui: MacroquadUi,
+    pub(crate) touch: TouchControls,
 }
 
 impl Game {
@@ -250,6 +252,7 @@ impl Game {
             perf: PerfLog::default(),
             audio: MacroquadAudio::default(),
             ui: MacroquadUi::default(),
+            touch: TouchControls::new(coarse_pointer()),
         }
     }
 }

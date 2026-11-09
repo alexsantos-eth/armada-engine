@@ -19,6 +19,16 @@ fn the_frame_readout_escalates_at_the_budgets() {
 }
 
 #[test]
+fn the_help_line_swaps_controls_for_touch() {
+    assert!(help_line(false).contains("WASD"));
+    assert!(help_line(false).contains("Shift"));
+    assert!(!help_line(false).contains("Joystick"));
+    assert!(help_line(true).contains("Joystick"));
+    assert!(help_line(true).contains("SALTAR"));
+    assert!(!help_line(true).contains("Shift"));
+}
+
+#[test]
 fn the_world_readout_carries_position_elevation_and_cost() {
     let line = world_readout_line(12.34, 7.89, 3, "Walking E", 5, 60, 16.7);
 

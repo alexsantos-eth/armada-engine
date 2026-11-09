@@ -2,6 +2,7 @@
 
 use iso::grid::ChunkCoord;
 use iso::player::physics::{ScreenDirections, get_walk_direction};
+use iso::projection::GridPoint;
 use iso::services::{
     AudioService, ChunkLoader, InputService, NormalizedInput, SoundEvent, UiEvent, UiService,
 };
@@ -9,10 +10,24 @@ use iso::terrain::TerrainColumn;
 use iso::world::ChunkManager;
 use macroquad::prelude::*;
 
-/// Input service backed by Macroquad's keyboard state.
-pub struct MacroquadInput;
+use crate::touch::{RawTouch, RawTouchPhase, TouchControls};
 
-impl InputService for MacroquadInput {
+/// Input service backed by Macroquad's keyboard and, on touch devices, the virtual controls.
+pub struct MacroquadInput<'a> {
+    pub touch: &'a mut TouchControls,
+}
+
+const fn touch_phase(phase: TouchPhase) -> RawTouchPhase {
+    match phase {
+        TouchPhase::Started => RawTouchPhase::Started,
+        TouchPhase::Stationary => RawTouchPhase::Stationary,
+        TouchPhase::Moved => RawTouchPhase::Moved,
+        TouchPhase::Ended => RawTouchPhase::Ended,
+        TouchPhase::Cancelled => RawTouchPhase::Cancelled,
+    }
+}
+
+impl InputService for MacroquadInput<'_> {
     fn poll(&mut self) -> NormalizedInput {
         let directions = ScreenDirections {
             up: is_key_down(KeyCode::Up) || is_key_down(KeyCode::W),
@@ -20,12 +35,29 @@ impl InputService for MacroquadInput {
             left: is_key_down(KeyCode::Left) || is_key_down(KeyCode::A),
             right: is_key_down(KeyCode::Right) || is_key_down(KeyCode::D),
         };
-        let walk = get_walk_direction(&directions);
+        let raw: Vec<RawTouch> = touches()
+            .iter()
+            .map(|touch| RawTouch {
+                id: touch.id,
+                phase: touch_phase(touch.phase),
+                x: touch.position.x,
+                y: touch.position.y,
+            })
+            .collect();
+        let frame = self.touch.update(screen_width(), screen_height(), &raw);
+        let keyboard = get_walk_direction(&directions);
+        let mut x = keyboard.x + frame.walk.x;
+        let mut y = keyboard.y + frame.walk.y;
+        let len = x.hypot(y);
+        if len > 1.0 {
+            x /= len;
+            y /= len;
+        }
         NormalizedInput {
-            walk,
-            jump_pressed: is_key_pressed(KeyCode::Space),
-            jump_held: is_key_down(KeyCode::Space),
-            run: is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift),
+            walk: GridPoint { x, y },
+            jump_pressed: is_key_pressed(KeyCode::Space) || frame.jump_pressed,
+            jump_held: is_key_down(KeyCode::Space) || frame.jump_held,
+            run: is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift) || frame.run,
             jetpack: is_key_down(KeyCode::J),
         }
     }

@@ -38,6 +38,16 @@ fn readout_colour(frame_max: f64) -> Color {
     }
 }
 
+/// The controls line in the title panel: keyboard hints, or the touch hints
+/// once the touch controls are on screen.
+fn help_line(touch_visible: bool) -> &'static str {
+    if touch_visible {
+        "Joystick: mover, a tope correr | SALTAR"
+    } else {
+        "WASD/Flechas | Espacio: saltar | Shift: correr | T: terreno | P: perf | F5: guardar"
+    }
+}
+
 /// Queues this frame's HUD readout from the player's state.
 pub(crate) fn push_hud_update(
     ui: &mut MacroquadUi,
@@ -55,20 +65,21 @@ pub(crate) fn push_hud_update(
     });
 }
 
-/// The overlay: title and help, world readout, performance readout and messages.
-pub(crate) fn draw_hud(ui: &mut MacroquadUi, perf: &PerfLog, dust_live: usize, frame_ms: f64) {
+/// The overlay: title, help, world readout, performance readout and messages.
+/// `touch_visible` swaps the help line to the touch controls when they are on screen.
+pub(crate) fn draw_hud(
+    ui: &mut MacroquadUi,
+    perf: &PerfLog,
+    dust_live: usize,
+    frame_ms: f64,
+    touch_visible: bool,
+) {
     let width = screen_width();
     let height = screen_height();
 
     draw_rectangle(20.0, 20.0, 510.0, 80.0, Color::from_rgba(21, 29, 42, 205));
     draw_text("iso-core / Macroquad", 32.0, 58.0, 32.0, WHITE);
-    draw_text(
-        "WASD/Flechas | Espacio: saltar | Shift: correr | T: terreno | P: perf | F5: guardar",
-        32.0,
-        89.0,
-        18.0,
-        LIGHTGRAY,
-    );
+    draw_text(help_line(touch_visible), 32.0, 89.0, 18.0, LIGHTGRAY);
     draw_rectangle(
         20.0,
         height - 70.0,

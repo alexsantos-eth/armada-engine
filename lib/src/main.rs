@@ -15,6 +15,7 @@ mod rendering;
 mod save;
 mod services;
 mod terrain;
+mod touch;
 mod water;
 
 use game::Game;

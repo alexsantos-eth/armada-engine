@@ -96,10 +96,19 @@ pub(crate) async fn run(mut game: Game) {
                 elevation,
                 chunks_alive,
             );
-            draw_hud(&mut game.ui, &game.perf, game.dust.live(), frame_ms);
+            let touch_visible = game.touch.visible();
+            draw_hud(
+                &mut game.ui,
+                &game.perf,
+                game.dust.live(),
+                frame_ms,
+                touch_visible,
+            );
         } else {
             game.ui.messages.clear();
         }
+
+        game.touch.draw();
 
         next_frame().await;
     }

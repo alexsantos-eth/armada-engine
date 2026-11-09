@@ -110,12 +110,12 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Tipos
 
-- [`Game`](state.rs#L46) — El juego compuesto: manager, archivo de guardado, jugador, cámara, stepper, arte, sombras, polvo, cola de dibujo y servicios (audio, UI, perf).
+- [`Game`](state.rs#L52) — El juego compuesto: manager, archivo de guardado, jugador, cámara, stepper, arte, sombras, polvo, cola de dibujo, servicios (audio, UI, perf) y los controles táctiles (`touch`).
   - Firma: `pub(crate) struct Game { ... }`
 
 #### Funciones y métodos
 
-- [`Game::new`](state.rs#L77) — Arranque: carga catálogo y manifiesto, restaura el guardado si existe, genera la zona de aparición y encuadra al jugador. Los fallos de assets degradan a avisos, nunca entran en pánico.
+- [`Game::new`](state.rs#L84) — Arranque: carga catálogo y manifiesto, restaura el guardado si existe, genera la zona de aparición y encuadra al jugador. Los fallos de assets degradan a avisos, nunca entran en pánico.
   - Firma: `pub(crate) async fn new() -> Self {`
 
 ## Detalles de implementación
@@ -155,5 +155,5 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones internas
 
-- [`client_path`](state.rs#L37) — De dónde se pide el manifiesto: `./` en WASM, la ruta tal cual en nativo.
+- [`client_path`](state.rs#L43) — De dónde se pide el manifiesto: `./` en WASM, la ruta tal cual en nativo.
   - Firma: `fn client_path(path: &str) -> String {`

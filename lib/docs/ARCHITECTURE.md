@@ -35,7 +35,7 @@ Dominio portable, crate `iso`:
 
 Cliente Macroquad, crate `iso-core`:
 
-- [assets](../src/assets/mod.md), [game](../src/game/mod.md), [gui](../src/gui/mod.md), [lighting](../src/lighting/mod.md), [loops](../src/loops/mod.md), [perf](../src/perf/mod.md), [player](../src/player/mod.md), [rendering](../src/rendering/mod.md), [save](../src/save/mod.md), [services](../src/services/mod.md), [terrain](../src/terrain/mod.md), [water](../src/water/mod.md)
+- [assets](../src/assets/mod.md), [game](../src/game/mod.md), [gui](../src/gui/mod.md), [lighting](../src/lighting/mod.md), [loops](../src/loops/mod.md), [perf](../src/perf/mod.md), [player](../src/player/mod.md), [rendering](../src/rendering/mod.md), [save](../src/save/mod.md), [services](../src/services/mod.md), [terrain](../src/terrain/mod.md), [touch](../src/touch/mod.md), [water](../src/water/mod.md)
 
 ## Invariantes compartidas
 
@@ -97,6 +97,10 @@ El reflejo es el mismo sprite dibujado bocabajo colgando de la línea de agua, s
 ### Guardado
 
 `save` persiste chunks descubiertos, entidades con estado y los objetos de estado del juego (`player`, `systems`) con sus versiones; el contenido guardado es la autoridad al reabrir, no el generador. La persistencia web implementa una interfaz de almacenamiento que una implementación nativa puede sustituir por archivos sin cambiar el formato lógico. Las versiones desconocidas o datos malformados se comunican sin `panic!`.
+
+### Controles táctiles
+
+En pantallas táctiles el cliente pinta dos controles en las esquinas inferiores: un joystick analógico a la izquierda y un botón SALTAR a la derecha (`src/touch`). El joystick alimenta la misma transformación de entrada que el teclado (`x = across + up`, `y = up - across`) pero con magnitud analógica recortada a deflexión máxima: a medio empuje se camina a media velocidad, y a partir de una deflexión fija (`RUN_THRESHOLD`) se enciende `run`, el equivalente a mantener `Shift`. El botón publica `jump_pressed`/`jump_held` como la barra espaciadora. Ambos controles son entrada de juego, no overlay: se pintan siempre encima de la escena, también en `/`, y aparecen en dispositivos de puntero grueso (la build web lo sabe con el import FFI `iso_pointer_coarse`) o en cualquier plataforma tras el primer toque; en escritorio con ratón no aparecen. El HUD sustituye la línea de ayuda por la de los controles cuando son visibles. El joystick sigue a un único dedo, el botón admite varios a la vez.
 
 ## Previsto (contratos de diseño, no afirmaciones)
 

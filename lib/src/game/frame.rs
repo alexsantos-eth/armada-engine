@@ -60,7 +60,9 @@ impl Game {
         let width = screen_width();
         let height = screen_height();
 
-        let mut input_service = MacroquadInput;
+        let mut input_service = MacroquadInput {
+            touch: &mut self.touch,
+        };
         let input: NormalizedInput = input_service.poll();
         self.player.walk = input.walk;
         set_player_run(&mut self.player, input.run);

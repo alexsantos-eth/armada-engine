@@ -31,7 +31,12 @@ Equivale a `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk carg
 Es un ajuste del entorno local, no una dependencia del proyecto.
 
 Flechas o WASD mueven al jugador; el clic sitúa el marcador sobre el plano del mundo. `T`
-alterna entre terreno y rejilla.
+alterna entre terreno y rejilla. En dispositivos táctiles aparecen dos controles en pantalla:
+un joystick analógico abajo a la izquierda (a media deflexión se camina a media velocidad; a
+tope enciende la carrera, el equivalente a `Shift`) y un botón `SALTAR` abajo a la derecha. Se
+muestran en dispositivos de puntero grueso o tras el primer toque (`/` incluido, porque son
+entrada de juego); la build web detecta el puntero grueso con el import FFI `iso_pointer_coarse`.
+El HUD sustituye la línea de ayuda por la de los controles cuando están visibles.
 
 ## Correr web
 
@@ -59,7 +64,8 @@ directorio de salida la página `web/index.html` (también como `playground/inde
 son herramientas nativas.
 
 La página carga el puente JavaScript oficial de Macroquad desde `not-fl3.github.io` y registra en
-su import `env` las operaciones de `localStorage`. Conviene servir una copia versionada propia del
+su import `env` las operaciones de `localStorage`, la lectura de la ruta (`iso_route_path`) y la
+detección de puntero grueso (`iso_pointer_coarse`). Conviene servir una copia versionada propia del
 puente, con sus cabeceras de caché, en vez de depender de ese dominio. El cliente no usa
 `web-sys`, porque su glue code de `wasm-bindgen` no es compatible con el cargador raw de
 Macroquad.
