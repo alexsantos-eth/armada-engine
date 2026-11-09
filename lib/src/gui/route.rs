@@ -7,7 +7,7 @@
 #[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "env")]
 unsafe extern "C" {
-    fn armada_route_path(output_ptr: *mut u8, output_capacity: usize) -> isize;
+    fn iso_route_path(output_ptr: *mut u8, output_capacity: usize) -> isize;
 }
 
 /// The path the browser serves the page at, or `None` when it cannot be read.
@@ -18,7 +18,7 @@ unsafe extern "C" {
 fn browser_path() -> Option<String> {
     const OUTPUT_CAPACITY: usize = 4 * 1024;
     let mut output = Vec::with_capacity(OUTPUT_CAPACITY);
-    let length = unsafe { armada_route_path(output.as_mut_ptr(), OUTPUT_CAPACITY) };
+    let length = unsafe { iso_route_path(output.as_mut_ptr(), OUTPUT_CAPACITY) };
     if length < 0 || length as usize > OUTPUT_CAPACITY {
         return None;
     }

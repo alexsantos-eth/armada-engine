@@ -42,11 +42,11 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`armada_storage_get`](persistence.rs#L11) — Calcula o recupera «armada storage get» según los parámetros de la firma.
-  - Firma: `fn armada_storage_get( key_ptr: *const u8, key_len: usize, output_ptr: *mut u8, output_capacity: usize, ) -> isize;`
+- [`iso_storage_get`](persistence.rs#L11) — Calcula o recupera «iso storage get» según los parámetros de la firma.
+  - Firma: `fn iso_storage_get( key_ptr: *const u8, key_len: usize, output_ptr: *mut u8, output_capacity: usize, ) -> isize;`
 
-- [`armada_storage_set`](persistence.rs#L17) — Calcula o recupera «armada storage set» según los parámetros de la firma.
-  - Firma: `fn armada_storage_set( key_ptr: *const u8, key_len: usize, value_ptr: *const u8, value_len: usize, ) -> i32;`
+- [`iso_storage_set`](persistence.rs#L17) — Calcula o recupera «iso storage set» según los parámetros de la firma.
+  - Firma: `fn iso_storage_set( key_ptr: *const u8, key_len: usize, value_ptr: *const u8, value_len: usize, ) -> i32;`
 
 - [`local_storage_get`](persistence.rs#L27) — Calcula o recupera «local storage get» según los parámetros de la firma.
   - Firma: `fn local_storage_get(key: &str) -> Option<String> {`
@@ -57,7 +57,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 #### Constantes internas
 
 - [`SAVE_PATH`](persistence.rs#L6) — Define el parámetro interno «SAVE PATH» empleado por este módulo.
-  - Declaración: `const SAVE_PATH: &str = "saves/armada_save.json";`
+  - Declaración: `const SAVE_PATH: &str = "saves/iso_save.json";`
 
 - [`OUTPUT_CAPACITY`](persistence.rs#L28) — Define el parámetro interno «OUTPUT CAPACITY» empleado por este módulo.
   - Declaración: `const OUTPUT_CAPACITY: usize = 32 * 1024 * 1024;`

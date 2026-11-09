@@ -1,4 +1,4 @@
-# Arquitectura de Armada Engine (Rust)
+# Arquitectura del motor (Rust)
 
 Este documento define los límites, contratos y prácticas de la implementación en Rust con Macroquad. Es autocontenido: describe el funcionamiento técnico del juego y del workspace, sin depender de otros clientes ni de sus ficheros. Lo que hace cada módulo concreto está en su [`mod.md`](#catálogos-de-api-por-módulo), junto a su código.
 

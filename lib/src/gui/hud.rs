@@ -61,7 +61,7 @@ pub(crate) fn draw_hud(ui: &mut MacroquadUi, perf: &PerfLog, dust_live: usize, f
     let height = screen_height();
 
     draw_rectangle(20.0, 20.0, 510.0, 80.0, Color::from_rgba(21, 29, 42, 205));
-    draw_text("Armada Engine / Macroquad", 32.0, 58.0, 32.0, WHITE);
+    draw_text("iso-core / Macroquad", 32.0, 58.0, 32.0, WHITE);
     draw_text(
         "WASD/Flechas | Espacio: saltar | Shift: correr | T: terreno | P: perf | F5: guardar",
         32.0,

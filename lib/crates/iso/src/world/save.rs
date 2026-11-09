@@ -1,4 +1,4 @@
-//! Saved world format (Armada Engine 2): complete discovered chunks, player and systems.
+//! Saved world format (`iso-engine-2`): complete discovered chunks, player and systems.
 
 use std::collections::{HashMap, HashSet};
 
@@ -56,7 +56,7 @@ pub struct WorldSave {
 }
 
 /// Save format magic value.
-pub const SAVE_FORMAT: &str = "armada-engine-2";
+pub const SAVE_FORMAT: &str = "iso-engine-2";
 /// Current save schema version.
 pub const SAVE_SCHEMA_VERSION: u32 = 1;
 
@@ -685,15 +685,15 @@ mod tests {
             (serde_json::json!([]), "object"),
             (serde_json::json!({ "version": 7 }), "format"),
             (
-                serde_json::json!({ "format": "armada-engine-2", "schemaVersion": 2 }),
+                serde_json::json!({ "format": "iso-engine-2", "schemaVersion": 2 }),
                 "version",
             ),
             (
-                serde_json::json!({ "format": "armada-engine-2", "schemaVersion": 1, "chunks": {}, "player": {}, "systems": {} }),
+                serde_json::json!({ "format": "iso-engine-2", "schemaVersion": 1, "chunks": {}, "player": {}, "systems": {} }),
                 "structure",
             ),
             (
-                serde_json::json!({ "format": "armada-engine-2", "schemaVersion": 1, "chunks": [], "player": [], "systems": {} }),
+                serde_json::json!({ "format": "iso-engine-2", "schemaVersion": 1, "chunks": [], "player": [], "systems": {} }),
                 "structure",
             ),
         ];

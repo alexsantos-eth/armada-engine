@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <base href="/" />
-    <title>Armada Engine · Macroquad</title>
+    <title>iso-core · Macroquad</title>
     <style>
       html,
         body,
@@ -27,7 +27,7 @@
       const utf8Decoder = new TextDecoder();
       const utf8Encoder = new TextEncoder();
 
-      importObject.env.armada_storage_get = (keyPtr, keyLength, outputPtr, outputCapacity) => {
+      importObject.env.iso_storage_get = (keyPtr, keyLength, outputPtr, outputCapacity) => {
         try {
           const key = utf8Decoder.decode(
             new Uint8Array(wasm_memory.buffer, keyPtr, keyLength),
@@ -47,7 +47,7 @@
         }
       };
 
-      importObject.env.armada_route_path = (outputPtr, outputCapacity) => {
+      importObject.env.iso_route_path = (outputPtr, outputCapacity) => {
         try {
           const encoded = utf8Encoder.encode(window.location.pathname);
           if (encoded.length > outputCapacity) {
@@ -60,7 +60,7 @@
         }
       };
 
-      importObject.env.armada_storage_set = (keyPtr, keyLength, valuePtr, valueLength) => {
+      importObject.env.iso_storage_set = (keyPtr, keyLength, valuePtr, valueLength) => {
         try {
           const key = utf8Decoder.decode(
             new Uint8Array(wasm_memory.buffer, keyPtr, keyLength),

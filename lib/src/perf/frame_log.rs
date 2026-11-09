@@ -136,7 +136,7 @@ impl PerfLog {
     /// The whole report, as lines to print.
     pub fn summary(&self) -> String {
         if self.is_empty() {
-            return "Armada perf · sin fotogramas todavía".to_owned();
+            return "iso perf · sin fotogramas todavía".to_owned();
         }
         let span = self.span_seconds();
         let frames = self.len();
@@ -149,7 +149,7 @@ impl PerfLog {
         let (c50, c95, cmax) = self.cpu_ms();
         let worst = self.worst();
         format!(
-            "Armada perf · {span:.1} s · {frames} frames · {fps:.1} fps · chunks {chunks:.0} dibujados · {alive:.0} en memoria\n\
+            "iso perf · {span:.1} s · {frames} frames · {fps:.1} fps · chunks {chunks:.0} dibujados · {alive:.0} en memoria\n\
              frame ms p50 {f50:.1} · p95 {f95:.1} · max {fmax:.1} · over {DROPPED_FRAME_MS} ms: {dropped}\n\
              cpu ms p50 {c50:.1} · p95 {c95:.1} · max {cmax:.1} · sprites avg {sprites:.0} · max {sprites_max}\n\
              cpu split avg: sim {sim:.2} · escena {scene:.2} · dibujo {draw:.2}\n\

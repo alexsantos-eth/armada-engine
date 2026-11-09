@@ -1,4 +1,4 @@
-//! Armada Engine's client: window configuration and composition root.
+//! The engine's client: window configuration and composition root.
 //!
 //! Everything that behaves lives in a domain module: `game` boots the world and splits the
 //! frame into update (`game::frame`) and view (`game::scene`), `gui` paints the overlay and
@@ -22,7 +22,7 @@ use macroquad::prelude::*;
 
 fn window_conf() -> Conf {
     Conf {
-        window_title: "Armada Engine".to_owned(),
+        window_title: "iso-core".to_owned(),
         window_width: 960,
         window_height: 600,
         ..Default::default()

@@ -3,18 +3,18 @@
 use iso::world::ChunkManager;
 use iso::world::{ChunkArchive, WorldSave, parse_world_save};
 
-const SAVE_PATH: &str = "saves/armada_save.json";
+const SAVE_PATH: &str = "saves/iso_save.json";
 
 #[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "env")]
 unsafe extern "C" {
-    fn armada_storage_get(
+    fn iso_storage_get(
         key_ptr: *const u8,
         key_len: usize,
         output_ptr: *mut u8,
         output_capacity: usize,
     ) -> isize;
-    fn armada_storage_set(
+    fn iso_storage_set(
         key_ptr: *const u8,
         key_len: usize,
         value_ptr: *const u8,
@@ -28,7 +28,7 @@ fn local_storage_get(key: &str) -> Option<String> {
     const OUTPUT_CAPACITY: usize = 32 * 1024 * 1024;
     let mut output = Vec::with_capacity(OUTPUT_CAPACITY);
     let length = unsafe {
-        armada_storage_get(
+        iso_storage_get(
             key.as_ptr(),
             key.len(),
             output.as_mut_ptr(),
@@ -47,7 +47,7 @@ fn local_storage_get(key: &str) -> Option<String> {
 /// Writes a JSON string to `window.localStorage` on WASM.
 #[cfg(target_arch = "wasm32")]
 fn local_storage_set(key: &str, value: &str) -> bool {
-    unsafe { armada_storage_set(key.as_ptr(), key.len(), value.as_ptr(), value.len()) != 0 }
+    unsafe { iso_storage_set(key.as_ptr(), key.len(), value.as_ptr(), value.len()) != 0 }
 }
 
 /// Tries to load a save file from disk. Returns `None` on any error or when running on WASM.

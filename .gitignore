@@ -20,7 +20,7 @@ __pycache__/
 *.py[cod]
 
 # Rust client save files
-/lib/saves/armada_save.json
+/lib/saves/iso_save.json
 
 # Editor directories and files
 .vscode/*

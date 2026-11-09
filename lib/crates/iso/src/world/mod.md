@@ -115,7 +115,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 #### Constantes
 
 - [`SAVE_FORMAT`](save.rs#L59) — Valor mágico del formato de guardado.
-  - Declaración: `pub const SAVE_FORMAT: &str = "armada-engine-2";`
+  - Declaración: `pub const SAVE_FORMAT: &str = "iso-engine-2";`
 
 - [`SAVE_SCHEMA_VERSION`](save.rs#L61) — Versión actual del esquema de guardado.
   - Declaración: `pub const SAVE_SCHEMA_VERSION: u32 = 1;`

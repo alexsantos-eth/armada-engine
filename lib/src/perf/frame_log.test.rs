@@ -91,7 +91,7 @@ fn the_summary_carries_every_figure_it_claims_to() {
     }
     let summary = log.summary();
     for expected in [
-        "Armada perf",
+        "iso perf",
         "10 frames",
         "chunks 9 dibujados · 25 en memoria",
         "frame ms p50 16.0",

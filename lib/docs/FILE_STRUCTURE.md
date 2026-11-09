@@ -1,7 +1,6 @@
 # Estructura de archivos Rust
 
-Este documento es la política de estructura para el workspace Rust de Armada
-Engine. Complementa la [arquitectura](ARCHITECTURE.md): aquella explica el
+Este documento es la política de estructura para el workspace Rust del motor. Complementa la [arquitectura](ARCHITECTURE.md): aquella explica el
 funcionamiento técnico del juego y los límites; esta define dónde vive cada
 archivo y cómo se prueba.
 
