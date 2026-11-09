@@ -84,6 +84,11 @@ La prueba cubre el contrato, casos límite y regresiones del archivo, no su
 estructura interna. Las pruebas que crucen módulos, crates o formatos externos
 van en `crates/iso/tests/`; no sustituyen la prueba unitaria del archivo dueño.
 
+La prueba se escribe **antes** que la implementación (test first): primero el
+test que define el comportamiento esperado, después el código que lo pasa. Un
+cambio que añade o cambia comportamiento sin su `<nombre>.test.rs` en el mismo
+cambio está incompleto.
+
 Excepciones permitidas —deben ser pequeñas y justificarse con un comentario en
 el archivo o en la descripción del PR—:
 

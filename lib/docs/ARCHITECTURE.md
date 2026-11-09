@@ -35,7 +35,7 @@ Dominio portable, crate `iso`:
 
 Cliente Macroquad, crate `iso-core`:
 
-- [assets](../src/assets/mod.md), [lighting](../src/lighting/mod.md), [perf](../src/perf/mod.md), [player](../src/player/mod.md), [rendering](../src/rendering/mod.md), [save](../src/save/mod.md), [services](../src/services/mod.md), [terrain](../src/terrain/mod.md), [water](../src/water/mod.md)
+- [assets](../src/assets/mod.md), [game](../src/game/mod.md), [gui](../src/gui/mod.md), [lighting](../src/lighting/mod.md), [loops](../src/loops/mod.md), [perf](../src/perf/mod.md), [player](../src/player/mod.md), [rendering](../src/rendering/mod.md), [save](../src/save/mod.md), [services](../src/services/mod.md), [terrain](../src/terrain/mod.md), [water](../src/water/mod.md)
 
 ## Invariantes compartidas
 

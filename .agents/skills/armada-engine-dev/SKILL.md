@@ -38,8 +38,9 @@ lib/
     src/{grid,paths,projection,camera,time,simulation,terrain,entities,world,
          lighting,scene_order,water,services}/
     tests/        # solo contratos que cruzan módulos y el fixture (contracts.json)
-  src/           # `iso-core`: el cliente. main.rs es la composición actual.
-    assets, lighting, perf, player, rendering, save, services, terrain, water/
+  src/           # `iso-core`: el cliente. main.rs es solo entrada/configuración de ventana;
+                 # la composición vive en game/, gui/ y loops/.
+    assets, game, gui, lighting, loops, perf, player, rendering, save, services, terrain, water/
   content/       # entities.json, assets.manifest.json, atlas.png, player-16_*.png
   assets-src/    # SVG fuente del atlas (commiteado; no se despliega)
   scripts/       # build-web.sh (WASM), build-atlas.sh, run-native.sh
@@ -67,7 +68,7 @@ Contratos clave (el detalle está en el `mod.md` correspondiente):
 - Errores con `Result` y contexto; nada de `panic!` ante datos externos (catálogos, guardados). `assert!` solo para invariantes internas.
 - `clippy --workspace --all-targets --locked -- -D warnings` en verde; `cargo fmt --all` limpio.
 - No mezclar dominio y cliente en un mismo módulo ni importar Macroquad/`winit`-like crates en `iso`.
-- Todo archivo de comportamiento lleva su `*.test.rs` colocalizado; `tests/` solo para contratos que cruzan módulos y fixtures. Las pruebas de dominio usan datos construidos a mano o el fixture de contrato.
+- Todo archivo de comportamiento lleva su `*.test.rs` colocalizado, escrito **antes** que la implementación (test first). El test define el comportamiento; el código lo pasa después. Si el comportamiento puro está mezclado con GPU/ventana/IO, se extrae primero la lógica pura y se prueba; la parte no aislable queda documentada en el propio archivo con su comprobación manual. Las pruebas de dominio usan datos construidos a mano o el fixture de contrato.
 - Los **comentarios de documentación** (rustdoc `///`, `//!`) van en **inglés**; la documentación Markdown va en **español**.
 - No editar a mano `content/atlas.png`, `content/assets.manifest.json` ni `content/player-16_*.png`: se generan con `scripts/build-atlas.sh` desde `assets-src/assets/`.
 - Los SVG son la fuente; `assets-src/` es su copia local. Un SVG nuevo para atlas se comprueba contra `assets.manifest.json` con los tests de `iso::assets`.
@@ -76,7 +77,7 @@ Contratos clave (el detalle está en el `mod.md` correspondiente):
 ## Flujo de trabajo
 
 1. Lee `lib/docs/ARCHITECTURE.md` y el `mod.md` del dominio antes de tocar nada.
-2. Si añades comportamiento, **escribe primero el test** que lo define y después implementa.
+2. **Test first, sin excepciones silenciosas:** antes de escribir o mover un comportamiento, escribe el test colocalizado que lo define (`<nombre>.test.rs`, cargado con `#[path]` bajo `#[cfg(test)]`). Después implementa hasta que el test pasa. Un cambio que añade o cambia comportamiento sin su `*.test.rs` en el mismo cambio está incompleto, igual que uno sin `cargo clippy -D warnings` en verde. Las únicas excepciones son: barrels, entradas (`main.rs`), datos puros y código GPU/ventana/IO no aislable aún — y en ese último caso la excepción se documenta en el propio archivo y se anota la comprobación manual; nunca se omite en silencio. Si una tarea no deja un test nuevo donde antes no había, justifícalo en la respuesta.
 3. Implementa respetando crates, barrels y la regla de dependencia.
 4. Antes de terminar, ejecuta en orden:
 

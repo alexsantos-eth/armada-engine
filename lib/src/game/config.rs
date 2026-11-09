@@ -1,0 +1,48 @@
+//! View configuration for the demo scene: tile metrics, layering and streaming knobs.
+//!
+//! These are data, not behaviour: the projection and the sprite collection read them, and the
+//! composition in `main.rs` picks the values.
+
+use iso::assets::{SVG_BLOCK_HEIGHT, SVG_TILE_WIDTH};
+use iso::grid::WorldCoord;
+use iso::world::ChunkRadii;
+
+/// Diagnostic centre of the world; the player spawns near here.
+pub const PREVIEW_CENTRE: WorldCoord = WorldCoord { x: 16, y: 88 };
+/// The scene's zoom: how wide one tile is drawn, in screen pixels.
+pub const PREVIEW_TILE_WIDTH: f64 = 280.0;
+/// How tall one tile is drawn, in screen pixels.
+pub const PREVIEW_TILE_HEIGHT: f64 = PREVIEW_TILE_WIDTH / 2.0;
+/// One level of elevation, in screen pixels.
+pub const PREVIEW_ELEVATION_STEP: f64 = PREVIEW_TILE_WIDTH * SVG_BLOCK_HEIGHT / SVG_TILE_WIDTH;
+
+/// How far each band of a multi-cell sprite reaches past its cut, in screen pixels.
+pub const BAND_BLEED: f64 = 0.5;
+
+/// Entities draw above the terrain of the same depth, and the player either side of them.
+pub const ENTITY_LAYER: i32 = 3;
+/// The player on the half of its column furthest from the camera.
+pub const PLAYER_BEHIND_LAYER: i32 = 2;
+/// The player on the half of its column nearest the camera.
+pub const PLAYER_FRONT_LAYER: i32 = 4;
+/// How big the player is drawn, as a fraction of the size its artwork was drawn at.
+pub const PLAYER_SCALE: f64 = 0.75;
+/// Source path of the player's still figure in the asset manifest, drawn if a sheet is missing.
+pub const PLAYER_SPRITE: &str = "/assets/player/block.svg";
+/// The player's sheets of poses, in the manifest: walking, standing, jumping and climbing.
+pub const PLAYER_WALK_SHEET: &str = "/assets/player-16/walk.svg";
+pub const PLAYER_IDLE_SHEET: &str = "/assets/player-16/idle.svg";
+pub const PLAYER_JUMP_SHEET: &str = "/assets/player-16/jump.svg";
+pub const PLAYER_CLIMB_SHEET: &str = "/assets/player-16/climb.svg";
+/// Extra view the chunk cull keeps around the screen, as a fraction of it.
+pub const CHUNK_CULL_MARGIN: f64 = 0.0;
+
+/// How far this client streams chunks, below the shared defaults (1 / 2 / 3).
+pub const CHUNK_RADII: ChunkRadii = ChunkRadii {
+    load: 1,
+    prefetch: 1,
+    keep: 2,
+};
+
+/// Safety-net interval for the periodic save; the real save happens on quit and on request.
+pub const AUTOSAVE_SECONDS: f64 = 120.0;

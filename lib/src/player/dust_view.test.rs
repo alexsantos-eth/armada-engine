@@ -240,10 +240,20 @@ fn dust_behind_the_feet_sorts_under_the_player_and_dust_in_front_over_it() {
     };
     react(&mut dust, &player, 0.0);
 
-    let behind =
-        crate::assets::sprites::scene_key(4.5, 4.5, 2.0, crate::PLAYER_BEHIND_LAYER, TILE / 2.0);
-    let front =
-        crate::assets::sprites::scene_key(4.5, 4.5, 2.0, crate::PLAYER_FRONT_LAYER, TILE / 2.0);
+    let behind = crate::assets::sprites::scene_key(
+        4.5,
+        4.5,
+        2.0,
+        crate::game::config::PLAYER_BEHIND_LAYER,
+        TILE / 2.0,
+    );
+    let front = crate::assets::sprites::scene_key(
+        4.5,
+        4.5,
+        2.0,
+        crate::game::config::PLAYER_FRONT_LAYER,
+        TILE / 2.0,
+    );
     let projection = ProjectionConfig {
         tile_width: TILE,
         tile_height: TILE / 2.0,
@@ -279,8 +289,8 @@ fn the_dust_layer_sits_between_the_ground_and_the_player() {
     use crate::terrain::terrain_view_blocks::TERRAIN_LAYER;
     const {
         assert!(DUST_BEHIND_LAYER > TERRAIN_LAYER);
-        assert!(DUST_BEHIND_LAYER < crate::PLAYER_BEHIND_LAYER);
-        assert!(DUST_BEHIND_LAYER < crate::ENTITY_LAYER);
+        assert!(DUST_BEHIND_LAYER < crate::game::config::PLAYER_BEHIND_LAYER);
+        assert!(DUST_BEHIND_LAYER < crate::game::config::ENTITY_LAYER);
     };
     const {
         assert!(

@@ -89,8 +89,8 @@ fn the_ground_shadow_lies_over_the_terrain_and_under_what_stands_on_it() {
     use crate::terrain::terrain_view_blocks::TERRAIN_LAYER;
 
     const { assert!(GROUND_SHADOW_LAYER > TERRAIN_LAYER) };
-    const { assert!(GROUND_SHADOW_LAYER < crate::ENTITY_LAYER) };
-    const { assert!(GROUND_SHADOW_LAYER < crate::PLAYER_BEHIND_LAYER) };
+    const { assert!(GROUND_SHADOW_LAYER < crate::game::config::ENTITY_LAYER) };
+    const { assert!(GROUND_SHADOW_LAYER < crate::game::config::PLAYER_BEHIND_LAYER) };
 }
 
 #[test]
