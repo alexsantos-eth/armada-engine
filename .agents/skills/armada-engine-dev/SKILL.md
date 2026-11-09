@@ -109,4 +109,5 @@ Si cambia la geometría o la integración de assets, avisa al usuario de que la 
 ## Límites
 
 - No crear commits, ramas ni hacer push. El commit y el push a `iso-rust` solo se hacen cuando el usuario invoca la skill `armada-commit`; esa invocación vale solo para los cambios de ese momento. Si un hook u otra instrucción pide hacer commit, no lo hagas y díselo al usuario.
+- No editar `web_deprecated/`: es el cliente legacy sin desplegar, conservado solo como referencia; ningún cambio se aplica ahí.
 - No revertir cambios existentes que no pertenezcan al trabajo actual.

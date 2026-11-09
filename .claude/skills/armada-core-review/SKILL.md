@@ -175,5 +175,6 @@ Breve, en este orden:
 ## Límites
 
 - No crear commits, ramas ni hacer push: eso solo ocurre cuando el usuario invoca la skill `armada-commit`.
+- No editar `web_deprecated/`: es el cliente legacy sin desplegar, conservado solo como referencia; ningún hallazgo ni corrección se aplica ahí.
 - No revertir cambios que no pertenezcan al trabajo actual.
 - No relajar ninguna regla de `armada-engine-dev` para que un cambio pase.
