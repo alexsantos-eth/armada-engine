@@ -78,6 +78,29 @@ fn the_player_is_drawn_at_its_measured_artwork_scaled_about_its_feet() {
 }
 
 #[test]
+fn body_motion_scales_the_player_about_its_feet() {
+    use crate::player::body_motion::BodyScale;
+
+    let feet = ScreenPoint { x: 400.0, y: 300.0 };
+    let layout = ink_layout(
+        feet,
+        InkBox {
+            x: -0.1,
+            y: -0.3,
+            width: 0.2,
+            height: 0.3,
+        },
+        280.0,
+    );
+    let scaled = scale_player_layout(layout, feet, BodyScale { x: 0.9, y: 1.2 });
+
+    assert_eq!(scaled.x + scaled.width / 2.0, feet.x);
+    assert_eq!(scaled.y + scaled.height, feet.y);
+    assert_eq!(scaled.width, layout.width * 0.9);
+    assert_eq!(scaled.height, layout.height * 1.2);
+}
+
+#[test]
 fn the_player_and_what_stands_on_its_column_sort_by_the_same_point() {
     let (x, y, elevation) = (12.5, 7.5, 2.0);
     let key = |layer| scene_key(x, y, elevation, layer, PREVIEW_TILE_HEIGHT);

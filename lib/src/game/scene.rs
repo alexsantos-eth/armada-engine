@@ -4,7 +4,7 @@
 //! reusable draw queue and projects the grid for the T-key debug view. It never mutates the
 //! world; simulation lives in `game::frame`.
 
-use iso::assets::{InkBox, SpriteFrame, footprint_band, ink_layout};
+use iso::assets::{InkBox, SpriteFrame, SpriteLayout, footprint_band, ink_layout};
 use iso::camera::Camera;
 use iso::entities::EntityLengthAxis;
 use iso::grid::WorldCoord;
@@ -26,6 +26,7 @@ use crate::game::frame::FrameView;
 use crate::game::ground::water_cell;
 use crate::game::state::Game;
 use crate::lighting::shadow_view;
+use crate::player::body_motion::{BodyMoment, BodyScale};
 use crate::player::dust_view::DustGround;
 use crate::player::player_view::{PlayerMoment, jump_poses};
 use crate::terrain::terrain_view_blocks::collect_terrain_sprites;
@@ -91,6 +92,22 @@ pub(crate) fn player_feet(
     ScreenPoint {
         x: projected.screen_x,
         y: projected.screen_y,
+    }
+}
+
+/// Scales the player artwork about its feet, so its contact point never slides across the ground.
+pub(crate) fn scale_player_layout(
+    layout: SpriteLayout,
+    feet: ScreenPoint,
+    scale: BodyScale,
+) -> SpriteLayout {
+    let width = layout.width * scale.x;
+    let height = layout.height * scale.y;
+    SpriteLayout {
+        x: feet.x + (layout.x - feet.x) * scale.x,
+        y: feet.y + (layout.y + layout.height - feet.y) * scale.y - height,
+        width,
+        height,
     }
 }
 
@@ -380,6 +397,17 @@ impl Game {
             },
             self.sheets,
         );
+        let body = self.body.advance(BodyMoment {
+            motion: self.player.motion,
+            speed: self.player.velocity.x.hypot(self.player.velocity.y),
+            walked: self.animation.walked(),
+            vertical_speed: self.player.vertical_speed,
+            climbing,
+            elapsed_ms: frame_ms,
+            jumps: self.player.feedback.jumps,
+            landings: self.player.feedback.landings,
+            impact: self.player.feedback.impact,
+        });
         self.drawn_at = (rp.x, rp.y);
         let sheet = self.atlas.sheet(match pose.sheet {
             PlayerSheet::Walk => PLAYER_WALK_SHEET,
@@ -400,7 +428,8 @@ impl Game {
         };
         match drawn {
             Some((texture, frame, ink)) => {
-                let layout = ink_layout(feet, ink, projection.tile_width);
+                let layout =
+                    scale_player_layout(ink_layout(feet, ink, projection.tile_width), feet, body);
                 let shade = self.shadows.as_ref().and_then(|shadows| {
                     let receiver = shadow_view::receiver_of(
                         layout,

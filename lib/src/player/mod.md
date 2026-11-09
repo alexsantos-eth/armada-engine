@@ -56,6 +56,29 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`RUN_PUFFS`](dust_view.rs#L31) — Soplos de polvo de carrera o derrape vivos a la vez, reutilizados por turno.
   - Declaración: `pub const RUN_PUFFS: usize = 6;`
 
+### `body_motion.rs`
+
+#### Tipos
+
+- [`BodyScale`](body_motion.rs#L23) — Escala visual del cuerpo alrededor de los pies.
+  - Firma: `pub struct BodyScale { pub x: f64, pub y: f64 }`
+- [`BodyMoment`](body_motion.rs#L34) — Muestra de estado del jugador para una animación visual de un fotograma.
+  - Firma: `pub struct BodyMoment { ... }`
+- [`BodyMotion`](body_motion.rs#L47) — Memoria de los pulsos visuales de despegue y aterrizaje.
+  - Firma: `pub struct BodyMotion { ... }`
+
+#### Funciones y métodos
+
+- [`advance`](body_motion.rs#L68) — Avanza pulsos visuales y devuelve la escala del cuerpo para el fotograma.
+  - Firma: `pub fn advance(&mut self, moment: BodyMoment) -> BodyScale {`
+
+#### Constantes
+
+- [`LANDING_SQUASH_MS`](body_motion.rs#L9) — Milisegundos de compresión tras aterrizar.
+  - Declaración: `pub const LANDING_SQUASH_MS: f64 = 180.0;`
+- [`TAKEOFF_STRETCH_MS`](body_motion.rs#L11) — Milisegundos de estiramiento tras despegar.
+  - Declaración: `pub const TAKEOFF_STRETCH_MS: f64 = 120.0;`
+
 ### `player_view.rs`
 
 #### Funciones y métodos
@@ -68,6 +91,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`facing_name`](player_view.rs#L172) — El nombre de la orientación con la que se dibuja al jugador, para el HUD.
   - Firma: `pub fn facing_name(&self) -> &'static str {`
+
+- [`walked`](player_view.rs#L177) — Distancia de la zancada visual actual, incluida la pedalada inversa del derrape.
+  - Firma: `pub fn walked(&self) -> f64 {`
 
 #### Constantes
 

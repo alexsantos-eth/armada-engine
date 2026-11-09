@@ -30,6 +30,7 @@ use crate::lighting::shadow_view::ShadowScene;
 use crate::lighting::shadow_view_atlas::ShadowAtlas;
 use crate::lighting::shadow_view_masks::SilhouetteMasks;
 use crate::perf::PerfLog;
+use crate::player::body_motion::BodyMotion;
 use crate::player::dust_view::DustPuffs;
 use crate::player::player_view::PlayerAnimation;
 use crate::rendering::render_target::SceneTarget;
@@ -70,6 +71,7 @@ pub(crate) struct Game {
     pub(crate) player_asset: Option<PlayerSprite>,
     pub(crate) sheets: crate::player::player_view::PlayerSheets,
     pub(crate) animation: PlayerAnimation,
+    pub(crate) body: BodyMotion,
     pub(crate) drawn_at: (f64, f64),
     pub(crate) dust: DustPuffs,
     pub(crate) draws: Vec<SpriteDraw>,
@@ -249,6 +251,7 @@ impl Game {
             player_asset,
             sheets,
             animation: PlayerAnimation::default(),
+            body: BodyMotion::default(),
             drawn_at: (spawned.x, spawned.y),
             dust: DustPuffs::new(),
             draws: Vec::new(),

@@ -173,6 +173,11 @@ impl PlayerAnimation {
         PLAYER_FACINGS[self.facing % PLAYER_FACINGS.len()]
     }
 
+    /// Columns travelled through the current walk cycle, including a skid's reverse pedalling.
+    pub fn walked(&self) -> f64 {
+        self.walked
+    }
+
     fn pose(&self, frame: PlayerFrame) -> PlayerPose {
         PlayerPose {
             sheet: frame.sheet,

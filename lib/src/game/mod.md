@@ -92,6 +92,8 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `pub(crate) fn player_layer(position: GridPoint, column: WorldCoord) -> i32 {`
 - [`player_feet`](scene.rs#L78) — Proyecta el punto donde los pies del jugador tocan la cima de su casilla.
   - Firma: `pub(crate) fn player_feet(position: GridPoint, elevation: f64, projection: ProjectionConfig) -> ScreenPoint {`
+- [`scale_player_layout`](scene.rs#L98) — Escala el arte del jugador alrededor de sus pies sin deslizar su punto de contacto.
+  - Firma: `pub(crate) fn scale_player_layout(layout: SpriteLayout, feet: ScreenPoint, scale: BodyScale) -> SpriteLayout {`
 - [`frame_projection`](scene.rs#L140) — El origen de la proyección del fotograma a partir de la cámara y su nivel.
   - Firma: `pub(crate) fn frame_projection(camera: Camera, level: f64, width: f32, height: f32) -> ProjectionConfig {`
 - [`draw_clouds`](scene.rs#L157) — Dibuja las sombras de nubes sobre la escena terminada, bajo el HUD.
