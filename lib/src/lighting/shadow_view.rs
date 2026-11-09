@@ -1,4 +1,4 @@
-//! Baked dawn shadows: the client half of [`iso::lighting`].
+//! Baked shadows for the selectable light phase: the client half of [`iso::lighting`].
 
 use super::shadow_view_atlas;
 use super::shadow_view_atlas::{ShadowAtlas, atlas_uv, square_in_slot};
@@ -7,7 +7,7 @@ use iso::assets::{InkBox, SpriteLayout};
 use iso::entities::Entity;
 use iso::grid::{CHUNK_SIZE, ChunkCoord, WorldCoord, to_chunk_coord};
 use iso::lighting::{
-    GroundBake, HeightField, MapArea, PhaseLight, SHADE_COLUMNS, SHADE_ROWS,
+    BakePhase, GroundBake, HeightField, MapArea, PhaseLight, SHADE_COLUMNS, SHADE_ROWS,
     SHADOW_MAP_PIXELS_PER_TILE, ShadeGrid, ShadowCaster, ShadowMap, ShadowPoint, ShadowReceiver,
     SpriteExtent, TerrainFace, shade_grid, shaded_at, terrain_faces,
 };
@@ -55,6 +55,7 @@ struct Baked {
 
 /// The baked shadows of every shown chunk.
 pub struct ShadowScene {
+    phase: BakePhase,
     light: PhaseLight,
     masks: SilhouetteMasks,
     chunks: HashMap<ChunkCoord, Baked>,
@@ -98,16 +99,17 @@ enum Reading {
 }
 
 impl ShadowScene {
-    /// An empty scene lit by `light`, sampling `masks`.
+    /// An empty scene for `phase`, sampling `masks`.
     pub fn new(
-        light: PhaseLight,
+        phase: BakePhase,
         masks: SilhouetteMasks,
         atlas: ShadowAtlas,
         tile_width: f64,
         box_height: f64,
     ) -> Self {
         Self {
-            light,
+            phase,
+            light: phase.light(),
             masks,
             chunks: HashMap::new(),
             scratch: ShadowMap::new(
@@ -119,6 +121,27 @@ impl ShadowScene {
             tile_width,
             box_height,
         }
+    }
+
+    /// The phase used by the current bake.
+    pub fn phase(&self) -> BakePhase {
+        self.phase
+    }
+
+    /// Selects a phase and discards every map derived from the previous light.
+    pub fn set_phase(&mut self, phase: BakePhase) {
+        if self.phase == phase {
+            return;
+        }
+        self.phase = phase;
+        self.light = phase.light();
+        if let Some(job) = self.working.take() {
+            self.atlas.release(job.coord);
+        }
+        for coord in self.chunks.keys().copied().collect::<Vec<_>>() {
+            self.atlas.release(coord);
+        }
+        self.chunks.clear();
     }
 
     /// Spends up to [`BAKE_BUDGET_MS`] bringing the bake up to date for `shown`, and forgets

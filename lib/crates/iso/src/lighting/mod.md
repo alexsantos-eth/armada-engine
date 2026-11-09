@@ -91,18 +91,29 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`opacity`](phases.rs#L14) — La opacidad a la que se dibujan sus sombras, que es para lo único que se usan los dos números
   - Firma: `pub fn opacity(&self) -> f64 {`
 
+- [`label`](phases.rs#L30) — El rótulo en español de una fase seleccionable.
+  - Firma: `pub const fn label(self) -> &'static str {`
+
+- [`light`](phases.rs#L40) — La configuración de luz correspondiente a una fase seleccionable.
+  - Firma: `pub const fn light(self) -> PhaseLight {`
+
+#### Tipos
+
+- [`BakePhase`](phases.rs#L21) — Fase de horneado seleccionable: amanecer, día, atardecer o noche.
+  - Declaración: `pub enum BakePhase { Dawn, Day, Sunset, Night }`
+
 #### Constantes
 
-- [`DAWN`](phases.rs#L20) — Amanecer: el sol bajo en el este, así que las sombras se alargan y van casi rectas a lo largo del mundo `−x`.
+- [`DAWN`](phases.rs#L51) — Amanecer: el sol bajo en el este, así que las sombras se alargan y van casi rectas a lo largo del mundo `−x`.
   - Declaración: `pub const DAWN: PhaseLight = PhaseLight {`
 
-- [`DAY`](phases.rs#L31) — Mediodía: luz desde arriba a la derecha, sombras cortas a plena intensidad.
+- [`DAY`](phases.rs#L62) — Mediodía: luz desde arriba a la derecha, sombras cortas a plena intensidad.
   - Declaración: `pub const DAY: PhaseLight = PhaseLight {`
 
-- [`SUNSET`](phases.rs#L42) — Atardecer: el sol bajo en el sur, sombras tan largas como las del amanecer y giradas un cuarto.
+- [`SUNSET`](phases.rs#L73) — Atardecer: el sol bajo en el sur, sombras tan largas como las del amanecer y giradas un cuarto.
   - Declaración: `pub const SUNSET: PhaseLight = PhaseLight {`
 
-- [`NIGHT`](phases.rs#L53) — Noche: una luna tenue, sombras cortas y débiles.
+- [`NIGHT`](phases.rs#L84) — Noche: una luna tenue, sombras cortas y débiles.
   - Declaración: `pub const NIGHT: PhaseLight = PhaseLight {`
 
 ### `received.rs`

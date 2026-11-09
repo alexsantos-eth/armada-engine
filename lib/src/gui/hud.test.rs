@@ -38,3 +38,34 @@ fn the_world_readout_carries_position_elevation_and_cost() {
     assert!(line.contains("60 fps"));
     assert!(line.contains("16.7 ms"));
 }
+
+#[test]
+fn phase_button_hit_selects_the_phase_under_a_click() {
+    assert_eq!(
+        phase_button_hit(PHASE_BUTTON_X + 1.0, PHASE_BUTTON_Y + 1.0),
+        Some(BakePhase::Dawn)
+    );
+    assert_eq!(
+        phase_button_hit(
+            PHASE_BUTTON_X + 1.0 + PHASE_BUTTON_WIDTH + PHASE_BUTTON_GAP,
+            PHASE_BUTTON_Y + 1.0
+        ),
+        Some(BakePhase::Day)
+    );
+    assert_eq!(
+        phase_button_hit(
+            PHASE_BUTTON_X + 1.0 + (PHASE_BUTTON_WIDTH + PHASE_BUTTON_GAP) * 2.0,
+            PHASE_BUTTON_Y + 1.0
+        ),
+        Some(BakePhase::Sunset)
+    );
+    assert_eq!(
+        phase_button_hit(
+            PHASE_BUTTON_X + 1.0 + (PHASE_BUTTON_WIDTH + PHASE_BUTTON_GAP) * 3.0,
+            PHASE_BUTTON_Y + 1.0
+        ),
+        Some(BakePhase::Night)
+    );
+    assert_eq!(phase_button_hit(10.0, PHASE_BUTTON_Y + 1.0), None);
+    assert_eq!(phase_button_hit(31.0, PHASE_BUTTON_Y - 1.0), None);
+}

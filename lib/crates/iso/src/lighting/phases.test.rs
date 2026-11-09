@@ -30,3 +30,15 @@ fn opacity_is_the_sun_and_the_phase_together() {
         "a moon reads fainter than a low sun"
     );
 }
+
+#[test]
+fn bake_phases_name_and_resolve_each_authored_light() {
+    assert_eq!(BakePhase::Dawn.label(), "AMANECER");
+    assert_eq!(BakePhase::Day.label(), "DIA");
+    assert_eq!(BakePhase::Sunset.label(), "ATARDECER");
+    assert_eq!(BakePhase::Night.label(), "NOCHE");
+    assert_eq!(BakePhase::Dawn.light(), DAWN);
+    assert_eq!(BakePhase::Day.light(), DAY);
+    assert_eq!(BakePhase::Sunset.light(), SUNSET);
+    assert_eq!(BakePhase::Night.light(), NIGHT);
+}

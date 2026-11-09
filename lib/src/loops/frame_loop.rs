@@ -99,13 +99,21 @@ pub(crate) async fn run(mut game: Game) {
                 chunks_alive,
             );
             let touch_visible = game.touch.visible();
-            draw_hud(
+            let phase = game
+                .shadows
+                .as_ref()
+                .map(crate::lighting::shadow_view::ShadowScene::phase);
+            if let Some(phase) = draw_hud(
                 &mut game.ui,
                 &game.perf,
                 game.dust.live(),
                 frame_ms,
                 touch_visible,
-            );
+                phase,
+            ) && let Some(shadows) = game.shadows.as_mut()
+            {
+                shadows.set_phase(phase);
+            }
         } else {
             game.ui.messages.clear();
         }

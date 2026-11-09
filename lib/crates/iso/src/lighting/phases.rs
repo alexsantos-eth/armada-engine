@@ -1,4 +1,4 @@
-//! The authored lighting phases, and the one this client bakes.
+//! The authored lighting phases, one of which the client bakes at a time.
 
 use super::shadow::ShadowProjection;
 
@@ -13,6 +13,37 @@ impl PhaseLight {
     /// The opacity its shadows are drawn at, which is all the two numbers are ever used for
     pub fn opacity(&self) -> f64 {
         self.shadow.alpha * self.shadow_strength
+    }
+}
+
+/// An authored phase that can be selected for a shadow bake.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BakePhase {
+    Dawn,
+    Day,
+    Sunset,
+    Night,
+}
+
+impl BakePhase {
+    /// The Spanish label the client presents for this phase.
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Dawn => "AMANECER",
+            Self::Day => "DIA",
+            Self::Sunset => "ATARDECER",
+            Self::Night => "NOCHE",
+        }
+    }
+
+    /// The light configuration baked for this phase.
+    pub const fn light(self) -> PhaseLight {
+        match self {
+            Self::Dawn => DAWN,
+            Self::Day => DAY,
+            Self::Sunset => SUNSET,
+            Self::Night => NIGHT,
+        }
     }
 }
 

@@ -11,7 +11,7 @@ use iso::assets::{AssetManifest, validate_manifest};
 use iso::camera::{Camera, CameraFocus};
 use iso::entities::{EntityCatalog, validate_catalog};
 use iso::grid::to_chunk_coord;
-use iso::lighting::DAWN;
+use iso::lighting::BakePhase;
 use iso::player::physics::{create_player, find_player_spawn, get_player_render_position};
 use iso::simulation::FixedStepper;
 use iso::terrain::{TerrainConfig, TerrainGenerator};
@@ -144,7 +144,7 @@ impl Game {
         };
         let shadows = masks.filter(|_| material.is_some()).map(|masks| {
             ShadowScene::new(
-                DAWN,
+                BakePhase::Dawn,
                 masks,
                 shadow_atlas,
                 PREVIEW_TILE_WIDTH,
