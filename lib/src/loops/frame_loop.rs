@@ -12,6 +12,7 @@ use macroquad::prelude::*;
 
 use crate::assets::sprites::draw_sorted;
 use crate::game::Game;
+use crate::game::config::DEFAULT_PHASE;
 use crate::gui::{draw_hud, overlay_enabled, push_hud_update};
 use crate::perf::FrameSample;
 
@@ -59,8 +60,7 @@ pub(crate) async fn run(mut game: Game) {
             .shadows
             .as_ref()
             .map(crate::lighting::shadow_view::ShadowScene::phase);
-        let grade =
-            crate::rendering::grade::grade_for(phase.unwrap_or(iso::lighting::BakePhase::Dawn));
+        let grade = crate::rendering::grade::grade_for(phase.unwrap_or(DEFAULT_PHASE));
 
         let width = screen_width();
         let height = screen_height();

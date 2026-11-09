@@ -53,8 +53,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Declaración: `pub const CHUNK_RADII: ChunkRadii = ChunkRadii { ... };`
 - [`AUTOSAVE_SECONDS`](config.rs#L48) — Intervalo de respaldo del guardado periódico; el real es al salir.
   - Declaración: `pub const AUTOSAVE_SECONDS: f64 = 120.0;`
-- [`WORLD_SEED`](config.rs#L51) — La semilla con la que genera el mundo; el valor por defecto del dominio (`iso::terrain::WORLD_SEED`) y los tests la comparten.
+- [`WORLD_SEED`](config.rs#L52) — La semilla con la que genera el mundo; el valor por defecto del dominio (`iso::terrain::WORLD_SEED`) y los tests la comparten.
   - Declaración: `pub const WORLD_SEED: u64 = iso::terrain::WORLD_SEED;`
+- [`DEFAULT_PHASE`](config.rs#L54) — La fase con la que arranca el cliente: el mediodía, el horneado más claro y la escena más legible.
+  - Declaración: `pub const DEFAULT_PHASE: BakePhase = BakePhase::Day;`
 
 ### `ground.rs`
 

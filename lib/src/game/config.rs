@@ -5,6 +5,7 @@
 
 use iso::assets::{SVG_BLOCK_HEIGHT, SVG_TILE_WIDTH};
 use iso::grid::WorldCoord;
+use iso::lighting::BakePhase;
 use iso::world::ChunkRadii;
 
 /// Diagnostic centre of the world; the player spawns near here.
@@ -49,3 +50,5 @@ pub const AUTOSAVE_SECONDS: f64 = 120.0;
 
 /// The seed the world generates from; the domain default and the tests pin the same value.
 pub const WORLD_SEED: u64 = iso::terrain::WORLD_SEED;
+/// The phase the client boots into: midday, the clearest bake and the most readable scene.
+pub const DEFAULT_PHASE: BakePhase = BakePhase::Day;
