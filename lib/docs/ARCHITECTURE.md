@@ -107,6 +107,44 @@ El cliente `lib/src/` mantendrá la separación de `game` (composición y arranq
 
 Un módulo nuevo debe ofrecer una entrada pequeña en `mod.rs` y colocar sus pruebas junto al archivo que contiene la regla: `coords.rs` con `coords.test.rs`, por ejemplo. El archivo de producción registra el test con `#[cfg(test)] #[path = "coords.test.rs"] mod tests;`. `tests/` queda para contratos que crucen módulos, fixtures de migración y recorridos de integración. La política completa —incluidas las excepciones justificadas para barrels, entradas y herramientas— vive en [Estructura de archivos](FILE_STRUCTURE.md). El punto de composición del juego se actualiza cuando se registra un sistema o una vista. Esta organización permite añadir módulos sin ampliar `main.rs`, `World` ni un renderer monolítico.
 
+## Índice de dominios y catálogos de API
+
+Cada carpeta de dominio mantiene su propio `mod.md`. Es el índice técnico de la carpeta: explica su responsabilidad, límites, módulos fuente y el propósito de todas sus funciones y constantes de producción. Distingue la API pública de los detalles internos para que un consumidor sepa qué contrato puede usar y un mantenedor pueda localizar la implementación sin recorrer todo el crate.
+
+### Dominio portable: crate `iso`
+
+- [assets](../crates/iso/src/assets/mod.md): contratos de atlas y poses.
+- [camera](../crates/iso/src/camera/mod.md): foco, cámara y visibilidad de chunks.
+- [entities](../crates/iso/src/entities/mod.md): blueprints, instancias y colocación.
+- [grid](../crates/iso/src/grid/mod.md): coordenadas, claves y estructuras espaciales.
+- [lighting](../crates/iso/src/lighting/mod.md): luz, fases y geometría de sombras.
+- [paths](../crates/iso/src/paths/mod.md): búsqueda de rutas determinista.
+- [player](../crates/iso/src/player/mod.md): estado, movimiento y física del jugador.
+- [projection](../crates/iso/src/projection/mod.md): conversión isométrica mundo-pantalla.
+- [scene_order](../crates/iso/src/scene_order/mod.md): profundidad, capas y presupuestos de streaming.
+- [services](../crates/iso/src/services/mod.md): puertos de entrada, audio, interfaz y carga.
+- [simulation](../crates/iso/src/simulation/mod.md): acumulador de paso fijo.
+- [terrain](../crates/iso/src/terrain/mod.md): columnas, materiales y generación.
+- [time](../crates/iso/src/time/mod.md): reloj lógico y conversiones temporales.
+- [water](../crates/iso/src/water/mod.md): geometría de superficies y reflejos.
+- [world](../crates/iso/src/world/mod.md): chunks, streaming y estado persistente.
+
+### Cliente Macroquad: crate `iso-core`
+
+- [assets](../src/assets/mod.md): atlas y hojas de sprites del cliente.
+- [lighting](../src/lighting/mod.md): atlas, máscaras y vistas de sombras.
+- [perf](../src/perf/mod.md): métricas e informe de fotogramas.
+- [player](../src/player/mod.md): vista y efectos visuales del jugador.
+- [rendering](../src/rendering/mod.md): materiales y primitivas de Macroquad.
+- [save](../src/save/mod.md): adaptadores de persistencia nativa y web.
+- [services](../src/services/mod.md): implementaciones Macroquad de los puertos.
+- [terrain](../src/terrain/mod.md): vistas y sprites de terreno.
+- [water](../src/water/mod.md): vistas de reflejos de agua.
+
+### Regla al añadir, mover o modificar código
+
+Todo cambio de producción dentro de una carpeta de dominio debe actualizar su `mod.md` en el mismo cambio. Al añadir, renombrar, mover o eliminar un archivo, función, método o constante, se actualizan su enlace, firma y propósito en el catálogo correspondiente; si cambia la responsabilidad, los límites o las dependencias del dominio, se actualiza también su introducción. Una revisión no está completa mientras el código, `mod.rs`, las pruebas colocalizadas y el `mod.md` describan estructuras distintas. Las herramientas de `src/bin/` se documentan junto a sus scripts o README porque no son dominios del motor.
+
 ## Invariantes compartidas
 
 - `World` es la fuente de verdad del juego. La escena y sus vistas mantienen solo cachés y recursos derivados. Descargar un chunk visual no elimina su contenido del mundo ni del archivo guardado.
