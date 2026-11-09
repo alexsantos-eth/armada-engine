@@ -145,3 +145,7 @@ pub fn restore_discovered_from_archive(
         systems: serde_json::json!({}),
     })
 }
+
+#[cfg(test)]
+#[path = "persistence.test.rs"]
+mod tests;

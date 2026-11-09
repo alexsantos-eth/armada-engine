@@ -46,6 +46,7 @@ pub struct EntityAsset {
 pub struct EntityShape {
     pub height: i32,
     pub length: i32,
+    #[serde(default)]
     pub axis: EntityLengthAxis,
     pub collision: Vec<f64>,
 }
@@ -72,3 +73,7 @@ pub struct EntityCatalogV2 {
     pub schema_version: u32,
     pub entities: Vec<EntityBlueprintV2>,
 }
+
+#[cfg(test)]
+#[path = "blueprint.test.rs"]
+mod tests;

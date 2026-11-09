@@ -1,3 +1,2 @@
-#[path = "services.rs"]
-mod implementation;
-pub use implementation::*;
+mod macroquad_adapters;
+pub use macroquad_adapters::*;

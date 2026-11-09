@@ -6,6 +6,8 @@ contiene el dominio sin dependencias gráficas. El workspace fija Rust 1.99.1 y 
 Este README solo explica cómo ejecutarlo y cómo preparar un despliegue. Los contratos del
 dominio y del cliente, el flujo de un fotograma y las prácticas de código y pruebas están en la
 [arquitectura por módulo](docs/ARCHITECTURE.md).
+La ubicación de cada crate, el uso de `mod.rs` y la política de pruebas
+colocalizadas están en [la estructura de archivos](docs/FILE_STRUCTURE.md).
 
 ## Correr nativo
 

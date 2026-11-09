@@ -36,3 +36,7 @@ const _: () = {
     assert!(CHUNKS_SHOWN_PER_FRAME > 0);
     assert!(CHUNKS_HIDDEN_PER_FRAME > 0);
 };
+
+#[cfg(test)]
+#[path = "budgets.test.rs"]
+mod tests;

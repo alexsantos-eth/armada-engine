@@ -1011,3 +1011,7 @@ pub fn ground_key(x: f64, y: f64, elevation: f64, layer: i32, tile_height: f64) 
         ..key
     }
 }
+
+#[cfg(test)]
+#[path = "sprites.test.rs"]
+mod tests;

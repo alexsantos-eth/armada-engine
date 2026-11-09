@@ -106,3 +106,7 @@ impl ChunkLoader for MacroquadChunkLoader<'_> {
         self.manager.terrain_chunk(coord).map(|c| c.to_vec())
     }
 }
+
+#[cfg(test)]
+#[path = "macroquad_adapters.test.rs"]
+mod tests;

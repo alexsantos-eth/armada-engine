@@ -182,5 +182,5 @@ impl PerfLog {
 }
 
 #[cfg(test)]
-#[path = "perf.test.rs"]
+#[path = "frame_log.test.rs"]
 mod tests;
