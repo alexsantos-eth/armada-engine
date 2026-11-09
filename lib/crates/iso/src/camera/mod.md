@@ -30,7 +30,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`advance`](focus.rs#L72) — The level to show for the player at `at`, `elapsed_ms` real milliseconds after the last
   - Firma: `pub fn advance( &mut self, at: &PlayerRenderPosition, motion: PlayerMotionType, elapsed_ms: f64, smooth_ms: f64, ) -> f64 {`
 
-- [`ground`](focus.rs#L142) — [`Self::advance`] as the ground point the TypeScript client's camera centres on: the
+- [`ground`](focus.rs#L142) — [`Self::advance`] as the ground point the camera centres on: the
   - Firma: `pub fn ground( &mut self, at: &PlayerRenderPosition, motion: PlayerMotionType, elapsed_ms: f64, projection: ProjectionConfig, ) -> GridPoint {`
 
 #### Constantes

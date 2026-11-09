@@ -1,4 +1,4 @@
-//! Integer world, chunk, and local coordinates. World axes match the TypeScript contracts.
+//! Integer world, chunk, and local coordinates.
 
 use std::fmt;
 

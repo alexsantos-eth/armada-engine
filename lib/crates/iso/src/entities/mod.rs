@@ -1,4 +1,4 @@
-//! Entity instances, deterministic placement and the validated V2 catalog.
+//! Entity instances, deterministic placement and the validated catalog.
 
 pub mod blueprint;
 pub mod entity;

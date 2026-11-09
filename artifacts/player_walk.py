@@ -6,15 +6,14 @@
 #
 # How many is PLAYER_FACINGS in the environment, sixteen by default:
 #
-#   python3 player_walk.py                     -> 16 rows, for the Macroquad client
-#                                                 (public/assets/player-16/walk.svg)
-#   PLAYER_FACINGS=8 python3 player_walk.py    -> 8 rows, for the Pixi client
-#                                                 (public/assets/player/walk.svg)
+#   python3 player_walk.py                     -> 16 rows, the set the client draws
+#                                                 (lib/assets-src/assets/player-16/walk.svg)
+#   PLAYER_FACINGS=8 python3 player_walk.py    -> 8 rows, the historical set
+#                                                 (lib/assets-src/assets/player/walk.svg)
 #
 # The Macroquad client cuts every cell of a sheet on its own and packs them into a texture of its
-# own, so a sheet of sixteen rows costs it nothing but the cells it holds. The Pixi client loads
-# the whole SVG as one texture, and sixteen rows would be twice the texture it has now, so it
-# keeps the eight-row sheets. The other player sheets (idle, jump, climb, jetpack) read the list
+# own, so a sheet of sixteen rows costs it nothing but the cells it holds; the eight-row sheets
+# are kept for reference, unused. The other player sheets (idle, jump, climb, jetpack) read the list
 # from here, so they follow whichever count this is run with. Column 0 is the figure standing, then FRAMES poses of one walk cycle (two steps).
 # Every cell is the same window CELL of a one-tile canvas (1024 x 853, viewBox 0 -341), so the
 # figure's feet stay at the tile's centre in every cell. The parts are clay voxels turned towards
@@ -54,9 +53,8 @@ FACINGS = POINTS[:: len(POINTS) // COUNT]
 # a margin, so all the sheets of one run share it (each generator asserts its poses fit). The
 # intermediate facings reach a little wider than the eight did — the idle dance leans across the
 # screen — so this is 408 wide where the eight-facing sheets have 398. Each sheet carries its own
-# `data-cell`, so the two live side by side; the Pixi client's copy of the window is written out
-# in `PLAYER_WALK.cell` (`src/isometric/content/player.ts`) and only has to change if those
-# eight-row sheets are drawn again. Kept under 412 wide so nine columns stay under a 4096 px
+# `data-cell`, so the two live side by side; the eight-row sheets' window is written out nowhere
+# else and only has to change if those sheets are drawn again. Kept under 412 wide so nine columns stay under a 4096 px
 # texture; the sixteen-row sheets are taller than that, which only a client that loads a whole
 # sheet as one texture feels — the Macroquad pipeline cuts every cell on its own. And the gap
 # between cells, so mipmaps never mix two of them.

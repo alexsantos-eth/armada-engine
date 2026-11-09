@@ -134,7 +134,7 @@ fn a_band_holds_only_its_own_cell() {
     }
 }
 
-/// The cut is vertical, like the strips the TypeScript client cuts its texture into, and not
+/// The cut is vertical, like strips cut out of a texture, and not
 #[test]
 fn the_cut_falls_straight_down_the_screen() {
     let layout = SpriteLayout { x: -40.0, y: -200.0, width: 160.0, height: 240.0 };

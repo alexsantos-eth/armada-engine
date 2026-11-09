@@ -42,7 +42,7 @@ impl std::fmt::Display for CatalogError {
 impl std::error::Error for CatalogError {}
 
 /// Validates a whole catalog: schema version, unique ids, and every blueprint.
-pub fn validate_catalog(catalog: &EntityCatalogV2) -> Result<(), CatalogError> {
+pub fn validate_catalog(catalog: &EntityCatalog) -> Result<(), CatalogError> {
     if catalog.schema_version != CATALOG_SCHEMA_VERSION {
         return Err(CatalogError::UnsupportedSchema {
             found: catalog.schema_version,
@@ -65,7 +65,7 @@ pub fn validate_catalog(catalog: &EntityCatalogV2) -> Result<(), CatalogError> {
 }
 
 /// Validates a single blueprint.
-fn validate_blueprint(blueprint: &EntityBlueprintV2) -> Result<(), CatalogError> {
+fn validate_blueprint(blueprint: &EntityBlueprint) -> Result<(), CatalogError> {
     if blueprint.shape.height < 1 {
         return Err(CatalogError::InvalidShape {
             id: blueprint.id.clone(),

@@ -71,7 +71,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Constantes
 
-- [`WALK_STRIDE`](player_view.rs#L8) — Columns walked per cycle of the walk sheet, from the TypeScript content (`PLAYER_WALK`):
+- [`WALK_STRIDE`](player_view.rs#L8) — Columns walked per cycle of the walk sheet:
   - Declaración: `pub const WALK_STRIDE: f64 = 1.4;`
 
 - [`IDLE_PERIOD_MS`](player_view.rs#L11) — Real milliseconds one cycle of the idle sheet lasts: two beats of the monkey's dance.

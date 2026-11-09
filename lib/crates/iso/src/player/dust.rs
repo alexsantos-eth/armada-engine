@@ -112,7 +112,7 @@ pub struct DustRandom {
 }
 
 impl DustRandom {
-    /// The stream of `seed`, which is the count of puffs raised so far in the TypeScript client.
+    /// The stream of `seed`, which is the count of puffs raised so far.
     pub fn new(seed: u64) -> Self {
         Self { state: seed.wrapping_mul(0x9e37_79b9_7f4a_7c15) ^ 0x6a09_e667_f3bc_c909 }
     }

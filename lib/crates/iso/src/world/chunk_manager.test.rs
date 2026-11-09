@@ -1,14 +1,14 @@
     use super::*;
     use crate::entities::blueprint::{
-        EntityAsset, EntityBlueprintV2, EntityLengthAxis, EntityPlacement, EntityShape,
+        EntityAsset, EntityBlueprint, EntityLengthAxis, EntityPlacement, EntityShape,
     };
     use crate::entities::validation::CATALOG_SCHEMA_VERSION;
     use crate::terrain::{TerrainConfig, TerrainGenerator, TerrainMaterial};
 
-    fn catalog() -> EntityCatalogV2 {
-        EntityCatalogV2 {
+    fn catalog() -> EntityCatalog {
+        EntityCatalog {
             schema_version: CATALOG_SCHEMA_VERSION,
-            entities: vec![EntityBlueprintV2 {
+            entities: vec![EntityBlueprint {
                 id: "tree".to_owned(),
                 asset: EntityAsset {
                     sprite: "/assets/tree/block.svg".to_owned(),

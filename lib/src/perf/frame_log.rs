@@ -1,8 +1,8 @@
-//! Frame timing log, reported in the same shape as the TypeScript client's.
+//! Frame timing log, reported in a stable, self-describing text shape.
 
 use std::collections::VecDeque;
 
-/// Frames kept in the window: five seconds at 60 fps, matching the TypeScript report.
+/// Frames kept in the window: five seconds at 60 fps.
 pub const WINDOW_FRAMES: usize = 300;
 
 /// Two refreshes of a 60 Hz display. A frame over this dropped one, which is what reads as a

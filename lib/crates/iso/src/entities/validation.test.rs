@@ -11,8 +11,8 @@
         }
     }
 
-    fn blueprint(id: &str, length: i32, surfaces: Vec<TerrainMaterial>) -> EntityBlueprintV2 {
-        EntityBlueprintV2 {
+    fn blueprint(id: &str, length: i32, surfaces: Vec<TerrainMaterial>) -> EntityBlueprint {
+        EntityBlueprint {
             id: id.to_owned(),
             asset: asset("/assets/tree/block.svg"),
             shape: EntityShape {
@@ -25,8 +25,8 @@
         }
     }
 
-    fn catalog(entities: Vec<EntityBlueprintV2>) -> EntityCatalogV2 {
-        EntityCatalogV2 {
+    fn catalog(entities: Vec<EntityBlueprint>) -> EntityCatalog {
+        EntityCatalog {
             schema_version: CATALOG_SCHEMA_VERSION,
             entities,
         }
@@ -43,7 +43,7 @@
 
     #[test]
     fn rejects_unsupported_schema() {
-        let catalog = EntityCatalogV2 {
+        let catalog = EntityCatalog {
             schema_version: 2,
             entities: vec![blueprint("tree", 1, vec![TerrainMaterial::Grass])],
         };

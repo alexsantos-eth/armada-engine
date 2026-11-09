@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="853" viewBox="0 -341 1024 853">
+  <defs>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <path id="lower-shadow" fill="transparent" d="M512 0 1024 256 512 512 0 256Z" opacity=".28" />
+  <path id="upper-shadow" fill="transparent" d="M512 -341 1024 -85 512 171 0 -85Z" opacity=".2" />
+  <g id="figure">
+    <polygon points="0.0,11.0 512.0,267.0 512.0,512.0 0.0,256.0" fill="#7d7a3a" stroke="#7d7a3a" stroke-width=".75" stroke-linejoin="round"/>
+    <polygon points="1024.0,11.0 512.0,267.0 512.0,512.0 1024.0,256.0" fill="#a7a44d" stroke="#a7a44d" stroke-width=".75" stroke-linejoin="round"/>
+    <polygon points="512.0,-245.0 1024.0,11.0 512.0,267.0 0.0,11.0" fill="#b4b053" stroke="#b4b053" stroke-width=".75" stroke-linejoin="round"/>
+    <polygon points="0.0,-85.0 512.0,171.0 512.0,267.0 0.0,11.0" fill="#729a00" stroke="#729a00" stroke-width=".75" stroke-linejoin="round"/>
+    <polygon points="1024.0,-85.0 512.0,171.0 512.0,267.0 1024.0,11.0" fill="#99ce00" stroke="#99ce00" stroke-width=".75" stroke-linejoin="round"/>
+    <polygon points="512.0,-341.0 1024.0,-85.0 512.0,171.0 0.0,-85.0" fill="#99ce00" stroke="#99ce00" stroke-width=".75" stroke-linejoin="round"/>
+    <polygon points="512.0,-327.0 996.0,-85.0 512.0,157.0 28.0,-85.0" fill="#a4de00" stroke="#a4de00" stroke-width=".75" stroke-linejoin="round"/>
+  </g>
+</svg>

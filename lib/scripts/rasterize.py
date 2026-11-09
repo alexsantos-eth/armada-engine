@@ -94,9 +94,9 @@ SVG_TILE_WIDTH = 1024
 # Top of the character template's canvas in those units: it reaches one block above the ground
 # plane, and a sheet's `data-cell` is measured from there.
 SVG_CANVAS_TOP = -341
-# Sheets this client does not draw from: the eight-facing player sheets under `player/` belong to
-# the Pixi client, which loads each SVG whole as one texture. This client reads the sixteen-facing
-# ones under `player-16/`, so cutting the others would pack five textures nothing asks for.
+# Sheets this client does not draw from: the eight-facing player sheets under `player/` are not
+# used, because this client reads the sixteen-facing ones under `player-16/` and cuts every cell
+# separately. Cutting the others would pack five textures nothing asks for.
 SKIPPED_SHEETS = frozenset(
     "player_%s" % name for name in ("walk", "idle", "jump", "climb", "jetpack")
 )

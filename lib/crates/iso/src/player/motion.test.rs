@@ -1,9 +1,9 @@
-//! Tests for `transition_player_motion`, mirroring the `motion` section of the shared
+//! Tests for `transition_player_motion`, against the `motion` section of the contract fixture.
 
 use super::*;
 
 #[test]
-fn ground_transitions_match_typescript_fixture() {
+fn ground_transitions_match_contract_fixture() {
     assert_eq!(
         transition_player_motion(PlayerMotionType::Idle, PlayerMotionEvent::Run),
         PlayerMotionType::Running
@@ -19,7 +19,7 @@ fn ground_transitions_match_typescript_fixture() {
 }
 
 #[test]
-fn air_transitions_match_typescript_fixture() {
+fn air_transitions_match_contract_fixture() {
     assert_eq!(
         transition_player_motion(PlayerMotionType::Jumping, PlayerMotionEvent::Fly),
         PlayerMotionType::Flying

@@ -2,8 +2,8 @@
     use crate::entities::blueprint::EntityAsset;
     use crate::terrain::TerrainMaterial;
 
-    fn blueprint(id: &str, length: i32, surface: TerrainMaterial) -> EntityBlueprintV2 {
-        EntityBlueprintV2 {
+    fn blueprint(id: &str, length: i32, surface: TerrainMaterial) -> EntityBlueprint {
+        EntityBlueprint {
             id: id.to_owned(),
             asset: EntityAsset {
                 sprite: format!("/assets/{}/block.svg", id),

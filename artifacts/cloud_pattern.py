@@ -7,8 +7,8 @@ one texel per SVG unit, so a copy is 1920 x 960 and spans the twelve tiles the p
 over.
 
 Two things the SVG cannot do for this client. **cairosvg ignores `feGaussianBlur`**, so the PNG
-came out with the hard diamond edges the browser never shows — the TypeScript client gets the
-filter from the browser's own renderer. The blur is applied here instead, over the wrapped
+came out with the hard diamond edges — a browser renderer would apply the filter itself.
+The blur is applied here instead, over the wrapped
 image, so the soft edge crosses the pattern's seam like every other edge. And the **colour is
 forced to black**: the client tints the pattern anyway, so only the alpha matters, and an RGB
 that is not black leaks its own hue into the half-transparent edge.

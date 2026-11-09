@@ -1,19 +1,19 @@
-//! Integration test for the versioned entity catalog, mirroring `save-v2` style.
-//! Loads the shared TypeScript fixture `entities.v2.json` and validates it.
+//! Integration test for the entity catalog.
+//! Loads the catalog the client ships (`content/entities.json`) and validates it.
 
 use iso::entities::{validate_catalog, CATALOG_SCHEMA_VERSION};
 
 fn fixture() -> serde_json::Value {
     serde_json::from_str(include_str!(
-        "../../../../web_deprecated/src/isometric/content/entities.v2.json"
+        "../../../content/entities.json"
     ))
-    .expect("migration fixture is valid JSON")
+    .expect("catalog fixture is valid JSON")
 }
 
 #[test]
-fn entity_catalog_matches_versioned_fixture() {
+fn entity_catalog_matches_contract_fixture() {
     let root = fixture();
-    let catalog: iso::entities::EntityCatalogV2 =
+    let catalog: iso::entities::EntityCatalog =
         serde_json::from_value(root.clone()).expect("fixture deserializes to the catalog");
 
     assert_eq!(catalog.schema_version, CATALOG_SCHEMA_VERSION);
@@ -41,17 +41,17 @@ fn entity_catalog_matches_versioned_fixture() {
         assert!(!blueprint.asset.sprite.is_empty(), "sprite for {}", blueprint.id);
     }
 
-    validate_catalog(&catalog).expect("the shared fixture must validate");
+    validate_catalog(&catalog).expect("the catalog fixture must validate");
 }
 
 #[test]
-fn entity_catalog_blueprint_count_matches_typescript() {
+fn entity_catalog_blueprint_count_matches_the_catalog() {
     let root = fixture();
     let entities = root
         .get("entities")
         .and_then(|v| v.as_array())
         .expect("entities array");
-    assert_eq!(entities.len(), 31, "the V2 fixture carries 31 blueprints");
+    assert_eq!(entities.len(), 31, "the catalog carries 31 blueprints");
 }
 
 #[test]
@@ -60,7 +60,7 @@ fn entity_catalog_rejects_unsupported_schema() {
     root.as_object_mut()
         .unwrap()
         .insert("schemaVersion".to_owned(), serde_json::Value::from(2));
-    let catalog: iso::entities::EntityCatalogV2 =
+    let catalog: iso::entities::EntityCatalog =
         serde_json::from_value(root).expect("serde deserializes a different schema version");
     let err = validate_catalog(&catalog).unwrap_err();
     assert!(matches!(

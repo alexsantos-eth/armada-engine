@@ -282,11 +282,11 @@ mod tests {
     }
 
     #[test]
-    fn deserializes_shared_manifest_fixture() {
+    fn deserializes_the_manifest_fixture() {
         let json = include_str!("../../../../content/assets.manifest.json");
         let manifest: AssetManifest = serde_json::from_str(json).expect("manifest deserializes");
         assert_eq!(manifest.schema_version, MANIFEST_SCHEMA_VERSION);
-        validate_manifest(&manifest).expect("shared manifest validates");
+        validate_manifest(&manifest).expect("the manifest validates");
         assert_eq!(manifest.entries.len(), 64);
         for entry in &manifest.entries {
             assert!(entry.primary_frame().is_some(), "entry {} has no frame", entry.id);

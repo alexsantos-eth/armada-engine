@@ -21,7 +21,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`mix_color`](dust.rs#L96) — The colour `share` (`0` → `1`) of the way from `from` to `to`, channel by channel, rounded
   - Firma: `pub fn mix_color(colors: (u32, u32), share: f64) -> u32 {`
 
-- [`new`](dust.rs#L116) — The stream of `seed`, which is the count of puffs raised so far in the TypeScript client.
+- [`new`](dust.rs#L116) — The stream of `seed`, which is the count of puffs raised so far.
   - Firma: `pub fn new(seed: u64) -> Self {`
 
 - [`roll`](dust.rs#L121) — The next number of the stream, in `[0, 1)`. SplitMix64, as `terrain::noise` hashes.

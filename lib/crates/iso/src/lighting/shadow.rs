@@ -1,6 +1,6 @@
 //! Where the sun lays a shadow, in world tiles.
 
-/// An affine map of the plane, in the same convention the TypeScript client's matrices use:
+/// An affine map of the plane: `(x, y)` goes to `(a*x + c*y + tx, b*x + d*y + ty)`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Affine2D {
     pub a: f64,

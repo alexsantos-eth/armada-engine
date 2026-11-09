@@ -25,8 +25,8 @@
         }
     }
 
-    fn blueprint(id: &str, length: i32, surfaces: Vec<TerrainMaterial>) -> EntityBlueprintV2 {
-        EntityBlueprintV2 {
+    fn blueprint(id: &str, length: i32, surfaces: Vec<TerrainMaterial>) -> EntityBlueprint {
+        EntityBlueprint {
             id: id.to_owned(),
             asset: EntityAsset {
                 sprite: format!("/assets/{}/block.svg", id),
@@ -50,8 +50,8 @@
         PlacementRules { gap: 0, density: 1 }
     }
 
-    fn catalog(blueprints: Vec<EntityBlueprintV2>) -> EntityCatalogV2 {
-        EntityCatalogV2 {
+    fn catalog(blueprints: Vec<EntityBlueprint>) -> EntityCatalog {
+        EntityCatalog {
             schema_version: CATALOG_SCHEMA_VERSION,
             entities: blueprints,
         }

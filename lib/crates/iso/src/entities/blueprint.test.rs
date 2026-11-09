@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn deserializes_the_versioned_blueprint_contract() {
-    let blueprint: EntityBlueprintV2 = serde_json::from_value(serde_json::json!({
+    let blueprint: EntityBlueprint = serde_json::from_value(serde_json::json!({
         "id": "oak",
         "asset": {
             "sprite": "/assets/tree/oak.svg",
@@ -27,7 +27,7 @@ fn deserializes_the_versioned_blueprint_contract() {
 
 #[test]
 fn serializes_catalog_schema_version_in_camel_case() {
-    let catalog = EntityCatalogV2 {
+    let catalog = EntityCatalog {
         schema_version: 1,
         entities: Vec::new(),
     };

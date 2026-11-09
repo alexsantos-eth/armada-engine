@@ -2,9 +2,9 @@ use super::*;
 
 const SEED: u64 = 1337;
 
-/// The grass palette of the TypeScript client (`content/terrain.ts`), ordered dark to dry.
+/// The grass palette, ordered dark to dry.
 const GRASS: [u32; 5] = [0xbfd5bd, 0xdde9d4, 0xffffff, 0xfff0c0, 0xffe49c];
-/// The grass tops and their shares, as the TypeScript content asks for them.
+/// The grass tops and their shares.
 const CHANCES: [f64; 9] = [0.05, 0.04, 0.025, 0.025, 0.07, 0.04, 0.035, 0.015, 0.02];
 
 /// Every column of a square, so a share can be counted rather than guessed at.

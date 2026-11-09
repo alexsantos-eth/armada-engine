@@ -185,7 +185,7 @@ fn a_trunk_sized_collision_lets_the_player_onto_the_cell_it_stands_on() {
     assert_eq!(
         get_player_column(at),
         WorldCoord { x: 1, y: 1 },
-        "it walks onto the cell the tree grows on, as the TypeScript client does"
+        "it walks onto the cell the tree grows on"
     );
 }
 

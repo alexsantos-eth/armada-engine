@@ -1,6 +1,6 @@
 //! Entity instances and their spatial footprint, independent of rendering.
 
-use crate::entities::blueprint::{EntityBlueprintV2, EntityLengthAxis, EntitySway};
+use crate::entities::blueprint::{EntityBlueprint, EntityLengthAxis, EntitySway};
 use crate::grid::{SpatialIndex, WorldCoord};
 
 /// How an entity blocks movement, block by block: a single fraction for the whole footprint, or
@@ -78,7 +78,7 @@ impl std::hash::Hash for Entity {
 
 impl Entity {
     /// Creates a standing entity anchored at `(x, y)` on `elevation`, from a validated blueprint.
-    pub fn new(x: i32, y: i32, blueprint: &EntityBlueprintV2, elevation: i32) -> Self {
+    pub fn new(x: i32, y: i32, blueprint: &EntityBlueprint, elevation: i32) -> Self {
         let collision = match blueprint.shape.collision.as_slice() {
             [size] => Some(EntityCollision::Uniform(*size)),
             sizes => Some(EntityCollision::PerCell(sizes.to_vec())),
@@ -114,7 +114,7 @@ impl Entity {
     pub fn restore(
         x: i32,
         y: i32,
-        blueprint: &EntityBlueprintV2,
+        blueprint: &EntityBlueprint,
         elevation: i32,
         id: String,
         color_variant: Option<u32>,

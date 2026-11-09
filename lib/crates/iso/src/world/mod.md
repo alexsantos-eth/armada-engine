@@ -19,10 +19,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `pub fn normalized(self) -> Self {`
 
 - [`new`](chunk_manager.rs#L64) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
-  - Firma: `pub fn new(generator: TerrainGenerator, catalog: EntityCatalogV2) -> Self {`
+  - Firma: `pub fn new(generator: TerrainGenerator, catalog: EntityCatalog) -> Self {`
 
 - [`with_radii`](chunk_manager.rs#L69) — Same as [`Self::new`] with streaming radii of the client's choosing.
-  - Firma: `pub fn with_radii( generator: TerrainGenerator, catalog: EntityCatalogV2, radii: ChunkRadii, ) -> Self {`
+  - Firma: `pub fn with_radii( generator: TerrainGenerator, catalog: EntityCatalog, radii: ChunkRadii, ) -> Self {`
 
 - [`radii`](chunk_manager.rs#L87) — The radii this streamer is using, already normalized.
   - Firma: `pub fn radii(&self) -> ChunkRadii {`

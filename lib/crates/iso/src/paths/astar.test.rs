@@ -14,7 +14,7 @@ fn point(x: i32, y: i32) -> WorldCoord {
 }
 
 #[test]
-fn keeps_neighbour_order_and_typescript_tie_fixture() {
+fn keeps_neighbour_order_and_contract_tie_fixture() {
     assert_eq!(
         PATH_STEPS,
         [point(1, 0), point(0, 1), point(-1, 0), point(0, -1)]
@@ -28,7 +28,7 @@ fn keeps_neighbour_order_and_typescript_tie_fixture() {
     )
     .unwrap();
     let fixture: Value = serde_json::from_str(include_str!(
-        "../../../../../web_deprecated/src/isometric/core/engine/flow-check/contracts.v1.json"
+        "../../tests/fixtures/contracts.json"
     ))
     .unwrap();
     let expected: Vec<_> = fixture["path"]

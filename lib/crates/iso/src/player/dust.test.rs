@@ -1,4 +1,4 @@
-//! Tests for the puffs of dust, against the behaviour of the TypeScript client's
+//! Tests for the puffs of dust.
 
 use super::*;
 

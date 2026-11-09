@@ -14,9 +14,9 @@ use serde_json::Value;
 
 fn fixture() -> Value {
     serde_json::from_str(include_str!(
-        "../../../../web_deprecated/src/isometric/core/engine/flow-check/contracts.v1.json"
+        "fixtures/contracts.json"
     ))
-    .expect("migration fixture is valid JSON")
+    .expect("contract fixture is valid JSON")
 }
 
 fn integer(value: &Value) -> i32 {
@@ -28,7 +28,7 @@ fn number(value: &Value) -> f64 {
 }
 
 #[test]
-fn signed_chunk_coordinates_match_typescript_fixture() {
+fn signed_chunk_coordinates_match_contract_fixture() {
     for sample in fixture()["coordinates"].as_array().unwrap() {
         let world = WorldCoord {
             x: integer(&sample["world"]["x"]),
@@ -51,7 +51,7 @@ fn signed_chunk_coordinates_match_typescript_fixture() {
 }
 
 #[test]
-fn isometric_blocks_match_typescript_fixture() {
+fn isometric_blocks_match_contract_fixture() {
     let fixture = fixture();
     let config = &fixture["projection"]["config"];
     let config = ProjectionConfig {
@@ -74,7 +74,7 @@ fn isometric_blocks_match_typescript_fixture() {
 }
 
 #[test]
-fn scene_depth_and_layer_match_typescript_fixture() {
+fn scene_depth_and_layer_match_contract_fixture() {
     let fixture = fixture();
     let order = &fixture["drawOrder"];
     let height = number(&order["tileHeight"]);
@@ -117,7 +117,7 @@ fn scene_depth_and_layer_match_typescript_fixture() {
 }
 
 #[test]
-fn player_pose_columns_match_typescript_fixture() {
+fn player_pose_columns_match_contract_fixture() {
     let fixture = fixture();
     let frames = &fixture["framePoses"];
     let walk = &frames["walk"];
@@ -196,7 +196,7 @@ fn player_pose_columns_match_typescript_fixture() {
 }
 
 #[test]
-fn player_sheet_selection_matches_typescript_fixture() {
+fn player_sheet_selection_matches_contract_fixture() {
     let fixture = fixture();
     let poses = &fixture["framePoses"];
     for sample in fixture["frameSelection"].as_array().unwrap() {
@@ -242,7 +242,7 @@ fn player_sheet_selection_matches_typescript_fixture() {
 }
 
 #[test]
-fn chunk_budgets_match_typescript_fixture() {
+fn chunk_budgets_match_contract_fixture() {
     let fixture = fixture();
     let budgets = &fixture["chunkBudgets"];
     assert_eq!(CHUNK_LOAD_RADIUS, integer(&budgets["chunkLoadRadius"]));
@@ -254,7 +254,7 @@ fn chunk_budgets_match_typescript_fixture() {
 }
 
 #[test]
-fn camera_culling_matches_typescript_fixture() {
+fn camera_culling_matches_contract_fixture() {
     let fixture = fixture();
     let culling = &fixture["culling"];
     let viewport = ScreenSize {
@@ -317,7 +317,7 @@ fn camera_culling_matches_typescript_fixture() {
 }
 
 #[test]
-fn stepper_matches_typescript_fixture() {
+fn stepper_matches_contract_fixture() {
     let fixture = fixture();
     let stepper = &fixture["stepper"];
     let step_ms = number(&stepper["stepMs"]);

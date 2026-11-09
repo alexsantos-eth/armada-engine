@@ -53,7 +53,7 @@ pub struct EntityPlacement {
 
 /// One entry of the versioned entity catalog.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct EntityBlueprintV2 {
+pub struct EntityBlueprint {
     pub id: String,
     pub asset: EntityAsset,
     pub shape: EntityShape,
@@ -62,10 +62,10 @@ pub struct EntityBlueprintV2 {
 
 /// Versioned entity catalog. `schema_version` is `1`; changes to the schema raise it.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct EntityCatalogV2 {
+pub struct EntityCatalog {
     #[serde(rename = "schemaVersion")]
     pub schema_version: u32,
-    pub entities: Vec<EntityBlueprintV2>,
+    pub entities: Vec<EntityBlueprint>,
 }
 
 #[cfg(test)]

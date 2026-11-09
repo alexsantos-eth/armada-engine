@@ -50,7 +50,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Constantes
 
-- [`WINDOW_FRAMES`](frame_log.rs#L6) — Frames kept in the window: five seconds at 60 fps, matching the TypeScript report.
+- [`WINDOW_FRAMES`](frame_log.rs#L6) — Frames kept in the window: five seconds at 60 fps.
   - Declaración: `pub const WINDOW_FRAMES: usize = 300;`
 
 - [`DROPPED_FRAME_MS`](frame_log.rs#L9) — Two refreshes of a 60 Hz display. A frame over this dropped one, which is what reads as a

@@ -138,7 +138,7 @@ impl CameraFocus {
         self.shown
     }
 
-    /// [`Self::advance`] as the ground point the TypeScript client's camera centres on: the
+    /// [`Self::advance`] as the ground point the camera centres on: the
     pub fn ground(
         &mut self,
         at: &PlayerRenderPosition,

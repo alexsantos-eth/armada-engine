@@ -2,9 +2,9 @@ use super::*;
 use serde_json::Value;
 
 #[test]
-fn matches_typescript_frame_fixture() {
+fn matches_contract_frame_fixture() {
     let fixture: Value = serde_json::from_str(include_str!(
-        "../../../../../web_deprecated/src/isometric/core/engine/flow-check/contracts.v1.json"
+        "../../tests/fixtures/contracts.json"
     ))
     .unwrap();
     let sample = &fixture["stepper"];

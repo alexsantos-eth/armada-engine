@@ -66,12 +66,12 @@ El `netlify.toml` de la raíz es el único sitio que se publica, y es el de este
 Node —la imagen de build de Netlify trae rustup y cargo preinstalados, el toolchain lo instala
 `rust-toolchain.toml` en la primera ejecución de cargo, y `lib/` no tiene `package.json` ni
 lockfile, así que no se instala ninguna dependencia JS. Quedan en caché el toolchain,
-`~/.cargo/registry` y `lib/target`. El cliente PixiJS de `../web/` ya no se despliega: se corre en
-local con `pnpm dev` para hacer pruebas.
+`~/.cargo/registry` y `lib/target`. El cliente es autocontenido: no lee ni escribe nada fuera de
+`lib/`; el arte fuente vive en `assets-src/` y los fixtures de contrato en `crates/iso/tests/fixtures/`.
 
 Netlify **no** regenera el atlas: eso necesita `cairosvg` y el `pack_atlas` nativo, así que
 `content/` está commiteado y `build-web.sh` solo lo copia. Si cambiaste algún SVG de
-`../web/public/assets/`, regenera el atlas y commitéalo antes de desplegar:
+`assets-src/assets/`, regenera el atlas y commitéalo antes de desplegar:
 
 ```sh
 scripts/build-atlas.sh
@@ -88,7 +88,7 @@ después compila y ejecuta `pack_atlas`, que empaqueta `content/atlas.png` (4096
 su `content/assets.manifest.json`. Las hojas de poses del jugador no caben en el atlas sin perder
 detalle, así que se cortan celda a celda y cada hoja recibe su textura,
 `content/player-16_<hoja>.png`, con su rejilla descrita en el manifiesto (esquema 2); se usan las
-de dieciséis orientaciones de `../web/public/assets/player-16/`, no las de ocho del cliente Pixi.
+de dieciséis orientaciones de `assets-src/assets/player-16/`, no las de ocho.
 El patrón de sombras de nubes no se empaqueta —el empaquetador recorta el borde transparente de
 cada sprite y un patrón recortado deja de repetir—, así que `../artifacts/cloud_pattern.py` lo
 rasteriza entero aparte en `content/cloud-shadow.png` y le aplica ahí el desenfoque que cairosvg
@@ -96,8 +96,8 @@ ignora. Después de tocar los bloques de terreno (`../artifacts/terrain_blocks.p
 regenerar también las variantes de hierba (`grass_clutter.py`) y los dieciséis tiles de camino
 (`path_tiles.py`) antes de volver a empaquetar. `build.rs` comprueba al compilar que el atlas y
 el manifiesto existen, y el cliente avisa por consola si falta
-`../web/public/assets/shadow/white.svg`, el cuadrado blanco del que se dibujan las sombras sin
+`assets-src/assets/shadow/white.svg`, el cuadrado blanco del que se dibujan las sombras sin
 cambiar de textura.
 
-`cargo run --bin remeasure_atlas -- content/assets.manifest.json content/atlas.png ../web/public`
+`cargo run --bin remeasure_atlas -- content/assets.manifest.json content/atlas.png assets-src`
 reescribe la geometría de un atlas ya empaquetado sin rasterizar nada.

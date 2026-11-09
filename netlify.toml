@@ -5,8 +5,8 @@
 # The toolchain comes from lib/rust-toolchain.toml and is cached between
 # builds, as are ~/.cargo/registry and lib/target.
 #
-# The PixiJS client in web/ is not deployed any more -- it is run locally
-# (pnpm dev) for testing.
+# The other client kept in this repository is not deployed any more -- it is run
+# locally (pnpm dev) for testing.
 
 [build]
   base = "lib"

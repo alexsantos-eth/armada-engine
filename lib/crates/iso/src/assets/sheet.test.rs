@@ -52,7 +52,7 @@ fn places_every_cell_by_the_window_it_shows() {
     assert!(ink.y + ink.height >= figure.y + figure.height);
 }
 
-/// The sheets as they are drawn: this client's own, of sixteen facings, and the Pixi client's
+/// The sheets as they are drawn: the sixteen-facing ones, and the eight-facing ones for contrast.
 #[test]
 fn reads_the_real_sheets() {
     for (directory, rows) in [("player-16", 16), ("player", 8)] {
@@ -65,7 +65,7 @@ fn reads_the_real_sheets() {
             ("jetpack", 1, 0),
         ] {
             let path = format!(
-                "{}/../../../web/public/assets/{directory}/{file}.svg",
+                "{}/../../assets-src/assets/{directory}/{file}.svg",
                 env!("CARGO_MANIFEST_DIR")
             );
             let svg = std::fs::read_to_string(&path).unwrap_or_else(|err| panic!("{path}: {err}"));
@@ -84,13 +84,13 @@ fn reads_the_real_sheets() {
 #[test]
 fn the_wider_window_holds_the_narrower_one() {
     let read = |path: &str| {
-        let svg = std::fs::read_to_string(format!("{}/../../../{path}", env!("CARGO_MANIFEST_DIR")))
+        let svg = std::fs::read_to_string(format!("{}/{path}", env!("CARGO_MANIFEST_DIR")))
             .expect("a sheet");
         parse_sheet(&svg).expect("a sheet").ink()
     };
     let (wide, narrow) = (
-        read("web/public/assets/player-16/walk.svg"),
-        read("web/public/assets/player/walk.svg"),
+        read("../../assets-src/assets/player-16/walk.svg"),
+        read("../../assets-src/assets/player/walk.svg"),
     );
     assert!(wide.x <= narrow.x && wide.x + wide.width >= narrow.x + narrow.width);
     assert_eq!((wide.y, wide.height), (narrow.y, narrow.height), "same rows");
@@ -104,7 +104,7 @@ fn the_wider_window_holds_the_narrower_one() {
 fn rejects_what_is_not_a_sheet() {
     let block = std::fs::read_to_string(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../../web/public/assets/player/block.svg"
+        "/../../assets-src/assets/player/block.svg"
     ))
     .expect("the still figure");
     assert!(parse_sheet(&block).is_none(), "one drawing, not a sheet");

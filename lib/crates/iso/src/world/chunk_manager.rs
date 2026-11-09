@@ -3,7 +3,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::entities::placement::place_entities;
-use crate::entities::{Entity, EntityCatalogV2};
+use crate::entities::{Entity, EntityCatalog};
 use crate::grid::{chunks_around, ChunkCoord};
 use crate::scene_order::{
     CHUNK_KEEP_RADIUS, CHUNK_LOAD_RADIUS, CHUNK_PREFETCH_RADIUS, CHUNKS_HIDDEN_PER_FRAME,
@@ -49,7 +49,7 @@ impl ChunkRadii {
 /// Manages which chunks are discovered, visible and unloaded, plus the entities living on
 pub struct ChunkManager {
     world: TerrainWorld,
-    catalog: EntityCatalogV2,
+    catalog: EntityCatalog,
     entities: HashMap<ChunkCoord, Vec<Entity>>,
     focus: Vec<ChunkCoord>,
     /// Chunks discovered this frame but not yet shown; kept so entities are generated once.
@@ -61,14 +61,14 @@ pub struct ChunkManager {
 }
 
 impl ChunkManager {
-    pub fn new(generator: TerrainGenerator, catalog: EntityCatalogV2) -> Self {
+    pub fn new(generator: TerrainGenerator, catalog: EntityCatalog) -> Self {
         Self::with_radii(generator, catalog, ChunkRadii::default())
     }
 
     /// Same as [`Self::new`] with streaming radii of the client's choosing.
     pub fn with_radii(
         generator: TerrainGenerator,
-        catalog: EntityCatalogV2,
+        catalog: EntityCatalog,
         radii: ChunkRadii,
     ) -> Self {
         Self {
@@ -237,7 +237,7 @@ impl ChunkManager {
 
     /// Restores chunks from a save into this manager, bypassing generation.
     pub fn load_from_save(&mut self, save: &crate::world::save::WorldSave) -> Vec<String> {
-        let blueprints: HashMap<&str, &crate::entities::EntityBlueprintV2> = self
+        let blueprints: HashMap<&str, &crate::entities::EntityBlueprint> = self
             .catalog
             .entities
             .iter()
@@ -391,7 +391,7 @@ impl Default for ChunkManager {
     fn default() -> Self {
         Self::new(
             TerrainGenerator::new(Default::default()).expect("default terrain config is valid"),
-            EntityCatalogV2 {
+            EntityCatalog {
                 schema_version: crate::entities::validation::CATALOG_SCHEMA_VERSION,
                 entities: Vec::new(),
             },

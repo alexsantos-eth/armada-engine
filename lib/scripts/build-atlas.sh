@@ -2,7 +2,7 @@
 # Builds the asset atlas from the SVG sources.
 #
 # Steps:
-#   1. Rasterize every SVG under public/assets/ with cairosvg, at a fixed number of pixels per
+#   1. Rasterize every SVG under assets-src/assets/ with cairosvg, at a fixed number of pixels per
 #      tile of world, and cut each of the player's sheets into one PNG per pose.
 #   2. Compile and run the pack_atlas tool to pack them into content/atlas.png, one texture per
 #      sheet beside it, and generate content/assets.manifest.json.
@@ -26,7 +26,7 @@ if [[ "$(uname -s)" == Darwin && -z "${SDKROOT:-}" && -d "$compatible_sdk" ]]; t
   export SDKROOT="$compatible_sdk"
 fi
 
-svg_dir="../web/public/assets"
+svg_dir="assets-src/assets"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
@@ -108,7 +108,7 @@ echo "Compiling pack_atlas..."
 cargo build --bin pack_atlas --quiet
 
 echo "Packing atlas..."
-./target/debug/pack_atlas "$tmp_dir" content/atlas.png content/assets.manifest.json ../web/public
+./target/debug/pack_atlas "$tmp_dir" content/atlas.png content/assets.manifest.json assets-src
 
 # The cloud shadows' pattern, whole and untrimmed: one texel per SVG unit, so a copy is
 # 1920 x 960 and spans the twelve tiles the pattern repeats over. It goes through

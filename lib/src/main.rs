@@ -16,7 +16,7 @@ use iso::camera::{
     CAMERA_LEVEL_SMOOTH_MS, Camera, CameraFocus, ScreenSize,
     visible_chunks as camera_visible_chunks,
 };
-use iso::entities::{EntityCatalogV2, EntityLengthAxis, validate_catalog};
+use iso::entities::{EntityCatalog, EntityLengthAxis, validate_catalog};
 use iso::grid::{WorldCoord, to_chunk_coord};
 use iso::lighting::DAWN;
 use iso::player::get_player_jump_phase;
@@ -225,7 +225,7 @@ impl PlayerGround for ChunkGround<'_> {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let catalog_json = include_str!("../../web_deprecated/src/isometric/content/entities.v2.json");
+    let catalog_json = include_str!("../content/entities.json");
 
     let manifest_json = include_str!("../content/assets.manifest.json");
     let manifest: iso::assets::AssetManifest =
@@ -299,7 +299,7 @@ async fn main() {
     for source in &missing_tops {
         eprintln!("warning: the atlas has no measured artwork for {source}; it will not grow");
     }
-    let catalog: EntityCatalogV2 =
+    let catalog: EntityCatalog =
         serde_json::from_str(catalog_json).expect("entity catalog is valid JSON");
     validate_catalog(&catalog).expect("entity catalog validates");
 
@@ -1155,7 +1155,7 @@ mod tests {
         assert_eq!(
             player_layer(GridPoint { x: 12.0, y: 7.0 }, column),
             PLAYER_FRONT_LAYER,
-            "on the centre it stands in front, like the TypeScript client"
+            "on the centre it stands in front"
         );
         const {
             assert!(PLAYER_BEHIND_LAYER < ENTITY_LAYER && ENTITY_LAYER < PLAYER_FRONT_LAYER);

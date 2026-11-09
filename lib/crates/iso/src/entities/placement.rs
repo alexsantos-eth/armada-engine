@@ -1,7 +1,7 @@
 //! Deterministic placement of entities over materialized terrain columns.
 
 use crate::entities::blueprint::{
-    EntityBlueprintV2, EntityCatalogV2, EntityLengthAxis,
+    EntityBlueprint, EntityCatalog, EntityLengthAxis,
 };
 use crate::entities::entity::{get_entity_footprint, Entity};
 use std::collections::HashMap;
@@ -94,14 +94,14 @@ impl Default for PlacementRules {
 }
 
 /// Places entities over `columns` with the default rules.
-pub fn place_entities(columns: &[TerrainColumn], catalog: &EntityCatalogV2) -> PlacementResult {
+pub fn place_entities(columns: &[TerrainColumn], catalog: &EntityCatalog) -> PlacementResult {
     place_entities_with(columns, catalog, PlacementRules::default())
 }
 
 /// Places entities over `columns`, one instance per valid anchor column the density lets
 pub fn place_entities_with(
     columns: &[TerrainColumn],
-    catalog: &EntityCatalogV2,
+    catalog: &EntityCatalog,
     rules: PlacementRules,
 ) -> PlacementResult {
     let mut columns_map = CellMap::new();
@@ -162,7 +162,7 @@ pub fn place_entities_with(
 /// Validates one instance of `blueprint` anchored on `column`.
 fn find_placement(
     anchor: WorldCoord,
-    blueprint: &EntityBlueprintV2,
+    blueprint: &EntityBlueprint,
     context: &mut PlacementContext,
     gap: i32,
 ) -> Option<Placement> {

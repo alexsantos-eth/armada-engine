@@ -4,7 +4,7 @@ use iso::player::{PLAYER_FACINGS, PlayerJumpPhase, PlayerMotionType, get_player_
 use iso::projection::GridPoint;
 use iso::scene_order::{PlayerFrame, PlayerFrameInput, PlayerSheet, select_player_frame};
 
-/// Columns walked per cycle of the walk sheet, from the TypeScript content (`PLAYER_WALK`):
+/// Columns walked per cycle of the walk sheet:
 pub const WALK_STRIDE: f64 = 1.4;
 
 /// Real milliseconds one cycle of the idle sheet lasts: two beats of the monkey's dance.
