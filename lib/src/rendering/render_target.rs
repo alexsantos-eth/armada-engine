@@ -4,6 +4,8 @@
 
 use macroquad::prelude::*;
 
+use crate::rendering::grade::{GradeMaterial, PhaseGrade};
+
 /// Converts framebuffer dimensions into valid texture dimensions.
 pub fn render_target_size(width: f32, height: f32) -> (u32, u32) {
     let dimension = |value: f32| {
@@ -62,9 +64,13 @@ impl SceneTarget {
         set_camera(&camera);
     }
 
-    /// Returns to the framebuffer and composites the completed scene at native resolution.
-    pub fn present(&self) {
+    /// Returns to the framebuffer and composites the completed scene at native resolution,
+    /// applying `grade` through `material` when the grade shader loaded; untouched otherwise.
+    pub fn present(&self, material: Option<&GradeMaterial>, grade: &PhaseGrade) {
         set_default_camera();
+        if let Some(material) = material {
+            material.bind(grade);
+        }
         draw_texture_ex(
             &self.target.texture,
             0.0,
@@ -72,6 +78,9 @@ impl SceneTarget {
             WHITE,
             present_params(screen_width(), screen_height()),
         );
+        if let Some(material) = material {
+            material.release();
+        }
     }
 }
 

@@ -55,6 +55,13 @@ pub(crate) async fn run(mut game: Game) {
         };
         let after_simulation = view.after_simulation;
 
+        let phase = game
+            .shadows
+            .as_ref()
+            .map(crate::lighting::shadow_view::ShadowScene::phase);
+        let grade =
+            crate::rendering::grade::grade_for(phase.unwrap_or(iso::lighting::BakePhase::Dawn));
+
         let width = screen_width();
         let height = screen_height();
 
@@ -66,7 +73,7 @@ pub(crate) async fn run(mut game: Game) {
         let after_collect = get_time();
         draw_sorted(&game.atlas, game.material.as_ref(), &mut game.draws);
         game.draw_clouds(frame_ms, &view.projection);
-        game.scene_target.present();
+        game.scene_target.present(game.grade.as_ref(), &grade);
         if show_overlay {
             draw_rectangle_lines(16.0, 16.0, width - 32.0, height - 32.0, 2.0, SKYBLUE);
         }
@@ -99,11 +106,7 @@ pub(crate) async fn run(mut game: Game) {
                 chunks_alive,
             );
             let touch_visible = game.touch.visible();
-            let phase = game
-                .shadows
-                .as_ref()
-                .map(crate::lighting::shadow_view::ShadowScene::phase);
-            if let Some(phase) = draw_hud(
+            if let Some(clicked) = draw_hud(
                 &mut game.ui,
                 &game.perf,
                 game.dust.live(),
@@ -112,7 +115,7 @@ pub(crate) async fn run(mut game: Game) {
                 phase,
             ) && let Some(shadows) = game.shadows.as_mut()
             {
-                shadows.set_phase(phase);
+                shadows.set_phase(clicked);
             }
         } else {
             game.ui.messages.clear();

@@ -33,6 +33,7 @@ use crate::perf::PerfLog;
 use crate::player::body_motion::BodyMotion;
 use crate::player::dust_view::DustPuffs;
 use crate::player::player_view::PlayerAnimation;
+use crate::rendering::grade::GradeMaterial;
 use crate::rendering::render_target::SceneTarget;
 use crate::rendering::scene_material::SceneMaterial;
 use crate::save::{load_archive_into_manager, load_save, restore_archive};
@@ -65,6 +66,7 @@ pub(crate) struct Game {
     pub(crate) clouds: Option<CloudShadows>,
     pub(crate) shadows: Option<ShadowScene>,
     pub(crate) material: Option<SceneMaterial>,
+    pub(crate) grade: Option<GradeMaterial>,
     pub(crate) scene_target: SceneTarget,
     pub(crate) terrain_frames: TerrainFrames,
     pub(crate) terrain_look: TerrainLook,
@@ -139,6 +141,13 @@ impl Game {
             Ok(material) => Some(material),
             Err(reason) => {
                 eprintln!("warning: {reason}; se dibujara sin sombras horneadas");
+                None
+            }
+        };
+        let grade = match GradeMaterial::load() {
+            Ok(grade) => Some(grade),
+            Err(reason) => {
+                eprintln!("warning: {reason}; la escena se compone sin grado por fase");
                 None
             }
         };
@@ -245,6 +254,7 @@ impl Game {
             clouds,
             shadows,
             material,
+            grade,
             scene_target: SceneTarget::new(screen_width(), screen_height()),
             terrain_frames,
             terrain_look,
