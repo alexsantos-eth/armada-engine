@@ -1,6 +1,5 @@
 use super::*;
-
-const SEED: u64 = 1337;
+use crate::terrain::WORLD_SEED as SEED;
 
 /// The grass palette, ordered dark to dry.
 const GRASS: [u32; 5] = [0xbfd5bd, 0xdde9d4, 0xffffff, 0xfff0c0, 0xffe49c];

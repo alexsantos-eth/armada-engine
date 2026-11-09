@@ -4,6 +4,9 @@ use super::columns::{TerrainColumn, TerrainMaterial};
 use super::noise::value_noise;
 use crate::grid::{ChunkCoord, WorldCoord, chunk_rect};
 
+/// The seed of the world the game boots with: the domain default and the client's configuration pin it.
+pub const WORLD_SEED: u64 = 764574;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TerrainConfig {
     /// Repeats a chosen landscape for testing; saved worlds keep materialized chunks.
@@ -21,7 +24,7 @@ pub struct TerrainConfig {
 impl Default for TerrainConfig {
     fn default() -> Self {
         Self {
-            seed: 1337,
+            seed: WORLD_SEED,
             min_elevation: -3,
             max_elevation: 4,
             height_scale: 48.0,

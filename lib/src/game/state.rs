@@ -21,6 +21,7 @@ use macroquad::prelude::*;
 use crate::assets::sprites::{SpriteAtlas, SpriteDraw};
 use crate::game::config::{
     CHUNK_RADII, PLAYER_SPRITE, PREVIEW_CENTRE, PREVIEW_ELEVATION_STEP, PREVIEW_TILE_WIDTH,
+    WORLD_SEED,
 };
 use crate::game::ground::ChunkGround;
 use crate::game::scene::{PlayerSprite, player_sheets};
@@ -148,7 +149,10 @@ impl Game {
         for material in &missing_terrain {
             eprintln!("warning: the atlas has no block for {material:?}; it will not be drawn");
         }
-        let terrain_config = TerrainConfig::default();
+        let terrain_config = TerrainConfig {
+            seed: WORLD_SEED,
+            ..TerrainConfig::default()
+        };
         let (terrain_look, missing_tops) = TerrainLook::new(terrain_config.seed, |source| {
             atlas
                 .asset(source)

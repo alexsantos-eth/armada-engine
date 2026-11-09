@@ -67,20 +67,25 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`validate`](generation.rs#L38) — Valida los invariantes de «» y devuelve el resultado de esa comprobación.
+- [`validate`](generation.rs#L41) — Valida los invariantes de «» y devuelve el resultado de esa comprobación.
   - Firma: `pub fn validate(self) -> Result<Self, InvalidTerrainConfig> {`
 
-- [`new`](generation.rs#L63) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
+- [`new`](generation.rs#L66) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
   - Firma: `pub fn new(config: TerrainConfig) -> Result<Self, InvalidTerrainConfig> {`
 
-- [`height_at`](generation.rs#L70) — Altura en una columna absoluta del mundo, independiente del orden de recorrido de chunks.
+- [`height_at`](generation.rs#L73) — Altura en una columna absoluta del mundo, independiente del orden de recorrido de chunks.
   - Firma: `pub fn height_at(&self, coord: WorldCoord) -> i32 {`
 
-- [`column_at`](generation.rs#L88) — Calcula o recupera «column at» según los parámetros de la firma.
+- [`column_at`](generation.rs#L91) — Calcula o recupera «column at» según los parámetros de la firma.
   - Firma: `pub fn column_at(&self, coord: WorldCoord) -> TerrainColumn {`
 
-- [`generate_chunk`](generation.rs#L122) — Columnas en orden x-major, incluidos los límites de chunk y las coordenadas con signo.
+- [`generate_chunk`](generation.rs#L125) — Columnas en orden x-major, incluidos los límites de chunk y las coordenadas con signo.
   - Firma: `pub fn generate_chunk(&self, chunk: ChunkCoord) -> Vec<TerrainColumn> {`
+
+#### Constantes
+
+- [`WORLD_SEED`](generation.rs#L8) — La semilla con la que genera el mundo que arranca el juego: el valor por defecto del dominio y la configuración del cliente la comparten.
+  - Declaración: `pub const WORLD_SEED: u64 = 764574;`
 
 ### `noise.rs`
 
@@ -119,7 +124,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`default`](generation.rs#L22) — Calcula o recupera «default» según los parámetros de la firma.
+- [`default`](generation.rs#L25) — Calcula o recupera «default» según los parámetros de la firma.
   - Firma: `fn default() -> Self {`
 
 ### `noise.rs`

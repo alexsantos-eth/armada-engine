@@ -1,6 +1,6 @@
 # Game
 
-Este dominio de cliente posee el juego en marcha: el arranque (`state.rs`), la configuración de la escena (`config.rs`), la mitad de reglas del fotograma — entrada, ticks fijos, streaming de chunks y guardado (`frame.rs`) — y la mitad de vista — la cola de sprites de cada fotograma (`scene.rs`). `main.rs` no compone nada de esto; solo crea la ventana y cede el control a `loops`.
+Este dominio de cliente posee el juego en marcha: el arranque (`state.rs`), la configuración del juego (`config.rs`), la mitad de reglas del fotograma — entrada, ticks fijos, streaming de chunks y guardado (`frame.rs`) — y la mitad de vista — la cola de sprites de cada fotograma (`scene.rs`). `main.rs` no compone nada de esto; solo crea la ventana y cede el control a `loops`.
 
 El mundo nunca se toca desde el dibujo: `frame.rs` muta estado, `scene.rs` solo lee y rellena la cola de dibujo. Los adaptadores de locomoción y reflexión viven en `ground.rs`.
 
@@ -53,6 +53,8 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Declaración: `pub const CHUNK_RADII: ChunkRadii = ChunkRadii { ... };`
 - [`AUTOSAVE_SECONDS`](config.rs#L48) — Intervalo de respaldo del guardado periódico; el real es al salir.
   - Declaración: `pub const AUTOSAVE_SECONDS: f64 = 120.0;`
+- [`WORLD_SEED`](config.rs#L51) — La semilla con la que genera el mundo; el valor por defecto del dominio (`iso::terrain::WORLD_SEED`) y los tests la comparten.
+  - Declaración: `pub const WORLD_SEED: u64 = iso::terrain::WORLD_SEED;`
 
 ### `ground.rs`
 

@@ -1,6 +1,6 @@
-//! View configuration for the demo scene: tile metrics, layering and streaming knobs.
+//! Game configuration for the demo scene: the world seed, tile metrics, layering and streaming knobs.
 //!
-//! These are data, not behaviour: the projection and the sprite collection read them, and the
+//! These are data, not behaviour: the world, the projection and the sprite collection read them, and the
 //! composition in `main.rs` picks the values.
 
 use iso::assets::{SVG_BLOCK_HEIGHT, SVG_TILE_WIDTH};
@@ -46,3 +46,6 @@ pub const CHUNK_RADII: ChunkRadii = ChunkRadii {
 
 /// Safety-net interval for the periodic save; the real save happens on quit and on request.
 pub const AUTOSAVE_SECONDS: f64 = 120.0;
+
+/// The seed the world generates from; the domain default and the tests pin the same value.
+pub const WORLD_SEED: u64 = iso::terrain::WORLD_SEED;

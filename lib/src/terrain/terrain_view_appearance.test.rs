@@ -1,7 +1,7 @@
 use super::*;
 use iso::assets::AssetManifest;
 
-const SEED: u64 = 1337;
+use crate::game::config::WORLD_SEED as SEED;
 
 /// The shipped atlas, read as the client reads it, so these checks fail when a top is dropped
 fn shipped() -> AssetManifest {
