@@ -58,16 +58,18 @@ pub(crate) async fn run(mut game: Game) {
         let width = screen_width();
         let height = screen_height();
 
+        game.scene_target.resize(width, height);
+        game.scene_target.begin();
         clear_background(Color::from_rgba(21, 29, 42, 255));
-        if show_overlay {
-            draw_rectangle_lines(16.0, 16.0, width - 32.0, height - 32.0, 2.0, SKYBLUE);
-        }
-
         let stats = game.collect_scene(&view);
 
         let after_collect = get_time();
         draw_sorted(&game.atlas, game.material.as_ref(), &mut game.draws);
         game.draw_clouds(frame_ms, &view.projection);
+        game.scene_target.present();
+        if show_overlay {
+            draw_rectangle_lines(16.0, 16.0, width - 32.0, height - 32.0, 2.0, SKYBLUE);
+        }
         let after_draw = get_time();
 
         game.perf.push(frame_sample(

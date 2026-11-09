@@ -27,6 +27,8 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`vertex`](scene_material.rs#L108) — Un vértice de la escena: un punto, de dónde leer la textura vinculada, un color, y los dos
   - Firma: `pub fn vertex( position: (f32, f32), uv: (f32, f32), colour: Color, map_uv: (f32, f32), kind: f32, ) -> Vertex {`
 
+El material mezcla los colores con alfa fuente, pero conserva el alfa opaco del render target. Así la composición posterior del target no vuelve a atenuar sprites, sombras ni nubes semitransparentes.
+
 #### Constantes
 
 - [`SPRITE`](scene_material.rs#L7) — `normal.z` de un vértice dibujado desde la textura vinculada, que es todo sprite.
@@ -34,6 +36,25 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`SHADOW`](scene_material.rs#L10) — `normal.z` de un vértice cuyo color es la cobertura leída del atlas de sombras.
   - Declaración: `pub const SHADOW: f32 = 1.0;`
+
+### `render_target.rs`
+
+#### Funciones y métodos
+
+- [`render_target_size`](render_target.rs#L6) — Convierte el tamaño del framebuffer en dimensiones enteras válidas para una textura, redondeando hacia arriba y evitando cero o valores no finitos.
+  - Firma: `pub fn render_target_size(width: f32, height: f32) -> (u32, u32) {`
+
+- [`SceneTarget::new`](render_target.rs#L25) — Reserva el target de la escena con filtro nearest para el tamaño del framebuffer inicial.
+  - Firma: `pub fn new(width: f32, height: f32) -> Self {`
+
+- [`SceneTarget::resize`](render_target.rs#L34) — Solo vuelve a reservar el target cuando cambian sus dimensiones de textura.
+  - Firma: `pub fn resize(&mut self, width: f32, height: f32) -> bool {`
+
+- [`SceneTarget::begin`](render_target.rs#L53) — Dirige el dibujo de escena al target offscreen conservando el sistema de coordenadas en píxeles del framebuffer.
+  - Firma: `pub fn begin(&self) {`
+
+- [`SceneTarget::present`](render_target.rs#L63) — Vuelve al framebuffer, invierte verticalmente la textura offscreen y compone la escena ya terminada.
+  - Firma: `pub fn present(&self) {`
 
 
 ## Detalles de implementación

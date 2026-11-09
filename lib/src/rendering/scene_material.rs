@@ -55,6 +55,22 @@ void main() {
     }
 }"#;
 
+fn scene_pipeline() -> PipelineParams {
+    PipelineParams {
+        color_blend: Some(BlendState::new(
+            Equation::Add,
+            BlendFactor::Value(BlendValue::SourceAlpha),
+            BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
+        )),
+        alpha_blend: Some(BlendState::new(
+            Equation::Add,
+            BlendFactor::Zero,
+            BlendFactor::One,
+        )),
+        ..Default::default()
+    }
+}
+
 /// The scene's material, bound for the whole sorted list and unbound after it.
 pub struct SceneMaterial {
     material: Material,
@@ -76,14 +92,7 @@ impl SceneMaterial {
                 fragment: FRAGMENT,
             },
             MaterialParams {
-                pipeline_params: PipelineParams {
-                    color_blend: Some(BlendState::new(
-                        Equation::Add,
-                        BlendFactor::Value(BlendValue::SourceAlpha),
-                        BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
-                    )),
-                    ..Default::default()
-                },
+                pipeline_params: scene_pipeline(),
                 textures: vec![SHADOW_MAP.to_owned()],
                 ..Default::default()
             },

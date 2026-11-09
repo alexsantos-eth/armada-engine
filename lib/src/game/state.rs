@@ -32,6 +32,7 @@ use crate::lighting::shadow_view_masks::SilhouetteMasks;
 use crate::perf::PerfLog;
 use crate::player::dust_view::DustPuffs;
 use crate::player::player_view::PlayerAnimation;
+use crate::rendering::render_target::SceneTarget;
 use crate::rendering::scene_material::SceneMaterial;
 use crate::save::{load_archive_into_manager, load_save, restore_archive};
 use crate::services::{MacroquadAudio, MacroquadUi};
@@ -63,6 +64,7 @@ pub(crate) struct Game {
     pub(crate) clouds: Option<CloudShadows>,
     pub(crate) shadows: Option<ShadowScene>,
     pub(crate) material: Option<SceneMaterial>,
+    pub(crate) scene_target: SceneTarget,
     pub(crate) terrain_frames: TerrainFrames,
     pub(crate) terrain_look: TerrainLook,
     pub(crate) player_asset: Option<PlayerSprite>,
@@ -241,6 +243,7 @@ impl Game {
             clouds,
             shadows,
             material,
+            scene_target: SceneTarget::new(screen_width(), screen_height()),
             terrain_frames,
             terrain_look,
             player_asset,

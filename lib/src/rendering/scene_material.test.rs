@@ -46,3 +46,15 @@ fn the_two_stages_agree_on_what_they_pass_between_them() {
     assert!(VERTEX.contains("attribute vec4 normal;"));
     assert!(FRAGMENT.contains(&format!("uniform sampler2D {SHADOW_MAP};")));
 }
+
+#[test]
+fn the_scene_preserves_the_opaque_target_alpha_while_blending_its_colours() {
+    assert_eq!(
+        scene_pipeline().alpha_blend,
+        Some(BlendState::new(
+            Equation::Add,
+            BlendFactor::Zero,
+            BlendFactor::One,
+        ))
+    );
+}
