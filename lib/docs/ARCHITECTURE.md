@@ -16,7 +16,7 @@ lib/
   src/            # crate `iso-core`: cliente Macroquad, binario y adaptadores
   content/        # manifiesto de assets, atlas y catálogo de entidades
   assets-src/     # SVG fuente del atlas (copia local, no se despliega)
-  web/            # cargador WASM y archivos web
+  web/            # cargador WASM y archivos web (`/` limpio, `/playground` con GUI)
   scripts/        # utilidades de atlas y ejecución nativa
 ```
 

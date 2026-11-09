@@ -1,6 +1,6 @@
 # Loops
 
-Este dominio de cliente contiene el bucle de fotograma y nada más: el orden de un frame — `update` → escena → dibujo → HUD — y la contabilidad de rendimiento. Ninguna regla de juego vive aquí; cada paso delega en su dominio (`game::frame` actualiza, `game::scene` ensambla los sprites, `assets::sprites::draw_sorted` ordena y dibuja, `gui` pinta el overlay).
+Este dominio de cliente contiene el bucle de fotograma y nada más: el orden de un frame — `update` → escena → dibujo → overlay — y la contabilidad de rendimiento. Ninguna regla de juego vive aquí; cada paso delega en su dominio (`game::frame` actualiza, `game::scene` ensambla los sprites, `assets::sprites::draw_sorted` ordena y dibuja, `gui` pinta el overlay). El overlay (borde, HUD y mensajes) solo se pinta cuando `gui::overlay_enabled` lo permite: en la build web, únicamente en `/playground`; en `/` el bucle salta esa pasada y vacía los mensajes para que no se acumulen.
 
 Existe para que la forma del frame se pueda leer de un vistazo y para que añadir una etapa nueva sea editar un solo archivo.
 
@@ -19,7 +19,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`run`](frame_loop.rs#L45) — El bucle: mide el frame, deja actualizar el mundo o salir, limpia el fondo, ensambla la escena, dibuja ordenada, pinta nubes y HUD, y alimenta el `PerfLog`.
+- [`run`](frame_loop.rs#L47) — El bucle: mide el frame, deja actualizar el mundo o salir, limpia el fondo, ensambla la escena, dibuja ordenada, pinta nubes y (si la ruta lo permite) el overlay, y alimenta el `PerfLog`.
   - Firma: `pub(crate) async fn run(mut game: Game) {`
 
 ## Detalles de implementación

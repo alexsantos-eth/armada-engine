@@ -8,6 +8,14 @@ archivo y cómo se prueba.
 La documentación Markdown del workspace está en español; el código y sus
 comentarios de documentación (`///`, `//!`) van en inglés.
 
+## Comentarios en el código
+
+El código no lleva comentarios dentro: ni `//` explicativos ni bloques
+narrativos entre líneas. Solo rustdoc (`///`, `//!`) al inicio del módulo,
+función, tipo o constante; una nota superviviente se resume en una única línea
+muy breve. Los detalles de implementación y las decisiones viven en el
+`mod.md` del dominio correspondiente, no junto al código.
+
 ## Dos crates, dos responsabilidades
 
 El workspace `lib/` contiene dos crates intencionadamente distintos:

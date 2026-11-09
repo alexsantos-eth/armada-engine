@@ -61,15 +61,17 @@ Contratos clave (el detalle está en el `mod.md` correspondiente):
 - **El mundo**: `TerrainWorld` conserva los chunks descubiertos; `ChunkManager` calcula carga/prefetch/conservación (1/2/3) **solo al cambiar el chunk de foco**; `save` persiste chunks y estado (`SAVE_FORMAT`, `SAVE_SCHEMA_VERSION`) y el guardado es la autoridad al reabrir.
 - **Contenido**: `content/entities.json` es el catálogo de entidades (`schemaVersion` 1), validado al cargar con `validate_catalog`; la colocación es determinista y consulta solo el terreno.
 - **Determinismo**: misma semilla + mismas coordenadas → mismo mundo. Un chunk sale igual solo que junto a sus vecinos. Nada en la generación depende del orden de carga ni de `HashMap`.
+- **Overlay web**: la build WASM condiciona el overlay a la ruta — `/` no pinta nada (ni borde, ni HUD, ni mensajes), `/playground` pinta el overlay completo — vía `gui::overlay_enabled` (regla pura `overlay_for_path`, fijada en `route.test.rs`). La build nativa no tiene ruta y siempre pinta el overlay. El sitio se sirve desde la raíz del dominio; `build-web.sh` publica la misma página en `dist/playground/index.html`.
 
 ## Reglas de cambios
 
-- Sin `unsafe` en `iso`. En el cliente, `unsafe` solo para el FFI con `localStorage` (guardado WASM), acotado y comentado.
+- Sin `unsafe` en `iso`. En el cliente, `unsafe` solo para los FFI con la página (`localStorage` para el guardado WASM, `location.pathname` para la ruta web), acotados y documentados en el `mod.md` de su dominio.
 - Errores con `Result` y contexto; nada de `panic!` ante datos externos (catálogos, guardados). `assert!` solo para invariantes internas.
 - `clippy --workspace --all-targets --locked -- -D warnings` en verde; `cargo fmt --all` limpio.
 - No mezclar dominio y cliente en un mismo módulo ni importar Macroquad/`winit`-like crates en `iso`.
 - Todo archivo de comportamiento lleva su `*.test.rs` colocalizado, escrito **antes** que la implementación (test first). El test define el comportamiento; el código lo pasa después. Si el comportamiento puro está mezclado con GPU/ventana/IO, se extrae primero la lógica pura y se prueba; la parte no aislable queda documentada en el propio archivo con su comprobación manual. Las pruebas de dominio usan datos construidos a mano o el fixture de contrato.
 - Los **comentarios de documentación** (rustdoc `///`, `//!`) van en **inglés**; la documentación Markdown va en **español**.
+- **Nada de comentarios dentro del código** (`//` explicativos, bloques narrativos entre líneas). Solo rustdoc `///`, `//!` al inicio del módulo, función, tipo o constante; una nota superviviente se reduce a una única línea muy resumida. Los detalles y las decisiones viven en el `mod.md` del dominio, no junto al código.
 - No editar a mano `content/atlas.png`, `content/assets.manifest.json` ni `content/player-16_*.png`: se generan con `scripts/build-atlas.sh` desde `assets-src/assets/`.
 - Los SVG son la fuente; `assets-src/` es su copia local. Un SVG nuevo para atlas se comprueba contra `assets.manifest.json` con los tests de `iso::assets`.
 - Nada de estado de sistema como campos sueltos de `World`; nada de reimplementar lo que `iso` ya expone.

@@ -1,16 +1,18 @@
-//! The order of one frame: update the world, assemble the scene, draw it, paint the HUD.
+//! The order of one frame: update the world, assemble the scene, draw it, paint the overlay.
 //!
 //! Nothing here decides anything; every step delegates to its domain. The loop exists so the
-//! frame's shape stays declarative and readable in one place. The one decision it owns — the
-//! perf sample's arithmetic — is extracted and tested in `frame_loop.test.rs`; the rest is
-//! window/GPU sequencing whose steps all live in tested modules (`game::frame`, `game::scene`,
-//! `gui`), checked manually with `scripts/run-native.sh`.
+//! frame's shape stays declarative and readable in one place. The overlay (HUD, border and
+//! messages) is route-gated through `gui::overlay_enabled` — `/` paints none of it on the
+//! web build — and the one decision it owns itself, the perf sample's arithmetic, is
+//! extracted and tested in `frame_loop.test.rs`; the rest is window/GPU sequencing whose
+//! steps all live in tested modules (`game::frame`, `game::scene`, `gui`), checked manually
+//! with `scripts/run-native.sh`.
 
 use macroquad::prelude::*;
 
 use crate::assets::sprites::draw_sorted;
 use crate::game::Game;
-use crate::gui::{draw_hud, push_hud_update};
+use crate::gui::{draw_hud, overlay_enabled, push_hud_update};
 use crate::perf::FrameSample;
 
 /// The instants the loop takes through a frame, in macroquad's seconds.
@@ -43,6 +45,7 @@ fn frame_sample(
 
 /// Runs the game until the player quits.
 pub(crate) async fn run(mut game: Game) {
+    let show_overlay = overlay_enabled();
     loop {
         let frame_start = get_time();
         let frame_ms = f64::from(get_frame_time()) * 1000.0;
@@ -54,10 +57,11 @@ pub(crate) async fn run(mut game: Game) {
 
         let width = screen_width();
         let height = screen_height();
-        let elevation = game.player.elevation.floor() as i32;
 
         clear_background(Color::from_rgba(21, 29, 42, 255));
-        draw_rectangle_lines(16.0, 16.0, width - 32.0, height - 32.0, 2.0, SKYBLUE);
+        if show_overlay {
+            draw_rectangle_lines(16.0, 16.0, width - 32.0, height - 32.0, 2.0, SKYBLUE);
+        }
 
         let stats = game.collect_scene(&view);
 
@@ -82,15 +86,20 @@ pub(crate) async fn run(mut game: Game) {
             info!("{}", game.perf.summary());
         }
 
-        let chunks_alive = game.manager.discovered_count();
-        push_hud_update(
-            &mut game.ui,
-            &game.player,
-            &game.animation,
-            elevation,
-            chunks_alive,
-        );
-        draw_hud(&mut game.ui, &game.perf, game.dust.live(), frame_ms);
+        if show_overlay {
+            let elevation = game.player.elevation.floor() as i32;
+            let chunks_alive = game.manager.discovered_count();
+            push_hud_update(
+                &mut game.ui,
+                &game.player,
+                &game.animation,
+                elevation,
+                chunks_alive,
+            );
+            draw_hud(&mut game.ui, &game.perf, game.dust.live(), frame_ms);
+        } else {
+            game.ui.messages.clear();
+        }
 
         next_frame().await;
     }

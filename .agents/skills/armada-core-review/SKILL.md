@@ -109,6 +109,7 @@ Revisa cada punto. Marca solo lo que realmente encuentres en el código, con arc
 - Constantes en su dueño, no mágicas.
 - Tests que verifican comportamiento y determinismo, no solo cobertura.
 - API pública documentada (rustdoc en inglés) e índice `mod.md` en español.
+- Sin comentarios dentro del código: solo rustdoc al inicio del módulo, función, tipo o constante; los detalles viven en el `mod.md`. Un `//` narrativo entre líneas es un hallazgo Baja.
 
 ## Clasificación de hallazgos
 

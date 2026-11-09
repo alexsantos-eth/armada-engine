@@ -16,7 +16,6 @@ fn marks(
 
 #[test]
 fn each_section_of_the_frame_costs_the_gap_between_its_marks() {
-    // Marks are seconds; the sample reports milliseconds.
     let sample = frame_sample(16.7, marks(100.0, 100.004, 100.009, 100.015), 42, 3, 9);
 
     assert!((sample.simulation_ms - 4.0).abs() < 1e-9);

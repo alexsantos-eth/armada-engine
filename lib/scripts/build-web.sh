@@ -13,6 +13,10 @@
 #      makes the build work there; locally it is a no-op.
 #   2. Compile the client to WebAssembly (release, locked).
 #   3. Copy the loader page, content/ and the .wasm into the output directory.
+#   4. Emit the same loader page also at playground/index.html: `/playground` is the
+#      development surface with the GUI; `/` paints no GUI at all. The page's
+#      <base href="/"> makes every relative URL resolve against the site root, so the
+#      two copies share the same .wasm and content/.
 #
 # Run from anywhere: lib/scripts/build-web.sh [output-dir]   (default: dist)
 
@@ -25,23 +29,20 @@ out_dir="${1:-dist}"
 target=wasm32-unknown-unknown
 
 echo "==> Toolchain"
-# With no argument this installs exactly what rust-toolchain.toml asks for,
-# including its `targets`. Already installed: it only prints the version.
 rustup toolchain install --no-self-update
-# Belt and braces, in case the pin ever stops listing the target.
 rustup target add "$target"
 cargo --version
 rustc --version
 
 echo "==> Compiling the client to WebAssembly"
-# Only the client binary: pack_atlas and remeasure_atlas are native build tools
-# and have no business being compiled for the browser.
 cargo build --release --locked --target "$target" --bin iso-core
 
 echo "==> Assembling $out_dir"
 rm -rf "$out_dir"
 mkdir -p "$out_dir"
 cp web/index.html "$out_dir/index.html"
+mkdir -p "$out_dir/playground"
+cp web/index.html "$out_dir/playground/index.html"
 cp web/mq_js_bundle.js "$out_dir/mq_js_bundle.js"
 cp -R content "$out_dir/content"
 cp "target/$target/release/iso-core.wasm" "$out_dir/iso-core.wasm"

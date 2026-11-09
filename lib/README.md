@@ -42,16 +42,21 @@ scripts/build-web.sh
 python3 -m http.server 8765 --bind 127.0.0.1 --directory dist
 ```
 
-Abre `http://127.0.0.1:8765/`. El servidor tiene que servir `dist/`, porque la página carga
-`iso-core.wasm` y `content/` desde su propio directorio; no abras el HTML con `file://`. En
-localhost la página añade un parámetro a la URL del WASM para que una recarga traiga siempre la
-última compilación.
+El sitio tiene dos rutas servidas desde la raíz del dominio:
+
+- `http://127.0.0.1:8765/` — la presentación: el mundo del juego **sin ninguna GUI en pantalla** (ni borde, ni HUD).
+- `http://127.0.0.1:8765/playground` — la superficie de desarrollo: el mismo juego con el overlay de siempre (título y ayuda, lectura del mundo, panel de rendimiento y mensajes).
+
+`build-web.sh` publica ambos: la página `web/index.html` en `dist/index.html` y una copia idéntica en `dist/playground/index.html` (con barra final funciona igual). La página usa `<base href="/">`, así que ambas rutas cargan el mismo `.wasm` y el mismo `content/` desde la raíz; por eso el sitio tiene que servirse desde la raíz del dominio —como hace Netlify— y no desde un subdirectorio. La ruta la lee el cliente en WASM mediante el import `armada_route_path` (mismo patrón FFI que el almacenamiento local); la build nativa no tiene ruta y siempre pinta el overlay. El servidor tiene que servir `dist/` desde la raíz, porque la página carga `iso-core.wasm` y
+`content/` desde la raíz del sitio; no abras el HTML con `file://`. En localhost la página añade
+un parámetro a la URL del WASM para que una recarga traiga siempre la última compilación.
 
 `scripts/build-web.sh [directorio]` (por defecto `dist/`, ignorado por git) instala el toolchain
 que fija `rust-toolchain.toml` con su target `wasm32-unknown-unknown`, compila
 `cargo build --release --locked --target wasm32-unknown-unknown --bin iso-core`, y copia al
-directorio de salida la página `web/index.html`, el `content/` y el `.wasm`. Solo compila el
-binario del cliente: `pack_atlas` y `remeasure_atlas` son herramientas nativas.
+directorio de salida la página `web/index.html` (también como `playground/index.html`), el
+`content/` y el `.wasm`. Solo compila el binario del cliente: `pack_atlas` y `remeasure_atlas`
+son herramientas nativas.
 
 La página carga el puente JavaScript oficial de Macroquad desde `not-fl3.github.io` y registra en
 su import `env` las operaciones de `localStorage`. Conviene servir una copia versionada propia del
