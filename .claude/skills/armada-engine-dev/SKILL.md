@@ -37,7 +37,7 @@ lib/
   crates/iso/    # `iso`: dominio portable. Sin Macroquad, GPU, navegador ni archivos.
     src/{grid,paths,projection,camera,time,simulation,terrain,entities,world,
          lighting,scene_order,water,services}/
-    tests/        # solo contratos que cruzan módulos y fixtures (fixtures/contracts.json)
+    tests/        # solo contratos que cruzan módulos y el fixture (contracts.json)
   src/           # `iso-core`: el cliente. main.rs es la composición actual.
     assets, lighting, perf, player, rendering, save, services, terrain, water/
   content/       # entities.json, assets.manifest.json, atlas.png, player-16_*.png

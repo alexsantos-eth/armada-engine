@@ -120,7 +120,7 @@ El reflejo es el mismo sprite dibujado bocabajo colgando de la línea de agua, s
 
 ## Tests y puertas de calidad
 
-**Dominio:** pruebas unitarias colocalizadas como `<archivo>.test.rs` para invariantes locales; cada archivo de producción las incluye solo bajo `#[cfg(test)]`. Las pruebas de integración en `crates/iso/tests/` verifican relaciones entre módulos y contratos externos. Probar bordes y propiedades para coordenadas, guardado y generación. El fixture de contrato (`crates/iso/tests/fixtures/contracts.json`) fija coordenadas, proyección, movimiento, rutas y reloj. Los resultados exactos del terreno y de las entidades se prueban con fixtures propios.
+**Dominio:** pruebas unitarias colocalizadas como `<archivo>.test.rs` para invariantes locales; cada archivo de producción las incluye solo bajo `#[cfg(test)]`. Las pruebas de integración en `crates/iso/tests/` verifican relaciones entre módulos y contratos externos. Probar bordes y propiedades para coordenadas, guardado y generación. El fixture de contrato (`crates/iso/tests/contracts.json`) fija coordenadas, proyección, movimiento, rutas y reloj. Los resultados exactos del terreno y de las entidades se prueban con fixtures propios.
 
 **Cliente:** probar transformaciones y composición con datos pequeños sin abrir GPU cuando sea posible. Usar pruebas visuales y recorridos manuales en nativo y WASM para profundidad, elevación, carga de assets, cámara, controles y persistencia. Guardar capturas de referencia de escenas concretas y registrar ventana, resolución y condiciones al comparar rendimiento.
 

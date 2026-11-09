@@ -1,4 +1,3 @@
-
 use super::*;
 use crate::entities::blueprint::{
     EntityAsset, EntityBlueprint, EntityLengthAxis, EntityPlacement, EntityShape,

@@ -67,7 +67,7 @@ Node —la imagen de build de Netlify trae rustup y cargo preinstalados, el tool
 `rust-toolchain.toml` en la primera ejecución de cargo, y `lib/` no tiene `package.json` ni
 lockfile, así que no se instala ninguna dependencia JS. Quedan en caché el toolchain,
 `~/.cargo/registry` y `lib/target`. El cliente es autocontenido: no lee ni escribe nada fuera de
-`lib/`; el arte fuente vive en `assets-src/` y los fixtures de contrato en `crates/iso/tests/fixtures/`.
+`lib/`; el arte fuente vive en `assets-src/` y el fixture de contrato en `crates/iso/tests/`.
 
 Netlify **no** regenera el atlas: eso necesita `cairosvg` y el `pack_atlas` nativo, así que
 `content/` está commiteado y `build-web.sh` solo lo copia. Si cambiaste algún SVG de
