@@ -24,7 +24,8 @@ pub const REFLECTION_TINT: Color = Color::new(
 /// Reflections draw in the layer of the shadows baked on the ground: over the water's own block,
 pub const REFLECTION_LAYER: i32 = crate::lighting::shadow_view::GROUND_SHADOW_LAYER;
 
-/// How far below something the water still shows it, in blocks.
+/// How far from its drawing the water still shows of something, in blocks: the search window opens
+/// that many cells in either direction.
 pub const MAX_REFLECTION_DROP: f64 = 4.0;
 
 /// The water of one cell, to something being mirrored in it.
@@ -63,11 +64,10 @@ pub fn collect_reflection(
         .unwrap_or(projection.tile_height / 2.0);
     let mirrored = |level: f64| -> ReflectedSprite {
         match reflected {
-            Reflected::Standing { turn_at } => mirror_sprite(
-                layout,
-                waterline(feet.y, elevation, level, box_height),
-                turn_at,
-            ),
+            Reflected::Standing { turn_at } => {
+                let surface = waterline(feet.y, elevation, level, box_height);
+                mirror_sprite(layout, (feet.y + surface) / 2.0, turn_at)
+            }
             Reflected::AsDrawn => lay_on_water(layout),
         }
     };
@@ -81,8 +81,8 @@ pub fn collect_reflection(
     } else {
         0
     };
-    for x in min_x.saturating_sub(drop)..=max_x {
-        for y in min_y.saturating_sub(drop)..=max_y {
+    for x in min_x.saturating_sub(drop)..=max_x.saturating_add(drop) {
+        for y in min_y.saturating_sub(drop)..=max_y.saturating_add(drop) {
             let Some(water) = water_at(x, y) else {
                 continue;
             };

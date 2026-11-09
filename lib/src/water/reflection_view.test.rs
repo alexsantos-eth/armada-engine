@@ -154,32 +154,31 @@ fn water_above_the_caster_mirrors_nothing() {
     assert!(draws.is_empty());
 }
 
-/// Something on a bank is still mirrored, in the water further in front of it: the drop between
+/// Something on a bank is still mirrored, hanging from the same waterline as the water itself:
+/// the reflection stays flush with the shore no matter how high above the water it stands.
 #[test]
-fn something_on_a_bank_is_mirrored_further_out() {
+fn something_on_a_bank_hangs_flush_with_the_waterline() {
     let on_water = collect((0, 0), 0.0, Reflected::Standing { turn_at: None }, sea(0.0));
     let on_bank = collect((0, 0), 2.0, Reflected::Standing { turn_at: None }, sea(0.0));
     assert!(
         !on_bank.is_empty(),
         "the water two blocks below still shows it"
     );
-    let lowest = |draws: &[SpriteDraw]| {
+    let topmost = |draws: &[SpriteDraw]| {
         draws
             .iter()
             .map(|draw| match &draw.kind {
-                DrawKind::Reflection { points, .. } => points
-                    .iter()
-                    .map(|&(_, y)| y)
-                    .fold(f64::NEG_INFINITY, f64::max),
+                DrawKind::Reflection { points, .. } => {
+                    points.iter().map(|&(_, y)| y).fold(f64::INFINITY, f64::min)
+                }
                 _ => unreachable!(),
             })
-            .fold(f64::NEG_INFINITY, f64::max)
+            .fold(f64::INFINITY, f64::min)
     };
-    assert!(
-        lowest(&on_bank) > lowest(&on_water),
-        "and it reaches further down the water: {} vs {}",
-        lowest(&on_bank),
-        lowest(&on_water),
+    assert_eq!(
+        topmost(&on_bank),
+        topmost(&on_water),
+        "a reflection hangs from the waterline flush with the shore",
     );
 }
 

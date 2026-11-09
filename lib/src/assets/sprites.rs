@@ -384,6 +384,7 @@ impl SpriteAtlas {
     }
 
     /// Draws a sprite's artwork as the water shows it: the polygon `points` on a water top, each
+    /// read at its own `uv`.
     pub fn draw_reflection(
         &self,
         texture: usize,

@@ -29,5 +29,5 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`REFLECTION_LAYER`](reflection_view.rs#L25) — Los reflejos se dibujan en la capa de las sombras horneadas sobre el suelo: sobre el propio bloque del agua,
   - Declaración: `pub const REFLECTION_LAYER: i32 = crate::lighting::shadow_view::GROUND_SHADOW_LAYER;`
 
-- [`MAX_REFLECTION_DROP`](reflection_view.rs#L28) — Hasta cuántas casillas por debajo el agua sigue mostrando algo, en bloques.
+- [`MAX_REFLECTION_DROP`](reflection_view.rs#L28) — Hasta cuántas casillas en cada sentido se abre la ventana que busca el agua que cubre el reflejo, en bloques.
   - Declaración: `pub const MAX_REFLECTION_DROP: f64 = 4.0;`
