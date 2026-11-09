@@ -33,7 +33,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`contains`](cell_map.rs#L69) — Calcula o recupera «contains» según los parámetros de la firma.
   - Firma: `pub fn contains(&self, coord: WorldCoord) -> Result<bool, GridCoordOutOfRange> {`
 
-- [`insert`](cell_map.rs#L74) — Returns the previous value, if any. A value can itself be an `Option<T>`.
+- [`insert`](cell_map.rs#L74) — Devuelve el valor anterior, si lo hay. Un valor puede ser a su vez un `Option<T>`.
   - Firma: `pub fn insert( &mut self, coord: WorldCoord, value: T, ) -> Result<Option<T>, GridCoordOutOfRange> {`
 
 - [`remove`](cell_map.rs#L102) — Elimina «remove» del estado o colección administrada.
@@ -112,16 +112,16 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`contains`](spatial_index.rs#L81) — Calcula o recupera «contains» según los parámetros de la firma.
   - Firma: `pub fn contains(&self, item: &T) -> bool {`
 
-- [`insert`](spatial_index.rs#L94) — Insert an item, ignoring repeated cells in its footprint.
+- [`insert`](spatial_index.rs#L94) — Inserta un elemento, ignorando las casillas repetidas en su huella.
   - Firma: `pub fn insert(&mut self, item: T, cells: &[WorldCoord]) -> Result<(), SpatialIndexError> {`
 
 - [`remove`](spatial_index.rs#L119) — Elimina «remove» del estado o colección administrada.
   - Firma: `pub fn remove(&mut self, item: &T) -> bool {`
 
-- [`move_item`](spatial_index.rs#L172) — Move an existing item or insert a missing one. Invalid coordinates leave the index intact.
+- [`move_item`](spatial_index.rs#L172) — Mueve un elemento existente o inserta uno que falta. Las coordenadas inválidas dejan el índice intacto.
   - Firma: `pub fn move_item(&mut self, item: T, cells: &[WorldCoord]) -> Result<(), SpatialIndexError> {`
 
-- [`at`](spatial_index.rs#L181) — Items occupying `cell`, in insertion order.
+- [`at`](spatial_index.rs#L181) — Elementos que ocupan `cell`, en orden de inserción.
   - Firma: `pub fn at(&self, cell: WorldCoord) -> impl Iterator<Item = &T> {`
 
 - [`is_occupied`](spatial_index.rs#L190) — Evalúa si se cumple la condición «occupied» para el estado recibido.
@@ -142,7 +142,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`any_in_rect`](spatial_index.rs#L226) — Calcula o recupera «any in rect» según los parámetros de la firma.
   - Firma: `pub fn any_in_rect(&self, rect: WorldRect, mut filter: impl FnMut(&T) -> bool) -> bool {`
 
-- [`query_radius`](spatial_index.rs#L254) — Chebyshev-radius query, including diagonal cells.
+- [`query_radius`](spatial_index.rs#L254) — Consulta por radio de Chebyshev, incluidas las casillas diagonales.
   - Firma: `pub fn query_radius(&self, centre: WorldCoord, radius: i32) -> Vec<&T> {`
 
 
@@ -191,11 +191,11 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`fmt`](spatial_index.rs#L49) — Calcula o recupera «fmt» según los parámetros de la firma.
   - Firma: `fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {`
 
-- [`slot_of`](spatial_index.rs#L73) — Slot holding `item`, found by hash and confirmed by equality.
+- [`slot_of`](spatial_index.rs#L73) — Slot que contiene `item`, encontrado por hash y confirmado por igualdad.
   - Firma: `fn slot_of(&self, item: &T) -> Option<usize> {`
 
-- [`live`](spatial_index.rs#L86) — Live items with their slot, in insertion order.
+- [`live`](spatial_index.rs#L86) — Elementos vivos con su slot, en orden de inserción.
   - Firma: `fn live(&self) -> impl Iterator<Item = (usize, &T)> {`
 
-- [`compact_if_sparse`](spatial_index.rs#L145) — Reclaims removed slots once they outnumber the live items, so an index that is moved
+- [`compact_if_sparse`](spatial_index.rs#L145) — Recupera los slots eliminados cuando superan en número a los elementos vivos, de modo que un índice que se mueve
   - Firma: `fn compact_if_sparse(&mut self) {`

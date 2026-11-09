@@ -1,9 +1,12 @@
 # Estructura de archivos Rust
 
 Este documento es la política de estructura para el workspace Rust de Armada
-Engine. Complementa la [arquitectura](ARCHITECTURE.md): aquella explica los
-límites y contratos del motor; esta define dónde vive cada archivo y cómo se
-prueba.
+Engine. Complementa la [arquitectura](ARCHITECTURE.md): aquella explica el
+funcionamiento técnico del juego y los límites; esta define dónde vive cada
+archivo y cómo se prueba.
+
+La documentación Markdown del workspace está en español; el código y sus
+comentarios de documentación (`///`, `//!`) van en inglés.
 
 ## Dos crates, dos responsabilidades
 

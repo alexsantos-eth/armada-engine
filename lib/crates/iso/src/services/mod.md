@@ -20,32 +20,32 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`play`](audio.rs#L16) — Plays a one-shot sound.
+- [`play`](audio.rs#L16) — Reproduce un sonido de una sola vez.
   - Firma: `fn play(&mut self, event: SoundEvent);`
 
-- [`set_volume`](audio.rs#L18) — Sets the master volume (0.0..=1.0).
+- [`set_volume`](audio.rs#L18) — Establece el volumen maestro (0.0..=1.0).
   - Firma: `fn set_volume(&mut self, volume: f64);`
 
 ### `chunk_loader.rs`
 
 #### Funciones internas
 
-- [`chunk`](chunk_loader.rs#L9) — Returns the columns of a discovered chunk, or `None` when not yet discovered.
+- [`chunk`](chunk_loader.rs#L9) — Devuelve las columnas de un chunk descubierto, o `None` cuando aún no se ha descubierto.
   - Firma: `fn chunk(&self, coord: ChunkCoord) -> Option<&[TerrainColumn]>;`
 
-- [`discover`](chunk_loader.rs#L11) — Discovers a chunk if needed and returns its columns.
+- [`discover`](chunk_loader.rs#L11) — Descubre un chunk si hace falta y devuelve sus columnas.
   - Firma: `fn discover(&mut self, coord: ChunkCoord) -> Option<Vec<TerrainColumn>>;`
 
 ### `input.rs`
 
 #### Funciones internas
 
-- [`poll`](input.rs#L18) — Polls the current input state. Called once per frame.
+- [`poll`](input.rs#L18) — Sondea el estado actual de la entrada. Se llama una vez por fotograma.
   - Firma: `fn poll(&mut self) -> NormalizedInput;`
 
 ### `ui.rs`
 
 #### Funciones internas
 
-- [`push`](ui.rs#L17) — Pushes an event to the UI layer.
+- [`push`](ui.rs#L17) — Envía un evento a la capa de UI.
   - Firma: `fn push(&mut self, event: UiEvent);`

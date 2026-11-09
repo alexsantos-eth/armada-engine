@@ -18,10 +18,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`new`](clock.rs#L22) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
   - Firma: `pub fn new(tick: u64) -> Self {`
 
-- [`advance`](clock.rs#L27) — Advance atomically; overflow leaves the clock unchanged.
+- [`advance`](clock.rs#L27) — Avanza atómicamente; el desbordamiento deja el reloj sin cambios.
   - Firma: `pub fn advance(&mut self, ticks: u64) -> Result<u64, ClockOverflow> {`
 
-- [`time_of_day`](clock.rs#L44) — Fraction of a day for a signed offset; negative offsets wrap to the previous day.
+- [`time_of_day`](clock.rs#L44) — Fracción de un día para un desplazamiento con signo; los desplazamientos negativos envuelven al día anterior.
   - Firma: `pub fn time_of_day(tick: i64) -> f64 {`
 
 - [`clock_time`](clock.rs#L48) — Calcula o recupera «clock time» según los parámetros de la firma.

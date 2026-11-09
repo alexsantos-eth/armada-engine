@@ -15,12 +15,12 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`find_path`](astar.rs#L47) — Find a cheapest side-neighbour path inside an inclusive rectangle.
+- [`find_path`](astar.rs#L47) — Encuentra un camino más barato por vecinos laterales dentro de un rectángulo inclusivo.
   - Firma: `pub fn find_path<G, C, H>( area: WorldRect, starts: &[WorldCoord], mut is_goal: G, mut cost: C, mut heuristic: H, ) -> Option<Vec<WorldCoord>> where G: FnMut(WorldCoord) -> bool, C: FnMut(WorldCoord, WorldCoord) -> f64, H: FnMut(WorldCoord) -> f64, {`
 
 #### Constantes
 
-- [`PATH_STEPS`](astar.rs#L9) — Side neighbours in the same order as the game contract: +x, +y, -x, -y.
+- [`PATH_STEPS`](astar.rs#L9) — Vecinos laterales en el mismo orden que el contrato del juego: +x, +y, -x, -y.
   - Declaración: `pub const PATH_STEPS: [WorldCoord; 4] = [ WorldCoord { x: 1, y: 0 }, WorldCoord { x: 0, y: 1 }, WorldCoord { x: -1, y: 0 }, WorldCoord { x: 0, y: -1 }, ];`
 
 

@@ -3,9 +3,9 @@
 Este directorio es el cliente Rust/Macroquad: el paquete `iso-core` dibuja y `crates/iso`
 contiene el dominio sin dependencias gráficas. El workspace fija Rust 1.99.1 y Macroquad 0.4.16.
 
-Este README solo explica cómo ejecutarlo y cómo preparar un despliegue. Los contratos del
-dominio y del cliente, el flujo de un fotograma y las prácticas de código y pruebas están en la
-[arquitectura por módulo](docs/ARCHITECTURE.md).
+Este README solo explica cómo ejecutarlo y cómo preparar un despliegue. El funcionamiento
+técnico del juego, los límites del workspace y las prácticas de código y pruebas están en la
+[arquitectura](docs/ARCHITECTURE.md).
 La ubicación de cada crate, el uso de `mod.rs` y la política de pruebas
 colocalizadas están en [la estructura de archivos](docs/FILE_STRUCTURE.md).
 

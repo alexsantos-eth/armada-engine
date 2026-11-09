@@ -15,64 +15,64 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`normalized`](chunk_manager.rs#L38) — Clamps the radii so they still grow outwards, whatever a caller asked for: a keep radius
+- [`normalized`](chunk_manager.rs#L38) — Acota los radios para que sigan creciendo hacia fuera, pida lo que pida quien llama: un radio de retención
   - Firma: `pub fn normalized(self) -> Self {`
 
 - [`new`](chunk_manager.rs#L64) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
   - Firma: `pub fn new(generator: TerrainGenerator, catalog: EntityCatalog) -> Self {`
 
-- [`with_radii`](chunk_manager.rs#L69) — Same as [`Self::new`] with streaming radii of the client's choosing.
+- [`with_radii`](chunk_manager.rs#L69) — Igual que [`Self::new`] con los radios de streaming que elija el cliente.
   - Firma: `pub fn with_radii( generator: TerrainGenerator, catalog: EntityCatalog, radii: ChunkRadii, ) -> Self {`
 
-- [`radii`](chunk_manager.rs#L87) — The radii this streamer is using, already normalized.
+- [`radii`](chunk_manager.rs#L87) — Los radios que está usando este streamer, ya normalizados.
   - Firma: `pub fn radii(&self) -> ChunkRadii {`
 
-- [`set_focus`](chunk_manager.rs#L92) — Sets the focus chunks (typically around the camera/player). The streamer keeps chunks
+- [`set_focus`](chunk_manager.rs#L92) — Establece los chunks de foco (normalmente alrededor de la cámara/jugador). El streamer conserva los chunks
   - Firma: `pub fn set_focus(&mut self, focus: Vec<ChunkCoord>) {`
 
-- [`set_single_focus`](chunk_manager.rs#L102) — Sets a single focus without allocating a new vector every rendered frame.
+- [`set_single_focus`](chunk_manager.rs#L102) — Establece un único foco sin asignar un nuevo vector en cada frame renderizado.
   - Firma: `pub fn set_single_focus(&mut self, focus: ChunkCoord) {`
 
-- [`tick`](chunk_manager.rs#L113) — Advances one frame: loads, shows and hides chunks respecting per-frame budgets.
+- [`tick`](chunk_manager.rs#L113) — Avanza un frame: carga, muestra y oculta chunks respetando los presupuestos por frame.
   - Firma: `pub fn tick(&mut self) -> Vec<ChunkCoord> {`
 
-- [`terrain_chunk`](chunk_manager.rs#L166) — Terrain columns of a discovered chunk, or `None` when it was never discovered.
+- [`terrain_chunk`](chunk_manager.rs#L166) — Columnas de terreno de un chunk descubierto, o `None` cuando nunca fue descubierto.
   - Firma: `pub fn terrain_chunk(&self, coord: ChunkCoord) -> Option<&[crate::terrain::TerrainColumn]> {`
 
-- [`column_at`](chunk_manager.rs#L171) — Terrain column at an absolute world coordinate, or `None` when its chunk was never
+- [`column_at`](chunk_manager.rs#L171) — Columna de terreno en una coordenada absoluta del mundo, o `None` cuando su chunk nunca fue
   - Firma: `pub fn column_at(&self, x: i32, y: i32) -> Option<crate::terrain::TerrainColumn> {`
 
-- [`is_discovered`](chunk_manager.rs#L180) — Whether a chunk has been discovered.
+- [`is_discovered`](chunk_manager.rs#L180) — Si un chunk ha sido descubierto.
   - Firma: `pub fn is_discovered(&self, coord: ChunkCoord) -> bool {`
 
-- [`entities_chunk`](chunk_manager.rs#L185) — Placed entities of a discovered chunk, or `None` when it was never discovered.
+- [`entities_chunk`](chunk_manager.rs#L185) — Entidades colocadas de un chunk descubierto, o `None` cuando nunca fue descubierto.
   - Firma: `pub fn entities_chunk(&self, coord: ChunkCoord) -> Option<&[Entity]> {`
 
-- [`is_visible`](chunk_manager.rs#L190) — Whether a chunk is part of the stream currently shown by the client.
+- [`is_visible`](chunk_manager.rs#L190) — Si un chunk forma parte del flujo que el cliente está mostrando actualmente.
   - Firma: `pub fn is_visible(&self, coord: ChunkCoord) -> bool {`
 
-- [`save_chunk`](chunk_manager.rs#L195) — Converts a discovered chunk into its saved form, storing terrain and entities.
+- [`save_chunk`](chunk_manager.rs#L195) — Convierte un chunk descubierto a su forma guardada, almacenando terreno y entidades.
   - Firma: `pub fn save_chunk(&self, coord: ChunkCoord) -> Option<crate::world::save::SavedChunk> {`
 
-- [`save_all`](chunk_manager.rs#L227) — Converts every discovered chunk into saved form.
+- [`save_all`](chunk_manager.rs#L227) — Convierte cada chunk descubierto a su forma guardada.
   - Firma: `pub fn save_all(&self) -> Vec<crate::world::save::SavedChunk> {`
 
-- [`load_from_save`](chunk_manager.rs#L239) — Restores chunks from a save into this manager, bypassing generation.
+- [`load_from_save`](chunk_manager.rs#L239) — Restaura chunks desde un guardado hacia este manager, sin pasar por la generación.
   - Firma: `pub fn load_from_save(&mut self, save: &crate::world::save::WorldSave) -> Vec<String> {`
 
-- [`visible_chunks`](chunk_manager.rs#L286) — Visible chunk coordinates in stable order.
+- [`visible_chunks`](chunk_manager.rs#L286) — Coordenadas de los chunks visibles en orden estable.
   - Firma: `pub fn visible_chunks(&self) -> Vec<ChunkCoord> {`
 
-- [`discovered_count`](chunk_manager.rs#L291) — Discovered chunk count (visible or not).
+- [`discovered_count`](chunk_manager.rs#L291) — Número de chunks descubiertos (visibles o no).
   - Firma: `pub fn discovered_count(&self) -> usize {`
 
-- [`focus`](chunk_manager.rs#L296) — Focus chunks in stable order.
+- [`focus`](chunk_manager.rs#L296) — Chunks de foco en orden estable.
   - Firma: `pub fn focus(&self) -> &[ChunkCoord] {`
 
-- [`unload_candidates`](chunk_manager.rs#L328) — Discovered chunks further than `CHUNK_KEEP_RADIUS` from every focus, nearest first.
+- [`unload_candidates`](chunk_manager.rs#L328) — Chunks descubiertos más lejos que `CHUNK_KEEP_RADIUS` de cada foco, de los más cercanos primero.
   - Firma: `pub fn unload_candidates(&self) -> Vec<ChunkCoord> {`
 
-- [`next_unload_candidate`](chunk_manager.rs#L348) — The one chunk [`Self::unload_candidates`] would hand back first, without building the
+- [`next_unload_candidate`](chunk_manager.rs#L348) — El único chunk que [`Self::unload_candidates`] devolvería primero, sin construir la
   - Firma: `pub fn next_unload_candidate(&self) -> Option<ChunkCoord> {`
 
 - [`unload_chunk`](chunk_manager.rs#L365) — Calcula o recupera «unload chunk» según los parámetros de la firma.
@@ -82,42 +82,42 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`terrain_column_to_saved`](save.rs#L98) — Converts a materialized terrain column into its saved form.
+- [`terrain_column_to_saved`](save.rs#L98) — Convierte una columna de terreno materializada a su forma guardada.
   - Firma: `pub fn terrain_column_to_saved(column: &crate::terrain::TerrainColumn) -> SavedColumn {`
 
-- [`saved_to_terrain_column`](save.rs#L111) — Reconstructs a terrain column from its saved form, using the top block as the surface.
+- [`saved_to_terrain_column`](save.rs#L111) — Reconstruye una columna de terreno desde su forma guardada, usando el bloque superior como superficie.
   - Firma: `pub fn saved_to_terrain_column(saved: &SavedColumn) -> crate::terrain::TerrainColumn {`
 
 - [`new`](save.rs#L132) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
   - Firma: `pub fn new() -> Self {`
 
-- [`put`](save.rs#L137) — Stores a deep copy of `chunk`, keyed by its coordinates.
+- [`put`](save.rs#L137) — Almacena una copia profunda de `chunk`, indexada por sus coordenadas.
   - Firma: `pub fn put(&mut self, chunk: SavedChunk) {`
 
-- [`get`](save.rs#L147) — Returns a copy of the chunk at `(cx, cy)`, or `None` when it was never discovered.
+- [`get`](save.rs#L147) — Devuelve una copia del chunk en `(cx, cy)`, o `None` cuando nunca fue descubierto.
   - Firma: `pub fn get(&self, cx: i32, cy: i32) -> Option<SavedChunk> {`
 
-- [`get_or_generate`](save.rs#L153) — Returns the discovered chunk, or generates and stores it once when absent.
+- [`get_or_generate`](save.rs#L153) — Devuelve el chunk descubierto, o lo genera y almacena una vez cuando falta.
   - Firma: `pub fn get_or_generate<F>(&mut self, cx: i32, cy: i32, generate: F) -> Result<SavedChunk, SaveError> where F: FnOnce(i32, i32) -> SavedChunk, {`
 
-- [`snapshot`](save.rs#L171) — Builds a save, sorting chunks for a stable JSON order.
+- [`snapshot`](save.rs#L171) — Construye un guardado, ordenando los chunks para un orden JSON estable.
   - Firma: `pub fn snapshot(&self, player: serde_json::Value, systems: serde_json::Value) -> WorldSave {`
 
-- [`chunks`](save.rs#L184) — Iterates over every discovered chunk in stable order.
+- [`chunks`](save.rs#L184) — Itera sobre cada chunk descubierto en orden estable.
   - Firma: `pub fn chunks(&self) -> impl Iterator<Item = &SavedChunk> {`
 
-- [`restore`](save.rs#L191) — Restores an archive from a parsed save.
+- [`restore`](save.rs#L191) — Restaura un archivo desde un guardado analizado.
   - Firma: `pub fn restore(save: &WorldSave) -> Self {`
 
-- [`parse_world_save`](save.rs#L201) — Checks the version and structure at the save-file boundary; V1 snapshots are rejected.
+- [`parse_world_save`](save.rs#L201) — Comprueba la versión y la estructura en la frontera del archivo de guardado; los snapshots V1 se rechazan.
   - Firma: `pub fn parse_world_save(value: serde_json::Value) -> Result<WorldSave, SaveError> {`
 
 #### Constantes
 
-- [`SAVE_FORMAT`](save.rs#L59) — Save format magic value.
+- [`SAVE_FORMAT`](save.rs#L59) — Valor mágico del formato de guardado.
   - Declaración: `pub const SAVE_FORMAT: &str = "armada-engine-2";`
 
-- [`SAVE_SCHEMA_VERSION`](save.rs#L61) — Current save schema version.
+- [`SAVE_SCHEMA_VERSION`](save.rs#L61) — Versión actual del esquema de guardado.
   - Declaración: `pub const SAVE_SCHEMA_VERSION: u32 = 1;`
 
 ### `terrain_world.rs`
@@ -127,19 +127,19 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`new`](terrain_world.rs#L23) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
   - Firma: `pub fn new(generator: TerrainGenerator) -> Self {`
 
-- [`load_chunk`](terrain_world.rs#L32) — Injects a previously saved chunk's terrain, bypassing generation. Used when restoring
+- [`load_chunk`](terrain_world.rs#L32) — Inyecta el terreno de un chunk guardado previamente, sin pasar por la generación. Se usa al restaurar
   - Firma: `pub fn load_chunk(&mut self, coord: ChunkCoord, columns: Vec<TerrainColumn>) -> bool {`
 
-- [`unload_chunk`](terrain_world.rs#L39) — Drops a chunk's terrain from memory, so a long session does not grow without bound.
+- [`unload_chunk`](terrain_world.rs#L39) — Descarta el terreno de un chunk de la memoria, para que una sesión larga no crezca sin límite.
   - Firma: `pub fn unload_chunk(&mut self, coord: ChunkCoord) -> Option<Vec<TerrainColumn>> {`
 
-- [`discover_chunk`](terrain_world.rs#L45) — Materializes a chunk at most once, without showing it. Returns true only for first
+- [`discover_chunk`](terrain_world.rs#L45) — Materializa un chunk como mucho una vez, sin mostrarlo. Devuelve true solo para el primer
   - Firma: `pub fn discover_chunk(&mut self, coord: ChunkCoord) -> bool {`
 
-- [`show_chunk`](terrain_world.rs#L55) — Materializes a chunk at most once and shows it. Returns true only for first discovery.
+- [`show_chunk`](terrain_world.rs#L55) — Materializa un chunk como mucho una vez y lo muestra. Devuelve true solo para el primer descubrimiento.
   - Firma: `pub fn show_chunk(&mut self, coord: ChunkCoord) -> bool {`
 
-- [`hide_chunk`](terrain_world.rs#L62) — Removes presentation visibility without discarding discovered terrain.
+- [`hide_chunk`](terrain_world.rs#L62) — Elimina la visibilidad de presentación sin descartar el terreno descubierto.
   - Firma: `pub fn hide_chunk(&mut self, coord: ChunkCoord) {`
 
 - [`chunk`](terrain_world.rs#L66) — Calcula o recupera «chunk» según los parámetros de la firma.
@@ -148,13 +148,13 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`column_at`](terrain_world.rs#L70) — Calcula o recupera «column at» según los parámetros de la firma.
   - Firma: `pub fn column_at(&self, coord: WorldCoord) -> Option<&TerrainColumn> {`
 
-- [`is_discovered`](terrain_world.rs#L79) — Whether a chunk has been discovered (materialized at least once).
+- [`is_discovered`](terrain_world.rs#L79) — Si un chunk ha sido descubierto (materializado al menos una vez).
   - Firma: `pub fn is_discovered(&self, coord: ChunkCoord) -> bool {`
 
-- [`is_visible`](terrain_world.rs#L84) — Whether a chunk is currently visible.
+- [`is_visible`](terrain_world.rs#L84) — Si un chunk es visible actualmente.
   - Firma: `pub fn is_visible(&self, coord: ChunkCoord) -> bool {`
 
-- [`edit_column`](terrain_world.rs#L89) — Edits a discovered column; passability follows its surface material.
+- [`edit_column`](terrain_world.rs#L89) — Edita una columna descubierta; la transitabilidad sigue a su material de superficie.
   - Firma: `pub fn edit_column( &mut self, coord: WorldCoord, elevation: i32, surface: TerrainMaterial, ) -> Result<(), EditError> {`
 
 - [`discovered_count`](terrain_world.rs#L114) — Calcula o recupera «discovered count» según los parámetros de la firma.
@@ -163,13 +163,13 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`visible_count`](terrain_world.rs#L118) — Calcula o recupera «visible count» según los parámetros de la firma.
   - Firma: `pub fn visible_count(&self) -> usize {`
 
-- [`visible_chunks`](terrain_world.rs#L123) — Visible chunk coordinates in a stable order, regardless of discovery order.
+- [`visible_chunks`](terrain_world.rs#L123) — Coordenadas de los chunks visibles en un orden estable, independientemente del orden de descubrimiento.
   - Firma: `pub fn visible_chunks(&self) -> Vec<ChunkCoord> {`
 
-- [`discovered_chunks`](terrain_world.rs#L130) — All discovered chunk coordinates in a stable order.
+- [`discovered_chunks`](terrain_world.rs#L130) — Todas las coordenadas de chunks descubiertos en un orden estable.
   - Firma: `pub fn discovered_chunks(&self) -> Vec<ChunkCoord> {`
 
-- [`discovered_chunks_unordered`](terrain_world.rs#L137) — Discovered chunks in no particular order, for callers that only scan them.
+- [`discovered_chunks_unordered`](terrain_world.rs#L137) — Chunks descubiertos sin un orden concreto, para quienes solo los recorren.
   - Firma: `pub fn discovered_chunks_unordered(&self) -> impl Iterator<Item = ChunkCoord> + '_ {`
 
 
@@ -184,16 +184,16 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`default`](chunk_manager.rs#L27) — Calcula o recupera «default» según los parámetros de la firma.
   - Firma: `fn default() -> Self {`
 
-- [`chunks_within`](chunk_manager.rs#L301) — Every chunk within `radius` of any focus, deduplicated and sorted nearest first.
+- [`chunks_within`](chunk_manager.rs#L301) — Todos los chunks dentro de `radius` de cualquier foco, sin duplicados y ordenados de los más cercanos primero.
   - Firma: `fn chunks_within(&self, radius: i32) -> Vec<ChunkCoord> {`
 
 - [`is_within_keep`](chunk_manager.rs#L321) — Evalúa si se cumple la condición «within keep» para el estado recibido.
   - Firma: `fn is_within_keep(&self, coord: ChunkCoord) -> bool {`
 
-- [`saved_entity_state`](chunk_manager.rs#L374) — The per-instance state a save has to carry: everything `Entity::restore` cannot rebuild from
+- [`saved_entity_state`](chunk_manager.rs#L374) — El estado por instancia que un guardado debe llevar: todo lo que `Entity::restore` no puede reconstruir a partir de
   - Firma: `fn saved_entity_state(entity: &Entity) -> serde_json::Value {`
 
-- [`distance`](chunk_manager.rs#L386) — Chebyshev distance between two chunk coordinates.
+- [`distance`](chunk_manager.rs#L386) — Distancia de Chebyshev entre dos coordenadas de chunk.
   - Firma: `fn distance(a: ChunkCoord, b: ChunkCoord) -> i32 {`
 
 - [`default`](chunk_manager.rs#L391) — Calcula o recupera «default» según los parámetros de la firma.

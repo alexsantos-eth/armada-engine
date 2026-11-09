@@ -15,102 +15,102 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`frame`](sprites.rs#L55) — The frame of pose `pose` in `facing`'s row, with both wrapped into the grid: an
+- [`frame`](sprites.rs#L55) — El frame de la pose `pose` en la fila de `facing`, con ambos ajustados a la cuadrícula: un
   - Firma: `pub fn frame(&self, facing: usize, pose: usize) -> SpriteFrame {`
 
-- [`columns`](sprites.rs#L61) — How many poses a row holds.
+- [`columns`](sprites.rs#L61) — Cuántas poses tiene una fila.
   - Firma: `pub fn columns(&self) -> usize {`
 
-- [`poses`](sprites.rs#L66) — The names the artwork gives its columns, where it names them (a jump's phases); empty
+- [`poses`](sprites.rs#L66) — Los nombres que el dibujo da a sus columnas, cuando los nombra (las fases de un salto); vacío
   - Firma: `pub fn poses(&self) -> &[String] {`
 
-- [`new`](sprites.rs#L73) — Builds the lookup over the textures the manifest names: the shared atlas, and then the
+- [`new`](sprites.rs#L73) — Construye el acceso sobre las texturas que nombra el manifiesto: el atlas compartido, y después las
   - Firma: `pub fn new( atlas: Texture2D, extra: Vec<(String, Texture2D)>, manifest: &AssetManifest, ) -> Self {`
 
-- [`has_white_patch`](sprites.rs#L140) — Whether the atlas carries [`WHITE_PATCH`]. Without it the shadows still draw, but each
+- [`has_white_patch`](sprites.rs#L140) — Si el atlas incluye [`WHITE_PATCH`]. Sin él las sombras se dibujan igualmente, pero cada
   - Firma: `pub fn has_white_patch(&self) -> bool {`
 
 - [`asset`](sprites.rs#L144) — Calcula o recupera «asset» según los parámetros de la firma.
   - Firma: `pub fn asset(&self, source: &str) -> Option<SpriteAsset> {`
 
-- [`sheet`](sprites.rs#L149) — The sheet of poses at `source`, for the player's animations.
+- [`sheet`](sprites.rs#L149) — La hoja de poses en `source`, para las animaciones del jugador.
   - Firma: `pub fn sheet(&self, source: &str) -> Option<&SheetAsset> {`
 
-- [`standing`](sprites.rs#L154) — The frame for something standing on `ground` and the rectangle to draw it into, or
+- [`standing`](sprites.rs#L154) — El frame para algo situado sobre `ground` y el rectángulo en el que dibujarlo, o
   - Firma: `pub fn standing( &self, source: &str, ground: ScreenPoint, tile_width: f64, ) -> Option<(SpriteFrame, SpriteLayout)> {`
 
-- [`draw`](sprites.rs#L170) — Draws one frame of `texture` into the rectangle `layout` describes, multiplied by `tint`.
+- [`draw`](sprites.rs#L170) — Dibuja un frame de `texture` en el rectángulo que describe `layout`, multiplicado por `tint`.
   - Firma: `pub fn draw(&self, texture: usize, frame: SpriteFrame, layout: SpriteLayout, tint: Color) {`
 
-- [`draw_band`](sprites.rs#L186) — Draws the part of a frame that falls inside `band`, which is a piece of the same
+- [`draw_band`](sprites.rs#L186) — Dibuja la parte de un frame que cae dentro de `band`, que es un trozo del mismo
   - Firma: `pub fn draw_band( &self, texture: usize, frame: SpriteFrame, layout: SpriteLayout, band: &SpriteBand, shade: Option<&ShadeLattice>, ) {`
 
-- [`draw_shaded`](sprites.rs#L234) — Draws one frame as a lattice of quads, each corner darkened by the shadows falling on it.
+- [`draw_shaded`](sprites.rs#L234) — Dibuja un frame como una retícula de quads, con cada esquina oscurecida por las sombras que caen sobre ella.
   - Firma: `pub fn draw_shaded( &self, texture: usize, frame: SpriteFrame, layout: SpriteLayout, shade: &ShadeLattice, ) {`
 
-- [`draw_face_shadow`](sprites.rs#L282) — Draws a shadow over the flat quad `corners`: a lattice of black, as opaque at each
+- [`draw_face_shadow`](sprites.rs#L282) — Dibuja una sombra sobre el quad plano `corners`: una retícula de negro, tan opaca en cada
   - Firma: `pub fn draw_face_shadow(&self, corners: &[(f64, f64); 4], shade: &ShadeLattice, opacity: f32) {`
 
-- [`draw_voxel`](sprites.rs#L327) — Draws one voxel of dust: its three visible faces in flat colour, as one mesh.
+- [`draw_voxel`](sprites.rs#L327) — Dibuja un voxel de polvo: sus tres caras visibles en color plano, como una única malla.
   - Firma: `pub fn draw_voxel(&self, faces: &VoxelFaces, colours: &[Color; 3]) {`
 
-- [`draw_ground_shadow`](sprites.rs#L359) — Draws the shadow baked on a column's top face: one quad, shaded by the shadow atlas.
+- [`draw_ground_shadow`](sprites.rs#L359) — Dibuja la sombra horneada en la cara superior de una columna: un quad, sombreado por el atlas de sombras.
   - Firma: `pub fn draw_ground_shadow( &self, corners: &[(f64, f64); 4], map_uv: &[(f32, f32); 4], opacity: f32, ) {`
 
-- [`draw_reflection`](sprites.rs#L387) — Draws a sprite's artwork as the water shows it: the polygon `points` on a water top, each
+- [`draw_reflection`](sprites.rs#L387) — Dibuja el dibujo de un sprite como lo muestra el agua: el polígono `points` sobre la superficie del agua, cada
   - Firma: `pub fn draw_reflection( &self, texture: usize, frame: SpriteFrame, points: &[(f64, f64)], uv: &[(f64, f64)], colour: Color, ) {`
 
-- [`on_screen`](sprites.rs#L453) — Whether `layout` would land anywhere on screen.
+- [`on_screen`](sprites.rs#L453) — Si `layout` caería en algún punto de la pantalla.
   - Firma: `pub fn on_screen(layout: SpriteLayout) -> bool {`
 
-- [`new`](sprites.rs#L473) — The lattice that draws `grid`: a corner shaded `v` keeps `1 − v` of its colour.
+- [`new`](sprites.rs#L473) — La retícula que dibuja `grid`: una esquina sombreada `v` conserva `1 − v` de su color.
   - Firma: `pub fn new(grid: &ShadeGrid) -> Self {`
 
-- [`from_coverage`](sprites.rs#L489) — A lattice straight from coverage values, row by row, for a surface that has no artwork
+- [`from_coverage`](sprites.rs#L489) — Una retícula directamente a partir de valores de cobertura, fila a fila, para una superficie sin dibujo
   - Firma: `pub fn from_coverage(columns: u32, rows: u32, coverage: Vec<f32>) -> Self {`
 
-- [`whole`](sprites.rs#L589) — A sprite drawn whole, which is everything standing on a single cell.
+- [`whole`](sprites.rs#L589) — Un sprite dibujado completo, que es todo lo situado sobre una única casilla.
   - Firma: `pub fn whole(key: DrawKey, texture: usize, frame: SpriteFrame, layout: SpriteLayout) -> Self {`
 
-- [`tinted`](sprites.rs#L594) — A sprite drawn whole and multiplied by `tint`: a block of ground in a colour zone.
+- [`tinted`](sprites.rs#L594) — Un sprite dibujado completo y multiplicado por `tint`: un bloque de terreno en una zona de color.
   - Firma: `pub fn tinted( key: DrawKey, texture: usize, frame: SpriteFrame, layout: SpriteLayout, tint: Color, ) -> Self {`
 
-- [`band`](sprites.rs#L614) — One band of a sprite whose footprint covers several cells.
+- [`band`](sprites.rs#L614) — Una banda de un sprite cuya huella abarca varias casillas.
   - Firma: `pub fn band( key: DrawKey, texture: usize, frame: SpriteFrame, layout: SpriteLayout, band: Option<SpriteBand>, ) -> Self {`
 
-- [`shaded`](sprites.rs#L634) — A sprite darkened by the shadows falling on it.
+- [`shaded`](sprites.rs#L634) — Un sprite oscurecido por las sombras que caen sobre él.
   - Firma: `pub fn shaded( key: DrawKey, texture: usize, frame: SpriteFrame, layout: SpriteLayout, shade: ShadeLattice, ) -> Self {`
 
-- [`shaded_band`](sprites.rs#L654) — One band of a sprite that spans several cells, darkened by the shadows falling on it.
+- [`shaded_band`](sprites.rs#L654) — Una banda de un sprite que abarca varias casillas, oscurecida por las sombras que caen sobre ella.
   - Firma: `pub fn shaded_band( key: DrawKey, texture: usize, frame: SpriteFrame, layout: SpriteLayout, shade: ShadeLattice, band: SpriteBand, ) -> Self {`
 
-- [`ground_shadow`](sprites.rs#L675) — The shadow baked on a column's top face, read from the shadow atlas.
+- [`ground_shadow`](sprites.rs#L675) — La sombra horneada en la cara superior de una columna, leída del atlas de sombras.
   - Firma: `pub fn ground_shadow( key: DrawKey, corners: [(f64, f64); 4], map_uv: [(f32, f32); 4], opacity: f32, ) -> Self {`
 
-- [`reflection`](sprites.rs#L692) — One water cell's share of what the water mirrors.
+- [`reflection`](sprites.rs#L692) — La parte de lo reflejado por el agua que corresponde a una casilla de agua.
   - Firma: `pub fn reflection( key: DrawKey, texture: usize, frame: SpriteFrame, points: Vec<(f64, f64)>, uv: Vec<(f64, f64)>, colour: Color, ) -> Self {`
 
-- [`voxel`](sprites.rs#L713) — One voxel of a puff of the player's dust.
+- [`voxel`](sprites.rs#L713) — Un voxel de una bocanada del polvo del jugador.
   - Firma: `pub fn voxel(key: DrawKey, faces: VoxelFaces, colours: [Color; 3]) -> Self {`
 
-- [`face_shadow`](sprites.rs#L721) — A shadow on one exposed vertical face of the ground.
+- [`face_shadow`](sprites.rs#L721) — Una sombra sobre una cara vertical expuesta del terreno.
   - Firma: `pub fn face_shadow( key: DrawKey, corners: [(f64, f64); 4], shade: Rc<ShadeLattice>, opacity: f32, ) -> Self {`
 
-- [`draw_sorted`](sprites.rs#L739) — Sorts the queued sprites far to near and draws them, with `material` bound throughout.
+- [`draw_sorted`](sprites.rs#L739) — Ordena los sprites encolados de lejos a cerca y los dibuja, con `material` enlazado durante todo el proceso.
   - Firma: `pub fn draw_sorted( atlas: &SpriteAtlas, material: Option<&crate::rendering::scene_material::SceneMaterial>, draws: &mut [SpriteDraw], ) {`
 
-- [`scene_key`](sprites.rs#L824) — Depth key of something standing on the cell whose centre is `(x, y)`, at `elevation`.
+- [`scene_key`](sprites.rs#L824) — Clave de profundidad de algo situado en la casilla cuyo centro es `(x, y)`, a la elevación `elevation`.
   - Firma: `pub fn scene_key(x: f64, y: f64, elevation: f64, layer: i32, tile_height: f64) -> DrawKey {`
 
-- [`ground_key`](sprites.rs#L839) — Depth key of a cell's surface: the terrain itself, and what is painted onto it — a baked
+- [`ground_key`](sprites.rs#L839) — Clave de profundidad de la superficie de una casilla: el terreno en sí, y lo pintado sobre él — un
   - Firma: `pub fn ground_key(x: f64, y: f64, elevation: f64, layer: i32, tile_height: f64) -> DrawKey {`
 
 #### Constantes
 
-- [`ATLAS_TEXTURE`](sprites.rs#L17) — The shared atlas, which is the texture of everything that is not a sheet of player poses.
+- [`ATLAS_TEXTURE`](sprites.rs#L17) — El atlas compartido, que es la textura de todo lo que no es una hoja de poses del jugador.
   - Declaración: `pub const ATLAS_TEXTURE: usize = 0;`
 
-- [`WHITE_PATCH`](sprites.rs#L20) — The asset that is nothing but opaque white, for drawing flat colour out of the shared atlas.
+- [`WHITE_PATCH`](sprites.rs#L20) — El asset que no es más que blanco opaco, para dibujar color plano a partir del atlas compartido.
   - Declaración: `pub const WHITE_PATCH: &str = "/assets/shadow/white.svg";`
 
 
@@ -122,16 +122,16 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`texture`](sprites.rs#L165) — The texture a draw names, or the shared atlas if it names one that is not loaded.
+- [`texture`](sprites.rs#L165) — La textura que nombra una orden de dibujo, o el atlas compartido si nombra una que no está cargada.
   - Firma: `fn texture(&self, index: usize) -> &Texture2D {`
 
-- [`draw_polygon`](sprites.rs#L399) — Draws `frame`'s artwork over the convex polygon `points`, each corner reading it at the
+- [`draw_polygon`](sprites.rs#L399) — Dibuja el dibujo de `frame` sobre el polígono convexo `points`, con cada esquina leyéndolo en la
   - Firma: `fn draw_polygon( &self, texture: usize, frame: SpriteFrame, points: &[(f64, f64)], uv: &[(f64, f64)], colour: Color, ) {`
 
-- [`source`](sprites.rs#L442) — The frame's pixels in the atlas, pulled in by half a texel on every side.
+- [`source`](sprites.rs#L442) — Los píxeles del frame en el atlas, con medio texel de margen por cada lado.
   - Firma: `fn source(&self, frame: SpriteFrame) -> Rect {`
 
-- [`light_in`](sprites.rs#L502) — The light `along` across the lattice and `down` it, both in `[0, 1]`, read between the
+- [`light_in`](sprites.rs#L502) — La luz `along` a través de la retícula y `down` por ella, ambas en `[0, 1]`, leídas entre los
   - Firma: `fn light_in(&self, along: f32, down: f32) -> f32 {`
 
 - [`light_at`](sprites.rs#L517) — Calcula o recupera «light at» según los parámetros de la firma.

@@ -15,30 +15,30 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`new`](focus.rs#L45) — A focus already settled on the top `at` stands on, so a session does not open with a swoop.
+- [`new`](focus.rs#L45) — Un foco ya asentado sobre la cara superior sobre la que se alza `at`, para que la sesión no comience con un barrido.
   - Firma: `pub fn new(at: &PlayerRenderPosition) -> Self {`
 
-- [`level`](focus.rs#L57) — The level it shows now, in blocks above elevation zero: what the last
+- [`level`](focus.rs#L57) — El nivel que muestra ahora, en bloques por encima de la elevación cero: lo que la última
   - Firma: `pub fn level(&self) -> f64 {`
 
-- [`aim_level`](focus.rs#L62) — The level it is heading for, before any chase: the top under the player, its feet while they
+- [`aim_level`](focus.rs#L62) — El nivel hacia el que se dirige, antes de cualquier persecución: la cara superior bajo el jugador, su altura de pies mientras
   - Firma: `pub fn aim_level(&self) -> f64 {`
 
-- [`rising`](focus.rs#L67) — Whether it is still rising onto a higher top, so the camera has somewhere to go even on a
+- [`rising`](focus.rs#L67) — Si aún está ascendiendo hacia una cara superior más alta, para que la cámara tenga adónde ir incluso en un
   - Firma: `pub fn rising(&self) -> bool {`
 
-- [`advance`](focus.rs#L72) — The level to show for the player at `at`, `elapsed_ms` real milliseconds after the last
+- [`advance`](focus.rs#L72) — El nivel que mostrar para el jugador en `at`, `elapsed_ms` milisegundos reales después de la última
   - Firma: `pub fn advance( &mut self, at: &PlayerRenderPosition, motion: PlayerMotionType, elapsed_ms: f64, smooth_ms: f64, ) -> f64 {`
 
-- [`ground`](focus.rs#L142) — [`Self::advance`] as the ground point the camera centres on: the
+- [`ground`](focus.rs#L142) — [`Self::advance`] como el punto de suelo en el que la cámara se centra: el
   - Firma: `pub fn ground( &mut self, at: &PlayerRenderPosition, motion: PlayerMotionType, elapsed_ms: f64, projection: ProjectionConfig, ) -> GridPoint {`
 
 #### Constantes
 
-- [`CAMERA_RISE_MS_PER_BLOCK`](focus.rs#L10) — Real milliseconds the camera takes to rise one block onto a higher top the player did not climb
+- [`CAMERA_RISE_MS_PER_BLOCK`](focus.rs#L10) — Milisegundos reales que tarda la cámara en ascender un bloque hacia una cara superior más alta a la que el jugador no trepó
   - Declaración: `pub const CAMERA_RISE_MS_PER_BLOCK: f64 = PLAYER_CLIMB_MS;`
 
-- [`CAMERA_LEVEL_SMOOTH_MS`](focus.rs#L13) — How long the level a camera shows takes to settle on the level it aims at, in real
+- [`CAMERA_LEVEL_SMOOTH_MS`](focus.rs#L13) — Cuánto tarda el nivel que muestra una cámara en asentarse en el nivel al que apunta, en
   - Declaración: `pub const CAMERA_LEVEL_SMOOTH_MS: f64 = 65.0;`
 
 ### `geometry.rs`
@@ -66,7 +66,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`camera_transform`](geometry.rs#L184) — Calcula o recupera «camera transform» según los parámetros de la firma.
   - Firma: `pub fn camera_transform( camera: Camera, viewport: ScreenSize, projection: ProjectionConfig, ) -> CameraTransform {`
 
-- [`ground_point_below`](geometry.rs#L204) — Ground point shown at the same screen height as a point raised above elevation zero.
+- [`ground_point_below`](geometry.rs#L204) — Punto de suelo mostrado a la misma altura de pantalla que un punto elevado por encima de la elevación cero.
   - Firma: `pub fn ground_point_below( point: GridPoint, elevation: f64, projection: ProjectionConfig, ) -> GridPoint {`
 
 - [`follow_camera`](geometry.rs#L220) — Calcula o recupera «follow camera» según los parámetros de la firma.
@@ -87,7 +87,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`needs_cull`](visibility.rs#L31) — Calcula o recupera «needs cull» según los parámetros de la firma.
   - Firma: `pub fn needs_cull( previous: Option<Camera>, camera: Camera, viewport: ScreenSize, projection: ProjectionConfig, margin: f64, ) -> bool {`
 
-- [`visible_chunks`](visibility.rs#L63) — Chunks intersecting the view, including raised terrain/entities and low water.
+- [`visible_chunks`](visibility.rs#L63) — Chunks que intersectan la vista, incluidos terreno/entidades elevados y agua baja.
   - Firma: `pub fn visible_chunks( camera: Camera, viewport: ScreenSize, projection: ProjectionConfig, margin: f64, ) -> Vec<ChunkCoord> {`
 
 #### Constantes
@@ -113,10 +113,10 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Constantes internas
 
-- [`LEVEL_SNAP`](focus.rs#L16) — Blocks under which the level a camera shows settles on the level it aims at, once it is barely
+- [`LEVEL_SNAP`](focus.rs#L16) — Bloques por debajo de los cuales el nivel que muestra la cámara se asienta en el nivel al que apunta, una vez que apenas
   - Declaración: `const LEVEL_SNAP: f64 = 0.002;`
 
-- [`LEVEL_SNAP_SPEED`](focus.rs#L19) — Blocks a second under which the spring counts as stopped, for the settle above.
+- [`LEVEL_SNAP_SPEED`](focus.rs#L19) — Bloques por segundo por debajo de los cuales el muelle cuenta como detenido, para el asentamiento anterior.
   - Declaración: `const LEVEL_SNAP_SPEED: f64 = 0.05;`
 
 ### `geometry.rs`

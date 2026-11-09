@@ -15,22 +15,22 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`load_save`](persistence.rs#L54) — Tries to load a save file from disk. Returns `None` on any error or when running on WASM.
+- [`load_save`](persistence.rs#L54) — Intenta cargar un archivo de guardado del disco. Devuelve `None` ante cualquier error o al ejecutarse en WASM.
   - Firma: `pub async fn load_save() -> Option<WorldSave> {`
 
-- [`restore_archive`](persistence.rs#L70) — Restores a `ChunkArchive` from a parsed save, or returns an empty archive.
+- [`restore_archive`](persistence.rs#L70) — Restaura un `ChunkArchive` desde un guardado ya parseado, o devuelve un archivo vacío.
   - Firma: `pub fn restore_archive(save: Option<WorldSave>) -> ChunkArchive {`
 
-- [`save_archive`](persistence.rs#L78) — Persists the archive to disk or to browser storage on WASM.
+- [`save_archive`](persistence.rs#L78) — Persiste el archivo en disco o en el almacenamiento del navegador en WASM.
   - Firma: `pub fn save_archive(archive: &ChunkArchive) {`
 
-- [`sync_manager_to_archive`](persistence.rs#L98) — Syncs discovered chunks from a `ChunkManager` into a `ChunkArchive`, replacing any
+- [`sync_manager_to_archive`](persistence.rs#L98) — Sincroniza los chunks descubiertos de un `ChunkManager` a un `ChunkArchive`, reemplazando cualquier
   - Firma: `pub fn sync_manager_to_archive(manager: &ChunkManager, archive: &mut ChunkArchive) {`
 
-- [`load_archive_into_manager`](persistence.rs#L105) — Loads saved chunks from an archive into a `ChunkManager`, bypassing terrain generation.
+- [`load_archive_into_manager`](persistence.rs#L105) — Carga en un `ChunkManager` los chunks guardados de un archivo, omitiendo la generación de terreno.
   - Firma: `pub fn load_archive_into_manager( manager: &mut ChunkManager, archive: &ChunkArchive, ) -> Vec<String> {`
 
-- [`restore_discovered_from_archive`](persistence.rs#L114) — Replaces freshly generated chunks with their archived copy, where the archive has one.
+- [`restore_discovered_from_archive`](persistence.rs#L114) — Reemplaza los chunks recién generados por su copia archivada, donde el archivo la tenga.
   - Firma: `pub fn restore_discovered_from_archive( manager: &mut ChunkManager, archive: &ChunkArchive, discovered: &[iso::grid::ChunkCoord], ) -> Vec<String> {`
 
 

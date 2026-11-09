@@ -15,7 +15,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`cpu_ms`](frame_log.rs#L32) — What this loop spent on the CPU. The rest of `frame_ms` went to the GPU or to waiting
+- [`cpu_ms`](frame_log.rs#L32) — Lo que este bucle gastó en la CPU. El resto de `frame_ms` fue a la GPU o a espera
   - Firma: `pub fn cpu_ms(&self) -> f64 {`
 
 - [`new`](frame_log.rs#L59) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
@@ -30,30 +30,30 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`is_empty`](frame_log.rs#L77) — Indica si la colección o el estado consultado no contiene elementos.
   - Firma: `pub fn is_empty(&self) -> bool {`
 
-- [`span_seconds`](frame_log.rs#L82) — Seconds the window covers, taken from the frames themselves rather than a clock, so the
+- [`span_seconds`](frame_log.rs#L82) — Segundos que cubre la ventana, tomados de los propios fotogramas en lugar de un reloj, de modo que la
   - Firma: `pub fn span_seconds(&self) -> f64 {`
 
-- [`worst`](frame_log.rs#L87) — The frame that took longest, which is the one a stutter is made of.
+- [`worst`](frame_log.rs#L87) — El fotograma que más tardó, que es del que está hecho un tirón.
   - Firma: `pub fn worst(&self) -> FrameSample {`
 
-- [`dropped`](frame_log.rs#L96) — Frames that missed two display refreshes.
+- [`dropped`](frame_log.rs#L96) — Fotogramas que se perdieron dos refrescos de pantalla.
   - Firma: `pub fn dropped(&self) -> usize {`
 
-- [`frame_ms`](frame_log.rs#L110) — `(p50, p95, max)` of whole frames, in milliseconds.
+- [`frame_ms`](frame_log.rs#L110) — `(p50, p95, max)` de fotogramas completos, en milisegundos.
   - Firma: `pub fn frame_ms(&self) -> (f64, f64, f64) {`
 
-- [`cpu_ms`](frame_log.rs#L120) — `(p50, p95, max)` of this loop's own CPU time, in milliseconds.
+- [`cpu_ms`](frame_log.rs#L120) — `(p50, p95, max)` del tiempo de CPU propio de este bucle, en milisegundos.
   - Firma: `pub fn cpu_ms(&self) -> (f64, f64, f64) {`
 
-- [`summary`](frame_log.rs#L137) — The whole report, as lines to print.
+- [`summary`](frame_log.rs#L137) — El informe completo, como líneas para imprimir.
   - Firma: `pub fn summary(&self) -> String {`
 
 #### Constantes
 
-- [`WINDOW_FRAMES`](frame_log.rs#L6) — Frames kept in the window: five seconds at 60 fps.
+- [`WINDOW_FRAMES`](frame_log.rs#L6) — Fotogramas guardados en la ventana: cinco segundos a 60 fps.
   - Declaración: `pub const WINDOW_FRAMES: usize = 300;`
 
-- [`DROPPED_FRAME_MS`](frame_log.rs#L9) — Two refreshes of a 60 Hz display. A frame over this dropped one, which is what reads as a
+- [`DROPPED_FRAME_MS`](frame_log.rs#L9) — Dos refrescos de una pantalla de 60 Hz. Un fotograma por encima de esto perdió uno, que es lo que se lee como un
   - Declaración: `pub const DROPPED_FRAME_MS: f64 = 33.4;`
 
 
@@ -68,7 +68,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`default`](frame_log.rs#L44) — Calcula o recupera «default» según los parámetros de la firma.
   - Firma: `fn default() -> Self {`
 
-- [`percentile`](frame_log.rs#L50) — Value at `fraction` of the way through `values` once sorted, nearest rank. `values` is
+- [`percentile`](frame_log.rs#L50) — Valor en `fraction` del recorrido de `values` una vez ordenado, rango más cercano. `values` está
   - Firma: `fn percentile(sorted: &[f64], fraction: f64) -> f64 {`
 
 - [`sorted`](frame_log.rs#L103) — Calcula o recupera «sorted» según los parámetros de la firma.

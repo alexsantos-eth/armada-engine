@@ -15,98 +15,98 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`elevation_step`](ink.rs#L19) — How far one elevation step rises on screen, for artwork drawn to this template.
+- [`elevation_step`](ink.rs#L19) — Hasta dónde sube un paso de elevación en pantalla, para los dibujos trazados según esta plantilla.
   - Firma: `pub fn elevation_step(tile_width: f64) -> f64 {`
 
-- [`rounded`](ink.rs#L34) — The box rounded to six decimals of a tile width, for writing into the manifest.
+- [`rounded`](ink.rs#L34) — La caja redondeada a seis decimales de un ancho de casilla, para escribirla en el manifiesto.
   - Firma: `pub fn rounded(self) -> Self {`
 
-- [`scaled`](ink.rs#L45) — The same drawing scaled about the ground it stands on, so that it stays on its spot.
+- [`scaled`](ink.rs#L45) — El mismo dibujo escalado en torno al suelo sobre el que se apoya, de modo que permanezca en su sitio.
   - Firma: `pub fn scaled(self, by: f64) -> Self {`
 
-- [`asset_ink`](ink.rs#L57) — Measures the artwork in `svg`, or `None` if it is not one asset drawn in the template.
+- [`asset_ink`](ink.rs#L57) — Mide el dibujo en `svg`, o `None` si no se trata de un único asset trazado según la plantilla.
   - Firma: `pub fn asset_ink(svg: &str) -> Option<InkBox> {`
 
-- [`data_tiles`](ink.rs#L100) — The asset's declared footprint and height, `"3x1x5"`, if it has one.
+- [`data_tiles`](ink.rs#L100) — La huella y la altura declaradas del asset, `"3x1x5"`, si las tiene.
   - Firma: `pub fn data_tiles(svg: &str) -> Option<&str> {`
 
-- [`attribute`](ink.rs#L145) — The value of `name="..."` in `text`, matching the whole attribute name.
+- [`attribute`](ink.rs#L145) — El valor de `name="..."` en `text`, coincidiendo con el nombre completo del atributo.
   - Firma: `pub(super) fn attribute<'a>(text: &'a str, name: &str) -> Option<&'a str> {`
 
 #### Constantes
 
-- [`SVG_TILE_WIDTH`](ink.rs#L4) — Width of one tile in the SVG's own units.
+- [`SVG_TILE_WIDTH`](ink.rs#L4) — Ancho de una casilla en las unidades propias del SVG.
   - Declaración: `pub const SVG_TILE_WIDTH: f64 = 1024.0;`
 
-- [`SVG_ANCHOR`](ink.rs#L7) — Screen position of the anchor cell's ground centre in the SVG's own units.
+- [`SVG_ANCHOR`](ink.rs#L7) — Posición en pantalla del centro del suelo de la casilla de ancla en las unidades propias del SVG.
   - Declaración: `pub const SVG_ANCHOR: (f64, f64) = (512.0, 256.0);`
 
-- [`SVG_BLOCK_HEIGHT`](ink.rs#L10) — Height of one block's body in the SVG's own units: how far one elevation step rises.
+- [`SVG_BLOCK_HEIGHT`](ink.rs#L10) — Altura del cuerpo de un bloque en las unidades propias del SVG: hasta dónde sube un paso de elevación.
   - Declaración: `pub const SVG_BLOCK_HEIGHT: f64 = 341.0;`
 
 ### `layout.rs`
 
 #### Funciones y métodos
 
-- [`ink_layout`](layout.rs#L18) — Places an asset's artwork so that it lands where it was drawn, relative to `ground`: the
+- [`ink_layout`](layout.rs#L18) — Coloca el dibujo de un asset de modo que aterrice donde fue trazado, en relación con `ground`: el
   - Firma: `pub fn ink_layout(ground: ScreenPoint, ink: InkBox, tile_width: f64) -> SpriteLayout {`
 
 - [`corners`](layout.rs#L35) — Calcula o recupera «corners» según los parámetros de la firma.
   - Firma: `pub fn corners(&self) -> &[(f64, f64)] {`
 
-- [`footprint_band`](layout.rs#L41) — The band of a multi-cell sprite that stands on the `index`-th cell of its footprint.
+- [`footprint_band`](layout.rs#L41) — La banda de un sprite de varias casillas que se apoya en la casilla `index` de su huella.
   - Firma: `pub fn footprint_band( layout: SpriteLayout, centre: ScreenPoint, step: (f64, f64), index: i32, cells: i32, bleed: f64, ) -> Option<SpriteBand> {`
 
 ### `manifest.rs`
 
 #### Funciones y métodos
 
-- [`primary_frame`](manifest.rs#L89) — Returns the first available frame (single or first of multiple).
+- [`primary_frame`](manifest.rs#L89) — Devuelve el primer marco disponible (único o primero de varios).
   - Firma: `pub fn primary_frame(&self) -> Option<SpriteFrame> {`
 
-- [`sheet_frame`](manifest.rs#L94) — The frame of the pose in `column` of `facing`'s row, for a sheet entry.
+- [`sheet_frame`](manifest.rs#L94) — El marco de la pose en la `column` de la fila de `facing`, para una entrada de hoja.
   - Firma: `pub fn sheet_frame(&self, facing: usize, column: usize) -> Option<SpriteFrame> {`
 
-- [`texture_size`](manifest.rs#L104) — The size of the texture this entry's frames are cut from, which is the atlas unless the
+- [`texture_size`](manifest.rs#L104) — El tamaño de la textura de la que se recortan los marcos de esta entrada, que es el atlas salvo que la
   - Firma: `pub fn texture_size(&self, atlas: SpriteFrame) -> SpriteFrame {`
 
-- [`frame_count`](manifest.rs#L109) — Number of animation frames.
+- [`frame_count`](manifest.rs#L109) — Número de marcos de animación.
   - Firma: `pub fn frame_count(&self) -> usize {`
 
-- [`validate_manifest`](manifest.rs#L159) — Validates a manifest: schema version, unique ids, frames inside the atlas.
+- [`validate_manifest`](manifest.rs#L159) — Valida un manifiesto: versión de esquema, ids únicos, marcos dentro del atlas.
   - Firma: `pub fn validate_manifest(manifest: &AssetManifest) -> Result<(), ManifestError> {`
 
 #### Constantes
 
-- [`MANIFEST_SCHEMA_VERSION`](manifest.rs#L126) — Manifest schema version this crate understands.
+- [`MANIFEST_SCHEMA_VERSION`](manifest.rs#L126) — Versión de esquema de manifiesto que este crate entiende.
   - Declaración: `pub const MANIFEST_SCHEMA_VERSION: u32 = 2;`
 
 ### `sheet.rs`
 
 #### Funciones y métodos
 
-- [`rows`](sheet.rs#L29) — Rows of the sheet: one per facing.
+- [`rows`](sheet.rs#L29) — Filas de la hoja: una por facing.
   - Firma: `pub fn rows(&self) -> usize {`
 
-- [`cell_id`](sheet.rs#L34) — The id of the group holding the pose in `column` of `facing`'s row, as the artwork names
+- [`cell_id`](sheet.rs#L34) — El id del grupo que contiene la pose en la `column` de la fila de `facing`, tal como el dibujo la nombra
   - Firma: `pub fn cell_id(&self, facing: usize, column: usize) -> Option<String> {`
 
-- [`ink`](sheet.rs#L44) — Where the artwork of every cell belongs over the ground the player stands on, in tile
+- [`ink`](sheet.rs#L44) — Dónde pertenece el dibujo de cada casilla sobre el suelo en el que se apoya el jugador, en casillas
   - Firma: `pub fn ink(&self) -> InkBox {`
 
-- [`parse_sheet`](sheet.rs#L55) — Reads the grid out of a sheet's SVG, or `None` if it is not one (no `data-frames`).
+- [`parse_sheet`](sheet.rs#L55) — Lee la cuadrícula del SVG de una hoja, o `None` si no lo es (sin `data-frames`).
   - Firma: `pub fn parse_sheet(svg: &str) -> Option<SheetGrid<'_>> {`
 
 #### Constantes
 
-- [`SVG_CANVAS_TOP`](sheet.rs#L6) — Top of the character template's canvas in the SVG's own units.
+- [`SVG_CANVAS_TOP`](sheet.rs#L6) — Parte superior del lienzo de la plantilla de personaje en las unidades propias del SVG.
   - Declaración: `pub const SVG_CANVAS_TOP: f64 = -SVG_BLOCK_HEIGHT;`
 
 ### `terrain_sprites.rs`
 
 #### Funciones y métodos
 
-- [`terrain_sprite_source`](terrain_sprites.rs#L6) — Source path of the block asset that draws `material`.
+- [`terrain_sprite_source`](terrain_sprites.rs#L6) — Ruta de origen del asset de bloque que dibuja `material`.
   - Firma: `pub fn terrain_sprite_source(material: TerrainMaterial) -> &'static str {`
 
 
@@ -118,31 +118,31 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`footprint`](ink.rs#L105) — How far the footprint runs from its anchor and along which of the *drawing's* axes, out of
+- [`footprint`](ink.rs#L105) — Hasta dónde se extiende la huella desde su ancla y a lo largo de cuál de los ejes del *dibujo*, a partir de
   - Firma: `fn footprint(svg: &str) -> (i32, bool) {`
 
-- [`visible_elements`](ink.rs#L123) — The text of every element that draws something: outside those containers, and not one of the
+- [`visible_elements`](ink.rs#L123) — El texto de cada elemento que dibuja algo: fuera de esos contenedores, y que no sea uno de los
   - Firma: `fn visible_elements(svg: &str) -> impl Iterator<Item = &str> {`
 
-- [`points`](ink.rs#L164) — Every `x,y` pair in a path or polygon's geometry.
+- [`points`](ink.rs#L164) — Cada par `x,y` en la geometría de un path o polígono.
   - Firma: `fn points(geometry: &str) -> impl Iterator<Item = (f64, f64)> + '_ {`
 
 #### Constantes internas
 
-- [`ROW`](ink.rs#L13) — How far one cell along either axis moves *down* the screen, in tile widths: half a tile
+- [`ROW`](ink.rs#L13) — Cuánto baja por la pantalla una casilla a lo largo de cualquiera de los ejes, en anchos de casilla: media casilla
   - Declaración: `const ROW: f64 = 0.25;`
 
-- [`HALF_TILE`](ink.rs#L16) — How far one cell along either axis moves *across* the screen, in tile widths.
+- [`HALF_TILE`](ink.rs#L16) — Cuánto se desplaza por la pantalla una casilla a lo largo de cualquiera de los ejes, en anchos de casilla.
   - Declaración: `const HALF_TILE: f64 = 0.5;`
 
-- [`SKIPPED`](ink.rs#L120) — Containers whose contents describe nothing that is drawn: filters and gradients, and the
+- [`SKIPPED`](ink.rs#L120) — Contenedores cuyo contenido no describe nada que se dibuje: filtros y degradados, y los
   - Declaración: `const SKIPPED: [&str; 2] = ["defs", "metadata"];`
 
 ### `layout.rs`
 
 #### Funciones internas
 
-- [`clip`](layout.rs#L78) — Sutherland–Hodgman: the part of a convex polygon where `inside` is not negative.
+- [`clip`](layout.rs#L78) — Sutherland–Hodgman: la parte de un polígono convexo donde `inside` no es negativa.
   - Firma: `fn clip(band: SpriteBand, inside: impl Fn((f64, f64)) -> f64) -> Option<SpriteBand> {`
 
 - [`push`](layout.rs#L99) — Añade el valor recibido a la colección o secuencia administrada.

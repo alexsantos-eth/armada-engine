@@ -15,24 +15,24 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`load`](scene_material.rs#L65) — Loads the material and points it at `shadow_map`.
+- [`load`](scene_material.rs#L65) — Carga el material y lo apunta a `shadow_map`.
   - Firma: `pub fn load(shadow_map: &Texture2D) -> Result<Self, String> {`
 
-- [`bind`](scene_material.rs#L97) — Draws everything that follows with this material.
+- [`bind`](scene_material.rs#L97) — Dibuja todo lo que sigue con este material.
   - Firma: `pub fn bind(&self) {`
 
-- [`release`](scene_material.rs#L102) — Hands drawing back to Macroquad's own pipeline, for the HUD.
+- [`release`](scene_material.rs#L102) — Devuelve el dibujado al pipeline propio de Macroquad, para el HUD.
   - Firma: `pub fn release(&self) {`
 
-- [`vertex`](scene_material.rs#L108) — One vertex of the scene: a point, where to read the bound texture, a colour, and the two
+- [`vertex`](scene_material.rs#L108) — Un vértice de la escena: un punto, de dónde leer la textura vinculada, un color, y los dos
   - Firma: `pub fn vertex( position: (f32, f32), uv: (f32, f32), colour: Color, map_uv: (f32, f32), kind: f32, ) -> Vertex {`
 
 #### Constantes
 
-- [`SPRITE`](scene_material.rs#L7) — `normal.z` of a vertex drawn from the bound texture, which is every sprite.
+- [`SPRITE`](scene_material.rs#L7) — `normal.z` de un vértice dibujado desde la textura vinculada, que es todo sprite.
   - Declaración: `pub const SPRITE: f32 = 0.0;`
 
-- [`SHADOW`](scene_material.rs#L10) — `normal.z` of a vertex whose colour is coverage read from the shadow atlas.
+- [`SHADOW`](scene_material.rs#L10) — `normal.z` de un vértice cuyo color es la cobertura leída del atlas de sombras.
   - Declaración: `pub const SHADOW: f32 = 1.0;`
 
 
@@ -44,7 +44,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Constantes internas
 
-- [`SHADOW_MAP`](scene_material.rs#L13) — The name the shader gives the shadow atlas. `Texture` and `_ScreenTexture` are Macroquad's
+- [`SHADOW_MAP`](scene_material.rs#L13) — El nombre que el shader da al atlas de sombras. `Texture` y `_ScreenTexture` son de Macroquad
   - Declaración: `const SHADOW_MAP: &str = "ShadowMap";`
 
 - [`VERTEX`](scene_material.rs#L15) — Define el parámetro interno «VERTEX» empleado por este módulo.

@@ -20,14 +20,14 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Constantes
 
-- [`REFLECTION_ALPHA`](reflection_view.rs#L14) — How opaque what the water mirrors is drawn.
+- [`REFLECTION_ALPHA`](reflection_view.rs#L14) — Opacidad con la que se dibuja lo que el agua refleja.
   - Declaración: `pub const REFLECTION_ALPHA: f32 = 0.62;`
 
-- [`REFLECTION_TINT`](reflection_view.rs#L17) — What the water multiplies the artwork by: a little darker and bluer than the real thing,
+- [`REFLECTION_TINT`](reflection_view.rs#L17) — Lo por lo que el agua multiplica el dibujo: un poco más oscuro y más azul que la cosa real,
   - Declaración: `pub const REFLECTION_TINT: Color = Color::new( 0xc4 as f32 / 255.0, 0xdb as f32 / 255.0, 0xe4 as f32 / 255.0, REFLECTION_ALPHA, );`
 
-- [`REFLECTION_LAYER`](reflection_view.rs#L25) — Reflections draw in the layer of the shadows baked on the ground: over the water's own block,
+- [`REFLECTION_LAYER`](reflection_view.rs#L25) — Los reflejos se dibujan en la capa de las sombras horneadas sobre el suelo: sobre el propio bloque del agua,
   - Declaración: `pub const REFLECTION_LAYER: i32 = crate::lighting::shadow_view::GROUND_SHADOW_LAYER;`
 
-- [`MAX_REFLECTION_DROP`](reflection_view.rs#L28) — How far below something the water still shows it, in blocks.
+- [`MAX_REFLECTION_DROP`](reflection_view.rs#L28) — Hasta cuántas casillas por debajo el agua sigue mostrando algo, en bloques.
   - Declaración: `pub const MAX_REFLECTION_DROP: f64 = 4.0;`

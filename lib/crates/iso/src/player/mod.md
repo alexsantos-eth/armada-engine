@@ -15,77 +15,77 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`get_dust`](dust.rs#L74) — A puff of dust `ms` real milliseconds after it rose: how far through its life of `duration`
+- [`get_dust`](dust.rs#L74) — Un soplo de polvo `ms` milisegundos reales después de que se alzó: cuánto ha recorrido su vida de `duration`
   - Firma: `pub fn get_dust(ms: f64, duration: f64, alpha: f64) -> Option<DustLook> {`
 
-- [`mix_color`](dust.rs#L96) — The colour `share` (`0` → `1`) of the way from `from` to `to`, channel by channel, rounded
+- [`mix_color`](dust.rs#L96) — El color a `share` (`0` → `1`) del camino de `from` a `to`, canal a canal, redondeado
   - Firma: `pub fn mix_color(colors: (u32, u32), share: f64) -> u32 {`
 
-- [`new`](dust.rs#L116) — The stream of `seed`, which is the count of puffs raised so far.
+- [`new`](dust.rs#L116) — El flujo de `seed`, que es el número de soplos alzados hasta ahora.
   - Firma: `pub fn new(seed: u64) -> Self {`
 
-- [`roll`](dust.rs#L121) — The next number of the stream, in `[0, 1)`. SplitMix64, as `terrain::noise` hashes.
+- [`roll`](dust.rs#L121) — El siguiente número del flujo, en `[0, 1)`. SplitMix64, como las funciones hash de `terrain::noise`.
   - Firma: `pub fn roll(&mut self) -> f64 {`
 
-- [`get_dust_voxels`](dust.rs#L132) — The voxels of a puff of dust of `shape`, scattered by the stream of `seed`: spread round the
+- [`get_dust_voxels`](dust.rs#L132) — Los voxeles de un soplo de polvo de `shape`, dispersados por el flujo de `seed`: repartidos alrededor de la
   - Firma: `pub fn get_dust_voxels( shape: DustShape, seed: u64, kick: GridPoint, origin: GridPoint, ) -> Vec<DustVoxel> {`
 
-- [`get_dust_voxel_at`](dust.rs#L177) — Where `voxel` is `progress` of the way through its puff's life (`0` → `1`): in columns from
+- [`get_dust_voxel_at`](dust.rs#L177) — Donde `voxel` está a `progress` del camino a lo largo de la vida de su soplo (`0` → `1`): en columnas desde
   - Firma: `pub fn get_dust_voxel_at(voxel: DustVoxel, progress: f64) -> DustVoxelState {`
 
-- [`get_dust_column`](dust.rs#L198) — The column a voxel of dust at `point` (on the ground, in columns) is drawn with, for feet at
+- [`get_dust_column`](dust.rs#L198) — La columna con la que se dibuja un voxel de polvo en `point` (en el suelo, en columnas), para pies en
   - Firma: `pub fn get_dust_column( point: GridPoint, feet: GridPoint, level: f64, top_at: impl Fn(i32, i32) -> Option<f64>, ) -> DustColumn {`
 
-- [`voxel_faces`](dust.rs#L232) — A small voxel standing on the ground, `size` tiles wide, its bottom centred on a point: its
+- [`voxel_faces`](dust.rs#L232) — Un voxel pequeño apoyado en el suelo, `size` casillas de ancho, con su base centrada en un punto: sus
   - Firma: `pub fn voxel_faces(size: f64, tile_width: f64, tile_height: f64, box_height: f64) -> VoxelFaces {`
 
 #### Constantes
 
-- [`DUST_MS`](dust.rs#L7) — Real milliseconds a puff of dust lasts, at a take-off or a landing.
+- [`DUST_MS`](dust.rs#L7) — Milisegundos reales que dura un soplo de polvo, en un despegue o un aterrizaje.
   - Declaración: `pub const DUST_MS: f64 = 360.0;`
 
-- [`DUST_ALPHA`](dust.rs#L10) — Opacity of a puff of dust as it rises, fading to `0` over [`DUST_MS`].
+- [`DUST_ALPHA`](dust.rs#L10) — Opacidad de un soplo de polvo mientras se eleva, atenuándose hasta `0` a lo largo de [`DUST_MS`].
   - Declaración: `pub const DUST_ALPHA: f64 = 0.85;`
 
-- [`DUST_MIN_IMPACT`](dust.rs#L13) — Landings softer than this, in blocks per tick (a small step down), raise no dust.
+- [`DUST_MIN_IMPACT`](dust.rs#L13) — Los aterrizajes más suaves que esto, en bloques por tick (un pequeño escalón descendente), no levantan polvo.
   - Declaración: `pub const DUST_MIN_IMPACT: f64 = 0.1;`
 
-- [`DUST_COLORS`](dust.rs#L36) — Shades of dust: white to a light grey.
+- [`DUST_COLORS`](dust.rs#L36) — Tonos de polvo: de blanco a un gris claro.
   - Declaración: `pub const DUST_COLORS: (u32, u32) = (0xffffff, 0xdbdbdb);`
 
-- [`BURST_DUST`](dust.rs#L39) — The puff of a take-off or a landing: a ring of voxels that bursts out from the feet.
+- [`BURST_DUST`](dust.rs#L39) — El soplo de un despegue o un aterrizaje: un anillo de voxeles que estalla desde los pies.
   - Declaración: `pub const BURST_DUST: DustShape = DustShape {`
 
-- [`KICK_DUST`](dust.rs#L53) — The small puff a running or skidding player kicks up behind its feet.
+- [`KICK_DUST`](dust.rs#L53) — El soplo pequeño que un jugador corriendo o derrapando levanta detrás de sus pies.
   - Declaración: `pub const KICK_DUST: DustShape = DustShape {`
 
 ### `motion.rs`
 
 #### Funciones y métodos
 
-- [`transition_player_motion`](motion.rs#L82) — Applies one event to `state` and returns the resulting motion state.
+- [`transition_player_motion`](motion.rs#L82) — Aplica un evento a `state` y devuelve el estado de movimiento resultante.
   - Firma: `pub fn transition_player_motion( state: PlayerMotionType, event: PlayerMotionEvent, ) -> PlayerMotionType {`
 
 ### `physics.rs`
 
 #### Funciones y métodos
 
-- [`get_jump_height`](physics.rs#L105) — Height of the feet above flat ground `tick` ticks into a jump.
+- [`get_jump_height`](physics.rs#L105) — Altura de los pies sobre suelo llano `tick` ticks después de un salto.
   - Firma: `pub fn get_jump_height(tick: f64) -> f64 {`
 
-- [`get_climb_rise`](physics.rs#L116) — Share of its rise a climb's feet have risen at `progress` (0–1).
+- [`get_climb_rise`](physics.rs#L116) — Fracción de su ascenso que los pies de una escalada han subido en `progress` (0–1).
   - Firma: `pub fn get_climb_rise(progress: f64) -> f64 {`
 
-- [`get_climb_advance`](physics.rs#L121) — Share of the way from `from` to `to` a climb has gone at `progress` (0–1).
+- [`get_climb_advance`](physics.rs#L121) — Fracción del camino de `from` a `to` que una escalada ha recorrido en `progress` (0–1).
   - Firma: `pub fn get_climb_advance(progress: f64) -> f64 {`
 
 - [`blocked_side`](physics.rs#L147) — Calcula o recupera «blocked side» según los parámetros de la firma.
   - Firma: `pub fn blocked_side(&self, _x: f64, _y: f64) -> f64 {`
 
-- [`get_player_column`](physics.rs#L246) — Column the ground point `point` belongs to.
+- [`get_player_column`](physics.rs#L246) — Columna a la que pertenece el punto de suelo `point`.
   - Firma: `pub fn get_player_column(point: GridPoint) -> WorldCoord {`
 
-- [`can_stand_on`](physics.rs#L254) — Whether the player can stand on the centre of column `(x, y)` coming from `from_elevation`.
+- [`can_stand_on`](physics.rs#L254) — Si el jugador puede mantenerse en pie en el centro de la columna `(x, y)` viniendo de `from_elevation`.
   - Firma: `pub fn can_stand_on<G: PlayerGround>(ground: &G, x: i32, y: i32, from_elevation: f64) -> bool {`
 
 - [`find_player_spawn`](physics.rs#L402) — Localiza «player spawn» que satisface las condiciones de la consulta.
@@ -147,112 +147,112 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Constantes
 
-- [`PLAYER_SPEED`](physics.rs#L11) — Walking speed of the player, in columns per second of simulation.
+- [`PLAYER_SPEED`](physics.rs#L11) — Velocidad de caminata del jugador, en columnas por segundo de simulación.
   - Declaración: `pub const PLAYER_SPEED: f64 = 3.0;`
 
-- [`PLAYER_STEP`](physics.rs#L13) — Maximum horizontal columns a walking player moves in one tick.
+- [`PLAYER_STEP`](physics.rs#L13) — Columnas horizontales máximas que un jugador caminando avanza en un tick.
   - Declaración: `pub const PLAYER_STEP: f64 = PLAYER_SPEED / TICKS_PER_SECOND as f64;`
 
-- [`PLAYER_RUN_SPEED`](physics.rs#L15) — Running speed of the player, in columns per second of simulation.
+- [`PLAYER_RUN_SPEED`](physics.rs#L15) — Velocidad de carrera del jugador, en columnas por segundo de simulación.
   - Declaración: `pub const PLAYER_RUN_SPEED: f64 = 5.0;`
 
-- [`PLAYER_RUN_STEP`](physics.rs#L17) — Maximum horizontal columns a running player moves in one tick.
+- [`PLAYER_RUN_STEP`](physics.rs#L17) — Columnas horizontales máximas que un jugador corriendo avanza en un tick.
   - Declaración: `pub const PLAYER_RUN_STEP: f64 = PLAYER_RUN_SPEED / TICKS_PER_SECOND as f64;`
 
-- [`PLAYER_GROUND_ACCEL`](physics.rs#L19) — Horizontal velocity change per tick while starting or redirecting on land.
+- [`PLAYER_GROUND_ACCEL`](physics.rs#L19) — Cambio de velocidad horizontal por tick al arrancar o redirigir en tierra.
   - Declaración: `pub const PLAYER_GROUND_ACCEL: f64 = 0.05;`
 
-- [`PLAYER_GROUND_BRAKE`](physics.rs#L21) — Horizontal velocity removed per tick when releasing movement on land.
+- [`PLAYER_GROUND_BRAKE`](physics.rs#L21) — Velocidad horizontal retirada por tick al soltar el movimiento en tierra.
   - Declaración: `pub const PLAYER_GROUND_BRAKE: f64 = 0.03;`
 
-- [`PLAYER_AIR_ACCEL`](physics.rs#L23) — Horizontal velocity change per tick while steering in the air.
+- [`PLAYER_AIR_ACCEL`](physics.rs#L23) — Cambio de velocidad horizontal por tick al virar en el aire.
   - Declaración: `pub const PLAYER_AIR_ACCEL: f64 = 0.04;`
 
-- [`PLAYER_AIR_BRAKE`](physics.rs#L25) — Horizontal velocity removed per tick when releasing movement in the air.
+- [`PLAYER_AIR_BRAKE`](physics.rs#L25) — Velocidad horizontal retirada por tick al soltar el movimiento en el aire.
   - Declaración: `pub const PLAYER_AIR_BRAKE: f64 = 0.025;`
 
-- [`PLAYER_CORNER_NUDGE`](physics.rs#L27) — Maximum sideways displacement used to clear a small corner.
+- [`PLAYER_CORNER_NUDGE`](physics.rs#L27) — Desplazamiento lateral máximo usado para salvar una esquina pequeña.
   - Declaración: `pub const PLAYER_CORNER_NUDGE: f64 = 0.04;`
 
-- [`PLAYER_RADIUS`](physics.rs#L29) — Half the side of the square the player's feet take on the ground.
+- [`PLAYER_RADIUS`](physics.rs#L29) — Mitad del lado del cuadrado que ocupan los pies del jugador en el suelo.
   - Declaración: `pub const PLAYER_RADIUS: f64 = 0.2;`
 
-- [`PLAYER_BODY_HEIGHT`](physics.rs#L31) — Vertical extent of the player's collision body above its feet, in blocks.
+- [`PLAYER_BODY_HEIGHT`](physics.rs#L31) — Extensión vertical del cuerpo de colisión del jugador por encima de sus pies, en bloques.
   - Declaración: `pub const PLAYER_BODY_HEIGHT: f64 = 0.6;`
 
-- [`PLAYER_RESCUE_DROP`](physics.rs#L33) — Distance below the last stable surface at which a fall is rescued.
+- [`PLAYER_RESCUE_DROP`](physics.rs#L33) — Distancia por debajo de la última superficie estable a la que se rescata una caída.
   - Declaración: `pub const PLAYER_RESCUE_DROP: f64 = 2.0;`
 
-- [`PLAYER_MAX_CLIMB`](physics.rs#L35) — Most blocks the player climbs up or down from one column to the next.
+- [`PLAYER_MAX_CLIMB`](physics.rs#L35) — Máximo de bloques que el jugador escala hacia arriba o hacia abajo de una columna a la siguiente.
   - Declaración: `pub const PLAYER_MAX_CLIMB: f64 = 1.0;`
 
-- [`PLAYER_JUMP_HEIGHT`](physics.rs#L37) — Blocks the player's feet rise at the top of a jump.
+- [`PLAYER_JUMP_HEIGHT`](physics.rs#L37) — Bloques que suben los pies del jugador en el punto más alto de un salto.
   - Declaración: `pub const PLAYER_JUMP_HEIGHT: f64 = 0.85;`
 
-- [`PLAYER_JUMP_TICKS`](physics.rs#L39) — Ticks a jump lasts on flat ground, from take-off to landing.
+- [`PLAYER_JUMP_TICKS`](physics.rs#L39) — Ticks que dura un salto en suelo llano, desde el despegue hasta el aterrizaje.
   - Declaración: `pub const PLAYER_JUMP_TICKS: i32 = 10;`
 
-- [`PLAYER_JUMP_BUFFER_TICKS`](physics.rs#L41) — Ticks for which a jump press can wait for landing.
+- [`PLAYER_JUMP_BUFFER_TICKS`](physics.rs#L41) — Ticks durante los que una pulsación de salto puede esperar al aterrizaje.
   - Declaración: `pub const PLAYER_JUMP_BUFFER_TICKS: i32 = 2;`
 
-- [`PLAYER_COYOTE_TICKS`](physics.rs#L43) — Ticks for which jumping remains possible after leaving a ledge.
+- [`PLAYER_COYOTE_TICKS`](physics.rs#L43) — Ticks durante los que el salto sigue siendo posible tras abandonar un borde.
   - Declaración: `pub const PLAYER_COYOTE_TICKS: i32 = 2;`
 
-- [`PLAYER_AIR_JUMPS`](physics.rs#L45) — Jumps the player can take in the air before it lands.
+- [`PLAYER_AIR_JUMPS`](physics.rs#L45) — Saltos que el jugador puede dar en el aire antes de aterrizar.
   - Declaración: `pub const PLAYER_AIR_JUMPS: i32 = 1;`
 
-- [`PLAYER_JUMP_SPEED`](physics.rs#L47) — Blocks per tick the feet rise at take-off.
+- [`PLAYER_JUMP_SPEED`](physics.rs#L47) — Bloques por tick que suben los pies en el despegue.
   - Declaración: `pub const PLAYER_JUMP_SPEED: f64 = (4.0 * PLAYER_JUMP_HEIGHT) / PLAYER_JUMP_TICKS as f64;`
 
-- [`PLAYER_JUMP_CUT_SPEED`](physics.rs#L49) — Upward speed retained when a jump key is released.
+- [`PLAYER_JUMP_CUT_SPEED`](physics.rs#L49) — Velocidad ascendente que se conserva al soltar la tecla de salto.
   - Declaración: `pub const PLAYER_JUMP_CUT_SPEED: f64 = PLAYER_JUMP_SPEED * 0.6;`
 
-- [`PLAYER_MAX_FALL_SPEED`](physics.rs#L51) — Fastest downward speed in blocks per simulation tick.
+- [`PLAYER_MAX_FALL_SPEED`](physics.rs#L51) — Velocidad descendente máxima en bloques por tick de simulación.
   - Declaración: `pub const PLAYER_MAX_FALL_SPEED: f64 = 0.6;`
 
-- [`PLAYER_GRAVITY`](physics.rs#L53) — Blocks per tick its feet's upward speed drops each tick in the air.
+- [`PLAYER_GRAVITY`](physics.rs#L53) — Bloques por tick que la velocidad ascendente de sus pies cae en cada tick en el aire.
   - Declaración: `pub const PLAYER_GRAVITY: f64 = (8.0 * PLAYER_JUMP_HEIGHT) / ((PLAYER_JUMP_TICKS as f64) * (PLAYER_JUMP_TICKS as f64));`
 
-- [`PLAYER_STEP_HEIGHT`](physics.rs#L55) — Blocks a top may stand above the player's feet and still be stepped onto in one tick.
+- [`PLAYER_STEP_HEIGHT`](physics.rs#L55) — Bloques que una superficie puede quedar por encima de los pies del jugador y aun así pisarse en un tick.
   - Declaración: `pub const PLAYER_STEP_HEIGHT: f64 = 0.25;`
 
-- [`PLAYER_CLIMB_TICKS`](physics.rs#L57) — Ticks a climb of one block lasts.
+- [`PLAYER_CLIMB_TICKS`](physics.rs#L57) — Ticks que dura una escalada de un bloque.
   - Declaración: `pub const PLAYER_CLIMB_TICKS: i32 = 12;`
 
-- [`PLAYER_CLIMB_MS`](physics.rs#L59) — Real milliseconds a climb of one block lasts.
+- [`PLAYER_CLIMB_MS`](physics.rs#L59) — Milisegundos reales que dura una escalada de un bloque.
   - Declaración: `pub const PLAYER_CLIMB_MS: f64 = (PLAYER_CLIMB_TICKS as f64 * 1000.0) / TICKS_PER_SECOND as f64;`
 
-- [`PLAYER_CLIMB_RISE_SHARE`](physics.rs#L61) — Share of a climb its feet take to rise to the top.
+- [`PLAYER_CLIMB_RISE_SHARE`](physics.rs#L61) — Fracción de una escalada que los pies emplean en subir hasta la cima.
   - Declaración: `pub const PLAYER_CLIMB_RISE_SHARE: f64 = 0.7;`
 
-- [`PLAYER_CLIMB_REACH`](physics.rs#L63) — Columns past where it reaches the higher top the player walks on during a climb.
+- [`PLAYER_CLIMB_REACH`](physics.rs#L63) — Columnas más allá de donde alcanza la superficie más alta que el jugador pisa durante una escalada.
   - Declaración: `pub const PLAYER_CLIMB_REACH: f64 = 0.25;`
 
-- [`PLAYER_FLY_SPEED`](physics.rs#L65) — Blocks per tick a flying player's feet rise at most.
+- [`PLAYER_FLY_SPEED`](physics.rs#L65) — Bloques por tick que suben como máximo los pies de un jugador volando.
   - Declaración: `pub const PLAYER_FLY_SPEED: f64 = 0.15;`
 
-- [`PLAYER_FLY_THRUST`](physics.rs#L67) — Blocks per tick its jetpack speeds a flying player's feet up by each tick.
+- [`PLAYER_FLY_THRUST`](physics.rs#L67) — Bloques por tick que el jetpack acelera los pies de un jugador volando en cada tick.
   - Declaración: `pub const PLAYER_FLY_THRUST: f64 = 0.04;`
 
-- [`PLAYER_FLY_MAX_HEIGHT`](physics.rs#L69) — Highest a flying player's feet go above the last land it stood on.
+- [`PLAYER_FLY_MAX_HEIGHT`](physics.rs#L69) — Altura máxima que alcanzan los pies de un jugador volando sobre el último suelo en el que estuvo.
   - Declaración: `pub const PLAYER_FLY_MAX_HEIGHT: f64 = 10.0;`
 
-- [`PLAYER_LANDING_TICKS`](physics.rs#L71) — Ticks the player shows its landing pose after it lands.
+- [`PLAYER_LANDING_TICKS`](physics.rs#L71) — Ticks durante los que el jugador muestra su pose de aterrizaje tras aterrizar.
   - Declaración: `pub const PLAYER_LANDING_TICKS: i32 = 3;`
 
-- [`PLAYER_TAKEOFF_TICKS`](physics.rs#L73) — Ticks after a take-off it shows its take-off pose.
+- [`PLAYER_TAKEOFF_TICKS`](physics.rs#L73) — Ticks tras un despegue durante los que muestra su pose de despegue.
   - Declaración: `pub const PLAYER_TAKEOFF_TICKS: i32 = 2;`
 
-- [`PLAYER_APEX_SPEED`](physics.rs#L75) — Vertical speed under which a jump is at its apex.
+- [`PLAYER_APEX_SPEED`](physics.rs#L75) — Velocidad vertical por debajo de la cual un salto está en su punto más alto.
   - Declaración: `pub const PLAYER_APEX_SPEED: f64 = PLAYER_GRAVITY;`
 
-- [`PLAYER_PART_ID`](physics.rs#L77) — Key of the player part.
+- [`PLAYER_PART_ID`](physics.rs#L77) — Clave de la parte del jugador.
   - Declaración: `pub const PLAYER_PART_ID: &str = "player";`
 
-- [`PLAYER_FACINGS`](physics.rs#L79) — The facings the player is drawn in: the sixteen points of the compass, counter-clockwise on
+- [`PLAYER_FACINGS`](physics.rs#L79) — Las orientaciones en las que se dibuja al jugador: los dieciséis puntos cardinales, en sentido antihorario sobre
   - Declaración: `pub const PLAYER_FACINGS: [&str; 16] = [ "east", "east-north-east", "north-east", "north-north-east", "north", "north-north-west", "north-west", "west-north-west", "west", "west-south-west", "south-west", "south-south-west", "south", "south-south-east", "south-east", "east-south-east", ];`
 
-- [`PLAYER_SPAWN_RADIUS`](physics.rs#L98) — Columns around the centre a new player's spawn is searched in.
+- [`PLAYER_SPAWN_RADIUS`](physics.rs#L98) — Columnas alrededor del centro en las que se busca el spawn de un jugador nuevo.
   - Declaración: `pub const PLAYER_SPAWN_RADIUS: i32 = 32;`
 
 
@@ -264,31 +264,31 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`remaining`](dust.rs#L16) — How much of an effect lasting `duration` is left `ms` after it started: `1` → `0`, `0` after.
+- [`remaining`](dust.rs#L16) — Cuánto de un efecto que dura `duration` queda `ms` después de que empezó: `1` → `0`, `0` después.
   - Firma: `fn remaining(ms: f64, duration: f64) -> f64 {`
 
-- [`between`](dust.rs#L163) — `share` of the way from the low to the high end of a range.
+- [`between`](dust.rs#L163) — `share` del camino del extremo bajo al alto de un rango.
   - Firma: `fn between(range: (f64, f64), share: f64) -> f64 {`
 
 ### `motion.rs`
 
 #### Funciones internas
 
-- [`next_state`](motion.rs#L72) — Finds the next state for `event` in `transitions`, or `None` when the event is not handled.
+- [`next_state`](motion.rs#L72) — Busca el siguiente estado para `event` en `transitions`, o `None` cuando el evento no está manejado.
   - Firma: `fn next_state( transitions: &[(PlayerMotionEvent, PlayerMotionType)], event: PlayerMotionEvent, ) -> Option<PlayerMotionType> {`
 
 #### Constantes internas
 
-- [`GROUND`](motion.rs#L38) — Transitions out of every ground state: idle, walking, running and skidding.
+- [`GROUND`](motion.rs#L38) — Transiciones desde cada estado de suelo: en reposo, caminando, corriendo y derrapando.
   - Declaración: `const GROUND: &[(PlayerMotionEvent, PlayerMotionType)] = &[ (PlayerMotionEvent::Walk, PlayerMotionType::Walking), (PlayerMotionEvent::Run, PlayerMotionType::Running), (PlayerMotionEvent::Skid, PlayerMotionType::Skidding), (PlayerMotionEvent::Stop, PlayerMotionType::Idle), (PlayerMotionEvent::Jump, PlayerMotionType::Jumping), (PlayerMotionEvent::Fall, PlayerMotionType::Falling), (PlayerMotionEvent::Climb, PlayerMotionType::Climbing), ];`
 
-- [`AIR`](motion.rs#L49) — Transitions out of the air: jumping, falling or flying.
+- [`AIR`](motion.rs#L49) — Transiciones desde el aire: saltando, cayendo o volando.
   - Declaración: `const AIR: &[(PlayerMotionEvent, PlayerMotionType)] = &[ (PlayerMotionEvent::Fall, PlayerMotionType::Falling), (PlayerMotionEvent::Fly, PlayerMotionType::Flying), (PlayerMotionEvent::LandIdle, PlayerMotionType::Idle), (PlayerMotionEvent::LandWalking, PlayerMotionType::Walking), (PlayerMotionEvent::LandRunning, PlayerMotionType::Running), (PlayerMotionEvent::LandSkidding, PlayerMotionType::Skidding), (PlayerMotionEvent::Climb, PlayerMotionType::Climbing), ];`
 
-- [`AIR_JUMP`](motion.rs#L60) — A jump press while already airborne keeps the player jumping or flying.
+- [`AIR_JUMP`](motion.rs#L60) — Una pulsación de salto en pleno aire mantiene al jugador saltando o volando.
   - Declaración: `const AIR_JUMP: &[(PlayerMotionEvent, PlayerMotionType)] = &[ (PlayerMotionEvent::Jump, PlayerMotionType::Jumping), ];`
 
-- [`CLIMBING`](motion.rs#L65) — Transitions out of climbing.
+- [`CLIMBING`](motion.rs#L65) — Transiciones desde la escalada.
   - Declaración: `const CLIMBING: &[(PlayerMotionEvent, PlayerMotionType)] = &[ (PlayerMotionEvent::ClimbTick, PlayerMotionType::Climbing), (PlayerMotionEvent::ClimbDoneIdle, PlayerMotionType::Idle), (PlayerMotionEvent::ClimbDoneWalking, PlayerMotionType::Walking), ];`
 
 ### `physics.rs`

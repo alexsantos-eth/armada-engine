@@ -15,16 +15,16 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`create_entity_id`](entity.rs#L55) — Builds the default id of an entity spawned with its anchor at `(x, y)`.
+- [`create_entity_id`](entity.rs#L55) — Construye el id por defecto de una entidad generada con su ancla en `(x, y)`.
   - Firma: `pub fn create_entity_id(type_: &str, x: i32, y: i32) -> String {`
 
-- [`new`](entity.rs#L81) — Creates a standing entity anchored at `(x, y)` on `elevation`, from a validated blueprint.
+- [`new`](entity.rs#L81) — Crea una entidad erguida anclada en `(x, y)` sobre `elevation`, a partir de un blueprint validado.
   - Firma: `pub fn new(x: i32, y: i32, blueprint: &EntityBlueprint, elevation: i32) -> Self {`
 
-- [`from_data`](entity.rs#L109) — Restores an entity from previously produced data (e.g. from a save).
+- [`from_data`](entity.rs#L109) — Restaura una entidad a partir de datos producidos previamente (p. ej. desde un guardado).
   - Firma: `pub fn from_data(x: i32, y: i32, data: EntityData) -> Self {`
 
-- [`restore`](entity.rs#L114) — Restores a saved instance of `blueprint`.
+- [`restore`](entity.rs#L114) — Restaura una instancia guardada de `blueprint`.
   - Firma: `pub fn restore( x: i32, y: i32, blueprint: &EntityBlueprint, elevation: i32, id: String, color_variant: Option<u32>, metadata: serde_json::Value, ) -> Self {`
 
 - [`x`](entity.rs#L130) — Calcula o recupera «x» según los parámetros de la firma.
@@ -84,19 +84,19 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`metadata`](entity.rs#L184) — Calcula o recupera «metadata» según los parámetros de la firma.
   - Firma: `pub fn metadata(&self) -> &serde_json::Value {`
 
-- [`collision_at`](entity.rs#L189) — Side of the square, centred on column `(x, y)`, the entity blocks movement in, as a
+- [`collision_at`](entity.rs#L189) — Lado del cuadrado, centrado en la columna `(x, y)`, en el que la entidad bloquea el movimiento, como un
   - Firma: `pub fn collision_at(&self, x: i32, y: i32) -> f64 {`
 
-- [`get_data`](entity.rs#L208) — Returns a clone of the entity's data.
+- [`get_data`](entity.rs#L208) — Devuelve un clon de los datos de la entidad.
   - Firma: `pub fn get_data(&self) -> EntityData {`
 
-- [`get_entity_footprint`](entity.rs#L217) — Columns covered by a footprint of `length` blocks anchored at `anchor`, along `lengthAxis`
+- [`get_entity_footprint`](entity.rs#L217) — Columnas cubiertas por una huella de `length` bloques anclada en `anchor`, a lo largo de `lengthAxis`
   - Firma: `pub fn get_entity_footprint( anchor: WorldCoord, length: i32, axis: EntityLengthAxis, ) -> Vec<WorldCoord> {`
 
-- [`get_entity_footprint_for`](entity.rs#L241) — Columns covered by an entity.
+- [`get_entity_footprint_for`](entity.rs#L241) — Columnas cubiertas por una entidad.
   - Firma: `pub fn get_entity_footprint_for(entity: &Entity) -> Vec<WorldCoord> {`
 
-- [`index_entities`](entity.rs#L253) — Builds the spatial index of `entities` over their whole footprints: what occupies each
+- [`index_entities`](entity.rs#L253) — Construye el índice espacial de `entities` sobre sus huellas completas: lo que ocupa cada
   - Firma: `pub fn index_entities(entities: &[Entity]) -> SpatialIndex<Entity> {`
 
 ### `placement.rs`
@@ -112,22 +112,22 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`is_taken`](placement.rs#L66) — Evalúa si se cumple la condición «taken» para el estado recibido.
   - Firma: `pub fn is_taken(&self, x: i32, y: i32) -> bool {`
 
-- [`place_entities`](placement.rs#L97) — Places entities over `columns` with the default rules.
+- [`place_entities`](placement.rs#L97) — Coloca entidades sobre `columns` con las reglas por defecto.
   - Firma: `pub fn place_entities(columns: &[TerrainColumn], catalog: &EntityCatalog) -> PlacementResult {`
 
-- [`place_entities_with`](placement.rs#L102) — Places entities over `columns`, one instance per valid anchor column the density lets
+- [`place_entities_with`](placement.rs#L102) — Coloca entidades sobre `columns`, una instancia por cada columna ancla válida que permite la densidad
   - Firma: `pub fn place_entities_with( columns: &[TerrainColumn], catalog: &EntityCatalog, rules: PlacementRules, ) -> PlacementResult {`
 
 ### `validation.rs`
 
 #### Funciones y métodos
 
-- [`validate_catalog`](validation.rs#L45) — Validates a whole catalog: schema version, unique ids, and every blueprint.
+- [`validate_catalog`](validation.rs#L45) — Valida un catálogo completo: versión de esquema, ids únicos y cada blueprint.
   - Firma: `pub fn validate_catalog(catalog: &EntityCatalog) -> Result<(), CatalogError> {`
 
 #### Constantes
 
-- [`CATALOG_SCHEMA_VERSION`](validation.rs#L8) — The catalog schema this validator accepts.
+- [`CATALOG_SCHEMA_VERSION`](validation.rs#L8) — El esquema de catálogo que este validador acepta.
   - Declaración: `pub const CATALOG_SCHEMA_VERSION: u32 = 1;`
 
 
@@ -149,21 +149,21 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`placement_roll`](placement.rs#L27) — Deterministic roll for one blueprint at one column, used as its spawn chance.
+- [`placement_roll`](placement.rs#L27) — Roll determinista para un blueprint en una columna, usado como su probabilidad de aparición.
   - Firma: `fn placement_roll(id: &str, x: i32, y: i32) -> u64 {`
 
 - [`default`](placement.rs#L88) — Calcula o recupera «default» según los parámetros de la firma.
   - Firma: `fn default() -> Self {`
 
-- [`find_placement`](placement.rs#L163) — Validates one instance of `blueprint` anchored on `column`.
+- [`find_placement`](placement.rs#L163) — Valida una instancia de `blueprint` anclada en `column`.
   - Firma: `fn find_placement( anchor: WorldCoord, blueprint: &EntityBlueprint, context: &mut PlacementContext, gap: i32, ) -> Option<Placement> {`
 
 #### Constantes internas
 
-- [`DEFAULT_GAP`](placement.rs#L21) — Minimum free blocks between instances of the same entity when the catalog does not say
+- [`DEFAULT_GAP`](placement.rs#L21) — Bloques libres mínimos entre instancias de la misma entidad cuando el catálogo no indica
   - Declaración: `const DEFAULT_GAP: i32 = 1;`
 
-- [`DEFAULT_DENSITY`](placement.rs#L24) — Columns per instance of one blueprint, on average.
+- [`DEFAULT_DENSITY`](placement.rs#L24) — Columnas por instancia de un blueprint, de media.
   - Declaración: `const DEFAULT_DENSITY: u64 = 400;`
 
 - [`OFFSET`](placement.rs#L28) — Define el parámetro interno «OFFSET» empleado por este módulo.
@@ -179,5 +179,5 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`fmt`](validation.rs#L22) — Calcula o recupera «fmt» según los parámetros de la firma.
   - Firma: `fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {`
 
-- [`validate_blueprint`](validation.rs#L68) — Validates a single blueprint.
+- [`validate_blueprint`](validation.rs#L68) — Valida un único blueprint.
   - Firma: `fn validate_blueprint(blueprint: &EntityBlueprint) -> Result<(), CatalogError> {`
