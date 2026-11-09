@@ -30,8 +30,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`reflection_cells`](reflection.rs#L73) — Las casillas sobre cuya cara superior podría caer un reflejo, como rango `((min_x, min_y), (max_x,
   - Firma: `pub fn reflection_cells( sprite: &ReflectedSprite, level: f64, projection: ProjectionConfig, ) -> Option<((i32, i32), (i32, i32))> {`
 
-- [`reflection_piece`](reflection.rs#L127) — La parte de `sprite` que cae sobre la cara superior de la casilla `cell`, o `None` cuando no cae ninguna.
+- [`reflection_piece`](reflection.rs#L124) — La parte de `sprite` que cae sobre la cara superior de la casilla `cell`, o `None` cuando no cae ninguna.
   - Firma: `pub fn reflection_piece( sprite: &ReflectedSprite, cell: &[(f64, f64); 4], ) -> Option<ReflectionPiece> {`
+
 
 #### Constantes
 
@@ -47,10 +48,10 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`clip`](reflection.rs#L168) — Recorta `polygon` al lado interior de la arista de `from` a `to`, in situ.
+- [`clip`](reflection.rs#L165) — Recorta `polygon` al lado interior de la arista de `from` a `to`, in situ.
   - Firma: `fn clip(polygon: &mut Vec<(f64, f64)>, from: (f64, f64), to: (f64, f64), turn: f64) {`
 
-- [`area`](reflection.rs#L195) — El área con signo de un polígono, positiva cuando está orientada en un sentido y negativa en el otro.
+- [`area`](reflection.rs#L194) — El área con signo de un polígono, positiva cuando está orientada en un sentido y negativa en el otro.
   - Firma: `fn area(polygon: &[(f64, f64)]) -> f64 {`
 
 #### Constantes internas

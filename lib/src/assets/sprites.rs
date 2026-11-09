@@ -450,13 +450,18 @@ impl SpriteAtlas {
         )
     }
 
-    /// Whether `layout` would land anywhere on screen.
-    pub fn on_screen(layout: SpriteLayout) -> bool {
+    /// Whether `layout` would land anywhere within `screen`.
+    pub fn on_screen_in(layout: SpriteLayout, screen: (f32, f32)) -> bool {
         let (x, y) = (layout.x as f32, layout.y as f32);
         x + layout.width as f32 >= 0.0
             && y + layout.height as f32 >= 0.0
-            && x <= screen_width()
-            && y <= screen_height()
+            && x <= screen.0
+            && y <= screen.1
+    }
+
+    /// Whether `layout` would land anywhere on screen.
+    pub fn on_screen(layout: SpriteLayout) -> bool {
+        Self::on_screen_in(layout, (screen_width(), screen_height()))
     }
 }
 

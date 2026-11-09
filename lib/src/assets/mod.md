@@ -61,7 +61,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   esquina leyendo su `uv`. Un desenfoque real queda aplazado a la fase de render target.
   - Firma: `pub fn draw_reflection( &self, texture: usize, frame: SpriteFrame, points: &[(f64, f64)], uv: &[(f64, f64)], colour: Color, ) {`
 
-- [`on_screen`](sprites.rs#L455) — Si `layout` caería en algún punto de la pantalla.
+- [`on_screen_in`](sprites.rs#L454) — Si `layout` caería en algún punto de `screen`.
+  - Firma: `pub fn on_screen_in(layout: SpriteLayout, screen: (f32, f32)) -> bool {`
+
+- [`on_screen`](sprites.rs#L463) — Si `layout` caería en algún punto de la pantalla.
   - Firma: `pub fn on_screen(layout: SpriteLayout) -> bool {`
 
 - [`new`](sprites.rs#L475) — La retícula que dibuja `grid`: una esquina sombreada `v` conserva `1 − v` de su color.

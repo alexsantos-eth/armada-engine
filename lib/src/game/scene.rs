@@ -230,6 +230,8 @@ impl Game {
                             .column_at(point.x, point.y)
                             .map(|c| c.elevation)
                     },
+                    |x, y| water_cell(&self.manager, x, y),
+                    (f64::from(screen_width()), f64::from(screen_height())),
                     &mut self.draws,
                 );
                 if let Some(shadows) = self.shadows.as_ref() {

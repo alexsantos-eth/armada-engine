@@ -109,6 +109,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`terrain_sprite_source`](terrain_sprites.rs#L6) — Ruta de origen del asset de bloque que dibuja `material`.
   - Firma: `pub fn terrain_sprite_source(material: TerrainMaterial) -> &'static str {`
 
+- [`terrain_reflection_source`](terrain_sprites.rs#L17) — Ruta de origen del asset de reflexión de `material`, dibujado como lo muestra el agua, o `None` para el propio agua.
+  - Firma: `pub fn terrain_reflection_source(material: TerrainMaterial) -> Option<&'static str> {`
+
 
 ## Detalles de implementación
 

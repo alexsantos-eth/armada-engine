@@ -72,9 +72,9 @@ pub fn collect_reflection(
         .elevation_step
         .unwrap_or(projection.tile_height / 2.0);
     let mirrored = |level: f64| -> ReflectedSprite {
+        let surface = waterline(feet.y, elevation, level, box_height);
         match reflected {
             Reflected::Standing { turn_at } => {
-                let surface = waterline(feet.y, elevation, level, box_height);
                 let grounded = feet.y + lift * box_height;
                 mirror_sprite(layout, (grounded + surface) / 2.0, turn_at)
             }
@@ -100,8 +100,8 @@ pub fn collect_reflection(
                 continue;
             }
             let sprite = mirrored(water.level);
-            let Some(piece) = reflection_piece(&sprite, &cell_top((x, y), water.level, projection))
-            else {
+            let cell = cell_top((x, y), water.level, projection);
+            let Some(piece) = reflection_piece(&sprite, &cell) else {
                 continue;
             };
             out.push(SpriteDraw::reflection(

@@ -1,14 +1,16 @@
 //! Terrain drawn with the atlas block sprites.
 
-use iso::assets::{InkBox, SpriteFrame, ink_layout, terrain_sprite_source};
+use iso::assets::{
+    InkBox, SpriteFrame, ink_layout, terrain_reflection_source, terrain_sprite_source,
+};
 use iso::grid::WorldCoord;
 use iso::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
 use iso::terrain::{TerrainColumn, TerrainMaterial};
-use macroquad::prelude::{screen_height, screen_width};
 
 use crate::assets::sprites::{ATLAS_TEXTURE, SpriteAtlas, SpriteDraw, ground_key};
 use crate::terrain::terrain_view::{MATERIAL_SLOTS, MATERIALS, slot};
 use crate::terrain::terrain_view_appearance::TerrainLook;
+use crate::water::reflection_view::{Reflected, WaterCell, collect_reflection};
 
 /// Terrain draws below everything that stands on it.
 pub const TERRAIN_LAYER: i32 = 0;
@@ -19,13 +21,17 @@ const MAX_EXPOSED_BLOCKS: i32 = 10;
 /// The atlas frame for each terrain material and where its artwork sits, resolved once at
 pub struct TerrainFrames {
     frames: [Option<(SpriteFrame, InkBox)>; MATERIAL_SLOTS],
+    reflections: [Option<(SpriteFrame, InkBox)>; MATERIAL_SLOTS],
 }
 
 impl TerrainFrames {
-    /// Resolves every material against the atlas. Returns the materials the atlas has no
-    pub fn new(atlas: &SpriteAtlas) -> (Self, Vec<TerrainMaterial>) {
+    /// Resolves every material against the atlas. Returns the materials missing artwork —
+    /// the blocks themselves first, their reflection sprites second.
+    pub fn new(atlas: &SpriteAtlas) -> (Self, Vec<TerrainMaterial>, Vec<TerrainMaterial>) {
         let mut frames = [None; MATERIAL_SLOTS];
+        let mut reflections = [None; MATERIAL_SLOTS];
         let mut missing = Vec::new();
+        let mut missing_reflections = Vec::new();
         for material in MATERIALS {
             match atlas
                 .asset(terrain_sprite_source(material))
@@ -34,12 +40,52 @@ impl TerrainFrames {
                 Some((frame, ink)) => frames[slot(material)] = Some((frame, ink)),
                 None => missing.push(material),
             }
+            match terrain_reflection_source(material)
+                .and_then(|source| atlas.asset(source))
+                .and_then(|asset| Some((asset.frame, asset.ink?)))
+            {
+                Some((frame, ink)) => reflections[slot(material)] = Some((frame, ink)),
+                None => missing_reflections.push(material),
+            }
         }
-        (Self { frames }, missing)
+        (
+            Self {
+                frames,
+                reflections,
+            },
+            missing,
+            missing_reflections,
+        )
     }
 
     pub fn frame(&self, material: TerrainMaterial) -> Option<(SpriteFrame, InkBox)> {
         self.frames[slot(material)]
+    }
+
+    /// The reflection sprite the water draws of `material`, hung from the waterline under it.
+    pub fn reflection(&self, material: TerrainMaterial) -> Option<(SpriteFrame, InkBox)> {
+        self.reflections[slot(material)]
+    }
+
+    /// Frames for every material, one plain block each, for tests.
+    #[cfg(test)]
+    pub(crate) fn for_test() -> Self {
+        let frame = SpriteFrame {
+            x: 0,
+            y: 0,
+            width: 32,
+            height: 32,
+        };
+        let ink = InkBox {
+            x: -0.5,
+            y: -1.0,
+            width: 1.0,
+            height: 1.0,
+        };
+        Self {
+            frames: [Some((frame, ink)); MATERIAL_SLOTS],
+            reflections: [Some((frame, ink)); MATERIAL_SLOTS],
+        }
     }
 
     /// How far the artwork of any of these materials reaches above and below the ground it
@@ -57,18 +103,23 @@ impl TerrainFrames {
 }
 
 /// Queues the sprites for `columns`, which the caller sorts and draws with everything else.
+/// Each block above the water also queues what the water shows of it, cut to the water cells
+/// it falls on. `screen` is the window size the culling tests each block's layout against.
+#[allow(clippy::too_many_arguments)]
 pub fn collect_terrain_sprites(
     columns: &[TerrainColumn],
     projection: ProjectionConfig,
     frames: &TerrainFrames,
     look: &TerrainLook,
     height_at: impl Fn(WorldCoord) -> Option<i32>,
+    water_at: impl Fn(i32, i32) -> Option<WaterCell>,
+    screen: (f64, f64),
     out: &mut Vec<SpriteDraw>,
 ) {
     let step = projection
         .elevation_step
         .unwrap_or(projection.tile_height / 2.0);
-    let (screen_w, screen_h) = (f64::from(screen_width()), f64::from(screen_height()));
+    let (screen_w, screen_h) = screen;
     let half_tile = projection.tile_width / 2.0;
     let (above, below) = frames.reach(projection.tile_width);
     let below = below + f64::from(MAX_EXPOSED_BLOCKS) * step;
@@ -101,7 +152,30 @@ pub fn collect_terrain_sprites(
                 y: column.coord.y.saturating_sub(1),
             },
         ];
+        let water_level = [
+            (column.coord.x, column.coord.y.saturating_sub(1)),
+            (column.coord.x.saturating_sub(1), column.coord.y),
+            (
+                column.coord.x.saturating_sub(1),
+                column.coord.y.saturating_sub(1),
+            ),
+            (column.coord.x, column.coord.y.saturating_add(1)),
+            (column.coord.x.saturating_add(1), column.coord.y),
+            (
+                column.coord.x.saturating_add(1),
+                column.coord.y.saturating_add(1),
+            ),
+            (
+                column.coord.x.saturating_sub(1),
+                column.coord.y.saturating_add(1),
+            ),
+        ]
+        .into_iter()
+        .find_map(|(x, y)| water_at(x, y).map(|cell| cell.level))
+        .filter(|_| column.surface != TerrainMaterial::Water);
+        let water_line = water_level.map(|level| project_block(centre, level, projection).screen_y);
         let floor = exposed_floor(column.elevation, in_front.into_iter().map(&height_at));
+        let mut above_water = 0i32;
 
         for block in column.blocks_from(floor) {
             let Some((frame, ink)) = frames.frame(block.material) else {
@@ -115,15 +189,12 @@ pub fn collect_terrain_sprites(
                 None => (frame, ink),
             };
             let tint = look.tint(block.material, column.coord.x, column.coord.y);
-            let layout = ink_layout(
-                ScreenPoint {
-                    x: top.screen_x,
-                    y: top.screen_y + f64::from(column.elevation - block.elevation + 1) * step,
-                },
-                ink,
-                projection.tile_width,
-            );
-            if !SpriteAtlas::on_screen(layout) {
+            let anchor = ScreenPoint {
+                x: top.screen_x,
+                y: top.screen_y + f64::from(column.elevation - block.elevation + 1) * step,
+            };
+            let layout = ink_layout(anchor, ink, projection.tile_width);
+            if !SpriteAtlas::on_screen_in(layout, (screen_w as f32, screen_h as f32)) {
                 continue;
             }
             let key = ground_key(
@@ -134,6 +205,32 @@ pub fn collect_terrain_sprites(
                 projection.tile_height,
             );
             out.push(SpriteDraw::tinted(key, ATLAS_TEXTURE, frame, layout, tint));
+            if let (Some(level), Some(water_line)) = (water_level, water_line) {
+                let block_level = f64::from(block.elevation);
+                if block_level > level
+                    && let Some((reflection_frame, reflection_ink)) =
+                        frames.reflection(block.material)
+                {
+                    let feet = ScreenPoint {
+                        x: top.screen_x,
+                        y: water_line + f64::from(above_water) * step,
+                    };
+                    let layout = ink_layout(feet, reflection_ink, projection.tile_width);
+                    collect_reflection(
+                        ATLAS_TEXTURE,
+                        reflection_frame,
+                        layout,
+                        feet,
+                        block_level,
+                        0.0,
+                        Reflected::AsDrawn,
+                        projection,
+                        &water_at,
+                        out,
+                    );
+                    above_water += 1;
+                }
+            }
         }
     }
 }

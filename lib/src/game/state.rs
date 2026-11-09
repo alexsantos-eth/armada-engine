@@ -159,9 +159,14 @@ impl Game {
                 PREVIEW_ELEVATION_STEP,
             )
         });
-        let (terrain_frames, missing_terrain) = TerrainFrames::new(&atlas);
+        let (terrain_frames, missing_terrain, missing_reflections) = TerrainFrames::new(&atlas);
         for material in &missing_terrain {
             eprintln!("warning: the atlas has no block for {material:?}; it will not be drawn");
+        }
+        for material in &missing_reflections {
+            eprintln!(
+                "warning: the atlas has no reflection sprite for {material:?}; it will not be reflected"
+            );
         }
         let terrain_config = TerrainConfig {
             seed: WORLD_SEED,

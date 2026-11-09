@@ -43,14 +43,17 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`new`](terrain_view_blocks.rs#L26) — Resuelve cada material contra el atlas. Devuelve los materiales de los que el atlas no tiene
-  - Firma: `pub fn new(atlas: &SpriteAtlas) -> (Self, Vec<TerrainMaterial>) {`
+- [`new`](terrain_view_blocks.rs#L30) — Resuelve cada material contra el atlas: su bloque y su sprite de reflejo. Devuelve, por ese orden, los materiales de los que no hay bloque y los de los que no hay sprite de reflejo.
+  - Firma: `pub fn new(atlas: &SpriteAtlas) -> (Self, Vec<TerrainMaterial>, Vec<TerrainMaterial>) {`
 
-- [`frame`](terrain_view_blocks.rs#L41) — Calcula o recupera «frame» según los parámetros de la firma.
+- [`frame`](terrain_view_blocks.rs#L61) — El frame de bloque de `material`, ya resuelto contra el atlas.
   - Firma: `pub fn frame(&self, material: TerrainMaterial) -> Option<(SpriteFrame, InkBox)> {`
 
-- [`collect_terrain_sprites`](terrain_view_blocks.rs#L60) — Encola los sprites de `columns`, que el llamante ordena y dibuja con todo lo demás.
-  - Firma: `pub fn collect_terrain_sprites( columns: &[TerrainColumn], projection: ProjectionConfig, frames: &TerrainFrames, look: &TerrainLook, height_at: impl Fn(WorldCoord) -> Option<i32>, out: &mut Vec<SpriteDraw>, ) {`
+- [`reflection`](terrain_view_blocks.rs#L66) — El sprite de reflejo de `material` (las caras laterales dibujadas como las muestra el agua), ya resuelto contra el atlas.
+  - Firma: `pub fn reflection(&self, material: TerrainMaterial) -> Option<(SpriteFrame, InkBox)> {`
+
+- [`collect_terrain_sprites`](terrain_view_blocks.rs#L109) — Encola los sprites de `columns`, que el llamante ordena y dibuja con todo lo demás. Cada bloque por encima del agua también encola el sprite de reflejo de su material, colgando de la línea de agua con una banda por bloque (`Reflected::AsDrawn`, cortada a las casillas de agua que cubre); las columnas de agua no se reflejan. `screen` es el tamaño de ventana contra el que se comprueba la visibilidad de cada bloque.
+  - Firma: `pub fn collect_terrain_sprites( columns: &[TerrainColumn], projection: ProjectionConfig, frames: &TerrainFrames, look: &TerrainLook, height_at: impl Fn(WorldCoord) -> Option<i32>, water_at: impl Fn(i32, i32) -> Option<WaterCell>, screen: (f64, f64), out: &mut Vec<SpriteDraw>, ) {`
 
 #### Constantes
 

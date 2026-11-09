@@ -628,6 +628,31 @@
       "sway": null
     },
     {
+      "id": "grass_block_reflection",
+      "kind": "entity",
+      "source": "/assets/grass/block_reflection.svg",
+      "dataTiles": null,
+      "frame": {
+        "x": 968,
+        "y": 2556,
+        "width": 320,
+        "height": 108
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.5,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 0.333008
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
       "id": "grass_block_sprouts",
       "kind": "entity",
       "source": "/assets/grass/block_sprouts.svg",
@@ -747,6 +772,31 @@
       "sway": null
     },
     {
+      "id": "ground_block_reflection",
+      "kind": "entity",
+      "source": "/assets/ground/block_reflection.svg",
+      "dataTiles": null,
+      "frame": {
+        "x": 1289,
+        "y": 2556,
+        "width": 320,
+        "height": 108
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.5,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 0.333008
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
       "id": "house_block",
       "kind": "entity",
       "source": "/assets/house/block.svg",
@@ -842,6 +892,31 @@
         "y": -0.583008,
         "width": 1.0,
         "height": 0.833008
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "path_block_reflection",
+      "kind": "entity",
+      "source": "/assets/path/block_reflection.svg",
+      "dataTiles": null,
+      "frame": {
+        "x": 1610,
+        "y": 2556,
+        "width": 320,
+        "height": 108
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.5,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 0.333008
       },
       "colorVariants": 1,
       "sway": null
@@ -4400,7 +4475,7 @@
       "source": "/assets/player/block.svg",
       "dataTiles": null,
       "frame": {
-        "x": 968,
+        "x": 2252,
         "y": 2556,
         "width": 86,
         "height": 107
@@ -4450,7 +4525,7 @@
       "source": "/assets/rock/block_2.svg",
       "dataTiles": null,
       "frame": {
-        "x": 1170,
+        "x": 2454,
         "y": 2556,
         "width": 127,
         "height": 90
@@ -4475,7 +4550,7 @@
       "source": "/assets/rock/block_3.svg",
       "dataTiles": null,
       "frame": {
-        "x": 1055,
+        "x": 2339,
         "y": 2556,
         "width": 114,
         "height": 101
@@ -4520,12 +4595,37 @@
       "sway": null
     },
     {
+      "id": "sand_block_reflection",
+      "kind": "entity",
+      "source": "/assets/sand/block_reflection.svg",
+      "dataTiles": null,
+      "frame": {
+        "x": 1931,
+        "y": 2556,
+        "width": 320,
+        "height": 108
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.5,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 0.333008
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
       "id": "shadow_white",
       "kind": "entity",
       "source": "/assets/shadow/white.svg",
       "dataTiles": null,
       "frame": {
-        "x": 1298,
+        "x": 2582,
         "y": 2556,
         "width": 20,
         "height": 20
