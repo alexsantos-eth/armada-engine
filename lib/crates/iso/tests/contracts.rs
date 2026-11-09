@@ -14,7 +14,7 @@ use serde_json::Value;
 
 fn fixture() -> Value {
     serde_json::from_str(include_str!(
-        "fixtures/contracts.json"
+        "./contracts.json"
     ))
     .expect("contract fixture is valid JSON")
 }

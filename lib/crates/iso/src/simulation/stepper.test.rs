@@ -4,7 +4,7 @@ use serde_json::Value;
 #[test]
 fn matches_contract_frame_fixture() {
     let fixture: Value = serde_json::from_str(include_str!(
-        "../../tests/fixtures/contracts.json"
+        "../../tests/contracts.json"
     ))
     .unwrap();
     let sample = &fixture["stepper"];
