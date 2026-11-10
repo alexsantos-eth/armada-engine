@@ -130,6 +130,24 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`player_shadow`](player_shadow.rs#L16) — Calcula una sombra elíptica anclada al suelo, que se reduce y desvanece durante un salto.
   - Firma: `pub fn player_shadow(ground: ScreenPoint, height: f64, tile_width: f64) -> PlayerShadow {`
 
+### `shadow_clip.rs`
+
+#### Tipos
+
+- [`ScreenQuad`](shadow_clip.rs#L8) — Una pieza convexa de pantalla: la cara superior de una casilla, con sus vértices en cualquier orden.
+  - Firma: `pub type ScreenQuad = [(f64, f64); 4];`
+
+#### Funciones
+
+- [`ellipse_polygon`](shadow_clip.rs#L12) — La elipse como polígono convexo de `segments` vértices, centrada en `centre`.
+  - Firma: `pub fn ellipse_polygon( centre: ScreenPoint, width: f64, height: f64, segments: usize, ) -> Vec<(f64, f64)> {`
+- [`clip_convex`](shadow_clip.rs#L32) — Recorta el polígono convexo `subject` por el cuadrilátero convexo `clip`, conservando lo que queda dentro.
+  - Firma: `pub fn clip_convex(subject: &[(f64, f64)], clip: &ScreenQuad) -> Vec<(f64, f64)> {`
+- [`clip_ellipse`](shadow_clip.rs#L72) — Todo lo de la elipse que cae dentro de las caras superiores dadas: un polígono por casilla, sin piezas vacías.
+  - Firma: `pub fn clip_ellipse( centre: ScreenPoint, width: f64, height: f64, diamonds: &[ScreenQuad], segments: usize, ) -> Vec<Vec<(f64, f64)>> {`
+- [`ground_diamonds`](shadow_clip.rs#L90) — Las caras superiores de las casillas cuyos soportes toca la elipse y cuya cima está a la altura de la sombra, proyectadas sobre el plano de la sombra.
+  - Firma: `pub fn ground_diamonds( centre: ScreenPoint, width: f64, height: f64, elevation: f64, projection: ProjectionConfig, elevation_at: impl Fn(i32, i32) -> Option<i32>, ) -> Vec<ScreenQuad> {`
+
 
 ## Detalles de implementación
 
@@ -150,6 +168,21 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 - [`voxel_key`](dust_view.rs#L279) — Dónde se ordena un cubo de polvo en la escena: la columna sobre la que está a mitad de su vida, y
   - Firma: `fn voxel_key( voxel: DustVoxel, feet: GridPoint, level: f64, tile_height: f64, top_at: &impl Fn(i32, i32) -> Option<f64>, ) -> DrawKey {`
+
+### `shadow_clip.rs`
+
+#### Funciones internas
+
+- [`footprint`](shadow_clip.rs#L124) — La cara superior de una casilla proyectada sobre el plano de la sombra: el cuadrilátero de sus cuatro esquinas.
+  - Firma: `fn footprint(x: i32, y: i32, elevation: f64, projection: &ProjectionConfig) -> ScreenQuad {`
+- [`to_grid`](shadow_clip.rs#L144) — Deshace la proyección en el plano `elevation`: de píxel de pantalla a coordenadas de rejilla.
+  - Firma: `fn to_grid(sx: f64, sy: f64, elevation: f64, projection: &ProjectionConfig) -> (f64, f64) {`
+- [`bounds`](shadow_clip.rs#L153) — El mínimo y el máximo de un iterador de valores, para el rango de casillas que la elipse puede tocar.
+  - Firma: `fn bounds(values: impl Iterator<Item = f64>) -> (f64, f64) {`
+- [`side`](shadow_clip.rs#L159) — El signo del lado del segmento `a → b` en el que cae `p`; decide qué lado es el de dentro comparando con el centro del cuadrilátero.
+  - Firma: `fn side(a: (f64, f64), b: (f64, f64), p: (f64, f64)) -> f64 {`
+- [`intersection`](shadow_clip.rs#L163) — El punto donde el segmento `from → to` cruza la línea del borde `a → b`.
+  - Firma: `fn intersection(from: (f64, f64), to: (f64, f64), a: (f64, f64), b: (f64, f64)) -> (f64, f64) {`
 
 - [`offset`](dust_view.rs#L310) — Las caras del voxel movidas al punto sobre el que se apoya.
   - Firma: `fn offset(faces: VoxelFaces, x: f64, y: f64) -> VoxelFaces {`

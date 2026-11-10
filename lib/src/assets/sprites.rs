@@ -582,12 +582,15 @@ pub enum DrawKind {
         /// How dark the shadow is drawn: the lighting phase's own opacity.
         opacity: f32,
     },
-    /// A flat ellipse painted on a ground surface.
+    /// A flat ellipse painted on a ground surface, cut to the top faces it may land on.
     GroundEllipse {
         centre: ScreenPoint,
         width: f64,
         height: f64,
         colour: Color,
+        /// The top faces of the cells at the ellipse's own level: where it may show. Empty means
+        /// no ground was found at that level and the ellipse paints whole, as before.
+        clip: Vec<[(f64, f64); 4]>,
     },
 }
 
@@ -747,13 +750,14 @@ impl SpriteDraw {
         }
     }
 
-    /// A simple flat ellipse on the ground.
+    /// A simple flat ellipse on the ground, cut to the top faces of the cells it may land on.
     pub fn ground_ellipse(
         key: DrawKey,
         centre: ScreenPoint,
         width: f64,
         height: f64,
         colour: Color,
+        clip: Vec<[(f64, f64); 4]>,
     ) -> Self {
         Self {
             key,
@@ -762,6 +766,7 @@ impl SpriteDraw {
                 width,
                 height,
                 colour,
+                clip,
             },
         }
     }
@@ -853,14 +858,32 @@ fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
                 width,
                 height,
                 colour,
-            } => draw_ellipse(
-                centre.x as f32,
-                centre.y as f32,
-                (*width / 2.0) as f32,
-                (*height / 2.0) as f32,
-                0.0,
-                *colour,
-            ),
+                clip,
+            } => {
+                if clip.is_empty() {
+                    draw_ellipse(
+                        centre.x as f32,
+                        centre.y as f32,
+                        (*width / 2.0) as f32,
+                        (*height / 2.0) as f32,
+                        0.0,
+                        *colour,
+                    );
+                } else {
+                    for piece in
+                        crate::player::shadow_clip::clip_ellipse(*centre, *width, *height, clip, 20)
+                    {
+                        for index in 1..piece.len().saturating_sub(1) {
+                            draw_triangle(
+                                vec2(piece[0].0 as f32, piece[0].1 as f32),
+                                vec2(piece[index].0 as f32, piece[index].1 as f32),
+                                vec2(piece[index + 1].0 as f32, piece[index + 1].1 as f32),
+                                *colour,
+                            );
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -73,40 +73,43 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`from_coverage`](sprites.rs#L491) — Una retícula directamente a partir de valores de cobertura, fila a fila, para una superficie sin dibujo
   - Firma: `pub fn from_coverage(columns: u32, rows: u32, coverage: Vec<f32>) -> Self {`
 
-- [`whole`](sprites.rs#L591) — Un sprite dibujado completo, que es todo lo situado sobre una única casilla.
+- [`whole`](sprites.rs#L605) — Un sprite dibujado completo, que es todo lo situado sobre una única casilla.
   - Firma: `pub fn whole(key: DrawKey, texture: usize, frame: SpriteFrame, layout: SpriteLayout) -> Self {`
 
-- [`tinted`](sprites.rs#L596) — Un sprite dibujado completo y multiplicado por `tint`: un bloque de terreno en una zona de color.
+- [`tinted`](sprites.rs#L610) — Un sprite dibujado completo y multiplicado por `tint`: un bloque de terreno en una zona de color.
   - Firma: `pub fn tinted( key: DrawKey, texture: usize, frame: SpriteFrame, layout: SpriteLayout, tint: Color, ) -> Self {`
 
-- [`band`](sprites.rs#L616) — Una banda de un sprite cuya huella abarca varias casillas.
+- [`band`](sprites.rs#L630) — Una banda de un sprite cuya huella abarca varias casillas.
   - Firma: `pub fn band( key: DrawKey, texture: usize, frame: SpriteFrame, layout: SpriteLayout, band: Option<SpriteBand>, ) -> Self {`
 
-- [`shaded`](sprites.rs#L636) — Un sprite oscurecido por las sombras que caen sobre él.
+- [`shaded`](sprites.rs#L650) — Un sprite oscurecido por las sombras que caen sobre él.
   - Firma: `pub fn shaded( key: DrawKey, texture: usize, frame: SpriteFrame, layout: SpriteLayout, shade: ShadeLattice, ) -> Self {`
 
-- [`shaded_band`](sprites.rs#L656) — Una banda de un sprite que abarca varias casillas, oscurecida por las sombras que caen sobre ella.
+- [`shaded_band`](sprites.rs#L670) — Una banda de un sprite que abarca varias casillas, oscurecida por las sombras que caen sobre ella.
   - Firma: `pub fn shaded_band( key: DrawKey, texture: usize, frame: SpriteFrame, layout: SpriteLayout, shade: ShadeLattice, band: SpriteBand, ) -> Self {`
 
-- [`ground_shadow`](sprites.rs#L677) — La sombra horneada en la cara superior de una columna, leída del atlas de sombras.
+- [`ground_shadow`](sprites.rs#L691) — La sombra horneada en la cara superior de una columna, leída del atlas de sombras.
   - Firma: `pub fn ground_shadow( key: DrawKey, corners: [(f64, f64); 4], map_uv: [(f32, f32); 4], opacity: f32, ) -> Self {`
 
-- [`reflection`](sprites.rs#L694) — La parte de lo reflejado por el agua que corresponde a una casilla de agua.
+- [`reflection`](sprites.rs#L708) — La parte de lo reflejado por el agua que corresponde a una casilla de agua.
   - Firma: `pub fn reflection( key: DrawKey, texture: usize, frame: SpriteFrame, points: Vec<(f64, f64)>, uv: Vec<(f64, f64)>, colour: Color, ) -> Self {`
 
-- [`voxel`](sprites.rs#L715) — Un voxel de una bocanada del polvo del jugador.
+- [`voxel`](sprites.rs#L729) — Un voxel de una bocanada del polvo del jugador.
   - Firma: `pub fn voxel(key: DrawKey, faces: VoxelFaces, colours: [Color; 3]) -> Self {`
 
-- [`face_shadow`](sprites.rs#L723) — Una sombra sobre una cara vertical expuesta del terreno.
+- [`face_shadow`](sprites.rs#L737) — Una sombra sobre una cara vertical expuesta del terreno.
   - Firma: `pub fn face_shadow( key: DrawKey, corners: [(f64, f64); 4], shade: Rc<ShadeLattice>, opacity: f32, ) -> Self {`
 
-- [`draw_sorted`](sprites.rs#L741) — Ordena los sprites encolados de lejos a cerca y los dibuja, con `material` enlazado durante todo el proceso.
+- [`ground_ellipse`](sprites.rs#L754) — Una elipse plana sobre el suelo, recortada a las caras superiores de las casillas en las que puede apoyarse (`clip`); lista vacía de `clip` la pinta entera.
+  - Firma: `pub fn ground_ellipse( key: DrawKey, centre: ScreenPoint, width: f64, height: f64, colour: Color, clip: Vec<[(f64, f64); 4]>, ) -> Self {`
+
+- [`draw_sorted`](sprites.rs#L776) — Ordena los sprites encolados de lejos a cerca y los dibuja, con `material` enlazado durante todo el proceso.
   - Firma: `pub fn draw_sorted( atlas: &SpriteAtlas, material: Option<&crate::rendering::scene_material::SceneMaterial>, draws: &mut [SpriteDraw], ) {`
 
-- [`scene_key`](sprites.rs#L826) — Clave de profundidad de algo situado en la casilla cuyo centro es `(x, y)`, a la elevación `elevation`.
+- [`scene_key`](sprites.rs#L892) — Clave de profundidad de algo situado en la casilla cuyo centro es `(x, y)`, a la elevación `elevation`.
   - Firma: `pub fn scene_key(x: f64, y: f64, elevation: f64, layer: i32, tile_height: f64) -> DrawKey {`
 
-- [`ground_key`](sprites.rs#L841) — Clave de profundidad de la superficie de una casilla: el terreno en sí, y lo pintado sobre él — un
+- [`ground_key`](sprites.rs#L907) — Clave de profundidad de la superficie de una casilla: el terreno en sí, y lo pintado sobre él — un
   - Firma: `pub fn ground_key(x: f64, y: f64, elevation: f64, layer: i32, tile_height: f64) -> DrawKey {`
 
 #### Constantes
@@ -141,7 +144,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`light_at`](sprites.rs#L519) — Calcula o recupera «light at» según los parámetros de la firma.
   - Firma: `fn light_at(&self, column: u32, row: u32) -> f32 {`
 
-- [`draw_queue`](sprites.rs#L755) — Calcula o recupera «draw queue» según los parámetros de la firma.
+- [`draw_queue`](sprites.rs#L790) — Calcula o recupera «draw queue» según los parámetros de la firma.
   - Firma: `fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {`
 
 #### Constantes internas
