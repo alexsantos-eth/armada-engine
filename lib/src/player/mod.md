@@ -118,6 +118,18 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`TURN_MS_PER_FACING`](player_view.rs#L26) — Milisegundos reales que la figura pasa en cada orientación por la que transita mientras gira.
   - Declaración: `pub const TURN_MS_PER_FACING: f64 = 35.0;`
 
+### `player_shadow.rs`
+
+#### Tipos
+
+- [`PlayerShadow`](player_shadow.rs#L7) — La elipse de pantalla de la sombra básica del jugador.
+  - Firma: `pub struct PlayerShadow { pub centre: ScreenPoint, pub width: f64, pub height: f64, pub alpha: f32 }`
+
+#### Funciones
+
+- [`player_shadow`](player_shadow.rs#L16) — Calcula una sombra elíptica anclada al suelo, que se reduce y desvanece durante un salto.
+  - Firma: `pub fn player_shadow(ground: ScreenPoint, height: f64, tile_width: f64) -> PlayerShadow {`
+
 
 ## Detalles de implementación
 

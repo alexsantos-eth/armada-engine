@@ -242,6 +242,16 @@ fn what_is_painted_on_the_ground_sorts_with_the_ground_it_lies_on() {
     );
 }
 
+#[test]
+fn player_shadow_is_below_the_player_on_its_supporting_column() {
+    use std::cmp::Ordering;
+
+    let shadow = scene_key(12.5, 7.5, 2.0, GROUND_SHADOW_LAYER, PREVIEW_TILE_HEIGHT);
+    let player = scene_key(12.5, 7.5, 2.0, PLAYER_BEHIND_LAYER, PREVIEW_TILE_HEIGHT);
+
+    assert_eq!(compare_draw_keys(&shadow, &player), Ordering::Less);
+}
+
 /// Moving every block of the terrain back by the same cell cannot change its order among
 /// itself.
 #[test]

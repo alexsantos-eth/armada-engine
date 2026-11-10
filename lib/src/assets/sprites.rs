@@ -582,6 +582,13 @@ pub enum DrawKind {
         /// How dark the shadow is drawn: the lighting phase's own opacity.
         opacity: f32,
     },
+    /// A flat ellipse painted on a ground surface.
+    GroundEllipse {
+        centre: ScreenPoint,
+        width: f64,
+        height: f64,
+        colour: Color,
+    },
 }
 
 /// One sprite queued for this frame, with the key it sorts by.
@@ -739,6 +746,25 @@ impl SpriteDraw {
             },
         }
     }
+
+    /// A simple flat ellipse on the ground.
+    pub fn ground_ellipse(
+        key: DrawKey,
+        centre: ScreenPoint,
+        width: f64,
+        height: f64,
+        colour: Color,
+    ) -> Self {
+        Self {
+            key,
+            kind: DrawKind::GroundEllipse {
+                centre,
+                width,
+                height,
+                colour,
+            },
+        }
+    }
 }
 
 /// Sorts the queued sprites far to near and draws them, with `material` bound throughout.
@@ -822,6 +848,19 @@ fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
             } => {
                 atlas.draw_face_shadow(corners, shade, *opacity);
             }
+            DrawKind::GroundEllipse {
+                centre,
+                width,
+                height,
+                colour,
+            } => draw_ellipse(
+                centre.x as f32,
+                centre.y as f32,
+                (*width / 2.0) as f32,
+                (*height / 2.0) as f32,
+                0.0,
+                *colour,
+            ),
         }
     }
 }

@@ -27,6 +27,7 @@ use crate::game::state::Game;
 use crate::lighting::shadow_view;
 use crate::player::body_motion::{BodyMoment, BodyScale};
 use crate::player::dust_view::DustGround;
+use crate::player::player_shadow::player_shadow;
 use crate::player::player_view::{PlayerMoment, jump_poses};
 use crate::terrain::terrain_view_blocks::{Surroundings, collect_terrain_sprites};
 use crate::water::reflection_view::{Reflected, ReflectionSprite, collect_reflection};
@@ -392,6 +393,21 @@ impl Game {
             player_layer(GridPoint { x: rp.x, y: rp.y }, column),
             projection.tile_height,
         );
+        let ground_feet = player_feet(GridPoint { x: rp.x, y: rp.y }, rp.elevation, projection);
+        let shadow = player_shadow(ground_feet, rp.height, projection.tile_width);
+        self.draws.push(SpriteDraw::ground_ellipse(
+            scene_key(
+                f64::from(column.x) + 0.5,
+                f64::from(column.y) + 0.5,
+                column_elevation,
+                shadow_view::GROUND_SHADOW_LAYER,
+                projection.tile_height,
+            ),
+            shadow.centre,
+            shadow.width,
+            shadow.height,
+            Color::new(0.0, 0.0, 0.0, shadow.alpha),
+        ));
         let climbing = get_player_climb_progress(&self.player, self.stepper.interpolation_alpha());
         let moved = (rp.x - self.drawn_at.0).hypot(rp.y - self.drawn_at.1);
         let pose = self.animation.advance(

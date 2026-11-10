@@ -4,6 +4,8 @@ Backlog vivo de revisiones del core (skill `armada-core-review`). Cada entrada d
 
 No hay hallazgos registrados todavía. Las revisiones futuras añaden aquí sus pendientes; las correcciones se retiran cuando entran con código y tests.
 
+Revisión 2026-11-10 (foco: sombra móvil básica del jugador — `src/player/player_shadow.rs`, `src/game/scene.rs`, `src/assets/sprites.rs`; contexto: orden de escena y sombras horneadas): sin hallazgos Bloqueante, Alta, Media ni Baja. La sombra es un efecto exclusivamente de `iso-core`: recibe una posición de pantalla y altura ya interpoladas, no escribe `World` ni añade estado persistente. Se encola con la capa de suelo de la columna y por ello queda bajo el jugador sin alterar las sombras horneadas por chunk. Se adoptó `macroquad::shapes::draw_ellipse`, que ya proporciona geometría 2D con batching automático; no se añadió un asset ni una malla manual. La geometría pura y su atenuación en el aire quedan cubiertas por `player_shadow.test.rs`; el orden por `player_shadow_is_below_the_player_on_its_supporting_column`. No se actualiza `armada-engine-dev`: no cambian fronteras, flujo de assets ni contratos generales.
+
 | Fecha | Hallazgo | Nivel | Archivo | Estado |
 | ----- | -------- | ----- | ------- | ------ |
 | 2026-11-08 | `WORLD_SEED` con cero a la izquierda (`09543`), `zero_prefixed_literal` de clippy rompe el gate `-D warnings`; era valor decimal, se conserva | Baja | crates/iso/src/terrain/generation.rs | corregido (`9543`, sin cambio de valor) |
