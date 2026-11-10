@@ -57,6 +57,51 @@ fn column(x: i32, y: i32, elevation: i32) -> TerrainColumn {
     }
 }
 
+/// Polygon area of a reflection piece.
+fn piece_area(draw: &crate::assets::sprites::SpriteDraw) -> f64 {
+    let crate::assets::sprites::DrawKind::Reflection { points, .. } = &draw.kind else {
+        return 0.0;
+    };
+    let mut sum = 0.0;
+    for index in 0..points.len() {
+        let (a, b) = (points[index], points[(index + 1) % points.len()]);
+        sum += a.0 * b.1 - b.0 * a.1;
+    }
+    sum / 2.0
+}
+
+/// A straight run of wall: the two blocks cast on the same water cell in front of them.
+/// The block in front paints over the sliver of the block behind, so the behind's piece
+/// queues first, whatever order the columns arrived in.
+#[test]
+fn the_back_block_reflects_before_the_front_block_on_their_shared_cell() {
+    let back = column(1, 0, 1);
+    let front = column(0, 0, 1);
+    for columns in [&[back, front][..], &[front, back][..]] {
+        let draws = shore(columns);
+        let depth = crate::assets::sprites::ground_key(
+            0.5,
+            -0.5,
+            0.0,
+            crate::water::reflection_view::REFLECTION_LAYER,
+            projection().tile_height,
+        )
+        .depth;
+        let shared: Vec<&crate::assets::sprites::SpriteDraw> = draws
+            .iter()
+            .filter(|draw| {
+                matches!(&draw.kind, DrawKind::Reflection { .. }) && draw.key.depth == depth
+            })
+            .collect();
+        assert_eq!(shared.len(), 2, "the two blocks share this cell");
+        let areas: Vec<f64> = shared.iter().map(|draw| piece_area(draw).abs()).collect();
+        assert!(
+            areas[0] < areas[1],
+            "the sliver of the back block paints before the front block's band"
+        );
+    }
+}
+
 /// A shore: `columns` rise above a sea at level `0.0`; every other cell is water, one
 /// block under the shore, as the world generates it.
 fn shore(columns: &[TerrainColumn]) -> Vec<crate::assets::sprites::SpriteDraw> {

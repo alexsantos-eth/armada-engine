@@ -1,7 +1,7 @@
 //! Terrain drawn with the atlas block sprites.
 
 use iso::assets::{
-    InkBox, SpriteFrame, ink_layout, terrain_reflection_source, terrain_sprite_source,
+    InkBox, SpriteFrame, SpriteLayout, ink_layout, terrain_reflection_source, terrain_sprite_source,
 };
 use iso::grid::WorldCoord;
 use iso::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
@@ -109,6 +109,19 @@ impl TerrainFrames {
     }
 }
 
+/// One queued terrain reflection, flushed after every column has been laid. On a water
+/// cell shared by two blocks, the piece of the block further away queues first, so the
+/// block in front paints over its sliver.
+struct ReflectionJob {
+    /// Depth of the casting block on the view axis: larger `coord.x + coord.y` is further
+    /// back.
+    depth: i32,
+    frame: SpriteFrame,
+    layout: SpriteLayout,
+    feet: ScreenPoint,
+    level: f64,
+}
+
 /// Queues the sprites for `columns`, which the caller sorts and draws with everything else.
 /// Each block above the water also queues what the water shows of it, cut to the water cells
 /// it falls on. `screen` is the window size the culling tests each block's layout against.
@@ -130,6 +143,7 @@ pub fn collect_terrain_sprites(
     let half_tile = projection.tile_width / 2.0;
     let (above, below) = frames.reach(projection.tile_width);
     let below = below + f64::from(MAX_EXPOSED_BLOCKS) * step;
+    let mut reflection_jobs = Vec::new();
 
     for &column in columns {
         let centre = GridPoint {
@@ -225,23 +239,32 @@ pub fn collect_terrain_sprites(
                         x: top.screen_x,
                         y: water_line + f64::from(above_water) * step,
                     };
-                    let layout = ink_layout(feet, reflection_ink, projection.tile_width);
-                    collect_reflection(
-                        ATLAS_TEXTURE,
-                        reflection_frame,
-                        layout,
+                    reflection_jobs.push(ReflectionJob {
+                        depth: column.coord.x + column.coord.y,
+                        frame: reflection_frame,
+                        layout: ink_layout(feet, reflection_ink, projection.tile_width),
                         feet,
-                        block_level,
-                        0.0,
-                        Reflected::AsDrawn,
-                        projection,
-                        &water_at,
-                        out,
-                    );
+                        level: block_level,
+                    });
                     above_water += 1;
                 }
             }
         }
+    }
+    reflection_jobs.sort_by_key(|job| std::cmp::Reverse(job.depth));
+    for job in reflection_jobs {
+        collect_reflection(
+            ATLAS_TEXTURE,
+            job.frame,
+            job.layout,
+            job.feet,
+            job.level,
+            0.0,
+            Reflected::AsDrawn,
+            projection,
+            &water_at,
+            out,
+        );
     }
 }
 

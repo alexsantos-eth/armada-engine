@@ -13,7 +13,7 @@ use macroquad::prelude::Color;
 use crate::assets::sprites::{SpriteDraw, ground_key};
 
 /// How opaque what the water mirrors is drawn.
-pub const REFLECTION_ALPHA: f32 = 0.62;
+pub const REFLECTION_ALPHA: f32 = 1.0;
 
 /// What the water multiplies the artwork by: a little darker and bluer than the real thing,
 pub const REFLECTION_TINT: Color = Color::new(

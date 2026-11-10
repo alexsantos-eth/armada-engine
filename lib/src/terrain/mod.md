@@ -52,7 +52,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`reflection`](terrain_view_blocks.rs#L66) — El sprite de reflejo de `material` (las caras laterales dibujadas como las muestra el agua), ya resuelto contra el atlas.
   - Firma: `pub fn reflection(&self, material: TerrainMaterial) -> Option<(SpriteFrame, InkBox)> {`
 
-- [`collect_terrain_sprites`](terrain_view_blocks.rs#L116) — Encola los sprites de `columns`, que el llamante ordena y dibuja con todo lo demás. Cada bloque por encima del agua también encola el sprite de reflejo de su material, colgando de la línea de agua con una banda por bloque (`Reflected::AsDrawn`, cortada a las casillas de agua que cubre); las columnas de agua no se reflejan. Una columna retranqueada entre dos vecinos de delante de la misma altura o mayor no refleja: las alas tapan la cuña de agua donde caería su reflejo y su banda asomaría entre ellas como un triángulo suelto en el vértice interior. `screen` es el tamaño de ventana contra el que se comprueba la visibilidad de cada bloque.
+- [`collect_terrain_sprites`](terrain_view_blocks.rs#L129) — Encola los sprites de `columns`, que el llamante ordena y dibuja con todo lo demás. Cada bloque por encima del agua también encola el sprite de reflejo de su material, colgando de la línea de agua con una banda por bloque (`Reflected::AsDrawn`, cortada a las casillas de agua que cubre); las columnas de agua no se reflejan. Los reflejos se dirigen a una cola aparte y se vacían de atrás hacia delante (`coord.x + coord.y` descendente) al final de la pasada, para que en una casilla compartida por dos bloques el bloque de delante pinte sobre el sliver del bloque de atrás. Una columna retranqueada entre dos vecinos de delante de la misma altura o mayor no refleja: las alas tapan la cuña de agua donde caería su reflejo y su banda asomaría entre ellas como un triángulo suelto en el vértice interior. `screen` es el tamaño de ventana contra el que se comprueba la visibilidad de cada bloque.
   - Firma: `pub fn collect_terrain_sprites( columns: &[TerrainColumn], projection: ProjectionConfig, frames: &TerrainFrames, look: &TerrainLook, height_at: impl Fn(WorldCoord) -> Option<i32>, water_at: impl Fn(i32, i32) -> Option<WaterCell>, screen: (f64, f64), out: &mut Vec<SpriteDraw>, ) {`
 
 #### Constantes
@@ -85,7 +85,10 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`reach`](terrain_view_blocks.rs#L99) — Hasta dónde llega el artwork de cualquiera de estos materiales por encima y por debajo del suelo que
   - Firma: `fn reach(&self, tile_width: f64) -> (f64, f64) {`
 
-- [`exposed_floor`](terrain_view_blocks.rs#L249) — El bloque más bajo de una columna que aún debe dibujarse: tan abajo como el más bajo de las
+- [`ReflectionJob`](terrain_view_blocks.rs#L115) — Trabajo de reflejo encolado durante la pasada principal y vaciado al final, de atrás hacia delante (`coord.x + coord.y` descendente), para que en una casilla compartida el bloque de delante pinte sobre el sliver del bloque de atrás.
+  - Declaración: `struct ReflectionJob { depth: i32, frame: SpriteFrame, layout: SpriteLayout, feet: ScreenPoint, level: f64, }`
+
+- [`exposed_floor`](terrain_view_blocks.rs#L272) — El bloque más bajo de una columna que aún debe dibujarse: tan abajo como el más bajo de las
   - Firma: `fn exposed_floor(elevation: i32, in_front: impl IntoIterator<Item = Option<i32>>) -> i32 {`
 
 #### Constantes internas
