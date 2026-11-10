@@ -75,18 +75,29 @@ fn draw_phase_buttons(selected: BakePhase) -> Option<BakePhase> {
         .flatten()
 }
 
-/// The world readout line: position, elevation, motion, chunks and the frame cost.
-fn world_readout_line(
+/// The world readout line: position, elevation, motion, chunks, clock and the frame cost.
+struct Readout<'a> {
     x: f64,
     y: f64,
     elevation: i32,
-    motion: &str,
+    motion: &'a str,
     chunks: usize,
+    clock: &'a str,
     fps: i32,
     frame_ms: f64,
-) -> String {
+}
+
+fn world_readout_line(readout: &Readout<'_>) -> String {
     format!(
-        "Mundo: ({x:.2}, {y:.2}, {elevation}) | {motion} | chunks: {chunks} | {fps} fps ({frame_ms:.1} ms)",
+        "Mundo: ({:.2}, {:.2}, {}) | {} | chunks: {} | {} | {} fps ({:.1} ms)",
+        readout.x,
+        readout.y,
+        readout.elevation,
+        readout.motion,
+        readout.chunks,
+        readout.clock,
+        readout.fps,
+        readout.frame_ms
     )
 }
 
@@ -131,7 +142,7 @@ pub(crate) fn push_hud_update(
 /// The overlay: title, help, world readout, performance readout and messages.
 /// `touch_visible` swaps the help line to the touch controls when they are on screen.
 /// `phase` is `None` when no shadow scene exists (so the phase buttons stay out); returns the
-/// phase picked by a click, if any.
+/// phase picked by a click, if any. `clock` is the world clock as `HH:MM`, shown read-only.
 pub(crate) fn draw_hud(
     ui: &mut MacroquadUi,
     perf: &PerfLog,
@@ -139,6 +150,7 @@ pub(crate) fn draw_hud(
     frame_ms: f64,
     touch_visible: bool,
     phase: Option<BakePhase>,
+    clock: &str,
 ) -> Option<BakePhase> {
     let width = screen_width();
     let height = screen_height();
@@ -155,7 +167,17 @@ pub(crate) fn draw_hud(
         Color::from_rgba(21, 29, 42, 205),
     );
     if let Some((x, y, elev, motion, chunks)) = &ui.hud {
-        let text = world_readout_line(*x, *y, *elev, motion, *chunks, get_fps(), frame_ms);
+        let readout = Readout {
+            x: *x,
+            y: *y,
+            elevation: *elev,
+            motion,
+            chunks: *chunks,
+            clock,
+            fps: get_fps(),
+            frame_ms,
+        };
+        let text = world_readout_line(&readout);
         draw_text(&text, 32.0, height - 42.0, 22.0, LIGHTGRAY);
     }
 

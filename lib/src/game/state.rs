@@ -11,16 +11,16 @@ use iso::assets::{AssetManifest, validate_manifest};
 use iso::camera::{Camera, CameraFocus};
 use iso::entities::{EntityCatalog, validate_catalog};
 use iso::grid::to_chunk_coord;
+use iso::lighting::phase_at;
 use iso::player::physics::{create_player, find_player_spawn, get_player_render_position};
 use iso::simulation::FixedStepper;
 use iso::terrain::{TerrainConfig, TerrainGenerator};
+use iso::time::WorldClock;
 use iso::world::{ChunkArchive, ChunkManager};
 use macroquad::prelude::*;
 
 use crate::assets::sprites::{SpriteAtlas, SpriteDraw};
-use crate::game::config::{
-    CHUNK_RADII, DEFAULT_PHASE, PLAYER_SPRITE, PREVIEW_CENTRE, SceneMetrics, WORLD_SEED,
-};
+use crate::game::config::{CHUNK_RADII, PLAYER_SPRITE, PREVIEW_CENTRE, SceneMetrics, WORLD_SEED};
 use crate::game::ground::ChunkGround;
 use crate::game::scene::{PlayerSprite, player_sheets};
 use crate::lighting::cloud_shadows::{CLOUD_SHADOW_SOURCE, CloudShadows};
@@ -79,6 +79,11 @@ pub(crate) struct Game {
     pub(crate) audio: MacroquadAudio,
     pub(crate) ui: MacroquadUi,
     pub(crate) touch: TouchControls,
+    /// The logical world clock; only the fixed step advances it.
+    pub(crate) clock: WorldClock,
+    /// A phase picked by hand from the playground HUD, overriding the clock until it is
+    /// unpicked; `None` means the phase follows the game clock.
+    pub(crate) phase_override: Option<iso::lighting::BakePhase>,
     pub(crate) tile_metrics: SceneMetrics,
 }
 
@@ -153,7 +158,7 @@ impl Game {
         let tile_metrics = SceneMetrics::for_pointer(coarse_pointer());
         let shadows = masks.filter(|_| material.is_some()).map(|masks| {
             ShadowScene::new(
-                DEFAULT_PHASE,
+                phase_at(iso::time::WORLD_START_TICK),
                 masks,
                 shadow_atlas,
                 tile_metrics.tile_width,
@@ -275,6 +280,8 @@ impl Game {
             ui: MacroquadUi::default(),
             touch: TouchControls::new(coarse_pointer()),
             tile_metrics,
+            clock: WorldClock::default(),
+            phase_override: None,
         }
     }
 }

@@ -1,6 +1,6 @@
 # Gui
 
-Este dominio de cliente pinta el overlay sobre la escena: el título y la ayuda de controles, los botones de fase de sombras (solo cuando hay una escena de sombras), la lectura del mundo en pantalla, el panel de rendimiento y los mensajes transitorios. El HUD no toca el mundo ni la cámara: devuelve una fase elegida para que el bucle la aplique a la vista de sombras.
+Este dominio de cliente pinta el overlay sobre la escena: el título y la ayuda de controles, los botones de fase de sombras (solo cuando hay una escena de sombras), la lectura del mundo en pantalla (posición, movimiento, chunks y la hora `HH:MM` del reloj del mundo), el panel de rendimiento y los mensajes transitorios. El HUD no toca el mundo ni la cámara: devuelve una fase elegida para que el bucle la aplique a la vista de sombras. En la raíz web (`/`) la fase sigue siempre al reloj; en `/playground` los botones fijan un override manual (volver a pulsar el activo devuelve el control al ciclo).
 
 El overlay está **condicionado por la ruta** en la build web: `/` no pinta nada (ni borde ni HUD), y `/playground` pinta el overlay completo de siempre. La build nativa no tiene ruta y siempre lo pinta. La regla vive en `route.rs` y se consulta una vez por proceso, antes de que arranque el bucle.
 
@@ -32,10 +32,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`push_hud_update`](hud.rs#L115) — Encola `UiEvent::HudUpdate` con la posición, la elevación, el movimiento y los chunks descubiertos.
+- [`push_hud_update`](hud.rs#L126) — Encola `UiEvent::HudUpdate` con la posición, la elevación, el movimiento y los chunks descubiertos.
   - Firma: `pub(crate) fn push_hud_update(ui: &mut MacroquadUi, player: &PlayerState, animation: &PlayerAnimation, elevation: i32, chunks: usize) {`
-- [`draw_hud`](hud.rs#L135) — Dibuja el título, la ayuda y, cuando hay una fase seleccionable, los botones de fase (con la activa resaltada), el estado del mundo con `ui.hud`, el panel de rendimiento y los mensajes; devuelve la fase pulsada y vacía los mensajes.
-  - Firma: `pub(crate) fn draw_hud(ui: &mut MacroquadUi, perf: &PerfLog, dust_live: usize, frame_ms: f64, touch_visible: bool, phase: Option<BakePhase>) -> Option<BakePhase> {`
+- [`draw_hud`](hud.rs#L146) — Dibuja el título, la ayuda y, cuando hay una fase seleccionable, los botones de fase (con la activa resaltada), el estado del mundo con `ui.hud` (incluida la hora `HH:MM` del reloj del mundo, como `clock`), el panel de rendimiento y los mensajes; devuelve la fase pulsada y vacía los mensajes.
+  - Firma: `pub(crate) fn draw_hud(ui: &mut MacroquadUi, perf: &PerfLog, dust_live: usize, frame_ms: f64, touch_visible: bool, phase: Option<BakePhase>, clock: &str) -> Option<BakePhase> {`
 
 ## Detalles de implementación
 
@@ -52,11 +52,14 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones internas
 
-- [`world_readout_line`](hud.rs#L79) — La línea de lectura del mundo: posición, elevación, movimiento, chunks y coste del fotograma.
-  - Firma: `fn world_readout_line(x: f64, y: f64, elevation: i32, motion: &str, chunks: usize, fps: i32, frame_ms: f64) -> String {`
-- [`readout_colour`](hud.rs#L94) — Colour del readout: `LIME` hasta 20 ms, `ORANGE` hasta 33.4 ms, `RED` por encima.
+- [`Readout`](hud.rs#L79) — Los datos de la línea de lectura del mundo, con la hora del reloj como `HH:MM` ya formateada.
+  - Declaración: `struct Readout<'a> { x: f64, y: f64, elevation: i32, motion: &'a str, chunks: usize, clock: &'a str, fps: i32, frame_ms: f64, }`
+
+- [`world_readout_line`](hud.rs#L90) — La línea de lectura del mundo: posición, elevación, movimiento, chunks, hora del reloj del mundo y coste del fotograma. Se prueba en `hud.test.rs`.
+  - Firma: `fn world_readout_line(readout: &Readout<'_>) -> String {`
+- [`readout_colour`](hud.rs#L105) — Colour del readout: `LIME` hasta 20 ms, `ORANGE` hasta 33.4 ms, `RED` por encima.
   - Firma: `fn readout_colour(frame_max: f64) -> Color {`
-- [`help_line`](hud.rs#L106) — La línea de controles del título: los atajos de teclado, o los del táctil (joystick y SALTAR) cuando los controles están visibles. Se prueba en `hud.test.rs`.
+- [`help_line`](hud.rs#L117) — La línea de controles del título: los atajos de teclado, o los del táctil (joystick y SALTAR) cuando los controles están visibles. Se prueba en `hud.test.rs`.
   - Firma: `fn help_line(touch_visible: bool) -> &'static str {`
 - [`phase_button_hit`](hud.rs#L29) — Devuelve la fase del botón que contiene el punto de pantalla dado; se prueba en `hud.test.rs`.
   - Firma: `fn phase_button_hit(x: f32, y: f32) -> Option<BakePhase> {`

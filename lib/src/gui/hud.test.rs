@@ -29,12 +29,22 @@ fn the_help_line_swaps_controls_for_touch() {
 }
 
 #[test]
-fn the_world_readout_carries_position_elevation_and_cost() {
-    let line = world_readout_line(12.34, 7.89, 3, "Walking E", 5, 60, 16.7);
+fn the_world_readout_carries_position_elevation_clock_and_cost() {
+    let line = world_readout_line(&Readout {
+        x: 12.34,
+        y: 7.89,
+        elevation: 3,
+        motion: "Walking E",
+        chunks: 5,
+        clock: "08:30",
+        fps: 60,
+        frame_ms: 16.7,
+    });
 
     assert!(line.contains("(12.34, 7.89, 3)"));
     assert!(line.contains("Walking E"));
     assert!(line.contains("chunks: 5"));
+    assert!(line.contains("08:30"));
     assert!(line.contains("60 fps"));
     assert!(line.contains("16.7 ms"));
 }

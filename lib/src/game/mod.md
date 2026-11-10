@@ -56,12 +56,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Declaración: `pub const CHUNK_RADII: ChunkRadii = ChunkRadii { ... };`
 - [`AUTOSAVE_SECONDS`](config.rs#L83) — Intervalo de respaldo del guardado periódico; el real es al salir.
   - Declaración: `pub const AUTOSAVE_SECONDS: f64 = 120.0;`
-- [`WORLD_SEED`](config.rs#L86) — La semilla con la que genera el mundo; el valor por defecto del dominio (`iso::terrain::WORLD_SEED`) y los tests la comparten.
+- [`WORLD_SEED`](config.rs#L88) — La semilla con la que genera el mundo; el valor por defecto del dominio (`iso::terrain::WORLD_SEED`) y los tests la comparten.
   - Declaración: `pub const WORLD_SEED: u64 = iso::terrain::WORLD_SEED;`
-- [`DEFAULT_PHASE`](config.rs#L88) — La fase con la que arranca el cliente: el mediodía, el horneado más claro y la escena más legible.
-  - Declaración: `pub const DEFAULT_PHASE: BakePhase = BakePhase::Day;`
-- [`PHASE_TRANSITION_SECONDS`](config.rs#L90) — Segundos que dura el cambio de fase de punta a punta: el crossfade del grado y el fade-in de sombras de cada chunk recién horneado.
-  - Declaración: `pub const PHASE_TRANSITION_SECONDS: f32 = 0.4;`
+- [`PHASE_TRANSITION_SECONDS`](config.rs#L88) — Segundos que dura el cambio de fase de punta a punta: el crossfade del grado y el fade-in de sombras de cada chunk recién horneado.
+  - Declaración: `pub const PHASE_TRANSITION_SECONDS: f32 = 0.6;`
 
 #### Tipos
 
@@ -91,12 +89,12 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Tipos
 
-- [`FrameView`](frame.rs#L34) — Lo que la mitad de vista del fotograma necesita tras la actualización: posición de render, proyección, chunks cullados, `frame_ms` y el instante en que la simulación terminó.
+- [`FrameView`](frame.rs#L35) — Lo que la mitad de vista del fotograma necesita tras la actualización: posición de render, proyección, chunks cullados, `frame_ms` y el instante en que la simulación terminó.
   - Firma: `pub(crate) struct FrameView { ... }`
 
 #### Funciones y métodos
 
-- [`update`](frame.rs#L46) — Entrada, ticks fijos, streaming de chunks y guardado de un fotograma. `None` si el jugador pidió salir (tras volcar el guardado si hacía falta).
+- [`update`](frame.rs#L47) — Entrada, ticks fijos, reloj del mundo (avanza solo en el paso fijo), fase efectiva de sombras (override o `phase_at` del reloj), streaming de chunks y guardado de un fotograma. `None` si el jugador pidió salir (tras volcar el guardado si hacía falta).
   - Firma: `pub(crate) fn update(&mut self, frame_ms: f64) -> Option<FrameView> {`
 
 ### `scene.rs`
@@ -131,12 +129,12 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Tipos
 
-- [`Game`](state.rs#L53) — El juego compuesto: manager, archivo de guardado, jugador, cámara, stepper, arte, sombras, polvo, cola de dibujo, servicios (audio, UI, perf), los controles táctiles (`touch`) y las métricas de casilla (`tile_metrics`).
+- [`Game`](state.rs#L53) — El juego compuesto: manager, archivo de guardado, jugador, cámara, stepper, reloj del mundo (`clock`), override de fase (`phase_override`), arte, sombras, polvo, cola de dibujo, servicios (audio, UI, perf), los controles táctiles (`touch`) y las métricas de casilla (`tile_metrics`).
   - Firma: `pub(crate) struct Game { ... }`
 
 #### Funciones y métodos
 
-- [`Game::new`](state.rs#L89) — Arranque: carga catálogo y manifiesto, restaura el guardado si existe, genera la zona de aparición y encuadra al jugador. Los fallos de assets degradan a avisos, nunca entran en pánico.
+- [`Game::new`](state.rs#L94) — Arranque: carga catálogo y manifiesto, restaura el guardado si existe, genera la zona de aparición y encuadra al jugador. Los fallos de assets degradan a avisos, nunca entran en pánico.
   - Firma: `pub(crate) async fn new() -> Self {`
 
 ## Detalles de implementación
@@ -152,9 +150,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones internas
 
-- [`frame_ticks`](frame.rs#L23) — Ticks a simular este fotograma, saturando en `u32::MAX` en vez de envolver.
+- [`frame_ticks`](frame.rs#L24) — Ticks a simular este fotograma, saturando en `u32::MAX` en vez de envolver.
   - Firma: `fn frame_ticks(consumed: u64) -> u32 {`
-- [`should_autosave`](frame.rs#L29) — El respaldo periódico: solo con cambios sin guardar, al salir o al superar `AUTOSAVE_SECONDS`.
+- [`should_autosave`](frame.rs#L30) — El respaldo periódico: solo con cambios sin guardar, al salir o al superar `AUTOSAVE_SECONDS`.
   - Firma: `fn should_autosave(unsaved_changes: bool, quitting: bool, since_last_save_seconds: f64) -> bool {`
 
 ### `scene.rs`

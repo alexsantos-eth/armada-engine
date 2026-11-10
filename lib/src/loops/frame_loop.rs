@@ -12,7 +12,6 @@ use macroquad::prelude::*;
 
 use crate::assets::sprites::draw_sorted;
 use crate::game::Game;
-use crate::game::config::DEFAULT_PHASE;
 use crate::gui::{draw_hud, overlay_enabled, push_hud_update};
 use crate::perf::FrameSample;
 
@@ -51,7 +50,7 @@ pub(crate) async fn run(mut game: Game) {
         .shadows
         .as_ref()
         .map(crate::lighting::shadow_view::ShadowScene::phase)
-        .unwrap_or(DEFAULT_PHASE);
+        .unwrap_or_else(|| iso::lighting::phase_at(game.clock.tick));
     let mut grade_transition = crate::rendering::grade::GradeTransition::new(
         crate::rendering::grade::grade_for(initial_phase),
     );
@@ -68,9 +67,8 @@ pub(crate) async fn run(mut game: Game) {
             .shadows
             .as_ref()
             .map(crate::lighting::shadow_view::ShadowScene::phase);
-        grade_transition.set_target(crate::rendering::grade::grade_for(
-            phase.unwrap_or(DEFAULT_PHASE),
-        ));
+        let effective_phase = phase.unwrap_or_else(|| iso::lighting::phase_at(game.clock.tick));
+        grade_transition.set_target(crate::rendering::grade::grade_for(effective_phase));
         let grade = grade_transition.advance((frame_ms / 1000.0) as f32);
 
         let width = screen_width();
@@ -117,6 +115,7 @@ pub(crate) async fn run(mut game: Game) {
                 chunks_alive,
             );
             let touch_visible = game.touch.visible();
+            let time_text = iso::time::format_clock_time(iso::time::clock_time(game.clock.tick));
             if let Some(clicked) = draw_hud(
                 &mut game.ui,
                 &game.perf,
@@ -124,9 +123,12 @@ pub(crate) async fn run(mut game: Game) {
                 frame_ms,
                 touch_visible,
                 phase,
-            ) && let Some(shadows) = game.shadows.as_mut()
-            {
-                shadows.set_phase(clicked);
+                &time_text,
+            ) {
+                game.phase_override = match game.phase_override {
+                    Some(current) if current == clicked => None,
+                    _ => Some(clicked),
+                };
             }
         } else {
             game.ui.messages.clear();

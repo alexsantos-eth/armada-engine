@@ -400,7 +400,7 @@ impl Game {
             .shadows
             .as_ref()
             .map(crate::lighting::shadow_view::ShadowScene::phase)
-            .unwrap_or(crate::game::config::DEFAULT_PHASE);
+            .unwrap_or_else(|| iso::lighting::phase_at(self.clock.tick));
         let shadow = player_shadow(ground_feet, rp.height, projection, phase.light());
         let outline = shadow_clip::sheared_ellipse(
             shadow.centre,

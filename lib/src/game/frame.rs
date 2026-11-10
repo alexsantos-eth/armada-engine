@@ -5,6 +5,7 @@
 
 use iso::camera::{CAMERA_LEVEL_SMOOTH_MS, ScreenSize, visible_chunks};
 use iso::grid::{WorldCoord, to_chunk_coord};
+use iso::lighting::phase_at;
 use iso::player::physics::{
     get_player_render_position, jump_player, set_player_jump_held, set_player_run, step_player,
 };
@@ -80,6 +81,7 @@ impl Game {
 
         let ticks = frame_ticks(self.stepper.consume_frame(frame_ms));
         if ticks > 0 {
+            let _ = self.clock.advance(u64::from(ticks));
             let jumps_before = self.player.feedback.jumps;
             let landings_before = self.player.feedback.landings;
             let mut ground = ChunkGround {
@@ -140,7 +142,11 @@ impl Game {
         };
         let culled = visible_chunks(self.camera, viewport, projection, CHUNK_CULL_MARGIN);
         let fade_dt = (frame_ms / 1000.0) as f32;
+        let target_phase = self
+            .phase_override
+            .unwrap_or_else(|| phase_at(self.clock.tick));
         if let Some(shadows) = self.shadows.as_mut() {
+            shadows.set_phase(target_phase);
             shadows.update(&self.manager, &culled, fade_dt);
         }
 

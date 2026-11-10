@@ -1,13 +1,7 @@
 //! `Game::new` itself is exercised by booting the game; the pure rules here pin the build
-//! difference in manifest paths and the phase the scene boots into.
+//! difference in manifest paths.
 
 use super::*;
-use crate::game::config::DEFAULT_PHASE;
-
-#[test]
-fn the_scene_boots_into_day() {
-    assert_eq!(DEFAULT_PHASE, iso::lighting::BakePhase::Day);
-}
 
 #[cfg(not(target_arch = "wasm32"))]
 #[test]

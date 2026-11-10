@@ -1,6 +1,7 @@
 //! The authored lighting phases, one of which the client bakes at a time.
 
 use super::shadow::ShadowProjection;
+use crate::time::{TICKS_PER_DAY, TICKS_PER_HOUR};
 
 /// A phase's sun and how strongly its shadows read.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -23,6 +24,28 @@ pub enum BakePhase {
     Day,
     Sunset,
     Night,
+}
+
+/// The first hour of dawn, inclusive. Before it, night rules.
+pub const DAWN_START_HOUR: u64 = 6;
+/// The first hour of the day, inclusive.
+pub const DAY_START_HOUR: u64 = 9;
+/// The first hour of the sunset, inclusive.
+pub const SUNSET_START_HOUR: u64 = 17;
+/// The first hour of the night, inclusive.
+pub const NIGHT_START_HOUR: u64 = 20;
+
+/// The phase that rules the game clock at `tick`: the atmosphere follows the game's own 24-hour
+/// cycle, dawn from [`DAWN_START_HOUR`], day from [`DAY_START_HOUR`], sunset from
+/// [`SUNSET_START_HOUR`] and night from [`NIGHT_START_HOUR`].
+pub fn phase_at(tick: u64) -> BakePhase {
+    let hour = (tick % TICKS_PER_DAY) / TICKS_PER_HOUR;
+    match hour {
+        DAWN_START_HOUR..DAY_START_HOUR => BakePhase::Dawn,
+        DAY_START_HOUR..SUNSET_START_HOUR => BakePhase::Day,
+        SUNSET_START_HOUR..NIGHT_START_HOUR => BakePhase::Sunset,
+        _ => BakePhase::Night,
+    }
 }
 
 impl BakePhase {

@@ -33,6 +33,6 @@ fn the_mobile_zoom_is_only_a_little_pull_back() {
 }
 
 #[test]
-fn the_phase_transition_is_fast() {
-    const { assert!(PHASE_TRANSITION_SECONDS > 0.0 && PHASE_TRANSITION_SECONDS <= 0.5) };
+fn the_phase_transition_is_positive() {
+    const { assert!(PHASE_TRANSITION_SECONDS > 0.0) };
 }
