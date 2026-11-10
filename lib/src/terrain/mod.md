@@ -52,12 +52,12 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`reflection`](terrain_view_blocks.rs#L66) — El sprite de reflejo de `material` (las caras laterales dibujadas como las muestra el agua), ya resuelto contra el atlas.
   - Firma: `pub fn reflection(&self, material: TerrainMaterial) -> Option<(SpriteFrame, InkBox)> {`
 
-- [`collect_terrain_sprites`](terrain_view_blocks.rs#L109) — Encola los sprites de `columns`, que el llamante ordena y dibuja con todo lo demás. Cada bloque por encima del agua también encola el sprite de reflejo de su material, colgando de la línea de agua con una banda por bloque (`Reflected::AsDrawn`, cortada a las casillas de agua que cubre); las columnas de agua no se reflejan. `screen` es el tamaño de ventana contra el que se comprueba la visibilidad de cada bloque.
+- [`collect_terrain_sprites`](terrain_view_blocks.rs#L116) — Encola los sprites de `columns`, que el llamante ordena y dibuja con todo lo demás. Cada bloque por encima del agua también encola el sprite de reflejo de su material, colgando de la línea de agua con una banda por bloque (`Reflected::AsDrawn`, cortada a las casillas de agua que cubre); las columnas de agua no se reflejan. Una columna retranqueada entre dos vecinos de delante de la misma altura o mayor no refleja: las alas tapan la cuña de agua donde caería su reflejo y su banda asomaría entre ellas como un triángulo suelto en el vértice interior. `screen` es el tamaño de ventana contra el que se comprueba la visibilidad de cada bloque.
   - Firma: `pub fn collect_terrain_sprites( columns: &[TerrainColumn], projection: ProjectionConfig, frames: &TerrainFrames, look: &TerrainLook, height_at: impl Fn(WorldCoord) -> Option<i32>, water_at: impl Fn(i32, i32) -> Option<WaterCell>, screen: (f64, f64), out: &mut Vec<SpriteDraw>, ) {`
 
 #### Constantes
 
-- [`TERRAIN_LAYER`](terrain_view_blocks.rs#L14) — El terreno se dibuja por debajo de todo lo que se apoya en él.
+- [`TERRAIN_LAYER`](terrain_view_blocks.rs#L16) — El terreno se dibuja por debajo de todo lo que se apoya en él.
   - Declaración: `pub const TERRAIN_LAYER: i32 = 0;`
 
 
@@ -82,13 +82,13 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`reach`](terrain_view_blocks.rs#L46) — Hasta dónde llega el artwork de cualquiera de estos materiales por encima y por debajo del suelo que
+- [`reach`](terrain_view_blocks.rs#L99) — Hasta dónde llega el artwork de cualquiera de estos materiales por encima y por debajo del suelo que
   - Firma: `fn reach(&self, tile_width: f64) -> (f64, f64) {`
 
-- [`exposed_floor`](terrain_view_blocks.rs#L142) — El bloque más bajo de una columna que aún debe dibujarse: tan abajo como el más bajo de las
+- [`exposed_floor`](terrain_view_blocks.rs#L249) — El bloque más bajo de una columna que aún debe dibujarse: tan abajo como el más bajo de las
   - Firma: `fn exposed_floor(elevation: i32, in_front: impl IntoIterator<Item = Option<i32>>) -> i32 {`
 
 #### Constantes internas
 
-- [`MAX_EXPOSED_BLOCKS`](terrain_view_blocks.rs#L17) — Hasta qué punto por debajo de su superficie se apila alguna vez una columna. Una columna junto a una fosa marina profunda
+- [`MAX_EXPOSED_BLOCKS`](terrain_view_blocks.rs#L19) — Hasta qué punto por debajo de su superficie se apila alguna vez una columna. Una columna junto a una fosa marina profunda
   - Declaración: `const MAX_EXPOSED_BLOCKS: i32 = 10;`

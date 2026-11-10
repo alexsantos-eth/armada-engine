@@ -67,7 +67,8 @@ impl TerrainFrames {
         self.reflections[slot(material)]
     }
 
-    /// Frames for every material, one plain block each, for tests.
+    /// Frames for every material, one plain block each, for tests. The reflection hangs one
+    /// elevation step below the anchor, as the shipped reflection art does.
     #[cfg(test)]
     pub(crate) fn for_test() -> Self {
         let frame = SpriteFrame {
@@ -76,15 +77,21 @@ impl TerrainFrames {
             width: 32,
             height: 32,
         };
-        let ink = InkBox {
+        let block = InkBox {
             x: -0.5,
             y: -1.0,
             width: 1.0,
             height: 1.0,
         };
+        let reflection = InkBox {
+            x: -0.5,
+            y: 0.0,
+            width: 1.0,
+            height: iso::assets::SVG_BLOCK_HEIGHT / iso::assets::SVG_TILE_WIDTH,
+        };
         Self {
-            frames: [Some((frame, ink)); MATERIAL_SLOTS],
-            reflections: [Some((frame, ink)); MATERIAL_SLOTS],
+            frames: [Some((frame, block)); MATERIAL_SLOTS],
+            reflections: [Some((frame, reflection)); MATERIAL_SLOTS],
         }
     }
 
@@ -138,20 +145,6 @@ pub fn collect_terrain_sprites(
             continue;
         }
 
-        let in_front = [
-            WorldCoord {
-                x: column.coord.x,
-                y: column.coord.y.saturating_sub(1),
-            },
-            WorldCoord {
-                x: column.coord.x.saturating_sub(1),
-                y: column.coord.y,
-            },
-            WorldCoord {
-                x: column.coord.x.saturating_sub(1),
-                y: column.coord.y.saturating_sub(1),
-            },
-        ];
         let water_level = [
             (column.coord.x, column.coord.y.saturating_sub(1)),
             (column.coord.x.saturating_sub(1), column.coord.y),
@@ -173,8 +166,21 @@ pub fn collect_terrain_sprites(
         .into_iter()
         .find_map(|(x, y)| water_at(x, y).map(|cell| cell.level))
         .filter(|_| column.surface != TerrainMaterial::Water);
+        let flank_y = height_at(WorldCoord {
+            x: column.coord.x,
+            y: column.coord.y.saturating_sub(1),
+        });
+        let flank_x = height_at(WorldCoord {
+            x: column.coord.x.saturating_sub(1),
+            y: column.coord.y,
+        });
+        let across = height_at(WorldCoord {
+            x: column.coord.x.saturating_sub(1),
+            y: column.coord.y.saturating_sub(1),
+        });
         let water_line = water_level.map(|level| project_block(centre, level, projection).screen_y);
-        let floor = exposed_floor(column.elevation, in_front.into_iter().map(&height_at));
+        let floor = exposed_floor(column.elevation, [flank_y, flank_x, across]);
+        let flank = [flank_y, flank_x];
         let mut above_water = 0i32;
 
         for block in column.blocks_from(floor) {
@@ -207,7 +213,11 @@ pub fn collect_terrain_sprites(
             out.push(SpriteDraw::tinted(key, ATLAS_TEXTURE, frame, layout, tint));
             if let (Some(level), Some(water_line)) = (water_level, water_line) {
                 let block_level = f64::from(block.elevation);
+                let walled_in = flank
+                    .iter()
+                    .all(|flank| flank.is_some_and(|height| height >= block.elevation));
                 if block_level > level
+                    && !walled_in
                     && let Some((reflection_frame, reflection_ink)) =
                         frames.reflection(block.material)
                 {
