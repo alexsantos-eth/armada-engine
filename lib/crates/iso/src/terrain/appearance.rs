@@ -152,7 +152,7 @@ impl VariantPicker {
 }
 
 /// The field over a fixed grid, ascending: the sample the thresholds are read off.
-fn sorted_samples(field: &NoiseField) -> Vec<f64> {
+pub(crate) fn sorted_samples(field: &NoiseField) -> Vec<f64> {
     let mut samples: Vec<f64> = (0..CALIBRATION_SIDE)
         .flat_map(|i| {
             (0..CALIBRATION_SIDE).map(move |j| (i * CALIBRATION_STEP, j * CALIBRATION_STEP))
@@ -164,7 +164,7 @@ fn sorted_samples(field: &NoiseField) -> Vec<f64> {
 }
 
 /// The value of `sorted` below which `fraction` of it lies.
-fn quantile(sorted: &[f64], fraction: f64) -> f64 {
+pub(crate) fn quantile(sorted: &[f64], fraction: f64) -> f64 {
     if fraction <= 0.0 {
         return f64::NEG_INFINITY;
     }

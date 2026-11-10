@@ -239,3 +239,131 @@ fn the_default_gap_keeps_instances_of_a_type_apart() {
         }
     }
 }
+
+fn trees_catalog() -> EntityCatalog {
+    catalog(vec![
+        blueprint("tree", 1, vec![grass()]),
+        blueprint("tree_2", 1, vec![grass()]),
+        blueprint("tree_3", 1, vec![grass()]),
+        blueprint("rock", 1, vec![grass()]),
+    ])
+}
+
+fn tree_biomes(entities: &EntityCatalog) -> crate::biomes::field::WorldBiomes {
+    let json = r#"{
+        "schemaVersion": 1,
+        "biomes": [
+            { "id": "temperate_forest", "share": 50.0, "treeCoverage": 0.30,
+              "trees": [
+                  { "blueprint": "tree", "weight": 60.0 },
+                  { "blueprint": "tree_2", "weight": 40.0 }
+              ],
+              "grassTints": ["bfd5bd", "dde9d4"], "groundTints": ["fffbea", "ffffff"] },
+            { "id": "taiga", "share": 50.0, "treeCoverage": 0.30,
+              "trees": [
+                  { "blueprint": "tree_3", "weight": 100.0 }
+              ],
+              "grassTints": ["8fa884", "a9bda0"], "groundTints": ["8f8878", "a49d8d"] }
+        ]
+    }"#;
+    let parsed = crate::biomes::catalog::parse_biomes(json, entities).expect("valid biomes");
+    crate::biomes::field::WorldBiomes::new(42, &parsed)
+}
+
+#[test]
+fn a_biome_species_only_grows_in_its_own_biome() {
+    let entities = trees_catalog();
+    let biomes = tree_biomes(&entities);
+    let columns: Vec<TerrainColumn> = (-64..64)
+        .flat_map(|x| (-64..64).map(move |y| column(x, y, grass(), 0)))
+        .collect();
+    let result = place_entities_with_biomes(&columns, &entities, dense(), Some(&biomes));
+    assert!(!result.entities.is_empty());
+    for entity in &result.entities {
+        if !matches!(entity.type_(), "tree" | "tree_2" | "tree_3") {
+            continue;
+        }
+        let biome = biomes.biome(entity.x(), entity.y());
+        let listed = biome
+            .trees
+            .iter()
+            .any(|tree| tree.blueprint == entity.type_());
+        assert!(
+            listed,
+            "{} grew at ({}, {}) in biome {}",
+            entity.type_(),
+            entity.x(),
+            entity.y(),
+            biome.id
+        );
+    }
+}
+
+#[test]
+fn each_biome_grows_its_own_groves_somewhere() {
+    let entities = trees_catalog();
+    let biomes = tree_biomes(&entities);
+    let columns: Vec<TerrainColumn> = (-192..192)
+        .flat_map(|x| (-192..192).map(move |y| column(x, y, grass(), 0)))
+        .collect();
+    let result = place_entities_with_biomes(&columns, &entities, dense(), Some(&biomes));
+    let mut temperate = 0;
+    let mut taiga = 0;
+    for entity in &result.entities {
+        match entity.type_() {
+            "tree" | "tree_2" => temperate += 1,
+            "tree_3" => taiga += 1,
+            _ => {}
+        }
+    }
+    assert!(temperate > 0, "the temperate biome must grow its trees");
+    assert!(taiga > 0, "the taiga biome must grow its trees");
+}
+
+#[test]
+fn a_blueprint_no_biome_claims_grows_in_every_biome() {
+    let entities = trees_catalog();
+    let biomes = tree_biomes(&entities);
+    let columns: Vec<TerrainColumn> = (-192..192)
+        .flat_map(|x| (-192..192).map(move |y| column(x, y, grass(), 0)))
+        .collect();
+    let result = place_entities_with_biomes(&columns, &entities, dense(), Some(&biomes));
+    let mut rock_biomes = std::collections::HashSet::new();
+    for entity in &result.entities {
+        if entity.type_() == "rock" {
+            rock_biomes.insert(biomes.biome_index(entity.x(), entity.y()));
+        }
+    }
+    assert_eq!(
+        rock_biomes.len(),
+        2,
+        "rocks grow in both biomes, found in {rock_biomes:?}"
+    );
+}
+
+#[test]
+fn biome_placement_is_deterministic() {
+    let entities = trees_catalog();
+    let biomes = tree_biomes(&entities);
+    let columns: Vec<TerrainColumn> = (-48..48)
+        .flat_map(|x| (-48..48).map(move |y| column(x, y, grass(), 0)))
+        .collect();
+    let first = place_entities_with_biomes(&columns, &entities, dense(), Some(&biomes));
+    let second = place_entities_with_biomes(&columns, &entities, dense(), Some(&biomes));
+    let ids: Vec<&str> = first.entities.iter().map(|e| e.id()).collect();
+    let ids_again: Vec<&str> = second.entities.iter().map(|e| e.id()).collect();
+    assert_eq!(ids, ids_again);
+}
+
+#[test]
+fn biome_placement_without_biomes_matches_the_old_path() {
+    let entities = trees_catalog();
+    let columns: Vec<TerrainColumn> = (-16..16)
+        .flat_map(|x| (-16..16).map(move |y| column(x, y, grass(), 0)))
+        .collect();
+    let with = place_entities_with_biomes(&columns, &entities, dense(), None);
+    let without = place_entities_with(&columns, &entities, dense());
+    let ids: Vec<&str> = with.entities.iter().map(|e| e.id()).collect();
+    let ids_without: Vec<&str> = without.entities.iter().map(|e| e.id()).collect();
+    assert_eq!(ids, ids_without);
+}

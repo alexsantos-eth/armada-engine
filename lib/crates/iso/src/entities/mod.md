@@ -112,11 +112,14 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`is_taken`](placement.rs#L66) — Evalúa si se cumple la condición «taken» para el estado recibido.
   - Firma: `pub fn is_taken(&self, x: i32, y: i32) -> bool {`
 
-- [`place_entities`](placement.rs#L97) — Coloca entidades sobre `columns` con las reglas por defecto.
+- [`place_entities`](placement.rs#L93) — Coloca entidades sobre `columns` con las reglas por defecto.
   - Firma: `pub fn place_entities(columns: &[TerrainColumn], catalog: &EntityCatalog) -> PlacementResult {`
 
-- [`place_entities_with`](placement.rs#L102) — Coloca entidades sobre `columns`, una instancia por cada columna ancla válida que permite la densidad
+- [`place_entities_with`](placement.rs#L98) — Coloca entidades sobre `columns`, una instancia por cada columna ancla válida que permite la densidad
   - Firma: `pub fn place_entities_with( columns: &[TerrainColumn], catalog: &EntityCatalog, rules: PlacementRules, ) -> PlacementResult {`
+
+- [`place_entities_with_biomes`](placement.rs#L112) — Coloca entidades sobre `columns`, confinando las especies que los biomas reclaman a sus propias regiones: un blueprint que algún bioma lista solo brota donde el bioma cubre la columna y su picker de bosquete devuelve esa especie, así que los bosquetes son monospecíficos y las reglas de densidad y hueco se aplican como siempre. `None` restaura el comportamiento sin biomas.
+  - Firma: `pub fn place_entities_with_biomes( columns: &[TerrainColumn], catalog: &EntityCatalog, rules: PlacementRules, biomes: Option<&WorldBiomes>, ) -> PlacementResult {`
 
 ### `validation.rs`
 

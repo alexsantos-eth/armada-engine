@@ -15,7 +15,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`normalized`](chunk_manager.rs#L38) — Acota los radios para que sigan creciendo hacia fuera, pida lo que pida quien llama: un radio de retención
+- [`normalized`](chunk_manager.rs#L37) — Acota los radios para que sigan creciendo hacia fuera, pida lo que pida quien llama: un radio de retención
   - Firma: `pub fn normalized(self) -> Self {`
 
 - [`new`](chunk_manager.rs#L64) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
@@ -24,58 +24,61 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`with_radii`](chunk_manager.rs#L69) — Igual que [`Self::new`] con los radios de streaming que elija el cliente.
   - Firma: `pub fn with_radii( generator: TerrainGenerator, catalog: EntityCatalog, radii: ChunkRadii, ) -> Self {`
 
-- [`radii`](chunk_manager.rs#L87) — Los radios que está usando este streamer, ya normalizados.
+- [`radii`](chunk_manager.rs#L89) — Los radios que está usando este streamer, ya normalizados.
   - Firma: `pub fn radii(&self) -> ChunkRadii {`
 
-- [`set_focus`](chunk_manager.rs#L92) — Establece los chunks de foco (normalmente alrededor de la cámara/jugador). El streamer conserva los chunks
+- [`set_biomes`](chunk_manager.rs#L97) — Entrega al manager los biomas del mundo. Se llama una vez en el arranque, antes del primer descubrimiento; las entidades de los chunks ya colocadas conservan los suyos hasta que se descargan.
+  - Firma: `pub fn set_biomes(&mut self, biomes: WorldBiomes) {`
+
+- [`set_focus`](chunk_manager.rs#L102) — Establece los chunks de foco (normalmente alrededor de la cámara/jugador). El streamer conserva los chunks
   - Firma: `pub fn set_focus(&mut self, focus: Vec<ChunkCoord>) {`
 
-- [`set_single_focus`](chunk_manager.rs#L102) — Establece un único foco sin asignar un nuevo vector en cada frame renderizado.
+- [`set_single_focus`](chunk_manager.rs#L112) — Establece un único foco sin asignar un nuevo vector en cada frame renderizado.
   - Firma: `pub fn set_single_focus(&mut self, focus: ChunkCoord) {`
 
-- [`tick`](chunk_manager.rs#L113) — Avanza un frame: carga, muestra y oculta chunks respetando los presupuestos por frame.
+- [`tick`](chunk_manager.rs#L123) — Avanza un frame: carga, muestra y oculta chunks respetando los presupuestos por frame.
   - Firma: `pub fn tick(&mut self) -> Vec<ChunkCoord> {`
 
-- [`terrain_chunk`](chunk_manager.rs#L166) — Columnas de terreno de un chunk descubierto, o `None` cuando nunca fue descubierto.
+- [`terrain_chunk`](chunk_manager.rs#L181) — Columnas de terreno de un chunk descubierto, o `None` cuando nunca fue descubierto.
   - Firma: `pub fn terrain_chunk(&self, coord: ChunkCoord) -> Option<&[crate::terrain::TerrainColumn]> {`
 
-- [`column_at`](chunk_manager.rs#L171) — Columna de terreno en una coordenada absoluta del mundo, o `None` cuando su chunk nunca fue
+- [`column_at`](chunk_manager.rs#L186) — Columna de terreno en una coordenada absoluta del mundo, o `None` cuando su chunk nunca fue
   - Firma: `pub fn column_at(&self, x: i32, y: i32) -> Option<crate::terrain::TerrainColumn> {`
 
-- [`is_discovered`](chunk_manager.rs#L180) — Si un chunk ha sido descubierto.
+- [`is_discovered`](chunk_manager.rs#L195) — Si un chunk ha sido descubierto.
   - Firma: `pub fn is_discovered(&self, coord: ChunkCoord) -> bool {`
 
-- [`entities_chunk`](chunk_manager.rs#L185) — Entidades colocadas de un chunk descubierto, o `None` cuando nunca fue descubierto.
+- [`entities_chunk`](chunk_manager.rs#L200) — Entidades colocadas de un chunk descubierto, o `None` cuando nunca fue descubierto.
   - Firma: `pub fn entities_chunk(&self, coord: ChunkCoord) -> Option<&[Entity]> {`
 
-- [`is_visible`](chunk_manager.rs#L190) — Si un chunk forma parte del flujo que el cliente está mostrando actualmente.
+- [`is_visible`](chunk_manager.rs#L205) — Si un chunk forma parte del flujo que el cliente está mostrando actualmente.
   - Firma: `pub fn is_visible(&self, coord: ChunkCoord) -> bool {`
 
-- [`save_chunk`](chunk_manager.rs#L195) — Convierte un chunk descubierto a su forma guardada, almacenando terreno y entidades.
+- [`save_chunk`](chunk_manager.rs#L210) — Convierte un chunk descubierto a su forma guardada, almacenando terreno y entidades.
   - Firma: `pub fn save_chunk(&self, coord: ChunkCoord) -> Option<crate::world::save::SavedChunk> {`
 
-- [`save_all`](chunk_manager.rs#L227) — Convierte cada chunk descubierto a su forma guardada.
+- [`save_all`](chunk_manager.rs#L242) — Convierte cada chunk descubierto a su forma guardada.
   - Firma: `pub fn save_all(&self) -> Vec<crate::world::save::SavedChunk> {`
 
-- [`load_from_save`](chunk_manager.rs#L239) — Restaura chunks desde un guardado hacia este manager, sin pasar por la generación.
+- [`load_from_save`](chunk_manager.rs#L254) — Restaura chunks desde un guardado hacia este manager, sin pasar por la generación.
   - Firma: `pub fn load_from_save(&mut self, save: &crate::world::save::WorldSave) -> Vec<String> {`
 
-- [`visible_chunks`](chunk_manager.rs#L286) — Coordenadas de los chunks visibles en orden estable.
+- [`visible_chunks`](chunk_manager.rs#L304) — Coordenadas de los chunks visibles en orden estable.
   - Firma: `pub fn visible_chunks(&self) -> Vec<ChunkCoord> {`
 
-- [`discovered_count`](chunk_manager.rs#L291) — Número de chunks descubiertos (visibles o no).
+- [`discovered_count`](chunk_manager.rs#L309) — Número de chunks descubiertos (visibles o no).
   - Firma: `pub fn discovered_count(&self) -> usize {`
 
-- [`focus`](chunk_manager.rs#L296) — Chunks de foco en orden estable.
+- [`focus`](chunk_manager.rs#L314) — Chunks de foco en orden estable.
   - Firma: `pub fn focus(&self) -> &[ChunkCoord] {`
 
-- [`unload_candidates`](chunk_manager.rs#L328) — Chunks descubiertos más lejos que `CHUNK_KEEP_RADIUS` de cada foco, de los más cercanos primero.
+- [`unload_candidates`](chunk_manager.rs#L346) — Chunks descubiertos más lejos que `CHUNK_KEEP_RADIUS` de cada foco, de los más cercanos primero.
   - Firma: `pub fn unload_candidates(&self) -> Vec<ChunkCoord> {`
 
-- [`next_unload_candidate`](chunk_manager.rs#L348) — El único chunk que [`Self::unload_candidates`] devolvería primero, sin construir la
+- [`next_unload_candidate`](chunk_manager.rs#L366) — El único chunk que [`Self::unload_candidates`] devolvería primero, sin construir la
   - Firma: `pub fn next_unload_candidate(&self) -> Option<ChunkCoord> {`
 
-- [`unload_chunk`](chunk_manager.rs#L365) — Calcula o recupera «unload chunk» según los parámetros de la firma.
+- [`unload_chunk`](chunk_manager.rs#L387) — Calcula o recupera «unload chunk» según los parámetros de la firma.
   - Firma: `pub fn unload_chunk(&mut self, coord: ChunkCoord) -> Option<crate::world::save::SavedChunk> {`
 
 ### `save.rs`

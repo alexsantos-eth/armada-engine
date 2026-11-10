@@ -2,7 +2,8 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::entities::placement::place_entities;
+use crate::biomes::field::WorldBiomes;
+use crate::entities::placement::place_entities_with_biomes;
 use crate::entities::{Entity, EntityCatalog};
 use crate::grid::{ChunkCoord, chunks_around};
 use crate::scene_order::{
@@ -58,6 +59,8 @@ pub struct ChunkManager {
     /// Cached, distance-sorted stream targets. They only change when the camera crosses a chunk
     wanted_loaded: Vec<ChunkCoord>,
     wanted_prefetch: Vec<ChunkCoord>,
+    /// The biomes of the world, when the content shipped them; `None` grows biome-agnostic chunks.
+    biomes: Option<WorldBiomes>,
 }
 
 impl ChunkManager {
@@ -80,12 +83,19 @@ impl ChunkManager {
             radii: radii.normalized(),
             wanted_loaded: Vec::new(),
             wanted_prefetch: Vec::new(),
+            biomes: None,
         }
     }
 
     /// The radii this streamer is using, already normalized.
     pub fn radii(&self) -> ChunkRadii {
         self.radii
+    }
+
+    /// Hands the manager the world's biomes. Called once at boot, before the first discovery;
+    /// the entities of chunks already placed keep their biomes until they are unloaded.
+    pub fn set_biomes(&mut self, biomes: WorldBiomes) {
+        self.biomes = Some(biomes);
     }
 
     /// Sets the focus chunks (typically around the camera/player). The streamer keeps chunks
@@ -129,7 +139,12 @@ impl ChunkManager {
 
         for coord in self.pending_entities.drain(..) {
             if let Some(columns) = self.world.chunk(coord) {
-                let result = place_entities(columns, &self.catalog);
+                let result = place_entities_with_biomes(
+                    columns,
+                    &self.catalog,
+                    crate::entities::placement::PlacementRules::default(),
+                    self.biomes.as_ref(),
+                );
                 self.entities.insert(coord, result.entities);
             }
         }

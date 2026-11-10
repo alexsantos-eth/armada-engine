@@ -4,6 +4,7 @@ use crate::entities::blueprint::{EntityBlueprint, EntityCatalog, EntityLengthAxi
 use crate::entities::entity::{Entity, get_entity_footprint};
 use std::collections::HashMap;
 
+use crate::biomes::field::WorldBiomes;
 use crate::grid::{CellMap, SpatialIndex, WorldCoord};
 use crate::terrain::{TerrainColumn, TerrainMaterial};
 
@@ -90,7 +91,7 @@ impl Default for PlacementRules {
 
 /// Places entities over `columns` with the default rules.
 pub fn place_entities(columns: &[TerrainColumn], catalog: &EntityCatalog) -> PlacementResult {
-    place_entities_with(columns, catalog, PlacementRules::default())
+    place_entities_with_biomes(columns, catalog, PlacementRules::default(), None)
 }
 
 /// Places entities over `columns`, one instance per valid anchor column the density lets
@@ -98,6 +99,21 @@ pub fn place_entities_with(
     columns: &[TerrainColumn],
     catalog: &EntityCatalog,
     rules: PlacementRules,
+) -> PlacementResult {
+    place_entities_with_biomes(columns, catalog, rules, None)
+}
+
+/// Places entities over `columns`, gating the species the biomes claim to their own regions.
+///
+/// A blueprint no biome lists keeps the density roll of `rules`; a blueprint some biome lists
+/// only grows where one of those biomes covers the column and its grove picker yields that
+/// species, so a biome's groves are monospecific while mixed edges between biomes can still
+/// touch. `None` restores the biome-agnostic behaviour of [`place_entities_with`].
+pub fn place_entities_with_biomes(
+    columns: &[TerrainColumn],
+    catalog: &EntityCatalog,
+    rules: PlacementRules,
+    biomes: Option<&WorldBiomes>,
 ) -> PlacementResult {
     let mut columns_map = CellMap::new();
     for column in columns {
@@ -113,16 +129,35 @@ pub fn place_entities_with(
     let empty: Vec<&TerrainColumn> = Vec::new();
 
     for blueprint in &catalog.entities {
+        let gated = biomes.map(|world| world.species_of(&blueprint.id));
         let Some(anchor_surface) = blueprint.placement.surfaces.first() else {
             continue;
         };
         let anchors = by_surface.get(anchor_surface).unwrap_or(&empty);
         for column in anchors {
             let anchor = column.coord;
-            if rules.density > 1
-                && !placement_roll(&blueprint.id, anchor.x, anchor.y).is_multiple_of(rules.density)
-            {
-                continue;
+            match &gated {
+                Some(memberships) if !memberships.is_empty() => {
+                    let Some(world) = biomes else { continue };
+                    let biome = world.biome_index(anchor.x, anchor.y);
+                    let allowed = memberships
+                        .iter()
+                        .find(|(biome_of, _)| *biome_of == biome)
+                        .is_some_and(|&(_, species)| {
+                            world.formation(anchor.x, anchor.y) == Some(species)
+                        });
+                    if !allowed {
+                        continue;
+                    }
+                }
+                _ => {
+                    if rules.density > 1
+                        && !placement_roll(&blueprint.id, anchor.x, anchor.y)
+                            .is_multiple_of(rules.density)
+                    {
+                        continue;
+                    }
+                }
             }
             let mut context = PlacementContext::new(&columns_map, &mut placed);
             let Some(placement) = find_placement(anchor, blueprint, &mut context, rules.gap) else {

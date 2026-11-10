@@ -1,6 +1,7 @@
 //! Game content: what colour a patch of ground is drawn, and what grows on top of the grass.
 
 use iso::assets::{InkBox, SpriteFrame};
+use iso::biomes::WorldBiomes;
 use iso::terrain::{TerrainMaterial, TintZones, VariantPicker, tint_channels};
 use macroquad::prelude::{Color, WHITE};
 
@@ -11,6 +12,11 @@ const GRASS_TINTS: (f64, &[u32]) = (10.0, &[0xbfd5bd, 0xdde9d4, 0xffffff, 0xfff0
 
 /// Bare ground and the broader land tones: much subtler than the grass, because dirt has no
 const LAND_TINTS: (f64, &[u32]) = (11.0, &[0xffffff, 0xfffbea, 0xf4f9df, 0xf2f5d6]);
+
+/// Scale of the grass and path colour zones, in world columns.
+const GRASS_TINT_SCALE: f64 = 10.0;
+/// Scale of the bare-ground colour zones, in world columns.
+const GROUND_TINT_SCALE: f64 = 11.0;
 
 /// The extra tops a grass column can grow, and the share of all grass each should cover.
 const GRASS_TOPS: &[(&str, f64)] = &[
@@ -25,27 +31,62 @@ const GRASS_TOPS: &[(&str, f64)] = &[
     ("/assets/grass/block_bushes.svg", 0.02),
 ];
 
+/// Builds the colour zones of one biome (or of the world, when there is no biome content).
+fn paint_zones(
+    seed: u64,
+    scope: Option<&str>,
+    grass: &[u32],
+    ground: &[u32],
+) -> [Option<TintZones>; MATERIAL_SLOTS] {
+    let mut tints = [const { None }; MATERIAL_SLOTS];
+    let label = |material: &str| match scope {
+        Some(biome) => format!("terrain-tints:{biome}:{material}"),
+        None => format!("terrain-tints:{material}"),
+    };
+    tints[slot(TerrainMaterial::Grass)] =
+        TintZones::new(seed, &label("grass"), GRASS_TINT_SCALE, grass);
+    tints[slot(TerrainMaterial::Path)] =
+        TintZones::new(seed, &label("grass"), GRASS_TINT_SCALE, grass);
+    tints[slot(TerrainMaterial::Ground)] =
+        TintZones::new(seed, &label("ground"), GROUND_TINT_SCALE, ground);
+    tints
+}
+
 /// How a world's terrain is dressed: resolved once against the atlas and the world seed.
 pub struct TerrainLook {
-    /// The colour zones of each material, by the slot [`super::slot`] gives it.
-    tints: [Option<TintZones>; MATERIAL_SLOTS],
+    /// The colour zones of each material, per biome; index `0` is the global look when there are
+    /// no biomes, otherwise one slot set per biome in catalogue order.
+    tints: Vec<[Option<TintZones>; MATERIAL_SLOTS]>,
+    /// The world's biomes, when the content shipped them; `None` tints every column globally.
+    biomes: Option<WorldBiomes>,
     /// Where the grass grows something, and the artwork of each top it can grow.
     grass_tops: Option<(VariantPicker, Vec<(SpriteFrame, InkBox)>)>,
 }
 
 impl TerrainLook {
-    /// Resolves the catalogue, asking `artwork` for the frame and the measurement of each top's
+    /// Resolves the catalogue, asking `artwork` for the frame and the measurement of each top's; when
+    /// `biomes` is given, every biome paints its own grass and ground, otherwise the world keeps
+    /// the global palette.
     pub fn new(
         seed: u64,
         artwork: impl Fn(&str) -> Option<(SpriteFrame, InkBox)>,
+        biomes: Option<&WorldBiomes>,
     ) -> (Self, Vec<&'static str>) {
-        let mut tints = [const { None }; MATERIAL_SLOTS];
-        let mut zone = |material: TerrainMaterial, label: &str, (scale, colors): (f64, &[u32])| {
-            tints[slot(material)] = TintZones::new(seed, label, scale, colors);
+        let tints = match biomes {
+            Some(world) => world
+                .biomes()
+                .iter()
+                .map(|biome| {
+                    paint_zones(
+                        seed,
+                        Some(&biome.id),
+                        &biome.grass_tints,
+                        &biome.ground_tints,
+                    )
+                })
+                .collect(),
+            None => vec![paint_zones(seed, None, GRASS_TINTS.1, LAND_TINTS.1)],
         };
-        zone(TerrainMaterial::Grass, "terrain-tints:grass", GRASS_TINTS);
-        zone(TerrainMaterial::Path, "terrain-tints:grass", GRASS_TINTS);
-        zone(TerrainMaterial::Ground, "terrain-tints:ground", LAND_TINTS);
 
         let mut missing = Vec::new();
         let mut chances = Vec::new();
@@ -61,12 +102,28 @@ impl TerrainLook {
         }
         let grass_tops = VariantPicker::new(seed, "terrain-variants:grass", &chances)
             .map(|picker| (picker, looks));
-        (Self { tints, grass_tops }, missing)
+        (
+            Self {
+                tints,
+                biomes: biomes.cloned(),
+                grass_tops,
+            },
+            missing,
+        )
     }
 
     /// What a block of `material` standing on column `(x, y)` is multiplied by.
     pub fn tint(&self, material: TerrainMaterial, x: i32, y: i32) -> Color {
-        let Some(zones) = &self.tints[slot(material)] else {
+        let index = self
+            .biomes
+            .as_ref()
+            .map(|world| world.biome_index(x, y))
+            .unwrap_or(0);
+        let Some(zones) = self
+            .tints
+            .get(index)
+            .and_then(|by_biome| by_biome[slot(material)].as_ref())
+        else {
             return WHITE;
         };
         let (red, green, blue) = tint_channels(zones.at(x, y));

@@ -3,6 +3,7 @@
 #![forbid(unsafe_code)]
 
 pub mod assets;
+pub mod biomes;
 pub mod camera;
 pub mod entities;
 pub mod grid;

@@ -6,7 +6,7 @@ Este documento define los límites, contratos y prácticas de la implementación
 
 ## Estado del proyecto
 
-**Implementado:** el workspace `lib`, el crate `iso` sin dependencias gráficas y el cliente Macroquad (paquete `iso-core`), `grid` con mapa de celdas e índice espacial, búsqueda `paths`, `projection`, geometría y visibilidad de `camera`, reloj `time` cableado al juego (`WorldClock` avanza solo en el paso fijo; la fase de sombras sigue al reloj del mundo), acumulador de paso fijo `simulation`, el modelo y generador de `terrain`, el modelo de mundo `world` en memoria con chunks descubiertos, las sombras de `lighting` con el horneado de una fase, el guardado nativo/web y una muestra jugable en la demo nativa y WASM. El contrato del catálogo de entidades vive en `content/entities.json` (`schemaVersion` 1) y lo valida `iso::entities::validate_catalog`. **Previsto:** la composición de sistemas de simulación, las reglas de colocación de entidades, el guardado persistente de chunks y la vista definitiva con assets. Una sección prevista es un contrato de diseño, no una afirmación de que su código ya existe.
+**Implementado:** el workspace `lib`, el crate `iso` sin dependencias gráficas y el cliente Macroquad (paquete `iso-core`), `grid` con mapa de celdas e índice espacial, búsqueda `paths`, `projection`, geometría y visibilidad de `camera`, reloj `time` cableado al juego (`WorldClock` avanza solo en el paso fijo; la fase de sombras sigue al reloj del mundo), acumulador de paso fijo `simulation`, el modelo y generador de `terrain`, el modelo de mundo `world` en memoria con chunks descubiertos, los biomas `biomes` (regiones por semilla, bosquetes monospecíficos, paleta de suelo por bioma), las sombras de `lighting` con el horneado de una fase, el guardado nativo/web y una muestra jugable en la demo nativa y WASM. El contrato del catálogo de entidades vive en `content/entities.json` (`schemaVersion` 1) y lo valida `iso::entities::validate_catalog`; el de los biomas, en `content/biomes.json` (`schemaVersion` 1) y lo valida `iso::biomes::parse_biomes`, que exige además que cada blueprint citado exista. **Previsto:** la composición de sistemas de simulación, las reglas de colocación de entidades, el guardado persistente de chunks y la vista definitiva con assets. Una sección prevista es un contrato de diseño, no una afirmación de que su código ya existe.
 
 ## Estructura y dependencias
 
@@ -14,7 +14,7 @@ Este documento define los límites, contratos y prácticas de la implementación
 lib/
   crates/iso/     # crate `iso`: dominio portable y sin Macroquad
   src/            # crate `iso-core`: cliente Macroquad, binario y adaptadores
-  content/        # manifiesto de assets, atlas y catálogo de entidades
+  content/        # manifiesto de assets, atlas, catálogo de entidades y biomas
   assets-src/     # SVG fuente del atlas (copia local, no se despliega)
   packaging/      # fuente e icns del icono del bundle macOS (no se despliega)
   web/            # cargador WASM y archivos web (`/` limpio, `/playground` con GUI)
@@ -71,7 +71,13 @@ El generador produce columnas con alturas y materiales (agua, arena, suelo, hier
 
 ### Entidades y colocación
 
-Las definiciones de entidades viven en `content/entities.json` (`schemaVersion` 1, validado por `iso::entities::validate_catalog`): huella por casilla, colisión, altura, eje de longitud, superficies admitidas. Una instancia es el blueprint más posición y orientación; las instancias tienen identidad estable para guardarse. La colocación es determinista y consulta solo el terreno; la densidad, grupos y reglas se diseñan aquí, no se heredan de ningún contenido anterior.
+Las definiciones de entidades viven en `content/entities.json` (`schemaVersion` 1, validado por `iso::entities::validate_catalog`): huella por casilla, colisión, altura, eje de longitud, superficies admitidas. Una instancia es el blueprint más posición y orientación; las instancias tienen identidad estable para guardarse. La colocación es determinista y consulta solo el terreno; la densidad, grupos y reglas se diseñan aquí, no se heredan de ningún contenido anterior. Los blueprints que algún bioma reclama como especie solo brotan en las columnas de ese bioma, en sus bosquetes (ver [Biomas](#biomas)); los demás (arbustos, rocas, edificios, muelles) se colocan sin distinción de bioma.
+
+### Biomas
+
+Los biomas son naturaleza, no edificios: hoy clasifican los ocho árboles en cuatro biomas —`temperate_forest` (`tree`, `tree_2`, `tree_5`, `tree_6`), `taiga` (`tree_3`, `tree_7`), `autumn_forest` (`tree_8`) y `savanna` (`tree_4`)— y arbustos y rocas crecen en todos. El contenido vive en `content/biomes.json` (`schemaVersion` 1, validado por `iso::biomes::parse_biomes`, que exige además que cada blueprint citado exista en el catálogo de entidades): cada bioma declara su `share` (peso relativo de cobertura del mundo), su `treeCoverage` (proporción de columnas en las que brotan árboles), las especies elegibles con su peso, y dos paletas de multiplicadores —`grassTints` para hierba y camino, `groundTints` para tierra desnuda—, de oscuro a claro, `0xRRGGBB`.
+
+El dominio `iso::biomes` reparte el mundo con un único campo ancho (`BIOME_FIELD_SCALE`, 200 columnas) cuyos cortes se calibran por cuantiles (como `VariantPicker`) para que las `share` se respeten de media donde se mide; es una función pura de la semilla y no se guarda — al reabrir, el mundo pinta las mismas regiones. Dentro de cada bioma, las formaciones son bosquetes monospecíficos: un `VariantPicker` por bioma con los pesos de especie escalados por su `treeCoverage` produce manchas (escala de 6 columnas, relleno 0,7) donde todos los árboles son de la misma especie; fuera de bosquete no brotan. `place_entities_with_biomes` aplica la regla; `ChunkManager::set_biomes` entrega el mundo de biomas al streamer en el arranque. El cliente (`TerrainLook`) resuelve el bioma por columna y multiplica el bloque de hierba, camino o tierra por la zona calibrada de la paleta de ese bioma; agua, arena, las caras superiores (flores y demás) y el guardado no cambian.
 
 ### Orden de dibujo y sprites
 
@@ -107,7 +113,7 @@ En pantallas táctiles el cliente pinta dos controles en las esquinas inferiores
 
 - `input` y `app`: comandos del dominio a partir de teclado y puntero; composición del mundo, sistemas, escena y ciclo principal.
 - `events` y `simulation`: eventos tipados síncronos en orden de registro; registro y ejecución de sistemas en orden declarado, con eventos de dominio y sin llamadas directas entre sistemas.
-- Colocación de entidades completa (densidad, grupos, biomas, vecindad) y reglas de aparición.
+- Colocación por wave function collapse para el resto de entidades (fuera de biomas): plan en [WFC-PLACEMENT.md](WFC-PLACEMENT.md). Queda pendiente de la fase de implementación; mientras, rige la colocación determinista actual.
 - Guardado persistente de chunks (en memoria en esta fase) y migraciones versionadas del formato.
 - `parts` y persistencia completa, `streaming` con presupuesto.
 - Módulos ambientales (curvas de luz, viento, ondas), `water`/`effects`/`audio` definitivas y `ui` con comandos sobre el flujo de simulación.

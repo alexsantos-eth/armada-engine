@@ -183,22 +183,33 @@ impl Game {
             seed: WORLD_SEED,
             ..TerrainConfig::default()
         };
-        let (terrain_look, missing_tops) = TerrainLook::new(terrain_config.seed, |source| {
-            atlas
-                .asset(source)
-                .and_then(|asset| Some((asset.frame, asset.ink?)))
-        });
-        for source in &missing_tops {
-            eprintln!("warning: the atlas has no measured artwork for {source}; it will not grow");
-        }
         let catalog: EntityCatalog =
             serde_json::from_str(catalog_json).expect("entity catalog is valid JSON");
         validate_catalog(&catalog).expect("entity catalog validates");
+
+        let biomes_json = include_str!("../../content/biomes.json");
+        let biomes_catalog =
+            iso::biomes::parse_biomes(biomes_json, &catalog).expect("biomes content validates");
+        let world_biomes = iso::biomes::WorldBiomes::new(terrain_config.seed, &biomes_catalog);
+
+        let (terrain_look, missing_tops) = TerrainLook::new(
+            terrain_config.seed,
+            |source| {
+                atlas
+                    .asset(source)
+                    .and_then(|asset| Some((asset.frame, asset.ink?)))
+            },
+            Some(&world_biomes),
+        );
+        for source in &missing_tops {
+            eprintln!("warning: the atlas has no measured artwork for {source}; it will not grow");
+        }
 
         let generator =
             TerrainGenerator::new(terrain_config).expect("default terrain configuration is valid");
 
         let mut manager = ChunkManager::with_radii(generator, catalog, CHUNK_RADII);
+        manager.set_biomes(world_biomes);
 
         let save = load_save().await;
         let archive = restore_archive(save);

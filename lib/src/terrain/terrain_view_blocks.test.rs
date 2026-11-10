@@ -125,7 +125,7 @@ fn collected(
     water_at: impl Fn(i32, i32) -> Option<WaterCell>,
 ) -> Vec<SpriteDraw> {
     let frames = test_frames();
-    let (look, _) = TerrainLook::new(7, |_| None);
+    let (look, _) = TerrainLook::new(7, |_| None, None);
     let mut out = Vec::new();
     collect_terrain_sprites(
         columns,

@@ -11,7 +11,7 @@ use iso::world::ChunkRadii;
 /// directory on macOS. This is the single place to change to rename the game everywhere.
 pub const GAME_TITLE: &str = "Yorch Adventure";
 /// Diagnostic centre of the world; the player spawns near here.
-pub const PREVIEW_CENTRE: WorldCoord = WorldCoord { x: 16, y: 88 };
+pub const PREVIEW_CENTRE: WorldCoord = WorldCoord { x: -120, y: -72 };
 /// The scene's zoom: how wide one tile is drawn, in screen pixels.
 pub const PREVIEW_TILE_WIDTH: f64 = 280.0;
 /// How tall one tile is drawn, in screen pixels.

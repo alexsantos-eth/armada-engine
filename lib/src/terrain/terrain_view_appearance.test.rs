@@ -28,7 +28,7 @@ fn columns(side: i32) -> impl Iterator<Item = (i32, i32)> {
 #[test]
 fn every_grass_top_is_in_the_shipped_atlas() {
     let manifest = shipped();
-    let (look, missing) = TerrainLook::new(SEED, artwork(&manifest));
+    let (look, missing) = TerrainLook::new(SEED, artwork(&manifest), None);
     assert!(missing.is_empty(), "the atlas is missing {missing:?}");
     let (_, looks) = look.grass_tops.as_ref().expect("the grass grows something");
     assert_eq!(looks.len(), GRASS_TOPS.len());
@@ -69,7 +69,7 @@ fn the_tops_dress_about_a_third_of_the_grass() {
 #[test]
 fn only_the_grass_grows_anything() {
     let manifest = shipped();
-    let (look, _) = TerrainLook::new(SEED, artwork(&manifest));
+    let (look, _) = TerrainLook::new(SEED, artwork(&manifest), None);
     assert!(columns(60).any(|(x, y)| look.top(TerrainMaterial::Grass, x, y).is_some()));
     for material in [
         TerrainMaterial::Water,
@@ -89,13 +89,17 @@ fn only_the_grass_grows_anything() {
 fn a_top_the_atlas_lacks_is_left_out_and_the_others_still_grow() {
     let manifest = shipped();
     let full = artwork(&manifest);
-    let (look, missing) = TerrainLook::new(SEED, |source| {
-        if source == GRASS_TOPS[0].0 {
-            None
-        } else {
-            full(source)
-        }
-    });
+    let (look, missing) = TerrainLook::new(
+        SEED,
+        |source| {
+            if source == GRASS_TOPS[0].0 {
+                None
+            } else {
+                full(source)
+            }
+        },
+        None,
+    );
     assert_eq!(missing, vec![GRASS_TOPS[0].0]);
     let (_, looks) = look.grass_tops.as_ref().expect("the rest still grow");
     assert_eq!(looks.len(), GRASS_TOPS.len() - 1);
@@ -111,7 +115,7 @@ fn a_top_the_atlas_lacks_is_left_out_and_the_others_still_grow() {
 /// With no artwork at all the ground is plain grass, not invisible: the picker is skipped.
 #[test]
 fn no_artwork_at_all_leaves_the_grass_plain() {
-    let (look, missing) = TerrainLook::new(SEED, |_| None);
+    let (look, missing) = TerrainLook::new(SEED, |_| None, None);
     assert_eq!(missing.len(), GRASS_TOPS.len());
     assert!(look.grass_tops.is_none());
     assert!(columns(40).all(|(x, y)| look.top(TerrainMaterial::Grass, x, y).is_none()));
@@ -122,7 +126,7 @@ fn no_artwork_at_all_leaves_the_grass_plain() {
 #[test]
 fn only_the_land_materials_are_tinted_and_never_brightened() {
     let manifest = shipped();
-    let (look, _) = TerrainLook::new(SEED, artwork(&manifest));
+    let (look, _) = TerrainLook::new(SEED, artwork(&manifest), None);
     for material in [TerrainMaterial::Water, TerrainMaterial::Sand] {
         assert!(
             columns(40).all(|(x, y)| look.tint(material, x, y) == WHITE),
@@ -154,7 +158,7 @@ fn only_the_land_materials_are_tinted_and_never_brightened() {
 #[test]
 fn a_path_takes_the_colour_of_the_grass_it_crosses() {
     let manifest = shipped();
-    let (look, _) = TerrainLook::new(SEED, artwork(&manifest));
+    let (look, _) = TerrainLook::new(SEED, artwork(&manifest), None);
     for (x, y) in columns(60) {
         assert_eq!(
             look.tint(TerrainMaterial::Path, x, y),
@@ -193,9 +197,9 @@ fn the_grass_zones_read_and_the_ground_zones_whisper() {
 #[test]
 fn the_dressing_follows_the_world_seed() {
     let manifest = shipped();
-    let (one, _) = TerrainLook::new(SEED, artwork(&manifest));
-    let (same, _) = TerrainLook::new(SEED, artwork(&manifest));
-    let (other, _) = TerrainLook::new(SEED + 1, artwork(&manifest));
+    let (one, _) = TerrainLook::new(SEED, artwork(&manifest), None);
+    let (same, _) = TerrainLook::new(SEED, artwork(&manifest), None);
+    let (other, _) = TerrainLook::new(SEED + 1, artwork(&manifest), None);
     let read = |look: &TerrainLook| -> Vec<(f32, Option<u32>)> {
         columns(40)
             .map(|(x, y)| {
@@ -209,4 +213,106 @@ fn the_dressing_follows_the_world_seed() {
     };
     assert_eq!(read(&one), read(&same));
     assert_ne!(read(&one), read(&other));
+}
+
+/// The shipped biomes content, read and cross-validated the way the client does it.
+fn shipped_biomes() -> iso::biomes::WorldBiomes {
+    let entities: iso::entities::EntityCatalog =
+        serde_json::from_str(include_str!("../../content/entities.json"))
+            .expect("the entity catalog is valid JSON");
+    let catalog = iso::biomes::parse_biomes(include_str!("../../content/biomes.json"), &entities)
+        .expect("the biomes content validates");
+    iso::biomes::WorldBiomes::new(SEED, &catalog)
+}
+
+/// The shipped biomes content names only blueprints the shipped entity catalog has.
+#[test]
+fn the_shipped_biomes_validate_against_the_entity_catalog() {
+    let biomes = shipped_biomes();
+    assert_eq!(biomes.biomes().len(), 4);
+    let mut ids: Vec<&str> = biomes
+        .biomes()
+        .iter()
+        .map(|biome| biome.id.as_str())
+        .collect();
+    ids.sort_unstable();
+    assert_eq!(
+        ids,
+        ["autumn_forest", "savanna", "taiga", "temperate_forest"]
+    );
+}
+
+/// Every land biome paints its own grass over at least one column, and no two biomes agree on
+#[test]
+fn each_shipped_biome_paints_the_grass_differently_somewhere() {
+    let manifest = shipped();
+    let biomes = shipped_biomes();
+    let (look, _) = TerrainLook::new(SEED, artwork(&manifest), Some(&biomes));
+    let mut seen: Vec<std::collections::HashSet<(u32, u32, u32)>> = (0..biomes.biomes().len())
+        .map(|_| std::collections::HashSet::new())
+        .collect();
+    for x in (0..400).step_by(3) {
+        for y in (0..400).step_by(3) {
+            let index = biomes.biome_index(x, y);
+            let tint = look.tint(TerrainMaterial::Grass, x, y);
+            seen[index].insert((tint.r.to_bits(), tint.g.to_bits(), tint.b.to_bits()));
+        }
+    }
+    for (index, colours) in seen.iter().enumerate() {
+        assert!(
+            !colours.is_empty(),
+            "biome {} covers no column in the sampled range",
+            biomes.biomes()[index].id
+        );
+    }
+    for first in 0..seen.len() {
+        for second in (first + 1)..seen.len() {
+            assert!(
+                seen[first] != seen[second],
+                "biomes {} and {} paint the same grass everywhere sampled",
+                biomes.biomes()[first].id,
+                biomes.biomes()[second].id
+            );
+        }
+    }
+}
+
+/// A path keeps the colours of the grass it crosses, in every biome, not just globally.
+#[test]
+fn a_path_takes_the_colour_of_the_grass_in_every_biome() {
+    let manifest = shipped();
+    let biomes = shipped_biomes();
+    let (look, _) = TerrainLook::new(SEED, artwork(&manifest), Some(&biomes));
+    for (x, y) in columns(120) {
+        assert_eq!(
+            look.tint(TerrainMaterial::Path, x, y),
+            look.tint(TerrainMaterial::Grass, x, y)
+        );
+    }
+}
+
+/// The biomes of a world follow the world seed: same seed, same regions; another seed, another.
+#[test]
+fn the_biome_regions_follow_the_world_seed() {
+    let one = shipped_biomes();
+    let entities: iso::entities::EntityCatalog =
+        serde_json::from_str(include_str!("../../content/entities.json"))
+            .expect("the entity catalog is valid JSON");
+    let catalog = iso::biomes::parse_biomes(include_str!("../../content/biomes.json"), &entities)
+        .expect("the biomes content validates");
+    let other = iso::biomes::WorldBiomes::new(SEED + 1, &catalog);
+    let same: Vec<_> = [(0, 0), (17, -9), (-300, 250), (1024, 1024)]
+        .into_iter()
+        .map(|(x, y)| one.biome_index(x, y))
+        .collect();
+    let again: Vec<_> = [(0, 0), (17, -9), (-300, 250), (1024, 1024)]
+        .into_iter()
+        .map(|(x, y)| one.biome_index(x, y))
+        .collect();
+    assert_eq!(same, again);
+    let different: Vec<_> = [(0, 0), (17, -9), (-300, 250), (1024, 1024)]
+        .into_iter()
+        .map(|(x, y)| other.biome_index(x, y))
+        .collect();
+    assert_ne!(same, different);
 }
