@@ -18,6 +18,10 @@ pub const PREVIEW_ELEVATION_STEP: f64 = PREVIEW_TILE_WIDTH * SVG_BLOCK_HEIGHT / 
 /// How much of the reference tile a coarse-pointer platform draws: the scene pulled back a
 /// little, so a small touch screen shows more of the world.
 pub const MOBILE_ZOOM: f64 = 0.7;
+/// Most simulation milliseconds a single frame may advance the fixed step. One tick's worth:
+/// the game slows down after a hitch (GC, GPU stall, chunk bake) instead of teleporting the
+/// player forward several ticks in one frame, which is what the eye catches as a jolt.
+pub(crate) const MAX_FRAME_MS: f64 = iso::simulation::STEP_MS;
 
 /// One scene's tile metrics, in screen pixels: the tile, and one level of elevation.
 #[derive(Clone, Copy, Debug, PartialEq)]

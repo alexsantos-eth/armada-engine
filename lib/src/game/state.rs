@@ -20,7 +20,9 @@ use iso::world::{ChunkArchive, ChunkManager};
 use macroquad::prelude::*;
 
 use crate::assets::sprites::{SpriteAtlas, SpriteDraw};
-use crate::game::config::{CHUNK_RADII, PLAYER_SPRITE, PREVIEW_CENTRE, SceneMetrics, WORLD_SEED};
+use crate::game::config::{
+    CHUNK_RADII, MAX_FRAME_MS, PLAYER_SPRITE, PREVIEW_CENTRE, SceneMetrics, WORLD_SEED,
+};
 use crate::game::ground::ChunkGround;
 use crate::game::scene::{PlayerSprite, player_sheets};
 use crate::lighting::cloud_shadows::{CLOUD_SHADOW_SOURCE, CloudShadows};
@@ -256,7 +258,11 @@ impl Game {
             player,
             camera,
             camera_focus,
-            stepper: FixedStepper::default(),
+            stepper: FixedStepper::new(iso::simulation::StepperOptions {
+                max_frame_ms: MAX_FRAME_MS,
+                ..iso::simulation::StepperOptions::default()
+            })
+            .expect("the client's stepper options are valid"),
             show_terrain: true,
             last_save: get_time(),
             unsaved_changes: false,
