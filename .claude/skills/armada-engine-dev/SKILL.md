@@ -67,7 +67,7 @@ Contratos clave (el detalle está en el `mod.md` correspondiente):
 
 - Sin `unsafe` en `iso`. En el cliente, `unsafe` solo para los FFI con la página (`localStorage` para el guardado WASM, `location.pathname` para la ruta web), acotados y documentados en el `mod.md` de su dominio.
 - Errores con `Result` y contexto; nada de `panic!` ante datos externos (catálogos, guardados). `assert!` solo para invariantes internas.
-- `clippy --workspace --all-targets --locked -- -D warnings` en verde; `cargo fmt --all` limpio.
+- `clippy --workspace --all-targets --locked -- -D warnings` en verde; `cargo fmt --all` limpio. **Nada de `#[allow(clippy::…)]` ni `#![allow(clippy::…)]`**: un lint de clippy no se silencia, se corrige o se reagrupa (parámetros relacionados → struct de dominio); si un lint es genuinamente inaplicable, la excepción la decide el usuario, nunca el código.
 - No mezclar dominio y cliente en un mismo módulo ni importar Macroquad/`winit`-like crates en `iso`.
 - Todo archivo de comportamiento lleva su `*.test.rs` colocalizado, escrito **antes** que la implementación (test first). El test define el comportamiento; el código lo pasa después. Si el comportamiento puro está mezclado con GPU/ventana/IO, se extrae primero la lógica pura y se prueba; la parte no aislable queda documentada en el propio archivo con su comprobación manual. Las pruebas de dominio usan datos construidos a mano o el fixture de contrato.
 - Los **comentarios de documentación** (rustdoc `///`, `//!`) van en **inglés**; la documentación Markdown va en **español**.

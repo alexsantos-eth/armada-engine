@@ -20,10 +20,13 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`Reflected`](reflection_view.rs#L44) — Qué está mostrando el agua. `Standing` voltea un sprite de pie; `AsDrawn` lo coloca tal como está dibujado (el sprite de reflejo del terreno, pensado para colgar de la línea de agua).
   - Firma: `pub enum Reflected { Standing { turn_at: Option<f64> }, AsDrawn, }`
 
+- [`ReflectionSprite`](reflection_view.rs#L55) — El sprite que se está reflejando y el terreno sobre el que está: el slot del atlas del que sale el dibujo, el sitio del artwork en pantalla y dónde están sus pies, en bloques sobre el suelo — `lift` incluido para un salto, cuyo arco también muestra el agua.
+  - Firma: `pub struct ReflectionSprite { pub texture: usize, pub frame: SpriteFrame, pub layout: SpriteLayout, pub feet: ScreenPoint, pub elevation: f64, pub lift: f64, }`
+
 #### Funciones y métodos
 
-- [`collect_reflection`](reflection_view.rs#L59) — Genera o calcula «reflection» a partir de los datos de entrada.
-  - Firma: `pub fn collect_reflection( texture: usize, frame: SpriteFrame, layout: SpriteLayout, feet: ScreenPoint, elevation: f64, lift: f64, reflected: Reflected, projection: ProjectionConfig, water_at: impl Fn(i32, i32) -> Option<WaterCell>, out: &mut Vec<SpriteDraw>, ) {`
+- [`collect_reflection`](reflection_view.rs#L75) — Encola lo que el agua muestra de `sprite`, cortado a las casillas de agua que cubre.
+  - Firma: `pub fn collect_reflection( sprite: ReflectionSprite, reflected: Reflected, projection: ProjectionConfig, water_at: impl Fn(i32, i32) -> Option<WaterCell>, out: &mut Vec<SpriteDraw>, ) {`
 
 #### Constantes
 

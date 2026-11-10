@@ -57,25 +57,25 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`update`](shadow_view.rs#L148) — Dedica hasta [`BAKE_BUDGET_MS`] a poner al día el horneado para `shown`, y olvida
   - Firma: `pub fn update(&mut self, manager: &ChunkManager, shown: &[ChunkCoord]) {`
 
-- [`collect_faces`](shadow_view.rs#L509) — Encola la sombra en cada cara vertical expuesta del terreno de `coord`.
+- [`collect_faces`](shadow_view.rs#L515) — Encola la sombra en cada cara vertical expuesta del terreno de `coord`.
   - Firma: `pub fn collect_faces( &self, coord: ChunkCoord, projection: ProjectionConfig, out: &mut Vec<SpriteDraw>, ) {`
 
-- [`shade_of`](shadow_view.rs#L555) — Las sombras que caen sobre la entidad situada en `cell`, si se horneó alguna.
+- [`shade_of`](shadow_view.rs#L561) — Las sombras que caen sobre la entidad situada en `cell`, si se horneó alguna.
   - Firma: `pub fn shade_of(&self, coord: ChunkCoord, cell: (i32, i32)) -> Option<&ShadeGrid> {`
 
-- [`shade_moving`](shadow_view.rs#L560) — Las sombras que caen sobre algo situado donde está el jugador, muestreadas ahora.
+- [`shade_moving`](shadow_view.rs#L566) — Las sombras que caen sobre algo situado donde está el jugador, muestreadas ahora.
   - Firma: `pub fn shade_moving( &self, manager: &ChunkManager, receiver: &ShadowReceiver, ) -> Option<ShadeGrid> {`
 
-- [`collect_ground`](shadow_view.rs#L592) — Encola la sombra de terreno de cada columna sombreada de `chunk`, para ordenarla y dibujarla con
+- [`collect_ground`](shadow_view.rs#L602) — Encola la sombra de terreno de cada columna sombreada de `chunk`, para ordenarla y dibujarla con
   - Firma: `pub fn collect_ground( &self, coord: ChunkCoord, columns: &[TerrainColumn], projection: ProjectionConfig, out: &mut Vec<SpriteDraw>, ) {`
 
-- [`extent_of_ink`](shadow_view.rs#L669) — Dónde se dibuja un dibujo medido alrededor del punto de terreno sobre el que se apoya, en píxeles de pantalla.
+- [`extent_of_ink`](shadow_view.rs#L679) — Dónde se dibuja un dibujo medido alrededor del punto de terreno sobre el que se apoya, en píxeles de pantalla.
   - Firma: `pub fn extent_of_ink(ink: InkBox, tile_width: f64) -> SpriteExtent {`
 
-- [`receiver_of`](shadow_view.rs#L680) — El receiver que forma un sprite dibujado en `layout` y situado en `foot` a elevación `elevation`.
+- [`receiver_of`](shadow_view.rs#L690) — El receiver que forma un sprite dibujado en `layout` y situado en `foot` a elevación `elevation`.
   - Firma: `pub fn receiver_of( layout: SpriteLayout, feet: ScreenPoint, foot: (f64, f64), elevation: f64, ) -> ShadowReceiver {`
 
-- [`lattice_of`](shadow_view.rs#L699) — Una retícula lista para dibujar un sprite, o `None` cuando al final nada lo sombrea.
+- [`lattice_of`](shadow_view.rs#L709) — Una retícula lista para dibujar un sprite, o `None` cuando al final nada lo sombrea.
   - Firma: `pub fn lattice_of(grid: &ShadeGrid) -> Option<ShadeLattice> {`
 
 #### Constantes
@@ -197,34 +197,34 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`advance`](shadow_view.rs#L233) — Hace una parte del trabajo en curso e indica si esa fue la última.
   - Firma: `fn advance(&mut self, manager: &ChunkManager) -> bool {`
 
-- [`start`](shadow_view.rs#L288) — Abre un horneado de `coord`, hasta el punto en que hay un mapa sobre el que volcarlo.
+- [`start`](shadow_view.rs#L290) — Abre un horneado de `coord`, hasta el punto en que hay un mapa sobre el que volcarlo.
   - Firma: `fn start(&mut self, manager: &ChunkManager, coord: ChunkCoord) {`
 
-- [`ground_field`](shadow_view.rs#L325) — Calcula o recupera «ground field» según los parámetros de la firma.
+- [`ground_field`](shadow_view.rs#L327) — Calcula o recupera «ground field» según los parámetros de la firma.
   - Firma: `fn ground_field( manager: &ChunkManager, min_x: i32, min_y: i32, max_x: i32, max_y: i32, ) -> HeightField {`
 
-- [`ground_cover`](shadow_view.rs#L338) — Lee cuáles de las `count` columnas desde `from` tienen algo de cobertura, añade la
+- [`ground_cover`](shadow_view.rs#L340) — Lee cuáles de las `count` columnas desde `from` tienen algo de cobertura, añade la
   - Firma: `fn ground_cover( &self, manager: &ChunkManager, coord: ChunkCoord, from: usize, count: usize, out: &mut Vec<bool>, ) -> usize {`
 
-- [`casters_of`](shadow_view.rs#L379) — Las entidades del chunk como casters, en las propias medidas del dibujo.
+- [`casters_of`](shadow_view.rs#L381) — Las entidades del chunk como casters, en las propias medidas del dibujo.
   - Firma: `fn casters_of(&self, manager: &ChunkManager, coord: ChunkCoord) -> Vec<ShadowCaster> {`
 
-- [`caster_of`](shadow_view.rs#L390) — Una entidad como caster, o `None` cuando el atlas no tiene un dibujo medido para ella.
+- [`caster_of`](shadow_view.rs#L392) — Una entidad como caster, o `None` cuando el atlas no tiene un dibujo medido para ella.
   - Firma: `fn caster_of(&self, entity: &Entity) -> Option<ShadowCaster> {`
 
-- [`extent_of`](shadow_view.rs#L401) — Dónde se dibuja el dibujo de una entidad alrededor del punto de terreno sobre el que se apoya.
+- [`extent_of`](shadow_view.rs#L403) — Dónde se dibuja el dibujo de una entidad alrededor del punto de terreno sobre el que se apoya.
   - Firma: `fn extent_of(&self, entity: &Entity) -> Option<SpriteExtent> {`
 
-- [`shade_entities`](shadow_view.rs#L407) — Las retículas de las entidades propias del chunk, para aquellas a las que algo sombrea.
+- [`shade_entities`](shadow_view.rs#L409) — Las retículas de las entidades propias del chunk, para aquellas a las que algo sombrea.
   - Firma: `fn shade_entities( &self, manager: &ChunkManager, coord: ChunkCoord, casters: &[ShadowCaster], ground: &HeightField, ) -> HashMap<(i32, i32), ShadeGrid> {`
 
-- [`shade_faces`](shadow_view.rs#L452) — La sombra en cada cara vertical expuesta del terreno del chunk.
+- [`shade_faces`](shadow_view.rs#L458) — La sombra en cada cara vertical expuesta del terreno del chunk.
   - Firma: `fn shade_faces( &self, manager: &ChunkManager, coord: ChunkCoord, casters: &[ShadowCaster], ground: &HeightField, ) -> Vec<(TerrainFace, Rc<ShadeLattice>)> {`
 
-- [`around`](shadow_view.rs#L704) — Los nueve chunks alrededor de `coord`, incluido él mismo, en un orden fijo.
+- [`around`](shadow_view.rs#L714) — Los nueve chunks alrededor de `coord`, incluido él mismo, en un orden fijo.
   - Firma: `fn around(coord: ChunkCoord) -> [ChunkCoord; 9] {`
 
-- [`neighbours_loaded`](shadow_view.rs#L720) — Cuáles de los nueve chunks alrededor de `coord` tiene el stream, en un bit cada uno: el horneado que se hizo
+- [`neighbours_loaded`](shadow_view.rs#L730) — Cuáles de los nueve chunks alrededor de `coord` tiene el stream, en un bit cada uno: el horneado que se hizo
   - Firma: `fn neighbours_loaded(manager: &ChunkManager, coord: ChunkCoord) -> u16 {`
 
 #### Constantes internas

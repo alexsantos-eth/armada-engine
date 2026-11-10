@@ -94,7 +94,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`put`](save.rs#L143) — Almacena una copia profunda de `chunk`, indexada por sus coordenadas.
   - Firma: `pub fn put(&mut self, chunk: SavedChunk) {`
 
-- [`get`](save.rs#L159) — Devuelve una copia del chunk en `(cx, cy)`, o `None` cuando nunca fue descubierto.
+- [`get`](save.rs#L153) — Devuelve una copia del chunk en `(cx, cy)`, o `None` cuando nunca fue descubierto.
   - Firma: `pub fn get(&self, cx: i32, cy: i32) -> Option<SavedChunk> {`
 
 - [`get_or_generate`](save.rs#L159) — Devuelve el chunk descubierto, o lo genera y almacena una vez cuando falta.

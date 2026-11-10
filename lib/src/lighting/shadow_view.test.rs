@@ -95,7 +95,10 @@ fn the_ground_shadow_lies_over_the_terrain_and_under_what_stands_on_it() {
 
 #[test]
 fn a_clear_grid_asks_for_no_lattice() {
-    use iso::lighting::{SHADE_COLUMNS, SHADE_ROWS, ShadowCaster, SpriteExtent, shade_grid};
+    use iso::lighting::{
+        BoxMetrics, SHADE_COLUMNS, SHADE_ROWS, ShadeLatticeSpec, ShadowCaster, SpriteExtent,
+        shade_grid,
+    };
 
     let receiver = ShadowReceiver {
         foot: (1.0, 1.0),
@@ -123,9 +126,10 @@ fn a_clear_grid_asks_for_no_lattice() {
         &receiver,
         &[caster],
         &light.shadow,
-        light.opacity(),
-        280.0,
-        93.0,
+        BoxMetrics {
+            tile_width: 280.0,
+            box_height: 93.0,
+        },
         &|_| {
             Some(iso::lighting::Silhouette {
                 alpha: &[255],
@@ -138,8 +142,11 @@ fn a_clear_grid_asks_for_no_lattice() {
             })
         },
         None,
-        SHADE_COLUMNS,
-        SHADE_ROWS,
+        ShadeLatticeSpec {
+            opacity: light.opacity(),
+            columns: SHADE_COLUMNS,
+            rows: SHADE_ROWS,
+        },
     );
 
     assert!(solid.is_none());

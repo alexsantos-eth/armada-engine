@@ -10,7 +10,7 @@ use iso::terrain::{TerrainColumn, TerrainMaterial};
 use crate::assets::sprites::{ATLAS_TEXTURE, SpriteAtlas, SpriteDraw, ground_key};
 use crate::terrain::terrain_view::{MATERIAL_SLOTS, MATERIALS, slot};
 use crate::terrain::terrain_view_appearance::TerrainLook;
-use crate::water::reflection_view::{Reflected, WaterCell, collect_reflection};
+use crate::water::reflection_view::{Reflected, ReflectionSprite, WaterCell, collect_reflection};
 
 /// Terrain draws below everything that stands on it.
 pub const TERRAIN_LAYER: i32 = 0;
@@ -94,20 +94,39 @@ struct ReflectionJob {
     level: f64,
 }
 
+/// How the world answers about the cells around a column: their streaming height and the
+/// water, if any, that lies on them.
+pub struct Surroundings<H, W>
+where
+    H: Fn(WorldCoord) -> Option<i32>,
+    W: Fn(i32, i32) -> Option<WaterCell>,
+{
+    /// The streaming height of the column at `coord`, or `None` when it is not loaded.
+    pub height_at: H,
+    /// The water cell at `(x, y)`, or `None` when the cell is dry.
+    pub water_at: W,
+}
+
 /// Queues the sprites for `columns`, which the caller sorts and draws with everything else.
 /// Each block above the water also queues what the water shows of it, cut to the water cells
-/// it falls on. `screen` is the window size the culling tests each block's layout against.
-#[allow(clippy::too_many_arguments)]
-pub fn collect_terrain_sprites(
+/// it falls on. `surroundings` is how the world answers about the cells around a column, and
+/// `screen` is the window size the culling tests each block's layout against.
+pub fn collect_terrain_sprites<H, W>(
     columns: &[TerrainColumn],
     projection: ProjectionConfig,
     frames: &TerrainFrames,
     look: &TerrainLook,
-    height_at: impl Fn(WorldCoord) -> Option<i32>,
-    water_at: impl Fn(i32, i32) -> Option<WaterCell>,
+    surroundings: Surroundings<H, W>,
     screen: (f64, f64),
     out: &mut Vec<SpriteDraw>,
-) {
+) where
+    H: Fn(WorldCoord) -> Option<i32>,
+    W: Fn(i32, i32) -> Option<WaterCell>,
+{
+    let Surroundings {
+        height_at,
+        water_at,
+    } = surroundings;
     let step = projection
         .elevation_step
         .unwrap_or(projection.tile_height / 2.0);
@@ -226,12 +245,14 @@ pub fn collect_terrain_sprites(
     reflection_jobs.sort_by_key(|job| std::cmp::Reverse(job.depth));
     for job in reflection_jobs {
         collect_reflection(
-            ATLAS_TEXTURE,
-            job.frame,
-            job.layout,
-            job.feet,
-            job.level,
-            0.0,
+            ReflectionSprite {
+                texture: ATLAS_TEXTURE,
+                frame: job.frame,
+                layout: job.layout,
+                feet: job.feet,
+                elevation: job.level,
+                lift: 0.0,
+            },
             Reflected::AsDrawn,
             projection,
             &water_at,

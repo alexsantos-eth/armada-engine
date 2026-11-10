@@ -48,26 +48,45 @@ pub enum Reflected {
     AsDrawn,
 }
 
-/// Queues what the water shows of the sprite drawn into `layout`, cut to the water cells it
-/// falls on.
+/// The sprite being mirrored and the ground it stands on: the atlas slot it draws from, the
+/// artwork's place on screen, and where its feet are, in blocks above the ground — `lift`
+/// included for a jump, whose arc the water shows too.
+#[derive(Clone, Copy, Debug)]
+pub struct ReflectionSprite {
+    /// Atlas texture the artwork is cut from.
+    pub texture: usize,
+    /// The frame of that texture to mirror.
+    pub frame: SpriteFrame,
+    /// Where the sprite is drawn on screen.
+    pub layout: SpriteLayout,
+    /// Where the caster's feet are drawn, jump included.
+    pub feet: ScreenPoint,
+    /// Blocks the sprite stands above the ground, jump included.
+    pub elevation: f64,
+    /// Blocks the caster is drawn above the ground it stands on; `0.0` for anything standing.
+    pub lift: f64,
+}
+
+/// Queues what the water shows of `sprite`, cut to the water cells it falls on.
 ///
-/// `feet` and `elevation` are where the caster is drawn, jump included; `lift` is how many
-/// blocks the caster is above the ground it stands on. The waterline does not rise with the
-/// jump — the reflection hangs from it — but the mirrored artwork sinks below it by the same
-/// lift, so the arc reads in the water too. Pass `0.0` for anything standing on the ground.
-#[allow(clippy::too_many_arguments)]
+/// `sprite`'s `lift` is how many blocks the caster is above the ground it stands on. The
+/// waterline does not rise with the jump — the reflection hangs from it — but the mirrored
+/// artwork sinks below it by the same lift, so the arc reads in the water too.
 pub fn collect_reflection(
-    texture: usize,
-    frame: SpriteFrame,
-    layout: SpriteLayout,
-    feet: ScreenPoint,
-    elevation: f64,
-    lift: f64,
+    sprite: ReflectionSprite,
     reflected: Reflected,
     projection: ProjectionConfig,
     water_at: impl Fn(i32, i32) -> Option<WaterCell>,
     out: &mut Vec<SpriteDraw>,
 ) {
+    let ReflectionSprite {
+        texture,
+        frame,
+        layout,
+        feet,
+        elevation,
+        lift,
+    } = sprite;
     let box_height = projection
         .elevation_step
         .unwrap_or(projection.tile_height / 2.0);

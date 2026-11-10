@@ -45,22 +45,22 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`at`](bake.rs#L150) — Cobertura en `[0, 1]` en `(u, v)`, ambas en `[0, 1]` sobre el dibujo, siendo `(0, 0)` su
   - Firma: `pub fn at(&self, u: f64, v: f64) -> f64 {`
 
-- [`at_texel`](bake.rs#L158) — Cobertura en una posición ya expresada en texels del plano, que es como la recorre el horneado: la posición
+- [`at_texel`](bake.rs#L161) — Cobertura en una posición ya expresada en texels del plano, que es como la recorre el horneado: la posición
   - Firma: `pub fn at_texel(&self, x: f64, y: f64) -> f64 {`
 
-- [`bake_ground_shadows`](bake.rs#L176) — Calcula o recupera «bake ground shadows» según los parámetros de la firma.
-  - Firma: `pub fn bake_ground_shadows( map: &mut ShadowMap, casters: &[ShadowCaster], ground: Option<&HeightField>, light: &ShadowProjection, tile_width: f64, box_height: f64, level_at: ReceivingLevel<'_>, silhouette_of: SilhouetteOf<'_, '_>, ) {`
+- [`bake_ground_shadows`](bake.rs#L178) — Calcula o recupera «bake ground shadows» según los parámetros de la firma.
+  - Firma: `pub fn bake_ground_shadows( map: &mut ShadowMap, casters: &[ShadowCaster], ground: Option<&HeightField>, light: &ShadowProjection, metrics: BoxMetrics, level_at: ReceivingLevel<'_>, silhouette_of: SilhouetteOf<'_, '_>, ) {`
 
-- [`new`](bake.rs#L219) — Lee los niveles sobre los que el área de `map` recibe sombras, que necesita cada paso posterior.
+- [`new`](bake.rs#L220) — Lee los niveles sobre los que el área de `map` recibe sombras, que necesita cada paso posterior.
   - Firma: `pub fn new(map: &ShadowMap, level_at: ReceivingLevel<'_>) -> Self {`
 
-- [`is_done`](bake.rs#L228) — Evalúa si se cumple la condición «done» para el estado recibido.
+- [`is_done`](bake.rs#L229) — Evalúa si se cumple la condición «done» para el estado recibido.
   - Firma: `pub fn is_done(&self) -> bool {`
 
-- [`step`](bake.rs#L235) — Calcula o recupera «step» según los parámetros de la firma.
-  - Firma: `pub fn step( &mut self, map: &mut ShadowMap, casters: &[ShadowCaster], ground: Option<&HeightField>, light: &ShadowProjection, tile_width: f64, box_height: f64, silhouette_of: SilhouetteOf<'_, '_>, ) -> bool {`
+- [`step`](bake.rs#L234) — Calcula o recupera «step» según los parámetros de la firma.
+  - Firma: `pub fn step( &mut self, map: &mut ShadowMap, casters: &[ShadowCaster], ground: Option<&HeightField>, light: &ShadowProjection, metrics: BoxMetrics, silhouette_of: SilhouetteOf<'_, '_>, ) -> bool {`
 
-- [`blur`](bake.rs#L704) — Un desenfoque de caja separable sobre todo el mapa: la penumbra.
+- [`blur`](bake.rs#L737) — Un desenfoque de caja separable sobre todo el mapa: la penumbra.
   - Firma: `pub fn blur(map: &mut ShadowMap, radius: u32) {`
 
 #### Constantes
@@ -132,11 +132,16 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`is_clear`](received.rs#L36) — Si todas las esquinas están despejadas, para que el cliente vuelva a dibujar el sprite como un único quad.
   - Firma: `pub fn is_clear(&self) -> bool {`
 
-- [`shade_grid`](received.rs#L54) — Calcula o recupera «shade grid» según los parámetros de la firma.
-  - Firma: `pub fn shade_grid( receiver: &ShadowReceiver, casters: &[ShadowCaster], light: &ShadowProjection, opacity: f64, tile_width: f64, box_height: f64, silhouette_of: super::bake::SilhouetteOf<'_, '_>, ground: Option<&HeightField>, columns: u32, rows: u32, ) -> Option<ShadeGrid> {`
+- [`shade_grid`](received.rs#L65) — Calcula o recupera «shade grid» según los parámetros de la firma.
+  - Firma: `pub fn shade_grid( receiver: &ShadowReceiver, casters: &[ShadowCaster], light: &ShadowProjection, metrics: BoxMetrics, silhouette_of: super::bake::SilhouetteOf<'_, '_>, ground: Option<&HeightField>, lattice: ShadeLatticeSpec, ) -> Option<ShadeGrid> {`
 
-- [`shaded_at`](received.rs#L137) — Cuán sombreado está un punto del mundo, por los casters que lo rodean y por el terreno.
+- [`shaded_at`](received.rs#L162) — Cuán sombreado está un punto del mundo, por los casters que lo rodean y por el terreno.
   - Firma: `pub fn shaded_at( point: ShadowPoint, casters: &[ShadowCaster], light: &ShadowProjection, tile_width: f64, box_height: f64, silhouette_of: super::bake::SilhouetteOf<'_, '_>, ground: Option<&HeightField>, ) -> f64 {`
+
+#### Tipos
+
+- [`ShadeLatticeSpec`](received.rs#L54) — Cómo se tiende la rejilla de sombra: su resolución y con qué opacidad cae.
+  - Declaración: `pub struct ShadeLatticeSpec { pub columns: u32, pub rows: u32, pub opacity: f64, }`
 
 #### Constantes
 
@@ -171,11 +176,16 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`lift_reach`](shadow.rs#L100) — Hasta qué distancia hacia abajo desplaza la sombra un plano `lift` bloques por debajo del propio terreno del caster, en
   - Firma: `pub fn lift_reach( light: &ShadowProjection, lift: f64, tile_width: f64, box_height: f64, ) -> f64 {`
 
-- [`cast_shadow_offset`](shadow.rs#L110) — Dónde proyecta el sol la silueta de un caster sobre otro recorte vertical, en píxeles de pantalla.
+- [`cast_shadow_offset`](shadow.rs#L105) — Dónde proyecta el sol la silueta de un caster sobre otro recorte vertical, en píxeles de pantalla.
   - Firma: `pub fn cast_shadow_offset( light: &ShadowProjection, caster_foot: (f64, f64), receiver_foot: (f64, f64), lift: f64, tile_width: f64, box_height: f64, ) -> Option<(f64, f64)> {`
 
-- [`shadow_reach`](shadow.rs#L132) — Distancia máxima por el terreno (casillas) que puede alcanzar la sombra de algo de `height` píxeles de pantalla de alto
+- [`shadow_reach`](shadow.rs#L127) — Distancia máxima por el terreno (casillas) que puede alcanzar la sombra de algo de `height` píxeles de pantalla de alto
   - Firma: `pub fn shadow_reach(height: f64, lift: f64, tile_width: f64, box_height: f64) -> f64 {`
+
+#### Tipos
+
+- [`BoxMetrics`](shadow.rs#L135) — Métricas de la caja del dibujo: ancho de una casilla de mundo y alto de un bloque, en píxeles de pantalla.
+  - Declaración: `pub struct BoxMetrics { pub tile_width: f64, pub box_height: f64, }`
 
 #### Constantes
 
@@ -186,19 +196,19 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`coverage`](terrain.rs#L23) — Cuán sombreado está un receiver `elevation` bloques más arriba, en `[0, 1]`.
+- [`coverage`](terrain.rs#L26) — Cuán sombreado está un receiver `elevation` bloques más arriba, en `[0, 1]`.
   - Firma: `pub fn coverage(&self, elevation: f64) -> f64 {`
 
-- [`new`](terrain.rs#L45) — Lee todas las columnas de `min_x..=max_x` por `min_y..=max_y`, ampliadas por el alcance del rayo.
+- [`new`](terrain.rs#L48) — Lee todas las columnas de `min_x..=max_x` por `min_y..=max_y`, ampliadas por el alcance del rayo.
   - Firma: `pub fn new( min_x: i32, min_y: i32, max_x: i32, max_y: i32, level_at: impl Fn(i32, i32) -> Option<f64>, ) -> Self {`
 
-- [`is_empty`](terrain.rs#L68) — Si ninguna columna del campo tiene terreno, de modo que cada recorrido volvería despejado.
+- [`is_empty`](terrain.rs#L78) — Si ninguna columna del campo tiene terreno, de modo que cada recorrido volvería despejado.
   - Firma: `pub fn is_empty(&self) -> bool {`
 
-- [`horizon`](terrain.rs#L80) — Avanza hacia el sol desde la casilla bajo `(px, py)` y devuelve lo que encuentra.
+- [`horizon`](terrain.rs#L90) — Avanza hacia el sol desde la casilla bajo `(px, py)` y devuelve lo que encuentra.
   - Firma: `pub fn horizon(&self, px: f64, py: f64, light: &ShadowProjection, box_height: f64, tile_width: f64) -> Horizon {`
 
-- [`receiver_point`](terrain.rs#L150) — Dónde está en el mundo un píxel de un sprite vertical, para poder preguntar por el horizonte del terreno
+- [`receiver_point`](terrain.rs#L178) — Dónde está en el mundo un píxel de un sprite vertical, para poder preguntar por el horizonte del terreno
   - Firma: `pub fn receiver_point( foot: ShadowPoint, screen_foot: (f64, f64), screen: (f64, f64), light: &ShadowProjection, tile_width: f64, box_height: f64, ) -> ShadowPoint {`
 
 #### Constantes
@@ -218,85 +228,85 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`within`](bake.rs#L312) — Los pasos `0..=steps` de un recorrido que empieza en `from` y avanza con paso `step` que quedan dentro
+- [`within`](bake.rs#L316) — Los pasos `0..=steps` de un recorrido que empieza en `from` y avanza con paso `step` que quedan dentro
   - Firma: `fn within(from: f64, step: f64, low: f64, high: f64, steps: u32) -> Option<(u32, u32)> {`
 
-- [`meet`](bake.rs#L324) — Los pasos que retienen ambos recorridos, o `None` cuando no comparten ninguno.
+- [`meet`](bake.rs#L328) — Los pasos que retienen ambos recorridos, o `None` cuando no comparten ninguno.
   - Firma: `fn meet(one: (u32, u32), other: (u32, u32)) -> Option<(u32, u32)> {`
 
-- [`horizon_lattice_shape`](bake.rs#L333) — Proyecta sobre cada texel la sombra que el terreno proyecta sobre sí mismo.
+- [`horizon_lattice_shape`](bake.rs#L337) — Proyecta sobre cada texel la sombra que el terreno proyecta sobre sí mismo.
   - Firma: `fn horizon_lattice_shape(map: &ShadowMap) -> (u32, u32, u32) {`
 
-- [`horizon_rows`](bake.rs#L340) — Calcula o recupera «horizon rows» según los parámetros de la firma.
-  - Firma: `fn horizon_rows( map: &ShadowMap, ground: &HeightField, light: &ShadowProjection, tile_width: f64, box_height: f64, from: u32, rows: u32, out: &mut Vec<Horizon>, ) -> u32 {`
+- [`horizon_rows`](bake.rs#L348) — Calcula o recupera «horizon rows» según los parámetros de la firma.
+  - Firma: `fn horizon_rows( map: &ShadowMap, ground: &HeightField, light: &ShadowProjection, metrics: BoxMetrics, from: u32, rows: u32, out: &mut Vec<Horizon>, ) -> u32 {`
 
-- [`lay_terrain_rows`](bake.rs#L364) — Proyecta la sombra propia del terreno sobre `rows` filas de columnas, empezando en la fila `from` de la
+- [`lay_terrain_rows`](bake.rs#L375) — Proyecta la sombra propia del terreno sobre `rows` filas de columnas, empezando en la fila `from` de la
   - Firma: `fn lay_terrain_rows( map: &mut ShadowMap, lattice: &[Horizon], levels: &LevelCache, from: i32, rows: i32, ) -> i32 {`
 
-- [`clear_columns_without_ground`](bake.rs#L473) — Pone en blanco el cuadrado de cada columna para la que el mundo no tiene terreno.
+- [`clear_columns_without_ground`](bake.rs#L488) — Pone en blanco el cuadrado de cada columna para la que el mundo no tiene terreno.
   - Firma: `fn clear_columns_without_ground(map: &mut ShadowMap, levels: &LevelCache) {`
 
-- [`new`](bake.rs#L501) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
+- [`new`](bake.rs#L516) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
   - Firma: `fn new(area: MapArea, level_at: ReceivingLevel<'_>) -> Self {`
 
-- [`at`](bake.rs#L518) — Calcula o recupera «at» según los parámetros de la firma.
+- [`at`](bake.rs#L538) — Calcula o recupera «at» según los parámetros de la firma.
   - Firma: `fn at(&self, x: i32, y: i32) -> Option<f64> {`
 
-- [`any`](bake.rs#L528) — Calcula o recupera «any» según los parámetros de la firma.
+- [`any`](bake.rs#L548) — Calcula o recupera «any» según los parámetros de la firma.
   - Firma: `fn any(&self) -> bool {`
 
-- [`lay_caster`](bake.rs#L534) — Proyecta la silueta de un caster sobre cada texel que puede alcanzar su sombra.
+- [`lay_caster`](bake.rs#L554) — Proyecta la silueta de un caster sobre cada texel que puede alcanzar su sombra.
   - Firma: `fn lay_caster( map: &mut ShadowMap, caster: &ShadowCaster, light: &ShadowProjection, tile_width: f64, box_height: f64, levels: &mut LevelCache, silhouette_of: SilhouetteOf<'_, '_>, ) {`
 
-- [`shadow_box`](bake.rs#L644) — La caja que cubre la sombra de `laid` una vez que un lift la ha movido `shift` casillas hacia abajo por la luz.
+- [`shadow_box`](bake.rs#L672) — La caja que cubre la sombra de `laid` una vez que un lift la ha movido `shift` casillas hacia abajo por la luz.
   - Firma: `fn shadow_box(laid: &[(f64, f64); 4], shift: f64, light: &ShadowProjection) -> WorldBox {`
 
-- [`union`](bake.rs#L659) — Calcula o recupera «union» según los parámetros de la firma.
+- [`union`](bake.rs#L692) — Calcula o recupera «union» según los parámetros de la firma.
   - Firma: `fn union(a: WorldBox, b: WorldBox) -> WorldBox {`
 
-- [`columns_touched`](bake.rs#L664) — Las columnas de `area` que solapa `box`, o `None` cuando no toca el área en absoluto.
+- [`columns_touched`](bake.rs#L697) — Las columnas de `area` que solapa `box`, o `None` cuando no toca el área en absoluto.
   - Firma: `fn columns_touched(area: MapArea, world: WorldBox) -> Option<(i32, i32, i32, i32)> {`
 
-- [`texels_of`](bake.rs#L676) — Los texels del cuadrado de una columna que solapa `box`, limitados al mapa.
+- [`texels_of`](bake.rs#L709) — Los texels del cuadrado de una columna que solapa `box`, limitados al mapa.
   - Firma: `fn texels_of( map: &ShadowMap, column_x: i32, column_y: i32, world: WorldBox, ) -> Option<(u32, u32, u32, u32)> {`
 
-- [`blur_across_within_levels`](bake.rs#L728) — El mismo desenfoque, pero sin leer nunca a través de un desnivel del terreno.
+- [`blur_across_within_levels`](bake.rs#L761) — El mismo desenfoque, pero sin leer nunca a través de un desnivel del terreno.
   - Firma: `fn blur_across_within_levels(map: &mut ShadowMap, radius: u32, levels: &LevelCache) {`
 
-- [`blur_down_within_levels`](bake.rs#L784) — La segunda pasada de [`blur_within_levels`], hacia abajo por el mapa, ejecutada fila a fila.
+- [`blur_down_within_levels`](bake.rs#L831) — La segunda pasada de [`blur_within_levels`], hacia abajo por el mapa, ejecutada fila a fila.
   - Firma: `fn blur_down_within_levels(map: &mut ShadowMap, span: usize, levels: &LevelCache) {`
 
-- [`mark_cuts`](bake.rs#L858) — Calcula o recupera «mark cuts» según los parámetros de la firma.
+- [`mark_cuts`](bake.rs#L913) — Calcula o recupera «mark cuts» según los parámetros de la firma.
   - Firma: `fn mark_cuts(cuts: &mut [bool], per_tile: usize, flush: impl Fn(usize) -> bool) {`
 
-- [`full_window_means`](bake.rs#L866) — Todos los cocientes a los que puede llegar una ventana completa del desenfoque, calculados una vez.
+- [`full_window_means`](bake.rs#L921) — Todos los cocientes a los que puede llegar una ventana completa del desenfoque, calculados una vez.
   - Firma: `fn full_window_means(span: usize) -> Vec<u8> {`
 
-- [`window_mean`](bake.rs#L872) — La media de `line` sobre `at ± span`, con los extremos limitados y `means` para una ventana completa.
+- [`window_mean`](bake.rs#L927) — La media de `line` sobre `at ± span`, con los extremos limitados y `means` para una ventana completa.
   - Firma: `fn window_mean(line: &[u8], at: usize, span: usize, means: &[u8]) -> u8 {`
 
-- [`mean`](bake.rs#L884) — La media de `line` sobre `at ± span`, con los extremos limitados.
+- [`mean`](bake.rs#L939) — La media de `line` sobre `at ± span`, con los extremos limitados.
   - Firma: `fn mean(line: &[u8], at: usize, span: usize) -> u8 {`
 
 #### Constantes internas
 
-- [`HORIZON_ROWS_PER_STEP`](bake.rs#L201) — Filas de retícula recorridas, y filas de columnas sombreadas, en una sola pieza de trabajo.
+- [`HORIZON_ROWS_PER_STEP`](bake.rs#L202) — Filas de retícula recorridas, y filas de columnas sombreadas, en una sola pieza de trabajo.
   - Declaración: `const HORIZON_ROWS_PER_STEP: u32 = 8;`
 
-- [`TERRAIN_ROWS_PER_STEP`](bake.rs#L202) — Define el parámetro interno «TERRAIN ROWS PER STEP» empleado por este módulo.
+- [`TERRAIN_ROWS_PER_STEP`](bake.rs#L203) — Define el parámetro interno «TERRAIN ROWS PER STEP» empleado por este módulo.
   - Declaración: `const TERRAIN_ROWS_PER_STEP: i32 = 4;`
 
-- [`TERRAIN_SAMPLES_PER_TILE`](bake.rs#L330) — Con qué frecuencia se pregunta por el horizonte del terreno a lo ancho de una casilla.
+- [`TERRAIN_SAMPLES_PER_TILE`](bake.rs#L334) — Con qué frecuencia se pregunta por el horizonte del terreno a lo ancho de una casilla.
   - Declaración: `const TERRAIN_SAMPLES_PER_TILE: u32 = 3;`
 
 ### `terrain.rs`
 
 #### Funciones internas
 
-- [`level`](terrain.rs#L72) — Calcula o recupera «level» según los parámetros de la firma.
+- [`level`](terrain.rs#L82) — Calcula o recupera «level» según los parámetros de la firma.
   - Firma: `fn level(&self, x: i32, y: i32) -> f64 {`
 
-- [`signum`](terrain.rs#L131) — Calcula o recupera «signum» según los parámetros de la firma.
+- [`signum`](terrain.rs#L159) — Calcula o recupera «signum» según los parámetros de la firma.
   - Firma: `fn signum(value: f64) -> i32 {`
 
 #### Constantes internas

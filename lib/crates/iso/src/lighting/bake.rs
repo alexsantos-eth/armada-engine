@@ -1,6 +1,6 @@
 //! Baking a chunk's ground shadows into a map, one texel per fraction of a tile.
 
-use super::shadow::{ShadowProjection, lift_reach, silhouette_matrix};
+use super::shadow::{BoxMetrics, ShadowProjection, lift_reach, silhouette_matrix};
 use super::terrain::{HeightField, Horizon};
 
 /// Texels of a shadow map per tile of world.
@@ -175,27 +175,17 @@ impl Silhouette<'_> {
 pub type SilhouetteOf<'a, 'plane> = &'a dyn Fn(u32) -> Option<Silhouette<'plane>>;
 
 /// Bakes `casters` into `map`, then blurs it.
-#[allow(clippy::too_many_arguments)]
 pub fn bake_ground_shadows(
     map: &mut ShadowMap,
     casters: &[ShadowCaster],
     ground: Option<&HeightField>,
     light: &ShadowProjection,
-    tile_width: f64,
-    box_height: f64,
+    metrics: BoxMetrics,
     level_at: ReceivingLevel<'_>,
     silhouette_of: SilhouetteOf<'_, '_>,
 ) {
     let mut bake = GroundBake::new(map, level_at);
-    while bake.step(
-        map,
-        casters,
-        ground,
-        light,
-        tile_width,
-        box_height,
-        silhouette_of,
-    ) {}
+    while bake.step(map, casters, ground, light, metrics, silhouette_of) {}
 }
 
 /// One chunk's ground bake, carried across frames a piece at a time.
@@ -241,17 +231,19 @@ impl GroundBake {
     }
 
     /// Does the next piece of work, and says whether any was left to do.
-    #[allow(clippy::too_many_arguments)]
     pub fn step(
         &mut self,
         map: &mut ShadowMap,
         casters: &[ShadowCaster],
         ground: Option<&HeightField>,
         light: &ShadowProjection,
-        tile_width: f64,
-        box_height: f64,
+        metrics: BoxMetrics,
         silhouette_of: SilhouetteOf<'_, '_>,
     ) -> bool {
+        let BoxMetrics {
+            tile_width,
+            box_height,
+        } = metrics;
         match self.stage {
             Stage::Casters => {
                 if let Some(caster) = casters.get(self.next_caster) {
@@ -275,8 +267,10 @@ impl GroundBake {
                         map,
                         ground,
                         light,
-                        tile_width,
-                        box_height,
+                        BoxMetrics {
+                            tile_width,
+                            box_height,
+                        },
                         from,
                         HORIZON_ROWS_PER_STEP,
                         &mut self.horizon,
@@ -350,17 +344,20 @@ fn horizon_lattice_shape(map: &ShadowMap) -> (u32, u32, u32) {
 }
 
 /// Walks `rows` rows of the horizon lattice back to the sun, starting at `from`, and appends
-#[allow(clippy::too_many_arguments)]
+/// them to `out`.
 fn horizon_rows(
     map: &ShadowMap,
     ground: &HeightField,
     light: &ShadowProjection,
-    tile_width: f64,
-    box_height: f64,
+    metrics: BoxMetrics,
     from: u32,
     rows: u32,
     out: &mut Vec<Horizon>,
 ) -> u32 {
+    let BoxMetrics {
+        tile_width,
+        box_height,
+    } = metrics;
     let (step, across, down) = horizon_lattice_shape(map);
     let per_tile = f64::from(map.pixels_per_tile);
     let last = (from + rows).min(down);

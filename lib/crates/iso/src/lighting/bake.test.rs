@@ -6,6 +6,13 @@ use crate::lighting::shadow::{
 const TILE: f64 = 100.0;
 const BOX: f64 = 100.0 / 3.0;
 
+fn metrics() -> BoxMetrics {
+    BoxMetrics {
+        tile_width: TILE,
+        box_height: BOX,
+    }
+}
+
 /// Shadows straight up the screen, one tile of ground per tile of height: the easiest sun to
 fn behind_the_camera() -> ShadowProjection {
     let half = std::f64::consts::FRAC_1_SQRT_2;
@@ -133,8 +140,7 @@ fn a_posts_shadow_falls_down_the_light_and_nowhere_else() {
         &[post((0.5, 0.5), 0.0, 50.0)],
         None,
         &light,
-        TILE,
-        BOX,
+        metrics(),
         &flat(0.0),
         &solid(),
     );
@@ -175,8 +181,7 @@ fn a_taller_caster_throws_a_longer_shadow() {
         &[post((0.5, 0.5), 0.0, 30.0)],
         None,
         &light,
-        TILE,
-        BOX,
+        metrics(),
         &flat(0.0),
         &solid(),
     );
@@ -186,8 +191,7 @@ fn a_taller_caster_throws_a_longer_shadow() {
         &[post((0.5, 0.5), 0.0, 120.0)],
         None,
         &light,
-        TILE,
-        BOX,
+        metrics(),
         &flat(0.0),
         &solid(),
     );
@@ -205,8 +209,7 @@ fn a_caster_standing_higher_lands_its_shadow_further_down_the_light() {
         &[post((0.5, 0.5), 0.0, 60.0)],
         None,
         &light,
-        TILE,
-        BOX,
+        metrics(),
         &flat(0.0),
         &solid(),
     );
@@ -216,8 +219,7 @@ fn a_caster_standing_higher_lands_its_shadow_further_down_the_light() {
         &[post((0.5, 0.5), 2.0, 60.0)],
         None,
         &light,
-        TILE,
-        BOX,
+        metrics(),
         &flat(0.0),
         &solid(),
     );
@@ -247,8 +249,7 @@ fn only_the_part_standing_above_the_receiving_ground_casts() {
         &[post((0.5, 0.5), -1.0, BOX)],
         None,
         &light,
-        TILE,
-        BOX,
+        metrics(),
         &flat(0.0),
         &solid(),
     );
@@ -269,8 +270,7 @@ fn a_hole_in_the_ground_receives_nothing() {
         &[post((0.5, 0.5), 0.0, 60.0)],
         None,
         &light,
-        TILE,
-        BOX,
+        metrics(),
         &level,
         &solid(),
     );
@@ -302,8 +302,7 @@ fn two_shadows_crossing_read_as_one() {
         &casters[..1],
         None,
         &light,
-        TILE,
-        BOX,
+        metrics(),
         &flat(0.0),
         &solid(),
     );
@@ -313,8 +312,7 @@ fn two_shadows_crossing_read_as_one() {
         &casters,
         None,
         &light,
-        TILE,
-        BOX,
+        metrics(),
         &flat(0.0),
         &solid(),
     );
@@ -336,8 +334,7 @@ fn the_silhouette_is_sampled_over_its_own_artwork() {
         &[post((0.5, 0.5), 0.0, 60.0)],
         None,
         &light,
-        TILE,
-        BOX,
+        metrics(),
         &flat(0.0),
         &half,
     );
@@ -369,8 +366,7 @@ fn a_caster_whose_shadow_misses_the_map_costs_nothing() {
         ],
         None,
         &light,
-        TILE,
-        BOX,
+        metrics(),
         &flat(0.0),
         &solid(),
     );
@@ -396,8 +392,7 @@ fn an_artwork_with_no_size_casts_nothing() {
         &[flat_sprite],
         None,
         &light,
-        TILE,
-        BOX,
+        metrics(),
         &flat(0.0),
         &solid(),
     );
@@ -423,8 +418,7 @@ fn a_caster_drawn_entirely_below_its_foot_casts_nothing() {
         &[puddle],
         None,
         &light,
-        TILE,
-        BOX,
+        metrics(),
         &flat(0.0),
         &solid(),
     );
@@ -441,8 +435,7 @@ fn an_empty_world_bakes_nothing() {
         &[post((0.5, 0.5), 0.0, 60.0)],
         None,
         &light,
-        TILE,
-        BOX,
+        metrics(),
         &(|_, _| None),
         &solid(),
     );
@@ -516,8 +509,7 @@ fn a_step_in_the_ground_lays_its_own_shadow_down_the_light() {
         &[],
         Some(&field),
         &light,
-        TILE,
-        BOX,
+        metrics(),
         &steps,
         &solid(),
     );
@@ -559,8 +551,7 @@ fn the_shadow_at_the_foot_of_a_step_is_as_solid_as_the_rest_of_it() {
         &[],
         Some(&field),
         &light,
-        TILE,
-        BOX,
+        metrics(),
         &steps,
         &solid(),
     );
@@ -591,8 +582,7 @@ fn level_ground_casts_nothing_on_itself() {
         &[],
         Some(&field),
         &light,
-        TILE,
-        BOX,
+        metrics(),
         &flat(1.0),
         &solid(),
     );

@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use super::{MAX_EXPOSED_BLOCKS, TerrainFrames, collect_terrain_sprites, exposed_floor};
+use super::{
+    MAX_EXPOSED_BLOCKS, Surroundings, TerrainFrames, collect_terrain_sprites, exposed_floor,
+};
 use iso::assets::{InkBox, SpriteFrame};
 use iso::grid::WorldCoord;
 use iso::terrain::{TerrainColumn, TerrainMaterial};
@@ -130,8 +132,10 @@ fn collected(
         projection(),
         &frames,
         &look,
-        height_at,
-        water_at,
+        Surroundings {
+            height_at,
+            water_at,
+        },
         (4000.0, 4000.0),
         &mut out,
     );

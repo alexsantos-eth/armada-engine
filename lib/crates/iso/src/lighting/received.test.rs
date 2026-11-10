@@ -66,7 +66,21 @@ fn solid() -> impl Fn(u32) -> Option<Silhouette<'static>> {
     window(&OPAQUE)
 }
 
-#[allow(clippy::too_many_arguments)]
+fn metrics() -> BoxMetrics {
+    BoxMetrics {
+        tile_width: TILE,
+        box_height: BOX,
+    }
+}
+
+fn lattice(opacity: f64) -> ShadeLatticeSpec {
+    ShadeLatticeSpec {
+        columns: SHADE_COLUMNS,
+        rows: SHADE_ROWS,
+        opacity,
+    }
+}
+
 fn grid_of(
     receiver: &ShadowReceiver,
     casters: &[ShadowCaster],
@@ -77,13 +91,10 @@ fn grid_of(
         receiver,
         casters,
         light,
-        1.0,
-        TILE,
-        BOX,
+        metrics(),
         alpha,
         None,
-        SHADE_COLUMNS,
-        SHADE_ROWS,
+        lattice(1.0),
     )
 }
 
@@ -120,13 +131,10 @@ fn the_opacity_of_the_phase_is_already_in_the_grid() {
         &it,
         &[post],
         &light,
-        0.5,
-        TILE,
-        BOX,
+        metrics(),
         &solid(),
         None,
-        SHADE_COLUMNS,
-        SHADE_ROWS,
+        lattice(0.5),
     )
     .unwrap();
 

@@ -7,9 +7,9 @@ use iso::assets::{InkBox, SpriteLayout};
 use iso::entities::Entity;
 use iso::grid::{CHUNK_SIZE, ChunkCoord, WorldCoord, to_chunk_coord};
 use iso::lighting::{
-    BakePhase, GroundBake, HeightField, MapArea, PhaseLight, SHADE_COLUMNS, SHADE_ROWS,
-    SHADOW_MAP_PIXELS_PER_TILE, ShadeGrid, ShadowCaster, ShadowMap, ShadowPoint, ShadowReceiver,
-    SpriteExtent, TerrainFace, shade_grid, shaded_at, terrain_faces,
+    BakePhase, BoxMetrics, GroundBake, HeightField, MapArea, PhaseLight, SHADE_COLUMNS, SHADE_ROWS,
+    SHADOW_MAP_PIXELS_PER_TILE, ShadeGrid, ShadeLatticeSpec, ShadowCaster, ShadowMap, ShadowPoint,
+    ShadowReceiver, SpriteExtent, TerrainFace, shade_grid, shaded_at, terrain_faces,
 };
 use iso::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
 use iso::terrain::TerrainColumn;
@@ -243,8 +243,10 @@ impl ShadowScene {
                     &job.casters,
                     Some(&job.ground),
                     &self.light.shadow,
-                    self.tile_width,
-                    self.box_height,
+                    BoxMetrics {
+                        tile_width: self.tile_width,
+                        box_height: self.box_height,
+                    },
                     &|index| masks.silhouette_of(index),
                 );
                 if !more {
@@ -434,13 +436,17 @@ impl ShadowScene {
                 &receiver,
                 &others,
                 &self.light.shadow,
-                self.light.opacity(),
-                self.tile_width,
-                self.box_height,
+                BoxMetrics {
+                    tile_width: self.tile_width,
+                    box_height: self.box_height,
+                },
                 &|index| masks.silhouette_of(index),
                 Some(ground),
-                ENTITY_SHADE_COLUMNS,
-                ENTITY_SHADE_ROWS,
+                ShadeLatticeSpec {
+                    opacity: self.light.opacity(),
+                    columns: ENTITY_SHADE_COLUMNS,
+                    rows: ENTITY_SHADE_ROWS,
+                },
             ) {
                 shaded.insert((entity.x(), entity.y()), grid);
             }
@@ -578,13 +584,17 @@ impl ShadowScene {
             receiver,
             &casters,
             &self.light.shadow,
-            self.light.opacity(),
-            self.tile_width,
-            self.box_height,
+            BoxMetrics {
+                tile_width: self.tile_width,
+                box_height: self.box_height,
+            },
             &|index| masks.silhouette_of(index),
             Some(&ground),
-            SHADE_COLUMNS,
-            SHADE_ROWS,
+            ShadeLatticeSpec {
+                opacity: self.light.opacity(),
+                columns: SHADE_COLUMNS,
+                rows: SHADE_ROWS,
+            },
         )
     }
 

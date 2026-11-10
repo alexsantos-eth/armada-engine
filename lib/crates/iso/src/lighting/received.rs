@@ -1,7 +1,7 @@
 //! The shadows one sprite receives from the others, as a grid over its own artwork.
 
 use super::bake::{ShadowCaster, SpriteExtent};
-use super::shadow::{ShadowProjection, cast_shadow_offset};
+use super::shadow::{BoxMetrics, ShadowProjection, cast_shadow_offset};
 use super::terrain::{HeightField, ShadowPoint, receiver_point};
 
 /// Corners across a receiver's artwork, and down it.
@@ -49,20 +49,37 @@ pub struct ShadowReceiver {
     pub extent: SpriteExtent,
 }
 
-/// The shadows `casters` and the ground cast on `receiver`, as a lattice of `columns` × `rows`
-#[allow(clippy::too_many_arguments)]
+/// How the shadow lattice is laid: its resolution and how dark it lands.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ShadeLatticeSpec {
+    /// Columns of the lattice across the sprite's width.
+    pub columns: u32,
+    /// Rows of the lattice down the sprite's height.
+    pub rows: u32,
+    /// Shadow opacity in `[0, 1]` before the phase's own strength.
+    pub opacity: f64,
+}
+
+/// The shadows `casters` and the ground cast on `receiver`, as a lattice described by
+/// `lattice`, scaled by `metrics`.
 pub fn shade_grid(
     receiver: &ShadowReceiver,
     casters: &[ShadowCaster],
     light: &ShadowProjection,
-    opacity: f64,
-    tile_width: f64,
-    box_height: f64,
+    metrics: BoxMetrics,
     silhouette_of: super::bake::SilhouetteOf<'_, '_>,
     ground: Option<&HeightField>,
-    columns: u32,
-    rows: u32,
+    lattice: ShadeLatticeSpec,
 ) -> Option<ShadeGrid> {
+    let BoxMetrics {
+        tile_width,
+        box_height,
+    } = metrics;
+    let ShadeLatticeSpec {
+        columns,
+        rows,
+        opacity,
+    } = lattice;
     let extent = receiver.extent;
     if extent.width <= 0.0 || extent.height <= 0.0 {
         return None;

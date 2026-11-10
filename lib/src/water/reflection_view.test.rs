@@ -60,12 +60,14 @@ fn collect(
     let at = feet(cell, elevation);
     let mut out = Vec::new();
     collect_reflection(
-        3,
-        frame(),
-        layout(at, BOX_HEIGHT),
-        at,
-        elevation,
-        0.0,
+        ReflectionSprite {
+            texture: 3,
+            frame: frame(),
+            layout: layout(at, BOX_HEIGHT),
+            feet: at,
+            elevation,
+            lift: 0.0,
+        },
         reflected,
         projection(),
         water_at,
@@ -198,12 +200,14 @@ fn a_jumping_sprite_sinks_its_reflection_by_the_lift() {
     };
     let mut airborne = Vec::new();
     collect_reflection(
-        3,
-        frame(),
-        layout(risen, BOX_HEIGHT),
-        risen,
-        lift,
-        lift,
+        ReflectionSprite {
+            texture: 3,
+            frame: frame(),
+            layout: layout(risen, BOX_HEIGHT),
+            feet: risen,
+            elevation: lift,
+            lift,
+        },
         Reflected::Standing { turn_at: None },
         projection(),
         sea(0.0),
@@ -288,17 +292,19 @@ fn a_sprite_with_no_area_mirrors_nothing() {
     let at = feet((0, 0), 0.0);
     let mut out = Vec::new();
     collect_reflection(
-        0,
-        frame(),
-        SpriteLayout {
-            x: at.x,
-            y: at.y,
-            width: 0.0,
-            height: 0.0,
+        ReflectionSprite {
+            texture: 0,
+            frame: frame(),
+            layout: SpriteLayout {
+                x: at.x,
+                y: at.y,
+                width: 0.0,
+                height: 0.0,
+            },
+            feet: at,
+            elevation: 0.0,
+            lift: 0.0,
         },
-        at,
-        0.0,
-        0.0,
         Reflected::Standing { turn_at: None },
         projection(),
         sea(0.0),
@@ -313,12 +319,14 @@ fn a_projection_with_no_tile_height_mirrors_nothing() {
     let at = ScreenPoint { x: 0.0, y: 0.0 };
     let mut out = Vec::new();
     collect_reflection(
-        0,
-        frame(),
-        layout(at, 10.0),
-        at,
-        0.0,
-        0.0,
+        ReflectionSprite {
+            texture: 0,
+            frame: frame(),
+            layout: layout(at, 10.0),
+            feet: at,
+            elevation: 0.0,
+            lift: 0.0,
+        },
         Reflected::Standing { turn_at: None },
         ProjectionConfig {
             tile_height: 0.0,

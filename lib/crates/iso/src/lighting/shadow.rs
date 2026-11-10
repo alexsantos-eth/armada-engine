@@ -129,6 +129,16 @@ pub fn shadow_reach(height: f64, lift: f64, tile_width: f64, box_height: f64) ->
         .max(0.0)
 }
 
+/// The artwork's box metrics: how wide a tile of world is, and how tall a block is, in
+/// screen pixels.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BoxMetrics {
+    /// Width of one tile of world, in screen pixels.
+    pub tile_width: f64,
+    /// Height of one block, in screen pixels.
+    pub box_height: f64,
+}
+
 #[cfg(test)]
 #[path = "shadow.test.rs"]
 mod tests;

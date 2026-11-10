@@ -10,6 +10,15 @@ use macroquad::prelude::Color;
 
 use crate::assets::sprites::SpriteDraw;
 
+/// Where a puff starts from and how it is thrown: `origin` is the start in world columns and
+/// `kick` flings the voxels away from the player's velocity; pass a zero `kick` for anything
+/// that erupts in place.
+#[derive(Clone, Copy, Debug)]
+struct DustEmission {
+    origin: GridPoint,
+    kick: GridPoint,
+}
+
 /// The colours of a voxel of dust, nearly white: its lit top, its left side and its right side.
 pub const DUST_TOP: u32 = 0xfbf9f4;
 pub const DUST_LEFT: u32 = 0xe6e2d8;
@@ -121,11 +130,14 @@ impl DustPuffs {
             self.raise(
                 LANDING_PUFF,
                 BURST_DUST,
-                at.feet,
-                at.ground,
-                ZERO,
-                ZERO,
-                at.tile_height,
+                &DustGround {
+                    level: at.ground,
+                    ..at
+                },
+                DustEmission {
+                    origin: ZERO,
+                    kick: ZERO,
+                },
                 top_at,
             );
         }
@@ -133,11 +145,11 @@ impl DustPuffs {
             self.raise(
                 TAKEOFF_PUFF,
                 BURST_DUST,
-                at.feet,
-                at.level,
-                ZERO,
-                ZERO,
-                at.tile_height,
+                &at,
+                DustEmission {
+                    origin: ZERO,
+                    kick: ZERO,
+                },
                 top_at,
             );
         }
@@ -178,41 +190,34 @@ impl DustPuffs {
         self.raise(
             index,
             KICK_DUST,
-            at.feet,
-            at.level,
-            kick,
-            ZERO,
-            at.tile_height,
+            &at,
+            DustEmission { origin: ZERO, kick },
             top_at,
         );
         self.run_puff = (self.run_puff + 1) % RUN_PUFFS;
     }
 
     /// Raises the puff in slot `index`, replacing whatever was there: a fresh scatter of
-    #[allow(clippy::too_many_arguments)]
     fn raise(
         &mut self,
         index: usize,
         shape: DustShape,
-        feet: GridPoint,
-        level: f64,
-        kick: GridPoint,
-        origin: GridPoint,
-        tile_height: f64,
+        at: &DustGround,
+        emission: DustEmission,
         top_at: &impl Fn(i32, i32) -> Option<f64>,
     ) {
         self.raised += 1;
-        let voxels = get_dust_voxels(shape, self.raised, kick, origin);
+        let voxels = get_dust_voxels(shape, self.raised, emission.kick, emission.origin);
         let keys = voxels
             .iter()
-            .map(|voxel| voxel_key(*voxel, feet, level, tile_height, top_at))
+            .map(|voxel| voxel_key(*voxel, at.feet, at.level, at.tile_height, top_at))
             .collect();
         self.puffs[index] = Some(Puff {
             shape,
             voxels,
             keys,
-            feet,
-            level,
+            feet: at.feet,
+            level: at.level,
             ms: Some(0.0),
         });
     }

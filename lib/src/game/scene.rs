@@ -29,8 +29,8 @@ use crate::lighting::shadow_view;
 use crate::player::body_motion::{BodyMoment, BodyScale};
 use crate::player::dust_view::DustGround;
 use crate::player::player_view::{PlayerMoment, jump_poses};
-use crate::terrain::terrain_view_blocks::collect_terrain_sprites;
-use crate::water::reflection_view::{Reflected, collect_reflection};
+use crate::terrain::terrain_view_blocks::{Surroundings, collect_terrain_sprites};
+use crate::water::reflection_view::{Reflected, ReflectionSprite, collect_reflection};
 
 /// This view's projection with its origin at `(origin_x, origin_y)`: the tile size and the
 /// elevation step are the scene's, the origin follows the camera.
@@ -225,12 +225,14 @@ impl Game {
                     projection,
                     &self.terrain_frames,
                     &self.terrain_look,
-                    |point| {
-                        self.manager
-                            .column_at(point.x, point.y)
-                            .map(|c| c.elevation)
+                    Surroundings {
+                        height_at: |point| {
+                            self.manager
+                                .column_at(point.x, point.y)
+                                .map(|c| c.elevation)
+                        },
+                        water_at: |x, y| water_cell(&self.manager, x, y),
                     },
-                    |x, y| water_cell(&self.manager, x, y),
                     (f64::from(screen_width()), f64::from(screen_height())),
                     &mut self.draws,
                 );
@@ -342,12 +344,14 @@ impl Game {
                         )
                     });
                 collect_reflection(
-                    mirrored.0,
-                    mirrored.1,
-                    mirrored.2,
-                    anchor,
-                    elevation,
-                    0.0,
+                    ReflectionSprite {
+                        texture: mirrored.0,
+                        frame: mirrored.1,
+                        layout: mirrored.2,
+                        feet: anchor,
+                        elevation,
+                        lift: 0.0,
+                    },
                     mirrored.3,
                     projection,
                     |x, y| water_cell(&self.manager, x, y),
@@ -445,12 +449,14 @@ impl Game {
                         .and_then(shadow_view::lattice_of)
                 });
                 collect_reflection(
-                    texture,
-                    frame,
-                    layout,
-                    feet,
-                    rp.elevation + rp.height,
-                    rp.height,
+                    ReflectionSprite {
+                        texture,
+                        frame,
+                        layout,
+                        feet,
+                        elevation: rp.elevation + rp.height,
+                        lift: rp.height,
+                    },
                     Reflected::Standing { turn_at: None },
                     projection,
                     |x, y| water_cell(&self.manager, x, y),
