@@ -1,10 +1,10 @@
 # Colocación de entidades por Wave Function Collapse (plan)
 
-**Estado: plan propuesto, no implementado.** Este documento reserva el diseño para cuando se aborde la fase de colocación del resto de entidades. Nada de esto existe aún en el código; la fase actual (biomas) sigue usando `place_entities_with_biomes`.
+**Estado: implementada (2026-11-10), sin cruce de chunks.** La fase 1 quedó así: módulo `iso::entities::wfc` con el mosaico de una casilla y huella múltiple —el solver siempre ofrece la vacancia como posibilidad—, restricciones de superficie y elevación uniforme por huella, hueco de 1 entre mismos tipos integrado en el mosaico, selección por menor entropía con tiradas `lattice_at` derivadas de la semilla, pesos por blueprint y `emptyWeight` en `content/wfc.json` (`schemaVersion` 1), validación con exigencia de peso para todo blueprint no reclamado por bioma, y chunk completamente autocontenido (sin mirar a los vecinos, para preservar el determinismo del orden de descubrimiento). Densidad reproducida como hasta ahora (≈ pesos 1, `emptyWeight` 380); arbustos y rocas crecen sueltos; sin techos por chunk ni reglas de vecindad extra (se añaden luego por contenido sin tocar código). Los biomas siguen gobernados por `iso::biomes`; el WFC reclama todo blueprint que ellos no listan. Quedan como trabajo futuro: vecindad declarativa en contenido, techos `maxPerChunk`, bosquetes para arbustos/rocas si se quieren, cruce de chunks si el diseño lo pide alguna vez.
 
 ## Objetivo
 
-Sustituir la tirada de densidad independiente por casilla por un solver de restricciones (wave function collapse simplificado) que place las entidades no adscritas a biomas (arbustos, rocas, edificios, muelles y, cuando el juego lo quiera, todas) con coherencia local: huecos creíbles, reglas de vecindad, densidad acotada y determinismo total.
+Sustituir la tirada de densidad independiente por casilla por un solver de restricciones que coloca las entidades no adscritas a biomas (edificios, muelles, barco, arbustos y rocas) con coherencia local y determinismo total.
 
 ## Restricciones heredadas (obligatorias para el solver)
 
@@ -15,51 +15,44 @@ Sustituir la tirada de densidad independiente por casilla por un solver de restr
 
 ## Modelo de decisión
 
-1. Cada columna del chunk abre con un conjunto de posibilidades: cada blueprint del catálogo cuya huella y superficie admiten la columna, más un «vacio» opcional.
-2. Propagación por consistencia de arco (AC-3): si una posibilidad de la celda A exige/prohibe algo en B, recortar B; repetir hasta fijar o contradecir.
-3. Observación: elegir la celda de menor entropía; si hay empate, la de menor índice por la corriente derivada; observar rolando por peso.
-4. Contradicción: retroceso acotado (pila de decisiones, límite fijo) o reinicio de la celda desempate con otra semilla derivada; si agotado, dejar la celda vacía (nunca panic, nunca relleno arbitrario).
+1. Cada columna del chunk abre con un conjunto de posibilidades: cada blueprint cuyo huella/superficie admite la columna (huella completa en casillas del chunk, elevación uniforme de sus celdas secas), más siempre la vacancia.
+2. Recorte local dirigido por el colapso: cuando una celda se asigna, sus celdas de huella quedan reclamadas; las posibilidades de las demás celdas cuya huella toca la reclamada desaparecen, igual que las del mismo blueprint a menos de 1 celda de Chebyshev (mismo tipo, hueco 1). La vacancia nunca se elimina, de modo que el mosaico nunca entra en contradicción y no hay retroceso.
+3. Observación: la celda sin decidir de menor entropía; empates por `lattice_at` (corriente derivada de la semilla); la elección pesa por blueprint más `emptyWeight`.
+4. El chunk es autocontenido: la vacancia siempre está disponible, no hace falta retroceso ni reinicios.
 
-## Contenido (`content/wfc.json`, `schemaVersion` 1 — futuro)
+## Contenido (`content/wfc.json`, `schemaVersion` 1)
 
 ```jsonc
 {
   "schemaVersion": 1,
-  "weights": { "bush": 1.0, "large_rock": 0.7 },
-  "maxPerChunk": { "house": 1, "townhall": 1 },
-  "adjacency": [
-    { "a": "pier_x_reverse", "b": "pier_y_reverse", "allow": true },
-    { "a": "house", "b": "house", "allow": false, "gap": 2 }
-  ],
-  "surfaces": {
-    "pier_x_reverse": ["water", "sand", "grass"]
-  }
+  "emptyWeight": 380.0,
+  "weights": { "house": 1.0, "bush": 1.0, "large_rock": 1.0, "...": 1.0 }
 }
 ```
 
-Validado con las mismas puertas que `biomes.json` (ids únicos, pesos finitos positivos, blueprints citados existentes en `entities.json`). La superficie ya vive en el catálogo de entidades y no se duplica; `wfc.json` solo añade pesos, cotas y vecindad.
+Validado con las mismas puertas que `biomes.json` (pesos finitos positivos, blueprints citados existentes en `entities.json`); además exige un peso para cada blueprint que ningún bioma reclama, para que nada quede fuera del mundo en silencio. La superficie ya vive en el catálogo de entidades y no se duplica; `wfc.json` solo añade pesos y cuánto pesa la vacancia. Los 8 árboles que los biomas reclaman no reciben peso (su hueco lo gobierna el bosquete).
 
 ## Fases
 
-1. **Solver núcleo + paridad**: módulo `iso::entities::wfc` con el mosaico de una casilla; resolver con la única regla "superficies admitidas" y fijar paridad con la colocación actual en tests (mismos conjuntos de casillas disponibles).
-2. **Vecindad y cotas**: reglas `adjacency` y `maxPerChunk`, integradas con `SpatialIndex` para las comprobaciones.
-3. **Huellas múltiplex**: super-tiles con verificación de uniformidad de elevación y superficie por celda (equivalente al chequeo actual de `find_placement`).
-4. **Cruce de chunks (opcional)**: frontera derivada de terreno únicamente, o nada; medir antes de tocar.
-5. **Retirada del camino legado**: `place_entities_with_biomes` pasa a ser un caso del solver; se conserva hasta entonces.
+1. ~~**Solver núcleo + paridad**~~ **Hecha**: `iso::entities::wfc` con mosaico de una casilla y huella múltiple nativa (los muelles y edificios largos son anclas con huella completa).
+2. ~~**Vecindad y cotas**~~ **Recortada**: solo el hueco 1 mismo tipo vive en el motor; la vecindad declarativa y los techos `maxPerChunk` quedan para una iteración de contenido sin tocar código.
+3. ~~**Huellas múltiples**~~ **Hecha**: la huella completa se valida en casillas del chunk (superficie y elevación uniforme de celdas secas), reclamando también las celdas intermedias para el mosaico.
+4. **Cruce de chunks (opcional)**: no hecho; la v1 es autocontenida por diseño.
+5. **Retirada del camino legado**: no hecha; `place_entities_with_content` conserva el camino legado cuando no hay catálogo wfc (`wfc: None`), que es lo que usan los tests del dominio.
 
-## Integración prevista (costuras ya presentes)
+## Integración (implementada)
 
-- `ChunkManager` ya recibe el "mundo de colocación" por puerto (`set_biomes`): el solver llegaría como un puerto análogo (`set_wfc` o contenido unido) sin tocar streaming ni guardado.
-- `place_entities_with_biomes(columns, catalog, rules, Option<&WorldBiomes>)` marca el punto de sustitución: el WFC consumiría el mismo `Vec<TerrainColumn>` y el mismo `EntityCatalog`, y devolvería el mismo `PlacementResult`.
+- `ChunkManager::set_wfc(wfc: WfcCatalog)` análogo a `set_biomes`; se llama en el arranque antes del primer descubrimiento, sin tocar streaming ni guardado.
+- `place_entities_with_content(columns, catalog, rules, PlacementContent { biomes, wfc, seed })` une ambos pases sobre el mismo `SpatialIndex`: biomas primero, wfc después.
 - `TerrainColumn`, superficies y elevación no cambian; el guardado tampoco (las entidades guardadas siguen siendo blueprint + posición).
 
 ## Presupuesto
 
 Chunk de 32×32 = 1024 celdas; conjuntos de posibilidades pequeños (≤ blueprints del catálogo); AC-3 en Rust es trivial de sobra para un paso por chunk en el descubrimiento. Si se supera el presupuesto, el solver es abortable por celda (se deja vacía) y medible con `src/perf` antes de optimizar nada.
 
-## Preguntas para la fase de implementación (no bloquean el plan)
+## Decisiones tomadas en la fase de implementación
 
-1. ¿Qué blueprints entran en el solver en la primera iteración: solo naturaleza (arbustos/rocas), o también muelles y edificios?
-2. ¿Reglas de vecindad iniciales mínimas (distancia entre mismos tipos, muelles junto al agua) o catálogo completo desde el principio?
-3. ¿Techos de densidad por tipo (`maxPerChunk`) por defecto, o sin techo más allá de la superficie?
-4. ¿Se mantiene la "estética de prado" (arbustos y rocas sueltos fuera de bosquete) o el solver los junta también en manchas?
+1. Entra **todo** lo que ningún bioma reclama (28 blueprints: edificios, muelles, barco, arbustos y rocas) — los biomas conservan los 8 árboles.
+2. Vecindad inicial **mínima**: hueco 1 mismo tipo; nada de vecindad declarativa en esta iteración.
+3. **Sin techos** por chunk; todo acotado por pesos, superficies y la vacancia.
+4. Arbustos y rocas **sueltos**; la densidad reproduce más o menos la de antes (pesos 1, `emptyWeight` 380).

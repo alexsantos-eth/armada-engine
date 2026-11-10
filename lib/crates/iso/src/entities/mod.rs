@@ -4,8 +4,10 @@ pub mod blueprint;
 pub mod entity;
 pub mod placement;
 pub mod validation;
+pub mod wfc;
 
 pub use blueprint::*;
 pub use entity::*;
 pub use placement::*;
 pub use validation::*;
+pub use wfc::*;

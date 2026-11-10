@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 2,
+  "emptyWeight": 380.0,
+  "weights": {
+    "pier_x_reverse": 1.0,
+    "pier_y_reverse": 1.0,
+    "house": 6.0,
+    "house_2x1": 4.0,
+    "house_balcony": 4.0,
+    "hospital": 1.0,
+    "restaurant": 2.5,
+    "market": 2.5,
+    "townhall": 1.0,
+    "tower": 1.0,
+    "apartments_x": 3.0,
+    "apartments_y": 3.0,
+    "skyscraper": 1.0,
+    "hotel_x": 2.5,
+    "hotel_y": 2.5,
+    "office_x": 0.5,
+    "office_y": 0.5,
+    "boat": 1.0,
+    "bush": 4.0,
+    "large_rock": 1.0,
+    "large_rock_2": 1.0,
+    "large_rock_3": 1.0
+  },
+  "families": {
+    "office": [
+      "office_x",
+      "office_y"
+    ]
+  },
+  "maxPerChunk": {
+    "office": 2,
+    "hospital": 1,
+    "townhall": 1
+  }
+}

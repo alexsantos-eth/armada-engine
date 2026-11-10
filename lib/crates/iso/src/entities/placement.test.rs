@@ -367,3 +367,93 @@ fn biome_placement_without_biomes_matches_the_old_path() {
     let ids_without: Vec<&str> = without.entities.iter().map(|e| e.id()).collect();
     assert_eq!(ids, ids_without);
 }
+
+fn tree_biomes_with_catalog(
+    entities: &EntityCatalog,
+) -> (
+    crate::biomes::catalog::BiomeCatalog,
+    crate::biomes::field::WorldBiomes,
+) {
+    let json = r#"{
+        "schemaVersion": 1,
+        "biomes": [
+            { "id": "temperate_forest", "share": 50.0, "treeCoverage": 0.30,
+              "trees": [
+                  { "blueprint": "tree", "weight": 60.0 },
+                  { "blueprint": "tree_2", "weight": 40.0 }
+              ],
+              "grassTints": ["bfd5bd", "dde9d4"], "groundTints": ["fffbea", "ffffff"] },
+            { "id": "taiga", "share": 50.0, "treeCoverage": 0.30,
+              "trees": [
+                  { "blueprint": "tree_3", "weight": 100.0 }
+              ],
+              "grassTints": ["8fa884", "a9bda0"], "groundTints": ["8f8878", "a49d8d"] }
+        ]
+    }"#;
+    let catalog = crate::biomes::catalog::parse_biomes(json, entities).expect("valid biomes");
+    let field = crate::biomes::field::WorldBiomes::new(42, &catalog);
+    (catalog, field)
+}
+
+#[test]
+fn the_biome_and_wfc_passes_coexist_deterministically() {
+    let entities = trees_catalog();
+    let (biomes_catalog, biomes) = tree_biomes_with_catalog(&entities);
+    let wfc = crate::entities::wfc::parse_wfc(
+        r#"{ "schemaVersion": 2, "emptyWeight": 50.0, "weights": { "rock": 1.0 } }"#,
+        &entities,
+        Some(&biomes_catalog),
+    )
+    .expect("valid wfc content");
+    let columns: Vec<TerrainColumn> = (-48..48)
+        .flat_map(|x| (-48..48).map(move |y| column(x, y, grass(), 0)))
+        .collect();
+    let content = || PlacementContent {
+        biomes: Some(&biomes),
+        wfc: Some(&wfc),
+        seed: 123,
+    };
+    let first = place_entities_with_content(&columns, &entities, dense(), content());
+    let second = place_entities_with_content(&columns, &entities, dense(), content());
+    let ids: Vec<_> = first.entities.iter().map(|e| e.id()).collect();
+    let ids_again: Vec<_> = second.entities.iter().map(|e| e.id()).collect();
+    assert_eq!(ids, ids_again);
+    let grew_biome = first
+        .entities
+        .iter()
+        .any(|e| matches!(e.type_(), "tree" | "tree_2" | "tree_3"));
+    let grew_wfc = first.entities.iter().any(|e| e.type_() == "rock");
+    assert!(grew_biome, "the biome pass must grow its trees");
+    assert!(grew_wfc, "the wfc pass must grow rocks");
+    let mut seen = std::collections::HashSet::new();
+    for entity in &first.entities {
+        assert!(
+            seen.insert((entity.x(), entity.y())),
+            "two entities grew on the same cell: {:?}",
+            (entity.x(), entity.y())
+        );
+    }
+}
+
+#[test]
+fn the_content_path_with_no_wfc_matches_the_biome_path() {
+    let entities = trees_catalog();
+    let biomes = tree_biomes(&entities);
+    let columns: Vec<TerrainColumn> = (-32..32)
+        .flat_map(|x| (-32..32).map(move |y| column(x, y, grass(), 0)))
+        .collect();
+    let with = place_entities_with_content(
+        &columns,
+        &entities,
+        dense(),
+        PlacementContent {
+            biomes: Some(&biomes),
+            wfc: None,
+            seed: 123,
+        },
+    );
+    let without = place_entities_with_biomes(&columns, &entities, dense(), Some(&biomes));
+    let ids: Vec<_> = with.entities.iter().map(|e| e.id()).collect();
+    let ids_without: Vec<_> = without.entities.iter().map(|e| e.id()).collect();
+    assert_eq!(ids, ids_without);
+}

@@ -26,9 +26,9 @@ scripts/run-native.sh test --workspace --locked
 scripts/run-native.sh clippy --workspace --all-targets --locked -- -D warnings
 ```
 
-En macOS, el SDK 27 de Command Line Tools falla al enlazar con el clang instalado, así que el
-script selecciona el SDK 26.5 cuando `SDKROOT` no está definido; en otros sistemas no toca nada.
-Equivale a `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk cargo run --locked`.
+En macOS, el SDK 27 de Command Line Tools falla al enlazar con el clang instalado, así que los
+scripts de build seleccionan el SDK 26.5 cuando `SDKROOT` no está definido; en otros sistemas no
+tocan nada. `run-native.sh` equivale a `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk cargo run --locked`; `build-web.sh` necesita la misma guarda porque los build scripts se compilan para el host aunque el artefacto final sea WASM.
 Es un ajuste del entorno local, no una dependencia del proyecto.
 
 Flechas o WASD mueven al jugador; el clic sitúa el marcador sobre el plano del mundo. `T`

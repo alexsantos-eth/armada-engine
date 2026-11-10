@@ -3,7 +3,8 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::biomes::field::WorldBiomes;
-use crate::entities::placement::place_entities_with_biomes;
+use crate::entities::placement::{PlacementContent, PlacementRules, place_entities_with_content};
+use crate::entities::wfc::WfcCatalog;
 use crate::entities::{Entity, EntityCatalog};
 use crate::grid::{ChunkCoord, chunks_around};
 use crate::scene_order::{
@@ -61,6 +62,8 @@ pub struct ChunkManager {
     wanted_prefetch: Vec<ChunkCoord>,
     /// The biomes of the world, when the content shipped them; `None` grows biome-agnostic chunks.
     biomes: Option<WorldBiomes>,
+    /// The wfc catalogue for everything else; `None` falls back to the density roll.
+    wfc: Option<WfcCatalog>,
 }
 
 impl ChunkManager {
@@ -84,6 +87,7 @@ impl ChunkManager {
             wanted_loaded: Vec::new(),
             wanted_prefetch: Vec::new(),
             biomes: None,
+            wfc: None,
         }
     }
 
@@ -96,6 +100,12 @@ impl ChunkManager {
     /// the entities of chunks already placed keep their biomes until they are unloaded.
     pub fn set_biomes(&mut self, biomes: WorldBiomes) {
         self.biomes = Some(biomes);
+    }
+
+    /// Hands the manager the world's wfc catalogue. Called once at boot, before the first
+    /// discovery; chunks already placed keep their entities until they are unloaded.
+    pub fn set_wfc(&mut self, wfc: WfcCatalog) {
+        self.wfc = Some(wfc);
     }
 
     /// Sets the focus chunks (typically around the camera/player). The streamer keeps chunks
@@ -139,11 +149,15 @@ impl ChunkManager {
 
         for coord in self.pending_entities.drain(..) {
             if let Some(columns) = self.world.chunk(coord) {
-                let result = place_entities_with_biomes(
+                let result = place_entities_with_content(
                     columns,
                     &self.catalog,
-                    crate::entities::placement::PlacementRules::default(),
-                    self.biomes.as_ref(),
+                    PlacementRules::default(),
+                    PlacementContent {
+                        biomes: self.biomes.as_ref(),
+                        wfc: self.wfc.as_ref(),
+                        seed: crate::terrain::WORLD_SEED,
+                    },
                 );
                 self.entities.insert(coord, result.entities);
             }

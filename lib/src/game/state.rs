@@ -190,6 +190,9 @@ impl Game {
         let biomes_json = include_str!("../../content/biomes.json");
         let biomes_catalog =
             iso::biomes::parse_biomes(biomes_json, &catalog).expect("biomes content validates");
+        let wfc_json = include_str!("../../content/wfc.json");
+        let wfc_catalog = iso::entities::wfc::parse_wfc(wfc_json, &catalog, Some(&biomes_catalog))
+            .expect("wfc content validates");
         let world_biomes = iso::biomes::WorldBiomes::new(terrain_config.seed, &biomes_catalog);
 
         let (terrain_look, missing_tops) = TerrainLook::new(
@@ -210,6 +213,7 @@ impl Game {
 
         let mut manager = ChunkManager::with_radii(generator, catalog, CHUNK_RADII);
         manager.set_biomes(world_biomes);
+        manager.set_wfc(wfc_catalog);
 
         let save = load_save().await;
         let archive = restore_archive(save);

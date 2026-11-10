@@ -118,8 +118,43 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`place_entities_with`](placement.rs#L98) — Coloca entidades sobre `columns`, una instancia por cada columna ancla válida que permite la densidad
   - Firma: `pub fn place_entities_with( columns: &[TerrainColumn], catalog: &EntityCatalog, rules: PlacementRules, ) -> PlacementResult {`
 
-- [`place_entities_with_biomes`](placement.rs#L112) — Coloca entidades sobre `columns`, confinando las especies que los biomas reclaman a sus propias regiones: un blueprint que algún bioma lista solo brota donde el bioma cubre la columna y su picker de bosquete devuelve esa especie, así que los bosquetes son monospecíficos y las reglas de densidad y hueco se aplican como siempre. `None` restaura el comportamiento sin biomas.
+- [`PlacementContent`](placement.rs#L108) — El contenido de colocación del pase: los biomas del mundo, el catálogo wfc del resto y la semilla de sus tiradas.
+  - Declaración: `pub struct PlacementContent<'a> { pub biomes: Option<&'a WorldBiomes>, pub wfc: Option<&'a WfcCatalog>, pub seed: u64, }`
+
+- [`place_entities_with_biomes`](placement.rs#L123) — Coloca entidades sobre `columns`, confinando las especies que los biomas reclaman a sus propias regiones: un blueprint que algún bioma lista solo brota donde el bioma cubre la columna y su picker de bosquete devuelve esa especie, así que los bosquetes son monospecíficos y las reglas de densidad y hueco se aplican como siempre. `None` restaura el comportamiento sin biomas. Es un atajo al camino sin wfc.
   - Firma: `pub fn place_entities_with_biomes( columns: &[TerrainColumn], catalog: &EntityCatalog, rules: PlacementRules, biomes: Option<&WorldBiomes>, ) -> PlacementResult {`
+
+- [`place_entities_with_content`](placement.rs#L147) — Coloca entidades sobre `columns`: el pase de biomas primero, el solver wfc después para todo lo que ningún bioma reclama, ambos sobre el mismo índice espacial para que nada se solape. Sin catálogo wfc, el comportamiento es el mismo que [`place_entities_with_biomes`].
+  - Firma: `pub fn place_entities_with_content( columns: &[TerrainColumn], catalog: &EntityCatalog, rules: PlacementRules, content: PlacementContent<'_>, ) -> PlacementResult {`
+
+### `wfc.rs`
+
+#### Funciones y métodos
+
+- [`weight_of`](wfc.rs#L110) — El peso de `blueprint`, o `0.0` cuando el contenido no lo lista (nunca crece).
+  - Firma: `pub fn weight_of(&self, blueprint: &str) -> f64 {`
+
+- [`parse_wfc`](wfc.rs#L117) — Parsea y valida el contenido wfc contra el catálogo de entidades que referencia, y contra los biomas (cuando se pasan) para exigir un peso a cada blueprint que ningún bioma reclama.
+  - Firma: `pub fn parse_wfc( json: &str, entities: &EntityCatalog, biomes: Option<&crate::biomes::catalog::BiomeCatalog>, ) -> Result<WfcCatalog, WfcError> {`
+
+- [`claimed_by_biomes`](wfc.rs#L177) — Qué blueprints ya reclaman los biomas, en orden de catálogo; el solver omite esos del mosaico.
+  - Firma: `pub fn claimed_by_biomes( entities: &EntityCatalog, biomes: Option<&crate::biomes::field::WorldBiomes>, ) -> Vec<bool> {`
+
+- [`solve_chunk`](wfc.rs#L357) — Resuelve el chunk y devuelve las entidades que crece, en orden de columna. El solver es por chunk y no consulta a los vecinos: cada posibilidad se comprueba contra el terreno, así que un chunk sale igual que junto a sus vecinos; la vacancia siempre es posible, de modo que el mosaico nunca entra en contradicción. Al llegar al techo de `maxPerChunk` para un blueprint o familia, sus posibilidades dejan de crecer en el resto del chunk.
+  - Firma: `pub fn solve_chunk( columns: &[TerrainColumn], catalog: &EntityCatalog, wfc: &WfcCatalog, claimed: &[bool], placed: &mut SpatialIndex<Entity>, seed: u64, ) -> Vec<Entity> {`
+
+#### Constantes
+
+- [`WFC_SCHEMA_VERSION`](wfc.rs#L15) — El esquema de contenido wfc que este validador acepta; la 2 añade `families` y `maxPerChunk`.
+  - Declaración: `pub const WFC_SCHEMA_VERSION: u32 = 2;`
+
+#### Tipos
+
+- [`WfcCatalog`](wfc.rs#L161) — El contenido wfc validado: `emptyWeight` (cuánto pesa «aquí no crece nada» frente a un blueprint), los pesos por blueprint, `families` (grupos que comparten techo: `office` junta `office_x`/`office_y`) y `maxPerChunk` (techo por chunk, indexado por id de familia o de blueprint). Los blueprints que ningún bioma reclama deben aparecer en `weights`, o el mundo se quedaría en silencio.
+  - Declaración: `pub struct WfcCatalog { pub schema_version: u32, pub empty_weight: f64, pub weights: HashMap<String, f64>, pub families: HashMap<String, Vec<String>>, pub max_per_chunk: HashMap<String, f64>, }`
+
+- [`WfcError`](wfc.rs#L22) — Todo lo que el contenido wfc puede declarar mal: esquema no soportado, JSON ilegible, `emptyWeight` o pesos no positivos, `blueprint` que el catálogo de entidades no tiene, un blueprint sin reclamar que nadie pesa; claves de techo ajenas a todo, techos inferiores a 1, familias vacías con blueprints repetidos entre familias o que chocan con un blueprint.
+  - Declaración: `pub enum WfcError { ... }`
 
 ### `validation.rs`
 
@@ -174,6 +209,35 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 - [`PRIME`](placement.rs#L29) — Define el parámetro interno «PRIME» empleado por este módulo.
   - Declaración: `const PRIME: u64 = 0x1000_0000_01b3;`
+
+### `wfc.rs`
+
+#### Funciones y métodos
+
+- [`weight_of`](wfc.rs#L110) — El peso de `blueprint`, o `0.0` cuando el contenido no lo lista (nunca crece).
+  - Firma: `pub fn weight_of(&self, blueprint: &str) -> f64 {`
+
+- [`parse_wfc`](wfc.rs#L117) — Parsea y valida el contenido wfc contra el catálogo de entidades que referencia, y contra los biomas (cuando se pasan) para exigir un peso a cada blueprint que ningún bioma reclama.
+  - Firma: `pub fn parse_wfc( json: &str, entities: &EntityCatalog, biomes: Option<&crate::biomes::catalog::BiomeCatalog>, ) -> Result<WfcCatalog, WfcError> {`
+
+- [`claimed_by_biomes`](wfc.rs#L177) — Qué blueprints ya reclaman los biomas, en orden de catálogo; el solver omite esos del mosaico.
+  - Firma: `pub fn claimed_by_biomes( entities: &EntityCatalog, biomes: Option<&crate::biomes::field::WorldBiomes>, ) -> Vec<bool> {`
+
+- [`solve_chunk`](wfc.rs#L357) — Resuelve el chunk y devuelve las entidades que crece, en orden de columna. El solver es por chunk y no consulta a los vecinos: cada posibilidad se comprueba contra el terreno, así que un chunk sale igual que junto a sus vecinos; la vacancia siempre es posible, de modo que el mosaico nunca entra en contradicción. Al llegar al techo de `maxPerChunk` para un blueprint o familia, sus posibilidades dejan de crecer en el resto del chunk.
+  - Firma: `pub fn solve_chunk( columns: &[TerrainColumn], catalog: &EntityCatalog, wfc: &WfcCatalog, claimed: &[bool], placed: &mut SpatialIndex<Entity>, seed: u64, ) -> Vec<Entity> {`
+
+#### Constantes
+
+- [`WFC_SCHEMA_VERSION`](wfc.rs#L15) — El esquema de contenido wfc que este validador acepta; la 2 añade `families` y `maxPerChunk`.
+  - Declaración: `pub const WFC_SCHEMA_VERSION: u32 = 2;`
+
+#### Tipos
+
+- [`WfcCatalog`](wfc.rs#L161) — El contenido wfc validado: `emptyWeight` (cuánto pesa «aquí no crece nada» frente a un blueprint), los pesos por blueprint, `families` (grupos que comparten techo: `office` junta `office_x`/`office_y`) y `maxPerChunk` (techo por chunk, indexado por id de familia o de blueprint). Los blueprints que ningún bioma reclama deben aparecer en `weights`, o el mundo se quedaría en silencio.
+  - Declaración: `pub struct WfcCatalog { pub schema_version: u32, pub empty_weight: f64, pub weights: HashMap<String, f64>, pub families: HashMap<String, Vec<String>>, pub max_per_chunk: HashMap<String, f64>, }`
+
+- [`WfcError`](wfc.rs#L22) — Todo lo que el contenido wfc puede declarar mal: esquema no soportado, JSON ilegible, `emptyWeight` o pesos no positivos, `blueprint` que el catálogo de entidades no tiene, un blueprint sin reclamar que nadie pesa; claves de techo ajenas a todo, techos inferiores a 1, familias vacías con blueprints repetidos entre familias o que chocan con un blueprint.
+  - Declaración: `pub enum WfcError { ... }`
 
 ### `validation.rs`
 

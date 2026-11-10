@@ -28,6 +28,11 @@ cd "$script_dir/.."
 out_dir="${1:-dist}"
 target=wasm32-unknown-unknown
 
+compatible_sdk=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk
+if [[ "$(uname -s)" == Darwin && -z "${SDKROOT:-}" && -d "$compatible_sdk" ]]; then
+  export SDKROOT="$compatible_sdk"
+fi
+
 echo "==> Toolchain"
 rustup toolchain install --no-self-update
 rustup target add "$target"

@@ -4,46 +4,145 @@
     {
       "id": "temperate_forest",
       "share": 35.0,
-      "treeCoverage": 0.06,
+      "treeCoverage": 0.135,
       "trees": [
-        { "blueprint": "tree", "weight": 30.0 },
-        { "blueprint": "tree_2", "weight": 30.0 },
-        { "blueprint": "tree_6", "weight": 22.0 },
-        { "blueprint": "tree_5", "weight": 18.0 }
+        {
+          "blueprint": "tree",
+          "weight": 25.0
+        },
+        {
+          "blueprint": "tree_2",
+          "weight": 22.0
+        },
+        {
+          "blueprint": "tree_6",
+          "weight": 20.0
+        },
+        {
+          "blueprint": "tree_5",
+          "weight": 15.0
+        },
+        {
+          "blueprint": "tree_3",
+          "weight": 10.0
+        },
+        {
+          "blueprint": "tree_7",
+          "weight": 8.0
+        }
       ],
-      "grassTints": ["bfd5bd", "dde9d4", "ffffff", "fff0c0", "ffe49c"],
-      "groundTints": ["ffffff", "fffbea", "f4f9df", "f2f5d6"]
+      "grassTints": [
+        "bfd5bd",
+        "dde9d4",
+        "ffffff",
+        "fff0c0",
+        "ffe49c"
+      ],
+      "groundTints": [
+        "ffffff",
+        "fffbea",
+        "f4f9df",
+        "f2f5d6"
+      ]
     },
     {
       "id": "taiga",
       "share": 25.0,
-      "treeCoverage": 0.07,
+      "treeCoverage": 0.15,
       "trees": [
-        { "blueprint": "tree_3", "weight": 60.0 },
-        { "blueprint": "tree_7", "weight": 40.0 }
+        {
+          "blueprint": "tree_3",
+          "weight": 50.0
+        },
+        {
+          "blueprint": "tree_7",
+          "weight": 35.0
+        },
+        {
+          "blueprint": "tree_5",
+          "weight": 15.0
+        }
       ],
-      "grassTints": ["8fa884", "a9bda0", "c8d4b6", "cfdcc4", "dde5cd"],
-      "groundTints": ["8f8878", "a49d8d", "b8b1a1", "cfc9ba", "e2ddd2"]
+      "grassTints": [
+        "8fa884",
+        "a9bda0",
+        "c8d4b6",
+        "cfdcc4",
+        "dde5cd"
+      ],
+      "groundTints": [
+        "8f8878",
+        "a49d8d",
+        "b8b1a1",
+        "cfc9ba",
+        "e2ddd2"
+      ]
     },
     {
       "id": "autumn_forest",
       "share": 22.0,
-      "treeCoverage": 0.04,
+      "treeCoverage": 0.095,
       "trees": [
-        { "blueprint": "tree_8", "weight": 100.0 }
+        {
+          "blueprint": "tree_8",
+          "weight": 55.0
+        },
+        {
+          "blueprint": "tree_2",
+          "weight": 22.0
+        },
+        {
+          "blueprint": "tree",
+          "weight": 13.0
+        },
+        {
+          "blueprint": "tree_6",
+          "weight": 10.0
+        }
       ],
-      "grassTints": ["c7a96b", "dabb85", "ffc46e", "ffdf9e", "f3e3c0"],
-      "groundTints": ["9c8654", "b09a64", "c4b078", "d8c8a0", "e8dcc0"]
+      "grassTints": [
+        "c7a96b",
+        "dabb85",
+        "ffc46e",
+        "ffdf9e",
+        "f3e3c0"
+      ],
+      "groundTints": [
+        "9c8654",
+        "b09a64",
+        "c4b078",
+        "d8c8a0",
+        "e8dcc0"
+      ]
     },
     {
       "id": "savanna",
       "share": 18.0,
-      "treeCoverage": 0.012,
+      "treeCoverage": 0.026,
       "trees": [
-        { "blueprint": "tree_4", "weight": 100.0 }
+        {
+          "blueprint": "tree_4",
+          "weight": 80.0
+        },
+        {
+          "blueprint": "tree_6",
+          "weight": 20.0
+        }
       ],
-      "grassTints": ["cfc088", "e2d6a4", "ffe066", "fff0a8", "fbf3d2"],
-      "groundTints": ["b09a6c", "c4b080", "dcc48e", "e6d3a4", "f0e0bc"]
+      "grassTints": [
+        "cfc088",
+        "e2d6a4",
+        "ffe066",
+        "fff0a8",
+        "fbf3d2"
+      ],
+      "groundTints": [
+        "b09a6c",
+        "c4b080",
+        "dcc48e",
+        "e6d3a4",
+        "f0e0bc"
+      ]
     }
   ]
 }

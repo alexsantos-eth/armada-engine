@@ -103,7 +103,18 @@ pub fn place_entities_with(
     place_entities_with_biomes(columns, catalog, rules, None)
 }
 
-/// Places entities over `columns`, gating the species the biomes claim to their own regions.
+/// One-off content for the placement pass: the world's biomes, the wfc catalogue and the seed.
+#[derive(Clone, Copy)]
+pub struct PlacementContent<'a> {
+    /// The biomes tree species grow in; biome-claimed blueprints never enter the wfc pass.
+    pub biomes: Option<&'a WorldBiomes>,
+    /// The wfc catalogue for everything else; `None` falls back to the legacy density roll.
+    pub wfc: Option<&'a crate::entities::wfc::WfcCatalog>,
+    /// The seed the solver's rolls draw from.
+    pub seed: u64,
+}
+
+/// Places entities over `columns`, confining the species the biomes claim to their own regions.
 ///
 /// A blueprint no biome lists keeps the density roll of `rules`; a blueprint some biome lists
 /// only grows where one of those biomes covers the column and its grove picker yields that
@@ -115,6 +126,31 @@ pub fn place_entities_with_biomes(
     rules: PlacementRules,
     biomes: Option<&WorldBiomes>,
 ) -> PlacementResult {
+    place_entities_with_content(
+        columns,
+        catalog,
+        rules,
+        PlacementContent {
+            biomes,
+            wfc: None,
+            seed: crate::terrain::WORLD_SEED,
+        },
+    )
+}
+
+/// Places entities over `columns`: the biome pass first, then the wfc solver for the rest.
+///
+/// The biome pass behaves exactly as [`place_entities_with_biomes`]; with a wfc catalogue,
+/// every blueprint no biome claims grows out of the solver instead of the density roll. Both
+/// passes share one spatial index, so wfc entities never overlap biome trees or each other.
+#[must_use = "place entities before discovering more chunks"]
+pub fn place_entities_with_content(
+    columns: &[TerrainColumn],
+    catalog: &EntityCatalog,
+    rules: PlacementRules,
+    content: PlacementContent<'_>,
+) -> PlacementResult {
+    let biomes = content.biomes;
     let mut columns_map = CellMap::new();
     for column in columns {
         let _ = columns_map.insert(column.coord, *column);
@@ -130,6 +166,12 @@ pub fn place_entities_with_biomes(
 
     for blueprint in &catalog.entities {
         let gated = biomes.map(|world| world.species_of(&blueprint.id));
+        let biome_claimed = gated
+            .as_ref()
+            .is_some_and(|memberships| !memberships.is_empty());
+        if content.wfc.is_some() && !biome_claimed {
+            continue;
+        }
         let Some(anchor_surface) = blueprint.placement.surfaces.first() else {
             continue;
         };
@@ -179,6 +221,19 @@ pub fn place_entities_with_biomes(
             }
             entities.push(entity);
         }
+    }
+
+    if let Some(wfc) = content.wfc {
+        let claimed = crate::entities::wfc::claimed_by_biomes(catalog, biomes);
+        let mut grown = crate::entities::wfc::solve_chunk(
+            columns,
+            catalog,
+            wfc,
+            &claimed,
+            &mut placed,
+            content.seed,
+        );
+        entities.append(&mut grown);
     }
 
     PlacementResult {
