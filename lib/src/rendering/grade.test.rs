@@ -54,3 +54,23 @@ fn every_grade_keeps_sane_ranges() {
         }
     }
 }
+
+#[test]
+fn tilt_shift_keeps_the_subject_band_sharp_and_softens_the_edges() {
+    assert_eq!(tilt_shift_radius(TILT_SHIFT_FOCUS_Y), 0.0);
+    assert_eq!(
+        tilt_shift_radius(TILT_SHIFT_FOCUS_Y - TILT_SHIFT_SHARP_HALF_HEIGHT),
+        0.0
+    );
+    assert_eq!(
+        tilt_shift_radius(TILT_SHIFT_FOCUS_Y + TILT_SHIFT_SHARP_HALF_HEIGHT),
+        0.0
+    );
+    assert!(tilt_shift_radius(0.0) > 0.0);
+    assert!(tilt_shift_radius(1.0) > 0.0);
+    assert_eq!(
+        tilt_shift_radius(-1.0),
+        TILT_SHIFT_MAX_RADIUS_PX,
+        "the effect remains bounded outside texture coordinates"
+    );
+}

@@ -35,14 +35,56 @@ uniform sampler2D Texture;
 uniform vec4 Tint;
 uniform vec4 Lift;
 uniform float Saturation;
+uniform vec2 TexelSize;
+uniform float TiltShiftFocusY;
+uniform float TiltShiftSharpHalfHeight;
+uniform float TiltShiftTransitionHeight;
+uniform float TiltShiftMaxRadius;
+
+float tiltShiftRadius(vec2 point) {
+    float distanceFromFocus = abs(point.y - TiltShiftFocusY);
+    float transition = smoothstep(
+        TiltShiftSharpHalfHeight,
+        TiltShiftSharpHalfHeight + TiltShiftTransitionHeight,
+        distanceFromFocus
+    );
+    return transition * TiltShiftMaxRadius;
+}
+
+vec3 tiltShiftBlur(vec2 point, float radius) {
+    vec2 stepSize = TexelSize * radius;
+    vec3 colour = texture2D(Texture, point).rgb * 0.20;
+    colour += texture2D(Texture, point + vec2(stepSize.x, 0.0)).rgb * 0.15;
+    colour += texture2D(Texture, point - vec2(stepSize.x, 0.0)).rgb * 0.15;
+    colour += texture2D(Texture, point + vec2(0.0, stepSize.y)).rgb * 0.15;
+    colour += texture2D(Texture, point - vec2(0.0, stepSize.y)).rgb * 0.15;
+    colour += texture2D(Texture, point + stepSize).rgb * 0.05;
+    colour += texture2D(Texture, point - stepSize).rgb * 0.05;
+    colour += texture2D(Texture, point + vec2(stepSize.x, -stepSize.y)).rgb * 0.05;
+    colour += texture2D(Texture, point + vec2(-stepSize.x, stepSize.y)).rgb * 0.05;
+    return colour;
+}
 
 void main() {
-    vec3 colour = texture2D(Texture, uv).rgb;
+    vec3 colour = tiltShiftBlur(uv, tiltShiftRadius(uv));
     float luma = dot(colour, vec3(0.299, 0.587, 0.114));
     colour = mix(vec3(luma), colour, Saturation);
     colour = colour * Tint.rgb + Lift.rgb;
     gl_FragColor = vec4(colour, 1.0);
 }"#;
+
+const TILT_SHIFT_FOCUS_Y: f32 = 0.52;
+const TILT_SHIFT_SHARP_HALF_HEIGHT: f32 = 0.14;
+const TILT_SHIFT_TRANSITION_HEIGHT: f32 = 0.20;
+const TILT_SHIFT_MAX_RADIUS_PX: f32 = 3.0;
+
+#[cfg(test)]
+fn tilt_shift_radius(y: f32) -> f32 {
+    let edge = (y - TILT_SHIFT_FOCUS_Y).abs() - TILT_SHIFT_SHARP_HALF_HEIGHT;
+    let amount = (edge / TILT_SHIFT_TRANSITION_HEIGHT).clamp(0.0, 1.0);
+    let smooth = amount * amount * (3.0 - 2.0 * amount);
+    smooth * TILT_SHIFT_MAX_RADIUS_PX
+}
 
 fn grade_pipeline() -> PipelineParams {
     PipelineParams {
@@ -135,6 +177,11 @@ impl GradeMaterial {
                     UniformDesc::new("Tint", UniformType::Float4),
                     UniformDesc::new("Lift", UniformType::Float4),
                     UniformDesc::new("Saturation", UniformType::Float1),
+                    UniformDesc::new("TexelSize", UniformType::Float2),
+                    UniformDesc::new("TiltShiftFocusY", UniformType::Float1),
+                    UniformDesc::new("TiltShiftSharpHalfHeight", UniformType::Float1),
+                    UniformDesc::new("TiltShiftTransitionHeight", UniformType::Float1),
+                    UniformDesc::new("TiltShiftMaxRadius", UniformType::Float1),
                 ],
                 ..Default::default()
             },
@@ -143,13 +190,22 @@ impl GradeMaterial {
         Ok(Self { material })
     }
 
-    /// Applies `grade`'s uniforms and draws what follows with this material.
-    pub fn bind(&self, grade: &PhaseGrade) {
+    /// Applies the presentation uniforms and draws what follows with this material.
+    pub fn bind(&self, grade: &PhaseGrade, texel_size: Vec2) {
         self.material
             .set_uniform("Tint", vec4(grade.tint.r, grade.tint.g, grade.tint.b, 1.0));
         self.material
             .set_uniform("Lift", vec4(grade.lift.r, grade.lift.g, grade.lift.b, 0.0));
         self.material.set_uniform("Saturation", grade.saturation);
+        self.material.set_uniform("TexelSize", texel_size);
+        self.material
+            .set_uniform("TiltShiftFocusY", TILT_SHIFT_FOCUS_Y);
+        self.material
+            .set_uniform("TiltShiftSharpHalfHeight", TILT_SHIFT_SHARP_HALF_HEIGHT);
+        self.material
+            .set_uniform("TiltShiftTransitionHeight", TILT_SHIFT_TRANSITION_HEIGHT);
+        self.material
+            .set_uniform("TiltShiftMaxRadius", TILT_SHIFT_MAX_RADIUS_PX);
         gl_use_material(&self.material);
     }
 

@@ -69,7 +69,10 @@ impl SceneTarget {
     pub fn present(&self, material: Option<&GradeMaterial>, grade: &PhaseGrade) {
         set_default_camera();
         if let Some(material) = material {
-            material.bind(grade);
+            material.bind(
+                grade,
+                vec2(1.0 / self.size.0 as f32, 1.0 / self.size.1 as f32),
+            );
         }
         draw_texture_ex(
             &self.target.texture,
