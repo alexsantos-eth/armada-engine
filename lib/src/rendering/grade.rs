@@ -8,6 +8,8 @@ use iso::lighting::BakePhase;
 use macroquad::prelude::*;
 use miniquad::{BlendFactor, BlendState, Equation, PipelineParams};
 
+use crate::game::config::PHASE_TRANSITION_SECONDS;
+
 const VERTEX: &str = r#"#version 100
 attribute vec3 position;
 attribute vec2 texcoord;
@@ -112,6 +114,83 @@ pub struct PhaseGrade {
     pub saturation: f32,
     /// Additive floor added to every channel, keeping the night from reading as a void.
     pub lift: Color,
+}
+
+fn ease(t: f32) -> f32 {
+    t * t * (3.0 - 2.0 * t)
+}
+
+fn lerp_channel(from: f32, to: f32, t: f32) -> f32 {
+    from + (to - from) * t
+}
+
+fn lerp_colour(from: Color, to: Color, t: f32) -> Color {
+    Color::new(
+        lerp_channel(from.r, to.r, t),
+        lerp_channel(from.g, to.g, t),
+        lerp_channel(from.b, to.b, t),
+        lerp_channel(from.a, to.a, t),
+    )
+}
+
+/// The blend between two phases' grades at `t` of the crossfade, per channel.
+pub fn lerp_grade(from: PhaseGrade, to: PhaseGrade, t: f32) -> PhaseGrade {
+    let t = t.clamp(0.0, 1.0);
+    PhaseGrade {
+        tint: lerp_colour(from.tint, to.tint, t),
+        saturation: lerp_channel(from.saturation, to.saturation, t),
+        lift: lerp_colour(from.lift, to.lift, t),
+    }
+}
+
+/// The crossfade between the presented grade and the one the world wants now.
+///
+/// The phase buttons rebake the shadows behind an untouched scene; presenting the grade of the
+/// selected phase straight away would cut the whole world warm or cold in a single frame. This
+/// keeps the presentation continuous instead: retargeting a settled transition restarts the
+/// crossfade from whatever grade is on screen.
+pub struct GradeTransition {
+    current: PhaseGrade,
+    from: PhaseGrade,
+    to: PhaseGrade,
+    elapsed: f32,
+}
+
+impl GradeTransition {
+    /// A settled transition displaying `grade`.
+    pub fn new(grade: PhaseGrade) -> Self {
+        Self {
+            current: grade,
+            from: grade,
+            to: grade,
+            elapsed: PHASE_TRANSITION_SECONDS,
+        }
+    }
+
+    /// Points the transition at `grade`; re-selecting the grade it already wants changes nothing.
+    pub fn set_target(&mut self, grade: PhaseGrade) {
+        if grade == self.to {
+            return;
+        }
+        self.from = self.current;
+        self.to = grade;
+        self.elapsed = 0.0;
+    }
+
+    /// Advances the crossfade by `dt` seconds and returns the grade to present.
+    pub fn advance(&mut self, dt: f32) -> PhaseGrade {
+        if self.elapsed >= PHASE_TRANSITION_SECONDS {
+            return self.current;
+        }
+        self.elapsed = (self.elapsed + dt.max(0.0)).min(PHASE_TRANSITION_SECONDS);
+        if self.elapsed >= PHASE_TRANSITION_SECONDS {
+            self.current = self.to;
+            return self.current;
+        }
+        let t = ease(self.elapsed / PHASE_TRANSITION_SECONDS);
+        self.current = lerp_grade(self.from, self.to, t);
+        self.current
+    }
 }
 
 /// Sunrise: the warm, low sun of a scene baked for `BakePhase::Dawn`.

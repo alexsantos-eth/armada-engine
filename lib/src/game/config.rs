@@ -86,6 +86,9 @@ pub const AUTOSAVE_SECONDS: f64 = 120.0;
 pub const WORLD_SEED: u64 = iso::terrain::WORLD_SEED;
 /// The phase the client boots into: midday, the clearest bake and the most readable scene.
 pub const DEFAULT_PHASE: BakePhase = BakePhase::Day;
+/// Seconds a phase change takes end to end: the presentation grade crossfades and each freshly
+/// baked chunk eases its shadows in, both over this one value.
+pub const PHASE_TRANSITION_SECONDS: f32 = 0.6;
 
 #[cfg(test)]
 #[path = "config.test.rs"]

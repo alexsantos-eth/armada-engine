@@ -491,6 +491,24 @@ impl ShadeLattice {
         }
     }
 
+    /// The same lattice with its darkness scaled by `scale`: `0.0` lifts every corner to lit.
+    pub(crate) fn scaled(&self, scale: f32) -> Self {
+        let scale = scale.clamp(0.0, 1.0);
+        if scale == 1.0 {
+            return self.clone();
+        }
+        let light = self
+            .light
+            .iter()
+            .map(|light| 1.0 - (1.0 - light) * scale)
+            .collect();
+        Self {
+            columns: self.columns,
+            rows: self.rows,
+            light,
+        }
+    }
+
     /// A lattice straight from coverage values, row by row, for a surface that has no artwork
     pub fn from_coverage(columns: u32, rows: u32, coverage: Vec<f32>) -> Self {
         let light = coverage

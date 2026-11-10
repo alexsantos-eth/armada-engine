@@ -275,11 +275,12 @@ impl Game {
                     continue;
                 }
                 let cells = entity.length().max(1);
-                let shade = self
-                    .shadows
-                    .as_ref()
-                    .and_then(|shadows| shadows.shade_of(coord, (entity.x(), entity.y())))
-                    .and_then(shadow_view::lattice_of);
+                let shade = self.shadows.as_ref().and_then(|shadows| {
+                    let fade = shadows.chunk_fade(coord);
+                    shadows
+                        .shade_of(coord, (entity.x(), entity.y()))
+                        .and_then(|grid| shadow_view::lattice_of(grid, fade))
+                });
                 let along_y = entity.length_axis() == Some(EntityLengthAxis::Y);
                 let (half, quarter) = (projection.tile_width / 2.0, projection.tile_height / 2.0);
                 let step = if along_y {
@@ -483,10 +484,14 @@ impl Game {
                         (rp.x + 0.5, rp.y + 0.5),
                         rp.elevation + rp.height,
                     );
+                    let home = iso::grid::to_chunk_coord(WorldCoord {
+                        x: receiver.foot.0.floor() as i32,
+                        y: receiver.foot.1.floor() as i32,
+                    });
+                    let fade = shadows.chunk_fade(home);
                     shadows
                         .shade_moving(&self.manager, &receiver)
-                        .as_ref()
-                        .and_then(shadow_view::lattice_of)
+                        .and_then(|grid| shadow_view::lattice_of(&grid, fade))
                 });
                 collect_reflection(
                     ReflectionSprite {

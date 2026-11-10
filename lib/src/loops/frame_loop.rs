@@ -47,6 +47,14 @@ fn frame_sample(
 /// Runs the game until the player quits.
 pub(crate) async fn run(mut game: Game) {
     let show_overlay = overlay_enabled();
+    let initial_phase = game
+        .shadows
+        .as_ref()
+        .map(crate::lighting::shadow_view::ShadowScene::phase)
+        .unwrap_or(DEFAULT_PHASE);
+    let mut grade_transition = crate::rendering::grade::GradeTransition::new(
+        crate::rendering::grade::grade_for(initial_phase),
+    );
     loop {
         let frame_start = get_time();
         let frame_ms = f64::from(get_frame_time()) * 1000.0;
@@ -60,7 +68,10 @@ pub(crate) async fn run(mut game: Game) {
             .shadows
             .as_ref()
             .map(crate::lighting::shadow_view::ShadowScene::phase);
-        let grade = crate::rendering::grade::grade_for(phase.unwrap_or(DEFAULT_PHASE));
+        grade_transition.set_target(crate::rendering::grade::grade_for(
+            phase.unwrap_or(DEFAULT_PHASE),
+        ));
+        let grade = grade_transition.advance((frame_ms / 1000.0) as f32);
 
         let width = screen_width();
         let height = screen_height();

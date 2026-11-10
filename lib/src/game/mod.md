@@ -60,6 +60,8 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Declaración: `pub const WORLD_SEED: u64 = iso::terrain::WORLD_SEED;`
 - [`DEFAULT_PHASE`](config.rs#L88) — La fase con la que arranca el cliente: el mediodía, el horneado más claro y la escena más legible.
   - Declaración: `pub const DEFAULT_PHASE: BakePhase = BakePhase::Day;`
+- [`PHASE_TRANSITION_SECONDS`](config.rs#L90) — Segundos que dura el cambio de fase de punta a punta: el crossfade del grado y el fade-in de sombras de cada chunk recién horneado.
+  - Declaración: `pub const PHASE_TRANSITION_SECONDS: f32 = 0.4;`
 
 #### Tipos
 

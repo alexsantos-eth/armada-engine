@@ -139,8 +139,9 @@ impl Game {
             height: f64::from(height),
         };
         let culled = visible_chunks(self.camera, viewport, projection, CHUNK_CULL_MARGIN);
+        let fade_dt = (frame_ms / 1000.0) as f32;
         if let Some(shadows) = self.shadows.as_mut() {
-            shadows.update(&self.manager, &culled);
+            shadows.update(&self.manager, &culled, fade_dt);
         }
 
         Some(FrameView {

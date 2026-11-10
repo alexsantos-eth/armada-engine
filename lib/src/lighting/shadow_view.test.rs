@@ -1,4 +1,5 @@
 use super::*;
+use crate::game::config::PHASE_TRANSITION_SECONDS;
 use iso::assets::InkBox;
 
 #[test]
@@ -184,4 +185,86 @@ fn every_terrain_block_is_drawn_at_least_a_whole_cell_wide() {
             ink.width
         );
     }
+}
+
+#[test]
+fn the_shadow_fade_eases_in_and_lands() {
+    assert_eq!(fade_of(0.0), 0.0);
+    assert_eq!(fade_of(PHASE_TRANSITION_SECONDS), 1.0);
+    assert_eq!(fade_of(PHASE_TRANSITION_SECONDS * 2.0), 1.0);
+    assert!((fade_of(PHASE_TRANSITION_SECONDS / 2.0) - 0.5).abs() < 1e-6);
+
+    let mut previous = 0.0_f32;
+    for step in 1..=40 {
+        let value = fade_of(PHASE_TRANSITION_SECONDS * step as f32 / 40.0);
+        assert!(value >= previous, "the fade never dips back");
+        previous = value;
+    }
+}
+
+#[test]
+fn a_zero_fade_asks_for_no_lattice_but_one_keeps_the_shadows() {
+    use iso::lighting::{
+        BoxMetrics, ShadowProjection, ShadowReceiver, Silhouette, SpriteExtent, shade_grid,
+    };
+
+    let light = ShadowProjection {
+        dir_x: std::f64::consts::FRAC_1_SQRT_2,
+        dir_y: std::f64::consts::FRAC_1_SQRT_2,
+        stretch: 1.0,
+        alpha: 1.0,
+    };
+    let receiver = ShadowReceiver {
+        foot: (light.dir_x, light.dir_y),
+        elevation: 0.0,
+        extent: SpriteExtent {
+            left: -50.0,
+            top: -80.0,
+            width: 100.0,
+            height: 80.0,
+        },
+    };
+    let caster = ShadowCaster {
+        foot: (0.0, 0.0),
+        elevation: 0.0,
+        extent: SpriteExtent {
+            left: -50.0,
+            top: -80.0,
+            width: 100.0,
+            height: 80.0,
+        },
+        silhouette: 0,
+    };
+    let solid = |_: u32| {
+        Some(Silhouette {
+            alpha: &[255; 4],
+            stride: 2,
+            rows: 2,
+            left: 0.0,
+            top: 0.0,
+            right: 1.0,
+            bottom: 1.0,
+        })
+    };
+    let grid = shade_grid(
+        &receiver,
+        &[caster],
+        &light,
+        BoxMetrics {
+            tile_width: 100.0,
+            box_height: 100.0 / 3.0,
+        },
+        &solid,
+        None,
+        ShadeLatticeSpec {
+            opacity: 1.0,
+            columns: SHADE_COLUMNS,
+            rows: SHADE_ROWS,
+        },
+    )
+    .expect("the grid carries shadow");
+
+    assert!(lattice_of(&grid, 0.0).is_none(), "a zero fade hides it");
+    assert!(lattice_of(&grid, 1.0).is_some(), "a full fade shows it");
+    assert!(!grid.is_clear());
 }

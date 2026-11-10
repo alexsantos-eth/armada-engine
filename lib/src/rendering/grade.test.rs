@@ -1,4 +1,5 @@
 use super::*;
+use crate::game::config::PHASE_TRANSITION_SECONDS;
 use iso::lighting::BakePhase;
 
 fn assert_colour(colour: Color, expected: (f32, f32, f32)) {
@@ -53,6 +54,116 @@ fn every_grade_keeps_sane_ranges() {
             );
         }
     }
+}
+
+#[test]
+fn lerp_grade_endpoints_return_the_sources() {
+    let dawn = grade_for(BakePhase::Dawn);
+    let night = grade_for(BakePhase::Night);
+    assert_eq!(lerp_grade(dawn, night, 0.0), dawn);
+    assert_eq!(lerp_grade(dawn, night, 1.0), night);
+}
+
+#[test]
+fn lerp_grade_midpoint_blends_every_channel() {
+    let from = PhaseGrade {
+        tint: Color::new(1.0, 0.0, 0.0, 1.0),
+        saturation: 1.0,
+        lift: Color::new(0.0, 0.2, 0.4, 1.0),
+    };
+    let to = PhaseGrade {
+        tint: Color::new(0.0, 1.0, 0.5, 1.0),
+        saturation: 0.5,
+        lift: Color::new(0.2, 0.0, 0.0, 1.0),
+    };
+    let mid = lerp_grade(from, to, 0.5);
+    assert!((mid.tint.r - 0.5).abs() < 1e-6);
+    assert!((mid.tint.g - 0.5).abs() < 1e-6);
+    assert!((mid.tint.b - 0.25).abs() < 1e-6);
+    assert!((mid.saturation - 0.75).abs() < 1e-6);
+    assert!((mid.lift.r - 0.1).abs() < 1e-6);
+    assert!((mid.lift.g - 0.1).abs() < 1e-6);
+    assert!((mid.lift.b - 0.2).abs() < 1e-6);
+}
+
+#[test]
+fn a_settled_transition_keeps_showing_its_grade() {
+    let mut transition = GradeTransition::new(SUNSET_GRADE);
+    assert_eq!(transition.advance(0.016), SUNSET_GRADE);
+    assert_eq!(transition.advance(0.016), SUNSET_GRADE);
+}
+
+#[test]
+fn a_retargeted_transition_eases_into_the_new_grade() {
+    let mut transition = GradeTransition::new(DAY_GRADE);
+    transition.set_target(NIGHT_GRADE);
+
+    let quarter = transition.advance(PHASE_TRANSITION_SECONDS * 0.25);
+    assert_ne!(quarter, DAY_GRADE, "the first quarter already moved");
+    assert_ne!(quarter, NIGHT_GRADE, "but has not landed yet");
+
+    let settled = transition.advance(PHASE_TRANSITION_SECONDS);
+    assert_eq!(settled, NIGHT_GRADE);
+    assert_eq!(transition.advance(0.016), NIGHT_GRADE, "it stays landed");
+}
+
+#[test]
+fn a_blend_stays_between_its_endpoints() {
+    for amount in [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0] {
+        let blended = lerp_grade(DAY_GRADE, NIGHT_GRADE, amount);
+        for (from, to, channel) in [
+            (DAY_GRADE.tint.r, NIGHT_GRADE.tint.r, blended.tint.r),
+            (DAY_GRADE.tint.g, NIGHT_GRADE.tint.g, blended.tint.g),
+            (DAY_GRADE.tint.b, NIGHT_GRADE.tint.b, blended.tint.b),
+            (DAY_GRADE.lift.r, NIGHT_GRADE.lift.r, blended.lift.r),
+            (DAY_GRADE.lift.g, NIGHT_GRADE.lift.g, blended.lift.g),
+            (DAY_GRADE.lift.b, NIGHT_GRADE.lift.b, blended.lift.b),
+            (
+                DAY_GRADE.saturation,
+                NIGHT_GRADE.saturation,
+                blended.saturation,
+            ),
+        ] {
+            let low = from.min(to) - 1e-6;
+            let high = from.max(to) + 1e-6;
+            assert!(
+                (low..=high).contains(&channel),
+                "channel {channel} out of [{low}, {high}]"
+            );
+        }
+    }
+}
+
+#[test]
+fn retargeting_mid_transition_continues_from_what_is_shown() {
+    let mut transition = GradeTransition::new(DAY_GRADE);
+    transition.set_target(NIGHT_GRADE);
+    let mid = transition.advance(0.2);
+    transition.set_target(DAWN_GRADE);
+    assert_eq!(
+        transition.advance(0.0),
+        mid,
+        "the crossfade resumes from the grade on screen"
+    );
+}
+
+#[test]
+fn the_same_target_does_not_restart_the_crossfade() {
+    let mut transition = GradeTransition::new(DAY_GRADE);
+    transition.set_target(NIGHT_GRADE);
+    transition.advance(0.3);
+    transition.set_target(NIGHT_GRADE);
+    let resumed = transition.advance(PHASE_TRANSITION_SECONDS);
+    assert_eq!(resumed, NIGHT_GRADE, "the clock is not rewound");
+}
+
+#[test]
+fn a_negative_step_does_not_move_backwards() {
+    let mut transition = GradeTransition::new(DAY_GRADE);
+    transition.set_target(NIGHT_GRADE);
+    let before = transition.advance(0.2);
+    let after = transition.advance(-1.0);
+    assert_eq!(after, before);
 }
 
 #[test]

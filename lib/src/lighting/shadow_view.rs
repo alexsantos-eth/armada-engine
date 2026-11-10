@@ -19,9 +19,16 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::assets::sprites::{ShadeLattice, SpriteDraw, ground_key};
+use crate::game::config::PHASE_TRANSITION_SECONDS;
 
 /// How long a frame may spend baking shadows.
 pub const BAKE_BUDGET_MS: f64 = 3.0;
+
+/// How far along the ease-in a chunk is, in `[0, 1]`: zero when its bake lands, one later.
+fn fade_of(elapsed: f32) -> f32 {
+    let t = (elapsed / PHASE_TRANSITION_SECONDS).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}
 
 /// Columns whose lattice is read off the map in one piece of work.
 const GROUND_SHADE_COLUMNS: usize = 128;
@@ -51,6 +58,8 @@ struct Baked {
     faces: Vec<(TerrainFace, Rc<ShadeLattice>)>,
     /// Which of the nine chunks around it (itself included) were loaded when it was baked.
     baked_against: u16,
+    /// Seconds since this chunk's bake landed; its shadows ease in as it grows.
+    born: f32,
 }
 
 /// The baked shadows of every shown chunk.
@@ -128,6 +137,14 @@ impl ShadowScene {
         self.phase
     }
 
+    /// How far in a chunk's shadows have eased, `0.0` straight after its bake lands. Chunks the
+    /// scene does not hold yet report `0.0`.
+    pub fn chunk_fade(&self, coord: ChunkCoord) -> f32 {
+        self.chunks
+            .get(&coord)
+            .map_or(0.0, |baked| fade_of(baked.born))
+    }
+
     /// Selects a phase and discards every map derived from the previous light.
     pub fn set_phase(&mut self, phase: BakePhase) {
         if self.phase == phase {
@@ -144,8 +161,10 @@ impl ShadowScene {
         self.chunks.clear();
     }
 
-    /// Spends up to [`BAKE_BUDGET_MS`] bringing the bake up to date for `shown`, and forgets
-    pub fn update(&mut self, manager: &ChunkManager, shown: &[ChunkCoord]) {
+    /// Spends up to [`BAKE_BUDGET_MS`] bringing the bake up to date for `shown`, forgets what the
+    /// stream no longer holds, and eases the freshly baked chunks in with `dt_seconds` of real
+    /// time.
+    pub fn update(&mut self, manager: &ChunkManager, shown: &[ChunkCoord], dt_seconds: f32) {
         let dropped: Vec<ChunkCoord> = self
             .chunks
             .keys()
@@ -155,6 +174,10 @@ impl ShadowScene {
         for coord in dropped {
             self.chunks.remove(&coord);
             self.atlas.release(coord);
+        }
+        let step = dt_seconds.max(0.0);
+        for baked in self.chunks.values_mut() {
+            baked.born = (baked.born + step).min(PHASE_TRANSITION_SECONDS);
         }
         debug_assert!(
             shown.len() <= shadow_view_atlas::SLOT_COUNT,
@@ -201,6 +224,7 @@ impl ShadowScene {
                         casters: own,
                         faces,
                         baked_against: against,
+                        born: 0.0,
                     },
                 );
             }
@@ -521,7 +545,7 @@ impl ShadowScene {
         let Some(baked) = self.chunks.get(&coord) else {
             return;
         };
-        let opacity = self.light.opacity() as f32;
+        let opacity = (self.light.opacity() * f64::from(fade_of(baked.born))) as f32;
         let (screen_w, screen_h) = (f64::from(screen_width()), f64::from(screen_height()));
         for (face, shade) in &baked.faces {
             let corner = |along: f64, down: f64| {
@@ -612,7 +636,7 @@ impl ShadowScene {
         let Some(slot) = self.atlas.slot_of(coord) else {
             return;
         };
-        let opacity = self.light.opacity() as f32;
+        let opacity = (self.light.opacity() * f64::from(fade_of(baked.born))) as f32;
         let (screen_w, screen_h) = (f64::from(screen_width()), f64::from(screen_height()));
         let half_tile = projection.tile_width / 2.0;
         let per_tile = f64::from(SHADOW_MAP_PIXELS_PER_TILE);
@@ -705,9 +729,10 @@ pub fn receiver_of(
     }
 }
 
-/// A lattice ready to draw a sprite with, or `None` when nothing shades it after all.
-pub fn lattice_of(grid: &ShadeGrid) -> Option<ShadeLattice> {
-    (!grid.is_clear()).then(|| ShadeLattice::new(grid))
+/// A lattice ready to draw a sprite with, or `None` when nothing shades it after all — or when
+/// `fade` is zero, so a chunk straight out of its bake draws as one unshaded quad.
+pub fn lattice_of(grid: &ShadeGrid, fade: f32) -> Option<ShadeLattice> {
+    (fade > 0.0 && !grid.is_clear()).then(|| ShadeLattice::new(grid).scaled(fade))
 }
 
 /// The nine chunks around `coord`, itself included, in a fixed order.
