@@ -726,5 +726,5 @@ fn neighbours_loaded(manager: &ChunkManager, coord: ChunkCoord) -> u16 {
 }
 
 #[cfg(test)]
-#[path = "shadow_view_mod.test.rs"]
+#[path = "shadow_view.test.rs"]
 mod tests;
