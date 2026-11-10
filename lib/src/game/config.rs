@@ -16,6 +16,40 @@ pub const PREVIEW_TILE_WIDTH: f64 = 280.0;
 pub const PREVIEW_TILE_HEIGHT: f64 = PREVIEW_TILE_WIDTH / 2.0;
 /// One level of elevation, in screen pixels.
 pub const PREVIEW_ELEVATION_STEP: f64 = PREVIEW_TILE_WIDTH * SVG_BLOCK_HEIGHT / SVG_TILE_WIDTH;
+/// How much of the reference tile a coarse-pointer platform draws: the scene pulled back a
+/// little, so a small touch screen shows more of the world.
+pub const MOBILE_ZOOM: f64 = 0.7;
+
+/// One scene's tile metrics, in screen pixels: the tile, and one level of elevation.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SceneMetrics {
+    pub tile_width: f64,
+    pub tile_height: f64,
+    pub elevation_step: f64,
+}
+
+impl SceneMetrics {
+    /// The reference metrics a fine-pointer platform draws at.
+    pub const REFERENCE: Self = Self {
+        tile_width: PREVIEW_TILE_WIDTH,
+        tile_height: PREVIEW_TILE_HEIGHT,
+        elevation_step: PREVIEW_ELEVATION_STEP,
+    };
+
+    /// The metrics for `coarse`: the reference on desktop, zoomed out a little on touch-first
+    /// platforms.
+    pub fn for_pointer(coarse: bool) -> Self {
+        if !coarse {
+            return Self::REFERENCE;
+        }
+        let tile_width = PREVIEW_TILE_WIDTH * MOBILE_ZOOM;
+        Self {
+            tile_width,
+            tile_height: tile_width / 2.0,
+            elevation_step: tile_width * SVG_BLOCK_HEIGHT / SVG_TILE_WIDTH,
+        }
+    }
+}
 
 /// How far each band of a multi-cell sprite reaches past its cut, in screen pixels.
 pub const BAND_BLEED: f64 = 0.5;
@@ -52,3 +86,7 @@ pub const AUTOSAVE_SECONDS: f64 = 120.0;
 pub const WORLD_SEED: u64 = iso::terrain::WORLD_SEED;
 /// The phase the client boots into: midday, the clearest bake and the most readable scene.
 pub const DEFAULT_PHASE: BakePhase = BakePhase::Day;
+
+#[cfg(test)]
+#[path = "config.test.rs"]
+mod tests;

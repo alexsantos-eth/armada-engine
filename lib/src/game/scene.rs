@@ -19,8 +19,7 @@ use macroquad::prelude::*;
 use crate::assets::sprites::{SpriteAtlas, SpriteDraw, scene_key};
 use crate::game::config::{
     BAND_BLEED, ENTITY_LAYER, PLAYER_BEHIND_LAYER, PLAYER_CLIMB_SHEET, PLAYER_FRONT_LAYER,
-    PLAYER_IDLE_SHEET, PLAYER_JUMP_SHEET, PLAYER_SCALE, PLAYER_WALK_SHEET, PREVIEW_ELEVATION_STEP,
-    PREVIEW_TILE_HEIGHT, PREVIEW_TILE_WIDTH,
+    PLAYER_IDLE_SHEET, PLAYER_JUMP_SHEET, PLAYER_SCALE, PLAYER_WALK_SHEET, SceneMetrics,
 };
 use crate::game::frame::FrameView;
 use crate::game::ground::water_cell;
@@ -32,13 +31,17 @@ use crate::player::player_view::{PlayerMoment, jump_poses};
 use crate::terrain::terrain_view_blocks::{Surroundings, collect_terrain_sprites};
 use crate::water::reflection_view::{Reflected, ReflectionSprite, collect_reflection};
 
-/// This view's projection with its origin at `(origin_x, origin_y)`: the tile size and the
-/// elevation step are the scene's, the origin follows the camera.
-pub(crate) fn preview_projection(origin_x: f64, origin_y: f64) -> ProjectionConfig {
+/// This view's projection with its origin at `(origin_x, origin_y)`: the tile metrics are the
+/// scene's, the origin follows the camera.
+pub(crate) fn preview_projection(
+    origin_x: f64,
+    origin_y: f64,
+    metrics: SceneMetrics,
+) -> ProjectionConfig {
     ProjectionConfig {
-        tile_width: PREVIEW_TILE_WIDTH,
-        tile_height: PREVIEW_TILE_HEIGHT,
-        elevation_step: Some(PREVIEW_ELEVATION_STEP),
+        tile_width: metrics.tile_width,
+        tile_height: metrics.tile_height,
+        elevation_step: Some(metrics.elevation_step),
         origin_x,
         origin_y,
     }
@@ -153,18 +156,21 @@ fn draw_grid(projection: ProjectionConfig, centre: WorldCoord) {
     }
 }
 
-/// The origin of the projection for this frame, from the camera and its current level.
+/// The origin of the projection for this frame, from the camera, its current level and the
+/// scene's tile metrics.
 pub(crate) fn frame_projection(
     camera: Camera,
     level: f64,
     width: f32,
     height: f32,
+    metrics: SceneMetrics,
 ) -> ProjectionConfig {
     preview_projection(
-        f64::from(width / 2.0) - (camera.x - camera.y) * (PREVIEW_TILE_WIDTH / 2.0),
+        f64::from(width / 2.0) - (camera.x - camera.y) * (metrics.tile_width / 2.0),
         f64::from(height / 2.0 + 50.0)
-            + (camera.x + camera.y) * (PREVIEW_TILE_HEIGHT / 2.0)
-            + level * PREVIEW_ELEVATION_STEP,
+            + (camera.x + camera.y) * (metrics.tile_height / 2.0)
+            + level * metrics.elevation_step,
+        metrics,
     )
 }
 

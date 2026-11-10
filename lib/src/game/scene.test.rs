@@ -2,7 +2,7 @@ use super::*;
 use crate::assets::sprites::{ground_key, scene_key};
 use crate::game::config::{
     CHUNK_CULL_MARGIN, ENTITY_LAYER, PLAYER_BEHIND_LAYER, PLAYER_FRONT_LAYER,
-    PREVIEW_ELEVATION_STEP, PREVIEW_TILE_HEIGHT, PREVIEW_TILE_WIDTH,
+    PREVIEW_ELEVATION_STEP, PREVIEW_TILE_HEIGHT, PREVIEW_TILE_WIDTH, SceneMetrics,
 };
 use crate::lighting::shadow_view::GROUND_SHADOW_LAYER;
 use crate::lighting::shadow_view_atlas::SLOT_COUNT;
@@ -17,7 +17,7 @@ fn the_atlas_holds_more_chunks_than_the_camera_can_show() {
         width: 3840.0,
         height: 2160.0,
     };
-    let projection = preview_projection(0.0, 0.0);
+    let projection = preview_projection(0.0, 0.0, SceneMetrics::REFERENCE);
     let camera = Camera {
         x: 0.0,
         y: 0.0,
@@ -292,4 +292,35 @@ fn the_player_passes_behind_what_stands_on_the_far_half_of_its_column() {
     const {
         assert!(PLAYER_BEHIND_LAYER < ENTITY_LAYER && ENTITY_LAYER < PLAYER_FRONT_LAYER);
     }
+}
+
+/// The shadow atlas feeds the zoomed-out touch view too: a large coarse-pointer screen may
+/// not ask for more chunks than it holds.
+#[test]
+fn the_atlas_holds_more_chunks_than_a_coarse_pointer_screen_can_show() {
+    let viewport = ScreenSize {
+        width: 3840.0,
+        height: 2160.0,
+    };
+    let metrics = SceneMetrics::for_pointer(true);
+    let projection = ProjectionConfig {
+        origin_x: 0.0,
+        origin_y: 0.0,
+        tile_width: metrics.tile_width,
+        tile_height: metrics.tile_height,
+        elevation_step: Some(metrics.elevation_step),
+    };
+    let camera = Camera {
+        x: 0.0,
+        y: 0.0,
+        zoom: 1.0,
+    };
+
+    let culled = visible_chunks(camera, viewport, projection, CHUNK_CULL_MARGIN);
+
+    assert!(
+        culled.len() <= SLOT_COUNT,
+        "the coarse-pointer camera shows {} chunks and the shadow atlas holds {SLOT_COUNT}",
+        culled.len()
+    );
 }

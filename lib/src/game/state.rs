@@ -19,8 +19,7 @@ use macroquad::prelude::*;
 
 use crate::assets::sprites::{SpriteAtlas, SpriteDraw};
 use crate::game::config::{
-    CHUNK_RADII, DEFAULT_PHASE, PLAYER_SPRITE, PREVIEW_CENTRE, PREVIEW_ELEVATION_STEP,
-    PREVIEW_TILE_WIDTH, WORLD_SEED,
+    CHUNK_RADII, DEFAULT_PHASE, PLAYER_SPRITE, PREVIEW_CENTRE, SceneMetrics, WORLD_SEED,
 };
 use crate::game::ground::ChunkGround;
 use crate::game::scene::{PlayerSprite, player_sheets};
@@ -80,6 +79,7 @@ pub(crate) struct Game {
     pub(crate) audio: MacroquadAudio,
     pub(crate) ui: MacroquadUi,
     pub(crate) touch: TouchControls,
+    pub(crate) tile_metrics: SceneMetrics,
 }
 
 impl Game {
@@ -150,13 +150,14 @@ impl Game {
                 None
             }
         };
+        let tile_metrics = SceneMetrics::for_pointer(coarse_pointer());
         let shadows = masks.filter(|_| material.is_some()).map(|masks| {
             ShadowScene::new(
                 DEFAULT_PHASE,
                 masks,
                 shadow_atlas,
-                PREVIEW_TILE_WIDTH,
-                PREVIEW_ELEVATION_STEP,
+                tile_metrics.tile_width,
+                tile_metrics.elevation_step,
             )
         });
         let (terrain_frames, missing_terrain, missing_reflections) = TerrainFrames::new(&atlas);
@@ -273,6 +274,7 @@ impl Game {
             audio: MacroquadAudio::default(),
             ui: MacroquadUi::default(),
             touch: TouchControls::new(coarse_pointer()),
+            tile_metrics,
         }
     }
 }

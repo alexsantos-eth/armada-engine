@@ -101,7 +101,7 @@ impl Game {
         let level =
             self.camera_focus
                 .advance(&rp, self.player.motion, frame_ms, CAMERA_LEVEL_SMOOTH_MS);
-        let projection = frame_projection(self.camera, level, width, height);
+        let projection = frame_projection(self.camera, level, width, height, self.tile_metrics);
 
         let discovered = self.manager.tick();
         if !discovered.is_empty() {
