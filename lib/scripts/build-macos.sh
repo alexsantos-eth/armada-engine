@@ -7,7 +7,8 @@
 # bundle identifier is intentionally independent of the title, because it must stay stable;
 # override it with BUNDLE_ID. The icon defaults to packaging/game.icns, committed in the repo;
 # override it with ICON_ICNS. Regenerate the committed icon from the source art with
-# scripts/build-icon.sh. Bundle version is read from Cargo.toml.
+# scripts/build-icon.sh. Bundle version is read from Cargo.toml (CFBundleShortVersionString);
+# CFBundleVersion is derived from the git commit count, or 1 outside a repository.
 #
 # Steps:
 #   1. Build the release binary (same SDKROOT guard as run-native.sh).
@@ -35,6 +36,7 @@ if [[ -z "$GAME_TITLE" || "$GAME_TITLE" == */* || "$GAME_TITLE" == *..* ]]; then
 fi
 EXE_NAME="$(printf '%s' "$GAME_TITLE" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
 VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
+BUILD_NUMBER="$(git rev-list --count HEAD 2>/dev/null || echo 1)"
 BUNDLE_ID="${BUNDLE_ID:-com.armada-io.yorch-adventure}"
 ICON_ICNS="${ICON_ICNS:-packaging/game.icns}"
 if [[ ! -f "$ICON_ICNS" ]]; then
@@ -70,7 +72,7 @@ cat > "$app/Contents/Info.plist" <<EOF
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$BUILD_NUMBER</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$VERSION</string>
 	<key>CFBundleInfoDictionaryVersion</key>

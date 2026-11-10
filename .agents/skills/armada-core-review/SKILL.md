@@ -147,10 +147,11 @@ En macOS, `lib/scripts/run-native.sh <subcomando>` selecciona el SDK correcto. E
 - Actualiza `lib/docs/ARCHITECTURE.md` si cambiaste contratos de funcionamiento técnico.
 - Actualiza el `mod.md` de cada dominio tocado (enlace, firma, propósito; su introducción si cambian sus límites o dependencias).
 - Mantén `lib/docs/CORE_REVIEW.md` como backlog vivo: fecha, hallazgo, nivel, archivo, estado (corregido / pendiente / plan propuesto / descartado y por qué). Créalo si no existe.
+- **La versión se incrementa en el mismo cambio** que cualquier corrección o mejora que toque el core o el cliente (ver «Versionado» en `armada-engine-dev`): MINOR si el cambio es funcionalidad, PATCH si es corrección. El número de build del bundle no se anota a mano; `build-macos.sh` lo deriva de `git rev-list --count HEAD`.
 
 ## Actualizar `armada-engine-dev`
 
-Si la revisión cambia algo que el desarrollador debe saber en su próximo trabajo, actualiza esa skill:
+Si la revisión cambia algo que el desarrollador debe saber en su próximo trabajo, actualiza esa skill **en el mismo cambio, no en revisiones posteriores**:
 
 - Nueva regla del core (p. ej. "todo efecto visual en movimiento reutiliza `moving_shadow`, no hornea").
 - Nueva carpeta o responsabilidad en el árbol de arquitectura.
