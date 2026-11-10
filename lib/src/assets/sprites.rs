@@ -582,14 +582,18 @@ pub enum DrawKind {
         /// How dark the shadow is drawn: the lighting phase's own opacity.
         opacity: f32,
     },
-    /// A flat ellipse painted on a ground surface, cut to the top faces it may land on.
+    /// A soft cast shadow on the ground: a fan fading from a dark core to a transparent rim,
+    /// sheared onto the screen by `shear`, cut to the top faces it may land on.
     GroundEllipse {
         centre: ScreenPoint,
         width: f64,
         height: f64,
-        colour: Color,
-        /// The top faces of the cells at the ellipse's own level: where it may show. Empty means
-        /// no ground was found at that level and the ellipse paints whole, as before.
+        /// The caster's own alpha at the core; the rim always fades to zero.
+        alpha: f32,
+        /// The screen-space anisotropy of the unsheared ground blob.
+        shear: [[f64; 2]; 2],
+        /// The top faces of the cells at the blob's own level: where it may show. Empty means
+        /// no ground was found at that level and the full blob paints, as a fallback.
         clip: Vec<[(f64, f64); 4]>,
     },
 }
@@ -750,13 +754,15 @@ impl SpriteDraw {
         }
     }
 
-    /// A simple flat ellipse on the ground, cut to the top faces of the cells it may land on.
+    /// A soft cast shadow on the ground: a core fading to a transparent rim, sheared by `shear`
+    /// and cut to the top faces of the cells it may land on. An empty `clip` paints it whole.
     pub fn ground_ellipse(
         key: DrawKey,
         centre: ScreenPoint,
         width: f64,
         height: f64,
-        colour: Color,
+        alpha: f32,
+        shear: [[f64; 2]; 2],
         clip: Vec<[(f64, f64); 4]>,
     ) -> Self {
         Self {
@@ -765,7 +771,8 @@ impl SpriteDraw {
                 centre,
                 width,
                 height,
-                colour,
+                alpha,
+                shear,
                 clip,
             },
         }
@@ -857,31 +864,34 @@ fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
                 centre,
                 width,
                 height,
-                colour,
+                alpha,
+                shear,
                 clip,
             } => {
-                if clip.is_empty() {
-                    draw_ellipse(
-                        centre.x as f32,
-                        centre.y as f32,
-                        (*width / 2.0) as f32,
-                        (*height / 2.0) as f32,
-                        0.0,
-                        *colour,
-                    );
-                } else {
-                    for piece in
-                        crate::player::shadow_clip::clip_ellipse(*centre, *width, *height, clip, 20)
-                    {
-                        for index in 1..piece.len().saturating_sub(1) {
-                            draw_triangle(
-                                vec2(piece[0].0 as f32, piece[0].1 as f32),
-                                vec2(piece[index].0 as f32, piece[index].1 as f32),
-                                vec2(piece[index + 1].0 as f32, piece[index + 1].1 as f32),
-                                *colour,
-                            );
+                let triangles = crate::player::shadow_clip::cast_pieces(
+                    *centre, *width, *height, *shear, *alpha, clip, 20,
+                );
+                if !triangles.is_empty() {
+                    let mut vertices = Vec::with_capacity(triangles.len() * 3);
+                    let mut indices = Vec::with_capacity(triangles.len() * 3);
+                    for triangle in &triangles {
+                        for &((x, y), alpha) in triangle {
+                            vertices.push(Vertex::new(
+                                x as f32,
+                                y as f32,
+                                0.0,
+                                0.0,
+                                0.0,
+                                Color::new(0.0, 0.0, 0.0, alpha),
+                            ));
+                            indices.push((vertices.len() - 1) as u16);
                         }
                     }
+                    draw_mesh(&Mesh {
+                        vertices,
+                        indices,
+                        texture: None,
+                    });
                 }
             }
         }

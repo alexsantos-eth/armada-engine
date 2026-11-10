@@ -395,15 +395,22 @@ impl Game {
             projection.tile_height,
         );
         let ground_feet = player_feet(GridPoint { x: rp.x, y: rp.y }, rp.elevation, projection);
-        let shadow = player_shadow(ground_feet, rp.height, projection.tile_width);
-        let clip = shadow_clip::ground_diamonds(
-            ground_feet,
+        let phase = self
+            .shadows
+            .as_ref()
+            .map(crate::lighting::shadow_view::ShadowScene::phase)
+            .unwrap_or(crate::game::config::DEFAULT_PHASE);
+        let shadow = player_shadow(ground_feet, rp.height, projection, phase.light());
+        let outline = shadow_clip::sheared_ellipse(
+            shadow.centre,
             shadow.width,
             shadow.height,
-            rp.elevation,
-            projection,
-            |x, y| self.manager.column_at(x, y).map(|c| c.elevation),
+            shadow.shear,
+            20,
         );
+        let clip = shadow_clip::ground_diamonds(&outline, rp.elevation, projection, |x, y| {
+            self.manager.column_at(x, y).map(|c| c.elevation)
+        });
         self.draws.push(SpriteDraw::ground_ellipse(
             scene_key(
                 f64::from(column.x) + 0.5,
@@ -415,7 +422,8 @@ impl Game {
             shadow.centre,
             shadow.width,
             shadow.height,
-            Color::new(0.0, 0.0, 0.0, shadow.alpha),
+            shadow.alpha,
+            shadow.shear,
             clip,
         ));
         let climbing = get_player_climb_progress(&self.player, self.stepper.interpolation_alpha());

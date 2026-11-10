@@ -100,8 +100,8 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`face_shadow`](sprites.rs#L737) — Una sombra sobre una cara vertical expuesta del terreno.
   - Firma: `pub fn face_shadow( key: DrawKey, corners: [(f64, f64); 4], shade: Rc<ShadeLattice>, opacity: f32, ) -> Self {`
 
-- [`ground_ellipse`](sprites.rs#L754) — Una elipse plana sobre el suelo, recortada a las caras superiores de las casillas en las que puede apoyarse (`clip`); lista vacía de `clip` la pinta entera.
-  - Firma: `pub fn ground_ellipse( key: DrawKey, centre: ScreenPoint, width: f64, height: f64, colour: Color, clip: Vec<[(f64, f64); 4]>, ) -> Self {`
+- [`ground_ellipse`](sprites.rs#L759) — Una mancha blanda sobre el suelo, con degradado de núcleo a borde y sesgo de pantalla `shear`, recortada a las caras superiores de las casillas en las que puede apoyarse (`clip`); lista vacía de `clip` la pinta entera.
+  - Firma: `pub fn ground_ellipse( key: DrawKey, centre: ScreenPoint, width: f64, height: f64, alpha: f32, shear: [[f64; 2]; 2], clip: Vec<[(f64, f64); 4]>, ) -> Self {`
 
 - [`draw_sorted`](sprites.rs#L776) — Ordena los sprites encolados de lejos a cerca y los dibuja, con `material` enlazado durante todo el proceso.
   - Firma: `pub fn draw_sorted( atlas: &SpriteAtlas, material: Option<&crate::rendering::scene_material::SceneMaterial>, draws: &mut [SpriteDraw], ) {`

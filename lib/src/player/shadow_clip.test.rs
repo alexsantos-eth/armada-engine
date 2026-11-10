@@ -50,7 +50,7 @@ fn point_in_quad(point: (f64, f64), quad: &ScreenQuad) -> bool {
     (0..4).all(|i| {
         let (a, b) = (quad[i], quad[(i + 1) % 4]);
         let keep = side(a, b, centre);
-        side(a, b, point) * keep >= -1e-9
+        side(a, b, point) * keep >= -1e-6 * keep.abs()
     })
 }
 
@@ -145,6 +145,23 @@ fn clipping_does_not_depend_on_the_diamonds_winding() {
     }
 }
 
+fn outline(centre: ScreenPoint, width: f64, height: f64) -> Vec<(f64, f64)> {
+    ellipse_polygon(centre, width, height, 32)
+}
+
+fn clip_convex(subject: &[(f64, f64)], clip: &ScreenQuad) -> Vec<(f64, f64)> {
+    clip_convex_vertices(
+        &subject
+            .iter()
+            .map(|point| (*point, 1.0_f32))
+            .collect::<Vec<_>>(),
+        clip,
+    )
+    .into_iter()
+    .map(|(point, _)| point)
+    .collect()
+}
+
 #[test]
 fn the_clip_is_coplanar_with_a_fractional_shadow() {
     let cell = footprint(4, 4, 0.0);
@@ -166,7 +183,8 @@ fn ground_diamonds_only_offers_the_cells_at_the_shadow_level() {
         _ => Some(2),
     };
 
-    let diamonds = ground_diamonds(centre, 400.0, 120.0, 2.0, PROJECTION, elevation_at);
+    let outline = outline(centre, 400.0, 120.0);
+    let diamonds = ground_diamonds(&outline, 2.0, PROJECTION, elevation_at);
     let cliff = footprint(6, 5, 2.0);
 
     assert!(!diamonds.is_empty());
@@ -185,7 +203,8 @@ fn ground_diamonds_projects_its_cells_at_the_shadows_own_height() {
         x: centre.screen_x,
         y: centre.screen_y,
     };
-    let diamonds = ground_diamonds(centre, 200.0, 80.0, 2.25, PROJECTION, |_, _| Some(2));
+    let outline = outline(centre, 200.0, 80.0);
+    let diamonds = ground_diamonds(&outline, 2.25, PROJECTION, |_, _| Some(2));
 
     assert!(!diamonds.is_empty());
     let mut grid_points = Vec::new();
@@ -223,17 +242,29 @@ fn an_ellipse_over_a_cliff_keeps_only_the_part_on_the_plateau() {
         y: centre.screen_y,
     };
     let elevation_at = |x: i32, _y: i32| (x <= 10).then_some(4);
-    let diamonds = ground_diamonds(centre, 300.0, 110.0, 4.0, PROJECTION, elevation_at);
+    let outline = outline(centre, 300.0, 110.0);
+    let diamonds = ground_diamonds(&outline, 4.0, PROJECTION, elevation_at);
 
     assert!(!diamonds.is_empty());
-    let pieces = clip_ellipse(centre, 300.0, 110.0, &diamonds, 48);
+    let triangles = cast_pieces(
+        centre,
+        300.0,
+        110.0,
+        [[1.0, 0.0], [0.0, 1.0]],
+        1.0,
+        &diamonds,
+        48,
+    );
 
-    assert!(!pieces.is_empty());
-    for piece in &pieces {
-        for point in piece {
+    assert!(!triangles.is_empty());
+    for triangle in &triangles {
+        for ((x, y), _) in triangle {
+            let point = (*x, *y);
             assert!(
-                diamonds.iter().any(|d| point_in_quad(*point, d)),
-                "a piece left the cells at the shadow level"
+                diamonds.iter().any(|d| point_in_quad(point, d)),
+                "a piece left the cells at the shadow level: ({}, {})",
+                point.0,
+                point.1
             );
         }
     }
@@ -242,7 +273,134 @@ fn an_ellipse_over_a_cliff_keeps_only_the_part_on_the_plateau() {
 #[test]
 fn the_clip_of_an_ellipse_with_no_cells_has_no_pieces() {
     let centre = ScreenPoint { x: 100.0, y: 100.0 };
+    let identity = [[1.0, 0.0], [0.0, 1.0]];
 
-    assert!(clip_ellipse(centre, 50.0, 20.0, &[], 24).is_empty());
-    assert!(ground_diamonds(centre, 50.0, 20.0, 4.0, PROJECTION, |_, _| None).is_empty());
+    assert!(cast_pieces(centre, 50.0, 20.0, identity, 1.0, &[], 24).len() >= 24);
+    let outline = outline(centre, 50.0, 20.0);
+    assert!(ground_diamonds(&outline, 4.0, PROJECTION, |_, _| None).is_empty());
+}
+
+#[test]
+fn without_any_cell_the_fan_is_the_whole_ellipse() {
+    let centre = ScreenPoint { x: 100.0, y: 100.0 };
+    let identity = [[1.0, 0.0], [0.0, 1.0]];
+
+    let triangles = cast_pieces(centre, 60.0, 24.0, identity, 1.0, &[], 16);
+
+    assert_eq!(triangles.len(), 16);
+    for triangle in &triangles {
+        let centre_alpha = triangle
+            .iter()
+            .find(|((x, y), _)| (*x, *y) == (centre.x, centre.y))
+            .map(|(_, a)| *a);
+        assert_eq!(centre_alpha, Some(1.0));
+    }
+}
+
+#[test]
+fn the_fan_fades_from_the_centre_to_the_rim() {
+    let centre = ScreenPoint { x: 100.0, y: 100.0 };
+    let identity = [[1.0, 0.0], [0.0, 1.0]];
+
+    let triangles = cast_pieces(centre, 60.0, 24.0, identity, 1.0, &[], 12);
+
+    for triangle in &triangles {
+        let rim_alpha = triangle
+            .iter()
+            .find(|((x, y), _)| (*x, *y) != (centre.x, centre.y))
+            .map(|(_, a)| *a)
+            .unwrap();
+        assert_eq!(rim_alpha, 0.0);
+    }
+}
+
+#[test]
+fn the_shear_maps_the_rim_out_of_its_unsheared_boxes() {
+    let centre = ScreenPoint { x: 200.0, y: 150.0 };
+    let shear = [[1.0, 0.6], [0.0, 1.0]];
+
+    let rim = sheared_ellipse(centre, 80.0, 30.0, shear, 24);
+
+    for (x, y) in &rim {
+        assert!((x - centre.x).abs() > 0.0 || (y - centre.y).abs() > 0.0);
+    }
+    let stretched = sheared_ellipse(centre, 80.0, 30.0, [[2.0, 0.0], [0.0, 1.0]], 24);
+    let min_x = stretched.iter().map(|p| p.0).fold(f64::INFINITY, f64::min);
+    let max_x = stretched
+        .iter()
+        .map(|p| p.0)
+        .fold(f64::NEG_INFINITY, f64::max);
+    assert!(
+        (max_x - min_x - 160.0).abs() < 1e-9,
+        "the shear doubles the widest reach"
+    );
+}
+
+#[test]
+fn the_pieces_keep_the_falloff_alpha_at_the_cut() {
+    let diamond = footprint(5, 5, 4.0);
+    let centre = project_block(GridPoint { x: 5.5, y: 5.5 }, 4.0, PROJECTION);
+    let centre = ScreenPoint {
+        x: centre.screen_x,
+        y: centre.screen_y,
+    };
+    let identity = [[1.0, 0.0], [0.0, 1.0]];
+
+    let triangles = cast_pieces(centre, 300.0, 300.0, identity, 1.0, &[diamond], 32);
+
+    assert!(!triangles.is_empty());
+    for triangle in &triangles {
+        for ((_, _), alpha) in triangle {
+            assert!(*alpha >= 0.0 && *alpha <= 1.0);
+        }
+    }
+    let boundary_alphas: Vec<f32> = triangles
+        .iter()
+        .flat_map(|t| t.iter())
+        .filter(|((x, y), _)| {
+            let point = (*x, *y);
+            (0..4).any(|i| {
+                let (a, b) = (diamond[i], diamond[(i + 1) % 4]);
+                let side = |a: (f64, f64), b: (f64, f64), p: (f64, f64)| {
+                    (b.0 - a.0) * (p.1 - a.1) - (b.1 - a.1) * (p.0 - a.0)
+                };
+                side(a, b, point).abs() < 1e-6
+            })
+        })
+        .map(|(_, a)| *a)
+        .collect();
+    assert!(
+        boundary_alphas.iter().all(|a| *a >= 0.0 && *a <= 1.0),
+        "interpolated boundary alphas stay in range"
+    );
+}
+
+#[test]
+fn the_falloff_alpha_interpolates_along_the_clip_edge() {
+    let diamond = footprint(5, 5, 4.0);
+    let centroid = (
+        diamond.iter().map(|p| p.0).sum::<f64>() / 4.0,
+        diamond.iter().map(|p| p.1).sum::<f64>() / 4.0,
+    );
+    let subject = [
+        ((centroid.0 - 10.0, centroid.1 - 10.0), 1.0_f32),
+        ((centroid.0 - 400.0, centroid.1 - 400.0), 0.0_f32),
+        ((centroid.0 + 10.0, centroid.1 + 10.0), 0.0_f32),
+    ];
+
+    let clipped = clip_convex_vertices(&subject, &diamond);
+
+    let cut = clipped
+        .iter()
+        .find(|((x, y), _)| {
+            subject
+                .iter()
+                .all(|((sx, sy), _)| (*sx - *x).abs() > 1e-9 || (*sy - *y).abs() > 1e-9)
+        })
+        .expect("an edge-crossing vertex appears");
+    assert!(
+        cut.1 > 0.0 && cut.1 < 1.0,
+        "the cut interpolates, got {}",
+        cut.1
+    );
 }
