@@ -4,8 +4,9 @@ Este directorio es el cliente Rust/Macroquad: el paquete `iso-core` dibuja y `cr
 contiene el dominio sin dependencias gráficas. El workspace fija Rust 1.99.1 y Macroquad 0.4.16.
 
 Este README solo explica cómo ejecutarlo y cómo preparar un despliegue. El funcionamiento
-técnico del juego, los límites del workspace y las prácticas de código y pruebas están en la
-[arquitectura](docs/ARCHITECTURE.md).
+técnico del juego y los límites del workspace están en la [arquitectura](docs/ARCHITECTURE.md).
+Las prácticas de código y documentación, las reglas del workspace y las puertas de calidad
+están en [las prácticas](docs/PRACTICES.md).
 La ubicación de cada crate, el uso de `mod.rs` y la política de pruebas
 colocalizadas están en [la estructura de archivos](docs/FILE_STRUCTURE.md).
 
