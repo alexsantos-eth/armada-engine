@@ -77,6 +77,19 @@ pub const CHUNK_RADII: ChunkRadii = ChunkRadii {
     prefetch: 1,
     keep: 2,
 };
+/// Finite bounds for the exponential follow of an unbounded world: wide enough that the clamp
+/// never engages, narrow enough to stay in range everywhere. The zoom window mirrors the
+/// demo's working range.
+pub(crate) const UNBOUNDED_CAMERA_LIMITS: iso::camera::CameraLimits = iso::camera::CameraLimits {
+    min_zoom: 0.5,
+    max_zoom: 4.0,
+    bounds: iso::camera::CameraBounds {
+        min_x: -1.0e17,
+        min_y: -1.0e17,
+        max_x: 1.0e17,
+        max_y: 1.0e17,
+    },
+};
 
 /// Safety-net interval for the periodic save; the real save happens on quit and on request.
 pub const AUTOSAVE_SECONDS: f64 = 120.0;

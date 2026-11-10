@@ -92,7 +92,7 @@ El reflejo es el mismo sprite dibujado bocabajo colgando de la línea de agua, s
 
 ### Cámara y seguimiento
 
-`iso::camera` guarda centro, zoom y seguimiento; `camera::focus` define a qué altura mira una cámara que sigue al jugador: fija el nivel en la cima que pisa, no lo mueve durante un salto, baja con los pies en una caída y sube a una cima más alta sobre la curva de una escalada. `advance()` lleva el nivel mostrado al nivel objetivo con un resorte críticamente amortiguado (`CAMERA_LEVEL_SMOOTH_MS`, 65 ms) y el cliente solo suaviza la altura, nunca el avance por el suelo. `streaming` queda previsto: carga/descarga con presupuesto por frame, separando visibilidad de persistencia.
+`iso::camera` guarda centro, zoom y seguimiento; `camera::focus` define a qué altura mira una cámara que sigue al jugador: fija el nivel en la cima que pisa, no lo mueve durante un salto, baja con los pies en una caída y sube a una cima más alta sobre la curva de una escalada. `advance()` lleva el nivel mostrado al nivel objetivo con un resorte críticamente amortiguado (`CAMERA_LEVEL_SMOOTH_MS`, 65 ms). La traslación por el suelo sigue al jugador con la semivida del `follow_camera` (`CAMERA_FOLLOW_HALF_LIFE_MS`, 90 ms) sobre límites que nunca se aplican (`UNBOUNDED_CAMERA_LIMITS`), de modo que las esquinas de velocidad de los ticks de 50 ms no llegan a la pantalla entera — en móvil, con menos fps y tiempos de fotograma desiguales, se notaban como tirones. La cámara va siempre un poco por detrás del jugador a velocidad máxima. `streaming` queda previsto: carga/descarga con presupuesto por frame, separando visibilidad de persistencia.
 
 ### Guardado
 

@@ -3,17 +3,20 @@
 //! This is the rule half of the frame: it mutates the world, the player and the save. Anything
 //! that only draws lives in `game::scene`; the order of the halves is the loop's to decide.
 
-use iso::camera::{CAMERA_LEVEL_SMOOTH_MS, ScreenSize, visible_chunks};
+use iso::camera::{
+    CAMERA_FOLLOW_HALF_LIFE_MS, CAMERA_LEVEL_SMOOTH_MS, Camera, ScreenSize, follow_camera,
+    visible_chunks,
+};
 use iso::grid::{WorldCoord, to_chunk_coord};
 use iso::lighting::phase_at;
 use iso::player::physics::{
     get_player_render_position, jump_player, set_player_jump_held, set_player_run, step_player,
 };
-use iso::projection::ProjectionConfig;
+use iso::projection::{GridPoint, ProjectionConfig};
 use iso::services::{AudioService, InputService, NormalizedInput, SoundEvent, UiEvent, UiService};
 use macroquad::prelude::*;
 
-use crate::game::config::{AUTOSAVE_SECONDS, CHUNK_CULL_MARGIN};
+use crate::game::config::{AUTOSAVE_SECONDS, CHUNK_CULL_MARGIN, UNBOUNDED_CAMERA_LIMITS};
 use crate::game::ground::ChunkGround;
 use crate::game::scene::frame_projection;
 use crate::game::state::Game;
@@ -23,6 +26,19 @@ use crate::services::MacroquadInput;
 /// Ticks to simulate this frame, saturating rather than wrapping at the top of `u32`.
 fn frame_ticks(consumed: u64) -> u32 {
     u32::try_from(consumed).unwrap_or(u32::MAX)
+}
+
+/// The translation of `camera` a frame after `elapsed_ms`, chasing `target` with the follow
+/// half-life. The world bounds never bind; the filter exists so the 50 ms corners of the
+/// movement do not reach the screen.
+fn camera_after_follow(camera: Camera, target: GridPoint, elapsed_ms: f64) -> Camera {
+    follow_camera(
+        camera,
+        target,
+        elapsed_ms,
+        UNBOUNDED_CAMERA_LIMITS,
+        CAMERA_FOLLOW_HALF_LIFE_MS,
+    )
 }
 
 /// Whether the periodic save should fire now: only with unsaved changes, and only on quit or
@@ -98,8 +114,7 @@ impl Game {
 
         let rp = get_player_render_position(&self.player, self.stepper.interpolation_alpha());
 
-        self.camera.x = rp.x;
-        self.camera.y = rp.y;
+        self.camera = camera_after_follow(self.camera, GridPoint { x: rp.x, y: rp.y }, frame_ms);
         let level =
             self.camera_focus
                 .advance(&rp, self.player.motion, frame_ms, CAMERA_LEVEL_SMOOTH_MS);
