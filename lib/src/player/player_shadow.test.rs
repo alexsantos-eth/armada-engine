@@ -20,13 +20,26 @@ fn ground() -> ScreenPoint {
 }
 
 #[test]
-fn shadow_stays_at_ground_contact_and_shrinks_in_the_air() {
+fn the_shadow_is_centred_on_the_feet_in_every_phase() {
+    let ground = ground();
+    for light in [DAWN, DAY, SUNSET, NIGHT] {
+        let shadow = player_shadow(ground, 0.0, PROJECTION, light);
+        assert_eq!(
+            shadow.centre, ground,
+            "grounded shadow stays centred on the feet"
+        );
+    }
+}
+
+#[test]
+fn shadow_stays_with_the_caster_and_shrinks_in_the_air() {
     let ground = ground();
     let grounded = player_shadow(ground, 0.0, PROJECTION, DAY);
     let airborne = player_shadow(ground, 2.0, PROJECTION, DAY);
 
-    assert_eq!(grounded.centre, ground);
-    assert_ne!(airborne.centre, ground);
+    let (ux, uy, _) = shadow_direction(DAY, PROJECTION);
+    let shift = |s: PlayerShadow| (s.centre.x - ground.x) * ux + (s.centre.y - ground.y) * uy;
+    assert!(shift(airborne) > shift(grounded));
     assert!(airborne.width < grounded.width);
     assert!(airborne.alpha < grounded.alpha);
 }
@@ -86,18 +99,18 @@ fn a_body_above_the_ground_pushes_its_shadow_down_the_sun() {
 }
 
 #[test]
-fn the_shear_stretches_the_blob_by_the_phases_stretch() {
+fn the_shear_stretches_the_blob_by_a_damped_share_of_the_phases_stretch() {
     let dawn = player_shadow(ground(), 0.0, PROJECTION, DAWN);
     let night = player_shadow(ground(), 0.0, PROJECTION, NIGHT);
 
+    let damped =
+        |light: iso::lighting::PhaseLight| 1.0 + (light.shadow.stretch - 1.0) * CAST_STRETCH_FACTOR;
     let area = |shear: [[f64; 2]; 2]| shear[0][0] * shear[1][1] - shear[0][1] * shear[1][0];
     assert!(
-        (area(dawn.shear).abs() / area(night.shear).abs()
-            - DAWN.shadow.stretch / NIGHT.shadow.stretch)
-            .abs()
-            < 1e-9,
-        "the shear's area scales with the phase's stretch"
+        (area(dawn.shear).abs() - damped(DAWN)).abs() < 1e-9,
+        "the shear keeps only a damped share of the phase's stretch"
     );
+    assert!((area(night.shear).abs() - damped(NIGHT)).abs() < 1e-9);
     assert!(area(dawn.shear).abs() > area(night.shear).abs());
 }
 

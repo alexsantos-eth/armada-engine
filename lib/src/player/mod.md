@@ -129,9 +129,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`shadow_direction`](player_shadow.rs#L22) — La dirección de las sombras sobre el suelo como vector unitario de pantalla, y cuántos píxeles alcanza una casilla de sombra en esa dirección.
   - Firma: `pub fn shadow_direction(light: PhaseLight, projection: ProjectionConfig) -> (f64, f64, f64) {`
-- [`cast_matrix`](player_shadow.rs#L43) — La anisotropía de pantalla de la mancha: el cuadrado del suelo sesgado a lo largo de la dirección de sombra de la fase, proyectado isométricamente (determinante = `stretch` de la fase).
+- [`cast_matrix`](player_shadow.rs#L52) — La anisotropía de pantalla de la mancha: el cuadrado del suelo sesgado a lo largo de la dirección de sombra de la fase, proyectado isométricamente (determinante = `1 + (stretch − 1) · CAST_STRETCH_FACTOR`, la fase estira sólo una fracción de su `stretch`).
   - Firma: `pub fn cast_matrix(light: PhaseLight, projection: ProjectionConfig) -> [[f64; 2]; 2] {`
-- [`player_shadow`](player_shadow.rs#L81) — Calcula una sombra anclada al suelo que se escora hacia donde la fase proyecta sus sombras, se separa de los pies al elevarse el cuerpo y se atenúa en el aire.
+- [`player_shadow`](player_shadow.rs#L89) — Calcula una sombra centrada en los pies que se escora hacia donde la fase proyecta sus sombras; al elevarse el cuerpo se separa de los pies río abajo del sol y se atenúa en el aire.
   - Firma: `pub fn player_shadow( ground: ScreenPoint, height: f64, projection: ProjectionConfig, light: PhaseLight, ) -> PlayerShadow {`
 
 ### `shadow_clip.rs`
@@ -176,6 +176,23 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 - [`voxel_key`](dust_view.rs#L279) — Dónde se ordena un cubo de polvo en la escena: la columna sobre la que está a mitad de su vida, y
   - Firma: `fn voxel_key( voxel: DustVoxel, feet: GridPoint, level: f64, tile_height: f64, top_at: &impl Fn(i32, i32) -> Option<f64>, ) -> DrawKey {`
+
+### `player_shadow.rs`
+
+#### Constantes internas
+
+- [`CAST_STRETCH_FACTOR`](player_shadow.rs#L42) — Fracción del `stretch` de la fase que estira la mancha en sí: la dirección proyectada es exacta, el aplanado sólo la mitad de dramático.
+  - Declaración: `const CAST_STRETCH_FACTOR: f64 = 0.5;`
+- [`CAST_WIDTH`](player_shadow.rs#L45) — Anchura de la mancha, como fracción de la casilla.
+  - Declaración: `const CAST_WIDTH: f64 = 0.30;`
+- [`CAST_HEIGHT`](player_shadow.rs#L46) — Altura de la mancha, como fracción de la casilla.
+  - Declaración: `const CAST_HEIGHT: f64 = 0.125;`
+- [`CAST_CORE_ALPHA`](player_shadow.rs#L49) — Alfa del núcleo de la mancha con el cuerpo en el suelo.
+  - Declaración: `const CAST_CORE_ALPHA: f64 = 0.28;`
+- [`CAST_AIR_FADE`](player_shadow.rs#L52) — Cuánto alfa del núcleo pierde la mancha con el cuerpo en el aire.
+  - Declaración: `const CAST_AIR_FADE: f64 = 0.14;`
+- [`CAST_PHASE_REFERENCE`](player_shadow.rs#L55) — El alfa más fuerte de una fase, para normalizar cuánto escala la fase la mancha.
+  - Declaración: `const CAST_PHASE_REFERENCE: f64 = 0.34;`
 
 ### `shadow_clip.rs`
 
