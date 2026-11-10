@@ -30,22 +30,25 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`is_empty`](frame_log.rs#L77) — Indica si la colección o el estado consultado no contiene elementos.
   - Firma: `pub fn is_empty(&self) -> bool {`
 
-- [`span_seconds`](frame_log.rs#L82) — Segundos que cubre la ventana, tomados de los propios fotogramas en lugar de un reloj, de modo que la
+- [`fps`](frame_log.rs#L83) — Los fotogramas de la ventana sobre su propia duración: la tasa que la ventana implica, en vez del recíproco de un solo frame. Un tirón apenas la mueve; es lo que muestra el HUD.
+  - Firma: `pub fn fps(&self) -> f64 {`
+
+- [`span_seconds`](frame_log.rs#L93) — Segundos que cubre la ventana, tomados de los propios fotogramas en lugar de un reloj, de modo que la
   - Firma: `pub fn span_seconds(&self) -> f64 {`
 
-- [`worst`](frame_log.rs#L87) — El fotograma que más tardó, que es del que está hecho un tirón.
+- [`worst`](frame_log.rs#L98) — El fotograma que más tardó, que es del que está hecho un tirón.
   - Firma: `pub fn worst(&self) -> FrameSample {`
 
-- [`dropped`](frame_log.rs#L96) — Fotogramas que se perdieron dos refrescos de pantalla.
+- [`dropped`](frame_log.rs#L107) — Fotogramas que se perdieron dos refrescos de pantalla.
   - Firma: `pub fn dropped(&self) -> usize {`
 
-- [`frame_ms`](frame_log.rs#L110) — `(p50, p95, max)` de fotogramas completos, en milisegundos.
+- [`frame_ms`](frame_log.rs#L121) — `(p50, p95, max)` de fotogramas completos, en milisegundos.
   - Firma: `pub fn frame_ms(&self) -> (f64, f64, f64) {`
 
-- [`cpu_ms`](frame_log.rs#L120) — `(p50, p95, max)` del tiempo de CPU propio de este bucle, en milisegundos.
+- [`cpu_ms`](frame_log.rs#L131) — `(p50, p95, max)` del tiempo de CPU propio de este bucle, en milisegundos.
   - Firma: `pub fn cpu_ms(&self) -> (f64, f64, f64) {`
 
-- [`summary`](frame_log.rs#L137) — El informe completo, como líneas para imprimir.
+- [`summary`](frame_log.rs#L148) — El informe completo, como líneas para imprimir.
   - Firma: `pub fn summary(&self) -> String {`
 
 #### Constantes
@@ -71,8 +74,8 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`percentile`](frame_log.rs#L50) — Valor en `fraction` del recorrido de `values` una vez ordenado, rango más cercano. `values` está
   - Firma: `fn percentile(sorted: &[f64], fraction: f64) -> f64 {`
 
-- [`sorted`](frame_log.rs#L103) — Calcula o recupera «sorted» según los parámetros de la firma.
+- [`sorted`](frame_log.rs#L114) — Calcula o recupera «sorted» según los parámetros de la firma.
   - Firma: `fn sorted(&self, of: impl Fn(&FrameSample) -> f64) -> Vec<f64> {`
 
-- [`mean`](frame_log.rs#L129) — Calcula o recupera «mean» según los parámetros de la firma.
+- [`mean`](frame_log.rs#L140) — Calcula o recupera «mean» según los parámetros de la firma.
   - Firma: `fn mean(&self, of: impl Fn(&FrameSample) -> f64) -> f64 {`

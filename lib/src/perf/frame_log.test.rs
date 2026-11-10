@@ -84,6 +84,24 @@ fn an_empty_log_summarizes_without_dividing_by_zero() {
 }
 
 #[test]
+fn the_fps_readout_is_the_window_average_not_one_frame() {
+    let log = PerfLog::new(10);
+    assert_eq!(log.fps(), 0.0, "an empty window reports zero, not a divide");
+    let mut log = PerfLog::new(10);
+    for _ in 0..9 {
+        log.push(frame(16.0));
+    }
+    log.push(frame(50.0));
+    let fps = log.fps();
+    let expected = 10.0 / ((9.0 * 16.0 + 50.0) / 1000.0);
+    assert!((fps - expected).abs() < 0.001, "fps was {fps}");
+    assert!(
+        (50.0..61.0).contains(&fps),
+        "one stuttering frame barely moves it"
+    );
+}
+
+#[test]
 fn the_summary_carries_every_figure_it_claims_to() {
     let mut log = PerfLog::new(10);
     for _ in 0..10 {

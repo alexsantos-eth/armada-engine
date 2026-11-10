@@ -52,8 +52,8 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones internas
 
-- [`Readout`](hud.rs#L79) — Los datos de la línea de lectura del mundo, con la hora del reloj como `HH:MM` ya formateada.
-  - Declaración: `struct Readout<'a> { x: f64, y: f64, elevation: i32, motion: &'a str, chunks: usize, clock: &'a str, fps: i32, frame_ms: f64, }`
+- [`Readout`](hud.rs#L79) — Los datos de la línea de lectura del mundo, con la hora del reloj como `HH:MM` ya formateada. El `fps` es el de la ventana de rendimiento (`PerfLog::fps`), no el recíproco instantáneo de macroquad, que un tirón desboca.
+  - Declaración: `struct Readout<'a> { x: f64, y: f64, elevation: i32, motion: &'a str, chunks: usize, clock: &'a str, fps: f64, frame_ms: f64, }`
 
 - [`world_readout_line`](hud.rs#L90) — La línea de lectura del mundo: posición, elevación, movimiento, chunks, hora del reloj del mundo y coste del fotograma. Se prueba en `hud.test.rs`.
   - Firma: `fn world_readout_line(readout: &Readout<'_>) -> String {`

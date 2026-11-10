@@ -83,13 +83,13 @@ struct Readout<'a> {
     motion: &'a str,
     chunks: usize,
     clock: &'a str,
-    fps: i32,
+    fps: f64,
     frame_ms: f64,
 }
 
 fn world_readout_line(readout: &Readout<'_>) -> String {
     format!(
-        "Mundo: ({:.2}, {:.2}, {}) | {} | chunks: {} | {} | {} fps ({:.1} ms)",
+        "Mundo: ({:.2}, {:.2}, {}) | {} | chunks: {} | {} | {:.0} fps ({:.1} ms)",
         readout.x,
         readout.y,
         readout.elevation,
@@ -166,6 +166,7 @@ pub(crate) fn draw_hud(
         48.0,
         Color::from_rgba(21, 29, 42, 205),
     );
+    let smoothed_fps = perf.fps();
     if let Some((x, y, elev, motion, chunks)) = &ui.hud {
         let readout = Readout {
             x: *x,
@@ -174,7 +175,7 @@ pub(crate) fn draw_hud(
             motion,
             chunks: *chunks,
             clock,
-            fps: get_fps(),
+            fps: smoothed_fps,
             frame_ms,
         };
         let text = world_readout_line(&readout);
@@ -192,7 +193,7 @@ pub(crate) fn draw_hud(
         Color::from_rgba(21, 29, 42, 205),
     );
     draw_text(
-        format!("{} fps", get_fps()),
+        format!("{smoothed_fps:.0} fps"),
         width - 218.0,
         46.0,
         28.0,

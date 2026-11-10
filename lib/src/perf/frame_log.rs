@@ -78,6 +78,17 @@ impl PerfLog {
         self.samples.is_empty()
     }
 
+    /// The display rate the window implies: its frames over its own span. One stuttering frame
+    /// barely moves it, which is what a readout steady enough to watch wants.
+    pub fn fps(&self) -> f64 {
+        let span = self.span_seconds();
+        if span > 0.0 {
+            self.samples.len() as f64 / span
+        } else {
+            0.0
+        }
+    }
+
     /// Seconds the window covers, taken from the frames themselves rather than a clock, so the
     pub fn span_seconds(&self) -> f64 {
         self.samples.iter().map(|s| s.frame_ms).sum::<f64>() / 1000.0
@@ -140,11 +151,7 @@ impl PerfLog {
         }
         let span = self.span_seconds();
         let frames = self.len();
-        let fps = if span > 0.0 {
-            frames as f64 / span
-        } else {
-            0.0
-        };
+        let fps = self.fps();
         let (f50, f95, fmax) = self.frame_ms();
         let (c50, c95, cmax) = self.cpu_ms();
         let worst = self.worst();

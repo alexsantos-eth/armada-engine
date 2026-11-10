@@ -37,7 +37,7 @@ fn the_world_readout_carries_position_elevation_clock_and_cost() {
         motion: "Walking E",
         chunks: 5,
         clock: "08:30",
-        fps: 60,
+        fps: 60.0,
         frame_ms: 16.7,
     });
 

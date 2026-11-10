@@ -65,7 +65,7 @@ que fija `rust-toolchain.toml` con su target `wasm32-unknown-unknown`, compila
 `cargo build --release --locked --target wasm32-unknown-unknown --bin iso-core`, y copia al
 directorio de salida la página `web/index.html` (también como `playground/index.html`), su
 `adapter.js` (los imports FFI y el arranque del `.wasm`), el `content/` y el `.wasm`. Solo compila el binario del cliente: `pack_atlas` y `remeasure_atlas`
-son herramientas nativas.
+son herramientas nativas. La página va con un `viewport` que desactiva el zoom de pellizco y `touch-action: none` en el canvas: en iOS Safari eso evita que WebKit haga reconocimiento de gestos por toque —una pausa del hilo principal por toque que se leía como frames perdidos—.
 
 La página carga el puente JavaScript oficial de Macroquad desde `not-fl3.github.io` y registra en
 su import `env` las operaciones de `localStorage`, la lectura de la ruta (`iso_route_path`) y la
