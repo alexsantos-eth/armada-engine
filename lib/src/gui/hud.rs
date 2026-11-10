@@ -208,8 +208,9 @@ pub(crate) fn draw_hud(
     );
     draw_text(
         format!(
-            "cpu p95 {cpu_p95:.1} ms · {} caidos · polvo {dust_live}",
+            "cpu p95 {cpu_p95:.1} ms · {} caidos · {} por cpu · polvo {dust_live}",
             perf.dropped(),
+            perf.cpu_dropped(),
         ),
         width - 218.0,
         82.0,

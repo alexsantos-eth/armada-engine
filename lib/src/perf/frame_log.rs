@@ -5,8 +5,12 @@ use std::collections::VecDeque;
 /// Frames kept in the window: five seconds at 60 fps.
 pub const WINDOW_FRAMES: usize = 300;
 
-/// Two refreshes of a 60 Hz display. A frame over this dropped one, which is what reads as a
+/// Two refreshes of a 60 Hz display. A frame over this dropped one, which is what reads as a stutter.
 pub const DROPPED_FRAME_MS: f64 = 33.4;
+
+/// One 60 Hz refresh spent purely on the loop's own CPU work. A frame is really dropped by this
+/// loop when it costs more than the display can repay while it waits.
+pub const CPU_DROPPED_MS: f64 = 16.7;
 
 /// One frame's measurements, in milliseconds.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -103,11 +107,20 @@ impl PerfLog {
             .unwrap_or_default()
     }
 
-    /// Frames that missed two display refreshes.
+    /// Frames that missed two display refreshes, whoever made them wait: the browser included.
     pub fn dropped(&self) -> usize {
         self.samples
             .iter()
             .filter(|s| s.frame_ms > DROPPED_FRAME_MS)
+            .count()
+    }
+
+    /// Frames this loop dropped on its own: the frame was long and this loop's CPU spent a whole
+    /// refresh on it, so it could not have made it even without waiting for the display.
+    pub fn cpu_dropped(&self) -> usize {
+        self.samples
+            .iter()
+            .filter(|s| s.frame_ms > DROPPED_FRAME_MS && s.cpu_ms() > CPU_DROPPED_MS)
             .count()
     }
 
@@ -157,13 +170,14 @@ impl PerfLog {
         let worst = self.worst();
         format!(
             "iso perf · {span:.1} s · {frames} frames · {fps:.1} fps · chunks {chunks:.0} dibujados · {alive:.0} en memoria\n\
-             frame ms p50 {f50:.1} · p95 {f95:.1} · max {fmax:.1} · over {DROPPED_FRAME_MS} ms: {dropped}\n\
+             frame ms p50 {f50:.1} · p95 {f95:.1} · max {fmax:.1} · over {DROPPED_FRAME_MS} ms: {dropped} · over {CPU_DROPPED_MS} ms cpu: {cpu_dropped}\n\
              cpu ms p50 {c50:.1} · p95 {c95:.1} · max {cmax:.1} · sprites avg {sprites:.0} · max {sprites_max}\n\
              cpu split avg: sim {sim:.2} · escena {scene:.2} · dibujo {draw:.2}\n\
              peor frame {worst_ms:.1} ms: sim {wsim:.2} · escena {wscene:.2} · dibujo {wdraw:.2} · sprites {wsprites}",
             chunks = self.mean(|s| s.chunks as f64),
             alive = self.mean(|s| s.chunks_alive as f64),
             dropped = self.dropped(),
+            cpu_dropped = self.cpu_dropped(),
             sprites = self.mean(|s| s.sprites as f64),
             sprites_max = self.samples.iter().map(|s| s.sprites).max().unwrap_or(0),
             sim = self.mean(|s| s.simulation_ms),

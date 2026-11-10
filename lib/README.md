@@ -72,7 +72,15 @@ su import `env` las operaciones de `localStorage`, la lectura de la ruta (`iso_r
 detección de puntero grueso (`iso_pointer_coarse`). Conviene servir una copia versionada propia del
 puente, con sus cabeceras de caché, en vez de depender de ese dominio. El cliente no usa
 `web-sys`, porque su glue code de `wasm-bindgen` no es compatible con el cargador raw de
-Macroquad.
+Macroquad. La copia local `web/mq_js_bundle.js` lleva parches propios: los listeners de
+`touchstart`/`touchmove`/`touchend`/`touchcancel` son `{passive: true}` y no llaman a
+`preventDefault()` (la página no puede hacer scroll ni zoom), para que iOS Safari no aplace el
+`requestAnimationFrame` durante los toques — sin el parche, cada toque producía un fotograma
+perdido de ~47 ms con el CPU en 0. Si algún día se reemplaza el puente por uno actualizado,
+hay que re-aplicar el parche. La página referencia esos dos scripts con una `?v=` manual (ver
+`web/index.html`): sin ese prefijo, la caché heurística de Safari servía el puente viejo durante
+días sin volver a pedirlo, y los arreglos del puente no llegaban al móvil. Al tocar el puente o
+el adaptador, sube el número.
 
 ## Preparar despliegue
 

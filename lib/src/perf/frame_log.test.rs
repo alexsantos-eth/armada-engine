@@ -75,6 +75,36 @@ fn cpu_time_is_the_sum_of_the_phases() {
 }
 
 #[test]
+fn cpu_drops_count_frames_that_spent_a_refresh_on_this_loops_own_work() {
+    let mut log = PerfLog::new(10);
+    for _ in 0..3 {
+        log.push(FrameSample {
+            frame_ms: 45.0,
+            simulation_ms: 1.0,
+            scene_ms: 2.0,
+            draw_ms: 1.0,
+            sprites: 10,
+            chunks: 1,
+            chunks_alive: 2,
+        });
+    }
+    assert_eq!(log.dropped(), 3, "the browser made those frames long");
+    assert_eq!(log.cpu_dropped(), 0, "this loop spent 4 ms on them");
+
+    log.push(FrameSample {
+        frame_ms: 45.0,
+        simulation_ms: 9.0,
+        scene_ms: 9.0,
+        draw_ms: 2.0,
+        sprites: 10,
+        chunks: 1,
+        chunks_alive: 2,
+    });
+    assert_eq!(log.dropped(), 4);
+    assert_eq!(log.cpu_dropped(), 1);
+}
+
+#[test]
 fn an_empty_log_summarizes_without_dividing_by_zero() {
     let log = PerfLog::new(10);
     assert!(log.is_empty());
