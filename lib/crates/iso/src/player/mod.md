@@ -70,16 +70,16 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`get_jump_height`](physics.rs#L105) — Altura de los pies sobre suelo llano `tick` ticks después de un salto.
+- [`get_jump_height`](physics.rs#L103) — Altura de los pies sobre suelo llano `tick` ticks después de un salto.
   - Firma: `pub fn get_jump_height(tick: f64) -> f64 {`
 
-- [`get_climb_rise`](physics.rs#L116) — Fracción de su ascenso que los pies de una escalada han subido en `progress` (0–1).
+- [`get_climb_rise`](physics.rs#L115) — Fracción de su ascenso que los pies de una escalada han subido en `progress` (0–1).
   - Firma: `pub fn get_climb_rise(progress: f64) -> f64 {`
 
-- [`get_climb_advance`](physics.rs#L121) — Fracción del camino de `from` a `to` que una escalada ha recorrido en `progress` (0–1).
+- [`get_climb_advance`](physics.rs#L120) — Fracción del camino de `from` a `to` que una escalada ha recorrido en `progress` (0–1).
   - Firma: `pub fn get_climb_advance(progress: f64) -> f64 {`
 
-- [`blocked_side`](physics.rs#L147) — Calcula o recupera «blocked side» según los parámetros de la firma.
+- [`blocked_side`](physics.rs#L145) — Calcula o recupera «blocked side» según los parámetros de la firma.
   - Firma: `pub fn blocked_side(&self, _x: f64, _y: f64) -> f64 {`
 
 - [`get_player_column`](physics.rs#L246) — Columna a la que pertenece el punto de suelo `point`.
@@ -88,129 +88,129 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`can_stand_on`](physics.rs#L254) — Si el jugador puede mantenerse en pie en el centro de la columna `(x, y)` viniendo de `from_elevation`.
   - Firma: `pub fn can_stand_on<G: PlayerGround>(ground: &G, x: i32, y: i32, from_elevation: f64) -> bool {`
 
-- [`find_player_spawn`](physics.rs#L402) — Localiza «player spawn» que satisface las condiciones de la consulta.
+- [`find_player_spawn`](physics.rs#L406) — Localiza «player spawn» que satisface las condiciones de la consulta.
   - Firma: `pub fn find_player_spawn<G: PlayerGround>(ground: &G, centre: GridPoint) -> PlayerPosition {`
 
-- [`create_player`](physics.rs#L471) — Crea el recurso o estado «player» a partir de los parámetros recibidos.
+- [`create_player`](physics.rs#L486) — Crea el recurso o estado «player» a partir de los parámetros recibidos.
   - Firma: `pub fn create_player<G: PlayerGround>(ground: &G, at: GridPoint) -> PlayerState {`
 
-- [`get_walk_direction`](physics.rs#L503) — Obtiene «walk direction» sin modificar el estado consultado.
+- [`get_walk_direction`](physics.rs#L518) — Obtiene «walk direction» sin modificar el estado consultado.
   - Firma: `pub fn get_walk_direction(directions: &ScreenDirections) -> GridPoint {`
 
-- [`get_player_facing`](physics.rs#L524) — Obtiene «player facing» sin modificar el estado consultado.
+- [`get_player_facing`](physics.rs#L542) — Obtiene «player facing» sin modificar el estado consultado.
   - Firma: `pub fn get_player_facing(walk: GridPoint) -> Option<usize> {`
 
-- [`set_player_walk`](physics.rs#L535) — Actualiza «player walk» con el valor indicado.
+- [`set_player_walk`](physics.rs#L553) — Actualiza «player walk» con el valor indicado.
   - Firma: `pub fn set_player_walk(player: &mut PlayerState, directions: ScreenDirections) {`
 
-- [`set_player_jetpack`](physics.rs#L539) — Actualiza «player jetpack» con el valor indicado.
+- [`set_player_jetpack`](physics.rs#L557) — Actualiza «player jetpack» con el valor indicado.
   - Firma: `pub fn set_player_jetpack(player: &mut PlayerState, jetpack: bool) {`
 
-- [`set_player_run`](physics.rs#L543) — Actualiza «player run» con el valor indicado.
+- [`set_player_run`](physics.rs#L561) — Actualiza «player run» con el valor indicado.
   - Firma: `pub fn set_player_run(player: &mut PlayerState, running: bool) {`
 
-- [`is_player_running`](physics.rs#L547) — Evalúa si se cumple la condición «player running» para el estado recibido.
+- [`is_player_running`](physics.rs#L565) — Evalúa si se cumple la condición «player running» para el estado recibido.
   - Firma: `pub fn is_player_running(player: &PlayerState) -> bool {`
 
-- [`is_player_skidding`](physics.rs#L551) — Evalúa si se cumple la condición «player skidding» para el estado recibido.
+- [`is_player_skidding`](physics.rs#L569) — Evalúa si se cumple la condición «player skidding» para el estado recibido.
   - Firma: `pub fn is_player_skidding(player: &PlayerState) -> bool {`
 
-- [`jump_player`](physics.rs#L555) — Calcula o recupera «jump player» según los parámetros de la firma.
+- [`jump_player`](physics.rs#L573) — Calcula o recupera «jump player» según los parámetros de la firma.
   - Firma: `pub fn jump_player(player: &mut PlayerState) {`
 
-- [`set_player_jump_held`](physics.rs#L561) — Actualiza «player jump held» con el valor indicado.
+- [`set_player_jump_held`](physics.rs#L579) — Actualiza «player jump held» con el valor indicado.
   - Firma: `pub fn set_player_jump_held(player: &mut PlayerState, held: bool) {`
 
-- [`cancel_player_jump`](physics.rs#L565) — Calcula o recupera «cancel player jump» según los parámetros de la firma.
+- [`cancel_player_jump`](physics.rs#L583) — Calcula o recupera «cancel player jump» según los parámetros de la firma.
   - Firma: `pub fn cancel_player_jump(player: &mut PlayerState) {`
 
-- [`step_player`](physics.rs#L1003) — Calcula o recupera «step player» según los parámetros de la firma.
+- [`step_player`](physics.rs#L1045) — Calcula o recupera «step player» según los parámetros de la firma.
   - Firma: `pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ticks: u32) {`
 
-- [`get_player_jump_phase`](physics.rs#L1141) — Obtiene «player jump phase» sin modificar el estado consultado.
+- [`get_player_jump_phase`](physics.rs#L1210) — Obtiene «player jump phase» sin modificar el estado consultado.
   - Firma: `pub fn get_player_jump_phase(player: &PlayerState) -> PlayerJumpPhase {`
 
-- [`get_player_climb_progress`](physics.rs#L1173) — Obtiene «player climb progress» sin modificar el estado consultado.
+- [`get_player_climb_progress`](physics.rs#L1242) — Obtiene «player climb progress» sin modificar el estado consultado.
   - Firma: `pub fn get_player_climb_progress(player: &PlayerState, alpha: f64) -> Option<f64> {`
 
-- [`get_player_render_position`](physics.rs#L1185) — Obtiene «player render position» sin modificar el estado consultado.
+- [`get_player_render_position`](physics.rs#L1253) — Posición de render del jugador: interpolación cúbica Hermite entre la posición al inicio del tick (`previous`, con sus velocidades) y la posición actual, con tangentes iguales a la velocidad horizontal y vertical de cada límite de tick; es C1 en cada límite y reproduce exactamente arcos de aceleración constante (un salto).
   - Firma: `pub fn get_player_render_position(player: &PlayerState, alpha: f64) -> PlayerRenderPosition {`
 
-- [`get_player_cells`](physics.rs#L1201) — Obtiene «player cells» sin modificar el estado consultado.
+- [`get_player_cells`](physics.rs#L1288) — Obtiene «player cells» sin modificar el estado consultado.
   - Firma: `pub fn get_player_cells(point: GridPoint) -> crate::grid::WorldRect {`
 
-- [`can_stand_on_public`](physics.rs#L1219) — Calcula o recupera «can stand on public» según los parámetros de la firma.
+- [`can_stand_on_public`](physics.rs#L1305) — Calcula o recupera «can stand on public» según los parámetros de la firma.
   - Firma: `pub fn can_stand_on_public<G: PlayerGround>(ground: &G, x: i32, y: i32, from_elevation: f64) -> bool {`
 
-- [`fits_player_at`](physics.rs#L1223) — Calcula o recupera «fits player at» según los parámetros de la firma.
+- [`fits_player_at`](physics.rs#L1314) — Calcula o recupera «fits player at» según los parámetros de la firma.
   - Firma: `pub fn fits_player_at<G: PlayerGround>(ground: &G, point: GridPoint) -> bool {`
 
 #### Constantes
 
-- [`PLAYER_SPEED`](physics.rs#L11) — Velocidad de caminata del jugador, en columnas por segundo de simulación.
+- [`PLAYER_SPEED`](physics.rs#L10) — Velocidad de caminata del jugador, en columnas por segundo de simulación.
   - Declaración: `pub const PLAYER_SPEED: f64 = 3.0;`
 
-- [`PLAYER_STEP`](physics.rs#L13) — Columnas horizontales máximas que un jugador caminando avanza en un tick.
+- [`PLAYER_STEP`](physics.rs#L12) — Columnas horizontales máximas que un jugador caminando avanza en un tick.
   - Declaración: `pub const PLAYER_STEP: f64 = PLAYER_SPEED / TICKS_PER_SECOND as f64;`
 
-- [`PLAYER_RUN_SPEED`](physics.rs#L15) — Velocidad de carrera del jugador, en columnas por segundo de simulación.
+- [`PLAYER_RUN_SPEED`](physics.rs#L14) — Velocidad de carrera del jugador, en columnas por segundo de simulación.
   - Declaración: `pub const PLAYER_RUN_SPEED: f64 = 5.0;`
 
-- [`PLAYER_RUN_STEP`](physics.rs#L17) — Columnas horizontales máximas que un jugador corriendo avanza en un tick.
+- [`PLAYER_RUN_STEP`](physics.rs#L16) — Columnas horizontales máximas que un jugador corriendo avanza en un tick.
   - Declaración: `pub const PLAYER_RUN_STEP: f64 = PLAYER_RUN_SPEED / TICKS_PER_SECOND as f64;`
 
-- [`PLAYER_GROUND_ACCEL`](physics.rs#L19) — Cambio de velocidad horizontal por tick al arrancar o redirigir en tierra.
+- [`PLAYER_GROUND_ACCEL`](physics.rs#L18) — Cambio de velocidad horizontal por tick al arrancar o redirigir en tierra.
   - Declaración: `pub const PLAYER_GROUND_ACCEL: f64 = 0.05;`
 
-- [`PLAYER_GROUND_BRAKE`](physics.rs#L21) — Velocidad horizontal retirada por tick al soltar el movimiento en tierra.
+- [`PLAYER_GROUND_BRAKE`](physics.rs#L20) — Velocidad horizontal retirada por tick al soltar el movimiento en tierra.
   - Declaración: `pub const PLAYER_GROUND_BRAKE: f64 = 0.03;`
 
-- [`PLAYER_AIR_ACCEL`](physics.rs#L23) — Cambio de velocidad horizontal por tick al virar en el aire.
+- [`PLAYER_AIR_ACCEL`](physics.rs#L22) — Cambio de velocidad horizontal por tick al virar en el aire.
   - Declaración: `pub const PLAYER_AIR_ACCEL: f64 = 0.04;`
 
-- [`PLAYER_AIR_BRAKE`](physics.rs#L25) — Velocidad horizontal retirada por tick al soltar el movimiento en el aire.
+- [`PLAYER_AIR_BRAKE`](physics.rs#L24) — Velocidad horizontal retirada por tick al soltar el movimiento en el aire.
   - Declaración: `pub const PLAYER_AIR_BRAKE: f64 = 0.025;`
 
-- [`PLAYER_CORNER_NUDGE`](physics.rs#L27) — Desplazamiento lateral máximo usado para salvar una esquina pequeña.
+- [`PLAYER_CORNER_NUDGE`](physics.rs#L26) — Desplazamiento lateral máximo usado para salvar una esquina pequeña.
   - Declaración: `pub const PLAYER_CORNER_NUDGE: f64 = 0.04;`
 
-- [`PLAYER_RADIUS`](physics.rs#L29) — Mitad del lado del cuadrado que ocupan los pies del jugador en el suelo.
+- [`PLAYER_RADIUS`](physics.rs#L28) — Mitad del lado del cuadrado que ocupan los pies del jugador en el suelo.
   - Declaración: `pub const PLAYER_RADIUS: f64 = 0.2;`
 
-- [`PLAYER_BODY_HEIGHT`](physics.rs#L31) — Extensión vertical del cuerpo de colisión del jugador por encima de sus pies, en bloques.
+- [`PLAYER_BODY_HEIGHT`](physics.rs#L30) — Extensión vertical del cuerpo de colisión del jugador por encima de sus pies, en bloques.
   - Declaración: `pub const PLAYER_BODY_HEIGHT: f64 = 0.6;`
 
-- [`PLAYER_RESCUE_DROP`](physics.rs#L33) — Distancia por debajo de la última superficie estable a la que se rescata una caída.
+- [`PLAYER_RESCUE_DROP`](physics.rs#L32) — Distancia por debajo de la última superficie estable a la que se rescata una caída.
   - Declaración: `pub const PLAYER_RESCUE_DROP: f64 = 2.0;`
 
-- [`PLAYER_MAX_CLIMB`](physics.rs#L35) — Máximo de bloques que el jugador escala hacia arriba o hacia abajo de una columna a la siguiente.
+- [`PLAYER_MAX_CLIMB`](physics.rs#L34) — Máximo de bloques que el jugador escala hacia arriba o hacia abajo de una columna a la siguiente.
   - Declaración: `pub const PLAYER_MAX_CLIMB: f64 = 1.0;`
 
-- [`PLAYER_JUMP_HEIGHT`](physics.rs#L37) — Bloques que suben los pies del jugador en el punto más alto de un salto.
+- [`PLAYER_JUMP_HEIGHT`](physics.rs#L36) — Bloques que suben los pies del jugador en el punto más alto de un salto.
   - Declaración: `pub const PLAYER_JUMP_HEIGHT: f64 = 0.85;`
 
-- [`PLAYER_JUMP_TICKS`](physics.rs#L39) — Ticks que dura un salto en suelo llano, desde el despegue hasta el aterrizaje.
+- [`PLAYER_JUMP_TICKS`](physics.rs#L38) — Ticks que dura un salto en suelo llano, desde el despegue hasta el aterrizaje.
   - Declaración: `pub const PLAYER_JUMP_TICKS: i32 = 10;`
 
-- [`PLAYER_JUMP_BUFFER_TICKS`](physics.rs#L41) — Ticks durante los que una pulsación de salto puede esperar al aterrizaje.
+- [`PLAYER_JUMP_BUFFER_TICKS`](physics.rs#L40) — Ticks durante los que una pulsación de salto puede esperar al aterrizaje.
   - Declaración: `pub const PLAYER_JUMP_BUFFER_TICKS: i32 = 2;`
 
-- [`PLAYER_COYOTE_TICKS`](physics.rs#L43) — Ticks durante los que el salto sigue siendo posible tras abandonar un borde.
+- [`PLAYER_COYOTE_TICKS`](physics.rs#L42) — Ticks durante los que el salto sigue siendo posible tras abandonar un borde.
   - Declaración: `pub const PLAYER_COYOTE_TICKS: i32 = 2;`
 
-- [`PLAYER_AIR_JUMPS`](physics.rs#L45) — Saltos que el jugador puede dar en el aire antes de aterrizar.
+- [`PLAYER_AIR_JUMPS`](physics.rs#L44) — Saltos que el jugador puede dar en el aire antes de aterrizar.
   - Declaración: `pub const PLAYER_AIR_JUMPS: i32 = 1;`
 
-- [`PLAYER_JUMP_SPEED`](physics.rs#L47) — Bloques por tick que suben los pies en el despegue.
+- [`PLAYER_JUMP_SPEED`](physics.rs#L46) — Bloques por tick que suben los pies en el despegue.
   - Declaración: `pub const PLAYER_JUMP_SPEED: f64 = (4.0 * PLAYER_JUMP_HEIGHT) / PLAYER_JUMP_TICKS as f64;`
 
-- [`PLAYER_JUMP_CUT_SPEED`](physics.rs#L49) — Velocidad ascendente que se conserva al soltar la tecla de salto.
+- [`PLAYER_JUMP_CUT_SPEED`](physics.rs#L48) — Velocidad ascendente que se conserva al soltar la tecla de salto.
   - Declaración: `pub const PLAYER_JUMP_CUT_SPEED: f64 = PLAYER_JUMP_SPEED * 0.6;`
 
-- [`PLAYER_MAX_FALL_SPEED`](physics.rs#L51) — Velocidad descendente máxima en bloques por tick de simulación.
+- [`PLAYER_MAX_FALL_SPEED`](physics.rs#L50) — Velocidad descendente máxima en bloques por tick de simulación.
   - Declaración: `pub const PLAYER_MAX_FALL_SPEED: f64 = 0.6;`
 
-- [`PLAYER_GRAVITY`](physics.rs#L53) — Bloques por tick que la velocidad ascendente de sus pies cae en cada tick en el aire.
+- [`PLAYER_GRAVITY`](physics.rs#L52) — Bloques por tick que la velocidad ascendente de sus pies cae en cada tick en el aire.
   - Declaración: `pub const PLAYER_GRAVITY: f64 = (8.0 * PLAYER_JUMP_HEIGHT) / ((PLAYER_JUMP_TICKS as f64) * (PLAYER_JUMP_TICKS as f64));`
 
 - [`PLAYER_STEP_HEIGHT`](physics.rs#L55) — Bloques que una superficie puede quedar por encima de los pies del jugador y aun así pisarse en un tick.
@@ -295,85 +295,85 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`harmonic`](physics.rs#L110) — Calcula o recupera «harmonic» según los parámetros de la firma.
+- [`harmonic`](physics.rs#L109) — Calcula o recupera «harmonic» según los parámetros de la firma.
   - Firma: `fn harmonic(t: f64) -> f64 {`
 
-- [`column_at`](physics.rs#L236) — Calcula o recupera «column at» según los parámetros de la firma.
+- [`column_at`](physics.rs#L237) — Calcula o recupera «column at» según los parámetros de la firma.
   - Firma: `fn column_at(&self, x: i32, y: i32) -> Option<TerrainColumn>;`
 
-- [`occupancy_at`](physics.rs#L237) — Calcula o recupera «occupancy at» según los parámetros de la firma.
+- [`occupancy_at`](physics.rs#L238) — Calcula o recupera «occupancy at» según los parámetros de la firma.
   - Firma: `fn occupancy_at(&self, x: i32, y: i32) -> Vec<PlayerObstacle>;`
 
-- [`chunk_has`](physics.rs#L238) — Calcula o recupera «chunk has» según los parámetros de la firma.
+- [`chunk_has`](physics.rs#L239) — Calcula o recupera «chunk has» según los parámetros de la firma.
   - Firma: `fn chunk_has(&self, _coord: ChunkCoord) -> bool {`
 
-- [`load_around`](physics.rs#L241) — Calcula o recupera «load around» según los parámetros de la firma.
+- [`load_around`](physics.rs#L242) — Calcula o recupera «load around» según los parámetros de la firma.
   - Firma: `fn load_around(&mut self, _point: GridPoint) {} } /// Column the ground point `point` belongs to. pub fn get_player_column(point: GridPoint) -> WorldCoord {`
 
-- [`is_steppable`](physics.rs#L279) — Evalúa si se cumple la condición «steppable» para el estado recibido.
+- [`is_steppable`](physics.rs#L276) — Evalúa si se cumple la condición «steppable» para el estado recibido.
   - Firma: `fn is_steppable<G: PlayerGround>(ground: &G, x: i32, y: i32, from_elevation: f64) -> bool {`
 
-- [`clears_standing_body`](physics.rs#L290) — Calcula o recupera «clears standing body» según los parámetros de la firma.
+- [`clears_standing_body`](physics.rs#L287) — Calcula o recupera «clears standing body» según los parámetros de la firma.
   - Firma: `fn clears_standing_body(occ: &PlayerObstacle, column: &TerrainColumn) -> bool {`
 
-- [`support_at`](physics.rs#L296) — Calcula o recupera «support at» según los parámetros de la firma.
+- [`support_at`](physics.rs#L293) — Calcula o recupera «support at» según los parámetros de la firma.
   - Firma: `fn support_at<G: PlayerGround>(ground: &G, point: GridPoint) -> Option<TerrainColumn> {`
 
-- [`fits_in_air`](physics.rs#L315) — Calcula o recupera «fits in air» según los parámetros de la firma.
+- [`fits_in_air`](physics.rs#L312) — Calcula o recupera «fits in air» según los parámetros de la firma.
   - Firma: `fn fits_in_air<G: PlayerGround>(ground: &G, point: GridPoint, feet: f64) -> bool {`
 
-- [`can_leave_edge`](physics.rs#L319) — Calcula o recupera «can leave edge» según los parámetros de la firma.
+- [`can_leave_edge`](physics.rs#L316) — Calcula o recupera «can leave edge» según los parámetros de la firma.
   - Firma: `fn can_leave_edge<G: PlayerGround>(ground: &G, point: GridPoint, feet: f64) -> bool {`
 
 - [`block_reason_at`](physics.rs#L336) — Calcula o recupera «block reason at» según los parámetros de la firma.
   - Firma: `fn block_reason_at<G: PlayerGround>( ground: &G, point: GridPoint, elevation: f64, feet: f64, airborne: bool, ) -> Option<PlayerBlockReason> {`
 
-- [`fits_at`](physics.rs#L392) — Calcula o recupera «fits at» según los parámetros de la firma.
+- [`fits_at`](physics.rs#L394) — Calcula o recupera «fits at» según los parámetros de la firma.
   - Firma: `fn fits_at<G: PlayerGround>(ground: &G, point: GridPoint, from_elevation: f64) -> bool {`
 
-- [`elevation_at`](physics.rs#L396) — Calcula o recupera «elevation at» según los parámetros de la firma.
+- [`elevation_at`](physics.rs#L398) — Calcula o recupera «elevation at» según los parámetros de la firma.
   - Firma: `fn elevation_at<G: PlayerGround>(ground: &G, point: GridPoint) -> f64 {`
 
-- [`approach_velocity`](physics.rs#L573) — Calcula o recupera «approach velocity» según los parámetros de la firma.
+- [`approach_velocity`](physics.rs#L590) — Calcula o recupera «approach velocity» según los parámetros de la firma.
   - Firma: `fn approach_velocity(current: GridPoint, desired: GridPoint, rate: f64) -> GridPoint {`
 
-- [`is_faster_than_walk`](physics.rs#L586) — Evalúa si se cumple la condición «faster than walk» para el estado recibido.
+- [`is_faster_than_walk`](physics.rs#L603) — Evalúa si se cumple la condición «faster than walk» para el estado recibido.
   - Firma: `fn is_faster_than_walk(player: &PlayerState) -> bool {`
 
-- [`is_sliding`](physics.rs#L590) — Evalúa si se cumple la condición «sliding» para el estado recibido.
+- [`is_sliding`](physics.rs#L608) — Evalúa si se cumple la condición «sliding» para el estado recibido.
   - Firma: `fn is_sliding(player: &PlayerState) -> bool {`
 
-- [`get_gait`](physics.rs#L599) — Obtiene «gait» sin modificar el estado consultado.
+- [`get_gait`](physics.rs#L617) — Obtiene «gait» sin modificar el estado consultado.
   - Firma: `fn get_gait(player: &PlayerState, moved: bool) -> &'static str {`
 
-- [`get_motion_event`](physics.rs#L612) — Obtiene «motion event» sin modificar el estado consultado.
+- [`get_motion_event`](physics.rs#L630) — Obtiene «motion event» sin modificar el estado consultado.
   - Firma: `fn get_motion_event(player: &PlayerState, flying: bool) -> PlayerMotionEvent {`
 
-- [`update_motion`](physics.rs#L661) — Calcula o recupera «update motion» según los parámetros de la firma.
+- [`update_motion`](physics.rs#L679) — Calcula o recupera «update motion» según los parámetros de la firma.
   - Firma: `fn update_motion(player: &mut PlayerState, flying: bool) {`
 
-- [`take_off`](physics.rs#L667) — Calcula o recupera «take off» según los parámetros de la firma.
+- [`take_off`](physics.rs#L685) — Calcula o recupera «take off» según los parámetros de la firma.
   - Firma: `fn take_off(player: &mut PlayerState, air: bool) {`
 
-- [`reject_jump`](physics.rs#L682) — Calcula o recupera «reject jump» según los parámetros de la firma.
+- [`reject_jump`](physics.rs#L700) — Calcula o recupera «reject jump» según los parámetros de la firma.
   - Firma: `fn reject_jump(player: &mut PlayerState, reason: PlayerBlockReason) {`
 
-- [`land`](physics.rs#L687) — Calcula o recupera «land» según los parámetros de la firma.
+- [`land`](physics.rs#L705) — Calcula o recupera «land» según los parámetros de la firma.
   - Firma: `fn land(player: &mut PlayerState) {`
 
-- [`accelerate_player`](physics.rs#L694) — Calcula o recupera «accelerate player» según los parámetros de la firma.
+- [`accelerate_player`](physics.rs#L712) — Calcula o recupera «accelerate player» según los parámetros de la firma.
   - Firma: `fn accelerate_player(player: &mut PlayerState) {`
 
-- [`step_once`](physics.rs#L727) — Calcula o recupera «step once» según los parámetros de la firma.
+- [`step_once`](physics.rs#L745) — Calcula o recupera «step once» según los parámetros de la firma.
   - Firma: `fn step_once<G: PlayerGround>( player: &mut PlayerState, ground: &G, diagnose: bool, ) -> Option<PlayerBlockReason> {`
 
-- [`step_air`](physics.rs#L873) — Calcula o recupera «step air» según los parámetros de la firma.
+- [`step_air`](physics.rs#L904) — Calcula o recupera «step air» según los parámetros de la firma.
   - Firma: `fn step_air<G: PlayerGround>( player: &mut PlayerState, ground: &G, flying: bool, ) -> Option<&'static str> {`
 
-- [`ceiling_at`](physics.rs#L956) — Calcula o recupera «ceiling at» según los parámetros de la firma.
+- [`ceiling_at`](physics.rs#L997) — Calcula o recupera «ceiling at» según los parámetros de la firma.
   - Firma: `fn ceiling_at<G: PlayerGround>( ground: &G, point: GridPoint, head: f64, next_head: f64, ) -> Option<f64> {`
 
-- [`is_flying`](physics.rs#L991) — Evalúa si se cumple la condición «flying» para el estado recibido.
+- [`is_flying`](physics.rs#L1034) — Evalúa si se cumple la condición «flying» para el estado recibido.
   - Firma: `fn is_flying(player: &PlayerState) -> bool {`
 
 #### Constantes internas

@@ -145,7 +145,37 @@ fn get_player_jump_phase_ground() {
 }
 
 #[test]
-fn get_player_render_position_interpolates() {
+fn get_player_render_position_anchors_to_the_tick_boundaries() {
+    let ground = ground_from(&["0"]);
+    let mut player = create_player(&ground, GridPoint { x: 0.0, y: 0.0 });
+    player.previous = PlayerPosition {
+        x: 1.0,
+        y: 2.0,
+        elevation: 3.0,
+        height: 4.0,
+        velocity: GridPoint { x: 0.3, y: -0.2 },
+        vertical_speed: Some(0.4),
+    };
+    player.x = 2.0;
+    player.y = 3.0;
+    player.elevation = 4.0;
+    player.height = 5.0;
+    player.velocity = GridPoint { x: 0.3, y: -0.2 };
+    player.vertical_speed = Some(0.4);
+    let start = get_player_render_position(&player, 0.0);
+    assert!((start.x - 1.0).abs() < 1e-12);
+    assert!((start.y - 2.0).abs() < 1e-12);
+    assert!((start.elevation - 3.0).abs() < 1e-12);
+    assert!((start.height - 4.0).abs() < 1e-12);
+    let end = get_player_render_position(&player, 1.0);
+    assert!((end.x - 2.0).abs() < 1e-12);
+    assert!((end.y - 3.0).abs() < 1e-12);
+    assert!((end.elevation - 4.0).abs() < 1e-12);
+    assert!((end.height - 5.0).abs() < 1e-12);
+}
+
+#[test]
+fn get_player_render_position_eases_in_with_the_initial_velocity() {
     let ground = ground_from(&["0"]);
     let mut player = create_player(&ground, GridPoint { x: 0.0, y: 0.0 });
     player.previous = PlayerPosition {
@@ -153,12 +183,57 @@ fn get_player_render_position_interpolates() {
         y: 0.0,
         elevation: 0.0,
         height: 0.0,
+        velocity: GridPoint { x: 0.0, y: 0.0 },
+        vertical_speed: None,
     };
-    player.x = 1.0;
-    player.y = 1.0;
+    player.x = 0.3;
+    player.y = 0.0;
+    player.previous.velocity = GridPoint { x: 0.0, y: 0.0 };
+    player.velocity = GridPoint { x: 0.3, y: 0.0 };
     let rp = get_player_render_position(&player, 0.5);
-    assert!((rp.x - 0.5).abs() < 1e-9);
-    assert!((rp.y - 0.5).abs() < 1e-9);
+    assert!((rp.x - 0.1125).abs() < 1e-12, "x = {}", rp.x);
+}
+
+#[test]
+fn get_player_render_position_keeps_a_constant_velocity_perfectly_straight() {
+    let ground = ground_from(&["0"]);
+    let mut player = create_player(&ground, GridPoint { x: 0.0, y: 0.0 });
+    player.previous = PlayerPosition {
+        x: 1.0,
+        y: 5.0,
+        elevation: 0.0,
+        height: 0.0,
+        velocity: GridPoint { x: 0.3, y: -0.1 },
+        vertical_speed: None,
+    };
+    player.x = 1.3;
+    player.y = 4.9;
+    player.velocity = GridPoint { x: 0.3, y: -0.1 };
+    for alpha in [0.0, 0.25, 0.5, 0.75, 1.0] {
+        let rp = get_player_render_position(&player, alpha);
+        assert!((rp.x - (1.0 + 0.3 * alpha)).abs() < 1e-12);
+        assert!((rp.y - (5.0 - 0.1 * alpha)).abs() < 1e-12);
+    }
+}
+
+#[test]
+fn get_player_render_position_reproduces_the_jump_arc_exactly() {
+    let mut ground = ground_from(&["0000000000"]);
+    let mut player = create_player(&ground, GridPoint { x: 0.0, y: 0.0 });
+    jump_player(&mut player);
+    step_player(&mut player, &mut ground, 3);
+    let v0 = PLAYER_JUMP_SPEED;
+    let g = PLAYER_GRAVITY;
+    assert!((player.previous.height - (v0 * 2.0 - g * 2.0 * 2.0 / 2.0)).abs() < 1e-9);
+    for alpha in [0.0, 0.25, 0.5, 0.75, 1.0] {
+        let rp = get_player_render_position(&player, alpha);
+        let h = v0 * (2.0 + alpha) - g * (2.0 + alpha) * (2.0 + alpha) / 2.0;
+        assert!(
+            (rp.height - h).abs() < 1e-9,
+            "alpha {alpha}: height {} vs parabola {h}",
+            rp.height
+        );
+    }
 }
 
 #[test]

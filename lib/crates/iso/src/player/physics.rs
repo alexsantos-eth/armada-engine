@@ -198,7 +198,6 @@ pub struct PlayerState {
     pub feedback: PlayerFeedback,
     pub walk: GridPoint,
     pub motion: PlayerMotionType,
-    pub height_prev: f64,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -207,6 +206,10 @@ pub struct PlayerPosition {
     pub y: f64,
     pub elevation: f64,
     pub height: f64,
+    /// Horizontal displacement per tick when this state was reached.
+    pub velocity: GridPoint,
+    /// Vertical displacement per tick when this state was reached; `None` resting on a surface.
+    pub vertical_speed: Option<f64>,
 }
 
 /// Render position for interpolation.
@@ -466,12 +469,16 @@ pub fn find_player_spawn<G: PlayerGround>(ground: &G, centre: GridPoint) -> Play
             y: s.coord.y as f64,
             elevation: s.elevation as f64,
             height: 0.0,
+            velocity: GridPoint { x: 0.0, y: 0.0 },
+            vertical_speed: None,
         },
         None => PlayerPosition {
             x: centre.x,
             y: centre.y,
             elevation: 0.0,
             height: 0.0,
+            velocity: GridPoint { x: 0.0, y: 0.0 },
+            vertical_speed: None,
         },
     }
 }
@@ -482,6 +489,8 @@ pub fn create_player<G: PlayerGround>(ground: &G, at: GridPoint) -> PlayerState 
         y: at.y,
         elevation: elevation_at(ground, at),
         height: 0.0,
+        velocity: GridPoint { x: 0.0, y: 0.0 },
+        vertical_speed: None,
     };
     PlayerState {
         x: at.x,
@@ -503,7 +512,6 @@ pub fn create_player<G: PlayerGround>(ground: &G, at: GridPoint) -> PlayerState 
         feedback: PlayerFeedback::default(),
         walk: GridPoint { x: 0.0, y: 0.0 },
         motion: PlayerMotionType::Idle,
-        height_prev: 0.0,
     }
 }
 
@@ -969,6 +977,8 @@ fn step_air<G: PlayerGround>(
                 y: player.y,
                 elevation: player.elevation,
                 height: 0.0,
+                velocity: GridPoint { x: 0.0, y: 0.0 },
+                vertical_speed: None,
             };
             return Some("landed");
         }
@@ -1059,6 +1069,8 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
             y,
             elevation,
             height,
+            velocity: player.velocity,
+            vertical_speed: player.vertical_speed,
         };
         if player.feedback.landing_ticks > 0 {
             player.feedback.landing_ticks -= 1;
@@ -1178,6 +1190,8 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
                 y: player.y,
                 elevation: player.elevation,
                 height: 0.0,
+                velocity: GridPoint { x: 0.0, y: 0.0 },
+                vertical_speed: None,
             };
         }
         player.feedback.air_ticks = if player.vertical_speed.is_none() {
@@ -1242,12 +1256,32 @@ pub fn get_player_render_position(player: &PlayerState, alpha: f64) -> PlayerRen
     } else {
         1.0
     };
-    let lerp = |from: f64, to: f64| from + (to - from) * t;
+    let previous = &player.previous;
+    let hermite = |from: f64, to: f64, tangent_from: f64, tangent_to: f64| {
+        let t2 = t * t;
+        let t3 = t2 * t;
+        let h00 = 2.0 * t3 - 3.0 * t2 + 1.0;
+        let h10 = t3 - 2.0 * t2 + t;
+        let h01 = -2.0 * t3 + 3.0 * t2;
+        let h11 = t3 - t2;
+        h00 * from + h10 * tangent_from + h01 * to + h11 * tangent_to
+    };
+    let tangent_x_from = previous.velocity.x;
+    let tangent_y_from = previous.velocity.y;
+    let tangent_x_to = player.velocity.x;
+    let tangent_y_to = player.velocity.y;
+    let tangent_height_from = previous.vertical_speed.unwrap_or(0.0);
+    let tangent_height_to = player.vertical_speed.unwrap_or(0.0);
     PlayerRenderPosition {
-        x: lerp(player.previous.x, player.x),
-        y: lerp(player.previous.y, player.y),
-        elevation: lerp(player.previous.elevation, player.elevation),
-        height: lerp(player.previous.height, player.height),
+        x: hermite(previous.x, player.x, tangent_x_from, tangent_x_to),
+        y: hermite(previous.y, player.y, tangent_y_from, tangent_y_to),
+        elevation: hermite(previous.elevation, player.elevation, 0.0, 0.0),
+        height: hermite(
+            previous.height,
+            player.height,
+            tangent_height_from,
+            tangent_height_to,
+        ),
     }
 }
 
