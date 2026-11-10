@@ -1,10 +1,41 @@
+use std::collections::HashMap;
+
 use super::{MAX_EXPOSED_BLOCKS, TerrainFrames, collect_terrain_sprites, exposed_floor};
+use iso::assets::{InkBox, SpriteFrame};
 use iso::grid::WorldCoord;
 use iso::terrain::{TerrainColumn, TerrainMaterial};
 
-use crate::assets::sprites::DrawKind;
+use crate::assets::sprites::{DrawKind, SpriteDraw};
+use crate::terrain::terrain_view::MATERIAL_SLOTS;
 use crate::terrain::terrain_view_appearance::TerrainLook;
 use crate::water::reflection_view::WaterCell;
+
+/// Frames for every material, one plain block each: the fixture the tests draw with. The
+/// reflection hangs one elevation step below the anchor, as the shipped reflection art does.
+fn test_frames() -> TerrainFrames {
+    let frame = SpriteFrame {
+        x: 0,
+        y: 0,
+        width: 32,
+        height: 32,
+    };
+    let block = InkBox {
+        x: -0.5,
+        y: -1.0,
+        width: 1.0,
+        height: 1.0,
+    };
+    let reflection = InkBox {
+        x: -0.5,
+        y: 0.0,
+        width: 1.0,
+        height: iso::assets::SVG_BLOCK_HEIGHT / iso::assets::SVG_TILE_WIDTH,
+    };
+    TerrainFrames {
+        frames: [Some((frame, block)); MATERIAL_SLOTS],
+        reflections: [Some((frame, reflection)); MATERIAL_SLOTS],
+    }
+}
 
 #[test]
 fn level_ground_draws_only_its_surface() {
@@ -58,8 +89,8 @@ fn column(x: i32, y: i32, elevation: i32) -> TerrainColumn {
 }
 
 /// Polygon area of a reflection piece.
-fn piece_area(draw: &crate::assets::sprites::SpriteDraw) -> f64 {
-    let crate::assets::sprites::DrawKind::Reflection { points, .. } = &draw.kind else {
+fn piece_area(draw: &SpriteDraw) -> f64 {
+    let DrawKind::Reflection { points, .. } = &draw.kind else {
         return 0.0;
     };
     let mut sum = 0.0;
@@ -70,47 +101,28 @@ fn piece_area(draw: &crate::assets::sprites::SpriteDraw) -> f64 {
     sum / 2.0
 }
 
-/// A straight run of wall: the two blocks cast on the same water cell in front of them.
-/// The block in front paints over the sliver of the block behind, so the behind's piece
-/// queues first, whatever order the columns arrived in.
-#[test]
-fn the_back_block_reflects_before_the_front_block_on_their_shared_cell() {
-    let back = column(1, 0, 1);
-    let front = column(0, 0, 1);
-    for columns in [&[back, front][..], &[front, back][..]] {
-        let draws = shore(columns);
-        let depth = crate::assets::sprites::ground_key(
-            0.5,
-            -0.5,
-            0.0,
-            crate::water::reflection_view::REFLECTION_LAYER,
-            projection().tile_height,
-        )
-        .depth;
-        let shared: Vec<&crate::assets::sprites::SpriteDraw> = draws
-            .iter()
-            .filter(|draw| {
-                matches!(&draw.kind, DrawKind::Reflection { .. }) && draw.key.depth == depth
-            })
-            .collect();
-        assert_eq!(shared.len(), 2, "the two blocks share this cell");
-        let areas: Vec<f64> = shared.iter().map(|draw| piece_area(draw).abs()).collect();
-        assert!(
-            areas[0] < areas[1],
-            "the sliver of the back block paints before the front block's band"
-        );
+/// Reflection pieces grouped by the key of the water cell they painted, in draw order. The test
+/// discovers the shared cells from the draws instead of recomputing the keys.
+fn reflection_pieces_by_cell(draws: &[SpriteDraw]) -> HashMap<u64, Vec<f64>> {
+    let mut cells: HashMap<u64, Vec<f64>> = HashMap::new();
+    for draw in draws {
+        if matches!(&draw.kind, DrawKind::Reflection { .. }) {
+            cells
+                .entry(draw.key.depth.to_bits())
+                .or_default()
+                .push(piece_area(draw).abs());
+        }
     }
+    cells
 }
 
-/// A shore: `columns` rise above a sea at level `0.0`; every other cell is water, one
-/// block under the shore, as the world generates it.
-fn shore(columns: &[TerrainColumn]) -> Vec<crate::assets::sprites::SpriteDraw> {
-    use std::collections::HashMap;
-    let elevations: HashMap<(i32, i32), i32> = columns
-        .iter()
-        .map(|column| ((column.coord.x, column.coord.y), column.elevation))
-        .collect();
-    let frames = TerrainFrames::for_test();
+/// The draws of `columns` over `water_at`, with `height_at` answering the streaming height query.
+fn collected(
+    columns: &[TerrainColumn],
+    height_at: impl Fn(WorldCoord) -> Option<i32>,
+    water_at: impl Fn(i32, i32) -> Option<WaterCell>,
+) -> Vec<SpriteDraw> {
+    let frames = test_frames();
     let (look, _) = TerrainLook::new(7, |_| None);
     let mut out = Vec::new();
     collect_terrain_sprites(
@@ -118,17 +130,38 @@ fn shore(columns: &[TerrainColumn]) -> Vec<crate::assets::sprites::SpriteDraw> {
         projection(),
         &frames,
         &look,
-        |coord| Some(elevations.get(&(coord.x, coord.y)).copied().unwrap_or(-1)),
-        |x, y| {
-            (!elevations.contains_key(&(x, y))).then_some(WaterCell {
-                level: 0.0,
-                elevation: 0.0,
-            })
-        },
+        height_at,
+        water_at,
         (4000.0, 4000.0),
         &mut out,
     );
     out
+}
+
+/// The draws of `columns` over a sea at `level`.
+fn collected_over_a_flat_sea(
+    columns: &[TerrainColumn],
+    water_at: impl Fn(i32, i32) -> Option<WaterCell>,
+) -> Vec<SpriteDraw> {
+    collected(columns, |_| Some(0), water_at)
+}
+
+/// A shore: `columns` rise above a sea at level `0.0`; every other cell is water, one
+/// block under the shore, as the world generates it.
+fn shore(columns: &[TerrainColumn]) -> Vec<SpriteDraw> {
+    let elevations: HashMap<(i32, i32), i32> = columns
+        .iter()
+        .map(|column| ((column.coord.x, column.coord.y), column.elevation))
+        .collect();
+    let height_at =
+        |coord: WorldCoord| Some(elevations.get(&(coord.x, coord.y)).copied().unwrap_or(-1));
+    let water_at = |x, y| {
+        (!elevations.contains_key(&(x, y))).then_some(WaterCell {
+            level: 0.0,
+            elevation: 0.0,
+        })
+    };
+    collected(columns, height_at, water_at)
 }
 
 /// A sea at one level: every cell of it is water, and nothing else is.
@@ -141,55 +174,37 @@ fn sea(level: f64) -> impl Fn(i32, i32) -> Option<WaterCell> {
     }
 }
 
-/// The draws of `columns` over a sea at `level`, split by kind of sprite.
-fn collected(
-    columns: &[TerrainColumn],
-    water_at: impl Fn(i32, i32) -> Option<WaterCell>,
-) -> Vec<crate::assets::sprites::SpriteDraw> {
-    let frames = TerrainFrames::for_test();
-    let (look, _) = TerrainLook::new(7, |_| None);
-    let mut out = Vec::new();
-    collect_terrain_sprites(
-        columns,
-        projection(),
-        &frames,
-        &look,
-        |_| Some(0),
-        water_at,
-        (4000.0, 4000.0),
-        &mut out,
-    );
-    out
-}
-
-fn reflections(draws: &[crate::assets::sprites::SpriteDraw]) -> usize {
+fn reflections(draws: &[SpriteDraw]) -> usize {
     draws
         .iter()
         .filter(|draw| matches!(&draw.kind, DrawKind::Reflection { .. }))
         .count()
 }
 
-/// Reflection draws keyed to one water cell, by its depth: the wings cast there whether or
-/// not the middle column exists, so this counts what that cell shows without the middle's share.
-fn reflections_on(draws: &[crate::assets::sprites::SpriteDraw], cell: (i32, i32)) -> usize {
-    let depth = crate::assets::sprites::ground_key(
-        f64::from(cell.0) + 0.5,
-        f64::from(cell.1) + 0.5,
-        0.0,
-        crate::water::reflection_view::REFLECTION_LAYER,
-        projection().tile_height,
-    )
-    .depth;
-    draws
-        .iter()
-        .filter(|draw| matches!(&draw.kind, DrawKind::Reflection { .. }) && draw.key.depth == depth)
-        .count()
+/// A straight run of wall: the two blocks cast on the same water cell in front of them.
+/// The block in front paints over the sliver of the block behind, so the behind's piece
+/// queues first, whatever order the columns arrived in.
+#[test]
+fn the_back_block_reflects_before_the_front_block_on_their_shared_cell() {
+    let back = column(1, 0, 1);
+    let front = column(0, 0, 1);
+    for columns in [&[back, front][..], &[front, back][..]] {
+        let cells = reflection_pieces_by_cell(&shore(columns));
+        let shared: Vec<&Vec<f64>> = cells.values().filter(|areas| areas.len() == 2).collect();
+        assert!(!shared.is_empty(), "the two blocks share a cell");
+        for areas in shared {
+            assert!(
+                areas[0] < areas[1],
+                "the sliver of the back block paints before the front block's band"
+            );
+        }
+    }
 }
 
 /// A rise above the water reflects in it, so the shore does not look pasted onto the sea.
 #[test]
 fn a_rise_above_the_water_reflects_in_it() {
-    let draws = collected(&[grass_column(2)], sea(0.0));
+    let draws = collected_over_a_flat_sea(&[grass_column(2)], sea(0.0));
     assert!(
         reflections(&draws) > 0,
         "the water shows the blocks of the shore"
@@ -203,20 +218,18 @@ fn a_rise_above_the_water_reflects_in_it() {
 fn a_hemmed_in_middle_column_reflects_nothing() {
     let middle = column(1, 1, 1);
     let wings = [column(0, 1, 1), column(1, 0, 1)];
-    let formation = shore(&[middle, wings[0], wings[1]]);
-    let wings_only = shore(&wings);
-    let wedge = (0, 0);
+    let wings_only = reflection_pieces_by_cell(&shore(&wings));
+    let wing_count: usize = wings_only.values().map(Vec::len).sum();
+    assert!(wing_count > 0, "the wings cast on the wedge of water");
+    let lone_middle = reflection_pieces_by_cell(&shore(&[middle]));
+    let lone_count: usize = lone_middle.values().map(Vec::len).sum();
     assert!(
-        reflections_on(&wings_only, wedge) > 0,
-        "the wings cast on the wedge of water"
-    );
-    assert!(
-        reflections_on(&shore(&[middle]), wedge) > 0,
+        lone_count > 0,
         "a lone middle column casts on the wedge of water"
     );
+    let formation = reflection_pieces_by_cell(&shore(&[middle, wings[0], wings[1]]));
     assert_eq!(
-        reflections_on(&formation, wedge),
-        reflections_on(&wings_only, wedge),
+        formation, wings_only,
         "a recessed middle column adds no reflection between same-height wings"
     );
 }
@@ -238,13 +251,13 @@ fn one_open_flank_keeps_the_middle_reflection() {
 /// Dry land mirrors nothing, whatever stands on it.
 #[test]
 fn dry_land_reflects_nothing() {
-    let draws = collected(&[grass_column(2)], |_, _| None);
+    let draws = collected_over_a_flat_sea(&[grass_column(2)], |_, _| None);
     assert_eq!(reflections(&draws), 0);
 }
 
 /// A column whose blocks all sit below the water hides in it: the water shows nothing of them.
 #[test]
 fn a_column_below_the_water_reflects_nothing() {
-    let draws = collected(&[grass_column(0)], sea(2.0));
+    let draws = collected_over_a_flat_sea(&[grass_column(0)], sea(2.0));
     assert_eq!(reflections(&draws), 0);
 }

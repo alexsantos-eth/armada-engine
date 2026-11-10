@@ -82,34 +82,34 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`terrain_column_to_saved`](save.rs#L98) — Convierte una columna de terreno materializada a su forma guardada.
+- [`terrain_column_to_saved`](save.rs#L101) — Convierte una columna de terreno materializada a su forma guardada.
   - Firma: `pub fn terrain_column_to_saved(column: &crate::terrain::TerrainColumn) -> SavedColumn {`
 
-- [`saved_to_terrain_column`](save.rs#L111) — Reconstruye una columna de terreno desde su forma guardada, usando el bloque superior como superficie.
+- [`saved_to_terrain_column`](save.rs#L114) — Reconstruye una columna de terreno desde su forma guardada, usando el bloque superior como superficie.
   - Firma: `pub fn saved_to_terrain_column(saved: &SavedColumn) -> crate::terrain::TerrainColumn {`
 
-- [`new`](save.rs#L132) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
+- [`new`](save.rs#L138) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
   - Firma: `pub fn new() -> Self {`
 
-- [`put`](save.rs#L137) — Almacena una copia profunda de `chunk`, indexada por sus coordenadas.
+- [`put`](save.rs#L143) — Almacena una copia profunda de `chunk`, indexada por sus coordenadas.
   - Firma: `pub fn put(&mut self, chunk: SavedChunk) {`
 
-- [`get`](save.rs#L147) — Devuelve una copia del chunk en `(cx, cy)`, o `None` cuando nunca fue descubierto.
+- [`get`](save.rs#L159) — Devuelve una copia del chunk en `(cx, cy)`, o `None` cuando nunca fue descubierto.
   - Firma: `pub fn get(&self, cx: i32, cy: i32) -> Option<SavedChunk> {`
 
-- [`get_or_generate`](save.rs#L153) — Devuelve el chunk descubierto, o lo genera y almacena una vez cuando falta.
+- [`get_or_generate`](save.rs#L159) — Devuelve el chunk descubierto, o lo genera y almacena una vez cuando falta.
   - Firma: `pub fn get_or_generate<F>(&mut self, cx: i32, cy: i32, generate: F) -> Result<SavedChunk, SaveError> where F: FnOnce(i32, i32) -> SavedChunk, {`
 
-- [`snapshot`](save.rs#L171) — Construye un guardado, ordenando los chunks para un orden JSON estable.
+- [`snapshot`](save.rs#L182) — Construye un guardado, ordenando los chunks para un orden JSON estable.
   - Firma: `pub fn snapshot(&self, player: serde_json::Value, systems: serde_json::Value) -> WorldSave {`
 
-- [`chunks`](save.rs#L184) — Itera sobre cada chunk descubierto en orden estable.
+- [`chunks`](save.rs#L195) — Itera sobre cada chunk descubierto en orden estable.
   - Firma: `pub fn chunks(&self) -> impl Iterator<Item = &SavedChunk> {`
 
-- [`restore`](save.rs#L191) — Restaura un archivo desde un guardado analizado.
+- [`restore`](save.rs#L202) — Restaura un archivo desde un guardado analizado.
   - Firma: `pub fn restore(save: &WorldSave) -> Self {`
 
-- [`parse_world_save`](save.rs#L201) — Comprueba la versión y la estructura en la frontera del archivo de guardado; los snapshots V1 se rechazan.
+- [`parse_world_save`](save.rs#L212) — Comprueba la versión y la estructura en la frontera del archivo de guardado; los snapshots V1 se rechazan.
   - Firma: `pub fn parse_world_save(value: serde_json::Value) -> Result<WorldSave, SaveError> {`
 
 #### Constantes
@@ -206,23 +206,23 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`fmt`](save.rs#L76) — Calcula o recupera «fmt» según los parámetros de la firma.
   - Firma: `fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {`
 
-- [`parse_chunk`](save.rs#L277) — Calcula o recupera «parse chunk» según los parámetros de la firma.
+- [`parse_chunk`](save.rs#L291) — Calcula o recupera «parse chunk» según los parámetros de la firma.
   - Firma: `fn parse_chunk(value: &serde_json::Value, index: usize) -> Result<SavedChunk, SaveError> {`
 
-- [`parse_columns`](save.rs#L316) — Calcula o recupera «parse columns» según los parámetros de la firma.
+- [`parse_columns`](save.rs#L332) — Calcula o recupera «parse columns» según los parámetros de la firma.
   - Firma: `fn parse_columns( obj: &serde_json::Map<String, serde_json::Value>, key: &str, cx: i32, cy: i32, ) -> Result<Vec<SavedColumn>, SaveError> {`
 
-- [`parse_column`](save.rs#L336) — Calcula o recupera «parse column» según los parámetros de la firma.
+- [`parse_column`](save.rs#L352) — Calcula o recupera «parse column» según los parámetros de la firma.
   - Firma: `fn parse_column( value: &serde_json::Value, cx: i32, cy: i32, index: usize, ) -> Result<SavedColumn, SaveError> {`
 
-- [`parse_blocks`](save.rs#L389) — Calcula o recupera «parse blocks» según los parámetros de la firma.
+- [`parse_blocks`](save.rs#L405) — Calcula o recupera «parse blocks» según los parámetros de la firma.
   - Firma: `fn parse_blocks( obj: &serde_json::Map<String, serde_json::Value>, key: &str, cx: i32, cy: i32, column_index: usize, ) -> Result<Vec<SavedBlock>, SaveError> {`
 
-- [`parse_block`](save.rs#L412) — Calcula o recupera «parse block» según los parámetros de la firma.
+- [`parse_block`](save.rs#L426) — Calcula o recupera «parse block» según los parámetros de la firma.
   - Firma: `fn parse_block( value: &serde_json::Value, cx: i32, cy: i32, column_index: usize, block_index: usize, ) -> Result<SavedBlock, SaveError> {`
 
-- [`parse_entities`](save.rs#L461) — Calcula o recupera «parse entities» según los parámetros de la firma.
+- [`parse_entities`](save.rs#L478) — Calcula o recupera «parse entities» según los parámetros de la firma.
   - Firma: `fn parse_entities( obj: &serde_json::Map<String, serde_json::Value>, key: &str, cx: i32, cy: i32, ) -> Result<Vec<SavedEntity>, SaveError> {`
 
-- [`parse_entity`](save.rs#L481) — Calcula o recupera «parse entity» según los parámetros de la firma.
+- [`parse_entity`](save.rs#L498) — Calcula o recupera «parse entity» según los parámetros de la firma.
   - Firma: `fn parse_entity( value: &serde_json::Value, cx: i32, cy: i32, index: usize, ) -> Result<SavedEntity, SaveError> {`

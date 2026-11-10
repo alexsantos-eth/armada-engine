@@ -67,34 +67,6 @@ impl TerrainFrames {
         self.reflections[slot(material)]
     }
 
-    /// Frames for every material, one plain block each, for tests. The reflection hangs one
-    /// elevation step below the anchor, as the shipped reflection art does.
-    #[cfg(test)]
-    pub(crate) fn for_test() -> Self {
-        let frame = SpriteFrame {
-            x: 0,
-            y: 0,
-            width: 32,
-            height: 32,
-        };
-        let block = InkBox {
-            x: -0.5,
-            y: -1.0,
-            width: 1.0,
-            height: 1.0,
-        };
-        let reflection = InkBox {
-            x: -0.5,
-            y: 0.0,
-            width: 1.0,
-            height: iso::assets::SVG_BLOCK_HEIGHT / iso::assets::SVG_TILE_WIDTH,
-        };
-        Self {
-            frames: [Some((frame, block)); MATERIAL_SLOTS],
-            reflections: [Some((frame, reflection)); MATERIAL_SLOTS],
-        }
-    }
-
     /// How far the artwork of any of these materials reaches above and below the ground it
     fn reach(&self, tile_width: f64) -> (f64, f64) {
         self.frames
