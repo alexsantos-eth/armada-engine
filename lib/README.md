@@ -80,7 +80,10 @@ perdido de ~47 ms con el CPU en 0. Si algún día se reemplaza el puente por uno
 hay que re-aplicar el parche. La página referencia esos dos scripts con una `?v=` manual (ver
 `web/index.html`): sin ese prefijo, la caché heurística de Safari servía el puente viejo durante
 días sin volver a pedirlo, y los arreglos del puente no llegaban al móvil. Al tocar el puente o
-el adaptador, sube el número.
+el adaptador, sube el número. Aun con los listeners pasivos, iOS Safari aplaza el
+`requestAnimationFrame` mientras hay un toque en vuelo: en el móvil «caídos» sube ~1 por toque
+con el CPU en cero. No es culpa del cliente y no hay parche JS conocido para ello; la cifra
+accionable es «por cpu» (frames que el juego perdió por sí mismo).
 
 ## Preparar despliegue
 
