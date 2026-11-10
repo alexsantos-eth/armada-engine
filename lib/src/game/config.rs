@@ -7,6 +7,9 @@ use iso::assets::{SVG_BLOCK_HEIGHT, SVG_TILE_WIDTH};
 use iso::grid::WorldCoord;
 use iso::world::ChunkRadii;
 
+/// The game's display name: window title, the `.app` bundle name and the per-user support
+/// directory on macOS. This is the single place to change to rename the game everywhere.
+pub const GAME_TITLE: &str = "Yorch Adventure";
 /// Diagnostic centre of the world; the player spawns near here.
 pub const PREVIEW_CENTRE: WorldCoord = WorldCoord { x: 16, y: 88 };
 /// The scene's zoom: how wide one tile is drawn, in screen pixels.

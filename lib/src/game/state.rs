@@ -43,12 +43,15 @@ use crate::terrain::terrain_view_blocks::TerrainFrames;
 use crate::touch::{TouchControls, coarse_pointer};
 
 /// Where a manifest path is fetched from.
+#[cfg(target_arch = "wasm32")]
 fn client_path(path: &str) -> String {
-    if cfg!(target_arch = "wasm32") {
-        format!("./{path}")
-    } else {
-        path.to_owned()
-    }
+    format!("./{path}")
+}
+
+/// Where a manifest path is fetched from.
+#[cfg(not(target_arch = "wasm32"))]
+fn client_path(path: &str) -> String {
+    crate::app::asset_path(path)
 }
 
 /// The composed game: world, player, camera, artwork and the save in flight.

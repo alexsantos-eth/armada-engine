@@ -15,7 +15,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`load_save`](persistence.rs#L54) — Intenta cargar un archivo de guardado del disco. Devuelve `None` ante cualquier error o al ejecutarse en WASM.
+- [`load_save`](persistence.rs) — Intenta cargar un archivo de guardado del disco. Devuelve `None` ante cualquier error o al ejecutarse en WASM. En nativo la ruta la resuelve `crate::app::save_path()`: dentro de un `.app`, `~/Library/Application Support/<GAME_TITLE>/saves/iso_save.json`; fuera, `saves/iso_save.json` junto al CWD.
   - Firma: `pub async fn load_save() -> Option<WorldSave> {`
 
 - [`restore_archive`](persistence.rs#L70) — Restaura un `ChunkArchive` desde un guardado ya parseado, o devuelve un archivo vacío.
@@ -56,8 +56,8 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Constantes internas
 
-- [`SAVE_PATH`](persistence.rs#L6) — Define el parámetro interno «SAVE PATH» empleado por este módulo.
-  - Declaración: `const SAVE_PATH: &str = "saves/iso_save.json";`
+- [`STORAGE_KEY`](persistence.rs) — Clave del almacenamiento local en WASM (solo build WASM); conserva el mismo nombre relativo que el archivo de desarrollo. En nativo no se usa: la ruta la resuelve `crate::app::save_path()` (ver `src/app/bundle.rs`).
+  - Declaración: `const STORAGE_KEY: &str = "saves/iso_save.json";`
 
 - [`OUTPUT_CAPACITY`](persistence.rs#L28) — Define el parámetro interno «OUTPUT CAPACITY» empleado por este módulo.
   - Declaración: `const OUTPUT_CAPACITY: usize = 32 * 1024 * 1024;`

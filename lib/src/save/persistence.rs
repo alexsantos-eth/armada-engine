@@ -3,7 +3,8 @@
 use iso::world::ChunkManager;
 use iso::world::{ChunkArchive, WorldSave, parse_world_save};
 
-const SAVE_PATH: &str = "saves/iso_save.json";
+#[cfg(target_arch = "wasm32")]
+const STORAGE_KEY: &str = "saves/iso_save.json";
 
 #[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "env")]
@@ -54,13 +55,14 @@ fn local_storage_set(key: &str, value: &str) -> bool {
 pub async fn load_save() -> Option<WorldSave> {
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let contents = std::fs::read_to_string(SAVE_PATH).ok()?;
+        let path = crate::app::save_path();
+        let contents = std::fs::read_to_string(&path).ok()?;
         let json: serde_json::Value = serde_json::from_str(&contents).ok()?;
         parse_world_save(json).ok()
     }
     #[cfg(target_arch = "wasm32")]
     {
-        let contents = local_storage_get(SAVE_PATH)?;
+        let contents = local_storage_get(STORAGE_KEY)?;
         let json: serde_json::Value = serde_json::from_str(&contents).ok()?;
         parse_world_save(json).ok()
     }
@@ -83,14 +85,20 @@ pub fn save_archive(archive: &ChunkArchive) {
     };
     #[cfg(not(target_arch = "wasm32"))]
     {
-        if let Some(directory) = std::path::Path::new(SAVE_PATH).parent() {
+        let path = crate::app::save_path();
+        if let Some(directory) = path.parent() {
             let _ = std::fs::create_dir_all(directory);
         }
-        let _ = std::fs::write(SAVE_PATH, json.as_bytes());
+        if let Err(err) = std::fs::write(&path, json.as_bytes()) {
+            eprintln!(
+                "warning: could not write the save at {}: {err}",
+                path.display()
+            );
+        }
     }
     #[cfg(target_arch = "wasm32")]
     {
-        let _ = local_storage_set(SAVE_PATH, &json);
+        let _ = local_storage_set(STORAGE_KEY, &json);
     }
 }
 

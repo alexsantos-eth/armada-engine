@@ -16,8 +16,9 @@ lib/
   src/            # crate `iso-core`: cliente Macroquad, binario y adaptadores
   content/        # manifiesto de assets, atlas y catálogo de entidades
   assets-src/     # SVG fuente del atlas (copia local, no se despliega)
+  packaging/      # fuente e icns del icono del bundle macOS (no se despliega)
   web/            # cargador WASM y archivos web (`/` limpio, `/playground` con GUI)
-  scripts/        # utilidades de atlas y ejecución nativa
+  scripts/        # utilidades de atlas, icono y ejecución nativa
 ```
 
 La regla de dependencia es `iso-core → iso`. `iso` no importa Macroquad, navegador, audio ni archivos de la escena; el cliente puede usar tipos y decisiones del dominio, pero el dominio no conoce sprites, texturas ni resolución de pantalla. Si una regla necesita pruebas sin GPU o navegador, normalmente pertenece al dominio. La estructura exacta de carpetas y archivos es la de [Estructura de archivos](FILE_STRUCTURE.md).

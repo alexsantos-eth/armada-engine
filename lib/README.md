@@ -42,6 +42,29 @@ referencia, `MOBILE_ZOOM` en `src/game/config.rs`), para ver más mundo en una p
 pequeña; la build nativa conserva la casilla de referencia.
 El HUD sustituye la línea de ayuda por la de los controles cuando están visibles.
 
+## Empaquetar para macOS
+
+`scripts/build-macos.sh [directorio]` (por defecto `dist/`, ignorado por git) compila el cliente en
+release y ensambla `dist/<Título>.app`: el binario renombrado en `Contents/MacOS`, `content/` en
+`Contents/Resources`, el icono `packaging/game.icns` (commitado; se regenera con
+`scripts/build-icon.sh` desde `packaging/icon-player.png`), el `Info.plist` y una firma ad-hoc.
+No hace falta Xcode completo: se apoya en las Command Line Tools (`codesign`, `plutil`; `sips` e
+`iconutil` solo en `scripts/build-icon.sh`).
+
+El título del juego tiene una única fuente: `GAME_TITLE` en `src/game/config.rs` (hoy «Yorch
+Adventure»). El script lo lee de ahí, así que cambiar el nombre es editar esa constante y volver a
+empaquetar: el título de la ventana, el nombre del `.app`, el `Info.plist` y el directorio de
+guardado per-user se actualizan solos. El identificador del bundle
+(`com.armada-io.yorch-adventure`) es independiente del título a propósito —debe permanecer
+estable— y se cambia con la variable de entorno `BUNDLE_ID`; el icono por defecto se sustituye con
+`ICON_ICNS`. La versión del bundle sale de `Cargo.toml`.
+
+Al lanzar desde el `.app` (Finder) el proceso arranca con `/` como directorio de trabajo: el cliente
+localiza los assets en `Contents/Resources` (la ruta tal cual si existe junto al CWD, para desarrollo;
+ver `src/app/bundle.rs`) y guarda en
+`~/Library/Application Support/<GAME_TITLE>/saves/iso_save.json`. Fuera del bundle el guardado sigue
+en `saves/iso_save.json` junto al CWD, como siempre. Para probarlo: `open "dist/Yorch Adventure.app"`.
+
 ## Correr web
 
 Compila a WebAssembly y sirve el resultado:

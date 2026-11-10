@@ -180,5 +180,5 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones internas
 
-- [`client_path`](state.rs#L44) — De dónde se pide el manifiesto: `./` en WASM, la ruta tal cual en nativo.
+- [`client_path`](state.rs#L47) — De dónde se pide el manifiesto, según la plataforma (dos definiciones con `#[cfg]`): `./` en WASM; en nativo, la ruta tal cual si existe junto al CWD (desarrollo), y desde `Contents/Resources` del bundle cuando corre dentro de un `.app` (`crate::app`).
   - Firma: `fn client_path(path: &str) -> String {`

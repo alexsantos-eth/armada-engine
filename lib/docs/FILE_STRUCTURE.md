@@ -69,8 +69,8 @@ propietario contiene sus tipos, reglas y pruebas: por ejemplo, `terrain`,
 Una carpeta de un solo archivo puede exponerlo desde su `mod.rs`, pero si la
 lógica crece se extrae a un archivo con nombre de responsabilidad y se conserva
 el barrel. `crates/iso/src/lib.rs` es el barrel del crate `iso`; `src/main.rs`
-es la entrada del binario y solo compone los módulos del cliente. Ninguno debe
-acumular reglas de dominio o renderizado.
+es la entrada del binario y solo declara los módulos del cliente y compone `app::run`. El
+dominio `app` ([`src/app/`](../src/app/mod.md), con su `mod.md`) aloja el pegamento de arranque —la ventana (`bootstrap.rs`, con su `bootstrap.test.rs`) y el layout del bundle de macOS (`bundle.rs`)—; el resto de la composición y el comportamiento viven en sus dominios. Ninguno debe acumular reglas de dominio o renderizado.
 
 Los consumidores externos importan la API del barrel (`iso::terrain`,
 `crate::lighting`); los archivos internos pueden usar rutas hermanas cuando
