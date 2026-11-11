@@ -57,6 +57,8 @@ pub struct EntityShape {
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct EntityPlacement {
     pub surfaces: Vec<TerrainMaterial>,
+    #[serde(default, rename = "roadAccess")]
+    pub road_access: bool,
 }
 
 /// One entry of the versioned entity catalog.

@@ -15,7 +15,7 @@ fn deserializes_the_versioned_blueprint_contract() {
             "length": 1,
             "collision": [1.0]
         },
-        "placement": { "surfaces": ["grass"] }
+        "placement": { "surfaces": ["grass"], "roadAccess": true }
     }))
     .expect("blueprint contract deserializes");
 
@@ -23,6 +23,7 @@ fn deserializes_the_versioned_blueprint_contract() {
     assert_eq!(blueprint.asset.contact_shadow, Some(true));
     assert!(blueprint.asset.color_replacements.is_some());
     assert_eq!(blueprint.placement.surfaces, [TerrainMaterial::Grass]);
+    assert!(blueprint.placement.road_access);
 }
 
 #[test]

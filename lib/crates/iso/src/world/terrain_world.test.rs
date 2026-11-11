@@ -1,4 +1,7 @@
 use super::*;
+use crate::entities::{
+    Entity, EntityAsset, EntityBlueprint, EntityLengthAxis, EntityPlacement, EntityShape,
+};
 use crate::terrain::{TerrainConfig, TerrainMaterial};
 
 fn world() -> TerrainWorld {
@@ -72,4 +75,52 @@ fn visibility_is_independent_of_discovery_order() {
     );
     world.hide_chunk(chunks[0]);
     assert_eq!(world.visible_chunks(), &[chunks[1]]);
+}
+
+#[test]
+fn road_enabled_structures_materialize_paths_without_overwriting_their_footprints() {
+    let mut world = world();
+    let chunk = ChunkCoord { cx: 0, cy: 0 };
+    world.show_chunk(chunk);
+    let blueprint = EntityBlueprint {
+        id: "house".to_owned(),
+        asset: EntityAsset {
+            sprite: "/assets/house/block.svg".to_owned(),
+            reflection: None,
+            color_replacements: None,
+            sway: None,
+            contact_shadow: None,
+        },
+        shape: EntityShape {
+            height: 1,
+            length: 1,
+            axis: EntityLengthAxis::X,
+            collision: vec![1.0],
+        },
+        placement: EntityPlacement {
+            surfaces: vec![TerrainMaterial::Grass],
+            road_access: true,
+        },
+    };
+    let entities = [
+        Entity::new(4, 4, &blueprint, 0),
+        Entity::new(12, 4, &blueprint, 0),
+    ];
+
+    assert_eq!(world.connect_roads(chunk, &entities), 2);
+    assert_eq!(
+        world.column_at(WorldCoord { x: 4, y: 4 }).unwrap().surface,
+        TerrainMaterial::Grass
+    );
+    assert_eq!(
+        world.column_at(WorldCoord { x: 12, y: 4 }).unwrap().surface,
+        TerrainMaterial::Grass
+    );
+    assert!(
+        world
+            .chunk(chunk)
+            .unwrap()
+            .iter()
+            .any(|column| column.surface == TerrainMaterial::Path)
+    );
 }

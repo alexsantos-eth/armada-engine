@@ -109,8 +109,16 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`terrain_sprite_source`](terrain_sprites.rs#L6) — Ruta de origen del asset de bloque que dibuja `material`.
   - Firma: `pub fn terrain_sprite_source(material: TerrainMaterial) -> &'static str {`
 
-- [`terrain_reflection_source`](terrain_sprites.rs#L17) — Ruta de origen del asset de reflexión de `material`, dibujado como lo muestra el agua, o `None` para el propio agua.
+- [`path_sprite_source`](terrain_sprites.rs#L39) — Ruta de origen del bloque de camino para la máscara de conexión `mask` (solo los cuatro bits bajos).
+  - Firma: `pub fn path_sprite_source(mask: u8) -> &'static str {`
+
+- [`terrain_reflection_source`](terrain_sprites.rs#L45) — Ruta de origen del asset de reflexión de `material`, dibujado como lo muestra el agua, o `None` para el propio agua.
   - Firma: `pub fn terrain_reflection_source(material: TerrainMaterial) -> Option<&'static str> {`
+
+#### Constantes
+
+- [`PATH_BLOCK_SOURCES`](terrain_sprites.rs#L19) — Las dieciséis rutas de origen de los bloques de camino, una por máscara de conexión: el índice es la máscara (bit `1` se une a +x, `2` a +y, `4` a −x, `8` a −y).
+  - Declaración: `pub const PATH_BLOCK_SOURCES: [&str; 16] = [`
 
 
 ## Detalles de implementación

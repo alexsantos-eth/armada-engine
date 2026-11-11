@@ -11,6 +11,8 @@ No contiene sprites, nodos de escena ni efectos visuales. La apariencia y el ren
 
 Este catálogo documenta las funciones, métodos y constantes exportados por este dominio. Incluye la firma y un enlace a la implementación; los helpers privados se mantienen junto a su código porque no forman parte del contrato estable.
 
+`EntityPlacement` incluye `road_access` (serializado como `roadAccess`): cuando es `true`, la instancia solicita una entrada a la red de caminos materializada por `world` tras el pase de colocación. Si falta, vale `false` y mantiene la compatibilidad del catálogo.
+
 ### `entity.rs`
 
 #### Funciones y métodos
@@ -56,6 +58,8 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`gap`](entity.rs#L157) — Calcula o recupera «gap» según los parámetros de la firma.
   - Firma: `pub fn gap(&self) -> Option<i32> {`
+- [`road_access`](entity.rs) — Indica si la instancia necesita una entrada conectada a la red de caminos.
+  - Firma: `pub fn road_access(&self) -> bool {`
 
 - [`texture_source`](entity.rs#L160) — Calcula o recupera «texture source» según los parámetros de la firma.
   - Firma: `pub fn texture_source(&self) -> &str {`

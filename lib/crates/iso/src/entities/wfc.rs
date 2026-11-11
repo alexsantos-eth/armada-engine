@@ -235,7 +235,9 @@ pub fn parse_wfc(
         }
     }
     let mut family_of: HashMap<&str, &str> = HashMap::new();
-    for (family, members) in &raw.families {
+    let mut families: Vec<_> = raw.families.iter().collect();
+    families.sort_by_key(|(family, _)| *family);
+    for (family, members) in families {
         if family.is_empty() {
             return Err(WfcError::EmptyFamily {
                 family: family.clone(),

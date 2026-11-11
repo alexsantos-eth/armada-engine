@@ -240,6 +240,9 @@ impl Game {
                                 .map(|c| c.elevation)
                         },
                         water_at: |x, y| water_cell(&self.manager, x, y),
+                        surface_at: |point| {
+                            self.manager.column_at(point.x, point.y).map(|c| c.surface)
+                        },
                     },
                     (f64::from(screen_width()), f64::from(screen_height())),
                     &mut self.draws,

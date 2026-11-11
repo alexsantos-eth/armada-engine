@@ -13,27 +13,44 @@ fn every_material_has_artwork_in_the_shipped_atlas() {
         TerrainMaterial::Path,
     ] {
         let source = terrain_sprite_source(material);
-        let entry = manifest
-            .entries
-            .iter()
-            .find(|entry| entry.source == source)
-            .unwrap_or_else(|| panic!("{material:?} has no asset at {source}"));
-        assert!(
-            entry.primary_frame().is_some(),
-            "{source} has no frame in the atlas"
-        );
-        let ink = entry
-            .ink
-            .unwrap_or_else(|| panic!("{source} was never measured; re-run remeasure_atlas"));
-        assert!(
-            ink.width > 0.5,
-            "{source} is narrower than half a tile: {ink:?}"
-        );
-        assert!(
-            ink.y < 0.0 && ink.y + ink.height > 0.0,
-            "{source} does not straddle the ground it stands on: {ink:?}"
-        );
+        assert_asset_has_measured_artwork(&manifest, source);
     }
+}
+
+#[test]
+fn every_path_connection_mask_has_artwork_in_the_shipped_atlas() {
+    let json = include_str!("../../../../content/assets.manifest.json");
+    let manifest: AssetManifest = serde_json::from_str(json).expect("manifest deserializes");
+    for mask in 0..16u8 {
+        assert_eq!(
+            PATH_BLOCK_SOURCES[usize::from(mask)],
+            path_sprite_source(mask)
+        );
+        assert_asset_has_measured_artwork(&manifest, path_sprite_source(mask));
+    }
+}
+
+fn assert_asset_has_measured_artwork(manifest: &AssetManifest, source: &str) {
+    let entry = manifest
+        .entries
+        .iter()
+        .find(|entry| entry.source == source)
+        .unwrap_or_else(|| panic!("{source} has no asset in the atlas"));
+    assert!(
+        entry.primary_frame().is_some(),
+        "{source} has no frame in the atlas"
+    );
+    let ink = entry
+        .ink
+        .unwrap_or_else(|| panic!("{source} was never measured; re-run remeasure_atlas"));
+    assert!(
+        ink.width > 0.5,
+        "{source} is narrower than half a tile: {ink:?}"
+    );
+    assert!(
+        ink.y < 0.0 && ink.y + ink.height > 0.0,
+        "{source} does not straddle the ground it stands on: {ink:?}"
+    );
 }
 
 #[test]

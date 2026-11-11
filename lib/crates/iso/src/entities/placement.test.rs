@@ -41,7 +41,10 @@ fn blueprint(id: &str, length: i32, surfaces: Vec<TerrainMaterial>) -> EntityBlu
             axis: EntityLengthAxis::X,
             collision: vec![1.0; length as usize],
         },
-        placement: EntityPlacement { surfaces },
+        placement: EntityPlacement {
+            surfaces,
+            road_access: false,
+        },
     }
 }
 

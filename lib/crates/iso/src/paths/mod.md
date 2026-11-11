@@ -23,6 +23,22 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`PATH_STEPS`](astar.rs#L9) — Vecinos laterales en el mismo orden que el contrato del juego: +x, +y, -x, -y.
   - Declaración: `pub const PATH_STEPS: [WorldCoord; 4] = [ WorldCoord { x: 1, y: 0 }, WorldCoord { x: 0, y: 1 }, WorldCoord { x: -1, y: 0 }, WorldCoord { x: 0, y: -1 }, ];`
 
+### `roads.rs`
+
+#### Funciones y métodos
+
+- [`new`](roads.rs) — Construye un conector de estructura con sus casillas laterales de acceso, ordenadas y sin duplicados.
+  - Firma: `pub fn new(anchor: WorldCoord, access_cells: impl IntoIterator<Item = WorldCoord>) -> Self {`
+- [`access_cells`](roads.rs) — Devuelve las casillas candidatas para la entrada de camino de la estructura.
+  - Firma: `pub fn access_cells(&self) -> &[WorldCoord] {`
+- [`connect_roads`](roads.rs) — Materializa un árbol de caminos determinista entre conectores, sin cruzar agua, ocupación ni desniveles mayores a un bloque.
+  - Firma: `pub fn connect_roads(columns: &mut [TerrainColumn], connectors: &[RoadConnector], occupied: &[WorldCoord]) -> usize {`
+
+#### Tipos
+
+- [`RoadConnector`](roads.rs) — Estructura que pide una entrada conectada a la red de caminos.
+  - Declaración: `pub struct RoadConnector { ... }`
+
 
 ## Detalles de implementación
 

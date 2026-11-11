@@ -1,6 +1,6 @@
 # Terrain
 
-Este dominio modela columnas, materiales, ruido, generación y apariencia determinista del terreno. Contiene las reglas que convierten una ubicación del mundo en datos de suelo, elevación y aspecto lógico.
+Este dominio modela columnas, materiales, ruido, generación, las máscaras de conexión de camino y la apariencia determinista del terreno. Contiene las reglas que convierten una ubicación del mundo en datos de suelo, elevación y aspecto lógico.
 
 La generación debe ser reproducible a partir de su semilla y parámetros. Las estructuras de terreno se mantienen libres de recursos visuales para que puedan usarse en persistencia, simulación y clientes distintos.
 
@@ -62,6 +62,13 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`blocks_from`](columns.rs#L40) — Bloques desde el nivel elegido como suelo hasta la parte superior, inclusive, del más bajo al más alto.
   - Firma: `pub fn blocks_from(self, floor: i32) -> impl Iterator<Item = TerrainBlock> {`
+
+### `connection_mask.rs`
+
+#### Funciones y métodos
+
+- [`connection_mask`](connection_mask.rs#L10) — Las caras de `coord` que unen camino: máscara de cuatro bits con el mismo orden que la lámina de bloques de camino (`1` +x, `2` +y, `4` −x, `8` −y); un vecino ausente o que no es camino no une.
+  - Firma: `pub fn connection_mask( coord: WorldCoord, at: impl Fn(WorldCoord) -> Option<TerrainMaterial>, ) -> u8 {`
 
 ### `generation.rs`
 

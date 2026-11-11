@@ -14,6 +14,7 @@ use crate::water::reflection_view::WaterCell;
 
 /// Frames for every material, one plain block each: the fixture the tests draw with. The
 /// reflection hangs one elevation step below the anchor, as the shipped reflection art does.
+/// The path variants carry `x = 1000 + mask` so tests can tell them apart.
 fn test_frames() -> TerrainFrames {
     let frame = SpriteFrame {
         x: 0,
@@ -21,6 +22,7 @@ fn test_frames() -> TerrainFrames {
         width: 32,
         height: 32,
     };
+    let path_fallback = SpriteFrame { x: 10, ..frame };
     let block = InkBox {
         x: -0.5,
         y: -1.0,
@@ -33,9 +35,23 @@ fn test_frames() -> TerrainFrames {
         width: 1.0,
         height: iso::assets::SVG_BLOCK_HEIGHT / iso::assets::SVG_TILE_WIDTH,
     };
+    let mut frames = [Some((frame, block)); MATERIAL_SLOTS];
+    frames[crate::terrain::terrain_view::slot(TerrainMaterial::Path)] =
+        Some((path_fallback, block));
     TerrainFrames {
-        frames: [Some((frame, block)); MATERIAL_SLOTS],
+        frames,
         reflections: [Some((frame, reflection)); MATERIAL_SLOTS],
+        path_frames: std::array::from_fn(|mask| {
+            Some((
+                SpriteFrame {
+                    x: 1000 + mask as u32,
+                    y: 0,
+                    width: 32,
+                    height: 32,
+                },
+                block,
+            ))
+        }),
     }
 }
 
@@ -119,10 +135,26 @@ fn reflection_pieces_by_cell(draws: &[SpriteDraw]) -> HashMap<u64, Vec<f64>> {
 }
 
 /// The draws of `columns` over `water_at`, with `height_at` answering the streaming height query.
+/// `surface_at` answers the surface of any column at any coordinate, defaulting to the slice.
 fn collected(
     columns: &[TerrainColumn],
     height_at: impl Fn(WorldCoord) -> Option<i32>,
     water_at: impl Fn(i32, i32) -> Option<WaterCell>,
+) -> Vec<SpriteDraw> {
+    collected_with(columns, height_at, water_at, |at| {
+        columns
+            .iter()
+            .find(|column| column.coord == at)
+            .map(|column| column.surface)
+    })
+}
+
+/// The draws of `columns`, with the caller naming what `surface_at` answers beyond the slice.
+fn collected_with(
+    columns: &[TerrainColumn],
+    height_at: impl Fn(WorldCoord) -> Option<i32>,
+    water_at: impl Fn(i32, i32) -> Option<WaterCell>,
+    surface_at: impl Fn(WorldCoord) -> Option<TerrainMaterial>,
 ) -> Vec<SpriteDraw> {
     let frames = test_frames();
     let (look, _) = TerrainLook::new(7, |_| None, None);
@@ -135,6 +167,7 @@ fn collected(
         Surroundings {
             height_at,
             water_at,
+            surface_at,
         },
         (4000.0, 4000.0),
         &mut out,
@@ -264,4 +297,113 @@ fn dry_land_reflects_nothing() {
 fn a_column_below_the_water_reflects_nothing() {
     let draws = collected_over_a_flat_sea(&[grass_column(0)], sea(2.0));
     assert_eq!(reflections(&draws), 0);
+}
+
+fn path_column(x: i32, y: i32) -> TerrainColumn {
+    TerrainColumn {
+        coord: WorldCoord { x, y },
+        elevation: 2,
+        surface: TerrainMaterial::Path,
+        walkable: true,
+    }
+}
+
+/// The path frames drawn, counted per connection mask (`x = 1000 + mask`), ignoring everything
+/// else the pass draws (reflections included).
+fn path_variant_counts(draws: &[SpriteDraw]) -> [usize; 16] {
+    let mut counts = [0; 16];
+    for draw in draws {
+        if let DrawKind::Sprite { frame, .. } = &draw.kind
+            && (1000..1016).contains(&frame.x)
+        {
+            counts[(frame.x - 1000) as usize] += 1;
+        }
+    }
+    counts
+}
+
+#[test]
+fn a_path_block_draws_the_variant_of_its_connections() {
+    let columns = [path_column(-1, 0), path_column(0, 0), path_column(1, 0)];
+    let draws = collected(&columns, |_| Some(2), |_, _| None);
+    let counts = path_variant_counts(&draws);
+    assert_eq!(counts[1], 1, "the -x end joins only +x");
+    assert_eq!(counts[4], 1, "the +x end joins only -x");
+    assert_eq!(counts[5], 1, "the middle joins both sides");
+    assert_eq!(counts.iter().sum::<usize>(), 3);
+}
+
+#[test]
+fn diagonal_neighbours_do_not_join() {
+    let centre = path_column(0, 0);
+    let diagonals = [
+        path_column(1, 1),
+        path_column(1, -1),
+        path_column(-1, 1),
+        path_column(-1, -1),
+    ];
+    let mut columns = vec![centre];
+    columns.extend(diagonals);
+    let draws = collected(&columns, |_| Some(2), |_, _| None);
+    let counts = path_variant_counts(&draws);
+    assert_eq!(
+        counts[0], 5,
+        "diagonal neighbours do not join any of the five"
+    );
+    assert_eq!(counts.iter().sum::<usize>(), 5);
+}
+
+/// A path neighbour that exists outside the drawn slice (a loaded cell of another chunk) still
+/// counts as a connection.
+#[test]
+fn a_path_neighbour_outside_the_slice_joins() {
+    let centre = path_column(0, 0);
+    let draws = collected_with(
+        &[centre],
+        |_| Some(2),
+        |_, _| None,
+        |at| (at == (WorldCoord { x: 1, y: 0 })).then_some(TerrainMaterial::Path),
+    );
+    let counts = path_variant_counts(&draws);
+    assert_eq!(
+        counts[1], 1,
+        "the +x neighbour of the centre column is a path"
+    );
+}
+
+/// A missing variant falls back to the plain path block instead of vanishing.
+#[test]
+fn a_missing_path_variant_falls_back_to_the_plain_block() {
+    let mut frames = test_frames();
+    frames.path_frames[1] = None;
+    let columns = [path_column(-1, 0), path_column(0, 0), path_column(1, 0)];
+    let (look, _) = TerrainLook::new(7, |_| None, None);
+    let mut out = Vec::new();
+    let surface_at = |at: WorldCoord| {
+        columns
+            .iter()
+            .find(|column| column.coord == at)
+            .map(|column| column.surface)
+    };
+    collect_terrain_sprites(
+        &columns,
+        projection(),
+        &frames,
+        &look,
+        Surroundings {
+            height_at: |_| Some(2),
+            water_at: |_, _| None,
+            surface_at,
+        },
+        (4000.0, 4000.0),
+        &mut out,
+    );
+    let fallback = out
+        .iter()
+        .filter(|draw| matches!(&draw.kind, DrawKind::Sprite { frame, .. } if frame.x == 10))
+        .count();
+    assert_eq!(
+        fallback, 1,
+        "the column needing mask 1 drew the plain path block"
+    );
 }

@@ -170,7 +170,8 @@ impl Game {
                 tile_metrics.elevation_step,
             )
         });
-        let (terrain_frames, missing_terrain, missing_reflections) = TerrainFrames::new(&atlas);
+        let (terrain_frames, missing_terrain, missing_reflections, missing_paths) =
+            TerrainFrames::new(&atlas);
         for material in &missing_terrain {
             eprintln!("warning: the atlas has no block for {material:?}; it will not be drawn");
         }
@@ -178,6 +179,17 @@ impl Game {
             eprintln!(
                 "warning: the atlas has no reflection sprite for {material:?}; it will not be reflected"
             );
+        }
+        for mask in &missing_paths {
+            if *mask == 0 {
+                eprintln!(
+                    "warning: the atlas has no path block for connection mask 0; path columns will not be drawn"
+                );
+            } else {
+                eprintln!(
+                    "warning: the atlas has no path block for connection mask {mask}; it will fall back to the plain path block"
+                );
+            }
         }
         let terrain_config = TerrainConfig {
             seed: WORLD_SEED,

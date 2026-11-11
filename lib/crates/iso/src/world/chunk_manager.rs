@@ -159,6 +159,7 @@ impl ChunkManager {
                         seed: crate::terrain::WORLD_SEED,
                     },
                 );
+                self.world.connect_roads(coord, &result.entities);
                 self.entities.insert(coord, result.entities);
             }
         }

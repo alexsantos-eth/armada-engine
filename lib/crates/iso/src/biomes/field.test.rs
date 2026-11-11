@@ -25,6 +25,7 @@ fn catalog() -> BiomeCatalog {
                 },
                 placement: crate::entities::blueprint::EntityPlacement {
                     surfaces: vec![crate::terrain::TerrainMaterial::Grass],
+                    road_access: false,
                 },
             })
             .collect(),

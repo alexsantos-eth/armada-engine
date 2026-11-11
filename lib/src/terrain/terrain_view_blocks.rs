@@ -1,11 +1,12 @@
 //! Terrain drawn with the atlas block sprites.
 
 use iso::assets::{
-    InkBox, SpriteFrame, SpriteLayout, ink_layout, terrain_reflection_source, terrain_sprite_source,
+    InkBox, SpriteFrame, SpriteLayout, ink_layout, path_sprite_source, terrain_reflection_source,
+    terrain_sprite_source,
 };
 use iso::grid::WorldCoord;
 use iso::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
-use iso::terrain::{TerrainColumn, TerrainMaterial};
+use iso::terrain::{TerrainColumn, TerrainMaterial, connection_mask};
 
 use crate::assets::sprites::{ATLAS_TEXTURE, SpriteAtlas, SpriteDraw, ground_key};
 use crate::terrain::terrain_view::{MATERIAL_SLOTS, MATERIALS, slot};
@@ -19,15 +20,19 @@ pub const TERRAIN_LAYER: i32 = 0;
 const MAX_EXPOSED_BLOCKS: i32 = 10;
 
 /// The atlas frame for each terrain material and where its artwork sits, resolved once at
+/// startup. The path family is the one material with more than one look: one full-block sprite
+/// per connection mask, so a stretch of road joins without seams.
 pub struct TerrainFrames {
     frames: [Option<(SpriteFrame, InkBox)>; MATERIAL_SLOTS],
     reflections: [Option<(SpriteFrame, InkBox)>; MATERIAL_SLOTS],
+    path_frames: [Option<(SpriteFrame, InkBox)>; 16],
 }
 
 impl TerrainFrames {
-    /// Resolves every material against the atlas. Returns the materials missing artwork —
-    /// the blocks themselves first, their reflection sprites second.
-    pub fn new(atlas: &SpriteAtlas) -> (Self, Vec<TerrainMaterial>, Vec<TerrainMaterial>) {
+    /// Resolves every material against the atlas. Returns the materials missing artwork, the
+    /// reflections missing artwork, and the connection masks of the path family missing one —
+    /// the blocks themselves first, their reflection sprites second, the path variants last.
+    pub fn new(atlas: &SpriteAtlas) -> (Self, Vec<TerrainMaterial>, Vec<TerrainMaterial>, Vec<u8>) {
         let mut frames = [None; MATERIAL_SLOTS];
         let mut reflections = [None; MATERIAL_SLOTS];
         let mut missing = Vec::new();
@@ -48,18 +53,37 @@ impl TerrainFrames {
                 None => missing_reflections.push(material),
             }
         }
+        let mut path_frames = [None; 16];
+        let mut missing_paths = Vec::new();
+        for mask in 0..16u8 {
+            let source = path_sprite_source(mask);
+            match atlas
+                .asset(source)
+                .and_then(|asset| Some((asset.frame, asset.ink?)))
+            {
+                Some((frame, ink)) => path_frames[usize::from(mask)] = Some((frame, ink)),
+                None => missing_paths.push(mask),
+            }
+        }
         (
             Self {
                 frames,
                 reflections,
+                path_frames,
             },
             missing,
             missing_reflections,
+            missing_paths,
         )
     }
 
     pub fn frame(&self, material: TerrainMaterial) -> Option<(SpriteFrame, InkBox)> {
         self.frames[slot(material)]
+    }
+
+    /// The path block artwork whose strips join the sides of connection mask `mask`.
+    pub fn path(&self, mask: u8) -> Option<(SpriteFrame, InkBox)> {
+        self.path_frames[usize::from(mask & 0b1111)]
     }
 
     /// The reflection sprite the water draws of `material`, hung from the waterline under it.
@@ -94,38 +118,44 @@ struct ReflectionJob {
     level: f64,
 }
 
-/// How the world answers about the cells around a column: their streaming height and the
-/// water, if any, that lies on them.
-pub struct Surroundings<H, W>
+/// How the world answers about the cells around a column: their streaming height, the water,
+/// if any, that lies on them, and the surface each of them carries, which the path blocks read
+/// to pick their connection mask.
+pub struct Surroundings<H, W, S>
 where
     H: Fn(WorldCoord) -> Option<i32>,
     W: Fn(i32, i32) -> Option<WaterCell>,
+    S: Fn(WorldCoord) -> Option<TerrainMaterial>,
 {
     /// The streaming height of the column at `coord`, or `None` when it is not loaded.
     pub height_at: H,
     /// The water cell at `(x, y)`, or `None` when the cell is dry.
     pub water_at: W,
+    /// The surface of the column at `coord`, or `None` when it is not loaded.
+    pub surface_at: S,
 }
 
 /// Queues the sprites for `columns`, which the caller sorts and draws with everything else.
 /// Each block above the water also queues what the water shows of it, cut to the water cells
 /// it falls on. `surroundings` is how the world answers about the cells around a column, and
 /// `screen` is the window size the culling tests each block's layout against.
-pub fn collect_terrain_sprites<H, W>(
+pub fn collect_terrain_sprites<H, W, S>(
     columns: &[TerrainColumn],
     projection: ProjectionConfig,
     frames: &TerrainFrames,
     look: &TerrainLook,
-    surroundings: Surroundings<H, W>,
+    surroundings: Surroundings<H, W, S>,
     screen: (f64, f64),
     out: &mut Vec<SpriteDraw>,
 ) where
     H: Fn(WorldCoord) -> Option<i32>,
     W: Fn(i32, i32) -> Option<WaterCell>,
+    S: Fn(WorldCoord) -> Option<TerrainMaterial>,
 {
     let Surroundings {
         height_at,
         water_at,
+        surface_at,
     } = surroundings;
     let step = projection
         .elevation_step
@@ -192,13 +222,19 @@ pub fn collect_terrain_sprites<H, W>(
             let Some((frame, ink)) = frames.frame(block.material) else {
                 continue;
             };
-            let (frame, ink) = match (block.elevation == column.elevation)
-                .then(|| look.top(block.material, column.coord.x, column.coord.y))
-                .flatten()
-            {
-                Some(top) => top,
-                None => (frame, ink),
-            };
+            let (frame, ink) =
+                if block.elevation == column.elevation && block.material == TerrainMaterial::Path {
+                    let mask = connection_mask(column.coord, &surface_at);
+                    frames.path(mask).unwrap_or((frame, ink))
+                } else {
+                    match (block.elevation == column.elevation)
+                        .then(|| look.top(block.material, column.coord.x, column.coord.y))
+                        .flatten()
+                    {
+                        Some(top) => top,
+                        None => (frame, ink),
+                    }
+                };
             let tint = look.tint(block.material, column.coord.x, column.coord.y);
             let anchor = ScreenPoint {
                 x: top.screen_x,

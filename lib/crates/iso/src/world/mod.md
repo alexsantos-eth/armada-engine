@@ -162,6 +162,8 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`edit_column`](terrain_world.rs#L89) — Edita una columna descubierta; la transitabilidad sigue a su material de superficie.
   - Firma: `pub fn edit_column( &mut self, coord: WorldCoord, elevation: i32, surface: TerrainMaterial, ) -> Result<(), EditError> {`
+- [`connect_roads`](terrain_world.rs) — Materializa caminos entre las entidades con acceso vial de un chunk descubierto, sin tocar sus huellas.
+  - Firma: `pub fn connect_roads(&mut self, coord: ChunkCoord, entities: &[Entity]) -> usize {`
 
 - [`discovered_count`](terrain_world.rs#L114) — Calcula o recupera «discovered count» según los parámetros de la firma.
   - Firma: `pub fn discovered_count(&self) -> usize {`

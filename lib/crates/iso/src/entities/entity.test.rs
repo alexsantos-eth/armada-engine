@@ -20,8 +20,16 @@ fn blueprint(id: &str, length: i32, surface: TerrainMaterial) -> EntityBlueprint
         },
         placement: crate::entities::blueprint::EntityPlacement {
             surfaces: vec![surface],
+            road_access: false,
         },
     }
+}
+
+#[test]
+fn entity_keeps_its_road_access_rule() {
+    let mut bp = blueprint("house", 1, TerrainMaterial::Grass);
+    bp.placement.road_access = true;
+    assert!(Entity::new(0, 0, &bp, 0).road_access());
 }
 
 #[test]

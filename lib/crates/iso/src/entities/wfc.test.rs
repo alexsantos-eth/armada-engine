@@ -23,6 +23,7 @@ fn entities() -> EntityCatalog {
         },
         placement: EntityPlacement {
             surfaces: vec![TerrainMaterial::Grass],
+            road_access: false,
         },
     };
     EntityCatalog {
@@ -380,6 +381,7 @@ fn a_pier_grows_at_the_water_edge() {
                     TerrainMaterial::Sand,
                     TerrainMaterial::Grass,
                 ],
+                road_access: false,
             },
         }],
     };

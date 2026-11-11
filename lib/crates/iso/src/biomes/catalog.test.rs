@@ -23,6 +23,7 @@ fn entities() -> EntityCatalog {
         },
         placement: EntityPlacement {
             surfaces: vec![TerrainMaterial::Grass],
+            road_access: false,
         },
     };
     EntityCatalog {

@@ -1,7 +1,7 @@
 # path_tiles.py — the sixteen looks of a path block, one per connection mask.
 # Run from artifacts/: python3 path_tiles.py ../web/public/assets/grass/block.svg ../web/public/assets/path
-# Writes block.svg (a lone patch of earth, the material's own texture) and the 4×4 path_tiles.svg
-# atlas, frame `mask` at column mask % 4, row mask // 4, each with the canvas of a block.
+# Writes sixteen standalone block_<mask>.svg files, one per connection mask, each with the canvas
+# of a block; the atlas packs each as its own sprite.
 #
 # A path tile is the grass block with a chunky, toon bed of trodden earth on its top: a wide strip
 # from the middle of the top to the middle of each joined edge, in big voxel steps (cells of 32
@@ -160,24 +160,8 @@ def with_top(asset):
     return svg
 
 
-def svg_inner(svg, prefix):
-    inner = svg.split(">", 1)[1].rsplit("</svg>", 1)[0]
-    for identifier in re.findall(r'\bid="([^"]+)"', inner):
-        inner = inner.replace(f'id="{identifier}"', f'id="{prefix}-{identifier}"')
-        inner = inner.replace(f"#{identifier}", f"#{prefix}-{identifier}")
-    return inner
-
-
 os.makedirs(OUT_DIR, exist_ok=True)
-tiles = [with_top(tile(mask)) for mask in range(16)]
-with open(os.path.join(OUT_DIR, "block.svg"), "w", encoding="utf8") as block_file:
-    block_file.write(tiles[0])
-atlas = ['<svg xmlns="http://www.w3.org/2000/svg" width="4096" height="3412" viewBox="0 -341 4096 3412">']
-for mask, svg in enumerate(tiles):
-    atlas.append(f'<g id="path-{mask}" transform="translate({mask % 4 * 1024} {mask // 4 * 853})">')
-    atlas.append(svg_inner(svg, f"path-{mask}"))
-    atlas.append("</g>")
-atlas.append("</svg>")
-with open(os.path.join(OUT_DIR, "path_tiles.svg"), "w", encoding="utf8") as atlas_file:
-    atlas_file.write("\n".join(atlas) + "\n")
-print("ok", len(tiles), "path tiles")
+for mask in range(16):
+    with open(os.path.join(OUT_DIR, "block_%d.svg" % mask), "w", encoding="utf8") as out_file:
+        out_file.write(with_top(tile(mask)))
+print("ok", 16, "path tiles")

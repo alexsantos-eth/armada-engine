@@ -31,6 +31,8 @@ pub struct EntityData {
     pub length_axis: Option<EntityLengthAxis>,
     /// Minimum free blocks (Chebyshev, diagonals included) between instances of this entity.
     pub gap: Option<i32>,
+    /// Whether this entity needs an entrance connected to the generated road network.
+    pub road_access: bool,
     /// Path to the entity's sprite asset.
     pub texture_source: String,
     /// Debug flag, only for definitions that asked for it.
@@ -92,6 +94,7 @@ impl Entity {
             length: blueprint.shape.length,
             length_axis: Some(blueprint.shape.axis),
             gap: None,
+            road_access: blueprint.placement.road_access,
             texture_source: blueprint.asset.sprite.clone(),
             debug: None,
             color_replacements: blueprint.asset.color_replacements.clone(),
@@ -156,6 +159,10 @@ impl Entity {
     }
     pub fn gap(&self) -> Option<i32> {
         self.data.gap
+    }
+    /// Whether this entity needs a generated road entrance.
+    pub fn road_access(&self) -> bool {
+        self.data.road_access
     }
     pub fn texture_source(&self) -> &str {
         &self.data.texture_source

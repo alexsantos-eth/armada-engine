@@ -2,7 +2,9 @@
 
 use std::collections::{HashMap, HashSet};
 
+use crate::entities::{Entity, get_entity_footprint_for};
 use crate::grid::{CHUNK_SIZE, ChunkCoord, WorldCoord, to_chunk_coord, to_local_coord};
+use crate::paths::{PATH_STEPS, RoadConnector, connect_roads};
 use crate::terrain::{TerrainColumn, TerrainGenerator, TerrainMaterial};
 
 /// An edit can only change a column that has already been materialized.
@@ -109,6 +111,35 @@ impl TerrainWorld {
             walkable: surface != TerrainMaterial::Water,
         };
         Ok(())
+    }
+
+    /// Connects every road-enabled entity in a discovered chunk with materialized path blocks.
+    pub fn connect_roads(&mut self, coord: ChunkCoord, entities: &[Entity]) -> usize {
+        let Some(columns) = self.discovered.get_mut(&coord) else {
+            return 0;
+        };
+        let occupied: Vec<_> = entities.iter().flat_map(get_entity_footprint_for).collect();
+        let connectors: Vec<_> = entities
+            .iter()
+            .filter(|entity| entity.road_access())
+            .map(|entity| {
+                let footprint = get_entity_footprint_for(entity);
+                let access = footprint.iter().flat_map(|cell| {
+                    PATH_STEPS.into_iter().map(move |step| WorldCoord {
+                        x: cell.x.saturating_add(step.x),
+                        y: cell.y.saturating_add(step.y),
+                    })
+                });
+                RoadConnector::new(
+                    WorldCoord {
+                        x: entity.x(),
+                        y: entity.y(),
+                    },
+                    access,
+                )
+            })
+            .collect();
+        connect_roads(columns, &connectors, &occupied)
     }
 
     pub fn discovered_count(&self) -> usize {
