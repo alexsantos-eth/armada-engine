@@ -426,3 +426,18 @@ fn biomes_are_available_to_views_once_set() {
     let world = manager.biomes().expect("biomes are set");
     assert_eq!(world.biome(0, 0).wind_strength, 2.0);
 }
+
+#[test]
+fn settling_pending_jobs_produces_the_same_world_twice() {
+    let mut one = ChunkManager::new(generator(), catalog());
+    let mut other = ChunkManager::new(generator(), catalog());
+    for manager in [&mut one, &mut other] {
+        manager.set_focus(vec![ChunkCoord { cx: 0, cy: 0 }]);
+        for _ in 0..6 {
+            manager.tick();
+        }
+        manager.settle();
+    }
+    let saved = one.save_all();
+    assert_eq!(saved, other.save_all());
+}

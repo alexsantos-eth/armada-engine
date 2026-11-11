@@ -113,33 +113,27 @@ impl TerrainWorld {
         Ok(())
     }
 
-    /// Connects every road-enabled entity in a discovered chunk with materialized path blocks.
     pub fn connect_roads(&mut self, coord: ChunkCoord, entities: &[Entity]) -> usize {
         let Some(columns) = self.discovered.get_mut(&coord) else {
             return 0;
         };
-        let occupied: Vec<_> = entities.iter().flat_map(get_entity_footprint_for).collect();
-        let connectors: Vec<_> = entities
-            .iter()
-            .filter(|entity| entity.road_access())
-            .map(|entity| {
-                let footprint = get_entity_footprint_for(entity);
-                let access = footprint.iter().flat_map(|cell| {
-                    PATH_STEPS.into_iter().map(move |step| WorldCoord {
-                        x: cell.x.saturating_add(step.x),
-                        y: cell.y.saturating_add(step.y),
-                    })
-                });
-                RoadConnector::new(
-                    WorldCoord {
-                        x: entity.x(),
-                        y: entity.y(),
-                    },
-                    access,
-                )
-            })
-            .collect();
-        connect_roads(columns, &connectors, &occupied)
+        connect_roads_into(columns, entities)
+    }
+
+    /// Replaces the columns of a discovered chunk, keeping visibility; the placement thread calls
+    /// this to swap in its columns once it has materialized the roads.
+    pub(crate) fn replace_columns(
+        &mut self,
+        coord: ChunkCoord,
+        columns: Vec<TerrainColumn>,
+    ) -> bool {
+        match self.discovered.entry(coord) {
+            std::collections::hash_map::Entry::Occupied(mut entry) => {
+                entry.insert(columns);
+                true
+            }
+            std::collections::hash_map::Entry::Vacant(_) => false,
+        }
     }
 
     pub fn discovered_count(&self) -> usize {
@@ -168,6 +162,34 @@ impl TerrainWorld {
     pub fn discovered_chunks_unordered(&self) -> impl Iterator<Item = ChunkCoord> + '_ {
         self.discovered.keys().copied()
     }
+}
+
+/// Materializes road blocks for every road-enabled entity in `columns`, the same material chunks
+/// see after [`TerrainWorld::connect_roads`]: entries in the libraries around each footprint,
+/// joined into a stable tree that avoids water and occupied footprints.
+pub(crate) fn connect_roads_into(columns: &mut [TerrainColumn], entities: &[Entity]) -> usize {
+    let occupied: Vec<_> = entities.iter().flat_map(get_entity_footprint_for).collect();
+    let connectors: Vec<_> = entities
+        .iter()
+        .filter(|entity| entity.road_access())
+        .map(|entity| {
+            let footprint = get_entity_footprint_for(entity);
+            let access = footprint.iter().flat_map(|cell| {
+                PATH_STEPS.into_iter().map(move |step| WorldCoord {
+                    x: cell.x.saturating_add(step.x),
+                    y: cell.y.saturating_add(step.y),
+                })
+            });
+            RoadConnector::new(
+                WorldCoord {
+                    x: entity.x(),
+                    y: entity.y(),
+                },
+                access,
+            )
+        })
+        .collect();
+    connect_roads(columns, &connectors, &occupied)
 }
 
 #[cfg(test)]

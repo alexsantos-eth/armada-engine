@@ -103,7 +103,7 @@ pub fn save_archive(archive: &ChunkArchive) {
 }
 
 /// Syncs discovered chunks from a `ChunkManager` into a `ChunkArchive`, replacing any
-pub fn sync_manager_to_archive(manager: &ChunkManager, archive: &mut ChunkArchive) {
+pub fn sync_manager_to_archive(manager: &mut ChunkManager, archive: &mut ChunkArchive) {
     for saved in manager.save_all() {
         archive.put(saved);
     }

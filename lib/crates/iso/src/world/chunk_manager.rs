@@ -2,8 +2,8 @@
 
 use std::collections::{HashMap, HashSet};
 
+use super::placement_job::PlacementJob;
 use crate::biomes::field::WorldBiomes;
-use crate::entities::placement::{PlacementContent, PlacementRules, place_entities_with_content};
 use crate::entities::wfc::WfcCatalog;
 use crate::entities::{Entity, EntityCatalog};
 use crate::grid::{ChunkCoord, chunks_around};
@@ -56,6 +56,7 @@ pub struct ChunkManager {
     focus: Vec<ChunkCoord>,
     /// Chunks discovered this frame but not yet shown; kept so entities are generated once.
     pending_entities: Vec<ChunkCoord>,
+    jobs: Vec<PlacementJob>,
     radii: ChunkRadii,
     /// Cached, distance-sorted stream targets. They only change when the camera crosses a chunk
     wanted_loaded: Vec<ChunkCoord>,
@@ -83,6 +84,7 @@ impl ChunkManager {
             entities: HashMap::new(),
             focus: Vec::new(),
             pending_entities: Vec::new(),
+            jobs: Vec::new(),
             radii: radii.normalized(),
             wanted_loaded: Vec::new(),
             wanted_prefetch: Vec::new(),
@@ -138,6 +140,7 @@ impl ChunkManager {
     /// Advances one frame: loads, shows and hides chunks respecting per-frame budgets.
     pub fn tick(&mut self) -> Vec<ChunkCoord> {
         let mut newly_discovered = Vec::new();
+        self.poll_jobs();
 
         let mut loads_left = CHUNKS_LOADED_PER_FRAME;
         for &coord in &self.wanted_prefetch {
@@ -154,20 +157,20 @@ impl ChunkManager {
         }
 
         for coord in self.pending_entities.drain(..) {
-            if let Some(columns) = self.world.chunk(coord) {
-                let result = place_entities_with_content(
-                    columns,
-                    &self.catalog,
-                    PlacementRules::default(),
-                    PlacementContent {
-                        biomes: self.biomes.as_ref(),
-                        wfc: self.wfc.as_ref(),
-                        seed: crate::terrain::WORLD_SEED,
-                    },
-                );
-                self.world.connect_roads(coord, &result.entities);
-                self.entities.insert(coord, result.entities);
-            }
+            let Some(columns) = self
+                .world
+                .chunk(coord)
+                .map(<[crate::terrain::TerrainColumn]>::to_vec)
+            else {
+                continue;
+            };
+            self.jobs.push(PlacementJob::spawn(
+                coord,
+                columns,
+                self.catalog.clone(),
+                self.biomes.clone(),
+                self.wfc.clone(),
+            ));
         }
 
         let mut shown_left = CHUNKS_SHOWN_PER_FRAME;
@@ -196,6 +199,71 @@ impl ChunkManager {
         }
 
         newly_discovered
+    }
+
+    /// Applies the outcome of jobs that are ready, in spawn order. A job whose chunk a save has
+    /// since replaced, or whose chunk was unloaded meanwhile, is dropped instead of applied.
+    fn poll_jobs(&mut self) {
+        let jobs = std::mem::take(&mut self.jobs);
+        let mut still_running = Vec::with_capacity(jobs.len());
+        for mut job in jobs {
+            if job.is_finished() {
+                let coord = job.coord;
+                if let Some(outcome) = job.take_outcome(false) {
+                    self.apply_outcome(coord, outcome);
+                }
+            } else {
+                still_running.push(job);
+            }
+        }
+        self.jobs = still_running;
+    }
+
+    /// Waits for every in-flight job and applies them in spawn order. Called before a save or an
+    /// unload, so those carry the freshly placed entities as well; a job whose chunk a save has
+    /// replaced, or whose chunk is gone, is dropped instead of applied.
+    pub fn settle(&mut self) {
+        let jobs = std::mem::take(&mut self.jobs);
+        for mut job in jobs {
+            let coord = job.coord;
+            if let Some(outcome) = job.take_outcome(true) {
+                self.apply_outcome(coord, outcome);
+            }
+        }
+    }
+
+    /// Waits for the job of `coord`, if any, and applies it before the chunk is unloaded.
+    fn drain_job(&mut self, coord: ChunkCoord) {
+        let jobs = std::mem::take(&mut self.jobs);
+        let mut remaining = Vec::with_capacity(jobs.len());
+        for mut job in jobs {
+            if job.coord == coord {
+                let coord = job.coord;
+                if let Some(outcome) = job.take_outcome(true) {
+                    self.apply_outcome(coord, outcome);
+                }
+            } else {
+                remaining.push(job);
+            }
+        }
+        self.jobs = remaining;
+    }
+
+    fn apply_outcome(
+        &mut self,
+        coord: ChunkCoord,
+        outcome: super::placement_job::PlacementOutcome,
+    ) {
+        if !self.world.is_discovered(coord) {
+            return;
+        }
+        if self.entities.contains_key(&coord) {
+            return;
+        }
+        if !self.world.replace_columns(coord, outcome.columns) {
+            return;
+        }
+        self.entities.insert(coord, outcome.entities);
     }
 
     /// Terrain columns of a discovered chunk, or `None` when it was never discovered.
@@ -260,7 +328,8 @@ impl ChunkManager {
     }
 
     /// Converts every discovered chunk into saved form.
-    pub fn save_all(&self) -> Vec<crate::world::save::SavedChunk> {
+    pub fn save_all(&mut self) -> Vec<crate::world::save::SavedChunk> {
+        self.settle();
         let mut chunks = Vec::new();
         for coord in self.world.discovered_chunks() {
             if let Some(saved) = self.save_chunk(coord) {
@@ -406,6 +475,7 @@ impl ChunkManager {
     /// Drops a chunk's terrain and entities from memory, returning its saved form.
     #[must_use = "the returned chunk is the only copy left; store it or its edits are lost"]
     pub fn unload_chunk(&mut self, coord: ChunkCoord) -> Option<crate::world::save::SavedChunk> {
+        self.drain_job(coord);
         let saved = self.save_chunk(coord)?;
         self.world.unload_chunk(coord);
         self.entities.remove(&coord);
