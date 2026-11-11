@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::entities::blueprint::{EntityBlueprint, EntityCatalog, EntityLengthAxis};
 use crate::entities::entity::{Entity, get_entity_footprint};
-use crate::grid::{CellMap, SpatialIndex, WorldCoord};
+use crate::grid::{SpatialIndex, WorldCoord};
 use crate::terrain::{TerrainColumn, TerrainMaterial};
 
 /// The schema version of the wfc content this validator accepts.
@@ -288,6 +288,61 @@ pub fn parse_wfc(
     })
 }
 
+/// A direct index into a chunk's columns: a bounds-checked grid of slots, no hashing. The
+/// placement hot paths resolve cells through this, which a hashed map makes expensive.
+struct Columns<'a> {
+    columns: &'a [TerrainColumn],
+    min_x: i32,
+    min_y: i32,
+    stride_x: usize,
+    stride_y: usize,
+    grid: Vec<Option<usize>>,
+}
+
+impl<'a> Columns<'a> {
+    fn of(columns: &'a [TerrainColumn]) -> Self {
+        let mut min_x = i32::MAX;
+        let mut min_y = i32::MAX;
+        let mut max_x = i32::MIN;
+        let mut max_y = i32::MIN;
+        for column in columns {
+            min_x = min_x.min(column.coord.x);
+            min_y = min_y.min(column.coord.y);
+            max_x = max_x.max(column.coord.x);
+            max_y = max_y.max(column.coord.y);
+        }
+        let stride_x = (max_x - min_x + 1).max(1) as usize;
+        let stride_y = (max_y - min_y + 1).max(1) as usize;
+        let mut grid = vec![None; stride_x * stride_y];
+        for (index, column) in columns.iter().enumerate() {
+            let dx = (column.coord.x - min_x) as usize;
+            let dy = (column.coord.y - min_y) as usize;
+            grid[dx * stride_y + dy] = Some(index);
+        }
+        Self {
+            columns,
+            min_x,
+            min_y,
+            stride_x,
+            stride_y,
+            grid,
+        }
+    }
+
+    fn index(&self, x: i32, y: i32) -> Option<usize> {
+        let dx = x - self.min_x;
+        let dy = y - self.min_y;
+        if dx < 0 || dy < 0 || dx as usize >= self.stride_x || dy as usize >= self.stride_y {
+            return None;
+        }
+        self.grid[dx as usize * self.stride_y + dy as usize]
+    }
+
+    fn column(&self, x: i32, y: i32) -> Option<&'a TerrainColumn> {
+        self.index(x, y).map(|index| &self.columns[index])
+    }
+}
+
 /// Which blueprints the biomes already claim, in catalog order.
 pub fn claimed_by_biomes(
     entities: &EntityCatalog,
@@ -308,7 +363,7 @@ pub fn claimed_by_biomes(
 /// chunk's columns or hits a surface it does not admit. Writes into `out` (cleared first);
 /// the scratch-buffer variant so the per-cell build does not allocate one `Vec` per footprint.
 fn footprint_cells_into(
-    columns: &CellMap<TerrainColumn>,
+    columns: &Columns<'_>,
     at: WorldCoord,
     blueprint: &EntityBlueprint,
     out: &mut Vec<WorldCoord>,
@@ -320,7 +375,7 @@ fn footprint_cells_into(
     for index in 0..length {
         let x = if along_x { at.x + index } else { at.x };
         let y = if along_x { at.y } else { at.y + index };
-        let Some(column) = columns.get(WorldCoord { x, y }).ok().flatten() else {
+        let Some(column) = columns.column(x, y) else {
             return false;
         };
         let required = surfaces.get(index as usize).copied().unwrap_or(surfaces[0]);
@@ -335,7 +390,7 @@ fn footprint_cells_into(
 /// Every column of the blueprint's footprint anchored on `at`, or `None` when it runs off the
 /// chunk's columns or hits a surface it does not admit.
 fn footprint_cells(
-    columns: &CellMap<TerrainColumn>,
+    columns: &Columns<'_>,
     at: WorldCoord,
     blueprint: &EntityBlueprint,
 ) -> Option<Vec<WorldCoord>> {
@@ -344,10 +399,10 @@ fn footprint_cells(
 }
 
 /// The elevation of a footprint: uniform across its dry cells, `0` when it only spans water.
-fn footprint_elevation(columns: &CellMap<TerrainColumn>, cells: &[WorldCoord]) -> Option<i32> {
+fn footprint_elevation(columns: &Columns<'_>, cells: &[WorldCoord]) -> Option<i32> {
     let mut elevation: Option<i32> = None;
     for cell in cells {
-        let column = columns.get(*cell).ok().flatten()?;
+        let column = columns.column(cell.x, cell.y)?;
         if column.surface == TerrainMaterial::Water {
             continue;
         }
@@ -555,13 +610,10 @@ pub fn solve_chunk(
     let n = columns.len();
     let caps = build_caps(catalog, wfc);
     let mut counts = vec![0.0; caps.limits.len()];
-    let mut index_of = HashMap::with_capacity(n);
+    let columns_view = Columns::of(columns);
+    let mut occupied = vec![false; n];
     for (index, column) in columns.iter().enumerate() {
-        index_of.insert(column.coord, index);
-    }
-    let mut columns_map = CellMap::new();
-    for column in columns {
-        let _ = columns_map.insert(column.coord, *column);
+        occupied[index] = placed.at(column.coord).next().is_some();
     }
 
     let blueprints = &catalog.entities;
@@ -581,13 +633,19 @@ pub fn solve_chunk(
         }
         for (cell, column) in columns.iter().enumerate() {
             let anchor = column.coord;
-            if !footprint_cells_into(&columns_map, anchor, blueprint, &mut scratch) {
+            if !footprint_cells_into(&columns_view, anchor, blueprint, &mut scratch) {
                 continue;
             }
-            if scratch.iter().any(|&coord| placed.is_occupied(coord)) {
+            if scratch
+                .iter()
+                .any(|&coord| match columns_view.index(coord.x, coord.y) {
+                    Some(index) => occupied[index],
+                    None => true,
+                })
+            {
                 continue;
             }
-            if footprint_elevation(&columns_map, &scratch).is_none() {
+            if footprint_elevation(&columns_view, &scratch).is_none() {
                 continue;
             }
             remaining[cell].push(bp);
@@ -629,12 +687,12 @@ pub fn solve_chunk(
                     }
                 }
                 let blueprint_ref = &blueprints[bp];
-                let cells = footprint_cells(&columns_map, column, blueprint_ref)
+                let cells = footprint_cells(&columns_view, column, blueprint_ref)
                     .unwrap_or_else(|| vec![column]);
                 let mut claimed_coords: HashSet<WorldCoord> = HashSet::with_capacity(cells.len());
                 for &coord in &cells {
                     claimed_coords.insert(coord);
-                    if let Some(&index) = index_of.get(&coord) {
+                    if let Some(index) = columns_view.index(coord.x, coord.y) {
                         absorbed[index] = true;
                     }
                 }
@@ -655,10 +713,10 @@ pub fn solve_chunk(
         let Some(bp) = blueprint else { continue };
         let blueprint = &blueprints[*bp];
         let anchor = columns[cell].coord;
-        let Some(cells) = footprint_cells(&columns_map, anchor, blueprint) else {
+        let Some(cells) = footprint_cells(&columns_view, anchor, blueprint) else {
             continue;
         };
-        let Some(level) = footprint_elevation(&columns_map, &cells) else {
+        let Some(level) = footprint_elevation(&columns_view, &cells) else {
             continue;
         };
         let entity = Entity::new(anchor.x, anchor.y, blueprint, level);

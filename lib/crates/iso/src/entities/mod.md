@@ -107,13 +107,13 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`new`](placement.rs#L55) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
+- [`new`](placement.rs#L54) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
   - Firma: `pub fn new(columns: &'a CellMap<TerrainColumn>, placed: &'a mut SpatialIndex<Entity>) -> Self {`
 
-- [`column`](placement.rs#L59) — Calcula o recupera «column» según los parámetros de la firma.
+- [`column`](placement.rs#L58) — Calcula o recupera «column» según los parámetros de la firma.
   - Firma: `pub fn column(&self, x: i32, y: i32) -> Option<&TerrainColumn> {`
 
-- [`is_taken`](placement.rs#L66) — Evalúa si se cumple la condición «taken» para el estado recibido.
+- [`is_taken`](placement.rs#L62) — Evalúa si se cumple la condición «taken» para el estado recibido.
   - Firma: `pub fn is_taken(&self, x: i32, y: i32) -> bool {`
 
 - [`place_entities`](placement.rs#L93) — Coloca entidades sobre `columns` con las reglas por defecto.
@@ -141,10 +141,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`parse_wfc`](wfc.rs#L185) — Parsea y valida el contenido wfc contra el catálogo de entidades que referencia, y contra los biomas (cuando se pasan) para exigir un peso a cada blueprint que ningún bioma reclama.
   - Firma: `pub fn parse_wfc( json: &str, entities: &EntityCatalog, biomes: Option<&crate::biomes::catalog::BiomeCatalog>, ) -> Result<WfcCatalog, WfcError> {`
 
-- [`claimed_by_biomes`](wfc.rs#L292) — Qué blueprints ya reclaman los biomas, en orden de catálogo; el solver omite esos del mosaico.
+- [`claimed_by_biomes`](wfc.rs#L347) — Qué blueprints ya reclaman los biomas, en orden de catálogo; el solver omite esos del mosaico.
   - Firma: `pub fn claimed_by_biomes( entities: &EntityCatalog, biomes: Option<&crate::biomes::field::WorldBiomes>, ) -> Vec<bool> {`
 
-- [`solve_chunk`](wfc.rs#L534) — Resuelve el chunk y devuelve las entidades que crece, en orden de columna. El solver es por chunk y no consulta a los vecinos: cada posibilidad se comprueba contra el terreno, así que un chunk sale igual que junto a sus vecinos; la vacancia siempre es posible, de modo que el mosaico nunca entra en contradicción. Al llegar al techo de `maxPerChunk` para un blueprint o familia, sus posibilidades dejan de crecer en el resto del chunk.
+- [`solve_chunk`](wfc.rs#L602) — Resuelve el chunk y devuelve las entidades que crece, en orden de columna. El solver es por chunk y no consulta a los vecinos: cada posibilidad se comprueba contra el terreno, así que un chunk sale igual que junto a sus vecinos; la vacancia siempre es posible, de modo que el mosaico nunca entra en contradicción. Al llegar al techo de `maxPerChunk` para un blueprint o familia, sus posibilidades dejan de crecer en el resto del chunk.
   - Firma: `pub fn solve_chunk( columns: &[TerrainColumn], catalog: &EntityCatalog, wfc: &WfcCatalog, claimed: &[bool], placed: &mut SpatialIndex<Entity>, seed: u64, ) -> Vec<Entity> {`
 
 #### Constantes
@@ -191,27 +191,27 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`placement_roll`](placement.rs#L27) — Roll determinista para un blueprint en una columna, usado como su probabilidad de aparición.
+- [`placement_roll`](placement.rs#L26) — Roll determinista para un blueprint en una columna, usado como su probabilidad de aparición.
   - Firma: `fn placement_roll(id: &str, x: i32, y: i32) -> u64 {`
 
-- [`default`](placement.rs#L88) — Calcula o recupera «default» según los parámetros de la firma.
+- [`default`](placement.rs#L84) — Calcula o recupera «default» según los parámetros de la firma.
   - Firma: `fn default() -> Self {`
 
-- [`find_placement`](placement.rs#L163) — Valida una instancia de `blueprint` anclada en `column`.
+- [`find_placement`](placement.rs#L262) — Valida una instancia de `blueprint` anclada en `column`.
   - Firma: `fn find_placement( anchor: WorldCoord, blueprint: &EntityBlueprint, context: &mut PlacementContext, gap: i32, ) -> Option<Placement> {`
 
 #### Constantes internas
 
-- [`DEFAULT_GAP`](placement.rs#L21) — Bloques libres mínimos entre instancias de la misma entidad cuando el catálogo no indica
+- [`DEFAULT_GAP`](placement.rs#L20) — Bloques libres mínimos entre instancias de la misma entidad cuando el catálogo no indica
   - Declaración: `const DEFAULT_GAP: i32 = 1;`
 
-- [`DEFAULT_DENSITY`](placement.rs#L24) — Columnas por instancia de un blueprint, de media.
+- [`DEFAULT_DENSITY`](placement.rs#L23) — Columnas por instancia de un blueprint, de media.
   - Declaración: `const DEFAULT_DENSITY: u64 = 400;`
 
-- [`OFFSET`](placement.rs#L28) — Define el parámetro interno «OFFSET» empleado por este módulo.
+- [`OFFSET`](placement.rs#L27) — Define el parámetro interno «OFFSET» empleado por este módulo.
   - Declaración: `const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;`
 
-- [`PRIME`](placement.rs#L29) — Define el parámetro interno «PRIME» empleado por este módulo.
+- [`PRIME`](placement.rs#L28) — Define el parámetro interno «PRIME» empleado por este módulo.
   - Declaración: `const PRIME: u64 = 0x1000_0000_01b3;`
 
 ### `wfc.rs`
@@ -224,10 +224,10 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`parse_wfc`](wfc.rs#L185) — Parsea y valida el contenido wfc contra el catálogo de entidades que referencia, y contra los biomas (cuando se pasan) para exigir un peso a cada blueprint que ningún bioma reclama.
   - Firma: `pub fn parse_wfc( json: &str, entities: &EntityCatalog, biomes: Option<&crate::biomes::catalog::BiomeCatalog>, ) -> Result<WfcCatalog, WfcError> {`
 
-- [`claimed_by_biomes`](wfc.rs#L292) — Qué blueprints ya reclaman los biomas, en orden de catálogo; el solver omite esos del mosaico.
+- [`claimed_by_biomes`](wfc.rs#L347) — Qué blueprints ya reclaman los biomas, en orden de catálogo; el solver omite esos del mosaico.
   - Firma: `pub fn claimed_by_biomes( entities: &EntityCatalog, biomes: Option<&crate::biomes::field::WorldBiomes>, ) -> Vec<bool> {`
 
-- [`solve_chunk`](wfc.rs#L534) — Resuelve el chunk y devuelve las entidades que crece, en orden de columna. El solver es por chunk y no consulta a los vecinos: cada posibilidad se comprueba contra el terreno, así que un chunk sale igual que junto a sus vecinos; la vacancia siempre es posible, de modo que el mosaico nunca entra en contradicción. Al llegar al techo de `maxPerChunk` para un blueprint o familia, sus posibilidades dejan de crecer en el resto del chunk.
+- [`solve_chunk`](wfc.rs#L602) — Resuelve el chunk y devuelve las entidades que crece, en orden de columna. El solver es por chunk y no consulta a los vecinos: cada posibilidad se comprueba contra el terreno, así que un chunk sale igual que junto a sus vecinos; la vacancia siempre es posible, de modo que el mosaico nunca entra en contradicción. Al llegar al techo de `maxPerChunk` para un blueprint o familia, sus posibilidades dejan de crecer en el resto del chunk.
   - Firma: `pub fn solve_chunk( columns: &[TerrainColumn], catalog: &EntityCatalog, wfc: &WfcCatalog, claimed: &[bool], placed: &mut SpatialIndex<Entity>, seed: u64, ) -> Vec<Entity> {`
 
 #### Constantes

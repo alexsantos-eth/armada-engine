@@ -158,11 +158,29 @@ pub fn place_entities_with_content(
     let mut placed = SpatialIndex::new();
     let mut entities = Vec::new();
 
-    let mut by_surface: HashMap<TerrainMaterial, Vec<&TerrainColumn>> = HashMap::new();
-    for column in columns {
-        by_surface.entry(column.surface).or_default().push(column);
+    let mut by_surface: HashMap<TerrainMaterial, Vec<usize>> = HashMap::new();
+    for (index, column) in columns.iter().enumerate() {
+        by_surface.entry(column.surface).or_default().push(index);
     }
-    let empty: Vec<&TerrainColumn> = Vec::new();
+    let empty: Vec<usize> = Vec::new();
+
+    // The biome of a column and the species its groves pick are the same for every blueprint in
+    // this pass; sampling them once per column keeps the pass from paying them per candidate.
+    let world = biomes;
+    let mut biome_of = Vec::with_capacity(columns.len());
+    let mut formation_of = Vec::with_capacity(columns.len());
+    for column in columns {
+        match world {
+            Some(world) => {
+                biome_of.push(world.biome_index(column.coord.x, column.coord.y));
+                formation_of.push(world.formation(column.coord.x, column.coord.y));
+            }
+            None => {
+                biome_of.push(0);
+                formation_of.push(None);
+            }
+        }
+    }
 
     for blueprint in &catalog.entities {
         let gated = biomes.map(|world| world.species_of(&blueprint.id));
@@ -176,18 +194,16 @@ pub fn place_entities_with_content(
             continue;
         };
         let anchors = by_surface.get(anchor_surface).unwrap_or(&empty);
-        for column in anchors {
+        for &index in anchors {
+            let column = &columns[index];
             let anchor = column.coord;
             match &gated {
                 Some(memberships) if !memberships.is_empty() => {
-                    let Some(world) = biomes else { continue };
-                    let biome = world.biome_index(anchor.x, anchor.y);
+                    let biome = biome_of[index];
                     let allowed = memberships
                         .iter()
                         .find(|(biome_of, _)| *biome_of == biome)
-                        .is_some_and(|&(_, species)| {
-                            world.formation(anchor.x, anchor.y) == Some(species)
-                        });
+                        .is_some_and(|&(_, species)| formation_of[index] == Some(species));
                     if !allowed {
                         continue;
                     }
