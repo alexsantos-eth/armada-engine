@@ -163,13 +163,19 @@ def band(k):
     return u0, u0 + DEPTH, LOW + (k + 1) * RISE
 
 
-def ruins(a, local):
+def ruins(a, local, plain):
     """The stones standing on the flight: the kerbs, a fallen drum, rubble and moss.
 
     Everything here rests on the stone under it — a kerb on the tread, a stone that has come to
     rest on the sunk strip one `SINK` lower — so nothing is left hanging in the air.
+
+    `plain` is set for the two directions whose flight climbs toward the camera: there the top
+    tread covers the rest of the flight, every lower tread shows only a sliver, and a kerb on one
+    reads as a block floating over the edge. Those views keep the bare steps and only what lies
+    in the top tread.
     """
     g = VoxelGrid(a, u=100)
+    shown = range(BANDS - 1, BANDS) if plain else range(BANDS)
 
     def part(u, v, z0, hu, hv, hz, color, r=None):
         cx, cy, hx, hy = local(u, v, hu, hv)
@@ -194,7 +200,7 @@ def ruins(a, local):
 
     for side, heights in KERBS.items():
         for k, rise in enumerate(heights):
-            if rise is None:
+            if rise is None or plain:
                 continue                  # the kerb has fallen through here
             hw, shift = free(k)
             top = band(k)[2]
@@ -210,17 +216,22 @@ def ruins(a, local):
 
     # The drum of a column that snapped off, lying where it fell in the lowest tread.
     hw, shift = free(0)
-    drum = (band(0)[0] + DEPTH * 0.68, shift - (hw - CLEAR - 32), 30, 24)
-    lying(0, *drum)
-    part(drum[0], drum[1], band(0)[2] - SINK, drum[2], drum[3], 20, KERB_PALE, r=16)
+    if 0 in shown:
+        drum = (band(0)[0] + DEPTH * 0.68, shift - (hw - CLEAR - 32), 30, 24)
+        lying(0, *drum)
+        part(drum[0], drum[1], band(0)[2] - SINK, drum[2], drum[3], 20, KERB_PALE, r=16)
 
     for k, frac, size, color in RUBBLE:
+        if k not in shown:
+            continue
         hw, shift = free(k)
         u, v = band(k)[0] + DEPTH * 0.68, shift + frac * (hw - CLEAR - size)
         lying(k, u, v, size * 1.2, size)
         part(u, v, band(k)[2] - SINK, size * 1.2, size, size * 0.6, color, r=size * 0.4)
 
     for k, frac, hu, hv in MOSSES:
+        if k not in shown:
+            continue
         hw, shift = free(k)
         u, v = band(k)[0] + DEPTH * 0.68, shift + frac * (hw - CLEAR - hv)
         lying(k, u, v, hu, hv)
@@ -230,6 +241,9 @@ def ruins(a, local):
 
 
 def build(uphill):
+    """The block for one direction. A flight that climbs toward the camera (`sum(uphill) > 0`)
+    is built plain: its top tread hides the rest, so the ruins on it would only show as slivers
+    and floating blocks over the edge."""
     a = Asset()
     local = frame(uphill)
     for k in range(BANDS):            # the steps, each one nested over the last, lowest painted first
@@ -237,7 +251,7 @@ def build(uphill):
         prism(a, rect(local, u0, HALF, -HALF, HALF), top - RISE, top,
               MASS_DEEP if k == 0 else MASS, rim=RIM)
         strip(a, local, k, top)
-    ruins(a, local)
+    ruins(a, local, plain=sum(uphill) > 0)
     a.check_bounds()
     return a
 
