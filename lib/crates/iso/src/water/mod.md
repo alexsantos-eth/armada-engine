@@ -51,7 +51,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`clip`](reflection.rs#L165) — Recorta `polygon` al lado interior de la arista de `from` a `to`, in situ.
   - Firma: `fn clip(polygon: &mut Vec<(f64, f64)>, from: (f64, f64), to: (f64, f64), turn: f64) {`
 
-- [`area`](reflection.rs#L194) — El área con signo de un polígono, positiva cuando está orientada en un sentido y negativa en el otro.
+- [`area`](reflection.rs#L192) — El área con signo de un polígono, positiva cuando está orientada en un sentido y negativa en el otro.
   - Firma: `fn area(polygon: &[(f64, f64)]) -> f64 {`
 
 #### Constantes internas

@@ -321,3 +321,7 @@ fn path_for_manifest(path: &Path) -> String {
         .collect::<Vec<_>>()
         .join("/")
 }
+
+#[cfg(test)]
+#[path = "pack_atlas.test.rs"]
+mod tests;

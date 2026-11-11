@@ -78,6 +78,14 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Declaración: `pub const LANDING_SQUASH_MS: f64 = 180.0;`
 - [`TAKEOFF_STRETCH_MS`](body_motion.rs#L10) — Milisegundos de estiramiento tras despegar.
   - Declaración: `pub const TAKEOFF_STRETCH_MS: f64 = 120.0;`
+- [`AIR_STRETCH_PER_SPEED`](body_motion.rs#L12) — Estiramiento del cuerpo en el aire por bloque por tick de velocidad vertical.
+  - Declaración: `pub const AIR_STRETCH_PER_SPEED: f64 = 0.25;`
+- [`MAX_AIR_STRETCH`](body_motion.rs#L14) — El mayor estiramiento que el cuerpo puede tomar en el aire.
+  - Declaración: `pub const MAX_AIR_STRETCH: f64 = 0.12;`
+- [`CLIMB_STRETCH`](body_motion.rs#L16) — Estiramiento del cuerpo en la mitad de una escalada.
+  - Declaración: `pub const CLIMB_STRETCH: f64 = 0.05;`
+- [`BOB_PER_SPEED`](body_motion.rs#L18) — Balanceo de pisada por columna por tick de velocidad en suelo.
+  - Declaración: `pub const BOB_PER_SPEED: f64 = 0.2;`
 
 ### `player_view.rs`
 
@@ -129,9 +137,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`shadow_direction`](player_shadow.rs#L22) — La dirección de las sombras sobre el suelo como vector unitario de pantalla, y cuántos píxeles alcanza una casilla de sombra en esa dirección.
   - Firma: `pub fn shadow_direction(light: PhaseLight, projection: ProjectionConfig) -> (f64, f64, f64) {`
-- [`cast_matrix`](player_shadow.rs#L52) — La anisotropía de pantalla de la mancha: el cuadrado del suelo sesgado a lo largo de la dirección de sombra de la fase, proyectado isométricamente (determinante = `1 + (stretch − 1) · CAST_STRETCH_FACTOR`, la fase estira sólo una fracción de su `stretch`).
+- [`cast_matrix`](player_shadow.rs#L61) — La anisotropía de pantalla de la mancha: el cuadrado del suelo sesgado a lo largo de la dirección de sombra de la fase, proyectado isométricamente (determinante = `1 + (stretch − 1) · CAST_STRETCH_FACTOR`, la fase estira sólo una fracción de su `stretch`).
   - Firma: `pub fn cast_matrix(light: PhaseLight, projection: ProjectionConfig) -> [[f64; 2]; 2] {`
-- [`player_shadow`](player_shadow.rs#L89) — Calcula una sombra centrada en los pies que se escora hacia donde la fase proyecta sus sombras; al elevarse el cuerpo se separa de los pies río abajo del sol y se atenúa en el aire.
+- [`player_shadow`](player_shadow.rs#L98) — Calcula una sombra centrada en los pies que se escora hacia donde la fase proyecta sus sombras; al elevarse el cuerpo se separa de los pies río abajo del sol y se atenúa en el aire.
   - Firma: `pub fn player_shadow( ground: ScreenPoint, height: f64, projection: ProjectionConfig, light: PhaseLight, ) -> PlayerShadow {`
 
 ### `shadow_clip.rs`

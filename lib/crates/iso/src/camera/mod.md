@@ -15,30 +15,30 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`new`](focus.rs#L45) — Un foco ya asentado sobre la cara superior sobre la que se alza `at`, para que la sesión no comience con un barrido.
+- [`new`](focus.rs#L43) — Un foco ya asentado sobre la cara superior sobre la que se alza `at`, para que la sesión no comience con un barrido.
   - Firma: `pub fn new(at: &PlayerRenderPosition) -> Self {`
 
-- [`level`](focus.rs#L57) — El nivel que muestra ahora, en bloques por encima de la elevación cero: lo que la última
+- [`level`](focus.rs#L55) — El nivel que muestra ahora, en bloques por encima de la elevación cero: lo que la última
   - Firma: `pub fn level(&self) -> f64 {`
 
-- [`aim_level`](focus.rs#L62) — El nivel hacia el que se dirige, antes de cualquier persecución: la cara superior bajo el jugador, su altura de pies mientras
+- [`aim_level`](focus.rs#L60) — El nivel hacia el que se dirige, antes de cualquier persecución: la cara superior bajo el jugador, su altura de pies mientras
   - Firma: `pub fn aim_level(&self) -> f64 {`
 
-- [`rising`](focus.rs#L67) — Si aún está ascendiendo hacia una cara superior más alta, para que la cámara tenga adónde ir incluso en un
+- [`rising`](focus.rs#L65) — Si aún está ascendiendo hacia una cara superior más alta, para que la cámara tenga adónde ir incluso en un
   - Firma: `pub fn rising(&self) -> bool {`
 
-- [`advance`](focus.rs#L72) — El nivel que mostrar para el jugador en `at`, `elapsed_ms` milisegundos reales después de la última
+- [`advance`](focus.rs#L70) — El nivel que mostrar para el jugador en `at`, `elapsed_ms` milisegundos reales después de la última
   - Firma: `pub fn advance( &mut self, at: &PlayerRenderPosition, motion: PlayerMotionType, elapsed_ms: f64, smooth_ms: f64, ) -> f64 {`
 
-- [`ground`](focus.rs#L142) — [`Self::advance`] como el punto de suelo en el que la cámara se centra: el
+- [`ground`](focus.rs#L139) — [`Self::advance`] como el punto de suelo en el que la cámara se centra: el
   - Firma: `pub fn ground( &mut self, at: &PlayerRenderPosition, motion: PlayerMotionType, elapsed_ms: f64, projection: ProjectionConfig, ) -> GridPoint {`
 
 #### Constantes
 
-- [`CAMERA_RISE_MS_PER_BLOCK`](focus.rs#L10) — Milisegundos reales que tarda la cámara en ascender un bloque hacia una cara superior más alta a la que el jugador no trepó
+- [`CAMERA_RISE_MS_PER_BLOCK`](focus.rs#L8) — Milisegundos reales que tarda la cámara en ascender un bloque hacia una cara superior más alta a la que el jugador no trepó
   - Declaración: `pub const CAMERA_RISE_MS_PER_BLOCK: f64 = PLAYER_CLIMB_MS;`
 
-- [`CAMERA_LEVEL_SMOOTH_MS`](focus.rs#L13) — Cuánto tarda el nivel que muestra una cámara en asentarse en el nivel al que apunta, en
+- [`CAMERA_LEVEL_SMOOTH_MS`](focus.rs#L11) — Cuánto tarda el nivel que muestra una cámara en asentarse en el nivel al que apunta, en
   - Declaración: `pub const CAMERA_LEVEL_SMOOTH_MS: f64 = 65.0;`
 
 ### `geometry.rs`
@@ -113,10 +113,10 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Constantes internas
 
-- [`LEVEL_SNAP`](focus.rs#L16) — Bloques por debajo de los cuales el nivel que muestra la cámara se asienta en el nivel al que apunta, una vez que apenas
+- [`LEVEL_SNAP`](focus.rs#L14) — Bloques por debajo de los cuales el nivel que muestra la cámara se asienta en el nivel al que apunta, una vez que apenas
   - Declaración: `const LEVEL_SNAP: f64 = 0.002;`
 
-- [`LEVEL_SNAP_SPEED`](focus.rs#L19) — Bloques por segundo por debajo de los cuales el muelle cuenta como detenido, para el asentamiento anterior.
+- [`LEVEL_SNAP_SPEED`](focus.rs#L17) — Bloques por segundo por debajo de los cuales el muelle cuenta como detenido, para el asentamiento anterior.
   - Declaración: `const LEVEL_SNAP_SPEED: f64 = 0.05;`
 
 ### `geometry.rs`

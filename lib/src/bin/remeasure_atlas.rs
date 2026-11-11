@@ -17,7 +17,7 @@ fn opaque_bounds(atlas: &RgbaImage, frame: SpriteFrame) -> Option<SpriteFrame> {
             }
         }
     }
-    (min_x <= max_x).then_some(SpriteFrame {
+    (min_x <= max_x).then(|| SpriteFrame {
         x: min_x,
         y: min_y,
         width: max_x - min_x + 1,
@@ -78,3 +78,7 @@ fn main() {
         println!("placed by anchor: {}", unmeasured.join(", "));
     }
 }
+
+#[cfg(test)]
+#[path = "remeasure_atlas.test.rs"]
+mod tests;

@@ -100,8 +100,11 @@ Excepciones permitidas —deben ser pequeñas y justificarse con un comentario e
 el archivo o en la descripción del PR—:
 
 - barrels (`mod.rs`, `lib.rs`) que solo declaran/reexportan módulos;
-- puntos de entrada (`main.rs`) y herramientas de `src/bin/`, cuando su
-  comportamiento esté delegado a módulos con pruebas;
+- puntos de entrada (`main.rs`, `build.rs`) y el envoltorio de E/S de las herramientas de
+  `src/bin/`: estas sí llevan su `<nombre>.test.rs` colocalizado con la lógica pura
+  (`pack_atlas.test.rs`, `remeasure_atlas.test.rs`). Cargo autodescubre cada `.rs` de
+  `src/bin/` como binario, así que los `.test.rs` de ahí solo conviven con `autobins = false`
+  y los `[[bin]]` declarados a mano en `Cargo.toml`;
 - archivos que solo declaran datos, traits o tipos sin comportamiento propio;
 - código dependiente de GPU, ventana o E/S que no pueda aislarse aún: primero
   extraer y probar la lógica pura; dejar documentada la comprobación manual

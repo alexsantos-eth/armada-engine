@@ -863,19 +863,6 @@ fn blur_across_rows(
     (end - start) as u32
 }
 
-/// The first pass of the blur, across the whole map.
-#[cfg(test)]
-fn blur_across_within_levels(map: &mut ShadowMap, radius: u32, levels: &LevelCache) {
-    let mut from = 0;
-    loop {
-        let done = blur_across_rows(map, radius, levels, from, u32::MAX);
-        if done == 0 || from + done >= map.height {
-            break;
-        }
-        from += done;
-    }
-}
-
 /// The rolling state of the blur's second pass: the window ring, the sums under it and where the
 /// column cuts stand. Carried across frames row by row so the blur shares the frame with the game.
 struct BlurDownJob {
@@ -995,21 +982,6 @@ fn blur_down_rows(
     }
     job.next_row = end as u32;
     (end - start) as u32
-}
-
-/// The second pass of the blur, down the whole map.
-#[cfg(test)]
-fn blur_down_within_levels(map: &mut ShadowMap, span: usize, levels: &LevelCache) {
-    if span == 0 {
-        return;
-    }
-    let mut job = BlurDownJob::new(map);
-    loop {
-        let done = blur_down_rows(map, span, levels, &mut job, u32::MAX);
-        if done == 0 || job.next_row as usize >= map.height as usize {
-            break;
-        }
-    }
 }
 
 fn mark_cuts(cuts: &mut [bool], per_tile: usize, flush: impl Fn(usize) -> bool) {

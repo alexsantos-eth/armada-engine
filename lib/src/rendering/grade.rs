@@ -80,14 +80,6 @@ const TILT_SHIFT_SHARP_HALF_HEIGHT: f32 = 0.14;
 const TILT_SHIFT_TRANSITION_HEIGHT: f32 = 0.20;
 const TILT_SHIFT_MAX_RADIUS_PX: f32 = 3.0;
 
-#[cfg(test)]
-fn tilt_shift_radius(y: f32) -> f32 {
-    let edge = (y - TILT_SHIFT_FOCUS_Y).abs() - TILT_SHIFT_SHARP_HALF_HEIGHT;
-    let amount = (edge / TILT_SHIFT_TRANSITION_HEIGHT).clamp(0.0, 1.0);
-    let smooth = amount * amount * (3.0 - 2.0 * amount);
-    smooth * TILT_SHIFT_MAX_RADIUS_PX
-}
-
 fn grade_pipeline() -> PipelineParams {
     PipelineParams {
         color_blend: Some(BlendState::new(

@@ -434,9 +434,9 @@
       "sway": null
     },
     {
-      "id": "cloud-shadow",
+      "id": "cloud_cloud-shadow",
       "kind": "entity",
-      "source": "/assets/cloud-shadow.svg",
+      "source": "/assets/cloud/cloud-shadow.svg",
       "dataTiles": null,
       "frame": {
         "x": 2557,

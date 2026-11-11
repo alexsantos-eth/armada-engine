@@ -60,7 +60,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`step`](bake.rs#L235) — Hace la siguiente pieza del horneado del mapa (un caster, unas filas del horizonte, unas filas del terreno o una ventana de filas del desenfoque) y dice si queda algo por hacer.
   - Firma: `pub fn step( &mut self, map: &mut ShadowMap, casters: &[ShadowCaster], ground: Option<&HeightField>, light: &ShadowProjection, metrics: BoxMetrics, silhouette_of: SilhouetteOf<'_, '_>, ) -> bool {`
 
-- [`blur`](bake.rs#L755) — Un desenfoque de caja separable sobre todo el mapa: la penumbra.
+- [`blur`](bake.rs#L760) — Un desenfoque de caja separable sobre todo el mapa: la penumbra.
   - Firma: `pub fn blur(map: &mut ShadowMap, radius: u32) {`
 
 #### Constantes
@@ -243,22 +243,22 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`within`](bake.rs#L334) — Los pasos `0..=steps` de un recorrido que empieza en `from` y avanza con paso `step` que quedan dentro
+- [`within`](bake.rs#L339) — Los pasos `0..=steps` de un recorrido que empieza en `from` y avanza con paso `step` que quedan dentro
   - Firma: `fn within(from: f64, step: f64, low: f64, high: f64, steps: u32) -> Option<(u32, u32)> {`
 
-- [`meet`](bake.rs#L346) — Los pasos que retienen ambos recorridos, o `None` cuando no comparten ninguno.
+- [`meet`](bake.rs#L351) — Los pasos que retienen ambos recorridos, o `None` cuando no comparten ninguno.
   - Firma: `fn meet(one: (u32, u32), other: (u32, u32)) -> Option<(u32, u32)> {`
 
-- [`horizon_lattice_shape`](bake.rs#L355) — Proyecta sobre cada texel la sombra que el terreno proyecta sobre sí mismo.
+- [`horizon_lattice_shape`](bake.rs#L360) — Proyecta sobre cada texel la sombra que el terreno proyecta sobre sí mismo.
   - Firma: `fn horizon_lattice_shape(map: &ShadowMap) -> (u32, u32, u32) {`
 
-- [`horizon_rows`](bake.rs#L366) — Calcula o recupera «horizon rows» según los parámetros de la firma.
+- [`horizon_rows`](bake.rs#L371) — Calcula o recupera «horizon rows» según los parámetros de la firma.
   - Firma: `fn horizon_rows( map: &ShadowMap, ground: &HeightField, light: &ShadowProjection, metrics: BoxMetrics, from: u32, rows: u32, out: &mut Vec<Horizon>, ) -> u32 {`
 
-- [`lay_terrain_rows`](bake.rs#L393) — Proyecta la sombra propia del terreno sobre `rows` filas de columnas, empezando en la fila `from` de la
+- [`lay_terrain_rows`](bake.rs#L398) — Proyecta la sombra propia del terreno sobre `rows` filas de columnas, empezando en la fila `from` de la
   - Firma: `fn lay_terrain_rows( map: &mut ShadowMap, lattice: &[Horizon], levels: &LevelCache, from: i32, rows: i32, ) -> i32 {`
 
-- [`clear_columns_without_ground`](bake.rs#L506) — Pone en blanco el cuadrado de cada columna para la que el mundo no tiene terreno.
+- [`clear_columns_without_ground`](bake.rs#L511) — Pone en blanco el cuadrado de cada columna para la que el mundo no tiene terreno.
   - Firma: `fn clear_columns_without_ground(map: &mut ShadowMap, levels: &LevelCache) {`
 
 - [`new`](bake.rs#L89) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
@@ -267,46 +267,46 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`at`](bake.rs#L150) — Calcula o recupera «at» según los parámetros de la firma.
   - Firma: `fn at(&self, x: i32, y: i32) -> Option<f64> {`
 
-- [`any`](bake.rs#L566) — Calcula o recupera «any» según los parámetros de la firma.
+- [`any`](bake.rs#L571) — Calcula o recupera «any» según los parámetros de la firma.
   - Firma: `fn any(&self) -> bool {`
 
-- [`lay_caster`](bake.rs#L572) — Proyecta la silueta de un caster sobre cada texel que puede alcanzar su sombra.
+- [`lay_caster`](bake.rs#L577) — Proyecta la silueta de un caster sobre cada texel que puede alcanzar su sombra.
   - Firma: `fn lay_caster( map: &mut ShadowMap, caster: &ShadowCaster, light: &ShadowProjection, tile_width: f64, box_height: f64, levels: &mut LevelCache, silhouette_of: SilhouetteOf<'_, '_>, ) {`
 
-- [`shadow_box`](bake.rs#L690) — La caja que cubre la sombra de `laid` una vez que un lift la ha movido `shift` casillas hacia abajo por la luz.
+- [`shadow_box`](bake.rs#L695) — La caja que cubre la sombra de `laid` una vez que un lift la ha movido `shift` casillas hacia abajo por la luz.
   - Firma: `fn shadow_box(laid: &[(f64, f64); 4], shift: f64, light: &ShadowProjection) -> WorldBox {`
 
-- [`union`](bake.rs#L710) — Calcula o recupera «union» según los parámetros de la firma.
+- [`union`](bake.rs#L715) — Calcula o recupera «union» según los parámetros de la firma.
   - Firma: `fn union(a: WorldBox, b: WorldBox) -> WorldBox {`
 
-- [`columns_touched`](bake.rs#L715) — Las columnas de `area` que solapa `box`, o `None` cuando no toca el área en absoluto.
+- [`columns_touched`](bake.rs#L720) — Las columnas de `area` que solapa `box`, o `None` cuando no toca el área en absoluto.
   - Firma: `fn columns_touched(area: MapArea, world: WorldBox) -> Option<(i32, i32, i32, i32)> {`
 
-- [`texels_of`](bake.rs#L727) — Los texels del cuadrado de una columna que solapa `box`, limitados al mapa.
+- [`texels_of`](bake.rs#L732) — Los texels del cuadrado de una columna que solapa `box`, limitados al mapa.
   - Firma: `fn texels_of( map: &ShadowMap, column_x: i32, column_y: i32, world: WorldBox, ) -> Option<(u32, u32, u32, u32)> {`
 
-- [`blur_across_rows`](bake.rs#L780) — La primera pasada del desenfoque, a lo ancho del mapa, recorriendo `rows` filas desde `from` para que comparta el frame con el juego; devuelve las filas recorridas.
+- [`blur_across_rows`](bake.rs#L785) — La primera pasada del desenfoque, a lo ancho del mapa, recorriendo `rows` filas desde `from` para que comparta el frame con el juego; devuelve las filas recorridas.
   - Firma: `fn blur_across_rows( map: &mut ShadowMap, radius: u32, levels: &LevelCache, from: u32, rows: u32, ) -> u32 {`
 
-- [`blur_across_within_levels`](bake.rs#L863) — Pasada completa del primer desenfoque, sin leer nunca a través de un desnivel del terreno; solo para los tests (`#[cfg(test)]`).
+- [`blur_across_within_levels`](bake.test.rs#L721) — Pasada completa del primer desenfoque, sin leer nunca a través de un desnivel del terreno; solo la usan los tests (vive en `bake.test.rs`).
   - Firma: `fn blur_across_within_levels(map: &mut ShadowMap, radius: u32, levels: &LevelCache) {`
 
-- [`blur_down_rows`](bake.rs#L906) — La segunda pasada del desenfoque, hacia abajo por el mapa, recorriendo `rows` filas desde el cursor de `job` para que comparta el frame con el juego; devuelve las filas recorridas.
+- [`blur_down_rows`](bake.rs#L898) — La segunda pasada del desenfoque, hacia abajo por el mapa, recorriendo `rows` filas desde el cursor de `job` para que comparta el frame con el juego; devuelve las filas recorridas.
   - Firma: `fn blur_down_rows( map: &mut ShadowMap, span: usize, levels: &LevelCache, job: &mut BlurDownJob, rows: u32, ) -> u32 {`
 
-- [`blur_down_within_levels`](bake.rs#L997) — Pasada completa de la segunda pasada del desenfoque; solo para los tests (`#[cfg(test)]`).
+- [`blur_down_within_levels`](bake.test.rs#L733) — Pasada completa de la segunda pasada del desenfoque; solo la usan los tests (vive en `bake.test.rs`).
   - Firma: `fn blur_down_within_levels(map: &mut ShadowMap, span: usize, levels: &LevelCache) {`
 
-- [`mark_cuts`](bake.rs#L1010) — Calcula o recupera «mark cuts» según los parámetros de la firma.
+- [`mark_cuts`](bake.rs#L987) — Calcula o recupera «mark cuts» según los parámetros de la firma.
   - Firma: `fn mark_cuts(cuts: &mut [bool], per_tile: usize, flush: impl Fn(usize) -> bool) {`
 
-- [`full_window_means`](bake.rs#L1018) — Todos los cocientes a los que puede llegar una ventana completa del desenfoque, calculados una vez.
+- [`full_window_means`](bake.rs#L995) — Todos los cocientes a los que puede llegar una ventana completa del desenfoque, calculados una vez.
   - Firma: `fn full_window_means(span: usize) -> Vec<u8> {`
 
-- [`window_mean`](bake.rs#L1024) — La media de `line` sobre `at ± span`, con los extremos limitados y `means` para una ventana completa.
+- [`window_mean`](bake.rs#L1001) — La media de `line` sobre `at ± span`, con los extremos limitados y `means` para una ventana completa.
   - Firma: `fn window_mean(line: &[u8], at: usize, span: usize, means: &[u8]) -> u8 {`
 
-- [`mean`](bake.rs#L1036) — La media de `line` sobre `at ± span`, con los extremos limitados.
+- [`mean`](bake.rs#L1013) — La media de `line` sobre `at ± span`, con los extremos limitados.
   - Firma: `fn mean(line: &[u8], at: usize, span: usize) -> u8 {`
 
 #### Constantes internas
@@ -325,10 +325,10 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Tipos internos
 
-- [`BlurDownJob`](bake.rs#L876) — El estado rodante de la segunda pasada del desenfoque (anillo de filas, sumas acumuladas, cortes por desnivel), que viaja entre pasos para que el desenfoque recorra el mapa por ventanas de filas y no en un único paso.
+- [`BlurDownJob`](bake.rs#L868) — El estado rodante de la segunda pasada del desenfoque (anillo de filas, sumas acumuladas, cortes por desnivel), que viaja entre pasos para que el desenfoque recorra el mapa por ventanas de filas y no en un único paso.
   - Declaración: `struct BlurDownJob {`
 
-- [`TERRAIN_SAMPLES_PER_TILE`](bake.rs#L352) — Con qué frecuencia se pregunta por el horizonte del terreno a lo ancho de una casilla.
+- [`TERRAIN_SAMPLES_PER_TILE`](bake.rs#L357) — Con qué frecuencia se pregunta por el horizonte del terreno a lo ancho de una casilla.
   - Declaración: `const TERRAIN_SAMPLES_PER_TILE: u32 = 3;`
 
 ### `terrain.rs`

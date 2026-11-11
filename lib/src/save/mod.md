@@ -18,19 +18,19 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`load_save`](persistence.rs) — Intenta cargar un archivo de guardado del disco. Devuelve `None` ante cualquier error o al ejecutarse en WASM. En nativo la ruta la resuelve `crate::app::save_path()`: dentro de un `.app`, `~/Library/Application Support/<GAME_TITLE>/saves/iso_save.json`; fuera, `saves/iso_save.json` junto al CWD.
   - Firma: `pub async fn load_save() -> Option<WorldSave> {`
 
-- [`restore_archive`](persistence.rs#L70) — Restaura un `ChunkArchive` desde un guardado ya parseado, o devuelve un archivo vacío.
+- [`restore_archive`](persistence.rs#L72) — Restaura un `ChunkArchive` desde un guardado ya parseado, o devuelve un archivo vacío.
   - Firma: `pub fn restore_archive(save: Option<WorldSave>) -> ChunkArchive {`
 
-- [`save_archive`](persistence.rs#L78) — Persiste el archivo en disco o en el almacenamiento del navegador en WASM.
+- [`save_archive`](persistence.rs#L80) — Persiste el archivo en disco o en el almacenamiento del navegador en WASM.
   - Firma: `pub fn save_archive(archive: &ChunkArchive) {`
 
-- [`sync_manager_to_archive`](persistence.rs#L98) — Sincroniza los chunks descubiertos de un `ChunkManager` a un `ChunkArchive`, reemplazando cualquier
+- [`sync_manager_to_archive`](persistence.rs#L106) — Sincroniza los chunks descubiertos de un `ChunkManager` a un `ChunkArchive`, reemplazando cualquier
   - Firma: `pub fn sync_manager_to_archive(manager: &ChunkManager, archive: &mut ChunkArchive) {`
 
-- [`load_archive_into_manager`](persistence.rs#L105) — Carga en un `ChunkManager` los chunks guardados de un archivo, omitiendo la generación de terreno.
+- [`load_archive_into_manager`](persistence.rs#L113) — Carga en un `ChunkManager` los chunks guardados de un archivo, omitiendo la generación de terreno.
   - Firma: `pub fn load_archive_into_manager( manager: &mut ChunkManager, archive: &ChunkArchive, ) -> Vec<String> {`
 
-- [`restore_discovered_from_archive`](persistence.rs#L114) — Reemplaza los chunks recién generados por su copia archivada, donde el archivo la tenga.
+- [`restore_discovered_from_archive`](persistence.rs#L122) — Reemplaza los chunks recién generados por su copia archivada, donde el archivo la tenga.
   - Firma: `pub fn restore_discovered_from_archive( manager: &mut ChunkManager, archive: &ChunkArchive, discovered: &[iso::grid::ChunkCoord], ) -> Vec<String> {`
 
 
@@ -42,16 +42,16 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`iso_storage_get`](persistence.rs#L11) — Calcula o recupera «iso storage get» según los parámetros de la firma.
+- [`iso_storage_get`](persistence.rs#L12) — Calcula o recupera «iso storage get» según los parámetros de la firma.
   - Firma: `fn iso_storage_get( key_ptr: *const u8, key_len: usize, output_ptr: *mut u8, output_capacity: usize, ) -> isize;`
 
-- [`iso_storage_set`](persistence.rs#L17) — Calcula o recupera «iso storage set» según los parámetros de la firma.
+- [`iso_storage_set`](persistence.rs#L18) — Calcula o recupera «iso storage set» según los parámetros de la firma.
   - Firma: `fn iso_storage_set( key_ptr: *const u8, key_len: usize, value_ptr: *const u8, value_len: usize, ) -> i32;`
 
-- [`local_storage_get`](persistence.rs#L27) — Calcula o recupera «local storage get» según los parámetros de la firma.
+- [`local_storage_get`](persistence.rs#L28) — Calcula o recupera «local storage get» según los parámetros de la firma.
   - Firma: `fn local_storage_get(key: &str) -> Option<String> {`
 
-- [`local_storage_set`](persistence.rs#L49) — Calcula o recupera «local storage set» según los parámetros de la firma.
+- [`local_storage_set`](persistence.rs#L50) — Calcula o recupera «local storage set» según los parámetros de la firma.
   - Firma: `fn local_storage_set(key: &str, value: &str) -> bool {`
 
 #### Constantes internas
@@ -59,5 +59,5 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`STORAGE_KEY`](persistence.rs) — Clave del almacenamiento local en WASM (solo build WASM); conserva el mismo nombre relativo que el archivo de desarrollo. En nativo no se usa: la ruta la resuelve `crate::app::save_path()` (ver `src/app/bundle.rs`).
   - Declaración: `const STORAGE_KEY: &str = "saves/iso_save.json";`
 
-- [`OUTPUT_CAPACITY`](persistence.rs#L28) — Define el parámetro interno «OUTPUT CAPACITY» empleado por este módulo.
+- [`OUTPUT_CAPACITY`](persistence.rs#L29) — Define el parámetro interno «OUTPUT CAPACITY» empleado por este módulo.
   - Declaración: `const OUTPUT_CAPACITY: usize = 32 * 1024 * 1024;`

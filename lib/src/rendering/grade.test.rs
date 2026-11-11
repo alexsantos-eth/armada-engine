@@ -185,3 +185,11 @@ fn tilt_shift_keeps_the_subject_band_sharp_and_softens_the_edges() {
         "the effect remains bounded outside texture coordinates"
     );
 }
+
+/// The CPU mirror of the shader's smoothstep between the sharp band and the full radius.
+fn tilt_shift_radius(y: f32) -> f32 {
+    let edge = (y - TILT_SHIFT_FOCUS_Y).abs() - TILT_SHIFT_SHARP_HALF_HEIGHT;
+    let amount = (edge / TILT_SHIFT_TRANSITION_HEIGHT).clamp(0.0, 1.0);
+    let smooth = amount * amount * (3.0 - 2.0 * amount);
+    smooth * TILT_SHIFT_MAX_RADIUS_PX
+}

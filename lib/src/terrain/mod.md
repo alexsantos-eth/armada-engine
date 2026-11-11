@@ -46,21 +46,21 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`new`](terrain_view_blocks.rs#L35) — Resuelve cada material contra el atlas: su bloque y su sprite de reflejo, y los dieciséis bloques de camino contra la máscara de conexión (bit `1` +x, `2` +y, `4` −x, `8` −y). Devuelve, por ese orden, los materiales de los que no hay bloque, los de los que no hay sprite de reflejo y las máscaras de los bloques de camino de los que no hay variante.
   - Firma: `pub fn new( atlas: &SpriteAtlas, ) -> (Self, Vec<TerrainMaterial>, Vec<TerrainMaterial>, Vec<u8>) {`
 
-- [`frame`](terrain_view_blocks.rs#L79) — El frame de bloque de `material`, ya resuelto contra el atlas.
+- [`frame`](terrain_view_blocks.rs#L80) — El frame de bloque de `material`, ya resuelto contra el atlas.
   - Firma: `pub fn frame(&self, material: TerrainMaterial) -> Option<(SpriteFrame, InkBox)> {`
 
-- [`path`](terrain_view_blocks.rs#L84) — El bloque de camino cuyas bandas unen las caras de la máscara de conexión `mask` (solo los cuatro bits bajos).
+- [`path`](terrain_view_blocks.rs#L85) — El bloque de camino cuyas bandas unen las caras de la máscara de conexión `mask` (solo los cuatro bits bajos).
   - Firma: `pub fn path(&self, mask: u8) -> Option<(SpriteFrame, InkBox)> {`
 
-- [`reflection`](terrain_view_blocks.rs#L89) — El sprite de reflejo de `material` (las caras laterales dibujadas como las muestra el agua), ya resuelto contra el atlas.
+- [`reflection`](terrain_view_blocks.rs#L90) — El sprite de reflejo de `material` (las caras laterales dibujadas como las muestra el agua), ya resuelto contra el atlas.
   - Firma: `pub fn reflection(&self, material: TerrainMaterial) -> Option<(SpriteFrame, InkBox)> {`
 
-- [`collect_terrain_sprites`](terrain_view_blocks.rs#L141) — Encola los sprites de `columns`, que el llamante ordena y dibuja con todo lo demás. El bloque de superficie `Path` dibuja la variante cuyo mask de conexión (`iso::terrain::connection_mask` sobre las superficies de `surface_at`) corresponde; una variante ausente cae al bloque de camino plano. Cada bloque por encima del agua también encola el sprite de reflejo de su material, colgando de la línea de agua con una banda por bloque (`Reflected::AsDrawn`, cortada a las casillas de agua que cubre); las columnas de agua no se reflejan. Los reflejos se dirigen a una cola aparte y se vacían de atrás hacia delante (`coord.x + coord.y` descendente) al final de la pasada, para que en una casilla compartida por dos bloques el bloque de delante pinte sobre el sliver del bloque de atrás. Una columna retranqueada entre dos vecinos de delante de la misma altura o mayor no refleja: las alas tapan la cuña de agua donde caería su reflejo y su banda asomaría entre ellas como un triángulo suelto en el vértice interior. `surroundings` es cómo contesta el mundo por las casillas alrededor de una columna, y `screen` es el tamaño de ventana contra el que se comprueba la visibilidad de cada bloque.
+- [`collect_terrain_sprites`](terrain_view_blocks.rs#L142) — Encola los sprites de `columns`, que el llamante ordena y dibuja con todo lo demás. El bloque de superficie `Path` dibuja la variante cuyo mask de conexión (`iso::terrain::connection_mask` sobre las superficies de `surface_at`) corresponde; una variante ausente cae al bloque de camino plano. Cada bloque por encima del agua también encola el sprite de reflejo de su material, colgando de la línea de agua con una banda por bloque (`Reflected::AsDrawn`, cortada a las casillas de agua que cubre); las columnas de agua no se reflejan. Los reflejos se dirigen a una cola aparte y se vacían de atrás hacia delante (`coord.x + coord.y` descendente) al final de la pasada, para que en una casilla compartida por dos bloques el bloque de delante pinte sobre el sliver del bloque de atrás. Una columna retranqueada entre dos vecinos de delante de la misma altura o mayor no refleja: las alas tapan la cuña de agua donde caería su reflejo y su banda asomaría entre ellas como un triángulo suelto en el vértice interior. `surroundings` es cómo contesta el mundo por las casillas alrededor de una columna, y `screen` es el tamaño de ventana contra el que se comprueba la visibilidad de cada bloque.
   - Firma: `pub fn collect_terrain_sprites<H, W, S>( columns: &[TerrainColumn], projection: ProjectionConfig, frames: &TerrainFrames, look: &TerrainLook, surroundings: Surroundings<H, W, S>, screen: (f64, f64), out: &mut Vec<SpriteDraw>, ) where H: Fn(WorldCoord) -> Option<i32>, W: Fn(i32, i32) -> Option<WaterCell>, S: Fn(WorldCoord) -> Option<TerrainMaterial> {`
 
 #### Tipos
 
-- [`Surroundings`](terrain_view_blocks.rs#L123) — Cómo contesta el mundo por las casillas alrededor de una columna: su altura de streaming, el agua, si la hay, que yace sobre ellas, y la superficie de cada una, que el bloque de superficie de camino lee para elegir su máscara de conexión.
+- [`Surroundings`](terrain_view_blocks.rs#L124) — Cómo contesta el mundo por las casillas alrededor de una columna: su altura de streaming, el agua, si la hay, que yace sobre ellas, y la superficie de cada una, que el bloque de superficie de camino lee para elegir su máscara de conexión.
   - Declaración: `pub struct Surroundings<H, W, S> where H: Fn(WorldCoord) -> Option<i32>, W: Fn(i32, i32) -> Option<WaterCell>, S: Fn(WorldCoord) -> Option<TerrainMaterial> { pub height_at: H, pub water_at: W, pub surface_at: S, }`
 
 #### Constantes
@@ -96,13 +96,13 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`reach`](terrain_view_blocks.rs#L94) — Hasta dónde llega el artwork de cualquiera de estos materiales por encima y por debajo del suelo que
+- [`reach`](terrain_view_blocks.rs#L95) — Hasta dónde llega el artwork de cualquiera de estos materiales por encima y por debajo del suelo que
   - Firma: `fn reach(&self, tile_width: f64) -> (f64, f64) {`
 
-- [`ReflectionJob`](terrain_view_blocks.rs#L110) — Trabajo de reflejo encolado durante la pasada principal y vaciado al final, de atrás hacia delante (`coord.x + coord.y` descendente), para que en una casilla compartida el bloque de delante pinte sobre el sliver del bloque de atrás.
+- [`ReflectionJob`](terrain_view_blocks.rs#L111) — Trabajo de reflejo encolado durante la pasada principal y vaciado al final, de atrás hacia delante (`coord.x + coord.y` descendente), para que en una casilla compartida el bloque de delante pinte sobre el sliver del bloque de atrás.
   - Declaración: `struct ReflectionJob { depth: i32, frame: SpriteFrame, layout: SpriteLayout, feet: ScreenPoint, level: f64, }`
 
-- [`exposed_floor`](terrain_view_blocks.rs#L300) — El bloque más bajo de una columna que aún debe dibujarse: tan abajo como el más bajo de las
+- [`exposed_floor`](terrain_view_blocks.rs#L301) — El bloque más bajo de una columna que aún debe dibujarse: tan abajo como el más bajo de las
   - Firma: `fn exposed_floor(elevation: i32, in_front: impl IntoIterator<Item = Option<i32>>) -> i32 {`
 
 #### Constantes internas

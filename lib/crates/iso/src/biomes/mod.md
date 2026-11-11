@@ -15,7 +15,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`parse_biomes`](catalog.rs#L175) — Parsea y valida el contenido de biomas contra el catálogo de entidades que referencia. Una especie que el catálogo de entidades no tiene es un error de carga, no un árbol que nunca brota.
+- [`parse_biomes`](catalog.rs#L194) — Parsea y valida el contenido de biomas contra el catálogo de entidades que referencia. Una especie que el catálogo de entidades no tiene es un error de carga, no un árbol que nunca brota.
   - Firma: `pub fn parse_biomes(json: &str, entities: &EntityCatalog) -> Result<BiomeCatalog, BiomeError> {`
 
 #### Constantes
@@ -25,7 +25,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Tipos
 
-- [`BiomeCatalog`](catalog.rs#L38) — El contenido de biomas validado: la versión de esquema y los biomas en orden de archivo, estable para un catálogo cargado.
+- [`BiomeCatalog`](catalog.rs#L41) — El contenido de biomas validado: la versión de esquema y los biomas en orden de archivo, estable para un catálogo cargado.
   - Declaración: `pub struct BiomeCatalog { pub schema_version: u32, pub biomes: Vec<Biome>, }`
 
 - [`Biome`](catalog.rs#L21) — Un bioma: su `share` (peso relativo de cobertura mundial), su `tree_coverage` (proporción de columnas del mundo en las que brotan árboles, bosquetes incluidos), las especies elegibles con su peso, su `wind_strength` (multiplicador del sesgo con que el viento mece los sprites con `sway` en su suelo; `0` es aire quieto, `1` la amplitud de autor; opcional, por defecto `1`) y sus paletas de suelo (`grassTints` para hierba y camino, `groundTints` para tierra desnuda; multiplicadores `0xRRGGBB`, de oscuro a claro). Un bioma sin árboles es legal.
@@ -34,7 +34,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`BiomeTree`](catalog.rs#L12) — Una especie elegible en el bioma: el `blueprint` que la habilita y el `weight` relativo con que entra en los bosquetes.
   - Declaración: `pub struct BiomeTree { pub blueprint: String, pub weight: f64, }`
 
-- [`BiomeError`](catalog.rs#L47) — Todo lo que el contenido de biomas puede declarar mal: esquema no soportado, JSON ilegible, catálogo vacío, ids vacíos o repetidos, `share` o `tree_coverage` no finitos o fuera de rango, pesos no positivos, `blueprint` que el catálogo de entidades no tiene, colores que no son seis dígitos hex, `windStrength` no finito o negativo.
+- [`BiomeError`](catalog.rs#L50) — Todo lo que el contenido de biomas puede declarar mal: esquema no soportado, JSON ilegible, catálogo vacío, ids vacíos o repetidos, `share` o `tree_coverage` no finitos o fuera de rango, pesos no positivos, `blueprint` que el catálogo de entidades no tiene, colores que no son seis dígitos hex, `windStrength` no finito o negativo.
   - Declaración: `pub enum BiomeError { ... }`
 
 ### `field.rs`

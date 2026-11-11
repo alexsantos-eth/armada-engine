@@ -19,8 +19,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Constantes
 
+- [`GAME_TITLE`](config.rs#L12) — Nombre visible del juego: título de la ventana, nombre del `.app` y carpeta de soporte en macOS. Es el único sitio donde renombrar el juego.
+  - Declaración: `pub const GAME_TITLE: &str = "Yorch Adventure";`
 - [`PREVIEW_CENTRE`](config.rs#L14) — Centro de diagnóstico del mundo; el jugador nace cerca de él.
-  - Declaración: `pub const PREVIEW_CENTRE: WorldCoord = WorldCoord { x: 16, y: 88 };`
+  - Declaración: `pub const PREVIEW_CENTRE: WorldCoord = WorldCoord { x: -120, y: -72 };`
 - [`PREVIEW_TILE_WIDTH`](config.rs#L16) — Zoom de la escena: ancho de una casilla en píxeles de pantalla.
   - Declaración: `pub const PREVIEW_TILE_WIDTH: f64 = 280.0;`
 - [`PREVIEW_TILE_HEIGHT`](config.rs#L18) — Alto de una casilla en píxeles.
@@ -70,9 +72,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`SceneMetrics::REFERENCE`](config.rs#L32) — Las métricas de referencia que dibuja una plataforma de puntero fino (escritorio).
+- [`SceneMetrics::REFERENCE`](config.rs#L39) — Las métricas de referencia que dibuja una plataforma de puntero fino (escritorio).
   - Declaración: `pub const REFERENCE: Self = Self { ... };`
-- [`SceneMetrics::for_pointer`](config.rs#L40) — Las métricas para `coarse`: la referencia en escritorio, la escena alejada un poco (`MOBILE_ZOOM`) en plataformas táctiles.
+- [`SceneMetrics::for_pointer`](config.rs#L47) — Las métricas para `coarse`: la referencia en escritorio, la escena alejada un poco (`MOBILE_ZOOM`) en plataformas táctiles.
   - Firma: `pub fn for_pointer(coarse: bool) -> Self {`
 
 ### `ground.rs`
@@ -96,47 +98,47 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`update`](frame.rs#L63) — Entrada, ticks fijos, reloj del mundo (avanza solo en el paso fijo), fase efectiva de sombras (override o `phase_at` del reloj), streaming de chunks y guardado de un fotograma. `None` si el jugador pidió salir (tras volcar el guardado si hacía falta).
+- [`update`](frame.rs#L67) — Entrada, ticks fijos, reloj del mundo (avanza solo en el paso fijo), fase efectiva de sombras (override o `phase_at` del reloj), streaming de chunks y guardado de un fotograma. `None` si el jugador pidió salir (tras volcar el guardado si hacía falta).
   - Firma: `pub(crate) fn update(&mut self, frame_ms: f64) -> Option<FrameView> {`
 
 ### `scene.rs`
 
 #### Funciones y métodos
 
-- [`preview_projection`](scene.rs#L36) — La proyección de esta vista con su origen en `(origin_x, origin_y)`: las métricas de casilla son las de la escena, el origen sigue a la cámara.
+- [`preview_projection`](scene.rs#L38) — La proyección de esta vista con su origen en `(origin_x, origin_y)`: las métricas de casilla son las de la escena, el origen sigue a la cámara.
   - Firma: `pub(crate) fn preview_projection(origin_x: f64, origin_y: f64, metrics: SceneMetrics) -> ProjectionConfig {`
-- [`player_sheets`](scene.rs#L57) — Cuántas poses trae cada hoja del jugador en el atlas.
+- [`player_sheets`](scene.rs#L62) — Cuántas poses trae cada hoja del jugador en el atlas.
   - Firma: `pub(crate) fn player_sheets(atlas: &SpriteAtlas) -> crate::player::player_view::PlayerSheets {`
-- [`player_layer`](scene.rs#L70) — Qué capa ocupa el jugador sobre la casilla que pisa.
+- [`player_layer`](scene.rs#L75) — Qué capa ocupa el jugador sobre la casilla que pisa.
   - Firma: `pub(crate) fn player_layer(position: GridPoint, column: WorldCoord) -> i32 {`
-- [`player_feet`](scene.rs#L79) — Proyecta el punto donde los pies del jugador tocan la cima de su casilla.
+- [`player_feet`](scene.rs#L84) — Proyecta el punto donde los pies del jugador tocan la cima de su casilla.
   - Firma: `pub(crate) fn player_feet(position: GridPoint, elevation: f64, projection: ProjectionConfig) -> ScreenPoint {`
-- [`scale_player_layout`](scene.rs#L99) — Escala el arte del jugador alrededor de sus pies sin deslizar su punto de contacto.
+- [`scale_player_layout`](scene.rs#L104) — Escala el arte del jugador alrededor de sus pies sin deslizar su punto de contacto.
   - Firma: `pub(crate) fn scale_player_layout(layout: SpriteLayout, feet: ScreenPoint, scale: BodyScale) -> SpriteLayout {`
-- [`frame_projection`](scene.rs#L161) — El origen de la proyección del fotograma a partir de la cámara, su nivel y las métricas de casilla de la escena.
+- [`frame_projection`](scene.rs#L163) — El origen de la proyección del fotograma a partir de la cámara, su nivel y las métricas de casilla de la escena.
   - Firma: `pub(crate) fn frame_projection(camera: Camera, level: f64, width: f32, height: f32, metrics: SceneMetrics) -> ProjectionConfig {`
-- [`draw_clouds`](scene.rs#L173) — Dibuja las sombras de nubes sobre la escena terminada, bajo el HUD.
+- [`draw_clouds`](scene.rs#L181) — Dibuja las sombras de nubes sobre la escena terminada, bajo el HUD.
   - Firma: `pub(crate) fn draw_clouds(&mut self, frame_ms: f64, projection: &ProjectionConfig) {`
-- [`collect_scene`](scene.rs#L186) — Los sprites del fotograma: terreno y sombras horneadas, entidades y reflejos, jugador y polvo. Reutiliza la cola de dibujo.
+- [`collect_scene`](scene.rs#L194) — Los sprites del fotograma: terreno y sombras horneadas, entidades y reflejos, jugador y polvo. Reutiliza la cola de dibujo.
   - Firma: `pub(crate) fn collect_scene(&mut self, view: &FrameView) -> SceneStats {`
 
 #### Tipos
 
-- [`PlayerSprite`](scene.rs#L49) — El arte del jugador: su frame en el atlas y dónde pertenece sobre el suelo.
+- [`PlayerSprite`](scene.rs#L54) — El arte del jugador: su frame en el atlas y dónde pertenece sobre el suelo.
   - Firma: `pub(crate) struct PlayerSprite { pub(crate) frame: SpriteFrame, pub(crate) ink: InkBox, pub(crate) texture: usize }`
-- [`SceneStats`](scene.rs#L115) — Lo que la pasada de escena midió: chunks dibujados y sprites en cola.
+- [`SceneStats`](scene.rs#L120) — Lo que la pasada de escena midió: chunks dibujados y sprites en cola.
   - Firma: `pub(crate) struct SceneStats { pub(crate) chunks_drawn: usize, pub(crate) sprites: usize }`
 
 ### `state.rs`
 
 #### Tipos
 
-- [`Game`](state.rs#L53) — El juego compuesto: manager, archivo de guardado, jugador, cámara, stepper, reloj del mundo (`clock`), override de fase (`phase_override`), arte, sombras, polvo, cola de dibujo, servicios (audio, UI, perf), los controles táctiles (`touch`) y las métricas de casilla (`tile_metrics`).
+- [`Game`](state.rs#L58) — El juego compuesto: manager, archivo de guardado, jugador, cámara, stepper, reloj del mundo (`clock`), override de fase (`phase_override`), arte, sombras, polvo, cola de dibujo, servicios (audio, UI, perf), los controles táctiles (`touch`) y las métricas de casilla (`tile_metrics`).
   - Firma: `pub(crate) struct Game { ... }`
 
 #### Funciones y métodos
 
-- [`Game::new`](state.rs#L94) — Arranque: carga catálogo y manifiesto, restaura el guardado si existe, genera la zona de aparición y encuadra al jugador. Los fallos de assets degradan a avisos, nunca entran en pánico.
+- [`Game::new`](state.rs#L102) — Arranque: carga catálogo y manifiesto, restaura el guardado si existe, genera la zona de aparición y encuadra al jugador. Los fallos de assets degradan a avisos, nunca entran en pánico.
   - Firma: `pub(crate) async fn new() -> Self {`
 
 ## Detalles de implementación
@@ -163,15 +165,15 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones internas
 
-- [`screen_point`](scene.rs#L120) — Proyecta un `GridPoint` a `Vec2` de macroquad.
+- [`screen_point`](scene.rs#L125) — Proyecta un `GridPoint` a `Vec2` de macroquad.
   - Firma: `fn screen_point(point: GridPoint, projection: ProjectionConfig) -> Vec2 {`
-- [`draw_grid`](scene.rs#L125) — La rejilla de depuración que se dibuja cuando el terreno está oculto (T).
+- [`draw_grid`](scene.rs#L130) — La rejilla de depuración que se dibuja cuando el terreno está oculto (T).
   - Firma: `fn draw_grid(projection: ProjectionConfig, centre: WorldCoord) {`
-- [`collect_world`](scene.rs#L212) — Terreno y sombras horneadas de los chunks visibles, luego entidades y sus reflejos. Devuelve cuántos chunks se dibujaron.
+- [`collect_world`](scene.rs#L220) — Terreno y sombras horneadas de los chunks visibles, luego entidades y sus reflejos. Devuelve cuántos chunks se dibujaron.
   - Firma: `fn collect_world(&mut self, view: &FrameView) -> usize {`
-- [`collect_player`](scene.rs#L367) — El sprite del jugador: clave de profundidad, pose, arte o figura quieta, su reflejo y la sombra que le cae encima. Devuelve cuánto se movió.
+- [`collect_player`](scene.rs#L421) — El sprite del jugador: clave de profundidad, pose, arte o figura quieta, su reflejo y la sombra que le cae encima. Devuelve cuánto se movió.
   - Firma: `fn collect_player(&mut self, view: &FrameView) -> f64 {`
-- [`collect_dust`](scene.rs#L481) — El polvo levantado por el movimiento del jugador.
+- [`collect_dust`](scene.rs#L571) — El polvo levantado por el movimiento del jugador.
   - Firma: `fn collect_dust(&mut self, view: &FrameView, moved: f64) {`
 
 ### `state.rs`

@@ -47,5 +47,5 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`push`](ui.rs#L17) — Envía un evento a la capa de UI.
+- [`push`](ui.rs#L23) — Envía un evento a la capa de UI.
   - Firma: `fn push(&mut self, event: UiEvent);`

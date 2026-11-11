@@ -716,3 +716,29 @@ fn the_blur_down_is_a_mean_of_its_window_texel_by_texel() {
         }
     }
 }
+
+/// The first pass of the blur, across the whole map.
+fn blur_across_within_levels(map: &mut ShadowMap, radius: u32, levels: &LevelCache) {
+    let mut from = 0;
+    loop {
+        let done = blur_across_rows(map, radius, levels, from, u32::MAX);
+        if done == 0 || from + done >= map.height {
+            break;
+        }
+        from += done;
+    }
+}
+
+/// The second pass of the blur, down the whole map.
+fn blur_down_within_levels(map: &mut ShadowMap, span: usize, levels: &LevelCache) {
+    if span == 0 {
+        return;
+    }
+    let mut job = BlurDownJob::new(map);
+    loop {
+        let done = blur_down_rows(map, span, levels, &mut job, u32::MAX);
+        if done == 0 || job.next_row as usize >= map.height as usize {
+            break;
+        }
+    }
+}

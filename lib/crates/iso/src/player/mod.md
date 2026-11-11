@@ -18,25 +18,25 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`get_dust`](dust.rs#L74) — Un soplo de polvo `ms` milisegundos reales después de que se alzó: cuánto ha recorrido su vida de `duration`
   - Firma: `pub fn get_dust(ms: f64, duration: f64, alpha: f64) -> Option<DustLook> {`
 
-- [`mix_color`](dust.rs#L96) — El color a `share` (`0` → `1`) del camino de `from` a `to`, canal a canal, redondeado
+- [`mix_color`](dust.rs#L99) — El color a `share` (`0` → `1`) del camino de `from` a `to`, canal a canal, redondeado
   - Firma: `pub fn mix_color(colors: (u32, u32), share: f64) -> u32 {`
 
-- [`new`](dust.rs#L116) — El flujo de `seed`, que es el número de soplos alzados hasta ahora.
+- [`new`](dust.rs#L119) — El flujo de `seed`, que es el número de soplos alzados hasta ahora.
   - Firma: `pub fn new(seed: u64) -> Self {`
 
-- [`roll`](dust.rs#L121) — El siguiente número del flujo, en `[0, 1)`. SplitMix64, como las funciones hash de `terrain::noise`.
+- [`roll`](dust.rs#L126) — El siguiente número del flujo, en `[0, 1)`. SplitMix64, como las funciones hash de `terrain::noise`.
   - Firma: `pub fn roll(&mut self) -> f64 {`
 
-- [`get_dust_voxels`](dust.rs#L132) — Los voxeles de un soplo de polvo de `shape`, dispersados por el flujo de `seed`: repartidos alrededor de la
+- [`get_dust_voxels`](dust.rs#L137) — Los voxeles de un soplo de polvo de `shape`, dispersados por el flujo de `seed`: repartidos alrededor de la
   - Firma: `pub fn get_dust_voxels( shape: DustShape, seed: u64, kick: GridPoint, origin: GridPoint, ) -> Vec<DustVoxel> {`
 
-- [`get_dust_voxel_at`](dust.rs#L177) — Donde `voxel` está a `progress` del camino a lo largo de la vida de su soplo (`0` → `1`): en columnas desde
+- [`get_dust_voxel_at`](dust.rs#L182) — Donde `voxel` está a `progress` del camino a lo largo de la vida de su soplo (`0` → `1`): en columnas desde
   - Firma: `pub fn get_dust_voxel_at(voxel: DustVoxel, progress: f64) -> DustVoxelState {`
 
-- [`get_dust_column`](dust.rs#L198) — La columna con la que se dibuja un voxel de polvo en `point` (en el suelo, en columnas), para pies en
+- [`get_dust_column`](dust.rs#L203) — La columna con la que se dibuja un voxel de polvo en `point` (en el suelo, en columnas), para pies en
   - Firma: `pub fn get_dust_column( point: GridPoint, feet: GridPoint, level: f64, top_at: impl Fn(i32, i32) -> Option<f64>, ) -> DustColumn {`
 
-- [`voxel_faces`](dust.rs#L232) — Un voxel pequeño apoyado en el suelo, `size` casillas de ancho, con su base centrada en un punto: sus
+- [`voxel_faces`](dust.rs#L240) — Un voxel pequeño apoyado en el suelo, `size` casillas de ancho, con su base centrada en un punto: sus
   - Firma: `pub fn voxel_faces(size: f64, tile_width: f64, tile_height: f64, box_height: f64) -> VoxelFaces {`
 
 #### Constantes
@@ -63,7 +63,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`transition_player_motion`](motion.rs#L82) — Aplica un evento a `state` y devuelve el estado de movimiento resultante.
+- [`transition_player_motion`](motion.rs#L84) — Aplica un evento a `state` y devuelve el estado de movimiento resultante.
   - Firma: `pub fn transition_player_motion( state: PlayerMotionType, event: PlayerMotionEvent, ) -> PlayerMotionType {`
 
 ### `physics.rs`
@@ -267,14 +267,14 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`remaining`](dust.rs#L16) — Cuánto de un efecto que dura `duration` queda `ms` después de que empezó: `1` → `0`, `0` después.
   - Firma: `fn remaining(ms: f64, duration: f64) -> f64 {`
 
-- [`between`](dust.rs#L163) — `share` del camino del extremo bajo al alto de un rango.
+- [`between`](dust.rs#L168) — `share` del camino del extremo bajo al alto de un rango.
   - Firma: `fn between(range: (f64, f64), share: f64) -> f64 {`
 
 ### `motion.rs`
 
 #### Funciones internas
 
-- [`next_state`](motion.rs#L72) — Busca el siguiente estado para `event` en `transitions`, o `None` cuando el evento no está manejado.
+- [`next_state`](motion.rs#L74) — Busca el siguiente estado para `event` en `transitions`, o `None` cuando el evento no está manejado.
   - Firma: `fn next_state( transitions: &[(PlayerMotionEvent, PlayerMotionType)], event: PlayerMotionEvent, ) -> Option<PlayerMotionType> {`
 
 #### Constantes internas
@@ -288,7 +288,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`AIR_JUMP`](motion.rs#L60) — Una pulsación de salto en pleno aire mantiene al jugador saltando o volando.
   - Declaración: `const AIR_JUMP: &[(PlayerMotionEvent, PlayerMotionType)] = &[ (PlayerMotionEvent::Jump, PlayerMotionType::Jumping), ];`
 
-- [`CLIMBING`](motion.rs#L65) — Transiciones desde la escalada.
+- [`CLIMBING`](motion.rs#L64) — Transiciones desde la escalada.
   - Declaración: `const CLIMBING: &[(PlayerMotionEvent, PlayerMotionType)] = &[ (PlayerMotionEvent::ClimbTick, PlayerMotionType::Climbing), (PlayerMotionEvent::ClimbDoneIdle, PlayerMotionType::Idle), (PlayerMotionEvent::ClimbDoneWalking, PlayerMotionType::Walking), ];`
 
 ### `physics.rs`

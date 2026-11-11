@@ -1,8 +1,21 @@
 [package]
 name = "iso-core"
-version = "0.7.2"
+version = "0.7.3"
 edition = "2024"
 default-run = "iso-core"
+autobins = false
+
+[[bin]]
+name = "iso-core"
+path = "src/main.rs"
+
+[[bin]]
+name = "pack_atlas"
+path = "src/bin/pack_atlas.rs"
+
+[[bin]]
+name = "remeasure_atlas"
+path = "src/bin/remeasure_atlas.rs"
 
 [workspace]
 members = [".", "crates/iso"]

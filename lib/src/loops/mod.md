@@ -19,7 +19,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`run`](frame_loop.rs#L47) — El bucle: mide el frame, deja actualizar el mundo o salir, limpia el fondo, ensambla la escena, dibuja ordenada, pinta nubes, (si la ruta lo permite) el overlay, los controles táctiles y alimenta el `PerfLog`.
+- [`run`](frame_loop.rs#L51) — El bucle: mide el frame, deja actualizar el mundo o salir, limpia el fondo, ensambla la escena, dibuja ordenada, pinta nubes, (si la ruta lo permite) el overlay, los controles táctiles y alimenta el `PerfLog`.
   - Firma: `pub(crate) async fn run(mut game: Game) {`
 
 ## Detalles de implementación

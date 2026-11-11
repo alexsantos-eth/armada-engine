@@ -96,6 +96,6 @@ echo "Packing atlas..."
 ./target/debug/pack_atlas "$tmp_dir" content/atlas.png content/assets.manifest.json assets-src
 
 echo "Rasterizing the cloud shadow pattern..."
-"$python" ../artifacts/cloud_pattern.py "$svg_dir/cloud-shadow.svg" content/cloud-shadow.png
+"$python" ../artifacts/cloud_pattern.py "$svg_dir/cloud/cloud-shadow.svg" content/cloud-shadow.png
 
 echo "Done. Atlas: content/atlas.png, sheets: content/player_*.png, clouds: content/cloud-shadow.png, manifest: content/assets.manifest.json"

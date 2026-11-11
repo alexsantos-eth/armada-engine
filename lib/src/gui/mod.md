@@ -25,7 +25,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`overlay_enabled`](route.rs#L39) — En WASM consulta `window.location.pathname` mediante el import `iso_route_path` del bundle y aplica la regla de `overlay_for_path`; fuera de WASM devuelve siempre `true`.
+- [`overlay_enabled`](route.rs#L38) — En WASM consulta `window.location.pathname` mediante el import `iso_route_path` del bundle y aplica la regla de `overlay_for_path`; fuera de WASM devuelve siempre `true`.
   - Firma: `pub(crate) fn overlay_enabled() -> bool {`
 
 ### `hud.rs`
@@ -43,9 +43,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones internas
 
-- [`browser_path`](route.rs#L17) — Lee `window.location.pathname` en WASM mediante el import `iso_route_path` (mismo patrón FFI acotado que `save::persistence`); devuelve `None` si el host falla.
+- [`browser_path`](route.rs#L18) — Lee `window.location.pathname` en WASM mediante el import `iso_route_path` (mismo patrón FFI acotado que `save::persistence`); devuelve `None` si el host falla.
   - Firma: `fn browser_path() -> Option<String> {`
-- [`overlay_for_path`](route.rs#L34) — La regla pura: el overlay solo se pinta en `/playground`, con barra final opcional. Se prueba en `route.test.rs`.
+- [`overlay_for_path`](route.rs#L33) — La regla pura: el overlay solo se pinta en `/playground`, con barra final opcional. Se prueba en `route.test.rs`.
   - Firma: `fn overlay_for_path(path: &str) -> bool {`
 
 ### `hud.rs`

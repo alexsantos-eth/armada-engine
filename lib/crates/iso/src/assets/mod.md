@@ -24,13 +24,13 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`scaled`](ink.rs#L45) — El mismo dibujo escalado en torno al suelo sobre el que se apoya, de modo que permanezca en su sitio.
   - Firma: `pub fn scaled(self, by: f64) -> Self {`
 
-- [`asset_ink`](ink.rs#L57) — Mide el dibujo en `svg`, o `None` si no se trata de un único asset trazado según la plantilla.
+- [`asset_ink`](ink.rs#L56) — Mide el dibujo en `svg`, o `None` si no se trata de un único asset trazado según la plantilla.
   - Firma: `pub fn asset_ink(svg: &str) -> Option<InkBox> {`
 
-- [`data_tiles`](ink.rs#L100) — La huella y la altura declaradas del asset, `"3x1x5"`, si las tiene.
+- [`data_tiles`](ink.rs#L99) — La huella y la altura declaradas del asset, `"3x1x5"`, si las tiene.
   - Firma: `pub fn data_tiles(svg: &str) -> Option<&str> {`
 
-- [`attribute`](ink.rs#L145) — El valor de `name="..."` en `text`, coincidiendo con el nombre completo del atributo.
+- [`attribute`](ink.rs#L144) — El valor de `name="..."` en `text`, coincidiendo con el nombre completo del atributo.
   - Firma: `pub(super) fn attribute<'a>(text: &'a str, name: &str) -> Option<&'a str> {`
 
 #### Constantes
@@ -67,24 +67,24 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`primary_frame`](manifest.rs#L89) — Devuelve el primer marco disponible (único o primero de varios).
+- [`primary_frame`](manifest.rs#L93) — Devuelve el primer marco disponible (único o primero de varios).
   - Firma: `pub fn primary_frame(&self) -> Option<SpriteFrame> {`
 
-- [`sheet_frame`](manifest.rs#L94) — El marco de la pose en la `column` de la fila de `facing`, para una entrada de hoja.
+- [`sheet_frame`](manifest.rs#L99) — El marco de la pose en la `column` de la fila de `facing`, para una entrada de hoja.
   - Firma: `pub fn sheet_frame(&self, facing: usize, column: usize) -> Option<SpriteFrame> {`
 
-- [`texture_size`](manifest.rs#L104) — El tamaño de la textura de la que se recortan los marcos de esta entrada, que es el atlas salvo que la
+- [`texture_size`](manifest.rs#L112) — El tamaño de la textura de la que se recortan los marcos de esta entrada, que es el atlas salvo que la
   - Firma: `pub fn texture_size(&self, atlas: SpriteFrame) -> SpriteFrame {`
 
-- [`frame_count`](manifest.rs#L109) — Número de marcos de animación.
+- [`frame_count`](manifest.rs#L117) — Número de marcos de animación.
   - Firma: `pub fn frame_count(&self) -> usize {`
 
-- [`validate_manifest`](manifest.rs#L159) — Valida un manifiesto: versión de esquema, ids únicos, marcos dentro del atlas.
+- [`validate_manifest`](manifest.rs#L173) — Valida un manifiesto: versión de esquema, ids únicos, marcos dentro del atlas.
   - Firma: `pub fn validate_manifest(manifest: &AssetManifest) -> Result<(), ManifestError> {`
 
 #### Constantes
 
-- [`MANIFEST_SCHEMA_VERSION`](manifest.rs#L126) — Versión de esquema de manifiesto que este crate entiende.
+- [`MANIFEST_SCHEMA_VERSION`](manifest.rs#L137) — Versión de esquema de manifiesto que este crate entiende.
   - Declaración: `pub const MANIFEST_SCHEMA_VERSION: u32 = 2;`
 
 ### `sheet.rs`
@@ -97,10 +97,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`cell_id`](sheet.rs#L34) — El id del grupo que contiene la pose en la `column` de la fila de `facing`, tal como el dibujo la nombra
   - Firma: `pub fn cell_id(&self, facing: usize, column: usize) -> Option<String> {`
 
-- [`ink`](sheet.rs#L44) — Dónde pertenece el dibujo de cada casilla sobre el suelo en el que se apoya el jugador, en casillas
+- [`ink`](sheet.rs#L46) — Dónde pertenece el dibujo de cada casilla sobre el suelo en el que se apoya el jugador, en casillas
   - Firma: `pub fn ink(&self) -> InkBox {`
 
-- [`parse_sheet`](sheet.rs#L55) — Lee la cuadrícula del SVG de una hoja, o `None` si no lo es (sin `data-frames`).
+- [`parse_sheet`](sheet.rs#L57) — Lee la cuadrícula del SVG de una hoja, o `None` si no lo es (sin `data-frames`).
   - Firma: `pub fn parse_sheet(svg: &str) -> Option<SheetGrid<'_>> {`
 
 #### Constantes
@@ -135,13 +135,13 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`footprint`](ink.rs#L105) — Hasta dónde se extiende la huella desde su ancla y a lo largo de cuál de los ejes del *dibujo*, a partir de
+- [`footprint`](ink.rs#L104) — Hasta dónde se extiende la huella desde su ancla y a lo largo de cuál de los ejes del *dibujo*, a partir de
   - Firma: `fn footprint(svg: &str) -> (i32, bool) {`
 
-- [`visible_elements`](ink.rs#L123) — El texto de cada elemento que dibuja algo: fuera de esos contenedores, y que no sea uno de los
+- [`visible_elements`](ink.rs#L122) — El texto de cada elemento que dibuja algo: fuera de esos contenedores, y que no sea uno de los
   - Firma: `fn visible_elements(svg: &str) -> impl Iterator<Item = &str> {`
 
-- [`points`](ink.rs#L164) — Cada par `x,y` en la geometría de un path o polígono.
+- [`points`](ink.rs#L163) — Cada par `x,y` en la geometría de un path o polígono.
   - Firma: `fn points(geometry: &str) -> impl Iterator<Item = (f64, f64)> + '_ {`
 
 #### Constantes internas
@@ -152,7 +152,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`HALF_TILE`](ink.rs#L16) — Cuánto se desplaza por la pantalla una casilla a lo largo de cualquiera de los ejes, en anchos de casilla.
   - Declaración: `const HALF_TILE: f64 = 0.5;`
 
-- [`SKIPPED`](ink.rs#L120) — Contenedores cuyo contenido no describe nada que se dibuje: filtros y degradados, y los
+- [`SKIPPED`](ink.rs#L119) — Contenedores cuyo contenido no describe nada que se dibuje: filtros y degradados, y los
   - Declaración: `const SKIPPED: [&str; 2] = ["defs", "metadata"];`
 
 ### `layout.rs`
@@ -169,5 +169,5 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`fmt`](manifest.rs#L140) — Calcula o recupera «fmt» según los parámetros de la firma.
+- [`fmt`](manifest.rs#L151) — Calcula o recupera «fmt» según los parámetros de la firma.
   - Firma: `fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {`
