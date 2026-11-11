@@ -43,7 +43,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `pub fn draw(&self, texture: usize, frame: SpriteFrame, layout: SpriteLayout, tint: Color) {`
 
 - [`draw_band`](sprites.rs#L187) — Dibuja la parte de un frame que cae dentro de `band`, que es un trozo del mismo
-  - Firma: `pub fn draw_band( &self, texture: usize, frame: SpriteFrame, layout: SpriteLayout, band: &SpriteBand, shade: Option<&ShadeLattice>, ) {`
+  - Firma: `pub fn draw_band( &self, texture: usize, frame: SpriteFrame, band: &SpriteBand, shade: Option<&ShadeLattice>, ) {`
 
 - [`draw_shaded`](sprites.rs#L234) — Dibuja un frame como una retícula de quads, con cada esquina oscurecida por las sombras que caen sobre ella.
   - Firma: `pub fn draw_shaded( &self, texture: usize, frame: SpriteFrame, layout: SpriteLayout, shade: &ShadeLattice, ) {`

@@ -214,3 +214,48 @@ fn rejects_invalid_hex_colours() {
         );
     }
 }
+
+#[test]
+fn parses_wind_strength_and_defaults_it_to_one() {
+    let parsed = parse_biomes(catalog_json(), &entities()).expect("valid biomes");
+    assert_eq!(
+        parsed.biomes[0].wind_strength, 1.0,
+        "undeclared defaults to 1"
+    );
+
+    let json = catalog_json().replace(
+        "\"treeCoverage\": 0.03,",
+        "\"treeCoverage\": 0.03, \"windStrength\": 2.5,",
+    );
+    let parsed = parse_biomes(&json, &entities()).expect("valid biomes");
+    assert_eq!(parsed.biomes[0].wind_strength, 2.5);
+    assert_eq!(
+        parsed.biomes[1].wind_strength, 1.0,
+        "the other biome keeps the default"
+    );
+}
+
+#[test]
+fn rejects_a_negative_wind_strength() {
+    let json = catalog_json().replace(
+        "\"treeCoverage\": 0.03,",
+        "\"treeCoverage\": 0.03, \"windStrength\": -0.5,",
+    );
+    let error = parse_biomes(&json, &entities()).unwrap_err();
+    assert_eq!(
+        error,
+        BiomeError::InvalidWindStrength {
+            id: "temperate_forest".to_owned(),
+        }
+    );
+}
+
+#[test]
+fn a_zero_wind_strength_is_a_biome_with_still_air() {
+    let json = catalog_json().replace(
+        "\"treeCoverage\": 0.03,",
+        "\"treeCoverage\": 0.03, \"windStrength\": 0.0,",
+    );
+    let parsed = parse_biomes(&json, &entities()).expect("a still biome is valid");
+    assert_eq!(parsed.biomes[0].wind_strength, 0.0);
+}

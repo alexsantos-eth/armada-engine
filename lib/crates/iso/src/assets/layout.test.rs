@@ -1,8 +1,10 @@
-use super::{SpriteBand, SpriteLayout, footprint_band, ink_layout};
+use super::{SpriteBand, SpriteLayout, footprint_band, ink_layout, sway_band};
 use crate::assets::ink::{InkBox, asset_ink};
 use crate::projection::ScreenPoint;
 
 const TILE_WIDTH: f64 = 80.0;
+const CUT: f64 = 0.6;
+const SHEAR: f64 = 12.0;
 
 fn ground() -> ScreenPoint {
     ScreenPoint { x: 0.0, y: 0.0 }
@@ -320,5 +322,94 @@ fn the_bleed_overlaps_neighbouring_bands() {
     assert!(
         widened < layout.width * 2.0,
         "but only by a pixel: {widened}"
+    );
+}
+
+fn sway_layout() -> SpriteLayout {
+    SpriteLayout {
+        x: 10.0,
+        y: 20.0,
+        width: 80.0,
+        height: 160.0,
+    }
+}
+
+#[test]
+fn the_trunk_covers_exactly_the_bottom_of_the_drawing() {
+    let layout = sway_layout();
+    let trunk = sway_band(layout, CUT, 999.0, false).expect("a band");
+    assert!((area(&trunk) - layout.width * layout.height * (1.0 - CUT)).abs() < 1e-9);
+    let cut_y = layout.y + layout.height * CUT;
+    for &(x, y) in trunk.corners() {
+        assert!((y - cut_y).abs() < 1e-9 || (y - (layout.y + layout.height)).abs() < 1e-9);
+        assert!(x >= layout.x - 1e-9 && x <= layout.x + layout.width + 1e-9);
+    }
+    for &(_, v) in trunk.uvs() {
+        assert!((CUT..=1.0).contains(&v));
+    }
+}
+
+#[test]
+fn the_canopy_is_a_parallelogram_leaning_only_at_its_top() {
+    let layout = sway_layout();
+    let canopy = sway_band(layout, CUT, SHEAR, true).expect("a band");
+    assert!((area(&canopy) - layout.width * layout.height * CUT).abs() < 1e-9);
+    let cut_y = layout.y + layout.height * CUT;
+    let corners = canopy.corners();
+    let bottom: Vec<_> = corners
+        .iter()
+        .filter(|c| (c.1 - cut_y).abs() < 1e-9)
+        .collect();
+    assert_eq!(bottom.len(), 2, "the cut edge stays put");
+    for corner in bottom {
+        assert!(
+            (corner.0 - layout.x).abs() < 1e-9
+                || (corner.0 - (layout.x + layout.width)).abs() < 1e-9
+        );
+    }
+    let top: Vec<_> = corners
+        .iter()
+        .filter(|c| (c.1 - layout.y).abs() < 1e-9)
+        .collect();
+    assert_eq!(top.len(), 2, "the top edge leans");
+    for corner in top {
+        assert!(
+            (corner.0 - layout.x - SHEAR).abs() < 1e-9
+                || (corner.0 - layout.x - layout.width - SHEAR).abs() < 1e-9
+        );
+    }
+    for &(_, v) in canopy.uvs() {
+        assert!((0.0..=CUT).contains(&v));
+    }
+}
+
+#[test]
+fn trunk_and_canopy_cover_the_drawing_once() {
+    let layout = sway_layout();
+    let trunk = sway_band(layout, CUT, 0.0, false).expect("trunk");
+    let canopy = sway_band(layout, CUT, SHEAR, true).expect("canopy");
+    assert!((area(&trunk) + area(&canopy) - layout.width * layout.height).abs() < 1e-6);
+}
+
+#[test]
+fn a_cut_outside_the_drawing_splits_nothing() {
+    let layout = sway_layout();
+    for cut in [0.0, 1.0, -0.25, 1.5, f64::NAN] {
+        assert_eq!(sway_band(layout, cut, SHEAR, true), None);
+        assert_eq!(sway_band(layout, cut, 0.0, false), None);
+    }
+}
+
+#[test]
+fn the_canopy_leans_in_both_directions_by_the_shear_given() {
+    let layout = sway_layout();
+    let right = sway_band(layout, CUT, SHEAR, true).expect("canopy");
+    let left = sway_band(layout, CUT, -SHEAR, true).expect("canopy");
+    let mean = |band: &SpriteBand| {
+        band.corners().iter().map(|c| c.0).sum::<f64>() / band.corners().len().max(1) as f64
+    };
+    assert!(
+        (mean(&right) - mean(&left) - SHEAR).abs() < 1e-9,
+        "only the top two corners move, so the mean shifts by exactly SHEAR"
     );
 }

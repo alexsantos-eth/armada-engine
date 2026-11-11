@@ -164,7 +164,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`validate_catalog`](validation.rs#L45) — Valida un catálogo completo: versión de esquema, ids únicos y cada blueprint.
+- [`validate_catalog`](validation.rs#L45) — Valida un catálogo completo: versión de esquema, ids únicos y cada blueprint (incl. `sway`: solo en entidades de una casilla, `cut` en `(0, 1)`, `amplitude` y `period` finitos y no negativos).
   - Firma: `pub fn validate_catalog(catalog: &EntityCatalog) -> Result<(), CatalogError> {`
 
 #### Constantes

@@ -51,11 +51,17 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`ink_layout`](layout.rs#L18) — Coloca el dibujo de un asset de modo que aterrice donde fue trazado, en relación con `ground`: el
   - Firma: `pub fn ink_layout(ground: ScreenPoint, ink: InkBox, tile_width: f64) -> SpriteLayout {`
 
-- [`corners`](layout.rs#L35) — Calcula o recupera «corners» según los parámetros de la firma.
+- [`corners`](layout.rs#L36) — Las esquinas de la banda en pantalla, en orden de dibujo.
   - Firma: `pub fn corners(&self) -> &[(f64, f64)] {`
 
-- [`footprint_band`](layout.rs#L41) — La banda de un sprite de varias casillas que se apoya en la casilla `index` de su huella.
+- [`uvs`](layout.rs#L42) — Dónde cada esquina lee el dibujo completo, como fracciones `(along, down)` de las dimensiones de `layout`; una banda sesgada conserva estas fracciones sin sesgar.
+  - Firma: `pub fn uvs(&self) -> &[(f64, f64)] {`
+
+- [`footprint_band`](layout.rs#L48) — La banda de un sprite de varias casillas que se apoya en la casilla `index` de su huella.
   - Firma: `pub fn footprint_band( layout: SpriteLayout, centre: ScreenPoint, step: (f64, f64), index: i32, cells: i32, bleed: f64, ) -> Option<SpriteBand> {`
+
+- [`sway_band`](layout.rs#L99) — La pieza de `layout` por encima (`top: true`), o por debajo, de la línea horizontal en `cut` (fracción de la altura desde el borde superior, limitada a `(0, 1)`; `None` si el corte no separa nada). El borde lejano de la pieza superior queda `shear` píxeles a la derecha de donde estaría; el borde sobre el corte no se mueve, de modo que la copa se inclina alrededor del corte y el tronco queda quieto.
+  - Firma: `pub fn sway_band( layout: SpriteLayout, cut: f64, shear: f64, top: bool, ) -> Option<SpriteBand> {`
 
 ### `manifest.rs`
 
@@ -153,11 +159,11 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`clip`](layout.rs#L78) — Sutherland–Hodgman: la parte de un polígono convexo donde `inside` no es negativa.
+- [`clip`](layout.rs#L142) — Sutherland–Hodgman: la parte de un polígono convexo donde `inside` no es negativa.
   - Firma: `fn clip(band: SpriteBand, inside: impl Fn((f64, f64)) -> f64) -> Option<SpriteBand> {`
 
-- [`push`](layout.rs#L99) — Añade el valor recibido a la colección o secuencia administrada.
-  - Firma: `fn push(&mut self, corner: (f64, f64)) {`
+- [`push`](layout.rs#L171) — Añade el valor recibido a la colección o secuencia administrada.
+  - Firma: `fn push(&mut self, corner: (f64, f64), uv: (f64, f64)) {`
 
 ### `manifest.rs`
 

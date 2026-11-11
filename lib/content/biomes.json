@@ -43,7 +43,8 @@
         "fffbea",
         "f4f9df",
         "f2f5d6"
-      ]
+      ],
+      "windStrength": 4.3
     },
     {
       "id": "taiga",
@@ -76,7 +77,8 @@
         "b8b1a1",
         "cfc9ba",
         "e2ddd2"
-      ]
+      ],
+      "windStrength": 3.5
     },
     {
       "id": "autumn_forest",
@@ -113,7 +115,8 @@
         "c4b078",
         "d8c8a0",
         "e8dcc0"
-      ]
+      ],
+      "windStrength": 4.0
     },
     {
       "id": "savanna",
@@ -142,7 +145,8 @@
         "dcc48e",
         "e6d3a4",
         "f0e0bc"
-      ]
+      ],
+      "windStrength": 4.8
     }
   ]
 }

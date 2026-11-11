@@ -108,6 +108,12 @@ impl ChunkManager {
         self.wfc = Some(wfc);
     }
 
+    /// The world's biomes, when the content shipped them: views read them to dress or move
+    /// what grows there (soil palette, sway strength) without owning their own copy.
+    pub fn biomes(&self) -> Option<&WorldBiomes> {
+        self.biomes.as_ref()
+    }
+
     /// Sets the focus chunks (typically around the camera/player). The streamer keeps chunks
     pub fn set_focus(&mut self, focus: Vec<ChunkCoord>) {
         if self.focus == focus {

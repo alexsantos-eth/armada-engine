@@ -33,6 +33,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`set_wfc`](chunk_manager.rs#L107) — Entrega al manager el catálogo wfc del resto de entidades. Se llama una vez en el arranque, antes del primer descubrimiento; los chunks ya colocados conservan las suyas hasta que se descargan.
   - Firma: `pub fn set_wfc(&mut self, wfc: WfcCatalog) {`
 
+- [`biomes`](chunk_manager.rs#L113) — Los biomas del mundo, cuando el contenido los trajo: las vistas los leen para vestir o mover lo que crece ahí (paleta de suelo, fuerza de mece) sin quedarse con su propia copia.
+  - Firma: `pub fn biomes(&self) -> Option<&WorldBiomes> {`
+
 - [`set_focus`](chunk_manager.rs#L112) — Establece los chunks de foco (normalmente alrededor de la cámara/jugador). El streamer conserva los chunks
   - Firma: `pub fn set_focus(&mut self, focus: Vec<ChunkCoord>) {`
 

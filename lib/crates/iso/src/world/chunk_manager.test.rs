@@ -401,3 +401,28 @@ fn radii_are_clamped_so_they_grow_outwards() {
         }
     );
 }
+
+#[test]
+fn biomes_are_available_to_views_once_set() {
+    use crate::biomes::parse_biomes;
+
+    let mut manager = ChunkManager::new(generator(), catalog());
+    assert!(manager.biomes().is_none());
+    let entities = catalog();
+    let biomes = parse_biomes(
+        r#"{
+            "schemaVersion": 1,
+            "biomes": [
+                { "id": "temperate_forest", "share": 1.0, "treeCoverage": 0.1,
+                  "trees": [ { "blueprint": "tree", "weight": 1.0 } ],
+                  "windStrength": 2.0,
+                  "grassTints": ["ffffff"], "groundTints": ["ffffff"] }
+            ]
+        }"#,
+        &entities,
+    )
+    .expect("valid biomes");
+    manager.set_biomes(WorldBiomes::new(1, &biomes));
+    let world = manager.biomes().expect("biomes are set");
+    assert_eq!(world.biome(0, 0).wind_strength, 2.0);
+}

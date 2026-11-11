@@ -107,6 +107,32 @@ fn validate_blueprint(blueprint: &EntityBlueprint) -> Result<(), CatalogError> {
             reason: "sprite must not be empty".to_owned(),
         });
     }
+    if let Some(sway) = &blueprint.asset.sway {
+        if blueprint.shape.length != 1 {
+            return Err(CatalogError::InvalidAsset {
+                id: blueprint.id.clone(),
+                reason: "sway is for single-tile entities only".to_owned(),
+            });
+        }
+        if !sway.cut.is_finite() || sway.cut <= 0.0 || sway.cut >= 1.0 {
+            return Err(CatalogError::InvalidAsset {
+                id: blueprint.id.clone(),
+                reason: "sway.cut must be between 0 and 1, both excluded".to_owned(),
+            });
+        }
+        if !sway.amplitude.is_finite() || sway.amplitude < 0.0 {
+            return Err(CatalogError::InvalidAsset {
+                id: blueprint.id.clone(),
+                reason: "sway.amplitude must be a non-negative finite number".to_owned(),
+            });
+        }
+        if !sway.period.is_finite() || sway.period <= 0.0 {
+            return Err(CatalogError::InvalidAsset {
+                id: blueprint.id.clone(),
+                reason: "sway.period must be a positive finite number".to_owned(),
+            });
+        }
+    }
     Ok(())
 }
 

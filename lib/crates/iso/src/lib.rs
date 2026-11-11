@@ -17,4 +17,5 @@ pub mod simulation;
 pub mod terrain;
 pub mod time;
 pub mod water;
+pub mod wind;
 pub mod world;

@@ -4,7 +4,7 @@
 //! reusable draw queue and projects the grid for the T-key debug view. It never mutates the
 //! world; simulation lives in `game::frame`.
 
-use iso::assets::{InkBox, SpriteFrame, SpriteLayout, footprint_band, ink_layout};
+use iso::assets::{InkBox, SpriteFrame, SpriteLayout, footprint_band, ink_layout, sway_band};
 use iso::camera::Camera;
 use iso::entities::EntityLengthAxis;
 use iso::grid::WorldCoord;
@@ -219,6 +219,7 @@ impl Game {
     /// Returns how many chunks were drawn.
     fn collect_world(&mut self, view: &FrameView) -> usize {
         let projection = view.projection;
+        self.wind_ms += view.frame_ms;
         let mut chunks_drawn = 0usize;
         for &coord in &view.culled {
             if !self.manager.is_visible(coord) {
@@ -295,11 +296,22 @@ impl Game {
                     x: ground.screen_x,
                     y: ground.screen_y,
                 };
+                let sway_lean = (cells == 1).then(|| entity.sway()).flatten().map(|sway| {
+                    let strength = self
+                        .manager
+                        .biomes()
+                        .map_or(iso::wind::DEFAULT_WIND_STRENGTH, |world| {
+                            world.biome(entity.x(), entity.y()).wind_strength
+                        });
+                    let offset = iso::wind::sway_offset(
+                        sway,
+                        iso::wind::sway_phase(entity.id()),
+                        self.wind_ms,
+                        strength,
+                    );
+                    (sway.cut, offset)
+                });
                 for index in 0..cells {
-                    let Some(band) = footprint_band(layout, anchor, step, index, cells, BAND_BLEED)
-                    else {
-                        continue;
-                    };
                     let (cell_x, cell_y) = if along_y {
                         (x, y + f64::from(index))
                     } else {
@@ -312,6 +324,36 @@ impl Game {
                         ENTITY_LAYER,
                         projection.tile_height,
                     );
+                    if let Some((cut, offset)) = sway_lean {
+                        for piece in [
+                            sway_band(layout, cut, 0.0, false),
+                            sway_band(layout, cut, offset, true),
+                        ] {
+                            let Some(piece) = piece else { continue };
+                            match &shade {
+                                Some(shade) => self.draws.push(SpriteDraw::shaded_band(
+                                    key,
+                                    entity_texture,
+                                    frame,
+                                    layout,
+                                    shade.clone(),
+                                    piece,
+                                )),
+                                None => self.draws.push(SpriteDraw::band(
+                                    key,
+                                    entity_texture,
+                                    frame,
+                                    layout,
+                                    Some(piece),
+                                )),
+                            }
+                        }
+                        continue;
+                    }
+                    let Some(band) = footprint_band(layout, anchor, step, index, cells, BAND_BLEED)
+                    else {
+                        continue;
+                    };
                     match (&shade, cells > 1) {
                         (Some(shade), false) => self.draws.push(SpriteDraw::shaded(
                             key,

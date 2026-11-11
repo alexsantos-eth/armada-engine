@@ -90,6 +90,9 @@ pub(crate) struct Game {
     /// unpicked; `None` means the phase follows the game clock.
     pub(crate) phase_override: Option<iso::lighting::BakePhase>,
     pub(crate) tile_metrics: SceneMetrics,
+    /// Real time the wind has been blowing, for the sway of what reacts to it; accumulates
+    /// frame time like the clouds and the dust, independent of the fixed step.
+    pub(crate) wind_ms: f64,
 }
 
 impl Game {
@@ -318,6 +321,7 @@ impl Game {
             tile_metrics,
             clock: WorldClock::default(),
             phase_override: None,
+            wind_ms: 0.0,
         }
     }
 }

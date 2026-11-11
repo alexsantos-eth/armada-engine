@@ -1,6 +1,6 @@
 # Biomes
 
-Este dominio modela los biomas de naturaleza del mundo: qué árboles crecen en cada región, en qué proporción y con qué paleta de suelo. Los biomas no aparecen en los edificios ni en las estructuras: solo naturaleza. Agrupa el catálogo de contenido (`content/biomes.json`), su validación cruzada contra el catálogo de entidades, el campo que decide qué bioma cubre cada columna y los bosquetes monospecíficos que cada bioma hace crecer.
+Este dominio modela los biomas de naturaleza del mundo: qué árboles crecen en cada región, en qué proporción, con qué paleta de suelo y con qué fuerza de viento los mece. Los biomas no aparecen en los edificios ni en las estructuras: solo naturaleza. Agrupa el catálogo de contenido (`content/biomes.json`), su validación cruzada contra el catálogo de entidades, el campo que decide qué bioma cubre cada columna y los bosquetes monospecíficos que cada bioma hace crecer.
 
 El bioma es una función pura de la semilla y las coordenadas: no se guarda en disco, se recomputa al cargar. El crate `iso` no conoce texturas ni sprites: el cliente decide cómo se pinta cada paleta.
 
@@ -28,13 +28,13 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`BiomeCatalog`](catalog.rs#L38) — El contenido de biomas validado: la versión de esquema y los biomas en orden de archivo, estable para un catálogo cargado.
   - Declaración: `pub struct BiomeCatalog { pub schema_version: u32, pub biomes: Vec<Biome>, }`
 
-- [`Biome`](catalog.rs#L21) — Un bioma: su `share` (peso relativo de cobertura mundial), su `tree_coverage` (proporción de columnas del mundo en las que brotan árboles, bosquetes incluidos), las especies elegibles con su peso y sus paletas de suelo (`grassTints` para hierba y camino, `groundTints` para tierra desnuda; multiplicadores `0xRRGGBB`, de oscuro a claro). Un bioma sin árboles es legal.
-  - Declaración: `pub struct Biome { pub id: String, pub share: f64, pub tree_coverage: f64, pub trees: Vec<BiomeTree>, pub grass_tints: Vec<u32>, pub ground_tints: Vec<u32>, }`
+- [`Biome`](catalog.rs#L21) — Un bioma: su `share` (peso relativo de cobertura mundial), su `tree_coverage` (proporción de columnas del mundo en las que brotan árboles, bosquetes incluidos), las especies elegibles con su peso, su `wind_strength` (multiplicador del sesgo con que el viento mece los sprites con `sway` en su suelo; `0` es aire quieto, `1` la amplitud de autor; opcional, por defecto `1`) y sus paletas de suelo (`grassTints` para hierba y camino, `groundTints` para tierra desnuda; multiplicadores `0xRRGGBB`, de oscuro a claro). Un bioma sin árboles es legal.
+  - Declaración: `pub struct Biome { pub id: String, pub share: f64, pub tree_coverage: f64, pub trees: Vec<BiomeTree>, pub wind_strength: f64, pub grass_tints: Vec<u32>, pub ground_tints: Vec<u32>, }`
 
 - [`BiomeTree`](catalog.rs#L12) — Una especie elegible en el bioma: el `blueprint` que la habilita y el `weight` relativo con que entra en los bosquetes.
   - Declaración: `pub struct BiomeTree { pub blueprint: String, pub weight: f64, }`
 
-- [`BiomeError`](catalog.rs#L47) — Todo lo que el contenido de biomas puede declarar mal: esquema no soportado, JSON ilegible, catálogo vacío, ids vacíos o repetidos, `share` o `tree_coverage` no finitos o fuera de rango, pesos no positivos, `blueprint` que el catálogo de entidades no tiene, colores que no son seis dígitos hex.
+- [`BiomeError`](catalog.rs#L47) — Todo lo que el contenido de biomas puede declarar mal: esquema no soportado, JSON ilegible, catálogo vacío, ids vacíos o repetidos, `share` o `tree_coverage` no finitos o fuera de rango, pesos no positivos, `blueprint` que el catálogo de entidades no tiene, colores que no son seis dígitos hex, `windStrength` no finito o negativo.
   - Declaración: `pub enum BiomeError { ... }`
 
 ### `field.rs`

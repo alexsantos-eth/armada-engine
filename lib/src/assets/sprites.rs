@@ -183,11 +183,12 @@ impl SpriteAtlas {
     }
 
     /// Draws the part of a frame that falls inside `band`, which is a piece of the same
+    /// artwork: one vertex per corner at the band's un-sheared read of it, fanned from the
+    /// first corner.
     pub fn draw_band(
         &self,
         texture: usize,
         frame: SpriteFrame,
-        layout: SpriteLayout,
         band: &SpriteBand,
         shade: Option<&ShadeLattice>,
     ) {
@@ -195,11 +196,12 @@ impl SpriteAtlas {
         let texture = self.texture(texture);
         let (width, height) = (texture.width(), texture.height());
         let corners = band.corners();
+        let uvs = band.uvs();
         let vertices: Vec<Vertex> = corners
             .iter()
-            .map(|&(x, y)| {
-                let along = ((x - layout.x) / layout.width) as f32;
-                let down = ((y - layout.y) / layout.height) as f32;
+            .zip(uvs)
+            .map(|(&(x, y), &(along, down))| {
+                let (along, down) = (along as f32, down as f32);
                 let colour = match shade {
                     None => WHITE,
                     Some(shade) => {
@@ -819,11 +821,10 @@ fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
             DrawKind::Sprite {
                 texture,
                 frame,
-                layout,
                 band: Some(band),
                 ..
             } => {
-                atlas.draw_band(*texture, *frame, *layout, band, None);
+                atlas.draw_band(*texture, *frame, band, None);
             }
             DrawKind::Sprite {
                 texture,
@@ -837,11 +838,11 @@ fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
             DrawKind::Shaded {
                 texture,
                 frame,
-                layout,
                 shade,
                 band: Some(band),
+                ..
             } => {
-                atlas.draw_band(*texture, *frame, *layout, band, Some(shade));
+                atlas.draw_band(*texture, *frame, band, Some(shade));
             }
             DrawKind::Shaded {
                 texture,

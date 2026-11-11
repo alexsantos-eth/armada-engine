@@ -27,6 +27,9 @@ pub struct Biome {
     pub tree_coverage: f64,
     /// The species eligible here, lightest first; an empty list is a treeless biome.
     pub trees: Vec<BiomeTree>,
+    /// Multiplier applied to swaying sprites' amplitude here; `0` is still air, `1` the
+    /// authored amplitude. Only validates finite and non-negative.
+    pub wind_strength: f64,
     /// Grass and path multipliers `0xRRGGBB`, ordered dark to light.
     pub grass_tints: Vec<u32>,
     /// Bare-ground multipliers `0xRRGGBB`, ordered dark to light.
@@ -96,6 +99,11 @@ pub enum BiomeError {
         /// The value as written.
         value: String,
     },
+    /// A wind strength was not a finite, non-negative number.
+    InvalidWindStrength {
+        /// The offending biome.
+        id: String,
+    },
 }
 
 impl std::fmt::Display for BiomeError {
@@ -137,6 +145,10 @@ impl std::fmt::Display for BiomeError {
                 f,
                 "biome {biome} has an invalid {field} value {value:?}: expected six hex digits"
             ),
+            BiomeError::InvalidWindStrength { id } => write!(
+                f,
+                "biome {id} has an invalid windStrength: expected a finite, non-negative number"
+            ),
         }
     }
 }
@@ -157,8 +169,15 @@ struct RawBiome {
     tree_coverage: f64,
     #[serde(default)]
     trees: Vec<RawBiomeTree>,
+    #[serde(default = "default_wind_strength")]
+    wind_strength: f64,
     grass_tints: Vec<String>,
     ground_tints: Vec<String>,
+}
+
+/// A biome that declares no wind sways at the authored amplitude.
+fn default_wind_strength() -> f64 {
+    1.0
 }
 
 #[derive(serde::Deserialize)]
@@ -201,6 +220,9 @@ pub fn parse_biomes(json: &str, entities: &EntityCatalog) -> Result<BiomeCatalog
         if !raw_biome.share.is_finite() || raw_biome.share <= 0.0 {
             return Err(BiomeError::InvalidShare { id: raw_biome.id });
         }
+        if !raw_biome.wind_strength.is_finite() || raw_biome.wind_strength < 0.0 {
+            return Err(BiomeError::InvalidWindStrength { id: raw_biome.id });
+        }
         if !raw_biome.tree_coverage.is_finite()
             || raw_biome.tree_coverage <= 0.0
             || raw_biome.tree_coverage > 1.0
@@ -233,6 +255,7 @@ pub fn parse_biomes(json: &str, entities: &EntityCatalog) -> Result<BiomeCatalog
             share: raw_biome.share,
             tree_coverage: raw_biome.tree_coverage,
             trees,
+            wind_strength: raw_biome.wind_strength,
             grass_tints,
             ground_tints,
         });
