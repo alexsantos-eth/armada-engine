@@ -201,17 +201,18 @@ pub struct GroundBake {
 /// Lattice rows walked, and rows of columns shaded, in one piece of work.
 const HORIZON_ROWS_PER_STEP: u32 = 8;
 const TERRAIN_ROWS_PER_STEP: i32 = 4;
+const BLUR_ROWS_PER_STEP: u32 = 128;
+const BLUR_DOWN_ROWS_PER_STEP: u32 = 64;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Stage {
     Casters,
     /// Walking the horizon lattice back to the sun, from this row on.
     Horizon(u32),
     /// Shading the ground from it, from this row of columns on.
     Terrain(i32),
-    /// The two passes of the blur, which are a pass over the whole map each.
-    BlurAcross,
-    BlurDown,
+    /// The two passes of the blur, walked a window of rows at a time.
+    BlurAcross(u32),
+    BlurDown(BlurDownJob),
     Done,
 }
 
@@ -227,7 +228,7 @@ impl GroundBake {
     }
 
     pub fn is_done(&self) -> bool {
-        self.stage == Stage::Done
+        matches!(self.stage, Stage::Done)
     }
 
     /// Does the next piece of work, and says whether any was left to do.
@@ -244,7 +245,7 @@ impl GroundBake {
             tile_width,
             box_height,
         } = metrics;
-        match self.stage {
+        match std::mem::replace(&mut self.stage, Stage::Done) {
             Stage::Casters => {
                 if let Some(caster) = casters.get(self.next_caster) {
                     self.next_caster += 1;
@@ -257,6 +258,7 @@ impl GroundBake {
                         &mut self.levels,
                         silhouette_of,
                     );
+                    self.stage = Stage::Casters;
                 } else {
                     self.stage = Stage::Horizon(0);
                 }
@@ -292,19 +294,40 @@ impl GroundBake {
                 );
                 self.stage = if laid == 0 || from + laid > map.area.rows() {
                     self.horizon = Vec::new();
-                    Stage::BlurAcross
+                    Stage::BlurAcross(0)
                 } else {
                     Stage::Terrain(from + laid)
                 };
             }
-            Stage::BlurAcross => {
-                blur_across_within_levels(map, SHADOW_BLUR_TEXELS, &self.levels);
-                self.stage = Stage::BlurDown;
+            Stage::BlurAcross(from) => {
+                let done = blur_across_rows(
+                    map,
+                    SHADOW_BLUR_TEXELS,
+                    &self.levels,
+                    from,
+                    BLUR_ROWS_PER_STEP,
+                );
+                self.stage = if done == 0 || from + done >= map.height {
+                    Stage::BlurDown(BlurDownJob::new(map))
+                } else {
+                    Stage::BlurAcross(from + done)
+                };
             }
-            Stage::BlurDown => {
-                blur_down_within_levels(map, SHADOW_BLUR_TEXELS as usize, &self.levels);
-                clear_columns_without_ground(map, &self.levels);
-                self.stage = Stage::Done;
+            Stage::BlurDown(job) => {
+                let mut job = job;
+                let done = blur_down_rows(
+                    map,
+                    SHADOW_BLUR_TEXELS as usize,
+                    &self.levels,
+                    &mut job,
+                    BLUR_DOWN_ROWS_PER_STEP,
+                );
+                if done == 0 || job.next_row as usize >= map.height as usize {
+                    clear_columns_without_ground(map, &self.levels);
+                    self.stage = Stage::Done;
+                } else {
+                    self.stage = Stage::BlurDown(job);
+                }
             }
             Stage::Done => return false,
         }
@@ -757,12 +780,21 @@ pub fn blur(map: &mut ShadowMap, radius: u32) {
     }
 }
 
-/// The same blur, but never reading across a step in the ground.
-fn blur_across_within_levels(map: &mut ShadowMap, radius: u32, levels: &LevelCache) {
+/// The first pass of the blur, across the map, walked `rows` rows from `from` at a time so it
+/// shares a frame with the game. Returns how many rows it walked.
+fn blur_across_rows(
+    map: &mut ShadowMap,
+    radius: u32,
+    levels: &LevelCache,
+    from: u32,
+    rows: u32,
+) -> u32 {
     if radius == 0 || map.width == 0 || map.height == 0 {
-        return;
+        return 0;
     }
     let (width, height) = (map.width as usize, map.height as usize);
+    let start = (from as usize).min(height);
+    let end = (start + rows as usize).min(height);
     let span = radius as usize;
     let per_tile = map.pixels_per_tile as usize;
     debug_assert!(
@@ -772,10 +804,13 @@ fn blur_across_within_levels(map: &mut ShadowMap, radius: u32, levels: &LevelCac
     let joined = |a: Option<f64>, b: Option<f64>| matches!((a, b), (Some(a), Some(b)) if a == b);
     let means = full_window_means(span);
     let mut cuts = vec![false; width + 1];
+    let mut cuts_band = usize::MAX;
     let mut row = vec![0u8; width];
-    for y in 0..height {
-        if y % per_tile == 0 {
-            let world_y = map.area.min_y + (y / per_tile) as i32;
+    for y in start..end {
+        let band = y / per_tile;
+        if band != cuts_band {
+            cuts_band = band;
+            let world_y = map.area.min_y + band as i32;
             mark_cuts(&mut cuts, per_tile, |column| {
                 let x = map.area.min_x + column as i32;
                 joined(levels.at(x - 1, world_y), levels.at(x, world_y))
@@ -825,68 +860,118 @@ fn blur_across_within_levels(map: &mut ShadowMap, radius: u32, levels: &LevelCac
             }
         }
     }
+    (end - start) as u32
 }
 
-/// The second pass of [`blur_within_levels`], down the map, run a row at a time.
-fn blur_down_within_levels(map: &mut ShadowMap, span: usize, levels: &LevelCache) {
+/// The first pass of the blur, across the whole map.
+#[cfg(test)]
+fn blur_across_within_levels(map: &mut ShadowMap, radius: u32, levels: &LevelCache) {
+    let mut from = 0;
+    loop {
+        let done = blur_across_rows(map, radius, levels, from, u32::MAX);
+        if done == 0 || from + done >= map.height {
+            break;
+        }
+        from += done;
+    }
+}
+
+/// The rolling state of the blur's second pass: the window ring, the sums under it and where the
+/// column cuts stand. Carried across frames row by row so the blur shares the frame with the game.
+struct BlurDownJob {
+    ring: Vec<Vec<u8>>,
+    sums: Vec<u32>,
+    loaded: usize,
+    held_from: usize,
+    held_to: usize,
+    marked: usize,
+    cut_above: Vec<bool>,
+    next_row: u32,
+}
+
+impl BlurDownJob {
+    fn new(map: &ShadowMap) -> Self {
+        let width = map.width as usize;
+        let keep = 2 * SHADOW_BLUR_TEXELS as usize + 1;
+        Self {
+            ring: vec![vec![0u8; width]; keep],
+            sums: vec![0u32; width],
+            loaded: 0,
+            held_from: 0,
+            held_to: usize::MAX,
+            marked: usize::MAX,
+            cut_above: vec![false; width],
+            next_row: 0,
+        }
+    }
+}
+
+/// The second pass of the blur, down the map, walked `rows` rows from the job's cursor so it
+/// shares a frame with the game. Returns how many rows it walked.
+fn blur_down_rows(
+    map: &mut ShadowMap,
+    span: usize,
+    levels: &LevelCache,
+    job: &mut BlurDownJob,
+    rows: u32,
+) -> u32 {
     if span == 0 || map.width == 0 || map.height == 0 {
-        return;
+        return 0;
     }
     let joined = |a: Option<f64>, b: Option<f64>| matches!((a, b), (Some(a), Some(b)) if a == b);
     let (width, height) = (map.width as usize, map.height as usize);
+    let start = (job.next_row as usize).min(height);
+    let end = (start + rows as usize).min(height);
     let per_tile = map.pixels_per_tile as usize;
     let keep = 2 * span + 1;
     let means = full_window_means(span);
-    let mut ring = vec![vec![0u8; width]; keep];
-    let mut sums = vec![0u32; width];
-    let mut cut_above = vec![false; width];
-    let (mut marked, mut loaded) = (usize::MAX, 0usize);
-    let (mut held_from, mut held_to) = (0usize, usize::MAX);
-    for y in 0..height {
+    for y in start..end {
         let (from, to) = (y.saturating_sub(span), (y + span).min(height - 1));
-        if held_to == usize::MAX {
-            sums[..width].fill(0);
-        } else if from > held_from {
-            let line = &ring[held_from % keep];
-            for (sum, value) in sums.iter_mut().zip(line.iter()) {
+        if job.held_to == usize::MAX {
+            job.sums[..width].fill(0);
+        } else if from > job.held_from {
+            let line = &job.ring[job.held_from % keep];
+            for (sum, value) in job.sums.iter_mut().zip(line.iter()) {
                 *sum -= u32::from(*value);
             }
         }
-        while loaded <= to {
-            ring[loaded % keep].copy_from_slice(&map.alpha[loaded * width..(loaded + 1) * width]);
-            loaded += 1;
+        while job.loaded <= to {
+            job.ring[job.loaded % keep]
+                .copy_from_slice(&map.alpha[job.loaded * width..(job.loaded + 1) * width]);
+            job.loaded += 1;
         }
-        let first_new = if held_to == usize::MAX {
+        let first_new = if job.held_to == usize::MAX {
             from
         } else {
-            held_to + 1
+            job.held_to + 1
         };
         for source in first_new..=to {
-            let line = &ring[source % keep];
-            for (sum, value) in sums.iter_mut().zip(line.iter()) {
+            let line = &job.ring[source % keep];
+            for (sum, value) in job.sums.iter_mut().zip(line.iter()) {
                 *sum += u32::from(*value);
             }
         }
-        (held_from, held_to) = (from, to);
-        let rows = (to - from + 1) as u32;
+        job.held_from = from;
+        job.held_to = to;
+        let rows_in_window = (to - from + 1) as u32;
         let out = &mut map.alpha[y * width..(y + 1) * width];
-        if rows == keep as u32 {
-            for (texel, sum) in out.iter_mut().zip(sums.iter()) {
+        if rows_in_window == keep as u32 {
+            for (texel, sum) in out.iter_mut().zip(job.sums.iter()) {
                 *texel = means[*sum as usize];
             }
         } else {
-            for (texel, sum) in out.iter_mut().zip(sums.iter()) {
-                *texel = (*sum / rows) as u8;
+            for (texel, sum) in out.iter_mut().zip(job.sums.iter()) {
+                *texel = (*sum / rows_in_window) as u8;
             }
         }
         let edge = (from / per_tile + 1) * per_tile;
         if edge > to {
             continue;
         }
-        if marked != edge {
-            marked = edge;
+        if job.marked != edge {
+            job.marked = edge;
             let world_y = map.area.min_y + (edge / per_tile) as i32;
-            for (x, cut) in cut_above.iter_mut().enumerate() {
+            for (x, cut) in job.cut_above.iter_mut().enumerate() {
                 let world_x = map.area.min_x + (x / per_tile) as i32;
                 *cut = !joined(levels.at(world_x, world_y - 1), levels.at(world_x, world_y));
             }
@@ -896,16 +981,33 @@ fn blur_down_within_levels(map: &mut ShadowMap, span: usize, levels: &LevelCache
         } else {
             (edge, to)
         };
-        let rows = (kept_to - kept_from + 1) as u32;
+        let rows_kept = (kept_to - kept_from + 1) as u32;
         for x in 0..width {
-            if !cut_above[x] {
+            if !job.cut_above[x] {
                 continue;
             }
             let mut total = 0u32;
             for source in kept_from..=kept_to {
-                total += u32::from(ring[source % keep][x]);
+                total += u32::from(job.ring[source % keep][x]);
             }
-            map.alpha[y * width + x] = (total / rows) as u8;
+            map.alpha[y * width + x] = (total / rows_kept) as u8;
+        }
+    }
+    job.next_row = end as u32;
+    (end - start) as u32
+}
+
+/// The second pass of the blur, down the whole map.
+#[cfg(test)]
+fn blur_down_within_levels(map: &mut ShadowMap, span: usize, levels: &LevelCache) {
+    if span == 0 {
+        return;
+    }
+    let mut job = BlurDownJob::new(map);
+    loop {
+        let done = blur_down_rows(map, span, levels, &mut job, u32::MAX);
+        if done == 0 || job.next_row as usize >= map.height as usize {
+            break;
         }
     }
 }

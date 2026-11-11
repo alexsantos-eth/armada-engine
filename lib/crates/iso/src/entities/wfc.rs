@@ -416,31 +416,85 @@ fn near(point: WorldCoord, cells: &HashSet<WorldCoord>, gap: i32) -> bool {
     false
 }
 
+/// Whether placing `blueprint` anchored on `anchor` overlaps one of the `claimed` cells, or —
+/// when `candidate` is the blueprint that was placed — lands within the same-type gap of one.
+/// A candidate's footprint is immutable for a fixed anchor: it was valid when the cell joined
+/// the possibilities, and surfaces and bounds never change afterwards.
+fn footprint_hits(
+    anchor: WorldCoord,
+    blueprint: &EntityBlueprint,
+    claimed: &HashSet<WorldCoord>,
+    candidate: usize,
+    placed: usize,
+) -> bool {
+    let along_x = blueprint.shape.axis == EntityLengthAxis::X;
+    for index in 0..blueprint.shape.length {
+        let cell = if along_x {
+            WorldCoord {
+                x: anchor.x + index,
+                y: anchor.y,
+            }
+        } else {
+            WorldCoord {
+                x: anchor.x,
+                y: anchor.y + index,
+            }
+        };
+        if claimed.contains(&cell) {
+            return true;
+        }
+        if candidate == placed && near(cell, claimed, 1) {
+            return true;
+        }
+    }
+    false
+}
+
 /// Removes from every undecided cell the possibilities whose footprint touches `claimed`, or that
-/// sit within the same-type gap of a claimed blueprint.
+/// sit within the same-type gap of a claimed blueprint. Only anchors within the longest footprint
+/// plus the same-type gap of the claim's box can interact with it, so cells beyond it are skipped.
 fn eliminate(
     columns: &[TerrainColumn],
-    ci: &CellMap<TerrainColumn>,
     catalog: &EntityCatalog,
     remaining: &mut [Vec<usize>],
     absorbed: &[bool],
     claimed: &HashSet<WorldCoord>,
     blueprint: usize,
 ) {
+    let reach = catalog
+        .entities
+        .iter()
+        .map(|blueprint| blueprint.shape.length)
+        .max()
+        .unwrap_or(1)
+        .max(1);
+    let (min_x, min_y, max_x, max_y) = claimed.iter().fold(
+        (i32::MAX, i32::MAX, i32::MIN, i32::MIN),
+        |(min_x, min_y, max_x, max_y), &cell| {
+            (
+                min_x.min(cell.x),
+                min_y.min(cell.y),
+                max_x.max(cell.x),
+                max_y.max(cell.y),
+            )
+        },
+    );
     for (cell, possibilities) in remaining.iter_mut().enumerate() {
         if absorbed[cell] || possibilities.is_empty() {
             continue;
         }
         let anchor = columns[cell].coord;
+        if anchor.x < min_x - reach
+            || anchor.x > max_x + reach
+            || anchor.y < min_y - reach
+            || anchor.y > max_y + reach
+        {
+            continue;
+        }
         let mut kept = Vec::with_capacity(possibilities.len());
         for &bp in possibilities.iter() {
             let blueprint_ref = &catalog.entities[bp];
-            let Some(cells) = footprint_cells(ci, anchor, blueprint_ref) else {
-                continue;
-            };
-            let overlaps = cells.iter().any(|coord| claimed.contains(coord));
-            let too_close = bp == blueprint && cells.iter().any(|coord| near(*coord, claimed, 1));
-            if !overlaps && !too_close {
+            if !footprint_hits(anchor, blueprint_ref, claimed, bp, blueprint) {
                 kept.push(bp);
             }
         }
@@ -565,7 +619,6 @@ pub fn solve_chunk(
                 }
                 eliminate(
                     columns,
-                    &columns_map,
                     catalog,
                     &mut remaining,
                     &absorbed,

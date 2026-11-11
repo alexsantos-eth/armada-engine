@@ -55,6 +55,10 @@ pub(crate) struct FrameView {
     pub(crate) frame_ms: f64,
     /// When the simulation landed, for the frame's performance accounting.
     pub(crate) after_simulation: f64,
+    /// Chunk lifecycle work this frame: generation, placement, roads, archive and unload.
+    pub(crate) stream_ms: f64,
+    /// Shadow bake work this frame: selection, rebake and atlas upload.
+    pub(crate) bake_ms: f64,
 }
 
 impl Game {
@@ -120,6 +124,7 @@ impl Game {
                 .advance(&rp, self.player.motion, frame_ms, CAMERA_LEVEL_SMOOTH_MS);
         let projection = frame_projection(self.camera, level, width, height, self.tile_metrics);
 
+        let stream_start = get_time();
         let discovered = self.manager.tick();
         if !discovered.is_empty() {
             self.unsaved_changes = true;
@@ -148,6 +153,7 @@ impl Game {
         if quitting {
             return None;
         }
+        let stream_ms = (get_time() - stream_start) * 1000.0;
 
         let after_simulation = get_time();
 
@@ -160,10 +166,12 @@ impl Game {
         let target_phase = self
             .phase_override
             .unwrap_or_else(|| phase_at(self.clock.tick));
+        let bake_start = get_time();
         if let Some(shadows) = self.shadows.as_mut() {
             shadows.set_phase(target_phase);
             shadows.update(&self.manager, &culled, fade_dt);
         }
+        let bake_ms = (get_time() - bake_start) * 1000.0;
 
         Some(FrameView {
             rp,
@@ -171,6 +179,8 @@ impl Game {
             culled,
             frame_ms,
             after_simulation,
+            stream_ms,
+            bake_ms,
         })
     }
 }

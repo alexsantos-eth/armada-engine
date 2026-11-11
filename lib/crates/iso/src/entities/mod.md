@@ -135,16 +135,16 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`weight_of`](wfc.rs#L110) — El peso de `blueprint`, o `0.0` cuando el contenido no lo lista (nunca crece).
+- [`weight_of`](wfc.rs#L178) — El peso de `blueprint`, o `0.0` cuando el contenido no lo lista (nunca crece).
   - Firma: `pub fn weight_of(&self, blueprint: &str) -> f64 {`
 
-- [`parse_wfc`](wfc.rs#L117) — Parsea y valida el contenido wfc contra el catálogo de entidades que referencia, y contra los biomas (cuando se pasan) para exigir un peso a cada blueprint que ningún bioma reclama.
+- [`parse_wfc`](wfc.rs#L185) — Parsea y valida el contenido wfc contra el catálogo de entidades que referencia, y contra los biomas (cuando se pasan) para exigir un peso a cada blueprint que ningún bioma reclama.
   - Firma: `pub fn parse_wfc( json: &str, entities: &EntityCatalog, biomes: Option<&crate::biomes::catalog::BiomeCatalog>, ) -> Result<WfcCatalog, WfcError> {`
 
-- [`claimed_by_biomes`](wfc.rs#L177) — Qué blueprints ya reclaman los biomas, en orden de catálogo; el solver omite esos del mosaico.
+- [`claimed_by_biomes`](wfc.rs#L292) — Qué blueprints ya reclaman los biomas, en orden de catálogo; el solver omite esos del mosaico.
   - Firma: `pub fn claimed_by_biomes( entities: &EntityCatalog, biomes: Option<&crate::biomes::field::WorldBiomes>, ) -> Vec<bool> {`
 
-- [`solve_chunk`](wfc.rs#L357) — Resuelve el chunk y devuelve las entidades que crece, en orden de columna. El solver es por chunk y no consulta a los vecinos: cada posibilidad se comprueba contra el terreno, así que un chunk sale igual que junto a sus vecinos; la vacancia siempre es posible, de modo que el mosaico nunca entra en contradicción. Al llegar al techo de `maxPerChunk` para un blueprint o familia, sus posibilidades dejan de crecer en el resto del chunk.
+- [`solve_chunk`](wfc.rs#L534) — Resuelve el chunk y devuelve las entidades que crece, en orden de columna. El solver es por chunk y no consulta a los vecinos: cada posibilidad se comprueba contra el terreno, así que un chunk sale igual que junto a sus vecinos; la vacancia siempre es posible, de modo que el mosaico nunca entra en contradicción. Al llegar al techo de `maxPerChunk` para un blueprint o familia, sus posibilidades dejan de crecer en el resto del chunk.
   - Firma: `pub fn solve_chunk( columns: &[TerrainColumn], catalog: &EntityCatalog, wfc: &WfcCatalog, claimed: &[bool], placed: &mut SpatialIndex<Entity>, seed: u64, ) -> Vec<Entity> {`
 
 #### Constantes
@@ -154,7 +154,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Tipos
 
-- [`WfcCatalog`](wfc.rs#L161) — El contenido wfc validado: `emptyWeight` (cuánto pesa «aquí no crece nada» frente a un blueprint), los pesos por blueprint, `families` (grupos que comparten techo: `office` junta `office_x`/`office_y`) y `maxPerChunk` (techo por chunk, indexado por id de familia o de blueprint). Los blueprints que ningún bioma reclama deben aparecer en `weights`, o el mundo se quedaría en silencio.
+- [`WfcCatalog`](wfc.rs#L163) — El contenido wfc validado: `emptyWeight` (cuánto pesa «aquí no crece nada» frente a un blueprint), los pesos por blueprint, `families` (grupos que comparten techo: `office` junta `office_x`/`office_y`) y `maxPerChunk` (techo por chunk, indexado por id de familia o de blueprint). Los blueprints que ningún bioma reclama deben aparecer en `weights`, o el mundo se quedaría en silencio.
   - Declaración: `pub struct WfcCatalog { pub schema_version: u32, pub empty_weight: f64, pub weights: HashMap<String, f64>, pub families: HashMap<String, Vec<String>>, pub max_per_chunk: HashMap<String, f64>, }`
 
 - [`WfcError`](wfc.rs#L22) — Todo lo que el contenido wfc puede declarar mal: esquema no soportado, JSON ilegible, `emptyWeight` o pesos no positivos, `blueprint` que el catálogo de entidades no tiene, un blueprint sin reclamar que nadie pesa; claves de techo ajenas a todo, techos inferiores a 1, familias vacías con blueprints repetidos entre familias o que chocan con un blueprint.
@@ -218,16 +218,16 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones y métodos
 
-- [`weight_of`](wfc.rs#L110) — El peso de `blueprint`, o `0.0` cuando el contenido no lo lista (nunca crece).
+- [`weight_of`](wfc.rs#L178) — El peso de `blueprint`, o `0.0` cuando el contenido no lo lista (nunca crece).
   - Firma: `pub fn weight_of(&self, blueprint: &str) -> f64 {`
 
-- [`parse_wfc`](wfc.rs#L117) — Parsea y valida el contenido wfc contra el catálogo de entidades que referencia, y contra los biomas (cuando se pasan) para exigir un peso a cada blueprint que ningún bioma reclama.
+- [`parse_wfc`](wfc.rs#L185) — Parsea y valida el contenido wfc contra el catálogo de entidades que referencia, y contra los biomas (cuando se pasan) para exigir un peso a cada blueprint que ningún bioma reclama.
   - Firma: `pub fn parse_wfc( json: &str, entities: &EntityCatalog, biomes: Option<&crate::biomes::catalog::BiomeCatalog>, ) -> Result<WfcCatalog, WfcError> {`
 
-- [`claimed_by_biomes`](wfc.rs#L177) — Qué blueprints ya reclaman los biomas, en orden de catálogo; el solver omite esos del mosaico.
+- [`claimed_by_biomes`](wfc.rs#L292) — Qué blueprints ya reclaman los biomas, en orden de catálogo; el solver omite esos del mosaico.
   - Firma: `pub fn claimed_by_biomes( entities: &EntityCatalog, biomes: Option<&crate::biomes::field::WorldBiomes>, ) -> Vec<bool> {`
 
-- [`solve_chunk`](wfc.rs#L357) — Resuelve el chunk y devuelve las entidades que crece, en orden de columna. El solver es por chunk y no consulta a los vecinos: cada posibilidad se comprueba contra el terreno, así que un chunk sale igual que junto a sus vecinos; la vacancia siempre es posible, de modo que el mosaico nunca entra en contradicción. Al llegar al techo de `maxPerChunk` para un blueprint o familia, sus posibilidades dejan de crecer en el resto del chunk.
+- [`solve_chunk`](wfc.rs#L534) — Resuelve el chunk y devuelve las entidades que crece, en orden de columna. El solver es por chunk y no consulta a los vecinos: cada posibilidad se comprueba contra el terreno, así que un chunk sale igual que junto a sus vecinos; la vacancia siempre es posible, de modo que el mosaico nunca entra en contradicción. Al llegar al techo de `maxPerChunk` para un blueprint o familia, sus posibilidades dejan de crecer en el resto del chunk.
   - Firma: `pub fn solve_chunk( columns: &[TerrainColumn], catalog: &EntityCatalog, wfc: &WfcCatalog, claimed: &[bool], placed: &mut SpatialIndex<Entity>, seed: u64, ) -> Vec<Entity> {`
 
 #### Constantes
@@ -237,7 +237,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Tipos
 
-- [`WfcCatalog`](wfc.rs#L161) — El contenido wfc validado: `emptyWeight` (cuánto pesa «aquí no crece nada» frente a un blueprint), los pesos por blueprint, `families` (grupos que comparten techo: `office` junta `office_x`/`office_y`) y `maxPerChunk` (techo por chunk, indexado por id de familia o de blueprint). Los blueprints que ningún bioma reclama deben aparecer en `weights`, o el mundo se quedaría en silencio.
+- [`WfcCatalog`](wfc.rs#L163) — El contenido wfc validado: `emptyWeight` (cuánto pesa «aquí no crece nada» frente a un blueprint), los pesos por blueprint, `families` (grupos que comparten techo: `office` junta `office_x`/`office_y`) y `maxPerChunk` (techo por chunk, indexado por id de familia o de blueprint). Los blueprints que ningún bioma reclama deben aparecer en `weights`, o el mundo se quedaría en silencio.
   - Declaración: `pub struct WfcCatalog { pub schema_version: u32, pub empty_weight: f64, pub weights: HashMap<String, f64>, pub families: HashMap<String, Vec<String>>, pub max_per_chunk: HashMap<String, f64>, }`
 
 - [`WfcError`](wfc.rs#L22) — Todo lo que el contenido wfc puede declarar mal: esquema no soportado, JSON ilegible, `emptyWeight` o pesos no positivos, `blueprint` que el catálogo de entidades no tiene, un blueprint sin reclamar que nadie pesa; claves de techo ajenas a todo, techos inferiores a 1, familias vacías con blueprints repetidos entre familias o que chocan con un blueprint.

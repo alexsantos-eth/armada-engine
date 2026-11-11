@@ -28,7 +28,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Tipos y funciones internas
 
-- [`FrameMarks`](frame_loop.rs#L17) — Los instantes que el bucle toma en un frame (arranque, fin de simulación, fin de recogida, fin de dibujo), en segundos de macroquad.
+- [`FrameMarks`](frame_loop.rs#L19) — Los instantes que el bucle toma en un frame (arranque, fin de simulación, fin de recogida, fin de dibujo), en segundos de macroquad.
   - Firma: `struct FrameMarks { frame_start: f64, after_simulation: f64, after_collect: f64, after_draw: f64 }`
-- [`frame_sample`](frame_loop.rs#L26) — La muestra del frame para el perf log: cada sección cuesta el hueco entre dos marcas, en milisegundos.
-  - Firma: `fn frame_sample(frame_ms: f64, marks: FrameMarks, sprites: usize, chunks: usize, chunks_alive: usize) -> FrameSample {`
+- [`frame_sample`](frame_loop.rs#L28) — La muestra del frame para el perf log: cada sección cuesta el hueco entre dos marcas, en milisegundos; lleva aparte los milisegundos de lifecycle de chunks (`stream_ms`) y de horneado de sombras (`bake_ms`) que `FrameView` midió.
+  - Firma: `fn frame_sample( frame_ms: f64, marks: FrameMarks, stream_ms: f64, bake_ms: f64, sprites: usize, chunks: usize, chunks_alive: usize, ) -> FrameSample {`

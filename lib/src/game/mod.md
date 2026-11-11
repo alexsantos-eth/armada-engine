@@ -93,7 +93,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Tipos
 
-- [`FrameView`](frame.rs#L51) — Lo que la mitad de vista del fotograma necesita tras la actualización: posición de render, proyección, chunks cullados, `frame_ms` y el instante en que la simulación terminó.
+- [`FrameView`](frame.rs#L51) — Lo que la mitad de vista del fotograma necesita tras la actualización: posición de render, proyección, chunks cullados, `frame_ms`, el instante en que la simulación terminó y los dos costes que el perf log desglosa — `stream_ms` (generación del chunk: terreno, entidades, carreteras, archive y descarga) y `bake_ms` (horneado de sombras y subida al atlas).
   - Firma: `pub(crate) struct FrameView { ... }`
 
 #### Funciones y métodos

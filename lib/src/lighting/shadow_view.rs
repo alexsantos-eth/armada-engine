@@ -91,8 +91,20 @@ struct Pending {
     map: GroundBake,
     shade: Vec<bool>,
     shaded: HashMap<(i32, i32), ShadeGrid>,
+    walls: Vec<TerrainFace>,
     faces: Vec<(TerrainFace, Rc<ShadeLattice>)>,
     stage: Reading,
+}
+
+/// How many entities, and how many exposed faces, are shaded in one step of a chunk's bake.
+const ENTITIES_PER_STEP: usize = 16;
+const FACES_PER_STEP: usize = 24;
+
+/// The slice of a chunk's work a step covers: `count` items starting at `from`.
+#[derive(Clone, Copy)]
+struct Window {
+    from: usize,
+    count: usize,
 }
 
 /// What a [`Pending`] does next once its map is laid.
@@ -104,8 +116,10 @@ enum Reading {
     Upload,
     /// Reading back which columns carry any coverage, from this one on.
     Ground(usize),
-    Entities,
-    Faces,
+    /// Shading the chunk's own entities, from this one on.
+    Entities(usize),
+    /// Shading the chunk's exposed faces, from this one on.
+    Faces(usize),
 }
 
 impl ShadowScene {
@@ -298,18 +312,46 @@ impl ShadowScene {
                     &mut job.shade,
                 );
                 job.stage = if done == 0 {
-                    Reading::Entities
+                    Reading::Entities(0)
                 } else {
                     Reading::Ground(from + done)
                 };
             }
-            Reading::Entities => {
-                job.shaded = self.shade_entities(manager, job.coord, &job.casters, &job.ground);
-                job.stage = Reading::Faces;
+            Reading::Entities(from) => {
+                let done = self.shade_entities(
+                    manager,
+                    job.coord,
+                    &job.casters,
+                    &job.ground,
+                    Window {
+                        from,
+                        count: ENTITIES_PER_STEP,
+                    },
+                    &mut job.shaded,
+                );
+                job.stage = if done == 0 {
+                    job.walls = Self::walls_of(manager, job.coord);
+                    Reading::Faces(0)
+                } else {
+                    Reading::Entities(from + done)
+                };
             }
-            Reading::Faces => {
-                job.faces = self.shade_faces(manager, job.coord, &job.casters, &job.ground);
-                finished = true;
+            Reading::Faces(from) => {
+                let done = self.shade_faces(
+                    &job.walls,
+                    &job.casters,
+                    &job.ground,
+                    Window {
+                        from,
+                        count: FACES_PER_STEP,
+                    },
+                    &mut job.faces,
+                );
+                if done == 0 {
+                    finished = true;
+                } else {
+                    job.stage = Reading::Faces(from + done);
+                }
             }
         }
         self.working = Some(job);
@@ -349,6 +391,7 @@ impl ShadowScene {
             map,
             shade: Vec::with_capacity(columns),
             shaded: HashMap::new(),
+            walls: Vec::new(),
             faces: Vec::new(),
             stage: Reading::Map,
         });
@@ -435,20 +478,24 @@ impl ShadowScene {
         Some(extent_of_ink(ink, self.tile_width))
     }
 
-    /// The lattices of the chunk's own entities, for the ones something shades.
+    /// The lattices of the chunk's own entities, `window` of them, for the ones something shades;
+    /// returns how many it processed.
     fn shade_entities(
         &self,
         manager: &ChunkManager,
         coord: ChunkCoord,
         casters: &[ShadowCaster],
         ground: &HeightField,
-    ) -> HashMap<(i32, i32), ShadeGrid> {
+        window: Window,
+        out: &mut HashMap<(i32, i32), ShadeGrid>,
+    ) -> usize {
         let Some(entities) = manager.entities_chunk(coord) else {
-            return HashMap::new();
+            return 0;
         };
         let masks = &self.masks;
-        let mut shaded = HashMap::new();
-        for entity in entities {
+        let mut processed = 0;
+        for entity in entities.iter().skip(window.from).take(window.count) {
+            processed += 1;
             let Some(extent) = self.extent_of(entity) else {
                 continue;
             };
@@ -478,34 +525,41 @@ impl ShadowScene {
                     rows: ENTITY_SHADE_ROWS,
                 },
             ) {
-                shaded.insert((entity.x(), entity.y()), grid);
+                out.insert((entity.x(), entity.y()), grid);
             }
         }
-        shaded
+        processed
     }
 
-    /// The shadow on each exposed vertical face of the chunk's ground.
-    fn shade_faces(
-        &self,
-        manager: &ChunkManager,
-        coord: ChunkCoord,
-        casters: &[ShadowCaster],
-        ground: &HeightField,
-    ) -> Vec<(TerrainFace, Rc<ShadeLattice>)> {
+    /// The chunk's exposed vertical faces, ready to be shaded one step at a time.
+    fn walls_of(manager: &ChunkManager, coord: ChunkCoord) -> Vec<TerrainFace> {
         let Some(columns) = manager.terrain_chunk(coord) else {
             return Vec::new();
         };
         let level_at = |x: i32, y: i32| manager.column_at(x, y).map(|c| f64::from(c.elevation));
-        let walls = terrain_faces(
+        terrain_faces(
             columns
                 .iter()
                 .map(|c| (c.coord.x, c.coord.y, f64::from(c.elevation), c.surface)),
             level_at,
             FACE_FLOOR,
-        );
+        )
+    }
+
+    /// The shadow on `window` of the exposed faces starting at `window.from`, appended to `out`;
+    /// returns how many it processed.
+    fn shade_faces(
+        &self,
+        walls: &[TerrainFace],
+        casters: &[ShadowCaster],
+        ground: &HeightField,
+        window: Window,
+        out: &mut Vec<(TerrainFace, Rc<ShadeLattice>)>,
+    ) -> usize {
         let masks = &self.masks;
-        let mut shaded = Vec::new();
-        for face in walls {
+        let mut processed = 0;
+        for face in walls.iter().skip(window.from).take(window.count) {
+            processed += 1;
             let mut grid =
                 Vec::with_capacity(((FACE_SHADE_STEPS + 1) * (FACE_SHADE_STEPS + 1)) as usize);
             let mut any = false;
@@ -528,8 +582,8 @@ impl ShadowScene {
                 }
             }
             if any {
-                shaded.push((
-                    face,
+                out.push((
+                    *face,
                     Rc::new(ShadeLattice::from_coverage(
                         FACE_SHADE_STEPS,
                         FACE_SHADE_STEPS,
@@ -538,7 +592,7 @@ impl ShadowScene {
                 ));
             }
         }
-        shaded
+        processed
     }
 
     /// Queues the shadow on every exposed vertical face of `coord`'s ground.

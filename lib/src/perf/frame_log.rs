@@ -17,12 +17,19 @@ pub const CPU_DROPPED_MS: f64 = 16.7;
 pub struct FrameSample {
     /// Whole frame, including waiting for the display.
     pub frame_ms: f64,
-    /// Input, the fixed simulation steps, streaming and saving.
+    /// Input, the fixed simulation steps, scene graph work, culling, streaming and saving. Streaming
+    /// and the shadow bake are inside this figure too, split out in `stream_ms` and `bake_ms`.
     pub simulation_ms: f64,
     /// Culling and building the sprite list.
     pub scene_ms: f64,
     /// Sorting the sprite list and issuing it.
     pub draw_ms: f64,
+    /// Chunk lifecycle this frame: discovering and generating terrain, placing entities, connecting
+    /// roads, restoring from the archive and unloading. A slice of `simulation_ms`.
+    pub stream_ms: f64,
+    /// Shadow bake this frame: re-baking chunks for a phase change or a stale neighbour, easing them
+    /// and uploading the maps to the atlas. A slice of `simulation_ms`.
+    pub bake_ms: f64,
     /// Sprites queued this frame.
     pub sprites: usize,
     /// Chunks drawn this frame.
@@ -172,8 +179,8 @@ impl PerfLog {
             "iso perf · {span:.1} s · {frames} frames · {fps:.1} fps · chunks {chunks:.0} dibujados · {alive:.0} en memoria\n\
              frame ms p50 {f50:.1} · p95 {f95:.1} · max {fmax:.1} · over {DROPPED_FRAME_MS} ms: {dropped} · over {CPU_DROPPED_MS} ms cpu: {cpu_dropped}\n\
              cpu ms p50 {c50:.1} · p95 {c95:.1} · max {cmax:.1} · sprites avg {sprites:.0} · max {sprites_max}\n\
-             cpu split avg: sim {sim:.2} · escena {scene:.2} · dibujo {draw:.2}\n\
-             peor frame {worst_ms:.1} ms: sim {wsim:.2} · escena {wscene:.2} · dibujo {wdraw:.2} · sprites {wsprites}",
+             cpu split avg: sim {sim:.2} · stream {stream:.2} · bake {bake:.2} · escena {scene:.2} · dibujo {draw:.2}\n\
+             peor frame {worst_ms:.1} ms: sim {wsim:.2} · stream {wstream:.2} · bake {wbake:.2} · escena {wscene:.2} · dibujo {wdraw:.2} · sprites {wsprites}",
             chunks = self.mean(|s| s.chunks as f64),
             alive = self.mean(|s| s.chunks_alive as f64),
             dropped = self.dropped(),
@@ -181,10 +188,14 @@ impl PerfLog {
             sprites = self.mean(|s| s.sprites as f64),
             sprites_max = self.samples.iter().map(|s| s.sprites).max().unwrap_or(0),
             sim = self.mean(|s| s.simulation_ms),
+            stream = self.mean(|s| s.stream_ms),
+            bake = self.mean(|s| s.bake_ms),
             scene = self.mean(|s| s.scene_ms),
             draw = self.mean(|s| s.draw_ms),
             worst_ms = worst.frame_ms,
             wsim = worst.simulation_ms,
+            wstream = worst.stream_ms,
+            wbake = worst.bake_ms,
             wscene = worst.scene_ms,
             wdraw = worst.draw_ms,
             wsprites = worst.sprites,
