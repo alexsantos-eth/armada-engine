@@ -3,7 +3,7 @@
 use crate::grid::{ChunkCoord, WorldCoord, WorldRect};
 use crate::player::motion::{PlayerMotionEvent, PlayerMotionType, transition_player_motion};
 use crate::projection::GridPoint;
-use crate::terrain::{TerrainColumn, TerrainMaterial};
+use crate::terrain::{TerrainColumn, TerrainMaterial, stairs_direction};
 use crate::time::TICKS_PER_SECOND;
 
 /// Walking speed of the player, in columns per second of simulation.
@@ -66,6 +66,9 @@ pub const PLAYER_STAIRS_TICKS: i32 = 16;
 /// Columns of the stairs block the player has crossed when it reaches the top of the flight,
 /// measured from the edge it stepped on at: it walks almost the whole block.
 pub const PLAYER_STAIRS_REACH: f64 = 0.95;
+/// Share of the top face of a flight the player crosses from its upper edge before it starts
+/// walking down the steps: the last stretch of flat top it stands on.
+pub const PLAYER_STAIRS_DESCENT_SHARE: f64 = 0.2;
 /// Blocks per tick a flying player's feet rise at most.
 pub const PLAYER_FLY_SPEED: f64 = 0.15;
 /// Blocks per tick its jetpack speeds a flying player's feet up by each tick.
@@ -869,6 +872,12 @@ fn step_once<G: PlayerGround>(
         x: next.x - from.x,
         y: next.y - from.y,
     };
+    if !airborne && let Some(descent) = start_stairs_descent(ground, from, next, feet) {
+        player.climb = Some(descent);
+        player.vertical_speed = None;
+        player.velocity = GridPoint { x: 0.0, y: 0.0 };
+        return None;
+    }
     let surface = support_at(ground, next);
     let elevation = surface
         .map(|s| s.elevation as f64)
@@ -932,6 +941,75 @@ fn step_once<G: PlayerGround>(
         player.vertical_speed = None;
     }
     None
+}
+
+/// The descent the player starts when it walks off the top of a flight of stairs, or `None`
+/// where it is not on one, is not walking down it, or has not yet crossed
+/// `PLAYER_STAIRS_DESCENT_SHARE` of its top face. The flight is read with `stairs_direction`,
+/// the same rule that picks its artwork, so the player only ever walks down drawn steps.
+fn start_stairs_descent<G: PlayerGround>(
+    ground: &G,
+    from: GridPoint,
+    next: GridPoint,
+    feet: f64,
+) -> Option<PlayerClimb> {
+    let column = support_at(ground, from)?;
+    if column.surface != TerrainMaterial::Stairs {
+        return None;
+    }
+    let coord = get_player_column(from);
+    let up = stairs_direction(coord, column.elevation, |at| {
+        ground
+            .column_at(at.x, at.y)
+            .map(|found| (found.surface, found.elevation))
+    })?;
+    let down = GridPoint {
+        x: -f64::from(up.x),
+        y: -f64::from(up.y),
+    };
+    let step = GridPoint {
+        x: next.x - from.x,
+        y: next.y - from.y,
+    };
+    if step.x * down.x + step.y * down.y <= 0.0 {
+        return None;
+    }
+    let crossed =
+        (next.x - f64::from(coord.x)) * down.x + (next.y - f64::from(coord.y)) * down.y + 0.5;
+    if crossed < PLAYER_STAIRS_DESCENT_SHARE {
+        return None;
+    }
+    let below = ground.column_at(coord.x - up.x, coord.y - up.y)?;
+    if !below.walkable || below.surface == TerrainMaterial::Water {
+        return None;
+    }
+    let landing = f64::from(below.elevation);
+    let rise = landing - feet;
+    if rise > -PLAYER_STEP_HEIGHT || rise < -PLAYER_MAX_CLIMB {
+        return None;
+    }
+    let to = GridPoint {
+        x: f64::from(coord.x - up.x),
+        y: f64::from(coord.y - up.y),
+    };
+    if !fits_at(ground, to, landing) {
+        return None;
+    }
+    let start = if get_player_column(next) == coord {
+        next
+    } else {
+        from
+    };
+    Some(PlayerClimb {
+        from: start,
+        to,
+        direction: down,
+        feet,
+        rise,
+        ticks: (PLAYER_STAIRS_TICKS as f64 * rise.abs()).round() as i32,
+        tick: 0,
+        stairs: true,
+    })
 }
 
 fn step_air<G: PlayerGround>(

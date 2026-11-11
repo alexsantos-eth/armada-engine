@@ -237,6 +237,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`PLAYER_STAIRS_REACH`](physics.rs) — Columnas del bloque de gradas que el jugador ha cruzado al llegar arriba, medidas desde el borde por el que entró: cruza casi el bloque entero.
   - Declaración: `pub const PLAYER_STAIRS_REACH: f64 = 0.95;`
 
+- [`PLAYER_STAIRS_DESCENT_SHARE`](physics.rs) — Parte de la cara superior de una grada que el jugador cruza desde su borde de arriba antes de empezar a bajar los escalones: el último tramo de cima llana en el que se queda de pie.
+  - Declaración: `pub const PLAYER_STAIRS_DESCENT_SHARE: f64 = 0.2;`
+
 - [`PLAYER_FLY_SPEED`](physics.rs#L65) — Bloques por tick que suben como máximo los pies de un jugador volando.
   - Declaración: `pub const PLAYER_FLY_SPEED: f64 = 0.15;`
 

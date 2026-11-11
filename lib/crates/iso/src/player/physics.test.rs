@@ -323,6 +323,9 @@ fn stairs_ground() -> CellGround {
     if let Some(column) = ground.columns.get_mut(&WorldCoord { x: 2, y: 1 }) {
         column.surface = TerrainMaterial::Stairs;
     }
+    if let Some(column) = ground.columns.get_mut(&WorldCoord { x: 1, y: 1 }) {
+        column.surface = TerrainMaterial::Path;
+    }
     ground
 }
 
@@ -426,4 +429,128 @@ fn a_flight_reports_no_climb_pose_and_keeps_the_player_walking() {
         step_player(&mut player, &mut ground, 1);
         assert_eq!(player.motion, PlayerMotionType::Walking);
     }
+}
+
+fn walk_down_stairs(ground: &mut CellGround) -> PlayerState {
+    let mut player = create_player(ground, GridPoint { x: 4.0, y: 1.0 });
+    set_player_walk(
+        &mut player,
+        ScreenDirections {
+            left: true,
+            down: true,
+            ..Default::default()
+        },
+    );
+    for _ in 0..80 {
+        step_player(&mut player, ground, 1);
+        if player.climb.is_some() {
+            break;
+        }
+    }
+    player
+}
+
+/// Coming from the top, the player walks a little way onto the flight before it starts down it.
+#[test]
+fn a_flight_is_walked_down_once_its_top_face_is_crossed() {
+    let mut ground = stairs_ground();
+    let mut player = create_player(&ground, GridPoint { x: 4.0, y: 1.0 });
+    set_player_walk(
+        &mut player,
+        ScreenDirections {
+            left: true,
+            down: true,
+            ..Default::default()
+        },
+    );
+    let mut entered = None;
+    for _ in 0..80 {
+        step_player(&mut player, &mut ground, 1);
+        if get_player_column(GridPoint {
+            x: player.x,
+            y: player.y,
+        }) == (WorldCoord { x: 2, y: 1 })
+            && entered.is_none()
+        {
+            entered = Some(player.x);
+            assert!(
+                player.climb.is_none(),
+                "the edge of the top face is still walked, not stepped down"
+            );
+        }
+        if player.climb.is_some() {
+            break;
+        }
+    }
+    let climb = player.climb.as_ref().expect("the player starts down");
+    assert!(climb.stairs, "it walks the steps down, it does not drop");
+    let crossed = 2.5 - climb.from.x;
+    assert!(
+        crossed >= PLAYER_STAIRS_DESCENT_SHARE,
+        "it crosses the top face before it starts down: {crossed}"
+    );
+    assert!(
+        crossed < PLAYER_STAIRS_DESCENT_SHARE + 2.0 * PLAYER_STEP,
+        "and it starts down as soon as it has: {crossed}"
+    );
+    assert!(climb.rise < 0.0, "a descent falls a block: {}", climb.rise);
+    assert_eq!(
+        get_player_column(climb.to),
+        WorldCoord { x: 1, y: 1 },
+        "and it ends on the road below"
+    );
+}
+
+/// Walking down a flight the player is on the steps, not falling over them, and its feet only
+#[test]
+fn a_flight_walks_its_player_down_the_steps_without_leaving_the_ground() {
+    let mut ground = stairs_ground();
+    let mut player = walk_down_stairs(&mut ground);
+    let start = player.elevation + player.height;
+    let ticks = player.climb.as_ref().expect("a descent").ticks;
+    assert_eq!(ticks, PLAYER_STAIRS_TICKS, "it takes as long as the climb");
+    let mut feet = Vec::new();
+    for _ in 0..ticks {
+        step_player(&mut player, &mut ground, 1);
+        assert_eq!(
+            player.height, 0.0,
+            "it walks the steps, never falls over them"
+        );
+        feet.push(player.elevation + player.height);
+    }
+    assert!(
+        feet.windows(2).all(|pair| pair[1] <= pair[0]),
+        "its feet only ever fall: {feet:?}"
+    );
+    let bottom = feet.last().copied().expect("the descent takes ticks");
+    assert!(
+        (bottom - (start - 1.0)).abs() < 1e-9,
+        "it ends a block lower: {bottom} from {start}"
+    );
+    step_player(&mut player, &mut ground, 1);
+    assert!(player.climb.is_none(), "and the descent is over");
+    assert_eq!(player.height, 0.0);
+}
+
+/// Walking down a flight is walking: the view is never told to play the climb poses.
+#[test]
+fn walking_down_a_flight_is_reported_as_walking() {
+    let mut ground = stairs_ground();
+    let mut player = walk_down_stairs(&mut ground);
+    assert_eq!(get_player_climb_progress(&player, 0.0), None);
+    for _ in 0..PLAYER_STAIRS_TICKS {
+        step_player(&mut player, &mut ground, 1);
+        assert_eq!(get_player_climb_progress(&player, 0.0), None);
+    }
+}
+
+/// A plain ledge is still a drop: only a flight of stairs is walked down.
+#[test]
+fn walking_off_a_plain_ledge_is_still_a_drop() {
+    let mut ground = ground_from(&["00111", "00111", "00111"]);
+    let player = walk_down_stairs(&mut ground);
+    assert!(
+        player.climb.is_none(),
+        "there are no steps to walk down off a plain block"
+    );
 }
