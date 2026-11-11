@@ -268,3 +268,38 @@ fn a_zero_fade_asks_for_no_lattice_but_one_keeps_the_shadows() {
     assert!(lattice_of(&grid, 1.0).is_some(), "a full fade shows it");
     assert!(!grid.is_clear());
 }
+
+#[test]
+fn a_fresh_bake_lands_whole_until_a_phase_change_arms_the_fade() {
+    let fade = PhaseFade::default();
+
+    assert_eq!(fade.fresh_born(), PHASE_TRANSITION_SECONDS);
+}
+
+#[test]
+fn a_fresh_bake_eases_in_while_a_phase_change_is_being_rebaked() {
+    let mut fade = PhaseFade::default();
+
+    fade.phase_changed();
+
+    assert_eq!(fade.fresh_born(), 0.0);
+}
+
+#[test]
+fn fresh_bakes_land_whole_again_once_the_rebake_goes_idle() {
+    let mut fade = PhaseFade::default();
+    fade.phase_changed();
+
+    fade.idle();
+
+    assert_eq!(fade.fresh_born(), PHASE_TRANSITION_SECONDS);
+}
+
+#[test]
+fn going_idle_without_a_phase_change_keeps_fresh_bakes_whole() {
+    let mut fade = PhaseFade::default();
+
+    fade.idle();
+
+    assert_eq!(fade.fresh_born(), PHASE_TRANSITION_SECONDS);
+}

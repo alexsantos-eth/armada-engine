@@ -1,5 +1,5 @@
-//! Wind
+//! Wind domain module.
 
-pub mod wind;
+pub mod sway;
 
-pub use wind::*;
+pub use sway::*;

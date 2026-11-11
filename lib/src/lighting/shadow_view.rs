@@ -58,7 +58,7 @@ struct Baked {
     faces: Vec<(TerrainFace, Rc<ShadeLattice>)>,
     /// Which of the nine chunks around it (itself included) were loaded when it was baked.
     baked_against: u16,
-    /// Seconds since this chunk's bake landed; its shadows ease in as it grows.
+    /// Seconds since this chunk's bake landed; chunks baked for a phase change ease in as it grows.
     born: f32,
 }
 
@@ -75,6 +75,7 @@ pub struct ShadowScene {
     working: Option<Pending>,
     tile_width: f64,
     box_height: f64,
+    phase_fade: PhaseFade,
 }
 
 /// A chunk's bake, part way through.
@@ -129,6 +130,7 @@ impl ShadowScene {
             working: None,
             tile_width,
             box_height,
+            phase_fade: PhaseFade::default(),
         }
     }
 
@@ -137,21 +139,24 @@ impl ShadowScene {
         self.phase
     }
 
-    /// How far in a chunk's shadows have eased, `0.0` straight after its bake lands. Chunks the
-    /// scene does not hold yet report `0.0`.
+    /// How far in a chunk's shadows have eased, `0.0` straight after its bake lands. Bakes that
+    /// landed outside a phase change report `1.0`. Chunks the scene does not hold yet report `0.0`.
     pub fn chunk_fade(&self, coord: ChunkCoord) -> f32 {
         self.chunks
             .get(&coord)
             .map_or(0.0, |baked| fade_of(baked.born))
     }
 
-    /// Selects a phase and discards every map derived from the previous light.
+    /// Selects a phase and discards every map derived from the previous light. Fresh bakes ease in
+    /// until an update pass finds nothing left to bake; streamed chunks landing after that ease in
+    /// never.
     pub fn set_phase(&mut self, phase: BakePhase) {
         if self.phase == phase {
             return;
         }
         self.phase = phase;
         self.light = phase.light();
+        self.phase_fade.phase_changed();
         if let Some(job) = self.working.take() {
             self.atlas.release(job.coord);
         }
@@ -162,8 +167,8 @@ impl ShadowScene {
     }
 
     /// Spends up to [`BAKE_BUDGET_MS`] bringing the bake up to date for `shown`, forgets what the
-    /// stream no longer holds, and eases the freshly baked chunks in with `dt_seconds` of real
-    /// time.
+    /// stream no longer holds, and eases the chunks baked for a phase change in with `dt_seconds`
+    /// of real time. Bakes landing outside a phase change appear whole.
     pub fn update(&mut self, manager: &ChunkManager, shown: &[ChunkCoord], dt_seconds: f32) {
         let dropped: Vec<ChunkCoord> = self
             .chunks
@@ -199,6 +204,7 @@ impl ShadowScene {
         loop {
             if self.working.is_none() {
                 let Some(coord) = self.next_to_bake(manager, shown) else {
+                    self.phase_fade.idle();
                     return;
                 };
                 self.start(manager, coord);
@@ -224,7 +230,7 @@ impl ShadowScene {
                         casters: own,
                         faces,
                         baked_against: against,
-                        born: 0.0,
+                        born: self.phase_fade.fresh_born(),
                     },
                 );
             }
@@ -758,6 +764,35 @@ fn neighbours_loaded(manager: &ChunkManager, coord: ChunkCoord) -> u16 {
         .enumerate()
         .filter(|(_, other)| manager.is_discovered(**other))
         .fold(0, |bits, (at, _)| bits | 1 << at)
+}
+
+/// Whether a phase change still owes fresh bakes their ease-in. True from the moment the phase
+/// flips until an update pass finds no work left; outside it, fresh bakes land whole so streamed
+/// chunks appear with their shadows already on.
+#[derive(Default)]
+struct PhaseFade {
+    active: bool,
+}
+
+impl PhaseFade {
+    /// The fade clock a chunk that just landed starts from.
+    fn fresh_born(&self) -> f32 {
+        if self.active {
+            0.0
+        } else {
+            PHASE_TRANSITION_SECONDS
+        }
+    }
+
+    /// Opens the window: a phase change just invalidated every map.
+    fn phase_changed(&mut self) {
+        self.active = true;
+    }
+
+    /// Closes the window: an update pass found nothing left to bake.
+    fn idle(&mut self) {
+        self.active = false;
+    }
 }
 
 #[cfg(test)]

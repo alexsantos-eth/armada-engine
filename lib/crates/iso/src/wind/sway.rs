@@ -35,5 +35,5 @@ pub fn sway_offset(sway: &EntitySway, phase: f64, time_ms: f64, strength: f64) -
 }
 
 #[cfg(test)]
-#[path = "wind.test.rs"]
+#[path = "sway.test.rs"]
 mod tests;

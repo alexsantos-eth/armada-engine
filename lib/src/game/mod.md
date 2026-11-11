@@ -19,55 +19,55 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Constantes
 
-- [`PREVIEW_CENTRE`](config.rs#L11) — Centro de diagnóstico del mundo; el jugador nace cerca de él.
+- [`PREVIEW_CENTRE`](config.rs#L14) — Centro de diagnóstico del mundo; el jugador nace cerca de él.
   - Declaración: `pub const PREVIEW_CENTRE: WorldCoord = WorldCoord { x: 16, y: 88 };`
-- [`PREVIEW_TILE_WIDTH`](config.rs#L13) — Zoom de la escena: ancho de una casilla en píxeles de pantalla.
+- [`PREVIEW_TILE_WIDTH`](config.rs#L16) — Zoom de la escena: ancho de una casilla en píxeles de pantalla.
   - Declaración: `pub const PREVIEW_TILE_WIDTH: f64 = 280.0;`
-- [`PREVIEW_TILE_HEIGHT`](config.rs#L15) — Alto de una casilla en píxeles.
+- [`PREVIEW_TILE_HEIGHT`](config.rs#L18) — Alto de una casilla en píxeles.
   - Declaración: `pub const PREVIEW_TILE_HEIGHT: f64 = PREVIEW_TILE_WIDTH / 2.0;`
-- [`PREVIEW_ELEVATION_STEP`](config.rs#L17) — Altura de un nivel de elevación en píxeles.
+- [`PREVIEW_ELEVATION_STEP`](config.rs#L20) — Altura de un nivel de elevación en píxeles.
   - Declaración: `pub const PREVIEW_ELEVATION_STEP: f64 = PREVIEW_TILE_WIDTH * SVG_BLOCK_HEIGHT / SVG_TILE_WIDTH;`
-- [`MOBILE_ZOOM`](config.rs#L20) — Fracción de la casilla de referencia que dibuja una plataforma de puntero grueso: la escena alejada un poco para ver más mundo en una pantalla táctil pequeña.
+- [`MOBILE_ZOOM`](config.rs#L23) — Fracción de la casilla de referencia que dibuja una plataforma de puntero grueso: la escena alejada un poco para ver más mundo en una pantalla táctil pequeña.
   - Declaración: `pub const MOBILE_ZOOM: f64 = 0.7;`
-- [`MAX_FRAME_MS`](config.rs#L24) — Milisegundos de simulación que un fotograma puede avanzar, uno por tick: tras un bloqueo (GC, GPU, horneado) el juego se ralentiza en vez de saltar varios ticks de golpe.
+- [`MAX_FRAME_MS`](config.rs#L27) — Milisegundos de simulación que un fotograma puede avanzar, uno por tick: tras un bloqueo (GC, GPU, horneado) el juego se ralentiza en vez de saltar varios ticks de golpe.
   - Declaración: `pub(crate) const MAX_FRAME_MS: f64 = iso::simulation::STEP_MS;`
 
-- [`BAND_BLEED`](config.rs#L58) — Cuánto alcanza cada banda de un sprite multi-casilla más allá de su corte.
+- [`BAND_BLEED`](config.rs#L61) — Cuánto alcanza cada banda de un sprite multi-casilla más allá de su corte.
   - Declaración: `pub const BAND_BLEED: f64 = 0.5;`
-- [`ENTITY_LAYER`](config.rs#L61) — Capa de dibujo de las entidades.
+- [`ENTITY_LAYER`](config.rs#L64) — Capa de dibujo de las entidades.
   - Declaración: `pub const ENTITY_LAYER: i32 = 3;`
-- [`PLAYER_BEHIND_LAYER`](config.rs#L63) — Capa del jugador en la mitad lejana de su casilla.
+- [`PLAYER_BEHIND_LAYER`](config.rs#L66) — Capa del jugador en la mitad lejana de su casilla.
   - Declaración: `pub const PLAYER_BEHIND_LAYER: i32 = 2;`
-- [`PLAYER_FRONT_LAYER`](config.rs#L65) — Capa del jugador en la mitad cercana de su casilla.
+- [`PLAYER_FRONT_LAYER`](config.rs#L68) — Capa del jugador en la mitad cercana de su casilla.
   - Declaración: `pub const PLAYER_FRONT_LAYER: i32 = 4;`
-- [`PLAYER_SCALE`](config.rs#L67) — Tamaño del jugador como fracción del que tiene su arte.
+- [`PLAYER_SCALE`](config.rs#L70) — Tamaño del jugador como fracción del que tiene su arte.
   - Declaración: `pub const PLAYER_SCALE: f64 = 0.75;`
-- [`PLAYER_SPRITE`](config.rs#L69) — Ruta del manifiesto de la figura quieta del jugador.
+- [`PLAYER_SPRITE`](config.rs#L72) — Ruta del manifiesto de la figura quieta del jugador.
   - Declaración: `pub const PLAYER_SPRITE: &str = "/assets/player/block.svg";`
-- [`PLAYER_WALK_SHEET`](config.rs#L71) — Hoja de poses al andar.
+- [`PLAYER_WALK_SHEET`](config.rs#L74) — Hoja de poses al andar.
   - Declaración: `pub const PLAYER_WALK_SHEET: &str = "/assets/player-16/walk.svg";`
-- [`PLAYER_IDLE_SHEET`](config.rs#L72) — Hoja de poses en reposo.
+- [`PLAYER_IDLE_SHEET`](config.rs#L75) — Hoja de poses en reposo.
   - Declaración: `pub const PLAYER_IDLE_SHEET: &str = "/assets/player-16/idle.svg";`
-- [`PLAYER_JUMP_SHEET`](config.rs#L73) — Hoja de poses de salto.
+- [`PLAYER_JUMP_SHEET`](config.rs#L76) — Hoja de poses de salto.
   - Declaración: `pub const PLAYER_JUMP_SHEET: &str = "/assets/player-16/jump.svg";`
-- [`PLAYER_CLIMB_SHEET`](config.rs#L74) — Hoja de poses de escalada.
+- [`PLAYER_CLIMB_SHEET`](config.rs#L77) — Hoja de poses de escalada.
   - Declaración: `pub const PLAYER_CLIMB_SHEET: &str = "/assets/player-16/climb.svg";`
-- [`CHUNK_CULL_MARGIN`](config.rs#L76) — Margen extra de visibilidad de chunks alrededor de la pantalla.
+- [`CHUNK_CULL_MARGIN`](config.rs#L79) — Margen extra de visibilidad de chunks alrededor de la pantalla.
   - Declaración: `pub const CHUNK_CULL_MARGIN: f64 = 0.0;`
-- [`CHUNK_RADII`](config.rs#L79) — Radios de carga/predescarga/conservación de este cliente (1 / 1 / 2).
+- [`CHUNK_RADII`](config.rs#L82) — Radios de carga/predescarga/conservación de este cliente (1 / 1 / 2).
   - Declaración: `pub const CHUNK_RADII: ChunkRadii = ChunkRadii { ... };`
-- [`UNBOUNDED_CAMERA_LIMITS`](config.rs#L87) — Límites finitos para el seguimiento exponencial de un mundo sin fronteras: tan anchos que la pinza nunca se aplica; solo los exige `follow_camera`.
+- [`UNBOUNDED_CAMERA_LIMITS`](config.rs#L90) — Límites finitos para el seguimiento exponencial de un mundo sin fronteras: tan anchos que la pinza nunca se aplica; solo los exige `follow_camera`.
   - Declaración: `pub(crate) const UNBOUNDED_CAMERA_LIMITS: iso::camera::CameraLimits = iso::camera::CameraLimits { ... };`
-- [`AUTOSAVE_SECONDS`](config.rs#L99) — Intervalo de respaldo del guardado periódico; el real es al salir.
+- [`AUTOSAVE_SECONDS`](config.rs#L102) — Intervalo de respaldo del guardado periódico; el real es al salir.
   - Declaración: `pub const AUTOSAVE_SECONDS: f64 = 120.0;`
-- [`WORLD_SEED`](config.rs#L102) — La semilla con la que genera el mundo; el valor por defecto del dominio (`iso::terrain::WORLD_SEED`) y los tests la comparten.
+- [`WORLD_SEED`](config.rs#L105) — La semilla con la que genera el mundo; el valor por defecto del dominio (`iso::terrain::WORLD_SEED`) y los tests la comparten.
   - Declaración: `pub const WORLD_SEED: u64 = iso::terrain::WORLD_SEED;`
-- [`PHASE_TRANSITION_SECONDS`](config.rs#L105) — Segundos que dura el cambio de fase de punta a punta: el crossfade del grado y el fade-in de sombras de cada chunk recién horneado.
+- [`PHASE_TRANSITION_SECONDS`](config.rs#L108) — Segundos que dura el cambio de fase de punta a punta: el crossfade del grado y el fade-in de sombras de los chunks rehorneados para la nueva fase.
   - Declaración: `pub const PHASE_TRANSITION_SECONDS: f32 = 0.6;`
 
 #### Tipos
 
-- [`SceneMetrics`](config.rs#L28) — Las métricas de la casilla de una escena, en píxeles de pantalla: casilla y nivel de elevación.
+- [`SceneMetrics`](config.rs#L31) — Las métricas de la casilla de una escena, en píxeles de pantalla: casilla y nivel de elevación.
   - Firma: `pub struct SceneMetrics { pub tile_width: f64, pub tile_height: f64, pub elevation_step: f64 }`
 
 #### Funciones y métodos
