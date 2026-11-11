@@ -138,7 +138,11 @@ impl PlacementJob {
                     }
                 }
             }
-            State::Taken => unreachable!("a job's outcome is only taken once"),
+            State::Taken => None,
         }
     }
 }
+
+#[cfg(test)]
+#[path = "placement_job.test.rs"]
+mod tests;
