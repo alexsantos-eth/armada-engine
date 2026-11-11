@@ -11,6 +11,8 @@ pub enum TerrainMaterial {
     Ground,
     Grass,
     Path,
+    /// A flight of steps carrying the road from the level below up to this block's own top.
+    Stairs,
 }
 
 /// Top of one terrain column. Elevation zero is the sea-level shore.

@@ -1,12 +1,13 @@
 //! Connection mask of a path column: which of its neighbours continue the road.
 
 use crate::grid::WorldCoord;
-use crate::terrain::TerrainMaterial;
+use crate::terrain::{TerrainMaterial, is_road};
 
 /// The sides of `coord` that host a path, as a four-bit mask matching the path block
-/// artwork: bit `1` is +x, bit `2` +y, bit `4` -x and bit `8` -y. Neighbours that are missing
-/// or not paths are not joined. Bits are read from `at`, which answers with the surface of the
-/// column at another coordinate, or `None` when there is no column there.
+/// artwork: bit `1` is +x, bit `2` +y, bit `4` -x and bit `8` -y. A flight of stairs joins like
+/// any other road block; neighbours that are missing or carry no road are not joined. Bits are
+/// read from `at`, which answers with the surface of the column at another coordinate, or `None`
+/// when there is no column there.
 pub fn connection_mask(
     coord: WorldCoord,
     at: impl Fn(WorldCoord) -> Option<TerrainMaterial>,
@@ -18,7 +19,7 @@ pub fn connection_mask(
             x: coord.x + dx,
             y: coord.y + dy,
         };
-        if at(neighbour) == Some(TerrainMaterial::Path) {
+        if at(neighbour).is_some_and(is_road) {
             mask |= bit;
         }
     }

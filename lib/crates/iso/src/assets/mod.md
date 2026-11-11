@@ -112,11 +112,14 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`terrain_sprite_source`](terrain_sprites.rs#L6) — Ruta de origen del asset de bloque que dibuja `material`.
+- [`terrain_sprite_source`](terrain_sprites.rs#L8) — Ruta de origen del asset de bloque que dibuja `material`. Las gradas responden con el bloque de camino liso: solo la cima de su columna se lee como escalones, y esa obra la da `stairs_sprite_source` cuando ya se conoce la dirección.
   - Firma: `pub fn terrain_sprite_source(material: TerrainMaterial) -> &'static str {`
 
 - [`path_sprite_source`](terrain_sprites.rs#L39) — Ruta de origen del bloque de camino para la máscara de conexión `mask` (solo los cuatro bits bajos).
   - Firma: `pub fn path_sprite_source(mask: u8) -> &'static str {`
+
+- [`stairs_sprite_source`](terrain_sprites.rs) — Ruta del bloque de gradas cuya subida va hacia `direction`, o `None` si no es una de las cuatro caras.
+  - Firma: `pub fn stairs_sprite_source(direction: WorldCoord) -> Option<&'static str> {`
 
 - [`terrain_reflection_source`](terrain_sprites.rs#L45) — Ruta de origen del asset de reflexión de `material`, dibujado como lo muestra el agua, o `None` para el propio agua.
   - Firma: `pub fn terrain_reflection_source(material: TerrainMaterial) -> Option<&'static str> {`
@@ -125,6 +128,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`PATH_BLOCK_SOURCES`](terrain_sprites.rs#L19) — Las dieciséis rutas de origen de los bloques de camino, una por máscara de conexión: el índice es la máscara (bit `1` se une a +x, `2` a +y, `4` a −x, `8` a −y).
   - Declaración: `pub const PATH_BLOCK_SOURCES: [&str; 16] = [`
+
+- [`STAIRS_BLOCK_SOURCES`](terrain_sprites.rs) — Ruta del bloque de gradas para cada dirección hacia la que sube la escalera, en el orden del contrato (+x, +y, −x, −y). Cada archivo está dibujado en su propia orientación, nunca espejado, así que las caras iluminadas y las sombreadas se quedan donde las pone el sol.
+  - Declaración: `pub const STAIRS_BLOCK_SOURCES: [(WorldCoord, &str); 4] = [...];`
 
 
 ## Detalles de implementación

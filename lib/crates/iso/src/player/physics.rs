@@ -61,6 +61,11 @@ pub const PLAYER_CLIMB_MS: f64 = (PLAYER_CLIMB_TICKS as f64 * 1000.0) / TICKS_PE
 pub const PLAYER_CLIMB_RISE_SHARE: f64 = 0.7;
 /// Columns past where it reaches the higher top the player walks on during a climb.
 pub const PLAYER_CLIMB_REACH: f64 = 0.25;
+/// Ticks a flight of stairs of one block lasts: it is walked up, not pulled up.
+pub const PLAYER_STAIRS_TICKS: i32 = 16;
+/// Columns of the stairs block the player has crossed when it reaches the top of the flight,
+/// measured from the edge it stepped on at: it walks almost the whole block.
+pub const PLAYER_STAIRS_REACH: f64 = 0.95;
 /// Blocks per tick a flying player's feet rise at most.
 pub const PLAYER_FLY_SPEED: f64 = 0.15;
 /// Blocks per tick its jetpack speeds a flying player's feet up by each tick.
@@ -121,6 +126,17 @@ pub fn get_climb_advance(progress: f64) -> f64 {
     harmonic((progress - PLAYER_CLIMB_RISE_SHARE) / (1.0 - PLAYER_CLIMB_RISE_SHARE))
 }
 
+/// Share of its rise and share of its advance a climb has taken at `progress` (0–1). Over a
+/// ledge the player pulls itself up first and steps over after; up a flight of stairs it rises
+/// and advances together and evenly, which is what walking up the steps looks like.
+pub fn get_climb_shares(stairs: bool, progress: f64) -> (f64, f64) {
+    if stairs {
+        let share = progress.clamp(0.0, 1.0);
+        return (share, share);
+    }
+    (get_climb_rise(progress), get_climb_advance(progress))
+}
+
 /// Why a requested walking step could not advance.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlayerBlockReason {
@@ -160,6 +176,9 @@ pub struct PlayerClimb {
     pub rise: f64,
     pub ticks: i32,
     pub tick: i32,
+    /// Whether the block being climbed is a flight of stairs, walked across instead of pulled
+    /// over.
+    pub stairs: bool,
 }
 
 /// Feedback counters of a player.
@@ -629,7 +648,7 @@ fn get_gait(player: &PlayerState, moved: bool) -> &'static str {
 
 fn get_motion_event(player: &PlayerState, flying: bool) -> PlayerMotionEvent {
     let moved = player.x != player.previous.x || player.y != player.previous.y;
-    if player.climb.is_some() {
+    if player.climb.as_ref().is_some_and(|climb| !climb.stairs) {
         return if player.motion == PlayerMotionType::Climbing {
             PlayerMotionEvent::ClimbTick
         } else {
@@ -856,6 +875,7 @@ fn step_once<G: PlayerGround>(
         .unwrap_or(player.elevation);
     let rise = elevation - feet;
     if !airborne && rise > PLAYER_STEP_HEIGHT {
+        let stairs = surface.is_some_and(|column| column.surface == TerrainMaterial::Stairs);
         let length = (next.x - from.x).hypot(next.y - from.y);
         let direction = if length > 0.0 {
             GridPoint {
@@ -865,23 +885,36 @@ fn step_once<G: PlayerGround>(
         } else {
             GridPoint { x: 0.0, y: 0.0 }
         };
-        let further = GridPoint {
-            x: next.x + direction.x * PLAYER_CLIMB_REACH,
-            y: next.y + direction.y * PLAYER_CLIMB_REACH,
-        };
         let column = get_player_column(next);
+        let further = if stairs {
+            GridPoint {
+                x: f64::from(column.x) + direction.x * (PLAYER_STAIRS_REACH - 0.5),
+                y: f64::from(column.y) + direction.y * (PLAYER_STAIRS_REACH - 0.5),
+            }
+        } else {
+            GridPoint {
+                x: next.x + direction.x * PLAYER_CLIMB_REACH,
+                y: next.y + direction.y * PLAYER_CLIMB_REACH,
+            }
+        };
         let on_top = get_player_column(further);
         let fits_top =
             on_top.x == column.x && on_top.y == column.y && fits_at(ground, further, elevation);
         let to = if fits_top { further } else { next };
+        let ticks = if stairs {
+            PLAYER_STAIRS_TICKS
+        } else {
+            PLAYER_CLIMB_TICKS
+        };
         player.climb = Some(PlayerClimb {
             from,
             to,
             direction,
             feet,
             rise,
-            ticks: (PLAYER_CLIMB_TICKS as f64 * rise).round() as i32,
+            ticks: (ticks as f64 * rise).round() as i32,
             tick: 0,
+            stairs,
         });
         player.vertical_speed = None;
         player.velocity = GridPoint { x: 0.0, y: 0.0 };
@@ -1086,17 +1119,22 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
             player.velocity = GridPoint { x: 0.0, y: 0.0 };
             climb.tick += 1;
             let progress = climb.tick as f64 / climb.ticks as f64;
-            let advance = get_climb_advance(progress);
+            let (rise, advance) = get_climb_shares(climb.stairs, progress);
             let point = GridPoint {
                 x: climb.from.x + (climb.to.x - climb.from.x) * advance,
                 y: climb.from.y + (climb.to.y - climb.from.y) * advance,
             };
-            let feet = climb.feet + climb.rise * get_climb_rise(progress);
+            let feet = climb.feet + climb.rise * rise;
             player.x = point.x;
             player.y = point.y;
-            player.elevation = elevation_at(ground, point);
-            let h = feet - player.elevation;
-            player.height = if h > LANDING { h } else { 0.0 };
+            if climb.stairs {
+                player.elevation = feet;
+                player.height = 0.0;
+            } else {
+                player.elevation = elevation_at(ground, point);
+                let h = feet - player.elevation;
+                player.height = if h > LANDING { h } else { 0.0 };
+            }
             player.climb = Some(climb);
             update_motion(player, false);
             continue;
@@ -1239,8 +1277,10 @@ pub fn get_player_jump_phase(player: &PlayerState) -> PlayerJumpPhase {
     }
 }
 
+/// How far into a climb over a ledge the player is, for the climbing poses. A flight of stairs
+/// is walked instead of pulled up, so it reports nothing and the view keeps walking.
 pub fn get_player_climb_progress(player: &PlayerState, alpha: f64) -> Option<f64> {
-    let climb = player.climb.as_ref()?;
+    let climb = player.climb.as_ref().filter(|climb| !climb.stairs)?;
     let t = if alpha.is_finite() {
         alpha.clamp(0.0, 1.0)
     } else {

@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::grid::{WorldCoord, WorldRect};
 use crate::paths::find_path;
-use crate::terrain::{TerrainColumn, TerrainMaterial};
+use crate::terrain::{TerrainColumn, TerrainMaterial, stairs_direction};
 
 /// One structure that needs one of its free neighbouring cells connected to the road network.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -32,6 +32,7 @@ impl RoadConnector {
 }
 
 /// Carves a stable road tree across `columns`, returning the number of connected structures.
+/// Every carved block that ends one level over the road beside it becomes a flight of stairs.
 pub fn connect_roads(
     columns: &mut [TerrainColumn],
     connectors: &[RoadConnector],
@@ -89,7 +90,30 @@ pub fn connect_roads(
         }
         connected += 1;
     }
+    place_stairs(columns);
     connected
+}
+
+/// Turns every road block that stands one level over the road beside it into a flight of stairs,
+/// returning how many it laid. The rule is [`stairs_direction`], read off a snapshot of the road
+/// before any block changes, so a run of levels comes out the same whatever order it is walked.
+pub fn place_stairs(columns: &mut [TerrainColumn]) -> usize {
+    let roads: HashMap<_, _> = columns
+        .iter()
+        .map(|column| (column.coord, (column.surface, column.elevation)))
+        .collect();
+    let mut laid = 0;
+    for column in columns.iter_mut() {
+        if column.surface != TerrainMaterial::Path {
+            continue;
+        }
+        if stairs_direction(column.coord, column.elevation, |at| roads.get(&at).copied()).is_some()
+        {
+            column.surface = TerrainMaterial::Stairs;
+            laid += 1;
+        }
+    }
+    laid
 }
 
 fn area_of(columns: &[TerrainColumn]) -> Option<WorldRect> {

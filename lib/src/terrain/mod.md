@@ -16,7 +16,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 #### Constantes
 
 - [`MATERIALS`](terrain_view.rs#L6) — Todos los materiales de terreno, en el orden en que los indexan los arrays de la vista.
-  - Declaración: `pub const MATERIALS: [TerrainMaterial; 5] = [ TerrainMaterial::Water, TerrainMaterial::Sand, TerrainMaterial::Ground, TerrainMaterial::Grass, TerrainMaterial::Path, ];`
+  - Declaración: `pub const MATERIALS: [TerrainMaterial; 6] = [ TerrainMaterial::Water, TerrainMaterial::Sand, TerrainMaterial::Ground, TerrainMaterial::Grass, TerrainMaterial::Path, TerrainMaterial::Stairs, ];`
 
 - [`MATERIAL_SLOTS`](terrain_view.rs#L15) — Cuántos slots necesita un array indexado por material.
   - Declaración: `pub const MATERIAL_SLOTS: usize = MATERIALS.len();`
@@ -51,6 +51,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`path`](terrain_view_blocks.rs#L85) — El bloque de camino cuyas bandas unen las caras de la máscara de conexión `mask` (solo los cuatro bits bajos).
   - Firma: `pub fn path(&self, mask: u8) -> Option<(SpriteFrame, InkBox)> {`
+
+- [`stairs`](terrain_view_blocks.rs) — El bloque de gradas cuya subida va hacia `direction`, la que devuelve `iso::terrain::stairs_direction` para esa columna.
+  - Firma: `pub fn stairs(&self, direction: WorldCoord) -> Option<(SpriteFrame, InkBox)> {`
 
 - [`reflection`](terrain_view_blocks.rs#L90) — El sprite de reflejo de `material` (las caras laterales dibujadas como las muestra el agua), ya resuelto contra el atlas.
   - Firma: `pub fn reflection(&self, material: TerrainMaterial) -> Option<(SpriteFrame, InkBox)> {`

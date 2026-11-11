@@ -59,3 +59,15 @@ fn non_path_and_missing_neighbours_are_not_joined() {
     let mask = connection_mask(centre, |at| map.get(&(at.x, at.y)).copied());
     assert_eq!(mask, 0);
 }
+
+#[test]
+fn a_flight_of_stairs_joins_like_any_other_road_block() {
+    let centre = WorldCoord { x: 0, y: 0 };
+    let map = columns(&[
+        (0, 0, TerrainMaterial::Path),
+        (1, 0, TerrainMaterial::Stairs),
+        (0, -1, TerrainMaterial::Stairs),
+    ]);
+    let mask = connection_mask(centre, |at| map.get(&(at.x, at.y)).copied());
+    assert_eq!(mask, 1 | 8);
+}

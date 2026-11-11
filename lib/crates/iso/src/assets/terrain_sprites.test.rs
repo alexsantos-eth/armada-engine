@@ -11,6 +11,7 @@ fn every_material_has_artwork_in_the_shipped_atlas() {
         TerrainMaterial::Ground,
         TerrainMaterial::Grass,
         TerrainMaterial::Path,
+        TerrainMaterial::Stairs,
     ] {
         let source = terrain_sprite_source(material);
         assert_asset_has_measured_artwork(&manifest, source);
@@ -87,4 +88,43 @@ fn every_land_material_has_reflection_artwork_in_the_shipped_atlas() {
 
 fn elevation_step_to_tile_width() -> f64 {
     crate::assets::SVG_BLOCK_HEIGHT / crate::assets::SVG_TILE_WIDTH
+}
+
+#[test]
+fn every_side_a_flight_climbs_toward_has_artwork_in_the_shipped_atlas() {
+    let json = include_str!("../../../../content/assets.manifest.json");
+    let manifest: AssetManifest = serde_json::from_str(json).expect("manifest deserializes");
+    for (_, source) in STAIRS_BLOCK_SOURCES {
+        assert_asset_has_measured_artwork(&manifest, source);
+    }
+}
+
+#[test]
+fn every_side_a_flight_climbs_toward_has_its_own_artwork() {
+    let mut sources: Vec<_> = STAIRS_BLOCK_SOURCES.iter().map(|(_, src)| *src).collect();
+    sources.sort_unstable();
+    sources.dedup();
+    assert_eq!(sources.len(), STAIRS_BLOCK_SOURCES.len());
+    for (direction, source) in STAIRS_BLOCK_SOURCES {
+        assert_eq!(stairs_sprite_source(direction), Some(source));
+    }
+}
+
+#[test]
+fn a_direction_that_is_not_a_side_has_no_stairs_artwork() {
+    for direction in [
+        WorldCoord { x: 0, y: 0 },
+        WorldCoord { x: 1, y: 1 },
+        WorldCoord { x: 2, y: 0 },
+    ] {
+        assert_eq!(stairs_sprite_source(direction), None);
+    }
+}
+
+#[test]
+fn a_buried_flight_falls_back_to_the_plain_road_block() {
+    assert_eq!(
+        terrain_sprite_source(TerrainMaterial::Stairs),
+        PATH_BLOCK_SOURCES[0]
+    );
 }

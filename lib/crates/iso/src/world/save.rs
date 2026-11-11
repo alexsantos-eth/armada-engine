@@ -460,6 +460,7 @@ fn parse_block(
         "sand" => TerrainMaterial::Sand,
         "water" => TerrainMaterial::Water,
         "path" => TerrainMaterial::Path,
+        "stairs" => TerrainMaterial::Stairs,
         other => {
             return Err(SaveError::InvalidColumn {
                 detail: format!(

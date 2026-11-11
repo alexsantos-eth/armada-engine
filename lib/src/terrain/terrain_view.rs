@@ -3,12 +3,13 @@
 use iso::terrain::TerrainMaterial;
 
 /// Every terrain material, in the order the view's arrays index them.
-pub const MATERIALS: [TerrainMaterial; 5] = [
+pub const MATERIALS: [TerrainMaterial; 6] = [
     TerrainMaterial::Water,
     TerrainMaterial::Sand,
     TerrainMaterial::Ground,
     TerrainMaterial::Grass,
     TerrainMaterial::Path,
+    TerrainMaterial::Stairs,
 ];
 
 /// How many slots an array indexed by material needs.
@@ -22,6 +23,7 @@ pub const fn slot(material: TerrainMaterial) -> usize {
         TerrainMaterial::Ground => 2,
         TerrainMaterial::Grass => 3,
         TerrainMaterial::Path => 4,
+        TerrainMaterial::Stairs => 5,
     }
 }
 

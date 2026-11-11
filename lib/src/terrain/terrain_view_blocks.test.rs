@@ -52,6 +52,17 @@ fn test_frames() -> TerrainFrames {
                 block,
             ))
         }),
+        stairs_frames: std::array::from_fn(|side| {
+            Some((
+                SpriteFrame {
+                    x: 2000 + side as u32,
+                    y: 0,
+                    width: 32,
+                    height: 32,
+                },
+                block,
+            ))
+        }),
     }
 }
 
@@ -406,4 +417,73 @@ fn a_missing_path_variant_falls_back_to_the_plain_block() {
         fallback, 1,
         "the column needing mask 1 drew the plain path block"
     );
+}
+
+/// The stairs frames drawn, counted per side a flight climbs toward (`x = 2000 + side`).
+fn stairs_side_counts(draws: &[SpriteDraw]) -> [usize; 4] {
+    let mut counts = [0; 4];
+    for draw in draws {
+        if let DrawKind::Sprite { frame, .. } = &draw.kind
+            && (2000..2004).contains(&frame.x)
+        {
+            counts[(frame.x - 2000) as usize] += 1;
+        }
+    }
+    counts
+}
+
+/// A flight is drawn with the artwork that climbs away from the road one level below it, so the
+/// steps always face down the slope.
+#[test]
+fn a_stairs_block_draws_the_side_its_flight_climbs_toward() {
+    for (side, step) in [
+        (0, WorldCoord { x: 1, y: 0 }),
+        (1, WorldCoord { x: 0, y: 1 }),
+        (2, WorldCoord { x: -1, y: 0 }),
+        (3, WorldCoord { x: 0, y: -1 }),
+    ] {
+        let flight = TerrainColumn {
+            coord: WorldCoord { x: 0, y: 0 },
+            elevation: 2,
+            surface: TerrainMaterial::Stairs,
+            walkable: true,
+        };
+        let below = TerrainColumn {
+            coord: WorldCoord {
+                x: -step.x,
+                y: -step.y,
+            },
+            elevation: 1,
+            surface: TerrainMaterial::Path,
+            walkable: true,
+        };
+        let columns = [flight, below];
+        let draws = collected(
+            &columns,
+            |at| {
+                columns
+                    .iter()
+                    .find(|column| column.coord == at)
+                    .map(|column| column.elevation)
+            },
+            |_, _| None,
+        );
+        let counts = stairs_side_counts(&draws);
+        assert_eq!(counts[side], 1, "a flight climbing toward {step:?}");
+        assert_eq!(counts.iter().sum::<usize>(), 1);
+    }
+}
+
+/// With no road one level below it, a flight has no side to face and falls back to its plain
+/// block instead of vanishing.
+#[test]
+fn a_flight_with_nothing_below_it_falls_back_to_the_plain_block() {
+    let flight = TerrainColumn {
+        coord: WorldCoord { x: 0, y: 0 },
+        elevation: 2,
+        surface: TerrainMaterial::Stairs,
+        walkable: true,
+    };
+    let draws = collected(&[flight], |_| Some(2), |_, _| None);
+    assert_eq!(stairs_side_counts(&draws).iter().sum::<usize>(), 0);
 }

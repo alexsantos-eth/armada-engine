@@ -317,3 +317,113 @@ fn a_whole_block_collision_keeps_the_player_off_the_cell() {
         "a house fills its cell, so the player never steps onto it"
     );
 }
+
+fn stairs_ground() -> CellGround {
+    let mut ground = ground_from(&["00111", "00111", "00111"]);
+    if let Some(column) = ground.columns.get_mut(&WorldCoord { x: 2, y: 1 }) {
+        column.surface = TerrainMaterial::Stairs;
+    }
+    ground
+}
+
+fn walk_onto_stairs(ground: &mut CellGround) -> PlayerState {
+    let mut player = create_player(ground, GridPoint { x: 1.0, y: 1.0 });
+    set_player_walk(
+        &mut player,
+        ScreenDirections {
+            right: true,
+            up: true,
+            ..Default::default()
+        },
+    );
+    for _ in 0..40 {
+        step_player(&mut player, ground, 1);
+        if player.climb.is_some() {
+            break;
+        }
+    }
+    player
+}
+
+/// A ledge is pulled up and stepped over; a flight of stairs is walked, so its rise and its
+#[test]
+fn a_climb_rises_before_it_advances_and_a_flight_does_both_at_once() {
+    for progress in [0.25, 0.5, 0.75] {
+        let (rise, advance) = get_climb_shares(true, progress);
+        assert!((rise - progress).abs() < 1e-9, "a flight rises evenly");
+        assert!((advance - progress).abs() < 1e-9, "and advances with it");
+        let (rise, advance) = get_climb_shares(false, progress);
+        assert!(rise > advance, "a ledge is pulled up before it is crossed");
+    }
+    assert_eq!(get_climb_shares(true, 1.0), (1.0, 1.0));
+    assert_eq!(get_climb_shares(false, 1.0), (1.0, 1.0));
+}
+
+/// Stepping onto a stairs block starts a flight: it crosses the whole block instead of just
+#[test]
+fn stepping_onto_a_stairs_block_starts_a_flight_across_it() {
+    let mut ground = stairs_ground();
+    let player = walk_onto_stairs(&mut ground);
+    let climb = player.climb.as_ref().expect("the player starts a climb");
+    assert!(climb.stairs, "the block it steps onto is a flight");
+    assert_eq!(climb.ticks, PLAYER_STAIRS_TICKS);
+    let crossed = (climb.to.x - climb.from.x).hypot(climb.to.y - climb.from.y);
+    assert!(
+        crossed > PLAYER_STAIRS_REACH * 0.9,
+        "a flight crosses its block, not just its edge: {crossed}"
+    );
+    assert_eq!(
+        get_player_column(climb.to),
+        WorldCoord { x: 2, y: 1 },
+        "and it ends on the flight itself, not past it"
+    );
+}
+
+/// The same step onto a plain block one higher is still the old ledge climb.
+#[test]
+fn stepping_onto_a_plain_block_keeps_the_ledge_climb() {
+    let mut ground = ground_from(&["00111", "00111", "00111"]);
+    let player = walk_onto_stairs(&mut ground);
+    let climb = player.climb.as_ref().expect("the player starts a climb");
+    assert!(!climb.stairs);
+    assert_eq!(climb.ticks, PLAYER_CLIMB_TICKS);
+}
+
+/// Walking up a flight the player is on the steps, not in the air over them, and its feet rise
+#[test]
+fn a_flight_walks_its_player_up_the_steps_without_leaving_the_ground() {
+    let mut ground = stairs_ground();
+    let mut player = walk_onto_stairs(&mut ground);
+    let start = player.elevation + player.height;
+    let mut feet = Vec::new();
+    for _ in 0..PLAYER_STAIRS_TICKS {
+        step_player(&mut player, &mut ground, 1);
+        assert_eq!(player.height, 0.0, "it walks on the steps, never over them");
+        feet.push(player.elevation + player.height);
+    }
+    assert!(
+        feet.windows(2).all(|pair| pair[1] >= pair[0]),
+        "its feet only ever rise: {feet:?}"
+    );
+    let top = feet.last().copied().expect("the flight takes ticks");
+    assert!((top - (start + 1.0)).abs() < 1e-9, "it ends a block higher");
+    step_player(&mut player, &mut ground, 1);
+    assert!(player.climb.is_none(), "and the flight is over");
+    assert!(
+        (player.elevation - (start + 1.0)).abs() < 1e-9,
+        "standing on the top of the flight"
+    );
+    assert_eq!(player.height, 0.0);
+}
+
+/// A flight is walked, so the view is told to walk it rather than to play the climb poses.
+#[test]
+fn a_flight_reports_no_climb_pose_and_keeps_the_player_walking() {
+    let mut ground = stairs_ground();
+    let mut player = walk_onto_stairs(&mut ground);
+    assert!(get_player_climb_progress(&player, 0.5).is_none());
+    for _ in 0..3 {
+        step_player(&mut player, &mut ground, 1);
+        assert_eq!(player.motion, PlayerMotionType::Walking);
+    }
+}

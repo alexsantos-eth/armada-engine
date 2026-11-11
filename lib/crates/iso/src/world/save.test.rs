@@ -271,6 +271,7 @@ fn a_column_survives_a_round_trip_through_one_saved_block() {
         (4, TerrainMaterial::Path, true),
         (-2, TerrainMaterial::Water, false),
         (1, TerrainMaterial::Sand, true),
+        (3, TerrainMaterial::Stairs, true),
     ] {
         let column = TerrainColumn {
             coord: WorldCoord { x: 7, y: -3 },

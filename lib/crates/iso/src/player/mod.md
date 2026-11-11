@@ -79,6 +79,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`get_climb_advance`](physics.rs#L120) — Fracción del camino de `from` a `to` que una escalada ha recorrido en `progress` (0–1).
   - Firma: `pub fn get_climb_advance(progress: f64) -> f64 {`
 
+- [`get_climb_shares`](physics.rs) — Fracción de su subida y fracción de su avance que una escalada ha recorrido en `progress` (0–1). Sobre un reborde el jugador se iza primero y pasa después; por una grada sube y avanza a la vez y de forma pareja, que es lo que parece subir los escalones andando.
+  - Firma: `pub fn get_climb_shares(stairs: bool, progress: f64) -> (f64, f64) {`
+
 - [`blocked_side`](physics.rs#L145) — Calcula o recupera «blocked side» según los parámetros de la firma.
   - Firma: `pub fn blocked_side(&self, _x: f64, _y: f64) -> f64 {`
 
@@ -130,7 +133,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`get_player_jump_phase`](physics.rs#L1210) — Obtiene «player jump phase» sin modificar el estado consultado.
   - Firma: `pub fn get_player_jump_phase(player: &PlayerState) -> PlayerJumpPhase {`
 
-- [`get_player_climb_progress`](physics.rs#L1242) — Obtiene «player climb progress» sin modificar el estado consultado.
+- [`get_player_climb_progress`](physics.rs#L1242) — Cuánto lleva recorrido el jugador de una escalada sobre un reborde, para las poses de trepar. Una grada se sube andando, así que no informa nada y la vista sigue caminando.
   - Firma: `pub fn get_player_climb_progress(player: &PlayerState, alpha: f64) -> Option<f64> {`
 
 - [`get_player_render_position`](physics.rs#L1253) — Posición de render del jugador: interpolación cúbica Hermite entre la posición al inicio del tick (`previous`, con sus velocidades) y la posición actual, con tangentes iguales a la velocidad horizontal y vertical de cada límite de tick; es C1 en cada límite y reproduce exactamente arcos de aceleración constante (un salto).
@@ -227,6 +230,12 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`PLAYER_CLIMB_REACH`](physics.rs#L63) — Columnas más allá de donde alcanza la superficie más alta que el jugador pisa durante una escalada.
   - Declaración: `pub const PLAYER_CLIMB_REACH: f64 = 0.25;`
+
+- [`PLAYER_STAIRS_TICKS`](physics.rs) — Ticks que dura una grada de un bloque: se sube andando, no izándose.
+  - Declaración: `pub const PLAYER_STAIRS_TICKS: i32 = 16;`
+
+- [`PLAYER_STAIRS_REACH`](physics.rs) — Columnas del bloque de gradas que el jugador ha cruzado al llegar arriba, medidas desde el borde por el que entró: cruza casi el bloque entero.
+  - Declaración: `pub const PLAYER_STAIRS_REACH: f64 = 0.95;`
 
 - [`PLAYER_FLY_SPEED`](physics.rs#L65) — Bloques por tick que suben como máximo los pies de un jugador volando.
   - Declaración: `pub const PLAYER_FLY_SPEED: f64 = 0.15;`

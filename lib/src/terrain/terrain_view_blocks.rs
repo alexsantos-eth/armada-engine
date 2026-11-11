@@ -1,12 +1,12 @@
 //! Terrain drawn with the atlas block sprites.
 
 use iso::assets::{
-    InkBox, SpriteFrame, SpriteLayout, ink_layout, path_sprite_source, terrain_reflection_source,
-    terrain_sprite_source,
+    InkBox, STAIRS_BLOCK_SOURCES, SpriteFrame, SpriteLayout, ink_layout, path_sprite_source,
+    terrain_reflection_source, terrain_sprite_source,
 };
 use iso::grid::WorldCoord;
 use iso::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
-use iso::terrain::{TerrainColumn, TerrainMaterial, connection_mask};
+use iso::terrain::{TerrainColumn, TerrainMaterial, connection_mask, stairs_direction};
 
 use crate::assets::sprites::{ATLAS_TEXTURE, SpriteAtlas, SpriteDraw, ground_key};
 use crate::terrain::terrain_view::{MATERIAL_SLOTS, MATERIALS, slot};
@@ -26,6 +26,7 @@ pub struct TerrainFrames {
     frames: [Option<(SpriteFrame, InkBox)>; MATERIAL_SLOTS],
     reflections: [Option<(SpriteFrame, InkBox)>; MATERIAL_SLOTS],
     path_frames: [Option<(SpriteFrame, InkBox)>; 16],
+    stairs_frames: [Option<(SpriteFrame, InkBox)>; STAIRS_BLOCK_SOURCES.len()],
 }
 
 impl TerrainFrames {
@@ -65,11 +66,18 @@ impl TerrainFrames {
                 None => missing_paths.push(mask),
             }
         }
+        let mut stairs_frames = [None; STAIRS_BLOCK_SOURCES.len()];
+        for (index, (_, source)) in STAIRS_BLOCK_SOURCES.iter().enumerate() {
+            stairs_frames[index] = atlas
+                .asset(source)
+                .and_then(|asset| Some((asset.frame, asset.ink?)));
+        }
         (
             Self {
                 frames,
                 reflections,
                 path_frames,
+                stairs_frames,
             },
             missing,
             missing_reflections,
@@ -84,6 +92,14 @@ impl TerrainFrames {
     /// The path block artwork whose strips join the sides of connection mask `mask`.
     pub fn path(&self, mask: u8) -> Option<(SpriteFrame, InkBox)> {
         self.path_frames[usize::from(mask & 0b1111)]
+    }
+
+    /// The stairs block artwork whose flight climbs toward `direction`.
+    pub fn stairs(&self, direction: WorldCoord) -> Option<(SpriteFrame, InkBox)> {
+        let index = STAIRS_BLOCK_SOURCES
+            .iter()
+            .position(|(step, _)| *step == direction)?;
+        self.stairs_frames[index]
     }
 
     /// The reflection sprite the water draws of `material`, hung from the waterline under it.
@@ -222,19 +238,25 @@ pub fn collect_terrain_sprites<H, W, S>(
             let Some((frame, ink)) = frames.frame(block.material) else {
                 continue;
             };
-            let (frame, ink) =
-                if block.elevation == column.elevation && block.material == TerrainMaterial::Path {
-                    let mask = connection_mask(column.coord, &surface_at);
-                    frames.path(mask).unwrap_or((frame, ink))
-                } else {
-                    match (block.elevation == column.elevation)
-                        .then(|| look.top(block.material, column.coord.x, column.coord.y))
-                        .flatten()
-                    {
-                        Some(top) => top,
-                        None => (frame, ink),
-                    }
-                };
+            let on_top = block.elevation == column.elevation;
+            let (frame, ink) = if on_top && block.material == TerrainMaterial::Stairs {
+                stairs_direction(column.coord, column.elevation, |at| {
+                    Some((surface_at(at)?, height_at(at)?))
+                })
+                .and_then(|direction| frames.stairs(direction))
+                .unwrap_or((frame, ink))
+            } else if on_top && block.material == TerrainMaterial::Path {
+                let mask = connection_mask(column.coord, &surface_at);
+                frames.path(mask).unwrap_or((frame, ink))
+            } else {
+                match on_top
+                    .then(|| look.top(block.material, column.coord.x, column.coord.y))
+                    .flatten()
+                {
+                    Some(top) => top,
+                    None => (frame, ink),
+                }
+            };
             let tint = look.tint(block.material, column.coord.x, column.coord.y);
             let anchor = ScreenPoint {
                 x: top.screen_x,

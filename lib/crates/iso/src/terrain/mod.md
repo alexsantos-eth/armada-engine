@@ -1,6 +1,6 @@
 # Terrain
 
-Este dominio modela columnas, materiales, ruido, generación, las máscaras de conexión de camino y la apariencia determinista del terreno. Contiene las reglas que convierten una ubicación del mundo en datos de suelo, elevación y aspecto lógico.
+Este dominio modela columnas, materiales, ruido, generación, las máscaras de conexión de camino, las gradas que suben el camino de nivel y la apariencia determinista del terreno. Contiene las reglas que convierten una ubicación del mundo en datos de suelo, elevación y aspecto lógico.
 
 La generación debe ser reproducible a partir de su semilla y parámetros. Las estructuras de terreno se mantienen libres de recursos visuales para que puedan usarse en persistencia, simulación y clientes distintos.
 
@@ -67,8 +67,18 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`connection_mask`](connection_mask.rs#L10) — Las caras de `coord` que unen camino: máscara de cuatro bits con el mismo orden que la lámina de bloques de camino (`1` +x, `2` +y, `4` −x, `8` −y); un vecino ausente o que no es camino no une.
+- [`connection_mask`](connection_mask.rs#L10) — Las caras de `coord` que unen camino: máscara de cuatro bits con el mismo orden que la lámina de bloques de camino (`1` +x, `2` +y, `4` −x, `8` −y); una grada une como cualquier otro bloque de camino, y un vecino ausente o sin camino no une.
   - Firma: `pub fn connection_mask( coord: WorldCoord, at: impl Fn(WorldCoord) -> Option<TerrainMaterial>, ) -> u8 {`
+
+### `stairs.rs`
+
+#### Funciones y métodos
+
+- [`stairs_direction`](stairs.rs#L13) — La cara hacia la que sube la grada de `coord` cuando el camino que lleva encima queda un bloque entero por encima del camino de uno de sus lados: la dirección contraria a ese vecino más bajo. `None` si el camino sigue a nivel, cae más de un bloque o solo linda con suelo liso. Las caras se leen en el orden del contrato (+x, +y, −x, −y). La regla solo lee el terreno, así que el mundo materializa la grada y la vista la viste con la misma respuesta.
+  - Firma: `pub fn stairs_direction( coord: WorldCoord, elevation: i32, at: impl Fn(WorldCoord) -> Option<(TerrainMaterial, i32)>, ) -> Option<WorldCoord> {`
+
+- [`is_road`](stairs.rs#L31) — Si una superficie lleva el camino: sus bloques de camino y las gradas entre sus niveles.
+  - Firma: `pub fn is_road(material: TerrainMaterial) -> bool {`
 
 ### `generation.rs`
 
