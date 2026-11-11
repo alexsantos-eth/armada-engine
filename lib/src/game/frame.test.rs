@@ -178,23 +178,13 @@ fn ticks_saturate_instead_of_wrapping() {
 }
 
 #[test]
-fn autosave_fires_on_quit_with_unsaved_changes() {
-    assert!(should_autosave(true, true, 0.0));
+fn saving_on_quit_fires_with_unsaved_changes() {
+    assert!(should_save_on_quit(true, true));
 }
 
 #[test]
-fn autosave_fires_once_the_interval_elapsed() {
-    assert!(should_autosave(true, false, AUTOSAVE_SECONDS + 1.0));
-}
-
-#[test]
-fn autosave_waits_while_everything_is_saved() {
-    assert!(!should_autosave(false, true, AUTOSAVE_SECONDS + 1.0));
-    assert!(!should_autosave(false, false, f64::INFINITY));
-}
-
-#[test]
-fn autosave_waits_within_the_interval() {
-    assert!(!should_autosave(true, false, 0.0));
-    assert!(!should_autosave(true, false, AUTOSAVE_SECONDS));
+fn quitting_waits_while_everything_is_saved() {
+    assert!(!should_save_on_quit(false, true));
+    assert!(!should_save_on_quit(true, false));
+    assert!(!should_save_on_quit(false, false));
 }

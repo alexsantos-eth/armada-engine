@@ -305,27 +305,42 @@ pub fn claimed_by_biomes(
 }
 
 /// Every column of the blueprint's footprint anchored on `at`, or `None` when it runs off the
+/// chunk's columns or hits a surface it does not admit. Writes into `out` (cleared first);
+/// the scratch-buffer variant so the per-cell build does not allocate one `Vec` per footprint.
+fn footprint_cells_into(
+    columns: &CellMap<TerrainColumn>,
+    at: WorldCoord,
+    blueprint: &EntityBlueprint,
+    out: &mut Vec<WorldCoord>,
+) -> bool {
+    out.clear();
+    let length = blueprint.shape.length;
+    let along_x = blueprint.shape.axis == EntityLengthAxis::X;
+    let surfaces = &blueprint.placement.surfaces;
+    for index in 0..length {
+        let x = if along_x { at.x + index } else { at.x };
+        let y = if along_x { at.y } else { at.y + index };
+        let Some(column) = columns.get(WorldCoord { x, y }).ok().flatten() else {
+            return false;
+        };
+        let required = surfaces.get(index as usize).copied().unwrap_or(surfaces[0]);
+        if column.surface != required {
+            return false;
+        }
+        out.push(WorldCoord { x, y });
+    }
+    true
+}
+
+/// Every column of the blueprint's footprint anchored on `at`, or `None` when it runs off the
 /// chunk's columns or hits a surface it does not admit.
 fn footprint_cells(
     columns: &CellMap<TerrainColumn>,
     at: WorldCoord,
     blueprint: &EntityBlueprint,
 ) -> Option<Vec<WorldCoord>> {
-    let length = blueprint.shape.length;
-    let along_x = blueprint.shape.axis == EntityLengthAxis::X;
-    let surfaces = &blueprint.placement.surfaces;
-    let mut cells = Vec::with_capacity(length as usize);
-    for index in 0..length {
-        let x = if along_x { at.x + index } else { at.x };
-        let y = if along_x { at.y } else { at.y + index };
-        let column = columns.get(WorldCoord { x, y }).ok().flatten()?;
-        let required = surfaces.get(index as usize).copied().unwrap_or(surfaces[0]);
-        if column.surface != required {
-            return None;
-        }
-        cells.push(WorldCoord { x, y });
-    }
-    Some(cells)
+    let mut cells = Vec::with_capacity(blueprint.shape.length as usize);
+    footprint_cells_into(columns, at, blueprint, &mut cells).then_some(cells)
 }
 
 /// The elevation of a footprint: uniform across its dry cells, `0` when it only spans water.
@@ -550,6 +565,12 @@ pub fn solve_chunk(
     }
 
     let blueprints = &catalog.entities;
+    let max_footprint = blueprints
+        .iter()
+        .map(|blueprint| blueprint.shape.length as usize)
+        .max()
+        .unwrap_or(1);
+    let mut scratch = Vec::with_capacity(max_footprint);
     let mut remaining: Vec<Vec<usize>> = vec![Vec::new(); n];
     for (bp, blueprint) in blueprints.iter().enumerate() {
         if claimed.get(bp).copied().unwrap_or(false) {
@@ -560,13 +581,13 @@ pub fn solve_chunk(
         }
         for (cell, column) in columns.iter().enumerate() {
             let anchor = column.coord;
-            let Some(cells) = footprint_cells(&columns_map, anchor, blueprint) else {
-                continue;
-            };
-            if cells.iter().any(|&coord| placed.is_occupied(coord)) {
+            if !footprint_cells_into(&columns_map, anchor, blueprint, &mut scratch) {
                 continue;
             }
-            if footprint_elevation(&columns_map, &cells).is_none() {
+            if scratch.iter().any(|&coord| placed.is_occupied(coord)) {
+                continue;
+            }
+            if footprint_elevation(&columns_map, &scratch).is_none() {
                 continue;
             }
             remaining[cell].push(bp);

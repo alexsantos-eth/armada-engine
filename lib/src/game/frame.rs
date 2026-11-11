@@ -16,7 +16,7 @@ use iso::projection::{GridPoint, ProjectionConfig};
 use iso::services::{AudioService, InputService, NormalizedInput, SoundEvent, UiEvent, UiService};
 use macroquad::prelude::*;
 
-use crate::game::config::{AUTOSAVE_SECONDS, CHUNK_CULL_MARGIN, UNBOUNDED_CAMERA_LIMITS};
+use crate::game::config::{CHUNK_CULL_MARGIN, UNBOUNDED_CAMERA_LIMITS};
 use crate::game::ground::ChunkGround;
 use crate::game::scene::frame_projection;
 use crate::game::state::Game;
@@ -41,10 +41,10 @@ fn camera_after_follow(camera: Camera, target: GridPoint, elapsed_ms: f64) -> Ca
     )
 }
 
-/// Whether the periodic save should fire now: only with unsaved changes, and only on quit or
-/// once the safety-net interval elapsed.
-fn should_autosave(unsaved_changes: bool, quitting: bool, since_last_save_seconds: f64) -> bool {
-    unsaved_changes && (quitting || since_last_save_seconds > AUTOSAVE_SECONDS)
+/// Whether the save should fire now: only with unsaved changes, and only on quit. Players save
+/// manually with F5 or Ctrl+S; nothing saves on a timer.
+fn should_save_on_quit(unsaved_changes: bool, quitting: bool) -> bool {
+    unsaved_changes && quitting
 }
 
 /// What the view half of the frame needs after the update half ran.
@@ -144,7 +144,7 @@ impl Game {
         }
 
         let quitting = is_quit_requested();
-        if should_autosave(self.unsaved_changes, quitting, get_time() - self.last_save) {
+        if should_save_on_quit(self.unsaved_changes, quitting) {
             sync_manager_to_archive(&self.manager, &mut self.archive);
             save_archive(&self.archive);
             self.unsaved_changes = false;

@@ -98,9 +98,6 @@ pub(crate) const UNBOUNDED_CAMERA_LIMITS: iso::camera::CameraLimits = iso::camer
     },
 };
 
-/// Safety-net interval for the periodic save; the real save happens on quit and on request.
-pub const AUTOSAVE_SECONDS: f64 = 120.0;
-
 /// The seed the world generates from; the domain default and the tests pin the same value.
 pub const WORLD_SEED: u64 = iso::terrain::WORLD_SEED;
 /// Seconds a phase change takes end to end: the presentation grade crossfades and each chunk

@@ -58,11 +58,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Declaración: `pub const CHUNK_RADII: ChunkRadii = ChunkRadii { ... };`
 - [`UNBOUNDED_CAMERA_LIMITS`](config.rs#L90) — Límites finitos para el seguimiento exponencial de un mundo sin fronteras: tan anchos que la pinza nunca se aplica; solo los exige `follow_camera`.
   - Declaración: `pub(crate) const UNBOUNDED_CAMERA_LIMITS: iso::camera::CameraLimits = iso::camera::CameraLimits { ... };`
-- [`AUTOSAVE_SECONDS`](config.rs#L102) — Intervalo de respaldo del guardado periódico; el real es al salir.
-  - Declaración: `pub const AUTOSAVE_SECONDS: f64 = 120.0;`
-- [`WORLD_SEED`](config.rs#L105) — La semilla con la que genera el mundo; el valor por defecto del dominio (`iso::terrain::WORLD_SEED`) y los tests la comparten.
+- [`WORLD_SEED`](config.rs#L102) — La semilla con la que genera el mundo; el valor por defecto del dominio (`iso::terrain::WORLD_SEED`) y los tests la comparten.
   - Declaración: `pub const WORLD_SEED: u64 = iso::terrain::WORLD_SEED;`
-- [`PHASE_TRANSITION_SECONDS`](config.rs#L108) — Segundos que dura el cambio de fase de punta a punta: el crossfade del grado y el fade-in de sombras de los chunks rehorneados para la nueva fase.
+- [`PHASE_TRANSITION_SECONDS`](config.rs#L105) — Segundos que dura el cambio de fase de punta a punta: el crossfade del grado y el fade-in de sombras de los chunks rehorneados para la nueva fase.
   - Declaración: `pub const PHASE_TRANSITION_SECONDS: f32 = 0.6;`
 
 #### Tipos
@@ -158,8 +156,8 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `fn frame_ticks(consumed: u64) -> u32 {`
 - [`camera_after_follow`](frame.rs#L34) — La traslación de la cámara un fotograma después, siguiendo a `target` con la semivida del seguimiento: filtra las esquinas de velocidad de los ticks de 50 ms para que no lleguen a la pantalla; el zoom nunca cambia.
   - Firma: `fn camera_after_follow(camera: Camera, target: GridPoint, elapsed_ms: f64) -> Camera {`
-- [`should_autosave`](frame.rs#L46) — El respaldo periódico: solo con cambios sin guardar, al salir o al superar `AUTOSAVE_SECONDS`.
-  - Firma: `fn should_autosave(unsaved_changes: bool, quitting: bool, since_last_save_seconds: f64) -> bool {`
+- [`should_save_on_quit`](frame.rs#L46) — El respaldo al salir: solo con cambios sin guardar. El guardado es manual (F5 / Ctrl+S); no hay temporizador de autoguardado.
+  - Firma: `fn should_save_on_quit(unsaved_changes: bool, quitting: bool) -> bool {`
 
 ### `scene.rs`
 
