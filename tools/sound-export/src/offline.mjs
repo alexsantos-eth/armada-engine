@@ -1,12 +1,3 @@
-// Offline rendering of Strudel patterns to raw PCM in Node.js, via
-// node-web-audio-api (a Rust implementation of the Web Audio API).
-// Adapted from wyote4094/rendel (MIT) — https://github.com/wyote4094/rendel —
-// Copyright (c) 2026 wyote4094. Modifications copyright (c) 2026 Armada engine.
-// Differences vs rendel: no AudioWorklet module is loaded (patterns that
-// depend on worklet-based effects, e.g. `.lfo`/`.djf`/wavetable synths, fail
-// with a clear error), no General MIDI soundfont registration (the game's
-// sounds only use superdough's built-in synths), and the chunked renderer is
-// exposed directly as `renderPattern` instead of a CLI-shaped helper.
 import * as nwaa from 'node-web-audio-api';
 
 const WEB_AUDIO_GLOBALS = [
@@ -44,8 +35,6 @@ for (const name of WEB_AUDIO_GLOBALS) {
   }
 }
 
-// superdough references `window` and `document` without `typeof` guards.
-// Recursive no-op proxies keep those references from throwing in Node.
 if (typeof window === 'undefined') {
   const makeBrowserStub = () => {
     const stub = new Proxy(
@@ -77,12 +66,6 @@ if (typeof window === 'undefined') {
   globalThis.document = makeBrowserStub();
 }
 
-// superdough's reverb generation creates a nested OfflineAudioContext and
-// passes AudioBuffers across context boundaries. node-web-audio-api (unlike
-// browsers) enforces strict context ownership and throws "Attempting to
-// connect nodes from different contexts". Intercept the `.buffer` setters and,
-// on cross-context error, copy the channel data into a buffer owned by the
-// receiving node's context.
 function patchCrossContextBuffer(NodeClass) {
   const desc = Object.getOwnPropertyDescriptor(NodeClass.prototype, 'buffer');
   Object.defineProperty(NodeClass.prototype, 'buffer', {
@@ -108,10 +91,6 @@ function patchCrossContextBuffer(NodeClass) {
 patchCrossContextBuffer(nwaa.AudioBufferSourceNode);
 patchCrossContextBuffer(nwaa.ConvolverNode);
 
-// superdough's node pool retains WeakRefs to nodes from previous contexts.
-// Between chunks, those stale refs would cause "nodes from different
-// contexts" errors when reused, so track them and neuter the audio-related
-// ones between chunks.
 const trackedRefs = new Set();
 const NativeWeakRef = globalThis.WeakRef;
 class TrackingWeakRef extends NativeWeakRef {
@@ -124,9 +103,7 @@ globalThis.WeakRef = TrackingWeakRef;
 
 function isAudioRelated(target) {
   if (!target || typeof target !== 'object') return false;
-  // AudioNode subclasses expose a `context` property.
   if ('context' in target) return true;
-  // Voice-tracking entries are plain objects { node, stop, nodes }.
   if ('node' in target && 'stop' in target) return true;
   return false;
 }
@@ -141,7 +118,6 @@ function invalidateAllRefs() {
   trackedRefs.clear();
 }
 
-// The Strudel modules are ESM singletons; load them once per process.
 let modulesPromise;
 
 async function loadModules() {
@@ -197,11 +173,6 @@ async function loadModules() {
   };
 }
 
-/**
- * Evaluates `code` (a Strudel pattern expression) and renders `duration`
- * seconds of it at `sampleRate` Hz and `cps` cycles per second.
- * Returns { left, right, sampleRate } as interleaved-ready Float32Arrays.
- */
 export async function renderPattern(code, { duration, cps, sampleRate, onHapError } = {}) {
   modulesPromise ??= loadModules();
   const {
@@ -252,9 +223,6 @@ export async function renderPattern(code, { duration, cps, sampleRate, onHapErro
     setAudioContext(ctx);
     setAudioContextUnbundled(ctx);
     setSuperdoughAudioController(new SuperdoughAudioController(ctx));
-    // No AudioWorklet modules are loaded: `.lfo`/`.djf`-style effects are not
-    // available offline. Built-in synths, envelopes, filters and effects that
-    // are plain AudioNodes (as used by this game's sounds) render fine.
     await initAudio({ maxPolyphony: 100000, disableWorklets: true });
 
     const hap2value = (hap) => {
@@ -263,9 +231,6 @@ export async function renderPattern(code, { duration, cps, sampleRate, onHapErro
     };
 
     for (const hap of haps) {
-      // Clamp onset to 0: floating-point imprecision can produce tiny negative
-      // values when a hap onset coincides with beginCyc, which superdough
-      // rejects as "in the past".
       const onsetSec = Math.max(0, (hap.whole.begin.valueOf() - beginCyc) / cps);
       try {
         await superdough(hap2value(hap), onsetSec, hap.duration.valueOf() / cps, cps, onsetSec);

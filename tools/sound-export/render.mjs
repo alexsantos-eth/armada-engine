@@ -1,17 +1,3 @@
-#!/usr/bin/env node
-// Regenerates the game's sound effects as WAV files for the Rust client.
-//
-// The `.strudel` files are the source of truth and live in `lib/music/`. They are rendered
-// here with superdough — the same audio engine the Strudel REPL uses — to 16-bit stereo PCM,
-// and written to `lib/content/sounds/<name>.wav`, which `lib/scripts/build-web.sh` copies
-// into the deployed site and the native bundle ships as a resource.
-//
-// Usage: npm ci && npm run render
-//
-// One-shots and loops all play at one cycle per second (String.SOUND_CPS), and
-// the game only plays what starts in the first cycle, so one cycle is the
-// natural render length — except `dance`, whose groove is `.slow(1.8)` and
-// therefore needs 1.8 cycles to be a seamless loop.
 import { readFile, writeFile, mkdir, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,22 +9,18 @@ const OUT_DIR = path.join(ROOT, 'lib/content/sounds');
 
 const CPS = 1;
 const SAMPLE_RATE = 48000;
-const MIN_PEAK = 0.001; // anything quieter is almost certainly an evaluation failure
+const MIN_PEAK = 0.001;
 
-/** [file-name-without-extension, cycles to render] */
 const SOUNDS = [
-  // One-shots: their notes live in the first octave of the cycle.
   ['jump', 1],
   ['air-jump', 1],
   ['land', 1],
   ['reject', 1],
   ['skid', 1],
   ['climb', 1],
-  // Loops: exactly one cycle, so the game can loop the file seamlessly.
   ['walk', 1],
   ['run', 1],
   ['jetpack', 1],
-  // The dance groove is `.slow(1.8)`: 1.8 cycles = 1.8 s, seamless.
   ['dance', 1.8],
 ];
 
@@ -51,13 +33,13 @@ function encodeWav({ left, right, sampleRate }) {
   buffer.writeUInt32LE(36 + dataBytes, 4);
   buffer.write('WAVE', 8, 'ascii');
   buffer.write('fmt ', 12, 'ascii');
-  buffer.writeUInt32LE(16, 16); // PCM chunk size
-  buffer.writeUInt16LE(1, 20); // PCM format
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
   buffer.writeUInt16LE(numChannels, 22);
   buffer.writeUInt32LE(sampleRate, 24);
-  buffer.writeUInt32LE(sampleRate * numChannels * 2, 28); // byte rate
-  buffer.writeUInt16LE(numChannels * 2, 32); // block align
-  buffer.writeUInt16LE(16, 34); // bits per sample
+  buffer.writeUInt32LE(sampleRate * numChannels * 2, 28);
+  buffer.writeUInt16LE(numChannels * 2, 32);
+  buffer.writeUInt16LE(16, 34);
   buffer.write('data', 36, 'ascii');
   buffer.writeUInt32LE(dataBytes, 40);
   let offset = 44;
@@ -113,7 +95,6 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-// Note stale files left in the output directory by earlier exports.
 const expected = new Set(SOUNDS.map(([name]) => `${name}.wav`));
 for (const entry of await readdir(OUT_DIR)) {
   if (entry.endsWith('.wav') && !expected.has(entry)) {
