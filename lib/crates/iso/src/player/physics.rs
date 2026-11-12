@@ -2,6 +2,10 @@
 
 use crate::grid::{ChunkCoord, WorldCoord, WorldRect};
 use crate::player::motion::{PlayerMotionEvent, PlayerMotionType, transition_player_motion};
+use crate::player::swim::{
+    PLAYER_SWIM_ACCEL, PLAYER_SWIM_BRAKE, PLAYER_SWIM_EXIT_CLIMB, PlayerSwim, float_bob,
+    float_settle, is_swimmable, is_under, next_float, splashes, swim_step,
+};
 use crate::projection::GridPoint;
 use crate::terrain::{TerrainColumn, TerrainMaterial, stairs_direction};
 use crate::time::TICKS_PER_SECOND;
@@ -223,6 +227,10 @@ pub struct PlayerFeedback {
     pub impact: f64,
     pub leap: bool,
     pub air_jump: bool,
+    /// Times the player has gone into the water fast enough to raise a splash.
+    pub splashes: i32,
+    /// Blocks per tick it was sinking as it went in, which is how big that splash is.
+    pub splash_impact: f64,
 }
 
 /// Player state.
@@ -243,6 +251,8 @@ pub struct PlayerState {
     pub jetpack: bool,
     pub velocity: GridPoint,
     pub climb: Option<PlayerClimb>,
+    /// The swim in progress, or `None` on land and in the air.
+    pub swim: Option<PlayerSwim>,
     pub previous: PlayerPosition,
     pub feedback: PlayerFeedback,
     pub walk: GridPoint,
@@ -322,15 +332,24 @@ pub fn can_stand_on<G: PlayerGround>(ground: &G, x: i32, y: i32, from_elevation:
     })
 }
 
-fn is_steppable<G: PlayerGround>(ground: &G, x: i32, y: i32, from_elevation: f64) -> bool {
+/// Whether the player can move onto the column `(x, y)` from `from_elevation`, reaching `reach`
+/// blocks up or down. Water is always entered, however far below: it is a fall into the water,
+/// and the water catches it.
+fn is_steppable<G: PlayerGround>(
+    ground: &G,
+    x: i32,
+    y: i32,
+    from_elevation: f64,
+    reach: f64,
+) -> bool {
     let column = match ground.column_at(x, y) {
         Some(c) => c,
         None => return false,
     };
-    if column.surface == TerrainMaterial::Water {
-        return false;
+    if is_swimmable(column.surface) {
+        return true;
     }
-    (column.elevation as f64 - from_elevation).abs() <= PLAYER_MAX_CLIMB
+    (column.elevation as f64 - from_elevation).abs() <= reach
 }
 
 fn clears_standing_body(occ: &PlayerObstacle, column: &TerrainColumn) -> bool {
@@ -406,7 +425,7 @@ fn may_step_onto<G: PlayerGround>(ground: &G, from: GridPoint, to: GridPoint, fe
 }
 
 fn fits_in_air<G: PlayerGround>(ground: &G, point: GridPoint, feet: f64) -> bool {
-    block_reason_at(ground, point, 0.0, feet, true).is_none()
+    block_reason_at(ground, point, 0.0, feet, true, PLAYER_MAX_CLIMB).is_none()
 }
 
 fn can_leave_edge<G: PlayerGround>(ground: &G, point: GridPoint, feet: f64) -> bool {
@@ -415,13 +434,7 @@ fn can_leave_edge<G: PlayerGround>(ground: &G, point: GridPoint, feet: f64) -> b
     for x in cells.min_x..=cells.max_x {
         for y in cells.min_y..=cells.max_y {
             let column = ground.column_at(x, y);
-            if column
-                .map(|c| c.surface == TerrainMaterial::Water)
-                .unwrap_or(false)
-            {
-                return false;
-            }
-            if column.is_none() {
+            if column.is_none_or(|c| is_swimmable(c.surface)) {
                 missing = true;
             }
         }
@@ -435,6 +448,7 @@ fn block_reason_at<G: PlayerGround>(
     elevation: f64,
     feet: f64,
     airborne: bool,
+    reach: f64,
 ) -> Option<PlayerBlockReason> {
     let cells = get_player_cells(point);
     for x in cells.min_x..=cells.max_x {
@@ -453,7 +467,7 @@ fn block_reason_at<G: PlayerGround>(
                 {
                     return Some(PlayerBlockReason::Terrain);
                 }
-            } else if !is_steppable(ground, x, y, elevation) {
+            } else if !is_steppable(ground, x, y, elevation, reach) {
                 return Some(PlayerBlockReason::Terrain);
             }
             for occ in ground.occupancy_at(x, y) {
@@ -488,7 +502,17 @@ fn block_reason_at<G: PlayerGround>(
 }
 
 fn fits_at<G: PlayerGround>(ground: &G, point: GridPoint, from_elevation: f64) -> bool {
-    block_reason_at(ground, point, from_elevation, 0.0, false).is_none()
+    fits_within(ground, point, from_elevation, PLAYER_MAX_CLIMB)
+}
+
+/// `fits_at` with the reach spelled out: a swimmer pulls itself further up than a walker steps.
+fn fits_within<G: PlayerGround>(
+    ground: &G,
+    point: GridPoint,
+    from_elevation: f64,
+    reach: f64,
+) -> bool {
+    block_reason_at(ground, point, from_elevation, 0.0, false, reach).is_none()
 }
 
 fn elevation_at<G: PlayerGround>(ground: &G, point: GridPoint) -> f64 {
@@ -604,6 +628,7 @@ pub fn create_player<G: PlayerGround>(ground: &G, at: GridPoint) -> PlayerState 
         jetpack: false,
         velocity: GridPoint { x: 0.0, y: 0.0 },
         climb: None,
+        swim: None,
         previous: position,
         feedback: PlayerFeedback::default(),
         walk: GridPoint { x: 0.0, y: 0.0 },
@@ -739,6 +764,13 @@ fn get_motion_event(player: &PlayerState, flying: bool) -> PlayerMotionEvent {
             PlayerMotionEvent::ClimbDoneIdle
         };
     }
+    if let Some(swim) = player.swim {
+        return if is_under(swim.depth) {
+            PlayerMotionEvent::Sink
+        } else {
+            PlayerMotionEvent::Swim
+        };
+    }
     if let Some(vs) = player.vertical_speed {
         if flying {
             return PlayerMotionEvent::Fly;
@@ -806,6 +838,24 @@ fn land(player: &mut PlayerState) {
 }
 
 fn accelerate_player(player: &mut PlayerState) {
+    if let Some(swim) = player.swim {
+        let step = swim_step(player.running, swim.depth);
+        let desired = GridPoint {
+            x: player.walk.x * step,
+            y: player.walk.y * step,
+        };
+        let rate = if desired.x == 0.0 && desired.y == 0.0 {
+            PLAYER_SWIM_BRAKE
+        } else if player.velocity.x * desired.x + player.velocity.y * desired.y < 0.0 {
+            PLAYER_SWIM_ACCEL + PLAYER_SWIM_BRAKE
+        } else if player.velocity.x.hypot(player.velocity.y) > step + 1e-9 {
+            PLAYER_SWIM_BRAKE
+        } else {
+            PLAYER_SWIM_ACCEL
+        };
+        player.velocity = approach_velocity(player.velocity, desired, rate);
+        return;
+    }
     let airborne = player.vertical_speed.is_some();
     let step = if player.running {
         PLAYER_RUN_STEP
@@ -866,6 +916,12 @@ fn step_once<G: PlayerGround>(
         },
     ];
     let airborne = player.vertical_speed.is_some();
+    let swimming = player.swim.is_some();
+    let reach = if swimming {
+        PLAYER_SWIM_EXIT_CLIMB
+    } else {
+        PLAYER_MAX_CLIMB
+    };
     let feet = player.elevation + player.height;
     let vs = player.vertical_speed.unwrap_or(0.0);
     let clearance_feet = if airborne && vs > 0.0 {
@@ -878,7 +934,8 @@ fn step_once<G: PlayerGround>(
             fits_in_air(ground, point, clearance_feet)
         } else {
             may_step_onto(ground, from, point, feet)
-                && (fits_at(ground, point, player.elevation) || can_leave_edge(ground, point, feet))
+                && (fits_within(ground, point, player.elevation, reach)
+                    || can_leave_edge(ground, point, feet))
         }
     };
     let mut next: Option<GridPoint> = None;
@@ -938,6 +995,7 @@ fn step_once<G: PlayerGround>(
                     player.elevation,
                     clearance_feet,
                     airborne,
+                    reach,
                 );
             }
             return None;
@@ -958,7 +1016,9 @@ fn step_once<G: PlayerGround>(
         .map(|s| s.elevation as f64)
         .unwrap_or(player.elevation);
     let rise = elevation - feet;
-    if !airborne && rise > PLAYER_STEP_HEIGHT {
+    // without a surface there is nothing to climb onto: a swimmer's feet are under its own
+    // water top, which is not a step up
+    if !airborne && surface.is_some() && rise > PLAYER_STEP_HEIGHT {
         let stairs = surface.is_some_and(|column| column.surface == TerrainMaterial::Stairs);
         let length = (next.x - from.x).hypot(next.y - from.y);
         let direction = if length > 0.0 {
@@ -989,8 +1049,9 @@ fn step_once<G: PlayerGround>(
             }
         };
         let on_top = get_player_column(further);
-        let fits_top =
-            on_top.x == column.x && on_top.y == column.y && fits_at(ground, further, elevation);
+        let fits_top = on_top.x == column.x
+            && on_top.y == column.y
+            && fits_within(ground, further, elevation, reach);
         let to = if fits_top { further } else { next };
         let ticks = if stairs {
             PLAYER_STAIRS_TICKS
@@ -1014,12 +1075,12 @@ fn step_once<G: PlayerGround>(
     player.x = next.x;
     player.y = next.y;
     player.elevation = elevation;
-    player.height = if airborne {
+    player.height = if airborne || swimming {
         feet - elevation
     } else {
         (feet - elevation).max(0.0)
     };
-    if !airborne && player.height == 0.0 {
+    if !airborne && !swimming && player.height == 0.0 {
         player.vertical_speed = None;
     }
     None
@@ -1098,6 +1159,7 @@ fn step_air<G: PlayerGround>(
     player: &mut PlayerState,
     ground: &G,
     flying: bool,
+    water: Option<f64>,
 ) -> Option<&'static str> {
     let support = support_at(
         ground,
@@ -1152,6 +1214,16 @@ fn step_air<G: PlayerGround>(
         player.vertical_speed = Some(0.0);
         return Some("ceiling");
     }
+    // the water's top is reached, not landed on: the feet stop there for this tick and the
+    // speed they fell at goes on as the plunge under the surface
+    if let Some(level) = water
+        && next_speed <= 0.0
+        && next_feet < level
+    {
+        player.height = level - player.elevation;
+        player.vertical_speed = Some(next_speed);
+        return Some("water");
+    }
     let landed = top
         .map(|t| speed <= 0.0 && feet >= t - LANDING && next_feet <= t + LANDING)
         .unwrap_or(false);
@@ -1175,7 +1247,7 @@ fn step_air<G: PlayerGround>(
             };
             return Some("landed");
         }
-    } else if next_feet < player.last_safe.elevation - PLAYER_RESCUE_DROP {
+    } else if water.is_none() && next_feet < player.last_safe.elevation - PLAYER_RESCUE_DROP {
         let safe = player.last_safe;
         player.x = safe.x;
         player.y = safe.y;
@@ -1224,6 +1296,42 @@ fn ceiling_at<G: PlayerGround>(
     ceiling
 }
 
+/// The top of the water the player is over, or `None` where the column under it is not water.
+fn water_over<G: PlayerGround>(ground: &G, point: GridPoint) -> Option<f64> {
+    let column = get_player_column(point);
+    let found = ground.column_at(column.x, column.y)?;
+    is_swimmable(found.surface).then(|| f64::from(found.elevation))
+}
+
+/// One tick of floating in water topped at `level`: the body is carried by the buoyancy spring,
+/// the swim is started if it has just gone in, and the feet are placed at the depth it reached.
+fn step_swim(player: &mut PlayerState, level: f64) {
+    let feet = player.elevation + player.height;
+    let mut swim = match player.swim {
+        Some(swim) => PlayerSwim { level, ..swim },
+        None => {
+            let sink = player.vertical_speed.map(|v| -v).unwrap_or(0.0);
+            if splashes(sink) {
+                player.feedback.splashes += 1;
+                player.feedback.splash_impact = sink;
+            }
+            PlayerSwim::entering(level, (level - feet).max(0.0), sink)
+        }
+    };
+    let (sink, depth) = next_float(swim.sink, swim.depth);
+    swim.sink = sink;
+    swim.depth = depth;
+    swim.ticks = swim.ticks.saturating_add(1);
+    // the swell is drawn on top of the depth, not pushed into it: the buoyancy spring keeps
+    // working from where the body really is
+    let moving = player.velocity.x != 0.0 || player.velocity.y != 0.0;
+    let bob = float_bob(swim.ticks, float_settle(depth), moving);
+    player.elevation = level;
+    player.height = -(depth + bob);
+    player.vertical_speed = None;
+    player.swim = Some(swim);
+}
+
 fn is_flying(player: &PlayerState) -> bool {
     let vs = match player.vertical_speed {
         Some(v) => v,
@@ -1252,7 +1360,8 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
             && player.velocity.y == 0.0
             && player.vertical_speed.is_none()
             && player.jump_buffer_ticks == 0
-            && climb.is_none();
+            && climb.is_none()
+            && player.swim.is_none();
         if resting && tick > 0 {
             return;
         }
@@ -1313,6 +1422,12 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
         if grounded_at_start {
             player.coyote_ticks = PLAYER_COYOTE_TICKS;
         }
+        // the jump key does nothing in the water: there is nothing to push off
+        if player.swim.is_some() && player.jump_buffer_ticks > 0 {
+            player.wants_jump = false;
+            player.jump_buffer_ticks = 0;
+            player.coyote_ticks = 0;
+        }
         let took_off =
             player.jump_buffer_ticks > 0 && (grounded_at_start || player.coyote_ticks > 0);
         let airborne = player.vertical_speed.is_some();
@@ -1328,12 +1443,32 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
         let flying = is_flying(player);
         accelerate_player(player);
         let block_reason = step_once(player, ground, false);
-        let air_result = if player.climb.is_none() {
-            step_air(player, ground, flying)
-        } else {
-            None
+        let here = GridPoint {
+            x: player.x,
+            y: player.y,
+        };
+        let water = water_over(ground, here);
+        let swimming = player.swim.is_some()
+            && water.is_some_and(|level| player.elevation + player.height <= level + LANDING);
+        let air_result = match (player.climb.is_some(), swimming) {
+            (true, _) => None,
+            (false, true) => {
+                step_swim(player, water.unwrap());
+                None
+            }
+            (false, false) => {
+                player.swim = None;
+                let result = step_air(player, ground, flying, water);
+                if result == Some("water") {
+                    step_swim(player, water.unwrap());
+                    Some("splashed")
+                } else {
+                    result
+                }
+            }
         };
         if player.climb.is_some() {
+            player.swim = None;
             player.wants_jump = false;
             player.jump_buffer_ticks = 0;
             player.coyote_ticks = 0;
@@ -1374,14 +1509,15 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
             }
         }
         if player.vertical_speed.is_none()
-            && support_at(
-                ground,
-                GridPoint {
-                    x: player.x,
-                    y: player.y,
-                },
-            )
-            .is_some()
+            && (player.swim.is_some()
+                || support_at(
+                    ground,
+                    GridPoint {
+                        x: player.x,
+                        y: player.y,
+                    },
+                )
+                .is_some())
         {
             player.last_safe = PlayerPosition {
                 x: player.x,
@@ -1406,6 +1542,9 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
 }
 
 pub fn get_player_jump_phase(player: &PlayerState) -> PlayerJumpPhase {
+    if player.swim.is_some() {
+        return PlayerJumpPhase::Ground;
+    }
     if player.climb.is_some() {
         return PlayerJumpPhase::Ground;
     }

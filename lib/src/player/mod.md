@@ -56,8 +56,17 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`RUN_PUFFS`](dust_view.rs#L40) — Soplos de polvo de carrera o derrape vivos a la vez, reutilizados por turno. La estela de quien nada usa esos mismos soplos.
   - Declaración: `pub const RUN_PUFFS: usize = 6;`
 
-- [`SWIM_WAKE_EVERY`](dust_view.rs) — Columnas que recorre quien nada entre dos crestas de su estela: más a menudo que el polvo de una carrera, porque el agua se cierra detrás.
-  - Declaración: `pub const SWIM_WAKE_EVERY: f64 = 0.35;`
+- [`SWIM_WAKE_EVERY`](dust_view.rs) — Columnas que recorre quien nada entre dos pares de crestas de su estela: más a menudo que el polvo de una carrera, porque el agua se cierra detrás.
+  - Declaración: `pub const SWIM_WAKE_EVERY: f64 = 0.4;`
+
+- [`SWIM_WAKE_SPREAD`](dust_view.rs) — Cuánto se abre cada brazo de la estela respecto a por donde vino el nadador, en radianes: los dos juntos son la V que arrastra.
+  - Declaración: `pub const SWIM_WAKE_SPREAD: f64 = 0.62;`
+
+- [`SWIM_WAKE_BEHIND`](dust_view.rs) — Columnas por detrás del nadador a las que nacen las crestas, para que el agua se cierre detrás del cuerpo y no dentro.
+  - Declaración: `pub const SWIM_WAKE_BEHIND: f64 = 0.16;`
+
+- [`SWIM_RIPPLE_MS`](dust_view.rs) — Milisegundos reales entre los anillos que abre quien flota quieto.
+  - Declaración: `pub const SWIM_RIPPLE_MS: f64 = 1400.0;`
 
 ### `body_motion.rs`
 

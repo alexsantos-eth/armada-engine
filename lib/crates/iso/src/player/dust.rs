@@ -72,30 +72,47 @@ pub const SPLASH_MS: f64 = 460.0;
 /// The crown of water a body throws up as it goes in: wider, higher and wetter than a
 /// landing's dust, and it grows with how hard the body hit the surface (see `splash_of`).
 pub const SPLASH_DUST: DustShape = DustShape {
-    voxels: 16,
-    radius: (0.06, 0.26),
-    drift: (0.18, 0.42),
-    size: (0.05, 0.1),
-    lift: 0.05,
-    rise: 0.3,
+    voxels: 18,
+    radius: (0.05, 0.22),
+    drift: (0.14, 0.34),
+    size: (0.05, 0.11),
+    lift: 0.06,
+    rise: 0.52,
     kick: 0.0,
     colors: WATER_COLORS,
     ms: SPLASH_MS,
-    alpha: 0.9,
+    alpha: 0.92,
 };
 
-/// The wake a swimmer leaves behind it: a few small crests that bob and fade.
-pub const WAKE_DUST: DustShape = DustShape {
-    voxels: 5,
-    radius: (0.0, 0.1),
-    drift: (0.03, 0.1),
-    size: (0.035, 0.07),
+/// The ring left on the surface where a body broke it, and the one that spreads from a swimmer
+/// floating in place: flat water that runs outwards and fades without ever rising.
+pub const RIPPLE_DUST: DustShape = DustShape {
+    voxels: 10,
+    radius: (0.1, 0.16),
+    drift: (0.24, 0.34),
+    size: (0.03, 0.055),
     lift: 0.0,
-    rise: 0.05,
-    kick: 0.26,
+    rise: 0.0,
+    kick: 0.0,
     colors: WATER_COLORS,
-    ms: 520.0,
-    alpha: 0.6,
+    ms: 760.0,
+    alpha: 0.45,
+};
+
+/// One crest of the V a swimmer drags behind it: it runs outwards and back along its own arm of
+/// the V, stays on the surface and fades slowly, so the two arms read as a wake and not as
+/// spray.
+pub const WAKE_DUST: DustShape = DustShape {
+    voxels: 4,
+    radius: (0.0, 0.07),
+    drift: (0.05, 0.14),
+    size: (0.03, 0.065),
+    lift: 0.0,
+    rise: 0.025,
+    kick: 0.34,
+    colors: WATER_COLORS,
+    ms: 640.0,
+    alpha: 0.55,
 };
 
 /// How hard a body has to hit the water for the full crown of [`SPLASH_DUST`]: at this speed in

@@ -2,8 +2,8 @@
 
 use iso::player::{
     BURST_DUST, DUST_MIN_IMPACT, DustShape, DustVoxel, KICK_DUST, PlayerMotionType, PlayerState,
-    VoxelFaces, WAKE_DUST, get_dust, get_dust_column, get_dust_voxel_at, get_dust_voxels,
-    splash_of, voxel_faces,
+    RIPPLE_DUST, VoxelFaces, WAKE_DUST, get_dust, get_dust_column, get_dust_voxel_at,
+    get_dust_voxels, splash_of, voxel_faces,
 };
 use iso::projection::{GridPoint, ProjectionConfig, project_grid_point};
 use iso::scene_order::DrawKey;
@@ -32,8 +32,19 @@ pub const DUST_BEHIND_LAYER: i32 = crate::lighting::shadow_view::GROUND_SHADOW_L
 pub const DUST_FRONT_DEPTH: f64 = 0.00001;
 
 /// Columns a swimmer covers between two crests of its wake: more often than a runner's dust,
-/// because the water closes behind it.
-pub const SWIM_WAKE_EVERY: f64 = 0.35;
+/// because the water closes behind it. Each one is a pair, one crest to each side.
+pub const SWIM_WAKE_EVERY: f64 = 0.4;
+
+/// How far out from straight behind the swimmer each arm of its wake runs, in radians: the two
+/// together are the V that trails it.
+pub const SWIM_WAKE_SPREAD: f64 = 0.62;
+
+/// Columns behind the swimmer the crests of its wake rise, so the water closes behind the body
+/// instead of inside it.
+pub const SWIM_WAKE_BEHIND: f64 = 0.16;
+
+/// Real milliseconds between the rings a swimmer floating in place spreads around itself.
+pub const SWIM_RIPPLE_MS: f64 = 1400.0;
 
 /// Columns a running player covers between two puffs of dust.
 pub const RUN_DUST_EVERY: f64 = 0.7;
@@ -53,15 +64,22 @@ const LANDING_PUFF: usize = 1;
 /// The crown of water thrown up where the player went into the water.
 const SPLASH_PUFF: usize = 2;
 
-/// The first puff of the trail a runner, a skidder or a swimmer leaves behind it.
-const TRAIL_PUFF: usize = 3;
+/// The ring that spreads around a swimmer floating in place.
+const RIPPLE_PUFF: usize = 3;
 
-/// The whole pool: a take-off, a landing, a splash and the trail.
+/// The first puff of the trail a runner, a skidder or a swimmer leaves behind it.
+const TRAIL_PUFF: usize = 4;
+
+/// The whole pool: a take-off, a landing, a splash, a ring and the trail. A swimmer's wake
+/// takes the trail's slots in pairs, so [`RUN_PUFFS`] has to be even for both arms of a V to
+/// live as long as each other.
 const PUFFS: usize = TRAIL_PUFF + RUN_PUFFS;
 
 /// Where the player's dust rises from this frame, and how far it has come since the last.
 #[derive(Clone, Copy, Debug)]
 pub struct DustGround {
+    /// Real milliseconds since the last frame, which paces what the water does on its own.
+    pub elapsed_ms: f64,
     /// The feet, in columns.
     pub feet: GridPoint,
     /// The plane the feet are drawn on, jump included (`elevation + height`).
@@ -99,6 +117,8 @@ pub struct DustPuffs {
     seen_splashes: i32,
     /// Columns run or slid since the last puff of the running trail.
     ran: f64,
+    /// Real milliseconds since the last ring spread around a floating swimmer.
+    rippled_ms: f64,
     /// The puff of the trail to reuse next.
     run_puff: usize,
 }
@@ -118,6 +138,7 @@ impl DustPuffs {
             seen_landings: 0,
             seen_splashes: 0,
             ran: 0.0,
+            rippled_ms: 0.0,
             run_puff: 0,
         }
     }
@@ -167,25 +188,31 @@ impl DustPuffs {
             );
         }
         if feedback.splashes != self.seen_splashes {
-            // the crown of water rises from the surface it broke, not from the sunken feet
+            // the crown of water rises from the surface it broke, not from the sunken feet, and
+            // the ring runs out from the same place
+            let surface = DustGround {
+                level: at.ground,
+                ..at
+            };
+            let in_place = DustEmission {
+                origin: ZERO,
+                kick: ZERO,
+            };
             self.raise(
                 SPLASH_PUFF,
                 splash_of(feedback.splash_impact),
-                &DustGround {
-                    level: at.ground,
-                    ..at
-                },
-                DustEmission {
-                    origin: ZERO,
-                    kick: ZERO,
-                },
+                &surface,
+                in_place,
                 top_at,
             );
+            self.raise(RIPPLE_PUFF, RIPPLE_DUST, &surface, in_place, top_at);
+            self.rippled_ms = 0.0;
         }
         self.seen_landings = feedback.landings;
         self.seen_jumps = feedback.jumps;
         self.seen_splashes = feedback.splashes;
         self.kick(player, at, top_at);
+        self.ripple(player, at, top_at);
     }
 
     /// The trail a running or skidding player kicks up behind its feet, a puff every stretch of
@@ -211,23 +238,76 @@ impl DustPuffs {
         }
         self.ran %= every;
         let kick = behind(player);
-        let index = TRAIL_PUFF + self.run_puff;
-        let at = if surface {
-            DustGround {
+        if !surface {
+            self.raise(
+                TRAIL_PUFF + self.run_puff,
+                shape,
+                &at,
+                DustEmission { origin: ZERO, kick },
+                top_at,
+            );
+            self.run_puff = (self.run_puff + 1) % RUN_PUFFS;
+            return;
+        }
+        // a swimmer's wake is a pair of crests on the surface, one to each side of the way it
+        // came, rising a little behind the body so the water closes behind it
+        let surface_at = DustGround {
+            level: at.ground,
+            ..at
+        };
+        for side in [-1.0, 1.0] {
+            let arm = turn(kick, side * SWIM_WAKE_SPREAD);
+            self.raise(
+                TRAIL_PUFF + self.run_puff,
+                shape,
+                &surface_at,
+                DustEmission {
+                    origin: GridPoint {
+                        x: kick.x * SWIM_WAKE_BEHIND,
+                        y: kick.y * SWIM_WAKE_BEHIND,
+                    },
+                    kick: arm,
+                },
+                top_at,
+            );
+            self.run_puff = (self.run_puff + 1) % RUN_PUFFS;
+        }
+    }
+
+    /// The rings a swimmer floating in place spreads around itself, one every
+    /// [`SWIM_RIPPLE_MS`]: the water answering a body that is not going anywhere. A swimmer on
+    /// the move leaves its wake instead, and nothing on land ever ripples.
+    fn ripple(
+        &mut self,
+        player: &PlayerState,
+        at: DustGround,
+        top_at: &impl Fn(i32, i32) -> Option<f64>,
+    ) {
+        let floating = matches!(player.motion, PlayerMotionType::Swimming)
+            && player.velocity.x == 0.0
+            && player.velocity.y == 0.0;
+        if !floating {
+            self.rippled_ms = 0.0;
+            return;
+        }
+        self.rippled_ms += at.elapsed_ms.max(0.0);
+        if self.rippled_ms < SWIM_RIPPLE_MS {
+            return;
+        }
+        self.rippled_ms %= SWIM_RIPPLE_MS;
+        self.raise(
+            RIPPLE_PUFF,
+            RIPPLE_DUST,
+            &DustGround {
                 level: at.ground,
                 ..at
-            }
-        } else {
-            at
-        };
-        self.raise(
-            index,
-            shape,
-            &at,
-            DustEmission { origin: ZERO, kick },
+            },
+            DustEmission {
+                origin: ZERO,
+                kick: ZERO,
+            },
             top_at,
         );
-        self.run_puff = (self.run_puff + 1) % RUN_PUFFS;
     }
 
     /// Raises the puff in slot `index`, replacing whatever was there: a fresh scatter of
@@ -307,6 +387,15 @@ impl DustPuffs {
 
 /// No kick and no offset from the feet.
 const ZERO: GridPoint = GridPoint { x: 0.0, y: 0.0 };
+
+/// `direction` turned `radians` counter-clockwise on the grid.
+fn turn(direction: GridPoint, radians: f64) -> GridPoint {
+    let (sin, cos) = radians.sin_cos();
+    GridPoint {
+        x: direction.x * cos - direction.y * sin,
+        y: direction.x * sin + direction.y * cos,
+    }
+}
 
 /// The way behind the player, which is where whatever it kicks up is thrown.
 fn behind(player: &PlayerState) -> GridPoint {

@@ -44,6 +44,7 @@ fn react(dust: &mut DustPuffs, player: &PlayerState, moved: f64) {
         level: 2.0,
         ground: 2.0,
         moved,
+        elapsed_ms: 16.0,
         tile_height: TILE / 2.0,
     };
     dust.react(player, at, &flat);
@@ -311,6 +312,7 @@ fn swim_react(dust: &mut DustPuffs, player: &PlayerState, moved: f64) {
         level: 2.0 - 0.3,
         ground: 2.0,
         moved,
+        elapsed_ms: 16.0,
         tile_height: TILE / 2.0,
     };
     dust.react(player, at, &flat);
@@ -330,10 +332,19 @@ fn going_into_the_water_throws_up_a_splash() {
         ..PlayerFeedback::default()
     };
     swim_react(&mut dust, &player, 0.0);
-    assert_eq!(dust.live(), 1);
+    assert_eq!(dust.live(), 2, "the crown of water and the ring it leaves");
 
     swim_react(&mut dust, &player, 0.0);
-    assert_eq!(dust.live(), 1, "the same entry does not splash twice");
+    assert_eq!(dust.live(), 2, "the same entry does not splash twice");
+}
+
+/// The ring of a splash and the wake stay on the water: they never rise out of it.
+#[test]
+fn the_water_a_swimmer_leaves_on_the_surface_stays_flat() {
+    assert_eq!(iso::player::RIPPLE_DUST.rise, 0.0);
+    assert_eq!(iso::player::RIPPLE_DUST.lift, 0.0);
+    let (wake, splash) = (WAKE_DUST.rise, iso::player::SPLASH_DUST.rise);
+    assert!(wake < splash, "a crest barely rises: {wake} under {splash}");
 }
 
 #[test]
@@ -346,7 +357,7 @@ fn a_harder_entry_throws_the_water_further() {
 }
 
 #[test]
-fn swimming_along_leaves_a_wake_behind() {
+fn swimming_along_leaves_a_wake_of_two_crests_behind() {
     let mut dust = DustPuffs::new();
     let mut player = player_at(4.0, 4.0);
     player.motion = PlayerMotionType::Swimming;
@@ -354,11 +365,66 @@ fn swimming_along_leaves_a_wake_behind() {
     swim_react(&mut dust, &player, SWIM_WAKE_EVERY / 2.0);
     assert_eq!(dust.live(), 0, "half a stretch raises nothing yet");
     swim_react(&mut dust, &player, SWIM_WAKE_EVERY / 2.0);
-    assert_eq!(dust.live(), 1);
+    assert_eq!(dust.live(), 2, "one crest to each side");
     for _ in 0..RUN_PUFFS {
         swim_react(&mut dust, &player, SWIM_WAKE_EVERY);
     }
     assert_eq!(dust.live(), RUN_PUFFS, "the trail's slots are reused in turn");
+}
+
+/// The two crests of a wake run out to opposite sides of the way the swimmer came, and both
+/// stay behind it.
+#[test]
+fn the_crests_of_a_wake_spread_to_both_sides() {
+    let arms: Vec<GridPoint> = [-1.0, 1.0]
+        .into_iter()
+        .map(|side| turn(GridPoint { x: -1.0, y: 0.0 }, side * SWIM_WAKE_SPREAD))
+        .collect();
+    assert!(arms[0].y > 0.0 && arms[1].y < 0.0, "one to each side: {arms:?}");
+    for arm in &arms {
+        assert!(arm.x < 0.0, "both run backwards: {arm:?}");
+        assert!((arm.x.hypot(arm.y) - 1.0).abs() < 1e-9, "and are unit long");
+    }
+}
+
+/// Floating in place, the water rings around the swimmer every so often instead of leaving a
+/// wake. Nothing of the sort happens on land.
+#[test]
+fn a_swimmer_floating_in_place_rings_the_water_around_it() {
+    let mut dust = DustPuffs::new();
+    let mut player = player_at(4.0, 4.0);
+    player.motion = PlayerMotionType::Swimming;
+    let frames = (SWIM_RIPPLE_MS / 16.0).ceil() as i32;
+    for _ in 0..frames {
+        swim_react(&mut dust, &player, 0.0);
+    }
+    assert_eq!(dust.live(), 1, "one ring after its while");
+    for _ in 0..frames {
+        swim_react(&mut dust, &player, 0.0);
+    }
+    assert_eq!(dust.live(), 1, "and it is the same slot every time");
+
+    let mut walker = DustPuffs::new();
+    let mut on_land = player_at(4.0, 4.0);
+    on_land.motion = PlayerMotionType::Idle;
+    for _ in 0..frames {
+        react(&mut walker, &on_land, 0.0);
+    }
+    assert_eq!(walker.live(), 0, "standing on dry land rings nothing");
+}
+
+/// A swimmer on the move leaves its wake, not rings.
+#[test]
+fn a_swimmer_on_the_move_does_not_ring_the_water() {
+    let mut dust = DustPuffs::new();
+    let mut player = player_at(4.0, 4.0);
+    player.motion = PlayerMotionType::Swimming;
+    player.velocity = GridPoint { x: 0.1, y: 0.0 };
+    let frames = (SWIM_RIPPLE_MS / 16.0).ceil() as i32;
+    for _ in 0..frames {
+        swim_react(&mut dust, &player, 0.0);
+    }
+    assert_eq!(dust.live(), 0);
 }
 
 #[test]

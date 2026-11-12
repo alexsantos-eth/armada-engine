@@ -56,6 +56,11 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`BURST_DUST`](dust.rs#L39) — El soplo de un despegue o un aterrizaje: un anillo de voxeles que estalla desde los pies.
   - Declaración: `pub const BURST_DUST: DustShape = DustShape {`
 
+- [`RIPPLE_DUST`](dust.rs) — El anillo que deja un cuerpo donde rompió la superficie, y el que abre quien flota quieto: agua plana que se abre y se apaga sin subir nunca.
+- [`SPLASH_DUST`](dust.rs) / [`splash_of`](dust.rs) — La corona de agua de un chapuzón, escalada por la velocidad con la que el cuerpo entró.
+- [`WAKE_DUST`](dust.rs) — Una cresta de la V que arrastra quien nada: corre hacia fuera y hacia atrás por su brazo, se queda en la superficie y se apaga despacio.
+- [`WATER_COLORS`](dust.rs) — Tonos del agua que levanta quien nada: de espuma blanca a un azul pálido.
+
 - [`KICK_DUST`](dust.rs#L53) — El soplo pequeño que un jugador corriendo o derrapando levanta detrás de sus pies.
   - Declaración: `pub const KICK_DUST: DustShape = DustShape {`
 

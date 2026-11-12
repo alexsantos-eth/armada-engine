@@ -586,6 +586,7 @@ impl Game {
                 level: rp.elevation + rp.height,
                 ground: rp.elevation,
                 moved,
+                elapsed_ms: frame_ms,
                 tile_height: projection.tile_height,
             },
             &elevation_at,
