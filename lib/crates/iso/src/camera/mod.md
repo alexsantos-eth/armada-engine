@@ -45,31 +45,31 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`validate`](geometry.rs#L49) — Valida los invariantes de «» y devuelve el resultado de esa comprobación.
+- [`validate`](geometry.rs#L49) — Valida los límites (zoom y bounds coherentes); `InvalidCameraLimits` si no lo son.
   - Firma: `pub fn validate(self) -> Result<Self, InvalidCameraLimits> {`
 
-- [`clamp_camera`](geometry.rs#L73) — Calcula o recupera «clamp camera» según los parámetros de la firma.
+- [`clamp_camera`](geometry.rs#L73) — Recorta `camera` a los límites (posición y zoom).
   - Firma: `pub fn clamp_camera(camera: Camera, limits: CameraLimits) -> Camera {`
 
-- [`create_camera`](geometry.rs#L81) — Crea el recurso o estado «camera» a partir de los parámetros recibidos.
+- [`create_camera`](geometry.rs#L81) — Crea la cámara inicial a partir de `limits` y un `start` opcional (o la por defecto).
   - Firma: `pub fn create_camera( limits: CameraLimits, start: Option<Camera>, ) -> Result<Camera, InvalidCameraLimits> {`
 
-- [`pan_camera`](geometry.rs#L109) — Calcula o recupera «pan camera» según los parámetros de la firma.
+- [`pan_camera`](geometry.rs#L109) — Traslada la cámara en pantalla (`delta`) y la recorta a los límites.
   - Firma: `pub fn pan_camera( camera: Camera, delta: ScreenPoint, limits: CameraLimits, projection: ProjectionConfig, ) -> Camera {`
 
-- [`screen_to_ground`](geometry.rs#L133) — Calcula o recupera «screen to ground» según los parámetros de la firma.
+- [`screen_to_ground`](geometry.rs#L133) — Proyecta `point` de pantalla al plano del suelo a través de la cámara.
   - Firma: `pub fn screen_to_ground( camera: Camera, viewport: ScreenSize, point: ScreenPoint, projection: ProjectionConfig, ) -> GridPoint {`
 
-- [`zoom_camera_at`](geometry.rs#L149) — Calcula o recupera «zoom camera at» según los parámetros de la firma.
+- [`zoom_camera_at`](geometry.rs#L149) — Acerca/aleja con `factor` anclada a `anchor` y recorta a los límites.
   - Firma: `pub fn zoom_camera_at( camera: Camera, factor: f64, anchor: ScreenPoint, viewport: ScreenSize, limits: CameraLimits, projection: ProjectionConfig, ) -> Camera {`
 
-- [`camera_transform`](geometry.rs#L184) — Calcula o recupera «camera transform» según los parámetros de la firma.
+- [`camera_transform`](geometry.rs#L184) — Transformación mundo→pantalla completa (proyección × cámara) para `viewport`.
   - Firma: `pub fn camera_transform( camera: Camera, viewport: ScreenSize, projection: ProjectionConfig, ) -> CameraTransform {`
 
 - [`ground_point_below`](geometry.rs#L204) — Punto de suelo mostrado a la misma altura de pantalla que un punto elevado por encima de la elevación cero.
   - Firma: `pub fn ground_point_below( point: GridPoint, elevation: f64, projection: ProjectionConfig, ) -> GridPoint {`
 
-- [`follow_camera`](geometry.rs#L220) — Calcula o recupera «follow camera» según los parámetros de la firma.
+- [`follow_camera`](geometry.rs#L220) — Sigue a `target` con la semivida `CAMERA_FOLLOW_HALF_LIFE_MS` (`elapsed_ms`), sin snaps.
   - Firma: `pub fn follow_camera( camera: Camera, target: GridPoint, elapsed_ms: f64, limits: CameraLimits, half_life_ms: f64, ) -> Camera {`
 
 #### Constantes
@@ -81,10 +81,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`cull_rect`](visibility.rs#L20) — Calcula o recupera «cull rect» según los parámetros de la firma.
+- [`cull_rect`](visibility.rs#L20) — Rectángulo útil de dibujo: el viewport ampliado `margin` (fracción) por cada lado.
   - Firma: `pub fn cull_rect(viewport: ScreenSize, margin: f64) -> ScreenRect {`
 
-- [`needs_cull`](visibility.rs#L31) — Calcula o recupera «needs cull» según los parámetros de la firma.
+- [`needs_cull`](visibility.rs#L31) — Si hay que recomputar el recorte: primer encuadre, cambio de zoom o cámara desplazada más allá del margen.
   - Firma: `pub fn needs_cull( previous: Option<Camera>, camera: Camera, viewport: ScreenSize, projection: ProjectionConfig, margin: f64, ) -> bool {`
 
 - [`visible_chunks`](visibility.rs#L63) — Chunks que intersectan la vista, incluidos terreno/entidades elevados y agua baja.
@@ -123,10 +123,10 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`offset_on_ground`](geometry.rs#L95) — Calcula o recupera «offset on ground» según los parámetros de la firma.
+- [`offset_on_ground`](geometry.rs#L95) — Desplaza un punto del suelo a partir de un delta de pantalla bajo `camera`.
   - Firma: `fn offset_on_ground(camera: Camera, delta: ScreenPoint, projection: ProjectionConfig) -> GridPoint {`
 
 #### Constantes internas
 
-- [`FOLLOW_SNAP_DISTANCE`](geometry.rs#L8) — Define el parámetro interno «FOLLOW SNAP DISTANCE» empleado por este módulo.
+- [`FOLLOW_SNAP_DISTANCE`](geometry.rs#L8) — Distancia de imán para enganchar la cámara al objetivo durante el seguimiento.
   - Declaración: `const FOLLOW_SNAP_DISTANCE: f64 = 1e-3;`

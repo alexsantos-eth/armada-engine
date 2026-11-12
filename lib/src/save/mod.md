@@ -42,16 +42,16 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`iso_storage_get`](persistence.rs#L12) — Calcula o recupera «iso storage get» según los parámetros de la firma.
+- [`iso_storage_get`](persistence.rs#L12) — Import FFI del navegador: lee `localStorage[key]` en un búfer y devuelve su longitud.
   - Firma: `fn iso_storage_get( key_ptr: *const u8, key_len: usize, output_ptr: *mut u8, output_capacity: usize, ) -> isize;`
 
-- [`iso_storage_set`](persistence.rs#L18) — Calcula o recupera «iso storage set» según los parámetros de la firma.
+- [`iso_storage_set`](persistence.rs#L18) — Import FFI del navegador: escribe `value` en `localStorage[key]`; devuelve 0 si tuvo éxito.
   - Firma: `fn iso_storage_set( key_ptr: *const u8, key_len: usize, value_ptr: *const u8, value_len: usize, ) -> i32;`
 
-- [`local_storage_get`](persistence.rs#L28) — Calcula o recupera «local storage get» según los parámetros de la firma.
+- [`local_storage_get`](persistence.rs#L28) — Lee `localStorage[key]`; `None` si falta o la build no es WASM.
   - Firma: `fn local_storage_get(key: &str) -> Option<String> {`
 
-- [`local_storage_set`](persistence.rs#L50) — Calcula o recupera «local storage set» según los parámetros de la firma.
+- [`local_storage_set`](persistence.rs#L50) — Escribe `value` en `localStorage[key]`; `false` si falló o la build no es WASM.
   - Firma: `fn local_storage_set(key: &str, value: &str) -> bool {`
 
 #### Constantes internas
@@ -59,5 +59,5 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`STORAGE_KEY`](persistence.rs) — Clave del almacenamiento local en WASM (solo build WASM); conserva el mismo nombre relativo que el archivo de desarrollo. En nativo no se usa: la ruta la resuelve `crate::app::save_path()` (ver `src/app/bundle.rs`).
   - Declaración: `const STORAGE_KEY: &str = "saves/iso_save.json";`
 
-- [`OUTPUT_CAPACITY`](persistence.rs#L29) — Define el parámetro interno «OUTPUT CAPACITY» empleado por este módulo.
+- [`OUTPUT_CAPACITY`](persistence.rs#L29) — Tope del búfer de lectura del FFI (32 MiB).
   - Declaración: `const OUTPUT_CAPACITY: usize = 32 * 1024 * 1024;`

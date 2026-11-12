@@ -37,7 +37,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`select_player_frame`](frame_selection.rs#L35) — Elige la hoja y la columna con prioridad de nadar, trepar, saltar, idle y caminar. En el agua manda [`SwimInput`](frame_selection.rs): la hoja de nado, con la columna de flotar, la del crol o la de bucear.
+- [`select_player_frame`](frame_selection.rs#L53) — Elige la hoja y la columna con prioridad de nadar, trepar, saltar, idle y caminar. En el agua manda [`SwimInput`](frame_selection.rs): la hoja de nado, con la columna de flotar, la del crol o la de bucear.
   - Firma: `pub fn select_player_frame(input: PlayerFrameInput) -> PlayerFrame {`
 
 ### `order.rs`
@@ -54,7 +54,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`jump_pose`](poses.rs#L24) — Calcula o recupera «jump pose» según los parámetros de la firma.
+- [`jump_pose`](poses.rs#L24) — Pose de salto para `phase` según la tabla `poses` (o `None` si no hay).
   - Firma: `pub fn jump_pose(phase: JumpPhase, poses: JumpPoses) -> Option<i32> {`
 
 - [`climb_pose`](poses.rs#L36) — Secciones de igual longitud de un ascenso, limitadas a sus columnas primera y última.
@@ -86,5 +86,5 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Constantes internas
 
-- [`_`](budgets.rs#L28) — Define el parámetro interno « » empleado por este módulo.
+- [`_`](budgets.rs#L28) — Asserts de compilación de los presupuestos: carga > 0 y carga ≤ prefetch ≤ keep.
   - Declaración: `const _: () = {`

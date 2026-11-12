@@ -1,6 +1,6 @@
 # Colocación de entidades por Wave Function Collapse (plan)
 
-**Estado: implementada (2026-11-10), sin cruce de chunks.** La fase 1 quedó así: módulo `iso::entities::wfc` con el mosaico de una casilla y huella múltiple —el solver siempre ofrece la vacancia como posibilidad—, restricciones de superficie y elevación uniforme por huella, hueco de 1 entre mismos tipos integrado en el mosaico, selección por menor entropía con tiradas `lattice_at` derivadas de la semilla, pesos por blueprint y `emptyWeight` en `content/wfc.json` (`schemaVersion` 1), validación con exigencia de peso para todo blueprint no reclamado por bioma, y chunk completamente autocontenido (sin mirar a los vecinos, para preservar el determinismo del orden de descubrimiento). Densidad reproducida como hasta ahora (≈ pesos 1, `emptyWeight` 380); arbustos y rocas crecen sueltos; sin techos por chunk ni reglas de vecindad extra (se añaden luego por contenido sin tocar código). Los biomas siguen gobernados por `iso::biomes`; el WFC reclama todo blueprint que ellos no listan. Quedan como trabajo futuro: vecindad declarativa en contenido, techos `maxPerChunk`, bosquetes para arbustos/rocas si se quieren, cruce de chunks si el diseño lo pide alguna vez.
+**Estado: implementada (2026-11-10), sin cruce de chunks.** La fase 1 quedó así: módulo `iso::entities::wfc` con el mosaico de una casilla y huella múltiple —el solver siempre ofrece la vacancia como posibilidad—, restricciones de superficie y elevación uniforme por huella, hueco de 1 entre mismos tipos integrado en el mosaico, selección por menor entropía con tiradas `lattice_at` derivadas de la semilla, pesos por blueprint y `emptyWeight` en `content/wfc.json` (`schemaVersion` 1 entonces, 2 desde su misma publicación), validación con exigencia de peso para todo blueprint no reclamado por bioma, y chunk completamente autocontenido (sin mirar a los vecinos, para preservar el determinismo del orden de descubrimiento). Densidad reproducida como hasta ahora (≈ pesos 1, `emptyWeight` 380); arbustos y rocas crecen sueltos. El esquema 2 añade `families` (grupos de blueprints que comparten techo, p. ej. `office` junta `office_x`/`office_y`) y `maxPerChunk` (techo por chunk por blueprint o por familia, p. ej. `office` y 1 para `hospital`/`townhall`), con validación de ambos (familias no solapadas con ids de blueprint, techos finitos > 0, claves conocidas). Los biomas siguen gobernados por `iso::biomes`; el WFC reclama todo blueprint que ellos no listan. Quedan como trabajo futuro: vecindad declarativa en contenido, bosquetes para arbustos/rocas si se quieren, cruce de chunks si el diseño lo pide alguna vez.
 
 ## Objetivo
 
@@ -20,13 +20,15 @@ Sustituir la tirada de densidad independiente por casilla por un solver de restr
 3. Observación: la celda sin decidir de menor entropía; empates por `lattice_at` (corriente derivada de la semilla); la elección pesa por blueprint más `emptyWeight`.
 4. El chunk es autocontenido: la vacancia siempre está disponible, no hace falta retroceso ni reinicios.
 
-## Contenido (`content/wfc.json`, `schemaVersion` 1)
+## Contenido (`content/wfc.json`, `schemaVersion` 2)
 
 ```jsonc
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "emptyWeight": 380.0,
-  "weights": { "house": 1.0, "bush": 1.0, "large_rock": 1.0, "...": 1.0 }
+  "weights": { "house": 6.0, "bush": 4.0, "large_rock": 1.0, "...": 1.0 },
+  "families": { "office": ["office_x", "office_y"] },
+  "maxPerChunk": { "office": 2, "hospital": 1, "townhall": 1 }
 }
 ```
 
@@ -35,7 +37,7 @@ Validado con las mismas puertas que `biomes.json` (pesos finitos positivos, blue
 ## Fases
 
 1. ~~**Solver núcleo + paridad**~~ **Hecha**: `iso::entities::wfc` con mosaico de una casilla y huella múltiple nativa (los muelles y edificios largos son anclas con huella completa).
-2. ~~**Vecindad y cotas**~~ **Recortada**: solo el hueco 1 mismo tipo vive en el motor; la vecindad declarativa y los techos `maxPerChunk` quedan para una iteración de contenido sin tocar código.
+2. ~~**Vecindad y cotas**~~ **Recortada**: viven en el motor solo el hueco 1 mismo tipo y los techos `maxPerChunk` compartidos por familia (`families`) desde el esquema 2; la vecindad declarativa sigue para una iteración de contenido sin tocar código.
 3. ~~**Huellas múltiples**~~ **Hecha**: la huella completa se valida en casillas del chunk (superficie y elevación uniforme de celdas secas), reclamando también las celdas intermedias para el mosaico.
 4. **Cruce de chunks (opcional)**: no hecho; la v1 es autocontenida por diseño.
 5. **Retirada del camino legado**: no hecha; `place_entities_with_content` conserva el camino legado cuando no hay catálogo wfc (`wfc: None`), que es lo que usan los tests del dominio.
@@ -52,7 +54,7 @@ Chunk de 32×32 = 1024 celdas; conjuntos de posibilidades pequeños (≤ bluepri
 
 ## Decisiones tomadas en la fase de implementación
 
-1. Entra **todo** lo que ningún bioma reclama (28 blueprints: edificios, muelles, barco, arbustos y rocas) — los biomas conservan los 8 árboles.
+1. Entra **todo** lo que ningún bioma reclama (30 blueprints en el catálogo actual, los 8 árboles — 22 con peso en `wfc.json`: edificios, muelles, barco, arbustos y rocas) — los biomas conservan los 8 árboles.
 2. Vecindad inicial **mínima**: hueco 1 mismo tipo; nada de vecindad declarativa en esta iteración.
-3. **Sin techos** por chunk; todo acotado por pesos, superficies y la vacancia.
+3. Los techos por chunk se añadieron en el esquema 2 como `families` + `maxPerChunk` (validados en `parse_wfc`): `office` comparte techo entre `office_x`/`office_y`, `hospital` y `townhall` se limitan a 1 por chunk. Todo sigue acotado por pesos, superficies y la vacancia; la vecindad declarativa sigue fuera del motor.
 4. Arbustos y rocas **sueltos**; la densidad reproduce más o menos la de antes (pesos 1, `emptyWeight` 380).

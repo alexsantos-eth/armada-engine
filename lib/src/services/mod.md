@@ -26,20 +26,20 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
   - Firma: `fn poll(&mut self) -> NormalizedInput {`
   - MacroquadInput es ahora `pub struct MacroquadInput<'a> { pub touch: &'a mut TouchControls }`: el llamante (`game::frame::update`) presta su `TouchControls` a la pasada de entrada.
 
-- [`default`](macroquad_adapters.rs#L73) — Calcula o recupera «default» según los parámetros de la firma.
+- [`default`](macroquad_adapters.rs#L73) — Implementación de `Default`: el adaptador de audio en silencio.
   - Firma: `fn default() -> Self {`
 
-- [`play`](macroquad_adapters.rs#L82) — Calcula o recupera «play» según los parámetros de la firma.
+- [`play`](macroquad_adapters.rs#L82) — Reproduce `event` (pendiente de la integración de audio; no hace nada).
   - Firma: `fn play(&mut self, event: SoundEvent) {`
 
-- [`set_volume`](macroquad_adapters.rs#L85) — Actualiza «volume» con el valor indicado.
+- [`set_volume`](macroquad_adapters.rs#L85) — Fija el volumen global en `0..=100`.
   - Firma: `fn set_volume(&mut self, volume: f64) {`
 
 - [`push`](macroquad_adapters.rs#L98) — Añade el valor recibido a la colección o secuencia administrada.
   - Firma: `fn push(&mut self, event: UiEvent) {`
 
-- [`chunk`](macroquad_adapters.rs#L122) — Calcula o recupera «chunk» según los parámetros de la firma.
+- [`chunk`](macroquad_adapters.rs#L122) — Devuelve las columnas del chunk si `ChunkManager` lo tiene; no lo descubre.
   - Firma: `fn chunk(&self, coord: ChunkCoord) -> Option<&[TerrainColumn]> {`
 
-- [`discover`](macroquad_adapters.rs#L125) — Calcula o recupera «discover» según los parámetros de la firma.
+- [`discover`](macroquad_adapters.rs#L125) — Descubre `coord` si hace falta (foco + tick) y devuelve sus columnas.
   - Firma: `fn discover(&mut self, coord: ChunkCoord) -> Option<Vec<TerrainColumn>> {`

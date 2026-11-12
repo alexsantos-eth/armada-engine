@@ -116,7 +116,7 @@ impl PlayerAnimation {
             moment.motion,
             PlayerMotionType::Swimming | PlayerMotionType::Sinking
         );
-        // with no swim sheet in the atlas the walk sheet carries the swimmer, pedalling along
+        // With no swim sheet the walk sheet carries the swimmer, pedalling along.
         let walking = matches!(
             moment.motion,
             PlayerMotionType::Walking | PlayerMotionType::Running | PlayerMotionType::Skidding

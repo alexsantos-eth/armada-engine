@@ -206,7 +206,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`start`](shadow_view.rs#L362) — Abre un horneado de `coord`, hasta el punto en que hay un mapa sobre el que volcarlo.
   - Firma: `fn start(&mut self, manager: &ChunkManager, coord: ChunkCoord) {`
 
-- [`ground_field`](shadow_view.rs#L400) — Calcula o recupera «ground field» según los parámetros de la firma.
+- [`ground_field`](shadow_view.rs#L400) — Construye el `HeightField` del área muestreando el terreno del manager.
   - Firma: `fn ground_field( manager: &ChunkManager, min_x: i32, min_y: i32, max_x: i32, max_y: i32, ) -> HeightField {`
 
 - [`ground_cover`](shadow_view.rs#L413) — Lee cuáles de las `count` columnas desde `from` tienen algo de cobertura, añade la
@@ -271,5 +271,5 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`default`](shadow_view_atlas.rs#L29) — Calcula o recupera «default» según los parámetros de la firma.
+- [`default`](shadow_view_atlas.rs#L29) — Implementación de `Default`: el atlas de sombras vacío.
   - Firma: `fn default() -> Self {`

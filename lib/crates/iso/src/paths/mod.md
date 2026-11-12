@@ -50,11 +50,11 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`eq`](astar.rs#L24) — Calcula o recupera «eq» según los parámetros de la firma.
+- [`eq`](astar.rs#L24) — Igualdad por coste/coordenada de la entrada en la cola.
   - Firma: `fn eq(&self, other: &Self) -> bool {`
 
-- [`partial_cmp`](astar.rs#L32) — Calcula o recupera «partial cmp» según los parámetros de la firma.
+- [`partial_cmp`](astar.rs#L32) — Orden parcial por coste para la cola (inverso del natural).
   - Firma: `fn partial_cmp(&self, other: &Self) -> Option<Ordering> {`
 
-- [`cmp`](astar.rs#L38) — Calcula o recupera «cmp» según los parámetros de la firma.
+- [`cmp`](astar.rs#L38) — Orden total por coste para la cola (inverso del natural).
   - Firma: `fn cmp(&self, other: &Self) -> Ordering {`

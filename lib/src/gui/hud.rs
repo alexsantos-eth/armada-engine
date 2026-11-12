@@ -135,8 +135,7 @@ pub(crate) fn push_hud_update(
         y: player.y,
         elevation,
         motion: match player.swim {
-            // in the water: how far under the surface the body is, which is what tells a
-            // plunge from floating
+            // In the water: how far under the surface the body is (plunge vs floating).
             Some(swim) => format!(
                 "{:?} {} · {:.2} bajo el agua",
                 player.motion,

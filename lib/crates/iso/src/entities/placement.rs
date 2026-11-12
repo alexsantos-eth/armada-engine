@@ -164,8 +164,7 @@ pub fn place_entities_with_content(
     }
     let empty: Vec<usize> = Vec::new();
 
-    // The biome of a column and the species its groves pick are the same for every blueprint in
-    // this pass; sampling them once per column keeps the pass from paying them per candidate.
+    // The biome and its species are the same for every blueprint in this pass; sample once per column.
     let world = biomes;
     let mut biome_of = Vec::with_capacity(columns.len());
     let mut formation_of = Vec::with_capacity(columns.len());

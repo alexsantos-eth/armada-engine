@@ -30,7 +30,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`has_white_patch`](sprites.rs#L140) — Si el atlas incluye [`WHITE_PATCH`]. Sin él las sombras se dibujan igualmente, pero cada
   - Firma: `pub fn has_white_patch(&self) -> bool {`
 
-- [`asset`](sprites.rs#L144) — Calcula o recupera «asset» según los parámetros de la firma.
+- [`asset`](sprites.rs#L144) — El sprite empaquetado para `source`, o `None` si el atlas no lo tiene.
   - Firma: `pub fn asset(&self, source: &str) -> Option<SpriteAsset> {`
 
 - [`sheet`](sprites.rs#L149) — La hoja de poses en `source`, para las animaciones del jugador.
@@ -144,13 +144,13 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`light_in`](sprites.rs#L528) — La luz `along` a través de la retícula y `down` por ella, ambas en `[0, 1]`, leídas entre los
   - Firma: `fn light_in(&self, along: f32, down: f32) -> f32 {`
 
-- [`light_at`](sprites.rs#L543) — Calcula o recupera «light at» según los parámetros de la firma.
+- [`light_at`](sprites.rs#L543) — Intensidad de luz del atlas en `column`,`row` (0..1) para el horneado.
   - Firma: `fn light_at(&self, column: u32, row: u32) -> f32 {`
 
-- [`draw_queue`](sprites.rs#L817) — Calcula o recupera «draw queue» según los parámetros de la firma.
+- [`draw_queue`](sprites.rs#L817) — Dibuja `draws` en orden ya ordenado con el atlas y el material.
   - Firma: `fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {`
 
 #### Constantes internas
 
-- [`INSET`](sprites.rs#L446) — Define el parámetro interno «INSET» empleado por este módulo.
+- [`INSET`](sprites.rs#L446) — Desborde de medio texel para el muestreo del atlas.
   - Declaración: `const INSET: f32 = 0.5;`

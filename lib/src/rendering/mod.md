@@ -120,7 +120,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Constantes internas
 
-- [`VERTEX`](grade.rs#L13) — Define el parámetro interno «VERTEX» empleado por este módulo.
+- [`VERTEX`](grade.rs#L13) — Vértice GLSL (`#version 100`) del shader de grado/material.
   - Declaración: `const VERTEX: &str = r#"#version 100 attribute vec3 position;`
 
 - [`FRAGMENT`](grade.rs#L27) — El fragmento de presentación: desenfoca progresivamente fuera de la franja tilt-shift, escala por `Tint`, desplaza saturación alrededor de la luma Rec. 601 y añade `Lift`.
@@ -136,8 +136,8 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`SHADOW_MAP`](scene_material.rs#L13) — El nombre que el shader da al atlas de sombras. `Texture` y `_ScreenTexture` son de Macroquad
   - Declaración: `const SHADOW_MAP: &str = "ShadowMap";`
 
-- [`VERTEX`](scene_material.rs#L15) — Define el parámetro interno «VERTEX» empleado por este módulo.
+- [`VERTEX`](scene_material.rs#L15) — Vértice GLSL (`#version 100`) del shader de grado/material.
   - Declaración: `const VERTEX: &str = r#"#version 100 attribute vec3 position;`
 
-- [`FRAGMENT`](scene_material.rs#L35) — Define el parámetro interno «FRAGMENT» empleado por este módulo.
+- [`FRAGMENT`](scene_material.rs#L35) — Fragmento GLSL (`#version 100`) del shader de material.
   - Declaración: `const FRAGMENT: &str = r#"#version 100 #ifdef GL_FRAGMENT_PRECISION_HIGH precision highp float;`

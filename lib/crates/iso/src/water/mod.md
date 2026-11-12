@@ -26,10 +26,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`lay_on_water`](reflection.rs#L64) — Un sprite ya dibujado tal como lo muestra el agua: colocado donde se puso, sin voltear.
   - Firma: `pub fn lay_on_water(layout: SpriteLayout) -> ReflectedSprite {`
 
-- [`cell_top`](reflection.rs#L88) — Las cuatro esquinas de la cara superior de una casilla en pantalla, desde la esquina hacia la cámara.
+- [`cell_top`](reflection.rs#L73) — Las cuatro esquinas de la cara superior de una casilla en pantalla, desde la esquina hacia la cámara.
   - Firma: `pub fn cell_top(cell: (i32, i32), level: f64, projection: ProjectionConfig) -> [(f64, f64); 4] {`
 
-- [`reflection_cells`](reflection.rs#L73) — Las casillas sobre cuya cara superior podría caer un reflejo, como rango `((min_x, min_y), (max_x,
+- [`reflection_cells`](reflection.rs#L88) — Las casillas sobre cuya cara superior podría caer un reflejo, como rango `((min_x, min_y), (max_x,
   - Firma: `pub fn reflection_cells( sprite: &ReflectedSprite, level: f64, projection: ProjectionConfig, ) -> Option<((i32, i32), (i32, i32))> {`
 
 - [`blur_radius`](reflection.rs#L180) — Lo ancho que el agua barre un reflejo que cuelga `depth` píxeles bajo su superficie, en píxeles.

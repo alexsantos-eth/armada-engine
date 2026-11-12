@@ -34,7 +34,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`push_hud_update`](hud.rs#L126) — Encola `UiEvent::HudUpdate` con la posición, la elevación, el movimiento y los chunks descubiertos.
   - Firma: `pub(crate) fn push_hud_update(ui: &mut MacroquadUi, player: &PlayerState, animation: &PlayerAnimation, elevation: i32, chunks: usize) {`
-- [`draw_hud`](hud.rs#L146) — Dibuja el título, la ayuda y, cuando hay una fase seleccionable, los botones de fase (con la activa resaltada), el estado del mundo con `ui.hud` (incluida la hora `HH:MM` del reloj del mundo, como `clock`), el panel de rendimiento y los mensajes; devuelve la fase pulsada y vacía los mensajes.
+- [`draw_hud`](hud.rs#L165) — Dibuja el título, la ayuda y, cuando hay una fase seleccionable, los botones de fase (con la activa resaltada), el estado del mundo con `ui.hud` (incluida la hora `HH:MM` del reloj del mundo, como `clock`), el panel de rendimiento y los mensajes; devuelve la fase pulsada y vacía los mensajes.
   - Firma: `pub(crate) fn draw_hud(ui: &mut MacroquadUi, perf: &PerfLog, counts: PerfCounts, frame_ms: f64, touch_visible: bool, phase: Option<BakePhase>, clock: &str) -> Option<BakePhase> {`
 
 ## Detalles de implementación

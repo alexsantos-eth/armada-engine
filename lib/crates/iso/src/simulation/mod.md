@@ -18,13 +18,13 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`new`](stepper.rs#L38) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
   - Firma: `pub fn new(options: StepperOptions) -> Result<Self, InvalidStepperOptions> {`
 
-- [`consume_frame`](stepper.rs#L57) — Calcula o recupera «consume frame» según los parámetros de la firma.
+- [`consume_frame`](stepper.rs#L57) — Acumula `elapsed_ms` y devuelve cuántos ticks debe ejecutar ahora el bucle.
   - Firma: `pub fn consume_frame(&mut self, elapsed_ms: f64) -> u64 {`
 
-- [`interpolation_alpha`](stepper.rs#L74) — Calcula o recupera «interpolation alpha» según los parámetros de la firma.
+- [`interpolation_alpha`](stepper.rs#L74) — Fracción (`0..1`) del avance dentro del tick actual, para interpolar en el render.
   - Firma: `pub fn interpolation_alpha(&self) -> f64 {`
 
-- [`set_time_scale`](stepper.rs#L78) — Actualiza «time scale» con el valor indicado.
+- [`set_time_scale`](stepper.rs#L78) — Fija la escala temporal (`1.0` = tiempo real); `InvalidStepperOptions` si no es finita o positiva.
   - Firma: `pub fn set_time_scale(&mut self, scale: f64) -> Result<(), InvalidStepperOptions> {`
 
 #### Constantes
@@ -44,8 +44,8 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`default`](stepper.rs#L16) — Calcula o recupera «default» según los parámetros de la firma.
+- [`default`](stepper.rs#L16) — Implementación de `Default`: el stepper por defecto (`max_frame_ms` de 250, sin escala).
   - Firma: `fn default() -> Self {`
 
-- [`default`](stepper.rs#L88) — Calcula o recupera «default» según los parámetros de la firma.
+- [`default`](stepper.rs#L88) — Implementación de `Default`: el stepper por defecto (`max_frame_ms` de 250, sin escala).
   - Firma: `fn default() -> Self {`

@@ -72,14 +72,14 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`default`](frame_log.rs#L55) — Calcula o recupera «default» según los parámetros de la firma.
+- [`default`](frame_log.rs#L55) — Implementación de `Default`: el registro de frames vacío con los campos a cero.
   - Firma: `fn default() -> Self {`
 
 - [`percentile`](frame_log.rs#L61) — Valor en `fraction` del recorrido de `values` una vez ordenado, rango más cercano. `values` está
   - Firma: `fn percentile(sorted: &[f64], fraction: f64) -> f64 {`
 
-- [`sorted`](frame_log.rs#L134) — Calcula o recupera «sorted» según los parámetros de la firma.
+- [`sorted`](frame_log.rs#L134) — Copia ordenada del extracto `of` para estadísticas (p50/p95/…).
   - Firma: `fn sorted(&self, of: impl Fn(&FrameSample) -> f64) -> Vec<f64> {`
 
-- [`mean`](frame_log.rs#L160) — Calcula o recupera «mean» según los parámetros de la firma.
+- [`mean`](frame_log.rs#L160) — Media del extracto `of` sobre las muestras de la ventana.
   - Firma: `fn mean(&self, of: impl Fn(&FrameSample) -> f64) -> f64 {`

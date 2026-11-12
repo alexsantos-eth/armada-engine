@@ -57,34 +57,34 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`material_at`](columns.rs#L27) — Material en un nivel relleno; los bloques bajo una superficie seca sostienen su parte superior.
+- [`material_at`](columns.rs#L29) — Material en un nivel relleno; los bloques bajo una superficie seca sostienen su parte superior.
   - Firma: `pub fn material_at(self, level: i32) -> Option<TerrainMaterial> {`
 
-- [`blocks_from`](columns.rs#L40) — Bloques desde el nivel elegido como suelo hasta la parte superior, inclusive, del más bajo al más alto.
+- [`blocks_from`](columns.rs#L42) — Bloques desde el nivel elegido como suelo hasta la parte superior, inclusive, del más bajo al más alto.
   - Firma: `pub fn blocks_from(self, floor: i32) -> impl Iterator<Item = TerrainBlock> {`
 
 ### `connection_mask.rs`
 
 #### Funciones y métodos
 
-- [`connection_mask`](connection_mask.rs#L10) — Las caras de `coord` que unen camino: máscara de cuatro bits con el mismo orden que la lámina de bloques de camino (`1` +x, `2` +y, `4` −x, `8` −y); una grada une como cualquier otro bloque de camino, y un vecino ausente o sin camino no une.
+- [`connection_mask`](connection_mask.rs#L11) — Las caras de `coord` que unen camino: máscara de cuatro bits con el mismo orden que la lámina de bloques de camino (`1` +x, `2` +y, `4` −x, `8` −y); una grada une como cualquier otro bloque de camino, y un vecino ausente o sin camino no une.
   - Firma: `pub fn connection_mask( coord: WorldCoord, at: impl Fn(WorldCoord) -> Option<TerrainMaterial>, ) -> u8 {`
 
 ### `stairs.rs`
 
 #### Funciones y métodos
 
-- [`stairs_direction`](stairs.rs#L13) — La cara hacia la que sube la grada de `coord` cuando el camino que lleva encima queda un bloque entero por encima del camino de uno de sus lados: la dirección contraria a ese vecino más bajo. `None` si el camino sigue a nivel, cae más de un bloque o solo linda con suelo liso. Las caras se leen en el orden del contrato (+x, +y, −x, −y). La regla solo lee el terreno, así que el mundo materializa la grada y la vista la viste con la misma respuesta.
+- [`stairs_direction`](stairs.rs#L16) — La cara hacia la que sube la grada de `coord` cuando el camino que lleva encima queda un bloque entero por encima del camino de uno de sus lados: la dirección contraria a ese vecino más bajo. `None` si el camino sigue a nivel, cae más de un bloque o solo linda con suelo liso. Las caras se leen en el orden del contrato (+x, +y, −x, −y). La regla solo lee el terreno, así que el mundo materializa la grada y la vista la viste con la misma respuesta.
   - Firma: `pub fn stairs_direction( coord: WorldCoord, elevation: i32, at: impl Fn(WorldCoord) -> Option<(TerrainMaterial, i32)>, ) -> Option<WorldCoord> {`
 
-- [`is_road`](stairs.rs#L31) — Si una superficie lleva el camino: sus bloques de camino y las gradas entre sus niveles.
+- [`is_road`](stairs.rs#L33) — Si una superficie lleva el camino: sus bloques de camino y las gradas entre sus niveles.
   - Firma: `pub fn is_road(material: TerrainMaterial) -> bool {`
 
 ### `generation.rs`
 
 #### Funciones y métodos
 
-- [`validate`](generation.rs#L41) — Valida los invariantes de «» y devuelve el resultado de esa comprobación.
+- [`validate`](generation.rs#L41) — Valida la configuración (ruidos finitos en rango, cotas coherentes); `InvalidTerrainConfig` si no.
   - Firma: `pub fn validate(self) -> Result<Self, InvalidTerrainConfig> {`
 
 - [`new`](generation.rs#L66) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
@@ -93,7 +93,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`height_at`](generation.rs#L73) — Altura en una columna absoluta del mundo, independiente del orden de recorrido de chunks.
   - Firma: `pub fn height_at(&self, coord: WorldCoord) -> i32 {`
 
-- [`column_at`](generation.rs#L91) — Calcula o recupera «column at» según los parámetros de la firma.
+- [`column_at`](generation.rs#L91) — Genera la columna de terreno en `coord` (ruido absoluto, determinista por semilla).
   - Firma: `pub fn column_at(&self, coord: WorldCoord) -> TerrainColumn {`
 
 - [`generate_chunk`](generation.rs#L125) — Columnas en orden x-major, incluidos los límites de chunk y las coordenadas con signo.
@@ -141,21 +141,21 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`default`](generation.rs#L25) — Calcula o recupera «default» según los parámetros de la firma.
+- [`default`](generation.rs#L25) — Implementación de `Default`: el generador con `WORLD_SEED` y parámetros estándar.
   - Firma: `fn default() -> Self {`
 
 ### `noise.rs`
 
 #### Funciones internas
 
-- [`hash`](noise.rs#L3) — Calcula o recupera «hash» según los parámetros de la firma.
+- [`hash`](noise.rs#L3) — Hash de `(seed, x, y)` (FNV-1a mezclada): base del ruido determinista.
   - Firma: `fn hash(seed: u64, x: i64, y: i64) -> u64 {`
 
-- [`lattice`](noise.rs#L12) — Calcula o recupera «lattice» según los parámetros de la firma.
+- [`lattice`](noise.rs#L12) — Valor de retícula (0..1) en `(x, y)` para `seed`.
   - Firma: `fn lattice(seed: u64, x: i64, y: i64) -> f64 {`
 
-- [`smooth`](noise.rs#L21) — Calcula o recupera «smooth» según los parámetros de la firma.
+- [`smooth`](noise.rs#L21) — Curva de suavizado cuádrica del interpolante.
   - Firma: `fn smooth(t: f64) -> f64 {`
 
-- [`mix`](noise.rs#L24) — Calcula o recupera «mix» según los parámetros de la firma.
+- [`mix`](noise.rs#L24) — Interpolación lineal entre `a` y `b` por `t`.
   - Firma: `fn mix(a: f64, b: f64, t: f64) -> f64 {`

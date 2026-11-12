@@ -24,10 +24,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`time_of_day`](clock.rs#L44) — Fracción de un día para un desplazamiento con signo; los desplazamientos negativos envuelven al día anterior.
   - Firma: `pub fn time_of_day(tick: i64) -> f64 {`
 
-- [`clock_time`](clock.rs#L48) — Calcula o recupera «clock time» según los parámetros de la firma.
+- [`clock_time`](clock.rs#L48) — Hora del día (`ClockTime`) correspondiente a `tick`.
   - Firma: `pub fn clock_time(tick: u64) -> ClockTime {`
 
-- [`format_clock_time`](clock.rs#L58) — Calcula o recupera «format clock time» según los parámetros de la firma.
+- [`format_clock_time`](clock.rs#L58) — Formatea `time` como `HH:MM` (24 h).
   - Firma: `pub fn format_clock_time(time: ClockTime) -> String {`
 
 #### Constantes
@@ -53,5 +53,5 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`default`](clock.rs#L14) — Calcula o recupera «default» según los parámetros de la firma.
+- [`default`](clock.rs#L14) — Implementación de `Default`: el reloj arranca en `WORLD_START_TICK`.
   - Firma: `fn default() -> Self {`

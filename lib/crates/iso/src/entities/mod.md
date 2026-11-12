@@ -29,63 +29,63 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`restore`](entity.rs#L117) — Restaura una instancia guardada de `blueprint`.
   - Firma: `pub fn restore( x: i32, y: i32, blueprint: &EntityBlueprint, elevation: i32, id: String, color_variant: Option<u32>, metadata: serde_json::Value, ) -> Self {`
 
-- [`x`](entity.rs#L133) — Calcula o recupera «x» según los parámetros de la firma.
+- [`x`](entity.rs#L133) — Columna de mundo ancla de la instancia.
   - Firma: `pub fn x(&self) -> i32 {`
 
-- [`y`](entity.rs#L136) — Calcula o recupera «y» según los parámetros de la firma.
+- [`y`](entity.rs#L136) — Fila de mundo ancla de la instancia.
   - Firma: `pub fn y(&self) -> i32 {`
 
-- [`id`](entity.rs#L139) — Calcula o recupera «id» según los parámetros de la firma.
+- [`id`](entity.rs#L139) — Id estable de la instancia.
   - Firma: `pub fn id(&self) -> &str {`
 
-- [`type_`](entity.rs#L142) — Calcula o recupera «type » según los parámetros de la firma.
+- [`type_`](entity.rs#L142) — Id del blueprint del que brota.
   - Firma: `pub fn type_(&self) -> &str {`
 
-- [`walkable`](entity.rs#L145) — Calcula o recupera «walkable» según los parámetros de la firma.
+- [`walkable`](entity.rs#L145) — Si el blueprint permite pisar su huella.
   - Firma: `pub fn walkable(&self) -> bool {`
 
-- [`elevation`](entity.rs#L148) — Calcula o recupera «elevation» según los parámetros de la firma.
+- [`elevation`](entity.rs#L148) — Nivel del terreno sobre el que se asienta.
   - Firma: `pub fn elevation(&self) -> i32 {`
 
-- [`height`](entity.rs#L151) — Calcula o recupera «height» según los parámetros de la firma.
+- [`height`](entity.rs#L151) — Altura de la instancia en bloques.
   - Firma: `pub fn height(&self) -> i32 {`
 
-- [`length`](entity.rs#L154) — Calcula o recupera «length» según los parámetros de la firma.
+- [`length`](entity.rs#L154) — Longitud de la huella en bloques.
   - Firma: `pub fn length(&self) -> i32 {`
 
-- [`length_axis`](entity.rs#L157) — Calcula o recupera «length axis» según los parámetros de la firma.
+- [`length_axis`](entity.rs#L157) — Eje a lo largo del cual se mide `length` (`None` = una casilla).
   - Firma: `pub fn length_axis(&self) -> Option<EntityLengthAxis> {`
 
-- [`gap`](entity.rs#L160) — Calcula o recupera «gap» según los parámetros de la firma.
+- [`gap`](entity.rs#L160) — Hueco extra que el blueprint pide con instancias del mismo tipo.
   - Firma: `pub fn gap(&self) -> Option<i32> {`
 - [`road_access`](entity.rs) — Indica si la instancia necesita una entrada conectada a la red de caminos.
   - Firma: `pub fn road_access(&self) -> bool {`
 
-- [`texture_source`](entity.rs#L167) — Calcula o recupera «texture source» según los parámetros de la firma.
+- [`texture_source`](entity.rs#L167) — Sprite del atlas (ruta lógica) que la representa.
   - Firma: `pub fn texture_source(&self) -> &str {`
 
-- [`debug`](entity.rs#L170) — Calcula o recupera «debug» según los parámetros de la firma.
+- [`debug`](entity.rs#L170) — Marca de depuración del blueprint (`None` = sin declarar).
   - Firma: `pub fn debug(&self) -> Option<bool> {`
 
-- [`color_replacements`](entity.rs#L173) — Calcula o recupera «color replacements» según los parámetros de la firma.
+- [`color_replacements`](entity.rs#L173) — Sustituciones de color del blueprint (`None` = sin declarar).
   - Firma: `pub fn color_replacements(&self) -> Option<&serde_json::Value> {`
 
-- [`color_variant`](entity.rs#L176) — Calcula o recupera «color variant» según los parámetros de la firma.
+- [`color_variant`](entity.rs#L176) — Tinte elegido para esta instancia (`None` = la del blueprint).
   - Firma: `pub fn color_variant(&self) -> Option<u32> {`
 
-- [`sway`](entity.rs#L179) — Calcula o recupera «sway» según los parámetros de la firma.
+- [`sway`](entity.rs#L179) — Configuración de mece por viento del blueprint (`None` = rígida).
   - Firma: `pub fn sway(&self) -> Option<&EntitySway> {`
 
-- [`collision`](entity.rs#L182) — Calcula o recupera «collision» según los parámetros de la firma.
+- [`collision`](entity.rs#L182) — Colisión del blueprint (`None` = bloque entero).
   - Firma: `pub fn collision(&self) -> Option<&EntityCollision> {`
 
-- [`contact_shadow`](entity.rs#L185) — Calcula o recupera «contact shadow» según los parámetros de la firma.
+- [`contact_shadow`](entity.rs#L185) — Si proyecta sombra propia horneada (`None` = hereda del blueprint).
   - Firma: `pub fn contact_shadow(&self) -> Option<bool> {`
 
-- [`reflection_source`](entity.rs#L188) — Calcula o recupera «reflection source» según los parámetros de la firma.
+- [`reflection_source`](entity.rs#L188) — Sprite de reflejo propio (`None` = el derivado del sprite).
   - Firma: `pub fn reflection_source(&self) -> Option<&str> {`
 
-- [`metadata`](entity.rs#L191) — Calcula o recupera «metadata» según los parámetros de la firma.
+- [`metadata`](entity.rs#L191) — Datos de juego de la instancia (opacos al motor).
   - Firma: `pub fn metadata(&self) -> &serde_json::Value {`
 
 - [`collision_at`](entity.rs#L196) — Lado del cuadrado, centrado en la columna `(x, y)`, en el que la entidad bloquea el movimiento, como un
@@ -110,10 +110,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`new`](placement.rs#L54) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
   - Firma: `pub fn new(columns: &'a CellMap<TerrainColumn>, placed: &'a mut SpatialIndex<Entity>) -> Self {`
 
-- [`column`](placement.rs#L58) — Calcula o recupera «column» según los parámetros de la firma.
+- [`column`](placement.rs#L58) — Referencia a la columna `(x, y)` de las `columns` originales, o `None` fuera del chunk.
   - Firma: `pub fn column(&self, x: i32, y: i32) -> Option<&TerrainColumn> {`
 
-- [`is_taken`](placement.rs#L62) — Evalúa si se cumple la condición «taken» para el estado recibido.
+- [`is_taken`](placement.rs#L62) — Si `(x, y)` ya está reclamada por una huella colocada.
   - Firma: `pub fn is_taken(&self, x: i32, y: i32) -> bool {`
 
 - [`place_entities`](placement.rs#L93) — Coloca entidades sobre `columns` con las reglas por defecto.
@@ -181,10 +181,10 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`eq`](entity.rs#L70) — Calcula o recupera «eq» según los parámetros de la firma.
+- [`eq`](entity.rs#L70) — Igualdad por `data.id` (la identidad de instancia).
   - Firma: `fn eq(&self, other: &Self) -> bool {`
 
-- [`hash`](entity.rs#L76) — Calcula o recupera «hash» según los parámetros de la firma.
+- [`hash`](entity.rs#L76) — Hash por `data.id`, coherente con `eq`.
   - Firma: `fn hash<H: std::hash::Hasher>(&self, state: &mut H) {`
 
 ### `placement.rs`
@@ -194,7 +194,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`placement_roll`](placement.rs#L26) — Roll determinista para un blueprint en una columna, usado como su probabilidad de aparición.
   - Firma: `fn placement_roll(id: &str, x: i32, y: i32) -> u64 {`
 
-- [`default`](placement.rs#L84) — Calcula o recupera «default» según los parámetros de la firma.
+- [`default`](placement.rs#L84) — Implementación de `Default` para `PlacementRules`: `gap`/`density` por defecto.
   - Firma: `fn default() -> Self {`
 
 - [`find_placement`](placement.rs#L262) — Valida una instancia de `blueprint` anclada en `column`.
@@ -208,46 +208,17 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`DEFAULT_DENSITY`](placement.rs#L23) — Columnas por instancia de un blueprint, de media.
   - Declaración: `const DEFAULT_DENSITY: u64 = 400;`
 
-- [`OFFSET`](placement.rs#L27) — Define el parámetro interno «OFFSET» empleado por este módulo.
+- [`OFFSET`](placement.rs#L27) — Semilla base (FNV-1a) del hash de la tirada de colocación.
   - Declaración: `const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;`
 
-- [`PRIME`](placement.rs#L28) — Define el parámetro interno «PRIME» empleado por este módulo.
+- [`PRIME`](placement.rs#L28) — Primo del hash FNV-1a.
   - Declaración: `const PRIME: u64 = 0x1000_0000_01b3;`
-
-### `wfc.rs`
-
-#### Funciones y métodos
-
-- [`weight_of`](wfc.rs#L178) — El peso de `blueprint`, o `0.0` cuando el contenido no lo lista (nunca crece).
-  - Firma: `pub fn weight_of(&self, blueprint: &str) -> f64 {`
-
-- [`parse_wfc`](wfc.rs#L185) — Parsea y valida el contenido wfc contra el catálogo de entidades que referencia, y contra los biomas (cuando se pasan) para exigir un peso a cada blueprint que ningún bioma reclama.
-  - Firma: `pub fn parse_wfc( json: &str, entities: &EntityCatalog, biomes: Option<&crate::biomes::catalog::BiomeCatalog>, ) -> Result<WfcCatalog, WfcError> {`
-
-- [`claimed_by_biomes`](wfc.rs#L347) — Qué blueprints ya reclaman los biomas, en orden de catálogo; el solver omite esos del mosaico.
-  - Firma: `pub fn claimed_by_biomes( entities: &EntityCatalog, biomes: Option<&crate::biomes::field::WorldBiomes>, ) -> Vec<bool> {`
-
-- [`solve_chunk`](wfc.rs#L602) — Resuelve el chunk y devuelve las entidades que crece, en orden de columna. El solver es por chunk y no consulta a los vecinos: cada posibilidad se comprueba contra el terreno, así que un chunk sale igual que junto a sus vecinos; la vacancia siempre es posible, de modo que el mosaico nunca entra en contradicción. Al llegar al techo de `maxPerChunk` para un blueprint o familia, sus posibilidades dejan de crecer en el resto del chunk.
-  - Firma: `pub fn solve_chunk( columns: &[TerrainColumn], catalog: &EntityCatalog, wfc: &WfcCatalog, claimed: &[bool], placed: &mut SpatialIndex<Entity>, seed: u64, ) -> Vec<Entity> {`
-
-#### Constantes
-
-- [`WFC_SCHEMA_VERSION`](wfc.rs#L15) — El esquema de contenido wfc que este validador acepta; la 2 añade `families` y `maxPerChunk`.
-  - Declaración: `pub const WFC_SCHEMA_VERSION: u32 = 2;`
-
-#### Tipos
-
-- [`WfcCatalog`](wfc.rs#L163) — El contenido wfc validado: `emptyWeight` (cuánto pesa «aquí no crece nada» frente a un blueprint), los pesos por blueprint, `families` (grupos que comparten techo: `office` junta `office_x`/`office_y`) y `maxPerChunk` (techo por chunk, indexado por id de familia o de blueprint). Los blueprints que ningún bioma reclama deben aparecer en `weights`, o el mundo se quedaría en silencio.
-  - Declaración: `pub struct WfcCatalog { pub schema_version: u32, pub empty_weight: f64, pub weights: HashMap<String, f64>, pub families: HashMap<String, Vec<String>>, pub max_per_chunk: HashMap<String, f64>, }`
-
-- [`WfcError`](wfc.rs#L22) — Todo lo que el contenido wfc puede declarar mal: esquema no soportado, JSON ilegible, `emptyWeight` o pesos no positivos, `blueprint` que el catálogo de entidades no tiene, un blueprint sin reclamar que nadie pesa; claves de techo ajenas a todo, techos inferiores a 1, familias vacías con blueprints repetidos entre familias o que chocan con un blueprint.
-  - Declaración: `pub enum WfcError { ... }`
 
 ### `validation.rs`
 
 #### Funciones internas
 
-- [`fmt`](validation.rs#L22) — Calcula o recupera «fmt» según los parámetros de la firma.
+- [`fmt`](validation.rs#L22) — Formato del error para `std::fmt::Display`.
   - Firma: `fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {`
 
 - [`validate_blueprint`](validation.rs#L71) — Valida un único blueprint.

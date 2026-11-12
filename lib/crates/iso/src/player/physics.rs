@@ -1171,8 +1171,7 @@ fn step_once<G: PlayerGround>(
         .map(|s| s.elevation as f64)
         .unwrap_or(player.elevation);
     let rise = elevation - feet;
-    // without a surface there is nothing to climb onto: a swimmer's feet are under its own
-    // water top, which is not a step up
+    // No surface, no climb: a swimmer's feet sit under its own water top, not a step up.
     if !airborne && surface.is_some() && rise > PLAYER_STEP_HEIGHT {
         let stairs = surface.is_some_and(|column| column.surface == TerrainMaterial::Stairs);
         let length = (next.x - from.x).hypot(next.y - from.y);
@@ -1375,8 +1374,7 @@ fn step_air<G: PlayerGround>(
         player.vertical_speed = Some(0.0);
         return Some("ceiling");
     }
-    // the water's top is reached, not landed on: the feet stop there for this tick and the
-    // speed they fell at goes on as the plunge under the surface
+    // The water's top is reached, not landed on; the fall speed goes on as the plunge.
     if let Some(level) = water
         && next_speed <= 0.0
         && next_feet < level
@@ -1483,8 +1481,7 @@ fn step_swim(player: &mut PlayerState, level: f64) {
     swim.sink = sink;
     swim.depth = depth;
     swim.ticks = swim.ticks.saturating_add(1);
-    // the swell is drawn on top of the depth, not pushed into it: the buoyancy spring keeps
-    // working from where the body really is
+    // The swell is drawn on the depth, not pushed into it; buoyancy works from the body.
     let moving = player.velocity.x != 0.0 || player.velocity.y != 0.0;
     let bob = float_bob(swim.ticks, float_settle(depth), moving);
     player.elevation = level;
@@ -1591,7 +1588,7 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
         if grounded_at_start {
             player.coyote_ticks = PLAYER_COYOTE_TICKS;
         }
-        // the jump key does nothing in the water: there is nothing to push off
+        // The jump key does nothing in the water: there is nothing to push off.
         if player.swim.is_some() && player.jump_buffer_ticks > 0 {
             player.wants_jump = false;
             player.jump_buffer_ticks = 0;

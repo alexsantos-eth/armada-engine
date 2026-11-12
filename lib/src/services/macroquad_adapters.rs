@@ -1,13 +1,8 @@
 //! Concrete implementations of the iso service traits for the Macroquad client.
 
-use iso::grid::ChunkCoord;
 use iso::player::physics::{ScreenDirections, get_walk_direction};
 use iso::projection::GridPoint;
-use iso::services::{
-    AudioService, ChunkLoader, InputService, NormalizedInput, SoundEvent, UiEvent, UiService,
-};
-use iso::terrain::TerrainColumn;
-use iso::world::ChunkManager;
+use iso::services::{AudioService, InputService, NormalizedInput, SoundEvent, UiEvent, UiService};
 use macroquad::prelude::*;
 
 use crate::touch::{RawTouch, RawTouchPhase, TouchControls};
@@ -109,28 +104,6 @@ impl UiService for MacroquadUi {
             }
             UiEvent::ChunkDiscovered { .. } => {}
         }
-    }
-}
-
-/// Chunk loader backed by a `ChunkManager`.
-#[allow(dead_code)]
-pub struct MacroquadChunkLoader<'a> {
-    pub manager: &'a mut ChunkManager,
-}
-
-impl ChunkLoader for MacroquadChunkLoader<'_> {
-    fn chunk(&self, coord: ChunkCoord) -> Option<&[TerrainColumn]> {
-        self.manager.terrain_chunk(coord)
-    }
-    fn discover(&mut self, coord: ChunkCoord) -> Option<Vec<TerrainColumn>> {
-        if self.manager.is_discovered(coord) {
-            return self.manager.terrain_chunk(coord).map(|c| c.to_vec());
-        }
-        let previous: Vec<ChunkCoord> = self.manager.focus().to_vec();
-        self.manager.set_focus(vec![coord]);
-        self.manager.tick();
-        self.manager.set_focus(previous);
-        self.manager.terrain_chunk(coord).map(|c| c.to_vec())
     }
 }
 

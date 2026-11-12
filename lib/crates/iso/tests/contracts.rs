@@ -217,8 +217,7 @@ fn player_sheet_selection_matches_contract_fixture() {
             walked: sample["walked"].as_f64().unwrap(),
             stood_ms: sample["stoodMs"].as_f64().unwrap(),
             air_pose: sample["airPose"].as_i64().map(|value| value as i32),
-            // the contract fixtures are the shared ones with the web client, which has no
-            // swim sheet: a swim is never selected here
+            // The fixtures are shared with the web client, which has no swim sheet.
             swim: None,
         });
         let expected = &sample["expected"];

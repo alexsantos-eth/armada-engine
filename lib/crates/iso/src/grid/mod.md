@@ -24,62 +24,62 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`is_empty`](cell_map.rs#L42) — Indica si la colección o el estado consultado no contiene elementos.
   - Firma: `pub fn is_empty(&self) -> bool {`
 
-- [`get`](cell_map.rs#L53) — Calcula o recupera «get» según los parámetros de la firma.
+- [`get`](cell_map.rs#L53) — Devuelve una referencia al valor en `(x, y)`, o `None` si la celda está vacía. La coordenada se valida.
   - Firma: `pub fn get(&self, coord: WorldCoord) -> Result<Option<&T>, GridCoordOutOfRange> {`
 
-- [`get_mut`](cell_map.rs#L61) — Obtiene «mut» sin modificar el estado consultado.
+- [`get_mut`](cell_map.rs#L61) — Devuelve una referencia mutable al valor en `(x, y)`, o `None` si la celda está vacía.
   - Firma: `pub fn get_mut(&mut self, coord: WorldCoord) -> Result<Option<&mut T>, GridCoordOutOfRange> {`
 
-- [`contains`](cell_map.rs#L69) — Calcula o recupera «contains» según los parámetros de la firma.
+- [`contains`](cell_map.rs#L69) — Si hay un valor almacenado en `(x, y)`.
   - Firma: `pub fn contains(&self, coord: WorldCoord) -> Result<bool, GridCoordOutOfRange> {`
 
 - [`insert`](cell_map.rs#L74) — Devuelve el valor anterior, si lo hay. Un valor puede ser a su vez un `Option<T>`.
   - Firma: `pub fn insert( &mut self, coord: WorldCoord, value: T, ) -> Result<Option<T>, GridCoordOutOfRange> {`
 
-- [`remove`](cell_map.rs#L102) — Elimina «remove» del estado o colección administrada.
+- [`remove`](cell_map.rs#L102) — Extrae y devuelve el valor en `(x, y)`, o `None` si no había ninguno; el cubo de su chunk se compacta si queda vacío.
   - Firma: `pub fn remove(&mut self, coord: WorldCoord) -> Result<Option<T>, GridCoordOutOfRange> {`
 
-- [`entries`](cell_map.rs#L125) — Calcula o recupera «entries» según los parámetros de la firma.
+- [`entries`](cell_map.rs#L125) — Itera `(coord, valor)` en orden estable: por chunk (orden de primera inserción) y, dentro de cada chunk, por celda en su orden de inserción.
   - Firma: `pub fn entries(&self) -> impl Iterator<Item = (WorldCoord, &T)> {`
 
-- [`values`](cell_map.rs#L137) — Calcula o recupera «values» según los parámetros de la firma.
+- [`values`](cell_map.rs#L137) — Itera los valores en el mismo orden que `entries`.
   - Firma: `pub fn values(&self) -> impl Iterator<Item = &T> {`
 
 ### `coords.rs`
 
 #### Funciones y métodos
 
-- [`assert_grid_coord`](coords.rs#L67) — Calcula o recupera «assert grid coord» según los parámetros de la firma.
+- [`assert_grid_coord`](coords.rs#L67) — Comprueba que `coord` está dentro del rango `±MAX_GRID_COORD`; devuelve `GridCoordOutOfRange` en caso contrario.
   - Firma: `pub fn assert_grid_coord(coord: WorldCoord) -> Result<(), GridCoordOutOfRange> {`
 
-- [`cell_key`](coords.rs#L93) — Calcula o recupera «cell key» según los parámetros de la firma.
+- [`cell_key`](coords.rs#L93) — Empaqueta `coord` en una `CellKey` de 64 bits; error si está fuera de rango.
   - Firma: `pub fn cell_key(coord: WorldCoord) -> Result<CellKey, GridCoordOutOfRange> {`
 
-- [`cell_from_key`](coords.rs#L97) — Calcula o recupera «cell from key» según los parámetros de la firma.
+- [`cell_from_key`](coords.rs#L97) — Desempaqueta una `CellKey` de vuelta a `WorldCoord`.
   - Firma: `pub fn cell_from_key(key: CellKey) -> WorldCoord {`
 
-- [`chunk_key`](coords.rs#L101) — Calcula o recupera «chunk key» según los parámetros de la firma.
+- [`chunk_key`](coords.rs#L101) — Empaqueta `coord` en una `ChunkKey` de 64 bits; error si está fuera de rango.
   - Firma: `pub fn chunk_key(coord: ChunkCoord) -> Result<ChunkKey, GridCoordOutOfRange> {`
 
-- [`chunk_from_key`](coords.rs#L109) — Calcula o recupera «chunk from key» según los parámetros de la firma.
+- [`chunk_from_key`](coords.rs#L109) — Desempaqueta una `ChunkKey` de vuelta a `ChunkCoord`.
   - Firma: `pub fn chunk_from_key(key: ChunkKey) -> ChunkCoord {`
 
-- [`to_chunk_coord`](coords.rs#L117) — Convierte el valor de entrada a «chunk coord» conservando la semántica del tipo de salida.
+- [`to_chunk_coord`](coords.rs#L117) — Chunk que contiene a `coord` usando división euclídea, válida también para coordenadas negativas.
   - Firma: `pub fn to_chunk_coord(coord: WorldCoord) -> ChunkCoord {`
 
-- [`to_local_coord`](coords.rs#L124) — Convierte el valor de entrada a «local coord» conservando la semántica del tipo de salida.
+- [`to_local_coord`](coords.rs#L124) — Coordenada local de `coord` dentro de su chunk (módulo euclídeo, siempre en `0..CHUNK_SIZE`).
   - Firma: `pub fn to_local_coord(coord: WorldCoord) -> LocalCoord {`
 
-- [`to_world_coord`](coords.rs#L131) — Convierte el valor de entrada a «world coord» conservando la semántica del tipo de salida.
+- [`to_world_coord`](coords.rs#L131) — Coordenada de mundo de `local` dentro de `chunk`.
   - Firma: `pub fn to_world_coord(chunk: ChunkCoord, local: LocalCoord) -> WorldCoord {`
 
-- [`chunk_rect`](coords.rs#L138) — Calcula o recupera «chunk rect» según los parámetros de la firma.
+- [`chunk_rect`](coords.rs#L138) — Rectángulo de columnas de mundo (cerrado en ambos extremos) que cubre `chunk`.
   - Firma: `pub fn chunk_rect(chunk: ChunkCoord) -> WorldRect {`
 
-- [`chunks_around`](coords.rs#L147) — Calcula o recupera «chunks around» según los parámetros de la firma.
+- [`chunks_around`](coords.rs#L147) — Todos los chunks del cuadrado de radio `radius` centrado en `centre`, en orden creciente de `c_y` y después de `c_x`.
   - Firma: `pub fn chunks_around(centre: ChunkCoord, radius: i32) -> Vec<ChunkCoord> {`
 
-- [`chunks_in_rect`](coords.rs#L160) — Calcula o recupera «chunks in rect» según los parámetros de la firma.
+- [`chunks_in_rect`](coords.rs#L160) — Los chunks que tocan `rect`, en orden creciente de `c_y` y `c_x`; vacío si el rectángulo es inválido (`max` < `min`).
   - Firma: `pub fn chunks_in_rect(rect: WorldRect) -> Vec<ChunkCoord> {`
 
 - [`as_u64`](coords.rs#L39) — Devuelve la representación numérica estable de una clave de celda.
@@ -109,13 +109,13 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`is_empty`](spatial_index.rs#L68) — Indica si la colección o el estado consultado no contiene elementos.
   - Firma: `pub fn is_empty(&self) -> bool {`
 
-- [`contains`](spatial_index.rs#L81) — Calcula o recupera «contains» según los parámetros de la firma.
+- [`contains`](spatial_index.rs#L81) — Si hay un valor almacenado en `(x, y)`.
   - Firma: `pub fn contains(&self, item: &T) -> bool {`
 
 - [`insert`](spatial_index.rs#L94) — Inserta un elemento, ignorando las casillas repetidas en su huella.
   - Firma: `pub fn insert(&mut self, item: T, cells: &[WorldCoord]) -> Result<(), SpatialIndexError> {`
 
-- [`remove`](spatial_index.rs#L119) — Elimina «remove» del estado o colección administrada.
+- [`remove`](spatial_index.rs#L119) — Extrae y devuelve el valor en `(x, y)`, o `None` si no había ninguno; el cubo de su chunk se compacta si queda vacío.
   - Firma: `pub fn remove(&mut self, item: &T) -> bool {`
 
 - [`move_item`](spatial_index.rs#L172) — Mueve un elemento existente o inserta uno que falta. Las coordenadas inválidas dejan el índice intacto.
@@ -124,22 +124,22 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`at`](spatial_index.rs#L181) — Elementos que ocupan `cell`, en orden de inserción.
   - Firma: `pub fn at(&self, cell: WorldCoord) -> impl Iterator<Item = &T> {`
 
-- [`is_occupied`](spatial_index.rs#L190) — Evalúa si se cumple la condición «occupied» para el estado recibido.
+- [`is_occupied`](spatial_index.rs#L190) — Si al menos un item vivo tiene `cell` en su huella.
   - Firma: `pub fn is_occupied(&self, cell: WorldCoord) -> bool {`
 
-- [`cells_of`](spatial_index.rs#L194) — Calcula o recupera «cells of» según los parámetros de la firma.
+- [`cells_of`](spatial_index.rs#L194) — La huella (casillas) de `item`, o un corte vacío si no está indexado.
   - Firma: `pub fn cells_of(&self, item: &T) -> &[WorldCoord] {`
 
-- [`items`](spatial_index.rs#L200) — Calcula o recupera «items» según los parámetros de la firma.
+- [`items`](spatial_index.rs#L200) — Itera los items vivos en orden de inserción.
   - Firma: `pub fn items(&self) -> impl Iterator<Item = &T> {`
 
-- [`query_rect`](spatial_index.rs#L204) — Calcula o recupera «query rect» según los parámetros de la firma.
+- [`query_rect`](spatial_index.rs#L204) — Los items vivos cuya huella toca `rect`, en orden de inserción y sin repetidos.
   - Firma: `pub fn query_rect(&self, rect: WorldRect) -> Vec<&T> {`
 
-- [`query_rect_where`](spatial_index.rs#L208) — Calcula o recupera «query rect where» según los parámetros de la firma.
+- [`query_rect_where`](spatial_index.rs#L208) — Como `query_rect` pero solo los items que pasan `filter`.
   - Firma: `pub fn query_rect_where(&self, rect: WorldRect, mut filter: impl FnMut(&T) -> bool) -> Vec<&T> {`
 
-- [`any_in_rect`](spatial_index.rs#L226) — Calcula o recupera «any in rect» según los parámetros de la firma.
+- [`any_in_rect`](spatial_index.rs#L226) — Si algún item vivo pasa `filter` y toca `rect`; elige la vía más barata entre recorrer el rect o los items.
   - Firma: `pub fn any_in_rect(&self, rect: WorldRect, mut filter: impl FnMut(&T) -> bool) -> bool {`
 
 - [`query_radius`](spatial_index.rs#L254) — Consulta por radio de Chebyshev, incluidas las casillas diagonales.
@@ -154,41 +154,41 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`default`](cell_map.rs#L24) — Calcula o recupera «default» según los parámetros de la firma.
+- [`default`](cell_map.rs#L24) — Implementación de `Default`: el contenedor vacío.
   - Firma: `fn default() -> Self {`
 
-- [`location`](cell_map.rs#L46) — Calcula o recupera «location» según los parámetros de la firma.
+- [`location`](cell_map.rs#L46) — Resuelve `(chunk, índice local)` de una coordenada, validando el rango.
   - Firma: `fn location(coord: WorldCoord) -> Result<(ChunkCoord, i32), GridCoordOutOfRange> {`
 
 ### `coords.rs`
 
 #### Funciones internas
 
-- [`fmt`](coords.rs#L60) — Calcula o recupera «fmt» según los parámetros de la firma.
+- [`fmt`](coords.rs#L60) — Formato del error para `std::fmt::Display`.
   - Firma: `fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {`
 
-- [`pack_key`](coords.rs#L79) — Calcula o recupera «pack key» según los parámetros de la firma.
+- [`pack_key`](coords.rs#L79) — Empaqueta una coordenada ya validada en `u64` (`x * SPAN + y`).
   - Firma: `fn pack_key(coord: WorldCoord) -> Result<u64, GridCoordOutOfRange> {`
 
-- [`unpack_key`](coords.rs#L86) — Calcula o recupera «unpack key» según los parámetros de la firma.
+- [`unpack_key`](coords.rs#L86) — Inversa de `pack_key`.
   - Firma: `fn unpack_key(key: u64) -> WorldCoord {`
 
 #### Constantes internas
 
-- [`SPAN`](coords.rs#L7) — Define el parámetro interno «SPAN» empleado por este módulo.
+- [`SPAN`](coords.rs#L7) — Capacidad de cada eje en la clave empaquetada: `2 * MAX_GRID_COORD + 1`.
   - Declaración: `const SPAN: u64 = (2 * MAX_GRID_COORD + 1) as u64;`
 
 ### `spatial_index.rs`
 
 #### Funciones internas
 
-- [`default`](spatial_index.rs#L25) — Calcula o recupera «default» según los parámetros de la firma.
+- [`default`](spatial_index.rs#L25) — Implementación de `Default`: el contenedor vacío.
   - Firma: `fn default() -> Self {`
 
-- [`hash_of`](spatial_index.rs#L36) — Calcula o recupera «hash of» según los parámetros de la firma.
+- [`hash_of`](spatial_index.rs#L36) — Hash por defecto (`DefaultHasher`) de un item.
   - Firma: `fn hash_of<T: Hash>(item: &T) -> u64 {`
 
-- [`fmt`](spatial_index.rs#L49) — Calcula o recupera «fmt» según los parámetros de la firma.
+- [`fmt`](spatial_index.rs#L49) — Formato del error para `std::fmt::Display`.
   - Firma: `fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {`
 
 - [`slot_of`](spatial_index.rs#L73) — Slot que contiene `item`, encontrado por hash y confirmado por igualdad.

@@ -188,8 +188,7 @@ impl DustPuffs {
             );
         }
         if feedback.splashes != self.seen_splashes {
-            // the crown of water rises from the surface it broke, not from the sunken feet, and
-            // the ring runs out from the same place
+            // The crown and the ring rise from the surface it broke, not from the sunken feet.
             let surface = DustGround {
                 level: at.ground,
                 ..at
@@ -249,8 +248,7 @@ impl DustPuffs {
             self.run_puff = (self.run_puff + 1) % RUN_PUFFS;
             return;
         }
-        // a swimmer's wake is a pair of crests on the surface, one to each side of the way it
-        // came, rising a little behind the body so the water closes behind it
+        // The wake is a pair of crests on the surface, one each side, closing behind the body.
         let surface_at = DustGround {
             level: at.ground,
             ..at

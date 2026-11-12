@@ -87,7 +87,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`next_unload_candidate`](chunk_manager.rs#L456) — El único chunk que [`Self::unload_candidates`] devolvería primero, sin construir la
   - Firma: `pub fn next_unload_candidate(&self) -> Option<ChunkCoord> {`
 
-- [`unload_chunk`](chunk_manager.rs#L477) — Calcula o recupera «unload chunk» según los parámetros de la firma.
+- [`unload_chunk`](chunk_manager.rs#L477) — Descubre o devuelve la forma guardada del chunk; `None` si no estaba descubierto.
   - Firma: `pub fn unload_chunk(&mut self, coord: ChunkCoord) -> Option<crate::world::save::SavedChunk> {`
 
 ### `save.rs`
@@ -154,10 +154,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`hide_chunk`](terrain_world.rs#L64) — Elimina la visibilidad de presentación sin descartar el terreno descubierto.
   - Firma: `pub fn hide_chunk(&mut self, coord: ChunkCoord) {`
 
-- [`chunk`](terrain_world.rs#L68) — Calcula o recupera «chunk» según los parámetros de la firma.
+- [`chunk`](terrain_world.rs#L68) — Las columnas de `coord` si está descubierto; `None` si no.
   - Firma: `pub fn chunk(&self, coord: ChunkCoord) -> Option<&[TerrainColumn]> {`
 
-- [`column_at`](terrain_world.rs#L72) — Calcula o recupera «column at» según los parámetros de la firma.
+- [`column_at`](terrain_world.rs#L72) — La columna de mundo en `(x, y)`; `None` si el chunk no está descubierto.
   - Firma: `pub fn column_at(&self, coord: WorldCoord) -> Option<&TerrainColumn> {`
 
 - [`is_discovered`](terrain_world.rs#L81) — Si un chunk ha sido descubierto (materializado al menos una vez).
@@ -171,10 +171,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`connect_roads`](terrain_world.rs#L116) — Materializa caminos entre las entidades con acceso vial de un chunk descubierto, sin tocar sus huellas.
   - Firma: `pub fn connect_roads(&mut self, coord: ChunkCoord, entities: &[Entity]) -> usize {`
 
-- [`discovered_count`](terrain_world.rs#L139) — Calcula o recupera «discovered count» según los parámetros de la firma.
+- [`discovered_count`](terrain_world.rs#L139) — Chunks descubiertos en memoria.
   - Firma: `pub fn discovered_count(&self) -> usize {`
 
-- [`visible_count`](terrain_world.rs#L143) — Calcula o recupera «visible count» según los parámetros de la firma.
+- [`visible_count`](terrain_world.rs#L143) — Chunks actualmente visibles.
   - Firma: `pub fn visible_count(&self) -> usize {`
 
 - [`visible_chunks`](terrain_world.rs#L148) — Coordenadas de los chunks visibles en un orden estable, independientemente del orden de descubrimiento.
@@ -195,14 +195,11 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`default`](chunk_manager.rs#L29) — Calcula o recupera «default» según los parámetros de la firma.
+- [`default`](chunk_manager.rs#L29) — Implementación de `Default`: los radios por defecto (`load`/`prefetch`/`keep`).
   - Firma: `fn default() -> Self {`
 
 - [`poll_jobs`](chunk_manager.rs#L206) — Aplica los trabajos que ya están listos, en el orden en que se crearon; un trabajo cuyo chunk está gobernado por un guardado o que ya no está descubierto se descarta en silencio.
   - Firma: `fn poll_jobs(&mut self) {`
-
-- [`settle`](chunk_manager.rs#L225) — Espera y aplica a todos los trabajos en vuelo, en orden; llamada dentro de `save_all` y `unload_chunk`.
-  - Firma: `pub fn settle(&mut self) {`
 
 - [`drain_job`](chunk_manager.rs#L236) — Espera al trabajo de `coord` antes de descargar el chunk, para que el guardado lleve las entidades recién colocadas.
   - Firma: `fn drain_job(&mut self, coord: ChunkCoord) {`
@@ -213,7 +210,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`chunks_within`](chunk_manager.rs#L409) — Todos los chunks dentro de `radius` de cualquier foco, sin duplicados y ordenados de los más cercanos primero.
   - Firma: `fn chunks_within(&self, radius: i32) -> Vec<ChunkCoord> {`
 
-- [`is_within_keep`](chunk_manager.rs#L429) — Evalúa si se cumple la condición «within keep» para el estado recibido.
+- [`is_within_keep`](chunk_manager.rs#L429) — Si `coord` está dentro del radio `keep` de algún foco.
   - Firma: `fn is_within_keep(&self, coord: ChunkCoord) -> bool {`
 
 - [`saved_entity_state`](chunk_manager.rs#L487) — El estado por instancia que un guardado debe llevar: todo lo que `Entity::restore` no puede reconstruir a partir de
@@ -222,7 +219,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`distance`](chunk_manager.rs#L499) — Distancia de Chebyshev entre dos coordenadas de chunk.
   - Firma: `fn distance(a: ChunkCoord, b: ChunkCoord) -> i32 {`
 
-- [`default`](chunk_manager.rs#L29) — Calcula o recupera «default» según los parámetros de la firma.
+- [`default`](chunk_manager.rs#L29) — Implementación de `Default`: los radios por defecto (`load`/`prefetch`/`keep`).
   - Firma: `fn default() -> Self {`
 
 ### `terrain_world.rs`
@@ -263,26 +260,26 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`fmt`](save.rs#L76) — Calcula o recupera «fmt» según los parámetros de la firma.
+- [`fmt`](save.rs#L76) — Formato legible del error de guardado (`Display`).
   - Firma: `fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {`
 
-- [`parse_chunk`](save.rs#L291) — Calcula o recupera «parse chunk» según los parámetros de la firma.
+- [`parse_chunk`](save.rs#L291) — Parsea un chunk del JSON; `index` entra en los mensajes de error.
   - Firma: `fn parse_chunk(value: &serde_json::Value, index: usize) -> Result<SavedChunk, SaveError> {`
 
-- [`parse_columns`](save.rs#L332) — Calcula o recupera «parse columns» según los parámetros de la firma.
+- [`parse_columns`](save.rs#L332) — Parsea la lista de columnas del chunk guardado.
   - Firma: `fn parse_columns( obj: &serde_json::Map<String, serde_json::Value>, key: &str, cx: i32, cy: i32, ) -> Result<Vec<SavedColumn>, SaveError> {`
 
-- [`parse_column`](save.rs#L352) — Calcula o recupera «parse column» según los parámetros de la firma.
+- [`parse_column`](save.rs#L352) — Parsea una columna individual del guardado.
   - Firma: `fn parse_column( value: &serde_json::Value, cx: i32, cy: i32, index: usize, ) -> Result<SavedColumn, SaveError> {`
 
-- [`parse_blocks`](save.rs#L405) — Calcula o recupera «parse blocks» según los parámetros de la firma.
+- [`parse_blocks`](save.rs#L405) — Parsea la lista de bloques del chunk guardado.
   - Firma: `fn parse_blocks( obj: &serde_json::Map<String, serde_json::Value>, key: &str, cx: i32, cy: i32, column_index: usize, ) -> Result<Vec<SavedBlock>, SaveError> {`
 
-- [`parse_block`](save.rs#L426) — Calcula o recupera «parse block» según los parámetros de la firma.
+- [`parse_block`](save.rs#L426) — Parsea un bloque de una columna guardada.
   - Firma: `fn parse_block( value: &serde_json::Value, cx: i32, cy: i32, column_index: usize, block_index: usize, ) -> Result<SavedBlock, SaveError> {`
 
-- [`parse_entities`](save.rs#L478) — Calcula o recupera «parse entities» según los parámetros de la firma.
+- [`parse_entities`](save.rs#L479) — Parsea la lista de entidades del chunk guardado.
   - Firma: `fn parse_entities( obj: &serde_json::Map<String, serde_json::Value>, key: &str, cx: i32, cy: i32, ) -> Result<Vec<SavedEntity>, SaveError> {`
 
-- [`parse_entity`](save.rs#L498) — Calcula o recupera «parse entity» según los parámetros de la firma.
+- [`parse_entity`](save.rs#L499) — Parsea una entidad guardada.
   - Firma: `fn parse_entity( value: &serde_json::Value, cx: i32, cy: i32, index: usize, ) -> Result<SavedEntity, SaveError> {`
