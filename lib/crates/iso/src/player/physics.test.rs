@@ -651,6 +651,120 @@ fn walk_into_flight_side(ground: &mut CellGround) -> PlayerState {
     player
 }
 
+/// Falling onto a corner with a fat obstacle in the lateral block must not wedge the player:
+/// it lands (the rounded cell is clear), the overlap it fell into may not deepen further
+/// in any axis, but sliding or stepping out must pass, otherwise it is frozen for good.
+#[test]
+fn a_player_dropped_at_a_corner_beside_an_obstacle_walks_out_of_it() {
+    let mut ground = ground_from(&["00000", "00000", "00000"]);
+    ground
+        .occupancy
+        .insert(WorldCoord { x: 3, y: 0 }, vec![obstacle(1.0)]);
+    let mut player = create_player(&ground, GridPoint { x: 2.5, y: 0.5 });
+    player.elevation = 0.0;
+    player.height = 2.0;
+    player.vertical_speed = Some(0.0);
+    for _ in 0..60 {
+        step_player(&mut player, &mut ground, 1);
+        if player.vertical_speed.is_none() && player.height == 0.0 {
+            break;
+        }
+    }
+    assert!(
+        player.vertical_speed.is_none() && player.height == 0.0,
+        "it lands beside the obstacle"
+    );
+    assert_eq!(player.elevation, 0.0);
+
+    set_player_walk(
+        &mut player,
+        ScreenDirections {
+            left: true,
+            ..Default::default()
+        },
+    );
+    for _ in 0..10 {
+        step_player(&mut player, &mut ground, 1);
+    }
+    assert!(
+        player.x < 2.0,
+        "it walks out of the corner back along the face, not frozen: x = {}",
+        player.x
+    );
+    assert_eq!(player.elevation, 0.0);
+}
+
+/// The corner where the foot's low side meets the flight: falling straight into it leaves the
+/// body overlapping the flight below its rim, which the side wall forbids the body from
+/// entering. The overlap must not be allowed to grow, not to freeze the player for good —
+/// every move that slides out or away must pass.
+#[test]
+fn a_player_dropped_on_a_flights_corner_walks_back_off_it() {
+    let mut ground = ground_from(&["00000", "01000", "00000"]);
+    ground
+        .columns
+        .get_mut(&WorldCoord { x: 1, y: 1 })
+        .unwrap()
+        .surface = TerrainMaterial::Stairs;
+    ground
+        .columns
+        .get_mut(&WorldCoord { x: 1, y: 0 })
+        .unwrap()
+        .surface = TerrainMaterial::Path;
+    let mut player = create_player(&ground, GridPoint { x: 1.5, y: 0.5 });
+    player.elevation = 0.0;
+    player.height = 2.0;
+    player.vertical_speed = Some(0.0);
+    for _ in 0..60 {
+        step_player(&mut player, &mut ground, 1);
+        if player.vertical_speed.is_none() && player.height == 0.0 {
+            break;
+        }
+    }
+    assert!(
+        player.vertical_speed.is_none() && player.height == 0.0,
+        "it lands on the low cell's top"
+    );
+    assert_eq!(player.elevation, 0.0, "on the foot's level");
+
+    set_player_walk(
+        &mut player,
+        ScreenDirections {
+            left: true,
+            ..Default::default()
+        },
+    );
+    for _ in 0..10 {
+        step_player(&mut player, &mut ground, 1);
+    }
+    assert!(
+        (player.x - 1.5).abs() < 1e-9,
+        "the side is still a wall from the corner: x = {}",
+        player.x
+    );
+    assert!(
+        player.climb.is_none(),
+        "it does not climb the side of the flight"
+    );
+
+    set_player_walk(
+        &mut player,
+        ScreenDirections {
+            right: true,
+            ..Default::default()
+        },
+    );
+    for _ in 0..10 {
+        step_player(&mut player, &mut ground, 1);
+    }
+    assert!(
+        player.x > 2.0,
+        "it walks out of the corner instead of freezing in it: x = {}",
+        player.x
+    );
+    assert_eq!(player.elevation, 0.0);
+}
+
 /// A flight is taken from its foot, never over its sides: from the side it is a wall like any
 #[test]
 fn a_flight_is_a_wall_from_its_sides() {

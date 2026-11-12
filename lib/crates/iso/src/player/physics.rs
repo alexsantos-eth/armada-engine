@@ -390,10 +390,32 @@ fn flight_direction<G: PlayerGround>(ground: &G, coord: WorldCoord) -> Option<Wo
     })
 }
 
+/// The way a body of `PLAYER_RADIUS` overlaps the cell, on each axis. Zero on an axis means
+/// the body does not reach into the cell there.
+fn body_overlap(point: GridPoint, x: i32, y: i32) -> (f64, f64) {
+    let extent =
+        |from: f64, to: f64, cell: f64| (to.min(cell + 0.5) - from.max(cell - 0.5)).max(0.0);
+    (
+        extent(
+            point.x - PLAYER_RADIUS,
+            point.x + PLAYER_RADIUS,
+            f64::from(x),
+        ),
+        extent(
+            point.y - PLAYER_RADIUS,
+            point.y + PLAYER_RADIUS,
+            f64::from(y),
+        ),
+    )
+}
+
 /// Whether a walking player with its feet at `feet` may move from `from` to `to`. A flight of
 /// stairs is only ever taken from its foot, the column it climbs away from, so from anywhere
 /// else its side is a wall the body stops against, like any other block's, and is cleared the
-/// way any block is, by jumping. Every move that does not reach up onto a flight passes.
+/// way any block is, by jumping. Every move that does not reach up onto a flight passes. A
+/// player who fell into an overlap with a flight's side may not deepen it, but may slide or
+/// step away: the overlap may not grow on either axis, or walking out of a corner would be
+/// impossible.
 fn may_step_onto<G: PlayerGround>(ground: &G, from: GridPoint, to: GridPoint, feet: f64) -> bool {
     let standing = get_player_column(from);
     let body = get_player_cells(to);
@@ -417,18 +439,32 @@ fn may_step_onto<G: PlayerGround>(ground: &G, from: GridPoint, to: GridPoint, fe
                 y: coord.y - up.y,
             };
             if standing != foot {
-                return false;
+                let (from_x, from_y) = body_overlap(from, x, y);
+                let (to_x, to_y) = body_overlap(to, x, y);
+                if to_x > from_x + 1e-9 || to_y > from_y + 1e-9 {
+                    return false;
+                }
             }
         }
     }
     true
 }
 
-fn fits_in_air<G: PlayerGround>(ground: &G, point: GridPoint, feet: f64) -> bool {
-    block_reason_at(ground, point, 0.0, feet, true, PLAYER_MAX_CLIMB).is_none()
+fn fits_in_air<G: PlayerGround>(
+    ground: &G,
+    point: GridPoint,
+    from: Option<GridPoint>,
+    feet: f64,
+) -> bool {
+    block_reason_at(ground, point, from, 0.0, feet, true, PLAYER_MAX_CLIMB).is_none()
 }
 
-fn can_leave_edge<G: PlayerGround>(ground: &G, point: GridPoint, feet: f64) -> bool {
+fn can_leave_edge<G: PlayerGround>(
+    ground: &G,
+    point: GridPoint,
+    from: Option<GridPoint>,
+    feet: f64,
+) -> bool {
     let cells = get_player_cells(point);
     let mut missing = false;
     for x in cells.min_x..=cells.max_x {
@@ -439,12 +475,21 @@ fn can_leave_edge<G: PlayerGround>(ground: &G, point: GridPoint, feet: f64) -> b
             }
         }
     }
-    missing && fits_in_air(ground, point, feet)
+    missing && fits_in_air(ground, point, from, feet)
+}
+
+/// The overlap of one axis between the body's square and the obstacle's square centred on
+/// `cell` with side `side`. Zero means the body does not reach into it there.
+fn square_overlap(centre: f64, cell: f64, side: f64) -> f64 {
+    let overlap = (centre + PLAYER_RADIUS).min(cell + side / 2.0)
+        - (centre - PLAYER_RADIUS).max(cell - side / 2.0);
+    overlap.max(0.0)
 }
 
 fn block_reason_at<G: PlayerGround>(
     ground: &G,
     point: GridPoint,
+    from: Option<GridPoint>,
     elevation: f64,
     feet: f64,
     airborne: bool,
@@ -475,10 +520,20 @@ fn block_reason_at<G: PlayerGround>(
                 if side <= 0.0 {
                     continue;
                 }
-                if (point.x - x as f64).abs() >= PLAYER_RADIUS + side / 2.0 {
+                let to_x = square_overlap(point.x, f64::from(x), side);
+                let to_y = square_overlap(point.y, f64::from(y), side);
+                if to_x <= 0.0 || to_y <= 0.0 {
                     continue;
                 }
-                if (point.y - y as f64).abs() >= PLAYER_RADIUS + side / 2.0 {
+                let blocked = match from {
+                    Some(from) => {
+                        let from_x = square_overlap(from.x, f64::from(x), side);
+                        let from_y = square_overlap(from.y, f64::from(y), side);
+                        to_x > from_x + 1e-9 || to_y > from_y + 1e-9
+                    }
+                    None => true,
+                };
+                if !blocked {
                     continue;
                 }
                 if !airborne {
@@ -502,17 +557,20 @@ fn block_reason_at<G: PlayerGround>(
 }
 
 fn fits_at<G: PlayerGround>(ground: &G, point: GridPoint, from_elevation: f64) -> bool {
-    fits_within(ground, point, from_elevation, PLAYER_MAX_CLIMB)
+    fits_within(ground, point, None, from_elevation, PLAYER_MAX_CLIMB)
 }
 
 /// `fits_at` with the reach spelled out: a swimmer pulls itself further up than a walker steps.
+/// `from` is the body's own air/ground position, when the caller has one: an overlap that
+/// deepens from it is rejected, one that merely slides or steps out is not.
 fn fits_within<G: PlayerGround>(
     ground: &G,
     point: GridPoint,
+    from: Option<GridPoint>,
     from_elevation: f64,
     reach: f64,
 ) -> bool {
-    block_reason_at(ground, point, from_elevation, 0.0, false, reach).is_none()
+    block_reason_at(ground, point, from, from_elevation, 0.0, false, reach).is_none()
 }
 
 fn elevation_at<G: PlayerGround>(ground: &G, point: GridPoint) -> f64 {
@@ -931,11 +989,11 @@ fn step_once<G: PlayerGround>(
     };
     let fits = |point: GridPoint| -> bool {
         if airborne {
-            fits_in_air(ground, point, clearance_feet)
+            fits_in_air(ground, point, Some(from), clearance_feet)
         } else {
             may_step_onto(ground, from, point, feet)
-                && (fits_within(ground, point, player.elevation, reach)
-                    || can_leave_edge(ground, point, feet))
+                && (fits_within(ground, point, Some(from), player.elevation, reach)
+                    || can_leave_edge(ground, point, Some(from), feet))
         }
     };
     let mut next: Option<GridPoint> = None;
@@ -992,6 +1050,7 @@ fn step_once<G: PlayerGround>(
                 return block_reason_at(
                     ground,
                     moves[0],
+                    Some(from),
                     player.elevation,
                     clearance_feet,
                     airborne,
@@ -1051,7 +1110,7 @@ fn step_once<G: PlayerGround>(
         let on_top = get_player_column(further);
         let fits_top = on_top.x == column.x
             && on_top.y == column.y
-            && fits_within(ground, further, elevation, reach);
+            && fits_within(ground, further, None, elevation, reach);
         let to = if fits_top { further } else { next };
         let ticks = if stairs {
             PLAYER_STAIRS_TICKS
