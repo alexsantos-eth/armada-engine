@@ -392,6 +392,36 @@ fn stepping_onto_a_plain_block_keeps_the_ledge_climb() {
     assert_eq!(climb.ticks, PLAYER_CLIMB_TICKS);
 }
 
+/// A flight whose far end is closed by an entity in the next block ends as far along
+/// the flight as the body fits, not back at its foot.
+#[test]
+fn a_flight_ends_next_to_the_entity_at_its_far_end() {
+    let mut ground = stairs_ground();
+    ground.occupancy.insert(
+        WorldCoord { x: 3, y: 1 },
+        vec![PlayerObstacle {
+            walkable: false,
+            height: Some(1.0),
+            elevation: Some(1.0),
+            collision_at: Some(1.0),
+        }],
+    );
+    let mut player = walk_onto_stairs(&mut ground);
+    assert!(player.climb.is_some(), "the player starts the flight");
+    let mut feet_at_top = None;
+    for _ in 0..PLAYER_STAIRS_TICKS {
+        step_player(&mut player, &mut ground, 1);
+        if player.elevation >= 1.0 - 1e-9 && feet_at_top.is_none() {
+            feet_at_top = Some(player.x);
+        }
+    }
+    let end = feet_at_top.expect("the flight reaches the top");
+    assert!(
+        end > 2.2,
+        "the flight ends near the far edge of its top face, not at its start: {end}"
+    );
+}
+
 /// Up a flight the player takes the treads one at a time, hopping onto each one.
 #[test]
 fn a_flight_hops_its_player_up_its_treads_one_at_a_time() {
