@@ -408,17 +408,19 @@ fn a_flight_ends_next_to_the_entity_at_its_far_end() {
     );
     let mut player = walk_onto_stairs(&mut ground);
     assert!(player.climb.is_some(), "the player starts the flight");
-    let mut feet_at_top = None;
     for _ in 0..PLAYER_STAIRS_TICKS {
         step_player(&mut player, &mut ground, 1);
-        if player.elevation >= 1.0 - 1e-9 && feet_at_top.is_none() {
-            feet_at_top = Some(player.x);
-        }
     }
-    let end = feet_at_top.expect("the flight reaches the top");
+    let end = player.x;
+    step_player(&mut player, &mut ground, 1);
+    assert!(player.climb.is_none(), "and the flight is over");
     assert!(
-        end > 2.2,
-        "the flight ends near the far edge of its top face, not at its start: {end}"
+        end > 2.25,
+        "the flight ends at the far edge of its top face, not at its start: {end}"
+    );
+    assert!(
+        end <= 2.3 + 1e-6,
+        "and the body stops clear of the entity, not inside it: {end}"
     );
 }
 

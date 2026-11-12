@@ -581,6 +581,36 @@ fn elevation_at<G: PlayerGround>(ground: &G, point: GridPoint) -> f64 {
         .unwrap_or(0.0)
 }
 
+/// The furthest point along `[near, far]` whose body fits, for when the far end of a
+/// flight of stairs is closed by an entity: a flight ends as far along its block as the
+/// body stands clear, never back at its foot. `near` is the point the current step landed
+/// on, which is free of obstacles by construction.
+fn farthest_clear_point<G: PlayerGround>(
+    ground: &G,
+    near: GridPoint,
+    far: GridPoint,
+    elevation: f64,
+    reach: f64,
+) -> GridPoint {
+    if !fits_within(ground, near, None, elevation, reach) {
+        return near;
+    }
+    let mut best = near;
+    let mut blocked = far;
+    for _ in 0..16 {
+        let mid = GridPoint {
+            x: (best.x + blocked.x) / 2.0,
+            y: (best.y + blocked.y) / 2.0,
+        };
+        if fits_within(ground, mid, None, elevation, reach) {
+            best = mid;
+        } else {
+            blocked = mid;
+        }
+    }
+    best
+}
+
 pub fn find_player_spawn<G: PlayerGround>(ground: &G, centre: GridPoint) -> PlayerPosition {
     let distance = |column: &TerrainColumn| -> f64 {
         (column.coord.x as f64 - centre.x).powi(2) + (column.coord.y as f64 - centre.y).powi(2)
@@ -1111,7 +1141,13 @@ fn step_once<G: PlayerGround>(
         let fits_top = on_top.x == column.x
             && on_top.y == column.y
             && fits_within(ground, further, None, elevation, reach);
-        let to = if fits_top { further } else { next };
+        let to = if fits_top {
+            further
+        } else if stairs {
+            farthest_clear_point(ground, next, further, elevation, reach)
+        } else {
+            next
+        };
         let ticks = if stairs {
             PLAYER_STAIRS_TICKS
         } else {

@@ -291,7 +291,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`PLAYER_STAIRS_TICKS`](physics.rs) — Ticks que dura una grada de un bloque: se sube andando, no izándose.
   - Declaración: `pub const PLAYER_STAIRS_TICKS: i32 = 16;`
 
-- [`PLAYER_STAIRS_REACH`](physics.rs) — Columnas del bloque de gradas que el jugador ha cruzado al llegar arriba, medidas desde el borde por el que entró: cruza casi el bloque entero.
+- [`PLAYER_STAIRS_REACH`](physics.rs) — Columnas del bloque de gradas que el jugador ha cruzado al llegar arriba, medidas desde el borde por el que entró: cruza casi el bloque entero. Si la entidad del bloque siguiente cierra el paso, el vuelo termina en el punto más avanzado cuyo cuerpo cabe sin solaparla (`farthest_clear_point`), no de vuelta al pie.
   - Declaración: `pub const PLAYER_STAIRS_REACH: f64 = 0.95;`
 
 - [`PLAYER_STAIRS_DESCENT_SHARE`](physics.rs) — Parte de la cara superior de una grada que el jugador cruza desde su borde de arriba antes de empezar a bajar los escalones: el último tramo de cima llana en el que se queda de pie.
@@ -405,6 +405,9 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 - [`block_reason_at`](physics.rs#L336) — Calcula o recupera «block reason at» según los parámetros de la firma.
   - Firma: `fn block_reason_at<G: PlayerGround>( ground: &G, point: GridPoint, elevation: f64, feet: f64, airborne: bool, ) -> Option<PlayerBlockReason> {`
+
+- [`farthest_clear_point`](physics.rs#L588) — El punto más avanzado del segmento `[near, far]` cuya casilla ocupa el cuerpo sin solapar nada. Lo usa el final de una grada cerrada por una entidad: el vuelo termina lo más lejos posible dentro del bloque, nunca de vuelta al pie.
+  - Firma: `fn farthest_clear_point<G: PlayerGround>( ground: &G, near: GridPoint, far: GridPoint, elevation: f64, reach: f64, ) -> GridPoint {`
 
 - [`fits_at`](physics.rs#L394) — Calcula o recupera «fits at» según los parámetros de la firma.
   - Firma: `fn fits_at<G: PlayerGround>(ground: &G, point: GridPoint, from_elevation: f64) -> bool {`
