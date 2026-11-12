@@ -67,6 +67,16 @@ impl TintZones {
     pub fn at(&self, x: i32, y: i32) -> u32 {
         self.colors[zone_index(self.field.sample(x, y), self.colors.len())]
     }
+
+    /// How many zones this palette holds: what a chosen zone is an index into.
+    pub fn zone_count(&self) -> usize {
+        self.colors.len()
+    }
+
+    /// The multiplier of zone `zone`, clamped to the palette.
+    pub fn color(&self, zone: usize) -> u32 {
+        self.colors[zone.min(self.colors.len() - 1)]
+    }
 }
 
 /// Which of `count` equal shares of `[0, 1]` the field value `value` falls in.

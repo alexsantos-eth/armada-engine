@@ -17,7 +17,7 @@ lib/
   content/        # manifiesto de assets, atlas, catálogo de entidades y biomas
   assets-src/     # SVG fuente del atlas (copia local, no se despliega)
   packaging/      # fuente e icns del icono del bundle macOS (no se despliega)
-  web/            # cargador WASM y archivos web (`/` limpio, `/playground` con GUI)
+  web/            # cargador WASM y archivos web (`/` limpio, `/playground` con GUI, `/maker` editor)
   scripts/        # utilidades de atlas, icono y ejecución nativa
 ```
 
@@ -62,6 +62,26 @@ La pantalla tiene origen arriba a la izquierda, `screen_x` a la derecha y `scree
 5. `camera`, `projection` y `render` construyen la escena en un render target del tamaño del framebuffer; las nubes se aplican en ese mismo pase y después se compone la textura al framebuffer aplicando el grado de la fase seleccionada (multiplicador cálido o frío, saturación y levantado de negros — el amanecer y el día casi limpios, el atardecer más saturado, la noche fría, desaturada y con negros despegados del vacío) y un tilt-shift. El cambio de fase interpola el grado con un crossfade suave (`GradeTransition`, smoothstep, `PHASE_TRANSITION_SECONDS`, partiendo de lo que hay en pantalla si se vuelve a cambiar a mitad), de modo que la luz no salta de golpe; el HUD sigue visible y operativo durante el fundido. El filtro mantiene una franja horizontal nítida y desenfoca con nueve muestras los extremos, con radio expresado en píxeles del target. HUD y controles se dibujan encima, fuera de ambos efectos. La interpolación afecta solo a la presentación. La escena limpia recursos de los chunks que salen de la vista.
 
 La generación de un chunk se inicia desde el flujo de mundo, no desde una vista. El chunk generado o modificado pasa al archivo de mundo; después la escena puede mostrarlo u ocultarlo cuantas veces sea necesario. El orden exacto de sistemas y eventos se declara en un único punto de composición y se cubre con una prueba de integración.
+
+## Rutas y editor de mundo
+
+La build web decide por la ruta de la página qué corre, una sola vez por proceso (`gui::Route`, regla pura en `route.rs`):
+
+- `/` — la presentación: sin overlay de ninguna clase.
+- `/playground` — la superficie de desarrollo: el overlay completo (título y ayuda, lectura del mundo, botones de fase, panel de rendimiento y mensajes).
+- `/maker` — el **editor de mundo** sobre un solo chunk.
+
+La build nativa no tiene ruta y la toma de sus argumentos: `--maker` abre el editor, `--plain` corre la presentación sin overlay, y sin argumentos queda el playground de siempre.
+
+En la ruta del editor no hay streaming ni guardado: `game::state` inyecta `MAKER_CHUNK` (por defecto `(0, 0)`) plano con `terrain::flat_chunk` mediante `ChunkManager::load_columns`, de modo que ni la generación ni la colocación procedural intervienen, y el jugador nace en el centro de ese chunk y camina por lo que se construye. `game::frame` toma entonces su propio camino: un trazo del editor en vez de la pasada de stream, sin descargas ni archive, y el horneado de luz del chunk se repite (`ShadowScene::forget`) solo cuando el trazo cambió el terreno o las entidades.
+
+Las reglas de edición viven en el dominio portable `iso::maker` y se prueban sin ventana; el cliente (`src/maker/`) solo lee el puntero y el teclado y pinta el panel. Siete herramientas: subir y bajar una columna (entre `MAKER_MIN_ELEVATION` y `MAKER_MAX_ELEVATION`), pintar su superficie (hierba, arena, tierra, camino, gradas y agua), escribir su zona de tinte, elegir la variante de hierba que crece, poner un blueprint del catálogo y borrar lo que haya. Tres clases de cambio, deliberadamente separadas:
+
+- **Terreno**: por `ChunkManager::edit_column`, respetando el contrato de la columna (agua solo bajo la orilla: bajar al nivel −1 convierte la columna en agua, subirla a 0 la deja en arena). Los caminos y las gradas no necesitan más: su máscara de conexión y su dirección se derivan del terreno al dibujar, igual que en el mundo generado.
+- **Vestido**: los tintes y las variantes de hierba no viven en la columna, sino en `iso::maker::Dressing`, un mapa de excepciones por casilla que `TerrainLook` consulta **antes** que el ruido y solo cuando no está vacío. Un mundo jugado lleva ese mapa vacío y todo lo decide el ruido, como siempre.
+- **Entidades**: validadas con `entities::placement_by_hand` (superficies, un único nivel bajo la huella y ocupación; sin la separación entre iguales, que es regla de la colocación generada) y puestas con `ChunkManager::put_entity`. **Girar** una entidad no rota el sprite: el contenido trae pares por eje (`hotel_x` / `hotel_y`), así que girar es moverse al hermano del catálogo; un blueprint sin eje en el nombre no gira.
+
+El historial guarda una copia del chunk (columnas, entidades y vestido) antes de cada trazo y `Ctrl+Z` la vuelve a escribir. Lo que el editor construye **no se guarda todavía**: el formato de guardado no tiene sitio para el vestido por casilla, así que el chunk editado vive solo en memoria mientras la ventana está abierta.
 
 ## Cómo funciona el juego
 

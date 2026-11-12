@@ -180,6 +180,16 @@ impl ShadowScene {
         self.chunks.clear();
     }
 
+    /// Drops the bake of `coord` so the next update pass bakes it again: what an edit to that
+    /// chunk's terrain or entities asks for, since its light no longer matches the ground.
+    pub fn forget(&mut self, coord: ChunkCoord) {
+        self.chunks.remove(&coord);
+        self.atlas.release(coord);
+        if self.working.as_ref().is_some_and(|job| job.coord == coord) {
+            self.working = None;
+        }
+    }
+
     /// Spends up to [`BAKE_BUDGET_MS`] bringing the bake up to date for `shown`, forgets what the
     /// stream no longer holds, and eases the chunks baked for a phase change in with `dt_seconds`
     /// of real time. Bakes landing outside a phase change appear whole.

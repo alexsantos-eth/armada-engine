@@ -42,6 +42,26 @@ referencia, `MOBILE_ZOOM` en `src/game/config.rs`), para ver más mundo en una p
 pequeña; la build nativa conserva la casilla de referencia.
 El HUD sustituye la línea de ayuda por la de los controles cuando están visibles.
 
+## Editar un mundo
+
+La ruta `/maker` abre el editor sobre **un solo chunk plano**, sin streaming ni guardado. Nativo:
+
+```sh
+scripts/run-native.sh run --locked -- --maker
+```
+
+(y `-- --plain` corre la presentación sin overlay, como la raíz web).
+
+El panel de la derecha tiene las siete herramientas; también se eligen con las teclas `1` a `7`:
+subir y bajar el terreno, pintar la superficie (hierba, arena, tierra, camino, gradas, agua),
+tinte, variante de hierba, poner una entidad del catálogo y borrar. Se aplica con clic, y
+arrastrando se pinta casilla por casilla. `R` gira la entidad elegida —en este contenido, su
+hermano del otro eje, como `hotel_x` y `hotel_y`—, `[` y `]` recorren el catálogo, `,` y `.` las
+variantes de hierba, `-` y `=` las zonas de tinte, y `Ctrl+Z` deshace. El jugador sigue
+caminando por lo que construyes, con WASD.
+
+Lo que se construye **no se guarda todavía**: vive en memoria mientras la ventana está abierta.
+
 ## Empaquetar para macOS
 
 `scripts/build-macos.sh [--clean-save] [directorio]` (por defecto `dist/`, ignorado por git) compila el cliente en
@@ -76,19 +96,20 @@ scripts/build-web.sh
 python3 -m http.server 8765 --bind 127.0.0.1 --directory dist
 ```
 
-El sitio tiene dos rutas servidas desde la raíz del dominio:
+El sitio tiene tres rutas servidas desde la raíz del dominio:
 
 - `http://127.0.0.1:8765/` — la presentación: el mundo del juego **sin ninguna GUI en pantalla** (ni borde, ni HUD).
 - `http://127.0.0.1:8765/playground` — la superficie de desarrollo: el mismo juego con el overlay de siempre (título y ayuda, lectura del mundo, panel de rendimiento y mensajes).
+- `http://127.0.0.1:8765/maker` — el editor de mundo: un chunk plano y un panel de herramientas para construirlo (ver [Editar un mundo](#editar-un-mundo)).
 
-`build-web.sh` publica ambos: la página `web/index.html` en `dist/index.html` y una copia idéntica en `dist/playground/index.html` (con barra final funciona igual). La página usa `<base href="/">`, así que ambas rutas cargan el mismo `.wasm` y el mismo `content/` desde la raíz; por eso el sitio tiene que servirse desde la raíz del dominio —como hace Netlify— y no desde un subdirectorio. La ruta la lee el cliente en WASM mediante el import `iso_route_path` (mismo patrón FFI que el almacenamiento local); la build nativa no tiene ruta y siempre pinta el overlay. El servidor tiene que servir `dist/` desde la raíz, porque la página carga `iso-core.wasm`, `adapter.js` y
+`build-web.sh` publica las tres: la página `web/index.html` en `dist/index.html` y copias idénticas en `dist/playground/index.html` y `dist/maker/index.html` (con barra final funciona igual). La página usa `<base href="/">`, así que las tres rutas cargan el mismo `.wasm` y el mismo `content/` desde la raíz; por eso el sitio tiene que servirse desde la raíz del dominio —como hace Netlify— y no desde un subdirectorio. La ruta la lee el cliente en WASM mediante el import `iso_route_path` (mismo patrón FFI que el almacenamiento local); la build nativa no tiene ruta y la toma de sus argumentos (`--maker`, `--plain`; sin ellos, el overlay del playground). El servidor tiene que servir `dist/` desde la raíz, porque la página carga `iso-core.wasm`, `adapter.js` y
 `content/` desde la raíz del sitio; no abras el HTML con `file://`. En localhost la página añade
 un parámetro a la URL del WASM para que una recarga traiga siempre la última compilación.
 
 `scripts/build-web.sh [directorio]` (por defecto `dist/`, ignorado por git) instala el toolchain
 que fija `rust-toolchain.toml` con su target `wasm32-unknown-unknown`, compila
 `cargo build --release --locked --target wasm32-unknown-unknown --bin iso-core`, y copia al
-directorio de salida la página `web/index.html` (también como `playground/index.html`), su
+directorio de salida la página `web/index.html` (también como `playground/index.html` y `maker/index.html`), su
 `adapter.js` (los imports FFI y el arranque del `.wasm`), el `content/` y el `.wasm`. Solo compila el binario del cliente: `pack_atlas` y `remeasure_atlas`
 son herramientas nativas. La página va con un `viewport` que desactiva el zoom de pellizco y `touch-action: none` en el canvas: en iOS Safari eso evita que WebKit haga reconocimiento de gestos por toque —una pausa del hilo principal por toque que se leía como frames perdidos—.
 

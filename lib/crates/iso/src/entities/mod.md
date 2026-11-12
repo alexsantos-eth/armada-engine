@@ -197,7 +197,10 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`default`](placement.rs#L84) — Implementación de `Default` para `PlacementRules`: `gap`/`density` por defecto.
   - Firma: `fn default() -> Self {`
 
-- [`find_placement`](placement.rs#L262) — Valida una instancia de `blueprint` anclada en `column`.
+- [`placement_by_hand`](placement.rs#L265) — Valida una instancia anclada en una casilla sobre unas columnas, con lo que ya está puesto: lo que pregunta un editor antes de poner una entidad a mano. Aplica superficies, nivel único bajo la huella y ocupación, pero **no** la separación entre instancias del mismo tipo, que es regla de la colocación generada.
+  - Firma: `pub fn placement_by_hand( anchor: WorldCoord, blueprint: &EntityBlueprint, columns: &[TerrainColumn], placed: &[Entity], ) -> Option<Placement> {`
+
+- [`find_placement`](placement.rs#L285) — Valida una instancia de `blueprint` anclada en `column`.
   - Firma: `fn find_placement( anchor: WorldCoord, blueprint: &EntityBlueprint, context: &mut PlacementContext, gap: i32, ) -> Option<Placement> {`
 
 #### Constantes internas

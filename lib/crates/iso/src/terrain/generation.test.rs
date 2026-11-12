@@ -136,3 +136,33 @@ fn columns_stand_on_the_raw_height_field() {
         }
     }
 }
+
+#[test]
+fn a_flat_chunk_holds_one_column_per_cell_in_the_generator_order() {
+    let chunk = ChunkCoord { cx: 1, cy: -2 };
+    let flat = flat_chunk(chunk, 0, TerrainMaterial::Grass);
+    let generated = TerrainGenerator::new(TerrainConfig::default())
+        .expect("default config is valid")
+        .generate_chunk(chunk);
+    assert_eq!(flat.len(), generated.len());
+    let coords: Vec<_> = flat.iter().map(|column| column.coord).collect();
+    let expected: Vec<_> = generated.iter().map(|column| column.coord).collect();
+    assert_eq!(coords, expected);
+}
+
+#[test]
+fn a_flat_chunk_is_level_and_walkable_on_dry_land() {
+    let flat = flat_chunk(ChunkCoord { cx: 0, cy: 0 }, 2, TerrainMaterial::Grass);
+    assert!(flat.iter().all(|column| column.elevation == 2));
+    assert!(
+        flat.iter()
+            .all(|column| column.surface == TerrainMaterial::Grass)
+    );
+    assert!(flat.iter().all(|column| column.walkable));
+}
+
+#[test]
+fn a_flat_chunk_of_water_is_not_walkable() {
+    let flat = flat_chunk(ChunkCoord { cx: 0, cy: 0 }, -1, TerrainMaterial::Water);
+    assert!(flat.iter().all(|column| !column.walkable));
+}

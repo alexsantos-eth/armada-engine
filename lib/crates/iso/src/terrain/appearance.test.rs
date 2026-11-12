@@ -240,3 +240,19 @@ fn a_quantile_reads_the_ends_of_the_sample_as_no_bound_at_all() {
     assert_eq!(quantile(&sorted, -1.0), f64::NEG_INFINITY);
     assert_eq!(quantile(&sorted, 0.5), 0.5);
 }
+
+#[test]
+fn a_palette_reports_its_zones_and_their_colours() {
+    let zones = TintZones::new(1, "test", 8.0, &[0x010203, 0x040506, 0x070809])
+        .expect("three colours make a palette");
+    assert_eq!(zones.zone_count(), 3);
+    assert_eq!(zones.color(0), 0x010203);
+    assert_eq!(zones.color(2), 0x070809);
+}
+
+#[test]
+fn a_zone_past_the_palette_clamps_to_its_last_colour() {
+    let zones =
+        TintZones::new(1, "test", 8.0, &[0x010203, 0x040506]).expect("two colours make a palette");
+    assert_eq!(zones.color(9), 0x040506);
+}

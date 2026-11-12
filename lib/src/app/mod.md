@@ -29,7 +29,7 @@ Este catálogo documenta las funciones y reexportaciones del dominio, con su fir
 
 - [`window_conf`](bootstrap.rs#L16) — La ventana del juego: título [`GAME_TITLE`](../game/config.rs) y 960×600 por defecto. El icono se difiere al bundle (`None`) para que un `.app` en macOS pinte su `game.icns` y no el logo por defecto de Miniquad. Única fuente del título: cambiar el nombre del juego es editar esa constante.
   - Firma: `pub(crate) fn window_conf() -> Conf {`
-- [`run`](bootstrap.rs#L27) — Arranca el juego (arte, mundo, guardado) y ejecuta el bucle de frames hasta que el jugador sale.
+- [`run`](bootstrap.rs#L28) — Consulta la ruta (`gui::current`), arranca el juego con ella (arte, mundo, guardado; o el chunk plano del editor) y ejecuta el bucle de frames hasta que el jugador sale.
   - Firma: `pub(crate) async fn run() {`
 
 ### `bundle.rs`

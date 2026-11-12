@@ -22,14 +22,16 @@ use macroquad::prelude::*;
 use crate::assets::sprites::{SpriteAtlas, SpriteDraw};
 use crate::effects::ambient::AmbientParticles;
 use crate::game::config::{
-    CHUNK_RADII, MAX_FRAME_MS, PLAYER_SPRITE, PREVIEW_CENTRE, SceneMetrics, WORLD_SEED,
+    CHUNK_RADII, MAKER_CHUNK, MAX_FRAME_MS, PLAYER_SPRITE, PREVIEW_CENTRE, SceneMetrics, WORLD_SEED,
 };
 use crate::game::ground::ChunkGround;
 use crate::game::scene::{PlayerSprite, player_sheets};
+use crate::gui::Route;
 use crate::lighting::cloud_shadows::{CLOUD_SHADOW_SOURCE, CloudShadows};
 use crate::lighting::shadow_view::ShadowScene;
 use crate::lighting::shadow_view_atlas::ShadowAtlas;
 use crate::lighting::shadow_view_masks::SilhouetteMasks;
+use crate::maker::MakerSession;
 use crate::perf::PerfLog;
 use crate::player::body_motion::BodyMotion;
 use crate::player::dust_view::DustPuffs;
@@ -93,6 +95,8 @@ pub(crate) struct Game {
     /// unpicked; `None` means the phase follows the game clock.
     pub(crate) phase_override: Option<iso::lighting::BakePhase>,
     pub(crate) tile_metrics: SceneMetrics,
+    /// The editing session, on the `/maker` route only; `None` plays the streamed world.
+    pub(crate) maker: Option<MakerSession>,
     /// Real time the wind has been blowing, for the sway of what reacts to it; accumulates
     /// frame time like the clouds and the dust, independent of the fixed step.
     pub(crate) wind_ms: f64,
@@ -102,7 +106,7 @@ impl Game {
     /// Boots the game: loads the catalog and the artwork, restores the save if there is one,
     /// generates the spawn area and frames the player. Exits the process only through
     /// `loops::run`; asset failures downgrade to warnings, never panic.
-    pub(crate) async fn new() -> Self {
+    pub(crate) async fn new(route: Route) -> Self {
         let catalog_json = include_str!("../../content/entities.json");
 
         let manifest_json = include_str!("../../content/assets.manifest.json");
@@ -233,26 +237,50 @@ impl Game {
         manager.set_biomes(world_biomes);
         manager.set_wfc(wfc_catalog);
 
-        let save = load_save().await;
-        let archive = restore_archive(save);
-        if archive.chunks().count() > 0 {
-            for id in load_archive_into_manager(&mut manager, &archive) {
-                eprintln!("warning: save refers to unknown entity blueprint {id}; skipped");
+        let editing = route.edits_the_world();
+        let archive = if editing {
+            restore_archive(None)
+        } else {
+            let save = load_save().await;
+            let archive = restore_archive(save);
+            if archive.chunks().count() > 0 {
+                for id in load_archive_into_manager(&mut manager, &archive) {
+                    eprintln!("warning: save refers to unknown entity blueprint {id}; skipped");
+                }
             }
-        }
+            archive
+        };
 
-        let centre_chunk = to_chunk_coord(PREVIEW_CENTRE);
-        manager.set_focus(vec![centre_chunk]);
-        for _ in 0..20 {
-            manager.tick();
+        let centre = if editing {
+            iso::grid::to_world_coord(
+                MAKER_CHUNK,
+                iso::grid::LocalCoord {
+                    lx: iso::grid::CHUNK_SIZE / 2,
+                    ly: iso::grid::CHUNK_SIZE / 2,
+                },
+            )
+        } else {
+            PREVIEW_CENTRE
+        };
+        if editing {
+            manager.load_columns(
+                MAKER_CHUNK,
+                iso::terrain::flat_chunk(MAKER_CHUNK, 0, iso::terrain::TerrainMaterial::Grass),
+            );
+            manager.set_single_focus(MAKER_CHUNK);
+        } else {
+            manager.set_focus(vec![to_chunk_coord(PREVIEW_CENTRE)]);
+            for _ in 0..20 {
+                manager.tick();
+            }
         }
 
         let ground = ChunkGround { manager: &manager };
         let spawn = find_player_spawn(
             &ground,
             iso::projection::GridPoint {
-                x: f64::from(PREVIEW_CENTRE.x),
-                y: f64::from(PREVIEW_CENTRE.y),
+                x: f64::from(centre.x),
+                y: f64::from(centre.y),
             },
         );
         let player = create_player(
@@ -324,6 +352,7 @@ impl Game {
             touch: TouchControls::new(coarse_pointer()),
             tile_metrics,
             clock: WorldClock::default(),
+            maker: editing.then(|| MakerSession::new(MAKER_CHUNK)),
             phase_override: None,
             wind_ms: 0.0,
         }

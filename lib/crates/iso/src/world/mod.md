@@ -87,7 +87,25 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`next_unload_candidate`](chunk_manager.rs#L456) — El único chunk que [`Self::unload_candidates`] devolvería primero, sin construir la
   - Firma: `pub fn next_unload_candidate(&self) -> Option<ChunkCoord> {`
 
-- [`unload_chunk`](chunk_manager.rs#L477) — Descubre o devuelve la forma guardada del chunk; `None` si no estaba descubierto.
+- [`catalog`](chunk_manager.rs#L476) — El catálogo desde el que coloca este manager: lo que un editor ofrece para poner a mano.
+  - Firma: `pub fn catalog(&self) -> &EntityCatalog {`
+
+- [`load_columns`](chunk_manager.rs#L482) — Inyecta el terreno de un chunk sin pasar por la generación y sin entidades: el suelo del que parte un editor. Reemplaza lo que el chunk tuviera.
+  - Firma: `pub fn load_columns(&mut self, coord: ChunkCoord, columns: Vec<crate::terrain::TerrainColumn>) {`
+
+- [`edit_column`](chunk_manager.rs#L489) — Edita una columna materializada, igual que [`TerrainWorld::edit_column`].
+  - Firma: `pub fn edit_column( &mut self, coord: crate::grid::WorldCoord, elevation: i32, surface: crate::terrain::TerrainMaterial, ) -> Result<(), crate::world::EditError> {`
+
+- [`put_entity`](chunk_manager.rs#L499) — Pone una entidad en su propio chunk e indica si ese chunk estaba cargado para recibirla.
+  - Firma: `pub fn put_entity(&mut self, entity: Entity) -> bool {`
+
+- [`set_entities`](chunk_manager.rs#L512) — Reemplaza las entidades de un chunk descubierto e indica si ese chunk estaba cargado.
+  - Firma: `pub fn set_entities(&mut self, coord: ChunkCoord, entities: Vec<Entity>) -> bool {`
+
+- [`remove_entity_at`](chunk_manager.rs#L521) — Quita la entidad cuya huella cubre una casilla, si alguna la cubre.
+  - Firma: `pub fn remove_entity_at(&mut self, x: i32, y: i32) -> Option<Entity> {`
+
+- [`unload_chunk`](chunk_manager.rs#L534) — Descubre o devuelve la forma guardada del chunk; `None` si no estaba descubierto.
   - Firma: `pub fn unload_chunk(&mut self, coord: ChunkCoord) -> Option<crate::world::save::SavedChunk> {`
 
 ### `save.rs`
@@ -213,10 +231,10 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`is_within_keep`](chunk_manager.rs#L429) — Si `coord` está dentro del radio `keep` de algún foco.
   - Firma: `fn is_within_keep(&self, coord: ChunkCoord) -> bool {`
 
-- [`saved_entity_state`](chunk_manager.rs#L487) — El estado por instancia que un guardado debe llevar: todo lo que `Entity::restore` no puede reconstruir a partir de
+- [`saved_entity_state`](chunk_manager.rs#L544) — El estado por instancia que un guardado debe llevar: todo lo que `Entity::restore` no puede reconstruir a partir de
   - Firma: `fn saved_entity_state(entity: &Entity) -> serde_json::Value {`
 
-- [`distance`](chunk_manager.rs#L499) — Distancia de Chebyshev entre dos coordenadas de chunk.
+- [`distance`](chunk_manager.rs#L556) — Distancia de Chebyshev entre dos coordenadas de chunk.
   - Firma: `fn distance(a: ChunkCoord, b: ChunkCoord) -> i32 {`
 
 - [`default`](chunk_manager.rs#L29) — Implementación de `Default`: los radios por defecto (`load`/`prefetch`/`keep`).

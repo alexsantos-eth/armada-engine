@@ -441,3 +441,120 @@ fn settling_pending_jobs_produces_the_same_world_twice() {
     let saved = one.save_all();
     assert_eq!(saved, other.save_all());
 }
+
+#[cfg(test)]
+mod editing {
+    use super::*;
+    use crate::grid::{ChunkCoord, WorldCoord, to_chunk_coord};
+    use crate::terrain::{TerrainMaterial, flat_chunk};
+    use crate::world::EditError;
+
+    const CHUNK: ChunkCoord = ChunkCoord { cx: 0, cy: 0 };
+
+    fn maker_manager() -> ChunkManager {
+        let mut manager = ChunkManager::default();
+        manager.load_columns(CHUNK, flat_chunk(CHUNK, 0, TerrainMaterial::Grass));
+        manager
+    }
+
+    #[test]
+    fn loaded_columns_are_discovered_visible_and_empty_of_entities() {
+        let manager = maker_manager();
+        assert!(manager.is_discovered(CHUNK));
+        assert!(manager.is_visible(CHUNK));
+        assert_eq!(manager.entities_chunk(CHUNK).map(<[_]>::len), Some(0));
+        assert_eq!(
+            manager.column_at(3, 4).map(|column| column.elevation),
+            Some(0)
+        );
+    }
+
+    #[test]
+    fn editing_a_column_changes_what_the_world_answers() {
+        let mut manager = maker_manager();
+        assert_eq!(
+            manager.edit_column(WorldCoord { x: 2, y: 2 }, 3, TerrainMaterial::Path),
+            Ok(())
+        );
+        let column = manager.column_at(2, 2).expect("the column is loaded");
+        assert_eq!(column.elevation, 3);
+        assert_eq!(column.surface, TerrainMaterial::Path);
+    }
+
+    #[test]
+    fn editing_outside_the_loaded_chunk_is_refused() {
+        let mut manager = maker_manager();
+        let far = WorldCoord { x: 200, y: 200 };
+        assert_eq!(
+            manager.edit_column(far, 1, TerrainMaterial::Grass),
+            Err(EditError::Undiscovered(to_chunk_coord(far)))
+        );
+    }
+
+    #[test]
+    fn an_entity_put_down_by_hand_lands_on_its_chunk_and_can_be_taken_back() {
+        let mut manager = maker_manager();
+        let blueprint = crate::entities::EntityBlueprint {
+            id: "hut".to_owned(),
+            asset: crate::entities::EntityAsset {
+                sprite: "/assets/hut.svg".to_owned(),
+                reflection: None,
+                color_replacements: None,
+                sway: None,
+                contact_shadow: None,
+            },
+            shape: crate::entities::EntityShape {
+                height: 1,
+                length: 2,
+                axis: crate::entities::EntityLengthAxis::X,
+                collision: vec![0.5, 0.5],
+            },
+            placement: crate::entities::EntityPlacement {
+                surfaces: vec![TerrainMaterial::Grass, TerrainMaterial::Grass],
+                road_access: false,
+            },
+        };
+        let entity = crate::entities::Entity::new(5, 6, &blueprint, 0);
+        assert!(manager.put_entity(entity));
+        assert_eq!(manager.entities_chunk(CHUNK).map(<[_]>::len), Some(1));
+        let taken = manager
+            .remove_entity_at(6, 6)
+            .expect("the footprint reaches the next cell");
+        assert_eq!(taken.type_(), "hut");
+        assert_eq!(manager.entities_chunk(CHUNK).map(<[_]>::len), Some(0));
+        assert!(manager.remove_entity_at(6, 6).is_none());
+    }
+
+    #[test]
+    fn an_entity_cannot_be_put_on_a_chunk_that_was_never_loaded() {
+        let mut manager = ChunkManager::default();
+        let blueprint = crate::entities::EntityBlueprint {
+            id: "hut".to_owned(),
+            asset: crate::entities::EntityAsset {
+                sprite: "/assets/hut.svg".to_owned(),
+                reflection: None,
+                color_replacements: None,
+                sway: None,
+                contact_shadow: None,
+            },
+            shape: crate::entities::EntityShape {
+                height: 1,
+                length: 1,
+                axis: crate::entities::EntityLengthAxis::X,
+                collision: vec![0.5],
+            },
+            placement: crate::entities::EntityPlacement {
+                surfaces: vec![TerrainMaterial::Grass],
+                road_access: false,
+            },
+        };
+        assert!(!manager.put_entity(crate::entities::Entity::new(0, 0, &blueprint, 0)));
+        assert!(!manager.set_entities(CHUNK, Vec::new()));
+    }
+
+    #[test]
+    fn the_catalog_is_readable_for_the_panel() {
+        let manager = maker_manager();
+        assert!(manager.catalog().entities.is_empty());
+    }
+}

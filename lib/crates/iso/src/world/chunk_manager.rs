@@ -472,6 +472,63 @@ impl ChunkManager {
             })
     }
 
+    /// The catalog this manager places from: what a maker offers to put down by hand.
+    pub fn catalog(&self) -> &EntityCatalog {
+        &self.catalog
+    }
+
+    /// Injects a chunk's terrain, bypassing generation, with no entities on it: the ground an
+    /// editor starts from. Replaces whatever the chunk held.
+    pub fn load_columns(&mut self, coord: ChunkCoord, columns: Vec<crate::terrain::TerrainColumn>) {
+        self.drain_job(coord);
+        self.world.load_chunk(coord, columns);
+        self.entities.insert(coord, Vec::new());
+    }
+
+    /// Edits one materialized column, as [`TerrainWorld::edit_column`] does.
+    pub fn edit_column(
+        &mut self,
+        coord: crate::grid::WorldCoord,
+        elevation: i32,
+        surface: crate::terrain::TerrainMaterial,
+    ) -> Result<(), crate::world::EditError> {
+        self.world.edit_column(coord, elevation, surface)
+    }
+
+    /// Puts `entity` on its own chunk, and says whether that chunk was there to take it.
+    pub fn put_entity(&mut self, entity: Entity) -> bool {
+        let coord = crate::grid::to_chunk_coord(crate::grid::WorldCoord {
+            x: entity.x(),
+            y: entity.y(),
+        });
+        if !self.world.is_discovered(coord) {
+            return false;
+        }
+        self.entities.entry(coord).or_default().push(entity);
+        true
+    }
+
+    /// Replaces the entities of a discovered chunk, and says whether that chunk was there.
+    pub fn set_entities(&mut self, coord: ChunkCoord, entities: Vec<Entity>) -> bool {
+        if !self.world.is_discovered(coord) {
+            return false;
+        }
+        self.entities.insert(coord, entities);
+        true
+    }
+
+    /// Takes away the entity whose footprint covers `(x, y)`, if one does.
+    pub fn remove_entity_at(&mut self, x: i32, y: i32) -> Option<Entity> {
+        let coord = crate::grid::to_chunk_coord(crate::grid::WorldCoord { x, y });
+        let entities = self.entities.get_mut(&coord)?;
+        let hit = entities.iter().position(|entity| {
+            crate::entities::get_entity_footprint_for(entity)
+                .into_iter()
+                .any(|cell| cell.x == x && cell.y == y)
+        })?;
+        Some(entities.remove(hit))
+    }
+
     /// Drops a chunk's terrain and entities from memory, returning its saved form.
     #[must_use = "the returned chunk is the only copy left; store it or its edits are lost"]
     pub fn unload_chunk(&mut self, coord: ChunkCoord) -> Option<crate::world::save::SavedChunk> {

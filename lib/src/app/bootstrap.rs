@@ -23,9 +23,11 @@ pub(crate) fn window_conf() -> Conf {
     }
 }
 
-/// Boots the game (artwork, world, save) and runs the frame loop until exit.
+/// Boots the game (artwork, world, save) and runs the frame loop until exit. The route decides
+/// what is booted: the streamed world, or the editor's one flat chunk.
 pub(crate) async fn run() {
-    let game = Game::new().await;
+    let route = crate::gui::current();
+    let game = Game::new(route).await;
     loops::run(game).await;
 }
 

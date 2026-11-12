@@ -316,3 +316,75 @@ fn the_biome_regions_follow_the_world_seed() {
         .collect();
     assert_ne!(same, different);
 }
+
+/// The maker writes over one cell at a time; every other cell keeps the answer of the noise.
+#[test]
+fn a_cell_dressed_by_hand_keeps_its_chosen_tint() {
+    let manifest = shipped();
+    let (mut look, _) = TerrainLook::new(SEED, artwork(&manifest), None);
+    let zones = look.tint_zones(TerrainMaterial::Grass, 0, 0);
+    assert!(zones > 1, "the grass palette has more than one zone");
+    let before = look.tint(TerrainMaterial::Grass, 0, 0);
+    let neighbour = look.tint(TerrainMaterial::Grass, 1, 0);
+    look.dressing_mut()
+        .set_tint(iso::grid::WorldCoord { x: 0, y: 0 }, Some(zones - 1));
+    let after = look.tint(TerrainMaterial::Grass, 0, 0);
+    assert_ne!(
+        (before.r, before.g, before.b),
+        (after.r, after.g, after.b),
+        "the chosen zone is the last of the palette, the noise's was not"
+    );
+    assert_eq!(
+        (neighbour.r, neighbour.g, neighbour.b),
+        {
+            let now = look.tint(TerrainMaterial::Grass, 1, 0);
+            (now.r, now.g, now.b)
+        },
+        "the neighbour still follows the noise"
+    );
+}
+
+#[test]
+fn a_chosen_tint_zone_past_the_palette_clamps_instead_of_panicking() {
+    let manifest = shipped();
+    let (mut look, _) = TerrainLook::new(SEED, artwork(&manifest), None);
+    look.dressing_mut()
+        .set_tint(iso::grid::WorldCoord { x: 2, y: 2 }, Some(99));
+    let _ = look.tint(TerrainMaterial::Grass, 2, 2);
+}
+
+#[test]
+fn a_cell_dressed_by_hand_grows_the_chosen_top_or_stays_plain() {
+    let manifest = shipped();
+    let (mut look, _) = TerrainLook::new(SEED, artwork(&manifest), None);
+    let tops = look.top_count();
+    assert_eq!(tops, GRASS_TOPS.len());
+    let grown = columns(64)
+        .find(|(x, y)| look.top(TerrainMaterial::Grass, *x, *y).is_some())
+        .expect("the noise grows something somewhere");
+    look.dressing_mut().set_top(
+        iso::grid::WorldCoord {
+            x: grown.0,
+            y: grown.1,
+        },
+        Some(None),
+    );
+    assert_eq!(look.top(TerrainMaterial::Grass, grown.0, grown.1), None);
+    look.dressing_mut()
+        .set_top(iso::grid::WorldCoord { x: 0, y: 0 }, Some(Some(tops - 1)));
+    let chosen = look
+        .top(TerrainMaterial::Grass, 0, 0)
+        .expect("the chosen top grows");
+    let last = artwork(&manifest)(GRASS_TOPS[tops - 1].0).expect("the last top is in the atlas");
+    assert_eq!(chosen, last);
+}
+
+#[test]
+fn a_dressed_cell_grows_nothing_on_a_material_that_grows_nothing() {
+    let manifest = shipped();
+    let (mut look, _) = TerrainLook::new(SEED, artwork(&manifest), None);
+    look.dressing_mut()
+        .set_top(iso::grid::WorldCoord { x: 0, y: 0 }, Some(Some(0)));
+    assert_eq!(look.top(TerrainMaterial::Sand, 0, 0), None);
+    assert_eq!(look.tint_zones(TerrainMaterial::Water, 0, 0), 0);
+}

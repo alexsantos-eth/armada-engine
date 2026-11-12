@@ -12,7 +12,7 @@ use macroquad::prelude::*;
 
 use crate::assets::sprites::draw_sorted;
 use crate::game::Game;
-use crate::gui::{draw_hud, overlay_enabled, push_hud_update};
+use crate::gui::{draw_hud, push_hud_update};
 use crate::perf::FrameSample;
 
 /// The instants the loop takes through a frame, in macroquad's seconds.
@@ -49,7 +49,7 @@ fn frame_sample(
 
 /// Runs the game until the player quits.
 pub(crate) async fn run(mut game: Game) {
-    let show_overlay = overlay_enabled();
+    let show_overlay = crate::gui::current().shows_overlay();
     let initial_phase = game
         .shadows
         .as_ref()
@@ -141,6 +141,11 @@ pub(crate) async fn run(mut game: Game) {
             }
         } else {
             game.ui.messages.clear();
+        }
+
+        if let Some(session) = game.maker.take() {
+            session.draw(&game.manager, view.projection);
+            game.maker = Some(session);
         }
 
         game.touch.draw();

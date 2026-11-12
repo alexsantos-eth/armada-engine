@@ -12,6 +12,8 @@ use iso::world::ChunkRadii;
 pub const GAME_TITLE: &str = "Yorch Adventure";
 /// Diagnostic centre of the world; the player spawns near here.
 pub const PREVIEW_CENTRE: WorldCoord = WorldCoord { x: -120, y: -72 };
+/// The one chunk the world editor loads flat and edits; the `/maker` route starts there.
+pub const MAKER_CHUNK: iso::grid::ChunkCoord = iso::grid::ChunkCoord { cx: 0, cy: 0 };
 /// The scene's zoom: how wide one tile is drawn, in screen pixels.
 pub const PREVIEW_TILE_WIDTH: f64 = 280.0;
 /// How tall one tile is drawn, in screen pixels.

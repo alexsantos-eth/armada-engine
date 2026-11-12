@@ -15,34 +15,34 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`new`](cell_map.rs#L34) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
+- [`new`](cell_map.rs#L36) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
   - Firma: `pub fn new() -> Self {`
 
-- [`len`](cell_map.rs#L38) — Devuelve cuántos elementos contiene actualmente la colección o el estado consultado.
+- [`len`](cell_map.rs#L40) — Devuelve cuántos elementos contiene actualmente la colección o el estado consultado.
   - Firma: `pub fn len(&self) -> usize {`
 
-- [`is_empty`](cell_map.rs#L42) — Indica si la colección o el estado consultado no contiene elementos.
+- [`is_empty`](cell_map.rs#L44) — Indica si la colección o el estado consultado no contiene elementos.
   - Firma: `pub fn is_empty(&self) -> bool {`
 
-- [`get`](cell_map.rs#L53) — Devuelve una referencia al valor en `(x, y)`, o `None` si la celda está vacía. La coordenada se valida.
+- [`get`](cell_map.rs#L55) — Devuelve una referencia al valor en `(x, y)`, o `None` si la celda está vacía. La coordenada se valida.
   - Firma: `pub fn get(&self, coord: WorldCoord) -> Result<Option<&T>, GridCoordOutOfRange> {`
 
-- [`get_mut`](cell_map.rs#L61) — Devuelve una referencia mutable al valor en `(x, y)`, o `None` si la celda está vacía.
+- [`get_mut`](cell_map.rs#L63) — Devuelve una referencia mutable al valor en `(x, y)`, o `None` si la celda está vacía.
   - Firma: `pub fn get_mut(&mut self, coord: WorldCoord) -> Result<Option<&mut T>, GridCoordOutOfRange> {`
 
-- [`contains`](cell_map.rs#L69) — Si hay un valor almacenado en `(x, y)`.
+- [`contains`](cell_map.rs#L71) — Si hay un valor almacenado en `(x, y)`.
   - Firma: `pub fn contains(&self, coord: WorldCoord) -> Result<bool, GridCoordOutOfRange> {`
 
-- [`insert`](cell_map.rs#L74) — Devuelve el valor anterior, si lo hay. Un valor puede ser a su vez un `Option<T>`.
+- [`insert`](cell_map.rs#L76) — Devuelve el valor anterior, si lo hay. Un valor puede ser a su vez un `Option<T>`.
   - Firma: `pub fn insert( &mut self, coord: WorldCoord, value: T, ) -> Result<Option<T>, GridCoordOutOfRange> {`
 
-- [`remove`](cell_map.rs#L102) — Extrae y devuelve el valor en `(x, y)`, o `None` si no había ninguno; el cubo de su chunk se compacta si queda vacío.
+- [`remove`](cell_map.rs#L104) — Extrae y devuelve el valor en `(x, y)`, o `None` si no había ninguno; el cubo de su chunk se compacta si queda vacío.
   - Firma: `pub fn remove(&mut self, coord: WorldCoord) -> Result<Option<T>, GridCoordOutOfRange> {`
 
-- [`entries`](cell_map.rs#L125) — Itera `(coord, valor)` en orden estable: por chunk (orden de primera inserción) y, dentro de cada chunk, por celda en su orden de inserción.
+- [`entries`](cell_map.rs#L127) — Itera `(coord, valor)` en orden estable: por chunk (orden de primera inserción) y, dentro de cada chunk, por celda en su orden de inserción.
   - Firma: `pub fn entries(&self) -> impl Iterator<Item = (WorldCoord, &T)> {`
 
-- [`values`](cell_map.rs#L137) — Itera los valores en el mismo orden que `entries`.
+- [`values`](cell_map.rs#L139) — Itera los valores en el mismo orden que `entries`.
   - Firma: `pub fn values(&self) -> impl Iterator<Item = &T> {`
 
 ### `coords.rs`
@@ -154,10 +154,10 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`default`](cell_map.rs#L24) — Implementación de `Default`: el contenedor vacío.
+- [`default`](cell_map.rs#L26) — Implementación de `Default`: el contenedor vacío.
   - Firma: `fn default() -> Self {`
 
-- [`location`](cell_map.rs#L46) — Resuelve `(chunk, índice local)` de una coordenada, validando el rango.
+- [`location`](cell_map.rs#L48) — Resuelve `(chunk, índice local)` de una coordenada, validando el rango.
   - Firma: `fn location(coord: WorldCoord) -> Result<(ChunkCoord, i32), GridCoordOutOfRange> {`
 
 ### `coords.rs`

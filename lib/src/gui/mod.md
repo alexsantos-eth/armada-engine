@@ -2,7 +2,7 @@
 
 Este dominio de cliente pinta el overlay sobre la escena: el título y la ayuda de controles, los botones de fase de sombras (solo cuando hay una escena de sombras), la lectura del mundo en pantalla (posición, movimiento, chunks y la hora `HH:MM` del reloj del mundo), el panel de rendimiento y los mensajes transitorios. El HUD no toca el mundo ni la cámara: devuelve una fase elegida para que el bucle la aplique a la vista de sombras. En la raíz web (`/`) la fase sigue siempre al reloj; en `/playground` los botones fijan un override manual (volver a pulsar el activo devuelve el control al ciclo).
 
-El overlay está **condicionado por la ruta** en la build web: `/` no pinta nada (ni borde ni HUD), y `/playground` pinta el overlay completo de siempre. La build nativa no tiene ruta y siempre lo pinta. La regla vive en `route.rs` y se consulta una vez por proceso, antes de que arranque el bucle.
+El overlay está **condicionado por la ruta** en la build web: `/` no pinta nada (ni borde ni HUD), y `/playground` y `/maker` pintan el overlay completo de siempre. La ruta decide además **qué se arranca**: `/maker` carga un único chunk plano y abre el editor de mundo (ver [`src/maker/`](../maker/mod.md)) en vez de transmitir el mundo procedural. La build nativa no tiene ruta y la toma de sus argumentos: `--maker` abre el editor y `--plain` corre el juego tal como se presenta, sin overlay. La regla vive en `route.rs` y se consulta una vez por proceso, antes de que arranque el bucle.
 
 La división es deliberada: `push_hud_update` publica lo que el jugador está haciendo mediante el servicio de UI (`UiEvent::HudUpdate`), y `draw_hud` renderiza lo que ese servicio retiene, incluidos los mensajes efímeros, que se vacían al pintarlos.
 
@@ -18,15 +18,26 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `pub(crate) use hud::{PerfCounts, draw_hud, push_hud_update};`
 - [`push_hud_update`](mod.rs#L9) — Publica la lectura de este fotograma (posición, elevación, movimiento, chunks) al servicio de UI.
   - Firma: `pub(crate) use hud::{draw_hud, push_hud_update};`
-- [`overlay_enabled`](mod.rs#L10) — Indica si esta ruta pinta el overlay: en WASM solo `/playground` (con barra final opcional); nativo siempre.
-  - Firma: `pub(crate) use route::overlay_enabled;`
+- [`Route`](mod.rs#L10) — Lo que corre este proceso: `Plain`, `Playground` o `Maker`.
+  - Firma: `pub(crate) use route::{Route, current};`
+- [`current`](mod.rs#L10) — La ruta de este proceso: el camino de la página en web, los argumentos en nativo.
+  - Firma: `pub(crate) use route::{Route, current};`
 
 ### `route.rs`
 
+#### Tipos
+
+- [`Route`](route.rs#L11) — La ruta de este proceso: `Plain` (sin overlay), `Playground` (overlay) o `Maker` (overlay y editor).
+  - Declaración: `pub(crate) enum Route { Plain, Playground, Maker }`
+
 #### Funciones y métodos
 
-- [`overlay_enabled`](route.rs#L38) — En WASM consulta `window.location.pathname` mediante el import `iso_route_path` del bundle y aplica la regla de `overlay_for_path`; fuera de WASM devuelve siempre `true`.
-  - Firma: `pub(crate) fn overlay_enabled() -> bool {`
+- [`shows_overlay`](route.rs#L22) — Si esta ruta pinta el overlay: `Playground` y `Maker` sí, `Plain` no.
+  - Firma: `pub(crate) fn shows_overlay(self) -> bool {`
+- [`edits_the_world`](route.rs#L27) — Si esta ruta edita un chunk a mano en vez de transmitir el mundo.
+  - Firma: `pub(crate) fn edits_the_world(self) -> bool {`
+- [`current`](route.rs#L91) — En WASM consulta `window.location.pathname` mediante el import `iso_route_path` del bundle y aplica `route_for_path`; fuera de WASM lee los argumentos del proceso con `native_route`.
+  - Firma: `pub(crate) fn current() -> Route {`
 
 ### `hud.rs`
 
@@ -34,7 +45,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`push_hud_update`](hud.rs#L126) — Encola `UiEvent::HudUpdate` con la posición, la elevación, el movimiento y los chunks descubiertos.
   - Firma: `pub(crate) fn push_hud_update(ui: &mut MacroquadUi, player: &PlayerState, animation: &PlayerAnimation, elevation: i32, chunks: usize) {`
-- [`draw_hud`](hud.rs#L165) — Dibuja el título, la ayuda y, cuando hay una fase seleccionable, los botones de fase (con la activa resaltada), el estado del mundo con `ui.hud` (incluida la hora `HH:MM` del reloj del mundo, como `clock`), el panel de rendimiento y los mensajes; devuelve la fase pulsada y vacía los mensajes.
+- [`draw_hud`](hud.rs#L164) — Dibuja el título, la ayuda y, cuando hay una fase seleccionable, los botones de fase (con la activa resaltada), el estado del mundo con `ui.hud` (incluida la hora `HH:MM` del reloj del mundo, como `clock`), el panel de rendimiento y los mensajes; devuelve la fase pulsada y vacía los mensajes.
   - Firma: `pub(crate) fn draw_hud(ui: &mut MacroquadUi, perf: &PerfLog, counts: PerfCounts, frame_ms: f64, touch_visible: bool, phase: Option<BakePhase>, clock: &str) -> Option<BakePhase> {`
 
 ## Detalles de implementación
@@ -43,10 +54,16 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones internas
 
-- [`browser_path`](route.rs#L18) — Lee `window.location.pathname` en WASM mediante el import `iso_route_path` (mismo patrón FFI acotado que `save::persistence`); devuelve `None` si el host falla.
+- [`MAKER_FLAG`](route.rs#L34) — El argumento que abre el editor en una build nativa (`--maker`).
+  - Firma: `const MAKER_FLAG: &str = "--maker";`
+- [`PLAIN_FLAG`](route.rs#L37) — El argumento que corre una build nativa como se presenta el juego, sin overlay (`--plain`).
+  - Firma: `const PLAIN_FLAG: &str = "--plain";`
+- [`browser_path`](route.rs#L50) — Lee `window.location.pathname` en WASM mediante el import `iso_route_path` (mismo patrón FFI acotado que `save::persistence`); devuelve `None` si el host falla.
   - Firma: `fn browser_path() -> Option<String> {`
-- [`overlay_for_path`](route.rs#L33) — La regla pura: el overlay solo se pinta en `/playground`, con barra final opcional. Se prueba en `route.test.rs`.
-  - Firma: `fn overlay_for_path(path: &str) -> bool {`
+- [`route_for_path`](route.rs#L66) — La regla pura de la web: `/playground` es la superficie de desarrollo, `/maker` el editor, con barra final opcional; cualquier otra ruta es la presentación limpia. Se prueba en `route.test.rs`.
+  - Firma: `fn route_for_path(path: &str) -> Route {`
+- [`native_route`](route.rs#L77) — La regla pura de nativo: el playground salvo que los argumentos pidan otra cosa; el último argumento de ruta es el que cuenta. Se prueba en `route.test.rs`.
+  - Firma: `fn native_route<'a>(arguments: impl Iterator<Item = &'a String>) -> Route {`
 
 ### `hud.rs`
 

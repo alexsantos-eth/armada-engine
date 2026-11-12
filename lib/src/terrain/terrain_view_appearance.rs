@@ -2,6 +2,8 @@
 
 use iso::assets::{InkBox, SpriteFrame};
 use iso::biomes::WorldBiomes;
+use iso::grid::WorldCoord;
+use iso::maker::Dressing;
 use iso::terrain::{TerrainMaterial, TintZones, VariantPicker, tint_channels};
 use macroquad::prelude::{Color, WHITE};
 
@@ -61,6 +63,8 @@ pub struct TerrainLook {
     biomes: Option<WorldBiomes>,
     /// Where the grass grows something, and the artwork of each top it can grow.
     grass_tops: Option<(VariantPicker, Vec<(SpriteFrame, InkBox)>)>,
+    /// The cells dressed by hand, which answer before the noise does; empty in a played world.
+    dressing: Dressing,
 }
 
 impl TerrainLook {
@@ -107,36 +111,72 @@ impl TerrainLook {
                 tints,
                 biomes: biomes.cloned(),
                 grass_tops,
+                dressing: Dressing::default(),
             },
             missing,
         )
     }
 
-    /// What a block of `material` standing on column `(x, y)` is multiplied by.
-    pub fn tint(&self, material: TerrainMaterial, x: i32, y: i32) -> Color {
+    /// The cells dressed by hand: what the maker writes its strokes into.
+    pub fn dressing_mut(&mut self) -> &mut Dressing {
+        &mut self.dressing
+    }
+
+    /// The palette of `material` at column `(x, y)`, or `None` where that material is not
+    /// tinted there.
+    fn zones(&self, material: TerrainMaterial, x: i32, y: i32) -> Option<&TintZones> {
         let index = self
             .biomes
             .as_ref()
             .map(|world| world.biome_index(x, y))
             .unwrap_or(0);
-        let Some(zones) = self
-            .tints
+        self.tints
             .get(index)
             .and_then(|by_biome| by_biome[slot(material)].as_ref())
-        else {
+    }
+
+    /// How many colour zones `material` is painted from at column `(x, y)`: what a chosen zone
+    /// is an index into. Zero where that material is not tinted there.
+    pub fn tint_zones(&self, material: TerrainMaterial, x: i32, y: i32) -> usize {
+        self.zones(material, x, y).map_or(0, TintZones::zone_count)
+    }
+
+    /// How many tops the grass can grow: what a chosen top is an index into.
+    pub fn top_count(&self) -> usize {
+        self.grass_tops.as_ref().map_or(0, |(_, looks)| looks.len())
+    }
+
+    /// What a block of `material` standing on column `(x, y)` is multiplied by. A cell dressed
+    /// by hand keeps its chosen zone; every other cell follows the noise.
+    pub fn tint(&self, material: TerrainMaterial, x: i32, y: i32) -> Color {
+        let Some(zones) = self.zones(material, x, y) else {
             return WHITE;
         };
-        let (red, green, blue) = tint_channels(zones.at(x, y));
+        let chosen = (!self.dressing.is_empty())
+            .then(|| self.dressing.tint(WorldCoord { x, y }))
+            .flatten();
+        let color = match chosen {
+            Some(zone) => zones.color(zone),
+            None => zones.at(x, y),
+        };
+        let (red, green, blue) = tint_channels(color);
         Color::new(red, green, blue, 1.0)
     }
 
-    /// The artwork of the top column `(x, y)` grows, if its material grows anything there.
+    /// The artwork of the top column `(x, y)` grows, if its material grows anything there. A
+    /// cell dressed by hand grows what it was given, or stays plain; the rest follow the noise.
     pub fn top(&self, material: TerrainMaterial, x: i32, y: i32) -> Option<(SpriteFrame, InkBox)> {
         if material != TerrainMaterial::Grass {
             return None;
         }
         let (picker, looks) = self.grass_tops.as_ref()?;
-        looks.get(picker.pick(x, y)?).copied()
+        let chosen = (!self.dressing.is_empty())
+            .then(|| self.dressing.top(WorldCoord { x, y }))
+            .flatten();
+        match chosen {
+            Some(top) => looks.get(top?).copied(),
+            None => looks.get(picker.pick(x, y)?).copied(),
+        }
     }
 }
 

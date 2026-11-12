@@ -134,6 +134,28 @@ impl TerrainGenerator {
     }
 }
 
+/// A chunk of flat columns at one level, all of the same surface: the ground the maker starts
+/// from, laid out in the same x-major order the generator produces.
+pub fn flat_chunk(
+    chunk: ChunkCoord,
+    elevation: i32,
+    surface: TerrainMaterial,
+) -> Vec<TerrainColumn> {
+    let rect = chunk_rect(chunk);
+    let mut columns = Vec::with_capacity(32 * 32);
+    for x in rect.min_x..=rect.max_x {
+        for y in rect.min_y..=rect.max_y {
+            columns.push(TerrainColumn {
+                coord: WorldCoord { x, y },
+                elevation,
+                surface,
+                walkable: surface != TerrainMaterial::Water,
+            });
+        }
+    }
+    columns
+}
+
 #[cfg(test)]
 #[path = "generation.test.rs"]
 mod tests;

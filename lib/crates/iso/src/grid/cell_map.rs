@@ -7,6 +7,7 @@ use super::coords::{
     to_local_coord,
 };
 
+#[derive(Clone)]
 struct Bucket<T> {
     chunk: ChunkCoord,
     values: HashMap<i32, T>,
@@ -14,6 +15,7 @@ struct Bucket<T> {
 }
 
 /// A chunk-local map whose iteration visits chunks, then cells, in insertion order.
+#[derive(Clone)]
 pub struct CellMap<T> {
     buckets: Vec<Bucket<T>>,
     by_chunk: HashMap<ChunkCoord, usize>,

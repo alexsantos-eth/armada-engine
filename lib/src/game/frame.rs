@@ -47,6 +47,18 @@ fn should_save_on_quit(unsaved_changes: bool, quitting: bool) -> bool {
     unsaved_changes && quitting
 }
 
+/// What a frame spent editing hands to its view: the same measurements an ordinary frame
+/// takes, gathered where the editor's own path has them.
+struct EditedFrame {
+    rp: iso::player::physics::PlayerRenderPosition,
+    projection: ProjectionConfig,
+    width: f32,
+    height: f32,
+    frame_ms: f64,
+    /// When the frame's world work started, for the performance accounting.
+    stream_start: f64,
+}
+
 /// What the view half of the frame needs after the update half ran.
 pub(crate) struct FrameView {
     pub(crate) rp: iso::player::physics::PlayerRenderPosition,
@@ -93,11 +105,13 @@ impl Game {
         }
         set_player_jump_held(&mut self.player, input.jump_held);
 
-        let focus = to_chunk_coord(WorldCoord {
-            x: self.player.x.floor() as i32,
-            y: self.player.y.floor() as i32,
-        });
-        self.manager.set_single_focus(focus);
+        if self.maker.is_none() {
+            let focus = to_chunk_coord(WorldCoord {
+                x: self.player.x.floor() as i32,
+                y: self.player.y.floor() as i32,
+            });
+            self.manager.set_single_focus(focus);
+        }
 
         let ticks = frame_ticks(self.stepper.consume_frame(frame_ms));
         if ticks > 0 {
@@ -125,6 +139,30 @@ impl Game {
         let projection = frame_projection(self.camera, level, width, height, self.tile_metrics);
 
         let stream_start = get_time();
+        if let Some(mut session) = self.maker.take() {
+            let edited = session.update(crate::maker::MakerFrame {
+                manager: &mut self.manager,
+                look: &mut self.terrain_look,
+                projection,
+            });
+            self.maker = Some(session);
+            if let Some(chunk) = edited
+                && let Some(shadows) = self.shadows.as_mut()
+            {
+                shadows.forget(chunk);
+            }
+            if is_quit_requested() {
+                return None;
+            }
+            return Some(self.editing_view(EditedFrame {
+                rp,
+                projection,
+                width,
+                height,
+                frame_ms,
+                stream_start,
+            }));
+        }
         let discovered = self.manager.tick();
         if !discovered.is_empty() {
             self.unsaved_changes = true;
@@ -182,6 +220,43 @@ impl Game {
             stream_ms,
             bake_ms,
         })
+    }
+
+    /// The view of a frame spent editing: the one chunk in hand, its light baked again when a
+    /// stroke changed it, and no streaming, saving or unloading at all.
+    fn editing_view(&mut self, frame: EditedFrame) -> FrameView {
+        let EditedFrame {
+            rp,
+            projection,
+            width,
+            height,
+            frame_ms,
+            stream_start,
+        } = frame;
+        let stream_ms = (get_time() - stream_start) * 1000.0;
+        let after_simulation = get_time();
+        let viewport = ScreenSize {
+            width: f64::from(width),
+            height: f64::from(height),
+        };
+        let culled = visible_chunks(self.camera, viewport, projection, CHUNK_CULL_MARGIN);
+        let target_phase = self
+            .phase_override
+            .unwrap_or_else(|| phase_at(self.clock.tick));
+        let bake_start = get_time();
+        if let Some(shadows) = self.shadows.as_mut() {
+            shadows.set_phase(target_phase);
+            shadows.update(&self.manager, &culled, (frame_ms / 1000.0) as f32);
+        }
+        FrameView {
+            rp,
+            projection,
+            culled,
+            frame_ms,
+            after_simulation,
+            stream_ms,
+            bake_ms: (get_time() - bake_start) * 1000.0,
+        }
     }
 }
 

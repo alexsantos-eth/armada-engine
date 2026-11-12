@@ -27,30 +27,36 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`new`](appearance.rs#L56) — `colors` son multiplicadores `0xRRGGBB`, ordenados de oscuro a claro; una lista vacía no tiñe nada.
   - Firma: `pub fn new(seed: u64, label: &str, scale: f64, colors: &[u32]) -> Option<Self> {`
 
+- [`zone_count`](appearance.rs#L72) — Cuántas zonas tiene la paleta: aquello de lo que una zona elegida es índice.
+  - Firma: `pub fn zone_count(&self) -> usize {`
+
+- [`color`](appearance.rs#L77) — El multiplicador de una zona, acotado a la paleta.
+  - Firma: `pub fn color(&self, zone: usize) -> u32 {`
+
 - [`at`](appearance.rs#L67) — El multiplicador de la columna `(x, y)`.
   - Firma: `pub fn at(&self, x: i32, y: i32) -> u32 {`
 
-- [`zone_index`](appearance.rs#L73) — En cuál de las `count` partes iguales de `[0, 1]` cae el valor de campo `value`.
+- [`zone_index`](appearance.rs#L83) — En cuál de las `count` partes iguales de `[0, 1]` cae el valor de campo `value`.
   - Firma: `pub fn zone_index(value: f64, count: usize) -> usize {`
 
-- [`tint_channels`](appearance.rs#L79) — Los tres canales de un multiplicador `0xRRGGBB`, cada uno en `[0, 1]`.
+- [`tint_channels`](appearance.rs#L89) — Los tres canales de un multiplicador `0xRRGGBB`, cada uno en `[0, 1]`.
   - Firma: `pub fn tint_channels(color: u32) -> (f32, f32, f32) {`
 
-- [`new`](appearance.rs#L110) — `chances` es la proporción de todas las columnas que debe cubrir cada variante, en orden. `None` cuando
+- [`new`](appearance.rs#L120) — `chances` es la proporción de todas las columnas que debe cubrir cada variante, en orden. `None` cuando
   - Firma: `pub fn new(seed: u64, label: &str, chances: &[f64]) -> Option<Self> {`
 
-- [`pick`](appearance.rs#L143) — La variante que crece en la columna `(x, y)`, o `None` para la propia parte superior lisa del material.
+- [`pick`](appearance.rs#L153) — La variante que crece en la columna `(x, y)`, o `None` para la propia parte superior lisa del material.
   - Firma: `pub fn pick(&self, x: i32, y: i32) -> Option<usize> {`
 
 #### Constantes
 
-- [`VARIANT_PATCH_SCALE`](appearance.rs#L85) — Tamaño de un grupo de variantes, en columnas: donde las plantas crecen juntas.
+- [`VARIANT_PATCH_SCALE`](appearance.rs#L95) — Tamaño de un grupo de variantes, en columnas: donde las plantas crecen juntas.
   - Declaración: `pub const VARIANT_PATCH_SCALE: f64 = 6.0;`
 
-- [`VARIANT_KIND_SCALE`](appearance.rs#L87) — Tamaño de una zona cuyos grupos son todos de un mismo tipo (un prado de flores amarillas, un rincón de hojas).
+- [`VARIANT_KIND_SCALE`](appearance.rs#L97) — Tamaño de una zona cuyos grupos son todos de un mismo tipo (un prado de flores amarillas, un rincón de hojas).
   - Declaración: `pub const VARIANT_KIND_SCALE: f64 = 24.0;`
 
-- [`VARIANT_PATCH_FILL`](appearance.rs#L89) — Proporción de columnas dentro de un grupo que muestran una variante: un grupo es denso pero no sólido.
+- [`VARIANT_PATCH_FILL`](appearance.rs#L99) — Proporción de columnas dentro de un grupo que muestran una variante: un grupo es denso pero no sólido.
   - Declaración: `pub const VARIANT_PATCH_FILL: f64 = 0.7;`
 
 ### `columns.rs`
@@ -90,6 +96,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`new`](generation.rs#L66) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
   - Firma: `pub fn new(config: TerrainConfig) -> Result<Self, InvalidTerrainConfig> {`
 
+- [`flat_chunk`](generation.rs#L139) — Un chunk de columnas planas a un nivel y de un solo material: el suelo del que parte el editor, en el mismo orden x-mayor que produce el generador.
+  - Firma: `pub fn flat_chunk( chunk: ChunkCoord, elevation: i32, surface: TerrainMaterial, ) -> Vec<TerrainColumn> {`
+
 - [`height_at`](generation.rs#L73) — Altura en una columna absoluta del mundo, independiente del orden de recorrido de chunks.
   - Firma: `pub fn height_at(&self, coord: WorldCoord) -> i32 {`
 
@@ -123,18 +132,18 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`sorted_samples`](appearance.rs#L155) — El campo sobre una cuadrícula fija, en orden ascendente: la muestra a partir de la cual se leen los umbrales.
+- [`sorted_samples`](appearance.rs#L165) — El campo sobre una cuadrícula fija, en orden ascendente: la muestra a partir de la cual se leen los umbrales.
   - Firma: `fn sorted_samples(field: &NoiseField) -> Vec<f64> {`
 
-- [`quantile`](appearance.rs#L167) — El valor de `sorted` por debajo del cual queda `fraction` de él.
+- [`quantile`](appearance.rs#L177) — El valor de `sorted` por debajo del cual queda `fraction` de él.
   - Firma: `fn quantile(sorted: &[f64], fraction: f64) -> f64 {`
 
 #### Constantes internas
 
-- [`CALIBRATION_SIDE`](appearance.rs#L91) — Lado, en muestras, de la cuadrícula sobre la que se miden los campos para convertir proporciones en umbrales.
+- [`CALIBRATION_SIDE`](appearance.rs#L101) — Lado, en muestras, de la cuadrícula sobre la que se miden los campos para convertir proporciones en umbrales.
   - Declaración: `const CALIBRATION_SIDE: i32 = 96;`
 
-- [`CALIBRATION_STEP`](appearance.rs#L93) — Columnas entre dos muestras de calibración, de modo que la cuadrícula abarca muchos grupos y muchas zonas.
+- [`CALIBRATION_STEP`](appearance.rs#L103) — Columnas entre dos muestras de calibración, de modo que la cuadrícula abarca muchos grupos y muchas zonas.
   - Declaración: `const CALIBRATION_STEP: i32 = 5;`
 
 ### `generation.rs`

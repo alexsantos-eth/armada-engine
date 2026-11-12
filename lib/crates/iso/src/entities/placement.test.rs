@@ -460,3 +460,128 @@ fn the_content_path_with_no_wfc_matches_the_biome_path() {
     let ids_without: Vec<_> = without.entities.iter().map(|e| e.id()).collect();
     assert_eq!(ids, ids_without);
 }
+
+#[cfg(test)]
+mod by_hand {
+    use super::*;
+    use crate::entities::blueprint::EntityShape;
+
+    fn grass_chunk() -> Vec<TerrainColumn> {
+        crate::terrain::flat_chunk(
+            crate::grid::ChunkCoord { cx: 0, cy: 0 },
+            0,
+            TerrainMaterial::Grass,
+        )
+    }
+
+    fn hut(length: i32, axis: EntityLengthAxis) -> EntityBlueprint {
+        EntityBlueprint {
+            id: "hut".to_owned(),
+            asset: EntityAsset {
+                sprite: "/assets/hut.svg".to_owned(),
+                reflection: None,
+                color_replacements: None,
+                sway: None,
+                contact_shadow: None,
+            },
+            shape: EntityShape {
+                height: 1,
+                length,
+                axis,
+                collision: vec![0.5; length as usize],
+            },
+            placement: EntityPlacement {
+                surfaces: vec![TerrainMaterial::Grass; length as usize],
+                road_access: false,
+            },
+        }
+    }
+
+    #[test]
+    fn a_hand_placement_lands_on_the_right_surface() {
+        let columns = grass_chunk();
+        let placement = placement_by_hand(
+            WorldCoord { x: 4, y: 4 },
+            &hut(1, EntityLengthAxis::X),
+            &columns,
+            &[],
+        )
+        .expect("grass takes a hut");
+        assert_eq!(placement.anchor, WorldCoord { x: 4, y: 4 });
+        assert_eq!(placement.elevation, 0);
+        assert_eq!(placement.footprint.len(), 1);
+    }
+
+    #[test]
+    fn a_hand_placement_is_refused_on_the_wrong_surface() {
+        let mut columns = grass_chunk();
+        for column in &mut columns {
+            column.surface = TerrainMaterial::Sand;
+        }
+        assert!(
+            placement_by_hand(
+                WorldCoord { x: 4, y: 4 },
+                &hut(1, EntityLengthAxis::X),
+                &columns,
+                &[]
+            )
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn a_hand_placement_is_refused_over_an_entity_already_standing_there() {
+        let columns = grass_chunk();
+        let blueprint = hut(1, EntityLengthAxis::X);
+        let standing = Entity::new(4, 4, &blueprint, 0);
+        assert!(
+            placement_by_hand(WorldCoord { x: 4, y: 4 }, &blueprint, &columns, &[standing])
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn a_hand_placement_ignores_the_spacing_rule_between_its_own_kind() {
+        let columns = grass_chunk();
+        let blueprint = hut(1, EntityLengthAxis::X);
+        let neighbour = Entity::new(4, 4, &blueprint, 0);
+        assert!(
+            placement_by_hand(
+                WorldCoord { x: 5, y: 4 },
+                &blueprint,
+                &columns,
+                &[neighbour]
+            )
+            .is_some()
+        );
+    }
+
+    #[test]
+    fn a_hand_placement_needs_one_level_under_its_whole_footprint() {
+        let mut columns = grass_chunk();
+        for column in &mut columns {
+            if column.coord == (WorldCoord { x: 5, y: 4 }) {
+                column.elevation = 1;
+            }
+        }
+        let blueprint = hut(2, EntityLengthAxis::X);
+        assert!(placement_by_hand(WorldCoord { x: 4, y: 4 }, &blueprint, &columns, &[]).is_none());
+        assert!(placement_by_hand(WorldCoord { x: 4, y: 6 }, &blueprint, &columns, &[]).is_some());
+    }
+
+    #[test]
+    fn a_hand_placement_runs_along_the_blueprint_axis() {
+        let columns = grass_chunk();
+        let placement = placement_by_hand(
+            WorldCoord { x: 4, y: 4 },
+            &hut(2, EntityLengthAxis::Y),
+            &columns,
+            &[],
+        )
+        .expect("grass takes a hut");
+        assert_eq!(
+            placement.footprint,
+            vec![WorldCoord { x: 4, y: 4 }, WorldCoord { x: 4, y: 5 }]
+        );
+    }
+}

@@ -1,7 +1,7 @@
 //! Deterministic placement of entities over materialized terrain columns.
 
 use crate::entities::blueprint::{EntityBlueprint, EntityCatalog, EntityLengthAxis};
-use crate::entities::entity::{Entity, get_entity_footprint};
+use crate::entities::entity::{Entity, get_entity_footprint, get_entity_footprint_for};
 use std::collections::HashMap;
 
 use crate::biomes::field::WorldBiomes;
@@ -255,6 +255,30 @@ pub fn place_entities_with_content(
         entities,
         index: placed,
     }
+}
+
+/// Validates one instance of `blueprint` anchored at `anchor` over `columns`, with `placed`
+/// already standing: what an editor asks before it puts an entity down by hand.
+///
+/// The surfaces, the level footing and the occupancy are the rules of a generated placement;
+/// the spacing between instances of one type is not, because a hand chooses where it builds.
+pub fn placement_by_hand(
+    anchor: WorldCoord,
+    blueprint: &EntityBlueprint,
+    columns: &[TerrainColumn],
+    placed: &[Entity],
+) -> Option<Placement> {
+    let mut columns_map = CellMap::new();
+    for column in columns {
+        let _ = columns_map.insert(column.coord, *column);
+    }
+    let mut index = SpatialIndex::new();
+    for entity in placed {
+        let footprint = get_entity_footprint_for(entity);
+        let _ = index.insert(entity.clone(), &footprint);
+    }
+    let mut context = PlacementContext::new(&columns_map, &mut index);
+    find_placement(anchor, blueprint, &mut context, 0)
 }
 
 /// Validates one instance of `blueprint` anchored on `column`.

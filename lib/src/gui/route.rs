@@ -1,8 +1,40 @@
-//! Which web route the page is served from, and whether that route shows the overlay.
+//! Which web route the page is served from, and what that route runs.
 //!
 //! `/` is the clean presentation and paints no GUI at all; `/playground` is the development
-//! surface with the overlay the HUD has always drawn. Native builds have no route and keep
-//! the historical behaviour. The decision is taken once per process, before the loop starts.
+//! surface with the overlay the HUD has always drawn; `/maker` is the world editor, which
+//! paints the overlay and edits one chunk instead of streaming the procedural world. The
+//! native build has no route and takes it from its arguments (`--maker`, `--plain`). The
+//! decision is taken once per process, before the loop starts.
+
+/// What this process runs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Route {
+    /// The game as it is presented: no overlay.
+    Plain,
+    /// The development surface: the overlay over the streamed world.
+    Playground,
+    /// The world editor over one flat chunk.
+    Maker,
+}
+
+impl Route {
+    /// Whether this route paints the overlay.
+    pub(crate) fn shows_overlay(self) -> bool {
+        matches!(self, Self::Playground | Self::Maker)
+    }
+
+    /// Whether this route edits one chunk by hand instead of streaming the world.
+    pub(crate) fn edits_the_world(self) -> bool {
+        matches!(self, Self::Maker)
+    }
+}
+
+/// The argument that opens the editor on a native build.
+#[cfg(any(not(target_arch = "wasm32"), test))]
+const MAKER_FLAG: &str = "--maker";
+/// The argument that runs a native build as the game is presented, with no overlay.
+#[cfg(any(not(target_arch = "wasm32"), test))]
+const PLAIN_FLAG: &str = "--plain";
 
 #[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "env")]
@@ -28,21 +60,42 @@ fn browser_path() -> Option<String> {
     String::from_utf8(output).ok()
 }
 
-/// The overlay rule: only `/playground`, optionally with a trailing slash, shows the GUI.
+/// The route rule: `/playground` is the development surface, `/maker` the editor, optionally
+/// with a trailing slash; everything else is the plain presentation.
 #[cfg(any(target_arch = "wasm32", test))]
-fn overlay_for_path(path: &str) -> bool {
-    path.trim_end_matches('/') == "/playground"
+fn route_for_path(path: &str) -> Route {
+    match path.trim_end_matches('/') {
+        "/playground" => Route::Playground,
+        "/maker" => Route::Maker,
+        _ => Route::Plain,
+    }
 }
 
-/// Whether this route paints the overlay. Native always does; the web build only on `/playground`.
-pub(crate) fn overlay_enabled() -> bool {
+/// The route a native run takes: the playground, unless its arguments ask for the editor or
+/// for the game as it is presented.
+#[cfg(any(not(target_arch = "wasm32"), test))]
+fn native_route<'a>(arguments: impl Iterator<Item = &'a String>) -> Route {
+    let mut route = Route::Playground;
+    for argument in arguments {
+        if argument == MAKER_FLAG {
+            route = Route::Maker;
+        }
+        if argument == PLAIN_FLAG {
+            route = Route::Plain;
+        }
+    }
+    route
+}
+
+/// The route this process runs: the page's path on the web, the arguments natively.
+pub(crate) fn current() -> Route {
     #[cfg(target_arch = "wasm32")]
     {
-        browser_path().is_some_and(|path| overlay_for_path(&path))
+        browser_path().map_or(Route::Plain, |path| route_for_path(&path))
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        true
+        native_route(std::env::args().collect::<Vec<String>>().iter())
     }
 }
 
