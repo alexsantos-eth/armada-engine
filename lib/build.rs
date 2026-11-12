@@ -1,6 +1,6 @@
 fn main() {
-    let atlas = "content/atlas.png";
-    let manifest = "content/assets.manifest.json";
+    let atlas = "content/images/atlas.png";
+    let manifest = "content/json/assets.manifest.json";
 
     if !std::path::Path::new(atlas).exists() {
         panic!(

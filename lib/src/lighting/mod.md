@@ -30,7 +30,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 #### Constantes
 
 - [`CLOUD_SHADOW_SOURCE`](cloud_shadows.rs#L6) — La ruta desde la que se carga el patrón, relativa a la raíz del cliente.
-  - Declaración: `pub const CLOUD_SHADOW_SOURCE: &str = "content/cloud-shadow.png";`
+  - Declaración: `pub const CLOUD_SHADOW_SOURCE: &str = "content/images/cloud-shadow.png";`
 
 - [`CLOUD_PERIOD_TILES`](cloud_shadows.rs#L9) — Cuántas casillas abarca la repetición del patrón, a lo largo de ambos ejes de pantalla.
   - Declaración: `pub const CLOUD_PERIOD_TILES: f64 = 12.0;`

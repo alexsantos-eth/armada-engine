@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "atlas": "content/atlas.png",
+  "atlas": "content/images/atlas.png",
   "atlasSize": {
     "x": 0,
     "y": 0,
@@ -2368,7 +2368,7 @@
           "height": 125
         }
       ],
-      "texture": "content/player-16_climb.png",
+      "texture": "content/images/player-16_climb.png",
       "textureSize": {
         "x": 0,
         "y": 0,
@@ -3570,7 +3570,7 @@
           "height": 125
         }
       ],
-      "texture": "content/player-16_flip.png",
+      "texture": "content/images/player-16_flip.png",
       "textureSize": {
         "x": 0,
         "y": 0,
@@ -4388,7 +4388,7 @@
           "height": 125
         }
       ],
-      "texture": "content/player-16_idle.png",
+      "texture": "content/images/player-16_idle.png",
       "textureSize": {
         "x": 0,
         "y": 0,
@@ -4534,7 +4534,7 @@
           "height": 125
         }
       ],
-      "texture": "content/player-16_jetpack.png",
+      "texture": "content/images/player-16_jetpack.png",
       "textureSize": {
         "x": 0,
         "y": 0,
@@ -5064,7 +5064,7 @@
           "height": 125
         }
       ],
-      "texture": "content/player-16_jump.png",
+      "texture": "content/images/player-16_jump.png",
       "textureSize": {
         "x": 0,
         "y": 0,
@@ -6081,7 +6081,7 @@
           "height": 142
         }
       ],
-      "texture": "content/player-16_swim.png",
+      "texture": "content/images/player-16_swim.png",
       "textureSize": {
         "x": 0,
         "y": 0,
@@ -6995,7 +6995,7 @@
           "height": 125
         }
       ],
-      "texture": "content/player-16_walk.png",
+      "texture": "content/images/player-16_walk.png",
       "textureSize": {
         "x": 0,
         "y": 0,

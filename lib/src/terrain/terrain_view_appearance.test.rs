@@ -5,7 +5,7 @@ use crate::game::config::WORLD_SEED as SEED;
 
 /// The shipped atlas, read as the client reads it, so these checks fail when a top is dropped
 fn shipped() -> AssetManifest {
-    serde_json::from_str(include_str!("../../content/assets.manifest.json"))
+    serde_json::from_str(include_str!("../../content/json/assets.manifest.json"))
         .expect("the asset manifest is valid JSON")
 }
 
@@ -218,10 +218,11 @@ fn the_dressing_follows_the_world_seed() {
 /// The shipped biomes content, read and cross-validated the way the client does it.
 fn shipped_biomes() -> iso::biomes::WorldBiomes {
     let entities: iso::entities::EntityCatalog =
-        serde_json::from_str(include_str!("../../content/entities.json"))
+        serde_json::from_str(include_str!("../../content/json/entities.json"))
             .expect("the entity catalog is valid JSON");
-    let catalog = iso::biomes::parse_biomes(include_str!("../../content/biomes.json"), &entities)
-        .expect("the biomes content validates");
+    let catalog =
+        iso::biomes::parse_biomes(include_str!("../../content/json/biomes.json"), &entities)
+            .expect("the biomes content validates");
     iso::biomes::WorldBiomes::new(SEED, &catalog)
 }
 
@@ -296,10 +297,11 @@ fn a_path_takes_the_colour_of_the_grass_in_every_biome() {
 fn the_biome_regions_follow_the_world_seed() {
     let one = shipped_biomes();
     let entities: iso::entities::EntityCatalog =
-        serde_json::from_str(include_str!("../../content/entities.json"))
+        serde_json::from_str(include_str!("../../content/json/entities.json"))
             .expect("the entity catalog is valid JSON");
-    let catalog = iso::biomes::parse_biomes(include_str!("../../content/biomes.json"), &entities)
-        .expect("the biomes content validates");
+    let catalog =
+        iso::biomes::parse_biomes(include_str!("../../content/json/biomes.json"), &entities)
+            .expect("the biomes content validates");
     let other = iso::biomes::WorldBiomes::new(SEED + 1, &catalog);
     let same: Vec<_> = [(0, 0), (17, -9), (-300, 250), (1024, 1024)]
         .into_iter()

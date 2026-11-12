@@ -76,7 +76,7 @@ Revisa cada punto. Marca solo lo que realmente encuentres en el código, con arc
 ### 3. Modelo de entidades
 
 - IDs estables y únicos por instancia (necesarios para guardado, referencias, IA).
-- Datos de entidad serializables (catálogo `content/entities.json` + instancia), separados del sprite.
+- Datos de entidad serializables (catálogo `content/json/entities.json` + instancia), separados del sprite.
 - `Entity` genérica + datos y no jerarquías de clases: vigila que no crezca con campos específicos de gameplay.
 - Ocupación espacial: `SpatialIndex` y `CellMap` por celda/chunk, con claves numéricas; sin claves de texto `"x:y"` ni consultas O(n²).
 
@@ -93,7 +93,7 @@ Revisa cada punto. Marca solo lo que realmente encuentres en el código, con arc
 
 ### 6. Contenido data-driven
 
-- El contenido vive en catálogos (`content/entities.json`, `content/assets.manifest.json`) validados al cargar, con errores claros.
+- El contenido vive en catálogos (`content/json/entities.json`, `content/json/assets.manifest.json`) validados al cargar, con errores claros.
 - Añadir contenido no requiere tocar escenas ni el renderer.
 
 ### 7. Rendimiento y escalado

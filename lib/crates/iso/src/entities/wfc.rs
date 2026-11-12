@@ -17,7 +17,7 @@ pub const WFC_SCHEMA_VERSION: u32 = 2;
 /// A namespaced tape for the rolls of one chunk.
 const ROLL_LABEL: &str = "wfc-placement:roll";
 
-/// Validation of the `content/wfc.json` catalogue.
+/// Validation of the `content/json/wfc.json` catalogue.
 #[derive(Clone, Debug, PartialEq)]
 pub enum WfcError {
     /// The JSON itself could not be read.

@@ -1,10 +1,10 @@
 //! Integration test for the entity catalog.
-//! Loads the catalog the client ships (`content/entities.json`) and validates it.
+//! Loads the catalog the client ships (`content/json/entities.json`) and validates it.
 
 use iso::entities::{CATALOG_SCHEMA_VERSION, validate_catalog};
 
 fn fixture() -> serde_json::Value {
-    serde_json::from_str(include_str!("../../../content/entities.json"))
+    serde_json::from_str(include_str!("../../../content/json/entities.json"))
         .expect("catalog fixture is valid JSON")
 }
 

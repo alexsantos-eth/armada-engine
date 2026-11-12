@@ -1,6 +1,6 @@
 # Biomes
 
-Este dominio modela los biomas de naturaleza del mundo: qué árboles crecen en cada región, en qué proporción, con qué paleta de suelo y con qué fuerza de viento los mece. Los biomas no aparecen en los edificios ni en las estructuras: solo naturaleza. Agrupa el catálogo de contenido (`content/biomes.json`), su validación cruzada contra el catálogo de entidades, el campo que decide qué bioma cubre cada columna y los bosquetes monospecíficos que cada bioma hace crecer.
+Este dominio modela los biomas de naturaleza del mundo: qué árboles crecen en cada región, en qué proporción, con qué paleta de suelo y con qué fuerza de viento los mece. Los biomas no aparecen en los edificios ni en las estructuras: solo naturaleza. Agrupa el catálogo de contenido (`content/json/biomes.json`), su validación cruzada contra el catálogo de entidades, el campo que decide qué bioma cubre cada columna y los bosquetes monospecíficos que cada bioma hace crecer.
 
 El bioma es una función pura de la semilla y las coordenadas: no se guarda en disco, se recomputa al cargar. El crate `iso` no conoce texturas ni sprites: el cliente decide cómo se pinta cada paleta.
 

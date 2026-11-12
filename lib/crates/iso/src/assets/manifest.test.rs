@@ -3,7 +3,7 @@ use super::*;
 fn manifest() -> AssetManifest {
     AssetManifest {
         schema_version: MANIFEST_SCHEMA_VERSION,
-        atlas: "content/atlas.png".to_owned(),
+        atlas: "content/images/atlas.png".to_owned(),
         atlas_size: SpriteFrame {
             x: 0,
             y: 0,
@@ -92,7 +92,7 @@ fn validates_manifest() {
 
 #[test]
 fn deserializes_the_manifest_fixture() {
-    let json = include_str!("../../../../content/assets.manifest.json");
+    let json = include_str!("../../../../content/json/assets.manifest.json");
     let manifest: AssetManifest = serde_json::from_str(json).expect("manifest deserializes");
     assert_eq!(manifest.schema_version, MANIFEST_SCHEMA_VERSION);
     validate_manifest(&manifest).expect("the manifest validates");

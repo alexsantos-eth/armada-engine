@@ -193,14 +193,14 @@ Con `PYTHON=/ruta/a/python3` eliges tú el intérprete base, y con `ATLAS_VENV` 
 cairo`; en Debian o Ubuntu, `libcairo2`.
 
 El script rasteriza cada SVG con `cairosvg` (`scripts/rasterize.py`) a 320 px por tile de mundo y
-después compila y ejecuta `pack_atlas`, que empaqueta `content/atlas.png` (4096 px de ancho) con
-su `content/assets.manifest.json`. Las hojas de poses del jugador no caben en el atlas sin perder
+después compila y ejecuta `pack_atlas`, que empaqueta `content/images/atlas.png` (4096 px de ancho) con
+su `content/json/assets.manifest.json`. Las hojas de poses del jugador no caben en el atlas sin perder
 detalle, así que se cortan celda a celda y cada hoja recibe su textura,
-`content/player-16_<hoja>.png`, con su rejilla descrita en el manifiesto (esquema 2); se usan las
+`content/images/player-16_<hoja>.png`, con su rejilla descrita en el manifiesto (esquema 2); se usan las
 de dieciséis orientaciones de `assets-src/assets/player-16/`, no las de ocho.
 El patrón de sombras de nubes no se empaqueta —el empaquetador recorta el borde transparente de
 cada sprite y un patrón recortado deja de repetir—, así que `../artifacts/cloud_pattern.py` lo
-rasteriza entero aparte en `content/cloud-shadow.png` y le aplica ahí el desenfoque que cairosvg
+rasteriza entero aparte en `content/images/cloud-shadow.png` y le aplica ahí el desenfoque que cairosvg
 ignora. Después de tocar los bloques de terreno (`../artifacts/terrain_blocks.py`) hay que
 regenerar también las variantes de hierba (`grass_clutter.py`) y los dieciséis tiles de camino
 (`path_tiles.py`) antes de volver a empaquetar. `build.rs` comprueba al compilar que el atlas y
@@ -208,5 +208,5 @@ el manifiesto existen, y el cliente avisa por consola si falta
 `assets-src/assets/shadow/white.svg`, el cuadrado blanco del que se dibujan las sombras sin
 cambiar de textura.
 
-`cargo run --bin remeasure_atlas -- content/assets.manifest.json content/atlas.png assets-src`
+`cargo run --bin remeasure_atlas -- content/json/assets.manifest.json content/images/atlas.png assets-src`
 reescribe la geometría de un atlas ya empaquetado sin rasterizar nada.

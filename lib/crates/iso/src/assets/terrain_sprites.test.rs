@@ -3,7 +3,7 @@ use crate::assets::AssetManifest;
 
 #[test]
 fn every_material_has_artwork_in_the_shipped_atlas() {
-    let json = include_str!("../../../../content/assets.manifest.json");
+    let json = include_str!("../../../../content/json/assets.manifest.json");
     let manifest: AssetManifest = serde_json::from_str(json).expect("manifest deserializes");
     for material in [
         TerrainMaterial::Water,
@@ -20,7 +20,7 @@ fn every_material_has_artwork_in_the_shipped_atlas() {
 
 #[test]
 fn every_path_connection_mask_has_artwork_in_the_shipped_atlas() {
-    let json = include_str!("../../../../content/assets.manifest.json");
+    let json = include_str!("../../../../content/json/assets.manifest.json");
     let manifest: AssetManifest = serde_json::from_str(json).expect("manifest deserializes");
     for mask in 0..16u8 {
         assert_eq!(
@@ -56,7 +56,7 @@ fn assert_asset_has_measured_artwork(manifest: &AssetManifest, source: &str) {
 
 #[test]
 fn every_land_material_has_reflection_artwork_in_the_shipped_atlas() {
-    let json = include_str!("../../../../content/assets.manifest.json");
+    let json = include_str!("../../../../content/json/assets.manifest.json");
     let manifest: AssetManifest = serde_json::from_str(json).expect("manifest deserializes");
     for material in [
         TerrainMaterial::Sand,
@@ -92,7 +92,7 @@ fn elevation_step_to_tile_width() -> f64 {
 
 #[test]
 fn every_side_a_flight_climbs_toward_has_artwork_in_the_shipped_atlas() {
-    let json = include_str!("../../../../content/assets.manifest.json");
+    let json = include_str!("../../../../content/json/assets.manifest.json");
     let manifest: AssetManifest = serde_json::from_str(json).expect("manifest deserializes");
     for (_, source) in STAIRS_BLOCK_SOURCES {
         assert_asset_has_measured_artwork(&manifest, source);

@@ -75,11 +75,11 @@ fn source_path_derives_the_svg_from_the_file_name() {
 #[test]
 fn path_for_manifest_joins_components_with_forward_slashes() {
     assert_eq!(
-        path_for_manifest(Path::new("content/atlas.png")),
-        "content/atlas.png"
+        path_for_manifest(Path::new("content/images/atlas.png")),
+        "content/images/atlas.png"
     );
     assert_eq!(
-        path_for_manifest(Path::new("content/sheets/player-16_walk.png")),
-        "content/sheets/player-16_walk.png"
+        path_for_manifest(Path::new("content/images/sheets/player-16_walk.png")),
+        "content/images/sheets/player-16_walk.png"
     );
 }

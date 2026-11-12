@@ -111,9 +111,9 @@ impl Game {
     /// generates the spawn area and frames the player. Exits the process only through
     /// `loops::run`; asset failures downgrade to warnings, never panic.
     pub(crate) async fn new(route: Route) -> Self {
-        let catalog_json = include_str!("../../content/entities.json");
+        let catalog_json = include_str!("../../content/json/entities.json");
 
-        let manifest_json = include_str!("../../content/assets.manifest.json");
+        let manifest_json = include_str!("../../content/json/assets.manifest.json");
         let manifest: AssetManifest =
             serde_json::from_str(manifest_json).expect("asset manifest is valid JSON");
         validate_manifest(&manifest).expect("asset manifest validates");
@@ -213,10 +213,10 @@ impl Game {
             serde_json::from_str(catalog_json).expect("entity catalog is valid JSON");
         validate_catalog(&catalog).expect("entity catalog validates");
 
-        let biomes_json = include_str!("../../content/biomes.json");
+        let biomes_json = include_str!("../../content/json/biomes.json");
         let biomes_catalog =
             iso::biomes::parse_biomes(biomes_json, &catalog).expect("biomes content validates");
-        let wfc_json = include_str!("../../content/wfc.json");
+        let wfc_json = include_str!("../../content/json/wfc.json");
         let wfc_catalog = iso::entities::wfc::parse_wfc(wfc_json, &catalog, Some(&biomes_catalog))
             .expect("wfc content validates");
         let world_biomes = iso::biomes::WorldBiomes::new(terrain_config.seed, &biomes_catalog);

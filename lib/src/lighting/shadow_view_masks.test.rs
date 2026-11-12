@@ -21,7 +21,7 @@ fn chequered() -> Image {
 fn manifest(frames: &[(&str, SpriteFrame)]) -> AssetManifest {
     AssetManifest {
         schema_version: 2,
-        atlas: "content/atlas.png".into(),
+        atlas: "content/images/atlas.png".into(),
         atlas_size: SpriteFrame {
             x: 0,
             y: 0,
@@ -148,7 +148,7 @@ fn a_sprite_sheet_is_not_a_silhouette() {
             height: 8,
         },
     )]);
-    manifest.entries[0].texture = Some("content/player-16_walk.png".into());
+    manifest.entries[0].texture = Some("content/images/player-16_walk.png".into());
     let masks = SilhouetteMasks::from_image(&chequered(), &manifest);
 
     assert_eq!(masks.index_of("/assets/player-16/walk.svg"), None);

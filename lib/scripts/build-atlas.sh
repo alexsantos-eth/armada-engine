@@ -4,9 +4,9 @@
 # Steps:
 #   1. Rasterize every SVG under assets-src/assets/ with cairosvg, at a fixed number of pixels per
 #      tile of world, and cut each of the player's sheets into one PNG per pose.
-#   2. Compile and run the pack_atlas tool to pack them into content/atlas.png, one texture per
-#      sheet beside it, and generate content/assets.manifest.json.
-#   3. Rasterize the cloud shadows' pattern on its own, into content/cloud-shadow.png. It is not
+#   2. Compile and run the pack_atlas tool to pack them into content/images/atlas.png, one texture per
+#      sheet beside it, and generate content/json/assets.manifest.json.
+#   3. Rasterize the cloud shadows' pattern on its own, into content/images/cloud-shadow.png. It is not
 #      packed: the packer trims every sprite's transparent border, and a trimmed pattern no
 #      longer repeats (see src/cloud_shadows.rs), and it is softened there because cairosvg
 #      ignores the blur the artwork asks for (see ../artifacts/cloud_pattern.py).
@@ -93,9 +93,9 @@ echo "Compiling pack_atlas..."
 cargo build --bin pack_atlas --quiet
 
 echo "Packing atlas..."
-./target/debug/pack_atlas "$tmp_dir" content/atlas.png content/assets.manifest.json assets-src
+./target/debug/pack_atlas "$tmp_dir" content/images/atlas.png content/json/assets.manifest.json assets-src
 
 echo "Rasterizing the cloud shadow pattern..."
-"$python" ../artifacts/cloud_pattern.py "$svg_dir/cloud/cloud-shadow.svg" content/cloud-shadow.png
+"$python" ../artifacts/cloud_pattern.py "$svg_dir/cloud/cloud-shadow.svg" content/images/cloud-shadow.png
 
-echo "Done. Atlas: content/atlas.png, sheets: content/player_*.png, clouds: content/cloud-shadow.png, manifest: content/assets.manifest.json"
+echo "Done. Atlas: content/images/atlas.png, sheets: content/player_*.png, clouds: content/images/cloud-shadow.png, manifest: content/json/assets.manifest.json"

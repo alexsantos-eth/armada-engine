@@ -3,7 +3,7 @@
 use macroquad::prelude::*;
 
 /// The path the pattern is loaded from, relative to the client root.
-pub const CLOUD_SHADOW_SOURCE: &str = "content/cloud-shadow.png";
+pub const CLOUD_SHADOW_SOURCE: &str = "content/images/cloud-shadow.png";
 
 /// How many tiles the pattern repeats over, along both screen axes.
 pub const CLOUD_PERIOD_TILES: f64 = 12.0;

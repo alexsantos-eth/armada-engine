@@ -67,7 +67,7 @@ fn the_atlas_carries_the_white_patch_the_shadows_are_drawn_from() {
     use iso::assets::AssetManifest;
 
     let manifest: AssetManifest =
-        serde_json::from_str(include_str!("../../content/assets.manifest.json"))
+        serde_json::from_str(include_str!("../../content/json/assets.manifest.json"))
             .expect("the asset manifest is valid JSON");
     let patch = manifest
         .entries
@@ -160,7 +160,7 @@ fn every_terrain_block_is_drawn_at_least_a_whole_cell_wide() {
     use iso::terrain::TerrainMaterial;
 
     let manifest: AssetManifest =
-        serde_json::from_str(include_str!("../../content/assets.manifest.json"))
+        serde_json::from_str(include_str!("../../content/json/assets.manifest.json"))
             .expect("the asset manifest is valid JSON");
 
     for material in [

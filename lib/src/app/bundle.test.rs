@@ -3,29 +3,31 @@ use super::*;
 #[test]
 fn dev_working_directory_wins_for_assets() {
     let resolved = decide_asset(
-        "content/atlas.png",
+        "content/images/atlas.png",
         true,
         Some(PathBuf::from("/App/Contents/Resources")),
     );
 
-    assert_eq!(resolved, "content/atlas.png");
+    assert_eq!(resolved, "content/images/atlas.png");
 }
 
 #[test]
 fn bundle_resources_serve_assets_outside_a_dev_checkout() {
-    let hit = Some(PathBuf::from("/App/Contents/Resources/content/atlas.png"));
+    let hit = Some(PathBuf::from(
+        "/App/Contents/Resources/content/images/atlas.png",
+    ));
 
     assert_eq!(
-        decide_asset("content/atlas.png", false, hit),
-        "/App/Contents/Resources/content/atlas.png"
+        decide_asset("content/images/atlas.png", false, hit),
+        "/App/Contents/Resources/content/images/atlas.png"
     );
 }
 
 #[test]
 fn missing_assets_fall_back_to_the_relative_path() {
     assert_eq!(
-        decide_asset("content/atlas.png", false, None),
-        "content/atlas.png"
+        decide_asset("content/images/atlas.png", false, None),
+        "content/images/atlas.png"
     );
 }
 
