@@ -35,15 +35,15 @@ Dos crates, en `lib/`:
 ```text
 lib/
   crates/iso/    # `iso`: dominio portable. Sin Macroquad, GPU, navegador ni archivos.
-    src/{grid,paths,projection,camera,time,simulation,terrain,entities,world,
-         lighting,scene_order,water,services}/
+    src/{grid,paths,projection,camera,time,simulation,terrain,biomes,entities,world,
+         lighting,scene_order,water,wind,services}/
     tests/        # solo contratos que cruzan módulos y el fixture (contracts.json)
-  src/           # `iso-core`: el cliente. main.rs es solo entrada/configuración de ventana;
-                 # la composición vive en game/, gui/ y loops/.
-    assets, game, gui, lighting, loops, perf, player, rendering, save, services, terrain, water/
-  content/       # entities.json, assets.manifest.json, atlas.png, player-16_*.png
+  src/           # `iso-core`: el cliente. `main.rs` es solo entrada: declara los dominios y entra por `app::run`.
+    app, assets, effects, game, gui, lighting, loops, perf, player, rendering, save, services, terrain, touch, water/
+  content/       # entities.json, biomes.json, wfc.json, assets.manifest.json, atlas.png, player-16_*.png
   assets-src/    # SVG fuente del atlas (commiteado; no se despliega)
-  scripts/       # build-web.sh (WASM), build-atlas.sh, run-native.sh
+  packaging/     # icono del bundle macOS: icon-player.png + game.icns (commiteado; no se despliega)
+  scripts/       # build-web.sh (WASM), build-atlas.sh, run-native.sh, build-macos.sh, build-icon.sh
 ```
 
 - La dependencia es `iso-core → iso`, nunca al revés. El dominio no conoce sprites, texturas ni Macroquad; si una regla necesita pruebas sin GPU, vive en `iso`.
@@ -59,9 +59,10 @@ Contratos clave (el detalle está en el `mod.md` correspondiente):
 - **Simulación**: `simulation::FixedStepper` con acumulador y `alpha` de interpolación; un tick no se puede saltar ni duplicar aunque caiga a 1 fps.
 - **Sombras**: `iso::lighting` es geometría pura (sin GPU). El cliente **hornea** una fase (`DAWN`) en CPU por chunk (mapa de 36 px/tile, máquina de estados `GroundBake` con presupuesto de 3 ms por frame). No hornear entidades ni el jugador.
 - **El mundo**: `TerrainWorld` conserva los chunks descubiertos; `ChunkManager` calcula carga/prefetch/conservación (1/2/3) **solo al cambiar el chunk de foco**; `save` persiste chunks y estado (`SAVE_FORMAT`, `SAVE_SCHEMA_VERSION`) y el guardado es la autoridad al reabrir.
-- **Contenido**: `content/entities.json` es el catálogo de entidades (`schemaVersion` 1), validado al cargar con `validate_catalog`; la colocación es determinista y consulta solo el terreno.
+- **Contenido**: `content/entities.json` es el catálogo de entidades (`schemaVersion` 1), validado al cargar con `validate_catalog`; la colocación es determinista y consulta solo el terreno. `content/biomes.json` (`schemaVersion` 1) clasifica los árboles por bioma y valida sus blueprints contra el catálogo con `iso::biomes::parse_biomes`; el bioma es una función pura de la semilla (no se guarda) y decide paleta de suelo, bosquetes monospecíficos y `windStrength` (multiplicador del mece con `sway` del viento en su suelo; `iso::wind` da el desplazamiento, el cliente dibuja la copa sesgada alrededor del corte del sprite). `content/wfc.json` (`schemaVersion` 2) da pesos de colocación al resto de blueprints y techos por chunk por blueprint o familia (`families`/`maxPerChunk`), y exige un peso para cada blueprint no reclamado con `iso::entities::wfc::parse_wfc`; el solver `iso::entities::wfc::solve_chunk` coloca por chunk con vacancia siempre posible, hueco 1 entre mismos tipos y autocontención frente a vecinos (orden de descubrimiento irrelevante).
 - **Determinismo**: misma semilla + mismas coordenadas → mismo mundo. Un chunk sale igual solo que junto a sus vecinos. Nada en la generación depende del orden de carga ni de `HashMap`.
 - **Overlay web**: la build WASM condiciona el overlay a la ruta — `/` no pinta nada (ni borde, ni HUD, ni mensajes), `/playground` pinta el overlay completo — vía `gui::overlay_enabled` (regla pura `overlay_for_path`, fijada en `route.test.rs`). La build nativa no tiene ruta y siempre pinta el overlay. El sitio se sirve desde la raíz del dominio; `build-web.sh` publica la misma página en `dist/playground/index.html`.
+- **macOS**: `scripts/build-macos.sh` compila el cliente en release y ensambla `dist/<Título>.app` (binario en `Contents/MacOS`, `content/` en `Contents/Resources`, icono `packaging/game.icns`, `Info.plist`, firma ad-hoc); sin Xcode, solo Command Line Tools. El nombre del juego tiene una única fuente: `GAME_TITLE` en `src/game/config.rs` (título de ventana, nombre del `.app` y carpeta de guardado derivan de ella — renombrar el juego es editar esa constante y reempaquetar). Dentro del `.app` el cliente resuelve assets en `Contents/Resources` y el guardado en `~/Library/Application Support/<GAME_TITLE>/saves/iso_save.json`; fuera, el comportamiento es el de siempre. El icono del bundle se regenera con `scripts/build-icon.sh` (sips + iconutil sobre `packaging/icon-player.png`).
 
 ## Reglas de cambios
 
@@ -75,6 +76,13 @@ Contratos clave (el detalle está en el `mod.md` correspondiente):
 - No editar a mano `content/atlas.png`, `content/assets.manifest.json` ni `content/player-16_*.png`: se generan con `scripts/build-atlas.sh` desde `assets-src/assets/`.
 - Los SVG son la fuente; `assets-src/` es su copia local. Un SVG nuevo para atlas se comprueba contra `assets.manifest.json` con los tests de `iso::assets`.
 - Nada de estado de sistema como campos sueltos de `World`; nada de reimplementar lo que `iso` ya expone.
+
+## Versionado
+
+- La única fuente de la versión del juego es `lib/Cargo.toml` (`[package].version`); `Cargo.lock` la acompaña siempre — si la subes, sincroniza antes el lockfile (`cargo check`) para que el gate `--locked` pase. `scripts/build-macos.sh` la lee como `CFBundleShortVersionString`.
+- `CFBundleVersion` (número de build) no se anota a mano: `scripts/build-macos.sh` lo deriva de `git rev-list --count HEAD` (o 1 fuera de un repositorio).
+- **Toda entrega incrementa la versión, en el mismo cambio**: PATCH para correcciones y mantenimiento, MINOR para funcionalidad (un dominio nuevo, un empaquetado, un contrato visible). Nunca se entrega un cambio sin subirla.
+- **Los skills se actualizan en el mismo cambio**: si un cambio mueve estructura, contratos, scripts, la política de versionado o un flujo de build, el skill afectado (este, `armada-core-review` o `iso-asset-generator`) se actualiza en ese mismo cambio — nunca «en la próxima revisión».
 
 ## Flujo de trabajo
 
@@ -91,9 +99,9 @@ Contratos clave (el detalle está en el `mod.md` correspondiente):
    SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk cargo build --release --locked --target wasm32-unknown-unknown --bin iso-core
    ```
 
-   `SDKROOT` solo hace falta en macOS si el SDK de Command Line Tools está roto (`scripts/run-native.sh` y `build-atlas.sh` lo seleccionan solos); en otros sistemas, ejecuta `cargo` directo. La build WASM la cubre `bash scripts/build-web.sh`.
+   `SDKROOT` solo hace falta en macOS si el SDK de Command Line Tools está roto (`scripts/run-native.sh`, `build-atlas.sh` y `build-web.sh` lo seleccionan solos); en otros sistemas, ejecuta `cargo` directo. La build WASM la cubre `bash scripts/build-web.sh`. Si el cambio incrementa la versión (ver Versionado), sincroniza antes el lockfile con `cargo check`; si no, el `--locked` fallará por el desfase de `iso-core`.
 5. Para revisión visual, arranca la demo con `lib/scripts/run-native.sh`. El presupuesto por frame se mira con `src/perf` (frame_log).
-6. Actualiza la documentación en el mismo cambio (ver abajo).
+6. Actualiza la documentación en el mismo cambio (ver abajo) y, si el cambio mueve estructura, contratos, scripts o la política de versionado, actualiza el skill afectado en el mismo cambio (ver Versionado).
 7. **Invoca `armada-core-review`** para auditar el core tras tu cambio. Esa skill puede corregir deficiencias, registrar deuda en `lib/docs/CORE_REVIEW.md` y proponer una actualización de esta skill; incluye su informe en tu respuesta final.
 
 ## Regla de documentación
@@ -101,10 +109,10 @@ Contratos clave (el detalle está en el `mod.md` correspondiente):
 Todo cambio que modifique el funcionamiento del core, sus contratos o el flujo de assets debe actualizar en el mismo cambio los Markdown afectados:
 
 - `lib/docs/ARCHITECTURE.md` para el funcionamiento técnico del juego.
-- El `mod.md` del dominio para su API (enlace, firma, propósito; su introducción si cambian sus límites).
+- El `mod.md` del dominio para su API (enlace, firma, propósito; su introducción si cambian sus límites). Antes de terminar, verifica los `mod.md` tocados con un barrido mecánico: las anclas `file.rs#Lnnn` apuntan a la declaración del símbolo y no quedan descripciones de relleno («calcula o recupera…»); un barrido regex de símbolo ↔ línea basta.
 - `lib/README.md` si cambian comandos, entorno o despliegue.
 
-Si cambia la geometría o la integración de assets, avisa al usuario de que la skill `iso-asset-generator` puede necesitar actualizarse.
+Si cambia la geometría o la integración de assets, avisa al usuario de que la skill `iso-asset-generator` puede necesitar actualizarse. Si cambia lo que el desarrollador debe saber (estructura, contratos, scripts, versionado o flujos de build), la skill afectada se actualiza en este mismo cambio, no después (ver Versionado).
 
 ## Límites
 
