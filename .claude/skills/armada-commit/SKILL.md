@@ -128,7 +128,7 @@ Conventional Commits, en inglés:
 - **summary:** en imperativo y en minúsculas, sin punto final, y la primera línea entera con ≤ 72 caracteres. Por ejemplo: `add walking dust puffs`, no `Added dust.`.
 - **body:** de 1 a 6 viñetas con `- `, cada una con qué cambió y por qué, a 72 columnas. Sin listas de archivos ni detalles que ya muestra el diff. Si rustfmt reformateó archivos ajenos al cambio, una viñeta lo dice (`- apply rustfmt formatting`).
 - **Cambio incompatible** (p. ej. sube `SAVE_SCHEMA_VERSION` o `schemaVersion` del catálogo o cambia un contrato público): `!` tras el scope (`feat(world)!: …`) y un pie `BREAKING CHANGE: <qué se rompe>` antes de los trailers.
-- **Trailers:** al final, separadas por una línea en blanco, las líneas de atribución que pida la sesión (p. ej. `Co-Authored-By: …` y `Claude-Session: …`), si las hay.
+- **Trailers:** al final, separadas por una línea en blanco, las líneas de atribución que pida la sesión (p. ej. `Co-Authored-By: …` y `Codex-Session: …`), si las hay.
 
 Ejemplo:
 
@@ -142,7 +142,7 @@ feat(lighting): bake terrain shadows once per chunk
 ## 6. Push a `origin/iso-rust`
 
 1. Llama a `mcp__claude-code-remote__add_repo` con `owner: "alexsantos-eth"`, `repo: "armada-engine"`, `access: "push"`.
-   - Si responde que el push será rechazado (`push_check: "refused"` o un error de acceso), intenta igualmente el sub-paso 4; si el push falla por permisos, **para**: el commit queda en local. Dile al usuario que instale la app de GitHub de Claude en el repo (https://github.com/apps/claude/installations/select_target) o que haga él `git push origin iso-rust`.
+   - Si responde que el push será rechazado (`push_check: "refused"` o un error de acceso), intenta igualmente el sub-paso 4; si el push falla por permisos, **para**: el commit queda en local. Dile al usuario que instale la app de GitHub de Codex en el repo (https://github.com/apps/claude/installations/select_target) o que haga él `git push origin iso-rust`.
 2. Clona `iso-rust` desde GitHub en un directorio nuevo (no reutilices otro clon cuyo `origin` no sea GitHub): `git clone --depth 1 -b iso-rust https://github.com/alexsantos-eth/armada-engine <dir>`, con un timeout amplio.
 3. En el equipo, crea un bundle con los commits que faltan en el remoto y tráelo con `device_stage_files`:
    ```bash
