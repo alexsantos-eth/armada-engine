@@ -24,10 +24,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`react`](dust_view.rs#L156) — Detecta lo que ha hecho el jugador desde el último frame y levanta el polvo correspondiente: un soplo
   - Firma: `pub fn react( &mut self, player: &PlayerState, at: DustGround, top_at: &impl Fn(i32, i32) -> Option<f64>, ) {`
 
-- [`advance`](dust_view.rs#L339) — Envejece cada soplo vivo en `elapsed_ms` de tiempo real, terminando los cuya vida ha acabado.
+- [`advance`](dust_view.rs#L337) — Envejece cada soplo vivo en `elapsed_ms` de tiempo real, terminando los cuya vida ha acabado.
   - Firma: `pub fn advance(&mut self, elapsed_ms: f64) {`
 
-- [`collect`](dust_view.rs#L348) — Encola cada cubo de polvo vivo en `draws`, cada uno a la profundidad que tomó cuando su soplo
+- [`collect`](dust_view.rs#L346) — Encola cada cubo de polvo vivo en `draws`, cada uno a la profundidad que tomó cuando su soplo
   - Firma: `pub fn collect(&self, projection: ProjectionConfig, draws: &mut Vec<SpriteDraw>) {`
 
 #### Constantes
@@ -99,20 +99,42 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`BOB_PER_SPEED`](body_motion.rs#L18) — Balanceo de pisada por columna por tick de velocidad en suelo.
   - Declaración: `pub const BOB_PER_SPEED: f64 = 0.2;`
 
+### `flip.rs`
+
+#### Tipos
+
+- [`FlipMoment`](flip.rs#L12) — Lo que el jugador ha hecho desde el frame anterior, en lo que atañe al mortal.
+  - Firma: `pub struct FlipMoment { ... }`
+- [`FlipMotion`](flip.rs#L24) — La memoria del mortal entre frames: cuánto lleva girado y a qué ritmo.
+  - Firma: `pub struct FlipMotion { ... }`
+
+#### Funciones y métodos
+
+- [`advance`](flip.rs#L49) — Tiene en cuenta un frame y responde con la parte del mortal que lleva girada, de `0.0` a `1.0`, o `None` cuando el jugador se dibuja derecho.
+  - Firma: `pub fn advance(&mut self, moment: FlipMoment) -> Option<f64> {`
+
+#### Constantes
+
+- [`FLIP_MS`](flip.rs#L4) — Milisegundos reales que dura un mortal entero, el tiempo en el aire de un segundo salto.
+  - Declaración: `pub const FLIP_MS: f64 = 520.0;`
+
+- [`FLIP_LANDING_MS`](flip.rs#L8) — Milisegundos reales en los que se termina el giro que quedaba cuando un aterrizaje corta el mortal.
+  - Declaración: `pub const FLIP_LANDING_MS: f64 = 110.0;`
+
 ### `player_view.rs`
 
 #### Funciones y métodos
 
-- [`jump_poses`](player_view.rs#L66) — Las columnas de las cinco fases de salto en una hoja que nombra sus columnas (`data-poses`).
+- [`jump_poses`](player_view.rs#L70) — Las columnas de las cinco fases de salto en una hoja que nombra sus columnas (`data-poses`).
   - Firma: `pub fn jump_poses(poses: &[String], columns: usize) -> Option<[usize; 5]> {`
 
-- [`advance`](player_view.rs#L114) — Tiene en cuenta un frame y responde con la pose a dibujar.
+- [`advance`](player_view.rs#L118) — Tiene en cuenta un frame y responde con la pose a dibujar.
   - Firma: `pub fn advance(&mut self, moment: PlayerMoment, sheets: PlayerSheets) -> PlayerPose {`
 
-- [`facing_name`](player_view.rs#L209) — El nombre de la orientación con la que se dibuja al jugador, para el HUD.
+- [`facing_name`](player_view.rs#L223) — El nombre de la orientación con la que se dibuja al jugador, para el HUD.
   - Firma: `pub fn facing_name(&self) -> &'static str {`
 
-- [`walked`](player_view.rs#L214) — Distancia de la zancada visual actual, incluida la pedalada inversa del derrape.
+- [`walked`](player_view.rs#L228) — Distancia de la zancada visual actual, incluida la pedalada inversa del derrape.
   - Firma: `pub fn walked(&self) -> f64 {`
 
 #### Constantes
@@ -194,13 +216,13 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`default`](dust_view.rs#L127) — Implementación de `Default`: la vista de polvo o de jugador vacía.
   - Firma: `fn default() -> Self {`
 
-- [`kick`](dust_view.rs#L219) — El rastro que un jugador corriendo o derrapando levanta tras sus pies, un soplo cada tramo de
+- [`kick`](dust_view.rs#L218) — El rastro que un jugador corriendo o derrapando levanta tras sus pies, un soplo cada tramo de
   - Firma: `fn kick( &mut self, player: &PlayerState, at: DustGround, top_at: &impl Fn(i32, i32) -> Option<f64>, ) {`
 
-- [`raise`](dust_view.rs#L314) — Levanta la bocanada `index` con `shape` en el emisor indicado; descarta la anterior.
+- [`raise`](dust_view.rs#L312) — Levanta la bocanada `index` con `shape` en el emisor indicado; descarta la anterior.
   - Firma: `fn raise( &mut self, index: usize, shape: DustShape, feet: GridPoint, level: f64, kick: GridPoint, origin: GridPoint, tile_height: f64, top_at: &impl Fn(i32, i32) -> Option<f64>, ) {`
 
-- [`voxel_key`](dust_view.rs#L414) — Dónde se ordena un cubo de polvo en la escena: la columna sobre la que está a mitad de su vida, y
+- [`voxel_key`](dust_view.rs#L412) — Dónde se ordena un cubo de polvo en la escena: la columna sobre la que está a mitad de su vida, y
   - Firma: `fn voxel_key( voxel: DustVoxel, feet: GridPoint, level: f64, tile_height: f64, top_at: &impl Fn(i32, i32) -> Option<f64>, ) -> DrawKey {`
 
 ### `player_shadow.rs`
@@ -233,10 +255,10 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`intersection`](shadow_clip.rs#L202) — El punto donde el segmento `from → to` cruza la línea del borde `a → b`, con el alfa interpolado.
   - Firma: `fn intersection( from: ShadowVertex, to: ShadowVertex, a: (f64, f64), b: (f64, f64), ) -> ShadowVertex {`
 
-- [`offset`](dust_view.rs#L445) — Las caras del voxel movidas al punto sobre el que se apoya.
+- [`offset`](dust_view.rs#L443) — Las caras del voxel movidas al punto sobre el que se apoya.
   - Firma: `fn offset(faces: VoxelFaces, x: f64, y: f64) -> VoxelFaces {`
 
-- [`colours`](dust_view.rs#L455) — Los colores de las tres caras para un cubo de `shade` en `alpha`: cada cara con su propio casi blanco
+- [`colours`](dust_view.rs#L453) — Los colores de las tres caras para un cubo de `shade` en `alpha`: cada cara con su propio casi blanco
   - Firma: `fn colours(shade: u32, alpha: f64) -> [Color; 3] {`
 
 #### Constantes internas
@@ -250,26 +272,39 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`PUFFS`](dust_view.rs#L76) — El conjunto completo: un despegue, un aterrizaje y el rastro de carrera.
   - Declaración: `const PUFFS: usize = 2 + RUN_PUFFS;`
 
-- [`ZERO`](dust_view.rs#L389) — Sin kick ni desplazamiento respecto a los pies.
+- [`ZERO`](dust_view.rs#L387) — Sin kick ni desplazamiento respecto a los pies.
   - Declaración: `const ZERO: GridPoint = GridPoint { x: 0.0, y: 0.0 };`
+
+### `flip.rs`
+
+El mortal es solo presentación: el dominio no sabe que el cuerpo gira. `FlipMotion` escucha los contadores de `PlayerFeedback` — un salto nuevo con `air_jump` arranca el giro, un aterrizaje lo termina — y entrega la parte del giro hecha, que `player_view` convierte en la columna de la hoja `flip` (`iso::scene_order::FlipInput`).
+
+El giro avanza a ritmo constante (una vuelta en `FLIP_MS`), porque un mortal acelerado o frenado se lee como un tirón. Al completar la vuelta el mortal termina y el jugador vuelve a su hoja de siempre. Si aterriza antes, el resto de la vuelta se reparte en `FLIP_LANDING_MS`: termina el mortal en el suelo en vez de saltar de golpe a la vertical.
+
+**El giro va dibujado, no rotado en pantalla.** Rotar el sprite es una voltereta lateral igual para todas las orientaciones: quien camina hacia la cámara giraría de lado. La hoja `flip.svg` (`../../../artifacts/player_flip.py`) hornea el mortal de verdad, una fila por orientación: la figura se inclina sobre su propio eje lateral **antes** del yaw de la orientación, así que quien va hacia la cámara cae hacia la cámara. Por eso el cliente no tiene ningún giro de sprite; si la hoja falta en el atlas, el segundo salto vuelve a las poses de salto de siempre.
+
+#### Funciones internas
+
+- [`default`](flip.rs#L35) — Implementación de `Default`: nadie gira todavía y una vuelta por `FLIP_MS`.
+  - Firma: `fn default() -> Self {`
 
 ### `player_view.rs`
 
 #### Funciones internas
 
-- [`default`](player_view.rs#L101) — Implementación de `Default`: la vista de polvo o de jugador vacía.
+- [`default`](player_view.rs#L105) — Implementación de `Default`: la vista de polvo o de jugador vacía.
   - Firma: `fn default() -> Self {`
 
-- [`turn_towards`](player_view.rs#L187) — Avanza la orientación hacia `target` por el camino más corto, una orientación por
+- [`turn_towards`](player_view.rs#L201) — Avanza la orientación hacia `target` por el camino más corto, una orientación por
   - Firma: `fn turn_towards(&mut self, target: usize, elapsed_ms: f64) {`
 
-- [`pose`](player_view.rs#L218) — Pose del `frame`: hoja, pose y orientación actual.
+- [`pose`](player_view.rs#L232) — Pose del `frame`: hoja, pose y orientación actual.
   - Firma: `fn pose(&self, frame: PlayerFrame) -> PlayerPose {`
 
-- [`phase_column`](player_view.rs#L228) — Cuál de las cinco columnas de salto usa una fase; `Ground` nunca llega aquí y toma la
+- [`phase_column`](player_view.rs#L242) — Cuál de las cinco columnas de salto usa una fase; `Ground` nunca llega aquí y toma la
   - Firma: `fn phase_column(phase: PlayerJumpPhase) -> usize {`
 
 #### Constantes internas
 
-- [`PHASES`](player_view.rs#L67) — Fases del salto: `takeoff`, `rise`, `apex`, `fall`, `landing`.
+- [`PHASES`](player_view.rs#L71) — Fases del salto: `takeoff`, `rise`, `apex`, `fall`, `landing`.
   - Declaración: `const PHASES: [&str; 5] = ["takeoff", "rise", "apex", "fall", "landing"];`

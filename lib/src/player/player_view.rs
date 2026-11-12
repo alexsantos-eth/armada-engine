@@ -3,7 +3,7 @@
 use iso::player::{PLAYER_FACINGS, PlayerJumpPhase, PlayerMotionType, get_player_facing};
 use iso::projection::GridPoint;
 use iso::scene_order::{
-    PlayerFrame, PlayerFrameInput, PlayerSheet, SwimInput, select_player_frame,
+    FlipInput, PlayerFrame, PlayerFrameInput, PlayerSheet, SwimInput, select_player_frame,
 };
 
 /// Columns walked per cycle of the walk sheet:
@@ -46,6 +46,8 @@ pub struct PlayerMoment {
     /// Columns covered since the frame before, for the walk cycle.
     pub moved: f64,
     pub jump_phase: PlayerJumpPhase,
+    /// How much of a front flip the player has turned, or `None` when it is not turning one.
+    pub flip: Option<f64>,
     /// Milliseconds of real time since the frame before, for the idle cycle.
     pub elapsed_ms: f64,
 }
@@ -60,6 +62,8 @@ pub struct PlayerSheets {
     pub swim_poses: Option<i32>,
     /// The column of each jump phase, in the order `takeoff rise apex fall landing`.
     pub jump_poses: Option<[usize; 5]>,
+    /// Columns of the flip sheet: the equal steps of one whole somersault.
+    pub flip_poses: Option<i32>,
 }
 
 /// The columns of the five jump phases in a sheet that names its columns (`data-poses`).
@@ -144,12 +148,17 @@ impl PlayerAnimation {
             (_, PlayerJumpPhase::Ground) | (None, _) => None,
             (Some(poses), phase) => Some(poses[phase_column(phase)] as i32),
         };
-        self.stood_ms =
-            if swimming || moment.climbing.is_some() || walking || flying || jump_pose.is_some() {
-                0.0
-            } else {
-                self.stood_ms + moment.elapsed_ms.max(0.0)
-            };
+        self.stood_ms = if swimming
+            || moment.climbing.is_some()
+            || walking
+            || flying
+            || jump_pose.is_some()
+            || moment.flip.is_some()
+        {
+            0.0
+        } else {
+            self.stood_ms + moment.elapsed_ms.max(0.0)
+        };
         let target = get_player_facing(moment.direction).unwrap_or(self.facing);
         self.turn_towards(target, moment.elapsed_ms);
         let pedal = match moment.motion {
@@ -166,6 +175,10 @@ impl PlayerAnimation {
         } else {
             0.0
         };
+        let flip = sheets
+            .flip_poses
+            .zip(moment.flip)
+            .map(|(columns, turned)| FlipInput { columns, turned });
         let frame = select_player_frame(PlayerFrameInput {
             walk_frames: sheets.walk_poses.unwrap_or(1).max(1),
             walk_stride: WALK_STRIDE,
@@ -179,6 +192,7 @@ impl PlayerAnimation {
             stood_ms: (self.stood_ms - IDLE_DELAY_MS).max(0.0),
             air_pose: Some(AIR_POSE),
             swim,
+            flip,
         });
         self.pose(frame)
     }

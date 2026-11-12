@@ -19,9 +19,9 @@ use macroquad::prelude::*;
 use crate::assets::sprites::{SpriteAtlas, SpriteDraw, scene_key};
 use crate::effects::ambient::SpawnEnv;
 use crate::game::config::{
-    BAND_BLEED, ENTITY_LAYER, PLAYER_BEHIND_LAYER, PLAYER_CLIMB_SHEET, PLAYER_FRONT_LAYER,
-    PLAYER_IDLE_SHEET, PLAYER_JUMP_SHEET, PLAYER_SCALE, PLAYER_SWIM_SHEET, PLAYER_WALK_SHEET,
-    SceneMetrics,
+    BAND_BLEED, ENTITY_LAYER, PLAYER_BEHIND_LAYER, PLAYER_CLIMB_SHEET, PLAYER_FLIP_SHEET,
+    PLAYER_FRONT_LAYER, PLAYER_IDLE_SHEET, PLAYER_JUMP_SHEET, PLAYER_SCALE, PLAYER_SWIM_SHEET,
+    PLAYER_WALK_SHEET, SceneMetrics,
 };
 use crate::game::frame::FrameView;
 use crate::game::ground::water_cell;
@@ -29,6 +29,7 @@ use crate::game::state::Game;
 use crate::lighting::shadow_view;
 use crate::player::body_motion::{BodyMoment, BodyScale};
 use crate::player::dust_view::DustGround;
+use crate::player::flip::FlipMoment;
 use crate::player::player_shadow::player_shadow;
 use crate::player::player_view::{PlayerMoment, jump_poses};
 use crate::player::shadow_clip;
@@ -68,6 +69,7 @@ pub(crate) fn player_sheets(atlas: &SpriteAtlas) -> crate::player::player_view::
         idle_poses: columns(PLAYER_IDLE_SHEET).map(|columns| columns as i32),
         climb_poses: columns(PLAYER_CLIMB_SHEET).map(|columns| columns as i32),
         swim_poses: columns(PLAYER_SWIM_SHEET).map(|columns| columns as i32),
+        flip_poses: columns(PLAYER_FLIP_SHEET).map(|columns| columns as i32),
         jump_poses: atlas
             .sheet(PLAYER_JUMP_SHEET)
             .and_then(|sheet| jump_poses(sheet.poses(), sheet.columns())),
@@ -488,6 +490,12 @@ impl Game {
             shadow.shear,
             clip,
         ));
+        let flip = self.flip.advance(FlipMoment {
+            jumps: self.player.feedback.jumps,
+            landings: self.player.feedback.landings,
+            air_jump: self.player.feedback.air_jump,
+            elapsed_ms: frame_ms,
+        });
         let climbing = get_player_climb_progress(&self.player, self.stepper.interpolation_alpha());
         let moved = (rp.x - self.drawn_at.0).hypot(rp.y - self.drawn_at.1);
         let pose = self.animation.advance(
@@ -501,6 +509,7 @@ impl Game {
                     .map_or(self.player.walk, |climb| climb.direction),
                 moved,
                 jump_phase: get_player_jump_phase(&self.player),
+                flip,
                 elapsed_ms: frame_ms,
             },
             self.sheets,
@@ -523,6 +532,7 @@ impl Game {
             PlayerSheet::Jump => PLAYER_JUMP_SHEET,
             PlayerSheet::Climb => PLAYER_CLIMB_SHEET,
             PlayerSheet::Swim => PLAYER_SWIM_SHEET,
+            PlayerSheet::Flip => PLAYER_FLIP_SHEET,
         });
         let drawn = match (sheet, self.player_asset) {
             (Some(sheet), _) => Some((

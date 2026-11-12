@@ -1,6 +1,8 @@
 //! Selects a player's sheet and column from presentation state, without textures.
 
-use super::{SWIM_FLOAT_POSE, climb_pose, idle_pose, swim_dive_pose, swim_pose, walk_pose};
+use super::{
+    SWIM_FLOAT_POSE, climb_pose, flip_pose, idle_pose, swim_dive_pose, swim_pose, walk_pose,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlayerSheet {
@@ -9,6 +11,16 @@ pub enum PlayerSheet {
     Jump,
     Idle,
     Swim,
+    Flip,
+}
+
+/// What the flip sheet is drawn from while the player turns a somersault in the air.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct FlipInput {
+    /// Columns the sheet holds: the equal steps of one whole turn.
+    pub columns: i32,
+    /// How much of the turn is made, from `0.0` to `1.0`.
+    pub turned: f64,
 }
 
 /// What the swim sheet is drawn from while the player is in the water.
@@ -47,9 +59,11 @@ pub struct PlayerFrameInput {
     pub air_pose: Option<i32>,
     /// The swim, when the player is in the water and there is a sheet for it.
     pub swim: Option<SwimInput>,
+    /// The somersault in the air, when one is being turned and there is a sheet for it.
+    pub flip: Option<FlipInput>,
 }
 
-/// Chooses sheet and column with climb, jump, idle, then walk priority.
+/// Chooses sheet and column with swim, climb, flip, jump, idle, then walk priority.
 pub fn select_player_frame(input: PlayerFrameInput) -> PlayerFrame {
     if let Some(swim) = input.swim {
         let pose = if swim.under {
@@ -75,6 +89,12 @@ pub fn select_player_frame(input: PlayerFrameInput) -> PlayerFrame {
                 sheet: PlayerSheet::Walk,
                 pose: 0,
             });
+    }
+    if let Some(flip) = input.flip {
+        return PlayerFrame {
+            sheet: PlayerSheet::Flip,
+            pose: flip_pose(flip.turned, flip.columns),
+        };
     }
     if let Some(pose) = input.jump_pose {
         return PlayerFrame {

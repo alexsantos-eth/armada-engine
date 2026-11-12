@@ -35,6 +35,7 @@ use crate::maker::MakerSession;
 use crate::perf::PerfLog;
 use crate::player::body_motion::BodyMotion;
 use crate::player::dust_view::DustPuffs;
+use crate::player::flip::FlipMotion;
 use crate::player::player_view::PlayerAnimation;
 use crate::rendering::grade::GradeMaterial;
 use crate::rendering::render_target::SceneTarget;
@@ -80,6 +81,7 @@ pub(crate) struct Game {
     pub(crate) sheets: crate::player::player_view::PlayerSheets,
     pub(crate) animation: PlayerAnimation,
     pub(crate) body: BodyMotion,
+    pub(crate) flip: FlipMotion,
     pub(crate) drawn_at: (f64, f64),
     pub(crate) dust: DustPuffs,
     /// The motes and fireflies drifting over the world; view state like the dust.
@@ -342,6 +344,7 @@ impl Game {
             sheets,
             animation: PlayerAnimation::default(),
             body: BodyMotion::default(),
+            flip: FlipMotion::default(),
             drawn_at: (spawned.x, spawned.y),
             dust: DustPuffs::new(),
             particles: AmbientParticles::new(WORLD_SEED),

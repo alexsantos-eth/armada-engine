@@ -8,6 +8,7 @@ const SHEETS: PlayerSheets = PlayerSheets {
     climb_poses: Some(9),
     jump_poses: Some([0, 1, 2, 3, 4]),
     swim_poses: Some(10),
+    flip_poses: Some(12),
 };
 
 fn moment() -> PlayerMoment {
@@ -17,6 +18,7 @@ fn moment() -> PlayerMoment {
         direction: GridPoint { x: 0.0, y: 0.0 },
         moved: 0.0,
         jump_phase: PlayerJumpPhase::Ground,
+        flip: None,
         elapsed_ms: 16.0,
     }
 }
@@ -423,4 +425,45 @@ fn falls_back_to_the_walk_sheet_when_there_is_no_swim_sheet() {
         },
     );
     assert_eq!(pose.sheet, PlayerSheet::Walk);
+}
+
+/// A somersault in the air is drawn from the flip sheet, at the column its turn has reached, and
+/// it wins over the jump poses of the same moment.
+#[test]
+fn a_somersault_is_drawn_from_the_flip_sheet() {
+    let mut animation = PlayerAnimation::default();
+
+    let pose = animation.advance(
+        PlayerMoment {
+            motion: PlayerMotionType::Jumping,
+            jump_phase: PlayerJumpPhase::Rise,
+            flip: Some(0.5),
+            ..moment()
+        },
+        SHEETS,
+    );
+
+    assert_eq!(pose.sheet, PlayerSheet::Flip);
+    assert_eq!(pose.pose, 6);
+}
+
+/// With no flip sheet in the atlas the jump poses carry the second jump, as they did before.
+#[test]
+fn without_a_flip_sheet_the_jump_poses_carry_the_second_jump() {
+    let mut animation = PlayerAnimation::default();
+
+    let pose = animation.advance(
+        PlayerMoment {
+            motion: PlayerMotionType::Jumping,
+            jump_phase: PlayerJumpPhase::Rise,
+            flip: Some(0.5),
+            ..moment()
+        },
+        PlayerSheets {
+            flip_poses: None,
+            ..SHEETS
+        },
+    );
+
+    assert_eq!(pose.sheet, PlayerSheet::Jump);
 }

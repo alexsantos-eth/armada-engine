@@ -37,7 +37,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`select_player_frame`](frame_selection.rs#L53) — Elige la hoja y la columna con prioridad de nadar, trepar, saltar, idle y caminar. En el agua manda [`SwimInput`](frame_selection.rs): la hoja de nado, con la columna de flotar, la del crol o la de bucear.
+- [`select_player_frame`](frame_selection.rs#L67) — Elige la hoja y la columna con prioridad de nadar, trepar, el mortal, saltar, idle y caminar. En el agua manda [`SwimInput`](frame_selection.rs): la hoja de nado, con la columna de flotar, la del crol o la de bucear. En el aire, [`FlipInput`](frame_selection.rs) manda sobre las poses de salto: la hoja del mortal, en la columna que marca la parte del giro hecha.
   - Firma: `pub fn select_player_frame(input: PlayerFrameInput) -> PlayerFrame {`
 
 ### `order.rs`
@@ -71,6 +71,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`swim_dive_pose`](poses.rs) — La columna con la que se dibuja a quien está bajo la superficie: la última de la hoja.
   - Firma: `pub fn swim_dive_pose(columns: i32) -> i32 {`
+
+- [`flip_pose`](poses.rs) — Columna del mortal por la parte del giro hecha, de `0.0` a `1.0`: las columnas de la hoja son los pasos iguales de una vuelta entera.
+  - Firma: `pub fn flip_pose(turned: f64, columns: i32) -> i32 {`
 
 #### Constantes
 

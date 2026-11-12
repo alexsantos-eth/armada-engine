@@ -219,6 +219,7 @@ fn player_sheet_selection_matches_contract_fixture() {
             air_pose: sample["airPose"].as_i64().map(|value| value as i32),
             // The fixtures are shared with the web client, which has no swim sheet.
             swim: None,
+            flip: None,
         });
         let expected = &sample["expected"];
         let sheet = match expected["sheet"].as_str().unwrap() {

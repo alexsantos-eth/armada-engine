@@ -14,6 +14,7 @@ fn input() -> PlayerFrameInput {
         stood_ms: 500.0,
         air_pose: Some(3),
         swim: None,
+        flip: None,
     }
 }
 
@@ -138,5 +139,38 @@ fn falls_back_to_idle_or_walk_when_special_sheets_are_missing() {
             sheet: PlayerSheet::Walk,
             pose: 0
         }
+    );
+}
+
+#[test]
+fn a_somersault_in_the_air_is_drawn_from_the_flip_sheet() {
+    assert_eq!(
+        select_player_frame(PlayerFrameInput {
+            flip: Some(FlipInput {
+                columns: 12,
+                turned: 0.25
+            }),
+            ..input()
+        }),
+        PlayerFrame {
+            sheet: PlayerSheet::Flip,
+            pose: 3
+        }
+    );
+}
+
+#[test]
+fn a_climb_still_wins_over_a_somersault() {
+    assert_eq!(
+        select_player_frame(PlayerFrameInput {
+            flip: Some(FlipInput {
+                columns: 12,
+                turned: 0.25
+            }),
+            climbing: Some(0.5),
+            ..input()
+        })
+        .sheet,
+        PlayerSheet::Climb
     );
 }

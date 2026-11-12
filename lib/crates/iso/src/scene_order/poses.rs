@@ -49,6 +49,13 @@ pub fn walk_pose(distance: f64, frames: i32, stride: f64) -> i32 {
     1 + ((cycle * f64::from(frames)).floor() as i32).min(frames - 1)
 }
 
+/// Flip column by how much of the somersault has been turned, from `0.0` to `1.0`: the sheet's
+/// columns are the equal steps of one whole turn.
+pub fn flip_pose(turned: f64, columns: i32) -> i32 {
+    let share = turned.clamp(0.0, 1.0);
+    ((share * f64::from(columns)).floor() as i32).clamp(0, (columns - 1).max(0))
+}
+
 /// The column of the swim sheet the figure treads water in: the first one.
 pub const SWIM_FLOAT_POSE: i32 = 0;
 
