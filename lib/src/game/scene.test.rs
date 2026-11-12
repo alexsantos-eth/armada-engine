@@ -167,6 +167,69 @@ fn level_ground_towards_the_camera_never_covers_the_player_and_a_step_still_does
     }
 }
 
+/// Walking up a flight, the ledge above it must keep covering the player until the feet
+/// pass its top: the key's elevation rides the feet, so the order tilts gradually instead
+/// of snapping with the rounded column to the flight's top level.
+#[test]
+fn climbing_tilts_the_order_against_the_ledge_with_the_feet() {
+    use std::cmp::Ordering;
+
+    let column = WorldCoord { x: 12, y: 7 };
+    let ledge = ground_key(12.5, 6.5, 3.0, TERRAIN_LAYER, PREVIEW_TILE_HEIGHT);
+
+    let midway = player_key(column, 2.4, PLAYER_FRONT_LAYER, PREVIEW_TILE_HEIGHT);
+    assert_eq!(
+        compare_draw_keys(&midway, &ledge),
+        Ordering::Less,
+        "feet below the ledge's top: it is drawn after and covers the player"
+    );
+
+    let at_the_top = player_key(column, 3.0, PLAYER_FRONT_LAYER, PREVIEW_TILE_HEIGHT);
+    assert_eq!(
+        compare_draw_keys(&at_the_top, &ledge),
+        Ordering::Greater,
+        "feet at the ledge's top: the front layer walks over it"
+    );
+
+    let descending = player_key(column, 2.99, PLAYER_FRONT_LAYER, PREVIEW_TILE_HEIGHT);
+    assert_eq!(
+        compare_draw_keys(&descending, &ledge),
+        Ordering::Less,
+        "feet a hair below the ledge's top: coming down it covers again"
+    );
+
+    let shadow_midway = player_key(column, 2.4, GROUND_SHADOW_LAYER, PREVIEW_TILE_HEIGHT);
+    assert_eq!(
+        compare_draw_keys(&shadow_midway, &ledge),
+        Ordering::Less,
+        "the shadow rides the same feet"
+    );
+}
+
+/// A flight stepped down still orders against its foot: below the lower ground's top
+/// face nothing covers the player, whatever the rounded column holds.
+#[test]
+fn the_key_tracks_the_feet_not_the_columns_integer_level() {
+    use std::cmp::Ordering;
+
+    let column = WorldCoord { x: 12, y: 7 };
+    let ground = ground_key(12.5, 6.5, 2.0, TERRAIN_LAYER, PREVIEW_TILE_HEIGHT);
+
+    let standing = player_key(column, 2.0, PLAYER_FRONT_LAYER, PREVIEW_TILE_HEIGHT);
+    assert_eq!(
+        compare_draw_keys(&standing, &ground),
+        Ordering::Greater,
+        "feet at integer elevation: the front layer stands over the ground it ties with"
+    );
+
+    let mid_descent = player_key(column, 1.5, PLAYER_FRONT_LAYER, PREVIEW_TILE_HEIGHT);
+    assert_eq!(
+        compare_draw_keys(&mid_descent, &ground),
+        Ordering::Less,
+        "feet below that ground's top: it is drawn after and covers"
+    );
+}
+
 /// The diamond of the cell across the corner starts where the feet stop.
 #[test]
 fn the_cell_across_the_corner_only_ever_touches_the_players_feet() {

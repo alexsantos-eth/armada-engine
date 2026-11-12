@@ -352,7 +352,11 @@ fn draws_the_swim_sheet_while_the_player_is_in_the_water() {
     for _ in 0..4 {
         poses.push(animation.advance(swimming, SHEETS).pose);
     }
-    assert_eq!(poses, vec![2, 3, 4, 5], "the crawl follows the distance swum");
+    assert_eq!(
+        poses,
+        vec![2, 3, 4, 5],
+        "the crawl follows the distance swum"
+    );
 
     let under = PlayerMoment {
         motion: PlayerMotionType::Sinking,

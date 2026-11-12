@@ -1,8 +1,6 @@
 //! Selects a player's sheet and column from presentation state, without textures.
 
-use super::{
-    SWIM_FLOAT_POSE, climb_pose, idle_pose, swim_dive_pose, swim_pose, walk_pose,
-};
+use super::{SWIM_FLOAT_POSE, climb_pose, idle_pose, swim_dive_pose, swim_pose, walk_pose};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlayerSheet {

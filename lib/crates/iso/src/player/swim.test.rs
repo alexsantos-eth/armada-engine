@@ -59,7 +59,10 @@ fn a_plunge_settles_back_at_the_float_depth() {
         deepest = deepest.max(depth);
     }
     assert!(deepest > PLAYER_FLOAT_DEPTH, "it went under: {deepest}");
-    assert!((depth - PLAYER_FLOAT_DEPTH).abs() < 1e-3, "settled: {depth}");
+    assert!(
+        (depth - PLAYER_FLOAT_DEPTH).abs() < 1e-3,
+        "settled: {depth}"
+    );
 }
 
 #[test]
@@ -158,7 +161,11 @@ fn a_body_still_plunging_does_not_bob() {
     assert_eq!(float_settle(PLAYER_FLOAT_DEPTH), 1.0);
     assert_eq!(float_settle(PLAYER_PLUNGE_MAX), 0.0);
     assert_eq!(
-        float_bob((PLAYER_BOB_TICKS / 4.0) as i32, float_settle(PLAYER_PLUNGE_MAX), false),
+        float_bob(
+            (PLAYER_BOB_TICKS / 4.0) as i32,
+            float_settle(PLAYER_PLUNGE_MAX),
+            false
+        ),
         0.0
     );
 }

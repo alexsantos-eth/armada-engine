@@ -13,7 +13,7 @@ use iso::player::physics::{get_player_climb_progress, get_player_column};
 use iso::projection::{
     GridPoint, ProjectionConfig, ScreenPoint, project_block, project_grid_point,
 };
-use iso::scene_order::PlayerSheet;
+use iso::scene_order::{DrawKey, PlayerSheet};
 use macroquad::prelude::*;
 
 use crate::assets::sprites::{SpriteAtlas, SpriteDraw, scene_key};
@@ -71,6 +71,24 @@ pub(crate) fn player_sheets(atlas: &SpriteAtlas) -> crate::player::player_view::
             .sheet(PLAYER_JUMP_SHEET)
             .and_then(|sheet| jump_poses(sheet.poses(), sheet.columns())),
     }
+}
+
+/// The player's depth key for this frame. It stands on its rounded column, but the key's
+/// elevation rides the feet, so climbing or descending a flight tilts the order gradually
+/// instead of snapping with the column's integer level.
+pub(crate) fn player_key(
+    column: WorldCoord,
+    feet_elevation: f64,
+    layer: i32,
+    tile_height: f64,
+) -> DrawKey {
+    scene_key(
+        f64::from(column.x) + 0.5,
+        f64::from(column.y) + 0.5,
+        feet_elevation,
+        layer,
+        tile_height,
+    )
 }
 
 /// Which layer the player draws in over the column it stands on.
@@ -431,14 +449,9 @@ impl Game {
             projection,
         );
         let column = get_player_column(GridPoint { x: rp.x, y: rp.y });
-        let column_elevation = self
-            .manager
-            .column_at(column.x, column.y)
-            .map_or(rp.elevation, |c| f64::from(c.elevation));
-        let key = scene_key(
-            f64::from(column.x) + 0.5,
-            f64::from(column.y) + 0.5,
-            column_elevation,
+        let key = player_key(
+            column,
+            rp.elevation,
             player_layer(GridPoint { x: rp.x, y: rp.y }, column),
             projection.tile_height,
         );
@@ -460,10 +473,9 @@ impl Game {
             self.manager.column_at(x, y).map(|c| c.elevation)
         });
         self.draws.push(SpriteDraw::ground_ellipse(
-            scene_key(
-                f64::from(column.x) + 0.5,
-                f64::from(column.y) + 0.5,
-                column_elevation,
+            player_key(
+                column,
+                rp.elevation,
                 shadow_view::GROUND_SHADOW_LAYER,
                 projection.tile_height,
             ),

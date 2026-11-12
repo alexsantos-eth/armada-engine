@@ -369,7 +369,11 @@ fn swimming_along_leaves_a_wake_of_two_crests_behind() {
     for _ in 0..RUN_PUFFS {
         swim_react(&mut dust, &player, SWIM_WAKE_EVERY);
     }
-    assert_eq!(dust.live(), RUN_PUFFS, "the trail's slots are reused in turn");
+    assert_eq!(
+        dust.live(),
+        RUN_PUFFS,
+        "the trail's slots are reused in turn"
+    );
 }
 
 /// The two crests of a wake run out to opposite sides of the way the swimmer came, and both
@@ -380,7 +384,10 @@ fn the_crests_of_a_wake_spread_to_both_sides() {
         .into_iter()
         .map(|side| turn(GridPoint { x: -1.0, y: 0.0 }, side * SWIM_WAKE_SPREAD))
         .collect();
-    assert!(arms[0].y > 0.0 && arms[1].y < 0.0, "one to each side: {arms:?}");
+    assert!(
+        arms[0].y > 0.0 && arms[1].y < 0.0,
+        "one to each side: {arms:?}"
+    );
     for arm in &arms {
         assert!(arm.x < 0.0, "both run backwards: {arm:?}");
         assert!((arm.x.hypot(arm.y) - 1.0).abs() < 1e-9, "and are unit long");

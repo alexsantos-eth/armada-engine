@@ -144,16 +144,12 @@ impl PlayerAnimation {
             (_, PlayerJumpPhase::Ground) | (None, _) => None,
             (Some(poses), phase) => Some(poses[phase_column(phase)] as i32),
         };
-        self.stood_ms = if swimming
-            || moment.climbing.is_some()
-            || walking
-            || flying
-            || jump_pose.is_some()
-        {
-            0.0
-        } else {
-            self.stood_ms + moment.elapsed_ms.max(0.0)
-        };
+        self.stood_ms =
+            if swimming || moment.climbing.is_some() || walking || flying || jump_pose.is_some() {
+                0.0
+            } else {
+                self.stood_ms + moment.elapsed_ms.max(0.0)
+            };
         let target = get_player_facing(moment.direction).unwrap_or(self.facing);
         self.turn_towards(target, moment.elapsed_ms);
         let pedal = match moment.motion {
