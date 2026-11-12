@@ -412,10 +412,11 @@ fn body_overlap(point: GridPoint, x: i32, y: i32) -> (f64, f64) {
 /// Whether a walking player with its feet at `feet` may move from `from` to `to`. A flight of
 /// stairs is only ever taken from its foot, the column it climbs away from, so from anywhere
 /// else its side is a wall the body stops against, like any other block's, and is cleared the
-/// way any block is, by jumping. Every move that does not reach up onto a flight passes. A
-/// player who fell into an overlap with a flight's side may not deepen it, but may slide or
-/// step away: the overlap may not grow on either axis, or walking out of a corner would be
-/// impossible.
+/// way any block is, by jumping. A flight at the top is the same leading edge in reverse: it
+/// is only entered from its descent edge, along its axis, so a lateral walk cannot step onto
+/// the top face. A player who fell into an overlap with a flight's side may not deepen it,
+/// but may slide or step away: the overlap may not grow on either axis, or walking out of a
+/// corner would be impossible.
 fn may_step_onto<G: PlayerGround>(ground: &G, from: GridPoint, to: GridPoint, feet: f64) -> bool {
     let standing = get_player_column(from);
     let body = get_player_cells(to);
@@ -429,6 +430,23 @@ fn may_step_onto<G: PlayerGround>(ground: &G, from: GridPoint, to: GridPoint, fe
                 continue;
             };
             if f64::from(column.elevation) - feet <= PLAYER_STEP_HEIGHT {
+                if let Some(up) = flight_direction(ground, coord) {
+                    let foot = WorldCoord {
+                        x: coord.x - up.x,
+                        y: coord.y - up.y,
+                    };
+                    let edge = WorldCoord {
+                        x: coord.x + up.x,
+                        y: coord.y + up.y,
+                    };
+                    if standing != foot && standing != edge {
+                        let (from_x, from_y) = body_overlap(from, x, y);
+                        let (to_x, to_y) = body_overlap(to, x, y);
+                        if to_x > from_x + 1e-9 || to_y > from_y + 1e-9 {
+                            return false;
+                        }
+                    }
+                }
                 continue;
             }
             let Some(up) = flight_direction(ground, coord) else {

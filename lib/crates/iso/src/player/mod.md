@@ -445,6 +445,9 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`accelerate_player`](physics.rs#L712) — Calcula o recupera «accelerate player» según los parámetros de la firma.
   - Firma: `fn accelerate_player(player: &mut PlayerState) {`
 
+- [`may_step_onto`](physics.rs#L420) — Si el jugador de a pie sacando sus pies a `feet` puede moverse de `from` a `to`. Una grada solo se entra por su eje: por el pie para subir y por el borde de bajada para bajar; desde cualquier otra casilla, a cualquier altura incluida la cima, es un muro que el cuerpo para como cualquier bloque (el solape no puede crecer en ningún eje).
+  - Firma: `fn may_step_onto<G: PlayerGround>(ground: &G, from: GridPoint, to: GridPoint, feet: f64) -> bool {`
+
 - [`step_once`](physics.rs#L745) — Calcula o recupera «step once» según los parámetros de la firma.
   - Firma: `fn step_once<G: PlayerGround>( player: &mut PlayerState, ground: &G, diagnose: bool, ) -> Option<PlayerBlockReason> {`
 

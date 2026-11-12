@@ -797,6 +797,38 @@ fn a_player_dropped_on_a_flights_corner_walks_back_off_it() {
     assert_eq!(player.elevation, 0.0);
 }
 
+/// What the foot is for going up, the descent edge is for coming down, all at the top:
+/// a flight is only ever entered along its axis, never from a side, at any height.
+#[test]
+fn a_flight_is_a_wall_from_its_sides_at_the_top() {
+    let mut ground = stairs_ground();
+    let mut player = create_player(&ground, GridPoint { x: 2.0, y: 0.0 });
+    set_player_walk(
+        &mut player,
+        ScreenDirections {
+            up: true,
+            left: true,
+            ..Default::default()
+        },
+    );
+    for _ in 0..40 {
+        step_player(&mut player, &mut ground, 1);
+        assert!(
+            player.climb.is_none(),
+            "there are no steps in from the side of the top face"
+        );
+    }
+    assert_eq!(
+        player.elevation, 1.0,
+        "it stays on the plateau, not on the flight"
+    );
+    assert!(
+        player.y < 0.5 - PLAYER_RADIUS + 1e-9,
+        "it stops against the side as against any block: {}",
+        player.y
+    );
+}
+
 /// A flight is taken from its foot, never over its sides: from the side it is a wall like any
 #[test]
 fn a_flight_is_a_wall_from_its_sides() {
