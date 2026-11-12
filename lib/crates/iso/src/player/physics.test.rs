@@ -1,8 +1,4 @@
 use super::*;
-use crate::player::swim::{
-    PLAYER_BOB_DEPTH, PLAYER_BOB_TICKS, PLAYER_FLOAT_DEPTH, PLAYER_PLUNGE_MAX,
-    PLAYER_SPLASH_MIN_SPEED, PLAYER_SWIM_STEP, PLAYER_UNDER_DEPTH,
-};
 use crate::terrain::{TerrainColumn, TerrainMaterial};
 
 fn ground_from(rows: &[&str]) -> CellGround {
@@ -629,221 +625,110 @@ fn each_tread_is_hopped_onto_and_landed_on() {
     }
 }
 
-/// A beach: land at elevation 0 up to `x = 0`, and from `x = 1` out, water topped `depth`
-/// blocks below it.
-fn beach(depth: i32) -> CellGround {
-    let mut ground = CellGround::new();
-    for x in -3..=40 {
-        for y in -3..=3 {
-            let water = x >= 1;
-            ground.columns.insert(
-                WorldCoord { x, y },
-                TerrainColumn {
-                    coord: WorldCoord { x, y },
-                    elevation: if water { -depth } else { 0 },
-                    surface: if water {
-                        TerrainMaterial::Water
-                    } else {
-                        TerrainMaterial::Grass
-                    },
-                    walkable: !water,
-                },
-            );
+fn flight_with_open_sides() -> CellGround {
+    let mut ground = ground_from(&["00000", "00111", "00000"]);
+    if let Some(column) = ground.columns.get_mut(&WorldCoord { x: 2, y: 1 }) {
+        column.surface = TerrainMaterial::Stairs;
+    }
+    for coord in [WorldCoord { x: 1, y: 1 }, WorldCoord { x: 3, y: 1 }] {
+        if let Some(column) = ground.columns.get_mut(&coord) {
+            column.surface = TerrainMaterial::Path;
         }
     }
     ground
 }
 
-/// Walking towards `+x`, which is up and right on screen.
-const SEAWARD: ScreenDirections = ScreenDirections {
-    up: true,
-    down: false,
-    left: false,
-    right: true,
-};
-
-/// Walking towards `-x`: back to the shore.
-const LANDWARD: ScreenDirections = ScreenDirections {
-    up: false,
-    down: true,
-    left: true,
-    right: false,
-};
-
-#[test]
-fn walking_into_the_water_starts_a_swim_at_the_water_top() {
-    let mut ground = beach(1);
-    let mut player = create_player(&ground, GridPoint { x: -1.0, y: 0.0 });
-    set_player_walk(&mut player, SEAWARD);
-    step_player(&mut player, &mut ground, 60);
-    let swim = player.swim.expect("it should be swimming");
-    assert!(player.x > 1.0, "it went into the water: {}", player.x);
-    assert_eq!(player.elevation, -1.0);
-    assert!(
-        (swim.depth - PLAYER_FLOAT_DEPTH).abs() < 0.05,
-        "it floats at the float depth: {}",
-        swim.depth
+fn walk_into_flight_side(ground: &mut CellGround) -> PlayerState {
+    let mut player = create_player(ground, GridPoint { x: 2.0, y: 0.0 });
+    set_player_walk(
+        &mut player,
+        ScreenDirections {
+            left: true,
+            up: true,
+            ..Default::default()
+        },
     );
-    assert!(
-        (player.height + swim.depth).abs() <= PLAYER_BOB_DEPTH + 1e-9,
-        "it is drawn at its depth, give or take the swell: {} vs {}",
-        player.height,
-        swim.depth
-    );
-    assert_eq!(player.motion, PlayerMotionType::Swimming);
+    player
 }
 
+/// A flight is taken from its foot, never over its sides: from the side it is a wall like any
 #[test]
-fn a_swimmer_is_slower_than_a_walker() {
-    let mut ground = beach(1);
-    let mut player = create_player(&ground, GridPoint { x: 3.0, y: 0.0 });
-    set_player_walk(&mut player, SEAWARD);
-    step_player(&mut player, &mut ground, 40);
-    let speed = player.velocity.x.hypot(player.velocity.y);
-    assert!(
-        (speed - PLAYER_SWIM_STEP).abs() < 1e-9,
-        "it cruises at the swimming speed: {speed}"
-    );
-    let (water, land) = (PLAYER_SWIM_STEP, PLAYER_STEP);
-    assert!(water < land, "a stroke covers less than a step: {water} < {land}");
-}
-
-#[test]
-fn falling_into_the_water_plunges_under_and_floats_back_up() {
-    let mut ground = beach(1);
-    let mut player = create_player(&ground, GridPoint { x: 3.0, y: 0.0 });
-    player.elevation = 4.0;
-    player.height = 0.0;
-    player.last_safe.elevation = 4.0;
-    player.vertical_speed = Some(0.0);
-    let mut deepest = 0.0f64;
-    for _ in 0..120 {
+fn a_flight_is_a_wall_from_its_sides() {
+    let mut ground = flight_with_open_sides();
+    let mut player = walk_into_flight_side(&mut ground);
+    for _ in 0..40 {
         step_player(&mut player, &mut ground, 1);
-        if let Some(swim) = player.swim {
-            deepest = deepest.max(swim.depth);
+        assert!(
+            player.climb.is_none(),
+            "there are no steps up the side of a flight"
+        );
+    }
+    assert_eq!(player.elevation, 0.0, "it never gets up the side");
+    assert!(
+        player.y < 0.5 - PLAYER_RADIUS + 1e-9,
+        "it stops against the side as against any block: {}",
+        player.y
+    );
+}
+
+/// From its foot the flight is walked up, straight up the steps whatever way the player came.
+#[test]
+fn a_flight_is_climbed_from_its_foot() {
+    let mut ground = flight_with_open_sides();
+    let mut player = create_player(&ground, GridPoint { x: 1.0, y: 1.0 });
+    set_player_walk(
+        &mut player,
+        ScreenDirections {
+            right: true,
+            up: true,
+            ..Default::default()
+        },
+    );
+    for _ in 0..40 {
+        step_player(&mut player, &mut ground, 1);
+        if player.climb.is_some() {
+            break;
         }
     }
+    let climb = player.climb.as_ref().expect("the flight is walked up");
+    assert!(climb.stairs);
     assert!(
-        deepest > PLAYER_FLOAT_DEPTH + PLAYER_UNDER_DEPTH,
-        "the fall pushed it under: {deepest}"
+        (climb.direction.x - 1.0).abs() < 1e-9 && climb.direction.y.abs() < 1e-9,
+        "it walks up the way the flight climbs: {:?}",
+        climb.direction
     );
-    assert!(deepest <= PLAYER_PLUNGE_MAX + 1e-9);
-    let swim = player.swim.expect("it should be swimming");
+}
+
+/// The side of a flight is cleared the way any block is: with a double jump.
+#[test]
+fn a_flight_side_is_cleared_with_a_double_jump() {
+    let mut ground = flight_with_open_sides();
+    let mut player = walk_into_flight_side(&mut ground);
+    set_player_jump_held(&mut player, true);
+    jump_player(&mut player);
+    step_player(&mut player, &mut ground, 4);
+    jump_player(&mut player);
+    step_player(&mut player, &mut ground, 4);
     assert!(
-        (swim.depth - PLAYER_FLOAT_DEPTH).abs() < 0.05,
-        "it is back at the surface: {}",
-        swim.depth
+        player.elevation + player.height >= 1.0,
+        "two jumps carry it over the top of the flight: {}",
+        player.elevation + player.height
     );
-    assert_eq!(player.feedback.splashes, 1);
-    assert!(player.feedback.splash_impact > PLAYER_SPLASH_MIN_SPEED);
-}
-
-#[test]
-fn a_fall_into_the_water_is_never_rescued() {
-    let mut ground = beach(1);
-    let mut player = create_player(&ground, GridPoint { x: 3.0, y: 0.0 });
-    player.elevation = 6.0;
-    player.last_safe = PlayerPosition {
-        x: 3.0,
-        y: 0.0,
-        elevation: 6.0,
-        height: 0.0,
-        velocity: GridPoint { x: 0.0, y: 0.0 },
-        vertical_speed: None,
-    };
-    player.vertical_speed = Some(0.0);
-    step_player(&mut player, &mut ground, 60);
-    assert!(player.swim.is_some(), "the water caught it");
-    assert_eq!(player.elevation, -1.0);
-}
-
-#[test]
-fn going_under_shows_as_sinking_and_slows_the_swimmer() {
-    let mut ground = beach(1);
-    let mut player = create_player(&ground, GridPoint { x: 3.0, y: 0.0 });
-    player.elevation = -1.0;
-    player.swim = Some(PlayerSwim::entering(-1.0, PLAYER_PLUNGE_MAX, 0.0));
-    set_player_walk(&mut player, SEAWARD);
-    step_player(&mut player, &mut ground, 1);
-    assert_eq!(player.motion, PlayerMotionType::Sinking);
-    assert!(swim_step(false, PLAYER_PLUNGE_MAX) < PLAYER_SWIM_STEP);
-}
-
-/// In the water there is nothing to push off: the jump key is ignored, and it does not leave a
-/// jump waiting to go off the moment the swimmer climbs out either.
-#[test]
-fn the_jump_key_does_nothing_in_the_water() {
-    let mut ground = beach(1);
-    let mut player = create_player(&ground, GridPoint { x: 3.0, y: 0.0 });
-    player.elevation = -1.0;
-    player.swim = Some(PlayerSwim::entering(-1.0, PLAYER_FLOAT_DEPTH, 0.0));
-    set_player_walk(&mut player, SEAWARD);
-    step_player(&mut player, &mut ground, 1);
-    let cruising = player.velocity.x.hypot(player.velocity.y);
-    for _ in 0..5 {
-        jump_player(&mut player);
+    set_player_walk(&mut player, ScreenDirections::default());
+    for _ in 0..40 {
         step_player(&mut player, &mut ground, 1);
+        if player.vertical_speed.is_none() {
+            break;
+        }
     }
-    let speed = player.velocity.x.hypot(player.velocity.y);
-    assert_eq!(player.feedback.jumps, 0, "it never takes off");
-    assert!(
-        speed <= PLAYER_SWIM_STEP + 1e-9,
-        "and it is not thrown forward: {speed} over {cruising}"
+    assert_eq!(
+        get_player_column(GridPoint {
+            x: player.x,
+            y: player.y
+        }),
+        WorldCoord { x: 2, y: 1 },
+        "it lands on the flight"
     );
-    assert_eq!(player.jump_buffer_ticks, 0, "no jump is left waiting");
-    assert_eq!(player.motion, PlayerMotionType::Swimming);
-}
-
-/// Floating still, the water carries the body up and down: the drawn height moves while the
-/// depth the buoyancy works from settles.
-#[test]
-fn a_floating_swimmer_rides_the_swell_up_and_down() {
-    let mut ground = beach(1);
-    let mut player = create_player(&ground, GridPoint { x: 3.0, y: 0.0 });
-    player.elevation = -1.0;
-    player.swim = Some(PlayerSwim::entering(-1.0, PLAYER_FLOAT_DEPTH, 0.0));
-    let mut heights = vec![];
-    for _ in 0..(PLAYER_BOB_TICKS as i32) {
-        step_player(&mut player, &mut ground, 1);
-        heights.push(player.height);
-    }
-    let high = heights.iter().cloned().fold(f64::MIN, f64::max);
-    let low = heights.iter().cloned().fold(f64::MAX, f64::min);
-    assert!(
-        high - low > PLAYER_BOB_DEPTH,
-        "it rides up and down: {low} to {high}"
-    );
-    let swim = player.swim.expect("it is still swimming");
-    assert!(
-        (swim.depth - PLAYER_FLOAT_DEPTH).abs() < 0.01,
-        "while the body itself rests at its float depth: {}",
-        swim.depth
-    );
-}
-
-#[test]
-fn a_swimmer_climbs_out_onto_the_shore() {
-    let mut ground = beach(1);
-    let mut player = create_player(&ground, GridPoint { x: 3.0, y: 0.0 });
-    player.elevation = -1.0;
-    player.swim = Some(PlayerSwim::entering(-1.0, PLAYER_FLOAT_DEPTH, 0.0));
-    set_player_walk(&mut player, LANDWARD);
-    step_player(&mut player, &mut ground, 200);
-    assert!(player.swim.is_none(), "it left the water");
-    assert_eq!(player.elevation, 0.0);
-    assert!(player.x < 1.0, "it is on the land: {}", player.x);
-}
-
-#[test]
-fn a_swimmer_pulls_itself_up_a_shore_two_blocks_higher() {
-    let mut ground = beach(2);
-    let mut player = create_player(&ground, GridPoint { x: 3.0, y: 0.0 });
-    player.elevation = -2.0;
-    player.swim = Some(PlayerSwim::entering(-2.0, PLAYER_FLOAT_DEPTH, 0.0));
-    set_player_walk(&mut player, LANDWARD);
-    step_player(&mut player, &mut ground, 300);
-    assert!(player.swim.is_none(), "it left the water");
-    assert_eq!(player.elevation, 0.0);
-    let (out_of_water, on_land) = (PLAYER_SWIM_EXIT_CLIMB, PLAYER_MAX_CLIMB);
-    assert!(out_of_water > on_land, "{out_of_water} over {on_land}");
+    assert_eq!(player.elevation, 1.0, "on its top");
+    assert_eq!(player.height, 0.0);
 }
