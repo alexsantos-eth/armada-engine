@@ -1,6 +1,7 @@
 use super::{
-    MAX_REFLECTION_CELLS, ReflectedSprite, cell_top, lay_on_water, mirror_sprite, reflection_cells,
-    reflection_piece, waterline,
+    BLUR_TAPS, MAX_REFLECTION_CELLS, ReflectedSprite, ReflectionPiece, blur_radius, blur_taps,
+    cell_top, lay_on_water, mirror_sprite, piece_depth, reflection_cells, reflection_piece,
+    smear_sprite, waterline,
 };
 use crate::assets::SpriteLayout;
 use crate::projection::ProjectionConfig;
@@ -285,4 +286,129 @@ fn the_cut_is_the_same_whichever_way_a_cell_is_wound() {
         (super::area(&one.points).abs() - super::area(&other.points).abs()).abs() < 1e-9,
         "the same area either way",
     );
+}
+
+/// At the surface the water still breaks a reflection up a little: the blur never vanishes.
+#[test]
+fn the_water_smears_a_reflection_even_at_its_surface() {
+    assert!(blur_radius(0.0) > 0.0);
+}
+
+/// Depth is what blurs a reflection: the deeper the mirrored artwork hangs, the wider it smears.
+#[test]
+fn a_deeper_reflection_smears_wider() {
+    assert!(blur_radius(40.0) > blur_radius(0.0));
+    assert!(blur_radius(200.0) > blur_radius(40.0));
+}
+
+/// Nothing above the surface is mirrored, so a negative depth reads as the surface itself.
+#[test]
+fn a_depth_above_the_surface_smears_like_the_surface() {
+    assert_eq!(blur_radius(-50.0), blur_radius(0.0));
+}
+
+/// The smear stops growing, so a reflection running far into the water stays a reflection.
+#[test]
+fn the_smear_stops_growing() {
+    assert_eq!(blur_radius(100_000.0), blur_radius(10_000.0));
+    assert!(blur_radius(100_000.0).is_finite());
+}
+
+/// The copies a reflection is drawn as: the first is the reflection itself, at full strength and
+/// in its own place, and the rest hang below it, each a little fainter over what came before.
+#[test]
+fn the_first_copy_of_a_smear_is_the_reflection_itself() {
+    let taps = blur_taps(12.0);
+    assert_eq!(taps[0].offset, 0.0);
+    assert_eq!(taps[0].alpha, 1.0);
+}
+
+/// The copies walk down from the reflection to the far end of the smear, never above it.
+#[test]
+fn the_copies_of_a_smear_walk_down_to_its_far_end() {
+    let radius = 12.0;
+    let taps = blur_taps(radius);
+    let drawn: Vec<f64> = taps
+        .iter()
+        .filter(|tap| tap.alpha > 0.0)
+        .map(|tap| tap.offset)
+        .collect();
+    assert!(drawn.len() > 1, "a wide smear takes several copies");
+    assert!(
+        drawn.windows(2).all(|pair| pair[1] > pair[0]),
+        "each copy is deeper than the one before: {drawn:?}",
+    );
+    assert_eq!(
+        drawn.last().copied(),
+        Some(radius),
+        "and the last reaches the far end",
+    );
+    assert!(drawn.iter().all(|&offset| offset >= 0.0));
+}
+
+/// Laid one over another, the copies weigh the artwork like a blur does: most of what is seen is
+/// the reflection itself, and each copy below it counts for less than the one above.
+#[test]
+fn the_copies_of_a_smear_weigh_like_a_blur() {
+    let taps = blur_taps(16.0);
+    let mut weights = Vec::new();
+    for (index, tap) in taps.iter().enumerate() {
+        if tap.alpha <= 0.0 {
+            continue;
+        }
+        let covered: f64 = taps[index + 1..]
+            .iter()
+            .map(|later| 1.0 - later.alpha)
+            .product();
+        weights.push(tap.alpha * covered);
+    }
+    let total: f64 = weights.iter().sum();
+    assert!(
+        (total - 1.0).abs() < 1e-9,
+        "the copies together are one reflection: {total}",
+    );
+    assert!(
+        weights.windows(2).all(|pair| pair[1] < pair[0]),
+        "and each one weighs less than the one above it: {weights:?}",
+    );
+}
+
+/// A smear only as wide as the surface's own blur is drawn with fewer copies than a deep one:
+/// the water pays for the blur only where it shows.
+#[test]
+fn a_narrow_smear_takes_fewer_copies_than_a_wide_one() {
+    let drawn = |radius: f64| {
+        blur_taps(radius)
+            .iter()
+            .filter(|tap| tap.alpha > 0.0)
+            .count()
+    };
+    assert!(drawn(blur_radius(0.0)) < drawn(blur_radius(400.0)));
+    assert!(drawn(blur_radius(400.0)) <= BLUR_TAPS);
+    assert_eq!(drawn(0.0), 1, "no smear at all is one copy");
+}
+
+/// A copy is the same drawing read the same way, moved deeper into the water.
+#[test]
+fn a_smeared_copy_is_the_same_drawing_deeper_down() {
+    let mirrored = mirror_sprite(standing((0.0, 100.0), 60.0), 100.0, None);
+    let deeper = smear_sprite(&mirrored, 7.0);
+    assert_eq!(deeper.rect.x, mirrored.rect.x);
+    assert_eq!(deeper.rect.width, mirrored.rect.width);
+    assert_eq!(deeper.rect.height, mirrored.rect.height);
+    assert_eq!(deeper.rect.y, mirrored.rect.y + 7.0);
+    assert_eq!(deeper.flip_u, mirrored.flip_u);
+    assert_eq!(deeper.flip_v, mirrored.flip_v);
+}
+
+/// How deep a piece hangs is read from the piece itself, so each cell of water blurs by what it
+/// shows there rather than by where the caster stands.
+#[test]
+fn a_pieces_depth_is_how_far_below_the_surface_it_hangs() {
+    let piece = ReflectionPiece {
+        points: vec![(0.0, 100.0), (10.0, 100.0), (10.0, 140.0), (0.0, 140.0)],
+        uv: vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+    };
+    assert_eq!(piece_depth(&piece, 100.0), 20.0);
+    assert_eq!(piece_depth(&piece, 160.0), 0.0, "never above the surface");
 }

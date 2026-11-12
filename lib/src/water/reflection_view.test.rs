@@ -1,6 +1,8 @@
 use super::*;
 use crate::assets::sprites::DrawKind;
 use iso::projection::{GridPoint, project_block};
+use iso::scene_order::DrawKey;
+use iso::water::blur_radius;
 
 const TILE_WIDTH: f64 = 280.0;
 const BOX_HEIGHT: f64 = 95.5;
@@ -235,11 +237,12 @@ fn an_asset_drawn_as_the_water_shows_it_stays_where_it_is() {
         };
         for &(x, y) in points {
             assert!(
-                x >= rect.x - 1e-6
-                    && x <= rect.x + rect.width + 1e-6
-                    && y >= rect.y - 1e-6
-                    && y <= rect.y + rect.height + 1e-6,
+                x >= rect.x - 1e-6 && x <= rect.x + rect.width + 1e-6 && y >= rect.y - 1e-6,
                 "({x}, {y}) is outside the drawing's own rectangle",
+            );
+            assert!(
+                y <= rect.y + rect.height + blur_radius(rect.height) + 1e-6,
+                "({x}, {y}) hangs deeper than the water smears it",
             );
         }
     }
@@ -283,8 +286,113 @@ fn the_pieces_read_the_casters_own_artwork_in_the_waters_colour() {
             uv.iter()
                 .all(|&(u, v)| (0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v))
         );
-        assert_eq!(*colour, REFLECTION_TINT);
+        assert_eq!((colour.r, colour.g, colour.b), rgb(REFLECTION_TINT));
+        assert!(colour.a > 0.0 && colour.a <= REFLECTION_ALPHA);
     }
+}
+
+/// What the water multiplies the artwork by, without its opacity.
+fn rgb(colour: Color) -> (f32, f32, f32) {
+    (colour.r, colour.g, colour.b)
+}
+
+/// The draws of one cell of water, in the order they were queued.
+fn copies(draws: &[SpriteDraw], key: DrawKey) -> Vec<&SpriteDraw> {
+    draws
+        .iter()
+        .filter(|draw| draw.key.depth == key.depth && draw.key.layer == key.layer)
+        .collect()
+}
+
+/// The top edge of a draw's piece on screen.
+fn top_of(draw: &SpriteDraw) -> f64 {
+    match &draw.kind {
+        DrawKind::Reflection { points, .. } => {
+            points.iter().map(|&(_, y)| y).fold(f64::INFINITY, f64::min)
+        }
+        other => panic!("a reflection is not {}", kind_name(other)),
+    }
+}
+
+/// The water is never a mirror: every cell draws what it shows as a smear, the reflection itself
+/// at full strength and copies of it hanging deeper, each fainter than the one above.
+#[test]
+fn the_water_smears_what_it_mirrors() {
+    let draws = collect((0, 0), 0.0, Reflected::Standing { turn_at: None }, sea(0.0));
+    assert!(!draws.is_empty());
+    let key = draws[0].key;
+    let smear = copies(&draws, key);
+    assert!(
+        smear.len() > 1,
+        "a cell draws more than the sharp reflection",
+    );
+    let alphas: Vec<f32> = smear
+        .iter()
+        .map(|draw| match &draw.kind {
+            DrawKind::Reflection { colour, .. } => colour.a,
+            other => panic!("a reflection is not {}", kind_name(other)),
+        })
+        .collect();
+    assert_eq!(
+        alphas[0], REFLECTION_ALPHA,
+        "the reflection itself is drawn in full",
+    );
+    assert!(
+        alphas.windows(2).all(|pair| pair[1] < pair[0]),
+        "and each copy over it is fainter: {alphas:?}",
+    );
+    assert!(
+        smear
+            .windows(2)
+            .all(|pair| top_of(pair[1]) >= top_of(pair[0]) - 1e-9),
+        "the copies hang below the reflection, never above it",
+    );
+}
+
+/// The smear widens with depth: a reflection far below the surface is drawn out of more copies
+/// than one on the surface itself, so the far end of it reads softer.
+#[test]
+fn a_deeper_reflection_is_smeared_wider() {
+    let draws = collect((0, 0), 0.0, Reflected::Standing { turn_at: None }, sea(0.0));
+    let surface = feet((0, 0), 0.0).y;
+    let depth = |draw: &SpriteDraw| top_of(draw) - surface;
+    let keys: Vec<DrawKey> = {
+        let mut keys: Vec<DrawKey> = Vec::new();
+        for draw in &draws {
+            if !keys
+                .iter()
+                .any(|key| key.depth == draw.key.depth && key.layer == draw.key.layer)
+            {
+                keys.push(draw.key);
+            }
+        }
+        keys
+    };
+    let nearest = keys
+        .iter()
+        .min_by(|a, b| {
+            depth(copies(&draws, **a)[0])
+                .partial_cmp(&depth(copies(&draws, **b)[0]))
+                .unwrap()
+        })
+        .copied()
+        .expect("the water shows it somewhere");
+    let deepest = keys
+        .iter()
+        .max_by(|a, b| {
+            depth(copies(&draws, **a)[0])
+                .partial_cmp(&depth(copies(&draws, **b)[0]))
+                .unwrap()
+        })
+        .copied()
+        .expect("the water shows it somewhere");
+    let spread = |key: DrawKey| copies(&draws, key).len();
+    assert!(
+        spread(deepest) > spread(nearest),
+        "the deep end of the reflection takes more copies than its near end: {} vs {}",
+        spread(deepest),
+        spread(nearest),
+    );
 }
 
 /// A sprite with no artwork to show queues nothing rather than a mesh with no area.

@@ -1,12 +1,13 @@
 //! What the water shows of the scene: the reflections of the things standing around it. A sprite
 //! drawn above its ground (a jump) is mirrored the same lift deeper in the water, so the arc
-//! reads in the reflection too.
+//! reads in the reflection too. The surface is never a mirror: every reflection is drawn as a
+//! smear of copies hanging deeper, wider the further below the surface it hangs.
 
 use iso::assets::{SpriteFrame, SpriteLayout};
 use iso::projection::{ProjectionConfig, ScreenPoint};
 use iso::water::{
-    ReflectedSprite, cell_top, lay_on_water, mirror_sprite, reflection_cells, reflection_piece,
-    waterline,
+    ReflectedSprite, blur_radius, blur_taps, cell_top, lay_on_water, mirror_sprite, piece_depth,
+    reflection_cells, reflection_piece, smear_sprite, waterline,
 };
 use macroquad::prelude::Color;
 
@@ -67,6 +68,15 @@ pub struct ReflectionSprite {
     pub lift: f64,
 }
 
+/// What the water lays over one copy of a smeared reflection: its own tint, as opaque over the
+/// copies already drawn as that copy weighs in the blur.
+fn smeared_tint(alpha: f64) -> Color {
+    Color {
+        a: REFLECTION_ALPHA * alpha as f32,
+        ..REFLECTION_TINT
+    }
+}
+
 /// Queues what the water shows of `sprite`, cut to the water cells it falls on.
 ///
 /// `sprite`'s `lift` is how many blocks the caster is above the ground it stands on. The
@@ -123,20 +133,37 @@ pub fn collect_reflection(
             let Some(piece) = reflection_piece(&sprite, &cell) else {
                 continue;
             };
-            out.push(SpriteDraw::reflection(
-                ground_key(
-                    f64::from(x) + 0.5,
-                    f64::from(y) + 0.5,
-                    water.elevation,
-                    REFLECTION_LAYER,
-                    projection.tile_height,
-                ),
-                texture,
-                frame,
-                piece.points,
-                piece.uv,
-                REFLECTION_TINT,
-            ));
+            let key = ground_key(
+                f64::from(x) + 0.5,
+                f64::from(y) + 0.5,
+                water.elevation,
+                REFLECTION_LAYER,
+                projection.tile_height,
+            );
+            let surface = waterline(feet.y, elevation, water.level, box_height);
+            let radius = blur_radius(piece_depth(&piece, surface));
+            let mut sharp = Some(piece);
+            for tap in blur_taps(radius) {
+                if tap.alpha <= 0.0 {
+                    continue;
+                }
+                let copy = if tap.offset == 0.0 {
+                    sharp.take()
+                } else {
+                    reflection_piece(&smear_sprite(&sprite, tap.offset), &cell)
+                };
+                let Some(copy) = copy else {
+                    continue;
+                };
+                out.push(SpriteDraw::reflection(
+                    key,
+                    texture,
+                    frame,
+                    copy.points,
+                    copy.uv,
+                    smeared_tint(tap.alpha),
+                ));
+            }
         }
     }
 }

@@ -9,6 +9,21 @@ pub const MAX_REFLECTION_CELLS: i32 = 24;
 /// Screen area, in pixels, below which a piece is dropped rather than drawn.
 const MIN_PIECE_AREA: f64 = 0.01;
 
+/// How many copies of a reflection the water's broken surface may smear it into.
+pub const BLUR_TAPS: usize = 5;
+
+/// How far the water smears what it mirrors right at its surface, in pixels.
+const BLUR_AT_SURFACE: f64 = 2.5;
+
+/// How much wider the smear grows for every pixel a reflection hangs below the surface.
+const BLUR_PER_PIXEL: f64 = 0.11;
+
+/// How wide the smear ever grows, in pixels.
+const MAX_BLUR: f64 = 22.0;
+
+/// How far apart the copies of a smear are drawn, in pixels: a narrow smear takes fewer of them.
+const BLUR_SPACING: f64 = 4.0;
+
 /// Screen `y` of the water's surface under something standing on `feet_y`, in pixels.
 pub fn waterline(feet_y: f64, elevation: f64, level: f64, box_height: f64) -> f64 {
     feet_y + (elevation - level) * box_height
@@ -159,6 +174,68 @@ pub fn reflection_piece(
         })
         .collect();
     Some(ReflectionPiece { points, uv })
+}
+
+/// How wide the water smears a reflection hanging `depth` pixels below its surface, in pixels.
+pub fn blur_radius(depth: f64) -> f64 {
+    (BLUR_AT_SURFACE + BLUR_PER_PIXEL * depth.max(0.0)).min(MAX_BLUR)
+}
+
+/// One of the copies a reflection is smeared into: how far below the reflection it is drawn, and
+/// how opaque it is drawn over the copies before it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BlurTap {
+    /// Pixels deeper into the water than the reflection itself.
+    pub offset: f64,
+    /// Opacity over everything already drawn; `0.0` for a copy this smear does not need.
+    pub alpha: f64,
+}
+
+/// The copies a smear `radius` pixels wide is drawn as, from the reflection itself downwards.
+pub fn blur_taps(radius: f64) -> [BlurTap; BLUR_TAPS] {
+    let mut taps = [BlurTap {
+        offset: 0.0,
+        alpha: 0.0,
+    }; BLUR_TAPS];
+    let span = radius.max(0.0);
+    let copies = ((span / BLUR_SPACING).ceil() as usize + 1).clamp(1, BLUR_TAPS);
+    if copies < 2 {
+        taps[0].alpha = 1.0;
+        return taps;
+    }
+    let sigma = span / 2.0;
+    let steps = (copies - 1) as f64;
+    let mut total = 0.0;
+    for (index, tap) in taps.iter_mut().take(copies).enumerate() {
+        let offset = span * index as f64 / steps;
+        let weight = (-0.5 * (offset / sigma).powi(2)).exp();
+        total += weight;
+        *tap = BlurTap {
+            offset,
+            alpha: weight / total,
+        };
+    }
+    taps
+}
+
+/// The same reflection drawn `by` pixels deeper in the water.
+pub fn smear_sprite(sprite: &ReflectedSprite, by: f64) -> ReflectedSprite {
+    ReflectedSprite {
+        rect: SpriteLayout {
+            y: sprite.rect.y + by,
+            ..sprite.rect
+        },
+        ..*sprite
+    }
+}
+
+/// How far below `surface` a piece of a reflection hangs, in pixels, taken at its middle.
+pub fn piece_depth(piece: &ReflectionPiece, surface: f64) -> f64 {
+    if piece.points.is_empty() {
+        return 0.0;
+    }
+    let middle = piece.points.iter().map(|&(_, y)| y).sum::<f64>() / piece.points.len() as f64;
+    (middle - surface).max(0.0)
 }
 
 /// Cuts `polygon` down to the inner side of the edge from `from` to `to`, in place.
