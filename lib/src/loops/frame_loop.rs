@@ -13,6 +13,7 @@ use macroquad::prelude::*;
 use crate::assets::sprites::draw_sorted;
 use crate::game::Game;
 use crate::gui::{draw_hud, push_hud_update};
+use crate::loops::clock::{FrameClock, frame_timestamp_seconds};
 use crate::perf::FrameSample;
 
 /// The instants the loop takes through a frame, in macroquad's seconds.
@@ -58,9 +59,13 @@ pub(crate) async fn run(mut game: Game) {
     let mut grade_transition = crate::rendering::grade::GradeTransition::new(
         crate::rendering::grade::grade_for(initial_phase),
     );
+    let mut clock = FrameClock::new();
     loop {
         let frame_start = get_time();
-        let frame_ms = f64::from(get_frame_time()) * 1000.0;
+        let frame_ms = clock.tick(
+            frame_timestamp_seconds(),
+            f64::from(get_frame_time()) * 1000.0,
+        );
 
         let Some(view) = game.update(frame_ms) else {
             return;

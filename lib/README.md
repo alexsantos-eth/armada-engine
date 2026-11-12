@@ -128,8 +128,24 @@ hay que re-aplicar el parche. La página referencia esos dos scripts con una `?v
 días sin volver a pedirlo, y los arreglos del puente no llegaban al móvil. Al tocar el puente o
 el adaptador, sube el número. Aun con los listeners pasivos, iOS Safari aplaza el
 `requestAnimationFrame` mientras hay un toque en vuelo: en el móvil «caídos» sube ~1 por toque
-con el CPU en cero. No es culpa del cliente y no hay parche JS conocido para ello; la cifra
-accionable es «por cpu» (frames que el juego perdió por sí mismo).
+con el CPU en cero. Eso no se puede evitar desde la página, pero sí se puede evitar que se vea
+como un tirón, y de eso se encargan las dos piezas que `adapter.js` añade al bucle:
+
+- **El reloj del fotograma.** El adaptador envuelve `requestAnimationFrame` para quedarse con el
+  instante que el navegador le pasa al callback y lo publica en el import `iso_frame_timestamp`,
+  que el cliente lee en `loops::clock`. Antes, el `delta` salía del reloj de pared que Macroquad
+  muestrea al entrar en el cuerpo del fotograma (`Date.now()`, con resolución de 1 ms): ese
+  instante se mueve con el reparto de eventos, así que un toque convertía una cadencia uniforme
+  en una desigual aunque los fotogramas se presentaran igual de espaciados. El timestamp de la
+  actualización de render no se mueve con los eventos y tiene resolución de microsegundos. Encima,
+  el reloj aprende la cadencia real (mediana de 11 mediciones), redondea a ella el ruido y reparte
+  el fotograma aplazado entre los siguientes en vez de entregárselo entero a la simulación.
+- **El marcado de paso (`?fps=`).** Por defecto el adaptador entrega como mucho 60 fotogramas por
+  segundo, saltándose las llamadas de `requestAnimationFrame` que lleguen antes de tiempo, y solo
+  lo hace si la pantalla va claramente más rápida que ese objetivo (si no, entrega todo lo que
+  llega). Así, con la flag de WebKit «Prefer Page Rendering Updates near 60fps» **desactivada** en
+  un iPhone ProMotion, el juego se queda en 60 estables en vez de caer al divisor de 30 que elige
+  Safari cuando no llega a 120. `?fps=120` sube el objetivo y `?fps=0` lo quita.
 
 ## Preparar despliegue
 

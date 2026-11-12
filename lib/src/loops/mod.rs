@@ -3,6 +3,7 @@
 //! `update` → `scene` → draw → HUD. The rules of the game live in `game::frame`, the view in
 //! `game::scene` and `gui`; this module only sequences them and feeds the frame's metrics.
 
+mod clock;
 mod frame_loop;
 
 pub(crate) use frame_loop::run;
