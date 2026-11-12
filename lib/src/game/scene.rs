@@ -19,7 +19,8 @@ use macroquad::prelude::*;
 use crate::assets::sprites::{SpriteAtlas, SpriteDraw, scene_key};
 use crate::game::config::{
     BAND_BLEED, ENTITY_LAYER, PLAYER_BEHIND_LAYER, PLAYER_CLIMB_SHEET, PLAYER_FRONT_LAYER,
-    PLAYER_IDLE_SHEET, PLAYER_JUMP_SHEET, PLAYER_SCALE, PLAYER_WALK_SHEET, SceneMetrics,
+    PLAYER_IDLE_SHEET, PLAYER_JUMP_SHEET, PLAYER_SCALE, PLAYER_SWIM_SHEET, PLAYER_WALK_SHEET,
+    SceneMetrics,
 };
 use crate::game::frame::FrameView;
 use crate::game::ground::water_cell;
@@ -65,6 +66,7 @@ pub(crate) fn player_sheets(atlas: &SpriteAtlas) -> crate::player::player_view::
         walk_poses: columns(PLAYER_WALK_SHEET).map(|columns| columns as i32 - 1),
         idle_poses: columns(PLAYER_IDLE_SHEET).map(|columns| columns as i32),
         climb_poses: columns(PLAYER_CLIMB_SHEET).map(|columns| columns as i32),
+        swim_poses: columns(PLAYER_SWIM_SHEET).map(|columns| columns as i32),
         jump_poses: atlas
             .sheet(PLAYER_JUMP_SHEET)
             .and_then(|sheet| jump_poses(sheet.poses(), sheet.columns())),
@@ -506,6 +508,7 @@ impl Game {
             PlayerSheet::Idle => PLAYER_IDLE_SHEET,
             PlayerSheet::Jump => PLAYER_JUMP_SHEET,
             PlayerSheet::Climb => PLAYER_CLIMB_SHEET,
+            PlayerSheet::Swim => PLAYER_SWIM_SHEET,
         });
         let drawn = match (sheet, self.player_asset) {
             (Some(sheet), _) => Some((

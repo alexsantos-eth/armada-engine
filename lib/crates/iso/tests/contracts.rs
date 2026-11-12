@@ -217,6 +217,9 @@ fn player_sheet_selection_matches_contract_fixture() {
             walked: sample["walked"].as_f64().unwrap(),
             stood_ms: sample["stoodMs"].as_f64().unwrap(),
             air_pose: sample["airPose"].as_i64().map(|value| value as i32),
+            // the contract fixtures are the shared ones with the web client, which has no
+            // swim sheet: a swim is never selected here
+            swim: None,
         });
         let expected = &sample["expected"];
         let sheet = match expected["sheet"].as_str().unwrap() {
@@ -224,6 +227,7 @@ fn player_sheet_selection_matches_contract_fixture() {
             "climb" => PlayerSheet::Climb,
             "jump" => PlayerSheet::Jump,
             "idle" => PlayerSheet::Idle,
+            "swim" => PlayerSheet::Swim,
             other => panic!("unexpected player sheet: {other}"),
         };
         assert_eq!(

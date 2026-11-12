@@ -66,6 +66,52 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`transition_player_motion`](motion.rs#L84) — Aplica un evento a `state` y devuelve el estado de movimiento resultante.
   - Firma: `pub fn transition_player_motion( state: PlayerMotionType, event: PlayerMotionEvent, ) -> PlayerMotionType {`
 
+### `swim.rs`
+
+#### Funciones y métodos
+
+- [`entering`](swim.rs) — Un nado recién empezado en agua con el techo en `level`, entrado a `sink` bloques por tick (`0` al deslizarse desde la orilla) con el cuerpo ya `depth` bloques por debajo.
+  - Firma: `pub fn entering(level: f64, depth: f64, sink: f64) -> Self {`
+
+- [`is_swimmable`](swim.rs) — Si una columna de ese material es agua en la que se nada. Toda columna de agua lo es: el agua no tiene fondo donde vadear, así que no hay zona baja.
+  - Firma: `pub fn is_swimmable(surface: crate::terrain::TerrainMaterial) -> bool {`
+
+- [`next_float`](swim.rs) — Un tick del agua sosteniendo el cuerpo: el resorte de flotación hacia [`PLAYER_FLOAT_DEPTH`] más el arrastre del agua, limitado a la superficie y a [`PLAYER_PLUNGE_MAX`]. Devuelve la nueva velocidad de hundimiento y la nueva profundidad.
+  - Firma: `pub fn next_float(sink: f64, depth: f64) -> (f64, f64) {`
+
+- [`is_under`](swim.rs) — Si un cuerpo a `depth` bloques bajo el techo del agua cuenta como sumergido.
+  - Firma: `pub fn is_under(depth: f64) -> bool {`
+
+- [`swim_step`](swim.rs) — Columnas por tick que recorre quien nada: su velocidad de crucero, la rápida con la tecla de correr, y recortada a [`PLAYER_UNDER_SPEED`] mientras sigue bajo la superficie.
+  - Firma: `pub fn swim_step(fast: bool, depth: f64) -> f64 {`
+
+- [`splashes`](swim.rs) — Si entrar al agua a `sink` bloques por tick levanta salpicón.
+  - Firma: `pub fn splashes(sink: f64) -> bool {`
+
+- [`float_bob`](swim.rs) — Cuánto sube o baja el oleaje a un cuerpo que flota en el tick `ticks` de su nado, en bloques sumados a su profundidad: nada mientras sigue hundiéndose o subiendo, todo el vaivén flotando quieto y [`PLAYER_BOB_SWIMMING`] de él mientras nada.
+  - Firma: `pub fn float_bob(ticks: i32, settled: f64, moving: bool) -> f64 {`
+
+- [`float_settle`](swim.rs) — Cuán asentado en la superficie está un cuerpo a `depth` bloques del techo del agua: `1` justo en su profundidad de flote y `0` a un chapuzón de ella.
+  - Firma: `pub fn float_settle(depth: f64) -> f64 {`
+
+#### Constantes
+
+- [`PLAYER_SWIM_SPEED`](swim.rs) / [`PLAYER_SWIM_STEP`](swim.rs) — Velocidad al nadar, en columnas por segundo de simulación y por tick: más lenta que caminar.
+- [`PLAYER_SWIM_FAST_SPEED`](swim.rs) / [`PLAYER_SWIM_FAST_STEP`](swim.rs) — Lo mismo con la tecla de correr: un crol más rápido, aún por debajo de correr en tierra.
+- [`PLAYER_SWIM_ACCEL`](swim.rs) / [`PLAYER_SWIM_BRAKE`](swim.rs) — Cambio de velocidad por tick al arrancar o soltar dentro del agua: cuesta más arrancar y se desliza al soltar.
+- [`PLAYER_FLOAT_DEPTH`](swim.rs) — Bloques que el cuerpo flota por debajo del techo del agua en reposo.
+- [`PLAYER_BUOYANCY`](swim.rs) / [`PLAYER_WATER_DRAG`](swim.rs) — El resorte amortiguado del flote: cuánto empuja el agua por bloque de desvío y qué parte de la velocidad vertical se come cada tick.
+- [`PLAYER_PLUNGE_MAX`](swim.rs) — Lo más hondo que llega el cuerpo bajo el techo del agua, por rápido que caiga.
+- [`PLAYER_UNDER_DEPTH`](swim.rs) / [`PLAYER_UNDER_SPEED`](swim.rs) — Cuánto hay que bajar de [`PLAYER_FLOAT_DEPTH`] para contar como sumergido, y qué parte de su velocidad conserva entonces.
+- [`PLAYER_SURFACE_DEPTH`](swim.rs) — Bloques que el cuerpo puede subir sobre el techo del agua: ninguno.
+- [`PLAYER_SWIM_EXIT_CLIMB`](swim.rs) — Bloques de altura sobre el agua a los que el jugador se iza para salir, mayor que [`PLAYER_MAX_CLIMB`].
+- [`PLAYER_BOB_TICKS`](swim.rs) / [`PLAYER_BOB_DEPTH`](swim.rs) / [`PLAYER_BOB_SWIMMING`](swim.rs) — El oleaje que mece a quien flota: cuánto tarda una subida y bajada, cuántos bloques sube y baja, y qué parte de eso siente quien va nadando.
+- [`PLAYER_SPLASH_MIN_SPEED`](swim.rs) — Velocidad de caída por debajo de la cual entrar al agua no levanta salpicón.
+
+#### Tipos
+
+- [`PlayerSwim`](swim.rs) — El nado en curso: el techo del agua, la profundidad del cuerpo, su velocidad vertical y los ticks que lleva nadando (de los que sale el oleaje).
+
 ### `physics.rs`
 
 #### Funciones y métodos

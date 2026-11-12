@@ -37,7 +37,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`select_player_frame`](frame_selection.rs#L35) — Elige la hoja y la columna con prioridad de trepar, saltar, idle y caminar.
+- [`select_player_frame`](frame_selection.rs#L35) — Elige la hoja y la columna con prioridad de nadar, trepar, saltar, idle y caminar. En el agua manda [`SwimInput`](frame_selection.rs): la hoja de nado, con la columna de flotar, la del crol o la de bucear.
   - Firma: `pub fn select_player_frame(input: PlayerFrameInput) -> PlayerFrame {`
 
 ### `order.rs`
@@ -65,6 +65,17 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`walk_pose`](poses.rs#L47) — Columna de caminar por distancia, incluido el pedaleo hacia atrás; cero es estar de pie.
   - Firma: `pub fn walk_pose(distance: f64, frames: i32, stride: f64) -> i32 {`
+
+- [`swim_pose`](poses.rs) — Columna de nado por distancia nadada: un ciclo del crol cada `stride` columnas, repartido entre las columnas que hay desde flotar (la primera) hasta bucear (la última).
+  - Firma: `pub fn swim_pose(distance: f64, columns: i32, stride: f64) -> i32 {`
+
+- [`swim_dive_pose`](poses.rs) — La columna con la que se dibuja a quien está bajo la superficie: la última de la hoja.
+  - Firma: `pub fn swim_dive_pose(columns: i32) -> i32 {`
+
+#### Constantes
+
+- [`SWIM_FLOAT_POSE`](poses.rs) — La columna de la hoja de nado en la que la figura se mantiene a flote: la primera.
+  - Declaración: `pub const SWIM_FLOAT_POSE: i32 = 0;`
 
 
 ## Detalles de implementación

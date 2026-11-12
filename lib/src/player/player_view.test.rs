@@ -7,6 +7,7 @@ const SHEETS: PlayerSheets = PlayerSheets {
     idle_poses: Some(8),
     climb_poses: Some(9),
     jump_poses: Some([0, 1, 2, 3, 4]),
+    swim_poses: Some(10),
 };
 
 fn moment() -> PlayerMoment {
@@ -326,4 +327,96 @@ fn turns_the_short_way_at_a_steady_rate() {
         slow.advance(west(TURN_MS_PER_FACING / 3.0), SHEETS).facing,
         11
     );
+}
+
+/// In the water the swim sheet is drawn from: treading water when it drifts, the crawl's cycle
+/// as it swims along, and the dive while its head is under.
+#[test]
+fn draws_the_swim_sheet_while_the_player_is_in_the_water() {
+    let mut animation = PlayerAnimation::default();
+    let floating = PlayerMoment {
+        motion: PlayerMotionType::Swimming,
+        ..moment()
+    };
+    let pose = animation.advance(floating, SHEETS);
+    assert_eq!(pose.sheet, PlayerSheet::Swim);
+    assert_eq!(pose.pose, 0, "it treads water while it drifts");
+
+    let swimming = PlayerMoment {
+        motion: PlayerMotionType::Swimming,
+        direction: GridPoint { x: 1.0, y: -1.0 },
+        moved: SWIM_STRIDE / 8.0,
+        ..moment()
+    };
+    let mut poses = vec![];
+    for _ in 0..4 {
+        poses.push(animation.advance(swimming, SHEETS).pose);
+    }
+    assert_eq!(poses, vec![2, 3, 4, 5], "the crawl follows the distance swum");
+
+    let under = PlayerMoment {
+        motion: PlayerMotionType::Sinking,
+        ..swimming
+    };
+    assert_eq!(
+        animation.advance(under, SHEETS).pose,
+        9,
+        "under the surface it is drawn diving"
+    );
+}
+
+/// Leaving the water starts the next swim's cycle from the beginning.
+#[test]
+fn forgets_the_crawl_once_the_player_is_out_of_the_water() {
+    let mut animation = PlayerAnimation::default();
+    let swimming = PlayerMoment {
+        motion: PlayerMotionType::Swimming,
+        direction: GridPoint { x: 1.0, y: -1.0 },
+        moved: SWIM_STRIDE / 2.0,
+        ..moment()
+    };
+    animation.advance(swimming, SHEETS);
+    assert!(animation.swum > 0.0);
+    animation.advance(
+        PlayerMoment {
+            motion: PlayerMotionType::Walking,
+            ..swimming
+        },
+        SHEETS,
+    );
+    assert_eq!(animation.swum, 0.0);
+}
+
+/// A swimmer never stands still long enough for the dance: the idle sheet stays out of the water.
+#[test]
+fn a_swimmer_never_falls_into_the_idle_dance() {
+    let mut animation = PlayerAnimation::default();
+    for _ in 0..200 {
+        let pose = animation.advance(
+            PlayerMoment {
+                motion: PlayerMotionType::Swimming,
+                elapsed_ms: 100.0,
+                ..moment()
+            },
+            SHEETS,
+        );
+        assert_eq!(pose.sheet, PlayerSheet::Swim);
+    }
+}
+
+/// Without a swim sheet in the atlas the walk sheet still carries the swimmer.
+#[test]
+fn falls_back_to_the_walk_sheet_when_there_is_no_swim_sheet() {
+    let mut animation = PlayerAnimation::default();
+    let pose = animation.advance(
+        PlayerMoment {
+            motion: PlayerMotionType::Swimming,
+            ..moment()
+        },
+        PlayerSheets {
+            swim_poses: None,
+            ..SHEETS
+        },
+    );
+    assert_eq!(pose.sheet, PlayerSheet::Walk);
 }

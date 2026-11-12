@@ -299,3 +299,83 @@ fn the_dust_layer_sits_between_the_ground_and_the_player() {
         );
     };
 }
+
+/// A swimmer in water topped at the ground level, sunk by its float depth, as the view sees it:
+/// its feet are under the surface and its wake and splash break that surface.
+fn swim_react(dust: &mut DustPuffs, player: &PlayerState, moved: f64) {
+    let at = DustGround {
+        feet: GridPoint {
+            x: player.x,
+            y: player.y,
+        },
+        level: 2.0 - 0.3,
+        ground: 2.0,
+        moved,
+        tile_height: TILE / 2.0,
+    };
+    dust.react(player, at, &flat);
+}
+
+#[test]
+fn going_into_the_water_throws_up_a_splash() {
+    let mut dust = DustPuffs::new();
+    let mut player = player_at(4.0, 4.0);
+    player.motion = PlayerMotionType::Sinking;
+    swim_react(&mut dust, &player, 0.0);
+    assert_eq!(dust.live(), 0, "floating alone throws up nothing");
+
+    player.feedback = PlayerFeedback {
+        splashes: 1,
+        splash_impact: 0.4,
+        ..PlayerFeedback::default()
+    };
+    swim_react(&mut dust, &player, 0.0);
+    assert_eq!(dust.live(), 1);
+
+    swim_react(&mut dust, &player, 0.0);
+    assert_eq!(dust.live(), 1, "the same entry does not splash twice");
+}
+
+#[test]
+fn a_harder_entry_throws_the_water_further() {
+    let soft = iso::player::splash_of(0.05);
+    let hard = iso::player::splash_of(1.0);
+    assert!(hard.drift.1 > soft.drift.1);
+    assert!(hard.rise > soft.rise);
+    assert!(hard.voxels == soft.voxels);
+}
+
+#[test]
+fn swimming_along_leaves_a_wake_behind() {
+    let mut dust = DustPuffs::new();
+    let mut player = player_at(4.0, 4.0);
+    player.motion = PlayerMotionType::Swimming;
+    player.velocity = GridPoint { x: 0.1, y: 0.0 };
+    swim_react(&mut dust, &player, SWIM_WAKE_EVERY / 2.0);
+    assert_eq!(dust.live(), 0, "half a stretch raises nothing yet");
+    swim_react(&mut dust, &player, SWIM_WAKE_EVERY / 2.0);
+    assert_eq!(dust.live(), 1);
+    for _ in 0..RUN_PUFFS {
+        swim_react(&mut dust, &player, SWIM_WAKE_EVERY);
+    }
+    assert_eq!(dust.live(), RUN_PUFFS, "the trail's slots are reused in turn");
+}
+
+#[test]
+fn a_submerged_swimmer_leaves_no_wake_on_the_surface() {
+    let mut dust = DustPuffs::new();
+    let mut player = player_at(4.0, 4.0);
+    player.motion = PlayerMotionType::Sinking;
+    player.velocity = GridPoint { x: 0.1, y: 0.0 };
+    for _ in 0..4 {
+        swim_react(&mut dust, &player, SWIM_WAKE_EVERY);
+    }
+    assert_eq!(dust.live(), 0);
+}
+
+#[test]
+fn the_water_a_swimmer_throws_up_is_blue_not_dust() {
+    assert_ne!(iso::player::WATER_COLORS, iso::player::DUST_COLORS);
+    assert_eq!(WAKE_DUST.colors, iso::player::WATER_COLORS);
+    assert_eq!(iso::player::SPLASH_DUST.colors, iso::player::WATER_COLORS);
+}

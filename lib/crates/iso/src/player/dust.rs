@@ -63,6 +63,59 @@ pub const KICK_DUST: DustShape = DustShape {
     alpha: DUST_ALPHA,
 };
 
+/// Shades of water thrown up by a swimmer: white foam to a pale blue.
+pub const WATER_COLORS: (u32, u32) = (0xffffff, 0x9ed6ef);
+
+/// Real milliseconds a spray of water lasts: longer than dust, because it falls back.
+pub const SPLASH_MS: f64 = 460.0;
+
+/// The crown of water a body throws up as it goes in: wider, higher and wetter than a
+/// landing's dust, and it grows with how hard the body hit the surface (see `splash_of`).
+pub const SPLASH_DUST: DustShape = DustShape {
+    voxels: 16,
+    radius: (0.06, 0.26),
+    drift: (0.18, 0.42),
+    size: (0.05, 0.1),
+    lift: 0.05,
+    rise: 0.3,
+    kick: 0.0,
+    colors: WATER_COLORS,
+    ms: SPLASH_MS,
+    alpha: 0.9,
+};
+
+/// The wake a swimmer leaves behind it: a few small crests that bob and fade.
+pub const WAKE_DUST: DustShape = DustShape {
+    voxels: 5,
+    radius: (0.0, 0.1),
+    drift: (0.03, 0.1),
+    size: (0.035, 0.07),
+    lift: 0.0,
+    rise: 0.05,
+    kick: 0.26,
+    colors: WATER_COLORS,
+    ms: 520.0,
+    alpha: 0.6,
+};
+
+/// How hard a body has to hit the water for the full crown of [`SPLASH_DUST`]: at this speed in
+/// blocks per tick, and above, the whole shape is thrown up; a slower entry scales down to a
+/// third of it.
+pub const SPLASH_FULL_SPEED: f64 = 0.5;
+
+/// The splash a body going into the water at `sink` blocks per tick throws up: the crown of
+/// [`SPLASH_DUST`], its reach and its height scaled by how hard it hit.
+pub fn splash_of(sink: f64) -> DustShape {
+    let share = 0.34 + 0.66 * (sink.max(0.0) / SPLASH_FULL_SPEED).min(1.0);
+    let scale = |range: (f64, f64)| (range.0 * share, range.1 * share);
+    DustShape {
+        radius: scale(SPLASH_DUST.radius),
+        drift: scale(SPLASH_DUST.drift),
+        rise: SPLASH_DUST.rise * share,
+        ..SPLASH_DUST
+    }
+}
+
 /// How a puff looks at one moment: how far through its life it is and how opaque it is.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DustLook {

@@ -53,8 +53,11 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`SKID_DUST_EVERY`](dust_view.rs#L37) — Columnas que un jugador derrapando desliza entre dos soplos: más a menudo que al correr, porque un derrape
   - Declaración: `pub const SKID_DUST_EVERY: f64 = 0.2;`
 
-- [`RUN_PUFFS`](dust_view.rs#L40) — Soplos de polvo de carrera o derrape vivos a la vez, reutilizados por turno.
+- [`RUN_PUFFS`](dust_view.rs#L40) — Soplos de polvo de carrera o derrape vivos a la vez, reutilizados por turno. La estela de quien nada usa esos mismos soplos.
   - Declaración: `pub const RUN_PUFFS: usize = 6;`
+
+- [`SWIM_WAKE_EVERY`](dust_view.rs) — Columnas que recorre quien nada entre dos crestas de su estela: más a menudo que el polvo de una carrera, porque el agua se cierra detrás.
+  - Declaración: `pub const SWIM_WAKE_EVERY: f64 = 0.35;`
 
 ### `body_motion.rs`
 
@@ -107,6 +110,12 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`WALK_STRIDE`](player_view.rs#L8) — Columnas recorridas por ciclo de la hoja de caminar:
   - Declaración: `pub const WALK_STRIDE: f64 = 1.4;`
+
+- [`SWIM_STRIDE`](player_view.rs) — Columnas nadadas por ciclo del crol: una brazada de cada brazo. Más corta que [`WALK_STRIDE`], porque quien nada avanza menos por brazada que quien camina por paso.
+  - Declaración: `pub const SWIM_STRIDE: f64 = 0.75;`
+
+- [`SWIM_MOVING`](player_view.rs) — Columnas por frame por debajo de las cuales quien nada cuenta como quieto, y se queda flotando en vez de bracear.
+  - Declaración: `pub const SWIM_MOVING: f64 = 0.0005;`
 
 - [`IDLE_PERIOD_MS`](player_view.rs#L11) — Milisegundos reales que dura un ciclo de la hoja de reposo: dos compases del baile del mono.
   - Declaración: `pub const IDLE_PERIOD_MS: f64 = 900.0;`

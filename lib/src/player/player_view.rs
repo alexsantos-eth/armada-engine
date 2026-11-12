@@ -2,10 +2,20 @@
 
 use iso::player::{PLAYER_FACINGS, PlayerJumpPhase, PlayerMotionType, get_player_facing};
 use iso::projection::GridPoint;
-use iso::scene_order::{PlayerFrame, PlayerFrameInput, PlayerSheet, select_player_frame};
+use iso::scene_order::{
+    PlayerFrame, PlayerFrameInput, PlayerSheet, SwimInput, select_player_frame,
+};
 
 /// Columns walked per cycle of the walk sheet:
 pub const WALK_STRIDE: f64 = 1.4;
+
+/// Columns swum per cycle of the crawl: one pull of each arm. Shorter than [`WALK_STRIDE`],
+/// because a swimmer covers less ground per stroke than a walker does per step.
+pub const SWIM_STRIDE: f64 = 0.75;
+
+/// Columns per frame under which a swimmer counts as floating still rather than swimming along,
+/// so that drifting to a stop settles into treading water.
+pub const SWIM_MOVING: f64 = 0.0005;
 
 /// Real milliseconds one cycle of the idle sheet lasts: two beats of the monkey's dance.
 pub const IDLE_PERIOD_MS: f64 = 900.0;
@@ -46,6 +56,8 @@ pub struct PlayerSheets {
     pub walk_poses: Option<i32>,
     pub idle_poses: Option<i32>,
     pub climb_poses: Option<i32>,
+    /// Columns of the swim sheet: treading water, the crawl's cycle, and diving.
+    pub swim_poses: Option<i32>,
     /// The column of each jump phase, in the order `takeoff rise apex fall landing`.
     pub jump_poses: Option<[usize; 5]>,
 }
@@ -81,6 +93,8 @@ pub struct PlayerAnimation {
     turning_ms: f64,
     walked: f64,
     stood_ms: f64,
+    /// Columns swum since the player went into the water, for the crawl's cycle.
+    swum: f64,
 }
 
 impl Default for PlayerAnimation {
@@ -90,6 +104,7 @@ impl Default for PlayerAnimation {
             turning_ms: 0.0,
             walked: 0.0,
             stood_ms: 0.0,
+            swum: 0.0,
         }
     }
 }
@@ -97,19 +112,44 @@ impl Default for PlayerAnimation {
 impl PlayerAnimation {
     /// Takes one frame into account and answers with the pose to draw.
     pub fn advance(&mut self, moment: PlayerMoment, sheets: PlayerSheets) -> PlayerPose {
+        let swimming = matches!(
+            moment.motion,
+            PlayerMotionType::Swimming | PlayerMotionType::Sinking
+        );
+        // with no swim sheet in the atlas the walk sheet carries the swimmer, pedalling along
         let walking = matches!(
             moment.motion,
             PlayerMotionType::Walking | PlayerMotionType::Running | PlayerMotionType::Skidding
-        );
+        ) || (swimming && sheets.swim_poses.is_none());
         let flying = matches!(
             moment.motion,
             PlayerMotionType::Jumping | PlayerMotionType::Falling | PlayerMotionType::Flying
         );
+        self.swum = if swimming {
+            self.swum + moment.moved.max(0.0)
+        } else {
+            0.0
+        };
+        let swim = sheets
+            .swim_poses
+            .filter(|_| swimming)
+            .map(|columns| SwimInput {
+                columns,
+                under: moment.motion == PlayerMotionType::Sinking,
+                moving: moment.moved > SWIM_MOVING,
+                swum: self.swum,
+                stride: SWIM_STRIDE,
+            });
         let jump_pose = match (sheets.jump_poses, moment.jump_phase) {
             (_, PlayerJumpPhase::Ground) | (None, _) => None,
             (Some(poses), phase) => Some(poses[phase_column(phase)] as i32),
         };
-        self.stood_ms = if moment.climbing.is_some() || walking || flying || jump_pose.is_some() {
+        self.stood_ms = if swimming
+            || moment.climbing.is_some()
+            || walking
+            || flying
+            || jump_pose.is_some()
+        {
             0.0
         } else {
             self.stood_ms + moment.elapsed_ms.max(0.0)
@@ -142,6 +182,7 @@ impl PlayerAnimation {
             walked: self.walked,
             stood_ms: (self.stood_ms - IDLE_DELAY_MS).max(0.0),
             air_pose: Some(AIR_POSE),
+            swim,
         });
         self.pose(frame)
     }

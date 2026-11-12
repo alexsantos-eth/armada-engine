@@ -12,6 +12,10 @@ pub enum PlayerMotionType {
     Falling,
     Flying,
     Climbing,
+    /// In the water, at the surface: floating still or stroking along it.
+    Swimming,
+    /// In the water, under the surface: fallen in and on its way back up.
+    Sinking,
 }
 
 /// Events produced by the deterministic player step and consumed by the motion machine.
@@ -32,6 +36,10 @@ pub enum PlayerMotionEvent {
     ClimbTick,
     ClimbDoneIdle,
     ClimbDoneWalking,
+    /// In the water with its head out.
+    Swim,
+    /// In the water with its head under.
+    Sink,
 }
 
 /// Transitions out of every ground state: idle, walking, running and skidding.
@@ -43,6 +51,8 @@ const GROUND: &[(PlayerMotionEvent, PlayerMotionType)] = &[
     (PlayerMotionEvent::Jump, PlayerMotionType::Jumping),
     (PlayerMotionEvent::Fall, PlayerMotionType::Falling),
     (PlayerMotionEvent::Climb, PlayerMotionType::Climbing),
+    (PlayerMotionEvent::Swim, PlayerMotionType::Swimming),
+    (PlayerMotionEvent::Sink, PlayerMotionType::Sinking),
 ];
 
 /// Transitions out of the air: jumping, falling or flying.
@@ -54,6 +64,8 @@ const AIR: &[(PlayerMotionEvent, PlayerMotionType)] = &[
     (PlayerMotionEvent::LandRunning, PlayerMotionType::Running),
     (PlayerMotionEvent::LandSkidding, PlayerMotionType::Skidding),
     (PlayerMotionEvent::Climb, PlayerMotionType::Climbing),
+    (PlayerMotionEvent::Swim, PlayerMotionType::Swimming),
+    (PlayerMotionEvent::Sink, PlayerMotionType::Sinking),
 ];
 
 /// A jump press while already airborne keeps the player jumping or flying.
@@ -68,6 +80,26 @@ const CLIMBING: &[(PlayerMotionEvent, PlayerMotionType)] = &[
         PlayerMotionEvent::ClimbDoneWalking,
         PlayerMotionType::Walking,
     ),
+    (PlayerMotionEvent::Swim, PlayerMotionType::Swimming),
+    (PlayerMotionEvent::Sink, PlayerMotionType::Sinking),
+];
+
+/// Transitions out of the water: the swimmer surfaces, goes under, or leaves it for the shore,
+/// where the ground and air states take over again.
+const WATER: &[(PlayerMotionEvent, PlayerMotionType)] = &[
+    (PlayerMotionEvent::Swim, PlayerMotionType::Swimming),
+    (PlayerMotionEvent::Sink, PlayerMotionType::Sinking),
+    (PlayerMotionEvent::Stop, PlayerMotionType::Idle),
+    (PlayerMotionEvent::Walk, PlayerMotionType::Walking),
+    (PlayerMotionEvent::Run, PlayerMotionType::Running),
+    (PlayerMotionEvent::Skid, PlayerMotionType::Skidding),
+    (PlayerMotionEvent::Jump, PlayerMotionType::Jumping),
+    (PlayerMotionEvent::Fall, PlayerMotionType::Falling),
+    (PlayerMotionEvent::Climb, PlayerMotionType::Climbing),
+    (PlayerMotionEvent::LandIdle, PlayerMotionType::Idle),
+    (PlayerMotionEvent::LandWalking, PlayerMotionType::Walking),
+    (PlayerMotionEvent::LandRunning, PlayerMotionType::Running),
+    (PlayerMotionEvent::LandSkidding, PlayerMotionType::Skidding),
 ];
 
 /// Finds the next state for `event` in `transitions`, or `None` when the event is not handled.
@@ -95,6 +127,9 @@ pub fn transition_player_motion(
             .unwrap_or(state),
         PlayerMotionType::Falling => next_state(AIR, event).unwrap_or(state),
         PlayerMotionType::Climbing => next_state(CLIMBING, event).unwrap_or(state),
+        PlayerMotionType::Swimming | PlayerMotionType::Sinking => {
+            next_state(WATER, event).unwrap_or(state)
+        }
     }
 }
 

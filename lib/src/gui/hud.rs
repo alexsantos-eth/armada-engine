@@ -118,7 +118,7 @@ fn help_line(touch_visible: bool) -> &'static str {
     if touch_visible {
         "Joystick: mover, a tope correr | SALTAR"
     } else {
-        "WASD/Flechas | Espacio: saltar | Shift: correr | T: terreno | P: perf | F5: guardar"
+        "WASD/Flechas | Espacio: saltar | Shift: correr o nadar rapido | T: terreno | P: perf | F5: guardar"
     }
 }
 
@@ -134,7 +134,17 @@ pub(crate) fn push_hud_update(
         x: player.x,
         y: player.y,
         elevation,
-        motion: format!("{:?} {}", player.motion, animation.facing_name()),
+        motion: match player.swim {
+            // in the water: how far under the surface the body is, which is what tells a
+            // plunge from floating
+            Some(swim) => format!(
+                "{:?} {} · {:.2} bajo el agua",
+                player.motion,
+                animation.facing_name(),
+                swim.depth
+            ),
+            None => format!("{:?} {}", player.motion, animation.facing_name()),
+        },
         chunks,
     });
 }

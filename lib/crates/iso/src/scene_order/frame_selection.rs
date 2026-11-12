@@ -1,6 +1,8 @@
 //! Selects a player's sheet and column from presentation state, without textures.
 
-use super::{climb_pose, idle_pose, walk_pose};
+use super::{
+    SWIM_FLOAT_POSE, climb_pose, idle_pose, swim_dive_pose, swim_pose, walk_pose,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlayerSheet {
@@ -8,6 +10,22 @@ pub enum PlayerSheet {
     Climb,
     Jump,
     Idle,
+    Swim,
+}
+
+/// What the swim sheet is drawn from while the player is in the water.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SwimInput {
+    /// Columns the sheet holds: treading water, the crawl's cycle, and diving.
+    pub columns: i32,
+    /// Whether the head is under the surface, which is drawn diving.
+    pub under: bool,
+    /// Whether the swimmer is moving along, which is what strokes the crawl.
+    pub moving: bool,
+    /// Columns swum, for the crawl's cycle.
+    pub swum: f64,
+    /// Columns of one cycle of the crawl.
+    pub stride: f64,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -29,10 +47,25 @@ pub struct PlayerFrameInput {
     pub walked: f64,
     pub stood_ms: f64,
     pub air_pose: Option<i32>,
+    /// The swim, when the player is in the water and there is a sheet for it.
+    pub swim: Option<SwimInput>,
 }
 
 /// Chooses sheet and column with climb, jump, idle, then walk priority.
 pub fn select_player_frame(input: PlayerFrameInput) -> PlayerFrame {
+    if let Some(swim) = input.swim {
+        let pose = if swim.under {
+            swim_dive_pose(swim.columns)
+        } else if swim.moving {
+            swim_pose(swim.swum, swim.columns, swim.stride)
+        } else {
+            SWIM_FLOAT_POSE
+        };
+        return PlayerFrame {
+            sheet: PlayerSheet::Swim,
+            pose,
+        };
+    }
     if let Some(progress) = input.climbing {
         return input
             .climb_frames

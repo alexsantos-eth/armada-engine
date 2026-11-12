@@ -98,7 +98,7 @@ SVG_CANVAS_TOP = -341
 # used, because this client reads the sixteen-facing ones under `player-16/` and cuts every cell
 # separately. Cutting the others would pack five textures nothing asks for.
 SKIPPED_SHEETS = frozenset(
-    "player_%s" % name for name in ("walk", "idle", "jump", "climb", "jetpack")
+    "player_%s" % name for name in ("walk", "idle", "jump", "climb", "jetpack", "swim")
 )
 
 # How many pixels wide one tile of world is rasterized at. The client draws a tile 280 px wide,

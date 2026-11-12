@@ -70,11 +70,13 @@ pub const PLAYER_FRONT_LAYER: i32 = 4;
 pub const PLAYER_SCALE: f64 = 0.75;
 /// Source path of the player's still figure in the asset manifest, drawn if a sheet is missing.
 pub const PLAYER_SPRITE: &str = "/assets/player/block.svg";
-/// The player's sheets of poses, in the manifest: walking, standing, jumping and climbing.
+/// The player's sheets of poses, in the manifest: walking, standing, jumping, climbing and
+/// swimming.
 pub const PLAYER_WALK_SHEET: &str = "/assets/player-16/walk.svg";
 pub const PLAYER_IDLE_SHEET: &str = "/assets/player-16/idle.svg";
 pub const PLAYER_JUMP_SHEET: &str = "/assets/player-16/jump.svg";
 pub const PLAYER_CLIMB_SHEET: &str = "/assets/player-16/climb.svg";
+pub const PLAYER_SWIM_SHEET: &str = "/assets/player-16/swim.svg";
 /// Extra view the chunk cull keeps around the screen, as a fraction of it.
 pub const CHUNK_CULL_MARGIN: f64 = 0.0;
 

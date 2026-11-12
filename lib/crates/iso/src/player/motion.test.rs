@@ -80,3 +80,63 @@ fn walk_and_stop() {
         PlayerMotionType::Idle
     );
 }
+
+#[test]
+fn going_into_the_water_from_the_ground_or_the_air_starts_a_swim() {
+    for state in [
+        PlayerMotionType::Idle,
+        PlayerMotionType::Walking,
+        PlayerMotionType::Running,
+        PlayerMotionType::Skidding,
+        PlayerMotionType::Jumping,
+        PlayerMotionType::Falling,
+        PlayerMotionType::Flying,
+        PlayerMotionType::Climbing,
+    ] {
+        assert_eq!(
+            transition_player_motion(state, PlayerMotionEvent::Sink),
+            PlayerMotionType::Sinking,
+            "{state:?} going under"
+        );
+        assert_eq!(
+            transition_player_motion(state, PlayerMotionEvent::Swim),
+            PlayerMotionType::Swimming,
+            "{state:?} at the surface"
+        );
+    }
+}
+
+#[test]
+fn a_swimmer_surfaces_and_goes_under_again() {
+    assert_eq!(
+        transition_player_motion(PlayerMotionType::Sinking, PlayerMotionEvent::Swim),
+        PlayerMotionType::Swimming
+    );
+    assert_eq!(
+        transition_player_motion(PlayerMotionType::Swimming, PlayerMotionEvent::Sink),
+        PlayerMotionType::Sinking
+    );
+}
+
+#[test]
+fn leaving_the_water_hands_the_swimmer_back_to_the_land() {
+    for (event, expected) in [
+        (PlayerMotionEvent::Stop, PlayerMotionType::Idle),
+        (PlayerMotionEvent::Walk, PlayerMotionType::Walking),
+        (PlayerMotionEvent::Run, PlayerMotionType::Running),
+        (PlayerMotionEvent::Skid, PlayerMotionType::Skidding),
+        (PlayerMotionEvent::Climb, PlayerMotionType::Climbing),
+        (PlayerMotionEvent::Fall, PlayerMotionType::Falling),
+        (PlayerMotionEvent::Jump, PlayerMotionType::Jumping),
+        (PlayerMotionEvent::LandIdle, PlayerMotionType::Idle),
+        (PlayerMotionEvent::LandWalking, PlayerMotionType::Walking),
+        (PlayerMotionEvent::LandRunning, PlayerMotionType::Running),
+        (PlayerMotionEvent::LandSkidding, PlayerMotionType::Skidding),
+    ] {
+        assert_eq!(
+            transition_player_motion(PlayerMotionType::Swimming, event),
+            expected,
+            "{event:?} out of the water"
+        );
+    }
+}

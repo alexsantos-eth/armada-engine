@@ -2,7 +2,8 @@
 
 use iso::player::{
     BURST_DUST, DUST_MIN_IMPACT, DustShape, DustVoxel, KICK_DUST, PlayerMotionType, PlayerState,
-    VoxelFaces, get_dust, get_dust_column, get_dust_voxel_at, get_dust_voxels, voxel_faces,
+    VoxelFaces, WAKE_DUST, get_dust, get_dust_column, get_dust_voxel_at, get_dust_voxels,
+    splash_of, voxel_faces,
 };
 use iso::projection::{GridPoint, ProjectionConfig, project_grid_point};
 use iso::scene_order::DrawKey;
@@ -30,6 +31,10 @@ pub const DUST_BEHIND_LAYER: i32 = crate::lighting::shadow_view::GROUND_SHADOW_L
 /// Depth added to a cube of dust in front of the feet, so it draws after the column it is over
 pub const DUST_FRONT_DEPTH: f64 = 0.00001;
 
+/// Columns a swimmer covers between two crests of its wake: more often than a runner's dust,
+/// because the water closes behind it.
+pub const SWIM_WAKE_EVERY: f64 = 0.35;
+
 /// Columns a running player covers between two puffs of dust.
 pub const RUN_DUST_EVERY: f64 = 0.7;
 
@@ -45,8 +50,14 @@ const TAKEOFF_PUFF: usize = 0;
 /// The puff a landing raises, on the ground it landed on.
 const LANDING_PUFF: usize = 1;
 
-/// The whole pool: a take-off, a landing and the running trail.
-const PUFFS: usize = 2 + RUN_PUFFS;
+/// The crown of water thrown up where the player went into the water.
+const SPLASH_PUFF: usize = 2;
+
+/// The first puff of the trail a runner, a skidder or a swimmer leaves behind it.
+const TRAIL_PUFF: usize = 3;
+
+/// The whole pool: a take-off, a landing, a splash and the trail.
+const PUFFS: usize = TRAIL_PUFF + RUN_PUFFS;
 
 /// Where the player's dust rises from this frame, and how far it has come since the last.
 #[derive(Clone, Copy, Debug)]
@@ -85,6 +96,7 @@ pub struct DustPuffs {
     raised: u64,
     seen_jumps: i32,
     seen_landings: i32,
+    seen_splashes: i32,
     /// Columns run or slid since the last puff of the running trail.
     ran: f64,
     /// The puff of the trail to reuse next.
@@ -104,6 +116,7 @@ impl DustPuffs {
             raised: 0,
             seen_jumps: 0,
             seen_landings: 0,
+            seen_splashes: 0,
             ran: 0.0,
             run_puff: 0,
         }
@@ -153,8 +166,25 @@ impl DustPuffs {
                 top_at,
             );
         }
+        if feedback.splashes != self.seen_splashes {
+            // the crown of water rises from the surface it broke, not from the sunken feet
+            self.raise(
+                SPLASH_PUFF,
+                splash_of(feedback.splash_impact),
+                &DustGround {
+                    level: at.ground,
+                    ..at
+                },
+                DustEmission {
+                    origin: ZERO,
+                    kick: ZERO,
+                },
+                top_at,
+            );
+        }
         self.seen_landings = feedback.landings;
         self.seen_jumps = feedback.jumps;
+        self.seen_splashes = feedback.splashes;
         self.kick(player, at, top_at);
     }
 
@@ -165,10 +195,11 @@ impl DustPuffs {
         at: DustGround,
         top_at: &impl Fn(i32, i32) -> Option<f64>,
     ) {
-        let every = match player.motion {
-            PlayerMotionType::Skidding => SKID_DUST_EVERY,
-            PlayerMotionType::Running => RUN_DUST_EVERY,
-            _ => 0.0,
+        let (every, shape, surface) = match player.motion {
+            PlayerMotionType::Skidding => (SKID_DUST_EVERY, KICK_DUST, false),
+            PlayerMotionType::Running => (RUN_DUST_EVERY, KICK_DUST, false),
+            PlayerMotionType::Swimming => (SWIM_WAKE_EVERY, WAKE_DUST, true),
+            _ => (0.0, KICK_DUST, false),
         };
         if every == 0.0 {
             self.ran = 0.0;
@@ -179,17 +210,19 @@ impl DustPuffs {
             return;
         }
         self.ran %= every;
-        let velocity = player.velocity;
-        let speed = velocity.x.hypot(velocity.y);
-        let speed = if speed == 0.0 { 1.0 } else { speed };
-        let kick = GridPoint {
-            x: -velocity.x / speed,
-            y: -velocity.y / speed,
+        let kick = behind(player);
+        let index = TRAIL_PUFF + self.run_puff;
+        let at = if surface {
+            DustGround {
+                level: at.ground,
+                ..at
+            }
+        } else {
+            at
         };
-        let index = 2 + self.run_puff;
         self.raise(
             index,
-            KICK_DUST,
+            shape,
             &at,
             DustEmission { origin: ZERO, kick },
             top_at,
@@ -274,6 +307,19 @@ impl DustPuffs {
 
 /// No kick and no offset from the feet.
 const ZERO: GridPoint = GridPoint { x: 0.0, y: 0.0 };
+
+/// The way behind the player, which is where whatever it kicks up is thrown.
+fn behind(player: &PlayerState) -> GridPoint {
+    let velocity = player.velocity;
+    let speed = velocity.x.hypot(velocity.y);
+    if speed == 0.0 {
+        return ZERO;
+    }
+    GridPoint {
+        x: -velocity.x / speed,
+        y: -velocity.y / speed,
+    }
+}
 
 /// Where a cube of dust sorts in the scene: the column it is over halfway through its life, and
 fn voxel_key(
