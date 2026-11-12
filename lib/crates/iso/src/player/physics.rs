@@ -419,6 +419,40 @@ fn body_overlap(point: GridPoint, x: i32, y: i32) -> (f64, f64) {
     )
 }
 
+/// The shove the game gives an idle player floating on a flight: a velocity toward its foot at
+/// walk speed, all on the axis the steps are drawn on, or `None` when he is not floating on one
+/// (walking, mid-air, on the ground outside a flight, or standing on the last tread flush with
+/// the top). A floating player is walked off the flight this way, never into a stairs climb.
+fn flight_shove<G: PlayerGround>(player: &PlayerState, ground: &G) -> Option<GridPoint> {
+    if player.walk.x != 0.0 || player.walk.y != 0.0 {
+        return None;
+    }
+    if player.vertical_speed.is_some() || player.height != 0.0 || player.climb.is_some() {
+        return None;
+    }
+    let here = GridPoint {
+        x: player.x,
+        y: player.y,
+    };
+    let support = support_at(ground, here)?;
+    if support.surface != TerrainMaterial::Stairs {
+        return None;
+    }
+    let coord = get_player_column(here);
+    let up = flight_direction(ground, coord)?;
+    let along = (here.x - f64::from(coord.x)) * f64::from(up.x)
+        + (here.y - f64::from(coord.y)) * f64::from(up.y);
+    let progress = (along + 0.5).clamp(0.0, 1.0);
+    let ramp = (support.elevation - 1) as f64 + get_stairs_rise(progress);
+    if player.elevation + player.height - ramp <= PLAYER_STEP_HEIGHT {
+        return None;
+    }
+    Some(GridPoint {
+        x: -f64::from(up.x) * PLAYER_STEP,
+        y: -f64::from(up.y) * PLAYER_STEP,
+    })
+}
+
 /// Whether a walking player with its feet at `feet` may move from `from` to `to`. A flight of
 /// stairs is only ever taken from its foot, the column it climbs away from, so from anywhere
 /// else its side is a wall the body stops against, like any other block's, and is cleared the
@@ -1008,6 +1042,7 @@ fn step_once<G: PlayerGround>(
     player: &mut PlayerState,
     ground: &G,
     diagnose: bool,
+    shove: bool,
 ) -> Option<PlayerBlockReason> {
     let velocity = player.velocity;
     if velocity.x == 0.0 && velocity.y == 0.0 {
@@ -1122,7 +1157,10 @@ fn step_once<G: PlayerGround>(
         x: next.x - from.x,
         y: next.y - from.y,
     };
-    if !airborne && let Some(descent) = start_stairs_descent(ground, from, next, feet) {
+    if !airborne
+        && !shove
+        && let Some(descent) = start_stairs_descent(ground, from, next, feet)
+    {
         player.climb = Some(descent);
         player.vertical_speed = None;
         player.velocity = GridPoint { x: 0.0, y: 0.0 };
@@ -1573,7 +1611,11 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
         }
         let flying = is_flying(player);
         accelerate_player(player);
-        let block_reason = step_once(player, ground, false);
+        let shove = flight_shove(player, ground);
+        if let Some(velocity) = shove {
+            player.velocity = velocity;
+        }
+        let block_reason = step_once(player, ground, false, shove.is_some());
         let here = GridPoint {
             x: player.x,
             y: player.y,

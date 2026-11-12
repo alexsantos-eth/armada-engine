@@ -859,6 +859,50 @@ fn a_player_descending_a_flight_off_centre_walks_onto_its_centreline() {
     );
 }
 
+/// A player who lands on a flight and stands still, floating above its steps, is pushed off
+/// toward its foot: the game walks him there as a shove — never as a stairs descent — and he
+/// drops off the far ledge of the flight as a fall onto the lower path.
+#[test]
+fn a_player_floating_on_a_flight_is_pushed_off_as_a_fall() {
+    let mut ground = stairs_ground();
+    let mut player = create_player(&ground, GridPoint { x: 2.0, y: 1.0 });
+    assert_eq!(player.elevation, 1.0);
+    for _ in 0..80 {
+        step_player(&mut player, &mut ground, 1);
+        assert!(
+            player.climb.is_none(),
+            "a floating player is never started down the steps: {}",
+            player.x
+        );
+    }
+    assert_eq!(
+        player.elevation, 0.0,
+        "he drops onto the lower path, not floats forever: {}",
+        player.x
+    );
+    assert_eq!(player.height, 0.0, "and lands");
+    assert_eq!(player.vertical_speed, None);
+}
+
+/// Standing on the last tread flush with the top is the normal place to stand: the player is
+/// not floating there, and the game leaves him alone no matter how long he waits.
+#[test]
+fn a_player_standing_on_the_last_tread_is_not_pushed() {
+    let mut ground = stairs_ground();
+    let mut player = create_player(&ground, GridPoint { x: 2.4, y: 1.0 });
+    assert_eq!(player.elevation, 1.0);
+    for _ in 0..40 {
+        step_player(&mut player, &mut ground, 1);
+        assert!(player.climb.is_none());
+    }
+    assert_eq!(player.elevation, 1.0, "he stays on the last tread");
+    assert!(
+        (player.x - 2.4).abs() < 1e-9,
+        "and does not move: {}",
+        player.x
+    );
+}
+
 /// What the foot is for going up, the descent edge is for coming down, all at the top:
 /// a flight is only ever entered along its axis, never from a side, at any height.
 #[test]

@@ -142,6 +142,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`get_stairs_align`](physics.rs) — Fracción de la corrección lateral hacia la línea central de la grada que el tramo ha andado en `progress` (0–1): el primer tramo de la grada, con la misma easing que un peldaño. A partir de ahí, el resto del vuelo va por el centro.
   - Firma: `pub fn get_stairs_align(progress: f64) -> f64 {`
 
+- [`flight_shove`](physics.rs#L426) — El empujón que el juego aplica a un jugador quieto sobre una grada flotando por encima de los peldaños: una velocidad en el eje de bajada, a la distancia de un paso por tick, o `None` si camina, está en el aire, hay tramo en curso, o pisa la última huella a ras de la cima. Lo desliza fuera del tramo y el motor resuelve el salto al pie como una caída.
+  - Firma: `fn flight_shove<G: PlayerGround>(player: &PlayerState, ground: &G) -> Option<GridPoint> {`
+
 - [`blocked_side`](physics.rs#L145) — Calcula o recupera «blocked side» según los parámetros de la firma.
   - Firma: `pub fn blocked_side(&self, _x: f64, _y: f64) -> f64 {`
 
