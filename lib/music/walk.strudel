@@ -1,5 +1,3 @@
-// Caminar (en bucle mientras camina): cuatro pasos por segundo, golpes secos de
-// ruido marrón filtrado, el segundo pie un poco más suave.
 s("brown*4")
   .attack(0.001)
   .decay(0.035)

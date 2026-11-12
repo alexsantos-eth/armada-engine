@@ -1,5 +1,3 @@
-// Aterrizaje: un golpe grave que baja y un soplo de ruido marrón (el polvo).
-// El juego escala su volumen con la fuerza del impacto.
 stack(
   note("[g2 c2] ~ ~ ~ ~ ~ ~ ~")
     .s("sine")

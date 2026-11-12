@@ -1,4 +1,3 @@
-// Patinazo: un siseo de ruido blanco, filtrado hacia los agudos, de un cuarto de segundo.
 s("brown ~ ~ ~")
   .attack(0.002)
   .decay(0.1)

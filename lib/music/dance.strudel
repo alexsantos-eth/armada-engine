@@ -1,6 +1,3 @@
-// Baile (en bucle mientras el mono baila quieto): un groove al compás de PLAYER_DANCE
-// (un tiempo cada 450 ms, ~133 BPM: el compás de cuatro tiempos dura 1.8 s, de ahí
-// el .slow(1.8)), con bombo, charles, bajo y un arpegio que recorre C, Am, F y G.
 stack(
   s("brown*2").attack(0.001).decay(0.08).sustain(0).lpf(180).gain(0.6),
   s("~ white ~ white").attack(0.001).decay(0.03).sustain(0).hpf(6000).gain(0.1),

@@ -1,4 +1,3 @@
-// Correr (en bucle mientras corre): seis pasos por segundo, más brillantes y fuertes.
 s("brown*6")
   .attack(0.001)
   .decay(0.03)

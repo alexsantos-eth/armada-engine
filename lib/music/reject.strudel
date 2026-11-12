@@ -1,4 +1,3 @@
-// Salto rechazado: un zumbido cuadrado, grave y corto, que baja medio tono.
 note("[d3 c#3] ~ ~ ~ ~ ~ ~ ~")
   .s("square")
   .attack(0.002)
