@@ -27,9 +27,8 @@ committing.
 
 | File           | Kind   | Cycles @ CPS 1 | Why |
 |----------------|--------|----------------|-----|
-| `jump`, `air-jump`, `land`, `reject`, `skid`, `climb` | one-shot | 1 | The engine plays events whose onset is inside the first cycle; everything sounds in the first octave. |
+| `jump`, `air-jump`, `land`, `skid`, `climb` | one-shot | 1 | The engine plays events whose onset is inside the first cycle; everything sounds in the first octave. |
 | `walk`, `run`, `jetpack` | loop | 1 | Exactly one cycle, so Macroquad can loop the file seamlessly (`looped: true`). |
-| `dance`        | loop   | 1.8            | The groove is `.slow(1.8)`; 1.8 cycles (1.8 s) is one full phrase and loops seamlessly. |
 
 Sample rate is 48000 Hz, stereo 16-bit PCM. A render fails loudly (non-zero
 exit) if a pattern does not evaluate or comes out quieter than −60 dBFS peak,

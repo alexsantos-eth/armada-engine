@@ -1,3 +1,12 @@
+#!/usr/bin/env node
+// Regenerates the game's sound effects as WAV files for the Rust client.
+//
+// The `.strudel` files are the source of truth and live in `lib/music/`. They are rendered
+// here with superdough — the same audio engine the Strudel REPL uses — to 16-bit stereo PCM,
+// and written to `lib/content/sounds/<name>.wav`, which `lib/scripts/build-web.sh` copies
+// into the deployed site and the native bundle ships as a resource.
+//
+// Usage: npm ci && npm run render
 import { readFile, writeFile, mkdir, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,13 +24,11 @@ const SOUNDS = [
   ['jump', 1],
   ['air-jump', 1],
   ['land', 1],
-  ['reject', 1],
   ['skid', 1],
   ['climb', 1],
   ['walk', 1],
   ['run', 1],
   ['jetpack', 1],
-  ['dance', 1.8],
 ];
 
 function encodeWav({ left, right, sampleRate }) {

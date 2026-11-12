@@ -20,19 +20,19 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`play`](audio.rs#L29) — Reproduce un sonido de una sola vez.
+- [`play`](audio.rs#L27) — Reproduce un sonido de una sola vez.
   - Firma: `fn play(&mut self, event: SoundEvent);`
 
-- [`play_with_volume`](audio.rs#L31) — Reproduce un sonido de una sola vez escalado a `volume` (0.0..=1.0). La implementación por defecto ignora el volumen y delega en `play`.
+- [`play_with_volume`](audio.rs#L29) — Reproduce un sonido de una sola vez escalado a `volume` (0.0..=1.0). La implementación por defecto ignora el volumen y delega en `play`.
   - Firma: `fn play_with_volume(&mut self, event: SoundEvent, volume: f64) { ... }`
 
-- [`play_loop`](audio.rs#L36) — Sustituye el bucle actual por `sound` (`None` lo detiene). La implementación por defecto no hace nada.
+- [`play_loop`](audio.rs#L34) — Sustituye el bucle actual por `sound` (`None` lo detiene). La implementación por defecto no hace nada.
   - Firma: `fn play_loop(&mut self, sound: Option<SoundLoop>) { ... }`
 
-- [`set_volume`](audio.rs#L40) — Establece el volumen maestro (0.0..=1.0).
+- [`set_volume`](audio.rs#L38) — Establece el volumen maestro (0.0..=1.0).
   - Firma: `fn set_volume(&mut self, volume: f64);`
 
-Los tipos de intercambio son `SoundEvent` (`Jump`, `AirJump`, `Land`, `Footstep`, `Climb`, `Rejection`, `Skid`) y `SoundLoop` (`Walk`, `Run`, `Jetpack`, `Dance`).
+Los tipos de intercambio son `SoundEvent` (`Jump`, `AirJump`, `Land`, `Footstep`, `Climb`, `Skid`) y `SoundLoop` (`Walk`, `Run`, `Jetpack`).
 
 ### `chunk_loader.rs`
 

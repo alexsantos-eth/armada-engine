@@ -19,9 +19,7 @@ use iso::services::{
 };
 use macroquad::prelude::*;
 
-use crate::game::config::{
-    CHUNK_CULL_MARGIN, DANCE_DELAY_SECONDS, LAND_SOUND_MIN_IMPACT, UNBOUNDED_CAMERA_LIMITS,
-};
+use crate::game::config::{CHUNK_CULL_MARGIN, LAND_SOUND_MIN_IMPACT, UNBOUNDED_CAMERA_LIMITS};
 use crate::game::ground::ChunkGround;
 use crate::game::scene::frame_projection;
 use crate::game::state::Game;
@@ -65,30 +63,18 @@ fn shot_for_entering(motion: PlayerMotionType) -> Option<SoundEvent> {
     }
 }
 
-/// Fires the skid and climb shots, swaps the loop bound to the player's motion state and,
-/// after `DANCE_DELAY_SECONDS` of stillness, swaps it for the dance loop. One call per frame;
-/// the `last_motion`/`idle_since` fields on `Game` are all the memory it needs.
+/// Fires the skid and climb shots and swaps the loop bound to the player's motion state.
+/// One call per frame; `last_motion` on `Game` is all the memory it needs.
 fn update_motion_audio(game: &mut Game) {
     let motion = game.player.motion;
-    if game.last_motion != Some(motion) {
-        game.last_motion = Some(motion);
-        game.idle_since = None;
-        if let Some(shot) = shot_for_entering(motion) {
-            game.audio.play(shot);
-        }
-        game.audio.play_loop(loop_for_motion(motion));
-        if motion == PlayerMotionType::Idle {
-            game.idle_since = Some(get_time());
-        }
+    if game.last_motion == Some(motion) {
         return;
     }
-    if motion == PlayerMotionType::Idle
-        && let Some(since) = game.idle_since
-        && get_time() - since >= DANCE_DELAY_SECONDS
-    {
-        game.idle_since = None;
-        game.audio.play_loop(Some(SoundLoop::Dance));
+    game.last_motion = Some(motion);
+    if let Some(shot) = shot_for_entering(motion) {
+        game.audio.play(shot);
     }
+    game.audio.play_loop(loop_for_motion(motion));
 }
 
 /// Whether the save should fire now: only with unsaved changes, and only on quit. Players save
@@ -168,7 +154,6 @@ impl Game {
             let _ = self.clock.advance(u64::from(ticks));
             let jumps_before = self.player.feedback.jumps;
             let landings_before = self.player.feedback.landings;
-            let rejections_before = self.player.feedback.rejections;
             let mut ground = ChunkGround {
                 manager: &self.manager,
             };
@@ -189,9 +174,6 @@ impl Game {
                         (impact / PLAYER_JUMP_SPEED).clamp(0.0, 1.0),
                     );
                 }
-            }
-            if self.player.feedback.rejections > rejections_before {
-                self.audio.play(SoundEvent::Rejection);
             }
         }
         update_motion_audio(self);

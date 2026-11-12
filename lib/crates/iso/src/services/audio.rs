@@ -9,7 +9,6 @@ pub enum SoundEvent {
     Land,
     Footstep,
     Climb,
-    Rejection,
     /// The player entered the skid.
     Skid,
 }
@@ -20,7 +19,6 @@ pub enum SoundLoop {
     Walk,
     Run,
     Jetpack,
-    Dance,
 }
 
 /// Audio playback contract.

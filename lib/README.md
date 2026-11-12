@@ -78,11 +78,10 @@ npm ci
 npm run render
 ```
 
-Un sonido por evento: los de un solo disparo se disparan al saltar (más alto en el aire),
-aterrizar (más alto cuanto más fuerte el impacto), ser rechazado, patinar y trepar; y los bucles
-de andar, correr y volar con el jetpack siguen al estado de movimiento, más la música de baile
-tras 0.3 s quieto. En web, el audio arranca con el primer gesto del usuario (política de
-autoplay del navegador), como en la versión anterior.
+Un sonido por evento: los de un solo disparo suenan al saltar (más alto en el aire),
+aterrizar (más alto cuanto más fuerte el impacto), patinar y trepar; y los bucles de andar,
+correr y volar con el jetpack siguen al estado de movimiento. En web, el audio arranca con el
+primer gesto del usuario (política de autoplay del navegador), como en la versión anterior.
 
 ## Empaquetar para macOS
 

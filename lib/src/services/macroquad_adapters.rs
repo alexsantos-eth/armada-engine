@@ -65,21 +65,19 @@ impl InputService for MacroquadInput<'_> {
 
 /// Sounds the client bundles, as one statically-generated WAV per semantic name. The files are
 /// rendered from the `.strudel` sources with the superdough engine (see `tools/sound-export/`).
-const SOUND_FILES: [(SoundEvent, &str); 6] = [
+const SOUND_FILES: [(SoundEvent, &str); 5] = [
     (SoundEvent::Jump, "jump.wav"),
     (SoundEvent::AirJump, "air-jump.wav"),
     (SoundEvent::Land, "land.wav"),
-    (SoundEvent::Rejection, "reject.wav"),
     (SoundEvent::Skid, "skid.wav"),
     (SoundEvent::Climb, "climb.wav"),
 ];
 
 /// Looping sounds the client bundles; see [`SOUND_FILES`].
-const LOOP_FILES: [(SoundLoop, &str); 4] = [
+const LOOP_FILES: [(SoundLoop, &str); 3] = [
     (SoundLoop::Walk, "walk.wav"),
     (SoundLoop::Run, "run.wav"),
     (SoundLoop::Jetpack, "jetpack.wav"),
-    (SoundLoop::Dance, "dance.wav"),
 ];
 
 /// Where a bundled sound is fetched from, as the world content does.
@@ -205,8 +203,7 @@ impl AudioService for MacroquadAudio {
                     },
                 );
             }
-            // Track the wanted loop even when its file failed to load: switching away
-            // simply finds nothing to stop, and no retry happens on repeat requests.
+
             self.current_loop = Some(next);
         }
     }
