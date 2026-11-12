@@ -392,21 +392,32 @@ fn stepping_onto_a_plain_block_keeps_the_ledge_climb() {
     assert_eq!(climb.ticks, PLAYER_CLIMB_TICKS);
 }
 
-/// Walking up a flight the player is on the steps, not in the air over them, and its feet rise
+/// Up a flight the player takes the treads one at a time, hopping onto each one.
 #[test]
-fn a_flight_walks_its_player_up_the_steps_without_leaving_the_ground() {
+fn a_flight_hops_its_player_up_its_treads_one_at_a_time() {
     let mut ground = stairs_ground();
     let mut player = walk_onto_stairs(&mut ground);
     let start = player.elevation + player.height;
     let mut feet = Vec::new();
     for _ in 0..PLAYER_STAIRS_TICKS {
         step_player(&mut player, &mut ground, 1);
-        assert_eq!(player.height, 0.0, "it walks on the steps, never over them");
-        feet.push(player.elevation + player.height);
+        assert!(
+            player.height >= 0.0 && player.height <= PLAYER_STAIRS_HOP + 1e-9,
+            "it hops onto each tread, it does not leap: {}",
+            player.height
+        );
+        feet.push(player.elevation);
     }
     assert!(
         feet.windows(2).all(|pair| pair[1] >= pair[0]),
-        "its feet only ever rise: {feet:?}"
+        "the tread under its feet only ever rises: {feet:?}"
+    );
+    assert!(
+        feet.windows(2)
+            .filter(|pair| pair[1] > pair[0] + 1e-9)
+            .count()
+            >= 2,
+        "and it rises in steps, not in one glide: {feet:?}"
     );
     let top = feet.last().copied().expect("the flight takes ticks");
     assert!((top - (start + 1.0)).abs() < 1e-9, "it ends a block higher");
@@ -501,9 +512,9 @@ fn a_flight_is_walked_down_once_its_top_face_is_crossed() {
     );
 }
 
-/// Walking down a flight the player is on the steps, not falling over them, and its feet only
+/// Down a flight it takes the same treads the other way, hopping down each one.
 #[test]
-fn a_flight_walks_its_player_down_the_steps_without_leaving_the_ground() {
+fn a_flight_hops_its_player_down_its_treads_one_at_a_time() {
     let mut ground = stairs_ground();
     let mut player = walk_down_stairs(&mut ground);
     let start = player.elevation + player.height;
@@ -512,15 +523,23 @@ fn a_flight_walks_its_player_down_the_steps_without_leaving_the_ground() {
     let mut feet = Vec::new();
     for _ in 0..ticks {
         step_player(&mut player, &mut ground, 1);
-        assert_eq!(
-            player.height, 0.0,
-            "it walks the steps, never falls over them"
+        assert!(
+            player.height >= 0.0 && player.height <= PLAYER_STAIRS_HOP + 1e-9,
+            "it hops down each tread, it does not drop: {}",
+            player.height
         );
-        feet.push(player.elevation + player.height);
+        feet.push(player.elevation);
     }
     assert!(
         feet.windows(2).all(|pair| pair[1] <= pair[0]),
-        "its feet only ever fall: {feet:?}"
+        "the tread under its feet only ever falls: {feet:?}"
+    );
+    assert!(
+        feet.windows(2)
+            .filter(|pair| pair[1] < pair[0] - 1e-9)
+            .count()
+            >= 2,
+        "and it falls in steps, not in one glide: {feet:?}"
     );
     let bottom = feet.last().copied().expect("the descent takes ticks");
     assert!(
@@ -553,4 +572,55 @@ fn walking_off_a_plain_ledge_is_still_a_drop() {
         player.climb.is_none(),
         "there are no steps to walk down off a plain block"
     );
+}
+
+/// A flight is taken one tread at a time: the feet lift onto a step and rest on it, instead of
+#[test]
+fn a_flight_rises_one_tread_at_a_time() {
+    let steps = f64::from(PLAYER_STAIRS_STEPS);
+    assert_eq!(get_stairs_rise(0.0), 0.0);
+    assert!((get_stairs_rise(1.0) - 1.0).abs() < 1e-9);
+    for tread in 0..=PLAYER_STAIRS_STEPS {
+        let at = f64::from(tread) / steps;
+        assert!(
+            (get_stairs_rise(at) - at).abs() < 1e-9,
+            "it stands on tread {tread} when it has walked {at} of the flight"
+        );
+    }
+    let mut last = 0.0;
+    for tick in 0..=200 {
+        let share = get_stairs_rise(f64::from(tick) / 200.0);
+        assert!(
+            share >= last - 1e-9,
+            "its feet never sink: {share} after {last}"
+        );
+        last = share;
+    }
+    let middle = 0.5 / steps;
+    assert!(
+        get_stairs_rise(middle) > middle + 0.05,
+        "halfway through a tread the foot is already most of the way onto it"
+    );
+}
+
+/// Each tread is hopped onto: the body pops a little and lands back on the step.
+#[test]
+fn each_tread_is_hopped_onto_and_landed_on() {
+    let steps = f64::from(PLAYER_STAIRS_STEPS);
+    for tread in 0..=PLAYER_STAIRS_STEPS {
+        let at = f64::from(tread) / steps;
+        assert!(
+            get_stairs_hop(at) < 1e-9,
+            "it lands on tread {tread}: {}",
+            get_stairs_hop(at)
+        );
+    }
+    for tread in 0..PLAYER_STAIRS_STEPS {
+        let middle = (f64::from(tread) + 0.3) / steps;
+        let hop = get_stairs_hop(middle);
+        assert!(
+            hop > 0.0 && hop <= PLAYER_STAIRS_HOP + 1e-9,
+            "it is in the air between treads, barely: {hop}"
+        );
+    }
 }

@@ -44,7 +44,7 @@ El HUD sustituye la línea de ayuda por la de los controles cuando están visibl
 
 ## Empaquetar para macOS
 
-`scripts/build-macos.sh [directorio]` (por defecto `dist/`, ignorado por git) compila el cliente en
+`scripts/build-macos.sh [--clean-save] [directorio]` (por defecto `dist/`, ignorado por git) compila el cliente en
 release y ensambla `dist/<Título>.app`: el binario renombrado en `Contents/MacOS`, `content/` en
 `Contents/Resources`, el icono `packaging/game.icns` (commitado; se regenera con
 `scripts/build-icon.sh` desde `packaging/icon-player.png`), el `Info.plist` y una firma ad-hoc.
@@ -64,6 +64,8 @@ localiza los assets en `Contents/Resources` (la ruta tal cual si existe junto al
 ver `src/app/bundle.rs`) y guarda en
 `~/Library/Application Support/<GAME_TITLE>/saves/iso_save.json`. Fuera del bundle el guardado sigue
 en `saves/iso_save.json` junto al CWD, como siempre. Para probarlo: `open "dist/Yorch Adventure.app"`.
+Con `--clean-save` el script borra ese `iso_save.json` de Application Support antes de compilar (solo ese
+archivo), útil para probar el arranque en limpio.
 
 ## Correr web
 

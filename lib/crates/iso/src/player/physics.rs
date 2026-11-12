@@ -69,6 +69,12 @@ pub const PLAYER_STAIRS_REACH: f64 = 0.95;
 /// Share of the top face of a flight the player crosses from its upper edge before it starts
 /// walking down the steps: the last stretch of flat top it stands on.
 pub const PLAYER_STAIRS_DESCENT_SHARE: f64 = 0.2;
+/// Treads a flight of stairs is taken in, one step of the artwork each.
+pub const PLAYER_STAIRS_STEPS: i32 = 4;
+/// Share of a tread's time the player spends moving onto it; the rest it stands on it.
+pub const PLAYER_STAIRS_LIFT_SHARE: f64 = 0.6;
+/// Blocks the player's body pops over the tread as it hops onto the next one.
+pub const PLAYER_STAIRS_HOP: f64 = 0.08;
 /// Blocks per tick a flying player's feet rise at most.
 pub const PLAYER_FLY_SPEED: f64 = 0.15;
 /// Blocks per tick its jetpack speeds a flying player's feet up by each tick.
@@ -129,13 +135,34 @@ pub fn get_climb_advance(progress: f64) -> f64 {
     harmonic((progress - PLAYER_CLIMB_RISE_SHARE) / (1.0 - PLAYER_CLIMB_RISE_SHARE))
 }
 
+/// Share of its rise a flight of stairs has taken at `progress` (0–1): one tread at a time,
+/// moving onto each step and standing on it, instead of gliding up a ramp. Negative rises, the
+/// descents, take their treads the same way.
+pub fn get_stairs_rise(progress: f64) -> f64 {
+    let steps = f64::from(PLAYER_STAIRS_STEPS);
+    let walked = progress.clamp(0.0, 1.0) * steps;
+    let tread = walked.floor().min(steps - 1.0);
+    let onto = harmonic(((walked - tread) / PLAYER_STAIRS_LIFT_SHARE).min(1.0));
+    ((tread + onto) / steps).min(1.0)
+}
+
+/// Blocks the player's body is over the tread under its feet at `progress` (0–1) of a flight:
+/// a small hop onto each step, nothing as it lands on one.
+pub fn get_stairs_hop(progress: f64) -> f64 {
+    let steps = f64::from(PLAYER_STAIRS_STEPS);
+    let walked = progress.clamp(0.0, 1.0) * steps;
+    let tread = walked.floor().min(steps - 1.0);
+    let onto = ((walked - tread) / PLAYER_STAIRS_LIFT_SHARE).min(1.0);
+    PLAYER_STAIRS_HOP * (std::f64::consts::PI * onto).sin()
+}
+
 /// Share of its rise and share of its advance a climb has taken at `progress` (0–1). Over a
-/// ledge the player pulls itself up first and steps over after; up a flight of stairs it rises
-/// and advances together and evenly, which is what walking up the steps looks like.
+/// ledge the player pulls itself up first and steps over after; a flight of stairs advances
+/// evenly and rises one tread at a time (`get_stairs_rise`), which is what taking the steps
+/// looks like.
 pub fn get_climb_shares(stairs: bool, progress: f64) -> (f64, f64) {
     if stairs {
-        let share = progress.clamp(0.0, 1.0);
-        return (share, share);
+        return (get_stairs_rise(progress), progress.clamp(0.0, 1.0));
     }
     (get_climb_rise(progress), get_climb_advance(progress))
 }
@@ -1207,7 +1234,7 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
             player.y = point.y;
             if climb.stairs {
                 player.elevation = feet;
-                player.height = 0.0;
+                player.height = get_stairs_hop(progress);
             } else {
                 player.elevation = elevation_at(ground, point);
                 let h = feet - player.elevation;

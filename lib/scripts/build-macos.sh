@@ -11,11 +11,13 @@
 # CFBundleVersion is derived from the git commit count, or 1 outside a repository.
 #
 # Steps:
-#   1. Build the release binary (same SDKROOT guard as run-native.sh).
-#   2. Lay out <Title>.app/Contents/{MacOS,Resources}: the renamed binary, content/ and the icon.
-#   3. Write Info.plist, lint it and ad-hoc sign the bundle (so macOS treats it as coherent).
+#   1. With --clean-save, delete the per-user save (~/Library/Application Support/<GAME_TITLE>/
+#      saves/iso_save.json) before building. Only that file is removed; nothing else.
+#   2. Build the release binary (same SDKROOT guard as run-native.sh).
+#   3. Lay out <Title>.app/Contents/{MacOS,Resources}: the renamed binary, content/ and the icon.
+#   4. Write Info.plist, lint it and ad-hoc sign the bundle (so macOS treats it as coherent).
 #
-# Run from anywhere: lib/scripts/build-macos.sh [output-dir]   (default: dist)
+# Run from anywhere: lib/scripts/build-macos.sh [--clean-save] [output-dir]   (default: dist)
 
 set -euo pipefail
 
@@ -27,7 +29,22 @@ if [[ "$(uname -s)" == Darwin && -z "${SDKROOT:-}" && -d "$compatible_sdk" ]]; t
   export SDKROOT="$compatible_sdk"
 fi
 
-out_dir="${1:-dist}"
+clean_save=0
+out_dir=""
+for arg in "$@"; do
+  case "$arg" in
+    --clean-save) clean_save=1 ;;
+    -*) echo "error: unknown flag: $arg (only --clean-save is supported)" >&2; exit 1 ;;
+    *)
+      if [[ -n "$out_dir" ]]; then
+        echo "error: unexpected extra argument: $arg" >&2
+        exit 1
+      fi
+      out_dir="$arg"
+      ;;
+  esac
+done
+out_dir="${out_dir:-dist}"
 
 GAME_TITLE="$(sed -n 's/.*pub const GAME_TITLE[^=]*=[^=]*"\([^"]*\)".*/\1/p' src/game/config.rs | head -n1)"
 if [[ -z "$GAME_TITLE" || "$GAME_TITLE" == */* || "$GAME_TITLE" == *..* ]]; then
@@ -42,6 +59,20 @@ ICON_ICNS="${ICON_ICNS:-packaging/game.icns}"
 if [[ ! -f "$ICON_ICNS" ]]; then
   echo "error: $ICON_ICNS not found; regenerate it with scripts/build-icon.sh" >&2
   exit 1
+fi
+
+if [[ "$clean_save" == 1 ]]; then
+  if [[ -z "${HOME:-}" ]]; then
+    echo "error: HOME is unset; cannot locate the Application Support save" >&2
+    exit 1
+  fi
+  save_file="$HOME/Library/Application Support/$GAME_TITLE/saves/iso_save.json"
+  if [[ -f "$save_file" ]]; then
+    rm "$save_file"
+    echo "==> Deleted save: $save_file"
+  else
+    echo "==> No save to delete at $save_file"
+  fi
 fi
 
 app="$out_dir/$GAME_TITLE.app"

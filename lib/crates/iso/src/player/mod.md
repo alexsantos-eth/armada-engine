@@ -79,8 +79,14 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`get_climb_advance`](physics.rs#L120) — Fracción del camino de `from` a `to` que una escalada ha recorrido en `progress` (0–1).
   - Firma: `pub fn get_climb_advance(progress: f64) -> f64 {`
 
-- [`get_climb_shares`](physics.rs) — Fracción de su subida y fracción de su avance que una escalada ha recorrido en `progress` (0–1). Sobre un reborde el jugador se iza primero y pasa después; por una grada sube y avanza a la vez y de forma pareja, que es lo que parece subir los escalones andando.
+- [`get_climb_shares`](physics.rs) — Fracción de su subida y fracción de su avance que una escalada ha recorrido en `progress` (0–1). Sobre un reborde el jugador se iza primero y pasa después; una grada avanza a ritmo constante y sube de peldaño en peldaño (`get_stairs_rise`), que es lo que parece tomar los escalones.
   - Firma: `pub fn get_climb_shares(stairs: bool, progress: f64) -> (f64, f64) {`
+
+- [`get_stairs_rise`](physics.rs) — Fracción de su subida que una grada ha recorrido en `progress` (0–1): de peldaño en peldaño, subiendo el pie a cada escalón y descansando en él, en vez de deslizarse por una rampa. Las subidas negativas, las bajadas, toman sus peldaños igual.
+  - Firma: `pub fn get_stairs_rise(progress: f64) -> f64 {`
+
+- [`get_stairs_hop`](physics.rs) — Bloques que el cuerpo del jugador está por encima del peldaño que tiene bajo los pies en `progress` (0–1) de una grada: un saltito hacia cada escalón, nada al aterrizar en uno.
+  - Firma: `pub fn get_stairs_hop(progress: f64) -> f64 {`
 
 - [`blocked_side`](physics.rs#L145) — Calcula o recupera «blocked side» según los parámetros de la firma.
   - Firma: `pub fn blocked_side(&self, _x: f64, _y: f64) -> f64 {`
@@ -239,6 +245,15 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`PLAYER_STAIRS_DESCENT_SHARE`](physics.rs) — Parte de la cara superior de una grada que el jugador cruza desde su borde de arriba antes de empezar a bajar los escalones: el último tramo de cima llana en el que se queda de pie.
   - Declaración: `pub const PLAYER_STAIRS_DESCENT_SHARE: f64 = 0.2;`
+
+- [`PLAYER_STAIRS_STEPS`](physics.rs) — Peldaños en los que se toma una grada, uno por escalón de la obra.
+  - Declaración: `pub const PLAYER_STAIRS_STEPS: i32 = 4;`
+
+- [`PLAYER_STAIRS_LIFT_SHARE`](physics.rs) — Parte del tiempo de un peldaño que el jugador pasa subiéndose a él; el resto se queda de pie encima.
+  - Declaración: `pub const PLAYER_STAIRS_LIFT_SHARE: f64 = 0.6;`
+
+- [`PLAYER_STAIRS_HOP`](physics.rs) — Bloques que el cuerpo del jugador se despega del peldaño al dar el saltito hacia el siguiente.
+  - Declaración: `pub const PLAYER_STAIRS_HOP: f64 = 0.08;`
 
 - [`PLAYER_FLY_SPEED`](physics.rs#L65) — Bloques por tick que suben como máximo los pies de un jugador volando.
   - Declaración: `pub const PLAYER_FLY_SPEED: f64 = 0.15;`
