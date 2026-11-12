@@ -188,3 +188,28 @@ fn quitting_waits_while_everything_is_saved() {
     assert!(!should_save_on_quit(true, false));
     assert!(!should_save_on_quit(false, false));
 }
+
+#[test]
+fn the_motion_loops_map_to_the_bundled_sounds() {
+    use iso::player::PlayerMotionType::{
+        Climbing, Flying, Idle, Jumping, Running, Skidding, Walking,
+    };
+
+    assert_eq!(loop_for_motion(Walking), Some(SoundLoop::Walk));
+    assert_eq!(loop_for_motion(Running), Some(SoundLoop::Run));
+    assert_eq!(loop_for_motion(Flying), Some(SoundLoop::Jetpack));
+    assert_eq!(loop_for_motion(Idle), None);
+    assert_eq!(loop_for_motion(Jumping), None);
+    assert_eq!(loop_for_motion(Skidding), None);
+    assert_eq!(loop_for_motion(Climbing), None);
+}
+
+#[test]
+fn entering_a_motion_fires_its_one_shot_when_there_is_one() {
+    use iso::player::PlayerMotionType::{Climbing, Idle, Skidding, Walking};
+
+    assert_eq!(shot_for_entering(Skidding), Some(SoundEvent::Skid));
+    assert_eq!(shot_for_entering(Climbing), Some(SoundEvent::Climb));
+    assert_eq!(shot_for_entering(Walking), None);
+    assert_eq!(shot_for_entering(Idle), None);
+}

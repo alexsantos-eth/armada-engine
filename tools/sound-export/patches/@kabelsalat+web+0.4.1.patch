@@ -1,0 +1,15 @@
+diff --git a/node_modules/@kabelsalat/web/package.json b/node_modules/@kabelsalat/web/package.json
+@@ -16,5 +16,12 @@
+   },
+   "scripts": {
+     "build": "vite build"
++  },
++  "exports": {
++    ".": {
++      "import": "./dist/index.mjs",
++      "require": "./dist/index.js",
++      "default": "./dist/index.mjs"
++    }
+   }
+ }
+\ No newline at end of file

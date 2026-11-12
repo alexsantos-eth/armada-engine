@@ -1,0 +1,13 @@
+# The WebAssembly backend of quad-snd (the audio library behind macroquad's
+# "audio" feature) declares its JavaScript host functions — `audio_init`,
+# `audio_add_buffer`, ... — as plain `extern "C"` blocks without
+# `#[link(wasm_import_module = "env")]`. Before Rust 1.96 the linker passed
+# `--allow-undefined` implicitly, so those symbols quietly became `env`
+# imports, exactly like miniquad's GL bindings (which do carry the attribute).
+# Rust 1.96 removed that flag from the wasm targets, so the same binary no
+# longer links. Restoring the historical behavior here keeps the JS host
+# functions provided by `web/mq_js_bundle.js` reachable; every wasm import in
+# this workspace is an intentional JavaScript host symbol, not a missing
+# native dependency.
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "link-arg=--allow-undefined"]

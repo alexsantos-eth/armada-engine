@@ -1,0 +1,13 @@
+diff --git a/node_modules/superdough/dist/index.mjs b/node_modules/superdough/dist/index.mjs
+index da81977..0027c18 100644
+--- a/node_modules/superdough/dist/index.mjs
++++ b/node_modules/superdough/dist/index.mjs
+@@ -470,7 +470,7 @@ const Bt = (e) => e / (1 + e), Kn = (e, t) => (e % t + t) % t, gn = (e, t) => (1
+       try {
+         e.stop();
+       } catch {
+-        e.start(e.context.currentTime + 5), e.stop();
++        try { e.start(e.context.currentTime + 5), e.stop(); } catch {}
+       }
+     }
+     e instanceof AudioWorkletNode && e.parameters.get("end")?.setValueAtTime(0, 0);

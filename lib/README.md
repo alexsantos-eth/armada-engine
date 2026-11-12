@@ -62,6 +62,28 @@ caminando por lo que construyes, con WASD.
 
 Lo que se construye **no se guarda todavía**: vive en memoria mientras la ventana está abierta.
 
+## Sonidos
+
+El jugador suena con WAVs generados en `content/sounds/` a partir de los patrones de Strudel
+(<https://strudel.cc>) de `lib/music/` (la fuente única de verdad; el cliente web archivado,
+`web_deprecated/`, los reproduce desde allí también). Macroquad los reproduce con su feature
+`audio` (WAV/OGG vía quad-snd) y un archivo que falte hace que ese evento suene en silencio,
+sin romper el juego.
+
+Para regenerarlos tras editar un `.strudel`:
+
+```sh
+cd ../tools/sound-export
+npm ci
+npm run render
+```
+
+Un sonido por evento: los de un solo disparo se disparan al saltar (más alto en el aire),
+aterrizar (más alto cuanto más fuerte el impacto), ser rechazado, patinar y trepar; y los bucles
+de andar, correr y volar con el jetpack siguen al estado de movimiento, más la música de baile
+tras 0.3 s quieto. En web, el audio arranca con el primer gesto del usuario (política de
+autoplay del navegador), como en la versión anterior.
+
 ## Empaquetar para macOS
 
 `scripts/build-macos.sh [--clean-save] [directorio]` (por defecto `dist/`, ignorado por git) compila el cliente en

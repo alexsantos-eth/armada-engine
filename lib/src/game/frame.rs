@@ -12,11 +12,16 @@ use iso::lighting::phase_at;
 use iso::player::physics::{
     get_player_render_position, jump_player, set_player_jump_held, set_player_run, step_player,
 };
+use iso::player::{PLAYER_JUMP_SPEED, PlayerMotionType};
 use iso::projection::{GridPoint, ProjectionConfig};
-use iso::services::{AudioService, InputService, NormalizedInput, SoundEvent, UiEvent, UiService};
+use iso::services::{
+    AudioService, InputService, NormalizedInput, SoundEvent, SoundLoop, UiEvent, UiService,
+};
 use macroquad::prelude::*;
 
-use crate::game::config::{CHUNK_CULL_MARGIN, UNBOUNDED_CAMERA_LIMITS};
+use crate::game::config::{
+    CHUNK_CULL_MARGIN, DANCE_DELAY_SECONDS, LAND_SOUND_MIN_IMPACT, UNBOUNDED_CAMERA_LIMITS,
+};
 use crate::game::ground::ChunkGround;
 use crate::game::scene::frame_projection;
 use crate::game::state::Game;
@@ -39,6 +44,51 @@ fn camera_after_follow(camera: Camera, target: GridPoint, elapsed_ms: f64) -> Ca
         UNBOUNDED_CAMERA_LIMITS,
         CAMERA_FOLLOW_HALF_LIFE_MS,
     )
+}
+
+/// The loop the motion state wants playing, if any.
+fn loop_for_motion(motion: PlayerMotionType) -> Option<SoundLoop> {
+    match motion {
+        PlayerMotionType::Walking => Some(SoundLoop::Walk),
+        PlayerMotionType::Running => Some(SoundLoop::Run),
+        PlayerMotionType::Flying => Some(SoundLoop::Jetpack),
+        _ => None,
+    }
+}
+
+/// The one-shot the motion wants when the player enters it, if any.
+fn shot_for_entering(motion: PlayerMotionType) -> Option<SoundEvent> {
+    match motion {
+        PlayerMotionType::Skidding => Some(SoundEvent::Skid),
+        PlayerMotionType::Climbing => Some(SoundEvent::Climb),
+        _ => None,
+    }
+}
+
+/// Fires the skid and climb shots, swaps the loop bound to the player's motion state and,
+/// after `DANCE_DELAY_SECONDS` of stillness, swaps it for the dance loop. One call per frame;
+/// the `last_motion`/`idle_since` fields on `Game` are all the memory it needs.
+fn update_motion_audio(game: &mut Game) {
+    let motion = game.player.motion;
+    if game.last_motion != Some(motion) {
+        game.last_motion = Some(motion);
+        game.idle_since = None;
+        if let Some(shot) = shot_for_entering(motion) {
+            game.audio.play(shot);
+        }
+        game.audio.play_loop(loop_for_motion(motion));
+        if motion == PlayerMotionType::Idle {
+            game.idle_since = Some(get_time());
+        }
+        return;
+    }
+    if motion == PlayerMotionType::Idle
+        && let Some(since) = game.idle_since
+        && get_time() - since >= DANCE_DELAY_SECONDS
+    {
+        game.idle_since = None;
+        game.audio.play_loop(Some(SoundLoop::Dance));
+    }
 }
 
 /// Whether the save should fire now: only with unsaved changes, and only on quit. Players save
@@ -118,17 +168,33 @@ impl Game {
             let _ = self.clock.advance(u64::from(ticks));
             let jumps_before = self.player.feedback.jumps;
             let landings_before = self.player.feedback.landings;
+            let rejections_before = self.player.feedback.rejections;
             let mut ground = ChunkGround {
                 manager: &self.manager,
             };
             step_player(&mut self.player, &mut ground, ticks);
             if self.player.feedback.jumps > jumps_before {
-                self.audio.play(SoundEvent::Jump);
+                let air = self.player.feedback.air_jump;
+                self.audio.play(if air {
+                    SoundEvent::AirJump
+                } else {
+                    SoundEvent::Jump
+                });
             }
             if self.player.feedback.landings > landings_before {
-                self.audio.play(SoundEvent::Land);
+                let impact = self.player.feedback.impact;
+                if impact >= LAND_SOUND_MIN_IMPACT {
+                    self.audio.play_with_volume(
+                        SoundEvent::Land,
+                        (impact / PLAYER_JUMP_SPEED).clamp(0.0, 1.0),
+                    );
+                }
+            }
+            if self.player.feedback.rejections > rejections_before {
+                self.audio.play(SoundEvent::Rejection);
             }
         }
+        update_motion_audio(self);
 
         let rp = get_player_render_position(&self.player, self.stepper.interpolation_alpha());
 

@@ -80,6 +80,10 @@ pub const PLAYER_JUMP_SHEET: &str = "/assets/player-16/jump.svg";
 pub const PLAYER_CLIMB_SHEET: &str = "/assets/player-16/climb.svg";
 pub const PLAYER_SWIM_SHEET: &str = "/assets/player-16/swim.svg";
 pub const PLAYER_FLIP_SHEET: &str = "/assets/player-16/flip.svg";
+/// How hard a landing must hit, in blocks per tick of impact, before it makes a sound.
+pub const LAND_SOUND_MIN_IMPACT: f64 = 0.1;
+/// Stillness, in seconds, before the idle dance loop starts.
+pub const DANCE_DELAY_SECONDS: f64 = 0.3;
 /// Extra view the chunk cull keeps around the screen, as a fraction of it.
 pub const CHUNK_CULL_MARGIN: f64 = 0.0;
 

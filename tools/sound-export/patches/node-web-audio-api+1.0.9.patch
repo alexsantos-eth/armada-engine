@@ -1,0 +1,28 @@
+diff --git a/node_modules/node-web-audio-api/js/AudioWorkletGlobalScope.js b/node_modules/node-web-audio-api/js/AudioWorkletGlobalScope.js
+index c77b1d7..c98b953 100644
+--- a/node_modules/node-web-audio-api/js/AudioWorkletGlobalScope.js
++++ b/node_modules/node-web-audio-api/js/AudioWorkletGlobalScope.js
+@@ -4,6 +4,9 @@ const {
+   markAsUntransferable,
+ } = require('node:worker_threads');
+ 
++const { pathToFileURL } = require('node:url');
++const path = require('node:path');
++
+ const conversions = require('webidl-conversions');
+ 
+ // these are defined in rust side
+@@ -316,7 +319,12 @@ parentPort.on('message', async event => {
+         // 2. If module is a blob or loaded from an URL, we use the raw text as
+         //    input. In this case, if the module uses `import` it will crash
+         if (moduleUrl !== null) {
+-          await import(moduleUrl);
++          // On Windows, absolute paths like C:\... are not valid ESM URLs.
++          // Convert to a file:// URL so Node's ESM loader accepts them.
++          const importUrl = path.isAbsolute(moduleUrl)
++            ? pathToFileURL(moduleUrl).href
++            : moduleUrl;
++          await import(importUrl);
+         } else {
+           await import(`data:text/javascript;base64,${btoa(unescape(encodeURIComponent(code)))}`);
+         }

@@ -89,6 +89,10 @@ pub(crate) struct Game {
     pub(crate) draws: Vec<SpriteDraw>,
     pub(crate) perf: PerfLog,
     pub(crate) audio: MacroquadAudio,
+    /// The motion state the audio layer last reacted to, one frame behind `player.motion`.
+    pub(crate) last_motion: Option<iso::player::PlayerMotionType>,
+    /// When the player became idle, for the dance delay (`None` once the dance starts or motion resumes).
+    pub(crate) idle_since: Option<f64>,
     pub(crate) ui: MacroquadUi,
     pub(crate) touch: TouchControls,
     /// The logical world clock; only the fixed step advances it.
@@ -350,7 +354,9 @@ impl Game {
             particles: AmbientParticles::new(WORLD_SEED),
             draws: Vec::new(),
             perf: PerfLog::default(),
-            audio: MacroquadAudio::default(),
+            audio: MacroquadAudio::load().await,
+            last_motion: None,
+            idle_since: None,
             ui: MacroquadUi::default(),
             touch: TouchControls::new(coarse_pointer()),
             tile_metrics,
