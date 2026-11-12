@@ -33,6 +33,7 @@ impl TerrainFrames {
     /// Resolves every material against the atlas. Returns the materials missing artwork, the
     /// reflections missing artwork, and the connection masks of the path family missing one —
     /// the blocks themselves first, their reflection sprites second, the path variants last.
+    /// A material with no reflection by design (the water) is never reported as missing one.
     pub fn new(atlas: &SpriteAtlas) -> (Self, Vec<TerrainMaterial>, Vec<TerrainMaterial>, Vec<u8>) {
         let mut frames = [None; MATERIAL_SLOTS];
         let mut reflections = [None; MATERIAL_SLOTS];
@@ -46,13 +47,16 @@ impl TerrainFrames {
                 Some((frame, ink)) => frames[slot(material)] = Some((frame, ink)),
                 None => missing.push(material),
             }
-            match terrain_reflection_source(material)
-                .and_then(|source| atlas.asset(source))
-                .and_then(|asset| Some((asset.frame, asset.ink?)))
-            {
-                Some((frame, ink)) => reflections[slot(material)] = Some((frame, ink)),
-                None => missing_reflections.push(material),
+            if let Some(source) = terrain_reflection_source(material) {
+                match atlas
+                    .asset(source)
+                    .and_then(|asset| Some((asset.frame, asset.ink?)))
+                {
+                    Some((frame, ink)) => reflections[slot(material)] = Some((frame, ink)),
+                    None => missing_reflections.push(material),
+                }
             }
+            // The water has no reflection of its own: nothing to look up, nothing to warn about.
         }
         let mut path_frames = [None; 16];
         let mut missing_paths = Vec::new();
