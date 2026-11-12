@@ -1,9 +1,10 @@
 //! The puffs of dust the player kicks up, raised, settled and queued for the scene.
 
 use iso::player::{
-    BURST_DUST, DUST_MIN_IMPACT, DustShape, DustVoxel, KICK_DUST, PlayerMotionType, PlayerState,
-    RIPPLE_DUST, VoxelFaces, WAKE_DUST, get_dust, get_dust_column, get_dust_voxel_at,
-    get_dust_voxels, splash_of, voxel_faces,
+    BURST_DUST, DUST_MIN_IMPACT, DustShape, DustVoxel, JET_FIRE, JET_NOZZLE_LIFT, JET_SMOKE,
+    KICK_DUST, PLAYER_FACINGS, PlayerMotionType, PlayerState, RIPPLE_DUST, VoxelFaces, WAKE_DUST,
+    get_dust, get_dust_column, get_dust_voxel_at, get_dust_voxels, jet_nozzle, splash_of,
+    voxel_faces,
 };
 use iso::projection::{GridPoint, ProjectionConfig, project_grid_point};
 use iso::scene_order::DrawKey;
@@ -55,6 +56,19 @@ pub const SKID_DUST_EVERY: f64 = 0.2;
 /// Puffs of running or skidding dust alive at once, reused in turn.
 pub const RUN_PUFFS: usize = 6;
 
+/// Real milliseconds between two puffs of a jetpack's flame while the player flies.
+pub const JET_FIRE_EVERY_MS: f64 = 40.0;
+
+/// Real milliseconds between two puffs of a jetpack's smoke while the player flies.
+pub const JET_SMOKE_EVERY_MS: f64 = 90.0;
+
+/// Puffs of flame alive at once: one more than the life of a puff holds, so the oldest is over
+/// before its slot comes round again.
+pub const JET_FIRE_PUFFS: usize = (JET_FIRE.ms / JET_FIRE_EVERY_MS) as usize + 2;
+
+/// Puffs of smoke alive at once; see [`JET_FIRE_PUFFS`].
+pub const JET_SMOKE_PUFFS: usize = (JET_SMOKE.ms / JET_SMOKE_EVERY_MS) as usize + 2;
+
 /// The puff a take-off raises, in the air too, so a double jump puffs again.
 const TAKEOFF_PUFF: usize = 0;
 
@@ -70,10 +84,16 @@ const RIPPLE_PUFF: usize = 3;
 /// The first puff of the trail a runner, a skidder or a swimmer leaves behind it.
 const TRAIL_PUFF: usize = 4;
 
-/// The whole pool: a take-off, a landing, a splash, a ring and the trail. A swimmer's wake
-/// takes the trail's slots in pairs, so [`RUN_PUFFS`] has to be even for both arms of a V to
-/// live as long as each other.
-const PUFFS: usize = TRAIL_PUFF + RUN_PUFFS;
+/// The first puff of the flame a jetpack burns out of its nozzles.
+const JET_FIRE_PUFF: usize = TRAIL_PUFF + RUN_PUFFS;
+
+/// The first puff of the smoke a jetpack trails behind it.
+const JET_SMOKE_PUFF: usize = JET_FIRE_PUFF + JET_FIRE_PUFFS;
+
+/// The whole pool: a take-off, a landing, a splash, a ring, the trail and the jetpack's flame
+/// and smoke. A swimmer's wake takes the trail's slots in pairs, so [`RUN_PUFFS`] has to be
+/// even for both arms of a V to live as long as each other.
+const PUFFS: usize = JET_SMOKE_PUFF + JET_SMOKE_PUFFS;
 
 /// Where the player's dust rises from this frame, and how far it has come since the last.
 #[derive(Clone, Copy, Debug)]
@@ -88,6 +108,9 @@ pub struct DustGround {
     pub ground: f64,
     /// Columns covered since the last frame, which is what paces the running trail.
     pub moved: f64,
+    /// The facing the figure is drawn in, an index into `PLAYER_FACINGS`: the jetpack's nozzles
+    /// are on the back of that.
+    pub facing: usize,
     /// The view's tile height, for the depth each cube sorts at.
     pub tile_height: f64,
 }
@@ -121,6 +144,13 @@ pub struct DustPuffs {
     rippled_ms: f64,
     /// The puff of the trail to reuse next.
     run_puff: usize,
+    /// Real milliseconds flown since the last puff of flame and of smoke; infinite on the
+    /// ground, so the first frame of a flight burns at once.
+    jet_fire_ms: f64,
+    jet_smoke_ms: f64,
+    /// The puffs of flame and of smoke to reuse next.
+    jet_fire_puff: usize,
+    jet_smoke_puff: usize,
 }
 
 impl Default for DustPuffs {
@@ -140,6 +170,10 @@ impl DustPuffs {
             ran: 0.0,
             rippled_ms: 0.0,
             run_puff: 0,
+            jet_fire_ms: f64::INFINITY,
+            jet_smoke_ms: f64::INFINITY,
+            jet_fire_puff: 0,
+            jet_smoke_puff: 0,
         }
     }
 
@@ -212,6 +246,7 @@ impl DustPuffs {
         self.seen_splashes = feedback.splashes;
         self.kick(player, at, top_at);
         self.ripple(player, at, top_at);
+        self.burn(player, at, top_at);
     }
 
     /// The trail a running or skidding player kicks up behind its feet, a puff every stretch of
@@ -306,6 +341,67 @@ impl DustPuffs {
             },
             top_at,
         );
+    }
+
+    /// The flame and the smoke a jetpack burns out of its nozzles while the player flies: both
+    /// rise from the nozzles on its back rather than from its feet, so they are drawn behind
+    /// the body or in front of it by where they drift, and both are paced in real time, because
+    /// it is an engine burning and not a step being taken. On the ground nothing burns.
+    fn burn(
+        &mut self,
+        player: &PlayerState,
+        at: DustGround,
+        top_at: &impl Fn(i32, i32) -> Option<f64>,
+    ) {
+        if player.motion != PlayerMotionType::Flying {
+            self.jet_fire_ms = f64::INFINITY;
+            self.jet_smoke_ms = f64::INFINITY;
+            return;
+        }
+        let nozzle = jet_nozzle(at.facing, PLAYER_FACINGS.len());
+        let length = nozzle.x.hypot(nozzle.y);
+        let away = if length == 0.0 {
+            ZERO
+        } else {
+            GridPoint {
+                x: nozzle.x / length,
+                y: nozzle.y / length,
+            }
+        };
+        // The nozzles sit a little over the feet; the flame shoots down from there.
+        let from = DustGround {
+            level: at.level + JET_NOZZLE_LIFT,
+            ..at
+        };
+        let emission = DustEmission {
+            origin: nozzle,
+            kick: away,
+        };
+        let elapsed_ms = at.elapsed_ms.max(0.0);
+        self.jet_fire_ms += elapsed_ms;
+        self.jet_smoke_ms += elapsed_ms;
+        if self.jet_fire_ms >= JET_FIRE_EVERY_MS {
+            self.jet_fire_ms = 0.0;
+            self.raise(
+                JET_FIRE_PUFF + self.jet_fire_puff,
+                JET_FIRE,
+                &from,
+                emission,
+                top_at,
+            );
+            self.jet_fire_puff = (self.jet_fire_puff + 1) % JET_FIRE_PUFFS;
+        }
+        if self.jet_smoke_ms >= JET_SMOKE_EVERY_MS {
+            self.jet_smoke_ms = 0.0;
+            self.raise(
+                JET_SMOKE_PUFF + self.jet_smoke_puff,
+                JET_SMOKE,
+                &from,
+                emission,
+                top_at,
+            );
+            self.jet_smoke_puff = (self.jet_smoke_puff + 1) % JET_SMOKE_PUFFS;
+        }
     }
 
     /// Raises the puff in slot `index`, replacing whatever was there: a fresh scatter of

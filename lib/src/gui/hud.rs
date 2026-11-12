@@ -26,53 +26,92 @@ const BAKE_PHASES: [BakePhase; 4] = [
     BakePhase::Night,
 ];
 
+/// The jetpack toggle sits in the phase buttons' row, just past the last of them.
+const JETPACK_BUTTON_X: f32 =
+    PHASE_BUTTON_X + BAKE_PHASES.len() as f32 * (PHASE_BUTTON_WIDTH + PHASE_BUTTON_GAP);
+
+/// Whether a point is inside the button at `left` of the buttons' row.
+fn button_hit(left: f32, x: f32, y: f32) -> bool {
+    (left..=left + PHASE_BUTTON_WIDTH).contains(&x)
+        && (PHASE_BUTTON_Y..=PHASE_BUTTON_Y + PHASE_BUTTON_HEIGHT).contains(&y)
+}
+
 fn phase_button_hit(x: f32, y: f32) -> Option<BakePhase> {
     BAKE_PHASES
         .into_iter()
         .enumerate()
         .find_map(|(index, phase)| {
             let left = PHASE_BUTTON_X + index as f32 * (PHASE_BUTTON_WIDTH + PHASE_BUTTON_GAP);
-            ((left..=left + PHASE_BUTTON_WIDTH).contains(&x)
-                && (PHASE_BUTTON_Y..=PHASE_BUTTON_Y + PHASE_BUTTON_HEIGHT).contains(&y))
-            .then_some(phase)
+            button_hit(left, x, y).then_some(phase)
         })
 }
 
 fn draw_phase_buttons(selected: BakePhase) -> Option<BakePhase> {
     let (mouse_x, mouse_y) = mouse_position();
-    let clicked = is_mouse_button_pressed(MouseButton::Left);
     for (index, phase) in BAKE_PHASES.into_iter().enumerate() {
         let x = PHASE_BUTTON_X + index as f32 * (PHASE_BUTTON_WIDTH + PHASE_BUTTON_GAP);
-        let active = phase == selected;
-        let hovered = (x..=x + PHASE_BUTTON_WIDTH).contains(&mouse_x)
-            && (PHASE_BUTTON_Y..=PHASE_BUTTON_Y + PHASE_BUTTON_HEIGHT).contains(&mouse_y);
-        let fill = if active {
-            Color::from_rgba(63, 116, 153, 235)
-        } else if hovered {
-            Color::from_rgba(52, 72, 98, 235)
-        } else {
-            Color::from_rgba(21, 29, 42, 205)
-        };
-        draw_rectangle(
-            x,
-            PHASE_BUTTON_Y,
-            PHASE_BUTTON_WIDTH,
-            PHASE_BUTTON_HEIGHT,
-            fill,
-        );
-        draw_rectangle_lines(
-            x,
-            PHASE_BUTTON_Y,
-            PHASE_BUTTON_WIDTH,
-            PHASE_BUTTON_HEIGHT,
-            1.0,
-            SKYBLUE,
-        );
-        draw_text(phase.label(), x + 8.0, PHASE_BUTTON_Y + 19.0, 14.0, WHITE);
+        draw_row_button(x, phase.label(), phase == selected, (mouse_x, mouse_y));
     }
-    clicked
+    is_mouse_button_pressed(MouseButton::Left)
         .then(|| phase_button_hit(mouse_x, mouse_y))
         .flatten()
+}
+
+/// Paints one button of the row at `left`: filled when `active`, lit when the pointer is over
+/// it, and labelled `label`.
+fn draw_row_button(left: f32, label: &str, active: bool, mouse: (f32, f32)) {
+    let fill = if active {
+        Color::from_rgba(63, 116, 153, 235)
+    } else if button_hit(left, mouse.0, mouse.1) {
+        Color::from_rgba(52, 72, 98, 235)
+    } else {
+        Color::from_rgba(21, 29, 42, 205)
+    };
+    draw_rectangle(
+        left,
+        PHASE_BUTTON_Y,
+        PHASE_BUTTON_WIDTH,
+        PHASE_BUTTON_HEIGHT,
+        fill,
+    );
+    draw_rectangle_lines(
+        left,
+        PHASE_BUTTON_Y,
+        PHASE_BUTTON_WIDTH,
+        PHASE_BUTTON_HEIGHT,
+        1.0,
+        SKYBLUE,
+    );
+    draw_text(label, left + 8.0, PHASE_BUTTON_Y + 19.0, 14.0, WHITE);
+}
+
+/// The jetpack toggle, next to the phase buttons: returns whether it was clicked this frame.
+fn draw_jetpack_button(worn: bool) -> bool {
+    let mouse = mouse_position();
+    let label = if worn { "Jetpack: si" } else { "Jetpack: no" };
+    draw_row_button(JETPACK_BUTTON_X, label, worn, mouse);
+    is_mouse_button_pressed(MouseButton::Left) && button_hit(JETPACK_BUTTON_X, mouse.0, mouse.1)
+}
+
+/// What the overlay says about the world this frame: `touch_visible` swaps the help line to
+/// the touch controls when they are on screen; `phase` is `None` when no shadow scene exists,
+/// so the phase buttons stay out; `jetpack` is whether the player wears one, which the toggle
+/// beside those buttons shows and flips; `clock` is the world clock as `HH:MM`, read-only.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct HudWorld<'a> {
+    pub touch_visible: bool,
+    pub phase: Option<BakePhase>,
+    pub jetpack: bool,
+    pub clock: &'a str,
+}
+
+/// What the overlay's buttons were asked for this frame.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(crate) struct HudClicks {
+    /// The phase picked by hand, if one was clicked.
+    pub phase: Option<BakePhase>,
+    /// Whether the jetpack toggle was clicked.
+    pub jetpack: bool,
 }
 
 /// The world readout line: position, elevation, motion, chunks, clock and the frame cost.
@@ -118,7 +157,7 @@ fn help_line(touch_visible: bool) -> &'static str {
     if touch_visible {
         "Joystick: mover, a tope correr | SALTAR"
     } else {
-        "WASD/Flechas | Espacio: saltar | Shift: correr o nadar rapido | T: terreno | P: perf | F5: guardar"
+        "WASD/Flechas | Espacio: saltar (mantener: volar con jetpack) | Shift: correr | J: jetpack | T: terreno | P: perf | F5: guardar"
     }
 }
 
@@ -143,7 +182,7 @@ pub(crate) fn push_hud_update(
                 swim.depth
             ),
             None => format!("{:?} {}", player.motion, animation.facing_name()),
-        },
+        } + if player.jetpack { " · jetpack" } else { "" },
         chunks,
     });
 }
@@ -158,25 +197,30 @@ pub(crate) struct PerfCounts {
 }
 
 /// The overlay: title, help, world readout, performance readout and messages.
-/// `touch_visible` swaps the help line to the touch controls when they are on screen.
-/// `phase` is `None` when no shadow scene exists (so the phase buttons stay out); returns the
-/// phase picked by a click, if any. `clock` is the world clock as `HH:MM`, shown read-only.
+/// Returns what was clicked.
 pub(crate) fn draw_hud(
     ui: &mut MacroquadUi,
     perf: &PerfLog,
     counts: PerfCounts,
     frame_ms: f64,
-    touch_visible: bool,
-    phase: Option<BakePhase>,
-    clock: &str,
-) -> Option<BakePhase> {
+    world: HudWorld<'_>,
+) -> HudClicks {
+    let HudWorld {
+        touch_visible,
+        phase,
+        jetpack,
+        clock,
+    } = world;
     let width = screen_width();
     let height = screen_height();
 
     draw_rectangle(20.0, 20.0, 510.0, 124.0, Color::from_rgba(21, 29, 42, 205));
     draw_text("iso-core / Macroquad", 32.0, 58.0, 32.0, WHITE);
     draw_text(help_line(touch_visible), 32.0, 89.0, 18.0, LIGHTGRAY);
-    let selected_phase = phase.and_then(draw_phase_buttons);
+    let clicks = HudClicks {
+        phase: phase.and_then(draw_phase_buttons),
+        jetpack: draw_jetpack_button(jetpack),
+    };
     draw_rectangle(
         20.0,
         height - 70.0,
@@ -253,7 +297,7 @@ pub(crate) fn draw_hud(
         draw_text(msg, 32.0, 160.0 + i as f32 * 20.0, 18.0, YELLOW);
     }
     ui.messages.clear();
-    selected_phase
+    clicks
 }
 
 #[cfg(test)]

@@ -79,3 +79,36 @@ fn phase_button_hit_selects_the_phase_under_a_click() {
     assert_eq!(phase_button_hit(10.0, PHASE_BUTTON_Y + 1.0), None);
     assert_eq!(phase_button_hit(31.0, PHASE_BUTTON_Y - 1.0), None);
 }
+
+#[test]
+fn the_help_line_says_which_key_straps_the_jetpack_on() {
+    assert!(help_line(false).contains("J: jetpack"));
+    assert!(help_line(false).contains("volar"));
+}
+
+#[test]
+fn the_jetpack_toggle_sits_past_the_last_phase_button() {
+    let last =
+        PHASE_BUTTON_X + (BAKE_PHASES.len() - 1) as f32 * (PHASE_BUTTON_WIDTH + PHASE_BUTTON_GAP);
+    assert!(
+        JETPACK_BUTTON_X >= last + PHASE_BUTTON_WIDTH,
+        "the toggle never covers a phase button"
+    );
+    assert!(button_hit(
+        JETPACK_BUTTON_X,
+        JETPACK_BUTTON_X + 1.0,
+        PHASE_BUTTON_Y + 1.0
+    ));
+    assert!(
+        !button_hit(
+            JETPACK_BUTTON_X,
+            JETPACK_BUTTON_X - 1.0,
+            PHASE_BUTTON_Y + 1.0
+        ),
+        "and nothing outside it is a click on it"
+    );
+    assert_eq!(
+        phase_button_hit(JETPACK_BUTTON_X + 1.0, PHASE_BUTTON_Y + 1.0),
+        None
+    );
+}

@@ -58,7 +58,7 @@ impl InputService for MacroquadInput<'_> {
             jump_pressed: is_key_pressed(KeyCode::Space) || frame.jump_pressed,
             jump_held: is_key_down(KeyCode::Space) || frame.jump_held,
             run: is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift) || frame.run,
-            jetpack: is_key_down(KeyCode::J),
+            jetpack_pressed: is_key_pressed(KeyCode::J),
         }
     }
 }

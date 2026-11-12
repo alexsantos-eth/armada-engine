@@ -219,6 +219,12 @@ impl PlayerAnimation {
         }
     }
 
+    /// The facing the player is drawn in, an index into [`PLAYER_FACINGS`]: what is on its
+    /// back (the jetpack's nozzles) is worked out from this.
+    pub fn facing(&self) -> usize {
+        self.facing
+    }
+
     /// The name of the facing the player is drawn with, for the heads-up display.
     pub fn facing_name(&self) -> &'static str {
         PLAYER_FACINGS[self.facing % PLAYER_FACINGS.len()]

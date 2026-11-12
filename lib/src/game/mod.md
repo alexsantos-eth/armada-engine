@@ -57,17 +57,26 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`PLAYER_JUMP_SHEET`](config.rs#L79) — Hoja de poses de salto.
   - Declaración: `pub const PLAYER_JUMP_SHEET: &str = "/assets/player-16/jump.svg";`
 - [`PLAYER_CLIMB_SHEET`](config.rs#L80) — Hoja de poses de escalada.
-- [`LAND_SOUND_MIN_IMPACT`](config.rs#L84) — Fuerza mínima del impacto de un aterrizaje, en bloques por tick, para que haga sonido; el volumen crece con la fuerza.
   - Declaración: `pub const PLAYER_CLIMB_SHEET: &str = "/assets/player-16/climb.svg";`
-- [`CHUNK_CULL_MARGIN`](config.rs#L86) — Margen extra de visibilidad de chunks alrededor de la pantalla.
+- [`PLAYER_SWIM_SHEET`](config.rs#L81) — Hoja de poses nadando.
+  - Declaración: `pub const PLAYER_SWIM_SHEET: &str = "/assets/player-16/swim.svg";`
+- [`PLAYER_FLIP_SHEET`](config.rs#L82) — Hoja del mortal del segundo salto.
+  - Declaración: `pub const PLAYER_FLIP_SHEET: &str = "/assets/player-16/flip.svg";`
+- [`PLAYER_JETPACK_SHEET`](config.rs#L85) — El jetpack de la espalda: una columna por orientación, recortado donde el cuerpo de pie lo tapa, así que se dibuja sobre cualquier pose.
+  - Declaración: `pub const PLAYER_JETPACK_SHEET: &str = "/assets/player-16/jetpack.svg";`
+- [`PLAYER_JETPACK_DEPTH`](config.rs#L87) — Profundidad que se suma al jetpack sobre el cuerpo, para que la mochila se dibuje justo después de él.
+  - Declaración: `pub const PLAYER_JETPACK_DEPTH: f64 = 0.00001;`
+- [`LAND_SOUND_MIN_IMPACT`](config.rs#L89) — Fuerza mínima del impacto de un aterrizaje, en bloques por tick, para que haga sonido; el volumen crece con la fuerza.
+  - Declaración: `pub const LAND_SOUND_MIN_IMPACT: f64 = 0.1;`
+- [`CHUNK_CULL_MARGIN`](config.rs#L91) — Margen extra de visibilidad de chunks alrededor de la pantalla.
   - Declaración: `pub const CHUNK_CULL_MARGIN: f64 = 0.0;`
-- [`CHUNK_RADII`](config.rs#L89) — Radios de carga/predescarga/conservación de este cliente (1 / 1 / 2).
+- [`CHUNK_RADII`](config.rs#L94) — Radios de carga/predescarga/conservación de este cliente (1 / 1 / 2).
   - Declaración: `pub const CHUNK_RADII: ChunkRadii = ChunkRadii { ... };`
-- [`UNBOUNDED_CAMERA_LIMITS`](config.rs#L97) — Límites finitos para el seguimiento exponencial de un mundo sin fronteras: tan anchos que la pinza nunca se aplica; solo los exige `follow_camera`.
+- [`UNBOUNDED_CAMERA_LIMITS`](config.rs#L102) — Límites finitos para el seguimiento exponencial de un mundo sin fronteras: tan anchos que la pinza nunca se aplica; solo los exige `follow_camera`.
   - Declaración: `pub(crate) const UNBOUNDED_CAMERA_LIMITS: iso::camera::CameraLimits = iso::camera::CameraLimits { ... };`
-- [`WORLD_SEED`](config.rs#L109) — La semilla con la que genera el mundo; el valor por defecto del dominio (`iso::terrain::WORLD_SEED`) y los tests la comparten.
+- [`WORLD_SEED`](config.rs#L114) — La semilla con la que genera el mundo; el valor por defecto del dominio (`iso::terrain::WORLD_SEED`) y los tests la comparten.
   - Declaración: `pub const WORLD_SEED: u64 = iso::terrain::WORLD_SEED;`
-- [`PHASE_TRANSITION_SECONDS`](config.rs#L112) — Segundos que dura el cambio de fase de punta a punta: el crossfade del grado y el fade-in de sombras de los chunks rehorneados para la nueva fase.
+- [`PHASE_TRANSITION_SECONDS`](config.rs#L117) — Segundos que dura el cambio de fase de punta a punta: el crossfade del grado y el fade-in de sombras de los chunks rehorneados para la nueva fase.
   - Declaración: `pub const PHASE_TRANSITION_SECONDS: f32 = 0.6;`
 
 #### Tipos
@@ -98,12 +107,14 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Tipos
 
-- [`FrameView`](frame.rs#L99) — Lo que la mitad de vista del fotograma necesita tras la actualización: posición de render, proyección, chunks cullados, `frame_ms`, el instante en que la simulación terminó y los dos costes que el perf log desglosa — `stream_ms` (generación del chunk: terreno, entidades, carreteras, archive y descarga) y `bake_ms` (horneado de sombras y subida al atlas).
+- [`FrameView`](frame.rs#L100) — Lo que la mitad de vista del fotograma necesita tras la actualización: posición de render, proyección, chunks cullados, `frame_ms`, el instante en que la simulación terminó y los dos costes que el perf log desglosa — `stream_ms` (generación del chunk: terreno, entidades, carreteras, archive y descarga) y `bake_ms` (horneado de sombras y subida al atlas).
   - Firma: `pub(crate) struct FrameView { ... }`
 
 #### Funciones y métodos
 
-- [`update`](frame.rs#L115) — Entrada, ticks fijos, reloj del mundo (avanza solo en el paso fijo), fase efectiva de sombras (override o `phase_at` del reloj), streaming de chunks, sonido ligado al movimiento y guardado de un fotograma. `None` si el jugador pidió salir (tras volcar el guardado si hacía falta).
+- [`toggle_jetpack`](frame.rs#L116) — Se pone o se quita el jetpack donde la ruta lo permite (`gui::Route::allows_jetpack`); en el resto no hace nada, así que la presentación limpia no se vuela. Devuelve si queda puesto. Lo llaman la tecla `J` de la entrada y el interruptor del HUD.
+  - Firma: `pub(crate) fn toggle_jetpack(&mut self) -> bool {`
+- [`update`](frame.rs#L125) — Entrada, ticks fijos, reloj del mundo (avanza solo en el paso fijo), fase efectiva de sombras (override o `phase_at` del reloj), streaming de chunks, sonido ligado al movimiento y guardado de un fotograma. `None` si el jugador pidió salir (tras volcar el guardado si hacía falta).
   - Firma: `pub(crate) fn update(&mut self, frame_ms: f64) -> Option<FrameView> {`
 
 ### `scene.rs`
@@ -140,7 +151,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Tipos
 
-- [`Game`](state.rs#L62) — El juego compuesto: manager, archivo de guardado, jugador, cámara, stepper, reloj del mundo (`clock`), override de fase (`phase_override`), arte, sombras, polvo, cola de dibujo, servicios (audio, UI, perf), los controles táctiles (`touch`), las métricas de casilla (`tile_metrics`) y la sesión de edición (`maker`, solo en la ruta del editor).
+- [`Game`](state.rs#L62) — El juego compuesto: manager, archivo de guardado, jugador, cámara, stepper, reloj del mundo (`clock`), override de fase (`phase_override`), arte, sombras, polvo, cola de dibujo, servicios (audio, UI, perf), los controles táctiles (`touch`), las métricas de casilla (`tile_metrics`), el jetpack (`jetpack`, si lo lleva puesto, y `jetpack_allowed`, si esta ruta deja ponérselo) y la sesión de edición (`maker`, solo en la ruta del editor).
   - Audio: `MacroquadAudio` carga los ocho WAVs de `content/sounds/` al arrancar; `last_motion` es la memoria de una pasada por fotograma para los bucles.
   - Firma: `pub(crate) struct Game { ... }`
 
@@ -162,21 +173,21 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones internas
 
-- [`frame_ticks`](frame.rs#L30) — Ticks a simular este fotograma, saturando en `u32::MAX` en vez de envolver.
+- [`frame_ticks`](frame.rs#L31) — Ticks a simular este fotograma, saturando en `u32::MAX` en vez de envolver.
   - Firma: `fn frame_ticks(consumed: u64) -> u32 {`
-- [`camera_after_follow`](frame.rs#L37) — La traslación de la cámara un fotograma después, siguiendo a `target` con la semivida del seguimiento: filtra las esquinas de velocidad de los ticks de 50 ms para que no lleguen a la pantalla; el zoom nunca cambia.
+- [`camera_after_follow`](frame.rs#L38) — La traslación de la cámara un fotograma después, siguiendo a `target` con la semivida del seguimiento: filtra las esquinas de velocidad de los ticks de 50 ms para que no lleguen a la pantalla; el zoom nunca cambia.
   - Firma: `fn camera_after_follow(camera: Camera, target: GridPoint, elapsed_ms: f64) -> Camera {`
-- [`loop_for_motion`](frame.rs#L48) — El bucle que quiere el estado de movimiento: andar, correr o volar con el jetpack; `None` en cualquier otro (incluido estar quieto).
+- [`loop_for_motion`](frame.rs#L49) — El bucle que quiere el estado de movimiento: andar, correr o volar con el jetpack; `None` en cualquier otro (incluido estar quieto).
   - Firma: `fn loop_for_motion(motion: PlayerMotionType) -> Option<SoundLoop> {`
-- [`shot_for_entering`](frame.rs#L58) — El sonido de un solo disparo que quiere el estado al entrar en él: `Skid` al patinar, `Climb` al trepar; `None` en el resto.
+- [`shot_for_entering`](frame.rs#L59) — El sonido de un solo disparo que quiere el estado al entrar en él: `Skid` al patinar, `Climb` al trepar; `None` en el resto.
   - Firma: `fn shot_for_entering(motion: PlayerMotionType) -> Option<SoundEvent> {`
-- [`update_motion_audio`](frame.rs#L68) — Una pasada por fotograma del sonido ligado al movimiento: dispara el sonido al entrar en patinazo/escalada y cambia el bucle según `PlayerMotionType`. Decide solo desde `last_motion`.
+- [`update_motion_audio`](frame.rs#L69) — Una pasada por fotograma del sonido ligado al movimiento: dispara el sonido al entrar en patinazo/escalada y cambia el bucle según `PlayerMotionType`. Decide solo desde `last_motion`.
   - Firma: `fn update_motion_audio(game: &mut Game) {`
-- [`should_save_on_quit`](frame.rs#L82) — El respaldo al salir: solo con cambios sin guardar. El guardado es manual (F5 / Ctrl+S); no hay temporizador de autoguardado.
+- [`should_save_on_quit`](frame.rs#L83) — El respaldo al salir: solo con cambios sin guardar. El guardado es manual (F5 / Ctrl+S); no hay temporizador de autoguardado.
   - Firma: `fn should_save_on_quit(unsaved_changes: bool, quitting: bool) -> bool {`
-- [`EditedFrame`](frame.rs#L88) — Lo que un fotograma de edición entrega a su vista: las mismas medidas que toma un fotograma normal, recogidas donde las tiene el camino del editor.
+- [`EditedFrame`](frame.rs#L89) — Lo que un fotograma de edición entrega a su vista: las mismas medidas que toma un fotograma normal, recogidas donde las tiene el camino del editor.
   - Declaración: `struct EditedFrame { rp: PlayerRenderPosition, projection: ProjectionConfig, width: f32, height: f32, frame_ms: f64, stream_start: f64 }`
-- [`editing_view`](frame.rs#L275) — La vista de un fotograma de edición: el único chunk en la mano, su luz horneada otra vez cuando un trazo la cambió, y ningún streaming, guardado ni descarga.
+- [`editing_view`](frame.rs#L289) — La vista de un fotograma de edición: el único chunk en la mano, su luz horneada otra vez cuando un trazo la cambió, y ningún streaming, guardado ni descarga.
   - Firma: `fn editing_view(&mut self, frame: EditedFrame) -> FrameView {`
 
 ### `scene.rs`
@@ -189,9 +200,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `fn draw_grid(projection: ProjectionConfig, centre: WorldCoord) {`
 - [`collect_world`](scene.rs#L244) — Terreno y sombras horneadas de los chunks visibles, luego entidades y sus reflejos. Devuelve cuántos chunks se dibujaron.
   - Firma: `fn collect_world(&mut self, view: &FrameView) -> usize {`
-- [`collect_player`](scene.rs#L445) — El sprite del jugador: clave de profundidad, pose, arte o figura quieta, su reflejo y la sombra que le cae encima. Devuelve cuánto se movió.
+- [`collect_player`](scene.rs#L445) — El sprite del jugador: clave de profundidad, pose, arte o figura quieta, el jetpack sobre el cuerpo cuando lo lleva puesto (su propia hoja y su propia tinta, un pelo por delante en profundidad; nadando no se dibuja), su reflejo y la sombra que le cae encima. Devuelve cuánto se movió.
   - Firma: `fn collect_player(&mut self, view: &FrameView) -> f64 {`
-- [`collect_dust`](scene.rs#L598) — El polvo levantado por el movimiento del jugador.
+- [`collect_dust`](scene.rs#L641) — El polvo levantado por el movimiento del jugador.
   - Firma: `fn collect_dust(&mut self, view: &FrameView, moved: f64) {`
 
 ### `state.rs`

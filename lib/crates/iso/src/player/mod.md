@@ -15,29 +15,32 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`get_dust`](dust.rs#L144) — Un soplo de polvo `ms` milisegundos reales después de que se alzó: cuánto ha recorrido su vida de `duration`
+- [`get_dust`](dust.rs#L198) — Un soplo de polvo `ms` milisegundos reales después de que se alzó: cuánto ha recorrido su vida de `duration`
   - Firma: `pub fn get_dust(ms: f64, duration: f64, alpha: f64) -> Option<DustLook> {`
 
-- [`mix_color`](dust.rs#L169) — El color a `share` (`0` → `1`) del camino de `from` a `to`, canal a canal, redondeado
+- [`mix_color`](dust.rs#L223) — El color a `share` (`0` → `1`) del camino de `from` a `to`, canal a canal, redondeado
   - Firma: `pub fn mix_color(colors: (u32, u32), share: f64) -> u32 {`
 
-- [`new`](dust.rs#L189) — El flujo de `seed`, que es el número de soplos alzados hasta ahora.
+- [`new`](dust.rs#L243) — El flujo de `seed`, que es el número de soplos alzados hasta ahora.
   - Firma: `pub fn new(seed: u64) -> Self {`
 
-- [`roll`](dust.rs#L196) — El siguiente número del flujo, en `[0, 1)`. SplitMix64, como las funciones hash de `terrain::noise`.
+- [`roll`](dust.rs#L250) — El siguiente número del flujo, en `[0, 1)`. SplitMix64, como las funciones hash de `terrain::noise`.
   - Firma: `pub fn roll(&mut self) -> f64 {`
 
-- [`get_dust_voxels`](dust.rs#L207) — Los voxeles de un soplo de polvo de `shape`, dispersados por el flujo de `seed`: repartidos alrededor de la
+- [`get_dust_voxels`](dust.rs#L261) — Los voxeles de un soplo de polvo de `shape`, dispersados por el flujo de `seed`: repartidos alrededor de la
   - Firma: `pub fn get_dust_voxels( shape: DustShape, seed: u64, kick: GridPoint, origin: GridPoint, ) -> Vec<DustVoxel> {`
 
-- [`get_dust_voxel_at`](dust.rs#L252) — Donde `voxel` está a `progress` del camino a lo largo de la vida de su soplo (`0` → `1`): en columnas desde
+- [`get_dust_voxel_at`](dust.rs#L306) — Donde `voxel` está a `progress` del camino a lo largo de la vida de su soplo (`0` → `1`): en columnas desde
   - Firma: `pub fn get_dust_voxel_at(voxel: DustVoxel, progress: f64) -> DustVoxelState {`
 
-- [`get_dust_column`](dust.rs#L273) — La columna con la que se dibuja un voxel de polvo en `point` (en el suelo, en columnas), para pies en
+- [`get_dust_column`](dust.rs#L327) — La columna con la que se dibuja un voxel de polvo en `point` (en el suelo, en columnas), para pies en
   - Firma: `pub fn get_dust_column( point: GridPoint, feet: GridPoint, level: f64, top_at: impl Fn(i32, i32) -> Option<f64>, ) -> DustColumn {`
 
-- [`voxel_faces`](dust.rs#L310) — Un voxel pequeño apoyado en el suelo, `size` casillas de ancho, con su base centrada en un punto: sus
+- [`voxel_faces`](dust.rs#L364) — Un voxel pequeño apoyado en el suelo, `size` casillas de ancho, con su base centrada en un punto: sus
   - Firma: `pub fn voxel_faces(size: f64, tile_width: f64, tile_height: f64, box_height: f64) -> VoxelFaces {`
+
+- [`jet_nozzle`](dust.rs#L163) — Dónde están las toberas del jetpack, en columnas desde los pies, a la espalda de una figura dibujada en `facing` de `facings` direcciones de pantalla.
+  - Firma: `pub fn jet_nozzle(facing: usize, facings: usize) -> GridPoint {`
 
 #### Constantes
 
@@ -59,6 +62,18 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`RIPPLE_DUST`](dust.rs) — El anillo que deja un cuerpo donde rompió la superficie, y el que abre quien flota quieto: agua plana que se abre y se apaga sin subir nunca.
 - [`SPLASH_DUST`](dust.rs) / [`splash_of`](dust.rs) — La corona de agua de un chapuzón, escalada por la velocidad con la que el cuerpo entró.
 - [`WAKE_DUST`](dust.rs) — Una cresta de la V que arrastra quien nada: corre hacia fuera y hacia atrás por su brazo, se queda en la superficie y se apaga despacio.
+
+- [`JET_FIRE`](dust.rs#L123) / [`JET_FIRE_COLORS`](dust.rs#L119) — La llama que un jetpack escupe por sus toberas mientras se vuela: voxeles pequeños, amarillos a naranjas, que salen hacia abajo y se apagan en 200 ms.
+  - Declaración: `pub const JET_FIRE: DustShape = DustShape {`
+
+- [`JET_SMOKE`](dust.rs#L141) / [`JET_SMOKE_COLORS`](dust.rs#L137) — El humo que deja detrás: voxeles grandes, grises a casi negros, que se abren y suben despacio durante casi un segundo.
+  - Declaración: `pub const JET_SMOKE: DustShape = DustShape {`
+
+- [`JET_NOZZLE_BACK`](dust.rs#L155) — Columnas por detrás de los pies a las que están las toberas del jetpack, a la espalda de la figura.
+  - Declaración: `pub const JET_NOZZLE_BACK: f64 = 0.12;`
+
+- [`JET_NOZZLE_LIFT`](dust.rs#L158) — Bloques por encima de los pies a los que están esas toberas.
+  - Declaración: `pub const JET_NOZZLE_LIFT: f64 = 0.1;`
 - [`WATER_COLORS`](dust.rs) — Tonos del agua que levanta quien nada: de espuma blanca a un azul pálido.
 
 - [`KICK_DUST`](dust.rs#L53) — El soplo pequeño que un jugador corriendo o derrapando levanta detrás de sus pies.
@@ -190,25 +205,25 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`cancel_player_jump`](physics.rs#L854) — Corta el ascenso del salto en curso (la tecla se soltó).
   - Firma: `pub fn cancel_player_jump(player: &mut PlayerState) {`
 
-- [`step_player`](physics.rs#L1507) — Avanza la simulación del jugador `ticks` pasos fijos sobre `ground`.
+- [`step_player`](physics.rs#L1504) — Avanza la simulación del jugador `ticks` pasos fijos sobre `ground`.
   - Firma: `pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ticks: u32) {`
 
-- [`get_player_jump_phase`](physics.rs#L1717) — Fase del salto para la animación; en el suelo (o nadando) responde `Ground`.
+- [`get_player_jump_phase`](physics.rs#L1714) — Fase del salto para la animación; en el suelo (o nadando) responde `Ground`.
   - Firma: `pub fn get_player_jump_phase(player: &PlayerState) -> PlayerJumpPhase {`
 
-- [`get_player_climb_progress`](physics.rs#L1754) — Cuánto lleva recorrido el jugador de una escalada sobre un reborde, para las poses de trepar. Una grada se sube andando, así que no informa nada y la vista sigue caminando.
+- [`get_player_climb_progress`](physics.rs#L1751) — Cuánto lleva recorrido el jugador de una escalada sobre un reborde, para las poses de trepar. Una grada se sube andando, así que no informa nada y la vista sigue caminando.
   - Firma: `pub fn get_player_climb_progress(player: &PlayerState, alpha: f64) -> Option<f64> {`
 
-- [`get_player_render_position`](physics.rs#L1765) — Posición de render del jugador: interpolación cúbica Hermite entre la posición al inicio del tick (`previous`, con sus velocidades) y la posición actual, con tangentes iguales a la velocidad horizontal y vertical de cada límite de tick; es C1 en cada límite y reproduce exactamente arcos de aceleración constante (un salto).
+- [`get_player_render_position`](physics.rs#L1762) — Posición de render del jugador: interpolación cúbica Hermite entre la posición al inicio del tick (`previous`, con sus velocidades) y la posición actual, con tangentes iguales a la velocidad horizontal y vertical de cada límite de tick; es C1 en cada límite y reproduce exactamente arcos de aceleración constante (un salto).
   - Firma: `pub fn get_player_render_position(player: &PlayerState, alpha: f64) -> PlayerRenderPosition {`
 
-- [`get_player_cells`](physics.rs#L1800) — Rectángulo de casillas que ocupa el cuerpo centrado en `point`.
+- [`get_player_cells`](physics.rs#L1797) — Rectángulo de casillas que ocupa el cuerpo centrado en `point`.
   - Firma: `pub fn get_player_cells(point: GridPoint) -> crate::grid::WorldRect {`
 
-- [`can_stand_on_public`](physics.rs#L1817) — Wrapper público de `can_stand_on`: si se puede pisar el suelo de `(x, y)` desde `from_elevation`.
+- [`can_stand_on_public`](physics.rs#L1814) — Wrapper público de `can_stand_on`: si se puede pisar el suelo de `(x, y)` desde `from_elevation`.
   - Firma: `pub fn can_stand_on_public<G: PlayerGround>(ground: &G, x: i32, y: i32, from_elevation: f64) -> bool {`
 
-- [`fits_player_at`](physics.rs#L1826) — Si el cuerpo cabe parado en `point` (sin colisión ni obstáculos).
+- [`fits_player_at`](physics.rs#L1823) — Si el cuerpo cabe parado en `point` (sin colisión ni obstáculos).
   - Firma: `pub fn fits_player_at<G: PlayerGround>(ground: &G, point: GridPoint) -> bool {`
 
 #### Constantes
@@ -354,7 +369,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`remaining`](dust.rs#L16) — Cuánto de un efecto que dura `duration` queda `ms` después de que empezó: `1` → `0`, `0` después.
   - Firma: `fn remaining(ms: f64, duration: f64) -> f64 {`
 
-- [`between`](dust.rs#L238) — `share` del camino del extremo bajo al alto de un rango.
+- [`between`](dust.rs#L292) — `share` del camino del extremo bajo al alto de un rango.
   - Firma: `fn between(range: (f64, f64), share: f64) -> f64 {`
 
 ### `motion.rs`
@@ -460,13 +475,13 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`step_once`](physics.rs#L1041) — Un tick completo de simulación sobre `ground`: intención, gravedad, colisiones, movimiento y estado.
   - Firma: `fn step_once<G: PlayerGround>( player: &mut PlayerState, ground: &G, diagnose: bool, ) -> Option<PlayerBlockReason> {`
 
-- [`step_air`](physics.rs#L1319) — Un tick estando en el aire: vuelo, gravedad, choque con techo y aterrizaje.
+- [`step_air`](physics.rs#L1318) — Un tick estando en el aire: vuelo, gravedad, choque con techo y aterrizaje.
   - Firma: `fn step_air<G: PlayerGround>( player: &mut PlayerState, ground: &G, flying: bool, ) -> Option<&'static str> {`
 
-- [`ceiling_at`](physics.rs#L1423) — Altura del techo sobre `point` (choque de cabeza), o `None` si no hay.
+- [`ceiling_at`](physics.rs#L1421) — Altura del techo sobre `point` (choque de cabeza), o `None` si no hay.
   - Firma: `fn ceiling_at<G: PlayerGround>( ground: &G, point: GridPoint, head: f64, next_head: f64, ) -> Option<f64> {`
 
-- [`is_flying`](physics.rs#L1496) — Si el jetpack está activo (vuelo).
+- [`is_flying`](physics.rs#L1493) — Si el jetpack está activo (vuelo).
   - Firma: `fn is_flying(player: &PlayerState) -> bool {`
 
 #### Constantes internas

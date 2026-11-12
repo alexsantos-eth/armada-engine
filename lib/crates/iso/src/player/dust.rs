@@ -115,6 +115,60 @@ pub const WAKE_DUST: DustShape = DustShape {
     alpha: 0.55,
 };
 
+/// Shades of a jetpack's flame: a bright yellow to a deep orange.
+pub const JET_FIRE_COLORS: (u32, u32) = (0xffd23f, 0xff6a1a);
+
+/// The flame a jetpack puffs out of its nozzles while the player flies: small voxels that shoot
+/// down out of the nozzles and burn out fast, so the fire reads as a jet and not as a cloud.
+pub const JET_FIRE: DustShape = DustShape {
+    voxels: 4,
+    radius: (0.0, 0.05),
+    drift: (0.02, 0.06),
+    size: (0.04, 0.065),
+    lift: 0.03,
+    rise: -0.4,
+    kick: 0.0,
+    colors: JET_FIRE_COLORS,
+    ms: 200.0,
+    alpha: 1.0,
+};
+
+/// Shades of a jetpack's smoke: a mid grey to nearly black.
+pub const JET_SMOKE_COLORS: (u32, u32) = (0x9a9a9a, 0x3c3c3c);
+
+/// The smoke a jetpack leaves behind it while the player flies: big voxels that spread out and
+/// rise slowly, lasting about a second, pushed back off its nozzles (`kick`).
+pub const JET_SMOKE: DustShape = DustShape {
+    voxels: 3,
+    radius: (0.02, 0.08),
+    drift: (0.08, 0.2),
+    size: (0.08, 0.14),
+    lift: -0.15,
+    rise: 0.3,
+    kick: 0.15,
+    colors: JET_SMOKE_COLORS,
+    ms: 900.0,
+    alpha: 0.7,
+};
+
+/// Columns behind the feet a jetpack's nozzles are, on the player's back.
+pub const JET_NOZZLE_BACK: f64 = 0.12;
+
+/// Blocks above the feet a jetpack's nozzles are.
+pub const JET_NOZZLE_LIFT: f64 = 0.1;
+
+/// Where a jetpack's nozzles are, in columns from the feet, on the back of a player drawn in
+/// `facing` of `facings` screen directions (counter-clockwise from east, up the screen being
+/// `+x +y`): [`JET_NOZZLE_BACK`] columns the way the figure is not looking.
+pub fn jet_nozzle(facing: usize, facings: usize) -> GridPoint {
+    let angle = (facing as f64 / facings as f64) * std::f64::consts::TAU;
+    let (up, across) = angle.sin_cos();
+    GridPoint {
+        x: -(across + up) * JET_NOZZLE_BACK / std::f64::consts::SQRT_2,
+        y: -(up - across) * JET_NOZZLE_BACK / std::f64::consts::SQRT_2,
+    }
+}
+
 /// How hard a body has to hit the water for the full crown of [`SPLASH_DUST`]: at this speed in
 /// blocks per tick, and above, the whole shape is thrown up; a slower entry scales down to a
 /// third of it.

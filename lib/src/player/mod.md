@@ -15,45 +15,45 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`new`](dust_view.rs#L133) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
+- [`new`](dust_view.rs#L163) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
   - Firma: `pub fn new() -> Self {`
 
-- [`live`](dust_view.rs#L147) — Cuántos soplos siguen elevándose, para el HUD y las pruebas.
+- [`live`](dust_view.rs#L181) — Cuántos soplos siguen elevándose, para el HUD y las pruebas.
   - Firma: `pub fn live(&self) -> usize {`
 
-- [`react`](dust_view.rs#L156) — Detecta lo que ha hecho el jugador desde el último frame y levanta el polvo correspondiente: un soplo
+- [`react`](dust_view.rs#L190) — Detecta lo que ha hecho el jugador desde el último frame y levanta el polvo correspondiente: un soplo
   - Firma: `pub fn react( &mut self, player: &PlayerState, at: DustGround, top_at: &impl Fn(i32, i32) -> Option<f64>, ) {`
 
-- [`advance`](dust_view.rs#L337) — Envejece cada soplo vivo en `elapsed_ms` de tiempo real, terminando los cuya vida ha acabado.
+- [`advance`](dust_view.rs#L433) — Envejece cada soplo vivo en `elapsed_ms` de tiempo real, terminando los cuya vida ha acabado.
   - Firma: `pub fn advance(&mut self, elapsed_ms: f64) {`
 
-- [`collect`](dust_view.rs#L346) — Encola cada cubo de polvo vivo en `draws`, cada uno a la profundidad que tomó cuando su soplo
+- [`collect`](dust_view.rs#L442) — Encola cada cubo de polvo vivo en `draws`, cada uno a la profundidad que tomó cuando su soplo
   - Firma: `pub fn collect(&self, projection: ProjectionConfig, draws: &mut Vec<SpriteDraw>) {`
 
 #### Constantes
 
-- [`DUST_TOP`](dust_view.rs#L24) — Los colores de un voxel de polvo, casi blanco: su cara superior iluminada, su lado izquierdo y su lado derecho.
+- [`DUST_TOP`](dust_view.rs#L25) — Los colores de un voxel de polvo, casi blanco: su cara superior iluminada, su lado izquierdo y su lado derecho.
   - Declaración: `pub const DUST_TOP: u32 = 0xfbf9f4;`
 
-- [`DUST_LEFT`](dust_view.rs#L25) — Selecciona el desplazamiento horizontal de polvo a la izquierda del jugador.
+- [`DUST_LEFT`](dust_view.rs#L26) — Selecciona el desplazamiento horizontal de polvo a la izquierda del jugador.
   - Declaración: `pub const DUST_LEFT: u32 = 0xe6e2d8;`
 
-- [`DUST_RIGHT`](dust_view.rs#L26) — Selecciona el desplazamiento horizontal de polvo a la derecha del jugador.
+- [`DUST_RIGHT`](dust_view.rs#L27) — Selecciona el desplazamiento horizontal de polvo a la derecha del jugador.
   - Declaración: `pub const DUST_RIGHT: u32 = 0xcfcabd;`
 
-- [`DUST_BEHIND_LAYER`](dust_view.rs#L29) — La capa en la que va el polvo dibujado detrás de lo que hay sobre su columna: la que luce la cima de una columna
+- [`DUST_BEHIND_LAYER`](dust_view.rs#L30) — La capa en la que va el polvo dibujado detrás de lo que hay sobre su columna: la que luce la cima de una columna
   - Declaración: `pub const DUST_BEHIND_LAYER: i32 = crate::lighting::shadow_view::GROUND_SHADOW_LAYER;`
 
-- [`DUST_FRONT_DEPTH`](dust_view.rs#L32) — Profundidad añadida a un cubo de polvo delante de los pies, para que se dibuje después de la columna sobre la que está
+- [`DUST_FRONT_DEPTH`](dust_view.rs#L33) — Profundidad añadida a un cubo de polvo delante de los pies, para que se dibuje después de la columna sobre la que está
   - Declaración: `pub const DUST_FRONT_DEPTH: f64 = 0.00001;`
 
-- [`RUN_DUST_EVERY`](dust_view.rs#L50) — Columnas que un jugador corriendo recorre entre dos soplos de polvo.
+- [`RUN_DUST_EVERY`](dust_view.rs#L51) — Columnas que un jugador corriendo recorre entre dos soplos de polvo.
   - Declaración: `pub const RUN_DUST_EVERY: f64 = 0.7;`
 
-- [`SKID_DUST_EVERY`](dust_view.rs#L53) — Columnas que un jugador derrapando desliza entre dos soplos: más a menudo que al correr, porque un derrape
+- [`SKID_DUST_EVERY`](dust_view.rs#L54) — Columnas que un jugador derrapando desliza entre dos soplos: más a menudo que al correr, porque un derrape
   - Declaración: `pub const SKID_DUST_EVERY: f64 = 0.2;`
 
-- [`RUN_PUFFS`](dust_view.rs#L56) — Soplos de polvo de carrera o derrape vivos a la vez, reutilizados por turno. La estela de quien nada usa esos mismos soplos.
+- [`RUN_PUFFS`](dust_view.rs#L57) — Soplos de polvo de carrera o derrape vivos a la vez, reutilizados por turno. La estela de quien nada usa esos mismos soplos.
   - Declaración: `pub const RUN_PUFFS: usize = 6;`
 
 - [`SWIM_WAKE_EVERY`](dust_view.rs) — Columnas que recorre quien nada entre dos pares de crestas de su estela: más a menudo que el polvo de una carrera, porque el agua se cierra detrás.
@@ -67,6 +67,12 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`SWIM_RIPPLE_MS`](dust_view.rs) — Milisegundos reales entre los anillos que abre quien flota quieto.
   - Declaración: `pub const SWIM_RIPPLE_MS: f64 = 1400.0;`
+
+- [`JET_FIRE_EVERY_MS`](dust_view.rs#L60) / [`JET_SMOKE_EVERY_MS`](dust_view.rs#L63) — Milisegundos reales entre dos soplos de llama y de humo del jetpack mientras se vuela. La quema se marca en tiempo real, no en columnas recorridas: es un motor encendido, no un paso dado.
+  - Declaración: `pub const JET_FIRE_EVERY_MS: f64 = 40.0;`
+
+- [`JET_FIRE_PUFFS`](dust_view.rs#L67) / [`JET_SMOKE_PUFFS`](dust_view.rs#L70) — Soplos de llama y de humo vivos a la vez: uno más de los que caben en la vida de un soplo, para que el más viejo haya terminado antes de que su hueco vuelva a tocar.
+  - Declaración: `pub const JET_FIRE_PUFFS: usize = (JET_FIRE.ms / JET_FIRE_EVERY_MS) as usize + 2;`
 
 ### `body_motion.rs`
 
@@ -131,10 +137,13 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`advance`](player_view.rs#L118) — Tiene en cuenta un frame y responde con la pose a dibujar.
   - Firma: `pub fn advance(&mut self, moment: PlayerMoment, sheets: PlayerSheets) -> PlayerPose {`
 
-- [`facing_name`](player_view.rs#L223) — El nombre de la orientación con la que se dibuja al jugador, para el HUD.
+- [`facing_name`](player_view.rs#L229) — El nombre de la orientación con la que se dibuja al jugador, para el HUD.
   - Firma: `pub fn facing_name(&self) -> &'static str {`
 
-- [`walked`](player_view.rs#L228) — Distancia de la zancada visual actual, incluida la pedalada inversa del derrape.
+- [`facing`](player_view.rs#L224) — La orientación con la que se dibuja al jugador, índice en `PLAYER_FACINGS`: de ahí se saca lo que lleva a la espalda (las toberas del jetpack).
+  - Firma: `pub fn facing(&self) -> usize {`
+
+- [`walked`](player_view.rs#L234) — Distancia de la zancada visual actual, incluida la pedalada inversa del derrape.
   - Firma: `pub fn walked(&self) -> f64 {`
 
 #### Constantes
@@ -213,16 +222,19 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`default`](dust_view.rs#L127) — Implementación de `Default`: la vista de polvo o de jugador vacía.
+- [`default`](dust_view.rs#L157) — Implementación de `Default`: la vista de polvo o de jugador vacía.
   - Firma: `fn default() -> Self {`
 
-- [`kick`](dust_view.rs#L218) — El rastro que un jugador corriendo o derrapando levanta tras sus pies, un soplo cada tramo de
+- [`kick`](dust_view.rs#L253) — El rastro que un jugador corriendo o derrapando levanta tras sus pies, un soplo cada tramo de
   - Firma: `fn kick( &mut self, player: &PlayerState, at: DustGround, top_at: &impl Fn(i32, i32) -> Option<f64>, ) {`
 
-- [`raise`](dust_view.rs#L312) — Levanta la bocanada `index` con `shape` en el emisor indicado; descarta la anterior.
+- [`burn`](dust_view.rs#L350) — La llama y el humo que el jetpack quema por sus toberas mientras se vuela: ambos salen de las toberas de la espalda (`iso::player::jet_nozzle`, `JET_NOZZLE_LIFT`) y no de los pies, así que el orden de dibujo los deja delante o detrás del cuerpo según hacia dónde derivan. En el suelo no se quema nada y los relojes vuelven a infinito, para que el primer fotograma de un vuelo encienda ya.
+  - Firma: `fn burn( &mut self, player: &PlayerState, at: DustGround, top_at: &impl Fn(i32, i32) -> Option<f64>, ) {`
+
+- [`raise`](dust_view.rs#L408) — Levanta la bocanada `index` con `shape` en el emisor indicado; descarta la anterior.
   - Firma: `fn raise( &mut self, index: usize, shape: DustShape, feet: GridPoint, level: f64, kick: GridPoint, origin: GridPoint, tile_height: f64, top_at: &impl Fn(i32, i32) -> Option<f64>, ) {`
 
-- [`voxel_key`](dust_view.rs#L412) — Dónde se ordena un cubo de polvo en la escena: la columna sobre la que está a mitad de su vida, y
+- [`voxel_key`](dust_view.rs#L508) — Dónde se ordena un cubo de polvo en la escena: la columna sobre la que está a mitad de su vida, y
   - Firma: `fn voxel_key( voxel: DustVoxel, feet: GridPoint, level: f64, tile_height: f64, top_at: &impl Fn(i32, i32) -> Option<f64>, ) -> DrawKey {`
 
 ### `player_shadow.rs`
@@ -255,24 +267,27 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`intersection`](shadow_clip.rs#L202) — El punto donde el segmento `from → to` cruza la línea del borde `a → b`, con el alfa interpolado.
   - Firma: `fn intersection( from: ShadowVertex, to: ShadowVertex, a: (f64, f64), b: (f64, f64), ) -> ShadowVertex {`
 
-- [`offset`](dust_view.rs#L443) — Las caras del voxel movidas al punto sobre el que se apoya.
+- [`offset`](dust_view.rs#L539) — Las caras del voxel movidas al punto sobre el que se apoya.
   - Firma: `fn offset(faces: VoxelFaces, x: f64, y: f64) -> VoxelFaces {`
 
-- [`colours`](dust_view.rs#L453) — Los colores de las tres caras para un cubo de `shade` en `alpha`: cada cara con su propio casi blanco
+- [`colours`](dust_view.rs#L549) — Los colores de las tres caras para un cubo de `shade` en `alpha`: cada cara con su propio casi blanco
   - Firma: `fn colours(shade: u32, alpha: f64) -> [Color; 3] {`
 
 #### Constantes internas
 
-- [`TAKEOFF_PUFF`](dust_view.rs#L59) — El soplo que levanta un despegue, también en el aire, así que un doble salto levanta otro soplo.
+- [`TAKEOFF_PUFF`](dust_view.rs#L73) — El soplo que levanta un despegue, también en el aire, así que un doble salto levanta otro soplo.
   - Declaración: `const TAKEOFF_PUFF: usize = 0;`
 
-- [`LANDING_PUFF`](dust_view.rs#L62) — El soplo que levanta un aterrizaje, sobre el suelo en el que aterrizó.
+- [`LANDING_PUFF`](dust_view.rs#L76) — El soplo que levanta un aterrizaje, sobre el suelo en el que aterrizó.
   - Declaración: `const LANDING_PUFF: usize = 1;`
 
-- [`PUFFS`](dust_view.rs#L76) — El conjunto completo: un despegue, un aterrizaje y el rastro de carrera.
-  - Declaración: `const PUFFS: usize = 2 + RUN_PUFFS;`
+- [`PUFFS`](dust_view.rs#L96) — El conjunto completo: un despegue, un aterrizaje, un chapuzón, un anillo, el rastro y la llama y el humo del jetpack.
+  - Declaración: `const PUFFS: usize = JET_SMOKE_PUFF + JET_SMOKE_PUFFS;`
 
-- [`ZERO`](dust_view.rs#L387) — Sin kick ni desplazamiento respecto a los pies.
+- [`JET_FIRE_PUFF`](dust_view.rs#L88) / [`JET_SMOKE_PUFF`](dust_view.rs#L91) — El primer hueco de la llama y del humo que quema el jetpack; cada uno se recorre por turno.
+  - Declaración: `const JET_FIRE_PUFF: usize = TRAIL_PUFF + RUN_PUFFS;`
+
+- [`ZERO`](dust_view.rs#L483) — Sin kick ni desplazamiento respecto a los pies.
   - Declaración: `const ZERO: GridPoint = GridPoint { x: 0.0, y: 0.0 };`
 
 ### `flip.rs`
@@ -298,10 +313,10 @@ El giro avanza a ritmo constante (una vuelta en `FLIP_MS`), porque un mortal ace
 - [`turn_towards`](player_view.rs#L201) — Avanza la orientación hacia `target` por el camino más corto, una orientación por
   - Firma: `fn turn_towards(&mut self, target: usize, elapsed_ms: f64) {`
 
-- [`pose`](player_view.rs#L232) — Pose del `frame`: hoja, pose y orientación actual.
+- [`pose`](player_view.rs#L238) — Pose del `frame`: hoja, pose y orientación actual.
   - Firma: `fn pose(&self, frame: PlayerFrame) -> PlayerPose {`
 
-- [`phase_column`](player_view.rs#L242) — Cuál de las cinco columnas de salto usa una fase; `Ground` nunca llega aquí y toma la
+- [`phase_column`](player_view.rs#L248) — Cuál de las cinco columnas de salto usa una fase; `Ground` nunca llega aquí y toma la
   - Firma: `fn phase_column(phase: PlayerJumpPhase) -> usize {`
 
 #### Constantes internas

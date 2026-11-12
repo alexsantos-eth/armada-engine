@@ -1288,7 +1288,7 @@ fn start_stairs_descent<G: PlayerGround>(
     }
     let landing = f64::from(below.elevation);
     let rise = landing - feet;
-    if rise > -PLAYER_STEP_HEIGHT || rise < -PLAYER_MAX_CLIMB {
+    if !(-PLAYER_MAX_CLIMB..=-PLAYER_STEP_HEIGHT).contains(&rise) {
         return None;
     }
     let to = GridPoint {

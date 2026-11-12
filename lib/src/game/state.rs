@@ -101,6 +101,11 @@ pub(crate) struct Game {
     pub(crate) tile_metrics: SceneMetrics,
     /// The editing session, on the `/maker` route only; `None` plays the streamed world.
     pub(crate) maker: Option<MakerSession>,
+    /// Whether this route lets the jetpack be strapped on at all (`Route::allows_jetpack`).
+    pub(crate) jetpack_allowed: bool,
+    /// Whether the player is wearing the jetpack: equipment the development surfaces toggle,
+    /// until it is an item found in the world. Worn, a held jump key flies (`PlayerState`).
+    pub(crate) jetpack: bool,
     /// Real time the wind has been blowing, for the sway of what reacts to it; accumulates
     /// frame time like the clouds and the dust, independent of the fixed step.
     pub(crate) wind_ms: f64,
@@ -332,6 +337,8 @@ impl Game {
             })
             .expect("the client's stepper options are valid"),
             show_terrain: true,
+            jetpack_allowed: route.allows_jetpack(),
+            jetpack: false,
             last_save: get_time(),
             unsaved_changes: false,
             atlas,

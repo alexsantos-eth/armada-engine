@@ -6,5 +6,5 @@
 mod hud;
 mod route;
 
-pub(crate) use hud::{PerfCounts, draw_hud, push_hud_update};
+pub(crate) use hud::{HudWorld, PerfCounts, draw_hud, push_hud_update};
 pub(crate) use route::{Route, current};

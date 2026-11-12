@@ -10,7 +10,8 @@ use iso::camera::{
 use iso::grid::{WorldCoord, to_chunk_coord};
 use iso::lighting::phase_at;
 use iso::player::physics::{
-    get_player_render_position, jump_player, set_player_jump_held, set_player_run, step_player,
+    get_player_render_position, jump_player, set_player_jetpack, set_player_jump_held,
+    set_player_run, step_player,
 };
 use iso::player::{PLAYER_JUMP_SPEED, PlayerMotionType};
 use iso::projection::{GridPoint, ProjectionConfig};
@@ -110,6 +111,15 @@ pub(crate) struct FrameView {
 }
 
 impl Game {
+    /// Straps the jetpack on, or takes it off, where the route allows it; elsewhere it does
+    /// nothing, so the plain presentation cannot be flown. Returns whether it is worn now.
+    pub(crate) fn toggle_jetpack(&mut self) -> bool {
+        if self.jetpack_allowed {
+            self.jetpack = !self.jetpack;
+        }
+        self.jetpack
+    }
+
     /// Input, ticks and streaming for one frame. Returns `None` when the player asked to quit
     /// (flushing the save first if there is anything unsaved).
     pub(crate) fn update(&mut self, frame_ms: f64) -> Option<FrameView> {
@@ -135,6 +145,10 @@ impl Game {
         let input: NormalizedInput = input_service.poll();
         self.player.walk = input.walk;
         set_player_run(&mut self.player, input.run);
+        if input.jetpack_pressed {
+            self.toggle_jetpack();
+        }
+        set_player_jetpack(&mut self.player, self.jetpack);
 
         if input.jump_pressed {
             jump_player(&mut self.player);

@@ -74,3 +74,13 @@ fn an_argument_that_is_not_a_route_is_ignored() {
     let arguments = ["iso-core".to_owned(), "--whatever".to_owned()];
     assert_eq!(native_route(arguments.iter()), Route::Playground);
 }
+
+#[test]
+fn only_the_development_surfaces_let_the_jetpack_on() {
+    assert!(Route::Playground.allows_jetpack());
+    assert!(Route::Maker.allows_jetpack());
+    assert!(
+        !Route::Plain.allows_jetpack(),
+        "the game as it is presented is not flown"
+    );
+}

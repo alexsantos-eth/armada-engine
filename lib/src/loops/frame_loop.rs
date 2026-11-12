@@ -127,7 +127,7 @@ pub(crate) async fn run(mut game: Game) {
             );
             let touch_visible = game.touch.visible();
             let time_text = iso::time::format_clock_time(iso::time::clock_time(game.clock.tick));
-            if let Some(clicked) = draw_hud(
+            let clicks = draw_hud(
                 &mut game.ui,
                 &game.perf,
                 crate::gui::PerfCounts {
@@ -135,14 +135,21 @@ pub(crate) async fn run(mut game: Game) {
                     air: game.particles.live(),
                 },
                 frame_ms,
-                touch_visible,
-                phase,
-                &time_text,
-            ) {
+                crate::gui::HudWorld {
+                    touch_visible,
+                    phase,
+                    jetpack: game.jetpack,
+                    clock: &time_text,
+                },
+            );
+            if let Some(clicked) = clicks.phase {
                 game.phase_override = match game.phase_override {
                     Some(current) if current == clicked => None,
                     _ => Some(clicked),
                 };
+            }
+            if clicks.jetpack {
+                game.toggle_jetpack();
             }
         } else {
             game.ui.messages.clear();

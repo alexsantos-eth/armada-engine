@@ -22,7 +22,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 - [`touch_phase`](macroquad_adapters.rs#L20) — Traduce la fase de `macroquad::input::Touch` a la fase cruda que entiende `touch::TouchControls`.
   - Firma: `const fn touch_phase(phase: TouchPhase) -> RawTouchPhase {`
-- [`poll`](macroquad_adapters.rs#L31) — Lee el teclado y los dedos (convertidos de `macroquad::input::Touch` a `RawTouch`), avanza los controles táctiles (`TouchControls::update`), suma el vector del teclado con el analógico recortado a longitud 1 y publica la entrada normalizada. `jump_pressed`, `jump_held`, `run` y `jetpack` combinan ambas fuentes.
+- [`poll`](macroquad_adapters.rs#L31) — Lee el teclado y los dedos (convertidos de `macroquad::input::Touch` a `RawTouch`), avanza los controles táctiles (`TouchControls::update`), suma el vector del teclado con el analógico recortado a longitud 1 y publica la entrada normalizada. `jump_pressed`, `jump_held` y `run` combinan ambas fuentes; `jetpack_pressed` es la pulsación de `J` (una pulsación, no un mantenido: el cliente alterna con ella el equipo).
   - Firma: `fn poll(&mut self) -> NormalizedInput {`
   - MacroquadInput es ahora `pub struct MacroquadInput<'a> { pub touch: &'a mut TouchControls }`: el llamante (`game::frame::update`) presta su `TouchControls` a la pasada de entrada.
 

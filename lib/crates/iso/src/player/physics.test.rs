@@ -1016,3 +1016,123 @@ fn a_flight_side_is_cleared_with_a_double_jump() {
     assert_eq!(player.elevation, 1.0, "on its top");
     assert_eq!(player.height, 0.0);
 }
+
+/// Flat land ten columns wide, which a flight has all the sky over.
+fn open_sky() -> CellGround {
+    ground_from(&["0000000000", "0000000000", "0000000000"])
+}
+
+/// A player wearing a jetpack on `ground`, holding the jump key, one tick into a take-off.
+fn took_off_with_a_jetpack(ground: &mut CellGround) -> PlayerState {
+    let mut player = create_player(ground, GridPoint { x: 1.0, y: 1.0 });
+    set_player_jetpack(&mut player, true);
+    set_player_jump_held(&mut player, true);
+    jump_player(&mut player);
+    step_player(&mut player, ground, 1);
+    player
+}
+
+#[test]
+fn a_jetpack_turns_a_held_jump_into_a_flight() {
+    let mut ground = open_sky();
+    let mut player = took_off_with_a_jetpack(&mut ground);
+    let jump_apex = PLAYER_JUMP_SPEED * PLAYER_JUMP_SPEED / (2.0 * PLAYER_GRAVITY);
+    step_player(&mut player, &mut ground, 40);
+    assert_eq!(player.motion, PlayerMotionType::Flying);
+    assert!(
+        player.height > jump_apex,
+        "the jetpack carries it past a jump's apex ({jump_apex}): {}",
+        player.height
+    );
+}
+
+#[test]
+fn a_flight_rises_no_faster_than_the_jetpack_pushes() {
+    let mut ground = open_sky();
+    let mut player = took_off_with_a_jetpack(&mut ground);
+    // The jump it took off with is faster than the jetpack; the cap is the flight's own.
+    for _ in 0..40 {
+        let before = player.elevation + player.height;
+        let flying = player.motion == PlayerMotionType::Flying;
+        step_player(&mut player, &mut ground, 1);
+        let climbed = player.elevation + player.height - before;
+        if flying {
+            assert!(
+                climbed <= PLAYER_FLY_SPEED + 1e-9,
+                "a tick of flight rises at most {PLAYER_FLY_SPEED}: {climbed}"
+            );
+        }
+    }
+    assert_eq!(player.motion, PlayerMotionType::Flying);
+}
+
+#[test]
+fn a_flight_stops_under_its_ceiling_over_the_land_it_left() {
+    let mut ground = open_sky();
+    let mut player = took_off_with_a_jetpack(&mut ground);
+    step_player(&mut player, &mut ground, 400);
+    let feet = player.elevation + player.height;
+    assert!(
+        feet <= PLAYER_FLY_MAX_HEIGHT + 1e-9,
+        "the jetpack never goes over {PLAYER_FLY_MAX_HEIGHT} blocks: {feet}"
+    );
+    assert!(
+        feet > PLAYER_FLY_MAX_HEIGHT - PLAYER_FLY_SPEED,
+        "and it does reach that ceiling: {feet}"
+    );
+}
+
+#[test]
+fn letting_the_jump_key_go_ends_the_flight() {
+    let mut ground = open_sky();
+    let mut player = took_off_with_a_jetpack(&mut ground);
+    step_player(&mut player, &mut ground, 20);
+    let height = player.height;
+    set_player_jump_held(&mut player, false);
+    step_player(&mut player, &mut ground, 10);
+    assert_ne!(player.motion, PlayerMotionType::Flying);
+    assert!(
+        player.height < height,
+        "it comes down once the key is let go: {} vs {height}",
+        player.height
+    );
+}
+
+#[test]
+fn without_a_jetpack_a_held_jump_is_only_a_jump() {
+    let mut ground = open_sky();
+    let mut player = create_player(&ground, GridPoint { x: 1.0, y: 1.0 });
+    set_player_jump_held(&mut player, true);
+    jump_player(&mut player);
+    step_player(&mut player, &mut ground, 40);
+    assert_ne!(player.motion, PlayerMotionType::Flying);
+    assert_eq!(
+        player.vertical_speed, None,
+        "it is back on the ground: {}",
+        player.height
+    );
+}
+
+#[test]
+fn a_press_in_the_air_flies_instead_of_jumping_again() {
+    let mut ground = open_sky();
+    let mut player = took_off_with_a_jetpack(&mut ground);
+    let jumps = player.feedback.jumps;
+    let air_jumps = player.air_jumps;
+    jump_player(&mut player);
+    step_player(&mut player, &mut ground, 1);
+    assert_eq!(player.feedback.jumps, jumps, "no second take-off");
+    assert_eq!(player.air_jumps, air_jumps, "and no air jump spent");
+}
+
+#[test]
+fn the_water_takes_a_jetpack_out_of_the_sky() {
+    let mut ground = ground_from(&["~~~~~~", "~~~~~~", "~~~~~~"]);
+    let mut player = create_player(&ground, GridPoint { x: 1.0, y: 1.0 });
+    set_player_jetpack(&mut player, true);
+    set_player_jump_held(&mut player, true);
+    jump_player(&mut player);
+    step_player(&mut player, &mut ground, 40);
+    assert_ne!(player.motion, PlayerMotionType::Flying);
+    assert!(player.swim.is_some(), "it is swimming, not flying");
+}

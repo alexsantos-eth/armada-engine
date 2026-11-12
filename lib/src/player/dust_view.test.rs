@@ -44,6 +44,7 @@ fn react(dust: &mut DustPuffs, player: &PlayerState, moved: f64) {
         level: 2.0,
         ground: 2.0,
         moved,
+        facing: 0,
         elapsed_ms: 16.0,
         tile_height: TILE / 2.0,
     };
@@ -312,6 +313,7 @@ fn swim_react(dust: &mut DustPuffs, player: &PlayerState, moved: f64) {
         level: 2.0 - 0.3,
         ground: 2.0,
         moved,
+        facing: 0,
         elapsed_ms: 16.0,
         tile_height: TILE / 2.0,
     };
@@ -451,4 +453,121 @@ fn the_water_a_swimmer_throws_up_is_blue_not_dust() {
     assert_ne!(iso::player::WATER_COLORS, iso::player::DUST_COLORS);
     assert_eq!(WAKE_DUST.colors, iso::player::WATER_COLORS);
     assert_eq!(iso::player::SPLASH_DUST.colors, iso::player::WATER_COLORS);
+}
+
+/// A flying player wearing a jetpack, as the view sees it this frame.
+fn flying_at(facing: usize) -> PlayerState {
+    let mut player = player_at(4.0, 4.0);
+    player.motion = PlayerMotionType::Flying;
+    player.jetpack = true;
+    player.height = 3.0;
+    let _ = facing;
+    player
+}
+
+/// One frame of a flight: `ms` of real time, the figure drawn in `facing`.
+fn fly_react(dust: &mut DustPuffs, player: &PlayerState, facing: usize, ms: f64) {
+    let at = DustGround {
+        feet: GridPoint {
+            x: player.x,
+            y: player.y,
+        },
+        level: 5.0,
+        ground: 2.0,
+        moved: 0.0,
+        facing,
+        elapsed_ms: ms,
+        tile_height: TILE / 2.0,
+    };
+    dust.react(player, at, &flat);
+}
+
+#[test]
+fn a_jetpack_burns_flame_from_the_first_frame_of_a_flight() {
+    let mut dust = DustPuffs::new();
+    let player = flying_at(0);
+    fly_react(&mut dust, &player, 0, 1.0);
+    assert!(
+        dust.live() >= 2,
+        "the flame and the smoke both light at once: {}",
+        dust.live()
+    );
+}
+
+#[test]
+fn flame_and_smoke_are_paced_in_real_time_not_in_columns() {
+    let mut dust = DustPuffs::new();
+    let player = flying_at(0);
+    fly_react(&mut dust, &player, 0, 1.0);
+    let first = dust.live();
+    // Less than a puff's interval later, nothing new is lit.
+    dust.advance(JET_FIRE_EVERY_MS / 4.0);
+    fly_react(&mut dust, &player, 0, JET_FIRE_EVERY_MS / 4.0);
+    assert_eq!(dust.live(), first, "too soon for another puff");
+    dust.advance(JET_FIRE_EVERY_MS);
+    fly_react(&mut dust, &player, 0, JET_FIRE_EVERY_MS);
+    assert!(dust.live() > first, "and then the next puff of flame");
+}
+
+#[test]
+fn nothing_burns_once_the_flight_is_over() {
+    let mut dust = DustPuffs::new();
+    let mut player = flying_at(0);
+    for _ in 0..8 {
+        dust.advance(JET_FIRE_EVERY_MS);
+        fly_react(&mut dust, &player, 0, JET_FIRE_EVERY_MS);
+    }
+    assert!(dust.live() > 0);
+    player.motion = PlayerMotionType::Falling;
+    dust.advance(JET_SMOKE.ms * 2.0);
+    fly_react(&mut dust, &player, 0, JET_SMOKE.ms * 2.0);
+    assert_eq!(dust.live(), 0, "the engine is out and the air clears");
+}
+
+/// The point a queued cube of dust stands on: the near corner of its left face.
+fn voxel_point(draw: &crate::assets::sprites::SpriteDraw) -> Option<(f64, f64)> {
+    match &draw.kind {
+        crate::assets::sprites::DrawKind::Voxel { faces, .. } => Some(faces.left[2]),
+        _ => None,
+    }
+}
+
+/// Where the cubes of a frame's burn sit on screen, on average.
+fn burn_centre(facing: usize) -> (f64, f64) {
+    let projection = ProjectionConfig {
+        tile_width: TILE,
+        tile_height: TILE / 2.0,
+        elevation_step: Some(160.0),
+        origin_x: 0.0,
+        origin_y: 0.0,
+    };
+    let mut dust = DustPuffs::new();
+    let player = flying_at(facing);
+    fly_react(&mut dust, &player, facing, 1.0);
+    let mut draws = Vec::new();
+    dust.collect(projection, &mut draws);
+    assert_eq!(
+        draws.len(),
+        JET_FIRE.voxels + JET_SMOKE.voxels,
+        "one cube per voxel of the flame and of the smoke"
+    );
+    let points: Vec<(f64, f64)> = draws.iter().filter_map(voxel_point).collect();
+    let count = points.len() as f64;
+    (
+        points.iter().map(|p| p.0).sum::<f64>() / count,
+        points.iter().map(|p| p.1).sum::<f64>() / count,
+    )
+}
+
+#[test]
+fn the_burn_comes_out_behind_the_figure_whichever_way_it_looks() {
+    // East on screen and west on screen: the nozzles, and so the burn, swap sides with them.
+    let east = burn_centre(0);
+    let west = burn_centre(iso::player::PLAYER_FACINGS.len() / 2);
+    assert!(
+        east.0 < west.0,
+        "looking east the burn trails to the left of where it trails looking west: {} vs {}",
+        east.0,
+        west.0
+    );
 }

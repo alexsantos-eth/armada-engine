@@ -20,8 +20,8 @@ use crate::assets::sprites::{SpriteAtlas, SpriteDraw, scene_key};
 use crate::effects::ambient::SpawnEnv;
 use crate::game::config::{
     BAND_BLEED, ENTITY_LAYER, PLAYER_BEHIND_LAYER, PLAYER_CLIMB_SHEET, PLAYER_FLIP_SHEET,
-    PLAYER_FRONT_LAYER, PLAYER_IDLE_SHEET, PLAYER_JUMP_SHEET, PLAYER_SCALE, PLAYER_SWIM_SHEET,
-    PLAYER_WALK_SHEET, SceneMetrics,
+    PLAYER_FRONT_LAYER, PLAYER_IDLE_SHEET, PLAYER_JETPACK_DEPTH, PLAYER_JETPACK_SHEET,
+    PLAYER_JUMP_SHEET, PLAYER_SCALE, PLAYER_SWIM_SHEET, PLAYER_WALK_SHEET, SceneMetrics,
 };
 use crate::game::frame::FrameView;
 use crate::game::ground::water_cell;
@@ -579,13 +579,56 @@ impl Game {
                     |x, y| water_cell(&self.manager, x, y),
                     &mut self.draws,
                 );
-                match shade {
-                    Some(shade) => self
-                        .draws
-                        .push(SpriteDraw::shaded(key, texture, frame, layout, shade)),
+                match &shade {
+                    Some(shade) => self.draws.push(SpriteDraw::shaded(
+                        key,
+                        texture,
+                        frame,
+                        layout,
+                        shade.clone(),
+                    )),
                     None => self
                         .draws
                         .push(SpriteDraw::whole(key, texture, frame, layout)),
+                }
+                // The jetpack on its back, from its own sheet: one column, laid out from its own
+                // ink so it lands right whatever sheet the body is drawn from, and drawn just
+                // after the body. Swimming it is hidden: the pack has no pose lying down.
+                let pack = (self.player.jetpack && self.player.swim.is_none())
+                    .then(|| self.atlas.sheet(PLAYER_JETPACK_SHEET))
+                    .flatten()
+                    .map(|sheet| {
+                        (
+                            sheet.texture,
+                            sheet.frame(pose.facing, 0),
+                            sheet.ink.scaled(PLAYER_SCALE),
+                        )
+                    });
+                if let Some((pack_texture, pack_frame, pack_ink)) = pack {
+                    let pack_layout = scale_player_layout(
+                        ink_layout(feet, pack_ink, projection.tile_width),
+                        feet,
+                        body,
+                    );
+                    let pack_key = DrawKey {
+                        depth: key.depth + PLAYER_JETPACK_DEPTH,
+                        layer: key.layer,
+                    };
+                    match &shade {
+                        Some(shade) => self.draws.push(SpriteDraw::shaded(
+                            pack_key,
+                            pack_texture,
+                            pack_frame,
+                            pack_layout,
+                            shade.clone(),
+                        )),
+                        None => self.draws.push(SpriteDraw::whole(
+                            pack_key,
+                            pack_texture,
+                            pack_frame,
+                            pack_layout,
+                        )),
+                    }
                 }
             }
             None => draw_circle(feet.x as f32, feet.y as f32, 12.0, GOLD),
@@ -610,6 +653,7 @@ impl Game {
                 level: rp.elevation + rp.height,
                 ground: rp.elevation,
                 moved,
+                facing: self.animation.facing(),
                 elapsed_ms: frame_ms,
                 tile_height: projection.tile_height,
             },

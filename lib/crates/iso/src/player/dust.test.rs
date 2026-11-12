@@ -230,3 +230,47 @@ fn a_voxel_is_drawn_as_the_three_faces_of_a_block() {
         "size scales the whole voxel"
     );
 }
+
+#[test]
+fn a_jetpacks_nozzles_sit_behind_the_figure() {
+    // East on screen is +x −y on the grid, so the nozzles of a figure looking that way are the
+    // other way: behind it, never in front.
+    let facings = 16;
+    for facing in 0..facings {
+        let angle = (facing as f64 / facings as f64) * std::f64::consts::TAU;
+        let (up, across) = angle.sin_cos();
+        let nozzle = jet_nozzle(facing, facings);
+        // The nozzle in screen terms, which is where the figure is not looking.
+        let screen_x = nozzle.x - nozzle.y;
+        let screen_y = nozzle.x + nozzle.y;
+        assert!(
+            screen_x * across + screen_y * up < 0.0,
+            "facing {facing} carries its nozzles on its back"
+        );
+        assert!(
+            (nozzle.x.hypot(nozzle.y) - JET_NOZZLE_BACK).abs() < 1e-9,
+            "always {JET_NOZZLE_BACK} columns back"
+        );
+    }
+}
+
+#[test]
+fn a_jetpacks_flame_shoots_down_and_its_smoke_rises() {
+    const {
+        assert!(
+            JET_FIRE.rise < 0.0,
+            "the flame goes down out of the nozzles"
+        );
+        assert!(JET_SMOKE.rise > 0.0, "the smoke drifts up off them");
+        assert!(
+            JET_FIRE.ms < JET_SMOKE.ms,
+            "and burns out long before the smoke clears"
+        );
+        assert!(
+            JET_SMOKE.size.0 > JET_FIRE.size.1,
+            "every cube of smoke is bigger than any of flame"
+        );
+    };
+    assert_eq!(JET_FIRE.colors, JET_FIRE_COLORS);
+    assert_eq!(JET_SMOKE.colors, JET_SMOKE_COLORS);
+}
