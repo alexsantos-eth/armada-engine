@@ -37,3 +37,7 @@ pub trait AudioService {
     /// Sets the master volume (0.0..=1.0).
     fn set_volume(&mut self, volume: f64);
 }
+
+#[cfg(test)]
+#[path = "audio.test.rs"]
+mod tests;
