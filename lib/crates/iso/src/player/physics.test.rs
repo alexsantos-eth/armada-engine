@@ -797,6 +797,68 @@ fn a_player_dropped_on_a_flights_corner_walks_back_off_it() {
     assert_eq!(player.elevation, 0.0);
 }
 
+/// Entering a flight off to the side, the sideways slide onto its centreline is walked like
+/// any other part of the steps — mostly in the first stretch of the flight — and the rest of
+/// it is taken on the centre.
+#[test]
+fn a_player_entering_a_flight_off_centre_walks_onto_its_centreline() {
+    let mut ground = stairs_ground();
+    let mut player = create_player(&ground, GridPoint { x: 1.0, y: 1.35 });
+    set_player_walk(
+        &mut player,
+        ScreenDirections {
+            up: true,
+            right: true,
+            ..Default::default()
+        },
+    );
+    for _ in 0..40 {
+        step_player(&mut player, &mut ground, 1);
+        if player.climb.is_some() {
+            break;
+        }
+    }
+    for _ in 0..(PLAYER_STAIRS_TICKS / 2) {
+        step_player(&mut player, &mut ground, 1);
+    }
+    assert!(
+        (player.y - 1.0).abs() < 1e-9,
+        "it walks onto the middle of the stairs, it does not slide alongside them: {}",
+        player.y
+    );
+}
+
+/// Coming down the top, the same sideways slide is walked back onto the centreline in the
+/// first stretch of the descent, so the rest is taken on the centre.
+#[test]
+fn a_player_descending_a_flight_off_centre_walks_onto_its_centreline() {
+    let mut ground = stairs_ground();
+    let mut player = create_player(&ground, GridPoint { x: 4.0, y: 1.35 });
+    set_player_walk(
+        &mut player,
+        ScreenDirections {
+            down: true,
+            left: true,
+            ..Default::default()
+        },
+    );
+    for _ in 0..80 {
+        step_player(&mut player, &mut ground, 1);
+        if player.climb.is_some() {
+            break;
+        }
+    }
+    assert!(player.climb.as_ref().is_some_and(|climb| climb.stairs));
+    for _ in 0..(PLAYER_STAIRS_TICKS / 2) {
+        step_player(&mut player, &mut ground, 1);
+    }
+    assert!(
+        (player.y - 1.0).abs() < 1e-9,
+        "it walks onto the middle of the stairs on the way down: {}",
+        player.y
+    );
+}
+
 /// What the foot is for going up, the descent edge is for coming down, all at the top:
 /// a flight is only ever entered along its axis, never from a side, at any height.
 #[test]

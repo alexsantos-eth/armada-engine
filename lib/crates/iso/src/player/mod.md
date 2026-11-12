@@ -139,6 +139,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`get_stairs_hop`](physics.rs) — Bloques que el cuerpo del jugador está por encima del peldaño que tiene bajo los pies en `progress` (0–1) de una grada: un saltito hacia cada escalón, nada al aterrizar en uno.
   - Firma: `pub fn get_stairs_hop(progress: f64) -> f64 {`
 
+- [`get_stairs_align`](physics.rs) — Fracción de la corrección lateral hacia la línea central de la grada que el tramo ha andado en `progress` (0–1): el primer tramo de la grada, con la misma easing que un peldaño. A partir de ahí, el resto del vuelo va por el centro.
+  - Firma: `pub fn get_stairs_align(progress: f64) -> f64 {`
+
 - [`blocked_side`](physics.rs#L145) — Calcula o recupera «blocked side» según los parámetros de la firma.
   - Firma: `pub fn blocked_side(&self, _x: f64, _y: f64) -> f64 {`
 
@@ -305,6 +308,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`PLAYER_STAIRS_HOP`](physics.rs) — Bloques que el cuerpo del jugador se despega del peldaño al dar el saltito hacia el siguiente.
   - Declaración: `pub const PLAYER_STAIRS_HOP: f64 = 0.08;`
+
+- [`PLAYER_STAIRS_ALIGN_SHARE`](physics.rs) — Parte del vuelo sobre la que se anda la corrección lateral hacia la línea central de la grada, desde el arranque; el resto del vuelo va por el centro.
+  - Declaración: `pub const PLAYER_STAIRS_ALIGN_SHARE: f64 = 0.4;`
 
 - [`PLAYER_FLY_SPEED`](physics.rs#L65) — Bloques por tick que suben como máximo los pies de un jugador volando.
   - Declaración: `pub const PLAYER_FLY_SPEED: f64 = 0.15;`

@@ -79,6 +79,9 @@ pub const PLAYER_STAIRS_STEPS: i32 = 4;
 pub const PLAYER_STAIRS_LIFT_SHARE: f64 = 0.6;
 /// Blocks the player's body pops over the tread as it hops onto the next one.
 pub const PLAYER_STAIRS_HOP: f64 = 0.08;
+/// Share of a flight over which the sideways slide onto the stairs centreline is walked, from
+/// the point the flight starts; the rest of the flight is taken on the middle of its steps.
+pub const PLAYER_STAIRS_ALIGN_SHARE: f64 = 0.4;
 /// Blocks per tick a flying player's feet rise at most.
 pub const PLAYER_FLY_SPEED: f64 = 0.15;
 /// Blocks per tick its jetpack speeds a flying player's feet up by each tick.
@@ -158,6 +161,13 @@ pub fn get_stairs_hop(progress: f64) -> f64 {
     let tread = walked.floor().min(steps - 1.0);
     let onto = ((walked - tread) / PLAYER_STAIRS_LIFT_SHARE).min(1.0);
     PLAYER_STAIRS_HOP * (std::f64::consts::PI * onto).sin()
+}
+
+/// Share of the sideways slide onto the stairs centreline a flight has walked at `progress`
+/// (0–1): the first stretch of the flight, eased like a step, so the rest of it is taken on
+/// the middle of its steps instead of in a shallow sideways slide.
+pub fn get_stairs_align(progress: f64) -> f64 {
+    harmonic(progress / PLAYER_STAIRS_ALIGN_SHARE)
 }
 
 /// Share of its rise and share of its advance a climb has taken at `progress` (0–1). Over a
@@ -1502,10 +1512,18 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
             climb.tick += 1;
             let progress = climb.tick as f64 / climb.ticks as f64;
             let (rise, advance) = get_climb_shares(climb.stairs, progress);
-            let point = GridPoint {
+            let mut point = GridPoint {
                 x: climb.from.x + (climb.to.x - climb.from.x) * advance,
                 y: climb.from.y + (climb.to.y - climb.from.y) * advance,
             };
+            if climb.stairs {
+                let axis = climb.direction;
+                let lateral =
+                    axis.x * (climb.from.y - climb.to.y) - axis.y * (climb.from.x - climb.to.x);
+                let slide = lateral * ((1.0 - get_stairs_align(progress)) - (1.0 - advance));
+                point.x += -axis.y * slide;
+                point.y += axis.x * slide;
+            }
             let feet = climb.feet + climb.rise * rise;
             player.x = point.x;
             player.y = point.y;
