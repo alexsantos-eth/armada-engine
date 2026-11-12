@@ -7,6 +7,7 @@
 
 mod app;
 mod assets;
+mod effects;
 mod game;
 mod gui;
 mod lighting;

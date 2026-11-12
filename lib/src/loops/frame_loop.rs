@@ -125,7 +125,10 @@ pub(crate) async fn run(mut game: Game) {
             if let Some(clicked) = draw_hud(
                 &mut game.ui,
                 &game.perf,
-                game.dust.live(),
+                crate::gui::PerfCounts {
+                    dust: game.dust.live(),
+                    air: game.particles.live(),
+                },
                 frame_ms,
                 touch_visible,
                 phase,

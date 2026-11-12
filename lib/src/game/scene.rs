@@ -17,6 +17,7 @@ use iso::scene_order::{DrawKey, PlayerSheet};
 use macroquad::prelude::*;
 
 use crate::assets::sprites::{SpriteAtlas, SpriteDraw, scene_key};
+use crate::effects::ambient::SpawnEnv;
 use crate::game::config::{
     BAND_BLEED, ENTITY_LAYER, PLAYER_BEHIND_LAYER, PLAYER_CLIMB_SHEET, PLAYER_FRONT_LAYER,
     PLAYER_IDLE_SHEET, PLAYER_JUMP_SHEET, PLAYER_SCALE, PLAYER_SWIM_SHEET, PLAYER_WALK_SHEET,
@@ -228,6 +229,7 @@ impl Game {
         let chunks_drawn = self.collect_world(view);
         let moved = self.collect_player(view);
         self.collect_dust(view, moved);
+        self.collect_particles(view);
 
         SceneStats {
             chunks_drawn,
@@ -604,6 +606,34 @@ impl Game {
             &elevation_at,
         );
         self.dust.collect(projection, &mut self.draws);
+    }
+
+    /// The motes and fireflies adrift over the world, spawned and drawn like the dust:
+    /// the phase and the ground decide what is airborne, the wind decides where it goes.
+    fn collect_particles(&mut self, view: &FrameView) {
+        let phase = self
+            .phase_override
+            .unwrap_or_else(|| iso::lighting::phase_at(self.clock.tick));
+        let biomes = self.manager.biomes();
+        let height_at =
+            |x: i32, y: i32| self.manager.column_at(x, y).map(|c| f64::from(c.elevation));
+        let surface_at = |x: i32, y: i32| self.manager.column_at(x, y).map(|c| c.surface);
+        let wind_at = |x: i32, y: i32| {
+            biomes.map_or(iso::wind::DEFAULT_WIND_STRENGTH, |world| {
+                world.biome(x, y).wind_strength
+            })
+        };
+        let env = SpawnEnv {
+            center_x: self.player.x,
+            center_y: self.player.y,
+            phase,
+            time_ms: self.wind_ms,
+            height_at: &height_at,
+            surface_at: &surface_at,
+            wind_at: &wind_at,
+        };
+        self.particles.update(view.frame_ms, &env);
+        self.particles.collect(view.projection, &mut self.draws);
     }
 }
 

@@ -20,6 +20,7 @@ use iso::world::{ChunkArchive, ChunkManager};
 use macroquad::prelude::*;
 
 use crate::assets::sprites::{SpriteAtlas, SpriteDraw};
+use crate::effects::ambient::AmbientParticles;
 use crate::game::config::{
     CHUNK_RADII, MAX_FRAME_MS, PLAYER_SPRITE, PREVIEW_CENTRE, SceneMetrics, WORLD_SEED,
 };
@@ -79,6 +80,8 @@ pub(crate) struct Game {
     pub(crate) body: BodyMotion,
     pub(crate) drawn_at: (f64, f64),
     pub(crate) dust: DustPuffs,
+    /// The motes and fireflies drifting over the world; view state like the dust.
+    pub(crate) particles: AmbientParticles,
     pub(crate) draws: Vec<SpriteDraw>,
     pub(crate) perf: PerfLog,
     pub(crate) audio: MacroquadAudio,
@@ -313,6 +316,7 @@ impl Game {
             body: BodyMotion::default(),
             drawn_at: (spawned.x, spawned.y),
             dust: DustPuffs::new(),
+            particles: AmbientParticles::new(WORLD_SEED),
             draws: Vec::new(),
             perf: PerfLog::default(),
             audio: MacroquadAudio::default(),

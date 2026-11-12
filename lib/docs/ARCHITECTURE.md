@@ -36,7 +36,7 @@ Dominio portable, crate `iso`:
 
 Cliente Macroquad, crate `iso-core`:
 
-- [assets](../src/assets/mod.md), [game](../src/game/mod.md), [gui](../src/gui/mod.md), [lighting](../src/lighting/mod.md), [loops](../src/loops/mod.md), [perf](../src/perf/mod.md), [player](../src/player/mod.md), [rendering](../src/rendering/mod.md), [save](../src/save/mod.md), [services](../src/services/mod.md), [terrain](../src/terrain/mod.md), [touch](../src/touch/mod.md), [water](../src/water/mod.md)
+- [assets](../src/assets/mod.md), [effects](../src/effects/mod.md), [game](../src/game/mod.md), [gui](../src/gui/mod.md), [lighting](../src/lighting/mod.md), [loops](../src/loops/mod.md), [perf](../src/perf/mod.md), [player](../src/player/mod.md), [rendering](../src/rendering/mod.md), [save](../src/save/mod.md), [services](../src/services/mod.md), [terrain](../src/terrain/mod.md), [touch](../src/touch/mod.md), [water](../src/water/mod.md)
 
 ## Invariantes compartidas
 
@@ -108,6 +108,10 @@ El dominio `iso::biomes` reparte el mundo con un único campo ancho (`BIOME_FIEL
 ### Viento: el mece de los árboles
 
 `iso::wind` da el desplazamiento horizontal de la punta de un sprite con `sway` como función pura del tiempo real: una onda principal del `sway.period` de su blueprint más [`SWAY_GUST_WEIGHT`](../crates/iso/src/wind/mod.md) de una segunda onda `SWAY_GUST_RATE` veces más rápida, desplazada por `sway_phase(instance_id)` (un hash de la instancia: dos vecinos no se mecen al unísono y el árbol se mece igual siempre que se muestra), nunca más allá de `amplitude × strength`, donde `strength` es el `windStrength` del bioma que cubre la columna (sin bioma, `DEFAULT_WIND_STRENGTH`). Es estado de vista, no en ticks y nunca guardado. En el cliente, un árbol de una casilla con `sway` se dibuja en dos piezas desde el mismo recorte de su textura: el tronco (debajo del corte `cut`, inmóvil) y la copa (encima) sesgada lateralmente alrededor del corte —misma profundidad y dibujo adyacente, el mismo `SpriteBand` y la misma retícula de sombras que los cortes de huella, sin filtros ni mallas nuevas—; multi-casilla o sin `sway`, se dibujan enteros como antes. Los árboles fuera de pantalla se saltan antes de partirse; en pantalla, la amplitud efectiva es de pocos píxeles.
+
+### Partículas ambientales
+
+El cliente siembra motas de polen y luciérnagas al aire (`src/effects`): son estado de vista como el polvo y las nubes — van en tiempo real, nunca en ticks, nunca se guardan y el mundo no sabe que existen. Lo que hay en el aire lo deciden la fase efectiva (`iso::lighting::phase_at` con el override del reloj) y el suelo de la columna; hacia dónde va, el viento, con una racha lenta modulada por el tiempo real y la fuerza del bioma. El polen aparece de día, amanecer y atardecer a 12/s sobre cualquier suelo que no sea agua, a la deriva con el viento y un bamboleo lateral; las luciérnagas solo de noche (6/s, 3/s al caer el sol) sobre hierba o tierra desnuda, parpadeando en `[0.1, 1]`. El nacimiento muestrea el disco de 15 columnas alrededor del jugador, la bolsa tiene un tope global (`MAX_PARTICLES`, 200) y cada partícula vive de 5 a 9 segundos con desvanecimiento en ambos extremos. Se dibujan como vóxeles chunky encolados con la clave de entidad (`ENTITY_LAYER`), así que heredan profundidad, orden, el grade de fase y el tilt-shift sin ruta de render propia. La semilla del cliente la fija el mundo (`WORLD_SEED`); la dispersión sale de un xorshift propio y no toca el RNG del dominio.
 
 ### Orden de dibujo y sprites
 

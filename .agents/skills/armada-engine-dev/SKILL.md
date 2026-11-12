@@ -39,7 +39,7 @@ lib/
          lighting,scene_order,water,wind,services}/
     tests/        # solo contratos que cruzan módulos y el fixture (contracts.json)
   src/           # `iso-core`: el cliente. `main.rs` es solo entrada: declara los dominios y entra por `app::run`.
-    app, assets, game, gui, lighting, loops, perf, player, rendering, save, services, terrain, touch, water/
+    app, assets, effects, game, gui, lighting, loops, perf, player, rendering, save, services, terrain, touch, water/
   content/       # entities.json, biomes.json, wfc.json, assets.manifest.json, atlas.png, player-16_*.png
   assets-src/    # SVG fuente del atlas (commiteado; no se despliega)
   packaging/     # icono del bundle macOS: icon-player.png + game.icns (commiteado; no se despliega)

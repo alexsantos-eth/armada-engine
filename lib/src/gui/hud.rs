@@ -149,6 +149,15 @@ pub(crate) fn push_hud_update(
     });
 }
 
+/// What the player has kicked up and what the air is carrying, for the readout line.
+#[derive(Clone, Copy)]
+pub(crate) struct PerfCounts {
+    /// Live puffs of dust around the player's feet.
+    pub dust: usize,
+    /// Ambient particles adrift over the world.
+    pub air: usize,
+}
+
 /// The overlay: title, help, world readout, performance readout and messages.
 /// `touch_visible` swaps the help line to the touch controls when they are on screen.
 /// `phase` is `None` when no shadow scene exists (so the phase buttons stay out); returns the
@@ -156,7 +165,7 @@ pub(crate) fn push_hud_update(
 pub(crate) fn draw_hud(
     ui: &mut MacroquadUi,
     perf: &PerfLog,
-    dust_live: usize,
+    counts: PerfCounts,
     frame_ms: f64,
     touch_visible: bool,
     phase: Option<BakePhase>,
@@ -218,9 +227,11 @@ pub(crate) fn draw_hud(
     );
     draw_text(
         format!(
-            "cpu p95 {cpu_p95:.1} ms · {} caidos · {} por cpu · polvo {dust_live}",
+            "cpu p95 {cpu_p95:.1} ms · {} caidos · {} por cpu · polvo {} · aire {}",
             perf.dropped(),
             perf.cpu_dropped(),
+            counts.dust,
+            counts.air,
         ),
         width - 218.0,
         82.0,
