@@ -1,7 +1,7 @@
 //! Build tool: write the geometry of an existing atlas back into its manifest.
 
 use image::RgbaImage;
-use iso::assets::{AssetManifest, SpriteFrame, asset_ink, data_tiles};
+use iso::assets::{AssetManifest, SpriteFrame, asset_ink, data_tiles, raster_ink, sidecar_tiles};
 
 /// Bounding box of everything that is not fully transparent inside `frame`.
 fn opaque_bounds(atlas: &RgbaImage, frame: SpriteFrame) -> Option<SpriteFrame> {
@@ -47,10 +47,37 @@ fn main() {
         if let Some(frame) = entry.frame.and_then(|frame| opaque_bounds(&atlas, frame)) {
             entry.frame = Some(frame);
         }
-        let svg = std::fs::read_to_string(format!("{svg_root}{}", entry.source));
-        let svg = svg.ok();
-        entry.data_tiles = svg.as_deref().and_then(data_tiles).map(str::to_owned);
-        match svg.as_deref().and_then(asset_ink) {
+        let measurement = if entry.source.ends_with(".png") {
+            // A raster asset is measured from its own source, which still carries the whole
+            // template canvas that the atlas frame was trimmed out of.
+            let tiles = std::fs::read_to_string(format!(
+                "{svg_root}{}.json",
+                entry.source.trim_end_matches(".png")
+            ))
+            .ok()
+            .and_then(|json| sidecar_tiles(&json).map(str::to_owned));
+            entry.data_tiles = tiles.clone();
+            image::open(format!("{svg_root}{}", entry.source))
+                .ok()
+                .map(|source| source.to_rgba8())
+                .and_then(|source| {
+                    let canvas = (source.width(), source.height());
+                    let whole = SpriteFrame {
+                        x: 0,
+                        y: 0,
+                        width: canvas.0,
+                        height: canvas.1,
+                    };
+                    let box_ = opaque_bounds(&source, whole)?;
+                    let bounds = (box_.x, box_.y, box_.x + box_.width, box_.y + box_.height);
+                    raster_ink(canvas, bounds, tiles.as_deref())
+                })
+        } else {
+            let svg = std::fs::read_to_string(format!("{svg_root}{}", entry.source)).ok();
+            entry.data_tiles = svg.as_deref().and_then(data_tiles).map(str::to_owned);
+            svg.as_deref().and_then(asset_ink)
+        };
+        match measurement {
             Some(ink) => {
                 entry.ink = Some(ink.rounded());
                 measured += 1;
