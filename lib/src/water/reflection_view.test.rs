@@ -103,6 +103,7 @@ fn kind_name(kind: &DrawKind) -> &'static str {
     match kind {
         DrawKind::Sprite { .. } => "a sprite",
         DrawKind::Shaded { .. } => "a shaded sprite",
+        DrawKind::Leaning { .. } => "a leant sprite",
         DrawKind::GroundShadow { .. } => "a ground shadow",
         DrawKind::Reflection { .. } => "a reflection",
         DrawKind::Voxel { .. } => "a voxel",

@@ -202,7 +202,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `fn collect_world(&mut self, view: &FrameView) -> usize {`
 - [`collect_player`](scene.rs#L445) — El sprite del jugador: clave de profundidad, pose, arte o figura quieta, el jetpack sobre el cuerpo cuando lo lleva puesto (su propia hoja y su propia tinta, un pelo por delante en profundidad; nadando no se dibuja), su reflejo y la sombra que le cae encima. Devuelve cuánto se movió.
   - Firma: `fn collect_player(&mut self, view: &FrameView) -> f64 {`
-- [`collect_dust`](scene.rs#L641) — El polvo levantado por el movimiento del jugador.
+- [`collect_dust`](scene.rs#L678) — El polvo levantado por el movimiento del jugador.
   - Firma: `fn collect_dust(&mut self, view: &FrameView, moved: f64) {`
 
 ### `state.rs`

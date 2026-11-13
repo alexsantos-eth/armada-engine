@@ -7,6 +7,8 @@ Debe tratar el crate `iso` como autoridad para movimiento y colisiones. Las deci
 No implementa física, no modifica reglas de entrada ni persiste estado jugable. Es una adaptación visual del dominio de jugador.
 
 
+El cuerpo del jugador se dibuja con dos inclinaciones de presentación, ambas resortes amortiguados sobre `BodyMotion`: en el suelo **se inclina hacia donde avanza** (deformación sobre la línea en la que pisa, los pies clavados), y en el aire con el jetpack **el cuerpo entero bascula** hacia donde vuela, girando sobre su centro (`ROLL_PIVOT`) con un muelle más lento y flotante. Las dos se alimentan de la velocidad y de la aceleración por tick, no de la tecla pulsada, así que arrancar, frenar y derrapar se notan en el cuerpo. Solo inclina la deriva **lateral** en pantalla: ir hacia la cámara o alejarse de ella no inclina nada. Al dejar de inclinarse, el sprite vuelve a dibujarse como un rectángulo recto (`SpriteDraw::whole`/`shaded`); inclinado o girado, pasa por `SpriteDraw::leaning`, que lo dibuja en su cuadrilátero. Ni la sombra del suelo ni el reflejo del agua siguen la inclinación.
+
 ## Catálogo de API pública
 
 Este catálogo documenta las funciones, métodos y constantes exportados por este dominio. Incluye la firma y un enlace a la implementación; los helpers privados se mantienen junto a su código porque no forman parte del contrato estable.
@@ -78,31 +80,57 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Tipos
 
-- [`BodyScale`](body_motion.rs#L22) — Escala visual del cuerpo alrededor de los pies.
+- [`BodyScale`](body_motion.rs#L147) — Escala visual del cuerpo alrededor de los pies.
   - Firma: `pub struct BodyScale { pub x: f64, pub y: f64 }`
-- [`BodyMoment`](body_motion.rs#L29) — Muestra de estado del jugador para una animación visual de un fotograma.
+- [`BodyMoment`](body_motion.rs#L154) — Muestra de estado del jugador para una animación visual de un fotograma.
   - Firma: `pub struct BodyMoment { ... }`
-- [`BodyMotion`](body_motion.rs#L43) — Memoria de los pulsos visuales de despegue y aterrizaje.
+- [`BodyMotion`](body_motion.rs#L174) — Memoria de los pulsos visuales de despegue y aterrizaje y de los dos resortes de inclinación.
   - Firma: `pub struct BodyMotion { ... }`
+- [`BodyPose`](body_motion.rs#L188) — Cómo se dibuja el cuerpo este fotograma: su escala sobre los pies, la inclinación sobre la línea en la que pisa (`tilt`) y el giro sobre el centro del cuerpo (`turned`).
+  - Firma: `pub struct BodyPose { pub scale: BodyScale, pub tilt: f64, pub turned: f64 }`
+- [`BodyLean`](body_motion.rs#L64) — Dónde está una inclinación y a qué velocidad gira: el estado de un resorte.
+  - Firma: `pub struct BodyLean { pub angle: f64, pub speed: f64 }`
+- [`LeanSpring`](body_motion.rs#L44) — Cómo sigue una inclinación a su objetivo: frecuencia angular y amortiguación.
+  - Firma: `pub struct LeanSpring { pub stiffness: f64, pub damping: f64 }`
 
 #### Funciones y métodos
 
-- [`advance`](body_motion.rs#L65) — Avanza pulsos visuales y devuelve la escala del cuerpo para el fotograma.
-  - Firma: `pub fn advance(&mut self, moment: BodyMoment) -> BodyScale {`
+- [`advance`](body_motion.rs#L212) — Avanza los pulsos visuales y las dos inclinaciones, y devuelve cómo se dibuja el cuerpo este fotograma. Volando, el cuerpo entero gira hacia donde va en vez de inclinarse, y la inclinación de pie se suelta; fuera del aire vuelve a enderezarse, cada una con su resorte.
+  - Firma: `pub fn advance(&mut self, moment: BodyMoment) -> BodyPose {`
+- [`screen_drift`](body_motion.rs#L71) — Cuánto deriva una velocidad por la pantalla, en columnas por tick: hacia la derecha positivo, hacia o desde la cámara nada, así que solo un movimiento lateral inclina.
+  - Firma: `pub fn screen_drift(velocity: GridPoint) -> f64 {`
+- [`lean_target`](body_motion.rs#L78) — El ángulo hacia el que se inclina en el suelo: adelante con su velocidad, más al acelerar y hacia atrás al frenar, nunca más allá de `MAX_LEAN`; derrapando clava los talones y se inclina contra el deslizamiento.
+  - Firma: `pub fn lean_target(velocity: GridPoint, acceleration: GridPoint, skidding: bool) -> f64 {`
+- [`roll_target`](body_motion.rs#L90) — El ángulo hacia el que gira el cuerpo entero volando: de cabeza hacia donde va, con los pies levantándose detrás, nunca más allá de `MAX_FLY_ROLL`.
+  - Firma: `pub fn roll_target(velocity: GridPoint, acceleration: GridPoint) -> f64 {`
+- [`step_body_lean`](body_motion.rs#L99) — Mueve una inclinación hacia su objetivo durante `ms` por el resorte amortiguado, en pasos de 16 ms como mucho; sobre un objetivo de `0` se para exactamente en `0`.
+  - Firma: `pub fn step_body_lean(lean: &mut BodyLean, target: f64, ms: f64, spring: LeanSpring) {`
+- [`body_quad`](body_motion.rs#L119) — Las cuatro esquinas de pantalla en las que se dibuja el cuerpo: el rectángulo inclinado `tilt` sobre la línea de los pies y girado después `turned` sobre el centro del cuerpo, `ROLL_PIVOT` bloques por encima.
+  - Firma: `pub fn body_quad(layout: SpriteLayout, feet: (f64, f64), tilt: f64, turned: f64, box_height: f64) -> [(f64, f64); 4] {`
 
 #### Constantes
 
-- [`LANDING_SQUASH_MS`](body_motion.rs#L8) — Milisegundos de compresión tras aterrizar.
+- [`LEAN_PER_SPEED`](body_motion.rs#L23) / [`LEAN_PER_ACCEL`](body_motion.rs#L26) / [`MAX_LEAN`](body_motion.rs#L30) — Cuánto se inclina el cuerpo en el suelo por columna por tick de deriva lateral (0,35: un paseo unos 3°, una carrera unos 5°), cuánto por aceleración (1,2: se inclina al arrancar y hacia atrás al frenar) y el tope (0,16 rad, unos 9°).
+  - Declaración: `pub const LEAN_PER_SPEED: f64 = 0.35;`
+- [`SKID_LEAN_PER_SPEED`](body_motion.rs#L28) — Derrapando se inclina contra el deslizamiento en vez de hacia él, con los talones clavados.
+  - Declaración: `pub const SKID_LEAN_PER_SPEED: f64 = 0.8;`
+- [`FLY_ROLL_PER_SPEED`](body_motion.rs#L33) / [`FLY_ROLL_PER_ACCEL`](body_motion.rs#L35) / [`MAX_FLY_ROLL`](body_motion.rs#L37) — Lo mismo volando, pero es un giro del cuerpo entero y mucho mayor (2,3 y 4, hasta 0,6 rad, unos 34°).
+  - Declaración: `pub const FLY_ROLL_PER_SPEED: f64 = 2.3;`
+- [`ROLL_PIVOT`](body_motion.rs#L39) — Bloques por encima de los pies a los que está el centro del cuerpo, sobre el que gira volando.
+  - Declaración: `pub const ROLL_PIVOT: f64 = 0.28;`
+- [`LEAN_SPRING`](body_motion.rs#L50) / [`FLY_ROLL_SPRING`](body_motion.rs#L57) — Los dos resortes amortiguados: el de pie es rápido y rebota un poco al parar (18 / 0,45); el del vuelo es lento y flotante, el cuerpo colgando del jetpack (8 / 0,5).
+  - Declaración: `pub const LEAN_SPRING: LeanSpring = LeanSpring { stiffness: 18.0, damping: 0.45 };`
+- [`LANDING_SQUASH_MS`](body_motion.rs#L10) — Milisegundos de compresión tras aterrizar.
   - Declaración: `pub const LANDING_SQUASH_MS: f64 = 180.0;`
-- [`TAKEOFF_STRETCH_MS`](body_motion.rs#L10) — Milisegundos de estiramiento tras despegar.
+- [`TAKEOFF_STRETCH_MS`](body_motion.rs#L12) — Milisegundos de estiramiento tras despegar.
   - Declaración: `pub const TAKEOFF_STRETCH_MS: f64 = 120.0;`
-- [`AIR_STRETCH_PER_SPEED`](body_motion.rs#L12) — Estiramiento del cuerpo en el aire por bloque por tick de velocidad vertical.
+- [`AIR_STRETCH_PER_SPEED`](body_motion.rs#L14) — Estiramiento del cuerpo en el aire por bloque por tick de velocidad vertical.
   - Declaración: `pub const AIR_STRETCH_PER_SPEED: f64 = 0.25;`
-- [`MAX_AIR_STRETCH`](body_motion.rs#L14) — El mayor estiramiento que el cuerpo puede tomar en el aire.
+- [`MAX_AIR_STRETCH`](body_motion.rs#L16) — El mayor estiramiento que el cuerpo puede tomar en el aire.
   - Declaración: `pub const MAX_AIR_STRETCH: f64 = 0.12;`
-- [`CLIMB_STRETCH`](body_motion.rs#L16) — Estiramiento del cuerpo en la mitad de una escalada.
+- [`CLIMB_STRETCH`](body_motion.rs#L18) — Estiramiento del cuerpo en la mitad de una escalada.
   - Declaración: `pub const CLIMB_STRETCH: f64 = 0.05;`
-- [`BOB_PER_SPEED`](body_motion.rs#L18) — Balanceo de pisada por columna por tick de velocidad en suelo.
+- [`BOB_PER_SPEED`](body_motion.rs#L20) — Balanceo de pisada por columna por tick de velocidad en suelo.
   - Declaración: `pub const BOB_PER_SPEED: f64 = 0.2;`
 
 ### `flip.rs`

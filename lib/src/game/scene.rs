@@ -27,7 +27,7 @@ use crate::game::frame::FrameView;
 use crate::game::ground::water_cell;
 use crate::game::state::Game;
 use crate::lighting::shadow_view;
-use crate::player::body_motion::{BodyMoment, BodyScale};
+use crate::player::body_motion::{BodyMoment, BodyScale, body_quad};
 use crate::player::dust_view::DustGround;
 use crate::player::flip::FlipMoment;
 use crate::player::player_shadow::player_shadow;
@@ -514,9 +514,17 @@ impl Game {
             },
             self.sheets,
         );
+        let velocity = self.player.velocity;
+        let previous = self.player.previous.velocity;
         let body = self.body.advance(BodyMoment {
             motion: self.player.motion,
-            speed: self.player.velocity.x.hypot(self.player.velocity.y),
+            speed: velocity.x.hypot(velocity.y),
+            velocity,
+            acceleration: GridPoint {
+                x: velocity.x - previous.x,
+                y: velocity.y - previous.y,
+            },
+            skidding: iso::player::physics::is_player_skidding(&self.player),
             walked: self.animation.walked(),
             vertical_speed: self.player.vertical_speed,
             climbing,
@@ -547,8 +555,16 @@ impl Game {
         };
         match drawn {
             Some((texture, frame, ink)) => {
-                let layout =
-                    scale_player_layout(ink_layout(feet, ink, projection.tile_width), feet, body);
+                let layout = scale_player_layout(
+                    ink_layout(feet, ink, projection.tile_width),
+                    feet,
+                    body.scale,
+                );
+                let box_height = projection.elevation_step.unwrap_or(projection.tile_height);
+                // Upright, the body is the rectangle it has always been; leant or turned, it is
+                // drawn into a quad of its own, which costs a mesh instead of a textured rect.
+                let upright = body.tilt == 0.0 && body.turned == 0.0;
+                let quad = body_quad(layout, (feet.x, feet.y), body.tilt, body.turned, box_height);
                 let shade = self.shadows.as_ref().and_then(|shadows| {
                     let receiver = shadow_view::receiver_of(
                         layout,
@@ -579,17 +595,24 @@ impl Game {
                     |x, y| water_cell(&self.manager, x, y),
                     &mut self.draws,
                 );
-                match &shade {
-                    Some(shade) => self.draws.push(SpriteDraw::shaded(
+                match (&shade, upright) {
+                    (Some(shade), true) => self.draws.push(SpriteDraw::shaded(
                         key,
                         texture,
                         frame,
                         layout,
                         shade.clone(),
                     )),
-                    None => self
+                    (None, true) => self
                         .draws
                         .push(SpriteDraw::whole(key, texture, frame, layout)),
+                    _ => self.draws.push(SpriteDraw::leaning(
+                        key,
+                        texture,
+                        frame,
+                        quad,
+                        shade.clone(),
+                    )),
                 }
                 // The jetpack on its back, from its own sheet: one column, laid out from its own
                 // ink so it lands right whatever sheet the body is drawn from, and drawn just
@@ -608,25 +631,39 @@ impl Game {
                     let pack_layout = scale_player_layout(
                         ink_layout(feet, pack_ink, projection.tile_width),
                         feet,
-                        body,
+                        body.scale,
+                    );
+                    let pack_quad = body_quad(
+                        pack_layout,
+                        (feet.x, feet.y),
+                        body.tilt,
+                        body.turned,
+                        box_height,
                     );
                     let pack_key = DrawKey {
                         depth: key.depth + PLAYER_JETPACK_DEPTH,
                         layer: key.layer,
                     };
-                    match &shade {
-                        Some(shade) => self.draws.push(SpriteDraw::shaded(
+                    match (&shade, upright) {
+                        (Some(shade), true) => self.draws.push(SpriteDraw::shaded(
                             pack_key,
                             pack_texture,
                             pack_frame,
                             pack_layout,
                             shade.clone(),
                         )),
-                        None => self.draws.push(SpriteDraw::whole(
+                        (None, true) => self.draws.push(SpriteDraw::whole(
                             pack_key,
                             pack_texture,
                             pack_frame,
                             pack_layout,
+                        )),
+                        _ => self.draws.push(SpriteDraw::leaning(
+                            pack_key,
+                            pack_texture,
+                            pack_frame,
+                            pack_quad,
+                            shade.clone(),
                         )),
                     }
                 }

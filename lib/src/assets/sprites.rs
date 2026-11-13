@@ -233,6 +233,65 @@ impl SpriteAtlas {
     }
 
     /// Draws one frame as a lattice of quads, each corner darkened by the shadows falling on it.
+    /// Draws one frame of `texture` into the quad `corners` (clockwise from its top left), as
+    /// one mesh: the artwork is carried along with the quad, so a leant or turned body keeps
+    /// its own shape. `shade`, when there is one, darkens it corner by corner as
+    /// [`Self::draw_shaded`] does; without one the artwork is drawn as it is.
+    pub fn draw_quad(
+        &self,
+        texture: usize,
+        frame: SpriteFrame,
+        corners: &[(f64, f64); 4],
+        shade: Option<&ShadeLattice>,
+    ) {
+        let source = self.source(frame);
+        let texture = self.texture(texture);
+        let (width, height) = (texture.width(), texture.height());
+        let (columns, rows) = shade.map_or((1, 1), |shade| (shade.columns, shade.rows));
+        let mut vertices = Vec::with_capacity(((columns + 1) * (rows + 1)) as usize);
+        for row in 0..=rows {
+            let down = f64::from(row) / f64::from(rows);
+            for column in 0..=columns {
+                let along = f64::from(column) / f64::from(columns);
+                let top = (
+                    corners[0].0 + (corners[1].0 - corners[0].0) * along,
+                    corners[0].1 + (corners[1].1 - corners[0].1) * along,
+                );
+                let bottom = (
+                    corners[3].0 + (corners[2].0 - corners[3].0) * along,
+                    corners[3].1 + (corners[2].1 - corners[3].1) * along,
+                );
+                let light = shade.map_or(1.0, |shade| shade.light_at(column, row));
+                vertices.push(vertex(
+                    (
+                        (top.0 + (bottom.0 - top.0) * down) as f32,
+                        (top.1 + (bottom.1 - top.1) * down) as f32,
+                    ),
+                    (
+                        (source.x + along as f32 * source.w) / width,
+                        (source.y + down as f32 * source.h) / height,
+                    ),
+                    Color::new(light, light, light, 1.0),
+                    (0.0, 0.0),
+                    crate::rendering::scene_material::SPRITE,
+                ));
+            }
+        }
+        let mut indices = Vec::with_capacity((columns * rows * 6) as usize);
+        for row in 0..rows {
+            for column in 0..columns {
+                let corner = (row * (columns + 1) + column) as u16;
+                let next = corner + columns as u16 + 1;
+                indices.extend_from_slice(&[corner, corner + 1, next + 1, corner, next + 1, next]);
+            }
+        }
+        draw_mesh(&Mesh {
+            vertices,
+            indices,
+            texture: Some(texture.clone()),
+        });
+    }
+
     pub fn draw_shaded(
         &self,
         texture: usize,
@@ -567,6 +626,15 @@ pub enum DrawKind {
         /// The piece of the drawing this draw shows, as in [`DrawKind::Sprite`].
         band: Option<SpriteBand>,
     },
+    /// A sprite drawn into a quad of its own instead of an upright rectangle: the player's
+    /// body, leant into where it walks or turned over while it flies.
+    Leaning {
+        texture: usize,
+        frame: SpriteFrame,
+        corners: [(f64, f64); 4],
+        /// The shadows falling on it, if any fall.
+        shade: Option<ShadeLattice>,
+    },
     /// The baked shadow on a column's top face: the flat quad of its own cell, shaded from the
     GroundShadow {
         /// The quad's four corners on screen, from the one towards the camera, clockwise.
@@ -691,6 +759,25 @@ impl SpriteDraw {
     }
 
     /// One band of a sprite that spans several cells, darkened by the shadows falling on it.
+    /// A sprite drawn into the quad `corners` (clockwise from its top left), shaded or not.
+    pub fn leaning(
+        key: DrawKey,
+        texture: usize,
+        frame: SpriteFrame,
+        corners: [(f64, f64); 4],
+        shade: Option<ShadeLattice>,
+    ) -> Self {
+        Self {
+            key,
+            kind: DrawKind::Leaning {
+                texture,
+                frame,
+                corners,
+                shade,
+            },
+        }
+    }
+
     pub fn shaded_band(
         key: DrawKey,
         texture: usize,
@@ -852,6 +939,14 @@ fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
                 band: None,
             } => {
                 atlas.draw_shaded(*texture, *frame, *layout, shade);
+            }
+            DrawKind::Leaning {
+                texture,
+                frame,
+                corners,
+                shade,
+            } => {
+                atlas.draw_quad(*texture, *frame, corners, shade.as_ref());
             }
             DrawKind::GroundShadow {
                 corners,
