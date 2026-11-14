@@ -69,7 +69,7 @@ fn entity_catalog_blueprint_count_matches_the_catalog() {
         .get("entities")
         .and_then(|v| v.as_array())
         .expect("entities array");
-    assert_eq!(entities.len(), 30, "the catalog carries 30 blueprints");
+    assert_eq!(entities.len(), 32, "the catalog carries 32 blueprints");
 }
 
 #[test]

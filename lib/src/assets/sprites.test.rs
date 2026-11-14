@@ -55,3 +55,24 @@ fn a_half_scaled_lattice_halves_its_darkness() {
 
     assert!(faded.light.iter().all(|&light| (light - 0.75).abs() < 1e-6));
 }
+
+#[test]
+fn artwork_key_drops_the_file_the_artwork_was_drawn_in() {
+    // A repainted asset is a PNG beside the drawing it overrides, while `entities.json` goes
+    // on naming the drawing. Both have to land on the same key or the entity draws nothing.
+    assert_eq!(
+        artwork_key("/assets/tree/block.png"),
+        artwork_key("/assets/tree/block.svg")
+    );
+    assert_eq!(artwork_key("/assets/tree/block.svg"), "/assets/tree/block");
+    // Names with their own dots keep everything but the last extension.
+    assert_eq!(
+        artwork_key("/assets/cloud/cloud-shadow.svg"),
+        "/assets/cloud/cloud-shadow"
+    );
+    assert_eq!(artwork_key("/assets/a/b.c.png"), "/assets/a/b.c");
+    // Nothing to drop: no extension at all, and a dotfile is a name, not an extension.
+    assert_eq!(artwork_key("/assets/tree/block"), "/assets/tree/block");
+    assert_eq!(artwork_key("/assets/.hidden"), "/assets/.hidden");
+    assert_eq!(artwork_key("block.svg"), "block");
+}

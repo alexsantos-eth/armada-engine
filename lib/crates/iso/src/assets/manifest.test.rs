@@ -96,7 +96,7 @@ fn deserializes_the_manifest_fixture() {
     let manifest: AssetManifest = serde_json::from_str(json).expect("manifest deserializes");
     assert_eq!(manifest.schema_version, MANIFEST_SCHEMA_VERSION);
     validate_manifest(&manifest).expect("the manifest validates");
-    assert_eq!(manifest.entries.len(), 88);
+    assert_eq!(manifest.entries.len(), 90);
     for entry in &manifest.entries {
         assert!(
             entry.primary_frame().is_some(),

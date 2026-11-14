@@ -3,7 +3,7 @@
 use image::RgbaImage;
 use iso::assets::{
     AssetEntry, AssetKind, AssetManifest, InkBox, MANIFEST_SCHEMA_VERSION, SheetLayout,
-    SpriteAnchor, SpriteFrame, asset_ink, data_tiles, parse_sheet,
+    SpriteAnchor, SpriteFrame, asset_ink, data_tiles, parse_sheet, raster_ink,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -61,11 +61,21 @@ fn pack_assets(
     svg_root: &str,
     entries: &mut Vec<AssetEntry>,
 ) -> (RgbaImage, SpriteFrame) {
-    let mut sprites: Vec<(String, RgbaImage)> = read_pngs(input_dir)
+    // An asset drawn as a raster has no geometry to measure, so its ink comes from where its
+    // opaque pixels sit on the template canvas — which is only knowable before the trim.
+    let mut sprites: Vec<(String, RgbaImage, Option<InkBox>)> = read_pngs(input_dir)
         .into_iter()
         .map(|(name, image)| {
-            let trimmed = trim(&image);
-            (name, trimmed)
+            let canvas = (image.width(), image.height());
+            let source = source_path(svg_root, &name);
+            let ink = if source.ends_with(".png") {
+                opaque_bounds(&image).and_then(|bounds| {
+                    raster_ink(canvas, bounds, raster_tiles(svg_root, &source).as_deref())
+                })
+            } else {
+                asset_ink(&read_svg(svg_root, &source))
+            };
+            (name, trim(&image), ink.map(InkBox::rounded))
         })
         .collect();
     sprites.sort_by(|a, b| b.1.height().cmp(&a.1.height()).then(a.0.cmp(&b.0)));
@@ -73,24 +83,28 @@ fn pack_assets(
     let places = shelve(
         sprites
             .iter()
-            .map(|(_, image)| (image.width(), image.height())),
+            .map(|(_, image, _)| (image.width(), image.height())),
     );
     let height = places
         .iter()
         .zip(&sprites)
-        .map(|(&(_, y), (_, image))| y + image.height() + PADDING)
+        .map(|(&(_, y), (_, image, _))| y + image.height() + PADDING)
         .max()
         .unwrap_or(1);
     let mut atlas = RgbaImage::new(ATLAS_WIDTH, height);
-    for ((name, image), (x, y)) in sprites.iter().zip(places) {
+    for ((name, image, ink), (x, y)) in sprites.iter().zip(places) {
         image::imageops::replace(&mut atlas, image, i64::from(x), i64::from(y));
-        let source = source_path(name);
-        let svg = read_svg(svg_root, &source);
+        let source = source_path(svg_root, name);
+        let tiles = if source.ends_with(".png") {
+            raster_tiles(svg_root, &source)
+        } else {
+            data_tiles(&read_svg(svg_root, &source)).map(str::to_owned)
+        };
         entries.push(AssetEntry {
             id: name.clone(),
             kind: AssetKind::Entity,
             source,
-            data_tiles: data_tiles(&svg).map(str::to_owned),
+            data_tiles: tiles,
             frame: Some(SpriteFrame {
                 x,
                 y,
@@ -102,7 +116,7 @@ fn pack_assets(
             texture_size: None,
             sheet: None,
             anchor: SpriteAnchor { x: 0.5, y: 1.0 },
-            ink: asset_ink(&svg).map(InkBox::rounded),
+            ink: *ink,
             color_variants: 1,
             sway: None,
         });
@@ -150,7 +164,7 @@ fn pack_sheets(
 
     for dir in dirs {
         let name = dir.file_name().unwrap().to_string_lossy().to_string();
-        let source = source_path(&name);
+        let source = source_path(svg_root, &name);
         let svg = read_svg(svg_root, &source);
         let Some(grid) = parse_sheet(&svg) else {
             eprintln!("warning: {source} is not a sprite sheet; its cells are skipped");
@@ -258,8 +272,9 @@ fn read_pngs(dir: &Path) -> Vec<(String, RgbaImage)> {
         .collect()
 }
 
-/// The image with its fully transparent border cut off, or the image itself if it is empty.
-fn trim(image: &RgbaImage) -> RgbaImage {
+/// The box of the image's opaque pixels, as `(min_x, min_y, max_x, max_y)` with the maxima one
+/// past the last opaque column and row, or `None` if nothing in it is opaque.
+fn opaque_bounds(image: &RgbaImage) -> Option<(u32, u32, u32, u32)> {
     let (mut min_x, mut min_y) = (image.width(), image.height());
     let (mut max_x, mut max_y) = (0u32, 0u32);
     for y in 0..image.height() {
@@ -272,10 +287,15 @@ fn trim(image: &RgbaImage) -> RgbaImage {
             }
         }
     }
-    if min_x > max_x || min_y > max_y {
+    (min_x <= max_x && min_y <= max_y).then(|| (min_x, min_y, max_x + 1, max_y + 1))
+}
+
+/// The image with its fully transparent border cut off, or the image itself if it is empty.
+fn trim(image: &RgbaImage) -> RgbaImage {
+    let Some((min_x, min_y, max_x, max_y)) = opaque_bounds(image) else {
         return image.clone();
-    }
-    image::imageops::crop_imm(image, min_x, min_y, max_x - min_x + 1, max_y - min_y + 1).to_image()
+    };
+    image::imageops::crop_imm(image, min_x, min_y, max_x - min_x, max_y - min_y).to_image()
 }
 
 /// Where each sprite goes in an atlas [`ATLAS_WIDTH`] wide: left to right along a shelf, then a
@@ -297,13 +317,36 @@ fn shelve(sizes: impl Iterator<Item = (u32, u32)>) -> Vec<(u32, u32)> {
 }
 
 /// The asset source path a rasterized file's name came from: only the first underscore
-fn source_path(name: &str) -> String {
+fn source_path(svg_root: &str, name: &str) -> String {
     let mut parts = name.splitn(2, '_');
     let directory = parts.next().unwrap_or(name);
-    match parts.next() {
-        Some(file) if !file.is_empty() => format!("/assets/{directory}/{file}.svg"),
-        _ => format!("/assets/{directory}.svg"),
+    let stem = match parts.next() {
+        Some(file) if !file.is_empty() => format!("/assets/{directory}/{file}"),
+        _ => format!("/assets/{directory}"),
+    };
+    // An asset is authored either as vector geometry or as a raster drawn on the same template.
+    // A raster beside an SVG overrides it, so an asset is repainted by adding the PNG and put
+    // back by deleting it, and the drawing that shaped it stays in the tree either way.
+    let png = format!("{stem}.png");
+    if Path::new(&format!("{svg_root}{png}")).exists() {
+        png
+    } else {
+        format!("{stem}.svg")
     }
+}
+
+/// The `data-tiles` of a raster asset: from the JSON file beside the image, or, for an asset
+/// repainted over a drawing, from the drawing it overrides.
+fn raster_tiles(svg_root: &str, source: &str) -> Option<String> {
+    let stem = source.strip_suffix(".png")?;
+    if let Some(tiles) = fs::read_to_string(format!("{svg_root}{stem}.json"))
+        .ok()
+        .and_then(|text| iso::assets::sidecar_tiles(&text).map(str::to_owned))
+    {
+        return Some(tiles);
+    }
+    let svg = fs::read_to_string(format!("{svg_root}{stem}.svg")).ok()?;
+    data_tiles(&svg).map(str::to_owned)
 }
 
 /// The SVG an asset was rasterized from, or an empty document if it cannot be read: a missing

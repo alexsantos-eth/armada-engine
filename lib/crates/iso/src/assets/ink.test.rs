@@ -1,4 +1,6 @@
-use super::{InkBox, SVG_TILE_WIDTH, asset_ink, elevation_step};
+use super::{
+    InkBox, SVG_TILE_WIDTH, asset_ink, elevation_step, raster_ink, sidecar_tiles, template_canvas,
+};
 
 /// One asset drawn in the template: a view box one tile wide, the invisible bounds diamonds the
 fn asset(figure: &str) -> String {
@@ -158,4 +160,72 @@ fn rounds_for_the_manifest() {
         box_.rounded(),
         "rounding again changes nothing"
     );
+}
+
+#[test]
+fn template_canvas_matches_the_generator_view_box() {
+    // `artifacts/iso_lib.py` writes these view boxes for the shipped assets.
+    assert_eq!(template_canvas(None), (0.0, -341.0, 1024.0, 853.0));
+    assert_eq!(
+        template_canvas(Some("1x1x2")),
+        (0.0, -682.0, 1024.0, 1194.0)
+    );
+    assert_eq!(
+        template_canvas(Some("2x1x2")),
+        (0.0, -682.0, 1536.0, 1450.0)
+    );
+    assert_eq!(
+        template_canvas(Some("1x2x3")),
+        (-512.0, -1023.0, 1536.0, 1791.0)
+    );
+    assert_eq!(
+        template_canvas(Some("2x1x3")),
+        (0.0, -1023.0, 1536.0, 1791.0)
+    );
+}
+
+#[test]
+fn raster_ink_measures_opaque_pixels_like_geometry() {
+    // The same artwork, as vector geometry and as a raster drawn on the template canvas:
+    // a box from (256, 128) to (768, 384) of a one-tile asset, whose canvas is 1024 x 853.
+    let svg = asset(
+        r##"<path fill="#8a8" stroke="none" d="M256.0,128.0 768.0,128.0 768.0,384.0 256.0,384.0 Z" />"##,
+    );
+    let from_svg = asset_ink(&svg).expect("measured");
+    // Rasterized at a quarter of the template's own size: 256 x 213 pixels.
+    let from_png = raster_ink((256, 213), (64, 117, 192, 181), None).expect("measured");
+    assert!((from_png.x - from_svg.x).abs() < 0.01, "{from_png:?}");
+    assert!(
+        (from_png.width - from_svg.width).abs() < 0.01,
+        "{from_png:?}"
+    );
+    assert!(
+        (from_png.height - from_svg.height).abs() < 0.01,
+        "{from_png:?}"
+    );
+}
+
+#[test]
+fn raster_ink_shifts_a_multi_cell_asset_back_to_its_anchor() {
+    // A two-cell asset filling its whole canvas: the ink starts half a tile left of the anchor
+    // and a quarter of a tile above it, the same shift `asset_ink` applies.
+    let ink = raster_ink((1536, 1450), (0, 0, 1536, 1450), Some("2x1x2")).expect("measured");
+    assert_eq!(ink.x, (0.0 - 512.0) / 1024.0 - 0.5);
+    assert_eq!(ink.y, (-682.0 - 256.0) / 1024.0 - 0.25);
+    assert_eq!(ink.width, 1536.0 / 1024.0);
+}
+
+#[test]
+fn raster_ink_rejects_an_empty_image() {
+    assert_eq!(raster_ink((0, 0), (0, 0, 1, 1), None), None);
+    assert_eq!(raster_ink((64, 64), (10, 10, 10, 20), None), None);
+}
+
+#[test]
+fn sidecar_tiles_reads_the_json_beside_a_raster_asset() {
+    assert_eq!(sidecar_tiles(r#"{"tiles": "2x1x2"}"#), Some("2x1x2"));
+    assert_eq!(sidecar_tiles(r#"{"note":"x","tiles":"1x3"}"#), Some("1x3"));
+    assert_eq!(sidecar_tiles(r#"{"tiles": ""}"#), None);
+    assert_eq!(sidecar_tiles("{}"), None);
+    assert_eq!(sidecar_tiles(""), None);
 }

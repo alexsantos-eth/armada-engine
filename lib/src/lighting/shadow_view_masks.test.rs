@@ -180,3 +180,32 @@ fn the_ink_of_a_silhouette_comes_straight_from_the_manifest() {
     );
     assert_eq!(masks.ink_of("/assets/nothing.svg"), None);
 }
+
+#[test]
+fn a_repainted_asset_keeps_the_silhouette_of_the_drawing_it_overrides() {
+    // The shadows find a caster by the name `entities.json` gives it, which is the drawing.
+    // Once an asset is repainted the atlas holds the PNG instead, and if the bank were keyed
+    // by the file the entity would simply stop casting a shadow, with nothing to show for it.
+    let frame = SpriteFrame {
+        x: 0,
+        y: 0,
+        width: 4,
+        height: 8,
+    };
+    let masks = SilhouetteMasks::from_image(
+        &chequered(),
+        &manifest(&[("/assets/tree/block.png", frame)]),
+    );
+
+    assert!(masks.index_of("/assets/tree/block.png").is_some());
+    assert_eq!(
+        masks.index_of("/assets/tree/block.svg"),
+        masks.index_of("/assets/tree/block.png"),
+        "the drawing and its repaint are the same caster"
+    );
+    assert_eq!(
+        masks.ink_of("/assets/tree/block.svg"),
+        masks.ink_of("/assets/tree/block.png")
+    );
+    assert_eq!(masks.index_of("/assets/rock/block.svg"), None);
+}

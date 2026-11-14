@@ -19,11 +19,23 @@ pub const ATLAS_TEXTURE: usize = 0;
 /// The asset that is nothing but opaque white, for drawing flat colour out of the shared atlas.
 pub const WHITE_PATCH: &str = "/assets/shadow/white.svg";
 
-/// The rasterized atlas plus the lookup from an asset's source path to its frame.
+/// An asset's identity, independent of which file its artwork was drawn in: its source path
+/// with the extension dropped. A repainted asset is a PNG laid beside the drawing it
+/// overrides, while `entities.json` and the rest of the engine go on naming the drawing, so
+/// the two have to meet on a key that does not mention the file.
+pub(crate) fn artwork_key(source: &str) -> &str {
+    let name_at = source.rfind('/').map_or(0, |slash| slash + 1);
+    match source[name_at..].rfind('.') {
+        Some(dot) if dot > 0 => &source[..name_at + dot],
+        _ => source,
+    }
+}
+
+/// The rasterized atlas plus the lookup from an asset to its frame, by [`artwork_key`].
 pub struct SpriteAtlas {
     /// Every texture the manifest names, the shared atlas first.
     textures: Vec<Texture2D>,
-    by_source: HashMap<String, SpriteAsset>,
+    by_artwork: HashMap<String, SpriteAsset>,
     sheets: HashMap<String, SheetAsset>,
     /// The middle of [`WHITE_PATCH`] in the shared atlas, in texture coordinates.
     white: Option<(f32, f32)>,
@@ -86,7 +98,7 @@ impl SpriteAtlas {
             Some(path) => indices.get(path.as_str()).copied(),
             None => Some(0),
         };
-        let mut by_source = HashMap::new();
+        let mut by_artwork = HashMap::new();
         let mut sheets = HashMap::new();
         for entry in &manifest.entries {
             let Some(texture) = index(entry) else {
@@ -96,7 +108,7 @@ impl SpriteAtlas {
                 && let Some(ink) = entry.ink
             {
                 sheets.insert(
-                    entry.source.clone(),
+                    artwork_key(&entry.source).to_owned(),
                     SheetAsset {
                         ink,
                         texture,
@@ -108,8 +120,8 @@ impl SpriteAtlas {
                 );
             }
             if let Some(frame) = entry.primary_frame() {
-                by_source.insert(
-                    entry.source.clone(),
+                by_artwork.insert(
+                    artwork_key(&entry.source).to_owned(),
                     SpriteAsset {
                         frame,
                         ink: entry.ink,
@@ -118,8 +130,8 @@ impl SpriteAtlas {
                 );
             }
         }
-        let white = by_source
-            .get(WHITE_PATCH)
+        let white = by_artwork
+            .get(artwork_key(WHITE_PATCH))
             .filter(|asset| asset.texture == ATLAS_TEXTURE)
             .map(|asset| {
                 let texture = &textures[ATLAS_TEXTURE];
@@ -130,7 +142,7 @@ impl SpriteAtlas {
             });
         Self {
             textures,
-            by_source,
+            by_artwork,
             sheets,
             white,
         }
@@ -142,12 +154,12 @@ impl SpriteAtlas {
     }
 
     pub fn asset(&self, source: &str) -> Option<SpriteAsset> {
-        self.by_source.get(source).copied()
+        self.by_artwork.get(artwork_key(source)).copied()
     }
 
     /// The sheet of poses at `source`, for the player's animations.
     pub fn sheet(&self, source: &str) -> Option<&SheetAsset> {
-        self.sheets.get(source)
+        self.sheets.get(artwork_key(source))
     }
 
     /// The frame for something standing on `ground` and the rectangle to draw it into, or
@@ -157,7 +169,7 @@ impl SpriteAtlas {
         ground: ScreenPoint,
         tile_width: f64,
     ) -> Option<(SpriteFrame, SpriteLayout)> {
-        let asset = self.by_source.get(source)?;
+        let asset = self.by_artwork.get(artwork_key(source))?;
         Some((asset.frame, ink_layout(ground, asset.ink?, tile_width)))
     }
 

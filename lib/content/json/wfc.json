@@ -23,7 +23,9 @@
     "bush": 4.0,
     "large_rock": 1.0,
     "large_rock_2": 1.0,
-    "large_rock_3": 1.0
+    "large_rock_3": 1.0,
+    "house_viking": 8.0,
+    "house_viking_2": 8.0
   },
   "families": {
     "office": [

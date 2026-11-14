@@ -84,15 +84,28 @@ pub fn asset_ink(svg: &str) -> Option<InkBox> {
     if min_x > max_x || min_y > max_y {
         return None;
     }
-    let (run, along_drawing_x) = footprint(svg);
+    Some(ink_box(
+        min_x,
+        min_y,
+        max_x - min_x,
+        max_y - min_y,
+        footprint(svg),
+    ))
+}
+
+/// One measured box, in the template's own units, as the manifest records it: relative to the
+/// anchor cell's ground centre, and shifted back along the footprint so that a multi-cell
+/// asset is placed from the cell it is anchored to.
+fn ink_box(left: f64, top: f64, width: f64, height: f64, footprint: (i32, bool)) -> InkBox {
+    let (run, along_drawing_x) = footprint;
     let steps = f64::from(run - 1);
     let sideways = if along_drawing_x { -steps } else { steps } * HALF_TILE;
-    Some(InkBox {
-        x: (min_x - SVG_ANCHOR.0) / SVG_TILE_WIDTH + sideways,
-        y: (min_y - SVG_ANCHOR.1) / SVG_TILE_WIDTH - steps * ROW,
-        width: (max_x - min_x) / SVG_TILE_WIDTH,
-        height: (max_y - min_y) / SVG_TILE_WIDTH,
-    })
+    InkBox {
+        x: (left - SVG_ANCHOR.0) / SVG_TILE_WIDTH + sideways,
+        y: (top - SVG_ANCHOR.1) / SVG_TILE_WIDTH - steps * ROW,
+        width: width / SVG_TILE_WIDTH,
+        height: height / SVG_TILE_WIDTH,
+    }
 }
 
 /// The asset's declared footprint and height, `"3x1x5"`, if it has one.
@@ -100,19 +113,80 @@ pub fn data_tiles(svg: &str) -> Option<&str> {
     attribute(svg, "data-tiles")
 }
 
+/// The `data-tiles` of a raster asset, from the JSON written beside the image: a PNG has no
+/// room for the attribute an SVG carries on its root element.
+pub fn sidecar_tiles(json: &str) -> Option<&str> {
+    let tiles = json.split("\"tiles\"").nth(1)?.split('"').nth(1)?;
+    (!tiles.is_empty()).then_some(tiles)
+}
+
+/// The template canvas `tiles` implies, as `(x, y, width, height)` in the SVG's own units: the
+/// view box `artifacts/iso_lib.py` gives an asset of that footprint. An asset authored as a
+/// raster is drawn on exactly this canvas, so its pixels map back to the template by it.
+/// Assets that reach below the ground plane (the pier) are not described by it.
+pub fn template_canvas(tiles: Option<&str>) -> (f64, f64, f64, f64) {
+    let (along, across, high) = tile_counts(tiles);
+    let half_tile = SVG_TILE_WIDTH / 2.0;
+    (
+        SVG_ANCHOR.0 - half_tile * f64::from(across),
+        -SVG_BLOCK_HEIGHT * f64::from(high),
+        half_tile * f64::from(along + across),
+        half_tile / 2.0 * f64::from(along + across) + SVG_BLOCK_HEIGHT * f64::from(high),
+    )
+}
+
+/// The artwork's bounding box for an asset authored as a raster rather than as vector geometry.
+///
+/// `canvas` is the size in pixels of the whole template canvas the image was drawn on, and
+/// `bounds` the box of its opaque pixels as `(min_x, min_y, max_x, max_y)`, the maxima being
+/// one past the last opaque row and column. The result is in the same units as [`asset_ink`].
+pub fn raster_ink(
+    canvas: (u32, u32),
+    bounds: (u32, u32, u32, u32),
+    tiles: Option<&str>,
+) -> Option<InkBox> {
+    let (min_x, min_y, max_x, max_y) = bounds;
+    if canvas.0 == 0 || canvas.1 == 0 || min_x >= max_x || min_y >= max_y {
+        return None;
+    }
+    let (view_x, view_y, view_width, view_height) = template_canvas(tiles);
+    let across = view_width / f64::from(canvas.0);
+    let down = view_height / f64::from(canvas.1);
+    let left = view_x + f64::from(min_x) * across;
+    let top = view_y + f64::from(min_y) * down;
+    Some(ink_box(
+        left,
+        top,
+        f64::from(max_x - min_x) * across,
+        f64::from(max_y - min_y) * down,
+        footprint_of(tiles),
+    ))
+}
+
 /// How far the footprint runs from its anchor and along which of the *drawing's* axes, out of
 fn footprint(svg: &str) -> (i32, bool) {
-    let Some(tiles) = attribute(svg, "data-tiles") else {
-        return (1, true);
-    };
-    let mut counts = tiles.split('x').map(str::parse::<i32>);
-    let along = counts.next().and_then(Result::ok).unwrap_or(1).max(1);
-    let across = counts.next().and_then(Result::ok).unwrap_or(1).max(1);
+    footprint_of(attribute(svg, "data-tiles"))
+}
+
+/// The same, from a `data-tiles` string on its own.
+fn footprint_of(tiles: Option<&str>) -> (i32, bool) {
+    let (along, across, _) = tile_counts(tiles);
     if along >= across {
         (along, true)
     } else {
         (across, false)
     }
+}
+
+/// The three counts of a `data-tiles` string, each at least one: cells along the drawing's x
+/// axis, cells along its y axis, and blocks tall.
+fn tile_counts(tiles: Option<&str>) -> (i32, i32, i32) {
+    let Some(tiles) = tiles else {
+        return (1, 1, 1);
+    };
+    let mut counts = tiles.split('x').map(str::parse::<i32>);
+    let mut next = || counts.next().and_then(Result::ok).unwrap_or(1).max(1);
+    (next(), next(), next())
 }
 
 /// Containers whose contents describe nothing that is drawn: filters and gradients, and the

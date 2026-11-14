@@ -294,6 +294,50 @@
       }
     },
     {
+      "id": "house_viking",
+      "asset": {
+        "sprite": "/assets/house/block_viking.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 2,
+        "axis": "y",
+        "collision": [
+          1,
+          1
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass",
+          "grass"
+        ],
+        "roadAccess": true
+      }
+    },
+    {
+      "id": "house_viking_2",
+      "asset": {
+        "sprite": "/assets/house/block_viking_2.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 2,
+        "axis": "y",
+        "collision": [
+          1,
+          1
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass",
+          "grass"
+        ],
+        "roadAccess": true
+      }
+    },
+    {
       "id": "hospital",
       "asset": {
         "sprite": "/assets/building/block_hospital.svg"

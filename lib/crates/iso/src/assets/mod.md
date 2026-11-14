@@ -27,10 +27,19 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`asset_ink`](ink.rs#L56) — Mide el dibujo en `svg`, o `None` si no se trata de un único asset trazado según la plantilla.
   - Firma: `pub fn asset_ink(svg: &str) -> Option<InkBox> {`
 
-- [`data_tiles`](ink.rs#L99) — La huella y la altura declaradas del asset, `"3x1x5"`, si las tiene.
+- [`data_tiles`](ink.rs#L112) — La huella y la altura declaradas del asset, `"3x1x5"`, si las tiene.
   - Firma: `pub fn data_tiles(svg: &str) -> Option<&str> {`
 
-- [`attribute`](ink.rs#L144) — El valor de `name="..."` en `text`, coincidiendo con el nombre completo del atributo.
+- [`sidecar_tiles`](ink.rs#L118) — Las `data-tiles` de un asset rasterizado, en el JSON escrito junto a la imagen: un PNG no tiene sitio para el atributo que un SVG lleva en su elemento raíz.
+  - Firma: `pub fn sidecar_tiles(json: &str) -> Option<&str> {`
+
+- [`template_canvas`](ink.rs#L127) — El lienzo de plantilla que implican las `tiles`, como `(x, y, ancho, alto)` en las unidades propias del SVG: el view box que `artifacts/iso_lib.py` da a un asset de esa huella.
+  - Firma: `pub fn template_canvas(tiles: Option<&str>) -> (f64, f64, f64, f64) {`
+
+- [`raster_ink`](ink.rs#L143) — La caja del dibujo de un asset trazado como rasterizado en lugar de como geometría vectorial.
+  - Firma: `pub fn raster_ink(canvas: (u32, u32), bounds: (u32, u32, u32, u32), tiles: Option<&str>) -> Option<InkBox> {`
+
+- [`attribute`](ink.rs#L218) — El valor de `name="..."` en `text`, coincidiendo con el nombre completo del atributo.
   - Firma: `pub(super) fn attribute<'a>(text: &'a str, name: &str) -> Option<&'a str> {`
 
 #### Constantes
@@ -141,13 +150,22 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`footprint`](ink.rs#L104) — Hasta dónde se extiende la huella desde su ancla y a lo largo de cuál de los ejes del *dibujo*, a partir de
+- [`ink_box`](ink.rs#L99) — Una caja medida, en las unidades propias de la plantilla, tal como la recoge el manifiesto: relativa al centro del suelo de la casilla de ancla y desplazada hacia atrás a lo largo de la huella.
+  - Firma: `fn ink_box(left: f64, top: f64, width: f64, height: f64, footprint: (i32, bool)) -> InkBox {`
+
+- [`footprint`](ink.rs#L167) — Hasta dónde se extiende la huella desde su ancla y a lo largo de cuál de los ejes del *dibujo*, a partir de
   - Firma: `fn footprint(svg: &str) -> (i32, bool) {`
 
-- [`visible_elements`](ink.rs#L122) — El texto de cada elemento que dibuja algo: fuera de esos contenedores, y que no sea uno de los
+- [`footprint_of`](ink.rs#L172) — Lo mismo, a partir de una cadena `data-tiles` por su cuenta.
+  - Firma: `fn footprint_of(tiles: Option<&str>) -> (i32, bool) {`
+
+- [`tile_counts`](ink.rs#L183) — Las tres cuentas de una cadena `data-tiles`, cada una al menos uno: casillas a lo largo del eje x del dibujo, casillas a lo largo de su eje y, y bloques de alto.
+  - Firma: `fn tile_counts(tiles: Option<&str>) -> (i32, i32, i32) {`
+
+- [`visible_elements`](ink.rs#L196) — El texto de cada elemento que dibuja algo: fuera de esos contenedores, y que no sea uno de los
   - Firma: `fn visible_elements(svg: &str) -> impl Iterator<Item = &str> {`
 
-- [`points`](ink.rs#L163) — Cada par `x,y` en la geometría de un path o polígono.
+- [`points`](ink.rs#L237) — Cada par `x,y` en la geometría de un path o polígono.
   - Firma: `fn points(geometry: &str) -> impl Iterator<Item = (f64, f64)> + '_ {`
 
 #### Constantes internas
@@ -158,7 +176,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`HALF_TILE`](ink.rs#L16) — Cuánto se desplaza por la pantalla una casilla a lo largo de cualquiera de los ejes, en anchos de casilla.
   - Declaración: `const HALF_TILE: f64 = 0.5;`
 
-- [`SKIPPED`](ink.rs#L119) — Contenedores cuyo contenido no describe nada que se dibuje: filtros y degradados, y los
+- [`SKIPPED`](ink.rs#L193) — Contenedores cuyo contenido no describe nada que se dibuje: filtros y degradados, y los
   - Declaración: `const SKIPPED: [&str; 2] = ["defs", "metadata"];`
 
 ### `layout.rs`

@@ -15,6 +15,7 @@ into ``sheets/<name>/<facing>-<pose>.png``; the packer gives each sheet a textur
 Usage: rasterize.py <svg_dir> <out_dir> [pixels_per_tile]
 """
 import glob
+import json
 import os
 import re
 import sys
@@ -135,6 +136,45 @@ def pixels(units, scale):
     return max(1, round(units * scale))
 
 
+def template_canvas(tiles):
+    """The canvas `tiles` implies, in the SVG's own units: `iso_lib.Asset.viewbox()`.
+
+    An asset authored as a PNG is drawn on exactly this canvas, so rasterizing it means only
+    scaling it to the same pixels per tile as everything else.
+    """
+    counts = [max(1, int(n)) for n in (tiles or "1x1x1").split("x")]
+    counts += [1] * (3 - len(counts))
+    along, across, high = counts[:3]
+    half = SVG_TILE_WIDTH / 2
+    return half * (along + across), half / 2 * (along + across) + 341 * high
+
+
+def render_raster(path, out_dir, name, scale, tiles):
+    """Copies a raster asset in at the shared resolution, leaving its canvas untouched."""
+    from PIL import Image
+
+    width, height = template_canvas(tiles)
+    image = Image.open(path).convert("RGBA")
+    out = os.path.join(out_dir, "%s.png" % name)
+    image.resize((pixels(width, scale), pixels(height, scale)), Image.LANCZOS).save(out)
+    return 1
+
+
+def asset_tiles(path):
+    """The `data-tiles` of a raster asset.
+
+    From the JSON file beside it, or, for an asset repainted over a drawing, from the drawing
+    it overrides, so a repaint of an existing asset needs no file of its own.
+    """
+    stem = path[: -len(".png")]
+    if os.path.exists(stem + ".json"):
+        with open(stem + ".json", encoding="utf-8") as file:
+            return json.load(file).get("tiles")
+    if os.path.exists(stem + ".svg"):
+        return attribute(open(stem + ".svg", encoding="utf-8").read(), "data-tiles")
+    return None
+
+
 def render_asset(path, svg, out_dir, name, scale):
     """Draws one whole asset at `scale` of its own size."""
     width = float(attribute(svg, "viewBox").split()[2])
@@ -184,25 +224,33 @@ def main():
     scale = per_tile / SVG_TILE_WIDTH
     os.makedirs(out_dir, exist_ok=True)
 
-    assets = sheets = cells = 0
-    for path in sorted(glob.glob(os.path.join(svg_dir, "**", "*.svg"), recursive=True)):
-        name = os.path.relpath(path, svg_dir).replace(os.sep, "_")[: -len(".svg")]
-        svg = open(path, encoding="utf-8").read()
-        try:
-            grid = sheet_grid(svg)
-            if grid and name in SKIPPED_SHEETS:
+    assets = sheets = cells = rasters = 0
+    for pattern in ("*.svg", "*.png"):
+        for path in sorted(glob.glob(os.path.join(svg_dir, "**", pattern), recursive=True)):
+            extension = os.path.splitext(path)[1]
+            # A raster beside an SVG overrides it: the drawing stays as the shape it came from.
+            if extension == ".svg" and os.path.exists(path[: -len(".svg")] + ".png"):
                 continue
-            if grid:
-                cells += render_sheet(svg, grid, out_dir, name, scale)
-                sheets += 1
-            else:
-                assets += render_asset(path, svg, out_dir, name, scale)
-        except Exception as error:  # a broken file must not stop the rest of the atlas
-            print("warning: failed to rasterize %s: %s" % (path, error), file=sys.stderr)
+            name = os.path.relpath(path, svg_dir).replace(os.sep, "_")[: -len(extension)]
+            try:
+                if extension == ".png":
+                    rasters += render_raster(path, out_dir, name, scale, asset_tiles(path))
+                    continue
+                svg = open(path, encoding="utf-8").read()
+                grid = sheet_grid(svg)
+                if grid and name in SKIPPED_SHEETS:
+                    continue
+                if grid:
+                    cells += render_sheet(svg, grid, out_dir, name, scale)
+                    sheets += 1
+                else:
+                    assets += render_asset(path, svg, out_dir, name, scale)
+            except Exception as error:  # a broken file must not stop the rest of the atlas
+                print("warning: failed to rasterize %s: %s" % (path, error), file=sys.stderr)
 
     print(
-        "Rasterized %d assets and %d sheets (%d cells) at %g px per tile."
-        % (assets, sheets, cells, per_tile)
+        "Rasterized %d assets, %d rasters and %d sheets (%d cells) at %g px per tile."
+        % (assets, rasters, sheets, cells, per_tile)
     )
 
 
