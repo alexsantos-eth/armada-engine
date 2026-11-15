@@ -72,6 +72,14 @@ pub struct ShadowCaster {
     pub extent: SpriteExtent,
     /// Which silhouette the bake samples for it; the client's own index.
     pub silhouette: u32,
+    /// The slice of the artwork this caster owns, in screen pixels across, relative to its own
+    /// ground point; `None` for the whole of it.
+    ///
+    /// A multi-cell entity casts one caster per cell, each standing on its own cell and owning
+    /// the band of the artwork that rests there, the same vertical slice
+    /// [`iso::assets::footprint_band`] cuts for drawing. Without it every cell would cast the
+    /// whole sprite and the shadow would come out as many copies of the entity.
+    pub crop: Option<(f64, f64)>,
 }
 
 /// A baked map: `alpha` is one byte of coverage per texel, row by row from the area's corner.
@@ -590,6 +598,9 @@ fn lay_caster(
     let Some(silhouette) = silhouette_of(caster.silhouette) else {
         return;
     };
+    let Some((extent, silhouette)) = crop(extent, silhouette, caster.crop) else {
+        return;
+    };
     let above_foot = (-extent.top).clamp(0.0, extent.height);
     if above_foot <= 0.0 {
         return;
@@ -686,6 +697,41 @@ fn lay_caster(
             }
         }
     }
+}
+
+/// The caster's own slice of its artwork: the extent narrowed to `crop` and the silhouette
+/// narrowed with it, so the sampling that follows reads only that band. `None` when the crop
+/// leaves nothing.
+fn crop<'a>(
+    extent: SpriteExtent,
+    silhouette: Silhouette<'a>,
+    crop: Option<(f64, f64)>,
+) -> Option<(SpriteExtent, Silhouette<'a>)> {
+    let Some((from, to)) = crop else {
+        return Some((extent, silhouette));
+    };
+    let left = extent.left.max(from);
+    let right = (extent.left + extent.width).min(to);
+    if right - left <= 0.0 {
+        return None;
+    }
+    let across = silhouette.right - silhouette.left;
+    let (u0, u1) = (
+        (left - extent.left) / extent.width,
+        (right - extent.left) / extent.width,
+    );
+    Some((
+        SpriteExtent {
+            left,
+            width: right - left,
+            ..extent
+        },
+        Silhouette {
+            left: silhouette.left + u0 * across,
+            right: silhouette.left + u1 * across,
+            ..silhouette
+        },
+    ))
 }
 
 /// A box in world tiles: `(min_x, min_y, max_x, max_y)`.

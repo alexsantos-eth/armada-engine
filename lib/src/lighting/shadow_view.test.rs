@@ -121,6 +121,7 @@ fn a_clear_grid_asks_for_no_lattice() {
             height: 100.0,
         },
         silhouette: 0,
+        crop: None,
     };
     let light = iso::lighting::DAWN;
     let solid = shade_grid(
@@ -236,6 +237,7 @@ fn a_zero_fade_asks_for_no_lattice_but_one_keeps_the_shadows() {
             height: 80.0,
         },
         silhouette: 0,
+        crop: None,
     };
     let solid = |_: u32| {
         Some(Silhouette {

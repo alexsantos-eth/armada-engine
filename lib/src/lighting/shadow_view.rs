@@ -4,7 +4,7 @@ use super::shadow_view_atlas;
 use super::shadow_view_atlas::{ShadowAtlas, atlas_uv, square_in_slot};
 use super::shadow_view_masks::SilhouetteMasks;
 use iso::assets::{InkBox, SpriteLayout};
-use iso::entities::Entity;
+use iso::entities::{Entity, EntityLengthAxis};
 use iso::grid::{CHUNK_SIZE, ChunkCoord, WorldCoord, to_chunk_coord};
 use iso::lighting::{
     BakePhase, BoxMetrics, GroundBake, HeightField, MapArea, PhaseLight, SHADE_COLUMNS, SHADE_ROWS,
@@ -467,19 +467,58 @@ impl ShadowScene {
         };
         entities
             .iter()
-            .filter_map(|entity| self.caster_of(entity))
+            .flat_map(|entity| self.casters_for(entity))
             .collect()
     }
 
-    /// One entity as a caster, or `None` when the atlas has no measured artwork for it.
-    fn caster_of(&self, entity: &Entity) -> Option<ShadowCaster> {
-        let silhouette = self.masks.index_of(entity.texture_source())?;
-        Some(ShadowCaster {
-            foot: (f64::from(entity.x()) + 0.5, f64::from(entity.y()) + 0.5),
-            elevation: f64::from(entity.elevation()),
-            extent: self.extent_of(entity)?,
-            silhouette,
-        })
+    /// One entity as casters: one per cell of its footprint, each standing on its own cell and
+    /// owning the band of the artwork that rests there.
+    ///
+    /// A single caster for the whole sprite would lay the far cells' artwork down from the
+    /// anchor cell's foot, so anything drawn away from the anchor — the far trees of a grove —
+    /// would throw its shadow where it does not stand. Empty when the atlas has no measured
+    /// artwork for the entity.
+    fn casters_for(&self, entity: &Entity) -> Vec<ShadowCaster> {
+        let Some(silhouette) = self.masks.index_of(entity.texture_source()) else {
+            return Vec::new();
+        };
+        let Some(extent) = self.extent_of(entity) else {
+            return Vec::new();
+        };
+        let cells = entity.length().max(1);
+        let along_y = entity.length_axis() == Some(EntityLengthAxis::Y);
+        // One cell along either axis moves half a tile across the screen and a quarter of one
+        // down it, the 2:1 projection the whole engine draws in.
+        let (half, quarter) = (self.tile_width / 2.0, self.tile_width / 4.0);
+        let step = if along_y {
+            (-half, -quarter)
+        } else {
+            (half, -quarter)
+        };
+        let elevation = f64::from(entity.elevation());
+        (0..cells)
+            .map(|index| {
+                let at = f64::from(index);
+                let (cell_x, cell_y) = if along_y {
+                    (entity.x(), entity.y() + index)
+                } else {
+                    (entity.x() + index, entity.y())
+                };
+                ShadowCaster {
+                    foot: (f64::from(cell_x) + 0.5, f64::from(cell_y) + 0.5),
+                    elevation,
+                    // The artwork does not move: it is the ground point under it that walks
+                    // along the footprint, so the extent walks back by as much.
+                    extent: SpriteExtent {
+                        left: extent.left - at * step.0,
+                        top: extent.top - at * step.1,
+                        ..extent
+                    },
+                    silhouette,
+                    crop: band_of(index, cells, step.0),
+                }
+            })
+            .collect()
     }
 
     /// Where an entity's artwork is drawn around the ground point it stands on.
@@ -770,6 +809,30 @@ impl ShadowScene {
 }
 
 /// Where a measured drawing is drawn around the ground point it stands on, in screen pixels.
+/// The band of the artwork the `index`-th cell of a footprint of `cells` owns, in screen pixels
+/// across, relative to that cell's own ground point. The cut lines are the ones
+/// [`iso::assets::footprint_band`] uses for drawing: half a tile apart, with the two ends open
+/// so nothing of the artwork is lost off the sides.
+fn band_of(index: i32, cells: i32, step_x: f64) -> Option<(f64, f64)> {
+    if cells <= 1 || step_x == 0.0 {
+        return None;
+    }
+    let (near, far) = (0.0, step_x);
+    let (from, to) = if step_x > 0.0 {
+        (near, far)
+    } else {
+        (far, near)
+    };
+    Some((
+        if index == 0 { f64::NEG_INFINITY } else { from },
+        if index == cells - 1 {
+            f64::INFINITY
+        } else {
+            to
+        },
+    ))
+}
+
 pub fn extent_of_ink(ink: InkBox, tile_width: f64) -> SpriteExtent {
     let layout = iso::assets::ink_layout(ScreenPoint { x: 0.0, y: 0.0 }, ink, tile_width);
     SpriteExtent {

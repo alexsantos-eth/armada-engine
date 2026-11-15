@@ -33,6 +33,7 @@ fn caster(foot: (f64, f64), elevation: f64, height: f64) -> ShadowCaster {
         elevation,
         extent: standing(foot, elevation, height),
         silhouette: 0,
+        crop: None,
     }
 }
 
@@ -252,6 +253,7 @@ fn a_point_is_shaded_by_a_caster_standing_up_the_light_from_it() {
             height: 120.0,
         },
         silhouette: 0,
+        crop: None,
     };
     let under = ShadowPoint {
         x: 4.5,

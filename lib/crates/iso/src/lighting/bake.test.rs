@@ -36,6 +36,7 @@ fn post(foot: (f64, f64), elevation: f64, height: f64) -> ShadowCaster {
             height,
         },
         silhouette: 0,
+        crop: None,
     }
 }
 
@@ -741,4 +742,74 @@ fn blur_down_within_levels(map: &mut ShadowMap, span: usize, levels: &LevelCache
             break;
         }
     }
+}
+
+#[test]
+fn a_crop_splits_one_caster_into_bands_that_add_up_to_it() {
+    // A multi-cell entity casts one caster per cell, each owning a band of the artwork. Two
+    // complementary bands of the same post must darken exactly what the whole post darkens:
+    // no gap down the seam, and no stripe counted twice.
+    let whole = post((1.5, 1.5), 0.0, TILE);
+    let (left, right) = (
+        ShadowCaster {
+            crop: Some((f64::NEG_INFINITY, 0.0)),
+            ..whole
+        },
+        ShadowCaster {
+            crop: Some((0.0, f64::INFINITY)),
+            ..whole
+        },
+    );
+    let bake = |casters: &[ShadowCaster]| {
+        let mut map = map_over(-2, 6);
+        bake_ground_shadows(
+            &mut map,
+            casters,
+            None,
+            &behind_the_camera(),
+            metrics(),
+            &flat(0.0),
+            &solid(),
+        );
+        map
+    };
+    let (split, full) = (bake(&[left, right]), bake(&[whole]));
+    assert!(
+        split.alpha.iter().zip(&full.alpha).all(|(a, b)| a >= b),
+        "the seam between two bands leaves no gap"
+    );
+    // Rounding the seam onto the map's texels can darken a texel's worth more along it, which
+    // the blur then softens. It must stay at that: a seam, not a second shadow. The bound is
+    // generous because this map is four texels to the tile; the shipped one is thirty-six, so
+    // the same seam is a ninth as wide there.
+    let (extra, total): (u32, u32) = split
+        .alpha
+        .iter()
+        .zip(&full.alpha)
+        .fold((0, 0), |(extra, total), (a, b)| {
+            (extra + u32::from(a - b), total + u32::from(*b))
+        });
+    assert!(
+        extra * 10 < total,
+        "the bands add {extra} of coverage over the {total} the whole post casts"
+    );
+}
+
+#[test]
+fn a_crop_outside_the_artwork_casts_nothing() {
+    let away = ShadowCaster {
+        crop: Some((TILE * 4.0, TILE * 5.0)),
+        ..post((1.5, 1.5), 0.0, TILE)
+    };
+    let mut map = map_over(-2, 6);
+    bake_ground_shadows(
+        &mut map,
+        &[away],
+        None,
+        &behind_the_camera(),
+        metrics(),
+        &flat(0.0),
+        &solid(),
+    );
+    assert!(map.alpha.iter().all(|&a| a == 0), "nothing is darkened");
 }
