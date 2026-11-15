@@ -279,7 +279,7 @@
     {
       "id": "mead_hall_x",
       "asset": {
-        "sprite": "/assets/building/block_mead_hall_2x1.png"
+        "sprite": "/assets/building/block_mead_hall_1x2.png"
       },
       "shape": {
         "height": 2,
@@ -301,7 +301,7 @@
     {
       "id": "mead_hall_y",
       "asset": {
-        "sprite": "/assets/building/block_mead_hall_1x2.png"
+        "sprite": "/assets/building/block_mead_hall_2x1.png"
       },
       "shape": {
         "height": 2,
@@ -323,7 +323,7 @@
     {
       "id": "boathouse_x",
       "asset": {
-        "sprite": "/assets/building/block_boathouse_2x1.png"
+        "sprite": "/assets/building/block_boathouse_1x2.png"
       },
       "shape": {
         "height": 2,
@@ -345,7 +345,7 @@
     {
       "id": "boathouse_y",
       "asset": {
-        "sprite": "/assets/building/block_boathouse_1x2.png"
+        "sprite": "/assets/building/block_boathouse_2x1.png"
       },
       "shape": {
         "height": 2,
@@ -559,7 +559,7 @@
     {
       "id": "grove_x",
       "asset": {
-        "sprite": "/assets/tree/block_grove_2x1.png"
+        "sprite": "/assets/tree/block_grove_1x2.png"
       },
       "shape": {
         "height": 2,
@@ -580,7 +580,7 @@
     {
       "id": "grove_y",
       "asset": {
-        "sprite": "/assets/tree/block_grove_1x2.png"
+        "sprite": "/assets/tree/block_grove_2x1.png"
       },
       "shape": {
         "height": 2,

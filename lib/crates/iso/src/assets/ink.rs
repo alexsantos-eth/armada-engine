@@ -9,6 +9,12 @@ pub const SVG_ANCHOR: (f64, f64) = (512.0, 256.0);
 /// Height of one block's body in the SVG's own units: how far one elevation step rises.
 pub const SVG_BLOCK_HEIGHT: f64 = 341.0;
 
+/// How far one cell along either axis moves *down* the screen, in tile widths: half a tile
+const ROW: f64 = 0.25;
+
+/// How far one cell along either axis moves *across* the screen, in tile widths.
+const HALF_TILE: f64 = 0.5;
+
 /// How far one elevation step rises on screen, for artwork drawn to this template.
 pub fn elevation_step(tile_width: f64) -> f64 {
     tile_width * SVG_BLOCK_HEIGHT / SVG_TILE_WIDTH
@@ -78,19 +84,25 @@ pub fn asset_ink(svg: &str) -> Option<InkBox> {
     if min_x > max_x || min_y > max_y {
         return None;
     }
-    Some(ink_box(min_x, min_y, max_x - min_x, max_y - min_y))
+    Some(ink_box(
+        min_x,
+        min_y,
+        max_x - min_x,
+        max_y - min_y,
+        footprint(svg),
+    ))
 }
 
 /// One measured box, in the template's own units, as the manifest records it: relative to the
-/// anchor cell's ground centre.
-///
-/// A multi-cell drawing needs no correction here. The template already draws it from its
-/// anchor cell outwards, along the same axis the entity's footprint runs, so the raw
-/// measurement lands on the footprint as drawn.
-fn ink_box(left: f64, top: f64, width: f64, height: f64) -> InkBox {
+/// anchor cell's ground centre, and shifted back along the footprint so that a multi-cell
+/// asset is placed from the cell it is anchored to.
+fn ink_box(left: f64, top: f64, width: f64, height: f64, footprint: (i32, bool)) -> InkBox {
+    let (run, along_drawing_x) = footprint;
+    let steps = f64::from(run - 1);
+    let sideways = if along_drawing_x { -steps } else { steps } * HALF_TILE;
     InkBox {
-        x: (left - SVG_ANCHOR.0) / SVG_TILE_WIDTH,
-        y: (top - SVG_ANCHOR.1) / SVG_TILE_WIDTH,
+        x: (left - SVG_ANCHOR.0) / SVG_TILE_WIDTH + sideways,
+        y: (top - SVG_ANCHOR.1) / SVG_TILE_WIDTH - steps * ROW,
         width: width / SVG_TILE_WIDTH,
         height: height / SVG_TILE_WIDTH,
     }
@@ -147,7 +159,23 @@ pub fn raster_ink(
         top,
         f64::from(max_x - min_x) * across,
         f64::from(max_y - min_y) * down,
+        footprint_of(tiles),
     ))
+}
+
+/// How far the footprint runs from its anchor and along which of the *drawing's* axes, out of
+fn footprint(svg: &str) -> (i32, bool) {
+    footprint_of(attribute(svg, "data-tiles"))
+}
+
+/// The same, from a `data-tiles` string on its own.
+fn footprint_of(tiles: Option<&str>) -> (i32, bool) {
+    let (along, across, _) = tile_counts(tiles);
+    if along >= across {
+        (along, true)
+    } else {
+        (across, false)
+    }
 }
 
 /// The three counts of a `data-tiles` string, each at least one: cells along the drawing's x
