@@ -16,18 +16,29 @@
     "mead_hall_x": 1.5,
     "mead_hall_y": 1.5,
     "boathouse_x": 2.0,
-    "boathouse_y": 2.0
+    "boathouse_y": 2.0,
+    "runestone_pair": 2.0,
+    "runestone_tall": 2.0,
+    "runestone_circle": 1.0,
+    "runestone_fallen": 1.5,
+    "grove_x": 2.5,
+    "grove_y": 2.5
   },
   "families": {
     "mead_hall": [
       "mead_hall_x",
       "mead_hall_y"
+    ],
+    "grove": [
+      "grove_x",
+      "grove_y"
     ]
   },
   "maxPerChunk": {
     "mead_hall": 1,
     "stave_temple": 1,
     "stone_shrine": 1,
-    "watchtower": 2
+    "watchtower": 2,
+    "grove": 2
   }
 }

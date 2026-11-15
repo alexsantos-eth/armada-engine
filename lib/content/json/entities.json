@@ -201,6 +201,82 @@
       }
     },
     {
+      "id": "runestone_pair",
+      "asset": {
+        "sprite": "/assets/building/block_runestone_pair.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.5
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "runestone_tall",
+      "asset": {
+        "sprite": "/assets/building/block_runestone_tall.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.5
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "runestone_circle",
+      "asset": {
+        "sprite": "/assets/building/block_runestone_circle.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.5
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "runestone_fallen",
+      "asset": {
+        "sprite": "/assets/building/block_runestone_fallen.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.5
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
       "id": "mead_hall_x",
       "asset": {
         "sprite": "/assets/building/block_mead_hall_1x2.png"
@@ -476,6 +552,48 @@
       },
       "placement": {
         "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "grove_x",
+      "asset": {
+        "sprite": "/assets/tree/block_grove_1x2.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 2,
+        "axis": "x",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass",
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "grove_y",
+      "asset": {
+        "sprite": "/assets/tree/block_grove_2x1.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 2,
+        "axis": "y",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass",
           "grass"
         ]
       }
