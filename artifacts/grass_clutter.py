@@ -1,6 +1,6 @@
 # grass_clutter.py — additional top-of-grass appearances, generated from the base grass SVG.
 # Run from artifacts/: python3 grass_clutter.py ../web/public/assets/grass/block.svg ../web/public/assets/grass
-# Writes the individual SVGs for preview and one 3×3 grass_variants.svg atlas for runtime.
+# Writes the individual SVGs used as the terrain's grass tops.
 # The terrain remains one grass block; only its top decoration changes, so no entities,
 # collision, extra footprints or per-instance shadows are added.
 import os
@@ -84,7 +84,6 @@ with open(BASE_SVG, encoding="utf8") as base_file:
     base = base_file.read()
 
 os.makedirs(OUT_DIR, exist_ok=True)
-rendered = []
 for name, build in VARIANTS.items():
     asset = Asset()
     grid = VoxelGrid(asset, u=100)
@@ -96,27 +95,4 @@ for name, build in VARIANTS.items():
     assert svg != base
     with open(os.path.join(OUT_DIR, name), "w", encoding="utf8") as output_file:
         output_file.write(svg)
-    rendered.append((name, svg))
     print("ok", name)
-
-
-def svg_inner(svg, prefix):
-    inner = svg.split(">", 1)[1].rsplit("</svg>", 1)[0]
-    ids = re.findall(r'\bid="([^"]+)"', inner)
-    for identifier in ids:
-        inner = inner.replace(f'id="{identifier}"', f'id="{prefix}-{identifier}"')
-        inner = inner.replace(f'#{identifier}', f'#{prefix}-{identifier}')
-    return inner
-
-
-# Each cell retains the original isometric canvas; frames are 1024×853 source pixels.
-atlas = ['<svg xmlns="http://www.w3.org/2000/svg" width="3072" height="2559" viewBox="0 -341 3072 2559">']
-for index, (name, svg) in enumerate(rendered):
-    column, row = index % 3, index // 3
-    atlas.append(f'<g id="{name.removesuffix(".svg")}" transform="translate({column * 1024} {row * 853})">')
-    atlas.append(svg_inner(svg, name.removesuffix(".svg")))
-    atlas.append("</g>")
-atlas.append("</svg>")
-with open(os.path.join(OUT_DIR, "grass_variants.svg"), "w", encoding="utf8") as atlas_file:
-    atlas_file.write("\n".join(atlas) + "\n")
-print("ok grass_variants.svg (3×3)")

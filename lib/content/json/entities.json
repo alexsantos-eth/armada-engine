@@ -289,50 +289,6 @@
       }
     },
     {
-      "id": "house_viking",
-      "asset": {
-        "sprite": "/assets/house/block_viking.png"
-      },
-      "shape": {
-        "height": 2,
-        "length": 2,
-        "axis": "y",
-        "collision": [
-          1,
-          1
-        ]
-      },
-      "placement": {
-        "surfaces": [
-          "grass",
-          "grass"
-        ],
-        "roadAccess": true
-      }
-    },
-    {
-      "id": "house_viking_2",
-      "asset": {
-        "sprite": "/assets/house/block_viking_2.png"
-      },
-      "shape": {
-        "height": 2,
-        "length": 2,
-        "axis": "y",
-        "collision": [
-          1,
-          1
-        ]
-      },
-      "placement": {
-        "surfaces": [
-          "grass",
-          "grass"
-        ],
-        "roadAccess": true
-      }
-    },
-    {
       "id": "tree",
       "asset": {
         "sprite": "/assets/tree/block.svg",
@@ -521,28 +477,6 @@
       "placement": {
         "surfaces": [
           "grass"
-        ]
-      }
-    },
-    {
-      "id": "boat",
-      "asset": {
-        "sprite": "/assets/boat/block_2.svg",
-        "reflection": "/assets/boat/block_2_reflection.svg"
-      },
-      "shape": {
-        "height": 1,
-        "length": 2,
-        "axis": "y",
-        "collision": [
-          1,
-          1
-        ]
-      },
-      "placement": {
-        "surfaces": [
-          "water",
-          "water"
         ]
       }
     },
