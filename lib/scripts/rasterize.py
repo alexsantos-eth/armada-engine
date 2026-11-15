@@ -11,6 +11,9 @@ The player's poses are sheets (``data-frames``), one cell per facing and pose wi
 the cells, and every cell is a window on the same character template. Fitting a whole sheet into
 one cell left a pose about sixteen pixels across, so the sheets are cut here, one PNG per cell,
 into ``sheets/<name>/<facing>-<pose>.png``; the packer gives each sheet a texture of its own.
+A sheet may also come already rendered, as ``painted/<name>.png`` beside the drawings' directory
+(``artifacts/player_render.py``): then its cells are cut from that picture, and the SVG only
+says what the grid is.
 
 Usage: rasterize.py <svg_dir> <out_dir> [pixels_per_tile]
 """
@@ -177,6 +180,37 @@ def render_asset(path, svg, out_dir, name, scale):
     return 1
 
 
+def painted_sheet(svg_dir, name):
+    """The rendered picture of sheet `name`, if `artifacts/player_render.py` has made one.
+
+    It lives beside the drawings, in `painted/<name>.png`, outside the directory the atlas is
+    globbed from so it is never taken for an asset of its own. It is a plain grid, one cell per
+    facing and pose with no gap, of the same windows the SVG's cells show.
+    """
+    path = os.path.join(os.path.dirname(os.path.normpath(svg_dir)), "painted", "%s.png" % name)
+    return path if os.path.exists(path) else None
+
+
+def cut_painted(path, grid, out_dir, name, scale):
+    """Cuts a painted sheet into its cells, each scaled to what the SVG cell would be drawn at."""
+    from PIL import Image
+
+    sheet = Image.open(path).convert("RGBA")
+    _, _, width, height = grid["cell"]
+    rows, columns = len(grid["facings"]), grid["columns"]
+    cell_w, cell_h = sheet.width / columns, sheet.height / rows
+    size = (pixels(width, scale), pixels(height, scale))
+    directory = os.path.join(out_dir, "sheets", name)
+    os.makedirs(directory, exist_ok=True)
+    for row in range(rows):
+        for column in range(columns):
+            box = (round(column * cell_w), round(row * cell_h),
+                   round((column + 1) * cell_w), round((row + 1) * cell_h))
+            cell = sheet.crop(box).resize(size, Image.LANCZOS)
+            cell.save(os.path.join(directory, "%d-%d.png" % (row, column)))
+    return rows * columns
+
+
 def render_sheet(svg, grid, out_dir, name, scale):
     """Draws every cell of a sheet on its own, in the window the cells share.
 
@@ -232,7 +266,11 @@ def main():
                 if grid and name in SKIPPED_SHEETS:
                     continue
                 if grid:
-                    cells += render_sheet(svg, grid, out_dir, name, scale)
+                    painted = painted_sheet(svg_dir, name)
+                    if painted:
+                        cells += cut_painted(painted, grid, out_dir, name, scale)
+                    else:
+                        cells += render_sheet(svg, grid, out_dir, name, scale)
                     sheets += 1
                 else:
                     assets += render_asset(path, svg, out_dir, name, scale)

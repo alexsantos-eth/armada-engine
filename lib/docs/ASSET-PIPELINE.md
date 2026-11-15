@@ -181,7 +181,43 @@ Tres contadores se mueven a mano cuando cambia el número de assets o entidades:
   dibujarse o no proyectar sombra sin ningún error. Hay que caminar hasta un poblado y un
   bosque y mirar.
 
-## 7. Costes de referencia
+## 7. Las hojas del jugador
+
+El jugador no pasa por fal.ai: pintar cada cuadro por separado cuesta decenas de dólares y,
+pintando varios por imagen, el modelo cambia las poses. Sus hojas salen de un modelo 3D.
+
+- `artifacts/player_model/model.npz` es la malla del mono en reposo (de pie, brazos a los
+  lados), con un color y seis pesos por vértice: cuerpo, cabeza, dos brazos y dos piernas.
+  Lo crea `artifacts/player_model/build.py <modelo.glb> <salida.npz>`, que separa los huesos
+  con planos (los brazos, por lo lejos que están del centro; cabeza y piernas, por altura).
+  Los planos y las articulaciones tienen nombre al principio de `build.py` (`ARM_FROM`,
+  `NECK`, `CROTCH`...) y las articulaciones se guardan en el `.npz`: al cambiar de modelo
+  sólo se ajustan ahí, a sus medidas, y `player_model.py` no se toca.
+- `artifacts/player_model.py [hoja ...]` toma las poses de los generadores de siempre
+  (`player_walk.py`, `player_idle.py`, `player_jump.py`, `player_climb.py`, `player_flip.py`,
+  `player_swim.py`): cada hueso sigue a la caja de `monkey.py` que lo representa, girando
+  sobre la articulación del propio modelo, y la piel se mezcla en las uniones. Dibuja con la
+  cámara del juego y el sol arriba a la derecha, y escribe
+  `lib/assets-src/painted/player-16_<hoja>.png`, una rejilla de celdas sin separación.
+- `lib/scripts/rasterize.py` corta las celdas de ese PNG cuando existe; si no, dibuja las del
+  SVG. El SVG sigue mandando en la rejilla (`data-cell`, cuadros y direcciones), así que el
+  manifiesto no cambia.
+
+Detalles que costó encontrar:
+
+- La malla es una sola piel fundida: la mano está unida a la cadera. Un triángulo que se
+  estira más de 1,7 veces su tamaño es uno de esos puentes y se descarta; por el hueco se ve
+  el interior de la piel, pintado como pelo en sombra.
+- La cabeza del modelo es más ancha que la de `monkey.py`, así que en el baile de reposo el
+  brazo se levanta menos (`ARM_LIMIT`, `ARM_SHARE`) para no meterse en la oreja ni salirse
+  de la celda.
+- El modelo no tiene cola, y `jetpack.svg` sigue siendo el dibujo de siempre.
+- `artifacts/player_render.py` es una alternativa sin modelo (dibuja las cajas de
+  `monkey.py` como arcilla suave); `player_model.py` toma de él la lectura de poses y rejilla.
+
+Regenerar las seis hojas (848 celdas) tarda unos ocho minutos y no cuesta nada.
+
+## 8. Costes de referencia
 
 | Lote | Imágenes | Coste |
 | --- | --- | --- |
