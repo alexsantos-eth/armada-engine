@@ -169,6 +169,12 @@ como un tirón, y de eso se encargan las dos piezas que `adapter.js` añade al b
   llega). Así, con la flag de WebKit «Prefer Page Rendering Updates near 60fps» **desactivada** en
   un iPhone ProMotion, el juego se queda en 60 estables en vez de caer al divisor de 30 que elige
   Safari cuando no llega a 120. `?fps=120` sube el objetivo y `?fps=0` lo quita.
+- **El borrado del guardado (`?fresh`).** En la build web, añadir `?fresh` a la URL borra
+  `saves/iso_save.json` de `localStorage` antes de que arranque el cliente, así que el juego
+  inicia sin partida guardada. El autosave vuelve a escribirla en cuanto juegas, y cada recarga
+  con el parámetro la vuelve a borrar. La ruta del editor (`/maker`) nunca lee el guardado y no se
+  toca con `?fresh`. Fuera de WASM el parámetro se ignora; en nativo, borra `saves/iso_save.json`
+  junto al CWD (o en la carpeta `Application Support` de un `.app`) antes de arrancar.
 
 ## Preparar despliegue
 

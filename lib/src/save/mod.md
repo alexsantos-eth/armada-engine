@@ -56,7 +56,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Constantes internas
 
-- [`STORAGE_KEY`](persistence.rs) — Clave del almacenamiento local en WASM (solo build WASM); conserva el mismo nombre relativo que el archivo de desarrollo. En nativo no se usa: la ruta la resuelve `crate::app::save_path()` (ver `src/app/bundle.rs`).
+- [`STORAGE_KEY`](persistence.rs) — Clave del almacenamiento local en WASM (solo build WASM); conserva el mismo nombre relativo que el archivo de desarrollo. En nativo no se usa: la ruta la resuelve `crate::app::save_path()` (ver `src/app/bundle.rs`). En WASM, `web/adapter.js` borra esta misma clave al cargar la página cuando la URL lleva `?fresh` (en `/maker` no se toca); ver `lib/README.md`.
   - Declaración: `const STORAGE_KEY: &str = "saves/iso_save.json";`
 
 - [`OUTPUT_CAPACITY`](persistence.rs#L29) — Tope del búfer de lectura del FFI (32 MiB).
