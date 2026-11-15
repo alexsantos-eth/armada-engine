@@ -92,7 +92,7 @@ fn sheets_and_transformed_drawings_are_not_measured() {
 
 /// A footprint of more than one tile is exactly what `data-tiles` declares, and the box says
 #[test]
-fn a_footprint_is_moved_onto_the_cells_it_covers() {
+fn a_footprint_is_measured_where_the_template_draws_it() {
     let one = r##"<svg viewBox="0 -341 1024 853" data-tiles="1x1">
       <path fill="#8a8" d="M256.0,128.0 768.0,128.0 768.0,384.0 256.0,384.0 Z" /></svg>"##;
     let tiles = |t: &str| {
@@ -101,27 +101,26 @@ fn a_footprint_is_moved_onto_the_cells_it_covers() {
     };
     let (one_cell, along_x, along_y) = (tiles("1x1"), tiles("3x1x5"), tiles("1x3x5"));
 
-    assert_eq!(along_x.y, one_cell.y - 0.5, "away from the viewer");
-    assert_eq!(along_y.y, one_cell.y - 0.5, "whichever axis it runs along");
-    assert_eq!(along_x.x, one_cell.x - 1.0);
-    assert_eq!(along_y.x, one_cell.x + 1.0);
-    assert_eq!(along_x.height, one_cell.height, "only moved, never resized");
+    // The template draws a multi-cell asset from its anchor cell outwards, along the same
+    // axis the entity's footprint runs, so the artwork already lands on its cells and the
+    // declared footprint changes nothing about where it is measured.
+    assert_eq!(along_x.x, one_cell.x, "the run does not move the artwork");
+    assert_eq!(along_y.x, one_cell.x, "whichever axis it runs along");
+    assert_eq!(along_x.y, one_cell.y);
+    assert_eq!(along_y.y, one_cell.y);
+    assert_eq!(along_x.height, one_cell.height, "and never resizes it");
     assert_eq!(along_x.width, one_cell.width);
 }
 
 #[test]
-fn a_multi_tile_footprint_is_measured_from_its_anchor() {
+fn a_multi_tile_drawing_is_measured_from_its_anchor_cell() {
     let svg = r##"<svg width="1536" height="853" viewBox="0 -341 1536 853" data-tiles="2x1">
       <path fill="transparent" d="M512.0,0.0 1024.0,256.0" opacity=".28" />
       <path fill="#8a8" d="M0.0,256.0 1536.0,256.0 1536.0,512.0 0.0,512.0 Z" /></svg>"##;
     let ink = asset_ink(svg).expect("measured");
     assert_eq!(ink.width, 1.5, "a tile and a half across");
-    assert_eq!(ink.y, 0.0 - 0.25, "a two-cell run moves up one row");
-    assert_eq!(
-        ink.x,
-        -0.5 - 0.5,
-        "and half a tile across, onto its own footprint"
-    );
+    assert_eq!(ink.y, 0.0, "measured from the anchor cell's ground centre");
+    assert_eq!(ink.x, -0.5, "reaching half a tile left of it, as drawn");
 }
 
 #[test]
@@ -206,12 +205,12 @@ fn raster_ink_measures_opaque_pixels_like_geometry() {
 }
 
 #[test]
-fn raster_ink_shifts_a_multi_cell_asset_back_to_its_anchor() {
-    // A two-cell asset filling its whole canvas: the ink starts half a tile left of the anchor
-    // and a quarter of a tile above it, the same shift `asset_ink` applies.
+fn raster_ink_measures_a_multi_cell_asset_from_its_anchor() {
+    // A two-cell asset filling its whole canvas, measured straight off the template canvas
+    // relative to the anchor cell's ground centre, exactly as `asset_ink` measures an SVG.
     let ink = raster_ink((1536, 1450), (0, 0, 1536, 1450), Some("2x1x2")).expect("measured");
-    assert_eq!(ink.x, (0.0 - 512.0) / 1024.0 - 0.5);
-    assert_eq!(ink.y, (-682.0 - 256.0) / 1024.0 - 0.25);
+    assert_eq!(ink.x, (0.0 - 512.0) / 1024.0);
+    assert_eq!(ink.y, (-682.0 - 256.0) / 1024.0);
     assert_eq!(ink.width, 1536.0 / 1024.0);
 }
 
