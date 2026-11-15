@@ -289,7 +289,7 @@
       "source": "/assets/bush/block.png",
       "dataTiles": null,
       "frame": {
-        "x": 1868,
+        "x": 1724,
         "y": 1247,
         "width": 214,
         "height": 117
@@ -508,7 +508,7 @@
       "source": "/assets/grass/block_reflection.svg",
       "dataTiles": null,
       "frame": {
-        "x": 2083,
+        "x": 1939,
         "y": 1247,
         "width": 320,
         "height": 108
@@ -633,7 +633,7 @@
       "source": "/assets/ground/block_reflection.svg",
       "dataTiles": null,
       "frame": {
-        "x": 2404,
+        "x": 2260,
         "y": 1247,
         "width": 320,
         "height": 108
@@ -1133,7 +1133,7 @@
       "source": "/assets/path/block_reflection.svg",
       "dataTiles": null,
       "frame": {
-        "x": 2725,
+        "x": 2581,
         "y": 1247,
         "width": 320,
         "height": 108
@@ -6699,7 +6699,7 @@
       "source": "/assets/player/block.svg",
       "dataTiles": null,
       "frame": {
-        "x": 3367,
+        "x": 3223,
         "y": 1247,
         "width": 86,
         "height": 107
@@ -6714,81 +6714,6 @@
         "y": -0.278809,
         "width": 0.263086,
         "height": 0.33291
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "rock_block",
-      "kind": "entity",
-      "source": "/assets/rock/block.png",
-      "dataTiles": null,
-      "frame": {
-        "x": 1724,
-        "y": 1247,
-        "width": 143,
-        "height": 127
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.26875,
-        "y": -0.283499,
-        "width": 0.446875,
-        "height": 0.396225
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "rock_block_2",
-      "kind": "entity",
-      "source": "/assets/rock/block_2.png",
-      "dataTiles": null,
-      "frame": {
-        "x": 3572,
-        "y": 1247,
-        "width": 131,
-        "height": 95
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.171875,
-        "y": -0.208622,
-        "width": 0.409375,
-        "height": 0.296389
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "rock_block_3",
-      "kind": "entity",
-      "source": "/assets/rock/block_3.png",
-      "dataTiles": null,
-      "frame": {
-        "x": 3454,
-        "y": 1247,
-        "width": 117,
-        "height": 105
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.190625,
-        "y": -0.224222,
-        "width": 0.365625,
-        "height": 0.327587
       },
       "colorVariants": 1,
       "sway": null
@@ -6824,7 +6749,7 @@
       "source": "/assets/sand/block_reflection.svg",
       "dataTiles": null,
       "frame": {
-        "x": 3046,
+        "x": 2902,
         "y": 1247,
         "width": 320,
         "height": 108
@@ -6849,7 +6774,7 @@
       "source": "/assets/shadow/white.svg",
       "dataTiles": null,
       "frame": {
-        "x": 3704,
+        "x": 3310,
         "y": 1247,
         "width": 20,
         "height": 20

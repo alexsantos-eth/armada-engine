@@ -498,63 +498,6 @@
           "grass"
         ]
       }
-    },
-    {
-      "id": "large_rock",
-      "asset": {
-        "sprite": "/assets/rock/block.svg"
-      },
-      "shape": {
-        "height": 1,
-        "length": 1,
-        "axis": "x",
-        "collision": [
-          0.7
-        ]
-      },
-      "placement": {
-        "surfaces": [
-          "grass"
-        ]
-      }
-    },
-    {
-      "id": "large_rock_2",
-      "asset": {
-        "sprite": "/assets/rock/block_2.svg"
-      },
-      "shape": {
-        "height": 1,
-        "length": 1,
-        "axis": "x",
-        "collision": [
-          0.7
-        ]
-      },
-      "placement": {
-        "surfaces": [
-          "grass"
-        ]
-      }
-    },
-    {
-      "id": "large_rock_3",
-      "asset": {
-        "sprite": "/assets/rock/block_3.svg"
-      },
-      "shape": {
-        "height": 1,
-        "length": 1,
-        "axis": "x",
-        "collision": [
-          0.7
-        ]
-      },
-      "placement": {
-        "surfaces": [
-          "grass"
-        ]
-      }
     }
   ]
 }

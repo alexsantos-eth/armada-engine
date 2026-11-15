@@ -3,9 +3,6 @@
   "emptyWeight": 380.0,
   "weights": {
     "bush": 4.0,
-    "large_rock": 1.0,
-    "large_rock_2": 1.0,
-    "large_rock_3": 1.0,
     "hut_moss": 7.0,
     "hut_thatch": 7.0,
     "cottage_tile": 6.0,
