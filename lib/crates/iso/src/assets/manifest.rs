@@ -169,6 +169,18 @@ impl std::fmt::Display for ManifestError {
 
 impl std::error::Error for ManifestError {}
 
+/// An asset's identity, independent of which file its artwork was drawn in: its source path
+/// with the extension dropped. A repainted asset is a PNG laid beside the drawing it
+/// overrides, while `entities.json` and the rest of the engine go on naming the drawing, so
+/// the two have to meet on a key that does not mention the file.
+pub fn artwork_key(source: &str) -> &str {
+    let name_at = source.rfind('/').map_or(0, |slash| slash + 1);
+    match source[name_at..].rfind('.') {
+        Some(dot) if dot > 0 => &source[..name_at + dot],
+        _ => source,
+    }
+}
+
 /// Validates a manifest: schema version, unique ids, frames inside the atlas.
 pub fn validate_manifest(manifest: &AssetManifest) -> Result<(), ManifestError> {
     if manifest.schema_version != MANIFEST_SCHEMA_VERSION {

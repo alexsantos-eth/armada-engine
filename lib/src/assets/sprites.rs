@@ -1,7 +1,8 @@
 //! Drawing atlas sprites.
 
 use iso::assets::{
-    AssetEntry, AssetManifest, InkBox, SpriteBand, SpriteFrame, SpriteLayout, ink_layout,
+    AssetEntry, AssetManifest, InkBox, SpriteBand, SpriteFrame, SpriteLayout, artwork_key,
+    ink_layout,
 };
 use iso::lighting::ShadeGrid;
 use iso::player::VoxelFaces;
@@ -18,18 +19,6 @@ pub const ATLAS_TEXTURE: usize = 0;
 
 /// The asset that is nothing but opaque white, for drawing flat colour out of the shared atlas.
 pub const WHITE_PATCH: &str = "/assets/shadow/white.svg";
-
-/// An asset's identity, independent of which file its artwork was drawn in: its source path
-/// with the extension dropped. A repainted asset is a PNG laid beside the drawing it
-/// overrides, while `entities.json` and the rest of the engine go on naming the drawing, so
-/// the two have to meet on a key that does not mention the file.
-pub(crate) fn artwork_key(source: &str) -> &str {
-    let name_at = source.rfind('/').map_or(0, |slash| slash + 1);
-    match source[name_at..].rfind('.') {
-        Some(dot) if dot > 0 => &source[..name_at + dot],
-        _ => source,
-    }
-}
 
 /// The rasterized atlas plus the lookup from an asset to its frame, by [`artwork_key`].
 pub struct SpriteAtlas {

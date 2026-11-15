@@ -174,7 +174,9 @@ fn every_terrain_block_is_drawn_at_least_a_whole_cell_wide() {
         let entry = manifest
             .entries
             .iter()
-            .find(|entry| entry.source == source)
+            .find(|entry| {
+                iso::assets::artwork_key(&entry.source) == iso::assets::artwork_key(source)
+            })
             .unwrap_or_else(|| panic!("the atlas has no {source}"));
         let ink = entry
             .ink

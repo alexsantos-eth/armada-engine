@@ -88,7 +88,13 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`frame_count`](manifest.rs#L117) — Número de marcos de animación.
   - Firma: `pub fn frame_count(&self) -> usize {`
 
-- [`validate_manifest`](manifest.rs#L173) — Valida un manifiesto: versión de esquema, ids únicos, marcos dentro del atlas.
+- [`artwork_key`](manifest.rs#L176) — La identidad de un asset, sin el fichero en el que está dibujado: su ruta de
+  origen sin extensión. Un repintado es un PNG junto al dibujo al que sustituye, mientras que
+  `entities.json` y el resto del motor siguen nombrando el dibujo, así que los dos tienen que
+  encontrarse en una clave que no mencione el fichero.
+  - Firma: `pub fn artwork_key(source: &str) -> &str {`
+
+- [`validate_manifest`](manifest.rs#L185) — Valida un manifiesto: versión de esquema, ids únicos, marcos dentro del atlas.
   - Firma: `pub fn validate_manifest(manifest: &AssetManifest) -> Result<(), ManifestError> {`
 
 #### Constantes

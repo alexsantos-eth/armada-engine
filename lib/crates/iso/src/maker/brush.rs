@@ -71,7 +71,7 @@ impl Default for MakerBrush {
 
 impl MakerBrush {
     /// Turns the blueprint in hand a quarter turn, which in this content is its sibling along
-    /// the other axis (`hotel_x` and `hotel_y`). Says whether the catalog had one to move to.
+    /// the other axis (`mead_hall_x` and `mead_hall_y`). Says whether the catalog had one to move to.
     pub fn turn(&mut self, catalog: &EntityCatalog) -> bool {
         let Some(current) = catalog.entities.get(self.blueprint) else {
             return false;
@@ -92,7 +92,7 @@ impl MakerBrush {
 }
 
 /// The name of the blueprint `id` turned a quarter turn: the same name with its axis segment
-/// swapped (`apartments_x` to `apartments_y`, `pier_x_reverse` to `pier_y_reverse`). `None`
+/// swapped (`mead_hall_x` to `mead_hall_y`, and the same with a `_reverse` tail). `None`
 /// when the name carries no axis, so the artwork only stands one way.
 pub fn turned_blueprint(id: &str) -> Option<String> {
     let mut segments: Vec<&str> = id.split('_').collect();

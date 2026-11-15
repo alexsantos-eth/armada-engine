@@ -96,7 +96,7 @@ fn deserializes_the_manifest_fixture() {
     let manifest: AssetManifest = serde_json::from_str(json).expect("manifest deserializes");
     assert_eq!(manifest.schema_version, MANIFEST_SCHEMA_VERSION);
     validate_manifest(&manifest).expect("the manifest validates");
-    assert_eq!(manifest.entries.len(), 89);
+    assert_eq!(manifest.entries.len(), 79);
     for entry in &manifest.entries {
         assert!(
             entry.primary_frame().is_some(),
@@ -319,4 +319,25 @@ fn rejects_missing_frame() {
     m.entries[0].frames = None;
     let err = validate_manifest(&m).unwrap_err();
     assert!(matches!(err, ManifestError::MissingFrame { .. }));
+}
+
+#[test]
+fn artwork_key_drops_the_file_the_artwork_was_drawn_in() {
+    // A repainted asset is a PNG beside the drawing it overrides, while `entities.json` goes
+    // on naming the drawing. Both have to land on the same key or the entity draws nothing.
+    assert_eq!(
+        artwork_key("/assets/tree/block.png"),
+        artwork_key("/assets/tree/block.svg")
+    );
+    assert_eq!(artwork_key("/assets/tree/block.svg"), "/assets/tree/block");
+    // Names with their own dots keep everything but the last extension.
+    assert_eq!(
+        artwork_key("/assets/cloud/cloud-shadow.svg"),
+        "/assets/cloud/cloud-shadow"
+    );
+    assert_eq!(artwork_key("/assets/a/b.c.png"), "/assets/a/b.c");
+    // Nothing to drop: no extension at all, and a dotfile is a name, not an extension.
+    assert_eq!(artwork_key("/assets/tree/block"), "/assets/tree/block");
+    assert_eq!(artwork_key("/assets/.hidden"), "/assets/.hidden");
+    assert_eq!(artwork_key("block.svg"), "block");
 }

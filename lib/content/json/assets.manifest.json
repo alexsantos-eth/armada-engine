@@ -5,7 +5,7 @@
     "x": 0,
     "y": 0,
     "width": 4096,
-    "height": 2354
+    "height": 2088
   },
   "entries": [
     {
@@ -14,8 +14,8 @@
       "source": "/assets/boat/block.svg",
       "dataTiles": "2x1",
       "frame": {
-        "x": 586,
-        "y": 1938,
+        "x": 1520,
+        "y": 1670,
         "width": 347,
         "height": 208
       },
@@ -39,8 +39,8 @@
       "source": "/assets/boat/block_2.svg",
       "dataTiles": "2x1",
       "frame": {
-        "x": 2177,
-        "y": 1938,
+        "x": 2469,
+        "y": 1670,
         "width": 307,
         "height": 202
       },
@@ -64,8 +64,8 @@
       "source": "/assets/boat/block_2_reflection.svg",
       "dataTiles": "2x1",
       "frame": {
-        "x": 2485,
-        "y": 1938,
+        "x": 2777,
+        "y": 1670,
         "width": 307,
         "height": 201
       },
@@ -139,7 +139,7 @@
       "source": "/assets/building/block_healer_hut.png",
       "dataTiles": "1x1x2",
       "frame": {
-        "x": 2565,
+        "x": 1369,
         "y": 802,
         "width": 292,
         "height": 299
@@ -164,8 +164,8 @@
       "source": "/assets/building/block_market_stall.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 1,
-        "y": 1938,
+        "x": 293,
+        "y": 1670,
         "width": 292,
         "height": 242
       },
@@ -239,8 +239,8 @@
       "source": "/assets/building/block_runestone.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 411,
-        "y": 2181,
+        "x": 455,
+        "y": 1916,
         "width": 202,
         "height": 166
       },
@@ -264,7 +264,7 @@
       "source": "/assets/building/block_smithy.png",
       "dataTiles": "1x1x2",
       "frame": {
-        "x": 794,
+        "x": 478,
         "y": 802,
         "width": 296,
         "height": 310
@@ -314,7 +314,7 @@
       "source": "/assets/building/block_stone_shrine.png",
       "dataTiles": "1x1x2",
       "frame": {
-        "x": 3687,
+        "x": 1,
         "y": 1670,
         "width": 291,
         "height": 245
@@ -364,8 +364,8 @@
       "source": "/assets/bush/block.png",
       "dataTiles": null,
       "frame": {
-        "x": 933,
-        "y": 2181,
+        "x": 977,
+        "y": 1916,
         "width": 214,
         "height": 117
       },
@@ -384,38 +384,13 @@
       "sway": null
     },
     {
-      "id": "car_block",
-      "kind": "entity",
-      "source": "/assets/car/block.png",
-      "dataTiles": "1x2",
-      "frame": {
-        "x": 1,
-        "y": 2181,
-        "width": 206,
-        "height": 172
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.232813,
-        "y": -0.593691,
-        "width": 0.965625,
-        "height": 0.697668
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
       "id": "cloud_cloud-shadow",
       "kind": "entity",
       "source": "/assets/cloud/cloud-shadow.svg",
       "dataTiles": null,
       "frame": {
-        "x": 1576,
-        "y": 1938,
+        "x": 1868,
+        "y": 1670,
         "width": 600,
         "height": 205
       },
@@ -430,10 +405,10 @@
     {
       "id": "grass_block",
       "kind": "entity",
-      "source": "/assets/grass/block.svg",
+      "source": "/assets/grass/block.png",
       "dataTiles": null,
       "frame": {
-        "x": 3738,
+        "x": 1662,
         "y": 802,
         "width": 320,
         "height": 267
@@ -455,11 +430,11 @@
     {
       "id": "grass_block_bushes",
       "kind": "entity",
-      "source": "/assets/grass/block_bushes.svg",
+      "source": "/assets/grass/block_bushes.png",
       "dataTiles": null,
       "frame": {
-        "x": 1,
-        "y": 1134,
+        "x": 1983,
+        "y": 802,
         "width": 320,
         "height": 267
       },
@@ -480,11 +455,11 @@
     {
       "id": "grass_block_flowers",
       "kind": "entity",
-      "source": "/assets/grass/block_flowers.svg",
+      "source": "/assets/grass/block_flowers.png",
       "dataTiles": null,
       "frame": {
-        "x": 322,
-        "y": 1134,
+        "x": 2304,
+        "y": 802,
         "width": 320,
         "height": 267
       },
@@ -505,11 +480,11 @@
     {
       "id": "grass_block_flowers_2",
       "kind": "entity",
-      "source": "/assets/grass/block_flowers_2.svg",
+      "source": "/assets/grass/block_flowers_2.png",
       "dataTiles": null,
       "frame": {
-        "x": 643,
-        "y": 1134,
+        "x": 2625,
+        "y": 802,
         "width": 320,
         "height": 267
       },
@@ -530,11 +505,11 @@
     {
       "id": "grass_block_leaves",
       "kind": "entity",
-      "source": "/assets/grass/block_leaves.svg",
+      "source": "/assets/grass/block_leaves.png",
       "dataTiles": null,
       "frame": {
-        "x": 964,
-        "y": 1134,
+        "x": 2946,
+        "y": 802,
         "width": 320,
         "height": 267
       },
@@ -555,11 +530,11 @@
     {
       "id": "grass_block_mushrooms",
       "kind": "entity",
-      "source": "/assets/grass/block_mushrooms.svg",
+      "source": "/assets/grass/block_mushrooms.png",
       "dataTiles": null,
       "frame": {
-        "x": 1285,
-        "y": 1134,
+        "x": 3267,
+        "y": 802,
         "width": 320,
         "height": 267
       },
@@ -580,11 +555,11 @@
     {
       "id": "grass_block_pebbles",
       "kind": "entity",
-      "source": "/assets/grass/block_pebbles.svg",
+      "source": "/assets/grass/block_pebbles.png",
       "dataTiles": null,
       "frame": {
-        "x": 1606,
-        "y": 1134,
+        "x": 3588,
+        "y": 802,
         "width": 320,
         "height": 267
       },
@@ -608,8 +583,8 @@
       "source": "/assets/grass/block_reflection.svg",
       "dataTiles": null,
       "frame": {
-        "x": 1148,
-        "y": 2181,
+        "x": 1192,
+        "y": 1916,
         "width": 320,
         "height": 108
       },
@@ -630,10 +605,10 @@
     {
       "id": "grass_block_sprouts",
       "kind": "entity",
-      "source": "/assets/grass/block_sprouts.svg",
+      "source": "/assets/grass/block_sprouts.png",
       "dataTiles": null,
       "frame": {
-        "x": 1927,
+        "x": 1,
         "y": 1134,
         "width": 320,
         "height": 267
@@ -655,10 +630,10 @@
     {
       "id": "grass_block_wildflowers_red",
       "kind": "entity",
-      "source": "/assets/grass/block_wildflowers_red.svg",
+      "source": "/assets/grass/block_wildflowers_red.png",
       "dataTiles": null,
       "frame": {
-        "x": 2248,
+        "x": 322,
         "y": 1134,
         "width": 320,
         "height": 267
@@ -680,10 +655,10 @@
     {
       "id": "grass_block_wildflowers_white",
       "kind": "entity",
-      "source": "/assets/grass/block_wildflowers_white.svg",
+      "source": "/assets/grass/block_wildflowers_white.png",
       "dataTiles": null,
       "frame": {
-        "x": 2569,
+        "x": 643,
         "y": 1134,
         "width": 320,
         "height": 267
@@ -724,10 +699,10 @@
     {
       "id": "ground_block",
       "kind": "entity",
-      "source": "/assets/ground/block.svg",
+      "source": "/assets/ground/block.png",
       "dataTiles": null,
       "frame": {
-        "x": 2890,
+        "x": 964,
         "y": 1134,
         "width": 320,
         "height": 267
@@ -752,8 +727,8 @@
       "source": "/assets/ground/block_reflection.svg",
       "dataTiles": null,
       "frame": {
-        "x": 1469,
-        "y": 2181,
+        "x": 1513,
+        "y": 1916,
         "width": 320,
         "height": 108
       },
@@ -777,7 +752,7 @@
       "source": "/assets/house/block_cottage_tile.png",
       "dataTiles": "1x1x2",
       "frame": {
-        "x": 1971,
+        "x": 775,
         "y": 802,
         "width": 296,
         "height": 305
@@ -802,7 +777,7 @@
       "source": "/assets/house/block_hut_moss.png",
       "dataTiles": "1x1x2",
       "frame": {
-        "x": 2268,
+        "x": 1072,
         "y": 802,
         "width": 296,
         "height": 303
@@ -827,8 +802,8 @@
       "source": "/assets/house/block_hut_thatch.png",
       "dataTiles": "1x1x2",
       "frame": {
-        "x": 294,
-        "y": 1938,
+        "x": 586,
+        "y": 1670,
         "width": 291,
         "height": 234
       },
@@ -899,7 +874,157 @@
     {
       "id": "path_block_0",
       "kind": "entity",
-      "source": "/assets/path/block_0.svg",
+      "source": "/assets/path/block_0.png",
+      "dataTiles": null,
+      "frame": {
+        "x": 1285,
+        "y": 1134,
+        "width": 320,
+        "height": 267
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.5,
+        "y": -0.583008,
+        "width": 1.0,
+        "height": 0.833008
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "path_block_1",
+      "kind": "entity",
+      "source": "/assets/path/block_1.png",
+      "dataTiles": null,
+      "frame": {
+        "x": 1606,
+        "y": 1134,
+        "width": 320,
+        "height": 267
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.5,
+        "y": -0.583008,
+        "width": 1.0,
+        "height": 0.833008
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "path_block_10",
+      "kind": "entity",
+      "source": "/assets/path/block_10.png",
+      "dataTiles": null,
+      "frame": {
+        "x": 1927,
+        "y": 1134,
+        "width": 320,
+        "height": 267
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.5,
+        "y": -0.583008,
+        "width": 1.0,
+        "height": 0.833008
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "path_block_11",
+      "kind": "entity",
+      "source": "/assets/path/block_11.png",
+      "dataTiles": null,
+      "frame": {
+        "x": 2248,
+        "y": 1134,
+        "width": 320,
+        "height": 267
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.5,
+        "y": -0.583008,
+        "width": 1.0,
+        "height": 0.833008
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "path_block_12",
+      "kind": "entity",
+      "source": "/assets/path/block_12.png",
+      "dataTiles": null,
+      "frame": {
+        "x": 2569,
+        "y": 1134,
+        "width": 320,
+        "height": 267
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.5,
+        "y": -0.583008,
+        "width": 1.0,
+        "height": 0.833008
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "path_block_13",
+      "kind": "entity",
+      "source": "/assets/path/block_13.png",
+      "dataTiles": null,
+      "frame": {
+        "x": 2890,
+        "y": 1134,
+        "width": 320,
+        "height": 267
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.5,
+        "y": -0.583008,
+        "width": 1.0,
+        "height": 0.833008
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "path_block_14",
+      "kind": "entity",
+      "source": "/assets/path/block_14.png",
       "dataTiles": null,
       "frame": {
         "x": 3211,
@@ -922,9 +1047,9 @@
       "sway": null
     },
     {
-      "id": "path_block_1",
+      "id": "path_block_15",
       "kind": "entity",
-      "source": "/assets/path/block_1.svg",
+      "source": "/assets/path/block_15.png",
       "dataTiles": null,
       "frame": {
         "x": 3532,
@@ -947,9 +1072,9 @@
       "sway": null
     },
     {
-      "id": "path_block_10",
+      "id": "path_block_2",
       "kind": "entity",
-      "source": "/assets/path/block_10.svg",
+      "source": "/assets/path/block_2.png",
       "dataTiles": null,
       "frame": {
         "x": 1,
@@ -972,9 +1097,9 @@
       "sway": null
     },
     {
-      "id": "path_block_11",
+      "id": "path_block_3",
       "kind": "entity",
-      "source": "/assets/path/block_11.svg",
+      "source": "/assets/path/block_3.png",
       "dataTiles": null,
       "frame": {
         "x": 322,
@@ -997,9 +1122,9 @@
       "sway": null
     },
     {
-      "id": "path_block_12",
+      "id": "path_block_4",
       "kind": "entity",
-      "source": "/assets/path/block_12.svg",
+      "source": "/assets/path/block_4.png",
       "dataTiles": null,
       "frame": {
         "x": 643,
@@ -1022,9 +1147,9 @@
       "sway": null
     },
     {
-      "id": "path_block_13",
+      "id": "path_block_5",
       "kind": "entity",
-      "source": "/assets/path/block_13.svg",
+      "source": "/assets/path/block_5.png",
       "dataTiles": null,
       "frame": {
         "x": 964,
@@ -1047,9 +1172,9 @@
       "sway": null
     },
     {
-      "id": "path_block_14",
+      "id": "path_block_6",
       "kind": "entity",
-      "source": "/assets/path/block_14.svg",
+      "source": "/assets/path/block_6.png",
       "dataTiles": null,
       "frame": {
         "x": 1285,
@@ -1072,9 +1197,9 @@
       "sway": null
     },
     {
-      "id": "path_block_15",
+      "id": "path_block_7",
       "kind": "entity",
-      "source": "/assets/path/block_15.svg",
+      "source": "/assets/path/block_7.png",
       "dataTiles": null,
       "frame": {
         "x": 1606,
@@ -1097,9 +1222,9 @@
       "sway": null
     },
     {
-      "id": "path_block_2",
+      "id": "path_block_8",
       "kind": "entity",
-      "source": "/assets/path/block_2.svg",
+      "source": "/assets/path/block_8.png",
       "dataTiles": null,
       "frame": {
         "x": 1927,
@@ -1122,163 +1247,13 @@
       "sway": null
     },
     {
-      "id": "path_block_3",
+      "id": "path_block_9",
       "kind": "entity",
-      "source": "/assets/path/block_3.svg",
+      "source": "/assets/path/block_9.png",
       "dataTiles": null,
       "frame": {
         "x": 2248,
         "y": 1402,
-        "width": 320,
-        "height": 267
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.5,
-        "y": -0.583008,
-        "width": 1.0,
-        "height": 0.833008
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "path_block_4",
-      "kind": "entity",
-      "source": "/assets/path/block_4.svg",
-      "dataTiles": null,
-      "frame": {
-        "x": 2569,
-        "y": 1402,
-        "width": 320,
-        "height": 267
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.5,
-        "y": -0.583008,
-        "width": 1.0,
-        "height": 0.833008
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "path_block_5",
-      "kind": "entity",
-      "source": "/assets/path/block_5.svg",
-      "dataTiles": null,
-      "frame": {
-        "x": 2890,
-        "y": 1402,
-        "width": 320,
-        "height": 267
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.5,
-        "y": -0.583008,
-        "width": 1.0,
-        "height": 0.833008
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "path_block_6",
-      "kind": "entity",
-      "source": "/assets/path/block_6.svg",
-      "dataTiles": null,
-      "frame": {
-        "x": 3211,
-        "y": 1402,
-        "width": 320,
-        "height": 267
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.5,
-        "y": -0.583008,
-        "width": 1.0,
-        "height": 0.833008
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "path_block_7",
-      "kind": "entity",
-      "source": "/assets/path/block_7.svg",
-      "dataTiles": null,
-      "frame": {
-        "x": 3532,
-        "y": 1402,
-        "width": 320,
-        "height": 267
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.5,
-        "y": -0.583008,
-        "width": 1.0,
-        "height": 0.833008
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "path_block_8",
-      "kind": "entity",
-      "source": "/assets/path/block_8.svg",
-      "dataTiles": null,
-      "frame": {
-        "x": 1,
-        "y": 1670,
-        "width": 320,
-        "height": 267
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.5,
-        "y": -0.583008,
-        "width": 1.0,
-        "height": 0.833008
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "path_block_9",
-      "kind": "entity",
-      "source": "/assets/path/block_9.svg",
-      "dataTiles": null,
-      "frame": {
-        "x": 322,
-        "y": 1670,
         "width": 320,
         "height": 267
       },
@@ -1302,8 +1277,8 @@
       "source": "/assets/path/block_reflection.svg",
       "dataTiles": null,
       "frame": {
-        "x": 1790,
-        "y": 2181,
+        "x": 1834,
+        "y": 1916,
         "width": 320,
         "height": 108
       },
@@ -1317,206 +1292,6 @@
         "y": 0.0,
         "width": 1.0,
         "height": 0.333008
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "pier_block_1x3_land_end",
-      "kind": "entity",
-      "source": "/assets/pier/block_1x3_land_end.svg",
-      "dataTiles": "1x3",
-      "frame": {
-        "x": 2807,
-        "y": 1670,
-        "width": 439,
-        "height": 255
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.364258,
-        "y": -0.534863,
-        "width": 1.367188,
-        "height": 0.793848
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "pier_block_1x3_land_start",
-      "kind": "entity",
-      "source": "/assets/pier/block_1x3_land_start.svg",
-      "dataTiles": "1x3",
-      "frame": {
-        "x": 2858,
-        "y": 802,
-        "width": 439,
-        "height": 292
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.00293,
-        "y": -0.915723,
-        "width": 1.367188,
-        "height": 0.90752
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "pier_block_1x3_over_water",
-      "kind": "entity",
-      "source": "/assets/pier/block_1x3_over_water.svg",
-      "dataTiles": "1x3",
-      "frame": {
-        "x": 1091,
-        "y": 802,
-        "width": 439,
-        "height": 308
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.364258,
-        "y": -0.534863,
-        "width": 1.367188,
-        "height": 0.959863
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "pier_block_1x3_over_water_reflection",
-      "kind": "entity",
-      "source": "/assets/pier/block_1x3_over_water_reflection.svg",
-      "dataTiles": "1x3",
-      "frame": {
-        "x": 1927,
-        "y": 1670,
-        "width": 439,
-        "height": 258
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.364258,
-        "y": 0.162891,
-        "width": 1.367188,
-        "height": 0.80166
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "pier_block_3x1_land_end",
-      "kind": "entity",
-      "source": "/assets/pier/block_3x1_land_end.svg",
-      "dataTiles": "3x1",
-      "frame": {
-        "x": 3247,
-        "y": 1670,
-        "width": 439,
-        "height": 255
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -1.00293,
-        "y": -0.534863,
-        "width": 1.367188,
-        "height": 0.793848
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "pier_block_3x1_land_start",
-      "kind": "entity",
-      "source": "/assets/pier/block_3x1_land_start.svg",
-      "dataTiles": "3x1",
-      "frame": {
-        "x": 3298,
-        "y": 802,
-        "width": 439,
-        "height": 292
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -1.364258,
-        "y": -0.915723,
-        "width": 1.367188,
-        "height": 0.90752
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "pier_block_3x1_over_water",
-      "kind": "entity",
-      "source": "/assets/pier/block_3x1_over_water.svg",
-      "dataTiles": "3x1",
-      "frame": {
-        "x": 1531,
-        "y": 802,
-        "width": 439,
-        "height": 308
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -1.00293,
-        "y": -0.534863,
-        "width": 1.367188,
-        "height": 0.959863
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "pier_block_3x1_over_water_reflection",
-      "kind": "entity",
-      "source": "/assets/pier/block_3x1_over_water_reflection.svg",
-      "dataTiles": "3x1",
-      "frame": {
-        "x": 2367,
-        "y": 1670,
-        "width": 439,
-        "height": 258
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -1.00293,
-        "y": 0.162891,
-        "width": 1.367188,
-        "height": 0.80166
       },
       "colorVariants": 1,
       "sway": null
@@ -7068,8 +6843,8 @@
       "source": "/assets/player/block.svg",
       "dataTiles": null,
       "frame": {
-        "x": 2432,
-        "y": 2181,
+        "x": 2476,
+        "y": 1916,
         "width": 86,
         "height": 107
       },
@@ -7093,8 +6868,8 @@
       "source": "/assets/rock/block.png",
       "dataTiles": null,
       "frame": {
-        "x": 789,
-        "y": 2181,
+        "x": 833,
+        "y": 1916,
         "width": 143,
         "height": 127
       },
@@ -7118,8 +6893,8 @@
       "source": "/assets/rock/block_2.png",
       "dataTiles": null,
       "frame": {
-        "x": 2637,
-        "y": 2181,
+        "x": 2681,
+        "y": 1916,
         "width": 131,
         "height": 95
       },
@@ -7143,8 +6918,8 @@
       "source": "/assets/rock/block_3.png",
       "dataTiles": null,
       "frame": {
-        "x": 2519,
-        "y": 2181,
+        "x": 2563,
+        "y": 1916,
         "width": 117,
         "height": 105
       },
@@ -7165,11 +6940,11 @@
     {
       "id": "sand_block",
       "kind": "entity",
-      "source": "/assets/sand/block.svg",
+      "source": "/assets/sand/block.png",
       "dataTiles": null,
       "frame": {
-        "x": 643,
-        "y": 1670,
+        "x": 2569,
+        "y": 1402,
         "width": 320,
         "height": 267
       },
@@ -7193,8 +6968,8 @@
       "source": "/assets/sand/block_reflection.svg",
       "dataTiles": null,
       "frame": {
-        "x": 2111,
-        "y": 2181,
+        "x": 2155,
+        "y": 1916,
         "width": 320,
         "height": 108
       },
@@ -7218,8 +6993,8 @@
       "source": "/assets/shadow/white.svg",
       "dataTiles": null,
       "frame": {
-        "x": 2769,
-        "y": 2181,
+        "x": 2813,
+        "y": 1916,
         "width": 20,
         "height": 20
       },
@@ -7234,13 +7009,13 @@
     {
       "id": "stairs_block_nx",
       "kind": "entity",
-      "source": "/assets/stairs/block_nx.svg",
+      "source": "/assets/stairs/block_nx.png",
       "dataTiles": null,
       "frame": {
-        "x": 934,
-        "y": 1938,
+        "x": 878,
+        "y": 1670,
         "width": 320,
-        "height": 208
+        "height": 209
       },
       "frames": null,
       "anchor": {
@@ -7249,9 +7024,9 @@
       },
       "ink": {
         "x": -0.5,
-        "y": -0.395508,
+        "y": -0.402055,
         "width": 1.0,
-        "height": 0.645508
+        "height": 0.652055
       },
       "colorVariants": 1,
       "sway": null
@@ -7259,13 +7034,13 @@
     {
       "id": "stairs_block_ny",
       "kind": "entity",
-      "source": "/assets/stairs/block_ny.svg",
+      "source": "/assets/stairs/block_ny.png",
       "dataTiles": null,
       "frame": {
-        "x": 1255,
-        "y": 1938,
+        "x": 1199,
+        "y": 1670,
         "width": 320,
-        "height": 208
+        "height": 209
       },
       "frames": null,
       "anchor": {
@@ -7274,9 +7049,9 @@
       },
       "ink": {
         "x": -0.5,
-        "y": -0.395508,
+        "y": -0.402055,
         "width": 1.0,
-        "height": 0.645508
+        "height": 0.652055
       },
       "colorVariants": 1,
       "sway": null
@@ -7284,11 +7059,11 @@
     {
       "id": "stairs_block_px",
       "kind": "entity",
-      "source": "/assets/stairs/block_px.svg",
+      "source": "/assets/stairs/block_px.png",
       "dataTiles": null,
       "frame": {
-        "x": 964,
-        "y": 1670,
+        "x": 2890,
+        "y": 1402,
         "width": 320,
         "height": 267
       },
@@ -7309,11 +7084,11 @@
     {
       "id": "stairs_block_py",
       "kind": "entity",
-      "source": "/assets/stairs/block_py.svg",
+      "source": "/assets/stairs/block_py.png",
       "dataTiles": null,
       "frame": {
-        "x": 1285,
-        "y": 1670,
+        "x": 3211,
+        "y": 1402,
         "width": 320,
         "height": 267
       },
@@ -7332,215 +7107,15 @@
       "sway": null
     },
     {
-      "id": "statue_block",
-      "kind": "entity",
-      "source": "/assets/statue/block.png",
-      "dataTiles": "1x1x2",
-      "frame": {
-        "x": 478,
-        "y": 802,
-        "width": 315,
-        "height": 317
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.490625,
-        "y": -0.750335,
-        "width": 0.984375,
-        "height": 0.990957
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
       "id": "tree_block",
       "kind": "entity",
       "source": "/assets/tree/block.png",
       "dataTiles": "1x1x2",
       "frame": {
-        "x": 3731,
-        "y": 1938,
+        "x": 3554,
+        "y": 1670,
         "width": 202,
-        "height": 175
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.315625,
-        "y": -0.732597,
-        "width": 0.63125,
-        "height": 0.764242
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "tree_block_2",
-      "kind": "entity",
-      "source": "/assets/tree/block_2.png",
-      "dataTiles": "1x1x2",
-      "frame": {
-        "x": 3262,
-        "y": 1938,
-        "width": 218,
-        "height": 179
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.340625,
-        "y": -0.750066,
-        "width": 0.68125,
-        "height": 0.781711
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "tree_block_3",
-      "kind": "entity",
-      "source": "/assets/tree/block_3.png",
-      "dataTiles": "1x1x2",
-      "frame": {
-        "x": 614,
-        "y": 2181,
-        "width": 174,
-        "height": 164
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.271875,
-        "y": -0.702028,
-        "width": 0.54375,
-        "height": 0.716204
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "tree_block_4",
-      "kind": "entity",
-      "source": "/assets/tree/block_4.png",
-      "dataTiles": "1x1x2",
-      "frame": {
-        "x": 2793,
-        "y": 1938,
-        "width": 272,
-        "height": 200
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.425,
-        "y": -0.867978,
-        "width": 0.85,
-        "height": 0.87342
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "tree_block_5",
-      "kind": "entity",
-      "source": "/assets/tree/block_5.png",
-      "dataTiles": "1x1x2",
-      "frame": {
-        "x": 3481,
-        "y": 1938,
-        "width": 124,
-        "height": 178
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.19375,
-        "y": -0.7588,
-        "width": 0.3875,
-        "height": 0.777344
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "tree_block_6",
-      "kind": "entity",
-      "source": "/assets/tree/block_6.png",
-      "dataTiles": "1x1x2",
-      "frame": {
-        "x": 3066,
-        "y": 1938,
-        "width": 195,
-        "height": 186
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.31875,
-        "y": -0.723863,
-        "width": 0.609375,
-        "height": 0.812281
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "tree_block_7",
-      "kind": "entity",
-      "source": "/assets/tree/block_7.png",
-      "dataTiles": "1x1x2",
-      "frame": {
-        "x": 3606,
-        "y": 1938,
-        "width": 124,
-        "height": 177
-      },
-      "frames": null,
-      "anchor": {
-        "x": 0.5,
-        "y": 1.0
-      },
-      "ink": {
-        "x": -0.19375,
-        "y": -0.750066,
-        "width": 0.3875,
-        "height": 0.772977
-      },
-      "colorVariants": 1,
-      "sway": null
-    },
-    {
-      "id": "tree_block_8",
-      "kind": "entity",
-      "source": "/assets/tree/block_8.png",
-      "dataTiles": "1x1x2",
-      "frame": {
-        "x": 208,
-        "y": 2181,
-        "width": 202,
-        "height": 172
+        "height": 174
       },
       "frames": null,
       "anchor": {
@@ -7551,7 +7126,182 @@
         "x": -0.315625,
         "y": -0.72823,
         "width": 0.63125,
-        "height": 0.751141
+        "height": 0.759875
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "tree_block_2",
+      "kind": "entity",
+      "source": "/assets/tree/block_2.png",
+      "dataTiles": "1x1x2",
+      "frame": {
+        "x": 3757,
+        "y": 1670,
+        "width": 218,
+        "height": 174
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.340625,
+        "y": -0.72823,
+        "width": 0.68125,
+        "height": 0.759875
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "tree_block_3",
+      "kind": "entity",
+      "source": "/assets/tree/block_3.png",
+      "dataTiles": "1x1x2",
+      "frame": {
+        "x": 658,
+        "y": 1916,
+        "width": 174,
+        "height": 163
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.271875,
+        "y": -0.697661,
+        "width": 0.54375,
+        "height": 0.711837
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "tree_block_4",
+      "kind": "entity",
+      "source": "/assets/tree/block_4.png",
+      "dataTiles": "1x1x2",
+      "frame": {
+        "x": 3085,
+        "y": 1670,
+        "width": 272,
+        "height": 195
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.425,
+        "y": -0.846142,
+        "width": 0.85,
+        "height": 0.851584
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "tree_block_5",
+      "kind": "entity",
+      "source": "/assets/tree/block_5.png",
+      "dataTiles": "1x1x2",
+      "frame": {
+        "x": 126,
+        "y": 1916,
+        "width": 124,
+        "height": 170
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.19375,
+        "y": -0.723863,
+        "width": 0.3875,
+        "height": 0.742407
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "tree_block_6",
+      "kind": "entity",
+      "source": "/assets/tree/block_6.png",
+      "dataTiles": "1x1x2",
+      "frame": {
+        "x": 3358,
+        "y": 1670,
+        "width": 195,
+        "height": 187
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.31875,
+        "y": -0.72823,
+        "width": 0.609375,
+        "height": 0.816648
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "tree_block_7",
+      "kind": "entity",
+      "source": "/assets/tree/block_7.png",
+      "dataTiles": "1x1x2",
+      "frame": {
+        "x": 1,
+        "y": 1916,
+        "width": 124,
+        "height": 171
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.19375,
+        "y": -0.723863,
+        "width": 0.3875,
+        "height": 0.746774
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "tree_block_8",
+      "kind": "entity",
+      "source": "/assets/tree/block_8.png",
+      "dataTiles": "1x1x2",
+      "frame": {
+        "x": 251,
+        "y": 1916,
+        "width": 203,
+        "height": 170
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.31875,
+        "y": -0.719496,
+        "width": 0.634375,
+        "height": 0.742407
       },
       "colorVariants": 1,
       "sway": null
@@ -7562,8 +7312,8 @@
       "source": "/assets/water/block.svg",
       "dataTiles": null,
       "frame": {
-        "x": 1606,
-        "y": 1670,
+        "x": 3532,
+        "y": 1402,
         "width": 320,
         "height": 267
       },

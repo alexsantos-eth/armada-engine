@@ -54,7 +54,7 @@ Chunk de 32×32 = 1024 celdas; conjuntos de posibilidades pequeños (≤ bluepri
 
 ## Decisiones tomadas en la fase de implementación
 
-1. Entra **todo** lo que ningún bioma reclama (31 blueprints en el catálogo actual, los 8 árboles — 23 con peso en `wfc.json`: edificios, muelles, barco, arbustos y rocas) — los biomas conservan los 8 árboles.
+1. Entra **todo** lo que ningún bioma reclama (29 blueprints en el catálogo actual, los 8 árboles — 21 con peso en `wfc.json`: edificios, barco, arbustos y rocas) — los biomas conservan los 8 árboles.
 2. Vecindad inicial **mínima**: hueco 1 mismo tipo; nada de vecindad declarativa en esta iteración.
 3. Los techos por chunk se añadieron en el esquema 2 como `families` + `maxPerChunk` (validados en `parse_wfc`): `office` comparte techo entre `office_x`/`office_y`, `hospital` y `townhall` se limitan a 1 por chunk. Todo sigue acotado por pesos, superficies y la vacancia; la vecindad declarativa sigue fuera del motor.
 4. Arbustos y rocas **sueltos**; la densidad reproduce más o menos la de antes (pesos 1, `emptyWeight` 380).

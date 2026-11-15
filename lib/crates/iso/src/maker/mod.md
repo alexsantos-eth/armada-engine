@@ -10,7 +10,7 @@ Tres clases de cambio, deliberadamente separadas:
 - **Vestido** (`Dressing`): los tintes y las variantes de hierba no viven en la columna, sino en un mapa de excepciones por casilla —el `CellMap` del propio dominio, agrupado por chunk, que es lo que recorrerá el guardado de un chunk editado— y responde **antes** que el ruido. Un mundo jugado lleva ese mapa vacío y todo lo decide el ruido, como siempre; `TerrainLook` consulta el mapa solo cuando no está vacío.
 - **Entidades**: el trazo valida con `entities::placement_by_hand` (superficies, un único nivel bajo la huella y la ocupación; sin la regla de separación entre iguales, que es de la colocación generada) y la pone con `ChunkManager::put_entity`.
 
-El **giro** de una entidad no es una rotación del sprite: el contenido trae pares por eje (`hotel_x` / `hotel_y`, `pier_x_reverse` / `pier_y_reverse`), así que girar es moverse al hermano del catálogo (`turned_blueprint`). Un blueprint sin eje en el nombre no gira.
+El **giro** de una entidad no es una rotación del sprite: el contenido trae pares por eje (`mead_hall_x` / `mead_hall_y`, `boathouse_x` / `boathouse_y`), así que girar es moverse al hermano del catálogo (`turned_blueprint`). Un blueprint sin eje en el nombre no gira.
 
 Los nombres de las herramientas y de los materiales en pantalla **no viven aquí**: el idioma del overlay es del cliente (`src/maker/panel.rs`), y este dominio solo expone las herramientas y su orden.
 
@@ -37,7 +37,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`turn`](brush.rs#L75) — Mueve el blueprint en la mano a su hermano del otro eje; indica si el catálogo tenía uno.
   - Firma: `pub fn turn(&mut self, catalog: &EntityCatalog) -> bool {`
-- [`turned_blueprint`](brush.rs#L97) — El nombre con su segmento de eje cambiado (`apartments_x` → `apartments_y`); `None` si no lleva eje.
+- [`turned_blueprint`](brush.rs#L97) — El nombre con su segmento de eje cambiado (`mead_hall_x` → `mead_hall_y`); `None` si no lleva eje.
   - Firma: `pub fn turned_blueprint(id: &str) -> Option<String> {`
 
 ### `dressing.rs`

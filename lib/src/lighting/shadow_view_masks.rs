@@ -1,6 +1,6 @@
 //! The silhouettes a shadow is sampled from.
 
-use crate::assets::sprites::artwork_key;
+use iso::assets::artwork_key;
 use iso::assets::{AssetManifest, InkBox, SpriteFrame};
 use iso::lighting::Silhouette;
 use macroquad::prelude::{Image, load_image};

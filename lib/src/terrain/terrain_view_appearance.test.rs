@@ -12,10 +12,9 @@ fn shipped() -> AssetManifest {
 /// The lookup the client gives `TerrainLook::new`, over a manifest instead of a GPU atlas.
 fn artwork(manifest: &AssetManifest) -> impl Fn(&str) -> Option<(SpriteFrame, InkBox)> + '_ {
     move |source: &str| {
-        let entry = manifest
-            .entries
-            .iter()
-            .find(|entry| entry.source == source)?;
+        let entry = manifest.entries.iter().find(|entry| {
+            iso::assets::artwork_key(&entry.source) == iso::assets::artwork_key(source)
+        })?;
         Some((entry.primary_frame()?, entry.ink?))
     }
 }

@@ -2,56 +2,6 @@
   "schemaVersion": 1,
   "entities": [
     {
-      "id": "pier_x_reverse",
-      "asset": {
-        "sprite": "/assets/pier/block_1x3_over_water.svg",
-        "reflection": "/assets/pier/block_1x3_over_water_reflection.svg",
-        "contactShadow": false
-      },
-      "shape": {
-        "height": 1,
-        "length": 3,
-        "axis": "x",
-        "collision": [
-          1,
-          1,
-          0
-        ]
-      },
-      "placement": {
-        "surfaces": [
-          "water",
-          "sand",
-          "grass"
-        ]
-      }
-    },
-    {
-      "id": "pier_y_reverse",
-      "asset": {
-        "sprite": "/assets/pier/block_3x1_over_water.svg",
-        "reflection": "/assets/pier/block_3x1_over_water_reflection.svg",
-        "contactShadow": false
-      },
-      "shape": {
-        "height": 1,
-        "length": 3,
-        "axis": "y",
-        "collision": [
-          1,
-          1,
-          0
-        ]
-      },
-      "placement": {
-        "surfaces": [
-          "water",
-          "sand",
-          "grass"
-        ]
-      }
-    },
-    {
       "id": "hut_moss",
       "asset": {
         "sprite": "/assets/house/block_hut_moss.png"

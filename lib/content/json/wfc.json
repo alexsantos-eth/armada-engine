@@ -2,8 +2,6 @@
   "schemaVersion": 2,
   "emptyWeight": 380.0,
   "weights": {
-    "pier_x_reverse": 1.0,
-    "pier_y_reverse": 1.0,
     "boat": 1.0,
     "bush": 4.0,
     "large_rock": 1.0,

@@ -1,5 +1,5 @@
 use super::*;
-use crate::assets::AssetManifest;
+use crate::assets::{AssetManifest, artwork_key};
 
 #[test]
 fn every_material_has_artwork_in_the_shipped_atlas() {
@@ -35,7 +35,7 @@ fn assert_asset_has_measured_artwork(manifest: &AssetManifest, source: &str) {
     let entry = manifest
         .entries
         .iter()
-        .find(|entry| entry.source == source)
+        .find(|entry| artwork_key(&entry.source) == artwork_key(source))
         .unwrap_or_else(|| panic!("{source} has no asset in the atlas"));
     assert!(
         entry.primary_frame().is_some(),
@@ -69,7 +69,7 @@ fn every_land_material_has_reflection_artwork_in_the_shipped_atlas() {
         let entry = manifest
             .entries
             .iter()
-            .find(|entry| entry.source == source)
+            .find(|entry| artwork_key(&entry.source) == artwork_key(source))
             .unwrap_or_else(|| panic!("{material:?} has no reflection asset at {source}"));
         assert!(
             entry.primary_frame().is_some(),
