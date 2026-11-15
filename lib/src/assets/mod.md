@@ -28,7 +28,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   origen sin extensión. Un repintado es un PNG junto al dibujo al que sustituye, mientras que
   `entities.json` y el resto del motor siguen nombrando el dibujo, así que los dos tienen que
   encontrarse en una clave que no mencione el fichero.
-  - Firma: `fn artwork_key(source: &str) -> &str {`
+  - Firma: `pub(crate) fn artwork_key(source: &str) -> &str {`
 
 - [`new`](sprites.rs#L85) — Construye el acceso sobre las texturas que nombra el manifiesto: el atlas compartido, y después las
   - Firma: `pub fn new( atlas: Texture2D, extra: Vec<(String, Texture2D)>, manifest: &AssetManifest, ) -> Self {`

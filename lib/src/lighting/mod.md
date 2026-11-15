@@ -168,24 +168,24 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`load`](shadow_view_masks.rs#L26) — Carga la imagen del atlas en `path` y la reduce a cobertura, una silueta por manifiesto
+- [`load`](shadow_view_masks.rs#L29) — Carga la imagen del atlas en `path` y la reduce a cobertura, una silueta por manifiesto
   - Firma: `pub async fn load(path: &str, manifest: &AssetManifest) -> Option<Self> {`
 
-- [`from_image`](shadow_view_masks.rs#L32) — Reduce `image` a cobertura e indexa los frames propios del manifiesto contra ella.
+- [`from_image`](shadow_view_masks.rs#L35) — Reduce `image` a cobertura e indexa los frames propios del manifiesto contra ella.
   - Firma: `pub fn from_image(image: &Image, manifest: &AssetManifest) -> Self {`
 
-- [`ink_of`](shadow_view_masks.rs#L80) — Dónde reside el dibujo de `source` alrededor del terreno sobre el que se apoya, o `None` cuando el
+- [`ink_of`](shadow_view_masks.rs#L83) — Dónde reside el dibujo de `source` alrededor del terreno sobre el que se apoya, o `None` cuando el
   - Firma: `pub fn ink_of(&self, source: &str) -> Option<InkBox> {`
 
-- [`index_of`](shadow_view_masks.rs#L85) — La silueta del asset en `source`, o `None` si el atlas no tiene ninguna.
+- [`index_of`](shadow_view_masks.rs#L88) — La silueta del asset en `source`, o `None` si el atlas no tiene ninguna.
   - Firma: `pub fn index_of(&self, source: &str) -> Option<u32> {`
 
-- [`silhouette_of`](shadow_view_masks.rs#L90) — La silueta de `index` como ventana sobre el único plano en el que vive cada máscara, o `None`
+- [`silhouette_of`](shadow_view_masks.rs#L93) — La silueta de `index` como ventana sobre el único plano en el que vive cada máscara, o `None`
   - Firma: `pub fn silhouette_of(&self, index: u32) -> Option<Silhouette<'_>> {`
 
 #### Constantes
 
-- [`MASK_SCALE`](shadow_view_masks.rs#L9) — Cuántos texels del atlas caben en un texel de una máscara, en cada eje.
+- [`MASK_SCALE`](shadow_view_masks.rs#L10) — Cuántos texels del atlas caben en un texel de una máscara, en cada eje.
   - Declaración: `pub const MASK_SCALE: u32 = 4;`
 
 

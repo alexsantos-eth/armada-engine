@@ -23,7 +23,7 @@ pub const WHITE_PATCH: &str = "/assets/shadow/white.svg";
 /// with the extension dropped. A repainted asset is a PNG laid beside the drawing it
 /// overrides, while `entities.json` and the rest of the engine go on naming the drawing, so
 /// the two have to meet on a key that does not mention the file.
-fn artwork_key(source: &str) -> &str {
+pub(crate) fn artwork_key(source: &str) -> &str {
     let name_at = source.rfind('/').map_or(0, |slash| slash + 1);
     match source[name_at..].rfind('.') {
         Some(dot) if dot > 0 => &source[..name_at + dot],

@@ -50,12 +50,17 @@ fn main() {
         let measurement = if entry.source.ends_with(".png") {
             // A raster asset is measured from its own source, which still carries the whole
             // template canvas that the atlas frame was trimmed out of.
-            let tiles = std::fs::read_to_string(format!(
-                "{svg_root}{}.json",
-                entry.source.trim_end_matches(".png")
-            ))
-            .ok()
-            .and_then(|json| sidecar_tiles(&json).map(str::to_owned));
+            // Its footprint comes from the JSON beside it, or from the drawing it overrides,
+            // the same two places `pack_atlas` looks: a repaint of an asset that was drawn
+            // first states its footprint only in that drawing.
+            let stem = entry.source.trim_end_matches(".png");
+            let tiles = std::fs::read_to_string(format!("{svg_root}{stem}.json"))
+                .ok()
+                .and_then(|json| sidecar_tiles(&json).map(str::to_owned))
+                .or_else(|| {
+                    let drawing = std::fs::read_to_string(format!("{svg_root}{stem}.svg")).ok()?;
+                    data_tiles(&drawing).map(str::to_owned)
+                });
             entry.data_tiles = tiles.clone();
             image::open(format!("{svg_root}{}", entry.source))
                 .ok()

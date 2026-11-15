@@ -70,7 +70,7 @@ fn pack_assets(
             let source = source_path(svg_root, &name);
             let ink = if source.ends_with(".png") {
                 opaque_bounds(&image).and_then(|bounds| {
-                    raster_ink(canvas, bounds, sidecar_tiles(svg_root, &source).as_deref())
+                    raster_ink(canvas, bounds, raster_tiles(svg_root, &source).as_deref())
                 })
             } else {
                 asset_ink(&read_svg(svg_root, &source))
@@ -96,7 +96,7 @@ fn pack_assets(
         image::imageops::replace(&mut atlas, image, i64::from(x), i64::from(y));
         let source = source_path(svg_root, name);
         let tiles = if source.ends_with(".png") {
-            sidecar_tiles(svg_root, &source)
+            raster_tiles(svg_root, &source)
         } else {
             data_tiles(&read_svg(svg_root, &source)).map(str::to_owned)
         };
@@ -324,20 +324,29 @@ fn source_path(svg_root: &str, name: &str) -> String {
         Some(file) if !file.is_empty() => format!("/assets/{directory}/{file}"),
         _ => format!("/assets/{directory}"),
     };
-    // An asset is authored either as vector geometry or as a raster drawn on the same template.
-    let svg = format!("{stem}.svg");
-    if Path::new(&format!("{svg_root}{svg}")).exists() {
-        svg
+    // An asset is authored either as vector geometry or as a raster drawn on the same template,
+    // and when both are there the raster is what reaches the atlas: `rasterize.py` writes the
+    // PNGs after the drawings, over the same names. The manifest has to name the file the
+    // artwork really came from, or its ink and footprint are read off the wrong one.
+    let png = format!("{stem}.png");
+    if Path::new(&format!("{svg_root}{png}")).exists() {
+        png
     } else {
-        format!("{stem}.png")
+        format!("{stem}.svg")
     }
 }
 
-/// The `data-tiles` of a raster asset, read from the JSON file beside the image.
-fn sidecar_tiles(svg_root: &str, source: &str) -> Option<String> {
-    let path = format!("{svg_root}{}.json", source.strip_suffix(".png")?);
-    let text = fs::read_to_string(&path).ok()?;
-    iso::assets::sidecar_tiles(&text).map(str::to_owned)
+/// The `data-tiles` of a raster asset: from the JSON file beside the image, or failing that from
+/// the drawing it overrides, which already states the footprint of every asset that was drawn
+/// before it was repainted. `None` for a source that is not a raster.
+fn raster_tiles(svg_root: &str, source: &str) -> Option<String> {
+    let stem = source.strip_suffix(".png")?;
+    let sidecar = fs::read_to_string(format!("{svg_root}{stem}.json")).ok();
+    if let Some(tiles) = sidecar.as_deref().and_then(iso::assets::sidecar_tiles) {
+        return Some(tiles.to_owned());
+    }
+    let drawing = fs::read_to_string(format!("{svg_root}{stem}.svg")).ok()?;
+    data_tiles(&drawing).map(str::to_owned)
 }
 
 /// The SVG an asset was rasterized from, or an empty document if it cannot be read: a missing

@@ -1,5 +1,6 @@
 //! The silhouettes a shadow is sampled from.
 
+use crate::assets::sprites::artwork_key;
 use iso::assets::{AssetManifest, InkBox, SpriteFrame};
 use iso::lighting::Silhouette;
 use macroquad::prelude::{Image, load_image};
@@ -18,7 +19,9 @@ pub struct SilhouetteMasks {
     frames: Vec<SpriteFrame>,
     /// Where each silhouette's artwork belongs around the ground it stands on, straight out of
     inks: Vec<Option<InkBox>>,
-    by_source: HashMap<String, u32>,
+    /// Every silhouette by [`artwork_key`], so a repainted asset is found under the
+    /// drawing it overrides, which is the name the rest of the engine knows it by.
+    by_artwork: HashMap<String, u32>,
 }
 
 impl SilhouetteMasks {
@@ -54,7 +57,7 @@ impl SilhouetteMasks {
 
         let mut frames = Vec::new();
         let mut inks = Vec::new();
-        let mut by_source = HashMap::new();
+        let mut by_artwork = HashMap::new();
         for entry in &manifest.entries {
             if entry.texture.is_some() || entry.sheet.is_some() {
                 continue;
@@ -62,7 +65,7 @@ impl SilhouetteMasks {
             let Some(frame) = entry.primary_frame() else {
                 continue;
             };
-            by_source.insert(entry.source.clone(), frames.len() as u32);
+            by_artwork.insert(artwork_key(&entry.source).to_owned(), frames.len() as u32);
             frames.push(frame);
             inks.push(entry.ink);
         }
@@ -72,18 +75,18 @@ impl SilhouetteMasks {
             alpha,
             frames,
             inks,
-            by_source,
+            by_artwork,
         }
     }
 
     /// Where the artwork at `source` belongs around the ground it stands on, or `None` when the
     pub fn ink_of(&self, source: &str) -> Option<InkBox> {
-        self.inks[*self.by_source.get(source)? as usize]
+        self.inks[*self.by_artwork.get(artwork_key(source))? as usize]
     }
 
     /// The silhouette of the asset at `source`, or `None` if the atlas has none.
     pub fn index_of(&self, source: &str) -> Option<u32> {
-        self.by_source.get(source).copied()
+        self.by_artwork.get(artwork_key(source)).copied()
     }
 
     /// The silhouette of `index` as a window on the one plane every mask lives in, or `None`
