@@ -82,9 +82,8 @@ Linux corre sin pantalla con `xvfb-run`. La guía completa está en [docs/TESTBE
 ## Sonidos
 
 El jugador suena con WAVs generados en `content/sounds/` a partir de los patrones de Strudel
-(<https://strudel.cc>) de `lib/music/` (la fuente única de verdad; el cliente web archivado,
-`web_deprecated/`, los reproduce desde allí también). Macroquad los reproduce con su feature
-`audio` (WAV/OGG vía quad-snd) y un archivo que falte hace que ese evento suene en silencio,
+(<https://strudel.cc>) de `lib/music/` (la fuente única de verdad). Macroquad los reproduce con
+su feature `audio` (WAV/OGG vía quad-snd) y un archivo que falte hace que ese evento suene en silencio,
 sin romper el juego.
 
 Para regenerarlos tras editar un `.strudel`:

@@ -2,8 +2,7 @@
 
 Static renderer for the game's sounds. It takes the `.strudel` files (written
 and tuned at <https://strudel.cc>) from **`lib/music/`** — the single source of
-truth, also played directly by the archived web client (`web_deprecated/`) —
-renders them offline with **superdough** (the same audio engine that powers the
+truth — renders them offline with **superdough** (the same audio engine that powers the
 Strudel REPL), and writes committed WAV files to `lib/content/sounds/`, which
 the Rust/Macroquad client loads with `macroquad::audio`. No browser, no live
 Strudel at runtime, and the game ships only plain WAVs.

@@ -24,10 +24,6 @@ del workspace para cualquier agente (o persona) que trabaje en él.
 
 - **Nada de `#[allow(clippy::…)]` ni `#![allow(clippy::…)]`**: un lint de clippy no se silencia, se corrige o se reagrupa (parámetros relacionados → struct de dominio). `cargo clippy --workspace --all-targets --locked -- -D warnings` es el gate; si un lint es genuinamente inaplicable, la excepción la decide el usuario, nunca el código.
 
-### web_deprecated
-
-- **No editar `web_deprecated/`**: es el cliente legacy sin desplegar (Netlify solo publica `lib/`), conservado únicamente como referencia. Ningún cambio se aplica ahí — ni limpieza de estilo, ni refactor, ni tests, ni actualizaciones de dependencias. Si necesitas consultarlo, hazlo en modo solo lectura.
-
 ## Tests y puertas de calidad
 
 **Dominio:** pruebas unitarias colocalizadas como `<archivo>.test.rs` para invariantes locales; cada archivo de producción las incluye solo bajo `#[cfg(test)]`. Las pruebas de integración en `crates/iso/tests/` verifican relaciones entre módulos y contratos externos. Probar bordes y propiedades para coordenadas, guardado y generación. El fixture de contrato (`crates/iso/tests/contracts.json`) fija coordenadas, proyección, movimiento, rutas y reloj. Los resultados exactos del terreno y de las entidades se prueban con fixtures propios.
