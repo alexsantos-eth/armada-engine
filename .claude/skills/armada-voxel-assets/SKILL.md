@@ -12,11 +12,12 @@ familia. No se llama a ningún modelo de imagen y no cuesta nada.
 
 Este flujo es el oficial. `iso-asset-generator` (SVG dibujado + pintado fal.ai) está obsoleto —
 conservado solo como referencia histórica—; no uses nada del flujo antiguo para un asset nuevo.
-Los sprites migrados a voxel viven en `lib/assets/`; los aún sin migrar viven fijos en `lib/assets-legacy/` (ver `lib/docs/ASSET-PIPELINE.md`).
+Todas las entidades (naturaleza, piedras rúnicas, casas y edificios) están migradas y viven en `lib/assets/`; en `lib/assets-legacy/` solo quedan las gradas, el patrón de nubes y el téxel blanco (ver `lib/docs/ASSET-PIPELINE.md`).
 
 ```
 artifacts/vox/clay/vox_prefabs.py   las piezas del kit            → artifacts/vox/prefabs/*.vox
-artifacts/vox/clay/vox_models.py    las entidades armadas         → artifacts/vox/models/<nombre>.vox
+artifacts/vox/clay/vox_models.py    naturaleza armada             → artifacts/vox/models/<nombre>.vox
+artifacts/vox/clay/vox_buildings.py piedras, casas y edificios    → artifacts/vox/models/<nombre>.vox
 artifacts/vox/clay/vox_render.py    Blender: modelo → sprite PNG  → lib/assets/<dir>/<asset>.png
 lib/scripts/build-atlas.sh sprite → atlas y manifiesto   (y recompilar el juego)
 ```
@@ -94,12 +95,22 @@ pieza nueva.
 | `CAP` / `STEM` / `DOT` | `#b5473a` / `#eee8d8` / `#fff2dc` | seta |
 | `OCHRE` / `RUST` | `#d9a441` / `#c9702e` | hojas caídas |
 | `ROCK` / `ROCK_DARK` | `#9a9a96` / `#7c7c7a` | piedra |
+| `STONE_SAND` / `STONE_CLAY` | `#d8c9a3` / `#c8694a` | piedra clara y piedra roja |
+| `GRAVEL` / `DIRT` | `#b8ae9c` / `#a8794f` | suelos propios |
+| `RUNE_BLUE` / `RUNE_CYAN` / `RUNE_DARK` | `#3f8fd9` / `#49c8c0` / `#8a3a2a` | runas (las rojas usan `RED`) |
+| `PLANK` / `TIMBER` / `PLASTER` | `#a8713d` / `#5e3d24` / `#eadfc4` | tabla, madera oscura, revoco |
+| `DOOR` | `#b98345` | hoja de puerta |
+| `THATCH` / `TURF` / `TILE` | `#e3c56a` / `#69a83c` / `#d9703a` | paja, tepe, teja |
+| `SHINGLE` / `SHINGLE_DARK` | `#9a5b2e` / `#8a3f2c` | tablilla clara y oscura |
+| `GLOW` / `IRON` / `FIRE` / `BREW` | `#ffd66b` / `#4a4a52` / `#f7802a` / `#5fd03a` | ventana encendida, hierro, fuego, caldero |
 
 Un material nuevo se añade como constante en `vox_prefabs.py` **y a la lista `PALETTE`**
-(si falta, el script se detiene). Elige tonos medios y saturados: el render los oscurece en
+(si falta, el script se detiene), **siempre al final**: los índices de los `.vox` ya escritos no se mueven. Elige tonos medios y saturados: el render los oscurece en
 las caras en sombra por su cuenta. Como mucho 255 colores.
 
-## 4. El kit
+## 4. Los kits
+
+### Kit 1: naturaleza
 
 Tamaños en vóxeles, ancho × fondo × alto. Las variantes son el sufijo del archivo
 (`leaf_block_dark.vox`) y el argumento `variant` al armar.
@@ -125,6 +136,44 @@ Tamaños en vóxeles, ancho × fondo × alto. Las variantes son el sufijo del ar
 | `pebble_s` / `_m` / `_l` | hasta 12 × 10 × 6 | — | guijarros |
 | `rock_s` | 14 × 12 × 8 | — | piedra suelta |
 | `rock_l` | 30 × 26 × 19 | — | roca con losa de musgo |
+
+### Kit 2: piedra
+
+| Pieza | Tamaño | Variantes | Uso |
+| --- | --- | --- | --- |
+| `stone_block` | 26 × 26 × 26 | grey, dark, sand, clay | sillar: una celda del módulo (muros, torre, gradas de un santuario) |
+| `stone_half` | 26 × 26 × 12 | grey, dark, sand, clay | zócalo, escalón, muro bajo |
+| `stone_small` | 14 × 14 × 14 | grey, dark, sand, clay | hilada de chimenea, plinto, brasero |
+| `floor_slab` | 26 × 26 × 3 | gravel, dirt, cobble, plank | el suelo propio de una entidad (lecho de grava, losas, tarima) |
+| `standing_stone` | 22 × 16 × 54 | grey, sand | piedra rúnica |
+| `standing_stone_tall` | 24 × 17 × 78 | grey, sand | la alta: con el suelo de 3 llega justo al bloque |
+| `standing_stone_small` | 16 × 13 × 30 | grey, sand | la baja, o el pie de una rota |
+| `stone_lying` | 54 × 20 × 10 | grey, sand | piedra caída (a lo largo de x) |
+| `moss_patch` | 10 × 8 × 3 | — | musgo suelto sobre piedra, teja o suelo |
+| `rune` | 2 × 9 × 12 | blue, cyan, red, dark | glifo prensado en una cara `+x` (`turn=True` para `+y`) |
+| `rune_flat` | 12 × 9 × 2 | blue, cyan, red, dark | el mismo glifo tumbado sobre una cara de arriba |
+
+### Kit 3: construcción
+
+| Pieza | Tamaño | Variantes | Uso |
+| --- | --- | --- | --- |
+| `wall_block` | 26 × 26 × 26 | plank, timber, plaster | una celda de muro |
+| `wall_half` | 26 × 26 × 12 | plank, timber, plaster | relleno del hastial, mostrador, tarima alta, barandilla |
+| `roof_block` | 26 × 26 × 12 | thatch, turf, tile, shingle, dark, red, white | una hilada de tejado; `red`/`white` son lona |
+| `ridge` | 26 × 8 × 6 | timber, plank | cumbrera |
+| `trunk_thin` (`timber`) | 9 × 9 × 28 | — | poste y esquina de entramado (la pieza del kit 1 en otro color) |
+| `door` | 5 × 20 × 32 | — | puerta con marco, sobre una cara |
+| `window` | 5 × 16 × 16 | lit, dark | ventana con marco: encendida o tronera |
+| `shield` | 5 × 15 × 15 | red, white | escudo redondo |
+| `dragon` | 16 × 6 × 20 | timber, plank | cabeza tallada que remata la cumbrera (mira a `+x`) |
+| `banner` | 3 × 12 × 18 | — | estandarte |
+| `barrel` / `crate` / `loaf` | hasta 13 × 13 × 15 | — | atrezo de puerta y de mercado |
+| `anvil` / `fire` / `cauldron` | hasta 14 × 14 × 12 | — | herrería, brasero, sanador |
+| `boat` | 45 × 14 × 14 | — | bote varado |
+
+Las piezas de cara (`door`, `window`, `shield`, `rune`, `banner`) tienen el pivote **en el
+plano de la cara**: se colocan con `x` igual al plano del muro y la mitad queda prensada
+dentro, igual que la fruta.
 
 `python3 artifacts/vox/clay/vox_prefabs.py` regenera todos los `.vox` de las piezas. Sirven para armar
 a mano en MagicaVoxel; `vox_models.py` no los lee, usa las mismas definiciones directamente.
@@ -179,6 +228,36 @@ Las alturas se cuadran con el módulo: tronco visible + 28 por capa + la punta =
 Si un modelo se sale del volumen de su huella, el script se detiene y dice por cuánto.
 
 `python3 artifacts/vox/clay/vox_models.py` escribe todos los modelos; con nombres detrás, solo esos.
+
+### Armar un edificio (`vox_buildings.py`)
+
+Los edificios, casas y piedras rúnicas viven en `artifacts/vox/clay/vox_buildings.py`, con su
+propio `MODELS` y el mismo uso (`python3 artifacts/vox/clay/vox_buildings.py --render smithy`).
+Un edificio se escribe **una vez con la cumbrera a lo largo de x**, alrededor de `(0, 0)`:
+
+- `walls(nu, nv, z, hiladas, variante, name="wall_block", rise=28, skip=())` — el perímetro de
+  un rectángulo de `nu × nv` celdas. `skip` deja celdas abiertas (un portón). El interior va
+  hueco: lo tapa el tejado.
+- `gable(nu, nv, z, variante, fill=None, ridge="timber")` — tejado a dos aguas: cada hilada
+  entra 14 y sube 12, el alero vuela 14 por los cuatro lados y `fill` cierra los hastiales con
+  `wall_half`. Empieza 4 por debajo del remate del muro.
+- `pyramid(tamaños, z, variante, name="roof_block", rise=12)` — hiladas cuadradas; repetir un
+  tamaño (`[4, 4, 3, 3, 2, 2, 1]`) da un cono más empinado. Con `stone_block` y `rise=28` es
+  una pirámide de sillares.
+- `floor(nu, nv, variante)` — el suelo propio, de 3 de alto: lo que va encima empieza en z = 3.
+- `face_x(pieza, plano_x, y, z, variante)` / `face_y(pieza, x, plano_y, z, variante)` — una
+  pieza de cara; `side(n)` da el plano exterior de `n` celdas (`n · 14 − 1`).
+- `along(cajas, eje)` — coloca un edificio de dos casillas sobre su huella en x o en y.
+
+Reglas de los edificios:
+
+- **Una casilla admite 3 celdas de muro** (84) más el alero (112 de 128). Una huella de dos
+  casillas, hasta 7 de largo. Con 4 celdas el alero se sale y el script se detiene.
+- **Puerta y acento en la cara `+x`** (la iluminada), ventana o escudos en la `+y`. Lo que se
+  ponga en `−x` o `−y` no se ve nunca.
+- Como mucho **un material de muro y uno de tejado** por edificio, más el zócalo de piedra.
+- Un edificio ocupa el volumen de su huella como cualquier modelo: 1 bloque los puestos y las
+  piedras, 2 las casas, 3 la torre y el templo.
 
 **A mano en MagicaVoxel**: modelo nuevo del tamaño de la huella, se importan las piezas de
 `artifacts/vox/prefabs/` (todas llevan la misma paleta) y se colocan sobre la rejilla de 28.

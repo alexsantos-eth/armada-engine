@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # vox_models.py — the game's nature entities assembled from the voxel pieces of vox_prefabs.py.
+# (vox_buildings.py assembles the built ones: standing stones, houses and buildings.)
 #
 #   python3 vox_models.py                → ../models/<name>.vox for every model
 #   python3 vox_models.py --render       → …and each one rendered onto its asset with vox_render.py
@@ -271,21 +272,22 @@ def render(model, sprite):
     print("  rendered", os.path.relpath(sprite))
 
 
-def main():
-    args = sys.argv[1:]
+def run(models, args):
+    """Write (and with --render, render) the named models of `models`, or all of them."""
     rendering = "--render" in args
-    names = [a for a in args if a != "--render"] or list(MODELS)
+    names = [a for a in args if a != "--render"] or list(models)
     here = os.path.dirname(os.path.abspath(__file__))
     out = os.path.join(here, "..", "models")
     assets = os.path.join(here, "..", "..", "..", "lib", "assets")
     os.makedirs(out, exist_ok=True)
     for name in names:
-        build, tiles, asset = MODELS[name]
+        build, tiles, asset = models[name]
         path = os.path.join(out, name + ".vox")
         write(path, build(), bounds=tile_volume(tiles))
         if rendering:
+            os.makedirs(os.path.dirname(os.path.join(assets, asset)), exist_ok=True)
             render(path, os.path.join(assets, asset))
 
 
 if __name__ == "__main__":
-    main()
+    run(MODELS, sys.argv[1:])

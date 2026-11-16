@@ -27,7 +27,7 @@ lib/scripts/build-atlas.sh            rasterize.py → pack_atlas → atlas.png 
 cargo build                           el manifiesto va dentro del binario (include_str!)
 ```
 
-Los sprites sin migrar (terreno, gradas, caminos, edificios, agua, sombra) son fijos por ahora:
+Los sprites sin migrar (terreno, gradas, caminos, agua, sombra) son fijos por ahora:
 son el PNG que hay en `assets/` o en `assets-legacy/`, y el PNG manda. Cuando uno migre a
 voxel, su `.vox` pasa a ser la fuente y su PNG se regenera con `artifacts/vox/clay/vox_models.py --render`
 o `artifacts/vox/clay/grass_clay.py`.
@@ -71,6 +71,10 @@ archivos llevan la misma paleta (un color por material, plano, sin luz horneada)
 tres bosquecillos en sus dos orientaciones); sus modelos quedan en `artifacts/vox/models/<nombre>.vox`. El modelo ocupa
 **el volumen entero de su huella** (128 × 128 × 170 para un árbol 1x1x2), con el pie en el
 centro del suelo de la casilla ancla: así el archivo dice dónde está plantado.
+
+`artifacts/vox/clay/vox_buildings.py` hace lo mismo con lo construido (las cinco piedras rúnicas,
+las tres casas y los edificios, los de dos casillas en sus dos orientaciones) con las piezas de
+piedra y de construcción: muros y tejados sobre el mismo módulo de 28.
 
 `artifacts/vox/clay/grass_clay.py` arma las variantes del techo de hierba: el bloque de
 `assets/grass/block.png` **no se toca**; lo que se arma con piezas del kit es el
@@ -118,17 +122,17 @@ manifiesto dentro, y con un atlas nuevo y un binario viejo los sprites salen rec
 en un `.json` al lado cuando no es 1x1x1. Las dos carpetas son:
 
 - `lib/assets/` — el terreno (hierba, tierra, arena, caminos, agua) y los sprites
-  creados por la ruta voxel (árboles, arbusto, bosquecillos, el propio bloque de hierba y sus
-  variantes con adornos). Los generadores de terreno siguen en uso —
-  `artifacts/vox/terrain/terrain_blocks.py` (hierba/tierra/arena) y `path_tiles.py` (los 16
-  tiles de camino) — y escriben PNG directamente (`iso_lib.Asset.save_png`).
-- `lib/assets-legacy/` — lo heredado que aún no pasa por la ruta voxel ni por la ruta de
-  generadores que queden vivas: edificios (casa del sanador, torre…), las cuatro gradas
-  (`artifacts/vox/terrain/stairs.py` las guarda, pero el PNG es el sprite y no se regeneran
-  por ahora), los patrones de nubes y la sombra blanca que el agua y las sombras necesitan.
-  Son fijos por ahora: su PNG es el sprite.
+  creados por la ruta voxel: árboles, arbusto, bosquecillos, el bloque de hierba y sus
+  variantes con adornos, y desde el 2026-11-16 también las piedras rúnicas, las casas y los
+  edificios (`artifacts/vox/clay/vox_buildings.py`, kits 2 y 3). Los generadores de terreno
+  siguen en uso — `artifacts/vox/terrain/terrain_blocks.py` (hierba/tierra/arena) y
+  `path_tiles.py` (los 16 tiles de camino) — y escriben PNG directamente.
+- `lib/assets-legacy/` — lo que no es una entidad y aún no pasa por la ruta voxel: las cuatro
+  gradas (`artifacts/vox/terrain/stairs.py` las guarda, pero el PNG es el sprite y no se
+  regeneran por ahora), el patrón de nubes y el téxel blanco que el agua y las sombras
+  necesitan. Son fijos por ahora: su PNG es el sprite.
 
-Migrar un asset a voxel es: armar su `.vox` en `artifacts/vox/clay/vox_models.py` (o `artifacts/vox/clay/grass_clay.py`
+Migrar un asset a voxel es: armar su `.vox` en `artifacts/vox/clay/vox_models.py` (`vox_buildings.py` si es algo construido, o `artifacts/vox/clay/grass_clay.py`
 si es un adorno del techo de hierba), renderizarlo a un PNG con el mismo nombre en su carpeta y
 regenerar el atlas (`scripts/build-atlas.sh`) — sin borrar el PNG, que sigue siendo el sprite;
 lo que pasa a ser la fuente es el `.vox`.
