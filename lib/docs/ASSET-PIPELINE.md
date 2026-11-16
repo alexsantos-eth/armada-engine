@@ -227,3 +227,45 @@ Regenerar las seis hojas (848 celdas) tarda unos ocho minutos y no cuesta nada.
 
 El post-proceso no cuesta nada: ajustar fuerza, tono o empalme se hace sobre los resultados
 crudos sin volver a llamar al modelo.
+
+## 9. Ruta voxel (experimental): prefabs, `.vox` y Blender
+
+Una alternativa al pintado, en prueba desde el 2026-11-16 con el ciprés (`tree_7`): el asset
+se arma con piezas voxel y se renderiza. No llama a ningún modelo y no cuesta nada.
+
+1. **Piezas.** `artifacts/vox_prefabs.py` escribe `artifacts/vox/prefabs/*.vox`: bloque de
+   hoja, tronco, rama, fruta, flor… Un vóxel son 4 unidades de la skill (una casilla, 128
+   vóxeles; un bloque de alto, 85), las piezas encajan en un módulo de 28 vóxeles y dejan
+   1 vóxel de aire por lado, y todos los archivos llevan la misma paleta.
+2. **Modelo.** Se arma con las piezas, en MagicaVoxel a mano o en `artifacts/vox_models.py`,
+   que tiene los ocho árboles, el arbusto y los dos bosquecillos
+   (`artifacts/vox/models/<nombre>.vox`). El modelo ocupa **el volumen entero de su
+   huella** (128 × 128 × 170 para un árbol 1x1x2), con el pie en el centro del suelo de la
+   casilla ancla: así el archivo dice dónde está plantado.
+3. **Sprite.** `artifacts/vox_render.py` lo renderiza con Blender (Cycles) sobre el lienzo de
+   plantilla, listo para dejar junto al dibujo:
+
+   ```sh
+   blender -b -P artifacts/vox_render.py -- artifacts/vox/models/tree_7.vox \
+       lib/assets-src/assets/tree/block_7.png
+   ```
+
+   Sin Blender instalado vale el módulo de pip: `pip install bpy` y
+   `python3 artifacts/vox_render.py modelo.vox sprite.png`. Cámara ortográfica a 45° y 30°
+   (el 2:1 de las casillas) con el modelo aplastado a √(2/3) de su alto, porque un bloque del
+   juego mide 341 sobre 512; un sol arriba a la derecha y un cielo uniforme ajustados a los
+   tonos de los árboles pintados (techo 1, cara derecha 0,93, cara izquierda 0,64); sin
+   sombra en el suelo, que la dibuja el juego.
+   El acabado por defecto es `--style clay`: los cubos se rehacen como una sola piel
+   cerrada (modificador Remesh), se suavizan hasta fundir los escalones de vóxel, reciben
+   una ligera irregularidad de arcilla amasada y un material mate con algo de brillo y de
+   luz que cala. `--style voxel` deja los cubos duros. Las constantes `CLAY_*` del script
+   gradúan cada cosa.
+   `python3 artifacts/vox_models.py --render [nombres]` arma y renderiza de una vez cada
+   modelo sobre el asset que sustituye.
+4. **Motor.** Como cualquier PNG: `scripts/build-atlas.sh` (sección 5), y recompilar: el
+   binario lleva el manifiesto dentro, y con un atlas nuevo y un binario viejo los sprites
+   salen recortados.
+
+`artifacts/iso_vox.py` convierte además cualquier generador de la sección 2 en un `.vox`
+entero, sin pasar por las piezas.
