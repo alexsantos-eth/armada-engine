@@ -94,6 +94,8 @@ struct EditedFrame {
     frame_ms: f64,
     /// When the frame's world work started, for the performance accounting.
     stream_start: f64,
+    /// The shots a scripted frame asks for once this frame is on screen.
+    shots: Vec<String>,
 }
 
 /// What the view half of the frame needs after the update half ran.
@@ -108,6 +110,8 @@ pub(crate) struct FrameView {
     pub(crate) stream_ms: f64,
     /// Shadow bake work this frame: selection, rebake and atlas upload.
     pub(crate) bake_ms: f64,
+    /// The shots a scripted frame asks for once this frame is on screen.
+    pub(crate) shots: Vec<String>,
 }
 
 impl Game {
@@ -126,9 +130,10 @@ impl Game {
         if is_key_pressed(KeyCode::T) {
             self.show_terrain = !self.show_terrain;
         }
-        let save_requested = is_key_pressed(KeyCode::F5)
-            || (is_key_pressed(KeyCode::S)
-                && (is_key_down(KeyCode::LeftControl) || is_key_down(KeyCode::RightControl)));
+        let save_requested = self.persists
+            && (is_key_pressed(KeyCode::F5)
+                || (is_key_pressed(KeyCode::S)
+                    && (is_key_down(KeyCode::LeftControl) || is_key_down(KeyCode::RightControl))));
         if save_requested {
             sync_manager_to_archive(&mut self.manager, &mut self.archive);
             save_archive(&self.archive);
@@ -139,10 +144,16 @@ impl Game {
         let width = screen_width();
         let height = screen_height();
 
-        let mut input_service = MacroquadInput {
-            touch: &mut self.touch,
+        let (input, shots): (NormalizedInput, Vec<String>) = if self.script.is_some() {
+            let (frame, shots) = crate::testbed::advance(self)?;
+            let mut input_service = crate::testbed::ScriptInput { frame };
+            (input_service.poll(), shots)
+        } else {
+            let mut input_service = MacroquadInput {
+                touch: &mut self.touch,
+            };
+            (input_service.poll(), Vec::new())
         };
-        let input: NormalizedInput = input_service.poll();
         self.player.walk = input.walk;
         set_player_run(&mut self.player, input.run);
         if input.jetpack_pressed {
@@ -155,7 +166,7 @@ impl Game {
         }
         set_player_jump_held(&mut self.player, input.jump_held);
 
-        if self.maker.is_none() {
+        if self.streams {
             let focus = to_chunk_coord(WorldCoord {
                 x: self.player.x.floor() as i32,
                 y: self.player.y.floor() as i32,
@@ -213,6 +224,8 @@ impl Game {
             {
                 shadows.forget(chunk);
             }
+        }
+        if !self.streams {
             if is_quit_requested() {
                 return None;
             }
@@ -223,6 +236,7 @@ impl Game {
                 height,
                 frame_ms,
                 stream_start,
+                shots,
             }));
         }
         let discovered = self.manager.tick();
@@ -244,7 +258,7 @@ impl Game {
         }
 
         let quitting = is_quit_requested();
-        if should_save_on_quit(self.unsaved_changes, quitting) {
+        if self.persists && should_save_on_quit(self.unsaved_changes, quitting) {
             sync_manager_to_archive(&mut self.manager, &mut self.archive);
             save_archive(&self.archive);
             self.unsaved_changes = false;
@@ -272,6 +286,8 @@ impl Game {
             shadows.update(&self.manager, &culled, fade_dt);
         }
         let bake_ms = (get_time() - bake_start) * 1000.0;
+        self.lit = self.settled(&culled);
+        self.shown.clone_from(&culled);
 
         Some(FrameView {
             rp,
@@ -281,6 +297,7 @@ impl Game {
             after_simulation,
             stream_ms,
             bake_ms,
+            shots,
         })
     }
 
@@ -294,6 +311,7 @@ impl Game {
             height,
             frame_ms,
             stream_start,
+            shots,
         } = frame;
         let stream_ms = (get_time() - stream_start) * 1000.0;
         let after_simulation = get_time();
@@ -310,6 +328,9 @@ impl Game {
             shadows.set_phase(target_phase);
             shadows.update(&self.manager, &culled, (frame_ms / 1000.0) as f32);
         }
+        let bake_ms = (get_time() - bake_start) * 1000.0;
+        self.lit = self.settled(&culled);
+        self.shown.clone_from(&culled);
         FrameView {
             rp,
             projection,
@@ -317,8 +338,21 @@ impl Game {
             frame_ms,
             after_simulation,
             stream_ms,
-            bake_ms: (get_time() - bake_start) * 1000.0,
+            bake_ms,
+            shots,
         }
+    }
+
+    /// Whether what is on screen is ready to be looked at: every chunk shown generated, and its
+    /// shadows baked for the phase in hand and faded all the way in. With no baked shadows at
+    /// all there is nothing to wait for, so it answers yes.
+    fn settled(&self, culled: &[iso::grid::ChunkCoord]) -> bool {
+        if !culled.iter().all(|coord| self.manager.is_visible(*coord)) {
+            return false;
+        }
+        self.shadows
+            .as_ref()
+            .is_none_or(|shadows| shadows.settled(&self.manager, culled))
     }
 }
 

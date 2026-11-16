@@ -28,6 +28,8 @@ Antes de tocar código, lee:
 
 Si el trabajo implica crear o modificar assets isométricos (geometría, proporciones, multi-bloque, `data-tiles`), invoca la skill **`iso-asset-generator`**: es la única fuente de las reglas de assets.
 
+Si el cambio se juzga **mirando** (terreno, colocación de entidades, sombras, reflejos, fases del día, animación del jugador, cámara, polvo), invoca la skill **`armada-visual-check`**: corre el juego desde un `scene.json` y devuelve capturas PNG y un informe, sin pedirle nada al usuario y sin pantalla en Linux. Un test verde no demuestra que algo se vea bien.
+
 ## Arquitectura
 
 Dos crates, en `lib/`:
@@ -61,7 +63,8 @@ Contratos clave (el detalle está en el `mod.md` correspondiente):
 - **El mundo**: `TerrainWorld` conserva los chunks descubiertos; `ChunkManager` calcula carga/prefetch/conservación (1/2/3) **solo al cambiar el chunk de foco**; `save` persiste chunks y estado (`SAVE_FORMAT`, `SAVE_SCHEMA_VERSION`) y el guardado es la autoridad al reabrir.
 - **Contenido**: `content/json/entities.json` es el catálogo de entidades (`schemaVersion` 1), validado al cargar con `validate_catalog`; la colocación es determinista y consulta solo el terreno. `content/json/biomes.json` (`schemaVersion` 1) clasifica los árboles por bioma y valida sus blueprints contra el catálogo con `iso::biomes::parse_biomes`; el bioma es una función pura de la semilla (no se guarda) y decide paleta de suelo, bosquetes monospecíficos y `windStrength` (multiplicador del mece con `sway` del viento en su suelo; `iso::wind` da el desplazamiento, el cliente dibuja la copa sesgada alrededor del corte del sprite). `content/json/wfc.json` (`schemaVersion` 2) da pesos de colocación al resto de blueprints y techos por chunk por blueprint o familia (`families`/`maxPerChunk`), y exige un peso para cada blueprint no reclamado con `iso::entities::wfc::parse_wfc`; el solver `iso::entities::wfc::solve_chunk` coloca por chunk con vacancia siempre posible, hueco 1 entre mismos tipos y autocontención frente a vecinos (orden de descubrimiento irrelevante).
 - **Determinismo**: misma semilla + mismas coordenadas → mismo mundo. Un chunk sale igual solo que junto a sus vecinos. Nada en la generación depende del orden de carga ni de `HashMap`.
-- **Overlay web**: la build WASM condiciona el overlay a la ruta — `/` no pinta nada (ni borde, ni HUD, ni mensajes), `/playground` pinta el overlay completo — vía `gui::overlay_enabled` (regla pura `overlay_for_path`, fijada en `route.test.rs`). La build nativa no tiene ruta y siempre pinta el overlay. El sitio se sirve desde la raíz del dominio; `build-web.sh` publica la misma página en `dist/playground/index.html`.
+- **Rutas**: una sola decisión por proceso (`gui::Route`, regla pura en `route.rs`). En WASM la da el camino de la página — `/` no pinta nada (ni borde, ni HUD, ni mensajes), `/playground` pinta el overlay completo y `/maker` abre el editor sobre un chunk plano. En nativo la dan los argumentos: `--plain`, `--maker`, `--scene <archivo>` (corrida guionizada, ver `armada-visual-check`) y, sin argumentos, el playground. `Route::keeps_the_save` decide quién toca la partida: el editor y una corrida guionizada trabajan sobre un mundo propio y no la tocan. El sitio se sirve desde la raíz del dominio; `build-web.sh` publica también `dist/playground/` y `dist/maker/`.
+- **Corridas guionizadas**: `iso::testbed` (reglas puras: esquema de `scene.json`, máquina de pasos, edición vía `iso::maker::apply_brush`, informe) y `src/testbed` (archivo, ventana y disco). El jugador se conduce por `iso::services::InputService`, nunca inyectando eventos en el canvas. Detalle en `lib/docs/TESTBED.md`.
 - **macOS**: `scripts/build-macos.sh` compila el cliente en release y ensambla `dist/<Título>.app` (binario en `Contents/MacOS`, `content/` en `Contents/Resources`, icono `packaging/game.icns`, `Info.plist`, firma ad-hoc); sin Xcode, solo Command Line Tools. El nombre del juego tiene una única fuente: `GAME_TITLE` en `src/game/config.rs` (título de ventana, nombre del `.app` y carpeta de guardado derivan de ella — renombrar el juego es editar esa constante y reempaquetar). Dentro del `.app` el cliente resuelve assets en `Contents/Resources` y el guardado en `~/Library/Application Support/<GAME_TITLE>/saves/iso_save.json`; fuera, el comportamiento es el de siempre. El icono del bundle se regenera con `scripts/build-icon.sh` (sips + iconutil sobre `packaging/icon-player.png`).
 
 ## Reglas de cambios
@@ -82,7 +85,7 @@ Contratos clave (el detalle está en el `mod.md` correspondiente):
 - La única fuente de la versión del juego es `lib/Cargo.toml` (`[package].version`); `Cargo.lock` la acompaña siempre — si la subes, sincroniza antes el lockfile (`cargo check`) para que el gate `--locked` pase. `scripts/build-macos.sh` la lee como `CFBundleShortVersionString`.
 - `CFBundleVersion` (número de build) no se anota a mano: `scripts/build-macos.sh` lo deriva de `git rev-list --count HEAD` (o 1 fuera de un repositorio).
 - **Toda entrega incrementa la versión, en el mismo cambio**: PATCH para correcciones y mantenimiento, MINOR para funcionalidad (un dominio nuevo, un empaquetado, un contrato visible). Nunca se entrega un cambio sin subirla.
-- **Los skills se actualizan en el mismo cambio**: si un cambio mueve estructura, contratos, scripts, la política de versionado o un flujo de build, el skill afectado (este, `armada-core-review` o `iso-asset-generator`) se actualiza en ese mismo cambio — nunca «en la próxima revisión».
+- **Los skills se actualizan en el mismo cambio**: si un cambio mueve estructura, contratos, scripts, la política de versionado o un flujo de build, el skill afectado (este, `armada-core-review`, `armada-visual-check` o `iso-asset-generator`) se actualiza en ese mismo cambio — nunca «en la próxima revisión».
 
 ## Flujo de trabajo
 
@@ -100,7 +103,7 @@ Contratos clave (el detalle está en el `mod.md` correspondiente):
    ```
 
    `SDKROOT` solo hace falta en macOS si el SDK de Command Line Tools está roto (`scripts/run-native.sh`, `build-atlas.sh` y `build-web.sh` lo seleccionan solos); en otros sistemas, ejecuta `cargo` directo. La build WASM la cubre `bash scripts/build-web.sh`. Si el cambio incrementa la versión (ver Versionado), sincroniza antes el lockfile con `cargo check`; si no, el `--locked` fallará por el desfase de `iso-core`.
-5. Para revisión visual, arranca la demo con `lib/scripts/run-native.sh`. El presupuesto por frame se mira con `src/perf` (frame_log).
+5. Para revisión visual, invoca **`armada-visual-check`**: escribe un `scene.json`, lo corre (`lib/scripts/run-scene.sh`, o `xvfb-run` sin pantalla) y mira las capturas y el `report.json`. Para jugarlo a mano, `lib/scripts/run-native.sh`. El presupuesto por frame se mira con `src/perf` (frame_log).
 6. Actualiza la documentación en el mismo cambio (ver abajo) y, si el cambio mueve estructura, contratos, scripts o la política de versionado, actualiza el skill afectado en el mismo cambio (ver Versionado).
 7. **Invoca `armada-core-review`** para auditar el core tras tu cambio. Esa skill puede corregir deficiencias, registrar deuda en `lib/docs/CORE_REVIEW.md` y proponer una actualización de esta skill; incluye su informe en tu respuesta final.
 
@@ -111,6 +114,8 @@ Todo cambio que modifique el funcionamiento del core, sus contratos o el flujo d
 - `lib/docs/ARCHITECTURE.md` para el funcionamiento técnico del juego.
 - El `mod.md` del dominio para su API (enlace, firma, propósito; su introducción si cambian sus límites). Antes de terminar, verifica los `mod.md` tocados con un barrido mecánico: las anclas `file.rs#Lnnn` apuntan a la declaración del símbolo y no quedan descripciones de relleno («calcula o recupera…»); un barrido regex de símbolo ↔ línea basta.
 - `lib/README.md` si cambian comandos, entorno o despliegue.
+
+- `lib/docs/TESTBED.md` si cambia el esquema de `scene.json`, sus pasos o su informe; y entonces también la skill `armada-visual-check`.
 
 Si cambia la geometría o la integración de assets, avisa al usuario de que la skill `iso-asset-generator` puede necesitar actualizarse. Si cambia lo que el desarrollador debe saber (estructura, contratos, scripts, versionado o flujos de build), la skill afectada se actualiza en este mismo cambio, no después (ver Versionado).
 

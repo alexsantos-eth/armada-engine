@@ -57,6 +57,8 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`set_phase`](shadow_view.rs#L167) — Cambia de fase e invalida los mapas derivados para rehornear los chunks visibles. Abre la ventana de fade: los horneados frescos hacen fade-in hasta que `update` encuentra nada pendiente; volver a la misma fase no la abre.
   - Firma: `pub fn set_phase(&mut self, phase: BakePhase) {`
 
+- [`settled`](shadow_view.rs#L289) — Si al horneado no le queda nada por hacer para los chunks dados: sin trabajo en curso, sin nada pendiente de hornear y con todos ellos fundidos del todo. Es lo que espera el paso `settle` de una corrida guionizada antes de capturar.
+  - Firma: `pub fn settled(&self, manager: &ChunkManager, shown: &[ChunkCoord]) -> bool {`
 - [`forget`](shadow_view.rs#L185) — Descarta el horneado de un chunk para que la siguiente pasada lo hornee otra vez: lo que pide una edición de su terreno o de sus entidades, porque su luz ya no corresponde al suelo.
   - Firma: `pub fn forget(&mut self, coord: ChunkCoord) {`
 

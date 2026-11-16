@@ -4,7 +4,7 @@ Este dominio de cliente posee el juego en marcha: el arranque (`state.rs`), la c
 
 El mundo nunca se toca desde el dibujo: `frame.rs` muta estado, `scene.rs` solo lee y rellena la cola de dibujo. Los adaptadores de locomoción y reflexión viven en `ground.rs`.
 
-La **ruta** decide qué se arranca (`gui::Route`, que `app::run` consulta y pasa a `Game::new`). En la ruta del editor, `state.rs` no carga el guardado ni genera nada: inyecta `MAKER_CHUNK` plano con `terrain::flat_chunk` y crea la sesión de edición (`maker`), y `frame.rs` toma entonces su propio camino — un trazo del editor en vez de streaming, sin descargas ni guardado, con el horneado de luz repetido solo cuando el trazo cambió terreno o entidades. El resto del fotograma (entrada, ticks, cámara, escena) es el mismo.
+La **ruta** decide qué se arranca (`gui::Route`, que `app::run` consulta y pasa a `Game::new` junto con la escena guionizada, si la hay). Dos banderas de `Game` sustituyen a «¿hay sesión de edición?»: `streams` (el mundo se transmite alrededor del jugador) y `persists` (esta corrida carga y escribe la partida); un mundo plano, lo pida el editor o una escena, no transmite ni guarda. `lit` y `shown` son lo que la vista dejó del último fotograma: si lo que hay en pantalla está generado y con la luz horneada, y qué chunks dibujó. En la ruta del editor, `state.rs` no carga el guardado ni genera nada: inyecta `MAKER_CHUNK` plano con `terrain::flat_chunk` y crea la sesión de edición (`maker`), y `frame.rs` toma entonces su propio camino — un trazo del editor en vez de streaming, sin descargas ni guardado, con el horneado de luz repetido solo cuando el trazo cambió terreno o entidades. El resto del fotograma (entrada, ticks, cámara, escena) es el mismo.
 
 ## Catálogo de API pública
 
@@ -90,6 +90,8 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Declaración: `pub const REFERENCE: Self = Self { ... };`
 - [`SceneMetrics::for_pointer`](config.rs#L49) — Las métricas para `coarse`: la referencia en escritorio, la escena alejada un poco (`MOBILE_ZOOM`) en plataformas táctiles.
   - Firma: `pub fn for_pointer(coarse: bool) -> Self {`
+- [`SceneMetrics::scaled`](config.rs#L59) — Estas métricas a un zoom dado: por debajo de uno la escena se aleja y cabe más mundo, por encima se acerca. Lo usa el `zoom` de una escena guionizada; un zoom que no sea un número positivo no cambia nada.
+  - Firma: `pub fn scaled(self, zoom: f64) -> Self {`
 
 ### `ground.rs`
 
@@ -107,12 +109,12 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Tipos
 
-- [`FrameView`](frame.rs#L100) — Lo que la mitad de vista del fotograma necesita tras la actualización: posición de render, proyección, chunks cullados, `frame_ms`, el instante en que la simulación terminó y los dos costes que el perf log desglosa — `stream_ms` (generación del chunk: terreno, entidades, carreteras, archive y descarga) y `bake_ms` (horneado de sombras y subida al atlas).
+- [`FrameView`](frame.rs#L102) — Lo que la mitad de vista del fotograma necesita tras la actualización: posición de render, proyección, chunks cullados, `frame_ms`, el instante en que la simulación terminó, los dos costes que el perf log desglosa — `stream_ms` (generación del chunk: terreno, entidades, carreteras, archive y descarga) y `bake_ms` (horneado de sombras y subida al atlas) — y las capturas que una corrida guionizada pide de este fotograma (`shots`).
   - Firma: `pub(crate) struct FrameView { ... }`
 
 #### Funciones y métodos
 
-- [`toggle_jetpack`](frame.rs#L116) — Se pone o se quita el jetpack donde la ruta lo permite (`gui::Route::allows_jetpack`); en el resto no hace nada, así que la presentación limpia no se vuela. Devuelve si queda puesto. Lo llaman la tecla `J` de la entrada y el interruptor del HUD.
+- [`toggle_jetpack`](frame.rs#L129) — Se pone o se quita el jetpack donde la ruta lo permite (`gui::Route::allows_jetpack`); en el resto no hace nada, así que la presentación limpia no se vuela. Devuelve si queda puesto. Lo llaman la tecla `J` de la entrada y el interruptor del HUD.
   - Firma: `pub(crate) fn toggle_jetpack(&mut self) -> bool {`
 - [`update`](frame.rs#L125) — Entrada, ticks fijos, reloj del mundo (avanza solo en el paso fijo), fase efectiva de sombras (override o `phase_at` del reloj), streaming de chunks, sonido ligado al movimiento y guardado de un fotograma. `None` si el jugador pidió salir (tras volcar el guardado si hacía falta).
   - Firma: `pub(crate) fn update(&mut self, frame_ms: f64) -> Option<FrameView> {`
@@ -157,7 +159,8 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`Game::new`](state.rs#L115) — Arranque: carga catálogo, manifiesto y sonidos, restaura el guardado si existe, genera la zona de aparición y encuadra al jugador. En la ruta del editor no toca el guardado y, en vez de generar, inyecta `MAKER_CHUNK` plano y abre la sesión de edición. Los fallos de assets degradan a avisos, nunca entran en pánico.
+- [`Game::new`](state.rs#L130) — Arranque: carga catálogo, manifiesto y sonidos, restaura el guardado si existe, genera la zona de aparición y encuadra al jugador. En la ruta del editor no toca el guardado y, en vez de generar, inyecta `MAKER_CHUNK` plano y abre la sesión de edición. Una escena guionizada (`scene`) decide además semilla, centro, zoom y si el mundo es plano o procedural. Los fallos de assets degradan a avisos, nunca entran en pánico.
+  - Firma: `pub(crate) async fn new(route: Route, scene: Option<&iso::testbed::Scene>) -> Self {`
   - Firma: `pub(crate) async fn new(route: Route) -> Self {`
 
 ## Detalles de implementación
@@ -189,6 +192,8 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Declaración: `struct EditedFrame { rp: PlayerRenderPosition, projection: ProjectionConfig, width: f32, height: f32, frame_ms: f64, stream_start: f64 }`
 - [`editing_view`](frame.rs#L289) — La vista de un fotograma de edición: el único chunk en la mano, su luz horneada otra vez cuando un trazo la cambió, y ningún streaming, guardado ni descarga.
   - Firma: `fn editing_view(&mut self, frame: EditedFrame) -> FrameView {`
+- [`settled`](frame.rs#L349) — Si lo que hay en pantalla está listo para mirarse: cada chunk mostrado generado y con sus sombras horneadas para la fase en curso y fundidas del todo. Sin sombras horneadas no hay nada que esperar, así que responde que sí. De ahí sale `Game::lit`, que espera el paso `settle` de una corrida guionizada.
+  - Firma: `fn settled(&self, culled: &[iso::grid::ChunkCoord]) -> bool {`
 
 ### `scene.rs`
 

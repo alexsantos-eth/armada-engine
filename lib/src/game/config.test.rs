@@ -64,3 +64,33 @@ fn the_client_cap_keeps_a_steady_thirty_frames_at_real_time() {
     }
     assert_eq!(ticks, 20);
 }
+
+#[test]
+fn a_scene_pulled_back_draws_a_smaller_tile_and_a_shorter_block() {
+    let half = SceneMetrics::REFERENCE.scaled(0.5);
+
+    assert_eq!(half.tile_width, PREVIEW_TILE_WIDTH / 2.0);
+    assert_eq!(half.tile_height, half.tile_width / 2.0);
+    assert_eq!(half.elevation_step, PREVIEW_ELEVATION_STEP / 2.0);
+}
+
+#[test]
+fn a_zoom_that_is_not_a_zoom_leaves_the_metrics_alone() {
+    assert_eq!(SceneMetrics::REFERENCE.scaled(0.0), SceneMetrics::REFERENCE);
+    assert_eq!(
+        SceneMetrics::REFERENCE.scaled(-1.0),
+        SceneMetrics::REFERENCE
+    );
+    assert_eq!(
+        SceneMetrics::REFERENCE.scaled(f64::NAN),
+        SceneMetrics::REFERENCE
+    );
+}
+
+#[test]
+fn a_touch_screen_is_the_reference_pulled_back_by_the_mobile_zoom() {
+    assert_eq!(
+        SceneMetrics::for_pointer(true),
+        SceneMetrics::REFERENCE.scaled(MOBILE_ZOOM)
+    );
+}

@@ -1,3 +1,7 @@
 /target/
 /dist/
 /.venv/
+
+# Scripted runs write their shots and reports here
+/scenes/*/
+scenes/shots/

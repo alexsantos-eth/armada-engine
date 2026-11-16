@@ -1,0 +1,25 @@
+{
+  "world": "blank",
+  "window": [960, 600],
+  "zoom": 0.8,
+  "phase": "day",
+  "centre": [16, 16],
+  "player": [16, 16],
+  "edits": [
+    { "surface": { "at": [17, 16], "material": "sand" } },
+    { "raise": { "at": [18, 16], "times": 2 } },
+    { "place": { "at": [14, 16], "blueprint": "runestone_tall" } }
+  ],
+  "steps": [
+    "settle",
+    { "shot": "antes.png" },
+    { "walk": { "dir": [1, 0], "frames": 20 } },
+    "jump",
+    { "wait": { "frames": 15 } },
+    { "phase": "sunset" },
+    "settle",
+    { "shot": "despues.png" }
+  ],
+  "out": "shots",
+  "maxFrames": 600
+}

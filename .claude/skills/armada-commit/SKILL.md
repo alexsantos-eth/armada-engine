@@ -15,6 +15,7 @@ Argumento opcional: una pista del mensaje del commit (p. ej. `/armada-commit som
 - El proyecto **no tiene dependencias JS**: es un workspace de Cargo (`lib/`) que Netlify compila con rustup y cargo preinstalados. La validación se hace en el propio equipo del usuario con `cargo`; no hace falta una nube ni `pnpm`.
 - En macOS, el SDK de Command Line Tools 27 está roto al enlazar: todo comando `cargo` que enlace (test, build, clippy) corre con `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk`, o vía `lib/scripts/run-native.sh <subcomando>`, que selecciona el SDK anterior si no hay `SDKROOT`. La build WASM no enlaza con el SDK del sistema y va directo (`lib/scripts/build-web.sh`).
 - Rama de integración: `iso-rust`. Remoto: `https://github.com/alexsantos-eth/armada-engine`.
+- Las capturas y los informes de una corrida guionizada (`armada-visual-check`) son salida, no código: `lib/scenes/*/` está ignorado por git. Si aparecen en `git status`, no entran en el commit; una escena que merezca conservarse sí (`lib/scenes/<nombre>.json`).
 
 Si las herramientas `mcp__remote-devices__*` no están o el equipo no responde, sigue en la máquina local donde esté el repo; si el repo no es accesible, para y díselo al usuario.
 

@@ -2,7 +2,7 @@
 
 pub(crate) mod config;
 mod frame;
-mod ground;
+pub(crate) mod ground;
 mod scene;
 mod state;
 

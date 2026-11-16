@@ -18,7 +18,8 @@ lib/
   assets-src/     # SVG fuente del atlas (copia local, no se despliega)
   packaging/      # fuente e icns del icono del bundle macOS (no se despliega)
   web/            # cargador WASM y archivos web (`/` limpio, `/playground` con GUI, `/maker` editor)
-  scripts/        # utilidades de atlas, icono y ejecución nativa
+  scenes/         # escenas de ejemplo para las corridas guionizadas (`scene.json`)
+  scripts/        # utilidades de atlas, icono, ejecución nativa y corridas de escena
 ```
 
 La regla de dependencia es `iso-core → iso`. `iso` no importa Macroquad, navegador, audio ni archivos de la escena; el cliente puede usar tipos y decisiones del dominio, pero el dominio no conoce sprites, texturas ni resolución de pantalla. Si una regla necesita pruebas sin GPU o navegador, normalmente pertenece al dominio. La estructura exacta de carpetas y archivos es la de [Estructura de archivos](FILE_STRUCTURE.md).
@@ -32,11 +33,11 @@ Cada carpeta de dominio con API pública mantiene un catálogo `mod.md` en espa�
 
 Dominio portable, crate `iso`:
 
-- [assets](../crates/iso/src/assets/mod.md), [biomes](../crates/iso/src/biomes/mod.md), [camera](../crates/iso/src/camera/mod.md), [entities](../crates/iso/src/entities/mod.md), [grid](../crates/iso/src/grid/mod.md), [lighting](../crates/iso/src/lighting/mod.md), [paths](../crates/iso/src/paths/mod.md), [player](../crates/iso/src/player/mod.md), [projection](../crates/iso/src/projection/mod.md), [scene_order](../crates/iso/src/scene_order/mod.md), [services](../crates/iso/src/services/mod.md), [simulation](../crates/iso/src/simulation/mod.md), [terrain](../crates/iso/src/terrain/mod.md), [time](../crates/iso/src/time/mod.md), [water](../crates/iso/src/water/mod.md), [wind](../crates/iso/src/wind/mod.md), [world](../crates/iso/src/world/mod.md)
+- [assets](../crates/iso/src/assets/mod.md), [biomes](../crates/iso/src/biomes/mod.md), [camera](../crates/iso/src/camera/mod.md), [entities](../crates/iso/src/entities/mod.md), [grid](../crates/iso/src/grid/mod.md), [lighting](../crates/iso/src/lighting/mod.md), [maker](../crates/iso/src/maker/mod.md), [paths](../crates/iso/src/paths/mod.md), [player](../crates/iso/src/player/mod.md), [projection](../crates/iso/src/projection/mod.md), [scene_order](../crates/iso/src/scene_order/mod.md), [services](../crates/iso/src/services/mod.md), [simulation](../crates/iso/src/simulation/mod.md), [terrain](../crates/iso/src/terrain/mod.md), [testbed](../crates/iso/src/testbed/mod.md), [time](../crates/iso/src/time/mod.md), [water](../crates/iso/src/water/mod.md), [wind](../crates/iso/src/wind/mod.md), [world](../crates/iso/src/world/mod.md)
 
 Cliente Macroquad, crate `iso-core`:
 
-- [assets](../src/assets/mod.md), [effects](../src/effects/mod.md), [game](../src/game/mod.md), [gui](../src/gui/mod.md), [lighting](../src/lighting/mod.md), [loops](../src/loops/mod.md), [perf](../src/perf/mod.md), [player](../src/player/mod.md), [rendering](../src/rendering/mod.md), [save](../src/save/mod.md), [services](../src/services/mod.md), [terrain](../src/terrain/mod.md), [touch](../src/touch/mod.md), [water](../src/water/mod.md)
+- [app](../src/app/mod.md), [assets](../src/assets/mod.md), [effects](../src/effects/mod.md), [game](../src/game/mod.md), [gui](../src/gui/mod.md), [lighting](../src/lighting/mod.md), [loops](../src/loops/mod.md), [maker](../src/maker/mod.md), [perf](../src/perf/mod.md), [player](../src/player/mod.md), [rendering](../src/rendering/mod.md), [save](../src/save/mod.md), [services](../src/services/mod.md), [terrain](../src/terrain/mod.md), [testbed](../src/testbed/mod.md), [touch](../src/touch/mod.md), [water](../src/water/mod.md)
 
 ## Invariantes compartidas
 
@@ -71,7 +72,7 @@ La build web decide por la ruta de la página qué corre, una sola vez por proce
 - `/playground` — la superficie de desarrollo: el overlay completo (título y ayuda, lectura del mundo, botones de fase, interruptor del jetpack, panel de rendimiento y mensajes).
 - `/maker` — el **editor de mundo** sobre un solo chunk.
 
-La build nativa no tiene ruta y la toma de sus argumentos: `--maker` abre el editor, `--plain` corre la presentación sin overlay, y sin argumentos queda el playground de siempre.
+La build nativa no tiene ruta y la toma de sus argumentos: `--maker` abre el editor, `--plain` corre la presentación sin overlay, `--scene <archivo>` corre una **escena guionizada**, y sin argumentos queda el playground de siempre.
 
 En la ruta del editor no hay streaming ni guardado: `game::state` inyecta `MAKER_CHUNK` (por defecto `(0, 0)`) plano con `terrain::flat_chunk` mediante `ChunkManager::load_columns`, de modo que ni la generación ni la colocación procedural intervienen, y el jugador nace en el centro de ese chunk y camina por lo que se construye. `game::frame` toma entonces su propio camino: un trazo del editor en vez de la pasada de stream, sin descargas ni archive, y el horneado de luz del chunk se repite (`ShadowScene::forget`) solo cuando el trazo cambió el terreno o las entidades.
 
@@ -82,6 +83,19 @@ Las reglas de edición viven en el dominio portable `iso::maker` y se prueban si
 - **Entidades**: validadas con `entities::placement_by_hand` (superficies, un único nivel bajo la huella y ocupación; sin la separación entre iguales, que es regla de la colocación generada) y puestas con `ChunkManager::put_entity`. **Girar** una entidad no rota el sprite: el contenido trae pares por eje (`hotel_x` / `hotel_y`), así que girar es moverse al hermano del catálogo; un blueprint sin eje en el nombre no gira.
 
 El historial guarda una copia del chunk (columnas, entidades y vestido) antes de cada trazo y `Ctrl+Z` la vuelve a escribir. Lo que el editor construye **no se guarda todavía**: el formato de guardado no tiene sitio para el vestido por casilla, así que el chunk editado vive solo en memoria mientras la ventana está abierta.
+
+## Corridas guionizadas (`scene.json`)
+
+Una cuarta ruta, solo nativa, corre el juego **desde un archivo** en vez de desde una persona al teclado: `--scene <archivo>` (`gui::Route::Script`, `scripts/run-scene.sh`). El archivo describe el mundo que abrir, lo que construir en él, dónde poner al jugador y una lista de pasos; el proceso los ejecuta, escribe en PNG los fotogramas que le piden, deja un `report.json` al lado y sale solo. La guía de uso está en [TESTBED.md](TESTBED.md).
+
+El reparto es el de siempre: las reglas en el dominio portable [`iso::testbed`](../crates/iso/src/testbed/mod.md), probadas sin ventana, y el archivo, la ventana y el disco en el cliente [`src/testbed`](../src/testbed/mod.md). Cuatro decisiones sostienen el diseño:
+
+- **El jugador se conduce por el puerto de entrada**, no por el teclado: `ScriptInput` implementa `iso::services::InputService` igual que `MacroquadInput`, así que la física, la animación y el audio no distinguen una corrida guionizada de una jugada. Inyectar eventos en el canvas de macroquad no es fiable; esto no depende de ello.
+- **Las ediciones son las del editor**: un paso `edit` se traduce a un `MakerBrush` y se aplica con `iso::maker::apply_brush`, con las mismas validaciones. Lo que `/maker` rechazaría lo rechaza también una escena, y el informe dice qué había en la celda.
+- **`settle` espera a la luz, no a un cronómetro**: el horneado gasta `BAKE_BUDGET_MS` por fotograma y entra con un fundido, así que el guion repite fotograma hasta que `ShadowScene::settled` dice que todos los chunks en pantalla están generados y horneados del todo. `maxFrames` acota la espera y el informe anota si se agotó.
+- **El fotograma vale un paso fijo mientras hay guion** (`SCRIPTED_FRAME_MS`), no lo que midiera la ventana, de modo que dos corridas de la misma escena dan la misma imagen por rápido que dibuje la máquina.
+
+Una corrida guionizada no lee ni escribe la partida (`Route::keeps_the_save`) y no pinta overlay. Necesita una ventana con GL pero no necesita a nadie mirándola: en Linux corre bajo `xvfb-run`, que es como se comprueba desde un contenedor sin pantalla.
 
 ## Cómo funciona el juego
 

@@ -675,7 +675,8 @@ To inspect bevels and seams, render at 1400 px and crop the area with PIL. To ch
    - voxels read as plain cubes (raise `r`) or as pillows (lower it);
    - too many small voxels (merge them into fewer, bigger ones);
    - a shadow spilling past the ground slab.
-6. **Deliver.** Deliver `<name>.svg` (one per orientation for multi-tile assets) and its `<name>.py`. Summarize in 2–4 sentences how it fills the volume and what can be tweaked.
+6. **See it in the game.** Once the asset is in the atlas and the catalogue (Armada Engine: `scripts/build-atlas.sh`, `content/json/entities.json`), check it standing in the world, not only in the preview: invoke the **`armada-visual-check`** skill, which runs the game from a `scene.json` that places the blueprint on a flat chunk and writes a PNG. The preview shows the artwork; only the game shows its size against a tile, its shadow, and what it hides behind it. Skip this step only when the asset is not going into the game yet.
+7. **Deliver.** Deliver `<name>.svg` (one per orientation for multi-tile assets) and its `<name>.py`. Summarize in 2–4 sentences how it fills the volume and what can be tweaked.
 
 ## 7. Reference recipes
 

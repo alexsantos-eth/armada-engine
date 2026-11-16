@@ -16,6 +16,10 @@ use crate::gui::{draw_hud, push_hud_update};
 use crate::loops::clock::{FrameClock, frame_timestamp_seconds};
 use crate::perf::FrameSample;
 
+/// How long a scripted frame counts as, whatever the window measured: one fixed step, so a
+/// scene's shots do not depend on how fast the machine drew them.
+const SCRIPTED_FRAME_MS: f64 = iso::simulation::STEP_MS;
+
 /// The instants the loop takes through a frame, in macroquad's seconds.
 struct FrameMarks {
     frame_start: f64,
@@ -51,6 +55,7 @@ fn frame_sample(
 /// Runs the game until the player quits.
 pub(crate) async fn run(mut game: Game) {
     let show_overlay = crate::gui::current().shows_overlay();
+    let scripted = game.script.is_some();
     let initial_phase = game
         .shadows
         .as_ref()
@@ -62,10 +67,14 @@ pub(crate) async fn run(mut game: Game) {
     let mut clock = FrameClock::new();
     loop {
         let frame_start = get_time();
-        let frame_ms = clock.tick(
-            frame_timestamp_seconds(),
-            f64::from(get_frame_time()) * 1000.0,
-        );
+        let frame_ms = if scripted {
+            SCRIPTED_FRAME_MS
+        } else {
+            clock.tick(
+                frame_timestamp_seconds(),
+                f64::from(get_frame_time()) * 1000.0,
+            )
+        };
 
         let Some(view) = game.update(frame_ms) else {
             return;
@@ -92,6 +101,7 @@ pub(crate) async fn run(mut game: Game) {
         draw_sorted(&game.atlas, game.material.as_ref(), &mut game.draws);
         game.draw_clouds(frame_ms, &view.projection);
         game.scene_target.present(game.grade.as_ref(), &grade);
+        crate::testbed::write_shots(&mut game, &view.shots);
         if show_overlay {
             draw_rectangle_lines(16.0, 16.0, width - 32.0, height - 32.0, 2.0, SKYBLUE);
         }

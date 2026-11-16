@@ -16,6 +16,7 @@ pub mod scene_order;
 pub mod services;
 pub mod simulation;
 pub mod terrain;
+pub mod testbed;
 pub mod time;
 pub mod water;
 pub mod wind;

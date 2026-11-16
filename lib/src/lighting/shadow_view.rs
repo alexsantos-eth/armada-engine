@@ -283,6 +283,15 @@ impl ShadowScene {
         first_time.or(again)
     }
 
+    /// Whether the bake has nothing left to do for `shown`: no job in hand, nothing left to
+    /// bake, and every chunk shown faded all the way in. A scripted run waits for it before it
+    /// captures a frame.
+    pub fn settled(&self, manager: &ChunkManager, shown: &[ChunkCoord]) -> bool {
+        self.working.is_none()
+            && self.next_to_bake(manager, shown).is_none()
+            && shown.iter().all(|coord| self.chunk_fade(*coord) >= 1.0)
+    }
+
     /// Does one piece of the job in hand, and says whether that was the last of it.
     fn advance(&mut self, manager: &ChunkManager) -> bool {
         let Some(mut job) = self.working.take() else {

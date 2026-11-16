@@ -64,6 +64,21 @@ caminando por lo que construyes, con WASD.
 
 Lo que se construye **no se guarda todavía**: vive en memoria mientras la ventana está abierta.
 
+## Probar el juego sin teclado
+
+El juego también corre **desde un archivo**: una escena describe el mundo, lo que se construye en
+él, dónde está el jugador y una lista de pasos; el proceso los ejecuta, escribe las capturas PNG
+que le pidan, deja un `report.json` al lado y sale solo.
+
+```sh
+scripts/run-scene.sh scenes/scene.json
+```
+
+Sirve para comprobar un cambio sin que nadie esté delante del juego: colocar entidades, cambiar
+el terreno, mover al jugador, cambiar la fase del día y capturar. El paso `settle` espera a que
+las sombras estén horneadas antes de capturar, así que una captura nunca sale a medio hornear. En
+Linux corre sin pantalla con `xvfb-run`. La guía completa está en [docs/TESTBED.md](docs/TESTBED.md).
+
 ## Sonidos
 
 El jugador suena con WAVs generados en `content/sounds/` a partir de los patrones de Strudel

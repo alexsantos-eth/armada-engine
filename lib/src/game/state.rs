@@ -101,6 +101,18 @@ pub(crate) struct Game {
     pub(crate) tile_metrics: SceneMetrics,
     /// The editing session, on the `/maker` route only; `None` plays the streamed world.
     pub(crate) maker: Option<MakerSession>,
+    /// The scripted run in flight, when a scene file is driving the game; `None` reads input.
+    pub(crate) script: Option<crate::testbed::ScriptRun>,
+    /// Whether the world streams around the player. A blank world holds one chunk and never
+    /// generates, places, unloads or saves.
+    pub(crate) streams: bool,
+    /// Whether this run loads and writes the player's save.
+    pub(crate) persists: bool,
+    /// Whether what is on screen is generated and its shadows are baked and faded in, as of
+    /// the end of the last frame. A scripted settle waits for it.
+    pub(crate) lit: bool,
+    /// The chunks the last frame drew, so a scripted report lists what its shots show.
+    pub(crate) shown: Vec<iso::grid::ChunkCoord>,
     /// Whether this route lets the jetpack be strapped on at all (`Route::allows_jetpack`).
     pub(crate) jetpack_allowed: bool,
     /// Whether the player is wearing the jetpack: equipment the development surfaces toggle,
@@ -115,7 +127,7 @@ impl Game {
     /// Boots the game: loads the catalog and the artwork, restores the save if there is one,
     /// generates the spawn area and frames the player. Exits the process only through
     /// `loops::run`; asset failures downgrade to warnings, never panic.
-    pub(crate) async fn new(route: Route) -> Self {
+    pub(crate) async fn new(route: Route, scene: Option<&iso::testbed::Scene>) -> Self {
         let catalog_json = include_str!("../../content/json/entities.json");
 
         let manifest_json = include_str!("../../content/json/assets.manifest.json");
@@ -179,7 +191,10 @@ impl Game {
                 None
             }
         };
-        let tile_metrics = SceneMetrics::for_pointer(coarse_pointer());
+        let tile_metrics = match scene.and_then(|scene| scene.zoom) {
+            Some(zoom) => SceneMetrics::for_pointer(coarse_pointer()).scaled(zoom),
+            None => SceneMetrics::for_pointer(coarse_pointer()),
+        };
         let shadows = masks.filter(|_| material.is_some()).map(|masks| {
             ShadowScene::new(
                 phase_at(iso::time::WORLD_START_TICK),
@@ -211,7 +226,7 @@ impl Game {
             }
         }
         let terrain_config = TerrainConfig {
-            seed: WORLD_SEED,
+            seed: scene.and_then(|scene| scene.seed).unwrap_or(WORLD_SEED),
             ..TerrainConfig::default()
         };
         let catalog: EntityCatalog =
@@ -246,8 +261,10 @@ impl Game {
         manager.set_biomes(world_biomes);
         manager.set_wfc(wfc_catalog);
 
-        let editing = route.edits_the_world();
-        let archive = if editing {
+        let blank = scene.map_or(route.edits_the_world(), |scene| {
+            scene.world == iso::testbed::SceneWorld::Blank
+        });
+        let archive = if !route.keeps_the_save() {
             restore_archive(None)
         } else {
             let save = load_save().await;
@@ -260,7 +277,10 @@ impl Game {
             archive
         };
 
-        let centre = if editing {
+        let asked_centre = scene
+            .and_then(|scene| scene.centre)
+            .map(|[x, y]| iso::grid::WorldCoord { x, y });
+        let generated_centre = if blank {
             iso::grid::to_world_coord(
                 MAKER_CHUNK,
                 iso::grid::LocalCoord {
@@ -271,14 +291,16 @@ impl Game {
         } else {
             PREVIEW_CENTRE
         };
-        if editing {
+        let centre = asked_centre.unwrap_or(generated_centre);
+        if blank {
+            let flat = asked_centre.map_or(MAKER_CHUNK, to_chunk_coord);
             manager.load_columns(
-                MAKER_CHUNK,
-                iso::terrain::flat_chunk(MAKER_CHUNK, 0, iso::terrain::TerrainMaterial::Grass),
+                flat,
+                iso::terrain::flat_chunk(flat, 0, iso::terrain::TerrainMaterial::Grass),
             );
-            manager.set_single_focus(MAKER_CHUNK);
+            manager.set_single_focus(flat);
         } else {
-            manager.set_focus(vec![to_chunk_coord(PREVIEW_CENTRE)]);
+            manager.set_focus(vec![to_chunk_coord(centre)]);
             for _ in 0..20 {
                 manager.tick();
             }
@@ -365,7 +387,14 @@ impl Game {
             touch: TouchControls::new(coarse_pointer()),
             tile_metrics,
             clock: WorldClock::default(),
-            maker: editing.then(|| MakerSession::new(MAKER_CHUNK)),
+            maker: route
+                .edits_the_world()
+                .then(|| MakerSession::new(MAKER_CHUNK)),
+            script: None,
+            streams: !blank,
+            persists: route.keeps_the_save(),
+            lit: false,
+            shown: Vec::new(),
             phase_override: None,
             wind_ms: 0.0,
         }

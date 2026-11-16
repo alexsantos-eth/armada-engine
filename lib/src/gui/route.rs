@@ -3,8 +3,8 @@
 //! `/` is the clean presentation and paints no GUI at all; `/playground` is the development
 //! surface with the overlay the HUD has always drawn; `/maker` is the world editor, which
 //! paints the overlay and edits one chunk instead of streaming the procedural world. The
-//! native build has no route and takes it from its arguments (`--maker`, `--plain`). The
-//! decision is taken once per process, before the loop starts.
+//! native build has no route and takes it from its arguments (`--maker`, `--plain`,
+//! `--scene <file>`). The decision is taken once per process, before the loop starts.
 
 /// What this process runs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -15,6 +15,10 @@ pub(crate) enum Route {
     Playground,
     /// The world editor over one flat chunk.
     Maker,
+    /// A scripted run over the world a scene file describes, with no input of its own. Native
+    /// only: a page has no arguments to name a scene with.
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code, reason = "native only"))]
+    Script,
 }
 
 impl Route {
@@ -23,10 +27,16 @@ impl Route {
         matches!(self, Self::Playground | Self::Maker)
     }
 
+    /// Whether this route loads and writes the player's save. A scripted run and the editor
+    /// both work on a world of their own, so neither touches it.
+    pub(crate) fn keeps_the_save(self) -> bool {
+        matches!(self, Self::Plain | Self::Playground)
+    }
+
     /// Whether this route lets the player strap a jetpack on. It is a development option, so
     /// only the surfaces that paint the overlay offer it; the plain presentation never does.
     pub(crate) fn allows_jetpack(self) -> bool {
-        matches!(self, Self::Playground | Self::Maker)
+        matches!(self, Self::Playground | Self::Maker | Self::Script)
     }
 
     /// Whether this route edits one chunk by hand instead of streaming the world.
@@ -41,6 +51,9 @@ const MAKER_FLAG: &str = "--maker";
 /// The argument that runs a native build as the game is presented, with no overlay.
 #[cfg(any(not(target_arch = "wasm32"), test))]
 const PLAIN_FLAG: &str = "--plain";
+/// The argument that runs a scene file; the scene itself is read by `testbed::scene_path`.
+#[cfg(any(not(target_arch = "wasm32"), test))]
+const SCENE_FLAG: &str = "--scene";
 
 #[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "env")]
@@ -88,6 +101,9 @@ fn native_route<'a>(arguments: impl Iterator<Item = &'a String>) -> Route {
         }
         if argument == PLAIN_FLAG {
             route = Route::Plain;
+        }
+        if argument == SCENE_FLAG || argument.starts_with(&format!("{SCENE_FLAG}=")) {
+            route = Route::Script;
         }
     }
     route

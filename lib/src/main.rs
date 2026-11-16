@@ -3,7 +3,8 @@
 //! Everything that behaves lives in a domain module: `game` boots the world and splits the
 //! frame into update (`game::frame`) and view (`game::scene`), `gui` paints the overlay,
 //! `maker` edits one chunk on the `/maker` route and `loops` sequences the frame. This file
-//! only declares the domains and hands control to `app::run`.
+//! only declares the domains and hands control to `app::run`. `testbed` runs the game from a
+//! scene file instead of from a person at the keyboard.
 
 mod app;
 mod assets;
@@ -19,6 +20,7 @@ mod rendering;
 mod save;
 mod services;
 mod terrain;
+mod testbed;
 mod touch;
 mod water;
 

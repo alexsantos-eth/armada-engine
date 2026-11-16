@@ -142,6 +142,8 @@ SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk cargo build --re
 
 En macOS, `lib/scripts/run-native.sh <subcomando>` selecciona el SDK correcto. En otros sistemas, `cargo` directo. `scripts/build-web.sh` cubre la compilación WASM completa. Si algo falla, arréglalo; nunca bajes el listón de clippy ni añadas `allow` para que pase.
 
+Si una corrección tuya toca lo que se ve (render, orden de dibujo, proyección, cámara, sombras, reflejos, terreno o colocación), compruébalo además con la skill **`armada-visual-check`**: un `scene.json` que aísle el caso, su captura y su `report.json`. Adjunta la captura al informe; «no se ve roto» sin imagen no es un hallazgo comprobado, y una regresión visual no la detecta ningún test de dominio.
+
 ## Documentación
 
 - Actualiza `lib/docs/ARCHITECTURE.md` si cambiaste contratos de funcionamiento técnico.
@@ -160,7 +162,7 @@ Si la revisión cambia algo que el desarrollador debe saber en su próximo traba
 
 Cómo: lee el `SKILL.md` actual de `armada-engine-dev` completo y genera la versión actualizada **entera** (conserva todo lo vigente, cambia solo lo necesario). Proponla con la herramienta de propuestas de skills si está disponible; si no, muestra el `SKILL.md` completo al usuario para que lo guarde. No dupliques en esa skill la lista de auditoría de esta: solo reglas que el desarrollador debe cumplir.
 
-Si cambia la geometría o la integración de assets, avisa de que `iso-asset-generator` puede necesitar actualizarse.
+Si cambia la geometría o la integración de assets, avisa de que `iso-asset-generator` puede necesitar actualizarse. Si cambia el esquema de `scene.json`, sus pasos o su informe, actualiza también `armada-visual-check` y `lib/docs/TESTBED.md`.
 
 ## Informe final
 

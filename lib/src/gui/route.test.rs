@@ -84,3 +84,36 @@ fn only_the_development_surfaces_let_the_jetpack_on() {
         "the game as it is presented is not flown"
     );
 }
+
+#[test]
+fn a_native_run_given_a_scene_is_a_scripted_run() {
+    let arguments = [
+        "iso-core".to_owned(),
+        "--scene".to_owned(),
+        "scene.json".to_owned(),
+    ];
+
+    assert_eq!(native_route(arguments.iter()), Route::Script);
+}
+
+#[test]
+fn a_scene_joined_by_an_equals_sign_is_a_scripted_run_too() {
+    let arguments = ["iso-core".to_owned(), "--scene=scene.json".to_owned()];
+
+    assert_eq!(native_route(arguments.iter()), Route::Script);
+}
+
+#[test]
+fn a_scripted_run_paints_no_overlay_and_keeps_no_save() {
+    assert!(!Route::Script.shows_overlay());
+    assert!(!Route::Script.keeps_the_save());
+    assert!(!Route::Script.edits_the_world());
+    assert!(Route::Script.allows_jetpack());
+}
+
+#[test]
+fn only_the_played_routes_keep_the_players_save() {
+    assert!(Route::Plain.keeps_the_save());
+    assert!(Route::Playground.keeps_the_save());
+    assert!(!Route::Maker.keeps_the_save());
+}

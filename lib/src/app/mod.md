@@ -16,7 +16,7 @@ Este catálogo documenta las funciones y reexportaciones del dominio, con su fir
 
 - [`run`](mod.rs#L11) — Arranque completo del cliente: crea el juego y cede el control al bucle de frames.
   - Declaración: `pub(crate) use bootstrap::{run, window_conf};`
-- [`window_conf`](mod.rs#L11) — Configuración de la ventana del juego.
+- [`window_conf`](mod.rs#L11) — Configuración de la ventana del juego: 960 × 600 salvo que una escena guionizada pida otro tamaño (`Scene::window`).
   - Declaración: `pub(crate) use bootstrap::{run, window_conf};`
 - [`asset_path`](mod.rs#L13) — Dónde se pide un asset al disco (solo builds nativas).
   - Declaración: `pub(crate) use bundle::{asset_path, save_path};`

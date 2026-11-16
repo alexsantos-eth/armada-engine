@@ -2,7 +2,7 @@
 
 Este dominio de cliente pinta el overlay sobre la escena: el título y la ayuda de controles, los botones de fase de sombras (solo cuando hay una escena de sombras), la lectura del mundo en pantalla (posición, movimiento, chunks y la hora `HH:MM` del reloj del mundo), el panel de rendimiento y los mensajes transitorios. El HUD no toca el mundo ni la cámara: devuelve una fase elegida para que el bucle la aplique a la vista de sombras. En la raíz web (`/`) la fase sigue siempre al reloj; en `/playground` los botones fijan un override manual (volver a pulsar el activo devuelve el control al ciclo).
 
-El overlay está **condicionado por la ruta** en la build web: `/` no pinta nada (ni borde ni HUD), y `/playground` y `/maker` pintan el overlay completo de siempre. La ruta decide además **qué se arranca**: `/maker` carga un único chunk plano y abre el editor de mundo (ver [`src/maker/`](../maker/mod.md)) en vez de transmitir el mundo procedural. La build nativa no tiene ruta y la toma de sus argumentos: `--maker` abre el editor y `--plain` corre el juego tal como se presenta, sin overlay. La regla vive en `route.rs` y se consulta una vez por proceso, antes de que arranque el bucle.
+El overlay está **condicionado por la ruta** en la build web: `/` no pinta nada (ni borde ni HUD), y `/playground` y `/maker` pintan el overlay completo de siempre. La ruta decide además **qué se arranca**: `/maker` carga un único chunk plano y abre el editor de mundo (ver [`src/maker/`](../maker/mod.md)) en vez de transmitir el mundo procedural. La build nativa no tiene ruta y la toma de sus argumentos: `--maker` abre el editor, `--plain` corre el juego tal como se presenta, sin overlay, y `--scene <archivo>` corre una escena guionizada (ver [`src/testbed/`](../testbed/mod.md)), que tampoco pinta overlay ni toca la partida guardada. La regla vive en `route.rs` y se consulta una vez por proceso, antes de que arranque el bucle.
 
 El **jetpack** es una opción de desarrollo del overlay: solo las rutas que lo pintan dejan ponérselo (`Route::allows_jetpack`), nunca la presentación limpia. Se alterna con la tecla `J` o con el botón que sigue a los de fase, y el estado vive en `game::state::Game` (`jetpack`), que el bucle pasa al HUD y `game::frame` baja al jugador con `iso::player::set_player_jetpack`. Llevarlo puesto no vuela por sí solo: volar es mantener la tecla de salto en el aire.
 
@@ -20,7 +20,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `pub(crate) use hud::{PerfCounts, draw_hud, push_hud_update};`
 - [`push_hud_update`](mod.rs#L9) — Publica la lectura de este fotograma (posición, elevación, movimiento, chunks) al servicio de UI.
   - Firma: `pub(crate) use hud::{draw_hud, push_hud_update};`
-- [`Route`](mod.rs#L10) — Lo que corre este proceso: `Plain`, `Playground` o `Maker`.
+- [`Route`](mod.rs#L10) — Lo que corre este proceso: `Plain`, `Playground`, `Maker` o `Script`.
   - Firma: `pub(crate) use route::{Route, current};`
 - [`current`](mod.rs#L10) — La ruta de este proceso: el camino de la página en web, los argumentos en nativo.
   - Firma: `pub(crate) use route::{Route, current};`
@@ -29,18 +29,20 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Tipos
 
-- [`Route`](route.rs#L11) — La ruta de este proceso: `Plain` (sin overlay), `Playground` (overlay) o `Maker` (overlay y editor).
-  - Declaración: `pub(crate) enum Route { Plain, Playground, Maker }`
+- [`Route`](route.rs#L11) — La ruta de este proceso: `Plain` (sin overlay), `Playground` (overlay), `Maker` (overlay y editor) o `Script` (corrida guionizada, solo nativa).
+  - Declaración: `pub(crate) enum Route { Plain, Playground, Maker, Script }`
 
 #### Funciones y métodos
 
-- [`shows_overlay`](route.rs#L22) — Si esta ruta pinta el overlay: `Playground` y `Maker` sí, `Plain` no.
+- [`shows_overlay`](route.rs#L26) — Si esta ruta pinta el overlay: `Playground` y `Maker` sí, `Plain` no.
   - Firma: `pub(crate) fn shows_overlay(self) -> bool {`
-- [`allows_jetpack`](route.rs#L28) — Si esta ruta deja ponerse el jetpack: `Playground` y `Maker` sí, `Plain` no, porque es una opción de desarrollo.
+- [`keeps_the_save`](route.rs#L32) — Si esta ruta carga y escribe la partida del jugador: `Plain` y `Playground` sí; el editor y una corrida guionizada trabajan sobre un mundo propio y no la tocan.
+  - Firma: `pub(crate) fn keeps_the_save(self) -> bool {`
+- [`allows_jetpack`](route.rs#L38) — Si esta ruta deja ponerse el jetpack: `Playground`, `Maker` y `Script` sí, `Plain` no, porque es una opción de desarrollo.
   - Firma: `pub(crate) fn allows_jetpack(self) -> bool {`
-- [`edits_the_world`](route.rs#L33) — Si esta ruta edita un chunk a mano en vez de transmitir el mundo.
+- [`edits_the_world`](route.rs#L43) — Si esta ruta edita un chunk a mano en vez de transmitir el mundo.
   - Firma: `pub(crate) fn edits_the_world(self) -> bool {`
-- [`current`](route.rs#L97) — En WASM consulta `window.location.pathname` mediante el import `iso_route_path` del bundle y aplica `route_for_path`; fuera de WASM lee los argumentos del proceso con `native_route`.
+- [`current`](route.rs#L113) — En WASM consulta `window.location.pathname` mediante el import `iso_route_path` del bundle y aplica `route_for_path`; fuera de WASM lee los argumentos del proceso con `native_route`.
   - Firma: `pub(crate) fn current() -> Route {`
 
 ### `hud.rs`
@@ -65,15 +67,17 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones internas
 
-- [`MAKER_FLAG`](route.rs#L40) — El argumento que abre el editor en una build nativa (`--maker`).
+- [`MAKER_FLAG`](route.rs#L50) — El argumento que abre el editor en una build nativa (`--maker`).
   - Firma: `const MAKER_FLAG: &str = "--maker";`
-- [`PLAIN_FLAG`](route.rs#L43) — El argumento que corre una build nativa como se presenta el juego, sin overlay (`--plain`).
+- [`PLAIN_FLAG`](route.rs#L53) — El argumento que corre una build nativa como se presenta el juego, sin overlay (`--plain`).
   - Firma: `const PLAIN_FLAG: &str = "--plain";`
-- [`browser_path`](route.rs#L56) — Lee `window.location.pathname` en WASM mediante el import `iso_route_path` (mismo patrón FFI acotado que `save::persistence`); devuelve `None` si el host falla.
+- [`SCENE_FLAG`](route.rs#L56) — El argumento que corre un archivo de escena (`--scene`); la escena misma la lee `testbed::scene_path`.
+  - Firma: `const SCENE_FLAG: &str = "--scene";`
+- [`browser_path`](route.rs#L69) — Lee `window.location.pathname` en WASM mediante el import `iso_route_path` (mismo patrón FFI acotado que `save::persistence`); devuelve `None` si el host falla.
   - Firma: `fn browser_path() -> Option<String> {`
-- [`route_for_path`](route.rs#L72) — La regla pura de la web: `/playground` es la superficie de desarrollo, `/maker` el editor, con barra final opcional; cualquier otra ruta es la presentación limpia. Se prueba en `route.test.rs`.
+- [`route_for_path`](route.rs#L85) — La regla pura de la web: `/playground` es la superficie de desarrollo, `/maker` el editor, con barra final opcional; cualquier otra ruta es la presentación limpia. Se prueba en `route.test.rs`.
   - Firma: `fn route_for_path(path: &str) -> Route {`
-- [`native_route`](route.rs#L83) — La regla pura de nativo: el playground salvo que los argumentos pidan otra cosa; el último argumento de ruta es el que cuenta. Se prueba en `route.test.rs`.
+- [`native_route`](route.rs#L96) — La regla pura de nativo: el playground salvo que los argumentos pidan otra cosa; el último argumento de ruta es el que cuenta. Se prueba en `route.test.rs`.
   - Firma: `fn native_route<'a>(arguments: impl Iterator<Item = &'a String>) -> Route {`
 
 ### `hud.rs`

@@ -50,7 +50,17 @@ impl SceneMetrics {
         if !coarse {
             return Self::REFERENCE;
         }
-        let tile_width = PREVIEW_TILE_WIDTH * MOBILE_ZOOM;
+        Self::REFERENCE.scaled(MOBILE_ZOOM)
+    }
+
+    /// These metrics at `zoom`: below one the scene is pulled back and more world fits on
+    /// screen, above one it is pushed in. A zoom that is not a positive number changes
+    /// nothing.
+    pub fn scaled(self, zoom: f64) -> Self {
+        if !zoom.is_finite() || zoom <= 0.0 {
+            return self;
+        }
+        let tile_width = self.tile_width * zoom;
         Self {
             tile_width,
             tile_height: tile_width / 2.0,
