@@ -18,7 +18,7 @@ use crate::rendering::scene_material::vertex;
 pub const ATLAS_TEXTURE: usize = 0;
 
 /// The asset that is nothing but opaque white, for drawing flat colour out of the shared atlas.
-pub const WHITE_PATCH: &str = "/assets/shadow/white.svg";
+pub const WHITE_PATCH: &str = "/assets/shadow/white.png";
 
 /// The rasterized atlas plus the lookup from an asset to its frame, by [`artwork_key`].
 pub struct SpriteAtlas {

@@ -49,21 +49,21 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`PLAYER_SCALE`](config.rs#L72) — Tamaño del jugador como fracción del que tiene su arte.
   - Declaración: `pub const PLAYER_SCALE: f64 = 0.75;`
 - [`PLAYER_SPRITE`](config.rs#L74) — Ruta del manifiesto de la figura quieta del jugador.
-  - Declaración: `pub const PLAYER_SPRITE: &str = "/assets/player/block.svg";`
+  - Declaración: `pub const PLAYER_SPRITE: &str = "/assets/player/block.png";`
 - [`PLAYER_WALK_SHEET`](config.rs#L77) — Hoja de poses al andar.
-  - Declaración: `pub const PLAYER_WALK_SHEET: &str = "/assets/player-16/walk.svg";`
+  - Declaración: `pub const PLAYER_WALK_SHEET: &str = "/assets/player-16/walk.png";`
 - [`PLAYER_IDLE_SHEET`](config.rs#L78) — Hoja de poses en reposo.
-  - Declaración: `pub const PLAYER_IDLE_SHEET: &str = "/assets/player-16/idle.svg";`
+  - Declaración: `pub const PLAYER_IDLE_SHEET: &str = "/assets/player-16/idle.png";`
 - [`PLAYER_JUMP_SHEET`](config.rs#L79) — Hoja de poses de salto.
-  - Declaración: `pub const PLAYER_JUMP_SHEET: &str = "/assets/player-16/jump.svg";`
+  - Declaración: `pub const PLAYER_JUMP_SHEET: &str = "/assets/player-16/jump.png";`
 - [`PLAYER_CLIMB_SHEET`](config.rs#L80) — Hoja de poses de escalada.
-  - Declaración: `pub const PLAYER_CLIMB_SHEET: &str = "/assets/player-16/climb.svg";`
+  - Declaración: `pub const PLAYER_CLIMB_SHEET: &str = "/assets/player-16/climb.png";`
 - [`PLAYER_SWIM_SHEET`](config.rs#L81) — Hoja de poses nadando.
-  - Declaración: `pub const PLAYER_SWIM_SHEET: &str = "/assets/player-16/swim.svg";`
+  - Declaración: `pub const PLAYER_SWIM_SHEET: &str = "/assets/player-16/swim.png";`
 - [`PLAYER_FLIP_SHEET`](config.rs#L82) — Hoja del mortal del segundo salto.
-  - Declaración: `pub const PLAYER_FLIP_SHEET: &str = "/assets/player-16/flip.svg";`
+  - Declaración: `pub const PLAYER_FLIP_SHEET: &str = "/assets/player-16/flip.png";`
 - [`PLAYER_JETPACK_SHEET`](config.rs#L85) — El jetpack de la espalda: una columna por orientación, recortado donde el cuerpo de pie lo tapa, así que se dibuja sobre cualquier pose.
-  - Declaración: `pub const PLAYER_JETPACK_SHEET: &str = "/assets/player-16/jetpack.svg";`
+  - Declaración: `pub const PLAYER_JETPACK_SHEET: &str = "/assets/player-16/jetpack.png";`
 - [`PLAYER_JETPACK_DEPTH`](config.rs#L87) — Profundidad que se suma al jetpack sobre el cuerpo, para que la mochila se dibuje justo después de él.
   - Declaración: `pub const PLAYER_JETPACK_DEPTH: f64 = 0.00001;`
 - [`LAND_SOUND_MIN_IMPACT`](config.rs#L89) — Fuerza mínima del impacto de un aterrizaje, en bloques por tick, para que haga sonido; el volumen crece con la fuerza.

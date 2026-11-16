@@ -1,8 +1,18 @@
 ---
 name: "iso-asset-generator"
-description: Generates 2:1 isometric "voxel clay" SVG assets (trees, rocks, statues, buildings, props, vehicles) for a 2D game, built from very round clay voxels inside the two-diamond bounds template — single-tile or multi-tile (e.g. a 2-tile-long car, a 2-block-tall house) — with a Python generator and true projection.
+description: "OBSOLETA — no usar. Era el generador SVG del flujo antiguo (Python + fal.ai), retirado en 2026-11-16. El flujo oficial de assets es la skill armada-voxel-assets (kit voxel → .vox → Blender). Se conserva sin tocar solo como referencia histórica."
 tools: Write, Edit, Read, Bash, AskUserQuestion
 ---
+
+> [!WARNING]
+> **OBSOLET — skill retirada (2026-11-16).** El flujo que describe (SVG dibujado a mano por
+> `artifacts/vox/player/iso_lib.py` y pintado con fal.ai en `artifacts/paint/`) ya no existe: los generadores
+> y `paint/` se borraron del repo, y la carpeta `lib/assets-src/` pasó a `lib/assets-legacy/`
+> con los sprites sin migrar como fuente congelada. **No uses esta skill para crear ni cambiar
+> assets.** La fuente oficial de las reglas de assets es la skill `armada-voxel-assets`; las
+> variantes migradas a voxel se rehacen con `artifacts/vox/clay/vox_models.py` o `artifacts/vox/clay/grass_clay.py`.
+> Este archivo se conserva únicamente como referencia histórica de cómo se dibujó el SVG del
+> lienzo antiguo.
 
 # Isometric voxel-clay asset generator agent
 

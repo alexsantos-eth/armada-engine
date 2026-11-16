@@ -121,7 +121,7 @@ pub fn sidecar_tiles(json: &str) -> Option<&str> {
 }
 
 /// The template canvas `tiles` implies, as `(x, y, width, height)` in the SVG's own units: the
-/// view box `artifacts/iso_lib.py` gives an asset of that footprint. An asset authored as a
+/// view box `artifacts/vox/player/iso_lib.py` gives an asset of that footprint. An asset authored as a
 /// raster is drawn on exactly this canvas, so its pixels map back to the template by it.
 /// Assets that reach below the ground plane (the pier) are not described by it.
 pub fn template_canvas(tiles: Option<&str>) -> (f64, f64, f64, f64) {
@@ -148,6 +148,20 @@ pub fn raster_ink(
     let (min_x, min_y, max_x, max_y) = bounds;
     if canvas.0 == 0 || canvas.1 == 0 || min_x >= max_x || min_y >= max_y {
         return None;
+    }
+    // Reflections are drawn to hang from the waterline, not to fill a block: their anchor is
+    // the top edge of the artwork, and they ignore the 1x1x1 template the map uses. Their
+    // sidecar declares `"tiles": "reflection"`, and their ink box is measured from the raw
+    // opaque bounds with the anchor at (SVG_ANCHOR.1, y) on the artwork's own view box.
+    if tiles == Some("reflection") {
+        let scale = f64::from(canvas.0) / SVG_TILE_WIDTH;
+        let to_px = |value: f64| value / scale;
+        return Some(InkBox {
+            x: (to_px(f64::from(min_x)) - SVG_ANCHOR.0) / SVG_TILE_WIDTH,
+            y: (to_px(f64::from(min_y)) - SVG_ANCHOR.1) / SVG_TILE_WIDTH,
+            width: to_px(f64::from(max_x - min_x)) / SVG_TILE_WIDTH,
+            height: to_px(f64::from(max_y - min_y)) / SVG_TILE_WIDTH,
+        });
     }
     let (view_x, view_y, view_width, view_height) = template_canvas(tiles);
     let across = view_width / f64::from(canvas.0);

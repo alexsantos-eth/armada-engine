@@ -37,7 +37,7 @@ fn every_grass_top_is_in_the_shipped_atlas() {
 #[test]
 fn a_top_stands_in_its_cell_exactly_where_the_plain_block_does() {
     let manifest = shipped();
-    let plain = artwork(&manifest)("/assets/grass/block.svg")
+    let plain = artwork(&manifest)("/assets/grass/block.png")
         .expect("the plain grass block")
         .1;
     for (source, _) in GRASS_TOPS {

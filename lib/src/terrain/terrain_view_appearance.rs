@@ -22,15 +22,15 @@ const GROUND_TINT_SCALE: f64 = 11.0;
 
 /// The extra tops a grass column can grow, and the share of all grass each should cover.
 const GRASS_TOPS: &[(&str, f64)] = &[
-    ("/assets/grass/block_flowers.svg", 0.05),
-    ("/assets/grass/block_flowers_2.svg", 0.04),
-    ("/assets/grass/block_wildflowers_red.svg", 0.025),
-    ("/assets/grass/block_wildflowers_white.svg", 0.025),
-    ("/assets/grass/block_sprouts.svg", 0.07),
-    ("/assets/grass/block_leaves.svg", 0.04),
-    ("/assets/grass/block_pebbles.svg", 0.035),
-    ("/assets/grass/block_mushrooms.svg", 0.015),
-    ("/assets/grass/block_bushes.svg", 0.02),
+    ("/assets/grass/block_flowers.png", 0.05),
+    ("/assets/grass/block_flowers_2.png", 0.04),
+    ("/assets/grass/block_wildflowers_red.png", 0.025),
+    ("/assets/grass/block_wildflowers_white.png", 0.025),
+    ("/assets/grass/block_sprouts.png", 0.07),
+    ("/assets/grass/block_leaves.png", 0.04),
+    ("/assets/grass/block_pebbles.png", 0.035),
+    ("/assets/grass/block_mushrooms.png", 0.015),
+    ("/assets/grass/block_bushes.png", 0.02),
 ];
 
 /// Builds the colour zones of one biome (or of the world, when there is no biome content).

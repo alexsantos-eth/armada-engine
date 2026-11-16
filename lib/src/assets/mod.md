@@ -122,7 +122,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Declaración: `pub const ATLAS_TEXTURE: usize = 0;`
 
 - [`WHITE_PATCH`](sprites.rs#L21) — El asset que no es más que blanco opaco, para dibujar color plano a partir del atlas compartido.
-  - Declaración: `pub const WHITE_PATCH: &str = "/assets/shadow/white.svg";`
+  - Declaración: `pub const WHITE_PATCH: &str = "/assets/shadow/white.png";`
 
 
 ## Detalles de implementación

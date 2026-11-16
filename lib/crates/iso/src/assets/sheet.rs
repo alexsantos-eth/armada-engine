@@ -1,11 +1,17 @@
-//! The grid of a player sprite sheet, read from the SVG that holds it.
+//! The grid of a player sprite sheet, read from its JSON sidecar beside the artwork.
+//!
+//! The sidecar is the whole sheet declaration: `{"frames": 9, "gap": 48, "cell": [x, y, w, h],
+//! "facings": ["east", …], "poses": ["takeoff", …]}`. It is not the artwork; it says where
+//! every cell of it sits and what each row and column of the sheet is.
 
-use super::ink::{InkBox, SVG_ANCHOR, SVG_BLOCK_HEIGHT, SVG_TILE_WIDTH, attribute};
+use serde::Deserialize;
 
-/// Top of the character template's canvas in the SVG's own units.
+use super::ink::{InkBox, SVG_ANCHOR, SVG_BLOCK_HEIGHT, SVG_TILE_WIDTH};
+
+/// Top of the character template's canvas in the sidecar's own units.
 pub const SVG_CANVAS_TOP: f64 = -SVG_BLOCK_HEIGHT;
 
-/// A rectangle of the character's canvas, in the SVG's own units.
+/// A rectangle of the character's canvas, in the sidecar's own units.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SheetCell {
     pub x: f64,
@@ -16,15 +22,15 @@ pub struct SheetCell {
 
 /// How a sheet is laid out: its cells, the gap between them, and what each row and column is.
 #[derive(Clone, Debug, PartialEq)]
-pub struct SheetGrid<'a> {
+pub struct SheetGrid {
     pub cell: SheetCell,
     pub gap: f64,
     pub columns: usize,
-    pub facings: Vec<&'a str>,
-    pub poses: Vec<&'a str>,
+    pub facings: Vec<String>,
+    pub poses: Vec<String>,
 }
 
-impl SheetGrid<'_> {
+impl SheetGrid {
     /// Rows of the sheet: one per facing.
     pub fn rows(&self) -> usize {
         self.facings.len()
@@ -53,35 +59,36 @@ impl SheetGrid<'_> {
     }
 }
 
-/// Reads the grid out of a sheet's SVG, or `None` if it is not one (no `data-frames`).
-pub fn parse_sheet(svg: &str) -> Option<SheetGrid<'_>> {
-    let columns: usize = attribute(svg, "data-frames")?.trim().parse().ok()?;
-    let cell = attribute(svg, "data-cell")?;
-    let mut numbers = cell.split_whitespace().map(str::parse::<f64>);
-    let mut next = || numbers.next().and_then(Result::ok);
-    let cell = SheetCell {
-        x: next()?,
-        y: next()?,
-        width: next()?,
-        height: next()?,
-    };
-    if cell.width <= 0.0 || cell.height <= 0.0 || columns == 0 {
-        return None;
-    }
-    let facings: Vec<&str> = attribute(svg, "data-facings")?.split_whitespace().collect();
-    if facings.is_empty() {
+/// The file the sidecar is, in the shape `parse_sheet` validates.
+#[derive(Deserialize)]
+struct SheetFile {
+    frames: usize,
+    #[serde(default)]
+    gap: f64,
+    cell: [f64; 4],
+    facings: Vec<String>,
+    #[serde(default)]
+    poses: Vec<String>,
+}
+
+/// Reads the grid out of a sheet's JSON sidecar, or `None` if there is none or it is not one.
+pub fn parse_sheet(json: &str) -> Option<SheetGrid> {
+    let file: SheetFile = serde_json::from_str(json).ok()?;
+    let [x, y, width, height] = file.cell;
+    if width <= 0.0 || height <= 0.0 || file.frames == 0 || file.facings.is_empty() {
         return None;
     }
     Some(SheetGrid {
-        cell,
-        gap: attribute(svg, "data-gap")
-            .and_then(|gap| gap.trim().parse().ok())
-            .unwrap_or(0.0),
-        columns,
-        facings,
-        poses: attribute(svg, "data-poses")
-            .map(|poses| poses.split_whitespace().collect())
-            .unwrap_or_default(),
+        cell: SheetCell {
+            x,
+            y,
+            width,
+            height,
+        },
+        gap: file.gap,
+        columns: file.frames,
+        facings: file.facings,
+        poses: file.poses,
     })
 }
 

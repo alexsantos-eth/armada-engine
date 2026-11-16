@@ -33,7 +33,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`sidecar_tiles`](ink.rs#L118) — Las `data-tiles` de un asset rasterizado, en el JSON escrito junto a la imagen: un PNG no tiene sitio para el atributo que un SVG lleva en su elemento raíz.
   - Firma: `pub fn sidecar_tiles(json: &str) -> Option<&str> {`
 
-- [`template_canvas`](ink.rs#L127) — El lienzo de plantilla que implican las `tiles`, como `(x, y, ancho, alto)` en las unidades propias del SVG: el view box que `artifacts/iso_lib.py` da a un asset de esa huella.
+- [`template_canvas`](ink.rs#L127) — El lienzo de plantilla que implican las `tiles`, como `(x, y, ancho, alto)` en las unidades propias del SVG: el view box que `artifacts/vox/player/iso_lib.py` da a un asset de esa huella.
   - Firma: `pub fn template_canvas(tiles: Option<&str>) -> (f64, f64, f64, f64) {`
 
 - [`raster_ink`](ink.rs#L143) — La caja del dibujo de un asset trazado como rasterizado en lugar de como geometría vectorial.

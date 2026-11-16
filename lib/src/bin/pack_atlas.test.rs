@@ -62,63 +62,54 @@ fn shelve_never_overlaps() {
 }
 
 #[test]
-fn source_path_derives_the_svg_from_the_file_name() {
+fn source_path_derives_the_json_from_the_file_name() {
     // A root with nothing in it, so this measures only how a name becomes a path: whether an
     // asset is drawn or repainted is the next test's business, and this one must not move
     // every time one of them gains a PNG.
     let root = "/nonexistent-asset-root";
-    assert_eq!(source_path(root, "house_block"), "/assets/house/block.svg");
+    assert_eq!(source_path(&[root], "house_block"), "/assets/house/block.json");
     assert_eq!(
-        source_path(root, "cloud_cloud-shadow"),
-        "/assets/cloud/cloud-shadow.svg"
+        source_path(&[root], "cloud_cloud-shadow"),
+        "/assets/cloud/cloud-shadow.json"
     );
-    assert_eq!(source_path(root, "block"), "/assets/block.svg");
-    assert_eq!(source_path(root, "a_"), "/assets/a.svg");
+    assert_eq!(source_path(&[root], "block"), "/assets/block.json");
+    assert_eq!(source_path(&[root], "a_"), "/assets/a.json");
 }
 
 #[test]
-fn a_raster_asset_overrides_the_svg_beside_it() {
+fn a_raster_asset_beats_the_json_sibling_it_was_made_from() {
     let dir = std::env::temp_dir().join("pack_atlas_source_path");
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(dir.join("assets/house")).expect("make the asset tree");
     let root = dir.to_string_lossy().to_string();
-    // With neither file there, a name is read as the SVG it would have been drawn as.
-    assert_eq!(source_path(&root, "house_block"), "/assets/house/block.svg");
-    fs::write(dir.join("assets/house/block.svg"), "<svg/>").expect("write the svg");
-    assert_eq!(source_path(&root, "house_block"), "/assets/house/block.svg");
-    // The repainted asset wins while it is there, and the drawing it came from stays.
+    // With neither file there, a name is read as the JSON of the sheet it might be.
+    assert_eq!(source_path(&[root.as_str()], "house_block"), "/assets/house/block.json");
+    fs::write(dir.join("assets/house/block.json"), "{}").expect("write the sidecar");
+    assert_eq!(source_path(&[root.as_str()], "house_block"), "/assets/house/block.json");
+    // The plain raster wins while it is there, and the sidecar it came from stays.
     fs::write(dir.join("assets/house/block.png"), []).expect("write the png");
-    assert_eq!(source_path(&root, "house_block"), "/assets/house/block.png");
+    assert_eq!(source_path(&[root.as_str()], "house_block"), "/assets/house/block.png");
     let _ = fs::remove_dir_all(&dir);
 }
 
 #[test]
-fn raster_tiles_reads_the_json_or_the_drawing_beside_the_image() {
+fn raster_tiles_reads_the_json_sidecar_beside_the_image() {
     let dir = std::env::temp_dir().join("pack_atlas_sidecar_tiles");
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(dir.join("assets/house")).expect("make the asset tree");
     let root = dir.to_string_lossy().to_string();
     let source = "/assets/house/block_viking.png";
-    assert_eq!(raster_tiles(&root, source), None, "nothing beside it yet");
-    // A repaint takes the footprint of the drawing it overrides.
-    fs::write(
-        dir.join("assets/house/block_viking.svg"),
-        r#"<svg data-tiles="1x1x2"/>"#,
-    )
-    .expect("write the drawing");
-    assert_eq!(raster_tiles(&root, source), Some("1x1x2".to_owned()));
+    assert_eq!(raster_tiles(&[root.as_str()], source), None, "nothing beside it yet");
+    // A sidecar states the footprint of the raster beside it.
     fs::write(
         dir.join("assets/house/block_viking.json"),
         r#"{"tiles": "2x1x2"}"#,
     )
     .expect("write the sidecar");
     assert_eq!(
-        raster_tiles(&root, source),
-        Some("2x1x2".to_owned()),
-        "the sidecar wins over the drawing"
+        raster_tiles(&[root.as_str()], source),
+        Some("2x1x2".to_owned())
     );
-    // An SVG source carries its footprint itself.
-    assert_eq!(raster_tiles(&root, "/assets/house/block.svg"), None);
     let _ = fs::remove_dir_all(&dir);
 }
 

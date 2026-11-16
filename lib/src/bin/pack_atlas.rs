@@ -3,7 +3,7 @@
 use image::RgbaImage;
 use iso::assets::{
     AssetEntry, AssetKind, AssetManifest, InkBox, MANIFEST_SCHEMA_VERSION, SheetLayout,
-    SpriteAnchor, SpriteFrame, asset_ink, data_tiles, parse_sheet, raster_ink,
+    SpriteAnchor, SpriteFrame, parse_sheet, raster_ink,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -18,7 +18,7 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 4 {
         eprintln!(
-            "Usage: {} <input_dir> <output_atlas> <output_manifest> [svg_root]",
+            "Usage: {} <input_dir> <output_atlas> <output_manifest> [svg_root ...]",
             args[0]
         );
         std::process::exit(1);
@@ -26,10 +26,14 @@ fn main() {
     let input_dir = Path::new(&args[1]);
     let output_atlas = Path::new(&args[2]);
     let output_manifest = &args[3];
-    let svg_root = args.get(4).map(String::as_str).unwrap_or("public");
+    let svg_roots: Vec<&str> = if args.len() > 4 {
+        args[4..].iter().map(String::as_str).collect()
+    } else {
+        vec!["public"]
+    };
 
     let mut entries = Vec::new();
-    let (atlas, atlas_size) = pack_assets(input_dir, svg_root, &mut entries);
+    let (atlas, atlas_size) = pack_assets(input_dir, &svg_roots, &mut entries);
     atlas.save(output_atlas).expect("save atlas");
     println!(
         "Atlas saved: {} ({}x{})",
@@ -37,7 +41,7 @@ fn main() {
         atlas_size.width,
         atlas_size.height
     );
-    pack_sheets(input_dir, output_atlas, svg_root, &mut entries);
+    pack_sheets(input_dir, output_atlas, &svg_roots, &mut entries);
 
     entries.sort_by(|a, b| a.id.cmp(&b.id));
     let manifest = AssetManifest {
@@ -58,23 +62,21 @@ fn main() {
 /// Packs every single-asset PNG into one atlas and appends an entry for each.
 fn pack_assets(
     input_dir: &Path,
-    svg_root: &str,
+    svg_roots: &[&str],
     entries: &mut Vec<AssetEntry>,
 ) -> (RgbaImage, SpriteFrame) {
     // An asset drawn as a raster has no geometry to measure, so its ink comes from where its
     // opaque pixels sit on the template canvas — which is only knowable before the trim.
+    // Its footprint is read from the JSON sidecar beside it, if there is one.
     let mut sprites: Vec<(String, RgbaImage, Option<InkBox>)> = read_pngs(input_dir)
         .into_iter()
         .map(|(name, image)| {
             let canvas = (image.width(), image.height());
-            let source = source_path(svg_root, &name);
-            let ink = if source.ends_with(".png") {
-                opaque_bounds(&image).and_then(|bounds| {
-                    raster_ink(canvas, bounds, raster_tiles(svg_root, &source).as_deref())
-                })
-            } else {
-                asset_ink(&read_svg(svg_root, &source))
-            };
+            let source = source_path(svg_roots, &name);
+            let tiles = raster_tiles(svg_roots, &source);
+            let ink = opaque_bounds(&image).and_then(|bounds| {
+                raster_ink(canvas, bounds, tiles.as_deref())
+            });
             (name, trim(&image), ink.map(InkBox::rounded))
         })
         .collect();
@@ -94,12 +96,8 @@ fn pack_assets(
     let mut atlas = RgbaImage::new(ATLAS_WIDTH, height);
     for ((name, image, ink), (x, y)) in sprites.iter().zip(places) {
         image::imageops::replace(&mut atlas, image, i64::from(x), i64::from(y));
-        let source = source_path(svg_root, name);
-        let tiles = if source.ends_with(".png") {
-            raster_tiles(svg_root, &source)
-        } else {
-            data_tiles(&read_svg(svg_root, &source)).map(str::to_owned)
-        };
+        let source = source_path(svg_roots, name);
+        let tiles = raster_tiles(svg_roots, &source);
         entries.push(AssetEntry {
             id: name.clone(),
             kind: AssetKind::Entity,
@@ -147,7 +145,7 @@ fn pack_assets(
 fn pack_sheets(
     input_dir: &Path,
     output_atlas: &Path,
-    svg_root: &str,
+    svg_roots: &[&str],
     entries: &mut Vec<AssetEntry>,
 ) {
     let sheets_dir = input_dir.join("sheets");
@@ -164,9 +162,9 @@ fn pack_sheets(
 
     for dir in dirs {
         let name = dir.file_name().unwrap().to_string_lossy().to_string();
-        let source = source_path(svg_root, &name);
-        let svg = read_svg(svg_root, &source);
-        let Some(grid) = parse_sheet(&svg) else {
+        let source = source_path(svg_roots, &name);
+        let sidecar = find_in_roots(svg_roots, &source);
+        let Some(grid) = sidecar.as_deref().and_then(parse_sheet) else {
             eprintln!("warning: {source} is not a sprite sheet; its cells are skipped");
             continue;
         };
@@ -226,7 +224,7 @@ fn pack_sheets(
             id: name,
             kind: AssetKind::Player,
             source,
-            data_tiles: data_tiles(&svg).map(str::to_owned),
+            data_tiles: None,
             frame: None,
             frames: Some(frames),
             texture: Some(path_for_manifest(&path)),
@@ -317,44 +315,47 @@ fn shelve(sizes: impl Iterator<Item = (u32, u32)>) -> Vec<(u32, u32)> {
 }
 
 /// The asset source path a rasterized file's name came from: only the first underscore
-fn source_path(svg_root: &str, name: &str) -> String {
+/// splits the folder from the file, so `grass_block_flowers` is `grass/block_flowers`.
+/// The roots are the trees a sprite can come from (the legacy sprites and the player's, which
+/// is generated from the model); the source names the file inside its folder either way, so the
+/// manifest does not say which tree it came from. A sheet names its sidecar; a plain asset its
+/// own raster.
+fn source_path(svg_roots: &[&str], name: &str) -> String {
     let mut parts = name.splitn(2, '_');
     let directory = parts.next().unwrap_or(name);
     let stem = match parts.next() {
         Some(file) if !file.is_empty() => format!("/assets/{directory}/{file}"),
         _ => format!("/assets/{directory}"),
     };
-    // An asset is authored either as vector geometry or as a raster drawn on the same template,
-    // and when both are there the raster is what reaches the atlas: `rasterize.py` writes the
-    // PNGs after the drawings, over the same names. The manifest has to name the file the
-    // artwork really came from, or its ink and footprint are read off the wrong one.
     let png = format!("{stem}.png");
-    if Path::new(&format!("{svg_root}{png}")).exists() {
+    if svg_roots.iter().any(|root| Path::new(&format!("{root}{png}")).exists()) {
         png
     } else {
-        format!("{stem}.svg")
+        format!("{stem}.json")
     }
 }
 
-/// The `data-tiles` of a raster asset: from the JSON file beside the image, or failing that from
-/// the drawing it overrides, which already states the footprint of every asset that was drawn
-/// before it was repainted. `None` for a source that is not a raster.
-fn raster_tiles(svg_root: &str, source: &str) -> Option<String> {
+/// The `data-tiles` of a raster asset: from the JSON sidecar beside the image, or `None` for a
+/// plain 1x1x1 asset — the same default a raster asset without a drawing already had. The
+/// sidecar is looked up in every root, in order.
+fn raster_tiles(svg_roots: &[&str], source: &str) -> Option<String> {
     let stem = source.strip_suffix(".png")?;
-    let sidecar = fs::read_to_string(format!("{svg_root}{stem}.json")).ok();
-    if let Some(tiles) = sidecar.as_deref().and_then(iso::assets::sidecar_tiles) {
-        return Some(tiles.to_owned());
+    for root in svg_roots {
+        if let Ok(json) = fs::read_to_string(format!("{root}{stem}.json")) {
+            if let Some(tiles) = iso::assets::sidecar_tiles(&json) {
+                return Some(tiles.to_owned());
+            }
+        }
     }
-    let drawing = fs::read_to_string(format!("{svg_root}{stem}.svg")).ok()?;
-    data_tiles(&drawing).map(str::to_owned)
+    None
 }
 
-/// The SVG an asset was rasterized from, or an empty document if it cannot be read: a missing
-fn read_svg(svg_root: &str, source: &str) -> String {
-    fs::read_to_string(format!("{svg_root}{source}")).unwrap_or_else(|err| {
-        eprintln!("warning: no source for {source}: {err}");
-        String::new()
-    })
+/// The sheet declaration for a sprite sheet, from the first root that holds it, if any.
+fn find_in_roots(svg_roots: &[&str], source: &str) -> Option<String> {
+    svg_roots
+        .iter()
+        .map(|root| fs::read_to_string(format!("{root}{source}")))
+        .find_map(Result::ok)
 }
 
 /// A written file's path as the manifest records it: relative to the client root, with forward

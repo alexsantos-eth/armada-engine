@@ -1,6 +1,6 @@
 ---
 name: "armada-voxel-assets"
-description: "Úsala para crear o cambiar sprites de entidades de Armada Engine (árboles, arbustos, rocas, props, edificios) por la ruta voxel: se arman con las piezas (prefabs) del kit, salen como .vox de MagicaVoxel y se renderizan en Blender con acabado clay sobre el lienzo de la casilla. Sustituye al flujo iso-asset-generator → fal.ai. También sirve para añadir piezas nuevas al kit."
+description: "Úsala para crear o cambiar assets de Armada Engine por la ruta voxel: los sprites se arman con las piezas (prefabs) del kit, salen como .vox y se renderizan en Blender con acabado clay sobre el lienzo de la casilla. Es la fuente oficial de las reglas de assets (sustituyó al flujo SVG/fal.ai). También sirve para añadir piezas nuevas al kit."
 ---
 
 # Assets voxel de Armada: kit de piezas, `.vox` y render en Blender
@@ -10,17 +10,18 @@ tramo de tronco, una fruta) y el modelo armado se renderiza a sprite. Todas las 
 comparten las mismas piezas, la misma paleta y la misma luz, y por eso se ven de la misma
 familia. No se llama a ningún modelo de imagen y no cuesta nada.
 
-Este flujo es completo por sí solo. No uses `iso-asset-generator` ni los scripts de
-`artifacts/paint/` para una entidad que vaya por aquí.
+Este flujo es el oficial. `iso-asset-generator` (SVG dibujado + pintado fal.ai) está obsoleto —
+conservado solo como referencia histórica—; no uses nada del flujo antiguo para un asset nuevo.
+Los sprites migrados a voxel viven en `lib/assets/`; los aún sin migrar viven fijos en `lib/assets-legacy/` (ver `lib/docs/ASSET-PIPELINE.md`).
 
 ```
-artifacts/vox_prefabs.py   las piezas del kit            → artifacts/vox/prefabs/*.vox
-artifacts/vox_models.py    las entidades armadas         → artifacts/vox/models/<nombre>.vox
-artifacts/vox_render.py    Blender: modelo → sprite PNG  → lib/assets-src/assets/<dir>/<asset>.png
+artifacts/vox/clay/vox_prefabs.py   las piezas del kit            → artifacts/vox/prefabs/*.vox
+artifacts/vox/clay/vox_models.py    las entidades armadas         → artifacts/vox/models/<nombre>.vox
+artifacts/vox/clay/vox_render.py    Blender: modelo → sprite PNG  → lib/assets/<dir>/<asset>.png
 lib/scripts/build-atlas.sh sprite → atlas y manifiesto   (y recompilar el juego)
 ```
 
-`artifacts/vox_lib.py` es el núcleo que comparten (cajas redondeadas → vóxeles → `.vox`).
+`artifacts/vox/clay/vox_lib.py` es el núcleo que comparten (cajas redondeadas → vóxeles → `.vox`).
 Solo usa la librería estándar de Python; Blender solo hace falta para el paso de render.
 
 ## 1. Las medidas que no se cambian
@@ -125,7 +126,7 @@ Tamaños en vóxeles, ancho × fondo × alto. Las variantes son el sufijo del ar
 | `rock_s` | 14 × 12 × 8 | — | piedra suelta |
 | `rock_l` | 30 × 26 × 19 | — | roca con losa de musgo |
 
-`python3 artifacts/vox_prefabs.py` regenera todos los `.vox` de las piezas. Sirven para armar
+`python3 artifacts/vox/clay/vox_prefabs.py` regenera todos los `.vox` de las piezas. Sirven para armar
 a mano en MagicaVoxel; `vox_models.py` no los lee, usa las mismas definiciones directamente.
 
 ### Crear una pieza nueva
@@ -152,7 +153,7 @@ reconocible a una.
 
 En `vox_models.py`, una función por entidad que devuelve la lista de cajas, y una entrada en
 `MODELS`: `"nombre": (función, (casillas_x, casillas_y, bloques), "dir/asset.png")`. La ruta
-es el PNG que el render sustituye, bajo `lib/assets-src/assets/`.
+es el PNG que el render sustituye, bajo `lib/assets/`.
 
 Ayudas disponibles (posiciones en vóxeles):
 
@@ -177,7 +178,7 @@ def fruit_tree():
 Las alturas se cuadran con el módulo: tronco visible + 28 por capa + la punta = 164 a 170.
 Si un modelo se sale del volumen de su huella, el script se detiene y dice por cuánto.
 
-`python3 artifacts/vox_models.py` escribe todos los modelos; con nombres detrás, solo esos.
+`python3 artifacts/vox/clay/vox_models.py` escribe todos los modelos; con nombres detrás, solo esos.
 
 **A mano en MagicaVoxel**: modelo nuevo del tamaño de la huella, se importan las piezas de
 `artifacts/vox/prefabs/` (todas llevan la misma paleta) y se colocan sobre la rejilla de 28.
@@ -188,12 +189,12 @@ emisivo en MagicaVoxel brilla en el sprite.
 ## 6. Renderizar
 
 ```sh
-python3 artifacts/vox_models.py --render tree_3 bush        # arma y renderiza sobre sus assets
-blender -b -P artifacts/vox_render.py -- modelo.vox sprite.png   # un .vox cualquiera
+python3 artifacts/vox/clay/vox_models.py --render tree_3 bush        # arma y renderiza sobre sus assets
+blender -b -P artifacts/vox/clay/vox_render.py -- modelo.vox sprite.png   # un .vox cualquiera
 ```
 
 Sin Blender instalado vale el módulo de pip (`pip install bpy`): entonces
-`python3 artifacts/vox_render.py modelo.vox sprite.png`. Tarda unos 35 s por sprite en CPU.
+`python3 artifacts/vox/clay/vox_render.py modelo.vox sprite.png`. Tarda unos 35 s por sprite en CPU.
 
 Lo que hace `vox_render.py`, y por qué no se toca a la ligera:
 
@@ -220,12 +221,11 @@ bulto sin junta) o que flotan sin apoyo.
 
 ## 7. Meterlo al juego
 
-1. El PNG va junto al dibujo del mismo nombre y lo sustituye (`tree/block_3.png` gana a
-   `tree/block_3.svg`). Una entidad nueva sin SVG necesita al lado un `<nombre>.json` con su
-   huella, por ejemplo `{"tiles": "1x1x2"}`, y su entrada en `lib/content/json/entities.json`.
-2. `lib/scripts/build-atlas.sh` (con `PYTHON=python3` si no encuentra cairosvg). Si
-   `content/images/cloud-shadow.png` cambia sin haber tocado las nubes, descártalo: es el
-   desenfoque de otra versión de cairo.
+1. El PNG va junto a su huella en `<nombre>.json` (obligatorio cuando la huella no es 1x1x1,
+   por ejemplo `{"tiles": "1x1x2"}`), es la fuente de la entidad, y su entrada en
+   `lib/content/json/entities.json` declara el sprite `/assets/<tipo>/<nombre>.png`.
+2. `lib/scripts/build-atlas.sh`. Si `content/images/cloud-shadow.png` cambia sin haber tocado
+   las nubes, descártalo: es el desenfoque de otra versión de cairo.
 3. **Recompila el juego** (`cargo build --locked --bin iso-core`). El binario lleva dentro el
    manifiesto: con atlas nuevo y binario viejo los sprites salen recortados y mezclados.
 4. Compruébalo corriendo con la skill `armada-visual-check`: una escena `blank` con la
@@ -251,7 +251,7 @@ El commit y el push solo los hace `armada-commit`, cuando el usuario la invoca.
 
 ## 9. El techo de hierba con adornos
 
-`artifacts/grass_clay.py` genera las variantes del bloque de hierba (`block_flowers.png`,
+`artifacts/vox/clay/grass_clay.py` genera las variantes del bloque de hierba (`block_flowers.png`,
 `block_flowers_2.png`, `block_wildflowers_red.png`, `block_wildflowers_white.png`,
 `block_sprouts.png`, `block_leaves.png`, `block_pebbles.png`, `block_mushrooms.png`,
 `block_bushes.png`): el bloque de `assets/grass/block.png` **no se toca ni se redibuja**; lo
@@ -264,6 +264,6 @@ sitio, así que los dos encajan al píxel.
 
 Los adornos se quedan bajos y dentro de la silueta del bloque, de modo que la caja de tinta de
 cada variante es la del bloque llano: el atlas mide el adorno como el bloque y el terreno lo
-dibuja donde dibuja el bloque. Regenerar: `python3 artifacts/grass_clay.py` (escribe los
+dibuja donde dibuja el bloque. Regenerar: `python3 artifacts/vox/clay/grass_clay.py` (escribe los
 `.vox` en `vox/models/block_*.vox` y los PNG sobre el bloque). Si cambian las piezas que un
 adorno usa, el kit o el render, se rehacen todos y el atlas se reconstruye igual que siempre.

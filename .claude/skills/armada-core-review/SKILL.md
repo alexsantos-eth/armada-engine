@@ -162,7 +162,7 @@ Si la revisión cambia algo que el desarrollador debe saber en su próximo traba
 
 Cómo: lee el `SKILL.md` actual de `armada-engine-dev` completo y genera la versión actualizada **entera** (conserva todo lo vigente, cambia solo lo necesario). Proponla con la herramienta de propuestas de skills si está disponible; si no, muestra el `SKILL.md` completo al usuario para que lo guarde. No dupliques en esa skill la lista de auditoría de esta: solo reglas que el desarrollador debe cumplir.
 
-Si cambia la geometría o la integración de assets, avisa de que `iso-asset-generator` puede necesitar actualizarse. Si cambia el esquema de `scene.json`, sus pasos o su informe, actualiza también `armada-visual-check` y `lib/docs/TESTBED.md`.
+Si cambia la geometría o la integración de assets, avisa de que `armada-voxel-assets` puede necesitar actualizarse. Si cambia el esquema de `scene.json`, sus pasos o su informe, actualiza también `armada-visual-check` y `lib/docs/TESTBED.md`.
 
 ## Informe final
 

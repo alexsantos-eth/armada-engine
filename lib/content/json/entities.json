@@ -367,7 +367,7 @@
     {
       "id": "tree",
       "asset": {
-        "sprite": "/assets/tree/block.svg",
+        "sprite": "/assets/tree/block.png",
         "sway": {
           "cut": 0.58,
           "amplitude": 1.5,
@@ -391,7 +391,7 @@
     {
       "id": "tree_2",
       "asset": {
-        "sprite": "/assets/tree/block_2.svg",
+        "sprite": "/assets/tree/block_2.png",
         "sway": {
           "cut": 0.69,
           "amplitude": 1.5,
@@ -415,7 +415,7 @@
     {
       "id": "tree_3",
       "asset": {
-        "sprite": "/assets/tree/block_3.svg",
+        "sprite": "/assets/tree/block_3.png",
         "sway": {
           "cut": 0.76,
           "amplitude": 1,
@@ -439,7 +439,7 @@
     {
       "id": "tree_4",
       "asset": {
-        "sprite": "/assets/tree/block_4.svg",
+        "sprite": "/assets/tree/block_4.png",
         "sway": {
           "cut": 0.61,
           "amplitude": 2,
@@ -463,7 +463,7 @@
     {
       "id": "tree_5",
       "asset": {
-        "sprite": "/assets/tree/block_5.svg",
+        "sprite": "/assets/tree/block_5.png",
         "sway": {
           "cut": 0.67,
           "amplitude": 2,
@@ -487,7 +487,7 @@
     {
       "id": "tree_6",
       "asset": {
-        "sprite": "/assets/tree/block_6.svg",
+        "sprite": "/assets/tree/block_6.png",
         "sway": {
           "cut": 0.61,
           "amplitude": 1.5,
@@ -511,7 +511,7 @@
     {
       "id": "tree_7",
       "asset": {
-        "sprite": "/assets/tree/block_7.svg",
+        "sprite": "/assets/tree/block_7.png",
         "sway": {
           "cut": 0.72,
           "amplitude": 1,
@@ -535,7 +535,7 @@
     {
       "id": "tree_8",
       "asset": {
-        "sprite": "/assets/tree/block_8.svg",
+        "sprite": "/assets/tree/block_8.png",
         "sway": {
           "cut": 0.74,
           "amplitude": 1.5,
@@ -601,7 +601,7 @@
     {
       "id": "bush",
       "asset": {
-        "sprite": "/assets/bush/block.svg"
+        "sprite": "/assets/bush/block.png"
       },
       "shape": {
         "height": 1,

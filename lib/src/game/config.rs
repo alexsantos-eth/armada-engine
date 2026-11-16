@@ -81,18 +81,18 @@ pub const PLAYER_FRONT_LAYER: i32 = 4;
 /// How big the player is drawn, as a fraction of the size its artwork was drawn at.
 pub const PLAYER_SCALE: f64 = 0.75;
 /// Source path of the player's still figure in the asset manifest, drawn if a sheet is missing.
-pub const PLAYER_SPRITE: &str = "/assets/player/block.svg";
+pub const PLAYER_SPRITE: &str = "/assets/player/block.png";
 /// The player's sheets of poses, in the manifest: walking, standing, jumping, climbing,
 /// swimming and the somersault of a second jump.
-pub const PLAYER_WALK_SHEET: &str = "/assets/player-16/walk.svg";
-pub const PLAYER_IDLE_SHEET: &str = "/assets/player-16/idle.svg";
-pub const PLAYER_JUMP_SHEET: &str = "/assets/player-16/jump.svg";
-pub const PLAYER_CLIMB_SHEET: &str = "/assets/player-16/climb.svg";
-pub const PLAYER_SWIM_SHEET: &str = "/assets/player-16/swim.svg";
-pub const PLAYER_FLIP_SHEET: &str = "/assets/player-16/flip.svg";
+pub const PLAYER_WALK_SHEET: &str = "/assets/player-16/walk.png";
+pub const PLAYER_IDLE_SHEET: &str = "/assets/player-16/idle.png";
+pub const PLAYER_JUMP_SHEET: &str = "/assets/player-16/jump.png";
+pub const PLAYER_CLIMB_SHEET: &str = "/assets/player-16/climb.png";
+pub const PLAYER_SWIM_SHEET: &str = "/assets/player-16/swim.png";
+pub const PLAYER_FLIP_SHEET: &str = "/assets/player-16/flip.png";
 /// The jetpack on the player's back: one column per facing, cut where the standing body hides
 /// it, so it is drawn over whatever pose the body is in.
-pub const PLAYER_JETPACK_SHEET: &str = "/assets/player-16/jetpack.svg";
+pub const PLAYER_JETPACK_SHEET: &str = "/assets/player-16/jetpack.png";
 /// Depth added to the jetpack over the body, so the pack draws right after it.
 pub const PLAYER_JETPACK_DEPTH: f64 = 0.00001;
 /// How hard a landing must hit, in blocks per tick of impact, before it makes a sound.

@@ -324,7 +324,7 @@ El mortal es solo presentación: el dominio no sabe que el cuerpo gira. `FlipMot
 
 El giro avanza a ritmo constante (una vuelta en `FLIP_MS`), porque un mortal acelerado o frenado se lee como un tirón. Al completar la vuelta el mortal termina y el jugador vuelve a su hoja de siempre. Si aterriza antes, el resto de la vuelta se reparte en `FLIP_LANDING_MS`: termina el mortal en el suelo en vez de saltar de golpe a la vertical.
 
-**El giro va dibujado, no rotado en pantalla.** Rotar el sprite es una voltereta lateral igual para todas las orientaciones: quien camina hacia la cámara giraría de lado. La hoja `flip.svg` (`../../../artifacts/player_flip.py`) hornea el mortal de verdad, una fila por orientación: la figura se inclina sobre su propio eje lateral **antes** del yaw de la orientación, así que quien va hacia la cámara cae hacia la cámara. Por eso el cliente no tiene ningún giro de sprite; si la hoja falta en el atlas, el segundo salto vuelve a las poses de salto de siempre.
+**El giro va dibujado, no rotado en pantalla.** Rotar el sprite es una voltereta lateral igual para todas las orientaciones: quien camina hacia la cámara giraría de lado. La hoja `flip.png` (`../../../artifacts/vox/player/player_model.py`) hornea el mortal de verdad, una fila por orientación: la figura se inclina sobre su propio eje lateral **antes** del yaw de la orientación, así que quien va hacia la cámara cae hacia la cámara. Por eso el cliente no tiene ningún giro de sprite; si la hoja falta en el atlas, el segundo salto vuelve a las poses de salto de siempre.
 
 #### Funciones internas
 

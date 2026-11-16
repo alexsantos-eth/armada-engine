@@ -199,37 +199,33 @@ Node —la imagen de build de Netlify trae rustup y cargo preinstalados, el tool
 `rust-toolchain.toml` en la primera ejecución de cargo, y `lib/` no tiene `package.json` ni
 lockfile, así que no se instala ninguna dependencia JS. Quedan en caché el toolchain,
 `~/.cargo/registry` y `lib/target`. El cliente es autocontenido: no lee ni escribe nada fuera de
-`lib/`; el arte fuente vive en `assets-src/` y el fixture de contrato en `crates/iso/tests/`.
+`lib/`; los sprites fuente viven en `assets-legacy/` y el fixture de contrato en `crates/iso/tests/`.
 
-Netlify **no** regenera el atlas: eso necesita `cairosvg` y el `pack_atlas` nativo, así que
-`content/` está commiteado y `build-web.sh` solo lo copia. Si cambiaste algún SVG de
-`assets-src/assets/`, regenera el atlas y commitéalo antes de desplegar:
+Netlify **no** regenera el atlas: eso necesita el empaquetado nativo de `pack_atlas`, así que
+`content/` está commiteado y `build-web.sh` solo lo copia. Si cambiaste algún sprite de `assets/` o `assets-legacy/assets/`, regenera el atlas y commitéalo antes de desplegar:
 
 ```sh
 scripts/build-atlas.sh
 ```
 
-El script elige un Python que pueda importar `cairosvg`; si no hay ninguno, se monta su propio
-entorno en `lib/.venv/` (ignorado por git) con `cairosvg`, NumPy y Pillow, y lo reutiliza después.
-Con `PYTHON=/ruta/a/python3` eliges tú el intérprete base, y con `ATLAS_VENV` dónde va el entorno.
-`cairosvg` necesita además la librería libcairo, que pip no instala: en macOS, `brew install
-cairo`; en Debian o Ubuntu, `libcairo2`.
+El script solo necesita un Python con Pillow (el `.venv/` de `lib/` ya lo trae; `PYTHON=/ruta/a/python` sirve para elegir otro intérprete).
+No hay SVGs: todas las fuentes son PNG.
 
-El script rasteriza cada SVG con `cairosvg` (`scripts/rasterize.py`) a 320 px por tile de mundo y
+El script reescala los PNG a 320 px por tile de mundo (`scripts/rasterize.py`) y
 después compila y ejecuta `pack_atlas`, que empaqueta `content/images/atlas.png` (4096 px de ancho) con
 su `content/json/assets.manifest.json`. Las hojas de poses del jugador no caben en el atlas sin perder
 detalle, así que se cortan celda a celda y cada hoja recibe su textura,
 `content/images/player-16_<hoja>.png`, con su rejilla descrita en el manifiesto (esquema 2); se usan las
-de dieciséis orientaciones de `assets-src/assets/player-16/`, no las de ocho.
+de dieciséis orientaciones de `assets/player-16/`, no las de ocho.
 El patrón de sombras de nubes no se empaqueta —el empaquetador recorta el borde transparente de
-cada sprite y un patrón recortado deja de repetir—, así que `../artifacts/cloud_pattern.py` lo
-rasteriza entero aparte en `content/images/cloud-shadow.png` y le aplica ahí el desenfoque que cairosvg
-ignora. Después de tocar los bloques de terreno (`../artifacts/terrain_blocks.py`) hay que
-regenerar también las variantes de hierba (`grass_clutter.py`) y los dieciséis tiles de camino
-(`path_tiles.py`) antes de volver a empaquetar. `build.rs` comprueba al compilar que el atlas y
+cada sprite y un patrón recortado deja de repetir—, así que `content/images/cloud-shadow.png` se commitea horneado tal cual y `build-atlas.sh` solo lo copia. Los assets que ya están migrados a la ruta voxel se rehacen con su generador
+(`../artifacts/vox/clay/vox_models.py`, `../artifacts/vox/clay/grass_clay.py`) y se vuelven a empaquetar; los que
+heredamos del generador SVG anterior (terreno, gradas, tiles de camino, edificios) son sprites
+fijos: cambiarlos es reemplazar el PNG en `assets-legacy/assets/` y volver a empaquetar.
+`build.rs` comprueba al compilar que el atlas y
 el manifiesto existen, y el cliente avisa por consola si falta
-`assets-src/assets/shadow/white.svg`, el cuadrado blanco del que se dibujan las sombras sin
+`assets-legacy/assets/shadow/white.png`, el cuadrado blanco del que se dibujan las sombras sin
 cambiar de textura.
 
-`cargo run --bin remeasure_atlas -- content/json/assets.manifest.json content/images/atlas.png assets-src`
+`cargo run --bin remeasure_atlas -- content/json/assets.manifest.json content/images/atlas.png assets-legacy`
 reescribe la geometría de un atlas ya empaquetado sin rasterizar nada.

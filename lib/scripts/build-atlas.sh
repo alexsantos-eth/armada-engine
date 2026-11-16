@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
-# Builds the asset atlas from the SVG sources.
+# Builds the asset atlas from the two asset trees:
+#   assets/         the terrain sprites and the player's, the latter generated from the 3D model
+#                   (artifacts/vox/player/);
+#   assets-legacy/  the sprites still pending migration to the voxel flow.
 #
 # Steps:
-#   1. Rasterize every SVG under assets-src/assets/ with cairosvg, at a fixed number of pixels per
-#      tile of world, and cut each of the player's sheets into one PNG per pose.
-#   2. Compile and run the pack_atlas tool to pack them into content/images/atlas.png, one texture per
-#      sheet beside it, and generate content/json/assets.manifest.json.
-#   3. Rasterize the cloud shadows' pattern on its own, into content/images/cloud-shadow.png. It is not
-#      packed: the packer trims every sprite's transparent border, and a trimmed pattern no
-#      longer repeats (see src/cloud_shadows.rs), and it is softened there because cairosvg
-#      ignores the blur the artwork asks for (see ../artifacts/cloud_pattern.py).
+#   1. Scale every PNG under both roots to the shared resolution with PIL (and cut the player's
+#      painted sheets cell by cell).
+#   2. Compile and run the pack_atlas tool to pack them into content/images/atlas.png, one
+#      texture per sheet beside it, and generate content/json/assets.manifest.json.
+#   3. Copy the baked cloud shadow pattern into content/images/cloud-shadow.png. It is not
+#      packed as anything the artwork asks for; the packer trims every sprite's transparent
+#      border, and a trimmed pattern no longer tiles (see src/cloud_shadows.rs).
 #
-# Requires: a Python with cairosvg (any version: the script looks for one) and a Rust toolchain.
-# Set PYTHON=/path/to/python3 to choose the interpreter yourself.
-# Run from anywhere: lib/scripts/build-atlas.sh
+# Requires: a Python with Pillow only. Point PYTHON=/path/to/python at one if yours is not on
+# the list. Run from anywhere: lib/scripts/build-atlas.sh
 
 set -euo pipefail
 
@@ -25,26 +26,18 @@ if [[ "$(uname -s)" == Darwin && -z "${SDKROOT:-}" && -d "$compatible_sdk" ]]; t
   export SDKROOT="$compatible_sdk"
 fi
 
-svg_dir="assets-src/assets"
+asset_roots=(assets assets-legacy/assets)
+# The roots pack_atlas looks the sprites up in: the tree's own parent, so the paths it builds
+# (/assets/…) resolve on disk.
+pack_roots=(. assets-legacy)
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
-
-for cairo_lib in \
-  /opt/homebrew/lib \
-  /usr/local/lib \
-  "$HOME/.cache/codex-runtimes/codex-primary-runtime/dependencies/native/poppler/poppler/lib"
-do
-  if [ -d "$cairo_lib" ]; then
-    export DYLD_LIBRARY_PATH="$cairo_lib:${DYLD_LIBRARY_PATH:-}"
-    export LD_LIBRARY_PATH="$cairo_lib:${LD_LIBRARY_PATH:-}"
-  fi
-done
 
 pythons=()
 if [ -n "${PYTHON:-}" ]; then
   pythons+=("$PYTHON")
 fi
-pythons+=(python3 /usr/bin/python3)
+pythons+=(".venv/bin/python" python3 /usr/bin/python3)
 for minor in 15 14 13 12 11 10 9; do
   pythons+=("python3.$minor")
 done
@@ -52,50 +45,31 @@ done
 python=""
 for candidate in "${pythons[@]}"; do
   command -v "$candidate" >/dev/null 2>&1 || continue
-  if "$candidate" -c "import cairosvg" >/dev/null 2>&1; then
+  if "$candidate" -c "import PIL" >/dev/null 2>&1; then
     python="$candidate"
     break
   fi
 done
 
-venv_dir="${ATLAS_VENV:-.venv}"
-
-if [ -z "$python" ] && [ -x "$venv_dir/bin/python" ] \
-  && "$venv_dir/bin/python" -c "import cairosvg, numpy, PIL" >/dev/null 2>&1; then
-  python="$venv_dir/bin/python"
-fi
-
 if [ -z "$python" ]; then
-  base="${PYTHON:-python3}"
-  echo "No Python here has cairosvg. Setting up $venv_dir with $("$base" -V 2>&1)..." >&2
-  "$base" -m venv "$venv_dir"
-  "$venv_dir/bin/python" -m pip install --quiet --disable-pip-version-check \
-    cairosvg numpy pillow
-  if "$venv_dir/bin/python" -c "import cairosvg, numpy, PIL" >/dev/null 2>&1; then
-    python="$venv_dir/bin/python"
-    echo "Done. Later runs reuse it; delete $venv_dir to start over." >&2
-  else
-    echo "" >&2
-    echo "$venv_dir was created but cairosvg still does not import there:" >&2
-    "$venv_dir/bin/python" -c "import cairosvg" >&2 || true
-    echo "" >&2
-    echo "cairosvg needs the libcairo library, which pip does not install." >&2
-    echo "On macOS: brew install cairo. On Debian/Ubuntu: apt install libcairo2." >&2
-    exit 1
-  fi
+  echo "No Python with Pillow found. Set PYTHON=/path/to/python to a Python that has it." >&2
+  exit 1
 fi
 
-echo "Rasterizing SVGs with cairosvg ($("$python" -V 2>&1), $(command -v "$python"))..."
-"$python" scripts/rasterize.py "$svg_dir" "$tmp_dir"
+echo "Rasterizing PNGs with Pillow ($("$python" -V 2>&1), $(command -v "$python"))..."
+for root in "${asset_roots[@]}"; do
+  "$python" scripts/rasterize.py "$root" "$tmp_dir"
+done
 echo "Done rasterizing."
 
 echo "Compiling pack_atlas..."
 cargo build --bin pack_atlas --quiet
 
 echo "Packing atlas..."
-./target/debug/pack_atlas "$tmp_dir" content/images/atlas.png content/json/assets.manifest.json assets-src
+./target/debug/pack_atlas "$tmp_dir" content/images/atlas.png content/json/assets.manifest.json "${pack_roots[@]}"
 
-echo "Rasterizing the cloud shadow pattern..."
-"$python" ../artifacts/cloud_pattern.py "$svg_dir/cloud/cloud-shadow.svg" content/images/cloud-shadow.png
+echo "Copying the cloud shadow pattern..."
+mkdir -p content/images
+cp "assets-legacy/assets/cloud/cloud-shadow.png" content/images/cloud-shadow.png
 
 echo "Done. Atlas: content/images/atlas.png, sheets: content/player_*.png, clouds: content/images/cloud-shadow.png, manifest: content/json/assets.manifest.json"

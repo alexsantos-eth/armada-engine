@@ -164,7 +164,7 @@ fn rounds_for_the_manifest() {
 
 #[test]
 fn template_canvas_matches_the_generator_view_box() {
-    // `artifacts/iso_lib.py` writes these view boxes for the shipped assets.
+    // `artifacts/vox/player/iso_lib.py` writes these view boxes for the shipped assets.
     assert_eq!(template_canvas(None), (0.0, -341.0, 1024.0, 853.0));
     assert_eq!(
         template_canvas(Some("1x1x2")),

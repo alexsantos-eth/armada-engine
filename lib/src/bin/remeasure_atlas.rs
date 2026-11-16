@@ -1,7 +1,7 @@
 //! Build tool: write the geometry of an existing atlas back into its manifest.
 
 use image::RgbaImage;
-use iso::assets::{AssetManifest, SpriteFrame, asset_ink, data_tiles, raster_ink, sidecar_tiles};
+use iso::assets::{AssetManifest, SpriteFrame, raster_ink, sidecar_tiles};
 
 /// Bounding box of everything that is not fully transparent inside `frame`.
 fn opaque_bounds(atlas: &RgbaImage, frame: SpriteFrame) -> Option<SpriteFrame> {
@@ -49,18 +49,13 @@ fn main() {
         }
         let measurement = if entry.source.ends_with(".png") {
             // A raster asset is measured from its own source, which still carries the whole
-            // template canvas that the atlas frame was trimmed out of.
-            // Its footprint comes from the JSON beside it, or from the drawing it overrides,
-            // the same two places `pack_atlas` looks: a repaint of an asset that was drawn
-            // first states its footprint only in that drawing.
+            // template canvas that the atlas frame was trimmed out of. Its footprint comes
+            // from the JSON sidecar beside it, or `None` for a plain 1x1x1 asset — the same
+            // default `pack_atlas` uses.
             let stem = entry.source.trim_end_matches(".png");
             let tiles = std::fs::read_to_string(format!("{svg_root}{stem}.json"))
                 .ok()
-                .and_then(|json| sidecar_tiles(&json).map(str::to_owned))
-                .or_else(|| {
-                    let drawing = std::fs::read_to_string(format!("{svg_root}{stem}.svg")).ok()?;
-                    data_tiles(&drawing).map(str::to_owned)
-                });
+                .and_then(|json| sidecar_tiles(&json).map(str::to_owned));
             entry.data_tiles = tiles.clone();
             image::open(format!("{svg_root}{}", entry.source))
                 .ok()
@@ -78,9 +73,9 @@ fn main() {
                     raster_ink(canvas, bounds, tiles.as_deref())
                 })
         } else {
-            let svg = std::fs::read_to_string(format!("{svg_root}{}", entry.source)).ok();
-            entry.data_tiles = svg.as_deref().and_then(data_tiles).map(str::to_owned);
-            svg.as_deref().and_then(asset_ink)
+            eprintln!("warning: {} is not backed by a raster; ink not remeasured", entry.id);
+            unmeasured.push(entry.id.clone());
+            continue;
         };
         match measurement {
             Some(ink) => {

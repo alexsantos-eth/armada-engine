@@ -26,7 +26,7 @@ Antes de tocar código, lee:
 - `lib/README.md` — cómo correrlo y cómo se despliega.
 - El `mod.md` del dominio que tocas — catálogo de su API con firmas y enlaces.
 
-Si el trabajo implica crear o modificar assets isométricos (geometría, proporciones, multi-bloque, `data-tiles`), invoca la skill **`iso-asset-generator`**: es la única fuente de las reglas de assets.
+Si el trabajo implica crear o modificar assets isométricos (geometría, proporciones, multi-bloque, `data-tiles`), invoca la skill **`armada-voxel-assets`**: es la fuente oficial de las reglas de assets. (Los sprites aún sin migrar a la ruta voxel son fijos; para ellos no se crean SVG nuevos.)
 
 Si el cambio se juzga **mirando** (terreno, colocación de entidades, sombras, reflejos, fases del día, animación del jugador, cámara, polvo), invoca la skill **`armada-visual-check`**: corre el juego desde un `scene.json` y devuelve capturas PNG y un informe, sin pedirle nada al usuario y sin pantalla en Linux. Un test verde no demuestra que algo se vea bien.
 
@@ -43,7 +43,9 @@ lib/
   src/           # `iso-core`: el cliente. `main.rs` es solo entrada: declara los dominios y entra por `app::run`.
     app, assets, effects, game, gui, lighting, loops, perf, player, rendering, save, services, terrain, touch, water/
   content/       # json/ (entities, biomes, wfc, settlements, assets.manifest), images/ (atlas, cloud-shadow, player-16_*), sounds/ (WAVs)
-  assets-src/    # SVG fuente del atlas (commiteado; no se despliega)
+  assets/        # sprites del atlas: terreno, jugador y ruta voxel (commiteado; no se despliega)
+  assets-legacy/ # sprites aún sin migrar: edificios, sombra y nubes (commiteado; no se despliega)
+  painted/       # las hojas pre-renderizadas del jugador desde el modelo 3D
   packaging/     # icono del bundle macOS: icon-player.png + game.icns (commiteado; no se despliega)
   scripts/       # build-web.sh (WASM), build-atlas.sh, run-native.sh, build-macos.sh, build-icon.sh
 ```
@@ -76,8 +78,8 @@ Contratos clave (el detalle está en el `mod.md` correspondiente):
 - Todo archivo de comportamiento lleva su `*.test.rs` colocalizado, escrito **antes** que la implementación (test first). El test define el comportamiento; el código lo pasa después. Si el comportamiento puro está mezclado con GPU/ventana/IO, se extrae primero la lógica pura y se prueba; la parte no aislable queda documentada en el propio archivo con su comprobación manual. Las pruebas de dominio usan datos construidos a mano o el fixture de contrato.
 - Los **comentarios de documentación** (rustdoc `///`, `//!`) van en **inglés**; la documentación Markdown va en **español**.
 - **Nada de comentarios dentro del código** (`//` explicativos, bloques narrativos entre líneas). Solo rustdoc `///`, `//!` al inicio del módulo, función, tipo o constante; una nota superviviente se reduce a una única línea muy resumida. Los detalles y las decisiones viven en el `mod.md` del dominio, no junto al código.
-- No editar a mano `content/images/atlas.png`, `content/json/assets.manifest.json` ni `content/images/player-16_*.png`: se generan con `scripts/build-atlas.sh` desde `assets-src/assets/`.
-- Los SVG son la fuente; `assets-src/` es su copia local. Un SVG nuevo para atlas se comprueba contra `assets.manifest.json` con los tests de `iso::assets`.
+- No editar a mano `content/images/atlas.png`, `content/json/assets.manifest.json` ni `content/images/player-16_*.png`: se generan con `scripts/build-atlas.sh` desde `assets/` y `assets-legacy/assets/`.
+- El modelo `.vox` es la fuente; `artifacts/vox/clay/vox_models.py` y `artifacts/vox/clay/grass_clay.py` regeneran los sprites que entran al atlas desde `assets/`. Para los sprites heredados aún sin migrar, el PNG manda. Un sprite nuevo para atlas se comprueba contra `assets.manifest.json` con los tests de `iso::assets`.
 - Nada de estado de sistema como campos sueltos de `World`; nada de reimplementar lo que `iso` ya expone.
 
 ## Versionado
@@ -85,7 +87,7 @@ Contratos clave (el detalle está en el `mod.md` correspondiente):
 - La única fuente de la versión del juego es `lib/Cargo.toml` (`[package].version`); `Cargo.lock` la acompaña siempre — si la subes, sincroniza antes el lockfile (`cargo check`) para que el gate `--locked` pase. `scripts/build-macos.sh` la lee como `CFBundleShortVersionString`.
 - `CFBundleVersion` (número de build) no se anota a mano: `scripts/build-macos.sh` lo deriva de `git rev-list --count HEAD` (o 1 fuera de un repositorio).
 - **Toda entrega incrementa la versión, en el mismo cambio**: PATCH para correcciones y mantenimiento, MINOR para funcionalidad (un dominio nuevo, un empaquetado, un contrato visible). Nunca se entrega un cambio sin subirla.
-- **Los skills se actualizan en el mismo cambio**: si un cambio mueve estructura, contratos, scripts, la política de versionado o un flujo de build, el skill afectado (este, `armada-core-review`, `armada-visual-check` o `iso-asset-generator`) se actualiza en ese mismo cambio — nunca «en la próxima revisión».
+- **Los skills se actualizan en el mismo cambio**: si un cambio mueve estructura, contratos, scripts, la política de versionado o un flujo de build, el skill afectado (este, `armada-core-review`, `armada-visual-check` o `armada-voxel-assets`) se actualiza en ese mismo cambio — nunca «en la próxima revisión».
 
 ## Flujo de trabajo
 
@@ -117,7 +119,7 @@ Todo cambio que modifique el funcionamiento del core, sus contratos o el flujo d
 
 - `lib/docs/TESTBED.md` si cambia el esquema de `scene.json`, sus pasos o su informe; y entonces también la skill `armada-visual-check`.
 
-Si cambia la geometría o la integración de assets, avisa al usuario de que la skill `iso-asset-generator` puede necesitar actualizarse. Si cambia lo que el desarrollador debe saber (estructura, contratos, scripts, versionado o flujos de build), la skill afectada se actualiza en este mismo cambio, no después (ver Versionado).
+Si cambia la geometría o la integración de assets, avisa al usuario de que la skill `armada-voxel-assets` puede necesitar actualizarse. Si cambia lo que el desarrollador debe saber (estructura, contratos, scripts, versionado o flujos de build), la skill afectada se actualiza en este mismo cambio, no después (ver Versionado).
 
 ## Límites
 
