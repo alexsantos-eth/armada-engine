@@ -117,15 +117,16 @@ manifiesto dentro, y con un atlas nuevo y un binario viejo los sprites salen rec
 **Ya no queda ningún SVG en el repositorio**: todos los sprites son PNG y la huella se declara
 en un `.json` al lado cuando no es 1x1x1. Las dos carpetas son:
 
-- `lib/assets/` — el terreno (hierba, tierra, arena, caminos, gradas, agua) y los sprites
+- `lib/assets/` — el terreno (hierba, tierra, arena, caminos, agua) y los sprites
   creados por la ruta voxel (árboles, arbusto, bosquecillos, el propio bloque de hierba y sus
   variantes con adornos). Los generadores de terreno siguen en uso —
-  `artifacts/vox/terrain/terrain_blocks.py` (hierba/tierra/arena), `path_tiles.py` (los 16
-  tiles de camino) y `stairs.py` (las cuatro gradas) — y escriben PNG directamente
-  (`iso_lib.Asset.save_png`).
-- `lib/assets-legacy/` — lo heredado que aún no pasa por la ruta voxel: edificios (casa del
-  sanador, torre…), los patrones de nubes y la sombra blanca que el agua y las sombras
-  necesitan. Son fijos por ahora: su PNG es el sprite.
+  `artifacts/vox/terrain/terrain_blocks.py` (hierba/tierra/arena) y `path_tiles.py` (los 16
+  tiles de camino) — y escriben PNG directamente (`iso_lib.Asset.save_png`).
+- `lib/assets-legacy/` — lo heredado que aún no pasa por la ruta voxel ni por la ruta de
+  generadores que queden vivas: edificios (casa del sanador, torre…), las cuatro gradas
+  (`artifacts/vox/terrain/stairs.py` las guarda, pero el PNG es el sprite y no se regeneran
+  por ahora), los patrones de nubes y la sombra blanca que el agua y las sombras necesitan.
+  Son fijos por ahora: su PNG es el sprite.
 
 Migrar un asset a voxel es: armar su `.vox` en `artifacts/vox/clay/vox_models.py` (o `artifacts/vox/clay/grass_clay.py`
 si es un adorno del techo de hierba), renderizarlo a un PNG con el mismo nombre en su carpeta y

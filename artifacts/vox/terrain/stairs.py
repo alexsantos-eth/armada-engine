@@ -1,7 +1,7 @@
 # stairs.py — the four looks of a stairs block: a flight of very old ruined steps that carries a
 # path from one elevation up to the next.
 #
-#   python3 stairs.py [out_dir]   (default ../../lib/assets/stairs)
+#   python3 stairs.py [out_dir]   (default ../../lib/assets-legacy/assets/stairs)
 #
 # The block fills its whole cell like a terrain block (`terrain_blocks.py`): square prisms, no
 # rounded clay corners, so a column stacks against its neighbours without a groove. It is one
@@ -30,7 +30,7 @@ sys.path.insert(0, os.path.join(HERE, "..", "player"))  # iso_lib lives with the
 
 from iso_lib import *
 
-OUT_DIR = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "..", "..", "..", "lib", "assets", "stairs")
+OUT_DIR = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "..", "..", "..", "lib", "assets-legacy", "assets", "stairs")
 
 LOW = 0                       #: the plane the downhill neighbour's ground sits on
 HIGH = H                      #: top of the tile the flight ends on, one block up
