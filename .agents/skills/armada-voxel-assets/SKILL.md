@@ -90,7 +90,7 @@ pieza nueva.
 | `BARK` | `#7a5a3a` | tronco caído |
 | `CUT` | `#d9b98a` | madera recién cortada (tocón, extremos del tronco) |
 | `MOSS` | `#6f8f4a` | musgo sobre roca o madera |
-| `RED` / `WHITE` / `YELLOW` / `PINK` | `#d9463a` / `#f4f1e6` / `#f4bd43` / `#f7a8c9` | fruta, pétalos, centro de flor |
+| `RED` / `WHITE` / `YELLOW` / `PINK` | `#d9463a` / `#f4f1e6` / `#f4bd43` / `#f7a8c9` | fruta, pétalos, centro de flor, copa de cerezo (`blossom`) |
 | `CAP` / `STEM` / `DOT` | `#b5473a` / `#eee8d8` / `#fff2dc` | seta |
 | `OCHRE` / `RUST` | `#d9a441` / `#c9702e` | hojas caídas |
 | `ROCK` / `ROCK_DARK` | `#9a9a96` / `#7c7c7a` | piedra |
@@ -106,11 +106,11 @@ Tamaños en vóxeles, ancho × fondo × alto. Las variantes son el sufijo del ar
 
 | Pieza | Tamaño | Variantes | Uso |
 | --- | --- | --- | --- |
-| `leaf_block` | 26 × 26 × 26 | green, dark, autumn | el bloque de copa; una celda del módulo |
-| `leaf_block_small` | 20 × 20 × 20 | green, dark, autumn | capas altas más estrechas (celda de 22) |
-| `leaf_cap` | 32 × 32 × 24 | green, dark, autumn | remate ancho de una copa |
-| `leaf_slab` | 36 × 36 × 12 | green, dark, autumn | copa plana (celda de 38, capas cada 13) |
-| `leaf_tuft` | 20 × 20 × 11 | green, dark, autumn | mata baja, almohadilla de rama (celda de 21) |
+| `leaf_block` | 26 × 26 × 26 | green, dark, autumn, blossom | el bloque de copa; una celda del módulo |
+| `leaf_block_small` | 20 × 20 × 20 | green, dark, autumn, blossom | capas altas más estrechas (celda de 22) |
+| `leaf_cap` | 32 × 32 × 24 | green, dark, autumn, blossom | remate ancho de una copa |
+| `leaf_slab` | 36 × 36 × 12 | green, dark, autumn, blossom | copa plana (celda de 38, capas cada 13) |
+| `leaf_tuft` | 20 × 20 × 11 | green, dark, autumn, blossom | mata baja, almohadilla de rama (celda de 21) |
 | `trunk` | 14 × 14 × 28 | brown, birch | tronco; se apila cada 28 |
 | `trunk_thin` | 9 × 9 × 28 | brown, birch | rama vertical, retoño |
 | `branch` | 26 × 8 × 8 | brown, birch | brazo horizontal (a lo largo de x; `turn=True` para y) |

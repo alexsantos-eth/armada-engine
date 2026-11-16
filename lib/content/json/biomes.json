@@ -29,6 +29,22 @@
         {
           "blueprint": "tree_7",
           "weight": 8.0
+        },
+        {
+          "blueprint": "tree_9",
+          "weight": 11.0
+        },
+        {
+          "blueprint": "tree_10",
+          "weight": 7.0
+        },
+        {
+          "blueprint": "tree_11",
+          "weight": 8.0
+        },
+        {
+          "blueprint": "tree_12",
+          "weight": 6.0
         }
       ],
       "grassTints": [
@@ -62,6 +78,10 @@
         {
           "blueprint": "tree_5",
           "weight": 15.0
+        },
+        {
+          "blueprint": "tree_10",
+          "weight": 30.0
         }
       ],
       "grassTints": [
@@ -100,6 +120,10 @@
         {
           "blueprint": "tree_6",
           "weight": 10.0
+        },
+        {
+          "blueprint": "tree_13",
+          "weight": 16.0
         }
       ],
       "grassTints": [
@@ -130,6 +154,10 @@
         {
           "blueprint": "tree_6",
           "weight": 20.0
+        },
+        {
+          "blueprint": "tree_11",
+          "weight": 18.0
         }
       ],
       "grassTints": [

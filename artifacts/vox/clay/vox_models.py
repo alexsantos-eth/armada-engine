@@ -113,6 +113,52 @@ def cypress():
     return out + put("leaf_cap", c, c, foot + 4 * M, "green")
 
 
+def willow():
+    """tree_9: a long bare trunk under a wide flat pad; a 2x2 blob sits on the pad and leaf tufts
+    hang from its far corners, like weeping branches."""
+    c = -6
+    out = trunk(0, 0, 5) + layer(RING, c, c, 138, "green", name="leaf_slab", cell=38)
+    out += layer(QUAD, c, c, 151, "green", name="leaf_slab", cell=38)
+    out += put("leaf_tuft", c - 38, c + 38, 126, "green") + put("leaf_tuft", c + 38, c - 38, 126, "green")
+    out += put("leaf_tuft", c - 38, c - 38, 126, "green")
+    return out + fruits([(c + 55, c + 6, 141), (c + 6, c + 55, 141)])
+
+
+def cedar():
+    """tree_10: a dark conifer whose flat slab tiers step in toward the top, trunk showing
+    between the boughs; a 2x2 of small blocks and one block crown it."""
+    c = -5
+    out = trunk(0, 0, 2, "brown") + layer(RING, c, c, 56, "dark", name="leaf_slab", cell=38)
+    out += layer(PLUS, c, c, 78, "dark", name="leaf_slab", cell=38)
+    out += layer([(0, 0)], c, c, 100, "dark", name="leaf_slab", cell=38)
+    out += layer(QUAD, c, c, 122, "dark", name="leaf_block_small", cell=22)
+    return out + put("leaf_block", c, c, 144, "dark")
+
+
+def encina():
+    """tree_11: a dense dark broadleaf: a low wide slab skirt, then full dark layers closing in
+    to a small block at the top."""
+    c = -6
+    out = trunk(0, 0, 3) + layer(RING, c, c, 80, "dark", name="leaf_slab", cell=38)
+    out += layer(FULL, c, c, 93, "dark") + layer(PLUS, c, c, 121, "dark")
+    return out + put("leaf_block_small", c, c, 148, "dark")
+
+
+def cherry():
+    """tree_12: a tall bare trunk carrying a blossom crown: ring, full, and a pink cap."""
+    c = -6
+    out = trunk(0, 0, 3) + layer(RING, c, c, 84, "blossom") + layer(FULL, c, c, 112, "blossom")
+    return out + put("leaf_cap", c, c, 140, "blossom")
+
+
+def golden_poplar():
+    """tree_13: the poplar column in autumn gold: three 2x2 layers, a slimmer one and a cap."""
+    c = -3
+    return (trunk(c, c, 2) + layer(QUAD[:3], c, c, 42, "autumn") + layer(QUAD, c, c, 70, "autumn")
+            + layer(QUAD, c, c, 98, "autumn") + layer(QUAD, c, c, 126, "autumn", name="leaf_block_small", cell=22)
+            + put("leaf_cap", c, c, 146, "autumn"))
+
+
 def bush():
     """bush: no trunk, a low mound of leaf blocks with berries."""
     c = -4
@@ -144,6 +190,54 @@ def grove(axis):
                          (fir[0] + 41, fir[1] + 3, 72), (sap[0] + 21, sap[1] + 8, 62)])
 
 
+def grove_autumn(axis):
+    """grove_autumn: a white birch and a big rounded autumn oak over fallen leaves, a stump and
+    toadstools, two tiles long along `axis`. Written once along (u, v) from the middle of the
+    footprint and laid out for either orientation, never mirrored."""
+    def at(u, v):
+        return (64 + u, v) if axis == "x" else (v, 64 + u)
+
+    def lay(name, u, v, z, variant="", long=False):
+        return put(name, *at(u, v), z, variant, turn=long and axis == "y")
+
+    birch, oak, sap, stump = at(-52, -14), at(30, 14), at(88, -22), at(-82, 46)
+    out = trunk(*birch, 3, "birch") + layer(RING, *birch, 84, "autumn") + layer(PLUS, *birch, 112, "autumn")
+    out += put("leaf_cap", *birch, 140, "autumn")
+    out += trunk(*oak, 2) + layer(RING, *oak, 56, "autumn") + layer(FULL, *oak, 84, "autumn")
+    out += layer(PLUS, *oak, 112, "autumn") + put("leaf_cap", *oak, 140, "autumn")
+    out += trunk(*sap, 2, name="trunk_thin")
+    out += layer(QUAD, *sap, 56, "autumn", name="leaf_block_small", cell=22) + put("leaf_block", *sap, 78, "autumn")
+    out += lay("stump", *stump, 0) + lay("fallen_leaf", -6, 42, 0, "ochre") + lay("fallen_leaf", 26, -44, 0, "rust")
+    out += lay("fallen_leaf", -88, 26, 0, "ochre") + lay("fallen_leaf", 62, 44, 0, "rust")
+    out += lay("mushroom", stump[0] - 12, stump[1] + 7, 0) + lay("mushroom", stump[0] + 10, stump[1] + 12, 0)
+    return out + fruits([(oak[0] + 41, oak[1] + 6, 94), (oak[0] - 6, oak[1] - 41, 100),
+                         (birch[0] + 41, birch[1] + 4, 92)])
+
+
+def grove_pine(axis):
+    """grove_pine: a tiered fir and a slab-boughed cedar over a fallen log, mushrooms and a
+    stone, two tiles long along `axis`. Written once along (u, v) from the middle of the
+    footprint and laid out for either orientation, never mirrored."""
+    def at(u, v):
+        return (64 + u, v) if axis == "x" else (v, 64 + u)
+
+    def lay(name, u, v, z, variant="", long=False):
+        return put(name, *at(u, v), z, variant, turn=long and axis == "y")
+
+    fir, cedar, log = at(-56, -20), at(52, 0), (-8, 44)
+    out = trunk(*fir, 2) + layer(RING, *fir, 48, "dark") + layer(PLUS, *fir, 76, "dark")
+    out += layer(QUAD, *fir, 104, "dark") + layer(QUAD, *fir, 132, "dark", name="leaf_block_small", cell=22)
+    out += put("leaf_block", *fir, 144, "dark")
+    out += trunk(*cedar, 2, "brown") + layer(RING, *cedar, 56, "dark", name="leaf_slab", cell=38)
+    out += layer(PLUS, *cedar, 78, "dark", name="leaf_slab", cell=38)
+    out += layer([(0, 0)], *cedar, 100, "dark", name="leaf_slab", cell=38)
+    out += layer(QUAD, *cedar, 122, "dark", name="leaf_block_small", cell=22)
+    out += put("leaf_block", *cedar, 144, "dark")
+    out += lay("log", *log, 0, long=True) + lay("rock_s", 78, -36, 0)
+    out += lay("mushroom", log[0] - 16, log[1] + 12, 0) + lay("mushroom", log[0] + 12, log[1] - 10, 0)
+    return out
+
+
 # name → (builder, tiles, the asset its render replaces, under lib/assets)
 MODELS = {
     "tree": (fruit_tree, (1, 1, 2), "tree/block.png"),
@@ -157,6 +251,15 @@ MODELS = {
     "bush": (bush, (1, 1, 1), "bush/block.png"),
     "grove_2x1": (lambda: grove("x"), (2, 1, 2), "tree/block_grove_2x1.png"),
     "grove_1x2": (lambda: grove("y"), (1, 2, 2), "tree/block_grove_1x2.png"),
+    "tree_9": (willow, (1, 1, 2), "tree/block_9.png"),
+    "tree_10": (cedar, (1, 1, 2), "tree/block_10.png"),
+    "tree_11": (encina, (1, 1, 2), "tree/block_11.png"),
+    "tree_12": (cherry, (1, 1, 2), "tree/block_12.png"),
+    "tree_13": (golden_poplar, (1, 1, 2), "tree/block_13.png"),
+    "grove_autumn_2x1": (lambda: grove_autumn("x"), (2, 1, 2), "tree/block_grove_autumn_2x1.png"),
+    "grove_autumn_1x2": (lambda: grove_autumn("y"), (1, 2, 2), "tree/block_grove_autumn_1x2.png"),
+    "grove_pine_2x1": (lambda: grove_pine("x"), (2, 1, 2), "tree/block_grove_pine_2x1.png"),
+    "grove_pine_1x2": (lambda: grove_pine("y"), (1, 2, 2), "tree/block_grove_pine_1x2.png"),
 }
 
 

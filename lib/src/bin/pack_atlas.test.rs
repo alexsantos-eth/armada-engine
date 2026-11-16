@@ -67,7 +67,10 @@ fn source_path_derives_the_json_from_the_file_name() {
     // asset is drawn or repainted is the next test's business, and this one must not move
     // every time one of them gains a PNG.
     let root = "/nonexistent-asset-root";
-    assert_eq!(source_path(&[root], "house_block"), "/assets/house/block.json");
+    assert_eq!(
+        source_path(&[root], "house_block"),
+        "/assets/house/block.json"
+    );
     assert_eq!(
         source_path(&[root], "cloud_cloud-shadow"),
         "/assets/cloud/cloud-shadow.json"
@@ -83,12 +86,21 @@ fn a_raster_asset_beats_the_json_sibling_it_was_made_from() {
     fs::create_dir_all(dir.join("assets/house")).expect("make the asset tree");
     let root = dir.to_string_lossy().to_string();
     // With neither file there, a name is read as the JSON of the sheet it might be.
-    assert_eq!(source_path(&[root.as_str()], "house_block"), "/assets/house/block.json");
+    assert_eq!(
+        source_path(&[root.as_str()], "house_block"),
+        "/assets/house/block.json"
+    );
     fs::write(dir.join("assets/house/block.json"), "{}").expect("write the sidecar");
-    assert_eq!(source_path(&[root.as_str()], "house_block"), "/assets/house/block.json");
+    assert_eq!(
+        source_path(&[root.as_str()], "house_block"),
+        "/assets/house/block.json"
+    );
     // The plain raster wins while it is there, and the sidecar it came from stays.
     fs::write(dir.join("assets/house/block.png"), []).expect("write the png");
-    assert_eq!(source_path(&[root.as_str()], "house_block"), "/assets/house/block.png");
+    assert_eq!(
+        source_path(&[root.as_str()], "house_block"),
+        "/assets/house/block.png"
+    );
     let _ = fs::remove_dir_all(&dir);
 }
 
@@ -99,7 +111,11 @@ fn raster_tiles_reads_the_json_sidecar_beside_the_image() {
     fs::create_dir_all(dir.join("assets/house")).expect("make the asset tree");
     let root = dir.to_string_lossy().to_string();
     let source = "/assets/house/block_viking.png";
-    assert_eq!(raster_tiles(&[root.as_str()], source), None, "nothing beside it yet");
+    assert_eq!(
+        raster_tiles(&[root.as_str()], source),
+        None,
+        "nothing beside it yet"
+    );
     // A sidecar states the footprint of the raster beside it.
     fs::write(
         dir.join("assets/house/block_viking.json"),

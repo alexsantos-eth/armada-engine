@@ -74,9 +74,8 @@ fn pack_assets(
             let canvas = (image.width(), image.height());
             let source = source_path(svg_roots, &name);
             let tiles = raster_tiles(svg_roots, &source);
-            let ink = opaque_bounds(&image).and_then(|bounds| {
-                raster_ink(canvas, bounds, tiles.as_deref())
-            });
+            let ink = opaque_bounds(&image)
+                .and_then(|bounds| raster_ink(canvas, bounds, tiles.as_deref()));
             (name, trim(&image), ink.map(InkBox::rounded))
         })
         .collect();
@@ -328,7 +327,10 @@ fn source_path(svg_roots: &[&str], name: &str) -> String {
         _ => format!("/assets/{directory}"),
     };
     let png = format!("{stem}.png");
-    if svg_roots.iter().any(|root| Path::new(&format!("{root}{png}")).exists()) {
+    if svg_roots
+        .iter()
+        .any(|root| Path::new(&format!("{root}{png}")).exists())
+    {
         png
     } else {
         format!("{stem}.json")
@@ -341,10 +343,10 @@ fn source_path(svg_roots: &[&str], name: &str) -> String {
 fn raster_tiles(svg_roots: &[&str], source: &str) -> Option<String> {
     let stem = source.strip_suffix(".png")?;
     for root in svg_roots {
-        if let Ok(json) = fs::read_to_string(format!("{root}{stem}.json")) {
-            if let Some(tiles) = iso::assets::sidecar_tiles(&json) {
-                return Some(tiles.to_owned());
-            }
+        if let Ok(json) = fs::read_to_string(format!("{root}{stem}.json"))
+            && let Some(tiles) = iso::assets::sidecar_tiles(&json)
+        {
+            return Some(tiles.to_owned());
         }
     }
     None

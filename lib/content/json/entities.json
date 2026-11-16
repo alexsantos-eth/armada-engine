@@ -557,6 +557,126 @@
       }
     },
     {
+      "id": "tree_9",
+      "asset": {
+        "sprite": "/assets/tree/block_9.png",
+        "sway": {
+          "cut": 0.58,
+          "amplitude": 2,
+          "period": 4000
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "tree_10",
+      "asset": {
+        "sprite": "/assets/tree/block_10.png",
+        "sway": {
+          "cut": 0.74,
+          "amplitude": 1,
+          "period": 3000
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "tree_11",
+      "asset": {
+        "sprite": "/assets/tree/block_11.png",
+        "sway": {
+          "cut": 0.6,
+          "amplitude": 1.2,
+          "period": 3600
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "tree_12",
+      "asset": {
+        "sprite": "/assets/tree/block_12.png",
+        "sway": {
+          "cut": 0.62,
+          "amplitude": 2,
+          "period": 3800
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "tree_13",
+      "asset": {
+        "sprite": "/assets/tree/block_13.png",
+        "sway": {
+          "cut": 0.6,
+          "amplitude": 2.2,
+          "period": 3100
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
       "id": "grove_x",
       "asset": {
         "sprite": "/assets/tree/block_grove_1x2.png"
@@ -581,6 +701,90 @@
       "id": "grove_y",
       "asset": {
         "sprite": "/assets/tree/block_grove_2x1.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 2,
+        "axis": "y",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass",
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "grove_autumn_x",
+      "asset": {
+        "sprite": "/assets/tree/block_grove_autumn_1x2.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 2,
+        "axis": "x",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass",
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "grove_autumn_y",
+      "asset": {
+        "sprite": "/assets/tree/block_grove_autumn_2x1.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 2,
+        "axis": "y",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass",
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "grove_pine_x",
+      "asset": {
+        "sprite": "/assets/tree/block_grove_pine_1x2.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 2,
+        "axis": "x",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass",
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "grove_pine_y",
+      "asset": {
+        "sprite": "/assets/tree/block_grove_pine_2x1.png"
       },
       "shape": {
         "height": 2,

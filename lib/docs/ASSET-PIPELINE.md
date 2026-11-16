@@ -67,8 +67,8 @@ archivos llevan la misma paleta (un color por material, plano, sin luz horneada)
 
 ### Modelo
 
-`artifacts/vox/clay/vox_models.py` arma las entidades con las piezas (los ocho árboles, el arbusto y los
-dos bosquecillos); sus modelos quedan en `artifacts/vox/models/<nombre>.vox`. El modelo ocupa
+`artifacts/vox/clay/vox_models.py` arma las entidades con las piezas (los trece árboles, el arbusto y los
+tres bosquecillos en sus dos orientaciones); sus modelos quedan en `artifacts/vox/models/<nombre>.vox`. El modelo ocupa
 **el volumen entero de su huella** (128 × 128 × 170 para un árbol 1x1x2), con el pie en el
 centro del suelo de la casilla ancla: así el archivo dice dónde está plantado.
 

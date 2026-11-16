@@ -22,7 +22,11 @@
     "runestone_circle": 1.0,
     "runestone_fallen": 1.5,
     "grove_x": 2.5,
-    "grove_y": 2.5
+    "grove_y": 2.5,
+    "grove_autumn_x": 2.5,
+    "grove_autumn_y": 2.5,
+    "grove_pine_x": 2.5,
+    "grove_pine_y": 2.5
   },
   "families": {
     "mead_hall": [
@@ -31,7 +35,11 @@
     ],
     "grove": [
       "grove_x",
-      "grove_y"
+      "grove_y",
+      "grove_autumn_x",
+      "grove_autumn_y",
+      "grove_pine_x",
+      "grove_pine_y"
     ],
     "boathouse": [
       "boathouse_x",

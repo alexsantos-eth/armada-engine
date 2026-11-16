@@ -54,7 +54,7 @@ def wildflower(petal):
     return out + [box(0, 0, 13, 3, 3, 3, YELLOW, 1.2)]
 
 
-LEAVES = dict(green=LEAF, dark=LEAF_DARK, autumn=LEAF_AUTUMN)
+LEAVES = dict(green=LEAF, dark=LEAF_DARK, autumn=LEAF_AUTUMN, blossom=PINK)
 BARKS = dict(brown=WOOD, birch=BIRCH)
 
 # name → (builder, {variant: colour}); a single unnamed variant writes `<name>.vox`.

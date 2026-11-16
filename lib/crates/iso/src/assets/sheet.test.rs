@@ -87,11 +87,7 @@ fn reads_the_real_sheets() {
         assert_eq!(grid.poses.len(), poses, "player-16/{file}");
         assert_eq!(grid.rows(), 16, "player-16/{file}");
         let shared = *window.get_or_insert(grid.ink());
-        assert_eq!(
-            grid.ink(),
-            shared,
-            "player-16/{file} shows the same window"
-        );
+        assert_eq!(grid.ink(), shared, "player-16/{file} shows the same window");
         assert_eq!(grid.facings[0], "east", "counter-clockwise from east");
     }
 }

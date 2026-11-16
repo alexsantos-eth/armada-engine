@@ -73,7 +73,10 @@ fn main() {
                     raster_ink(canvas, bounds, tiles.as_deref())
                 })
         } else {
-            eprintln!("warning: {} is not backed by a raster; ink not remeasured", entry.id);
+            eprintln!(
+                "warning: {} is not backed by a raster; ink not remeasured",
+                entry.id
+            );
             unmeasured.push(entry.id.clone());
             continue;
         };

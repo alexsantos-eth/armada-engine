@@ -252,14 +252,33 @@ fn plant_patios(
     }
 }
 
-/// The grove blueprint to try at `at`, on whichever axis the roll picks.
+/// The grove blueprint to try at `at`, on whichever axis the roll picks. Any blueprint of the
+/// catalogue whose id starts with `grove_` and ends with the axis suffix is a candidate, so new
+/// forest compositions the content ships join the pick.
 fn grove_blueprint(catalog: &EntityCatalog, at: WorldCoord, streams: &Streams) -> Option<String> {
     let along_x = lattice_at(streams.species, i64::from(at.x), i64::from(at.y) + 57) < 0.5;
-    let first = if along_x { "grove_x" } else { "grove_y" };
-    let second = if along_x { "grove_y" } else { "grove_x" };
-    blueprint_of(catalog, first)
-        .or_else(|| blueprint_of(catalog, second))
-        .map(|blueprint| blueprint.id.clone())
+    let axes = if along_x {
+        [true, false]
+    } else {
+        [false, true]
+    };
+    for axis in axes {
+        let suffix = if axis { "_x" } else { "_y" };
+        let mut candidates: Vec<&str> = catalog
+            .entities
+            .iter()
+            .map(|blueprint| blueprint.id.as_str())
+            .filter(|id| id.starts_with("grove_") && id.ends_with(suffix))
+            .collect();
+        candidates.sort_unstable();
+        if candidates.is_empty() {
+            continue;
+        }
+        let roll = lattice_at(streams.species, i64::from(at.x), i64::from(at.y) + 91);
+        let index = (roll.max(0.0) * candidates.len() as f64) as usize;
+        return Some(candidates[index.min(candidates.len() - 1)].to_owned());
+    }
+    None
 }
 
 /// Plants the greenery of every settlement zone covering `columns`, patios first and the
