@@ -22,12 +22,12 @@ MODULE = 28
 LEAF, LEAF_DARK, LEAF_AUTUMN = "#80c034", "#4c8f3a", "#f0a830"
 ROSETTE = "#6fb81e"
 WOOD, BIRCH, BIRCH_MARK, BARK, CUT, MOSS = "#8a5a30", "#f1ece1", "#4a4038", "#7a5a3a", "#d9b98a", "#6f8f4a"
-RED, WHITE, YELLOW = "#d9463a", "#f4f1e6", "#f4bd43"
+RED, WHITE, YELLOW, PINK = "#d9463a", "#f4f1e6", "#f4bd43", "#f7a8c9"
 CAP, STEM, DOT = "#b5473a", "#eee8d8", "#fff2dc"
 OCHRE, RUST = "#d9a441", "#c9702e"
 ROCK, ROCK_DARK = "#9a9a96", "#7c7c7a"
 PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK, CUT, MOSS,
-           RED, WHITE, YELLOW, CAP, STEM, DOT, OCHRE, RUST, ROCK, ROCK_DARK]
+           RED, WHITE, YELLOW, PINK, CAP, STEM, DOT, OCHRE, RUST, ROCK, ROCK_DARK]
 
 
 def box(x, y, z0, sx, sy, sz, color, r):
@@ -72,7 +72,7 @@ PIECES = {
                        box(-14, 0, 2, 2, 8, 8, CUT, 1), box(-3, 0, 10, 14, 10, 3, MOSS, 1.4)], {"": BARK}),
     "fruit": (lambda c: [box(0, 0, 0, 7, 7, 7, c, 3)], {"": RED}),
     "flower_big": (lambda c: [box(0, 0, 0, 17, 17, 4, ROSETTE, 2), box(0, 0, 4, 10, 10, 7, c, 3.5)],
-                   dict(white=WHITE, red=RED, yellow=YELLOW)),
+                   dict(white=WHITE, red=RED, yellow=YELLOW, pink=PINK)),
     "wildflower": (wildflower, dict(red=RED, white=WHITE)),
     "mushroom": (lambda c: [box(0, 0, 0, 4, 4, 8, STEM, 1.5), box(0, 0, 5, 10, 9, 5, c, 2.4),
                             box(-2, 1, 9, 2, 2, 2, DOT, 0.9)], {"": CAP}),

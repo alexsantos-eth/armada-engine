@@ -89,7 +89,7 @@ pieza nueva.
 | `BARK` | `#7a5a3a` | tronco caído |
 | `CUT` | `#d9b98a` | madera recién cortada (tocón, extremos del tronco) |
 | `MOSS` | `#6f8f4a` | musgo sobre roca o madera |
-| `RED` / `WHITE` / `YELLOW` | `#d9463a` / `#f4f1e6` / `#f4bd43` | fruta, pétalos, centro de flor |
+| `RED` / `WHITE` / `YELLOW` / `PINK` | `#d9463a` / `#f4f1e6` / `#f4bd43` / `#f7a8c9` | fruta, pétalos, centro de flor |
 | `CAP` / `STEM` / `DOT` | `#b5473a` / `#eee8d8` / `#fff2dc` | seta |
 | `OCHRE` / `RUST` | `#d9a441` / `#c9702e` | hojas caídas |
 | `ROCK` / `ROCK_DARK` | `#9a9a96` / `#7c7c7a` | piedra |
@@ -116,7 +116,7 @@ Tamaños en vóxeles, ancho × fondo × alto. Las variantes son el sufijo del ar
 | `stump` | 16 × 16 × 14 | — | tocón con el corte claro |
 | `log` | 30 × 12 × 13 | — | tronco caído con musgo |
 | `fruit` | 7 × 7 × 7 | — | el acento rojo |
-| `flower_big` | 17 × 17 × 11 | white, red, yellow | flor sobre su roseta |
+| `flower_big` | 17 × 17 × 11 | white, red, yellow, pink | flor sobre su roseta |
 | `wildflower` | 11 × 11 × 16 | red, white | flor de tallo |
 | `mushroom` | 10 × 9 × 11 | — | seta |
 | `sprout` | 14 × 14 × 13 | — | tres briznas |
@@ -248,3 +248,22 @@ El commit y el push solo los hace `armada-commit`, cuando el usuario la invoca.
 - [ ] Viste el sprite renderizado y la entidad dentro del juego, y adjuntas las dos imágenes.
 - [ ] Atlas regenerado, juego recompilado y tests en verde.
 - [ ] Entregas el `.vox` del modelo, el sprite y los cambios de `vox_prefabs.py` / `vox_models.py`.
+
+## 9. El techo de hierba con adornos
+
+`artifacts/grass_clay.py` genera las variantes del bloque de hierba (`block_flowers.png`,
+`block_flowers_2.png`, `block_wildflowers_red.png`, `block_wildflowers_white.png`,
+`block_sprouts.png`, `block_leaves.png`, `block_pebbles.png`, `block_mushrooms.png`,
+`block_bushes.png`): el bloque de `assets/grass/block.png` **no se toca ni se redibuja**; lo
+que se arma con piezas del kit es solo el adorno, de pie sobre un volumen 1x1x1 con la base en
+z = 0, y el render se compone encima del bloque con un desplazamiento vertical de −341 px del
+lienzo (−171 px a la escala de `block.png`, la del techo, exactamente donde la planta del
+adorno pisa el bloque). En el
+lienzo 1x1x1 el plano de suelo del adorno y la cara de arriba del bloque caen en el mismo
+sitio, así que los dos encajan al píxel.
+
+Los adornos se quedan bajos y dentro de la silueta del bloque, de modo que la caja de tinta de
+cada variante es la del bloque llano: el atlas mide el adorno como el bloque y el terreno lo
+dibuja donde dibuja el bloque. Regenerar: `python3 artifacts/grass_clay.py` (escribe los
+`.vox` en `vox/models/block_*.vox` y los PNG sobre el bloque). Si cambian las piezas que un
+adorno usa, el kit o el render, se rehacen todos y el atlas se reconstruye igual que siempre.

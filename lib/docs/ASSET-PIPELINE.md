@@ -57,7 +57,8 @@ proyección 2:1, orden de profundidad). Los que están en uso:
 | Generador | Qué produce |
 | --- | --- |
 | `terrain_blocks.py` | bloques de hierba, tierra y arena (llenan la casilla entera) |
-| `grass_clutter.py`, `grass_decor.py` | variantes del techo de hierba (flores, piedras, brotes) |
+| `grass_clutter.py`, `grass_decor.py` | variantes del techo de hierba (flores, piedras, brotes), dibujo vectorial |
+| `grass_clay.py` | variantes del techo de hierba con piezas del kit voxel sobre el bloque intacto |
 | `path_tiles.py` | los 16 tiles de camino, uno por máscara de conexión |
 | `stairs.py` | las cuatro gradas (`px`, `py`, `nx`, `ny`) |
 | `tree_*.py` | árboles |
@@ -242,8 +243,14 @@ se arma con piezas voxel y se renderiza. No llama a ningún modelo y no cuesta n
    (`artifacts/vox/models/<nombre>.vox`). El modelo ocupa **el volumen entero de su
    huella** (128 × 128 × 170 para un árbol 1x1x2), con el pie en el centro del suelo de la
    casilla ancla: así el archivo dice dónde está plantado.
-3. **Sprite.** `artifacts/vox_render.py` lo renderiza con Blender (Cycles) sobre el lienzo de
-   plantilla, listo para dejar junto al dibujo:
+3. **Sprite.** Con una excepción para el terreno: las variantes del techo de hierba las arma
+   `artifacts/grass_clay.py`, que renderiza solo el adorno (de pie en z = 0 de un volumen
+   1x1x1) y lo compone sobre el `block.png` intacto con un desplazamiento de −341 px del
+   lienzo (−171 px a la escala del bloque), donde el plano de suelo del adorno cae justo en la
+   cara de arriba del bloque. Los adornos bajos y dentro de la silueta dejan la caja de tinta
+   de cada variante igual que la del bloque llano, así que el atlas los mide como el bloque.
+   Para lo demás, `artifacts/vox_render.py` renderiza un modelo con Blender (Cycles)
+   sobre el lienzo de plantilla, listo para dejar junto al dibujo:
 
    ```sh
    blender -b -P artifacts/vox_render.py -- artifacts/vox/models/tree_7.vox \
