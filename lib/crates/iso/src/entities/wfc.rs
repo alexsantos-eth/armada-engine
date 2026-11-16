@@ -9,6 +9,7 @@ use std::collections::{HashMap, HashSet};
 use crate::entities::blueprint::{EntityBlueprint, EntityCatalog, EntityLengthAxis};
 use crate::entities::entity::{Entity, get_entity_footprint};
 use crate::grid::{SpatialIndex, WorldCoord};
+use crate::settlements::WorldSettlements;
 use crate::terrain::{TerrainColumn, TerrainMaterial};
 
 /// The schema version of the wfc content this validator accepts.
@@ -598,15 +599,85 @@ fn roll(seed: u64, x: i32, y: i32) -> f64 {
     )
 }
 
+/// What the solver reads besides the terrain: the weights, the settlement zones that reshape
+/// them per column, and the seed its rolls come from.
+#[derive(Clone, Copy)]
+pub struct WfcContent<'a> {
+    /// The weight of every blueprint and of nothing growing.
+    pub wfc: &'a WfcCatalog,
+    /// The settlements whose zones multiply those weights; `None` grows a zoneless world.
+    pub settlements: Option<&'a WorldSettlements>,
+    /// The seed the solver's rolls draw from.
+    pub seed: u64,
+}
+
+impl<'a> WfcContent<'a> {
+    /// The content of a world without settlements: the catalogue's weights, as written.
+    pub fn new(wfc: &'a WfcCatalog, seed: u64) -> Self {
+        Self {
+            wfc,
+            settlements: None,
+            seed,
+        }
+    }
+
+    /// The same content, with the settlement field whose zones reshape the weights.
+    pub fn in_settlements(mut self, settlements: Option<&'a WorldSettlements>) -> Self {
+        self.settlements = settlements;
+        self
+    }
+}
+
+/// The weight of each blueprint on each column: the catalogue's weight times the multiplier of
+/// the zone covering the column. A weight of `0` keeps the blueprint out of that column.
+struct ZoneWeights {
+    base: Vec<f64>,
+    per_cell: Option<Vec<Vec<f64>>>,
+}
+
+impl ZoneWeights {
+    fn of(columns: &[TerrainColumn], catalog: &EntityCatalog, content: WfcContent<'_>) -> Self {
+        let base: Vec<f64> = catalog
+            .entities
+            .iter()
+            .map(|blueprint| content.wfc.weight_of(&blueprint.id))
+            .collect();
+        let per_cell = content.settlements.map(|settlements| {
+            let coords: Vec<WorldCoord> = columns.iter().map(|column| column.coord).collect();
+            settlements
+                .zones_over(&coords)
+                .into_iter()
+                .map(|zone| {
+                    let profile = settlements.profile_of(zone);
+                    base.iter()
+                        .enumerate()
+                        .map(|(bp, weight)| weight * profile.multiplier(bp))
+                        .collect()
+                })
+                .collect()
+        });
+        Self { base, per_cell }
+    }
+
+    fn at(&self, cell: usize, blueprint: usize) -> f64 {
+        match &self.per_cell {
+            Some(weights) => weights[cell][blueprint],
+            None => self.base[blueprint],
+        }
+    }
+}
+
 /// Solves one chunk and returns the entities it grows, in column order.
 pub fn solve_chunk(
     columns: &[TerrainColumn],
     catalog: &EntityCatalog,
-    wfc: &WfcCatalog,
+    content: WfcContent<'_>,
     claimed: &[bool],
     placed: &mut SpatialIndex<Entity>,
-    seed: u64,
 ) -> Vec<Entity> {
+    let wfc = content.wfc;
+    let seed = content.seed;
+    let weights = ZoneWeights::of(columns, catalog, content);
     let n = columns.len();
     let caps = build_caps(catalog, wfc);
     let mut counts = vec![0.0; caps.limits.len()];
@@ -632,6 +703,9 @@ pub fn solve_chunk(
             continue;
         }
         for (cell, column) in columns.iter().enumerate() {
+            if weights.at(cell, bp) <= 0.0 {
+                continue;
+            }
             let anchor = column.coord;
             if !footprint_cells_into(&columns_view, anchor, blueprint, &mut scratch) {
                 continue;
@@ -660,13 +734,13 @@ pub fn solve_chunk(
         let column = columns[cell].coord;
         let total: f64 = remaining[cell]
             .iter()
-            .map(|&bp| wfc.weight_of(&blueprints[bp].id))
+            .map(|&bp| weights.at(cell, bp))
             .sum::<f64>()
             + wfc.empty_weight;
         let mut roll_value = roll(seed, column.x, column.y) * total;
         let mut pick: Option<usize> = None;
         for &bp in &remaining[cell] {
-            let weight = wfc.weight_of(&blueprints[bp].id);
+            let weight = weights.at(cell, bp);
             if roll_value < weight {
                 pick = Some(bp);
                 break;

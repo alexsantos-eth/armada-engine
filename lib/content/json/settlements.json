@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "spacing": 112,
+  "chance": 0.6,
+  "radius": {
+    "min": 10.0,
+    "max": 18.0
+  },
+  "wilderness": {
+    "default": 0.0,
+    "weights": {
+      "bush": 1.0,
+      "grove": 1.0,
+      "runestones": 1.0,
+      "boathouse": 1.0
+    },
+    "greens": 0.0
+  },
+  "greens": {
+    "spacing": 6.0,
+    "tight": 2.0,
+    "near": 3.0,
+    "far": 9.0,
+    "front": 2,
+    "patio": {
+      "chance": 0.7,
+      "min": 2,
+      "max": 4,
+      "reach": 2,
+      "groveChance": 0.18
+    }
+  },
+  "zones": [
+    {
+      "id": "center",
+      "seeds": 1,
+      "ring": [
+        0.0,
+        0.1
+      ],
+      "pull": 0.15,
+      "default": 0.0,
+      "weights": {
+        "mead_hall": 60.0,
+        "stave_temple": 50.0,
+        "market_stall": 25.0,
+        "stone_shrine": 30.0,
+        "runestone_circle": 25.0,
+        "runestone_tall": 6.0,
+        "smithy": 8.0,
+        "watchtower": 6.0
+      },
+      "greens": 0.0
+    },
+    {
+      "id": "residential",
+      "seeds": 4,
+      "ring": [
+        0.25,
+        0.6
+      ],
+      "pull": 0.17,
+      "default": 0.0,
+      "weights": {
+        "hut_moss": 10.0,
+        "hut_thatch": 10.0,
+        "cottage_tile": 6.0,
+        "smithy": 4.0,
+        "healer_hut": 6.0,
+        "market_stall": 2.0,
+        "runestone": 1.0,
+        "bush": 1.0
+      },
+      "greens": 0.5
+    },
+    {
+      "id": "green",
+      "seeds": 3,
+      "ring": [
+        0.45,
+        0.9
+      ],
+      "pull": 0.08,
+      "default": 0.0,
+      "weights": {
+        "grove": 8.0,
+        "bush": 6.0,
+        "runestone": 4.0,
+        "runestone_circle": 6.0,
+        "stone_shrine": 4.0
+      },
+      "greens": 1.6
+    },
+    {
+      "id": "edge",
+      "seeds": 5,
+      "ring": [
+        0.75,
+        1.0
+      ],
+      "pull": 0.06,
+      "default": 0.0,
+      "weights": {
+        "hut_moss": 2.0,
+        "hut_thatch": 2.0,
+        "watchtower": 8.0,
+        "boathouse": 6.0,
+        "runestone": 3.0,
+        "runestone_pair": 3.0,
+        "runestone_fallen": 3.0,
+        "bush": 2.0,
+        "grove": 1.0
+      },
+      "greens": 0.9
+    }
+  ]
+}

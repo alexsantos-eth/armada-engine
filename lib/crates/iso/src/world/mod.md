@@ -15,97 +15,103 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`normalized`](chunk_manager.rs#L40) — Acota los radios para que sigan creciendo hacia fuera, pida lo que pida quien llama: un radio de retención
+- [`normalized`](chunk_manager.rs#L41) — Acota los radios para que sigan creciendo hacia fuera, pida lo que pida quien llama: un radio de retención
   - Firma: `pub fn normalized(self) -> Self {`
 
-- [`new`](chunk_manager.rs#L71) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
+- [`new`](chunk_manager.rs#L74) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
   - Firma: `pub fn new(generator: TerrainGenerator, catalog: EntityCatalog) -> Self {`
 
-- [`with_radii`](chunk_manager.rs#L76) — Igual que [`Self::new`] con los radios de streaming que elija el cliente.
+- [`with_radii`](chunk_manager.rs#L79) — Igual que [`Self::new`] con los radios de streaming que elija el cliente.
   - Firma: `pub fn with_radii( generator: TerrainGenerator, catalog: EntityCatalog, radii: ChunkRadii, ) -> Self {`
 
-- [`radii`](chunk_manager.rs#L97) — Los radios que está usando este streamer, ya normalizados.
+- [`radii`](chunk_manager.rs#L101) — Los radios que está usando este streamer, ya normalizados.
   - Firma: `pub fn radii(&self) -> ChunkRadii {`
 
-- [`set_biomes`](chunk_manager.rs#L103) — Entrega al manager los biomas del mundo. Se llama una vez en el arranque, antes del primer descubrimiento; las entidades de los chunks ya colocadas conservan los suyos hasta que se descargan.
+- [`set_biomes`](chunk_manager.rs#L107) — Entrega al manager los biomas del mundo. Se llama una vez en el arranque, antes del primer descubrimiento; las entidades de los chunks ya colocadas conservan los suyos hasta que se descargan.
   - Firma: `pub fn set_biomes(&mut self, biomes: WorldBiomes) {`
 
-- [`set_wfc`](chunk_manager.rs#L109) — Entrega al manager el catálogo wfc del resto de entidades. Se llama una vez en el arranque, antes del primer descubrimiento; los chunks ya colocados conservan las suyas hasta que se descargan.
+- [`set_wfc`](chunk_manager.rs#L113) — Entrega al manager el catálogo wfc del resto de entidades. Se llama una vez en el arranque, antes del primer descubrimiento; los chunks ya colocados conservan las suyas hasta que se descargan.
   - Firma: `pub fn set_wfc(&mut self, wfc: WfcCatalog) {`
 
-- [`biomes`](chunk_manager.rs#L115) — Los biomas del mundo, cuando el contenido los trajo: las vistas los leen para vestir o mover lo que crece ahí (paleta de suelo, fuerza de mece) sin quedarse con su propia copia.
+- [`set_settlements`](chunk_manager.rs#L119) — Entrega al manager los asentamientos del mundo, cuyas zonas semánticas deciden qué crece en cada columna. Se llama una vez en el arranque, antes del primer descubrimiento; los chunks ya colocados conservan las zonas bajo las que crecieron.
+  - Firma: `pub fn set_settlements(&mut self, settlements: WorldSettlements) {`
+
+- [`settlements`](chunk_manager.rs#L124) — Los asentamientos del mundo, cuando el contenido los trae.
+  - Firma: `pub fn settlements(&self) -> Option<&WorldSettlements> {`
+
+- [`biomes`](chunk_manager.rs#L130) — Los biomas del mundo, cuando el contenido los trajo: las vistas los leen para vestir o mover lo que crece ahí (paleta de suelo, fuerza de mece) sin quedarse con su propia copia.
   - Firma: `pub fn biomes(&self) -> Option<&WorldBiomes> {`
 
-- [`set_focus`](chunk_manager.rs#L120) — Establece los chunks de foco (normalmente alrededor de la cámara/jugador). El streamer conserva los chunks
+- [`set_focus`](chunk_manager.rs#L135) — Establece los chunks de foco (normalmente alrededor de la cámara/jugador). El streamer conserva los chunks
   - Firma: `pub fn set_focus(&mut self, focus: Vec<ChunkCoord>) {`
 
-- [`set_single_focus`](chunk_manager.rs#L130) — Establece un único foco sin asignar un nuevo vector en cada frame renderizado.
+- [`set_single_focus`](chunk_manager.rs#L145) — Establece un único foco sin asignar un nuevo vector en cada frame renderizado.
   - Firma: `pub fn set_single_focus(&mut self, focus: ChunkCoord) {`
 
-- [`tick`](chunk_manager.rs#L141) — Avanza un frame: aplica los resultados del hilo de colocación, descubre, muestra y oculta chunks. El terreno se inserta síncronamente; la colocación de entidades es un trabajo en hilo (inline en `wasm32`) que aterriza unos frames después.
+- [`tick`](chunk_manager.rs#L156) — Avanza un frame: aplica los resultados del hilo de colocación, descubre, muestra y oculta chunks. El terreno se inserta síncronamente; la colocación de entidades es un trabajo en hilo (inline en `wasm32`) que aterriza unos frames después.
   - Firma: `pub fn tick(&mut self) -> Vec<ChunkCoord> {`
 
-- [`settle`](chunk_manager.rs#L225) — Espera a que todos los trabajos de colocación en vuelo terminen y los aplica en el orden en que se crearon. La usan [`Self::save_all`] y [`Self::unload_chunk`] para que el guardado transporte las entidades recién colocadas; se conserva aquí pública por si algún camino del cliente necesita garantizarlo.
+- [`settle`](chunk_manager.rs#L243) — Espera a que todos los trabajos de colocación en vuelo terminen y los aplica en el orden en que se crearon. La usan [`Self::save_all`] y [`Self::unload_chunk`] para que el guardado transporte las entidades recién colocadas; se conserva aquí pública por si algún camino del cliente necesita garantizarlo.
   - Firma: `pub fn settle(&mut self) {`
 
-- [`terrain_chunk`](chunk_manager.rs#L270) — Columnas de terreno de un chunk descubierto, o `None` cuando nunca fue descubierto.
+- [`terrain_chunk`](chunk_manager.rs#L288) — Columnas de terreno de un chunk descubierto, o `None` cuando nunca fue descubierto.
   - Firma: `pub fn terrain_chunk(&self, coord: ChunkCoord) -> Option<&[crate::terrain::TerrainColumn]> {`
 
-- [`column_at`](chunk_manager.rs#L275) — Columna de terreno en una coordenada absoluta del mundo, o `None` cuando su chunk nunca fue
+- [`column_at`](chunk_manager.rs#L293) — Columna de terreno en una coordenada absoluta del mundo, o `None` cuando su chunk nunca fue
   - Firma: `pub fn column_at(&self, x: i32, y: i32) -> Option<crate::terrain::TerrainColumn> {`
 
-- [`is_discovered`](chunk_manager.rs#L284) — Si un chunk ha sido descubierto.
+- [`is_discovered`](chunk_manager.rs#L302) — Si un chunk ha sido descubierto.
   - Firma: `pub fn is_discovered(&self, coord: ChunkCoord) -> bool {`
 
-- [`entities_chunk`](chunk_manager.rs#L289) — Entidades colocadas de un chunk descubierto, o `None` cuando nunca fue descubierto.
+- [`entities_chunk`](chunk_manager.rs#L307) — Entidades colocadas de un chunk descubierto, o `None` cuando nunca fue descubierto.
   - Firma: `pub fn entities_chunk(&self, coord: ChunkCoord) -> Option<&[Entity]> {`
 
-- [`is_visible`](chunk_manager.rs#L294) — Si un chunk forma parte del flujo que el cliente está mostrando actualmente.
+- [`is_visible`](chunk_manager.rs#L312) — Si un chunk forma parte del flujo que el cliente está mostrando actualmente.
   - Firma: `pub fn is_visible(&self, coord: ChunkCoord) -> bool {`
 
-- [`save_chunk`](chunk_manager.rs#L299) — Convierte un chunk descubierto a su forma guardada, almacenando terreno y entidades.
+- [`save_chunk`](chunk_manager.rs#L317) — Convierte un chunk descubierto a su forma guardada, almacenando terreno y entidades.
   - Firma: `pub fn save_chunk(&self, coord: ChunkCoord) -> Option<crate::world::save::SavedChunk> {`
 
-- [`save_all`](chunk_manager.rs#L331) — Convierte cada chunk descubierto a su forma guardada.
+- [`save_all`](chunk_manager.rs#L349) — Convierte cada chunk descubierto a su forma guardada.
   - Firma: `pub fn save_all(&self) -> Vec<crate::world::save::SavedChunk> {`
 
-- [`load_from_save`](chunk_manager.rs#L344) — Restaura chunks desde un guardado hacia este manager, sin pasar por la generación.
+- [`load_from_save`](chunk_manager.rs#L362) — Restaura chunks desde un guardado hacia este manager, sin pasar por la generación.
   - Firma: `pub fn load_from_save(&mut self, save: &crate::world::save::WorldSave) -> Vec<String> {`
 
-- [`visible_chunks`](chunk_manager.rs#L394) — Coordenadas de los chunks visibles en orden estable.
+- [`visible_chunks`](chunk_manager.rs#L412) — Coordenadas de los chunks visibles en orden estable.
   - Firma: `pub fn visible_chunks(&self) -> Vec<ChunkCoord> {`
 
-- [`discovered_count`](chunk_manager.rs#L399) — Número de chunks descubiertos (visibles o no).
+- [`discovered_count`](chunk_manager.rs#L417) — Número de chunks descubiertos (visibles o no).
   - Firma: `pub fn discovered_count(&self) -> usize {`
 
-- [`focus`](chunk_manager.rs#L404) — Chunks de foco en orden estable.
+- [`focus`](chunk_manager.rs#L422) — Chunks de foco en orden estable.
   - Firma: `pub fn focus(&self) -> &[ChunkCoord] {`
 
-- [`unload_candidates`](chunk_manager.rs#L436) — Chunks descubiertos más lejos que `CHUNK_KEEP_RADIUS` de cada foco, de los más cercanos primero.
+- [`unload_candidates`](chunk_manager.rs#L454) — Chunks descubiertos más lejos que `CHUNK_KEEP_RADIUS` de cada foco, de los más cercanos primero.
   - Firma: `pub fn unload_candidates(&self) -> Vec<ChunkCoord> {`
 
-- [`next_unload_candidate`](chunk_manager.rs#L456) — El único chunk que [`Self::unload_candidates`] devolvería primero, sin construir la
+- [`next_unload_candidate`](chunk_manager.rs#L474) — El único chunk que [`Self::unload_candidates`] devolvería primero, sin construir la
   - Firma: `pub fn next_unload_candidate(&self) -> Option<ChunkCoord> {`
 
-- [`catalog`](chunk_manager.rs#L476) — El catálogo desde el que coloca este manager: lo que un editor ofrece para poner a mano.
+- [`catalog`](chunk_manager.rs#L494) — El catálogo desde el que coloca este manager: lo que un editor ofrece para poner a mano.
   - Firma: `pub fn catalog(&self) -> &EntityCatalog {`
 
-- [`load_columns`](chunk_manager.rs#L482) — Inyecta el terreno de un chunk sin pasar por la generación y sin entidades: el suelo del que parte un editor. Reemplaza lo que el chunk tuviera.
+- [`load_columns`](chunk_manager.rs#L500) — Inyecta el terreno de un chunk sin pasar por la generación y sin entidades: el suelo del que parte un editor. Reemplaza lo que el chunk tuviera.
   - Firma: `pub fn load_columns(&mut self, coord: ChunkCoord, columns: Vec<crate::terrain::TerrainColumn>) {`
 
-- [`edit_column`](chunk_manager.rs#L489) — Edita una columna materializada, igual que [`TerrainWorld::edit_column`].
+- [`edit_column`](chunk_manager.rs#L507) — Edita una columna materializada, igual que [`TerrainWorld::edit_column`].
   - Firma: `pub fn edit_column( &mut self, coord: crate::grid::WorldCoord, elevation: i32, surface: crate::terrain::TerrainMaterial, ) -> Result<(), crate::world::EditError> {`
 
-- [`put_entity`](chunk_manager.rs#L499) — Pone una entidad en su propio chunk e indica si ese chunk estaba cargado para recibirla.
+- [`put_entity`](chunk_manager.rs#L517) — Pone una entidad en su propio chunk e indica si ese chunk estaba cargado para recibirla.
   - Firma: `pub fn put_entity(&mut self, entity: Entity) -> bool {`
 
-- [`set_entities`](chunk_manager.rs#L512) — Reemplaza las entidades de un chunk descubierto e indica si ese chunk estaba cargado.
+- [`set_entities`](chunk_manager.rs#L530) — Reemplaza las entidades de un chunk descubierto e indica si ese chunk estaba cargado.
   - Firma: `pub fn set_entities(&mut self, coord: ChunkCoord, entities: Vec<Entity>) -> bool {`
 
-- [`remove_entity_at`](chunk_manager.rs#L521) — Quita la entidad cuya huella cubre una casilla, si alguna la cubre.
+- [`remove_entity_at`](chunk_manager.rs#L539) — Quita la entidad cuya huella cubre una casilla, si alguna la cubre.
   - Firma: `pub fn remove_entity_at(&mut self, x: i32, y: i32) -> Option<Entity> {`
 
-- [`unload_chunk`](chunk_manager.rs#L534) — Descubre o devuelve la forma guardada del chunk; `None` si no estaba descubierto.
+- [`unload_chunk`](chunk_manager.rs#L552) — Descubre o devuelve la forma guardada del chunk; `None` si no estaba descubierto.
   - Firma: `pub fn unload_chunk(&mut self, coord: ChunkCoord) -> Option<crate::world::save::SavedChunk> {`
 
 ### `save.rs`
@@ -216,25 +222,25 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`default`](chunk_manager.rs#L29) — Implementación de `Default`: los radios por defecto (`load`/`prefetch`/`keep`).
   - Firma: `fn default() -> Self {`
 
-- [`poll_jobs`](chunk_manager.rs#L206) — Aplica los trabajos que ya están listos, en el orden en que se crearon; un trabajo cuyo chunk está gobernado por un guardado o que ya no está descubierto se descarta en silencio.
+- [`poll_jobs`](chunk_manager.rs#L224) — Aplica los trabajos que ya están listos, en el orden en que se crearon; un trabajo cuyo chunk está gobernado por un guardado o que ya no está descubierto se descarta en silencio.
   - Firma: `fn poll_jobs(&mut self) {`
 
-- [`drain_job`](chunk_manager.rs#L236) — Espera al trabajo de `coord` antes de descargar el chunk, para que el guardado lleve las entidades recién colocadas.
+- [`drain_job`](chunk_manager.rs#L254) — Espera al trabajo de `coord` antes de descargar el chunk, para que el guardado lleve las entidades recién colocadas.
   - Firma: `fn drain_job(&mut self, coord: ChunkCoord) {`
 
-- [`apply_outcome`](chunk_manager.rs#L252) — Escribe el resultado de un trabajo: sustituye las columnas por las que trae con los caminos materializados e inserta las entidades; todo ello solo si el chunk sigue descubierto y ningún guardado lo gobierna.
+- [`apply_outcome`](chunk_manager.rs#L270) — Escribe el resultado de un trabajo: sustituye las columnas por las que trae con los caminos materializados e inserta las entidades; todo ello solo si el chunk sigue descubierto y ningún guardado lo gobierna.
   - Firma: `fn apply_outcome( &mut self, coord: ChunkCoord, outcome: super::placement_job::PlacementOutcome, ) {`
 
-- [`chunks_within`](chunk_manager.rs#L409) — Todos los chunks dentro de `radius` de cualquier foco, sin duplicados y ordenados de los más cercanos primero.
+- [`chunks_within`](chunk_manager.rs#L427) — Todos los chunks dentro de `radius` de cualquier foco, sin duplicados y ordenados de los más cercanos primero.
   - Firma: `fn chunks_within(&self, radius: i32) -> Vec<ChunkCoord> {`
 
-- [`is_within_keep`](chunk_manager.rs#L429) — Si `coord` está dentro del radio `keep` de algún foco.
+- [`is_within_keep`](chunk_manager.rs#L447) — Si `coord` está dentro del radio `keep` de algún foco.
   - Firma: `fn is_within_keep(&self, coord: ChunkCoord) -> bool {`
 
-- [`saved_entity_state`](chunk_manager.rs#L544) — El estado por instancia que un guardado debe llevar: todo lo que `Entity::restore` no puede reconstruir a partir de
+- [`saved_entity_state`](chunk_manager.rs#L562) — El estado por instancia que un guardado debe llevar: todo lo que `Entity::restore` no puede reconstruir a partir de
   - Firma: `fn saved_entity_state(entity: &Entity) -> serde_json::Value {`
 
-- [`distance`](chunk_manager.rs#L556) — Distancia de Chebyshev entre dos coordenadas de chunk.
+- [`distance`](chunk_manager.rs#L574) — Distancia de Chebyshev entre dos coordenadas de chunk.
   - Firma: `fn distance(a: ChunkCoord, b: ChunkCoord) -> i32 {`
 
 - [`default`](chunk_manager.rs#L29) — Implementación de `Default`: los radios por defecto (`load`/`prefetch`/`keep`).
@@ -254,24 +260,25 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`place`](placement_job.rs#L29) — Coloca entidades sobre las columnas y materializa sus caminos, inline; el hilo de colocación la ejecuta.
-  - Firma: `fn place( mut columns: Vec<TerrainColumn>, catalog: &EntityCatalog, biomes: Option<&WorldBiomes>, wfc: Option<&WfcCatalog>, ) -> PlacementOutcome {`
+- [`place`](placement_job.rs#L39) — Coloca entidades sobre las columnas y materializa sus caminos, inline; el hilo de colocación la ejecuta.
+  - Firma: `fn place( mut columns: Vec<TerrainColumn>, catalog: &EntityCatalog, content: &ChunkContent, ) -> PlacementOutcome {`
 
-- [`spawn`](placement_job.rs#L71) — Lanza el trabajo de colocación en un hilo; en `wasm32` lo calcula directamente en el frame.
-  - Firma: `pub(crate) fn spawn( coord: ChunkCoord, columns: Vec<TerrainColumn>, catalog: EntityCatalog, biomes: Option<WorldBiomes>, wfc: Option<WfcCatalog>, ) -> Self {`
+- [`spawn`](placement_job.rs#L81) — Lanza el trabajo de colocación en un hilo; en `wasm32` lo calcula directamente en el frame.
+  - Firma: `pub(crate) fn spawn( coord: ChunkCoord, columns: Vec<TerrainColumn>, catalog: EntityCatalog, content: ChunkContent, ) -> Self {`
+  - El contenido de un chunk es `ChunkContent` ([placement_job.rs#L32](placement_job.rs#L32)): los biomas, el catálogo wfc y los asentamientos del mundo, clonados para el hilo que lo resuelve.
 
-- [`is_finished`](placement_job.rs#L107) — Si el trabajo está listo para recogerse, con o sin hilo.
+- [`is_finished`](placement_job.rs#L109) — Si el trabajo está listo para recogerse, con o sin hilo.
   - Firma: `pub(crate) fn is_finished(&self) -> bool {`
 
-- [`take_outcome`](placement_job.rs#L119) — Recoge el resultado si está listo (o espera a que lo esté si `wait`); un hilo que hace panic registra y deja el chunk sin entidades.
+- [`take_outcome`](placement_job.rs#L121) — Recoge el resultado si está listo (o espera a que lo esté si `wait`); un hilo que hace panic registra y deja el chunk sin entidades.
   - Firma: `pub(crate) fn take_outcome(&mut self, wait: bool) -> Option<PlacementOutcome> {`
 
 #### Tipos internos
 
-- [`PlacementJob`](placement_job.rs#L53) — El trabajo de colocación de un chunk: desde que se crea hasta que se recoge, o se descarta porque el chunk ya no está descubierto o un guardado lo gobierna.
+- [`PlacementJob`](placement_job.rs#L63) — El trabajo de colocación de un chunk: desde que se crea hasta que se recoge, o se descarta porque el chunk ya no está descubierto o un guardado lo gobierna.
   - Declaración: `pub(crate) struct PlacementJob { pub(crate) coord: ChunkCoord, state: State }`
 
-- [`PlacementOutcome`](placement_job.rs#L23) — El resultado de una colocación: las columnas con los caminos ya materializados, y las entidades del chunk en orden de columna.
+- [`PlacementOutcome`](placement_job.rs#L24) — El resultado de una colocación: las columnas con los caminos ya materializados, y las entidades del chunk en orden de columna.
   - Declaración: `pub(crate) struct PlacementOutcome { pub(crate) columns: Vec<TerrainColumn>, pub(crate) entities: Vec<Entity> }`
 
 ### `save.rs`

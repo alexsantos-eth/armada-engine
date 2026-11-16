@@ -414,6 +414,7 @@ fn the_biome_and_wfc_passes_coexist_deterministically() {
     let content = || PlacementContent {
         biomes: Some(&biomes),
         wfc: Some(&wfc),
+        settlements: None,
         seed: 123,
     };
     let first = place_entities_with_content(&columns, &entities, dense(), content());
@@ -452,6 +453,7 @@ fn the_content_path_with_no_wfc_matches_the_biome_path() {
         PlacementContent {
             biomes: Some(&biomes),
             wfc: None,
+            settlements: None,
             seed: 123,
         },
     );
@@ -584,4 +586,89 @@ mod by_hand {
             vec![WorldCoord { x: 4, y: 4 }, WorldCoord { x: 4, y: 5 }]
         );
     }
+}
+
+/// A settlement field over the whole fixture: one zone that fells every tree inside it.
+fn bare_settlements(entities: &EntityCatalog) -> crate::settlements::WorldSettlements {
+    let wfc = crate::entities::wfc::parse_wfc(
+        r#"{ "schemaVersion": 2, "emptyWeight": 50.0, "weights": { "rock": 1.0 } }"#,
+        entities,
+        None,
+    )
+    .expect("valid wfc content");
+    let json = r#"{
+        "schemaVersion": 1,
+        "spacing": 60,
+        "chance": 1.0,
+        "radius": { "min": 20.0, "max": 20.0 },
+        "wilderness": { "default": 1.0, "greens": 0.0, "weights": {} },
+        "greens": { "spacing": 6.0, "tight": 2.0, "near": 3.0, "far": 9.0, "front": 2,
+                    "patio": { "chance": 0.0, "min": 2, "max": 4, "reach": 2, "groveChance": 0.0 } },
+        "zones": [
+            { "id": "center", "seeds": 1, "ring": [0.0, 0.0], "pull": 1.0,
+              "default": 1.0, "greens": 0.0, "weights": {} }
+        ]
+    }"#;
+    let catalog = crate::settlements::parse_settlements(json, entities, &wfc)
+        .expect("the fixture settlements validate");
+    crate::settlements::WorldSettlements::new(7, &catalog)
+}
+
+#[test]
+fn the_biome_plants_no_tree_inside_a_settlement() {
+    let entities = trees_catalog();
+    let (_, biomes) = tree_biomes_with_catalog(&entities);
+    let settlements = bare_settlements(&entities);
+    let columns: Vec<TerrainColumn> = (-48..48)
+        .flat_map(|x| (-48..48).map(move |y| column(x, y, grass(), 0)))
+        .collect();
+    let placed = place_entities_with_content(
+        &columns,
+        &entities,
+        dense(),
+        PlacementContent {
+            biomes: Some(&biomes),
+            wfc: None,
+            settlements: Some(&settlements),
+            seed: 123,
+        },
+    );
+    let trees: Vec<_> = placed
+        .entities
+        .iter()
+        .filter(|entity| entity.type_().starts_with("tree"))
+        .collect();
+    assert!(!trees.is_empty(), "the wilderness must keep its trees");
+    for tree in trees {
+        assert_eq!(
+            settlements.zone_at(tree.x(), tree.y()),
+            None,
+            "{} grew inside a settlement, where the greenery pass rules",
+            tree.id()
+        );
+    }
+}
+
+#[test]
+fn without_a_settlement_field_the_biome_pass_is_unchanged() {
+    let entities = trees_catalog();
+    let (_, biomes) = tree_biomes_with_catalog(&entities);
+    let columns: Vec<TerrainColumn> = (-32..32)
+        .flat_map(|x| (-32..32).map(move |y| column(x, y, grass(), 0)))
+        .collect();
+    let zoneless = place_entities_with_content(
+        &columns,
+        &entities,
+        dense(),
+        PlacementContent {
+            biomes: Some(&biomes),
+            wfc: None,
+            settlements: None,
+            seed: 123,
+        },
+    );
+    let legacy = place_entities_with_biomes(&columns, &entities, dense(), Some(&biomes));
+    let ids: Vec<_> = zoneless.entities.iter().map(|e| e.id()).collect();
+    let ids_legacy: Vec<_> = legacy.entities.iter().map(|e| e.id()).collect();
+    assert_eq!(ids, ids_legacy);
 }

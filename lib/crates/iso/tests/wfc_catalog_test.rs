@@ -63,18 +63,16 @@ fn shipped_wfc_content_grows_deterministically_on_a_grass_chunk() {
     let first = iso::entities::wfc::solve_chunk(
         &columns,
         &entities,
-        &wfc,
+        iso::entities::wfc::WfcContent::new(&wfc, iso::terrain::WORLD_SEED),
         &claimed,
         &mut iso::grid::SpatialIndex::new(),
-        iso::terrain::WORLD_SEED,
     );
     let second = iso::entities::wfc::solve_chunk(
         &columns,
         &entities,
-        &wfc,
+        iso::entities::wfc::WfcContent::new(&wfc, iso::terrain::WORLD_SEED),
         &claimed,
         &mut iso::grid::SpatialIndex::new(),
-        iso::terrain::WORLD_SEED,
     );
     let ids: Vec<_> = first.iter().map(|e| e.id()).collect();
     let ids_again: Vec<_> = second.iter().map(|e| e.id()).collect();

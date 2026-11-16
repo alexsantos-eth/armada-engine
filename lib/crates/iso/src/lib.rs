@@ -14,6 +14,7 @@ pub mod player;
 pub mod projection;
 pub mod scene_order;
 pub mod services;
+pub mod settlements;
 pub mod simulation;
 pub mod terrain;
 pub mod testbed;

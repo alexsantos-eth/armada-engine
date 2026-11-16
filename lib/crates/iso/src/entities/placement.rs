@@ -110,6 +110,9 @@ pub struct PlacementContent<'a> {
     pub biomes: Option<&'a WorldBiomes>,
     /// The wfc catalogue for everything else; `None` falls back to the legacy density roll.
     pub wfc: Option<&'a crate::entities::wfc::WfcCatalog>,
+    /// The settlements whose semantic zones reshape what grows where; `None` grows a zoneless
+    /// world, where every column reads the weights and the tree coverage as written.
+    pub settlements: Option<&'a crate::settlements::WorldSettlements>,
     /// The seed the solver's rolls draw from.
     pub seed: u64,
 }
@@ -133,16 +136,20 @@ pub fn place_entities_with_biomes(
         PlacementContent {
             biomes,
             wfc: None,
+            settlements: None,
             seed: crate::terrain::WORLD_SEED,
         },
     )
 }
 
-/// Places entities over `columns`: the biome pass first, then the wfc solver for the rest.
+/// Places entities over `columns`: the biome pass first, then the wfc solver for the rest, and
+/// last the greenery of any settlement covering them.
 ///
-/// The biome pass behaves exactly as [`place_entities_with_biomes`]; with a wfc catalogue,
-/// every blueprint no biome claims grows out of the solver instead of the density roll. Both
-/// passes share one spatial index, so wfc entities never overlap biome trees or each other.
+/// The biome pass behaves exactly as [`place_entities_with_biomes`] out in the wild, and skips
+/// every column a settlement covers: inside a village the greenery is not the biome's to plant,
+/// it is planted last, once the buildings stand, so it can hug their walls and keep their
+/// façades clear. With a wfc catalogue, every blueprint no biome claims grows out of the solver
+/// instead of the density roll. Every pass shares one spatial index, so nothing ever overlaps.
 #[must_use = "place entities before discovering more chunks"]
 pub fn place_entities_with_content(
     columns: &[TerrainColumn],
@@ -166,6 +173,10 @@ pub fn place_entities_with_content(
 
     // The biome and its species are the same for every blueprint in this pass; sample once per column.
     let world = biomes;
+    let zone_of = content.settlements.map(|settlements| {
+        let coords: Vec<WorldCoord> = columns.iter().map(|column| column.coord).collect();
+        settlements.zones_over(&coords)
+    });
     let mut biome_of = Vec::with_capacity(columns.len());
     let mut formation_of = Vec::with_capacity(columns.len());
     for column in columns {
@@ -206,6 +217,9 @@ pub fn place_entities_with_content(
                     if !allowed {
                         continue;
                     }
+                    if zone_of.as_ref().is_some_and(|zones| zones[index].is_some()) {
+                        continue;
+                    }
                 }
                 _ => {
                     if rules.density > 1
@@ -243,12 +257,28 @@ pub fn place_entities_with_content(
         let mut grown = crate::entities::wfc::solve_chunk(
             columns,
             catalog,
-            wfc,
+            crate::entities::wfc::WfcContent::new(wfc, content.seed)
+                .in_settlements(content.settlements),
             &claimed,
             &mut placed,
-            content.seed,
         );
         entities.append(&mut grown);
+    }
+
+    if let Some(settlements) = content.settlements {
+        let standing = entities.clone();
+        let mut greens = crate::entities::greenery::plant_greens(
+            columns,
+            catalog,
+            &standing,
+            &mut placed,
+            crate::entities::greenery::GreensContent {
+                settlements,
+                biomes,
+                seed: content.seed,
+            },
+        );
+        entities.append(&mut greens);
     }
 
     PlacementResult {
@@ -282,7 +312,7 @@ pub fn placement_by_hand(
 }
 
 /// Validates one instance of `blueprint` anchored on `column`.
-fn find_placement(
+pub(crate) fn find_placement(
     anchor: WorldCoord,
     blueprint: &EntityBlueprint,
     context: &mut PlacementContext,

@@ -96,6 +96,17 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`MAX_GRID_COORD`](coords.rs#L6) — Define el valor absoluto máximo admitido para cada coordenada de rejilla.
   - Declaración: `pub const MAX_GRID_COORD: i32 = (1 << 20) - 1;`
 
+### `poisson.rs`
+
+#### Funciones y métodos
+
+- [`new`](poisson.rs#L35) — Construye un esparcido azul del mundo de `seed` sobre la corriente `label`, con un candidato por bloque de `step` columnas y un alcance máximo de `max_radius`.
+  - Firma: `pub fn new(seed: u64, label: &str, step: i32, max_radius: f64) -> Self {`
+
+- [`samples_in`](poisson.rs#L70) — Las columnas de `area` que el esparcido conserva, en orden de bloque; `radius_at` da el hueco exigido alrededor de cada columna, o `None` para una columna rechazada.
+  - Firma: `pub fn samples_in( &self, area: WorldRect, radius_at: impl Fn(WorldCoord) -> Option<f64>, ) -> Vec<WorldCoord> {`
+
+
 ### `spatial_index.rs`
 
 #### Funciones y métodos
@@ -177,6 +188,19 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 - [`SPAN`](coords.rs#L7) — Capacidad de cada eje en la clave empaquetada: `2 * MAX_GRID_COORD + 1`.
   - Declaración: `const SPAN: u64 = (2 * MAX_GRID_COORD + 1) as u64;`
+
+### `poisson.rs`
+
+#### Funciones internas
+
+- [`candidate_of`](poisson.rs#L45) — La columna candidata del bloque `(bx, by)` y la fuerza con que la sostiene, ambas derivadas de sus propias coordenadas.
+  - Firma: `fn candidate_of(&self, bx: i32, by: i32) -> Candidate {`
+
+- [`yields_to`](poisson.rs#L62) — Si `one` cede ante `other`: gana la prioridad mayor y el empate lo rompe la propia columna.
+  - Firma: `fn yields_to(one: &Candidate, other: &Candidate) -> bool {`
+
+- [`stands`](poisson.rs#L100) — Si un candidato se mantiene: ningún candidato más fuerte dentro del mayor de los dos radios.
+  - Firma: `fn stands( &self, candidate: Candidate, reach: i32, radius_at: &impl Fn(WorldCoord) -> Option<f64>, ) -> bool {`
 
 ### `spatial_index.rs`
 

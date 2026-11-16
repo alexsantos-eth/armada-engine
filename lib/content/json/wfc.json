@@ -32,6 +32,17 @@
     "grove": [
       "grove_x",
       "grove_y"
+    ],
+    "boathouse": [
+      "boathouse_x",
+      "boathouse_y"
+    ],
+    "runestones": [
+      "runestone",
+      "runestone_pair",
+      "runestone_tall",
+      "runestone_circle",
+      "runestone_fallen"
     ]
   },
   "maxPerChunk": {
@@ -39,6 +50,10 @@
     "stave_temple": 1,
     "stone_shrine": 1,
     "watchtower": 2,
-    "grove": 2
+    "grove": 2,
+    "market_stall": 6,
+    "smithy": 1,
+    "healer_hut": 1,
+    "boathouse": 2
   }
 }

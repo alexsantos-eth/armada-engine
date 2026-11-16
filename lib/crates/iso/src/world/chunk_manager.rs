@@ -11,6 +11,7 @@ use crate::scene_order::{
     CHUNK_KEEP_RADIUS, CHUNK_LOAD_RADIUS, CHUNK_PREFETCH_RADIUS, CHUNKS_HIDDEN_PER_FRAME,
     CHUNKS_LOADED_PER_FRAME, CHUNKS_SHOWN_PER_FRAME,
 };
+use crate::settlements::WorldSettlements;
 use crate::terrain::TerrainGenerator;
 use crate::world::TerrainWorld;
 
@@ -65,6 +66,8 @@ pub struct ChunkManager {
     biomes: Option<WorldBiomes>,
     /// The wfc catalogue for everything else; `None` falls back to the density roll.
     wfc: Option<WfcCatalog>,
+    /// The settlements whose zones reshape what grows where; `None` grows a zoneless world.
+    settlements: Option<WorldSettlements>,
 }
 
 impl ChunkManager {
@@ -90,6 +93,7 @@ impl ChunkManager {
             wanted_prefetch: Vec::new(),
             biomes: None,
             wfc: None,
+            settlements: None,
         }
     }
 
@@ -108,6 +112,17 @@ impl ChunkManager {
     /// discovery; chunks already placed keep their entities until they are unloaded.
     pub fn set_wfc(&mut self, wfc: WfcCatalog) {
         self.wfc = Some(wfc);
+    }
+
+    /// Hands the manager the world's settlements. Called once at boot, before the first
+    /// discovery; the entities of chunks already placed keep the zones they grew under.
+    pub fn set_settlements(&mut self, settlements: WorldSettlements) {
+        self.settlements = Some(settlements);
+    }
+
+    /// The world's settlements, when the content shipped them.
+    pub fn settlements(&self) -> Option<&WorldSettlements> {
+        self.settlements.as_ref()
     }
 
     /// The world's biomes, when the content shipped them: views read them to dress or move
@@ -168,8 +183,11 @@ impl ChunkManager {
                 coord,
                 columns,
                 self.catalog.clone(),
-                self.biomes.clone(),
-                self.wfc.clone(),
+                super::placement_job::ChunkContent {
+                    biomes: self.biomes.clone(),
+                    wfc: self.wfc.clone(),
+                    settlements: self.settlements.clone(),
+                },
             ));
         }
 

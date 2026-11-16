@@ -130,6 +130,20 @@ an edit on [-118, -72] changed nothing: the cell is Ground at elevation 1
 
 Con eso se corrige la escena sin abrir el juego: ahí hacía falta hierba.
 
+## Escenas guardadas
+
+En `lib/scenes/` viven las escenas que sirven para comprobar algo más de una vez. Hoy hay dos:
+
+- `scene.json` — el ejemplo del formato, sobre un chunk plano.
+- `village-greens.json` — un poblado completo con su vegetación: zona central limpia, patios detrás de las casas y el cinturón de arboleda. Centrada en `(267, 204)` con la semilla del juego, `zoom` 0,45 para que entren varios chunks. Es la escena con la que se miran los cambios de `iso::settlements` y de `iso::entities::greenery`.
+
+```sh
+cd lib
+scripts/run-scene.sh scenes/village-greens.json   # deja scenes/shots/village-greens.png
+```
+
+Las capturas y el `report.json` caen en `scenes/shots/`, que no se commitea.
+
 ## Determinismo
 
 Mientras hay guion, el fotograma cuenta siempre como un paso fijo de la simulación, no como lo

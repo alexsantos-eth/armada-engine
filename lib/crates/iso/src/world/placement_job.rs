@@ -14,6 +14,7 @@ use crate::entities::{
     wfc::WfcCatalog,
 };
 use crate::grid::ChunkCoord;
+use crate::settlements::WorldSettlements;
 use crate::terrain::{TerrainColumn, WORLD_SEED};
 
 use super::terrain_world::connect_roads_into;
@@ -25,20 +26,29 @@ pub(crate) struct PlacementOutcome {
     pub(crate) entities: Vec<Entity>,
 }
 
+/// The content one chunk's placement reads: the world's biomes, its wfc weights and the
+/// settlement zones that reshape them.
+#[derive(Clone)]
+pub(crate) struct ChunkContent {
+    pub(crate) biomes: Option<WorldBiomes>,
+    pub(crate) wfc: Option<WfcCatalog>,
+    pub(crate) settlements: Option<WorldSettlements>,
+}
+
 /// Places entities on `columns` and materializes the roads for them, inline.
 fn place(
     mut columns: Vec<TerrainColumn>,
     catalog: &EntityCatalog,
-    biomes: Option<&WorldBiomes>,
-    wfc: Option<&WfcCatalog>,
+    content: &ChunkContent,
 ) -> PlacementOutcome {
     let result = place_entities_with_content(
         &columns,
         catalog,
         PlacementRules::default(),
         PlacementContent {
-            biomes,
-            wfc,
+            biomes: content.biomes.as_ref(),
+            wfc: content.wfc.as_ref(),
+            settlements: content.settlements.as_ref(),
             seed: WORLD_SEED,
         },
     );
@@ -72,11 +82,9 @@ impl PlacementJob {
         coord: ChunkCoord,
         columns: Vec<TerrainColumn>,
         catalog: EntityCatalog,
-        biomes: Option<WorldBiomes>,
-        wfc: Option<WfcCatalog>,
+        content: ChunkContent,
     ) -> Self {
-        let handle =
-            std::thread::spawn(move || place(columns, &catalog, biomes.as_ref(), wfc.as_ref()));
+        let handle = std::thread::spawn(move || place(columns, &catalog, &content));
         Self {
             coord,
             state: State::Thread(handle),
@@ -89,17 +97,11 @@ impl PlacementJob {
         coord: ChunkCoord,
         columns: Vec<TerrainColumn>,
         catalog: EntityCatalog,
-        biomes: Option<WorldBiomes>,
-        wfc: Option<WfcCatalog>,
+        content: ChunkContent,
     ) -> Self {
         Self {
             coord,
-            state: State::Inline(Some(place(
-                columns,
-                &catalog,
-                biomes.as_ref(),
-                wfc.as_ref(),
-            ))),
+            state: State::Inline(Some(place(columns, &catalog, &content))),
         }
     }
 

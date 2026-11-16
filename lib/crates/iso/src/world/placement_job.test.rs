@@ -89,14 +89,16 @@ fn biomes(seed: u64, catalog: &EntityCatalog) -> WorldBiomes {
     WorldBiomes::new(seed, &biomes)
 }
 
+fn content() -> ChunkContent {
+    ChunkContent {
+        biomes: Some(biomes(1, &catalog())),
+        wfc: None,
+        settlements: None,
+    }
+}
+
 fn job(chunk: crate::grid::ChunkCoord) -> PlacementJob {
-    PlacementJob::spawn(
-        chunk,
-        grass_columns(chunk),
-        catalog(),
-        Some(biomes(1, &catalog())),
-        None,
-    )
+    PlacementJob::spawn(chunk, grass_columns(chunk), catalog(), content())
 }
 
 #[test]
@@ -154,21 +156,10 @@ fn an_inline_placement_is_identical_to_a_spawned_one() {
     let chunk = crate::grid::ChunkCoord { cx: 0, cy: 0 };
 
     let grass = grass_columns(chunk);
-    let from_worker = place(
-        grass_columns(chunk),
-        &catalog(),
-        Some(&biomes(1, &catalog())),
-        None,
-    );
-    let from_thread = PlacementJob::spawn(
-        chunk,
-        grass_columns(chunk),
-        catalog(),
-        Some(biomes(1, &catalog())),
-        None,
-    )
-    .take_outcome(true)
-    .expect("threaded outcome");
+    let from_worker = place(grass_columns(chunk), &catalog(), &content());
+    let from_thread = PlacementJob::spawn(chunk, grass_columns(chunk), catalog(), content())
+        .take_outcome(true)
+        .expect("threaded outcome");
 
     assert_eq!(grass.len(), from_worker.columns.len());
     assert_eq!(from_worker.entities.len(), from_thread.entities.len());
@@ -186,14 +177,8 @@ fn an_inline_placement_is_identical_to_a_spawned_one() {
 #[test]
 fn take_outcome_without_waiting_leaves_the_job_running() {
     let chunk = crate::grid::ChunkCoord { cx: 0, cy: 0 };
-    let outcome = PlacementJob::spawn(
-        chunk,
-        grass_columns(chunk),
-        catalog(),
-        Some(biomes(1, &catalog())),
-        None,
-    )
-    .take_outcome(true);
+    let outcome =
+        PlacementJob::spawn(chunk, grass_columns(chunk), catalog(), content()).take_outcome(true);
 
     assert!(outcome.is_some());
 }
@@ -201,13 +186,7 @@ fn take_outcome_without_waiting_leaves_the_job_running() {
 #[test]
 fn a_job_that_is_taken_cannot_be_taken_again() {
     let chunk = crate::grid::ChunkCoord { cx: 0, cy: 0 };
-    let mut job = PlacementJob::spawn(
-        chunk,
-        grass_columns(chunk),
-        catalog(),
-        Some(biomes(1, &catalog())),
-        None,
-    );
+    let mut job = PlacementJob::spawn(chunk, grass_columns(chunk), catalog(), content());
 
     assert!(job.take_outcome(true).is_some());
     assert!(job.take_outcome(true).is_none());

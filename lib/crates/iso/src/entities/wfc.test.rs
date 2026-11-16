@@ -217,7 +217,13 @@ fn the_solver_only_grows_eligible_blueprints() {
     let claimed = claimed_tree_mask(&entities);
     let columns = grass_columns(24);
     let mut placed = crate::grid::SpatialIndex::new();
-    let grown = solve_chunk(&columns, &entities, &wfc, &claimed, &mut placed, 99);
+    let grown = solve_chunk(
+        &columns,
+        &entities,
+        WfcContent::new(&wfc, 99),
+        &claimed,
+        &mut placed,
+    );
     assert!(!grown.is_empty(), "the chunk must grow something");
     for entity in &grown {
         assert!(
@@ -244,18 +250,16 @@ fn the_solver_is_deterministic() {
     let first = solve_chunk(
         &columns,
         &entities,
-        &wfc,
+        WfcContent::new(&wfc, 99),
         &claimed,
         &mut crate::grid::SpatialIndex::new(),
-        99,
     );
     let second = solve_chunk(
         &columns,
         &entities,
-        &wfc,
+        WfcContent::new(&wfc, 99),
         &claimed,
         &mut crate::grid::SpatialIndex::new(),
-        99,
     );
     let ids: Vec<_> = first.iter().map(|e| e.id()).collect();
     let ids_again: Vec<_> = second.iter().map(|e| e.id()).collect();
@@ -263,10 +267,9 @@ fn the_solver_is_deterministic() {
     let other = solve_chunk(
         &columns,
         &entities,
-        &wfc,
+        WfcContent::new(&wfc, 100),
         &claimed,
         &mut crate::grid::SpatialIndex::new(),
-        100,
     );
     let ids_other: Vec<_> = other.iter().map(|e| e.id()).collect();
     assert_ne!(ids, ids_other);
@@ -281,10 +284,9 @@ fn the_solver_keeps_same_type_instances_apart() {
     let grown = solve_chunk(
         &columns,
         &entities,
-        &wfc,
+        WfcContent::new(&wfc, 7),
         &claimed,
         &mut crate::grid::SpatialIndex::new(),
-        7,
     );
     for a in &grown {
         for b in &grown {
@@ -321,7 +323,13 @@ fn the_solver_never_overlaps_entities_already_placed() {
         EntityLengthAxis::X,
     );
     assert!(placed.insert(rock, &footprint).is_ok());
-    let grown = solve_chunk(&columns, &entities, &wfc, &claimed, &mut placed, 11);
+    let grown = solve_chunk(
+        &columns,
+        &entities,
+        WfcContent::new(&wfc, 11),
+        &claimed,
+        &mut placed,
+    );
     for entity in &grown {
         assert!(
             !(entity.x() == 5 && entity.y() == 5),
@@ -341,10 +349,9 @@ fn a_huge_empty_weight_grows_nothing() {
     let grown = solve_chunk(
         &columns,
         &entities,
-        &wfc,
+        WfcContent::new(&wfc, 3),
         &claimed,
         &mut crate::grid::SpatialIndex::new(),
-        3,
     );
     assert!(grown.is_empty());
 }
@@ -403,10 +410,9 @@ fn a_pier_grows_at_the_water_edge() {
     let grown = solve_chunk(
         &columns,
         &entities,
-        &wfc,
+        WfcContent::new(&wfc, 42),
         &claimed,
         &mut crate::grid::SpatialIndex::new(),
-        42,
     );
     assert!(
         grown.iter().any(|e| e.type_() == "pier_x_reverse"),
@@ -505,10 +511,9 @@ fn the_solver_respects_max_per_chunk_across_a_family() {
     let grown = solve_chunk(
         &columns,
         &entities(),
-        &wfc,
+        WfcContent::new(&wfc, 5),
         &claimed_tree_mask(&entities()),
         &mut crate::grid::SpatialIndex::new(),
-        5,
     );
     let houses = grown.iter().filter(|e| e.type_() == "house").count();
     let bushes = grown.iter().filter(|e| e.type_() == "bush").count();
@@ -536,10 +541,9 @@ fn the_solver_respects_a_solo_blueprint_cap() {
     let grown = solve_chunk(
         &columns,
         &entities,
-        &wfc,
+        WfcContent::new(&wfc, 9),
         &claimed_tree_mask(&entities),
         &mut crate::grid::SpatialIndex::new(),
-        9,
     );
     let houses = grown.iter().filter(|e| e.type_() == "house").count();
     assert_eq!(houses, 3);
@@ -547,4 +551,116 @@ fn the_solver_respects_a_solo_blueprint_cap() {
 fn parsed2(json: &str) -> WfcCatalog {
     let entities = entities();
     parse_wfc(json, &entities, None).expect("valid wfc content")
+}
+
+/// A settlement field whose zones forbid `house` outside a village and demand it inside.
+fn settlements_of(zone_weights: &str, wilderness: &str) -> crate::settlements::WorldSettlements {
+    let entities = entities();
+    let wfc = parse_wfc(
+        r#"{ "schemaVersion": 2, "emptyWeight": 1.0,
+             "weights": { "house": 1.0, "bush": 1.0, "large_rock": 1.0,
+                          "pier_x_reverse": 1.0 } }"#,
+        &entities,
+        None,
+    )
+    .expect("valid wfc content");
+    let json = format!(
+        r#"{{
+          "schemaVersion": 1,
+          "spacing": 60,
+          "chance": 1.0,
+          "radius": {{ "min": 25.0, "max": 25.0 }},
+          "wilderness": {{ "default": 0.0, "greens": 0.0, "weights": {wilderness} }},
+          "greens": {{ "spacing": 6.0, "tight": 2.0, "near": 3.0, "far": 9.0, "front": 2,
+                       "patio": {{ "chance": 0.7, "min": 2, "max": 4, "reach": 2, "groveChance": 0.3 }} }},
+          "zones": [
+            {{ "id": "center", "seeds": 1, "ring": [0.0, 0.0], "pull": 1.0,
+               "default": 0.0, "greens": 0.0, "weights": {zone_weights} }}
+          ]
+        }}"#
+    );
+    let catalog = crate::settlements::parse_settlements(&json, &entities, &wfc)
+        .expect("the fixture settlements validate");
+    crate::settlements::WorldSettlements::new(99, &catalog)
+}
+
+#[test]
+fn a_zone_multiplier_of_zero_keeps_a_blueprint_out_of_the_zone() {
+    let entities = entities();
+    let wfc = parsed(
+        r#"{ "schemaVersion": 2, "emptyWeight": 1.0,
+                          "weights": { "house": 50.0 } }"#,
+    );
+    let settlements = settlements_of(r#"{ "house": 0.0 }"#, r#"{ "house": 1.0 }"#);
+    let columns = grass_columns(24);
+    let grown = solve_chunk(
+        &columns,
+        &entities,
+        WfcContent::new(&wfc, 4).in_settlements(Some(&settlements)),
+        &claimed_tree_mask(&entities),
+        &mut crate::grid::SpatialIndex::new(),
+    );
+    for entity in &grown {
+        assert_eq!(
+            settlements.zone_at(entity.x(), entity.y()),
+            None,
+            "{} grew in a zone that forbids it",
+            entity.type_()
+        );
+    }
+    assert!(
+        !grown.is_empty(),
+        "the wilderness must still grow its houses"
+    );
+}
+
+#[test]
+fn a_zone_multiplier_concentrates_a_blueprint_inside_the_zone() {
+    let entities = entities();
+    let wfc = parsed(
+        r#"{ "schemaVersion": 2, "emptyWeight": 400.0,
+                          "weights": { "house": 1.0 } }"#,
+    );
+    let settlements = settlements_of(r#"{ "house": 300.0 }"#, r#"{ "house": 0.0 }"#);
+    let columns = grass_columns(24);
+    let grown = solve_chunk(
+        &columns,
+        &entities,
+        WfcContent::new(&wfc, 4).in_settlements(Some(&settlements)),
+        &claimed_tree_mask(&entities),
+        &mut crate::grid::SpatialIndex::new(),
+    );
+    assert!(!grown.is_empty(), "the zone must grow its houses");
+    for entity in &grown {
+        assert!(
+            settlements.zone_at(entity.x(), entity.y()).is_some(),
+            "{} grew out in the wild, where the profile forbids it",
+            entity.type_()
+        );
+    }
+}
+
+#[test]
+fn without_a_settlement_field_the_weights_are_the_catalogue_s_own() {
+    let entities = entities();
+    let wfc = parsed(wfc_json());
+    let columns = grass_columns(24);
+    let bare = solve_chunk(
+        &columns,
+        &entities,
+        WfcContent::new(&wfc, 6),
+        &claimed_tree_mask(&entities),
+        &mut crate::grid::SpatialIndex::new(),
+    );
+    let explicit = solve_chunk(
+        &columns,
+        &entities,
+        WfcContent::new(&wfc, 6).in_settlements(None),
+        &claimed_tree_mask(&entities),
+        &mut crate::grid::SpatialIndex::new(),
+    );
+    fn ids(grown: &[Entity]) -> Vec<&str> {
+        grown.iter().map(|entity| entity.id()).collect()
+    }
+    assert_eq!(ids(&bare), ids(&explicit));
 }

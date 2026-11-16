@@ -240,6 +240,12 @@ impl Game {
         let wfc_catalog = iso::entities::wfc::parse_wfc(wfc_json, &catalog, Some(&biomes_catalog))
             .expect("wfc content validates");
         let world_biomes = iso::biomes::WorldBiomes::new(terrain_config.seed, &biomes_catalog);
+        let settlements_json = include_str!("../../content/json/settlements.json");
+        let settlements_catalog =
+            iso::settlements::parse_settlements(settlements_json, &catalog, &wfc_catalog)
+                .expect("settlements content validates");
+        let world_settlements =
+            iso::settlements::WorldSettlements::new(terrain_config.seed, &settlements_catalog);
 
         let (terrain_look, missing_tops) = TerrainLook::new(
             terrain_config.seed,
@@ -260,6 +266,7 @@ impl Game {
         let mut manager = ChunkManager::with_radii(generator, catalog, CHUNK_RADII);
         manager.set_biomes(world_biomes);
         manager.set_wfc(wfc_catalog);
+        manager.set_settlements(world_settlements);
 
         let blank = scene.map_or(route.edits_the_world(), |scene| {
             scene.world == iso::testbed::SceneWorld::Blank

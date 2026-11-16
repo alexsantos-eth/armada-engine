@@ -2,8 +2,10 @@
 
 pub mod cell_map;
 pub mod coords;
+pub mod poisson;
 pub mod spatial_index;
 
 pub use cell_map::*;
 pub use coords::*;
+pub use poisson::*;
 pub use spatial_index::*;
