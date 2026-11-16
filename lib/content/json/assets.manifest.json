@@ -14,7 +14,7 @@
       "source": "/assets/building/block_boathouse_1x2.png",
       "dataTiles": "1x2x2",
       "frame": {
-        "x": 2342,
+        "x": 2340,
         "y": 1,
         "width": 476,
         "height": 351
@@ -39,7 +39,7 @@
       "source": "/assets/building/block_boathouse_2x1.png",
       "dataTiles": "2x1x2",
       "frame": {
-        "x": 2819,
+        "x": 2817,
         "y": 1,
         "width": 476,
         "height": 331
@@ -92,7 +92,7 @@
         "x": 3182,
         "y": 1015,
         "width": 292,
-        "height": 242
+        "height": 246
       },
       "frames": null,
       "anchor": {
@@ -101,9 +101,9 @@
       },
       "ink": {
         "x": -0.45625,
-        "y": -0.52373,
+        "y": -0.53621,
         "width": 0.9125,
-        "height": 0.755011
+        "height": 0.76749
       },
       "colorVariants": 1,
       "sway": null
@@ -114,10 +114,10 @@
       "source": "/assets/building/block_mead_hall_1x2.png",
       "dataTiles": "1x2x2",
       "frame": {
-        "x": 1068,
+        "x": 292,
         "y": 1,
         "width": 478,
-        "height": 419
+        "height": 431
       },
       "frames": null,
       "anchor": {
@@ -126,9 +126,9 @@
       },
       "ink": {
         "x": -0.496875,
-        "y": -1.062862,
+        "y": -1.100373,
         "width": 1.49375,
-        "height": 1.309736
+        "height": 1.347247
       },
       "colorVariants": 1,
       "sway": null
@@ -139,10 +139,10 @@
       "source": "/assets/building/block_mead_hall_2x1.png",
       "dataTiles": "2x1x2",
       "frame": {
-        "x": 589,
+        "x": 1068,
         "y": 1,
         "width": 478,
-        "height": 429
+        "height": 421
       },
       "frames": null,
       "anchor": {
@@ -151,9 +151,9 @@
       },
       "ink": {
         "x": -0.996875,
-        "y": -1.094121,
+        "y": -1.069114,
         "width": 1.49375,
-        "height": 1.340995
+        "height": 1.315988
       },
       "colorVariants": 1,
       "sway": null
@@ -289,7 +289,7 @@
       "source": "/assets/building/block_smithy.png",
       "dataTiles": "1x1x2",
       "frame": {
-        "x": 3296,
+        "x": 3294,
         "y": 1,
         "width": 296,
         "height": 310
@@ -314,7 +314,7 @@
       "source": "/assets/building/block_stave_temple.png",
       "dataTiles": "1x1x3",
       "frame": {
-        "x": 292,
+        "x": 771,
         "y": 1,
         "width": 296,
         "height": 431
@@ -342,7 +342,7 @@
         "x": 2890,
         "y": 1015,
         "width": 291,
-        "height": 245
+        "height": 258
       },
       "frames": null,
       "anchor": {
@@ -351,9 +351,9 @@
       },
       "ink": {
         "x": -0.453125,
-        "y": -0.54089,
+        "y": -0.581529,
         "width": 0.909375,
-        "height": 0.765882
+        "height": 0.80652
       },
       "colorVariants": 1,
       "sway": null
@@ -758,7 +758,7 @@
       "source": "/assets/house/block_cottage_tile.png",
       "dataTiles": "1x1x2",
       "frame": {
-        "x": 3593,
+        "x": 3591,
         "y": 1,
         "width": 296,
         "height": 305
@@ -7195,8 +7195,8 @@
       "frame": {
         "x": 1547,
         "y": 1,
-        "width": 397,
-        "height": 357
+        "width": 396,
+        "height": 361
       },
       "frames": null,
       "anchor": {
@@ -7205,9 +7205,9 @@
       },
       "ink": {
         "x": -0.36875,
-        "y": -0.969086,
-        "width": 1.240625,
-        "height": 1.115933
+        "y": -0.984716,
+        "width": 1.2375,
+        "height": 1.128436
       },
       "colorVariants": 1,
       "sway": null
@@ -7218,9 +7218,9 @@
       "source": "/assets/tree/block_grove_2x1.png",
       "dataTiles": "2x1x2",
       "frame": {
-        "x": 1945,
+        "x": 1944,
         "y": 1,
-        "width": 396,
+        "width": 395,
         "height": 355
       },
       "frames": null,
@@ -7231,7 +7231,7 @@
       "ink": {
         "x": -0.86875,
         "y": -0.962835,
-        "width": 1.2375,
+        "width": 1.234375,
         "height": 1.109681
       },
       "colorVariants": 1,
