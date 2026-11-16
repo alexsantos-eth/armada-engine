@@ -267,5 +267,7 @@ se arma con piezas voxel y se renderiza. No llama a ningún modelo y no cuesta n
    binario lleva el manifiesto dentro, y con un atlas nuevo y un binario viejo los sprites
    salen recortados.
 
-`artifacts/iso_vox.py` convierte además cualquier generador de la sección 2 en un `.vox`
-entero, sin pasar por las piezas.
+Las reglas completas (medidas, estilo, paleta, kit, cómo crear piezas) están en la skill
+`armada-voxel-assets`. `artifacts/vox_lib.py` es el núcleo común, y `artifacts/iso_vox.py`
+convierte además cualquier generador de la sección 2 en un `.vox` entero, sin pasar por las
+piezas.

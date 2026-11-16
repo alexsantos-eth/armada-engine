@@ -14,7 +14,7 @@
 import os
 import sys
 
-import iso_vox
+import vox_lib
 
 SCALE = 4
 MODULE = 28
@@ -111,8 +111,8 @@ def tile_volume(tiles):
 
 
 def write(path, boxes, bounds=None):
-    cells = iso_vox.shell(iso_vox.voxelise(boxes, SCALE, bake=False))
-    size, count, _ = iso_vox.write_vox(path, cells, palette=PALETTE, bounds=bounds)
+    cells = vox_lib.shell(vox_lib.voxelise(boxes, SCALE, bake=False))
+    size, count, _ = vox_lib.write_vox(path, cells, palette=PALETTE, bounds=bounds)
     print(f"{os.path.basename(path):34} {size[0]:3} x {size[1]:3} x {size[2]:3}  {count:6} voxels")
 
 
