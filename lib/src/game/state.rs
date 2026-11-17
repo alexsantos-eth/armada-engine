@@ -63,6 +63,12 @@ pub(crate) struct Game {
     pub(crate) manager: ChunkManager,
     pub(crate) archive: ChunkArchive,
     pub(crate) player: iso::player::physics::PlayerState,
+    /// The characters of the chunks on show; born from the seed, never saved.
+    pub(crate) npcs: iso::npc::Npcs,
+    /// Their animation between frames; view state like the player's.
+    pub(crate) npc_views: crate::npc::npc_view::NpcViews,
+    /// The seed of the world in play, for what is born from it after the boot.
+    pub(crate) world_seed: u64,
     pub(crate) camera: Camera,
     pub(crate) camera_focus: CameraFocus,
     pub(crate) stepper: FixedStepper,
@@ -238,6 +244,7 @@ impl Game {
             seed: scene.and_then(|scene| scene.seed).unwrap_or(WORLD_SEED),
             ..TerrainConfig::default()
         };
+        let world_seed = terrain_config.seed;
         let catalog: EntityCatalog =
             serde_json::from_str(catalog_json).expect("entity catalog is valid JSON");
         validate_catalog(&catalog).expect("entity catalog validates");
@@ -367,6 +374,9 @@ impl Game {
             manager,
             archive,
             player,
+            npcs: iso::npc::Npcs::default(),
+            npc_views: crate::npc::npc_view::NpcViews::default(),
+            world_seed,
             camera,
             camera_focus,
             stepper: FixedStepper::new(iso::simulation::StepperOptions {

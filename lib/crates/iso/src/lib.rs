@@ -9,6 +9,7 @@ pub mod entities;
 pub mod grid;
 pub mod lighting;
 pub mod maker;
+pub mod npc;
 pub mod paths;
 pub mod player;
 pub mod projection;

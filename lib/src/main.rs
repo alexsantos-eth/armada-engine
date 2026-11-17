@@ -14,6 +14,7 @@ mod gui;
 mod lighting;
 mod loops;
 mod maker;
+mod npc;
 mod perf;
 mod player;
 mod rendering;

@@ -124,6 +124,31 @@ impl Game {
         self.jetpack
     }
 
+    /// The characters' share of the fixed step: whoever is at home in a chunk on show with its
+    /// entities placed is alive, and everybody alive wanders `ticks` ticks.
+    fn step_npcs(&mut self, ticks: u32) {
+        let manager = &self.manager;
+        let live: Vec<iso::grid::ChunkCoord> = manager
+            .visible_chunks()
+            .into_iter()
+            .filter(|coord| manager.entities_chunk(*coord).is_some())
+            .collect();
+        let ground = ChunkGround { manager };
+        let seed = self.world_seed;
+        self.npcs.sync(&live, |chunk| {
+            iso::npc::spawn_npcs(seed, chunk, &ground, |x, y| {
+                manager
+                    .settlements()
+                    .is_some_and(|world| world.settlement_at(x, y).is_some())
+            })
+        });
+        let player = iso::player::physics::get_player_column(GridPoint {
+            x: self.player.x,
+            y: self.player.y,
+        });
+        self.npcs.step(&ground, player, ticks);
+    }
+
     /// Input, ticks and streaming for one frame. Returns `None` when the player asked to quit
     /// (flushing the save first if there is anything unsaved).
     pub(crate) fn update(&mut self, frame_ms: f64) -> Option<FrameView> {
@@ -183,6 +208,9 @@ impl Game {
                 manager: &self.manager,
             };
             step_player(&mut self.player, &mut ground, ticks);
+            if self.streams {
+                self.step_npcs(ticks);
+            }
             if self.player.feedback.jumps > jumps_before {
                 let air = self.player.feedback.air_jump;
                 self.audio.play(if air {

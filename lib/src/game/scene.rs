@@ -301,6 +301,7 @@ impl Game {
         );
         let chunks_drawn = self.collect_world(view, player, &water);
         let moved = self.collect_player(view, &water);
+        self.collect_npcs(view, &water);
         self.collect_dust(view, moved);
         self.collect_particles(view);
 
@@ -788,6 +789,108 @@ impl Game {
         }
 
         moved
+    }
+
+    /// The characters on show: each one's ground shadow, its pose off the walk or the idle
+    /// sheet, the shadows falling on it and its reflection, laid out like the player's.
+    fn collect_npcs(&mut self, view: &FrameView, water: &WaterField) {
+        let projection = view.projection;
+        let alpha = self.stepper.interpolation_alpha();
+        let phase = self
+            .shadows
+            .as_ref()
+            .map(crate::lighting::shadow_view::ShadowScene::phase)
+            .unwrap_or_else(|| iso::lighting::phase_at(self.clock.tick));
+        self.npc_views.begin();
+        for npc in self.npcs.iter() {
+            let at = npc.render_position(alpha);
+            let column = get_player_column(at);
+            if !self.manager.is_visible(iso::grid::to_chunk_coord(column)) {
+                continue;
+            }
+            let elevation = f64::from(npc.elevation);
+            let feet = player_feet(at, elevation, projection);
+            let Some(idle) = self.atlas.sheet(PLAYER_IDLE_SHEET) else {
+                continue;
+            };
+            let ink = idle.ink.scaled(PLAYER_SCALE);
+            if !SpriteAtlas::on_screen(ink_layout(feet, ink, projection.tile_width)) {
+                continue;
+            }
+            let pose = self.npc_views.advance(npc, at, view.frame_ms, self.sheets);
+            let Some(sheet) = self.atlas.sheet(match pose.sheet {
+                PlayerSheet::Walk => PLAYER_WALK_SHEET,
+                _ => PLAYER_IDLE_SHEET,
+            }) else {
+                continue;
+            };
+            let (texture, frame) = (sheet.texture, sheet.frame(pose.facing, pose.pose));
+            let layout = ink_layout(feet, sheet.ink.scaled(PLAYER_SCALE), projection.tile_width);
+            let key = player_key(
+                column,
+                elevation,
+                player_layer(at, column),
+                projection.tile_height,
+            );
+            let shadow = player_shadow(feet, 0.0, projection, phase.light());
+            let outline = shadow_clip::sheared_ellipse(
+                shadow.centre,
+                shadow.width,
+                shadow.height,
+                shadow.shear,
+                20,
+            );
+            let clip = shadow_clip::ground_diamonds(&outline, elevation, projection, |x, y| {
+                self.manager.column_at(x, y).map(|c| c.elevation)
+            });
+            self.draws.push(SpriteDraw::ground_ellipse(
+                player_key(
+                    column,
+                    elevation,
+                    shadow_view::GROUND_SHADOW_LAYER,
+                    projection.tile_height,
+                ),
+                shadow.centre,
+                shadow.width,
+                shadow.height,
+                shadow.alpha,
+                shadow.shear,
+                clip,
+            ));
+            let shade = self.shadows.as_ref().and_then(|shadows| {
+                let receiver =
+                    shadow_view::receiver_of(layout, feet, (at.x + 0.5, at.y + 0.5), elevation);
+                let home = iso::grid::to_chunk_coord(WorldCoord {
+                    x: receiver.foot.0.floor() as i32,
+                    y: receiver.foot.1.floor() as i32,
+                });
+                let fade = shadows.chunk_fade(home);
+                shadows
+                    .shade_moving(&self.manager, &receiver)
+                    .and_then(|grid| shadow_view::lattice_of(&grid, fade))
+            });
+            if !water.is_empty() {
+                collect_reflection(
+                    ReflectionSprite {
+                        texture,
+                        frame,
+                        layout,
+                        feet,
+                        elevation,
+                        lift: 0.0,
+                    },
+                    Reflected::Standing { turn_at: None },
+                    projection,
+                    |x, y| water.at(x, y),
+                    &mut self.draws,
+                );
+            }
+            self.draws.push(match shade {
+                Some(shade) => SpriteDraw::shaded(key, texture, frame, layout, shade),
+                None => SpriteDraw::whole(key, texture, frame, layout),
+            });
+        }
+        self.npc_views.finish();
     }
 
     /// The dust kicked up by the player's movement.
