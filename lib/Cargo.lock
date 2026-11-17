@@ -281,7 +281,7 @@ dependencies = [
 
 [[package]]
 name = "iso-core"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "image",
  "iso",

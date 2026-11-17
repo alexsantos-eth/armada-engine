@@ -791,8 +791,8 @@ impl Game {
         moved
     }
 
-    /// The characters on show: each one's ground shadow, its pose off the walk or the idle
-    /// sheet, the shadows falling on it and its reflection, laid out like the player's.
+    /// The characters on show: each one's ground shadow, its pose off the walk, idle, climb
+    /// or jump sheet, the shadows falling on it and its reflection, laid out like the player's.
     fn collect_npcs(&mut self, view: &FrameView, water: &WaterField) {
         let projection = view.projection;
         let alpha = self.stepper.interpolation_alpha();
@@ -803,13 +803,13 @@ impl Game {
             .unwrap_or_else(|| iso::lighting::phase_at(self.clock.tick));
         self.npc_views.begin();
         for npc in self.npcs.iter() {
-            let at = npc.render_position(alpha);
+            let rp = npc.render_pose(alpha);
+            let at = GridPoint { x: rp.x, y: rp.y };
             let column = get_player_column(at);
             if !self.manager.is_visible(iso::grid::to_chunk_coord(column)) {
                 continue;
             }
-            let elevation = f64::from(npc.elevation);
-            let feet = player_feet(at, elevation, projection);
+            let feet = player_feet(at, rp.elevation + rp.height, projection);
             let Some(idle) = self.atlas.sheet(PLAYER_IDLE_SHEET) else {
                 continue;
             };
@@ -820,6 +820,8 @@ impl Game {
             let pose = self.npc_views.advance(npc, at, view.frame_ms, self.sheets);
             let Some(sheet) = self.atlas.sheet(match pose.sheet {
                 PlayerSheet::Walk => PLAYER_WALK_SHEET,
+                PlayerSheet::Climb => PLAYER_CLIMB_SHEET,
+                PlayerSheet::Jump => PLAYER_JUMP_SHEET,
                 _ => PLAYER_IDLE_SHEET,
             }) else {
                 continue;
@@ -828,11 +830,12 @@ impl Game {
             let layout = ink_layout(feet, sheet.ink.scaled(PLAYER_SCALE), projection.tile_width);
             let key = player_key(
                 column,
-                elevation,
+                rp.elevation,
                 player_layer(at, column),
                 projection.tile_height,
             );
-            let shadow = player_shadow(feet, 0.0, projection, phase.light());
+            let ground_feet = player_feet(at, rp.elevation, projection);
+            let shadow = player_shadow(ground_feet, rp.height, projection, phase.light());
             let outline = shadow_clip::sheared_ellipse(
                 shadow.centre,
                 shadow.width,
@@ -840,13 +843,13 @@ impl Game {
                 shadow.shear,
                 20,
             );
-            let clip = shadow_clip::ground_diamonds(&outline, elevation, projection, |x, y| {
+            let clip = shadow_clip::ground_diamonds(&outline, rp.elevation, projection, |x, y| {
                 self.manager.column_at(x, y).map(|c| c.elevation)
             });
             self.draws.push(SpriteDraw::ground_ellipse(
                 player_key(
                     column,
-                    elevation,
+                    rp.elevation,
                     shadow_view::GROUND_SHADOW_LAYER,
                     projection.tile_height,
                 ),
@@ -858,8 +861,12 @@ impl Game {
                 clip,
             ));
             let shade = self.shadows.as_ref().and_then(|shadows| {
-                let receiver =
-                    shadow_view::receiver_of(layout, feet, (at.x + 0.5, at.y + 0.5), elevation);
+                let receiver = shadow_view::receiver_of(
+                    layout,
+                    feet,
+                    (at.x + 0.5, at.y + 0.5),
+                    rp.elevation + rp.height,
+                );
                 let home = iso::grid::to_chunk_coord(WorldCoord {
                     x: receiver.foot.0.floor() as i32,
                     y: receiver.foot.1.floor() as i32,
@@ -876,8 +883,8 @@ impl Game {
                         frame,
                         layout,
                         feet,
-                        elevation,
-                        lift: 0.0,
+                        elevation: rp.elevation + rp.height,
+                        lift: rp.height,
                     },
                     Reflected::Standing { turn_at: None },
                     projection,

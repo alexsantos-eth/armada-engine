@@ -65,6 +65,36 @@ pub(crate) fn ground_from(rows: &[&str]) -> CellGround {
     ground
 }
 
+/// Lays a road over `cells`, each a column, its level and whether it is a flight of stairs.
+fn pave(ground: &mut CellGround, cells: &[(i32, i32, i32, bool)]) {
+    for &(x, y, elevation, stairs) in cells {
+        let coord = WorldCoord { x, y };
+        ground.columns.insert(
+            coord,
+            TerrainColumn {
+                coord,
+                elevation,
+                surface: if stairs {
+                    TerrainMaterial::Stairs
+                } else {
+                    TerrainMaterial::Path
+                },
+                walkable: true,
+            },
+        );
+    }
+}
+
+fn walk_out(npc: &mut Npc, ground: &CellGround) -> Vec<NpcPose> {
+    let mut poses = Vec::new();
+    while npc.step.is_some() {
+        step_npc(npc, ground, nobody);
+        poses.push(npc.pose());
+        assert!(poses.len() < 200);
+    }
+    poses
+}
+
 fn cell(x: i32, y: i32) -> WorldCoord {
     WorldCoord { x, y }
 }
@@ -92,34 +122,39 @@ fn stands_only_on_dry_level_free_ground() {
 }
 
 #[test]
-fn never_steps_up_down_into_water_or_past_its_leash() {
-    let ground = ground_from(&["010", "0~0", "000"]);
+fn walks_level_ground_but_not_water_cliffs_or_past_its_leash() {
+    let ground = ground_from(&["020", "0~0", "000"]);
     let npc = ready(cell(0, 0));
-    assert!(!can_npc_step(&npc, (1, 0), &ground, nobody));
-    assert!(can_npc_step(&npc, (0, 1), &ground, nobody));
-    assert!(!can_npc_step(&npc, (1, 1), &ground, nobody));
-    assert!(!can_npc_step(&npc, (-1, 0), &ground, nobody));
+    assert!(plan_npc_step(&npc, (1, 0), &ground, nobody).is_none());
+    assert_eq!(
+        plan_npc_step(&npc, (0, 1), &ground, nobody).map(|step| step.kind),
+        Some(NpcMove::Walk)
+    );
+    assert!(plan_npc_step(&npc, (1, 1), &ground, nobody).is_none());
+    assert!(plan_npc_step(&npc, (-1, 0), &ground, nobody).is_none());
 
     let mut far = ready(cell(0, 0));
     far.home = cell(0, -NPC_LEASH);
-    assert!(can_npc_step(&far, (1, 0), &ground_from(&["00"]), nobody));
-    assert!(!can_npc_step(&far, (0, 1), &ground, nobody));
+    assert!(plan_npc_step(&far, (1, 0), &ground_from(&["00"]), nobody).is_some());
+    assert!(plan_npc_step(&far, (0, 1), &ground, nobody).is_none());
 }
 
 #[test]
-fn a_diagonal_does_not_cut_a_closed_corner() {
+fn a_diagonal_does_not_cut_a_closed_corner_nor_change_level() {
     let open = ground_from(&["00", "00"]);
     let corner = ground_from(&["0T", "00"]);
+    let step_up = ground_from(&["00", "01"]);
     let npc = ready(cell(0, 0));
-    assert!(can_npc_step(&npc, (1, 1), &open, nobody));
-    assert!(!can_npc_step(&npc, (1, 1), &corner, nobody));
+    assert!(plan_npc_step(&npc, (1, 1), &open, nobody).is_some());
+    assert!(plan_npc_step(&npc, (1, 1), &corner, nobody).is_none());
+    assert!(plan_npc_step(&npc, (1, 1), &step_up, nobody).is_none());
 }
 
 #[test]
 fn does_not_step_into_a_taken_cell() {
     let ground = ground_from(&["00"]);
     let npc = ready(cell(0, 0));
-    assert!(!can_npc_step(&npc, (1, 0), &ground, |at| at == cell(1, 0)));
+    assert!(plan_npc_step(&npc, (1, 0), &ground, |at| at == cell(1, 0)).is_none());
 }
 
 #[test]
@@ -140,17 +175,12 @@ fn walks_a_cell_at_its_pace_and_lands_on_the_centre() {
     let ground = ground_from(&["00"]);
     let mut npc = ready(cell(0, 0));
     step_npc(&mut npc, &ground, nobody);
-    assert_eq!(npc.heading, Some((1, 0)));
+    assert_eq!(npc.step.map(|step| step.heading), Some((1, 0)));
     assert_eq!(npc.direction, GridPoint { x: 1.0, y: 0.0 });
     step_npc(&mut npc, &ground, nobody);
     assert!((npc.position().x - NPC_STEP).abs() < 1e-12);
-    assert!((npc.render_position(0.5).x - NPC_STEP / 2.0).abs() < 1e-12);
-    let mut ticks = 1;
-    while npc.heading.is_some() {
-        step_npc(&mut npc, &ground, nobody);
-        ticks += 1;
-        assert!(ticks < 100);
-    }
+    assert!((npc.render_pose(0.5).x - NPC_STEP / 2.0).abs() < 1e-12);
+    let ticks = 1 + walk_out(&mut npc, &ground).len() as i32;
     assert_eq!(ticks, (1.0 / NPC_STEP).ceil() as i32);
     assert_eq!(npc.cell, cell(1, 0));
     assert_eq!(npc.position(), GridPoint { x: 1.0, y: 0.0 });
@@ -167,35 +197,224 @@ fn a_boxed_in_character_waits_and_tries_again() {
 }
 
 #[test]
-fn a_long_wander_stays_level_dry_and_near_home() {
+fn climbs_a_block_one_higher_and_no_more() {
+    let ground = ground_from(&["012"]);
+    let mut npc = ready(cell(0, 0));
+    let step = plan_npc_step(&npc, (1, 0), &ground, nobody).expect("a block one higher");
+    assert_eq!((step.kind, step.rise), (NpcMove::Climb, 1));
+    assert!(plan_npc_step(&ready(cell(0, 0)), (1, 0), &ground_from(&["02"]), nobody).is_none());
+
+    npc.step = Some(step);
+    let poses = walk_out(&mut npc, &ground);
+    assert_eq!((npc.cell, npc.elevation), (cell(1, 0), 1));
+    assert_eq!(npc.pose().elevation, 1.0);
+    let mut before = 0.0;
+    for pose in &poses {
+        assert!(pose.elevation >= before - 1e-12 && pose.elevation <= 1.0 + 1e-12);
+        assert!(pose.x >= -1e-12 && pose.x <= 1.0 + 1e-12);
+        before = pose.elevation;
+    }
+    assert!(
+        poses
+            .iter()
+            .any(|pose| pose.elevation > 0.2 && pose.x < 0.5)
+    );
+}
+
+#[test]
+fn the_pull_of_a_climb_is_the_only_part_that_climbs() {
+    let mut npc = ready(cell(0, 0));
+    npc.step = Some(NpcStep {
+        heading: (1, 0),
+        kind: NpcMove::Climb,
+        rise: 1,
+    });
+    assert_eq!(npc.motion(), NpcMotion::Walking);
+    assert!(npc.climbing().is_none());
+    npc.progress = 0.5;
+    assert_eq!(npc.motion(), NpcMotion::Climbing);
+    assert!(npc.climbing().is_some_and(|pull| pull > 0.0 && pull < 1.0));
+    npc.progress = 0.99;
+    assert_eq!(npc.motion(), NpcMotion::Walking);
+
+    let (start, _, _) = get_npc_climb(0.0);
+    let (end, risen, _) = get_npc_climb(1.0);
+    assert_eq!(start, 0.0);
+    assert!((end - 1.0).abs() < 1e-9 && risen == 1.0);
+}
+
+#[test]
+fn drops_off_a_block_onto_ground_one_lower_and_no_more() {
+    let ground = ground_from(&["10"]);
+    let mut npc = Npc::new(7, cell(0, 0), 1);
+    npc.rest_ticks = 0;
+    let step = plan_npc_step(&npc, (1, 0), &ground, nobody).expect("ground one lower");
+    assert_eq!((step.kind, step.rise), (NpcMove::Drop, -1));
+    let mut high = Npc::new(7, cell(0, 0), 2);
+    high.rest_ticks = 0;
+    assert!(plan_npc_step(&high, (1, 0), &ground_from(&["20"]), nobody).is_none());
+    assert!(plan_npc_step(&npc, (1, 0), &ground_from(&["1~"]), nobody).is_none());
+
+    npc.step = Some(step);
+    let poses = walk_out(&mut npc, &ground);
+    assert_eq!((npc.cell, npc.elevation), (cell(1, 0), 0));
+    assert_eq!(npc.pose().height, 0.0);
+    let mut feet = 1.0;
+    let mut fell = false;
+    for pose in &poses {
+        let now = pose.elevation + pose.height;
+        assert!(now <= feet + 1e-12 && now >= -1e-12);
+        if pose.x < NPC_DROP_EDGE - 1e-9 {
+            assert_eq!(now, 1.0);
+        }
+        fell |= pose.height > 0.0 && pose.elevation == 0.0;
+        feet = now;
+    }
+    assert!(fell);
+    assert_eq!(get_npc_fall(0.0), 0.0);
+    assert_eq!(get_npc_fall(100.0), 1.0);
+}
+
+#[test]
+fn a_falling_character_is_falling_and_drawn_between_ticks_without_a_jump() {
+    let ground = ground_from(&["10"]);
+    let mut npc = Npc::new(7, cell(0, 0), 1);
+    npc.step = plan_npc_step(&npc, (1, 0), &ground, nobody);
+    let mut seen_falling = false;
+    while npc.step.is_some() {
+        let before = npc.pose();
+        step_npc(&mut npc, &ground, nobody);
+        let now = npc.pose();
+        let between = npc.render_pose(0.5);
+        let (low, high) = (now.elevation + now.height, before.elevation + before.height);
+        let feet = between.elevation + between.height;
+        assert!(feet >= low - 1e-12 && feet <= high + 1e-12);
+        assert!(between.height >= -1e-12);
+        seen_falling |= npc.motion() == NpcMotion::Falling;
+    }
+    assert!(seen_falling);
+}
+
+/// A road along `x`: level 0 on columns 0 and 1, a flight on column 2 and level 1 beyond.
+fn flight() -> CellGround {
+    let mut ground = ground_from(&["00011", "00011", "00011"]);
+    pave(
+        &mut ground,
+        &[
+            (0, 1, 0, false),
+            (1, 1, 0, false),
+            (2, 1, 1, true),
+            (3, 1, 1, false),
+            (4, 1, 1, false),
+        ],
+    );
+    ground
+}
+
+#[test]
+fn takes_a_flight_of_stairs_up_through_to_the_cell_beyond() {
+    let ground = flight();
+    let mut npc = ready(cell(1, 1));
+    let step = plan_npc_step(&npc, (1, 0), &ground, nobody).expect("the foot of a flight");
+    assert_eq!((step.kind, step.rise, step.span()), (NpcMove::Stairs, 1, 2));
+    npc.step = Some(step);
+    assert!(npc.claims(cell(2, 1)) && npc.claims(cell(3, 1)));
+    let poses = walk_out(&mut npc, &ground);
+    assert_eq!((npc.cell, npc.elevation), (cell(3, 1), 1));
+    let mut before = 0.0;
+    for pose in &poses {
+        assert!(pose.elevation >= before - 1e-12 && pose.elevation <= 1.0 + 1e-12);
+        if pose.x <= 1.5 {
+            assert_eq!(pose.elevation, 0.0);
+        }
+        if pose.x >= 2.5 {
+            assert_eq!(pose.elevation, 1.0);
+        }
+        before = pose.elevation;
+    }
+    assert!(poses.iter().any(|pose| pose.height > 0.0));
+    assert_eq!(poses.len(), (2.0 / NPC_STEP).ceil() as usize);
+}
+
+#[test]
+fn takes_a_flight_of_stairs_down_from_the_cell_above() {
+    let ground = flight();
+    let mut npc = Npc::new(7, cell(3, 1), 1);
+    npc.rest_ticks = 0;
+    let step = plan_npc_step(&npc, (-1, 0), &ground, nobody).expect("the top of a flight");
+    assert_eq!((step.kind, step.rise), (NpcMove::Stairs, -1));
+    npc.step = Some(step);
+    let poses = walk_out(&mut npc, &ground);
+    assert_eq!((npc.cell, npc.elevation), (cell(1, 1), 0));
+    let mut before = 1.0;
+    for pose in &poses {
+        assert!(pose.elevation <= before + 1e-12 && pose.elevation >= -1e-12);
+        before = pose.elevation;
+    }
+}
+
+#[test]
+fn a_flight_is_only_taken_along_its_axis_and_never_stood_on() {
+    let ground = flight();
+    assert!(!can_npc_stand(&ground, cell(2, 1), None));
+    let beside = ready(cell(2, 0));
+    assert!(plan_npc_step(&beside, (0, 1), &ground, nobody).is_none());
+    let corner = ready(cell(1, 0));
+    assert!(plan_npc_step(&corner, (1, 1), &ground, nobody).is_none());
+    let foot = ready(cell(1, 1));
+    assert!(plan_npc_step(&foot, (1, 0), &ground, |at| at == cell(3, 1)).is_none());
+    assert!(plan_npc_step(&foot, (1, 0), &ground, |at| at == cell(2, 1)).is_none());
+}
+
+#[test]
+fn a_long_wander_stays_dry_on_solid_ground_and_near_home() {
     let rows = [
         "0000000000000000",
         "000~~00000T00000",
         "000~~00000000110",
         "0000000T00000110",
-        "0000000000000000",
-        "00s0000000~~0000",
+        "0000000000022000",
         "0000000000~~0000",
+        "0000300000~~0000",
         "0000000000000000",
     ];
-    let ground = ground_from(&rows);
+    let mut ground = ground_from(&rows);
+    pave(
+        &mut ground,
+        &[(1, 5, 0, false), (2, 5, 1, true), (3, 5, 1, false)],
+    );
     let mut npc = ready(cell(6, 4));
     let mut visited = std::collections::HashSet::new();
-    for _ in 0..20_000 {
+    let mut moves = Vec::new();
+    for _ in 0..60_000 {
+        let before = npc.pose();
         step_npc(&mut npc, &ground, nobody);
         visited.insert(npc.cell);
-        assert!(can_npc_stand(&ground, npc.cell, Some(0)));
+        if let Some(step) = npc.step {
+            moves.push(step.kind);
+        }
+        assert!(can_npc_stand(&ground, npc.cell, Some(npc.elevation)));
+        assert!(npc.elevation <= 2);
         assert!((npc.cell.x - npc.home.x).abs() <= NPC_LEASH);
         assert!((npc.cell.y - npc.home.y).abs() <= NPC_LEASH);
-        let step = npc.position();
-        assert!((step.x - npc.previous.x).hypot(step.y - npc.previous.y) <= NPC_STEP + 1e-9);
+        let now = npc.pose();
+        assert!((now.x - before.x).hypot(now.y - before.y) <= 0.3);
+        assert!(now.height >= 0.0);
     }
     assert!(visited.len() > 20);
+    for kind in [
+        NpcMove::Walk,
+        NpcMove::Climb,
+        NpcMove::Drop,
+        NpcMove::Stairs,
+    ] {
+        assert!(moves.contains(&kind), "never took a {kind:?}");
+    }
 }
 
 #[test]
 fn the_same_character_wanders_the_same_way() {
-    let ground = ground_from(&["00000", "00000", "00000", "00000", "00000"]);
+    let ground = ground_from(&["00000", "00100", "00000", "00000", "00000"]);
     let mut one = Npc::new(42, cell(2, 2), 0);
     let mut other = Npc::new(42, cell(2, 2), 0);
     for _ in 0..2_000 {
@@ -203,5 +422,5 @@ fn the_same_character_wanders_the_same_way() {
         step_npc(&mut other, &ground, nobody);
     }
     assert_eq!(one.cell, other.cell);
-    assert_eq!(one.position(), other.position());
+    assert_eq!(one.pose(), other.pose());
 }

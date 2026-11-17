@@ -1,6 +1,7 @@
 //! Tests for the characters' animation bookkeeping.
 
 use iso::grid::WorldCoord;
+use iso::npc::{NpcMove, NpcStep};
 
 use super::*;
 use crate::player::player_view::{IDLE_DELAY_MS, WALK_STRIDE};
@@ -20,13 +21,17 @@ fn resting() -> Npc {
 
 fn walking() -> Npc {
     let mut npc = resting();
-    npc.heading = Some((1, 0));
+    npc.step = Some(NpcStep {
+        heading: (1, 0),
+        kind: NpcMove::Walk,
+        rise: 0,
+    });
     npc.direction = GridPoint { x: 1.0, y: 0.0 };
     npc
 }
 
 #[test]
-fn a_character_only_ever_walks_or_stands() {
+fn a_character_walks_or_stands_and_never_swims_or_flips() {
     let moment = npc_moment(&walking(), 0.1, 16.0);
     assert_eq!(moment.motion, PlayerMotionType::Walking);
     assert_eq!(moment.moved, 0.1);
@@ -40,8 +45,61 @@ fn a_character_only_ever_walks_or_stands() {
     let sheets = npc_sheets(SHEETS);
     assert_eq!(sheets.walk_poses, Some(8));
     assert_eq!(sheets.idle_poses, Some(8));
-    assert!(sheets.climb_poses.is_none() && sheets.jump_poses.is_none());
+    assert_eq!(sheets.climb_poses, Some(9));
+    assert!(sheets.jump_poses.is_some());
     assert!(sheets.swim_poses.is_none() && sheets.flip_poses.is_none());
+}
+
+fn stepping(kind: NpcMove, rise: i32, progress: f64) -> Npc {
+    let mut npc = Npc::new(3, WorldCoord { x: 4, y: 4 }, 1);
+    npc.step = Some(NpcStep {
+        heading: (1, 0),
+        kind,
+        rise,
+    });
+    npc.direction = GridPoint { x: 1.0, y: 0.0 };
+    npc.progress = progress;
+    npc
+}
+
+#[test]
+fn the_pull_over_a_ledge_plays_the_climb_sheet() {
+    let npc = stepping(NpcMove::Climb, 1, 0.5);
+    let moment = npc_moment(&npc, 0.1, 16.0);
+    assert_eq!(moment.motion, PlayerMotionType::Climbing);
+    assert!(moment.climbing.is_some());
+    let mut views = NpcViews::default();
+    let at = GridPoint { x: 4.4, y: 4.0 };
+    assert_eq!(
+        views.advance(&npc, at, 16.0, SHEETS).sheet,
+        PlayerSheet::Climb
+    );
+}
+
+#[test]
+fn the_fall_off_a_block_plays_the_falling_pose() {
+    let npc = stepping(NpcMove::Drop, -1, 0.7);
+    let moment = npc_moment(&npc, 0.1, 16.0);
+    assert_eq!(moment.motion, PlayerMotionType::Falling);
+    assert_eq!(moment.jump_phase, PlayerJumpPhase::Fall);
+    let mut views = NpcViews::default();
+    let at = GridPoint { x: 4.7, y: 4.0 };
+    let pose = views.advance(&npc, at, 16.0, SHEETS);
+    assert_eq!((pose.sheet, pose.pose), (PlayerSheet::Jump, 3));
+
+    let before_the_edge = stepping(NpcMove::Drop, -1, 0.2);
+    assert_eq!(
+        npc_moment(&before_the_edge, 0.1, 16.0).motion,
+        PlayerMotionType::Walking
+    );
+}
+
+#[test]
+fn a_flight_of_stairs_is_walked() {
+    let npc = stepping(NpcMove::Stairs, 1, 0.5);
+    let moment = npc_moment(&npc, 0.1, 16.0);
+    assert_eq!(moment.motion, PlayerMotionType::Walking);
+    assert!(moment.climbing.is_none());
 }
 
 #[test]
