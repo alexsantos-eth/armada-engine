@@ -7,7 +7,7 @@ tools: Write, Edit, Read, Bash, AskUserQuestion
 > [!WARNING]
 > **OBSOLET — skill retirada (2026-11-16).** El flujo que describe (SVG dibujado a mano por
 > `artifacts/vox/player/iso_lib.py` y pintado con fal.ai en `artifacts/paint/`) ya no existe: los generadores
-> y `paint/` se borraron del repo, y la carpeta `lib/assets-src/` pasó a `lib/assets-legacy/`
+> y `paint/` se borraron del repo, y la carpeta `lib/assets-src/` acabó en `lib/assets/`
 > con los sprites sin migrar como fuente congelada. **No uses esta skill para crear ni cambiar
 > assets.** La fuente oficial de las reglas de assets es la skill `armada-voxel-assets`; las
 > variantes migradas a voxel se rehacen con `artifacts/vox/clay/vox_models.py` o `artifacts/vox/clay/grass_clay.py`.

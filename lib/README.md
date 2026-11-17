@@ -198,10 +198,10 @@ Node —la imagen de build de Netlify trae rustup y cargo preinstalados, el tool
 `rust-toolchain.toml` en la primera ejecución de cargo, y `lib/` no tiene `package.json` ni
 lockfile, así que no se instala ninguna dependencia JS. Quedan en caché el toolchain,
 `~/.cargo/registry` y `lib/target`. El cliente es autocontenido: no lee ni escribe nada fuera de
-`lib/`; los sprites fuente viven en `assets-legacy/` y el fixture de contrato en `crates/iso/tests/`.
+`lib/`; los sprites fuente viven en `assets/` y el fixture de contrato en `crates/iso/tests/`.
 
 Netlify **no** regenera el atlas: eso necesita el empaquetado nativo de `pack_atlas`, así que
-`content/` está commiteado y `build-web.sh` solo lo copia. Si cambiaste algún sprite de `assets/` o `assets-legacy/assets/`, regenera el atlas y commitéalo antes de desplegar:
+`content/` está commiteado y `build-web.sh` solo lo copia. Si cambiaste algún sprite de `assets/`, regenera el atlas y commitéalo antes de desplegar:
 
 ```sh
 scripts/build-atlas.sh
@@ -220,11 +220,11 @@ El patrón de sombras de nubes no se empaqueta —el empaquetador recorta el bor
 cada sprite y un patrón recortado deja de repetir—, así que `content/images/cloud-shadow.png` se commitea horneado tal cual y `build-atlas.sh` solo lo copia. Los assets que ya están migrados a la ruta voxel se rehacen con su generador
 (`../artifacts/vox/clay/vox_models.py`, `../artifacts/vox/clay/grass_clay.py`) y se vuelven a empaquetar; los que
 heredamos del generador SVG anterior (terreno, gradas, tiles de camino, edificios) son sprites
-fijos: cambiarlos es reemplazar el PNG en `assets-legacy/assets/` y volver a empaquetar.
+fijos: cambiarlos es reemplazar el PNG en `assets/` y volver a empaquetar.
 `build.rs` comprueba al compilar que el atlas y
 el manifiesto existen, y el cliente avisa por consola si falta
-`assets-legacy/assets/shadow/white.png`, el cuadrado blanco del que se dibujan las sombras sin
+`assets/shadow/white.png`, el cuadrado blanco del que se dibujan las sombras sin
 cambiar de textura.
 
-`cargo run --bin remeasure_atlas -- content/json/assets.manifest.json content/images/atlas.png assets-legacy`
+`cargo run --bin remeasure_atlas -- content/json/assets.manifest.json content/images/atlas.png .`
 reescribe la geometría de un atlas ya empaquetado sin rasterizar nada.

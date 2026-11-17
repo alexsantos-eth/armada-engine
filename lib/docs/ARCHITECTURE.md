@@ -15,7 +15,7 @@ lib/
   crates/iso/     # crate `iso`: dominio portable y sin Macroquad
   src/            # crate `iso-core`: cliente Macroquad, binario y adaptadores
   content/        # manifiesto de assets, atlas, catálogo de entidades y biomas
-  assets-legacy/   # sprites del atlas: los del flujo voxel y los aún sin migrar (copia local, no se despliega)
+  assets/         # sprites del atlas: los del flujo voxel, el terreno y los dos fijos (nubes y sombra) (copia local, no se despliega)
   packaging/      # fuente e icns del icono del bundle macOS (no se despliega)
   web/            # cargador WASM y archivos web (`/` limpio, `/playground` con GUI, `/maker` editor)
   scenes/         # escenas de ejemplo para las corridas guionizadas (`scene.json`)
@@ -190,7 +190,7 @@ El cliente siembra motas de polen y luciérnagas al aire (`src/effects`): son es
 
 ### Atlas y hojas de sprites
 
-Las texturas del juego salen de los sprites en `assets-legacy/assets/`, no del binario: los PNG mandan; donde aún hay un SVG al lado, describe al mismo sprite (el caso de los heredados del flujo SVG); `scripts/rasterize.py` dibuja cada SVG a su tamaño de pantalla (320 px por tile de mundo) y `pack_atlas` los recorta y coloca en estanterías dentro de `content/images/atlas.png` (4096 px de ancho), con su `content/json/assets.manifest.json`. El recorte coincide con el `InkBox` medido del sprite, y `remeasure_atlas` reescribe la geometría de un atlas ya empaquetado sin rasterizar nada.
+Las texturas del juego salen de los sprites en `assets/`, no del binario: los PNG mandan; `scripts/rasterize.py` los reescala a su tamaño de pantalla (320 px por tile de mundo) y `pack_atlas` los recorta y coloca en estanterías dentro de `content/images/atlas.png` (4096 px de ancho), con su `content/json/assets.manifest.json`. El recorte coincide con el `InkBox` medido del sprite, y `remeasure_atlas` reescribe la geometría de un atlas ya empaquetado sin rasterizar nada.
 
 Las hojas de poses del jugador son rejillas de 16 orientaciones (una fila por punto de la rosa de los dieciséis vientos, sentido antihorario desde el este) por pose, y no caben en el atlas: reciben textura propia (`content/images/player-16_<hoja>.png`), con su rejilla fijada en unos `.json` junto al `.png` de cada hoja en `assets/player-16/` (`cell`, `frames`, `facings`, `poses`), de modo que la pose está en `facing * columns + pose`. Las celdas cortadas nunca caen entre píxeles, y todas comparten el `InkBox` de la plantilla del personaje. La hoja del mortal (`flip.png`, doce columnas de una vuelta entera) es la única con una ventana propia, dos unidades más ancha: una figura dando la vuelta llega algo más lejos de lado que una de pie. Cada hoja lleva su `data-cell`, así que el cliente la coloca con la suya y los pies caen donde los de las demás.
 

@@ -43,8 +43,7 @@ lib/
   src/           # `iso-core`: el cliente. `main.rs` es solo entrada: declara los dominios y entra por `app::run`.
     app, assets, effects, game, gui, lighting, loops, perf, player, rendering, save, services, terrain, touch, water/
   content/       # json/ (entities, biomes, wfc, settlements, assets.manifest), images/ (atlas, cloud-shadow, player-16_*), sounds/ (WAVs)
-  assets/        # sprites del atlas: terreno, jugador y ruta voxel (commiteado; no se despliega)
-  assets-legacy/ # sprites aún sin migrar: edificios, sombra y nubes (commiteado; no se despliega)
+  assets/        # sprites del atlas: terreno, jugador, ruta voxel y los dos fijos (nubes y sombra) (commiteado; no se despliega)
   painted/       # las hojas pre-renderizadas del jugador desde el modelo 3D
   packaging/     # icono del bundle macOS: icon-player.png + game.icns (commiteado; no se despliega)
   scripts/       # build-web.sh (WASM), build-atlas.sh, run-native.sh, build-macos.sh, build-icon.sh
@@ -78,8 +77,8 @@ Contratos clave (el detalle está en el `mod.md` correspondiente):
 - Todo archivo de comportamiento lleva su `*.test.rs` colocalizado, escrito **antes** que la implementación (test first). El test define el comportamiento; el código lo pasa después. Si el comportamiento puro está mezclado con GPU/ventana/IO, se extrae primero la lógica pura y se prueba; la parte no aislable queda documentada en el propio archivo con su comprobación manual. Las pruebas de dominio usan datos construidos a mano o el fixture de contrato.
 - Los **comentarios de documentación** (rustdoc `///`, `//!`) van en **inglés**; la documentación Markdown va en **español**.
 - **Nada de comentarios dentro del código** (`//` explicativos, bloques narrativos entre líneas). Solo rustdoc `///`, `//!` al inicio del módulo, función, tipo o constante; una nota superviviente se reduce a una única línea muy resumida. Los detalles y las decisiones viven en el `mod.md` del dominio, no junto al código.
-- No editar a mano `content/images/atlas.png`, `content/json/assets.manifest.json` ni `content/images/player-16_*.png`: se generan con `scripts/build-atlas.sh` desde `assets/` y `assets-legacy/assets/`.
-- El modelo `.vox` es la fuente; `artifacts/vox/clay/vox_models.py` y `artifacts/vox/clay/grass_clay.py` regeneran los sprites que entran al atlas desde `assets/`. Para los sprites heredados aún sin migrar, el PNG manda. Un sprite nuevo para atlas se comprueba contra `assets.manifest.json` con los tests de `iso::assets`.
+- No editar a mano `content/images/atlas.png`, `content/json/assets.manifest.json` ni `content/images/player-16_*.png`: se generan con `scripts/build-atlas.sh` desde `assets/`.
+- El modelo `.vox` es la fuente; `artifacts/vox/clay/vox_models.py` y `artifacts/vox/clay/grass_clay.py` regeneran los sprites que entran al atlas desde `assets/`. Para los sprites fijos (terreno, gradas, nubes, sombra), el PNG manda. Un sprite nuevo para atlas se comprueba contra `assets.manifest.json` con los tests de `iso::assets`.
 - Nada de estado de sistema como campos sueltos de `World`; nada de reimplementar lo que `iso` ya expone.
 
 ## Versionado

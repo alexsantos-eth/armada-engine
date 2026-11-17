@@ -5,9 +5,9 @@ que se cita aquí está en el repositorio: los modelos y las piezas en `artifact
 rasterización y el empaquetado del atlas en `lib/scripts/`.
 
 El flujo oficial es **la ruta voxel**: el asset se arma con piezas voxel reutilizables y se
-renderiza a sprite. No llama a ningún modelo de imagen y no cuesta nada. Lo que aún no ha
-pasado por esa ruta vive congelado como sprite en `assets-legacy/`, y se migra cuando toca
-rehacerlo.
+renderiza a sprite. No llama a ningún modelo de imagen y no cuesta nada. Lo único que no pasa
+por esa ruta son dos sprites fijos —el patrón de nubes y el téxel blanco de las sombras— y
+viven en `assets/` como cualquier otro sprite.
 
 ```
 artifacts/vox/clay/vox_prefabs.py              las piezas del kit            → artifacts/vox/prefabs/*.vox
@@ -27,8 +27,8 @@ lib/scripts/build-atlas.sh            rasterize.py → pack_atlas → atlas.png 
 cargo build                           el manifiesto va dentro del binario (include_str!)
 ```
 
-Los sprites sin migrar (terreno, gradas, caminos, agua, sombra) son fijos por ahora:
-son el PNG que hay en `assets/` o en `assets-legacy/`, y el PNG manda. Cuando uno migre a
+Los sprites sin migrar a voxel (terreno, gradas, caminos, agua, sombra) son fijos por ahora:
+son el PNG que hay en `assets/`, y el PNG manda. Cuando uno migre a
 voxel, su `.vox` pasa a ser la fuente y su PNG se regenera con `artifacts/vox/clay/vox_models.py --render`
 o `artifacts/vox/clay/grass_clay.py`.
 
@@ -116,19 +116,19 @@ sprite tarda unos treinta segundos en CPU.
 Como cualquier PNG: `scripts/build-atlas.sh` (sección 4), y recompilar: el binario lleva el
 manifiesto dentro, y con un atlas nuevo y un binario viejo los sprites salen recortados.
 
-## 3. Los sprites sin migrar: `assets/` y `assets-legacy/`
+## 3. Los sprites: `assets/`
 
 **Ya no queda ningún SVG en el repositorio**: todos los sprites son PNG y la huella se declara
-en un `.json` al lado cuando no es 1x1x1. Las dos carpetas son:
+en un `.json` al lado cuando no es 1x1x1. Todo vive en una sola carpeta:
 
-- `lib/assets/` — el terreno (hierba, tierra, arena, caminos, agua) y los sprites
-  creados por la ruta voxel: árboles, arbusto, bosquecillos, el bloque de hierba y sus
+- `lib/assets/` — el terreno (hierba, tierra, arena, caminos, agua), los sprites
+  creados por la ruta voxel (árboles, arbusto, bosquecillos, el bloque de hierba y sus
   variantes con adornos, y desde el 2026-11-16 también las piedras rúnicas, las casas y los
-  edificios (`artifacts/vox/clay/vox_buildings.py`, kits 2 y 3). Los generadores de terreno
-  siguen en uso — `artifacts/vox/terrain/terrain_blocks.py` (hierba/tierra/arena) y
+  edificios, `artifacts/vox/clay/vox_buildings.py`, kits 2 y 3) y los dos sprites fijos que no
+  pasan por la ruta voxel: el patrón de nubes (`assets/cloud/cloud-shadow.png`) y el téxel
+  blanco que el agua y las sombras necesitan (`assets/shadow/white.png`). Los generadores de
+  terreno siguen en uso — `artifacts/vox/terrain/terrain_blocks.py` (hierba/tierra/arena) y
   `path_tiles.py` (los 16 tiles de camino) — y escriben PNG directamente.
-- `lib/assets-legacy/` — lo único que aún no pasa por la ruta voxel: el patrón de nubes y el
-  téxel blanco que el agua y las sombras necesitan. Son fijos: su PNG es el sprite.
 
 Las cuatro gradas (`assets/stairs/block_{px,py,nx,ny}.png`) salen de
 `artifacts/vox/clay/vox_stairs.py`. Son terreno, no entidad: la masa son prismas rectos de

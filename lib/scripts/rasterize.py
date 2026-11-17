@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rasterize the game's assets for the atlas packer.
 
-Every asset is a PNG already (the voxel renders, the hand-drawn legacy ones), so this script
+Every asset is a PNG already (the voxel renders and the fixed hand-made ones), so this script
 only: scales each `.png` asset it finds to the shared resolution (the packer then trims each to
 its ink), and cuts every painted player sheet (`painted/player-16_<sheet>.png`, the 3D-model
 renders) cell by cell into `sheets/player-16_<sheet>/<row>-<column>.png` — needing the cell

@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# Builds the asset atlas from the two asset trees:
-#   assets/         the terrain sprites and the player's, the latter generated from the 3D model
-#                   (artifacts/vox/player/);
-#   assets-legacy/  the sprites still pending migration to the voxel flow.
+# Builds the asset atlas from the asset tree:
+#   assets/         the terrain sprites, the player's (generated from the 3D model,
+#                   artifacts/vox/player/), and the fixed ones (clouds, shadows);
 #
 # Steps:
-#   1. Scale every PNG under both roots to the shared resolution with PIL (and cut the player's
+#   1. Scale every PNG under the root to the shared resolution with PIL (and cut the player's
 #      painted sheets cell by cell).
 #   2. Compile and run the pack_atlas tool to pack them into content/images/atlas.png, one
 #      texture per sheet beside it, and generate content/json/assets.manifest.json.
@@ -26,10 +25,10 @@ if [[ "$(uname -s)" == Darwin && -z "${SDKROOT:-}" && -d "$compatible_sdk" ]]; t
   export SDKROOT="$compatible_sdk"
 fi
 
-asset_roots=(assets assets-legacy/assets)
+asset_roots=(assets)
 # The roots pack_atlas looks the sprites up in: the tree's own parent, so the paths it builds
 # (/assets/…) resolve on disk.
-pack_roots=(. assets-legacy)
+pack_roots=(.)
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
@@ -70,6 +69,6 @@ echo "Packing atlas..."
 
 echo "Copying the cloud shadow pattern..."
 mkdir -p content/images
-cp "assets-legacy/assets/cloud/cloud-shadow.png" content/images/cloud-shadow.png
+cp "assets/cloud/cloud-shadow.png" content/images/cloud-shadow.png
 
 echo "Done. Atlas: content/images/atlas.png, sheets: content/player_*.png, clouds: content/images/cloud-shadow.png, manifest: content/json/assets.manifest.json"

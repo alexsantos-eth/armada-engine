@@ -12,7 +12,7 @@ familia. No se llama a ningún modelo de imagen y no cuesta nada.
 
 Este flujo es el oficial. `iso-asset-generator` (SVG dibujado + pintado fal.ai) está obsoleto —
 conservado solo como referencia histórica—; no uses nada del flujo antiguo para un asset nuevo.
-Todas las entidades (naturaleza, piedras rúnicas, casas y edificios) están migradas y viven en `lib/assets/`; en `lib/assets-legacy/` solo quedan el patrón de nubes y el téxel blanco (ver `lib/docs/ASSET-PIPELINE.md`).
+Todas las entidades (naturaleza, piedras rúnicas, casas y edificios) están migradas y viven en `lib/assets/`, junto con el terreno y los dos sprites fijos —el patrón de nubes y el téxel blanco— (ver `lib/docs/ASSET-PIPELINE.md`).
 
 ```
 artifacts/vox/clay/vox_prefabs.py   las piezas del kit            → artifacts/vox/prefabs/*.vox

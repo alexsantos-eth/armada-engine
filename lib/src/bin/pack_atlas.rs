@@ -315,10 +315,10 @@ fn shelve(sizes: impl Iterator<Item = (u32, u32)>) -> Vec<(u32, u32)> {
 
 /// The asset source path a rasterized file's name came from: only the first underscore
 /// splits the folder from the file, so `grass_block_flowers` is `grass/block_flowers`.
-/// The roots are the trees a sprite can come from (the legacy sprites and the player's, which
-/// is generated from the model); the source names the file inside its folder either way, so the
-/// manifest does not say which tree it came from. A sheet names its sidecar; a plain asset its
-/// own raster.
+/// The roots are the trees a sprite can come from (the terrain and fixed sprites, and the
+/// player's, which is generated from the model); the source names the file inside its folder
+/// either way, so the manifest does not say which tree it came from. A sheet names its
+/// sidecar; a plain asset its own raster.
 fn source_path(svg_roots: &[&str], name: &str) -> String {
     let mut parts = name.splitn(2, '_');
     let directory = parts.next().unwrap_or(name);
