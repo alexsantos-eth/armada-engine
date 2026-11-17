@@ -109,55 +109,50 @@ def along(boxes, axis, tiles=2):
 # ------------------------------------------------------------------------- standing stones
 
 def runestone():
-    """runestone: one stone with blue runes on a gravel bed, a small stone and pebbles."""
-    return (floor(3, 3, "gravel")
-            + put("standing_stone", -8, -10, 3, "grey") + face_x("rune", 3, -10, 34, "blue")
-            + face_x("rune", 3, -10, 16, "blue")
-            + put("standing_stone_small", 24, 18, 3, "grey") + face_x("rune", 32, 18, 12, "red")
-            + put("rock_s", -28, 12, 3) + put("pebble_l", 22, -26, 3) + put("pebble_m", -4, 30, 3)
-            + put("moss_patch", 6, 12, 3))
+    """runestone: one stone with blue runes, a small stone and pebbles."""
+    return (put("standing_stone", -8, -10, 0, "grey") + face_x("rune", 3, -10, 31, "blue")
+            + face_x("rune", 3, -10, 13, "blue")
+            + put("standing_stone_small", 24, 18, 0, "grey") + face_x("rune", 32, 18, 9, "red")
+            + put("rock_s", -28, 12, 0) + put("pebble_l", 22, -26, 0) + put("pebble_m", -4, 30, 0)
+            + put("moss_patch", 6, 12, 0))
 
 
 def runestone_tall():
     """runestone_tall: a tall mossy stone with cyan runes, rocks at its foot."""
-    return (floor(3, 3, "cobble")
-            + put("standing_stone_tall", -6, -6, 3, "grey")
-            + face_x("rune", 6, -6, 56, "cyan") + face_x("rune", 6, -6, 38, "cyan")
-            + face_x("rune", 6, -6, 20, "cyan")
-            + put("moss_patch", -6, 3, 48) + put("moss_patch", -8, -6, 81)
-            + put("rock_l", 20, 24, 3) + put("rock_s", -30, 16, 3) + put("pebble_l", 26, -24, 3))
+    return (put("standing_stone_tall", -6, -6, 0, "grey")
+            + face_x("rune", 6, -6, 53, "cyan") + face_x("rune", 6, -6, 35, "cyan")
+            + face_x("rune", 6, -6, 17, "cyan")
+            + put("moss_patch", -6, 3, 45) + put("moss_patch", -8, -6, 78)
+            + put("rock_l", 20, 24, 0) + put("rock_s", -30, 16, 0) + put("pebble_l", 26, -24, 0))
 
 
 def runestone_pair():
     """runestone_pair: a tall grey stone and a shorter pale one, both with red runes."""
-    return (floor(3, 3, "cobble")
-            + put("standing_stone_tall", -14, -12, 3, "grey")
-            + face_x("rune", -2, -12, 56, "red") + face_x("rune", -2, -12, 36, "red")
-            + put("standing_stone", 20, 14, 3, "sand")
-            + face_x("rune", 31, 14, 34, "red") + face_x("rune", 31, 14, 14, "red")
-            + put("moss_patch", -4, 6, 3) + put("rock_s", -26, 26, 3) + put("pebble_m", 28, -22, 3))
+    return (put("standing_stone_tall", -14, -12, 0, "grey")
+            + face_x("rune", -2, -12, 53, "red") + face_x("rune", -2, -12, 33, "red")
+            + put("standing_stone", 20, 14, 0, "sand")
+            + face_x("rune", 31, 14, 31, "red") + face_x("rune", 31, 14, 11, "red")
+            + put("moss_patch", -4, 6, 0) + put("rock_s", -26, 26, 0) + put("pebble_m", 28, -22, 0))
 
 
 def runestone_circle():
-    """runestone_circle: four stones round a bare patch, a low altar stone in the middle."""
-    out = floor(4, 4, "dirt")
-    out += put("standing_stone", -38, -38, 3, "grey") + put("moss_patch", -38, -36, 57)
-    out += put("standing_stone_small", 38, -36, 3, "grey") + face_x("rune", 46, -36, 12, "red")
-    out += put("standing_stone_small", -36, 38, 3, "sand") + face_x("rune", -28, 38, 12, "red")
-    out += put("standing_stone", 38, 38, 3, "sand") + face_x("rune", 49, 38, 30, "red")
-    out += put("moss_patch", 38, 40, 57)
-    return out + put("stone_small", 0, 0, 3, "sand") + put("rune_flat", 0, 0, 16, "red")
+    """runestone_circle: four stones in a ring, a low altar stone in the middle."""
+    out = put("standing_stone", -38, -38, 0, "grey") + put("moss_patch", -38, -36, 54)
+    out += put("standing_stone_small", 38, -36, 0, "grey") + face_x("rune", 46, -36, 9, "red")
+    out += put("standing_stone_small", -36, 38, 0, "sand") + face_x("rune", -28, 38, 9, "red")
+    out += put("standing_stone", 38, 38, 0, "sand") + face_x("rune", 49, 38, 27, "red")
+    out += put("moss_patch", 38, 40, 54)
+    return out + put("stone_small", 0, 0, 0, "sand") + put("rune_flat", 0, 0, 13, "red")
 
 
 def runestone_fallen():
     """runestone_fallen: the broken foot of a stone still standing, the rest lying in front
     with its runes up, moss over both."""
-    return (floor(3, 3, "gravel")
-            + put("standing_stone_small", -16, -20, 3, "sand") + put("moss_patch", -16, -19, 33)
-            + put("stone_small", 8, -24, 3, "sand")
-            + put("stone_lying", 2, 14, 3, "sand") + put("rune_flat", -10, 14, 12, "blue")
-            + put("rune_flat", 10, 14, 12, "blue") + put("moss_patch", 22, 16, 13)
-            + put("rock_s", -30, -2, 3) + put("pebble_l", 30, -12, 3) + put("moss_patch", -6, 32, 3))
+    return (put("standing_stone_small", -16, -20, 0, "sand") + put("moss_patch", -16, -19, 30)
+            + put("stone_small", 8, -24, 0, "sand")
+            + put("stone_lying", 2, 14, 0, "sand") + put("rune_flat", -10, 14, 9, "blue")
+            + put("rune_flat", 10, 14, 9, "blue") + put("moss_patch", 22, 16, 10)
+            + put("rock_s", -30, -2, 0) + put("pebble_l", 30, -12, 0) + put("moss_patch", -6, 32, 0))
 
 
 # --------------------------------------------------------------------------------- houses
@@ -219,18 +214,18 @@ def smithy():
 
 
 def market_stall():
-    """market_stall: a striped awning on four posts over a plank deck, a counter with produce."""
-    out = floor(4, 4, "plank")
+    """market_stall: a striped awning on four posts, a counter with produce."""
+    out = []
     for x in (-40, 40):
         for y in (-40, 40):
-            out += stack("trunk_thin", x, y, 3, 2, "timber", M)
+            out += stack("trunk_thin", x, y, 0, 2, "timber", M)
     for i, x in enumerate(cells(4)):
         for j, y in enumerate(cells(3)):
-            out += put("roof_block", x, y - 4, 59 + 4 * (2 - j), "red" if i % 2 == 0 else "white")
-    out += put("wall_half", -14, 30, 3, "plank") + put("wall_half", 14, 30, 3, "plank")
-    out += put("loaf", -18, 30, 15) + put("fruit", -4, 26, 15) + put("fruit", 4, 33, 15)
-    out += put("leaf_tuft", 18, 30, 15, "green")
-    return out + put("barrel", 12, -14, 3) + put("crate", -18, -16, 3) + put("crate", 36, 4, 3)
+            out += put("roof_block", x, y - 4, 56 + 4 * (2 - j), "red" if i % 2 == 0 else "white")
+    out += put("wall_half", -14, 30, 0, "plank") + put("wall_half", 14, 30, 0, "plank")
+    out += put("loaf", -18, 30, 12) + put("fruit", -4, 26, 12) + put("fruit", 4, 33, 12)
+    out += put("leaf_tuft", 18, 30, 12, "green")
+    return out + put("barrel", 12, -14, 0) + put("crate", -18, -16, 0) + put("crate", 36, 4, 0)
 
 
 def stone_shrine():
