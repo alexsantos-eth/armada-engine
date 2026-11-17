@@ -397,3 +397,124 @@ fn the_atlas_holds_more_chunks_than_a_coarse_pointer_screen_can_show() {
         culled.len()
     );
 }
+
+fn occlusion_sprite(cell: (f64, f64), cells: i32, along_y: bool) -> StandingSprite<'static> {
+    let projection = preview_projection(400.0, 300.0, SceneMetrics::REFERENCE);
+    let ground = project_block(
+        GridPoint {
+            x: cell.0,
+            y: cell.1,
+        },
+        0.0,
+        projection,
+    );
+    let (half, quarter) = (projection.tile_width / 2.0, projection.tile_height / 2.0);
+    let reach = half * f64::from(cells - 1);
+    StandingSprite {
+        layout: SpriteLayout {
+            x: ground.screen_x - half - if along_y { reach } else { 0.0 },
+            y: ground.screen_y - projection.tile_width * 1.5,
+            width: projection.tile_width + reach,
+            height: projection.tile_width * 1.5 + quarter,
+        },
+        mask: None,
+        cell,
+        elevation: 0.0,
+        anchor: ScreenPoint {
+            x: ground.screen_x,
+            y: ground.screen_y,
+        },
+        step: if along_y {
+            (-half, -quarter)
+        } else {
+            (half, -quarter)
+        },
+        cells,
+        along_y,
+    }
+}
+
+fn occlusion_player(at: (f64, f64)) -> Occludee {
+    let projection = preview_projection(400.0, 300.0, SceneMetrics::REFERENCE);
+    let position = GridPoint { x: at.0, y: at.1 };
+    let feet = player_feet(position, 0.0, projection);
+    let column = get_player_column(position);
+    let width = projection.tile_width * 0.3;
+    Occludee {
+        area: SpriteLayout {
+            x: feet.x - width / 2.0,
+            y: feet.y - width * 2.0,
+            width,
+            height: width * 2.0,
+        },
+        key: player_key(
+            column,
+            0.0,
+            player_layer(position, column),
+            projection.tile_height,
+        ),
+    }
+}
+
+#[test]
+fn a_tree_between_the_player_and_the_camera_hides_it() {
+    let tree = occlusion_sprite((10.5, 10.5), 1, false);
+
+    assert!(tree.hides(
+        &occlusion_player((11.0, 11.0)),
+        SceneMetrics::REFERENCE.tile_height
+    ));
+}
+
+#[test]
+fn a_tree_the_player_stands_in_front_of_hides_nothing() {
+    let tree = occlusion_sprite((10.5, 10.5), 1, false);
+
+    assert!(!tree.hides(
+        &occlusion_player((9.0, 9.0)),
+        SceneMetrics::REFERENCE.tile_height
+    ));
+}
+
+#[test]
+fn a_tree_far_to_one_side_hides_nothing_even_when_it_is_drawn_later() {
+    let tree = occlusion_sprite((10.5, 10.5), 1, false);
+
+    assert!(!tree.hides(
+        &occlusion_player((14.0, 8.0)),
+        SceneMetrics::REFERENCE.tile_height
+    ));
+}
+
+#[test]
+fn a_long_building_hides_the_player_only_behind_the_cells_drawn_after_it() {
+    let hall = occlusion_sprite((10.5, 10.5), 3, false);
+    let tile_height = SceneMetrics::REFERENCE.tile_height;
+
+    assert!(hall.hides(&occlusion_player((12.0, 11.0)), tile_height));
+    assert!(!hall.hides(&occlusion_player((12.0, 9.0)), tile_height));
+}
+
+#[test]
+fn the_cells_of_a_footprint_follow_its_axis() {
+    assert_eq!(
+        occlusion_sprite((4.5, 7.5), 2, false).cell_at(1),
+        (5.5, 7.5)
+    );
+    assert_eq!(occlusion_sprite((4.5, 7.5), 2, true).cell_at(1), (4.5, 8.5));
+}
+
+#[test]
+fn a_sprite_whose_artwork_is_elsewhere_in_its_rectangle_hides_nothing() {
+    let empty = CoverMask::from_alpha(48, 48, |_, _| 0);
+    let solid = CoverMask::from_alpha(48, 48, |_, _| 255);
+    let tile_height = SceneMetrics::REFERENCE.tile_height;
+    let player = occlusion_player((11.0, 11.0));
+
+    let mut tree = occlusion_sprite((10.5, 10.5), 1, false);
+    tree.mask = Some(&empty);
+    assert!(!tree.hides(&player, tile_height));
+
+    tree.mask = Some(&solid);
+    assert!(tree.hides(&player, tile_height));
+}

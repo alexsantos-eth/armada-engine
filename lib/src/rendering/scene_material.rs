@@ -46,11 +46,23 @@ varying vec4 data;
 uniform sampler2D Texture;
 uniform sampler2D ShadowMap;
 
+float bayer2(vec2 cell) {
+    cell = mod(floor(cell), 2.0);
+    return fract(cell.x / 2.0 + cell.y * cell.y * 0.75);
+}
+
+float bayer4(vec2 cell) {
+    return bayer2(0.5 * cell) * 0.25 + bayer2(cell);
+}
+
 void main() {
     if (data.z > 0.5) {
         float cover = texture2D(ShadowMap, data.xy).a;
         gl_FragColor = vec4(0.0, 0.0, 0.0, cover * color.a);
     } else {
+        if (data.w > 0.0 && bayer4(gl_FragCoord.xy) < data.w) {
+            discard;
+        }
         gl_FragColor = color * texture2D(Texture, uv);
     }
 }"#;
@@ -126,6 +138,46 @@ pub fn vertex(
         uv: vec2(uv.0, uv.1),
         color: colour.into(),
         normal: vec4(map_uv.0, map_uv.1, kind, 0.0),
+    }
+}
+
+/// How a sprite the player stands behind is thinned out: by the shader's screen-door when the
+/// scene material draws it, by plain transparency when it does not.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Veil {
+    /// What the vertex colour's alpha is multiplied by.
+    pub alpha: f32,
+    /// The share of the sprite's pixels the shader drops, carried in `normal.w`.
+    pub dither: f32,
+}
+
+impl Veil {
+    /// The veil that leaves a sprite `opacity` of itself; `dithered` says whether the scene
+    /// material is bound to drop the pixels.
+    pub fn of(opacity: f32, dithered: bool) -> Self {
+        let opacity = if opacity.is_nan() {
+            1.0
+        } else {
+            opacity.clamp(0.0, 1.0)
+        };
+        if dithered {
+            Self {
+                alpha: 1.0,
+                dither: 1.0 - opacity,
+            }
+        } else {
+            Self {
+                alpha: opacity,
+                dither: 0.0,
+            }
+        }
+    }
+
+    /// `vertex` with this veil laid over it.
+    pub fn over(self, mut vertex: Vertex) -> Vertex {
+        vertex.normal.w = self.dither;
+        vertex.color[3] = (f32::from(vertex.color[3]) * self.alpha).round() as u8;
+        vertex
     }
 }
 

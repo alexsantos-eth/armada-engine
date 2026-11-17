@@ -2,6 +2,8 @@
 
 Este dominio de cliente contiene materiales y primitivas específicas de Macroquad usados para dibujar la escena y presentar la pasada offscreen. Centraliza los componentes visuales reutilizables que no representan por sí mismos una regla de mundo.
 
+El shader de la escena hace además el dithering de la oclusión del jugador: en la rama de sprites, un vértice con `normal.w > 0` descarta los píxeles cuyo umbral de Bayer 4 × 4 (leído de `gl_FragCoord`) queda por debajo de ese valor. `normal.w` vale 0 en todo lo demás, incluido lo que dibuja `draw_texture_ex`, así que nada cambia para un sprite opaco. `Veil` es quien escribe ese valor.
+
 Los recursos deben tener una propiedad clara y una vida útil controlada por el cliente. Las APIs públicas de este dominio deben expresar conceptos de renderizado y no filtrar decisiones de terreno, entidades o simulación.
 
 No contiene estado persistente del juego ni algoritmos de dominio. Los consumidores le entregan datos ya calculados.
@@ -15,16 +17,22 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`load`](scene_material.rs#L81) — Carga el material y lo apunta a `shadow_map`.
+- [`load`](scene_material.rs#L93) — Carga el material y lo apunta a `shadow_map`.
   - Firma: `pub fn load(shadow_map: &Texture2D) -> Result<Self, String> {`
 
-- [`bind`](scene_material.rs#L106) — Dibuja todo lo que sigue con este material.
+- [`bind`](scene_material.rs#L118) — Dibuja todo lo que sigue con este material.
   - Firma: `pub fn bind(&self) {`
 
-- [`release`](scene_material.rs#L111) — Devuelve el dibujado al pipeline propio de Macroquad, para el HUD.
+- [`release`](scene_material.rs#L123) — Devuelve el dibujado al pipeline propio de Macroquad, para el HUD.
   - Firma: `pub fn release(&self) {`
 
-- [`vertex`](scene_material.rs#L117) — Un vértice de la escena: un punto, de dónde leer la textura vinculada, un color, y los dos
+- [`of`](scene_material.rs#L157) — El `Veil` que deja a un sprite con `opacity` de sí; `dithered` dice si el material de la escena está ligado para descartar los píxeles (rejilla de Bayer en el shader) o si hay que caer a transparencia normal.
+  - Firma: `pub fn of(opacity: f32, dithered: bool) -> Self {`
+
+- [`over`](scene_material.rs#L177) — El vértice con el velo puesto: `normal.w` lleva la parte de píxeles a descartar y el alfa del color se multiplica por `alpha`.
+  - Firma: `pub fn over(self, mut vertex: Vertex) -> Vertex {`
+
+- [`vertex`](scene_material.rs#L129) — Un vértice de la escena: un punto, de dónde leer la textura vinculada, un color, y los dos
   - Firma: `pub fn vertex( position: (f32, f32), uv: (f32, f32), colour: Color, map_uv: (f32, f32), kind: f32, ) -> Vertex {`
 
 El material mezcla los colores con alfa fuente, pero conserva el alfa opaco del render target. Así la composición posterior del target no vuelve a atenuar sprites, sombras ni nubes semitransparentes.

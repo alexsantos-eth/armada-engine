@@ -82,6 +82,8 @@ pub(crate) struct Game {
     pub(crate) animation: PlayerAnimation,
     pub(crate) body: BodyMotion,
     pub(crate) flip: FlipMotion,
+    /// The fade of each entity sprite the player stands behind.
+    pub(crate) occlusion: iso::scene_order::OcclusionFades,
     pub(crate) drawn_at: (f64, f64),
     pub(crate) dust: DustPuffs,
     /// The motes and fireflies drifting over the world; view state like the dust.
@@ -135,9 +137,10 @@ impl Game {
             serde_json::from_str(manifest_json).expect("asset manifest is valid JSON");
         validate_manifest(&manifest).expect("asset manifest validates");
         let atlas_path = client_path(&manifest.atlas);
-        let texture = load_texture(&atlas_path)
+        let atlas_image = load_image(&atlas_path)
             .await
             .unwrap_or_else(|err| panic!("could not load the atlas at {atlas_path}: {err}"));
+        let texture = Texture2D::from_image(&atlas_image);
         let mut sheet_textures = Vec::new();
         let mut sheet_paths: Vec<&String> = manifest
             .entries
@@ -153,7 +156,13 @@ impl Game {
                 Err(err) => eprintln!("warning: could not load the sheet at {path}: {err}"),
             }
         }
-        let atlas = SpriteAtlas::new(texture, sheet_textures, &manifest);
+        let mut atlas = SpriteAtlas::new(texture, sheet_textures, &manifest);
+        atlas.measure_cover(
+            u32::from(atlas_image.width),
+            u32::from(atlas_image.height),
+            &atlas_image.bytes,
+        );
+        drop(atlas_image);
         let clouds = match load_texture(&client_path(CLOUD_SHADOW_SOURCE)).await {
             Ok(texture) => Some(CloudShadows::new(texture)),
             Err(err) => {
@@ -383,6 +392,7 @@ impl Game {
             animation: PlayerAnimation::default(),
             body: BodyMotion::default(),
             flip: FlipMotion::default(),
+            occlusion: iso::scene_order::OcclusionFades::default(),
             drawn_at: (spawned.x, spawned.y),
             dust: DustPuffs::new(),
             particles: AmbientParticles::new(WORLD_SEED),

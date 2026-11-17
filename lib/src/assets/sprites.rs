@@ -7,12 +7,12 @@ use iso::assets::{
 use iso::lighting::ShadeGrid;
 use iso::player::VoxelFaces;
 use iso::projection::ScreenPoint;
-use iso::scene_order::{DrawKey, LengthAxis, compare_draw_keys, get_draw_depth};
+use iso::scene_order::{CoverMask, DrawKey, LengthAxis, compare_draw_keys, get_draw_depth};
 use macroquad::prelude::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::rendering::scene_material::vertex;
+use crate::rendering::scene_material::{Veil, vertex};
 
 /// The shared atlas, which is the texture of everything that is not a sheet of player poses.
 pub const ATLAS_TEXTURE: usize = 0;
@@ -28,6 +28,8 @@ pub struct SpriteAtlas {
     sheets: HashMap<String, SheetAsset>,
     /// The middle of [`WHITE_PATCH`] in the shared atlas, in texture coordinates.
     white: Option<(f32, f32)>,
+    /// Where each sprite of the shared atlas is solid, by [`artwork_key`].
+    masks: HashMap<String, CoverMask>,
 }
 
 /// What the manifest knows about one sprite: the pixels, and where they belong.
@@ -134,7 +136,27 @@ impl SpriteAtlas {
             by_artwork,
             sheets,
             white,
+            masks: HashMap::new(),
         }
+    }
+
+    /// Measures where every sprite of the shared atlas is solid, out of the atlas's own
+    /// pixels: `width` by `height` of them, four bytes each, row by row.
+    pub fn measure_cover(&mut self, width: u32, height: u32, rgba: &[u8]) {
+        self.masks = cover_masks(
+            self.by_artwork
+                .iter()
+                .filter(|(_, asset)| asset.texture == ATLAS_TEXTURE && asset.ink.is_some())
+                .map(|(key, asset)| (key.as_str(), asset.frame)),
+            width,
+            height,
+            rgba,
+        );
+    }
+
+    /// Where the artwork of `source` is solid, if it was measured.
+    pub fn cover_mask(&self, source: &str) -> Option<&CoverMask> {
+        self.masks.get(artwork_key(source))
     }
 
     /// Whether the atlas carries [`WHITE_PATCH`]. Without it the shadows still draw, but each
@@ -183,6 +205,44 @@ impl SpriteAtlas {
         );
     }
 
+    /// Draws one frame of `texture` into the rectangle `layout` describes, multiplied by `tint`
+    /// and thinned by `veil`: the whole sprite the player stands behind.
+    pub fn draw_veiled(
+        &self,
+        texture: usize,
+        frame: SpriteFrame,
+        layout: SpriteLayout,
+        tint: Color,
+        veil: Veil,
+    ) {
+        let source = self.source(frame);
+        let texture = self.texture(texture);
+        let (width, height) = (texture.width(), texture.height());
+        let vertices: Vec<Vertex> = [(0.0f32, 0.0f32), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
+            .iter()
+            .map(|&(along, down)| {
+                veil.over(vertex(
+                    (
+                        layout.x as f32 + along * layout.width as f32,
+                        layout.y as f32 + down * layout.height as f32,
+                    ),
+                    (
+                        (source.x + along * source.w) / width,
+                        (source.y + down * source.h) / height,
+                    ),
+                    tint,
+                    (0.0, 0.0),
+                    crate::rendering::scene_material::SPRITE,
+                ))
+            })
+            .collect();
+        draw_mesh(&Mesh {
+            vertices,
+            indices: vec![0, 1, 2, 0, 2, 3],
+            texture: Some(texture.clone()),
+        });
+    }
+
     /// Draws the part of a frame that falls inside `band`, which is a piece of the same
     /// artwork: one vertex per corner at the band's un-sheared read of it, fanned from the
     /// first corner.
@@ -192,6 +252,7 @@ impl SpriteAtlas {
         frame: SpriteFrame,
         band: &SpriteBand,
         shade: Option<&ShadeLattice>,
+        veil: Veil,
     ) {
         let source = self.source(frame);
         let texture = self.texture(texture);
@@ -210,7 +271,7 @@ impl SpriteAtlas {
                         Color::new(light, light, light, 1.0)
                     }
                 };
-                vertex(
+                veil.over(vertex(
                     (x as f32, y as f32),
                     (
                         (source.x + along * source.w) / width,
@@ -219,7 +280,7 @@ impl SpriteAtlas {
                     colour,
                     (0.0, 0.0),
                     crate::rendering::scene_material::SPRITE,
-                )
+                ))
             })
             .collect();
         let mut indices = Vec::with_capacity((corners.len() - 2) * 3);
@@ -299,6 +360,7 @@ impl SpriteAtlas {
         frame: SpriteFrame,
         layout: SpriteLayout,
         shade: &ShadeLattice,
+        veil: Veil,
     ) {
         let source = self.source(frame);
         let texture = self.texture(texture);
@@ -310,7 +372,7 @@ impl SpriteAtlas {
             for column in 0..=columns {
                 let along = f32::from(column as u16) / columns as f32;
                 let light = shade.light_at(column, row);
-                vertices.push(vertex(
+                vertices.push(veil.over(vertex(
                     (
                         layout.x as f32 + along * layout.width as f32,
                         layout.y as f32 + down * layout.height as f32,
@@ -322,7 +384,7 @@ impl SpriteAtlas {
                     Color::new(light, light, light, 1.0),
                     (0.0, 0.0),
                     crate::rendering::scene_material::SPRITE,
-                ));
+                )));
             }
         }
         let mut indices = Vec::with_capacity((columns * rows * 6) as usize);
@@ -527,6 +589,32 @@ impl SpriteAtlas {
     }
 }
 
+/// The mask of each of `frames`, read from an image `width` by `height` pixels of four bytes.
+/// A frame that reaches outside the image gets no mask.
+pub(crate) fn cover_masks<'a>(
+    frames: impl Iterator<Item = (&'a str, SpriteFrame)>,
+    width: u32,
+    height: u32,
+    rgba: &[u8],
+) -> HashMap<String, CoverMask> {
+    if rgba.len() < width as usize * height as usize * 4 {
+        return HashMap::new();
+    }
+    frames
+        .filter(|(_, frame)| {
+            frame.x.saturating_add(frame.width) <= width
+                && frame.y.saturating_add(frame.height) <= height
+        })
+        .map(|(key, frame)| {
+            let mask = CoverMask::from_alpha(frame.width, frame.height, |x, y| {
+                let pixel = (frame.y + y) as usize * width as usize + (frame.x + x) as usize;
+                rgba[pixel * 4 + 3]
+            });
+            (key.to_owned(), mask)
+        })
+        .collect()
+}
+
 /// How dark each corner of a lattice over a sprite is: the shadows falling on it.
 #[derive(Clone, Debug)]
 pub struct ShadeLattice {
@@ -617,6 +705,8 @@ pub enum DrawKind {
         band: Option<SpriteBand>,
         /// What the artwork is multiplied by: the colour zone the ground stands in, or [`WHITE`]
         tint: Color,
+        /// How much of itself it keeps: below `1.0` while the player stands behind it.
+        opacity: f32,
     },
     /// An atlas sprite drawn as a lattice, darkened by the shadows falling on it.
     Shaded {
@@ -626,6 +716,8 @@ pub enum DrawKind {
         shade: ShadeLattice,
         /// The piece of the drawing this draw shows, as in [`DrawKind::Sprite`].
         band: Option<SpriteBand>,
+        /// How much of itself it keeps, as in [`DrawKind::Sprite`].
+        opacity: f32,
     },
     /// A sprite drawn into a quad of its own instead of an upright rectangle: the player's
     /// body, leant into where it walks or turned over while it flies.
@@ -715,8 +807,20 @@ impl SpriteDraw {
                 layout,
                 band: None,
                 tint,
+                opacity: 1.0,
             },
         }
+    }
+
+    /// The same draw keeping `opacity` of itself: an entity's sprite the player stands behind.
+    /// Only sprites thin out; every other kind of draw is returned as it is.
+    pub fn see_through(mut self, opacity: f32) -> Self {
+        if let DrawKind::Sprite { opacity: own, .. } | DrawKind::Shaded { opacity: own, .. } =
+            &mut self.kind
+        {
+            *own = opacity;
+        }
+        self
     }
 
     /// One band of a sprite whose footprint covers several cells.
@@ -735,6 +839,7 @@ impl SpriteDraw {
                 layout,
                 band,
                 tint: WHITE,
+                opacity: 1.0,
             },
         }
     }
@@ -755,6 +860,7 @@ impl SpriteDraw {
                 layout,
                 shade,
                 band: None,
+                opacity: 1.0,
             },
         }
     }
@@ -795,6 +901,7 @@ impl SpriteDraw {
                 layout,
                 shade,
                 band: Some(band),
+                opacity: 1.0,
             },
         }
     }
@@ -896,13 +1003,13 @@ pub fn draw_sorted(
     if let Some(material) = material {
         material.bind();
     }
-    draw_queue(atlas, draws);
+    draw_queue(atlas, draws, material.is_some());
     if let Some(material) = material {
         material.release();
     }
 }
 
-fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
+fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw], dithered: bool) {
     draws.sort_by(|a, b| compare_draw_keys(&a.key, &b.key));
     for draw in draws.iter() {
         match &draw.kind {
@@ -910,9 +1017,10 @@ fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
                 texture,
                 frame,
                 band: Some(band),
+                opacity,
                 ..
             } => {
-                atlas.draw_band(*texture, *frame, band, None);
+                atlas.draw_band(*texture, *frame, band, None, Veil::of(*opacity, dithered));
             }
             DrawKind::Sprite {
                 texture,
@@ -920,17 +1028,35 @@ fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
                 layout,
                 band: None,
                 tint,
+                opacity,
             } => {
-                atlas.draw(*texture, *frame, *layout, *tint);
+                if *opacity < 1.0 {
+                    atlas.draw_veiled(
+                        *texture,
+                        *frame,
+                        *layout,
+                        *tint,
+                        Veil::of(*opacity, dithered),
+                    );
+                } else {
+                    atlas.draw(*texture, *frame, *layout, *tint);
+                }
             }
             DrawKind::Shaded {
                 texture,
                 frame,
                 shade,
                 band: Some(band),
+                opacity,
                 ..
             } => {
-                atlas.draw_band(*texture, *frame, band, Some(shade));
+                atlas.draw_band(
+                    *texture,
+                    *frame,
+                    band,
+                    Some(shade),
+                    Veil::of(*opacity, dithered),
+                );
             }
             DrawKind::Shaded {
                 texture,
@@ -938,8 +1064,15 @@ fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw]) {
                 layout,
                 shade,
                 band: None,
+                opacity,
             } => {
-                atlas.draw_shaded(*texture, *frame, *layout, shade);
+                atlas.draw_shaded(
+                    *texture,
+                    *frame,
+                    *layout,
+                    shade,
+                    Veil::of(*opacity, dithered),
+                );
             }
             DrawKind::Leaning {
                 texture,

@@ -80,6 +80,9 @@ pub const PLAYER_BEHIND_LAYER: i32 = 2;
 pub const PLAYER_FRONT_LAYER: i32 = 4;
 /// How big the player is drawn, as a fraction of the size its artwork was drawn at.
 pub const PLAYER_SCALE: f64 = 0.75;
+/// Whether an entity's sprite that hides the player thins out to show it; `false` draws
+/// every sprite solid, as before.
+pub const PLAYER_XRAY: bool = true;
 /// Source path of the player's still figure in the asset manifest, drawn if a sheet is missing.
 pub const PLAYER_SPRITE: &str = "/assets/player/block.png";
 /// The player's sheets of poses, in the manifest: walking, standing, jumping, climbing,

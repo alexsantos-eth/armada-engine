@@ -13,7 +13,7 @@ use iso::player::physics::{get_player_climb_progress, get_player_column};
 use iso::projection::{
     GridPoint, ProjectionConfig, ScreenPoint, project_block, project_grid_point,
 };
-use iso::scene_order::{DrawKey, PlayerSheet};
+use iso::scene_order::{CoverMask, DrawKey, Occludee, PlayerSheet, bounding_layout, cover_share};
 use macroquad::prelude::*;
 
 use crate::assets::sprites::{SpriteAtlas, SpriteDraw, scene_key};
@@ -21,7 +21,8 @@ use crate::effects::ambient::SpawnEnv;
 use crate::game::config::{
     BAND_BLEED, ENTITY_LAYER, PLAYER_BEHIND_LAYER, PLAYER_CLIMB_SHEET, PLAYER_FLIP_SHEET,
     PLAYER_FRONT_LAYER, PLAYER_IDLE_SHEET, PLAYER_JETPACK_DEPTH, PLAYER_JETPACK_SHEET,
-    PLAYER_JUMP_SHEET, PLAYER_SCALE, PLAYER_SWIM_SHEET, PLAYER_WALK_SHEET, SceneMetrics,
+    PLAYER_JUMP_SHEET, PLAYER_SCALE, PLAYER_SWIM_SHEET, PLAYER_WALK_SHEET, PLAYER_XRAY,
+    SceneMetrics,
 };
 use crate::game::frame::FrameView;
 use crate::game::ground::water_cell;
@@ -139,6 +140,68 @@ pub(crate) fn scale_player_layout(
     }
 }
 
+/// An entity's sprite as the scene lays it out: the rectangle of its artwork and the cells of
+/// its footprint, each drawn as a band with a key of its own.
+#[derive(Clone, Copy)]
+pub(crate) struct StandingSprite<'a> {
+    pub(crate) layout: SpriteLayout,
+    /// Where the artwork is solid inside that rectangle, when the atlas measured it.
+    pub(crate) mask: Option<&'a CoverMask>,
+    /// The centre of the footprint's first cell, in the grid.
+    pub(crate) cell: (f64, f64),
+    pub(crate) elevation: f64,
+    /// Where that first cell's ground is on screen.
+    pub(crate) anchor: ScreenPoint,
+    /// The screen step from one cell of the footprint to the next.
+    pub(crate) step: (f64, f64),
+    pub(crate) cells: i32,
+    pub(crate) along_y: bool,
+}
+
+impl StandingSprite<'_> {
+    /// The centre of the `index`-th cell of the footprint, in the grid.
+    pub(crate) fn cell_at(&self, index: i32) -> (f64, f64) {
+        if self.along_y {
+            (self.cell.0, self.cell.1 + f64::from(index))
+        } else {
+            (self.cell.0 + f64::from(index), self.cell.1)
+        }
+    }
+
+    /// Whether this sprite hides `player`: one of its cells is drawn after the player and the
+    /// part of the artwork standing on that cell lies over the player's box. Without a mask
+    /// the artwork is taken to fill its rectangle.
+    pub(crate) fn hides(&self, player: &Occludee, tile_height: f64) -> bool {
+        if cover_share(player.area, self.layout) <= 0.0 {
+            return false;
+        }
+        (0..self.cells).any(|index| {
+            let (x, y) = self.cell_at(index);
+            let key = scene_key(x, y, self.elevation, ENTITY_LAYER, tile_height);
+            let area = if self.cells == 1 {
+                Some(self.layout)
+            } else {
+                footprint_band(
+                    self.layout,
+                    self.anchor,
+                    self.step,
+                    index,
+                    self.cells,
+                    BAND_BLEED,
+                )
+                .and_then(|band| bounding_layout(band.corners()))
+            };
+            area.is_some_and(|area| {
+                let share = match self.mask {
+                    Some(mask) => mask.share_over(player.area, self.layout, area),
+                    None => cover_share(player.area, area),
+                };
+                player.hidden_by(key, share)
+            })
+        })
+    }
+}
+
 /// What a frame's scene pass measured.
 pub(crate) struct SceneStats {
     pub(crate) chunks_drawn: usize,
@@ -228,7 +291,9 @@ impl Game {
             );
         }
 
-        let chunks_drawn = self.collect_world(view);
+        self.occlusion.begin(view.frame_ms);
+        let player = PLAYER_XRAY.then(|| self.player_cover(view)).flatten();
+        let chunks_drawn = self.collect_world(view, player);
         let moved = self.collect_player(view);
         self.collect_dust(view, moved);
         self.collect_particles(view);
@@ -239,9 +304,36 @@ impl Game {
         }
     }
 
+    /// What has to stay visible this frame: the player's box at rest, standing where it is
+    /// drawn, and the key it sorts by. The box is the idle pose's whatever pose is showing,
+    /// so a stride or a lean never flickers what fades.
+    fn player_cover(&self, view: &FrameView) -> Option<Occludee> {
+        let projection = view.projection;
+        let rp = &view.rp;
+        let ink = self
+            .atlas
+            .sheet(PLAYER_IDLE_SHEET)
+            .map(|sheet| sheet.ink)
+            .or(self.player_asset.map(|asset| asset.ink))?
+            .scaled(PLAYER_SCALE);
+        let position = GridPoint { x: rp.x, y: rp.y };
+        let feet = player_feet(position, rp.elevation + rp.height, projection);
+        let column = get_player_column(position);
+        Some(Occludee {
+            area: ink_layout(feet, ink, projection.tile_width),
+            key: player_key(
+                column,
+                rp.elevation,
+                player_layer(position, column),
+                projection.tile_height,
+            ),
+        })
+    }
+
     /// Terrain and baked shadows of the visible chunks, then entities and their reflections.
-    /// Returns how many chunks were drawn.
-    fn collect_world(&mut self, view: &FrameView) -> usize {
+    /// An entity's sprite that hides `player` is thinned out. Returns how many chunks were
+    /// drawn.
+    fn collect_world(&mut self, view: &FrameView, player: Option<Occludee>) -> usize {
         let projection = view.projection;
         self.wind_ms += view.frame_ms;
         let mut chunks_drawn = 0usize;
@@ -335,12 +427,23 @@ impl Game {
                     );
                     (sway.cut, offset)
                 });
+                let standing = StandingSprite {
+                    layout,
+                    mask: self.atlas.cover_mask(entity.texture_source()),
+                    cell: (x, y),
+                    elevation,
+                    anchor,
+                    step,
+                    cells,
+                    along_y,
+                };
+                let covering = !entity.walkable()
+                    && player
+                        .as_ref()
+                        .is_some_and(|player| standing.hides(player, projection.tile_height));
+                let opacity = self.occlusion.opacity(entity.id(), covering) as f32;
                 for index in 0..cells {
-                    let (cell_x, cell_y) = if along_y {
-                        (x, y + f64::from(index))
-                    } else {
-                        (x + f64::from(index), y)
-                    };
+                    let (cell_x, cell_y) = standing.cell_at(index);
                     let key = scene_key(
                         cell_x,
                         cell_y,
@@ -354,23 +457,24 @@ impl Game {
                             sway_band(layout, cut, offset, true),
                         ] {
                             let Some(piece) = piece else { continue };
-                            match &shade {
-                                Some(shade) => self.draws.push(SpriteDraw::shaded_band(
+                            let draw = match &shade {
+                                Some(shade) => SpriteDraw::shaded_band(
                                     key,
                                     entity_texture,
                                     frame,
                                     layout,
                                     shade.clone(),
                                     piece,
-                                )),
-                                None => self.draws.push(SpriteDraw::band(
+                                ),
+                                None => SpriteDraw::band(
                                     key,
                                     entity_texture,
                                     frame,
                                     layout,
                                     Some(piece),
-                                )),
-                            }
+                                ),
+                            };
+                            self.draws.push(draw.see_through(opacity));
                         }
                         continue;
                     }
@@ -378,30 +482,27 @@ impl Game {
                     else {
                         continue;
                     };
-                    match (&shade, cells > 1) {
-                        (Some(shade), false) => self.draws.push(SpriteDraw::shaded(
-                            key,
-                            entity_texture,
-                            frame,
-                            layout,
-                            shade.clone(),
-                        )),
-                        (Some(shade), true) => self.draws.push(SpriteDraw::shaded_band(
+                    let draw = match (&shade, cells > 1) {
+                        (Some(shade), false) => {
+                            SpriteDraw::shaded(key, entity_texture, frame, layout, shade.clone())
+                        }
+                        (Some(shade), true) => SpriteDraw::shaded_band(
                             key,
                             entity_texture,
                             frame,
                             layout,
                             shade.clone(),
                             band,
-                        )),
-                        (None, cut) => self.draws.push(SpriteDraw::band(
+                        ),
+                        (None, cut) => SpriteDraw::band(
                             key,
                             entity_texture,
                             frame,
                             layout,
                             cut.then_some(band),
-                        )),
-                    }
+                        ),
+                    };
+                    self.draws.push(draw.see_through(opacity));
                 }
                 let mirrored = entity
                     .reflection_source()

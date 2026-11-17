@@ -38,45 +38,48 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`MAX_FRAME_MS`](config.rs#L29) — Milisegundos de simulación que un fotograma puede avanzar, uno por tick: tras un bloqueo (GC, GPU, horneado) el juego se ralentiza en vez de saltar varios ticks de golpe.
   - Declaración: `pub(crate) const MAX_FRAME_MS: f64 = iso::simulation::STEP_MS;`
 
-- [`BAND_BLEED`](config.rs#L63) — Cuánto alcanza cada banda de un sprite multi-casilla más allá de su corte.
+- [`BAND_BLEED`](config.rs#L73) — Cuánto alcanza cada banda de un sprite multi-casilla más allá de su corte.
   - Declaración: `pub const BAND_BLEED: f64 = 0.5;`
-- [`ENTITY_LAYER`](config.rs#L66) — Capa de dibujo de las entidades.
+- [`ENTITY_LAYER`](config.rs#L76) — Capa de dibujo de las entidades.
   - Declaración: `pub const ENTITY_LAYER: i32 = 3;`
-- [`PLAYER_BEHIND_LAYER`](config.rs#L68) — Capa del jugador en la mitad lejana de su casilla.
+- [`PLAYER_BEHIND_LAYER`](config.rs#L78) — Capa del jugador en la mitad lejana de su casilla.
   - Declaración: `pub const PLAYER_BEHIND_LAYER: i32 = 2;`
-- [`PLAYER_FRONT_LAYER`](config.rs#L70) — Capa del jugador en la mitad cercana de su casilla.
+- [`PLAYER_FRONT_LAYER`](config.rs#L80) — Capa del jugador en la mitad cercana de su casilla.
   - Declaración: `pub const PLAYER_FRONT_LAYER: i32 = 4;`
-- [`PLAYER_SCALE`](config.rs#L72) — Tamaño del jugador como fracción del que tiene su arte.
+- [`PLAYER_SCALE`](config.rs#L82) — Tamaño del jugador como fracción del que tiene su arte.
   - Declaración: `pub const PLAYER_SCALE: f64 = 0.75;`
-- [`PLAYER_SPRITE`](config.rs#L74) — Ruta del manifiesto de la figura quieta del jugador.
+
+- [`PLAYER_XRAY`](config.rs#L85) — Interruptor de la oclusión X-Ray: con `true` el sprite de una entidad que tapa al jugador se aclara para dejarlo ver; con `false` todo se dibuja sólido, como antes.
+  - Declaración: `pub const PLAYER_XRAY: bool = true;`
+- [`PLAYER_SPRITE`](config.rs#L87) — Ruta del manifiesto de la figura quieta del jugador.
   - Declaración: `pub const PLAYER_SPRITE: &str = "/assets/player/block.png";`
-- [`PLAYER_WALK_SHEET`](config.rs#L77) — Hoja de poses al andar.
+- [`PLAYER_WALK_SHEET`](config.rs#L90) — Hoja de poses al andar.
   - Declaración: `pub const PLAYER_WALK_SHEET: &str = "/assets/player-16/walk.png";`
-- [`PLAYER_IDLE_SHEET`](config.rs#L78) — Hoja de poses en reposo.
+- [`PLAYER_IDLE_SHEET`](config.rs#L91) — Hoja de poses en reposo.
   - Declaración: `pub const PLAYER_IDLE_SHEET: &str = "/assets/player-16/idle.png";`
-- [`PLAYER_JUMP_SHEET`](config.rs#L79) — Hoja de poses de salto.
+- [`PLAYER_JUMP_SHEET`](config.rs#L92) — Hoja de poses de salto.
   - Declaración: `pub const PLAYER_JUMP_SHEET: &str = "/assets/player-16/jump.png";`
-- [`PLAYER_CLIMB_SHEET`](config.rs#L80) — Hoja de poses de escalada.
+- [`PLAYER_CLIMB_SHEET`](config.rs#L93) — Hoja de poses de escalada.
   - Declaración: `pub const PLAYER_CLIMB_SHEET: &str = "/assets/player-16/climb.png";`
-- [`PLAYER_SWIM_SHEET`](config.rs#L81) — Hoja de poses nadando.
+- [`PLAYER_SWIM_SHEET`](config.rs#L94) — Hoja de poses nadando.
   - Declaración: `pub const PLAYER_SWIM_SHEET: &str = "/assets/player-16/swim.png";`
-- [`PLAYER_FLIP_SHEET`](config.rs#L82) — Hoja del mortal del segundo salto.
+- [`PLAYER_FLIP_SHEET`](config.rs#L95) — Hoja del mortal del segundo salto.
   - Declaración: `pub const PLAYER_FLIP_SHEET: &str = "/assets/player-16/flip.png";`
-- [`PLAYER_JETPACK_SHEET`](config.rs#L85) — El jetpack de la espalda: una columna por orientación, recortado donde el cuerpo de pie lo tapa, así que se dibuja sobre cualquier pose.
+- [`PLAYER_JETPACK_SHEET`](config.rs#L98) — El jetpack de la espalda: una columna por orientación, recortado donde el cuerpo de pie lo tapa, así que se dibuja sobre cualquier pose.
   - Declaración: `pub const PLAYER_JETPACK_SHEET: &str = "/assets/player-16/jetpack.png";`
-- [`PLAYER_JETPACK_DEPTH`](config.rs#L87) — Profundidad que se suma al jetpack sobre el cuerpo, para que la mochila se dibuje justo después de él.
+- [`PLAYER_JETPACK_DEPTH`](config.rs#L100) — Profundidad que se suma al jetpack sobre el cuerpo, para que la mochila se dibuje justo después de él.
   - Declaración: `pub const PLAYER_JETPACK_DEPTH: f64 = 0.00001;`
-- [`LAND_SOUND_MIN_IMPACT`](config.rs#L89) — Fuerza mínima del impacto de un aterrizaje, en bloques por tick, para que haga sonido; el volumen crece con la fuerza.
+- [`LAND_SOUND_MIN_IMPACT`](config.rs#L102) — Fuerza mínima del impacto de un aterrizaje, en bloques por tick, para que haga sonido; el volumen crece con la fuerza.
   - Declaración: `pub const LAND_SOUND_MIN_IMPACT: f64 = 0.1;`
-- [`CHUNK_CULL_MARGIN`](config.rs#L91) — Margen extra de visibilidad de chunks alrededor de la pantalla.
+- [`CHUNK_CULL_MARGIN`](config.rs#L104) — Margen extra de visibilidad de chunks alrededor de la pantalla.
   - Declaración: `pub const CHUNK_CULL_MARGIN: f64 = 0.0;`
-- [`CHUNK_RADII`](config.rs#L94) — Radios de carga/predescarga/conservación de este cliente (1 / 1 / 2).
+- [`CHUNK_RADII`](config.rs#L107) — Radios de carga/predescarga/conservación de este cliente (1 / 1 / 2).
   - Declaración: `pub const CHUNK_RADII: ChunkRadii = ChunkRadii { ... };`
-- [`UNBOUNDED_CAMERA_LIMITS`](config.rs#L102) — Límites finitos para el seguimiento exponencial de un mundo sin fronteras: tan anchos que la pinza nunca se aplica; solo los exige `follow_camera`.
+- [`UNBOUNDED_CAMERA_LIMITS`](config.rs#L115) — Límites finitos para el seguimiento exponencial de un mundo sin fronteras: tan anchos que la pinza nunca se aplica; solo los exige `follow_camera`.
   - Declaración: `pub(crate) const UNBOUNDED_CAMERA_LIMITS: iso::camera::CameraLimits = iso::camera::CameraLimits { ... };`
-- [`WORLD_SEED`](config.rs#L114) — La semilla con la que genera el mundo; el valor por defecto del dominio (`iso::terrain::WORLD_SEED`) y los tests la comparten.
+- [`WORLD_SEED`](config.rs#L127) — La semilla con la que genera el mundo; el valor por defecto del dominio (`iso::terrain::WORLD_SEED`) y los tests la comparten.
   - Declaración: `pub const WORLD_SEED: u64 = iso::terrain::WORLD_SEED;`
-- [`PHASE_TRANSITION_SECONDS`](config.rs#L117) — Segundos que dura el cambio de fase de punta a punta: el crossfade del grado y el fade-in de sombras de los chunks rehorneados para la nueva fase.
+- [`PHASE_TRANSITION_SECONDS`](config.rs#L130) — Segundos que dura el cambio de fase de punta a punta: el crossfade del grado y el fade-in de sombras de los chunks rehorneados para la nueva fase.
   - Declaración: `pub const PHASE_TRANSITION_SECONDS: f32 = 0.6;`
 
 #### Tipos
@@ -114,39 +117,48 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`toggle_jetpack`](frame.rs#L129) — Se pone o se quita el jetpack donde la ruta lo permite (`gui::Route::allows_jetpack`); en el resto no hace nada, así que la presentación limpia no se vuela. Devuelve si queda puesto. Lo llaman la tecla `J` de la entrada y el interruptor del HUD.
+- [`toggle_jetpack`](frame.rs#L120) — Se pone o se quita el jetpack donde la ruta lo permite (`gui::Route::allows_jetpack`); en el resto no hace nada, así que la presentación limpia no se vuela. Devuelve si queda puesto. Lo llaman la tecla `J` de la entrada y el interruptor del HUD.
   - Firma: `pub(crate) fn toggle_jetpack(&mut self) -> bool {`
-- [`update`](frame.rs#L125) — Entrada, ticks fijos, reloj del mundo (avanza solo en el paso fijo), fase efectiva de sombras (override o `phase_at` del reloj), streaming de chunks, sonido ligado al movimiento y guardado de un fotograma. `None` si el jugador pidió salir (tras volcar el guardado si hacía falta).
+- [`update`](frame.rs#L129) — Entrada, ticks fijos, reloj del mundo (avanza solo en el paso fijo), fase efectiva de sombras (override o `phase_at` del reloj), streaming de chunks, sonido ligado al movimiento y guardado de un fotograma. `None` si el jugador pidió salir (tras volcar el guardado si hacía falta).
   - Firma: `pub(crate) fn update(&mut self, frame_ms: f64) -> Option<FrameView> {`
 
 ### `scene.rs`
 
 #### Funciones y métodos
 
-- [`preview_projection`](scene.rs#L41) — La proyección de esta vista con su origen en `(origin_x, origin_y)`: las métricas de casilla son las de la escena, el origen sigue a la cámara.
+- [`preview_projection`](scene.rs#L42) — La proyección de esta vista con su origen en `(origin_x, origin_y)`: las métricas de casilla son las de la escena, el origen sigue a la cámara.
   - Firma: `pub(crate) fn preview_projection(origin_x: f64, origin_y: f64, metrics: SceneMetrics) -> ProjectionConfig {`
-- [`player_sheets`](scene.rs#L65) — Cuántas poses trae cada hoja del jugador en el atlas.
+- [`player_sheets`](scene.rs#L66) — Cuántas poses trae cada hoja del jugador en el atlas.
   - Firma: `pub(crate) fn player_sheets(atlas: &SpriteAtlas) -> crate::player::player_view::PlayerSheets {`
-- [`player_key`](scene.rs#L82) — La clave de profundidad del jugador y de su sombra: la casilla redondeada, pero la elevación de los pies, para que el orden frente a quien lo tapa cambie gradualmente al subir o bajar gradas.
+- [`player_key`](scene.rs#L83) — La clave de profundidad del jugador y de su sombra: la casilla redondeada, pero la elevación de los pies, para que el orden frente a quien lo tapa cambie gradualmente al subir o bajar gradas.
   - Firma: `pub(crate) fn player_key(column: WorldCoord, feet_elevation: f64, layer: i32, tile_height: f64) -> DrawKey {`
-- [`player_layer`](scene.rs#L98) — Qué capa ocupa el jugador sobre la casilla que pisa.
+- [`player_layer`](scene.rs#L99) — Qué capa ocupa el jugador sobre la casilla que pisa.
   - Firma: `pub(crate) fn player_layer(position: GridPoint, column: WorldCoord) -> i32 {`
-- [`player_feet`](scene.rs#L107) — Proyecta el punto donde los pies del jugador tocan la cima de su casilla.
+- [`player_feet`](scene.rs#L108) — Proyecta el punto donde los pies del jugador tocan la cima de su casilla.
   - Firma: `pub(crate) fn player_feet(position: GridPoint, elevation: f64, projection: ProjectionConfig) -> ScreenPoint {`
-- [`scale_player_layout`](scene.rs#L127) — Escala el arte del jugador alrededor de sus pies sin deslizar su punto de contacto.
+- [`cell_at`](scene.rs#L163) — Centro, en la rejilla, de la casilla `index` de la huella de un `StandingSprite`.
+  - Firma: `pub(crate) fn cell_at(&self, index: i32) -> (f64, f64) {`
+
+- [`hides`](scene.rs#L174) — Si el sprite de una entidad tapa al jugador: alguna de sus casillas se dibuja después y la parte del arte apoyada en ella cae sobre la caja del jugador (con la `CoverMask` del atlas si la hay; sin ella, el rectángulo).
+  - Firma: `pub(crate) fn hides(&self, player: &Occludee, tile_height: f64) -> bool {`
+
+- [`scale_player_layout`](scene.rs#L128) — Escala el arte del jugador alrededor de sus pies sin deslizar su punto de contacto.
   - Firma: `pub(crate) fn scale_player_layout(layout: SpriteLayout, feet: ScreenPoint, scale: BodyScale) -> SpriteLayout {`
-- [`frame_projection`](scene.rs#L186) — El origen de la proyección del fotograma a partir de la cámara, su nivel y las métricas de casilla de la escena.
+- [`frame_projection`](scene.rs#L249) — El origen de la proyección del fotograma a partir de la cámara, su nivel y las métricas de casilla de la escena.
   - Firma: `pub(crate) fn frame_projection(camera: Camera, level: f64, width: f32, height: f32, metrics: SceneMetrics) -> ProjectionConfig {`
-- [`draw_clouds`](scene.rs#L204) — Dibuja las sombras de nubes sobre la escena terminada, bajo el HUD.
+- [`draw_clouds`](scene.rs#L267) — Dibuja las sombras de nubes sobre la escena terminada, bajo el HUD.
   - Firma: `pub(crate) fn draw_clouds(&mut self, frame_ms: f64, projection: &ProjectionConfig) {`
-- [`collect_scene`](scene.rs#L217) — Los sprites del fotograma: terreno y sombras horneadas, entidades y reflejos, jugador y polvo. Reutiliza la cola de dibujo.
+- [`collect_scene`](scene.rs#L280) — Los sprites del fotograma: terreno y sombras horneadas, entidades y reflejos, jugador y polvo. Reutiliza la cola de dibujo.
   - Firma: `pub(crate) fn collect_scene(&mut self, view: &FrameView) -> SceneStats {`
 
 #### Tipos
 
-- [`PlayerSprite`](scene.rs#L57) — El arte del jugador: su frame en el atlas y dónde pertenece sobre el suelo.
+- [`StandingSprite`](scene.rs#L146) — El sprite de una entidad tal como lo coloca la escena: el rectángulo de su arte, su máscara de cobertura y las casillas de su huella, cada una dibujada como una banda con clave propia.
+  - Declaración: `pub(crate) struct StandingSprite<'a> {`
+
+- [`PlayerSprite`](scene.rs#L58) — El arte del jugador: su frame en el atlas y dónde pertenece sobre el suelo.
   - Firma: `pub(crate) struct PlayerSprite { pub(crate) frame: SpriteFrame, pub(crate) ink: InkBox, pub(crate) texture: usize }`
-- [`SceneStats`](scene.rs#L143) — Lo que la pasada de escena midió: chunks dibujados y sprites en cola.
+- [`SceneStats`](scene.rs#L206) — Lo que la pasada de escena midió: chunks dibujados y sprites en cola.
   - Firma: `pub(crate) struct SceneStats { pub(crate) chunks_drawn: usize, pub(crate) sprites: usize }`
 
 ### `state.rs`
@@ -159,7 +171,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`Game::new`](state.rs#L130) — Arranque: carga catálogo, manifiesto y sonidos, restaura el guardado si existe, genera la zona de aparición y encuadra al jugador. En la ruta del editor no toca el guardado y, en vez de generar, inyecta `MAKER_CHUNK` plano y abre la sesión de edición. Una escena guionizada (`scene`) decide además semilla, centro, zoom y si el mundo es plano o procedural. Los fallos de assets degradan a avisos, nunca entran en pánico.
+- [`Game::new`](state.rs#L132) — Arranque: carga catálogo, manifiesto y sonidos, restaura el guardado si existe, genera la zona de aparición y encuadra al jugador. En la ruta del editor no toca el guardado y, en vez de generar, inyecta `MAKER_CHUNK` plano y abre la sesión de edición. Una escena guionizada (`scene`) decide además semilla, centro, zoom y si el mundo es plano o procedural. Los fallos de assets degradan a avisos, nunca entran en pánico.
   - Firma: `pub(crate) async fn new(route: Route, scene: Option<&iso::testbed::Scene>) -> Self {`
   - Firma: `pub(crate) async fn new(route: Route) -> Self {`
 
@@ -190,7 +202,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `fn should_save_on_quit(unsaved_changes: bool, quitting: bool) -> bool {`
 - [`EditedFrame`](frame.rs#L89) — Lo que un fotograma de edición entrega a su vista: las mismas medidas que toma un fotograma normal, recogidas donde las tiene el camino del editor.
   - Declaración: `struct EditedFrame { rp: PlayerRenderPosition, projection: ProjectionConfig, width: f32, height: f32, frame_ms: f64, stream_start: f64 }`
-- [`editing_view`](frame.rs#L289) — La vista de un fotograma de edición: el único chunk en la mano, su luz horneada otra vez cuando un trazo la cambió, y ningún streaming, guardado ni descarga.
+- [`editing_view`](frame.rs#L306) — La vista de un fotograma de edición: el único chunk en la mano, su luz horneada otra vez cuando un trazo la cambió, y ningún streaming, guardado ni descarga.
   - Firma: `fn editing_view(&mut self, frame: EditedFrame) -> FrameView {`
 - [`settled`](frame.rs#L349) — Si lo que hay en pantalla está listo para mirarse: cada chunk mostrado generado y con sus sombras horneadas para la fase en curso y fundidas del todo. Sin sombras horneadas no hay nada que esperar, así que responde que sí. De ahí sale `Game::lit`, que espera el paso `settle` de una corrida guionizada.
   - Firma: `fn settled(&self, culled: &[iso::grid::ChunkCoord]) -> bool {`
@@ -199,15 +211,15 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones internas
 
-- [`screen_point`](scene.rs#L148) — Proyecta un `GridPoint` a `Vec2` de macroquad.
+- [`screen_point`](scene.rs#L211) — Proyecta un `GridPoint` a `Vec2` de macroquad.
   - Firma: `fn screen_point(point: GridPoint, projection: ProjectionConfig) -> Vec2 {`
-- [`draw_grid`](scene.rs#L153) — La rejilla de depuración que se dibuja cuando el terreno está oculto (T).
+- [`draw_grid`](scene.rs#L216) — La rejilla de depuración que se dibuja cuando el terreno está oculto (T).
   - Firma: `fn draw_grid(projection: ProjectionConfig, centre: WorldCoord) {`
-- [`collect_world`](scene.rs#L244) — Terreno y sombras horneadas de los chunks visibles, luego entidades y sus reflejos. Devuelve cuántos chunks se dibujaron.
+- [`collect_world`](scene.rs#L336) — Terreno y sombras horneadas de los chunks visibles, luego entidades y sus reflejos. Devuelve cuántos chunks se dibujaron.
   - Firma: `fn collect_world(&mut self, view: &FrameView) -> usize {`
-- [`collect_player`](scene.rs#L445) — El sprite del jugador: clave de profundidad, pose, arte o figura quieta, el jetpack sobre el cuerpo cuando lo lleva puesto (su propia hoja y su propia tinta, un pelo por delante en profundidad; nadando no se dibuja), su reflejo y la sombra que le cae encima. Devuelve cuánto se movió.
+- [`collect_player`](scene.rs#L546) — El sprite del jugador: clave de profundidad, pose, arte o figura quieta, el jetpack sobre el cuerpo cuando lo lleva puesto (su propia hoja y su propia tinta, un pelo por delante en profundidad; nadando no se dibuja), su reflejo y la sombra que le cae encima. Devuelve cuánto se movió.
   - Firma: `fn collect_player(&mut self, view: &FrameView) -> f64 {`
-- [`collect_dust`](scene.rs#L678) — El polvo levantado por el movimiento del jugador.
+- [`collect_dust`](scene.rs#L779) — El polvo levantado por el movimiento del jugador.
   - Firma: `fn collect_dust(&mut self, view: &FrameView, moved: f64) {`
 
 ### `state.rs`
