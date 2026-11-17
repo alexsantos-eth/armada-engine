@@ -65,6 +65,9 @@ construir, y la casilla ancla es la primera.
 - **Un solo acento por entidad**: fruta, hojas rojas o setas. Va **en la cara** de un bloque:
   el centro de la fruta en el plano de la cara (`x = centro del bloque + 13`, o lo mismo en
   y), a media altura del bloque. Metida más adentro queda enterrada y no se ve.
+- **Sin suelo propio.** Ninguna entidad lleva losa, tarima, lecho de grava ni base de ningún
+  tipo: pisa directamente el terreno de su casilla, y sus piezas empiezan en z = 0. (Regla de
+  Alex, 2026-11-16. Un zócalo de piedra bajo un muro es muro, no suelo.)
 - **Sin sombra en el suelo.** El juego dibuja la sombra de cada entidad; el modelo no lleva
   ninguna pieza que la imite.
 - **Los árboles miden dos bloques**: llegan a z = 164–170. Un árbol «pequeño» es un árbol de
@@ -97,7 +100,7 @@ pieza nueva.
 | `OCHRE` / `RUST` | `#d9a441` / `#c9702e` | hojas caídas |
 | `ROCK` / `ROCK_DARK` | `#9a9a96` / `#7c7c7a` | piedra |
 | `STONE_SAND` / `STONE_CLAY` | `#d8c9a3` / `#c8694a` | piedra clara y piedra roja |
-| `GRAVEL` / `DIRT` | `#b8ae9c` / `#a8794f` | suelos propios |
+| `GRAVEL` / `DIRT` | `#b8ae9c` / `#a8794f` | sin uso desde que las entidades no llevan suelo |
 | `RUNE_BLUE` / `RUNE_CYAN` / `RUNE_DARK` | `#3f8fd9` / `#49c8c0` / `#8a3a2a` | runas (las rojas usan `RED`) |
 | `PLANK` / `TIMBER` / `PLASTER` | `#a8713d` / `#5e3d24` / `#eadfc4` | tabla, madera oscura, revoco |
 | `DOOR` | `#b98345` | hoja de puerta |
@@ -145,7 +148,6 @@ Tamaños en vóxeles, ancho × fondo × alto. Las variantes son el sufijo del ar
 | `stone_block` | 26 × 26 × 26 | grey, dark, sand, clay | sillar: una celda del módulo (muros, torre, gradas de un santuario) |
 | `stone_half` | 26 × 26 × 12 | grey, dark, sand, clay | zócalo, escalón, muro bajo |
 | `stone_small` | 14 × 14 × 14 | grey, dark, sand, clay | hilada de chimenea, plinto, brasero |
-| `floor_slab` | 26 × 26 × 3 | gravel, dirt, cobble, plank | el suelo propio de una entidad (lecho de grava, losas, tarima) |
 | `standing_stone` | 22 × 16 × 54 | grey, sand | piedra rúnica |
 | `standing_stone_tall` | 24 × 17 × 78 | grey, sand | la alta: con el suelo de 3 llega justo al bloque |
 | `standing_stone_small` | 16 × 13 × 30 | grey, sand | la baja, o el pie de una rota |
@@ -245,7 +247,6 @@ Un edificio se escribe **una vez con la cumbrera a lo largo de x**, alrededor de
 - `pyramid(tamaños, z, variante, name="roof_block", rise=12)` — hiladas cuadradas; repetir un
   tamaño (`[4, 4, 3, 3, 2, 2, 1]`) da un cono más empinado. Con `stone_block` y `rise=28` es
   una pirámide de sillares.
-- `floor(nu, nv, variante)` — el suelo propio, de 3 de alto: lo que va encima empieza en z = 3.
 - `face_x(pieza, plano_x, y, z, variante)` / `face_y(pieza, x, plano_y, z, variante)` — una
   pieza de cara; `side(n)` da el plano exterior de `n` celdas (`n · 14 − 1`).
 - `along(cajas, eje)` — coloca un edificio de dos casillas sobre su huella en x o en y.
@@ -324,7 +325,7 @@ El commit y el push solo los hace `armada-commit`, cuando el usuario la invoca.
 - [ ] Solo piezas del kit y colores de la paleta; las piezas nuevas siguen la sección 4.
 - [ ] Hojas en la rejilla del módulo, juntas visibles, frente de la capa baja vacío.
 - [ ] Árboles a dos bloques (z 164–170); un solo acento, puesto en una cara.
-- [ ] Sin sombra propia en el suelo; dos orientaciones generadas, no espejadas.
+- [ ] Sin suelo propio (ni losa ni tarima) y sin sombra propia en el suelo; dos orientaciones generadas, no espejadas.
 - [ ] Viste el sprite renderizado y la entidad dentro del juego, y adjuntas las dos imágenes.
 - [ ] Atlas regenerado, juego recompilado y tests en verde.
 - [ ] Entregas el `.vox` del modelo, el sprite y los cambios de `vox_prefabs.py` / `vox_models.py`.

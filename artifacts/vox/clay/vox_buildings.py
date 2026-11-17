@@ -10,7 +10,8 @@
 # right and y down-left on screen, so the faces the sprite shows are +x (lit) and +y (shaded).
 #
 # A building is written once with its ridge along x, around (0, 0), and `along` lays it on its
-# tiles for either axis. Walls and roofs sit on the 28-voxel module:
+# tiles for either axis. No entity brings its own ground (a slab, a deck, a bed of gravel): it
+# stands straight on the terrain's. Walls and roofs sit on the 28-voxel module:
 #   walls(nu, nv, …)    the perimeter of an nu × nv rectangle of wall or stone cells
 #   gable(nu, nv, …)    a pitched roof over it: each course steps 14 in and 12 up
 #   pyramid(sizes, …)   square courses, one per entry of `sizes` (cells per side)
@@ -37,10 +38,6 @@ def walls(nu, nv, z, levels, variant, name="wall_block", rise=M, skip=()):
                 if edge and (i, j) not in skip:
                     out += put(name, x, y, z + k * rise, variant)
     return out
-
-
-def floor(nu, nv, variant, name="floor_slab", z=0):
-    return [b for x in cells(nu) for y in cells(nv) for b in put(name, x, y, z, variant)]
 
 
 def gable(nu, nv, z, variant, fill=None, ridge="timber", stripes=None):
@@ -200,16 +197,16 @@ def healer_hut():
 
 
 def smithy():
-    """smithy: an open shed on four posts over flagstones, with the forge, its chimney, the
+    """smithy: an open shed on four posts, with the forge, its chimney, the
     anvil and a barrel."""
-    out = floor(4, 4, "cobble")
+    out = []
     for x in (-40, 40):
         for y in (-40, 40):
-            out += stack("trunk_thin", x, y, 3, 2, "timber", M)
-    out += gable(3, 3, 59, "shingle")
-    out += put("stone_block", -28, -28, 3, "dark") + put("stone_block", 0, -28, 3, "dark")
-    out += put("fire", 0, -28, 29) + stack("stone_small", -28, -28, 29, 6, "grey", 14)
-    out += put("anvil", 16, 14, 3) + put("barrel", -26, 34, 3) + put("crate", 34, -8, 3)
+            out += stack("trunk_thin", x, y, 0, 2, "timber", M)
+    out += gable(3, 3, 56, "shingle")
+    out += put("stone_block", -28, -28, 0, "dark") + put("stone_block", 0, -28, 0, "dark")
+    out += put("fire", 0, -28, 26) + stack("stone_small", -28, -28, 26, 6, "grey", 14)
+    out += put("anvil", 16, 14, 0) + put("barrel", -26, 34, 0) + put("crate", 34, -8, 0)
     return out
 
 

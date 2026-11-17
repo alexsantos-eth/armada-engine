@@ -106,7 +106,6 @@ BARKS = dict(brown=WOOD, birch=BIRCH, timber=TIMBER)
 STONES = dict(grey=ROCK, dark=ROCK_DARK, sand=STONE_SAND, clay=STONE_CLAY)
 WALLS = dict(plank=PLANK, timber=TIMBER, plaster=PLASTER)
 ROOFS = dict(thatch=THATCH, turf=TURF, tile=TILE, shingle=SHINGLE, dark=SHINGLE_DARK, red=RED, white=WHITE)
-FLOORS = dict(gravel=GRAVEL, dirt=DIRT, cobble=ROCK_DARK, plank=PLANK)
 RUNES = dict(blue=RUNE_BLUE, cyan=RUNE_CYAN, red=RED, dark=RUNE_DARK)
 
 # name → (builder, {variant: colour}); a single unnamed variant writes `<name>.vox`.
@@ -141,7 +140,6 @@ PIECES = {
     "stone_block": (stone(26, 26, 26, 5), STONES),             # masonry: one cell of the module
     "stone_half": (stone(26, 26, 12, 4), STONES),              # footing, step, low wall
     "stone_small": (stone(14, 14, 14, 3.5), STONES),           # chimney course, plinth, brazier
-    "floor_slab": (stone(26, 26, 3, 1.2), FLOORS),             # the ground an entity stands on
     "standing_stone": (stone(22, 16, 54, 7), dict(grey=ROCK, sand=STONE_SAND)),
     "standing_stone_tall": (stone(24, 17, 78, 7.5), dict(grey=ROCK, sand=STONE_SAND)),
     "standing_stone_small": (stone(16, 13, 30, 5.5), dict(grey=ROCK, sand=STONE_SAND)),

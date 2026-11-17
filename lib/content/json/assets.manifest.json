@@ -289,10 +289,10 @@
       "source": "/assets/building/block_smithy.png",
       "dataTiles": "1x1x2",
       "frame": {
-        "x": 1159,
+        "x": 2401,
         "y": 1542,
         "width": 278,
-        "height": 254
+        "height": 237
       },
       "frames": null,
       "anchor": {
@@ -301,9 +301,9 @@
       },
       "ink": {
         "x": -0.434375,
-        "y": -0.575276,
+        "y": -0.562772,
         "width": 0.86875,
-        "height": 0.794016
+        "height": 0.740873
       },
       "colorVariants": 1,
       "sway": null
@@ -764,7 +764,7 @@
       "source": "/assets/house/block_cottage_tile.png",
       "dataTiles": "1x1x2",
       "frame": {
-        "x": 1438,
+        "x": 1159,
         "y": 1542,
         "width": 278,
         "height": 251
@@ -814,7 +814,7 @@
       "source": "/assets/house/block_hut_thatch.png",
       "dataTiles": "1x1x2",
       "frame": {
-        "x": 2200,
+        "x": 1921,
         "y": 1542,
         "width": 276,
         "height": 238
@@ -7030,7 +7030,7 @@
       "source": "/assets/tree/block_10.png",
       "dataTiles": "1x1x2",
       "frame": {
-        "x": 1717,
+        "x": 1438,
         "y": 1542,
         "width": 279,
         "height": 241
@@ -7080,7 +7080,7 @@
       "source": "/assets/tree/block_12.png",
       "dataTiles": "1x1x2",
       "frame": {
-        "x": 2477,
+        "x": 2198,
         "y": 1542,
         "width": 202,
         "height": 238
@@ -7155,7 +7155,7 @@
       "source": "/assets/tree/block_3.png",
       "dataTiles": "1x1x2",
       "frame": {
-        "x": 1997,
+        "x": 1718,
         "y": 1542,
         "width": 202,
         "height": 241
