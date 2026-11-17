@@ -107,6 +107,7 @@ pieza nueva.
 | `THATCH` / `TURF` / `TILE` | `#e3c56a` / `#69a83c` / `#d9703a` | paja, tepe, teja |
 | `SHINGLE` / `SHINGLE_DARK` | `#9a5b2e` / `#8a3f2c` | tablilla clara y oscura |
 | `GLOW` / `IRON` / `FIRE` / `BREW` | `#ffd66b` / `#4a4a52` / `#f7802a` / `#5fd03a` | ventana encendida, hierro, fuego, caldero |
+| `STEP` / `STEP_DEEP` / `TREAD` | `#a79e8d` / `#8f8777` / `#c6bfae` | masa, cimiento y huella de las gradas |
 
 Un material nuevo se añade como constante en `vox_prefabs.py` **y a la lista `PALETTE`**
 (si falta, el script se detiene), **siempre al final**: los índices de los `.vox` ya escritos no se mueven. Elige tonos medios y saturados: el render los oscurece en
@@ -114,10 +115,10 @@ las caras en sombra por su cuenta. Como mucho 255 colores.
 
 ## 4. Los kits
 
-### Kit 1: naturaleza
-
 Tamaños en vóxeles, ancho × fondo × alto. Las variantes son el sufijo del archivo
 (`leaf_block_dark.vox`) y el argumento `variant` al armar.
+
+### Kit 1: naturaleza
 
 | Pieza | Tamaño | Variantes | Uso |
 | --- | --- | --- | --- |
@@ -127,7 +128,7 @@ Tamaños en vóxeles, ancho × fondo × alto. Las variantes son el sufijo del ar
 | `leaf_slab` | 36 × 36 × 12 | green, dark, autumn, blossom | copa plana (celda de 38, capas cada 13) |
 | `leaf_tuft` | 20 × 20 × 11 | green, dark, autumn, blossom | mata baja, almohadilla de rama (celda de 21) |
 | `trunk` | 14 × 14 × 28 | brown, birch | tronco; se apila cada 28 |
-| `trunk_thin` | 9 × 9 × 28 | brown, birch | rama vertical, retoño |
+| `trunk_thin` | 9 × 9 × 28 | brown, birch, timber | rama vertical, retoño; en `timber`, poste |
 | `branch` | 26 × 8 × 8 | brown, birch | brazo horizontal (a lo largo de x; `turn=True` para y) |
 | `stump` | 16 × 16 × 14 | — | tocón con el corte claro |
 | `log` | 30 × 12 × 13 | — | tronco caído con musgo |
@@ -223,19 +224,22 @@ resuelve con una existente girada, apilada o en otro color.
 2. **Tamaño**: si la pieza va en la rejilla, mide el módulo menos 2 (26 en un módulo de 28,
    54 en dos). Si es un prop suelto, el tamaño que pida, entero.
 3. **Radio**: 40–45 % del lado menor. Por debajo del 30 % se lee como un cubo; por encima del
-   48 %, como un cojín.
+   48 %, como un cojín. Muros y sillares van más rectos (15–20 %) para leerse como obra.
 4. Los detalles de otro color (el corte del tocón, las marcas del abedul) son cajas pequeñas
    **después** de la principal: la última caja gana donde se pisan.
-5. Regenera el kit y mira la pieza antes de usarla (sección 6).
+5. Una pieza de cara (puerta, escudo, glifo) lleva el pivote en el plano de la cara y mira a
+   `+x`; para `+y` se gira al colocarla.
+6. Regenera el kit y mira la pieza antes de usarla (sección 6).
 
 Mantén el kit corto: una pieza nueva tiene que servir a más de una entidad o ser lo que hace
-reconocible a una.
+reconocible a una. No se crean piezas de suelo (losa, tarima): las entidades no llevan.
 
 ## 5. Armar una entidad
 
-En `vox_models.py`, una función por entidad que devuelve la lista de cajas, y una entrada en
-`MODELS`: `"nombre": (función, (casillas_x, casillas_y, bloques), "dir/asset.png")`. La ruta
-es el PNG que el render sustituye, bajo `lib/assets/`.
+En `vox_models.py` (naturaleza) o `vox_buildings.py` (lo construido), una función por entidad
+que devuelve la lista de cajas, y una entrada en `MODELS`: `"nombre": (función, (casillas_x,
+casillas_y, bloques), "dir/asset.png")`. La ruta es el PNG que el render sustituye, bajo
+`lib/assets/`.
 
 Ayudas disponibles (posiciones en vóxeles):
 
@@ -346,11 +350,13 @@ emisivo en MagicaVoxel brilla en el sprite.
 
 ```sh
 python3 artifacts/vox/clay/vox_models.py --render tree_3 bush        # arma y renderiza sobre sus assets
+python3 artifacts/vox/clay/vox_buildings.py --render smithy          # lo mismo para lo construido
 blender -b -P artifacts/vox/clay/vox_render.py -- modelo.vox sprite.png   # un .vox cualquiera
 ```
 
 Sin Blender instalado vale el módulo de pip (`pip install bpy`): entonces
-`python3 artifacts/vox/clay/vox_render.py modelo.vox sprite.png`. Tarda unos 35 s por sprite en CPU.
+`python3 artifacts/vox/clay/vox_render.py modelo.vox sprite.png`. Tarda unos 35 s por sprite en CPU
+(un edificio de dos casillas, un par de minutos).
 
 Lo que hace `vox_render.py`, y por qué no se toca a la ligera:
 
@@ -373,15 +379,14 @@ Lo que hace `vox_render.py`, y por qué no se toca a la ligera:
 
 Mira siempre el PNG antes de seguir. Lo que suele fallar: un bloque del frente que tapa el
 tronco, fruta enterrada, una copa que no llega arriba, piezas que se pisan (se funden en un
-bulto sin junta) o que flotan sin apoyo.
+bulto sin junta) o que flotan sin apoyo (un techo por encima de sus postes).
 
 ## 7. Meterlo al juego
 
 1. El PNG va junto a su huella en `<nombre>.json` (obligatorio cuando la huella no es 1x1x1,
    por ejemplo `{"tiles": "1x1x2"}`), es la fuente de la entidad, y su entrada en
    `lib/content/json/entities.json` declara el sprite `/assets/<tipo>/<nombre>.png`.
-2. `lib/scripts/build-atlas.sh`. Si `content/images/cloud-shadow.png` cambia sin haber tocado
-   las nubes, descártalo: es el desenfoque de otra versión de cairo.
+2. `lib/scripts/build-atlas.sh`.
 3. **Recompila el juego** (`cargo build --locked --bin iso-core`). El binario lleva dentro el
    manifiesto: con atlas nuevo y binario viejo los sprites salen recortados y mezclados.
 4. Compruébalo corriendo con la skill `armada-visual-check`: una escena `blank` con la
@@ -390,20 +395,22 @@ bulto sin junta) o que flotan sin apoyo.
 5. `cargo test --workspace --locked`. Al añadir entidades o assets hay contadores a mano en
    `manifest.test.rs`, `entities_catalog_test.rs` y `wfc_catalog_test.rs`.
 6. Si cambian las piezas, las reglas o el render, actualiza en el mismo cambio esta skill y
-   la sección 9 de `lib/docs/ASSET-PIPELINE.md`.
+   `lib/docs/ASSET-PIPELINE.md`.
 
-El commit y el push solo los hace `armada-commit`, cuando el usuario la invoca.
+El commit y el push solo los hace `armada-commit`, cuando el usuario la invoca, salvo que el
+usuario haya pedido trabajar directamente en la rama.
 
 ## 8. Antes de entregar
 
-- [ ] El modelo ocupa el volumen de su huella y `vox_models.py` lo escribe sin quejarse.
+- [ ] El modelo ocupa el volumen de su huella y el script lo escribe sin quejarse.
 - [ ] Solo piezas del kit y colores de la paleta; las piezas nuevas siguen la sección 4.
 - [ ] Hojas en la rejilla del módulo, juntas visibles, frente de la capa baja vacío.
 - [ ] Árboles a dos bloques (z 164–170); un solo acento, puesto en una cara.
+- [ ] Edificios: 3 celdas por casilla, puerta en `+x`, un muro y un tejado, nada flotando.
 - [ ] Sin suelo propio (ni losa ni tarima) y sin sombra propia en el suelo; dos orientaciones generadas, no espejadas.
 - [ ] Viste el sprite renderizado y la entidad dentro del juego, y adjuntas las dos imágenes.
 - [ ] Atlas regenerado, juego recompilado y tests en verde.
-- [ ] Entregas el `.vox` del modelo, el sprite y los cambios de `vox_prefabs.py` / `vox_models.py`.
+- [ ] Entregas el `.vox` del modelo, el sprite y los cambios de `vox_prefabs.py` / `vox_models.py` / `vox_buildings.py`.
 
 ## 9. El techo de hierba con adornos
 
