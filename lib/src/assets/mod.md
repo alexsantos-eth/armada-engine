@@ -57,6 +57,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`see_through`](sprites.rs#L817) — El mismo dibujo conservando `opacity` de sí: el sprite de una entidad tras la que está el jugador. Solo se aclaran `DrawKind::Sprite` y `DrawKind::Shaded`; cualquier otro tipo vuelve intacto.
   - Firma: `pub fn see_through(mut self, opacity: f32) -> Self {`
 
+- [`tinted_by`](sprites.rs#L842) — El mismo dibujo multiplicado por `tint`: el pelaje de un personaje. Solo lo toman `DrawKind::Sprite` y un `DrawKind::Shaded` entero; cualquier otro tipo vuelve intacto.
+  - Firma: `pub fn tinted_by(mut self, tint: Color) -> Self {`
+
 - [`draw_quad`](sprites.rs#L302) — Dibuja un frame dentro de un cuadrilátero (en sentido horario desde su esquina superior izquierda) como una sola malla, con o sin sombras: así se dibuja el cuerpo del jugador cuando se inclina o bascula, llevándose el arte consigo.
   - Firma: `pub fn draw_quad( &mut self, texture: usize, frame: SpriteFrame, corners: &[(f64, f64); 4], shade: Option<&ShadeLattice>, ) {`
 - [`leaning`](sprites.rs#L870) — Encola un sprite dibujado en un cuadrilátero propio en vez de en un rectángulo recto: el jugador inclinado o basculando.

@@ -157,7 +157,7 @@ Un personaje va de casilla en casilla y el suelo decide cómo (`plan_npc_step`):
 
 `Game::step_npcs` corre en el paso fijo, después del jugador y solo en el mundo que se transmite: sincroniza el conjunto (`Npcs::sync`) con los chunks en pantalla que ya tienen sus entidades colocadas y avanza a todos en orden de id. Cada personaje decide con su propio flujo, sembrado con su id, así que la misma semilla da siempre la misma gente haciendo lo mismo. **No se guardan**: un chunk que se va se lleva a los suyos, y al volver nacen otra vez en casa.
 
-Se dibujan con las hojas del mono del jugador (`src/npc`, `Game::collect_npcs`) — `walk`, `idle`, `climb` para el izado y la pose de caída de `jump` —: misma escala, misma clave de profundidad que el jugador, su sombra de suelo, las sombras horneadas que les caen encima y su reflejo en el agua. No participan en la oclusión X-Ray.
+Se dibujan con las hojas del mono del jugador (`src/npc`, `Game::collect_npcs`) — `walk`, `idle`, `climb` para el izado y la pose de caída de `jump` —: misma escala, misma clave de profundidad que el jugador, su sombra de suelo, las sombras horneadas que les caen encima y su reflejo en el agua. Cada uno lleva su aspecto, `iso::npc::npc_look(id)`: un tinte de una paleta de ocho pelajes (`NPC_TINTS`, multiplicado sobre el dibujo con `SpriteDraw::tinted_by`, también bajo sombra) y un tamaño entre 0,8 y 1,15 veces el del jugador (`NPC_SCALE_RANGE`), que escala el cuerpo alrededor de los pies y su sombra de suelo. Es función pura del id, así que no se guarda. No participan en la oclusión X-Ray.
 
 ### Poblados y zonas semánticas
 

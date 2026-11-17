@@ -13,6 +13,8 @@ No salta, no nada y no corre; un desnivel de dos bloques o más, el agua y lo s�
 
 Todo es determinista: quién nace sale de la semilla, del chunk y de su suelo (`derive_seed` + `lattice_at`), y cada personaje decide con su propio flujo (`DustRandom` sembrado con su id, que es la clave de su casilla de origen). Avanzan solo en el paso fijo. **No se guardan**: al volver un chunk, sus personajes nacen otra vez en casa.
 
+Cada personaje tiene además un **aspecto** (`npc_look`): un tinte de una paleta de ocho pelajes y un tamaño entre 0,8 y 1,15 veces el del jugador. Sale de su id con un flujo aparte del que usa para deambular, así que no se guarda nada y vuelve con el mismo aspecto.
+
 No dibuja nada ni conoce sprites: la vista vive en el cliente (`src/npc`).
 
 ## Catálogo de API pública
@@ -133,3 +135,21 @@ No dibuja nada ni conoce sprites: la vista vive en el cliente (`src/npc`).
 #### Tipos
 
 - [`Npcs`](crowd.rs#L12) — Los personajes de los chunks vivos, en orden de id. No se guardan.
+
+### `look.rs`
+
+#### Funciones y métodos
+
+- [`npc_look`](look.rs#L27) — El aspecto del personaje `id`: siempre el mismo para el mismo personaje.
+  - Firma: `pub fn npc_look(id: u64) -> NpcLook {`
+
+#### Constantes
+
+- [`NPC_TINTS`](look.rs#L8) — Los tintes por los que se multiplica el dibujo, como `0xRRGGBB`: el mono tal cual y siete pelajes que lo oscurecen o lo entibian.
+
+- [`NPC_SCALE_RANGE`](look.rs#L12) — Lo más pequeño y lo más grande que se dibuja un personaje, como parte del tamaño del jugador.
+  - Declaración: `pub const NPC_SCALE_RANGE: (f64, f64) = (0.8, 1.15);`
+
+#### Tipos
+
+- [`NpcLook`](look.rs#L18) — Cómo se ve un personaje: su tinte y su tamaño.

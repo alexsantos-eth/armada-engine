@@ -115,3 +115,21 @@ fn a_frame_outside_the_image_or_an_image_cut_short_gets_no_mask() {
     assert!(cover_masks([("outside", outside)].into_iter(), 4, 2, &rgba).is_empty());
     assert!(cover_masks([("whole", test_frame())].into_iter(), 64, 64, &rgba).is_empty());
 }
+
+#[test]
+fn a_coat_tints_a_whole_sprite_lit_or_shaded_and_nothing_else() {
+    let key = scene_key(0.0, 0.0, 0.0, 0, 16.0);
+    let coat = Color::new(0.8, 0.7, 0.6, 1.0);
+    let whole = SpriteDraw::whole(key, 0, test_frame(), test_layout()).tinted_by(coat);
+    assert!(matches!(whole.kind, DrawKind::Sprite { tint, .. } if tint == coat));
+
+    let shade = Rc::new(ShadeLattice::from_coverage(1, 1, vec![0.0; 4]));
+    let plain = SpriteDraw::shaded(key, 0, test_frame(), test_layout(), shade.clone());
+    assert!(matches!(plain.kind, DrawKind::Shaded { tint, .. } if tint == WHITE));
+    let shaded = plain.tinted_by(coat);
+    assert!(matches!(shaded.kind, DrawKind::Shaded { tint, .. } if tint == coat));
+
+    let corners = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)];
+    let shadow = SpriteDraw::ground_shadow(key, corners, [(0.0, 0.0); 4], 0.5).tinted_by(coat);
+    assert!(matches!(shadow.kind, DrawKind::GroundShadow { .. }));
+}

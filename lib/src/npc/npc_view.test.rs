@@ -146,3 +146,28 @@ fn whoever_is_not_drawn_is_forgotten() {
     views.finish();
     assert_eq!(views.len(), 1);
 }
+
+#[test]
+fn a_coat_is_its_three_channels_opaque() {
+    let color = coat_color(0xff_80_00);
+    assert_eq!((color.r, color.b, color.a), (1.0, 0.0, 1.0));
+    assert!((color.g - 128.0 / 255.0).abs() < 1e-6);
+    assert_eq!(coat_color(0xff_ff_ff), macroquad::color::WHITE);
+}
+
+#[test]
+fn a_bigger_character_casts_a_bigger_shadow_from_the_same_spot() {
+    let shadow = PlayerShadow {
+        centre: iso::projection::ScreenPoint { x: 10.0, y: 20.0 },
+        width: 30.0,
+        height: 12.0,
+        alpha: 0.25,
+        shear: [[1.0, 0.0], [0.0, 1.0]],
+    };
+    let big = scaled_shadow(shadow, 1.5);
+    assert_eq!((big.width, big.height), (45.0, 18.0));
+    assert_eq!(
+        (big.centre, big.alpha, big.shear),
+        (shadow.centre, shadow.alpha, shadow.shear)
+    );
+}

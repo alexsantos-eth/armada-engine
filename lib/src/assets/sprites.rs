@@ -366,7 +366,7 @@ impl SpriteAtlas {
         texture: usize,
         frame: SpriteFrame,
         layout: SpriteLayout,
-        shade: &ShadeLattice,
+        (shade, tint): (&ShadeLattice, Color),
         veil: Veil,
     ) {
         let source = self.source(frame);
@@ -388,7 +388,7 @@ impl SpriteAtlas {
                         (source.x + along * source.w) / width,
                         (source.y + down * source.h) / height,
                     ),
-                    Color::new(light, light, light, 1.0),
+                    Color::new(light * tint.r, light * tint.g, light * tint.b, 1.0),
                     (0.0, 0.0),
                     crate::rendering::scene_material::SPRITE,
                 )));
@@ -728,6 +728,8 @@ pub enum DrawKind {
         shade: Rc<ShadeLattice>,
         /// The piece of the drawing this draw shows, as in [`DrawKind::Sprite`].
         band: Option<SpriteBand>,
+        /// What the lit artwork is multiplied by; a band ignores it.
+        tint: Color,
         /// How much of itself it keeps, as in [`DrawKind::Sprite`].
         opacity: f32,
     },
@@ -835,6 +837,17 @@ impl SpriteDraw {
         self
     }
 
+    /// The same draw multiplied by `tint`: a character's own coat. Only a sprite drawn whole,
+    /// lit or shaded, takes it; every other kind of draw is returned as it is.
+    pub fn tinted_by(mut self, tint: Color) -> Self {
+        if let DrawKind::Sprite { tint: own, .. } | DrawKind::Shaded { tint: own, .. } =
+            &mut self.kind
+        {
+            *own = tint;
+        }
+        self
+    }
+
     /// One band of a sprite whose footprint covers several cells.
     pub fn band(
         key: DrawKey,
@@ -872,6 +885,7 @@ impl SpriteDraw {
                 layout,
                 shade,
                 band: None,
+                tint: WHITE,
                 opacity: 1.0,
             },
         }
@@ -913,6 +927,7 @@ impl SpriteDraw {
                 layout,
                 shade,
                 band: Some(band),
+                tint: WHITE,
                 opacity: 1.0,
             },
         }
@@ -1076,13 +1091,14 @@ fn draw_queue(atlas: &mut SpriteAtlas, draws: &mut [SpriteDraw], dithered: bool)
                 layout,
                 shade,
                 band: None,
+                tint,
                 opacity,
             } => {
                 atlas.draw_shaded(
                     *texture,
                     *frame,
                     *layout,
-                    shade.as_ref(),
+                    (shade.as_ref(), *tint),
                     Veil::of(*opacity, dithered),
                 );
             }

@@ -813,7 +813,9 @@ impl Game {
             let Some(idle) = self.atlas.sheet(PLAYER_IDLE_SHEET) else {
                 continue;
             };
-            let ink = idle.ink.scaled(PLAYER_SCALE);
+            let look = iso::npc::npc_look(npc.id);
+            let scale = PLAYER_SCALE * look.scale;
+            let ink = idle.ink.scaled(scale);
             if !SpriteAtlas::on_screen(ink_layout(feet, ink, projection.tile_width)) {
                 continue;
             }
@@ -827,7 +829,7 @@ impl Game {
                 continue;
             };
             let (texture, frame) = (sheet.texture, sheet.frame(pose.facing, pose.pose));
-            let layout = ink_layout(feet, sheet.ink.scaled(PLAYER_SCALE), projection.tile_width);
+            let layout = ink_layout(feet, sheet.ink.scaled(scale), projection.tile_width);
             let key = player_key(
                 column,
                 rp.elevation,
@@ -835,7 +837,10 @@ impl Game {
                 projection.tile_height,
             );
             let ground_feet = player_feet(at, rp.elevation, projection);
-            let shadow = player_shadow(ground_feet, rp.height, projection, phase.light());
+            let shadow = crate::npc::npc_view::scaled_shadow(
+                player_shadow(ground_feet, rp.height, projection, phase.light()),
+                look.scale,
+            );
             let outline = shadow_clip::sheared_ellipse(
                 shadow.centre,
                 shadow.width,
@@ -892,10 +897,12 @@ impl Game {
                     &mut self.draws,
                 );
             }
-            self.draws.push(match shade {
+            let draw = match shade {
                 Some(shade) => SpriteDraw::shaded(key, texture, frame, layout, shade),
                 None => SpriteDraw::whole(key, texture, frame, layout),
-            });
+            };
+            self.draws
+                .push(draw.tinted_by(crate::npc::npc_view::coat_color(look.tint)));
         }
         self.npc_views.finish();
     }

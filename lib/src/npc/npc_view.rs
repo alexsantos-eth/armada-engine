@@ -11,6 +11,7 @@ use iso::player::{PlayerJumpPhase, PlayerMotionType};
 use iso::projection::GridPoint;
 use iso::scene_order::PlayerSheet;
 
+use crate::player::player_shadow::PlayerShadow;
 use crate::player::player_view::{PlayerAnimation, PlayerMoment, PlayerPose, PlayerSheets};
 
 /// The animation of one character between frames, and where it was last drawn.
@@ -62,6 +63,22 @@ pub fn npc_sheets(sheets: PlayerSheets) -> PlayerSheets {
         swim_poses: None,
         flip_poses: None,
         ..sheets
+    }
+}
+
+/// The colour a character's artwork is multiplied by, from its coat as `0xRRGGBB`.
+pub fn coat_color(tint: u32) -> macroquad::color::Color {
+    let channel = |shift: u32| f32::from(((tint >> shift) & 0xff) as u8) / 255.0;
+    macroquad::color::Color::new(channel(16), channel(8), channel(0), 1.0)
+}
+
+/// The ground shadow of a character `scale` times the player's size: as wide and as deep as
+/// its body, cast from the same spot.
+pub fn scaled_shadow(shadow: PlayerShadow, scale: f64) -> PlayerShadow {
+    PlayerShadow {
+        width: shadow.width * scale,
+        height: shadow.height * scale,
+        ..shadow
     }
 }
 
