@@ -95,7 +95,7 @@ pieza nueva.
 | `BARK` | `#7a5a3a` | tronco caído |
 | `CUT` | `#d9b98a` | madera recién cortada (tocón, extremos del tronco) |
 | `MOSS` | `#6f8f4a` | musgo sobre roca o madera |
-| `RED` / `WHITE` / `YELLOW` / `PINK` | `#d9463a` / `#f4f1e6` / `#f4bd43` / `#f7a8c9` | fruta, pétalos, centro de flor |
+| `RED` / `WHITE` / `YELLOW` / `PINK` | `#d9463a` / `#f4f1e6` / `#f4bd43` / `#f7a8c9` | fruta, pétalos, centro de flor, copa de cerezo (`blossom`) |
 | `CAP` / `STEM` / `DOT` | `#b5473a` / `#eee8d8` / `#fff2dc` | seta |
 | `OCHRE` / `RUST` | `#d9a441` / `#c9702e` | hojas caídas |
 | `ROCK` / `ROCK_DARK` | `#9a9a96` / `#7c7c7a` | piedra |
@@ -121,11 +121,11 @@ Tamaños en vóxeles, ancho × fondo × alto. Las variantes son el sufijo del ar
 
 | Pieza | Tamaño | Variantes | Uso |
 | --- | --- | --- | --- |
-| `leaf_block` | 26 × 26 × 26 | green, dark, autumn | el bloque de copa; una celda del módulo |
-| `leaf_block_small` | 20 × 20 × 20 | green, dark, autumn | capas altas más estrechas (celda de 22) |
-| `leaf_cap` | 32 × 32 × 24 | green, dark, autumn | remate ancho de una copa |
-| `leaf_slab` | 36 × 36 × 12 | green, dark, autumn | copa plana (celda de 38, capas cada 13) |
-| `leaf_tuft` | 20 × 20 × 11 | green, dark, autumn | mata baja, almohadilla de rama (celda de 21) |
+| `leaf_block` | 26 × 26 × 26 | green, dark, autumn, blossom | el bloque de copa; una celda del módulo |
+| `leaf_block_small` | 20 × 20 × 20 | green, dark, autumn, blossom | capas altas más estrechas (celda de 22) |
+| `leaf_cap` | 32 × 32 × 24 | green, dark, autumn, blossom | remate ancho de una copa |
+| `leaf_slab` | 36 × 36 × 12 | green, dark, autumn, blossom | copa plana (celda de 38, capas cada 13) |
+| `leaf_tuft` | 20 × 20 × 11 | green, dark, autumn, blossom | mata baja, almohadilla de rama (celda de 21) |
 | `trunk` | 14 × 14 × 28 | brown, birch | tronco; se apila cada 28 |
 | `trunk_thin` | 9 × 9 × 28 | brown, birch | rama vertical, retoño |
 | `branch` | 26 × 8 × 8 | brown, birch | brazo horizontal (a lo largo de x; `turn=True` para y) |
@@ -149,7 +149,7 @@ Tamaños en vóxeles, ancho × fondo × alto. Las variantes son el sufijo del ar
 | `stone_half` | 26 × 26 × 12 | grey, dark, sand, clay | zócalo, escalón, muro bajo |
 | `stone_small` | 14 × 14 × 14 | grey, dark, sand, clay | hilada de chimenea, plinto, brasero |
 | `standing_stone` | 22 × 16 × 54 | grey, sand | piedra rúnica |
-| `standing_stone_tall` | 24 × 17 × 78 | grey, sand | la alta: con el suelo de 3 llega justo al bloque |
+| `standing_stone_tall` | 24 × 17 × 78 | grey, sand | la alta: casi el bloque entero (85) |
 | `standing_stone_small` | 16 × 13 × 30 | grey, sand | la baja, o el pie de una rota |
 | `stone_lying` | 54 × 20 × 10 | grey, sand | piedra caída (a lo largo de x) |
 | `moss_patch` | 10 × 8 × 3 | — | musgo suelto sobre piedra, teja o suelo |
@@ -161,7 +161,7 @@ Tamaños en vóxeles, ancho × fondo × alto. Las variantes son el sufijo del ar
 | Pieza | Tamaño | Variantes | Uso |
 | --- | --- | --- | --- |
 | `wall_block` | 26 × 26 × 26 | plank, timber, plaster | una celda de muro |
-| `wall_half` | 26 × 26 × 12 | plank, timber, plaster | relleno del hastial, mostrador, tarima alta, barandilla |
+| `wall_half` | 26 × 26 × 12 | plank, timber, plaster | relleno del hastial, mostrador, galería de una torre, barandilla |
 | `roof_block` | 26 × 26 × 12 | thatch, turf, tile, shingle, dark, red, white | una hilada de tejado; `red`/`white` son lona |
 | `ridge` | 26 × 8 × 6 | timber, plank | cumbrera |
 | `trunk_thin` (`timber`) | 9 × 9 × 28 | — | poste y esquina de entramado (la pieza del kit 1 en otro color) |
@@ -177,6 +177,36 @@ Tamaños en vóxeles, ancho × fondo × alto. Las variantes son el sufijo del ar
 Las piezas de cara (`door`, `window`, `shield`, `rune`, `banner`) tienen el pivote **en el
 plano de la cara**: se colocan con `x` igual al plano del muro y la mitad queda prensada
 dentro, igual que la fruta.
+
+### Qué kit usar y cómo se combinan
+
+| Quiero hacer… | Kit | Dónde | Piezas base |
+| --- | --- | --- | --- |
+| árbol, arbusto, bosquecillo | 1 | `vox_models.py` | `trunk` + capas de `leaf_*` + un acento |
+| adorno del techo de hierba | 1 | `grass_clay.py` | `flower_big`, `wildflower`, `sprout`, `mushroom`, `pebble_*` |
+| piedra rúnica, ruina, menhir | 2 | `vox_buildings.py` | `standing_stone*` + `rune` + `moss_patch` |
+| obra de piedra (torre, santuario, zócalo) | 2 | `vox_buildings.py` | `stone_block` / `stone_half` con `walls` o `pyramid` |
+| casa, salón, cobertizo, puesto | 3 (+2) | `vox_buildings.py` | `wall_block` + `roof_block` + piezas de cara + atrezo |
+| gradas | 2 | `vox_stairs.py` | masa recta propia + `stone_small`, `pebble_*`, `moss_patch` |
+
+Los kits **se mezclan**: comparten módulo (28), junta y paleta. Una casa lleva zócalo y
+chimenea del kit 2, postes (`trunk_thin` en `timber`) y una mata (`leaf_tuft`) del kit 1; una
+piedra rúnica lleva guijarros y rocas del kit 1. Lo que no se mezcla son los papeles: una
+pieza de hoja no hace de tejado ni un `wall_block` de roca.
+
+Cotas que cuadran las piezas entre sí (todo en vóxeles):
+
+| Se apila | Sube por pieza | Ejemplo |
+| --- | --- | --- |
+| `wall_block`, `stone_block`, `leaf_block`, `trunk`, `trunk_thin` | 28 | dos hiladas de muro = 56; dos postes = 56 |
+| `wall_half`, `stone_half`, `roof_block` | 12 | zócalo de 12 + dos hiladas = 68 |
+| `stone_small` | 14 | chimenea de tres = 42 |
+| una hilada de `gable` o de `pyramid` | 12 arriba, 14 adentro | tejado sobre 3 celdas: 4 hiladas = 48, más la cumbrera 6 |
+
+Con eso se calcula la altura antes de armar: casa de 3 celdas con zócalo = 12 + 56 − 4 + 48 +
+6 = 118 de 170. Lo que apoya en otra pieza empieza **exactamente** en su cota de arriba: un
+techo plano sobre dos postes va en z = 56, no «más o menos encima» (el toldo del mercado flotó
+por eso).
 
 `python3 artifacts/vox/clay/vox_prefabs.py` regenera todos los `.vox` de las piezas. Sirven para armar
 a mano en MagicaVoxel; `vox_models.py` no los lee, usa las mismas definiciones directamente.
@@ -250,6 +280,10 @@ Un edificio se escribe **una vez con la cumbrera a lo largo de x**, alrededor de
 - `face_x(pieza, plano_x, y, z, variante)` / `face_y(pieza, x, plano_y, z, variante)` — una
   pieza de cara; `side(n)` da el plano exterior de `n` celdas (`n · 14 − 1`).
 - `along(cajas, eje)` — coloca un edificio de dos casillas sobre su huella en x o en y.
+- `cells(n)` — los centros de `n` celdas alrededor de 0 (`cells(3)` = −28, 0, 28), para
+  repartir escudos, ventanas o postes sobre la rejilla.
+- `stack(pieza, x, y, z, cuántas, variante, sube)` — la misma pieza apilada: postes
+  (`sube` 28), chimenea de `stone_small` (`sube` 14).
 
 Reglas de los edificios:
 
@@ -260,6 +294,47 @@ Reglas de los edificios:
 - Como mucho **un material de muro y uno de tejado** por edificio, más el zócalo de piedra.
 - Un edificio ocupa el volumen de su huella como cualquier modelo: 1 bloque los puestos y las
   piedras, 2 las casas, 3 la torre y el templo.
+- **Sin suelo propio**: muros, postes y atrezo arrancan en z = 0 sobre la hierba.
+
+Recetas, una por tipo (las de `vox_buildings.py`, resumidas):
+
+```python
+def runestone_pair():            # kit 2: piedras sueltas sobre la hierba, sin suelo propio
+    return (put("standing_stone_tall", -14, -12, 0, "grey")
+            + face_x("rune", -2, -12, 53, "red")            # plano = centro −14 + mitad del ancho 12
+            + put("standing_stone", 20, 14, 0, "sand") + face_x("rune", 31, 14, 31, "red")
+            + put("moss_patch", -4, 6, 0) + put("rock_s", -26, 26, 0))
+
+def cottage_tile():              # kit 3 + 2: casa de una casilla, dos bloques
+    top = 12 + 56                                           # zócalo + dos hiladas
+    out = walls(3, 3, 0, 1, "grey", name="stone_half") + walls(3, 3, 12, 2, "plaster")
+    for x, y in ((41, 41), (41, -41), (-41, 41)):           # esquinas vistas: entramado
+        out += stack("trunk_thin", x, y, 12, 2, "timber", M)
+    out += gable(3, 3, top - 4, "tile", fill="plaster")     # el tejado muerde 4 del muro
+    out += stack("stone_small", -28, -22, top + 20, 3, "grey", 14)      # chimenea, detrás
+    return out + face_x("door", side(3), 0, 12) + face_y("window", -14, side(3), 34, "lit")
+
+def smithy():                    # cobertizo abierto: postes en vez de muros
+    out = [b for x in (-40, 40) for y in (-40, 40) for b in stack("trunk_thin", x, y, 0, 2, "timber", M)]
+    out += gable(3, 3, 56, "shingle")                       # apoya en la cota de los postes
+    return out + put("stone_block", 0, -28, 0, "dark") + put("fire", 0, -28, 26) + put("anvil", 16, 14, 0)
+
+def watchtower():                # tres bloques: fuste de sillares, galería y caseta
+    deck = 5 * M
+    out = walls(2, 2, 0, 5, "grey", name="stone_block") + pyramid([4], deck, "plank", name="wall_half")
+    return out + walls(2, 2, deck + 12, 1, "plank") + gable(2, 2, deck + 36, "turf", fill="plank")
+
+def mead_hall(axis):             # dos casillas: se escribe a lo largo de x y `along` lo coloca
+    out = walls(7, 3, 0, 1, "grey", name="stone_half") + walls(7, 3, 12, 2, "timber")
+    out += gable(7, 3, 64, "shingle", fill="timber", ridge="plank") + face_x("door", side(7), 0, 12)
+    for n, x in enumerate(cells(7)[1:-1]):                  # la fila de escudos, en la cara +y
+        out += face_y("shield", x, side(3), 34, "red" if n % 2 == 0 else "white")
+    return along(out, axis)      # MODELS: "mead_hall_2x1" con "x" y (2, 1, 2); "_1x2" con "y" y (1, 2, 2)
+```
+
+Lo que da carácter a cada edificio con las mismas piezas: el **material** (un muro y un
+tejado), la **forma del tejado** (`gable` bajo, `pyramid` empinada, plano de lona), **una
+pieza propia** (dragón, chimenea, caldero, bote, yunque) y el atrezo junto a la puerta.
 
 **A mano en MagicaVoxel**: modelo nuevo del tamaño de la huella, se importan las piezas de
 `artifacts/vox/prefabs/` (todas llevan la misma paleta) y se colocan sobre la rejilla de 28.
