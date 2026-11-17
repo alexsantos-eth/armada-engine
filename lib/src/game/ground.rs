@@ -1,5 +1,7 @@
 //! Adapters from the world to locomotion and to reflections.
 
+use std::collections::HashMap;
+
 use iso::entities::EntityLengthAxis;
 use iso::player::physics::{PlayerGround, PlayerObstacle};
 use iso::terrain::{TerrainColumn, TerrainMaterial};
@@ -63,10 +65,36 @@ fn water_cell_of(column: Option<TerrainColumn>) -> Option<WaterCell> {
     })
 }
 
-/// The water of the cell `(x, y)`, or `None` where there is none: what a reflection asks the
-/// world about the cells beneath a sprite.
-pub(crate) fn water_cell(manager: &ChunkManager, x: i32, y: i32) -> Option<WaterCell> {
-    water_cell_of(manager.column_at(x, y))
+/// The water of every cell drawn this frame, by absolute cell: what the reflections and the
+/// terrain ask instead of walking the world cell by cell. A frame that shows no water holds
+/// nothing, and its reflections are skipped whole.
+pub(crate) struct WaterField {
+    cells: HashMap<(i32, i32), WaterCell>,
+}
+
+impl WaterField {
+    /// The water among `chunks`, the columns of every chunk on screen.
+    pub(crate) fn from_chunks<'a>(chunks: impl Iterator<Item = &'a [TerrainColumn]>) -> Self {
+        let mut cells = HashMap::new();
+        for columns in chunks {
+            for column in columns {
+                if let Some(cell) = water_cell_of(Some(*column)) {
+                    cells.insert((column.coord.x, column.coord.y), cell);
+                }
+            }
+        }
+        Self { cells }
+    }
+
+    /// The water at `(x, y)`, or `None` when that cell is dry or off screen.
+    pub(crate) fn at(&self, x: i32, y: i32) -> Option<WaterCell> {
+        self.cells.get(&(x, y)).copied()
+    }
+
+    /// Whether the frame shows any water at all.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.cells.is_empty()
+    }
 }
 
 #[cfg(test)]

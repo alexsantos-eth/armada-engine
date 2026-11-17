@@ -98,7 +98,7 @@ pub(crate) async fn run(mut game: Game) {
         let stats = game.collect_scene(&view);
 
         let after_collect = get_time();
-        draw_sorted(&game.atlas, game.material.as_ref(), &mut game.draws);
+        draw_sorted(&mut game.atlas, game.material.as_ref(), &mut game.draws);
         game.draw_clouds(frame_ms, &view.projection);
         game.scene_target.present(game.grade.as_ref(), &grade);
         crate::testbed::write_shots(&mut game, &view.shots);

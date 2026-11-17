@@ -18,42 +18,22 @@ fn scene_key_orders_a_higher_layer_after_the_same_world_position() {
 }
 
 #[test]
-fn a_lattice_scaled_to_zero_lifts_every_corner_to_lit() {
-    let lattice = ShadeLattice {
-        columns: 1,
-        rows: 1,
-        light: vec![0.0, 0.25, 0.5, 0.75],
-    };
+fn a_lattice_built_from_coverage_keeps_the_light_of_each_corner() {
+    let lattice = ShadeLattice::from_coverage(1, 1, vec![0.0, 0.25, 0.5, 0.75]);
 
-    let faded = lattice.scaled(0.0);
-
-    assert!(faded.light.iter().all(|&light| (light - 1.0).abs() < 1e-6));
-    assert_eq!((faded.columns, faded.rows), (1, 1));
+    assert_eq!((lattice.columns, lattice.rows), (1, 1));
+    assert_eq!(lattice.light, vec![1.0, 0.75, 0.5, 0.25]);
 }
 
 #[test]
-fn a_lattice_scaled_to_one_keeps_its_darkness() {
-    let light = vec![0.5, 0.25, 0.0, 0.75, 0.9, 0.1, 0.33, 0.66, 0.12];
-    let lattice = ShadeLattice {
-        columns: 2,
-        rows: 2,
-        light: light.clone(),
-    };
+fn a_lattice_reads_the_light_between_its_corners() {
+    let lattice = ShadeLattice::from_coverage(1, 1, vec![0.0, 0.25, 0.5, 0.75]);
 
-    assert_eq!(lattice.scaled(1.0).light, light);
-}
-
-#[test]
-fn a_half_scaled_lattice_halves_its_darkness() {
-    let lattice = ShadeLattice {
-        columns: 1,
-        rows: 1,
-        light: vec![0.5; 4],
-    };
-
-    let faded = lattice.scaled(0.5);
-
-    assert!(faded.light.iter().all(|&light| (light - 0.75).abs() < 1e-6));
+    assert_eq!(lattice.light_in(0.0, 0.0), 1.0);
+    assert_eq!(lattice.light_in(1.0, 0.0), 0.75);
+    assert_eq!(lattice.light_in(0.0, 1.0), 0.5);
+    assert_eq!(lattice.light_in(1.0, 1.0), 0.25);
+    assert_eq!(lattice.light_in(0.5, 0.5), 0.625);
 }
 
 fn test_frame() -> SpriteFrame {
@@ -83,7 +63,7 @@ fn a_sprite_is_queued_opaque_and_thins_out_when_made_see_through() {
     let thinned = whole.see_through(0.4);
     assert!(matches!(thinned.kind, DrawKind::Sprite { opacity, .. } if opacity == 0.4));
 
-    let shade = ShadeLattice::from_coverage(1, 1, vec![0.0; 4]);
+    let shade = Rc::new(ShadeLattice::from_coverage(1, 1, vec![0.0; 4]));
     let shaded = SpriteDraw::shaded(key, 0, test_frame(), test_layout(), shade).see_through(0.7);
     assert!(matches!(shaded.kind, DrawKind::Shaded { opacity, .. } if opacity == 0.7));
 }

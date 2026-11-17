@@ -25,7 +25,7 @@ use crate::game::config::{
     SceneMetrics,
 };
 use crate::game::frame::FrameView;
-use crate::game::ground::water_cell;
+use crate::game::ground::WaterField;
 use crate::game::state::Game;
 use crate::lighting::shadow_view;
 use crate::player::body_motion::{BodyMoment, BodyScale, body_quad};
@@ -293,8 +293,14 @@ impl Game {
 
         self.occlusion.begin(view.frame_ms);
         let player = PLAYER_XRAY.then(|| self.player_cover(view)).flatten();
-        let chunks_drawn = self.collect_world(view, player);
-        let moved = self.collect_player(view);
+        let water = WaterField::from_chunks(
+            view.culled
+                .iter()
+                .filter(|coord| self.manager.is_visible(**coord))
+                .filter_map(|coord| self.manager.terrain_chunk(*coord)),
+        );
+        let chunks_drawn = self.collect_world(view, player, &water);
+        let moved = self.collect_player(view, &water);
         self.collect_dust(view, moved);
         self.collect_particles(view);
 
@@ -333,7 +339,12 @@ impl Game {
     /// Terrain and baked shadows of the visible chunks, then entities and their reflections.
     /// An entity's sprite that hides `player` is thinned out. Returns how many chunks were
     /// drawn.
-    fn collect_world(&mut self, view: &FrameView, player: Option<Occludee>) -> usize {
+    fn collect_world(
+        &mut self,
+        view: &FrameView,
+        player: Option<Occludee>,
+        water: &WaterField,
+    ) -> usize {
         let projection = view.projection;
         self.wind_ms += view.frame_ms;
         let mut chunks_drawn = 0usize;
@@ -356,7 +367,7 @@ impl Game {
                                 .column_at(point.x, point.y)
                                 .map(|c| c.elevation)
                         },
-                        water_at: |x, y| water_cell(&self.manager, x, y),
+                        water_at: |x, y| water.at(x, y),
                         surface_at: |point| {
                             self.manager.column_at(point.x, point.y).map(|c| c.surface)
                         },
@@ -522,20 +533,22 @@ impl Game {
                             Reflected::Standing { turn_at },
                         )
                     });
-                collect_reflection(
-                    ReflectionSprite {
-                        texture: mirrored.0,
-                        frame: mirrored.1,
-                        layout: mirrored.2,
-                        feet: anchor,
-                        elevation,
-                        lift: 0.0,
-                    },
-                    mirrored.3,
-                    projection,
-                    |x, y| water_cell(&self.manager, x, y),
-                    &mut self.draws,
-                );
+                if !water.is_empty() {
+                    collect_reflection(
+                        ReflectionSprite {
+                            texture: mirrored.0,
+                            frame: mirrored.1,
+                            layout: mirrored.2,
+                            feet: anchor,
+                            elevation,
+                            lift: 0.0,
+                        },
+                        mirrored.3,
+                        projection,
+                        |x, y| water.at(x, y),
+                        &mut self.draws,
+                    );
+                }
             }
         }
         chunks_drawn
@@ -543,7 +556,7 @@ impl Game {
 
     /// The player's sprite: depth key, pose, artwork or fallback, its reflection and the
     /// shadow falling on it. Returns how far it moved this frame.
-    fn collect_player(&mut self, view: &FrameView) -> f64 {
+    fn collect_player(&mut self, view: &FrameView, water: &WaterField) -> f64 {
         let projection = view.projection;
         let rp = &view.rp;
         let frame_ms = view.frame_ms;
@@ -682,20 +695,22 @@ impl Game {
                         .shade_moving(&self.manager, &receiver)
                         .and_then(|grid| shadow_view::lattice_of(&grid, fade))
                 });
-                collect_reflection(
-                    ReflectionSprite {
-                        texture,
-                        frame,
-                        layout,
-                        feet,
-                        elevation: rp.elevation + rp.height,
-                        lift: rp.height,
-                    },
-                    Reflected::Standing { turn_at: None },
-                    projection,
-                    |x, y| water_cell(&self.manager, x, y),
-                    &mut self.draws,
-                );
+                if !water.is_empty() {
+                    collect_reflection(
+                        ReflectionSprite {
+                            texture,
+                            frame,
+                            layout,
+                            feet,
+                            elevation: rp.elevation + rp.height,
+                            lift: rp.height,
+                        },
+                        Reflected::Standing { turn_at: None },
+                        projection,
+                        |x, y| water.at(x, y),
+                        &mut self.draws,
+                    );
+                }
                 match (&shade, upright) {
                     (Some(shade), true) => self.draws.push(SpriteDraw::shaded(
                         key,

@@ -872,9 +872,10 @@ pub fn receiver_of(
 }
 
 /// A lattice ready to draw a sprite with, or `None` when nothing shades it after all — or when
-/// `fade` is zero, so a chunk straight out of its bake draws as one unshaded quad.
-pub fn lattice_of(grid: &ShadeGrid, fade: f32) -> Option<ShadeLattice> {
-    (fade > 0.0 && !grid.is_clear()).then(|| ShadeLattice::new(grid).scaled(fade))
+/// `fade` is zero, so a chunk straight out of its bake draws as one unshaded quad. The lattice
+/// is shared with every draw of the same sprite instead of copied into each of them.
+pub fn lattice_of(grid: &ShadeGrid, fade: f32) -> Option<Rc<ShadeLattice>> {
+    (fade > 0.0 && !grid.is_clear()).then(|| Rc::new(ShadeLattice::faded(grid, fade)))
 }
 
 /// The nine chunks around `coord`, itself included, in a fixed order.

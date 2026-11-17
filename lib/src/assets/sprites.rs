@@ -30,6 +30,9 @@ pub struct SpriteAtlas {
     white: Option<(f32, f32)>,
     /// Where each sprite of the shared atlas is solid, by [`artwork_key`].
     masks: HashMap<String, CoverMask>,
+    /// The one mesh every draw is built in: Macroquad copies its vertices into the batch, so
+    /// the same buffers are cleared and filled again instead of allocated for each draw.
+    scratch: Mesh,
 }
 
 /// What the manifest knows about one sprite: the pixels, and where they belong.
@@ -137,6 +140,11 @@ impl SpriteAtlas {
             sheets,
             white,
             masks: HashMap::new(),
+            scratch: Mesh {
+                vertices: Vec::new(),
+                indices: Vec::new(),
+                texture: None,
+            },
         }
     }
 
@@ -189,6 +197,16 @@ impl SpriteAtlas {
         self.textures.get(index).unwrap_or(&self.textures[0])
     }
 
+    /// Clears the scratch mesh and points it at `texture`: a draw fills it and hands it to
+    /// Macroquad, which copies its vertices into the batch, so the buffers outlive the draw.
+    fn begin_mesh(&mut self, texture: Option<Texture2D>) -> &mut Mesh {
+        let mesh = &mut self.scratch;
+        mesh.vertices.clear();
+        mesh.indices.clear();
+        mesh.texture = texture;
+        mesh
+    }
+
     /// Draws one frame of `texture` into the rectangle `layout` describes, multiplied by `tint`.
     pub fn draw(&self, texture: usize, frame: SpriteFrame, layout: SpriteLayout, tint: Color) {
         let source = self.source(frame);
@@ -208,7 +226,7 @@ impl SpriteAtlas {
     /// Draws one frame of `texture` into the rectangle `layout` describes, multiplied by `tint`
     /// and thinned by `veil`: the whole sprite the player stands behind.
     pub fn draw_veiled(
-        &self,
+        &mut self,
         texture: usize,
         frame: SpriteFrame,
         layout: SpriteLayout,
@@ -216,38 +234,33 @@ impl SpriteAtlas {
         veil: Veil,
     ) {
         let source = self.source(frame);
-        let texture = self.texture(texture);
+        let texture = self.texture(texture).clone();
         let (width, height) = (texture.width(), texture.height());
-        let vertices: Vec<Vertex> = [(0.0f32, 0.0f32), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
-            .iter()
-            .map(|&(along, down)| {
-                veil.over(vertex(
-                    (
-                        layout.x as f32 + along * layout.width as f32,
-                        layout.y as f32 + down * layout.height as f32,
-                    ),
-                    (
-                        (source.x + along * source.w) / width,
-                        (source.y + down * source.h) / height,
-                    ),
-                    tint,
-                    (0.0, 0.0),
-                    crate::rendering::scene_material::SPRITE,
-                ))
-            })
-            .collect();
-        draw_mesh(&Mesh {
-            vertices,
-            indices: vec![0, 1, 2, 0, 2, 3],
-            texture: Some(texture.clone()),
-        });
+        let mesh = self.begin_mesh(Some(texture));
+        for &(along, down) in [(0.0f32, 0.0f32), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)].iter() {
+            mesh.vertices.push(veil.over(vertex(
+                (
+                    layout.x as f32 + along * layout.width as f32,
+                    layout.y as f32 + down * layout.height as f32,
+                ),
+                (
+                    (source.x + along * source.w) / width,
+                    (source.y + down * source.h) / height,
+                ),
+                tint,
+                (0.0, 0.0),
+                crate::rendering::scene_material::SPRITE,
+            )));
+        }
+        mesh.indices.extend_from_slice(&[0, 1, 2, 0, 2, 3]);
+        draw_mesh(mesh);
     }
 
     /// Draws the part of a frame that falls inside `band`, which is a piece of the same
     /// artwork: one vertex per corner at the band's un-sheared read of it, fanned from the
     /// first corner.
     pub fn draw_band(
-        &self,
+        &mut self,
         texture: usize,
         frame: SpriteFrame,
         band: &SpriteBand,
@@ -255,43 +268,35 @@ impl SpriteAtlas {
         veil: Veil,
     ) {
         let source = self.source(frame);
-        let texture = self.texture(texture);
+        let texture = self.texture(texture).clone();
         let (width, height) = (texture.width(), texture.height());
         let corners = band.corners();
         let uvs = band.uvs();
-        let vertices: Vec<Vertex> = corners
-            .iter()
-            .zip(uvs)
-            .map(|(&(x, y), &(along, down))| {
-                let (along, down) = (along as f32, down as f32);
-                let colour = match shade {
-                    None => WHITE,
-                    Some(shade) => {
-                        let light = shade.light_in(along, down);
-                        Color::new(light, light, light, 1.0)
-                    }
-                };
-                veil.over(vertex(
-                    (x as f32, y as f32),
-                    (
-                        (source.x + along * source.w) / width,
-                        (source.y + down * source.h) / height,
-                    ),
-                    colour,
-                    (0.0, 0.0),
-                    crate::rendering::scene_material::SPRITE,
-                ))
-            })
-            .collect();
-        let mut indices = Vec::with_capacity((corners.len() - 2) * 3);
-        for i in 1..corners.len() - 1 {
-            indices.extend_from_slice(&[0, i as u16, i as u16 + 1]);
+        let mesh = self.begin_mesh(Some(texture));
+        for (&(x, y), &(along, down)) in corners.iter().zip(uvs.iter()) {
+            let (along, down) = (along as f32, down as f32);
+            let colour = match shade {
+                None => WHITE,
+                Some(shade) => {
+                    let light = shade.light_in(along, down);
+                    Color::new(light, light, light, 1.0)
+                }
+            };
+            mesh.vertices.push(veil.over(vertex(
+                (x as f32, y as f32),
+                (
+                    (source.x + along * source.w) / width,
+                    (source.y + down * source.h) / height,
+                ),
+                colour,
+                (0.0, 0.0),
+                crate::rendering::scene_material::SPRITE,
+            )));
         }
-        draw_mesh(&Mesh {
-            vertices,
-            indices,
-            texture: Some(texture.clone()),
-        });
+        for i in 1..corners.len() - 1 {
+            mesh.indices.extend_from_slice(&[0, i as u16, i as u16 + 1]);
+        }
+        draw_mesh(mesh);
     }
 
     /// Draws one frame as a lattice of quads, each corner darkened by the shadows falling on it.
@@ -300,17 +305,17 @@ impl SpriteAtlas {
     /// its own shape. `shade`, when there is one, darkens it corner by corner as
     /// [`Self::draw_shaded`] does; without one the artwork is drawn as it is.
     pub fn draw_quad(
-        &self,
+        &mut self,
         texture: usize,
         frame: SpriteFrame,
         corners: &[(f64, f64); 4],
         shade: Option<&ShadeLattice>,
     ) {
         let source = self.source(frame);
-        let texture = self.texture(texture);
+        let texture = self.texture(texture).clone();
         let (width, height) = (texture.width(), texture.height());
         let (columns, rows) = shade.map_or((1, 1), |shade| (shade.columns, shade.rows));
-        let mut vertices = Vec::with_capacity(((columns + 1) * (rows + 1)) as usize);
+        let mesh = self.begin_mesh(Some(texture));
         for row in 0..=rows {
             let down = f64::from(row) / f64::from(rows);
             for column in 0..=columns {
@@ -324,7 +329,7 @@ impl SpriteAtlas {
                     corners[3].1 + (corners[2].1 - corners[3].1) * along,
                 );
                 let light = shade.map_or(1.0, |shade| shade.light_at(column, row));
-                vertices.push(vertex(
+                mesh.vertices.push(vertex(
                     (
                         (top.0 + (bottom.0 - top.0) * down) as f32,
                         (top.1 + (bottom.1 - top.1) * down) as f32,
@@ -339,23 +344,25 @@ impl SpriteAtlas {
                 ));
             }
         }
-        let mut indices = Vec::with_capacity((columns * rows * 6) as usize);
         for row in 0..rows {
             for column in 0..columns {
                 let corner = (row * (columns + 1) + column) as u16;
                 let next = corner + columns as u16 + 1;
-                indices.extend_from_slice(&[corner, corner + 1, next + 1, corner, next + 1, next]);
+                mesh.indices.extend_from_slice(&[
+                    corner,
+                    corner + 1,
+                    next + 1,
+                    corner,
+                    next + 1,
+                    next,
+                ]);
             }
         }
-        draw_mesh(&Mesh {
-            vertices,
-            indices,
-            texture: Some(texture.clone()),
-        });
+        draw_mesh(mesh);
     }
 
     pub fn draw_shaded(
-        &self,
+        &mut self,
         texture: usize,
         frame: SpriteFrame,
         layout: SpriteLayout,
@@ -363,16 +370,16 @@ impl SpriteAtlas {
         veil: Veil,
     ) {
         let source = self.source(frame);
-        let texture = self.texture(texture);
+        let texture = self.texture(texture).clone();
         let (width, height) = (texture.width(), texture.height());
         let (columns, rows) = (shade.columns, shade.rows);
-        let mut vertices = Vec::with_capacity(((columns + 1) * (rows + 1)) as usize);
+        let mesh = self.begin_mesh(Some(texture));
         for row in 0..=rows {
             let down = f32::from(row as u16) / rows as f32;
             for column in 0..=columns {
                 let along = f32::from(column as u16) / columns as f32;
                 let light = shade.light_at(column, row);
-                vertices.push(veil.over(vertex(
+                mesh.vertices.push(veil.over(vertex(
                     (
                         layout.x as f32 + along * layout.width as f32,
                         layout.y as f32 + down * layout.height as f32,
@@ -387,26 +394,34 @@ impl SpriteAtlas {
                 )));
             }
         }
-        let mut indices = Vec::with_capacity((columns * rows * 6) as usize);
         for row in 0..rows {
             for column in 0..columns {
                 let corner = (row * (columns + 1) + column) as u16;
                 let next = corner + columns as u16 + 1;
-                indices.extend_from_slice(&[corner, corner + 1, next + 1, corner, next + 1, next]);
+                mesh.indices.extend_from_slice(&[
+                    corner,
+                    corner + 1,
+                    next + 1,
+                    corner,
+                    next + 1,
+                    next,
+                ]);
             }
         }
-        draw_mesh(&Mesh {
-            vertices,
-            indices,
-            texture: Some(texture.clone()),
-        });
+        draw_mesh(mesh);
     }
 
     /// Draws a shadow over the flat quad `corners`: a lattice of black, as opaque at each
-    pub fn draw_face_shadow(&self, corners: &[(f64, f64); 4], shade: &ShadeLattice, opacity: f32) {
+    pub fn draw_face_shadow(
+        &mut self,
+        corners: &[(f64, f64); 4],
+        shade: &ShadeLattice,
+        opacity: f32,
+    ) {
         let (columns, rows) = (shade.columns, shade.rows);
         let (u, v) = self.white.unwrap_or((0.0, 0.0));
-        let mut vertices = Vec::with_capacity(((columns + 1) * (rows + 1)) as usize);
+        let texture = self.white.map(|_| self.textures[ATLAS_TEXTURE].clone());
+        let mesh = self.begin_mesh(texture);
         for row in 0..=rows {
             let down = f64::from(row) / f64::from(rows);
             for column in 0..=columns {
@@ -420,7 +435,7 @@ impl SpriteAtlas {
                     corners[3].1 + (corners[2].1 - corners[3].1) * along,
                 );
                 let alpha = (1.0 - shade.light_at(column, row)) * opacity;
-                vertices.push(vertex(
+                mesh.vertices.push(vertex(
                     (
                         (top.0 + (bottom.0 - top.0) * down) as f32,
                         (top.1 + (bottom.1 - top.1) * down) as f32,
@@ -432,30 +447,32 @@ impl SpriteAtlas {
                 ));
             }
         }
-        let mut indices = Vec::with_capacity((columns * rows * 6) as usize);
         for row in 0..rows {
             for column in 0..columns {
                 let corner = (row * (columns + 1) + column) as u16;
                 let next = corner + columns as u16 + 1;
-                indices.extend_from_slice(&[corner, corner + 1, next + 1, corner, next + 1, next]);
+                mesh.indices.extend_from_slice(&[
+                    corner,
+                    corner + 1,
+                    next + 1,
+                    corner,
+                    next + 1,
+                    next,
+                ]);
             }
         }
-        draw_mesh(&Mesh {
-            vertices,
-            indices,
-            texture: self.white.map(|_| self.textures[ATLAS_TEXTURE].clone()),
-        });
+        draw_mesh(mesh);
     }
 
     /// Draws one voxel of dust: its three visible faces in flat colour, as one mesh.
-    pub fn draw_voxel(&self, faces: &VoxelFaces, colours: &[Color; 3]) {
+    pub fn draw_voxel(&mut self, faces: &VoxelFaces, colours: &[Color; 3]) {
         let (u, v) = self.white.unwrap_or((0.0, 0.0));
-        let mut vertices = Vec::with_capacity(12);
-        let mut indices = Vec::with_capacity(18);
+        let texture = self.white.map(|_| self.textures[ATLAS_TEXTURE].clone());
+        let mesh = self.begin_mesh(texture);
         for (face, colour) in [faces.top, faces.left, faces.right].iter().zip(colours) {
-            let corner = vertices.len() as u16;
+            let corner = mesh.vertices.len() as u16;
             for point in face {
-                vertices.push(vertex(
+                mesh.vertices.push(vertex(
                     (point.0 as f32, point.1 as f32),
                     (u, v),
                     *colour,
@@ -463,7 +480,7 @@ impl SpriteAtlas {
                     crate::rendering::scene_material::SPRITE,
                 ));
             }
-            indices.extend_from_slice(&[
+            mesh.indices.extend_from_slice(&[
                 corner,
                 corner + 1,
                 corner + 2,
@@ -472,45 +489,38 @@ impl SpriteAtlas {
                 corner + 3,
             ]);
         }
-        draw_mesh(&Mesh {
-            vertices,
-            indices,
-            texture: self.white.map(|_| self.textures[ATLAS_TEXTURE].clone()),
-        });
+        draw_mesh(mesh);
     }
 
     /// Draws the shadow baked on a column's top face: one quad, shaded by the shadow atlas.
     pub fn draw_ground_shadow(
-        &self,
+        &mut self,
         corners: &[(f64, f64); 4],
         map_uv: &[(f32, f32); 4],
         opacity: f32,
     ) {
         let white = self.white.unwrap_or((0.0, 0.0));
         let colour = Color::new(0.0, 0.0, 0.0, opacity);
-        let vertices: Vec<Vertex> = (0..4)
-            .map(|corner| {
-                let (x, y) = corners[corner];
-                vertex(
-                    (x as f32, y as f32),
-                    white,
-                    colour,
-                    map_uv[corner],
-                    crate::rendering::scene_material::SHADOW,
-                )
-            })
-            .collect();
-        draw_mesh(&Mesh {
-            vertices,
-            indices: vec![0, 1, 2, 0, 2, 3],
-            texture: Some(self.textures[ATLAS_TEXTURE].clone()),
-        });
+        let texture = self.textures[ATLAS_TEXTURE].clone();
+        let mesh = self.begin_mesh(Some(texture));
+        for corner in 0..4 {
+            let (x, y) = corners[corner];
+            mesh.vertices.push(vertex(
+                (x as f32, y as f32),
+                white,
+                colour,
+                map_uv[corner],
+                crate::rendering::scene_material::SHADOW,
+            ));
+        }
+        mesh.indices.extend_from_slice(&[0, 1, 2, 0, 2, 3]);
+        draw_mesh(mesh);
     }
 
     /// Draws a sprite's artwork as the water shows it: the polygon `points` on a water top, each
     /// read at its own `uv`.
     pub fn draw_reflection(
-        &self,
+        &mut self,
         texture: usize,
         frame: SpriteFrame,
         points: &[(f64, f64)],
@@ -522,7 +532,7 @@ impl SpriteAtlas {
 
     /// Draws `frame`'s artwork over the convex polygon `points`, each corner reading it at the
     fn draw_polygon(
-        &self,
+        &mut self,
         texture: usize,
         frame: SpriteFrame,
         points: &[(f64, f64)],
@@ -533,34 +543,51 @@ impl SpriteAtlas {
             return;
         }
         let source = self.source(frame);
-        let texture = self.texture(texture);
+        let texture = self.texture(texture).clone();
         let (width, height) = (texture.width(), texture.height());
-        let vertices: Vec<Vertex> = points
-            .iter()
-            .zip(uv)
-            .map(|(point, read)| {
-                vertex(
-                    (point.0 as f32, point.1 as f32),
-                    (
-                        (source.x + read.0 as f32 * source.w) / width,
-                        (source.y + read.1 as f32 * source.h) / height,
-                    ),
-                    colour,
-                    (0.0, 0.0),
-                    crate::rendering::scene_material::SPRITE,
-                )
-            })
-            .collect();
-        let mut indices = Vec::with_capacity((points.len() - 2) * 3);
+        let mesh = self.begin_mesh(Some(texture));
+        for (point, read) in points.iter().zip(uv) {
+            mesh.vertices.push(vertex(
+                (point.0 as f32, point.1 as f32),
+                (
+                    (source.x + read.0 as f32 * source.w) / width,
+                    (source.y + read.1 as f32 * source.h) / height,
+                ),
+                colour,
+                (0.0, 0.0),
+                crate::rendering::scene_material::SPRITE,
+            ));
+        }
         for corner in 1..points.len() - 1 {
             let corner = corner as u16;
-            indices.extend_from_slice(&[0, corner, corner + 1]);
+            mesh.indices.extend_from_slice(&[0, corner, corner + 1]);
         }
-        draw_mesh(&Mesh {
-            vertices,
-            indices,
-            texture: Some(texture.clone()),
-        });
+        draw_mesh(mesh);
+    }
+
+    /// Draws the clipped fan of a ground ellipse using the atlas scratch mesh.
+    pub fn draw_ground_ellipse(
+        &mut self,
+        triangles: &[[crate::player::shadow_clip::ShadowVertex; 3]],
+    ) {
+        if triangles.is_empty() {
+            return;
+        }
+        let mesh = self.begin_mesh(None);
+        for triangle in triangles {
+            for &((x, y), alpha) in triangle {
+                mesh.vertices.push(Vertex::new(
+                    x as f32,
+                    y as f32,
+                    0.0,
+                    0.0,
+                    0.0,
+                    Color::new(0.0, 0.0, 0.0, alpha),
+                ));
+                mesh.indices.push((mesh.vertices.len() - 1) as u16);
+            }
+        }
+        draw_mesh(mesh);
     }
 
     /// The frame's pixels in the atlas, pulled in by half a texel on every side.
@@ -625,36 +652,21 @@ pub struct ShadeLattice {
 }
 
 impl ShadeLattice {
-    /// The lattice that draws `grid`: a corner shaded `v` keeps `1 − v` of its colour.
-    pub fn new(grid: &ShadeGrid) -> Self {
+    /// The lattice that draws `grid` faded by `fade`: a corner shaded `v` keeps `1 − v · fade`
+    /// of its colour, so `0.0` lifts every corner to lit and `1.0` keeps the grid's own shadows.
+    /// The whole lattice is built in this one pass, without a second copy to scale.
+    pub fn faded(grid: &ShadeGrid, fade: f32) -> Self {
+        let fade = fade.clamp(0.0, 1.0);
         let (columns, rows) = (grid.columns(), grid.rows());
         let mut light = Vec::with_capacity(((columns + 1) * (rows + 1)) as usize);
         for row in 0..=rows {
             for column in 0..=columns {
-                light.push((1.0 - grid.at(column, row)).clamp(0.0, 1.0));
+                light.push((1.0 - grid.at(column, row) * fade).clamp(0.0, 1.0));
             }
         }
         Self {
             columns,
             rows,
-            light,
-        }
-    }
-
-    /// The same lattice with its darkness scaled by `scale`: `0.0` lifts every corner to lit.
-    pub(crate) fn scaled(&self, scale: f32) -> Self {
-        let scale = scale.clamp(0.0, 1.0);
-        if scale == 1.0 {
-            return self.clone();
-        }
-        let light = self
-            .light
-            .iter()
-            .map(|light| 1.0 - (1.0 - light) * scale)
-            .collect();
-        Self {
-            columns: self.columns,
-            rows: self.rows,
             light,
         }
     }
@@ -673,7 +685,7 @@ impl ShadeLattice {
     }
 
     /// The light `along` across the lattice and `down` it, both in `[0, 1]`, read between the
-    fn light_in(&self, along: f32, down: f32) -> f32 {
+    pub(crate) fn light_in(&self, along: f32, down: f32) -> f32 {
         let place = |value: f32, count: u32| {
             let scaled = (value.clamp(0.0, 1.0)) * count as f32;
             let first = (scaled.floor() as u32).min(count.saturating_sub(1));
@@ -713,7 +725,7 @@ pub enum DrawKind {
         texture: usize,
         frame: SpriteFrame,
         layout: SpriteLayout,
-        shade: ShadeLattice,
+        shade: Rc<ShadeLattice>,
         /// The piece of the drawing this draw shows, as in [`DrawKind::Sprite`].
         band: Option<SpriteBand>,
         /// How much of itself it keeps, as in [`DrawKind::Sprite`].
@@ -726,7 +738,7 @@ pub enum DrawKind {
         frame: SpriteFrame,
         corners: [(f64, f64); 4],
         /// The shadows falling on it, if any fall.
-        shade: Option<ShadeLattice>,
+        shade: Option<Rc<ShadeLattice>>,
     },
     /// The baked shadow on a column's top face: the flat quad of its own cell, shaded from the
     GroundShadow {
@@ -850,7 +862,7 @@ impl SpriteDraw {
         texture: usize,
         frame: SpriteFrame,
         layout: SpriteLayout,
-        shade: ShadeLattice,
+        shade: Rc<ShadeLattice>,
     ) -> Self {
         Self {
             key,
@@ -872,7 +884,7 @@ impl SpriteDraw {
         texture: usize,
         frame: SpriteFrame,
         corners: [(f64, f64); 4],
-        shade: Option<ShadeLattice>,
+        shade: Option<Rc<ShadeLattice>>,
     ) -> Self {
         Self {
             key,
@@ -890,7 +902,7 @@ impl SpriteDraw {
         texture: usize,
         frame: SpriteFrame,
         layout: SpriteLayout,
-        shade: ShadeLattice,
+        shade: Rc<ShadeLattice>,
         band: SpriteBand,
     ) -> Self {
         Self {
@@ -996,7 +1008,7 @@ impl SpriteDraw {
 
 /// Sorts the queued sprites far to near and draws them, with `material` bound throughout.
 pub fn draw_sorted(
-    atlas: &SpriteAtlas,
+    atlas: &mut SpriteAtlas,
     material: Option<&crate::rendering::scene_material::SceneMaterial>,
     draws: &mut [SpriteDraw],
 ) {
@@ -1009,7 +1021,7 @@ pub fn draw_sorted(
     }
 }
 
-fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw], dithered: bool) {
+fn draw_queue(atlas: &mut SpriteAtlas, draws: &mut [SpriteDraw], dithered: bool) {
     draws.sort_by(|a, b| compare_draw_keys(&a.key, &b.key));
     for draw in draws.iter() {
         match &draw.kind {
@@ -1054,7 +1066,7 @@ fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw], dithered: bool) {
                     *texture,
                     *frame,
                     band,
-                    Some(shade),
+                    Some(shade.as_ref()),
                     Veil::of(*opacity, dithered),
                 );
             }
@@ -1070,7 +1082,7 @@ fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw], dithered: bool) {
                     *texture,
                     *frame,
                     *layout,
-                    shade,
+                    shade.as_ref(),
                     Veil::of(*opacity, dithered),
                 );
             }
@@ -1080,7 +1092,7 @@ fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw], dithered: bool) {
                 corners,
                 shade,
             } => {
-                atlas.draw_quad(*texture, *frame, corners, shade.as_ref());
+                atlas.draw_quad(*texture, *frame, corners, shade.as_deref());
             }
             DrawKind::GroundShadow {
                 corners,
@@ -1119,28 +1131,7 @@ fn draw_queue(atlas: &SpriteAtlas, draws: &mut [SpriteDraw], dithered: bool) {
                 let triangles = crate::player::shadow_clip::cast_pieces(
                     *centre, *width, *height, *shear, *alpha, clip, 20,
                 );
-                if !triangles.is_empty() {
-                    let mut vertices = Vec::with_capacity(triangles.len() * 3);
-                    let mut indices = Vec::with_capacity(triangles.len() * 3);
-                    for triangle in &triangles {
-                        for &((x, y), alpha) in triangle {
-                            vertices.push(Vertex::new(
-                                x as f32,
-                                y as f32,
-                                0.0,
-                                0.0,
-                                0.0,
-                                Color::new(0.0, 0.0, 0.0, alpha),
-                            ));
-                            indices.push((vertices.len() - 1) as u16);
-                        }
-                    }
-                    draw_mesh(&Mesh {
-                        vertices,
-                        indices,
-                        texture: None,
-                    });
-                }
+                atlas.draw_ground_ellipse(&triangles);
             }
         }
     }

@@ -271,6 +271,24 @@ fn a_zero_fade_asks_for_no_lattice_but_one_keeps_the_shadows() {
     assert!(lattice_of(&grid, 0.0).is_none(), "a zero fade hides it");
     assert!(lattice_of(&grid, 1.0).is_some(), "a full fade shows it");
     assert!(!grid.is_clear());
+
+    let half = lattice_of(&grid, 0.5).expect("half a fade still draws");
+    let whole = lattice_of(&grid, 1.0).expect("a full fade draws the grid");
+    for row in 0..=SHADE_ROWS {
+        for column in 0..=SHADE_COLUMNS {
+            let along = column as f32 / SHADE_COLUMNS as f32;
+            let down = row as f32 / SHADE_ROWS as f32;
+            let coverage = grid.at(column, row);
+            assert!(
+                (half.light_in(along, down) - (1.0 - coverage * 0.5)).abs() < 1e-6,
+                "a half fade keeps half of each corner's shadow"
+            );
+            assert!(
+                (whole.light_in(along, down) - (1.0 - coverage)).abs() < 1e-6,
+                "a full fade keeps the grid's own shadows"
+            );
+        }
+    }
 }
 
 #[test]

@@ -105,8 +105,8 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`water_cell`](ground.rs#L68) — El agua de la celda `(x, y)`, o `None`: lo que un reflejo pregunta al mundo.
-  - Firma: `pub(crate) fn water_cell(manager: &ChunkManager, x: i32, y: i32) -> Option<WaterCell> {`
+- [`WaterField`](ground.rs#L68) — Índice de las casillas de agua de los chunks visibles del fotograma. Responde a terreno y reflejos sin volver a consultar el mundo por cada celda; si está vacío, la escena omite por completo la pasada de reflejos.
+  - Declaración: `pub(crate) struct WaterField { cells: HashMap<(i32, i32), WaterCell> }`
 
 ### `frame.rs`
 
@@ -181,7 +181,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones internas
 
-- [`water_cell_of`](ground.rs#L55) — La regla pura: columna con agua → `WaterCell` con su propio nivel y elevación; cualquier otro material o ninguna columna → `None`.
+- [`water_cell_of`](ground.rs#L55) — La regla pura: columna con agua → `WaterCell` con su propio nivel y elevación; cualquier otro material o ninguna columna → `None`. `WaterField` la aplica una vez al construir el índice del fotograma.
   - Firma: `fn water_cell_of(column: Option<TerrainColumn>) -> Option<WaterCell> {`
 
 ### `frame.rs`

@@ -83,8 +83,8 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`receiver_of`](shadow_view.rs#L784) — El receiver que forma un sprite dibujado en `layout` y situado en `foot` a elevación `elevation`.
   - Firma: `pub fn receiver_of( layout: SpriteLayout, feet: ScreenPoint, foot: (f64, f64), elevation: f64, ) -> ShadowReceiver {`
 
-- [`lattice_of`](shadow_view.rs#L804) — Una retícula lista para dibujar un sprite, con su oscuridad escalada por `fade`, o `None` cuando al final nada lo sombrea (o cuando `fade` es cero).
-  - Firma: `pub fn lattice_of(grid: &ShadeGrid, fade: f32) -> Option<ShadeLattice> {`
+- [`lattice_of`](shadow_view.rs#L804) — Una retícula lista para dibujar un sprite, con su oscuridad escalada por `fade`, compartida mediante `Rc`, o `None` cuando al final nada lo sombrea (o cuando `fade` es cero).
+  - Firma: `pub fn lattice_of(grid: &ShadeGrid, fade: f32) -> Option<Rc<ShadeLattice>> {`
 
 #### Constantes
 

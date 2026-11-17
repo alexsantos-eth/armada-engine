@@ -46,7 +46,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `pub fn draw_band( &self, texture: usize, frame: SpriteFrame, band: &SpriteBand, shade: Option<&ShadeLattice>, veil: Veil, ) {`
 
 - [`draw_veiled`](sprites.rs#L210) — Dibuja un frame entero en `layout`, multiplicado por `tint` y aclarado por `veil`: el sprite completo tras el que está el jugador. Es una malla de cuatro vértices porque `draw_texture_ex` no deja escribir `normal.w`.
-  - Firma: `pub fn draw_veiled( &self, texture: usize, frame: SpriteFrame, layout: SpriteLayout, tint: Color, veil: Veil, ) {`
+  - Firma: `pub fn draw_veiled( &mut self, texture: usize, frame: SpriteFrame, layout: SpriteLayout, tint: Color, veil: Veil, ) {`
 
 - [`measure_cover`](sprites.rs#L145) — Mide dónde es sólido cada sprite del atlas compartido, a partir de los píxeles RGBA del propio atlas; se llama una vez al arrancar, antes de soltar la imagen.
   - Firma: `pub fn measure_cover(&mut self, width: u32, height: u32, rgba: &[u8]) {`
@@ -58,24 +58,26 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `pub fn see_through(mut self, opacity: f32) -> Self {`
 
 - [`draw_quad`](sprites.rs#L302) — Dibuja un frame dentro de un cuadrilátero (en sentido horario desde su esquina superior izquierda) como una sola malla, con o sin sombras: así se dibuja el cuerpo del jugador cuando se inclina o bascula, llevándose el arte consigo.
-  - Firma: `pub fn draw_quad( &self, texture: usize, frame: SpriteFrame, corners: &[(f64, f64); 4], shade: Option<&ShadeLattice>, ) {`
+  - Firma: `pub fn draw_quad( &mut self, texture: usize, frame: SpriteFrame, corners: &[(f64, f64); 4], shade: Option<&ShadeLattice>, ) {`
 - [`leaning`](sprites.rs#L870) — Encola un sprite dibujado en un cuadrilátero propio en vez de en un rectángulo recto: el jugador inclinado o basculando.
-  - Firma: `pub fn leaning( key: DrawKey, texture: usize, frame: SpriteFrame, corners: [(f64, f64); 4], shade: Option<ShadeLattice>, ) -> Self {`
+  - Firma: `pub fn leaning( key: DrawKey, texture: usize, frame: SpriteFrame, corners: [(f64, f64); 4], shade: Option<Rc<ShadeLattice>,> ) -> Self {`
 - [`draw_shaded`](sprites.rs#L357) — Dibuja un frame como una retícula de quads, con cada esquina oscurecida por las sombras que caen sobre ella.
-  - Firma: `pub fn draw_shaded( &self, texture: usize, frame: SpriteFrame, layout: SpriteLayout, shade: &ShadeLattice, veil: Veil, ) {`
+  - Firma: `pub fn draw_shaded( &mut self, texture: usize, frame: SpriteFrame, layout: SpriteLayout, shade: &ShadeLattice, veil: Veil, ) {`
 
 - [`draw_face_shadow`](sprites.rs#L406) — Dibuja una sombra sobre el quad plano `corners`: una retícula de negro, tan opaca en cada
-  - Firma: `pub fn draw_face_shadow(&self, corners: &[(f64, f64); 4], shade: &ShadeLattice, opacity: f32) {`
+  - Firma: `pub fn draw_face_shadow(&mut self, corners: &[(f64, f64); 4], shade: &ShadeLattice, opacity: f32) {`
 
 - [`draw_voxel`](sprites.rs#L451) — Dibuja un voxel de polvo: sus tres caras visibles en color plano, como una única malla.
-  - Firma: `pub fn draw_voxel(&self, faces: &VoxelFaces, colours: &[Color; 3]) {`
+  - Firma: `pub fn draw_voxel(&mut self, faces: &VoxelFaces, colours: &[Color; 3]) {`
 
 - [`draw_ground_shadow`](sprites.rs#L483) — Dibuja la sombra horneada en la cara superior de una columna: un quad, sombreado por el atlas de sombras.
-  - Firma: `pub fn draw_ground_shadow( &self, corners: &[(f64, f64); 4], map_uv: &[(f32, f32); 4], opacity: f32, ) {`
+  - Firma: `pub fn draw_ground_shadow( &mut self, corners: &[(f64, f64); 4], map_uv: &[(f32, f32); 4], opacity: f32, ) {`
 
 - [`draw_reflection`](sprites.rs#L512) — Dibuja el dibujo de un sprite como lo muestra el agua: el polígono `points` sobre la superficie del agua, cada
   esquina leyendo su `uv`. Un desenfoque real queda aplazado a la fase de render target.
-  - Firma: `pub fn draw_reflection( &self, texture: usize, frame: SpriteFrame, points: &[(f64, f64)], uv: &[(f64, f64)], colour: Color, ) {`
+  - Firma: `pub fn draw_reflection( &mut self, texture: usize, frame: SpriteFrame, points: &[(f64, f64)], uv: &[(f64, f64)], colour: Color, ) {`
+
+- [`draw_ground_ellipse`](sprites.rs) — Dibuja las piezas ya recortadas de la sombra elíptica del jugador mediante la misma malla de trabajo reutilizada por el resto de la cola.
 
 - [`on_screen_in`](sprites.rs#L578) — Si `layout` caería en algún punto de `screen`.
   - Firma: `pub fn on_screen_in(layout: SpriteLayout, screen: (f32, f32)) -> bool {`
@@ -83,8 +85,8 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`on_screen`](sprites.rs#L587) — Si `layout` caería en algún punto de la pantalla.
   - Firma: `pub fn on_screen(layout: SpriteLayout) -> bool {`
 
-- [`new`](sprites.rs#L629) — La retícula que dibuja `grid`: una esquina sombreada `v` conserva `1 − v` de su color.
-  - Firma: `pub fn new(grid: &ShadeGrid) -> Self {`
+- [`faded`](sprites.rs#L629) — Construye en una sola pasada la retícula que dibuja `grid`, aplicando `fade` a la oscuridad; se comparte por referencia contada entre los dibujos de una entidad.
+  - Firma: `pub fn faded(grid: &ShadeGrid, fade: f32) -> Self {`
 
 - [`from_coverage`](sprites.rs#L663) — Una retícula directamente a partir de valores de cobertura, fila a fila, para una superficie sin dibujo
   - Firma: `pub fn from_coverage(columns: u32, rows: u32, coverage: Vec<f32>) -> Self {`
@@ -120,7 +122,11 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `pub fn ground_ellipse( key: DrawKey, centre: ScreenPoint, width: f64, height: f64, alpha: f32, shear: [[f64; 2]; 2], clip: Vec<[(f64, f64); 4]>, ) -> Self {`
 
 - [`draw_sorted`](sprites.rs#L998) — Ordena los sprites encolados de lejos a cerca y los dibuja, con `material` enlazado durante todo el proceso.
-  - Firma: `pub fn draw_sorted( atlas: &SpriteAtlas, material: Option<&crate::rendering::scene_material::SceneMaterial>, draws: &mut [SpriteDraw], ) {`
+  - Firma: `pub fn draw_sorted( atlas: &mut SpriteAtlas, material: Option<&crate::rendering::scene_material::SceneMaterial>, draws: &mut [SpriteDraw], ) {`
+
+`SpriteAtlas` conserva una malla `Mesh` de trabajo. Las funciones de dibujo la vacían y rellenan;
+`draw_mesh` de Macroquad copia sus vértices al batch, por lo que la reutilización no cambia el
+resultado y evita reservar los vectores de geometría en cada dibujo.
 
 - [`scene_key`](sprites.rs#L1150) — Clave de profundidad de algo situado en la casilla cuyo centro es `(x, y)`, a la elevación `elevation`.
   - Firma: `pub fn scene_key(x: f64, y: f64, elevation: f64, layer: i32, tile_height: f64) -> DrawKey {`
