@@ -214,14 +214,14 @@ def smithy():
 
 
 def market_stall():
-    """market_stall: a striped awning on four posts, a counter with produce."""
+    """market_stall: a flat striped awning resting on four posts, a counter with produce."""
     out = []
     for x in (-40, 40):
-        for y in (-40, 40):
+        for y in (-36, 36):
             out += stack("trunk_thin", x, y, 0, 2, "timber", M)
     for i, x in enumerate(cells(4)):
-        for j, y in enumerate(cells(3)):
-            out += put("roof_block", x, y - 4, 56 + 4 * (2 - j), "red" if i % 2 == 0 else "white")
+        for y in cells(4):
+            out += put("roof_block", x, y, 2 * M, "red" if i % 2 == 0 else "white")
     out += put("wall_half", -14, 30, 0, "plank") + put("wall_half", 14, 30, 0, "plank")
     out += put("loaf", -18, 30, 12) + put("fruit", -4, 26, 12) + put("fruit", 4, 33, 12)
     out += put("leaf_tuft", 18, 30, 12, "green")

@@ -12,12 +12,13 @@ familia. No se llama a ningún modelo de imagen y no cuesta nada.
 
 Este flujo es el oficial. `iso-asset-generator` (SVG dibujado + pintado fal.ai) está obsoleto —
 conservado solo como referencia histórica—; no uses nada del flujo antiguo para un asset nuevo.
-Todas las entidades (naturaleza, piedras rúnicas, casas y edificios) están migradas y viven en `lib/assets/`; en `lib/assets-legacy/` solo quedan las gradas, el patrón de nubes y el téxel blanco (ver `lib/docs/ASSET-PIPELINE.md`).
+Todas las entidades (naturaleza, piedras rúnicas, casas y edificios) están migradas y viven en `lib/assets/`; en `lib/assets-legacy/` solo quedan el patrón de nubes y el téxel blanco (ver `lib/docs/ASSET-PIPELINE.md`).
 
 ```
 artifacts/vox/clay/vox_prefabs.py   las piezas del kit            → artifacts/vox/prefabs/*.vox
 artifacts/vox/clay/vox_models.py    naturaleza armada             → artifacts/vox/models/<nombre>.vox
 artifacts/vox/clay/vox_buildings.py piedras, casas y edificios    → artifacts/vox/models/<nombre>.vox
+artifacts/vox/clay/vox_stairs.py    las cuatro gradas (terreno)   → lib/assets/stairs/block_*.png
 artifacts/vox/clay/vox_render.py    Blender: modelo → sprite PNG  → lib/assets/<dir>/<asset>.png
 lib/scripts/build-atlas.sh sprite → atlas y manifiesto   (y recompilar el juego)
 ```
@@ -346,3 +347,23 @@ cada variante es la del bloque llano: el atlas mide el adorno como el bloque y e
 dibuja donde dibuja el bloque. Regenerar: `python3 artifacts/vox/clay/grass_clay.py` (escribe los
 `.vox` en `vox/models/block_*.vox` y los PNG sobre el bloque). Si cambian las piezas que un
 adorno usa, el kit o el render, se rehacen todos y el atlas se reconstruye igual que siempre.
+
+## 10. Las gradas (terreno por la ruta voxel)
+
+`artifacts/vox/clay/vox_stairs.py` genera `lib/assets/stairs/block_{px,py,nx,ny}.png` (y
+`vox/models/stairs_*.vox`). Una grada es **terreno**, y eso cambia tres reglas de las entidades:
+
+- **Llena la casilla.** La masa son cajas de radio 0 de borde a borde (128 vóxeles), sin aire a
+  los lados: con juntas, la columna enseñaría una ranura contra sus vecinas. Solo el adorno
+  (bordillos `stone_small`, guijarros, `moss_patch`) son piezas del kit con su redondeo.
+- **Cuatro bandas de 32 de fondo que suben a 21, 42, 64 y 85**: la última huella queda a ras
+  del suelo de la casilla de arriba, y nada pasa de z = 85. Si cambian las bandas hay que mover
+  `PLAYER_STAIRS_STEPS` en el motor.
+- **La franja pisada** mide 66 de ancho y va hundida 5, lo mismo que la tira de tierra de un
+  camino, para que el camino entre y salga sin salto.
+
+El sprite son dos renders compuestos: el clay encima y, debajo, el de cubos duros
+(`--style voxel`) de la masa sola. El clay redondea el borde de la casilla uno o dos vóxeles y
+el render duro rellena esa rendija con la misma piedra. Sale a 512 × 427, como todo el terreno.
+El tramo se escribe una vez subiendo hacia `−y` y se coloca para las otras tres direcciones
+(`LAYOUT`); cada una se renderiza en su orientación, nunca se espeja el sprite.

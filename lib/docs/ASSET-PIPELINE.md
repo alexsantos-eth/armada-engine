@@ -127,10 +127,14 @@ en un `.json` al lado cuando no es 1x1x1. Las dos carpetas son:
   edificios (`artifacts/vox/clay/vox_buildings.py`, kits 2 y 3). Los generadores de terreno
   siguen en uso — `artifacts/vox/terrain/terrain_blocks.py` (hierba/tierra/arena) y
   `path_tiles.py` (los 16 tiles de camino) — y escriben PNG directamente.
-- `lib/assets-legacy/` — lo que no es una entidad y aún no pasa por la ruta voxel: las cuatro
-  gradas (`artifacts/vox/terrain/stairs.py` las guarda, pero el PNG es el sprite y no se
-  regeneran por ahora), el patrón de nubes y el téxel blanco que el agua y las sombras
-  necesitan. Son fijos por ahora: su PNG es el sprite.
+- `lib/assets-legacy/` — lo único que aún no pasa por la ruta voxel: el patrón de nubes y el
+  téxel blanco que el agua y las sombras necesitan. Son fijos: su PNG es el sprite.
+
+Las cuatro gradas (`assets/stairs/block_{px,py,nx,ny}.png`) salen de
+`artifacts/vox/clay/vox_stairs.py`. Son terreno, no entidad: la masa son prismas rectos de
+borde a borde de la casilla (sin redondeo ni aire a los lados) y encima van piezas del kit; el
+sprite compone el render clay sobre el render de cubos duros de la masa sola, para que la
+silueta sea la casilla entera y los bloques empalmen.
 
 Migrar un asset a voxel es: armar su `.vox` en `artifacts/vox/clay/vox_models.py` (`vox_buildings.py` si es algo construido, o `artifacts/vox/clay/grass_clay.py`
 si es un adorno del techo de hierba), renderizarlo a un PNG con el mismo nombre en su carpeta y

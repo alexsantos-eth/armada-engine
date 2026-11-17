@@ -89,10 +89,10 @@
       "source": "/assets/building/block_market_stall.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 280,
+        "x": 1197,
         "y": 1810,
-        "width": 240,
-        "height": 213
+        "width": 276,
+        "height": 207
       },
       "frames": null,
       "anchor": {
@@ -100,10 +100,10 @@
         "y": 1.0
       },
       "ink": {
-        "x": -0.359375,
-        "y": -0.486292,
-        "width": 0.75,
-        "height": 0.664534
+        "x": -0.43125,
+        "y": -0.476932,
+        "width": 0.8625,
+        "height": 0.645815
       },
       "colorVariants": 1,
       "sway": null
@@ -164,7 +164,7 @@
       "source": "/assets/building/block_runestone.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 2747,
+        "x": 2783,
         "y": 1810,
         "width": 141,
         "height": 121
@@ -189,7 +189,7 @@
       "source": "/assets/building/block_runestone_circle.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 2012,
+        "x": 2048,
         "y": 1810,
         "width": 220,
         "height": 181
@@ -214,7 +214,7 @@
       "source": "/assets/building/block_runestone_fallen.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 2889,
+        "x": 2925,
         "y": 1810,
         "width": 129,
         "height": 102
@@ -239,7 +239,7 @@
       "source": "/assets/building/block_runestone_pair.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 2386,
+        "x": 2422,
         "y": 1810,
         "width": 157,
         "height": 151
@@ -264,7 +264,7 @@
       "source": "/assets/building/block_runestone_tall.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 2233,
+        "x": 2269,
         "y": 1810,
         "width": 152,
         "height": 158
@@ -339,7 +339,7 @@
       "source": "/assets/building/block_stone_shrine.png",
       "dataTiles": "1x1x2",
       "frame": {
-        "x": 1163,
+        "x": 922,
         "y": 1810,
         "width": 274,
         "height": 208
@@ -389,7 +389,7 @@
       "source": "/assets/bush/block.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 2544,
+        "x": 2580,
         "y": 1810,
         "width": 202,
         "height": 130
@@ -414,7 +414,7 @@
       "source": "/assets/cloud/cloud-shadow.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 1691,
+        "x": 1727,
         "y": 1810,
         "width": 320,
         "height": 188
@@ -6805,7 +6805,7 @@
       "source": "/assets/player/block.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 1438,
+        "x": 1474,
         "y": 1810,
         "width": 252,
         "height": 198
@@ -6905,7 +6905,7 @@
       "source": "/assets/stairs/block_nx.png",
       "dataTiles": null,
       "frame": {
-        "x": 521,
+        "x": 280,
         "y": 1810,
         "width": 320,
         "height": 209
@@ -6930,7 +6930,7 @@
       "source": "/assets/stairs/block_ny.png",
       "dataTiles": null,
       "frame": {
-        "x": 842,
+        "x": 601,
         "y": 1810,
         "width": 320,
         "height": 209

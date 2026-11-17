@@ -32,12 +32,13 @@ RUNE_BLUE, RUNE_CYAN, RUNE_DARK = "#3f8fd9", "#49c8c0", "#8a3a2a"
 PLANK, TIMBER, PLASTER, DOOR = "#a8713d", "#5e3d24", "#eadfc4", "#b98345"
 THATCH, TURF, TILE, SHINGLE, SHINGLE_DARK = "#e3c56a", "#69a83c", "#d9703a", "#9a5b2e", "#8a3f2c"
 GLOW, IRON, FIRE, BREW = "#ffd66b", "#4a4a52", "#f7802a", "#5fd03a"
+STEP, STEP_DEEP, TREAD = "#a79e8d", "#8f8777", "#c6bfae"       # the stairs block (vox_stairs.py)
 # New colours go at the end: the indices of the files already written must not move.
 PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK, CUT, MOSS,
            RED, WHITE, YELLOW, PINK, CAP, STEM, DOT, OCHRE, RUST, ROCK, ROCK_DARK,
            STONE_SAND, STONE_CLAY, GRAVEL, DIRT, RUNE_BLUE, RUNE_CYAN, RUNE_DARK,
            PLANK, TIMBER, PLASTER, DOOR, THATCH, TURF, TILE, SHINGLE, SHINGLE_DARK,
-           GLOW, IRON, FIRE, BREW]
+           GLOW, IRON, FIRE, BREW, STEP, STEP_DEEP, TREAD]
 
 
 def box(x, y, z0, sx, sy, sz, color, r):
