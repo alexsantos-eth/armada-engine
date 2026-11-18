@@ -20,6 +20,7 @@ artifacts/vox/clay/vox_models.py    naturaleza armada             → artifacts/
 artifacts/vox/clay/vox_buildings.py piedras, casas y edificios    → artifacts/vox/models/<nombre>.vox
 artifacts/vox/clay/vox_stairs.py    las cuatro gradas (terreno)   → lib/assets/stairs/block_*.png
 artifacts/vox/clay/vox_render.py    Blender: modelo → sprite PNG  → lib/assets/<dir>/<asset>.png
+artifacts/vox/clay/vox_shadow.py    volúmenes de sombra de los .vox → lib/content/volumes/shadow-volumes.bin
 lib/scripts/build-atlas.sh sprite → atlas y manifiesto   (y recompilar el juego)
 ```
 
@@ -387,6 +388,9 @@ bulto sin junta) o que flotan sin apoyo (un techo por encima de sus postes).
    por ejemplo `{"tiles": "1x1x2"}`), es la fuente de la entidad, y su entrada en
    `lib/content/json/entities.json` declara el sprite `/assets/<tipo>/<nombre>.png`.
 2. `lib/scripts/build-atlas.sh`.
+   Y `python3 artifacts/vox/clay/vox_shadow.py`: la sombra que la entidad proyecta en el suelo
+   se hornea desde su `.vox`, no desde el sprite. Sin volumen, la entidad cae al recorte del
+   sprite, que deja la sombra despegada.
 3. **Recompila el juego** (`cargo build --locked --bin iso-core`). El binario lleva dentro el
    manifiesto: con atlas nuevo y binario viejo los sprites salen recortados y mezclados.
 4. Compruébalo corriendo con la skill `armada-visual-check`: una escena `blank` con la
