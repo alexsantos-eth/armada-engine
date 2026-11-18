@@ -66,12 +66,20 @@ impl SceneTarget {
 
     /// Returns to the framebuffer and composites the completed scene at native resolution,
     /// applying `grade` through `material` when the grade shader loaded; untouched otherwise.
-    pub fn present(&self, material: Option<&GradeMaterial>, grade: &PhaseGrade) {
+    /// The depth of field reads `depth`, focused at `focus`.
+    pub fn present(
+        &self,
+        material: Option<&GradeMaterial>,
+        grade: &PhaseGrade,
+        (depth, focus): (&Texture2D, f32),
+    ) {
         set_default_camera();
         if let Some(material) = material {
             material.bind(
                 grade,
                 vec2(1.0 / self.size.0 as f32, 1.0 / self.size.1 as f32),
+                depth,
+                focus,
             );
         }
         draw_texture_ex(

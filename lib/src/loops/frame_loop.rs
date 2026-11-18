@@ -10,7 +10,7 @@
 
 use macroquad::prelude::*;
 
-use crate::assets::sprites::draw_sorted;
+use crate::assets::sprites::{draw_depth, draw_sorted};
 use crate::game::Game;
 use crate::gui::{draw_hud, push_hud_update};
 use crate::loops::clock::{FrameClock, frame_timestamp_seconds};
@@ -93,6 +93,7 @@ pub(crate) async fn run(mut game: Game) {
         let height = screen_height();
 
         game.scene_target.resize(width, height);
+        game.depth_target.resize(width, height);
         game.scene_target.begin();
         clear_background(Color::from_rgba(21, 29, 42, 255));
         let stats = game.collect_scene(&view);
@@ -100,7 +101,16 @@ pub(crate) async fn run(mut game: Game) {
         let after_collect = get_time();
         draw_sorted(&mut game.atlas, game.material.as_ref(), &mut game.draws);
         game.draw_clouds(frame_ms, &view.projection);
-        game.scene_target.present(game.grade.as_ref(), &grade);
+        if let Some(depth) = game.depth_material.as_ref() {
+            game.depth_target.begin(depth, &view.depth);
+            draw_depth(&mut game.atlas, &game.draws, &view.depth);
+            game.depth_target.end();
+        }
+        game.scene_target.present(
+            game.grade.as_ref(),
+            &grade,
+            (game.depth_target.texture(), view.depth.focus()),
+        );
         crate::testbed::write_shots(&mut game, &view.shots);
         if show_overlay {
             draw_rectangle_lines(16.0, 16.0, width - 32.0, height - 32.0, 2.0, SKYBLUE);

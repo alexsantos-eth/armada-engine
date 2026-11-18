@@ -24,6 +24,7 @@ use crate::game::config::{CHUNK_CULL_MARGIN, LAND_SOUND_MIN_IMPACT, UNBOUNDED_CA
 use crate::game::ground::ChunkGround;
 use crate::game::scene::frame_projection;
 use crate::game::state::Game;
+use crate::rendering::depth_of_field::DepthFrame;
 use crate::save::{restore_discovered_from_archive, save_archive, sync_manager_to_archive};
 use crate::services::MacroquadInput;
 
@@ -89,6 +90,7 @@ fn should_save_on_quit(unsaved_changes: bool, quitting: bool) -> bool {
 struct EditedFrame {
     rp: iso::player::physics::PlayerRenderPosition,
     projection: ProjectionConfig,
+    depth: DepthFrame,
     width: f32,
     height: f32,
     frame_ms: f64,
@@ -102,6 +104,8 @@ struct EditedFrame {
 pub(crate) struct FrameView {
     pub(crate) rp: iso::player::physics::PlayerRenderPosition,
     pub(crate) projection: ProjectionConfig,
+    /// Where this frame's depths sit on screen, for the depth of field.
+    pub(crate) depth: DepthFrame,
     pub(crate) culled: Vec<iso::grid::ChunkCoord>,
     pub(crate) frame_ms: f64,
     /// When the simulation landed, for the frame's performance accounting.
@@ -238,6 +242,11 @@ impl Game {
             self.camera_focus
                 .advance(&rp, self.player.motion, frame_ms, CAMERA_LEVEL_SMOOTH_MS);
         let projection = frame_projection(self.camera, level, width, height, self.tile_metrics);
+        let feet = GridPoint {
+            x: rp.x + 0.5,
+            y: rp.y + 0.5,
+        };
+        let depth = DepthFrame::new(projection, level, height, feet);
 
         let stream_start = get_time();
         if let Some(mut session) = self.maker.take() {
@@ -260,6 +269,7 @@ impl Game {
             return Some(self.editing_view(EditedFrame {
                 rp,
                 projection,
+                depth,
                 width,
                 height,
                 frame_ms,
@@ -320,6 +330,7 @@ impl Game {
         Some(FrameView {
             rp,
             projection,
+            depth,
             culled,
             frame_ms,
             after_simulation,
@@ -335,6 +346,7 @@ impl Game {
         let EditedFrame {
             rp,
             projection,
+            depth,
             width,
             height,
             frame_ms,
@@ -362,6 +374,7 @@ impl Game {
         FrameView {
             rp,
             projection,
+            depth,
             culled,
             frame_ms,
             after_simulation,

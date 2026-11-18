@@ -37,6 +37,7 @@ use crate::player::body_motion::BodyMotion;
 use crate::player::dust_view::DustPuffs;
 use crate::player::flip::FlipMotion;
 use crate::player::player_view::PlayerAnimation;
+use crate::rendering::depth_of_field::{DepthMaterial, DepthTarget};
 use crate::rendering::grade::GradeMaterial;
 use crate::rendering::render_target::SceneTarget;
 use crate::rendering::scene_material::SceneMaterial;
@@ -81,6 +82,9 @@ pub(crate) struct Game {
     pub(crate) material: Option<SceneMaterial>,
     pub(crate) grade: Option<GradeMaterial>,
     pub(crate) scene_target: SceneTarget,
+    /// The depth pass's material; without it the blur falls back to the height on screen.
+    pub(crate) depth_material: Option<DepthMaterial>,
+    pub(crate) depth_target: DepthTarget,
     pub(crate) terrain_frames: TerrainFrames,
     pub(crate) terrain_look: TerrainLook,
     pub(crate) player_asset: Option<PlayerSprite>,
@@ -203,6 +207,13 @@ impl Game {
             Ok(grade) => Some(grade),
             Err(reason) => {
                 eprintln!("warning: {reason}; la escena se compone sin grado por fase");
+                None
+            }
+        };
+        let depth_material = match DepthMaterial::load() {
+            Ok(depth) => Some(depth),
+            Err(reason) => {
+                eprintln!("warning: {reason}; el desenfoque sigue la altura en pantalla");
                 None
             }
         };
@@ -395,6 +406,8 @@ impl Game {
             material,
             grade,
             scene_target: SceneTarget::new(screen_width(), screen_height()),
+            depth_material,
+            depth_target: DepthTarget::new(screen_width(), screen_height()),
             terrain_frames,
             terrain_look,
             player_asset,

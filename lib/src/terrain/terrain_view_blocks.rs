@@ -277,7 +277,10 @@ pub fn collect_terrain_sprites<H, W, S>(
                 TERRAIN_LAYER,
                 projection.tile_height,
             );
-            out.push(SpriteDraw::tinted(key, ATLAS_TEXTURE, frame, layout, tint));
+            out.push(
+                SpriteDraw::tinted(key, ATLAS_TEXTURE, frame, layout, tint)
+                    .on_surface(f64::from(column.elevation)),
+            );
             if let (Some(level), Some(water_line)) = (water_level, water_line) {
                 let block_level = f64::from(block.elevation);
                 let walled_in = flank

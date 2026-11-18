@@ -12,6 +12,7 @@ use macroquad::prelude::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use crate::rendering::depth_of_field::{DepthFrame, DepthStamp};
 use crate::rendering::scene_material::{Veil, vertex};
 
 /// The shared atlas, which is the texture of everything that is not a sheet of player poses.
@@ -33,6 +34,8 @@ pub struct SpriteAtlas {
     /// The one mesh every draw is built in: Macroquad copies its vertices into the batch, so
     /// the same buffers are cleared and filled again instead of allocated for each draw.
     scratch: Mesh,
+    /// The depth the draw in hand writes, while the depth pass is drawing.
+    stamp: Option<DepthStamp>,
 }
 
 /// What the manifest knows about one sprite: the pixels, and where they belong.
@@ -140,6 +143,7 @@ impl SpriteAtlas {
             sheets,
             white,
             masks: HashMap::new(),
+            stamp: None,
             scratch: Mesh {
                 vertices: Vec::new(),
                 indices: Vec::new(),
@@ -253,7 +257,7 @@ impl SpriteAtlas {
             )));
         }
         mesh.indices.extend_from_slice(&[0, 1, 2, 0, 2, 3]);
-        draw_mesh(mesh);
+        self.submit();
     }
 
     /// Draws the part of a frame that falls inside `band`, which is a piece of the same
@@ -296,7 +300,7 @@ impl SpriteAtlas {
         for i in 1..corners.len() - 1 {
             mesh.indices.extend_from_slice(&[0, i as u16, i as u16 + 1]);
         }
-        draw_mesh(mesh);
+        self.submit();
     }
 
     /// Draws one frame as a lattice of quads, each corner darkened by the shadows falling on it.
@@ -358,7 +362,7 @@ impl SpriteAtlas {
                 ]);
             }
         }
-        draw_mesh(mesh);
+        self.submit();
     }
 
     pub fn draw_shaded(
@@ -408,7 +412,7 @@ impl SpriteAtlas {
                 ]);
             }
         }
-        draw_mesh(mesh);
+        self.submit();
     }
 
     /// Draws a shadow over the flat quad `corners`: a lattice of black, as opaque at each
@@ -461,7 +465,7 @@ impl SpriteAtlas {
                 ]);
             }
         }
-        draw_mesh(mesh);
+        self.submit();
     }
 
     /// Draws one voxel of dust: its three visible faces in flat colour, as one mesh.
@@ -489,7 +493,7 @@ impl SpriteAtlas {
                 corner + 3,
             ]);
         }
-        draw_mesh(mesh);
+        self.submit();
     }
 
     /// Draws the shadow baked on a column's top face: one quad, shaded by the shadow atlas.
@@ -514,7 +518,7 @@ impl SpriteAtlas {
             ));
         }
         mesh.indices.extend_from_slice(&[0, 1, 2, 0, 2, 3]);
-        draw_mesh(mesh);
+        self.submit();
     }
 
     /// Draws a sprite's artwork as the water shows it: the polygon `points` on a water top, each
@@ -562,7 +566,7 @@ impl SpriteAtlas {
             let corner = corner as u16;
             mesh.indices.extend_from_slice(&[0, corner, corner + 1]);
         }
-        draw_mesh(mesh);
+        self.submit();
     }
 
     /// Draws the clipped fan of a ground ellipse using the atlas scratch mesh.
@@ -587,7 +591,18 @@ impl SpriteAtlas {
                 mesh.indices.push((mesh.vertices.len() - 1) as u16);
             }
         }
-        draw_mesh(mesh);
+        self.submit();
+    }
+
+    /// Hands the scratch mesh to Macroquad; during the depth pass every vertex first carries
+    /// the depth stamp of the draw instead of its colour.
+    fn submit(&mut self) {
+        if let Some(stamp) = self.stamp {
+            for vertex in &mut self.scratch.vertices {
+                stamp.over(vertex);
+            }
+        }
+        draw_mesh(&self.scratch);
     }
 
     /// The frame's pixels in the atlas, pulled in by half a texel on every side.
@@ -796,13 +811,35 @@ pub enum DrawKind {
 /// One sprite queued for this frame, with the key it sorts by.
 pub struct SpriteDraw {
     pub key: DrawKey,
+    /// What depth of field reads this draw at: see [`Focus`].
+    pub focus: Focus,
     pub kind: DrawKind,
+}
+
+/// How the depth-of-field pass places a draw in depth, so the blur follows the isometric
+/// depth (the cell's `x + y`, the same coordinate the draws sort by) and not the height on
+/// screen: everything standing on one cell is exactly as sharp as that cell's ground.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Focus {
+    /// Something upright on its cell (an entity, the player, a building's band): the whole
+    /// artwork reads at its key's depth, so the crown of a tall tree is as sharp as its trunk.
+    Standing,
+    /// A block of terrain whose column's top face is at `top`: each pixel of that face reads
+    /// at the ground it shows, so a flat field blurs as a smooth gradient and not tile by tile;
+    /// the sides below it read at the cell's near corner.
+    Surface { top: f64 },
 }
 
 impl SpriteDraw {
     /// A sprite drawn whole, which is everything standing on a single cell.
     pub fn whole(key: DrawKey, texture: usize, frame: SpriteFrame, layout: SpriteLayout) -> Self {
         Self::tinted(key, texture, frame, layout, WHITE)
+    }
+
+    /// This draw read as a block of terrain whose column tops out at `top`; see [`Focus`].
+    pub fn on_surface(mut self, top: f64) -> Self {
+        self.focus = Focus::Surface { top };
+        self
     }
 
     /// A sprite drawn whole and multiplied by `tint`: a block of ground in a colour zone.
@@ -815,6 +852,7 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
+            focus: Focus::Standing,
             kind: DrawKind::Sprite {
                 texture,
                 frame,
@@ -858,6 +896,7 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
+            focus: Focus::Standing,
             kind: DrawKind::Sprite {
                 texture,
                 frame,
@@ -879,6 +918,7 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
+            focus: Focus::Standing,
             kind: DrawKind::Shaded {
                 texture,
                 frame,
@@ -902,6 +942,7 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
+            focus: Focus::Standing,
             kind: DrawKind::Leaning {
                 texture,
                 frame,
@@ -921,6 +962,7 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
+            focus: Focus::Standing,
             kind: DrawKind::Shaded {
                 texture,
                 frame,
@@ -942,6 +984,7 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
+            focus: Focus::Standing,
             kind: DrawKind::GroundShadow {
                 corners,
                 map_uv,
@@ -961,6 +1004,7 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
+            focus: Focus::Standing,
             kind: DrawKind::Reflection {
                 texture,
                 frame,
@@ -975,6 +1019,7 @@ impl SpriteDraw {
     pub fn voxel(key: DrawKey, faces: VoxelFaces, colours: [Color; 3]) -> Self {
         Self {
             key,
+            focus: Focus::Standing,
             kind: DrawKind::Voxel { faces, colours },
         }
     }
@@ -988,6 +1033,7 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
+            focus: Focus::Standing,
             kind: DrawKind::FaceShadow {
                 corners,
                 shade,
@@ -1009,6 +1055,7 @@ impl SpriteDraw {
     ) -> Self {
         Self {
             key,
+            focus: Focus::Standing,
             kind: DrawKind::GroundEllipse {
                 centre,
                 width,
@@ -1034,6 +1081,46 @@ pub fn draw_sorted(
     if let Some(material) = material {
         material.release();
     }
+}
+
+/// Redraws the sorted `draws` as depths for the depth of field, with the depth material bound
+/// by the caller: only what is solid and stands in the scene, never a shadow, a reflection or
+/// a sprite the player is seen through.
+pub fn draw_depth(atlas: &mut SpriteAtlas, draws: &[SpriteDraw], frame: &DepthFrame) {
+    let plain = Veil::of(1.0, false);
+    for draw in draws {
+        atlas.stamp = Some(frame.stamp(draw.key, draw.focus));
+        match &draw.kind {
+            DrawKind::Sprite {
+                texture,
+                frame,
+                band,
+                layout,
+                opacity,
+                ..
+            }
+            | DrawKind::Shaded {
+                texture,
+                frame,
+                band,
+                layout,
+                opacity,
+                ..
+            } if *opacity >= 1.0 => match band {
+                Some(band) => atlas.draw_band(*texture, *frame, band, None, plain),
+                None => atlas.draw_veiled(*texture, *frame, *layout, WHITE, plain),
+            },
+            DrawKind::Leaning {
+                texture,
+                frame,
+                corners,
+                ..
+            } => atlas.draw_quad(*texture, *frame, corners, None),
+            DrawKind::Voxel { faces, colours } => atlas.draw_voxel(faces, colours),
+            _ => {}
+        }
+    }
+    atlas.stamp = None;
 }
 
 fn draw_queue(atlas: &mut SpriteAtlas, draws: &mut [SpriteDraw], dithered: bool) {

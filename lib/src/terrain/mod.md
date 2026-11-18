@@ -114,7 +114,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`ReflectionJob`](terrain_view_blocks.rs#L131) — Trabajo de reflejo encolado durante la pasada principal y vaciado al final, de atrás hacia delante (`coord.x + coord.y` descendente), para que en una casilla compartida el bloque de delante pinte sobre el sliver del bloque de atrás.
   - Declaración: `struct ReflectionJob { depth: i32, frame: SpriteFrame, layout: SpriteLayout, feet: ScreenPoint, level: f64, }`
 
-- [`exposed_floor`](terrain_view_blocks.rs#L327) — El bloque más bajo de una columna que aún debe dibujarse: tan abajo como el más bajo de las
+- [`exposed_floor`](terrain_view_blocks.rs#L330) — El bloque más bajo de una columna que aún debe dibujarse: tan abajo como el más bajo de las
   - Firma: `fn exposed_floor(elevation: i32, in_front: impl IntoIterator<Item = Option<i32>>) -> i32 {`
 
 #### Constantes internas

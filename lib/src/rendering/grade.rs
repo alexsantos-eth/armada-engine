@@ -9,6 +9,10 @@ use macroquad::prelude::*;
 use miniquad::{BlendFactor, BlendState, Equation, PipelineParams};
 
 use crate::game::config::PHASE_TRANSITION_SECONDS;
+use crate::rendering::depth_of_field::{
+    DEPTH_MAP, FOCAL_HALF_HEIGHT, GRADE_DEPTH_GLSL, MAX_BLUR_RADIUS_PX, TRANSITION_HEIGHT,
+};
+use crate::rendering::lens::lens_glsl;
 
 const VERTEX: &str = r#"#version 100
 attribute vec3 position;
@@ -24,7 +28,7 @@ void main() {
     uv = texcoord;
 }"#;
 
-const FRAGMENT: &str = r#"#version 100
+const FRAGMENT_HEAD: &str = r#"#version 100
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
 #else
@@ -38,47 +42,28 @@ uniform vec4 Tint;
 uniform vec4 Lift;
 uniform float Saturation;
 uniform vec2 TexelSize;
-uniform float TiltShiftFocusY;
-uniform float TiltShiftSharpHalfHeight;
-uniform float TiltShiftTransitionHeight;
-uniform float TiltShiftMaxRadius;
+"#;
 
-float tiltShiftRadius(vec2 point) {
-    float distanceFromFocus = abs(point.y - TiltShiftFocusY);
-    float transition = smoothstep(
-        TiltShiftSharpHalfHeight,
-        TiltShiftSharpHalfHeight + TiltShiftTransitionHeight,
-        distanceFromFocus
-    );
-    return transition * TiltShiftMaxRadius;
-}
-
-vec3 tiltShiftBlur(vec2 point, float radius) {
-    vec2 stepSize = TexelSize * radius;
-    vec3 colour = texture2D(Texture, point).rgb * 0.20;
-    colour += texture2D(Texture, point + vec2(stepSize.x, 0.0)).rgb * 0.15;
-    colour += texture2D(Texture, point - vec2(stepSize.x, 0.0)).rgb * 0.15;
-    colour += texture2D(Texture, point + vec2(0.0, stepSize.y)).rgb * 0.15;
-    colour += texture2D(Texture, point - vec2(0.0, stepSize.y)).rgb * 0.15;
-    colour += texture2D(Texture, point + stepSize).rgb * 0.05;
-    colour += texture2D(Texture, point - stepSize).rgb * 0.05;
-    colour += texture2D(Texture, point + vec2(stepSize.x, -stepSize.y)).rgb * 0.05;
-    colour += texture2D(Texture, point + vec2(-stepSize.x, stepSize.y)).rgb * 0.05;
-    return colour;
-}
-
+const FRAGMENT_BODY: &str = r#"
 void main() {
-    vec3 colour = tiltShiftBlur(uv, tiltShiftRadius(uv));
+    float radius = blurRadius(uv);
+    float focus = 1.0 - radius / MaxBlurRadius;
+    vec3 colour = bokeh(uv, radius);
+    colour = microContrast(colour, uv, focus);
+    colour = lensTone(colour, focus);
     float luma = dot(colour, vec3(0.299, 0.587, 0.114));
     colour = mix(vec3(luma), colour, Saturation);
-    colour = colour * Tint.rgb + Lift.rgb;
-    gl_FragColor = vec4(colour, 1.0);
+    colour = colour * Tint.rgb * vignette(uv) + Lift.rgb;
+    gl_FragColor = vec4(clamp(colour, 0.0, 1.0), 1.0);
 }"#;
 
-const TILT_SHIFT_FOCUS_Y: f32 = 0.52;
-const TILT_SHIFT_SHARP_HALF_HEIGHT: f32 = 0.14;
-const TILT_SHIFT_TRANSITION_HEIGHT: f32 = 0.20;
-const TILT_SHIFT_MAX_RADIUS_PX: f32 = 3.0;
+/// The grade's fragment shader: its head, the depth-of-field reader, the lens and its body.
+fn fragment() -> String {
+    format!(
+        "{FRAGMENT_HEAD}{GRADE_DEPTH_GLSL}{}{FRAGMENT_BODY}",
+        lens_glsl()
+    )
+}
 
 fn grade_pipeline() -> PipelineParams {
     PipelineParams {
@@ -237,10 +222,11 @@ impl GradeMaterial {
                 "el grado de la escena necesita el backend de OpenGL y este contexto es {backend:?}"
             ));
         }
+        let fragment = fragment();
         let material = load_material(
             ShaderSource::Glsl {
                 vertex: VERTEX,
-                fragment: FRAGMENT,
+                fragment: &fragment,
             },
             MaterialParams {
                 pipeline_params: grade_pipeline(),
@@ -249,34 +235,35 @@ impl GradeMaterial {
                     UniformDesc::new("Lift", UniformType::Float4),
                     UniformDesc::new("Saturation", UniformType::Float1),
                     UniformDesc::new("TexelSize", UniformType::Float2),
-                    UniformDesc::new("TiltShiftFocusY", UniformType::Float1),
-                    UniformDesc::new("TiltShiftSharpHalfHeight", UniformType::Float1),
-                    UniformDesc::new("TiltShiftTransitionHeight", UniformType::Float1),
-                    UniformDesc::new("TiltShiftMaxRadius", UniformType::Float1),
+                    UniformDesc::new("FocusDepth", UniformType::Float1),
+                    UniformDesc::new("FocalHalfHeight", UniformType::Float1),
+                    UniformDesc::new("TransitionHeight", UniformType::Float1),
+                    UniformDesc::new("MaxBlurRadius", UniformType::Float1),
                 ],
-                ..Default::default()
+                textures: vec![DEPTH_MAP.to_owned()],
             },
         )
         .map_err(|error| format!("no se pudo compilar el shader de grado de la escena: {error}"))?;
         Ok(Self { material })
     }
 
-    /// Applies the presentation uniforms and draws what follows with this material.
-    pub fn bind(&self, grade: &PhaseGrade, texel_size: Vec2) {
+    /// Applies the presentation uniforms, with the depth of field focused at `focus` over
+    /// `depth`, and draws what follows with this material.
+    pub fn bind(&self, grade: &PhaseGrade, texel_size: Vec2, depth: &Texture2D, focus: f32) {
         self.material
             .set_uniform("Tint", vec4(grade.tint.r, grade.tint.g, grade.tint.b, 1.0));
         self.material
             .set_uniform("Lift", vec4(grade.lift.r, grade.lift.g, grade.lift.b, 0.0));
         self.material.set_uniform("Saturation", grade.saturation);
         self.material.set_uniform("TexelSize", texel_size);
+        self.material.set_uniform("FocusDepth", focus);
         self.material
-            .set_uniform("TiltShiftFocusY", TILT_SHIFT_FOCUS_Y);
+            .set_uniform("FocalHalfHeight", FOCAL_HALF_HEIGHT);
         self.material
-            .set_uniform("TiltShiftSharpHalfHeight", TILT_SHIFT_SHARP_HALF_HEIGHT);
+            .set_uniform("TransitionHeight", TRANSITION_HEIGHT);
         self.material
-            .set_uniform("TiltShiftTransitionHeight", TILT_SHIFT_TRANSITION_HEIGHT);
-        self.material
-            .set_uniform("TiltShiftMaxRadius", TILT_SHIFT_MAX_RADIUS_PX);
+            .set_uniform("MaxBlurRadius", MAX_BLUR_RADIUS_PX);
+        self.material.set_texture(DEPTH_MAP, depth.weak_clone());
         gl_use_material(&self.material);
     }
 
