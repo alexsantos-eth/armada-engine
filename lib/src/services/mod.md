@@ -44,8 +44,8 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
   - Firma: `fn play_with_volume(&mut self, event: SoundEvent, volume: f64) {`
 - [`play_loop`](macroquad_adapters.rs#L191) — Sustituye el bucle actual (silencio con `None`) por el de `sound`; repetir el mismo bucle es un no-op.
   - Firma: `fn play_loop(&mut self, sound: Option<SoundLoop>) {`
-- [`set_volume`](macroquad_adapters.rs#L212) — Fija el volumen maestro en `0.0..=1.0` y lo aplica al bucle en reproducción.
+- [`set_volume`](macroquad_adapters.rs#L211) — Fija el volumen maestro en `0.0..=1.0` y lo aplica al bucle en reproducción.
   - Firma: `fn set_volume(&mut self, volume: f64) {`
 
-- [`push`](macroquad_adapters.rs#L230) — Añade el valor recibido a la colección o secuencia administrada.
+- [`push`](macroquad_adapters.rs#L229) — Añade el valor recibido a la colección o secuencia administrada.
   - Firma: `fn push(&mut self, event: UiEvent) {`

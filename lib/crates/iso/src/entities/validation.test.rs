@@ -227,3 +227,76 @@ fn rejects_a_non_positive_or_non_finite_sway_period() {
         assert!(matches!(err, CatalogError::InvalidAsset { id, .. } if id == "tree"));
     }
 }
+
+#[test]
+fn rejects_a_shape_shorter_than_one_block_high() {
+    let mut bp = blueprint("tree", 1, vec![TerrainMaterial::Grass]);
+    bp.shape.height = 0;
+    let catalog = catalog(vec![bp]);
+    let err = validate_catalog(&catalog).unwrap_err();
+    assert!(matches!(err, CatalogError::InvalidShape { id, .. } if id == "tree"));
+}
+
+#[test]
+fn rejects_a_zero_length_footprint() {
+    let mut bp = blueprint("tree", 1, vec![TerrainMaterial::Grass]);
+    bp.shape.length = 0;
+    bp.shape.collision.clear();
+    let catalog = catalog(vec![bp]);
+    let err = validate_catalog(&catalog).unwrap_err();
+    assert!(matches!(err, CatalogError::InvalidShape { id, .. } if id == "tree"));
+}
+
+#[test]
+fn rejects_a_blueprint_without_any_placement_surface() {
+    let bp = blueprint("tree", 1, vec![]);
+    let catalog = catalog(vec![bp]);
+    let err = validate_catalog(&catalog).unwrap_err();
+    assert!(matches!(err, CatalogError::InvalidPlacement { id, .. } if id == "tree"));
+}
+
+#[test]
+fn every_catalog_error_prints_what_was_found() {
+    let errors = [
+        CatalogError::UnsupportedSchema {
+            found: 9,
+            expected: 1,
+        },
+        CatalogError::EmptyId,
+        CatalogError::DuplicateId {
+            id: "tree".to_owned(),
+        },
+        CatalogError::InvalidShape {
+            id: "tree".to_owned(),
+            reason: "height must be >= 1".to_owned(),
+        },
+        CatalogError::InvalidPlacement {
+            id: "tree".to_owned(),
+            reason: "surfaces must not be empty".to_owned(),
+        },
+        CatalogError::InvalidAsset {
+            id: "tree".to_owned(),
+            reason: "sprite must not be empty".to_owned(),
+        },
+    ];
+    for error in errors {
+        let message = error.to_string();
+        assert!(!message.is_empty(), "{error:?} prints something");
+        assert!(!message.contains('{'), "{message} interpolates every value");
+    }
+    assert!(
+        CatalogError::UnsupportedSchema {
+            found: 9,
+            expected: 1
+        }
+        .to_string()
+        .contains("9")
+    );
+    assert!(
+        CatalogError::DuplicateId {
+            id: "tree".to_owned()
+        }
+        .to_string()
+        .contains("tree")
+    );
+}

@@ -31,13 +31,13 @@ Tres decisiones que no son obvias:
 
 #### Reexportaciones
 
-- [`apply_edit`, `blueprint_index`, `brush_for`](mod.rs#L12) — Las ediciones de la escena sobre el mundo.
-  - Firma: `pub use apply::{apply_edit, blueprint_index, brush_for};`
+- [`apply_edit`](mod.rs#L12) — Las ediciones de la escena sobre el mundo.
+  - Firma: `pub use apply::apply_edit;`
 - [`Report`, `ReportEntity`, `ReportPlayer`, `entities_in`, `player_of`, `refusal_note`](mod.rs#L13) — Con qué responde una corrida.
   - Firma: `pub use report::{Report, ReportEntity, ReportPlayer, entities_in, player_of, refusal_note};`
 - [`Scene`, `SceneEdit`, `ScenePhase`, `SceneStep`, `SceneWorld`, …](mod.rs#L14) — El esquema de `scene.json`.
-  - Firma: `pub use scene::{DEFAULT_MAX_FRAMES, Scene, SceneEdit, ScenePhase, SceneStep, SceneWorld, default_steps, is_shot_name, parse_scene};`
-- [`Script`, `ScriptFrame`](mod.rs#L18) — La máquina que decide qué hace cada fotograma.
+  - Firma: `pub use scene::{Scene, SceneEdit, ScenePhase, SceneStep, SceneWorld, is_shot_name, parse_scene};`
+- [`Script`, `ScriptFrame`](mod.rs#L17) — La máquina que decide qué hace cada fotograma.
   - Firma: `pub use script::{Script, ScriptFrame};`
 
 ### `scene.rs`

@@ -1,6 +1,6 @@
 # Services
 
-Este dominio declara los puertos para entrada, audio, interfaz y carga de chunks que el cliente debe implementar. Establece límites explícitos entre reglas de juego y efectos del exterior mediante traits y tipos de intercambio.
+Este dominio declara los puertos para entrada, audio e interfaz que el cliente debe implementar. Establece límites explícitos entre reglas de juego y efectos del exterior mediante traits y tipos de intercambio.
 
 Las interfaces deben ser pequeñas, orientadas a capacidades y no filtrar tipos del backend. Las implementaciones concretas viven en los clientes o en adaptadores de infraestructura.
 
@@ -33,16 +33,6 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
   - Firma: `fn set_volume(&mut self, volume: f64);`
 
 Los tipos de intercambio son `SoundEvent` (`Jump`, `AirJump`, `Land`, `Footstep`, `Climb`, `Skid`) y `SoundLoop` (`Walk`, `Run`, `Jetpack`).
-
-### `chunk_loader.rs`
-
-#### Funciones internas
-
-- [`chunk`](chunk_loader.rs#L9) — Devuelve las columnas de un chunk descubierto, o `None` cuando aún no se ha descubierto.
-  - Firma: `fn chunk(&self, coord: ChunkCoord) -> Option<&[TerrainColumn]>;`
-
-- [`discover`](chunk_loader.rs#L11) — Descubre un chunk si hace falta y devuelve sus columnas.
-  - Firma: `fn discover(&mut self, coord: ChunkCoord) -> Option<Vec<TerrainColumn>>;`
 
 ### `input.rs`
 

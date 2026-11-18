@@ -14,7 +14,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Reexportaciones
 
-- [`Game`](mod.rs#L9) — El juego compuesto: mundo, jugador, cámara, arte y guardado.
+- [`Game`](state.rs#L64) — El juego compuesto: mundo, jugador, cámara, arte y guardado.
   - Firma: `pub(crate) use state::Game;`
 
 ### `config.rs`
@@ -36,7 +36,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`MOBILE_ZOOM`](config.rs#L25) — Fracción de la casilla de referencia que dibuja una plataforma de puntero grueso: la escena alejada un poco para ver más mundo en una pantalla táctil pequeña.
   - Declaración: `pub const MOBILE_ZOOM: f64 = 0.7;`
 - [`DEFAULT_ZOOM`](config.rs#L29) — El zoom por defecto de la escena, en cualquier plataforma: escala las métricas de casilla de referencia (`SceneMetrics`); uno es la vista de referencia, por debajo uno se aleja y cabe más mundo, por encima uno se acerca. Se compone multiplicativamente con `MOBILE_ZOOM` (puntero grueso) y con el `zoom` de una escena guionizada.
-  - Declaración: `pub const DEFAULT_ZOOM: f64 = 1.0;`
+  - Declaración: `pub const DEFAULT_ZOOM: f64 = 0.9;`
 - [`MAX_FRAME_MS`](config.rs#L33) — Milisegundos de simulación que un fotograma puede avanzar, uno por tick: tras un bloqueo (GC, GPU, horneado) el juego se ralentiza en vez de saltar varios ticks de golpe.
   - Declaración: `pub(crate) const MAX_FRAME_MS: f64 = iso::simulation::STEP_MS;`
 
@@ -175,7 +175,6 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`Game::new`](state.rs#L143) — Arranque: carga catálogo, manifiesto y sonidos, restaura el guardado si existe, genera la zona de aparición y encuadra al jugador. En la ruta del editor no toca el guardado y, en vez de generar, inyecta `MAKER_CHUNK` plano y abre la sesión de edición. Una escena guionizada (`scene`) decide además semilla, centro, zoom y si el mundo es plano o procedural. Los fallos de assets degradan a avisos, nunca entran en pánico.
   - Firma: `pub(crate) async fn new(route: Route, scene: Option<&iso::testbed::Scene>) -> Self {`
-  - Firma: `pub(crate) async fn new(route: Route) -> Self {`
 
 ## Detalles de implementación
 

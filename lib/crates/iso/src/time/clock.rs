@@ -40,11 +40,6 @@ pub struct ClockTime {
     pub minute: u8,
 }
 
-/// Fraction of a day for a signed offset; negative offsets wrap to the previous day.
-pub fn time_of_day(tick: i64) -> f64 {
-    tick.rem_euclid(TICKS_PER_DAY as i64) as f64 / TICKS_PER_DAY as f64
-}
-
 pub fn clock_time(tick: u64) -> ClockTime {
     let in_day = tick % TICKS_PER_DAY;
     let minutes = in_day * 24 * 60 / TICKS_PER_DAY;

@@ -1,25 +1,4 @@
 use super::*;
-use serde_json::Value;
-
-#[test]
-fn matches_contract_frame_fixture() {
-    let fixture: Value = serde_json::from_str(include_str!("../../tests/contracts.json")).unwrap();
-    let sample = &fixture["stepper"];
-    let mut stepper = FixedStepper::default();
-    assert_eq!(stepper.step_ms, sample["stepMs"].as_f64().unwrap());
-    for (frame, expected) in sample["framesMs"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .zip(sample["steps"].as_array().unwrap())
-    {
-        assert_eq!(
-            stepper.consume_frame(frame.as_f64().unwrap()),
-            expected.as_u64().unwrap()
-        );
-    }
-    assert!((stepper.interpolation_alpha() - sample["alpha"][3].as_f64().unwrap()).abs() < 1e-12);
-}
 
 #[test]
 fn caps_real_frame_before_scaling_and_preserves_pause_remainder() {

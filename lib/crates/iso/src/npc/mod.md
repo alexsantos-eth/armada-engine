@@ -45,11 +45,11 @@ No dibuja nada ni conoce sprites: la vista vive en el cliente (`src/npc`).
 
 - [`get_npc_fall`](wander.rs#L136) — Bloques que ha caído un cuerpo `ticks` ticks después de pasar un borde, uno como mucho.
 
-- [`can_npc_stand`](wander.rs#L342) — Si un personaje puede estar en `cell`: suelo seco, que no sea grada, sin nada sólido; con `level`, exactamente a ese nivel.
+- [`can_npc_stand`](wander.rs#L341) — Si un personaje puede estar en `cell`: suelo seco, que no sea grada, sin nada sólido; con `level`, exactamente a ese nivel.
 
-- [`plan_npc_step`](wander.rs#L383) — El paso que `npc` daría hacia `heading` (caminar, gradas, escalar o caer), o `None` si ese lado está cerrado.
+- [`plan_npc_step`](wander.rs#L382) — El paso que `npc` daría hacia `heading` (caminar, gradas, escalar o caer), o `None` si ese lado está cerrado.
 
-- [`step_npc`](wander.rs#L458) — Un tick de `npc`: descansa, arranca un paseo o continúa el paso en curso.
+- [`step_npc`](wander.rs#L457) — Un tick de `npc`: descansa, arranca un paseo o continúa el paso en curso.
 
 #### Constantes
 

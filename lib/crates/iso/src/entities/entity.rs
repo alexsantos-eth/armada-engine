@@ -1,7 +1,7 @@
 //! Entity instances and their spatial footprint, independent of rendering.
 
 use crate::entities::blueprint::{EntityBlueprint, EntityLengthAxis, EntitySway};
-use crate::grid::{SpatialIndex, WorldCoord};
+use crate::grid::WorldCoord;
 
 /// How an entity blocks movement, block by block: a single fraction for the whole footprint, or
 #[derive(Clone, Debug, PartialEq)]
@@ -29,24 +29,16 @@ pub struct EntityData {
     pub length: i32,
     /// Axis the footprint runs along. `None` means a single cell.
     pub length_axis: Option<EntityLengthAxis>,
-    /// Minimum free blocks (Chebyshev, diagonals included) between instances of this entity.
-    pub gap: Option<i32>,
     /// Whether this entity needs an entrance connected to the generated road network.
     pub road_access: bool,
     /// Path to the entity's sprite asset.
     pub texture_source: String,
-    /// Debug flag, only for definitions that asked for it.
-    pub debug: Option<bool>,
-    /// Color replacement lists, if the definition has any.
-    pub color_replacements: Option<std::sync::Arc<serde_json::Value>>,
     /// Chosen color variation index, kept in the data so it survives saves.
     pub color_variant: Option<u32>,
     /// Wind sway parameters, single-tile entities only.
     pub sway: Option<EntitySway>,
     /// Per-cell or whole-footprint collision fraction.
     pub collision: Option<EntityCollision>,
-    /// Whether to add a static contact shadow at the footprint.
-    pub contact_shadow: Option<bool>,
     /// Sprite reflected in water, multi-tile entities only.
     pub reflection_source: Option<String>,
     /// Free-form metadata.
@@ -93,23 +85,14 @@ impl Entity {
             height: blueprint.shape.height,
             length: blueprint.shape.length,
             length_axis: Some(blueprint.shape.axis),
-            gap: None,
             road_access: blueprint.placement.road_access,
             texture_source: blueprint.asset.sprite.clone(),
-            debug: None,
-            color_replacements: blueprint.asset.color_replacements.clone(),
             color_variant: None,
             sway: blueprint.asset.sway.clone(),
             collision,
-            contact_shadow: blueprint.asset.contact_shadow,
             reflection_source: blueprint.asset.reflection.clone(),
             metadata: serde_json::Value::Object(Default::default()),
         };
-        Self { x, y, data }
-    }
-
-    /// Restores an entity from previously produced data (e.g. from a save).
-    pub fn from_data(x: i32, y: i32, data: EntityData) -> Self {
         Self { x, y, data }
     }
 
@@ -157,9 +140,6 @@ impl Entity {
     pub fn length_axis(&self) -> Option<EntityLengthAxis> {
         self.data.length_axis
     }
-    pub fn gap(&self) -> Option<i32> {
-        self.data.gap
-    }
     /// Whether this entity needs a generated road entrance.
     pub fn road_access(&self) -> bool {
         self.data.road_access
@@ -167,23 +147,11 @@ impl Entity {
     pub fn texture_source(&self) -> &str {
         &self.data.texture_source
     }
-    pub fn debug(&self) -> Option<bool> {
-        self.data.debug
-    }
-    pub fn color_replacements(&self) -> Option<&serde_json::Value> {
-        self.data.color_replacements.as_deref()
-    }
     pub fn color_variant(&self) -> Option<u32> {
         self.data.color_variant
     }
     pub fn sway(&self) -> Option<&EntitySway> {
         self.data.sway.as_ref()
-    }
-    pub fn collision(&self) -> Option<&EntityCollision> {
-        self.data.collision.as_ref()
-    }
-    pub fn contact_shadow(&self) -> Option<bool> {
-        self.data.contact_shadow
     }
     pub fn reflection_source(&self) -> Option<&str> {
         self.data.reflection_source.as_deref()
@@ -208,14 +176,6 @@ impl Entity {
             None => 1.0,
             Some(EntityCollision::Uniform(size)) => *size,
             Some(EntityCollision::PerCell(sizes)) => sizes.get(index).copied().unwrap_or(1.0),
-        }
-    }
-
-    /// Returns a clone of the entity's data.
-    pub fn get_data(&self) -> EntityData {
-        EntityData {
-            metadata: self.data.metadata.clone(),
-            ..self.data.clone()
         }
     }
 }
@@ -254,16 +214,6 @@ pub fn get_entity_footprint_for(entity: &Entity) -> Vec<WorldCoord> {
         entity.length(),
         entity.data.length_axis.unwrap_or(EntityLengthAxis::X),
     )
-}
-
-/// Builds the spatial index of `entities` over their whole footprints: what occupies each
-pub fn index_entities(entities: &[Entity]) -> SpatialIndex<Entity> {
-    let mut index = SpatialIndex::new();
-    for entity in entities {
-        let footprint = get_entity_footprint_for(entity);
-        let _ = index.insert(entity.clone(), &footprint);
-    }
-    index
 }
 
 #[cfg(test)]

@@ -21,10 +21,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`advance`](cloud_shadows.rs#L35) — Hace avanzar las nubes `elapsed_ms` de tiempo real.
   - Firma: `pub fn advance(&mut self, elapsed_ms: f64) {`
 
-- [`draw`](cloud_shadows.rs#L43) — Dibuja el patrón sobre la vista, con tantas copias como hagan falta para cubrirla.
+- [`draw`](cloud_shadows.rs#L40) — Dibuja el patrón sobre la vista, con tantas copias como hagan falta para cubrirla.
   - Firma: `pub fn draw(&self, origin: (f64, f64), tile: (f64, f64), screen: (f64, f64)) {`
 
-- [`cloud_copies`](cloud_shadows.rs#L69) — Dónde va cada copia del patrón para cubrir una vista de tamaño `screen`, dada la esquina superior izquierda
+- [`cloud_copies`](cloud_shadows.rs#L74) — Dónde va cada copia del patrón para cubrir una vista de tamaño `screen`, dada la esquina superior izquierda
   - Firma: `pub fn cloud_copies(anchor: (f64, f64), period: (f64, f64), screen: (f64, f64)) -> Vec<(f64, f64)> {`
 
 #### Constantes
@@ -45,62 +45,62 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`new`](shadow_view.rs#L127) — Una escena vacía iluminada por la fase `phase`, que muestrea `masks`.
+- [`new`](shadow_view.rs#L178) — Una escena vacía iluminada por la fase `phase`, que muestrea `masks`.
   - Firma: `pub fn new( phase: BakePhase, masks: SilhouetteMasks, atlas: ShadowAtlas, tile_width: f64, box_height: f64, ) -> Self {`
 
-- [`phase`](shadow_view.rs#L152) — La fase con la que se hornean las sombras actuales.
+- [`phase`](shadow_view.rs#L205) — La fase con la que se hornean las sombras actuales.
   - Firma: `pub fn phase(&self) -> BakePhase {`
 
-- [`chunk_fade`](shadow_view.rs#L158) — Cuánto ha desvanecido un chunk: `0.0` justo al terminar el horneado de un cambio de fase, `1.0` pasados `PHASE_TRANSITION_SECONDS` (`game::config`). Los horneados que aterrizan fuera de un cambio de fase reportan `1.0` desde el inicio.
+- [`chunk_fade`](shadow_view.rs#L211) — Cuánto ha desvanecido un chunk: `0.0` justo al terminar el horneado de un cambio de fase, `1.0` pasados `PHASE_TRANSITION_SECONDS` (`game::config`). Los horneados que aterrizan fuera de un cambio de fase reportan `1.0` desde el inicio.
   - Firma: `pub fn chunk_fade(&self, coord: ChunkCoord) -> f32 {`
 
-- [`set_phase`](shadow_view.rs#L167) — Cambia de fase e invalida los mapas derivados para rehornear los chunks visibles. Abre la ventana de fade: los horneados frescos hacen fade-in hasta que `update` encuentra nada pendiente; volver a la misma fase no la abre.
+- [`set_phase`](shadow_view.rs#L220) — Cambia de fase e invalida los mapas derivados para rehornear los chunks visibles. Abre la ventana de fade: los horneados frescos hacen fade-in hasta que `update` encuentra nada pendiente; volver a la misma fase no la abre.
   - Firma: `pub fn set_phase(&mut self, phase: BakePhase) {`
 
-- [`settled`](shadow_view.rs#L289) — Si al horneado no le queda nada por hacer para los chunks dados: sin trabajo en curso, sin nada pendiente de hornear y con todos ellos fundidos del todo. Es lo que espera el paso `settle` de una corrida guionizada antes de capturar.
+- [`settled`](shadow_view.rs#L343) — Si al horneado no le queda nada por hacer para los chunks dados: sin trabajo en curso, sin nada pendiente de hornear y con todos ellos fundidos del todo. Es lo que espera el paso `settle` de una corrida guionizada antes de capturar.
   - Firma: `pub fn settled(&self, manager: &ChunkManager, shown: &[ChunkCoord]) -> bool {`
-- [`forget`](shadow_view.rs#L185) — Descarta el horneado de un chunk para que la siguiente pasada lo hornee otra vez: lo que pide una edición de su terreno o de sus entidades, porque su luz ya no corresponde al suelo.
+- [`forget`](shadow_view.rs#L239) — Descarta el horneado de un chunk para que la siguiente pasada lo hornee otra vez: lo que pide una edición de su terreno o de sus entidades, porque su luz ya no corresponde al suelo.
   - Firma: `pub fn forget(&mut self, coord: ChunkCoord) {`
 
-- [`update`](shadow_view.rs#L196) — Dedica hasta [`BAKE_BUDGET_MS`] a poner al día el horneado para `shown`, olvida lo que el stream ya no tiene y hace avanzar el fade de los chunks horneados para un cambio de fase con `dt_seconds` de tiempo real. Los horneados que aterrizan fuera de un cambio de fase aparecen enteros. Cierra la ventana de fade cuando no queda trabajo.
+- [`update`](shadow_view.rs#L250) — Dedica hasta [`BAKE_BUDGET_MS`] a poner al día el horneado para `shown`, olvida lo que el stream ya no tiene y hace avanzar el fade de los chunks horneados para un cambio de fase con `dt_seconds` de tiempo real. Los horneados que aterrizan fuera de un cambio de fase aparecen enteros. Cierra la ventana de fade cuando no queda trabajo.
   - Firma: `pub fn update(&mut self, manager: &ChunkManager, shown: &[ChunkCoord], dt_seconds: f32) {`
 
-- [`collect_faces`](shadow_view.rs#L609) — Encola la sombra en cada cara vertical expuesta del terreno de `coord`.
+- [`collect_faces`](shadow_view.rs#L739) — Encola la sombra en cada cara vertical expuesta del terreno de `coord`.
   - Firma: `pub fn collect_faces( &self, coord: ChunkCoord, projection: ProjectionConfig, out: &mut Vec<SpriteDraw>, ) {`
 
-- [`shade_of`](shadow_view.rs#L655) — Las sombras que caen sobre la entidad situada en `cell`, si se horneó alguna.
+- [`shade_of`](shadow_view.rs#L785) — Las sombras que caen sobre la entidad situada en `cell`, si se horneó alguna.
   - Firma: `pub fn shade_of(&self, coord: ChunkCoord, cell: (i32, i32)) -> Option<&ShadeGrid> {`
 
-- [`shade_moving`](shadow_view.rs#L660) — Las sombras que caen sobre algo situado donde está el jugador, muestreadas ahora.
+- [`shade_moving`](shadow_view.rs#L790) — Las sombras que caen sobre algo situado donde está el jugador, muestreadas ahora.
   - Firma: `pub fn shade_moving( &self, manager: &ChunkManager, receiver: &ShadowReceiver, ) -> Option<ShadeGrid> {`
 
-- [`collect_ground`](shadow_view.rs#L696) — Encola la sombra de terreno de cada columna sombreada de `chunk`, para ordenarla y dibujarla con
+- [`collect_ground`](shadow_view.rs#L826) — Encola la sombra de terreno de cada columna sombreada de `chunk`, para ordenarla y dibujarla con
   - Firma: `pub fn collect_ground( &self, coord: ChunkCoord, columns: &[TerrainColumn], projection: ProjectionConfig, out: &mut Vec<SpriteDraw>, ) {`
 
-- [`extent_of_ink`](shadow_view.rs#L773) — Dónde se dibuja un dibujo medido alrededor del punto de terreno sobre el que se apoya, en píxeles de pantalla.
+- [`extent_of_ink`](shadow_view.rs#L927) — Dónde se dibuja un dibujo medido alrededor del punto de terreno sobre el que se apoya, en píxeles de pantalla.
   - Firma: `pub fn extent_of_ink(ink: InkBox, tile_width: f64) -> SpriteExtent {`
 
-- [`receiver_of`](shadow_view.rs#L784) — El receiver que forma un sprite dibujado en `layout` y situado en `foot` a elevación `elevation`.
+- [`receiver_of`](shadow_view.rs#L938) — El receiver que forma un sprite dibujado en `layout` y situado en `foot` a elevación `elevation`.
   - Firma: `pub fn receiver_of( layout: SpriteLayout, feet: ScreenPoint, foot: (f64, f64), elevation: f64, ) -> ShadowReceiver {`
 
-- [`lattice_of`](shadow_view.rs#L804) — Una retícula lista para dibujar un sprite, con su oscuridad escalada por `fade`, compartida mediante `Rc`, o `None` cuando al final nada lo sombrea (o cuando `fade` es cero).
+- [`lattice_of`](shadow_view.rs#L959) — Una retícula lista para dibujar un sprite, con su oscuridad escalada por `fade`, compartida mediante `Rc`, o `None` cuando al final nada lo sombrea (o cuando `fade` es cero).
   - Firma: `pub fn lattice_of(grid: &ShadeGrid, fade: f32) -> Option<Rc<ShadeLattice>> {`
 
 #### Constantes
 
-- [`BAKE_BUDGET_MS`](shadow_view.rs#L25) — Cuánto tiempo puede dedicar un fotograma a hornear sombras.
+- [`BAKE_BUDGET_MS`](shadow_view.rs#L72) — Cuánto tiempo puede dedicar un fotograma a hornear sombras.
   - Declaración: `pub const BAKE_BUDGET_MS: f64 = 3.0;`
 
-- [`GROUND_SHADOW_LAYER`](shadow_view.rs#L37) — Las sombras de terreno se dibujan sobre el terreno de su propia columna y bajo cualquier cosa situada sobre él.
+- [`GROUND_SHADOW_LAYER`](shadow_view.rs#L84) — Las sombras de terreno se dibujan sobre el terreno de su propia columna y bajo cualquier cosa situada sobre él.
   - Declaración: `pub const GROUND_SHADOW_LAYER: i32 = 1;`
 
-- [`FACE_FLOOR`](shadow_view.rs#L43) — Hasta qué profundidad de la cara expuesta de una columna se calcula la sombra, en bloques.
+- [`FACE_FLOOR`](shadow_view.rs#L90) — Hasta qué profundidad de la cara expuesta de una columna se calcula la sombra, en bloques.
   - Declaración: `pub const FACE_FLOOR: f64 = 10.0;`
 
-- [`ENTITY_SHADE_COLUMNS`](shadow_view.rs#L46) — Esquinas a lo ancho del dibujo de una entidad, y hacia abajo, para las sombras que recibe.
+- [`ENTITY_SHADE_COLUMNS`](shadow_view.rs#L93) — Esquinas a lo ancho del dibujo de una entidad, y hacia abajo, para las sombras que recibe.
   - Declaración: `pub const ENTITY_SHADE_COLUMNS: u32 = 6;`
 
-- [`ENTITY_SHADE_ROWS`](shadow_view.rs#L47) — Define cuántas filas contiene la banda de sombreado aplicada a entidades.
+- [`ENTITY_SHADE_ROWS`](shadow_view.rs#L94) — Define cuántas filas contiene la banda de sombreado aplicada a entidades.
   - Declaración: `pub const ENTITY_SHADE_ROWS: u32 = 10;`
 
 ### `shadow_view_atlas.rs`
@@ -199,77 +199,77 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`fade_of`](shadow_view.rs#L28) — Cuánto ha progresado el fade-in de un chunk según los segundos desde que terminó su horneado: smoothstep sobre `PHASE_TRANSITION_SECONDS` (`game::config`), exacto en los extremos.
+- [`fade_of`](shadow_view.rs#L75) — Cuánto ha progresado el fade-in de un chunk según los segundos desde que terminó su horneado: smoothstep sobre `PHASE_TRANSITION_SECONDS` (`game::config`), exacto en los extremos.
   - Firma: `fn fade_of(elapsed: f32) -> f32 {`
 
-- [`next_to_bake`](shadow_view.rs#L268) — El chunk que más conviene hornear después: uno que no tiene ninguna sombra antes que uno que ya tiene
+- [`next_to_bake`](shadow_view.rs#L322) — El chunk que más conviene hornear después: uno que no tiene ninguna sombra antes que uno que ya tiene
   - Firma: `fn next_to_bake(&self, manager: &ChunkManager, shown: &[ChunkCoord]) -> Option<ChunkCoord> {`
 
-- [`advance`](shadow_view.rs#L287) — Hace una parte del trabajo en curso e indica si esa fue la última.
+- [`advance`](shadow_view.rs#L350) — Hace una parte del trabajo en curso e indica si esa fue la última.
   - Firma: `fn advance(&mut self, manager: &ChunkManager) -> bool {`
 
-- [`start`](shadow_view.rs#L372) — Abre un horneado de `coord`, hasta el punto en que hay un mapa sobre el que volcarlo.
+- [`start`](shadow_view.rs#L453) — Abre un horneado de `coord`, hasta el punto en que hay un mapa sobre el que volcarlo.
   - Firma: `fn start(&mut self, manager: &ChunkManager, coord: ChunkCoord) {`
 
-- [`ground_field`](shadow_view.rs#L410) — Construye el `HeightField` del área muestreando el terreno del manager.
+- [`ground_field`](shadow_view.rs#L491) — Construye el `HeightField` del área muestreando el terreno del manager.
   - Firma: `fn ground_field( manager: &ChunkManager, min_x: i32, min_y: i32, max_x: i32, max_y: i32, ) -> HeightField {`
 
-- [`ground_cover`](shadow_view.rs#L423) — Lee cuáles de las `count` columnas desde `from` tienen algo de cobertura, añade la
+- [`ground_cover`](shadow_view.rs#L504) — Lee cuáles de las `count` columnas desde `from` tienen algo de cobertura, añade la
   - Firma: `fn ground_cover( &self, manager: &ChunkManager, coord: ChunkCoord, from: usize, count: usize, out: &mut Vec<bool>, ) -> usize {`
 
-- [`casters_of`](shadow_view.rs#L464) — Las entidades del chunk como casters, en las propias medidas del dibujo.
+- [`casters_of`](shadow_view.rs#L545) — Las entidades del chunk como casters, en las propias medidas del dibujo.
   - Firma: `fn casters_of(&self, manager: &ChunkManager, coord: ChunkCoord) -> Vec<ShadowCaster> {`
 
-- [`caster_of`](shadow_view.rs#L475) — Una entidad como caster, o `None` cuando el atlas no tiene un dibujo medido para ella.
-  - Firma: `fn caster_of(&self, entity: &Entity) -> Option<ShadowCaster> {`
+- [`casters_for`](shadow_view.rs#L566) — Una entidad como casters: una por celda de su huella, en las propias medidas del dibujo (la celda ancla carga el volumen si lo hay); vacío cuando el atlas no tiene un dibujo medido para ella.
+  - Firma: `fn casters_for(&self, entity: &Entity) -> Vec<ShadowCaster> {`
 
-- [`extent_of`](shadow_view.rs#L486) — Dónde se dibuja el dibujo de una entidad alrededor del punto de terreno sobre el que se apoya.
+- [`extent_of`](shadow_view.rs#L616) — Dónde se dibuja el dibujo de una entidad alrededor del punto de terreno sobre el que se apoya.
   - Firma: `fn extent_of(&self, entity: &Entity) -> Option<SpriteExtent> {`
 
-- [`shade_entities`](shadow_view.rs#L493) — Las retículas de las entidades propias del chunk en `window`, para aquellas a las que algo sombrea; devuelve cuántas procesó.
+- [`shade_entities`](shadow_view.rs#L623) — Las retículas de las entidades propias del chunk en `window`, para aquellas a las que algo sombrea; devuelve cuántas procesó.
   - Firma: `fn shade_entities( &self, manager: &ChunkManager, coord: ChunkCoord, casters: &[ShadowCaster], ground: &HeightField, window: Window, out: &mut HashMap<(i32, i32), ShadeGrid>, ) -> usize {`
 
-- [`walls_of`](shadow_view.rs#L545) — Las caras verticales expuestas del terreno de `coord`, listas para sombrearse por pasos.
+- [`walls_of`](shadow_view.rs#L675) — Las caras verticales expuestas del terreno de `coord`, listas para sombrearse por pasos.
   - Firma: `fn walls_of(manager: &ChunkManager, coord: ChunkCoord) -> Vec<TerrainFace> {`
 
-- [`shade_faces`](shadow_view.rs#L561) — La sombra en las caras expuestas en `window`, añadida a `out`; devuelve cuántas procesó.
+- [`shade_faces`](shadow_view.rs#L691) — La sombra en las caras expuestas en `window`, añadida a `out`; devuelve cuántas procesó.
   - Firma: `fn shade_faces( &self, walls: &[TerrainFace], casters: &[ShadowCaster], ground: &HeightField, window: Window, out: &mut Vec<(TerrainFace, Rc<ShadeLattice>)>, ) -> usize {`
 
-- [`around`](shadow_view.rs#L809) — Los nueve chunks alrededor de `coord`, incluido él mismo, en un orden fijo.
+- [`around`](shadow_view.rs#L964) — Los nueve chunks alrededor de `coord`, incluido él mismo, en un orden fijo.
   - Firma: `fn around(coord: ChunkCoord) -> [ChunkCoord; 9] {`
 
-- [`neighbours_loaded`](shadow_view.rs#L825) — Cuáles de los nueve chunks alrededor de `coord` tiene el stream, en un bit cada uno: el horneado que se hizo
+- [`neighbours_loaded`](shadow_view.rs#L980) — Cuáles de los nueve chunks alrededor de `coord` tiene el stream, en un bit cada uno: el horneado que se hizo
   - Firma: `fn neighbours_loaded(manager: &ChunkManager, coord: ChunkCoord) -> u16 {`
 
-- [`fresh_born`](shadow_view.rs#L843) — De qué segundo arranca el reloj de fade de un chunk que acaba de aterrizar: `0.0` mientras un cambio de fase está en rehorneado, `PHASE_TRANSITION_SECONDS` en cualquier otro caso (el chunk aparece con la sombra puesta).
+- [`fresh_born`](shadow_view.rs#L998) — De qué segundo arranca el reloj de fade de un chunk que acaba de aterrizar: `0.0` mientras un cambio de fase está en rehorneado, `PHASE_TRANSITION_SECONDS` en cualquier otro caso (el chunk aparece con la sombra puesta).
   - Firma: `fn fresh_born(&self) -> f32 {`
 
-- [`phase_changed`](shadow_view.rs#L852) — Abre la ventana de fade tras un cambio de fase real (`set_phase` con otra fase).
+- [`phase_changed`](shadow_view.rs#L1007) — Abre la ventana de fade tras un cambio de fase real (`set_phase` con otra fase).
   - Firma: `fn phase_changed(&mut self) {`
 
-- [`idle`](shadow_view.rs#L857) — Cierra la ventana de fade: `update` no encontró ningún chunk por hornear ni horneado en curso.
+- [`idle`](shadow_view.rs#L1012) — Cierra la ventana de fade: `update` no encontró ningún chunk por hornear ni horneado en curso.
   - Firma: `fn idle(&mut self) {`
 
 #### Tipos internos
 
-- [`Window`](shadow_view.rs#L105) — El tramo del trabajo de un chunk que cubre un paso: `count` elementos a partir de `from`.
+- [`Window`](shadow_view.rs#L156) — El tramo del trabajo de un chunk que cubre un paso: `count` elementos a partir de `from`.
   - Declaración: `struct Window {`
 
-- [`PhaseFade`](shadow_view.rs#L837) — Si un cambio de fase todavía debe su fade-in a los horneados frescos; la ventana abre con el cambio de fase y cierra cuando un pase de `update` no encuentra trabajo. No hay fade fuera de un cambio de fase: los chunks que llegan con el stream aterrizan con la sombra puesta.
+- [`PhaseFade`](shadow_view.rs#L992) — Si un cambio de fase todavía debe su fade-in a los horneados frescos; la ventana abre con el cambio de fase y cierra cuando un pase de `update` no encuentra trabajo. No hay fade fuera de un cambio de fase: los chunks que llegan con el stream aterrizan con la sombra puesta.
   - Declaración: `struct PhaseFade {`
 
 #### Constantes internas
 
-- [`GROUND_SHADE_COLUMNS`](shadow_view.rs#L34) — Columnas cuya retícula se lee del mapa en una sola pieza de trabajo.
+- [`GROUND_SHADE_COLUMNS`](shadow_view.rs#L81) — Columnas cuya retícula se lee del mapa en una sola pieza de trabajo.
   - Declaración: `const GROUND_SHADE_COLUMNS: usize = 128;`
 
-- [`ENTITIES_PER_STEP`](shadow_view.rs#L100) — Entidades sombreadas en una sola pieza de trabajo.
+- [`ENTITIES_PER_STEP`](shadow_view.rs#L151) — Entidades sombreadas en una sola pieza de trabajo.
   - Declaración: `const ENTITIES_PER_STEP: usize = 16;`
 
-- [`FACES_PER_STEP`](shadow_view.rs#L101) — Caras verticales expuestas sombreadas en una sola pieza de trabajo.
+- [`FACES_PER_STEP`](shadow_view.rs#L152) — Caras verticales expuestas sombreadas en una sola pieza de trabajo.
   - Declaración: `const FACES_PER_STEP: usize = 24;`
 
-- [`FACE_SHADE_STEPS`](shadow_view.rs#L40) — Quads a lo ancho de una cara vertical de terreno expuesta, y a lo alto, para la sombra que la cubre.
+- [`FACE_SHADE_STEPS`](shadow_view.rs#L87) — Quads a lo ancho de una cara vertical de terreno expuesta, y a lo alto, para la sombra que la cubre.
   - Declaración: `const FACE_SHADE_STEPS: u32 = 3;`
 
 ### `shadow_view_atlas.rs`

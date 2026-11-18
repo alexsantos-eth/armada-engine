@@ -219,7 +219,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`default`](chunk_manager.rs#L29) — Implementación de `Default`: los radios por defecto (`load`/`prefetch`/`keep`).
+- [`default`](chunk_manager.rs#L30) — Implementación de `Default`: los radios por defecto (`load`/`prefetch`/`keep`).
   - Firma: `fn default() -> Self {`
 
 - [`poll_jobs`](chunk_manager.rs#L224) — Aplica los trabajos que ya están listos, en el orden en que se crearon; un trabajo cuyo chunk está gobernado por un guardado o que ya no está descubierto se descarta en silencio.
@@ -243,7 +243,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`distance`](chunk_manager.rs#L574) — Distancia de Chebyshev entre dos coordenadas de chunk.
   - Firma: `fn distance(a: ChunkCoord, b: ChunkCoord) -> i32 {`
 
-- [`default`](chunk_manager.rs#L29) — Implementación de `Default`: los radios por defecto (`load`/`prefetch`/`keep`).
+- [`default`](chunk_manager.rs#L30) — Implementación de `Default`: los radios por defecto (`load`/`prefetch`/`keep`).
   - Firma: `fn default() -> Self {`
 
 ### `terrain_world.rs`
@@ -253,7 +253,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`replace_columns`](terrain_world.rs#L125) — Sustituye las columnas de un chunk descubierto conservando su visibilidad; el trabajo de colocación la usa para intercambiar las columnas con los caminos ya materializados.
   - Firma: `pub(crate) fn replace_columns( &mut self, coord: ChunkCoord, columns: Vec<TerrainColumn>, ) -> bool {`
 
-- [`connect_roads_into`](terrain_world.rs#L170) — Materializa los caminos de un chunk sobre sus columnas dada la lista de entidades; la usan `connect_roads` y el trabajo de colocación, con la misma lógica en ambos.
+- [`connect_roads_into`](terrain_world.rs#L172) — Materializa los caminos de un chunk sobre sus columnas dada la lista de entidades; la usan `connect_roads` y el trabajo de colocación, con la misma lógica en ambos.
   - Firma: `pub(crate) fn connect_roads_into(columns: &mut [TerrainColumn], entities: &[Entity]) -> usize {`
 
 ### `placement_job.rs`
@@ -263,22 +263,22 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`place`](placement_job.rs#L40) — Coloca entidades sobre las columnas, materializa sus caminos y esquila después el decor de piedras sobre las columnas talladas, inline; el hilo de colocación la ejecuta.
   - Firma: `fn place( mut columns: Vec<TerrainColumn>, catalog: &EntityCatalog, content: &ChunkContent, ) -> PlacementOutcome {`
 
-- [`spawn`](placement_job.rs#L81) — Lanza el trabajo de colocación en un hilo; en `wasm32` lo calcula directamente en el frame.
+- [`spawn`](placement_job.rs#L82) — Lanza el trabajo de colocación en un hilo; en `wasm32` lo calcula directamente en el frame.
   - Firma: `pub(crate) fn spawn( coord: ChunkCoord, columns: Vec<TerrainColumn>, catalog: EntityCatalog, content: ChunkContent, ) -> Self {`
   - El contenido de un chunk es `ChunkContent` ([placement_job.rs#L32](placement_job.rs#L32)): los biomas, el catálogo wfc y los asentamientos del mundo, clonados para el hilo que lo resuelve.
 
-- [`is_finished`](placement_job.rs#L109) — Si el trabajo está listo para recogerse, con o sin hilo.
+- [`is_finished`](placement_job.rs#L110) — Si el trabajo está listo para recogerse, con o sin hilo.
   - Firma: `pub(crate) fn is_finished(&self) -> bool {`
 
-- [`take_outcome`](placement_job.rs#L121) — Recoge el resultado si está listo (o espera a que lo esté si `wait`); un hilo que hace panic registra y deja el chunk sin entidades.
+- [`take_outcome`](placement_job.rs#L122) — Recoge el resultado si está listo (o espera a que lo esté si `wait`); un hilo que hace panic registra y deja el chunk sin entidades.
   - Firma: `pub(crate) fn take_outcome(&mut self, wait: bool) -> Option<PlacementOutcome> {`
 
 #### Tipos internos
 
-- [`PlacementJob`](placement_job.rs#L63) — El trabajo de colocación de un chunk: desde que se crea hasta que se recoge, o se descarta porque el chunk ya no está descubierto o un guardado lo gobierna.
+- [`PlacementJob`](placement_job.rs#L64) — El trabajo de colocación de un chunk: desde que se crea hasta que se recoge, o se descarta porque el chunk ya no está descubierto o un guardado lo gobierna.
   - Declaración: `pub(crate) struct PlacementJob { pub(crate) coord: ChunkCoord, state: State }`
 
-- [`PlacementOutcome`](placement_job.rs#L24) — El resultado de una colocación: las columnas con los caminos ya materializados, y las entidades del chunk en orden de columna.
+- [`PlacementOutcome`](placement_job.rs#L25) — El resultado de una colocación: las columnas con los caminos ya materializados, y las entidades del chunk en orden de columna.
   - Declaración: `pub(crate) struct PlacementOutcome { pub(crate) columns: Vec<TerrainColumn>, pub(crate) entities: Vec<Entity> }`
 
 ### `save.rs`

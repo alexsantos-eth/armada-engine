@@ -143,7 +143,7 @@ El sitio tiene tres rutas servidas desde la raíz del dominio:
 `content/` desde la raíz del sitio; no abras el HTML con `file://`. En localhost la página añade
 un parámetro a la URL del WASM para que una recarga traiga siempre la última compilación.
 
-**PWA instalable.** La página declara `manifest.json` (nombre «Yorch», modo `standalone`, colores `#122034`) con los iconos de `web/icons/` (192, 512, maskable 512 y `apple-touch-icon` 180), generados desde `packaging/icon-player.png` con Pillow. El `sw.js` mínimo no cachea nada: solo hace que el sitio sea instalable, y cada carga va a la red como siempre. Jugar sin conexión necesitaría una estrategia de caché y subir la versión de caché en cada despliegue, y no está hecho.
+**PWA instalable.** La página declara `manifest.json` (nombre «Yorch Adventure», modo `standalone`, colores `#122034`) con los iconos de `web/icons/` (192, 512, maskable 512 y `apple-touch-icon` 180), generados desde `packaging/icon-player.png` con Pillow. El `sw.js` mínimo no cachea nada: solo hace que el sitio sea instalable, y cada carga va a la red como siempre. Jugar sin conexión necesitaría una estrategia de caché y subir la versión de caché en cada despliegue, y no está hecho.
 
 `scripts/build-web.sh [directorio]` (por defecto `dist/`, ignorado por git) instala el toolchain
 que fija `rust-toolchain.toml` con su target `wasm32-unknown-unknown`, compila

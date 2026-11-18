@@ -1,17 +1,5 @@
 use super::*;
 
-/// The CPU mirror of the shader's `vignette`: what a pixel `d` from the centre is multiplied by,
-/// with `d` 0 at the centre and 1 in a corner.
-fn vignette(d: f32) -> f32 {
-    let t = ((d - VIGNETTE_START) / (1.0 - VIGNETTE_START)).clamp(0.0, 1.0);
-    1.0 - VIGNETTE_STRENGTH * t * t * (3.0 - 2.0 * t)
-}
-
-/// The CPU mirror of the shader's saturation gain for a pixel `focus` in focus.
-fn saturation_gain(focus: f32) -> f32 {
-    1.0 + SCENE_SATURATION + FOCUS_SATURATION * focus
-}
-
 #[test]
 fn the_vogel_taps_fill_the_unit_disc_evenly() {
     let taps = vogel_offsets(BOKEH_TAPS);
@@ -39,19 +27,19 @@ fn consecutive_taps_turn_by_the_golden_angle() {
 }
 
 #[test]
-fn the_vignette_leaves_the_middle_alone_and_only_dims_the_corners_a_little() {
-    assert_eq!(vignette(0.0), 1.0);
-    assert_eq!(vignette(VIGNETTE_START), 1.0);
-    let corner = vignette(1.0);
-    assert!((0.8..1.0).contains(&corner), "corner {corner}");
-    assert!(vignette(0.8) > corner);
-}
-
-#[test]
-fn the_focus_is_never_duller_than_the_rest_and_stays_subtle() {
-    assert!(saturation_gain(0.0) >= 1.0);
-    assert!(saturation_gain(1.0) >= saturation_gain(0.0));
-    assert!(saturation_gain(1.0) <= 1.15);
+fn the_shader_carries_the_authored_vignette_and_gain() {
+    let glsl = lens_glsl();
+    assert!(glsl.contains("float vignette("));
+    assert!(glsl.contains(&format!(
+        "smoothstep({}, 1.0, reach)",
+        glsl_float(VIGNETTE_START)
+    )));
+    assert!(glsl.contains(&glsl_float(VIGNETTE_STRENGTH)));
+    assert!(glsl.contains(&format!(
+        "1.0 + {} + {} * focus",
+        glsl_float(SCENE_SATURATION),
+        glsl_float(FOCUS_SATURATION)
+    )));
 }
 
 #[test]

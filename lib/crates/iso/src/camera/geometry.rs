@@ -42,54 +42,12 @@ pub struct CameraTransform {
     pub scale: f64,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct InvalidCameraLimits;
-
-impl CameraLimits {
-    pub fn validate(self) -> Result<Self, InvalidCameraLimits> {
-        let b = self.bounds;
-        if [
-            self.min_zoom,
-            self.max_zoom,
-            b.min_x,
-            b.min_y,
-            b.max_x,
-            b.max_y,
-        ]
-        .iter()
-        .all(|value| value.is_finite())
-            && self.min_zoom > 0.0
-            && self.min_zoom <= self.max_zoom
-            && b.min_x <= b.max_x
-            && b.min_y <= b.max_y
-        {
-            Ok(self)
-        } else {
-            Err(InvalidCameraLimits)
-        }
-    }
-}
-
-pub fn clamp_camera(camera: Camera, limits: CameraLimits) -> Camera {
+fn clamp_camera(camera: Camera, limits: CameraLimits) -> Camera {
     Camera {
         x: camera.x.clamp(limits.bounds.min_x, limits.bounds.max_x),
         y: camera.y.clamp(limits.bounds.min_y, limits.bounds.max_y),
         zoom: camera.zoom.clamp(limits.min_zoom, limits.max_zoom),
     }
-}
-
-pub fn create_camera(
-    limits: CameraLimits,
-    start: Option<Camera>,
-) -> Result<Camera, InvalidCameraLimits> {
-    let limits = limits.validate()?;
-    let b = limits.bounds;
-    let camera = start.unwrap_or(Camera {
-        x: (b.min_x + b.max_x) / 2.0,
-        y: (b.min_y + b.max_y) / 2.0,
-        zoom: 7.0,
-    });
-    Ok(clamp_camera(camera, limits))
 }
 
 fn offset_on_ground(camera: Camera, delta: ScreenPoint, projection: ProjectionConfig) -> GridPoint {
@@ -106,30 +64,6 @@ fn offset_on_ground(camera: Camera, delta: ScreenPoint, projection: ProjectionCo
     }
 }
 
-pub fn pan_camera(
-    camera: Camera,
-    delta: ScreenPoint,
-    limits: CameraLimits,
-    projection: ProjectionConfig,
-) -> Camera {
-    let centre = offset_on_ground(
-        camera,
-        ScreenPoint {
-            x: -delta.x,
-            y: -delta.y,
-        },
-        projection,
-    );
-    clamp_camera(
-        Camera {
-            x: centre.x,
-            y: centre.y,
-            zoom: camera.zoom,
-        },
-        limits,
-    )
-}
-
 pub fn screen_to_ground(
     camera: Camera,
     viewport: ScreenSize,
@@ -143,41 +77,6 @@ pub fn screen_to_ground(
             y: point.y - viewport.height / 2.0,
         },
         projection,
-    )
-}
-
-pub fn zoom_camera_at(
-    camera: Camera,
-    factor: f64,
-    anchor: ScreenPoint,
-    viewport: ScreenSize,
-    limits: CameraLimits,
-    projection: ProjectionConfig,
-) -> Camera {
-    if !factor.is_finite() || factor <= 0.0 {
-        return camera;
-    }
-    let focus = screen_to_ground(camera, viewport, anchor, projection);
-    let zoom = (camera.zoom * factor).clamp(limits.min_zoom, limits.max_zoom);
-    let centre = offset_on_ground(
-        Camera {
-            x: focus.x,
-            y: focus.y,
-            zoom,
-        },
-        ScreenPoint {
-            x: viewport.width / 2.0 - anchor.x,
-            y: viewport.height / 2.0 - anchor.y,
-        },
-        projection,
-    );
-    clamp_camera(
-        Camera {
-            x: centre.x,
-            y: centre.y,
-            zoom,
-        },
-        limits,
     )
 }
 

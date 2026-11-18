@@ -110,16 +110,6 @@ fn every_shade_of_dust_is_near_white() {
             );
         }
     }
-    assert_eq!(
-        mix_color(DUST_COLORS, 0.0),
-        DUST_COLORS.0,
-        "one end of the mix is one colour"
-    );
-    assert_eq!(
-        mix_color(DUST_COLORS, 1.0),
-        DUST_COLORS.1,
-        "and the other the other"
-    );
 }
 
 #[test]

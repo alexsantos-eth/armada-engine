@@ -21,13 +21,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`advance`](clock.rs#L27) — Avanza atómicamente; el desbordamiento deja el reloj sin cambios.
   - Firma: `pub fn advance(&mut self, ticks: u64) -> Result<u64, ClockOverflow> {`
 
-- [`time_of_day`](clock.rs#L44) — Fracción de un día para un desplazamiento con signo; los desplazamientos negativos envuelven al día anterior.
-  - Firma: `pub fn time_of_day(tick: i64) -> f64 {`
-
-- [`clock_time`](clock.rs#L48) — Hora del día (`ClockTime`) correspondiente a `tick`.
+- [`clock_time`](clock.rs#L43) — Hora del día (`ClockTime`) correspondiente a `tick`.
   - Firma: `pub fn clock_time(tick: u64) -> ClockTime {`
 
-- [`format_clock_time`](clock.rs#L58) — Formatea `time` como `HH:MM` (24 h).
+- [`format_clock_time`](clock.rs#L53) — Formatea `time` como `HH:MM` (24 h).
   - Firma: `pub fn format_clock_time(time: ClockTime) -> String {`
 
 #### Constantes

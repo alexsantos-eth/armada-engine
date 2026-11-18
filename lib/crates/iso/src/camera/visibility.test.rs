@@ -68,7 +68,7 @@ fn visible_chunks_match_documented_camera_examples() {
             },
             VIEWPORT,
             PROJECTION,
-            CHUNK_VIEW_MARGIN
+            0.1
         ),
         vec![chunk(0, 0)]
     );
@@ -94,7 +94,7 @@ fn visible_chunks_match_documented_camera_examples() {
             },
             VIEWPORT,
             PROJECTION,
-            CHUNK_VIEW_MARGIN
+            0.1
         ),
         vec![
             chunk(0, 0),

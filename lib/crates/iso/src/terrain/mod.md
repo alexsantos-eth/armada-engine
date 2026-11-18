@@ -111,7 +111,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 #### Constantes
 
 - [`WORLD_SEED`](generation.rs#L8) — La semilla con la que genera el mundo que arranca el juego: el valor por defecto del dominio y la configuración del cliente la comparten.
-  - Declaración: `pub const WORLD_SEED: u64 = 764574;`
+  - Declaración: `pub const WORLD_SEED: u64 = 937516841;`
 
 ### `noise.rs`
 

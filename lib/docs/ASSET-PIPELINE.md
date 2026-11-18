@@ -199,7 +199,7 @@ Las hojas del jugador son render 3D del modelo, no dibujo ni voxel:
 - `scripts/rasterize.py` corta las celdas de cada hoja en `sheets/player-16_<hoja>/<fila>-<col>.png`
   dentro del directorio de trabajo del empaquetador, leyendo la rejilla de los `.json` de
   `assets/player-16/` (`cell`, `frames`, `facings`, `poses`).
-- `pack_atlas` mete cada celda en `content/player-16_<hoja>.png` (textura propia por hoja, no el
+- `pack_atlas` mete cada celda en `content/images/player-16_<hoja>.png` (textura propia por hoja, no el
   atlas compartido), con la rejilla descrita en el manifiesto, esquema 2: `facing * columns + pose`.
 
 ## 7. Coste

@@ -270,7 +270,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 #### Constantes internas
 
 - [`CAST_STRETCH_FACTOR`](player_shadow.rs#L42) — Fracción del `stretch` de la fase que estira la mancha en sí: la dirección proyectada es exacta, el aplanado sólo la mitad de dramático.
-  - Declaración: `const CAST_STRETCH_FACTOR: f64 = 0.5;`
+  - Declaración: `const CAST_STRETCH_FACTOR: f64 = 0.3;`
 - [`CAST_WIDTH`](player_shadow.rs#L45) — Anchura de la mancha, como fracción de la casilla.
   - Declaración: `const CAST_WIDTH: f64 = 0.30;`
 - [`CAST_HEIGHT`](player_shadow.rs#L46) — Altura de la mancha, como fracción de la casilla.

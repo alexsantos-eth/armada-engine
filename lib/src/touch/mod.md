@@ -16,13 +16,13 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Reexportaciones
 
-- [`TouchControls`](mod.rs#L17) — Los controles: visibilidad, el dedo que es del joystick y los dedos que son del botón.
+- [`TouchControls`](controls.rs#L54) — Los controles: visibilidad, el dedo que es del joystick y los dedos que son del botón.
   - Firma: `pub(crate) use controls::{RawTouch, RawTouchPhase, TouchControls};`
-- [`RawTouch`](mod.rs#L17) — Un dedo tal y como lo ve la máquina de estados, en píxeles de pantalla.
+- [`RawTouch`](controls.rs#L28) — Un dedo tal y como lo ve la máquina de estados, en píxeles de pantalla.
   - Firma: `pub(crate) use controls::{RawTouch, RawTouchPhase, TouchControls};`
-- [`RawTouchPhase`](mod.rs#L17) — La fase del ciclo de vida de un dedo (`Started`, `Stationary`, `Moved`, `Ended`, `Cancelled`).
+- [`RawTouchPhase`](controls.rs#L18) — La fase del ciclo de vida de un dedo (`Started`, `Stationary`, `Moved`, `Ended`, `Cancelled`).
   - Firma: `pub(crate) use controls::{RawTouch, RawTouchPhase, TouchControls};`
-- [`coarse_pointer`](mod.rs#L18) — Pista de plataforma: `true` si el puntero principal es táctil (FFI en WASM; `false` nativo).
+- [`coarse_pointer`](platform.rs#L14) — Pista de plataforma: `true` si el puntero principal es táctil (FFI en WASM; `false` nativo).
   - Firma: `pub(crate) use platform::coarse_pointer;`
 
 ### `layout.rs`

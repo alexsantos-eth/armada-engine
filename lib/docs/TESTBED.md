@@ -6,7 +6,7 @@ que un agente pueda colocar entidades, cambiar el terreno, mover al jugador y mi
 sin que nadie esté delante.
 
 ```bash
-scripts/run-scene.sh escenas/scene.json
+scripts/run-scene.sh scenes/scene.json
 ```
 
 El proceso abre su ventana, construye la escena, toma lo que le pidan y **sale solo**. Imprime en

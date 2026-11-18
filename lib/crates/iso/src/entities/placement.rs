@@ -89,26 +89,12 @@ impl Default for PlacementRules {
     }
 }
 
-/// Places entities over `columns` with the default rules.
-pub fn place_entities(columns: &[TerrainColumn], catalog: &EntityCatalog) -> PlacementResult {
-    place_entities_with_biomes(columns, catalog, PlacementRules::default(), None)
-}
-
-/// Places entities over `columns`, one instance per valid anchor column the density lets
-pub fn place_entities_with(
-    columns: &[TerrainColumn],
-    catalog: &EntityCatalog,
-    rules: PlacementRules,
-) -> PlacementResult {
-    place_entities_with_biomes(columns, catalog, rules, None)
-}
-
 /// One-off content for the placement pass: the world's biomes, the wfc catalogue and the seed.
 #[derive(Clone, Copy)]
 pub struct PlacementContent<'a> {
     /// The biomes tree species grow in; biome-claimed blueprints never enter the wfc pass.
     pub biomes: Option<&'a WorldBiomes>,
-    /// The wfc catalogue for everything else; `None` falls back to the legacy density roll.
+    /// The wfc catalogue for everything else; `None` keeps the plain density roll.
     pub wfc: Option<&'a crate::entities::wfc::WfcCatalog>,
     /// The settlements whose semantic zones reshape what grows where; `None` grows a zoneless
     /// world, where every column reads the weights and the tree coverage as written.
@@ -117,35 +103,10 @@ pub struct PlacementContent<'a> {
     pub seed: u64,
 }
 
-/// Places entities over `columns`, confining the species the biomes claim to their own regions.
-///
-/// A blueprint no biome lists keeps the density roll of `rules`; a blueprint some biome lists
-/// only grows where one of those biomes covers the column and its grove picker yields that
-/// species, so a biome's groves are monospecific while mixed edges between biomes can still
-/// touch. `None` restores the biome-agnostic behaviour of [`place_entities_with`].
-pub fn place_entities_with_biomes(
-    columns: &[TerrainColumn],
-    catalog: &EntityCatalog,
-    rules: PlacementRules,
-    biomes: Option<&WorldBiomes>,
-) -> PlacementResult {
-    place_entities_with_content(
-        columns,
-        catalog,
-        rules,
-        PlacementContent {
-            biomes,
-            wfc: None,
-            settlements: None,
-            seed: crate::terrain::WORLD_SEED,
-        },
-    )
-}
-
 /// Places entities over `columns`: the biome pass first, then the wfc solver for the rest, and
 /// last the greenery of any settlement covering them.
 ///
-/// The biome pass behaves exactly as [`place_entities_with_biomes`] out in the wild, and skips
+/// The biome pass keeps the bosquet picker of each biome in the wild, and skips
 /// every column a settlement covers: inside a village the greenery is not the biome's to plant,
 /// it is planted last, once the buildings stand, so it can hug their walls and keep their
 /// façades clear. With a wfc catalogue, every blueprint no biome claims grows out of the solver

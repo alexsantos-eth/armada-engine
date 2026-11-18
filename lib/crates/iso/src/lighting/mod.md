@@ -15,63 +15,60 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`around`](bake.rs#L26) — El área que hornea un chunk de columnas `[min_x, max_x] × [min_y, max_y]`, con su margen.
+- [`around`](bake.rs#L28) — El área que hornea un chunk de columnas `[min_x, max_x] × [min_y, max_y]`, con su margen.
   - Firma: `pub fn around(min_x: i32, min_y: i32, max_x: i32, max_y: i32) -> Self {`
 
-- [`columns`](bake.rs#L35) — Columnas que cubre el área.
+- [`columns`](bake.rs#L37) — Columnas que cubre el área.
   - Firma: `pub fn columns(&self) -> i32 {`
 
-- [`square_of`](bake.rs#L40) — El cuadrado de texels de la columna `(x, y)` dentro de un área dibujada con `pixels_per_tile`, en
+- [`square_of`](bake.rs#L42) — El cuadrado de texels de la columna `(x, y)` dentro de un área dibujada con `pixels_per_tile`, en
   - Firma: `pub fn square_of(&self, x: i32, y: i32, pixels_per_tile: u32) -> Option<(u32, u32)> {`
 
-- [`rows`](bake.rs#L50) — Filas que cubre el área.
+- [`rows`](bake.rs#L52) — Filas que cubre el área.
   - Firma: `pub fn rows(&self) -> i32 {`
 
-- [`new`](bake.rs#L89) — Un mapa vacío sobre `area`.
+- [`new`](bake.rs#L114) — Un mapa vacío sobre `area`.
   - Firma: `pub fn new(area: MapArea, pixels_per_tile: u32) -> Self {`
 
-- [`clear`](bake.rs#L102) — Borra todos los texels conservando el buffer: un chunk se rehornea cuando aparece un vecino, y la
+- [`clear`](bake.rs#L127) — Borra todos los texels conservando el buffer: un chunk se rehornea cuando aparece un vecino, y la
   - Firma: `pub fn clear(&mut self) {`
 
-- [`move_to`](bake.rs#L107) — Apunta el mapa a otra área del mundo y lo borra.
+- [`move_to`](bake.rs#L132) — Apunta el mapa a otra área del mundo y lo borra.
   - Firma: `pub fn move_to(&mut self, area: MapArea) {`
 
-- [`square_of`](bake.rs#L40) — El cuadrado de texels de una columna, como `(x, y)` de su esquina en texels. `None` fuera del
+- [`square_of`](bake.rs#L42) — El cuadrado de texels de una columna, como `(x, y)` de su esquina en texels. `None` fuera del
   - Firma: `pub fn square_of(&self, x: i32, y: i32) -> Option<(u32, u32)> {`
 
-- [`is_empty`](bake.rs#L126) — Si algún texel lleva cobertura, para que el cliente pueda saltarse un chunk que nada sombrea.
+- [`is_empty`](bake.rs#L151) — Si algún texel lleva cobertura, para que el cliente pueda saltarse un chunk que nada sombrea.
   - Firma: `pub fn is_empty(&self) -> bool {`
 
-- [`at`](bake.rs#L150) — Cobertura en `[0, 1]` en `(u, v)`, ambas en `[0, 1]` sobre el dibujo, siendo `(0, 0)` su
+- [`at`](bake.rs#L175) — Cobertura en `[0, 1]` en `(u, v)`, ambas en `[0, 1]` sobre el dibujo, siendo `(0, 0)` su
   - Firma: `pub fn at(&self, u: f64, v: f64) -> f64 {`
 
-- [`at_texel`](bake.rs#L161) — Cobertura en una posición ya expresada en texels del plano, que es como la recorre el horneado: la posición
+- [`at_texel`](bake.rs#L186) — Cobertura en una posición ya expresada en texels del plano, que es como la recorre el horneado: la posición
   - Firma: `pub fn at_texel(&self, x: f64, y: f64) -> f64 {`
 
-- [`bake_ground_shadows`](bake.rs#L178) — Hornea `casters` en `map` (recorrido DDA + siluetas) y después lo desenfoca.
+- [`bake_ground_shadows`](bake.rs#L215) — Hornea `casters` en `map` (recorrido DDA + siluetas) y después lo desenfoca.
   - Firma: `pub fn bake_ground_shadows( map: &mut ShadowMap, casters: &[ShadowCaster], ground: Option<&HeightField>, light: &ShadowProjection, metrics: BoxMetrics, level_at: ReceivingLevel<'_>, silhouette_of: SilhouetteOf<'_, '_>, ) {`
 
-- [`new`](bake.rs#L221) — Lee los niveles sobre los que el área de `map` recibe sombras, que necesita cada paso posterior.
+- [`new`](bake.rs#L258) — Lee los niveles sobre los que el área de `map` recibe sombras, que necesita cada paso posterior.
   - Firma: `pub fn new(map: &ShadowMap, level_at: ReceivingLevel<'_>) -> Self {`
 
-- [`is_done`](bake.rs#L230) — Si la máquina de horneado llegó a `Stage::Done`.
-  - Firma: `pub fn is_done(&self) -> bool {`
-
-- [`step`](bake.rs#L235) — Hace la siguiente pieza del horneado del mapa (un caster, unas filas del horizonte, unas filas del terreno o una ventana de filas del desenfoque) y dice si queda algo por hacer.
+- [`step`](bake.rs#L268) — Hace la siguiente pieza del horneado del mapa (un caster, unas filas del horizonte, unas filas del terreno o una ventana de filas del desenfoque) y dice si queda algo por hacer.
   - Firma: `pub fn step( &mut self, map: &mut ShadowMap, casters: &[ShadowCaster], ground: Option<&HeightField>, light: &ShadowProjection, metrics: BoxMetrics, silhouette_of: SilhouetteOf<'_, '_>, ) -> bool {`
 
-- [`blur`](bake.rs#L760) — Un desenfoque de caja separable sobre todo el mapa: la penumbra.
+- [`blur`](bake.rs#L1042) — Un desenfoque de caja separable sobre todo el mapa: la penumbra.
   - Firma: `pub fn blur(map: &mut ShadowMap, radius: u32) {`
 
 #### Constantes
 
-- [`SHADOW_MAP_PIXELS_PER_TILE`](bake.rs#L7) — Texels de un mapa de sombras por casilla de mundo.
+- [`SHADOW_MAP_PIXELS_PER_TILE`](bake.rs#L9) — Texels de un mapa de sombras por casilla de mundo.
   - Declaración: `pub const SHADOW_MAP_PIXELS_PER_TILE: u32 = 36;`
 
-- [`SHADOW_MAP_MARGIN`](bake.rs#L10) — Casillas que el mapa de un chunk alcanza más allá del chunk por cada lado, para que el desenfoque de una sombra que cruza
+- [`SHADOW_MAP_MARGIN`](bake.rs#L12) — Casillas que el mapa de un chunk alcanza más allá del chunk por cada lado, para que el desenfoque de una sombra que cruza
   - Declaración: `pub const SHADOW_MAP_MARGIN: i32 = 1;`
 
-- [`SHADOW_BLUR_TEXELS`](bake.rs#L13) — Radio del desenfoque de caja con el que termina el horneado, en texels: la penumbra.
+- [`SHADOW_BLUR_TEXELS`](bake.rs#L15) — Radio del desenfoque de caja con el que termina el horneado, en texels: la penumbra.
   - Declaración: `pub const SHADOW_BLUR_TEXELS: u32 = 1;`
 
 ### `faces.rs`
@@ -250,8 +247,8 @@ leyendo siluetas.
 
 - [`ShadowVolume`](volume.rs#L30) — Columnas de 1/32 de casilla con hasta dos tramos sólidos cada una (en bloques), su caja y su punto más alto.
 - [`VolumeColumn`](volume.rs#L13) — Centro de la columna en casillas desde el centro de la celda ancla, y sus tramos.
-- [`GroundCast`](bake.rs#L90) — Qué deja un `ShadowCaster` en el suelo: su silueta, un volumen (solo la celda ancla) o nada (las demás celdas de una entidad con volumen).
-- [`CasterShapes`](bake.rs#L206) — Los dos resolutores que recibe el horneado: siluetas y sombras precalculadas (`StampOf`) por índice.
+- [`GroundCast`](bake.rs#L91) — Qué deja un `ShadowCaster` en el suelo: su silueta, un volumen (solo la celda ancla) o nada (las demás celdas de una entidad con volumen).
+- [`CasterShapes`](bake.rs#L209) — Los dos resolutores que recibe el horneado: siluetas y sombras precalculadas (`StampOf`) por índice.
 - [`ShadowStamp`](bake.rs) — La sombra de un volumen bajo una luz, en téxeles del mapa, con su área en casillas relativa a la celda de la entidad.
 - [`volume_stamp`](bake.rs) — La calcula: cada tramo barre su cuadrado desde donde cae su base hasta donde cae su cima.
 
@@ -272,96 +269,96 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`within`](bake.rs#L339) — Los pasos `0..=steps` de un recorrido que empieza en `from` y avanza con paso `step` que quedan dentro
+- [`within`](bake.rs#L382) — Los pasos `0..=steps` de un recorrido que empieza en `from` y avanza con paso `step` que quedan dentro
   - Firma: `fn within(from: f64, step: f64, low: f64, high: f64, steps: u32) -> Option<(u32, u32)> {`
 
-- [`meet`](bake.rs#L351) — Los pasos que retienen ambos recorridos, o `None` cuando no comparten ninguno.
+- [`meet`](bake.rs#L394) — Los pasos que retienen ambos recorridos, o `None` cuando no comparten ninguno.
   - Firma: `fn meet(one: (u32, u32), other: (u32, u32)) -> Option<(u32, u32)> {`
 
-- [`horizon_lattice_shape`](bake.rs#L360) — Proyecta sobre cada texel la sombra que el terreno proyecta sobre sí mismo.
+- [`horizon_lattice_shape`](bake.rs#L403) — Proyecta sobre cada texel la sombra que el terreno proyecta sobre sí mismo.
   - Firma: `fn horizon_lattice_shape(map: &ShadowMap) -> (u32, u32, u32) {`
 
-- [`horizon_rows`](bake.rs#L371) — Recorre `rows` filas del horizonte hacia el sol desde `from` y las vuelca en `out`; devuelve las filas recorridas.
+- [`horizon_rows`](bake.rs#L414) — Recorre `rows` filas del horizonte hacia el sol desde `from` y las vuelca en `out`; devuelve las filas recorridas.
   - Firma: `fn horizon_rows( map: &ShadowMap, ground: &HeightField, light: &ShadowProjection, metrics: BoxMetrics, from: u32, rows: u32, out: &mut Vec<Horizon>, ) -> u32 {`
 
 - `lay_stamp` — Copia la sombra precalculada al mapa, una pasada por nivel de terreno: en suelo más bajo se desliza luz abajo lo que alcanza el desnivel (redondeado a téxel), y solo escribe las columnas de ese nivel. Aproximación: en un escalón la sombra no se estira y lo que una columna más alta entierra sigue proyectando.
 
 - `stamp_swept_square` — Rellena los téxeles cuyo centro barre un cuadrado deslizado a lo largo de la luz (línea a línea, sin muestreo).
 
-- [`lay_terrain_rows`](bake.rs#L398) — Proyecta la sombra propia del terreno sobre `rows` filas de columnas, empezando en la fila `from` de la
+- [`lay_terrain_rows`](bake.rs#L441) — Proyecta la sombra propia del terreno sobre `rows` filas de columnas, empezando en la fila `from` de la
   - Firma: `fn lay_terrain_rows( map: &mut ShadowMap, lattice: &[Horizon], levels: &LevelCache, from: i32, rows: i32, ) -> i32 {`
 
-- [`clear_columns_without_ground`](bake.rs#L511) — Pone en blanco el cuadrado de cada columna para la que el mundo no tiene terreno.
+- [`clear_columns_without_ground`](bake.rs#L554) — Pone en blanco el cuadrado de cada columna para la que el mundo no tiene terreno.
   - Firma: `fn clear_columns_without_ground(map: &mut ShadowMap, levels: &LevelCache) {`
 
-- [`new`](bake.rs#L539) — Construye la caché de niveles de `area` muestreando `level_at` por columna.
+- [`new`](bake.rs#L582) — Construye la caché de niveles de `area` muestreando `level_at` por columna.
   - Firma: `fn new(area: MapArea, level_at: ReceivingLevel<'_>) -> Self {`
 
-- [`at`](bake.rs#L561) — Nivel de la caché en `(x, y)`, o `None` fuera del área.
+- [`at`](bake.rs#L604) — Nivel de la caché en `(x, y)`, o `None` fuera del área.
   - Firma: `fn at(&self, x: i32, y: i32) -> Option<f64> {`
 
-- [`any`](bake.rs#L571) — Si la caché contiene al menos un nivel finito.
+- [`any`](bake.rs#L614) — Si la caché contiene al menos un nivel finito.
   - Firma: `fn any(&self) -> bool {`
 
-- [`lay_caster`](bake.rs#L577) — Proyecta la silueta de un caster sobre cada texel que puede alcanzar su sombra.
+- [`lay_caster`](bake.rs#L620) — Proyecta la silueta de un caster sobre cada texel que puede alcanzar su sombra.
   - Firma: `fn lay_caster( map: &mut ShadowMap, caster: &ShadowCaster, light: &ShadowProjection, tile_width: f64, box_height: f64, levels: &mut LevelCache, silhouette_of: SilhouetteOf<'_, '_>, ) {`
 
-- [`shadow_box`](bake.rs#L695) — La caja que cubre la sombra de `laid` una vez que un lift la ha movido `shift` casillas hacia abajo por la luz.
+- [`shadow_box`](bake.rs#L977) — La caja que cubre la sombra de `laid` una vez que un lift la ha movido `shift` casillas hacia abajo por la luz.
   - Firma: `fn shadow_box(laid: &[(f64, f64); 4], shift: f64, light: &ShadowProjection) -> WorldBox {`
 
-- [`union`](bake.rs#L715) — Caja que une `a` y `b` (mínimo y máximo por eje).
+- [`union`](bake.rs#L997) — Caja que une `a` y `b` (mínimo y máximo por eje).
   - Firma: `fn union(a: WorldBox, b: WorldBox) -> WorldBox {`
 
-- [`columns_touched`](bake.rs#L720) — Las columnas de `area` que solapa `box`, o `None` cuando no toca el área en absoluto.
+- [`columns_touched`](bake.rs#L1002) — Las columnas de `area` que solapa `box`, o `None` cuando no toca el área en absoluto.
   - Firma: `fn columns_touched(area: MapArea, world: WorldBox) -> Option<(i32, i32, i32, i32)> {`
 
-- [`texels_of`](bake.rs#L732) — Los texels del cuadrado de una columna que solapa `box`, limitados al mapa.
+- [`texels_of`](bake.rs#L1014) — Los texels del cuadrado de una columna que solapa `box`, limitados al mapa.
   - Firma: `fn texels_of( map: &ShadowMap, column_x: i32, column_y: i32, world: WorldBox, ) -> Option<(u32, u32, u32, u32)> {`
 
-- [`blur_across_rows`](bake.rs#L785) — La primera pasada del desenfoque, a lo ancho del mapa, recorriendo `rows` filas desde `from` para que comparta el frame con el juego; devuelve las filas recorridas.
+- [`blur_across_rows`](bake.rs#L1067) — La primera pasada del desenfoque, a lo ancho del mapa, recorriendo `rows` filas desde `from` para que comparta el frame con el juego; devuelve las filas recorridas.
   - Firma: `fn blur_across_rows( map: &mut ShadowMap, radius: u32, levels: &LevelCache, from: u32, rows: u32, ) -> u32 {`
 
-- [`blur_across_within_levels`](bake.test.rs#L721) — Pasada completa del primer desenfoque, sin leer nunca a través de un desnivel del terreno; solo la usan los tests (vive en `bake.test.rs`).
+- [`blur_across_within_levels`](bake.test.rs#L737) — Pasada completa del primer desenfoque, sin leer nunca a través de un desnivel del terreno; solo la usan los tests (vive en `bake.test.rs`).
   - Firma: `fn blur_across_within_levels(map: &mut ShadowMap, radius: u32, levels: &LevelCache) {`
 
-- [`blur_down_rows`](bake.rs#L898) — La segunda pasada del desenfoque, hacia abajo por el mapa, recorriendo `rows` filas desde el cursor de `job` para que comparta el frame con el juego; devuelve las filas recorridas.
+- [`blur_down_rows`](bake.rs#L1180) — La segunda pasada del desenfoque, hacia abajo por el mapa, recorriendo `rows` filas desde el cursor de `job` para que comparta el frame con el juego; devuelve las filas recorridas.
   - Firma: `fn blur_down_rows( map: &mut ShadowMap, span: usize, levels: &LevelCache, job: &mut BlurDownJob, rows: u32, ) -> u32 {`
 
-- [`blur_down_within_levels`](bake.test.rs#L733) — Pasada completa de la segunda pasada del desenfoque; solo la usan los tests (vive en `bake.test.rs`).
+- [`blur_down_within_levels`](bake.test.rs#L749) — Pasada completa de la segunda pasada del desenfoque; solo la usan los tests (vive en `bake.test.rs`).
   - Firma: `fn blur_down_within_levels(map: &mut ShadowMap, span: usize, levels: &LevelCache) {`
 
-- [`mark_cuts`](bake.rs#L987) — Marca los cortes (primera/última fila o cada `per_tile` cuando `flush` lo pide).
+- [`mark_cuts`](bake.rs#L1269) — Marca los cortes (primera/última fila o cada `per_tile` cuando `flush` lo pide).
   - Firma: `fn mark_cuts(cuts: &mut [bool], per_tile: usize, flush: impl Fn(usize) -> bool) {`
 
-- [`full_window_means`](bake.rs#L995) — Todos los cocientes a los que puede llegar una ventana completa del desenfoque, calculados una vez.
+- [`full_window_means`](bake.rs#L1277) — Todos los cocientes a los que puede llegar una ventana completa del desenfoque, calculados una vez.
   - Firma: `fn full_window_means(span: usize) -> Vec<u8> {`
 
-- [`window_mean`](bake.rs#L1001) — La media de `line` sobre `at ± span`, con los extremos limitados y `means` para una ventana completa.
+- [`window_mean`](bake.rs#L1283) — La media de `line` sobre `at ± span`, con los extremos limitados y `means` para una ventana completa.
   - Firma: `fn window_mean(line: &[u8], at: usize, span: usize, means: &[u8]) -> u8 {`
 
-- [`mean`](bake.rs#L1013) — La media de `line` sobre `at ± span`, con los extremos limitados.
+- [`mean`](bake.rs#L1295) — La media de `line` sobre `at ± span`, con los extremos limitados.
   - Firma: `fn mean(line: &[u8], at: usize, span: usize) -> u8 {`
 
 #### Constantes internas
 
-- [`HORIZON_ROWS_PER_STEP`](bake.rs#L202) — Filas de retícula recorridas, y filas de columnas sombreadas, en una sola pieza de trabajo.
+- [`HORIZON_ROWS_PER_STEP`](bake.rs#L239) — Filas de retícula recorridas, y filas de columnas sombreadas, en una sola pieza de trabajo.
   - Declaración: `const HORIZON_ROWS_PER_STEP: u32 = 8;`
 
-- [`TERRAIN_ROWS_PER_STEP`](bake.rs#L203) — Filas de columnas de terreno proyectadas por paso de trabajo.
+- [`TERRAIN_ROWS_PER_STEP`](bake.rs#L240) — Filas de columnas de terreno proyectadas por paso de trabajo.
   - Declaración: `const TERRAIN_ROWS_PER_STEP: i32 = 4;`
 
-- [`BLUR_ROWS_PER_STEP`](bake.rs#L204) — Filas recorridas por paso en la primera pasada del desenfoque (a lo ancho del mapa).
+- [`BLUR_ROWS_PER_STEP`](bake.rs#L241) — Filas recorridas por paso en la primera pasada del desenfoque (a lo ancho del mapa).
   - Declaración: `const BLUR_ROWS_PER_STEP: u32 = 128;`
 
-- [`BLUR_DOWN_ROWS_PER_STEP`](bake.rs#L205) — Filas recorridas por paso en la segunda pasada del desenfoque (hacia abajo por el mapa).
+- [`BLUR_DOWN_ROWS_PER_STEP`](bake.rs#L242) — Filas recorridas por paso en la segunda pasada del desenfoque (hacia abajo por el mapa).
   - Declaración: `const BLUR_DOWN_ROWS_PER_STEP: u32 = 64;`
 
 #### Tipos internos
 
-- [`BlurDownJob`](bake.rs#L868) — El estado rodante de la segunda pasada del desenfoque (anillo de filas, sumas acumuladas, cortes por desnivel), que viaja entre pasos para que el desenfoque recorra el mapa por ventanas de filas y no en un único paso.
+- [`BlurDownJob`](bake.rs#L1150) — El estado rodante de la segunda pasada del desenfoque (anillo de filas, sumas acumuladas, cortes por desnivel), que viaja entre pasos para que el desenfoque recorra el mapa por ventanas de filas y no en un único paso.
   - Declaración: `struct BlurDownJob {`
 
-- [`TERRAIN_SAMPLES_PER_TILE`](bake.rs#L357) — Con qué frecuencia se pregunta por el horizonte del terreno a lo ancho de una casilla.
+- [`TERRAIN_SAMPLES_PER_TILE`](bake.rs#L400) — Con qué frecuencia se pregunta por el horizonte del terreno a lo ancho de una casilla.
   - Declaración: `const TERRAIN_SAMPLES_PER_TILE: u32 = 3;`
 
 ### `terrain.rs`

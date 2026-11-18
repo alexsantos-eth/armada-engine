@@ -121,7 +121,7 @@ impl DepthStamp {
 }
 
 /// The size of the depth map for a framebuffer of `width` by `height`: half of it, rounded up.
-pub fn depth_target_size(width: f32, height: f32) -> (u32, u32) {
+fn depth_target_size(width: f32, height: f32) -> (u32, u32) {
     let half = |value: f32| {
         if !value.is_finite() {
             return 1;

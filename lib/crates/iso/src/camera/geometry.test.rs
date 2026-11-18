@@ -1,6 +1,6 @@
 use crate::camera::{
-    Camera, CameraBounds, CameraLimits, ScreenSize, camera_transform, create_camera, follow_camera,
-    ground_point_below, pan_camera, screen_to_ground, zoom_camera_at,
+    Camera, CameraBounds, CameraLimits, ScreenSize, camera_transform, follow_camera,
+    ground_point_below, screen_to_ground,
 };
 use crate::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_grid_point};
 
@@ -36,21 +36,12 @@ fn screen(camera: Camera, ground: GridPoint) -> ScreenPoint {
 }
 
 #[test]
-fn documented_axes_govern_pan_and_screen_conversion() {
+fn ground_projects_to_screen_and_back() {
     let camera = Camera {
         x: 10.0,
         y: 10.0,
         zoom: 1.0,
     };
-    let panned = pan_camera(camera, ScreenPoint { x: 40.0, y: 0.0 }, LIMITS, PROJECTION);
-    assert_eq!(
-        panned,
-        Camera {
-            x: 9.0,
-            y: 11.0,
-            zoom: 1.0
-        }
-    );
     let point = ScreenPoint { x: 123.0, y: 456.0 };
     let ground = screen_to_ground(camera, VIEWPORT, point, PROJECTION);
     let back = screen(camera, ground);
@@ -59,19 +50,19 @@ fn documented_axes_govern_pan_and_screen_conversion() {
 }
 
 #[test]
-fn zoom_preserves_ground_below_anchor() {
-    let camera = Camera {
-        x: 10.0,
-        y: 12.0,
-        zoom: 2.0,
-    };
-    let anchor = ScreenPoint { x: 700.0, y: 100.0 };
-    let ground = screen_to_ground(camera, VIEWPORT, anchor, PROJECTION);
-    let zoomed = zoom_camera_at(camera, 1.5, anchor, VIEWPORT, LIMITS, PROJECTION);
-    assert_eq!(zoomed.zoom, 3.0);
-    let back = screen(zoomed, ground);
-    assert!((back.x - anchor.x).abs() < 1e-9);
-    assert!((back.y - anchor.y).abs() < 1e-9);
+fn screen_roundtrip_holds_at_other_zooms() {
+    for zoom in [0.5, 2.0, 8.0] {
+        let camera = Camera {
+            x: 10.0,
+            y: 12.0,
+            zoom,
+        };
+        let point = ScreenPoint { x: 700.0, y: 100.0 };
+        let ground = screen_to_ground(camera, VIEWPORT, point, PROJECTION);
+        let back = screen(camera, ground);
+        assert!((back.x - point.x).abs() < 1e-9);
+        assert!((back.y - point.y).abs() < 1e-9);
+    }
 }
 
 #[test]
@@ -97,15 +88,5 @@ fn elevation_and_follow_match_the_ground_contract() {
     assert_eq!(
         follow_camera(start, GridPoint { x: 5.0, y: 5.0 }, f64::NAN, LIMITS, 100.0),
         start
-    );
-    assert!(
-        create_camera(
-            CameraLimits {
-                min_zoom: 0.0,
-                ..LIMITS
-            },
-            None
-        )
-        .is_err()
     );
 }

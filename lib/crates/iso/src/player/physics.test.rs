@@ -247,13 +247,10 @@ fn get_player_climb_progress_none_when_not_climbing() {
 fn step_player_moves_on_ground() {
     let mut ground = ground_from(&["00", "00"]);
     let mut player = create_player(&ground, GridPoint { x: 0.5, y: 0.5 });
-    set_player_walk(
-        &mut player,
-        ScreenDirections {
-            right: true,
-            ..Default::default()
-        },
-    );
+    player.walk = get_walk_direction(&ScreenDirections {
+        right: true,
+        ..Default::default()
+    });
     step_player(&mut player, &mut ground, 1);
     assert!(player.previous.x >= 0.0);
 }
@@ -275,14 +272,11 @@ fn walk_into_centre(side: f64) -> GridPoint {
         .occupancy
         .insert(WorldCoord { x: 1, y: 1 }, vec![obstacle(side)]);
     let mut player = create_player(&ground, GridPoint { x: 1.0, y: 0.0 });
-    set_player_walk(
-        &mut player,
-        ScreenDirections {
-            up: true,
-            left: true,
-            ..Default::default()
-        },
-    );
+    player.walk = get_walk_direction(&ScreenDirections {
+        up: true,
+        left: true,
+        ..Default::default()
+    });
     step_player(&mut player, &mut ground, 20);
     GridPoint {
         x: player.x,
@@ -331,14 +325,11 @@ fn stairs_ground() -> CellGround {
 
 fn walk_onto_stairs(ground: &mut CellGround) -> PlayerState {
     let mut player = create_player(ground, GridPoint { x: 1.0, y: 1.0 });
-    set_player_walk(
-        &mut player,
-        ScreenDirections {
-            right: true,
-            up: true,
-            ..Default::default()
-        },
-    );
+    player.walk = get_walk_direction(&ScreenDirections {
+        right: true,
+        up: true,
+        ..Default::default()
+    });
     for _ in 0..40 {
         step_player(&mut player, ground, 1);
         if player.climb.is_some() {
@@ -476,14 +467,11 @@ fn a_flight_reports_no_climb_pose_and_keeps_the_player_walking() {
 
 fn walk_down_stairs(ground: &mut CellGround) -> PlayerState {
     let mut player = create_player(ground, GridPoint { x: 4.0, y: 1.0 });
-    set_player_walk(
-        &mut player,
-        ScreenDirections {
-            left: true,
-            down: true,
-            ..Default::default()
-        },
-    );
+    player.walk = get_walk_direction(&ScreenDirections {
+        left: true,
+        down: true,
+        ..Default::default()
+    });
     for _ in 0..80 {
         step_player(&mut player, ground, 1);
         if player.climb.is_some() {
@@ -498,14 +486,11 @@ fn walk_down_stairs(ground: &mut CellGround) -> PlayerState {
 fn a_flight_is_walked_down_once_its_top_face_is_crossed() {
     let mut ground = stairs_ground();
     let mut player = create_player(&ground, GridPoint { x: 4.0, y: 1.0 });
-    set_player_walk(
-        &mut player,
-        ScreenDirections {
-            left: true,
-            down: true,
-            ..Default::default()
-        },
-    );
+    player.walk = get_walk_direction(&ScreenDirections {
+        left: true,
+        down: true,
+        ..Default::default()
+    });
     let mut entered = None;
     for _ in 0..80 {
         step_player(&mut player, &mut ground, 1);
@@ -672,14 +657,11 @@ fn flight_with_open_sides() -> CellGround {
 
 fn walk_into_flight_side(ground: &mut CellGround) -> PlayerState {
     let mut player = create_player(ground, GridPoint { x: 2.0, y: 0.0 });
-    set_player_walk(
-        &mut player,
-        ScreenDirections {
-            left: true,
-            up: true,
-            ..Default::default()
-        },
-    );
+    player.walk = get_walk_direction(&ScreenDirections {
+        left: true,
+        up: true,
+        ..Default::default()
+    });
     player
 }
 
@@ -708,13 +690,10 @@ fn a_player_dropped_at_a_corner_beside_an_obstacle_walks_out_of_it() {
     );
     assert_eq!(player.elevation, 0.0);
 
-    set_player_walk(
-        &mut player,
-        ScreenDirections {
-            left: true,
-            ..Default::default()
-        },
-    );
+    player.walk = get_walk_direction(&ScreenDirections {
+        left: true,
+        ..Default::default()
+    });
     for _ in 0..10 {
         step_player(&mut player, &mut ground, 1);
     }
@@ -759,13 +738,10 @@ fn a_player_dropped_on_a_flights_corner_walks_back_off_it() {
     );
     assert_eq!(player.elevation, 0.0, "on the foot's level");
 
-    set_player_walk(
-        &mut player,
-        ScreenDirections {
-            left: true,
-            ..Default::default()
-        },
-    );
+    player.walk = get_walk_direction(&ScreenDirections {
+        left: true,
+        ..Default::default()
+    });
     for _ in 0..10 {
         step_player(&mut player, &mut ground, 1);
     }
@@ -779,13 +755,10 @@ fn a_player_dropped_on_a_flights_corner_walks_back_off_it() {
         "it does not climb the side of the flight"
     );
 
-    set_player_walk(
-        &mut player,
-        ScreenDirections {
-            right: true,
-            ..Default::default()
-        },
-    );
+    player.walk = get_walk_direction(&ScreenDirections {
+        right: true,
+        ..Default::default()
+    });
     for _ in 0..10 {
         step_player(&mut player, &mut ground, 1);
     }
@@ -804,14 +777,11 @@ fn a_player_dropped_on_a_flights_corner_walks_back_off_it() {
 fn a_player_entering_a_flight_off_centre_walks_onto_its_centreline() {
     let mut ground = stairs_ground();
     let mut player = create_player(&ground, GridPoint { x: 1.0, y: 1.35 });
-    set_player_walk(
-        &mut player,
-        ScreenDirections {
-            up: true,
-            right: true,
-            ..Default::default()
-        },
-    );
+    player.walk = get_walk_direction(&ScreenDirections {
+        up: true,
+        right: true,
+        ..Default::default()
+    });
     for _ in 0..40 {
         step_player(&mut player, &mut ground, 1);
         if player.climb.is_some() {
@@ -834,14 +804,11 @@ fn a_player_entering_a_flight_off_centre_walks_onto_its_centreline() {
 fn a_player_descending_a_flight_off_centre_walks_onto_its_centreline() {
     let mut ground = stairs_ground();
     let mut player = create_player(&ground, GridPoint { x: 4.0, y: 1.35 });
-    set_player_walk(
-        &mut player,
-        ScreenDirections {
-            down: true,
-            left: true,
-            ..Default::default()
-        },
-    );
+    player.walk = get_walk_direction(&ScreenDirections {
+        down: true,
+        left: true,
+        ..Default::default()
+    });
     for _ in 0..80 {
         step_player(&mut player, &mut ground, 1);
         if player.climb.is_some() {
@@ -909,14 +876,11 @@ fn a_player_standing_on_the_last_tread_is_not_pushed() {
 fn a_flight_is_a_wall_from_its_sides_at_the_top() {
     let mut ground = stairs_ground();
     let mut player = create_player(&ground, GridPoint { x: 2.0, y: 0.0 });
-    set_player_walk(
-        &mut player,
-        ScreenDirections {
-            up: true,
-            left: true,
-            ..Default::default()
-        },
-    );
+    player.walk = get_walk_direction(&ScreenDirections {
+        up: true,
+        left: true,
+        ..Default::default()
+    });
     for _ in 0..40 {
         step_player(&mut player, &mut ground, 1);
         assert!(
@@ -960,14 +924,11 @@ fn a_flight_is_a_wall_from_its_sides() {
 fn a_flight_is_climbed_from_its_foot() {
     let mut ground = flight_with_open_sides();
     let mut player = create_player(&ground, GridPoint { x: 1.0, y: 1.0 });
-    set_player_walk(
-        &mut player,
-        ScreenDirections {
-            right: true,
-            up: true,
-            ..Default::default()
-        },
-    );
+    player.walk = get_walk_direction(&ScreenDirections {
+        right: true,
+        up: true,
+        ..Default::default()
+    });
     for _ in 0..40 {
         step_player(&mut player, &mut ground, 1);
         if player.climb.is_some() {
@@ -998,7 +959,7 @@ fn a_flight_side_is_cleared_with_a_double_jump() {
         "two jumps carry it over the top of the flight: {}",
         player.elevation + player.height
     );
-    set_player_walk(&mut player, ScreenDirections::default());
+    player.walk = get_walk_direction(&ScreenDirections::default());
     for _ in 0..40 {
         step_player(&mut player, &mut ground, 1);
         if player.vertical_speed.is_none() {

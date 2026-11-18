@@ -16,13 +16,13 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Reexportaciones
 
-- [`draw_hud`](mod.rs#L9) — Pinta el overlay completo y devuelve la fase de sombras pulsada, si hubo una.
+- [`draw_hud`](hud.rs#L201) — Pinta el overlay completo y devuelve la fase de sombras pulsada, si hubo una.
   - Firma: `pub(crate) use hud::{PerfCounts, draw_hud, push_hud_update};`
-- [`push_hud_update`](mod.rs#L9) — Publica la lectura de este fotograma (posición, elevación, movimiento, chunks) al servicio de UI.
+- [`push_hud_update`](hud.rs#L165) — Publica la lectura de este fotograma (posición, elevación, movimiento, chunks) al servicio de UI.
   - Firma: `pub(crate) use hud::{draw_hud, push_hud_update};`
-- [`Route`](mod.rs#L10) — Lo que corre este proceso: `Plain`, `Playground`, `Maker` o `Script`.
+- [`Route`](route.rs#L11) — Lo que corre este proceso: `Plain`, `Playground`, `Maker` o `Script`.
   - Firma: `pub(crate) use route::{Route, current};`
-- [`current`](mod.rs#L10) — La ruta de este proceso: el camino de la página en web, los argumentos en nativo.
+- [`current`](route.rs#L113) — La ruta de este proceso: el camino de la página en web, los argumentos en nativo.
   - Firma: `pub(crate) use route::{Route, current};`
 
 ### `route.rs`

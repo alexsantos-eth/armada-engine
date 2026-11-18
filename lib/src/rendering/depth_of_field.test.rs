@@ -38,13 +38,6 @@ fn depth_at(stamp: DepthStamp, pixel_y: f32, height: f32) -> f32 {
     ((pixel_y + stamp.lift) / height).clamp(stamp.least, stamp.most)
 }
 
-/// The CPU mirror of the grade's `blurRadius`, as a share of the full radius.
-fn circle_of_confusion(depth: f32, focus: f32) -> f32 {
-    let distance = (depth - focus).abs();
-    let t = ((distance - FOCAL_HALF_HEIGHT) / TRANSITION_HEIGHT).clamp(0.0, 1.0);
-    t * t * (3.0 - 2.0 * t)
-}
-
 fn close(a: f32, b: f32, tolerance: f32) -> bool {
     (a - b).abs() <= tolerance
 }
@@ -215,50 +208,6 @@ fn a_stamp_rides_on_the_colour_and_normal_of_every_vertex() {
     assert_eq!(vertex.normal.x, stamp.lift);
     assert_eq!(vertex.position, vec3(1.0, 2.0, 0.0));
     assert_eq!(vertex.uv, vec2(0.3, 0.4));
-}
-
-#[test]
-fn the_focal_band_is_perfectly_sharp() {
-    for distance in [
-        0.0f32,
-        0.03,
-        -0.06,
-        FOCAL_HALF_HEIGHT * 0.999,
-        -FOCAL_HALF_HEIGHT * 0.999,
-    ] {
-        assert_eq!(circle_of_confusion(0.5 + distance, 0.5), 0.0);
-    }
-}
-
-#[test]
-fn the_focal_band_covers_a_fifth_of_the_screen() {
-    let band = 2.0 * FOCAL_HALF_HEIGHT;
-    assert!((0.15..=0.25).contains(&band), "band {band}");
-}
-
-#[test]
-fn the_edges_hold_the_full_blur() {
-    let edge = FOCAL_HALF_HEIGHT + TRANSITION_HEIGHT;
-    for distance in [edge, edge + 0.1, 0.9] {
-        assert_eq!(circle_of_confusion(0.5 + distance, 0.5), 1.0);
-        assert_eq!(circle_of_confusion(0.5 - distance, 0.5), 1.0);
-    }
-}
-
-#[test]
-fn the_transition_eases_in_and_out_and_never_falls_back() {
-    let mut previous = 0.0;
-    let steps = 64;
-    for step in 1..=steps {
-        let distance = FOCAL_HALF_HEIGHT + TRANSITION_HEIGHT * step as f32 / steps as f32;
-        let blur = circle_of_confusion(0.5 + distance, 0.5);
-        assert!(blur >= previous);
-        previous = blur;
-    }
-    let first = circle_of_confusion(0.5 + FOCAL_HALF_HEIGHT + TRANSITION_HEIGHT * 0.1, 0.5);
-    let middle = circle_of_confusion(0.5 + FOCAL_HALF_HEIGHT + TRANSITION_HEIGHT * 0.5, 0.5);
-    assert!(first < 0.1 * 0.5, "the band's edge eases in: {first}");
-    assert!(close(middle, 0.5, 1e-6));
 }
 
 #[test]

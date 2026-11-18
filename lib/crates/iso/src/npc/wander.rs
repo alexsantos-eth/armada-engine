@@ -274,7 +274,6 @@ impl Npc {
             height: feet - elevation,
         }
     }
-
     /// The cell it is on its way to, when a step is in flight.
     pub fn target(&self) -> Option<WorldCoord> {
         self.step.map(|step| WorldCoord {

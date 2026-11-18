@@ -260,3 +260,87 @@ fn a_zero_wind_strength_is_a_biome_with_still_air() {
     let parsed = parse_biomes(&json, &entities()).expect("a still biome is valid");
     assert_eq!(parsed.biomes[0].wind_strength, 0.0);
 }
+
+#[test]
+fn rejects_an_empty_biome_id() {
+    let json = r#"{
+        "schemaVersion": 1,
+        "biomes": [
+            { "id": "", "share": 1.0, "treeCoverage": 0.03, "trees": [],
+              "grassTints": ["ffffff"], "groundTints": ["ffffff"] }
+        ]
+    }"#;
+    let error = parse_biomes(json, &entities()).unwrap_err();
+    assert_eq!(error, BiomeError::EmptyId);
+}
+
+#[test]
+fn rejects_an_empty_palette() {
+    let json = r#"{
+        "schemaVersion": 1,
+        "biomes": [
+            { "id": "a", "share": 1.0, "treeCoverage": 0.03, "trees": [],
+              "grassTints": [], "groundTints": ["ffffff"] }
+        ]
+    }"#;
+    let error = parse_biomes(json, &entities()).unwrap_err();
+    assert_eq!(
+        error,
+        BiomeError::InvalidColor {
+            biome: "a".to_owned(),
+            field: "grassTints",
+            value: String::new(),
+        }
+    );
+}
+
+#[test]
+fn every_biome_error_prints_what_was_found() {
+    let errors = [
+        BiomeError::Json("expected value".to_owned()),
+        BiomeError::UnsupportedSchema {
+            found: 7,
+            expected: 1,
+        },
+        BiomeError::NoBiomes,
+        BiomeError::EmptyId,
+        BiomeError::DuplicateId { id: "a".to_owned() },
+        BiomeError::InvalidShare { id: "a".to_owned() },
+        BiomeError::InvalidTreeCoverage { id: "a".to_owned() },
+        BiomeError::InvalidWeight {
+            biome: "a".to_owned(),
+            blueprint: "tree".to_owned(),
+        },
+        BiomeError::UnknownBlueprint {
+            biome: "a".to_owned(),
+            blueprint: "baobab".to_owned(),
+        },
+        BiomeError::InvalidColor {
+            biome: "a".to_owned(),
+            field: "grassTints",
+            value: "xyz".to_owned(),
+        },
+        BiomeError::InvalidWindStrength { id: "a".to_owned() },
+    ];
+    for error in errors {
+        let message = error.to_string();
+        assert!(!message.is_empty(), "{error:?} prints something");
+        assert!(!message.contains('{'), "{message} interpolates every value");
+    }
+    assert!(
+        BiomeError::UnsupportedSchema {
+            found: 7,
+            expected: 1
+        }
+        .to_string()
+        .contains('7')
+    );
+    assert!(
+        BiomeError::UnknownBlueprint {
+            biome: "a".to_owned(),
+            blueprint: "baobab".to_owned()
+        }
+        .to_string()
+        .contains("baobab")
+    );
+}

@@ -44,7 +44,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Tipos
 
-- [`Dressing`](dressing.rs#L13) — Las excepciones de vestido por casilla: zona de color y variante de hierba elegidas a mano.
+- [`Dressing`](dressing.rs#L29) — Las excepciones de vestido por casilla: zona de color y variante de hierba elegidas a mano.
   - Declaración: `pub struct Dressing { cells: CellMap<CellDressing> }`
 
 #### Funciones y métodos

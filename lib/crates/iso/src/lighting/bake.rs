@@ -264,10 +264,6 @@ impl GroundBake {
         }
     }
 
-    pub fn is_done(&self) -> bool {
-        matches!(self.stage, Stage::Done)
-    }
-
     /// Does the next piece of work, and says whether any was left to do.
     pub fn step(
         &mut self,

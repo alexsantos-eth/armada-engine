@@ -104,10 +104,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `pub fn band( key: DrawKey, texture: usize, frame: SpriteFrame, layout: SpriteLayout, band: Option<SpriteBand>, ) -> Self {`
 
 - [`shaded`](sprites.rs#L912) — Un sprite oscurecido por las sombras que caen sobre él.
-  - Firma: `pub fn shaded( key: DrawKey, texture: usize, frame: SpriteFrame, layout: SpriteLayout, shade: ShadeLattice, ) -> Self {`
+  - Firma: `pub fn shaded( key: DrawKey, texture: usize, frame: SpriteFrame, layout: SpriteLayout, shade: Rc<ShadeLattice>, ) -> Self {`
 
 - [`shaded_band`](sprites.rs#L955) — Una banda de un sprite que abarca varias casillas, oscurecida por las sombras que caen sobre ella.
-  - Firma: `pub fn shaded_band( key: DrawKey, texture: usize, frame: SpriteFrame, layout: SpriteLayout, shade: ShadeLattice, band: SpriteBand, ) -> Self {`
+  - Firma: `pub fn shaded_band( key: DrawKey, texture: usize, frame: SpriteFrame, layout: SpriteLayout, shade: Rc<ShadeLattice>, band: SpriteBand, ) -> Self {`
 
 - [`ground_shadow`](sprites.rs#L979) — La sombra horneada en la cara superior de una columna, leída del atlas de sombras.
   - Firma: `pub fn ground_shadow( key: DrawKey, corners: [(f64, f64); 4], map_uv: [(f32, f32); 4], opacity: f32, ) -> Self {`
@@ -172,8 +172,8 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`source`](sprites.rs#L609) — Los píxeles del frame en el atlas, con medio texel de margen por cada lado.
   - Firma: `fn source(&self, frame: SpriteFrame) -> Rect {`
 
-- [`scaled`](sprites.rs#L645) — La misma retícula con su oscuridad escalada por `scale` (smooth para el fade-in tras un horneado; `1.0` devuelve una copia exacta y `0.0` la levanta a totalmente iluminada).
-  - Firma: `pub(crate) fn scaled(&self, scale: f32) -> Self {`
+- [`faded`](sprites.rs#L673) — La retícula horneada con el `fade` del horneado (smooth para el fade-in tras un horneado; `0.0` levanta toda la retícula a totalmente iluminada y `1.0` conserva las sombras de la rejilla). Construida en una sola pasada, sin copia que escalar.
+  - Firma: `pub fn faded(grid: &ShadeGrid, fade: f32) -> Self {`
 
 - [`light_in`](sprites.rs#L703) — La luz `along` a través de la retícula y `down` por ella, ambas en `[0, 1]`, leídas entre los
   - Firma: `fn light_in(&self, along: f32, down: f32) -> f32 {`

@@ -60,15 +60,12 @@ fn a_period_of_nothing_draws_nothing() {
 }
 
 #[test]
-fn the_drift_is_wrapped_at_the_period() {
-    let mut drift: f64 = 0.0;
+fn the_drift_wraps_into_one_period_over_time() {
+    let mut drift = (0.0, 0.0);
     for _ in 0..100_000 {
-        drift += CLOUD_DRIFT.0;
-        drift %= CLOUD_PERIOD_TILES;
+        drift = drift_after(drift, 1000.0);
+        assert!(drift.0.abs() < CLOUD_PERIOD_TILES);
+        assert!(drift.1.abs() < CLOUD_PERIOD_TILES);
     }
-    assert!(
-        drift.abs() < CLOUD_PERIOD_TILES,
-        "a day of drift is still inside one period: {drift}"
-    );
-    assert!(drift > 0.0, "and it did move: {drift}");
+    assert!(drift.0 > 0.0, "and it did move: {}", drift.0);
 }

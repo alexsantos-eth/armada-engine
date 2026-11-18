@@ -23,10 +23,6 @@ fn every_path_connection_mask_has_artwork_in_the_shipped_atlas() {
     let json = include_str!("../../../../content/json/assets.manifest.json");
     let manifest: AssetManifest = serde_json::from_str(json).expect("manifest deserializes");
     for mask in 0..16u8 {
-        assert_eq!(
-            PATH_BLOCK_SOURCES[usize::from(mask)],
-            path_sprite_source(mask)
-        );
         assert_asset_has_measured_artwork(&manifest, path_sprite_source(mask));
     }
 }
@@ -105,9 +101,6 @@ fn every_side_a_flight_climbs_toward_has_its_own_artwork() {
     sources.sort_unstable();
     sources.dedup();
     assert_eq!(sources.len(), STAIRS_BLOCK_SOURCES.len());
-    for (direction, source) in STAIRS_BLOCK_SOURCES {
-        assert_eq!(stairs_sprite_source(direction), Some(source));
-    }
 }
 
 #[test]

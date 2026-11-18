@@ -33,9 +33,9 @@ Cuatro decisiones que no son obvias:
 
 - [`advance`, `begin`, `write_shots`](mod.rs#L13) — Abrir la corrida, llevar un fotograma a cabo y escribir sus capturas.
   - Firma: `pub(crate) use drive::{advance, begin, write_shots};`
-- [`ScriptInput`](mod.rs#L14) — La entrada de un fotograma guionizado.
+- [`ScriptInput`](input.rs#L10) — La entrada de un fotograma guionizado.
   - Firma: `pub(crate) use input::ScriptInput;`
-- [`ScriptRun`](mod.rs#L15) — La corrida en vuelo.
+- [`ScriptRun`](run.rs#L22) — La corrida en vuelo.
   - Firma: `pub(crate) use run::ScriptRun;`
 - [`load_scene`, `out_dir`, `scene_path`](mod.rs#L16) — De dónde sale la escena y a dónde va lo que produce.
   - Firma: `pub(crate) use scene_file::{load_scene, out_dir, scene_path};`
@@ -73,28 +73,28 @@ Cuatro decisiones que no son obvias:
 
 #### Tipos
 
-- [`ScriptRun`](run.rs#L24) — Una corrida en vuelo: los pasos que quedan, a dónde va su salida y lo que tiene que contar.
+- [`ScriptRun`](run.rs#L22) — Una corrida en vuelo: los pasos que quedan, a dónde va su salida y lo que tiene que contar.
   - Declaración: `pub(crate) struct ScriptRun { script, out, written, notes }`
 
 #### Funciones y métodos
 
-- [`new`](run.rs#L33) — Una corrida de los pasos de una escena escribiendo en `out`.
+- [`new`](run.rs#L31) — Una corrida de los pasos de una escena escribiendo en `out`.
   - Firma: `pub(crate) fn new(scene: &Scene, out: PathBuf) -> Self {`
-- [`out`](run.rs#L43) — Dónde se escriben las capturas y el informe de esta corrida.
+- [`out`](run.rs#L41) — Dónde se escriben las capturas y el informe de esta corrida.
   - Firma: `pub(crate) fn out(&self) -> &Path {`
-- [`frame`](run.rs#L48) — El fotograma que toca ahora, anotando lo que el guion tenga que decir de él.
+- [`frame`](run.rs#L46) — El fotograma que toca ahora, anotando lo que el guion tenga que decir de él.
   - Firma: `pub(crate) fn frame(&mut self, lit: bool) -> ScriptFrame {`
-- [`note`](run.rs#L57) — Anota algo que merece aparecer en el informe.
+- [`note`](run.rs#L55) — Anota algo que merece aparecer en el informe.
   - Firma: `pub(crate) fn note(&mut self, text: String) {`
-- [`wrote`](run.rs#L62) — Anota una captura que llegó al disco.
+- [`wrote`](run.rs#L60) — Anota una captura que llegó al disco.
   - Firma: `pub(crate) fn wrote(&mut self, name: &str) {`
-- [`report`](run.rs#L67) — El informe de la corrida tal como está, para el estado que el cliente lee del mundo.
+- [`report`](run.rs#L65) — El informe de la corrida tal como está, para el estado que el cliente lee del mundo.
   - Firma: `pub(crate) fn report(&self, player: Option<ReportPlayer>, entities: Vec<ReportEntity>, phase: BakePhase) -> Report {`
-- [`phase_name`](run.rs#L14) — El nombre con el que una escena llama a una fase del día.
+- [`phase_name`](run.rs#L12) — El nombre con el que una escena llama a una fase del día.
   - Firma: `pub(crate) const fn phase_name(phase: BakePhase) -> &'static str {`
-- [`summary`](run.rs#L96) — La línea que imprime una corrida terminada, para que la terminal diga qué pasó sin abrir el informe.
+- [`summary`](run.rs#L94) — La línea que imprime una corrida terminada, para que la terminal diga qué pasó sin abrir el informe.
   - Firma: `pub(crate) fn summary(report: &Report) -> String {`
-- [`shots_asked`](run.rs#L108) — Las capturas que pide una escena, para anunciarlas antes de correr.
+- [`shots_asked`](run.rs#L106) — Las capturas que pide una escena, para anunciarlas antes de correr.
   - Firma: `pub(crate) fn shots_asked(scene: &Scene) -> Vec<String> {`
 
 ### `drive.rs`

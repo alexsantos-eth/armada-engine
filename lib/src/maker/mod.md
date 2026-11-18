@@ -23,9 +23,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Reexportaciones
 
-- [`MakerSession`](mod.rs#L9) — La sesión de edición sobre un chunk.
+- [`MakerSession`](session.rs#L101) — La sesión de edición sobre un chunk.
   - Firma: `pub(crate) use session::{MakerFrame, MakerSession};`
-- [`MakerFrame`](mod.rs#L9) — Lo que un frame de edición necesita del juego: mundo, vestido y proyección.
+- [`MakerFrame`](session.rs#L94) — Lo que un frame de edición necesita del juego: mundo, vestido y proyección.
   - Firma: `pub(crate) use session::{MakerFrame, MakerSession};`
 
 ### `session.rs`

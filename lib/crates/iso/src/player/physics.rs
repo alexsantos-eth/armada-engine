@@ -94,8 +94,6 @@ pub const PLAYER_LANDING_TICKS: i32 = 3;
 pub const PLAYER_TAKEOFF_TICKS: i32 = 2;
 /// Vertical speed under which a jump is at its apex.
 pub const PLAYER_APEX_SPEED: f64 = PLAYER_GRAVITY;
-/// Key of the player part.
-pub const PLAYER_PART_ID: &str = "player";
 /// The facings the player is drawn in: the sixteen points of the compass, counter-clockwise on
 pub const PLAYER_FACINGS: [&str; 16] = [
     "east",
@@ -119,13 +117,6 @@ pub const PLAYER_FACINGS: [&str; 16] = [
 pub const PLAYER_SPAWN_RADIUS: i32 = 32;
 
 const LANDING: f64 = 1e-9;
-
-/// Height of the feet above flat ground `tick` ticks into a jump.
-pub fn get_jump_height(tick: f64) -> f64 {
-    let t = tick.clamp(0.0, PLAYER_JUMP_TICKS as f64);
-    (4.0 * PLAYER_JUMP_HEIGHT * t * (PLAYER_JUMP_TICKS as f64 - t))
-        / (PLAYER_JUMP_TICKS as f64).powi(2)
-}
 
 fn harmonic(t: f64) -> f64 {
     let clamped = t.clamp(0.0, 1.0);
@@ -821,20 +812,12 @@ pub fn get_player_facing(walk: GridPoint) -> Option<usize> {
     Some(turn.rem_euclid(PLAYER_FACINGS.len() as i32) as usize)
 }
 
-pub fn set_player_walk(player: &mut PlayerState, directions: ScreenDirections) {
-    player.walk = get_walk_direction(&directions);
-}
-
 pub fn set_player_jetpack(player: &mut PlayerState, jetpack: bool) {
     player.jetpack = jetpack;
 }
 
 pub fn set_player_run(player: &mut PlayerState, running: bool) {
     player.running = running;
-}
-
-pub fn is_player_running(player: &PlayerState) -> bool {
-    player.motion == PlayerMotionType::Running
 }
 
 pub fn is_player_skidding(player: &PlayerState) -> bool {
@@ -1809,19 +1792,6 @@ pub fn get_player_cells(point: GridPoint) -> crate::grid::WorldRect {
         max_x: max.x,
         max_y: max.y,
     }
-}
-
-pub fn can_stand_on_public<G: PlayerGround>(
-    ground: &G,
-    x: i32,
-    y: i32,
-    from_elevation: f64,
-) -> bool {
-    can_stand_on(ground, x, y, from_elevation)
-}
-
-pub fn fits_player_at<G: PlayerGround>(ground: &G, point: GridPoint) -> bool {
-    fits_at(ground, point, elevation_at(ground, point))
 }
 
 #[cfg(test)]

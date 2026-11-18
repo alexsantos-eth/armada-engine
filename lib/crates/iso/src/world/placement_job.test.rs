@@ -177,15 +177,6 @@ fn an_inline_placement_is_identical_to_a_spawned_one() {
 }
 
 #[test]
-fn take_outcome_without_waiting_leaves_the_job_running() {
-    let chunk = crate::grid::ChunkCoord { cx: 0, cy: 0 };
-    let outcome =
-        PlacementJob::spawn(chunk, grass_columns(chunk), catalog(), content()).take_outcome(true);
-
-    assert!(outcome.is_some());
-}
-
-#[test]
 fn a_job_that_is_taken_cannot_be_taken_again() {
     let chunk = crate::grid::ChunkCoord { cx: 0, cy: 0 };
     let mut job = PlacementJob::spawn(chunk, grass_columns(chunk), catalog(), content());

@@ -33,10 +33,7 @@ impl CloudShadows {
 
     /// Moves the clouds on by `elapsed_ms` of real time.
     pub fn advance(&mut self, elapsed_ms: f64) {
-        self.drift.0 += CLOUD_DRIFT.0 * elapsed_ms / 1000.0;
-        self.drift.1 += CLOUD_DRIFT.1 * elapsed_ms / 1000.0;
-        self.drift.0 %= CLOUD_PERIOD_TILES;
-        self.drift.1 %= CLOUD_PERIOD_TILES;
+        self.drift = drift_after(self.drift, elapsed_ms);
     }
 
     /// Draws the pattern over the view, as many copies as it takes to cover it.
@@ -63,6 +60,14 @@ impl CloudShadows {
             );
         }
     }
+}
+
+/// The drift a spell of `elapsed_ms` of real time later, each axis wrapped into one period.
+fn drift_after(drift: (f64, f64), elapsed_ms: f64) -> (f64, f64) {
+    (
+        (drift.0 + CLOUD_DRIFT.0 * elapsed_ms / 1000.0) % CLOUD_PERIOD_TILES,
+        (drift.1 + CLOUD_DRIFT.1 * elapsed_ms / 1000.0) % CLOUD_PERIOD_TILES,
+    )
 }
 
 /// Where each copy of the pattern goes to cover a `screen`-sized view, given one copy's top left

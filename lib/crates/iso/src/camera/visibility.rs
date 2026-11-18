@@ -4,10 +4,8 @@ use super::geometry::{Camera, ScreenSize, camera_transform, screen_to_ground};
 use crate::grid::{ChunkCoord, WorldRect, chunk_rect, chunks_in_rect};
 use crate::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_grid_point};
 
-pub const CAMERA_CULL_MARGIN: f64 = 0.1;
-pub const CHUNK_VIEW_MARGIN: f64 = 0.1;
-pub const CHUNK_VIEW_RISE: f64 = 10.0;
-pub const CHUNK_VIEW_DROP: f64 = 4.0;
+const CHUNK_VIEW_RISE: f64 = 10.0;
+const CHUNK_VIEW_DROP: f64 = 4.0;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ScreenRect {

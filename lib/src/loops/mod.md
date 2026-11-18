@@ -14,14 +14,14 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Reexportaciones
 
-- [`run`](mod.rs#L8) — El bucle principal: corre el juego hasta que el jugador pide salir.
+- [`run`](frame_loop.rs#L56) — El bucle principal: corre el juego hasta que el jugador pide salir.
   - Firma: `pub(crate) use frame_loop::run;`
 
 ### `frame_loop.rs`
 
 #### Funciones y métodos
 
-- [`run`](frame_loop.rs#L52) — El bucle: mide el frame, deja actualizar el mundo o salir, limpia el fondo, ensambla la escena, dibuja ordenada, pinta nubes, (si la ruta lo permite) el overlay, los controles táctiles y alimenta el `PerfLog`.
+- [`run`](frame_loop.rs#L56) — El bucle: mide el frame, deja actualizar el mundo o salir, limpia el fondo, ensambla la escena, dibuja ordenada, pinta nubes, (si la ruta lo permite) el overlay, los controles táctiles y alimenta el `PerfLog`.
   - Firma: `pub(crate) async fn run(mut game: Game) {`
 
 ### `clock.rs`

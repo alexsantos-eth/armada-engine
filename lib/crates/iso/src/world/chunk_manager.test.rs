@@ -101,14 +101,6 @@ fn hides_chunks_outside_keep_radius() {
 }
 
 #[test]
-fn generates_entities_for_discovered_chunks() {
-    let mut manager = ChunkManager::new(generator(), catalog());
-    manager.set_focus(vec![ChunkCoord { cx: 0, cy: 0 }]);
-    manager.tick();
-    let _ = manager.entities_chunk(ChunkCoord { cx: 0, cy: 0 });
-}
-
-#[test]
 fn save_and_restore_round_trip() {
     let mut manager = ChunkManager::new(generator(), catalog());
     manager.set_focus(vec![ChunkCoord { cx: 0, cy: 0 }]);

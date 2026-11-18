@@ -54,6 +54,26 @@ fn dense() -> PlacementRules {
     PlacementRules { gap: 0, density: 1 }
 }
 
+/// A world with no biomes, no wfc catalogue and no settlements: the plain density roll.
+fn plain() -> PlacementContent<'static> {
+    PlacementContent {
+        biomes: None,
+        wfc: None,
+        settlements: None,
+        seed: crate::terrain::WORLD_SEED,
+    }
+}
+
+/// A world whose biome field is `biomes`, with no wfc catalogue and no settlements.
+fn with_biomes(biomes: &WorldBiomes) -> PlacementContent<'_> {
+    PlacementContent {
+        biomes: Some(biomes),
+        wfc: None,
+        settlements: None,
+        seed: crate::terrain::WORLD_SEED,
+    }
+}
+
 fn catalog(blueprints: Vec<EntityBlueprint>) -> EntityCatalog {
     EntityCatalog {
         schema_version: CATALOG_SCHEMA_VERSION,
@@ -69,7 +89,7 @@ fn places_one_entity_per_eligible_column() {
         column(0, 1, water(), -1),
     ];
     let catalog = catalog(vec![blueprint("house", 1, vec![grass()])]);
-    let result = place_entities_with(&columns, &catalog, dense());
+    let result = place_entities_with_content(&columns, &catalog, dense(), plain());
     assert_eq!(result.entities.len(), 2);
     assert!(result.entities.iter().any(|e| e.id() == "house@0,0"));
     assert!(result.entities.iter().any(|e| e.id() == "house@1,0"));
@@ -90,7 +110,7 @@ fn the_returned_index_covers_every_entity_footprint() {
         blueprint("pier", 3, vec![water(), sand(), grass()]),
         blueprint("house", 1, vec![grass()]),
     ]);
-    let result = place_entities_with(&columns, &catalog, dense());
+    let result = place_entities_with_content(&columns, &catalog, dense(), plain());
     assert_eq!(result.entities.len(), 2);
 
     for entity in &result.entities {
@@ -109,7 +129,7 @@ fn the_returned_index_covers_every_entity_footprint() {
 fn does_not_place_on_wrong_surface() {
     let columns = vec![column(0, 0, water(), -1)];
     let catalog = catalog(vec![blueprint("house", 1, vec![grass()])]);
-    let result = place_entities_with(&columns, &catalog, dense());
+    let result = place_entities_with_content(&columns, &catalog, dense(), plain());
     assert!(result.entities.is_empty());
 }
 
@@ -121,7 +141,7 @@ fn multi_cell_footprint_requires_matching_surfaces() {
         column(2, 0, grass(), 0),
     ];
     let catalog = catalog(vec![blueprint("pier", 3, vec![water(), sand(), grass()])]);
-    let result = place_entities_with(&columns, &catalog, dense());
+    let result = place_entities_with_content(&columns, &catalog, dense(), plain());
     assert_eq!(result.entities.len(), 1);
     assert_eq!(result.entities[0].id(), "pier@0,0");
     assert_eq!(result.entities[0].elevation(), 0);
@@ -177,7 +197,7 @@ fn respects_gap_between_same_type_instances() {
 fn entity_id_matches_blueprint_and_anchor() {
     let columns = vec![column(5, -3, grass(), 0)];
     let catalog = catalog(vec![blueprint("tree", 1, vec![grass()])]);
-    let result = place_entities_with(&columns, &catalog, dense());
+    let result = place_entities_with_content(&columns, &catalog, dense(), plain());
     assert_eq!(result.entities[0].id(), "tree@5,-3");
 }
 
@@ -193,13 +213,13 @@ fn density_thins_placement_deterministically() {
         gap: 0,
         density: 50,
     };
-    let result = place_entities_with(&columns, &catalog, rules);
+    let result = place_entities_with_content(&columns, &catalog, rules, plain());
     assert!(
         (40..=130).contains(&result.entities.len()),
         "{} entities placed, expected around 82",
         result.entities.len()
     );
-    let again = place_entities_with(&columns, &catalog, rules);
+    let again = place_entities_with_content(&columns, &catalog, rules, plain());
     let ids: Vec<&str> = result.entities.iter().map(|e| e.id()).collect();
     let ids_again: Vec<&str> = again.entities.iter().map(|e| e.id()).collect();
     assert_eq!(
@@ -207,13 +227,14 @@ fn density_thins_placement_deterministically() {
         "the same world must generate the same way twice"
     );
 
-    let denser = place_entities_with(
+    let denser = place_entities_with_content(
         &columns,
         &catalog,
         PlacementRules {
             gap: 0,
             density: 25,
         },
+        plain(),
     );
     assert!(denser.entities.len() > result.entities.len());
 }
@@ -225,13 +246,14 @@ fn the_default_gap_keeps_instances_of_a_type_apart() {
         .flat_map(|x| (0..32).map(move |y| column(x, y, grass(), 0)))
         .collect();
     let catalog = catalog(vec![blueprint("tree", 1, vec![grass()])]);
-    let result = place_entities_with(
+    let result = place_entities_with_content(
         &columns,
         &catalog,
         PlacementRules {
             density: 1,
             ..PlacementRules::default()
         },
+        plain(),
     );
     for a in &result.entities {
         for b in &result.entities {
@@ -281,7 +303,7 @@ fn a_biome_species_only_grows_in_its_own_biome() {
     let columns: Vec<TerrainColumn> = (-64..64)
         .flat_map(|x| (-64..64).map(move |y| column(x, y, grass(), 0)))
         .collect();
-    let result = place_entities_with_biomes(&columns, &entities, dense(), Some(&biomes));
+    let result = place_entities_with_content(&columns, &entities, dense(), with_biomes(&biomes));
     assert!(!result.entities.is_empty());
     for entity in &result.entities {
         if !matches!(entity.type_(), "tree" | "tree_2" | "tree_3") {
@@ -310,7 +332,7 @@ fn each_biome_grows_its_own_groves_somewhere() {
     let columns: Vec<TerrainColumn> = (-192..192)
         .flat_map(|x| (-192..192).map(move |y| column(x, y, grass(), 0)))
         .collect();
-    let result = place_entities_with_biomes(&columns, &entities, dense(), Some(&biomes));
+    let result = place_entities_with_content(&columns, &entities, dense(), with_biomes(&biomes));
     let mut temperate = 0;
     let mut taiga = 0;
     for entity in &result.entities {
@@ -331,7 +353,7 @@ fn a_blueprint_no_biome_claims_grows_in_every_biome() {
     let columns: Vec<TerrainColumn> = (-192..192)
         .flat_map(|x| (-192..192).map(move |y| column(x, y, grass(), 0)))
         .collect();
-    let result = place_entities_with_biomes(&columns, &entities, dense(), Some(&biomes));
+    let result = place_entities_with_content(&columns, &entities, dense(), with_biomes(&biomes));
     let mut rock_biomes = std::collections::HashSet::new();
     for entity in &result.entities {
         if entity.type_() == "rock" {
@@ -352,8 +374,8 @@ fn biome_placement_is_deterministic() {
     let columns: Vec<TerrainColumn> = (-48..48)
         .flat_map(|x| (-48..48).map(move |y| column(x, y, grass(), 0)))
         .collect();
-    let first = place_entities_with_biomes(&columns, &entities, dense(), Some(&biomes));
-    let second = place_entities_with_biomes(&columns, &entities, dense(), Some(&biomes));
+    let first = place_entities_with_content(&columns, &entities, dense(), with_biomes(&biomes));
+    let second = place_entities_with_content(&columns, &entities, dense(), with_biomes(&biomes));
     let ids: Vec<&str> = first.entities.iter().map(|e| e.id()).collect();
     let ids_again: Vec<&str> = second.entities.iter().map(|e| e.id()).collect();
     assert_eq!(ids, ids_again);
@@ -365,8 +387,8 @@ fn biome_placement_without_biomes_matches_the_old_path() {
     let columns: Vec<TerrainColumn> = (-16..16)
         .flat_map(|x| (-16..16).map(move |y| column(x, y, grass(), 0)))
         .collect();
-    let with = place_entities_with_biomes(&columns, &entities, dense(), None);
-    let without = place_entities_with(&columns, &entities, dense());
+    let with = place_entities_with_content(&columns, &entities, dense(), plain());
+    let without = place_entities_with_content(&columns, &entities, dense(), plain());
     let ids: Vec<&str> = with.entities.iter().map(|e| e.id()).collect();
     let ids_without: Vec<&str> = without.entities.iter().map(|e| e.id()).collect();
     assert_eq!(ids, ids_without);
@@ -458,7 +480,7 @@ fn the_content_path_with_no_wfc_matches_the_biome_path() {
             seed: 123,
         },
     );
-    let without = place_entities_with_biomes(&columns, &entities, dense(), Some(&biomes));
+    let without = place_entities_with_content(&columns, &entities, dense(), with_biomes(&biomes));
     let ids: Vec<_> = with.entities.iter().map(|e| e.id()).collect();
     let ids_without: Vec<_> = without.entities.iter().map(|e| e.id()).collect();
     assert_eq!(ids, ids_without);
@@ -652,30 +674,6 @@ fn the_biome_plants_no_tree_inside_a_settlement() {
 }
 
 #[test]
-fn without_a_settlement_field_the_biome_pass_is_unchanged() {
-    let entities = trees_catalog();
-    let (_, biomes) = tree_biomes_with_catalog(&entities);
-    let columns: Vec<TerrainColumn> = (-32..32)
-        .flat_map(|x| (-32..32).map(move |y| column(x, y, grass(), 0)))
-        .collect();
-    let zoneless = place_entities_with_content(
-        &columns,
-        &entities,
-        dense(),
-        PlacementContent {
-            biomes: Some(&biomes),
-            wfc: None,
-            settlements: None,
-            seed: 123,
-        },
-    );
-    let legacy = place_entities_with_biomes(&columns, &entities, dense(), Some(&biomes));
-    let ids: Vec<_> = zoneless.entities.iter().map(|e| e.id()).collect();
-    let ids_legacy: Vec<_> = legacy.entities.iter().map(|e| e.id()).collect();
-    assert_eq!(ids, ids_legacy);
-}
-
-#[test]
 fn a_hand_placement_accepts_an_additional_surface() {
     let mut rock = blueprint("rock_small", 1, vec![TerrainMaterial::Grass]);
     rock.shape.collision = vec![0.0];
@@ -702,11 +700,8 @@ fn the_generated_pass_anchors_on_an_additional_surface() {
         .flat_map(|x| (-8..8).map(move |y| column(x, y, TerrainMaterial::Path, 0)))
         .collect();
     let catalog = catalog(vec![rock]);
-    let rules = PlacementRules {
-        gap: 0,
-        density: 1,
-    };
-    let placed = place_entities_with_biomes(&columns, &catalog, rules, None);
+    let rules = PlacementRules { gap: 0, density: 1 };
+    let placed = place_entities_with_content(&columns, &catalog, rules, plain());
     assert!(
         !placed.entities.is_empty(),
         "with no biome claiming it, the density roll anchors on the additional surface"
@@ -718,7 +713,11 @@ fn the_generated_pass_anchors_on_an_additional_surface() {
 
 #[test]
 fn an_additional_surface_does_not_replace_the_footprint_requirements() {
-    let mut rock = blueprint("rock_small", 2, vec![TerrainMaterial::Grass, TerrainMaterial::Grass]);
+    let mut rock = blueprint(
+        "rock_small",
+        2,
+        vec![TerrainMaterial::Grass, TerrainMaterial::Grass],
+    );
     rock.shape.collision = vec![0.0, 0.0];
     rock.placement.additional_surfaces = vec![TerrainMaterial::Path];
     let columns = vec![

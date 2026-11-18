@@ -14,22 +14,22 @@ Este catálogo documenta las funciones y reexportaciones del dominio, con su fir
 
 #### Reexportaciones
 
-- [`run`](mod.rs#L11) — Arranque completo del cliente: crea el juego y cede el control al bucle de frames.
+- [`run`](bootstrap.rs#L47) — Arranque completo del cliente: crea el juego y cede el control al bucle de frames.
   - Declaración: `pub(crate) use bootstrap::{run, window_conf};`
-- [`window_conf`](mod.rs#L11) — Configuración de la ventana del juego: 960 × 600 salvo que una escena guionizada pida otro tamaño (`Scene::window`).
+- [`window_conf`](bootstrap.rs#L31) — Configuración de la ventana del juego: 960 × 600 salvo que una escena guionizada pida otro tamaño (`Scene::window`).
   - Declaración: `pub(crate) use bootstrap::{run, window_conf};`
-- [`asset_path`](mod.rs#L13) — Dónde se pide un asset al disco (solo builds nativas).
+- [`asset_path`](bundle.rs#L48) — Dónde se pide un asset al disco (solo builds nativas).
   - Declaración: `pub(crate) use bundle::{asset_path, save_path};`
-- [`save_path`](mod.rs#L13) — Dónde vive el archivo de guardado (solo builds nativas).
+- [`save_path`](bundle.rs#L76) — Dónde vive el archivo de guardado (solo builds nativas).
   - Declaración: `pub(crate) use bundle::{asset_path, save_path};`
 
 ### `bootstrap.rs`
 
 #### Funciones y métodos
 
-- [`window_conf`](bootstrap.rs#L16) — La ventana del juego: título [`GAME_TITLE`](../game/config.rs) y 960×600 por defecto. El icono se difiere al bundle (`None`) para que un `.app` en macOS pinte su `game.icns` y no el logo por defecto de Miniquad. Única fuente del título: cambiar el nombre del juego es editar esa constante.
+- [`window_conf`](bootstrap.rs#L31) — La ventana del juego: título [`GAME_TITLE`](../game/config.rs) y 960×600 por defecto. El icono se difiere al bundle (`None`) para que un `.app` en macOS pinte su `game.icns` y no el logo por defecto de Miniquad. Única fuente del título: cambiar el nombre del juego es editar esa constante.
   - Firma: `pub(crate) fn window_conf() -> Conf {`
-- [`run`](bootstrap.rs#L28) — Consulta la ruta (`gui::current`), arranca el juego con ella (arte, mundo, guardado; o el chunk plano del editor) y ejecuta el bucle de frames hasta que el jugador sale.
+- [`run`](bootstrap.rs#L47) — Consulta la ruta (`gui::current`), arranca el juego con ella (arte, mundo, guardado; o el chunk plano del editor) y ejecuta el bucle de frames hasta que el jugador sale.
   - Firma: `pub(crate) async fn run() {`
 
 ### `bundle.rs`

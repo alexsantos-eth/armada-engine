@@ -81,7 +81,8 @@ fn collision_per_cell_respects_axis() {
 fn index_entities_occupies_whole_footprint() {
     let bp = blueprint("house", 1, TerrainMaterial::Grass);
     let entity = Entity::new(0, 0, &bp, 0);
-    let index = index_entities(std::slice::from_ref(&entity));
+    let mut index = crate::grid::SpatialIndex::new();
+    let _ = index.insert(entity.clone(), &get_entity_footprint_for(&entity));
     assert!(index.is_occupied(WorldCoord { x: 0, y: 0 }));
     assert!(!index.is_occupied(WorldCoord { x: 1, y: 0 }));
     assert!(index.contains(&entity));

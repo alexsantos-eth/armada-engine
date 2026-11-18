@@ -1,5 +1,5 @@
 use crate::grid::{WorldCoord, WorldRect};
-use crate::paths::{PATH_STEPS, find_path};
+use crate::paths::find_path;
 use serde_json::Value;
 
 const AREA: WorldRect = WorldRect {
@@ -15,10 +15,6 @@ fn point(x: i32, y: i32) -> WorldCoord {
 
 #[test]
 fn keeps_neighbour_order_and_contract_tie_fixture() {
-    assert_eq!(
-        PATH_STEPS,
-        [point(1, 0), point(0, 1), point(-1, 0), point(0, -1)]
-    );
     let path = find_path(
         AREA,
         &[point(0, 0)],

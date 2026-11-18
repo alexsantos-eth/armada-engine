@@ -26,13 +26,22 @@ Sustituir la tirada de densidad independiente por casilla por un solver de restr
 {
   "schemaVersion": 2,
   "emptyWeight": 380.0,
-  "weights": { "house": 6.0, "bush": 4.0, "large_rock": 1.0, "...": 1.0 },
-  "families": { "office": ["office_x", "office_y"] },
-  "maxPerChunk": { "office": 2, "hospital": 1, "townhall": 1 }
+  "weights": { "mead_hall_x": 1.2, "boathouse_x": 1.0, "bush": 4.0, "...": 1.0 },
+  "families": {
+    "mead_hall": ["mead_hall_x", "mead_hall_y"],
+    "grove": ["grove_x", "grove_y", "grove_autumn_x", "grove_autumn_y", "grove_pine_x", "grove_pine_y"],
+    "boathouse": ["boathouse_x", "boathouse_y"],
+    "runestones": ["runestone", "runestone_pair", "runestone_tall", "runestone_circle", "runestone_fallen"],
+    "palms": ["palm", "palm_tall", "palm_bent", "palm_grove_x", "palm_grove_y"],
+    "wreck": ["wreck_x", "wreck_y"],
+    "beach": ["coconuts", "driftwood", "beach_rocks", "rowboat", "anchor", "flag_post", "fish_rack", "gull_post"]
+  },
+  "maxPerChunk": { "mead_hall": 1, "stave_temple": 1, "stone_shrine": 1, "watchtower": 2, "grove": 2,
+                    "market_stall": 6, "smithy": 1, "healer_hut": 1, "boathouse": 2, "wreck": 1 }
 }
 ```
 
-Validado con las mismas puertas que `biomes.json` (pesos finitos positivos, blueprints citados existentes en `entities.json`); además exige un peso para cada blueprint que ningún bioma reclama, para que nada quede fuera del mundo en silencio. La superficie ya vive en el catálogo de entidades y no se duplica; `wfc.json` solo añade pesos y cuánto pesa la vacancia. Los 8 árboles que los biomas reclaman no reciben peso (su hueco lo gobierna el bosquete).
+Validado con las mismas puertas que `biomes.json` (pesos finitos positivos, blueprints citados existentes en `entities.json`); además exige un peso para cada blueprint que ningún bioma reclama, para que nada quede fuera del mundo en silencio. La superficie ya vive en el catálogo de entidades y no se duplica; `wfc.json` solo añade pesos y cuánto pesa la vacancia. Los 13 árboles que los biomas reclaman no reciben peso (su hueco lo gobierna el bosquete).
 
 ## Fases
 
@@ -40,7 +49,7 @@ Validado con las mismas puertas que `biomes.json` (pesos finitos positivos, blue
 2. ~~**Vecindad y cotas**~~ **Recortada**: viven en el motor solo el hueco 1 mismo tipo y los techos `maxPerChunk` compartidos por familia (`families`) desde el esquema 2; la vecindad declarativa sigue para una iteración de contenido sin tocar código.
 3. ~~**Huellas múltiples**~~ **Hecha**: la huella completa se valida en casillas del chunk (superficie y elevación uniforme de celdas secas), reclamando también las celdas intermedias para el mosaico.
 4. **Cruce de chunks (opcional)**: no hecho; la v1 es autocontenida por diseño.
-5. **Retirada del camino legado**: no hecha; `place_entities_with_content` conserva el camino legado cuando no hay catálogo wfc (`wfc: None`), que es lo que usan los tests del dominio.
+5. **Retirada del camino sin wfc**: no hecha; `place_entities_with_content` conserva `wfc: None` (pase de biomas + tirada de densidad), que es lo que ejercitan los tests del dominio.
 
 ## Integración (implementada)
 
@@ -54,7 +63,7 @@ Chunk de 32×32 = 1024 celdas; conjuntos de posibilidades pequeños (≤ bluepri
 
 ## Decisiones tomadas en la fase de implementación
 
-1. Entra **todo** lo que ningún bioma reclama (23 blueprints en el catálogo actual, los 8 árboles — 15 con peso en `wfc.json`: edificios, boathouses y arbustos) — los biomas conservan los 8 árboles.
+1. Entra **todo** lo que ningún bioma reclama (58 blueprints en el catálogo actual, los 13 árboles — 45 con peso en `wfc.json`: edificios, boathouses y arbustos) — los biomas conservan los 13 árboles.
 2. Vecindad inicial **mínima**: hueco 1 mismo tipo; nada de vecindad declarativa en esta iteración.
-3. Los techos por chunk se añadieron en el esquema 2 como `families` + `maxPerChunk` (validados en `parse_wfc`): `office` comparte techo entre `office_x`/`office_y`, `hospital` y `townhall` se limitan a 1 por chunk. Todo sigue acotado por pesos, superficies y la vacancia; la vecindad declarativa sigue fuera del motor.
+3. Los techos por chunk se añadieron en el esquema 2 como `families` + `maxPerChunk` (validados en `parse_wfc`): `mead_hall` comparte techo entre `mead_hall_x`/`mead_hall_y` (y lo mismo `boathouse`, `wreck` y los seis `grove`); `stave_temple`, `stone_shrine`, `smithy` y `healer_hut` se limitan a 1 por chunk, `watchtower` a 2, `market_stall` a 6 y `boathouse` a 2. Todo sigue acotado por pesos, superficies y la vacancia; la vecindad declarativa sigue fuera del motor.
 4. Arbustos **sueltos**; la densidad reproduce más o menos la de antes (pesos 1, `emptyWeight` 380).

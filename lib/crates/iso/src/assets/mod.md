@@ -39,7 +39,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`raster_ink`](ink.rs#L143) — La caja del dibujo de un asset trazado como rasterizado en lugar de como geometría vectorial.
   - Firma: `pub fn raster_ink(canvas: (u32, u32), bounds: (u32, u32, u32, u32), tiles: Option<&str>) -> Option<InkBox> {`
 
-- [`attribute`](ink.rs#L218) — El valor de `name="..."` en `text`, coincidiendo con el nombre completo del atributo.
+- [`attribute`](ink.rs#L232) — El valor de `name="..."` en `text`, coincidiendo con el nombre completo del atributo.
   - Firma: `pub(super) fn attribute<'a>(text: &'a str, name: &str) -> Option<&'a str> {`
 
 #### Constantes
@@ -106,21 +106,21 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`rows`](sheet.rs#L29) — Filas de la hoja: una por facing.
+- [`rows`](sheet.rs#L35) — Filas de la hoja: una por facing.
   - Firma: `pub fn rows(&self) -> usize {`
 
-- [`cell_id`](sheet.rs#L34) — El id del grupo que contiene la pose en la `column` de la fila de `facing`, tal como el dibujo la nombra
+- [`cell_id`](sheet.rs#L40) — El id del grupo que contiene la pose en la `column` de la fila de `facing`, tal como el dibujo la nombra
   - Firma: `pub fn cell_id(&self, facing: usize, column: usize) -> Option<String> {`
 
-- [`ink`](sheet.rs#L46) — Dónde pertenece el dibujo de cada casilla sobre el suelo en el que se apoya el jugador, en casillas
+- [`ink`](sheet.rs#L52) — Dónde pertenece el dibujo de cada casilla sobre el suelo en el que se apoya el jugador, en casillas
   - Firma: `pub fn ink(&self) -> InkBox {`
 
-- [`parse_sheet`](sheet.rs#L57) — Lee la cuadrícula del SVG de una hoja, o `None` si no lo es (sin `data-frames`).
-  - Firma: `pub fn parse_sheet(svg: &str) -> Option<SheetGrid<'_>> {`
+- [`parse_sheet`](sheet.rs#L75) — Lee el sidecar JSON de la hoja (`{"frames": [...]}`), o `None` si no lleva ese esquema.
+  - Firma: `pub fn parse_sheet(json: &str) -> Option<SheetGrid> {`
 
 #### Constantes
 
-- [`SVG_CANVAS_TOP`](sheet.rs#L6) — Parte superior del lienzo de la plantilla de personaje en las unidades propias del SVG.
+- [`SVG_CANVAS_TOP`](sheet.rs#L12) — Parte superior del lienzo de la plantilla de personaje en las unidades propias del SVG.
   - Declaración: `pub const SVG_CANVAS_TOP: f64 = -SVG_BLOCK_HEIGHT;`
 
 ### `terrain_sprites.rs`
@@ -159,19 +159,19 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`ink_box`](ink.rs#L99) — Una caja medida, en las unidades propias de la plantilla, tal como la recoge el manifiesto: relativa al centro del suelo de la casilla de ancla y desplazada hacia atrás a lo largo de la huella.
   - Firma: `fn ink_box(left: f64, top: f64, width: f64, height: f64, footprint: (i32, bool)) -> InkBox {`
 
-- [`footprint`](ink.rs#L167) — Hasta dónde se extiende la huella desde su ancla y a lo largo de cuál de los ejes del *dibujo*, a partir de
+- [`footprint`](ink.rs#L181) — Hasta dónde se extiende la huella desde su ancla y a lo largo de cuál de los ejes del *dibujo*, a partir de
   - Firma: `fn footprint(svg: &str) -> (i32, bool) {`
 
-- [`footprint_of`](ink.rs#L172) — Lo mismo, a partir de una cadena `data-tiles` por su cuenta.
+- [`footprint_of`](ink.rs#L186) — Lo mismo, a partir de una cadena `data-tiles` por su cuenta.
   - Firma: `fn footprint_of(tiles: Option<&str>) -> (i32, bool) {`
 
-- [`tile_counts`](ink.rs#L183) — Las tres cuentas de una cadena `data-tiles`, cada una al menos uno: casillas a lo largo del eje x del dibujo, casillas a lo largo de su eje y, y bloques de alto.
+- [`tile_counts`](ink.rs#L197) — Las tres cuentas de una cadena `data-tiles`, cada una al menos uno: casillas a lo largo del eje x del dibujo, casillas a lo largo de su eje y, y bloques de alto.
   - Firma: `fn tile_counts(tiles: Option<&str>) -> (i32, i32, i32) {`
 
-- [`visible_elements`](ink.rs#L196) — El texto de cada elemento que dibuja algo: fuera de esos contenedores, y que no sea uno de los
+- [`visible_elements`](ink.rs#L210) — El texto de cada elemento que dibuja algo: fuera de esos contenedores, y que no sea uno de los
   - Firma: `fn visible_elements(svg: &str) -> impl Iterator<Item = &str> {`
 
-- [`points`](ink.rs#L237) — Cada par `x,y` en la geometría de un path o polígono.
+- [`points`](ink.rs#L251) — Cada par `x,y` en la geometría de un path o polígono.
   - Firma: `fn points(geometry: &str) -> impl Iterator<Item = (f64, f64)> + '_ {`
 
 #### Constantes internas
@@ -182,7 +182,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`HALF_TILE`](ink.rs#L16) — Cuánto se desplaza por la pantalla una casilla a lo largo de cualquiera de los ejes, en anchos de casilla.
   - Declaración: `const HALF_TILE: f64 = 0.5;`
 
-- [`SKIPPED`](ink.rs#L193) — Contenedores cuyo contenido no describe nada que se dibuje: filtros y degradados, y los
+- [`SKIPPED`](ink.rs#L207) — Contenedores cuyo contenido no describe nada que se dibuje: filtros y degradados, y los
   - Declaración: `const SKIPPED: [&str; 2] = ["defs", "metadata"];`
 
 ### `layout.rs`

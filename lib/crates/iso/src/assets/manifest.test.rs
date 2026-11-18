@@ -341,3 +341,74 @@ fn artwork_key_drops_the_file_the_artwork_was_drawn_in() {
     assert_eq!(artwork_key("/assets/.hidden"), "/assets/.hidden");
     assert_eq!(artwork_key("block.svg"), "block");
 }
+
+#[test]
+fn rejects_an_empty_atlas_path() {
+    let mut m = manifest();
+    m.atlas = String::new();
+    let err = validate_manifest(&m).unwrap_err();
+    assert!(matches!(err, ManifestError::EmptyAtlas));
+}
+
+#[test]
+fn rejects_an_empty_asset_id() {
+    let mut m = manifest();
+    m.entries[0].id = String::new();
+    let err = validate_manifest(&m).unwrap_err();
+    assert!(matches!(err, ManifestError::EmptyId));
+}
+
+#[test]
+fn rejects_a_zero_sized_frame() {
+    let mut m = manifest();
+    m.entries[0].frame = Some(SpriteFrame {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 64,
+    });
+    let err = validate_manifest(&m).unwrap_err();
+    assert!(matches!(err, ManifestError::InvalidFrame { id, .. } if id == "block"));
+}
+
+#[test]
+fn every_manifest_error_prints_what_was_found() {
+    let errors = [
+        ManifestError::UnsupportedSchema {
+            found: 3,
+            expected: 1,
+        },
+        ManifestError::EmptyId,
+        ManifestError::DuplicateId {
+            id: "tree".to_owned(),
+        },
+        ManifestError::MissingFrame {
+            id: "tree".to_owned(),
+        },
+        ManifestError::InvalidFrame {
+            id: "tree".to_owned(),
+            reason: "frame must have positive width and height".to_owned(),
+        },
+        ManifestError::EmptyAtlas,
+    ];
+    for error in errors {
+        let message = error.to_string();
+        assert!(!message.is_empty(), "{error:?} prints something");
+        assert!(!message.contains('{'), "{message} interpolates every value");
+    }
+    assert!(
+        ManifestError::UnsupportedSchema {
+            found: 3,
+            expected: 1
+        }
+        .to_string()
+        .contains('3')
+    );
+    assert!(
+        ManifestError::MissingFrame {
+            id: "tree".to_owned()
+        }
+        .to_string()
+        .contains("tree")
+    );
+}

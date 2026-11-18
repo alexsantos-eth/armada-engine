@@ -27,9 +27,7 @@ fn clock_starts_at_eight_and_advances_by_ticks() {
 }
 
 #[test]
-fn day_fraction_wraps_and_overflow_does_not_mutate() {
-    assert_eq!(time_of_day(-(TICKS_PER_HOUR as i64)), 23.0 / 24.0);
-    assert_eq!(time_of_day(TICKS_PER_DAY as i64 / 2), 0.5);
+fn advance_overflow_does_not_mutate() {
     let mut clock = WorldClock::new(u64::MAX);
     assert_eq!(clock.advance(1), Err(ClockOverflow));
     assert_eq!(clock.tick, u64::MAX);
