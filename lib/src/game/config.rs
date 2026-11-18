@@ -23,6 +23,10 @@ pub const PREVIEW_ELEVATION_STEP: f64 = PREVIEW_TILE_WIDTH * SVG_BLOCK_HEIGHT / 
 /// How much of the reference tile a coarse-pointer platform draws: the scene pulled back a
 /// little, so a small touch screen shows more of the world.
 pub const MOBILE_ZOOM: f64 = 0.7;
+/// The zoom the scene starts with, on every platform: how the reference tile metrics
+/// scale. One keeps the reference view; below one the world is pulled back and more of it
+/// fits on screen, above one it is pushed in; a coarse pointer applies `MOBILE_ZOOM` on top.
+pub const DEFAULT_ZOOM: f64 = 0.9;
 /// Most simulation milliseconds a single frame may advance the fixed step. One tick's worth:
 /// the game slows down after a hitch (GC, GPU stall, chunk bake) instead of teleporting the
 /// player forward several ticks in one frame, which is what the eye catches as a jolt.

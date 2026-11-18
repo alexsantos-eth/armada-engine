@@ -22,7 +22,8 @@ use macroquad::prelude::*;
 use crate::assets::sprites::{SpriteAtlas, SpriteDraw};
 use crate::effects::ambient::AmbientParticles;
 use crate::game::config::{
-    CHUNK_RADII, MAKER_CHUNK, MAX_FRAME_MS, PLAYER_SPRITE, PREVIEW_CENTRE, SceneMetrics, WORLD_SEED,
+    CHUNK_RADII, DEFAULT_ZOOM, MAKER_CHUNK, MAX_FRAME_MS, PLAYER_SPRITE, PREVIEW_CENTRE,
+    SceneMetrics, WORLD_SEED,
 };
 use crate::game::ground::ChunkGround;
 use crate::game::scene::{PlayerSprite, player_sheets};
@@ -217,9 +218,10 @@ impl Game {
                 None
             }
         };
+        let metrics = SceneMetrics::for_pointer(coarse_pointer()).scaled(DEFAULT_ZOOM);
         let tile_metrics = match scene.and_then(|scene| scene.zoom) {
-            Some(zoom) => SceneMetrics::for_pointer(coarse_pointer()).scaled(zoom),
-            None => SceneMetrics::for_pointer(coarse_pointer()),
+            Some(zoom) => metrics.scaled(zoom),
+            None => metrics,
         };
         let shadows = masks.filter(|_| material.is_some()).map(|masks| {
             ShadowScene::new(

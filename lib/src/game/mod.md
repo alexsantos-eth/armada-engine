@@ -35,65 +35,67 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Declaración: `pub const PREVIEW_ELEVATION_STEP: f64 = PREVIEW_TILE_WIDTH * SVG_BLOCK_HEIGHT / SVG_TILE_WIDTH;`
 - [`MOBILE_ZOOM`](config.rs#L25) — Fracción de la casilla de referencia que dibuja una plataforma de puntero grueso: la escena alejada un poco para ver más mundo en una pantalla táctil pequeña.
   - Declaración: `pub const MOBILE_ZOOM: f64 = 0.7;`
-- [`MAX_FRAME_MS`](config.rs#L29) — Milisegundos de simulación que un fotograma puede avanzar, uno por tick: tras un bloqueo (GC, GPU, horneado) el juego se ralentiza en vez de saltar varios ticks de golpe.
+- [`DEFAULT_ZOOM`](config.rs#L29) — El zoom por defecto de la escena, en cualquier plataforma: escala las métricas de casilla de referencia (`SceneMetrics`); uno es la vista de referencia, por debajo uno se aleja y cabe más mundo, por encima uno se acerca. Se compone multiplicativamente con `MOBILE_ZOOM` (puntero grueso) y con el `zoom` de una escena guionizada.
+  - Declaración: `pub const DEFAULT_ZOOM: f64 = 1.0;`
+- [`MAX_FRAME_MS`](config.rs#L33) — Milisegundos de simulación que un fotograma puede avanzar, uno por tick: tras un bloqueo (GC, GPU, horneado) el juego se ralentiza en vez de saltar varios ticks de golpe.
   - Declaración: `pub(crate) const MAX_FRAME_MS: f64 = iso::simulation::STEP_MS;`
 
-- [`BAND_BLEED`](config.rs#L73) — Cuánto alcanza cada banda de un sprite multi-casilla más allá de su corte.
+- [`BAND_BLEED`](config.rs#L77) — Cuánto alcanza cada banda de un sprite multi-casilla más allá de su corte.
   - Declaración: `pub const BAND_BLEED: f64 = 0.5;`
-- [`ENTITY_LAYER`](config.rs#L76) — Capa de dibujo de las entidades.
+- [`ENTITY_LAYER`](config.rs#L80) — Capa de dibujo de las entidades.
   - Declaración: `pub const ENTITY_LAYER: i32 = 3;`
-- [`PLAYER_BEHIND_LAYER`](config.rs#L78) — Capa del jugador en la mitad lejana de su casilla.
+- [`PLAYER_BEHIND_LAYER`](config.rs#L82) — Capa del jugador en la mitad lejana de su casilla.
   - Declaración: `pub const PLAYER_BEHIND_LAYER: i32 = 2;`
-- [`PLAYER_FRONT_LAYER`](config.rs#L80) — Capa del jugador en la mitad cercana de su casilla.
+- [`PLAYER_FRONT_LAYER`](config.rs#L84) — Capa del jugador en la mitad cercana de su casilla.
   - Declaración: `pub const PLAYER_FRONT_LAYER: i32 = 4;`
-- [`PLAYER_SCALE`](config.rs#L82) — Tamaño del jugador como fracción del que tiene su arte.
+- [`PLAYER_SCALE`](config.rs#L86) — Tamaño del jugador como fracción del que tiene su arte.
   - Declaración: `pub const PLAYER_SCALE: f64 = 0.75;`
 
-- [`PLAYER_XRAY`](config.rs#L85) — Interruptor de la oclusión X-Ray: con `true` el sprite de una entidad que tapa al jugador se aclara para dejarlo ver; con `false` todo se dibuja sólido, como antes.
+- [`PLAYER_XRAY`](config.rs#L89) — Interruptor de la oclusión X-Ray: con `true` el sprite de una entidad que tapa al jugador se aclara para dejarlo ver; con `false` todo se dibuja sólido, como antes.
   - Declaración: `pub const PLAYER_XRAY: bool = true;`
-- [`PLAYER_SPRITE`](config.rs#L87) — Ruta del manifiesto de la figura quieta del jugador.
+- [`PLAYER_SPRITE`](config.rs#L91) — Ruta del manifiesto de la figura quieta del jugador.
   - Declaración: `pub const PLAYER_SPRITE: &str = "/assets/player/block.png";`
-- [`PLAYER_WALK_SHEET`](config.rs#L90) — Hoja de poses al andar.
+- [`PLAYER_WALK_SHEET`](config.rs#L94) — Hoja de poses al andar.
   - Declaración: `pub const PLAYER_WALK_SHEET: &str = "/assets/player-16/walk.png";`
-- [`PLAYER_IDLE_SHEET`](config.rs#L91) — Hoja de poses en reposo.
+- [`PLAYER_IDLE_SHEET`](config.rs#L95) — Hoja de poses en reposo.
   - Declaración: `pub const PLAYER_IDLE_SHEET: &str = "/assets/player-16/idle.png";`
-- [`PLAYER_JUMP_SHEET`](config.rs#L92) — Hoja de poses de salto.
+- [`PLAYER_JUMP_SHEET`](config.rs#L96) — Hoja de poses de salto.
   - Declaración: `pub const PLAYER_JUMP_SHEET: &str = "/assets/player-16/jump.png";`
-- [`PLAYER_CLIMB_SHEET`](config.rs#L93) — Hoja de poses de escalada.
+- [`PLAYER_CLIMB_SHEET`](config.rs#L97) — Hoja de poses de escalada.
   - Declaración: `pub const PLAYER_CLIMB_SHEET: &str = "/assets/player-16/climb.png";`
-- [`PLAYER_SWIM_SHEET`](config.rs#L94) — Hoja de poses nadando.
+- [`PLAYER_SWIM_SHEET`](config.rs#L98) — Hoja de poses nadando.
   - Declaración: `pub const PLAYER_SWIM_SHEET: &str = "/assets/player-16/swim.png";`
-- [`PLAYER_FLIP_SHEET`](config.rs#L95) — Hoja del mortal del segundo salto.
+- [`PLAYER_FLIP_SHEET`](config.rs#L99) — Hoja del mortal del segundo salto.
   - Declaración: `pub const PLAYER_FLIP_SHEET: &str = "/assets/player-16/flip.png";`
-- [`PLAYER_JETPACK_SHEET`](config.rs#L98) — El jetpack de la espalda: una columna por orientación, recortado donde el cuerpo de pie lo tapa, así que se dibuja sobre cualquier pose.
+- [`PLAYER_JETPACK_SHEET`](config.rs#L102) — El jetpack de la espalda: una columna por orientación, recortado donde el cuerpo de pie lo tapa, así que se dibuja sobre cualquier pose.
   - Declaración: `pub const PLAYER_JETPACK_SHEET: &str = "/assets/player-16/jetpack.png";`
-- [`PLAYER_JETPACK_DEPTH`](config.rs#L100) — Profundidad que se suma al jetpack sobre el cuerpo, para que la mochila se dibuje justo después de él.
+- [`PLAYER_JETPACK_DEPTH`](config.rs#L104) — Profundidad que se suma al jetpack sobre el cuerpo, para que la mochila se dibuje justo después de él.
   - Declaración: `pub const PLAYER_JETPACK_DEPTH: f64 = 0.00001;`
-- [`LAND_SOUND_MIN_IMPACT`](config.rs#L102) — Fuerza mínima del impacto de un aterrizaje, en bloques por tick, para que haga sonido; el volumen crece con la fuerza.
+- [`LAND_SOUND_MIN_IMPACT`](config.rs#L106) — Fuerza mínima del impacto de un aterrizaje, en bloques por tick, para que haga sonido; el volumen crece con la fuerza.
   - Declaración: `pub const LAND_SOUND_MIN_IMPACT: f64 = 0.1;`
-- [`CHUNK_CULL_MARGIN`](config.rs#L104) — Margen extra de visibilidad de chunks alrededor de la pantalla.
+- [`CHUNK_CULL_MARGIN`](config.rs#L108) — Margen extra de visibilidad de chunks alrededor de la pantalla.
   - Declaración: `pub const CHUNK_CULL_MARGIN: f64 = 0.0;`
-- [`CHUNK_RADII`](config.rs#L107) — Radios de carga/predescarga/conservación de este cliente (1 / 1 / 2).
+- [`CHUNK_RADII`](config.rs#L111) — Radios de carga/predescarga/conservación de este cliente (1 / 1 / 2).
   - Declaración: `pub const CHUNK_RADII: ChunkRadii = ChunkRadii { ... };`
-- [`UNBOUNDED_CAMERA_LIMITS`](config.rs#L115) — Límites finitos para el seguimiento exponencial de un mundo sin fronteras: tan anchos que la pinza nunca se aplica; solo los exige `follow_camera`.
+- [`UNBOUNDED_CAMERA_LIMITS`](config.rs#L119) — Límites finitos para el seguimiento exponencial de un mundo sin fronteras: tan anchos que la pinza nunca se aplica; solo los exige `follow_camera`.
   - Declaración: `pub(crate) const UNBOUNDED_CAMERA_LIMITS: iso::camera::CameraLimits = iso::camera::CameraLimits { ... };`
-- [`WORLD_SEED`](config.rs#L127) — La semilla con la que genera el mundo; el valor por defecto del dominio (`iso::terrain::WORLD_SEED`) y los tests la comparten.
+- [`WORLD_SEED`](config.rs#L131) — La semilla con la que genera el mundo; el valor por defecto del dominio (`iso::terrain::WORLD_SEED`) y los tests la comparten.
   - Declaración: `pub const WORLD_SEED: u64 = iso::terrain::WORLD_SEED;`
-- [`PHASE_TRANSITION_SECONDS`](config.rs#L130) — Segundos que dura el cambio de fase de punta a punta: el crossfade del grado y el fade-in de sombras de los chunks rehorneados para la nueva fase.
+- [`PHASE_TRANSITION_SECONDS`](config.rs#L134) — Segundos que dura el cambio de fase de punta a punta: el crossfade del grado y el fade-in de sombras de los chunks rehorneados para la nueva fase.
   - Declaración: `pub const PHASE_TRANSITION_SECONDS: f32 = 0.6;`
 
 #### Tipos
 
-- [`SceneMetrics`](config.rs#L33) — Las métricas de la casilla de una escena, en píxeles de pantalla: casilla y nivel de elevación.
+- [`SceneMetrics`](config.rs#L37) — Las métricas de la casilla de una escena, en píxeles de pantalla: casilla y nivel de elevación.
   - Firma: `pub struct SceneMetrics { pub tile_width: f64, pub tile_height: f64, pub elevation_step: f64 }`
 
 #### Funciones y métodos
 
-- [`SceneMetrics::REFERENCE`](config.rs#L41) — Las métricas de referencia que dibuja una plataforma de puntero fino (escritorio).
+- [`SceneMetrics::REFERENCE`](config.rs#L45) — Las métricas de referencia que dibuja una plataforma de puntero fino (escritorio).
   - Declaración: `pub const REFERENCE: Self = Self { ... };`
-- [`SceneMetrics::for_pointer`](config.rs#L49) — Las métricas para `coarse`: la referencia en escritorio, la escena alejada un poco (`MOBILE_ZOOM`) en plataformas táctiles.
+- [`SceneMetrics::for_pointer`](config.rs#L53) — Las métricas para `coarse`: la referencia en escritorio, la escena alejada un poco (`MOBILE_ZOOM`) en plataformas táctiles.
   - Firma: `pub fn for_pointer(coarse: bool) -> Self {`
-- [`SceneMetrics::scaled`](config.rs#L59) — Estas métricas a un zoom dado: por debajo de uno la escena se aleja y cabe más mundo, por encima se acerca. Lo usa el `zoom` de una escena guionizada; un zoom que no sea un número positivo no cambia nada.
+- [`SceneMetrics::scaled`](config.rs#L63) — Estas métricas a un zoom dado: por debajo de uno la escena se aleja y cabe más mundo, por encima se acerca. Lo usa el `zoom` de una escena guionizada; un zoom que no sea un número positivo no cambia nada.
   - Firma: `pub fn scaled(self, zoom: f64) -> Self {`
 
 ### `ground.rs`
@@ -165,13 +167,13 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Tipos
 
-- [`Game`](state.rs#L63) — El juego compuesto: manager, archivo de guardado, jugador, cámara, stepper, reloj del mundo (`clock`), override de fase (`phase_override`), arte, sombras, polvo, cola de dibujo, servicios (audio, UI, perf), los controles táctiles (`touch`), las métricas de casilla (`tile_metrics`), el jetpack (`jetpack`, si lo lleva puesto, y `jetpack_allowed`, si esta ruta deja ponérselo) y la sesión de edición (`maker`, solo en la ruta del editor).
+- [`Game`](state.rs#L64) — El juego compuesto: manager, archivo de guardado, jugador, cámara, stepper, reloj del mundo (`clock`), override de fase (`phase_override`), arte, sombras, polvo, cola de dibujo, servicios (audio, UI, perf), los controles táctiles (`touch`), las métricas de casilla (`tile_metrics`), el jetpack (`jetpack`, si lo lleva puesto, y `jetpack_allowed`, si esta ruta deja ponérselo) y la sesión de edición (`maker`, solo en la ruta del editor).
   - Audio: `MacroquadAudio` carga los ocho WAVs de `content/sounds/` al arrancar; `last_motion` es la memoria de una pasada por fotograma para los bucles.
   - Firma: `pub(crate) struct Game { ... }`
 
 #### Funciones y métodos
 
-- [`Game::new`](state.rs#L132) — Arranque: carga catálogo, manifiesto y sonidos, restaura el guardado si existe, genera la zona de aparición y encuadra al jugador. En la ruta del editor no toca el guardado y, en vez de generar, inyecta `MAKER_CHUNK` plano y abre la sesión de edición. Una escena guionizada (`scene`) decide además semilla, centro, zoom y si el mundo es plano o procedural. Los fallos de assets degradan a avisos, nunca entran en pánico.
+- [`Game::new`](state.rs#L143) — Arranque: carga catálogo, manifiesto y sonidos, restaura el guardado si existe, genera la zona de aparición y encuadra al jugador. En la ruta del editor no toca el guardado y, en vez de generar, inyecta `MAKER_CHUNK` plano y abre la sesión de edición. Una escena guionizada (`scene`) decide además semilla, centro, zoom y si el mundo es plano o procedural. Los fallos de assets degradan a avisos, nunca entran en pánico.
   - Firma: `pub(crate) async fn new(route: Route, scene: Option<&iso::testbed::Scene>) -> Self {`
   - Firma: `pub(crate) async fn new(route: Route) -> Self {`
 
@@ -226,5 +228,5 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones internas
 
-- [`client_path`](state.rs#L52) — De dónde se pide el manifiesto, según la plataforma (dos definiciones con `#[cfg]`): `./` en WASM; en nativo, la ruta tal cual si existe junto al CWD (desarrollo), y desde `Contents/Resources` del bundle cuando corre dentro de un `.app` (`crate::app`).
+- [`client_path`](state.rs#L53) — De dónde se pide el manifiesto, según la plataforma (dos definiciones con `#[cfg]`): `./` en WASM; en nativo, la ruta tal cual si existe junto al CWD (desarrollo), y desde `Contents/Resources` del bundle cuando corre dentro de un `.app` (`crate::app`).
   - Firma: `fn client_path(path: &str) -> String {`

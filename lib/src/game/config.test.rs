@@ -33,6 +33,21 @@ fn the_mobile_zoom_is_only_a_little_pull_back() {
 }
 
 #[test]
+fn the_default_zoom_scales_the_scene_on_every_platform() {
+    const {
+        assert!(DEFAULT_ZOOM.is_finite());
+        assert!(DEFAULT_ZOOM > 0.0);
+    }
+    let reference = SceneMetrics::REFERENCE.scaled(DEFAULT_ZOOM);
+    assert_eq!(reference.tile_width, PREVIEW_TILE_WIDTH * DEFAULT_ZOOM);
+    let coarse = SceneMetrics::for_pointer(true).scaled(DEFAULT_ZOOM);
+    assert!(
+        (coarse.tile_width - PREVIEW_TILE_WIDTH * MOBILE_ZOOM * DEFAULT_ZOOM).abs() < 1e-9,
+        "a coarse pointer applies MOBILE_ZOOM and DEFAULT_ZOOM on top of each other"
+    );
+}
+
+#[test]
 fn the_phase_transition_is_positive() {
     const { assert!(PHASE_TRANSITION_SECONDS > 0.0) };
 }

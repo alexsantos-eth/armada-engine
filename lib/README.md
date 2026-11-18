@@ -41,7 +41,7 @@ muestran en dispositivos de puntero grueso o tras el primer toque (`/` incluido,
 entrada de juego); la build web detecta el puntero grueso con el import FFI `iso_pointer_coarse`.
 En esas mismas plataformas la escena se dibuja alejada un poco (la casilla al 70 % de la
 referencia, `MOBILE_ZOOM` en `src/game/config.rs`), para ver más mundo en una pantalla táctil
-pequeña; la build nativa conserva la casilla de referencia.
+pequeña; la build nativa conserva la casilla de referencia. El zoom por defecto de la escena, en cualquier plataforma, lo fija `DEFAULT_ZOOM` en `src/game/config.rs`: por debajo de uno la escena se aleja y cabe más mundo, por encima uno se acerca.
 El HUD sustituye la línea de ayuda por la de los controles cuando están visibles.
 
 ## Editar un mundo
