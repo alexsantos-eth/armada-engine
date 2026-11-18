@@ -34,3 +34,13 @@ fn neighbours_do_not_all_look_alike() {
     assert!((1_001..1_010).any(|id| npc_look(id).tint != first.tint));
     assert!((1_001..1_010).any(|id| (npc_look(id).scale - first.scale).abs() > 0.02));
 }
+
+#[test]
+fn a_crab_takes_a_shell_and_a_size_of_its_own() {
+    for id in 0..64 {
+        let look = kind_look(NpcKind::Crab, id);
+        assert!(CRAB_TINTS.contains(&look.tint));
+        assert!(look.scale >= CRAB_SCALE_RANGE.0 && look.scale <= CRAB_SCALE_RANGE.1);
+        assert_eq!(kind_look(NpcKind::Villager, id), npc_look(id));
+    }
+}

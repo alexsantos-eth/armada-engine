@@ -15,6 +15,8 @@ Todo es determinista: quién nace sale de la semilla, del chunk y de su suelo (`
 
 Cada personaje tiene además un **aspecto** (`npc_look`): un tinte de una paleta de ocho pelajes y un tamaño entre 0,8 y 1,15 veces el del jugador. Sale de su id con un flujo aparte del que usa para deambular, así que no se guarda nada y vuelve con el mismo aspecto.
 
+Hay dos clases de personaje (`NpcKind`). El **aldeano** hace todo lo de arriba. El **cangrejo** (`NpcKind::Crab`) nace en la arena seca de la playa (`spawn_crabs`, hasta `CRABS_PER_CHUNK` por chunk, con un flujo propio para no cambiar quién más nace, y su id lleva `CRAB_ID_BIT` para no coincidir con el de un aldeano de la misma casilla). Corretea más rápido y con correa más corta (`NpcKind::gait`), **no escala ni toma gradas**: solo pisa suelo de su nivel o uno más bajo (cae como cualquiera). Si a mitad de paseo se topa con un bloque más alto, el agua o su correa, da la vuelta (`step_npc`). Camina de lado: mira a través de su camino (`facing_for`), del lado al que ya miraba, o hacia la cámara si los dos lados empatan. Su aspecto (`kind_look`) es un tono de caparazón y un tamaño propios.
+
 No dibuja nada ni conoce sprites: la vista vive en el cliente (`src/npc`).
 
 ## Catálogo de API pública

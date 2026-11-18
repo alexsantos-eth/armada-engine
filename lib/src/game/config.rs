@@ -100,6 +100,12 @@ pub const PLAYER_FLIP_SHEET: &str = "/assets/player-16/flip.png";
 /// The jetpack on the player's back: one column per facing, cut where the standing body hides
 /// it, so it is drawn over whatever pose the body is in.
 pub const PLAYER_JETPACK_SHEET: &str = "/assets/player-16/jetpack.png";
+/// The beach crab's sheets, in the manifest: standing about and scuttling sideways. Its cells
+/// are clay renders at the world's own scale, so the crab is drawn at its sheet's size.
+pub const CRAB_WALK_SHEET: &str = "/assets/crab/walk.png";
+pub const CRAB_IDLE_SHEET: &str = "/assets/crab/idle.png";
+/// How wide a crab's ground shadow is against the player's.
+pub const CRAB_SHADOW_SCALE: f64 = 0.9;
 /// Depth added to the jetpack over the body, so the pack draws right after it.
 pub const PLAYER_JETPACK_DEPTH: f64 = 0.00001;
 /// How hard a landing must hit, in blocks per tick of impact, before it makes a sound.

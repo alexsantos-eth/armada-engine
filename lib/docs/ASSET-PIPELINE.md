@@ -202,6 +202,19 @@ Las hojas del jugador son render 3D del modelo, no dibujo ni voxel:
 - `pack_atlas` mete cada celda en `content/images/player-16_<hoja>.png` (textura propia por hoja, no el
   atlas compartido), con la rejilla descrita en el manifiesto, esquema 2: `facing * columns + pose`.
 
+### El cangrejo (NPC de playa)
+
+El cangrejo también va en hojas, pero por la ruta voxel: `artifacts/vox/crab/crab.py` lo arma
+con cajas del kit (`vox_prefabs.box`, paleta del kit, sin suelo propio), escribe cada pose como
+`.vox` en `artifacts/vox/models/crab/` y, con `--render` (Blender o el módulo `bpy`), renderiza
+cada pose en las 16 direcciones con el acabado clay de `vox_render.py`, girando el modelo sobre
+su pie con el sol fijo. Salen `lib/painted/crab_{idle,walk}.png` y sus rejillas
+`lib/assets/crab/{idle,walk}.json`: `idle` (8 poses, pinzas y respiración) y `walk` (columna 0
+de pie y dos zancadas de 4 poses: el cangrejo corretea de lado). `rasterize.py` corta cualquier
+`painted/<carpeta>_<hoja>.png` que tenga su `.json`, y `pack_atlas` da a cada hoja su textura
+(`content/images/crab_<hoja>.png`). Se dibuja a la escala de su hoja (no a `PLAYER_SCALE`).
+Tarda ~2 min en 4 núcleos.
+
 ## 7. Coste
 
 Cero. La ruta voxel no llama a ningún modelo de imagen. El posprocesado tampoco: ajustar fuerza,

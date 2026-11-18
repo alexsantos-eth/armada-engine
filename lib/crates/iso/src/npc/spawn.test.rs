@@ -53,3 +53,37 @@ fn the_same_seed_and_chunk_give_the_same_characters() {
     assert_eq!(ids(9, HOME), ids(9, HOME));
     assert_ne!(ids(9, HOME), ids(10, HOME));
 }
+
+fn beach() -> impl PlayerGround {
+    let row = ".".repeat(CHUNK_SIZE as usize);
+    let rows: Vec<&str> = (0..CHUNK_SIZE).map(|_| row.as_str()).collect();
+    ground_from(&rows)
+}
+
+#[test]
+fn crabs_are_born_on_the_sand_only() {
+    let born = spawn_crabs(1, HOME, &beach());
+    assert!(!born.is_empty() && born.len() <= CRABS_PER_CHUNK);
+    for crab in &born {
+        assert_eq!(crab.kind, NpcKind::Crab);
+        assert_ne!(crab.id & CRAB_ID_BIT, 0);
+        assert_eq!(to_chunk(crab.home), HOME);
+    }
+    assert!(spawn_crabs(1, HOME, &flat()).is_empty());
+}
+
+#[test]
+fn crabs_do_not_change_who_else_is_born() {
+    let villagers = |ground: &dyn Fn() -> Vec<Npc>| -> Vec<u64> {
+        ground()
+            .iter()
+            .filter(|npc| npc.kind == NpcKind::Villager)
+            .map(|npc| npc.id)
+            .collect()
+    };
+    let on_grass = villagers(&|| spawn_npcs(3, HOME, &flat(), |_, _| true));
+    let on_sand = villagers(&|| spawn_npcs(3, HOME, &beach(), |_, _| true));
+    assert_eq!(on_grass, on_sand);
+    let all = spawn_npcs(3, HOME, &beach(), |_, _| true);
+    assert!(all.iter().any(|npc| npc.kind == NpcKind::Crab));
+}
