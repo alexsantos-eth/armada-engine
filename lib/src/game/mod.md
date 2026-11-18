@@ -150,7 +150,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `pub(crate) fn frame_projection(camera: Camera, level: f64, width: f32, height: f32, metrics: SceneMetrics) -> ProjectionConfig {`
 - [`draw_clouds`](scene.rs#L267) — Dibuja las sombras de nubes sobre la escena terminada, bajo el HUD.
   - Firma: `pub(crate) fn draw_clouds(&mut self, frame_ms: f64, projection: &ProjectionConfig) {`
-- [`collect_scene`](scene.rs#L280) — Los sprites del fotograma: terreno y sombras horneadas, entidades y reflejos, jugador y polvo. Reutiliza la cola de dibujo.
+- [`collect_scene`](scene.rs#L280) — Los sprites del fotograma: terreno y sombras horneadas, entidades y reflejos, jugador y polvo. Reutiliza la cola de dibujo; las entidades con `drawUnderPlayer` (las rocas pequeñas) van a `ground_props`, que se vacía y se dibuja antes que `draws`.
   - Firma: `pub(crate) fn collect_scene(&mut self, view: &FrameView) -> SceneStats {`
 
 #### Tipos
@@ -217,7 +217,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `fn screen_point(point: GridPoint, projection: ProjectionConfig) -> Vec2 {`
 - [`draw_grid`](scene.rs#L216) — La rejilla de depuración que se dibuja cuando el terreno está oculto (T).
   - Firma: `fn draw_grid(projection: ProjectionConfig, centre: WorldCoord) {`
-- [`collect_world`](scene.rs#L343) — Terreno y sombras horneadas de los chunks visibles, luego entidades y sus reflejos. Devuelve cuántos chunks se dibujaron.
+- [`collect_world`](scene.rs#L343) — Terreno y sombras horneadas de los chunks visibles, luego entidades y sus reflejos (las marcadas como `drawUnderPlayer` a la cola `ground_props`, que el bucle dibuja bajo todo lo demás). Devuelve cuántos chunks se dibujaron.
   - Firma: `fn collect_world(&mut self, view: &FrameView) -> usize {`
 - [`collect_player`](scene.rs#L560) — El sprite del jugador: clave de profundidad, pose, arte o figura quieta, el jetpack sobre el cuerpo cuando lo lleva puesto (su propia hoja y su propia tinta, un pelo por delante en profundidad; nadando no se dibuja), su reflejo y la sombra que le cae encima. Devuelve cuánto se movió.
   - Firma: `fn collect_player(&mut self, view: &FrameView) -> f64 {`

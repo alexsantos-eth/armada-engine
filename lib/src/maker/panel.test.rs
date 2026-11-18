@@ -17,6 +17,7 @@ fn catalog(ids: &[&str]) -> EntityCatalog {
                     reflection: None,
                     color_replacements: None,
                     sway: None,
+                    draw_under_player: false,
                     contact_shadow: None,
                 },
                 shape: EntityShape {

@@ -33,6 +33,7 @@ fn blueprint(id: &str, length: i32, surfaces: Vec<TerrainMaterial>) -> EntityBlu
             reflection: None,
             color_replacements: None,
             sway: None,
+            draw_under_player: false,
             contact_shadow: None,
         },
         shape: crate::entities::blueprint::EntityShape {
@@ -485,6 +486,7 @@ mod by_hand {
                 reflection: None,
                 color_replacements: None,
                 sway: None,
+                draw_under_player: false,
                 contact_shadow: None,
             },
             shape: EntityShape {
@@ -702,10 +704,7 @@ fn the_generated_pass_anchors_on_an_additional_surface() {
         .flat_map(|x| (-8..8).map(move |y| column(x, y, TerrainMaterial::Path, 0)))
         .collect();
     let catalog = catalog(vec![rock]);
-    let rules = PlacementRules {
-        gap: 0,
-        density: 1,
-    };
+    let rules = PlacementRules { gap: 0, density: 1 };
     let placed = place_entities_with_biomes(&columns, &catalog, rules, None);
     assert!(
         !placed.entities.is_empty(),
@@ -718,7 +717,11 @@ fn the_generated_pass_anchors_on_an_additional_surface() {
 
 #[test]
 fn an_additional_surface_does_not_replace_the_footprint_requirements() {
-    let mut rock = blueprint("rock_small", 2, vec![TerrainMaterial::Grass, TerrainMaterial::Grass]);
+    let mut rock = blueprint(
+        "rock_small",
+        2,
+        vec![TerrainMaterial::Grass, TerrainMaterial::Grass],
+    );
     rock.shape.collision = vec![0.0, 0.0];
     rock.placement.additional_surfaces = vec![TerrainMaterial::Path];
     let columns = vec![

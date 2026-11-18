@@ -41,6 +41,8 @@ pub struct EntityAsset {
         rename = "contactShadow"
     )]
     pub contact_shadow: Option<bool>,
+    #[serde(default, rename = "drawUnderPlayer")]
+    pub draw_under_player: bool,
 }
 
 /// Physical footprint of an entity: one collision size per occupied cell.
@@ -57,7 +59,11 @@ pub struct EntityShape {
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct EntityPlacement {
     pub surfaces: Vec<TerrainMaterial>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty", rename = "additionalSurfaces")]
+    #[serde(
+        default,
+        skip_serializing_if = "Vec::is_empty",
+        rename = "additionalSurfaces"
+    )]
     pub additional_surfaces: Vec<TerrainMaterial>,
     #[serde(default, rename = "roadAccess")]
     pub road_access: bool,

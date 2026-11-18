@@ -21,7 +21,11 @@ fn path_chunk(side: i32) -> Vec<TerrainColumn> {
         .collect()
 }
 
-fn rock(id: &str, collision: Vec<f64>, additional: Vec<TerrainMaterial>) -> crate::entities::blueprint::EntityBlueprint {
+fn rock(
+    id: &str,
+    collision: Vec<f64>,
+    additional: Vec<TerrainMaterial>,
+) -> crate::entities::blueprint::EntityBlueprint {
     crate::entities::blueprint::EntityBlueprint {
         id: id.to_owned(),
         asset: EntityAsset {
@@ -29,6 +33,7 @@ fn rock(id: &str, collision: Vec<f64>, additional: Vec<TerrainMaterial>) -> crat
             reflection: None,
             color_replacements: None,
             sway: None,
+            draw_under_player: false,
             contact_shadow: None,
         },
         shape: EntityShape {
@@ -62,16 +67,11 @@ fn the_decor_scatters_on_the_additional_surfaces_after_the_roads_carve() {
     )]);
     let mut placed = SpatialIndex::new();
     let decor = place_decor(&columns, &catalog, &mut placed);
-    assert!(
-        !decor.is_empty(),
-        "some rock must land on the carved path"
-    );
+    assert!(!decor.is_empty(), "some rock must land on the carved path");
     for entity in &decor {
         let column = columns
             .iter()
-            .find(|column| {
-                column.coord.x == entity.x() && column.coord.y == entity.y()
-            })
+            .find(|column| column.coord.x == entity.x() && column.coord.y == entity.y())
             .expect("the anchor is inside the chunk");
         assert_eq!(column.surface, TerrainMaterial::Path);
         assert_eq!(column.elevation, 2);
@@ -89,6 +89,7 @@ fn the_decor_never_covers_what_already_stands() {
             reflection: None,
             color_replacements: None,
             sway: None,
+            draw_under_player: false,
             contact_shadow: None,
         },
         shape: EntityShape {
@@ -115,7 +116,9 @@ fn the_decor_never_covers_what_already_stands() {
         .expect("the house stands");
     let decor = place_decor(&columns, &catalog, &mut placed);
     assert!(
-        decor.iter().all(|entity| (entity.x(), entity.y()) != (8, 8)),
+        decor
+            .iter()
+            .all(|entity| (entity.x(), entity.y()) != (8, 8)),
         "no rock may take the house's cell"
     );
 }
@@ -143,8 +146,14 @@ fn the_decor_is_a_deterministic_function_of_the_columns() {
     )]);
     let first = place_decor(&columns, &catalog, &mut SpatialIndex::new());
     let second = place_decor(&columns, &catalog, &mut SpatialIndex::new());
-    let ids: Vec<_> = first.iter().map(|entity| (entity.x(), entity.y())).collect();
-    let ids_again: Vec<_> = second.iter().map(|entity| (entity.x(), entity.y())).collect();
+    let ids: Vec<_> = first
+        .iter()
+        .map(|entity| (entity.x(), entity.y()))
+        .collect();
+    let ids_again: Vec<_> = second
+        .iter()
+        .map(|entity| (entity.x(), entity.y()))
+        .collect();
     assert_eq!(ids, ids_again);
 }
 

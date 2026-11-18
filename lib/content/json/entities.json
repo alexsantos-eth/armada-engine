@@ -1117,6 +1117,7 @@
     {
       "id": "rock_small",
       "asset": {
+        "drawUnderPlayer": true,
         "sprite": "/assets/rock/block.png"
       },
       "shape": {
@@ -1142,6 +1143,7 @@
     {
       "id": "rock_small_2",
       "asset": {
+        "drawUnderPlayer": true,
         "sprite": "/assets/rock/block_2.png"
       },
       "shape": {
@@ -1167,6 +1169,7 @@
     {
       "id": "rock_small_3",
       "asset": {
+        "drawUnderPlayer": true,
         "sprite": "/assets/rock/block_3.png"
       },
       "shape": {

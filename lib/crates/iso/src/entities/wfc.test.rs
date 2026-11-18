@@ -13,6 +13,7 @@ fn entities() -> EntityCatalog {
             reflection: None,
             color_replacements: None,
             sway: None,
+            draw_under_player: false,
             contact_shadow: None,
         },
         shape: EntityShape {
@@ -375,6 +376,7 @@ fn a_pier_grows_at_the_water_edge() {
                 reflection: None,
                 color_replacements: None,
                 sway: None,
+                draw_under_player: false,
                 contact_shadow: None,
             },
             shape: EntityShape {
@@ -678,6 +680,7 @@ fn a_blueprint_grows_on_an_additional_surface() {
                 reflection: None,
                 color_replacements: None,
                 sway: None,
+                draw_under_player: false,
                 contact_shadow: None,
             },
             shape: EntityShape {
@@ -703,9 +706,7 @@ fn a_blueprint_grows_on_an_additional_surface() {
     let wfc = parse_wfc(json, &entities, None).expect("valid wfc content");
     let claimed = vec![false];
     let columns: Vec<_> = (0..24)
-        .flat_map(|x| {
-            (0..24).map(move |y| column(x, y, TerrainMaterial::Path, 0))
-        })
+        .flat_map(|x| (0..24).map(move |y| column(x, y, TerrainMaterial::Path, 0)))
         .collect();
     let grown = solve_chunk(
         &columns,
