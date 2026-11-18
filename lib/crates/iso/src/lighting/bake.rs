@@ -2,6 +2,8 @@
 
 use super::shadow::{BoxMetrics, ShadowProjection, lift_reach, silhouette_matrix};
 use super::terrain::{HeightField, Horizon};
+use super::volume::ShadowVolume;
+use std::rc::Rc;
 
 /// Texels of a shadow map per tile of world.
 pub const SHADOW_MAP_PIXELS_PER_TILE: u32 = 36;
@@ -80,6 +82,21 @@ pub struct ShadowCaster {
     /// [`iso::assets::footprint_band`] cuts for drawing. Without it every cell would cast the
     /// whole sprite and the shadow would come out as many copies of the entity.
     pub crop: Option<(f64, f64)>,
+    /// What the ground bake lays for it: the silhouette, or the entity's solid volume.
+    pub cast: GroundCast,
+}
+
+/// How a caster lays its shadow on the ground.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GroundCast {
+    /// Its silhouette, stood up facing the sun: what an entity without a volume casts.
+    Silhouette,
+    /// The volume the client's index names, standing on this caster's foot. Only the anchor
+    /// cell of an entity carries it; the volume already covers the whole footprint.
+    Volume(u32),
+    /// Nothing on the ground: another cell of an entity whose anchor lays its volume. The
+    /// caster still shades the entities and faces it falls on, which read silhouettes.
+    Skip,
 }
 
 /// A baked map: `alpha` is one byte of coverage per texel, row by row from the area's corner.
@@ -182,6 +199,18 @@ impl Silhouette<'_> {
 /// The silhouette a caster's index names, or `None` for one the client has no artwork for.
 pub type SilhouetteOf<'a, 'plane> = &'a dyn Fn(u32) -> Option<Silhouette<'plane>>;
 
+/// The stamp a [`GroundCast::Volume`] index names under the light being baked, or `None` for
+/// one the client does not have. The client lays it once per light with [`volume_stamp`] and
+/// keeps it.
+pub type StampOf<'a> = &'a dyn Fn(u32) -> Option<Rc<ShadowStamp>>;
+
+/// What a caster's index resolves to: its silhouette and, for [`GroundCast::Volume`], its stamp.
+#[derive(Clone, Copy)]
+pub struct CasterShapes<'a, 'plane> {
+    pub silhouette_of: SilhouetteOf<'a, 'plane>,
+    pub stamp_of: StampOf<'a>,
+}
+
 /// Bakes `casters` into `map`, then blurs it.
 pub fn bake_ground_shadows(
     map: &mut ShadowMap,
@@ -190,10 +219,10 @@ pub fn bake_ground_shadows(
     light: &ShadowProjection,
     metrics: BoxMetrics,
     level_at: ReceivingLevel<'_>,
-    silhouette_of: SilhouetteOf<'_, '_>,
+    shapes: CasterShapes<'_, '_>,
 ) {
     let mut bake = GroundBake::new(map, level_at);
-    while bake.step(map, casters, ground, light, metrics, silhouette_of) {}
+    while bake.step(map, casters, ground, light, metrics, shapes) {}
 }
 
 /// One chunk's ground bake, carried across frames a piece at a time.
@@ -247,7 +276,7 @@ impl GroundBake {
         ground: Option<&HeightField>,
         light: &ShadowProjection,
         metrics: BoxMetrics,
-        silhouette_of: SilhouetteOf<'_, '_>,
+        shapes: CasterShapes<'_, '_>,
     ) -> bool {
         let BoxMetrics {
             tile_width,
@@ -257,15 +286,25 @@ impl GroundBake {
             Stage::Casters => {
                 if let Some(caster) = casters.get(self.next_caster) {
                     self.next_caster += 1;
-                    lay_caster(
-                        map,
-                        caster,
-                        light,
-                        tile_width,
-                        box_height,
-                        &mut self.levels,
-                        silhouette_of,
-                    );
+                    let stamp = match caster.cast {
+                        GroundCast::Volume(index) => (shapes.stamp_of)(index),
+                        GroundCast::Silhouette | GroundCast::Skip => None,
+                    };
+                    match (caster.cast, stamp) {
+                        (GroundCast::Skip, _) => {}
+                        (_, Some(stamp)) => {
+                            lay_stamp(map, caster, &stamp, light, metrics, &self.levels)
+                        }
+                        (_, None) => lay_caster(
+                            map,
+                            caster,
+                            light,
+                            tile_width,
+                            box_height,
+                            &mut self.levels,
+                            shapes.silhouette_of,
+                        ),
+                    }
                     self.stage = Stage::Casters;
                 } else {
                     self.stage = Stage::Horizon(0);
@@ -696,6 +735,207 @@ fn lay_caster(
                 }
             }
         }
+    }
+}
+
+/// An entity's ground shadow for one light, laid once on flat ground at its own level and kept,
+/// so that every bake after that only copies it into its map.
+///
+/// `area` is in tiles relative to the cell the entity stands on: the stamp's texel `(0, 0)` is
+/// the corner of tile `(area.min_x, area.min_y)` of that cell's neighbourhood.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ShadowStamp {
+    pub area: MapArea,
+    pub pixels_per_tile: u32,
+    pub width: u32,
+    pub height: u32,
+    pub alpha: Vec<u8>,
+}
+
+/// Lays `volume`'s shadow on flat ground at its own level, as a stamp at `pixels_per_tile`.
+///
+/// A run of solid height over a square of ground throws that square swept along the light,
+/// from where the run's low end lands to where its top lands.
+pub fn volume_stamp(
+    volume: &ShadowVolume,
+    light: &ShadowProjection,
+    metrics: BoxMetrics,
+    pixels_per_tile: u32,
+) -> ShadowStamp {
+    let BoxMetrics {
+        tile_width,
+        box_height,
+    } = metrics;
+    let foot = (0.5, 0.5);
+    let reach = volume.shadow_box(foot, 0.0, light, (tile_width, box_height));
+    let area = MapArea {
+        min_x: reach.0.floor() as i32,
+        min_y: reach.1.floor() as i32,
+        max_x: (reach.2.ceil() as i32 - 1).max(reach.0.floor() as i32),
+        max_y: (reach.3.ceil() as i32 - 1).max(reach.1.floor() as i32),
+    };
+    let mut map = ShadowMap::new(area, pixels_per_tile);
+    let per_tile = f64::from(pixels_per_tile);
+    let half = volume.column / 2.0 * per_tile;
+    for column in &volume.columns {
+        let centre = (
+            (foot.0 + column.x - f64::from(area.min_x)) * per_tile,
+            (foot.1 + column.y - f64::from(area.min_y)) * per_tile,
+        );
+        for &(low, high) in column.runs() {
+            let near = lift_reach(light, low, tile_width, box_height) * per_tile;
+            let far = lift_reach(light, high, tile_width, box_height) * per_tile;
+            stamp_swept_square(
+                &mut map,
+                (centre.0 + near * light.dir_x, centre.1 + near * light.dir_y),
+                half,
+                ((far - near) * light.dir_x, (far - near) * light.dir_y),
+            );
+        }
+    }
+    ShadowStamp {
+        area,
+        pixels_per_tile,
+        width: map.width,
+        height: map.height,
+        alpha: map.alpha,
+    }
+}
+
+/// Copies an entity's stamp into the map, once per level of ground its shadow can touch.
+///
+/// The stamp was laid on flat ground at the entity's own level. Where the ground sits lower the
+/// whole stamp slides further down the light by the reach of the drop, and where it sits higher
+/// it slides back, rounded to whole texels; each pass writes only the texels of the columns at
+/// its level. It is an approximation: a shadow falling down a step keeps its shape instead of
+/// stretching, and the part of the entity a raised column buries still throws its shadow there.
+fn lay_stamp(
+    map: &mut ShadowMap,
+    caster: &ShadowCaster,
+    stamp: &ShadowStamp,
+    light: &ShadowProjection,
+    metrics: BoxMetrics,
+    levels: &LevelCache,
+) {
+    if !levels.any() || stamp.pixels_per_tile != map.pixels_per_tile || stamp.alpha.is_empty() {
+        return;
+    }
+    let BoxMetrics {
+        tile_width,
+        box_height,
+    } = metrics;
+    let reach = |lift: f64| lift_reach(light, lift, tile_width, box_height);
+    let cell = (caster.foot.0.floor() as i32, caster.foot.1.floor() as i32);
+    let tiles = (
+        f64::from(cell.0 + stamp.area.min_x),
+        f64::from(cell.1 + stamp.area.min_y),
+        f64::from(cell.0 + stamp.area.max_x + 1),
+        f64::from(cell.1 + stamp.area.max_y + 1),
+    );
+    let slid = |lift: f64| {
+        let r = reach(lift);
+        (
+            tiles.0 + r * light.dir_x,
+            tiles.1 + r * light.dir_y,
+            tiles.2 + r * light.dir_x,
+            tiles.3 + r * light.dir_y,
+        )
+    };
+    let over_all_lifts = union(
+        slid(caster.elevation - levels.highest),
+        slid(caster.elevation - levels.lowest),
+    );
+    let Some((from_x, from_y, to_x, to_y)) = columns_touched(map.area, over_all_lifts) else {
+        return;
+    };
+    let mut touched: Vec<f64> = Vec::new();
+    for y in from_y..=to_y {
+        for x in from_x..=to_x {
+            if let Some(level) = levels.at(x, y)
+                && !touched.contains(&level)
+            {
+                touched.push(level);
+            }
+        }
+    }
+    let per_tile = i64::from(map.pixels_per_tile);
+    let only = touched.len() == 1;
+    for &level in &touched {
+        let r = reach(caster.elevation - level) * per_tile as f64;
+        let origin = (
+            i64::from(cell.0 + stamp.area.min_x - map.area.min_x) * per_tile
+                + (r * light.dir_x).round() as i64,
+            i64::from(cell.1 + stamp.area.min_y - map.area.min_y) * per_tile
+                + (r * light.dir_y).round() as i64,
+        );
+        let col_from = (-origin.0).max(0);
+        let col_to = (i64::from(map.width) - origin.0).min(i64::from(stamp.width));
+        if col_from >= col_to {
+            continue;
+        }
+        for row in 0..i64::from(stamp.height) {
+            let y = origin.1 + row;
+            if y < 0 || y >= i64::from(map.height) {
+                continue;
+            }
+            let source =
+                &stamp.alpha[(row * i64::from(stamp.width)) as usize..][..stamp.width as usize];
+            let line = y as usize * map.width as usize;
+            let tile_y = map.area.min_y + (y / per_tile) as i32;
+            for col in col_from..col_to {
+                let value = source[col as usize];
+                if value == 0 {
+                    continue;
+                }
+                let x = origin.0 + col;
+                if !only && levels.at(map.area.min_x + (x / per_tile) as i32, tile_y) != Some(level)
+                {
+                    continue;
+                }
+                let texel = &mut map.alpha[line + x as usize];
+                if value > *texel {
+                    *texel = value;
+                }
+            }
+        }
+    }
+}
+
+/// Fills the texels whose centres a square of half side `half`, centred on `start` and slid
+/// along `sweep` (all in map texels), passes over.
+fn stamp_swept_square(map: &mut ShadowMap, start: (f64, f64), half: f64, sweep: (f64, f64)) {
+    let (width, height) = (f64::from(map.width), f64::from(map.height));
+    let top = start.1 - half + sweep.1.min(0.0);
+    let bottom = start.1 + half + sweep.1.max(0.0);
+    let row_from = (top - 0.5).ceil().max(0.0);
+    let row_to = (bottom - 0.5).floor().min(height - 1.0);
+    if row_to < row_from {
+        return;
+    }
+    let stride = map.width as usize;
+    for row in row_from as u32..=row_to as u32 {
+        let centre_y = f64::from(row) + 0.5;
+        let (t0, t1) = if sweep.1 == 0.0 {
+            if (centre_y - start.1).abs() > half {
+                continue;
+            }
+            (0.0, 1.0)
+        } else {
+            let a = (centre_y - half - start.1) / sweep.1;
+            let b = (centre_y + half - start.1) / sweep.1;
+            (a.min(b).max(0.0), a.max(b).min(1.0))
+        };
+        if t0 > t1 {
+            continue;
+        }
+        let (a, b) = (t0 * sweep.0, t1 * sweep.0);
+        let col_from = (start.0 - half + a.min(b) - 0.5).ceil().max(0.0);
+        let col_to = (start.0 + half + a.max(b) - 0.5).floor().min(width - 1.0);
+        if col_to < col_from {
+            continue;
+        }
+        let line = row as usize * stride;
+        map.alpha[line + col_from as usize..=line + col_to as usize].fill(255);
     }
 }
 

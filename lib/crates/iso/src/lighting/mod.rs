@@ -6,6 +6,7 @@ pub mod phases;
 pub mod received;
 pub mod shadow;
 pub mod terrain;
+pub mod volume;
 
 pub use bake::*;
 pub use faces::*;
@@ -13,3 +14,4 @@ pub use phases::*;
 pub use received::*;
 pub use shadow::*;
 pub use terrain::*;
+pub use volume::*;

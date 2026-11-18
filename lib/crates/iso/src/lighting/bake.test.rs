@@ -37,6 +37,7 @@ fn post(foot: (f64, f64), elevation: f64, height: f64) -> ShadowCaster {
         },
         silhouette: 0,
         crop: None,
+        cast: GroundCast::Silhouette,
     }
 }
 
@@ -60,6 +61,20 @@ fn window(plane: &'static [u8; 4]) -> impl Fn(u32) -> Option<Silhouette<'static>
 /// A silhouette that is opaque everywhere.
 fn solid() -> impl Fn(u32) -> Option<Silhouette<'static>> {
     window(&OPAQUE)
+}
+
+fn no_stamp(_: u32) -> Option<std::rc::Rc<ShadowStamp>> {
+    None
+}
+
+/// Silhouettes from `silhouette_of` and no volumes: every caster lays its cut-out.
+fn shapes<'a>(
+    silhouette_of: &'a dyn Fn(u32) -> Option<Silhouette<'static>>,
+) -> CasterShapes<'a, 'static> {
+    CasterShapes {
+        silhouette_of,
+        stamp_of: &no_stamp,
+    }
 }
 
 fn flat(level: f64) -> impl Fn(i32, i32) -> Option<f64> {
@@ -143,7 +158,7 @@ fn a_posts_shadow_falls_down_the_light_and_nowhere_else() {
         &light,
         metrics(),
         &flat(0.0),
-        &solid(),
+        shapes(&solid()),
     );
 
     let reach = 50.0 * tiles_per_pixel_of_height(TILE);
@@ -184,7 +199,7 @@ fn a_taller_caster_throws_a_longer_shadow() {
         &light,
         metrics(),
         &flat(0.0),
-        &solid(),
+        shapes(&solid()),
     );
     let mut tall = map_over(-2, 6);
     bake_ground_shadows(
@@ -194,7 +209,7 @@ fn a_taller_caster_throws_a_longer_shadow() {
         &light,
         metrics(),
         &flat(0.0),
-        &solid(),
+        shapes(&solid()),
     );
 
     assert_eq!(coverage_at(&short, far.0, far.1), 0);
@@ -212,7 +227,7 @@ fn a_caster_standing_higher_lands_its_shadow_further_down_the_light() {
         &light,
         metrics(),
         &flat(0.0),
-        &solid(),
+        shapes(&solid()),
     );
     let mut raised = map_over(-2, 8);
     bake_ground_shadows(
@@ -222,7 +237,7 @@ fn a_caster_standing_higher_lands_its_shadow_further_down_the_light() {
         &light,
         metrics(),
         &flat(0.0),
-        &solid(),
+        shapes(&solid()),
     );
 
     let shift = lift_reach(&light, 2.0, TILE, BOX);
@@ -252,7 +267,7 @@ fn only_the_part_standing_above_the_receiving_ground_casts() {
         &light,
         metrics(),
         &flat(0.0),
-        &solid(),
+        shapes(&solid()),
     );
 
     assert!(
@@ -273,7 +288,7 @@ fn a_hole_in_the_ground_receives_nothing() {
         &light,
         metrics(),
         &level,
-        &solid(),
+        shapes(&solid()),
     );
 
     let reach = 60.0 * tiles_per_pixel_of_height(TILE);
@@ -305,7 +320,7 @@ fn two_shadows_crossing_read_as_one() {
         &light,
         metrics(),
         &flat(0.0),
-        &solid(),
+        shapes(&solid()),
     );
     let mut both = map_over(-2, 6);
     bake_ground_shadows(
@@ -315,7 +330,7 @@ fn two_shadows_crossing_read_as_one() {
         &light,
         metrics(),
         &flat(0.0),
-        &solid(),
+        shapes(&solid()),
     );
 
     assert_eq!(
@@ -337,7 +352,7 @@ fn the_silhouette_is_sampled_over_its_own_artwork() {
         &light,
         metrics(),
         &flat(0.0),
-        &half,
+        shapes(&half),
     );
 
     let reach = 60.0 * tiles_per_pixel_of_height(TILE) * 0.5;
@@ -369,7 +384,7 @@ fn a_caster_whose_shadow_misses_the_map_costs_nothing() {
         &light,
         metrics(),
         &flat(0.0),
-        &solid(),
+        shapes(&solid()),
     );
 
     assert!(map.is_empty());
@@ -395,7 +410,7 @@ fn an_artwork_with_no_size_casts_nothing() {
         &light,
         metrics(),
         &flat(0.0),
-        &solid(),
+        shapes(&solid()),
     );
 
     assert!(map.is_empty());
@@ -421,7 +436,7 @@ fn a_caster_drawn_entirely_below_its_foot_casts_nothing() {
         &light,
         metrics(),
         &flat(0.0),
-        &solid(),
+        shapes(&solid()),
     );
 
     assert!(map.is_empty());
@@ -438,7 +453,7 @@ fn an_empty_world_bakes_nothing() {
         &light,
         metrics(),
         &(|_, _| None),
-        &solid(),
+        shapes(&solid()),
     );
 
     assert!(
@@ -512,7 +527,7 @@ fn a_step_in_the_ground_lays_its_own_shadow_down_the_light() {
         &light,
         metrics(),
         &steps,
-        &solid(),
+        shapes(&solid()),
     );
 
     assert_eq!(
@@ -554,7 +569,7 @@ fn the_shadow_at_the_foot_of_a_step_is_as_solid_as_the_rest_of_it() {
         &light,
         metrics(),
         &steps,
-        &solid(),
+        shapes(&solid()),
     );
 
     let (at_the_foot, well_inside) = (coverage_at(&map, 4.01, 0.5), coverage_at(&map, 4.5, 0.5));
@@ -585,7 +600,7 @@ fn level_ground_casts_nothing_on_itself() {
         &light,
         metrics(),
         &flat(1.0),
-        &solid(),
+        shapes(&solid()),
     );
 
     assert!(map.is_empty(), "a plain has no horizon to hide behind");
@@ -753,10 +768,12 @@ fn a_crop_splits_one_caster_into_bands_that_add_up_to_it() {
     let (left, right) = (
         ShadowCaster {
             crop: Some((f64::NEG_INFINITY, 0.0)),
+            cast: GroundCast::Silhouette,
             ..whole
         },
         ShadowCaster {
             crop: Some((0.0, f64::INFINITY)),
+            cast: GroundCast::Silhouette,
             ..whole
         },
     );
@@ -769,7 +786,7 @@ fn a_crop_splits_one_caster_into_bands_that_add_up_to_it() {
             &behind_the_camera(),
             metrics(),
             &flat(0.0),
-            &solid(),
+            shapes(&solid()),
         );
         map
     };
@@ -799,6 +816,7 @@ fn a_crop_splits_one_caster_into_bands_that_add_up_to_it() {
 fn a_crop_outside_the_artwork_casts_nothing() {
     let away = ShadowCaster {
         crop: Some((TILE * 4.0, TILE * 5.0)),
+        cast: GroundCast::Silhouette,
         ..post((1.5, 1.5), 0.0, TILE)
     };
     let mut map = map_over(-2, 6);
@@ -809,7 +827,7 @@ fn a_crop_outside_the_artwork_casts_nothing() {
         &behind_the_camera(),
         metrics(),
         &flat(0.0),
-        &solid(),
+        shapes(&solid()),
     );
     assert!(map.alpha.iter().all(|&a| a == 0), "nothing is darkened");
 }

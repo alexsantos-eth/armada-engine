@@ -7,19 +7,66 @@ use iso::assets::{InkBox, SpriteLayout};
 use iso::entities::{Entity, EntityLengthAxis};
 use iso::grid::{CHUNK_SIZE, ChunkCoord, WorldCoord, to_chunk_coord};
 use iso::lighting::{
-    BakePhase, BoxMetrics, GroundBake, HeightField, MapArea, PhaseLight, SHADE_COLUMNS, SHADE_ROWS,
-    SHADOW_MAP_PIXELS_PER_TILE, ShadeGrid, ShadeLatticeSpec, ShadowCaster, ShadowMap, ShadowPoint,
-    ShadowReceiver, SpriteExtent, TerrainFace, shade_grid, shaded_at, terrain_faces,
+    BakePhase, BoxMetrics, CasterShapes, GroundBake, GroundCast, HeightField, MapArea, PhaseLight,
+    SHADE_COLUMNS, SHADE_ROWS, SHADOW_MAP_PIXELS_PER_TILE, ShadeGrid, ShadeLatticeSpec,
+    ShadowCaster, ShadowMap, ShadowPoint, ShadowReceiver, ShadowStamp, ShadowVolume, SpriteExtent,
+    TerrainFace, parse_shadow_volumes, shade_grid, shaded_at, terrain_faces, volume_stamp,
 };
 use iso::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
 use iso::terrain::TerrainColumn;
 use iso::world::ChunkManager;
 use macroquad::prelude::{get_time, screen_height, screen_width};
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::assets::sprites::{ShadeLattice, SpriteDraw, ground_key};
 use crate::game::config::PHASE_TRANSITION_SECONDS;
+
+/// The solid shape of every entity model, written by `artifacts/vox/clay/vox_shadow.py`. The
+/// ground bake casts these instead of the sprites' cut-outs wherever an entity has one.
+const SHADOW_VOLUMES: &[u8] = include_bytes!("../../content/volumes/shadow-volumes.bin");
+
+/// The shadow volumes, looked up by the artwork an entity draws.
+#[derive(Default)]
+pub struct ShadowVolumes {
+    list: Vec<ShadowVolume>,
+    by_artwork: HashMap<String, u32>,
+}
+
+impl ShadowVolumes {
+    /// Reads the volumes out of `bytes`; a file it cannot read leaves every entity on its
+    /// cut-out, which is what the bake did before there were volumes.
+    pub fn read(bytes: &[u8]) -> Self {
+        match parse_shadow_volumes(bytes) {
+            Ok(entries) => {
+                let mut volumes = Self::default();
+                for (source, volume) in entries {
+                    let index = volumes.list.len() as u32;
+                    volumes.list.push(volume);
+                    volumes
+                        .by_artwork
+                        .insert(iso::assets::artwork_key(&source).to_string(), index);
+                }
+                volumes
+            }
+            Err(reason) => {
+                eprintln!("warning: {reason}; entity shadows fall back to their cut-outs");
+                Self::default()
+            }
+        }
+    }
+
+    pub fn index_of(&self, source: &str) -> Option<u32> {
+        self.by_artwork
+            .get(iso::assets::artwork_key(source))
+            .copied()
+    }
+
+    pub fn get(&self, index: u32) -> Option<&ShadowVolume> {
+        self.list.get(index as usize)
+    }
+}
 
 /// How long a frame may spend baking shadows.
 pub const BAKE_BUDGET_MS: f64 = 3.0;
@@ -67,6 +114,10 @@ pub struct ShadowScene {
     phase: BakePhase,
     light: PhaseLight,
     masks: SilhouetteMasks,
+    volumes: ShadowVolumes,
+    /// Each volume's shadow under the current light, laid the first time a bake asks for it
+    /// and copied into every map after that; a new phase forgets them all.
+    stamps: RefCell<HashMap<u32, Rc<ShadowStamp>>>,
     chunks: HashMap<ChunkCoord, Baked>,
     /// One map, reused by every bake: it is over a megabyte of texels and only one chunk bakes
     scratch: ShadowMap,
@@ -135,6 +186,8 @@ impl ShadowScene {
             phase,
             light: phase.light(),
             masks,
+            volumes: ShadowVolumes::read(SHADOW_VOLUMES),
+            stamps: RefCell::new(HashMap::new()),
             chunks: HashMap::new(),
             scratch: ShadowMap::new(
                 MapArea::around(0, 0, CHUNK_SIZE - 1, CHUNK_SIZE - 1),
@@ -170,6 +223,7 @@ impl ShadowScene {
         }
         self.phase = phase;
         self.light = phase.light();
+        self.stamps.borrow_mut().clear();
         self.phase_fade.phase_changed();
         if let Some(job) = self.working.take() {
             self.atlas.release(job.coord);
@@ -300,17 +354,35 @@ impl ShadowScene {
         let mut finished = false;
         match job.stage {
             Reading::Map => {
-                let masks = &self.masks;
+                let (masks, volumes, stamps) = (&self.masks, &self.volumes, &self.stamps);
+                let light = self.light.shadow;
+                let metrics = BoxMetrics {
+                    tile_width: self.tile_width,
+                    box_height: self.box_height,
+                };
+                let stamp_of = |index: u32| {
+                    if let Some(stamp) = stamps.borrow().get(&index) {
+                        return Some(Rc::clone(stamp));
+                    }
+                    let stamp = Rc::new(volume_stamp(
+                        volumes.get(index)?,
+                        &light,
+                        metrics,
+                        SHADOW_MAP_PIXELS_PER_TILE,
+                    ));
+                    stamps.borrow_mut().insert(index, Rc::clone(&stamp));
+                    Some(stamp)
+                };
                 let more = job.map.step(
                     &mut self.scratch,
                     &job.casters,
                     Some(&job.ground),
-                    &self.light.shadow,
-                    BoxMetrics {
-                        tile_width: self.tile_width,
-                        box_height: self.box_height,
+                    &light,
+                    metrics,
+                    CasterShapes {
+                        silhouette_of: &|index| masks.silhouette_of(index),
+                        stamp_of: &stamp_of,
                     },
-                    &|index| masks.silhouette_of(index),
                 );
                 if !more {
                     job.stage = Reading::Upload;
@@ -483,6 +555,10 @@ impl ShadowScene {
     /// One entity as casters: one per cell of its footprint, each standing on its own cell and
     /// owning the band of the artwork that rests there.
     ///
+    /// On the ground, an entity with a volume casts that instead: the anchor's caster carries it
+    /// and the other cells' lay nothing, since the volume covers the whole footprint. The bands
+    /// still shade what the entity's shadow falls on (other entities, faces, the player).
+    ///
     /// A single caster for the whole sprite would lay the far cells' artwork down from the
     /// anchor cell's foot, so anything drawn away from the anchor — the far trees of a grove —
     /// would throw its shadow where it does not stand. Empty when the atlas has no measured
@@ -505,6 +581,7 @@ impl ShadowScene {
             (half, -quarter)
         };
         let elevation = f64::from(entity.elevation());
+        let volume = self.volumes.index_of(entity.texture_source());
         (0..cells)
             .map(|index| {
                 let at = f64::from(index);
@@ -525,6 +602,11 @@ impl ShadowScene {
                     },
                     silhouette,
                     crop: band_of(index, cells, step.0),
+                    cast: match (volume, index) {
+                        (None, _) => GroundCast::Silhouette,
+                        (Some(volume), 0) => GroundCast::Volume(volume),
+                        (Some(_), _) => GroundCast::Skip,
+                    },
                 }
             })
             .collect()

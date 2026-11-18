@@ -7,8 +7,8 @@
 
 use iso::assets::{AssetManifest, InkBox};
 use iso::lighting::{
-    BakePhase, BoxMetrics, MapArea, SHADOW_MAP_PIXELS_PER_TILE, ShadowCaster, ShadowMap,
-    Silhouette, SpriteExtent, bake_ground_shadows,
+    BakePhase, BoxMetrics, CasterShapes, GroundCast, MapArea, SHADOW_MAP_PIXELS_PER_TILE,
+    ShadowCaster, ShadowMap, Silhouette, SpriteExtent, bake_ground_shadows,
 };
 
 const TILE_WIDTH: f64 = 64.0;
@@ -89,6 +89,7 @@ fn main() {
             extent,
             silhouette: 0,
             crop: None,
+            cast: GroundCast::Silhouette,
         }]
     } else {
         (0..cells.max(1))
@@ -109,6 +110,7 @@ fn main() {
                     },
                     silhouette: 0,
                     crop: band_of(index, cells, step.0),
+                    cast: GroundCast::Silhouette,
                 }
             })
             .collect()
@@ -128,7 +130,10 @@ fn main() {
             &phase.light().shadow,
             metrics,
             &|_, _| Some(0.0),
-            &|_| Some(silhouette),
+            CasterShapes {
+                silhouette_of: &|_| Some(silhouette),
+                stamp_of: &|_| None,
+            },
         );
         let tag = if whole { "whole" } else { "cells" };
         let path = format!("{out}/shadow_{wanted}_{tag}_{}.png", phase.label());

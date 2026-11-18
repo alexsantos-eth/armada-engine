@@ -235,6 +235,35 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Declaración: `pub const CLEAR: Self = Self { elevation: f64::NEG_INFINITY, width: 0.1 };`
 
 
+### `volume.rs`
+
+El volumen sólido de una entidad, leído del `.vox` con el que se renderizó su sprite
+(`artifacts/vox/clay/vox_shadow.py` → `lib/content/volumes/shadow-volumes.bin`). El horneado de
+suelo usa su sombra precalculada en vez del recorte del sprite: la primera vez que un horneado la pide
+bajo una luz, `volume_stamp` proyecta las columnas hacia el sol sobre suelo plano y el cliente la
+guarda (`ShadowScene::stamps`, se vacía al cambiar de fase); después cada chunk solo la copia. Por qué no el recorte: el recorte confunde
+profundidad con altura y no sabe a qué lado de la entidad queda una rama, así que su sombra
+se despegaba de la entidad. Las sombras sobre otras entidades, caras y el jugador siguen
+leyendo siluetas.
+
+#### Tipos
+
+- [`ShadowVolume`](volume.rs#L30) — Columnas de 1/32 de casilla con hasta dos tramos sólidos cada una (en bloques), su caja y su punto más alto.
+- [`VolumeColumn`](volume.rs#L13) — Centro de la columna en casillas desde el centro de la celda ancla, y sus tramos.
+- [`GroundCast`](bake.rs#L90) — Qué deja un `ShadowCaster` en el suelo: su silueta, un volumen (solo la celda ancla) o nada (las demás celdas de una entidad con volumen).
+- [`CasterShapes`](bake.rs#L206) — Los dos resolutores que recibe el horneado: siluetas y sombras precalculadas (`StampOf`) por índice.
+- [`ShadowStamp`](bake.rs) — La sombra de un volumen bajo una luz, en téxeles del mapa, con su área en casillas relativa a la celda de la entidad.
+- [`volume_stamp`](bake.rs) — La calcula: cada tramo barre su cuadrado desde donde cae su base hasta donde cae su cima.
+
+#### Funciones y métodos
+
+- [`parse_shadow_volumes`](volume.rs#L102) — Lee el fichero de volúmenes; pasa los ejes del modelo (x abajo-derecha = mundo −y, y abajo-izquierda = mundo −x, ancla en la última casilla) a los del mundo.
+  - Firma: `pub fn parse_shadow_volumes(bytes: &[u8]) -> Result<Vec<(String, ShadowVolume)>, String> {`
+
+- [`shadow_box`](volume.rs#L75) — La caja que puede cubrir la sombra del volumen: la huella barrida hasta el alcance de su punto más alto.
+  - Firma: `pub fn shadow_box( &self, foot: (f64, f64), deepest: f64, light: &ShadowProjection, metrics: (f64, f64), ) -> (f64, f64, f64, f64) {`
+
+
 ## Detalles de implementación
 
 Esta sección cubre las funciones y constantes internas de producción. Describe cómo se descompone el dominio, pero no constituye un contrato de compatibilidad para consumidores externos.
@@ -254,6 +283,10 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 - [`horizon_rows`](bake.rs#L371) — Recorre `rows` filas del horizonte hacia el sol desde `from` y las vuelca en `out`; devuelve las filas recorridas.
   - Firma: `fn horizon_rows( map: &ShadowMap, ground: &HeightField, light: &ShadowProjection, metrics: BoxMetrics, from: u32, rows: u32, out: &mut Vec<Horizon>, ) -> u32 {`
+
+- `lay_stamp` — Copia la sombra precalculada al mapa, una pasada por nivel de terreno: en suelo más bajo se desliza luz abajo lo que alcanza el desnivel (redondeado a téxel), y solo escribe las columnas de ese nivel. Aproximación: en un escalón la sombra no se estira y lo que una columna más alta entierra sigue proyectando.
+
+- `stamp_swept_square` — Rellena los téxeles cuyo centro barre un cuadrado deslizado a lo largo de la luz (línea a línea, sin muestreo).
 
 - [`lay_terrain_rows`](bake.rs#L398) — Proyecta la sombra propia del terreno sobre `rows` filas de columnas, empezando en la fila `from` de la
   - Firma: `fn lay_terrain_rows( map: &mut ShadowMap, lattice: &[Horizon], levels: &LevelCache, from: i32, rows: i32, ) -> i32 {`

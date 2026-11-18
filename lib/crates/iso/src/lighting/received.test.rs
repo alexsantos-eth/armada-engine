@@ -1,6 +1,6 @@
 use super::*;
 use crate::lighting::Silhouette;
-use crate::lighting::bake::{ShadowCaster, SpriteExtent};
+use crate::lighting::bake::{GroundCast, ShadowCaster, SpriteExtent};
 use crate::lighting::shadow::ShadowProjection;
 
 const TILE: f64 = 100.0;
@@ -34,6 +34,7 @@ fn caster(foot: (f64, f64), elevation: f64, height: f64) -> ShadowCaster {
         extent: standing(foot, elevation, height),
         silhouette: 0,
         crop: None,
+        cast: GroundCast::Silhouette,
     }
 }
 
@@ -254,6 +255,7 @@ fn a_point_is_shaded_by_a_caster_standing_up_the_light_from_it() {
         },
         silhouette: 0,
         crop: None,
+        cast: GroundCast::Silhouette,
     };
     let under = ShadowPoint {
         x: 4.5,
