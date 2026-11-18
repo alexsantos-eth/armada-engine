@@ -8,7 +8,6 @@ Los recursos deben tener una propiedad clara y una vida útil controlada por el 
 
 No contiene estado persistente del juego ni algoritmos de dominio. Los consumidores le entregan datos ya calculados.
 
-
 ## Catálogo de API pública
 
 Este catálogo documenta las funciones, métodos y constantes exportados por este dominio. Incluye la firma y un enlace a la implementación; los helpers privados se mantienen junto a su código porque no forman parte del contrato estable.
@@ -49,56 +48,56 @@ El material mezcla los colores con alfa fuente, pero conserva el alfa opaco del 
 
 #### Tipos
 
-- [`PhaseGrade`](grade.rs#L87) — Cómo lee una fase en pantalla: el multiplicador sobre la escena, la saturación alrededor de la luma y el levantado de negros.
+- [`PhaseGrade`](grade.rs#L86) — Cómo lee una fase en pantalla: el multiplicador sobre la escena, la saturación alrededor de la luma y el levantado de negros.
   - Declaración: `pub struct PhaseGrade { pub tint: Color, pub saturation: f32, pub lift: Color }`
 
-- [`GradeTransition`](grade.rs#L129) — El crossfade entre el grado presentado y el que la escena pide tras un cambio de fase; se avanza con el tiempo de frame.
+- [`GradeTransition`](grade.rs#L128) — El crossfade entre el grado presentado y el que la escena pide tras un cambio de fase; se avanza con el tiempo de frame.
   - Declaración: `pub struct GradeTransition { current: PhaseGrade, from: PhaseGrade, to: PhaseGrade, elapsed: f32 }`
 
-- [`GradeMaterial`](grade.rs#L212) — El material de presentación: una pasada a pantalla completa que aplica el grado y la profundidad de campo al componer la escena offscreen.
+- [`GradeMaterial`](grade.rs#L211) — El material de presentación: una pasada a pantalla completa que aplica el grado y la profundidad de campo al componer la escena offscreen.
   - Declaración: `pub struct GradeMaterial { material: Material }`
 
 #### Funciones y métodos
 
-- [`grade_for`](grade.rs#L202) — El grado con el que presenta una fase horneada.
+- [`grade_for`](grade.rs#L201) — El grado con el que presenta una fase horneada.
   - Firma: `pub fn grade_for(phase: BakePhase) -> PhaseGrade {`
 
-- [`lerp_grade`](grade.rs#L114) — La mezcla canal a canal entre dos grados a `t` del crossfade, acotada a `[0, 1]`.
+- [`lerp_grade`](grade.rs#L113) — La mezcla canal a canal entre dos grados a `t` del crossfade, acotada a `[0, 1]`.
   - Firma: `pub fn lerp_grade(from: PhaseGrade, to: PhaseGrade, t: f32) -> PhaseGrade {`
 
-- [`GradeTransition::new`](grade.rs#L138) — Una transición asentada que presenta `grade`.
+- [`GradeTransition::new`](grade.rs#L137) — Una transición asentada que presenta `grade`.
   - Firma: `pub fn new(grade: PhaseGrade) -> Self {`
 
-- [`GradeTransition::set_target`](grade.rs#L148) — Apunta la transición a `grade`; re-seleccionar el grado deseado no reinicia nada, y un cambio a mitad parte de lo que se ve.
+- [`GradeTransition::set_target`](grade.rs#L147) — Apunta la transición a `grade`; re-seleccionar el grado deseado no reinicia nada, y un cambio a mitad parte de lo que se ve.
   - Firma: `pub fn set_target(&mut self, grade: PhaseGrade) {`
 
-- [`GradeTransition::advance`](grade.rs#L158) — Avanza el crossfade `dt` segundos y devuelve el grado a presentar.
+- [`GradeTransition::advance`](grade.rs#L157) — Avanza el crossfade `dt` segundos y devuelve el grado a presentar.
   - Firma: `pub fn advance(&mut self, dt: f32) -> PhaseGrade {`
 
-- [`GradeMaterial::load`](grade.rs#L218) — Carga el material; falla igual que el de la escena cuando el contexto no tiene OpenGL.
+- [`GradeMaterial::load`](grade.rs#L217) — Carga el material; falla igual que el de la escena cuando el contexto no tiene OpenGL.
   - Firma: `pub fn load() -> Result<Self, String> {`
 
-- [`GradeMaterial::bind`](grade.rs#L252) — Aplica los uniforms de grado y de profundidad de campo (escala de un texel del target, mapa de profundidad y foco en los pies del jugador) y dibuja lo que sigue con este material.
+- [`GradeMaterial::bind`](grade.rs#L251) — Aplica los uniforms de grado y de profundidad de campo (escala de un texel del target, mapa de profundidad y foco en los pies del jugador) y dibuja lo que sigue con este material.
   - Firma: `pub fn bind(&self, grade: &PhaseGrade, texel_size: Vec2, depth: &Texture2D, focus: f32) {`
 
-- [`GradeMaterial::release`](grade.rs#L271) — Devuelve el dibujado al pipeline propio de Macroquad, para la interfaz.
+- [`GradeMaterial::release`](grade.rs#L270) — Devuelve el dibujado al pipeline propio de Macroquad, para la interfaz.
   - Firma: `pub fn release(&self) {`
 
 #### Constantes
 
-- [`DAWN_GRADE`](grade.rs#L174) — Amanecer: el sol cálido y bajo; tiñe hacia dorado.
+- [`DAWN_GRADE`](grade.rs#L173) — Amanecer: el sol cálido y bajo; tiñe hacia dorado.
   - Declaración: `pub const DAWN_GRADE: PhaseGrade = PhaseGrade {`
 
-- [`DAY_GRADE`](grade.rs#L181) — Día: la escena sin tocar (identidad).
+- [`DAY_GRADE`](grade.rs#L180) — Día: la escena sin tocar (identidad).
   - Declaración: `pub const DAY_GRADE: PhaseGrade = PhaseGrade {`
 
-- [`SUNSET_GRADE`](grade.rs#L188) — Atardecer: la hora ámbar, más saturada que el amanecer.
+- [`SUNSET_GRADE`](grade.rs#L187) — Atardecer: la hora ámbar, más saturada que el amanecer.
   - Declaración: `pub const SUNSET_GRADE: PhaseGrade = PhaseGrade {`
 
-- [`NIGHT_GRADE`](grade.rs#L195) — Noche: la escena fría, desaturada y con los negros levantados.
+- [`NIGHT_GRADE`](grade.rs#L194) — Noche: la escena fría, desaturada y con los negros levantados.
   - Declaración: `pub const NIGHT_GRADE: PhaseGrade = PhaseGrade {`
 
-El material escribe alfa opaco y se pinta con reemplazo (sin blend), de modo que la pasada de grado nunca deja el framebuffer semitransparente ni se amalgama con el contenido anterior. En esa misma pasada aplica la profundidad de campo (ver `depth_of_field.rs`): el radio del bokeh de disco (ver `lens.rs`) sale de la profundidad isométrica de cada píxel, no de su altura en pantalla; después vienen el micro-contraste, el tono de lente y el viñeteado. El tamaño real del render target se entrega como uniform para que el radio sea estable en píxeles al redimensionar. El cambio de fase no corta el mundo de golpe: el bucle presenta el grado a través de `GradeTransition`, que interpola tinte, saturación y negros con suavizado (smoothstep) durante `PHASE_TRANSITION_SECONDS` (`game::config`), partiendo de lo que hay en pantalla si se cambia a mitad.
+El material escribe alfa opaco y se pinta con reemplazo (sin blend), de modo que la pasada de grado nunca deja el framebuffer semitransparente ni se amalgama con el contenido anterior. En esa misma pasada aplica la profundidad de campo (ver `depth_of_field.rs`): el radio del bokeh de disco (ver `lens.rs`) sale de la profundidad isométrica de cada píxel, no de su altura en pantalla; después vienen el tono de lente y el viñeteado. El tamaño real del render target se entrega como uniform para que el radio sea estable en píxeles al redimensionar. El cambio de fase no corta el mundo de golpe: el bucle presenta el grado a través de `GradeTransition`, que interpola tinte, saturación y negros con suavizado (smoothstep) durante `PHASE_TRANSITION_SECONDS` (`game::config`), partiendo de lo que hay en pantalla si se cambia a mitad.
 
 ### `depth_of_field.rs`
 
@@ -187,17 +186,17 @@ La profundidad de campo desenfoca por **profundidad isométrica** (`x + y` del m
 
 ### `lens.rs`
 
-La lente del aspecto de maqueta, incluida en el fragmento de presentación. **Bokeh de disco**: `BOKEH_TAPS` (16) muestras en espiral de Vogel (ángulo áureo, radios de área igual `√((i + ½)/n)`) desenrolladas desde `vogel_offsets`, escaladas por el radio del CoC; cada muestra pesa `1 + BOKEH_HIGHLIGHT·luma⁴`, así los brillos conservan su disco y las esquinas de los bloques desenfocados se redondean como arcilla en vez de lavarse (el filtro anterior de 9 muestras en cruz dejaba fantasmas en rejilla). Con radio < 0,05 px se lee una sola muestra. **Micro-contraste**: con `focus = 1 − radio/máx`, una máscara de enfoque de 4 vecinos a 1 texel (`MICRO_CONTRAST` 0,35·focus) oscurece las grietas entre vóxeles y aviva los bordes donde la escena está nítida. **Tono**: saturación `+SCENE_SATURATION + FOCUS_SATURATION·focus` (+4 % en toda la escena, +12 % en foco) y contraste alrededor del gris medio `+SCENE_CONTRAST + FOCUS_CONTRAST·focus` (+3 %/+8 %), antes del grado de fase. **Viñeteado**: `1 − VIGNETTE_STRENGTH·smoothstep(VIGNETTE_START, 1, d)` con `d` 0 en el centro y 1 en la esquina (−14 % en las esquinas), multiplicado con el `Tint`. El cliente no tiene pase de SSAO ni dibuja `contact_shadow`: la oscuridad entre bloques viene horneada del render clay de Blender, y el micro-contraste es lo que la refuerza en pantalla. La aritmética tiene su espejo en `lens.test.rs`.
+La lente del aspecto de maqueta, incluida en el fragmento de presentación. **Bokeh de disco**: `BOKEH_TAPS` (16) muestras en espiral de Vogel (ángulo áureo, radios de área igual `√((i + ½)/n)`) desenrolladas desde `vogel_offsets`, escaladas por el radio del CoC; cada muestra pesa `1 + BOKEH_HIGHLIGHT·luma⁴`, así los brillos conservan su disco y las esquinas de los bloques desenfocados se redondean como arcilla en vez de lavarse (el filtro anterior de 9 muestras en cruz dejaba fantasmas en rejilla). Con radio < 0,05 px se lee una sola muestra. Con `focus = 1 − radio/máx`, **tono**: saturación `+SCENE_SATURATION + FOCUS_SATURATION·focus` (0 % en toda la escena, +2 % en foco) antes del grado de fase; la lente no toca el contraste (se quitó a petición). **Viñeteado**: `1 − VIGNETTE_STRENGTH·smoothstep(VIGNETTE_START, 1, d)` con `d` 0 en el centro y 1 en la esquina (−14 % en las esquinas), multiplicado con el `Tint`. El cliente no tiene pase de SSAO ni dibuja `contact_shadow`: la oscuridad entre bloques viene horneada del render clay de Blender, y en pantalla no se refuerza (el micro-contraste se probó y se quitó: dentaba las siluetas). La aritmética tiene su espejo en `lens.test.rs`.
 
 #### Funciones y métodos
 
-- [`vogel_offsets`](lens.rs#L42) — Las `count` muestras de una espiral de Vogel sobre el disco unidad.
+- [`vogel_offsets`](lens.rs#L33) — Las `count` muestras de una espiral de Vogel sobre el disco unidad.
   - Firma: `pub fn vogel_offsets(count: usize) -> Vec<(f32, f32)> {`
 
-- [`glsl_float`](lens.rs#L53) — `value` escrito como literal float de GLSL.
+- [`glsl_float`](lens.rs#L44) — `value` escrito como literal float de GLSL.
   - Firma: `pub fn glsl_float(value: f32) -> String {`
 
-- [`lens_glsl`](lens.rs#L58) — El GLSL que incluye la presentación: `bokeh`, `microContrast`, `lensTone` y `vignette`, con las constantes como literales.
+- [`lens_glsl`](lens.rs#L49) — El GLSL que incluye la presentación: `bokeh`, `lensTone` y `vignette`, con las constantes como literales.
   - Firma: `pub fn lens_glsl() -> String {`
 
 #### Constantes
@@ -211,25 +210,17 @@ La lente del aspecto de maqueta, incluida en el fragmento de presentación. **Bo
 - [`BOKEH_HIGHLIGHT`](lens.rs#L17) — Cuánto más pesa en el bokeh una muestra blanca que una negra.
   - Declaración: `pub const BOKEH_HIGHLIGHT: f32 = 2.0;`
 
-- [`MICRO_CONTRAST`](lens.rs#L20) — La fuerza de la máscara de enfoque sobre lo nítido.
-  - Declaración: `pub const MICRO_CONTRAST: f32 = 0.35;`
+- [`SCENE_SATURATION`](lens.rs#L20) — Saturación añadida en toda la escena.
+  - Declaración: `pub const SCENE_SATURATION: f32 = 0.0;`
 
-- [`SCENE_SATURATION`](lens.rs#L23) — Saturación añadida en toda la escena.
-  - Declaración: `pub const SCENE_SATURATION: f32 = 0.04;`
+- [`FOCUS_SATURATION`](lens.rs#L23) — Saturación añadida encima donde la escena está nítida.
+  - Declaración: `pub const FOCUS_SATURATION: f32 = 0.02;`
 
-- [`FOCUS_SATURATION`](lens.rs#L26) — Saturación añadida encima donde la escena está nítida.
-  - Declaración: `pub const FOCUS_SATURATION: f32 = 0.08;`
 
-- [`SCENE_CONTRAST`](lens.rs#L29) — Contraste añadido en toda la escena, alrededor del gris medio.
-  - Declaración: `pub const SCENE_CONTRAST: f32 = 0.03;`
-
-- [`FOCUS_CONTRAST`](lens.rs#L32) — Contraste añadido encima donde la escena está nítida.
-  - Declaración: `pub const FOCUS_CONTRAST: f32 = 0.05;`
-
-- [`VIGNETTE_START`](lens.rs#L35) — A qué distancia del centro (0) a la esquina (1) empieza el viñeteado.
+- [`VIGNETTE_START`](lens.rs#L26) — A qué distancia del centro (0) a la esquina (1) empieza el viñeteado.
   - Declaración: `pub const VIGNETTE_START: f32 = 0.55;`
 
-- [`VIGNETTE_STRENGTH`](lens.rs#L38) — Cuánto oscurece el viñeteado las esquinas.
+- [`VIGNETTE_STRENGTH`](lens.rs#L29) — Cuánto oscurece el viñeteado las esquinas.
   - Declaración: `pub const VIGNETTE_STRENGTH: f32 = 0.14;`
 
 ### `render_target.rs`
@@ -251,7 +242,6 @@ La lente del aspecto de maqueta, incluida en el fragmento de presentación. **Bo
 - [`SceneTarget::present`](render_target.rs#L70) — Vuelve al framebuffer, invierte verticalmente la textura offscreen y compone la escena ya terminada, aplicando el grado y la profundidad de campo (mapa `depth`, foco `focus`) con el material de presentación cuando está disponible.
   - Firma: `pub fn present( &self, material: Option<&GradeMaterial>, grade: &PhaseGrade, (depth, focus): (&Texture2D, f32), ) {`
 
-
 ## Detalles de implementación
 
 Esta sección cubre las funciones y constantes internas de producción. Describe cómo se descompone el dominio, pero no constituye un contrato de compatibilidad para consumidores externos.
@@ -269,10 +259,10 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`FRAGMENT_BODY`](grade.rs#L47) — Cuerpo del fragmento: desenfoca con el radio de `blurRadius`, escala por `Tint`, desplaza saturación alrededor de la luma Rec. 601 y añade `Lift`.
   - Declaración: `const FRAGMENT_BODY: &str = r#"`
 
-- [`fragment`](grade.rs#L61) — El fragmento completo: cabecera, `GRADE_DEPTH_GLSL` y cuerpo.
+- [`fragment`](grade.rs#L60) — El fragmento completo: cabecera, `GRADE_DEPTH_GLSL` y cuerpo.
   - Firma: `fn fragment() -> String {`
 
-- [`grade_pipeline`](grade.rs#L68) — La tubería del grado: reemplazo opaco (sin blend) para que la pasada nunca amalgame con el contenido anterior del framebuffer.
+- [`grade_pipeline`](grade.rs#L67) — La tubería del grado: reemplazo opaco (sin blend) para que la pasada nunca amalgame con el contenido anterior del framebuffer.
   - Firma: `fn grade_pipeline() -> PipelineParams {`
 
 ### `scene_material.rs`

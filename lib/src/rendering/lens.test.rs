@@ -12,11 +12,6 @@ fn saturation_gain(focus: f32) -> f32 {
     1.0 + SCENE_SATURATION + FOCUS_SATURATION * focus
 }
 
-/// The CPU mirror of the shader's contrast gain for a pixel `focus` in focus.
-fn contrast_gain(focus: f32) -> f32 {
-    1.0 + SCENE_CONTRAST + FOCUS_CONTRAST * focus
-}
-
 #[test]
 fn the_vogel_taps_fill_the_unit_disc_evenly() {
     let taps = vogel_offsets(BOKEH_TAPS);
@@ -53,32 +48,23 @@ fn the_vignette_leaves_the_middle_alone_and_only_dims_the_corners_a_little() {
 }
 
 #[test]
-fn the_focus_gets_ten_to_fifteen_percent_more_saturation_than_the_source() {
-    let sharp = saturation_gain(1.0) - 1.0;
-    assert!((0.10..=0.15).contains(&sharp), "{sharp}");
-    assert!(saturation_gain(0.0) < saturation_gain(1.0));
+fn the_focus_is_never_duller_than_the_rest_and_stays_subtle() {
     assert!(saturation_gain(0.0) >= 1.0);
-}
-
-#[test]
-fn contrast_rises_most_where_the_scene_is_sharp_and_stays_subtle() {
-    assert!(contrast_gain(1.0) > contrast_gain(0.0));
-    assert!(contrast_gain(1.0) <= 1.15);
-    const { assert!(MICRO_CONTRAST > 0.0 && MICRO_CONTRAST < 1.0) };
+    assert!(saturation_gain(1.0) >= saturation_gain(0.0));
+    assert!(saturation_gain(1.0) <= 1.15);
 }
 
 #[test]
 fn the_shader_unrolls_every_tap_and_names_its_functions() {
     let glsl = lens_glsl();
     assert_eq!(glsl.matches("bokehTap(").count(), BOKEH_TAPS + 1);
-    for name in [
-        "vec3 bokeh(",
-        "vec3 microContrast(",
-        "vec3 lensTone(",
-        "float vignette(",
-    ] {
+    for name in ["vec3 bokeh(", "vec3 lensTone(", "float vignette("] {
         assert!(glsl.contains(name), "{name} missing");
     }
+    assert!(
+        !glsl.contains("microContrast"),
+        "the unsharp mask was taken out"
+    );
     for reserved in [
         "packed",
         "float distance",

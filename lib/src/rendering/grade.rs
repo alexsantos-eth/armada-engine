@@ -49,7 +49,6 @@ void main() {
     float radius = blurRadius(uv);
     float focus = 1.0 - radius / MaxBlurRadius;
     vec3 colour = bokeh(uv, radius);
-    colour = microContrast(colour, uv, focus);
     colour = lensTone(colour, focus);
     float luma = dot(colour, vec3(0.299, 0.587, 0.114));
     colour = mix(vec3(luma), colour, Saturation);
