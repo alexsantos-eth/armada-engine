@@ -19,7 +19,7 @@
 import sys
 
 from vox_models import M, put, run
-from vox_prefabs import moved, turned
+from vox_prefabs import moved, piece, spun, turned
 
 
 def cells(n):
@@ -286,6 +286,70 @@ def boathouse(axis):
     return along(out, axis)
 
 
+# ------------------------------------------------------------------------------- the beach
+
+def wreck(axis):
+    """wreck: a longship run aground and broken: the hull with its dragon prow, a gap in the
+    shaded side where the ribs stand bare, the mast snapped short and the striped sail fallen
+    on the sand beside it, a shield and a barrel washed up. Two tiles along `axis`."""
+    out = moved(piece("hull_end", "plank"), 82, 0, 0) + moved(spun(piece("hull_end", "plank"), 2), -82, 0, 0)
+    for n, x in enumerate(cells(5)):
+        if n == 3:                                        # the broken stretch: keel and ribs only
+            out += put("hull_mid", x, 0, 0, "timber")[:1]
+            out += [b for dx in (-8, 8) for b in put("trunk_thin", x + dx, 12, 4, "timber")]
+            out += put("hull_mid", x, 0, 0, "plank")[1:3]  # the far side still stands
+        else:
+            out += put("hull_mid", x, 0, 0, "plank")
+    out += put("dragon", 100, 0, 40, "timber") + put("trunk_thin", -98, 0, 40, "timber")
+    out += stack("trunk", -6, 0, 8, 2, "brown", M)        # the mast, snapped at two lengths
+    for n in range(7):                                    # the striped sail, fallen on the lit side
+        out += put("cloth", -42 + 14 * n, 46, 0, "red" if n % 2 == 0 else "white")
+    for x in (-56, -28, 56):                              # shields on the shaded side, off the gap
+        out += face_y("shield", x, 28, 7, "red" if x != -28 else "white")
+    out += put("barrel", 50, -46, 0) + put("rope_coil", -50, -46, 0)
+    return along(out, axis)
+
+
+def rowboat():
+    """rowboat: a small longship-built boat pulled up on the sand (the hull pieces: a bow, one
+    module, a stern), its two oars across the gunwales, a crate and a rope beside it."""
+    out = (moved(piece("hull_end", "timber"), 28, -8, 0) + put("hull_mid", 0, -8, 0, "plank")
+           + moved(spun(piece("hull_end", "plank"), 2), -28, -8, 0))
+    out += put("branch", 6, -8, 26, "timber", turn=True) + put("branch", -14, -8, 26, "timber", turn=True)
+    return out + put("crate", -30, 40, 0) + put("rope_coil", 30, 36, 0)
+
+
+def anchor_rest():
+    """anchor: a great iron anchor stood on its crown, its rope coiled at the foot, a stone."""
+    return (put("anchor", -8, -8, 0) + put("rope_coil", 22, 20, 0) + put("rope_coil", 22, 20, 4)
+            + put("stone_small", -30, 22, 0, "grey") + put("pebble_m", 26, -24, 0))
+
+
+def flag_post():
+    """flag_post: a tall pole with a red striped flag, a dragon at the top and a cairn at its foot."""
+    out = stack("trunk_thin", -6, -6, 0, 5, "timber", M)
+    out += face_x("flag", -1, -6, 100, "red") + put("dragon", -6, -6, 140, "timber")
+    out += face_x("shield", -1, -6, 30, "white")
+    return (out + put("stone_small", -26, 8, 0, "grey") + put("stone_small", 12, -22, 0, "sand")
+            + put("stone_small", -12, 14, 0, "grey") + put("pebble_l", 20, 18, 0))
+
+
+def fish_rack():
+    """fish_rack: a drying rack of stockfish: two posts, a long bar along y and the fish hanging,
+    with a barrel at its foot."""
+    out = stack("trunk_thin", 0, -40, 0, 2, "timber", M) + stack("trunk_thin", 0, 40, 0, 2, "timber", M)
+    out += [b for y in (-27, 0, 27) for b in put("branch", 0, y, 56, "brown", turn=True)]
+    out += [b for y in (-24, -12, 0, 12, 24) for b in put("fish", 0, y, 40)]
+    return out + put("barrel", 30, 28, 0) + put("fish", 24, -30, 0)
+
+
+def gull_post():
+    """gull_post: two mooring posts, a rope round the tall one and a gull standing on it."""
+    out = stack("trunk", -8, -8, 0, 2, "brown", M) + put("trunk", 22, 14, 0, "brown")
+    out += put("rope_coil", -8, -8, 36) + put("gull", -8, -8, 56)
+    return out + put("pebble_l", 30, -20, 0) + put("shell", -28, 26, 0, "white")
+
+
 # name → (builder, tiles, the asset its render replaces, under lib/assets)
 MODELS = {
     "runestone": (runestone, (1, 1, 1), "building/block_runestone.png"),
@@ -306,6 +370,13 @@ MODELS = {
     "mead_hall_1x2": (lambda: mead_hall("y"), (1, 2, 2), "building/block_mead_hall_1x2.png"),
     "boathouse_2x1": (lambda: boathouse("x"), (2, 1, 2), "building/block_boathouse_2x1.png"),
     "boathouse_1x2": (lambda: boathouse("y"), (1, 2, 2), "building/block_boathouse_1x2.png"),
+    "wreck_2x1": (lambda: wreck("x"), (2, 1, 1), "beach/block_wreck_2x1.png"),
+    "wreck_1x2": (lambda: wreck("y"), (1, 2, 1), "beach/block_wreck_1x2.png"),
+    "rowboat": (rowboat, (1, 1, 1), "beach/block_rowboat.png"),
+    "anchor": (anchor_rest, (1, 1, 1), "beach/block_anchor.png"),
+    "flag_post": (flag_post, (1, 1, 2), "beach/block_flag_post.png"),
+    "fish_rack": (fish_rack, (1, 1, 1), "beach/block_fish_rack.png"),
+    "gull_post": (gull_post, (1, 1, 1), "beach/block_gull_post.png"),
 }
 
 if __name__ == "__main__":

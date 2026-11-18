@@ -820,6 +820,299 @@
           "grass"
         ]
       }
+    },
+    {
+      "id": "palm_tall",
+      "asset": {
+        "sprite": "/assets/beach/block_palm_tall.png"
+      },
+      "shape": {
+        "height": 3,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "palm",
+      "asset": {
+        "sprite": "/assets/beach/block_palm.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "palm_bent",
+      "asset": {
+        "sprite": "/assets/beach/block_palm_bent.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "coconuts",
+      "asset": {
+        "sprite": "/assets/beach/block_coconuts.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.3
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "driftwood",
+      "asset": {
+        "sprite": "/assets/beach/block_driftwood.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.5
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "beach_rocks",
+      "asset": {
+        "sprite": "/assets/beach/block_beach_rocks.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.6
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "rowboat",
+      "asset": {
+        "sprite": "/assets/beach/block_rowboat.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.6
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "anchor",
+      "asset": {
+        "sprite": "/assets/beach/block_anchor.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.3
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "flag_post",
+      "asset": {
+        "sprite": "/assets/beach/block_flag_post.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "fish_rack",
+      "asset": {
+        "sprite": "/assets/beach/block_fish_rack.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.6
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "gull_post",
+      "asset": {
+        "sprite": "/assets/beach/block_gull_post.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.3
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "wreck_x",
+      "asset": {
+        "sprite": "/assets/beach/block_wreck_1x2.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 2,
+        "axis": "x",
+        "collision": [
+          0.8,
+          0.8
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand",
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "wreck_y",
+      "asset": {
+        "sprite": "/assets/beach/block_wreck_2x1.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 2,
+        "axis": "y",
+        "collision": [
+          0.8,
+          0.8
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand",
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "palm_grove_x",
+      "asset": {
+        "sprite": "/assets/beach/block_palm_grove_1x2.png"
+      },
+      "shape": {
+        "height": 3,
+        "length": 2,
+        "axis": "x",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand",
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "palm_grove_y",
+      "asset": {
+        "sprite": "/assets/beach/block_palm_grove_2x1.png"
+      },
+      "shape": {
+        "height": 3,
+        "length": 2,
+        "axis": "y",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand",
+          "sand"
+        ]
+      }
     }
   ]
 }
