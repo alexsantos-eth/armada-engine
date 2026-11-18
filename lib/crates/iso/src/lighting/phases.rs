@@ -75,7 +75,7 @@ pub const DAWN: PhaseLight = PhaseLight {
     shadow: ShadowProjection {
         dir_x: -0.92,
         dir_y: 0.391_918_358_845_308_46,
-        stretch: 2.2,
+        stretch: 1.54,
         alpha: 0.34,
     },
     shadow_strength: 0.85,
@@ -86,7 +86,7 @@ pub const DAY: PhaseLight = PhaseLight {
     shadow: ShadowProjection {
         dir_x: -0.25,
         dir_y: 0.968_245_836_551_854_5,
-        stretch: 1.15,
+        stretch: 0.8,
         alpha: 0.34,
     },
     shadow_strength: 1.0,
@@ -97,7 +97,7 @@ pub const SUNSET: PhaseLight = PhaseLight {
     shadow: ShadowProjection {
         dir_x: 0.936_749_699_759_759_8,
         dir_y: -0.35,
-        stretch: 2.2,
+        stretch: 1.54,
         alpha: 0.34,
     },
     shadow_strength: 0.85,
@@ -108,7 +108,7 @@ pub const NIGHT: PhaseLight = PhaseLight {
     shadow: ShadowProjection {
         dir_x: 0.6,
         dir_y: 0.8,
-        stretch: 0.85,
+        stretch: 0.6,
         alpha: 0.2,
     },
     shadow_strength: 0.55,
