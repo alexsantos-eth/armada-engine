@@ -63,9 +63,7 @@ pub fn place_decor(
             {
                 continue;
             }
-            if !decor_roll(&blueprint.id, column.coord.x, column.coord.y)
-                .is_multiple_of(DECOR_DENSITY)
-            {
+            if decor_roll(&blueprint.id, column.coord.x, column.coord.y) % DECOR_DENSITY != 0 {
                 continue;
             }
             let mut context = PlacementContext::new(&columns_map, placed);

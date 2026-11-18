@@ -89,7 +89,6 @@ fn road_enabled_structures_materialize_paths_without_overwriting_their_footprint
             reflection: None,
             color_replacements: None,
             sway: None,
-            draw_under_player: false,
             contact_shadow: None,
         },
         shape: EntityShape {
@@ -153,7 +152,6 @@ fn the_road_carves_through_a_zero_collision_prop_and_keeps_it_on_the_path() {
             reflection: None,
             color_replacements: None,
             sway: None,
-            draw_under_player: false,
             contact_shadow: None,
         },
         shape: EntityShape {
@@ -175,7 +173,6 @@ fn the_road_carves_through_a_zero_collision_prop_and_keeps_it_on_the_path() {
             reflection: None,
             color_replacements: None,
             sway: None,
-            draw_under_player: false,
             contact_shadow: None,
         },
         shape: EntityShape {

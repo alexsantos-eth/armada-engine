@@ -100,18 +100,10 @@ pub(crate) async fn run(mut game: Game) {
 
         let after_collect = get_time();
         draw_sorted(&mut game.atlas, game.material.as_ref(), &mut game.draws);
-        draw_sorted(
-            &mut game.atlas,
-            game.material.as_ref(),
-            &mut game.ground_props,
-        );
-        draw_sorted(&mut game.atlas, game.material.as_ref(), &mut game.front);
         game.draw_clouds(frame_ms, &view.projection);
         if let Some(depth) = game.depth_material.as_ref() {
             game.depth_target.begin(depth, &view.depth);
             draw_depth(&mut game.atlas, &game.draws, &view.depth);
-            draw_depth(&mut game.atlas, &game.ground_props, &view.depth);
-            draw_depth(&mut game.atlas, &game.front, &view.depth);
             game.depth_target.end();
         }
         game.scene_target.present(

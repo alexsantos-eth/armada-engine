@@ -43,8 +43,6 @@ pub struct EntityData {
     pub color_variant: Option<u32>,
     /// Wind sway parameters, single-tile entities only.
     pub sway: Option<EntitySway>,
-    /// Whether the sprite is drawn in the ground-props pre-pass, always under the player.
-    pub draw_under_player: bool,
     /// Per-cell or whole-footprint collision fraction.
     pub collision: Option<EntityCollision>,
     /// Whether to add a static contact shadow at the footprint.
@@ -102,7 +100,6 @@ impl Entity {
             color_replacements: blueprint.asset.color_replacements.clone(),
             color_variant: None,
             sway: blueprint.asset.sway.clone(),
-            draw_under_player: blueprint.asset.draw_under_player,
             collision,
             contact_shadow: blueprint.asset.contact_shadow,
             reflection_source: blueprint.asset.reflection.clone(),
@@ -187,10 +184,6 @@ impl Entity {
     }
     pub fn contact_shadow(&self) -> Option<bool> {
         self.data.contact_shadow
-    }
-    /// Whether the sprite is drawn in the ground-props pre-pass, always under the player.
-    pub fn draw_under_player(&self) -> bool {
-        self.data.draw_under_player
     }
     pub fn reflection_source(&self) -> Option<&str> {
         self.data.reflection_source.as_deref()

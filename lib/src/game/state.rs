@@ -99,12 +99,6 @@ pub(crate) struct Game {
     pub(crate) dust: DustPuffs,
     /// The motes and fireflies drifting over the world; view state like the dust.
     pub(crate) particles: AmbientParticles,
-    /// The ground-props pass: sprites that behave like the terrain and the player is always
-    /// drawn over (the small rocks). Flushed after `draws` and before `front`.
-    pub(crate) ground_props: Vec<SpriteDraw>,
-    /// The front pass: everything drawn over the ground props (entities, the player, NPCs,
-    /// dust and particles). Flushed last.
-    pub(crate) front: Vec<SpriteDraw>,
     pub(crate) draws: Vec<SpriteDraw>,
     pub(crate) perf: PerfLog,
     pub(crate) audio: MacroquadAudio,
@@ -427,8 +421,6 @@ impl Game {
             drawn_at: (spawned.x, spawned.y),
             dust: DustPuffs::new(),
             particles: AmbientParticles::new(WORLD_SEED),
-            ground_props: Vec::new(),
-            front: Vec::new(),
             draws: Vec::new(),
             perf: PerfLog::default(),
             audio: MacroquadAudio::load().await,

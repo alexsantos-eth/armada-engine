@@ -82,9 +82,6 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`contact_shadow`](entity.rs#L185) — Si proyecta sombra propia horneada (`None` = hereda del blueprint).
   - Firma: `pub fn contact_shadow(&self) -> Option<bool> {`
 
-- [`draw_under_player`](entity.rs#L192) — Si el sprite se dibuja en el pre-pase de props de suelo, siempre por debajo del jugador (las rocas pequeñas).
-  - Firma: `pub fn draw_under_player(&self) -> bool {`
-
 - [`reflection_source`](entity.rs#L188) — Sprite de reflejo propio (`None` = el derivado del sprite).
   - Firma: `pub fn reflection_source(&self) -> Option<&str> {`
 

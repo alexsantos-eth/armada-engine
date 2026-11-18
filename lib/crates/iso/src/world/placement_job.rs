@@ -57,7 +57,10 @@ fn place(
     let mut entities = result.entities;
     let mut index = result.index;
     entities.append(&mut place_decor(&columns, catalog, &mut index));
-    PlacementOutcome { columns, entities }
+    PlacementOutcome {
+        columns,
+        entities,
+    }
 }
 
 /// One chunk's placement, listed from spawn until it is applied or dropped.

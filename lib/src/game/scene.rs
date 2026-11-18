@@ -281,8 +281,6 @@ impl Game {
         let projection = view.projection;
 
         self.draws.clear();
-        self.ground_props.clear();
-        self.front.clear();
         if !self.show_terrain {
             draw_grid(
                 projection,
@@ -309,7 +307,7 @@ impl Game {
 
         SceneStats {
             chunks_drawn,
-            sprites: self.draws.len() + self.ground_props.len() + self.front.len(),
+            sprites: self.draws.len(),
         }
     }
 
@@ -451,22 +449,11 @@ impl Game {
                     cells,
                     along_y,
                 };
-                let under_player = entity.draw_under_player();
-                let covering = !under_player
-                    && !entity.walkable()
+                let covering = !entity.walkable()
                     && player
                         .as_ref()
                         .is_some_and(|player| standing.hides(player, projection.tile_height));
-                let opacity = if under_player {
-                    1.0
-                } else {
-                    self.occlusion.opacity(entity.id(), covering) as f32
-                };
-                let target: &mut Vec<SpriteDraw> = if under_player {
-                    &mut self.ground_props
-                } else {
-                    &mut self.front
-                };
+                let opacity = self.occlusion.opacity(entity.id(), covering) as f32;
                 for index in 0..cells {
                     let (cell_x, cell_y) = standing.cell_at(index);
                     let key = scene_key(
@@ -499,7 +486,7 @@ impl Game {
                                     Some(piece),
                                 ),
                             };
-                            target.push(draw.see_through(opacity));
+                            self.draws.push(draw.see_through(opacity));
                         }
                         continue;
                     }
@@ -527,7 +514,7 @@ impl Game {
                             cut.then_some(band),
                         ),
                     };
-                    target.push(draw.see_through(opacity));
+                    self.draws.push(draw.see_through(opacity));
                 }
                 let mirrored = entity
                     .reflection_source()
@@ -560,7 +547,7 @@ impl Game {
                         mirrored.3,
                         projection,
                         |x, y| water.at(x, y),
-                        target,
+                        &mut self.draws,
                     );
                 }
             }
@@ -604,7 +591,7 @@ impl Game {
         let clip = shadow_clip::ground_diamonds(&outline, rp.elevation, projection, |x, y| {
             self.manager.column_at(x, y).map(|c| c.elevation)
         });
-        self.front.push(SpriteDraw::ground_ellipse(
+        self.draws.push(SpriteDraw::ground_ellipse(
             player_key(
                 column,
                 rp.elevation,
@@ -722,11 +709,11 @@ impl Game {
                         Reflected::Standing { turn_at: None },
                         projection,
                         |x, y| water.at(x, y),
-                        &mut self.front,
+                        &mut self.draws,
                     );
                 }
                 match (&shade, upright) {
-                    (Some(shade), true) => self.front.push(SpriteDraw::shaded(
+                    (Some(shade), true) => self.draws.push(SpriteDraw::shaded(
                         key,
                         texture,
                         frame,
@@ -734,9 +721,9 @@ impl Game {
                         shade.clone(),
                     )),
                     (None, true) => self
-                        .front
+                        .draws
                         .push(SpriteDraw::whole(key, texture, frame, layout)),
-                    _ => self.front.push(SpriteDraw::leaning(
+                    _ => self.draws.push(SpriteDraw::leaning(
                         key,
                         texture,
                         frame,
@@ -775,20 +762,20 @@ impl Game {
                         layer: key.layer,
                     };
                     match (&shade, upright) {
-                        (Some(shade), true) => self.front.push(SpriteDraw::shaded(
+                        (Some(shade), true) => self.draws.push(SpriteDraw::shaded(
                             pack_key,
                             pack_texture,
                             pack_frame,
                             pack_layout,
                             shade.clone(),
                         )),
-                        (None, true) => self.front.push(SpriteDraw::whole(
+                        (None, true) => self.draws.push(SpriteDraw::whole(
                             pack_key,
                             pack_texture,
                             pack_frame,
                             pack_layout,
                         )),
-                        _ => self.front.push(SpriteDraw::leaning(
+                        _ => self.draws.push(SpriteDraw::leaning(
                             pack_key,
                             pack_texture,
                             pack_frame,
@@ -864,7 +851,7 @@ impl Game {
             let clip = shadow_clip::ground_diamonds(&outline, rp.elevation, projection, |x, y| {
                 self.manager.column_at(x, y).map(|c| c.elevation)
             });
-            self.front.push(SpriteDraw::ground_ellipse(
+            self.draws.push(SpriteDraw::ground_ellipse(
                 player_key(
                     column,
                     rp.elevation,
@@ -907,14 +894,14 @@ impl Game {
                     Reflected::Standing { turn_at: None },
                     projection,
                     |x, y| water.at(x, y),
-                    &mut self.front,
+                    &mut self.draws,
                 );
             }
             let draw = match shade {
                 Some(shade) => SpriteDraw::shaded(key, texture, frame, layout, shade),
                 None => SpriteDraw::whole(key, texture, frame, layout),
             };
-            self.front
+            self.draws
                 .push(draw.tinted_by(crate::npc::npc_view::coat_color(look.tint)));
         }
         self.npc_views.finish();
@@ -942,7 +929,7 @@ impl Game {
             },
             &elevation_at,
         );
-        self.dust.collect(projection, &mut self.front);
+        self.dust.collect(projection, &mut self.draws);
     }
 
     /// The motes and fireflies adrift over the world, spawned and drawn like the dust:
@@ -970,7 +957,7 @@ impl Game {
             wind_at: &wind_at,
         };
         self.particles.update(view.frame_ms, &env);
-        self.particles.collect(view.projection, &mut self.front);
+        self.particles.collect(view.projection, &mut self.draws);
     }
 }
 

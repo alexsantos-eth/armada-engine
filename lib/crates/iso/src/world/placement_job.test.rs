@@ -35,7 +35,6 @@ fn catalog() -> EntityCatalog {
                     reflection: None,
                     color_replacements: None,
                     sway: None,
-                    draw_under_player: false,
                     contact_shadow: None,
                 },
                 shape: EntityShape {
@@ -57,7 +56,6 @@ fn catalog() -> EntityCatalog {
                     reflection: None,
                     color_replacements: None,
                     sway: None,
-                    draw_under_player: false,
                     contact_shadow: None,
                 },
                 shape: EntityShape {
