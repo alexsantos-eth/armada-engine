@@ -37,13 +37,14 @@ fn shipped_wfc_content_validates_against_entities_and_biomes() {
     assert_eq!(wfc.schema_version, 2);
     assert_eq!(
         wfc.weights.len(),
-        25,
+        40,
         "every blueprint no biome claims has a weight"
     );
     assert_eq!(wfc.max_per_chunk["mead_hall"], 1.0);
     assert_eq!(wfc.max_per_chunk["stave_temple"], 1.0);
     assert_eq!(wfc.max_per_chunk["watchtower"], 2.0);
     assert_eq!(wfc.max_per_chunk["grove"], 2.0);
+    assert_eq!(wfc.max_per_chunk["wreck"], 1.0);
 }
 
 #[test]

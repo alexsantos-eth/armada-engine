@@ -12,7 +12,10 @@
       "bush": 1.0,
       "grove": 1.0,
       "runestones": 1.0,
-      "boathouse": 1.0
+      "boathouse": 1.0,
+      "palms": 1.0,
+      "wreck": 1.0,
+      "beach": 1.0
     },
     "greens": 0.0
   },
@@ -109,7 +112,11 @@
         "runestone_pair": 3.0,
         "runestone_fallen": 3.0,
         "bush": 2.0,
-        "grove": 1.0
+        "grove": 1.0,
+        "fish_rack": 4.0,
+        "rowboat": 3.0,
+        "flag_post": 2.0,
+        "palms": 2.0
       },
       "greens": 0.9
     }

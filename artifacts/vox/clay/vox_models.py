@@ -15,7 +15,7 @@ import shutil
 import subprocess
 import sys
 
-from vox_prefabs import MODULE, moved, piece, tile_volume, turned, write
+from vox_prefabs import MODULE, moved, piece, spun, tile_volume, turned, write
 
 M = MODULE
 RING = [(-1, -1), (0, -1), (1, -1), (-1, 0), (0, 0), (1, 0), (-1, 1), (0, 1)]   # 3x3 without the front cell
@@ -239,6 +239,105 @@ def grove_pine(axis):
     return out
 
 
+# ---------------------------------------------------------------------------------- the beach
+
+def crown(x, y, z, variant="green"):
+    """A palm crown at the top of its trunk (x, y, z): seven fronds hanging out around a tuft,
+    one small block on top. The frond toward the front (+x +y) is left out, like the front
+    block of a tree's lowest layer, so the coconuts and the top of the trunk show."""
+    out = put("leaf_tuft", x, y, z - 6, variant)
+    for q in range(4):
+        out += moved(spun(piece("frond", variant), q), x, y, z)
+        if q:
+            out += moved(spun(piece("frond_diag", variant), q), x, y, z)
+    return out + put("leaf_block_small", x, y, z + 4, variant)
+
+
+def palm_trunk(base, top, segments, bend=2.0):
+    """`segments` ringed segments from `base` (x, y) to `top`, the lean growing toward the top
+    (bend 1 is straight lines, 2 a palm's curve). Returns the boxes and the top of the trunk."""
+    out = []
+    for k in range(segments):
+        t = (k / max(segments - 1, 1)) ** bend
+        x = base[0] + (top[0] - base[0]) * t
+        y = base[1] + (top[1] - base[1]) * t
+        out += put("palm_trunk", x, y, k * 14)
+    return out, segments * 14
+
+
+def coconuts(x, y, z):
+    """Three coconuts hanging under a crown, on its lit and its shaded side."""
+    return (put("coconut", x + 11, y + 3, z) + put("coconut", x + 3, y + 11, z - 1)
+            + put("coconut", x + 10, y + 10, z - 8))
+
+
+def palm_tall():
+    """palm_tall: three blocks: a long ringed trunk leaning gently back, the crown and coconuts."""
+    top = (-8, -8)
+    trunk_boxes, h = palm_trunk((2, 2), top, 16)
+    return trunk_boxes + crown(*top, h + 4) + coconuts(*top, h - 8)
+
+
+def palm():
+    """palm: the medium palm, two blocks, a straighter trunk under a darker crown."""
+    top = (-4, -4)
+    trunk_boxes, h = palm_trunk((2, 2), top, 10)
+    return trunk_boxes + crown(*top, h + 4, "dark") + coconuts(*top, h - 8)
+
+
+def palm_bent():
+    """palm_bent: two blocks; the trunk bows out toward the sea (up-right on screen), coconuts
+    fallen at its foot."""
+    top = (-6, -8)
+    trunk_boxes, h = palm_trunk((12, 28), top, 10, bend=1.6)
+    return (trunk_boxes + crown(*top, h + 4) + coconuts(*top, h - 8)
+            + put("coconut", 30, 30, 0) + put("coconut_half", 40, 18, 0))
+
+
+def coconut_pile():
+    """coconuts: a heap of coconuts fallen on the sand, one split open, and two shells."""
+    return (put("coconut", -10, -6, 0) + put("coconut", 3, -12, 0) + put("coconut", -4, 7, 0)
+            + put("coconut", 9, 2, 0) + put("coconut", -3, -4, 10) + put("coconut_half", 22, 14, 0)
+            + put("coconut_half", -22, 22, 0) + put("shell", -26, -22, 0, "pink") + put("shell", 30, -16, 0, "white"))
+
+
+def driftwood():
+    """driftwood: two bleached logs washed up across each other, a rock and a shell."""
+    return (put("driftwood", -6, -8, 0) + put("driftwood", 4, 2, 12, turn=True)
+            + put("rock_s", -30, 26, 0) + put("shell", 30, 22, 0, "pink"))
+
+
+def beach_rocks():
+    """beach_rocks: a big sand boulder, a grey one behind it, a small stone, pebbles and a crab."""
+    return (put("beach_rock", -18, -6, 0, "sand") + put("beach_rock", 28, -30, 0, "grey")
+            + put("stone_block", -28, 34, 0, "sand") + put("pebble_l", 36, 14, 0)
+            + put("pebble_m", 4, 34, 0) + put("crab", 22, 20, 0))
+
+
+def palm_grove(axis):
+    """palm_grove: a tall palm, a medium one, a young one and a palm bowing out toward the
+    front, over coconuts, a bleached log and a rock, two tiles long along `axis`. Written once
+    along (u, v) from the middle of the footprint and laid out for either orientation; the
+    crowns step down from the back to the front so each one shows."""
+    def at(u, v):
+        return (64 + u, v) if axis == "x" else (v, 64 + u)
+
+    def lay(name, u, v, z, variant="", long=False):
+        return put(name, *at(u, v), z, variant, turn=long and axis == "y")
+
+    def palm_at(base, top, segments, variant, bend=2.0):
+        boxes, h = palm_trunk(at(*base), at(*top), segments, bend)
+        return boxes + crown(*at(*top), h + 4, variant) + coconuts(*at(*top), h - 8)
+
+    out = palm_at((-66, -4), (-72, -8), 16, "green")                 # the tall one, at the back
+    out += palm_at((-4, 6), (-8, 2), 10, "dark")                      # the medium one
+    out += palm_at((44, -14), (68, -6), 9, "green", bend=1.6)         # bowing out toward +u
+    out += palm_at((14, 10), (14, 8), 6, "dark")                     # a young one in front
+    out += lay("driftwood", 20, 36, 0, long=True) + lay("rock_s", 96, 34, 0)
+    out += lay("coconut", -20, 18, 0) + lay("coconut", -12, 24, 0) + lay("coconut_half", 84, 14, 0)
+    return out + lay("coconut", 4, 40, 12) + lay("shell", -96, 30, 0, "pink")
+
+
 # name → (builder, tiles, the asset its render replaces, under lib/assets)
 MODELS = {
     "tree": (fruit_tree, (1, 1, 2), "tree/block.png"),
@@ -261,6 +360,14 @@ MODELS = {
     "grove_autumn_1x2": (lambda: grove_autumn("y"), (1, 2, 2), "tree/block_grove_autumn_1x2.png"),
     "grove_pine_2x1": (lambda: grove_pine("x"), (2, 1, 2), "tree/block_grove_pine_2x1.png"),
     "grove_pine_1x2": (lambda: grove_pine("y"), (1, 2, 2), "tree/block_grove_pine_1x2.png"),
+    "palm_tall": (palm_tall, (1, 1, 3), "beach/block_palm_tall.png"),
+    "palm": (palm, (1, 1, 2), "beach/block_palm.png"),
+    "palm_bent": (palm_bent, (1, 1, 2), "beach/block_palm_bent.png"),
+    "coconuts": (coconut_pile, (1, 1, 1), "beach/block_coconuts.png"),
+    "driftwood": (driftwood, (1, 1, 1), "beach/block_driftwood.png"),
+    "beach_rocks": (beach_rocks, (1, 1, 1), "beach/block_beach_rocks.png"),
+    "palm_grove_2x1": (lambda: palm_grove("x"), (2, 1, 3), "beach/block_palm_grove_2x1.png"),
+    "palm_grove_1x2": (lambda: palm_grove("y"), (1, 2, 3), "beach/block_palm_grove_1x2.png"),
 }
 
 

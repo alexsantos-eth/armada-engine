@@ -26,7 +26,22 @@
     "grove_autumn_x": 2.5,
     "grove_autumn_y": 2.5,
     "grove_pine_x": 2.5,
-    "grove_pine_y": 2.5
+    "grove_pine_y": 2.5,
+    "palm": 6.0,
+    "palm_tall": 4.0,
+    "palm_bent": 4.0,
+    "coconuts": 3.0,
+    "driftwood": 3.0,
+    "beach_rocks": 3.0,
+    "rowboat": 1.5,
+    "anchor": 1.0,
+    "flag_post": 1.0,
+    "fish_rack": 1.5,
+    "gull_post": 2.0,
+    "wreck_x": 0.6,
+    "wreck_y": 0.6,
+    "palm_grove_x": 2.5,
+    "palm_grove_y": 2.5
   },
   "families": {
     "mead_hall": [
@@ -51,6 +66,27 @@
       "runestone_tall",
       "runestone_circle",
       "runestone_fallen"
+    ],
+    "palms": [
+      "palm",
+      "palm_tall",
+      "palm_bent",
+      "palm_grove_x",
+      "palm_grove_y"
+    ],
+    "wreck": [
+      "wreck_x",
+      "wreck_y"
+    ],
+    "beach": [
+      "coconuts",
+      "driftwood",
+      "beach_rocks",
+      "rowboat",
+      "anchor",
+      "flag_post",
+      "fish_rack",
+      "gull_post"
     ]
   },
   "maxPerChunk": {
@@ -62,6 +98,7 @@
     "market_stall": 6,
     "smithy": 1,
     "healer_hut": 1,
-    "boathouse": 2
+    "boathouse": 2,
+    "wreck": 1
   }
 }

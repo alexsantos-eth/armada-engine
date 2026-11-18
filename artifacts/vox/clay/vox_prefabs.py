@@ -33,12 +33,16 @@ PLANK, TIMBER, PLASTER, DOOR = "#a8713d", "#5e3d24", "#eadfc4", "#b98345"
 THATCH, TURF, TILE, SHINGLE, SHINGLE_DARK = "#e3c56a", "#69a83c", "#d9703a", "#9a5b2e", "#8a3f2c"
 GLOW, IRON, FIRE, BREW = "#ffd66b", "#4a4a52", "#f7802a", "#5fd03a"
 STEP, STEP_DEEP, TREAD = "#a79e8d", "#8f8777", "#c6bfae"       # the stairs block (vox_stairs.py)
+# the beach: palm bark and its rings, coconut husk, sun-bleached driftwood, stockfish, rope
+PALM_BARK, PALM_RING, COCONUT = "#b08a5a", "#80603c", "#6b4528"
+DRIFT, FISH, ROPE = "#cbbfa6", "#b9c6c8", "#cfae6e"
 # New colours go at the end: the indices of the files already written must not move.
 PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK, CUT, MOSS,
            RED, WHITE, YELLOW, PINK, CAP, STEM, DOT, OCHRE, RUST, ROCK, ROCK_DARK,
            STONE_SAND, STONE_CLAY, GRAVEL, DIRT, RUNE_BLUE, RUNE_CYAN, RUNE_DARK,
            PLANK, TIMBER, PLASTER, DOOR, THATCH, TURF, TILE, SHINGLE, SHINGLE_DARK,
-           GLOW, IRON, FIRE, BREW, STEP, STEP_DEEP, TREAD]
+           GLOW, IRON, FIRE, BREW, STEP, STEP_DEEP, TREAD,
+           PALM_BARK, PALM_RING, COCONUT, DRIFT, FISH, ROPE]
 
 
 def box(x, y, z0, sx, sy, sz, color, r):
@@ -99,6 +103,82 @@ def shield(color):
 def dragon(color):
     """The carved head that ends a ridge: a neck rising outward along +x and a snout."""
     return [box(0, 0, 0, 6, 6, 14, color, 2), box(4, 0, 10, 6, 6, 10, color, 2), box(9, 0, 15, 8, 5, 5, color, 2)]
+
+
+def palm_trunk(color):
+    """One ringed segment of a palm trunk: stacked every 14 the rings read as the bark scars."""
+    return [box(0, 0, 0, 11, 11, 13, color, 4), box(0, 0, 11, 13, 13, 3, PALM_RING, 1.4)]
+
+
+def frond(color):
+    """One palm frond hanging out along +x from the crown: five leaf pads, each further out and
+    lower, overlapping so the frond reads as one leaf. Its pivot is the crown, so it reaches 21
+    below it; spin it for the other sides."""
+    return [box(9, 0, -2, 18, 15, 7, color, 3), box(22, 0, -6, 16, 14, 7, color, 3),
+            box(34, 0, -11, 14, 12, 7, color, 2.8), box(44, 0, -16, 11, 10, 7, color, 2.4),
+            box(51, 0, -21, 7, 7, 6, color, 2)]
+
+
+def frond_diag(color):
+    """The same frond hanging out along the diagonal between +x and +y."""
+    return [box(6, 6, -2, 15, 15, 7, color, 3), box(16, 16, -6, 13, 13, 7, color, 3),
+            box(24, 24, -11, 11, 11, 7, color, 2.8), box(31, 31, -16, 9, 9, 7, color, 2.4),
+            box(36, 36, -21, 6, 6, 6, color, 2)]
+
+
+def hull_mid(color):
+    """One module of a longship hull, along x: a bottom as wide as the hull, two side strakes
+    standing on it from z = 0 and the dark gunwales, open on top. 60 wide and 26 high."""
+    return ([box(0, 0, 0, 26, 50, 8, color, 3)]
+            + [b for s in (-1, 1) for b in (box(0, s * 24, 0, 26, 8, 22, color, 3),
+                                             box(0, s * 27, 18, 26, 6, 8, TIMBER, 2.4))])
+
+
+def hull_end(color):
+    """The bow of a longship hull, closing toward +x in three steps up to the tall stem post
+    (spin it twice for the stern). Each step's bottom reaches out under its side strakes, so the
+    sides stand on it instead of floating beside a narrow keel."""
+    out = [box(-7, 0, 0, 12, 46, 8, color, 3), box(4, 0, 0, 12, 34, 8, color, 3),
+           box(12, 0, 0, 8, 20, 8, color, 3), box(16, 0, 0, 8, 8, 40, TIMBER, 2.4)]
+    for s in (-1, 1):
+        out += [box(-7, s * 20, 0, 12, 8, 22, color, 3), box(4, s * 14, 0, 12, 8, 24, color, 3),
+                box(12, s * 7, 0, 8, 7, 26, color, 2.6),
+                box(-7, s * 23, 18, 12, 6, 8, TIMBER, 2.4), box(4, s * 17, 20, 12, 6, 8, TIMBER, 2.4)]
+    return out
+
+
+def anchor(color):
+    """An iron anchor stood on its crown: arms on the sand along x, shank, stock along y, ring."""
+    return [box(0, 0, 0, 40, 7, 7, color, 2.6), box(18, 0, 0, 7, 7, 16, color, 2.6),
+            box(-18, 0, 0, 7, 7, 16, color, 2.6), box(0, 0, 3, 7, 7, 50, color, 2.6),
+            box(0, 0, 42, 7, 32, 7, color, 2.6), box(0, 0, 52, 4, 11, 10, color, 1.6)]
+
+
+def flag(color):
+    """A striped flag on a +x face, flying toward +y from its pole: its pivot is on the face."""
+    out = [box(0, 20, 0, 2, 40, 28, color, 0.6)]
+    return out + [box(1, 20, z, 2, 40, 5, WHITE, 0) for z in (6, 17)]
+
+
+def rope_coil(color):
+    """A coil of rope: a low ring of four rounded lengths around a hollow middle."""
+    return [box(0, 5, 0, 14, 4, 4, color, 1.8), box(0, -5, 0, 14, 4, 4, color, 1.8),
+            box(5, 0, 0, 4, 6, 4, color, 1.8), box(-5, 0, 0, 4, 6, 4, color, 1.8),
+            box(0, 0, 3, 10, 3, 3, color, 1.4)]
+
+
+def crab(color):
+    """A beach crab facing +x: body, two claws, legs and eyes."""
+    out = [box(0, 0, 2, 16, 19, 7, color, 3.2), box(12, 7, 1, 8, 7, 5, color, 2.2), box(12, -7, 1, 8, 7, 5, color, 2.2)]
+    out += [box(dx, s * 11, 0, 3, 5, 3, color, 1.2) for s in (-1, 1) for dx in (-5, 2)]
+    return out + [box(6, s * 3, 8, 3, 3, 3, BIRCH_MARK, 1.2) for s in (-1, 1)]
+
+
+def gull(color):
+    """A gull standing and looking toward +x: body, grey wing, head, yellow beak and legs."""
+    return [box(-1, 0, 0, 3, 6, 5, YELLOW, 1), box(0, 0, 5, 20, 11, 11, color, 4.5),
+            box(-3, 0, 13, 16, 12, 4, ROCK, 1.8), box(-13, 0, 10, 8, 6, 3, ROCK_DARK, 1.2),
+            box(9, 0, 13, 9, 9, 9, color, 3.8), box(15, 0, 16, 6, 3, 3, YELLOW, 1)]
 
 
 LEAVES = dict(green=LEAF, dark=LEAF_DARK, autumn=LEAF_AUTUMN, blossom=PINK)
@@ -165,6 +245,25 @@ PIECES = {
     "anvil": (lambda c: [box(0, 0, 0, 8, 8, 6, c, 1.5), box(1, 0, 6, 14, 7, 5, c, 1.5)], {"": IRON}),
     "fire": (lambda c: [box(0, 0, 0, 10, 10, 6, c, 3), box(0, 0, 5, 6, 6, 7, YELLOW, 2.6)], {"": FIRE}),
     "cauldron": (lambda c: [box(0, 0, 0, 14, 14, 11, c, 4.5), box(0, 0, 10, 10, 10, 2, BREW, 1)], {"": IRON}),
+    # ---- the beach (kits 1 and 3) ---------------------------------------------------------
+    "palm_trunk": (palm_trunk, {"": PALM_BARK}),                # stacked every 14
+    "frond": (frond, dict(green=LEAF, dark=LEAF_DARK)),
+    "frond_diag": (frond_diag, dict(green=LEAF, dark=LEAF_DARK)),
+    "coconut": (lambda c: [box(0, 0, 0, 11, 11, 11, c, 4.8)], {"": COCONUT}),
+    "coconut_half": (lambda c: [box(0, 0, 0, 12, 12, 6, c, 2.6), box(0, 0, 5, 8, 8, 2, WHITE, 1.2)], {"": COCONUT}),
+    "driftwood": (lambda c: [box(0, 0, 0, 58, 14, 13, c, 5.5), box(29, 0, 2, 2, 10, 10, CUT, 1.4),
+                             box(-10, 9, 5, 7, 14, 7, c, 2.8), box(12, -8, 6, 6, 10, 6, c, 2.5)], {"": DRIFT}),
+    "beach_rock": (stone(46, 38, 26, 10), dict(grey=ROCK, sand=STONE_SAND)),
+    "shell": (lambda c: [box(0, 0, 0, 9, 8, 4, c, 2), box(0, 0, 3, 6, 4, 2, WHITE, 1)], dict(pink=PINK, white=PLASTER)),
+    "crab": (crab, {"": RED}),
+    "gull": (gull, {"": WHITE}),
+    "hull_mid": (hull_mid, dict(plank=PLANK, timber=TIMBER)),
+    "hull_end": (hull_end, dict(plank=PLANK, timber=TIMBER)),
+    "anchor": (anchor, {"": IRON}),
+    "flag": (flag, dict(red=RED, blue=RUNE_BLUE)),
+    "rope_coil": (rope_coil, {"": ROPE}),
+    "cloth": (lambda c: [box(0, 0, 0, 14, 26, 3, c, 1.2)], dict(red=RED, white=WHITE)),
+    "fish": (lambda c: [box(0, 0, 5, 4, 8, 16, c, 1.8), box(0, 0, 0, 3, 10, 6, c, 1.2)], {"": FISH}),
     "boat": (lambda c: [box(0, 0, 0, 44, 14, 8, c, 4), box(0, 0, 6, 36, 8, 2, CUT, 1),
                         box(21, 0, 4, 5, 5, 10, c, 2)], {"": SHINGLE}),
 }
@@ -179,6 +278,14 @@ def moved(boxes, x, y, z):
 def turned(boxes):
     """The same boxes turned a quarter: what ran along x now runs along y."""
     return [dict(b, c=(b["c"][1], b["c"][0], b["c"][2]), h=(b["h"][1], b["h"][0], b["h"][2])) for b in boxes]
+
+
+def spun(boxes, quarters):
+    """The same boxes spun a quarter turn at a time around z: +x goes to +y, then −x, then −y.
+    Unlike `turned`, which swaps the axes (a mirror), this keeps a piece's handedness."""
+    for _ in range(quarters % 4):
+        boxes = [dict(b, c=(-b["c"][1], b["c"][0], b["c"][2]), h=(b["h"][1], b["h"][0], b["h"][2])) for b in boxes]
+    return boxes
 
 
 def piece(name, variant=""):
