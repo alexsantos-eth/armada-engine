@@ -1113,6 +1113,131 @@
           "sand"
         ]
       }
+    },
+    {
+      "id": "rock_small",
+      "asset": {
+        "sprite": "/assets/rock/block.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ],
+        "additionalSurfaces": [
+          "ground",
+          "sand",
+          "path",
+          "stairs"
+        ]
+      }
+    },
+    {
+      "id": "rock_small_2",
+      "asset": {
+        "sprite": "/assets/rock/block_2.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ],
+        "additionalSurfaces": [
+          "ground",
+          "sand",
+          "path",
+          "stairs"
+        ]
+      }
+    },
+    {
+      "id": "rock_small_3",
+      "asset": {
+        "sprite": "/assets/rock/block_3.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ],
+        "additionalSurfaces": [
+          "ground",
+          "sand",
+          "path",
+          "stairs"
+        ]
+      }
+    },
+    {
+      "id": "rock_medium",
+      "asset": {
+        "sprite": "/assets/rock/block_4.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ],
+        "additionalSurfaces": [
+          "ground",
+          "sand",
+          "path",
+          "stairs"
+        ]
+      }
+    },
+    {
+      "id": "rock_medium_2",
+      "asset": {
+        "sprite": "/assets/rock/block_5.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ],
+        "additionalSurfaces": [
+          "ground",
+          "sand",
+          "path",
+          "stairs"
+        ]
+      }
     }
   ]
 }

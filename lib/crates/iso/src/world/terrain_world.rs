@@ -166,9 +166,18 @@ impl TerrainWorld {
 
 /// Materializes road blocks for every road-enabled entity in `columns`, the same material chunks
 /// see after [`TerrainWorld::connect_roads`]: entries in the libraries around each footprint,
-/// joined into a stable tree that avoids water and occupied footprints.
+/// joined into a stable tree that avoids water and occupied footprints. A zero-collision
+/// footprint (the small decor) never blocks the road: the carve goes through and the prop
+/// stays standing on the path it lands on.
 pub(crate) fn connect_roads_into(columns: &mut [TerrainColumn], entities: &[Entity]) -> usize {
-    let occupied: Vec<_> = entities.iter().flat_map(get_entity_footprint_for).collect();
+    let occupied: Vec<_> = entities
+        .iter()
+        .flat_map(|entity| {
+            get_entity_footprint_for(entity)
+                .into_iter()
+                .filter(move |&cell| entity.collision_at(cell.x, cell.y) > 0.0)
+        })
+        .collect();
     let connectors: Vec<_> = entities
         .iter()
         .filter(|entity| entity.road_access())

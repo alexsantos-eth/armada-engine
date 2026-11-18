@@ -260,7 +260,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`place`](placement_job.rs#L39) — Coloca entidades sobre las columnas y materializa sus caminos, inline; el hilo de colocación la ejecuta.
+- [`place`](placement_job.rs#L40) — Coloca entidades sobre las columnas, materializa sus caminos y esquila después el decor de piedras sobre las columnas talladas, inline; el hilo de colocación la ejecuta.
   - Firma: `fn place( mut columns: Vec<TerrainColumn>, catalog: &EntityCatalog, content: &ChunkContent, ) -> PlacementOutcome {`
 
 - [`spawn`](placement_job.rs#L81) — Lanza el trabajo de colocación en un hilo; en `wasm32` lo calcula directamente en el frame.

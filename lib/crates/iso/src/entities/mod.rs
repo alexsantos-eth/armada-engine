@@ -1,6 +1,7 @@
 //! Entity instances, deterministic placement and the validated catalog.
 
 pub mod blueprint;
+pub mod decor;
 pub mod entity;
 pub mod greenery;
 pub mod placement;

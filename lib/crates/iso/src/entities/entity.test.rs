@@ -20,6 +20,7 @@ fn blueprint(id: &str, length: i32, surface: TerrainMaterial) -> EntityBlueprint
         },
         placement: crate::entities::blueprint::EntityPlacement {
             surfaces: vec![surface],
+            additional_surfaces: vec![],
             road_access: false,
         },
     }

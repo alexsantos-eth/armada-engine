@@ -21,6 +21,7 @@ fn blueprint(id: &str, length: i32, axis: EntityLengthAxis, road_access: bool) -
         },
         placement: EntityPlacement {
             surfaces: vec![TerrainMaterial::Grass; length as usize],
+            additional_surfaces: vec![],
             road_access,
         },
     }

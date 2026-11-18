@@ -203,8 +203,17 @@ pub fn place_entities_with_content(
         let Some(anchor_surface) = blueprint.placement.surfaces.first() else {
             continue;
         };
-        let anchors = by_surface.get(anchor_surface).unwrap_or(&empty);
-        for &index in anchors {
+        let mut anchor_surfaces = vec![*anchor_surface];
+        for &extra in &blueprint.placement.additional_surfaces {
+            if !anchor_surfaces.contains(&extra) {
+                anchor_surfaces.push(extra);
+            }
+        }
+        let anchors: Vec<usize> = anchor_surfaces
+            .iter()
+            .flat_map(|surface| by_surface.get(surface).unwrap_or(&empty).iter().copied())
+            .collect();
+        for &index in &anchors {
             let column = &columns[index];
             let anchor = column.coord;
             match &gated {
@@ -323,7 +332,12 @@ pub(crate) fn find_placement(
     let surfaces = &blueprint.placement.surfaces;
 
     let anchor_cell = context.column(anchor.x, anchor.y)?;
-    if anchor_cell.surface != surfaces[0] {
+    if anchor_cell.surface != surfaces[0]
+        && !blueprint
+            .placement
+            .additional_surfaces
+            .contains(&anchor_cell.surface)
+    {
         return None;
     }
     if context.is_taken(anchor.x, anchor.y) {
@@ -348,7 +362,12 @@ pub(crate) fn find_placement(
         };
         let cell = context.column(x, y)?;
         let required = surfaces.get(index).copied().unwrap_or(surfaces[0]);
-        if cell.surface != required {
+        let stands_on_anchor = index == 0
+            && blueprint
+                .placement
+                .additional_surfaces
+                .contains(&cell.surface);
+        if cell.surface != required && !stands_on_anchor {
             return None;
         }
         if context.is_taken(x, y) {

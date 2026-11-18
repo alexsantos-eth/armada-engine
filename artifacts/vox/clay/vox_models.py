@@ -239,6 +239,34 @@ def grove_pine(axis):
     return out
 
 
+def rock_medium():
+    """rock_medium: one big slab boulder, moss on its back."""
+    return put("rock_l", 0, -2, 0)
+
+
+def rock_medium_2():
+    """rock_medium_2: a boulder settled among a pebble, a small one and moss."""
+    return (put("rock_l", -10, 4, 0) + put("pebble_l", 16, -12, 0)
+            + put("pebble_m", 2, -16, 0) + put("moss_patch", 12, 14, 0))
+
+
+def rock_small():
+    """rock_small: one loose dark stone, resting off-centre."""
+    return put("rock_s", 3, -4, 0)
+
+
+def rock_small_2():
+    """rock_small_2: a stone with a pale pebble, a small one and a dab of moss for company."""
+    return (put("rock_s", -12, -2, 0) + put("pebble_l", 10, -10, 0) + put("moss_patch", 12, 10, 0)
+            + put("pebble_s", -4, 16, 0))
+
+
+def rock_small_3():
+    """rock_small_3: a low pile of pebbles scattered over the tile."""
+    return (put("pebble_l", -9, 5, 0) + put("pebble_m", 11, -7, 0) + put("pebble_s", 4, 15, 0)
+            + put("pebble_s", -15, -13, 0))
+
+
 # ---------------------------------------------------------------------------------- the beach
 
 def crown(x, y, z, variant="green"):
@@ -349,6 +377,11 @@ MODELS = {
     "tree_7": (cypress, (1, 1, 2), "tree/block_7.png"),
     "tree_8": (birch, (1, 1, 2), "tree/block_8.png"),
     "bush": (bush, (1, 1, 1), "bush/block.png"),
+    "rock_small": (rock_small, (1, 1, 1), "rock/block.png"),
+    "rock_small_2": (rock_small_2, (1, 1, 1), "rock/block_2.png"),
+    "rock_small_3": (rock_small_3, (1, 1, 1), "rock/block_3.png"),
+    "rock_medium": (rock_medium, (1, 1, 1), "rock/block_4.png"),
+    "rock_medium_2": (rock_medium_2, (1, 1, 1), "rock/block_5.png"),
     "grove_2x1": (lambda: grove("x"), (2, 1, 2), "tree/block_grove_2x1.png"),
     "grove_1x2": (lambda: grove("y"), (1, 2, 2), "tree/block_grove_1x2.png"),
     "tree_9": (willow, (1, 1, 2), "tree/block_9.png"),

@@ -27,6 +27,7 @@ fn catalog(ids: &[&str]) -> EntityCatalog {
                 },
                 placement: EntityPlacement {
                     surfaces: vec![TerrainMaterial::Grass],
+                    additional_surfaces: vec![],
                     road_access: false,
                 },
             })

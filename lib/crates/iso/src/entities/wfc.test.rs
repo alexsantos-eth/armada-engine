@@ -23,6 +23,7 @@ fn entities() -> EntityCatalog {
         },
         placement: EntityPlacement {
             surfaces: vec![TerrainMaterial::Grass],
+            additional_surfaces: vec![],
             road_access: false,
         },
     };
@@ -388,6 +389,7 @@ fn a_pier_grows_at_the_water_edge() {
                     TerrainMaterial::Sand,
                     TerrainMaterial::Grass,
                 ],
+                additional_surfaces: vec![],
                 road_access: false,
             },
         }],
@@ -663,4 +665,64 @@ fn without_a_settlement_field_the_weights_are_the_catalogue_s_own() {
         grown.iter().map(|entity| entity.id()).collect()
     }
     assert_eq!(ids(&bare), ids(&explicit));
+}
+
+#[test]
+fn a_blueprint_grows_on_an_additional_surface() {
+    let entities = EntityCatalog {
+        schema_version: crate::entities::validation::CATALOG_SCHEMA_VERSION,
+        entities: vec![EntityBlueprint {
+            id: "rock_small".to_owned(),
+            asset: EntityAsset {
+                sprite: "/assets/rock/block.png".to_owned(),
+                reflection: None,
+                color_replacements: None,
+                sway: None,
+                contact_shadow: None,
+            },
+            shape: EntityShape {
+                height: 1,
+                length: 1,
+                axis: EntityLengthAxis::X,
+                collision: vec![0.0],
+            },
+            placement: EntityPlacement {
+                surfaces: vec![TerrainMaterial::Grass],
+                additional_surfaces: vec![TerrainMaterial::Path],
+                road_access: false,
+            },
+        }],
+    };
+    let json = r#"{
+        "schemaVersion": 2,
+        "emptyWeight": 0.001,
+        "weights": {
+            "rock_small": 1.0
+        }
+    }"#;
+    let wfc = parse_wfc(json, &entities, None).expect("valid wfc content");
+    let claimed = vec![false];
+    let columns: Vec<_> = (0..24)
+        .flat_map(|x| {
+            (0..24).map(move |y| column(x, y, TerrainMaterial::Path, 0))
+        })
+        .collect();
+    let grown = solve_chunk(
+        &columns,
+        &entities,
+        WfcContent::new(&wfc, 123),
+        &claimed,
+        &mut crate::grid::SpatialIndex::new(),
+    );
+    assert!(
+        grown.iter().any(|entity| entity.type_() == "rock_small"),
+        "the rock grows on the path the solver is given"
+    );
+    for rock in grown.iter().filter(|entity| entity.type_() == "rock_small") {
+        let anchor = columns
+            .iter()
+            .find(|column| column.coord.x == rock.x() && column.coord.y == rock.y())
+            .expect("the anchor is inside the chunk");
+        assert_eq!(anchor.surface, TerrainMaterial::Path);
+    }
 }

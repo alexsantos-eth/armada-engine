@@ -41,7 +41,12 @@
     "wreck_x": 0.6,
     "wreck_y": 0.6,
     "palm_grove_x": 2.5,
-    "palm_grove_y": 2.5
+    "palm_grove_y": 2.5,
+    "rock_small": 2.0,
+    "rock_small_2": 2.0,
+    "rock_small_3": 1.5,
+    "rock_medium": 1.5,
+    "rock_medium_2": 1.0
   },
   "families": {
     "mead_hall": [

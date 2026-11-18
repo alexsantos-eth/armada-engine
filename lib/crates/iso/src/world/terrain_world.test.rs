@@ -99,6 +99,7 @@ fn road_enabled_structures_materialize_paths_without_overwriting_their_footprint
         },
         placement: EntityPlacement {
             surfaces: vec![TerrainMaterial::Grass],
+            additional_surfaces: vec![],
             road_access: true,
         },
     };
@@ -122,5 +123,80 @@ fn road_enabled_structures_materialize_paths_without_overwriting_their_footprint
             .unwrap()
             .iter()
             .any(|column| column.surface == TerrainMaterial::Path)
+    );
+}
+
+#[test]
+fn the_road_carves_through_a_zero_collision_prop_and_keeps_it_on_the_path() {
+    let mut world = world();
+    let chunk = ChunkCoord { cx: 0, cy: 0 };
+    world.show_chunk(chunk);
+
+    for y in 0..16 {
+        for x in 0..16 {
+            if y == 8 {
+                world
+                    .edit_column(WorldCoord { x, y }, 0, TerrainMaterial::Grass)
+                    .unwrap();
+            } else {
+                world
+                    .edit_column(WorldCoord { x, y }, -1, TerrainMaterial::Water)
+                    .unwrap();
+            }
+        }
+    }
+    let house = EntityBlueprint {
+        id: "house".to_owned(),
+        asset: EntityAsset {
+            sprite: "/assets/house/block.svg".to_owned(),
+            reflection: None,
+            color_replacements: None,
+            sway: None,
+            contact_shadow: None,
+        },
+        shape: EntityShape {
+            height: 1,
+            length: 1,
+            axis: EntityLengthAxis::X,
+            collision: vec![1.0],
+        },
+        placement: EntityPlacement {
+            surfaces: vec![TerrainMaterial::Grass],
+            additional_surfaces: vec![],
+            road_access: true,
+        },
+    };
+    let rock = EntityBlueprint {
+        id: "rock_small".to_owned(),
+        asset: EntityAsset {
+            sprite: "/assets/rock/block.png".to_owned(),
+            reflection: None,
+            color_replacements: None,
+            sway: None,
+            contact_shadow: None,
+        },
+        shape: EntityShape {
+            height: 1,
+            length: 1,
+            axis: EntityLengthAxis::X,
+            collision: vec![0.0],
+        },
+        placement: EntityPlacement {
+            surfaces: vec![TerrainMaterial::Grass],
+            additional_surfaces: vec![TerrainMaterial::Path],
+            road_access: false,
+        },
+    };
+    let entities = [
+        Entity::new(2, 7, &house, 0),
+        Entity::new(13, 7, &house, 0),
+        Entity::new(8, 8, &rock, 0),
+    ];
+
+    assert_eq!(world.connect_roads(chunk, &entities), 2);
+    assert_eq!(
+        world.column_at(WorldCoord { x: 8, y: 8 }).unwrap().surface,
+        TerrainMaterial::Path,
+        "the rock's cell carries the road; its collision never blocks the carve"
     );
 }

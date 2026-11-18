@@ -45,6 +45,7 @@ fn catalog() -> EntityCatalog {
                 },
                 placement: EntityPlacement {
                     surfaces: vec![TerrainMaterial::Grass],
+                    additional_surfaces: vec![],
                     road_access: false,
                 },
             },
@@ -65,6 +66,7 @@ fn catalog() -> EntityCatalog {
                 },
                 placement: EntityPlacement {
                     surfaces: vec![TerrainMaterial::Grass],
+                    additional_surfaces: vec![],
                     road_access: true,
                 },
             },

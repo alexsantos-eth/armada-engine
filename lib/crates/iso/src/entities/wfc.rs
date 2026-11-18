@@ -380,7 +380,12 @@ fn footprint_cells_into(
             return false;
         };
         let required = surfaces.get(index as usize).copied().unwrap_or(surfaces[0]);
-        if column.surface != required {
+        let stands_on_anchor = index == 0
+            && blueprint
+                .placement
+                .additional_surfaces
+                .contains(&column.surface);
+        if column.surface != required && !stands_on_anchor {
             return false;
         }
         out.push(WorldCoord { x, y });

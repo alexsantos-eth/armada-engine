@@ -15,7 +15,12 @@
       "boathouse": 1.0,
       "palms": 1.0,
       "wreck": 1.0,
-      "beach": 1.0
+      "beach": 1.0,
+      "rock_small": 1.0,
+      "rock_small_2": 1.0,
+      "rock_small_3": 1.0,
+      "rock_medium": 1.0,
+      "rock_medium_2": 1.0
     },
     "greens": 0.0
   },

@@ -7200,6 +7200,131 @@
       "sway": null
     },
     {
+      "id": "rock_block",
+      "kind": "entity",
+      "source": "/assets/rock/block.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1644,
+        "y": 2156,
+        "width": 32,
+        "height": 25
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.025,
+        "y": -0.055748,
+        "width": 0.1,
+        "height": 0.077997
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "rock_block_2",
+      "kind": "entity",
+      "source": "/assets/rock/block_2.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1501,
+        "y": 2156,
+        "width": 74,
+        "height": 47
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.10625,
+        "y": -0.080707,
+        "width": 0.23125,
+        "height": 0.146634
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "rock_block_3",
+      "kind": "entity",
+      "source": "/assets/rock/block_3.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1576,
+        "y": 2156,
+        "width": 67,
+        "height": 43
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.1,
+        "y": -0.080707,
+        "width": 0.209375,
+        "height": 0.134155
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "rock_block_4",
+      "kind": "entity",
+      "source": "/assets/rock/block_4.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1435,
+        "y": 2156,
+        "width": 65,
+        "height": 51
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.09375,
+        "y": -0.121266,
+        "width": 0.203125,
+        "height": 0.159114
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "rock_block_5",
+      "kind": "entity",
+      "source": "/assets/rock/block_5.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1334,
+        "y": 2156,
+        "width": 100,
+        "height": 65
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.15625,
+        "y": -0.130625,
+        "width": 0.3125,
+        "height": 0.202792
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
       "id": "sand_block",
       "kind": "entity",
       "source": "/assets/sand/block.png",

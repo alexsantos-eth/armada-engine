@@ -25,6 +25,7 @@ fn catalog() -> EntityCatalog {
             },
             placement: EntityPlacement {
                 surfaces: vec![TerrainMaterial::Grass],
+                additional_surfaces: vec![],
                 road_access: false,
             },
         }],
@@ -511,6 +512,7 @@ mod editing {
             },
             placement: crate::entities::EntityPlacement {
                 surfaces: vec![TerrainMaterial::Grass, TerrainMaterial::Grass],
+                additional_surfaces: vec![],
                 road_access: false,
             },
         };
@@ -545,6 +547,7 @@ mod editing {
             },
             placement: crate::entities::EntityPlacement {
                 surfaces: vec![TerrainMaterial::Grass],
+                additional_surfaces: vec![],
                 road_access: false,
             },
         };

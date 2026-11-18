@@ -18,6 +18,7 @@ use crate::settlements::WorldSettlements;
 use crate::terrain::{TerrainColumn, WORLD_SEED};
 
 use super::terrain_world::connect_roads_into;
+use crate::entities::decor::place_decor;
 
 /// The outcome of one chunk's placement: the columns with any roads materialized, and its
 /// entities in column order.
@@ -53,9 +54,12 @@ fn place(
         },
     );
     let _ = connect_roads_into(&mut columns, &result.entities);
+    let mut entities = result.entities;
+    let mut index = result.index;
+    entities.append(&mut place_decor(&columns, catalog, &mut index));
     PlacementOutcome {
         columns,
-        entities: result.entities,
+        entities,
     }
 }
 

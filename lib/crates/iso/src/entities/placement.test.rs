@@ -43,6 +43,7 @@ fn blueprint(id: &str, length: i32, surfaces: Vec<TerrainMaterial>) -> EntityBlu
         },
         placement: EntityPlacement {
             surfaces,
+            additional_surfaces: vec![],
             road_access: false,
         },
     }
@@ -494,6 +495,7 @@ mod by_hand {
             },
             placement: EntityPlacement {
                 surfaces: vec![TerrainMaterial::Grass; length as usize],
+                additional_surfaces: vec![],
                 road_access: false,
             },
         }
@@ -671,4 +673,59 @@ fn without_a_settlement_field_the_biome_pass_is_unchanged() {
     let ids: Vec<_> = zoneless.entities.iter().map(|e| e.id()).collect();
     let ids_legacy: Vec<_> = legacy.entities.iter().map(|e| e.id()).collect();
     assert_eq!(ids, ids_legacy);
+}
+
+#[test]
+fn a_hand_placement_accepts_an_additional_surface() {
+    let mut rock = blueprint("rock_small", 1, vec![TerrainMaterial::Grass]);
+    rock.shape.collision = vec![0.0];
+    rock.placement.additional_surfaces = vec![TerrainMaterial::Path];
+    let columns = vec![
+        column(0, 0, TerrainMaterial::Path, 1),
+        column(1, 0, TerrainMaterial::Water, 1),
+    ];
+    let placed = placement_by_hand(WorldCoord { x: 0, y: 0 }, &rock, &columns, &[]);
+    assert!(placed.is_some(), "the rock stands on the path");
+    assert_eq!(placed.expect("the rock stands").elevation, 1);
+    assert!(
+        placement_by_hand(WorldCoord { x: 1, y: 0 }, &rock, &columns, &[]).is_none(),
+        "the additional surface does not let it stand on water"
+    );
+}
+
+#[test]
+fn the_generated_pass_anchors_on_an_additional_surface() {
+    let mut rock = blueprint("rock_small", 1, vec![TerrainMaterial::Grass]);
+    rock.shape.collision = vec![0.0];
+    rock.placement.additional_surfaces = vec![TerrainMaterial::Path];
+    let columns: Vec<TerrainColumn> = (-8..8)
+        .flat_map(|x| (-8..8).map(move |y| column(x, y, TerrainMaterial::Path, 0)))
+        .collect();
+    let catalog = catalog(vec![rock]);
+    let rules = PlacementRules {
+        gap: 0,
+        density: 1,
+    };
+    let placed = place_entities_with_biomes(&columns, &catalog, rules, None);
+    assert!(
+        !placed.entities.is_empty(),
+        "with no biome claiming it, the density roll anchors on the additional surface"
+    );
+    for entity in &placed.entities {
+        assert_eq!(entity.type_(), "rock_small");
+    }
+}
+
+#[test]
+fn an_additional_surface_does_not_replace_the_footprint_requirements() {
+    let mut rock = blueprint("rock_small", 2, vec![TerrainMaterial::Grass, TerrainMaterial::Grass]);
+    rock.shape.collision = vec![0.0, 0.0];
+    rock.placement.additional_surfaces = vec![TerrainMaterial::Path];
+    let columns = vec![
+        column(0, 0, TerrainMaterial::Path, 0),
+        column(1, 0, TerrainMaterial::Sand, 0),
+    ];
+
+    let placed = placement_by_hand(WorldCoord { x: 0, y: 0 }, &rock, &columns, &[]);
+    assert!(placed.is_none());
 }

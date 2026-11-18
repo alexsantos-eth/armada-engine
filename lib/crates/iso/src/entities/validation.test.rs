@@ -23,6 +23,7 @@ fn blueprint(id: &str, length: i32, surfaces: Vec<TerrainMaterial>) -> EntityBlu
         },
         placement: EntityPlacement {
             surfaces,
+            additional_surfaces: vec![],
             road_access: false,
         },
     }

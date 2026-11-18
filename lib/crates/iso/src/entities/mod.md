@@ -11,7 +11,7 @@ No contiene sprites, nodos de escena ni efectos visuales. La apariencia y el ren
 
 Este catálogo documenta las funciones, métodos y constantes exportados por este dominio. Incluye la firma y un enlace a la implementación; los helpers privados se mantienen junto a su código porque no forman parte del contrato estable.
 
-`EntityPlacement` incluye `road_access` (serializado como `roadAccess`): cuando es `true`, la instancia solicita una entrada a la red de caminos materializada por `world` tras el pase de colocación. Si falta, vale `false` y mantiene la compatibilidad del catálogo.
+`EntityPlacement` incluye `road_access` (serializado como `roadAccess`): cuando es `true`, la instancia solicita una entrada a la red de caminos materializada por `world` tras el pase de colocación. Si falta, vale `false` y mantiene la compatibilidad del catálogo. También incluye `additional_surfaces` (serializado como `additionalSurfaces`): las superficies sobre las que la casilla ancla puede estar, además de `surfaces[0]`; el resto de la huella conserva sus superficies exigidas. Es cómo un blueprint alcanza los bloques que el pase de colocación nunca ve (los caminos se materializan después; el pase `decor`, tras las carreteras, esquila los `additionalSurfaces` de los blueprints sin colisión —las piedras— sobre el chunk recién tallado). Si falta, vale lista vacía y mantiene la compatibilidad del catálogo.
 
 ### `entity.rs`
 
@@ -102,6 +102,17 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`index_entities`](entity.rs#L260) — Construye el índice espacial de `entities` sobre sus huellas completas: lo que ocupa cada
   - Firma: `pub fn index_entities(entities: &[Entity]) -> SpatialIndex<Entity> {`
+
+### `decor.rs`
+
+#### Funciones y métodos
+
+- [`place_decor`](decor.rs#L43) — Coloca los blueprints sin colisión sobre sus `additionalSurfaces`, sobre las columnas tal como quedan tras tallar los caminos: salta cualquier columna ya ocupada y rueda desde su propio flujo determinista, de modo que las piedras se ponen sobre el camino sin repetir ni solaparse con lo ya en pie. Se aplica después de `connect_roads_into`, sobre las columnas ya talladas.
+  - Firma: `pub fn place_decor( columns: &[TerrainColumn], catalog: &EntityCatalog, placed: &mut SpatialIndex<Entity>, ) -> Vec<Entity> {`
+
+#### Constantes internas
+
+- [`DECOR_DENSITY`](decor.rs#L16) — Columnas por instancia de un blueprint, de media, sobre las superficies adicionales.
 
 ### `greenery.rs`
 
