@@ -3,9 +3,11 @@
 
 Every asset is a PNG already (the voxel renders and the fixed hand-made ones), so this script
 only: scales each `.png` asset it finds to the shared resolution (the packer then trims each to
-its ink), and cuts every painted player sheet (`painted/player-16_<sheet>.png`, the 3D-model
-renders) cell by cell into `sheets/player-16_<sheet>/<row>-<column>.png` — needing the cell
-geometry of each sheet, which is compiled in beside them as `player-16/<sheet>.json`.
+its ink), and cuts every painted sheet (`painted/<folder>_<sheet>.png`: the player's 3D-model
+renders, `player-16_*`, and the crab's clay renders, `crab_*`) cell by cell into
+`sheets/<folder>_<sheet>/<row>-<column>.png` — needing the cell geometry of each sheet, which
+is its sidecar `<folder>/<sheet>.json` under the asset tree. A painted PNG without a sidecar
+is skipped.
 
 `PIXELS_PER_TILE` is the width of one tile of world in the rasters, so every sprite comes out at
 the same resolution per tile of world. The packer only trims and places; nothing is scaled
@@ -123,9 +125,9 @@ def main():
     for path in sorted(glob.glob(os.path.join(painted, "*.png"))):
         stem = os.path.splitext(os.path.basename(path))[0]   # e.g. player-16_walk
         folder, separator, sheet = stem.partition("_")
-        if not separator or folder != "player-16":
-            continue
         sidecar = os.path.join(svg_dir, folder, sheet + ".json")
+        if not separator or not os.path.exists(sidecar):
+            continue
         try:
             grid = sheet_grid(sidecar)
             assert grid, "%s is not a sheet" % sidecar

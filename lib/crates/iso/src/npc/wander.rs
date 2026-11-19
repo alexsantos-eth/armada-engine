@@ -31,6 +31,62 @@ pub const NPC_CLIMB_SETTLE: f64 = 0.25;
 /// Share of the step at which a character walking off a block leaves its edge and falls.
 pub const NPC_DROP_EDGE: f64 = 0.6;
 
+/// How fast a crab scuttles, in columns per simulated second: quicker than a villager strolls.
+pub const CRAB_SPEED: f64 = 1.8;
+/// How many columns a crab strays from where it was born, along either axis.
+pub const CRAB_LEASH: i32 = 4;
+/// The shortest and the longest rest of a crab between two scuttles, in ticks.
+pub const CRAB_REST_TICKS: (i32, i32) = (20, 90);
+/// The fewest and the most cells one scuttle covers.
+pub const CRAB_STROLL_CELLS: (i32, i32) = (1, 3);
+
+/// What kind of character it is, and so how it gets about.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum NpcKind {
+    /// A villager or a wanderer: walks, takes stairs, climbs a block and drops off one.
+    #[default]
+    Villager,
+    /// A beach crab: scuttles sideways over level ground and drops off a block, but never
+    /// climbs nor takes a flight of stairs. Faced with a wall it turns back.
+    Crab,
+}
+
+/// How a kind of character moves: its pace, its leash, its rests and its strolls.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct NpcGait {
+    /// Columns advanced per tick.
+    pub step: f64,
+    pub leash: i32,
+    pub rest_ticks: (i32, i32),
+    pub stroll_cells: (i32, i32),
+}
+
+impl NpcKind {
+    /// How this kind moves.
+    pub fn gait(self) -> NpcGait {
+        match self {
+            NpcKind::Villager => NpcGait {
+                step: NPC_STEP,
+                leash: NPC_LEASH,
+                rest_ticks: NPC_REST_TICKS,
+                stroll_cells: NPC_STROLL_CELLS,
+            },
+            NpcKind::Crab => NpcGait {
+                step: CRAB_SPEED / TICKS_PER_SECOND as f64,
+                leash: CRAB_LEASH,
+                rest_ticks: CRAB_REST_TICKS,
+                stroll_cells: CRAB_STROLL_CELLS,
+            },
+        }
+    }
+
+    /// Whether it can climb a block one higher or take a flight of stairs: only ground of its
+    /// own level or lower is open to one that cannot.
+    pub fn climbs(self) -> bool {
+        self == NpcKind::Villager
+    }
+}
+
 /// The eight neighbours a stroll can head for, in the order they are tried.
 const HEADINGS: [(i32, i32); 8] = [
     (1, 0),
@@ -83,13 +139,13 @@ impl NpcStep {
         if self.kind == NpcMove::Stairs { 2 } else { 1 }
     }
 
-    /// Share of the step covered per tick.
-    fn pace(&self) -> f64 {
+    /// Share of the step covered per tick by a body advancing `step` columns a tick.
+    fn pace(&self, step: f64) -> f64 {
         let (dx, dy) = self.heading;
         let length = f64::from(dx).hypot(f64::from(dy)) * f64::from(self.span());
         match self.kind {
             NpcMove::Climb => 1.0 / climb_ticks(),
-            _ => NPC_STEP / length,
+            _ => step / length,
         }
     }
 }
@@ -144,6 +200,8 @@ pub fn get_npc_fall(ticks: f64) -> f64 {
 pub struct Npc {
     /// Stable identity, derived from the home cell.
     pub id: u64,
+    /// What kind of character it is.
+    pub kind: NpcKind,
     /// The cell it was born on and stays within [`NPC_LEASH`] of.
     pub home: WorldCoord,
     /// The cell it stands on, or is leaving while a step is in flight.
@@ -154,7 +212,8 @@ pub struct Npc {
     pub step: Option<NpcStep>,
     /// How much of that step is covered, `0` to `1`.
     pub progress: f64,
-    /// The way it last walked, as a unit vector of the grid; what it faces while it rests.
+    /// The way it faces, as a unit vector of the grid: the way it last walked, or for a crab,
+    /// which walks sideways, across it.
     pub direction: GridPoint,
     /// Ticks of rest left before the next stroll.
     pub rest_ticks: i32,
@@ -169,11 +228,17 @@ impl Npc {
     /// A character born on `home`, at `elevation`, resting for a first while drawn from its
     /// own stream so that neighbours do not set off together.
     pub fn new(id: u64, home: WorldCoord, elevation: i32) -> Self {
+        Self::of_kind(NpcKind::Villager, id, home, elevation)
+    }
+
+    /// A character of `kind` born on `home`, at `elevation`, like [`Npc::new`].
+    pub fn of_kind(kind: NpcKind, id: u64, home: WorldCoord, elevation: i32) -> Self {
         let mut random = DustRandom::new(id);
         let facing = HEADINGS[pick(&mut random, 0, HEADINGS.len() as i32 - 1) as usize];
-        let rest_ticks = pick(&mut random, 0, NPC_REST_TICKS.1);
+        let rest_ticks = pick(&mut random, 0, kind.gait().rest_ticks.1);
         let mut npc = Self {
             id,
+            kind,
             home,
             cell: home,
             elevation,
@@ -229,7 +294,7 @@ impl Npc {
             }
             NpcMove::Drop if self.progress < NPC_DROP_EDGE => (self.progress, level, 0.0),
             NpcMove::Drop => {
-                let ticks = (self.progress - NPC_DROP_EDGE) / NPC_STEP;
+                let ticks = (self.progress - NPC_DROP_EDGE) / self.kind.gait().step;
                 (self.progress, level - 1.0, 1.0 - get_npc_fall(ticks))
             }
         };
@@ -361,7 +426,8 @@ pub fn can_npc_stand<G: PlayerGround>(ground: &G, cell: WorldCoord, level: Optio
 
 /// Whether `cell` is within the leash of `npc`.
 fn in_leash(npc: &Npc, cell: WorldCoord) -> bool {
-    (cell.x - npc.home.x).abs() <= NPC_LEASH && (cell.y - npc.home.y).abs() <= NPC_LEASH
+    let leash = npc.kind.gait().leash;
+    (cell.x - npc.home.x).abs() <= leash && (cell.y - npc.home.y).abs() <= leash
 }
 
 /// The way the flight on `cell` climbs, when that column carries one.
@@ -378,7 +444,9 @@ fn flight_up<G: PlayerGround>(ground: &G, cell: WorldCoord, elevation: i32) -> O
 /// closed. Level ground is walked in any of the eight directions, without cutting a closed
 /// corner. Straight ahead only: a flight of stairs is taken along its axis through to the cell
 /// beyond it, a block exactly one higher is climbed and ground exactly one lower is dropped
-/// onto. The cell it ends on is within its leash, standable and not `taken`.
+/// onto. A kind that does not climb (a crab) takes neither stairs nor a block one higher: only
+/// ground of its own level or one lower. The cell it ends on is within its leash, standable and
+/// not `taken`.
 pub fn plan_npc_step<G: PlayerGround>(
     npc: &Npc,
     heading: (i32, i32),
@@ -397,7 +465,7 @@ pub fn plan_npc_step<G: PlayerGround>(
         return None;
     }
     if column.surface == TerrainMaterial::Stairs {
-        if !straight {
+        if !straight || !npc.kind.climbs() {
             return None;
         }
         let up = flight_up(ground, to, column.elevation)?;
@@ -427,7 +495,7 @@ pub fn plan_npc_step<G: PlayerGround>(
     let rise = column.elevation - level;
     let kind = match rise {
         0 => NpcMove::Walk,
-        1 if straight => NpcMove::Climb,
+        1 if straight && npc.kind.climbs() => NpcMove::Climb,
         -1 if straight => NpcMove::Drop,
         _ => return None,
     };
@@ -464,11 +532,12 @@ pub fn step_npc<G: PlayerGround>(npc: &mut Npc, ground: &G, taken: impl Fn(World
         set_off(npc, ground, taken);
         return;
     };
-    npc.progress += step.pace();
+    let gait = npc.kind.gait();
+    npc.progress += step.pace(gait.step);
     if npc.progress < 1.0 {
         return;
     }
-    let over = (npc.progress - 1.0) / step.pace();
+    let over = (npc.progress - 1.0) / step.pace(gait.step);
     npc.cell = WorldCoord {
         x: npc.cell.x + step.heading.0 * step.span(),
         y: npc.cell.y + step.heading.1 * step.span(),
@@ -477,23 +546,33 @@ pub fn step_npc<G: PlayerGround>(npc: &mut Npc, ground: &G, taken: impl Fn(World
     npc.step = None;
     npc.progress = 0.0;
     let next = (npc.strides_left > 0)
-        .then(|| plan_npc_step(npc, step.heading, ground, taken))
+        .then(|| {
+            plan_npc_step(npc, step.heading, ground, &taken).or_else(|| {
+                // A crab that runs into a wall, the water or its leash turns back.
+                let back = (-step.heading.0, -step.heading.1);
+                (npc.kind == NpcKind::Crab)
+                    .then(|| plan_npc_step(npc, back, ground, &taken))
+                    .flatten()
+            })
+        })
         .flatten();
     if let Some(next) = next {
         npc.strides_left -= 1;
         npc.step = Some(next);
-        npc.progress = over * next.pace();
+        npc.progress = over * next.pace(gait.step);
+        npc.direction = facing_for(npc.kind, next.heading, npc.direction);
         return;
     }
     npc.strides_left = 0;
-    npc.rest_ticks = pick(&mut npc.random, NPC_REST_TICKS.0, NPC_REST_TICKS.1);
+    npc.rest_ticks = pick(&mut npc.random, gait.rest_ticks.0, gait.rest_ticks.1);
 }
 
 /// Starts a stroll towards the first open neighbour, tried round from one drawn at random.
 fn set_off<G: PlayerGround>(npc: &mut Npc, ground: &G, taken: impl Fn(WorldCoord) -> bool) {
     let count = HEADINGS.len();
     let first = pick(&mut npc.random, 0, count as i32 - 1) as usize;
-    let strides = pick(&mut npc.random, NPC_STROLL_CELLS.0, NPC_STROLL_CELLS.1);
+    let stroll = npc.kind.gait().stroll_cells;
+    let strides = pick(&mut npc.random, stroll.0, stroll.1);
     let open = (0..count)
         .map(|turn| HEADINGS[(first + turn) % count])
         .find_map(|heading| plan_npc_step(npc, heading, ground, &taken));
@@ -501,10 +580,33 @@ fn set_off<G: PlayerGround>(npc: &mut Npc, ground: &G, taken: impl Fn(WorldCoord
         Some(step) => {
             npc.step = Some(step);
             npc.progress = 0.0;
-            npc.direction = unit(step.heading);
+            npc.direction = facing_for(npc.kind, step.heading, npc.direction);
             npc.strides_left = strides - 1;
         }
         None => npc.rest_ticks = NPC_BLOCKED_REST_TICKS,
+    }
+}
+
+/// The way a character of `kind` faces while it heads for `heading`, having faced `before`. A
+/// villager looks where it goes. A crab goes sideways: it faces across its way, on the side it
+/// already faced so that it does not spin round, and towards the camera when both sides are
+/// as near (the camera looks from where `x + y` falls).
+pub fn facing_for(kind: NpcKind, heading: (i32, i32), before: GridPoint) -> GridPoint {
+    if kind != NpcKind::Crab {
+        return unit(heading);
+    }
+    let (dx, dy) = heading;
+    let left = unit((-dy, dx));
+    let right = unit((dy, -dx));
+    let lean = |side: GridPoint| side.x * before.x + side.y * before.y;
+    let (a, b) = (lean(left), lean(right));
+    if (a - b).abs() > 1e-9 {
+        return if a > b { left } else { right };
+    }
+    if left.x + left.y <= right.x + right.y {
+        left
+    } else {
+        right
     }
 }
 

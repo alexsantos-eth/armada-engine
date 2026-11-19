@@ -19,10 +19,10 @@ use macroquad::prelude::*;
 use crate::assets::sprites::{SpriteAtlas, SpriteDraw, scene_key};
 use crate::effects::ambient::SpawnEnv;
 use crate::game::config::{
-    BAND_BLEED, ENTITY_LAYER, PLAYER_BEHIND_LAYER, PLAYER_CLIMB_SHEET, PLAYER_FLIP_SHEET,
-    PLAYER_FRONT_LAYER, PLAYER_IDLE_SHEET, PLAYER_JETPACK_DEPTH, PLAYER_JETPACK_SHEET,
-    PLAYER_JUMP_SHEET, PLAYER_SCALE, PLAYER_SWIM_SHEET, PLAYER_WALK_SHEET, PLAYER_XRAY,
-    SceneMetrics,
+    BAND_BLEED, CRAB_IDLE_SHEET, CRAB_SHADOW_SCALE, CRAB_WALK_SHEET, ENTITY_LAYER,
+    PLAYER_BEHIND_LAYER, PLAYER_CLIMB_SHEET, PLAYER_FLIP_SHEET, PLAYER_FRONT_LAYER,
+    PLAYER_IDLE_SHEET, PLAYER_JETPACK_DEPTH, PLAYER_JETPACK_SHEET, PLAYER_JUMP_SHEET, PLAYER_SCALE,
+    PLAYER_SWIM_SHEET, PLAYER_WALK_SHEET, PLAYER_XRAY, SceneMetrics,
 };
 use crate::game::frame::FrameView;
 use crate::game::ground::WaterField;
@@ -74,6 +74,17 @@ pub(crate) fn player_sheets(atlas: &SpriteAtlas) -> crate::player::player_view::
         jump_poses: atlas
             .sheet(PLAYER_JUMP_SHEET)
             .and_then(|sheet| jump_poses(sheet.poses(), sheet.columns())),
+    }
+}
+
+/// How many poses the crab's sheets hold, out of the atlas: a walk sheet whose first column
+/// stands, and an idle cycle. It has nothing to climb, jump, swim or flip with.
+pub(crate) fn crab_sheets(atlas: &SpriteAtlas) -> crate::player::player_view::PlayerSheets {
+    let columns = |source| atlas.sheet(source).map(|sheet| sheet.columns());
+    crate::player::player_view::PlayerSheets {
+        walk_poses: columns(CRAB_WALK_SHEET).map(|columns| columns as i32 - 1),
+        idle_poses: columns(CRAB_IDLE_SHEET).map(|columns| columns as i32),
+        ..Default::default()
     }
 }
 
@@ -810,21 +821,27 @@ impl Game {
                 continue;
             }
             let feet = player_feet(at, rp.elevation + rp.height, projection);
-            let Some(idle) = self.atlas.sheet(PLAYER_IDLE_SHEET) else {
+            let crab = npc.kind == iso::npc::NpcKind::Crab;
+            let (idle_sheet, walk_sheet, sheets) = if crab {
+                (CRAB_IDLE_SHEET, CRAB_WALK_SHEET, self.crab_sheets)
+            } else {
+                (PLAYER_IDLE_SHEET, PLAYER_WALK_SHEET, self.sheets)
+            };
+            let Some(idle) = self.atlas.sheet(idle_sheet) else {
                 continue;
             };
-            let look = iso::npc::npc_look(npc.id);
-            let scale = PLAYER_SCALE * look.scale;
+            let look = iso::npc::kind_look(npc.kind, npc.id);
+            let scale = if crab { 1.0 } else { PLAYER_SCALE } * look.scale;
             let ink = idle.ink.scaled(scale);
             if !SpriteAtlas::on_screen(ink_layout(feet, ink, projection.tile_width)) {
                 continue;
             }
-            let pose = self.npc_views.advance(npc, at, view.frame_ms, self.sheets);
+            let pose = self.npc_views.advance(npc, at, view.frame_ms, sheets);
             let Some(sheet) = self.atlas.sheet(match pose.sheet {
-                PlayerSheet::Walk => PLAYER_WALK_SHEET,
-                PlayerSheet::Climb => PLAYER_CLIMB_SHEET,
-                PlayerSheet::Jump => PLAYER_JUMP_SHEET,
-                _ => PLAYER_IDLE_SHEET,
+                PlayerSheet::Walk => walk_sheet,
+                PlayerSheet::Climb if !crab => PLAYER_CLIMB_SHEET,
+                PlayerSheet::Jump if !crab => PLAYER_JUMP_SHEET,
+                _ => idle_sheet,
             }) else {
                 continue;
             };
@@ -839,7 +856,7 @@ impl Game {
             let ground_feet = player_feet(at, rp.elevation, projection);
             let shadow = crate::npc::npc_view::scaled_shadow(
                 player_shadow(ground_feet, rp.height, projection, phase.light()),
-                look.scale,
+                look.scale * if crab { CRAB_SHADOW_SCALE } else { 1.0 },
             );
             let outline = shadow_clip::sheared_ellipse(
                 shadow.centre,

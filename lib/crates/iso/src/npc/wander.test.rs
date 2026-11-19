@@ -23,7 +23,7 @@ impl PlayerGround for CellGround {
 }
 
 /// Ground from rows of characters: a digit is grass at that level, `~` water, `s` stairs,
-/// `T` grass with a tree on it and a space no ground at all.
+/// `.` sand at level 0, `T` grass with a tree on it and a space no ground at all.
 pub(crate) fn ground_from(rows: &[&str]) -> CellGround {
     let mut ground = CellGround::default();
     for (y, row) in rows.iter().enumerate() {
@@ -38,6 +38,7 @@ pub(crate) fn ground_from(rows: &[&str]) -> CellGround {
             let surface = match ch {
                 '~' => TerrainMaterial::Water,
                 's' => TerrainMaterial::Stairs,
+                '.' => TerrainMaterial::Sand,
                 _ => TerrainMaterial::Grass,
             };
             ground.columns.insert(
@@ -423,4 +424,111 @@ fn the_same_character_wanders_the_same_way() {
     }
     assert_eq!(one.cell, other.cell);
     assert_eq!(one.pose(), other.pose());
+}
+
+fn crab_at(home: WorldCoord, elevation: i32) -> Npc {
+    let mut crab = Npc::of_kind(NpcKind::Crab, 7, home, elevation);
+    crab.rest_ticks = 0;
+    crab
+}
+
+#[test]
+fn a_crab_never_climbs_a_block_nor_takes_stairs() {
+    let crab = crab_at(cell(0, 0), 0);
+    assert!(plan_npc_step(&crab, (1, 0), &ground_from(&["01"]), nobody).is_none());
+    assert!(plan_npc_step(&ready(cell(0, 0)), (1, 0), &ground_from(&["01"]), nobody).is_some());
+
+    let ground = flight();
+    assert!(plan_npc_step(&crab_at(cell(1, 1), 0), (1, 0), &ground, nobody).is_none());
+    assert!(plan_npc_step(&crab_at(cell(3, 1), 1), (-1, 0), &ground, nobody).is_none());
+}
+
+#[test]
+fn a_crab_scuttles_level_ground_and_drops_off_a_block() {
+    let crab = crab_at(cell(0, 0), 1);
+    let ground = ground_from(&["110"]);
+    assert_eq!(
+        plan_npc_step(&crab, (1, 0), &ground, nobody).map(|step| step.kind),
+        Some(NpcMove::Walk)
+    );
+    let mut edge = crab_at(cell(1, 0), 1);
+    let step = plan_npc_step(&edge, (1, 0), &ground, nobody).expect("a drop is open");
+    assert_eq!((step.kind, step.rise), (NpcMove::Drop, -1));
+    edge.step = Some(step);
+    walk_out(&mut edge, &ground);
+    assert_eq!((edge.cell, edge.elevation), (cell(2, 0), 0));
+}
+
+#[test]
+fn a_crab_scuttles_faster_on_a_shorter_leash() {
+    let (villager, crab) = (NpcKind::Villager.gait(), NpcKind::Crab.gait());
+    assert!(crab.step > villager.step);
+    assert!(crab.leash < villager.leash);
+    let mut far = crab_at(cell(0, 0), 0);
+    far.home = cell(-CRAB_LEASH, 0);
+    assert!(plan_npc_step(&far, (1, 0), &ground_from(&["00"]), nobody).is_none());
+}
+
+#[test]
+fn a_crab_faces_across_its_way() {
+    let crab = crab_at(cell(1, 1), 0);
+    let ground = ground_from(&["000", "000", "000"]);
+    let mut crab = crab;
+    step_npc(&mut crab, &ground, nobody);
+    let step = crab.step.expect("it sets off");
+    let (dx, dy) = (f64::from(step.heading.0), f64::from(step.heading.1));
+    assert!((crab.direction.x * dx + crab.direction.y * dy).abs() < 1e-12);
+    assert!((crab.direction.x.hypot(crab.direction.y) - 1.0).abs() < 1e-12);
+}
+
+#[test]
+fn a_crab_keeps_the_side_it_faced_and_otherwise_faces_the_camera() {
+    let east = GridPoint { x: 1.0, y: 0.0 };
+    let turned = facing_for(NpcKind::Crab, (0, 1), east);
+    assert_eq!(turned, GridPoint { x: 1.0, y: 0.0 });
+    let back = facing_for(NpcKind::Crab, (0, -1), east);
+    assert_eq!(back, GridPoint { x: 1.0, y: 0.0 });
+    let fresh = facing_for(NpcKind::Crab, (1, 0), GridPoint { x: 1.0, y: 0.0 });
+    assert!(fresh.x + fresh.y < 0.0);
+    assert_eq!(
+        facing_for(NpcKind::Villager, (0, 1), east),
+        GridPoint { x: 0.0, y: 1.0 }
+    );
+}
+
+#[test]
+fn a_crab_that_meets_a_wall_turns_back() {
+    let ground = ground_from(&["00001"]);
+    let mut crab = crab_at(cell(2, 0), 0);
+    crab.step = Some(NpcStep {
+        heading: (1, 0),
+        kind: NpcMove::Walk,
+        rise: 0,
+    });
+    crab.strides_left = 2;
+    walk_out_one(&mut crab, &ground);
+    assert_eq!(crab.cell, cell(3, 0));
+    assert_eq!(crab.step.map(|step| step.heading), Some((-1, 0)));
+
+    let mut villager = ready(cell(2, 0));
+    villager.step = crab.step.map(|_| NpcStep {
+        heading: (1, 0),
+        kind: NpcMove::Walk,
+        rise: 0,
+    });
+    villager.strides_left = 2;
+    walk_out_one(&mut villager, &ground);
+    assert_eq!(villager.step.map(|step| step.kind), Some(NpcMove::Climb));
+}
+
+/// Steps `npc` until the step in flight ends and it is either resting or on a new one.
+fn walk_out_one(npc: &mut Npc, ground: &CellGround) {
+    let from = npc.cell;
+    for _ in 0..200 {
+        step_npc(npc, ground, nobody);
+        if npc.cell != from {
+            return;
+        }
+    }
+    panic!("the step never ended");
 }
