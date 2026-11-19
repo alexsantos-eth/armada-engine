@@ -157,3 +157,27 @@ fn a_player_beside_the_fire_sorts_against_its_flames_as_against_its_sprite() {
         );
     }
 }
+
+#[test]
+fn flames_share_the_sprite_key_so_a_player_in_the_fire_cell_in_front_draws_over_them() {
+    use crate::game::config::{PLAYER_BEHIND_LAYER, PLAYER_FRONT_LAYER};
+    use iso::scene_order::compare_draw_keys;
+    let projection = ProjectionConfig {
+        tile_width: 128.0,
+        tile_height: 64.0,
+        elevation_step: None,
+        origin_x: 0.0,
+        origin_y: 0.0,
+    };
+    let fire = spot();
+    let sprite = scene_key(fire.x, fire.y, fire.ground, ENTITY_LAYER, 64.0);
+    let flames = sort_key(&fire, projection);
+    assert_eq!(
+        compare_draw_keys(&sprite, &flames),
+        std::cmp::Ordering::Equal
+    );
+    for (layer, over) in [(PLAYER_FRONT_LAYER, true), (PLAYER_BEHIND_LAYER, false)] {
+        let player = scene_key(fire.x, fire.y, fire.ground, layer, 64.0);
+        assert_eq!(compare_draw_keys(&player, &flames).is_gt(), over);
+    }
+}

@@ -369,13 +369,15 @@ fn voxel_draw(
     SpriteDraw::voxel(key, faces, colours)
 }
 
-/// The depth key every flame, spark and wisp of a fire shares: the fire's own cell, a hair above
-/// its sprite, so the player in front of the fire draws over them and behind it, under.
+/// The depth key every flame, spark and wisp of a fire shares: exactly the sprite's own, so the
+/// stable sort keeps them just after it. The player in front of the fire, on any column
+/// of it, draws over them, and the player behind it, under. Any lift in height would push them
+/// past a player standing in the fire's own column.
 fn sort_key(spot: &FireSpot, projection: ProjectionConfig) -> DrawKey {
     scene_key(
         spot.x,
         spot.y,
-        spot.ground + 0.5,
+        spot.ground,
         ENTITY_LAYER,
         projection.tile_height,
     )
