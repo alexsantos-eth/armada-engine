@@ -115,7 +115,8 @@ fn a_top_the_atlas_lacks_is_left_out_and_the_others_still_grow() {
 #[test]
 fn no_artwork_at_all_leaves_the_grass_plain() {
     let (look, missing) = TerrainLook::new(SEED, |_| None, None);
-    assert_eq!(missing.len(), GRASS_TOPS.len() + GRASS_PLAINS.len());
+    let plains: usize = PLAIN_LOOKS.iter().map(|(_, looks)| looks.len()).sum();
+    assert_eq!(missing.len(), GRASS_TOPS.len() + plains);
     assert!(look.grass_tops.is_none());
     assert!(columns(40).all(|(x, y)| look.top(TerrainMaterial::Grass, x, y).is_none()));
     assert_ne!(look.tint(TerrainMaterial::Grass, 0, 0), WHITE);
@@ -390,24 +391,35 @@ fn a_dressed_cell_grows_nothing_on_a_material_that_grows_nothing() {
     assert_eq!(look.tint_zones(TerrainMaterial::Water, 0, 0), 0);
 }
 
-/// The plain grass shows all its looks across a field, and only on grass.
+/// Every plain ground shows all its looks across a field, about evenly, and paths and water none.
 #[test]
-fn plain_grass_alternates_its_looks() {
+fn plain_ground_alternates_its_looks() {
     let manifest = shipped();
-    let (look, _) = TerrainLook::new(SEED, artwork(&manifest), None);
-    assert_eq!(look.grass_plains.1.len(), GRASS_PLAINS.len());
-    let picked: Vec<_> = columns(40)
-        .map(|(x, y)| look.plain(TerrainMaterial::Grass, x, y))
-        .collect();
-    let own = picked.iter().filter(|pick| pick.is_none()).count();
-    let share = own as f64 / picked.len() as f64;
-    let even = 1.0 / (GRASS_PLAINS.len() + 1) as f64;
-    assert!(
-        (share - even).abs() < 0.05,
-        "{share} of the field keeps block.png"
-    );
-    for (frame, _) in &look.grass_plains.1 {
-        assert!(picked.iter().flatten().any(|(picked, _)| picked == frame));
+    let (look, missing) = TerrainLook::new(SEED, artwork(&manifest), None);
+    assert!(missing.is_empty(), "the atlas is missing {missing:?}");
+    for (material, sources) in PLAIN_LOOKS {
+        let (_, looks) = look
+            .plains
+            .1
+            .iter()
+            .find(|(kind, _)| kind == material)
+            .expect("every material is resolved");
+        assert_eq!(looks.len(), sources.len());
+        let picked: Vec<_> = columns(40)
+            .map(|(x, y)| look.plain(*material, x, y))
+            .collect();
+        let own = picked.iter().filter(|pick| pick.is_none()).count();
+        let share = own as f64 / picked.len() as f64;
+        let even = 1.0 / (sources.len() + 1) as f64;
+        assert!(
+            (share - even).abs() < 0.05,
+            "{share} of the {material:?} keeps its block.png"
+        );
+        for (frame, _) in looks {
+            assert!(picked.iter().flatten().any(|(picked, _)| picked == frame));
+        }
     }
-    assert!(columns(20).all(|(x, y)| look.plain(TerrainMaterial::Sand, x, y).is_none()));
+    for material in [TerrainMaterial::Path, TerrainMaterial::Water] {
+        assert!(columns(20).all(|(x, y)| look.plain(material, x, y).is_none()));
+    }
 }

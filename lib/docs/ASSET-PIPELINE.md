@@ -12,7 +12,7 @@ viven en `assets/` como cualquier otro sprite.
 ```
 artifacts/vox/clay/vox_prefabs.py              las piezas del kit            → artifacts/vox/prefabs/*.vox
 artifacts/vox/clay/vox_models.py               las entidades armadas         → artifacts/vox/models/<nombre>.vox
-artifacts/vox/clay/grass_block.py              el bloque de hierba llano     → lib/assets/grass/block.png
+artifacts/vox/clay/terrain_clay.py             hierba, tierra, arena, caminos → lib/assets/{grass,ground,sand,path}/block*.png
 artifacts/vox/clay/grass_clay.py               adornos Clay sobre la hierba  → artifacts/vox/models/block_*.vox
         │
         ▼
@@ -78,13 +78,22 @@ centro del suelo de la casilla ancla: así el archivo dice dónde está plantado
 las tres casas y los edificios, los de dos casillas en sus dos orientaciones) con las piezas de
 piedra y de construcción: muros y tejados sobre el mismo módulo de 28.
 
-`artifacts/vox/clay/grass_block.py` genera el bloque llano `assets/grass/block.png` como las
-gradas: masa de borde a borde de la casilla, render clay encima del de cubos duros, con la
-hierba goteando sobre la tierra en lenguas redondas y tufos. El césped queda en z = 79 y los
-tufos llegan a 85. Saca también `block_2..4.png`, que el terreno alterna casilla a casilla donde
-la hierba no lleva adorno (`GRASS_PLAINS`): el patrón es periódico (lo que sale por un borde
-entra por el opuesto) y los bordes son comunes a las cuatro, así que empalman sin corte. El clay
-se modela sobre un margen de las vecinas y se recorta a la casilla (`vox_render.py --margin`).
+`artifacts/vox/clay/terrain_clay.py` genera todo el terreno de suelo: hierba
+(`grass/block.png` y `block_2..4.png`), tierra (`ground/block.png`, `block_2..3.png`), arena
+(`sand/block.png`, `block_2..3.png`) y los 16 caminos (`path/block_0..15.png`, uno por máscara
+de conexión). Son terreno como las gradas: masa de borde a borde de la casilla, render clay
+encima del de cubos duros. La hierba gotea sobre la tierra y lleva tufos (césped en z = 79); la
+tierra, terrones y guijarros (z = 81); la arena, una costra más clara, ondas bajas y alguna
+concha (z = 81); el camino es la hierba con un lecho de tierra hundido a z = 78 que llega al
+centro de cada borde unido con 66 de ancho. Nada pasa de z = 85.
+
+**Empalman sin corte**: el patrón es periódico (lo que sale por un borde entra por el opuesto) y
+lo que cruza los bordes sale de una semilla por material, común a todas sus variantes; solo el
+interior cambia. El terreno alterna las variantes casilla a casilla donde no hay adorno
+(`PLAIN_LOOKS` en `src/terrain/terrain_view_appearance.rs`). El clay se modela sobre un margen
+de las vecinas y se recorta a la casilla (`vox_render.py --margin N [--around]`): el techo con
+margen por los cuatro lados, los lados con margen solo detrás, y se componen por la máscara del
+rombo de la superficie.
 
 `artifacts/vox/clay/grass_clay.py` arma las variantes del techo de hierba encima de ese bloque
 (se rehace después de él): lo que se arma con piezas del kit es el adorno (flores, hojas caídas,
@@ -136,9 +145,9 @@ en un `.json` al lado cuando no es 1x1x1. Todo vive en una sola carpeta:
   variantes con adornos, y desde el 2026-11-16 también las piedras rúnicas, las casas y los
   edificios, `artifacts/vox/clay/vox_buildings.py`, kits 2 y 3) y los dos sprites fijos que no
   pasan por la ruta voxel: el patrón de nubes (`assets/cloud/cloud-shadow.png`) y el téxel
-  blanco que el agua y las sombras necesitan (`assets/shadow/white.png`). Los generadores de
-  terreno siguen en uso — `artifacts/vox/terrain/terrain_blocks.py` (hierba/tierra/arena) y
-  `path_tiles.py` (los 16 tiles de camino) — y escriben PNG directamente.
+  blanco que el agua y las sombras necesitan (`assets/shadow/white.png`). Desde el 2026-11-19 todo
+  el terreno de suelo (hierba, tierra, arena y caminos) también sale de la ruta voxel,
+  `artifacts/vox/clay/terrain_clay.py`.
 
 Las cuatro gradas (`assets/stairs/block_{px,py,nx,ny}.png`) salen de
 `artifacts/vox/clay/vox_stairs.py`. Son terreno, no entidad: la masa son prismas rectos de

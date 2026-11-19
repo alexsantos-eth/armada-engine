@@ -36,9 +36,12 @@ STEP, STEP_DEEP, TREAD = "#a79e8d", "#8f8777", "#c6bfae"       # the stairs bloc
 # the beach: palm bark and its rings, coconut husk, sun-bleached driftwood, stockfish, rope
 PALM_BARK, PALM_RING, COCONUT = "#b08a5a", "#80603c", "#6b4528"
 DRIFT, FISH, ROPE = "#cbbfa6", "#b9c6c8", "#cfae6e"
-# the grass block (grass_block.py): the terrain's lime turf, a deeper green for its tufts, and
+# the grass block (terrain_clay.py): the terrain's lime turf, a deeper green for its tufts, and
 # the soil under it (the same top and soil colours as the flat terrain blocks)
 GRASS_TOP, GRASS_DEEP, SOIL = "#a4de00", "#8cc400", "#bcb857"
+# the other clay terrain (terrain_clay.py): clods on bare ground, the sand's crust and body, the
+# trodden earth of a path and its darker patches (the colours of the flat blocks they replace)
+SOIL_DARK, SAND_TOP, SAND_BODY, EARTH, EARTH_DARK = "#a39f47", "#f3dc96", "#dcc07a", "#c08a4e", "#a8743d"
 # New colours go at the end: the indices of the files already written must not move.
 PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK, CUT, MOSS,
            RED, WHITE, YELLOW, PINK, CAP, STEM, DOT, OCHRE, RUST, ROCK, ROCK_DARK,
@@ -46,7 +49,8 @@ PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK,
            PLANK, TIMBER, PLASTER, DOOR, THATCH, TURF, TILE, SHINGLE, SHINGLE_DARK,
            GLOW, IRON, FIRE, BREW, STEP, STEP_DEEP, TREAD,
            PALM_BARK, PALM_RING, COCONUT, DRIFT, FISH, ROPE,
-           GRASS_TOP, GRASS_DEEP, SOIL]
+           GRASS_TOP, GRASS_DEEP, SOIL,
+           SOIL_DARK, SAND_TOP, SAND_BODY, EARTH, EARTH_DARK]
 
 
 def box(x, y, z0, sx, sy, sz, color, r):

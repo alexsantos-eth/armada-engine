@@ -37,7 +37,7 @@ OUT_DIR = sys.argv[2] if len(sys.argv) > 2 else ASSETS
 ONLY = sys.argv[3:]  # rebuild only these variants, e.g. block_pebbles
 RENDER = os.path.join(HERE, "vox_render.py")
 # The block's top face is one block (341 template px) above the decoration's foot plane, less
-# the few voxels the clay lawn sits under the top of the block (grass_block.py), so the
+# the few voxels the clay lawn sits under the top of the block (terrain_clay.py), so the
 # decorations stand on the lawn and not on the tips of its tufts.
 TOP_SHIFT = 341 - (85 - 79) * 4
 

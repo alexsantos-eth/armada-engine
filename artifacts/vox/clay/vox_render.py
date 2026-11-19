@@ -163,10 +163,33 @@ def build_mesh(size, voxels, palette, glow, ny, clay):
     if clay:
         clay_shape(model, filled, slots, ny)
     model.scale = (1, 1, Z_SQUEEZE)
-    return model
+    return model, filled, slots
 
 
-def cut_to_tile(model, margin, nx, ny, around=False):
+def voxel_colour(filled, slots, ny, point):
+    """The material slot of the voxel nearest to `point` (mesh space), or 0 when none is near."""
+    cell = (math.floor(point.x + TILE / 2), math.floor(point.y + TILE * ny - TILE / 2), math.floor(point.z))
+    colour = next((filled[c] for c in ((cell[0] + d[0], cell[1] + d[1], cell[2] + d[2]) for d in NEAR)
+                   if c in filled), None)
+    return slots[colour] if colour else 0
+
+
+def column_colour(filled, slots, ny, point):
+    """The material slot of the first voxel over `point`: a cut through the model takes the colour
+    of the surface above it, the one that shows where the cut meets the top. (Under the surface
+    the file keeps no voxels, and the nearest one may be of a layer further down.)"""
+    x, y = math.floor(point.x + TILE / 2), math.floor(point.y + TILE * ny - TILE / 2)
+    for z in range(max(0, math.floor(point.z)), 256):
+        if (x, y, z) in filled:
+            return slots[filled[(x, y, z)]]
+    return 0
+
+
+NEAR = sorted(((dx, dy, dz) for dx in range(-3, 4) for dy in range(-3, 4) for dz in range(-3, 4)),
+              key=lambda d: d[0] ** 2 + d[1] ** 2 + d[2] ** 2)
+
+
+def cut_to_tile(model, filled, slots, margin, nx, ny, around=False):
     """Drops the margin of neighbouring cells: the model moves so its anchor tile sits where a
     model without margin would (the margin along y already lies past the anchor's far side, so
     only x moves), and a box over its footprint keeps only what lies inside. The box
@@ -187,6 +210,22 @@ def cut_to_tile(model, margin, nx, ny, around=False):
     tile.hide_render = True
     cut = model.modifiers.new("tile", "BOOLEAN")
     cut.operation, cut.object, cut.solver = "INTERSECT", tile, "EXACT"
+    # Bake the cut, and give the faces it opened the colour of the voxels behind them: left to
+    # the boolean they take the model's first material, whatever it is.
+    baked = bpy.data.meshes.new_from_object(model.evaluated_get(bpy.context.evaluated_depsgraph_get()))
+    model.modifiers.clear()
+    for mat in model.data.materials:
+        baked.materials.append(mat)
+    model.data = baked
+    planes = [(0, lo.x - model.location.x), (0, hi.x - model.location.x),
+              (1, lo.y - model.location.y), (1, hi.y - model.location.y)]
+    index = [p.material_index for p in baked.polygons]
+    for n, poly in enumerate(baked.polygons):
+        if any(abs(poly.normal[axis]) > 0.9 and abs(poly.center[axis] - at) < 0.3 for axis, at in planes):
+            index[n] = column_colour(filled, slots, ny, poly.center - poly.normal * 0.6) \
+                or voxel_colour(filled, slots, ny, poly.center - poly.normal * 0.6)
+    baked.polygons.foreach_set("material_index", index)
+    baked.update()
 
 
 def clay_shape(model, filled, slots, ny):
@@ -204,15 +243,7 @@ def clay_shape(model, filled, slots, ny):
         skin.materials.append(mat)
     model.data = skin
 
-    near = sorted(((dx, dy, dz) for dx in range(-3, 4) for dy in range(-3, 4) for dz in range(-3, 4)),
-                  key=lambda d: d[0] ** 2 + d[1] ** 2 + d[2] ** 2)
-    index = []
-    for poly in skin.polygons:
-        p = poly.center - poly.normal * 0.6
-        cell = (math.floor(p.x + TILE / 2), math.floor(p.y + TILE * ny - TILE / 2), math.floor(p.z))
-        colour = next((filled[c] for c in ((cell[0] + d[0], cell[1] + d[1], cell[2] + d[2]) for d in near)
-                       if c in filled), None)
-        index.append(slots[colour] if colour else 0)
+    index = [voxel_colour(filled, slots, ny, poly.center - poly.normal * 0.6) for poly in skin.polygons]
     skin.polygons.foreach_set("material_index", index)
     skin.polygons.foreach_set("use_smooth", [True] * len(index))
     skin.update()
@@ -321,9 +352,9 @@ def main():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     size, voxels, palette, glow = read_vox(source)
     nx, ny, nz = tiles_of(size, margin * (2 if around else 1))
-    model = build_mesh(size, voxels, palette, glow, ny, clay)
+    model, filled, slots = build_mesh(size, voxels, palette, glow, ny, clay)
     if margin:
-        cut_to_tile(model, margin, nx, ny, around)
+        cut_to_tile(model, filled, slots, margin, nx, ny, around)
     setup_scene(nx, ny, nz, samples)
     bpy.context.scene.render.filepath = target
     bpy.ops.render.render(write_still=True)

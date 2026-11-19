@@ -190,6 +190,7 @@ dentro, igual que la fruta.
 | obra de piedra (torre, santuario, zócalo) | 2 | `vox_buildings.py` | `stone_block` / `stone_half` con `walls` o `pyramid` |
 | casa, salón, cobertizo, puesto | 3 (+2) | `vox_buildings.py` | `wall_block` + `roof_block` + piezas de cara + atrezo |
 | gradas | 2 | `vox_stairs.py` | masa recta propia + `stone_small`, `pebble_*`, `moss_patch` |
+| suelo: hierba, tierra, arena, caminos | — | `terrain_clay.py` | masa recta propia + bultos redondos; patrón periódico que empalma (sección 9) |
 
 Los kits **se mezclan**: comparten módulo (28), junta y paleta. Una casa lleva zócalo y
 chimenea del kit 2, postes (`trunk_thin` en `timber`) y una mata (`leaf_tuft`) del kit 1; una
@@ -421,8 +422,9 @@ usuario haya pedido trabajar directamente en la rama.
 `artifacts/vox/clay/grass_clay.py` genera las variantes del bloque de hierba (`block_flowers.png`,
 `block_flowers_2.png`, `block_wildflowers_red.png`, `block_wildflowers_white.png`,
 `block_leaves.png`, `block_pebbles.png`, `block_mushrooms.png`). El bloque llano
-`assets/grass/block.png` sale de `artifacts/vox/clay/grass_block.py`, con tres hermanos (`block_2..4.png`) que el terreno
-alterna casilla a casilla: terreno como las gradas (masa de borde a borde, render clay sobre el
+`assets/grass/block.png` sale de `artifacts/vox/clay/terrain_clay.py` (que hace también la tierra,
+la arena y los 16 caminos, ver `lib/docs/ASSET-PIPELINE.md`), con tres hermanos
+(`block_2..4.png`) que el terreno alterna casilla a casilla: terreno como las gradas (masa de borde a borde, render clay sobre el
 de cubos duros), con la hierba goteando sobre la tierra y tufos redondos; el césped queda en
 z = 79 y los tufos llegan a 85. **Empalman sin corte**: lo que cruza un borde reaparece por el
 opuesto (patrón periódico) y sale de una semilla común a las cuatro, así que cualquier par casa;
