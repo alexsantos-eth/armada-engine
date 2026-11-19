@@ -41,6 +41,14 @@ pub struct EntityAsset {
         rename = "contactShadow"
     )]
     pub contact_shadow: Option<bool>,
+    /// Ground decor that is always drawn under the player (the small rocks): the player's
+    /// sprite sorts just after it whenever they are close, so it never covers the player.
+    #[serde(
+        default,
+        skip_serializing_if = "std::ops::Not::not",
+        rename = "drawUnderPlayer"
+    )]
+    pub draw_under_player: bool,
 }
 
 /// Physical footprint of an entity: one collision size per occupied cell.

@@ -518,3 +518,31 @@ fn a_sprite_whose_artwork_is_elsewhere_in_its_rectangle_hides_nothing() {
     tree.mask = Some(&solid);
     assert!(tree.hides(&player, tile_height));
 }
+
+/// A small rock (`drawUnderPlayer`) in front of the player never covers it: the player's key
+/// is lifted just past the rock's. A rock up on a step above the feet keeps its normal order,
+/// and a rock behind the player never pulls the key back.
+#[test]
+fn ground_decor_in_front_of_the_player_draws_under_it() {
+    use std::cmp::Ordering;
+
+    let column = WorldCoord { x: 12, y: 7 };
+    let key = player_key(column, 2.0, PLAYER_BEHIND_LAYER, PREVIEW_TILE_HEIGHT);
+    let front = WorldCoord { x: 11, y: 6 };
+    let rock = scene_key(11.5, 6.5, 2.0, ENTITY_LAYER, PREVIEW_TILE_HEIGHT);
+    assert_eq!(compare_draw_keys(&key, &rock), Ordering::Less);
+
+    let lifted = lift_over_ground_decor(key, 2.0, [(front, 2.0)], PREVIEW_TILE_HEIGHT);
+    assert_eq!(
+        compare_draw_keys(&lifted, &rock),
+        Ordering::Greater,
+        "the rock in front draws first, the player over it"
+    );
+
+    let on_a_step = lift_over_ground_decor(key, 2.0, [(front, 3.0)], PREVIEW_TILE_HEIGHT);
+    assert_eq!(on_a_step, key, "a rock above the feet keeps its order");
+
+    let behind = WorldCoord { x: 13, y: 8 };
+    let kept = lift_over_ground_decor(key, 2.0, [(behind, 2.0)], PREVIEW_TILE_HEIGHT);
+    assert_eq!(kept, key, "a rock behind already draws first");
+}

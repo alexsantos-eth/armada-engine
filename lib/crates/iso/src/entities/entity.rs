@@ -37,6 +37,8 @@ pub struct EntityData {
     pub color_variant: Option<u32>,
     /// Wind sway parameters, single-tile entities only.
     pub sway: Option<EntitySway>,
+    /// Whether the sprite is ground decor, always drawn under the player.
+    pub draw_under_player: bool,
     /// Per-cell or whole-footprint collision fraction.
     pub collision: Option<EntityCollision>,
     /// Sprite reflected in water, multi-tile entities only.
@@ -89,6 +91,7 @@ impl Entity {
             texture_source: blueprint.asset.sprite.clone(),
             color_variant: None,
             sway: blueprint.asset.sway.clone(),
+            draw_under_player: blueprint.asset.draw_under_player,
             collision,
             reflection_source: blueprint.asset.reflection.clone(),
             metadata: serde_json::Value::Object(Default::default()),
@@ -152,6 +155,10 @@ impl Entity {
     }
     pub fn sway(&self) -> Option<&EntitySway> {
         self.data.sway.as_ref()
+    }
+    /// Whether the sprite is ground decor, always drawn under the player.
+    pub fn draw_under_player(&self) -> bool {
+        self.data.draw_under_player
     }
     pub fn reflection_source(&self) -> Option<&str> {
         self.data.reflection_source.as_deref()

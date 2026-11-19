@@ -14,6 +14,7 @@ fn entities() -> EntityCatalog {
             color_replacements: None,
             sway: None,
             contact_shadow: None,
+            draw_under_player: false,
         },
         shape: EntityShape {
             height: 1,
@@ -376,6 +377,7 @@ fn a_pier_grows_at_the_water_edge() {
                 color_replacements: None,
                 sway: None,
                 contact_shadow: None,
+                draw_under_player: false,
             },
             shape: EntityShape {
                 height: 1,
@@ -679,6 +681,7 @@ fn a_blueprint_grows_on_an_additional_surface() {
                 color_replacements: None,
                 sway: None,
                 contact_shadow: None,
+                draw_under_player: false,
             },
             shape: EntityShape {
                 height: 1,

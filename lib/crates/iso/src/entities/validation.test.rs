@@ -8,6 +8,7 @@ fn asset(sprite: &str) -> EntityAsset {
         color_replacements: None,
         sway: None,
         contact_shadow: None,
+        draw_under_player: false,
     }
 }
 

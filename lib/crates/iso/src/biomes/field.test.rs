@@ -16,6 +16,7 @@ fn catalog() -> BiomeCatalog {
                     color_replacements: None,
                     sway: None,
                     contact_shadow: None,
+                    draw_under_player: false,
                 },
                 shape: crate::entities::blueprint::EntityShape {
                     height: 2,

@@ -18,6 +18,7 @@ fn blueprint(id: &str, length: i32, axis: EntityLengthAxis) -> EntityBlueprint {
             color_replacements: None,
             sway: None,
             contact_shadow: None,
+            draw_under_player: false,
         },
         shape: EntityShape {
             height: 1,

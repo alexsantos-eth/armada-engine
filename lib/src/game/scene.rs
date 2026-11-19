@@ -106,6 +106,38 @@ pub(crate) fn player_key(
     )
 }
 
+/// Lifts the player's key just past every piece of ground decor (`drawUnderPlayer`, the small
+/// rocks) around it that would otherwise draw after it, so a rock never covers the player.
+/// `decor` gives each piece's anchor column and base elevation; only pieces at or below the
+/// player's feet count, so a rock up on a step in front still sorts with its step.
+pub(crate) fn lift_over_ground_decor(
+    key: DrawKey,
+    feet_elevation: f64,
+    decor: impl IntoIterator<Item = (WorldCoord, f64)>,
+    tile_height: f64,
+) -> DrawKey {
+    let mut lifted = key;
+    for (cell, elevation) in decor {
+        if elevation > feet_elevation + 1e-6 {
+            continue;
+        }
+        let rock = scene_key(
+            f64::from(cell.x) + 0.5,
+            f64::from(cell.y) + 0.5,
+            elevation,
+            ENTITY_LAYER,
+            tile_height,
+        );
+        if iso::scene_order::compare_draw_keys(&rock, &lifted).is_ge() {
+            lifted = DrawKey {
+                depth: rock.depth,
+                layer: ENTITY_LAYER + 1,
+            };
+        }
+    }
+    lifted
+}
+
 /// Which layer the player draws in over the column it stands on.
 pub(crate) fn player_layer(position: GridPoint, column: WorldCoord) -> i32 {
     if position.x + position.y > f64::from(column.x) + f64::from(column.y) {
@@ -336,16 +368,57 @@ impl Game {
             .scaled(PLAYER_SCALE);
         let position = GridPoint { x: rp.x, y: rp.y };
         let feet = player_feet(position, rp.elevation + rp.height, projection);
-        let column = get_player_column(position);
         Some(Occludee {
             area: ink_layout(feet, ink, projection.tile_width),
-            key: player_key(
-                column,
-                rp.elevation,
-                player_layer(position, column),
-                projection.tile_height,
-            ),
+            key: self.player_draw_key(view),
         })
+    }
+
+    /// The key the player's body sorts by: see `figure_draw_key`.
+    fn player_draw_key(&self, view: &FrameView) -> DrawKey {
+        let rp = &view.rp;
+        self.figure_draw_key(
+            GridPoint { x: rp.x, y: rp.y },
+            rp.elevation,
+            view.projection.tile_height,
+        )
+    }
+
+    /// The key a walking figure (the player or an NPC) sorts by: its column and half, lifted
+    /// past the ground decor around it (see `lift_over_ground_decor`), so a small rock never
+    /// covers it.
+    fn figure_draw_key(&self, position: GridPoint, elevation: f64, tile_height: f64) -> DrawKey {
+        let column = get_player_column(position);
+        let key = player_key(
+            column,
+            elevation,
+            player_layer(position, column),
+            tile_height,
+        );
+        let mut decor = Vec::new();
+        for dy in -1..=1 {
+            for dx in -1..=1 {
+                let cell = WorldCoord {
+                    x: column.x + dx,
+                    y: column.y + dy,
+                };
+                let Some(entities) = self.manager.entities_chunk(iso::grid::to_chunk_coord(cell))
+                else {
+                    continue;
+                };
+                decor.extend(
+                    entities
+                        .iter()
+                        .filter(|entity| {
+                            entity.draw_under_player()
+                                && entity.x() == cell.x
+                                && entity.y() == cell.y
+                        })
+                        .map(|entity| (cell, f64::from(entity.elevation()))),
+                );
+            }
+        }
+        lift_over_ground_decor(key, elevation, decor, tile_height)
     }
 
     /// Terrain and baked shadows of the visible chunks, then entities and their reflections.
@@ -461,6 +534,7 @@ impl Game {
                     along_y,
                 };
                 let covering = !entity.walkable()
+                    && !entity.draw_under_player()
                     && player
                         .as_ref()
                         .is_some_and(|player| standing.hides(player, projection.tile_height));
@@ -579,12 +653,7 @@ impl Game {
             projection,
         );
         let column = get_player_column(GridPoint { x: rp.x, y: rp.y });
-        let key = player_key(
-            column,
-            rp.elevation,
-            player_layer(GridPoint { x: rp.x, y: rp.y }, column),
-            projection.tile_height,
-        );
+        let key = self.player_draw_key(view);
         let ground_feet = player_feet(GridPoint { x: rp.x, y: rp.y }, rp.elevation, projection);
         let phase = self
             .shadows
@@ -847,12 +916,7 @@ impl Game {
             };
             let (texture, frame) = (sheet.texture, sheet.frame(pose.facing, pose.pose));
             let layout = ink_layout(feet, sheet.ink.scaled(scale), projection.tile_width);
-            let key = player_key(
-                column,
-                rp.elevation,
-                player_layer(at, column),
-                projection.tile_height,
-            );
+            let key = self.figure_draw_key(at, rp.elevation, projection.tile_height);
             let ground_feet = player_feet(at, rp.elevation, projection);
             let shadow = crate::npc::npc_view::scaled_shadow(
                 player_shadow(ground_feet, rp.height, projection, phase.light()),
