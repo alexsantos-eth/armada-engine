@@ -190,6 +190,9 @@ pub struct PlayerObstacle {
     pub elevation: Option<f64>,
     /// Side of the square it blocks, as a fraction of the block, precomputed for the column
     pub collision_at: Option<f64>,
+    /// Where that square is centred, for a body that moves (a character walking by). `None`
+    /// centres it on the column that reports it, which is where a placed entity stands.
+    pub centre: Option<GridPoint>,
 }
 
 impl PlayerObstacle {
@@ -198,6 +201,15 @@ impl PlayerObstacle {
             return 0.0;
         }
         self.collision_at.unwrap_or(1.0)
+    }
+
+    /// Centre of the square it blocks, reported on column `(x, y)`: its own centre when it
+    /// moves, the column's otherwise.
+    pub fn centre_on(&self, x: i32, y: i32) -> GridPoint {
+        self.centre.unwrap_or(GridPoint {
+            x: f64::from(x),
+            y: f64::from(y),
+        })
     }
 }
 
@@ -327,6 +339,12 @@ pub fn can_stand_on<G: PlayerGround>(ground: &G, x: i32, y: i32, from_elevation:
         if side <= 0.0 {
             return true;
         }
+        let centre = occ.centre_on(x, y);
+        if square_overlap(f64::from(x), centre.x, side) <= 0.0
+            || square_overlap(f64::from(y), centre.y, side) <= 0.0
+        {
+            return true;
+        }
         occ.elevation
             .map(|e| e >= column.elevation as f64 + PLAYER_BODY_HEIGHT - LANDING)
             .unwrap_or(false)
@@ -367,10 +385,11 @@ fn support_at<G: PlayerGround>(ground: &G, point: GridPoint) -> Option<TerrainCo
     }
     for occ in ground.occupancy_at(x, y) {
         let side = occ.blocked_side(x as f64, y as f64);
+        let centre = occ.centre_on(x, y);
         if side > 0.0
             && !clears_standing_body(&occ, &column)
-            && (point.x - x as f64).abs() < PLAYER_RADIUS + side / 2.0
-            && (point.y - y as f64).abs() < PLAYER_RADIUS + side / 2.0
+            && (point.x - centre.x).abs() < PLAYER_RADIUS + side / 2.0
+            && (point.y - centre.y).abs() < PLAYER_RADIUS + side / 2.0
         {
             return None;
         }
@@ -532,7 +551,7 @@ fn can_leave_edge<G: PlayerGround>(
 }
 
 /// The overlap of one axis between the body's square and the obstacle's square centred on
-/// `cell` with side `side`. Zero means the body does not reach into it there.
+/// `cell` (the column's centre, or a moving body's own) with side `side`. Zero means the body does not reach into it there.
 fn square_overlap(centre: f64, cell: f64, side: f64) -> f64 {
     let overlap = (centre + PLAYER_RADIUS).min(cell + side / 2.0)
         - (centre - PLAYER_RADIUS).max(cell - side / 2.0);
@@ -573,15 +592,16 @@ fn block_reason_at<G: PlayerGround>(
                 if side <= 0.0 {
                     continue;
                 }
-                let to_x = square_overlap(point.x, f64::from(x), side);
-                let to_y = square_overlap(point.y, f64::from(y), side);
+                let centre = occ.centre_on(x, y);
+                let to_x = square_overlap(point.x, centre.x, side);
+                let to_y = square_overlap(point.y, centre.y, side);
                 if to_x <= 0.0 || to_y <= 0.0 {
                     continue;
                 }
                 let blocked = match from {
                     Some(from) => {
-                        let from_x = square_overlap(from.x, f64::from(x), side);
-                        let from_y = square_overlap(from.y, f64::from(y), side);
+                        let from_x = square_overlap(from.x, centre.x, side);
+                        let from_y = square_overlap(from.y, centre.y, side);
                         to_x > from_x + 1e-9 || to_y > from_y + 1e-9
                     }
                     None => true,

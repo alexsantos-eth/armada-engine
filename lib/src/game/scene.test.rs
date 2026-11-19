@@ -546,3 +546,45 @@ fn ground_decor_in_front_of_the_player_draws_under_it() {
     let kept = lift_over_ground_decor(key, 2.0, [(behind, 2.0)], PREVIEW_TILE_HEIGHT);
     assert_eq!(kept, key, "a rock behind already draws first");
 }
+
+#[test]
+fn two_figures_on_one_column_draw_in_the_order_they_stand() {
+    let column = WorldCoord { x: 6, y: 5 };
+    let key = |at: GridPoint| {
+        let base = player_key(column, 0.0, player_layer(at, column), PREVIEW_TILE_HEIGHT);
+        nudge_figure_key(base, at, column, false)
+    };
+    let npc = key(GridPoint { x: 6.0, y: 5.0 });
+    let in_front = key(GridPoint { x: 5.55, y: 5.0 });
+    let behind = key(GridPoint { x: 6.45, y: 5.0 });
+    assert_eq!(
+        compare_draw_keys(&in_front, &npc),
+        std::cmp::Ordering::Greater,
+        "the player nearer the camera draws over the crab"
+    );
+    assert_eq!(
+        compare_draw_keys(&behind, &npc),
+        std::cmp::Ordering::Less,
+        "and further away, under it"
+    );
+
+    let rock = scene_key(5.5, 5.5, 0.0, ENTITY_LAYER, PREVIEW_TILE_HEIGHT);
+    let tree = scene_key(6.5, 5.5, 0.0, ENTITY_LAYER, PREVIEW_TILE_HEIGHT);
+    assert_eq!(
+        compare_draw_keys(&in_front, &tree),
+        std::cmp::Ordering::Greater
+    );
+    assert_eq!(compare_draw_keys(&behind, &tree), std::cmp::Ordering::Less);
+    let lifted = lift_over_ground_decor(
+        behind,
+        0.0,
+        [(WorldCoord { x: 5, y: 5 }, 0.0)],
+        PREVIEW_TILE_HEIGHT,
+    );
+    let lifted = nudge_figure_key(lifted, GridPoint { x: 6.45, y: 5.0 }, column, true);
+    assert_eq!(
+        compare_draw_keys(&lifted, &rock),
+        std::cmp::Ordering::Greater,
+        "a figure lifted over a rock stays over it"
+    );
+}

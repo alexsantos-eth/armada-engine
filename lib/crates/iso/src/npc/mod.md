@@ -17,6 +17,8 @@ Cada personaje tiene además un **aspecto** (`npc_look`): un tinte de una paleta
 
 Hay dos clases de personaje (`NpcKind`). El **aldeano** hace todo lo de arriba. El **cangrejo** (`NpcKind::Crab`) nace en la arena seca de la playa (`spawn_crabs`, hasta `CRABS_PER_CHUNK` por chunk, con un flujo propio para no cambiar quién más nace, y su id lleva `CRAB_ID_BIT` para no coincidir con el de un aldeano de la misma casilla). Corretea más rápido y con correa más corta (`NpcKind::gait`), **no escala ni toma gradas**: solo pisa suelo de su nivel o uno más bajo (cae como cualquiera). Si a mitad de paseo se topa con un bloque más alto, el agua o su correa, da la vuelta (`step_npc`). Camina de lado: mira a través de su camino (`facing_for`), del lado al que ya miraba, o hacia la cámara si los dos lados empatan. Su aspecto (`kind_look`) es un tono de caparazón y un tamaño propios.
 
+Cada personaje tiene un **cuerpo** (`Npc::body`): un cuadrado centrado en sus pies de este tick, que lo sigue en cada paso, escalada y caída, con el lado y la altura de su clase (`NpcKind::body_size`: el del jugador para el aldeano, una concha baja y ancha para el cangrejo) escalados por su aspecto. El jugador choca con esos cuerpos a través de `NpcGround`, que envuelve el suelo y añade a sus ocupantes los cuerpos que tocan cada casilla (`Npcs::obstacles_at`); un `PlayerObstacle` con `centre` es un cuadrado que se mueve, y sin él se centra en su casilla como una entidad colocada. Los personajes deambulan sobre el suelo sin envolver, así que no se estorban con su propio cuerpo: entre ellos se apartan por las casillas que reclaman.
+
 No dibuja nada ni conoce sprites: la vista vive en el cliente (`src/npc`).
 
 ## Catálogo de API pública
@@ -25,33 +27,33 @@ No dibuja nada ni conoce sprites: la vista vive en el cliente (`src/npc`).
 
 #### Funciones y métodos
 
-- [`Npc::new`](wander.rs#L171) — Un personaje nacido en `home`, a `elevation`, con un primer descanso sacado de su propio flujo para que los vecinos no arranquen a la vez.
+- [`Npc::new`](wander.rs#L230) — Un personaje nacido en `home`, a `elevation`, con un primer descanso sacado de su propio flujo para que los vecinos no arranquen a la vez.
 
-- [`Npc::pose`](wander.rs#L198) — Dónde tiene los pies ahora: punto de la rejilla, nivel del suelo o del peldaño que pisa y cuánto está su cuerpo por encima.
+- [`Npc::pose`](wander.rs#L263) — Dónde tiene los pies ahora: punto de la rejilla, nivel del suelo o del peldaño que pisa y cuánto está su cuerpo por encima.
 
-- [`Npc::position`](wander.rs#L245) — Dónde está sobre el suelo, en las coordenadas del jugador.
+- [`Npc::position`](wander.rs#L310) — Dónde está sobre el suelo, en las coordenadas del jugador.
 
-- [`Npc::render_pose`](wander.rs#L254) — Dónde se dibuja a `alpha` del camino entre el tick anterior y este; al pasar un borde el suelo cambia de golpe y los pies no.
+- [`Npc::render_pose`](wander.rs#L319) — Dónde se dibuja a `alpha` del camino entre el tick anterior y este; al pasar un borde el suelo cambia de golpe y los pies no.
 
-- [`Npc::target`](wander.rs#L279) — La casilla a la que va, si hay un paso en curso.
+- [`Npc::target`](wander.rs#L343) — La casilla a la que va, si hay un paso en curso.
 
-- [`Npc::claims`](wander.rs#L287) — Si ocupa `cell`: está en ella, va hacia ella o la está cruzando (la grada de un tramo).
+- [`Npc::claims`](wander.rs#L351) — Si ocupa `cell`: está en ella, va hacia ella o la está cruzando (la grada de un tramo).
 
-- [`Npc::climbing`](wander.rs#L301) — Cuánto lleva del izado sobre un reborde, o `None` si no está en una pared.
+- [`Npc::climbing`](wander.rs#L365) — Cuánto lleva del izado sobre un reborde, o `None` si no está en una pared.
 
-- [`Npc::motion`](wander.rs#L307) — Qué hace este tick: `Idle`, `Walking`, `Climbing` o `Falling`.
+- [`Npc::motion`](wander.rs#L371) — Qué hace este tick: `Idle`, `Walking`, `Climbing` o `Falling`.
 
-- [`NpcStep::span`](wander.rs#L82) — Casillas que cubre el paso: dos por un tramo de gradas, una en los demás.
+- [`NpcStep::span`](wander.rs#L138) — Casillas que cubre el paso: dos por un tramo de gradas, una en los demás.
 
-- [`get_npc_climb`](wander.rs#L115) — Una escalada a `progress` de su paso entero: parte de la casilla avanzada, parte del bloque subida y, mientras está en la pared, cuánto lleva del izado.
+- [`get_npc_climb`](wander.rs#L171) — Una escalada a `progress` de su paso entero: parte de la casilla avanzada, parte del bloque subida y, mientras está en la pared, cuánto lleva del izado.
 
-- [`get_npc_fall`](wander.rs#L136) — Bloques que ha caído un cuerpo `ticks` ticks después de pasar un borde, uno como mucho.
+- [`get_npc_fall`](wander.rs#L192) — Bloques que ha caído un cuerpo `ticks` ticks después de pasar un borde, uno como mucho.
 
-- [`can_npc_stand`](wander.rs#L341) — Si un personaje puede estar en `cell`: suelo seco, que no sea grada, sin nada sólido; con `level`, exactamente a ese nivel.
+- [`can_npc_stand`](wander.rs#L406) — Si un personaje puede estar en `cell`: suelo seco, que no sea grada, sin nada sólido; con `level`, exactamente a ese nivel.
 
-- [`plan_npc_step`](wander.rs#L382) — El paso que `npc` daría hacia `heading` (caminar, gradas, escalar o caer), o `None` si ese lado está cerrado.
+- [`plan_npc_step`](wander.rs#L450) — El paso que `npc` daría hacia `heading` (caminar, gradas, escalar o caer), o `None` si ese lado está cerrado.
 
-- [`step_npc`](wander.rs#L457) — Un tick de `npc`: descansa, arranca un paseo o continúa el paso en curso.
+- [`step_npc`](wander.rs#L525) — Un tick de `npc`: descansa, arranca un paseo o continúa el paso en curso.
 
 #### Constantes
 
@@ -84,35 +86,62 @@ No dibuja nada ni conoce sprites: la vista vive en el cliente (`src/npc`).
 
 #### Tipos
 
-- [`NpcMotion`](wander.rs#L48) — Lo que hace un personaje, para quien lo dibuja.
+- [`NpcMotion`](wander.rs#L104) — Lo que hace un personaje, para quien lo dibuja.
 
-- [`NpcMove`](wander.rs#L59) — Cómo llega un paso a la casilla siguiente: `Walk`, `Stairs`, `Climb` o `Drop`.
+- [`NpcMove`](wander.rs#L115) — Cómo llega un paso a la casilla siguiente: `Walk`, `Stairs`, `Climb` o `Drop`.
 
-- [`NpcStep`](wander.rs#L72) — Un paso en curso: hacia dónde, de qué tipo y cuántos niveles gana.
+- [`NpcStep`](wander.rs#L128) — Un paso en curso: hacia dónde, de qué tipo y cuántos niveles gana.
 
-- [`NpcPose`](wander.rs#L100) — Dónde están los pies: punto, nivel del suelo bajo ellos y altura del cuerpo sobre él.
+- [`NpcPose`](wander.rs#L156) — Dónde están los pies: punto, nivel del suelo bajo ellos y altura del cuerpo sobre él.
 
-- [`Npc`](wander.rs#L144) — Un personaje: su casa, la casilla que pisa, su nivel, el paso en curso, hacia dónde mira y cuánto le queda de descanso.
+- [`Npc`](wander.rs#L200) — Un personaje: su casa, la casilla que pisa, su nivel, el paso en curso, hacia dónde mira y cuánto le queda de descanso.
+
+### `body.rs`
+
+#### Funciones y métodos
+
+- [`Npc::body`](body.rs#L47) — Su cuerpo este tick: un cuadrado centrado en sus pies, escalado por su aspecto, que lo sigue en cada paso, escalada y caída.
+
+- [`NpcKind::body_size`](body.rs#L36) — Lado y altura del cuerpo de esta clase a escala uno.
+
+- [`NpcBody::covers`](body.rs#L65) — Si su cuadrado entra en `cell`.
+
+- [`NpcBody::obstacle`](body.rs#L75) — El cuerpo como algo con lo que choca el jugador.
+
+- [`Npcs::obstacles_at`](body.rs#L88) — Los cuerpos que entran en `cell`, como obstáculos del jugador.
+
+#### Constantes
+
+- [`NPC_BODY_SIDE`](body.rs#L13) — Lado del cuadrado de un aldeano a tamaño de jugador: el del jugador.
+- [`NPC_BODY_HEIGHT`](body.rs#L15) — Altura del cuerpo de un aldeano a tamaño de jugador: la del jugador.
+- [`CRAB_BODY_SIDE`](body.rs#L17) — Lado del cuadrado de un cangrejo a tamaño de su hoja.
+- [`CRAB_BODY_HEIGHT`](body.rs#L19) — Altura del cuerpo de un cangrejo a tamaño de su hoja.
+
+#### Tipos
+
+- [`NpcBody`](body.rs#L23) — Dónde está el cuerpo de un personaje ahora y cuánto mide.
+
+- [`NpcGround`](body.rs#L99) — Un suelo con los personajes encima: el jugador choca con sus cuerpos donde estén este tick.
 
 ### `spawn.rs`
 
 #### Funciones y métodos
 
-- [`spawn_npcs`](spawn.rs#L22) — Los personajes que nacen en `chunk`: aldeanos en las casillas de poblado y, de vez en cuando, un caminante fuera. Misma semilla, chunk y suelo dan siempre los mismos.
+- [`spawn_npcs`](spawn.rs#L34) — Los personajes que nacen en `chunk`: aldeanos en las casillas de poblado y, de vez en cuando, un caminante fuera. Misma semilla, chunk y suelo dan siempre los mismos.
   - Firma: `pub fn spawn_npcs<G: PlayerGround>( seed: u64, chunk: ChunkCoord, ground: &G, in_village: impl Fn(i32, i32) -> bool, ) -> Vec<Npc> {`
 
 #### Constantes
 
-- [`NPC_SPAWN_TRIES`](spawn.rs#L11) — Casillas de un chunk que se prueban como casa.
+- [`NPC_SPAWN_TRIES`](spawn.rs#L22) — Casillas de un chunk que se prueban como casa.
   - Declaración: `pub const NPC_SPAWN_TRIES: i32 = 96;`
 
-- [`NPC_VILLAGERS_PER_CHUNK`](spawn.rs#L13) — Tope de personajes que un chunk da dentro de un poblado.
+- [`NPC_VILLAGERS_PER_CHUNK`](spawn.rs#L24) — Tope de personajes que un chunk da dentro de un poblado.
   - Declaración: `pub const NPC_VILLAGERS_PER_CHUNK: usize = 20;`
 
-- [`NPC_WANDERERS_PER_CHUNK`](spawn.rs#L15) — Tope de personajes que un chunk da fuera de un poblado.
+- [`NPC_WANDERERS_PER_CHUNK`](spawn.rs#L26) — Tope de personajes que un chunk da fuera de un poblado.
   - Declaración: `pub const NPC_WANDERERS_PER_CHUNK: usize = 1;`
 
-- [`NPC_WANDERER_CHANCE`](spawn.rs#L17) — Parte de las casillas salvajes probadas que sí reciben un caminante.
+- [`NPC_WANDERER_CHANCE`](spawn.rs#L28) — Parte de las casillas salvajes probadas que sí reciben un caminante.
   - Declaración: `pub const NPC_WANDERER_CHANCE: f64 = 0.05;`
 
 ### `crowd.rs`
@@ -142,16 +171,16 @@ No dibuja nada ni conoce sprites: la vista vive en el cliente (`src/npc`).
 
 #### Funciones y métodos
 
-- [`npc_look`](look.rs#L27) — El aspecto del personaje `id`: siempre el mismo para el mismo personaje.
+- [`npc_look`](look.rs#L32) — El aspecto del personaje `id`: siempre el mismo para el mismo personaje.
   - Firma: `pub fn npc_look(id: u64) -> NpcLook {`
 
 #### Constantes
 
-- [`NPC_TINTS`](look.rs#L8) — Los tintes por los que se multiplica el dibujo, como `0xRRGGBB`: el mono tal cual y siete pelajes que lo oscurecen o lo entibian.
+- [`NPC_TINTS`](look.rs#L9) — Los tintes por los que se multiplica el dibujo, como `0xRRGGBB`: el mono tal cual y siete pelajes que lo oscurecen o lo entibian.
 
-- [`NPC_SCALE_RANGE`](look.rs#L12) — Lo más pequeño y lo más grande que se dibuja un personaje, como parte del tamaño del jugador.
+- [`NPC_SCALE_RANGE`](look.rs#L13) — Lo más pequeño y lo más grande que se dibuja un personaje, como parte del tamaño del jugador.
   - Declaración: `pub const NPC_SCALE_RANGE: (f64, f64) = (0.8, 1.15);`
 
 #### Tipos
 
-- [`NpcLook`](look.rs#L18) — Cómo se ve un personaje: su tinte y su tamaño.
+- [`NpcLook`](look.rs#L23) — Cómo se ve un personaje: su tinte y su tamaño.

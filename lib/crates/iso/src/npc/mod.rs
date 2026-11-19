@@ -1,9 +1,11 @@
 //! Non-player characters: who lives where, and the wander that moves them.
 
+pub mod body;
 pub mod crowd;
 pub mod look;
 pub mod spawn;
 pub mod wander;
+pub use body::*;
 pub use crowd::*;
 pub use look::*;
 pub use spawn::*;

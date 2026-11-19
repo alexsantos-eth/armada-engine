@@ -132,35 +132,38 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `pub(crate) fn preview_projection(origin_x: f64, origin_y: f64, metrics: SceneMetrics) -> ProjectionConfig {`
 - [`player_sheets`](scene.rs#L66) — Cuántas poses trae cada hoja del jugador en el atlas.
   - Firma: `pub(crate) fn player_sheets(atlas: &SpriteAtlas) -> crate::player::player_view::PlayerSheets {`
-- [`player_key`](scene.rs#L83) — La clave de profundidad del jugador y de su sombra: la casilla redondeada, pero la elevación de los pies, para que el orden frente a quien lo tapa cambie gradualmente al subir o bajar gradas.
+- [`player_key`](scene.rs#L94) — La clave de profundidad del jugador y de su sombra: la casilla redondeada, pero la elevación de los pies, para que el orden frente a quien lo tapa cambie gradualmente al subir o bajar gradas.
   - Firma: `pub(crate) fn player_key(column: WorldCoord, feet_elevation: f64, layer: i32, tile_height: f64) -> DrawKey {`
-- [`player_layer`](scene.rs#L99) — Qué capa ocupa el jugador sobre la casilla que pisa.
+- [`nudge_figure_key`](scene.rs#L148) — Desempata a dos figuras (el jugador, los NPCs) que comparten casilla, y por tanto profundidad y capa: la más cercana a la cámara (menor `x + y`) se dibuja después. Una clave levantada sobre decoración del suelo solo avanza, para no volver detrás de la roca.
+  - Firma: `pub(crate) fn nudge_figure_key( key: DrawKey, position: GridPoint, column: WorldCoord, lifted: bool, ) -> DrawKey {`
+
+- [`player_layer`](scene.rs#L163) — Qué capa ocupa el jugador sobre la casilla que pisa.
   - Firma: `pub(crate) fn player_layer(position: GridPoint, column: WorldCoord) -> i32 {`
-- [`player_feet`](scene.rs#L108) — Proyecta el punto donde los pies del jugador tocan la cima de su casilla.
+- [`player_feet`](scene.rs#L172) — Proyecta el punto donde los pies del jugador tocan la cima de su casilla.
   - Firma: `pub(crate) fn player_feet(position: GridPoint, elevation: f64, projection: ProjectionConfig) -> ScreenPoint {`
-- [`cell_at`](scene.rs#L163) — Centro, en la rejilla, de la casilla `index` de la huella de un `StandingSprite`.
+- [`cell_at`](scene.rs#L227) — Centro, en la rejilla, de la casilla `index` de la huella de un `StandingSprite`.
   - Firma: `pub(crate) fn cell_at(&self, index: i32) -> (f64, f64) {`
 
-- [`hides`](scene.rs#L174) — Si el sprite de una entidad tapa al jugador: alguna de sus casillas se dibuja después y la parte del arte apoyada en ella cae sobre la caja del jugador (con la `CoverMask` del atlas si la hay; sin ella, el rectángulo).
+- [`hides`](scene.rs#L238) — Si el sprite de una entidad tapa al jugador: alguna de sus casillas se dibuja después y la parte del arte apoyada en ella cae sobre la caja del jugador (con la `CoverMask` del atlas si la hay; sin ella, el rectángulo).
   - Firma: `pub(crate) fn hides(&self, player: &Occludee, tile_height: f64) -> bool {`
 
-- [`scale_player_layout`](scene.rs#L128) — Escala el arte del jugador alrededor de sus pies sin deslizar su punto de contacto.
+- [`scale_player_layout`](scene.rs#L192) — Escala el arte del jugador alrededor de sus pies sin deslizar su punto de contacto.
   - Firma: `pub(crate) fn scale_player_layout(layout: SpriteLayout, feet: ScreenPoint, scale: BodyScale) -> SpriteLayout {`
-- [`frame_projection`](scene.rs#L249) — El origen de la proyección del fotograma a partir de la cámara, su nivel y las métricas de casilla de la escena.
+- [`frame_projection`](scene.rs#L313) — El origen de la proyección del fotograma a partir de la cámara, su nivel y las métricas de casilla de la escena.
   - Firma: `pub(crate) fn frame_projection(camera: Camera, level: f64, width: f32, height: f32, metrics: SceneMetrics) -> ProjectionConfig {`
-- [`draw_clouds`](scene.rs#L267) — Dibuja las sombras de nubes sobre la escena terminada, bajo el HUD.
+- [`draw_clouds`](scene.rs#L331) — Dibuja las sombras de nubes sobre la escena terminada, bajo el HUD.
   - Firma: `pub(crate) fn draw_clouds(&mut self, frame_ms: f64, projection: &ProjectionConfig) {`
-- [`collect_scene`](scene.rs#L280) — Los sprites del fotograma: terreno y sombras horneadas, entidades y reflejos, jugador y polvo. Reutiliza la cola de dibujo.
+- [`collect_scene`](scene.rs#L344) — Los sprites del fotograma: terreno y sombras horneadas, entidades y reflejos, jugador y polvo. Reutiliza la cola de dibujo.
   - Firma: `pub(crate) fn collect_scene(&mut self, view: &FrameView) -> SceneStats {`
 
 #### Tipos
 
-- [`StandingSprite`](scene.rs#L146) — El sprite de una entidad tal como lo coloca la escena: el rectángulo de su arte, su máscara de cobertura y las casillas de su huella, cada una dibujada como una banda con clave propia.
+- [`StandingSprite`](scene.rs#L210) — El sprite de una entidad tal como lo coloca la escena: el rectángulo de su arte, su máscara de cobertura y las casillas de su huella, cada una dibujada como una banda con clave propia.
   - Declaración: `pub(crate) struct StandingSprite<'a> {`
 
 - [`PlayerSprite`](scene.rs#L58) — El arte del jugador: su frame en el atlas y dónde pertenece sobre el suelo.
   - Firma: `pub(crate) struct PlayerSprite { pub(crate) frame: SpriteFrame, pub(crate) ink: InkBox, pub(crate) texture: usize }`
-- [`SceneStats`](scene.rs#L206) — Lo que la pasada de escena midió: chunks dibujados y sprites en cola.
+- [`SceneStats`](scene.rs#L270) — Lo que la pasada de escena midió: chunks dibujados y sprites en cola.
   - Firma: `pub(crate) struct SceneStats { pub(crate) chunks_drawn: usize, pub(crate) sprites: usize }`
 
 ### `state.rs`
@@ -212,15 +215,15 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones internas
 
-- [`screen_point`](scene.rs#L211) — Proyecta un `GridPoint` a `Vec2` de macroquad.
+- [`screen_point`](scene.rs#L275) — Proyecta un `GridPoint` a `Vec2` de macroquad.
   - Firma: `fn screen_point(point: GridPoint, projection: ProjectionConfig) -> Vec2 {`
-- [`draw_grid`](scene.rs#L216) — La rejilla de depuración que se dibuja cuando el terreno está oculto (T).
+- [`draw_grid`](scene.rs#L280) — La rejilla de depuración que se dibuja cuando el terreno está oculto (T).
   - Firma: `fn draw_grid(projection: ProjectionConfig, centre: WorldCoord) {`
-- [`collect_world`](scene.rs#L343) — Terreno y sombras horneadas de los chunks visibles, luego entidades y sus reflejos. Devuelve cuántos chunks se dibujaron.
+- [`collect_world`](scene.rs#L450) — Terreno y sombras horneadas de los chunks visibles, luego entidades y sus reflejos. Devuelve cuántos chunks se dibujaron.
   - Firma: `fn collect_world(&mut self, view: &FrameView) -> usize {`
-- [`collect_player`](scene.rs#L560) — El sprite del jugador: clave de profundidad, pose, arte o figura quieta, el jetpack sobre el cuerpo cuando lo lleva puesto (su propia hoja y su propia tinta, un pelo por delante en profundidad; nadando no se dibuja), su reflejo y la sombra que le cae encima. Devuelve cuánto se movió.
+- [`collect_player`](scene.rs#L668) — El sprite del jugador: clave de profundidad, pose, arte o figura quieta, el jetpack sobre el cuerpo cuando lo lleva puesto (su propia hoja y su propia tinta, un pelo por delante en profundidad; nadando no se dibuja), su reflejo y la sombra que le cae encima. Devuelve cuánto se movió.
   - Firma: `fn collect_player(&mut self, view: &FrameView) -> f64 {`
-- [`collect_dust`](scene.rs#L911) — El polvo levantado por el movimiento del jugador.
+- [`collect_dust`](scene.rs#L1015) — El polvo levantado por el movimiento del jugador.
   - Firma: `fn collect_dust(&mut self, view: &FrameView, moved: f64) {`
 
 ### `state.rs`

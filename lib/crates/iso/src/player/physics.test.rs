@@ -262,6 +262,7 @@ fn obstacle(side: f64) -> PlayerObstacle {
         height: Some(1.0),
         elevation: Some(0.0),
         collision_at: Some(side),
+        centre: None,
     }
 }
 
@@ -395,6 +396,7 @@ fn a_flight_ends_next_to_the_entity_at_its_far_end() {
             height: Some(1.0),
             elevation: Some(1.0),
             collision_at: Some(1.0),
+            centre: None,
         }],
     );
     let mut player = walk_onto_stairs(&mut ground);

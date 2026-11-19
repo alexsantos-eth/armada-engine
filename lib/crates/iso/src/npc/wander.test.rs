@@ -58,6 +58,7 @@ pub(crate) fn ground_from(rows: &[&str]) -> CellGround {
                         height: Some(2.0),
                         elevation: Some(0.0),
                         collision_at: Some(0.15),
+                        centre: None,
                     }],
                 );
             }

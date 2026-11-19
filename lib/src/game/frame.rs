@@ -208,8 +208,11 @@ impl Game {
             let _ = self.clock.advance(u64::from(ticks));
             let jumps_before = self.player.feedback.jumps;
             let landings_before = self.player.feedback.landings;
-            let mut ground = ChunkGround {
-                manager: &self.manager,
+            let mut ground = iso::npc::NpcGround {
+                ground: ChunkGround {
+                    manager: &self.manager,
+                },
+                npcs: &self.npcs,
             };
             step_player(&mut self.player, &mut ground, ticks);
             if self.streams {

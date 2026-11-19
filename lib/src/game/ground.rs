@@ -44,6 +44,7 @@ impl PlayerGround for ChunkGround<'_> {
                     height: Some(entity.height() as f64),
                     elevation: Some(entity.elevation() as f64),
                     collision_at: Some(collision),
+                    centre: None,
                 }
             })
             .collect()

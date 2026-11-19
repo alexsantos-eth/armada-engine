@@ -138,6 +138,27 @@ pub(crate) fn lift_over_ground_decor(
     lifted
 }
 
+/// How far a figure's key moves per block it stands off its column's centre: far below every
+/// step between two real keys, so it only ever settles a tie between two figures.
+pub(crate) const FIGURE_NUDGE: f64 = 1e-6;
+
+/// Settles the order of two walking figures (the player, the NPCs) that share a column, and
+/// so its depth and layer: the one nearer the camera (the smaller `x + y`) draws after. A key
+/// lifted over ground decor only moves forward, so it never slips back behind the rock.
+pub(crate) fn nudge_figure_key(
+    key: DrawKey,
+    position: GridPoint,
+    column: WorldCoord,
+    lifted: bool,
+) -> DrawKey {
+    let ahead = f64::from(column.x + column.y) - (position.x + position.y);
+    let nudge = if lifted { 1.0 + ahead } else { ahead };
+    DrawKey {
+        depth: key.depth + FIGURE_NUDGE * nudge,
+        ..key
+    }
+}
+
 /// Which layer the player draws in over the column it stands on.
 pub(crate) fn player_layer(position: GridPoint, column: WorldCoord) -> i32 {
     if position.x + position.y > f64::from(column.x) + f64::from(column.y) {
@@ -386,7 +407,8 @@ impl Game {
 
     /// The key a walking figure (the player or an NPC) sorts by: its column and half, lifted
     /// past the ground decor around it (see `lift_over_ground_decor`), so a small rock never
-    /// covers it.
+    /// covers it, and nudged by where it stands in its column (see `nudge_figure_key`), so two
+    /// figures side by side draw in the order they stand in.
     fn figure_draw_key(&self, position: GridPoint, elevation: f64, tile_height: f64) -> DrawKey {
         let column = get_player_column(position);
         let key = player_key(
@@ -418,7 +440,8 @@ impl Game {
                 );
             }
         }
-        lift_over_ground_decor(key, elevation, decor, tile_height)
+        let lifted = lift_over_ground_decor(key, elevation, decor, tile_height);
+        nudge_figure_key(lifted, position, column, lifted != key)
     }
 
     /// Terrain and baked shadows of the visible chunks, then entities and their reflections.
