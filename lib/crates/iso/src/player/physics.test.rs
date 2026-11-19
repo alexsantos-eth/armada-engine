@@ -1136,6 +1136,14 @@ fn walking_into_an_entity_throws_the_player_back() {
         player.x < player.previous.x,
         "the bump pushes back on the tick it lands"
     );
+    let feedback = &player.feedback;
+    assert!(feedback.bump_away.x < -0.99, "thrown back along -x");
+    assert!(
+        (feedback.bump_at.x - (player.previous.x + PLAYER_RADIUS)).abs() < 1e-9,
+        "the bump strikes at the front edge of the body, at {}",
+        feedback.bump_at.x
+    );
+    assert!(feedback.bump_at.x < 4.75, "and not inside the rock");
     let mut recoil = 0;
     while player.motion == PlayerMotionType::Bumped {
         step_player(&mut player, &mut ground, 1);

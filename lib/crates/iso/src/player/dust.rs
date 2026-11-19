@@ -63,6 +63,21 @@ pub const KICK_DUST: DustShape = DustShape {
     alpha: DUST_ALPHA,
 };
 
+/// The puff a bump knocks off where the player struck a body: a tight burst at the point of
+/// contact, thrown back the way the player bounced, and a little up its side.
+pub const BUMP_DUST: DustShape = DustShape {
+    voxels: 9,
+    radius: (0.02, 0.09),
+    drift: (0.08, 0.18),
+    size: (0.035, 0.065),
+    lift: 0.22,
+    rise: 0.12,
+    kick: 0.2,
+    colors: DUST_COLORS,
+    ms: DUST_MS,
+    alpha: DUST_ALPHA,
+};
+
 /// Shades of water thrown up by a swimmer: white foam to a pale blue.
 pub const WATER_COLORS: (u32, u32) = (0xffffff, 0x9ed6ef);
 

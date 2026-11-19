@@ -17,19 +17,19 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`new`](dust_view.rs#L163) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
+- [`new`](dust_view.rs#L167) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
   - Firma: `pub fn new() -> Self {`
 
-- [`live`](dust_view.rs#L181) — Cuántos soplos siguen elevándose, para el HUD y las pruebas.
+- [`live`](dust_view.rs#L186) — Cuántos soplos siguen elevándose, para el HUD y las pruebas.
   - Firma: `pub fn live(&self) -> usize {`
 
-- [`react`](dust_view.rs#L190) — Detecta lo que ha hecho el jugador desde el último frame y levanta el polvo correspondiente: un soplo
+- [`react`](dust_view.rs#L195) — Detecta lo que ha hecho el jugador desde el último frame y levanta el polvo correspondiente: un soplo
   - Firma: `pub fn react( &mut self, player: &PlayerState, at: DustGround, top_at: &impl Fn(i32, i32) -> Option<f64>, ) {`
 
-- [`advance`](dust_view.rs#L433) — Envejece cada soplo vivo en `elapsed_ms` de tiempo real, terminando los cuya vida ha acabado.
+- [`advance`](dust_view.rs#L457) — Envejece cada soplo vivo en `elapsed_ms` de tiempo real, terminando los cuya vida ha acabado.
   - Firma: `pub fn advance(&mut self, elapsed_ms: f64) {`
 
-- [`collect`](dust_view.rs#L442) — Encola cada cubo de polvo vivo en `draws`, cada uno a la profundidad que tomó cuando su soplo
+- [`collect`](dust_view.rs#L466) — Encola cada cubo de polvo vivo en `draws`, cada uno a la profundidad que tomó cuando su soplo
   - Firma: `pub fn collect(&self, projection: ProjectionConfig, draws: &mut Vec<SpriteDraw>) {`
 
 #### Constantes
@@ -58,16 +58,16 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`RUN_PUFFS`](dust_view.rs#L57) — Soplos de polvo de carrera o derrape vivos a la vez, reutilizados por turno. La estela de quien nada usa esos mismos soplos.
   - Declaración: `pub const RUN_PUFFS: usize = 6;`
 
-- [`SWIM_WAKE_EVERY`](dust_view.rs) — Columnas que recorre quien nada entre dos pares de crestas de su estela: más a menudo que el polvo de una carrera, porque el agua se cierra detrás.
+- [`SWIM_WAKE_EVERY`](dust_view.rs#L37) — Columnas que recorre quien nada entre dos pares de crestas de su estela: más a menudo que el polvo de una carrera, porque el agua se cierra detrás.
   - Declaración: `pub const SWIM_WAKE_EVERY: f64 = 0.4;`
 
-- [`SWIM_WAKE_SPREAD`](dust_view.rs) — Cuánto se abre cada brazo de la estela respecto a por donde vino el nadador, en radianes: los dos juntos son la V que arrastra.
+- [`SWIM_WAKE_SPREAD`](dust_view.rs#L41) — Cuánto se abre cada brazo de la estela respecto a por donde vino el nadador, en radianes: los dos juntos son la V que arrastra.
   - Declaración: `pub const SWIM_WAKE_SPREAD: f64 = 0.62;`
 
-- [`SWIM_WAKE_BEHIND`](dust_view.rs) — Columnas por detrás del nadador a las que nacen las crestas, para que el agua se cierre detrás del cuerpo y no dentro.
+- [`SWIM_WAKE_BEHIND`](dust_view.rs#L45) — Columnas por detrás del nadador a las que nacen las crestas, para que el agua se cierre detrás del cuerpo y no dentro.
   - Declaración: `pub const SWIM_WAKE_BEHIND: f64 = 0.16;`
 
-- [`SWIM_RIPPLE_MS`](dust_view.rs) — Milisegundos reales entre los anillos que abre quien flota quieto.
+- [`SWIM_RIPPLE_MS`](dust_view.rs#L48) — Milisegundos reales entre los anillos que abre quien flota quieto.
   - Declaración: `pub const SWIM_RIPPLE_MS: f64 = 1400.0;`
 
 - [`JET_FIRE_EVERY_MS`](dust_view.rs#L60) / [`JET_SMOKE_EVERY_MS`](dust_view.rs#L63) — Milisegundos reales entre dos soplos de llama y de humo del jetpack mientras se vuela. La quema se marca en tiempo real, no en columnas recorridas: es un motor encendido, no un paso dado.
@@ -250,19 +250,19 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`default`](dust_view.rs#L157) — Implementación de `Default`: la vista de polvo o de jugador vacía.
+- [`default`](dust_view.rs#L161) — Implementación de `Default`: la vista de polvo o de jugador vacía.
   - Firma: `fn default() -> Self {`
 
-- [`kick`](dust_view.rs#L253) — El rastro que un jugador corriendo o derrapando levanta tras sus pies, un soplo cada tramo de
+- [`kick`](dust_view.rs#L277) — El rastro que un jugador corriendo o derrapando levanta tras sus pies, un soplo cada tramo de
   - Firma: `fn kick( &mut self, player: &PlayerState, at: DustGround, top_at: &impl Fn(i32, i32) -> Option<f64>, ) {`
 
-- [`burn`](dust_view.rs#L350) — La llama y el humo que el jetpack quema por sus toberas mientras se vuela: ambos salen de las toberas de la espalda (`iso::player::jet_nozzle`, `JET_NOZZLE_LIFT`) y no de los pies, así que el orden de dibujo los deja delante o detrás del cuerpo según hacia dónde derivan. En el suelo no se quema nada y los relojes vuelven a infinito, para que el primer fotograma de un vuelo encienda ya.
+- [`burn`](dust_view.rs#L374) — La llama y el humo que el jetpack quema por sus toberas mientras se vuela: ambos salen de las toberas de la espalda (`iso::player::jet_nozzle`, `JET_NOZZLE_LIFT`) y no de los pies, así que el orden de dibujo los deja delante o detrás del cuerpo según hacia dónde derivan. En el suelo no se quema nada y los relojes vuelven a infinito, para que el primer fotograma de un vuelo encienda ya.
   - Firma: `fn burn( &mut self, player: &PlayerState, at: DustGround, top_at: &impl Fn(i32, i32) -> Option<f64>, ) {`
 
-- [`raise`](dust_view.rs#L408) — Levanta la bocanada `index` con `shape` en el emisor indicado; descarta la anterior.
+- [`raise`](dust_view.rs#L432) — Levanta la bocanada `index` con `shape` en el emisor indicado; descarta la anterior.
   - Firma: `fn raise( &mut self, index: usize, shape: DustShape, feet: GridPoint, level: f64, kick: GridPoint, origin: GridPoint, tile_height: f64, top_at: &impl Fn(i32, i32) -> Option<f64>, ) {`
 
-- [`voxel_key`](dust_view.rs#L508) — Dónde se ordena un cubo de polvo en la escena: la columna sobre la que está a mitad de su vida, y
+- [`voxel_key`](dust_view.rs#L532) — Dónde se ordena un cubo de polvo en la escena: la columna sobre la que está a mitad de su vida, y
   - Firma: `fn voxel_key( voxel: DustVoxel, feet: GridPoint, level: f64, tile_height: f64, top_at: &impl Fn(i32, i32) -> Option<f64>, ) -> DrawKey {`
 
 ### `player_shadow.rs`
@@ -295,10 +295,10 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`intersection`](shadow_clip.rs#L202) — El punto donde el segmento `from → to` cruza la línea del borde `a → b`, con el alfa interpolado.
   - Firma: `fn intersection( from: ShadowVertex, to: ShadowVertex, a: (f64, f64), b: (f64, f64), ) -> ShadowVertex {`
 
-- [`offset`](dust_view.rs#L539) — Las caras del voxel movidas al punto sobre el que se apoya.
+- [`offset`](dust_view.rs#L563) — Las caras del voxel movidas al punto sobre el que se apoya.
   - Firma: `fn offset(faces: VoxelFaces, x: f64, y: f64) -> VoxelFaces {`
 
-- [`colours`](dust_view.rs#L549) — Los colores de las tres caras para un cubo de `shade` en `alpha`: cada cara con su propio casi blanco
+- [`colours`](dust_view.rs#L573) — Los colores de las tres caras para un cubo de `shade` en `alpha`: cada cara con su propio casi blanco
   - Firma: `fn colours(shade: u32, alpha: f64) -> [Color; 3] {`
 
 #### Constantes internas
@@ -309,13 +309,16 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`LANDING_PUFF`](dust_view.rs#L76) — El soplo que levanta un aterrizaje, sobre el suelo en el que aterrizó.
   - Declaración: `const LANDING_PUFF: usize = 1;`
 
-- [`PUFFS`](dust_view.rs#L96) — El conjunto completo: un despegue, un aterrizaje, un chapuzón, un anillo, el rastro y la llama y el humo del jetpack.
+- [`BUMP_PUFF`](dust_view.rs#L85) — El soplo de `BUMP_DUST` que suelta un choque contra un cuerpo, en el punto de contacto (`feedback.bump_at` respecto a los pies dibujados) y lanzado por `feedback.bump_away`. Sale una vez por cada `feedback.bumps` nuevo.
+  - Declaración: `const BUMP_PUFF: usize = 4;`
+
+- [`PUFFS`](dust_view.rs#L99) — El conjunto completo: un despegue, un aterrizaje, un chapuzón, un anillo, un choque, el rastro y la llama y el humo del jetpack.
   - Declaración: `const PUFFS: usize = JET_SMOKE_PUFF + JET_SMOKE_PUFFS;`
 
-- [`JET_FIRE_PUFF`](dust_view.rs#L88) / [`JET_SMOKE_PUFF`](dust_view.rs#L91) — El primer hueco de la llama y del humo que quema el jetpack; cada uno se recorre por turno.
+- [`JET_FIRE_PUFF`](dust_view.rs#L91) / [`JET_SMOKE_PUFF`](dust_view.rs#L94) — El primer hueco de la llama y del humo que quema el jetpack; cada uno se recorre por turno.
   - Declaración: `const JET_FIRE_PUFF: usize = TRAIL_PUFF + RUN_PUFFS;`
 
-- [`ZERO`](dust_view.rs#L483) — Sin kick ni desplazamiento respecto a los pies.
+- [`ZERO`](dust_view.rs#L507) — Sin kick ni desplazamiento respecto a los pies.
   - Declaración: `const ZERO: GridPoint = GridPoint { x: 0.0, y: 0.0 };`
 
 ### `flip.rs`

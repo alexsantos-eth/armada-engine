@@ -262,6 +262,12 @@ pub struct PlayerFeedback {
     pub bumps: i32,
     /// Columns per tick it was going into that body, which is how hard the bump was.
     pub bump_impact: f64,
+    /// Where the last bump struck: the edge of the player's body facing what it hit.
+    pub bump_at: GridPoint,
+    /// Level of the feet when it struck.
+    pub bump_level: f64,
+    /// The way the last bump threw the player, as a unit vector away from what it hit.
+    pub bump_away: GridPoint,
 }
 
 /// Player state.
@@ -719,8 +725,20 @@ fn bump(player: &mut PlayerState, away: GridPoint, velocity: GridPoint) {
         y: away.y * speed,
     };
     player.bump_cooldown = PLAYER_BUMP_COOLDOWN_TICKS;
-    player.feedback.bumps += 1;
     player.feedback.bump_impact = impact;
+    record_bump(player, away);
+}
+
+/// Counts a bump in `feedback` and notes where it struck, for the dust the client raises there.
+fn record_bump(player: &mut PlayerState, away: GridPoint) {
+    let feedback = &mut player.feedback;
+    feedback.bumps += 1;
+    feedback.bump_away = away;
+    feedback.bump_at = GridPoint {
+        x: player.x - away.x * PLAYER_RADIUS,
+        y: player.y - away.y * PLAYER_RADIUS,
+    };
+    feedback.bump_level = player.elevation + player.height;
 }
 
 /// The way out of the bodies the player's own body is inside at `point` with its feet at
@@ -792,8 +810,8 @@ fn eject_player<G: PlayerGround>(player: &mut PlayerState, ground: &G) {
         y: away.y * speed,
     };
     player.bump_cooldown = PLAYER_BUMP_COOLDOWN_TICKS;
-    player.feedback.bumps += 1;
     player.feedback.bump_impact = speed;
+    record_bump(player, away);
 }
 
 /// The ground under `point` for a body that cannot stand there only because another body

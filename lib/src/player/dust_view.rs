@@ -1,10 +1,10 @@
 //! The puffs of dust the player kicks up, raised, settled and queued for the scene.
 
 use iso::player::{
-    BURST_DUST, DUST_MIN_IMPACT, DustShape, DustVoxel, JET_FIRE, JET_NOZZLE_LIFT, JET_SMOKE,
-    KICK_DUST, PLAYER_FACINGS, PlayerMotionType, PlayerState, RIPPLE_DUST, VoxelFaces, WAKE_DUST,
-    get_dust, get_dust_column, get_dust_voxel_at, get_dust_voxels, jet_nozzle, splash_of,
-    voxel_faces,
+    BUMP_DUST, BURST_DUST, DUST_MIN_IMPACT, DustShape, DustVoxel, JET_FIRE, JET_NOZZLE_LIFT,
+    JET_SMOKE, KICK_DUST, PLAYER_FACINGS, PlayerMotionType, PlayerState, RIPPLE_DUST, VoxelFaces,
+    WAKE_DUST, get_dust, get_dust_column, get_dust_voxel_at, get_dust_voxels, jet_nozzle,
+    splash_of, voxel_faces,
 };
 use iso::projection::{GridPoint, ProjectionConfig, project_grid_point};
 use iso::scene_order::DrawKey;
@@ -81,8 +81,11 @@ const SPLASH_PUFF: usize = 2;
 /// The ring that spreads around a swimmer floating in place.
 const RIPPLE_PUFF: usize = 3;
 
+/// The burst knocked off where the player struck a body.
+const BUMP_PUFF: usize = 4;
+
 /// The first puff of the trail a runner, a skidder or a swimmer leaves behind it.
-const TRAIL_PUFF: usize = 4;
+const TRAIL_PUFF: usize = 5;
 
 /// The first puff of the flame a jetpack burns out of its nozzles.
 const JET_FIRE_PUFF: usize = TRAIL_PUFF + RUN_PUFFS;
@@ -90,7 +93,7 @@ const JET_FIRE_PUFF: usize = TRAIL_PUFF + RUN_PUFFS;
 /// The first puff of the smoke a jetpack trails behind it.
 const JET_SMOKE_PUFF: usize = JET_FIRE_PUFF + JET_FIRE_PUFFS;
 
-/// The whole pool: a take-off, a landing, a splash, a ring, the trail and the jetpack's flame
+/// The whole pool: a take-off, a landing, a splash, a ring, a bump, the trail and the jetpack's flame
 /// and smoke. A swimmer's wake takes the trail's slots in pairs, so [`RUN_PUFFS`] has to be
 /// even for both arms of a V to live as long as each other.
 const PUFFS: usize = JET_SMOKE_PUFF + JET_SMOKE_PUFFS;
@@ -138,6 +141,7 @@ pub struct DustPuffs {
     seen_jumps: i32,
     seen_landings: i32,
     seen_splashes: i32,
+    seen_bumps: i32,
     /// Columns run or slid since the last puff of the running trail.
     ran: f64,
     /// Real milliseconds since the last ring spread around a floating swimmer.
@@ -167,6 +171,7 @@ impl DustPuffs {
             seen_jumps: 0,
             seen_landings: 0,
             seen_splashes: 0,
+            seen_bumps: 0,
             ran: 0.0,
             rippled_ms: 0.0,
             run_puff: 0,
@@ -241,7 +246,26 @@ impl DustPuffs {
             self.raise(RIPPLE_PUFF, RIPPLE_DUST, &surface, in_place, top_at);
             self.rippled_ms = 0.0;
         }
+        if feedback.bumps != self.seen_bumps {
+            self.raise(
+                BUMP_PUFF,
+                BUMP_DUST,
+                &DustGround {
+                    level: feedback.bump_level,
+                    ..at
+                },
+                DustEmission {
+                    origin: GridPoint {
+                        x: feedback.bump_at.x - at.feet.x,
+                        y: feedback.bump_at.y - at.feet.y,
+                    },
+                    kick: feedback.bump_away,
+                },
+                top_at,
+            );
+        }
         self.seen_landings = feedback.landings;
+        self.seen_bumps = feedback.bumps;
         self.seen_jumps = feedback.jumps;
         self.seen_splashes = feedback.splashes;
         self.kick(player, at, top_at);

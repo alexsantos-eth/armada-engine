@@ -1,7 +1,7 @@
 {
   "id": "/",
   "name": "Yorch Adventure",
-  "short_name": "Yorch",
+  "short_name": "Yorch Adventure",
   "description": "Aventura isométrica procedural de supervivencia.",
   "start_url": "/",
   "scope": "/",

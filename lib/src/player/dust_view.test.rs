@@ -571,3 +571,33 @@ fn the_burn_comes_out_behind_the_figure_whichever_way_it_looks() {
         west.0
     );
 }
+
+#[test]
+fn a_bump_knocks_dust_off_where_the_player_struck() {
+    let mut dust = DustPuffs::new();
+    let mut player = player_at(4.0, 4.0);
+    player.feedback = PlayerFeedback {
+        bumps: 1,
+        bump_at: GridPoint { x: 4.2, y: 4.0 },
+        bump_away: GridPoint { x: -1.0, y: 0.0 },
+        bump_level: 2.0,
+        ..PlayerFeedback::default()
+    };
+    react(&mut dust, &player, 0.0);
+    assert_eq!(dust.live(), 1, "a bump raises a puff");
+    let puff = dust.puffs[BUMP_PUFF].as_ref().expect("in its own slot");
+    let centre = puff.voxels.iter().map(|v| v.x).sum::<f64>() / puff.voxels.len() as f64;
+    assert!(
+        centre > 0.1,
+        "it rises at the contact, ahead of the feet: {centre}"
+    );
+    assert!(
+        puff.voxels
+            .iter()
+            .all(|v| v.drift_x < 0.0 || v.drift_x.abs() < BUMP_DUST.drift.1),
+        "and is thrown back the way the player bounced"
+    );
+
+    react(&mut dust, &player, 0.0);
+    assert_eq!(dust.live(), 1, "the same bump raises it only once");
+}
