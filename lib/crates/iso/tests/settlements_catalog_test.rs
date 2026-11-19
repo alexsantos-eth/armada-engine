@@ -111,3 +111,15 @@ fn a_village_of_the_shipped_field_grows_a_centre_a_neighbourhood_and_a_green() {
     assert!(zones.contains("center"), "no centre: {zones:?}");
     assert!(zones.len() >= 3, "a village of one or two zones: {zones:?}");
 }
+
+#[test]
+fn the_campfire_grows_in_the_wild_and_not_only_inside_a_village() {
+    let entities = entities();
+    let catalog = settlements();
+    let index = entities
+        .entities
+        .iter()
+        .position(|blueprint| blueprint.id == "campfire")
+        .expect("the catalog carries the campfire");
+    assert!(catalog.wilderness.multiplier(index) > 0.0);
+}

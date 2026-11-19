@@ -20,7 +20,8 @@
       "rock_small_2": 1.0,
       "rock_small_3": 1.0,
       "rock_medium": 1.0,
-      "rock_medium_2": 1.0
+      "rock_medium_2": 1.0,
+      "campfire": 1.0
     },
     "greens": 0.0
   },
@@ -77,7 +78,8 @@
         "healer_hut": 6.0,
         "market_stall": 2.0,
         "runestone": 1.0,
-        "bush": 1.0
+        "bush": 1.0,
+        "campfire": 1.5
       },
       "greens": 0.5
     },
@@ -93,6 +95,7 @@
       "weights": {
         "grove": 8.0,
         "bush": 6.0,
+        "campfire": 2.0,
         "runestone": 4.0,
         "runestone_circle": 6.0,
         "stone_shrine": 4.0

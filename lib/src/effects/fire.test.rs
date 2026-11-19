@@ -93,6 +93,7 @@ fn smoke_climbs_slower_than_sparks() {
     let climb = |kind| {
         let mut ember = Ember {
             kind,
+            source: spot(),
             x: 0.0,
             y: 0.0,
             height: 0.0,
@@ -106,4 +107,53 @@ fn smoke_climbs_slower_than_sparks() {
         ember.height
     };
     assert!(climb(EmberKind::Spark) > climb(EmberKind::Smoke));
+}
+
+#[test]
+fn every_piece_of_a_fire_sorts_with_its_cell_however_far_it_drifts() {
+    let projection = ProjectionConfig {
+        tile_width: 128.0,
+        tile_height: 64.0,
+        elevation_step: None,
+        origin_x: 0.0,
+        origin_y: 0.0,
+    };
+    let key = sort_key(&spot(), projection);
+    let mut far = spot();
+    far.x += 0.6;
+    far.y += 0.6;
+    assert_ne!(key.depth, sort_key(&far, projection).depth);
+    let mut fire = Fire::new(3);
+    run(&mut fire, 3.0, &[spot()]);
+    assert!(fire.embers.iter().all(|e| e.source == spot()));
+}
+
+#[test]
+fn a_player_beside_the_fire_sorts_against_its_flames_as_against_its_sprite() {
+    use iso::scene_order::compare_draw_keys;
+    let projection = ProjectionConfig {
+        tile_width: 128.0,
+        tile_height: 64.0,
+        elevation_step: None,
+        origin_x: 0.0,
+        origin_y: 0.0,
+    };
+    let fire = spot();
+    let sprite = scene_key(fire.x, fire.y, fire.ground, ENTITY_LAYER, 64.0);
+    let flames = sort_key(&fire, projection);
+    for (dx, dy) in [
+        (1.0, 0.0),
+        (0.0, 1.0),
+        (-1.0, 0.0),
+        (0.0, -1.0),
+        (1.0, 1.0),
+        (-1.0, -1.0),
+    ] {
+        let player = scene_key(fire.x + dx, fire.y + dy, fire.ground, ENTITY_LAYER, 64.0);
+        assert_eq!(
+            compare_draw_keys(&player, &sprite),
+            compare_draw_keys(&player, &flames),
+            "player at ({dx}, {dy}) from the fire"
+        );
+    }
 }

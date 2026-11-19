@@ -3,6 +3,7 @@
 
 use iso::player::{VoxelFaces, voxel_faces};
 use iso::projection::{GridPoint, ProjectionConfig, project_grid_point};
+use iso::scene_order::DrawKey;
 use macroquad::prelude::Color;
 
 use crate::assets::sprites::{SpriteDraw, scene_key};
@@ -62,6 +63,8 @@ enum EmberKind {
 #[derive(Clone, Copy, Debug)]
 struct Ember {
     kind: EmberKind,
+    /// The fire it came from; it sorts in depth as that fire does, wherever it drifts.
+    source: FireSpot,
     x: f64,
     y: f64,
     /// Blocks above elevation zero.
@@ -148,6 +151,7 @@ impl Fire {
                 let height = spot.ground + flame.height;
                 draws.push(voxel_draw(
                     VoxelAt { x, y, height },
+                    sort_key(spot, projection),
                     flame.size,
                     flame.colours.map(|c| colour(c, 1.0)),
                     projection,
@@ -181,6 +185,7 @@ impl Fire {
                     y: ember.y,
                     height: ember.height,
                 },
+                sort_key(&ember.source, projection),
                 size,
                 colours,
                 projection,
@@ -211,6 +216,7 @@ impl Fire {
         };
         self.embers.push(Ember {
             kind,
+            source: spot,
             x: spot.x + reach * scatter.cos(),
             y: spot.y + reach * scatter.sin(),
             height: spot.ground + FLAME_TOP,
@@ -343,6 +349,7 @@ struct VoxelAt {
 /// A voxel of `size` tiles at `at`, sorted with whatever stands on its column.
 fn voxel_draw(
     at: VoxelAt,
+    key: DrawKey,
     size: f64,
     colours: [Color; 3],
     projection: ProjectionConfig,
@@ -359,8 +366,19 @@ fn voxel_draw(
         screen.x,
         screen.y - at.height * box_height,
     );
-    let key = scene_key(at.x, at.y, at.height, ENTITY_LAYER, projection.tile_height);
     SpriteDraw::voxel(key, faces, colours)
+}
+
+/// The depth key every flame, spark and wisp of a fire shares: the fire's own cell, a hair above
+/// its sprite, so the player in front of the fire draws over them and behind it, under.
+fn sort_key(spot: &FireSpot, projection: ProjectionConfig) -> DrawKey {
+    scene_key(
+        spot.x,
+        spot.y,
+        spot.ground + 0.5,
+        ENTITY_LAYER,
+        projection.tile_height,
+    )
 }
 
 /// The faces of a voxel moved by `(x, y)`.
