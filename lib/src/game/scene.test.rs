@@ -588,3 +588,44 @@ fn two_figures_on_one_column_draw_in_the_order_they_stand() {
         "a figure lifted over a rock stays over it"
     );
 }
+
+/// A rock two diagonals ahead lifts the player, but never past a tree (or one cell of a grove)
+/// standing one diagonal ahead: the player stays behind the tree. With nothing in between, the
+/// lift over the rock is kept.
+#[test]
+fn a_lift_over_ground_decor_stops_behind_a_tree_in_front() {
+    use std::cmp::Ordering;
+
+    let column = WorldCoord { x: 12, y: 7 };
+    let key = player_key(column, 2.0, PLAYER_BEHIND_LAYER, PREVIEW_TILE_HEIGHT);
+    let rock_cell = WorldCoord { x: 11, y: 6 };
+    let rock = scene_key(11.5, 6.5, 2.0, ENTITY_LAYER, PREVIEW_TILE_HEIGHT);
+    let lifted = lift_over_ground_decor(key, 2.0, [(rock_cell, 2.0)], PREVIEW_TILE_HEIGHT);
+    assert_eq!(compare_draw_keys(&lifted, &rock), Ordering::Greater);
+
+    for tree_cell in [WorldCoord { x: 11, y: 7 }, WorldCoord { x: 12, y: 6 }] {
+        let tree = scene_key(
+            f64::from(tree_cell.x) + 0.5,
+            f64::from(tree_cell.y) + 0.5,
+            2.0,
+            ENTITY_LAYER,
+            PREVIEW_TILE_HEIGHT,
+        );
+        let held = hold_behind_cover(key, lifted, [(tree_cell, 2.0)], PREVIEW_TILE_HEIGHT);
+        let held = nudge_figure_key(held, GridPoint { x: 12.4, y: 7.4 }, column, held != key);
+        assert_eq!(
+            compare_draw_keys(&held, &tree),
+            Ordering::Less,
+            "the tree in front still covers the player"
+        );
+        assert_ne!(
+            compare_draw_keys(&held, &key),
+            Ordering::Less,
+            "the hold never drops below the player's own key"
+        );
+    }
+
+    let behind = WorldCoord { x: 13, y: 8 };
+    let kept = hold_behind_cover(key, lifted, [(behind, 2.0)], PREVIEW_TILE_HEIGHT);
+    assert_eq!(kept, lifted, "a tree behind leaves the lift alone");
+}

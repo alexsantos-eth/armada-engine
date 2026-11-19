@@ -138,6 +138,50 @@ pub(crate) fn lift_over_ground_decor(
     lifted
 }
 
+/// How many columns past its anchor the longest footprint reaches (a 2-tile grove: 1).
+pub(crate) const FOOTPRINT_REACH: i32 = 1;
+
+/// How far short of a covering cell's key a held figure stops: below the smallest real step
+/// between two keys (one column along `x`), above any `FIGURE_NUDGE`.
+pub(crate) const COVER_GAP: f64 = 1e-5;
+
+/// Keeps a lift over ground decor from carrying the figure past what really stands in front
+/// of it. A rock two diagonals ahead sorts after the trees one diagonal ahead, so lifting the
+/// figure past the rock would also draw it over those trees (or one cell of a grove or palm
+/// grove). `cover` gives every non-decor cell around the figure and its base elevation; the
+/// figure stops just short of the first one it would otherwise pass, never below `key`. A
+/// small rock may then overlap the figure, which beats a figure drawn over a tree.
+pub(crate) fn hold_behind_cover(
+    key: DrawKey,
+    lifted: DrawKey,
+    cover: impl IntoIterator<Item = (WorldCoord, f64)>,
+    tile_height: f64,
+) -> DrawKey {
+    let mut held = lifted;
+    for (cell, elevation) in cover {
+        let block = scene_key(
+            f64::from(cell.x) + 0.5,
+            f64::from(cell.y) + 0.5,
+            elevation,
+            ENTITY_LAYER,
+            tile_height,
+        );
+        if iso::scene_order::compare_draw_keys(&block, &key).is_le()
+            || iso::scene_order::compare_draw_keys(&block, &held).is_gt()
+        {
+            continue;
+        }
+        if block.depth - COVER_GAP <= key.depth {
+            return key;
+        }
+        held = DrawKey {
+            depth: block.depth - COVER_GAP,
+            ..held
+        };
+    }
+    held
+}
+
 /// How far a figure's key moves per block it stands off its column's centre: far below every
 /// step between two real keys, so it only ever settles a tie between two figures.
 pub(crate) const FIGURE_NUDGE: f64 = 1e-6;
@@ -417,31 +461,62 @@ impl Game {
             player_layer(position, column),
             tile_height,
         );
-        let mut decor = Vec::new();
-        for dy in -1..=1 {
-            for dx in -1..=1 {
-                let cell = WorldCoord {
+        let near =
+            |cell: WorldCoord| (cell.x - column.x).abs() <= 1 && (cell.y - column.y).abs() <= 1;
+        // A footprint runs +x or +y from its anchor, so one that reaches the 3×3 around the
+        // figure is anchored at most `FOOTPRINT_REACH` columns further back.
+        let mut chunks = Vec::new();
+        for dy in -1 - FOOTPRINT_REACH..=1 {
+            for dx in -1 - FOOTPRINT_REACH..=1 {
+                let chunk = iso::grid::to_chunk_coord(WorldCoord {
                     x: column.x + dx,
                     y: column.y + dy,
-                };
-                let Some(entities) = self.manager.entities_chunk(iso::grid::to_chunk_coord(cell))
-                else {
+                });
+                if !chunks.contains(&chunk) {
+                    chunks.push(chunk);
+                }
+            }
+        }
+        let mut decor = Vec::new();
+        let mut cover = Vec::new();
+        for chunk in chunks {
+            let Some(entities) = self.manager.entities_chunk(chunk) else {
+                continue;
+            };
+            for entity in entities {
+                let base = f64::from(entity.elevation());
+                if entity.draw_under_player() {
+                    let anchor = WorldCoord {
+                        x: entity.x(),
+                        y: entity.y(),
+                    };
+                    if near(anchor) {
+                        decor.push((anchor, base));
+                    }
                     continue;
-                };
-                decor.extend(
-                    entities
-                        .iter()
-                        .filter(|entity| {
-                            entity.draw_under_player()
-                                && entity.x() == cell.x
-                                && entity.y() == cell.y
-                        })
-                        .map(|entity| (cell, f64::from(entity.elevation()))),
-                );
+                }
+                let along_y = entity.length_axis() == Some(EntityLengthAxis::Y);
+                for index in 0..entity.length().max(1) {
+                    let cell = if along_y {
+                        WorldCoord {
+                            x: entity.x(),
+                            y: entity.y() + index,
+                        }
+                    } else {
+                        WorldCoord {
+                            x: entity.x() + index,
+                            y: entity.y(),
+                        }
+                    };
+                    if near(cell) {
+                        cover.push((cell, base));
+                    }
+                }
             }
         }
         let lifted = lift_over_ground_decor(key, elevation, decor, tile_height);
-        nudge_figure_key(lifted, position, column, lifted != key)
+        let held = hold_behind_cover(key, lifted, cover, tile_height);
+        nudge_figure_key(held, position, column, held != key)
     }
 
     /// Terrain and baked shadows of the visible chunks, then entities and their reflections.
