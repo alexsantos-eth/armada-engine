@@ -89,3 +89,22 @@ fn entity_catalog_rejects_unsupported_schema() {
         }
     ));
 }
+
+/// Rocks never stand on stairs: a flight has to stay clear to climb.
+#[test]
+fn no_rock_is_placed_on_stairs() {
+    let catalog: iso::entities::EntityCatalog =
+        serde_json::from_value(fixture()).expect("fixture deserializes to the catalog");
+    for blueprint in catalog.entities.iter().filter(|b| b.id.contains("rock")) {
+        let placement = &blueprint.placement;
+        assert!(
+            !placement
+                .surfaces
+                .iter()
+                .chain(&placement.additional_surfaces)
+                .any(|surface| *surface == iso::terrain::TerrainMaterial::Stairs),
+            "{} may be placed on stairs",
+            blueprint.id
+        );
+    }
+}

@@ -1135,8 +1135,7 @@
         "additionalSurfaces": [
           "ground",
           "sand",
-          "path",
-          "stairs"
+          "path"
         ]
       }
     },
@@ -1161,8 +1160,7 @@
         "additionalSurfaces": [
           "ground",
           "sand",
-          "path",
-          "stairs"
+          "path"
         ]
       }
     },
@@ -1187,8 +1185,7 @@
         "additionalSurfaces": [
           "ground",
           "sand",
-          "path",
-          "stairs"
+          "path"
         ]
       }
     },
@@ -1212,8 +1209,7 @@
         "additionalSurfaces": [
           "ground",
           "sand",
-          "path",
-          "stairs"
+          "path"
         ]
       }
     },
@@ -1237,8 +1233,7 @@
         "additionalSurfaces": [
           "ground",
           "sand",
-          "path",
-          "stairs"
+          "path"
         ]
       }
     }
