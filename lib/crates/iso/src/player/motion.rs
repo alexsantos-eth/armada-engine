@@ -16,6 +16,8 @@ pub enum PlayerMotionType {
     Swimming,
     /// In the water, under the surface: fallen in and on its way back up.
     Sinking,
+    /// On the ground, thrown back by a body it walked into, not steering until the push dies.
+    Bumped,
 }
 
 /// Events produced by the deterministic player step and consumed by the motion machine.
@@ -40,6 +42,9 @@ pub enum PlayerMotionEvent {
     Swim,
     /// In the water with its head under.
     Sink,
+    /// On the ground, pushed back by a body it walked into. Only sent with the feet down, so
+    /// from the air or the water it means the player came down or out still being pushed.
+    Bump,
 }
 
 /// Transitions out of every ground state: idle, walking, running and skidding.
@@ -53,6 +58,7 @@ const GROUND: &[(PlayerMotionEvent, PlayerMotionType)] = &[
     (PlayerMotionEvent::Climb, PlayerMotionType::Climbing),
     (PlayerMotionEvent::Swim, PlayerMotionType::Swimming),
     (PlayerMotionEvent::Sink, PlayerMotionType::Sinking),
+    (PlayerMotionEvent::Bump, PlayerMotionType::Bumped),
 ];
 
 /// Transitions out of the air: jumping, falling or flying.
@@ -66,6 +72,7 @@ const AIR: &[(PlayerMotionEvent, PlayerMotionType)] = &[
     (PlayerMotionEvent::Climb, PlayerMotionType::Climbing),
     (PlayerMotionEvent::Swim, PlayerMotionType::Swimming),
     (PlayerMotionEvent::Sink, PlayerMotionType::Sinking),
+    (PlayerMotionEvent::Bump, PlayerMotionType::Bumped),
 ];
 
 /// A jump press while already airborne keeps the player jumping or flying.
@@ -100,6 +107,7 @@ const WATER: &[(PlayerMotionEvent, PlayerMotionType)] = &[
     (PlayerMotionEvent::LandWalking, PlayerMotionType::Walking),
     (PlayerMotionEvent::LandRunning, PlayerMotionType::Running),
     (PlayerMotionEvent::LandSkidding, PlayerMotionType::Skidding),
+    (PlayerMotionEvent::Bump, PlayerMotionType::Bumped),
 ];
 
 /// Finds the next state for `event` in `transitions`, or `None` when the event is not handled.
@@ -121,7 +129,8 @@ pub fn transition_player_motion(
         PlayerMotionType::Idle
         | PlayerMotionType::Walking
         | PlayerMotionType::Running
-        | PlayerMotionType::Skidding => next_state(GROUND, event).unwrap_or(state),
+        | PlayerMotionType::Skidding
+        | PlayerMotionType::Bumped => next_state(GROUND, event).unwrap_or(state),
         PlayerMotionType::Jumping | PlayerMotionType::Flying => next_state(AIR_JUMP, event)
             .or_else(|| next_state(AIR, event))
             .unwrap_or(state),

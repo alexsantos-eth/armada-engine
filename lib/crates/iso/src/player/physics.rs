@@ -28,6 +28,20 @@ pub const PLAYER_AIR_ACCEL: f64 = 0.04;
 pub const PLAYER_AIR_BRAKE: f64 = 0.025;
 /// Maximum sideways displacement used to clear a small corner.
 pub const PLAYER_CORNER_NUDGE: f64 = 0.04;
+/// Share of the speed it walked into a body with that the player is thrown back with.
+pub const PLAYER_BUMP_RESTITUTION: f64 = 0.9;
+/// Slowest walk into a body that throws the player back: above one tick of ground
+/// acceleration, so leaning on a body from a standstill never bounces.
+pub const PLAYER_BUMP_MIN_IMPACT: f64 = PLAYER_GROUND_ACCEL * 1.2;
+/// Share of the push back that survives each tick: half, so it dies within three or four.
+pub const PLAYER_BUMP_DECAY: f64 = 0.5;
+/// Push back, in columns per tick, below which it is over.
+pub const PLAYER_BUMP_REST: f64 = 0.01;
+/// Hardest push, in columns per tick, a body the player ends up inside throws it out with.
+pub const PLAYER_EMBED_MAX_PUSH: f64 = 0.3;
+/// Ticks after a bump during which another body only stops the player, as before bumps:
+/// walking straight back in is a lean, not a second bounce.
+pub const PLAYER_BUMP_COOLDOWN_TICKS: i32 = 12;
 /// Half the side of the square the player's feet take on the ground.
 pub const PLAYER_RADIUS: f64 = 0.2;
 /// Vertical extent of the player's collision body above its feet, in blocks.
@@ -244,6 +258,10 @@ pub struct PlayerFeedback {
     pub splashes: i32,
     /// Blocks per tick it was sinking as it went in, which is how big that splash is.
     pub splash_impact: f64,
+    /// Times the player has walked into a body hard enough to be thrown back.
+    pub bumps: i32,
+    /// Columns per tick it was going into that body, which is how hard the bump was.
+    pub bump_impact: f64,
 }
 
 /// Player state.
@@ -270,6 +288,11 @@ pub struct PlayerState {
     pub feedback: PlayerFeedback,
     pub walk: GridPoint,
     pub motion: PlayerMotionType,
+    /// The push back of the last body it walked into, in columns per tick: it moves the
+    /// player on its own, apart from `velocity`, and dies by `PLAYER_BUMP_DECAY` each tick.
+    pub knockback: GridPoint,
+    /// Ticks left before walking into a body can throw the player back again.
+    pub bump_cooldown: i32,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -587,46 +610,283 @@ fn block_reason_at<G: PlayerGround>(
             } else if !is_steppable(ground, x, y, elevation, reach) {
                 return Some(PlayerBlockReason::Terrain);
             }
-            for occ in ground.occupancy_at(x, y) {
-                let side = occ.blocked_side(x as f64, y as f64);
-                if side <= 0.0 {
-                    continue;
-                }
-                let centre = occ.centre_on(x, y);
-                let to_x = square_overlap(point.x, centre.x, side);
-                let to_y = square_overlap(point.y, centre.y, side);
-                if to_x <= 0.0 || to_y <= 0.0 {
-                    continue;
-                }
-                let blocked = match from {
-                    Some(from) => {
-                        let from_x = square_overlap(from.x, centre.x, side);
-                        let from_y = square_overlap(from.y, centre.y, side);
-                        to_x > from_x + 1e-9 || to_y > from_y + 1e-9
-                    }
-                    None => true,
-                };
-                if !blocked {
-                    continue;
-                }
-                if !airborne {
-                    let col = column.unwrap();
-                    if !clears_standing_body(&occ, &col) {
-                        return Some(PlayerBlockReason::Obstacle);
-                    }
-                    continue;
-                }
-                let base = occ
-                    .elevation
-                    .unwrap_or(column.map(|c| c.elevation as f64).unwrap_or(0.0));
-                let height = occ.height.unwrap_or(f64::INFINITY);
-                if feet < base + height - LANDING && feet + PLAYER_BODY_HEIGHT > base + LANDING {
-                    return Some(PlayerBlockReason::Obstacle);
-                }
+            if ground
+                .occupancy_at(x, y)
+                .iter()
+                .any(|occ| obstacle_stops(occ, (x, y), column, point, from, feet, airborne))
+            {
+                return Some(PlayerBlockReason::Obstacle);
             }
         }
     }
     None
+}
+
+/// Whether `occ`, reported on column `at` (whose terrain is `column`), stops a body going to
+/// `point`: its square takes part of the body there, more of it than from `from` (an overlap
+/// may be walked out of, never deepened), and it stands in the body's way, which on the ground
+/// is any body it is not stood on top of and in the air one the feet at `feet` are not over.
+fn obstacle_stops(
+    occ: &PlayerObstacle,
+    at: (i32, i32),
+    column: Option<TerrainColumn>,
+    point: GridPoint,
+    from: Option<GridPoint>,
+    feet: f64,
+    airborne: bool,
+) -> bool {
+    let side = occ.blocked_side(f64::from(at.0), f64::from(at.1));
+    if side <= 0.0 {
+        return false;
+    }
+    let centre = occ.centre_on(at.0, at.1);
+    let to_x = square_overlap(point.x, centre.x, side);
+    let to_y = square_overlap(point.y, centre.y, side);
+    if to_x <= 0.0 || to_y <= 0.0 {
+        return false;
+    }
+    if let Some(from) = from {
+        let from_x = square_overlap(from.x, centre.x, side);
+        let from_y = square_overlap(from.y, centre.y, side);
+        if to_x <= from_x + 1e-9 && to_y <= from_y + 1e-9 {
+            return false;
+        }
+    }
+    if !airborne {
+        return column.is_some_and(|col| !clears_standing_body(occ, &col));
+    }
+    let base = occ
+        .elevation
+        .unwrap_or(column.map(|c| c.elevation as f64).unwrap_or(0.0));
+    let height = occ.height.unwrap_or(f64::INFINITY);
+    feet < base + height - LANDING && feet + PLAYER_BODY_HEIGHT > base + LANDING
+}
+
+/// The way out of the bodies that stop a move from `from` to `to`, as a unit vector: from
+/// their centres to the player's, the way a hit throws it back. `None` when no body stops it
+/// (terrain does, or nothing does) or the bodies' pushes cancel out.
+fn bump_away<G: PlayerGround>(
+    ground: &G,
+    from: GridPoint,
+    to: GridPoint,
+    feet: f64,
+    airborne: bool,
+) -> Option<GridPoint> {
+    let cells = get_player_cells(to);
+    let mut away = GridPoint { x: 0.0, y: 0.0 };
+    let mut found = false;
+    for x in cells.min_x..=cells.max_x {
+        for y in cells.min_y..=cells.max_y {
+            let column = ground.column_at(x, y);
+            for occ in ground.occupancy_at(x, y) {
+                if !obstacle_stops(&occ, (x, y), column, to, Some(from), feet, airborne) {
+                    continue;
+                }
+                found = true;
+                let centre = occ.centre_on(x, y);
+                let (dx, dy) = (from.x - centre.x, from.y - centre.y);
+                let length = dx.hypot(dy);
+                if length > 1e-9 {
+                    away.x += dx / length;
+                    away.y += dy / length;
+                } else {
+                    let (vx, vy) = (from.x - to.x, from.y - to.y);
+                    let length = vx.hypot(vy).max(1e-9);
+                    away.x += vx / length;
+                    away.y += vy / length;
+                }
+            }
+        }
+    }
+    let length = away.x.hypot(away.y);
+    (found && length > 1e-9).then(|| GridPoint {
+        x: away.x / length,
+        y: away.y / length,
+    })
+}
+
+/// Throws the player back off the body it ran into going `velocity`, out along `away`, as
+/// hard as it ran into it: a light hit, not a slide. Too soft a touch, or one inside the
+/// cooldown of the last bump, only stops it.
+fn bump(player: &mut PlayerState, away: GridPoint, velocity: GridPoint) {
+    let impact = -(velocity.x * away.x + velocity.y * away.y);
+    if player.bump_cooldown > 0 || impact < PLAYER_BUMP_MIN_IMPACT {
+        return;
+    }
+    let speed = impact * PLAYER_BUMP_RESTITUTION;
+    player.knockback = GridPoint {
+        x: away.x * speed,
+        y: away.y * speed,
+    };
+    player.bump_cooldown = PLAYER_BUMP_COOLDOWN_TICKS;
+    player.feedback.bumps += 1;
+    player.feedback.bump_impact = impact;
+}
+
+/// The way out of the bodies the player's own body is inside at `point` with its feet at
+/// `feet` (it fell onto one, or one stepped into it), as a unit vector from their centres to
+/// its own, and how far it is to step out of the shallowest of them. `None` when it is inside
+/// none.
+fn embedded_away<G: PlayerGround>(
+    ground: &G,
+    point: GridPoint,
+    feet: f64,
+) -> Option<(GridPoint, f64)> {
+    let cells = get_player_cells(point);
+    let mut away = GridPoint { x: 0.0, y: 0.0 };
+    let mut depth: Option<f64> = None;
+    for x in cells.min_x..=cells.max_x {
+        for y in cells.min_y..=cells.max_y {
+            let column = ground.column_at(x, y);
+            for occ in ground.occupancy_at(x, y) {
+                if !obstacle_stops(&occ, (x, y), column, point, None, feet, true) {
+                    continue;
+                }
+                let side = occ.blocked_side(f64::from(x), f64::from(y));
+                let centre = occ.centre_on(x, y);
+                let (dx, dy) = (point.x - centre.x, point.y - centre.y);
+                let reach = PLAYER_RADIUS + side / 2.0;
+                let exit = (reach - dx.abs()).min(reach - dy.abs());
+                depth = Some(depth.map_or(exit, |d: f64| d.min(exit)));
+                let length = dx.hypot(dy);
+                if length > 1e-9 {
+                    away.x += dx / length;
+                    away.y += dy / length;
+                } else {
+                    away.x += 1.0;
+                }
+            }
+        }
+    }
+    let depth = depth?;
+    let length = away.x.hypot(away.y);
+    (length > 1e-9).then(|| {
+        (
+            GridPoint {
+                x: away.x / length,
+                y: away.y / length,
+            },
+            depth,
+        )
+    })
+}
+
+/// Throws the player out of a body it is inside, hard enough that the decaying push carries
+/// it clear: it never sinks through the ground under the body nor goes back to safety.
+fn eject_player<G: PlayerGround>(player: &mut PlayerState, ground: &G) {
+    if is_knocked_back(player) {
+        return;
+    }
+    let here = GridPoint {
+        x: player.x,
+        y: player.y,
+    };
+    let feet = player.elevation + player.height;
+    let Some((away, depth)) = embedded_away(ground, here, feet) else {
+        return;
+    };
+    let speed = (depth * (1.0 - PLAYER_BUMP_DECAY) + PLAYER_BUMP_REST)
+        .clamp(PLAYER_BUMP_MIN_IMPACT, PLAYER_EMBED_MAX_PUSH);
+    player.knockback = GridPoint {
+        x: away.x * speed,
+        y: away.y * speed,
+    };
+    player.bump_cooldown = PLAYER_BUMP_COOLDOWN_TICKS;
+    player.feedback.bumps += 1;
+    player.feedback.bump_impact = speed;
+}
+
+/// The ground under `point` for a body that cannot stand there only because another body
+/// takes the spot: its column, unless it is water or missing.
+fn ground_under<G: PlayerGround>(ground: &G, point: GridPoint) -> Option<TerrainColumn> {
+    let coord = get_player_column(point);
+    ground
+        .column_at(coord.x, coord.y)
+        .filter(|column| !is_swimmable(column.surface))
+}
+
+fn is_knocked_back(player: &PlayerState) -> bool {
+    player.knockback.x != 0.0 || player.knockback.y != 0.0
+}
+
+/// Moves the player one tick of its push back and lets the push decay. The push slides along
+/// whatever it meets and dies against what it cannot slide along; it never climbs a block or
+/// starts a flight (a bump walks nobody up a step), though it may throw the player off an edge.
+fn push_player<G: PlayerGround>(player: &mut PlayerState, ground: &G) {
+    if !is_knocked_back(player) {
+        return;
+    }
+    let push = player.knockback;
+    player.knockback = if push.x.hypot(push.y) * PLAYER_BUMP_DECAY < PLAYER_BUMP_REST {
+        GridPoint { x: 0.0, y: 0.0 }
+    } else {
+        GridPoint {
+            x: push.x * PLAYER_BUMP_DECAY,
+            y: push.y * PLAYER_BUMP_DECAY,
+        }
+    };
+    if player.climb.is_some() {
+        player.knockback = GridPoint { x: 0.0, y: 0.0 };
+        return;
+    }
+    let from = GridPoint {
+        x: player.x,
+        y: player.y,
+    };
+    let airborne = player.vertical_speed.is_some();
+    let swimming = player.swim.is_some();
+    let reach = if swimming {
+        PLAYER_SWIM_EXIT_CLIMB
+    } else {
+        PLAYER_MAX_CLIMB
+    };
+    let feet = player.elevation + player.height;
+    let fits = |point: GridPoint| -> bool {
+        if airborne {
+            return fits_in_air(ground, point, Some(from), feet);
+        }
+        let low_enough = support_at(ground, point)
+            .is_none_or(|s| s.elevation as f64 - feet <= PLAYER_STEP_HEIGHT);
+        low_enough
+            && may_step_onto(ground, from, point, feet)
+            && (fits_within(ground, point, Some(from), player.elevation, reach)
+                || can_leave_edge(ground, point, Some(from), feet))
+    };
+    let moves = [
+        GridPoint {
+            x: from.x + push.x,
+            y: from.y + push.y,
+        },
+        GridPoint {
+            x: from.x + push.x,
+            y: from.y,
+        },
+        GridPoint {
+            x: from.x,
+            y: from.y + push.y,
+        },
+    ];
+    let Some(next) = moves
+        .into_iter()
+        .find(|m| (m.x != from.x || m.y != from.y) && fits(*m))
+    else {
+        player.knockback = GridPoint { x: 0.0, y: 0.0 };
+        return;
+    };
+    let elevation = support_at(ground, next)
+        .map(|s| s.elevation as f64)
+        .unwrap_or(player.elevation);
+    player.x = next.x;
+    player.y = next.y;
+    player.elevation = elevation;
+    player.height = if airborne || swimming {
+        feet - elevation
+    } else {
+        (feet - elevation).max(0.0)
+    };
+    if !airborne && !swimming && player.height == 0.0 {
+        player.vertical_speed = None;
+    }
 }
 
 fn fits_at<G: PlayerGround>(ground: &G, point: GridPoint, from_elevation: f64) -> bool {
@@ -794,6 +1054,8 @@ pub fn create_player<G: PlayerGround>(ground: &G, at: GridPoint) -> PlayerState 
         feedback: PlayerFeedback::default(),
         walk: GridPoint { x: 0.0, y: 0.0 },
         motion: PlayerMotionType::Idle,
+        knockback: GridPoint { x: 0.0, y: 0.0 },
+        bump_cooldown: 0,
     }
 }
 
@@ -934,7 +1196,12 @@ fn get_motion_event(player: &PlayerState, flying: bool) -> PlayerMotionEvent {
             PlayerMotionEvent::Fall
         };
     }
-    let gait = get_gait(player, moved);
+    if is_knocked_back(player) {
+        return PlayerMotionEvent::Bump;
+    }
+    let stepped =
+        moved && (player.climb.is_some() || player.velocity.x != 0.0 || player.velocity.y != 0.0);
+    let gait = get_gait(player, stepped);
     let air_motions = matches!(
         player.motion,
         PlayerMotionType::Jumping | PlayerMotionType::Falling | PlayerMotionType::Flying
@@ -1141,6 +1408,11 @@ fn step_once<G: PlayerGround>(
     let next = match next {
         Some(n) => n,
         None => {
+            if !shove
+                && let Some(away) = bump_away(ground, from, moves[0], clearance_feet, airborne)
+            {
+                bump(player, away, velocity);
+            }
             player.velocity = GridPoint { x: 0.0, y: 0.0 };
             if diagnose {
                 return block_reason_at(
@@ -1324,13 +1596,12 @@ fn step_air<G: PlayerGround>(
     flying: bool,
     water: Option<f64>,
 ) -> Option<&'static str> {
-    let support = support_at(
-        ground,
-        GridPoint {
-            x: player.x,
-            y: player.y,
-        },
-    );
+    let here = GridPoint {
+        x: player.x,
+        y: player.y,
+    };
+    let stable = support_at(ground, here);
+    let support = stable.or_else(|| ground_under(ground, here));
     let top = support.map(|s| s.elevation as f64);
     let feet = player.elevation + player.height;
     if player.vertical_speed.is_none() {
@@ -1399,14 +1670,16 @@ fn step_air<G: PlayerGround>(
         if let Some(s) = support {
             player.feedback.impact = (-(speed + next_speed) / 2.0).max(0.0);
             player.elevation = s.elevation as f64;
-            player.last_safe = PlayerPosition {
-                x: player.x,
-                y: player.y,
-                elevation: player.elevation,
-                height: 0.0,
-                velocity: GridPoint { x: 0.0, y: 0.0 },
-                vertical_speed: None,
-            };
+            if stable.is_some() {
+                player.last_safe = PlayerPosition {
+                    x: player.x,
+                    y: player.y,
+                    elevation: player.elevation,
+                    height: 0.0,
+                    velocity: GridPoint { x: 0.0, y: 0.0 },
+                    vertical_speed: None,
+                };
+            }
             return Some("landed");
         }
     } else if water.is_none() && next_feet < player.last_safe.elevation - PLAYER_RESCUE_DROP {
@@ -1522,7 +1795,8 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
             && player.vertical_speed.is_none()
             && player.jump_buffer_ticks == 0
             && climb.is_none()
-            && player.swim.is_none();
+            && player.swim.is_none()
+            && !is_knocked_back(player);
         if resting && tick > 0 {
             return;
         }
@@ -1610,12 +1884,20 @@ pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ti
             take_off(player, air_jumped);
         }
         let flying = is_flying(player);
+        if player.bump_cooldown > 0 {
+            player.bump_cooldown -= 1;
+        }
+        eject_player(player, ground);
         accelerate_player(player);
+        if is_knocked_back(player) {
+            player.velocity = GridPoint { x: 0.0, y: 0.0 };
+        }
         let shove = flight_shove(player, ground);
         if let Some(velocity) = shove {
             player.velocity = velocity;
         }
         let block_reason = step_once(player, ground, false, shove.is_some());
+        push_player(player, ground);
         let here = GridPoint {
             x: player.x,
             y: player.y,

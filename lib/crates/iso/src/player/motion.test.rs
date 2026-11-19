@@ -140,3 +140,32 @@ fn leaving_the_water_hands_the_swimmer_back_to_the_land() {
         );
     }
 }
+
+#[test]
+fn bump_transitions() {
+    assert_eq!(
+        transition_player_motion(PlayerMotionType::Running, PlayerMotionEvent::Bump),
+        PlayerMotionType::Bumped
+    );
+    assert_eq!(
+        transition_player_motion(PlayerMotionType::Bumped, PlayerMotionEvent::Bump),
+        PlayerMotionType::Bumped
+    );
+    assert_eq!(
+        transition_player_motion(PlayerMotionType::Bumped, PlayerMotionEvent::Walk),
+        PlayerMotionType::Walking
+    );
+    assert_eq!(
+        transition_player_motion(PlayerMotionType::Bumped, PlayerMotionEvent::Fall),
+        PlayerMotionType::Falling
+    );
+    // Landing or wading out while still pushed back.
+    assert_eq!(
+        transition_player_motion(PlayerMotionType::Falling, PlayerMotionEvent::Bump),
+        PlayerMotionType::Bumped
+    );
+    assert_eq!(
+        transition_player_motion(PlayerMotionType::Swimming, PlayerMotionEvent::Bump),
+        PlayerMotionType::Bumped
+    );
+}

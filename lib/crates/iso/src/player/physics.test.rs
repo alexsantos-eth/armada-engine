@@ -1099,3 +1099,159 @@ fn the_water_takes_a_jetpack_out_of_the_sky() {
     assert_ne!(player.motion, PlayerMotionType::Flying);
     assert!(player.swim.is_some(), "it is swimming, not flying");
 }
+
+fn ground_with_rock(rows: &[&str], at: WorldCoord) -> CellGround {
+    let mut ground = ground_from(rows);
+    ground.occupancy.insert(
+        at,
+        vec![PlayerObstacle {
+            walkable: false,
+            height: None,
+            elevation: None,
+            collision_at: Some(0.5),
+            centre: None,
+        }],
+    );
+    ground
+}
+
+#[test]
+fn walking_into_an_entity_throws_the_player_back() {
+    let mut ground = ground_with_rock(
+        &["........", "........", "........"],
+        WorldCoord { x: 5, y: 1 },
+    );
+    let mut player = create_player(&ground, GridPoint { x: 1.0, y: 1.0 });
+    player.walk = GridPoint { x: 1.0, y: 0.0 };
+    let mut ticks = 0;
+    while player.feedback.bumps == 0 {
+        step_player(&mut player, &mut ground, 1);
+        ticks += 1;
+        assert!(ticks < 100, "the player never reached the rock");
+    }
+    let hit = player.x;
+    assert!(player.feedback.bump_impact >= PLAYER_BUMP_MIN_IMPACT);
+    assert_eq!(player.motion, PlayerMotionType::Bumped);
+    assert!(
+        player.x < player.previous.x,
+        "the bump pushes back on the tick it lands"
+    );
+    let mut recoil = 0;
+    while player.motion == PlayerMotionType::Bumped {
+        step_player(&mut player, &mut ground, 1);
+        recoil += 1;
+        assert!(recoil <= 5, "the push back dies within a few ticks");
+    }
+    assert!(
+        recoil >= 2,
+        "a push back, not a single snap: {recoil} ticks"
+    );
+    assert!(player.x < hit, "it was thrown back off the rock");
+    assert!(
+        hit - player.x < 0.6,
+        "a light hit, not a launch: {}",
+        hit - player.x
+    );
+}
+
+#[test]
+fn leaning_on_an_entity_after_a_bump_does_not_bounce_again() {
+    let mut ground = ground_with_rock(
+        &["........", "........", "........"],
+        WorldCoord { x: 5, y: 1 },
+    );
+    let mut player = create_player(&ground, GridPoint { x: 1.0, y: 1.0 });
+    player.walk = GridPoint { x: 1.0, y: 0.0 };
+    step_player(&mut player, &mut ground, 200);
+    assert_eq!(player.feedback.bumps, 1, "one bounce, then a lean");
+    assert!(
+        player.x > 4.5 - PLAYER_RADIUS - 1e-3 - 0.1,
+        "it ends against the rock"
+    );
+    assert_ne!(player.motion, PlayerMotionType::Bumped);
+}
+
+#[test]
+fn a_terrain_wall_stops_without_a_bump() {
+    let mut ground = ground_from(&["....33..", "....33..", "....33.."]);
+    let mut player = create_player(&ground, GridPoint { x: 1.0, y: 1.0 });
+    player.walk = GridPoint { x: 1.0, y: 0.0 };
+    player.running = true;
+    step_player(&mut player, &mut ground, 60);
+    assert_eq!(player.feedback.bumps, 0);
+    assert!(player.x < 3.5);
+}
+
+fn ground_with_body(rows: &[&str], at: WorldCoord, centre: GridPoint) -> CellGround {
+    let mut ground = ground_from(rows);
+    ground.occupancy.insert(
+        at,
+        vec![PlayerObstacle {
+            walkable: false,
+            height: Some(PLAYER_BODY_HEIGHT),
+            elevation: Some(0.0),
+            collision_at: Some(PLAYER_RADIUS * 2.0),
+            centre: Some(centre),
+        }],
+    );
+    ground
+}
+
+fn clear_of(player: &PlayerState, centre: GridPoint) -> bool {
+    let reach = PLAYER_RADIUS * 2.0 - 1e-6;
+    (player.x - centre.x).abs() >= reach || (player.y - centre.y).abs() >= reach
+}
+
+#[test]
+fn falling_onto_a_body_throws_the_player_off_it_instead_of_back_to_safety() {
+    let centre = GridPoint { x: 3.0, y: 1.0 };
+    let mut ground = ground_with_body(
+        &["......", "......", "......"],
+        WorldCoord { x: 3, y: 1 },
+        centre,
+    );
+    let mut player = create_player(&ground, GridPoint { x: 1.0, y: 1.0 });
+    player.x = 3.1;
+    player.height = 1.0;
+    player.vertical_speed = Some(0.0);
+    step_player(&mut player, &mut ground, 40);
+    assert!(
+        player.x > 3.1,
+        "thrown off the far side, not rescued: at {}",
+        player.x
+    );
+    assert!(
+        clear_of(&player, centre),
+        "it ends clear of the body, at {}",
+        player.x
+    );
+    assert_eq!(player.vertical_speed, None);
+    assert_eq!(player.height, 0.0);
+    assert!(player.feedback.bumps >= 1);
+}
+
+#[test]
+fn a_body_stepping_into_the_player_pushes_it_out() {
+    let centre = GridPoint { x: 3.15, y: 1.0 };
+    let mut ground = ground_with_body(
+        &["......", "......", "......"],
+        WorldCoord { x: 3, y: 1 },
+        centre,
+    );
+    let mut player = create_player(&ground, GridPoint { x: 1.0, y: 1.0 });
+    player.x = 3.0;
+    player.last_safe.x = 1.0;
+    step_player(&mut player, &mut ground, 40);
+    assert!(
+        player.x < 3.0 && player.x > 2.0,
+        "pushed out the near side, not rescued: at {}",
+        player.x
+    );
+    assert!(
+        clear_of(&player, centre),
+        "it ends clear of the body, at {}",
+        player.x
+    );
+    assert_eq!(player.vertical_speed, None);
+    assert_eq!(player.motion, PlayerMotionType::Idle);
+}
