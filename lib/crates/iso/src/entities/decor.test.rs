@@ -35,6 +35,7 @@ fn rock(
             sway: None,
             contact_shadow: None,
             draw_under_player: false,
+            fire: false,
         },
         shape: EntityShape {
             height: 1,
@@ -91,6 +92,7 @@ fn the_decor_never_covers_what_already_stands() {
             sway: None,
             contact_shadow: None,
             draw_under_player: false,
+            fire: false,
         },
         shape: EntityShape {
             height: 1,

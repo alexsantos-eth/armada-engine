@@ -49,6 +49,9 @@ pub struct EntityAsset {
         rename = "drawUnderPlayer"
     )]
     pub draw_under_player: bool,
+    /// Whether the entity is a fire: the client draws flames, sparks and smoke over its coals.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub fire: bool,
 }
 
 /// Physical footprint of an entity: one collision size per occupied cell.

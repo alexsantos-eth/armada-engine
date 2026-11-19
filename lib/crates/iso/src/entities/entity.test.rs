@@ -12,6 +12,7 @@ fn blueprint(id: &str, length: i32, surface: TerrainMaterial) -> EntityBlueprint
             sway: None,
             contact_shadow: None,
             draw_under_player: false,
+            fire: false,
         },
         shape: crate::entities::blueprint::EntityShape {
             height: 1,

@@ -1236,6 +1236,29 @@
           "path"
         ]
       }
+    },
+    {
+      "id": "campfire",
+      "asset": {
+        "fire": true,
+        "sprite": "/assets/building/block_campfire.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.25
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ],
+        "additionalSurfaces": [
+          "ground"
+        ]
+      }
     }
   ]
 }

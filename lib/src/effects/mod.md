@@ -34,3 +34,16 @@ El nacimiento se dispara con un disco de `SPAWN_RADIUS` (15) columnas alrededor 
 
 - Nada de esto toca el dominio ni el guardado; si un efecto necesita el mundo, se decide aquí leyendo columnas, nunca escribiéndolas.
 - Los vóxeles se dibujan enteros (sin recorte a casillas ni sombra propia); a 5–9 px desaparecen en el tilt-shift.
+
+## Fuego (`fire.rs`)
+
+Llamas, chispas y humo de las entidades con `asset.fire` (la fogata). Mismo contrato que las partículas ambientales: tiempo real, vóxeles con `ENTITY_LAYER`, nada se guarda.
+
+- [`FireSpot`](fire.rs) — un fuego en pantalla: `x`/`y` (centro de su casilla, en columnas) y `ground` (bloques de suelo).
+- [`Flame`](fire.rs) — una lengua de llama: `dx`, `dy`, `height`, `size` y `colours` (`0xRRGGBB`, cara superior primero).
+- [`Fire::new(seed: u64)`](fire.rs) / `Fire::default()` — la bolsa vacía.
+- [`Fire::live(&self) -> usize`](fire.rs) — chispas y volutas en el aire.
+- [`Fire::update(&mut self, elapsed_ms: f64, spots: &[FireSpot])`](fire.rs) — envejece, descarta y lanza chispas (4,5/s) y humo (2,4/s) por fuego.
+- [`Fire::collect(&self, spots, time_ms, projection, draws)`](fire.rs) — encola llamas, chispas y humo.
+- [`flames(time_ms: f64, phase: f64) -> [Flame; 6]`](fire.rs) — las llamas de un instante: función pura del tiempo y la fase del fuego.
+- `MAX_EMBERS: usize = 160` — tope global de chispas y humo.

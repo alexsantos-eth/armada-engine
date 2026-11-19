@@ -133,6 +133,7 @@ Tamaños en vóxeles, ancho × fondo × alto. Las variantes son el sufijo del ar
 | `branch` | 26 × 8 × 8 | brown, birch | brazo horizontal (a lo largo de x; `turn=True` para y) |
 | `stump` | 16 × 16 × 14 | — | tocón con el corte claro |
 | `log` | 30 × 12 × 13 | — | tronco caído con musgo |
+| `firewood` | 30 × 12 × 12 | — | leño cortado, sin musgo (fogata) |
 | `fruit` | 7 × 7 × 7 | — | el acento rojo |
 | `flower_big` | 17 × 17 × 11 | white, red, yellow, pink | flor sobre su roseta |
 | `wildflower` | 11 × 11 × 16 | red, white | flor de tallo |
@@ -404,6 +405,8 @@ bulto sin junta) o que flotan sin apoyo (un techo por encima de sus postes).
 
 El commit y el push solo los hace `armada-commit`, cuando el usuario la invoca, salvo que el
 usuario haya pedido trabajar directamente en la rama.
+
+Una entidad con llama (`campfire`, `"fire": true` en su blueprint) lleva en el modelo solo piedras, leños y brasas (`fire`): las llamas, las chispas y el humo los anima el cliente (`src/effects/fire.rs`), no el atlas.
 
 ## 8. Antes de entregar
 

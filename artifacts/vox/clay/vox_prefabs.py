@@ -209,6 +209,8 @@ PIECES = {
     "stump": (lambda c: [box(0, 0, 0, 16, 16, 14, c, 3), box(0, 0, 12, 11, 11, 2, CUT, 1)], {"": WOOD}),
     "log": (lambda c: [box(0, 0, 0, 30, 12, 12, c, 4), box(14, 0, 2, 2, 8, 8, CUT, 1),
                        box(-14, 0, 2, 2, 8, 8, CUT, 1), box(-3, 0, 10, 14, 10, 3, MOSS, 1.4)], {"": BARK}),
+    "firewood": (lambda c: [box(0, 0, 0, 30, 12, 12, c, 4), box(14, 0, 2, 2, 8, 8, CUT, 1),
+                            box(-14, 0, 2, 2, 8, 8, CUT, 1)], {"": WOOD}),
     "fruit": (lambda c: [box(0, 0, 0, 7, 7, 7, c, 3)], {"": RED}),
     "flower_big": (lambda c: [box(0, 0, 0, 17, 17, 4, ROSETTE, 2), box(0, 0, 4, 10, 10, 7, c, 3.5)],
                    dict(white=WHITE, red=RED, yellow=YELLOW, pink=PINK)),

@@ -13,6 +13,7 @@ fn blueprint(id: &str, length: i32, axis: EntityLengthAxis, road_access: bool) -
             sway: None,
             contact_shadow: None,
             draw_under_player: false,
+            fire: false,
         },
         shape: EntityShape {
             height: 2,

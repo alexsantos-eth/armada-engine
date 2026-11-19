@@ -18,6 +18,7 @@ use macroquad::prelude::*;
 
 use crate::assets::sprites::{SpriteAtlas, SpriteDraw, scene_key};
 use crate::effects::ambient::SpawnEnv;
+use crate::effects::fire::FireSpot;
 use crate::game::config::{
     BAND_BLEED, CRAB_IDLE_SHEET, CRAB_SHADOW_SCALE, CRAB_WALK_SHEET, ENTITY_LAYER,
     PLAYER_BEHIND_LAYER, PLAYER_CLIMB_SHEET, PLAYER_FLIP_SHEET, PLAYER_FRONT_LAYER,
@@ -407,11 +408,13 @@ impl Game {
                 .filter(|coord| self.manager.is_visible(**coord))
                 .filter_map(|coord| self.manager.terrain_chunk(*coord)),
         );
+        self.fire_spots.clear();
         let chunks_drawn = self.collect_world(view, player, &water);
         let moved = self.collect_player(view, &water);
         self.collect_npcs(view, &water);
         self.collect_dust(view, moved);
         self.collect_particles(view);
+        self.collect_fires(view);
 
         SceneStats {
             chunks_drawn,
@@ -587,6 +590,13 @@ impl Game {
                 };
                 if !SpriteAtlas::on_screen(layout) {
                     continue;
+                }
+                if entity.fire() {
+                    self.fire_spots.push(FireSpot {
+                        x,
+                        y,
+                        ground: elevation,
+                    });
                 }
                 let cells = entity.length().max(1);
                 let shade = self.shadows.as_ref().and_then(|shadows| {
@@ -1109,6 +1119,18 @@ impl Game {
             &elevation_at,
         );
         self.dust.collect(projection, &mut self.draws);
+    }
+
+    /// The flames, sparks and smoke of the fires in view, drawn like the dust: real time, in the
+    /// scene's depth order.
+    fn collect_fires(&mut self, view: &FrameView) {
+        self.fire.update(view.frame_ms, &self.fire_spots);
+        self.fire.collect(
+            &self.fire_spots,
+            self.wind_ms,
+            view.projection,
+            &mut self.draws,
+        );
     }
 
     /// The motes and fireflies adrift over the world, spawned and drawn like the dust:

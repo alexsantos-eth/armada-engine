@@ -17,6 +17,7 @@ fn catalog() -> EntityCatalog {
                 sway: None,
                 contact_shadow: None,
                 draw_under_player: false,
+                fire: false,
             },
             shape: EntityShape {
                 height: 2,
@@ -497,6 +498,7 @@ mod editing {
                 sway: None,
                 contact_shadow: None,
                 draw_under_player: false,
+                fire: false,
             },
             shape: crate::entities::EntityShape {
                 height: 1,
@@ -533,6 +535,7 @@ mod editing {
                 sway: None,
                 contact_shadow: None,
                 draw_under_player: false,
+                fire: false,
             },
             shape: crate::entities::EntityShape {
                 height: 1,

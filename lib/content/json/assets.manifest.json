@@ -64,7 +64,7 @@
       "source": "/assets/beach/block_coconuts.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 2873,
+        "x": 3032,
         "y": 2158,
         "width": 141,
         "height": 72
@@ -429,6 +429,31 @@
         "y": -0.737772,
         "width": 1.19375,
         "height": 0.878367
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "building_block_campfire",
+      "kind": "entity",
+      "source": "/assets/building/block_campfire.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2873,
+        "y": 2158,
+        "width": 158,
+        "height": 86
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.21875,
+        "y": -0.161824,
+        "width": 0.49375,
+        "height": 0.26831
       },
       "colorVariants": 1,
       "sway": null
@@ -9012,7 +9037,7 @@
       "source": "/assets/rock/block.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 3325,
+        "x": 3484,
         "y": 2158,
         "width": 32,
         "height": 25
@@ -9037,7 +9062,7 @@
       "source": "/assets/rock/block_2.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 3182,
+        "x": 3341,
         "y": 2158,
         "width": 74,
         "height": 47
@@ -9062,7 +9087,7 @@
       "source": "/assets/rock/block_3.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 3257,
+        "x": 3416,
         "y": 2158,
         "width": 67,
         "height": 43
@@ -9087,7 +9112,7 @@
       "source": "/assets/rock/block_4.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 3116,
+        "x": 3275,
         "y": 2158,
         "width": 65,
         "height": 51
@@ -9112,7 +9137,7 @@
       "source": "/assets/rock/block_5.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 3015,
+        "x": 3174,
         "y": 2158,
         "width": 100,
         "height": 65

@@ -350,6 +350,17 @@ def gull_post():
     return out + put("pebble_l", 30, -20, 0) + put("shell", -28, 26, 0, "white")
 
 
+def campfire():
+    """campfire: a ring of stones round a bed of coals, three logs crossed over it. The flames
+    and the smoke are drawn by the game, so the model keeps the fire itself low and dark."""
+    out = []
+    for n, (x, y) in enumerate(((30, 0), (21, 21), (0, 30), (-21, 21), (-30, 0), (-21, -21), (0, -30), (21, -21))):
+        out += put("stone_small", x, y, 0, "dark" if n % 3 == 1 else "grey")
+    out += put("fire", 6, 0, 0) + put("fire", -8, 6, 0)
+    out += put("firewood", -2, -15, 0) + put("firewood", -2, 15, 0) + put("firewood", -12, 0, 12, turn=True)
+    return out + put("pebble_m", 38, -22, 0) + put("pebble_s", -34, -26, 0)
+
+
 # name → (builder, tiles, the asset its render replaces, under lib/assets)
 MODELS = {
     "runestone": (runestone, (1, 1, 1), "building/block_runestone.png"),
@@ -377,6 +388,7 @@ MODELS = {
     "flag_post": (flag_post, (1, 1, 2), "beach/block_flag_post.png"),
     "fish_rack": (fish_rack, (1, 1, 1), "beach/block_fish_rack.png"),
     "gull_post": (gull_post, (1, 1, 1), "beach/block_gull_post.png"),
+    "campfire": (campfire, (1, 1, 1), "building/block_campfire.png"),
 }
 
 if __name__ == "__main__":

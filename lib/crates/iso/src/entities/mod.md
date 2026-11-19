@@ -62,6 +62,8 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`color_variant`](entity.rs#L150) — Tinte elegido para esta instancia (`None` = la del blueprint).
   - Firma: `pub fn color_variant(&self) -> Option<u32> {`
 
+- [`fire`](entity.rs) — Si la entidad es un fuego que el cliente anima (`asset.fire`).
+  - Firma: `pub fn fire(&self) -> bool {`
 - [`sway`](entity.rs#L153) — Configuración de mece por viento del blueprint (`None` = rígida).
   - Firma: `pub fn sway(&self) -> Option<&EntitySway> {`
 
