@@ -420,12 +420,20 @@ usuario haya pedido trabajar directamente en la rama.
 
 `artifacts/vox/clay/grass_clay.py` genera las variantes del bloque de hierba (`block_flowers.png`,
 `block_flowers_2.png`, `block_wildflowers_red.png`, `block_wildflowers_white.png`,
-`block_sprouts.png`, `block_leaves.png`, `block_pebbles.png`, `block_mushrooms.png`,
-`block_bushes.png`): el bloque de `assets/grass/block.png` **no se toca ni se redibuja**; lo
-que se arma con piezas del kit es solo el adorno, de pie sobre un volumen 1x1x1 con la base en
-z = 0, y el render se compone encima del bloque con un desplazamiento vertical de −341 px del
-lienzo (−171 px a la escala de `block.png`, la del techo, exactamente donde la planta del
-adorno pisa el bloque). En el
+`block_leaves.png`, `block_pebbles.png`, `block_mushrooms.png`). El bloque llano
+`assets/grass/block.png` sale de `artifacts/vox/clay/grass_block.py`, con tres hermanos (`block_2..4.png`) que el terreno
+alterna casilla a casilla: terreno como las gradas (masa de borde a borde, render clay sobre el
+de cubos duros), con la hierba goteando sobre la tierra y tufos redondos; el césped queda en
+z = 79 y los tufos llegan a 85. **Empalman sin corte**: lo que cruza un borde reaparece por el
+opuesto (patrón periódico) y sale de una semilla común a las cuatro, así que cualquier par casa;
+solo el interior cambia. El clay se modela sobre un margen de las vecinas y luego se recorta a
+la casilla (`vox_render.py --margin N [--around]`): el techo con margen alrededor, los lados
+con margen solo detrás, y se componen por la máscara del rombo del césped.
+Se rehace primero el bloque y después las variantes. Lo que se arma con piezas del kit en
+`grass_clay.py` es solo el adorno, de pie sobre un volumen 1x1x1 con la base en z = 0, y el
+render se compone encima del bloque con un desplazamiento vertical de −(341 − 6 · 4) px del
+lienzo: un bloque menos los 6 vóxeles que el césped queda bajo el tope, para que el adorno pise
+el césped y no la punta de los tufos. En el
 lienzo 1x1x1 el plano de suelo del adorno y la cara de arriba del bloque caen en el mismo
 sitio, así que los dos encajan al píxel.
 

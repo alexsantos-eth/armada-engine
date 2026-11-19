@@ -4,6 +4,7 @@ use iso::assets::{InkBox, SpriteFrame};
 use iso::biomes::WorldBiomes;
 use iso::grid::WorldCoord;
 use iso::maker::Dressing;
+use iso::terrain::noise::lattice_at;
 use iso::terrain::{TerrainMaterial, TintZones, VariantPicker, tint_channels};
 use macroquad::prelude::{Color, WHITE};
 
@@ -26,11 +27,18 @@ const GRASS_TOPS: &[(&str, f64)] = &[
     ("/assets/grass/block_flowers_2.png", 0.04),
     ("/assets/grass/block_wildflowers_red.png", 0.025),
     ("/assets/grass/block_wildflowers_white.png", 0.025),
-    ("/assets/grass/block_sprouts.png", 0.07),
     ("/assets/grass/block_leaves.png", 0.04),
     ("/assets/grass/block_pebbles.png", 0.035),
     ("/assets/grass/block_mushrooms.png", 0.015),
-    ("/assets/grass/block_bushes.png", 0.02),
+];
+
+/// The other looks of the plain grass block (`block.png` is the first), drawn one cell at a time
+/// at random where the grass grows nothing. They share every edge, so any two join without a
+/// seam; only the inside of the cell differs, which breaks the grid of a wide field.
+const GRASS_PLAINS: &[&str] = &[
+    "/assets/grass/block_2.png",
+    "/assets/grass/block_3.png",
+    "/assets/grass/block_4.png",
 ];
 
 /// Builds the colour zones of one biome (or of the world, when there is no biome content).
@@ -63,6 +71,8 @@ pub struct TerrainLook {
     biomes: Option<WorldBiomes>,
     /// Where the grass grows something, and the artwork of each top it can grow.
     grass_tops: Option<(VariantPicker, Vec<(SpriteFrame, InkBox)>)>,
+    /// The other looks of the plain grass block, and the stream that picks one per cell.
+    grass_plains: (u64, Vec<(SpriteFrame, InkBox)>),
     /// The cells dressed by hand, which answer before the noise does; empty in a played world.
     dressing: Dressing,
 }
@@ -106,11 +116,20 @@ impl TerrainLook {
         }
         let grass_tops = VariantPicker::new(seed, "terrain-variants:grass", &chances)
             .map(|picker| (picker, looks));
+        let mut plains = Vec::new();
+        for source in GRASS_PLAINS {
+            match artwork(source) {
+                Some(look) => plains.push(look),
+                None => missing.push(*source),
+            }
+        }
+        let plain_seed = seed ^ 0x9e37_79b9_7f4a_7c15;
         (
             Self {
                 tints,
                 biomes: biomes.cloned(),
                 grass_tops,
+                grass_plains: (plain_seed, plains),
                 dressing: Dressing::default(),
             },
             missing,
@@ -177,6 +196,23 @@ impl TerrainLook {
             Some(top) => looks.get(top?).copied(),
             None => looks.get(picker.pick(x, y)?).copied(),
         }
+    }
+
+    /// Which look of the plain block column `(x, y)` shows where it grows nothing: `None` is the
+    /// block's own artwork, otherwise one of the other plain looks, picked per cell at random.
+    pub fn plain(
+        &self,
+        material: TerrainMaterial,
+        x: i32,
+        y: i32,
+    ) -> Option<(SpriteFrame, InkBox)> {
+        let (seed, looks) = &self.grass_plains;
+        if material != TerrainMaterial::Grass || looks.is_empty() {
+            return None;
+        }
+        let pick = lattice_at(*seed, i64::from(x), i64::from(y)) * (looks.len() + 1) as f64;
+        let pick = (pick as usize).min(looks.len());
+        pick.checked_sub(1).and_then(|at| looks.get(at).copied())
     }
 }
 

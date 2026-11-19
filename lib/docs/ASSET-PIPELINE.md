@@ -12,6 +12,7 @@ viven en `assets/` como cualquier otro sprite.
 ```
 artifacts/vox/clay/vox_prefabs.py              las piezas del kit            → artifacts/vox/prefabs/*.vox
 artifacts/vox/clay/vox_models.py               las entidades armadas         → artifacts/vox/models/<nombre>.vox
+artifacts/vox/clay/grass_block.py              el bloque de hierba llano     → lib/assets/grass/block.png
 artifacts/vox/clay/grass_clay.py               adornos Clay sobre la hierba  → artifacts/vox/models/block_*.vox
         │
         ▼
@@ -77,11 +78,19 @@ centro del suelo de la casilla ancla: así el archivo dice dónde está plantado
 las tres casas y los edificios, los de dos casillas en sus dos orientaciones) con las piezas de
 piedra y de construcción: muros y tejados sobre el mismo módulo de 28.
 
-`artifacts/vox/clay/grass_clay.py` arma las variantes del techo de hierba: el bloque de
-`assets/grass/block.png` **no se toca**; lo que se arma con piezas del kit es el
-adorno (flores, brotes, hojas caídas, guijarros, setas, arbustos), de pie en z = 0 de un volumen
-1x1x1, y su render se compone encima del bloque con un desplazamiento de −341 px del lienzo
-(−171 px a la escala del bloque), donde el plano de suelo del adorno cae en la cara de arriba.
+`artifacts/vox/clay/grass_block.py` genera el bloque llano `assets/grass/block.png` como las
+gradas: masa de borde a borde de la casilla, render clay encima del de cubos duros, con la
+hierba goteando sobre la tierra en lenguas redondas y tufos. El césped queda en z = 79 y los
+tufos llegan a 85. Saca también `block_2..4.png`, que el terreno alterna casilla a casilla donde
+la hierba no lleva adorno (`GRASS_PLAINS`): el patrón es periódico (lo que sale por un borde
+entra por el opuesto) y los bordes son comunes a las cuatro, así que empalman sin corte. El clay
+se modela sobre un margen de las vecinas y se recorta a la casilla (`vox_render.py --margin`).
+
+`artifacts/vox/clay/grass_clay.py` arma las variantes del techo de hierba encima de ese bloque
+(se rehace después de él): lo que se arma con piezas del kit es el adorno (flores, hojas caídas,
+guijarros, setas), de pie en z = 0 de un volumen 1x1x1, y su render se compone encima del bloque
+con un desplazamiento de −(341 − 24) px del lienzo: un bloque menos los 6 vóxeles que el césped
+queda bajo el tope.
 Sus modelos quedan en `artifacts/vox/models/block_*.vox` y sus sprites sustituyen a las
 variantes del bloque.
 

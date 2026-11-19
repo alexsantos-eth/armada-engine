@@ -2,6 +2,7 @@
 # vox_render.py — renders a MagicaVoxel .vox model into a game sprite with Blender (Cycles).
 #
 #   blender -b -P vox_render.py -- model.vox sprite.png [--style clay|voxel] [--samples 96]
+#                                  [--margin N [--around]]
 #   python3 vox_render.py model.vox sprite.png            (with the `bpy` pip module instead)
 #
 # The sprite comes out on the asset's template canvas, one pixel per skill unit, so it drops
@@ -23,6 +24,13 @@
 # Finish: `clay` (the default) melts the voxel steps into round edges, adds the slight
 # unevenness of hand-pressed clay, and shades it as soft matte clay; `voxel` keeps the hard
 # cubes with flat matte paint. A colour marked as emissive in MagicaVoxel glows in both.
+#
+# --margin N is for terrain that has to join its neighbours without a seam: the model carries N
+# extra voxels of the neighbouring cells behind it (on its −x and −y sides), the clay skin is
+# shaped over all of it, and only then is the mesh cut back to the anchor tile. Across a back
+# edge the surface runs on unbroken instead of rounding off where the voxels stop. With --around
+# the margin goes round all four sides, so the front edges are clean cuts too (and the side
+# faces are bare cuts: that render is only good for the top).
 import math
 import struct
 import sys
@@ -85,8 +93,8 @@ def read_vox(path):
     return size, voxels, palette, glow
 
 
-def tiles_of(size):
-    nx, ny, nz = size[0] / TILE, size[1] / TILE, size[2] / BLOCK
+def tiles_of(size, margin=0):
+    nx, ny, nz = (size[0] - margin) / TILE, (size[1] - margin) / TILE, size[2] / BLOCK
     assert nx == int(nx) and ny == int(ny) and nz == int(nz) and min(nx, ny, nz) >= 1, (
         f"the model is {size[0]} x {size[1]} x {size[2]} voxels; it must fill its footprint's volume: "
         f"{TILE} per tile along x and y and {BLOCK} per block of height (a 1x1x2 tree is 128 x 128 x 170)")
@@ -155,6 +163,30 @@ def build_mesh(size, voxels, palette, glow, ny, clay):
     if clay:
         clay_shape(model, filled, slots, ny)
     model.scale = (1, 1, Z_SQUEEZE)
+    return model
+
+
+def cut_to_tile(model, margin, nx, ny, around=False):
+    """Drops the margin of neighbouring cells: the model moves so its anchor tile sits where a
+    model without margin would (the margin along y already lies past the anchor's far side, so
+    only x moves), and a box over its footprint keeps only what lies inside. The box
+    reaches past the front sides, where there is no margin, so it never shares a face with the
+    model there."""
+    model.location.x = -margin
+    # mesh +y is model −y: the margin lies past +TILE / 2 in y and past −TILE / 2 in x
+    lo = Vector((-TILE / 2, -(TILE * ny - TILE / 2) - 8, -10))
+    hi = Vector((TILE * nx - TILE / 2 + 8, TILE / 2, 1000))
+    if around:                     # the front margin too: the model starts `margin` further on
+        model.location.y = -margin
+        lo.y, hi.x = -(TILE * ny - TILE / 2), TILE * nx - TILE / 2
+    mesh = bpy.data.meshes.new("tile")
+    corners = [(x, y, z) for x in (lo.x, hi.x) for y in (lo.y, hi.y) for z in (lo.z, hi.z)]
+    mesh.from_pydata(corners, [], [(0, 1, 3, 2), (4, 6, 7, 5), (0, 4, 5, 1), (2, 3, 7, 6), (0, 2, 6, 4), (1, 5, 7, 3)])
+    tile = bpy.data.objects.new("tile", mesh)
+    bpy.context.collection.objects.link(tile)
+    tile.hide_render = True
+    cut = model.modifiers.new("tile", "BOOLEAN")
+    cut.operation, cut.object, cut.solver = "INTERSECT", tile, "EXACT"
 
 
 def clay_shape(model, filled, slots, ny):
@@ -272,21 +304,26 @@ SUN_ENERGY = math.pi * (1 - SKY) / Vector(SUN_FROM).normalized().z
 
 def main():
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
-    options = {"--samples": "96", "--style": "clay"}
+    options = {"--samples": "96", "--style": "clay", "--margin": "0"}
+    around = "--around" in args
+    if around:
+        args.remove("--around")
     for name in options:
         if name in args:
             at = args.index(name)
             options[name] = args[at + 1]
             del args[at:at + 2]
-    samples, clay = int(options["--samples"]), options["--style"] == "clay"
+    samples, clay, margin = int(options["--samples"]), options["--style"] == "clay", int(options["--margin"])
     assert options["--style"] in ("clay", "voxel") and len(args) == 2, \
-        "usage: vox_render.py model.vox sprite.png [--style clay|voxel] [--samples N]"
+        "usage: vox_render.py model.vox sprite.png [--style clay|voxel] [--samples N] [--margin N]"
     source, target = args
 
     bpy.ops.wm.read_factory_settings(use_empty=True)
     size, voxels, palette, glow = read_vox(source)
-    nx, ny, nz = tiles_of(size)
-    build_mesh(size, voxels, palette, glow, ny, clay)
+    nx, ny, nz = tiles_of(size, margin * (2 if around else 1))
+    model = build_mesh(size, voxels, palette, glow, ny, clay)
+    if margin:
+        cut_to_tile(model, margin, nx, ny, around)
     setup_scene(nx, ny, nz, samples)
     bpy.context.scene.render.filepath = target
     bpy.ops.render.render(write_still=True)

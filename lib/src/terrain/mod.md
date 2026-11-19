@@ -102,7 +102,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
   - Declaración: `const GROUND_TINT_SCALE: f64 = 11.0;`
 
 - [`GRASS_TOPS`](terrain_view_appearance.rs#L24) — Las caras superiores extra que una columna de hierba puede hacer crecer, y la proporción de toda la hierba que cada una debería cubrir.
-  - Declaración: `const GRASS_TOPS: &[(&str, f64)] = &[ ("/assets/grass/block_flowers.png", 0.05), ("/assets/grass/block_flowers_2.png", 0.04), ("/assets/grass/block_wildflowers_red.png", 0.025), ("/assets/grass/block_wildflowers_white.png", 0.025), ("/assets/grass/block_sprouts.png", 0.07), ("/assets/grass/block_leaves.png", 0.04), ("/assets/grass/block_pebbles.png", 0.035), ("/assets/grass/block_mushrooms.png", 0.015), ("/assets/grass/block_bushes.png", 0.02), ];`
+  - Declaración: `const GRASS_TOPS: &[(&str, f64)] = &[ ("/assets/grass/block_flowers.png", 0.05), ("/assets/grass/block_flowers_2.png", 0.04), ("/assets/grass/block_wildflowers_red.png", 0.025), ("/assets/grass/block_wildflowers_white.png", 0.025), ("/assets/grass/block_leaves.png", 0.04), ("/assets/grass/block_pebbles.png", 0.035), ("/assets/grass/block_mushrooms.png", 0.015), ];`
 
 ### `terrain_view_blocks.rs`
 

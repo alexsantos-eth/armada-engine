@@ -253,13 +253,12 @@ pub fn collect_terrain_sprites<H, W, S>(
                 let mask = connection_mask(column.coord, &surface_at);
                 frames.path(mask).unwrap_or((frame, ink))
             } else {
-                match on_top
-                    .then(|| look.top(block.material, column.coord.x, column.coord.y))
+                let (x, y) = (column.coord.x, column.coord.y);
+                on_top
+                    .then(|| look.top(block.material, x, y))
                     .flatten()
-                {
-                    Some(top) => top,
-                    None => (frame, ink),
-                }
+                    .or_else(|| look.plain(block.material, x, y))
+                    .unwrap_or((frame, ink))
             };
             let tint = look.tint(block.material, column.coord.x, column.coord.y);
             let anchor = ScreenPoint {

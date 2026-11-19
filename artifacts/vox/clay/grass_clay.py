@@ -4,8 +4,8 @@
 #
 #   python3 grass_clay.py [block.png] [out_dir] [only …]   (run from artifacts/vox/clay/)
 #
-#   → block_bushes.png, block_flowers.png, block_flowers_2.png, block_leaves.png,
-#     block_mushrooms.png, block_pebbles.png, block_sprouts.png,
+#   → block_flowers.png, block_flowers_2.png, block_leaves.png,
+#     block_mushrooms.png, block_pebbles.png,
 #     block_wildflowers_red.png, block_wildflowers_white.png
 #
 # The decorations are assembled as a voxel model standing on the ground plane of a 1x1x1 volume
@@ -34,10 +34,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.join(HERE, "..", "..", "..", "lib", "assets", "grass")
 BASE = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ASSETS, "block.png")
 OUT_DIR = sys.argv[2] if len(sys.argv) > 2 else ASSETS
-ONLY = sys.argv[3:]  # rebuild only these variants, e.g. block_bushes
+ONLY = sys.argv[3:]  # rebuild only these variants, e.g. block_pebbles
 RENDER = os.path.join(HERE, "vox_render.py")
-# The block's top face is one block (341 template px) above the decoration's foot plane.
-TOP_SHIFT = 341
+# The block's top face is one block (341 template px) above the decoration's foot plane, less
+# the few voxels the clay lawn sits under the top of the block (grass_block.py), so the
+# decorations stand on the lawn and not on the tips of its tufts.
+TOP_SHIFT = 341 - (85 - 79) * 4
 
 # (x, y) spots on the top, in voxels, kept within the flat top and the silhouette
 A, B, C, D, E, F = (-30, -28), (22, -35), (-38, 17), (10, 5), (35, 27), (-10, 38)
@@ -49,10 +51,6 @@ def flowers(variant, spots):
 
 def wildflowers(variant, spots):
     return [b for x, y in spots for b in put("wildflower", x, y, 0, variant)]
-
-
-def sprouts():
-    return [b for x, y in (A, B, C, D, E) for b in put("sprout", x, y, 0)]
 
 
 def leaves():
@@ -70,15 +68,6 @@ def mushrooms():
     return put("mushroom", -21, -8, 0) + put("mushroom", 14, 13, 0)
 
 
-def bushes():
-    out = []
-    for x, y in ((-35, -5), (30, -22), (12, 32)):
-        out += put("leaf_tuft", x, y, 0, "green")
-        out += put("leaf_tuft", x + 9, y + 4, 0, "dark")
-        out += put("leaf_tuft", x - 7, y - 5, 0, "green")
-    return out
-
-
 def put(name, x, y, z, variant=""):
     return moved(piece(name, variant), x, y, z)
 
@@ -88,11 +77,9 @@ VARIANTS = {
     "block_flowers_2.png": flowers("pink", (A, C, E)),
     "block_wildflowers_red.png": wildflowers("red", (A, C, E)),
     "block_wildflowers_white.png": wildflowers("white", (A, B, F)),
-    "block_sprouts.png": sprouts(),
     "block_leaves.png": leaves(),
     "block_pebbles.png": pebbles(),
     "block_mushrooms.png": mushrooms(),
-    "block_bushes.png": bushes(),
 }
 
 

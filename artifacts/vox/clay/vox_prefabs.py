@@ -36,13 +36,17 @@ STEP, STEP_DEEP, TREAD = "#a79e8d", "#8f8777", "#c6bfae"       # the stairs bloc
 # the beach: palm bark and its rings, coconut husk, sun-bleached driftwood, stockfish, rope
 PALM_BARK, PALM_RING, COCONUT = "#b08a5a", "#80603c", "#6b4528"
 DRIFT, FISH, ROPE = "#cbbfa6", "#b9c6c8", "#cfae6e"
+# the grass block (grass_block.py): the terrain's lime turf, a deeper green for its tufts, and
+# the soil under it (the same top and soil colours as the flat terrain blocks)
+GRASS_TOP, GRASS_DEEP, SOIL = "#a4de00", "#8cc400", "#bcb857"
 # New colours go at the end: the indices of the files already written must not move.
 PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK, CUT, MOSS,
            RED, WHITE, YELLOW, PINK, CAP, STEM, DOT, OCHRE, RUST, ROCK, ROCK_DARK,
            STONE_SAND, STONE_CLAY, GRAVEL, DIRT, RUNE_BLUE, RUNE_CYAN, RUNE_DARK,
            PLANK, TIMBER, PLASTER, DOOR, THATCH, TURF, TILE, SHINGLE, SHINGLE_DARK,
            GLOW, IRON, FIRE, BREW, STEP, STEP_DEEP, TREAD,
-           PALM_BARK, PALM_RING, COCONUT, DRIFT, FISH, ROPE]
+           PALM_BARK, PALM_RING, COCONUT, DRIFT, FISH, ROPE,
+           GRASS_TOP, GRASS_DEEP, SOIL]
 
 
 def box(x, y, z0, sx, sy, sz, color, r):
