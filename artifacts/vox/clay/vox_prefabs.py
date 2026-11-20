@@ -49,6 +49,8 @@ PEAT, BOG, REED, CATTAIL, WELL_WATER = "#5b4532", "#4f6b5c", "#b3a85a", "#73472a
 # its faded head, amber ore and the bright steel of a blade or a vein of iron
 BONE, ASH, SOOT, RUSTED = "#e6dab8", "#9b968e", "#3b3632", "#9c5a36"
 THISTLE, THISTLE_HEAD, AMBER, STEEL = "#8c6b45", "#9a7096", "#eda23a", "#b9bec6"
+# the animated entities: candle wax, the pale sinter of a geyser's cone and its hot pool
+WAX, SINTER, HOT_WATER = "#f3e6c2", "#d9d0b6", "#5fb8c8"
 # New colours go at the end: the indices of the files already written must not move.
 PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK, CUT, MOSS,
            RED, WHITE, YELLOW, PINK, CAP, STEM, DOT, OCHRE, RUST, ROCK, ROCK_DARK,
@@ -59,7 +61,8 @@ PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK,
            GRASS_TOP, GRASS_DEEP, SOIL,
            SOIL_DARK, SAND_TOP, SAND_BODY, EARTH, EARTH_DARK,
            PEAT, BOG, REED, CATTAIL, WELL_WATER,
-           BONE, ASH, SOOT, RUSTED, THISTLE, THISTLE_HEAD, AMBER, STEEL]
+           BONE, ASH, SOOT, RUSTED, THISTLE, THISTLE_HEAD, AMBER, STEEL,
+           WAX, SINTER, HOT_WATER]
 
 
 def box(x, y, z0, sx, sy, sz, color, r):
@@ -453,6 +456,44 @@ def pit(color):
             box(-1, 1, 0, 36, 28, 3, SOOT, 1)]
 
 
+def torch_cup(color):
+    """An iron fire cup for a post's head: a narrow foot, a flaring bowl and glowing coals heaped
+    just over its rim. 14 x 14 x 13; the flame itself is drawn by the game."""
+    return [box(0, 0, 0, 8, 8, 4, color, 1.6), box(0, 0, 3, 14, 14, 8, color, 3),
+            box(0, 0, 9, 10, 10, 3, SOOT, 1.4), box(0, 0, 10, 8, 8, 3, FIRE, 1.6), box(1, -1, 11, 4, 4, 2, YELLOW, 1.2)]
+
+
+def bowl(color):
+    """A brazier's wide iron bowl: a narrow base flaring out to a thick rim, heaped with coals
+    that glow in two places. 38 x 38 x 15; the flames are drawn by the game."""
+    return [box(0, 0, 0, 20, 20, 5, color, 2), box(0, 0, 4, 30, 30, 6, color, 2.6),
+            box(0, 0, 8, 38, 38, 5, color, 2.2), box(0, 0, 11, 30, 30, 3, SOOT, 1.4),
+            box(-4, 3, 12, 11, 11, 3, FIRE, 2.4), box(6, -4, 12, 10, 10, 3, FIRE, 2.4),
+            box(1, 6, 13, 7, 7, 2, YELLOW, 1.6), box(-6, -6, 12, 6, 6, 3, SOOT, 1.6)]
+
+
+def candle(h):
+    """A church candle h voxels high with a drip of wax down its lit side and a black wick on
+    top; the flame is drawn by the game."""
+    def build(color):
+        return [box(0, 0, 0, 7, 7, h, color, 2.8), box(4, 1, h - 7, 2, 3, 6, color, 1),
+                box(0, 0, h, 2, 2, 3, SOOT, 0.8)]
+    return build
+
+
+def sinter(sx, sy, sz):
+    """A ledge of the mineral crust a geyser builds round its mouth: a flat, irregular slab."""
+    def build(color):
+        return [box(0, 0, 0, sx, sy, sz, color, 3.2), box(-2, 3, sz - 2, sx * .6, sy * .55, 3, color, 1.4)]
+    return build
+
+
+def fish_flat(color):
+    """A dead fish lying on its side along x: body, head and a fanned tail. 22 x 9 x 4."""
+    return [box(0, 0, 0, 14, 8, 4, color, 1.8), box(-8, 0, 0, 5, 7, 4, color, 1.8),
+            box(9, 0, 0, 4, 9, 3, color, 1), box(-9, 2, 2, 2, 2, 2, SOOT, 0)]
+
+
 LEAVES = dict(green=LEAF, dark=LEAF_DARK, autumn=LEAF_AUTUMN, blossom=PINK)
 BARKS = dict(brown=WOOD, birch=BIRCH, timber=TIMBER)
 STONES = dict(grey=ROCK, dark=ROCK_DARK, sand=STONE_SAND, clay=STONE_CLAY)
@@ -592,6 +633,18 @@ PIECES = {
     "ash": (ash, {"": ASH}),
     "pit": (pit, {"": PEAT}),
     "mouth": (lambda c: [box(0, 0, 0, 6, 30, 54, c, 2)], {"": SOOT}),   # the dark of a doorway
+    # the animated entities (their flames, lanterns and particles are drawn by the game)
+    "torch_cup": (torch_cup, {"": IRON}),
+    "bowl": (bowl, {"": IRON}),
+    "rod": (lambda c: [box(0, 0, 0, 4, 4, 21, c, 1.4)], {"": IRON}),          # stacks every 21
+    "candle": (candle(16), dict(wax=WAX, red=RED)),
+    "candle_tall": (candle(25), dict(wax=WAX, red=RED)),
+    "candle_short": (candle(10), dict(wax=WAX, red=RED)),
+    "wax": (lambda c: [box(0, 0, 0, 12, 10, 2, c, 1)], {"": WAX}),
+    "sinter": (sinter(30, 24, 8), dict(sinter=SINTER, grey=ROCK)),
+    "sinter_small": (sinter(22, 18, 8), dict(sinter=SINTER, grey=ROCK)),
+    "hot_pool": (lambda c: disc(26, 3, c, "xy", rows=6), {"": HOT_WATER}),
+    "fish_flat": (fish_flat, {"": FISH}),
 }
 
 

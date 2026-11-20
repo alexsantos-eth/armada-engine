@@ -554,6 +554,97 @@ def skull_helmet():
     return out + put("pebble_m", 36, -8, 0) + put("pebble_s", -10, 40, 0)
 
 
+# ------------------------------------------------------------- animated entities (lib/assets/animated)
+# The game animates these: flames, the lantern, flies, steam and leaves are drawn by
+# src/effects/emitters.rs, so the models keep only what stands still. The anchors the game
+# needs (the cup, the bowl, the hook, the wicks, the geyser's mouth) are written next to each
+# model and mirrored in emitters.rs; move one and move the other.
+
+def torch_post():
+    """torch_post: a timber post with an iron fire cup on its head, wedged with stones at its
+    foot. The cup's coals are at (−6, −6, 66)."""
+    out = stack("trunk_thin", -6, -6, 0, 2, "timber", M) + put("torch_cup", -6, -6, 2 * M)
+    out += put("stone_small", 8, -8, 0, "grey") + put("pebble_m", -18, 8, 0) + put("pebble_s", 6, 10, 0)
+    return out + put("rock_s", 30, 26, 0) + put("grass_tuft", 30, -34, 0, "dry")
+
+
+def brazier():
+    """brazier: a wide iron bowl of coals on four iron legs, ash spilled under it. The coals are
+    at (−4, −4, 57)."""
+    out = []
+    for x, y in ((-11, -11), (3, -11), (-11, 3), (3, 3)):        # under the bowl's foot
+        out += stack("rod", x, y, 0, 2, "", 21)
+    out += put("bowl", -4, -4, 42) + put("ash", 22, 20, 0) + put("ash", -24, 26, 0)
+    return out + put("pebble_m", 34, -18, 0) + put("stone_small", -32, -30, 0, "dark")
+
+
+def hanging_lantern():
+    """hanging_lantern: a timber post with an arm reaching toward the viewer and an iron hook at
+    its tip. The lantern hangs from the hook at (4, 0, 62); the game swings it."""
+    out = stack("trunk_thin", -34, 0, 0, 3, "timber", M)
+    out += put("branch_long", -14, 0, 70, "timber") + put("branch", -24, 0, 60, "timber")
+    out += put("link_up", 4, 0, 62, "iron", turn=True)
+    out += put("stone_small", -20, 12, 0, "grey") + put("stone_small", -46, -12, 0, "dark")
+    return out + put("pebble_m", 30, 30, 0) + put("grass_tuft", -40, 30, 0, "green")
+
+
+def fly_swarm():
+    """fly_swarm: a stinking peat puddle with a gnawed bone in it; the game hovers the flies."""
+    out = put("puddle", 0, 0, 0) + put("bone", 6, 4, 3) + put("bone", -14, -10, 0, turn=True)
+    return out + put("pebble_s", 30, -20, 0) + put("grass_tuft", -32, 30, 0, "green")
+
+
+def fly_swarm_bones():
+    """fly_swarm_bones: the ribs of a carcass in the dirt under its horned skull; flies hover."""
+    out = [b for y in (-18, -6, 6) for b in put("rib", -10, y, 0)]
+    out += put("skull_horned", 18, 2, 0) + put("bone", -30, 22, 0) + put("ash", -32, -26, 0)
+    return out + put("pebble_m", 30, -30, 0)
+
+
+def fly_swarm_sand():
+    """fly_swarm_sand: dead fish washed up by a bit of driftwood; flies hover."""
+    out = put("fish_flat", 0, -4, 0) + put("fish_flat", -6, 12, 0, turn=True) + put("fish_flat", 16, 18, 0)
+    out += put("driftwood", -28, -24, 0)
+    return out + put("pebble_s", 32, -16, 0)
+
+
+def geyser():
+    """geyser: a low cone of pale sinter ledges round a hot turquoise pool, stained ochre where
+    the water spills. The mouth is at (−4, −4, 18); the game blows the jet."""
+    out = []
+    for n, (x, y) in enumerate(((30, 0), (21, 21), (0, 30), (-21, 21), (-30, 0), (-21, -21), (0, -30), (21, -21))):
+        out += put("sinter", x - 4, y - 4, 0, "grey" if n % 3 == 2 else "sinter", turn=n % 2 == 1)
+    for n, (x, y) in enumerate(((15, 0), (8, 13), (-8, 13), (-15, 0), (-8, -13), (8, -13))):
+        out += put("sinter_small", x - 4, y - 4, 8, "sinter", turn=n % 2 == 0)
+    out += put("hot_pool", -4, -4, 15)
+    out += put("ore", 30, 20, 0, "amber") + put("moss_patch", -36, 20, 0)
+    return out + put("pebble_m", 40, -24, 0) + put("rock_s", -38, -38, 0)
+
+
+def leaf_emitter():
+    """leaf_emitter: fallen leaves under a tree, ochre and rust; the game drops more on them."""
+    out = []
+    for n, (x, y) in enumerate(((-24, -16), (-4, -30), (16, -8), (-10, 6), (26, 18), (-30, 22), (6, 30), (34, -26))):
+        out += put("fallen_leaf", x, y, 0, "rust" if n % 3 == 1 else "ochre", turn=n % 2 == 0)
+    return out + put("sprout", -26, -34, 0) + put("pebble_s", 38, 4, 0)
+
+
+def ritual_candles():
+    """ritual_candles: candles on a flat altar stone and two more on the ground before it, wax
+    pooled round their feet and a red glyph on the stone. The wicks are written in WICKS."""
+    out = put("flat_stone", -10, -10, 0, "dark") + put("rune_flat", -2, -18, 7, "red")
+    for (x, y, z), (name, variant) in zip(WICKS, CANDLES):
+        out += put(name, x, y, z, variant)
+    out += put("wax", -16, -4, 8) + put("wax", 22, 22, 0)
+    return out + put("pebble_m", 36, -26, 0) + put("moss_patch", -34, 28, 0)
+
+
+# where each candle of ritual_candles stands (its foot), and which candle it is
+WICKS = [(-20, -18, 8), (-2, -4, 8), (-20, 2, 8), (24, 14, 0), (12, 30, 0)]
+CANDLES = [("candle_tall", "wax"), ("candle", "red"), ("candle_short", "wax"), ("candle", "wax"),
+           ("candle_short", "wax")]
+
+
 # name → (builder, tiles, the asset its render replaces, under lib/assets)
 MODELS = {
     "runestone": (runestone, (1, 1, 1), "building/block_runestone.png"),
@@ -601,6 +692,15 @@ MODELS = {
     "excavation_pit": (excavation_pit, (1, 1, 1), "barren/block_excavation_pit.png"),
     "rusty_chain": (rusty_chain, (1, 1, 1), "barren/block_rusty_chain.png"),
     "skull_helmet": (skull_helmet, (1, 1, 1), "barren/block_skull_helmet.png"),
+    "torch_post": (torch_post, (1, 1, 1), "animated/block_torch_post.png"),
+    "brazier": (brazier, (1, 1, 1), "animated/block_brazier.png"),
+    "hanging_lantern": (hanging_lantern, (1, 1, 1), "animated/block_hanging_lantern.png"),
+    "fly_swarm": (fly_swarm, (1, 1, 1), "animated/block_fly_swarm.png"),
+    "fly_swarm_bones": (fly_swarm_bones, (1, 1, 1), "animated/block_fly_swarm_bones.png"),
+    "fly_swarm_sand": (fly_swarm_sand, (1, 1, 1), "animated/block_fly_swarm_sand.png"),
+    "geyser": (geyser, (1, 1, 1), "animated/block_geyser.png"),
+    "leaf_emitter": (leaf_emitter, (1, 1, 1), "animated/block_leaf_emitter.png"),
+    "ritual_candles": (ritual_candles, (1, 1, 1), "animated/block_ritual_candles.png"),
 }
 
 if __name__ == "__main__":

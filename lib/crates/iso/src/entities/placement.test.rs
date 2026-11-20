@@ -37,6 +37,7 @@ fn blueprint(id: &str, length: i32, surfaces: Vec<TerrainMaterial>) -> EntityBlu
             contact_shadow: None,
             draw_under_player: false,
             fire: false,
+            effect: None,
         },
         shape: crate::entities::blueprint::EntityShape {
             height: 1,
@@ -514,6 +515,7 @@ mod by_hand {
                 contact_shadow: None,
                 draw_under_player: false,
                 fire: false,
+                effect: None,
             },
             shape: EntityShape {
                 height: 1,

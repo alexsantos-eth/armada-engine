@@ -21,6 +21,7 @@ use macroquad::prelude::*;
 
 use crate::assets::sprites::{SpriteAtlas, SpriteDraw};
 use crate::effects::ambient::AmbientParticles;
+use crate::effects::emitters::{EffectSpot, Emitters};
 use crate::effects::fire::{Fire, FireSpot};
 use crate::game::config::{
     CHUNK_RADII, DEFAULT_ZOOM, MAKER_CHUNK, MAX_FRAME_MS, PLAYER_SPRITE, PREVIEW_CENTRE,
@@ -108,6 +109,10 @@ pub(crate) struct Game {
     pub(crate) fire: Fire,
     /// The fires on screen this frame, gathered while the entities are laid out.
     pub(crate) fire_spots: Vec<FireSpot>,
+    /// What the animated entities in view throw off (sparks, steam, leaves); view state.
+    pub(crate) emitters: Emitters,
+    /// The animated entities on screen this frame, gathered while the entities are laid out.
+    pub(crate) effect_spots: Vec<EffectSpot>,
     pub(crate) draws: Vec<SpriteDraw>,
     pub(crate) perf: PerfLog,
     pub(crate) audio: MacroquadAudio,
@@ -450,6 +455,8 @@ impl Game {
             particles: AmbientParticles::new(WORLD_SEED),
             fire: Fire::default(),
             fire_spots: Vec::new(),
+            emitters: Emitters::default(),
+            effect_spots: Vec::new(),
             draws: Vec::new(),
             perf: PerfLog::default(),
             audio: MacroquadAudio::load().await,

@@ -49,7 +49,13 @@
       "remains": 2.0,
       "outcrop": 2.0,
       "diggings": 2.0,
-      "barrow_entrance": 2.0
+      "barrow_entrance": 2.0,
+      "torch_post": 1.0,
+      "brazier": 0.8,
+      "flies": 2.0,
+      "geyser": 2.0,
+      "leaf_emitter": 2.5,
+      "ritual_candles": 1.0
     },
     "greens": 0.0
   },
@@ -76,7 +82,10 @@
         "runestone_tall": 4.0,
         "watchtower": 3.0,
         "campfire": 4.0,
-        "bush": 2.0
+        "bush": 2.0,
+        "brazier": 3.0,
+        "torch_post": 3.0,
+        "ritual_candles": 1.0
       },
       "lots": {
         "mead_hall": 12.0,
@@ -97,7 +106,9 @@
         "campfire": 1.5,
         "runestone": 1.0,
         "rock_small": 1.0,
-        "rock_small_2": 1.0
+        "rock_small_2": 1.0,
+        "torch_post": 1.0,
+        "hanging_lantern": 0.8
       },
       "lots": {
         "hut_moss": 10.0,
@@ -135,7 +146,9 @@
         "campfire": 2.0,
         "runestone": 2.0,
         "bush": 3.0,
-        "rock_small": 1.5
+        "rock_small": 1.5,
+        "hanging_lantern": 2.0,
+        "torch_post": 1.5
       },
       "lots": {
         "market_stall": 1.0
@@ -151,7 +164,8 @@
       "weights": {
         "campfire": 1.5,
         "rock_medium": 1.0,
-        "bush": 1.0
+        "bush": 1.0,
+        "brazier": 2.0
       },
       "lots": {
         "smithy": 1.0,
@@ -168,7 +182,9 @@
         "bush": 4.0,
         "campfire": 2.0,
         "runestone": 2.0,
-        "rock_small": 2.0
+        "rock_small": 2.0,
+        "ritual_candles": 1.0,
+        "leaf_emitter": 2.0
       },
       "lots": {
         "grove": 10.0,
@@ -201,7 +217,9 @@
         "palms": 2.0,
         "rock_small": 2.0,
         "rock_medium": 1.0,
-        "campfire": 1.0
+        "campfire": 1.0,
+        "hanging_lantern": 3.0,
+        "torch_post": 2.0
       },
       "greens": 0.9
     },
@@ -222,7 +240,9 @@
         "rock_small_3": 15.0,
         "runestone": 10.0,
         "runestone_fallen": 10.0,
-        "campfire": 5.0
+        "campfire": 5.0,
+        "hanging_lantern": 6.0,
+        "torch_post": 6.0
       },
       "greens": 0.0
     }

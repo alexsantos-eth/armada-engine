@@ -306,7 +306,7 @@ pub fn flames(time_ms: f64, phase: f64) -> [Flame; 6] {
 }
 
 /// A stable offset in `[0, 1)` for one fire, so neighbours flicker out of step.
-fn spot_phase(spot: &FireSpot) -> f64 {
+pub(crate) fn spot_phase(spot: &FireSpot) -> f64 {
     let hash = (spot.x * 12.9898 + spot.y * 78.233).sin() * 43758.5453;
     hash - hash.floor()
 }
@@ -340,14 +340,14 @@ pub(crate) fn fade(age_ms: f64, life_ms: f64) -> f64 {
 }
 
 /// Where a voxel stands: a column point and the blocks above elevation zero.
-struct VoxelAt {
-    x: f64,
-    y: f64,
-    height: f64,
+pub(crate) struct VoxelAt {
+    pub(crate) x: f64,
+    pub(crate) y: f64,
+    pub(crate) height: f64,
 }
 
 /// A voxel of `size` tiles at `at`, sorted with whatever stands on its column.
-fn voxel_draw(
+pub(crate) fn voxel_draw(
     at: VoxelAt,
     key: DrawKey,
     size: f64,
@@ -373,7 +373,7 @@ fn voxel_draw(
 /// stable sort keeps them just after it. The player in front of the fire, on any column
 /// of it, draws over them, and the player behind it, under. Any lift in height would push them
 /// past a player standing in the fire's own column.
-fn sort_key(spot: &FireSpot, projection: ProjectionConfig) -> DrawKey {
+pub(crate) fn sort_key(spot: &FireSpot, projection: ProjectionConfig) -> DrawKey {
     scene_key(
         spot.x,
         spot.y,
@@ -394,7 +394,7 @@ fn shifted(faces: VoxelFaces, x: f64, y: f64) -> VoxelFaces {
 }
 
 /// An `0xRRGGBB` colour at `alpha`.
-fn colour(rgb: u32, alpha: f32) -> Color {
+pub(crate) fn colour(rgb: u32, alpha: f32) -> Color {
     Color::new(
         ((rgb >> 16) & 0xff) as f32 / 255.0,
         ((rgb >> 8) & 0xff) as f32 / 255.0,

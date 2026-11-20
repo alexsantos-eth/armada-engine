@@ -453,6 +453,14 @@ usuario haya pedido trabajar directamente en la rama.
 
 Una entidad con llama (`campfire`, `"fire": true` en su blueprint) lleva en el modelo solo piedras, leños y brasas (`fire`): las llamas, las chispas y el humo los anima el cliente (`src/effects/fire.rs`), no el atlas.
 
+Lo mismo vale para las entidades animadas de `lib/assets/animated/` (`"effect"` en el blueprint:
+`torch`, `brazier`, `lantern`, `flies`, `geyser`, `leaves`, `candles`): el modelo lleva solo lo
+quieto y `src/effects/emitters.rs` dibuja lo que se mueve. Sus anclajes (copa, cuenco, gancho,
+mechas, boca del géiser) se apuntan en el comentario del modelo y en `emitters.rs`; si se mueve
+una pieza, se mueven los dos. Piezas: `torch_cup`, `bowl`, `rod` (se apila cada 21), `candle`,
+`candle_tall`, `candle_short` (wax, red), `wax`, `sinter`/`sinter_small`, `hot_pool`,
+`fish_flat`; colores `WAX` `#f3e6c2`, `SINTER` `#d9d0b6`, `HOT_WATER` `#5fb8c8`.
+
 ## 8. Antes de entregar
 
 - [ ] El modelo ocupa el volumen de su huella y el script lo escribe sin quejarse.

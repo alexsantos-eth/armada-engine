@@ -84,7 +84,16 @@
     "ruined_forge": 0.5,
     "excavation_pit": 0.8,
     "barrow_entrance_x": 0.3,
-    "barrow_entrance_y": 0.3
+    "barrow_entrance_y": 0.3,
+    "torch_post": 1.0,
+    "brazier": 0.6,
+    "hanging_lantern": 0.6,
+    "fly_swarm": 1.0,
+    "fly_swarm_bones": 1.2,
+    "fly_swarm_sand": 0.8,
+    "geyser": 0.5,
+    "leaf_emitter": 1.5,
+    "ritual_candles": 0.6
   },
   "families": {
     "mead_hall": [
@@ -184,6 +193,16 @@
     "barrow_entrance": [
       "barrow_entrance_x",
       "barrow_entrance_y"
+    ],
+    "lights": [
+      "torch_post",
+      "brazier",
+      "hanging_lantern"
+    ],
+    "flies": [
+      "fly_swarm",
+      "fly_swarm_bones",
+      "fly_swarm_sand"
     ]
   },
   "maxPerChunk": {
@@ -205,6 +224,11 @@
     "ruins": 3,
     "barrow_entrance": 1,
     "diggings": 2,
-    "outcrop": 4
+    "outcrop": 4,
+    "geyser": 1,
+    "lights": 3,
+    "flies": 2,
+    "ritual_candles": 1,
+    "leaf_emitter": 4
   }
 }

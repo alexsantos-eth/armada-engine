@@ -10,6 +10,7 @@ fn asset(sprite: &str) -> EntityAsset {
         contact_shadow: None,
         draw_under_player: false,
         fire: false,
+        effect: None,
     }
 }
 

@@ -18,6 +18,7 @@ use macroquad::prelude::*;
 
 use crate::assets::sprites::{SpriteAtlas, SpriteDraw, ground_key, scene_key};
 use crate::effects::ambient::SpawnEnv;
+use crate::effects::emitters::EffectSpot;
 use crate::effects::fire::FireSpot;
 use crate::game::config::{
     BAND_BLEED, CRAB_IDLE_SHEET, CRAB_SHADOW_SCALE, CRAB_WALK_SHEET, ENTITY_LAYER,
@@ -437,6 +438,7 @@ impl Game {
                 .filter_map(|coord| self.manager.terrain_chunk(*coord)),
         );
         self.fire_spots.clear();
+        self.effect_spots.clear();
         let chunks_drawn = self.collect_world(view, player, &water);
         let moved = self.collect_player(view, &water);
         self.collect_npcs(view, &water);
@@ -637,6 +639,16 @@ impl Game {
                         x,
                         y,
                         ground: elevation,
+                    });
+                }
+                if let Some(kind) = entity.effect() {
+                    self.effect_spots.push(EffectSpot {
+                        kind,
+                        at: FireSpot {
+                            x,
+                            y,
+                            ground: elevation,
+                        },
                     });
                 }
                 let cells = entity.length().max(1);
@@ -1168,6 +1180,14 @@ impl Game {
         self.fire.update(view.frame_ms, &self.fire_spots);
         self.fire.collect(
             &self.fire_spots,
+            self.wind_ms,
+            view.projection,
+            &mut self.draws,
+        );
+        self.emitters
+            .update(view.frame_ms, self.wind_ms, &self.effect_spots);
+        self.emitters.collect(
+            &self.effect_spots,
             self.wind_ms,
             view.projection,
             &mut self.draws,

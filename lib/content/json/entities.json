@@ -2351,6 +2351,203 @@
           "ground"
         ]
       }
+    },
+    {
+      "id": "torch_post",
+      "asset": {
+        "sprite": "/assets/animated/block_torch_post.png",
+        "effect": "torch"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.25
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ],
+        "additionalSurfaces": [
+          "ground",
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "brazier",
+      "asset": {
+        "sprite": "/assets/animated/block_brazier.png",
+        "effect": "brazier"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ],
+        "additionalSurfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "hanging_lantern",
+      "asset": {
+        "sprite": "/assets/animated/block_hanging_lantern.png",
+        "effect": "lantern"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.25
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ],
+        "additionalSurfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "fly_swarm",
+      "asset": {
+        "sprite": "/assets/animated/block_fly_swarm.png",
+        "effect": "flies",
+        "drawUnderPlayer": true
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "fly_swarm_bones",
+      "asset": {
+        "sprite": "/assets/animated/block_fly_swarm_bones.png",
+        "effect": "flies",
+        "drawUnderPlayer": true
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "fly_swarm_sand",
+      "asset": {
+        "sprite": "/assets/animated/block_fly_swarm_sand.png",
+        "effect": "flies",
+        "drawUnderPlayer": true
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "geyser",
+      "asset": {
+        "sprite": "/assets/animated/block_geyser.png",
+        "effect": "geyser"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.5
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "leaf_emitter",
+      "asset": {
+        "sprite": "/assets/animated/block_leaf_emitter.png",
+        "effect": "leaves",
+        "drawUnderPlayer": true
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "ritual_candles",
+      "asset": {
+        "sprite": "/assets/animated/block_ritual_candles.png",
+        "effect": "candles"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.3
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ],
+        "additionalSurfaces": [
+          "grass"
+        ]
+      }
     }
   ]
 }

@@ -152,7 +152,7 @@ pub(crate) async fn run(mut game: Game) {
                 &game.perf,
                 crate::gui::PerfCounts {
                     dust: game.dust.live(),
-                    air: game.particles.live() + game.fire.live(),
+                    air: game.particles.live() + game.fire.live() + game.emitters.live(),
                 },
                 frame_ms,
                 crate::gui::HudWorld {
