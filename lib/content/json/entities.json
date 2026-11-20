@@ -62,6 +62,86 @@
       }
     },
     {
+      "id": "house_thatch",
+      "asset": {
+        "sprite": "/assets/house/block_house_thatch.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          1
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ],
+        "roadAccess": true
+      }
+    },
+    {
+      "id": "house_stone",
+      "asset": {
+        "sprite": "/assets/house/block_house_stone.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          1
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ],
+        "roadAccess": true
+      }
+    },
+    {
+      "id": "house_annex",
+      "asset": {
+        "sprite": "/assets/house/block_house_annex.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          1
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ],
+        "roadAccess": true
+      }
+    },
+    {
+      "id": "house_twowood",
+      "asset": {
+        "sprite": "/assets/house/block_house_twowood.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          1
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ],
+        "roadAccess": true
+      }
+    },
+    {
       "id": "smithy",
       "asset": {
         "sprite": "/assets/building/block_smithy.png"
@@ -2210,6 +2290,50 @@
       },
       "placement": {
         "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "village_cairn",
+      "asset": {
+        "sprite": "/assets/barren/block_cairn.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.3
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ],
+        "additionalSurfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "village_menhir",
+      "asset": {
+        "sprite": "/assets/barren/block_menhir.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.3
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ],
+        "additionalSurfaces": [
           "ground"
         ]
       }

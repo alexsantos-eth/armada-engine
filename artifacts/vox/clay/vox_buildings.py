@@ -185,6 +185,58 @@ def cottage_tile():
     return out + face_x("window", side(3), 0, top + 8, "lit")
 
 
+def house_thatch():
+    """house_thatch: plank walls on a grey footing under a deep thatch gable, a woodpile at
+    the lit gable beside the door."""
+    top = 12 + 56
+    out = walls(3, 3, 0, 1, "grey", name="stone_half") + walls(3, 3, 12, 2, "plank")
+    out += gable(3, 3, top - 4, "thatch", fill="plank")
+    out += face_x("door", side(3), -8, 12) + face_y("window", 0, side(3), 34, "lit")
+    out += put("firewood", 52, 30, 0, turn=True) + put("firewood", 52, 30, 12, turn=True)
+    return out + put("leaf_tuft", -24, 54, 0, "green")
+
+
+def house_stone():
+    """house_stone: two courses of grey masonry, timber gable ends under a turf
+    roof, a stone chimney at the back and a barrel by the door."""
+    top = 2 * M
+    out = walls(3, 3, 0, 2, "grey", name="stone_block")
+    out += gable(3, 3, top - 4, "turf", fill="timber")
+    out += stack("stone_small", -28, -30, top + 16, 4, "dark", 14)
+    out += face_x("door", side(3), 0, 0) + face_y("window", -14, side(3), 26, "dark")
+    out += put("moss_patch", 30, 42, 52) + put("moss_patch", -42, 20, 26)
+    return out + put("barrel", 52, 32, 0) + put("rock_s", 50, -36, 0)
+
+
+def house_annex():
+    """house_annex: a plaster house two cells deep pushed to the back, a plank lean-to under
+    its own lower shingle roof along the shaded side, a lit window in the lean-to."""
+    body = walls(3, 2, 0, 1, "grey", name="stone_half") + walls(3, 2, 12, 2, "plaster")
+    body += gable(3, 2, 64, "shingle", fill="plaster")
+    body += face_x("door", side(3), 0, 12) + face_x("window", side(3), 0, 78, "lit")
+    out = moved(body, 0, -14, 0)
+    for x in (-28, 0):                                      # the lean-to: two cells along y = +28
+        out += put("wall_block", x, 28, 0, "plank") + put("wall_half", x, 28, 28, "plank")
+    for x in (-42, -14, 14):                                # its roof steps down toward +y
+        out += put("roof_block", x, 28, 40, "shingle") + put("roof_block", x, 42, 28, "shingle")
+    out += face_y("window", -14, 41, 10, "lit") + face_x("door", 13, 28, 0)
+    return out + put("crate", 30, 32, 0) + put("crate", 30, 32, 12)
+
+
+def house_twowood():
+    """house_twowood: a course of pale plank under a course of dark timber, timber posts at the
+    seen corners, a red-brown shingle gable closed in plank and a shield over the door."""
+    top = 2 * M
+    out = walls(3, 3, 0, 1, "plank") + walls(3, 3, M, 1, "timber")
+    for x, y in ((41, 41), (41, -41), (-41, 41)):
+        out += stack("trunk_thin", x, y, 0, 2, "timber", M)
+    out += gable(3, 3, top - 4, "dark", fill="plank", ridge="plank")
+    out += face_x("door", side(3), 0, 0) + face_x("shield", side(3), 0, 40, "white")
+    out += face_y("window", 0, side(3), 30, "lit")
+    out += put("dragon", 46, 0, gable_top(3, top - 4) - 4, "plank")
+    return out + put("barrel", 52, -30, 0)
+
+
 # ------------------------------------------------------------------------------ buildings
 
 def healer_hut():
@@ -655,6 +707,10 @@ MODELS = {
     "hut_moss": (hut_moss, (1, 1, 2), "house/block_hut_moss.png"),
     "hut_thatch": (hut_thatch, (1, 1, 2), "house/block_hut_thatch.png"),
     "cottage_tile": (cottage_tile, (1, 1, 2), "house/block_cottage_tile.png"),
+    "house_thatch": (house_thatch, (1, 1, 2), "house/block_house_thatch.png"),
+    "house_stone": (house_stone, (1, 1, 2), "house/block_house_stone.png"),
+    "house_annex": (house_annex, (1, 1, 2), "house/block_house_annex.png"),
+    "house_twowood": (house_twowood, (1, 1, 2), "house/block_house_twowood.png"),
     "healer_hut": (healer_hut, (1, 1, 2), "building/block_healer_hut.png"),
     "smithy": (smithy, (1, 1, 2), "building/block_smithy.png"),
     "market_stall": (market_stall, (1, 1, 1), "building/block_market_stall.png"),

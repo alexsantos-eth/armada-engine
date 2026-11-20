@@ -37,7 +37,7 @@ fn shipped_wfc_content_validates_against_entities_and_biomes() {
     assert_eq!(wfc.schema_version, 2);
     assert_eq!(
         wfc.weights.len(),
-        92,
+        98,
         "every blueprint no biome claims has a weight"
     );
     assert_eq!(wfc.max_per_chunk["mead_hall"], 1.0);
@@ -96,9 +96,12 @@ fn shipped_wfc_content_grows_deterministically_on_a_grass_chunk() {
             .iter()
             .find(|column| column.coord.x == entity.x() && column.coord.y == entity.y())
             .expect("the anchor is inside the chunk");
-        assert_eq!(
-            anchor.surface,
-            blueprint.placement.surfaces[0],
+        assert!(
+            anchor.surface == blueprint.placement.surfaces[0]
+                || blueprint
+                    .placement
+                    .additional_surfaces
+                    .contains(&anchor.surface),
             "{} anchors on its admitted surface",
             entity.type_()
         );

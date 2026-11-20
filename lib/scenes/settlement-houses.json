@@ -1,0 +1,166 @@
+{
+  "world": "blank",
+  "window": [
+    1200,
+    760
+  ],
+  "zoom": 0.7,
+  "phase": "day",
+  "centre": [
+    15,
+    12
+  ],
+  "player": [
+    14,
+    9
+  ],
+  "edits": [
+    {
+      "place": {
+        "at": [
+          9,
+          11
+        ],
+        "blueprint": "hut_moss"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          11,
+          11
+        ],
+        "blueprint": "hut_thatch"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          13,
+          11
+        ],
+        "blueprint": "cottage_tile"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          15,
+          11
+        ],
+        "blueprint": "house_thatch"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          17,
+          11
+        ],
+        "blueprint": "house_stone"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          19,
+          11
+        ],
+        "blueprint": "house_annex"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          21,
+          11
+        ],
+        "blueprint": "house_twowood"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          10,
+          15
+        ],
+        "blueprint": "village_cairn"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          12,
+          15
+        ],
+        "blueprint": "village_menhir"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          14,
+          15
+        ],
+        "blueprint": "totem_stub"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          16,
+          15
+        ],
+        "blueprint": "old_well"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          18,
+          15
+        ],
+        "blueprint": "buried_chest"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          20,
+          15
+        ],
+        "blueprint": "tall_grass"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          22,
+          15
+        ],
+        "blueprint": "mushrooms"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          24,
+          15
+        ],
+        "blueprint": "torch_post"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "wait": {
+        "frames": 400
+      }
+    },
+    {
+      "shot": "settlement-houses.png"
+    }
+  ],
+  "out": "shots",
+  "maxFrames": 1200
+}
