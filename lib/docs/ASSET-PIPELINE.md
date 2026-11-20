@@ -255,7 +255,8 @@ seco, cadena oxidada y yelmo sobre cráneo. Salen de `vox_models.py` (huesos y c
 `skull`, `helmet`, `link`, `pickaxe`, `thistle`, `vein`, `flat_stone`, `menhir`, `ash`, `pit`…).
 Su blueprint pide `"surfaces": ["ground"]` y se colocan por las familias `thistle`, `remains`,
 `outcrop`, `diggings` y `barrow_entrance` de `wfc.json`, con multiplicador en `settlements.json`
-→ `wilderness.weights`. Las bajas llevan `drawUnderPlayer` y colisión 0.
+→ `wilderness.weights`. Todas tienen colisión salvo la cadena oxidada, que lleva
+`drawUnderPlayer` y colisión 0.
 
 ## 7. Coste
 

@@ -219,8 +219,8 @@ colisión 0; las demás (setas y charco incluidos), colisión de 0,2 a 0,6.
 Las entidades del suelo de tierra (`lib/assets/barren/`) solo crecen en la superficie `ground`
 (`placement.surfaces: ["ground"]`, sin `additionalSurfaces`), fuera de poblados: familias
 `thistle`, `remains`, `outcrop`, `diggings` y `barrow_entrance` de `wfc.json`, con peso en
-`wilderness.weights`. Las bajas (cardo, huesos, cadena, yelmo) llevan `drawUnderPlayer` y
-colisión 0; la entrada del túmulo bloquea sus dos casillas (1,0).
+`wilderness.weights`. Todas tienen colisión (de 0,2 a 0,5) salvo la cadena, que lleva
+`drawUnderPlayer` y colisión 0; la entrada del túmulo bloquea sus dos casillas (1,0).
 
 Las piezas de cara (`door`, `window`, `shield`, `rune`, `banner`) tienen el pivote **en el
 plano de la cara**: se colocan con `x` igual al plano del muro y la mitad queda prensada

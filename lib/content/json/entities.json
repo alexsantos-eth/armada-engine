@@ -2160,7 +2160,6 @@
     {
       "id": "bone_pile",
       "asset": {
-        "drawUnderPlayer": true,
         "sprite": "/assets/barren/block_bone_pile.png"
       },
       "shape": {
@@ -2168,7 +2167,7 @@
         "length": 1,
         "axis": "x",
         "collision": [
-          0.0
+          0.5
         ]
       },
       "placement": {
@@ -2298,7 +2297,6 @@
     {
       "id": "dry_thistle",
       "asset": {
-        "drawUnderPlayer": true,
         "sprite": "/assets/barren/block_dry_thistle.png"
       },
       "shape": {
@@ -2306,7 +2304,7 @@
         "length": 1,
         "axis": "x",
         "collision": [
-          0.0
+          0.4
         ]
       },
       "placement": {
@@ -2338,7 +2336,6 @@
     {
       "id": "skull_helmet",
       "asset": {
-        "drawUnderPlayer": true,
         "sprite": "/assets/barren/block_skull_helmet.png"
       },
       "shape": {
@@ -2346,7 +2343,7 @@
         "length": 1,
         "axis": "x",
         "collision": [
-          0.0
+          0.3
         ]
       },
       "placement": {
