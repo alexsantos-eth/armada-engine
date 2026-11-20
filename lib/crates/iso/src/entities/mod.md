@@ -17,69 +17,69 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`create_entity_id`](entity.rs#L49) — Construye el id por defecto de una entidad generada con su ancla en `(x, y)`.
+- [`create_entity_id`](entity.rs#L53) — Construye el id por defecto de una entidad generada con su ancla en `(x, y)`.
   - Firma: `pub fn create_entity_id(type_: &str, x: i32, y: i32) -> String {`
 
-- [`new`](entity.rs#L75) — Crea una entidad erguida anclada en `(x, y)` sobre `elevation`, a partir de un blueprint validado.
+- [`new`](entity.rs#L79) — Crea una entidad erguida anclada en `(x, y)` sobre `elevation`, a partir de un blueprint validado.
   - Firma: `pub fn new(x: i32, y: i32, blueprint: &EntityBlueprint, elevation: i32) -> Self {`
 
-- [`restore`](entity.rs#L100) — Restaura una instancia guardada de `blueprint`.
+- [`restore`](entity.rs#L106) — Restaura una instancia guardada de `blueprint`.
   - Firma: `pub fn restore( x: i32, y: i32, blueprint: &EntityBlueprint, elevation: i32, id: String, color_variant: Option<u32>, metadata: serde_json::Value, ) -> Self {`
 
-- [`x`](entity.rs#L116) — Columna de mundo ancla de la instancia.
+- [`x`](entity.rs#L122) — Columna de mundo ancla de la instancia.
   - Firma: `pub fn x(&self) -> i32 {`
 
-- [`y`](entity.rs#L119) — Fila de mundo ancla de la instancia.
+- [`y`](entity.rs#L125) — Fila de mundo ancla de la instancia.
   - Firma: `pub fn y(&self) -> i32 {`
 
-- [`id`](entity.rs#L122) — Id estable de la instancia.
+- [`id`](entity.rs#L128) — Id estable de la instancia.
   - Firma: `pub fn id(&self) -> &str {`
 
-- [`type_`](entity.rs#L125) — Id del blueprint del que brota.
+- [`type_`](entity.rs#L131) — Id del blueprint del que brota.
   - Firma: `pub fn type_(&self) -> &str {`
 
-- [`walkable`](entity.rs#L128) — Si el blueprint permite pisar su huella.
+- [`walkable`](entity.rs#L134) — Si el blueprint permite pisar su huella.
   - Firma: `pub fn walkable(&self) -> bool {`
 
-- [`elevation`](entity.rs#L131) — Nivel del terreno sobre el que se asienta.
+- [`elevation`](entity.rs#L137) — Nivel del terreno sobre el que se asienta.
   - Firma: `pub fn elevation(&self) -> i32 {`
 
-- [`height`](entity.rs#L134) — Altura de la instancia en bloques.
+- [`height`](entity.rs#L140) — Altura de la instancia en bloques.
   - Firma: `pub fn height(&self) -> i32 {`
 
-- [`length`](entity.rs#L137) — Longitud de la huella en bloques.
+- [`length`](entity.rs#L143) — Longitud de la huella en bloques.
   - Firma: `pub fn length(&self) -> i32 {`
 
-- [`length_axis`](entity.rs#L140) — Eje a lo largo del cual se mide `length` (`None` = una casilla).
+- [`length_axis`](entity.rs#L146) — Eje a lo largo del cual se mide `length` (`None` = una casilla).
   - Firma: `pub fn length_axis(&self) -> Option<EntityLengthAxis> {`
 
 - [`road_access`](entity.rs) — Indica si la instancia necesita una entrada conectada a la red de caminos.
   - Firma: `pub fn road_access(&self) -> bool {`
 
-- [`texture_source`](entity.rs#L147) — Sprite del atlas (ruta lógica) que la representa.
+- [`texture_source`](entity.rs#L153) — Sprite del atlas (ruta lógica) que la representa.
   - Firma: `pub fn texture_source(&self) -> &str {`
 
-- [`color_variant`](entity.rs#L150) — Tinte elegido para esta instancia (`None` = la del blueprint).
+- [`color_variant`](entity.rs#L156) — Tinte elegido para esta instancia (`None` = la del blueprint).
   - Firma: `pub fn color_variant(&self) -> Option<u32> {`
 
 - [`fire`](entity.rs) — Si la entidad es un fuego que el cliente anima (`asset.fire`).
   - Firma: `pub fn fire(&self) -> bool {`
-- [`sway`](entity.rs#L153) — Configuración de mece por viento del blueprint (`None` = rígida).
+- [`sway`](entity.rs#L159) — Configuración de mece por viento del blueprint (`None` = rígida).
   - Firma: `pub fn sway(&self) -> Option<&EntitySway> {`
 
-- [`reflection_source`](entity.rs#L156) — Sprite de reflejo propio (`None` = el derivado del sprite).
+- [`reflection_source`](entity.rs#L170) — Sprite de reflejo propio (`None` = el derivado del sprite).
   - Firma: `pub fn reflection_source(&self) -> Option<&str> {`
 
-- [`metadata`](entity.rs#L159) — Datos de juego de la instancia (opacos al motor).
+- [`metadata`](entity.rs#L173) — Datos de juego de la instancia (opacos al motor).
   - Firma: `pub fn metadata(&self) -> &serde_json::Value {`
 
-- [`collision_at`](entity.rs#L164) — Lado del cuadrado, centrado en la columna `(x, y)`, en el que la entidad bloquea el movimiento, como un
+- [`collision_at`](entity.rs#L178) — Lado del cuadrado, centrado en la columna `(x, y)`, en el que la entidad bloquea el movimiento, como un
   - Firma: `pub fn collision_at(&self, x: i32, y: i32) -> f64 {`
 
-- [`get_entity_footprint`](entity.rs#L184) — Columnas cubiertas por una huella de `length` bloques anclada en `anchor`, a lo largo de `lengthAxis`
+- [`get_entity_footprint`](entity.rs#L198) — Columnas cubiertas por una huella de `length` bloques anclada en `anchor`, a lo largo de `lengthAxis`
   - Firma: `pub fn get_entity_footprint( anchor: WorldCoord, length: i32, axis: EntityLengthAxis, ) -> Vec<WorldCoord> {`
 
-- [`get_entity_footprint_for`](entity.rs#L208) — Columnas cubiertas por una entidad.
+- [`get_entity_footprint_for`](entity.rs#L222) — Columnas cubiertas por una entidad.
   - Firma: `pub fn get_entity_footprint_for(entity: &Entity) -> Vec<WorldCoord> {`
 
 ### `decor.rs`
@@ -97,13 +97,25 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`plant_greens`](greenery.rs#L287) — Siembra la vegetación de las zonas de poblado que cubren `columns`: primero el patio de cada edificio, después el esparcido azul del suelo libre, y devuelve lo que creció en orden de plantado. Sin biomas no crece nada, porque las especies salen del bioma de debajo.
+- [`plant_greens`](greenery.rs#L290) — Siembra la vegetación de las zonas de poblado que cubren `columns`: primero el patio de cada edificio, después el esparcido azul del suelo libre, y devuelve lo que creció en orden de plantado. Sin biomas no crece nada, porque las especies salen del bioma de debajo.
   - Firma: `pub fn plant_greens( columns: &[TerrainColumn], catalog: &EntityCatalog, standing: &[Entity], placed: &mut SpatialIndex<Entity>, content: GreensContent<'_>, ) -> Vec<Entity> {`
 
 #### Tipos
 
 - [`GreensContent`](greenery.rs#L26) — Lo que el pase lee aparte del terreno: los asentamientos cuyas zonas dicen dónde y cuánto crece, los biomas de los que salen las especies y la semilla de sus tiradas.
   - Declaración: `pub struct GreensContent<'a> { pub settlements: &'a WorldSettlements, pub biomes: Option<&'a WorldBiomes>, pub seed: u64, }`
+
+### `lots.rs`
+
+#### Funciones y métodos
+
+- [`raise_lots`](lots.rs#L51) — Levanta un edificio (o un bosquete o decoración en un parque) en cada lote de poblado cuyo ancla cae en `columns`, elegido por los pesos `lots` de su zona, con una sola elección por manzana si la zona es `uniform`; si el elegido no cabe (superficie, desnivel, ocupación o el borde del chunk) cede al siguiente hasta agotarlos. Corre tras el pase de biomas y antes del WFC, y devuelve los edificios en orden de lote.
+  - Firma: `pub fn raise_lots( columns: &[TerrainColumn], catalog: &EntityCatalog, placed: &mut SpatialIndex<Entity>, content: LotsContent<'_>, ) -> Vec<Entity> {`
+
+#### Tipos
+
+- [`LotsContent`](lots.rs#L22) — Lo que el pase lee aparte del terreno: los asentamientos cuya cuadrícula dispone los lotes y la semilla de sus tiradas.
+  - Declaración: `pub struct LotsContent<'a> { pub settlements: &'a WorldSettlements, pub seed: u64, }`
 
 ### `placement.rs`
 
@@ -121,10 +133,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`PlacementContent`](placement.rs#L94) — El contenido de colocación del pase: los biomas del mundo, el catálogo wfc del resto, los asentamientos cuyas zonas semánticas reescriben qué crece en cada columna y la semilla de sus tiradas. Sin asentamientos, el mundo crece sin zonas y cada columna lee los pesos y la cobertura de árboles tal y como están escritos.
   - Declaración: `pub struct PlacementContent<'a> { pub biomes: Option<&'a WorldBiomes>, pub wfc: Option<&'a WfcCatalog>, pub settlements: Option<&'a WorldSettlements>, pub seed: u64, }`
 
-- [`place_entities_with_content`](placement.rs#L115) — Coloca entidades sobre `columns`: el pase de biomas primero, el solver wfc después para todo lo que ningún bioma reclama, ambos sobre el mismo índice espacial para que nada se solape. Sin catálogo wfc, es el camino del pase de biomas sobre el índice compartido.
+- [`place_entities_with_content`](placement.rs#L115) — Coloca entidades sobre `columns`: el pase de biomas primero, luego un edificio en cada lote de poblado (`lots::raise_lots`), el solver wfc después para todo lo que ningún bioma reclama y al final la vegetación de poblado, todos sobre el mismo índice espacial para que nada se solape. Sin catálogo wfc, es el camino del pase de biomas sobre el índice compartido.
   - Firma: `pub fn place_entities_with_content( columns: &[TerrainColumn], catalog: &EntityCatalog, rules: PlacementRules, content: PlacementContent<'_>, ) -> PlacementResult {`
 
-- [`placement_by_hand`](placement.rs#L265) — Valida una instancia anclada en una casilla sobre unas columnas, con lo que ya está puesto: lo que pregunta un editor antes de poner una entidad a mano. Aplica superficies, nivel único bajo la huella y ocupación, pero **no** la separación entre instancias del mismo tipo, que es regla de la colocación generada.
+- [`placement_by_hand`](placement.rs#L281) — Valida una instancia anclada en una casilla sobre unas columnas, con lo que ya está puesto: lo que pregunta un editor antes de poner una entidad a mano. Aplica superficies, nivel único bajo la huella y ocupación, pero **no** la separación entre instancias del mismo tipo, que es regla de la colocación generada.
   - Firma: `pub fn placement_by_hand( anchor: WorldCoord, blueprint: &EntityBlueprint, columns: &[TerrainColumn], placed: &[Entity], ) -> Option<Placement> {`
   - Con asentamientos el orden es otro dentro del poblado: el pase de biomas se salta toda columna que cubra un asentamiento (sus bosques son del campo abierto), el solver wfc levanta los edificios con los multiplicadores de la zona, y al final `greenery::plant_greens` siembra la vegetación del poblado sobre lo que acaba de quedar en pie. Fuera de todo poblado nada cambia.
 
@@ -145,10 +157,10 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `pub fn solve_chunk( columns: &[TerrainColumn], catalog: &EntityCatalog, content: WfcContent<'_>, claimed: &[bool], placed: &mut SpatialIndex<Entity>, ) -> Vec<Entity> {`
   - El peso de un blueprint en una columna es el del catálogo por el multiplicador de la zona que la cubre: un `0` lo saca de las posibilidades de esa columna, de modo que los edificios solo crecen donde su zona los admite.
 
-- [`WfcContent::new`](wfc.rs#L616) — El contenido de un mundo sin asentamientos: los pesos del catálogo, tal y como están escritos.
+- [`WfcContent::new`](wfc.rs#L621) — El contenido de un mundo sin asentamientos: los pesos del catálogo, tal y como están escritos.
   - Firma: `pub fn new(wfc: &'a WfcCatalog, seed: u64) -> Self {`
 
-- [`WfcContent::in_settlements`](wfc.rs#L625) — El mismo contenido, con el campo de asentamientos cuyas zonas reescriben los pesos.
+- [`WfcContent::in_settlements`](wfc.rs#L630) — El mismo contenido, con el campo de asentamientos cuyas zonas reescriben los pesos.
   - Firma: `pub fn in_settlements(mut self, settlements: Option<&'a WorldSettlements>) -> Self {`
 
 #### Constantes
@@ -188,44 +200,46 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`eq`](entity.rs#L62) — Igualdad por `data.id` (la identidad de instancia).
+- [`eq`](entity.rs#L66) — Igualdad por `data.id` (la identidad de instancia).
   - Firma: `fn eq(&self, other: &Self) -> bool {`
 
-- [`hash`](entity.rs#L68) — Hash por `data.id`, coherente con `eq`.
+- [`hash`](entity.rs#L72) — Hash por `data.id`, coherente con `eq`.
   - Firma: `fn hash<H: std::hash::Hasher>(&self, state: &mut H) {`
 
 ### `greenery.rs`
 
 #### Funciones internas
 
-- [`distance`](greenery.rs#L49) — Distancia a la celda de edificio más cercana, o infinito si no hay ninguna.
+- [`ChunkCells`](greenery.rs#L42) — Las columnas del chunk y la zona que resolvió cada una, consultables por celda; el patio lee de aquí en vez de volver a resolver el poblado por columna.
+
+- [`distance`](greenery.rs#L55) — Distancia a la celda de edificio más cercana, o infinito si no hay ninguna.
   - Firma: `fn distance(&self, at: WorldCoord) -> f64 {`
 
-- [`is_blocked`](greenery.rs#L58) — Si la columna cae en el despeje que se guarda delante de una fachada.
+- [`is_blocked`](greenery.rs#L64) — Si la columna cae en el despeje que se guarda delante de una fachada.
   - Firma: `fn is_blocked(&self, at: WorldCoord) -> bool {`
 
-- [`standing_of`](greenery.rs#L69) — Las celdas que ocupan los edificios del chunk y el despeje delante de cada fachada; como la altura en pantalla baja al crecer `x + y`, la fachada mira hacia las columnas de menor `x` y menor `y`.
+- [`standing_of`](greenery.rs#L75) — Las celdas que ocupan los edificios del chunk y el despeje delante de cada fachada; como la altura en pantalla baja al crecer `x + y`, la fachada mira hacia las columnas de menor `x` y menor `y`.
   - Firma: `fn standing_of(entities: &[Entity], catalog: &EntityCatalog, front: i32) -> Standing {`
 
-- [`blueprint_of`](greenery.rs#L103) — El blueprint de un id, o `None` si el catálogo no lo tiene.
+- [`blueprint_of`](greenery.rs#L109) — El blueprint de un id, o `None` si el catálogo no lo tiene.
   - Firma: `fn blueprint_of<'a>(catalog: &'a EntityCatalog, id: &str) -> Option<&'a EntityBlueprint> {`
 
-- [`species_at`](greenery.rs#L108) — El árbol que el bioma de esa columna hace crecer ahí.
+- [`species_at`](greenery.rs#L114) — El árbol que el bioma de esa columna hace crecer ahí.
   - Firma: `fn species_at( biomes: &WorldBiomes, catalog: &EntityCatalog, streams: &Streams, at: WorldCoord, ) -> Option<String> {`
 
-- [`plant`](greenery.rs#L134) — Planta un blueprint en una columna si cabe, y lo añade al índice espacial.
+- [`plant`](greenery.rs#L140) — Planta un blueprint en una columna si cabe, y lo añade al índice espacial.
   - Firma: `fn plant( at: WorldCoord, blueprint: &EntityBlueprint, columns: &CellMap<TerrainColumn>, placed: &mut SpatialIndex<Entity>, ) -> Option<Entity> {`
 
-- [`patio_spots`](greenery.rs#L149) — Las columnas detrás de un edificio, siguiendo su eje, donde puede colgar su patio.
+- [`patio_spots`](greenery.rs#L155) — Las columnas detrás de un edificio, siguiendo su eje, donde puede colgar su patio.
   - Firma: `fn patio_spots(entity: &Entity, blueprint: &EntityBlueprint, reach: i32) -> Vec<WorldCoord> {`
 
-- [`plant_patios`](greenery.rs#L189) — Recorre los edificios en pie en orden de columna y cuelga de cada uno su patio.
+- [`plant_patios`](greenery.rs#L195) — Recorre los edificios en pie en orden de columna y cuelga de cada uno su patio.
   - Firma: `fn plant_patios( entities: &[Entity], catalog: &EntityCatalog, columns: &CellMap<TerrainColumn>, placed: &mut SpatialIndex<Entity>, content: GreensContent<'_>, streams: &Streams, grown: &mut Vec<Entity>, ) {`
 
-- [`grove_blueprint`](greenery.rs#L258) — El bosquete que corresponde a una columna, eligiendo su eje.
+- [`grove_blueprint`](greenery.rs#L261) — El bosquete que corresponde a una columna, eligiendo su eje.
   - Firma: `fn grove_blueprint(catalog: &EntityCatalog, at: WorldCoord, streams: &Streams) -> Option<String> {`
 
-- [`area_of`](greenery.rs#L357) — El rectángulo que cubren `columns`, o `None` si no hay ninguna.
+- [`area_of`](greenery.rs#L363) — El rectángulo que cubren `columns`, o `None` si no hay ninguna.
   - Firma: `fn area_of(columns: &[TerrainColumn]) -> Option<WorldRect> {`
 
 #### Constantes internas
@@ -239,6 +253,12 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`SCATTER_LABEL`](greenery.rs#L22) — Corriente del esparcido azul del suelo libre.
   - Declaración: `const SCATTER_LABEL: &str = "greens-scatter";`
 
+### `lots.rs`
+
+- [`area_of`](lots.rs#L30) — El rectángulo que cubren `columns`, o `None` si no hay ninguna.
+- [`LOT_LABEL`](lots.rs#L16) — Corriente que elige el edificio de cada lote.
+- [`RETRY_STRIDE`](lots.rs#L18) — Salto entre las filas de la retícula de las que un lote lee sus reintentos.
+
 ### `placement.rs`
 
 #### Funciones internas
@@ -249,7 +269,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`default`](placement.rs#L84) — Implementación de `Default` para `PlacementRules`: `gap`/`density` por defecto.
   - Firma: `fn default() -> Self {`
 
-- [`find_placement`](placement.rs#L285) — Valida una instancia de `blueprint` anclada en `column`.
+- [`find_placement`](placement.rs#L301) — Valida una instancia de `blueprint` anclada en `column`.
   - Firma: `fn find_placement( anchor: WorldCoord, blueprint: &EntityBlueprint, context: &mut PlacementContext, gap: i32, ) -> Option<Placement> {`
 
 #### Constantes internas

@@ -38,6 +38,12 @@ struct Streams {
     species: u64,
 }
 
+/// The chunk's columns and the zone each one resolved to, looked up by cell.
+struct ChunkCells<'a> {
+    columns: &'a CellMap<TerrainColumn>,
+    zones: &'a CellMap<Option<usize>>,
+}
+
 /// Where the buildings of this chunk stand, and how far every column is from one.
 struct Standing {
     cells: Vec<WorldCoord>,
@@ -189,7 +195,7 @@ fn patio_spots(entity: &Entity, blueprint: &EntityBlueprint, reach: i32) -> Vec<
 fn plant_patios(
     entities: &[Entity],
     catalog: &EntityCatalog,
-    columns: &CellMap<TerrainColumn>,
+    chunk: &ChunkCells<'_>,
     placed: &mut SpatialIndex<Entity>,
     content: GreensContent<'_>,
     streams: &Streams,
@@ -226,11 +232,8 @@ fn plant_patios(
             if planted >= wanted {
                 break;
             }
-            if content
-                .settlements
-                .greens_of(content.settlements.zone_at(spot.x, spot.y))
-                <= 0.0
-            {
+            let zone = chunk.zones.get(spot).ok().flatten().copied().flatten();
+            if content.settlements.greens_of(zone) <= 0.0 {
                 continue;
             }
             let grove = lattice_at(streams.species, i64::from(spot.x) + 31, i64::from(spot.y))
@@ -244,7 +247,7 @@ fn plant_patios(
             let Some(blueprint) = blueprint_of(catalog, &species) else {
                 continue;
             };
-            if let Some(entity) = plant(spot, blueprint, columns, placed) {
+            if let Some(entity) = plant(spot, blueprint, chunk.columns, placed) {
                 grown.push(entity);
                 planted += 1;
             }
@@ -303,11 +306,20 @@ pub fn plant_greens(
         patio: derive_seed(content.seed, PATIO_LABEL),
         species: derive_seed(content.seed, SPECIES_LABEL),
     };
+    let coords: Vec<WorldCoord> = columns.iter().map(|column| column.coord).collect();
+    let zones = content.settlements.zones_over(&coords);
+    let mut zone_of = CellMap::new();
+    for (index, coord) in coords.iter().enumerate() {
+        let _ = zone_of.insert(*coord, zones[index]);
+    }
     let mut grown = Vec::new();
     plant_patios(
         standing,
         catalog,
-        &columns_map,
+        &ChunkCells {
+            columns: &columns_map,
+            zones: &zone_of,
+        },
         placed,
         content,
         &streams,
@@ -324,12 +336,6 @@ pub fn plant_greens(
         rules.tight.floor().max(1.0) as i32,
         rules.spacing,
     );
-    let coords: Vec<WorldCoord> = columns.iter().map(|column| column.coord).collect();
-    let zones = content.settlements.zones_over(&coords);
-    let mut zone_of = CellMap::new();
-    for (index, coord) in coords.iter().enumerate() {
-        let _ = zone_of.insert(*coord, zones[index]);
-    }
     let radius_at = |at: WorldCoord| {
         let zone = zone_of.get(at).ok().flatten()?;
         if buildings.is_blocked(at) {

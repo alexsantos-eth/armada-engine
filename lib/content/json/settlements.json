@@ -1,27 +1,39 @@
 {
-  "schemaVersion": 1,
-  "spacing": 112,
-  "chance": 0.6,
-  "radius": {
-    "min": 10.0,
-    "max": 18.0
+  "schemaVersion": 2,
+  "spacing": 60,
+  "chance": 0.85,
+  "layout": {
+    "blocks": {
+      "min": 3,
+      "max": 6
+    },
+    "block": 4,
+    "street": 1,
+    "edge": 3,
+    "exit": 6,
+    "trim": 0.35,
+    "frontPark": 0.5,
+    "lots": {
+      "min": 3,
+      "max": 5
+    }
   },
   "wilderness": {
     "default": 0.0,
     "weights": {
-      "bush": 1.0,
-      "grove": 1.0,
-      "runestones": 1.0,
+      "bush": 2.5,
+      "grove": 1.5,
+      "runestones": 1.5,
       "boathouse": 1.0,
       "palms": 1.0,
       "wreck": 1.0,
-      "beach": 1.0,
-      "rock_small": 1.0,
-      "rock_small_2": 1.0,
-      "rock_small_3": 1.0,
-      "rock_medium": 1.0,
-      "rock_medium_2": 1.0,
-      "campfire": 1.0
+      "beach": 1.5,
+      "rock_small": 3.0,
+      "rock_small_2": 3.0,
+      "rock_small_3": 3.0,
+      "rock_medium": 3.0,
+      "rock_medium_2": 3.0,
+      "campfire": 2.5
     },
     "greens": 0.0
   },
@@ -32,7 +44,7 @@
     "far": 9.0,
     "front": 2,
     "patio": {
-      "chance": 0.7,
+      "chance": 0.85,
       "min": 2,
       "max": 4,
       "reach": 2,
@@ -42,91 +54,142 @@
   "zones": [
     {
       "id": "center",
-      "seeds": 1,
-      "ring": [
-        0.0,
-        0.1
-      ],
-      "pull": 0.15,
+      "role": "center",
       "default": 0.0,
       "weights": {
-        "mead_hall": 60.0,
-        "stave_temple": 50.0,
-        "market_stall": 25.0,
-        "stone_shrine": 30.0,
-        "runestone_circle": 25.0,
-        "runestone_tall": 6.0,
-        "smithy": 8.0,
-        "watchtower": 6.0
+        "runestone_tall": 4.0,
+        "watchtower": 3.0,
+        "campfire": 4.0,
+        "bush": 2.0
       },
-      "greens": 0.0
+      "lots": {
+        "mead_hall": 12.0,
+        "stave_temple": 8.0,
+        "stone_shrine": 8.0,
+        "market_stall": 20.0,
+        "runestone_circle": 6.0
+      },
+      "greens": 0.3
     },
     {
       "id": "residential",
-      "seeds": 4,
-      "ring": [
-        0.25,
-        0.6
-      ],
-      "pull": 0.17,
+      "role": "residential",
+      "share": 3.0,
       "default": 0.0,
       "weights": {
+        "bush": 2.0,
+        "campfire": 1.5,
+        "runestone": 1.0,
+        "rock_small": 1.0,
+        "rock_small_2": 1.0
+      },
+      "lots": {
         "hut_moss": 10.0,
         "hut_thatch": 10.0,
         "cottage_tile": 6.0,
-        "smithy": 4.0,
-        "healer_hut": 6.0,
-        "market_stall": 2.0,
-        "runestone": 1.0,
-        "bush": 1.0,
-        "campfire": 1.5
+        "smithy": 2.0,
+        "healer_hut": 2.0
       },
-      "greens": 0.5
+      "greens": 1.2
+    },
+    {
+      "id": "row",
+      "role": "residential",
+      "share": 1.2,
+      "uniform": true,
+      "default": 0.0,
+      "weights": {
+        "bush": 2.0,
+        "rock_small": 1.0
+      },
+      "lots": {
+        "hut_moss": 1.0,
+        "hut_thatch": 1.0,
+        "cottage_tile": 1.0
+      },
+      "greens": 1.0
+    },
+    {
+      "id": "market",
+      "role": "residential",
+      "share": 0.8,
+      "uniform": true,
+      "default": 0.0,
+      "weights": {
+        "campfire": 2.0,
+        "runestone": 1.0,
+        "bush": 1.0
+      },
+      "lots": {
+        "market_stall": 1.0
+      },
+      "greens": 0.4
+    },
+    {
+      "id": "workshops",
+      "role": "residential",
+      "share": 0.7,
+      "uniform": true,
+      "default": 0.0,
+      "weights": {
+        "campfire": 1.5,
+        "rock_medium": 1.0,
+        "bush": 1.0
+      },
+      "lots": {
+        "smithy": 1.0,
+        "healer_hut": 1.0
+      },
+      "greens": 0.8
     },
     {
       "id": "green",
-      "seeds": 3,
-      "ring": [
-        0.45,
-        0.9
-      ],
-      "pull": 0.08,
+      "role": "park",
+      "share": 1.2,
       "default": 0.0,
       "weights": {
-        "grove": 8.0,
-        "bush": 6.0,
+        "bush": 4.0,
         "campfire": 2.0,
-        "runestone": 4.0,
-        "runestone_circle": 6.0,
-        "stone_shrine": 4.0
+        "runestone": 2.0,
+        "rock_small": 2.0
       },
-      "greens": 1.6
+      "lots": {
+        "grove": 6.0,
+        "bush": 3.0,
+        "runestone": 2.0,
+        "runestone_circle": 1.0,
+        "stone_shrine": 1.0,
+        "campfire": 1.0,
+        "rock_medium": 1.0
+      },
+      "greens": 1.8
     },
     {
       "id": "edge",
-      "seeds": 5,
-      "ring": [
-        0.75,
-        1.0
-      ],
-      "pull": 0.06,
+      "role": "edge",
       "default": 0.0,
       "weights": {
-        "hut_moss": 2.0,
-        "hut_thatch": 2.0,
-        "watchtower": 8.0,
-        "boathouse": 6.0,
         "runestone": 3.0,
         "runestone_pair": 3.0,
         "runestone_fallen": 3.0,
-        "bush": 2.0,
-        "grove": 1.0,
-        "fish_rack": 4.0,
-        "rowboat": 3.0,
+        "bush": 3.0,
+        "grove": 2.0,
+        "boathouse": 4.0,
+        "fish_rack": 3.0,
+        "rowboat": 2.0,
         "flag_post": 2.0,
-        "palms": 2.0
+        "palms": 2.0,
+        "rock_small": 2.0,
+        "rock_medium": 1.0,
+        "campfire": 1.0
       },
       "greens": 0.9
+    },
+    {
+      "id": "street",
+      "role": "street",
+      "default": 0.0,
+      "greens": 0.0
     }
   ]
 }

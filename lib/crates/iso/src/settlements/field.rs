@@ -1,72 +1,200 @@
-//! Where the world's settlements stand, and which semantic zone owns each of their columns.
+//! Where the world's settlements stand, how each one is cut into a grid of blocks and streets,
+//! and which semantic zone owns each of their columns.
 
 use std::collections::HashMap;
-use std::f64::consts::TAU;
 
-use super::catalog::{SettlementCatalog, ZoneProfile};
-use crate::grid::WorldCoord;
-use crate::terrain::{derive_seed, noise::lattice_at};
+use super::catalog::{LayoutRules, SettlementCatalog, ZoneProfile, ZoneRole};
+use crate::grid::{WorldCoord, WorldRect};
+use crate::terrain::{TerrainGenerator, TerrainMaterial, derive_seed, noise::lattice_at};
 
 /// Label for the stream that decides which candidate site hosts a settlement.
 const SITE_LABEL: &str = "settlements-site";
-/// Label for the stream that jitters a settlement off its site, one axis each.
+/// Label for the stream that jitters a settlement off its site, along x.
 const JITTER_X_LABEL: &str = "settlements-jitter-x";
-/// Label for the stream that jitters a settlement off its site, one axis each.
+/// Label for the stream that jitters a settlement off its site, along y.
 const JITTER_Y_LABEL: &str = "settlements-jitter-y";
-/// Label for the stream that sizes a settlement.
-const RADIUS_LABEL: &str = "settlements-radius";
-/// Label prefix for the stream that lays one zone's seeds; the zone id completes it.
-const ZONE_LABEL_PREFIX: &str = "settlements-zone";
-/// Step between the lattice points one zone's seeds are read from, along each axis.
-const SEED_STRIDE_X: i64 = 7_919;
-/// Step between the lattice points one zone's seeds are read from, along each axis.
-const SEED_STRIDE_Y: i64 = 104_729;
+/// Label for the stream that sizes a settlement's grid, one lattice point per axis.
+const SIZE_LABEL: &str = "settlements-size";
+/// Label for the stream that trims the grid's corners.
+const TRIM_LABEL: &str = "settlements-trim";
+/// Label for the stream that decides whether a block on the camera's side is a park.
+const FRONT_LABEL: &str = "settlements-front";
+/// Label for the stream that deals a zone to every block.
+const DEAL_LABEL: &str = "settlements-deal";
+/// Label for the stream that counts the lots of a block and shuffles its slots.
+const LOTS_LABEL: &str = "settlements-lots";
+/// Label for the stream that picks the street each side opens into the wild.
+const EXIT_LABEL: &str = "settlements-exit";
 
-/// One Voronoi seed of a settlement: where it sits, how far its cell reaches, and whose it is.
-#[derive(Clone, Copy, Debug, PartialEq)]
-struct ZoneSeed {
-    x: f64,
-    y: f64,
-    reach: f64,
-    zone: usize,
+/// One building plot: the column its building is anchored on, the zone that raises it and the
+/// low corner of its block, which a uniform zone keys its single pick on. A lot always stands on
+/// the rim of its block, beside a street, so its building needs no walkway of its own.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Lot {
+    /// The column the building stands on.
+    pub anchor: WorldCoord,
+    /// The zone whose lot weights choose the building.
+    pub zone: usize,
+    /// The low corner of the block the lot belongs to.
+    pub block: WorldCoord,
 }
 
-/// One settlement of the world: its centre column, its radius in columns and the zone seeds
-/// laid around it. Derived from the seed alone, so a chunk comes out the same whoever asks.
+/// Where one column falls along one axis of the grid.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Axis {
+    /// On the street line that runs before block `line` (line `cols` closes the grid).
+    Street(i32),
+    /// Inside block `index`, at `offset` columns from its low side.
+    Block(i32, i32),
+}
+
+/// One settlement of the world: a grid of square blocks cut by streets, each block dealt a zone,
+/// with an open band around it and one street running out of every side. Derived from the seed
+/// alone, so a chunk comes out the same whoever asks.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Settlement {
-    /// The column the settlement grew around.
+    /// The column at the middle of the grid.
     pub center: WorldCoord,
-    /// How far its footprint reaches from `center`, in columns.
-    pub radius: f64,
-    seeds: Vec<ZoneSeed>,
+    origin: WorldCoord,
+    cols: i32,
+    rows: i32,
+    layout: LayoutRules,
+    blocks: Vec<Option<usize>>,
+    lots: Vec<Lot>,
+    exits: [i32; 4],
+    edge: usize,
+    street: usize,
 }
 
 impl Settlement {
-    /// The index of the zone owning column `(x, y)`, or `None` when it lies outside the radius.
-    ///
-    /// Inside the footprint the owner is the seed with the smallest distance less its reach:
-    /// an additively weighted Voronoi diagram, which bends the borders between zones into
-    /// something organic instead of concentric rings.
-    pub fn zone_at(&self, x: i32, y: i32) -> Option<usize> {
-        let dx = f64::from(x - self.center.x);
-        let dy = f64::from(y - self.center.y);
-        if dx.hypot(dy) > self.radius {
+    /// Blocks along x.
+    pub fn cols(&self) -> i32 {
+        self.cols
+    }
+
+    /// Blocks along y.
+    pub fn rows(&self) -> i32 {
+        self.rows
+    }
+
+    /// The grid with its outer streets, margins excluded.
+    pub fn bounds(&self) -> WorldRect {
+        let street = self.layout.street;
+        let pitch = self.layout.pitch();
+        WorldRect {
+            min_x: self.origin.x - street,
+            min_y: self.origin.y - street,
+            max_x: self.origin.x + self.cols * pitch - 1,
+            max_y: self.origin.y + self.rows * pitch - 1,
+        }
+    }
+
+    /// The columns of block `(i, j)`, streets excluded.
+    pub fn block_rect(&self, i: i32, j: i32) -> WorldRect {
+        let pitch = self.layout.pitch();
+        let min_x = self.origin.x + i * pitch;
+        let min_y = self.origin.y + j * pitch;
+        WorldRect {
+            min_x,
+            min_y,
+            max_x: min_x + self.layout.block - 1,
+            max_y: min_y + self.layout.block - 1,
+        }
+    }
+
+    /// The zone dealt to block `(i, j)`, or `None` when it was trimmed or lies off the grid.
+    pub fn block_zone(&self, i: i32, j: i32) -> Option<usize> {
+        if i < 0 || j < 0 || i >= self.cols || j >= self.rows {
             return None;
         }
-        let mut best: Option<(f64, usize)> = None;
-        for seed in &self.seeds {
-            let distance = (f64::from(x) - seed.x).hypot(f64::from(y) - seed.y) - seed.reach;
-            match best {
-                Some((closest, _)) if closest <= distance => {}
-                _ => best = Some((distance, seed.zone)),
-            }
+        self.blocks[(j * self.cols + i) as usize]
+    }
+
+    /// The building plots of this settlement, block by block.
+    pub fn lots(&self) -> &[Lot] {
+        &self.lots
+    }
+
+    /// The index of the zone owning column `(x, y)`, or `None` when it lies outside the
+    /// settlement. Blocks own their columns, streets ring every block that stands, and the
+    /// band around the grid and every trimmed corner are edge.
+    pub fn zone_at(&self, x: i32, y: i32) -> Option<usize> {
+        let bounds = self.bounds();
+        let inside =
+            x >= bounds.min_x && x <= bounds.max_x && y >= bounds.min_y && y <= bounds.max_y;
+        if inside {
+            let kept = |i: i32, j: i32| self.block_zone(i, j).is_some();
+            return match (self.axis(x, self.origin.x), self.axis(y, self.origin.y)) {
+                (Axis::Block(i, _), Axis::Block(j, _)) => {
+                    Some(self.block_zone(i, j).unwrap_or(self.edge))
+                }
+                (Axis::Street(i), Axis::Block(j, _)) => {
+                    Some(self.street_or_edge(kept(i - 1, j) || kept(i, j)))
+                }
+                (Axis::Block(i, _), Axis::Street(j)) => {
+                    Some(self.street_or_edge(kept(i, j - 1) || kept(i, j)))
+                }
+                (Axis::Street(i), Axis::Street(j)) => Some(self.street_or_edge(
+                    kept(i - 1, j - 1) || kept(i, j - 1) || kept(i - 1, j) || kept(i, j),
+                )),
+            };
         }
-        best.map(|(_, zone)| zone)
+        if self.is_exit(x, y, bounds) {
+            return Some(self.street);
+        }
+        let band = self.layout.edge;
+        let near = x >= bounds.min_x - band
+            && x <= bounds.max_x + band
+            && y >= bounds.min_y - band
+            && y <= bounds.max_y + band;
+        near.then_some(self.edge)
+    }
+
+    fn street_or_edge(&self, street: bool) -> usize {
+        if street { self.street } else { self.edge }
+    }
+
+    /// Where `value` falls along an axis whose first block starts at `origin`.
+    fn axis(&self, value: i32, origin: i32) -> Axis {
+        let street = self.layout.street;
+        let shifted = value - origin + street;
+        let index = shifted.div_euclid(self.layout.pitch());
+        let offset = shifted.rem_euclid(self.layout.pitch());
+        if offset < street {
+            Axis::Street(index)
+        } else {
+            Axis::Block(index, offset - street)
+        }
+    }
+
+    /// Whether `(x, y)`, outside the grid, lies on one of the four streets running into the wild.
+    fn is_exit(&self, x: i32, y: i32, bounds: WorldRect) -> bool {
+        let reach = self.layout.exit;
+        let on_line =
+            |value: i32, origin: i32, line: i32| self.axis(value, origin) == Axis::Street(line);
+        let [low_x, high_x, low_y, high_y] = self.exits;
+        let across_y = y >= bounds.min_y && y <= bounds.max_y;
+        let across_x = x >= bounds.min_x && x <= bounds.max_x;
+        (across_y
+            && x < bounds.min_x
+            && x >= bounds.min_x - reach
+            && on_line(y, self.origin.y, low_x))
+            || (across_y
+                && x > bounds.max_x
+                && x <= bounds.max_x + reach
+                && on_line(y, self.origin.y, high_x))
+            || (across_x
+                && y < bounds.min_y
+                && y >= bounds.min_y - reach
+                && on_line(x, self.origin.x, low_y))
+            || (across_x
+                && y > bounds.max_y
+                && y <= bounds.max_y + reach
+                && on_line(x, self.origin.x, high_y))
     }
 }
 
-/// The settlements of a world: the field that lays them down and the zones inside each one.
+/// The settlements of a world: the field that lays them down and the blocks inside each one.
 /// Shared, immutable and rebuilt from the seed, so a reopened save lays the same villages again.
 #[derive(Clone, Debug)]
 pub struct WorldSettlements {
@@ -74,26 +202,39 @@ pub struct WorldSettlements {
     site: u64,
     jitter_x: u64,
     jitter_y: u64,
-    radius: u64,
-    zone_streams: Vec<u64>,
+    size: u64,
+    trim: u64,
+    front: u64,
+    deal: u64,
+    lots: u64,
+    exit: u64,
+    ground: Option<TerrainGenerator>,
 }
 
 impl WorldSettlements {
     /// Builds the settlement field for `catalog` in the world of `seed`.
     pub fn new(seed: u64, catalog: &SettlementCatalog) -> Self {
-        let zone_streams = catalog
-            .zones
-            .iter()
-            .map(|zone| derive_seed(seed, &format!("{ZONE_LABEL_PREFIX}:{}", zone.id)))
-            .collect();
         Self {
             catalog: catalog.clone(),
             site: derive_seed(seed, SITE_LABEL),
             jitter_x: derive_seed(seed, JITTER_X_LABEL),
             jitter_y: derive_seed(seed, JITTER_Y_LABEL),
-            radius: derive_seed(seed, RADIUS_LABEL),
-            zone_streams,
+            size: derive_seed(seed, SIZE_LABEL),
+            trim: derive_seed(seed, TRIM_LABEL),
+            front: derive_seed(seed, FRONT_LABEL),
+            deal: derive_seed(seed, DEAL_LABEL),
+            lots: derive_seed(seed, LOTS_LABEL),
+            exit: derive_seed(seed, EXIT_LABEL),
+            ground: None,
         }
+    }
+
+    /// The same field laid over the terrain `generator` raises: a block whose corners or middle
+    /// are not land is trimmed away, and a site whose middle block is not land hosts nothing,
+    /// so no village spreads its streets over a beach or a bay.
+    pub fn on_ground(mut self, generator: TerrainGenerator) -> Self {
+        self.ground = Some(generator);
+        self
     }
 
     /// The content this field was built from.
@@ -101,31 +242,34 @@ impl WorldSettlements {
         &self.catalog
     }
 
-    /// The settlement covering column `(x, y)`, or `None` out in the wild. The content keeps
-    /// the sites farther apart than two radii, so at most one settlement ever covers a column.
+    /// The settlement covering column `(x, y)`, or `None` out in the wild. Every settlement
+    /// stays inside its own candidate cell, so only that cell's site is ever asked.
     pub fn settlement_at(&self, x: i32, y: i32) -> Option<Settlement> {
-        let spacing = self.catalog.spacing;
-        let site_x = x.div_euclid(spacing);
-        let site_y = y.div_euclid(spacing);
-        for dy in -1..=1 {
-            for dx in -1..=1 {
-                let Some(settlement) = self.settlement_of_site(site_x + dx, site_y + dy) else {
-                    continue;
-                };
-                let distance =
-                    f64::from(x - settlement.center.x).hypot(f64::from(y - settlement.center.y));
-                if distance <= settlement.radius {
-                    return Some(settlement);
-                }
-            }
-        }
-        None
+        self.settlement_reaching(x, y)
+            .filter(|settlement| settlement.zone_at(x, y).is_some())
     }
 
     /// The index of the zone owning column `(x, y)`, or `None` out in the wild.
     pub fn zone_at(&self, x: i32, y: i32) -> Option<usize> {
-        self.settlement_at(x, y)
+        self.settlement_reaching(x, y)
             .and_then(|settlement| settlement.zone_at(x, y))
+    }
+
+    /// The settlement of the site of `(x, y)` when the column falls within its grid and
+    /// margins; the frame is checked before the blocks, the ground and the lots are laid, so a
+    /// column out in the wild costs a handful of rolls.
+    fn settlement_reaching(&self, x: i32, y: i32) -> Option<Settlement> {
+        let spacing = self.catalog.spacing;
+        let (site_x, site_y) = (x.div_euclid(spacing), y.div_euclid(spacing));
+        let (origin, cols, rows) = self.frame_of_site(site_x, site_y)?;
+        let layout = self.catalog.layout;
+        let margin = layout.margin();
+        let reach_x = origin.x - layout.street - margin..origin.x + cols * layout.pitch() + margin;
+        let reach_y = origin.y - layout.street - margin..origin.y + rows * layout.pitch() + margin;
+        if !reach_x.contains(&x) || !reach_y.contains(&y) {
+            return None;
+        }
+        self.settlement_of_site(site_x, site_y)
     }
 
     /// The id of the zone owning column `(x, y)`, or `None` out in the wild.
@@ -140,29 +284,63 @@ impl WorldSettlements {
     pub fn zones_over(&self, coords: &[WorldCoord]) -> Vec<Option<usize>> {
         let mut sites: HashMap<(i32, i32), Option<Settlement>> = HashMap::new();
         let spacing = self.catalog.spacing;
-        let mut zones = Vec::with_capacity(coords.len());
-        for coord in coords {
-            let site_x = coord.x.div_euclid(spacing);
-            let site_y = coord.y.div_euclid(spacing);
-            let mut zone = None;
-            'sites: for dy in -1..=1 {
-                for dx in -1..=1 {
-                    let key = (site_x + dx, site_y + dy);
-                    let settlement = sites
-                        .entry(key)
-                        .or_insert_with(|| self.settlement_of_site(key.0, key.1));
-                    let Some(settlement) = settlement else {
-                        continue;
-                    };
-                    if let Some(found) = settlement.zone_at(coord.x, coord.y) {
-                        zone = Some(found);
-                        break 'sites;
-                    }
-                }
+        coords
+            .iter()
+            .map(|coord| {
+                let key = (coord.x.div_euclid(spacing), coord.y.div_euclid(spacing));
+                sites
+                    .entry(key)
+                    .or_insert_with(|| self.settlement_of_site(key.0, key.1))
+                    .as_ref()
+                    .and_then(|settlement| settlement.zone_at(coord.x, coord.y))
+            })
+            .collect()
+    }
+
+    /// Whether each column of `coords` is a street or an exit, in the same order: what
+    /// the road pass paves before anything is placed.
+    pub fn streets_over(&self, coords: &[WorldCoord]) -> Vec<bool> {
+        let street = Some(self.catalog.zone_of(ZoneRole::Street));
+        self.zones_over(coords)
+            .into_iter()
+            .map(|zone| zone == street)
+            .collect()
+    }
+
+    /// Whether each column of `coords` lies inside a block that stands (centre, residential or
+    /// park), in the same order: the ground the placement pass turfs before it raises the lots.
+    pub fn blocks_over(&self, coords: &[WorldCoord]) -> Vec<bool> {
+        self.zones_over(coords)
+            .into_iter()
+            .map(|zone| {
+                zone.is_some_and(|zone| {
+                    matches!(
+                        self.catalog.zones[zone].role,
+                        ZoneRole::Center | ZoneRole::Residential | ZoneRole::Park
+                    )
+                })
+            })
+            .collect()
+    }
+
+    /// Every lot whose anchor falls inside `area`, settlement by settlement in site order.
+    pub fn lots_in(&self, area: WorldRect) -> Vec<Lot> {
+        let spacing = self.catalog.spacing;
+        let mut lots = Vec::new();
+        for site_y in area.min_y.div_euclid(spacing)..=area.max_y.div_euclid(spacing) {
+            for site_x in area.min_x.div_euclid(spacing)..=area.max_x.div_euclid(spacing) {
+                let Some(settlement) = self.settlement_of_site(site_x, site_y) else {
+                    continue;
+                };
+                lots.extend(settlement.lots.iter().copied().filter(|lot| {
+                    lot.anchor.x >= area.min_x
+                        && lot.anchor.x <= area.max_x
+                        && lot.anchor.y >= area.min_y
+                        && lot.anchor.y <= area.max_y
+                }));
             }
-            zones.push(zone);
         }
-        zones
+        lots
     }
 
     /// What grows on column `(x, y)`: its zone's profile, or the wilderness profile outside.
@@ -202,55 +380,189 @@ impl WorldSettlements {
         Some((spacing / density).max(1.0))
     }
 
-    /// The settlement the candidate site `(site_x, site_y)` hosts, when it hosts one.
-    fn settlement_of_site(&self, site_x: i32, site_y: i32) -> Option<Settlement> {
-        let key_x = i64::from(site_x);
-        let key_y = i64::from(site_y);
-        if lattice_at(self.site, key_x, key_y) >= self.catalog.chance {
+    /// Where the grid of the site `(site_x, site_y)` starts and how many blocks it spans along
+    /// each axis, when the site hosts a settlement at all.
+    fn frame_of_site(&self, site_x: i32, site_y: i32) -> Option<(WorldCoord, i32, i32)> {
+        let key = (i64::from(site_x), i64::from(site_y));
+        if lattice_at(self.site, key.0, key.1) >= self.catalog.chance {
             return None;
         }
-        let radius = self.catalog.radius_min
-            + lattice_at(self.radius, key_x, key_y)
-                * (self.catalog.radius_max - self.catalog.radius_min);
-        let inset = self.catalog.radius_max.ceil() as i32;
-        let span = (self.catalog.spacing - 2 * inset).max(1);
-        let jitter =
-            |stream: u64| (lattice_at(stream, key_x, key_y) * f64::from(span)).floor() as i32;
-        let center = WorldCoord {
-            x: site_x * self.catalog.spacing + inset + jitter(self.jitter_x),
-            y: site_y * self.catalog.spacing + inset + jitter(self.jitter_y),
+        let layout = self.catalog.layout;
+        let count = |offset: i64| {
+            let choices = layout.blocks_max - layout.blocks_min + 1;
+            layout.blocks_min
+                + ((lattice_at(self.size, key.0 * 2 + offset, key.1) * f64::from(choices)).floor()
+                    as i32)
+                    .min(choices - 1)
         };
-        let mut seeds = Vec::new();
-        for (zone, definition) in self.catalog.zones.iter().enumerate() {
-            let stream = self.zone_streams[zone];
-            let (near, far) = definition.ring;
-            for index in 0..i64::from(definition.seeds) {
-                let angle = TAU
-                    * lattice_at(
-                        stream,
-                        i64::from(center.x) + index * SEED_STRIDE_X,
-                        i64::from(center.y),
-                    );
-                let fraction = near
-                    + (far - near)
-                        * lattice_at(
-                            stream,
-                            i64::from(center.x),
-                            i64::from(center.y) + index * SEED_STRIDE_Y,
-                        );
-                seeds.push(ZoneSeed {
-                    x: f64::from(center.x) + angle.cos() * fraction * radius,
-                    y: f64::from(center.y) + angle.sin() * fraction * radius,
-                    reach: definition.pull * radius,
-                    zone,
-                });
+        let span = (self.catalog.spacing - layout.max_extent()).max(1);
+        let jitter = |stream: u64| {
+            ((lattice_at(stream, key.0, key.1) * f64::from(span)).floor() as i32).min(span - 1)
+        };
+        let lead = layout.margin() + layout.street;
+        let origin = WorldCoord {
+            x: site_x * self.catalog.spacing + lead + jitter(self.jitter_x),
+            y: site_y * self.catalog.spacing + lead + jitter(self.jitter_y),
+        };
+        Some((origin, count(0), count(1)))
+    }
+
+    /// The settlement the candidate site `(site_x, site_y)` hosts, when it hosts one.
+    fn settlement_of_site(&self, site_x: i32, site_y: i32) -> Option<Settlement> {
+        let (origin, cols, rows) = self.frame_of_site(site_x, site_y)?;
+        let layout = self.catalog.layout;
+        let key = (i64::from(site_x), i64::from(site_y));
+        let mut settlement = Settlement {
+            center: WorldCoord {
+                x: origin.x + (cols * layout.pitch() - layout.street) / 2,
+                y: origin.y + (rows * layout.pitch() - layout.street) / 2,
+            },
+            origin,
+            cols,
+            rows,
+            layout,
+            blocks: Vec::with_capacity((cols * rows) as usize),
+            lots: Vec::new(),
+            exits: [0; 4],
+            edge: self.catalog.zone_of(ZoneRole::Edge),
+            street: self.catalog.zone_of(ZoneRole::Street),
+        };
+        for j in 0..rows {
+            for i in 0..cols {
+                let zone = self
+                    .deal_block(&settlement, i, j)
+                    .filter(|_| self.is_land(settlement.block_rect(i, j)));
+                settlement.blocks.push(zone);
             }
         }
-        Some(Settlement {
-            center,
-            radius,
-            seeds,
+        settlement.block_zone(cols / 2, rows / 2)?;
+        for j in 0..rows {
+            for i in 0..cols {
+                self.lay_lots(&mut settlement, i, j);
+            }
+        }
+        settlement.exits = [
+            self.exit_line(rows, key, 0),
+            self.exit_line(rows, key, 1),
+            self.exit_line(cols, key, 2),
+            self.exit_line(cols, key, 3),
+        ];
+        Some(settlement)
+    }
+
+    /// Whether the corners and the middle of `rect` stand on land, or there is no ground to ask.
+    fn is_land(&self, rect: WorldRect) -> bool {
+        let Some(generator) = &self.ground else {
+            return true;
+        };
+        [
+            (rect.min_x, rect.min_y),
+            (rect.max_x, rect.min_y),
+            (rect.min_x, rect.max_y),
+            (rect.max_x, rect.max_y),
+            ((rect.min_x + rect.max_x) / 2, (rect.min_y + rect.max_y) / 2),
+        ]
+        .into_iter()
+        .all(|(x, y)| {
+            matches!(
+                generator.column_at(WorldCoord { x, y }).surface,
+                TerrainMaterial::Grass | TerrainMaterial::Ground
+            )
         })
+    }
+
+    /// The zone block `(i, j)` is dealt, or `None` when the grid trims it away.
+    fn deal_block(&self, settlement: &Settlement, i: i32, j: i32) -> Option<usize> {
+        let (cols, rows) = (settlement.cols, settlement.rows);
+        let rect = settlement.block_rect(i, j);
+        let key = (i64::from(rect.min_x), i64::from(rect.min_y));
+        if (i, j) == (cols / 2, rows / 2) {
+            return Some(self.catalog.zone_of(ZoneRole::Center));
+        }
+        let corner = (i == 0 || i == cols - 1) && (j == 0 || j == rows - 1);
+        if corner
+            && cols >= 3
+            && rows >= 3
+            && lattice_at(self.trim, key.0, key.1) < self.catalog.layout.trim
+        {
+            return None;
+        }
+        let front = i == 0 || j == 0;
+        let parks_only =
+            front && lattice_at(self.front, key.0, key.1) < self.catalog.layout.front_park;
+        let candidates: Vec<(usize, f64)> = self
+            .catalog
+            .zones
+            .iter()
+            .enumerate()
+            .filter(|(_, zone)| match zone.role {
+                ZoneRole::Park => true,
+                ZoneRole::Residential => !parks_only,
+                _ => false,
+            })
+            .map(|(index, zone)| (index, zone.share))
+            .collect();
+        let total: f64 = candidates.iter().map(|(_, share)| share).sum();
+        if total <= 0.0 {
+            return candidates.first().map(|(index, _)| *index);
+        }
+        let mut roll = lattice_at(self.deal, key.0, key.1) * total;
+        for (index, share) in &candidates {
+            if roll < *share {
+                return Some(*index);
+            }
+            roll -= share;
+        }
+        candidates.last().map(|(index, _)| *index)
+    }
+
+    /// Lays the lots of block `(i, j)`: between `lots.min` and `lots.max` of the rim slots of
+    /// its block, shuffled per block, so every block that stands raises something.
+    fn lay_lots(&self, settlement: &mut Settlement, i: i32, j: i32) {
+        let Some(zone) = settlement.block_zone(i, j) else {
+            return;
+        };
+        let layout = settlement.layout;
+        let rect = settlement.block_rect(i, j);
+        let block = WorldCoord {
+            x: rect.min_x,
+            y: rect.min_y,
+        };
+        let choices = layout.lots_max - layout.lots_min + 1;
+        let count = layout.lots_min
+            + ((lattice_at(self.lots, i64::from(block.x), i64::from(block.y)) * f64::from(choices))
+                .floor() as u32)
+                .min(choices - 1);
+        let mut slots = layout.slots();
+        slots.sort_by_cached_key(|&(dx, dy)| {
+            lattice_at(
+                self.lots,
+                i64::from(block.x + dx) * 3 + 1,
+                i64::from(block.y + dy),
+            )
+            .to_bits()
+        });
+        for (dx, dy) in slots.into_iter().take(count as usize) {
+            settlement.lots.push(Lot {
+                anchor: WorldCoord {
+                    x: block.x + dx,
+                    y: block.y + dy,
+                },
+                zone,
+                block,
+            });
+        }
+    }
+
+    /// The street line one side of the grid opens into the wild: an inner line when there is
+    /// one, so the exit never leaves from a corner a trim may take away.
+    fn exit_line(&self, blocks: i32, key: (i64, i64), side: i64) -> i32 {
+        let roll = lattice_at(self.exit, key.0 * 4 + side, key.1);
+        if blocks >= 2 {
+            1 + ((roll * f64::from(blocks - 1)).floor() as i32).min(blocks - 2)
+        } else {
+            i32::from(roll >= 0.5)
+        }
     }
 }
 

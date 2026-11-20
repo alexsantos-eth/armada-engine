@@ -66,16 +66,20 @@ fn settlements(catalog: &EntityCatalog, greens: &str, patio: &str) -> WorldSettl
     .expect("valid wfc content");
     let json = format!(
         r#"{{
-          "schemaVersion": 1,
+          "schemaVersion": 2,
           "spacing": 80,
           "chance": 1.0,
-          "radius": {{ "min": 30.0, "max": 30.0 }},
+          "layout": {{ "blocks": {{ "min": 3, "max": 3 }}, "block": 9, "street": 1, "edge": 8,
+                       "exit": 0, "trim": 0.0, "frontPark": 0.0, "lots": {{ "min": 0, "max": 0 }} }},
           "wilderness": {{ "default": 0.0, "greens": 0.0, "weights": {{}} }},
           "greens": {{ "spacing": 6.0, "tight": 2.0, "near": 3.0, "far": 9.0, "front": 2,
                        "patio": {patio} }},
           "zones": [
-            {{ "id": "green", "seeds": 1, "ring": [0.0, 0.0], "pull": 1.0,
-               "default": 0.0, "greens": {greens}, "weights": {{}} }}
+            {{ "id": "center", "role": "center", "greens": {greens} }},
+            {{ "id": "homes", "role": "residential", "share": 1.0, "greens": {greens} }},
+            {{ "id": "green", "role": "park", "share": 1.0, "greens": {greens} }},
+            {{ "id": "edge", "role": "edge", "greens": {greens} }},
+            {{ "id": "street", "role": "street", "greens": {greens} }}
           ]
         }}"#
     );

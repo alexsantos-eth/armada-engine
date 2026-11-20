@@ -280,8 +280,11 @@ impl Game {
         let settlements_catalog =
             iso::settlements::parse_settlements(settlements_json, &catalog, &wfc_catalog)
                 .expect("settlements content validates");
+        let generator =
+            TerrainGenerator::new(terrain_config).expect("default terrain configuration is valid");
         let world_settlements =
-            iso::settlements::WorldSettlements::new(terrain_config.seed, &settlements_catalog);
+            iso::settlements::WorldSettlements::new(terrain_config.seed, &settlements_catalog)
+                .on_ground(generator.clone());
 
         let (terrain_look, missing_tops) = TerrainLook::new(
             terrain_config.seed,
@@ -295,9 +298,6 @@ impl Game {
         for source in &missing_tops {
             eprintln!("warning: the atlas has no measured artwork for {source}; it will not grow");
         }
-
-        let generator =
-            TerrainGenerator::new(terrain_config).expect("default terrain configuration is valid");
 
         let mut manager = ChunkManager::with_radii(generator, catalog, CHUNK_RADII);
         manager.set_biomes(world_biomes);

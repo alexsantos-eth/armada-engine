@@ -93,19 +93,19 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`validate`](generation.rs#L41) — Valida la configuración (ruidos finitos en rango, cotas coherentes); `InvalidTerrainConfig` si no.
   - Firma: `pub fn validate(self) -> Result<Self, InvalidTerrainConfig> {`
 
-- [`new`](generation.rs#L66) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
+- [`new`](generation.rs#L67) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
   - Firma: `pub fn new(config: TerrainConfig) -> Result<Self, InvalidTerrainConfig> {`
 
-- [`flat_chunk`](generation.rs#L139) — Un chunk de columnas planas a un nivel y de un solo material: el suelo del que parte el editor, en el mismo orden x-mayor que produce el generador.
+- [`flat_chunk`](generation.rs#L140) — Un chunk de columnas planas a un nivel y de un solo material: el suelo del que parte el editor, en el mismo orden x-mayor que produce el generador.
   - Firma: `pub fn flat_chunk( chunk: ChunkCoord, elevation: i32, surface: TerrainMaterial, ) -> Vec<TerrainColumn> {`
 
-- [`height_at`](generation.rs#L73) — Altura en una columna absoluta del mundo, independiente del orden de recorrido de chunks.
+- [`height_at`](generation.rs#L74) — Altura en una columna absoluta del mundo, independiente del orden de recorrido de chunks.
   - Firma: `pub fn height_at(&self, coord: WorldCoord) -> i32 {`
 
-- [`column_at`](generation.rs#L91) — Genera la columna de terreno en `coord` (ruido absoluto, determinista por semilla).
+- [`column_at`](generation.rs#L92) — Genera la columna de terreno en `coord` (ruido absoluto, determinista por semilla).
   - Firma: `pub fn column_at(&self, coord: WorldCoord) -> TerrainColumn {`
 
-- [`generate_chunk`](generation.rs#L125) — Columnas en orden x-major, incluidos los límites de chunk y las coordenadas con signo.
+- [`generate_chunk`](generation.rs#L126) — Columnas en orden x-major, incluidos los límites de chunk y las coordenadas con signo.
   - Firma: `pub fn generate_chunk(&self, chunk: ChunkCoord) -> Vec<TerrainColumn> {`
 
 #### Constantes

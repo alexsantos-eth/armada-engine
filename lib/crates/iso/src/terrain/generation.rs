@@ -58,6 +58,7 @@ impl TerrainConfig {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct TerrainGenerator {
     config: TerrainConfig,
 }

@@ -6,16 +6,17 @@ use crate::entities::EntityCatalog;
 use crate::entities::wfc::WfcCatalog;
 
 /// The schema version of the settlement content this validator accepts.
-pub const SETTLEMENTS_SCHEMA_VERSION: u32 = 1;
+pub const SETTLEMENTS_SCHEMA_VERSION: u32 = 2;
 
-/// What one zone grows: a multiplier per blueprint over its wfc weight, and how thickly the
-/// village greenery fills it. `0` forbids; `1` is the catalogue's own spacing.
+/// What one zone grows: a multiplier per blueprint over its wfc weight, the weight of every
+/// building its lots raise, and how thickly the village greenery fills it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ZoneProfile {
     /// Density of village greenery here: `0` plants none, `1` keeps the catalogue's spacing,
-    /// and a larger number tightens it, so a sacred grove grows thicker than a back lane.
+    /// and a larger number tightens it, so a park grows thicker than a back lane.
     pub greens: f64,
     multipliers: Vec<f64>,
+    lots: Vec<f64>,
 }
 
 impl ZoneProfile {
@@ -23,22 +24,114 @@ impl ZoneProfile {
     pub fn multiplier(&self, index: usize) -> f64 {
         self.multipliers.get(index).copied().unwrap_or(0.0)
     }
+
+    /// The weight the lots of this zone give the blueprint at `index`; `0` never raises it.
+    pub fn lot(&self, index: usize) -> f64 {
+        self.lots.get(index).copied().unwrap_or(0.0)
+    }
 }
 
-/// One semantic zone of a settlement: how many Voronoi seeds it drops, where they sit and how
-/// far their cells reach.
+/// What part of a settlement's block grid a zone covers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ZoneRole {
+    /// The one block nearest the middle of the grid: the plaza with the great hall.
+    Center,
+    /// A block of buildings, each on a lot of its rim beside a street, with trees between them.
+    Residential,
+    /// A block with no house: its lots raise woods and decor, ringed by streets.
+    Park,
+    /// The open band around the street grid, and every block the grid trimmed away.
+    Edge,
+    /// The streets between the blocks and the exits into the wild.
+    Street,
+}
+
+impl ZoneRole {
+    /// Every role, in the order a catalogue is checked for them.
+    pub const ALL: [ZoneRole; 5] = [
+        ZoneRole::Center,
+        ZoneRole::Residential,
+        ZoneRole::Park,
+        ZoneRole::Edge,
+        ZoneRole::Street,
+    ];
+
+    /// Whether exactly one zone may play this role.
+    fn is_unique(self) -> bool {
+        matches!(self, ZoneRole::Center | ZoneRole::Edge | ZoneRole::Street)
+    }
+}
+
+/// One semantic zone of a settlement: its role in the block grid, how often it wins a block
+/// against the other zones of its kind (`share`), and what it grows.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SettlementZone {
     /// Stable identifier used by the engine and the content (`center`, `residential`…).
     pub id: String,
-    /// How many seeds of this zone every settlement drops.
-    pub seeds: u32,
-    /// The band of the radius its seeds sit in, as fractions of the radius, near then far.
-    pub ring: (f64, f64),
-    /// Additive Voronoi bonus, as a fraction of the radius: bigger seeds own bigger cells.
-    pub pull: f64,
+    /// The part of the block grid this zone covers.
+    pub role: ZoneRole,
+    /// Relative weight against the other residential and park zones when a block is dealt.
+    pub share: f64,
+    /// Whether every lot of one block raises the same building, so a block reads as a market
+    /// or a row of one trade instead of a mix.
+    pub uniform: bool,
     /// What this zone grows.
     pub profile: ZoneProfile,
+}
+
+/// How a settlement lays its block grid out, in columns.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LayoutRules {
+    /// Fewest blocks along each axis.
+    pub blocks_min: i32,
+    /// Most blocks along each axis.
+    pub blocks_max: i32,
+    /// Side of one square block, streets excluded.
+    pub block: i32,
+    /// Width of every street between two blocks.
+    pub street: i32,
+    /// Width of the open band around the outer streets.
+    pub edge: i32,
+    /// How far each exit street runs on into the wild.
+    pub exit: i32,
+    /// Share of the grid's corner blocks trimmed away, in `[0, 1]`.
+    pub trim: f64,
+    /// Share of the blocks on the camera's side that are parks whatever the deal, in `[0, 1]`.
+    pub front_park: f64,
+    /// Fewest lots on a block.
+    pub lots_min: u32,
+    /// Most lots on a block; never more than [`LayoutRules::slots`] holds.
+    pub lots_max: u32,
+}
+
+impl LayoutRules {
+    /// Columns from one block to the next: a block and the street after it.
+    pub fn pitch(&self) -> i32 {
+        self.block + self.street
+    }
+
+    /// Columns the settlement reaches past its outer streets: the wider of edge and exit.
+    pub fn margin(&self) -> i32 {
+        self.edge.max(self.exit)
+    }
+
+    /// The cells of a block that may hold a lot, as offsets from its low corner: every other
+    /// cell of its rim, so each lot touches a street and no two lots touch, front first.
+    pub fn slots(&self) -> Vec<(i32, i32)> {
+        let last = self.block - 1;
+        let mut slots: Vec<(i32, i32)> = (0..self.block)
+            .flat_map(|x| (0..self.block).map(move |y| (x, y)))
+            .filter(|&(x, y)| (x == 0 || y == 0 || x == last || y == last) && (x + y) % 2 == 0)
+            .collect();
+        slots.sort_by_key(|&(x, y)| (x + y, x));
+        slots
+    }
+
+    /// Columns the widest settlement spans along one axis, margins included.
+    pub fn max_extent(&self) -> i32 {
+        self.blocks_max * self.pitch() + self.street + 2 * self.margin()
+    }
 }
 
 /// How the greenery of a settlement clusters around what is already standing.
@@ -73,7 +166,8 @@ pub struct PatioRules {
     pub grove_chance: f64,
 }
 
-/// The validated settlement content: the field that lays settlements down and their zones.
+/// The validated settlement content: the field that lays settlements down, the block grid each
+/// one is cut into and the zones that fill it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SettlementCatalog {
     /// The schema the file declared; always [`SETTLEMENTS_SCHEMA_VERSION`] after validation.
@@ -82,16 +176,24 @@ pub struct SettlementCatalog {
     pub spacing: i32,
     /// Share of candidate sites that host a settlement, in `(0, 1]`.
     pub chance: f64,
-    /// Smallest settlement radius in columns.
-    pub radius_min: f64,
-    /// Largest settlement radius in columns.
-    pub radius_max: f64,
+    /// How each settlement lays its block grid out.
+    pub layout: LayoutRules,
     /// What grows outside every settlement.
     pub wilderness: ZoneProfile,
     /// How the greenery of a settlement clusters around what is already standing.
     pub greens: GreensRules,
     /// The zones in file order; indices into it are stable for one loaded catalogue.
     pub zones: Vec<SettlementZone>,
+}
+
+impl SettlementCatalog {
+    /// The index of the first zone playing `role`; validation keeps one of every role.
+    pub fn zone_of(&self, role: ZoneRole) -> usize {
+        self.zones
+            .iter()
+            .position(|zone| zone.role == role)
+            .unwrap_or(0)
+    }
 }
 
 /// Everything the settlement content can declare wrong.
@@ -115,6 +217,16 @@ pub enum SettlementError {
         /// The duplicated id.
         id: String,
     },
+    /// No zone plays a role the block grid needs.
+    MissingRole {
+        /// The role nobody plays.
+        role: ZoneRole,
+    },
+    /// Two zones play a role only one may.
+    DuplicateRole {
+        /// The role played twice.
+        role: ZoneRole,
+    },
     /// The spacing between candidate sites was not a positive number of columns.
     InvalidSpacing {
         /// What the file declared.
@@ -125,29 +237,17 @@ pub enum SettlementError {
         /// What the file declared.
         found: f64,
     },
-    /// The radius band was not a finite, positive, ascending pair.
-    InvalidRadius,
-    /// Two neighbouring settlements could overlap, which no zone layout can resolve.
+    /// The block layout could not cut a grid with room for a lot on every block.
+    InvalidLayout,
+    /// Two neighbouring settlements could overlap.
     SettlementsOverlap {
         /// The spacing the file declared.
         spacing: i32,
-        /// The largest radius the file declared.
-        radius_max: f64,
+        /// The columns the widest settlement spans.
+        extent: i32,
     },
-    /// A zone drops no seed, so it could never own a column.
-    InvalidSeeds {
-        /// The offending zone.
-        zone: String,
-        /// What the file declared.
-        found: u32,
-    },
-    /// A ring was not an ascending pair of fractions of the radius in `[0, 1]`.
-    InvalidRing {
-        /// The offending zone.
-        zone: String,
-    },
-    /// A pull was not a finite fraction of the radius in `[0, 1]`.
-    InvalidPull {
+    /// A zone's share of the blocks was not finite and non-negative.
+    InvalidShare {
         /// The offending zone.
         zone: String,
     },
@@ -199,6 +299,12 @@ impl std::fmt::Display for SettlementError {
             SettlementError::DuplicateZone { id } => {
                 write!(f, "two settlement zones share the id {id}")
             }
+            SettlementError::MissingRole { role } => {
+                write!(f, "no settlement zone plays the {role:?} role")
+            }
+            SettlementError::DuplicateRole { role } => {
+                write!(f, "only one settlement zone may play the {role:?} role")
+            }
             SettlementError::InvalidSpacing { found } => write!(
                 f,
                 "spacing must be a positive number of columns, got {found}"
@@ -206,28 +312,17 @@ impl std::fmt::Display for SettlementError {
             SettlementError::InvalidChance { found } => {
                 write!(f, "chance must be in (0, 1], got {found}")
             }
-            SettlementError::InvalidRadius => write!(
+            SettlementError::InvalidLayout => write!(
                 f,
-                "radius must be a finite, positive band with min no greater than max"
+                "layout needs at least one block per axis with min no greater than max, blocks of three columns or more, streets of one or more, no negative edge or exit, shares in [0, 1] and no more lots per block than its rim has slots"
             ),
-            SettlementError::SettlementsOverlap {
-                spacing,
-                radius_max,
-            } => write!(
+            SettlementError::SettlementsOverlap { spacing, extent } => write!(
                 f,
-                "spacing {spacing} is not wider than two settlements of radius {radius_max}"
+                "spacing {spacing} is not wider than the {extent} columns the widest settlement spans"
             ),
-            SettlementError::InvalidSeeds { zone, found } => write!(
+            SettlementError::InvalidShare { zone } => write!(
                 f,
-                "zone {zone} drops {found} seeds: it would never own a column"
-            ),
-            SettlementError::InvalidRing { zone } => write!(
-                f,
-                "zone {zone} has a ring that is not an ascending pair of fractions in [0, 1]"
-            ),
-            SettlementError::InvalidPull { zone } => write!(
-                f,
-                "zone {zone} has a pull that is not a finite fraction of the radius in [0, 1]"
+                "zone {zone} has a share that is not finite and non-negative"
             ),
             SettlementError::InvalidGreens { zone } => write!(
                 f,
@@ -260,9 +355,22 @@ impl std::fmt::Display for SettlementError {
 impl std::error::Error for SettlementError {}
 
 #[derive(serde::Deserialize)]
-struct RawRadius {
-    min: f64,
-    max: f64,
+struct RawCount {
+    min: i64,
+    max: i64,
+}
+
+#[derive(serde::Deserialize)]
+struct RawLayout {
+    blocks: RawCount,
+    block: i32,
+    street: i32,
+    edge: i32,
+    exit: i32,
+    trim: f64,
+    #[serde(rename = "frontPark")]
+    front_park: f64,
+    lots: RawCount,
 }
 
 #[derive(serde::Deserialize)]
@@ -273,14 +381,18 @@ struct RawProfile {
     greens: f64,
     #[serde(default)]
     weights: HashMap<String, f64>,
+    #[serde(default)]
+    lots: HashMap<String, f64>,
 }
 
 #[derive(serde::Deserialize)]
 struct RawZone {
     id: String,
-    seeds: u32,
-    ring: [f64; 2],
-    pull: f64,
+    role: ZoneRole,
+    #[serde(default)]
+    share: f64,
+    #[serde(default)]
+    uniform: bool,
     #[serde(flatten)]
     profile: RawProfile,
 }
@@ -311,10 +423,46 @@ struct RawSettlements {
     schema_version: u32,
     spacing: i32,
     chance: f64,
-    radius: RawRadius,
+    layout: RawLayout,
     wilderness: RawProfile,
     greens: RawGreens,
     zones: Vec<RawZone>,
+}
+
+/// Validates the block layout: a grid every block of which has a slot for each of its lots.
+fn layout_of(raw: &RawLayout) -> Result<LayoutRules, SettlementError> {
+    let share = |value: f64| value.is_finite() && (0.0..=1.0).contains(&value);
+    let valid = (1..=64).contains(&raw.blocks.min)
+        && raw.blocks.max >= raw.blocks.min
+        && raw.blocks.max <= 64
+        && (3..=64).contains(&raw.block)
+        && (1..=8).contains(&raw.street)
+        && (0..=64).contains(&raw.edge)
+        && (0..=64).contains(&raw.exit)
+        && share(raw.trim)
+        && share(raw.front_park)
+        && raw.lots.min >= 0
+        && raw.lots.max >= raw.lots.min
+        && raw.lots.max <= 64;
+    if !valid {
+        return Err(SettlementError::InvalidLayout);
+    }
+    let layout = LayoutRules {
+        blocks_min: raw.blocks.min as i32,
+        blocks_max: raw.blocks.max as i32,
+        block: raw.block,
+        street: raw.street,
+        edge: raw.edge,
+        exit: raw.exit,
+        trim: raw.trim,
+        front_park: raw.front_park,
+        lots_min: raw.lots.min as u32,
+        lots_max: raw.lots.max as u32,
+    };
+    if layout.lots_max as usize > layout.slots().len() {
+        return Err(SettlementError::InvalidLayout);
+    }
+    Ok(layout)
 }
 
 /// Validates the greenery rules: finite, ordered distances and shares that read as shares.
@@ -354,31 +502,23 @@ fn greens_of(raw: &RawGreens) -> Result<GreensRules, SettlementError> {
     })
 }
 
-/// Resolves one profile against the entity catalogue, expanding wfc families onto their members.
-fn profile_of(
-    raw: &RawProfile,
+/// Resolves one weight map against the entity catalogue, expanding wfc families onto their
+/// members; a blueprint key wins over the family it belongs to.
+fn weights_of(
+    raw: &HashMap<String, f64>,
+    default: f64,
     zone: &str,
     entities: &EntityCatalog,
     wfc: &WfcCatalog,
-) -> Result<ZoneProfile, SettlementError> {
-    if !raw.default.is_finite() || raw.default < 0.0 {
-        return Err(SettlementError::InvalidDefault {
-            zone: zone.to_owned(),
-        });
-    }
-    if !raw.greens.is_finite() || raw.greens < 0.0 {
-        return Err(SettlementError::InvalidGreens {
-            zone: zone.to_owned(),
-        });
-    }
+) -> Result<Vec<f64>, SettlementError> {
     let index_of = |id: &str| {
         entities
             .entities
             .iter()
             .position(|blueprint| blueprint.id == id)
     };
-    let mut multipliers = vec![raw.default; entities.entities.len()];
-    let mut keys: Vec<(&String, &f64)> = raw.weights.iter().collect();
+    let mut multipliers = vec![default; entities.entities.len()];
+    let mut keys: Vec<(&String, &f64)> = raw.iter().collect();
     keys.sort_by(|a, b| a.0.cmp(b.0));
     let mut families = Vec::new();
     let mut blueprints = Vec::new();
@@ -410,10 +550,45 @@ fn profile_of(
     for (index, multiplier) in blueprints {
         multipliers[index] = multiplier;
     }
+    Ok(multipliers)
+}
+
+/// Resolves one profile against the entity catalogue: its wfc multipliers and its lot weights.
+fn profile_of(
+    raw: &RawProfile,
+    zone: &str,
+    entities: &EntityCatalog,
+    wfc: &WfcCatalog,
+) -> Result<ZoneProfile, SettlementError> {
+    if !raw.default.is_finite() || raw.default < 0.0 {
+        return Err(SettlementError::InvalidDefault {
+            zone: zone.to_owned(),
+        });
+    }
+    if !raw.greens.is_finite() || raw.greens < 0.0 {
+        return Err(SettlementError::InvalidGreens {
+            zone: zone.to_owned(),
+        });
+    }
     Ok(ZoneProfile {
         greens: raw.greens,
-        multipliers,
+        multipliers: weights_of(&raw.weights, raw.default, zone, entities, wfc)?,
+        lots: weights_of(&raw.lots, 0.0, zone, entities, wfc)?,
     })
+}
+
+/// Checks that every role the block grid deals is played, and the unique ones only once.
+fn check_roles(zones: &[SettlementZone]) -> Result<(), SettlementError> {
+    for role in ZoneRole::ALL {
+        let players = zones.iter().filter(|zone| zone.role == role).count();
+        if players == 0 {
+            return Err(SettlementError::MissingRole { role });
+        }
+        if players > 1 && role.is_unique() {
+            return Err(SettlementError::DuplicateRole { role });
+        }
+    }
+    Ok(())
 }
 
 /// Parses and validates the settlement content against the entity catalogue it places and the
@@ -437,17 +612,11 @@ pub fn parse_settlements(
     if !raw.chance.is_finite() || raw.chance <= 0.0 || raw.chance > 1.0 {
         return Err(SettlementError::InvalidChance { found: raw.chance });
     }
-    if !raw.radius.min.is_finite()
-        || !raw.radius.max.is_finite()
-        || raw.radius.min <= 0.0
-        || raw.radius.max < raw.radius.min
-    {
-        return Err(SettlementError::InvalidRadius);
-    }
-    if f64::from(raw.spacing) <= 2.0 * raw.radius.max {
+    let layout = layout_of(&raw.layout)?;
+    if raw.spacing <= layout.max_extent() {
         return Err(SettlementError::SettlementsOverlap {
             spacing: raw.spacing,
-            radius_max: raw.radius.max,
+            extent: layout.max_extent(),
         });
     }
     if raw.zones.is_empty() {
@@ -468,38 +637,26 @@ pub fn parse_settlements(
                 id: zone.id.clone(),
             });
         }
-        if zone.seeds == 0 {
-            return Err(SettlementError::InvalidSeeds {
-                zone: zone.id.clone(),
-                found: zone.seeds,
-            });
-        }
-        let [near, far] = zone.ring;
-        if !near.is_finite() || !far.is_finite() || near < 0.0 || far > 1.0 || far < near {
-            return Err(SettlementError::InvalidRing {
-                zone: zone.id.clone(),
-            });
-        }
-        if !zone.pull.is_finite() || zone.pull < 0.0 || zone.pull > 1.0 {
-            return Err(SettlementError::InvalidPull {
+        if !zone.share.is_finite() || zone.share < 0.0 {
+            return Err(SettlementError::InvalidShare {
                 zone: zone.id.clone(),
             });
         }
         let profile = profile_of(&zone.profile, &zone.id, entities, wfc)?;
         zones.push(SettlementZone {
             id: zone.id.clone(),
-            seeds: zone.seeds,
-            ring: (near, far),
-            pull: zone.pull,
+            role: zone.role,
+            share: zone.share,
+            uniform: zone.uniform,
             profile,
         });
     }
+    check_roles(&zones)?;
     Ok(SettlementCatalog {
         schema_version: raw.schema_version,
         spacing: raw.spacing,
         chance: raw.chance,
-        radius_min: raw.radius.min,
-        radius_max: raw.radius.max,
+        layout,
         wilderness,
         greens,
         zones,

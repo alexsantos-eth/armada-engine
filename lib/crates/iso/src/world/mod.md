@@ -260,25 +260,28 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`place`](placement_job.rs#L40) — Coloca entidades sobre las columnas, materializa sus caminos y esquila después el decor de piedras sobre las columnas talladas, inline; el hilo de colocación la ejecuta.
+- [`turf`](placement_job.rs#L42) — Convierte en hierba la tierra desnuda (`Ground`) de cada columna marcada, para que una manzana sobre un claro de tierra levante igual sus casas; devuelve cuántas columnas cambió.
+  - Firma: `fn turf(columns: &mut [TerrainColumn], blocks: &[bool]) -> usize {`
+
+- [`place`](placement_job.rs#L55) — Convierte en hierba la tierra desnuda de las manzanas, pavimenta las calles de los poblados que cubren las columnas, coloca entidades sobre ellas, materializa sus caminos y esquila después el decor de piedras sobre las columnas talladas, inline; el hilo de colocación la ejecuta.
   - Firma: `fn place( mut columns: Vec<TerrainColumn>, catalog: &EntityCatalog, content: &ChunkContent, ) -> PlacementOutcome {`
 
-- [`spawn`](placement_job.rs#L82) — Lanza el trabajo de colocación en un hilo; en `wasm32` lo calcula directamente en el frame.
+- [`spawn`](placement_job.rs#L102) — Lanza el trabajo de colocación en un hilo; en `wasm32` lo calcula directamente en el frame.
   - Firma: `pub(crate) fn spawn( coord: ChunkCoord, columns: Vec<TerrainColumn>, catalog: EntityCatalog, content: ChunkContent, ) -> Self {`
   - El contenido de un chunk es `ChunkContent` ([placement_job.rs#L32](placement_job.rs#L32)): los biomas, el catálogo wfc y los asentamientos del mundo, clonados para el hilo que lo resuelve.
 
-- [`is_finished`](placement_job.rs#L110) — Si el trabajo está listo para recogerse, con o sin hilo.
+- [`is_finished`](placement_job.rs#L130) — Si el trabajo está listo para recogerse, con o sin hilo.
   - Firma: `pub(crate) fn is_finished(&self) -> bool {`
 
-- [`take_outcome`](placement_job.rs#L122) — Recoge el resultado si está listo (o espera a que lo esté si `wait`); un hilo que hace panic registra y deja el chunk sin entidades.
+- [`take_outcome`](placement_job.rs#L142) — Recoge el resultado si está listo (o espera a que lo esté si `wait`); un hilo que hace panic registra y deja el chunk sin entidades.
   - Firma: `pub(crate) fn take_outcome(&mut self, wait: bool) -> Option<PlacementOutcome> {`
 
 #### Tipos internos
 
-- [`PlacementJob`](placement_job.rs#L64) — El trabajo de colocación de un chunk: desde que se crea hasta que se recoge, o se descarta porque el chunk ya no está descubierto o un guardado lo gobierna.
+- [`PlacementJob`](placement_job.rs#L84) — El trabajo de colocación de un chunk: desde que se crea hasta que se recoge, o se descarta porque el chunk ya no está descubierto o un guardado lo gobierna.
   - Declaración: `pub(crate) struct PlacementJob { pub(crate) coord: ChunkCoord, state: State }`
 
-- [`PlacementOutcome`](placement_job.rs#L25) — El resultado de una colocación: las columnas con los caminos ya materializados, y las entidades del chunk en orden de columna.
+- [`PlacementOutcome`](placement_job.rs#L26) — El resultado de una colocación: las columnas con los caminos ya materializados, y las entidades del chunk en orden de columna.
   - Declaración: `pub(crate) struct PlacementOutcome { pub(crate) columns: Vec<TerrainColumn>, pub(crate) entities: Vec<Entity> }`
 
 ### `save.rs`

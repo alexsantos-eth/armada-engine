@@ -627,16 +627,20 @@ fn bare_settlements(entities: &EntityCatalog) -> crate::settlements::WorldSettle
     )
     .expect("valid wfc content");
     let json = r#"{
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "spacing": 60,
         "chance": 1.0,
-        "radius": { "min": 20.0, "max": 20.0 },
+        "layout": { "blocks": { "min": 3, "max": 3 }, "block": 5, "street": 1, "edge": 2,
+                    "exit": 4, "trim": 0.0, "frontPark": 0.0, "lots": { "min": 0, "max": 0 } },
         "wilderness": { "default": 1.0, "greens": 0.0, "weights": {} },
         "greens": { "spacing": 6.0, "tight": 2.0, "near": 3.0, "far": 9.0, "front": 2,
                     "patio": { "chance": 0.0, "min": 2, "max": 4, "reach": 2, "groveChance": 0.0 } },
         "zones": [
-            { "id": "center", "seeds": 1, "ring": [0.0, 0.0], "pull": 1.0,
-              "default": 1.0, "greens": 0.0, "weights": {} }
+            { "id": "center", "role": "center", "default": 1.0 },
+            { "id": "homes", "role": "residential", "share": 1.0, "default": 1.0 },
+            { "id": "park", "role": "park", "share": 1.0, "default": 1.0 },
+            { "id": "edge", "role": "edge", "default": 1.0 },
+            { "id": "street", "role": "street", "default": 1.0 }
         ]
     }"#;
     let catalog = crate::settlements::parse_settlements(json, entities, &wfc)

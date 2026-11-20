@@ -55,58 +55,98 @@ fn wfc() -> crate::entities::wfc::WfcCatalog {
 fn content(zones: &str) -> String {
     format!(
         r#"{{
-      "schemaVersion": 1,
+      "schemaVersion": 2,
       "spacing": 100,
       "chance": 0.5,
-      "radius": {{ "min": 8.0, "max": 16.0 }},
+      "layout": {{ "blocks": {{ "min": 3, "max": 4 }}, "block": 5, "street": 1, "edge": 2,
+                   "exit": 4, "trim": 0.25, "frontPark": 0.5, "lots": {{ "min": 1, "max": 2 }} }},
       "wilderness": {{ "default": 1.0, "greens": 0.0, "weights": {{ "hut": 0.0 }} }},
       "greens": {{ "spacing": 5.0, "tight": 2.0, "near": 3.0, "far": 9.0, "front": 2,
-                   "patio": {{ "chance": 0.75, "min": 2, "max": 4, "reach": 2, "groveChance": 0.3 }} }},
+                   "patio": {{ "chance": 0.75, "min": 2, "max": 5, "reach": 2, "groveChance": 0.3 }} }},
       "zones": {zones}
     }}"#
     )
 }
 
-fn one_zone() -> String {
-    content(
-        r#"[{ "id": "center", "seeds": 1, "ring": [0.0, 0.2], "pull": 0.1,
-              "default": 0.0, "greens": 1.0,
-              "weights": { "mead_hall": 40.0, "hut": 2.0 } }]"#,
-    )
+const CENTER: &str = r#"{ "id": "center", "role": "center", "default": 0.0, "greens": 1.0,
+      "weights": { "mead_hall": 40.0, "hut": 2.0 }, "lots": { "mead_hall": 1.0 } }"#;
+const HOMES: &str = r#"{ "id": "homes", "role": "residential", "share": 3.0, "greens": 0.5,
+      "lots": { "hut": 1.0 } }"#;
+const PARK: &str = r#"{ "id": "park", "role": "park", "share": 1.0, "greens": 1.5,
+      "weights": { "tree": 2.0 } }"#;
+const EDGE: &str = r#"{ "id": "edge", "role": "edge", "greens": 0.8 }"#;
+const STREET: &str = r#"{ "id": "street", "role": "street" }"#;
+
+fn zones_json(zones: &[&str]) -> String {
+    format!("[{}]", zones.join(", "))
+}
+
+fn every_role() -> String {
+    content(&zones_json(&[CENTER, HOMES, PARK, EDGE, STREET]))
 }
 
 fn parse(json: &str) -> Result<SettlementCatalog, SettlementError> {
     parse_settlements(json, &entities(), &wfc())
 }
 
+fn index(id: &str) -> usize {
+    entities()
+        .entities
+        .iter()
+        .position(|blueprint| blueprint.id == id)
+        .expect("fixture blueprint")
+}
+
 #[test]
-fn reads_the_field_shape_and_the_zones() {
-    let catalog = parse(&one_zone()).expect("the fixture validates");
+fn reads_the_field_and_the_block_layout() {
+    let catalog = parse(&every_role()).expect("the fixture validates");
     assert_eq!(catalog.schema_version, SETTLEMENTS_SCHEMA_VERSION);
     assert_eq!(catalog.spacing, 100);
     assert_eq!(catalog.chance, 0.5);
-    assert_eq!(catalog.radius_min, 8.0);
-    assert_eq!(catalog.radius_max, 16.0);
-    assert_eq!(catalog.zones.len(), 1);
-    let zone = &catalog.zones[0];
-    assert_eq!(zone.id, "center");
-    assert_eq!(zone.seeds, 1);
-    assert_eq!(zone.ring, (0.0, 0.2));
-    assert_eq!(zone.pull, 0.1);
+    let layout = catalog.layout;
+    assert_eq!((layout.blocks_min, layout.blocks_max), (3, 4));
+    assert_eq!((layout.block, layout.street), (5, 1));
+    assert_eq!((layout.edge, layout.exit), (2, 4));
+    assert_eq!(layout.trim, 0.25);
+    assert_eq!(layout.front_park, 0.5);
+    assert_eq!((layout.lots_min, layout.lots_max), (1, 2));
+    assert_eq!(layout.pitch(), 6);
+}
+
+#[test]
+fn the_widest_settlement_spans_its_blocks_streets_and_the_wider_of_edge_and_exit() {
+    let catalog = parse(&every_role()).expect("the fixture validates");
+    assert_eq!(catalog.layout.margin(), 4);
+    assert_eq!(catalog.layout.max_extent(), 4 * 6 + 1 + 2 * 4);
+}
+
+#[test]
+fn reads_every_zone_with_its_role_and_share() {
+    let catalog = parse(&every_role()).expect("the fixture validates");
+    let ids: Vec<_> = catalog.zones.iter().map(|zone| zone.id.as_str()).collect();
+    assert_eq!(ids, ["center", "homes", "park", "edge", "street"]);
+    let roles: Vec<_> = catalog.zones.iter().map(|zone| zone.role).collect();
+    assert_eq!(
+        roles,
+        [
+            ZoneRole::Center,
+            ZoneRole::Residential,
+            ZoneRole::Park,
+            ZoneRole::Edge,
+            ZoneRole::Street
+        ]
+    );
+    assert_eq!(catalog.zones[1].share, 3.0);
+    assert_eq!(catalog.zones[2].share, 1.0);
+    assert_eq!(catalog.zone_of(ZoneRole::Center), 0);
+    assert_eq!(catalog.zone_of(ZoneRole::Edge), 3);
+    assert_eq!(catalog.zone_of(ZoneRole::Street), 4);
 }
 
 #[test]
 fn resolves_a_family_key_onto_every_member_and_keeps_the_default_for_the_rest() {
-    let catalog = parse(&one_zone()).expect("the fixture validates");
+    let catalog = parse(&every_role()).expect("the fixture validates");
     let profile = &catalog.zones[0].profile;
-    let order = &entities();
-    let index = |id: &str| {
-        order
-            .entities
-            .iter()
-            .position(|blueprint| blueprint.id == id)
-            .expect("fixture blueprint")
-    };
     assert_eq!(profile.multiplier(index("mead_hall_x")), 40.0);
     assert_eq!(profile.multiplier(index("mead_hall_y")), 40.0);
     assert_eq!(profile.multiplier(index("hut")), 2.0);
@@ -115,13 +155,24 @@ fn resolves_a_family_key_onto_every_member_and_keeps_the_default_for_the_rest() 
 }
 
 #[test]
+fn reads_the_buildings_each_zone_raises_on_its_lots() {
+    let catalog = parse(&every_role()).expect("the fixture validates");
+    let centre = &catalog.zones[0].profile;
+    assert_eq!(centre.lot(index("mead_hall_x")), 1.0);
+    assert_eq!(centre.lot(index("mead_hall_y")), 1.0);
+    assert_eq!(centre.lot(index("hut")), 0.0);
+    let homes = &catalog.zones[1].profile;
+    assert_eq!(homes.lot(index("hut")), 1.0);
+    assert_eq!(homes.multiplier(index("hut")), 0.0);
+    assert_eq!(catalog.zones[2].profile.lot(index("hut")), 0.0);
+}
+
+#[test]
 fn a_blueprint_key_wins_over_the_family_it_belongs_to() {
-    let json = content(
-        r#"[{ "id": "center", "seeds": 1, "ring": [0.0, 0.2], "pull": 0.0,
-              "default": 0.0, "greens": 1.0,
-              "weights": { "mead_hall": 40.0, "mead_hall_y": 1.0 } }]"#,
-    );
-    let catalog = parse(&json).expect("the fixture validates");
+    let centre = r#"{ "id": "center", "role": "center", "greens": 1.0,
+          "weights": { "mead_hall": 40.0, "mead_hall_y": 1.0 } }"#;
+    let catalog = parse(&content(&zones_json(&[centre, HOMES, PARK, EDGE, STREET])))
+        .expect("the fixture validates");
     let profile = &catalog.zones[0].profile;
     assert_eq!(profile.multiplier(0), 0.0);
     assert_eq!(profile.multiplier(1), 40.0);
@@ -130,7 +181,7 @@ fn a_blueprint_key_wins_over_the_family_it_belongs_to() {
 
 #[test]
 fn the_wilderness_profile_is_read_like_a_zone() {
-    let catalog = parse(&one_zone()).expect("the fixture validates");
+    let catalog = parse(&every_role()).expect("the fixture validates");
     assert_eq!(catalog.wilderness.multiplier(0), 0.0);
     assert_eq!(catalog.wilderness.multiplier(3), 1.0);
     assert_eq!(catalog.wilderness.greens, 0.0);
@@ -143,7 +194,7 @@ fn rejects_unreadable_json() {
 
 #[test]
 fn rejects_another_schema() {
-    let json = one_zone().replace("\"schemaVersion\": 1", "\"schemaVersion\": 7");
+    let json = every_role().replace("\"schemaVersion\": 2", "\"schemaVersion\": 7");
     assert_eq!(
         parse(&json),
         Err(SettlementError::UnsupportedSchema {
@@ -160,73 +211,79 @@ fn rejects_a_catalogue_without_zones() {
 
 #[test]
 fn rejects_two_zones_sharing_an_id() {
-    let json = content(
-        r#"[{ "id": "center", "seeds": 1, "ring": [0.0, 0.2], "pull": 0.0,
-              "default": 0.0, "greens": 1.0, "weights": {} },
-            { "id": "center", "seeds": 1, "ring": [0.5, 0.9], "pull": 0.0,
-              "default": 0.0, "greens": 1.0, "weights": {} }]"#,
-    );
+    let twin = PARK.replace("\"park\", \"role\"", "\"homes\", \"role\"");
+    let json = content(&zones_json(&[CENTER, HOMES, &twin, EDGE, STREET]));
     assert_eq!(
         parse(&json),
         Err(SettlementError::DuplicateZone {
-            id: "center".to_owned()
+            id: "homes".to_owned()
         })
     );
 }
 
 #[test]
 fn rejects_an_empty_zone_id() {
-    let json = one_zone().replace("\"center\"", "\"\"");
+    let json = every_role().replace("\"center\", \"role\"", "\"\", \"role\"");
     assert_eq!(parse(&json), Err(SettlementError::EmptyZoneId));
 }
 
 #[test]
-fn rejects_a_zone_with_no_seed() {
-    let json = one_zone().replace("\"seeds\": 1", "\"seeds\": 0");
+fn rejects_a_role_that_is_missing_or_declared_twice() {
+    let json = content(&zones_json(&[CENTER, HOMES, PARK, EDGE]));
     assert_eq!(
         parse(&json),
-        Err(SettlementError::InvalidSeeds {
-            zone: "center".to_owned(),
-            found: 0,
+        Err(SettlementError::MissingRole {
+            role: ZoneRole::Street
+        })
+    );
+    let json = content(&zones_json(&[CENTER, HOMES, EDGE, STREET]));
+    assert_eq!(
+        parse(&json),
+        Err(SettlementError::MissingRole {
+            role: ZoneRole::Park
+        })
+    );
+    let second = EDGE.replace("\"edge\", \"role\"", "\"rim\", \"role\"");
+    let json = content(&zones_json(&[CENTER, HOMES, PARK, EDGE, &second, STREET]));
+    assert_eq!(
+        parse(&json),
+        Err(SettlementError::DuplicateRole {
+            role: ZoneRole::Edge
         })
     );
 }
 
 #[test]
-fn rejects_a_ring_outside_the_radius_or_turned_around() {
-    let json = one_zone().replace("[0.0, 0.2]", "[0.6, 0.3]");
-    assert_eq!(
-        parse(&json),
-        Err(SettlementError::InvalidRing {
-            zone: "center".to_owned()
-        })
-    );
-    let json = one_zone().replace("[0.0, 0.2]", "[0.0, 1.4]");
-    assert_eq!(
-        parse(&json),
-        Err(SettlementError::InvalidRing {
-            zone: "center".to_owned()
-        })
-    );
+fn a_second_residential_or_park_zone_shares_the_blocks() {
+    let more = HOMES.replace("\"homes\", \"role\"", "\"farms\", \"role\"");
+    let json = content(&zones_json(&[CENTER, HOMES, &more, PARK, EDGE, STREET]));
+    let catalog = parse(&json).expect("two residential zones validate");
+    assert_eq!(catalog.zones.len(), 6);
 }
 
 #[test]
-fn rejects_a_negative_pull_or_coverage_or_default() {
-    let json = one_zone().replace("\"pull\": 0.1", "\"pull\": -0.1");
+fn rejects_an_unknown_role() {
+    let json = every_role().replace("\"role\": \"park\"", "\"role\": \"harbour\"");
+    assert!(matches!(parse(&json), Err(SettlementError::Json(_))));
+}
+
+#[test]
+fn rejects_a_negative_share_greens_or_default() {
+    let json = every_role().replace("\"share\": 3.0", "\"share\": -3.0");
     assert_eq!(
         parse(&json),
-        Err(SettlementError::InvalidPull {
-            zone: "center".to_owned()
+        Err(SettlementError::InvalidShare {
+            zone: "homes".to_owned()
         })
     );
-    let json = one_zone().replace("\"greens\": 1.0", "\"greens\": -1.0");
+    let json = every_role().replace("\"greens\": 1.0", "\"greens\": -1.0");
     assert_eq!(
         parse(&json),
         Err(SettlementError::InvalidGreens {
             zone: "center".to_owned()
         })
     );
-    let json = one_zone().replace("\"default\": 0.0", "\"default\": -2.0");
+    let json = every_role().replace("\"default\": 0.0", "\"default\": -2.0");
     assert_eq!(
         parse(&json),
         Err(SettlementError::InvalidDefault {
@@ -236,8 +293,8 @@ fn rejects_a_negative_pull_or_coverage_or_default() {
 }
 
 #[test]
-fn rejects_a_weight_that_is_not_a_finite_multiplier() {
-    let json = one_zone().replace("\"hut\": 2.0", "\"hut\": -2.0");
+fn rejects_a_weight_or_lot_that_is_not_a_finite_multiplier() {
+    let json = every_role().replace("\"hut\": 2.0", "\"hut\": -2.0");
     assert_eq!(
         parse(&json),
         Err(SettlementError::InvalidMultiplier {
@@ -245,11 +302,19 @@ fn rejects_a_weight_that_is_not_a_finite_multiplier() {
             key: "hut".to_owned(),
         })
     );
+    let json = every_role().replace("\"lots\": { \"hut\": 1.0 }", "\"lots\": { \"hut\": -1.0 }");
+    assert_eq!(
+        parse(&json),
+        Err(SettlementError::InvalidMultiplier {
+            zone: "homes".to_owned(),
+            key: "hut".to_owned(),
+        })
+    );
 }
 
 #[test]
 fn rejects_a_weight_key_that_names_neither_a_blueprint_nor_a_family() {
-    let json = one_zone().replace("\"hut\": 2.0", "\"longhouse\": 2.0");
+    let json = every_role().replace("\"hut\": 2.0", "\"longhouse\": 2.0");
     assert_eq!(
         parse(&json),
         Err(SettlementError::UnknownKey {
@@ -261,30 +326,50 @@ fn rejects_a_weight_key_that_names_neither_a_blueprint_nor_a_family() {
 
 #[test]
 fn rejects_a_field_that_cannot_be_laid_out() {
-    let json = one_zone().replace("\"spacing\": 100", "\"spacing\": 0");
+    let json = every_role().replace("\"spacing\": 100", "\"spacing\": 0");
     assert_eq!(
         parse(&json),
         Err(SettlementError::InvalidSpacing { found: 0 })
     );
-    let json = one_zone().replace("\"chance\": 0.5", "\"chance\": 1.5");
+    let json = every_role().replace("\"chance\": 0.5", "\"chance\": 1.5");
     assert_eq!(
         parse(&json),
         Err(SettlementError::InvalidChance { found: 1.5 })
     );
-    let json = one_zone().replace("\"min\": 8.0", "\"min\": 20.0");
-    assert_eq!(parse(&json), Err(SettlementError::InvalidRadius));
+}
+
+#[test]
+fn rejects_a_block_layout_that_cannot_hold_a_lot() {
+    for (from, to) in [
+        ("\"min\": 3, \"max\": 4", "\"min\": 0, \"max\": 4"),
+        ("\"min\": 3, \"max\": 4", "\"min\": 5, \"max\": 4"),
+        ("\"block\": 5", "\"block\": 2"),
+        ("\"street\": 1", "\"street\": 0"),
+        ("\"edge\": 2", "\"edge\": -1"),
+        ("\"exit\": 4", "\"exit\": -1"),
+        ("\"trim\": 0.25", "\"trim\": 1.5"),
+        ("\"frontPark\": 0.5", "\"frontPark\": -0.5"),
+        ("\"min\": 1, \"max\": 2", "\"min\": 2, \"max\": 1"),
+        ("\"min\": 1, \"max\": 2", "\"min\": 1, \"max\": 9"),
+    ] {
+        let json = every_role().replace(from, to);
+        assert_ne!(json, every_role(), "{from} is in the fixture");
+        assert_eq!(parse(&json), Err(SettlementError::InvalidLayout), "{to}");
+    }
 }
 
 #[test]
 fn rejects_a_spacing_that_lets_two_settlements_overlap() {
-    let json = one_zone().replace("\"spacing\": 100", "\"spacing\": 20");
+    let json = every_role().replace("\"spacing\": 100", "\"spacing\": 33");
     assert_eq!(
         parse(&json),
         Err(SettlementError::SettlementsOverlap {
-            spacing: 20,
-            radius_max: 16.0,
+            spacing: 33,
+            extent: 33,
         })
     );
+    let json = every_role().replace("\"spacing\": 100", "\"spacing\": 34");
+    assert!(parse(&json).is_ok());
 }
 
 #[test]
@@ -298,21 +383,20 @@ fn every_error_says_what_the_content_got_wrong() {
         SettlementError::NoZones,
         SettlementError::EmptyZoneId,
         SettlementError::DuplicateZone { id: "a".to_owned() },
+        SettlementError::MissingRole {
+            role: ZoneRole::Center,
+        },
+        SettlementError::DuplicateRole {
+            role: ZoneRole::Street,
+        },
         SettlementError::InvalidSpacing { found: -1 },
         SettlementError::InvalidChance { found: 0.0 },
-        SettlementError::InvalidRadius,
+        SettlementError::InvalidLayout,
         SettlementError::SettlementsOverlap {
             spacing: 4,
-            radius_max: 9.0,
+            extent: 9,
         },
-        SettlementError::InvalidSeeds {
-            zone: "a".to_owned(),
-            found: 0,
-        },
-        SettlementError::InvalidRing {
-            zone: "a".to_owned(),
-        },
-        SettlementError::InvalidPull {
+        SettlementError::InvalidShare {
             zone: "a".to_owned(),
         },
         SettlementError::InvalidGreens {
@@ -339,7 +423,7 @@ fn every_error_says_what_the_content_got_wrong() {
 
 #[test]
 fn reads_how_the_greenery_clusters() {
-    let catalog = parse(&one_zone()).expect("the fixture validates");
+    let catalog = parse(&every_role()).expect("the fixture validates");
     assert_eq!(catalog.greens.spacing, 5.0);
     assert_eq!(catalog.greens.tight, 2.0);
     assert_eq!(catalog.greens.near, 3.0);
@@ -347,27 +431,63 @@ fn reads_how_the_greenery_clusters() {
     assert_eq!(catalog.greens.front, 2);
     assert_eq!(catalog.greens.patio.chance, 0.75);
     assert_eq!(catalog.greens.patio.min, 2);
-    assert_eq!(catalog.greens.patio.max, 4);
+    assert_eq!(catalog.greens.patio.max, 5);
     assert_eq!(catalog.greens.patio.reach, 2);
     assert_eq!(catalog.greens.patio.grove_chance, 0.3);
 }
 
 #[test]
 fn rejects_greenery_rules_that_do_not_read_as_distances() {
-    let json = one_zone().replace("\"tight\": 2.0", "\"tight\": 9.0");
+    let json = every_role().replace("\"tight\": 2.0", "\"tight\": 9.0");
     assert_eq!(parse(&json), Err(SettlementError::InvalidGreensRules));
-    let json = one_zone().replace("\"near\": 3.0", "\"near\": 12.0");
+    let json = every_role().replace("\"near\": 3.0", "\"near\": 12.0");
     assert_eq!(parse(&json), Err(SettlementError::InvalidGreensRules));
-    let json = one_zone().replace("\"front\": 2", "\"front\": -1");
+    let json = every_role().replace("\"front\": 2", "\"front\": -1");
     assert_eq!(parse(&json), Err(SettlementError::InvalidGreensRules));
 }
 
 #[test]
 fn rejects_a_patio_that_could_never_be_planted() {
-    let json = one_zone().replace("\"chance\": 0.75", "\"chance\": 1.5");
+    let json = every_role().replace("\"chance\": 0.75", "\"chance\": 1.5");
     assert_eq!(parse(&json), Err(SettlementError::InvalidPatio));
-    let json = one_zone().replace("\"min\": 2", "\"min\": 9");
+    let json = every_role().replace("\"min\": 2, \"max\": 5", "\"min\": 9, \"max\": 5");
     assert_eq!(parse(&json), Err(SettlementError::InvalidPatio));
-    let json = one_zone().replace("\"reach\": 2", "\"reach\": 0");
+    let json = every_role().replace("\"reach\": 2", "\"reach\": 0");
     assert_eq!(parse(&json), Err(SettlementError::InvalidPatio));
+}
+
+#[test]
+fn a_block_lays_its_lots_on_every_other_cell_of_its_rim() {
+    let catalog = parse(&every_role()).expect("the fixture validates");
+    let mut rules = catalog.layout;
+    rules.block = 4;
+    assert_eq!(
+        rules.slots(),
+        vec![(0, 0), (0, 2), (2, 0), (1, 3), (3, 1), (3, 3)]
+    );
+    rules.block = 3;
+    assert_eq!(rules.slots(), vec![(0, 0), (0, 2), (2, 0), (2, 2)]);
+    assert_eq!(catalog.layout.slots().len(), 8);
+}
+
+#[test]
+fn a_small_block_may_hold_as_many_lots_as_its_rim_has_slots() {
+    let json = every_role()
+        .replace("\"block\": 5", "\"block\": 4")
+        .replace("\"min\": 1, \"max\": 2", "\"min\": 3, \"max\": 6");
+    let catalog = parse(&json).expect("six lots fit a block of four");
+    assert_eq!((catalog.layout.block, catalog.layout.lots_max), (4, 6));
+    let json = json.replace("\"min\": 3, \"max\": 6", "\"min\": 3, \"max\": 7");
+    assert_eq!(parse(&json), Err(SettlementError::InvalidLayout));
+}
+
+#[test]
+fn a_zone_may_raise_one_building_type_across_its_whole_block() {
+    let json = every_role().replace(
+        "\"role\": \"residential\", \"share\": 3.0,",
+        "\"role\": \"residential\", \"share\": 3.0, \"uniform\": true,",
+    );
+    let catalog = parse(&json).expect("a uniform zone validates");
+    assert!(catalog.zones[1].uniform);
+    assert!(!catalog.zones[0].uniform);
 }

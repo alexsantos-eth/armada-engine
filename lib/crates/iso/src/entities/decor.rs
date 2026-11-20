@@ -13,7 +13,7 @@ use crate::grid::{CellMap, SpatialIndex};
 use crate::terrain::TerrainColumn;
 
 /// Columns per instance of one blueprint, on average, on the additional surfaces.
-const DECOR_DENSITY: u64 = 40;
+const DECOR_DENSITY: u64 = 28;
 
 /// Deterministic roll for one blueprint at one column, in the decor's own stream.
 fn decor_roll(id: &str, x: i32, y: i32) -> u64 {

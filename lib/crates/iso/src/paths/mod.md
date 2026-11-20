@@ -31,9 +31,11 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `pub fn new(anchor: WorldCoord, access_cells: impl IntoIterator<Item = WorldCoord>) -> Self {`
 - [`access_cells`](roads.rs) — Devuelve las casillas candidatas para la entrada de camino de la estructura.
   - Firma: `pub fn access_cells(&self) -> &[WorldCoord] {`
-- [`connect_roads`](roads.rs) — Materializa un árbol de caminos determinista entre conectores, sin cruzar agua, ocupación ni desniveles mayores a un bloque, y convierte en gradas cada bloque que queda un nivel por encima del camino contiguo.
+- [`connect_roads`](roads.rs#L38) — Materializa un árbol de caminos determinista entre conectores, sin cruzar agua, ocupación ni desniveles mayores a un bloque, y convierte en gradas cada bloque que queda un nivel por encima del camino contiguo. Todo camino ya pavimentado (las calles de un poblado) entra en la red desde el principio, así que un edificio que ya toca una calle no traza nada.
   - Firma: `pub fn connect_roads(columns: &mut [TerrainColumn], connectors: &[RoadConnector], occupied: &[WorldCoord]) -> usize {`
-- [`place_stairs`](roads.rs) — Convierte en gradas todo bloque de camino que queda un nivel por encima del camino de al lado, y devuelve cuántas colocó. La regla es `terrain::stairs_direction`, leída sobre una instantánea del camino anterior a cualquier cambio, así que una cuesta de varios niveles sale igual en cualquier orden de recorrido.
+- [`pave`](roads.rs#L110) — Pavimenta cada columna de tierra que `streets` marca, en orden de columna, y pone las gradas de sus cuestas; devuelve cuántas pavimentó. El agua y lo no transitable quedan como estaban.
+  - Firma: `pub fn pave(columns: &mut [TerrainColumn], streets: &[bool]) -> usize {`
+- [`place_stairs`](roads.rs#L126) — Convierte en gradas todo bloque de camino que queda un nivel por encima del camino de al lado, y devuelve cuántas colocó. La regla es `terrain::stairs_direction`, leída sobre una instantánea del camino anterior a cualquier cambio, así que una cuesta de varios niveles sale igual en cualquier orden de recorrido.
   - Firma: `pub fn place_stairs(columns: &mut [TerrainColumn]) -> usize {`
 
 #### Tipos

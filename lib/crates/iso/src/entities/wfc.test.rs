@@ -574,16 +574,20 @@ fn settlements_of(zone_weights: &str, wilderness: &str) -> crate::settlements::W
     .expect("valid wfc content");
     let json = format!(
         r#"{{
-          "schemaVersion": 1,
+          "schemaVersion": 2,
           "spacing": 60,
           "chance": 1.0,
-          "radius": {{ "min": 25.0, "max": 25.0 }},
+          "layout": {{ "blocks": {{ "min": 3, "max": 3 }}, "block": 9, "street": 1, "edge": 4,
+                       "exit": 0, "trim": 0.0, "frontPark": 0.0, "lots": {{ "min": 0, "max": 0 }} }},
           "wilderness": {{ "default": 0.0, "greens": 0.0, "weights": {wilderness} }},
           "greens": {{ "spacing": 6.0, "tight": 2.0, "near": 3.0, "far": 9.0, "front": 2,
                        "patio": {{ "chance": 0.7, "min": 2, "max": 4, "reach": 2, "groveChance": 0.3 }} }},
           "zones": [
-            {{ "id": "center", "seeds": 1, "ring": [0.0, 0.0], "pull": 1.0,
-               "default": 0.0, "greens": 0.0, "weights": {zone_weights} }}
+            {{ "id": "center", "role": "center", "weights": {zone_weights} }},
+            {{ "id": "homes", "role": "residential", "share": 1.0, "weights": {zone_weights} }},
+            {{ "id": "park", "role": "park", "share": 1.0, "weights": {zone_weights} }},
+            {{ "id": "edge", "role": "edge", "weights": {zone_weights} }},
+            {{ "id": "street", "role": "street", "weights": {zone_weights} }}
           ]
         }}"#
     );

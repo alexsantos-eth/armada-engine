@@ -32,6 +32,8 @@ impl RoadConnector {
 }
 
 /// Carves a stable road tree across `columns`, returning the number of connected structures.
+/// Every road already paved on them is part of the network from the start, so a structure
+/// beside a street only walks to the nearest one.
 /// Every carved block that ends one level over the road beside it becomes a flight of stairs.
 pub fn connect_roads(
     columns: &mut [TerrainColumn],
@@ -49,7 +51,16 @@ pub fn connect_roads(
     let occupied: HashSet<_> = occupied.iter().copied().collect();
     let mut connectors: Vec<_> = connectors.iter().collect();
     connectors.sort_by_key(|connector| (connector.anchor.y, connector.anchor.x));
-    let mut network = HashSet::new();
+    let mut network: HashSet<WorldCoord> = columns
+        .iter()
+        .filter(|column| {
+            matches!(
+                column.surface,
+                TerrainMaterial::Path | TerrainMaterial::Stairs
+            )
+        })
+        .map(|column| column.coord)
+        .collect();
     let mut connected = 0;
 
     for connector in connectors {
@@ -92,6 +103,21 @@ pub fn connect_roads(
     }
     place_stairs(columns);
     connected
+}
+
+/// Paves every land column `streets` marks, in column order, and lays the stairs its climbs
+/// need; returns how many columns it paved. Water and unwalkable columns stay as they are.
+pub fn pave(columns: &mut [TerrainColumn], streets: &[bool]) -> usize {
+    let mut paved = 0;
+    for (column, &street) in columns.iter_mut().zip(streets) {
+        if !street || !column.walkable || column.surface == TerrainMaterial::Water {
+            continue;
+        }
+        column.surface = TerrainMaterial::Path;
+        paved += 1;
+    }
+    place_stairs(columns);
+    paved
 }
 
 /// Turns every road block that stands one level over the road beside it into a flight of stairs,

@@ -118,14 +118,14 @@
   "maxPerChunk": {
     "mead_hall": 1,
     "stave_temple": 1,
-    "stone_shrine": 1,
+    "stone_shrine": 2,
     "watchtower": 2,
-    "grove": 2,
+    "grove": 4,
     "market_stall": 6,
     "smithy": 1,
     "healer_hut": 1,
     "boathouse": 2,
     "wreck": 1,
-    "campfire": 1
+    "campfire": 2
   }
 }

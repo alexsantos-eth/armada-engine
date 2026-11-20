@@ -103,8 +103,8 @@ pub struct PlacementContent<'a> {
     pub seed: u64,
 }
 
-/// Places entities over `columns`: the biome pass first, then the wfc solver for the rest, and
-/// last the greenery of any settlement covering them.
+/// Places entities over `columns`: the biome pass first, then a building on every settlement
+/// lot, then the wfc solver for the rest, and last the greenery of any settlement covering them.
 ///
 /// The biome pass keeps the bosquet picker of each biome in the wild, and skips
 /// every column a settlement covers: inside a village the greenery is not the biome's to plant,
@@ -223,6 +223,19 @@ pub fn place_entities_with_content(
             }
             entities.push(entity);
         }
+    }
+
+    if let Some(settlements) = content.settlements {
+        let mut raised = crate::entities::lots::raise_lots(
+            columns,
+            catalog,
+            &mut placed,
+            crate::entities::lots::LotsContent {
+                settlements,
+                seed: content.seed,
+            },
+        );
+        entities.append(&mut raised);
     }
 
     if let Some(wfc) = content.wfc {

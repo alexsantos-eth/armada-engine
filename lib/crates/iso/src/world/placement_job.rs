@@ -14,8 +14,9 @@ use crate::entities::{
     wfc::WfcCatalog,
 };
 use crate::grid::ChunkCoord;
+use crate::paths::pave;
 use crate::settlements::WorldSettlements;
-use crate::terrain::{TerrainColumn, WORLD_SEED};
+use crate::terrain::{TerrainColumn, TerrainMaterial, WORLD_SEED};
 
 use super::terrain_world::connect_roads_into;
 use crate::entities::decor::place_decor;
@@ -36,12 +37,31 @@ pub(crate) struct ChunkContent {
     pub(crate) settlements: Option<WorldSettlements>,
 }
 
-/// Places entities on `columns` and materializes the roads for them, inline.
+/// Grows grass on the bare ground of every column `blocks` marks, so a village block on a dirt
+/// patch can still raise its houses; returns how many columns it turfed.
+fn turf(columns: &mut [TerrainColumn], blocks: &[bool]) -> usize {
+    let mut turfed = 0;
+    for (column, &block) in columns.iter_mut().zip(blocks) {
+        if block && column.surface == TerrainMaterial::Ground {
+            column.surface = TerrainMaterial::Grass;
+            turfed += 1;
+        }
+    }
+    turfed
+}
+
+/// Turfs the bare ground of the settlement blocks and paves the settlement streets of `columns`, places entities on them and materializes the
+/// roads that join every building to the network, inline.
 fn place(
     mut columns: Vec<TerrainColumn>,
     catalog: &EntityCatalog,
     content: &ChunkContent,
 ) -> PlacementOutcome {
+    if let Some(settlements) = content.settlements.as_ref() {
+        let coords: Vec<_> = columns.iter().map(|column| column.coord).collect();
+        let _ = turf(&mut columns, &settlements.blocks_over(&coords));
+        let _ = pave(&mut columns, &settlements.streets_over(&coords));
+    }
     let result = place_entities_with_content(
         &columns,
         catalog,

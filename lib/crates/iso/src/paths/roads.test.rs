@@ -147,3 +147,64 @@ fn carving_a_road_up_a_slope_lays_its_flights() {
     assert_eq!(surface_at(&columns, 3, 0), Some(TerrainMaterial::Stairs));
     assert_eq!(surface_at(&columns, 4, 0), Some(TerrainMaterial::Path));
 }
+
+#[test]
+fn a_road_already_paved_joins_the_network_before_any_connector() {
+    let mut columns: Vec<_> = (0..7)
+        .flat_map(|x| (0..5).map(move |y| column(x, y, TerrainMaterial::Grass)))
+        .collect();
+    for column in columns.iter_mut().filter(|column| column.coord.x == 0) {
+        column.surface = TerrainMaterial::Path;
+    }
+    let connectors = [
+        RoadConnector::new(WorldCoord { x: 1, y: 1 }, [WorldCoord { x: 1, y: 1 }]),
+        RoadConnector::new(WorldCoord { x: 3, y: 3 }, [WorldCoord { x: 3, y: 3 }]),
+    ];
+
+    let carved = connect_roads(&mut columns, &connectors, &[]);
+
+    assert_eq!(carved, 2);
+    let paths = columns
+        .iter()
+        .filter(|column| column.surface == TerrainMaterial::Path && column.coord.x > 0)
+        .count();
+    assert_eq!(
+        paths,
+        1 + 3,
+        "each connector takes the shortest way to the paved road"
+    );
+    assert_eq!(surface_at(&columns, 3, 3), Some(TerrainMaterial::Path));
+    assert_eq!(surface_at(&columns, 1, 3), Some(TerrainMaterial::Path));
+}
+
+#[test]
+fn paving_turns_every_marked_land_column_into_road_and_skips_water() {
+    let mut columns: Vec<_> = (0..4)
+        .map(|x| column(x, 0, TerrainMaterial::Grass))
+        .collect();
+    columns[2].surface = TerrainMaterial::Water;
+    columns[2].walkable = false;
+    columns[2].elevation = -1;
+    columns[3].elevation = 1;
+
+    let paved = pave(&mut columns, &[true, true, true, false]);
+
+    assert_eq!(paved, 2);
+    assert_eq!(columns[0].surface, TerrainMaterial::Path);
+    assert_eq!(columns[1].surface, TerrainMaterial::Path);
+    assert_eq!(columns[2].surface, TerrainMaterial::Water);
+    assert_eq!(columns[3].surface, TerrainMaterial::Grass);
+}
+
+#[test]
+fn paving_a_climb_lays_its_stairs() {
+    let mut columns: Vec<_> = (0..3)
+        .map(|x| column(x, 0, TerrainMaterial::Grass))
+        .collect();
+    columns[2].elevation = 1;
+
+    let _ = pave(&mut columns, &[true, true, true]);
+
+    assert_eq!(columns[1].surface, TerrainMaterial::Path);
+    assert_eq!(columns[2].surface, TerrainMaterial::Stairs);
+}
