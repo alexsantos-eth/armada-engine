@@ -16,7 +16,7 @@ use iso::projection::{
 use iso::scene_order::{CoverMask, DrawKey, Occludee, PlayerSheet, bounding_layout, cover_share};
 use macroquad::prelude::*;
 
-use crate::assets::sprites::{SpriteAtlas, SpriteDraw, scene_key};
+use crate::assets::sprites::{SpriteAtlas, SpriteDraw, ground_key, scene_key};
 use crate::effects::ambient::SpawnEnv;
 use crate::effects::fire::FireSpot;
 use crate::game::config::{
@@ -35,7 +35,7 @@ use crate::player::flip::FlipMoment;
 use crate::player::player_shadow::player_shadow;
 use crate::player::player_view::{PlayerMoment, jump_poses};
 use crate::player::shadow_clip;
-use crate::terrain::terrain_view_blocks::{Surroundings, collect_terrain_sprites};
+use crate::terrain::terrain_view_blocks::{Surroundings, TERRAIN_LAYER, collect_terrain_sprites};
 use crate::water::reflection_view::{Reflected, ReflectionSprite, collect_reflection};
 
 /// This view's projection with its origin at `(origin_x, origin_y)`: the tile metrics are the
@@ -149,24 +149,17 @@ pub(crate) const COVER_GAP: f64 = 1e-5;
 /// Keeps a lift over ground decor from carrying the figure past what really stands in front
 /// of it. A rock two diagonals ahead sorts after the trees one diagonal ahead, so lifting the
 /// figure past the rock would also draw it over those trees (or one cell of a grove or palm
-/// grove). `cover` gives every non-decor cell around the figure and its base elevation; the
-/// figure stops just short of the first one it would otherwise pass, never below `key`. A
-/// small rock may then overlap the figure, which beats a figure drawn over a tree.
+/// grove), or over the ledge of a higher level in front (see `ledge_cover`). `cover` gives
+/// the key of everything around the figure that must keep covering it; the figure stops just
+/// short of the first one it would otherwise pass, never below `key`. A small rock may then
+/// overlap the figure, which beats a figure drawn over a tree or a cliff.
 pub(crate) fn hold_behind_cover(
     key: DrawKey,
     lifted: DrawKey,
-    cover: impl IntoIterator<Item = (WorldCoord, f64)>,
-    tile_height: f64,
+    cover: impl IntoIterator<Item = DrawKey>,
 ) -> DrawKey {
     let mut held = lifted;
-    for (cell, elevation) in cover {
-        let block = scene_key(
-            f64::from(cell.x) + 0.5,
-            f64::from(cell.y) + 0.5,
-            elevation,
-            ENTITY_LAYER,
-            tile_height,
-        );
+    for block in cover {
         if iso::scene_order::compare_draw_keys(&block, &key).is_le()
             || iso::scene_order::compare_draw_keys(&block, &held).is_gt()
         {
@@ -181,6 +174,41 @@ pub(crate) fn hold_behind_cover(
         };
     }
     held
+}
+
+/// The cover key of something standing on `cell` at `elevation` (a tree, a building).
+pub(crate) fn standing_cover(cell: WorldCoord, elevation: f64, tile_height: f64) -> DrawKey {
+    scene_key(
+        f64::from(cell.x) + 0.5,
+        f64::from(cell.y) + 0.5,
+        elevation,
+        ENTITY_LAYER,
+        tile_height,
+    )
+}
+
+/// The cover key of the column on `cell`, whose top is at `top`, against a figure whose feet
+/// are at `feet`: the lowest of its terrain blocks that rises above the feet, or `None` when
+/// the column is not higher than the feet. A figure down on the beach with a rock in front is
+/// lifted past the rock, which would also carry it past the grass ledge one level up between
+/// them; this keeps the ledge in front of it. Level ground never counts, so the lift still
+/// clears the rock there.
+pub(crate) fn ledge_cover(
+    cell: WorldCoord,
+    top: i32,
+    feet: f64,
+    tile_height: f64,
+) -> Option<DrawKey> {
+    let lowest_above = (feet.floor() as i32 + 1).min(top);
+    (f64::from(top) > feet + 1e-6).then(|| {
+        ground_key(
+            f64::from(cell.x) + 0.5,
+            f64::from(cell.y) + 0.5,
+            f64::from(lowest_above),
+            TERRAIN_LAYER,
+            tile_height,
+        )
+    })
 }
 
 /// How far a figure's key moves per block it stands off its column's centre: far below every
@@ -512,13 +540,26 @@ impl Game {
                         }
                     };
                     if near(cell) {
-                        cover.push((cell, base));
+                        cover.push(standing_cover(cell, base, tile_height));
                     }
                 }
             }
         }
+        for dy in -1..=1 {
+            for dx in -1..=1 {
+                let cell = WorldCoord {
+                    x: column.x + dx,
+                    y: column.y + dy,
+                };
+                if let Some(top) = self.manager.column_at(cell.x, cell.y).map(|c| c.elevation)
+                    && let Some(ledge) = ledge_cover(cell, top, elevation, tile_height)
+                {
+                    cover.push(ledge);
+                }
+            }
+        }
         let lifted = lift_over_ground_decor(key, elevation, decor, tile_height);
-        let held = hold_behind_cover(key, lifted, cover, tile_height);
+        let held = hold_behind_cover(key, lifted, cover);
         nudge_figure_key(held, position, column, held != key)
     }
 

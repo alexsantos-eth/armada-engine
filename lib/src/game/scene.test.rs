@@ -611,7 +611,11 @@ fn a_lift_over_ground_decor_stops_behind_a_tree_in_front() {
             ENTITY_LAYER,
             PREVIEW_TILE_HEIGHT,
         );
-        let held = hold_behind_cover(key, lifted, [(tree_cell, 2.0)], PREVIEW_TILE_HEIGHT);
+        let held = hold_behind_cover(
+            key,
+            lifted,
+            [standing_cover(tree_cell, 2.0, PREVIEW_TILE_HEIGHT)],
+        );
         let held = nudge_figure_key(held, GridPoint { x: 12.4, y: 7.4 }, column, held != key);
         assert_eq!(
             compare_draw_keys(&held, &tree),
@@ -626,6 +630,86 @@ fn a_lift_over_ground_decor_stops_behind_a_tree_in_front() {
     }
 
     let behind = WorldCoord { x: 13, y: 8 };
-    let kept = hold_behind_cover(key, lifted, [(behind, 2.0)], PREVIEW_TILE_HEIGHT);
+    let kept = hold_behind_cover(
+        key,
+        lifted,
+        [standing_cover(behind, 2.0, PREVIEW_TILE_HEIGHT)],
+    );
     assert_eq!(kept, lifted, "a tree behind leaves the lift alone");
+}
+
+/// Alex, 2026-11-20: down on the beach, with a rock on the sand in front, the player was drawn
+/// over the grass ledge one level up between them. The lift past the rock must stop at the
+/// ledge, like it stops at a tree; on level ground the lift still clears the rock.
+#[test]
+fn a_lift_over_ground_decor_stops_behind_a_higher_ledge_in_front() {
+    use std::cmp::Ordering;
+
+    let column = WorldCoord { x: 12, y: 7 };
+    let feet = 2.0;
+    let key = player_key(column, feet, PLAYER_BEHIND_LAYER, PREVIEW_TILE_HEIGHT);
+    let rock = WorldCoord { x: 11, y: 6 };
+    let lifted = lift_over_ground_decor(key, feet, [(rock, feet)], PREVIEW_TILE_HEIGHT);
+    assert_eq!(
+        compare_draw_keys(
+            &lifted,
+            &ground_key(11.5, 6.5, 3.0, TERRAIN_LAYER, PREVIEW_TILE_HEIGHT)
+        ),
+        Ordering::Greater,
+        "without the hold the lift carries the player past the ledge (the bug)"
+    );
+
+    for ledge_cell in [
+        WorldCoord { x: 11, y: 6 },
+        WorldCoord { x: 11, y: 7 },
+        WorldCoord { x: 12, y: 6 },
+    ] {
+        for top in [3, 4] {
+            let ledge = ledge_cover(ledge_cell, top, feet, PREVIEW_TILE_HEIGHT)
+                .expect("a higher column is a ledge");
+            let held = hold_behind_cover(key, lifted, [ledge]);
+            let held = nudge_figure_key(held, GridPoint { x: 12.4, y: 7.4 }, column, held != key);
+            for level in 3..=top {
+                let block = ground_key(
+                    f64::from(ledge_cell.x) + 0.5,
+                    f64::from(ledge_cell.y) + 0.5,
+                    f64::from(level),
+                    TERRAIN_LAYER,
+                    PREVIEW_TILE_HEIGHT,
+                );
+                assert_eq!(
+                    compare_draw_keys(&held, &block),
+                    Ordering::Less,
+                    "the block at {level} of the ledge at {ledge_cell:?} still covers the player"
+                );
+            }
+            assert_ne!(compare_draw_keys(&held, &key), Ordering::Less);
+        }
+    }
+
+    for level in [1, 2] {
+        assert_eq!(
+            ledge_cover(WorldCoord { x: 11, y: 6 }, level, feet, PREVIEW_TILE_HEIGHT),
+            None,
+            "ground at or below the feet never holds the lift"
+        );
+    }
+}
+
+/// Halfway up a climb the feet sit between two levels: the ledge's block above the feet
+/// still counts, the one the feet have passed does not.
+#[test]
+fn a_ledge_covers_from_its_lowest_block_above_the_feet() {
+    let cell = WorldCoord { x: 11, y: 6 };
+    assert_eq!(
+        ledge_cover(cell, 4, 2.5, PREVIEW_TILE_HEIGHT),
+        Some(ground_key(
+            11.5,
+            6.5,
+            3.0,
+            TERRAIN_LAYER,
+            PREVIEW_TILE_HEIGHT
+        ))
+    );
+    assert_eq!(ledge_cover(cell, 3, 3.0, PREVIEW_TILE_HEIGHT), None);
 }
