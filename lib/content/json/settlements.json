@@ -14,9 +14,10 @@
     "trim": 0.35,
     "frontPark": 0.5,
     "lots": {
-      "min": 3,
-      "max": 5
+      "min": 5,
+      "max": 8
     },
+    "innerLots": true,
     "shapes": {
       "notch": 0.2,
       "shrink": 0.1,
@@ -85,14 +86,21 @@
         "bush": 2.0,
         "brazier": 3.0,
         "torch_post": 3.0,
-        "ritual_candles": 1.0
+        "ritual_candles": 1.0,
+        "old_well": 3.0,
+        "totem_stub": 2.0,
+        "hanging_lantern": 2.0,
+        "buried_chest": 0.5,
+        "village_menhir": 1.0
       },
       "lots": {
         "mead_hall": 12.0,
         "stave_temple": 8.0,
         "stone_shrine": 8.0,
         "market_stall": 20.0,
-        "runestone_circle": 6.0
+        "runestone_circle": 6.0,
+        "old_well": 4.0,
+        "totem_stub": 3.0
       },
       "greens": 0.6
     },
@@ -108,14 +116,23 @@
         "rock_small": 1.0,
         "rock_small_2": 1.0,
         "torch_post": 1.0,
-        "hanging_lantern": 0.8
+        "hanging_lantern": 0.8,
+        "buried_chest": 0.5,
+        "cart": 0.8,
+        "tall_grass": 1.0,
+        "mushrooms": 0.5,
+        "old_well": 0.5
       },
       "lots": {
         "hut_moss": 10.0,
         "hut_thatch": 10.0,
         "cottage_tile": 6.0,
         "smithy": 2.0,
-        "healer_hut": 2.0
+        "healer_hut": 2.0,
+        "house_thatch": 8.0,
+        "house_stone": 6.0,
+        "house_annex": 6.0,
+        "house_twowood": 8.0
       },
       "greens": 1.6
     },
@@ -127,12 +144,19 @@
       "default": 0.0,
       "weights": {
         "bush": 2.0,
-        "rock_small": 1.0
+        "rock_small": 1.0,
+        "torch_post": 1.0,
+        "hanging_lantern": 1.0,
+        "tall_grass": 1.0
       },
       "lots": {
         "hut_moss": 1.0,
         "hut_thatch": 1.0,
-        "cottage_tile": 1.0
+        "cottage_tile": 1.0,
+        "house_thatch": 1.0,
+        "house_stone": 1.0,
+        "house_annex": 1.0,
+        "house_twowood": 1.0
       },
       "greens": 1.4
     },
@@ -148,7 +172,11 @@
         "bush": 3.0,
         "rock_small": 1.5,
         "hanging_lantern": 2.0,
-        "torch_post": 1.5
+        "torch_post": 1.5,
+        "brazier": 1.5,
+        "buried_chest": 1.0,
+        "cart": 1.0,
+        "old_well": 1.0
       },
       "lots": {
         "market_stall": 1.0
@@ -165,7 +193,11 @@
         "campfire": 1.5,
         "rock_medium": 1.0,
         "bush": 1.0,
-        "brazier": 2.0
+        "brazier": 2.0,
+        "torch_post": 1.5,
+        "hanging_lantern": 1.0,
+        "cart": 2.0,
+        "buried_chest": 1.0
       },
       "lots": {
         "smithy": 1.0,
@@ -184,7 +216,18 @@
         "runestone": 2.0,
         "rock_small": 2.0,
         "ritual_candles": 1.0,
-        "leaf_emitter": 2.0
+        "leaf_emitter": 2.0,
+        "mushrooms": 3.0,
+        "tall_grass": 3.0,
+        "tall_grass_2": 3.0,
+        "fallen_log_x": 1.5,
+        "fallen_log_y": 1.5,
+        "peat_puddle": 1.0,
+        "village_cairn": 2.0,
+        "village_menhir": 1.5,
+        "totem_stub": 1.5,
+        "buried_chest": 0.5,
+        "torch_post": 0.5
       },
       "lots": {
         "grove": 10.0,
@@ -196,7 +239,14 @@
         "runestone_circle": 0.5,
         "stone_shrine": 0.5,
         "campfire": 0.5,
-        "rock_medium": 1.0
+        "rock_medium": 1.0,
+        "totem_stub": 1.0,
+        "village_menhir": 1.0,
+        "village_cairn": 1.0,
+        "old_well": 0.5,
+        "fallen_log_x": 0.5,
+        "fallen_log_y": 0.5,
+        "mushrooms": 1.0
       },
       "greens": 2.5
     },
@@ -219,7 +269,17 @@
         "rock_medium": 1.0,
         "campfire": 1.0,
         "hanging_lantern": 3.0,
-        "torch_post": 2.0
+        "torch_post": 2.0,
+        "collapsed_wall": 1.5,
+        "shield_grave": 1.0,
+        "village_cairn": 2.0,
+        "village_menhir": 1.5,
+        "fallen_log_x": 1.0,
+        "fallen_log_y": 1.0,
+        "tall_grass": 2.0,
+        "mushrooms": 1.0,
+        "cart": 1.0,
+        "totem_stub": 1.0
       },
       "greens": 0.9
     },
@@ -242,7 +302,13 @@
         "runestone_fallen": 10.0,
         "campfire": 5.0,
         "hanging_lantern": 6.0,
-        "torch_post": 6.0
+        "torch_post": 6.0,
+        "tall_grass": 10.0,
+        "tall_grass_2": 10.0,
+        "mushrooms": 6.0,
+        "village_cairn": 6.0,
+        "buried_chest": 2.0,
+        "brazier": 3.0
       },
       "greens": 0.0
     }
