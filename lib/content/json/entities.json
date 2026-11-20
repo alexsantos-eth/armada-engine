@@ -2049,8 +2049,8 @@
         "length": 2,
         "axis": "x",
         "collision": [
-          0.4,
-          0.4
+          1.0,
+          1.0
         ]
       },
       "placement": {
@@ -2070,8 +2070,8 @@
         "length": 2,
         "axis": "y",
         "collision": [
-          0.4,
-          0.4
+          1.0,
+          1.0
         ]
       },
       "placement": {
