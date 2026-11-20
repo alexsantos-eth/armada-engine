@@ -1823,7 +1823,6 @@
     {
       "id": "mushrooms",
       "asset": {
-        "drawUnderPlayer": true,
         "sprite": "/assets/field/block_mushrooms.png"
       },
       "shape": {
@@ -1831,7 +1830,7 @@
         "length": 1,
         "axis": "x",
         "collision": [
-          0.0
+          0.5
         ]
       },
       "placement": {
@@ -1925,7 +1924,6 @@
     {
       "id": "peat_puddle",
       "asset": {
-        "drawUnderPlayer": true,
         "sprite": "/assets/field/block_peat_puddle.png"
       },
       "shape": {
@@ -1933,7 +1931,7 @@
         "length": 1,
         "axis": "x",
         "collision": [
-          0.0
+          0.6
         ]
       },
       "placement": {

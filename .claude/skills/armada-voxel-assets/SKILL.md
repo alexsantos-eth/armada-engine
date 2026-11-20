@@ -197,8 +197,8 @@ Una caja tiene el radio limitado por su lado más fino, así que **nada redondo 
 caja**: `disc(d, t, color, plano)` en `vox_prefabs.py` arma un disco por filas (ruedas, cepa).
 Las entidades del campo (`lib/assets/field/`) solo crecen en hierba fuera de poblados: familias
 `meadow`, `barrow`, `ruins` y `cart` de `wfc.json`, con peso en `settlements.json` →
-`wilderness.weights`. Las bajas (setas, hierba alta, charco) llevan `drawUnderPlayer` y
-colisión 0; las demás, colisión de 0,2 a 0,6.
+`wilderness.weights`. La hierba alta lleva `drawUnderPlayer` y
+colisión 0; las demás (setas y charco incluidos), colisión de 0,2 a 0,6.
 
 Las piezas de cara (`door`, `window`, `shield`, `rune`, `banner`) tienen el pivote **en el
 plano de la cara**: se colocan con `x` igual al plano del muro y la mitad queda prensada

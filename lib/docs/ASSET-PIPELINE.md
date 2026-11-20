@@ -243,7 +243,7 @@ manchas de hierba alta, charco de turba con cañas, tronco caído (2 casillas), 
 `grass_tuft`, `reed`, `puddle`, `log_long`, `root_plate`, `turf_block`, `wheel`, `spear`,
 `chest`, `totem`…). Se colocan por las familias `meadow`, `barrow`, `ruins` y `cart` de
 `wfc.json`, con multiplicador en `settlements.json` → `wilderness.weights` (las zonas de poblado
-no las listan, así que nunca salen dentro). Las bajas llevan `drawUnderPlayer` y colisión 0.
+no las listan, así que nunca salen dentro). Solo la hierba alta lleva `drawUnderPlayer` y colisión 0.
 
 ## 7. Coste
 
