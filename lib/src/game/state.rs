@@ -43,7 +43,9 @@ use crate::rendering::depth_of_field::{DepthMaterial, DepthTarget};
 use crate::rendering::grade::GradeMaterial;
 use crate::rendering::render_target::SceneTarget;
 use crate::rendering::scene_material::SceneMaterial;
-use crate::save::{load_archive_into_manager, load_save, restore_archive};
+use crate::save::{
+    boot_seed, load_archive_into_manager, load_save, restore_archive, take_fresh_seed,
+};
 use crate::services::{MacroquadAudio, MacroquadUi};
 use crate::terrain::terrain_view_appearance::TerrainLook;
 use crate::terrain::terrain_view_blocks::TerrainFrames;
@@ -260,8 +262,25 @@ impl Game {
                 );
             }
         }
+        let (fresh, save) = if route.keeps_the_save() {
+            let fresh = take_fresh_seed();
+            let save = if fresh.is_some() {
+                None
+            } else {
+                load_save().await
+            };
+            (fresh, save)
+        } else {
+            (None, None)
+        };
         let terrain_config = TerrainConfig {
-            seed: scene.and_then(|scene| scene.seed).unwrap_or(WORLD_SEED),
+            seed: boot_seed(
+                scene.and_then(|scene| scene.seed),
+                fresh,
+                save.as_ref()
+                    .and_then(|save| iso::world::saved_seed(&save.systems)),
+                WORLD_SEED,
+            ),
             ..TerrainConfig::default()
         };
         let world_seed = terrain_config.seed;
@@ -310,7 +329,6 @@ impl Game {
         let archive = if !route.keeps_the_save() {
             restore_archive(None)
         } else {
-            let save = load_save().await;
             let archive = restore_archive(save);
             if archive.chunks().count() > 0 {
                 for id in load_archive_into_manager(&mut manager, &archive) {

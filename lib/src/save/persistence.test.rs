@@ -34,3 +34,36 @@ fn restore_preserves_the_archive_snapshot() {
         "the chunk survives the round trip"
     );
 }
+
+#[test]
+fn a_saved_archive_records_the_world_seed() {
+    let archive = ChunkArchive::new();
+    let save = snapshot_of(&archive, 77);
+    assert_eq!(iso::world::saved_seed(&save.systems), Some(77));
+}
+
+#[test]
+fn a_fresh_seed_note_reads_as_a_number_and_an_empty_note_as_none() {
+    assert_eq!(parse_fresh_seed("12345"), Some(12345));
+    assert_eq!(parse_fresh_seed(" 18446744073709551615 \n"), Some(u64::MAX));
+    assert_eq!(parse_fresh_seed(""), None);
+    assert_eq!(parse_fresh_seed("soon"), None);
+}
+
+#[test]
+fn a_native_run_asks_for_a_fresh_world_with_its_flag() {
+    let args = |list: &[&str]| list.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+    assert!(asks_for_fresh(args(&["iso-core", "--fresh"]).iter()));
+    assert!(asks_for_fresh(
+        args(&["iso-core", "--plain", "--fresh"]).iter()
+    ));
+    assert!(!asks_for_fresh(args(&["iso-core", "--plain"]).iter()));
+}
+
+#[test]
+fn the_seed_a_world_boots_with_prefers_a_scene_then_a_fresh_draw_then_the_save() {
+    assert_eq!(boot_seed(Some(5), Some(6), Some(7), 9), 5);
+    assert_eq!(boot_seed(None, Some(6), Some(7), 9), 6);
+    assert_eq!(boot_seed(None, None, Some(7), 9), 7);
+    assert_eq!(boot_seed(None, None, None, 9), 9);
+}

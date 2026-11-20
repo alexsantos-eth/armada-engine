@@ -311,3 +311,17 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 - [`parse_entity`](save.rs#L499) — Parsea una entidad guardada.
   - Firma: `fn parse_entity( value: &serde_json::Value, cx: i32, cy: i32, index: usize, ) -> Result<SavedEntity, SaveError> {`
+
+### `seed.rs`
+
+La semilla del mundo viaja en la partida, en la parte `systems.world` (`{ "version": 1, "seed": <u64> }`), para que un mundo arrancado con una semilla nueva (`?fresh`) se reabra igual. Una partida sin esa parte, o con una versión que el motor no entiende, no tiene semilla y el cliente usa la por defecto.
+
+- [`seed_systems`](seed.rs#L9) — El objeto `systems` de una partida que registra `seed` como semilla del mundo.
+  - Firma: `pub fn seed_systems(seed: u64) -> serde_json::Value {`
+- [`saved_seed`](seed.rs#L17) — La semilla que registra el `systems` de una partida, o `None` si es anterior a ella o trae una parte que no entiende.
+  - Firma: `pub fn saved_seed(systems: &serde_json::Value) -> Option<u64> {`
+- [`fresh_seed`](seed.rs#L27) — Una semilla de mundo a partir de la entropía que da la plataforma (reloj, fuente aleatoria), mezclada para que entradas cercanas den mundos sin relación. Pura.
+  - Firma: `pub fn fresh_seed(entropy: u64) -> u64 {`
+- [`WORLD_PART`](seed.rs#L4) / [`WORLD_PART_VERSION`](seed.rs#L6) — La clave de la parte del mundo en `systems` y la versión que escribe y lee el motor.
+  - Declaración: `pub const WORLD_PART: &str = "world";` / `pub const WORLD_PART_VERSION: u32 = 1;`
+

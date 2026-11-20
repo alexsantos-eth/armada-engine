@@ -15,14 +15,20 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
+- [`snapshot_of`](persistence.rs#L87) — La partida que se escribe para un archivo de chunks en un mundo de `seed`: sus chunks y la semilla en `systems.world`, para que un mundo nacido de `?fresh` se reabra igual.
+  - Firma: `pub fn snapshot_of(archive: &ChunkArchive, seed: u64) -> WorldSave {`
+- [`boot_seed`](persistence.rs#L93) — La semilla con la que arranca el mundo: la de la escena, si no la recién tirada por `?fresh`/`--fresh`, si no la que guardó la partida, si no la por defecto.
+  - Firma: `pub fn boot_seed( scene: Option<u64>, fresh: Option<u64>, saved: Option<u64>, default: u64, ) -> u64 {`
+- [`take_fresh_seed`](persistence.rs#L115) — Una semilla nueva cuando esta ejecución arranca un mundo fresco: en web lee y borra la nota `saves/iso_fresh_seed` que deja `adapter.js`; en nativo, con `--fresh`, borra el archivo de partida y la tira del reloj (la mezcla `iso::world::fresh_seed`).
+  - Firma: `pub fn take_fresh_seed() -> Option<u64> {`
+- [`save_archive`](persistence.rs#L139) — Escribe la partida de un mundo de `seed` en disco o, en WASM, en `localStorage`.
+  - Firma: `pub fn save_archive(archive: &ChunkArchive, seed: u64) {`
 - [`load_save`](persistence.rs) — Intenta cargar un archivo de guardado del disco. Devuelve `None` ante cualquier error o al ejecutarse en WASM. En nativo la ruta la resuelve `crate::app::save_path()`: dentro de un `.app`, `~/Library/Application Support/<GAME_TITLE>/saves/iso_save.json`; fuera, `saves/iso_save.json` junto al CWD.
   - Firma: `pub async fn load_save() -> Option<WorldSave> {`
 
 - [`restore_archive`](persistence.rs#L72) — Restaura un `ChunkArchive` desde un guardado ya parseado, o devuelve un archivo vacío.
   - Firma: `pub fn restore_archive(save: Option<WorldSave>) -> ChunkArchive {`
 
-- [`save_archive`](persistence.rs#L80) — Persiste el archivo en disco o en el almacenamiento del navegador en WASM.
-  - Firma: `pub fn save_archive(archive: &ChunkArchive) {`
 
 - [`sync_manager_to_archive`](persistence.rs#L106) — Sincroniza los chunks descubiertos de un `ChunkManager` a un `ChunkArchive`, reemplazando cualquier
   - Firma: `pub fn sync_manager_to_archive(manager: &ChunkManager, archive: &mut ChunkArchive) {`
@@ -56,7 +62,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Constantes internas
 
-- [`STORAGE_KEY`](persistence.rs) — Clave del almacenamiento local en WASM (solo build WASM); conserva el mismo nombre relativo que el archivo de desarrollo. En nativo no se usa: la ruta la resuelve `crate::app::save_path()` (ver `src/app/bundle.rs`). En WASM, `web/adapter.js` borra esta misma clave al cargar la página cuando la URL lleva `?fresh` (en `/maker` no se toca); ver `lib/README.md`.
+- [`STORAGE_KEY`](persistence.rs) — Clave del almacenamiento local en WASM (solo build WASM); conserva el mismo nombre relativo que el archivo de desarrollo. En nativo no se usa: la ruta la resuelve `crate::app::save_path()` (ver `src/app/bundle.rs`). En WASM, `web/adapter.js` borra esta misma clave al cargar la página cuando la URL lleva `?fresh` y deja una semilla aleatoria en `saves/iso_fresh_seed` (en `/maker` no se toca); ver `lib/README.md`.
   - Declaración: `const STORAGE_KEY: &str = "saves/iso_save.json";`
 
 - [`OUTPUT_CAPACITY`](persistence.rs#L29) — Tope del búfer de lectura del FFI (32 MiB).

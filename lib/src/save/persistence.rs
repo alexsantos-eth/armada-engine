@@ -5,6 +5,12 @@ use iso::world::{ChunkArchive, WorldSave, parse_world_save};
 
 #[cfg(target_arch = "wasm32")]
 const STORAGE_KEY: &str = "saves/iso_save.json";
+/// Where `web/adapter.js` leaves the seed it drew for `?fresh`, read once and cleared at boot.
+#[cfg(target_arch = "wasm32")]
+const FRESH_SEED_KEY: &str = "saves/iso_fresh_seed";
+/// The argument that starts a native run on a fresh world: no save, a new seed.
+#[cfg(any(not(target_arch = "wasm32"), test))]
+const FRESH_FLAG: &str = "--fresh";
 
 #[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "env")]
@@ -76,9 +82,62 @@ pub fn restore_archive(save: Option<WorldSave>) -> ChunkArchive {
     }
 }
 
-/// Persists the archive to disk or to browser storage on WASM.
-pub fn save_archive(archive: &ChunkArchive) {
-    let save = archive.snapshot(serde_json::json!({}), serde_json::json!({}));
+/// The save written for `archive` in a world of `seed`: its chunks and the seed, so the world
+/// reopens as itself even when it was started from a fresh seed.
+pub fn snapshot_of(archive: &ChunkArchive, seed: u64) -> WorldSave {
+    archive.snapshot(serde_json::json!({}), iso::world::seed_systems(seed))
+}
+
+/// The seed a world boots with: a scene's own, else one freshly drawn for `?fresh`, else the
+/// one the save recorded, else the default world's.
+pub fn boot_seed(scene: Option<u64>, fresh: Option<u64>, saved: Option<u64>, default: u64) -> u64 {
+    scene.or(fresh).or(saved).unwrap_or(default)
+}
+
+/// Reads the seed note `web/adapter.js` leaves for `?fresh`: a decimal `u64`, or nothing.
+#[cfg_attr(
+    not(target_arch = "wasm32"),
+    allow(dead_code, reason = "read by the wasm build")
+)]
+pub(crate) fn parse_fresh_seed(note: &str) -> Option<u64> {
+    note.trim().parse().ok()
+}
+
+/// Whether native arguments ask for a fresh world.
+#[cfg(any(not(target_arch = "wasm32"), test))]
+pub(crate) fn asks_for_fresh<'a>(mut arguments: impl Iterator<Item = &'a String>) -> bool {
+    arguments.any(|argument| argument == FRESH_FLAG)
+}
+
+/// A freshly drawn seed when this run starts a fresh world, wiping the save it would otherwise
+/// reopen. On the web the page draws it for `?fresh` and leaves it in storage, read and cleared
+/// here; natively `--fresh` deletes the save file and draws it from the clock.
+pub fn take_fresh_seed() -> Option<u64> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let arguments: Vec<String> = std::env::args().collect();
+        if !asks_for_fresh(arguments.iter()) {
+            return None;
+        }
+        let _ = std::fs::remove_file(crate::app::save_path());
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |elapsed| elapsed.as_nanos() as u64);
+        Some(iso::world::fresh_seed(
+            nanos ^ u64::from(std::process::id()),
+        ))
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        let note = local_storage_get(FRESH_SEED_KEY)?;
+        let _ = local_storage_set(FRESH_SEED_KEY, "");
+        parse_fresh_seed(&note).map(iso::world::fresh_seed)
+    }
+}
+
+/// Persists the archive of a world of `seed` to disk, or to browser storage on WASM.
+pub fn save_archive(archive: &ChunkArchive, seed: u64) {
+    let save = snapshot_of(archive, seed);
     let json = match serde_json::to_string(&save) {
         Ok(j) => j,
         Err(_) => return,

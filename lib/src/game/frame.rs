@@ -161,7 +161,7 @@ impl Game {
                     && (is_key_down(KeyCode::LeftControl) || is_key_down(KeyCode::RightControl))));
         if save_requested {
             sync_manager_to_archive(&mut self.manager, &mut self.archive);
-            save_archive(&self.archive);
+            save_archive(&self.archive, self.world_seed);
             self.unsaved_changes = false;
             self.last_save = get_time();
         }
@@ -297,7 +297,7 @@ impl Game {
         let quitting = is_quit_requested();
         if self.persists && should_save_on_quit(self.unsaved_changes, quitting) {
             sync_manager_to_archive(&mut self.manager, &mut self.archive);
-            save_archive(&self.archive);
+            save_archive(&self.archive, self.world_seed);
             self.unsaved_changes = false;
             self.last_save = get_time();
         }
