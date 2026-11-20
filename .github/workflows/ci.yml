@@ -1,0 +1,124 @@
+# Required checks for every pull request into iso-rust: formatting, clippy, tests and the
+# WebAssembly build. It never runs the game or takes screenshots (that is pr-screenshots.yml),
+# so it stays fast.
+#
+# Branch protection should require only the `CI` job (the last one below): it fails when any
+# other job fails or is cancelled, so the job list can change without touching the rule.
+# How to set it up: lib/docs/CI.md.
+#
+# There is no `paths:` filter on purpose: a required check that never starts leaves the PR
+# blocked on "Expected — Waiting for status to be reported".
+name: CI
+
+on:
+  pull_request:
+    branches: [iso-rust]
+  push:
+    # Also on the base branch, so rust-cache keeps a warm cache that PRs can restore from.
+    branches: [iso-rust]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  # No RUSTFLAGS here: it would replace the wasm32 rustflags in lib/.cargo/config.toml and the
+  # wasm build would stop linking. Warnings are denied through clippy's -D warnings instead.
+
+defaults:
+  run:
+    working-directory: lib
+
+jobs:
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain (from lib/rust-toolchain.toml)
+        run: rustup toolchain install --no-self-update
+      - name: cargo fmt --check
+        run: cargo fmt --all -- --check
+
+  clippy:
+    name: clippy (${{ matrix.name }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: native
+            args: --workspace --all-targets
+          - name: wasm32
+            args: --workspace --target wasm32-unknown-unknown
+    steps:
+      - uses: actions/checkout@v4
+      - name: System libraries (ALSA, for macroquad's audio)
+        if: matrix.name == 'native'
+        run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends libasound2-dev
+      - name: Rust toolchain (from lib/rust-toolchain.toml)
+        run: rustup toolchain install --no-self-update
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: lib
+          key: clippy-${{ matrix.name }}
+      - name: cargo clippy
+        run: cargo clippy ${{ matrix.args }} --locked -- -D warnings
+
+  test:
+    name: tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: System libraries (ALSA, for macroquad's audio)
+        run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends libasound2-dev
+      - name: Rust toolchain (from lib/rust-toolchain.toml)
+        run: rustup toolchain install --no-self-update
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: lib
+      - name: cargo test
+        run: cargo test --workspace --locked
+
+  wasm:
+    name: wasm build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain (from lib/rust-toolchain.toml)
+        run: rustup toolchain install --no-self-update
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: lib
+      # The same command Netlify runs (scripts/build-web.sh), so a PR that would break the
+      # deploy fails here first.
+      - name: cargo build --target wasm32-unknown-unknown
+        run: cargo build --release --locked --target wasm32-unknown-unknown --bin iso-core
+
+  ci:
+    # The one check branch protection requires.
+    name: CI
+    if: always()
+    needs: [fmt, clippy, test, wasm]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Fail if a check did not pass
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
+        working-directory: .
+        run: |
+          echo "::error::A required check did not pass: fmt=${{ needs.fmt.result }} clippy=${{ needs.clippy.result }} test=${{ needs.test.result }} wasm=${{ needs.wasm.result }}"
+          exit 1
+      - name: All green
+        working-directory: .
+        run: echo "fmt, clippy, tests and the wasm build passed."
