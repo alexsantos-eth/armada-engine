@@ -66,14 +66,14 @@ fn the_tops_dress_about_a_third_of_the_grass() {
 }
 
 #[test]
-fn only_the_grass_grows_anything() {
+fn only_the_grass_and_the_bare_ground_grow_anything() {
     let manifest = shipped();
     let (look, _) = TerrainLook::new(SEED, artwork(&manifest), None);
     assert!(columns(60).any(|(x, y)| look.top(TerrainMaterial::Grass, x, y).is_some()));
+    assert!(columns(60).any(|(x, y)| look.top(TerrainMaterial::Ground, x, y).is_some()));
     for material in [
         TerrainMaterial::Water,
         TerrainMaterial::Sand,
-        TerrainMaterial::Ground,
         TerrainMaterial::Path,
     ] {
         assert!(
@@ -81,6 +81,69 @@ fn only_the_grass_grows_anything() {
             "{material:?} grew something"
         );
     }
+}
+
+/// Every look of the bare ground is in the shipped atlas, measured exactly as the plain ground
+/// block (a whole block, so it stands where the plain one does), and together they leave most of
+/// the ground plain.
+#[test]
+fn every_ground_top_is_in_the_atlas_on_the_plain_blocks_template() {
+    let manifest = shipped();
+    let (look, missing) = TerrainLook::new(SEED, artwork(&manifest), None);
+    assert!(missing.is_empty(), "the atlas is missing {missing:?}");
+    let roll = look
+        .ground_tops
+        .as_ref()
+        .expect("the bare ground has looks");
+    assert_eq!(roll.looks.len(), GROUND_TOPS.len());
+    let plain = artwork(&manifest)("/assets/ground/block.png")
+        .expect("the plain ground block")
+        .1;
+    for (_, ink) in &roll.looks {
+        assert_eq!(*ink, plain);
+    }
+    let total: f64 = GROUND_TOPS.iter().map(|(_, chance)| chance).sum();
+    assert!(
+        (0.2..0.4).contains(&total),
+        "{total} of the ground would be dressed"
+    );
+    let dressed = columns(200)
+        .filter(|(x, y)| look.top(TerrainMaterial::Ground, *x, *y).is_some())
+        .count() as f64
+        / 40_000.0;
+    assert!(
+        (dressed - total).abs() < 0.05,
+        "{dressed} dressed, {total} asked for"
+    );
+    for (x0, y0) in [(0, 0), (9, 9), (-30, 130), (100, -60)] {
+        let near = (x0..x0 + 12)
+            .flat_map(|x| (y0..y0 + 12).map(move |y| (x, y)))
+            .filter(|(x, y)| look.top(TerrainMaterial::Ground, *x, *y).is_some())
+            .count() as f64
+            / 144.0;
+        assert!(
+            (near - total).abs() < 0.12,
+            "a small patch of dirt at ({x0}, {y0}) shows {near}, not about {total}"
+        );
+    }
+}
+
+/// A bare-ground cell dressed by hand keeps its plain block: the maker's tops are the grass's.
+#[test]
+fn a_dressed_bare_ground_cell_stays_plain() {
+    let manifest = shipped();
+    let (mut look, _) = TerrainLook::new(SEED, artwork(&manifest), None);
+    let grown = columns(64)
+        .find(|(x, y)| look.top(TerrainMaterial::Ground, *x, *y).is_some())
+        .expect("the noise dresses some ground");
+    look.dressing_mut().set_top(
+        iso::grid::WorldCoord {
+            x: grown.0,
+            y: grown.1,
+        },
+        Some(Some(0)),
+    );
+    assert_eq!(look.top(TerrainMaterial::Ground, grown.0, grown.1), None);
 }
 
 /// A missing top is left out and the rest take its share, rather than the ground showing a hole
@@ -116,8 +179,10 @@ fn a_top_the_atlas_lacks_is_left_out_and_the_others_still_grow() {
 fn no_artwork_at_all_leaves_the_grass_plain() {
     let (look, missing) = TerrainLook::new(SEED, |_| None, None);
     let plains: usize = PLAIN_LOOKS.iter().map(|(_, looks)| looks.len()).sum();
-    assert_eq!(missing.len(), GRASS_TOPS.len() + plains);
+    assert_eq!(missing.len(), GRASS_TOPS.len() + GROUND_TOPS.len() + plains);
     assert!(look.grass_tops.is_none());
+    assert!(look.ground_tops.is_none());
+    assert!(columns(40).all(|(x, y)| look.top(TerrainMaterial::Ground, x, y).is_none()));
     assert!(columns(40).all(|(x, y)| look.top(TerrainMaterial::Grass, x, y).is_none()));
     assert_ne!(look.tint(TerrainMaterial::Grass, 0, 0), WHITE);
 }

@@ -3,6 +3,7 @@
 # voxel kit, laid over the grass block that already exists. The block itself is never drawn.
 #
 #   python3 grass_clay.py [block.png] [out_dir] [only …]   (run from artifacts/vox/clay/)
+#   python3 grass_clay.py --ground [only …]                 the bare ground's: block_dry.png
 #
 #   → block_flowers.png, block_flowers_2.png, block_leaves.png,
 #     block_mushrooms.png, block_pebbles.png,
@@ -31,15 +32,21 @@ from PIL import Image
 from vox_prefabs import moved, piece, tile_volume, write
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ASSETS = os.path.join(HERE, "..", "..", "..", "lib", "assets", "grass")
-BASE = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ASSETS, "block.png")
-OUT_DIR = sys.argv[2] if len(sys.argv) > 2 else ASSETS
-ONLY = sys.argv[3:]  # rebuild only these variants, e.g. block_pebbles
+GROUND = len(sys.argv) > 1 and sys.argv[1] == "--ground"
+ASSETS = os.path.join(HERE, "..", "..", "..", "lib", "assets", "ground" if GROUND else "grass")
+if GROUND:
+    BASE, OUT_DIR, ONLY = os.path.join(ASSETS, "block.png"), ASSETS, sys.argv[2:]
+else:
+    BASE = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ASSETS, "block.png")
+    OUT_DIR = sys.argv[2] if len(sys.argv) > 2 else ASSETS
+    ONLY = sys.argv[3:]  # rebuild only these variants, e.g. block_pebbles
 RENDER = os.path.join(HERE, "vox_render.py")
 # The block's top face is one block (341 template px) above the decoration's foot plane, less
 # the few voxels the clay lawn sits under the top of the block (terrain_clay.py), so the
 # decorations stand on the lawn and not on the tips of its tufts.
 TOP_SHIFT = 341 - (85 - 79) * 4
+# The bare ground's top is flat at 81 (terrain_clay.py), its clods reach 85.
+GROUND_SHIFT = 341 - (85 - 81) * 4
 
 # (x, y) spots on the top, in voxels, kept within the flat top and the silhouette
 A, B, C, D, E, F = (-30, -28), (22, -35), (-38, 17), (10, 5), (35, 27), (-10, 38)
@@ -83,6 +90,21 @@ VARIANTS = {
 }
 
 
+def dry_tufts():
+    """block_dry (on the bare ground): tufts of dead grass, straw sprouts round a darker one, and
+    two pebbles."""
+    out = []
+    for n, (x, y) in enumerate(((-30, -22), (18, -34), (-34, 20), (6, 2), (34, 22), (-6, 38))):
+        out += put("sprout", x, y, 0, "straw" if n % 3 == 0 else "dry")
+        out += put("sprout", x + 7, y - 6, 0, "dry")
+    return out + put("pebble_m", -12, -36, 0) + put("pebble_s", 30, -6, 0)
+
+
+GROUND_VARIANTS = {
+    "block_dry.png": dry_tufts(),
+}
+
+
 def blender():
     path = shutil.which("blender")
     if path:
@@ -101,15 +123,16 @@ def render(model, sprite):
 def main():
     base = Image.open(BASE).convert("RGBA")
     full_h = 853  # the 1x1x1 template's height in units; the render comes out 1024 x 853
-    shift = round(TOP_SHIFT * base.height / full_h)
+    shift = round((GROUND_SHIFT if GROUND else TOP_SHIFT) * base.height / full_h)
     models = os.path.join(HERE, "..", "models")
     os.makedirs(models, exist_ok=True)
     os.makedirs(OUT_DIR, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
-        for name, boxes in VARIANTS.items():
+        for name, boxes in (GROUND_VARIANTS if GROUND else VARIANTS).items():
             if ONLY and name not in ONLY and name not in (n + ".png" for n in ONLY):
                 continue
-            model = os.path.join(models, os.path.splitext(name)[0] + ".vox")
+            stem = os.path.splitext(name)[0]
+            model = os.path.join(models, ("ground_" if GROUND else "") + stem + ".vox")
             render_png = os.path.join(tmp, name)
             write(model, boxes, bounds=tile_volume((1, 1, 1)))
             render(model, render_png)

@@ -99,7 +99,16 @@
     "fly_swarm_sand": 0.8,
     "geyser": 0.5,
     "leaf_emitter": 1.5,
-    "ritual_candles": 0.6
+    "ritual_candles": 0.6,
+    "dead_tree": 2.0,
+    "snag": 2.0,
+    "dead_bush": 3.0,
+    "dry_grass": 4.0,
+    "dry_grass_2": 3.0,
+    "rubble": 3.0,
+    "burrow": 1.5,
+    "battle_spears": 1.0,
+    "skull_pole": 0.8
   },
   "families": {
     "mead_hall": [
@@ -179,12 +188,16 @@
       "abandoned_cart_y"
     ],
     "thistle": [
-      "dry_thistle"
+      "dry_thistle",
+      "dry_grass",
+      "dry_grass_2"
     ],
     "remains": [
       "bone_pile",
       "rusty_chain",
-      "skull_helmet"
+      "skull_helmet",
+      "battle_spears",
+      "skull_pole"
     ],
     "outcrop": [
       "ore_vein",
@@ -209,6 +222,15 @@
       "fly_swarm",
       "fly_swarm_bones",
       "fly_swarm_sand"
+    ],
+    "deadwood": [
+      "dead_tree",
+      "snag",
+      "dead_bush"
+    ],
+    "debris": [
+      "rubble",
+      "burrow"
     ]
   },
   "maxPerChunk": {
@@ -229,12 +251,13 @@
     "buried_chest": 1,
     "ruins": 3,
     "barrow_entrance": 1,
-    "diggings": 2,
-    "outcrop": 4,
+    "diggings": 3,
+    "outcrop": 6,
     "geyser": 1,
     "lights": 3,
     "flies": 2,
     "ritual_candles": 1,
-    "leaf_emitter": 4
+    "leaf_emitter": 4,
+    "deadwood": 8
   }
 }

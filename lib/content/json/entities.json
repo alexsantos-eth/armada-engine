@@ -2477,6 +2477,179 @@
       }
     },
     {
+      "id": "dead_tree",
+      "asset": {
+        "sprite": "/assets/barren/block_dead_tree.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "snag",
+      "asset": {
+        "sprite": "/assets/barren/block_snag.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.3
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "dead_bush",
+      "asset": {
+        "sprite": "/assets/barren/block_dead_bush.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "dry_grass",
+      "asset": {
+        "drawUnderPlayer": true,
+        "sprite": "/assets/barren/block_dry_grass.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "dry_grass_2",
+      "asset": {
+        "drawUnderPlayer": true,
+        "sprite": "/assets/barren/block_dry_grass_2.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "rubble",
+      "asset": {
+        "sprite": "/assets/barren/block_rubble.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.35
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "battle_spears",
+      "asset": {
+        "sprite": "/assets/barren/block_battle_spears.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.3
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "burrow",
+      "asset": {
+        "sprite": "/assets/barren/block_burrow.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "skull_pole",
+      "asset": {
+        "sprite": "/assets/barren/block_skull_pole.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.2
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
       "id": "torch_post",
       "asset": {
         "sprite": "/assets/animated/block_torch_post.png",

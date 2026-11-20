@@ -15,7 +15,7 @@ import shutil
 import subprocess
 import sys
 
-from vox_prefabs import MODULE, moved, piece, spun, tile_volume, turned, write
+from vox_prefabs import DEADWOOD, MODULE, box, moved, piece, spun, tile_volume, turned, write
 
 M = MODULE
 RING = [(-1, -1), (0, -1), (1, -1), (-1, 0), (0, 0), (1, 0), (-1, 1), (0, 1)]   # 3x3 without the front cell
@@ -646,6 +646,71 @@ def dry_thistle():
     return out + put("grass_tuft", 30, 34, 0, "dry") + put("rock_s", -34, -34, 0) + put("pebble_m", 6, 40, 0)
 
 
+def limb(x, y, z, dx, dy, steps, rise=6, thick=7, color=DEADWOOD):
+    """A bare limb leaning out of a trunk: short rounded lengths, each a step further out along
+    (dx, dy) and `rise` higher, thinning toward the tip. No piece of the kit leans, so a slanted
+    limb is drawn as a stair of small ones, which the clay finish rounds into one bough."""
+    out = []
+    for half in range(2 * steps - 1):                    # half steps, so the lengths overlap
+        k = half / 2
+        w = max(4, round(thick - k * (thick - 4) / max(1, steps - 1)))
+        out.append(box(x + dx * k, y + dy * k, z + rise * k, w, w, rise + 3, color, w * 0.45))
+    return out
+
+
+def dead_tree():
+    """dead_tree: a tree long dead on the bare ground: a weathered trunk flaring at its foot and
+    kinking as it thins, bare limbs leaning out and up on every side, one fork at its crown, and
+    a dead limb fallen at its foot."""
+    out = put("trunk_root", 0, 0, 0, "dead") + put("trunk_thick", 0, 0, 0, "dead")
+    out += put("trunk", -1, -1, M, "dead") + put("trunk_thin", -3, -2, 2 * M, "dead")
+    out += put("trunk_thin", -6, -3, 3 * M, "dead") + put("trunk_thin", -8, -5, 4 * M, "dead")
+    out += limb(4, 2, 44, 5, 1, 7)                       # low and long, toward the lit side
+    out += limb(-4, -5, 66, -1, -5, 7)                   # toward −y
+    out += limb(-2, 2, 86, 3, 4, 7, thick=6)             # toward the viewer
+    out += limb(-10, -6, 100, -5, 1, 5, thick=6)         # toward −x
+    out += limb(-8, -5, 132, 4, -2, 5, thick=5) + limb(-8, -5, 132, -3, 3, 5, thick=5)   # the fork
+    out += limb(28, 9, 78, 2, -3, 4, thick=5)            # a twig off the low limb
+    out += put("branch_long", 30, 40, 0, "dead") + put("branch", -30, 22, 0, "dead", turn=True)
+    return out + put("grass_tuft", -40, 34, 0, "dry") + put("rock_s", -36, -40, 0) + put("pebble_m", 44, -30, 0)
+
+
+def snag():
+    """snag: the broken stump of a dead tree, snapped into a ragged crown of splinters, one bough
+    still leaning off it and a length of the fallen trunk at its foot."""
+    out = put("trunk_thick", 0, 0, 0, "dead") + [box(-2, -2, M, 18, 18, 14, DEADWOOD, 6)]
+    for x, y, h, w in ((-7, -7, 30, 6), (2, -8, 22, 5), (-8, 2, 18, 5), (4, 4, 12, 6), (6, -3, 16, 4)):
+        out.append(box(x, y, M + 10, w, w, h, DEADWOOD, w * 0.45))           # the splinters
+    out += limb(8, 4, 30, 5, 2, 6, thick=7)
+    out += put("branch_long", 24, 40, 0, "dead") + put("branch", -36, 24, 0, "dead", turn=True)
+    return out + put("grass_tuft", 34, -34, 0, "dry") + put("pebble_l", -36, -32, 0) + put("pebble_s", 44, 10, 0)
+
+
+def dead_bush():
+    """dead_bush: a tangle of bare grey twigs fanning out of one root, leaning every way and
+    crossing, dry grass at its foot."""
+    out = [box(-4, -4, 0, 12, 12, 8, DEADWOOD, 5)]
+    for dx, dy, steps, z in ((4, 1, 6, 4), (-1, 4, 6, 6), (-4, -1, 5, 4), (1, -4, 5, 8),
+                             (3, 3, 6, 10), (-3, 3, 5, 12), (3, -3, 5, 14), (0, 0, 7, 6)):
+        out += limb(-4 + dx, -4 + dy, z, dx, dy, steps, rise=7, thick=6)
+    return out + put("grass_tuft", 30, 30, 0, "dry") + put("pebble_m", -34, 34, 0) + put("thistle_short", 36, -30, 0)
+
+
+def dry_grass():
+    """dry_grass: tufts of dead, straw-coloured grass on the bare ground, a short thistle among
+    them."""
+    spots = [(-24, -16, "dry"), (20, -24, "dry"), (2, 22, "dry"), (-30, 30, "dry")]
+    out = [b for x, y, v in spots for b in put("grass_tuft", x, y, 0, v)]
+    return out + put("thistle_short", 28, 18, 0) + put("pebble_s", -6, -2, 0)
+
+
+def dry_grass_2():
+    """dry_grass_2: a wider patch of dry grass, one tuft still a little green, and two stones."""
+    spots = [(-28, -24, "dry"), (6, -30, "dry"), (30, 4, "dry"), (-8, 12, "light"), (16, 34, "dry")]
+    out = [b for x, y, v in spots for b in put("grass_tuft", x, y, 0, v)]
+    return out + put("rock_s", -32, 30, 0) + put("pebble_m", 40, -36, 0)
+
+
 # name → (builder, tiles, the asset its render replaces, under lib/assets)
 MODELS = {
     "tree": (fruit_tree, (1, 1, 2), "tree/block.png"),
@@ -712,6 +777,11 @@ MODELS = {
     "peat_puddle": (peat_puddle, (1, 1, 1), "field/block_peat_puddle.png"),
     "bone_pile": (bone_pile, (1, 1, 1), "barren/block_bone_pile.png"),
     "dry_thistle": (dry_thistle, (1, 1, 1), "barren/block_dry_thistle.png"),
+    "dead_tree": (dead_tree, (1, 1, 2), "barren/block_dead_tree.png"),
+    "snag": (snag, (1, 1, 1), "barren/block_snag.png"),
+    "dead_bush": (dead_bush, (1, 1, 1), "barren/block_dead_bush.png"),
+    "dry_grass": (dry_grass, (1, 1, 1), "barren/block_dry_grass.png"),
+    "dry_grass_2": (dry_grass_2, (1, 1, 1), "barren/block_dry_grass_2.png"),
 }
 
 

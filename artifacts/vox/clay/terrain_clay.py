@@ -6,6 +6,7 @@
 #
 #   → lib/assets/grass/block.png, block_2..4.png    (and ../models/terrain_*.vox)
 #     lib/assets/ground/block.png, block_2..3.png
+#     lib/assets/ground/block_dark.png, _cracked, _stones, _damp   (the ground's own looks)
 #     lib/assets/sand/block.png, block_2..3.png
 #     lib/assets/path/block_0..15.png               (one per connection mask)
 #
@@ -49,8 +50,9 @@ from PIL import Image, ImageDraw
 
 import vox_lib
 from grass_clay import blender
-from vox_prefabs import (EARTH, EARTH_DARK, GRASS_DEEP, GRASS_TOP, PALETTE, ROCK, ROCK_DARK, SAND_BODY,
-                         SAND_TOP, SCALE, SOIL, SOIL_DARK, STONE_SAND, WHITE, box, tile_volume, write)
+from vox_prefabs import (BOG, CRACK, EARTH, EARTH_DARK, GRASS_DEEP, GRASS_TOP, GRAVEL, PALETTE, REED, ROCK,
+                         ROCK_DARK, SAND_BODY, SAND_TOP, SCALE, SOIL, SOIL_DARK, SOIL_DEEP, SOIL_WET,
+                         STONE_SAND, THATCH, WHITE, box, tile_volume, write)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.join(HERE, "..", "..", "..", "lib", "assets")
@@ -215,10 +217,10 @@ class Ground:
         return out
 
     @staticmethod
-    def inside(seed):
+    def inside(seed, clods=(4, 5)):
         rnd = random.Random(seed)
         out = []
-        for cx, cy in scatter(rnd, rnd.choice((4, 5)), 20, 28):
+        for cx, cy in scatter(rnd, rnd.choice(clods), 20, 28):
             out += Ground.clods(rnd, cx, cy)
         for cx, cy in scatter(rnd, rnd.choice((3, 4)), 12, 14):
             out.append(lump(cx, cy, rnd.choice((83, 84)), rnd.choice((6, 8, 9)), rnd.choice((ROCK, ROCK_DARK))))
@@ -228,6 +230,159 @@ class Ground:
                 out.append(on_face(face, rnd.uniform(-HALF + 16, HALF - 16), 14, rnd.uniform(10, GROUND - 26),
                                    rnd.choice((14, 18, 22)), rnd.choice((12, 14)), SOIL_DARK, 6))
         return out
+
+
+GROUND_SEEDS = (13, 29, 41)       # the inside of each plain ground look
+
+
+# The ground's tops: whole ground blocks with the same edges as the plain looks, so they join
+# any of them, and one thing of their own inside the cell that the terrain scatters in patches
+# (src/terrain/terrain_view_appearance.rs, GROUND_TOPS). Everything of their own stays clear of
+# the edges, so the neighbours never see it.
+
+def wet_blob(rnd, cx, cy, radius):
+    """The cells of a soft blob round (cx, cy), its rim wandering a little."""
+    phase = rnd.uniform(0, 6.3)
+    out = set()
+    for i in range(int(cx - radius - 4), int(cx + radius + 5)):
+        for j in range(int(cy - radius - 4), int(cy + radius + 5)):
+            angle = math.atan2(j - cy, i - cx)
+            reach = radius * (1 + 0.18 * math.sin(3 * angle + phase) + 0.1 * math.cos(5 * angle - phase))
+            if math.hypot(i + .5 - cx, j + .5 - cy) < reach:
+                out.add((i, j))
+    return out
+
+
+def crack_cells(rnd, count, keep=18):
+    """Jagged cracks across the top: a few walks from inside the cell, each forking once, two or
+    three voxels wide and well clear of the edges."""
+    cells = set()
+    lim = HALF - keep
+
+    def walk(x, y, heading, steps):
+        for _ in range(steps):
+            heading += rnd.uniform(-0.5, 0.5)
+            x, y = x + 2 * math.cos(heading), y + 2 * math.sin(heading)
+            if abs(x) > lim or abs(y) > lim:
+                return
+            width = 2 if rnd.random() < 0.6 else 3
+            for i in range(round(x) - width, round(x) + width):
+                for j in range(round(y) - width, round(y) + width):
+                    cells.add((i, j))
+            if rnd.random() < 0.04:
+                walk(x, y, heading + rnd.choice((-1, 1)) * rnd.uniform(0.8, 1.3), steps // 2)
+
+    for _ in range(count):
+        x, y = rnd.uniform(-20, 20), rnd.uniform(-20, 20)
+        heading = rnd.uniform(0, 6.3)
+        x, y = rnd.uniform(-30, 30), rnd.uniform(-30, 30)
+        walk(x, y, heading, rnd.randint(13, 19))
+        walk(x, y, heading + math.pi, rnd.randint(8, 13))
+    return cells
+
+
+def carve(cut, depth, bottom, fill=None):
+    """A finish that sinks `cut` (a set of (i, j)) `depth` voxels into the ground: the voxels over
+    it go, the one under turns `bottom`, and with `fill` the sunk floor is water up to two voxels
+    under the ground's top."""
+    def finish(cells):
+        out = {}
+        for (i, j, k), color in cells.items():
+            if (i, j) in cut:
+                if k >= GROUND - depth:
+                    if fill and k == GROUND - depth:
+                        color = fill
+                    elif fill and GROUND - depth < k < GROUND - 2:
+                        color = fill
+                    else:
+                        continue
+                elif k == GROUND - depth - 1:
+                    color = bottom
+            out[(i, j, k)] = color
+        return out
+    return finish
+
+
+def stain(patch, color, sink=1):
+    """A finish that darkens `patch` (a set of (i, j)) on the bare top: the top `sink` voxels go,
+    so the patch lies a little lower, and the one under turns `color`. Clods and stones standing
+    on it keep their own colour."""
+    def finish(cells):
+        out = {}
+        for (i, j, k), c in cells.items():
+            if (i, j) in patch and c == SOIL:
+                if GROUND - sink <= k < GROUND:
+                    continue
+                if k == GROUND - sink - 1:
+                    c = color
+            out[(i, j, k)] = c
+        return out
+    return finish
+
+
+def both(*finishes):
+    def finish(cells):
+        for f in finishes:
+            cells = f(cells)
+        return cells
+    return finish
+
+
+def patches(rnd, count, radius, keep=12):
+    """The cells of `count` soft blobs inside the cell, kept `keep` clear of its edges."""
+    cells = set()
+    for cx, cy in scatter(rnd, count, keep + radius[1], radius[1]):
+        cells |= wet_blob(rnd, cx, cy, rnd.uniform(*radius))
+    lim = HALF - keep
+    return {(i, j) for i, j in cells if -lim <= i < lim and -lim <= j < lim}
+
+
+def ground_dark(seed):
+    """block_dark: broad, soft patches of deeper earth across the top, as if the soil turned."""
+    rnd = random.Random(seed)
+    out = Ground.inside(seed, clods=(2, 3))
+    return out, stain(patches(rnd, 3, (14, 20)), SOIL_DEEP)
+
+
+def ground_cracked(seed):
+    """block_cracked: dried-out earth split by a few jagged cracks, dark at the bottom."""
+    rnd = random.Random(seed)
+    out = Ground.inside(seed, clods=(1, 2))
+    return out, carve(crack_cells(rnd, 3), 6, CRACK)
+
+
+def ground_stones(seed):
+    """block_stones: flat stones half sunk in the earth and grit between them."""
+    rnd = random.Random(seed)
+    out = Ground.inside(seed, clods=(1, 2))
+    for cx, cy in scatter(rnd, rnd.choice((5, 6)), 18, 22):
+        sx, sy = rnd.choice((14, 18, 22, 26)), rnd.choice((12, 16, 20))
+        color = rnd.choice((ROCK, ROCK, ROCK_DARK, STONE_SAND))
+        out.append(dict(box(cx, cy, GROUND - 5, sx, sy, 8, color, min(sx, sy) * 0.3), surface=True))
+    for cx, cy in scatter(rnd, 8, 14, 10):
+        out.append(lump(cx, cy, GROUND + 1, rnd.choice((4, 5)), GRAVEL, depth=4))
+    return out, None
+
+
+def ground_damp(seed):
+    """block_damp: a dark, damp hollow with a little water standing in it, and the earth round it
+    darker where it soaked."""
+    rnd = random.Random(seed)
+    out = Ground.inside(seed, clods=(1, 2))
+    cx, cy = rnd.uniform(-12, 8), rnd.uniform(-12, 8)
+    out = [b for b in out if not (b.get("surface") and math.hypot(b["c"][0] / SCALE - cx, b["c"][1] / SCALE - cy) < 34)]
+    soaked = wet_blob(rnd, cx, cy, 30) | wet_blob(rnd, cx + 10, cy - 8, 22)
+    pool = wet_blob(rnd, cx, cy, 14)
+    out.append(lump(cx + 19, cy - 15, 85, 9, REED, depth=10))      # a reed tussock at its rim
+    lim = HALF - 10
+    soaked = {(i, j) for i, j in soaked if -lim <= i < lim and -lim <= j < lim}
+    return out, both(stain(soaked, SOIL_WET), carve(pool, 4, SOIL_WET, fill=BOG))
+
+
+GROUND_TOPS = (("block_dark", ground_dark, 61), ("block_cracked", ground_cracked, 67),
+               ("block_stones", ground_stones, 71), ("block_damp", ground_damp, 73))
+# (block_dry, the dry tufts, stands taller than a terrain block may: grass_clay.py --ground lays
+# it over the plain block like the grass's flowers.)
 
 
 class Sand:
@@ -407,11 +562,15 @@ def render(vox, sprite, style, margin=0, around=False):
 
 def jobs():
     """(material, file name, model stem, features, finish) for every sprite."""
-    for kind, seeds in ((Grass, GRASS_SEEDS), (Ground, (13, 29, 41)), (Sand, (17, 31, 43))):
+    for kind, seeds in ((Grass, GRASS_SEEDS), (Ground, GROUND_SEEDS), (Sand, (17, 31, 43))):
         edges = wrapped(kind.edges())
         for n, seed in enumerate(seeds):
             name = "block.png" if n == 0 else f"block_{n + 1}.png"
             yield kind, name, f"terrain_{kind.folder}_{n + 1}", edges + kind.inside(seed), None
+    ground_edges = wrapped(Ground.edges())
+    for name, build, seed in GROUND_TOPS:
+        features, finish = build(seed)
+        yield Ground, name + ".png", f"terrain_ground_{name[6:]}", ground_edges + features, finish
     grass_edges = wrapped(Grass.edges())
     for mask in range(16):
         path = Path(mask)

@@ -19,7 +19,7 @@
 import sys
 
 from vox_models import M, put, run
-from vox_prefabs import moved, piece, spun, turned
+from vox_prefabs import SOOT, disc, moved, piece, spun, turned
 
 
 def cells(n):
@@ -606,6 +606,48 @@ def skull_helmet():
     return out + put("pebble_m", 36, -8, 0) + put("pebble_s", -10, 40, 0)
 
 
+def rubble():
+    """rubble: the tumbled stones of something long fallen: a block and its half, a lintel lying
+    across the dirt, small stones spilled round them."""
+    out = put("stone_half", -16, -14, 0, "grey") + put("stone_small", -14, -12, 12, "dark")
+    out += put("stone_block", 14, -22, 0, "dark") + put("stone_lying", 4, 18, 0, "grey")
+    out += put("flat_stone_small", -30, 22, 0, "sand") + put("stone_small", 30, 4, 0, "grey")
+    out += put("moss_patch", 12, -24, 26) + put("pebble_l", 36, 34, 0) + put("pebble_m", -38, -36, 0)
+    return out + put("pebble_s", -4, 40, 0) + put("rock_s", 40, -36, 0)
+
+
+def battle_spears():
+    """battle_spears: where a fight was lost: three spears still stuck in the dirt, a white shield
+    face up, a rusted helmet and an old bone."""
+    out = put("spear", -22, -18, 0) + put("spear", -4, -28, 0) + put("spear", -28, 4, 0)
+    out += put("shield_flat", 16, 8, 0, "white") + put("helmet", 22, 34, 5, "rusted")
+    out += put("bone", -24, 34, 0) + put("sword", 22, -30, 0)
+    return out + put("pebble_m", 42, -8, 0) + put("pebble_s", -40, -36, 0)
+
+
+def burrow():
+    """burrow: a heap of dug earth over the dark mouth of an animal's den, loose clods spilled in
+    front of it."""
+    out = []
+    for x, y, z, v in ((-22, -20, 0, "dark"), (-22, -4, 0, "earth"), (-22, 12, 0, "dark"), (-8, -24, 0, "earth"),
+                       (8, -22, 0, "dark"), (-8, 16, 0, "earth"), (8, 16, 0, "dark"),
+                       (-16, -12, 6, "earth"), (-16, 6, 6, "dark"), (0, -16, 6, "dark"), (0, 10, 6, "earth"),
+                       (-10, -4, 12, "earth"), (2, -4, 12, "dark")):
+        out += put("clod", x, y, z, v)
+    out += moved(disc(16, 3, SOOT, "yz"), 12, -4, 0)
+    out += put("clod", 28, -10, 0, "earth") + put("clod", 30, 8, 0, "dark") + put("clod", 40, -2, 0, "earth")
+    return out + put("grass_tuft", -38, 34, 0, "dry") + put("pebble_m", 36, 36, 0)
+
+
+def skull_pole():
+    """skull_pole: a timber stake with a horned ox skull set on its head, a warning at the edge
+    of the waste, wedged at its foot with stones, a bone dropped beside it."""
+    out = stack("trunk_thin", -6, -6, 0, 3, "timber", M) + put("skull_horned", -4, -6, 3 * M)
+    out += put("stone_small", 8, -8, 0, "grey") + put("stone_small", -18, 6, 0, "dark")
+    out += put("bone", 22, 22, 0) + put("pebble_m", -32, -30, 0)
+    return out + put("grass_tuft", 30, -32, 0, "dry") + put("rock_s", -34, 34, 0)
+
+
 # ------------------------------------------------------------- animated entities (lib/assets/animated)
 # The game animates these: flames, the lantern, flies, steam and leaves are drawn by
 # src/effects/emitters.rs, so the models keep only what stands still. The anchors the game
@@ -748,6 +790,10 @@ MODELS = {
     "excavation_pit": (excavation_pit, (1, 1, 1), "barren/block_excavation_pit.png"),
     "rusty_chain": (rusty_chain, (1, 1, 1), "barren/block_rusty_chain.png"),
     "skull_helmet": (skull_helmet, (1, 1, 1), "barren/block_skull_helmet.png"),
+    "rubble": (rubble, (1, 1, 1), "barren/block_rubble.png"),
+    "battle_spears": (battle_spears, (1, 1, 1), "barren/block_battle_spears.png"),
+    "burrow": (burrow, (1, 1, 1), "barren/block_burrow.png"),
+    "skull_pole": (skull_pole, (1, 1, 2), "barren/block_skull_pole.png"),
     "torch_post": (torch_post, (1, 1, 1), "animated/block_torch_post.png"),
     "brazier": (brazier, (1, 1, 1), "animated/block_brazier.png"),
     "hanging_lantern": (hanging_lantern, (1, 1, 1), "animated/block_hanging_lantern.png"),

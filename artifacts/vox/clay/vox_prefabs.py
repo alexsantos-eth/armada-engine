@@ -51,6 +51,10 @@ BONE, ASH, SOOT, RUSTED = "#e6dab8", "#9b968e", "#3b3632", "#9c5a36"
 THISTLE, THISTLE_HEAD, AMBER, STEEL = "#8c6b45", "#9a7096", "#eda23a", "#b9bec6"
 # the animated entities: candle wax, the pale sinter of a geyser's cone and its hot pool
 WAX, SINTER, HOT_WATER = "#f3e6c2", "#d9d0b6", "#5fb8c8"
+# the ground's own looks (terrain_clay.py): deep, damp earth and the dark at the bottom of a crack
+SOIL_DEEP, SOIL_WET, CRACK = "#8f8a3e", "#7a7536", "#55512a"
+# the dead wood of the bare ground: a trunk long dead, weathered grey
+DEADWOOD = "#8e8576"
 # New colours go at the end: the indices of the files already written must not move.
 PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK, CUT, MOSS,
            RED, WHITE, YELLOW, PINK, CAP, STEM, DOT, OCHRE, RUST, ROCK, ROCK_DARK,
@@ -62,7 +66,8 @@ PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK,
            SOIL_DARK, SAND_TOP, SAND_BODY, EARTH, EARTH_DARK,
            PEAT, BOG, REED, CATTAIL, WELL_WATER,
            BONE, ASH, SOOT, RUSTED, THISTLE, THISTLE_HEAD, AMBER, STEEL,
-           WAX, SINTER, HOT_WATER]
+           WAX, SINTER, HOT_WATER,
+           SOIL_DEEP, SOIL_WET, CRACK, DEADWOOD]
 
 
 def box(x, y, z0, sx, sy, sz, color, r):
@@ -495,7 +500,7 @@ def fish_flat(color):
 
 
 LEAVES = dict(green=LEAF, dark=LEAF_DARK, autumn=LEAF_AUTUMN, blossom=PINK)
-BARKS = dict(brown=WOOD, birch=BIRCH, timber=TIMBER)
+BARKS = dict(brown=WOOD, birch=BIRCH, timber=TIMBER, dead=DEADWOOD)
 STONES = dict(grey=ROCK, dark=ROCK_DARK, sand=STONE_SAND, clay=STONE_CLAY)
 WALLS = dict(plank=PLANK, timber=TIMBER, plaster=PLASTER)
 ROOFS = dict(thatch=THATCH, turf=TURF, tile=TILE, shingle=SHINGLE, dark=SHINGLE_DARK, red=RED, white=WHITE)
@@ -530,7 +535,7 @@ PIECES = {
     "mushroom": (lambda c: [box(0, 0, 0, 4, 4, 8, STEM, 1.5), box(0, 0, 5, 10, 9, 5, c, 2.4),
                             box(-2, 1, 9, 2, 2, 2, DOT, 0.9)], {"": CAP}),
     "sprout": (lambda c: [box(0, 0, 0, 8, 8, 13, c, 3.5), box(7, 2, 0, 6, 6, 9, c, 3),
-                          box(1, 7, 0, 6, 6, 7, c, 3)], {"": ROSETTE}),
+                          box(1, 7, 0, 6, 6, 7, c, 3)], {"": ROSETTE, "dry": THATCH, "straw": REED}),
     "fallen_leaf": (lambda c: [box(0, 0, 0, 15, 11, 2, c, 1)], dict(ochre=OCHRE, rust=RUST)),
     "pebble_s": (lambda c: [box(0, 0, 0, 6, 5, 3, c, 1.2)], {"": ROCK}),
     "pebble_m": (lambda c: [box(0, 0, 0, 9, 8, 4, c, 1.6)], {"": ROCK_DARK}),
