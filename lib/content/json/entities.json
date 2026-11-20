@@ -2118,6 +2118,242 @@
           "grass"
         ]
       }
+    },
+    {
+      "id": "ore_vein",
+      "asset": {
+        "sprite": "/assets/barren/block_ore_vein.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "ore_vein_amber",
+      "asset": {
+        "sprite": "/assets/barren/block_ore_vein_amber.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "bone_pile",
+      "asset": {
+        "drawUnderPlayer": true,
+        "sprite": "/assets/barren/block_bone_pile.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "cairn",
+      "asset": {
+        "sprite": "/assets/barren/block_cairn.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.3
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "menhir",
+      "asset": {
+        "sprite": "/assets/barren/block_menhir.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.3
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "barrow_entrance_x",
+      "asset": {
+        "sprite": "/assets/barren/block_barrow_entrance_1x2.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 2,
+        "axis": "x",
+        "collision": [
+          1.0,
+          1.0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground",
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "barrow_entrance_y",
+      "asset": {
+        "sprite": "/assets/barren/block_barrow_entrance_2x1.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 2,
+        "axis": "y",
+        "collision": [
+          1.0,
+          1.0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground",
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "ruined_forge",
+      "asset": {
+        "sprite": "/assets/barren/block_ruined_forge.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "excavation_pit",
+      "asset": {
+        "sprite": "/assets/barren/block_excavation_pit.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.2
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "dry_thistle",
+      "asset": {
+        "drawUnderPlayer": true,
+        "sprite": "/assets/barren/block_dry_thistle.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "rusty_chain",
+      "asset": {
+        "drawUnderPlayer": true,
+        "sprite": "/assets/barren/block_rusty_chain.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "skull_helmet",
+      "asset": {
+        "drawUnderPlayer": true,
+        "sprite": "/assets/barren/block_skull_helmet.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
     }
   ]
 }

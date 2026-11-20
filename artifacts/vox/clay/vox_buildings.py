@@ -453,6 +453,107 @@ def totem_stub():
     return out + put("grass_tuft", 22, -24, 0, "dry") + put("grass_tuft", -28, -30, 0, "green")
 
 
+# ---------------------------------------------------------- stones and relics of the bare ground
+
+def ore_vein(variant):
+    """ore_vein: a knot of bedrock breaking through the bare ground, streaks of ore (iron or amber)
+    in its lit faces and a few loose nuggets broken off at its foot."""
+    out = put("stone_block", -14, -14, 0, "grey") + put("stone_block", 14, -14, 0, "dark")
+    out += put("stone_block", -14, 14, 0, "dark") + put("stone_half", 14, 14, 0, "grey")
+    out += put("stone_block", -12, -12, M, "grey") + put("stone_small", 12, -14, M, "dark")
+    out += face_x("vein", 27, -14, 5, variant) + face_x("vein", 3, -12, M + 5, variant)
+    out += face_y("vein", -14, 27, 4, variant) + put("ore", 14, 14, 12, variant)
+    out += put("ore", 38, 30, 0, variant) + put("ore", 30, 42, 0, variant) + put("pebble_l", 42, -28, 0)
+    return out + put("rock_s", -38, 38, 0) + put("pebble_s", 38, 8, 0)
+
+
+def cairn():
+    """cairn: a waymark of flat stones stacked four high, each turned against the one under it,
+    a rounded stone on top and pebbles round its foot."""
+    out = put("flat_stone", -6, -6, 0, "grey") + put("flat_stone", -4, -8, 9, "dark", turn=True)
+    out += put("flat_stone_small", -7, -5, 18, "grey") + put("flat_stone_small", -5, -7, 27, "sand", turn=True)
+    out += put("stone_small", -6, -6, 36, "grey") + put("moss_patch", -9, -4, 9 + 8)
+    out += put("pebble_l", 26, 18, 0) + put("pebble_m", 14, 30, 0) + put("pebble_s", 30, -14, 0)
+    return out + put("rock_s", -32, 28, 0) + put("pebble_m", -34, -30, 0)
+
+
+def menhir():
+    """menhir: a lone standing stone of rough granite about two blocks high, lichen on its lit
+    face and stones at its foot."""
+    out = put("menhir", -6, -4, 0, "grey")
+    out += put("moss_patch", 11, -6, 30) + put("moss_patch", 5, 7, 84)
+    out += face_x("rune", 11, 2, 60, "dark")
+    return out + put("rock_s", 26, 22, 0) + put("pebble_l", -30, 28, 0) + put("pebble_m", 30, -26, 0)
+
+
+def barrow_entrance(axis):
+    """barrow_entrance: a low earthen barrow with the stone doorway of its passage in the lit end:
+    two posts, a lintel across them and the dark mouth between. Two tiles along `axis`."""
+    out = []
+    for k, (nu, nv) in enumerate(((7, 3), (5, 2), (3, 1))):
+        for i, x in enumerate(cells(nu)):
+            for j, y in enumerate(cells(nv)):
+                if k == 0 and i == nu - 1:
+                    continue
+                out += put("turf_block", x, y, k * M, "moss" if (i + j + k) % 4 == 3 else "turf")
+    for y in (-28, 28):
+        out += stack("stone_block", 84, y, 0, 2, "dark", M)
+    out += put("stone_lying", 84, 0, 2 * M, "grey", turn=True)
+    out += put("mouth", 74, 0, 0) + put("pit", 92, 0, 0)
+    out += put("moss_patch", 84, -28, 2 * M + 10) + face_x("rune", 97, 28, 22, "red")
+    out += put("stone_small", 110, -40, 0, "grey") + put("pebble_l", 112, 30, 0)
+    return along(out + put("rock_s", -100, 36, 0) + put("pebble_m", -60, -48, 0), axis)
+
+
+def ruined_forge():
+    """ruined_forge: a smithy's stone hearth fallen in: three blocks of its bed and a stub of the
+    chimney still standing, cold ash and charcoal on it and spilled round, the fourth block and
+    the anvil lying in the dirt."""
+    out = put("stone_block", -20, -20, 0, "grey") + put("stone_block", 8, -20, 0, "dark")
+    out += put("stone_block", -20, 8, 0, "dark") + put("stone_block", -20, -20, M, "grey")
+    out += put("stone_small", -22, -22, 2 * M, "dark") + put("ash", -2, -4, M - 1)
+    out += put("stone_half", 34, 26, 0, "grey") + put("anvil", 32, -30, 0)
+    out += put("ash", 14, 20, 0) + put("ash", -26, 36, 0)
+    out += put("branch_long", 4, 44, 0, "timber") + put("branch", 36, 6, 0, "timber", turn=True)
+    return out + put("stone_small", 40, 0, 0, "dark") + put("pebble_m", -40, 30, 0)
+
+
+def excavation_pit():
+    """excavation_pit: a hole dug in the bare ground, its spoil heaped behind it, a pickaxe leant on
+    the heap and a stone hauled out of it."""
+    out = put("pit", 6, 6, 0)
+    for x, y, z, v in ((-30, -24, 0, "earth"), (-30, -8, 0, "dark"), (-30, 8, 0, "earth"), (-24, 24, 0, "dark"),
+                       (-14, -30, 0, "dark"), (2, -32, 0, "earth"), (18, -30, 0, "dark"),
+                       (-34, -16, 6, "dark"), (-32, 2, 6, "earth"), (-20, -32, 6, "earth"),
+                       (-38, -32, 0, "earth"), (-28, -28, 10, "dark")):
+        out += put("clod", x, y, z, v)
+    out += moved(spun(piece("pickaxe"), 2), -2, -26, 0)
+    out += put("rock_s", 38, 34, 0) + put("clod", 36, 18, 0, "earth") + put("clod", 20, 38, 0, "dark")
+    return out + put("pebble_m", 40, -12, 0)
+
+
+def rusty_chain():
+    """rusty_chain: a length of rusted chain lying in the dirt, flat and standing links in turn,
+    one end still on the iron ring of a stake, the other broken off."""
+    out = put("trunk_thin", -36, -36, 0, "timber") + put("link_up", -36, -28, 18, "rusted", turn=True)
+    path = [(-36, -26 + 9 * k, "y") for k in range(1, 4)]
+    path += [(-34 + 9 * k, 4, "x") for k in range(1, 6)]
+    path += [(14, 4 + 9 * k, "y") for k in range(1, 4)]
+    path += [(14 + 9 * k, 34, "x") for k in range(1, 3)]
+    for n, (x, y, a) in enumerate(path):
+        out += put("link" if n % 2 == 0 else "link_up", x, y, 0, "rusted", turn=a == "y")
+    return out + put("rock_s", 34, -18, 0) + put("pebble_m", -12, 34, 0) + put("grass_tuft", 30, -40, 0, "dry")
+
+
+def skull_helmet():
+    """skull_helmet: a fallen warrior: a skull in the dirt with its iron helmet still on, a red
+    shield lying face up behind it, a sword dropped beside them and a bone."""
+    out = put("skull", 6, 2, 0) + put("helmet", 1, 2, 10, "iron")
+    out += put("shield_flat", -22, 20, 0, "red") + put("sword", -2, -28, 0)
+    out += put("bone", 28, 28, 0, turn=True) + put("bone", -32, -10, 0)
+    return out + put("pebble_m", 36, -8, 0) + put("pebble_s", -10, 40, 0)
+
+
 # name → (builder, tiles, the asset its render replaces, under lib/assets)
 MODELS = {
     "runestone": (runestone, (1, 1, 1), "building/block_runestone.png"),
@@ -490,6 +591,16 @@ MODELS = {
     "abandoned_cart_1x2": (lambda: abandoned_cart("y"), (1, 2, 1), "field/block_abandoned_cart_1x2.png"),
     "buried_chest": (buried_chest, (1, 1, 1), "field/block_buried_chest.png"),
     "totem_stub": (totem_stub, (1, 1, 2), "field/block_totem_stub.png"),
+    "ore_vein": (lambda: ore_vein("iron"), (1, 1, 1), "barren/block_ore_vein.png"),
+    "ore_vein_amber": (lambda: ore_vein("amber"), (1, 1, 1), "barren/block_ore_vein_amber.png"),
+    "cairn": (cairn, (1, 1, 1), "barren/block_cairn.png"),
+    "menhir": (menhir, (1, 1, 2), "barren/block_menhir.png"),
+    "barrow_entrance_2x1": (lambda: barrow_entrance("x"), (2, 1, 1), "barren/block_barrow_entrance_2x1.png"),
+    "barrow_entrance_1x2": (lambda: barrow_entrance("y"), (1, 2, 1), "barren/block_barrow_entrance_1x2.png"),
+    "ruined_forge": (ruined_forge, (1, 1, 1), "barren/block_ruined_forge.png"),
+    "excavation_pit": (excavation_pit, (1, 1, 1), "barren/block_excavation_pit.png"),
+    "rusty_chain": (rusty_chain, (1, 1, 1), "barren/block_rusty_chain.png"),
+    "skull_helmet": (skull_helmet, (1, 1, 1), "barren/block_skull_helmet.png"),
 }
 
 if __name__ == "__main__":

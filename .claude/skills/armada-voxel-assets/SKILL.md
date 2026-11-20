@@ -110,6 +110,8 @@ pieza nueva.
 | `GLOW` / `IRON` / `FIRE` / `BREW` | `#ffd66b` / `#4a4a52` / `#f7802a` / `#5fd03a` | ventana encendida, hierro, fuego, caldero |
 | `STEP` / `STEP_DEEP` / `TREAD` | `#a79e8d` / `#8f8777` / `#c6bfae` | masa, cimiento y huella de las gradas |
 | `PEAT` / `BOG` / `REED` / `CATTAIL` / `WELL_WATER` | `#5b4532` / `#4f6b5c` / `#b3a85a` / `#73472a` / `#2f5470` | turba, agua del charco, caña, espadaña, agua del pozo |
+| `BONE` / `ASH` / `SOOT` / `RUSTED` | `#e6dab8` / `#9b968e` / `#3b3632` / `#9c5a36` | hueso, ceniza, hollín y boca oscura, hierro oxidado |
+| `THISTLE` / `THISTLE_HEAD` / `AMBER` / `STEEL` | `#8c6b45` / `#9a7096` / `#eda23a` / `#b9bec6` | cardo seco y su flor, ámbar, acero y veta de hierro |
 
 Un material nuevo se añade como constante en `vox_prefabs.py` **y a la lista `PALETTE`**
 (si falta, el script se detiene), **siempre al final**: los índices de los `.vox` ya escritos no se mueven. Elige tonos medios y saturados: el render los oscurece en
@@ -199,6 +201,26 @@ Las entidades del campo (`lib/assets/field/`) solo crecen en hierba fuera de pob
 `meadow`, `barrow`, `ruins` y `cart` de `wfc.json`, con peso en `settlements.json` →
 `wilderness.weights`. La hierba alta lleva `drawUnderPlayer` y
 colisión 0; las demás (setas y charco incluidos), colisión de 0,2 a 0,6.
+
+### Piezas del suelo de tierra
+
+| Pieza | Tamaño | Variantes | Uso |
+| --- | --- | --- | --- |
+| `bone` / `rib` / `skull` / `skull_horned` | 24 × 7 × 5 / 3 × 30 × 18 / 12 × 11 × 13 / 22 × 31 × 16 | — | hueso largo, costilla en arco (a lo ancho de y), cráneo y cráneo de buey (miran a `+x`) |
+| `helmet` / `sword` / `shield_flat` | 17 × 17 × 11 / 50 × 12 × 4 / 26 × 26 × 5 | helmet: iron, rusted; shield_flat: red, white | yelmo (pivote en el borde, nasal 5 por debajo), espada tirada, escudo boca arriba |
+| `link` / `link_up` | 12 × 8 × 3 / 12 × 3 × 8 | rusted, iron | eslabones tumbado y de canto; alternados cada 9 forman una cadena |
+| `pickaxe` | 23 × 20 × 51 | — | pico apoyado, inclinado hacia `+x` (`spun` para otras direcciones) |
+| `thistle` / `thistle_short` | ~23 × 22 × 52 / 38 | — | cardo seco con hojas en púas y tres cabezas |
+| `vein` / `ore` | 3 × 20 × 16 / 8 × 7 × 6 | iron, amber | veta prensada en una cara `+x` (pivote en la cara) y pepita suelta |
+| `flat_stone` / `flat_stone_small` | 32 × 26 × 8 / 22 × 18 × 8 | grey, dark, sand, clay | losas de un mojón, se apilan cada 9 |
+| `menhir` | 32 × 22 × 150 | grey, sand | menhir de granito de casi dos bloques |
+| `ash` / `pit` / `mouth` | 22 × 18 × 9 / 50 × 44 × 3 / 6 × 30 × 54 | — | montón de ceniza, fondo de un hoyo (pieza plana, no suelo), boca oscura de una puerta |
+
+Las entidades del suelo de tierra (`lib/assets/barren/`) solo crecen en la superficie `ground`
+(`placement.surfaces: ["ground"]`, sin `additionalSurfaces`), fuera de poblados: familias
+`thistle`, `remains`, `outcrop`, `diggings` y `barrow_entrance` de `wfc.json`, con peso en
+`wilderness.weights`. Las bajas (cardo, huesos, cadena, yelmo) llevan `drawUnderPlayer` y
+colisión 0; la entrada del túmulo bloquea sus dos casillas (1,0).
 
 Las piezas de cara (`door`, `window`, `shield`, `rune`, `banner`) tienen el pivote **en el
 plano de la cara**: se colocan con `x` igual al plano del muro y la mitad queda prensada

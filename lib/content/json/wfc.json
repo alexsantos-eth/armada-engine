@@ -72,7 +72,19 @@
     "abandoned_cart_x": 0.4,
     "abandoned_cart_y": 0.4,
     "buried_chest": 0.5,
-    "totem_stub": 0.6
+    "totem_stub": 0.6,
+    "dry_thistle": 4.0,
+    "bone_pile": 1.5,
+    "rusty_chain": 1.0,
+    "skull_helmet": 0.8,
+    "ore_vein": 1.5,
+    "ore_vein_amber": 0.8,
+    "cairn": 1.0,
+    "menhir": 0.6,
+    "ruined_forge": 0.5,
+    "excavation_pit": 0.8,
+    "barrow_entrance_x": 0.3,
+    "barrow_entrance_y": 0.3
   },
   "families": {
     "mead_hall": [
@@ -150,6 +162,28 @@
     "cart": [
       "abandoned_cart_x",
       "abandoned_cart_y"
+    ],
+    "thistle": [
+      "dry_thistle"
+    ],
+    "remains": [
+      "bone_pile",
+      "rusty_chain",
+      "skull_helmet"
+    ],
+    "outcrop": [
+      "ore_vein",
+      "ore_vein_amber",
+      "cairn",
+      "menhir"
+    ],
+    "diggings": [
+      "ruined_forge",
+      "excavation_pit"
+    ],
+    "barrow_entrance": [
+      "barrow_entrance_x",
+      "barrow_entrance_y"
     ]
   },
   "maxPerChunk": {
@@ -168,6 +202,9 @@
     "cart": 1,
     "old_well": 1,
     "buried_chest": 1,
-    "ruins": 3
+    "ruins": 3,
+    "barrow_entrance": 1,
+    "diggings": 2,
+    "outcrop": 4
   }
 }

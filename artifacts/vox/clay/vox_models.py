@@ -626,6 +626,26 @@ def peat_puddle():
     return out + put("grass_tuft", -44, 30, 0, "dry") + put("rock_s", 40, -16, 0) + put("moss_patch", 30, -30, 0)
 
 
+# ------------------------------------------------------------------------ the bare ground
+def bone_pile():
+    """bone_pile: what is left of an ox on the bare ground: a ribcage still standing over its
+    spine, the horned skull in front and leg bones scattered round it. Low enough to walk over."""
+    out = [b for k, x in enumerate((-30, -22, -14, -6, 2)) for b in put("rib", x, -6 + (k % 2), 0)]
+    out += put("bone", -14, -6, 15) + put("bone", 6, -6, 13)
+    out += put("skull_horned", 24, -10, 0)
+    out += put("bone", -30, 30, 0, turn=True) + put("bone", 6, 30, 0) + put("bone", 34, 22, 0, turn=True)
+    out += put("bone", -38, -36, 0) + put("rib", 22, 38, 0, turn=True)
+    return out + put("pebble_m", 40, -34, 0) + put("pebble_s", -10, 42, 0) + put("grass_tuft", -40, 6, 0, "dry")
+
+
+def dry_thistle():
+    """dry_thistle: a clump of dry, spiny thistles, brown stalks and faded heads, among a dry
+    grass tuft and a stone."""
+    out = put("thistle", -16, -12, 0) + put("thistle", 10, -24, 0) + put("thistle_short", -4, 16, 0)
+    out += put("thistle_short", 24, 8, 0) + put("thistle_short", -30, 20, 0)
+    return out + put("grass_tuft", 30, 34, 0, "dry") + put("rock_s", -34, -34, 0) + put("pebble_m", 6, 40, 0)
+
+
 # name → (builder, tiles, the asset its render replaces, under lib/assets)
 MODELS = {
     "tree": (fruit_tree, (1, 1, 2), "tree/block.png"),
@@ -690,6 +710,8 @@ MODELS = {
     "fallen_log_2x1": (lambda: fallen_log("x"), (2, 1, 1), "field/block_fallen_log_2x1.png"),
     "fallen_log_1x2": (lambda: fallen_log("y"), (1, 2, 1), "field/block_fallen_log_1x2.png"),
     "peat_puddle": (peat_puddle, (1, 1, 1), "field/block_peat_puddle.png"),
+    "bone_pile": (bone_pile, (1, 1, 1), "barren/block_bone_pile.png"),
+    "dry_thistle": (dry_thistle, (1, 1, 1), "barren/block_dry_thistle.png"),
 }
 
 

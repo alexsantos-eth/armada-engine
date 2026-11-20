@@ -11,6 +11,7 @@
 # height) and leave 1 voxel of air per side, so two neighbours show a 2-voxel seam by
 # themselves. Every file carries the same palette, flat material colours, no baked light.
 # Sizes below are in voxels: (x, y, z0, size x, size y, size z, colour, corner radius).
+import math
 import os
 import sys
 
@@ -44,6 +45,10 @@ GRASS_TOP, GRASS_DEEP, SOIL = "#a4de00", "#8cc400", "#bcb857"
 SOIL_DARK, SAND_TOP, SAND_BODY, EARTH, EARTH_DARK = "#a39f47", "#f3dc96", "#dcc07a", "#c08a4e", "#a8743d"
 # the open field: peat and its murky water, reeds and their cattails, the dark water of a well
 PEAT, BOG, REED, CATTAIL, WELL_WATER = "#5b4532", "#4f6b5c", "#b3a85a", "#73472a", "#2f5470"
+# the bare ground: old bone, cold ash, soot and charcoal, rusted iron, the dry thistle's stalk and
+# its faded head, amber ore and the bright steel of a blade or a vein of iron
+BONE, ASH, SOOT, RUSTED = "#e6dab8", "#9b968e", "#3b3632", "#9c5a36"
+THISTLE, THISTLE_HEAD, AMBER, STEEL = "#8c6b45", "#9a7096", "#eda23a", "#b9bec6"
 # New colours go at the end: the indices of the files already written must not move.
 PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK, CUT, MOSS,
            RED, WHITE, YELLOW, PINK, CAP, STEM, DOT, OCHRE, RUST, ROCK, ROCK_DARK,
@@ -53,7 +58,8 @@ PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK,
            PALM_BARK, PALM_RING, COCONUT, DRIFT, FISH, ROPE,
            GRASS_TOP, GRASS_DEEP, SOIL,
            SOIL_DARK, SAND_TOP, SAND_BODY, EARTH, EARTH_DARK,
-           PEAT, BOG, REED, CATTAIL, WELL_WATER]
+           PEAT, BOG, REED, CATTAIL, WELL_WATER,
+           BONE, ASH, SOOT, RUSTED, THISTLE, THISTLE_HEAD, AMBER, STEEL]
 
 
 def box(x, y, z0, sx, sy, sz, color, r):
@@ -325,6 +331,128 @@ def sack(color):
     return [box(0, 0, 0, 13, 11, 13, color, 5), box(0, 0, 12, 5, 5, 4, color, 2)]
 
 
+# ------------------------------------------------------------------- the bare ground (kit 1-3)
+def bone(color):
+    """A long bone lying along x: a shaft and a double knob at each end. 24 x 7 x 5."""
+    return [box(0, 0, 0, 16, 4, 4, color, 1.8)] + [box(dx, dy, 0, 5, 4, 5, color, 2)
+                                                   for dx in (-9, 9) for dy in (-1.5, 1.5)]
+
+
+def rib(color):
+    """One rib arching across y over a carcass: short rounded lengths on a half circle, 30 wide
+    and 18 high, its feet on the ground."""
+    out = []
+    for k in range(9):
+        a = math.pi * k / 8
+        out.append(box(0, -13 * math.cos(a), 13 * math.sin(a), 3, 5, 5, color, 2))
+    return out
+
+
+def skull(color):
+    """A skull facing +x: the cranium, the jaw under its front, two dark eye sockets and the nose."""
+    return [box(0, 0, 2, 12, 11, 11, color, 5), box(3, 0, 0, 7, 8, 5, color, 2.4),
+            box(6, -2.5, 6, 2, 3, 3, SOOT, 1), box(6, 2.5, 6, 2, 3, 3, SOOT, 1), box(6, 0, 3, 2, 2, 2, SOOT, 0.6)]
+
+
+def skull_horned(color):
+    """An ox skull facing +x: a long face narrowing to the muzzle, eye sockets, and two pale horns
+    curving out and up."""
+    out = [box(-3, 0, 0, 12, 13, 10, color, 4.6), box(5, 0, 0, 10, 9, 7, color, 3.2), box(10, 0, 0, 5, 7, 5, color, 2)]
+    out += [box(3, s * 4.5, 5, 2, 3, 3, SOOT, 1) for s in (-1, 1)]
+    for s in (-1, 1):
+        out += [box(-5, s * 9, 6, 4, 5, 4, CUT, 1.8), box(-5, s * 12, 9, 4, 4, 4, CUT, 1.8),
+                box(-5, s * 14, 12, 3, 3, 4, CUT, 1.4)]
+    return out
+
+
+def helmet(color):
+    """A round iron helmet, its nose guard toward +x: a dome on a band, the guard hanging 5 below
+    the rim. 17 x 17 x 11, its pivot at the rim."""
+    return [box(0, 0, 0, 17, 17, 3, color, 1.4), box(0, 0, 1, 15, 15, 10, color, 6.5),
+            box(8, 0, -5, 2, 3, 7, color, 0.8), box(0, 0, 9, 3, 11, 3, color, 1.2)]
+
+
+def sword(color):
+    """A sword lying along x, its point toward +x: blade, crossguard, grip and pommel. 50 long."""
+    return [box(8, 0, 0, 34, 5, 2, color, 1), box(26, 0, 0, 4, 3, 2, color, 1), box(-10, 0, 0, 3, 12, 3, IRON, 1.2),
+            box(-15, 0, 0, 7, 3, 3, TIMBER, 1.2), box(-20, 0, 0, 4, 4, 4, IRON, 1.6)]
+
+
+def shield_flat(color):
+    """A round shield lying face up on the ground: a painted disc and its iron boss."""
+    return disc(26, 3, color, "xy", rows=8) + [box(0, 0, 2, 8, 8, 3, IRON, 2.6)]
+
+
+def link(color):
+    """One chain link lying flat along x: an oval ring 12 x 8 x 3 with its hole open."""
+    return [box(0, -3, 0, 12, 2, 3, color, 1), box(0, 3, 0, 12, 2, 3, color, 1),
+            box(-5, 0, 0, 2, 8, 3, color, 1), box(5, 0, 0, 2, 8, 3, color, 1)]
+
+
+def link_up(color):
+    """The next link of a chain, standing on its edge along x: 12 long, 3 thick, 8 high."""
+    return [box(0, 0, 0, 12, 3, 2, color, 1), box(0, 0, 6, 12, 3, 2, color, 1),
+            box(-5, 0, 0, 2, 3, 8, color, 1), box(5, 0, 0, 2, 3, 8, color, 1)]
+
+
+def pickaxe(color):
+    """A pickaxe leaning toward +x: the handle climbs in short lengths, each further out, up to
+    the iron head lying across y. 54 high."""
+    out = [box(2.4 * k, 0, 6 * k, 4, 4, 8, color, 1.6) for k in range(8)]
+    return out + [box(19, 0, 46, 5, 20, 5, IRON, 1.6), box(19, -12, 47, 4, 6, 3, IRON, 1.2),
+                  box(19, 12, 47, 4, 6, 3, IRON, 1.2)]
+
+
+def thistle(height):
+    """A dry thistle `height` high: a stiff stalk, spiny leaves jutting from it in pairs, and three
+    prickly heads, their tufts faded to a dry mauve, on short side branches."""
+    def build(color):
+        out = [box(0, 0, 0, 3, 3, height, color, 1.2)]
+        for k, z in enumerate(range(3, height - 12, 7)):
+            dx, dy = (1, 0) if k % 2 == 0 else (0, 1)
+            for s in (-1, 1):
+                for n in range(3):
+                    out.append(box(s * dx * (3 + 3 * n), s * dy * (3 + 3 * n), z + 2 * n, 4 if dx else 2,
+                                   2 if dx else 4, 2, color, 0.6))
+        heads = ((0, 0, height), (7, 0, height - 9), (0, -6, height - 15))
+        for x, y, z in heads:
+            if (x, y) != (0, 0):
+                out.append(box(x / 2, y / 2, z - 3, 2 + abs(x), 2 + abs(y), 2, color, 0.8))
+            out += [box(x, y, z - 2, 6, 6, 5, color, 2.4), box(x, y, z + 2, 5, 5, 5, THISTLE_HEAD, 2.2)]
+            out += [box(x + sx * 4, y + sy * 4, z - 1 + k, 3, 2, 2, color, 0.5) if sx else
+                    box(x, y + sy * 4, z - 1 + k, 2, 3, 2, color, 0.5)
+                    for k, (sx, sy) in enumerate(((1, 0), (-1, 0), (0, 1), (0, -1)))]
+        return out
+    return build
+
+
+def vein(color):
+    """A streak of ore pressed into a +x face (turn it for +y): three lumps stepping up and
+    across, its pivot on the face plane. 3 x 20 x 16."""
+    return [box(0, -6, 0, 3, 8, 5, color, 1.6), box(0, 0, 5, 3, 9, 5, color, 1.6), box(0, 6, 10, 3, 8, 6, color, 1.6),
+            box(1, 1, 6, 2, 3, 3, WHITE, 1)]
+
+
+def menhir(color):
+    """A rough granite menhir about two blocks high: three uneven courses that lean back and narrow
+    as they rise, and a blunt top."""
+    return [box(0, 0, 0, 32, 22, 62, color, 7), box(-2, 1, 56, 28, 20, 52, color, 7),
+            box(-4, 2, 102, 22, 17, 40, color, 6.5), box(-6, 2, 138, 12, 13, 12, color, 4.5)]
+
+
+def ash(color):
+    """A low heap of cold ash with charcoal lumps in it."""
+    return [box(0, 0, 0, 22, 18, 4, color, 2), box(-1, 1, 2, 16, 13, 5, color, 3.4), box(-2, 1, 5, 9, 8, 4, color, 3.6),
+            box(6, -5, 2, 6, 5, 5, SOOT, 2), box(-7, 5, 1, 5, 6, 5, SOOT, 2), box(2, 6, 4, 4, 4, 4, SOOT, 1.6)]
+
+
+def pit(color):
+    """The floor of a dug pit: a dark earth rim round a darker hollow. 50 x 44, 2 high: a flat
+    piece like the puddle, not a floor."""
+    return [box(0, 0, 0, 50, 36, 2, color, 1), box(-3, 3, 0, 40, 44, 2, color, 1),
+            box(-1, 1, 0, 36, 28, 3, SOOT, 1)]
+
+
 LEAVES = dict(green=LEAF, dark=LEAF_DARK, autumn=LEAF_AUTUMN, blossom=PINK)
 BARKS = dict(brown=WOOD, birch=BIRCH, timber=TIMBER)
 STONES = dict(grey=ROCK, dark=ROCK_DARK, sand=STONE_SAND, clay=STONE_CLAY)
@@ -443,6 +571,27 @@ PIECES = {
     "well_water": (lambda c: [box(0, 0, 0, 30, 30, 3, c, 1)], {"": WELL_WATER}),
     "shovel": (lambda c: [box(0, 0, 0, 3, 11, 13, IRON, 1.2), box(0, 0, 12, 3, 3, 40, c, 1.2),
                           box(0, 0, 50, 3, 9, 3, c, 1.2)], {"": TIMBER}),
+    # the bare ground
+    "bone": (bone, {"": BONE}),
+    "rib": (rib, {"": BONE}),
+    "skull": (skull, {"": BONE}),
+    "skull_horned": (skull_horned, {"": BONE}),
+    "helmet": (helmet, dict(iron=IRON, rusted=RUSTED)),
+    "sword": (sword, {"": STEEL}),
+    "shield_flat": (shield_flat, dict(red=RED, white=WHITE)),
+    "link": (link, dict(rusted=RUSTED, iron=IRON)),
+    "link_up": (link_up, dict(rusted=RUSTED, iron=IRON)),
+    "pickaxe": (pickaxe, {"": TIMBER}),
+    "thistle": (thistle(44), {"": THISTLE}),
+    "thistle_short": (thistle(30), {"": THISTLE}),
+    "vein": (vein, dict(iron=STEEL, amber=AMBER)),
+    "ore": (lambda c: [box(0, 0, 0, 8, 7, 5, ROCK_DARK, 2.4), box(1, 0, 3, 5, 4, 3, c, 1.4)], dict(iron=STEEL, amber=AMBER)),
+    "flat_stone": (stone(32, 26, 8, 3.5), STONES),            # a cairn's slab
+    "flat_stone_small": (stone(22, 18, 8, 3), STONES),
+    "menhir": (menhir, dict(grey=ROCK, sand=STONE_SAND)),
+    "ash": (ash, {"": ASH}),
+    "pit": (pit, {"": PEAT}),
+    "mouth": (lambda c: [box(0, 0, 0, 6, 30, 54, c, 2)], {"": SOOT}),   # the dark of a doorway
 }
 
 

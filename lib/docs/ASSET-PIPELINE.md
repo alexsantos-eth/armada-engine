@@ -245,6 +245,18 @@ manchas de hierba alta, charco de turba con cañas, tronco caído (2 casillas), 
 `wfc.json`, con multiplicador en `settlements.json` → `wilderness.weights` (las zonas de poblado
 no las listan, así que nunca salen dentro). Solo la hierba alta lleva `drawUnderPlayer` y colisión 0.
 
+### Decoración del suelo de tierra
+
+`lib/assets/barren/` guarda las entidades que solo crecen en la superficie `ground` (la tierra
+desnuda): veta de mineral (hierro y ámbar), montón de huesos, mojón de losas, menhir (2 bloques),
+entrada de túmulo (2 casillas, bloquea), forja en ruinas, hoyo de excavación con pico, cardo
+seco, cadena oxidada y yelmo sobre cráneo. Salen de `vox_models.py` (huesos y cardo) y
+`vox_buildings.py` (el resto) con las piezas del suelo de `vox_prefabs.py` (`bone`, `rib`,
+`skull`, `helmet`, `link`, `pickaxe`, `thistle`, `vein`, `flat_stone`, `menhir`, `ash`, `pit`…).
+Su blueprint pide `"surfaces": ["ground"]` y se colocan por las familias `thistle`, `remains`,
+`outcrop`, `diggings` y `barrow_entrance` de `wfc.json`, con multiplicador en `settlements.json`
+→ `wilderness.weights`. Las bajas llevan `drawUnderPlayer` y colisión 0.
+
 ## 7. Coste
 
 Cero. La ruta voxel no llama a ningún modelo de imagen. El posprocesado tampoco: ajustar fuerza,
