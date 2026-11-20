@@ -1,0 +1,120 @@
+# Screenshots of the game for every pull request into iso-rust.
+#
+# Builds the native client, runs the scripted scenes (lib/scenes/pr-*.json plus any scene the
+# PR adds or changes) under Xvfb, and posts the shots as one sticky comment on the PR. The
+# shots are also kept as a workflow artifact. See lib/docs/TESTBED.md for the scene format.
+name: PR screenshots
+
+on:
+  pull_request:
+    branches: [iso-rust]
+    types: [opened, synchronize, reopened, ready_for_review, closed]
+    paths:
+      - "lib/**"
+      - ".github/workflows/pr-screenshots.yml"
+      - ".github/scripts/*pr-screenshots.sh"
+
+concurrency:
+  group: pr-screenshots-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  shots:
+    if: github.event.action != 'closed' && !github.event.pull_request.draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: System libraries (GL, ALSA, Xvfb)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            xvfb xauth libasound2-dev libgl1 libegl1 libglx-mesa0 libgl1-mesa-dri
+
+      - name: Rust toolchain (from lib/rust-toolchain.toml)
+        working-directory: lib
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: lib
+
+      - name: Build the native client
+        working-directory: lib
+        run: cargo build --release --locked --bin iso-core
+
+      - name: Run the scenes
+        id: scenes
+        env:
+          SCENE_TIMEOUT: "300"
+        run: |
+          bash .github/scripts/pr-screenshots.sh lib/target/release/iso-core "$RUNNER_TEMP/shots" \
+            "${{ github.event.pull_request.base.sha }}"
+
+      - name: Keep the shots as an artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-${{ github.event.pull_request.number }}-screenshots
+          path: ${{ runner.temp }}/shots
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Publish the shots
+        # A fork's token cannot push or comment: the artifact is all it gets.
+        if: always() && steps.scenes.outcome != 'skipped' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          [ -f "$RUNNER_TEMP/shots/summary.md" ] || exit 0
+          bash .github/scripts/publish-pr-screenshots.sh "$RUNNER_TEMP/shots" \
+            "${{ github.event.pull_request.number }}" "${{ github.event.pull_request.head.sha }}" \
+            "$RUNNER_TEMP/comment.md"
+
+      - name: Comment on the PR
+        if: always() && steps.scenes.outcome != 'skipped' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const file = `${process.env.RUNNER_TEMP}/comment.md`;
+            if (!fs.existsSync(file)) return;
+            const body = fs.readFileSync(file, 'utf8');
+            const marker = '<!-- pr-screenshots -->';
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const mine = comments.find(c => c.user.type === 'Bot' && c.body.startsWith(marker));
+            if (mine) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+  cleanup:
+    # Drops the PR's folder from the screenshots branch once the PR is closed. Comments keep
+    # working: they point at the commit that published each image, not at the branch tip.
+    if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Remove pr-${{ github.event.pull_request.number }}/
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          git init -q work && cd work
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch -q --depth 1 origin pr-screenshots || exit 0
+          git checkout -q -B pr-screenshots FETCH_HEAD
+          [ -d "pr-$PR" ] || exit 0
+          git rm -rq "pr-$PR"
+          git commit -qm "screenshots: drop PR #$PR"
+          git push -q origin HEAD:pr-screenshots

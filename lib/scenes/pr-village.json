@@ -1,0 +1,11 @@
+{
+  "world": "procedural",
+  "window": [1400, 900],
+  "zoom": 0.45,
+  "phase": "day",
+  "centre": [267, 204],
+  "player": [267, 204],
+  "steps": ["settle", { "shot": "village.png" }],
+  "out": "shots",
+  "maxFrames": 1200
+}

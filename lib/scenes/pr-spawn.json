@@ -1,0 +1,23 @@
+{
+  "world": "procedural",
+  "window": [1280, 800],
+  "zoom": 0.7,
+  "phase": "day",
+  "steps": [
+    "settle",
+    { "shot": "spawn-day.png" },
+    { "walk": { "dir": [1, 0], "frames": 30 } },
+    "jump",
+    { "wait": { "frames": 6 } },
+    { "shot": "spawn-jump.png" },
+    { "wait": { "frames": 30 } },
+    { "phase": "sunset" },
+    "settle",
+    { "shot": "spawn-sunset.png" },
+    { "phase": "night" },
+    "settle",
+    { "shot": "spawn-night.png" }
+  ],
+  "out": "shots",
+  "maxFrames": 1800
+}

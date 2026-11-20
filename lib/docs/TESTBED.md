@@ -132,10 +132,11 @@ Con eso se corrige la escena sin abrir el juego: ahí hacía falta hierba.
 
 ## Escenas guardadas
 
-En `lib/scenes/` viven las escenas que sirven para comprobar algo más de una vez. Hoy hay dos:
+En `lib/scenes/` viven las escenas que sirven para comprobar algo más de una vez:
 
 - `scene.json` — el ejemplo del formato, sobre un chunk plano.
 - `village-greens.json` — un poblado completo con su vegetación: zona central limpia, patios detrás de las casas y el cinturón de arboleda. Centrada en `(267, 204)` con la semilla del juego, `zoom` 0,45 para que entren varios chunks. Es la escena con la que se miran los cambios de `iso::settlements` y de `iso::entities::greenery`.
+- `pr-spawn.json` y `pr-village.json` — las que corre el workflow de capturas en cada PR (ver más abajo).
 
 ```sh
 cd lib
@@ -171,3 +172,23 @@ Así es como se comprueba desde un contenedor sin pantalla. En macOS se corre co
   edición lo dice.
 - Con un `zoom` muy bajo puede entrar en pantalla más mundo del que el radio de chunks carga; el
   `settle` esperaría hasta agotar `maxFrames`, y el informe lo deja anotado.
+
+## Capturas en cada pull request
+
+`.github/workflows/pr-screenshots.yml` corre escenas en cada PR contra `iso-rust` que toque
+`lib/`: compila el binario nativo en release, corre las escenas con Xvfb y deja las capturas en un
+comentario del PR (que se actualiza en cada push) y en un artefacto de la corrida.
+
+Qué escenas corren:
+
+- todas las `lib/scenes/pr-*.json`: el juego tal como arranca (`pr-spawn`, de día, tras andar y
+  saltar, al atardecer y de noche) y un poblado entero (`pr-village`);
+- además, cualquier otra `lib/scenes/*.json` que el PR añada o cambie. Es la forma de mostrar la
+  feature: una escena que la encuadre (con `edits`, `place`, `teleport` o una `seed`) entra sola
+  en el comentario.
+
+Las imágenes se suben a la rama huérfana `pr-screenshots` (`pr-<n>/<sha>/…`), que solo guarda
+PNGs y nunca se mergea; al cerrar el PR se borra su carpeta, pero los comentarios antiguos siguen
+viéndose porque enlazan el commit que las publicó. Una escena que falla o agota su tiempo
+(`SCENE_TIMEOUT`, 300 s) aparece en la tabla del comentario sin parar el resto. Los scripts están en
+`.github/scripts/`.
