@@ -5,7 +5,7 @@
     "x": 0,
     "y": 0,
     "width": 4096,
-    "height": 3067
+    "height": 3048
   },
   "entries": [
     {
@@ -14,7 +14,7 @@
       "source": "/assets/beach/block_anchor.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 3622,
+        "x": 3440,
         "y": 2733,
         "width": 158,
         "height": 130
@@ -39,7 +39,7 @@
       "source": "/assets/beach/block_beach_rocks.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 353,
+        "x": 1,
         "y": 2937,
         "width": 231,
         "height": 110
@@ -64,7 +64,7 @@
       "source": "/assets/beach/block_coconuts.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 1009,
+        "x": 970,
         "y": 2937,
         "width": 141,
         "height": 72
@@ -89,7 +89,7 @@
       "source": "/assets/beach/block_driftwood.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 715,
+        "x": 676,
         "y": 2937,
         "width": 134,
         "height": 87
@@ -639,7 +639,7 @@
       "source": "/assets/building/block_campfire.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 850,
+        "x": 811,
         "y": 2937,
         "width": 158,
         "height": 86
@@ -764,8 +764,8 @@
       "source": "/assets/building/block_runestone.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 211,
-        "y": 2937,
+        "x": 3802,
+        "y": 2733,
         "width": 141,
         "height": 121
       },
@@ -814,7 +814,7 @@
       "source": "/assets/building/block_runestone_fallen.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 585,
+        "x": 233,
         "y": 2937,
         "width": 129,
         "height": 102
@@ -989,7 +989,7 @@
       "source": "/assets/bush/block.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 3781,
+        "x": 3599,
         "y": 2733,
         "width": 202,
         "height": 130
@@ -3071,10 +3071,10 @@
       "source": "/assets/field/block_tall_grass.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 3440,
-        "y": 2733,
-        "width": 181,
-        "height": 134
+        "x": 521,
+        "y": 2937,
+        "width": 154,
+        "height": 94
       },
       "frames": null,
       "anchor": {
@@ -3082,10 +3082,10 @@
         "y": 1.0
       },
       "ink": {
-        "x": -0.29375,
-        "y": -0.249181,
-        "width": 0.565625,
-        "height": 0.418064
+        "x": -0.240625,
+        "y": -0.230461,
+        "width": 0.48125,
+        "height": 0.293269
       },
       "colorVariants": 1,
       "sway": null
@@ -3096,10 +3096,10 @@
       "source": "/assets/field/block_tall_grass_2.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 1,
+        "x": 363,
         "y": 2937,
-        "width": 209,
-        "height": 129
+        "width": 157,
+        "height": 100
       },
       "frames": null,
       "anchor": {
@@ -3107,10 +3107,10 @@
         "y": 1.0
       },
       "ink": {
-        "x": -0.334375,
-        "y": -0.27102,
-        "width": 0.653125,
-        "height": 0.402464
+        "x": -0.271875,
+        "y": -0.233581,
+        "width": 0.490625,
+        "height": 0.311988
       },
       "colorVariants": 1,
       "sway": null
@@ -9612,7 +9612,7 @@
       "source": "/assets/rock/block.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 1461,
+        "x": 1422,
         "y": 2937,
         "width": 32,
         "height": 25
@@ -9637,7 +9637,7 @@
       "source": "/assets/rock/block_2.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 1318,
+        "x": 1279,
         "y": 2937,
         "width": 74,
         "height": 47
@@ -9662,7 +9662,7 @@
       "source": "/assets/rock/block_3.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 1393,
+        "x": 1354,
         "y": 2937,
         "width": 67,
         "height": 43
@@ -9687,7 +9687,7 @@
       "source": "/assets/rock/block_4.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 1252,
+        "x": 1213,
         "y": 2937,
         "width": 65,
         "height": 51
@@ -9712,7 +9712,7 @@
       "source": "/assets/rock/block_5.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 1151,
+        "x": 1112,
         "y": 2937,
         "width": 100,
         "height": 65

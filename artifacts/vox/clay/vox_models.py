@@ -589,18 +589,16 @@ def mushrooms():
 
 
 def tall_grass():
-    """tall_grass: a patch of tall grass tufts, green and fresh, with one red wildflower."""
-    spots = [(-26, -24, "green"), (4, -32, "light"), (30, -8, "green"), (-32, 10, "light"),
-             (-4, 2, "green"), (22, 22, "light"), (-12, 32, "green"), (36, 40, "green")]
-    return [b for x, y, v in spots for b in put("grass_tuft", x, y, 0, v)] + put("wildflower", 12, 8, 0, "red")
+    """tall_grass: three tufts of tall grass, green and fresh, with one red wildflower."""
+    spots = [(-22, -18, "green"), (24, -6, "light"), (-4, 26, "green")]
+    return [b for x, y, v in spots for b in put("grass_tuft", x, y, 0, v)] + put("wildflower", 8, 8, 0, "red")
 
 
 def tall_grass_2():
-    """tall_grass_2: a denser, half-dry meadow patch: straw-coloured tufts among green ones."""
-    spots = [(-30, -30, "dry"), (-4, -28, "green"), (24, -26, "dry"), (-28, -4, "green"),
-             (0, -2, "dry"), (28, 2, "green"), (-30, 24, "dry"), (-2, 26, "green"), (26, 30, "dry")]
+    """tall_grass_2: three half-dry tufts, two straw-coloured and a green one, a flower and a sprout."""
+    spots = [(-20, -22, "dry"), (22, -2, "green"), (-14, 24, "dry")]
     return ([b for x, y, v in spots for b in put("grass_tuft", x, y, 0, v)]
-            + put("wildflower", 14, 14, 0, "white") + put("sprout", -16, 12, 0))
+            + put("wildflower", 14, 22, 0, "white") + put("sprout", 2, 2, 0))
 
 
 def fallen_log(axis):
