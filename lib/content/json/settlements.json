@@ -44,7 +44,12 @@
       "barrow": 2.0,
       "ruins": 2.0,
       "cart": 2.0,
-      "buried_chest": 2.0
+      "buried_chest": 2.0,
+      "thistle": 3.0,
+      "remains": 2.0,
+      "outcrop": 2.0,
+      "diggings": 2.0,
+      "barrow_entrance": 2.0
     },
     "greens": 0.0
   },
