@@ -42,6 +42,8 @@ GRASS_TOP, GRASS_DEEP, SOIL = "#a4de00", "#8cc400", "#bcb857"
 # the other clay terrain (terrain_clay.py): clods on bare ground, the sand's crust and body, the
 # trodden earth of a path and its darker patches (the colours of the flat blocks they replace)
 SOIL_DARK, SAND_TOP, SAND_BODY, EARTH, EARTH_DARK = "#a39f47", "#f3dc96", "#dcc07a", "#c08a4e", "#a8743d"
+# the open field: peat and its murky water, reeds and their cattails, the dark water of a well
+PEAT, BOG, REED, CATTAIL, WELL_WATER = "#5b4532", "#4f6b5c", "#b3a85a", "#73472a", "#2f5470"
 # New colours go at the end: the indices of the files already written must not move.
 PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK, CUT, MOSS,
            RED, WHITE, YELLOW, PINK, CAP, STEM, DOT, OCHRE, RUST, ROCK, ROCK_DARK,
@@ -50,7 +52,8 @@ PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK,
            GLOW, IRON, FIRE, BREW, STEP, STEP_DEEP, TREAD,
            PALM_BARK, PALM_RING, COCONUT, DRIFT, FISH, ROPE,
            GRASS_TOP, GRASS_DEEP, SOIL,
-           SOIL_DARK, SAND_TOP, SAND_BODY, EARTH, EARTH_DARK]
+           SOIL_DARK, SAND_TOP, SAND_BODY, EARTH, EARTH_DARK,
+           PEAT, BOG, REED, CATTAIL, WELL_WATER]
 
 
 def box(x, y, z0, sx, sy, sz, color, r):
@@ -213,6 +216,115 @@ def gull(color):
             box(9, 0, 13, 9, 9, 9, color, 3.8), box(15, 0, 16, 6, 3, 3, YELLOW, 1)]
 
 
+# ------------------------------------------------------------------ the open field (kit 1-3)
+def toadstool(color):
+    """A big toadstool: a pale stem under a wide cap, three white dots on the cap."""
+    return ([box(0, 0, 0, 9, 9, 19, STEM, 3.6), box(0, 0, 15, 27, 25, 12, color, 5.4)]
+            + [box(dx, dy, 25, 4, 4, 3, DOT, 1.4) for dx, dy in ((6, -4), (-4, 6), (-6, -6), (7, 7))])
+
+
+def grass_tuft(color):
+    """A tuft of tall grass: blades fanning out of a low clump like a fountain, each a column of
+    five overlapping lengths that thin to a point and bend further out as they rise. Up to 34
+    high."""
+    out = [box(0, 0, 0, 12, 12, 7, color, 3.5)]
+    blades = (((0, 0), 34), ((1.2, 0), 28), ((0, 1.2), 30), ((-1.2, 0), 25), ((0, -1.2), 26),
+              ((1, 1), 24), ((-1, 1), 22), ((1, -1), 23), ((-1, -1), 20))
+    for (dx, dy), h in blades:
+        for k, w in enumerate((6, 5, 4, 3, 2)):
+            out.append(box(dx * (2 + 3 * k), dy * (2 + 3 * k), k * h // 5, w, w, h // 5 + 3, color, w / 2))
+    return out
+
+
+def reed(color):
+    """A reed: a thin stalk with its brown cattail near the top and a blade beside it."""
+    return [box(0, 0, 0, 3, 3, 36, color, 1.2), box(0, 0, 22, 5, 5, 10, CATTAIL, 2.2),
+            box(3, 1, 0, 3, 3, 22, color, 1.2)]
+
+
+def puddle(color):
+    """A peat puddle lying on the ground: an uneven rim of wet peat round murky water. 52 x 40,
+    4 high: a flat piece, like a fallen leaf or a cloth, not a floor."""
+    return [box(0, 0, 0, 52, 32, 3, PEAT, 1.4), box(-6, 4, 0, 40, 40, 3, PEAT, 1.4),
+            box(8, -6, 0, 30, 30, 3, PEAT, 1.4),
+            box(0, 1, 1, 40, 22, 3, color, 1), box(-5, 4, 1, 28, 30, 3, color, 1)]
+
+
+def log_long(color):
+    """A long fallen trunk along x with pale cut ends and moss on its back: 150 x 20 x 19."""
+    return [box(0, 0, 0, 150, 20, 19, color, 7), box(75, 0, 3, 2, 14, 13, CUT, 1.4),
+            box(-75, 0, 3, 2, 14, 13, CUT, 1.4), box(-30, -2, 17, 36, 12, 3, MOSS, 1.4),
+            box(32, -1, 17, 20, 10, 3, MOSS, 1.4)]
+
+
+def disc(d, t, color, plane, z0=0, rows=6):
+    """A round disc of diameter d and thickness t from rows of boxes (a box's corner radius is
+    capped by its thinnest side, so one box can never be round). plane: "xz" stands facing +y,
+    "yz" stands facing +x, "xy" lies flat. Its pivot is the centre of its base."""
+    out, step = [], d / rows
+    for i in range(rows):
+        c = -d / 2 + (i + .5) * step
+        w = max(4, round(2 * ((d / 2) ** 2 - c ** 2) ** .5))
+        if plane == "xy":
+            out.append(box(0, c, z0, w, step + 1, t, color, 1.4))
+        elif plane == "xz":
+            out.append(box(0, 0, z0 + d / 2 + c - step / 2, w, t, step + 1, color, 1.4))
+        else:
+            out.append(box(0, 0, z0 + d / 2 + c - step / 2, t, w, step + 1, color, 1.4))
+    return out
+
+
+def root_plate(color):
+    """The torn-up root plate at a fallen trunk's foot: a round disc standing across x, earth
+    still caught in its face and roots reaching out of its rim."""
+    out = disc(46, 10, color, "yz", rows=8) + [box(1, 0, 10, 10, 26, 26, EARTH_DARK, 4)]
+    return out + [box(0, 25, 6, 8, 12, 7, color, 3), box(0, -25, 12, 8, 12, 7, color, 3),
+                  box(0, 10, 44, 8, 8, 10, color, 3), box(0, -14, 40, 8, 8, 9, color, 3)]
+
+
+def wheel(color):
+    """A cart wheel standing on its rim, its face toward +y: a timber rim, a plank face and an
+    iron hub."""
+    return disc(32, 5, color, "xz", rows=8) + disc(22, 7, PLANK, "xz", z0=5, rows=6) + [
+        box(0, 0, 12, 8, 10, 8, IRON, 3)]
+
+
+def wheel_flat(color):
+    """The same wheel lying on the ground, its hub up."""
+    return disc(32, 5, color, "xy", rows=8) + disc(22, 6, PLANK, "xy", rows=6) + [box(0, 0, 4, 8, 8, 5, IRON, 2)]
+
+
+def spear(color):
+    """A spear stuck upright in the ground: a long shaft and an iron head. 80 high."""
+    return [box(0, 0, 0, 3, 3, 68, color, 1.2), box(0, 0, 66, 5, 5, 4, IRON, 1.4),
+            box(0, 0, 68, 4, 4, 10, IRON, 1.6), box(0, 0, 77, 2, 2, 3, IRON, 0.8)]
+
+
+def chest(color):
+    """A treasure chest closed (34 x 24 x 25), facing +x: the body, a rounded lid, two iron bands and the gold
+    lock on its front."""
+    out = [box(0, 0, 0, 34, 24, 16, color, 3), box(0, 0, 15, 34, 24, 10, color, 4.6)]
+    out += [box(dx, 0, 0, 4, 25, 25, IRON, 1.6) for dx in (-10, 10)]
+    return out + [box(17, 0, 12, 2, 7, 7, YELLOW, 1.4)]
+
+
+def totem(color):
+    """One carved section of a totem pole, its face toward +x: a heavy brow, two eyes, a nose and
+    a red mouth. 22 x 22 x 28, stacked every 28 like a trunk."""
+    return [box(0, 0, 0, 22, 22, 26, color, 5), box(11, 0, 18, 3, 20, 4, color, 1.4),
+            box(12, 5, 13, 2, 5, 4, BIRCH_MARK, 1), box(12, -5, 13, 2, 5, 4, BIRCH_MARK, 1),
+            box(12, 0, 7, 4, 5, 8, color, 1.6), box(12, 0, 2, 2, 10, 3, RED, 1)]
+
+
+def bucket(color):
+    return [box(0, 0, 0, 9, 9, 10, color, 2.4), box(0, 0, 6, 10, 10, 2, IRON, 1)]
+
+
+def sack(color):
+    """A tied grain sack: a fat body and its knotted neck."""
+    return [box(0, 0, 0, 13, 11, 13, color, 5), box(0, 0, 12, 5, 5, 4, color, 2)]
+
+
 LEAVES = dict(green=LEAF, dark=LEAF_DARK, autumn=LEAF_AUTUMN, blossom=PINK)
 BARKS = dict(brown=WOOD, birch=BIRCH, timber=TIMBER)
 STONES = dict(grey=ROCK, dark=ROCK_DARK, sand=STONE_SAND, clay=STONE_CLAY)
@@ -311,6 +423,26 @@ PIECES = {
     "fish": (lambda c: [box(0, 0, 5, 4, 8, 16, c, 1.8), box(0, 0, 0, 3, 10, 6, c, 1.2)], {"": FISH}),
     "boat": (lambda c: [box(0, 0, 0, 44, 14, 8, c, 4), box(0, 0, 6, 36, 8, 2, CUT, 1),
                         box(21, 0, 4, 5, 5, 10, c, 2)], {"": SHINGLE}),
+    # the open field
+    "toadstool": (toadstool, dict(red=CAP, tan=OCHRE)),
+    "grass_tuft": (grass_tuft, dict(green=GRASS_DEEP, light=ROSETTE, dry=THATCH)),
+    "reed": (reed, {"": REED}),
+    "puddle": (puddle, {"": BOG}),
+    "log_long": (log_long, {"": BARK}),
+    "root_plate": (root_plate, {"": BARK}),
+    "turf_block": (leaf(26, 26, 26, 9), dict(turf=TURF, moss=MOSS)),   # a cell of a grassy mound
+    "wheel": (wheel, {"": TIMBER}),
+    "wheel_flat": (wheel_flat, {"": TIMBER}),
+    "spear": (spear, {"": TIMBER}),
+    "chest": (chest, {"": PLANK}),
+    "coin": (lambda c: [box(0, 0, 0, 5, 5, 2, c, 1)], {"": YELLOW}),
+    "clod": (lambda c: [box(0, 0, 0, 14, 12, 7, c, 3.4)], dict(earth=EARTH, dark=EARTH_DARK)),
+    "totem": (totem, dict(timber=TIMBER, wood=WOOD, plank=PLANK)),
+    "bucket": (bucket, {"": PLANK}),
+    "sack": (sack, {"": PLASTER}),
+    "well_water": (lambda c: [box(0, 0, 0, 30, 30, 3, c, 1)], {"": WELL_WATER}),
+    "shovel": (lambda c: [box(0, 0, 0, 3, 11, 13, IRON, 1.2), box(0, 0, 12, 3, 3, 40, c, 1.2),
+                          box(0, 0, 50, 3, 9, 3, c, 1.2)], {"": TIMBER}),
 }
 
 

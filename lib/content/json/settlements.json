@@ -39,7 +39,12 @@
       "rock_small_3": 3.0,
       "rock_medium": 3.0,
       "rock_medium_2": 3.0,
-      "campfire": 2.5
+      "campfire": 2.5,
+      "meadow": 3.0,
+      "barrow": 2.0,
+      "ruins": 2.0,
+      "cart": 2.0,
+      "buried_chest": 2.0
     },
     "greens": 0.0
   },

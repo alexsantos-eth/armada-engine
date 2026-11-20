@@ -578,6 +578,56 @@ def palm_grove_2(axis):
     return out + lay("shell", 8, -40, 0, "white") + lay("driftwood", 92, 36, 0, long=True)
 
 
+# ------------------------------------------------------------------------ the open field
+def mushrooms():
+    """mushrooms: three clumps of toadstools and small mushrooms on moss, low enough to walk over."""
+    out = put("toadstool", -22, -20, 0, "red") + put("mushroom", -4, -32, 0) + put("mushroom", -36, -4, 0)
+    out += put("moss_patch", -20, -2, 0) + put("toadstool", -34, -36, 0, "red")
+    out += put("toadstool", 26, -8, 0, "tan") + put("mushroom", 38, 10, 0) + put("mushroom", 16, -26, 0)
+    out += put("toadstool", 4, 26, 0, "red") + put("mushroom", -12, 36, 0) + put("mushroom", 18, 38, 0)
+    return out + put("fallen_leaf", 34, 34, 0, "ochre") + put("fallen_leaf", -38, 24, 0, "rust")
+
+
+def tall_grass():
+    """tall_grass: a patch of tall grass tufts, green and fresh, with one red wildflower."""
+    spots = [(-26, -24, "green"), (4, -32, "light"), (30, -8, "green"), (-32, 10, "light"),
+             (-4, 2, "green"), (22, 22, "light"), (-12, 32, "green"), (36, 40, "green")]
+    return [b for x, y, v in spots for b in put("grass_tuft", x, y, 0, v)] + put("wildflower", 12, 8, 0, "red")
+
+
+def tall_grass_2():
+    """tall_grass_2: a denser, half-dry meadow patch: straw-coloured tufts among green ones."""
+    spots = [(-30, -30, "dry"), (-4, -28, "green"), (24, -26, "dry"), (-28, -4, "green"),
+             (0, -2, "dry"), (28, 2, "green"), (-30, 24, "dry"), (-2, 26, "green"), (26, 30, "dry")]
+    return ([b for x, y, v in spots for b in put("grass_tuft", x, y, 0, v)]
+            + put("wildflower", 14, 14, 0, "white") + put("sprout", -16, 12, 0))
+
+
+def fallen_log(axis):
+    """fallen_log: an old trunk fallen along `axis`, two tiles long: its torn root plate at the
+    back end, a broken bough standing up, moss and toadstools on it and grass round it."""
+    def at(u, v):
+        return (64 + u, v) if axis == "x" else (v, 64 + u)
+
+    def lay(name, u, v, z, variant="", long=False):
+        return put(name, *at(u, v), z, variant, turn=long and axis == "y")
+
+    out = lay("log_long", 10, -4, 0, long=True) + lay("root_plate", -72, -4, 0, long=True)
+    out += lay("trunk_thin", 44, -4, 19, "brown") + lay("leaf_tuft", 60, -2, 19, "green")
+    out += lay("mushroom", -36, -2, 19) + lay("mushroom", -24, 2, 19)
+    out += lay("toadstool", -10, 22, 0, "tan") + lay("mushroom", 4, 24, 0)
+    out += lay("grass_tuft", 96, 26, 0, "green") + lay("grass_tuft", -104, -34, 0, "dry")
+    return out + lay("grass_tuft", 40, 30, 0, "light") + lay("rock_s", -40, 34, 0)
+
+
+def peat_puddle():
+    """peat_puddle: two pools of murky water in wet peat, reeds with cattails at the back."""
+    out = put("puddle", -6, -4, 0) + put("puddle", 22, 22, 0)
+    for x, y in ((-34, -30), (-24, -36), (-40, -18), (-18, -28), (-30, -8), (8, -36)):
+        out += put("reed", x, y, 0)
+    return out + put("grass_tuft", -44, 30, 0, "dry") + put("rock_s", 40, -16, 0) + put("moss_patch", 30, -30, 0)
+
+
 # name → (builder, tiles, the asset its render replaces, under lib/assets)
 MODELS = {
     "tree": (fruit_tree, (1, 1, 2), "tree/block.png"),
@@ -636,6 +686,12 @@ MODELS = {
     "palm_slim": (palm_slim, (1, 1, 3), "beach/block_palm_slim.png"),
     "palm_grove_2_2x1": (lambda: palm_grove_2("x"), (2, 1, 3), "beach/block_palm_grove_2_2x1.png"),
     "palm_grove_2_1x2": (lambda: palm_grove_2("y"), (1, 2, 3), "beach/block_palm_grove_2_1x2.png"),
+    "mushrooms": (mushrooms, (1, 1, 1), "field/block_mushrooms.png"),
+    "tall_grass": (tall_grass, (1, 1, 1), "field/block_tall_grass.png"),
+    "tall_grass_2": (tall_grass_2, (1, 1, 1), "field/block_tall_grass_2.png"),
+    "fallen_log_2x1": (lambda: fallen_log("x"), (2, 1, 1), "field/block_fallen_log_2x1.png"),
+    "fallen_log_1x2": (lambda: fallen_log("y"), (1, 2, 1), "field/block_fallen_log_1x2.png"),
+    "peat_puddle": (peat_puddle, (1, 1, 1), "field/block_peat_puddle.png"),
 }
 
 

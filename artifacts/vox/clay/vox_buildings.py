@@ -361,6 +361,98 @@ def campfire():
     return out + put("pebble_m", 38, -22, 0) + put("pebble_s", -34, -26, 0)
 
 
+# ------------------------------------------------------------- ruins and relics of the field
+
+def burial_mound(axis):
+    """burial_mound: a long grassy barrow closing in course by course, a runestone on its crown
+    and a timber door between two stone posts in its lit end. Two tiles along `axis`."""
+    out = []
+    for k, (nu, nv) in enumerate(((7, 3), (5, 2), (3, 1), (1, 1))):
+        for i, x in enumerate(cells(nu)):
+            for j, y in enumerate(cells(nv)):
+                out += put("turf_block", x, y, k * M, "moss" if (i + j + k) % 4 == 3 else "turf")
+    out += put("standing_stone", 0, 0, 4 * M, "grey") + face_x("rune", 11, 0, 4 * M + 26, "red")
+    out += face_x("door", side(7), 0, 0)
+    for y in (-19, 19):
+        out += stack("stone_small", 104, y, 0, 3, "grey", 14)
+    out += put("stone_lying", 104, 0, 42, "grey", turn=True)
+    out += put("flower_big", -56, 42, 0, "white") + put("flower_big", 30, 44, 0, "yellow")
+    return along(out + put("grass_tuft", 70, 46, 0, "dry") + put("rock_s", -104, -30, 0), axis)
+
+
+def collapsed_wall():
+    """collapsed_wall: what is left of a stone wall, stepping down course by course, its fallen
+    blocks lying in front of it and moss over the stones."""
+    out = put("stone_block", -22, -28, 0, "grey") + put("stone_block", -22, 0, 0, "dark")
+    out += put("stone_block", -22, 28, 0, "grey") + put("stone_block", -22, -28, M, "grey")
+    out += put("stone_block", -22, 0, M, "grey") + put("stone_block", -22, -28, 2 * M, "dark")
+    out += put("moss_patch", -22, -27, 3 * M - 2) + put("moss_patch", -21, 1, 2 * M) + put("moss_patch", -21, 29, M)
+    out += put("stone_block", 16, 18, 0, "grey") + put("stone_half", 22, -20, 0, "dark")
+    out += put("stone_small", 42, 2, 0, "grey") + put("stone_small", 4, 44, 0, "dark")
+    return out + put("moss_patch", 16, 19, 26) + put("grass_tuft", -44, 44, 0, "green") + put("pebble_l", 40, 36, 0)
+
+
+def old_well():
+    """old_well: a round of mossy stone round dark water, two posts carrying the winding beam
+    with its rope, and the bucket left on the rim."""
+    out = walls(3, 3, 0, 2, "grey", name="stone_half", rise=12) + put("well_water", 0, 0, 16)
+    out += put("moss_patch", 28, 28, 24) + put("moss_patch", -28, 28, 24)
+    for y in (-48, 48):
+        out += stack("trunk_thin", 0, y, 0, 2, "timber", M)
+    out += put("branch_long", 0, -22, 56, "timber", turn=True) + put("branch_long", 0, 22, 56, "timber", turn=True)
+    out += put("rope_coil", 0, 0, 54) + put("bucket", 30, 28, 24)
+    return out + put("grass_tuft", 40, -38, 0, "green") + put("grass_tuft", -42, 42, 0, "dry")
+
+
+def shield_grave():
+    """shield_grave: a warrior's grave: a cairn of stones, a spear stuck in the ground behind it
+    and a red shield leant against its lit side, a white flower left in front."""
+    out = [b for x, y, v in ((-18, -14, "grey"), (8, -14, "dark"), (-18, 12, "dark"), (8, 12, "grey"))
+           for b in put("stone_half", x, y, 0, v)]
+    out += put("stone_small", -12, -8, 12, "grey") + put("stone_small", 4, -6, 12, "dark")
+    out += put("stone_small", -10, 8, 12, "dark") + put("stone_small", 2, 8, 12, "grey")
+    out += put("stone_small", -4, 0, 26, "grey") + put("moss_patch", -4, 0, 40)
+    out += face_x("shield", 22, 0, 12, "red") + put("spear", -34, -30, 0)
+    out += put("wildflower", 34, 26, 0, "white") + put("grass_tuft", -38, 36, 0, "green")
+    return out + put("grass_tuft", 38, -34, 0, "dry") + put("pebble_m", 16, 42, 0)
+
+
+def abandoned_cart(axis):
+    """abandoned_cart: a cart left in the field: a plank bed on one axle, the near wheel still on,
+    the other lying in the grass, its shafts dropped to the ground and sacks and a barrel still
+    aboard. Written along x and laid on two tiles along `axis`."""
+    out = [b for x in cells(4) for y in cells(2) for b in put("wall_half", x, y, 16, "plank")]
+    out += [b for x in cells(4) for y in (-31, 31) for b in put("branch", x, y, 28, "timber")]
+    out += put("branch", -60, 0, 28, "timber", turn=True)
+    out += put("wheel", -14, 38, 0) + put("stone_small", -14, -34, 0, "grey") + put("stone_small", 48, 0, 0, "grey")
+    out += put("branch_long", 80, -18, 0, "timber") + put("branch_long", 80, 18, 0, "timber")
+    out += put("sack", -32, 0, 28) + put("sack", -8, -10, 28) + put("barrel", 22, 8, 28)
+    out += put("wheel_flat", -84, 40, 0) + put("crate", -106, -28, 0) + put("sack", 104, 40, 0)
+    return along(out + put("grass_tuft", 104, -30, 0, "green") + put("grass_tuft", -104, 12, 0, "dry"), axis)
+
+
+def buried_chest():
+    """buried_chest: a chest half dug out of the ground, clods of earth round it, gold coins
+    spilled on the lit side and the shovel left stuck in the spoil."""
+    out = put("chest", -6, -6, 0)
+    for x, y, v in ((15, -6, "earth"), (-27, -6, "dark"), (-6, 11, "earth"), (-6, -23, "dark"),
+                    (12, 10, "dark"), (-24, 10, "earth"), (12, -22, "earth"), (-24, -22, "earth")):
+        out += put("clod", x, y, 0, v)
+    out += put("clod", -36, -34, 0, "earth") + put("clod", -26, -42, 0, "dark") + put("shovel", -36, -34, 7)
+    out += put("coin", 26, 14, 0) + put("coin", 32, 4, 0) + put("coin", 16, 12, 7) + put("coin", 22, 26, 0)
+    return out + put("grass_tuft", 34, -30, 0, "green") + put("pebble_l", -34, 26, 0)
+
+
+def totem_stub():
+    """totem_stub: a weathered totem pole: three carved faces stacked, wings jutting out under
+    the top one and a dragon head crowning it, stones and grass at its foot."""
+    out = put("totem", -6, -6, 0, "wood") + put("totem", -6, -6, M, "plank") + put("totem", -6, -6, 2 * M, "wood")
+    out += put("branch", -6, -26, 70, "timber", turn=True) + put("branch", -6, 14, 70, "timber", turn=True)
+    out += put("dragon", -6, -6, 3 * M, "timber") + put("moss_patch", -6, -6, 3 * M - 2)
+    out += put("stone_small", 18, 18, 0, "grey") + put("rock_s", -30, 20, 0)
+    return out + put("grass_tuft", 22, -24, 0, "dry") + put("grass_tuft", -28, -30, 0, "green")
+
+
 # name → (builder, tiles, the asset its render replaces, under lib/assets)
 MODELS = {
     "runestone": (runestone, (1, 1, 1), "building/block_runestone.png"),
@@ -389,6 +481,15 @@ MODELS = {
     "fish_rack": (fish_rack, (1, 1, 1), "beach/block_fish_rack.png"),
     "gull_post": (gull_post, (1, 1, 1), "beach/block_gull_post.png"),
     "campfire": (campfire, (1, 1, 1), "building/block_campfire.png"),
+    "burial_mound_2x1": (lambda: burial_mound("x"), (2, 1, 2), "field/block_burial_mound_2x1.png"),
+    "burial_mound_1x2": (lambda: burial_mound("y"), (1, 2, 2), "field/block_burial_mound_1x2.png"),
+    "collapsed_wall": (collapsed_wall, (1, 1, 1), "field/block_collapsed_wall.png"),
+    "old_well": (old_well, (1, 1, 1), "field/block_old_well.png"),
+    "shield_grave": (shield_grave, (1, 1, 1), "field/block_shield_grave.png"),
+    "abandoned_cart_2x1": (lambda: abandoned_cart("x"), (2, 1, 1), "field/block_abandoned_cart_2x1.png"),
+    "abandoned_cart_1x2": (lambda: abandoned_cart("y"), (1, 2, 1), "field/block_abandoned_cart_1x2.png"),
+    "buried_chest": (buried_chest, (1, 1, 1), "field/block_buried_chest.png"),
+    "totem_stub": (totem_stub, (1, 1, 2), "field/block_totem_stub.png"),
 }
 
 if __name__ == "__main__":
