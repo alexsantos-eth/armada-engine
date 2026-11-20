@@ -267,6 +267,143 @@ def rock_small_3():
             + put("pebble_s", -15, -13, 0))
 
 
+# ------------------------------------------------------------------- more forest variants
+
+def oak_wide():
+    """tree_14: a broad oak: a short trunk under a wide slab skirt, two fuller layers and a cap."""
+    c = -5
+    return (trunk(0, 0, 3) + layer(FULL, c, c, 58, name="leaf_slab", cell=38)
+            + layer(FULL, c, c, 71, name="leaf_slab", cell=38) + layer(PLUS, c, c, 84)
+            + layer(PLUS, c, c, 112) + put("leaf_cap", c, c, 140, "green"))
+
+
+def sapling():
+    """tree_15: a young tree: a thin pole of a trunk and a small crown of small blocks."""
+    c = -3
+    return (trunk(c, c, 4, name="trunk_thin") + layer(QUAD, c, c, 106, name="leaf_block_small", cell=22)
+            + put("leaf_block_small", c, c, 126, "green") + put("leaf_block_small", c, c, 146, "green"))
+
+
+def spruce_slim():
+    """tree_16: a tall slim dark conifer: a long bare pole, then five narrow tiers closing to a point."""
+    c = -3
+    out = trunk(c, c, 2, name="trunk_thin") + layer(QUAD[:3], c, c, 50, "dark", "leaf_block_small", 22)
+    for z in (70, 90, 110):
+        out += layer(QUAD, c, c, z, "dark", "leaf_block_small", 22)
+    return out + put("leaf_block_small", c, c, 130, "dark") + put("leaf_block_small", c, c, 150, "dark")
+
+
+def windswept():
+    """tree_17: a crown blown toward the back: each layer shifted a half block further."""
+    return (trunk(0, 0, 3) + layer(RING, -4, -4, 84) + layer(PLUS, -12, -12, 112)
+            + put("leaf_cap", -18, -18, 140, "green") + put("leaf_block", -8, 24, 100, "green")
+            + put("leaf_tuft", 20, -22, 92, "green"))
+
+
+def birch_green():
+    """tree_18: a white trunk under a green crown, a side branch with a clump."""
+    c = -6
+    return (trunk(-2, -2, 3, "birch") + layer(RING, c, c, 84) + layer(PLUS, c, c, 112)
+            + put("leaf_cap", c, c, 140, "green")
+            + put("branch", 15, -2, 50, "birch") + put("leaf_block", 38, -4, 42, "green"))
+
+
+def sparse_oak():
+    """tree_19: an old thin-crowned tree: the layers have gaps, so the sky and the boughs show."""
+    c = -6
+    return (trunk(0, 0, 3) + layer([(-1, -1), (0, -1), (0, 0), (-1, 1), (0, 1)], c, c, 84)
+            + layer([(0, 0), (0, 1), (-1, 1)], c, c, 112) + put("leaf_cap", c, c, 140, "green")
+            + put("branch", 15, 2, 56, "brown") + put("leaf_tuft", 36, 2, 58, "green"))
+
+
+def maple():
+    """tree_20: a round autumn maple: three full layers and a cap, red leaves on the face."""
+    c = -5
+    return (trunk(0, 0, 2) + layer(RING, c, c, 56, "autumn") + layer(FULL, c, c, 84, "autumn")
+            + layer(PLUS, c, c, 112, "autumn") + put("leaf_cap", c, c, 140, "autumn")
+            + fruits([(c + 41, c + 4, 94), (c - 4, c + 41, 66)]))
+
+
+def fir_broad():
+    """tree_21: a broad dark fir: a full skirt closing in tier by tier to a single block."""
+    c = -5
+    return (trunk(0, 0, 2) + layer(RING, c, c, 38, "dark") + layer(FULL, c, c, 66, "dark")
+            + layer(PLUS, c, c, 94, "dark") + layer(QUAD, c, c, 122, "dark", "leaf_block_small", 22)
+            + put("leaf_block", c, c, 144, "dark"))
+
+
+def acacia_low():
+    """tree_22: a wide umbrella on a long trunk, a leaning branch with a pad on the other side."""
+    c, cell = -6, 38
+    return (trunk(c, c, 5) + layer(PLUS, c, c, 142, name="leaf_slab", cell=cell)
+            + layer([(0, 0)], c, c, 155, name="leaf_slab", cell=cell)
+            + put("branch", c - 10, c + 20, 66, "brown", turn=True) + put("trunk_thin", c - 6, c + 30, 66, "brown")
+            + layer(QUAD, c - 6, c + 30, 94, name="leaf_tuft", cell=21))
+
+
+def ball_tree():
+    """tree_23: a tree of round clumps: three layers of leaf balls, a dome on top."""
+    c = -5
+    return (trunk(0, 0, 3) + layer(FULL, c, c, 84, name="leaf_ball") + layer(PLUS, c, c, 106, name="leaf_ball")
+            + layer([(0, 0)], c, c, 128, name="leaf_ball") + put("leaf_dome", c, c, 148, "green"))
+
+
+def column_tree():
+    """tree_24: a bunch of tall leaf columns standing up from a short trunk, a dome between them."""
+    c = -4
+    return (trunk(0, 0, 2) + layer(QUAD, c, c, 50, name="leaf_column", cell=20)
+            + layer(PLUS, c, c, 86, name="leaf_column", cell=20) + put("leaf_column", c, c, 114, "green")
+            + put("leaf_dome", c, c, 150, "green"))
+
+
+def beam_oak():
+    """tree_25: a stout trunk carrying crossed boughs, a block layer and a cap."""
+    c = -5
+    return (trunk(0, 0, 3, name="trunk_thick")
+            + put("leaf_beam", c, c - 14, 84, "green") + put("leaf_beam", c, c + 14, 84, "green")
+            + put("leaf_beam", c - 14, c, 100, "green", turn=True) + put("leaf_beam", c + 14, c, 100, "green", turn=True)
+            + layer(PLUS, c, c, 116) + put("leaf_cap", c, c, 142, "green"))
+
+
+def weeping():
+    """tree_26: a weeping tree: slab tiers on a trunk, strands hanging round the skirt."""
+    c = -6
+    out = trunk(0, 0, 4) + layer(RING, c, c, 112, name="leaf_slab", cell=38)
+    out += layer(FULL, c, c, 125, name="leaf_slab", cell=38) + layer(PLUS, c, c, 138)
+    for i, j in ((-1, -1), (0, -1), (1, -1), (-1, 0), (-1, 1), (0, 1)):
+        out += put("leaf_drop", c + i * 38 + (-6 if i < 0 else 6 if i > 0 else 0), c + j * 38, 92, "green")
+    return out
+
+
+def elder_oak():
+    """tree_27: a squat old oak: a flared root, a stout trunk and three wide layers under a dome."""
+    c = -5
+    out = put("trunk_root", 0, 0, 0, "brown") + [b for k in range(2) for b in put("trunk_thick", 0, 0, 10 + k * 28, "brown")]
+    return (out + layer(RING, c, c, 66) + layer(FULL, c, c, 94) + layer(PLUS, c, c, 122)
+            + put("leaf_dome", c, c, 148, "green") + put("branch_long", 20, 0, 52, "brown"))
+
+
+def grove_birch(axis):
+    """grove_birch: a green birch, a sparse oak and a sapling over a stump, a bush, fallen leaves
+    and toadstools, two tiles long along `axis`. Laid out for either orientation, never mirrored."""
+    def at(u, v):
+        return (64 + u, v) if axis == "x" else (v, 64 + u)
+
+    def lay(name, u, v, z, variant="", long=False):
+        return put(name, *at(u, v), z, variant, turn=long and axis == "y")
+
+    birch, oak, sap = at(-74, 10), at(40, -10), at(104, 34)
+    out = trunk(*birch, 3, "birch") + layer(RING, *birch, 84) + layer(PLUS, *birch, 112)
+    out += put("leaf_cap", *birch, 140, "green")
+    out += trunk(*oak, 3) + layer([(-1, -1), (0, -1), (0, 0), (-1, 1), (0, 1)], *oak, 86)
+    out += layer([(0, 0), (0, 1), (-1, 1)], *oak, 114) + put("leaf_cap", *oak, 142, "green")
+    out += trunk(*sap, 3, name="trunk_thin") + layer(QUAD, *sap, 70, name="leaf_block_small", cell=22)
+    out += put("leaf_block_small", *sap, 92, "green")
+    out += lay("stump", -20, 46, 0) + lay("fallen_leaf", 50, 40, 0, "ochre") + lay("fallen_leaf", -90, -34, 0, "rust")
+    out += lay("mushroom", -30, 40, 0) + lay("mushroom", -12, 52, 0)
+    return out + lay("rock_s", 8, 40, 0, long=True)
+
+
 # ---------------------------------------------------------------------------------- the beach
 
 def crown(x, y, z, variant="green"):
@@ -366,6 +503,88 @@ def palm_grove(axis):
     return out + lay("coconut", 4, 40, 12) + lay("shell", -96, 30, 0, "pink")
 
 
+def palm_young():
+    """palm_young: a short young palm, two blocks, a pale crown on a slender straight trunk."""
+    top = (-2, -2)
+    trunk_boxes, h = palm_trunk((2, 2), top, 8, bend=1.2)
+    return trunk_boxes + crown(*top, h + 4, "green")
+
+
+def palm_lean():
+    """palm_lean: a palm leaning hard toward the back, its coconuts bunched under the crown."""
+    top = (-8, -6)
+    trunk_boxes, h = palm_trunk((16, 14), top, 10, bend=1.5)
+    return trunk_boxes + crown(*top, h + 4, "green") + coconuts(*top, h - 8)
+
+
+def palm_slim():
+    """palm_slim: three blocks, a very tall straight slim palm under a dark crown."""
+    top = (-2, -2)
+    trunk_boxes, h = palm_trunk((2, 2), top, 16, bend=1.3)
+    return trunk_boxes + crown(*top, h + 4, "dark") + coconuts(*top, h - 8)
+
+
+def crown_short(x, y, z, variant="green", rising=False):
+    """A dense crown of short fronds (or young, rising ones) around a tuft; the front one left out."""
+    name = "frond_up" if rising else "frond_short"
+    out = put("leaf_tuft", x, y, z - 6, variant)
+    for q in range(4):
+        out += moved(spun(piece(name, variant), q), x, y, z)
+        if q:
+            out += moved(spun(piece(name + "_diag", variant), q), x, y, z)
+    return out + put("leaf_block_small", x, y, z + 4, variant)
+
+
+def palm_fan():
+    """palm_fan: a mid palm with a dense crown of short fronds on a straight trunk."""
+    top = (-4, -4)
+    trunk_boxes, h = palm_trunk((2, 2), top, 10, bend=1.3)
+    return trunk_boxes + crown_short(*top, h + 4, "green") + coconuts(*top, h - 8)
+
+
+def palm_sprout():
+    """palm_sprout: a young palm with its fronds still standing up."""
+    top = (-2, -2)
+    trunk_boxes, h = palm_trunk((2, 2), top, 7, bend=1.2)
+    return trunk_boxes + crown_short(*top, h + 4, "green", rising=True)
+
+
+def palm_cluster():
+    """palm_cluster: three young palms in one tile, of different heights."""
+    parts = [((-18, 14), (-22, 10), 6, "green"), ((16, -10), (12, -14), 9, "dark"), ((20, 24), (22, 20), 4, "green")]
+    out = []
+    for base, top, n, v in parts:
+        boxes, h = palm_trunk(base, top, n, 1.3)
+        out += boxes + crown_short(*top, h + 4, v, rising=True)
+    return out
+
+
+def palm_grove_2(axis):
+    """palm_grove_2: a leaning pair at the back, a slim palm, a bowing one at the front and a
+    young one, over coconuts, a shell and a rock, two tiles long along `axis`."""
+    def at(u, v):
+        return (64 + u, v) if axis == "x" else (v, 64 + u)
+
+    def lay(name, u, v, z, variant="", long=False):
+        return put(name, *at(u, v), z, variant, turn=long and axis == "y")
+
+    def palm_at(base, top, segments, variant, bend=2.0):
+        boxes, h = palm_trunk(at(*base), at(*top), segments, bend)
+        return boxes + crown(*at(*top), h + 4, variant) + coconuts(*at(*top), h - 8)
+
+    def palm_sprout_at(u, v, segments):
+        boxes, h = palm_trunk(at(u + 2, v + 2), at(u, v), segments, 1.2)
+        return boxes + crown_short(*at(u, v), h + 4, "dark", rising=True)
+
+    out = palm_sprout_at(-34, 8, 5)                                    # young ones sit low, clear of the big crowns
+    out += palm_sprout_at(36, -8, 4)
+    out += palm_at((-68, -2), (-70, -6), 15, "green")                   # the tall slim one, at the back
+    out += palm_at((2, 6), (2, 4), 10, "dark")                          # the medium one
+    out += palm_at((64, -2), (70, -4), 12, "green", bend=1.5)           # bowing out toward +u
+    out += lay("coconut", 22, 38, 0) + lay("coconut_half", 32, 30, 0) + lay("rock_s", -50, 38, 0)
+    return out + lay("shell", 8, -40, 0, "white") + lay("driftwood", 92, 36, 0, long=True)
+
+
 # name → (builder, tiles, the asset its render replaces, under lib/assets)
 MODELS = {
     "tree": (fruit_tree, (1, 1, 2), "tree/block.png"),
@@ -401,6 +620,30 @@ MODELS = {
     "beach_rocks": (beach_rocks, (1, 1, 1), "beach/block_beach_rocks.png"),
     "palm_grove_2x1": (lambda: palm_grove("x"), (2, 1, 3), "beach/block_palm_grove_2x1.png"),
     "palm_grove_1x2": (lambda: palm_grove("y"), (1, 2, 3), "beach/block_palm_grove_1x2.png"),
+    "tree_14": (oak_wide, (1, 1, 2), "tree/block_14.png"),
+    "tree_15": (sapling, (1, 1, 2), "tree/block_15.png"),
+    "tree_16": (spruce_slim, (1, 1, 2), "tree/block_16.png"),
+    "tree_17": (windswept, (1, 1, 2), "tree/block_17.png"),
+    "tree_18": (birch_green, (1, 1, 2), "tree/block_18.png"),
+    "tree_19": (sparse_oak, (1, 1, 2), "tree/block_19.png"),
+    "tree_20": (maple, (1, 1, 2), "tree/block_20.png"),
+    "tree_21": (fir_broad, (1, 1, 2), "tree/block_21.png"),
+    "tree_22": (acacia_low, (1, 1, 2), "tree/block_22.png"),
+    "tree_23": (ball_tree, (1, 1, 2), "tree/block_23.png"),
+    "tree_24": (column_tree, (1, 1, 2), "tree/block_24.png"),
+    "tree_25": (beam_oak, (1, 1, 2), "tree/block_25.png"),
+    "tree_26": (weeping, (1, 1, 2), "tree/block_26.png"),
+    "tree_27": (elder_oak, (1, 1, 2), "tree/block_27.png"),
+    "palm_fan": (palm_fan, (1, 1, 2), "beach/block_palm_fan.png"),
+    "palm_sprout": (palm_sprout, (1, 1, 2), "beach/block_palm_sprout.png"),
+    "palm_cluster": (palm_cluster, (1, 1, 2), "beach/block_palm_cluster.png"),
+    "grove_birch_2x1": (lambda: grove_birch("x"), (2, 1, 2), "tree/block_grove_birch_2x1.png"),
+    "grove_birch_1x2": (lambda: grove_birch("y"), (1, 2, 2), "tree/block_grove_birch_1x2.png"),
+    "palm_young": (palm_young, (1, 1, 2), "beach/block_palm_young.png"),
+    "palm_lean": (palm_lean, (1, 1, 2), "beach/block_palm_lean.png"),
+    "palm_slim": (palm_slim, (1, 1, 3), "beach/block_palm_slim.png"),
+    "palm_grove_2_2x1": (lambda: palm_grove_2("x"), (2, 1, 3), "beach/block_palm_grove_2_2x1.png"),
+    "palm_grove_2_1x2": (lambda: palm_grove_2("y"), (1, 2, 3), "beach/block_palm_grove_2_1x2.png"),
 }
 
 

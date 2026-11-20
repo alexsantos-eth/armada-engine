@@ -134,6 +134,30 @@ def frond_diag(color):
             box(36, 36, -21, 6, 6, 6, color, 2)]
 
 
+def frond_short(color):
+    """A short, stout frond along +x: three pads, for dense or young crowns."""
+    return [box(8, 0, -1, 16, 14, 7, color, 3), box(19, 0, -4, 13, 12, 7, color, 3),
+            box(28, 0, -8, 9, 9, 6, color, 2.4)]
+
+
+def frond_short_diag(color):
+    """The short frond along the diagonal between +x and +y."""
+    return [box(6, 6, -1, 14, 14, 7, color, 3), box(14, 14, -4, 11, 11, 7, color, 3),
+            box(20, 20, -8, 8, 8, 6, color, 2.4)]
+
+
+def frond_up(color):
+    """A frond rising along +x like a young palm's: four pads climbing and leaning out."""
+    return [box(6, 0, 1, 14, 12, 7, color, 3), box(12, 0, 7, 12, 10, 7, color, 3),
+            box(16, 0, 14, 10, 9, 7, color, 2.6), box(18, 0, 21, 7, 7, 6, color, 2.2)]
+
+
+def frond_up_diag(color):
+    """The rising frond along the diagonal between +x and +y."""
+    return [box(4, 4, 1, 12, 12, 7, color, 3), box(9, 9, 7, 10, 10, 7, color, 3),
+            box(12, 12, 14, 9, 9, 7, color, 2.6), box(13, 13, 21, 6, 6, 6, color, 2.2)]
+
+
 def hull_mid(color):
     """One module of a longship hull, along x: a bottom as wide as the hull, two side strakes
     standing on it from z = 0 and the dark gunwales, open on top. 60 wide and 26 high."""
@@ -203,7 +227,15 @@ PIECES = {
     "leaf_cap": (leaf(32, 32, 24, 7), LEAVES),
     "leaf_slab": (leaf(36, 36, 12, 5), LEAVES),
     "leaf_tuft": (leaf(20, 20, 11, 4.5), LEAVES),
+    "leaf_dome": (leaf(30, 30, 18, 8), LEAVES),                 # a low rounded cap
+    "leaf_ball": (leaf(24, 24, 24, 11), LEAVES),                # a round clump, on a cell of 28
+    "leaf_column": (leaf(18, 18, 36, 8), LEAVES),               # a tall narrow clump (cell 20)
+    "leaf_beam": (leaf(54, 26, 16, 6), LEAVES),                 # a long bough of leaves along x
+    "leaf_drop": (leaf(12, 12, 22, 5), LEAVES),                 # a hanging strand (willow)
     "trunk": (trunk, BARKS),
+    "trunk_thick": (lambda c: [box(0, 0, 0, 20, 20, 28, c, 4.5)], BARKS),   # an old, stout trunk
+    "trunk_root": (lambda c: [box(0, 0, 0, 28, 28, 10, c, 6)], BARKS),      # the flare at a trunk's foot
+    "branch_long": (lambda c: [box(0, 0, 0, 40, 9, 9, c, 3)], BARKS),
     "trunk_thin": (lambda c: [box(0, 0, 0, 9, 9, 28, c, 2)], BARKS),
     "branch": (lambda c: [box(0, 0, 0, 26, 8, 8, c, 2.5)], BARKS),
     "stump": (lambda c: [box(0, 0, 0, 16, 16, 14, c, 3), box(0, 0, 12, 11, 11, 2, CUT, 1)], {"": WOOD}),
@@ -258,6 +290,10 @@ PIECES = {
     # ---- the beach (kits 1 and 3) ---------------------------------------------------------
     "palm_trunk": (palm_trunk, {"": PALM_BARK}),                # stacked every 14
     "frond": (frond, dict(green=LEAF, dark=LEAF_DARK)),
+    "frond_short": (frond_short, dict(green=LEAF, dark=LEAF_DARK)),
+    "frond_short_diag": (frond_short_diag, dict(green=LEAF, dark=LEAF_DARK)),
+    "frond_up": (frond_up, dict(green=LEAF, dark=LEAF_DARK)),
+    "frond_up_diag": (frond_up_diag, dict(green=LEAF, dark=LEAF_DARK)),
     "frond_diag": (frond_diag, dict(green=LEAF, dark=LEAF_DARK)),
     "coconut": (lambda c: [box(0, 0, 0, 11, 11, 11, c, 4.8)], {"": COCONUT}),
     "coconut_half": (lambda c: [box(0, 0, 0, 12, 12, 6, c, 2.6), box(0, 0, 5, 8, 8, 2, WHITE, 1.2)], {"": COCONUT}),

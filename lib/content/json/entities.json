@@ -824,7 +824,7 @@
     {
       "id": "palm_tall",
       "asset": {
-        "sprite": "/assets/beach/block_palm_tall.png"
+        "sprite": "/assets/beach/block_palm_tall.png", "sway": {"cut": 0.8, "amplitude": 3.0, "period": 5200}
       },
       "shape": {
         "height": 3,
@@ -843,7 +843,7 @@
     {
       "id": "palm",
       "asset": {
-        "sprite": "/assets/beach/block_palm.png"
+        "sprite": "/assets/beach/block_palm.png", "sway": {"cut": 0.72, "amplitude": 2.4, "period": 4600}
       },
       "shape": {
         "height": 2,
@@ -862,7 +862,7 @@
     {
       "id": "palm_bent",
       "asset": {
-        "sprite": "/assets/beach/block_palm_bent.png"
+        "sprite": "/assets/beach/block_palm_bent.png", "sway": {"cut": 0.7, "amplitude": 2.8, "period": 5000}
       },
       "shape": {
         "height": 2,
@@ -1110,6 +1110,570 @@
       "placement": {
         "surfaces": [
           "sand",
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "tree_14",
+      "asset": {
+        "sprite": "/assets/tree/block_14.png",
+        "sway": {
+          "cut": 0.6,
+          "amplitude": 2,
+          "period": 4000
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "tree_15",
+      "asset": {
+        "sprite": "/assets/tree/block_15.png",
+        "sway": {
+          "cut": 0.55,
+          "amplitude": 2.4,
+          "period": 3300
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "tree_16",
+      "asset": {
+        "sprite": "/assets/tree/block_16.png",
+        "sway": {
+          "cut": 0.6,
+          "amplitude": 1.8,
+          "period": 3600
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "tree_17",
+      "asset": {
+        "sprite": "/assets/tree/block_17.png",
+        "sway": {
+          "cut": 0.62,
+          "amplitude": 2.6,
+          "period": 3500
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "tree_18",
+      "asset": {
+        "sprite": "/assets/tree/block_18.png",
+        "sway": {
+          "cut": 0.6,
+          "amplitude": 2,
+          "period": 3900
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "tree_19",
+      "asset": {
+        "sprite": "/assets/tree/block_19.png",
+        "sway": {
+          "cut": 0.62,
+          "amplitude": 2.2,
+          "period": 4100
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "tree_20",
+      "asset": {
+        "sprite": "/assets/tree/block_20.png",
+        "sway": {
+          "cut": 0.6,
+          "amplitude": 2,
+          "period": 3700
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "tree_21",
+      "asset": {
+        "sprite": "/assets/tree/block_21.png",
+        "sway": {
+          "cut": 0.6,
+          "amplitude": 1.8,
+          "period": 4300
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "tree_22",
+      "asset": {
+        "sprite": "/assets/tree/block_22.png",
+        "sway": {
+          "cut": 0.61,
+          "amplitude": 2,
+          "period": 4200
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "palm_young",
+      "asset": {
+        "sprite": "/assets/beach/block_palm_young.png",
+        "sway": {
+          "cut": 0.7,
+          "amplitude": 2.2,
+          "period": 4400
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "palm_lean",
+      "asset": {
+        "sprite": "/assets/beach/block_palm_lean.png",
+        "sway": {
+          "cut": 0.72,
+          "amplitude": 2.6,
+          "period": 4900
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "palm_slim",
+      "asset": {
+        "sprite": "/assets/beach/block_palm_slim.png",
+        "sway": {
+          "cut": 0.8,
+          "amplitude": 3.0,
+          "period": 5400
+        }
+      },
+      "shape": {
+        "height": 3,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "grove_birch_x",
+      "asset": {
+        "sprite": "/assets/tree/block_grove_birch_1x2.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 2,
+        "axis": "x",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass",
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "grove_birch_y",
+      "asset": {
+        "sprite": "/assets/tree/block_grove_birch_2x1.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 2,
+        "axis": "y",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass",
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "palm_grove_2_x",
+      "asset": {
+        "sprite": "/assets/beach/block_palm_grove_2_1x2.png"
+      },
+      "shape": {
+        "height": 3,
+        "length": 2,
+        "axis": "x",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand",
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "palm_grove_2_y",
+      "asset": {
+        "sprite": "/assets/beach/block_palm_grove_2_2x1.png"
+      },
+      "shape": {
+        "height": 3,
+        "length": 2,
+        "axis": "y",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand",
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "tree_23",
+      "asset": {
+        "sprite": "/assets/tree/block_23.png",
+        "sway": {
+          "cut": 0.6,
+          "amplitude": 2,
+          "period": 3800
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "tree_24",
+      "asset": {
+        "sprite": "/assets/tree/block_24.png",
+        "sway": {
+          "cut": 0.55,
+          "amplitude": 2.2,
+          "period": 3400
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "tree_25",
+      "asset": {
+        "sprite": "/assets/tree/block_25.png",
+        "sway": {
+          "cut": 0.6,
+          "amplitude": 1.8,
+          "period": 4400
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "tree_26",
+      "asset": {
+        "sprite": "/assets/tree/block_26.png",
+        "sway": {
+          "cut": 0.6,
+          "amplitude": 2.4,
+          "period": 4600
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "tree_27",
+      "asset": {
+        "sprite": "/assets/tree/block_27.png",
+        "sway": {
+          "cut": 0.62,
+          "amplitude": 1.6,
+          "period": 4800
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "palm_fan",
+      "asset": {
+        "sprite": "/assets/beach/block_palm_fan.png",
+        "sway": {
+          "cut": 0.7,
+          "amplitude": 2.4,
+          "period": 4500
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "palm_sprout",
+      "asset": {
+        "sprite": "/assets/beach/block_palm_sprout.png",
+        "sway": {
+          "cut": 0.7,
+          "amplitude": 2.0,
+          "period": 4000
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand"
+        ]
+      }
+    },
+    {
+      "id": "palm_cluster",
+      "asset": {
+        "sprite": "/assets/beach/block_palm_cluster.png",
+        "sway": {
+          "cut": 0.7,
+          "amplitude": 2.2,
+          "period": 4300
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
           "sand"
         ]
       }
