@@ -1,0 +1,25 @@
+{
+  "world": "procedural",
+  "window": [
+    1200,
+    760
+  ],
+  "zoom": 0.7,
+  "phase": "day",
+  "centre": [
+    -12,
+    142
+  ],
+  "player": [
+    -12,
+    142
+  ],
+  "steps": [
+    "settle",
+    {
+      "shot": "ground-world.png"
+    }
+  ],
+  "out": "shots",
+  "maxFrames": 1200
+}

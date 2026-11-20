@@ -112,6 +112,7 @@ pieza nueva.
 | `PEAT` / `BOG` / `REED` / `CATTAIL` / `WELL_WATER` | `#5b4532` / `#4f6b5c` / `#b3a85a` / `#73472a` / `#2f5470` | turba, agua del charco, caña, espadaña, agua del pozo |
 | `BONE` / `ASH` / `SOOT` / `RUSTED` | `#e6dab8` / `#9b968e` / `#3b3632` / `#9c5a36` | hueso, ceniza, hollín y boca oscura, hierro oxidado |
 | `THISTLE` / `THISTLE_HEAD` / `AMBER` / `STEEL` | `#8c6b45` / `#9a7096` / `#eda23a` / `#b9bec6` | cardo seco y su flor, ámbar, acero y veta de hierro |
+| `SOIL_DEEP` / `SOIL_WET` / `CRACK` / `DEADWOOD` | `#8f8a3e` / `#7a7536` / `#55512a` / `#8e8576` | looks de la tierra (tierra honda, húmeda, fondo de grieta) y madera muerta |
 
 Un material nuevo se añade como constante en `vox_prefabs.py` **y a la lista `PALETTE`**
 (si falta, el script se detiene), **siempre al final**: los índices de los `.vox` ya escritos no se mueven. Elige tonos medios y saturados: el render los oscurece en
@@ -215,12 +216,20 @@ colisión 0; las demás (setas y charco incluidos), colisión de 0,2 a 0,6.
 | `flat_stone` / `flat_stone_small` | 32 × 26 × 8 / 22 × 18 × 8 | grey, dark, sand, clay | losas de un mojón, se apilan cada 9 |
 | `menhir` | 32 × 22 × 150 | grey, sand | menhir de granito de casi dos bloques |
 | `ash` / `pit` / `mouth` | 22 × 18 × 9 / 50 × 44 × 3 / 6 × 30 × 54 | — | montón de ceniza, fondo de un hoyo (pieza plana, no suelo), boca oscura de una puerta |
+| troncos y ramas en `dead` | — | `dead` (`DEADWOOD` `#8e8576`) | madera muerta: árbol muerto, tocón partido, matorral seco |
 
 Las entidades del suelo de tierra (`lib/assets/barren/`) solo crecen en la superficie `ground`
 (`placement.surfaces: ["ground"]`, sin `additionalSurfaces`), fuera de poblados: familias
-`thistle`, `remains`, `outcrop`, `diggings` y `barrow_entrance` de `wfc.json`, con peso en
-`wilderness.weights`. Todas tienen colisión (de 0,2 a 0,5) salvo la cadena, que lleva
-`drawUnderPlayer` y colisión 0; la entrada del túmulo bloquea sus dos casillas (1,0).
+`thistle`, `remains`, `outcrop`, `diggings`, `barrow_entrance`, `deadwood` y `debris` de
+`wfc.json`, con peso en `wilderness.weights`. Todas tienen colisión (de 0,15 a 0,5) salvo la
+cadena y la hierba seca, que llevan `drawUnderPlayer` y colisión 0; la entrada del túmulo
+bloquea sus dos casillas (1,0).
+
+La tierra tiene también sus **looks de terreno** (`ground/block_dark`, `_cracked`, `_stones`,
+`_damp`, `_dry`): bloques enteros de `terrain_clay.py` (`GROUND_TOPS`) con los bordes del llano
+y algo propio dentro (manchas `SOIL_DEEP`, grietas talladas con fondo `CRACK`, losas hundidas,
+agua `BOG` sobre `SOIL_WET`, matas secas). El motor los reparte por manchas de ruido como los
+adornos de la hierba (`GROUND_TOPS` en `src/terrain/terrain_view_appearance.rs`).
 
 Las piezas de cara (`door`, `window`, `shield`, `rune`, `banner`) tienen el pivote **en el
 plano de la cara**: se colocan con `x` igual al plano del muro y la mitad queda prensada

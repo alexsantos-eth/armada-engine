@@ -95,6 +95,15 @@ de las vecinas y se recorta a la casilla (`vox_render.py --margin N [--around]`)
 margen por los cuatro lados, los lados con margen solo detrás, y se componen por la máscara del
 rombo de la superficie.
 
+La tierra tiene además cinco **looks propios** que salen del mismo script con los mismos bordes
+(`GROUND_TOPS`): `ground/block_dark.png` (manchas de tierra más honda), `block_cracked.png`
+(grietas talladas en el vóxel, oscuras al fondo), `block_stones.png` (losas medio hundidas y
+grava), `block_damp.png` (hondonada húmeda con agua y una mata de junco) y `block_dry.png`
+(matas de hierba seca). Como cada uno es un bloque entero, su caja de tinta es la del bloque
+llano; el terreno los reparte por manchas de ruido con su propio `VariantPicker`
+(`GROUND_TOPS` en `src/terrain/terrain_view_appearance.rs`, ~30 % de la tierra), igual que los
+adornos de la hierba. Colores nuevos: `SOIL_DEEP`, `SOIL_WET`, `CRACK`.
+
 `artifacts/vox/clay/grass_clay.py` arma las variantes del techo de hierba encima de ese bloque
 (se rehace después de él): lo que se arma con piezas del kit es el adorno (flores, hojas caídas,
 guijarros, setas), de pie en z = 0 de un volumen 1x1x1, y su render se compone encima del bloque
@@ -250,13 +259,18 @@ no las listan, así que nunca salen dentro). Solo la hierba alta lleva `drawUnde
 `lib/assets/barren/` guarda las entidades que solo crecen en la superficie `ground` (la tierra
 desnuda): veta de mineral (hierro y ámbar), montón de huesos, mojón de losas, menhir (2 bloques),
 entrada de túmulo (2 casillas, bloquea), forja en ruinas, hoyo de excavación con pico, cardo
-seco, cadena oxidada y yelmo sobre cráneo. Salen de `vox_models.py` (huesos y cardo) y
+seco, cadena oxidada y yelmo sobre cráneo; y desde 2026-11-20 árbol muerto (2 bloques), tocón
+partido, matorral seco, hierba seca (dos), cascotes, lanzas de una batalla, madriguera y poste con
+cráneo de buey (2 bloques), en madera muerta (`dead` de los troncos, color `DEADWOOD`). Salen de
+`vox_models.py` (huesos, cardo, madera muerta y hierba seca) y
 `vox_buildings.py` (el resto) con las piezas del suelo de `vox_prefabs.py` (`bone`, `rib`,
 `skull`, `helmet`, `link`, `pickaxe`, `thistle`, `vein`, `flat_stone`, `menhir`, `ash`, `pit`…).
 Su blueprint pide `"surfaces": ["ground"]` y se colocan por las familias `thistle`, `remains`,
-`outcrop`, `diggings` y `barrow_entrance` de `wfc.json`, con multiplicador en `settlements.json`
-→ `wilderness.weights`. Todas tienen colisión salvo la cadena oxidada, que lleva
-`drawUnderPlayer` y colisión 0.
+`outcrop`, `diggings`, `barrow_entrance`, `deadwood` y `debris` de `wfc.json`, con multiplicador
+en `settlements.json` → `wilderness.weights`. Con los pesos de 2026-11-20 una casilla de tierra
+lleva entidad un 28 % de las veces (antes 18 %, y dos tercios eran piedritas genéricas). Todas
+tienen colisión salvo la cadena oxidada y la hierba seca, que llevan `drawUnderPlayer` y
+colisión 0.
 
 ### Entidades animadas
 

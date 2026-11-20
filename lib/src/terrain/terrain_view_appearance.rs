@@ -1,4 +1,5 @@
-//! Game content: what colour a patch of ground is drawn, and what grows on top of the grass.
+//! Game content: what colour a patch of ground is drawn, and what lies on top of the grass and
+//! of the bare ground.
 
 use iso::assets::{InkBox, SpriteFrame};
 use iso::biomes::WorldBiomes;
@@ -31,6 +32,68 @@ const GRASS_TOPS: &[(&str, f64)] = &[
     ("/assets/grass/block_pebbles.png", 0.035),
     ("/assets/grass/block_mushrooms.png", 0.015),
 ];
+
+/// The looks the bare ground can take, and the share of all bare ground each should cover:
+/// whole ground blocks with the plain block's edges, so they join it anywhere, and one thing of
+/// their own inside the cell (`artifacts/vox/clay/terrain_clay.py`, `GROUND_TOPS`). Bare ground
+/// comes in small patches, so these are rolled cell by cell instead of gathered by the grass's
+/// patch noise: gathered, a whole patch of dirt often fell between two clusters and showed none.
+const GROUND_TOPS: &[(&str, f64)] = &[
+    ("/assets/ground/block_dark.png", 0.08),
+    ("/assets/ground/block_cracked.png", 0.06),
+    ("/assets/ground/block_stones.png", 0.06),
+    ("/assets/ground/block_damp.png", 0.04),
+    ("/assets/ground/block_dry.png", 0.06),
+];
+
+/// Resolves the tops of one material against the atlas: the ones it lacks go to `missing`, the
+/// rest come back with their chances.
+fn resolve_tops(
+    tops: &[(&'static str, f64)],
+    artwork: &impl Fn(&str) -> Option<(SpriteFrame, InkBox)>,
+    missing: &mut Vec<&'static str>,
+) -> (Vec<f64>, Vec<Look>) {
+    let mut chances = Vec::new();
+    let mut looks = Vec::new();
+    for (source, chance) in tops {
+        match artwork(source) {
+            Some(look) => {
+                chances.push(*chance);
+                looks.push(look);
+            }
+            None => missing.push(*source),
+        }
+    }
+    (chances, looks)
+}
+
+/// Looks rolled one cell at a time: each covers its chance of the cells, wherever they are.
+struct CellRoll {
+    seed: u64,
+    /// The running sum of the chances: a roll under the `n`th picks look `n`.
+    below: Vec<f64>,
+    looks: Vec<Look>,
+}
+
+impl CellRoll {
+    fn new(seed: u64, chances: &[f64], looks: Vec<Look>) -> Option<Self> {
+        let mut total = 0.0;
+        let below: Vec<f64> = chances
+            .iter()
+            .map(|chance| {
+                total += chance.max(0.0);
+                total
+            })
+            .collect();
+        (total > 0.0).then_some(Self { seed, below, looks })
+    }
+
+    fn pick(&self, x: i32, y: i32) -> Option<Look> {
+        let roll = lattice_at(self.seed, i64::from(x), i64::from(y));
+        let at = self.below.iter().position(|limit| roll < *limit)?;
+        self.looks.get(at).copied()
+    }
+}
 
 /// The other looks of each plain ground block (its `block.png` is the first), drawn one cell at a
 /// time at random where the ground grows nothing. The looks of a material share every edge, so
@@ -88,6 +151,8 @@ pub struct TerrainLook {
     biomes: Option<WorldBiomes>,
     /// Where the grass grows something, and the artwork of each top it can grow.
     grass_tops: Option<(VariantPicker, Vec<(SpriteFrame, InkBox)>)>,
+    /// Where the bare ground takes one of its own looks, and the artwork of each.
+    ground_tops: Option<CellRoll>,
     /// The other looks of each plain ground block, and the stream that picks one per cell.
     plains: (u64, Vec<(TerrainMaterial, Vec<Look>)>),
     /// The cells dressed by hand, which answer before the noise does; empty in a played world.
@@ -120,19 +185,11 @@ impl TerrainLook {
         };
 
         let mut missing = Vec::new();
-        let mut chances = Vec::new();
-        let mut looks = Vec::new();
-        for (source, chance) in GRASS_TOPS {
-            match artwork(source) {
-                Some(look) => {
-                    chances.push(*chance);
-                    looks.push(look);
-                }
-                None => missing.push(*source),
-            }
-        }
+        let (chances, looks) = resolve_tops(GRASS_TOPS, &artwork, &mut missing);
         let grass_tops = VariantPicker::new(seed, "terrain-variants:grass", &chances)
             .map(|picker| (picker, looks));
+        let (chances, looks) = resolve_tops(GROUND_TOPS, &artwork, &mut missing);
+        let ground_tops = CellRoll::new(seed ^ 0x6a09_e667_f3bc_c909, &chances, looks);
         let mut plains = Vec::new();
         for (material, sources) in PLAIN_LOOKS {
             let mut looks = Vec::new();
@@ -150,6 +207,7 @@ impl TerrainLook {
                 tints,
                 biomes: biomes.cloned(),
                 grass_tops,
+                ground_tops,
                 plains: (plain_seed, plains),
                 dressing: Dressing::default(),
             },
@@ -204,15 +262,19 @@ impl TerrainLook {
     }
 
     /// The artwork of the top column `(x, y)` grows, if its material grows anything there. A
-    /// cell dressed by hand grows what it was given, or stays plain; the rest follow the noise.
+    /// grass cell dressed by hand grows what it was given, or stays plain, and a bare-ground cell
+    /// dressed by hand stays plain (the maker's tops are the grass's); the rest follow the noise.
     pub fn top(&self, material: TerrainMaterial, x: i32, y: i32) -> Option<(SpriteFrame, InkBox)> {
-        if material != TerrainMaterial::Grass {
-            return None;
-        }
-        let (picker, looks) = self.grass_tops.as_ref()?;
         let chosen = (!self.dressing.is_empty())
             .then(|| self.dressing.top(WorldCoord { x, y }))
             .flatten();
+        let (picker, looks) = match material {
+            TerrainMaterial::Grass => self.grass_tops.as_ref()?,
+            TerrainMaterial::Ground if chosen.is_none() => {
+                return self.ground_tops.as_ref()?.pick(x, y);
+            }
+            _ => return None,
+        };
         match chosen {
             Some(top) => looks.get(top?).copied(),
             None => looks.get(picker.pick(x, y)?).copied(),
