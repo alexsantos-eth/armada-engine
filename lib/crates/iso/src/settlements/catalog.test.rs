@@ -59,7 +59,8 @@ fn content(zones: &str) -> String {
       "spacing": 100,
       "chance": 0.5,
       "layout": {{ "blocks": {{ "min": 3, "max": 4 }}, "block": 5, "street": 1, "edge": 2,
-                   "exit": 4, "trim": 0.25, "frontPark": 0.5, "lots": {{ "min": 1, "max": 2 }} }},
+                   "exit": 4, "trim": 0.25, "frontPark": 0.5, "lots": {{ "min": 1, "max": 2 }},
+                   "shapes": {{ "notch": 0.2, "shrink": 0.1, "merge": 0.15, "split": 0.05 }} }},
       "wilderness": {{ "default": 1.0, "greens": 0.0, "weights": {{ "hut": 0.0 }} }},
       "greens": {{ "spacing": 5.0, "tight": 2.0, "near": 3.0, "far": 9.0, "front": 2,
                    "patio": {{ "chance": 0.75, "min": 2, "max": 5, "reach": 2, "groveChance": 0.3 }} }},
@@ -490,4 +491,65 @@ fn a_zone_may_raise_one_building_type_across_its_whole_block() {
     let catalog = parse(&json).expect("a uniform zone validates");
     assert!(catalog.zones[1].uniform);
     assert!(!catalog.zones[0].uniform);
+}
+
+#[test]
+fn reads_how_often_a_block_is_notched_shrunk_or_merged() {
+    let catalog = parse(&every_role()).expect("the fixture validates");
+    let shapes = catalog.layout.shapes;
+    assert_eq!(
+        (shapes.notch, shapes.shrink, shapes.merge),
+        (0.2, 0.1, 0.15)
+    );
+    assert_eq!(shapes.split, 0.05);
+}
+
+#[test]
+fn a_layout_without_shapes_keeps_every_block_square() {
+    let json = every_role().replace(
+        ",\n                   \"shapes\": { \"notch\": 0.2, \"shrink\": 0.1, \"merge\": 0.15, \"split\": 0.05 }",
+        "",
+    );
+    assert!(!json.contains("notch"));
+    let shapes = parse(&json).expect("shapes are optional").layout.shapes;
+    assert_eq!((shapes.notch, shapes.shrink, shapes.merge), (0.0, 0.0, 0.0));
+}
+
+#[test]
+fn rejects_shape_shares_that_are_not_shares_or_add_up_past_one() {
+    for (from, to) in [
+        ("\"notch\": 0.2", "\"notch\": -0.2"),
+        ("\"merge\": 0.15", "\"merge\": 1.5"),
+        ("\"notch\": 0.2", "\"notch\": 0.8"),
+        ("\"split\": 0.05", "\"split\": 0.6"),
+    ] {
+        let json = every_role().replace(from, to);
+        assert_eq!(parse(&json), Err(SettlementError::InvalidLayout), "{to}");
+    }
+}
+
+const VERGE: &str = r#"{ "id": "verge", "role": "verge", "weights": { "tree": 1.0 } }"#;
+
+#[test]
+fn a_verge_is_optional_and_found_when_declared() {
+    let catalog = parse(&every_role()).expect("the fixture validates");
+    assert_eq!(catalog.verge(), None);
+    let json = content(&zones_json(&[CENTER, HOMES, PARK, EDGE, STREET, VERGE]));
+    let catalog = parse(&json).expect("a verge validates");
+    assert_eq!(catalog.verge(), Some(5));
+    assert_eq!(catalog.zones[5].role, ZoneRole::Verge);
+}
+
+#[test]
+fn rejects_two_verges() {
+    let other = VERGE.replace("\"verge\", \"role\"", "\"kerb\", \"role\"");
+    let json = content(&zones_json(&[
+        CENTER, HOMES, PARK, EDGE, STREET, VERGE, &other,
+    ]));
+    assert_eq!(
+        parse(&json),
+        Err(SettlementError::DuplicateRole {
+            role: ZoneRole::Verge
+        })
+    );
 }

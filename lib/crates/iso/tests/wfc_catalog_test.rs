@@ -43,7 +43,7 @@ fn shipped_wfc_content_validates_against_entities_and_biomes() {
     assert_eq!(wfc.max_per_chunk["mead_hall"], 1.0);
     assert_eq!(wfc.max_per_chunk["stave_temple"], 1.0);
     assert_eq!(wfc.max_per_chunk["watchtower"], 2.0);
-    assert_eq!(wfc.max_per_chunk["grove"], 4.0);
+    assert_eq!(wfc.max_per_chunk["grove"], 12.0);
     assert_eq!(wfc.max_per_chunk["campfire"], 2.0);
     assert_eq!(wfc.max_per_chunk["wreck"], 1.0);
 }

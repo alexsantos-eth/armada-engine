@@ -4,7 +4,7 @@
     {
       "id": "temperate_forest",
       "share": 35.0,
-      "treeCoverage": 0.135,
+      "treeCoverage": 0.32,
       "trees": [
         {
           "blueprint": "tree",
@@ -101,7 +101,7 @@
     {
       "id": "taiga",
       "share": 25.0,
-      "treeCoverage": 0.15,
+      "treeCoverage": 0.34,
       "trees": [
         {
           "blueprint": "tree_3",
@@ -151,7 +151,7 @@
     {
       "id": "autumn_forest",
       "share": 22.0,
-      "treeCoverage": 0.095,
+      "treeCoverage": 0.26,
       "trees": [
         {
           "blueprint": "tree_8",
@@ -225,7 +225,7 @@
     {
       "id": "savanna",
       "share": 18.0,
-      "treeCoverage": 0.026,
+      "treeCoverage": 0.07,
       "trees": [
         {
           "blueprint": "tree_4",

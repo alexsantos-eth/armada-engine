@@ -45,6 +45,10 @@ pub enum ZoneRole {
     Edge,
     /// The streets between the blocks and the exits into the wild.
     Street,
+    /// Optional: the rim of a block that stands right in front of a street, seen from the
+    /// camera (its `+x` or `+y` neighbour is a street), kept to low decor so nothing tall hides
+    /// a player walking that street. Without a verge zone the rim keeps its block's zone.
+    Verge,
 }
 
 impl ZoneRole {
@@ -59,7 +63,10 @@ impl ZoneRole {
 
     /// Whether exactly one zone may play this role.
     fn is_unique(self) -> bool {
-        matches!(self, ZoneRole::Center | ZoneRole::Edge | ZoneRole::Street)
+        matches!(
+            self,
+            ZoneRole::Center | ZoneRole::Edge | ZoneRole::Street | ZoneRole::Verge
+        )
     }
 }
 
@@ -103,6 +110,24 @@ pub struct LayoutRules {
     pub lots_min: u32,
     /// Most lots on a block; never more than [`LayoutRules::slots`] holds.
     pub lots_max: u32,
+    /// How often a block breaks the square: notched, shrunk or merged with a neighbour.
+    pub shapes: ShapeShares,
+}
+
+/// The share of blocks that leave the plain square, each in `[0, 1]` and together no more
+/// than one: the rest stay square.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ShapeShares {
+    /// Share of blocks that lose a corner square of half their side to the street.
+    pub notch: f64,
+    /// Share of blocks that lose one whole side row to the street.
+    pub shrink: f64,
+    /// Share of blocks that swallow the street towards their `+x` or `+y` neighbour and grow
+    /// into one double block with it.
+    pub merge: f64,
+    /// Share of blocks cut in two by an alley through their middle, joining the streets on
+    /// either side.
+    pub split: f64,
 }
 
 impl LayoutRules {
@@ -187,6 +212,13 @@ pub struct SettlementCatalog {
 }
 
 impl SettlementCatalog {
+    /// The index of the verge zone, when the content declares one.
+    pub fn verge(&self) -> Option<usize> {
+        self.zones
+            .iter()
+            .position(|zone| zone.role == ZoneRole::Verge)
+    }
+
     /// The index of the first zone playing `role`; validation keeps one of every role.
     pub fn zone_of(&self, role: ZoneRole) -> usize {
         self.zones
@@ -360,6 +392,18 @@ struct RawCount {
     max: i64,
 }
 
+#[derive(Default, serde::Deserialize)]
+struct RawShapes {
+    #[serde(default)]
+    notch: f64,
+    #[serde(default)]
+    shrink: f64,
+    #[serde(default)]
+    merge: f64,
+    #[serde(default)]
+    split: f64,
+}
+
 #[derive(serde::Deserialize)]
 struct RawLayout {
     blocks: RawCount,
@@ -371,6 +415,8 @@ struct RawLayout {
     #[serde(rename = "frontPark")]
     front_park: f64,
     lots: RawCount,
+    #[serde(default)]
+    shapes: RawShapes,
 }
 
 #[derive(serde::Deserialize)]
@@ -443,7 +489,12 @@ fn layout_of(raw: &RawLayout) -> Result<LayoutRules, SettlementError> {
         && share(raw.front_park)
         && raw.lots.min >= 0
         && raw.lots.max >= raw.lots.min
-        && raw.lots.max <= 64;
+        && raw.lots.max <= 64
+        && share(raw.shapes.notch)
+        && share(raw.shapes.shrink)
+        && share(raw.shapes.merge)
+        && share(raw.shapes.split)
+        && raw.shapes.notch + raw.shapes.shrink + raw.shapes.merge + raw.shapes.split <= 1.0;
     if !valid {
         return Err(SettlementError::InvalidLayout);
     }
@@ -458,6 +509,12 @@ fn layout_of(raw: &RawLayout) -> Result<LayoutRules, SettlementError> {
         front_park: raw.front_park,
         lots_min: raw.lots.min as u32,
         lots_max: raw.lots.max as u32,
+        shapes: ShapeShares {
+            notch: raw.shapes.notch,
+            shrink: raw.shapes.shrink,
+            merge: raw.shapes.merge,
+            split: raw.shapes.split,
+        },
     };
     if layout.lots_max as usize > layout.slots().len() {
         return Err(SettlementError::InvalidLayout);
@@ -579,8 +636,11 @@ fn profile_of(
 
 /// Checks that every role the block grid deals is played, and the unique ones only once.
 fn check_roles(zones: &[SettlementZone]) -> Result<(), SettlementError> {
-    for role in ZoneRole::ALL {
+    for role in ZoneRole::ALL.into_iter().chain([ZoneRole::Verge]) {
         let players = zones.iter().filter(|zone| zone.role == role).count();
+        if role == ZoneRole::Verge && players == 0 {
+            continue;
+        }
         if players == 0 {
             return Err(SettlementError::MissingRole { role });
         }

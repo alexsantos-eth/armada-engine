@@ -63,7 +63,8 @@ fn shipped_settlement_content_validates_against_entities_and_wfc() {
             "workshops",
             "green",
             "edge",
-            "street"
+            "street",
+            "verge"
         ]
     );
 }
@@ -201,4 +202,60 @@ fn the_wild_scatters_more_rocks_than_the_solver_alone_would() {
             "{rock}"
         );
     }
+}
+
+#[test]
+fn the_shipped_grid_breaks_the_square_of_some_blocks() {
+    let shapes = settlements().layout.shapes;
+    assert!(shapes.notch > 0.0 && shapes.shrink > 0.0 && shapes.merge > 0.0);
+    assert!(shapes.split > 0.0);
+    assert!(shapes.notch + shapes.shrink + shapes.merge + shapes.split < 0.75);
+}
+
+#[test]
+fn the_wild_grows_more_groves_and_palms_than_the_solver_alone_would() {
+    let entities = entities();
+    let catalog = settlements();
+    for wild in ["grove_x", "palm", "palm_grove_x"] {
+        assert!(
+            catalog.wilderness.multiplier(index(&entities, wild)) > 2.0,
+            "{wild}"
+        );
+    }
+}
+
+#[test]
+fn the_verge_in_front_of_every_street_grows_only_low_decor() {
+    let entities = entities();
+    let catalog = settlements();
+    let verge = catalog
+        .verge()
+        .expect("the shipped content declares a verge");
+    let profile = &catalog.zones[verge].profile;
+    assert_eq!(profile.greens, 0.0);
+    for blueprint in &entities.entities {
+        let at = index(&entities, &blueprint.id);
+        if profile.multiplier(at) > 0.0 {
+            assert!(
+                blueprint.shape.height <= 1,
+                "{} is too tall for a verge",
+                blueprint.id
+            );
+        }
+        assert_eq!(profile.lot(at), 0.0);
+    }
+}
+
+#[test]
+fn parks_raise_groves_and_trees_and_the_wild_grows_more_groves_than_palms() {
+    let entities = entities();
+    let catalog = settlements();
+    let park = &zone(&catalog, "green").profile;
+    assert!(park.lot(index(&entities, "grove_x")) >= park.lot(index(&entities, "bush")));
+    assert!(park.lot(index(&entities, "tree")) > 0.0);
+    assert!(park.greens > 2.0);
+    let wild = &catalog.wilderness;
+    assert!(
+        wild.multiplier(index(&entities, "grove_x")) > wild.multiplier(index(&entities, "palm"))
+    );
 }

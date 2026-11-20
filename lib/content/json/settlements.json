@@ -1,13 +1,13 @@
 {
   "schemaVersion": 2,
-  "spacing": 60,
-  "chance": 0.85,
+  "spacing": 46,
+  "chance": 0.9,
   "layout": {
     "blocks": {
       "min": 3,
-      "max": 6
+      "max": 5
     },
-    "block": 4,
+    "block": 5,
     "street": 1,
     "edge": 3,
     "exit": 6,
@@ -16,18 +16,24 @@
     "lots": {
       "min": 3,
       "max": 5
+    },
+    "shapes": {
+      "notch": 0.2,
+      "shrink": 0.1,
+      "merge": 0.15,
+      "split": 0.12
     }
   },
   "wilderness": {
     "default": 0.0,
     "weights": {
-      "bush": 2.5,
-      "grove": 1.5,
+      "bush": 3.0,
+      "grove": 6.0,
       "runestones": 1.5,
       "boathouse": 1.0,
-      "palms": 1.0,
+      "palms": 3.0,
       "wreck": 1.0,
-      "beach": 1.5,
+      "beach": 2.5,
       "rock_small": 3.0,
       "rock_small_2": 3.0,
       "rock_small_3": 3.0,
@@ -69,7 +75,7 @@
         "market_stall": 20.0,
         "runestone_circle": 6.0
       },
-      "greens": 0.3
+      "greens": 0.6
     },
     {
       "id": "residential",
@@ -90,7 +96,7 @@
         "smithy": 2.0,
         "healer_hut": 2.0
       },
-      "greens": 1.2
+      "greens": 1.6
     },
     {
       "id": "row",
@@ -107,7 +113,7 @@
         "hut_thatch": 1.0,
         "cottage_tile": 1.0
       },
-      "greens": 1.0
+      "greens": 1.4
     },
     {
       "id": "market",
@@ -117,13 +123,14 @@
       "default": 0.0,
       "weights": {
         "campfire": 2.0,
-        "runestone": 1.0,
-        "bush": 1.0
+        "runestone": 2.0,
+        "bush": 3.0,
+        "rock_small": 1.5
       },
       "lots": {
         "market_stall": 1.0
       },
-      "greens": 0.4
+      "greens": 1.0
     },
     {
       "id": "workshops",
@@ -140,7 +147,7 @@
         "smithy": 1.0,
         "healer_hut": 1.0
       },
-      "greens": 0.8
+      "greens": 1.2
     },
     {
       "id": "green",
@@ -154,15 +161,18 @@
         "rock_small": 2.0
       },
       "lots": {
-        "grove": 6.0,
+        "grove": 10.0,
+        "tree": 2.0,
+        "tree_2": 2.0,
+        "tree_3": 2.0,
         "bush": 3.0,
-        "runestone": 2.0,
-        "runestone_circle": 1.0,
-        "stone_shrine": 1.0,
-        "campfire": 1.0,
+        "runestone": 1.0,
+        "runestone_circle": 0.5,
+        "stone_shrine": 0.5,
+        "campfire": 0.5,
         "rock_medium": 1.0
       },
-      "greens": 1.8
+      "greens": 2.5
     },
     {
       "id": "edge",
@@ -189,6 +199,21 @@
       "id": "street",
       "role": "street",
       "default": 0.0,
+      "greens": 0.0
+    },
+    {
+      "id": "verge",
+      "role": "verge",
+      "default": 0.0,
+      "weights": {
+        "bush": 30.0,
+        "rock_small": 20.0,
+        "rock_small_2": 20.0,
+        "rock_small_3": 15.0,
+        "runestone": 10.0,
+        "runestone_fallen": 10.0,
+        "campfire": 5.0
+      },
       "greens": 0.0
     }
   ]

@@ -58,6 +58,9 @@ struct Fixture {
     trim: f64,
     front_park: f64,
     lots: (u32, u32),
+    shapes: (f64, f64, f64),
+    split: f64,
+    verge: bool,
 }
 
 impl Default for Fixture {
@@ -69,6 +72,9 @@ impl Default for Fixture {
             trim: 0.0,
             front_park: 0.0,
             lots: (1, 2),
+            shapes: (0.0, 0.0, 0.0),
+            split: 0.0,
+            verge: false,
         }
     }
 }
@@ -81,7 +87,16 @@ fn catalog_of(fixture: Fixture) -> SettlementCatalog {
         trim,
         front_park,
         lots,
+        shapes,
+        split,
+        verge,
     } = fixture;
+    let verge = if verge {
+        r#",
+            { "id": "verge", "role": "verge", "greens": 0.0 }"#
+    } else {
+        ""
+    };
     let json = format!(
         r#"{{
           "schemaVersion": 2,
@@ -89,7 +104,8 @@ fn catalog_of(fixture: Fixture) -> SettlementCatalog {
           "chance": {chance},
           "layout": {{ "blocks": {{ "min": {}, "max": {} }}, "block": 5, "street": 1, "edge": 2,
                        "exit": 4, "trim": {trim}, "frontPark": {front_park},
-                       "lots": {{ "min": {}, "max": {} }} }},
+                       "lots": {{ "min": {}, "max": {} }},
+                       "shapes": {{ "notch": {}, "shrink": {}, "merge": {}, "split": {split} }} }},
           "wilderness": {{ "default": 1.0, "greens": 0.0, "weights": {{ "mead_hall": 0.0 }} }},
           "greens": {{ "spacing": 6.0, "tight": 2.0, "near": 3.0, "far": 9.0, "front": 2,
                        "patio": {{ "chance": 0.8, "min": 2, "max": 4, "reach": 2, "groveChance": 0.3 }} }},
@@ -101,10 +117,10 @@ fn catalog_of(fixture: Fixture) -> SettlementCatalog {
             {{ "id": "park", "role": "park", "share": 1.0, "greens": {greens},
                "weights": {{ "tree": 2.0 }} }},
             {{ "id": "edge", "role": "edge", "greens": 0.5 }},
-            {{ "id": "street", "role": "street" }}
+            {{ "id": "street", "role": "street" }}{verge}
           ]
         }}"#,
-        blocks.0, blocks.1, lots.0, lots.1
+        blocks.0, blocks.1, lots.0, lots.1, shapes.0, shapes.1, shapes.2
     );
     parse_settlements(&json, &entities(), &wfc()).expect("the fixture validates")
 }
@@ -326,9 +342,10 @@ fn the_open_band_around_the_streets_is_edge_and_beyond_it_is_wild() {
 }
 
 #[test]
-fn every_lot_stands_on_the_rim_of_its_block_beside_a_street_and_no_two_touch() {
+fn every_lot_outside_a_park_stands_on_the_rim_beside_a_street_and_no_two_touch() {
     let world = field_of(&catalog());
     let street = zone(&world, ZoneRole::Street);
+    let park = zone(&world, ZoneRole::Park);
     let mut seen = 0;
     for site in 0..8 {
         let settlement = settlement_in(&world, site, 3).expect("chance is one");
@@ -340,7 +357,7 @@ fn every_lot_stands_on_the_rim_of_its_block_beside_a_street_and_no_two_touch() {
                 .any(|(dx, dy)| {
                     world.zone_at(lot.anchor.x + dx, lot.anchor.y + dy) == Some(street)
                 });
-            assert!(beside_street, "{lot:?}");
+            assert!(beside_street || lot.zone == park, "{lot:?}");
             assert_eq!(world.zone_at(lot.anchor.x, lot.anchor.y), Some(lot.zone));
             for other in lots {
                 let apart =
@@ -353,14 +370,18 @@ fn every_lot_stands_on_the_rim_of_its_block_beside_a_street_and_no_two_touch() {
 }
 
 #[test]
-fn every_block_raises_as_many_lots_as_the_layout_allows_parks_and_centre_included() {
+fn every_block_but_a_park_raises_as_many_lots_as_the_layout_allows() {
     let catalog = catalog();
     let world = field_of(&catalog);
     let layout = catalog.layout;
+    let park = zone(&world, ZoneRole::Park);
     for site in 0..6 {
         let settlement = settlement_in(&world, site, 4).expect("chance is one");
         for j in 0..settlement.rows() {
             for i in 0..settlement.cols() {
+                if settlement.block_zone(i, j) == Some(park) {
+                    continue;
+                }
                 let rect = settlement.block_rect(i, j);
                 let corner = WorldCoord {
                     x: rect.min_x,
@@ -620,13 +641,27 @@ fn the_ground_never_moves_a_settlement_it_keeps() {
 }
 
 #[test]
-fn the_blocks_of_an_area_are_its_centre_residential_and_park_columns() {
-    let world = field_of(&catalog());
-    let roles = [ZoneRole::Center, ZoneRole::Residential, ZoneRole::Park];
+fn the_blocks_of_an_area_are_its_centre_residential_park_and_verge_columns() {
+    let world = fixture_world(Fixture {
+        verge: true,
+        ..Fixture::default()
+    });
+    let roles = [
+        ZoneRole::Center,
+        ZoneRole::Residential,
+        ZoneRole::Park,
+        ZoneRole::Verge,
+    ];
     let coords: Vec<WorldCoord> = (-10..70)
         .flat_map(|y| (-10..70).map(move |x| WorldCoord { x, y }))
         .collect();
     let blocks = world.blocks_over(&coords);
+    let verge = world.catalog().verge();
+    assert!(
+        coords
+            .iter()
+            .any(|coord| world.zone_at(coord.x, coord.y) == verge)
+    );
     for (coord, &block) in coords.iter().zip(&blocks) {
         let expected = world
             .zone_at(coord.x, coord.y)
@@ -634,4 +669,354 @@ fn the_blocks_of_an_area_are_its_centre_residential_and_park_columns() {
         assert_eq!(block, expected);
     }
     assert!(blocks.iter().any(|&block| block));
+}
+
+fn shaped(shapes: (f64, f64, f64)) -> WorldSettlements {
+    WorldSettlements::new(
+        99,
+        &catalog_of(Fixture {
+            shapes,
+            ..Fixture::default()
+        }),
+    )
+}
+
+/// The cells of block `(i, j)` the field hands to the street.
+fn removed_cells(
+    world: &WorldSettlements,
+    settlement: &Settlement,
+    i: i32,
+    j: i32,
+) -> Vec<WorldCoord> {
+    let street = zone(world, ZoneRole::Street);
+    block_cells(settlement, i, j)
+        .into_iter()
+        .filter(|cell| world.zone_at(cell.x, cell.y) == Some(street))
+        .collect()
+}
+
+#[test]
+fn a_notched_block_hands_one_corner_square_of_half_its_side_to_the_street() {
+    let world = shaped((1.0, 0.0, 0.0));
+    let half = world.catalog().layout.block / 2;
+    let mut notched = 0;
+    for site in 0..6 {
+        let settlement = settlement_in(&world, site, 5).expect("chance is one");
+        for j in 0..settlement.rows() {
+            for i in 0..settlement.cols() {
+                let removed = removed_cells(&world, &settlement, i, j);
+                if (i, j) == (settlement.cols() / 2, settlement.rows() / 2) {
+                    assert_eq!(settlement.block_shape(i, j), BlockShape::Square);
+                    assert!(removed.is_empty());
+                    continue;
+                }
+                let BlockShape::Notched { high_x, high_y } = settlement.block_shape(i, j) else {
+                    panic!("block ({i}, {j}) is {:?}", settlement.block_shape(i, j));
+                };
+                notched += 1;
+                assert_eq!(removed.len() as i32, half * half);
+                let rect = settlement.block_rect(i, j);
+                for cell in removed {
+                    let near_x = if high_x {
+                        rect.max_x - cell.x
+                    } else {
+                        cell.x - rect.min_x
+                    };
+                    let near_y = if high_y {
+                        rect.max_y - cell.y
+                    } else {
+                        cell.y - rect.min_y
+                    };
+                    assert!(near_x < half && near_y < half, "{cell:?}");
+                }
+            }
+        }
+    }
+    assert!(notched > 20);
+}
+
+#[test]
+fn a_shrunk_block_hands_one_whole_side_row_to_the_street() {
+    let world = shaped((0.0, 1.0, 0.0));
+    let block = world.catalog().layout.block;
+    for site in 0..6 {
+        let settlement = settlement_in(&world, site, 5).expect("chance is one");
+        for j in 0..settlement.rows() {
+            for i in 0..settlement.cols() {
+                if (i, j) == (settlement.cols() / 2, settlement.rows() / 2) {
+                    continue;
+                }
+                let BlockShape::Shrunk { along_x, high } = settlement.block_shape(i, j) else {
+                    panic!("block ({i}, {j}) is {:?}", settlement.block_shape(i, j));
+                };
+                let removed = removed_cells(&world, &settlement, i, j);
+                assert_eq!(removed.len() as i32, block);
+                let rect = settlement.block_rect(i, j);
+                let edge = match (along_x, high) {
+                    (true, false) => removed.iter().all(|cell| cell.x == rect.min_x),
+                    (true, true) => removed.iter().all(|cell| cell.x == rect.max_x),
+                    (false, false) => removed.iter().all(|cell| cell.y == rect.min_y),
+                    (false, true) => removed.iter().all(|cell| cell.y == rect.max_y),
+                };
+                assert!(edge, "{removed:?}");
+            }
+        }
+    }
+}
+
+#[test]
+fn a_merged_block_swallows_the_street_to_its_neighbour_but_not_the_crossings() {
+    let world = shaped((0.0, 0.0, 1.0));
+    let street = zone(&world, ZoneRole::Street);
+    let mut merges = 0;
+    for site in 0..6 {
+        let settlement = settlement_in(&world, site, 5).expect("chance is one");
+        let mut partners = std::collections::HashSet::new();
+        for j in 0..settlement.rows() {
+            for i in 0..settlement.cols() {
+                let rect = settlement.block_rect(i, j);
+                let dealt = settlement.block_zone(i, j);
+                let (segment, other): (Vec<WorldCoord>, (i32, i32)) =
+                    match settlement.block_shape(i, j) {
+                        BlockShape::MergedX => (
+                            (rect.min_y..=rect.max_y)
+                                .map(|y| WorldCoord {
+                                    x: rect.max_x + 1,
+                                    y,
+                                })
+                                .collect(),
+                            (i + 1, j),
+                        ),
+                        BlockShape::MergedY => (
+                            (rect.min_x..=rect.max_x)
+                                .map(|x| WorldCoord {
+                                    x,
+                                    y: rect.max_y + 1,
+                                })
+                                .collect(),
+                            (i, j + 1),
+                        ),
+                        _ => continue,
+                    };
+                merges += 1;
+                assert!(partners.insert((i, j)), "({i}, {j}) merges twice");
+                assert!(partners.insert(other), "{other:?} merges twice");
+                assert_eq!(settlement.block_zone(other.0, other.1), dealt);
+                assert_eq!(settlement.block_shape(other.0, other.1), BlockShape::Square);
+                for cell in &segment {
+                    assert_eq!(world.zone_at(cell.x, cell.y), dealt, "{cell:?}");
+                }
+                let first = segment[0];
+                let last = segment[segment.len() - 1];
+                let (before, after) = if first.x == last.x {
+                    (
+                        WorldCoord {
+                            x: first.x,
+                            y: first.y - 1,
+                        },
+                        WorldCoord {
+                            x: last.x,
+                            y: last.y + 1,
+                        },
+                    )
+                } else {
+                    (
+                        WorldCoord {
+                            x: first.x - 1,
+                            y: first.y,
+                        },
+                        WorldCoord {
+                            x: last.x + 1,
+                            y: last.y,
+                        },
+                    )
+                };
+                assert_eq!(world.zone_at(before.x, before.y), Some(street));
+                assert_eq!(world.zone_at(after.x, after.y), Some(street));
+            }
+        }
+    }
+    assert!(merges > 5, "only {merges} merges");
+}
+
+#[test]
+fn whatever_their_shape_every_block_raises_lots_beside_a_street_and_none_touch() {
+    let world = shaped((0.3, 0.2, 0.3));
+    let street = zone(&world, ZoneRole::Street);
+    let park = zone(&world, ZoneRole::Park);
+    for site in 0..8 {
+        let settlement = settlement_in(&world, site, 6).expect("chance is one");
+        let lots = settlement.lots();
+        for lot in lots {
+            assert_eq!(world.zone_at(lot.anchor.x, lot.anchor.y), Some(lot.zone));
+            let beside_street = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+                .into_iter()
+                .any(|(dx, dy)| {
+                    world.zone_at(lot.anchor.x + dx, lot.anchor.y + dy) == Some(street)
+                });
+            assert!(beside_street || lot.zone == park, "{lot:?}");
+            for other in lots {
+                let apart =
+                    (lot.anchor.x - other.anchor.x).abs() + (lot.anchor.y - other.anchor.y).abs();
+                assert_ne!(apart, 1, "{lot:?} touches {other:?}");
+            }
+        }
+        for j in 0..settlement.rows() {
+            for i in 0..settlement.cols() {
+                let rect = settlement.block_rect(i, j);
+                let corner = WorldCoord {
+                    x: rect.min_x,
+                    y: rect.min_y,
+                };
+                assert!(
+                    lots.iter().any(|lot| lot.block == corner),
+                    "block ({i}, {j}) raised nothing"
+                );
+            }
+        }
+    }
+}
+
+fn fixture_world(fixture: Fixture) -> WorldSettlements {
+    WorldSettlements::new(99, &catalog_of(fixture))
+}
+
+#[test]
+fn with_a_verge_nothing_of_a_block_stands_right_in_front_of_a_street() {
+    let world = fixture_world(Fixture {
+        verge: true,
+        shapes: (0.25, 0.15, 0.2),
+        split: 0.15,
+        ..Fixture::default()
+    });
+    let street = zone(&world, ZoneRole::Street);
+    let verge = world
+        .catalog()
+        .verge()
+        .expect("the fixture declares a verge");
+    let roles = [ZoneRole::Center, ZoneRole::Residential, ZoneRole::Park];
+    let mut verges = 0;
+    for site in 0..6 {
+        let settlement = settlement_in(&world, site, 7).expect("chance is one");
+        let grid = settlement.bounds();
+        for y in grid.min_y..=grid.max_y {
+            for x in grid.min_x..=grid.max_x {
+                let found = world.zone_at(x, y);
+                let behind = world.zone_at(x + 1, y) == Some(street)
+                    || world.zone_at(x, y + 1) == Some(street);
+                if found == Some(verge) {
+                    verges += 1;
+                    assert!(behind, "({x}, {y}) is verge with no street behind it");
+                }
+                if let Some(zone) = found
+                    && roles.contains(&world.catalog().zones[zone].role)
+                {
+                    assert!(!behind, "({x}, {y}) hides the street behind it");
+                }
+            }
+        }
+        for lot in settlement.lots() {
+            assert_ne!(world.zone_at(lot.anchor.x, lot.anchor.y), Some(verge));
+        }
+        for j in 0..settlement.rows() {
+            for i in 0..settlement.cols() {
+                let rect = settlement.block_rect(i, j);
+                let corner = WorldCoord {
+                    x: rect.min_x,
+                    y: rect.min_y,
+                };
+                assert!(
+                    settlement.lots().iter().any(|lot| lot.block == corner),
+                    "block ({i}, {j}) raised nothing"
+                );
+            }
+        }
+    }
+    assert!(verges > 50);
+}
+
+#[test]
+fn a_split_block_is_cut_by_an_alley_that_joins_the_streets_on_both_sides() {
+    let world = fixture_world(Fixture {
+        split: 1.0,
+        ..Fixture::default()
+    });
+    let street = zone(&world, ZoneRole::Street);
+    let half = world.catalog().layout.block / 2;
+    let mut splits = 0;
+    for site in 0..6 {
+        let settlement = settlement_in(&world, site, 8).expect("chance is one");
+        for j in 0..settlement.rows() {
+            for i in 0..settlement.cols() {
+                if (i, j) == (settlement.cols() / 2, settlement.rows() / 2) {
+                    continue;
+                }
+                let BlockShape::Split { along_x } = settlement.block_shape(i, j) else {
+                    panic!("block ({i}, {j}) is {:?}", settlement.block_shape(i, j));
+                };
+                splits += 1;
+                let rect = settlement.block_rect(i, j);
+                let alley: Vec<WorldCoord> = if along_x {
+                    (rect.min_y - 1..=rect.max_y + 1)
+                        .map(|y| WorldCoord {
+                            x: rect.min_x + half,
+                            y,
+                        })
+                        .collect()
+                } else {
+                    (rect.min_x - 1..=rect.max_x + 1)
+                        .map(|x| WorldCoord {
+                            x,
+                            y: rect.min_y + half,
+                        })
+                        .collect()
+                };
+                for cell in &alley {
+                    assert_eq!(world.zone_at(cell.x, cell.y), Some(street), "{cell:?}");
+                }
+                let carved = removed_cells(&world, &settlement, i, j);
+                assert_eq!(carved.len() as i32, world.catalog().layout.block);
+            }
+        }
+    }
+    assert!(splits > 20);
+}
+
+#[test]
+fn a_park_raises_a_lot_on_every_cell_of_one_checkerboard_colour_not_only_its_rim() {
+    let world = fixture_world(Fixture {
+        verge: true,
+        front_park: 1.0,
+        ..Fixture::default()
+    });
+    let park = zone(&world, ZoneRole::Park);
+    let mut parks = 0;
+    for site in 0..6 {
+        let settlement = settlement_in(&world, site, 9).expect("chance is one");
+        for j in 0..settlement.rows() {
+            for i in 0..settlement.cols() {
+                if settlement.block_zone(i, j) != Some(park) {
+                    continue;
+                }
+                parks += 1;
+                let rect = settlement.block_rect(i, j);
+                let corner = WorldCoord {
+                    x: rect.min_x,
+                    y: rect.min_y,
+                };
+                let lots: Vec<WorldCoord> = settlement
+                    .lots()
+                    .iter()
+                    .filter(|lot| lot.block == corner)
+                    .map(|lot| lot.anchor)
+                    .collect();
+                for cell in block_cells(&settlement, i, j) {
+                    let wanted = (cell.x + cell.y).rem_euclid(2) == 0
+                        && world.zone_at(cell.x, cell.y) == Some(park);
+                    assert_eq!(lots.contains(&cell), wanted, "{cell:?}");
+                }
+            }
+        }
+    }
+    assert!(parks > 10);
 }
