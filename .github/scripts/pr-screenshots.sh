@@ -31,7 +31,7 @@ if [[ -n "$base" ]]; then
     changed="${changed#lib/}"
     [[ "$changed" == scenes/pr-* ]] && continue
     [[ -f "$changed" ]] && scenes+=("$changed")
-  done < <(git diff --name-only --diff-filter=AM "$base"...HEAD -- 'lib/scenes/*.json')
+  done < <(git diff --name-only --diff-filter=AM "$base"...HEAD -- ':(top)lib/scenes/*.json')
 fi
 
 summary="$out/summary.md"
