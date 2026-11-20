@@ -1,5 +1,6 @@
 use super::super::wander::tests::ground_from;
 use super::*;
+use crate::npc::NpcLogic;
 
 const A: ChunkCoord = ChunkCoord { cx: 0, cy: 0 };
 const B: ChunkCoord = ChunkCoord { cx: 1, cy: 0 };
@@ -8,11 +9,13 @@ fn born_in(chunk: ChunkCoord) -> Vec<Npc> {
     let x = chunk.cx * crate::grid::CHUNK_SIZE;
     vec![
         Npc::new(
+            NpcLogic::Basic,
             u64::from(x.unsigned_abs()) + 2,
             WorldCoord { x: x + 1, y: 1 },
             0,
         ),
         Npc::new(
+            NpcLogic::Basic,
             u64::from(x.unsigned_abs()) + 1,
             WorldCoord { x: x + 3, y: 3 },
             0,
@@ -46,6 +49,7 @@ fn nobody_shares_a_cell_nor_walks_onto_the_player() {
         (0..4)
             .map(|index| {
                 Npc::new(
+                    NpcLogic::Basic,
                     index + 1,
                     WorldCoord {
                         x: index as i32,

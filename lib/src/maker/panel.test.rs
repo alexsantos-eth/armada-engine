@@ -11,6 +11,7 @@ fn catalog(ids: &[&str]) -> EntityCatalog {
         entities: ids
             .iter()
             .map(|id| EntityBlueprint {
+                npc: None,
                 id: (*id).to_owned(),
                 asset: EntityAsset {
                     sprite: format!("/assets/{id}.svg"),

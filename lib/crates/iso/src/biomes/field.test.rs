@@ -9,6 +9,7 @@ fn catalog() -> BiomeCatalog {
         entities: ["tree", "tree_2", "tree_3", "tree_4"]
             .into_iter()
             .map(|id| crate::entities::blueprint::EntityBlueprint {
+                npc: None,
                 id: id.to_owned(),
                 asset: crate::entities::blueprint::EntityAsset {
                     sprite: format!("/assets/{id}.svg"),

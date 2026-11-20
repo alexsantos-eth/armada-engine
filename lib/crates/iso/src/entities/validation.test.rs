@@ -15,6 +15,7 @@ fn asset(sprite: &str) -> EntityAsset {
 
 fn blueprint(id: &str, length: i32, surfaces: Vec<TerrainMaterial>) -> EntityBlueprint {
     EntityBlueprint {
+        npc: None,
         id: id.to_owned(),
         asset: asset("/assets/tree/block.svg"),
         shape: EntityShape {

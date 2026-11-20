@@ -9,6 +9,7 @@ fn catalog() -> EntityCatalog {
     EntityCatalog {
         schema_version: CATALOG_SCHEMA_VERSION,
         entities: vec![EntityBlueprint {
+            npc: None,
             id: "tree".to_owned(),
             asset: EntityAsset {
                 sprite: "/assets/tree/block.svg".to_owned(),
@@ -490,6 +491,7 @@ mod editing {
     fn an_entity_put_down_by_hand_lands_on_its_chunk_and_can_be_taken_back() {
         let mut manager = maker_manager();
         let blueprint = crate::entities::EntityBlueprint {
+            npc: None,
             id: "hut".to_owned(),
             asset: crate::entities::EntityAsset {
                 sprite: "/assets/hut.svg".to_owned(),
@@ -527,6 +529,7 @@ mod editing {
     fn an_entity_cannot_be_put_on_a_chunk_that_was_never_loaded() {
         let mut manager = ChunkManager::default();
         let blueprint = crate::entities::EntityBlueprint {
+            npc: None,
             id: "hut".to_owned(),
             asset: crate::entities::EntityAsset {
                 sprite: "/assets/hut.svg".to_owned(),

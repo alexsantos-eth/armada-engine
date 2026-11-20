@@ -4,6 +4,25 @@ use super::*;
 use crate::player::PlayerObstacle;
 use crate::terrain::TerrainColumn;
 
+/// A gait that walks, takes stairs and climbs, and looks where it goes: what the logics of
+/// the engine's tests need to exercise every kind of step.
+pub(crate) fn walker_gait() -> NpcGait {
+    NpcGait {
+        step: NPC_STEP,
+        leash: 6,
+        rest_ticks: (40, 160),
+        stroll_cells: (1, 4),
+        climbs: true,
+        sideways: false,
+        turns_back: false,
+    }
+}
+
+/// A character born on `home` that walks like [`walker_gait`].
+pub(crate) fn walker(id: u64, home: WorldCoord, elevation: i32) -> Npc {
+    Npc::new(NpcLogic::Basic, id, home, elevation).with_gait(walker_gait())
+}
+
 #[derive(Default)]
 pub(crate) struct CellGround {
     pub(crate) columns: HashMap<WorldCoord, TerrainColumn>,
@@ -106,7 +125,7 @@ fn nobody(_: WorldCoord) -> bool {
 }
 
 fn ready(home: WorldCoord) -> Npc {
-    let mut npc = Npc::new(7, home, 0);
+    let mut npc = walker(7, home, 0);
     npc.rest_ticks = 0;
     npc
 }
@@ -136,7 +155,7 @@ fn walks_level_ground_but_not_water_cliffs_or_past_its_leash() {
     assert!(plan_npc_step(&npc, (-1, 0), &ground, nobody).is_none());
 
     let mut far = ready(cell(0, 0));
-    far.home = cell(0, -NPC_LEASH);
+    far.home = cell(0, -walker_gait().leash);
     assert!(plan_npc_step(&far, (1, 0), &ground_from(&["00"]), nobody).is_some());
     assert!(plan_npc_step(&far, (0, 1), &ground, nobody).is_none());
 }
@@ -162,7 +181,7 @@ fn does_not_step_into_a_taken_cell() {
 #[test]
 fn rests_before_it_sets_off() {
     let ground = ground_from(&["000", "000", "000"]);
-    let mut npc = Npc::new(7, cell(1, 1), 0);
+    let mut npc = walker(7, cell(1, 1), 0);
     npc.rest_ticks = 3;
     for _ in 0..3 {
         step_npc(&mut npc, &ground, nobody);
@@ -186,7 +205,10 @@ fn walks_a_cell_at_its_pace_and_lands_on_the_centre() {
     assert_eq!(ticks, (1.0 / NPC_STEP).ceil() as i32);
     assert_eq!(npc.cell, cell(1, 0));
     assert_eq!(npc.position(), GridPoint { x: 1.0, y: 0.0 });
-    assert!(npc.rest_ticks >= NPC_REST_TICKS.0 && npc.rest_ticks <= NPC_REST_TICKS.1);
+    assert!(
+        npc.rest_ticks >= walker_gait().rest_ticks.0
+            && npc.rest_ticks <= walker_gait().rest_ticks.1
+    );
 }
 
 #[test]
@@ -248,11 +270,11 @@ fn the_pull_of_a_climb_is_the_only_part_that_climbs() {
 #[test]
 fn drops_off_a_block_onto_ground_one_lower_and_no_more() {
     let ground = ground_from(&["10"]);
-    let mut npc = Npc::new(7, cell(0, 0), 1);
+    let mut npc = walker(7, cell(0, 0), 1);
     npc.rest_ticks = 0;
     let step = plan_npc_step(&npc, (1, 0), &ground, nobody).expect("ground one lower");
     assert_eq!((step.kind, step.rise), (NpcMove::Drop, -1));
-    let mut high = Npc::new(7, cell(0, 0), 2);
+    let mut high = walker(7, cell(0, 0), 2);
     high.rest_ticks = 0;
     assert!(plan_npc_step(&high, (1, 0), &ground_from(&["20"]), nobody).is_none());
     assert!(plan_npc_step(&npc, (1, 0), &ground_from(&["1~"]), nobody).is_none());
@@ -280,7 +302,7 @@ fn drops_off_a_block_onto_ground_one_lower_and_no_more() {
 #[test]
 fn a_falling_character_is_falling_and_drawn_between_ticks_without_a_jump() {
     let ground = ground_from(&["10"]);
-    let mut npc = Npc::new(7, cell(0, 0), 1);
+    let mut npc = walker(7, cell(0, 0), 1);
     npc.step = plan_npc_step(&npc, (1, 0), &ground, nobody);
     let mut seen_falling = false;
     while npc.step.is_some() {
@@ -341,7 +363,7 @@ fn takes_a_flight_of_stairs_up_through_to_the_cell_beyond() {
 #[test]
 fn takes_a_flight_of_stairs_down_from_the_cell_above() {
     let ground = flight();
-    let mut npc = Npc::new(7, cell(3, 1), 1);
+    let mut npc = walker(7, cell(3, 1), 1);
     npc.rest_ticks = 0;
     let step = plan_npc_step(&npc, (-1, 0), &ground, nobody).expect("the top of a flight");
     assert_eq!((step.kind, step.rise), (NpcMove::Stairs, -1));
@@ -397,8 +419,8 @@ fn a_long_wander_stays_dry_on_solid_ground_and_near_home() {
         }
         assert!(can_npc_stand(&ground, npc.cell, Some(npc.elevation)));
         assert!(npc.elevation <= 2);
-        assert!((npc.cell.x - npc.home.x).abs() <= NPC_LEASH);
-        assert!((npc.cell.y - npc.home.y).abs() <= NPC_LEASH);
+        assert!((npc.cell.x - npc.home.x).abs() <= walker_gait().leash);
+        assert!((npc.cell.y - npc.home.y).abs() <= walker_gait().leash);
         let now = npc.pose();
         assert!((now.x - before.x).hypot(now.y - before.y) <= 0.3);
         assert!(now.height >= 0.0);
@@ -417,8 +439,8 @@ fn a_long_wander_stays_dry_on_solid_ground_and_near_home() {
 #[test]
 fn the_same_character_wanders_the_same_way() {
     let ground = ground_from(&["00000", "00100", "00000", "00000", "00000"]);
-    let mut one = Npc::new(42, cell(2, 2), 0);
-    let mut other = Npc::new(42, cell(2, 2), 0);
+    let mut one = walker(42, cell(2, 2), 0);
+    let mut other = walker(42, cell(2, 2), 0);
     for _ in 0..2_000 {
         step_npc(&mut one, &ground, nobody);
         step_npc(&mut other, &ground, nobody);
@@ -428,7 +450,7 @@ fn the_same_character_wanders_the_same_way() {
 }
 
 fn crab_at(home: WorldCoord, elevation: i32) -> Npc {
-    let mut crab = Npc::of_kind(NpcKind::Crab, 7, home, elevation);
+    let mut crab = Npc::new(NpcLogic::Basic, 7, home, elevation);
     crab.rest_ticks = 0;
     crab
 }
@@ -462,11 +484,11 @@ fn a_crab_scuttles_level_ground_and_drops_off_a_block() {
 
 #[test]
 fn a_crab_scuttles_faster_on_a_shorter_leash() {
-    let (villager, crab) = (NpcKind::Villager.gait(), NpcKind::Crab.gait());
+    let (villager, crab) = (walker_gait(), NpcLogic::Basic.gait());
     assert!(crab.step > villager.step);
     assert!(crab.leash < villager.leash);
     let mut far = crab_at(cell(0, 0), 0);
-    far.home = cell(-CRAB_LEASH, 0);
+    far.home = cell(-crate::ai::basic::LEASH, 0);
     assert!(plan_npc_step(&far, (1, 0), &ground_from(&["00"]), nobody).is_none());
 }
 
@@ -485,14 +507,14 @@ fn a_crab_faces_across_its_way() {
 #[test]
 fn a_crab_keeps_the_side_it_faced_and_otherwise_faces_the_camera() {
     let east = GridPoint { x: 1.0, y: 0.0 };
-    let turned = facing_for(NpcKind::Crab, (0, 1), east);
+    let turned = facing_for(NpcLogic::Basic.gait(), (0, 1), east);
     assert_eq!(turned, GridPoint { x: 1.0, y: 0.0 });
-    let back = facing_for(NpcKind::Crab, (0, -1), east);
+    let back = facing_for(NpcLogic::Basic.gait(), (0, -1), east);
     assert_eq!(back, GridPoint { x: 1.0, y: 0.0 });
-    let fresh = facing_for(NpcKind::Crab, (1, 0), GridPoint { x: 1.0, y: 0.0 });
+    let fresh = facing_for(NpcLogic::Basic.gait(), (1, 0), GridPoint { x: 1.0, y: 0.0 });
     assert!(fresh.x + fresh.y < 0.0);
     assert_eq!(
-        facing_for(NpcKind::Villager, (0, 1), east),
+        facing_for(walker_gait(), (0, 1), east),
         GridPoint { x: 0.0, y: 1.0 }
     );
 }

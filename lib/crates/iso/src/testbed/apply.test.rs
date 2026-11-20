@@ -9,6 +9,7 @@ const CHUNK: ChunkCoord = ChunkCoord { cx: 0, cy: 0 };
 
 fn blueprint(id: &str) -> EntityBlueprint {
     EntityBlueprint {
+        npc: None,
         id: id.to_owned(),
         asset: EntityAsset {
             sprite: format!("/assets/{id}.svg"),

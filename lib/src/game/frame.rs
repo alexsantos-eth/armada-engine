@@ -128,8 +128,8 @@ impl Game {
         self.jetpack
     }
 
-    /// The characters' share of the fixed step: whoever is at home in a chunk on show with its
-    /// entities placed is alive, and everybody alive wanders `ticks` ticks.
+    /// The characters' share of the fixed step: whoever the catalog's NPC entities give birth to in a
+    /// chunk on show with its entities placed is alive, and everybody alive wanders `ticks` ticks.
     fn step_npcs(&mut self, ticks: u32) {
         let manager = &self.manager;
         let live: Vec<iso::grid::ChunkCoord> = manager
@@ -140,11 +140,7 @@ impl Game {
         let ground = ChunkGround { manager };
         let seed = self.world_seed;
         self.npcs.sync(&live, |chunk| {
-            iso::npc::spawn_npcs(seed, chunk, &ground, |x, y| {
-                manager
-                    .settlements()
-                    .is_some_and(|world| world.settlement_at(x, y).is_some())
-            })
+            iso::npc::spawn_npcs(seed, chunk, &ground, manager.catalog())
         });
         let player = iso::player::physics::get_player_column(GridPoint {
             x: self.player.x,

@@ -6,6 +6,7 @@ use crate::terrain::TerrainMaterial;
 
 fn entities() -> EntityCatalog {
     let blueprint = |id: &str| EntityBlueprint {
+        npc: None,
         id: id.to_owned(),
         asset: EntityAsset {
             sprite: format!("/assets/{id}.svg"),

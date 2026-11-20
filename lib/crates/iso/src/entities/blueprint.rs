@@ -85,6 +85,11 @@ pub struct EntityBlueprint {
     pub asset: EntityAsset,
     pub shape: EntityShape,
     pub placement: EntityPlacement,
+    /// The NPC logic that drives it, when it is a character that wanders rather than a thing
+    /// that is placed: `"npc": "basic"`. Without the key the entity has no NPC behaviour. An
+    /// entity with a logic is born by that logic, never grown by the placement or the wfc.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub npc: Option<crate::npc::NpcLogic>,
 }
 
 /// Versioned entity catalog. `schema_version` is `1`; changes to the schema raise it.

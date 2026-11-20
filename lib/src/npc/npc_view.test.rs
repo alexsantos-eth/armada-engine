@@ -1,7 +1,7 @@
 //! Tests for the characters' animation bookkeeping.
 
 use iso::grid::WorldCoord;
-use iso::npc::{NpcMove, NpcStep};
+use iso::npc::{NpcGait, NpcLogic, NpcMove, NpcStep};
 
 use super::*;
 use crate::player::player_view::{IDLE_DELAY_MS, WALK_STRIDE};
@@ -15,8 +15,21 @@ const SHEETS: PlayerSheets = PlayerSheets {
     flip_poses: Some(12),
 };
 
+/// A character that walks and climbs: the one the sheets of these tests are drawn for.
+fn walker(id: u64, home: WorldCoord, elevation: i32) -> Npc {
+    Npc::new(NpcLogic::Basic, id, home, elevation).with_gait(NpcGait {
+        step: 0.02,
+        leash: 6,
+        rest_ticks: (40, 160),
+        stroll_cells: (1, 4),
+        climbs: true,
+        sideways: false,
+        turns_back: false,
+    })
+}
+
 fn resting() -> Npc {
-    Npc::new(3, WorldCoord { x: 4, y: 4 }, 0)
+    walker(3, WorldCoord { x: 4, y: 4 }, 0)
 }
 
 fn walking() -> Npc {
@@ -51,7 +64,7 @@ fn a_character_walks_or_stands_and_never_swims_or_flips() {
 }
 
 fn stepping(kind: NpcMove, rise: i32, progress: f64) -> Npc {
-    let mut npc = Npc::new(3, WorldCoord { x: 4, y: 4 }, 1);
+    let mut npc = walker(3, WorldCoord { x: 4, y: 4 }, 1);
     npc.step = Some(NpcStep {
         heading: (1, 0),
         kind,
@@ -135,7 +148,7 @@ fn standing_plays_the_idle_sheet() {
 fn whoever_is_not_drawn_is_forgotten() {
     let mut views = NpcViews::default();
     let at = GridPoint { x: 4.0, y: 4.0 };
-    let (one, other) = (resting(), Npc::new(9, WorldCoord { x: 1, y: 1 }, 0));
+    let (one, other) = (resting(), walker(9, WorldCoord { x: 1, y: 1 }, 0));
     views.begin();
     views.advance(&one, at, 16.0, SHEETS);
     views.advance(&other, at, 16.0, SHEETS);

@@ -2,21 +2,12 @@
 //! as tall as the character, and the ground that adds those bodies to the world's own.
 
 use super::crowd::Npcs;
-use super::look::kind_look;
-use super::wander::{Npc, NpcKind};
+use super::look::npc_look;
+use super::wander::Npc;
 use crate::grid::{ChunkCoord, WorldCoord};
-use crate::player::{PLAYER_BODY_HEIGHT, PLAYER_RADIUS, PlayerGround, PlayerObstacle};
+use crate::player::{PlayerGround, PlayerObstacle};
 use crate::projection::GridPoint;
 use crate::terrain::TerrainColumn;
-
-/// Side of a villager's square at the player's size, in blocks: the player's own.
-pub const NPC_BODY_SIDE: f64 = PLAYER_RADIUS * 2.0;
-/// Height of a villager's body at the player's size, in blocks: the player's own.
-pub const NPC_BODY_HEIGHT: f64 = PLAYER_BODY_HEIGHT;
-/// Side of a crab's square at its sheet's size, in blocks: a low, wide shell.
-pub const CRAB_BODY_SIDE: f64 = 0.36;
-/// Height of a crab's body at its sheet's size, in blocks.
-pub const CRAB_BODY_HEIGHT: f64 = 0.25;
 
 /// Where a character's body is right now and how big it is.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -31,23 +22,13 @@ pub struct NpcBody {
     pub height: f64,
 }
 
-impl NpcKind {
-    /// Side and height of the body of this kind at scale one.
-    pub fn body_size(self) -> (f64, f64) {
-        match self {
-            NpcKind::Villager => (NPC_BODY_SIDE, NPC_BODY_HEIGHT),
-            NpcKind::Crab => (CRAB_BODY_SIDE, CRAB_BODY_HEIGHT),
-        }
-    }
-}
-
 impl Npc {
     /// Its body this tick: a square centred on its feet, scaled by its look, that follows it
     /// through every step, climb and drop.
     pub fn body(&self) -> NpcBody {
         let pose = self.pose();
-        let scale = kind_look(self.kind, self.id).scale;
-        let (side, height) = self.kind.body_size();
+        let scale = npc_look(self.logic, self.id).scale;
+        let (side, height) = self.logic.body_size();
         NpcBody {
             centre: GridPoint {
                 x: pose.x,

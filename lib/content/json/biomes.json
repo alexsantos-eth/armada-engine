@@ -67,10 +67,6 @@
           "weight": 9.0
         },
         {
-          "blueprint": "tree_23",
-          "weight": 10.0
-        },
-        {
           "blueprint": "tree_25",
           "weight": 10.0
         },
@@ -196,10 +192,6 @@
         {
           "blueprint": "tree_15",
           "weight": 5.0
-        },
-        {
-          "blueprint": "tree_23",
-          "weight": 8.0
         },
         {
           "blueprint": "tree_25",

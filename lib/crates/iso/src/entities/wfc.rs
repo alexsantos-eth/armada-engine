@@ -225,7 +225,7 @@ pub fn parse_wfc(
             .flat_map(|biome| biome.trees.iter().map(|tree| tree.blueprint.as_str()))
             .collect();
         for blueprint in &entities.entities {
-            if claimed.contains(blueprint.id.as_str()) {
+            if blueprint.npc.is_some() || claimed.contains(blueprint.id.as_str()) {
                 continue;
             }
             if !raw.weights.contains_key(&blueprint.id) {
@@ -701,7 +701,7 @@ pub fn solve_chunk(
     let mut scratch = Vec::with_capacity(max_footprint);
     let mut remaining: Vec<Vec<usize>> = vec![Vec::new(); n];
     for (bp, blueprint) in blueprints.iter().enumerate() {
-        if claimed.get(bp).copied().unwrap_or(false) {
+        if blueprint.npc.is_some() || claimed.get(bp).copied().unwrap_or(false) {
             continue;
         }
         if wfc.weight_of(&blueprint.id) <= 0.0 {

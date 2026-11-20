@@ -1,57 +1,14 @@
 use super::super::wander::tests::ground_from;
 use super::*;
+use crate::ai::basic::{ID_BIT, PER_CHUNK};
+use crate::grid::{CHUNK_SIZE, WorldCoord};
+
+const HOME: ChunkCoord = ChunkCoord { cx: 0, cy: 0 };
 
 fn flat() -> impl PlayerGround {
     let row = "0".repeat(CHUNK_SIZE as usize);
     let rows: Vec<&str> = (0..CHUNK_SIZE).map(|_| row.as_str()).collect();
     ground_from(&rows)
-}
-
-const HOME: ChunkCoord = ChunkCoord { cx: 0, cy: 0 };
-
-#[test]
-fn a_village_chunk_is_born_with_its_villagers() {
-    let born = spawn_npcs(1, HOME, &flat(), |_, _| true);
-    assert_eq!(born.len(), NPC_VILLAGERS_PER_CHUNK);
-    for npc in &born {
-        assert_eq!(npc.cell, npc.home);
-        assert_eq!(to_chunk(npc.home), HOME);
-    }
-}
-
-fn to_chunk(cell: WorldCoord) -> ChunkCoord {
-    crate::grid::to_chunk_coord(cell)
-}
-
-#[test]
-fn the_wild_gives_a_wanderer_at_most() {
-    let mut total = 0;
-    for seed in 0..40 {
-        let born = spawn_npcs(seed, HOME, &flat(), |_, _| false);
-        assert!(born.len() <= NPC_WANDERERS_PER_CHUNK);
-        total += born.len();
-    }
-    assert!(total > 0);
-}
-
-#[test]
-fn nobody_is_born_on_water_or_without_ground() {
-    let row = "~".repeat(CHUNK_SIZE as usize);
-    let rows: Vec<&str> = (0..CHUNK_SIZE).map(|_| row.as_str()).collect();
-    assert!(spawn_npcs(1, HOME, &ground_from(&rows), |_, _| true).is_empty());
-    assert!(spawn_npcs(1, HOME, &ground_from(&[]), |_, _| true).is_empty());
-}
-
-#[test]
-fn the_same_seed_and_chunk_give_the_same_characters() {
-    let ids = |seed, chunk| -> Vec<u64> {
-        spawn_npcs(seed, chunk, &flat(), |_, _| true)
-            .iter()
-            .map(|npc| npc.id)
-            .collect()
-    };
-    assert_eq!(ids(9, HOME), ids(9, HOME));
-    assert_ne!(ids(9, HOME), ids(10, HOME));
 }
 
 fn beach() -> impl PlayerGround {
@@ -60,30 +17,76 @@ fn beach() -> impl PlayerGround {
     ground_from(&rows)
 }
 
-#[test]
-fn crabs_are_born_on_the_sand_only() {
-    let born = spawn_crabs(1, HOME, &beach());
-    assert!(!born.is_empty() && born.len() <= CRABS_PER_CHUNK);
-    for crab in &born {
-        assert_eq!(crab.kind, NpcKind::Crab);
-        assert_ne!(crab.id & CRAB_ID_BIT, 0);
-        assert_eq!(to_chunk(crab.home), HOME);
-    }
-    assert!(spawn_crabs(1, HOME, &flat()).is_empty());
+fn to_chunk(cell: WorldCoord) -> ChunkCoord {
+    crate::grid::to_chunk_coord(cell)
+}
+
+/// A catalog of a rock and a crab, the crab declaring `npc` when given one.
+fn catalog(npc: Option<&str>) -> EntityCatalog {
+    let entity = |id: &str, npc: Option<&str>| {
+        let npc = npc.map_or(String::new(), |logic| format!(r#""npc": "{logic}","#));
+        format!(
+            r#"{{"id": "{id}", {npc} "asset": {{"sprite": "/a.png"}},
+            "shape": {{"height": 1, "length": 1, "collision": [0]}},
+            "placement": {{"surfaces": ["sand"]}}}}"#
+        )
+    };
+    let json = format!(
+        r#"{{"schemaVersion": 1, "entities": [{}, {}]}}"#,
+        entity("rock", None),
+        entity("crab", npc)
+    );
+    serde_json::from_str(&json).expect("a valid catalog")
 }
 
 #[test]
-fn crabs_do_not_change_who_else_is_born() {
-    let villagers = |ground: &dyn Fn() -> Vec<Npc>| -> Vec<u64> {
-        ground()
+fn an_entity_with_the_basic_logic_is_born_on_the_sand_only() {
+    let catalog = catalog(Some("basic"));
+    let born = spawn_npcs(1, HOME, &beach(), &catalog);
+    assert!(!born.is_empty() && born.len() <= PER_CHUNK);
+    for npc in &born {
+        assert_eq!(npc.logic, NpcLogic::Basic);
+        assert_ne!(npc.id & ID_BIT, 0);
+        assert_eq!(npc.cell, npc.home);
+        assert_eq!(to_chunk(npc.home), HOME);
+    }
+    assert!(spawn_npcs(1, HOME, &flat(), &catalog).is_empty());
+}
+
+#[test]
+fn without_the_npc_key_nobody_is_born() {
+    assert!(spawn_npcs(1, HOME, &beach(), &catalog(None)).is_empty());
+}
+
+#[test]
+fn a_logic_declared_twice_is_born_once() {
+    let mut twice = catalog(Some("basic"));
+    twice.entities[0].npc = Some(NpcLogic::Basic);
+    assert_eq!(logics_in(&twice), vec![NpcLogic::Basic]);
+    assert_eq!(
+        spawn_npcs(1, HOME, &beach(), &twice).len(),
+        spawn_npcs(1, HOME, &beach(), &catalog(Some("basic"))).len()
+    );
+}
+
+#[test]
+fn nobody_is_born_on_water_or_without_ground() {
+    let row = "~".repeat(CHUNK_SIZE as usize);
+    let rows: Vec<&str> = (0..CHUNK_SIZE).map(|_| row.as_str()).collect();
+    let catalog = catalog(Some("basic"));
+    assert!(spawn_npcs(1, HOME, &ground_from(&rows), &catalog).is_empty());
+    assert!(spawn_npcs(1, HOME, &ground_from(&[]), &catalog).is_empty());
+}
+
+#[test]
+fn the_same_seed_and_chunk_give_the_same_characters() {
+    let catalog = catalog(Some("basic"));
+    let ids = |seed, chunk| -> Vec<u64> {
+        spawn_npcs(seed, chunk, &beach(), &catalog)
             .iter()
-            .filter(|npc| npc.kind == NpcKind::Villager)
             .map(|npc| npc.id)
             .collect()
     };
-    let on_grass = villagers(&|| spawn_npcs(3, HOME, &flat(), |_, _| true));
-    let on_sand = villagers(&|| spawn_npcs(3, HOME, &beach(), |_, _| true));
-    assert_eq!(on_grass, on_sand);
-    let all = spawn_npcs(3, HOME, &beach(), |_, _| true);
-    assert!(all.iter().any(|npc| npc.kind == NpcKind::Crab));
+    assert_eq!(ids(9, HOME), ids(9, HOME));
+    assert_ne!(ids(9, HOME), ids(10, HOME));
 }

@@ -998,7 +998,7 @@ impl Game {
                 continue;
             }
             let feet = player_feet(at, rp.elevation + rp.height, projection);
-            let crab = npc.kind == iso::npc::NpcKind::Crab;
+            let crab = npc.logic == iso::npc::NpcLogic::Basic;
             let (idle_sheet, walk_sheet, sheets) = if crab {
                 (CRAB_IDLE_SHEET, CRAB_WALK_SHEET, self.crab_sheets)
             } else {
@@ -1007,7 +1007,7 @@ impl Game {
             let Some(idle) = self.atlas.sheet(idle_sheet) else {
                 continue;
             };
-            let look = iso::npc::kind_look(npc.kind, npc.id);
+            let look = iso::npc::npc_look(npc.logic, npc.id);
             let scale = if crab { 1.0 } else { PLAYER_SCALE } * look.scale;
             let ink = idle.ink.scaled(scale);
             if !SpriteAtlas::on_screen(ink_layout(feet, ink, projection.tile_width)) {

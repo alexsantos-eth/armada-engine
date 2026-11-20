@@ -1487,30 +1487,6 @@
       }
     },
     {
-      "id": "tree_23",
-      "asset": {
-        "sprite": "/assets/tree/block_23.png",
-        "sway": {
-          "cut": 0.6,
-          "amplitude": 2,
-          "period": 3800
-        }
-      },
-      "shape": {
-        "height": 2,
-        "length": 1,
-        "axis": "x",
-        "collision": [
-          0.15
-        ]
-      },
-      "placement": {
-        "surfaces": [
-          "grass"
-        ]
-      }
-    },
-    {
       "id": "tree_24",
       "asset": {
         "sprite": "/assets/tree/block_24.png",
@@ -1821,6 +1797,26 @@
         ],
         "additionalSurfaces": [
           "ground"
+        ]
+      }
+    },
+    {
+      "id": "crab",
+      "npc": "basic",
+      "asset": {
+        "sprite": "/assets/crab/idle.json"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "sand"
         ]
       }
     }

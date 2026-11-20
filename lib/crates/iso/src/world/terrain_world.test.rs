@@ -83,6 +83,7 @@ fn road_enabled_structures_materialize_paths_without_overwriting_their_footprint
     let chunk = ChunkCoord { cx: 0, cy: 0 };
     world.show_chunk(chunk);
     let blueprint = EntityBlueprint {
+        npc: None,
         id: "house".to_owned(),
         asset: EntityAsset {
             sprite: "/assets/house/block.svg".to_owned(),
@@ -148,6 +149,7 @@ fn the_road_carves_through_a_zero_collision_prop_and_keeps_it_on_the_path() {
         }
     }
     let house = EntityBlueprint {
+        npc: None,
         id: "house".to_owned(),
         asset: EntityAsset {
             sprite: "/assets/house/block.svg".to_owned(),
@@ -171,6 +173,7 @@ fn the_road_carves_through_a_zero_collision_prop_and_keeps_it_on_the_path() {
         },
     };
     let rock = EntityBlueprint {
+        npc: None,
         id: "rock_small".to_owned(),
         asset: EntityAsset {
             sprite: "/assets/rock/block.png".to_owned(),

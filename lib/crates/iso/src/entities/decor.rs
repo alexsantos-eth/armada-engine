@@ -52,7 +52,10 @@ pub fn place_decor(
     let mut entities = Vec::new();
     for blueprint in &catalog.entities {
         let zero_collision = blueprint.shape.collision.iter().all(|&size| size <= 0.0);
-        if !zero_collision || blueprint.placement.additional_surfaces.is_empty() {
+        if blueprint.npc.is_some()
+            || !zero_collision
+            || blueprint.placement.additional_surfaces.is_empty()
+        {
             continue;
         }
         for column in columns {

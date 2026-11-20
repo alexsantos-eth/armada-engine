@@ -154,6 +154,9 @@ pub fn place_entities_with_content(
     }
 
     for blueprint in &catalog.entities {
+        if blueprint.npc.is_some() {
+            continue;
+        }
         let gated = biomes.map(|world| world.species_of(&blueprint.id));
         let biome_claimed = gated
             .as_ref()

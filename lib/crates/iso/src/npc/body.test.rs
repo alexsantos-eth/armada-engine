@@ -1,6 +1,7 @@
 use super::super::wander::tests::ground_from;
 use super::*;
-use crate::player::{create_player, step_player};
+use crate::npc::{NpcLogic, npc_look};
+use crate::player::{PLAYER_RADIUS, create_player, step_player};
 
 fn cell(x: i32, y: i32) -> WorldCoord {
     WorldCoord { x, y }
@@ -15,7 +16,7 @@ fn crowd_of(npcs: Vec<Npc>) -> Npcs {
 #[test]
 fn the_body_follows_the_feet_through_a_step() {
     let ground = ground_from(&["......", "......", "......"]);
-    let mut crab = Npc::of_kind(NpcKind::Crab, 3, cell(1, 1), 0);
+    let mut crab = Npc::new(NpcLogic::Basic, 3, cell(1, 1), 0);
     crab.rest_ticks = 0;
     let standing = crab.body();
     assert_eq!(standing.centre, GridPoint { x: 1.0, y: 1.0 });
@@ -30,14 +31,12 @@ fn the_body_follows_the_feet_through_a_step() {
 }
 
 #[test]
-fn a_crab_is_smaller_and_lower_than_a_villager() {
-    let crab = Npc::of_kind(NpcKind::Crab, 3, cell(1, 1), 0).body();
-    let villager = Npc::new(3, cell(1, 1), 0).body();
-    assert!(crab.height < villager.height);
-    let (side, height) = NpcKind::Crab.body_size();
-    let scale = kind_look(NpcKind::Crab, 3).scale;
-    assert!((crab.side - side * scale).abs() < 1e-12);
-    assert!((crab.height - height * scale).abs() < 1e-12);
+fn a_body_has_the_size_of_its_logic_scaled_by_its_look() {
+    let body = Npc::new(NpcLogic::Basic, 3, cell(1, 1), 0).body();
+    let (side, height) = NpcLogic::Basic.body_size();
+    let scale = npc_look(NpcLogic::Basic, 3).scale;
+    assert!((body.side - side * scale).abs() < 1e-12);
+    assert!((body.height - height * scale).abs() < 1e-12);
 }
 
 #[test]
@@ -56,7 +55,7 @@ fn a_body_reaches_into_every_cell_its_square_overlaps() {
 
 #[test]
 fn the_ground_reports_bodies_where_they_stand_now() {
-    let crowd = crowd_of(vec![Npc::of_kind(NpcKind::Crab, 3, cell(2, 1), 0)]);
+    let crowd = crowd_of(vec![Npc::new(NpcLogic::Basic, 3, cell(2, 1), 0)]);
     let with = NpcGround {
         ground: ground_from(&["......", "......", "......"]),
         npcs: &crowd,
@@ -69,7 +68,7 @@ fn the_ground_reports_bodies_where_they_stand_now() {
 
 #[test]
 fn the_player_walks_into_a_body_and_stops() {
-    let crowd = crowd_of(vec![Npc::new(3, cell(4, 1), 0)]);
+    let crowd = crowd_of(vec![Npc::new(NpcLogic::Basic, 3, cell(4, 1), 0)]);
     let mut with = NpcGround {
         ground: ground_from(&["........", "........", "........"]),
         npcs: &crowd,
@@ -80,7 +79,7 @@ fn the_player_walks_into_a_body_and_stops() {
     let body = crowd.iter().next().unwrap().body();
     assert!(
         player.x < body.centre.x - body.side / 2.0 - PLAYER_RADIUS + 1e-6,
-        "the player stopped against the villager, at {}",
+        "the player stopped against the body, at {}",
         player.x
     );
     assert!(player.x > 2.5, "the player still walked up to it");

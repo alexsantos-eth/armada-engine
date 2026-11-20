@@ -2,7 +2,7 @@
 
 Este dominio contiene a los personajes no jugadores: quién nace en cada chunk, el deambular que los mueve y el conjunto de los que están vivos. Reutiliza el suelo del jugador (`iso::player::PlayerGround`) para preguntar por columnas y ocupantes, de modo que un personaje ve el mismo mundo que el jugador.
 
-Un personaje va de casilla en casilla, y cómo llega a la siguiente lo decide el suelo (`plan_npc_step`):
+Un personaje va de casilla en casilla (las gradas y el escalar son para una lógica cuyo `NpcGait::climbs` sea cierto), y cómo llega a la siguiente lo decide el suelo (`plan_npc_step`):
 
 - **Camina** por suelo seco de su mismo nivel, en las ocho direcciones, sin cortar una esquina cerrada.
 - **Sube y baja gradas**: solo por el eje del tramo, y lo cruza entero hasta la casilla de más allá (un paso de dos casillas), con los mismos peldaños y saltitos que el jugador (`get_stairs_rise`, `get_stairs_hop`). Nunca se queda parado en una grada.
@@ -13,11 +13,13 @@ No salta, no nada y no corre; un desnivel de dos bloques o más, el agua y lo s�
 
 Todo es determinista: quién nace sale de la semilla, del chunk y de su suelo (`derive_seed` + `lattice_at`), y cada personaje decide con su propio flujo (`DustRandom` sembrado con su id, que es la clave de su casilla de origen). Avanzan solo en el paso fijo. **No se guardan**: al volver un chunk, sus personajes nacen otra vez en casa.
 
-Cada personaje tiene además un **aspecto** (`npc_look`): un tinte de una paleta de ocho pelajes y un tamaño entre 0,8 y 1,15 veces el del jugador. Sale de su id con un flujo aparte del que usa para deambular, así que no se guarda nada y vuelve con el mismo aspecto.
+Cada personaje tiene además un **aspecto** (`npc_look(logic, id)`): un tinte de la paleta de su lógica y un tamaño dentro de su rango. Sale de su id con un flujo aparte del que usa para deambular, así que no se guarda nada y vuelve con el mismo aspecto.
 
-Hay dos clases de personaje (`NpcKind`). El **aldeano** hace todo lo de arriba. El **cangrejo** (`NpcKind::Crab`) nace en la arena seca de la playa (`spawn_crabs`, hasta `CRABS_PER_CHUNK` por chunk, con un flujo propio para no cambiar quién más nace, y su id lleva `CRAB_ID_BIT` para no coincidir con el de un aldeano de la misma casilla). Corretea más rápido y con correa más corta (`NpcKind::gait`), **no escala ni toma gradas**: solo pisa suelo de su nivel o uno más bajo (cae como cualquiera). Si a mitad de paseo se topa con un bloque más alto, el agua o su correa, da la vuelta (`step_npc`). Camina de lado: mira a través de su camino (`facing_for`), del lado al que ya miraba, o hacia la cámara si los dos lados empatan. Su aspecto (`kind_look`) es un tono de caparazón y un tamaño propios.
+Cada entidad del catálogo decide su lógica con `"npc": "basic"` en `entities.json` (`NpcLogic`); sin esa clave no tiene comportamiento NPC y el WFC y la colocación la ignoran. Cada lógica (`ai`) pone su paso (`NpcGait`), su cuerpo (`NpcLogic::body_size`), su aspecto (`NpcLogic::look_rule`) y su regla de nacimiento; la maquinaria de pasos de `wander.rs` es común.
 
-Cada personaje tiene un **cuerpo** (`Npc::body`): un cuadrado centrado en sus pies de este tick, que lo sigue en cada paso, escalada y caída, con el lado y la altura de su clase (`NpcKind::body_size`: el del jugador para el aldeano, una concha baja y ancha para el cangrejo) escalados por su aspecto. El jugador choca con esos cuerpos a través de `NpcGround`, que envuelve el suelo y añade a sus ocupantes los cuerpos que tocan cada casilla (`Npcs::obstacles_at`); un `PlayerObstacle` con `centre` es un cuadrado que se mueve, y sin él se centra en su casilla como una entidad colocada. Los personajes deambulan sobre el suelo sin envolver, así que no se estorban con su propio cuerpo: entre ellos se apartan por las casillas que reclaman.
+La lógica **`basic`** (`ai/basic.rs`) es la del cangrejo y la de futuros animales sencillos: nace en la arena seca de la playa (`basic::spawn`, hasta `PER_CHUNK` por chunk, con un flujo propio, y su id lleva `ID_BIT`), corretea con correa corta, **no escala ni toma gradas** (solo pisa suelo de su nivel o uno más bajo; cae como cualquiera), da la vuelta si a mitad de paseo se topa con un bloque más alto, el agua o su correa, y camina de lado: mira a través de su camino (`facing_for`), del lado al que ya miraba, o hacia la cámara si los dos lados empatan. Los aldeanos se retiraron por ahora.
+
+Cada personaje tiene un **cuerpo** (`Npc::body`): un cuadrado centrado en sus pies de este tick, que lo sigue en cada paso, escalada y caída, con el lado y la altura de su clase (`NpcLogic::body_size`: una concha baja y ancha para `basic`) escalados por su aspecto. El jugador choca con esos cuerpos a través de `NpcGround`, que envuelve el suelo y añade a sus ocupantes los cuerpos que tocan cada casilla (`Npcs::obstacles_at`); un `PlayerObstacle` con `centre` es un cuadrado que se mueve, y sin él se centra en su casilla como una entidad colocada. Los personajes deambulan sobre el suelo sin envolver, así que no se estorban con su propio cuerpo: entre ellos se apartan por las casillas que reclaman.
 
 No dibuja nada ni conoce sprites: la vista vive en el cliente (`src/npc`).
 
@@ -102,7 +104,6 @@ No dibuja nada ni conoce sprites: la vista vive en el cliente (`src/npc`).
 
 - [`Npc::body`](body.rs#L47) — Su cuerpo este tick: un cuadrado centrado en sus pies, escalado por su aspecto, que lo sigue en cada paso, escalada y caída.
 
-- [`NpcKind::body_size`](body.rs#L36) — Lado y altura del cuerpo de esta clase a escala uno.
 
 - [`NpcBody::covers`](body.rs#L65) — Si su cuadrado entra en `cell`.
 
@@ -112,10 +113,6 @@ No dibuja nada ni conoce sprites: la vista vive en el cliente (`src/npc`).
 
 #### Constantes
 
-- [`NPC_BODY_SIDE`](body.rs#L13) — Lado del cuadrado de un aldeano a tamaño de jugador: el del jugador.
-- [`NPC_BODY_HEIGHT`](body.rs#L15) — Altura del cuerpo de un aldeano a tamaño de jugador: la del jugador.
-- [`CRAB_BODY_SIDE`](body.rs#L17) — Lado del cuadrado de un cangrejo a tamaño de su hoja.
-- [`CRAB_BODY_HEIGHT`](body.rs#L19) — Altura del cuerpo de un cangrejo a tamaño de su hoja.
 
 #### Tipos
 
@@ -127,7 +124,7 @@ No dibuja nada ni conoce sprites: la vista vive en el cliente (`src/npc`).
 
 #### Funciones y métodos
 
-- [`spawn_npcs`](spawn.rs#L34) — Los personajes que nacen en `chunk`: aldeanos en las casillas de poblado y, de vez en cuando, un caminante fuera. Misma semilla, chunk y suelo dan siempre los mismos.
+- [`spawn_npcs`](spawn.rs) — Los personajes que nacen en `chunk`: para cada `NpcLogic` que declara el catálogo (`"npc"` en `entities.json`), los que da su regla de nacimiento. Misma semilla, chunk, suelo y catálogo dan siempre los mismos.
   - Firma: `pub fn spawn_npcs<G: PlayerGround>( seed: u64, chunk: ChunkCoord, ground: &G, in_village: impl Fn(i32, i32) -> bool, ) -> Vec<Npc> {`
 
 #### Constantes

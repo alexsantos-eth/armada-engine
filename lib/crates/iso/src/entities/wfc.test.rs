@@ -7,6 +7,7 @@ use crate::terrain::TerrainMaterial;
 
 fn entities() -> EntityCatalog {
     let blueprint = |id: &str| EntityBlueprint {
+        npc: None,
         id: id.to_owned(),
         asset: EntityAsset {
             sprite: format!("/assets/{id}.svg"),
@@ -371,6 +372,7 @@ fn a_pier_grows_at_the_water_edge() {
     let entities = EntityCatalog {
         schema_version: crate::entities::validation::CATALOG_SCHEMA_VERSION,
         entities: vec![EntityBlueprint {
+            npc: None,
             id: "pier_x_reverse".to_owned(),
             asset: EntityAsset {
                 sprite: "/assets/pier/block_1x3_over_water.svg".to_owned(),
@@ -676,6 +678,7 @@ fn a_blueprint_grows_on_an_additional_surface() {
     let entities = EntityCatalog {
         schema_version: crate::entities::validation::CATALOG_SCHEMA_VERSION,
         entities: vec![EntityBlueprint {
+            npc: None,
             id: "rock_small".to_owned(),
             asset: EntityAsset {
                 sprite: "/assets/rock/block.png".to_owned(),

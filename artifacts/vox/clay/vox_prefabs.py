@@ -228,7 +228,6 @@ PIECES = {
     "leaf_slab": (leaf(36, 36, 12, 5), LEAVES),
     "leaf_tuft": (leaf(20, 20, 11, 4.5), LEAVES),
     "leaf_dome": (leaf(30, 30, 18, 8), LEAVES),                 # a low rounded cap
-    "leaf_ball": (leaf(24, 24, 24, 11), LEAVES),                # a round clump, on a cell of 28
     "leaf_column": (leaf(18, 18, 36, 8), LEAVES),               # a tall narrow clump (cell 20)
     "leaf_beam": (leaf(54, 26, 16, 6), LEAVES),                 # a long bough of leaves along x
     "leaf_drop": (leaf(12, 12, 22, 5), LEAVES),                 # a hanging strand (willow)

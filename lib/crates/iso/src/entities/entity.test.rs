@@ -4,6 +4,7 @@ use crate::terrain::TerrainMaterial;
 
 fn blueprint(id: &str, length: i32, surface: TerrainMaterial) -> EntityBlueprint {
     EntityBlueprint {
+        npc: None,
         id: id.to_owned(),
         asset: EntityAsset {
             sprite: format!("/assets/{}/block.svg", id),

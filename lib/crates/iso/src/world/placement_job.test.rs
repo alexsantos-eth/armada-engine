@@ -29,6 +29,7 @@ fn catalog() -> EntityCatalog {
         schema_version: CATALOG_SCHEMA_VERSION,
         entities: vec![
             EntityBlueprint {
+                npc: None,
                 id: tree_id,
                 asset: EntityAsset {
                     sprite: "/assets/tree/block.svg".to_owned(),
@@ -52,6 +53,7 @@ fn catalog() -> EntityCatalog {
                 },
             },
             EntityBlueprint {
+                npc: None,
                 id: house_id,
                 asset: EntityAsset {
                     sprite: "/assets/house/block.svg".to_owned(),

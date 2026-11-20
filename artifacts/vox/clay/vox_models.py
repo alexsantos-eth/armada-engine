@@ -341,13 +341,6 @@ def acacia_low():
             + layer(QUAD, c - 6, c + 30, 94, name="leaf_tuft", cell=21))
 
 
-def ball_tree():
-    """tree_23: a tree of round clumps: three layers of leaf balls, a dome on top."""
-    c = -5
-    return (trunk(0, 0, 3) + layer(FULL, c, c, 84, name="leaf_ball") + layer(PLUS, c, c, 106, name="leaf_ball")
-            + layer([(0, 0)], c, c, 128, name="leaf_ball") + put("leaf_dome", c, c, 148, "green"))
-
-
 def column_tree():
     """tree_24: a bunch of tall leaf columns standing up from a short trunk, a dome between them."""
     c = -4
@@ -629,7 +622,6 @@ MODELS = {
     "tree_20": (maple, (1, 1, 2), "tree/block_20.png"),
     "tree_21": (fir_broad, (1, 1, 2), "tree/block_21.png"),
     "tree_22": (acacia_low, (1, 1, 2), "tree/block_22.png"),
-    "tree_23": (ball_tree, (1, 1, 2), "tree/block_23.png"),
     "tree_24": (column_tree, (1, 1, 2), "tree/block_24.png"),
     "tree_25": (beam_oak, (1, 1, 2), "tree/block_25.png"),
     "tree_26": (weeping, (1, 1, 2), "tree/block_26.png"),

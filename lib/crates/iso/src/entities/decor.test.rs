@@ -27,6 +27,7 @@ fn rock(
     additional: Vec<TerrainMaterial>,
 ) -> crate::entities::blueprint::EntityBlueprint {
     crate::entities::blueprint::EntityBlueprint {
+        npc: None,
         id: id.to_owned(),
         asset: EntityAsset {
             sprite: format!("/assets/rock/{id}.png"),
@@ -84,6 +85,7 @@ fn the_decor_scatters_on_the_additional_surfaces_after_the_roads_carve() {
 fn the_decor_never_covers_what_already_stands() {
     let columns = path_chunk(16);
     let house = crate::entities::blueprint::EntityBlueprint {
+        npc: None,
         id: "house".to_owned(),
         asset: EntityAsset {
             sprite: "/assets/house/block.png".to_owned(),

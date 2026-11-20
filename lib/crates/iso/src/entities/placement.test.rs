@@ -27,6 +27,7 @@ fn column(x: i32, y: i32, surface: TerrainMaterial, elevation: i32) -> TerrainCo
 
 fn blueprint(id: &str, length: i32, surfaces: Vec<TerrainMaterial>) -> EntityBlueprint {
     EntityBlueprint {
+        npc: None,
         id: id.to_owned(),
         asset: EntityAsset {
             sprite: format!("/assets/{}/block.svg", id),
@@ -503,6 +504,7 @@ mod by_hand {
 
     fn hut(length: i32, axis: EntityLengthAxis) -> EntityBlueprint {
         EntityBlueprint {
+            npc: None,
             id: "hut".to_owned(),
             asset: EntityAsset {
                 sprite: "/assets/hut.svg".to_owned(),
