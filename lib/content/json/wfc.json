@@ -57,7 +57,22 @@
     "rock_small_3": 1.5,
     "rock_medium": 1.5,
     "rock_medium_2": 1.0,
-    "campfire": 0.8
+    "campfire": 0.8,
+    "mushrooms": 3.0,
+    "tall_grass": 4.0,
+    "tall_grass_2": 4.0,
+    "fallen_log_x": 1.0,
+    "fallen_log_y": 1.0,
+    "peat_puddle": 1.5,
+    "burial_mound_x": 0.3,
+    "burial_mound_y": 0.3,
+    "collapsed_wall": 1.0,
+    "old_well": 0.5,
+    "shield_grave": 0.8,
+    "abandoned_cart_x": 0.4,
+    "abandoned_cart_y": 0.4,
+    "buried_chest": 0.5,
+    "totem_stub": 0.6
   },
   "families": {
     "mead_hall": [
@@ -113,6 +128,28 @@
       "flag_post",
       "fish_rack",
       "gull_post"
+    ],
+    "meadow": [
+      "mushrooms",
+      "tall_grass",
+      "tall_grass_2",
+      "fallen_log_x",
+      "fallen_log_y",
+      "peat_puddle"
+    ],
+    "barrow": [
+      "burial_mound_x",
+      "burial_mound_y"
+    ],
+    "ruins": [
+      "collapsed_wall",
+      "old_well",
+      "shield_grave",
+      "totem_stub"
+    ],
+    "cart": [
+      "abandoned_cart_x",
+      "abandoned_cart_y"
     ]
   },
   "maxPerChunk": {
@@ -126,6 +163,11 @@
     "healer_hut": 1,
     "boathouse": 2,
     "wreck": 1,
-    "campfire": 2
+    "campfire": 2,
+    "barrow": 1,
+    "cart": 1,
+    "old_well": 1,
+    "buried_chest": 1,
+    "ruins": 3
   }
 }

@@ -109,6 +109,7 @@ pieza nueva.
 | `SHINGLE` / `SHINGLE_DARK` | `#9a5b2e` / `#8a3f2c` | tablilla clara y oscura |
 | `GLOW` / `IRON` / `FIRE` / `BREW` | `#ffd66b` / `#4a4a52` / `#f7802a` / `#5fd03a` | ventana encendida, hierro, fuego, caldero |
 | `STEP` / `STEP_DEEP` / `TREAD` | `#a79e8d` / `#8f8777` / `#c6bfae` | masa, cimiento y huella de las gradas |
+| `PEAT` / `BOG` / `REED` / `CATTAIL` / `WELL_WATER` | `#5b4532` / `#4f6b5c` / `#b3a85a` / `#73472a` / `#2f5470` | turba, agua del charco, caña, espadaña, agua del pozo |
 
 Un material nuevo se añade como constante en `vox_prefabs.py` **y a la lista `PALETTE`**
 (si falta, el script se detiene), **siempre al final**: los índices de los `.vox` ya escritos no se mueven. Elige tonos medios y saturados: el render los oscurece en
@@ -133,6 +134,7 @@ Tamaños en vóxeles, ancho × fondo × alto. Las variantes son el sufijo del ar
 | `branch` | 26 × 8 × 8 | brown, birch | brazo horizontal (a lo largo de x; `turn=True` para y) |
 | `stump` | 16 × 16 × 14 | — | tocón con el corte claro |
 | `log` | 30 × 12 × 13 | — | tronco caído con musgo |
+| `firewood` | 30 × 12 × 12 | — | leño cortado, sin musgo (fogata) |
 | `fruit` | 7 × 7 × 7 | — | el acento rojo |
 | `flower_big` | 17 × 17 × 11 | white, red, yellow, pink | flor sobre su roseta |
 | `wildflower` | 11 × 11 × 16 | red, white | flor de tallo |
@@ -175,6 +177,28 @@ Tamaños en vóxeles, ancho × fondo × alto. Las variantes son el sufijo del ar
 | `barrel` / `crate` / `loaf` | hasta 13 × 13 × 15 | — | atrezo de puerta y de mercado |
 | `anvil` / `fire` / `cauldron` | hasta 14 × 14 × 12 | — | herrería, brasero, sanador |
 | `boat` | 45 × 14 × 14 | — | bote varado |
+
+### Piezas del campo abierto
+
+| Pieza | Tamaño | Variantes | Uso |
+| --- | --- | --- | --- |
+| `toadstool` | 27 × 25 × 27 | red, tan | seta grande con motas |
+| `grass_tuft` | ~34 × 34 × 34 | green, light, dry | mata de hierba alta en abanico |
+| `reed` / `puddle` | 5 × 5 × 36 / 52 × 40 × 4 | — | caña con espadaña; charco de turba (pieza plana, no suelo) |
+| `log_long` / `root_plate` | 150 × 20 × 19 / 10 × 46 × 50 | — | tronco caído de dos casillas y su cepa arrancada |
+| `turf_block` | 26 × 26 × 26 | turf, moss | celda de un túmulo de hierba |
+| `wheel` / `wheel_flat` | 32 × 7 × 32 | — | rueda de carro de pie (cara a `+y`) o tumbada |
+| `spear` / `shovel` | hasta 11 × 11 × 80 | — | lanza clavada; pala |
+| `chest` / `coin` / `clod` | 34 × 25 × 25 / 5 / 14 × 12 × 7 | clod: earth, dark | cofre, moneda, terrón |
+| `totem` | 22 × 22 × 28 | timber, wood, plank | tramo tallado de tótem (cara a `+x`), se apila cada 28 |
+| `bucket` / `sack` / `well_water` | — | — | cubo, saco, agua de pozo |
+
+Una caja tiene el radio limitado por su lado más fino, así que **nada redondo sale de una sola
+caja**: `disc(d, t, color, plano)` en `vox_prefabs.py` arma un disco por filas (ruedas, cepa).
+Las entidades del campo (`lib/assets/field/`) solo crecen en hierba fuera de poblados: familias
+`meadow`, `barrow`, `ruins` y `cart` de `wfc.json`, con peso en `settlements.json` →
+`wilderness.weights`. La hierba alta lleva `drawUnderPlayer` y
+colisión 0; las demás (setas y charco incluidos), colisión de 0,2 a 0,6.
 
 Las piezas de cara (`door`, `window`, `shield`, `rune`, `banner`) tienen el pivote **en el
 plano de la cara**: se colocan con `x` igual al plano del muro y la mitad queda prensada
@@ -404,6 +428,8 @@ bulto sin junta) o que flotan sin apoyo (un techo por encima de sus postes).
 
 El commit y el push solo los hace `armada-commit`, cuando el usuario la invoca, salvo que el
 usuario haya pedido trabajar directamente en la rama.
+
+Una entidad con llama (`campfire`, `"fire": true` en su blueprint) lleva en el modelo solo piedras, leños y brasas (`fire`): las llamas, las chispas y el humo los anima el cliente (`src/effects/fire.rs`), no el atlas.
 
 ## 8. Antes de entregar
 

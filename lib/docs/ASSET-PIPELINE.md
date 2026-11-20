@@ -233,6 +233,18 @@ de pie y dos zancadas de 4 poses: el cangrejo corretea de lado). `rasterize.py` 
 (`content/images/crab_<hoja>.png`). Se dibuja a la escala de su hoja (no a `PLAYER_SCALE`).
 Tarda ~2 min en 4 núcleos.
 
+### Decoración del campo abierto
+
+`lib/assets/field/` guarda las entidades que llenan la hierba fuera de poblados: setas, dos
+manchas de hierba alta, charco de turba con cañas, tronco caído (2 casillas), túmulo funerario
+(2 casillas, 2 bloques), muro derrumbado, pozo viejo, tumba de escudo y lanza, carro abandonado
+(2 casillas), cofre semienterrado y tótem. Salen de `vox_models.py` (las de naturaleza) y
+`vox_buildings.py` (ruinas y objetos) con las piezas del campo de `vox_prefabs.py` (`toadstool`,
+`grass_tuft`, `reed`, `puddle`, `log_long`, `root_plate`, `turf_block`, `wheel`, `spear`,
+`chest`, `totem`…). Se colocan por las familias `meadow`, `barrow`, `ruins` y `cart` de
+`wfc.json`, con multiplicador en `settlements.json` → `wilderness.weights` (las zonas de poblado
+no las listan, así que nunca salen dentro). Solo la hierba alta lleva `drawUnderPlayer` y colisión 0.
+
 ## 7. Coste
 
 Cero. La ruta voxel no llama a ningún modelo de imagen. El posprocesado tampoco: ajustar fuerza,

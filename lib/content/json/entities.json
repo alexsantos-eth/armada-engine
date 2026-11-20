@@ -1819,6 +1819,305 @@
           "sand"
         ]
       }
+    },
+    {
+      "id": "mushrooms",
+      "asset": {
+        "sprite": "/assets/field/block_mushrooms.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.5
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "tall_grass",
+      "asset": {
+        "drawUnderPlayer": true,
+        "sprite": "/assets/field/block_tall_grass.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "tall_grass_2",
+      "asset": {
+        "drawUnderPlayer": true,
+        "sprite": "/assets/field/block_tall_grass_2.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "fallen_log_x",
+      "asset": {
+        "sprite": "/assets/field/block_fallen_log_1x2.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 2,
+        "axis": "x",
+        "collision": [
+          0.25,
+          0.25
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass",
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "fallen_log_y",
+      "asset": {
+        "sprite": "/assets/field/block_fallen_log_2x1.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 2,
+        "axis": "y",
+        "collision": [
+          0.25,
+          0.25
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass",
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "peat_puddle",
+      "asset": {
+        "sprite": "/assets/field/block_peat_puddle.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.6
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "burial_mound_x",
+      "asset": {
+        "sprite": "/assets/field/block_burial_mound_1x2.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 2,
+        "axis": "x",
+        "collision": [
+          0.6,
+          0.6
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass",
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "burial_mound_y",
+      "asset": {
+        "sprite": "/assets/field/block_burial_mound_2x1.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 2,
+        "axis": "y",
+        "collision": [
+          0.6,
+          0.6
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass",
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "collapsed_wall",
+      "asset": {
+        "sprite": "/assets/field/block_collapsed_wall.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "old_well",
+      "asset": {
+        "sprite": "/assets/field/block_old_well.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.5
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "shield_grave",
+      "asset": {
+        "sprite": "/assets/field/block_shield_grave.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.2
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "abandoned_cart_x",
+      "asset": {
+        "sprite": "/assets/field/block_abandoned_cart_1x2.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 2,
+        "axis": "x",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass",
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "abandoned_cart_y",
+      "asset": {
+        "sprite": "/assets/field/block_abandoned_cart_2x1.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 2,
+        "axis": "y",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass",
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "buried_chest",
+      "asset": {
+        "sprite": "/assets/field/block_buried_chest.png"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.2
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
+      "id": "totem_stub",
+      "asset": {
+        "sprite": "/assets/field/block_totem_stub.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.2
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
     }
   ]
 }
