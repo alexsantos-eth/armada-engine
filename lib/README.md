@@ -79,6 +79,12 @@ el terreno, mover al jugador, cambiar la fase del día y capturar. El paso `sett
 las sombras estén horneadas antes de capturar, así que una captura nunca sale a medio hornear. En
 Linux corre sin pantalla con `xvfb-run`. La guía completa está en [docs/TESTBED.md](docs/TESTBED.md).
 
+## CI
+
+Cada PR contra `iso-rust` tiene que pasar `.github/workflows/ci.yml`: `cargo fmt --check`, clippy
+con `-D warnings` (nativo y wasm32), `cargo test` y la build WASM de Netlify. Qué corre cada job y
+cómo dejarlo como check obligatorio de la rama: [docs/CI.md](docs/CI.md).
+
 ## Sonidos
 
 El jugador suena con WAVs generados en `content/sounds/` a partir de los patrones de Strudel
