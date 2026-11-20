@@ -1,6 +1,6 @@
 //! Entity instances and their spatial footprint, independent of rendering.
 
-use crate::entities::blueprint::{EntityBlueprint, EntityLengthAxis, EntitySway};
+use crate::entities::blueprint::{EntityBlueprint, EntityEffect, EntityLengthAxis, EntitySway};
 use crate::grid::WorldCoord;
 
 /// How an entity blocks movement, block by block: a single fraction for the whole footprint, or
@@ -41,6 +41,8 @@ pub struct EntityData {
     pub draw_under_player: bool,
     /// Whether the entity is a fire the client animates.
     pub fire: bool,
+    /// What the client animates over the sprite, if anything.
+    pub effect: Option<EntityEffect>,
     /// Per-cell or whole-footprint collision fraction.
     pub collision: Option<EntityCollision>,
     /// Sprite reflected in water, multi-tile entities only.
@@ -95,6 +97,7 @@ impl Entity {
             sway: blueprint.asset.sway.clone(),
             draw_under_player: blueprint.asset.draw_under_player,
             fire: blueprint.asset.fire,
+            effect: blueprint.asset.effect,
             collision,
             reflection_source: blueprint.asset.reflection.clone(),
             metadata: serde_json::Value::Object(Default::default()),
@@ -166,6 +169,10 @@ impl Entity {
     /// Whether the entity is a fire the client animates with flames, sparks and smoke.
     pub fn fire(&self) -> bool {
         self.data.fire
+    }
+    /// What the client animates over the sprite: flames, a lantern, flies, steam or leaves.
+    pub fn effect(&self) -> Option<EntityEffect> {
+        self.data.effect
     }
     pub fn reflection_source(&self) -> Option<&str> {
         self.data.reflection_source.as_deref()

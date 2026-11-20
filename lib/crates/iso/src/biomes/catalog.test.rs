@@ -17,6 +17,7 @@ fn entities() -> EntityCatalog {
             contact_shadow: None,
             draw_under_player: false,
             fire: false,
+            effect: None,
         },
         shape: EntityShape {
             height: 2,

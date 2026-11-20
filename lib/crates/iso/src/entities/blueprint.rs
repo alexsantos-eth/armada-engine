@@ -22,6 +22,28 @@ pub struct EntitySway {
     pub period: f64,
 }
 
+/// What the client animates over an entity's still sprite, in real time: flames, a swinging
+/// lantern, flies or falling leaves. The world never sees it; it is view state like the
+/// campfire's flames (`EntityAsset::fire`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EntityEffect {
+    /// A small flame in the fire cup on a post's head, with sparks and a thread of smoke.
+    Torch,
+    /// A broad flame over a bowl of coals, throwing sparks but no smoke.
+    Brazier,
+    /// A lantern swinging on a chain under an arm, its light flickering.
+    Lantern,
+    /// A cloud of flies hovering and drifting over the spot.
+    Flies,
+    /// Quiet steam, then every few seconds a burst of water and steam straight up.
+    Geyser,
+    /// Leaves drifting down from the canopy overhead onto the spot.
+    Leaves,
+    /// Small flames on a handful of candles, each flickering out of step.
+    Candles,
+}
+
 /// Visual asset of an entity blueprint.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct EntityAsset {
@@ -52,6 +74,9 @@ pub struct EntityAsset {
     /// Whether the entity is a fire: the client draws flames, sparks and smoke over its coals.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub fire: bool,
+    /// What the client animates over the sprite (`"effect": "torch"`), if anything.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effect: Option<EntityEffect>,
 }
 
 /// Physical footprint of an entity: one collision size per occupied cell.

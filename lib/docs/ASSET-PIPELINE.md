@@ -258,6 +258,22 @@ Su blueprint pide `"surfaces": ["ground"]` y se colocan por las familias `thistl
 → `wilderness.weights`. Todas tienen colisión salvo la cadena oxidada, que lleva
 `drawUnderPlayer` y colisión 0.
 
+### Entidades animadas
+
+`lib/assets/animated/` guarda las entidades que el juego anima en tiempo real: antorcha en poste,
+brasero de hierro, farola colgante, enjambre de moscas (sobre un charco en hierba, una osamenta en
+tierra o peces muertos en arena), géiser (solo tierra), hojarasca que recibe hojas cayendo (hierba)
+y velas rituales sobre una losa de altar. El modelo (`vox_buildings.py`) lleva solo lo que está
+quieto —el poste con su copa de brasas, el cuenco, el brazo con el gancho, las velas con su mecha,
+el cono de sínter con su poza—; las llamas, la farola, las moscas, el vapor, el agua y las hojas
+los dibuja el cliente (`src/effects/emitters.rs`) según `"effect"` en el blueprint (`torch`,
+`brazier`, `lantern`, `flies`, `geyser`, `leaves`, `candles`). Los anclajes de cada efecto están
+escritos junto a cada modelo y repetidos en `emitters.rs`: si se mueve uno, se mueve el otro.
+Piezas nuevas: `torch_cup`, `bowl`, `rod`, `candle*`, `wax`, `sinter*`, `hot_pool`, `fish_flat`;
+colores `WAX`, `SINTER`, `HOT_WATER`. Se colocan por las familias `lights` y `flies` de
+`wfc.json` (más `geyser`, `leaf_emitter`, `ritual_candles`), en `wilderness.weights` y en las
+zonas de poblado (centro, mercado, talleres, borde y arcén para las luces).
+
 ## 7. Coste
 
 Cero. La ruta voxel no llama a ningún modelo de imagen. El posprocesado tampoco: ajustar fuerza,
