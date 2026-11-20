@@ -110,6 +110,9 @@ pub struct LayoutRules {
     pub lots_min: u32,
     /// Most lots on a block; never more than [`LayoutRules::slots`] holds.
     pub lots_max: u32,
+    /// Whether a residential block also raises lots inside its rim, a second row behind the
+    /// ones beside the street, once those are taken.
+    pub inner_lots: bool,
     /// How often a block breaks the square: notched, shrunk or merged with a neighbour.
     pub shapes: ShapeShares,
 }
@@ -142,12 +145,16 @@ impl LayoutRules {
     }
 
     /// The cells of a block that may hold a lot, as offsets from its low corner: every other
-    /// cell of its rim, so each lot touches a street and no two lots touch, front first.
+    /// cell of its rim, so each lot touches a street and no two lots touch, front first; with
+    /// `inner_lots`, every other cell of the whole block.
     pub fn slots(&self) -> Vec<(i32, i32)> {
         let last = self.block - 1;
+        let inner = self.inner_lots;
         let mut slots: Vec<(i32, i32)> = (0..self.block)
             .flat_map(|x| (0..self.block).map(move |y| (x, y)))
-            .filter(|&(x, y)| (x == 0 || y == 0 || x == last || y == last) && (x + y) % 2 == 0)
+            .filter(|&(x, y)| {
+                (inner || x == 0 || y == 0 || x == last || y == last) && (x + y) % 2 == 0
+            })
             .collect();
         slots.sort_by_key(|&(x, y)| (x + y, x));
         slots
@@ -415,6 +422,8 @@ struct RawLayout {
     #[serde(rename = "frontPark")]
     front_park: f64,
     lots: RawCount,
+    #[serde(default, rename = "innerLots")]
+    inner_lots: bool,
     #[serde(default)]
     shapes: RawShapes,
 }
@@ -509,6 +518,7 @@ fn layout_of(raw: &RawLayout) -> Result<LayoutRules, SettlementError> {
         front_park: raw.front_park,
         lots_min: raw.lots.min as u32,
         lots_max: raw.lots.max as u32,
+        inner_lots: raw.inner_lots,
         shapes: ShapeShares {
             notch: raw.shapes.notch,
             shrink: raw.shapes.shrink,

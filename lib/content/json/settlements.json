@@ -14,9 +14,10 @@
     "trim": 0.35,
     "frontPark": 0.5,
     "lots": {
-      "min": 3,
-      "max": 5
+      "min": 5,
+      "max": 8
     },
+    "innerLots": true,
     "shapes": {
       "notch": 0.2,
       "shrink": 0.1,

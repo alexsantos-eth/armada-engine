@@ -1,0 +1,25 @@
+{
+  "world": "procedural",
+  "window": [
+    1400,
+    900
+  ],
+  "zoom": 0.7,
+  "phase": "day",
+  "centre": [
+    257,
+    207
+  ],
+  "player": [
+    257,
+    207
+  ],
+  "steps": [
+    "settle",
+    {
+      "shot": "settlement-lots.png"
+    }
+  ],
+  "out": "shots",
+  "maxFrames": 1200
+}

@@ -688,7 +688,8 @@ impl WorldSettlements {
 
     /// Lays the lots of block `(i, j)`: a park takes every cell of its zone on one colour of the
     /// checkerboard, so it grows thick; any other block takes between `lots.min` and `lots.max`
-    /// of the cells of its outline that touch a street, on one colour of a checkerboard over the whole world so no
+    /// of the cells of its outline that touch a street (with `inner_lots`, a residential block
+    /// then fills its inner cells behind them), on one colour of a checkerboard over the whole world so no
     /// two lots ever touch, shuffled per block; a block with any such cell raises at least one.
     fn lay_lots(&self, settlement: &mut Settlement, i: i32, j: i32) {
         let Some(zone) = settlement.block_zone(i, j) else {
@@ -718,19 +719,26 @@ impl WorldSettlements {
             _ => {}
         }
         let street = Some(settlement.street);
-        let park = self.catalog.zones[zone].role == ZoneRole::Park;
+        let role = self.catalog.zones[zone].role;
+        let park = role == ZoneRole::Park;
+        let inner = layout.inner_lots && role == ZoneRole::Residential;
+        let beside_street = |cell: &WorldCoord| {
+            [(1, 0), (-1, 0), (0, 1), (0, -1)]
+                .into_iter()
+                .any(|(dx, dy)| settlement.zone_at(cell.x + dx, cell.y + dy) == street)
+        };
         let mut slots: Vec<WorldCoord> = cells
             .into_iter()
             .filter(|cell| (cell.x + cell.y).rem_euclid(2) == 0)
             .filter(|cell| settlement.zone_at(cell.x, cell.y) == Some(zone))
-            .filter(|cell| {
-                park || [(1, 0), (-1, 0), (0, 1), (0, -1)]
-                    .into_iter()
-                    .any(|(dx, dy)| settlement.zone_at(cell.x + dx, cell.y + dy) == street)
-            })
+            .filter(|cell| park || inner || beside_street(cell))
             .collect();
+        // The cells beside a street first, shuffled; an inner row only fills in behind them.
         slots.sort_by_cached_key(|cell| {
-            lattice_at(self.lots, i64::from(cell.x) * 3 + 1, i64::from(cell.y)).to_bits()
+            (
+                !park && !beside_street(cell),
+                lattice_at(self.lots, i64::from(cell.x) * 3 + 1, i64::from(cell.y)).to_bits(),
+            )
         });
         let choices = layout.lots_max - layout.lots_min + 1;
         let count = layout.lots_min

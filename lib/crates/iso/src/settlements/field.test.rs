@@ -62,6 +62,7 @@ struct Fixture {
     shapes: (f64, f64, f64),
     split: f64,
     verge: bool,
+    inner: bool,
 }
 
 impl Default for Fixture {
@@ -76,6 +77,7 @@ impl Default for Fixture {
             shapes: (0.0, 0.0, 0.0),
             split: 0.0,
             verge: false,
+            inner: false,
         }
     }
 }
@@ -91,6 +93,7 @@ fn catalog_of(fixture: Fixture) -> SettlementCatalog {
         shapes,
         split,
         verge,
+        inner,
     } = fixture;
     let verge = if verge {
         r#",
@@ -105,7 +108,7 @@ fn catalog_of(fixture: Fixture) -> SettlementCatalog {
           "chance": {chance},
           "layout": {{ "blocks": {{ "min": {}, "max": {} }}, "block": 5, "street": 1, "edge": 2,
                        "exit": 4, "trim": {trim}, "frontPark": {front_park},
-                       "lots": {{ "min": {}, "max": {} }},
+                       "lots": {{ "min": {}, "max": {} }}, "innerLots": {inner},
                        "shapes": {{ "notch": {}, "shrink": {}, "merge": {}, "split": {split} }} }},
           "wilderness": {{ "default": 1.0, "greens": 0.0, "weights": {{ "mead_hall": 0.0 }} }},
           "greens": {{ "spacing": 6.0, "tight": 2.0, "near": 3.0, "far": 9.0, "front": 2,
@@ -1020,4 +1023,61 @@ fn a_park_raises_a_lot_on_every_cell_of_one_checkerboard_colour_not_only_its_rim
         }
     }
     assert!(parks > 10);
+}
+
+#[test]
+fn inner_lots_fill_a_residential_block_behind_its_street_row_and_none_touch() {
+    let rim_only = field_of(&catalog_of(Fixture {
+        lots: (8, 8),
+        verge: true,
+        ..Fixture::default()
+    }));
+    let inner = field_of(&catalog_of(Fixture {
+        lots: (13, 13),
+        verge: true,
+        inner: true,
+        ..Fixture::default()
+    }));
+    let street = zone(&inner, ZoneRole::Street);
+    let homes = zone(&inner, ZoneRole::Residential);
+    let park = zone(&inner, ZoneRole::Park);
+    let count = |world: &WorldSettlements| {
+        (0..8)
+            .map(|site| {
+                settlement_in(world, site, 3)
+                    .expect("chance is one")
+                    .lots()
+                    .iter()
+                    .filter(|lot| lot.zone == homes)
+                    .count()
+            })
+            .sum::<usize>()
+    };
+    let mut behind = 0;
+    for site in 0..8 {
+        let settlement = settlement_in(&inner, site, 3).expect("chance is one");
+        let lots = settlement.lots();
+        for lot in lots {
+            assert_eq!(inner.zone_at(lot.anchor.x, lot.anchor.y), Some(lot.zone));
+            let beside_street = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+                .into_iter()
+                .any(|(dx, dy)| {
+                    inner.zone_at(lot.anchor.x + dx, lot.anchor.y + dy) == Some(street)
+                });
+            if !beside_street {
+                assert!(
+                    lot.zone == homes || lot.zone == park,
+                    "only a residential block (or a park) fills inward: {lot:?}"
+                );
+                behind += usize::from(lot.zone == homes);
+            }
+            for other in lots {
+                let apart =
+                    (lot.anchor.x - other.anchor.x).abs() + (lot.anchor.y - other.anchor.y).abs();
+                assert_ne!(apart, 1, "{lot:?} touches {other:?}");
+            }
+        }
+    }
+    assert!(behind > 10, "only {behind} inner lots");
+    assert!(count(&inner) > count(&rim_only) * 3 / 2);
 }
