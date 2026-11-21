@@ -3018,6 +3018,132 @@
           "ground"
         ]
       }
+    },
+    {
+      "id": "ground_grove_scrub_x",
+      "asset": {
+        "sprite": "/assets/barren/block_ground_grove_scrub_1x2.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 2,
+        "axis": "x",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground",
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "ground_grove_scrub_y",
+      "asset": {
+        "sprite": "/assets/barren/block_ground_grove_scrub_2x1.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 2,
+        "axis": "y",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground",
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "ground_grove_dead_x",
+      "asset": {
+        "sprite": "/assets/barren/block_ground_grove_dead_1x2.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 2,
+        "axis": "x",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground",
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "ground_grove_dead_y",
+      "asset": {
+        "sprite": "/assets/barren/block_ground_grove_dead_2x1.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 2,
+        "axis": "y",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground",
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "ground_grove_burnt_x",
+      "asset": {
+        "sprite": "/assets/barren/block_ground_grove_burnt_1x2.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 2,
+        "axis": "x",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground",
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "ground_grove_burnt_y",
+      "asset": {
+        "sprite": "/assets/barren/block_ground_grove_burnt_2x1.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 2,
+        "axis": "y",
+        "collision": [
+          0.4,
+          0.4
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground",
+          "ground"
+        ]
+      }
     }
   ]
 }

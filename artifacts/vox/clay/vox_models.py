@@ -802,6 +802,35 @@ def juniper():
     return out + put("grass_tuft", 34, 30, 0, "dry") + put("rock_s", 38, -34, 0)
 
 
+def ground_grove(kind, axis):
+    """ground_grove_<kind>: two or three trees of the bare ground with their litter, two tiles
+    long along `axis` (the groves of the grass, in dirt). Written once along (u, v) and laid out
+    for either orientation, never mirrored."""
+    def at(u, v):
+        return (64 + u, v) if axis == "x" else (v, 64 + u)
+
+    def lay(name, u, v, z, variant="", long=False):
+        return put(name, *at(u, v), z, variant, turn=long and axis == "y")
+
+    def tree(build, u, v):
+        x, y = at(u, v)
+        return moved(build(), x, y, 0)
+
+    if kind == "scrub":      # a gaunt pine and a juniper over a dead log, thistles and dry grass
+        out = tree(gaunt_pine, -52, -16) + tree(juniper, 52, 4)
+        out += lay("log", -6, 46, 0, long=True) + lay("grass_tuft", 90, 40, 0, "dry")
+        out += lay("thistle_short", -90, 40, 0) + lay("rock_s", 80, -42, 0, long=True)
+        return out + lay("pebble_m", 14, -40, 0)
+    if kind == "dead":       # dead conifer, bare birch and a gnarled oak over bones and a stump
+        out = tree(dead_pine, -56, -14) + tree(bare_birch, 18, 6) + tree(gnarled_oak, 86, -8)
+        out += lay("stump", -88, 46, 0) + lay("bone", 10, 46, 0) + lay("skull", 34, 40, 0)
+        return out + lay("grass_tuft", 60, 44, 0, "dry") + lay("rock_s", -20, -44, 0)
+    # "burnt": a split tree and a dead pine over ash, fallen charred limbs and rubble
+    out = tree(split_tree, -48, -10) + tree(dead_pine, 56, 6) + tree(dry_fir, 4, -8)
+    out += lay("ash", -10, 44, 0) + lay("branch_long", 26, 46, 0, "char", long=True)
+    return out + lay("pebble_l", 88, -40, 0) + lay("pebble_s", -88, 40, 0) + lay("rock_s", 100, 40, 0)
+
+
 MODELS = {
     "tree": (fruit_tree, (1, 1, 2), "tree/block.png"),
     "tree_2": (leafy, (1, 1, 2), "tree/block_2.png"),
@@ -879,6 +908,12 @@ MODELS = {
     "ground_bare_birch": (bare_birch, (1, 1, 2), "barren/block_ground_bare_birch.png"),
     "ground_split": (split_tree, (1, 1, 2), "barren/block_ground_split.png"),
     "ground_juniper": (juniper, (1, 1, 2), "barren/block_ground_juniper.png"),
+    "ground_grove_scrub_2x1": (lambda: ground_grove("scrub", "x"), (2, 1, 2), "barren/block_ground_grove_scrub_2x1.png"),
+    "ground_grove_scrub_1x2": (lambda: ground_grove("scrub", "y"), (1, 2, 2), "barren/block_ground_grove_scrub_1x2.png"),
+    "ground_grove_dead_2x1": (lambda: ground_grove("dead", "x"), (2, 1, 2), "barren/block_ground_grove_dead_2x1.png"),
+    "ground_grove_dead_1x2": (lambda: ground_grove("dead", "y"), (1, 2, 2), "barren/block_ground_grove_dead_1x2.png"),
+    "ground_grove_burnt_2x1": (lambda: ground_grove("burnt", "x"), (2, 1, 2), "barren/block_ground_grove_burnt_2x1.png"),
+    "ground_grove_burnt_1x2": (lambda: ground_grove("burnt", "y"), (1, 2, 2), "barren/block_ground_grove_burnt_1x2.png"),
 }
 
 

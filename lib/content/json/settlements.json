@@ -58,7 +58,8 @@
       "leaf_emitter": 2.5,
       "ritual_candles": 1.0,
       "deadwood": 3.0,
-      "debris": 3.0
+      "debris": 3.0,
+      "ground_grove": 4.0
     },
     "greens": 0.0
   },
