@@ -120,24 +120,47 @@ pub fn pave(columns: &mut [TerrainColumn], streets: &[bool]) -> usize {
     paved
 }
 
-/// Turns every road block that stands one level over the road beside it into a flight of stairs,
+/// Turns the road blocks that stand one level over the road beside them into flights of stairs,
 /// returning how many it laid. The rule is [`stairs_direction`], read off a snapshot of the road
-/// before any block changes, so a run of levels comes out the same whatever order it is walked.
+/// before any block changes. Two flights that touch must climb along the same axis: a candidate
+/// is skipped (it stays a plain road block) when a flight already laid beside it climbs along the
+/// other axis, so no L-shaped corner of crossed flights appears. Candidates are visited in
+/// coordinate order, so the result does not depend on the order of `columns`.
 pub fn place_stairs(columns: &mut [TerrainColumn]) -> usize {
     let roads: HashMap<_, _> = columns
         .iter()
         .map(|column| (column.coord, (column.surface, column.elevation)))
         .collect();
+    let mut candidates: Vec<(usize, WorldCoord)> = columns
+        .iter()
+        .enumerate()
+        .filter(|(_, column)| column.surface == TerrainMaterial::Path)
+        .filter_map(|(index, column)| {
+            stairs_direction(column.coord, column.elevation, |at| roads.get(&at).copied())
+                .map(|direction| (index, direction))
+        })
+        .collect();
+    candidates.sort_by_key(|&(index, _)| (columns[index].coord.x, columns[index].coord.y));
+    let mut axes: HashMap<WorldCoord, bool> = HashMap::new();
     let mut laid = 0;
-    for column in columns.iter_mut() {
-        if column.surface != TerrainMaterial::Path {
+    for (index, direction) in candidates {
+        let coord = columns[index].coord;
+        let along_x = direction.x != 0;
+        let crosses = [(1, 0), (0, 1), (-1, 0), (0, -1)]
+            .into_iter()
+            .any(|(dx, dy)| {
+                let beside = WorldCoord {
+                    x: coord.x.saturating_add(dx),
+                    y: coord.y.saturating_add(dy),
+                };
+                axes.get(&beside).is_some_and(|&other| other != along_x)
+            });
+        if crosses {
             continue;
         }
-        if stairs_direction(column.coord, column.elevation, |at| roads.get(&at).copied()).is_some()
-        {
-            column.surface = TerrainMaterial::Stairs;
-            laid += 1;
-        }
+        axes.insert(coord, along_x);
+        columns[index].surface = TerrainMaterial::Stairs;
+        laid += 1;
     }
     laid
 }
