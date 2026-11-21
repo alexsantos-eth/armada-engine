@@ -20,7 +20,7 @@ pub enum HarvestBlock {
 }
 
 /// What the harvest did this step.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum HarvestStatus {
     /// Nothing harvestable in reach.
     Idle,

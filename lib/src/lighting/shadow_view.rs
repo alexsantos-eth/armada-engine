@@ -124,9 +124,23 @@ pub struct ShadowScene {
     /// The maps of the shown chunks, on the GPU: the texture the scene's material samples.
     atlas: ShadowAtlas,
     working: Option<Pending>,
+    /// Parts of baked maps gone stale (something was taken out of the world), still to patch.
+    patches: std::collections::VecDeque<iso::lighting::MapPatch>,
+    /// The patch in hand.
+    patching: Option<PatchJob>,
+    /// The map patches are laid into: a small one, a few tiles across.
+    patch_scratch: ShadowMap,
     tile_width: f64,
     box_height: f64,
     phase_fade: PhaseFade,
+}
+
+/// A patch of a chunk's map, part way through its bake.
+struct PatchJob {
+    patch: iso::lighting::MapPatch,
+    casters: Vec<ShadowCaster>,
+    ground: HeightField,
+    map: GroundBake,
 }
 
 /// A chunk's bake, part way through.
@@ -195,6 +209,9 @@ impl ShadowScene {
             ),
             atlas,
             working: None,
+            patches: std::collections::VecDeque::new(),
+            patching: None,
+            patch_scratch: ShadowMap::new(MapArea::around(0, 0, 0, 0), SHADOW_MAP_PIXELS_PER_TILE),
             tile_width,
             box_height,
             phase_fade: PhaseFade::default(),
@@ -228,6 +245,8 @@ impl ShadowScene {
         if let Some(job) = self.working.take() {
             self.atlas.release(job.coord);
         }
+        self.patches.clear();
+        self.patching = None;
         for coord in self.chunks.keys().copied().collect::<Vec<_>>() {
             self.atlas.release(coord);
         }
@@ -237,10 +256,136 @@ impl ShadowScene {
     /// Drops the bake of `coord` so the next update pass bakes it again: what an edit to that
     /// chunk's terrain or entities asks for, since its light no longer matches the ground.
     pub fn forget(&mut self, coord: ChunkCoord) {
+        self.patches.retain(|patch| patch.coord != coord);
+        if self
+            .patching
+            .as_ref()
+            .is_some_and(|job| job.patch.coord == coord)
+        {
+            self.patching = None;
+        }
         self.chunks.remove(&coord);
         self.atlas.release(coord);
         if self.working.as_ref().is_some_and(|job| job.coord == coord) {
             self.working = None;
+        }
+    }
+
+    /// Takes out of the bake the shadow of what was just removed from the world: the columns of
+    /// `stale` are baked again, a patch at a time, and copied over the maps of the chunks they
+    /// fall in, instead of baking those chunks whole. Their casters are read again first, so
+    /// the removed entity no longer shades the player or its neighbours' bakes.
+    pub fn erase(&mut self, manager: &ChunkManager, stale: iso::grid::WorldRect) {
+        let reach = iso::grid::WorldRect {
+            min_x: stale.min_x - iso::lighting::SHADOW_MAP_MARGIN,
+            min_y: stale.min_y - iso::lighting::SHADOW_MAP_MARGIN,
+            max_x: stale.max_x + iso::lighting::SHADOW_MAP_MARGIN,
+            max_y: stale.max_y + iso::lighting::SHADOW_MAP_MARGIN,
+        };
+        for coord in iso::grid::chunks_in_rect(reach) {
+            if self.working.as_ref().is_some_and(|job| job.coord == coord) {
+                self.working = None;
+            }
+            if !self.chunks.contains_key(&coord) {
+                continue;
+            }
+            let casters = self.casters_of(manager, coord);
+            if let Some(baked) = self.chunks.get_mut(&coord) {
+                baked.casters = casters;
+            }
+            if self.atlas.holds(coord)
+                && let Some(patch) = iso::lighting::patch_of(coord, stale)
+            {
+                self.patches.push_back(patch);
+            }
+        }
+    }
+
+    /// Opens the next patch whose chunk is still baked and in the atlas.
+    fn start_patch(&mut self, manager: &ChunkManager) -> bool {
+        while let Some(patch) = self.patches.pop_front() {
+            if !self.chunks.contains_key(&patch.coord) || !self.atlas.holds(patch.coord) {
+                continue;
+            }
+            let casters = around(patch.coord)
+                .iter()
+                .flat_map(|coord| self.casters_of(manager, *coord))
+                .collect();
+            let chunk = iso::lighting::chunk_map_area(patch.coord);
+            let ground =
+                Self::ground_field(manager, chunk.min_x, chunk.min_y, chunk.max_x, chunk.max_y);
+            self.patch_scratch.move_to(patch.baked);
+            let level_at = |x: i32, y: i32| manager.column_at(x, y).map(|c| f64::from(c.elevation));
+            let map = GroundBake::new(&self.patch_scratch, &level_at);
+            self.patching = Some(PatchJob {
+                patch,
+                casters,
+                ground,
+                map,
+            });
+            return true;
+        }
+        false
+    }
+
+    /// Does one piece of the patch in hand; once it is laid, copies it over its chunk's map and
+    /// reads which of its columns carry coverage now.
+    fn advance_patch(&mut self, manager: &ChunkManager) {
+        let Some(mut job) = self.patching.take() else {
+            return;
+        };
+        let more = lay_step(
+            BakeTools {
+                masks: &self.masks,
+                volumes: &self.volumes,
+                stamps: &self.stamps,
+                light: self.light.shadow,
+                metrics: BoxMetrics {
+                    tile_width: self.tile_width,
+                    box_height: self.box_height,
+                },
+            },
+            &mut self.patch_scratch,
+            &mut job.map,
+            &job.casters,
+            &job.ground,
+        );
+        if more {
+            self.patching = Some(job);
+            return;
+        }
+        let coord = job.patch.coord;
+        let copy = iso::lighting::copy_patch(
+            &self.patch_scratch,
+            job.patch.inner,
+            iso::lighting::chunk_map_area(coord),
+        );
+        self.atlas.put_part(coord, &copy);
+        let (Some(baked), Some(columns)) =
+            (self.chunks.get_mut(&coord), manager.terrain_chunk(coord))
+        else {
+            return;
+        };
+        let inner = job.patch.inner;
+        let per_tile = self.patch_scratch.pixels_per_tile;
+        let width = self.patch_scratch.width;
+        for (index, column) in columns.iter().enumerate() {
+            let (x, y) = (column.coord.x, column.coord.y);
+            if x < inner.min_x || x > inner.max_x || y < inner.min_y || y > inner.max_y {
+                continue;
+            }
+            let Some((from_x, from_y)) = self.patch_scratch.square_of(x, y) else {
+                continue;
+            };
+            let any = (from_y..from_y + per_tile).any(|row| {
+                let start = (row * width + from_x) as usize;
+                self.patch_scratch.alpha[start..start + per_tile as usize]
+                    .iter()
+                    .any(|&texel| texel > 0)
+            });
+            if let Some(slot) = baked.ground.get_mut(index) {
+                *slot = any;
+            }
         }
     }
 
@@ -279,6 +424,12 @@ impl ShadowScene {
             }
         }
         let until = get_time() + BAKE_BUDGET_MS / 1000.0;
+        while self.patching.is_some() || self.start_patch(manager) {
+            self.advance_patch(manager);
+            if get_time() >= until {
+                return;
+            }
+        }
         loop {
             if self.working.is_none() {
                 let Some(coord) = self.next_to_bake(manager, shown) else {
@@ -342,6 +493,8 @@ impl ShadowScene {
     /// captures a frame.
     pub fn settled(&self, manager: &ChunkManager, shown: &[ChunkCoord]) -> bool {
         self.working.is_none()
+            && self.patching.is_none()
+            && self.patches.is_empty()
             && self.next_to_bake(manager, shown).is_none()
             && shown.iter().all(|coord| self.chunk_fade(*coord) >= 1.0)
     }
@@ -354,35 +507,21 @@ impl ShadowScene {
         let mut finished = false;
         match job.stage {
             Reading::Map => {
-                let (masks, volumes, stamps) = (&self.masks, &self.volumes, &self.stamps);
-                let light = self.light.shadow;
-                let metrics = BoxMetrics {
-                    tile_width: self.tile_width,
-                    box_height: self.box_height,
-                };
-                let stamp_of = |index: u32| {
-                    if let Some(stamp) = stamps.borrow().get(&index) {
-                        return Some(Rc::clone(stamp));
-                    }
-                    let stamp = Rc::new(volume_stamp(
-                        volumes.get(index)?,
-                        &light,
-                        metrics,
-                        SHADOW_MAP_PIXELS_PER_TILE,
-                    ));
-                    stamps.borrow_mut().insert(index, Rc::clone(&stamp));
-                    Some(stamp)
-                };
-                let more = job.map.step(
-                    &mut self.scratch,
-                    &job.casters,
-                    Some(&job.ground),
-                    &light,
-                    metrics,
-                    CasterShapes {
-                        silhouette_of: &|index| masks.silhouette_of(index),
-                        stamp_of: &stamp_of,
+                let more = lay_step(
+                    BakeTools {
+                        masks: &self.masks,
+                        volumes: &self.volumes,
+                        stamps: &self.stamps,
+                        light: self.light.shadow,
+                        metrics: BoxMetrics {
+                            tile_width: self.tile_width,
+                            box_height: self.box_height,
+                        },
                     },
+                    &mut self.scratch,
+                    &mut job.map,
+                    &job.casters,
+                    &job.ground,
                 );
                 if !more {
                     job.stage = Reading::Upload;
@@ -961,6 +1100,57 @@ pub fn lattice_of(grid: &ShadeGrid, fade: f32) -> Option<Rc<ShadeLattice>> {
 }
 
 /// The nine chunks around `coord`, itself included, in a fixed order.
+/// What laying a map needs from the scene: the shapes of the casters and the light.
+struct BakeTools<'a> {
+    masks: &'a SilhouetteMasks,
+    volumes: &'a ShadowVolumes,
+    stamps: &'a RefCell<HashMap<u32, Rc<ShadowStamp>>>,
+    light: iso::lighting::ShadowProjection,
+    metrics: BoxMetrics,
+}
+
+/// Does one piece of laying `casters` and `ground` into `map` with `bake`, and says whether any
+/// was left; a volume's stamp is laid the first time it is asked for under this light and kept.
+fn lay_step(
+    tools: BakeTools<'_>,
+    map: &mut ShadowMap,
+    bake: &mut GroundBake,
+    casters: &[ShadowCaster],
+    ground: &HeightField,
+) -> bool {
+    let BakeTools {
+        masks,
+        volumes,
+        stamps,
+        light,
+        metrics,
+    } = tools;
+    let stamp_of = |index: u32| {
+        if let Some(stamp) = stamps.borrow().get(&index) {
+            return Some(Rc::clone(stamp));
+        }
+        let stamp = Rc::new(volume_stamp(
+            volumes.get(index)?,
+            &light,
+            metrics,
+            SHADOW_MAP_PIXELS_PER_TILE,
+        ));
+        stamps.borrow_mut().insert(index, Rc::clone(&stamp));
+        Some(stamp)
+    };
+    bake.step(
+        map,
+        casters,
+        Some(ground),
+        &light,
+        metrics,
+        CasterShapes {
+            silhouette_of: &|index| masks.silhouette_of(index),
+            stamp_of: &stamp_of,
+        },
+    )
+}
+
 fn around(coord: ChunkCoord) -> [ChunkCoord; 9] {
     let mut all = [coord; 9];
     let mut at = 0;

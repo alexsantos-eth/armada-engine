@@ -11,6 +11,7 @@ fn tree() -> HarvestTarget {
         blueprint: "tree".into(),
         elevation: 2,
         nearest: WorldCoord { x: 1, y: 0 },
+        gap: 0.0,
         in_reach: true,
     }
 }

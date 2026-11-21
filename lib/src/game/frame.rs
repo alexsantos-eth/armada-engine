@@ -202,9 +202,7 @@ impl Game {
             if taken.id() == target.id {
                 felled = Some(target.clone());
                 if let Some(shadows) = self.shadows.as_mut() {
-                    for chunk in iso::harvest::shadow_chunks(target.anchor) {
-                        shadows.forget(chunk);
-                    }
+                    shadows.erase(&self.manager, iso::harvest::shadow_area(target.anchor));
                 }
                 for gained in yields {
                     self.carried

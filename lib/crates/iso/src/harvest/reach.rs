@@ -3,15 +3,23 @@
 use crate::entities::{Entity, get_entity_footprint_for};
 use crate::grid::WorldCoord;
 use crate::items::ItemCatalog;
+use crate::player::physics::PLAYER_RADIUS;
 use crate::projection::GridPoint;
 
-/// Farthest a footprint cell's centre may be from the player's feet, in columns: every
-/// neighbouring column, diagonals included.
-pub const HARVEST_REACH: f64 = 1.5;
+/// Farthest the player may be from touching an entity for it to be picked at all, in columns:
+/// beyond [`HARVEST_CONTACT_SLACK`] the player walks up to it before it strikes.
+pub const HARVEST_SIGHT: f64 = 3.5;
 
-/// Farthest a footprint cell may be for the entity to be picked at all, in columns: beyond
-/// [`HARVEST_REACH`] the player walks up to it before it strikes.
-pub const HARVEST_SIGHT: f64 = 4.0;
+/// Columns of gap left between the player's body and the entity's at which it strikes: as close
+/// as the collision lets it come, give or take what one tick of a slow walk covers.
+pub const HARVEST_CONTACT_SLACK: f64 = 0.08;
+
+/// Gap, in columns, over which the approach slows from a full walk down to a creep, so the
+/// player arrives instead of walking into the entity and bouncing off it.
+pub const HARVEST_APPROACH_EASE: f64 = 0.6;
+
+/// Slowest share of a full walk the approach eases down to.
+pub const HARVEST_APPROACH_CREEP: f64 = 0.25;
 
 /// Columns around a harvested entity's anchor its baked shadow may fall on.
 pub const HARVEST_SHADOW_SPAN: i32 = 8;
@@ -27,7 +35,7 @@ pub struct Feet {
 }
 
 /// One entity the player can gather.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct HarvestTarget {
     /// Instance id of the entity.
     pub id: String,
@@ -39,11 +47,14 @@ pub struct HarvestTarget {
     pub elevation: i32,
     /// Its footprint cell nearest the feet, the one the player walks towards.
     pub nearest: WorldCoord,
-    /// Whether that cell is within [`HARVEST_REACH`], so the player can strike from where it is.
+    /// Columns left between the player's body and that cell's collision square before they
+    /// touch, measured along the axis they are farthest apart on, as the collision is.
+    pub gap: f64,
+    /// Whether the gap is within [`HARVEST_CONTACT_SLACK`], so the player strikes from where it is.
     pub in_reach: bool,
 }
 
-/// The harvestable entity among `entities` with a footprint cell nearest to `feet` within
+/// The harvestable entity among `entities` with the smallest gap to `feet`, within
 /// [`HARVEST_SIGHT`] and [`HARVEST_LEVEL_REACH`]; ties go to the smaller id, so the pick never
 /// depends on the order the entities come in.
 pub fn pick_harvest_target<'a>(
@@ -60,10 +71,7 @@ pub fn pick_harvest_target<'a>(
         }
         let Some((distance, cell)) = get_entity_footprint_for(entity)
             .into_iter()
-            .map(|cell| {
-                let distance = (f64::from(cell.x) - feet.at.x).hypot(f64::from(cell.y) - feet.at.y);
-                (distance, cell)
-            })
+            .map(|cell| (gap_to(entity, cell, feet.at), cell))
             .reduce(|a, b| if b.0 < a.0 { b } else { a })
         else {
             continue;
@@ -91,12 +99,28 @@ pub fn pick_harvest_target<'a>(
         blueprint: entity.type_().to_owned(),
         elevation: entity.elevation(),
         nearest,
-        in_reach: distance <= HARVEST_REACH,
+        gap: distance,
+        in_reach: distance <= HARVEST_CONTACT_SLACK,
     })
 }
 
-/// The unit walk that takes a player whose feet are at `feet` straight towards `target`'s
-/// nearest cell; still when it is already there.
+/// Columns left between a player with feet at `at` and the collision square `entity` has on
+/// `cell`, along the axis they are farthest apart on; negative when they overlap.
+fn gap_to(entity: &Entity, cell: WorldCoord, at: GridPoint) -> f64 {
+    let side = if entity.walkable() {
+        0.0
+    } else {
+        entity.collision_at(cell.x, cell.y)
+    };
+    let apart = (f64::from(cell.x) - at.x)
+        .abs()
+        .max((f64::from(cell.y) - at.y).abs());
+    apart - PLAYER_RADIUS - side / 2.0
+}
+
+/// The walk that takes a player whose feet are at `feet` straight towards `target`'s nearest
+/// cell: a full walk while far, easing down to [`HARVEST_APPROACH_CREEP`] over the last
+/// [`HARVEST_APPROACH_EASE`] of the gap; still when it is already there.
 pub fn approach_walk(target: &HarvestTarget, feet: GridPoint) -> GridPoint {
     let x = f64::from(target.nearest.x) - feet.x;
     let y = f64::from(target.nearest.y) - feet.y;
@@ -104,21 +128,22 @@ pub fn approach_walk(target: &HarvestTarget, feet: GridPoint) -> GridPoint {
     if length == 0.0 {
         return GridPoint { x: 0.0, y: 0.0 };
     }
+    let pace = (target.gap / HARVEST_APPROACH_EASE).clamp(HARVEST_APPROACH_CREEP, 1.0);
     GridPoint {
-        x: x / length,
-        y: y / length,
+        x: x / length * pace,
+        y: y / length * pace,
     }
 }
 
-/// The chunks a harvested entity at `anchor` may have cast its baked shadow on, whose bake is
-/// stale once it is gone.
-pub fn shadow_chunks(anchor: WorldCoord) -> Vec<crate::grid::ChunkCoord> {
-    crate::grid::chunks_in_rect(crate::grid::WorldRect {
+/// The columns around a harvested entity at `anchor` its baked shadow may have fallen on: the
+/// area whose bake is stale once it is gone.
+pub fn shadow_area(anchor: WorldCoord) -> crate::grid::WorldRect {
+    crate::grid::WorldRect {
         min_x: anchor.x - HARVEST_SHADOW_SPAN,
         min_y: anchor.y - HARVEST_SHADOW_SPAN,
         max_x: anchor.x + HARVEST_SHADOW_SPAN,
         max_y: anchor.y + HARVEST_SHADOW_SPAN,
-    })
+    }
 }
 
 #[cfg(test)]

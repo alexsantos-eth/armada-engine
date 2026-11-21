@@ -2,9 +2,9 @@
 
 Este dominio decide qué puede recolectar el jugador desde donde está y lleva el trabajo de recolectarlo. Es la Fase 1 del GDD: agarrar recursos del mundo (árboles, rocas, plantas) y llenarlos en el inventario.
 
-- **Alcance** (`reach.rs`): de las entidades con regla en `items.json`, la que tiene una casilla de su huella más cerca de los pies del jugador, a `HARVEST_SIGHT` columnas como mucho y a `HARVEST_LEVEL_REACH` bloques de altura. El objetivo dice cuál es esa casilla (`nearest`) y si está a `HARVEST_REACH` (todas las vecinas, diagonales incluidas, `in_reach`): si no lo está, con la tecla mantenida la recolección queda en `Approaching` y el cliente hace caminar al jugador hacia ella (`approach_walk`) hasta que llega y empieza a golpear. Un empate lo gana el id menor, así que el orden en que llegan las entidades no importa.
+- **Alcance** (`reach.rs`): de las entidades con regla en `items.json`, la que deja menos hueco (`gap`) entre el cuerpo del jugador y el cuadrado de colisión de una casilla de su huella, medido por el eje en que están más lejos, como la colisión (`PLAYER_RADIUS` más medio lado de colisión). Se elige hasta `HARVEST_SIGHT` columnas de hueco y `HARVEST_LEVEL_REACH` bloques de altura; el objetivo dice cuál es esa casilla (`nearest`). Está al alcance (`in_reach`) solo cuando el hueco cabe en `HARVEST_CONTACT_SLACK`: el jugador golpea lo más cerca que deja la colisión. Si no, con la tecla mantenida la recolección queda en `Approaching` y el cliente lo hace caminar hacia esa casilla (`approach_walk`), frenando a lo largo de `HARVEST_APPROACH_EASE` hasta `HARVEST_APPROACH_CREEP` para llegar sin chocar ni rebotar. Un empate lo gana el id menor, así que el orden en que llegan las entidades no importa.
 - **Trabajo** (`harvester.rs`): mientras se mantiene la tecla de recolectar sobre el mismo objetivo, cada tick fijo suma la velocidad de la mejor herramienta del tipo pedido (`tool_speed_tenths`). Soltar la tecla pausa el trabajo; cambiar de objetivo o perderlo de alcance empieza de cero. Sin la herramienta o el nivel pedidos, o sin sitio para todo el rendimiento, el objetivo queda bloqueado y no avanza.
-- Al terminar (`HarvestStatus::Done`), quien llama saca la entidad del mundo (`ChunkManager::remove_entity_at`), olvida el horneado de sombras de los chunks donde podía caer la suya (`shadow_chunks`, `HARVEST_SHADOW_SPAN`) para que se rehornee sin ella, y guarda el rendimiento; la entidad quitada viaja con su chunk en el guardado, así que no vuelve al reabrir.
+- Al terminar (`HarvestStatus::Done`), quien llama saca la entidad del mundo (`ChunkManager::remove_entity_at`), pide a las sombras que borren la suya: solo las columnas donde podía caer (`shadow_area`, `HARVEST_SHADOW_SPAN`) se hornean otra vez, en parches pequeños copiados sobre el mapa de cada chunk (`iso::lighting::patch`), sin rehornear chunks enteros, y guarda el rendimiento; la entidad quitada viaja con su chunk en el guardado, así que no vuelve al reabrir.
 
 - **Golpes** (`harvester.rs`): mientras se trabaja, el jugador golpea a un ritmo fijo, independiente de la herramienta: un golpe cada `HARVEST_STRIKE_TICKS` ticks, que cae en el tick `HARVEST_STRIKE_AT` (la pose de impacto de la hoja `gather` del jugador está en ese punto). `Harvester::swing` dice en qué tick del golpe va y `Harvester::strikes` cuenta los golpes dados, sin volver atrás, para que la vista note uno nuevo y sacuda la entidad y suelte astillas.
 - **Astillas** (`chips.rs`): formas del polvo del jugador (`DustShape`) con el color del item que da el objetivo (`strike_chips`, y `felled_chips`, más y más amplias, cuando cae), y el punto del objetivo donde caen las manos (`strike_point`, `STRIKE_LIFT`).
@@ -17,31 +17,35 @@ El trabajo en curso no se guarda: un objetivo a medias empieza de cero tras reca
 
 #### Funciones y métodos
 
-- [`pick_harvest_target`](reach.rs#L49) — La entidad recolectable más cercana a los pies dentro del alcance; los empates los gana el id menor.
+- [`pick_harvest_target`](reach.rs#L60) — La entidad recolectable más cercana a los pies dentro del alcance; los empates los gana el id menor.
   - Firma: `pub fn pick_harvest_target<'a>( feet: Feet, entities: impl IntoIterator<Item = &'a Entity>, items: &ItemCatalog, ) -> Option<HarvestTarget> {`
 
-- [`approach_walk`](reach.rs#L101) — La caminata unitaria que lleva al jugador en línea recta hacia la casilla más cercana del objetivo; quieta si ya está ahí.
+- [`approach_walk`](reach.rs#L124) — La caminata que lleva al jugador en línea recta hacia la casilla más cercana del objetivo: entera de lejos, frenando hasta `HARVEST_APPROACH_CREEP` en el último `HARVEST_APPROACH_EASE` de hueco; quieta si ya está ahí.
   - Firma: `pub fn approach_walk(target: &HarvestTarget, feet: GridPoint) -> GridPoint {`
-- [`shadow_chunks`](reach.rs#L116) — Los chunks sobre los que pudo caer la sombra horneada de una entidad recolectada, cuyo horneado queda viejo al quitarla.
-  - Firma: `pub fn shadow_chunks(anchor: WorldCoord) -> Vec<crate::grid::ChunkCoord> {`
+- [`shadow_area`](reach.rs#L140) — Las columnas sobre las que pudo caer la sombra horneada de una entidad recolectada: el área cuyo horneado queda viejo al quitarla.
+  - Firma: `pub fn shadow_area(anchor: WorldCoord) -> crate::grid::WorldRect {`
 
 #### Constantes
 
-- [`HARVEST_SIGHT`](reach.rs#L14) — Distancia máxima a la que se elige un objetivo; más allá de `HARVEST_REACH` el jugador camina hasta él.
-  - Declaración: `pub const HARVEST_SIGHT: f64 = 4.0;`
-- [`HARVEST_SHADOW_SPAN`](reach.rs#L17) — Columnas alrededor del ancla sobre las que pudo caer su sombra horneada.
+- [`HARVEST_SIGHT`](reach.rs#L11) — Hueco máximo con el que se elige un objetivo; más allá de `HARVEST_CONTACT_SLACK` el jugador camina hasta él.
+  - Declaración: `pub const HARVEST_SIGHT: f64 = 3.5;`
+- [`HARVEST_SHADOW_SPAN`](reach.rs#L25) — Columnas alrededor del ancla sobre las que pudo caer su sombra horneada.
   - Declaración: `pub const HARVEST_SHADOW_SPAN: i32 = 8;`
-- [`HARVEST_REACH`](reach.rs#L10) — Distancia máxima, en columnas, del centro de una casilla de la huella a los pies.
-  - Declaración: `pub const HARVEST_REACH: f64 = 1.5;`
-- [`HARVEST_LEVEL_REACH`](reach.rs#L20) — Bloques máximos entre la base de la entidad y los pies.
+- [`HARVEST_CONTACT_SLACK`](reach.rs#L15) — Hueco, en columnas, entre los cuerpos con el que el jugador ya golpea: lo que cubre un tick de paso lento.
+  - Declaración: `pub const HARVEST_CONTACT_SLACK: f64 = 0.08;`
+- [`HARVEST_APPROACH_EASE`](reach.rs#L19) — Hueco a lo largo del cual el acercamiento frena de un paso entero a uno lento.
+  - Declaración: `pub const HARVEST_APPROACH_EASE: f64 = 0.6;`
+- [`HARVEST_APPROACH_CREEP`](reach.rs#L22) — Fracción más lenta de un paso a la que frena el acercamiento.
+  - Declaración: `pub const HARVEST_APPROACH_CREEP: f64 = 0.25;`
+- [`HARVEST_LEVEL_REACH`](reach.rs#L28) — Bloques máximos entre la base de la entidad y los pies.
   - Declaración: `pub const HARVEST_LEVEL_REACH: f64 = 2.0;`
 
 #### Tipos
 
-- [`Feet`](reach.rs#L24) — Dónde están los pies del jugador: punto de columna (centros enteros) y altura.
+- [`Feet`](reach.rs#L32) — Dónde están los pies del jugador: punto de columna (centros enteros) y altura.
   - Declaración: `pub struct Feet { pub at: GridPoint, pub elevation: f64 }`
-- [`HarvestTarget`](reach.rs#L31) — Una entidad recolectable: id de instancia, ancla, blueprint y el bloque sobre el que se apoya.
-  - Declaración: `pub struct HarvestTarget { pub id: String, pub anchor: WorldCoord, pub blueprint: String, pub elevation: i32, pub nearest: WorldCoord, pub in_reach: bool }`
+- [`HarvestTarget`](reach.rs#L39) — Una entidad recolectable: id de instancia, ancla, blueprint y el bloque sobre el que se apoya.
+  - Declaración: `pub struct HarvestTarget { pub id: String, pub anchor: WorldCoord, pub blueprint: String, pub elevation: i32, pub nearest: WorldCoord, pub gap: f64, pub in_reach: bool }`
 
 ### `harvester.rs`
 

@@ -1,9 +1,10 @@
-//! Tests for picking what the player can gather: the nearest harvestable entity within reach.
+//! Tests for picking what the player can gather and how close it has to come to strike it.
 
 use super::*;
 use crate::entities::{Entity, EntityCatalog};
 use crate::items::catalog::tests::{catalog_json, entities};
 use crate::items::{ItemCatalog, parse_items};
+use crate::player::physics::PLAYER_RADIUS;
 
 fn items() -> ItemCatalog {
     parse_items(catalog_json(), &entities()).unwrap()
@@ -21,13 +22,16 @@ fn feet(x: f64, y: f64, elevation: f64) -> Feet {
     }
 }
 
+/// Where the player's body touches a fixture entity's square (side 0.5) along one axis.
+const TOUCH: f64 = PLAYER_RADIUS + 0.25;
+
 #[test]
-fn picks_the_nearest_harvestable_entity_in_reach() {
+fn picks_the_nearest_harvestable_entity_in_sight() {
     let catalog = entities();
     let world = [
         spawn(&catalog, "tree", 3, 1, 0),
         spawn(&catalog, "rock_small", 1, 0, 0),
-        spawn(&catalog, "tall_grass", 0, 1, 0),
+        spawn(&catalog, "tall_grass", 0, 2, 0),
     ];
     let target = pick_harvest_target(feet(0.1, 0.0, 0.0), &world, &items()).unwrap();
     assert_eq!(target.blueprint, "rock_small");
@@ -38,7 +42,7 @@ fn picks_the_nearest_harvestable_entity_in_reach() {
 #[test]
 fn nothing_out_of_sight_is_picked() {
     let catalog = entities();
-    let world = [spawn(&catalog, "tree", 5, 0, 0)];
+    let world = [spawn(&catalog, "tree", 6, 0, 0)];
     assert_eq!(
         pick_harvest_target(feet(0.0, 0.0, 0.0), &world, &items()),
         None
@@ -46,24 +50,21 @@ fn nothing_out_of_sight_is_picked() {
 }
 
 #[test]
-fn a_target_in_sight_but_out_of_reach_is_walked_to() {
+fn the_gap_is_what_is_left_before_the_bodies_touch() {
     let catalog = entities();
     let world = [spawn(&catalog, "tree", 3, 0, 0)];
-    let target = pick_harvest_target(feet(0.0, 0.0, 0.0), &world, &items()).unwrap();
-    assert!(!target.in_reach);
-    assert_eq!(target.nearest, WorldCoord { x: 3, y: 0 });
-    let near = pick_harvest_target(feet(1.8, 0.0, 0.0), &world, &items()).unwrap();
-    assert!(near.in_reach);
-}
-
-#[test]
-fn a_harvest_forgets_the_shadows_of_the_chunks_around_it() {
-    let chunks = shadow_chunks(WorldCoord { x: 0, y: 0 });
-    assert!(chunks.contains(&crate::grid::ChunkCoord { cx: 0, cy: 0 }));
-    assert!(chunks.contains(&crate::grid::ChunkCoord { cx: -1, cy: -1 }));
-    assert_eq!(chunks.len(), 4);
-    let inside = shadow_chunks(WorldCoord { x: 16, y: 16 });
-    assert_eq!(inside, vec![crate::grid::ChunkCoord { cx: 0, cy: 0 }]);
+    let far = pick_harvest_target(feet(0.0, 0.0, 0.0), &world, &items()).unwrap();
+    assert!((far.gap - (3.0 - TOUCH)).abs() < 1e-9);
+    assert!(!far.in_reach);
+    assert_eq!(far.nearest, WorldCoord { x: 3, y: 0 });
+    let one_cell_off = pick_harvest_target(feet(2.0, 0.0, 0.0), &world, &items()).unwrap();
+    assert!(
+        !one_cell_off.in_reach,
+        "a whole cell away is not close enough"
+    );
+    let touching = pick_harvest_target(feet(3.0 - TOUCH, 0.1, 0.0), &world, &items()).unwrap();
+    assert!(touching.gap.abs() < 1e-9);
+    assert!(touching.in_reach);
 }
 
 #[test]
@@ -104,14 +105,25 @@ fn a_tie_goes_to_the_smaller_id_whatever_the_order() {
 }
 
 #[test]
-fn the_approach_heads_straight_for_the_nearest_cell() {
+fn the_approach_heads_for_the_nearest_cell_and_slows_down_at_the_end() {
     let catalog = entities();
     let world = [spawn(&catalog, "tree", 3, 4, 0)];
-    let target = pick_harvest_target(feet(1.2, 1.6, 0.0), &world, &items()).unwrap();
-    let walk = approach_walk(&target, GridPoint { x: 1.2, y: 1.6 });
+    let at = GridPoint { x: 1.2, y: 1.6 };
+    let target = pick_harvest_target(feet(at.x, at.y, 0.0), &world, &items()).unwrap();
+    let walk = approach_walk(&target, at);
     assert!((walk.x - 0.6).abs() < 1e-9 && (walk.y - 0.8).abs() < 1e-9);
-    assert_eq!(
-        approach_walk(&target, GridPoint { x: 3.0, y: 4.0 }),
-        GridPoint { x: 0.0, y: 0.0 }
-    );
+    let close = GridPoint {
+        x: 3.0 - TOUCH - 0.1,
+        y: 4.0,
+    };
+    let near = pick_harvest_target(feet(close.x, close.y, 0.0), &world, &items()).unwrap();
+    let slow = approach_walk(&near, close);
+    assert!(slow.x > 0.0 && slow.x < 1.0, "{slow:?}");
+}
+
+#[test]
+fn a_harvest_forgets_the_shadows_of_the_area_around_it() {
+    let area = shadow_area(WorldCoord { x: 0, y: 0 });
+    assert_eq!(area.min_x, -HARVEST_SHADOW_SPAN);
+    assert_eq!(area.max_y, HARVEST_SHADOW_SPAN);
 }

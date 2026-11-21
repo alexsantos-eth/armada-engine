@@ -18,6 +18,7 @@ fn target(blueprint: &str, x: i32) -> HarvestTarget {
         blueprint: blueprint.to_owned(),
         elevation: 0,
         nearest: WorldCoord { x: 1, y: 0 },
+        gap: 0.0,
         in_reach: true,
     }
 }
@@ -276,6 +277,7 @@ fn holding_the_key_on_a_target_out_of_reach_walks_up_to_it_first() {
     );
     assert_eq!(harvester.strikes(), 0);
     let near = HarvestTarget {
+        gap: 0.0,
         in_reach: true,
         ..far
     };
