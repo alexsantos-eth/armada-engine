@@ -48,6 +48,8 @@ pub struct NpcHop {
     pub chance: f64,
     /// How high its feet go at the top, in blocks.
     pub height: f64,
+    /// How many hops make up one step: each covers that part of a cell.
+    pub per_step: u32,
 }
 
 /// How one character looks: tints and size range of its logic.

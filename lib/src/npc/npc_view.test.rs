@@ -200,7 +200,7 @@ fn a_hop_plays_the_jump_sheet_through_its_five_phases() {
     });
     let mut phases = Vec::new();
     for at in [0.05, 0.3, 0.5, 0.7, 0.95] {
-        rabbit.progress = at;
+        rabbit.progress = at / 2.0;
         let moment = npc_moment(&rabbit, 0.02, 16.0);
         assert_eq!(moment.motion, PlayerMotionType::Jumping);
         let pose = NpcViews::default().advance(

@@ -316,15 +316,20 @@ impl Npc {
         get_npc_climb(self.progress).2
     }
 
-    /// How far into a hop it is (`0` takes off, `1` lands), or `None` when it is not hopping.
+    /// How far into the hop it is in the air on (`0` takes off, `1` lands), or `None` when it is
+    /// not hopping. A hopped step is cut into the gait's `per_step` hops.
     pub fn hopping(&self) -> Option<f64> {
+        let hop = self.gait.hop?;
         self.step
             .filter(|step| step.hop && step.kind == NpcMove::Walk)
-            .map(|_| self.progress.clamp(0.0, 1.0))
+            .map(|_| {
+                let scaled = self.progress.clamp(0.0, 1.0) * f64::from(hop.per_step.max(1));
+                scaled - scaled.floor()
+            })
     }
 
     /// How high a hop has its feet this tick: a parabola from the ground to the gait's height
-    /// and back over the step.
+    /// and back over each hop of the step.
     fn hop_height(&self) -> f64 {
         match (self.hopping(), self.gait.hop) {
             (Some(at), Some(hop)) => hop.height * 4.0 * at * (1.0 - at),

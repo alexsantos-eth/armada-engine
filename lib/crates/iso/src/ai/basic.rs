@@ -105,7 +105,8 @@ pub mod rabbit {
     /// same level, and a block up or down stays closed to it.
     pub const HOP: NpcHop = NpcHop {
         chance: 0.3,
-        height: 0.35,
+        height: 0.2,
+        per_step: 2,
     };
     /// Side of its square at its sheet's size, in blocks.
     pub const BODY_SIDE: f64 = 0.3;

@@ -626,11 +626,17 @@ fn a_hop_rises_and_falls_over_its_step() {
     });
     let height = |rabbit: &Npc| rabbit.pose().height;
     assert_eq!(height(&rabbit), 0.0);
-    rabbit.progress = 0.5;
+    // Two hops make the step: the top of the first is a quarter of the way along, its landing
+    // half way, and the second hop goes up again.
+    rabbit.progress = 0.25;
     let top = NpcKind::Rabbit.gait().hop.map(|hop| hop.height);
     assert_eq!(Some(height(&rabbit)), top);
     assert_eq!(rabbit.hopping(), Some(0.5));
-    rabbit.progress = 0.25;
+    rabbit.progress = 0.5;
+    assert!(height(&rabbit) < 1e-9);
+    rabbit.progress = 0.75;
+    assert_eq!(Some(height(&rabbit)), top);
+    rabbit.progress = 0.125;
     assert!(height(&rabbit) > 0.0 && Some(height(&rabbit)) < top);
 }
 
