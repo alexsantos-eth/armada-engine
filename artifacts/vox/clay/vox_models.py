@@ -15,7 +15,7 @@ import shutil
 import subprocess
 import sys
 
-from vox_prefabs import DEADWOOD, MODULE, box, moved, piece, spun, tile_volume, turned, write
+from vox_prefabs import BIRCH, CHAR, DEADWOOD, WOOD, MODULE, box, moved, piece, spun, tile_volume, turned, write
 
 M = MODULE
 RING = [(-1, -1), (0, -1), (1, -1), (-1, 0), (0, 0), (1, 0), (-1, 1), (0, 1)]   # 3x3 without the front cell
@@ -712,6 +712,125 @@ def dry_grass_2():
 
 
 # name → (builder, tiles, the asset its render replaces, under lib/assets)
+def scatter(spots, z, variant="dark", name="leaf_tuft"):
+    """One piece at each (x, y) spot, all with their base at z."""
+    return [b for x, y in spots for b in put(name, x, y, z, variant)]
+
+
+def gaunt_pine():
+    """ground_pine: a pine bitten thin by the wind: a long bare trunk, and its dark needles in
+    a few loose clumps that leave the sky between them, the front always open."""
+    c = -4
+    out = trunk(0, 0, 2) + [b for z in (56, 84, 112, 140) for b in put("trunk_thin", c, c, z, "brown")]
+    out += scatter([(c + 17, c - 4), (c - 17, c + 2), (c - 2, c - 17)], 50)
+    out += scatter([(c + 14, c + 3), (c - 12, c - 12), (c - 12, c + 14)], 78)
+    out += scatter([(c + 12, c - 8), (c - 11, c + 4)], 104)
+    out += scatter([(c, c)], 128, name="leaf_block_small") + scatter([(c + 2, c + 2)], 152)
+    return out
+
+
+def dry_fir():
+    """ground_fir: a narrow fir on poor soil: a stout trunk, four short tiers of dark boughs
+    that shrink to a spike, thin enough to read the trunk through them."""
+    c = -3
+    out = trunk(0, 0, 2) + put("trunk_thin", c, c, 56, "brown") + put("trunk_thin", c, c, 84, "brown")
+    out += layer(QUAD[:3], c, c, 42, "dark", "leaf_tuft", 21) + layer(RING[:5], c, c, 54, "dark", "leaf_tuft", 21)
+    out += layer(QUAD, c, c, 78, "dark", "leaf_tuft", 21) + layer(QUAD, c, c, 100, "dark", "leaf_tuft", 21)
+    out += layer([(0, 0)], c, c, 120, "dark", "leaf_block_small", 22) + put("leaf_tuft", c, c, 138, "dark")
+    out += put("leaf_tuft", c, c, 152, "dark")
+    return out
+
+
+def dead_pine():
+    """ground_dead_pine: a dead conifer: a straight grey trunk with pairs of short bare boughs
+    stepping up it, thinner and shorter toward its dry leader."""
+    c = -2
+    out = put("trunk_root", c, c, 0, "dead") + put("trunk_thick", c, c, 0, "dead") + put("trunk", c, c, M, "dead")
+    out += [b for z in (56, 84, 112, 140) for b in put("trunk_thin", c, c, z, "dead")]
+    for z, reach, thick in ((36, 7, 7), (58, 6, 6), (80, 5, 6), (104, 4, 5), (128, 3, 5)):
+        out += limb(c + 3, c, z, reach, 1, 4, rise=3, thick=thick)           # toward the lit side
+        out += limb(c, c + 3, z + 12, -1, reach, 4, rise=3, thick=thick)       # toward the viewer
+        out += limb(c - 3, c - 2, z + 6, -reach, -2, 4, rise=3, thick=thick)  # toward the back
+    return out + put("branch_long", 32, 38, 0, "dead", turn=True) + put("pebble_m", -34, 34, 0)
+
+
+def gnarled_oak():
+    """ground_gnarled: a stunted oak twisted by the wind: a thick trunk that kinks over, a
+    long bough, and a lopsided, thin crown of dry leaf clumps raked toward −x."""
+    out = put("trunk_root", 0, 0, 0, "brown") + put("trunk_thick", 0, 0, 0, "brown")
+    out += put("trunk", -2, -2, M, "brown") + put("trunk", -6, -4, 2 * M, "brown")
+    out += put("trunk_thin", -10, -6, 3 * M, "brown") + put("trunk_thin", -14, -8, 4 * M, "brown")
+    out += limb(-6, -4, 70, -6, 1, 6, rise=4, thick=7, color=WOOD) + limb(-4, -4, 90, 2, -6, 5, rise=4, thick=6, color=WOOD)
+    out += scatter([(-34, -3), (-20, 12), (-22, -16)], 94, "dry") + scatter([(-14, -30), (4, -28)], 100, "dry")
+    out += scatter([(-12, -4), (-30, -8), (-18, 8)], 120, "dry")
+    out += scatter([(-14, -8)], 142, "dry", "leaf_block_small") + scatter([(-16, -8)], 156, "dry")
+    return out
+
+
+def bare_birch():
+    """ground_bare_birch: a birch that lost everything: a white trunk with black marks, and
+    pale branches forking up and out, a few last yellow leaves clinging."""
+    c = -2
+    out = trunk(c, c, 3, "birch") + put("trunk_thin", c, c, 84, "birch") + put("trunk_thin", c - 1, c - 1, 112, "birch")
+    out += limb(c, c, 100, 5, 2, 7, rise=7, thick=6, color=BIRCH) + limb(c, c, 108, -5, 3, 7, rise=7, thick=6, color=BIRCH)
+    out += limb(c, c, 96, -2, -6, 7, rise=7, thick=6, color=BIRCH) + limb(c - 1, c - 1, 128, 3, -3, 6, rise=6, thick=5, color=BIRCH)
+    out += limb(c - 1, c - 1, 128, -3, 3, 6, rise=6, thick=5, color=BIRCH) + limb(c, c, 70, 4, -4, 5, rise=5, thick=5, color=BIRCH)
+    return out + put("fallen_leaf", 30, 30, 0, "ochre") + put("fallen_leaf", -30, 36, 0, "rust")
+
+
+def split_tree():
+    """ground_split: a tree a lightning bolt split down the middle and burned: a charred
+    trunk parting into two black prongs of different height, one limb left, ash at its foot."""
+    out = put("trunk_root", 0, 0, 0, "char") + put("trunk_thick", 0, 0, 0, "char") + put("trunk", -1, -1, M, "char")
+    out += put("trunk", -2, -2, 2 * M, "char") + put("trunk_thin", -3, -2, 3 * M, "char")
+    out += [b for z in (84, 112, 140) for b in put("trunk_thin", -10, -8, z, "char")]        # the tall prong
+    out += [b for z in (84, 112) for b in put("trunk_thin", 6, 4, z, "char")]                # the short one
+    out += [box(6, 4, 140, 7, 7, 10, CHAR, 3)] + limb(6, 4, 104, 6, 3, 5, rise=4, thick=6, color=CHAR)
+    out += limb(-10, -8, 124, -6, 1, 5, rise=4, thick=5, color=CHAR)
+    return out + put("ash", 26, 20, 0) + put("branch", -34, 30, 0, "char", turn=True) + put("pebble_s", 40, -26, 0)
+
+
+def juniper():
+    """ground_juniper: a wind-bent juniper: a short gnarled trunk, two arms and tufts of dry
+    olive scrub carried low and to one side, taller than a bush but with a thin crown."""
+    out = put("trunk_root", 0, 0, 0, "brown") + put("trunk_thick", 0, 0, 0, "brown") + put("trunk", -2, -2, M, "brown")
+    out += put("trunk_thin", -4, -4, 2 * M, "brown") + put("trunk_thin", -6, -5, 3 * M, "brown")
+    out += limb(-4, -4, 56, 6, -2, 5, rise=4, thick=6, color=WOOD) + limb(-4, -4, 70, -5, 3, 6, rise=5, thick=6, color=WOOD)
+    out += scatter([(-6, -4), (-26, -6), (-6, -22), (16, -22)], 60, "dry", "leaf_block_small")
+    out += scatter([(-8, -6), (-24, 2), (-20, -20)], 82, "dry") + scatter([(-10, -8)], 106, "dry", "leaf_block_small")
+    out += scatter([(-12, -8)], 130, "dry") + scatter([(-12, -8)], 148, "dry")
+    return out + put("grass_tuft", 34, 30, 0, "dry") + put("rock_s", 38, -34, 0)
+
+
+def ground_grove(kind, axis):
+    """ground_grove_<kind>: two or three trees of the bare ground with their litter, two tiles
+    long along `axis` (the groves of the grass, in dirt). Written once along (u, v) and laid out
+    for either orientation, never mirrored."""
+    def at(u, v):
+        return (64 + u, v) if axis == "x" else (v, 64 + u)
+
+    def lay(name, u, v, z, variant="", long=False):
+        return put(name, *at(u, v), z, variant, turn=long and axis == "y")
+
+    def tree(build, u, v):
+        x, y = at(u, v)
+        return moved(build(), x, y, 0)
+
+    if kind == "scrub":      # a gaunt pine and a juniper over a dead log, thistles and dry grass
+        out = tree(gaunt_pine, -52, -16) + tree(juniper, 52, 4)
+        out += lay("log", -6, 46, 0, long=True) + lay("grass_tuft", 90, 40, 0, "dry")
+        out += lay("thistle_short", -90, 40, 0) + lay("rock_s", 80, -42, 0, long=True)
+        return out + lay("pebble_m", 14, -40, 0)
+    if kind == "dead":       # dead conifer, bare birch and a gnarled oak over bones and a stump
+        out = tree(dead_pine, -56, -14) + tree(bare_birch, 18, 6) + tree(gnarled_oak, 86, -8)
+        out += lay("stump", -88, 46, 0) + lay("bone", 10, 46, 0) + lay("skull", 34, 40, 0)
+        return out + lay("grass_tuft", 60, 44, 0, "dry") + lay("rock_s", -20, -44, 0)
+    # "burnt": a split tree and a dead pine over ash, fallen charred limbs and rubble
+    out = tree(split_tree, -48, -10) + tree(dead_pine, 56, 6) + tree(dry_fir, 4, -8)
+    out += lay("ash", -10, 44, 0) + lay("branch_long", 26, 46, 0, "char", long=True)
+    return out + lay("pebble_l", 88, -40, 0) + lay("pebble_s", -88, 40, 0) + lay("rock_s", 100, 40, 0)
+
+
 MODELS = {
     "tree": (fruit_tree, (1, 1, 2), "tree/block.png"),
     "tree_2": (leafy, (1, 1, 2), "tree/block_2.png"),
@@ -782,6 +901,19 @@ MODELS = {
     "dead_bush": (dead_bush, (1, 1, 1), "barren/block_dead_bush.png"),
     "dry_grass": (dry_grass, (1, 1, 1), "barren/block_dry_grass.png"),
     "dry_grass_2": (dry_grass_2, (1, 1, 1), "barren/block_dry_grass_2.png"),
+    "ground_pine": (gaunt_pine, (1, 1, 2), "barren/block_ground_pine.png"),
+    "ground_fir": (dry_fir, (1, 1, 2), "barren/block_ground_fir.png"),
+    "ground_dead_pine": (dead_pine, (1, 1, 2), "barren/block_ground_dead_pine.png"),
+    "ground_gnarled": (gnarled_oak, (1, 1, 2), "barren/block_ground_gnarled.png"),
+    "ground_bare_birch": (bare_birch, (1, 1, 2), "barren/block_ground_bare_birch.png"),
+    "ground_split": (split_tree, (1, 1, 2), "barren/block_ground_split.png"),
+    "ground_juniper": (juniper, (1, 1, 2), "barren/block_ground_juniper.png"),
+    "ground_grove_scrub_2x1": (lambda: ground_grove("scrub", "x"), (2, 1, 2), "barren/block_ground_grove_scrub_2x1.png"),
+    "ground_grove_scrub_1x2": (lambda: ground_grove("scrub", "y"), (1, 2, 2), "barren/block_ground_grove_scrub_1x2.png"),
+    "ground_grove_dead_2x1": (lambda: ground_grove("dead", "x"), (2, 1, 2), "barren/block_ground_grove_dead_2x1.png"),
+    "ground_grove_dead_1x2": (lambda: ground_grove("dead", "y"), (1, 2, 2), "barren/block_ground_grove_dead_1x2.png"),
+    "ground_grove_burnt_2x1": (lambda: ground_grove("burnt", "x"), (2, 1, 2), "barren/block_ground_grove_burnt_2x1.png"),
+    "ground_grove_burnt_1x2": (lambda: ground_grove("burnt", "y"), (1, 2, 2), "barren/block_ground_grove_burnt_1x2.png"),
 }
 
 

@@ -108,7 +108,13 @@
     "rubble": 3.0,
     "burrow": 1.5,
     "battle_spears": 1.0,
-    "skull_pole": 0.8
+    "skull_pole": 0.8,
+    "ground_grove_scrub_x": 1.5,
+    "ground_grove_scrub_y": 1.5,
+    "ground_grove_dead_x": 1.5,
+    "ground_grove_dead_y": 1.5,
+    "ground_grove_burnt_x": 1.5,
+    "ground_grove_burnt_y": 1.5
   },
   "families": {
     "mead_hall": [
@@ -222,6 +228,14 @@
       "fly_swarm",
       "fly_swarm_bones",
       "fly_swarm_sand"
+    ],
+    "ground_grove": [
+      "ground_grove_scrub_x",
+      "ground_grove_scrub_y",
+      "ground_grove_dead_x",
+      "ground_grove_dead_y",
+      "ground_grove_burnt_x",
+      "ground_grove_burnt_y"
     ],
     "deadwood": [
       "dead_tree",

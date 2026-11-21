@@ -4,7 +4,7 @@
     {
       "id": "temperate_forest",
       "share": 35.0,
-      "treeCoverage": 0.32,
+      "treeCoverage": 0.5454,
       "trees": [
         {
           "blueprint": "tree",
@@ -81,6 +81,22 @@
         {
           "blueprint": "tree_24",
           "weight": 5.0
+        },
+        {
+          "blueprint": "ground_gnarled",
+          "weight": 50.0
+        },
+        {
+          "blueprint": "ground_bare_birch",
+          "weight": 40.0
+        },
+        {
+          "blueprint": "ground_juniper",
+          "weight": 30.0
+        },
+        {
+          "blueprint": "ground_pine",
+          "weight": 30.0
         }
       ],
       "grassTints": [
@@ -101,7 +117,7 @@
     {
       "id": "taiga",
       "share": 25.0,
-      "treeCoverage": 0.34,
+      "treeCoverage": 0.6029,
       "trees": [
         {
           "blueprint": "tree_3",
@@ -130,6 +146,26 @@
         {
           "blueprint": "tree_24",
           "weight": 6.0
+        },
+        {
+          "blueprint": "ground_pine",
+          "weight": 50.0
+        },
+        {
+          "blueprint": "ground_fir",
+          "weight": 45.0
+        },
+        {
+          "blueprint": "ground_dead_pine",
+          "weight": 25.0
+        },
+        {
+          "blueprint": "ground_split",
+          "weight": 10.0
+        },
+        {
+          "blueprint": "ground_juniper",
+          "weight": 20.0
         }
       ],
       "grassTints": [
@@ -151,7 +187,7 @@
     {
       "id": "autumn_forest",
       "share": 22.0,
-      "treeCoverage": 0.26,
+      "treeCoverage": 0.4686,
       "trees": [
         {
           "blueprint": "tree_8",
@@ -204,6 +240,22 @@
         {
           "blueprint": "tree_26",
           "weight": 4.0
+        },
+        {
+          "blueprint": "ground_gnarled",
+          "weight": 40.0
+        },
+        {
+          "blueprint": "ground_bare_birch",
+          "weight": 50.0
+        },
+        {
+          "blueprint": "ground_dead_pine",
+          "weight": 30.0
+        },
+        {
+          "blueprint": "ground_juniper",
+          "weight": 30.0
         }
       ],
       "grassTints": [
@@ -225,7 +277,7 @@
     {
       "id": "savanna",
       "share": 18.0,
-      "treeCoverage": 0.07,
+      "treeCoverage": 0.2613,
       "trees": [
         {
           "blueprint": "tree_4",
@@ -254,6 +306,22 @@
         {
           "blueprint": "tree_25",
           "weight": 6.0
+        },
+        {
+          "blueprint": "ground_dead_pine",
+          "weight": 150.0
+        },
+        {
+          "blueprint": "ground_juniper",
+          "weight": 200.0
+        },
+        {
+          "blueprint": "ground_gnarled",
+          "weight": 100.0
+        },
+        {
+          "blueprint": "ground_split",
+          "weight": 50.0
         }
       ],
       "grassTints": [
