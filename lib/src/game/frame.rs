@@ -201,6 +201,11 @@ impl Game {
         {
             if taken.id() == target.id {
                 felled = Some(target.clone());
+                if let Some(shadows) = self.shadows.as_mut() {
+                    for chunk in iso::harvest::shadow_chunks(target.anchor) {
+                        shadows.forget(chunk);
+                    }
+                }
                 for gained in yields {
                     self.carried
                         .inventory
@@ -257,15 +262,29 @@ impl Game {
             self.toggle_jetpack();
         }
         set_player_jetpack(&mut self.player, self.jetpack);
-        let engaged = self.streams
-            && input.gather_held
-            && self.player.vertical_speed.is_none()
-            && self.player.swim.is_none()
-            && matches!(
-                self.harvest_status,
-                iso::harvest::HarvestStatus::Ready { .. }
-                    | iso::harvest::HarvestStatus::Working { .. }
+        let sought = match &self.harvest_status {
+            iso::harvest::HarvestStatus::Ready { target }
+            | iso::harvest::HarvestStatus::Approaching { target }
+            | iso::harvest::HarvestStatus::Working { target, .. }
+                if self.streams
+                    && input.gather_held
+                    && self.player.vertical_speed.is_none()
+                    && self.player.swim.is_none() =>
+            {
+                Some(target.clone())
+            }
+            _ => None,
+        };
+        if let Some(target) = sought.as_ref().filter(|target| !target.in_reach) {
+            self.player.walk = iso::harvest::approach_walk(
+                target,
+                GridPoint {
+                    x: self.player.x,
+                    y: self.player.y,
+                },
             );
+        }
+        let engaged = sought.as_ref().is_some_and(|target| target.in_reach);
         iso::player::physics::set_player_gathering(&mut self.player, engaged);
 
         if input.jump_pressed {

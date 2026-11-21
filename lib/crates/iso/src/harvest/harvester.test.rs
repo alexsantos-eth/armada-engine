@@ -17,6 +17,8 @@ fn target(blueprint: &str, x: i32) -> HarvestTarget {
         anchor: WorldCoord { x, y: 0 },
         blueprint: blueprint.to_owned(),
         elevation: 0,
+        nearest: WorldCoord { x: 1, y: 0 },
+        in_reach: true,
     }
 }
 
@@ -256,4 +258,29 @@ fn every_status_but_idle_names_its_target() {
         .target(),
         Some(&tree)
     );
+}
+
+#[test]
+fn holding_the_key_on_a_target_out_of_reach_walks_up_to_it_first() {
+    let carried = Carried::starting(4, &items());
+    let far = HarvestTarget {
+        in_reach: false,
+        ..target("tree", 3)
+    };
+    let mut harvester = Harvester::default();
+    assert_eq!(
+        step(&mut harvester, true, Some(&far), &carried, 10),
+        HarvestStatus::Approaching {
+            target: far.clone()
+        }
+    );
+    assert_eq!(harvester.strikes(), 0);
+    let near = HarvestTarget {
+        in_reach: true,
+        ..far
+    };
+    assert!(matches!(
+        step(&mut harvester, true, Some(&near), &carried, 1),
+        HarvestStatus::Working { progress: 10, .. }
+    ));
 }

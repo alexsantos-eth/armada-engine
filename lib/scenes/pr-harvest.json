@@ -18,7 +18,7 @@
     {
       "surface": {
         "at": [
-          -11,
+          -9,
           142
         ],
         "material": "grass"
@@ -27,7 +27,7 @@
     {
       "place": {
         "at": [
-          -11,
+          -9,
           142
         ],
         "blueprint": "tree"
@@ -36,8 +36,8 @@
     {
       "place": {
         "at": [
-          -12,
-          144
+          -13,
+          147
         ],
         "blueprint": "rock_small"
       }
@@ -50,23 +50,28 @@
     },
     {
       "gather": {
-        "frames": 17
+        "frames": 8
       }
     },
     {
-      "shot": "harvest-1-strike.png"
+      "shot": "harvest-1-approach.png"
     },
     {
       "gather": {
-        "frames": 4
+        "frames": 24
       }
     },
     {
-      "shot": "harvest-2-windup.png"
+      "shot": "harvest-2-strike.png"
     },
     {
       "gather": {
-        "frames": 19
+        "frames": 30
+      }
+    },
+    {
+      "wait": {
+        "frames": 40
       }
     },
     {
@@ -75,15 +80,15 @@
     {
       "walk": {
         "dir": [
-          0,
+          -1,
           1
         ],
-        "frames": 8
+        "frames": 25
       }
     },
     {
       "gather": {
-        "frames": 17
+        "frames": 30
       }
     },
     {
@@ -91,7 +96,7 @@
     },
     {
       "gather": {
-        "frames": 14
+        "frames": 40
       }
     },
     {

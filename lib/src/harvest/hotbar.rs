@@ -83,7 +83,7 @@ fn yield_name(blueprint: &str, items: &ItemCatalog) -> String {
 pub(crate) fn prompt(status: &HarvestStatus, items: &ItemCatalog) -> Option<Prompt> {
     match status {
         HarvestStatus::Idle | HarvestStatus::Done { .. } => None,
-        HarvestStatus::Ready { target } => Some(Prompt {
+        HarvestStatus::Ready { target } | HarvestStatus::Approaching { target } => Some(Prompt {
             text: format!("Manten E: {}", yield_name(&target.blueprint, items)),
             progress: None,
         }),

@@ -127,7 +127,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `fn step_harvest(&mut self, held: bool, ticks: u32) {`
 - [`toggle_jetpack`](frame.rs#L123) — Se pone o se quita el jetpack en cualquier ruta. Devuelve si queda puesto. Lo llaman la tecla `J` de la entrada y el interruptor del HUD.
   - Firma: `pub(crate) fn toggle_jetpack(&mut self) -> bool {`
-- [`update`](frame.rs#L226) — Entrada, ticks fijos, reloj del mundo (avanza solo en el paso fijo), fase efectiva de sombras (override o `phase_at` del reloj), streaming de chunks, sonido ligado al movimiento y guardado de un fotograma. `None` si el jugador pidió salir (tras volcar el guardado si hacía falta).
+- [`update`](frame.rs#L231) — Entrada, ticks fijos, reloj del mundo (avanza solo en el paso fijo), fase efectiva de sombras (override o `phase_at` del reloj), streaming de chunks, sonido ligado al movimiento y guardado de un fotograma. `None` si el jugador pidió salir (tras volcar el guardado si hacía falta).
   - Firma: `pub(crate) fn update(&mut self, frame_ms: f64) -> Option<FrameView> {`
 
 ### `scene.rs`
@@ -212,9 +212,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `fn should_save_on_quit(unsaved_changes: bool, quitting: bool) -> bool {`
 - [`EditedFrame`](frame.rs#L90) — Lo que un fotograma de edición entrega a su vista: las mismas medidas que toma un fotograma normal, recogidas donde las tiene el camino del editor.
   - Declaración: `struct EditedFrame { rp: PlayerRenderPosition, projection: ProjectionConfig, width: f32, height: f32, frame_ms: f64, stream_start: f64 }`
-- [`editing_view`](frame.rs#L437) — La vista de un fotograma de edición: el único chunk en la mano, su luz horneada otra vez cuando un trazo la cambió, y ningún streaming, guardado ni descarga.
+- [`editing_view`](frame.rs#L456) — La vista de un fotograma de edición: el único chunk en la mano, su luz horneada otra vez cuando un trazo la cambió, y ningún streaming, guardado ni descarga.
   - Firma: `fn editing_view(&mut self, frame: EditedFrame) -> FrameView {`
-- [`settled`](frame.rs#L482) — Si lo que hay en pantalla está listo para mirarse: cada chunk mostrado generado y con sus sombras horneadas para la fase en curso y fundidas del todo. Sin sombras horneadas no hay nada que esperar, así que responde que sí. De ahí sale `Game::lit`, que espera el paso `settle` de una corrida guionizada.
+- [`settled`](frame.rs#L501) — Si lo que hay en pantalla está listo para mirarse: cada chunk mostrado generado y con sus sombras horneadas para la fase en curso y fundidas del todo. Sin sombras horneadas no hay nada que esperar, así que responde que sí. De ahí sale `Game::lit`, que espera el paso `settle` de una corrida guionizada.
   - Firma: `fn settled(&self, culled: &[iso::grid::ChunkCoord]) -> bool {`
 
 ### `scene.rs`

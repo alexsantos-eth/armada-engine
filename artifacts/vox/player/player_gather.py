@@ -9,7 +9,10 @@
 # It reuses the climb's machinery (player_climb.py): a pose is the lean of the body and the swing
 # of each arm, hand, leg and foot, eased between key poses.
 #
-#   python3 player_render.py gather          -> lib/painted/player-16_gather.png
+#   python3 player_model.py gather           -> lib/painted/player-16_gather.png
+#
+# Render it with player_model.py, the textured 3D model every live sheet comes from; player_render.py
+# draws the older clay boxes and is only where the poses are looked up.
 #
 # Requires shapely (see iso_lib.py).
 from player_climb import ClimbPart, HIP, SHOULDER, WRIST, ANKLE, ease

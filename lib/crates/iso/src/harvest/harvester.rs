@@ -24,8 +24,10 @@ pub enum HarvestBlock {
 pub enum HarvestStatus {
     /// Nothing harvestable in reach.
     Idle,
-    /// A target in reach, the key not held.
+    /// A target in sight, the key not held.
     Ready { target: HarvestTarget },
+    /// The key held on a target in sight but out of reach: the player walks up to it.
+    Approaching { target: HarvestTarget },
     /// A target in reach that cannot be gathered.
     Blocked {
         target: HarvestTarget,
@@ -50,6 +52,7 @@ impl HarvestStatus {
         match self {
             Self::Idle => None,
             Self::Ready { target }
+            | Self::Approaching { target }
             | Self::Blocked { target, .. }
             | Self::Working { target, .. }
             | Self::Done { target, .. } => Some(target),
@@ -122,6 +125,12 @@ impl Harvester {
             self.progress = 0;
         }
         let total = rule.ticks.saturating_mul(tool_speed_tenths(0));
+        if input.held && !target.in_reach {
+            self.swing_ticks = 0;
+            return HarvestStatus::Approaching {
+                target: target.clone(),
+            };
+        }
         if !input.held {
             self.swing_ticks = 0;
             if self.progress == 0 {
