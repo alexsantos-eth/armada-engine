@@ -33,7 +33,7 @@ con este formato. Parte siempre de `origin/iso-rust` actualizado (`git fetch ori
   - `refactor`: cambio de estructura sin cambio de comportamiento.
   - `perf`: rendimiento.
   - `docs`: solo Markdown, comentarios o skills.
-- **scope** (obligatorio): dominio/módulo o palabra clave, en minúsculas, con `/` para anidar:
+- **scope** (obligatorio): una palabra en minúsculas (`terrain`, `ci`); la `/` es opcional y solo sirve para anidar:
   `npc/rabbit`, `terrain`, `lighting`, `ci`, `assets/beach`, `docs`.
 - **descripción**: en inglés, imperativo, minúsculas, sin punto final.
 - `!` tras el scope marca un cambio incompatible (`feat(world)!: …`).
