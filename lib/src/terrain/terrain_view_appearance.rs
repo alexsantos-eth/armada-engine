@@ -39,9 +39,8 @@ const GRASS_TOPS: &[(&str, f64)] = &[
 /// comes in small patches, so these are rolled cell by cell instead of gathered by the grass's
 /// patch noise: gathered, a whole patch of dirt often fell between two clusters and showed none.
 const GROUND_TOPS: &[(&str, f64)] = &[
-    ("/assets/ground/block_dark.png", 0.08),
-    ("/assets/ground/block_cracked.png", 0.06),
-    ("/assets/ground/block_stones.png", 0.06),
+    ("/assets/ground/block_dark.png", 0.09),
+    ("/assets/ground/block_stones.png", 0.08),
     ("/assets/ground/block_damp.png", 0.04),
     ("/assets/ground/block_dry.png", 0.06),
 ];
