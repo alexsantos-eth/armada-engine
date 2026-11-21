@@ -31,10 +31,10 @@ commit: `feature/pr-screenshots`, `fix/player-clipping-on-stairs`, `release/0.27
 Formato obligatorio, tanto para el título del PR como para el asunto de **cada** commit:
 
 ```
-<feat|docs|fix>(<dominio/módulo o palabra clave>): <descripción>
+<feat|fix|docs|refactor|perf>(<dominio/módulo o palabra clave>): <descripción>
 ```
 
-- `feat` (también refactor, perf, build, assets, chore), `fix` o `docs`; el scope es obligatorio,
+- `feat` (también build, assets, chore), `fix`, `docs`, `refactor` o `perf`; el scope es obligatorio,
   en minúsculas y puede anidar con `/`; la descripción va en inglés, imperativo, minúsculas y sin
   punto final. Ejemplos: `feat(npc/rabbit): add hop animation`,
   `fix(terrain): remove cracked ground variant`.

@@ -1,6 +1,6 @@
 ---
 name: "armada-pull-request"
-description: "Úsala al abrir un pull request en Armada Engine (sobre todo desde un hilo o sesión de agente): rama feature/fix/release, commits y título <feat|docs|fix>(scope): descripción, escena para las capturas automáticas y checks que debe pasar."
+description: "Úsala al abrir un pull request en Armada Engine (sobre todo desde un hilo o sesión de agente): rama feature/fix/release, commits y título <feat|fix|docs|refactor|perf>(scope): descripción, escena para las capturas automáticas y checks que debe pasar."
 ---
 
 # Pull requests de Armada Engine
@@ -27,9 +27,11 @@ con este formato. Parte siempre de `origin/iso-rust` actualizado (`git fetch ori
 
 ## 2. Commits y título: `<tipo>(<scope>): <descripción>`
 
-- **tipo**: solo `feat`, `docs` o `fix`.
-  - `feat`: comportamiento nuevo, y también refactor, perf, build, assets o chore.
+- **tipo**: `feat`, `fix`, `docs`, `refactor` o `perf`.
+  - `feat`: comportamiento nuevo (también build, assets o chore).
   - `fix`: corrección de un error.
+  - `refactor`: cambio de estructura sin cambio de comportamiento.
+  - `perf`: rendimiento.
   - `docs`: solo Markdown, comentarios o skills.
 - **scope** (obligatorio): dominio/módulo o palabra clave, en minúsculas, con `/` para anidar:
   `npc/rabbit`, `terrain`, `lighting`, `ci`, `assets/beach`, `docs`.

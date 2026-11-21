@@ -116,8 +116,10 @@ Conventional Commits, en inglés:
 ```
 
 - **type**, uno de estos (los mismos que valida el CI en los PRs, `.github/workflows/pr-format.yml`):
-  - `feat`: comportamiento nuevo (también refactor, perf, build, assets y chore);
+  - `feat`: comportamiento nuevo (también build, assets y chore);
   - `fix`: corrección de un error;
+  - `refactor`: cambio de estructura sin cambio de comportamiento;
+  - `perf`: rendimiento;
   - `docs`: solo Markdown, comentarios o skills.
 - **scope** (obligatorio): el área principal tocada, en minúsculas. Puede ser un módulo del motor (`iso`, `grid`, `projection`, `paths`, `camera`, `time`, `simulation`, `terrain`, `entities`, `world`, `lighting`, `water`, `player`, `scene_order`, `rendering`, `perf`, `save`, `services`, `assets`), un área (`content`, `assets`, `painted`, `scripts`, `netlify`, `wasm`), o `deps`, `lint`, `format`, `docs`. Si toca varias áreas, usa la dominante. Con dos o más cambios independientes, pregunta si prefiere un commit por cambio y, si dice que sí, repite los pasos 5 y 6 por grupo (con una sola validación previa del conjunto).
 - **summary:** en imperativo y en minúsculas, sin punto final, y la primera línea entera con ≤ 72 caracteres. Por ejemplo: `add walking dust puffs`, no `Added dust.`.

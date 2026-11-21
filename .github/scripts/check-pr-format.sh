@@ -10,7 +10,7 @@
 # Exit status is 1 when anything is invalid, with one explanation per offender.
 set -euo pipefail
 
-TYPES='feat|docs|fix'
+TYPES='feat|fix|docs|refactor|perf'
 PATTERN="^(${TYPES})\\(([a-z0-9]+([/_-][a-z0-9]+)*)\\)!?: [^ ].*[^ .]$|^(${TYPES})\\(([a-z0-9]+([/_-][a-z0-9]+)*)\\)!?: [^ .]$"
 
 # Prints the reason a subject is invalid, or nothing when it is fine.

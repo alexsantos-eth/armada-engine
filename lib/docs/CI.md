@@ -24,7 +24,7 @@ igual que en Netlify.
 
 `.github/workflows/pr-format.yml` corre en cada PR contra `iso-rust` (también al editar el título)
 y falla si el título del PR o el asunto de algún commit no es
-`<feat|docs|fix>(<dominio/módulo o palabra clave>): <descripción>`; los commits de merge se
+`<feat|fix|docs|refactor|perf>(<dominio/módulo o palabra clave>): <descripción>`; los commits de merge se
 saltan. Las reglas viven en `.github/scripts/check-pr-format.sh` (se puede correr en local) y el
 flujo de ramas y PRs en la skill `armada-pull-request`. Es un check aparte de `CI`: para que
 bloquee el merge, añade también `Format` a los checks obligatorios de la regla de rama.

@@ -1,4 +1,4 @@
-# Checks that the PR title and every commit follow `<feat|docs|fix>(<domain/module or keyword>):
+# Checks that the PR title and every commit follow `<feat|fix|docs|refactor|perf>(<domain/module or keyword>):
 # <description>`, e.g. `feat(npc/rabbit): add hop animation`. The check is `Format`; add it to
 # the branch rule next to `CI` (lib/docs/CI.md). The rules live in .github/scripts/check-pr-format.sh.
 #
