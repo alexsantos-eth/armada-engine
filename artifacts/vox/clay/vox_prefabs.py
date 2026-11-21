@@ -58,6 +58,8 @@ DEADWOOD = "#8e8576"
 # the rabbit NPC (artifacts/vox/rabbit/rabbit.py): a pale fawn coat, light enough that every tint
 # the game multiplies it by (only ever darker) still reads as fur
 FUR = "#dcc6a2"
+# the trees of the bare ground: dry olive scrub leaf, and the char of a tree a lightning bolt split
+LEAF_DRY, CHAR = "#a39c46", "#4a423c"
 # New colours go at the end: the indices of the files already written must not move.
 PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK, CUT, MOSS,
            RED, WHITE, YELLOW, PINK, CAP, STEM, DOT, OCHRE, RUST, ROCK, ROCK_DARK,
@@ -70,7 +72,8 @@ PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK,
            PEAT, BOG, REED, CATTAIL, WELL_WATER,
            BONE, ASH, SOOT, RUSTED, THISTLE, THISTLE_HEAD, AMBER, STEEL,
            WAX, SINTER, HOT_WATER,
-           SOIL_DEEP, SOIL_WET, CRACK, DEADWOOD, FUR]
+           SOIL_DEEP, SOIL_WET, CRACK, DEADWOOD, FUR,
+           LEAF_DRY, CHAR]
 
 
 def box(x, y, z0, sx, sy, sz, color, r):
@@ -502,8 +505,8 @@ def fish_flat(color):
             box(9, 0, 0, 4, 9, 3, color, 1), box(-9, 2, 2, 2, 2, 2, SOOT, 0)]
 
 
-LEAVES = dict(green=LEAF, dark=LEAF_DARK, autumn=LEAF_AUTUMN, blossom=PINK)
-BARKS = dict(brown=WOOD, birch=BIRCH, timber=TIMBER, dead=DEADWOOD)
+LEAVES = dict(green=LEAF, dark=LEAF_DARK, autumn=LEAF_AUTUMN, blossom=PINK, dry=LEAF_DRY)
+BARKS = dict(brown=WOOD, birch=BIRCH, timber=TIMBER, dead=DEADWOOD, char=CHAR)
 STONES = dict(grey=ROCK, dark=ROCK_DARK, sand=STONE_SAND, clay=STONE_CLAY)
 WALLS = dict(plank=PLANK, timber=TIMBER, plaster=PLASTER)
 ROOFS = dict(thatch=THATCH, turf=TURF, tile=TILE, shingle=SHINGLE, dark=SHINGLE_DARK, red=RED, white=WHITE)

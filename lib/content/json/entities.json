@@ -2865,6 +2865,159 @@
           "grass"
         ]
       }
+    },
+    {
+      "id": "ground_pine",
+      "asset": {
+        "sprite": "/assets/barren/block_ground_pine.png",
+        "sway": {
+          "cut": 0.62,
+          "amplitude": 1,
+          "period": 3000
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "ground_fir",
+      "asset": {
+        "sprite": "/assets/barren/block_ground_fir.png",
+        "sway": {
+          "cut": 0.62,
+          "amplitude": 1,
+          "period": 3600
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "ground_dead_pine",
+      "asset": {
+        "sprite": "/assets/barren/block_ground_dead_pine.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "ground_gnarled",
+      "asset": {
+        "sprite": "/assets/barren/block_ground_gnarled.png",
+        "sway": {
+          "cut": 0.62,
+          "amplitude": 1.4,
+          "period": 4200
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "ground_bare_birch",
+      "asset": {
+        "sprite": "/assets/barren/block_ground_bare_birch.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "ground_split",
+      "asset": {
+        "sprite": "/assets/barren/block_ground_split.png"
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
+    },
+    {
+      "id": "ground_juniper",
+      "asset": {
+        "sprite": "/assets/barren/block_ground_juniper.png",
+        "sway": {
+          "cut": 0.62,
+          "amplitude": 1.2,
+          "period": 3800
+        }
+      },
+      "shape": {
+        "height": 2,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0.15
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "ground"
+        ]
+      }
     }
   ]
 }
