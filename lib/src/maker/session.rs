@@ -66,7 +66,7 @@ fn cycled_top(current: Option<usize>, tops: usize, forward: bool) -> Option<usiz
 /// What to tell the maker after a stroke: nothing, unless a tool that can be refused was.
 fn note_for(stroke: MakerStroke, tool: MakerTool) -> &'static str {
     match (stroke, tool) {
-        (MakerStroke::Nothing, MakerTool::Place) => "Ahi no cabe",
+        (MakerStroke::Nothing, MakerTool::Place) => "It doesn't fit there",
         _ => "",
     }
 }
@@ -74,19 +74,19 @@ fn note_for(stroke: MakerStroke, tool: MakerTool) -> &'static str {
 /// The brush in hand, written for the panel's subtitle.
 fn brush_title(brush: &MakerBrush, catalog: &EntityCatalog) -> String {
     match brush.tool {
-        MakerTool::Raise => "Subir el terreno".to_owned(),
-        MakerTool::Lower => "Bajar el terreno".to_owned(),
-        MakerTool::Surface => format!("Pintar: {}", surface_label(brush.surface)),
-        MakerTool::Tint => format!("Tinte: zona {}", brush.tint + 1),
+        MakerTool::Raise => "Raise the terrain".to_owned(),
+        MakerTool::Lower => "Lower the terrain".to_owned(),
+        MakerTool::Surface => format!("Paint: {}", surface_label(brush.surface)),
+        MakerTool::Tint => format!("Tint: zone {}", brush.tint + 1),
         MakerTool::Top => match brush.top {
-            Some(top) => format!("Hierba: variante {}", top + 1),
-            None => "Hierba: bloque plano".to_owned(),
+            Some(top) => format!("Grass: variant {}", top + 1),
+            None => "Grass: flat block".to_owned(),
         },
         MakerTool::Place => match catalog.entities.get(brush.blueprint) {
-            Some(blueprint) => format!("Poner: {}", blueprint.id),
-            None => "Poner: sin catalogo".to_owned(),
+            Some(blueprint) => format!("Place: {}", blueprint.id),
+            None => "Place: no catalog".to_owned(),
         },
-        MakerTool::Erase => "Borrar lo que haya".to_owned(),
+        MakerTool::Erase => "Erase whatever is there".to_owned(),
     }
 }
 
@@ -258,7 +258,7 @@ impl MakerSession {
     /// Takes the last stroke back, and says whether the light has to be baked again.
     fn undo(&mut self, manager: &mut ChunkManager, look: &mut TerrainLook) -> Option<ChunkCoord> {
         let Some(step) = self.history.undo() else {
-            self.note = "No queda nada que deshacer";
+            self.note = "Nothing to undo";
             return None;
         };
         restore(manager, look.dressing_mut(), self.chunk, step);
@@ -310,7 +310,7 @@ impl MakerSession {
 
     /// The controls line the panel shows along the bottom of the window.
     fn help_line() -> &'static str {
-        "1-7: herramienta | clic: aplicar | R: girar | [ ] , . - =: elegir | Ctrl+Z: deshacer"
+        "1-7: tool | click: apply | R: rotate | [ ] , . - =: choose | Ctrl+Z: undo"
     }
 }
 

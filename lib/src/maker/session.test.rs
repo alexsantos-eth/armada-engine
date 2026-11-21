@@ -58,7 +58,7 @@ fn a_stroke_says_what_it_did_and_a_refused_one_says_why() {
     assert_eq!(note_for(MakerStroke::Entities, MakerTool::Place), "");
     assert_eq!(
         note_for(MakerStroke::Nothing, MakerTool::Place),
-        "Ahi no cabe"
+        "It doesn't fit there"
     );
     assert_eq!(note_for(MakerStroke::Nothing, MakerTool::Raise), "");
 }
@@ -78,7 +78,7 @@ fn the_title_names_the_tool_and_its_choice() {
             },
             &catalog
         ),
-        "Pintar: Camino"
+        "Paint: Path"
     );
     assert_eq!(
         brush_title(
@@ -89,7 +89,7 @@ fn the_title_names_the_tool_and_its_choice() {
             },
             &catalog
         ),
-        "Tinte: zona 3"
+        "Tint: zone 3"
     );
     assert_eq!(
         brush_title(
@@ -100,7 +100,7 @@ fn the_title_names_the_tool_and_its_choice() {
             },
             &catalog
         ),
-        "Hierba: variante 5"
+        "Grass: variant 5"
     );
     assert_eq!(
         brush_title(
@@ -110,10 +110,10 @@ fn the_title_names_the_tool_and_its_choice() {
             },
             &catalog
         ),
-        "Poner: sin catalogo"
+        "Place: no catalog"
     );
     assert_eq!(
         brush_title(&MakerBrush::default(), &catalog),
-        "Subir el terreno"
+        "Raise the terrain"
     );
 }

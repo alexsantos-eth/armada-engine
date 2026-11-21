@@ -63,25 +63,25 @@ pub(crate) struct PanelCounts {
 /// The short name of a tool on the panel.
 pub(crate) fn tool_label(tool: MakerTool) -> &'static str {
     match tool {
-        MakerTool::Raise => "Subir",
-        MakerTool::Lower => "Bajar",
-        MakerTool::Surface => "Pintar",
-        MakerTool::Tint => "Tinte",
-        MakerTool::Top => "Hierba",
-        MakerTool::Place => "Poner",
-        MakerTool::Erase => "Borrar",
+        MakerTool::Raise => "Raise",
+        MakerTool::Lower => "Lower",
+        MakerTool::Surface => "Paint",
+        MakerTool::Tint => "Tint",
+        MakerTool::Top => "Grass",
+        MakerTool::Place => "Place",
+        MakerTool::Erase => "Erase",
     }
 }
 
 /// The short name of a surface on the panel.
 pub(crate) fn surface_label(material: TerrainMaterial) -> &'static str {
     match material {
-        TerrainMaterial::Grass => "Hierba",
-        TerrainMaterial::Sand => "Arena",
-        TerrainMaterial::Ground => "Tierra",
-        TerrainMaterial::Path => "Camino",
-        TerrainMaterial::Stairs => "Gradas",
-        TerrainMaterial::Water => "Agua",
+        TerrainMaterial::Grass => "Grass",
+        TerrainMaterial::Sand => "Sand",
+        TerrainMaterial::Ground => "Ground",
+        TerrainMaterial::Path => "Path",
+        TerrainMaterial::Stairs => "Stairs",
+        TerrainMaterial::Water => "Water",
     }
 }
 

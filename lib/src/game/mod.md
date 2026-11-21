@@ -107,7 +107,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`WaterField`](ground.rs#L71) — Índice de las casillas de agua de los chunks visibles del fotograma. Responde a terreno y reflejos sin volver a consultar el mundo por cada celda; si está vacío, la escena omite por completo la pasada de reflejos.
+- [`WaterField`](ground.rs#L72) — Índice de las casillas de agua de los chunks visibles del fotograma. Responde a terreno y reflejos sin volver a consultar el mundo por cada celda; si está vacío, la escena omite por completo la pasada de reflejos.
   - Declaración: `pub(crate) struct WaterField { cells: HashMap<(i32, i32), WaterCell> }`
 
 ### `frame.rs`
@@ -128,9 +128,9 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`preview_projection`](scene.rs#L42) — La proyección de esta vista con su origen en `(origin_x, origin_y)`: las métricas de casilla son las de la escena, el origen sigue a la cámara.
+- [`preview_projection`](scene.rs#L44) — La proyección de esta vista con su origen en `(origin_x, origin_y)`: las métricas de casilla son las de la escena, el origen sigue a la cámara.
   - Firma: `pub(crate) fn preview_projection(origin_x: f64, origin_y: f64, metrics: SceneMetrics) -> ProjectionConfig {`
-- [`player_sheets`](scene.rs#L66) — Cuántas poses trae cada hoja del jugador en el atlas.
+- [`player_sheets`](scene.rs#L68) — Cuántas poses trae cada hoja del jugador en el atlas.
   - Firma: `pub(crate) fn player_sheets(atlas: &SpriteAtlas) -> crate::player::player_view::PlayerSheets {`
 - [`player_key`](scene.rs#L94) — La clave de profundidad del jugador y de su sombra: la casilla redondeada, pero la elevación de los pies, para que el orden frente a quien lo tapa cambie gradualmente al subir o bajar gradas.
   - Firma: `pub(crate) fn player_key(column: WorldCoord, feet_elevation: f64, layer: i32, tile_height: f64) -> DrawKey {`
@@ -161,7 +161,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`StandingSprite`](scene.rs#L210) — El sprite de una entidad tal como lo coloca la escena: el rectángulo de su arte, su máscara de cobertura y las casillas de su huella, cada una dibujada como una banda con clave propia.
   - Declaración: `pub(crate) struct StandingSprite<'a> {`
 
-- [`PlayerSprite`](scene.rs#L58) — El arte del jugador: su frame en el atlas y dónde pertenece sobre el suelo.
+- [`PlayerSprite`](scene.rs#L60) — El arte del jugador: su frame en el atlas y dónde pertenece sobre el suelo.
   - Firma: `pub(crate) struct PlayerSprite { pub(crate) frame: SpriteFrame, pub(crate) ink: InkBox, pub(crate) texture: usize }`
 - [`SceneStats`](scene.rs#L270) — Lo que la pasada de escena midió: chunks dibujados y sprites en cola.
   - Firma: `pub(crate) struct SceneStats { pub(crate) chunks_drawn: usize, pub(crate) sprites: usize }`
@@ -185,7 +185,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones internas
 
-- [`water_cell_of`](ground.rs#L57) — La regla pura: columna con agua → `WaterCell` con su propio nivel y elevación; cualquier otro material o ninguna columna → `None`. `WaterField` la aplica una vez al construir el índice del fotograma.
+- [`water_cell_of`](ground.rs#L58) — La regla pura: columna con agua → `WaterCell` con su propio nivel y elevación; cualquier otro material o ninguna columna → `None`. `WaterField` la aplica una vez al construir el índice del fotograma.
   - Firma: `fn water_cell_of(column: Option<TerrainColumn>) -> Option<WaterCell> {`
 
 ### `frame.rs`

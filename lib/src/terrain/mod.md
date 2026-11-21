@@ -89,19 +89,19 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Constantes internas
 
-- [`GRASS_TINTS`](terrain_view_appearance.rs#L13) — Zonas de hierba globales, del ruido más bajo al más alto: frondosa y más oscura, ligeramente más oscura, llana,
+- [`GRASS_TINTS`](terrain_view_appearance.rs#L15) — Zonas de hierba globales, del ruido más bajo al más alto: frondosa y más oscura, ligeramente más oscura, llana,
   - Declaración: `const GRASS_TINTS: (f64, &[u32]) = (10.0, &[0xbfd5bd, 0xdde9d4, 0xffffff, 0xfff0c0, 0xffe49c]);`
 
-- [`LAND_TINTS`](terrain_view_appearance.rs#L16) — Suelo desnudo y los tonos de tierra globales: mucho más sutiles que la hierba, porque la tierra no tiene
+- [`LAND_TINTS`](terrain_view_appearance.rs#L18) — Suelo desnudo y los tonos de tierra globales: mucho más sutiles que la hierba, porque la tierra no tiene
   - Declaración: `const LAND_TINTS: (f64, &[u32]) = (11.0, &[0xffffff, 0xfffbea, 0xf4f9df, 0xf2f5d6]);`
 
-- [`GRASS_TINT_SCALE`](terrain_view_appearance.rs#L19) — Ancho de un borrón de zona de hierba o camino, en columnas.
+- [`GRASS_TINT_SCALE`](terrain_view_appearance.rs#L21) — Ancho de un borrón de zona de hierba o camino, en columnas.
   - Declaración: `const GRASS_TINT_SCALE: f64 = 10.0;`
 
 - [`GROUND_TINT_SCALE`](terrain_view_appearance.rs#L21) — Ancho de un borrón de zona de tierra, en columnas.
   - Declaración: `const GROUND_TINT_SCALE: f64 = 11.0;`
 
-- [`GRASS_TOPS`](terrain_view_appearance.rs#L24) — Las caras superiores extra que una columna de hierba puede hacer crecer, y la proporción de toda la hierba que cada una debería cubrir.
+- [`GRASS_TOPS`](terrain_view_appearance.rs#L26) — Las caras superiores extra que una columna de hierba puede hacer crecer, y la proporción de toda la hierba que cada una debería cubrir.
   - Declaración: `const GRASS_TOPS: &[(&str, f64)] = &[ ("/assets/grass/block_flowers.png", 0.05), ("/assets/grass/block_flowers_2.png", 0.04), ("/assets/grass/block_wildflowers_red.png", 0.025), ("/assets/grass/block_wildflowers_white.png", 0.025), ("/assets/grass/block_leaves.png", 0.04), ("/assets/grass/block_pebbles.png", 0.035), ("/assets/grass/block_mushrooms.png", 0.015), ];`
 
 ### `terrain_view_blocks.rs`
