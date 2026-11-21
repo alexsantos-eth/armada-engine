@@ -48,6 +48,18 @@ pub struct ItemDef {
     /// Most units one inventory slot holds.
     pub stack: u32,
     pub rarity: ItemRarity,
+    /// Colour of the chips a blow knocks off what yields it, as six hex digits (`a0703c`).
+    #[serde(default)]
+    color: Option<String>,
+}
+
+impl ItemDef {
+    /// The colour of its chips as `0xRRGGBB`, if it declares one.
+    pub fn color(&self) -> Option<u32> {
+        self.color
+            .as_deref()
+            .and_then(|hex| u32::from_str_radix(hex, 16).ok())
+    }
 }
 
 /// One tool: equipment kept apart from the inventory slots.
@@ -129,6 +141,7 @@ pub enum ItemsError {
     UnknownItem { id: String },
     InvalidYield { id: String },
     InvalidWork { id: String },
+    InvalidColor { id: String },
 }
 
 impl std::fmt::Display for ItemsError {
@@ -159,6 +172,9 @@ impl std::fmt::Display for ItemsError {
             Self::UnknownItem { id } => write!(f, "harvest yields undeclared item {id}"),
             Self::InvalidYield { id } => write!(f, "harvest of {id} yields nothing"),
             Self::InvalidWork { id } => write!(f, "harvest of {id} takes no work"),
+            Self::InvalidColor { id } => {
+                write!(f, "item {id} has a colour that is not six hex digits")
+            }
         }
     }
 }
@@ -205,6 +221,10 @@ pub fn parse_items(json: &str, entities: &EntityCatalog) -> Result<ItemCatalog, 
         check_id(&item.id, &mut seen)?;
         if item.stack == 0 {
             return Err(ItemsError::InvalidStack { id: item.id });
+        }
+        let hex_ok = |hex: &str| hex.len() == 6 && hex.chars().all(|c| c.is_ascii_hexdigit());
+        if item.color.as_deref().is_some_and(|hex| !hex_ok(hex)) {
+            return Err(ItemsError::InvalidColor { id: item.id });
         }
         items.insert(item.id.clone(), item);
     }

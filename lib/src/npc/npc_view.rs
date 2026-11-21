@@ -54,6 +54,7 @@ pub fn npc_moment(npc: &Npc, moved: f64, elapsed_ms: f64) -> PlayerMoment {
         },
         flip: None,
         elapsed_ms,
+        gather: None,
     }
 }
 

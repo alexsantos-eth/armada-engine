@@ -146,6 +146,14 @@ impl Game {
         self.npcs.step(&ground, player, ticks);
     }
 
+    /// What the player is striking: the harvest's target while the player is in the gathering
+    /// state, for the blow's facing, the swing and the shake.
+    pub(crate) fn struck_target(&self) -> Option<iso::harvest::HarvestTarget> {
+        (self.player.motion == iso::player::PlayerMotionType::Gathering)
+            .then(|| self.harvest_status.target().cloned())
+            .flatten()
+    }
+
     /// The harvest's share of the fixed step: picks what is in reach from the chunks around the
     /// player, works on it `ticks` ticks while `held`, and when it is gathered takes it out of the
     /// world and puts its yields away.
@@ -179,12 +187,20 @@ impl Game {
             &self.carried,
             &self.items,
         );
+        let color = status
+            .target()
+            .and_then(|target| self.items.harvest_rule(&target.blueprint))
+            .and_then(|rule| rule.yields.first())
+            .and_then(|first| self.items.item(&first.item))
+            .and_then(iso::items::ItemDef::color);
+        let mut felled = None;
         if let iso::harvest::HarvestStatus::Done { target, yields } = &status
             && let Some(taken) = self
                 .manager
                 .remove_entity_at(target.anchor.x, target.anchor.y)
         {
             if taken.id() == target.id {
+                felled = Some(target.clone());
                 for gained in yields {
                     self.carried
                         .inventory
@@ -199,6 +215,9 @@ impl Game {
                 self.manager.put_entity(taken);
             }
         }
+        let struck = held.then(|| status.target()).flatten();
+        self.impacts
+            .notice(self.harvester.strikes(), struck, felled.as_ref(), color);
         self.harvest_status = status;
     }
 
@@ -238,6 +257,16 @@ impl Game {
             self.toggle_jetpack();
         }
         set_player_jetpack(&mut self.player, self.jetpack);
+        let engaged = self.streams
+            && input.gather_held
+            && self.player.vertical_speed.is_none()
+            && self.player.swim.is_none()
+            && matches!(
+                self.harvest_status,
+                iso::harvest::HarvestStatus::Ready { .. }
+                    | iso::harvest::HarvestStatus::Working { .. }
+            );
+        iso::player::physics::set_player_gathering(&mut self.player, engaged);
 
         if input.jump_pressed {
             jump_player(&mut self.player);

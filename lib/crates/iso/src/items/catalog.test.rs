@@ -51,7 +51,7 @@ pub(crate) fn catalog_json() -> &'static str {
     r#"{
         "schemaVersion": 1,
         "items": [
-            { "id": "wood", "name": "Madera", "stack": 50, "rarity": "common" },
+            { "id": "wood", "name": "Madera", "stack": 50, "rarity": "common", "color": "a0703c" },
             { "id": "stone", "name": "Piedra", "stack": 50, "rarity": "common" },
             { "id": "fiber", "name": "Fibra", "stack": 99, "rarity": "common" },
             { "id": "copper_ore", "name": "Cobre", "stack": 30, "rarity": "rare" }
@@ -281,5 +281,21 @@ fn rejects_a_hand_rule_with_a_tier() {
         Err(ItemsError::InvalidTier {
             id: "tall_grass".into()
         })
+    );
+}
+
+#[test]
+fn an_item_may_carry_the_colour_of_its_chips() {
+    let catalog = parsed();
+    assert_eq!(catalog.item("wood").unwrap().color(), Some(0xa0703c));
+    assert_eq!(catalog.item("stone").unwrap().color(), None);
+}
+
+#[test]
+fn rejects_a_colour_that_is_not_six_hex_digits() {
+    let json = with(|value| value["items"][0]["color"] = "brown".into());
+    assert_eq!(
+        parse_items(&json, &entities()),
+        Err(ItemsError::InvalidColor { id: "wood".into() })
     );
 }

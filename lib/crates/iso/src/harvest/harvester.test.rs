@@ -16,6 +16,7 @@ fn target(blueprint: &str, x: i32) -> HarvestTarget {
         id: format!("{blueprint}@{x},0"),
         anchor: WorldCoord { x, y: 0 },
         blueprint: blueprint.to_owned(),
+        elevation: 0,
     }
 }
 
@@ -188,5 +189,71 @@ fn a_full_inventory_refuses_the_harvest() {
             target: tree,
             reason: HarvestBlock::InventoryFull
         }
+    );
+}
+
+#[test]
+fn blows_land_on_the_beat_of_the_swing() {
+    let items = items();
+    let carried = Carried::starting(4, &items);
+    let rock = target("tree", 1);
+    let mut harvester = Harvester::default();
+    step(
+        &mut harvester,
+        true,
+        Some(&rock),
+        &carried,
+        HARVEST_STRIKE_AT - 1,
+    );
+    assert_eq!(harvester.strikes(), 0);
+    assert_eq!(harvester.swing(), HARVEST_STRIKE_AT - 1);
+    step(&mut harvester, true, Some(&rock), &carried, 1);
+    assert_eq!(harvester.strikes(), 1);
+    step(
+        &mut harvester,
+        true,
+        Some(&rock),
+        &carried,
+        HARVEST_STRIKE_TICKS,
+    );
+    assert_eq!(harvester.strikes(), 2);
+}
+
+#[test]
+fn letting_go_starts_the_next_swing_from_the_top_but_keeps_the_count() {
+    let carried = Carried::starting(4, &items());
+    let tree = target("tree", 1);
+    let mut harvester = Harvester::default();
+    step(
+        &mut harvester,
+        true,
+        Some(&tree),
+        &carried,
+        HARVEST_STRIKE_AT + 2,
+    );
+    step(&mut harvester, false, Some(&tree), &carried, 1);
+    assert_eq!(harvester.swing(), 0);
+    assert_eq!(harvester.strikes(), 1);
+}
+
+#[test]
+fn every_status_but_idle_names_its_target() {
+    let tree = target("tree", 1);
+    assert_eq!(HarvestStatus::Idle.target(), None);
+    assert_eq!(
+        HarvestStatus::Ready {
+            target: tree.clone()
+        }
+        .target(),
+        Some(&tree)
+    );
+    assert_eq!(
+        HarvestStatus::Working {
+            target: tree.clone(),
+            progress: 1,
+            total: 2
+        }
+        .target(),
+        Some(&tree)
     );
 }

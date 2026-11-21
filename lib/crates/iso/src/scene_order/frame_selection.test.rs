@@ -15,6 +15,7 @@ fn input() -> PlayerFrameInput {
         air_pose: Some(3),
         swim: None,
         flip: None,
+        gather: None,
     }
 }
 
@@ -173,4 +174,37 @@ fn a_climb_still_wins_over_a_somersault() {
         .sheet,
         PlayerSheet::Climb
     );
+}
+
+#[test]
+fn a_gathering_player_is_drawn_through_its_blow() {
+    let gathering = |swing: f64| {
+        select_player_frame(PlayerFrameInput {
+            jump_pose: None,
+            gather: Some(GatherInput { columns: 8, swing }),
+            ..input()
+        })
+    };
+    assert_eq!(
+        gathering(0.0),
+        PlayerFrame {
+            sheet: PlayerSheet::Gather,
+            pose: 0
+        }
+    );
+    assert_eq!(gathering(0.6).pose, 4);
+    assert_eq!(gathering(0.99).pose, 7);
+    assert_eq!(gathering(1.0).pose, 0);
+}
+
+#[test]
+fn a_jump_still_wins_over_a_blow() {
+    let frame = select_player_frame(PlayerFrameInput {
+        gather: Some(GatherInput {
+            columns: 8,
+            swing: 0.5,
+        }),
+        ..input()
+    });
+    assert_eq!(frame.sheet, PlayerSheet::Jump);
 }

@@ -220,6 +220,7 @@ fn player_sheet_selection_matches_contract_fixture() {
             // These fixtures have no swim sheet.
             swim: None,
             flip: None,
+            gather: None,
         });
         let expected = &sample["expected"];
         let sheet = match expected["sheet"].as_str().unwrap() {

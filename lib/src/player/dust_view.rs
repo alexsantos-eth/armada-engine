@@ -93,10 +93,16 @@ const JET_FIRE_PUFF: usize = TRAIL_PUFF + RUN_PUFFS;
 /// The first puff of the smoke a jetpack trails behind it.
 const JET_SMOKE_PUFF: usize = JET_FIRE_PUFF + JET_FIRE_PUFFS;
 
-/// The whole pool: a take-off, a landing, a splash, a ring, a bump, the trail and the jetpack's flame
-/// and smoke. A swimmer's wake takes the trail's slots in pairs, so [`RUN_PUFFS`] has to be
-/// even for both arms of a V to live as long as each other.
-const PUFFS: usize = JET_SMOKE_PUFF + JET_SMOKE_PUFFS;
+/// Bursts of chips from the player's blows alive at once, reused in turn.
+pub const CHIP_PUFFS: usize = 4;
+
+/// The first burst of chips knocked off what the player gathers.
+const CHIP_PUFF: usize = JET_SMOKE_PUFF + JET_SMOKE_PUFFS;
+
+/// The whole pool: a take-off, a landing, a splash, a ring, a bump, the trail, the jetpack's flame
+/// and smoke, and the chips of the blows. A swimmer's wake takes the trail's slots in pairs, so
+/// [`RUN_PUFFS`] has to be even for both arms of a V to live as long as each other.
+const PUFFS: usize = CHIP_PUFF + CHIP_PUFFS;
 
 /// Where the player's dust rises from this frame, and how far it has come since the last.
 #[derive(Clone, Copy, Debug)]
@@ -155,6 +161,8 @@ pub struct DustPuffs {
     /// The puffs of flame and of smoke to reuse next.
     jet_fire_puff: usize,
     jet_smoke_puff: usize,
+    /// The burst of chips to reuse next.
+    chip_puff: usize,
 }
 
 impl Default for DustPuffs {
@@ -179,6 +187,7 @@ impl DustPuffs {
             jet_smoke_ms: f64::INFINITY,
             jet_fire_puff: 0,
             jet_smoke_puff: 0,
+            chip_puff: 0,
         }
     }
 
@@ -451,6 +460,26 @@ impl DustPuffs {
             level: at.level,
             ms: Some(0.0),
         });
+    }
+
+    /// Raises a burst of chips of `shape` where a blow lands (`at.feet`, at `at.level`), thrown
+    /// along `kick`; the oldest burst gives its slot up when they are all alive.
+    pub fn chip(
+        &mut self,
+        shape: DustShape,
+        at: DustGround,
+        kick: GridPoint,
+        top_at: &impl Fn(i32, i32) -> Option<f64>,
+    ) {
+        let index = CHIP_PUFF + self.chip_puff;
+        self.chip_puff = (self.chip_puff + 1) % CHIP_PUFFS;
+        self.raise(
+            index,
+            shape,
+            &at,
+            DustEmission { origin: ZERO, kick },
+            top_at,
+        );
     }
 
     /// Ages every live puff by `elapsed_ms` of real time, ending the ones whose life is over.

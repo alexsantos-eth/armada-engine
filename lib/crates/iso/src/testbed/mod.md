@@ -18,7 +18,7 @@ Tres decisiones que no son obvias:
 - **Un paso o termina el fotograma o no lo termina.** Los que solo cambian el mundo (`phase`,
   `teleport`, `edit`) se toman sobre la marcha y la máquina sigue al siguiente dentro del mismo
   fotograma; los que mueven al jugador, dejan pasar tiempo o capturan (`walk`, `jump`, `jetpack`,
-  `gather`, `wait`, `shot`) lo terminan. Por eso un `shot` nunca sale contaminado por el paso que lo sigue.
+  `gather`, `wait`, `shot`) lo terminan. Un `shot` justo después de un `gather` sigue manteniendo la tecla de recolectar, para que la captura muestre el golpe a medias y no al jugador de pie. Por eso un `shot` nunca sale contaminado por el paso que lo sigue.
 - **`settle` no cuenta segundos, espera a que la luz esté al día.** El cliente responde si lo que
   hay en pantalla está generado y con sus sombras horneadas y fundidas; el guion repite fotograma
   hasta que sí. Ese es el problema que hacía inservibles las capturas de `/maker`, donde el
@@ -88,15 +88,15 @@ Tres decisiones que no son obvias:
 
 #### Funciones y métodos
 
-- [`new`](script.rs#L55) — Una corrida de `steps` que se rinde a los `max_frames`.
+- [`new`](script.rs#L57) — Una corrida de `steps` que se rinde a los `max_frames`.
   - Firma: `pub fn new(steps: Vec<SceneStep>, max_frames: u32) -> Self {`
-- [`frames`](script.rs#L66) — Cuántos fotogramas lleva la corrida.
+- [`frames`](script.rs#L69) — Cuántos fotogramas lleva la corrida.
   - Firma: `pub const fn frames(&self) -> u32 {`
-- [`step`](script.rs#L71) — En qué paso va, contando desde cero.
+- [`step`](script.rs#L74) — En qué paso va, contando desde cero.
   - Firma: `pub const fn step(&self) -> usize {`
-- [`steps`](script.rs#L76) — Cuántos pasos tiene la corrida.
+- [`steps`](script.rs#L79) — Cuántos pasos tiene la corrida.
   - Firma: `pub const fn steps(&self) -> usize {`
-- [`frame`](script.rs#L82) — El fotograma que toca ahora; `lit` dice si lo que hay en pantalla ya está generado y con la luz horneada.
+- [`frame`](script.rs#L85) — El fotograma que toca ahora; `lit` dice si lo que hay en pantalla ya está generado y con la luz horneada.
   - Firma: `pub fn frame(&mut self, lit: bool) -> ScriptFrame {`
 
 ### `apply.rs`

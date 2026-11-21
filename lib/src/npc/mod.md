@@ -17,22 +17,22 @@ Cada personaje se dibuja con su aspecto (`iso::npc::npc_look`): el tamaño escal
 - [`npc_moment`](npc_view.rs#L33) — Lo que un fotograma de `npc` es para la animación del jugador: caminar o reposar en el suelo, el izado sobre un reborde o la caída de un bloque; nunca un salto propio, un nado o una carrera.
   - Firma: `pub fn npc_moment(npc: &Npc, moved: f64, elapsed_ms: f64) -> PlayerMoment {`
 
-- [`npc_sheets`](npc_view.rs#L61) — Las hojas de las que se dibuja un personaje: todas las del jugador menos nado y mortal.
+- [`npc_sheets`](npc_view.rs#L75) — Las hojas de las que se dibuja un personaje: todas las del jugador menos nado y mortal.
   - Firma: `pub fn npc_sheets(sheets: PlayerSheets) -> PlayerSheets {`
 
-- [`NpcViews::begin`](npc_view.rs#L87) — Marca todas las vistas como no vistas; las que no se dibujen antes de `finish` se sueltan.
+- [`NpcViews::begin`](npc_view.rs#L101) — Marca todas las vistas como no vistas; las que no se dibujen antes de `finish` se sueltan.
   - Firma: `pub fn begin(&mut self) {`
 
-- [`NpcViews::advance`](npc_view.rs#L94) — Cuenta un fotograma de `npc`, dibujado en `at`, y responde con su pose.
+- [`NpcViews::advance`](npc_view.rs#L108) — Cuenta un fotograma de `npc`, dibujado en `at`, y responde con su pose.
   - Firma: `pub fn advance( &mut self, npc: &Npc, at: GridPoint, elapsed_ms: f64, sheets: PlayerSheets, ) -> PlayerPose {`
 
-- [`NpcViews::finish`](npc_view.rs#L122) — Suelta la vista de quien no se dibujó desde `begin`.
+- [`NpcViews::finish`](npc_view.rs#L136) — Suelta la vista de quien no se dibujó desde `begin`.
   - Firma: `pub fn finish(&mut self) {`
 
-- [`coat_color`](npc_view.rs#L70) — El color por el que se multiplica el dibujo de un personaje, a partir de su pelaje `0xRRGGBB`.
+- [`coat_color`](npc_view.rs#L84) — El color por el que se multiplica el dibujo de un personaje, a partir de su pelaje `0xRRGGBB`.
   - Firma: `pub fn coat_color(tint: u32) -> macroquad::color::Color {`
 
-- [`scaled_shadow`](npc_view.rs#L77) — La sombra de suelo de un personaje `scale` veces el tamaño del jugador: igual de ancha y honda que su cuerpo, desde el mismo sitio.
+- [`scaled_shadow`](npc_view.rs#L91) — La sombra de suelo de un personaje `scale` veces el tamaño del jugador: igual de ancha y honda que su cuerpo, desde el mismo sitio.
   - Firma: `pub fn scaled_shadow(shadow: PlayerShadow, scale: f64) -> PlayerShadow {`
 
 #### Tipos

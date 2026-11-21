@@ -17,6 +17,7 @@ fn tree() -> HarvestTarget {
         id: "tree@1,0".into(),
         anchor: WorldCoord { x: 1, y: 0 },
         blueprint: "tree".into(),
+        elevation: 0,
     }
 }
 

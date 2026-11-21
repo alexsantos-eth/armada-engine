@@ -1263,3 +1263,17 @@ fn a_body_stepping_into_the_player_pushes_it_out() {
     assert_eq!(player.vertical_speed, None);
     assert_eq!(player.motion, PlayerMotionType::Idle);
 }
+
+#[test]
+fn a_gathering_player_stands_still_and_strikes() {
+    let mut ground = ground_from(&["......", "......", "......"]);
+    let mut player = create_player(&ground, GridPoint { x: 1.0, y: 1.0 });
+    player.walk = GridPoint { x: 1.0, y: 0.0 };
+    set_player_gathering(&mut player, true);
+    step_player(&mut player, &mut ground, 10);
+    assert_eq!(player.motion, PlayerMotionType::Gathering);
+    assert_eq!((player.x, player.y), (1.0, 1.0));
+    set_player_gathering(&mut player, false);
+    step_player(&mut player, &mut ground, 1);
+    assert_eq!(player.motion, PlayerMotionType::Idle);
+}

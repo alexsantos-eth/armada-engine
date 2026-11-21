@@ -192,3 +192,19 @@ fn a_run_counts_its_steps_and_the_one_it_is_on() {
     run.frame(true);
     assert_eq!(run.step(), 1);
 }
+
+#[test]
+fn a_shot_right_after_a_gather_keeps_the_key_held() {
+    let mut run = script(vec![
+        SceneStep::Gather { frames: 1 },
+        SceneStep::Shot("a.png".to_owned()),
+        SceneStep::Wait { frames: 1 },
+        SceneStep::Shot("b.png".to_owned()),
+    ]);
+    assert!(run.frame(true).input.gather_held);
+    let shot = run.frame(true);
+    assert_eq!(shot.shots, vec!["a.png".to_owned()]);
+    assert!(shot.input.gather_held);
+    assert!(!run.frame(true).input.gather_held);
+    assert!(!run.frame(true).input.gather_held);
+}

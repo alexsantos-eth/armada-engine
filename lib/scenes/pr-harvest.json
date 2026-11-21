@@ -50,19 +50,27 @@
     },
     {
       "gather": {
-        "frames": 20
+        "frames": 17
       }
     },
     {
-      "shot": "harvest-1-working.png"
+      "shot": "harvest-1-strike.png"
     },
     {
       "gather": {
-        "frames": 22
+        "frames": 4
       }
     },
     {
-      "shot": "harvest-2-wood.png"
+      "shot": "harvest-2-windup.png"
+    },
+    {
+      "gather": {
+        "frames": 19
+      }
+    },
+    {
+      "shot": "harvest-3-felled.png"
     },
     {
       "walk": {
@@ -75,11 +83,19 @@
     },
     {
       "gather": {
-        "frames": 32
+        "frames": 17
       }
     },
     {
-      "shot": "harvest-3-stone.png"
+      "shot": "harvest-4-rock.png"
+    },
+    {
+      "gather": {
+        "frames": 14
+      }
+    },
+    {
+      "shot": "harvest-5-stone.png"
     }
   ],
   "out": "shots",

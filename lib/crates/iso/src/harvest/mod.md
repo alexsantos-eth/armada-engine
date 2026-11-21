@@ -6,6 +6,9 @@ Este dominio decide qué puede recolectar el jugador desde donde está y lleva e
 - **Trabajo** (`harvester.rs`): mientras se mantiene la tecla de recolectar sobre el mismo objetivo, cada tick fijo suma la velocidad de la mejor herramienta del tipo pedido (`tool_speed_tenths`). Soltar la tecla pausa el trabajo; cambiar de objetivo o perderlo de alcance empieza de cero. Sin la herramienta o el nivel pedidos, o sin sitio para todo el rendimiento, el objetivo queda bloqueado y no avanza.
 - Al terminar (`HarvestStatus::Done`), quien llama saca la entidad del mundo (`ChunkManager::remove_entity_at`) y guarda el rendimiento; la entidad quitada viaja con su chunk en el guardado, así que no vuelve al reabrir.
 
+- **Golpes** (`harvester.rs`): mientras se trabaja, el jugador golpea a un ritmo fijo, independiente de la herramienta: un golpe cada `HARVEST_STRIKE_TICKS` ticks, que cae en el tick `HARVEST_STRIKE_AT` (la pose de impacto de la hoja `gather` del jugador está en ese punto). `Harvester::swing` dice en qué tick del golpe va y `Harvester::strikes` cuenta los golpes dados, sin volver atrás, para que la vista note uno nuevo y sacuda la entidad y suelte astillas.
+- **Astillas** (`chips.rs`): formas del polvo del jugador (`DustShape`) con el color del item que da el objetivo (`strike_chips`, y `felled_chips`, más y más amplias, cuando cae), y el punto del objetivo donde caen las manos (`strike_point`, `STRIKE_LIFT`).
+
 El trabajo en curso no se guarda: un objetivo a medias empieza de cero tras recargar. La fauna (NPC) todavía no se recolecta: los personajes nacen de la semilla y no se guardan, así que se rechaza en el catálogo.
 
 ## Catálogo de API pública
@@ -14,7 +17,7 @@ El trabajo en curso no se guarda: un objetivo a medias empieza de cero tras reca
 
 #### Funciones y métodos
 
-- [`pick_harvest_target`](reach.rs#L36) — La entidad recolectable más cercana a los pies dentro del alcance; los empates los gana el id menor.
+- [`pick_harvest_target`](reach.rs#L38) — La entidad recolectable más cercana a los pies dentro del alcance; los empates los gana el id menor.
   - Firma: `pub fn pick_harvest_target<'a>( feet: Feet, entities: impl IntoIterator<Item = &'a Entity>, items: &ItemCatalog, ) -> Option<HarvestTarget> {`
 
 #### Constantes
@@ -28,23 +31,59 @@ El trabajo en curso no se guarda: un objetivo a medias empieza de cero tras reca
 
 - [`Feet`](reach.rs#L17) — Dónde están los pies del jugador: punto de columna (centros enteros) y altura.
   - Declaración: `pub struct Feet { pub at: GridPoint, pub elevation: f64 }`
-- [`HarvestTarget`](reach.rs#L24) — Una entidad recolectable: id de instancia, ancla y blueprint.
-  - Declaración: `pub struct HarvestTarget { pub id: String, pub anchor: WorldCoord, pub blueprint: String }`
+- [`HarvestTarget`](reach.rs#L24) — Una entidad recolectable: id de instancia, ancla, blueprint y el bloque sobre el que se apoya.
+  - Declaración: `pub struct HarvestTarget { pub id: String, pub anchor: WorldCoord, pub blueprint: String, pub elevation: i32 }`
 
 ### `harvester.rs`
 
 #### Funciones y métodos
 
-- [`Harvester::step`](harvester.rs#L62) — Avanza la recolección `ticks` ticks con lo que lleva el jugador y dice qué pasó.
+- [`HarvestStatus::target`](harvester.rs#L49) — El objetivo al alcance, pase lo que pase con él; `None` en `Idle`.
+  - Firma: `pub fn target(&self) -> Option<&HarvestTarget> {`
+- [`Harvester::swing`](harvester.rs#L162) — Ticks del golpe en curso, de `0` a `HARVEST_STRIKE_TICKS`; `0` es arriba, al empezar a bajar.
+  - Firma: `pub fn swing(&self) -> u32 {`
+- [`Harvester::strikes`](harvester.rs#L167) — Golpes dados desde que existe este recolector; nunca baja.
+  - Firma: `pub fn strikes(&self) -> u64 {`
+
+- [`Harvester::step`](harvester.rs#L83) — Avanza la recolección `ticks` ticks con lo que lleva el jugador y dice qué pasó.
   - Firma: `pub fn step( &mut self, input: HarvestInput<'_>, carried: &Carried, items: &ItemCatalog, ) -> HarvestStatus {`
+
+#### Constantes
+
+- [`HARVEST_STRIKE_TICKS`](harvester.rs#L9) — Ticks de un golpe: alzar, golpear, seguir.
+  - Declaración: `pub const HARVEST_STRIKE_TICKS: u32 = 10;`
+- [`HARVEST_STRIKE_AT`](harvester.rs#L11) — Tick del golpe en que caen las manos.
+  - Declaración: `pub const HARVEST_STRIKE_AT: u32 = 6;`
 
 #### Tipos
 
-- [`HarvestBlock`](harvester.rs#L10) — Por qué un objetivo no se puede recolectar: falta la herramienta (`NeedsTool { kind, tier }`) o el inventario está lleno.
+- [`HarvestBlock`](harvester.rs#L15) — Por qué un objetivo no se puede recolectar: falta la herramienta (`NeedsTool { kind, tier }`) o el inventario está lleno.
   - Declaración: `pub enum HarvestBlock { NeedsTool { kind: ToolKind, tier: u8 }, InventoryFull }`
-- [`HarvestStatus`](harvester.rs#L19) — Lo que hizo la recolección en este paso: `Idle`, `Ready`, `Blocked`, `Working { progress, total }` (décimas de tick a mano; también en pausa, con la tecla suelta) o `Done { target, yields }`.
+- [`HarvestStatus`](harvester.rs#L24) — Lo que hizo la recolección en este paso: `Idle`, `Ready`, `Blocked`, `Working { progress, total }` (décimas de tick a mano; también en pausa, con la tecla suelta) o `Done { target, yields }`.
   - Declaración: `pub enum HarvestStatus { Idle, Ready { .. }, Blocked { .. }, Working { .. }, Done { .. } }`
-- [`HarvestInput`](harvester.rs#L44) — La entrada de un paso: tecla mantenida, objetivo en alcance y ticks.
+- [`HarvestInput`](harvester.rs#L62) — La entrada de un paso: tecla mantenida, objetivo en alcance y ticks.
   - Declaración: `pub struct HarvestInput<'a> { pub held: bool, pub target: Option<&'a HarvestTarget>, pub ticks: u32 }`
-- [`Harvester`](harvester.rs#L55) — El trabajo sobre el objetivo actual; se conserva al soltar la tecla y se pierde al cambiar de objetivo, perderlo de alcance o quedar bloqueado.
+- [`Harvester`](harvester.rs#L74) — El trabajo sobre el objetivo actual; se conserva al soltar la tecla y se pierde al cambiar de objetivo, perderlo de alcance o quedar bloqueado.
   - Declaración: `pub struct Harvester { ... }`
+
+### `chips.rs`
+
+#### Funciones y métodos
+
+- [`darker`](chips.rs#L15) — Un color al 60 %, la cara en sombra de una astilla.
+  - Firma: `pub fn darker(color: u32) -> u32 {`
+- [`strike_chips`](chips.rs#L21) — La ráfaga de un golpe: pocas astillas pequeñas lanzadas hacia el jugador y hacia arriba.
+  - Firma: `pub fn strike_chips(color: u32) -> DustShape {`
+- [`strike_chips_of`](chips.rs#L37) — `strike_chips` de un item que puede no declarar color; sin él, polvo.
+  - Firma: `pub fn strike_chips_of(color: Option<u32>) -> DustShape {`
+- [`felled_chips`](chips.rs#L48) — La ráfaga del último golpe, cuando el objetivo cae: más astillas, más amplias y más largas.
+  - Firma: `pub fn felled_chips(color: u32) -> DustShape {`
+- [`strike_point`](chips.rs#L64) — Dónde cae un golpe sobre el objetivo anclado en `cell`: `STRIKE_REACH` del camino desde el centro de la casilla hacia los pies.
+  - Firma: `pub fn strike_point(cell: WorldCoord, feet: GridPoint) -> GridPoint {`
+
+#### Constantes
+
+- [`STRIKE_REACH`](chips.rs#L9) — Parte del camino desde la casilla del objetivo hacia el jugador en la que cae el golpe.
+  - Declaración: `pub const STRIKE_REACH: f64 = 0.35;`
+- [`STRIKE_LIFT`](chips.rs#L12) — Bloques sobre la base del objetivo a los que cae el golpe: la altura de las manos.
+  - Declaración: `pub const STRIKE_LIFT: f64 = 0.45;`

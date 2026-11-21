@@ -28,6 +28,8 @@ pub struct HarvestTarget {
     pub anchor: WorldCoord,
     /// Its blueprint, which names its harvest rule.
     pub blueprint: String,
+    /// The block its base stands on, where the blows land.
+    pub elevation: i32,
 }
 
 /// The harvestable entity among `entities` with a footprint cell nearest to `feet` within
@@ -73,6 +75,7 @@ pub fn pick_harvest_target<'a>(
             y: entity.y(),
         },
         blueprint: entity.type_().to_owned(),
+        elevation: entity.elevation(),
     })
 }
 

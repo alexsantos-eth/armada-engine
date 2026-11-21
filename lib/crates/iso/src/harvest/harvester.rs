@@ -5,6 +5,11 @@ use crate::harvest::HarvestTarget;
 use crate::inventory::Carried;
 use crate::items::{HarvestYield, ItemCatalog, ToolKind, tool_speed_tenths};
 
+/// Fixed ticks of one blow of the gathering swing: wind up, strike, follow through.
+pub const HARVEST_STRIKE_TICKS: u32 = 10;
+/// Tick of the swing on which the blow lands; the gather sheet's strike pose matches it.
+pub const HARVEST_STRIKE_AT: u32 = 6;
+
 /// Why a target in reach cannot be gathered now.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HarvestBlock {
@@ -39,6 +44,19 @@ pub enum HarvestStatus {
     },
 }
 
+impl HarvestStatus {
+    /// The target in reach, whatever is happening to it; `None` when idle.
+    pub fn target(&self) -> Option<&HarvestTarget> {
+        match self {
+            Self::Idle => None,
+            Self::Ready { target }
+            | Self::Blocked { target, .. }
+            | Self::Working { target, .. }
+            | Self::Done { target, .. } => Some(target),
+        }
+    }
+}
+
 /// One fixed step's input to the harvest.
 #[derive(Clone, Copy, Debug)]
 pub struct HarvestInput<'a> {
@@ -56,6 +74,8 @@ pub struct HarvestInput<'a> {
 pub struct Harvester {
     target: Option<String>,
     progress: u32,
+    swing_ticks: u32,
+    strikes: u64,
 }
 
 impl Harvester {
@@ -103,6 +123,7 @@ impl Harvester {
         }
         let total = rule.ticks.saturating_mul(tool_speed_tenths(0));
         if !input.held {
+            self.swing_ticks = 0;
             if self.progress == 0 {
                 return HarvestStatus::Ready {
                     target: target.clone(),
@@ -117,6 +138,12 @@ impl Harvester {
         self.progress = self
             .progress
             .saturating_add(input.ticks.saturating_mul(speed));
+        for _ in 0..input.ticks {
+            self.swing_ticks = (self.swing_ticks + 1) % HARVEST_STRIKE_TICKS;
+            if self.swing_ticks == HARVEST_STRIKE_AT {
+                self.strikes += 1;
+            }
+        }
         if self.progress >= total {
             self.reset();
             return HarvestStatus::Done {
@@ -131,10 +158,21 @@ impl Harvester {
         }
     }
 
-    /// Forgets the work in hand.
+    /// Ticks into the current blow of the swing, `0..HARVEST_STRIKE_TICKS`; `0` is the top.
+    pub fn swing(&self) -> u32 {
+        self.swing_ticks
+    }
+
+    /// Blows landed since this harvester was made; never goes back, so a view can tell a new one.
+    pub fn strikes(&self) -> u64 {
+        self.strikes
+    }
+
+    /// Forgets the work in hand; the count of blows stays.
     fn reset(&mut self) {
         self.target = None;
         self.progress = 0;
+        self.swing_ticks = 0;
     }
 }
 

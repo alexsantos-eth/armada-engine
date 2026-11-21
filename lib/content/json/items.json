@@ -5,49 +5,57 @@
       "id": "wood",
       "name": "Madera",
       "stack": 50,
-      "rarity": "common"
+      "rarity": "common",
+      "color": "9a6a3c"
     },
     {
       "id": "stone",
       "name": "Piedra",
       "stack": 50,
-      "rarity": "common"
+      "rarity": "common",
+      "color": "9c9a94"
     },
     {
       "id": "fiber",
       "name": "Fibra",
       "stack": 99,
-      "rarity": "common"
+      "rarity": "common",
+      "color": "9fbf5a"
     },
     {
       "id": "mushroom",
       "name": "Hongo",
       "stack": 20,
-      "rarity": "common"
+      "rarity": "common",
+      "color": "d8c3a0"
     },
     {
       "id": "coconut",
       "name": "Coco",
       "stack": 20,
-      "rarity": "common"
+      "rarity": "common",
+      "color": "7a5230"
     },
     {
       "id": "bone",
       "name": "Hueso",
       "stack": 30,
-      "rarity": "common"
+      "rarity": "common",
+      "color": "eee6d2"
     },
     {
       "id": "copper_ore",
       "name": "Cobre",
       "stack": 30,
-      "rarity": "rare"
+      "rarity": "rare",
+      "color": "c07a45"
     },
     {
       "id": "amber",
       "name": "Ambar",
       "stack": 30,
-      "rarity": "rare"
+      "rarity": "rare",
+      "color": "e8a33a"
     }
   ],
   "tools": [

@@ -97,6 +97,8 @@ pub const PLAYER_JUMP_SHEET: &str = "/assets/player-16/jump.png";
 pub const PLAYER_CLIMB_SHEET: &str = "/assets/player-16/climb.png";
 pub const PLAYER_SWIM_SHEET: &str = "/assets/player-16/swim.png";
 pub const PLAYER_FLIP_SHEET: &str = "/assets/player-16/flip.png";
+/// The blow of a gathering player, both hands brought down on what is in reach.
+pub const PLAYER_GATHER_SHEET: &str = "/assets/player-16/gather.png";
 /// The jetpack on the player's back: one column per facing, cut where the standing body hides
 /// it, so it is drawn over whatever pose the body is in.
 pub const PLAYER_JETPACK_SHEET: &str = "/assets/player-16/jetpack.png";

@@ -17,19 +17,21 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`new`](dust_view.rs#L167) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
+- [`new`](dust_view.rs#L175) — Construye una instancia nueva con los valores iniciales indicados por los parámetros.
   - Firma: `pub fn new() -> Self {`
 
-- [`live`](dust_view.rs#L186) — Cuántos soplos siguen elevándose, para el HUD y las pruebas.
+- [`live`](dust_view.rs#L195) — Cuántos soplos siguen elevándose, para el HUD y las pruebas.
   - Firma: `pub fn live(&self) -> usize {`
 
-- [`react`](dust_view.rs#L195) — Detecta lo que ha hecho el jugador desde el último frame y levanta el polvo correspondiente: un soplo
+- [`chip`](dust_view.rs#L467) — Levanta una ráfaga de astillas de un golpe donde caen las manos, lanzada según `kick`; las ráfagas viven en su propio grupo de `CHIP_PUFFS` huecos, reutilizados por turno.
+  - Firma: `pub fn chip( &mut self, shape: DustShape, at: DustGround, kick: GridPoint, top_at: &impl Fn(i32, i32) -> Option<f64>, ) {`
+- [`react`](dust_view.rs#L204) — Detecta lo que ha hecho el jugador desde el último frame y levanta el polvo correspondiente: un soplo
   - Firma: `pub fn react( &mut self, player: &PlayerState, at: DustGround, top_at: &impl Fn(i32, i32) -> Option<f64>, ) {`
 
-- [`advance`](dust_view.rs#L457) — Envejece cada soplo vivo en `elapsed_ms` de tiempo real, terminando los cuya vida ha acabado.
+- [`advance`](dust_view.rs#L486) — Envejece cada soplo vivo en `elapsed_ms` de tiempo real, terminando los cuya vida ha acabado.
   - Firma: `pub fn advance(&mut self, elapsed_ms: f64) {`
 
-- [`collect`](dust_view.rs#L466) — Encola cada cubo de polvo vivo en `draws`, cada uno a la profundidad que tomó cuando su soplo
+- [`collect`](dust_view.rs#L495) — Encola cada cubo de polvo vivo en `draws`, cada uno a la profundidad que tomó cuando su soplo
   - Firma: `pub fn collect(&self, projection: ProjectionConfig, draws: &mut Vec<SpriteDraw>) {`
 
 #### Constantes
@@ -159,24 +161,24 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`jump_poses`](player_view.rs#L70) — Las columnas de las cinco fases de salto en una hoja que nombra sus columnas (`data-poses`).
+- [`jump_poses`](player_view.rs#L76) — Las columnas de las cinco fases de salto en una hoja que nombra sus columnas (`data-poses`).
   - Firma: `pub fn jump_poses(poses: &[String], columns: usize) -> Option<[usize; 5]> {`
 
-- [`advance`](player_view.rs#L118) — Tiene en cuenta un frame y responde con la pose a dibujar.
+- [`advance`](player_view.rs#L124) — Tiene en cuenta un frame y responde con la pose a dibujar.
   - Firma: `pub fn advance(&mut self, moment: PlayerMoment, sheets: PlayerSheets) -> PlayerPose {`
 
-- [`facing_name`](player_view.rs#L229) — El nombre de la orientación con la que se dibuja al jugador, para el HUD.
+- [`facing_name`](player_view.rs#L241) — El nombre de la orientación con la que se dibuja al jugador, para el HUD.
   - Firma: `pub fn facing_name(&self) -> &'static str {`
 
-- [`facing`](player_view.rs#L224) — La orientación con la que se dibuja al jugador, índice en `PLAYER_FACINGS`: de ahí se saca lo que lleva a la espalda (las toberas del jetpack).
+- [`facing`](player_view.rs#L236) — La orientación con la que se dibuja al jugador, índice en `PLAYER_FACINGS`: de ahí se saca lo que lleva a la espalda (las toberas del jetpack).
   - Firma: `pub fn facing(&self) -> usize {`
 
-- [`walked`](player_view.rs#L234) — Distancia de la zancada visual actual, incluida la pedalada inversa del derrape.
+- [`walked`](player_view.rs#L246) — Distancia de la zancada visual actual, incluida la pedalada inversa del derrape.
   - Firma: `pub fn walked(&self) -> f64 {`
 
 #### Constantes
 
-- [`WALK_STRIDE`](player_view.rs#L10) — Columnas recorridas por ciclo de la hoja de caminar:
+- [`WALK_STRIDE`](player_view.rs#L11) — Columnas recorridas por ciclo de la hoja de caminar:
   - Declaración: `pub const WALK_STRIDE: f64 = 1.4;`
 
 - [`SWIM_STRIDE`](player_view.rs) — Columnas nadadas por ciclo del crol: una brazada de cada brazo. Más corta que [`WALK_STRIDE`], porque quien nada avanza menos por brazada que quien camina por paso.
@@ -185,22 +187,22 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`SWIM_MOVING`](player_view.rs) — Columnas por frame por debajo de las cuales quien nada cuenta como quieto, y se queda flotando en vez de bracear.
   - Declaración: `pub const SWIM_MOVING: f64 = 0.0005;`
 
-- [`IDLE_PERIOD_MS`](player_view.rs#L21) — Milisegundos reales que dura un ciclo de la hoja de reposo: dos compases del baile del mono.
+- [`IDLE_PERIOD_MS`](player_view.rs#L22) — Milisegundos reales que dura un ciclo de la hoja de reposo: dos compases del baile del mono.
   - Declaración: `pub const IDLE_PERIOD_MS: f64 = 900.0;`
 
-- [`IDLE_DELAY_MS`](player_view.rs#L24) — Milisegundos que el jugador permanece quieto antes de que empiece su ciclo de reposo, de modo que al pararse para un
+- [`IDLE_DELAY_MS`](player_view.rs#L25) — Milisegundos que el jugador permanece quieto antes de que empiece su ciclo de reposo, de modo que al pararse para un
   - Declaración: `pub const IDLE_DELAY_MS: f64 = 300.0;`
 
-- [`AIR_POSE`](player_view.rs#L27) — La pose de caminar usada en el aire cuando no hay hoja de salto: las piernas más separadas, un brinco.
+- [`AIR_POSE`](player_view.rs#L28) — La pose de caminar usada en el aire cuando no hay hoja de salto: las piernas más separadas, un brinco.
   - Declaración: `pub const AIR_POSE: i32 = 3;`
 
-- [`SKID_PEDAL`](player_view.rs#L30) — A qué velocidad pedalean los pies mientras el jugador derrapa: el doble del paso al caminar, y hacia atrás cuando
+- [`SKID_PEDAL`](player_view.rs#L31) — A qué velocidad pedalean los pies mientras el jugador derrapa: el doble del paso al caminar, y hacia atrás cuando
   - Declaración: `pub const SKID_PEDAL: f64 = 2.0;`
 
-- [`START_FACING`](player_view.rs#L33) — La orientación con la que empieza el jugador, antes de haber caminado a ningún sitio: hacia la cámara, que
+- [`START_FACING`](player_view.rs#L34) — La orientación con la que empieza el jugador, antes de haber caminado a ningún sitio: hacia la cámara, que
   - Declaración: `pub const START_FACING: usize = 12;`
 
-- [`TURN_MS_PER_FACING`](player_view.rs#L36) — Milisegundos reales que la figura pasa en cada orientación por la que transita mientras gira.
+- [`TURN_MS_PER_FACING`](player_view.rs#L37) — Milisegundos reales que la figura pasa en cada orientación por la que transita mientras gira.
   - Declaración: `pub const TURN_MS_PER_FACING: f64 = 35.0;`
 
 ### `player_shadow.rs`
@@ -250,19 +252,19 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`default`](dust_view.rs#L161) — Implementación de `Default`: la vista de polvo o de jugador vacía.
+- [`default`](dust_view.rs#L169) — Implementación de `Default`: la vista de polvo o de jugador vacía.
   - Firma: `fn default() -> Self {`
 
-- [`kick`](dust_view.rs#L277) — El rastro que un jugador corriendo o derrapando levanta tras sus pies, un soplo cada tramo de
+- [`kick`](dust_view.rs#L286) — El rastro que un jugador corriendo o derrapando levanta tras sus pies, un soplo cada tramo de
   - Firma: `fn kick( &mut self, player: &PlayerState, at: DustGround, top_at: &impl Fn(i32, i32) -> Option<f64>, ) {`
 
-- [`burn`](dust_view.rs#L374) — La llama y el humo que el jetpack quema por sus toberas mientras se vuela: ambos salen de las toberas de la espalda (`iso::player::jet_nozzle`, `JET_NOZZLE_LIFT`) y no de los pies, así que el orden de dibujo los deja delante o detrás del cuerpo según hacia dónde derivan. En el suelo no se quema nada y los relojes vuelven a infinito, para que el primer fotograma de un vuelo encienda ya.
+- [`burn`](dust_view.rs#L383) — La llama y el humo que el jetpack quema por sus toberas mientras se vuela: ambos salen de las toberas de la espalda (`iso::player::jet_nozzle`, `JET_NOZZLE_LIFT`) y no de los pies, así que el orden de dibujo los deja delante o detrás del cuerpo según hacia dónde derivan. En el suelo no se quema nada y los relojes vuelven a infinito, para que el primer fotograma de un vuelo encienda ya.
   - Firma: `fn burn( &mut self, player: &PlayerState, at: DustGround, top_at: &impl Fn(i32, i32) -> Option<f64>, ) {`
 
-- [`raise`](dust_view.rs#L432) — Levanta la bocanada `index` con `shape` en el emisor indicado; descarta la anterior.
+- [`raise`](dust_view.rs#L441) — Levanta la bocanada `index` con `shape` en el emisor indicado; descarta la anterior.
   - Firma: `fn raise( &mut self, index: usize, shape: DustShape, feet: GridPoint, level: f64, kick: GridPoint, origin: GridPoint, tile_height: f64, top_at: &impl Fn(i32, i32) -> Option<f64>, ) {`
 
-- [`voxel_key`](dust_view.rs#L532) — Dónde se ordena un cubo de polvo en la escena: la columna sobre la que está a mitad de su vida, y
+- [`voxel_key`](dust_view.rs#L561) — Dónde se ordena un cubo de polvo en la escena: la columna sobre la que está a mitad de su vida, y
   - Firma: `fn voxel_key( voxel: DustVoxel, feet: GridPoint, level: f64, tile_height: f64, top_at: &impl Fn(i32, i32) -> Option<f64>, ) -> DrawKey {`
 
 ### `player_shadow.rs`
@@ -295,10 +297,10 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`intersection`](shadow_clip.rs#L202) — El punto donde el segmento `from → to` cruza la línea del borde `a → b`, con el alfa interpolado.
   - Firma: `fn intersection( from: ShadowVertex, to: ShadowVertex, a: (f64, f64), b: (f64, f64), ) -> ShadowVertex {`
 
-- [`offset`](dust_view.rs#L563) — Las caras del voxel movidas al punto sobre el que se apoya.
+- [`offset`](dust_view.rs#L592) — Las caras del voxel movidas al punto sobre el que se apoya.
   - Firma: `fn offset(faces: VoxelFaces, x: f64, y: f64) -> VoxelFaces {`
 
-- [`colours`](dust_view.rs#L573) — Los colores de las tres caras para un cubo de `shade` en `alpha`: cada cara con su propio casi blanco
+- [`colours`](dust_view.rs#L602) — Los colores de las tres caras para un cubo de `shade` en `alpha`: cada cara con su propio casi blanco
   - Firma: `fn colours(shade: u32, alpha: f64) -> [Color; 3] {`
 
 #### Constantes internas
@@ -312,13 +314,13 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`BUMP_PUFF`](dust_view.rs#L85) — El soplo de `BUMP_DUST` que suelta un choque contra un cuerpo, en el punto de contacto (`feedback.bump_at` respecto a los pies dibujados) y lanzado por `feedback.bump_away`. Sale una vez por cada `feedback.bumps` nuevo.
   - Declaración: `const BUMP_PUFF: usize = 4;`
 
-- [`PUFFS`](dust_view.rs#L99) — El conjunto completo: un despegue, un aterrizaje, un chapuzón, un anillo, un choque, el rastro y la llama y el humo del jetpack.
-  - Declaración: `const PUFFS: usize = JET_SMOKE_PUFF + JET_SMOKE_PUFFS;`
+- [`PUFFS`](dust_view.rs#L105) — El conjunto completo: un despegue, un aterrizaje, un chapuzón, un anillo, un choque, el rastro y la llama y el humo del jetpack.
+  - Declaración: `const PUFFS: usize = CHIP_PUFF + CHIP_PUFFS;`
 
 - [`JET_FIRE_PUFF`](dust_view.rs#L91) / [`JET_SMOKE_PUFF`](dust_view.rs#L94) — El primer hueco de la llama y del humo que quema el jetpack; cada uno se recorre por turno.
   - Declaración: `const JET_FIRE_PUFF: usize = TRAIL_PUFF + RUN_PUFFS;`
 
-- [`ZERO`](dust_view.rs#L507) — Sin kick ni desplazamiento respecto a los pies.
+- [`ZERO`](dust_view.rs#L536) — Sin kick ni desplazamiento respecto a los pies.
   - Declaración: `const ZERO: GridPoint = GridPoint { x: 0.0, y: 0.0 };`
 
 ### `flip.rs`
@@ -338,19 +340,19 @@ El giro avanza a ritmo constante (una vuelta en `FLIP_MS`), porque un mortal ace
 
 #### Funciones internas
 
-- [`default`](player_view.rs#L105) — Implementación de `Default`: la vista de polvo o de jugador vacía.
+- [`default`](player_view.rs#L111) — Implementación de `Default`: la vista de polvo o de jugador vacía.
   - Firma: `fn default() -> Self {`
 
-- [`turn_towards`](player_view.rs#L201) — Avanza la orientación hacia `target` por el camino más corto, una orientación por
+- [`turn_towards`](player_view.rs#L213) — Avanza la orientación hacia `target` por el camino más corto, una orientación por
   - Firma: `fn turn_towards(&mut self, target: usize, elapsed_ms: f64) {`
 
-- [`pose`](player_view.rs#L238) — Pose del `frame`: hoja, pose y orientación actual.
+- [`pose`](player_view.rs#L250) — Pose del `frame`: hoja, pose y orientación actual.
   - Firma: `fn pose(&self, frame: PlayerFrame) -> PlayerPose {`
 
-- [`phase_column`](player_view.rs#L248) — Cuál de las cinco columnas de salto usa una fase; `Ground` nunca llega aquí y toma la
+- [`phase_column`](player_view.rs#L260) — Cuál de las cinco columnas de salto usa una fase; `Ground` nunca llega aquí y toma la
   - Firma: `fn phase_column(phase: PlayerJumpPhase) -> usize {`
 
 #### Constantes internas
 
-- [`PHASES`](player_view.rs#L71) — Fases del salto: `takeoff`, `rise`, `apex`, `fall`, `landing`.
+- [`PHASES`](player_view.rs#L77) — Fases del salto: `takeoff`, `rise`, `apex`, `fall`, `landing`.
   - Declaración: `const PHASES: [&str; 5] = ["takeoff", "rise", "apex", "fall", "landing"];`

@@ -22,9 +22,9 @@ use crate::effects::emitters::EffectSpot;
 use crate::effects::fire::FireSpot;
 use crate::game::config::{
     BAND_BLEED, ENTITY_LAYER, NpcArt, PLAYER_BEHIND_LAYER, PLAYER_CLIMB_SHEET, PLAYER_FLIP_SHEET,
-    PLAYER_FRONT_LAYER, PLAYER_IDLE_SHEET, PLAYER_JETPACK_DEPTH, PLAYER_JETPACK_SHEET,
-    PLAYER_JUMP_SHEET, PLAYER_SCALE, PLAYER_SWIM_SHEET, PLAYER_WALK_SHEET, PLAYER_XRAY,
-    SceneMetrics,
+    PLAYER_FRONT_LAYER, PLAYER_GATHER_SHEET, PLAYER_IDLE_SHEET, PLAYER_JETPACK_DEPTH,
+    PLAYER_JETPACK_SHEET, PLAYER_JUMP_SHEET, PLAYER_SCALE, PLAYER_SWIM_SHEET, PLAYER_WALK_SHEET,
+    PLAYER_XRAY, SceneMetrics,
 };
 use crate::game::frame::FrameView;
 use crate::game::ground::WaterField;
@@ -73,6 +73,7 @@ pub(crate) fn player_sheets(atlas: &SpriteAtlas) -> crate::player::player_view::
         climb_poses: columns(PLAYER_CLIMB_SHEET).map(|columns| columns as i32),
         swim_poses: columns(PLAYER_SWIM_SHEET).map(|columns| columns as i32),
         flip_poses: columns(PLAYER_FLIP_SHEET).map(|columns| columns as i32),
+        gather_poses: columns(PLAYER_GATHER_SHEET).map(|columns| columns as i32),
         jump_poses: atlas
             .sheet(PLAYER_JUMP_SHEET)
             .and_then(|sheet| jump_poses(sheet.poses(), sheet.columns())),
@@ -438,7 +439,8 @@ impl Game {
         }
 
         self.occlusion.begin(view.frame_ms);
-        let player = PLAYER_XRAY.then(|| self.player_cover(view)).flatten();
+        let xray = PLAYER_XRAY && self.player.motion != iso::player::PlayerMotionType::Gathering;
+        let player = xray.then(|| self.player_cover(view)).flatten();
         let water = WaterField::from_chunks(
             view.culled
                 .iter()
@@ -624,7 +626,10 @@ impl Game {
                 let x = f64::from(entity.x()) + 0.5;
                 let y = f64::from(entity.y()) + 0.5;
                 let elevation = f64::from(entity.elevation());
-                let ground = project_block(GridPoint { x, y }, elevation, projection);
+                let mut ground = project_block(GridPoint { x, y }, elevation, projection);
+                if let Some(shake) = self.impacts.shake_of(entity.id()) {
+                    ground.screen_x += shake * projection.tile_width;
+                }
                 let entity_texture = self
                     .atlas
                     .asset(entity.texture_source())
@@ -862,15 +867,28 @@ impl Game {
         });
         let climbing = get_player_climb_progress(&self.player, self.stepper.interpolation_alpha());
         let moved = (rp.x - self.drawn_at.0).hypot(rp.y - self.drawn_at.1);
+        let struck = self.struck_target();
+        let gather = struck.as_ref().map(|_| {
+            let alpha = self.stepper.interpolation_alpha();
+            (f64::from(self.harvester.swing()) + alpha)
+                / f64::from(iso::harvest::HARVEST_STRIKE_TICKS)
+        });
         let pose = self.animation.advance(
             PlayerMoment {
                 climbing,
                 motion: self.player.motion,
-                direction: self
-                    .player
-                    .climb
-                    .as_ref()
-                    .map_or(self.player.walk, |climb| climb.direction),
+                direction: match &struck {
+                    Some(target) => GridPoint {
+                        x: f64::from(target.anchor.x) - self.player.x,
+                        y: f64::from(target.anchor.y) - self.player.y,
+                    },
+                    None => self
+                        .player
+                        .climb
+                        .as_ref()
+                        .map_or(self.player.walk, |climb| climb.direction),
+                },
+                gather,
                 moved,
                 jump_phase: get_player_jump_phase(&self.player),
                 flip,
@@ -905,6 +923,7 @@ impl Game {
             PlayerSheet::Climb => PLAYER_CLIMB_SHEET,
             PlayerSheet::Swim => PLAYER_SWIM_SHEET,
             PlayerSheet::Flip => PLAYER_FLIP_SHEET,
+            PlayerSheet::Gather => PLAYER_GATHER_SHEET,
         });
         let drawn = match (sheet, self.player_asset) {
             (Some(sheet), _) => Some((
@@ -1174,6 +1193,35 @@ impl Game {
             },
             &elevation_at,
         );
+        self.impacts.advance(frame_ms);
+        for burst in self.impacts.take_bursts() {
+            let color = burst.color;
+            let shape = match (burst.felled, color) {
+                (true, Some(color)) => iso::harvest::felled_chips(color),
+                (true, None) => iso::harvest::felled_chips(iso::player::DUST_COLORS.0),
+                (false, color) => iso::harvest::strike_chips_of(color),
+            };
+            let feet = GridPoint { x: rp.x, y: rp.y };
+            let at = iso::harvest::strike_point(burst.anchor, feet);
+            let level = f64::from(burst.elevation) + iso::harvest::STRIKE_LIFT;
+            self.dust.chip(
+                shape,
+                DustGround {
+                    feet: at,
+                    level,
+                    ground: level,
+                    moved: 0.0,
+                    facing: self.animation.facing(),
+                    elapsed_ms: frame_ms,
+                    tile_height: projection.tile_height,
+                },
+                GridPoint {
+                    x: feet.x - at.x,
+                    y: feet.y - at.y,
+                },
+                &elevation_at,
+            );
+        }
         self.dust.collect(projection, &mut self.draws);
     }
 

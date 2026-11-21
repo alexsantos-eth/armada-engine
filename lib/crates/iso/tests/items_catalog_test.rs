@@ -19,6 +19,7 @@ fn gather(blueprint: &str, carried: &Carried, items: &ItemCatalog) -> HarvestSta
         id: format!("{blueprint}@0,0"),
         anchor: iso::grid::WorldCoord { x: 0, y: 0 },
         blueprint: blueprint.to_owned(),
+        elevation: 0,
     };
     let mut harvester = Harvester::default();
     let mut status = HarvestStatus::Idle;

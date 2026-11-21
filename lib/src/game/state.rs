@@ -153,6 +153,8 @@ pub(crate) struct Game {
     pub(crate) harvest_status: iso::harvest::HarvestStatus,
     /// The note of the last harvest and how long it stays up, in milliseconds.
     pub(crate) gain_note: Option<(String, f64)>,
+    /// The shake of what the player strikes and the bursts of chips due; view state.
+    pub(crate) impacts: crate::harvest::impact::Impacts,
     /// Real time the wind has been blowing, for the sway of what reacts to it; accumulates
     /// frame time like the clouds and the dust, independent of the fixed step.
     pub(crate) wind_ms: f64,
@@ -505,6 +507,7 @@ impl Game {
             harvester: iso::harvest::Harvester::default(),
             harvest_status: iso::harvest::HarvestStatus::Idle,
             gain_note: None,
+            impacts: crate::harvest::impact::Impacts::default(),
         }
     }
 }

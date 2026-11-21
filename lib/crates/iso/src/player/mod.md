@@ -86,7 +86,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`transition_player_motion`](motion.rs#L124) — Aplica un evento a `state` y devuelve el estado de movimiento resultante.
+- [`transition_player_motion`](motion.rs#L129) — Aplica un evento a `state` y devuelve el estado de movimiento resultante.
   - Firma: `pub fn transition_player_motion( state: PlayerMotionType, event: PlayerMotionEvent, ) -> PlayerMotionType {`
 
 ### `swim.rs`
@@ -157,7 +157,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`get_stairs_align`](physics.rs#L174) — Fracción de la corrección lateral hacia la línea central de la grada que el tramo ha andado en `progress` (0–1): el primer tramo de la grada, con la misma easing que un peldaño. A partir de ahí, el resto del vuelo va por el centro.
   - Firma: `pub fn get_stairs_align(progress: f64) -> f64 {`
 
-- [`flight_shove`](physics.rs#L465) — El empujón que el juego aplica a un jugador quieto sobre una grada flotando por encima de los peldaños: una velocidad en el eje de bajada, a la distancia de un paso por tick, o `None` si camina, está en el aire, hay tramo en curso, o pisa la última huella a ras de la cima. Lo desliza fuera del tramo y el motor resuelve el salto al pie como una caída.
+- [`flight_shove`](physics.rs#L467) — El empujón que el juego aplica a un jugador quieto sobre una grada flotando por encima de los peldaños: una velocidad en el eje de bajada, a la distancia de un paso por tick, o `None` si camina, está en el aire, hay tramo en curso, o pisa la última huella a ras de la cima. Lo desliza fuera del tramo y el motor resuelve el salto al pie como una caída.
   - Firma: `fn flight_shove<G: PlayerGround>(player: &PlayerState, ground: &G) -> Option<GridPoint> {`
 
 - [`blocked_side`](physics.rs#L213) — Lado del cuadrado que bloquea la columna: `0.0` si es pisable, su `collision_at` en caso contrario (`1.0` si no declara).
@@ -166,55 +166,57 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`centre_on`](physics.rs#L222) — Centro del cuadrado que bloquea, informado en la columna `(x, y)`: su propio `centre` si se mueve (un personaje que pasa), el de la columna si no.
   - Firma: `pub fn centre_on(&self, x: i32, y: i32) -> GridPoint {`
 
-- [`get_player_column`](physics.rs#L347) — Columna a la que pertenece el punto de suelo `point`.
+- [`get_player_column`](physics.rs#L349) — Columna a la que pertenece el punto de suelo `point`.
   - Firma: `pub fn get_player_column(point: GridPoint) -> WorldCoord {`
 
-- [`can_stand_on`](physics.rs#L355) — Si el jugador puede mantenerse en pie en el centro de la columna `(x, y)` viniendo de `from_elevation`.
+- [`can_stand_on`](physics.rs#L357) — Si el jugador puede mantenerse en pie en el centro de la columna `(x, y)` viniendo de `from_elevation`.
   - Firma: `pub fn can_stand_on<G: PlayerGround>(ground: &G, x: i32, y: i32, from_elevation: f64) -> bool {`
 
-- [`find_player_spawn`](physics.rs#L965) — Busca la posición erguida inicial alrededor de `centre`, explorando en espiral hasta `PLAYER_SPAWN_RADIUS`.
+- [`find_player_spawn`](physics.rs#L967) — Busca la posición erguida inicial alrededor de `centre`, explorando en espiral hasta `PLAYER_SPAWN_RADIUS`.
   - Firma: `pub fn find_player_spawn<G: PlayerGround>(ground: &G, centre: GridPoint) -> PlayerPosition {`
 
-- [`create_player`](physics.rs#L1045) — Crea el `PlayerState` erguido en `at` con los valores por defecto.
+- [`create_player`](physics.rs#L1047) — Crea el `PlayerState` erguido en `at` con los valores por defecto.
   - Firma: `pub fn create_player<G: PlayerGround>(ground: &G, at: GridPoint) -> PlayerState {`
 
-- [`get_walk_direction`](physics.rs#L1080) — Dirección normalizada de movimiento a partir de la entrada: `x = across + up`, `y = up − across`; `0` en ambos ejes si no hay entrada.
+- [`get_walk_direction`](physics.rs#L1083) — Dirección normalizada de movimiento a partir de la entrada: `x = across + up`, `y = up − across`; `0` en ambos ejes si no hay entrada.
   - Firma: `pub fn get_walk_direction(directions: &ScreenDirections) -> GridPoint {`
 
-- [`get_player_facing`](physics.rs#L1104) — Orientación (0..`PLAYER_FACINGS`−1) derivada de `walk`; `None` si está quieto.
+- [`get_player_facing`](physics.rs#L1107) — Orientación (0..`PLAYER_FACINGS`−1) derivada de `walk`; `None` si está quieto.
   - Firma: `pub fn get_player_facing(walk: GridPoint) -> Option<usize> {`
 
-- [`set_player_jetpack`](physics.rs#L1115) — Activa o desactiva el jetpack.
+- [`set_player_jetpack`](physics.rs#L1118) — Activa o desactiva el jetpack.
   - Firma: `pub fn set_player_jetpack(player: &mut PlayerState, jetpack: bool) {`
+- [`set_player_gathering`](physics.rs#L1124) — Marca si el jugador está recolectando (tecla mantenida sobre algo al alcance). Recolectando se queda quieto: descarta la caminata y la carrera, así que se llama después de fijar la caminata. En el suelo y quieto, la máquina pasa a `Gathering` (evento `Gather`); cualquier otro evento de suelo, aire o agua lo saca de ahí.
+  - Firma: `pub fn set_player_gathering(player: &mut PlayerState, gathering: bool) {`
 
-- [`set_player_run`](physics.rs#L1119) — Activa o desactiva la carrera.
+- [`set_player_run`](physics.rs#L1132) — Activa o desactiva la carrera.
   - Firma: `pub fn set_player_run(player: &mut PlayerState, running: bool) {`
 
-- [`is_player_skidding`](physics.rs#L1123) — Si se desliza con velocidad residual y entrada de caminar cero (`walk` ≈ 0, `velocity` ≠ 0).
+- [`is_player_skidding`](physics.rs#L1136) — Si se desliza con velocidad residual y entrada de caminar cero (`walk` ≈ 0, `velocity` ≠ 0).
   - Firma: `pub fn is_player_skidding(player: &PlayerState) -> bool {`
 
-- [`jump_player`](physics.rs#L1127) — Arranca el salto si puede (buffer/coyote u obstáculo válido); si no, lo rechaza con el motivo.
+- [`jump_player`](physics.rs#L1140) — Arranca el salto si puede (buffer/coyote u obstáculo válido); si no, lo rechaza con el motivo.
   - Firma: `pub fn jump_player(player: &mut PlayerState) {`
 
-- [`set_player_jump_held`](physics.rs#L1133) — Fija la tecla de salto mantenida (salto variable).
+- [`set_player_jump_held`](physics.rs#L1146) — Fija la tecla de salto mantenida (salto variable).
   - Firma: `pub fn set_player_jump_held(player: &mut PlayerState, held: bool) {`
 
-- [`cancel_player_jump`](physics.rs#L1137) — Corta el ascenso del salto en curso (la tecla se soltó).
+- [`cancel_player_jump`](physics.rs#L1150) — Corta el ascenso del salto en curso (la tecla se soltó).
   - Firma: `pub fn cancel_player_jump(player: &mut PlayerState) {`
 
-- [`step_player`](physics.rs#L1798) — Avanza la simulación del jugador `ticks` pasos fijos sobre `ground`.
+- [`step_player`](physics.rs#L1812) — Avanza la simulación del jugador `ticks` pasos fijos sobre `ground`.
   - Firma: `pub fn step_player<G: PlayerGround>(player: &mut PlayerState, ground: &mut G, ticks: u32) {`
 
-- [`get_player_jump_phase`](physics.rs#L2017) — Fase del salto para la animación; en el suelo (o nadando) responde `Ground`.
+- [`get_player_jump_phase`](physics.rs#L2031) — Fase del salto para la animación; en el suelo (o nadando) responde `Ground`.
   - Firma: `pub fn get_player_jump_phase(player: &PlayerState) -> PlayerJumpPhase {`
 
-- [`get_player_climb_progress`](physics.rs#L2054) — Cuánto lleva recorrido el jugador de una escalada sobre un reborde, para las poses de trepar. Una grada se sube andando, así que no informa nada y la vista sigue caminando.
+- [`get_player_climb_progress`](physics.rs#L2068) — Cuánto lleva recorrido el jugador de una escalada sobre un reborde, para las poses de trepar. Una grada se sube andando, así que no informa nada y la vista sigue caminando.
   - Firma: `pub fn get_player_climb_progress(player: &PlayerState, alpha: f64) -> Option<f64> {`
 
-- [`get_player_render_position`](physics.rs#L2065) — Posición de render del jugador: interpolación cúbica Hermite entre la posición al inicio del tick (`previous`, con sus velocidades) y la posición actual, con tangentes iguales a la velocidad horizontal y vertical de cada límite de tick; es C1 en cada límite y reproduce exactamente arcos de aceleración constante (un salto).
+- [`get_player_render_position`](physics.rs#L2079) — Posición de render del jugador: interpolación cúbica Hermite entre la posición al inicio del tick (`previous`, con sus velocidades) y la posición actual, con tangentes iguales a la velocidad horizontal y vertical de cada límite de tick; es C1 en cada límite y reproduce exactamente arcos de aceleración constante (un salto).
   - Firma: `pub fn get_player_render_position(player: &PlayerState, alpha: f64) -> PlayerRenderPosition {`
 
-- [`get_player_cells`](physics.rs#L2100) — Rectángulo de casillas que ocupa el cuerpo centrado en `point`.
+- [`get_player_cells`](physics.rs#L2114) — Rectángulo de casillas que ocupa el cuerpo centrado en `point`.
   - Firma: `pub fn get_player_cells(point: GridPoint) -> crate::grid::WorldRect {`
 
 #### Constantes
@@ -384,21 +386,21 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`next_state`](motion.rs#L114) — Busca el siguiente estado para `event` en `transitions`, o `None` cuando el evento no está manejado.
+- [`next_state`](motion.rs#L119) — Busca el siguiente estado para `event` en `transitions`, o `None` cuando el evento no está manejado.
   - Firma: `fn next_state( transitions: &[(PlayerMotionEvent, PlayerMotionType)], event: PlayerMotionEvent, ) -> Option<PlayerMotionType> {`
 
 #### Constantes internas
 
-- [`GROUND`](motion.rs#L51) — Transiciones desde cada estado de suelo: en reposo, caminando, corriendo y derrapando.
-  - Declaración: `const GROUND: &[(PlayerMotionEvent, PlayerMotionType)] = &[ (PlayerMotionEvent::Walk, PlayerMotionType::Walking), (PlayerMotionEvent::Run, PlayerMotionType::Running), (PlayerMotionEvent::Skid, PlayerMotionType::Skidding), (PlayerMotionEvent::Stop, PlayerMotionType::Idle), (PlayerMotionEvent::Jump, PlayerMotionType::Jumping), (PlayerMotionEvent::Fall, PlayerMotionType::Falling), (PlayerMotionEvent::Climb, PlayerMotionType::Climbing), (PlayerMotionEvent::Swim, PlayerMotionType::Swimming), (PlayerMotionEvent::Sink, PlayerMotionType::Sinking), (PlayerMotionEvent::Bump, PlayerMotionType::Bumped), ];`
+- [`GROUND`](motion.rs#L55) — Transiciones desde cada estado de suelo: en reposo, caminando, corriendo y derrapando.
+  - Declaración: `const GROUND: &[(PlayerMotionEvent, PlayerMotionType)] = &[ (PlayerMotionEvent::Walk, PlayerMotionType::Walking), (PlayerMotionEvent::Run, PlayerMotionType::Running), (PlayerMotionEvent::Skid, PlayerMotionType::Skidding), (PlayerMotionEvent::Stop, PlayerMotionType::Idle), (PlayerMotionEvent::Jump, PlayerMotionType::Jumping), (PlayerMotionEvent::Fall, PlayerMotionType::Falling), (PlayerMotionEvent::Climb, PlayerMotionType::Climbing), (PlayerMotionEvent::Swim, PlayerMotionType::Swimming), (PlayerMotionEvent::Sink, PlayerMotionType::Sinking), (PlayerMotionEvent::Bump, PlayerMotionType::Bumped), (PlayerMotionEvent::Gather, PlayerMotionType::Gathering), ];`
 
-- [`AIR`](motion.rs#L65) — Transiciones desde el aire: saltando, cayendo o volando.
+- [`AIR`](motion.rs#L70) — Transiciones desde el aire: saltando, cayendo o volando.
   - Declaración: `const AIR: &[(PlayerMotionEvent, PlayerMotionType)] = &[ (PlayerMotionEvent::Fall, PlayerMotionType::Falling), (PlayerMotionEvent::Fly, PlayerMotionType::Flying), (PlayerMotionEvent::LandIdle, PlayerMotionType::Idle), (PlayerMotionEvent::LandWalking, PlayerMotionType::Walking), (PlayerMotionEvent::LandRunning, PlayerMotionType::Running), (PlayerMotionEvent::LandSkidding, PlayerMotionType::Skidding), (PlayerMotionEvent::Climb, PlayerMotionType::Climbing), (PlayerMotionEvent::Swim, PlayerMotionType::Swimming), (PlayerMotionEvent::Sink, PlayerMotionType::Sinking), (PlayerMotionEvent::Bump, PlayerMotionType::Bumped), ];`
 
-- [`AIR_JUMP`](motion.rs#L79) — Una pulsación de salto en pleno aire mantiene al jugador saltando o volando.
+- [`AIR_JUMP`](motion.rs#L84) — Una pulsación de salto en pleno aire mantiene al jugador saltando o volando.
   - Declaración: `const AIR_JUMP: &[(PlayerMotionEvent, PlayerMotionType)] = &[ (PlayerMotionEvent::Jump, PlayerMotionType::Jumping), ];`
 
-- [`CLIMBING`](motion.rs#L83) — Transiciones desde la escalada.
+- [`CLIMBING`](motion.rs#L88) — Transiciones desde la escalada.
   - Declaración: `const CLIMBING: &[(PlayerMotionEvent, PlayerMotionType)] = &[ (PlayerMotionEvent::ClimbTick, PlayerMotionType::Climbing), (PlayerMotionEvent::ClimbDoneIdle, PlayerMotionType::Idle), (PlayerMotionEvent::ClimbDoneWalking, PlayerMotionType::Walking), (PlayerMotionEvent::Swim, PlayerMotionType::Swimming), (PlayerMotionEvent::Sink, PlayerMotionType::Sinking), (PlayerMotionEvent::Bump, PlayerMotionType::Bumped), ];`
 
 ### `physics.rs`
@@ -408,115 +410,115 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`harmonic`](physics.rs#L135) — Easing `(1 − cos(π t)) / 2` en `[0, 1]` (corrección lateral del tramo de gradas).
   - Firma: `fn harmonic(t: f64) -> f64 {`
 
-- [`column_at`](physics.rs#L338) — Columna del terreno en `(x, y)`; `None` si no está disponible (método del trait `PlayerGround`).
+- [`column_at`](physics.rs#L340) — Columna del terreno en `(x, y)`; `None` si no está disponible (método del trait `PlayerGround`).
   - Firma: `fn column_at(&self, x: i32, y: i32) -> Option<TerrainColumn>;`
 
-- [`occupancy_at`](physics.rs#L339) — Obstáculos que toca la columna `(x, y)`.
+- [`occupancy_at`](physics.rs#L341) — Obstáculos que toca la columna `(x, y)`.
   - Firma: `fn occupancy_at(&self, x: i32, y: i32) -> Vec<PlayerObstacle>;`
 
-- [`chunk_has`](physics.rs#L340) — Si el chunk de `(x, y)` está cargado; por defecto `true` (trait `PlayerGround`).
+- [`chunk_has`](physics.rs#L342) — Si el chunk de `(x, y)` está cargado; por defecto `true` (trait `PlayerGround`).
   - Firma: `fn chunk_has(&self, _coord: ChunkCoord) -> bool {`
 
-- [`load_around`](physics.rs#L343) — Hook para cargar/prefetech alrededor de `point`; vacío por defecto.
+- [`load_around`](physics.rs#L345) — Hook para cargar/prefetech alrededor de `point`; vacío por defecto.
   - Firma: `fn load_around(&mut self, _point: GridPoint) {} } /// Column the ground point `point` belongs to. pub fn get_player_column(point: GridPoint) -> WorldCoord {`
 
-- [`is_steppable`](physics.rs#L386) — Si la columna se puede pisar para entrar: cualquier agua entra siempre; si no, la altura de su techo.
+- [`is_steppable`](physics.rs#L388) — Si la columna se puede pisar para entrar: cualquier agua entra siempre; si no, la altura de su techo.
   - Firma: `fn is_steppable<G: PlayerGround>(ground: &G, x: i32, y: i32, from_elevation: f64) -> bool {`
 
-- [`clears_standing_body`](physics.rs#L403) — Si `occ` (obstáculo) no llega al cuerpo parado sobre la columna.
+- [`clears_standing_body`](physics.rs#L405) — Si `occ` (obstáculo) no llega al cuerpo parado sobre la columna.
   - Firma: `fn clears_standing_body(occ: &PlayerObstacle, column: &TerrainColumn) -> bool {`
 
-- [`support_at`](physics.rs#L409) — La columna que soporta al punto `point` (techo a su altura o por debajo), o `None`.
+- [`support_at`](physics.rs#L411) — La columna que soporta al punto `point` (techo a su altura o por debajo), o `None`.
   - Firma: `fn support_at<G: PlayerGround>(ground: &G, point: GridPoint) -> Option<TerrainColumn> {`
 
-- [`fits_in_air`](physics.rs#L554) — Si el cuerpo cabe en el aire en `point` sin solapar obstáculos.
+- [`fits_in_air`](physics.rs#L556) — Si el cuerpo cabe en el aire en `point` sin solapar obstáculos.
   - Firma: `fn fits_in_air<G: PlayerGround>(ground: &G, point: GridPoint, feet: f64) -> bool {`
 
-- [`can_leave_edge`](physics.rs#L563) — Si se puede abandonar el borde de la columna `(x, y)` (cuenta como caída; el agua también es borde).
+- [`can_leave_edge`](physics.rs#L565) — Si se puede abandonar el borde de la columna `(x, y)` (cuenta como caída; el agua también es borde).
   - Firma: `fn can_leave_edge<G: PlayerGround>(ground: &G, point: GridPoint, feet: f64) -> bool {`
 
-- [`block_reason_at`](physics.rs#L590) — El motivo por el que el cuerpo no puede estar en `point`, o `None` si está libre.
+- [`block_reason_at`](physics.rs#L592) — El motivo por el que el cuerpo no puede estar en `point`, o `None` si está libre.
   - Firma: `fn block_reason_at<G: PlayerGround>( ground: &G, point: GridPoint, elevation: f64, feet: f64, airborne: bool, ) -> Option<PlayerBlockReason> {`
 
-- [`farthest_clear_point`](physics.rs#L939) — El punto más avanzado del segmento `[near, far]` cuya casilla ocupa el cuerpo sin solapar nada. Lo usa el final de una grada cerrada por una entidad: el vuelo termina lo más lejos posible dentro del bloque, nunca de vuelta al pie.
+- [`farthest_clear_point`](physics.rs#L941) — El punto más avanzado del segmento `[near, far]` cuya casilla ocupa el cuerpo sin solapar nada. Lo usa el final de una grada cerrada por una entidad: el vuelo termina lo más lejos posible dentro del bloque, nunca de vuelta al pie.
   - Firma: `fn farthest_clear_point<G: PlayerGround>( ground: &G, near: GridPoint, far: GridPoint, elevation: f64, reach: f64, ) -> GridPoint {`
 
-- [`fits_at`](physics.rs#L910) — Si el cuerpo cabe parado en `point`, usando `from_elevation` como referencia de altura.
+- [`fits_at`](physics.rs#L912) — Si el cuerpo cabe parado en `point`, usando `from_elevation` como referencia de altura.
   - Firma: `fn fits_at<G: PlayerGround>(ground: &G, point: GridPoint, from_elevation: f64) -> bool {`
 
-- [`elevation_at`](physics.rs#L927) — Altura del suelo bajo `point` (el techo de su columna).
+- [`elevation_at`](physics.rs#L929) — Altura del suelo bajo `point` (el techo de su columna).
   - Firma: `fn elevation_at<G: PlayerGround>(ground: &G, point: GridPoint) -> f64 {`
 
-- [`approach_velocity`](physics.rs#L1144) — Acerca `current` a `desired` al ritmo `rate` (aceleración o frenado), eje a eje.
+- [`approach_velocity`](physics.rs#L1157) — Acerca `current` a `desired` al ritmo `rate` (aceleración o frenado), eje a eje.
   - Firma: `fn approach_velocity(current: GridPoint, desired: GridPoint, rate: f64) -> GridPoint {`
 
-- [`is_faster_than_walk`](physics.rs#L1157) — Si la velocidad actual supera la de caminar.
+- [`is_faster_than_walk`](physics.rs#L1170) — Si la velocidad actual supera la de caminar.
   - Firma: `fn is_faster_than_walk(player: &PlayerState) -> bool {`
 
-- [`is_sliding`](physics.rs#L1162) — Si mantiene velocidad residual sin impulso de caminar (derrape).
+- [`is_sliding`](physics.rs#L1175) — Si mantiene velocidad residual sin impulso de caminar (derrape).
   - Firma: `fn is_sliding(player: &PlayerState) -> bool {`
 
-- [`get_gait`](physics.rs#L1171) — La cadencia del ciclo de caminar según el estado: `IDLE`/`WALKING`/`RUNNING`/`SKIDDING`.
+- [`get_gait`](physics.rs#L1184) — La cadencia del ciclo de caminar según el estado: `IDLE`/`WALKING`/`RUNNING`/`SKIDDING`.
   - Firma: `fn get_gait(player: &PlayerState, moved: bool) -> &'static str {`
 
-- [`get_motion_event`](physics.rs#L1184) — El evento resultante del estado y las condiciones (salto, caída, agua, aterrizaje, …).
+- [`get_motion_event`](physics.rs#L1197) — El evento resultante del estado y las condiciones (salto, caída, agua, aterrizaje, …).
   - Firma: `fn get_motion_event(player: &PlayerState, flying: bool) -> PlayerMotionEvent {`
 
-- [`update_motion`](physics.rs#L1245) — Aplica la máquina de movimiento con el evento de este tick.
+- [`update_motion`](physics.rs#L1259) — Aplica la máquina de movimiento con el evento de este tick.
   - Firma: `fn update_motion(player: &mut PlayerState, flying: bool) {`
 
-- [`take_off`](physics.rs#L1251) — Consuma un salto o salto aéreo y arranca el ascenso (`PLAYER_JUMP_SPEED`).
+- [`take_off`](physics.rs#L1265) — Consuma un salto o salto aéreo y arranca el ascenso (`PLAYER_JUMP_SPEED`).
   - Firma: `fn take_off(player: &mut PlayerState, air: bool) {`
 
-- [`reject_jump`](physics.rs#L1266) — Registra el rechazo del salto con su motivo (contador y `rejected`).
+- [`reject_jump`](physics.rs#L1280) — Registra el rechazo del salto con su motivo (contador y `rejected`).
   - Firma: `fn reject_jump(player: &mut PlayerState, reason: PlayerBlockReason) {`
 
-- [`land`](physics.rs#L1271) — Aterriza: contadores, `PLAYER_LANDING_TICKS` y recarga los saltos aéreos.
+- [`land`](physics.rs#L1285) — Aterriza: contadores, `PLAYER_LANDING_TICKS` y recarga los saltos aéreos.
   - Firma: `fn land(player: &mut PlayerState) {`
 
-- [`accelerate_player`](physics.rs#L1278) — Integra aceleración/frenado horizontal y la gravedad/vertical del tick.
+- [`accelerate_player`](physics.rs#L1292) — Integra aceleración/frenado horizontal y la gravedad/vertical del tick.
   - Firma: `fn accelerate_player(player: &mut PlayerState) {`
 
-- [`obstacle_stops`](physics.rs#L635) — Si un ocupante de la columna `at` frena un cuerpo que va a `point`: su cuadrado ocupa parte del cuerpo allí, más que desde `from` (un solape se puede abandonar, nunca hundir), y está en el camino (en suelo, si no se está de pie encima; en el aire, si los pies no lo libran). Lo comparten `block_reason_at` y `bump_away`.
+- [`obstacle_stops`](physics.rs#L637) — Si un ocupante de la columna `at` frena un cuerpo que va a `point`: su cuadrado ocupa parte del cuerpo allí, más que desde `from` (un solape se puede abandonar, nunca hundir), y está en el camino (en suelo, si no se está de pie encima; en el aire, si los pies no lo libran). Lo comparten `block_reason_at` y `bump_away`.
   - Firma: `fn obstacle_stops( occ: &PlayerObstacle, at: (i32, i32), column: Option<TerrainColumn>, point: GridPoint, from: Option<GridPoint>, feet: f64, airborne: bool, ) -> bool {`
 
-- [`bump_away`](physics.rs#L674) — Vector unitario para salir de los cuerpos que frenan el paso de `from` a `to`: de sus centros al del jugador (la dirección jugador − obstáculo). `None` si lo frena el terreno o nada.
+- [`bump_away`](physics.rs#L676) — Vector unitario para salir de los cuerpos que frenan el paso de `from` a `to`: de sus centros al del jugador (la dirección jugador − obstáculo). `None` si lo frena el terreno o nada.
   - Firma: `fn bump_away<G: PlayerGround>( ground: &G, from: GridPoint, to: GridPoint, feet: f64, airborne: bool, ) -> Option<GridPoint> {`
 
-- [`bump`](physics.rs#L717) — Rebota al jugador del cuerpo contra el que iba a `velocity`: `knockback` = `away` × componente de choque × `PLAYER_BUMP_RESTITUTION`, arma el enfriamiento y cuenta el golpe en `feedback`. Un roce por debajo de `PLAYER_BUMP_MIN_IMPACT` o dentro del enfriamiento solo frena.
+- [`bump`](physics.rs#L719) — Rebota al jugador del cuerpo contra el que iba a `velocity`: `knockback` = `away` × componente de choque × `PLAYER_BUMP_RESTITUTION`, arma el enfriamiento y cuenta el golpe en `feedback`. Un roce por debajo de `PLAYER_BUMP_MIN_IMPACT` o dentro del enfriamiento solo frena.
   - Firma: `fn bump(player: &mut PlayerState, away: GridPoint, velocity: GridPoint) {`
 
-- [`record_bump`](physics.rs#L733) — Cuenta un rebote en `feedback` y anota dónde golpeó: `bump_at` (el borde del cuerpo del jugador que mira a lo que golpeó), `bump_level` (nivel de los pies) y `bump_away`, para el polvo que el cliente levanta ahí.
+- [`record_bump`](physics.rs#L735) — Cuenta un rebote en `feedback` y anota dónde golpeó: `bump_at` (el borde del cuerpo del jugador que mira a lo que golpeó), `bump_level` (nivel de los pies) y `bump_away`, para el polvo que el cliente levanta ahí.
   - Firma: `fn record_bump(player: &mut PlayerState, away: GridPoint) {`
 
-- [`embedded_away`](physics.rs#L748) — Si el cuerpo del jugador está dentro de otros cuerpos en `point` con los pies en `feet`: vector unitario de sus centros al del jugador y distancia para salir del menos profundo. `None` si no está dentro de ninguno.
+- [`embedded_away`](physics.rs#L750) — Si el cuerpo del jugador está dentro de otros cuerpos en `point` con los pies en `feet`: vector unitario de sus centros al del jugador y distancia para salir del menos profundo. `None` si no está dentro de ninguno.
   - Firma: `fn embedded_away<G: PlayerGround>( ground: &G, point: GridPoint, feet: f64, ) -> Option<(GridPoint, f64)> {`
 
-- [`eject_player`](physics.rs#L794) — Expulsa al jugador del cuerpo en el que está metido con un empuje que, al amortiguarse, basta para dejarlo libre (tope `PLAYER_EMBED_MAX_PUSH`). Cuenta como rebote en `feedback`.
+- [`eject_player`](physics.rs#L796) — Expulsa al jugador del cuerpo en el que está metido con un empuje que, al amortiguarse, basta para dejarlo libre (tope `PLAYER_EMBED_MAX_PUSH`). Cuenta como rebote en `feedback`.
   - Firma: `fn eject_player<G: PlayerGround>(player: &mut PlayerState, ground: &G) {`
 
-- [`ground_under`](physics.rs#L819) — El suelo bajo `point` para un cuerpo que no puede estar de pie ahí solo porque otro cuerpo ocupa el sitio: su columna, salvo agua o ausencia. `step_air` aterriza en él para no atravesar el terreno, pero no lo guarda como `last_safe`.
+- [`ground_under`](physics.rs#L821) — El suelo bajo `point` para un cuerpo que no puede estar de pie ahí solo porque otro cuerpo ocupa el sitio: su columna, salvo agua o ausencia. `step_air` aterriza en él para no atravesar el terreno, pero no lo guarda como `last_safe`.
   - Firma: `fn ground_under<G: PlayerGround>(ground: &G, point: GridPoint) -> Option<TerrainColumn> {`
 
-- [`is_knocked_back`](physics.rs#L826) — Si al jugador le queda empuje de un rebote.
+- [`is_knocked_back`](physics.rs#L828) — Si al jugador le queda empuje de un rebote.
   - Firma: `fn is_knocked_back(player: &PlayerState) -> bool {`
 
-- [`push_player`](physics.rs#L833) — Mueve al jugador un tick de su empuje y lo amortigua (`PLAYER_BUMP_DECAY`). Desliza por lo que encuentra, muere contra lo que no puede deslizar, nunca sube un bloque ni empieza una grada, aunque sí puede tirarlo de un borde.
+- [`push_player`](physics.rs#L835) — Mueve al jugador un tick de su empuje y lo amortigua (`PLAYER_BUMP_DECAY`). Desliza por lo que encuentra, muere contra lo que no puede deslizar, nunca sube un bloque ni empieza una grada, aunque sí puede tirarlo de un borde.
   - Firma: `fn push_player<G: PlayerGround>(player: &mut PlayerState, ground: &G) {`
 
-- [`may_step_onto`](physics.rs#L503) — Si el jugador de a pie sacando sus pies a `feet` puede moverse de `from` a `to`. Una grada solo se entra por su eje: por el pie para subir y por el borde de bajada para bajar; desde cualquier otra casilla, a cualquier altura incluida la cima, es un muro que el cuerpo para como cualquier bloque (el solape no puede crecer en ningún eje).
+- [`may_step_onto`](physics.rs#L505) — Si el jugador de a pie sacando sus pies a `feet` puede moverse de `from` a `to`. Una grada solo se entra por su eje: por el pie para subir y por el borde de bajada para bajar; desde cualquier otra casilla, a cualquier altura incluida la cima, es un muro que el cuerpo para como cualquier bloque (el solape no puede crecer en ningún eje).
   - Firma: `fn may_step_onto<G: PlayerGround>(ground: &G, from: GridPoint, to: GridPoint, feet: f64) -> bool {`
 
-- [`step_once`](physics.rs#L1329) — Un tick completo de simulación sobre `ground`: intención, gravedad, colisiones, movimiento y estado.
+- [`step_once`](physics.rs#L1343) — Un tick completo de simulación sobre `ground`: intención, gravedad, colisiones, movimiento y estado.
   - Firma: `fn step_once<G: PlayerGround>( player: &mut PlayerState, ground: &G, diagnose: bool, ) -> Option<PlayerBlockReason> {`
 
-- [`step_air`](physics.rs#L1611) — Un tick estando en el aire: vuelo, gravedad, choque con techo y aterrizaje.
+- [`step_air`](physics.rs#L1625) — Un tick estando en el aire: vuelo, gravedad, choque con techo y aterrizaje.
   - Firma: `fn step_air<G: PlayerGround>( player: &mut PlayerState, ground: &G, flying: bool, ) -> Option<&'static str> {`
 
-- [`ceiling_at`](physics.rs#L1715) — Altura del techo sobre `point` (choque de cabeza), o `None` si no hay.
+- [`ceiling_at`](physics.rs#L1729) — Altura del techo sobre `point` (choque de cabeza), o `None` si no hay.
   - Firma: `fn ceiling_at<G: PlayerGround>( ground: &G, point: GridPoint, head: f64, next_head: f64, ) -> Option<f64> {`
 
-- [`is_flying`](physics.rs#L1787) — Si el jetpack está activo (vuelo).
+- [`is_flying`](physics.rs#L1801) — Si el jetpack está activo (vuelo).
   - Firma: `fn is_flying(player: &PlayerState) -> bool {`
 
 #### Constantes internas
