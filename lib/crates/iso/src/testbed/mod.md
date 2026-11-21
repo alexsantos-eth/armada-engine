@@ -37,7 +37,7 @@ Tres decisiones que no son obvias:
   - Firma: `pub use report::{Report, ReportEntity, ReportPlayer, entities_in, player_of, refusal_note};`
 - [`Scene`, `SceneEdit`, `ScenePhase`, `SceneStep`, `SceneWorld`, …](mod.rs#L14) — El esquema de `scene.json`.
   - Firma: `pub use scene::{Scene, SceneEdit, ScenePhase, SceneStep, SceneWorld, is_shot_name, parse_scene};`
-- [`Script`, `ScriptFrame`](mod.rs#L17) — La máquina que decide qué hace cada fotograma.
+- [`Script`, `ScriptFrame`](mod.rs#L15) — La máquina que decide qué hace cada fotograma.
   - Firma: `pub use script::{Script, ScriptFrame};`
 
 ### `scene.rs`

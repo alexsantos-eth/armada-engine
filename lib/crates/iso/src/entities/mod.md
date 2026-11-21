@@ -17,7 +17,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`create_entity_id`](entity.rs#L53) — Construye el id por defecto de una entidad generada con su ancla en `(x, y)`.
+- [`create_entity_id`](entity.rs#L55) — Construye el id por defecto de una entidad generada con su ancla en `(x, y)`.
   - Firma: `pub fn create_entity_id(type_: &str, x: i32, y: i32) -> String {`
 
 - [`new`](entity.rs#L79) — Crea una entidad erguida anclada en `(x, y)` sobre `elevation`, a partir de un blueprint validado.
@@ -70,7 +70,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`reflection_source`](entity.rs#L170) — Sprite de reflejo propio (`None` = el derivado del sprite).
   - Firma: `pub fn reflection_source(&self) -> Option<&str> {`
 
-- [`metadata`](entity.rs#L173) — Datos de juego de la instancia (opacos al motor).
+- [`metadata`](entity.rs#L180) — Datos de juego de la instancia (opacos al motor).
   - Firma: `pub fn metadata(&self) -> &serde_json::Value {`
 
 - [`collision_at`](entity.rs#L178) — Lado del cuadrado, centrado en la columna `(x, y)`, en el que la entidad bloquea el movimiento, como un
@@ -200,7 +200,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`eq`](entity.rs#L66) — Igualdad por `data.id` (la identidad de instancia).
+- [`eq`](entity.rs#L68) — Igualdad por `data.id` (la identidad de instancia).
   - Firma: `fn eq(&self, other: &Self) -> bool {`
 
 - [`hash`](entity.rs#L72) — Hash por `data.id`, coherente con `eq`.

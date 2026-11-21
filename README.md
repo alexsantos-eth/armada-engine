@@ -5,7 +5,7 @@
 ---
 
 <p align="center">
-  <img src="./lib/reference/referennce.png" alt="Yorch Adventure — escena isométrica" width="700" />
+  <img src="./lib/reference/reference.png" alt="Yorch Adventure — escena isométrica" width="700" />
   <br>
   <em>Mundo isométrico generado desde semilla, con ciclo día/noche y criaturas amigables.</em>
 </p>

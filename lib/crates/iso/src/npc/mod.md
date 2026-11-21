@@ -61,10 +61,10 @@ No dibuja nada ni conoce sprites: la vista vive en el cliente (`src/npc`).
 
 #### Constantes
 
-- [`NPC_SPEED`](wander.rs#L15) — Velocidad de paseo, en columnas por segundo de simulación: más lenta que el caminar del jugador.
+- [`NPC_SPEED`](wander.rs#L16) — Velocidad de paseo, en columnas por segundo de simulación: más lenta que el caminar del jugador.
   - Declaración: `pub const NPC_SPEED: f64 = 1.2;`
 
-- [`NPC_STEP`](wander.rs#L17) — Columnas que avanza por tick.
+- [`NPC_STEP`](wander.rs#L18) — Columnas que avanza por tick.
   - Declaración: `pub const NPC_STEP: f64 = NPC_SPEED / TICKS_PER_SECOND as f64;`
 
 - [`NPC_LEASH`](wander.rs#L19) — Columnas que se aleja de su casa, en cada eje.

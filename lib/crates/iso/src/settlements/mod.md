@@ -36,7 +36,7 @@ Este dominio no coloca nada ni modifica el terreno (solo lo consulta): responde 
 - [`lot`](catalog.rs#L29) — El peso con el que los lotes de la zona levantan el blueprint que ocupa `index`; `0` nunca lo levanta.
   - Firma: `pub fn lot(&self, index: usize) -> f64 {`
 
-- [`pitch`](catalog.rs#L135) — Columnas de una manzana a la siguiente: la manzana y la calle que la sigue.
+- [`pitch`](catalog.rs#L138) — Columnas de una manzana a la siguiente: la manzana y la calle que la sigue.
   - Firma: `pub fn pitch(&self) -> i32 {`
 
 - [`margin`](catalog.rs#L140) — Columnas que el poblado alcanza más allá de sus calles exteriores: la mayor entre la franja `edge` y las salidas `exit`.
@@ -45,7 +45,7 @@ Este dominio no coloca nada ni modifica el terreno (solo lo consulta): responde 
 - [`max_extent`](catalog.rs#L157) — Columnas que abarca el poblado más ancho en un eje, márgenes incluidos; `spacing` debe superarlas.
   - Firma: `pub fn max_extent(&self) -> i32 {`
 
-- [`slots`](catalog.rs#L146) — Las casillas de una manzana que pueden llevar un lote, como desplazamientos desde su esquina baja: una de cada dos casillas del borde, en damero, la delantera primero.
+- [`slots`](catalog.rs#L150) — Las casillas de una manzana que pueden llevar un lote, como desplazamientos desde su esquina baja: una de cada dos casillas del borde, en damero, la delantera primero.
   - Firma: `pub fn slots(&self) -> Vec<(i32, i32)> {`
 
 - [`verge`](catalog.rs#L216) — El índice de la zona verge, si el contenido la declara.
@@ -64,13 +64,13 @@ Este dominio no coloca nada ni modifica el terreno (solo lo consulta): responde 
 
 #### Tipos
 
-- [`SettlementCatalog`](catalog.rs#L197) — El contenido validado: `spacing`, `chance`, las reglas de la cuadrícula, el perfil del yermo, las reglas de vegetación y las zonas en orden de archivo.
+- [`SettlementCatalog`](catalog.rs#L204) — El contenido validado: `spacing`, `chance`, las reglas de la cuadrícula, el perfil del yermo, las reglas de vegetación y las zonas en orden de archivo.
   - Declaración: `pub struct SettlementCatalog { pub schema_version: u32, pub spacing: i32, pub chance: f64, pub layout: LayoutRules, pub wilderness: ZoneProfile, pub greens: GreensRules, pub zones: Vec<SettlementZone>, }`
 
 - [`LayoutRules`](catalog.rs#L92) — Cómo se corta un poblado: banda de manzanas por eje, lado de manzana, ancho de calle, franja de borde, largo de las salidas, proporción de esquinas recortadas, proporción de manzanas delanteras que son parque y banda de lotes por manzana (nunca más que `slots`).
   - Declaración: `pub struct LayoutRules { pub blocks_min: i32, pub blocks_max: i32, pub block: i32, pub street: i32, pub edge: i32, pub exit: i32, pub trim: f64, pub front_park: f64, pub lots_min: u32, pub lots_max: u32, pub shapes: ShapeShares, }`
 
-- [`ShapeShares`](catalog.rs#L120) — Qué proporción de manzanas pierde una esquina (`notch`), una fila (`shrink`), se une con su vecina (`merge`) o se parte con un callejón (`split`); cada una en `[0, 1]` y juntas no más de uno. Opcional: sin `shapes` todas las manzanas son cuadradas.
+- [`ShapeShares`](catalog.rs#L123) — Qué proporción de manzanas pierde una esquina (`notch`), una fila (`shrink`), se une con su vecina (`merge`) o se parte con un callejón (`split`); cada una en `[0, 1]` y juntas no más de uno. Opcional: sin `shapes` todas las manzanas son cuadradas.
   - Declaración: `pub struct ShapeShares { pub notch: f64, pub shrink: f64, pub merge: f64, pub split: f64, }`
 
 - [`ZoneRole`](catalog.rs#L37) — La parte de la cuadrícula que cubre una zona: `Center`, `Residential`, `Park`, `Edge`, `Street` o `Verge` (opcional). Centro, borde, calle y verge son únicos; barrio y parque admiten varias zonas que se reparten las manzanas por `share`.
