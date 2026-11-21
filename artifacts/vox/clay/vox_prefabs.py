@@ -52,7 +52,7 @@ THISTLE, THISTLE_HEAD, AMBER, STEEL = "#8c6b45", "#9a7096", "#eda23a", "#b9bec6"
 # the animated entities: candle wax, the pale sinter of a geyser's cone and its hot pool
 WAX, SINTER, HOT_WATER = "#f3e6c2", "#d9d0b6", "#5fb8c8"
 # the ground's own looks (terrain_clay.py): deep, damp earth and the dark at the bottom of a crack
-SOIL_DEEP, SOIL_WET, CRACK = "#8f8a3e", "#7a7536", "#55512a"
+SOIL_DEEP, SOIL_WET, CRACK = "#8f8a3e", "#7a7536", "#55512a"   # CRACK: unused since the cracked look went
 # the dead wood of the bare ground: a trunk long dead, weathered grey
 DEADWOOD = "#8e8576"
 # New colours go at the end: the indices of the files already written must not move.

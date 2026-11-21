@@ -112,7 +112,7 @@ pieza nueva.
 | `PEAT` / `BOG` / `REED` / `CATTAIL` / `WELL_WATER` | `#5b4532` / `#4f6b5c` / `#b3a85a` / `#73472a` / `#2f5470` | turba, agua del charco, caña, espadaña, agua del pozo |
 | `BONE` / `ASH` / `SOOT` / `RUSTED` | `#e6dab8` / `#9b968e` / `#3b3632` / `#9c5a36` | hueso, ceniza, hollín y boca oscura, hierro oxidado |
 | `THISTLE` / `THISTLE_HEAD` / `AMBER` / `STEEL` | `#8c6b45` / `#9a7096` / `#eda23a` / `#b9bec6` | cardo seco y su flor, ámbar, acero y veta de hierro |
-| `SOIL_DEEP` / `SOIL_WET` / `CRACK` / `DEADWOOD` | `#8f8a3e` / `#7a7536` / `#55512a` / `#8e8576` | looks de la tierra (tierra honda, húmeda, fondo de grieta) y madera muerta |
+| `SOIL_DEEP` / `SOIL_WET` / `CRACK` / `DEADWOOD` | `#8f8a3e` / `#7a7536` / `#55512a` / `#8e8576` | looks de la tierra (tierra honda, húmeda; `CRACK` sin uso) y madera muerta |
 
 Un material nuevo se añade como constante en `vox_prefabs.py` **y a la lista `PALETTE`**
 (si falta, el script se detiene), **siempre al final**: los índices de los `.vox` ya escritos no se mueven. Elige tonos medios y saturados: el render los oscurece en
@@ -225,11 +225,11 @@ Las entidades del suelo de tierra (`lib/assets/barren/`) solo crecen en la super
 cadena y la hierba seca, que llevan `drawUnderPlayer` y colisión 0; la entrada del túmulo
 bloquea sus dos casillas (1,0).
 
-La tierra tiene también sus **looks de terreno** (`ground/block_dark`, `_cracked`, `_stones`,
+La tierra tiene también sus **looks de terreno** (`ground/block_dark`, `_stones`,
 `_damp`, `_dry`): bloques enteros de `terrain_clay.py` (`GROUND_TOPS`) con los bordes del llano
-y algo propio dentro (manchas `SOIL_DEEP`, grietas talladas con fondo `CRACK`, losas hundidas,
-agua `BOG` sobre `SOIL_WET`, matas secas). El motor los reparte por manchas de ruido como los
-adornos de la hierba (`GROUND_TOPS` en `src/terrain/terrain_view_appearance.rs`).
+y algo propio dentro (manchas `SOIL_DEEP`, losas hundidas,
+agua `BOG` sobre `SOIL_WET`, matas secas). El motor los reparte casilla a casilla, ~30 % de
+la tierra (`GROUND_TOPS` en `src/terrain/terrain_view_appearance.rs`).
 
 Las piezas de cara (`door`, `window`, `shield`, `rune`, `banner`) tienen el pivote **en el
 plano de la cara**: se colocan con `x` igual al plano del muro y la mitad queda prensada

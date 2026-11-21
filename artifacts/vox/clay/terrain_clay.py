@@ -6,7 +6,7 @@
 #
 #   → lib/assets/grass/block.png, block_2..4.png    (and ../models/terrain_*.vox)
 #     lib/assets/ground/block.png, block_2..3.png
-#     lib/assets/ground/block_dark.png, _cracked, _stones, _damp   (the ground's own looks)
+#     lib/assets/ground/block_dark.png, _stones, _damp   (the ground's own looks)
 #     lib/assets/sand/block.png, block_2..3.png
 #     lib/assets/path/block_0..15.png               (one per connection mask)
 #
@@ -50,7 +50,7 @@ from PIL import Image, ImageDraw
 
 import vox_lib
 from grass_clay import blender
-from vox_prefabs import (BOG, CRACK, EARTH, EARTH_DARK, GRASS_DEEP, GRASS_TOP, GRAVEL, PALETTE, REED, ROCK,
+from vox_prefabs import (BOG, EARTH, EARTH_DARK, GRASS_DEEP, GRASS_TOP, GRAVEL, PALETTE, REED, ROCK,
                          ROCK_DARK, SAND_BODY, SAND_TOP, SCALE, SOIL, SOIL_DARK, SOIL_DEEP, SOIL_WET,
                          STONE_SAND, THATCH, WHITE, box, tile_volume, write)
 
@@ -253,34 +253,6 @@ def wet_blob(rnd, cx, cy, radius):
     return out
 
 
-def crack_cells(rnd, count, keep=18):
-    """Jagged cracks across the top: a few walks from inside the cell, each forking once, two or
-    three voxels wide and well clear of the edges."""
-    cells = set()
-    lim = HALF - keep
-
-    def walk(x, y, heading, steps):
-        for _ in range(steps):
-            heading += rnd.uniform(-0.5, 0.5)
-            x, y = x + 2 * math.cos(heading), y + 2 * math.sin(heading)
-            if abs(x) > lim or abs(y) > lim:
-                return
-            width = 2 if rnd.random() < 0.6 else 3
-            for i in range(round(x) - width, round(x) + width):
-                for j in range(round(y) - width, round(y) + width):
-                    cells.add((i, j))
-            if rnd.random() < 0.04:
-                walk(x, y, heading + rnd.choice((-1, 1)) * rnd.uniform(0.8, 1.3), steps // 2)
-
-    for _ in range(count):
-        x, y = rnd.uniform(-20, 20), rnd.uniform(-20, 20)
-        heading = rnd.uniform(0, 6.3)
-        x, y = rnd.uniform(-30, 30), rnd.uniform(-30, 30)
-        walk(x, y, heading, rnd.randint(13, 19))
-        walk(x, y, heading + math.pi, rnd.randint(8, 13))
-    return cells
-
-
 def carve(cut, depth, bottom, fill=None):
     """A finish that sinks `cut` (a set of (i, j)) `depth` voxels into the ground: the voxels over
     it go, the one under turns `bottom`, and with `fill` the sunk floor is water up to two voxels
@@ -344,13 +316,6 @@ def ground_dark(seed):
     return out, stain(patches(rnd, 3, (14, 20)), SOIL_DEEP)
 
 
-def ground_cracked(seed):
-    """block_cracked: dried-out earth split by a few jagged cracks, dark at the bottom."""
-    rnd = random.Random(seed)
-    out = Ground.inside(seed, clods=(1, 2))
-    return out, carve(crack_cells(rnd, 3), 6, CRACK)
-
-
 def ground_stones(seed):
     """block_stones: flat stones half sunk in the earth and grit between them."""
     rnd = random.Random(seed)
@@ -379,7 +344,7 @@ def ground_damp(seed):
     return out, both(stain(soaked, SOIL_WET), carve(pool, 4, SOIL_WET, fill=BOG))
 
 
-GROUND_TOPS = (("block_dark", ground_dark, 61), ("block_cracked", ground_cracked, 67),
+GROUND_TOPS = (("block_dark", ground_dark, 61),
                ("block_stones", ground_stones, 71), ("block_damp", ground_damp, 73))
 # (block_dry, the dry tufts, stands taller than a terrain block may: grass_clay.py --ground lays
 # it over the plain block like the grass's flowers.)
