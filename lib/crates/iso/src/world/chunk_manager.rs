@@ -250,6 +250,13 @@ impl ChunkManager {
         }
     }
 
+    /// Makes sure the entities of a discovered `coord` are placed, waiting for its placement
+    /// job if one is still running. What the simulation reads (NPC births) must not depend on
+    /// how fast a thread happened to finish, so it asks for the chunk instead of polling.
+    pub fn ensure_entities(&mut self, coord: ChunkCoord) {
+        self.drain_job(coord);
+    }
+
     /// Waits for the job of `coord`, if any, and applies it before the chunk is unloaded.
     fn drain_job(&mut self, coord: ChunkCoord) {
         let jobs = std::mem::take(&mut self.jobs);

@@ -173,3 +173,17 @@ fn another_seed_walks_another_crowd() {
     let ring = ring();
     assert_ne!(crowd_after(42, 600, &ring), crowd_after(43, 600, &ring));
 }
+
+#[test]
+fn ensure_entities_places_a_chunk_without_waiting_for_the_poll() {
+    let mut manager = manager(42);
+    manager.set_single_focus(ChunkCoord { cx: 0, cy: 0 });
+    // One frame discovers chunks and starts their placement threads; none is polled yet.
+    let found = manager.tick();
+    let coord = *found.first().expect("a chunk was discovered");
+    manager.ensure_entities(coord);
+    assert!(
+        manager.entities_chunk(coord).is_some(),
+        "the entities are there as soon as they are asked for, whatever the thread timing"
+    );
+}

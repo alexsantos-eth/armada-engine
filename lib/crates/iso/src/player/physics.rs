@@ -134,7 +134,7 @@ const LANDING: f64 = 1e-9;
 
 fn harmonic(t: f64) -> f64 {
     let clamped = t.clamp(0.0, 1.0);
-    (1.0 - (std::f64::consts::PI * clamped).cos()) / 2.0
+    (1.0 - crate::det_math::cos(std::f64::consts::PI * clamped)) / 2.0
 }
 
 /// Share of its rise a climb's feet have risen at `progress` (0–1).
@@ -165,7 +165,7 @@ pub fn get_stairs_hop(progress: f64) -> f64 {
     let walked = progress.clamp(0.0, 1.0) * steps;
     let tread = walked.floor().min(steps - 1.0);
     let onto = ((walked - tread) / PLAYER_STAIRS_LIFT_SHARE).min(1.0);
-    PLAYER_STAIRS_HOP * (std::f64::consts::PI * onto).sin()
+    PLAYER_STAIRS_HOP * crate::det_math::sin(std::f64::consts::PI * onto)
 }
 
 /// Share of the sideways slide onto the stairs centreline a flight has walked at `progress`
@@ -1108,7 +1108,7 @@ pub fn get_player_facing(walk: GridPoint) -> Option<usize> {
         return None;
     }
     let step = std::f64::consts::TAU / PLAYER_FACINGS.len() as f64;
-    let turn = (up.atan2(across) / step).round() as i32;
+    let turn = (crate::det_math::atan2(up, across) / step).round() as i32;
     Some(turn.rem_euclid(PLAYER_FACINGS.len() as i32) as usize)
 }
 
