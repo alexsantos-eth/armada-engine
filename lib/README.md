@@ -32,7 +32,7 @@ tocan nada. `run-native.sh` equivale a `SDKROOT=/Library/Developer/CommandLineTo
 Es un ajuste del entorno local, no una dependencia del proyecto.
 
 Flechas o WASD mueven al jugador; el clic sitúa el marcador sobre el plano del mundo. `T`
-alterna entre terreno y rejilla. En `/playground` y en `/maker`, `J` (o el interruptor del HUD
+alterna entre terreno y rejilla. En cualquier ruta, `J` (o el interruptor del HUD, con el overlay visible,
 que sigue a los botones de fase) le pone y le quita el jetpack: con él puesto, mantener la tecla
 de salto en el aire vuela. En dispositivos táctiles aparecen dos controles en pantalla:
 un joystick analógico abajo a la izquierda (a media deflexión se camina a media velocidad; a

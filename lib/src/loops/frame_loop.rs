@@ -134,10 +134,6 @@ pub(crate) async fn run(mut game: Game) {
         ));
         if route.toggles_overlay() && is_key_pressed(KeyCode::H) {
             show_overlay = !show_overlay;
-            game.jetpack_allowed = route.allows_jetpack() || show_overlay;
-            if !game.jetpack_allowed {
-                game.jetpack = false;
-            }
         }
         if is_key_pressed(KeyCode::P) {
             info!("{}", game.perf.summary());

@@ -119,12 +119,9 @@ pub(crate) struct FrameView {
 }
 
 impl Game {
-    /// Straps the jetpack on, or takes it off, where the route allows it; elsewhere it does
-    /// nothing, so the plain presentation cannot be flown. Returns whether it is worn now.
+    /// Straps the jetpack on, or takes it off, on every route. Returns whether it is worn now.
     pub(crate) fn toggle_jetpack(&mut self) -> bool {
-        if self.jetpack_allowed {
-            self.jetpack = !self.jetpack;
-        }
+        self.jetpack = !self.jetpack;
         self.jetpack
     }
 

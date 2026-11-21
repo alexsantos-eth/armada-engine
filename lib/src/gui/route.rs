@@ -39,12 +39,6 @@ impl Route {
         matches!(self, Self::Plain | Self::Playground)
     }
 
-    /// Whether this route lets the player strap a jetpack on. It is a development option, so
-    /// only the surfaces that paint the overlay offer it; the plain presentation never does.
-    pub(crate) fn allows_jetpack(self) -> bool {
-        matches!(self, Self::Playground | Self::Maker | Self::Script)
-    }
-
     /// Whether this route edits one chunk by hand instead of streaming the world.
     pub(crate) fn edits_the_world(self) -> bool {
         matches!(self, Self::Maker)
