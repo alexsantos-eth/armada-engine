@@ -1,7 +1,7 @@
 //! One character and its wander: rest, pick a neighbouring cell, stroll to it, rest again.
 //! The way there is a walk, a flight of stairs, a climb or a drop, as the ground asks.
 
-use crate::ai::{NpcGait, NpcLogic};
+use crate::ai::{NpcGait, NpcKind};
 use crate::grid::WorldCoord;
 use crate::player::{
     DustRandom, PLAYER_CLIMB_TICKS, PLAYER_GRAVITY, PlayerGround, get_climb_advance,
@@ -47,6 +47,8 @@ pub enum NpcMotion {
     Climbing,
     /// In the air on the way down from a block one higher.
     Falling,
+    /// Off the ground on a hop over level ground, only for show.
+    Hopping,
 }
 
 /// How a step gets from one cell to the next.
@@ -70,6 +72,9 @@ pub struct NpcStep {
     pub kind: NpcMove,
     /// Levels gained by the end of the step: `1`, `0` or `-1`.
     pub rise: i32,
+    /// Whether it hops the step (over level ground, a gait with a hop): the feet leave the ground
+    /// and land where a walk would.
+    pub hop: bool,
 }
 
 impl NpcStep {
@@ -133,15 +138,16 @@ pub fn get_npc_fall(ticks: f64) -> f64 {
 }
 
 /// One character. It stands on the centre of `cell` or is on its way to another one. It walks
-/// level ground, takes a flight of stairs (if its gait climbs), climbs a block one higher and drops off a block
-/// onto ground one lower; it never jumps, swims or runs.
+/// level ground (hopping it now and then, if its gait hops), takes a flight of stairs and climbs
+/// a block one higher (if its gait climbs) and drops off a block onto ground one lower (if its
+/// gait drops); it never jumps a block, swims or runs.
 #[derive(Clone, Copy, Debug)]
 pub struct Npc {
     /// Stable identity, derived from the home cell.
     pub id: u64,
-    /// Which NPC logic drives it.
-    pub logic: NpcLogic,
-    /// How it moves, taken from its logic when it is born.
+    /// Which animal it is, and so which logic drives it.
+    pub kind: NpcKind,
+    /// How it moves, taken from its kind when it is born.
     pub gait: NpcGait,
     /// The cell it was born on and stays within its gait's leash of.
     pub home: WorldCoord,
@@ -166,16 +172,16 @@ pub struct Npc {
 }
 
 impl Npc {
-    /// A character of `logic` born on `home`, at `elevation`, resting for a first while drawn from its
+    /// A character of `kind` born on `home`, at `elevation`, resting for a first while drawn from its
     /// own stream so that neighbours do not set off together.
-    pub fn new(logic: NpcLogic, id: u64, home: WorldCoord, elevation: i32) -> Self {
+    pub fn new(kind: NpcKind, id: u64, home: WorldCoord, elevation: i32) -> Self {
         let mut random = DustRandom::new(id);
         let facing = HEADINGS[pick(&mut random, 0, HEADINGS.len() as i32 - 1) as usize];
-        let rest_ticks = pick(&mut random, 0, logic.gait().rest_ticks.1);
+        let rest_ticks = pick(&mut random, 0, kind.gait().rest_ticks.1);
         let mut npc = Self {
             id,
-            logic,
-            gait: logic.gait(),
+            kind,
+            gait: kind.gait(),
             home,
             cell: home,
             elevation,
@@ -217,7 +223,7 @@ impl Npc {
         let (dx, dy) = (f64::from(step.heading.0), f64::from(step.heading.1));
         let rise = f64::from(step.rise);
         let (advance, elevation, height) = match step.kind {
-            NpcMove::Walk => (self.progress, level, 0.0),
+            NpcMove::Walk => (self.progress, level, self.hop_height()),
             NpcMove::Stairs => {
                 let flight = ((self.progress - 0.25) / 0.5).clamp(0.0, 1.0);
                 let on_flight = flight > 0.0 && flight < 1.0;
@@ -310,10 +316,32 @@ impl Npc {
         get_npc_climb(self.progress).2
     }
 
+    /// How far into the hop it is in the air on (`0` takes off, `1` lands), or `None` when it is
+    /// not hopping. A hopped step is cut into the gait's `per_step` hops.
+    pub fn hopping(&self) -> Option<f64> {
+        let hop = self.gait.hop?;
+        self.step
+            .filter(|step| step.hop && step.kind == NpcMove::Walk)
+            .map(|_| {
+                let scaled = self.progress.clamp(0.0, 1.0) * f64::from(hop.per_step.max(1));
+                scaled - scaled.floor()
+            })
+    }
+
+    /// How high a hop has its feet this tick: a parabola from the ground to the gait's height
+    /// and back over each hop of the step.
+    fn hop_height(&self) -> f64 {
+        match (self.hopping(), self.gait.hop) {
+            (Some(at), Some(hop)) => hop.height * 4.0 * at * (1.0 - at),
+            _ => 0.0,
+        }
+    }
+
     /// What it is doing this tick.
     pub fn motion(&self) -> NpcMotion {
         match self.step {
             None => NpcMotion::Idle,
+            Some(_) if self.hopping().is_some() => NpcMotion::Hopping,
             Some(_) if self.climbing().is_some() => NpcMotion::Climbing,
             Some(step) if step.kind == NpcMove::Drop && self.pose().height > 0.0 => {
                 NpcMotion::Falling
@@ -387,8 +415,9 @@ fn flight_up<G: PlayerGround>(ground: &G, cell: WorldCoord, elevation: i32) -> O
 /// closed. Level ground is walked in any of the eight directions, without cutting a closed
 /// corner. Straight ahead only: a flight of stairs is taken along its axis through to the cell
 /// beyond it, a block exactly one higher is climbed and ground exactly one lower is dropped
-/// onto. A gait that does not climb takes neither stairs nor a block one higher: only
-/// ground of its own level or one lower. The cell it ends on is within its leash, standable and
+/// onto. A gait that does not climb takes neither stairs nor a block one higher, and one
+/// that does not drop never walks off a block: one that does neither keeps to its own level.
+/// The step is never hopped here; `step_npc` decides that. The cell it ends on is within its leash, standable and
 /// not `taken`.
 pub fn plan_npc_step<G: PlayerGround>(
     npc: &Npc,
@@ -430,6 +459,7 @@ pub fn plan_npc_step<G: PlayerGround>(
             heading,
             kind: NpcMove::Stairs,
             rise,
+            hop: false,
         });
     }
     if !in_leash(npc, to) || !can_npc_stand(ground, to, None) {
@@ -439,7 +469,7 @@ pub fn plan_npc_step<G: PlayerGround>(
     let kind = match rise {
         0 => NpcMove::Walk,
         1 if straight && npc.gait.climbs => NpcMove::Climb,
-        -1 if straight => NpcMove::Drop,
+        -1 if straight && npc.gait.drops => NpcMove::Drop,
         _ => return None,
     };
     if !straight {
@@ -460,6 +490,7 @@ pub fn plan_npc_step<G: PlayerGround>(
         heading,
         kind,
         rise,
+        hop: false,
     })
 }
 
@@ -502,7 +533,7 @@ pub fn step_npc<G: PlayerGround>(npc: &mut Npc, ground: &G, taken: impl Fn(World
         .flatten();
     if let Some(next) = next {
         npc.strides_left -= 1;
-        npc.step = Some(next);
+        npc.step = Some(with_hop(npc, next));
         npc.progress = over * next.pace(gait.step);
         npc.direction = facing_for(npc.gait, next.heading, npc.direction);
         return;
@@ -522,12 +553,28 @@ fn set_off<G: PlayerGround>(npc: &mut Npc, ground: &G, taken: impl Fn(WorldCoord
         .find_map(|heading| plan_npc_step(npc, heading, ground, &taken));
     match open {
         Some(step) => {
-            npc.step = Some(step);
+            npc.step = Some(with_hop(npc, step));
             npc.progress = 0.0;
             npc.direction = facing_for(npc.gait, step.heading, npc.direction);
             npc.strides_left = strides - 1;
         }
         None => npc.rest_ticks = NPC_BLOCKED_REST_TICKS,
+    }
+}
+
+/// `step`, hopped if `npc`'s gait hops, the step crosses level ground and its own stream says
+/// so. A gait without a hop draws nothing, so the stream of an animal that never hops is the
+/// same as before hops existed.
+fn with_hop(npc: &mut Npc, step: NpcStep) -> NpcStep {
+    let Some(hop) = npc.gait.hop else {
+        return step;
+    };
+    if step.kind != NpcMove::Walk {
+        return step;
+    }
+    NpcStep {
+        hop: npc.random.roll() < hop.chance,
+        ..step
     }
 }
 

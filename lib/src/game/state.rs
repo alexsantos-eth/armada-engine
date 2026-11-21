@@ -28,7 +28,7 @@ use crate::game::config::{
     SceneMetrics, WORLD_SEED,
 };
 use crate::game::ground::ChunkGround;
-use crate::game::scene::{PlayerSprite, crab_sheets, player_sheets};
+use crate::game::scene::{PlayerSprite, npc_sheets, player_sheets};
 use crate::gui::Route;
 use crate::lighting::cloud_shadows::{CLOUD_SHADOW_SOURCE, CloudShadows};
 use crate::lighting::shadow_view::ShadowScene;
@@ -94,8 +94,8 @@ pub(crate) struct Game {
     pub(crate) terrain_look: TerrainLook,
     pub(crate) player_asset: Option<PlayerSprite>,
     pub(crate) sheets: crate::player::player_view::PlayerSheets,
-    /// How many poses the crab's sheets hold.
-    pub(crate) crab_sheets: crate::player::player_view::PlayerSheets,
+    /// How many poses each animal's sheets hold.
+    pub(crate) npc_sheets: NpcSheets,
     pub(crate) animation: PlayerAnimation,
     pub(crate) body: BodyMotion,
     pub(crate) flip: FlipMotion,
@@ -407,7 +407,10 @@ impl Game {
             eprintln!("warning: the atlas has no measured player sprite at {PLAYER_SPRITE}");
         }
         let sheets = player_sheets(&atlas);
-        let crab_sheets = crab_sheets(&atlas);
+        let npc_sheets = NpcSheets {
+            crab: npc_sheets(&atlas, crate::game::config::CRAB_ART),
+            rabbit: npc_sheets(&atlas, crate::game::config::RABBIT_ART),
+        };
         if sheets.walk_poses.is_none() {
             eprintln!("warning: the atlas has no player sheets; the still figure will be drawn");
         }
@@ -445,7 +448,7 @@ impl Game {
             terrain_look,
             player_asset,
             sheets,
-            crab_sheets,
+            npc_sheets,
             animation: PlayerAnimation::default(),
             body: BodyMotion::default(),
             flip: FlipMotion::default(),
@@ -482,3 +485,20 @@ impl Game {
 #[cfg(test)]
 #[path = "state.test.rs"]
 mod tests;
+
+/// How many poses the sheets of each animal hold, read once from the atlas.
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct NpcSheets {
+    pub(crate) crab: crate::player::player_view::PlayerSheets,
+    pub(crate) rabbit: crate::player::player_view::PlayerSheets,
+}
+
+impl NpcSheets {
+    /// The sheets of `kind`.
+    pub(crate) fn of(&self, kind: iso::npc::NpcKind) -> crate::player::player_view::PlayerSheets {
+        match kind {
+            iso::npc::NpcKind::Crab => self.crab,
+            iso::npc::NpcKind::Rabbit => self.rabbit,
+        }
+    }
+}

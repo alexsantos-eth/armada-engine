@@ -241,6 +241,17 @@ de pie y dos zancadas de 4 poses: el cangrejo corretea de lado). `rasterize.py` 
 (`content/images/crab_<hoja>.png`). Se dibuja a la escala de su hoja (no a `PLAYER_SCALE`).
 Tarda ~2 min en 4 núcleos.
 
+### El conejo (NPC de pradera)
+
+El conejo sigue la ruta del cangrejo: `artifacts/vox/rabbit/rabbit.py` lo arma con cajas del kit
+(pelaje `FUR`, vientre blanco, orejas rosadas), escribe cada pose como `.vox` en
+`artifacts/vox/models/rabbit/` y, con `--render`, renderiza las 16 direcciones con el acabado clay.
+`--preview` renderiza solo una dirección de cada pose en `lib/target/rabbit-preview.png` para juzgar
+el modelo en segundos. Salen `lib/painted/rabbit_{idle,walk,jump}.png` y sus rejillas
+`lib/assets/rabbit/*.json`: `idle` (8 poses, sentado: nariz, orejas, flancos), `walk` (columna 0 sentado y
+dos saltitos de 4 poses) y `jump` (las cinco fases del salto grande, en el orden del jugador:
+takeoff, rise, apex, fall, landing). A diferencia del cangrejo mira hacia donde va. Tarda ~2 min.
+
 ### Decoración del campo abierto
 
 `lib/assets/field/` guarda las entidades que llenan la hierba fuera de poblados: setas, dos

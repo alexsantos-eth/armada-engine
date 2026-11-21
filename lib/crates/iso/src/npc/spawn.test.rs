@@ -1,6 +1,6 @@
 use super::super::wander::tests::ground_from;
 use super::*;
-use crate::ai::basic::{ID_BIT, PER_CHUNK};
+use crate::ai::basic::crab::{ID_BIT, PER_CHUNK};
 use crate::grid::{CHUNK_SIZE, WorldCoord};
 
 const HOME: ChunkCoord = ChunkCoord { cx: 0, cy: 0 };
@@ -45,7 +45,7 @@ fn an_entity_with_the_basic_logic_is_born_on_the_sand_only() {
     let born = spawn_npcs(1, HOME, &beach(), &catalog);
     assert!(!born.is_empty() && born.len() <= PER_CHUNK);
     for npc in &born {
-        assert_eq!(npc.logic, NpcLogic::Basic);
+        assert_eq!(npc.kind, NpcKind::Crab);
         assert_ne!(npc.id & ID_BIT, 0);
         assert_eq!(npc.cell, npc.home);
         assert_eq!(to_chunk(npc.home), HOME);
@@ -89,4 +89,53 @@ fn the_same_seed_and_chunk_give_the_same_characters() {
     };
     assert_eq!(ids(9, HOME), ids(9, HOME));
     assert_ne!(ids(9, HOME), ids(10, HOME));
+}
+
+/// A catalog of a crab and a rabbit, each declaring the `basic` logic.
+fn meadow_catalog(rabbit_id: &str) -> EntityCatalog {
+    let entity = |id: &str, surface: &str| {
+        format!(
+            r#"{{"id": "{id}", "npc": "basic", "asset": {{"sprite": "/a.png"}},
+            "shape": {{"height": 1, "length": 1, "collision": [0]}},
+            "placement": {{"surfaces": ["{surface}"]}}}}"#
+        )
+    };
+    let json = format!(
+        r#"{{"schemaVersion": 1, "entities": [{}, {}]}}"#,
+        entity("crab", "sand"),
+        entity(rabbit_id, "grass")
+    );
+    serde_json::from_str(&json).expect("a valid catalog")
+}
+
+#[test]
+fn every_animal_of_a_logic_is_born_on_its_own_ground() {
+    use crate::ai::basic::rabbit;
+    let catalog = meadow_catalog("rabbit");
+    assert_eq!(kinds_in(&catalog), vec![NpcKind::Crab, NpcKind::Rabbit]);
+    assert_eq!(logics_in(&catalog), vec![NpcLogic::Basic]);
+    let born: Vec<Npc> = (0..8)
+        .flat_map(|seed| spawn_npcs(seed, HOME, &flat(), &catalog))
+        .collect();
+    assert!(!born.is_empty());
+    for npc in &born {
+        assert_eq!(npc.kind, NpcKind::Rabbit);
+        assert_ne!(npc.id & rabbit::ID_BIT, 0);
+        assert_eq!(npc.id & ID_BIT, 0);
+    }
+    for seed in 0..8 {
+        assert!(spawn_npcs(seed, HOME, &flat(), &catalog).len() <= rabbit::PER_CHUNK);
+        assert!(
+            spawn_npcs(seed, HOME, &beach(), &catalog)
+                .iter()
+                .all(|npc| npc.kind == NpcKind::Crab)
+        );
+    }
+}
+
+#[test]
+fn an_npc_entity_the_game_does_not_know_gives_nobody() {
+    let catalog = meadow_catalog("griffin");
+    assert_eq!(kinds_in(&catalog), vec![NpcKind::Crab]);
+    assert!((0..8).all(|seed| spawn_npcs(seed, HOME, &flat(), &catalog).is_empty()));
 }

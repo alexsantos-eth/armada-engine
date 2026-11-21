@@ -100,12 +100,41 @@ pub const PLAYER_FLIP_SHEET: &str = "/assets/player-16/flip.png";
 /// The jetpack on the player's back: one column per facing, cut where the standing body hides
 /// it, so it is drawn over whatever pose the body is in.
 pub const PLAYER_JETPACK_SHEET: &str = "/assets/player-16/jetpack.png";
-/// The beach crab's sheets, in the manifest: standing about and scuttling sideways. Its cells
-/// are clay renders at the world's own scale, so the crab is drawn at its sheet's size.
-pub const CRAB_WALK_SHEET: &str = "/assets/crab/walk.png";
-pub const CRAB_IDLE_SHEET: &str = "/assets/crab/idle.png";
-/// How wide a crab's ground shadow is against the player's.
-pub const CRAB_SHADOW_SCALE: f64 = 0.9;
+/// The sheets an animal NPC is drawn from, in the manifest, and how wide its ground shadow is
+/// against the player's. Its cells are clay renders at the world's own scale, so it is drawn at
+/// its sheet's size (not at `PLAYER_SCALE`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct NpcArt {
+    pub walk: &'static str,
+    pub idle: &'static str,
+    /// The five phases of a hop off the ground, for an animal that hops.
+    pub jump: Option<&'static str>,
+    pub shadow_scale: f64,
+}
+
+/// The beach crab: standing about and scuttling sideways.
+pub const CRAB_ART: NpcArt = NpcArt {
+    walk: "/assets/crab/walk.png",
+    idle: "/assets/crab/idle.png",
+    jump: None,
+    shadow_scale: 0.9,
+};
+
+/// The meadow rabbit: sitting about, little hops along and a bigger hop now and then.
+pub const RABBIT_ART: NpcArt = NpcArt {
+    walk: "/assets/rabbit/walk.png",
+    idle: "/assets/rabbit/idle.png",
+    jump: Some("/assets/rabbit/jump.png"),
+    shadow_scale: 0.75,
+};
+
+/// The art of each animal.
+pub fn npc_art(kind: iso::npc::NpcKind) -> NpcArt {
+    match kind {
+        iso::npc::NpcKind::Crab => CRAB_ART,
+        iso::npc::NpcKind::Rabbit => RABBIT_ART,
+    }
+}
 /// Depth added to the jetpack over the body, so the pack draws right after it.
 pub const PLAYER_JETPACK_DEPTH: f64 = 0.00001;
 /// How hard a landing must hit, in blocks per tick of impact, before it makes a sound.

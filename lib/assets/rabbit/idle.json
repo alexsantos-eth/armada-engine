@@ -1,0 +1,28 @@
+{
+  "frames": 8,
+  "gap": 0.0,
+  "cell": [
+    352.0,
+    357.0,
+    320.0,
+    300.0
+  ],
+  "facings": [
+    "east",
+    "east-north-east",
+    "north-east",
+    "north-north-east",
+    "north",
+    "north-north-west",
+    "north-west",
+    "west-north-west",
+    "west",
+    "west-south-west",
+    "south-west",
+    "south-south-west",
+    "south",
+    "south-south-east",
+    "south-east",
+    "east-south-east"
+  ]
+}

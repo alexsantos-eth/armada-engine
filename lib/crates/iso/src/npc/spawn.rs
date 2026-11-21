@@ -2,7 +2,7 @@
 //! catalog, which says which entities have NPC logic.
 
 use super::wander::Npc;
-use crate::ai::{NpcLogic, basic};
+use crate::ai::{NpcKind, NpcLogic, basic};
 use crate::entities::EntityCatalog;
 use crate::grid::ChunkCoord;
 use crate::player::PlayerGround;
@@ -22,9 +22,26 @@ pub fn logics_in(catalog: &EntityCatalog) -> Vec<NpcLogic> {
     found
 }
 
-/// The characters born in `chunk` of the world of `seed`: for each logic some entity of
-/// `catalog` declares, the ones its birth rule gives. An entity without `npc` gives none. The
-/// same seed, chunk, ground and catalog always give the same characters.
+/// The animals `catalog` declares: every entity with an `npc` logic whose id names one the game
+/// knows, once each, in the order they appear. An entity with `npc` but an unknown id gives none.
+pub fn kinds_in(catalog: &EntityCatalog) -> Vec<NpcKind> {
+    let mut found: Vec<NpcKind> = Vec::new();
+    for kind in catalog
+        .entities
+        .iter()
+        .filter(|blueprint| blueprint.npc.is_some())
+        .filter_map(|blueprint| NpcKind::of_entity(&blueprint.id))
+    {
+        if !found.contains(&kind) {
+            found.push(kind);
+        }
+    }
+    found
+}
+
+/// The characters born in `chunk` of the world of `seed`: for each animal `catalog` declares,
+/// the ones the birth rule of its logic gives. An entity without `npc` gives none. The same
+/// seed, chunk, ground and catalog always give the same characters.
 pub fn spawn_npcs<G: PlayerGround>(
     seed: u64,
     chunk: ChunkCoord,
@@ -32,9 +49,9 @@ pub fn spawn_npcs<G: PlayerGround>(
     catalog: &EntityCatalog,
 ) -> Vec<Npc> {
     let mut born = Vec::new();
-    for logic in logics_in(catalog) {
-        match logic {
-            NpcLogic::Basic => born.extend(basic::spawn(seed, chunk, ground)),
+    for kind in kinds_in(catalog) {
+        match kind.logic() {
+            NpcLogic::Basic => born.extend(basic::spawn(seed, chunk, ground, kind)),
         }
     }
     born

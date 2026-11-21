@@ -29,7 +29,7 @@ pub struct NpcViews {
 }
 
 /// What one frame of `npc` is to the player's animation: a walk or a rest on the ground, the
-/// pull over a ledge, or the fall off a block. Never a jump of its own, a swim or a run.
+/// pull over a ledge, the fall off a block or a hop over level ground. Never a swim or a run.
 pub fn npc_moment(npc: &Npc, moved: f64, elapsed_ms: f64) -> PlayerMoment {
     let motion = npc.motion();
     PlayerMoment {
@@ -39,6 +39,7 @@ pub fn npc_moment(npc: &Npc, moved: f64, elapsed_ms: f64) -> PlayerMoment {
             NpcMotion::Walking => PlayerMotionType::Walking,
             NpcMotion::Climbing => PlayerMotionType::Climbing,
             NpcMotion::Falling => PlayerMotionType::Falling,
+            NpcMotion::Hopping => PlayerMotionType::Jumping,
         },
         direction: npc.direction,
         moved: if motion == NpcMotion::Walking {
@@ -46,13 +47,25 @@ pub fn npc_moment(npc: &Npc, moved: f64, elapsed_ms: f64) -> PlayerMoment {
         } else {
             0.0
         },
-        jump_phase: if motion == NpcMotion::Falling {
-            PlayerJumpPhase::Fall
-        } else {
-            PlayerJumpPhase::Ground
+        jump_phase: match (motion, npc.hopping()) {
+            (NpcMotion::Falling, _) => PlayerJumpPhase::Fall,
+            (NpcMotion::Hopping, Some(at)) => hop_phase(at),
+            _ => PlayerJumpPhase::Ground,
         },
         flip: None,
         elapsed_ms,
+    }
+}
+
+/// Which of the five jump phases a hop is in, `at` of the way through it (`0` takes off, `1`
+/// lands): a little gathered at each end, drawn out over the rest.
+pub fn hop_phase(at: f64) -> PlayerJumpPhase {
+    match at {
+        at if at < 0.12 => PlayerJumpPhase::Takeoff,
+        at if at < 0.4 => PlayerJumpPhase::Rise,
+        at if at < 0.6 => PlayerJumpPhase::Apex,
+        at if at < 0.88 => PlayerJumpPhase::Fall,
+        _ => PlayerJumpPhase::Landing,
     }
 }
 

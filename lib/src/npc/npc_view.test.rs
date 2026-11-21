@@ -1,7 +1,7 @@
 //! Tests for the characters' animation bookkeeping.
 
 use iso::grid::WorldCoord;
-use iso::npc::{NpcGait, NpcLogic, NpcMove, NpcStep};
+use iso::npc::{NpcGait, NpcKind, NpcMove, NpcStep};
 
 use super::*;
 use crate::player::player_view::{IDLE_DELAY_MS, WALK_STRIDE};
@@ -17,14 +17,16 @@ const SHEETS: PlayerSheets = PlayerSheets {
 
 /// A character that walks and climbs: the one the sheets of these tests are drawn for.
 fn walker(id: u64, home: WorldCoord, elevation: i32) -> Npc {
-    Npc::new(NpcLogic::Basic, id, home, elevation).with_gait(NpcGait {
+    Npc::new(NpcKind::Crab, id, home, elevation).with_gait(NpcGait {
         step: 0.02,
         leash: 6,
         rest_ticks: (40, 160),
         stroll_cells: (1, 4),
         climbs: true,
+        drops: true,
         sideways: false,
         turns_back: false,
+        hop: None,
     })
 }
 
@@ -38,6 +40,7 @@ fn walking() -> Npc {
         heading: (1, 0),
         kind: NpcMove::Walk,
         rise: 0,
+        hop: false,
     });
     npc.direction = GridPoint { x: 1.0, y: 0.0 };
     npc
@@ -69,6 +72,7 @@ fn stepping(kind: NpcMove, rise: i32, progress: f64) -> Npc {
         heading: (1, 0),
         kind,
         rise,
+        hop: false,
     });
     npc.direction = GridPoint { x: 1.0, y: 0.0 };
     npc.progress = progress;
@@ -182,5 +186,40 @@ fn a_bigger_character_casts_a_bigger_shadow_from_the_same_spot() {
     assert_eq!(
         (big.centre, big.alpha, big.shear),
         (shadow.centre, shadow.alpha, shadow.shear)
+    );
+}
+
+#[test]
+fn a_hop_plays_the_jump_sheet_through_its_five_phases() {
+    let mut rabbit = Npc::new(NpcKind::Rabbit, 5, WorldCoord { x: 4, y: 4 }, 0);
+    rabbit.step = Some(NpcStep {
+        heading: (1, 0),
+        kind: NpcMove::Walk,
+        rise: 0,
+        hop: true,
+    });
+    let mut phases = Vec::new();
+    for at in [0.05, 0.3, 0.5, 0.7, 0.95] {
+        rabbit.progress = at / 2.0;
+        let moment = npc_moment(&rabbit, 0.02, 16.0);
+        assert_eq!(moment.motion, PlayerMotionType::Jumping);
+        let pose = NpcViews::default().advance(
+            &rabbit,
+            GridPoint {
+                x: 4.0 + at,
+                y: 4.0,
+            },
+            16.0,
+            SHEETS,
+        );
+        assert_eq!(pose.sheet, PlayerSheet::Jump);
+        phases.push(pose.pose);
+    }
+    assert_eq!(phases, vec![0, 1, 2, 3, 4]);
+
+    rabbit.step = rabbit.step.map(|step| NpcStep { hop: false, ..step });
+    assert_eq!(
+        npc_moment(&rabbit, 0.02, 16.0).jump_phase,
+        PlayerJumpPhase::Ground
     );
 }

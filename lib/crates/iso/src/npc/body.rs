@@ -27,8 +27,8 @@ impl Npc {
     /// through every step, climb and drop.
     pub fn body(&self) -> NpcBody {
         let pose = self.pose();
-        let scale = npc_look(self.logic, self.id).scale;
-        let (side, height) = self.logic.body_size();
+        let scale = npc_look(self.kind, self.id).scale;
+        let (side, height) = self.kind.body_size();
         NpcBody {
             centre: GridPoint {
                 x: pose.x,

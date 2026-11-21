@@ -13,14 +13,16 @@ pub(crate) fn walker_gait() -> NpcGait {
         rest_ticks: (40, 160),
         stroll_cells: (1, 4),
         climbs: true,
+        drops: true,
         sideways: false,
         turns_back: false,
+        hop: None,
     }
 }
 
 /// A character born on `home` that walks like [`walker_gait`].
 pub(crate) fn walker(id: u64, home: WorldCoord, elevation: i32) -> Npc {
-    Npc::new(NpcLogic::Basic, id, home, elevation).with_gait(walker_gait())
+    Npc::new(NpcKind::Crab, id, home, elevation).with_gait(walker_gait())
 }
 
 #[derive(Default)]
@@ -252,6 +254,7 @@ fn the_pull_of_a_climb_is_the_only_part_that_climbs() {
         heading: (1, 0),
         kind: NpcMove::Climb,
         rise: 1,
+        hop: false,
     });
     assert_eq!(npc.motion(), NpcMotion::Walking);
     assert!(npc.climbing().is_none());
@@ -450,7 +453,7 @@ fn the_same_character_wanders_the_same_way() {
 }
 
 fn crab_at(home: WorldCoord, elevation: i32) -> Npc {
-    let mut crab = Npc::new(NpcLogic::Basic, 7, home, elevation);
+    let mut crab = Npc::new(NpcKind::Crab, 7, home, elevation);
     crab.rest_ticks = 0;
     crab
 }
@@ -484,11 +487,11 @@ fn a_crab_scuttles_level_ground_and_drops_off_a_block() {
 
 #[test]
 fn a_crab_scuttles_faster_on_a_shorter_leash() {
-    let (villager, crab) = (walker_gait(), NpcLogic::Basic.gait());
+    let (villager, crab) = (walker_gait(), NpcKind::Crab.gait());
     assert!(crab.step > villager.step);
     assert!(crab.leash < villager.leash);
     let mut far = crab_at(cell(0, 0), 0);
-    far.home = cell(-crate::ai::basic::LEASH, 0);
+    far.home = cell(-crate::ai::basic::crab::LEASH, 0);
     assert!(plan_npc_step(&far, (1, 0), &ground_from(&["00"]), nobody).is_none());
 }
 
@@ -507,11 +510,11 @@ fn a_crab_faces_across_its_way() {
 #[test]
 fn a_crab_keeps_the_side_it_faced_and_otherwise_faces_the_camera() {
     let east = GridPoint { x: 1.0, y: 0.0 };
-    let turned = facing_for(NpcLogic::Basic.gait(), (0, 1), east);
+    let turned = facing_for(NpcKind::Crab.gait(), (0, 1), east);
     assert_eq!(turned, GridPoint { x: 1.0, y: 0.0 });
-    let back = facing_for(NpcLogic::Basic.gait(), (0, -1), east);
+    let back = facing_for(NpcKind::Crab.gait(), (0, -1), east);
     assert_eq!(back, GridPoint { x: 1.0, y: 0.0 });
-    let fresh = facing_for(NpcLogic::Basic.gait(), (1, 0), GridPoint { x: 1.0, y: 0.0 });
+    let fresh = facing_for(NpcKind::Crab.gait(), (1, 0), GridPoint { x: 1.0, y: 0.0 });
     assert!(fresh.x + fresh.y < 0.0);
     assert_eq!(
         facing_for(walker_gait(), (0, 1), east),
@@ -527,6 +530,7 @@ fn a_crab_that_meets_a_wall_turns_back() {
         heading: (1, 0),
         kind: NpcMove::Walk,
         rise: 0,
+        hop: false,
     });
     crab.strides_left = 2;
     walk_out_one(&mut crab, &ground);
@@ -538,6 +542,7 @@ fn a_crab_that_meets_a_wall_turns_back() {
         heading: (1, 0),
         kind: NpcMove::Walk,
         rise: 0,
+        hop: false,
     });
     villager.strides_left = 2;
     walk_out_one(&mut villager, &ground);
@@ -554,4 +559,95 @@ fn walk_out_one(npc: &mut Npc, ground: &CellGround) {
         }
     }
     panic!("the step never ended");
+}
+
+fn rabbit_at(home: WorldCoord, elevation: i32) -> Npc {
+    let mut rabbit = Npc::new(NpcKind::Rabbit, 7, home, elevation);
+    rabbit.rest_ticks = 0;
+    rabbit
+}
+
+#[test]
+fn a_rabbit_keeps_to_its_own_level() {
+    let ground = ground_from(&["101"]);
+    let rabbit = rabbit_at(cell(1, 0), 0);
+    assert!(plan_npc_step(&rabbit, (1, 0), &ground, nobody).is_none());
+    assert!(plan_npc_step(&rabbit, (-1, 0), &ground, nobody).is_none());
+    let on_top = rabbit_at(cell(0, 0), 1);
+    assert!(plan_npc_step(&on_top, (1, 0), &ground, nobody).is_none());
+    assert!(plan_npc_step(&crab_at(cell(0, 0), 1), (1, 0), &ground, nobody).is_some());
+
+    let flight = flight();
+    assert!(plan_npc_step(&rabbit_at(cell(1, 1), 0), (1, 0), &flight, nobody).is_none());
+}
+
+#[test]
+fn a_rabbit_hops_now_and_then_and_lands_where_it_was_going() {
+    let rows = ["0000000000"; 10];
+    let ground = ground_from(&rows);
+    let mut rabbit = rabbit_at(cell(5, 5), 0);
+    let hop = NpcKind::Rabbit.gait().hop.expect("a rabbit hops");
+    let (mut hopped, mut walked, mut highest) = (0, 0, 0.0_f64);
+    for _ in 0..40_000 {
+        let before = rabbit.step;
+        step_npc(&mut rabbit, &ground, nobody);
+        let pose = rabbit.pose();
+        assert_eq!(rabbit.elevation, 0);
+        assert!(pose.height >= 0.0 && pose.height <= hop.height + 1e-9);
+        highest = highest.max(pose.height);
+        if let Some(step) = rabbit.step.filter(|step| Some(*step) != before) {
+            assert_eq!(step.kind, NpcMove::Walk);
+            if step.hop {
+                hopped += 1;
+            } else {
+                walked += 1;
+            }
+        }
+        match rabbit.hopping() {
+            Some(_) => assert_eq!(rabbit.motion(), NpcMotion::Hopping),
+            None => assert_ne!(rabbit.motion(), NpcMotion::Hopping),
+        }
+    }
+    assert!(
+        hopped > 20 && walked > hopped,
+        "{hopped} hops, {walked} walks"
+    );
+    assert!(highest > hop.height * 0.9);
+}
+
+#[test]
+fn a_hop_rises_and_falls_over_its_step() {
+    let mut rabbit = rabbit_at(cell(0, 0), 0);
+    rabbit.step = Some(NpcStep {
+        heading: (1, 0),
+        kind: NpcMove::Walk,
+        rise: 0,
+        hop: true,
+    });
+    let height = |rabbit: &Npc| rabbit.pose().height;
+    assert_eq!(height(&rabbit), 0.0);
+    // Two hops make the step: the top of the first is a quarter of the way along, its landing
+    // half way, and the second hop goes up again.
+    rabbit.progress = 0.25;
+    let top = NpcKind::Rabbit.gait().hop.map(|hop| hop.height);
+    assert_eq!(Some(height(&rabbit)), top);
+    assert_eq!(rabbit.hopping(), Some(0.5));
+    rabbit.progress = 0.5;
+    assert!(height(&rabbit) < 1e-9);
+    rabbit.progress = 0.75;
+    assert_eq!(Some(height(&rabbit)), top);
+    rabbit.progress = 0.125;
+    assert!(height(&rabbit) > 0.0 && Some(height(&rabbit)) < top);
+}
+
+#[test]
+fn a_crab_never_hops() {
+    let rows = ["0000000"; 7];
+    let ground = ground_from(&rows);
+    let mut crab = crab_at(cell(3, 3), 0);
+    for _ in 0..5_000 {
+        step_npc(&mut crab, &ground, nobody);
+        assert!(crab.step.is_none_or(|step| !step.hop));
+        assert!(crab.hopping().is_none());
+    }
 }

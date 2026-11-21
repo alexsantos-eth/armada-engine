@@ -55,6 +55,9 @@ WAX, SINTER, HOT_WATER = "#f3e6c2", "#d9d0b6", "#5fb8c8"
 SOIL_DEEP, SOIL_WET, CRACK = "#8f8a3e", "#7a7536", "#55512a"   # CRACK: unused since the cracked look went
 # the dead wood of the bare ground: a trunk long dead, weathered grey
 DEADWOOD = "#8e8576"
+# the rabbit NPC (artifacts/vox/rabbit/rabbit.py): a pale fawn coat, light enough that every tint
+# the game multiplies it by (only ever darker) still reads as fur
+FUR = "#dcc6a2"
 # New colours go at the end: the indices of the files already written must not move.
 PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK, CUT, MOSS,
            RED, WHITE, YELLOW, PINK, CAP, STEM, DOT, OCHRE, RUST, ROCK, ROCK_DARK,
@@ -67,7 +70,7 @@ PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK,
            PEAT, BOG, REED, CATTAIL, WELL_WATER,
            BONE, ASH, SOOT, RUSTED, THISTLE, THISTLE_HEAD, AMBER, STEEL,
            WAX, SINTER, HOT_WATER,
-           SOIL_DEEP, SOIL_WET, CRACK, DEADWOOD]
+           SOIL_DEEP, SOIL_WET, CRACK, DEADWOOD, FUR]
 
 
 def box(x, y, z0, sx, sy, sz, color, r):

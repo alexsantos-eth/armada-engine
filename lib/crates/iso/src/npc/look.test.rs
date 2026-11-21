@@ -1,7 +1,7 @@
 use super::*;
-use crate::ai::basic::{SCALE_RANGE, TINTS};
+use crate::ai::basic::crab::{SCALE_RANGE, TINTS};
 
-const BASIC: NpcLogic = NpcLogic::Basic;
+const BASIC: NpcKind = NpcKind::Crab;
 
 #[test]
 fn a_character_always_looks_the_same() {
@@ -36,4 +36,14 @@ fn neighbours_do_not_all_look_alike() {
     let first = npc_look(BASIC, 1_000);
     assert!((1_001..1_010).any(|id| npc_look(BASIC, id).tint != first.tint));
     assert!((1_001..1_010).any(|id| (npc_look(BASIC, id).scale - first.scale).abs() > 0.02));
+}
+
+#[test]
+fn a_rabbit_wears_its_own_coats() {
+    use crate::ai::basic::rabbit;
+    for id in 0..500 {
+        let look = npc_look(NpcKind::Rabbit, id);
+        assert!(rabbit::TINTS.contains(&look.tint));
+        assert!(look.scale >= rabbit::SCALE_RANGE.0 && look.scale <= rabbit::SCALE_RANGE.1);
+    }
 }
