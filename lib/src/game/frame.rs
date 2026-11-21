@@ -128,6 +128,11 @@ impl Game {
     /// The characters' share of the fixed step: whoever the catalog's NPC entities give birth to in a
     /// chunk on show with its entities placed is alive, and everybody alive wanders `ticks` ticks.
     fn step_npcs(&mut self, ticks: u32) {
+        // A chunk on show gives birth to its characters this tick, not whenever its placement
+        // thread finishes: the crowd is a function of the seed and the tick, never of timing.
+        for coord in self.manager.visible_chunks() {
+            self.manager.ensure_entities(coord);
+        }
         let manager = &self.manager;
         let live: Vec<iso::grid::ChunkCoord> = manager
             .visible_chunks()

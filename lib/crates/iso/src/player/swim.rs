@@ -147,7 +147,7 @@ pub fn swim_step(fast: bool, depth: f64) -> f64 {
 pub fn float_bob(ticks: i32, settled: f64, moving: bool) -> f64 {
     let share = if moving { PLAYER_BOB_SWIMMING } else { 1.0 };
     let phase = std::f64::consts::TAU * f64::from(ticks) / PLAYER_BOB_TICKS;
-    PLAYER_BOB_DEPTH * phase.sin() * settled.clamp(0.0, 1.0) * share
+    PLAYER_BOB_DEPTH * crate::det_math::sin(phase) * settled.clamp(0.0, 1.0) * share
 }
 
 /// How settled on the surface a body `depth` blocks under the water's top is: `1` right at its
