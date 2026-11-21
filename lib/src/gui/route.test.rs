@@ -44,9 +44,10 @@ fn no_other_route_leaves_the_initial_one() {
 }
 
 #[test]
-fn the_native_route_is_the_playground_unless_an_argument_asks_otherwise() {
+fn the_native_route_is_plain_unless_an_argument_asks_otherwise() {
+    assert_eq!(native_route(["iso-core".to_owned()].iter()), Route::Plain);
     assert_eq!(
-        native_route(["iso-core".to_owned()].iter()),
+        native_route(["iso-core".to_owned(), "--playground".to_owned()].iter()),
         Route::Playground
     );
     assert_eq!(
@@ -72,7 +73,7 @@ fn the_last_route_argument_is_the_one_that_counts() {
 #[test]
 fn an_argument_that_is_not_a_route_is_ignored() {
     let arguments = ["iso-core".to_owned(), "--whatever".to_owned()];
-    assert_eq!(native_route(arguments.iter()), Route::Playground);
+    assert_eq!(native_route(arguments.iter()), Route::Plain);
 }
 
 #[test]
@@ -116,4 +117,12 @@ fn only_the_played_routes_keep_the_players_save() {
     assert!(Route::Plain.keeps_the_save());
     assert!(Route::Playground.keeps_the_save());
     assert!(!Route::Maker.keeps_the_save());
+}
+
+#[test]
+fn only_the_player_routes_toggle_the_overlay() {
+    assert!(Route::Plain.toggles_overlay());
+    assert!(Route::Playground.toggles_overlay());
+    assert!(!Route::Maker.toggles_overlay());
+    assert!(!Route::Script.toggles_overlay());
 }

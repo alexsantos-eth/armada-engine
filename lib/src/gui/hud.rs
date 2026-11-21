@@ -157,7 +157,7 @@ fn help_line(touch_visible: bool) -> &'static str {
     if touch_visible {
         "Joystick: mover, a tope correr | SALTAR"
     } else {
-        "WASD/Flechas | Espacio: saltar (mantener: volar con jetpack) | Shift: correr | J: jetpack | T: terreno | P: perf | F5: guardar"
+        "WASD/Flechas | Espacio: saltar (mantener: volar con jetpack) | Shift: correr | J: jetpack | T: terreno | P: perf | H: ocultar panel | F5: guardar"
     }
 }
 

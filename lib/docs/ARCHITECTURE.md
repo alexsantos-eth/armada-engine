@@ -73,7 +73,7 @@ La build web decide por la ruta de la página qué corre, una sola vez por proce
 - `/playground` — la superficie de desarrollo: el overlay completo (título y ayuda, lectura del mundo, botones de fase, interruptor del jetpack, panel de rendimiento y mensajes).
 - `/maker` — el **editor de mundo** sobre un solo chunk.
 
-La build nativa no tiene ruta y la toma de sus argumentos: `--maker` abre el editor, `--plain` corre la presentación sin overlay, `--scene <archivo>` corre una **escena guionizada**, y sin argumentos queda el playground de siempre.
+La build nativa no tiene ruta y la toma de sus argumentos: `--maker` abre el editor, `--playground` arranca con el overlay visible, `--scene <archivo>` corre una **escena guionizada**, y sin argumentos corre la presentación sin overlay (como `/`); en las rutas de jugador la tecla `H` muestra u oculta el overlay.
 
 En la ruta del editor no hay streaming ni guardado: `game::state` inyecta `MAKER_CHUNK` (por defecto `(0, 0)`) plano con `terrain::flat_chunk` mediante `ChunkManager::load_columns`, de modo que ni la generación ni la colocación procedural intervienen, y el jugador nace en el centro de ese chunk y camina por lo que se construye. `game::frame` toma entonces su propio camino: un trazo del editor en vez de la pasada de stream, sin descargas ni archive, y el horneado de luz del chunk se repite (`ShadowScene::forget`) solo cuando el trazo cambió el terreno o las entidades.
 
