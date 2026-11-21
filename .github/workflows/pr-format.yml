@@ -1,0 +1,37 @@
+# Checks that the PR title and every commit follow `<feat|fix|docs|refactor|perf>(<domain/module or keyword>):
+# <description>`, e.g. `feat(npc/rabbit): add hop animation`. The check is `Format`; add it to
+# the branch rule next to `CI` (lib/docs/CI.md). The rules live in .github/scripts/check-pr-format.sh.
+#
+# No `paths:` filter on purpose: a required check that never starts blocks the PR.
+name: PR format
+
+on:
+  pull_request:
+    branches: [iso-rust]
+    types: [opened, edited, synchronize, reopened]
+
+concurrency:
+  group: pr-format-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    name: Format
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: PR title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: .github/scripts/check-pr-format.sh title "$TITLE"
+      - name: Commits
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: .github/scripts/check-pr-format.sh commits "$BASE" "$HEAD"
