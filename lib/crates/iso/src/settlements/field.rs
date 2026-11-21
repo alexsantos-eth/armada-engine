@@ -25,9 +25,6 @@ const DEAL_LABEL: &str = "settlements-deal";
 const LOTS_LABEL: &str = "settlements-lots";
 /// Label for the stream that bends a block out of the plain square.
 const SHAPE_LABEL: &str = "settlements-shape";
-/// Label for the stream that picks the street each side opens into the wild.
-const EXIT_LABEL: &str = "settlements-exit";
-
 /// One building plot: the column its building is anchored on, the zone that raises it and the
 /// low corner of its block, which a uniform zone keys its single pick on. A lot always stands on
 /// the rim of its block, beside a street, so its building needs no walkway of its own.
@@ -204,6 +201,49 @@ impl Settlement {
     /// settlement. Blocks own their columns, streets ring every block that stands, and the
     /// band around the grid and every trimmed corner are edge.
     fn base_zone_at(&self, x: i32, y: i32) -> Option<usize> {
+        let lane = self.lane_at(x, y)?;
+        let bounds = self.bounds();
+        let inside =
+            x >= bounds.min_x && x <= bounds.max_x && y >= bounds.min_y && y <= bounds.max_y;
+        if !inside {
+            return Some(lane);
+        }
+        if self.is_paved(x, y) {
+            Some(self.street)
+        } else if lane == self.street {
+            Some(self.edge)
+        } else {
+            Some(lane)
+        }
+    }
+
+    /// Whether the cell inside the grid belongs to the paved network: the ring around the middle
+    /// block (the settlement's one roundabout) and the four straight arms that run out of it.
+    /// Every other lane between blocks stays unpaved, so no small squares of road form; the
+    /// buildings on them reach the network by their own roads.
+    fn is_paved(&self, x: i32, y: i32) -> bool {
+        let rank = |axis: Axis| match axis {
+            Axis::Street(i) => (2 * i, true),
+            Axis::Block(i, _) => (2 * i + 1, false),
+        };
+        let (px, on_x) = rank(self.axis(x, self.origin.x));
+        let (py, on_y) = rank(self.axis(y, self.origin.y));
+        let (ci, cj) = (self.cols / 2, self.rows / 2);
+        let line_x = |i: i32| on_x && px == 2 * i;
+        let line_y = |j: i32| on_y && py == 2 * j;
+        let ring_x = (2 * ci..=2 * ci + 2).contains(&px);
+        let ring_y = (2 * cj..=2 * cj + 2).contains(&py);
+        (ring_x && (line_y(cj) || line_y(cj + 1)))
+            || (ring_y && (line_x(ci) || line_x(ci + 1)))
+            || (line_y(cj) && px < 2 * ci)
+            || (line_y(cj + 1) && px > 2 * ci + 2)
+            || (line_x(ci) && py < 2 * cj)
+            || (line_x(ci + 1) && py > 2 * cj + 2)
+    }
+
+    /// The zone of column `(x, y)` before the unpaved lanes are handed back to the edge: every
+    /// lane between blocks reads as street here, which is what the lots stand beside.
+    fn lane_at(&self, x: i32, y: i32) -> Option<usize> {
         let bounds = self.bounds();
         let inside =
             x >= bounds.min_x && x <= bounds.max_x && y >= bounds.min_y && y <= bounds.max_y;
@@ -304,7 +344,6 @@ pub struct WorldSettlements {
     front: u64,
     deal: u64,
     lots: u64,
-    exit: u64,
     shape: u64,
     ground: Option<TerrainGenerator>,
 }
@@ -322,7 +361,6 @@ impl WorldSettlements {
             front: derive_seed(seed, FRONT_LABEL),
             deal: derive_seed(seed, DEAL_LABEL),
             lots: derive_seed(seed, LOTS_LABEL),
-            exit: derive_seed(seed, EXIT_LABEL),
             shape: derive_seed(seed, SHAPE_LABEL),
             ground: None,
         }
@@ -510,7 +548,6 @@ impl WorldSettlements {
     fn settlement_of_site(&self, site_x: i32, site_y: i32) -> Option<Settlement> {
         let (origin, cols, rows) = self.frame_of_site(site_x, site_y)?;
         let layout = self.catalog.layout;
-        let key = (i64::from(site_x), i64::from(site_y));
         let mut settlement = Settlement {
             center: WorldCoord {
                 x: origin.x + (cols * layout.pitch() - layout.street) / 2,
@@ -543,12 +580,9 @@ impl WorldSettlements {
                 self.lay_lots(&mut settlement, i, j);
             }
         }
-        settlement.exits = [
-            self.exit_line(rows, key, 0),
-            self.exit_line(rows, key, 1),
-            self.exit_line(cols, key, 2),
-            self.exit_line(cols, key, 3),
-        ];
+        // The four arms run straight out of the ring around the middle block, in a pinwheel.
+        let (ci, cj) = (cols / 2, rows / 2);
+        settlement.exits = [cj, cj + 1, ci, ci + 1];
         Some(settlement)
     }
 
@@ -725,7 +759,7 @@ impl WorldSettlements {
         let beside_street = |cell: &WorldCoord| {
             [(1, 0), (-1, 0), (0, 1), (0, -1)]
                 .into_iter()
-                .any(|(dx, dy)| settlement.zone_at(cell.x + dx, cell.y + dy) == street)
+                .any(|(dx, dy)| settlement.lane_at(cell.x + dx, cell.y + dy) == street)
         };
         let mut slots: Vec<WorldCoord> = cells
             .into_iter()
@@ -756,17 +790,6 @@ impl WorldSettlements {
                 zone,
                 block,
             });
-        }
-    }
-
-    /// The street line one side of the grid opens into the wild: an inner line when there is
-    /// one, so the exit never leaves from a corner a trim may take away.
-    fn exit_line(&self, blocks: i32, key: (i64, i64), side: i64) -> i32 {
-        let roll = lattice_at(self.exit, key.0 * 4 + side, key.1);
-        if blocks >= 2 {
-            1 + ((roll * f64::from(blocks - 1)).floor() as i32).min(blocks - 2)
-        } else {
-            i32::from(roll >= 0.5)
         }
     }
 }
