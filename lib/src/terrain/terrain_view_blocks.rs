@@ -8,13 +8,51 @@ use iso::grid::WorldCoord;
 use iso::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
 use iso::terrain::{TerrainColumn, TerrainMaterial, connection_mask, stairs_direction};
 
-use crate::assets::sprites::{ATLAS_TEXTURE, SpriteAtlas, SpriteDraw, ground_key};
+use std::rc::Rc;
+
+use crate::assets::sprites::{ATLAS_TEXTURE, ShadeLattice, SpriteAtlas, SpriteDraw, ground_key};
+use crate::lighting::shadow_view::GROUND_SHADOW_LAYER;
 use crate::terrain::terrain_view::{MATERIAL_SLOTS, MATERIALS, slot};
 use crate::terrain::terrain_view_appearance::TerrainLook;
 use crate::water::reflection_view::{Reflected, ReflectionSprite, WaterCell, collect_reflection};
 
 /// Terrain draws below everything that stands on it.
 pub const TERRAIN_LAYER: i32 = 0;
+
+/// How dark the contact shade is where it is darkest, at the edge shared with a higher column.
+pub const CONTACT_OPACITY: f32 = 0.5;
+
+/// Points of the contact lattice across a cell, and how many of them the shade fades over.
+const CONTACT_STEPS: u32 = 4;
+const CONTACT_REACH: f32 = 2.0;
+
+/// The shade a lower column's top takes next to a higher one: darkest along the edge they share,
+/// fading out over half a cell. `rise_x` is a higher column across the near `x` edge and `rise_y`
+/// across the near `y` edge; the lattice runs from the cell's `(0, 0)` corner, along `x` and down
+/// `y`, like the quad the terrain draws it on. `None` when neither edge borders a higher column.
+///
+/// The camera sees a column's faces on its `-x` and `-y` sides, so the far side of a step shows
+/// only the lower top, with no face and no cast shadow in some phases of the day: this shade is
+/// what tells the two levels apart there.
+pub fn contact_lattice(rise_x: bool, rise_y: bool) -> Option<ShadeLattice> {
+    if !rise_x && !rise_y {
+        return None;
+    }
+    let fade = |steps: u32| (1.0 - steps as f32 / CONTACT_REACH).max(0.0);
+    let mut coverage = Vec::with_capacity(((CONTACT_STEPS + 1) * (CONTACT_STEPS + 1)) as usize);
+    for row in 0..=CONTACT_STEPS {
+        for column in 0..=CONTACT_STEPS {
+            let across_x = if rise_x { fade(column) } else { 0.0 };
+            let across_y = if rise_y { fade(row) } else { 0.0 };
+            coverage.push(across_x.max(across_y));
+        }
+    }
+    Some(ShadeLattice::from_coverage(
+        CONTACT_STEPS,
+        CONTACT_STEPS,
+        coverage,
+    ))
+}
 
 /// How far below its surface a column is ever stacked. A column beside a deep sea trench would
 const MAX_EXPOSED_BLOCKS: i32 = 10;
@@ -280,6 +318,45 @@ pub fn collect_terrain_sprites<H, W, S>(
                 SpriteDraw::tinted(key, ATLAS_TEXTURE, frame, layout, tint)
                     .on_surface(f64::from(column.elevation)),
             );
+            if on_top
+                && !matches!(
+                    block.material,
+                    TerrainMaterial::Water | TerrainMaterial::Stairs
+                )
+                && let Some(lattice) = contact_lattice(
+                    flank_x.is_some_and(|height| height > column.elevation),
+                    flank_y.is_some_and(|height| height > column.elevation),
+                )
+            {
+                let corner = |dx: f64, dy: f64| {
+                    let point = project_block(
+                        GridPoint {
+                            x: f64::from(column.coord.x) + dx,
+                            y: f64::from(column.coord.y) + dy,
+                        },
+                        f64::from(column.elevation),
+                        projection,
+                    );
+                    (point.screen_x, point.screen_y)
+                };
+                out.push(SpriteDraw::face_shadow(
+                    ground_key(
+                        centre.x,
+                        centre.y,
+                        f64::from(column.elevation),
+                        GROUND_SHADOW_LAYER,
+                        projection.tile_height,
+                    ),
+                    [
+                        corner(0.0, 0.0),
+                        corner(1.0, 0.0),
+                        corner(1.0, 1.0),
+                        corner(0.0, 1.0),
+                    ],
+                    Rc::new(lattice),
+                    CONTACT_OPACITY,
+                ));
+            }
             if let (Some(level), Some(water_line)) = (water_level, water_line) {
                 let block_level = f64::from(block.elevation);
                 let walled_in = flank

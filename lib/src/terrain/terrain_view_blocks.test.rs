@@ -487,3 +487,18 @@ fn a_flight_with_nothing_below_it_falls_back_to_the_plain_block() {
     let draws = collected(&[flight], |_| Some(2), |_, _| None);
     assert_eq!(stairs_side_counts(&draws).iter().sum::<usize>(), 0);
 }
+
+#[test]
+fn a_column_beside_no_higher_one_takes_no_contact_shade() {
+    assert!(super::contact_lattice(false, false).is_none());
+}
+
+#[test]
+fn contact_shade_is_darkest_along_the_edge_shared_with_the_higher_column() {
+    let x_edge = super::contact_lattice(true, false).expect("a higher column across x");
+    assert!(x_edge.light_in(0.0, 0.5) < 0.01);
+    assert!(x_edge.light_in(0.5, 0.5) > 0.99, "it fades out by mid-cell");
+    let y_edge = super::contact_lattice(false, true).expect("a higher column across y");
+    assert!(y_edge.light_in(0.5, 0.0) < 0.01);
+    assert!(y_edge.light_in(0.5, 1.0) > 0.99);
+}
