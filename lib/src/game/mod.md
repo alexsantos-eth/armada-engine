@@ -119,7 +119,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`toggle_jetpack`](frame.rs#L124) — Se pone o se quita el jetpack donde la ruta lo permite (`gui::Route::allows_jetpack`); en el resto no hace nada, así que la presentación limpia no se vuela. Devuelve si queda puesto. Lo llaman la tecla `J` de la entrada y el interruptor del HUD.
+- [`toggle_jetpack`](frame.rs#L124) — Se pone o se quita el jetpack en cualquier ruta. Devuelve si queda puesto. Lo llaman la tecla `J` de la entrada y el interruptor del HUD.
   - Firma: `pub(crate) fn toggle_jetpack(&mut self) -> bool {`
 - [`update`](frame.rs#L158) — Entrada, ticks fijos, reloj del mundo (avanza solo en el paso fijo), fase efectiva de sombras (override o `phase_at` del reloj), streaming de chunks, sonido ligado al movimiento y guardado de un fotograma. `None` si el jugador pidió salir (tras volcar el guardado si hacía falta).
   - Firma: `pub(crate) fn update(&mut self, frame_ms: f64) -> Option<FrameView> {`
@@ -170,7 +170,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Tipos
 
-- [`Game`](state.rs#L64) — El juego compuesto: manager, archivo de guardado, jugador, cámara, stepper, reloj del mundo (`clock`), override de fase (`phase_override`), arte, sombras, polvo, cola de dibujo, servicios (audio, UI, perf), los controles táctiles (`touch`), las métricas de casilla (`tile_metrics`), el jetpack (`jetpack`, si lo lleva puesto, y `jetpack_allowed`, si esta ruta deja ponérselo) y la sesión de edición (`maker`, solo en la ruta del editor).
+- [`Game`](state.rs#L64) — El juego compuesto: manager, archivo de guardado, jugador, cámara, stepper, reloj del mundo (`clock`), override de fase (`phase_override`), arte, sombras, polvo, cola de dibujo, servicios (audio, UI, perf), los controles táctiles (`touch`), las métricas de casilla (`tile_metrics`), el jetpack (`jetpack`, si lo lleva puesto) y la sesión de edición (`maker`, solo en la ruta del editor).
   - Audio: `MacroquadAudio` carga los ocho WAVs de `content/sounds/` al arrancar; `last_motion` es la memoria de una pasada por fotograma para los bucles.
   - Firma: `pub(crate) struct Game { ... }`
 

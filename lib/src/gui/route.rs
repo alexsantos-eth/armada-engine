@@ -3,8 +3,8 @@
 //! `/` is the clean presentation and paints no GUI at all; `/playground` is the development
 //! surface with the overlay the HUD has always drawn; `/maker` is the world editor, which
 //! paints the overlay and edits one chunk instead of streaming the procedural world. The
-//! native build has no route and takes it from its arguments (`--maker`, `--plain`,
-//! `--scene <file>`). The decision is taken once per process, before the loop starts.
+//! native build has no route and takes it from its arguments (`--maker`, `--playground`,
+//! `--scene <file>`); with none it is the plain presentation, like `/`. The decision is taken once per process, before the loop starts.
 
 /// What this process runs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -27,16 +27,16 @@ impl Route {
         matches!(self, Self::Playground | Self::Maker)
     }
 
+    /// Whether the player can show or hide the overlay with the `H` key. The editor always has
+    /// it, and a scripted run never does.
+    pub(crate) fn toggles_overlay(self) -> bool {
+        matches!(self, Self::Plain | Self::Playground)
+    }
+
     /// Whether this route loads and writes the player's save. A scripted run and the editor
     /// both work on a world of their own, so neither touches it.
     pub(crate) fn keeps_the_save(self) -> bool {
         matches!(self, Self::Plain | Self::Playground)
-    }
-
-    /// Whether this route lets the player strap a jetpack on. It is a development option, so
-    /// only the surfaces that paint the overlay offer it; the plain presentation never does.
-    pub(crate) fn allows_jetpack(self) -> bool {
-        matches!(self, Self::Playground | Self::Maker | Self::Script)
     }
 
     /// Whether this route edits one chunk by hand instead of streaming the world.
@@ -48,7 +48,11 @@ impl Route {
 /// The argument that opens the editor on a native build.
 #[cfg(any(not(target_arch = "wasm32"), test))]
 const MAKER_FLAG: &str = "--maker";
-/// The argument that runs a native build as the game is presented, with no overlay.
+/// The argument that runs a native build with the overlay on from the first frame.
+#[cfg(any(not(target_arch = "wasm32"), test))]
+const PLAYGROUND_FLAG: &str = "--playground";
+/// The argument that runs a native build as the game is presented, with no overlay. It is what
+/// a native run does anyway; it stays so that old command lines keep working.
 #[cfg(any(not(target_arch = "wasm32"), test))]
 const PLAIN_FLAG: &str = "--plain";
 /// The argument that runs a scene file; the scene itself is read by `testbed::scene_path`.
@@ -90,14 +94,17 @@ fn route_for_path(path: &str) -> Route {
     }
 }
 
-/// The route a native run takes: the playground, unless its arguments ask for the editor or
-/// for the game as it is presented.
+/// The route a native run takes: the game as it is presented, unless its arguments ask for the
+/// editor, for the overlay on from the start, or for a scripted scene.
 #[cfg(any(not(target_arch = "wasm32"), test))]
 fn native_route<'a>(arguments: impl Iterator<Item = &'a String>) -> Route {
-    let mut route = Route::Playground;
+    let mut route = Route::Plain;
     for argument in arguments {
         if argument == MAKER_FLAG {
             route = Route::Maker;
+        }
+        if argument == PLAYGROUND_FLAG {
+            route = Route::Playground;
         }
         if argument == PLAIN_FLAG {
             route = Route::Plain;

@@ -140,8 +140,6 @@ pub(crate) struct Game {
     pub(crate) lit: bool,
     /// The chunks the last frame drew, so a scripted report lists what its shots show.
     pub(crate) shown: Vec<iso::grid::ChunkCoord>,
-    /// Whether this route lets the jetpack be strapped on at all (`Route::allows_jetpack`).
-    pub(crate) jetpack_allowed: bool,
     /// Whether the player is wearing the jetpack: equipment the development surfaces toggle,
     /// until it is an item found in the world. Worn, a held jump key flies (`PlayerState`).
     pub(crate) jetpack: bool,
@@ -432,7 +430,6 @@ impl Game {
             })
             .expect("the client's stepper options are valid"),
             show_terrain: true,
-            jetpack_allowed: route.allows_jetpack(),
             jetpack: false,
             last_save: get_time(),
             unsaved_changes: false,

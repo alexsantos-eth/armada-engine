@@ -54,7 +54,8 @@ fn frame_sample(
 
 /// Runs the game until the player quits.
 pub(crate) async fn run(mut game: Game) {
-    let show_overlay = crate::gui::current().shows_overlay();
+    let route = crate::gui::current();
+    let mut show_overlay = route.shows_overlay();
     let scripted = game.script.is_some();
     let initial_phase = game
         .shadows
@@ -131,6 +132,9 @@ pub(crate) async fn run(mut game: Game) {
             stats.chunks_drawn,
             game.manager.discovered_count(),
         ));
+        if route.toggles_overlay() && is_key_pressed(KeyCode::H) {
+            show_overlay = !show_overlay;
+        }
         if is_key_pressed(KeyCode::P) {
             info!("{}", game.perf.summary());
         }
