@@ -78,9 +78,6 @@ STRIP = 66                        # width of a path's bed where it leaves the ce
 BLOB = 36                         # radius of the bed in the middle of the cell
 FRAY, FADE = 9, 22                # most the bed's edge wanders, and how far from the cell's edge
 #                                   that wandering has faded out, so a bed leaves at its width
-# Height contrast (shade_sides): the sides come out this share of the top's brightness, with a rim
-# RIM_WIDTH pixels thick along the lip that goes this far (RIM_LIGHT) towards white.
-SIDE_SHADE, RIM_WIDTH, RIM_LIGHT = 0.78, 2.0, 0.30
 # Engine bit → direction on the model's top plane (engine +x is model −y, +y is −x).
 DIRECTIONS = {1: (0, -1), 2: (-1, 0), 4: (0, 1), 8: (1, 0)}
 
@@ -521,23 +518,6 @@ def top_mask(floor):
     return mask
 
 
-def shade_sides(img, floor):
-    """Height contrast: under the surface's front edges (the two faces the camera sees) the block
-    is darker than its top and has a light rim along the lip, so a step between two levels reads
-    at a glance. Neighbours at one level cover each other's sides, so the lawn shows no grid."""
-    import numpy as np
-    a = np.asarray(img.convert("RGBA"), dtype=np.float32).copy()
-    h, w = a.shape[:2]
-    edge = 256 + (TOP - floor) / TOP * 170.5 - np.abs(np.arange(w) - w / 2) * 0.5
-    d = np.arange(h)[:, None] - edge[None, :] + 0.5      # rows under the surface's edge: side faces
-    dark = SIDE_SHADE + (1 - SIDE_SHADE) * np.clip(1 - d, 0, 1)      # a one-pixel blend at the lip
-    rim = np.clip(RIM_WIDTH - d, 0, 1) * (d >= 0) * RIM_LIGHT
-    rgb = a[..., :3] * np.where(d > 0, dark, 1)[..., None]
-    rgb += (255 - rgb) * rim[..., None]
-    a[..., :3] = rgb
-    return Image.fromarray(np.clip(a + 0.5, 0, 255).astype(np.uint8), "RGBA")
-
-
 def render(vox, sprite, style, margin=0, around=False):
     binary = blender()
     tail = [vox, sprite, "--style", style, "--margin", str(margin)] + (["--around"] if around else [])
@@ -589,7 +569,6 @@ def main():
             alpha = Image.composite(top.getchannel("A"), Image.new("L", SIZE, 0), top_mask(kind.floor))
             top.putalpha(alpha)                          # and over the side render, which fills
             out.alpha_composite(top)                     # wherever the top one is see-through
-            out = shade_sides(out, kind.floor)
             os.makedirs(os.path.join(ASSETS, kind.folder), exist_ok=True)
             out.save(os.path.join(ASSETS, kind.folder, name))
             print("ok", label)
