@@ -182,7 +182,9 @@ comentario del PR (que se actualiza en cada push) y en un artefacto de la corrid
 Qué escenas corren:
 
 - todas las `lib/scenes/pr-*.json`: el juego tal como arranca (`pr-spawn`, de día, tras andar y
-  saltar, al atardecer y de noche) y un poblado entero (`pr-village`);
+  saltar, al atardecer y de noche), un poblado entero (`pr-village`) y las mismas dos posiciones
+  de cerca (`pr-spawn-close`, `pr-village-close`: zoom 1,8 y 1,5, de día, al atardecer y de noche)
+  para poder comprobar las sombras;
 - además, cualquier otra `lib/scenes/*.json` que el PR añada o cambie. Es la forma de mostrar la
   feature: una escena que la encuadre (con `edits`, `place`, `teleport` o una `seed`) entra sola
   en el comentario.

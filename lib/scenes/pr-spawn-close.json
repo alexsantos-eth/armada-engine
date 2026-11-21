@@ -1,0 +1,18 @@
+{
+  "world": "procedural",
+  "window": [1280, 800],
+  "zoom": 1.8,
+  "phase": "day",
+  "steps": [
+    "settle",
+    { "shot": "close-day.png" },
+    { "phase": "sunset" },
+    "settle",
+    { "shot": "close-sunset.png" },
+    { "phase": "night" },
+    "settle",
+    { "shot": "close-night.png" }
+  ],
+  "out": "shots",
+  "maxFrames": 1800
+}
