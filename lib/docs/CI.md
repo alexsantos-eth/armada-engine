@@ -20,6 +20,15 @@ Los tests no se ejecutan en WebAssembly: `wasm32-unknown-unknown` no tiene un ru
 código que solo compila para la web (`#[cfg(target_arch = "wasm32")]`) sigue compilando y enlazando
 igual que en Netlify.
 
+## Formato de commits y título (`Format`)
+
+`.github/workflows/pr-format.yml` corre en cada PR contra `iso-rust` (también al editar el título)
+y falla si el título del PR o el asunto de algún commit no es
+`<feat|docs|fix>(<dominio/módulo o palabra clave>): <descripción>`; los commits de merge se
+saltan. Las reglas viven en `.github/scripts/check-pr-format.sh` (se puede correr en local) y el
+flujo de ramas y PRs en la skill `armada-pull-request`. Es un check aparte de `CI`: para que
+bloquee el merge, añade también `Format` a los checks obligatorios de la regla de rama.
+
 ## Hacerlo obligatorio
 
 Un workflow no puede marcarse a sí mismo como obligatorio: eso es una regla de la rama y la pone
@@ -58,7 +67,8 @@ gh api -X POST repos/alexsantos-eth/armada-engine/rulesets --input - <<'EOF'
         "required_review_thread_resolution": false } },
     { "type": "required_status_checks", "parameters": {
         "strict_required_status_checks_policy": false,
-        "required_status_checks": [ { "context": "CI", "integration_id": 15368 } ] } }
+        "required_status_checks": [ { "context": "CI", "integration_id": 15368 },
+                                    { "context": "Format", "integration_id": 15368 } ] } }
   ]
 }
 EOF

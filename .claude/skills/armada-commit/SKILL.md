@@ -115,17 +115,11 @@ Conventional Commits, en inglés:
 <attribution trailers, if the session provides them>
 ```
 
-- **type**, uno de estos:
-  - `feat`: comportamiento nuevo;
+- **type**, uno de estos (los mismos que valida el CI en los PRs, `.github/workflows/pr-format.yml`):
+  - `feat`: comportamiento nuevo (también refactor, perf, build, assets y chore);
   - `fix`: corrección de un error;
-  - `perf`: rendimiento;
-  - `refactor`: cambio de estructura sin cambio de comportamiento;
-  - `test`: solo tests;
-  - `docs`: solo Markdown o comentarios;
-  - `build`: dependencias, Macroquad, WASM, clippy, rustfmt o CI;
-  - `style`: solo formato (lo que deja rustfmt), sin otros cambios;
-  - `chore`: el resto (assets generados, limpieza).
-- **scope:** el área principal tocada, en minúsculas. Puede ser un módulo del motor (`iso`, `grid`, `projection`, `paths`, `camera`, `time`, `simulation`, `terrain`, `entities`, `world`, `lighting`, `water`, `player`, `scene_order`, `rendering`, `perf`, `save`, `services`, `assets`), un área (`content`, `assets`, `painted`, `scripts`, `netlify`, `wasm`), o `deps`, `lint`, `format`, `docs`. Si toca varias áreas, usa la dominante. Con dos o más cambios independientes, pregunta si prefiere un commit por cambio y, si dice que sí, repite los pasos 5 y 6 por grupo (con una sola validación previa del conjunto).
+  - `docs`: solo Markdown, comentarios o skills.
+- **scope** (obligatorio): el área principal tocada, en minúsculas. Puede ser un módulo del motor (`iso`, `grid`, `projection`, `paths`, `camera`, `time`, `simulation`, `terrain`, `entities`, `world`, `lighting`, `water`, `player`, `scene_order`, `rendering`, `perf`, `save`, `services`, `assets`), un área (`content`, `assets`, `painted`, `scripts`, `netlify`, `wasm`), o `deps`, `lint`, `format`, `docs`. Si toca varias áreas, usa la dominante. Con dos o más cambios independientes, pregunta si prefiere un commit por cambio y, si dice que sí, repite los pasos 5 y 6 por grupo (con una sola validación previa del conjunto).
 - **summary:** en imperativo y en minúsculas, sin punto final, y la primera línea entera con ≤ 72 caracteres. Por ejemplo: `add walking dust puffs`, no `Added dust.`.
 - **body:** de 1 a 6 viñetas con `- `, cada una con qué cambió y por qué, a 72 columnas. Sin listas de archivos ni detalles que ya muestra el diff. Si rustfmt reformateó archivos ajenos al cambio, una viñeta lo dice (`- apply rustfmt formatting`).
 - **Cambio incompatible** (p. ej. sube `SAVE_SCHEMA_VERSION` o `schemaVersion` del catálogo o cambia un contrato público): `!` tras el scope (`feat(world)!: …`) y un pie `BREAKING CHANGE: <qué se rompe>` antes de los trailers.
