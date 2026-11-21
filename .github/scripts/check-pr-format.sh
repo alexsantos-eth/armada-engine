@@ -5,7 +5,7 @@
 #   check-pr-format.sh commits <base-sha> <head-sha>     # every non-merge commit in base..head
 #
 # type  : feat | docs | fix            (TYPES below is the single place to change it)
-# scope : domain/module or keyword, lowercase, e.g. `npc/rabbit`, `terrain`, `ci`
+# scope : one lowercase word (`terrain`, `ci`); a `/` is optional, only to nest (`npc/rabbit`)
 # desc  : non-empty, no trailing period.
 # Exit status is 1 when anything is invalid, with one explanation per offender.
 set -euo pipefail
@@ -17,7 +17,7 @@ PATTERN="^(${TYPES})\\(([a-z0-9]+([/_-][a-z0-9]+)*)\\)!?: [^ ].*[^ .]$|^(${TYPES
 problem() {
   local s=$1
   if [[ ! $s =~ $PATTERN ]]; then
-    echo "does not match <${TYPES}>(<domain/module or keyword>): <description>"
+    echo "does not match <${TYPES}>(<scope>): <description>"
   fi
 }
 
@@ -52,7 +52,7 @@ esac
 if [[ $fail -ne 0 ]]; then
   {
     echo
-    echo "Expected: <${TYPES}>(<domain/module or keyword>): <description>"
+    echo "Expected: <${TYPES}>(<scope>): <description>"
     echo "  feat(npc/rabbit): add hop animation"
     echo "  fix(terrain): remove cracked ground variant"
     echo "More in .claude/CLAUDE.md (Ramas y pull requests)."
