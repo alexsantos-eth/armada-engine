@@ -150,6 +150,11 @@ fn settlement_in(world: &WorldSettlements, site_x: i32, site_y: i32) -> Option<S
     None
 }
 
+/// The zone of a column with every lane between blocks read as street, paved or not.
+fn lane(world: &WorldSettlements, x: i32, y: i32) -> Option<usize> {
+    world.settlement_at(x, y).and_then(|s| s.lane_at(x, y))
+}
+
 fn some_settlement(world: &WorldSettlements) -> Settlement {
     settlement_in(world, 0, 0).expect("every site hosts a settlement in the fixture")
 }
@@ -201,6 +206,29 @@ fn the_grid_has_as_many_blocks_as_the_layout_allows() {
 }
 
 #[test]
+fn only_the_middle_block_is_ringed_by_paved_street() {
+    let world = shaped((0.0, 0.0, 0.0));
+    let street = zone(&world, ZoneRole::Street);
+    for site in 0..6 {
+        let settlement = settlement_in(&world, site, 5).expect("chance is one");
+        let ringed = |i: i32, j: i32| {
+            let rect = settlement.block_rect(i, j);
+            let paved = |x: i32, y: i32| world.zone_at(x, y) == Some(street);
+            (rect.min_x - 1..=rect.max_x + 1)
+                .all(|x| paved(x, rect.min_y - 1) && paved(x, rect.max_y + 1))
+                && (rect.min_y - 1..=rect.max_y + 1)
+                    .all(|y| paved(rect.min_x - 1, y) && paved(rect.max_x + 1, y))
+        };
+        for j in 0..settlement.rows() {
+            for i in 0..settlement.cols() {
+                let middle = (i, j) == (settlement.cols() / 2, settlement.rows() / 2);
+                assert_eq!(ringed(i, j), middle, "block ({i}, {j}) of site {site}");
+            }
+        }
+    }
+}
+
+#[test]
 fn every_block_is_ringed_by_streets() {
     let world = field_of(&catalog());
     let street = zone(&world, ZoneRole::Street);
@@ -209,12 +237,12 @@ fn every_block_is_ringed_by_streets() {
         for i in 0..settlement.cols() {
             let rect = settlement.block_rect(i, j);
             for x in rect.min_x - 1..=rect.max_x + 1 {
-                assert_eq!(world.zone_at(x, rect.min_y - 1), Some(street));
-                assert_eq!(world.zone_at(x, rect.max_y + 1), Some(street));
+                assert_eq!(lane(&world, x, rect.min_y - 1), Some(street));
+                assert_eq!(lane(&world, x, rect.max_y + 1), Some(street));
             }
             for y in rect.min_y - 1..=rect.max_y + 1 {
-                assert_eq!(world.zone_at(rect.min_x - 1, y), Some(street));
-                assert_eq!(world.zone_at(rect.max_x + 1, y), Some(street));
+                assert_eq!(lane(&world, rect.min_x - 1, y), Some(street));
+                assert_eq!(lane(&world, rect.max_x + 1, y), Some(street));
             }
         }
     }
@@ -358,9 +386,7 @@ fn every_lot_outside_a_park_stands_on_the_rim_beside_a_street_and_no_two_touch()
             seen += 1;
             let beside_street = [(1, 0), (-1, 0), (0, 1), (0, -1)]
                 .into_iter()
-                .any(|(dx, dy)| {
-                    world.zone_at(lot.anchor.x + dx, lot.anchor.y + dy) == Some(street)
-                });
+                .any(|(dx, dy)| lane(&world, lot.anchor.x + dx, lot.anchor.y + dy) == Some(street));
             assert!(beside_street || lot.zone == park, "{lot:?}");
             assert_eq!(world.zone_at(lot.anchor.x, lot.anchor.y), Some(lot.zone));
             for other in lots {
@@ -695,7 +721,7 @@ fn removed_cells(
     let street = zone(world, ZoneRole::Street);
     block_cells(settlement, i, j)
         .into_iter()
-        .filter(|cell| world.zone_at(cell.x, cell.y) == Some(street))
+        .filter(|cell| lane(world, cell.x, cell.y) == Some(street))
         .collect()
 }
 
@@ -808,7 +834,7 @@ fn a_merged_block_swallows_the_street_to_its_neighbour_but_not_the_crossings() {
                 assert_eq!(settlement.block_zone(other.0, other.1), dealt);
                 assert_eq!(settlement.block_shape(other.0, other.1), BlockShape::Square);
                 for cell in &segment {
-                    assert_eq!(world.zone_at(cell.x, cell.y), dealt, "{cell:?}");
+                    assert_eq!(lane(&world, cell.x, cell.y), dealt, "{cell:?}");
                 }
                 let first = segment[0];
                 let last = segment[segment.len() - 1];
@@ -835,8 +861,8 @@ fn a_merged_block_swallows_the_street_to_its_neighbour_but_not_the_crossings() {
                         },
                     )
                 };
-                assert_eq!(world.zone_at(before.x, before.y), Some(street));
-                assert_eq!(world.zone_at(after.x, after.y), Some(street));
+                assert_eq!(lane(&world, before.x, before.y), Some(street));
+                assert_eq!(lane(&world, after.x, after.y), Some(street));
             }
         }
     }
@@ -855,9 +881,7 @@ fn whatever_their_shape_every_block_raises_lots_beside_a_street_and_none_touch()
             assert_eq!(world.zone_at(lot.anchor.x, lot.anchor.y), Some(lot.zone));
             let beside_street = [(1, 0), (-1, 0), (0, 1), (0, -1)]
                 .into_iter()
-                .any(|(dx, dy)| {
-                    world.zone_at(lot.anchor.x + dx, lot.anchor.y + dy) == Some(street)
-                });
+                .any(|(dx, dy)| lane(&world, lot.anchor.x + dx, lot.anchor.y + dy) == Some(street));
             assert!(beside_street || lot.zone == park, "{lot:?}");
             for other in lots {
                 let apart =
@@ -976,7 +1000,7 @@ fn a_split_block_is_cut_by_an_alley_that_joins_the_streets_on_both_sides() {
                         .collect()
                 };
                 for cell in &alley {
-                    assert_eq!(world.zone_at(cell.x, cell.y), Some(street), "{cell:?}");
+                    assert_eq!(lane(&world, cell.x, cell.y), Some(street), "{cell:?}");
                 }
                 let carved = removed_cells(&world, &settlement, i, j);
                 assert_eq!(carved.len() as i32, world.catalog().layout.block);
