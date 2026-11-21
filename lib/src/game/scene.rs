@@ -21,10 +21,10 @@ use crate::effects::ambient::SpawnEnv;
 use crate::effects::emitters::EffectSpot;
 use crate::effects::fire::FireSpot;
 use crate::game::config::{
-    BAND_BLEED, CRAB_IDLE_SHEET, CRAB_SHADOW_SCALE, CRAB_WALK_SHEET, ENTITY_LAYER,
-    PLAYER_BEHIND_LAYER, PLAYER_CLIMB_SHEET, PLAYER_FLIP_SHEET, PLAYER_FRONT_LAYER,
-    PLAYER_IDLE_SHEET, PLAYER_JETPACK_DEPTH, PLAYER_JETPACK_SHEET, PLAYER_JUMP_SHEET, PLAYER_SCALE,
-    PLAYER_SWIM_SHEET, PLAYER_WALK_SHEET, PLAYER_XRAY, SceneMetrics,
+    BAND_BLEED, ENTITY_LAYER, NpcArt, PLAYER_BEHIND_LAYER, PLAYER_CLIMB_SHEET, PLAYER_FLIP_SHEET,
+    PLAYER_FRONT_LAYER, PLAYER_IDLE_SHEET, PLAYER_JETPACK_DEPTH, PLAYER_JETPACK_SHEET,
+    PLAYER_JUMP_SHEET, PLAYER_SCALE, PLAYER_SWIM_SHEET, PLAYER_WALK_SHEET, PLAYER_XRAY,
+    SceneMetrics,
 };
 use crate::game::frame::FrameView;
 use crate::game::ground::WaterField;
@@ -79,13 +79,21 @@ pub(crate) fn player_sheets(atlas: &SpriteAtlas) -> crate::player::player_view::
     }
 }
 
-/// How many poses the crab's sheets hold, out of the atlas: a walk sheet whose first column
-/// stands, and an idle cycle. It has nothing to climb, jump, swim or flip with.
-pub(crate) fn crab_sheets(atlas: &SpriteAtlas) -> crate::player::player_view::PlayerSheets {
+/// How many poses an animal's sheets hold, out of the atlas: a walk sheet whose first column
+/// stands, an idle cycle and, for one that hops, the five jump phases. It has nothing to climb,
+/// swim or flip with.
+pub(crate) fn npc_sheets(
+    atlas: &SpriteAtlas,
+    art: NpcArt,
+) -> crate::player::player_view::PlayerSheets {
     let columns = |source| atlas.sheet(source).map(|sheet| sheet.columns());
     crate::player::player_view::PlayerSheets {
-        walk_poses: columns(CRAB_WALK_SHEET).map(|columns| columns as i32 - 1),
-        idle_poses: columns(CRAB_IDLE_SHEET).map(|columns| columns as i32),
+        walk_poses: columns(art.walk).map(|columns| columns as i32 - 1),
+        idle_poses: columns(art.idle).map(|columns| columns as i32),
+        jump_poses: art
+            .jump
+            .and_then(|jump| atlas.sheet(jump))
+            .and_then(|sheet| jump_poses(sheet.poses(), sheet.columns())),
         ..Default::default()
     }
 }
@@ -1051,27 +1059,22 @@ impl Game {
                 continue;
             }
             let feet = player_feet(at, rp.elevation + rp.height, projection);
-            let crab = npc.logic == iso::npc::NpcLogic::Basic;
-            let (idle_sheet, walk_sheet, sheets) = if crab {
-                (CRAB_IDLE_SHEET, CRAB_WALK_SHEET, self.crab_sheets)
-            } else {
-                (PLAYER_IDLE_SHEET, PLAYER_WALK_SHEET, self.sheets)
-            };
-            let Some(idle) = self.atlas.sheet(idle_sheet) else {
+            let art = crate::game::config::npc_art(npc.kind);
+            let sheets = self.npc_sheets.of(npc.kind);
+            let Some(idle) = self.atlas.sheet(art.idle) else {
                 continue;
             };
-            let look = iso::npc::npc_look(npc.logic, npc.id);
-            let scale = if crab { 1.0 } else { PLAYER_SCALE } * look.scale;
+            let look = iso::npc::npc_look(npc.kind, npc.id);
+            let scale = look.scale;
             let ink = idle.ink.scaled(scale);
             if !SpriteAtlas::on_screen(ink_layout(feet, ink, projection.tile_width)) {
                 continue;
             }
             let pose = self.npc_views.advance(npc, at, view.frame_ms, sheets);
             let Some(sheet) = self.atlas.sheet(match pose.sheet {
-                PlayerSheet::Walk => walk_sheet,
-                PlayerSheet::Climb if !crab => PLAYER_CLIMB_SHEET,
-                PlayerSheet::Jump if !crab => PLAYER_JUMP_SHEET,
-                _ => idle_sheet,
+                PlayerSheet::Walk => art.walk,
+                PlayerSheet::Jump => art.jump.unwrap_or(art.idle),
+                _ => art.idle,
             }) else {
                 continue;
             };
@@ -1081,7 +1084,7 @@ impl Game {
             let ground_feet = player_feet(at, rp.elevation, projection);
             let shadow = crate::npc::npc_view::scaled_shadow(
                 player_shadow(ground_feet, rp.height, projection, phase.light()),
-                look.scale * if crab { CRAB_SHADOW_SCALE } else { 1.0 },
+                look.scale * art.shadow_scale,
             );
             let outline = shadow_clip::sheared_ellipse(
                 shadow.centre,

@@ -1,0 +1,20 @@
+{
+  "world": "procedural",
+  "window": [1280, 800],
+  "zoom": 2.0,
+  "phase": "day",
+  "centre": [-127, -56],
+  "player": [-127, -56],
+  "steps": [
+    "settle",
+    { "shot": "rabbit-0.png" },
+    { "wait": { "frames": 20 } },
+    { "shot": "rabbit-1.png" },
+    { "wait": { "frames": 20 } },
+    { "shot": "rabbit-2.png" },
+    { "wait": { "frames": 20 } },
+    { "shot": "rabbit-3.png" }
+  ],
+  "out": "shots",
+  "maxFrames": 1200
+}

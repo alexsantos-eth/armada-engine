@@ -1901,6 +1901,26 @@
       }
     },
     {
+      "id": "rabbit",
+      "npc": "basic",
+      "asset": {
+        "sprite": "/assets/rabbit/idle.json"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
       "id": "mushrooms",
       "asset": {
         "sprite": "/assets/field/block_mushrooms.png"

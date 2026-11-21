@@ -5,7 +5,7 @@ pub mod crowd;
 pub mod look;
 pub mod spawn;
 pub mod wander;
-pub use crate::ai::{NpcGait, NpcLogic, NpcLookRule};
+pub use crate::ai::{NpcGait, NpcHop, NpcKind, NpcLogic, NpcLookRule};
 pub use body::*;
 pub use crowd::*;
 pub use look::*;
