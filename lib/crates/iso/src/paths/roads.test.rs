@@ -97,6 +97,23 @@ fn a_road_block_over_the_road_beside_it_becomes_a_flight() {
 }
 
 #[test]
+fn flights_that_touch_never_climb_along_different_axes() {
+    // (1,0) climbs toward +x; (1,1) borders a lower road at (1,2) and would climb along y.
+    let mut columns = vec![road(0, 0, 0), road(1, 0, 1), road(1, 1, 1), road(1, 2, 0)];
+
+    assert_eq!(place_stairs(&mut columns), 1);
+    assert_eq!(columns[1].surface, TerrainMaterial::Stairs);
+    assert_eq!(columns[2].surface, TerrainMaterial::Path);
+}
+
+#[test]
+fn flights_that_touch_along_the_same_axis_both_stay() {
+    let mut columns = vec![road(0, 0, 0), road(1, 0, 1), road(0, 1, 0), road(1, 1, 1)];
+
+    assert_eq!(place_stairs(&mut columns), 2);
+}
+
+#[test]
 fn a_climb_of_two_levels_lays_one_flight_per_level() {
     let mut columns = vec![road(0, 0, 0), road(1, 0, 1), road(2, 0, 2)];
 
