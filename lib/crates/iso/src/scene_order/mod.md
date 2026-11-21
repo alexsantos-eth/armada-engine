@@ -39,7 +39,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`select_player_frame`](frame_selection.rs#L67) — Elige la hoja y la columna con prioridad de nadar, trepar, el mortal, saltar, idle y caminar. En el agua manda [`SwimInput`](frame_selection.rs): la hoja de nado, con la columna de flotar, la del crol o la de bucear. En el aire, [`FlipInput`](frame_selection.rs) manda sobre las poses de salto: la hoja del mortal, en la columna que marca la parte del giro hecha.
+- [`select_player_frame`](frame_selection.rs#L80) — Elige la hoja y la columna con prioridad de nadar, trepar, el mortal, saltar, recolectar, idle y caminar. Recolectando, [`GatherInput`](frame_selection.rs) da la hoja del golpe (`PlayerSheet::Gather`) en la columna de la parte del golpe hecha (`swing`, de 0 a 1). En el agua manda [`SwimInput`](frame_selection.rs): la hoja de nado, con la columna de flotar, la del crol o la de bucear. En el aire, [`FlipInput`](frame_selection.rs) manda sobre las poses de salto: la hoja del mortal, en la columna que marca la parte del giro hecha.
   - Firma: `pub fn select_player_frame(input: PlayerFrameInput) -> PlayerFrame {`
 
 ### `occlusion.rs`

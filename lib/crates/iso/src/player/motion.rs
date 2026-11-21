@@ -18,6 +18,8 @@ pub enum PlayerMotionType {
     Sinking,
     /// On the ground, thrown back by a body it walked into, not steering until the push dies.
     Bumped,
+    /// On the ground, standing still and striking what is in reach with both hands.
+    Gathering,
 }
 
 /// Events produced by the deterministic player step and consumed by the motion machine.
@@ -45,9 +47,11 @@ pub enum PlayerMotionEvent {
     /// On the ground, pushed back by a body it walked into. Only sent with the feet down, so
     /// from the air or the water it means the player came down or out still being pushed.
     Bump,
+    /// On the ground and still, with the gather key held on something in reach.
+    Gather,
 }
 
-/// Transitions out of every ground state: idle, walking, running and skidding.
+/// Transitions out of every ground state: idle, walking, running, skidding, bumped and gathering.
 const GROUND: &[(PlayerMotionEvent, PlayerMotionType)] = &[
     (PlayerMotionEvent::Walk, PlayerMotionType::Walking),
     (PlayerMotionEvent::Run, PlayerMotionType::Running),
@@ -59,6 +63,7 @@ const GROUND: &[(PlayerMotionEvent, PlayerMotionType)] = &[
     (PlayerMotionEvent::Swim, PlayerMotionType::Swimming),
     (PlayerMotionEvent::Sink, PlayerMotionType::Sinking),
     (PlayerMotionEvent::Bump, PlayerMotionType::Bumped),
+    (PlayerMotionEvent::Gather, PlayerMotionType::Gathering),
 ];
 
 /// Transitions out of the air: jumping, falling or flying.
@@ -130,7 +135,8 @@ pub fn transition_player_motion(
         | PlayerMotionType::Walking
         | PlayerMotionType::Running
         | PlayerMotionType::Skidding
-        | PlayerMotionType::Bumped => next_state(GROUND, event).unwrap_or(state),
+        | PlayerMotionType::Bumped
+        | PlayerMotionType::Gathering => next_state(GROUND, event).unwrap_or(state),
         PlayerMotionType::Jumping | PlayerMotionType::Flying => next_state(AIR_JUMP, event)
             .or_else(|| next_state(AIR, event))
             .unwrap_or(state),

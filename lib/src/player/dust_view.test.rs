@@ -601,3 +601,30 @@ fn a_bump_knocks_dust_off_where_the_player_struck() {
     react(&mut dust, &player, 0.0);
     assert_eq!(dust.live(), 1, "the same bump raises it only once");
 }
+
+#[test]
+fn blows_raise_chips_in_their_own_slots_reused_in_turn() {
+    let mut dust = DustPuffs::new();
+    let at = DustGround {
+        feet: GridPoint { x: 4.0, y: 4.0 },
+        level: 2.5,
+        ground: 2.5,
+        moved: 0.0,
+        facing: 0,
+        elapsed_ms: 16.0,
+        tile_height: TILE / 2.0,
+    };
+    let kick = GridPoint { x: -1.0, y: 0.0 };
+    for _ in 0..CHIP_PUFFS + 2 {
+        dust.chip(iso::harvest::strike_chips(0xa0703c), at, kick, &flat);
+    }
+    assert_eq!(dust.live(), CHIP_PUFFS);
+    let mut player = player_at(4.0, 4.0);
+    player.feedback.jumps = 1;
+    react(&mut dust, &player, 0.0);
+    assert_eq!(
+        dust.live(),
+        CHIP_PUFFS + 1,
+        "the chips leave the take-off its slot"
+    );
+}

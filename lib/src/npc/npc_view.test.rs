@@ -13,6 +13,7 @@ const SHEETS: PlayerSheets = PlayerSheets {
     jump_poses: Some([0, 1, 2, 3, 4]),
     swim_poses: Some(10),
     flip_poses: Some(12),
+    gather_poses: None,
 };
 
 /// A character that walks and climbs: the one the sheets of these tests are drawn for.

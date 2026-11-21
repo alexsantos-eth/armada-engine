@@ -12,6 +12,8 @@ pub struct NormalizedInput {
     /// Whether the key that straps the jetpack on was pressed this frame: a press, not a hold,
     /// so the client toggles the equipment with it. Flying itself is the jump key held.
     pub jetpack_pressed: bool,
+    /// Whether the gather key is held: work on what is in reach accumulates while it is.
+    pub gather_held: bool,
 }
 
 /// Source of normalized input events.

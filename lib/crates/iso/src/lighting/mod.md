@@ -375,3 +375,16 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 - [`SURFACE_BIAS`](terrain.rs#L9) — A cuánta distancia por debajo del horizonte tiene que estar una superficie para contar como sombreada, en bloques.
   - Declaración: `const SURFACE_BIAS: f64 = 0.04;`
+
+### `patch.rs`
+
+Parchear parte del mapa horneado de un chunk: cuando algo sale del mundo, solo las columnas donde podía caer su sombra se hornean otra vez, en un mapa pequeño, y se copian encima del mapa del chunk, en vez de hornear el chunk entero.
+
+- [`chunk_map_area`](patch.rs#L31) — El área que hornea un chunk: sus columnas y el margen.
+  - Firma: `pub fn chunk_map_area(coord: ChunkCoord) -> MapArea {`
+- [`patch_of`](patch.rs#L38) — El parche que necesita el mapa de `coord` para las columnas viejas `stale`, o `None` si no lo tocan. `inner` son las columnas que se copian (las viejas dentro del mapa del chunk) y `baked` las que se hornean: `inner` y una casilla alrededor, para que el desenfoque del borde lea lo mismo que el horneado del chunk, sin salir de su mapa.
+  - Firma: `pub fn patch_of(coord: ChunkCoord, stale: WorldRect) -> Option<MapPatch> {`
+- [`copy_patch`](patch.rs#L64) — Los texels de `inner` sacados de un mapa horneado sobre un área mayor, y dónde caen en el mapa del chunk.
+  - Firma: `pub fn copy_patch(map: &ShadowMap, inner: MapArea, chunk_map: MapArea) -> PatchCopy {`
+- [`MapPatch`](patch.rs#L10) — La parte del mapa de un chunk que un parche hornea otra vez.
+- [`PatchCopy`](patch.rs#L22) — Texels a copiar sobre el mapa de un chunk, fila a fila, y dónde caen.

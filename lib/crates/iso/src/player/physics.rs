@@ -286,6 +286,8 @@ pub struct PlayerState {
     pub running: bool,
     pub air_jumps: i32,
     pub jetpack: bool,
+    /// Whether the gather key is held on something in reach: the player stands and strikes.
+    pub gathering: bool,
     pub velocity: GridPoint,
     pub climb: Option<PlayerClimb>,
     /// The swim in progress, or `None` on land and in the air.
@@ -1065,6 +1067,7 @@ pub fn create_player<G: PlayerGround>(ground: &G, at: GridPoint) -> PlayerState 
         running: false,
         air_jumps: PLAYER_AIR_JUMPS,
         jetpack: false,
+        gathering: false,
         velocity: GridPoint { x: 0.0, y: 0.0 },
         climb: None,
         swim: None,
@@ -1114,6 +1117,16 @@ pub fn get_player_facing(walk: GridPoint) -> Option<usize> {
 
 pub fn set_player_jetpack(player: &mut PlayerState, jetpack: bool) {
     player.jetpack = jetpack;
+}
+
+/// Sets whether the player is gathering. A gathering player stands still: its walk is dropped,
+/// so set the walk first and this after it.
+pub fn set_player_gathering(player: &mut PlayerState, gathering: bool) {
+    player.gathering = gathering;
+    if gathering {
+        player.walk = GridPoint { x: 0.0, y: 0.0 };
+        player.running = false;
+    }
 }
 
 pub fn set_player_run(player: &mut PlayerState, running: bool) {
@@ -1234,6 +1247,7 @@ fn get_motion_event(player: &PlayerState, flying: bool) -> PlayerMotionEvent {
         };
     }
     match gait {
+        "IDLE" if player.gathering => PlayerMotionEvent::Gather,
         "IDLE" => PlayerMotionEvent::Stop,
         "WALKING" => PlayerMotionEvent::Walk,
         "RUNNING" => PlayerMotionEvent::Run,

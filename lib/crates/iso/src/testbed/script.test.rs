@@ -1,4 +1,5 @@
 use super::*;
+use crate::projection::GridPoint;
 use crate::testbed::scene::{ScenePhase, SceneStep};
 
 /// A run of `steps` with room to spare.
@@ -90,6 +91,18 @@ fn the_jetpack_step_presses_the_key_that_straps_it_on() {
 }
 
 #[test]
+fn a_gather_holds_the_gather_key_for_its_frames() {
+    let mut run = script(vec![SceneStep::Gather { frames: 2 }]);
+
+    for _ in 0..2 {
+        let frame = run.frame(true);
+        assert!(frame.input.gather_held);
+        assert_eq!(frame.input.walk, GridPoint::default());
+    }
+    assert!(run.frame(true).done);
+}
+
+#[test]
 fn a_wait_spends_frames_with_no_input_at_all() {
     let mut run = script(vec![SceneStep::Wait { frames: 3 }]);
 
@@ -178,4 +191,20 @@ fn a_run_counts_its_steps_and_the_one_it_is_on() {
     assert_eq!(run.step(), 0);
     run.frame(true);
     assert_eq!(run.step(), 1);
+}
+
+#[test]
+fn a_shot_right_after_a_gather_keeps_the_key_held() {
+    let mut run = script(vec![
+        SceneStep::Gather { frames: 1 },
+        SceneStep::Shot("a.png".to_owned()),
+        SceneStep::Wait { frames: 1 },
+        SceneStep::Shot("b.png".to_owned()),
+    ]);
+    assert!(run.frame(true).input.gather_held);
+    let shot = run.frame(true);
+    assert_eq!(shot.shots, vec!["a.png".to_owned()]);
+    assert!(shot.input.gather_held);
+    assert!(!run.frame(true).input.gather_held);
+    assert!(!run.frame(true).input.gather_held);
 }

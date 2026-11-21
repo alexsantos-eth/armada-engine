@@ -169,3 +169,44 @@ fn bump_transitions() {
         PlayerMotionType::Bumped
     );
 }
+
+#[test]
+fn gathering_starts_from_the_ground_and_ends_with_any_ground_event() {
+    for from in [
+        PlayerMotionType::Idle,
+        PlayerMotionType::Walking,
+        PlayerMotionType::Skidding,
+    ] {
+        assert_eq!(
+            transition_player_motion(from, PlayerMotionEvent::Gather),
+            PlayerMotionType::Gathering
+        );
+    }
+    assert_eq!(
+        transition_player_motion(PlayerMotionType::Gathering, PlayerMotionEvent::Gather),
+        PlayerMotionType::Gathering
+    );
+    assert_eq!(
+        transition_player_motion(PlayerMotionType::Gathering, PlayerMotionEvent::Stop),
+        PlayerMotionType::Idle
+    );
+    assert_eq!(
+        transition_player_motion(PlayerMotionType::Gathering, PlayerMotionEvent::Fall),
+        PlayerMotionType::Falling
+    );
+}
+
+#[test]
+fn nothing_gathers_in_the_air_or_the_water() {
+    for from in [
+        PlayerMotionType::Jumping,
+        PlayerMotionType::Falling,
+        PlayerMotionType::Swimming,
+        PlayerMotionType::Climbing,
+    ] {
+        assert_eq!(
+            transition_player_motion(from, PlayerMotionEvent::Gather),
+            from
+        );
+    }
+}

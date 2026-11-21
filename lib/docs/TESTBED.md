@@ -83,6 +83,9 @@ la escena lo dice.
 "settle"                                       // espera a que la luz esté al día
 "jump"                                         // un fotograma de la tecla de salto
 "jetpack"                                      // pone o quita la mochila
+{ "gather": { "frames": 40 } }                 // mantiene la tecla de recolectar, quieto
+                                               // (un "shot" justo después la sigue manteniendo,
+                                               //  para capturar el golpe a medias)
 { "wait": { "frames": 20 } }                   // 20 fotogramas sin tocar nada
 { "walk": { "dir": [1, 0], "frames": 40, "run": true } }
 { "teleport": [x, y] }                         // mueve al jugador, con la cámara ya puesta

@@ -125,6 +125,8 @@ pub enum SceneStep {
     Jump,
     /// Presses the key that straps the jetpack on, for one frame.
     Jetpack,
+    /// Holds the gather key, standing still, for a number of frames.
+    Gather { frames: u32 },
     /// Runs a number of frames with no input at all.
     Wait { frames: u32 },
     /// Runs frames until every chunk on screen is generated and its shadows are baked and
@@ -146,7 +148,12 @@ impl SceneStep {
     pub const fn ends_the_frame(&self) -> bool {
         matches!(
             self,
-            Self::Walk { .. } | Self::Jump | Self::Jetpack | Self::Wait { .. } | Self::Shot(_)
+            Self::Walk { .. }
+                | Self::Jump
+                | Self::Jetpack
+                | Self::Gather { .. }
+                | Self::Wait { .. }
+                | Self::Shot(_)
         )
     }
 }

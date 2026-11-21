@@ -38,7 +38,22 @@ fn restore_preserves_the_archive_snapshot() {
 #[test]
 fn a_saved_archive_records_the_world_seed() {
     let archive = ChunkArchive::new();
-    let save = snapshot_of(&archive, 77);
+    let save = snapshot_of(&archive, 77, None);
+    assert_eq!(iso::world::saved_seed(&save.systems), Some(77));
+    assert!(save.systems.get(iso::inventory::INVENTORY_PART).is_none());
+}
+
+#[test]
+fn a_saved_archive_records_what_the_player_carries() {
+    let entities: iso::entities::EntityCatalog =
+        serde_json::from_str(include_str!("../../content/json/entities.json")).unwrap();
+    let items =
+        iso::items::parse_items(include_str!("../../content/json/items.json"), &entities).unwrap();
+    let mut carried = iso::inventory::Carried::starting(4, &items);
+    carried.inventory.add("wood", 3, &items);
+    let save = snapshot_of(&ChunkArchive::new(), 77, Some(&carried));
+    let restored = iso::inventory::saved_carried(&save.systems, 4, &items).unwrap();
+    assert_eq!(restored.carried, carried);
     assert_eq!(iso::world::saved_seed(&save.systems), Some(77));
 }
 

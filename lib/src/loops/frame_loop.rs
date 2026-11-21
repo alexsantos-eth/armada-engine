@@ -112,6 +112,15 @@ pub(crate) async fn run(mut game: Game) {
             &grade,
             (game.depth_target.texture(), view.depth.focus()),
         );
+        if game.streams {
+            let prompt = crate::harvest::hotbar::prompt(&game.harvest_status, &game.items);
+            crate::harvest::hotbar::draw_hotbar(
+                &game.carried,
+                &game.items,
+                prompt.as_ref(),
+                game.gain_note.as_ref().map(|(text, _)| text.as_str()),
+            );
+        }
         crate::testbed::write_shots(&mut game, &view.shots);
         if show_overlay {
             draw_rectangle_lines(16.0, 16.0, width - 32.0, height - 32.0, 2.0, SKYBLUE);

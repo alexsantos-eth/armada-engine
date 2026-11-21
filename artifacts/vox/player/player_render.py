@@ -2,7 +2,7 @@
 #
 # The monkey of monkey.py is a handful of rounded boxes, and every sheet generator
 # (player_walk.py, player_idle.py, player_jump.py, player_climb.py, player_flip.py,
-# player_swim.py) already poses those boxes for each cell. This takes the very same poses and
+# player_swim.py, player_gather.py) already poses those boxes for each cell. This takes the very same poses and
 # draws them as one smooth clay toy: the boxes are blended into each other where they meet, lit
 # by one warm sun from the upper right with soft occlusion in the creases, and given a tuft of
 # hair on the head. The look was approved by Alex on 2026-11-15 from an AI repaint of one pose;
@@ -33,6 +33,7 @@ import player_jump
 import player_climb
 import player_flip
 import player_swim
+import player_gather
 from iso_lib import CX, CY
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -86,7 +87,8 @@ def poses_of(name, frames):
         return lambda r, c: (module.pose(c), player_walk.facing_yaw(r))
 
     return {"walk": walk, "idle": idle, "jump": by_index(player_jump), "climb": by_index(player_climb),
-            "flip": by_index(player_flip), "swim": by_index(player_swim)}[name]
+            "flip": by_index(player_flip), "swim": by_index(player_swim),
+            "gather": by_index(player_gather)}[name]
 
 
 def boxes(parts, yaw):

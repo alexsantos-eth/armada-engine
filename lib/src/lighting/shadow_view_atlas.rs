@@ -175,6 +175,33 @@ impl ShadowAtlas {
         turned_out
     }
 
+    /// Copies a patch over part of `coord`'s map in its slot, and says whether the slot was
+    /// there to take it.
+    pub fn put_part(&mut self, coord: ChunkCoord, copy: &iso::lighting::PatchCopy) -> bool {
+        let Some(slot) = self.slots.slot_of(coord) else {
+            return false;
+        };
+        if copy.x + copy.width > SLOT_TEXELS
+            || copy.y + copy.height > SLOT_TEXELS
+            || copy.alpha.len() != (copy.width * copy.height) as usize
+        {
+            return false;
+        }
+        let (x, y) = slot_origin(slot);
+        unsafe {
+            let gl = get_internal_gl();
+            gl.quad_context.texture_update_part(
+                self.texture.raw_miniquad_id(),
+                (x + copy.x) as i32,
+                (y + copy.y) as i32,
+                copy.width as i32,
+                copy.height as i32,
+                &copy.alpha,
+            );
+        }
+        true
+    }
+
     /// Frees `coord`'s slot.
     pub fn release(&mut self, coord: ChunkCoord) {
         self.slots.release(coord);

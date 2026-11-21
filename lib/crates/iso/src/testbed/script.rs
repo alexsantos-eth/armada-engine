@@ -48,6 +48,8 @@ pub struct Script {
     left: u32,
     frames: u32,
     max_frames: u32,
+    /// Whether the last frame held the gather key, which a shot right after it keeps held.
+    gathering: bool,
 }
 
 impl Script {
@@ -59,6 +61,7 @@ impl Script {
             left: 0,
             frames: 0,
             max_frames,
+            gathering: false,
         }
     }
 
@@ -80,6 +83,13 @@ impl Script {
     /// The frame to take now. `lit` is whether the client has the world on screen generated and
     /// its light baked; a settle waits for it.
     pub fn frame(&mut self, lit: bool) -> ScriptFrame {
+        let frame = self.next_frame(lit);
+        self.gathering = frame.input.gather_held;
+        frame
+    }
+
+    /// The frame to take now, before the gather key is remembered for the shot after it.
+    fn next_frame(&mut self, lit: bool) -> ScriptFrame {
         let mut frame = ScriptFrame::default();
         if self.frames >= self.max_frames {
             frame.done = true;
@@ -118,6 +128,7 @@ impl Script {
                 }
                 SceneStep::Shot(name) => {
                     frame.shots.push(name);
+                    frame.input.gather_held = self.gathering;
                     self.at += 1;
                     self.frames += 1;
                     return frame;
@@ -132,6 +143,14 @@ impl Script {
                 SceneStep::Jetpack => {
                     frame.input.jetpack_pressed = true;
                     self.at += 1;
+                    self.frames += 1;
+                    return frame;
+                }
+                SceneStep::Gather { frames } => {
+                    if self.spend(frames) {
+                        continue;
+                    }
+                    frame.input.gather_held = true;
                     self.frames += 1;
                     return frame;
                 }

@@ -151,6 +151,84 @@ impl Game {
         self.npcs.step(&ground, player, ticks);
     }
 
+    /// What the player is striking: the harvest's target while the player is in the gathering
+    /// state, for the blow's facing, the swing and the shake.
+    pub(crate) fn struck_target(&self) -> Option<iso::harvest::HarvestTarget> {
+        (self.player.motion == iso::player::PlayerMotionType::Gathering)
+            .then(|| self.harvest_status.target().cloned())
+            .flatten()
+    }
+
+    /// The harvest's share of the fixed step: picks what is in reach from the chunks around the
+    /// player, works on it `ticks` ticks while `held`, and when it is gathered takes it out of the
+    /// world and puts its yields away.
+    fn step_harvest(&mut self, held: bool, ticks: u32) {
+        let at = GridPoint {
+            x: self.player.x,
+            y: self.player.y,
+        };
+        let centre = to_chunk_coord(iso::player::physics::get_player_column(at));
+        let manager = &self.manager;
+        let nearby = (-1..=1)
+            .flat_map(|dx| {
+                (-1..=1).map(move |dy| iso::grid::ChunkCoord {
+                    cx: centre.cx + dx,
+                    cy: centre.cy + dy,
+                })
+            })
+            .filter_map(|coord| manager.entities_chunk(coord))
+            .flatten();
+        let feet = iso::harvest::Feet {
+            at,
+            elevation: self.player.elevation,
+        };
+        let target = iso::harvest::pick_harvest_target(feet, nearby, &self.items);
+        let status = self.harvester.step(
+            iso::harvest::HarvestInput {
+                held,
+                target: target.as_ref(),
+                ticks,
+            },
+            &self.carried,
+            &self.items,
+        );
+        let color = status
+            .target()
+            .and_then(|target| self.items.harvest_rule(&target.blueprint))
+            .and_then(|rule| rule.yields.first())
+            .and_then(|first| self.items.item(&first.item))
+            .and_then(iso::items::ItemDef::color);
+        let mut felled = None;
+        if let iso::harvest::HarvestStatus::Done { target, yields } = &status
+            && let Some(taken) = self
+                .manager
+                .remove_entity_at(target.anchor.x, target.anchor.y)
+        {
+            if taken.id() == target.id {
+                felled = Some(target.clone());
+                if let Some(shadows) = self.shadows.as_mut() {
+                    shadows.erase(&self.manager, iso::harvest::shadow_area(target.anchor));
+                }
+                for gained in yields {
+                    self.carried
+                        .inventory
+                        .add(&gained.item, gained.amount, &self.items);
+                }
+                self.gain_note = Some((
+                    crate::harvest::hotbar::gain_text(yields, &self.items),
+                    crate::harvest::hotbar::GAIN_NOTE_MS,
+                ));
+                self.unsaved_changes = true;
+            } else {
+                self.manager.put_entity(taken);
+            }
+        }
+        let struck = held.then(|| status.target()).flatten();
+        self.impacts
+            .notice(self.harvester.strikes(), struck, felled.as_ref(), color);
+        self.harvest_status = status;
+    }
+
     /// Input, ticks and streaming for one frame. Returns `None` when the player asked to quit
     /// (flushing the save first if there is anything unsaved).
     pub(crate) fn update(&mut self, frame_ms: f64) -> Option<FrameView> {
@@ -163,7 +241,7 @@ impl Game {
                     && (is_key_down(KeyCode::LeftControl) || is_key_down(KeyCode::RightControl))));
         if save_requested {
             sync_manager_to_archive(&mut self.manager, &mut self.archive);
-            save_archive(&self.archive, self.world_seed);
+            save_archive(&self.archive, self.world_seed, &self.carried);
             self.unsaved_changes = false;
             self.last_save = get_time();
         }
@@ -187,6 +265,30 @@ impl Game {
             self.toggle_jetpack();
         }
         set_player_jetpack(&mut self.player, self.jetpack);
+        let sought = match &self.harvest_status {
+            iso::harvest::HarvestStatus::Ready { target }
+            | iso::harvest::HarvestStatus::Approaching { target }
+            | iso::harvest::HarvestStatus::Working { target, .. }
+                if self.streams
+                    && input.gather_held
+                    && self.player.vertical_speed.is_none()
+                    && self.player.swim.is_none() =>
+            {
+                Some(target.clone())
+            }
+            _ => None,
+        };
+        if let Some(target) = sought.as_ref().filter(|target| !target.in_reach) {
+            self.player.walk = iso::harvest::approach_walk(
+                target,
+                GridPoint {
+                    x: self.player.x,
+                    y: self.player.y,
+                },
+            );
+        }
+        let engaged = sought.as_ref().is_some_and(|target| target.in_reach);
+        iso::player::physics::set_player_gathering(&mut self.player, engaged);
 
         if input.jump_pressed {
             jump_player(&mut self.player);
@@ -215,6 +317,7 @@ impl Game {
             step_player(&mut self.player, &mut ground, ticks);
             if self.streams {
                 self.step_npcs(ticks);
+                self.step_harvest(input.gather_held, ticks);
             }
             if self.player.feedback.jumps > jumps_before {
                 let air = self.player.feedback.air_jump;
@@ -235,6 +338,16 @@ impl Game {
             }
         }
         update_motion_audio(self);
+        if let Some((_, left)) = self.gain_note.as_mut() {
+            *left -= frame_ms;
+        }
+        if self
+            .gain_note
+            .as_ref()
+            .is_some_and(|(_, left)| *left <= 0.0)
+        {
+            self.gain_note = None;
+        }
 
         let rp = get_player_render_position(&self.player, self.stepper.interpolation_alpha());
 
@@ -299,7 +412,7 @@ impl Game {
         let quitting = is_quit_requested();
         if self.persists && should_save_on_quit(self.unsaved_changes, quitting) {
             sync_manager_to_archive(&mut self.manager, &mut self.archive);
-            save_archive(&self.archive, self.world_seed);
+            save_archive(&self.archive, self.world_seed, &self.carried);
             self.unsaved_changes = false;
             self.last_save = get_time();
         }

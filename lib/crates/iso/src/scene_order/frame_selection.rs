@@ -12,6 +12,17 @@ pub enum PlayerSheet {
     Idle,
     Swim,
     Flip,
+    /// Striking what is in reach with both hands.
+    Gather,
+}
+
+/// What the gather sheet is drawn from while the player strikes.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GatherInput {
+    /// Columns the sheet holds: the equal steps of one blow.
+    pub columns: i32,
+    /// How far through the current blow, from `0.0` (wound back) up to `1.0`.
+    pub swing: f64,
 }
 
 /// What the flip sheet is drawn from while the player turns a somersault in the air.
@@ -61,9 +72,11 @@ pub struct PlayerFrameInput {
     pub swim: Option<SwimInput>,
     /// The somersault in the air, when one is being turned and there is a sheet for it.
     pub flip: Option<FlipInput>,
+    /// The blow, when the player is gathering and there is a sheet for it.
+    pub gather: Option<GatherInput>,
 }
 
-/// Chooses sheet and column with swim, climb, flip, jump, idle, then walk priority.
+/// Chooses sheet and column with swim, climb, flip, jump, gather, idle, then walk priority.
 pub fn select_player_frame(input: PlayerFrameInput) -> PlayerFrame {
     if let Some(swim) = input.swim {
         let pose = if swim.under {
@@ -100,6 +113,14 @@ pub fn select_player_frame(input: PlayerFrameInput) -> PlayerFrame {
         return PlayerFrame {
             sheet: PlayerSheet::Jump,
             pose,
+        };
+    }
+    if let Some(gather) = input.gather {
+        let columns = gather.columns.max(1);
+        let pose = (gather.swing.rem_euclid(1.0) * f64::from(columns)).floor() as i32;
+        return PlayerFrame {
+            sheet: PlayerSheet::Gather,
+            pose: pose.clamp(0, columns - 1),
         };
     }
     if let Some((frames, period)) = input.idle.filter(|_| !input.walking && !input.flying) {

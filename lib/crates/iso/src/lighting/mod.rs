@@ -2,6 +2,7 @@
 
 pub mod bake;
 pub mod faces;
+pub mod patch;
 pub mod phases;
 pub mod received;
 pub mod shadow;
@@ -10,6 +11,7 @@ pub mod volume;
 
 pub use bake::*;
 pub use faces::*;
+pub use patch::*;
 pub use phases::*;
 pub use received::*;
 pub use shadow::*;

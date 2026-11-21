@@ -9,6 +9,7 @@ fn a_scripted_frame_is_handed_over_as_it_was_decided() {
         jump_held: true,
         run: true,
         jetpack_pressed: false,
+        gather_held: true,
     };
     let mut input = ScriptInput { frame: decided };
 

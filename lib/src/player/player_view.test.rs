@@ -9,6 +9,7 @@ const SHEETS: PlayerSheets = PlayerSheets {
     jump_poses: Some([0, 1, 2, 3, 4]),
     swim_poses: Some(10),
     flip_poses: Some(12),
+    gather_poses: Some(8),
 };
 
 fn moment() -> PlayerMoment {
@@ -20,6 +21,7 @@ fn moment() -> PlayerMoment {
         jump_phase: PlayerJumpPhase::Ground,
         flip: None,
         elapsed_ms: 16.0,
+        gather: None,
     }
 }
 
@@ -466,4 +468,28 @@ fn without_a_flip_sheet_the_jump_poses_carry_the_second_jump() {
     );
 
     assert_eq!(pose.sheet, PlayerSheet::Jump);
+}
+
+#[test]
+fn a_gathering_player_faces_what_it_strikes_and_swings() {
+    let mut animation = PlayerAnimation::default();
+    let mut pose = animation.advance(moment(), SHEETS);
+    for _ in 0..40 {
+        pose = animation.advance(
+            PlayerMoment {
+                motion: PlayerMotionType::Gathering,
+                direction: GridPoint { x: 1.0, y: -1.0 },
+                gather: Some(0.6),
+                elapsed_ms: 100.0,
+                ..moment()
+            },
+            SHEETS,
+        );
+    }
+    assert_eq!(pose.sheet, PlayerSheet::Gather);
+    assert_eq!(pose.pose, 4);
+    assert_eq!(
+        Some(pose.facing),
+        iso::player::physics::get_player_facing(GridPoint { x: 1.0, y: -1.0 })
+    );
 }

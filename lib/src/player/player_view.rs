@@ -3,7 +3,8 @@
 use iso::player::{PLAYER_FACINGS, PlayerJumpPhase, PlayerMotionType, get_player_facing};
 use iso::projection::GridPoint;
 use iso::scene_order::{
-    FlipInput, PlayerFrame, PlayerFrameInput, PlayerSheet, SwimInput, select_player_frame,
+    FlipInput, GatherInput, PlayerFrame, PlayerFrameInput, PlayerSheet, SwimInput,
+    select_player_frame,
 };
 
 /// Columns walked per cycle of the walk sheet:
@@ -50,6 +51,9 @@ pub struct PlayerMoment {
     pub flip: Option<f64>,
     /// Milliseconds of real time since the frame before, for the idle cycle.
     pub elapsed_ms: f64,
+    /// How far through its blow a gathering player is (`0.0..1.0`), or `None` when it is not
+    /// gathering; `direction` then points at what it strikes.
+    pub gather: Option<f64>,
 }
 
 /// How many poses each of the player's sheets holds, read from the manifest once.
@@ -64,6 +68,8 @@ pub struct PlayerSheets {
     pub jump_poses: Option<[usize; 5]>,
     /// Columns of the flip sheet: the equal steps of one whole somersault.
     pub flip_poses: Option<i32>,
+    /// Columns of the gather sheet: the equal steps of one blow.
+    pub gather_poses: Option<i32>,
 }
 
 /// The columns of the five jump phases in a sheet that names its columns (`data-poses`).
@@ -154,6 +160,7 @@ impl PlayerAnimation {
             || flying
             || jump_pose.is_some()
             || moment.flip.is_some()
+            || moment.gather.is_some()
         {
             0.0
         } else {
@@ -179,6 +186,10 @@ impl PlayerAnimation {
             .flip_poses
             .zip(moment.flip)
             .map(|(columns, turned)| FlipInput { columns, turned });
+        let gather = sheets
+            .gather_poses
+            .zip(moment.gather)
+            .map(|(columns, swing)| GatherInput { columns, swing });
         let frame = select_player_frame(PlayerFrameInput {
             walk_frames: sheets.walk_poses.unwrap_or(1).max(1),
             walk_stride: WALK_STRIDE,
@@ -193,6 +204,7 @@ impl PlayerAnimation {
             air_pose: Some(AIR_POSE),
             swim,
             flip,
+            gather,
         });
         self.pose(frame)
     }
