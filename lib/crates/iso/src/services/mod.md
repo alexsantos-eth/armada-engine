@@ -38,9 +38,9 @@ Los tipos de intercambio son `SoundEvent` (`Jump`, `AirJump`, `Land`, `Footstep`
 
 #### Funciones internas
 
-- [`poll`](input.rs#L20) — Sondea el estado actual de la entrada. Se llama una vez por fotograma.
+- [`poll`](input.rs#L22) — Sondea el estado actual de la entrada. Se llama una vez por fotograma.
   - Firma: `fn poll(&mut self) -> NormalizedInput;`
-  - `NormalizedInput` lleva `walk`, `jump_pressed`, `jump_held`, `run` y `jetpack_pressed`. Este último es la pulsación de la tecla que se pone el jetpack, no un mantenido: el cliente alterna el equipo con ella, y volar es mantener la tecla de salto.
+  - `NormalizedInput` lleva `walk`, `jump_pressed`, `jump_held`, `run` `jetpack_pressed` y `gather_held` (la tecla de recolectar mantenida: el trabajo sobre lo que está al alcance avanza mientras se mantiene). `jetpack_pressed` es la pulsación de la tecla que se pone el jetpack, no un mantenido: el cliente alterna el equipo con ella, y volar es mantener la tecla de salto.
 
 ### `ui.rs`
 

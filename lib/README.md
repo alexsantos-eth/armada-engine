@@ -34,7 +34,9 @@ Es un ajuste del entorno local, no una dependencia del proyecto.
 Flechas o WASD mueven al jugador; el clic sitúa el marcador sobre el plano del mundo. `T`
 alterna entre terreno y rejilla. En cualquier ruta, `J` (o el interruptor del HUD, con el overlay visible,
 que sigue a los botones de fase) le pone y le quita el jetpack: con él puesto, mantener la tecla
-de salto en el aire vuela. En dispositivos táctiles aparecen dos controles en pantalla:
+de salto en el aire vuela. Mantener `E` junto a un árbol, una roca o una planta la recolecta:
+la barra de slots de abajo muestra el inventario y, encima, qué hay al alcance, qué herramienta falta
+o el progreso (los recursos y las reglas viven en `content/json/items.json`). En dispositivos táctiles aparecen dos controles en pantalla:
 un joystick analógico abajo a la izquierda (a media deflexión se camina a media velocidad; a
 tope enciende la carrera, el equivalente a `Shift`) y un botón `SALTAR` abajo a la derecha. Se
 muestran en dispositivos de puntero grueso o tras el primer toque (`/` incluido, porque son

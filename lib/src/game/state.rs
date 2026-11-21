@@ -143,6 +143,16 @@ pub(crate) struct Game {
     /// Whether the player is wearing the jetpack: equipment the development surfaces toggle,
     /// until it is an item found in the world. Worn, a held jump key flies (`PlayerState`).
     pub(crate) jetpack: bool,
+    /// What can be carried, the tools and which entities yield what (`content/json/items.json`).
+    pub(crate) items: iso::items::ItemCatalog,
+    /// The player's slots and tools; saved in the save's `systems`.
+    pub(crate) carried: iso::inventory::Carried,
+    /// The work on what is in reach; never saved, a reload starts the harvest over.
+    pub(crate) harvester: iso::harvest::Harvester,
+    /// What the harvest did on the last fixed step, for the prompt.
+    pub(crate) harvest_status: iso::harvest::HarvestStatus,
+    /// The note of the last harvest and how long it stays up, in milliseconds.
+    pub(crate) gain_note: Option<(String, f64)>,
     /// Real time the wind has been blowing, for the sway of what reacts to it; accumulates
     /// frame time like the clouds and the dust, independent of the fixed step.
     pub(crate) wind_ms: f64,
@@ -276,6 +286,7 @@ impl Game {
         } else {
             (None, None)
         };
+        let saved_systems = save.as_ref().map(|save| save.systems.clone());
         let terrain_config = TerrainConfig {
             seed: boot_seed(
                 scene.and_then(|scene| scene.seed),
@@ -290,6 +301,20 @@ impl Game {
         let catalog: EntityCatalog =
             serde_json::from_str(catalog_json).expect("entity catalog is valid JSON");
         validate_catalog(&catalog).expect("entity catalog validates");
+
+        let items_json = include_str!("../../content/json/items.json");
+        let items = iso::items::parse_items(items_json, &catalog).expect("item content validates");
+        let carried = match saved_systems.as_ref().and_then(|systems| {
+            iso::inventory::saved_carried(systems, iso::inventory::STARTING_SLOTS, &items)
+        }) {
+            Some(restored) => {
+                for id in &restored.dropped {
+                    eprintln!("warning: save carries unknown item or tool {id}; dropped");
+                }
+                restored.carried
+            }
+            None => iso::inventory::Carried::starting(iso::inventory::STARTING_SLOTS, &items),
+        };
 
         let biomes_json = include_str!("../../content/json/biomes.json");
         let biomes_catalog =
@@ -475,6 +500,11 @@ impl Game {
             shown: Vec::new(),
             phase_override: None,
             wind_ms: 0.0,
+            items,
+            carried,
+            harvester: iso::harvest::Harvester::default(),
+            harvest_status: iso::harvest::HarvestStatus::Idle,
+            gain_note: None,
         }
     }
 }

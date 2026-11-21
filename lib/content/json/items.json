@@ -1,0 +1,330 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "wood",
+      "name": "Madera",
+      "stack": 50,
+      "rarity": "common"
+    },
+    {
+      "id": "stone",
+      "name": "Piedra",
+      "stack": 50,
+      "rarity": "common"
+    },
+    {
+      "id": "fiber",
+      "name": "Fibra",
+      "stack": 99,
+      "rarity": "common"
+    },
+    {
+      "id": "mushroom",
+      "name": "Hongo",
+      "stack": 20,
+      "rarity": "common"
+    },
+    {
+      "id": "coconut",
+      "name": "Coco",
+      "stack": 20,
+      "rarity": "common"
+    },
+    {
+      "id": "bone",
+      "name": "Hueso",
+      "stack": 30,
+      "rarity": "common"
+    },
+    {
+      "id": "copper_ore",
+      "name": "Cobre",
+      "stack": 30,
+      "rarity": "rare"
+    },
+    {
+      "id": "amber",
+      "name": "Ambar",
+      "stack": 30,
+      "rarity": "rare"
+    }
+  ],
+  "tools": [
+    {
+      "id": "flint_axe",
+      "name": "Hacha de pedernal",
+      "kind": "axe",
+      "tier": 1
+    },
+    {
+      "id": "stone_pickaxe",
+      "name": "Pico de piedra",
+      "kind": "pickaxe",
+      "tier": 1
+    },
+    {
+      "id": "fiber_net",
+      "name": "Red de fibra",
+      "kind": "net",
+      "tier": 1
+    },
+    {
+      "id": "bone_axe",
+      "name": "Hacha de hueso",
+      "kind": "axe",
+      "tier": 2
+    },
+    {
+      "id": "copper_pickaxe",
+      "name": "Pico de cobre",
+      "kind": "pickaxe",
+      "tier": 3
+    }
+  ],
+  "startingTools": [
+    "flint_axe",
+    "stone_pickaxe",
+    "fiber_net"
+  ],
+  "harvest": [
+    {
+      "blueprints": [
+        "tree",
+        "tree_2",
+        "tree_3",
+        "tree_4",
+        "tree_5",
+        "tree_6",
+        "tree_7",
+        "tree_8",
+        "tree_9",
+        "tree_10",
+        "tree_11",
+        "tree_12",
+        "tree_13",
+        "palm_tall",
+        "palm",
+        "palm_bent",
+        "tree_14",
+        "tree_15",
+        "tree_16",
+        "tree_17",
+        "tree_18",
+        "tree_19",
+        "tree_20",
+        "tree_21",
+        "tree_22",
+        "palm_young",
+        "palm_lean",
+        "palm_slim",
+        "tree_24",
+        "tree_25",
+        "tree_26",
+        "tree_27",
+        "palm_fan",
+        "palm_sprout",
+        "palm_cluster",
+        "ground_pine",
+        "ground_fir",
+        "ground_dead_pine",
+        "ground_gnarled",
+        "ground_bare_birch",
+        "ground_split",
+        "ground_juniper",
+        "dead_tree",
+        "snag"
+      ],
+      "tool": "axe",
+      "tier": 1,
+      "ticks": 40,
+      "yields": [
+        {
+          "item": "wood",
+          "amount": 3
+        }
+      ]
+    },
+    {
+      "blueprints": [
+        "fallen_log_x",
+        "fallen_log_y",
+        "driftwood"
+      ],
+      "tool": "axe",
+      "tier": 1,
+      "ticks": 25,
+      "yields": [
+        {
+          "item": "wood",
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "blueprints": [
+        "grove_x",
+        "grove_y",
+        "grove_autumn_x",
+        "grove_autumn_y",
+        "grove_pine_x",
+        "grove_pine_y",
+        "palm_grove_x",
+        "palm_grove_y",
+        "grove_birch_x",
+        "grove_birch_y",
+        "palm_grove_2_x",
+        "palm_grove_2_y",
+        "ground_grove_scrub_x",
+        "ground_grove_scrub_y",
+        "ground_grove_dead_x",
+        "ground_grove_dead_y",
+        "ground_grove_burnt_x",
+        "ground_grove_burnt_y"
+      ],
+      "tool": "axe",
+      "tier": 5,
+      "ticks": 120,
+      "yields": [
+        {
+          "item": "wood",
+          "amount": 12
+        }
+      ]
+    },
+    {
+      "blueprints": [
+        "rock_small",
+        "rock_small_2",
+        "rock_small_3",
+        "beach_rocks",
+        "rubble"
+      ],
+      "tool": "pickaxe",
+      "tier": 1,
+      "ticks": 30,
+      "yields": [
+        {
+          "item": "stone",
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "blueprints": [
+        "rock_medium",
+        "rock_medium_2"
+      ],
+      "tool": "pickaxe",
+      "tier": 1,
+      "ticks": 60,
+      "yields": [
+        {
+          "item": "stone",
+          "amount": 5
+        }
+      ]
+    },
+    {
+      "blueprints": [
+        "ore_vein"
+      ],
+      "tool": "pickaxe",
+      "tier": 3,
+      "ticks": 80,
+      "yields": [
+        {
+          "item": "copper_ore",
+          "amount": 2
+        },
+        {
+          "item": "stone",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "blueprints": [
+        "ore_vein_amber"
+      ],
+      "tool": "pickaxe",
+      "tier": 3,
+      "ticks": 80,
+      "yields": [
+        {
+          "item": "amber",
+          "amount": 1
+        },
+        {
+          "item": "stone",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "blueprints": [
+        "tall_grass",
+        "tall_grass_2",
+        "dry_grass",
+        "dry_grass_2",
+        "dry_thistle"
+      ],
+      "ticks": 10,
+      "yields": [
+        {
+          "item": "fiber",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "blueprints": [
+        "bush",
+        "dead_bush"
+      ],
+      "ticks": 15,
+      "yields": [
+        {
+          "item": "fiber",
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "blueprints": [
+        "mushrooms"
+      ],
+      "ticks": 10,
+      "yields": [
+        {
+          "item": "mushroom",
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "blueprints": [
+        "coconuts"
+      ],
+      "ticks": 15,
+      "yields": [
+        {
+          "item": "coconut",
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "blueprints": [
+        "bone_pile"
+      ],
+      "ticks": 20,
+      "yields": [
+        {
+          "item": "bone",
+          "amount": 3
+        }
+      ]
+    }
+  ]
+}

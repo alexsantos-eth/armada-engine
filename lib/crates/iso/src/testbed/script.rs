@@ -135,6 +135,14 @@ impl Script {
                     self.frames += 1;
                     return frame;
                 }
+                SceneStep::Gather { frames } => {
+                    if self.spend(frames) {
+                        continue;
+                    }
+                    frame.input.gather_held = true;
+                    self.frames += 1;
+                    return frame;
+                }
                 SceneStep::Wait { frames } => {
                     if self.spend(frames) {
                         continue;

@@ -82,7 +82,8 @@ Ediciones, las siete herramientas del editor con sus mismas reglas: `raise`, `lo
 (`grass|sand|ground|path|stairs|water`), `tint`, `top`, `place` (`blueprint` es el `id` de
 `content/json/entities.json`, con `"turned": true` para el hermano del otro eje) y `erase`.
 
-Pasos: `"settle"`, `"jump"`, `"jetpack"`, `{"wait": {...}}`, `{"walk": {"dir": [x, y], "frames":
+Pasos: `"settle"`, `"jump"`, `"jetpack"`, `{"gather": {"frames": n}}` (mantiene `E`, quieto),
+`{"wait": {...}}`, `{"walk": {"dir": [x, y], "frames":
 n, "run": bool}}`, `{"teleport": [x, y]}`, `{"phase": "..."}`, `{"edit": {...}}` y
 `{"shot": "nombre.png"}`. `dir` va en ejes del mundo: `[1, 0]` es `+x` (arriba a la derecha).
 

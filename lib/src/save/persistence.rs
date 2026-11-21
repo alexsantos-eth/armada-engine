@@ -83,9 +83,18 @@ pub fn restore_archive(save: Option<WorldSave>) -> ChunkArchive {
 }
 
 /// The save written for `archive` in a world of `seed`: its chunks and the seed, so the world
-/// reopens as itself even when it was started from a fresh seed.
-pub fn snapshot_of(archive: &ChunkArchive, seed: u64) -> WorldSave {
-    archive.snapshot(serde_json::json!({}), iso::world::seed_systems(seed))
+/// reopens as itself even when it was started from a fresh seed, and what the player `carried`.
+pub fn snapshot_of(
+    archive: &ChunkArchive,
+    seed: u64,
+    carried: Option<&iso::inventory::Carried>,
+) -> WorldSave {
+    let systems = iso::world::seed_systems(seed);
+    let systems = match carried {
+        Some(carried) => iso::inventory::with_carried(systems, carried),
+        None => systems,
+    };
+    archive.snapshot(serde_json::json!({}), systems)
 }
 
 /// The seed a world boots with: a scene's own, else one freshly drawn for `?fresh`, else the
@@ -136,8 +145,8 @@ pub fn take_fresh_seed() -> Option<u64> {
 }
 
 /// Persists the archive of a world of `seed` to disk, or to browser storage on WASM.
-pub fn save_archive(archive: &ChunkArchive, seed: u64) {
-    let save = snapshot_of(archive, seed);
+pub fn save_archive(archive: &ChunkArchive, seed: u64, carried: &iso::inventory::Carried) {
+    let save = snapshot_of(archive, seed, Some(carried));
     let json = match serde_json::to_string(&save) {
         Ok(j) => j,
         Err(_) => return,

@@ -18,7 +18,7 @@ Tres decisiones que no son obvias:
 - **Un paso o termina el fotograma o no lo termina.** Los que solo cambian el mundo (`phase`,
   `teleport`, `edit`) se toman sobre la marcha y la máquina sigue al siguiente dentro del mismo
   fotograma; los que mueven al jugador, dejan pasar tiempo o capturan (`walk`, `jump`, `jetpack`,
-  `wait`, `shot`) lo terminan. Por eso un `shot` nunca sale contaminado por el paso que lo sigue.
+  `gather`, `wait`, `shot`) lo terminan. Por eso un `shot` nunca sale contaminado por el paso que lo sigue.
 - **`settle` no cuenta segundos, espera a que la luz esté al día.** El cliente responde si lo que
   hay en pantalla está generado y con sus sombras horneadas y fundidas; el guion repite fotograma
   hasta que sí. Ese es el problema que hacía inservibles las capturas de `/maker`, donde el
@@ -51,8 +51,8 @@ Tres decisiones que no son obvias:
 - [`SceneEdit`](scene.rs#L53) — Un cambio al mundo, en los términos de las siete herramientas del editor.
   - Declaración: `pub enum SceneEdit { Raise, Lower, Surface, Tint, Top, Place, Erase }`
 - [`SceneStep`](scene.rs#L116) — Un paso de la corrida.
-  - Declaración: `pub enum SceneStep { Walk, Jump, Jetpack, Wait, Settle, Teleport, Phase, Edit, Shot }`
-- [`Scene`](scene.rs#L171) — Una corrida completa, tal como la describe `scene.json`.
+  - Declaración: `pub enum SceneStep { Walk, Jump, Jetpack, Gather, Wait, Settle, Teleport, Phase, Edit, Shot }`
+- [`Scene`](scene.rs#L178) — Una corrida completa, tal como la describe `scene.json`.
   - Declaración: `pub struct Scene { world, seed, centre, window, zoom, phase, player, edits, steps, out, max_frames }`
 
 #### Funciones y métodos
@@ -63,18 +63,18 @@ Tres decisiones que no son obvias:
   - Firma: `pub const fn at(&self) -> [i32; 2] {`
 - [`times`](scene.rs#L105) — Cuántos trazos da una edición.
   - Firma: `pub const fn times(&self) -> u32 {`
-- [`ends_the_frame`](scene.rs#L146) — Si el paso termina el fotograma en el que se toma.
+- [`ends_the_frame`](scene.rs#L148) — Si el paso termina el fotograma en el que se toma.
   - Firma: `pub const fn ends_the_frame(&self) -> bool {`
-- [`default_steps`](scene.rs#L208) — Los pasos de una escena sin pasos: esperar la luz y tomar una captura.
+- [`default_steps`](scene.rs#L215) — Los pasos de una escena sin pasos: esperar la luz y tomar una captura.
   - Firma: `pub fn default_steps() -> Vec<SceneStep> {`
-- [`is_shot_name`](scene.rs#L214) — Si un nombre de captura es un nombre de archivo llano acabado en `.png`, sin carpeta propia.
+- [`is_shot_name`](scene.rs#L221) — Si un nombre de captura es un nombre de archivo llano acabado en `.png`, sin carpeta propia.
   - Firma: `pub fn is_shot_name(name: &str) -> bool {`
-- [`parse_scene`](scene.rs#L225) — Lee una escena y dice qué tiene mal en vez de reventar; rechaza campos desconocidos y nombres de captura que se salgan de la carpeta de salida.
+- [`parse_scene`](scene.rs#L232) — Lee una escena y dice qué tiene mal en vez de reventar; rechaza campos desconocidos y nombres de captura que se salgan de la carpeta de salida.
   - Firma: `pub fn parse_scene(json: &str) -> Result<Scene, String> {`
 
 #### Constantes
 
-- [`DEFAULT_MAX_FRAMES`](scene.rs#L161) — Presupuesto de fotogramas por defecto: 600, treinta segundos al paso fijo.
+- [`DEFAULT_MAX_FRAMES`](scene.rs#L168) — Presupuesto de fotogramas por defecto: 600, treinta segundos al paso fijo.
   - Declaración: `pub const DEFAULT_MAX_FRAMES: u32 = 600;`
 
 ### `script.rs`

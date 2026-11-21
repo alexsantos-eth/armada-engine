@@ -14,7 +14,7 @@ Este documento define los límites, contratos y prácticas de la implementación
 lib/
   crates/iso/     # crate `iso`: dominio portable y sin Macroquad
   src/            # crate `iso-core`: cliente Macroquad, binario y adaptadores
-  content/        # manifiesto de assets, atlas, catálogo de entidades y biomas
+  content/        # manifiesto de assets, atlas, catálogos de entidades, biomas e items
   assets/         # sprites del atlas: los del flujo voxel, el terreno y los dos fijos (nubes y sombra) (copia local, no se despliega)
   packaging/      # fuente e icns del icono del bundle macOS (no se despliega)
   web/            # cargador WASM y archivos web (`/` limpio, `/playground` con GUI, `/maker` editor)
@@ -33,11 +33,11 @@ Cada carpeta de dominio con API pública mantiene un catálogo `mod.md` en espa�
 
 Dominio portable, crate `iso`:
 
-- [assets](../crates/iso/src/assets/mod.md), [biomes](../crates/iso/src/biomes/mod.md), [camera](../crates/iso/src/camera/mod.md), [entities](../crates/iso/src/entities/mod.md), [grid](../crates/iso/src/grid/mod.md), [lighting](../crates/iso/src/lighting/mod.md), [maker](../crates/iso/src/maker/mod.md), [npc](../crates/iso/src/npc/mod.md), [paths](../crates/iso/src/paths/mod.md), [player](../crates/iso/src/player/mod.md), [projection](../crates/iso/src/projection/mod.md), [scene_order](../crates/iso/src/scene_order/mod.md), [services](../crates/iso/src/services/mod.md), [settlements](../crates/iso/src/settlements/mod.md), [simulation](../crates/iso/src/simulation/mod.md), [terrain](../crates/iso/src/terrain/mod.md), [testbed](../crates/iso/src/testbed/mod.md), [time](../crates/iso/src/time/mod.md), [water](../crates/iso/src/water/mod.md), [wind](../crates/iso/src/wind/mod.md), [world](../crates/iso/src/world/mod.md)
+- [assets](../crates/iso/src/assets/mod.md), [biomes](../crates/iso/src/biomes/mod.md), [camera](../crates/iso/src/camera/mod.md), [entities](../crates/iso/src/entities/mod.md), [grid](../crates/iso/src/grid/mod.md), [harvest](../crates/iso/src/harvest/mod.md), [inventory](../crates/iso/src/inventory/mod.md), [items](../crates/iso/src/items/mod.md), [lighting](../crates/iso/src/lighting/mod.md), [maker](../crates/iso/src/maker/mod.md), [npc](../crates/iso/src/npc/mod.md), [paths](../crates/iso/src/paths/mod.md), [player](../crates/iso/src/player/mod.md), [projection](../crates/iso/src/projection/mod.md), [scene_order](../crates/iso/src/scene_order/mod.md), [services](../crates/iso/src/services/mod.md), [settlements](../crates/iso/src/settlements/mod.md), [simulation](../crates/iso/src/simulation/mod.md), [terrain](../crates/iso/src/terrain/mod.md), [testbed](../crates/iso/src/testbed/mod.md), [time](../crates/iso/src/time/mod.md), [water](../crates/iso/src/water/mod.md), [wind](../crates/iso/src/wind/mod.md), [world](../crates/iso/src/world/mod.md)
 
 Cliente Macroquad, crate `iso-core`:
 
-- [app](../src/app/mod.md), [assets](../src/assets/mod.md), [effects](../src/effects/mod.md), [game](../src/game/mod.md), [gui](../src/gui/mod.md), [lighting](../src/lighting/mod.md), [loops](../src/loops/mod.md), [maker](../src/maker/mod.md), [npc](../src/npc/mod.md), [perf](../src/perf/mod.md), [player](../src/player/mod.md), [rendering](../src/rendering/mod.md), [save](../src/save/mod.md), [services](../src/services/mod.md), [terrain](../src/terrain/mod.md), [testbed](../src/testbed/mod.md), [touch](../src/touch/mod.md), [water](../src/water/mod.md)
+- [app](../src/app/mod.md), [assets](../src/assets/mod.md), [effects](../src/effects/mod.md), [game](../src/game/mod.md), [gui](../src/gui/mod.md), [harvest](../src/harvest/mod.md), [lighting](../src/lighting/mod.md), [loops](../src/loops/mod.md), [maker](../src/maker/mod.md), [npc](../src/npc/mod.md), [perf](../src/perf/mod.md), [player](../src/player/mod.md), [rendering](../src/rendering/mod.md), [save](../src/save/mod.md), [services](../src/services/mod.md), [terrain](../src/terrain/mod.md), [testbed](../src/testbed/mod.md), [touch](../src/touch/mod.md), [water](../src/water/mod.md)
 
 ## Invariantes compartidas
 
@@ -150,6 +150,15 @@ Volando, el cuerpo **bascula**: `player::body_motion` lleva dos inclinaciones de
 
 La vista añade dos cosas. La mochila se dibuja de su propia hoja (`/assets/player-16/jetpack.png`, `../../artifacts/vox/player/player_jetpack.py`): una columna por orientación, recortada donde el cuerpo de pie la tapa, con la misma tinta que la hoja de caminar, así que se pinta sobre cualquier pose un pelo por delante del cuerpo (`PLAYER_JETPACK_DEPTH`); nadando no se dibuja, porque no hay pose tumbada para ella. Y mientras se vuela, las toberas queman: `player::dust_view::burn` levanta llama (`JET_FIRE`, cada `JET_FIRE_EVERY_MS`) y humo (`JET_SMOKE`, cada `JET_SMOKE_EVERY_MS`) con los mismos cubos volumétricos del polvo, nacidos en las toberas de la espalda (`jet_nozzle`, `JET_NOZZLE_LIFT`) y no en los pies, de modo que el orden de dibujo los deja delante o detrás del cuerpo según hacia dónde deriven. Se marcan en tiempo real y no en columnas recorridas: es un motor encendido, no un paso dado. El sonido es el bucle `SoundLoop::Jetpack`, atado al estado `Flying` como el de andar o correr.
 
+### Inventario y recolección
+
+Fase 1 del GDD. Tres dominios puros en `iso` y un adaptador en el cliente:
+
+- `iso::items` carga `content/json/items.json` (`schemaVersion` 1): items (`stack`, `rarity`), herramientas (`kind` `axe`/`pickaxe`/`net`, `tier` 1-10 con la tabla de multiplicadores del GDD), las herramientas iniciales y las reglas de recolección por blueprint (`tool`, `tier`, `ticks` de trabajo a mano, `yields`). Lo valida `parse_items` contra el catálogo de entidades: blueprint desconocido o en dos reglas, personaje (`npc`) como objetivo e item sin declarar son errores de carga. El contenido nuevo (un recurso, una herramienta, una regla) es dato en ese archivo.
+- `iso::inventory`: `Inventory` (fila fija de `STARTING_SLOTS` slots, una pila por slot, tope `stack` por item) y `Toolbelt` (herramientas aparte de los slots: al morir se pierden los recursos y se conservan las herramientas). Juntos son `Carried`, que se guarda como su propia parte versionada en `systems.inventory` del guardado, al lado de `systems.world`; un item o herramienta que el catálogo ya no declara se descarta al reabrir.
+- `iso::harvest`: `pick_harvest_target` elige, entre las entidades con regla de los chunks alrededor del jugador, la más cercana a los pies (`HARVEST_REACH` = 1,5 columnas, `HARVEST_LEVEL_REACH` = 2 bloques; empate por id, independiente del orden). `Harvester::step` corre en el **paso fijo**: mientras se mantiene la tecla (`NormalizedInput::gather_held`, `E`) sobre el mismo objetivo, cada tick suma la velocidad de la mejor herramienta del tipo pedido en décimas enteras; soltar la tecla pausa el trabajo y cambiar de objetivo o perderlo de alcance lo reinicia. Sin herramienta o nivel, o sin sitio en el inventario para todo el rendimiento, queda `Blocked`. Al llegar al trabajo de la regla devuelve `Done` y el cliente quita la entidad con `ChunkManager::remove_entity_at` y guarda el rendimiento; la entidad quitada viaja con su chunk en el guardado y no vuelve al reabrir.
+- El cliente (`src/harvest/hotbar.rs`) pinta la barra de slots abajo, el aviso (qué da el objetivo, qué herramienta falta, inventario lleno) y la barra de progreso, más la nota `+3 Madera` durante `GAIN_NOTE_MS`. Es entrada de juego como los controles táctiles, no overlay: sale también en `/` y en las capturas, y no en `/maker`. Aún no hay botón táctil de recolectar ni recolección de fauna (los NPC nacen de la semilla y no se guardan).
+
 ### Personajes (NPC)
 
 `iso::npc` da vida a los personajes no jugadores. Qué entidad es un personaje lo dice el catálogo: una entrada de `entities.json` con `"npc": "basic"` (el valor es una `NpcLogic`) tiene comportamiento NPC; sin esa clave, no. Esas entradas nunca las coloca ni las hace crecer el WFC: nacen con su chunk, y `spawn_npcs(seed, chunk, ground, catalog)` pide su regla de nacimiento a cada lógica que el catálogo declara. La lógica `basic` (`ai::basic`, el cangrejo de playa y futuros animales sencillos) los deja en la arena seca, hasta `PER_CHUNK` por chunk, con un flujo propio sembrado por la semilla y el chunk. Los aldeanos se retiraron por ahora.
@@ -244,7 +253,7 @@ El reflejo es el mismo sprite dibujado bocabajo colgando de la línea de agua, s
 
 ### Guardado
 
-`save` persiste chunks descubiertos, entidades con estado y los objetos de estado del juego (`player`, `systems`) con sus versiones; el contenido guardado es la autoridad al reabrir, no el generador. La persistencia web implementa una interfaz de almacenamiento que una implementación nativa puede sustituir por archivos sin cambiar el formato lógico. Las versiones desconocidas o datos malformados se comunican sin `panic!`.
+`save` persiste chunks descubiertos, entidades con estado y los objetos de estado del juego (`player`, `systems`: hoy `world` con la semilla e `inventory` con lo que lleva el jugador) con sus versiones; el contenido guardado es la autoridad al reabrir, no el generador. La persistencia web implementa una interfaz de almacenamiento que una implementación nativa puede sustituir por archivos sin cambiar el formato lógico. Las versiones desconocidas o datos malformados se comunican sin `panic!`.
 
 ### Controles táctiles
 

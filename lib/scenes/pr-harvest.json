@@ -1,0 +1,87 @@
+{
+  "world": "procedural",
+  "window": [
+    1280,
+    800
+  ],
+  "zoom": 2.2,
+  "phase": "day",
+  "centre": [
+    -12,
+    142
+  ],
+  "player": [
+    -12,
+    142
+  ],
+  "edits": [
+    {
+      "surface": {
+        "at": [
+          -11,
+          142
+        ],
+        "material": "grass"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          -11,
+          142
+        ],
+        "blueprint": "tree"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          -12,
+          144
+        ],
+        "blueprint": "rock_small"
+      }
+    }
+  ],
+  "steps": [
+    "settle",
+    {
+      "shot": "harvest-0-ready.png"
+    },
+    {
+      "gather": {
+        "frames": 20
+      }
+    },
+    {
+      "shot": "harvest-1-working.png"
+    },
+    {
+      "gather": {
+        "frames": 22
+      }
+    },
+    {
+      "shot": "harvest-2-wood.png"
+    },
+    {
+      "walk": {
+        "dir": [
+          0,
+          1
+        ],
+        "frames": 8
+      }
+    },
+    {
+      "gather": {
+        "frames": 32
+      }
+    },
+    {
+      "shot": "harvest-3-stone.png"
+    }
+  ],
+  "out": "shots",
+  "maxFrames": 1600
+}

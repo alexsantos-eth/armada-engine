@@ -115,6 +115,7 @@ fn the_steps_read_as_words_where_they_carry_nothing() {
             "jump",
             "jetpack",
             {"wait": {"frames": 5}},
+            {"gather": {"frames": 30}},
             {"walk": {"dir": [1, 0], "frames": 40, "run": true}},
             {"teleport": [8, 9]},
             {"phase": "night"},
@@ -131,6 +132,7 @@ fn the_steps_read_as_words_where_they_carry_nothing() {
             SceneStep::Jump,
             SceneStep::Jetpack,
             SceneStep::Wait { frames: 5 },
+            SceneStep::Gather { frames: 30 },
             SceneStep::Walk {
                 dir: [1.0, 0.0],
                 frames: 40,
@@ -148,6 +150,7 @@ fn the_steps_read_as_words_where_they_carry_nothing() {
 fn only_the_steps_that_let_time_pass_or_capture_end_their_frame() {
     assert!(SceneStep::Jump.ends_the_frame());
     assert!(SceneStep::Jetpack.ends_the_frame());
+    assert!(SceneStep::Gather { frames: 1 }.ends_the_frame());
     assert!(SceneStep::Wait { frames: 1 }.ends_the_frame());
     assert!(
         SceneStep::Walk {

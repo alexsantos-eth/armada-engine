@@ -1,4 +1,5 @@
 use super::*;
+use crate::projection::GridPoint;
 use crate::testbed::scene::{ScenePhase, SceneStep};
 
 /// A run of `steps` with room to spare.
@@ -87,6 +88,18 @@ fn the_jetpack_step_presses_the_key_that_straps_it_on() {
 
     assert!(frame.input.jetpack_pressed);
     assert!(!frame.input.jump_pressed);
+}
+
+#[test]
+fn a_gather_holds_the_gather_key_for_its_frames() {
+    let mut run = script(vec![SceneStep::Gather { frames: 2 }]);
+
+    for _ in 0..2 {
+        let frame = run.frame(true);
+        assert!(frame.input.gather_held);
+        assert_eq!(frame.input.walk, GridPoint::default());
+    }
+    assert!(run.frame(true).done);
 }
 
 #[test]

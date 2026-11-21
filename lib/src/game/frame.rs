@@ -146,6 +146,62 @@ impl Game {
         self.npcs.step(&ground, player, ticks);
     }
 
+    /// The harvest's share of the fixed step: picks what is in reach from the chunks around the
+    /// player, works on it `ticks` ticks while `held`, and when it is gathered takes it out of the
+    /// world and puts its yields away.
+    fn step_harvest(&mut self, held: bool, ticks: u32) {
+        let at = GridPoint {
+            x: self.player.x,
+            y: self.player.y,
+        };
+        let centre = to_chunk_coord(iso::player::physics::get_player_column(at));
+        let manager = &self.manager;
+        let nearby = (-1..=1)
+            .flat_map(|dx| {
+                (-1..=1).map(move |dy| iso::grid::ChunkCoord {
+                    cx: centre.cx + dx,
+                    cy: centre.cy + dy,
+                })
+            })
+            .filter_map(|coord| manager.entities_chunk(coord))
+            .flatten();
+        let feet = iso::harvest::Feet {
+            at,
+            elevation: self.player.elevation,
+        };
+        let target = iso::harvest::pick_harvest_target(feet, nearby, &self.items);
+        let status = self.harvester.step(
+            iso::harvest::HarvestInput {
+                held,
+                target: target.as_ref(),
+                ticks,
+            },
+            &self.carried,
+            &self.items,
+        );
+        if let iso::harvest::HarvestStatus::Done { target, yields } = &status
+            && let Some(taken) = self
+                .manager
+                .remove_entity_at(target.anchor.x, target.anchor.y)
+        {
+            if taken.id() == target.id {
+                for gained in yields {
+                    self.carried
+                        .inventory
+                        .add(&gained.item, gained.amount, &self.items);
+                }
+                self.gain_note = Some((
+                    crate::harvest::hotbar::gain_text(yields, &self.items),
+                    crate::harvest::hotbar::GAIN_NOTE_MS,
+                ));
+                self.unsaved_changes = true;
+            } else {
+                self.manager.put_entity(taken);
+            }
+        }
+        self.harvest_status = status;
+    }
+
     /// Input, ticks and streaming for one frame. Returns `None` when the player asked to quit
     /// (flushing the save first if there is anything unsaved).
     pub(crate) fn update(&mut self, frame_ms: f64) -> Option<FrameView> {
@@ -158,7 +214,7 @@ impl Game {
                     && (is_key_down(KeyCode::LeftControl) || is_key_down(KeyCode::RightControl))));
         if save_requested {
             sync_manager_to_archive(&mut self.manager, &mut self.archive);
-            save_archive(&self.archive, self.world_seed);
+            save_archive(&self.archive, self.world_seed, &self.carried);
             self.unsaved_changes = false;
             self.last_save = get_time();
         }
@@ -210,6 +266,7 @@ impl Game {
             step_player(&mut self.player, &mut ground, ticks);
             if self.streams {
                 self.step_npcs(ticks);
+                self.step_harvest(input.gather_held, ticks);
             }
             if self.player.feedback.jumps > jumps_before {
                 let air = self.player.feedback.air_jump;
@@ -230,6 +287,16 @@ impl Game {
             }
         }
         update_motion_audio(self);
+        if let Some((_, left)) = self.gain_note.as_mut() {
+            *left -= frame_ms;
+        }
+        if self
+            .gain_note
+            .as_ref()
+            .is_some_and(|(_, left)| *left <= 0.0)
+        {
+            self.gain_note = None;
+        }
 
         let rp = get_player_render_position(&self.player, self.stepper.interpolation_alpha());
 
@@ -294,7 +361,7 @@ impl Game {
         let quitting = is_quit_requested();
         if self.persists && should_save_on_quit(self.unsaved_changes, quitting) {
             sync_manager_to_archive(&mut self.manager, &mut self.archive);
-            save_archive(&self.archive, self.world_seed);
+            save_archive(&self.archive, self.world_seed, &self.carried);
             self.unsaved_changes = false;
             self.last_save = get_time();
         }
