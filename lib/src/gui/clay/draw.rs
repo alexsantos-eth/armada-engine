@@ -456,41 +456,26 @@ fn draw_backpack(skin: &ClaySkin, hud: &ClayHud, layout: &HudLayout) {
     draw_piece(skin, "backpack", *rect, alpha);
 }
 
-/// The sprint lock's radius as a share of the stick's radius (`--ac-stick-lock` / `--ac-stick`).
-const LOCK_SIZE: f32 = 40.0 / 120.0;
-
-/// Paints the floating touch stick with the kit: the base, the sprint lock (a hint while the
-/// finger nears it, lit while the run is locked), the knob (red while running) and, when
-/// something is in reach, its tool on the knob, swinging while the held stick gathers.
+/// Paints the floating touch stick with the kit: the base, the knob (red while running) and,
+/// when something is in reach, its tool on the knob, swinging while the held stick gathers.
+/// Invisible while the stick rests idle: the player sees it once they touch it.
 pub(crate) fn draw_clay_stick(
     skin: &ClaySkin,
     view: &StickView,
     tool: Option<&str>,
     clock_ms: f64,
 ) {
-    let (base_alpha, knob_alpha) = if view.active { (0.8, 1.0) } else { (0.45, 0.7) };
+    if !view.active {
+        return;
+    }
     let (cx, cy) = view.center;
     let r = view.radius;
     draw_piece(
         skin,
         "stick_base",
         Rect::new(cx - r, cy - r, 2.0 * r, 2.0 * r),
-        base_alpha,
+        0.8,
     );
-    if let Some((lx, ly)) = view.lock_at {
-        let (piece, alpha) = if view.locked {
-            ("stick_lock_on", 1.0)
-        } else {
-            ("stick_lock", 0.75)
-        };
-        let l = r * LOCK_SIZE;
-        draw_piece(
-            skin,
-            piece,
-            Rect::new(lx - l, ly - l, 2.0 * l, 2.0 * l),
-            alpha,
-        );
-    }
     let knob = if view.run {
         "stick_knob_run"
     } else {
@@ -498,12 +483,7 @@ pub(crate) fn draw_clay_stick(
     };
     let (kx, ky) = view.knob;
     let k = view.knob_radius;
-    draw_piece(
-        skin,
-        knob,
-        Rect::new(kx - k, ky - k, 2.0 * k, 2.0 * k),
-        knob_alpha,
-    );
+    draw_piece(skin, knob, Rect::new(kx - k, ky - k, 2.0 * k, 2.0 * k), 1.0);
     let Some(tool) = tool else {
         return;
     };
@@ -528,7 +508,7 @@ pub(crate) fn draw_clay_stick(
                 side + 2.0 * room,
                 side + 2.0 * room,
             ),
-            knob_alpha,
+            1.0,
         );
     });
 }
