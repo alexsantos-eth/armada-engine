@@ -15,4 +15,5 @@ mod platform;
 mod stick;
 
 pub(crate) use controls::{RawTouch, RawTouchPhase, TouchControls};
+pub(crate) use layout::TouchLayout;
 pub(crate) use platform::coarse_pointer;

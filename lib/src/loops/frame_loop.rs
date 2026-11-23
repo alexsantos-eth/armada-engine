@@ -16,6 +16,16 @@ use crate::gui::{draw_hud, push_hud_update};
 use crate::loops::clock::{FrameClock, frame_timestamp_seconds};
 use crate::perf::FrameSample;
 
+/// Whether the mouse or a finger is down on the native HUD's action button.
+fn action_pressed(layout: &crate::gui::clay::HudLayout) -> bool {
+    let (mx, my) = mouse_position();
+    (is_mouse_button_down(MouseButton::Left) && layout.action_hit(mx, my))
+        || touches().iter().any(|touch| {
+            !matches!(touch.phase, TouchPhase::Ended | TouchPhase::Cancelled)
+                && layout.action_hit(touch.position.x, touch.position.y)
+        })
+}
+
 /// How long a scripted frame counts as, whatever the window measured: one fixed step, so a
 /// scene's shots do not depend on how fast the machine drew them.
 const SCRIPTED_FRAME_MS: f64 = iso::simulation::STEP_MS;
@@ -113,7 +123,8 @@ pub(crate) async fn run(mut game: Game) {
             (game.depth_target.texture(), view.depth.focus()),
         );
         let picked = std::mem::take(&mut game.pending_gains);
-        if game.streams && crate::gui::web_ui::active() {
+        let clay = game.streams && (crate::gui::web_ui::active() || game.clay_skin.is_some());
+        if clay {
             let chest = game.player_chest(&view);
             let at = crate::harvest::web_hud::screen_share(chest.x, chest.y, width, height);
             let frame = crate::harvest::web_hud::hud_frame(
@@ -124,7 +135,17 @@ pub(crate) async fn run(mut game: Game) {
                 game.touch.visible(),
             );
             let gains = crate::harvest::web_hud::gains(&picked, &game.items, at);
-            game.web_ui.send(&frame, &gains);
+            if let Some(skin) = game.clay_skin.as_ref() {
+                let layout =
+                    crate::gui::clay::HudLayout::new(width, height, frame.slots.len(), frame.touch);
+                game.clay_hud.apply(&frame, &gains, (width, height));
+                game.clay_hud.advance(frame_ms);
+                game.clay_hud.held =
+                    frame.prompt.as_ref().is_some_and(|p| !p.blocked) && action_pressed(&layout);
+                crate::gui::clay::draw_clay_hud(skin, &game.clay_hud, &frame, &layout);
+            } else {
+                game.web_ui.send(&frame, &gains);
+            }
         } else if game.streams {
             let prompt = crate::harvest::hotbar::prompt(&game.harvest_status, &game.items);
             crate::harvest::hotbar::draw_hotbar(

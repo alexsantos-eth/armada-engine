@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Armada UI kit: export</title>
+    <link rel="stylesheet" href="armada-ui.css" />
+    <style>
+      /* The pieces scripts/export-ui.mjs screenshots for the native client: each [data-piece] is
+         one PNG, with PAD px of room around the shape for the wobble and the offset shadow. */
+      :root { --pad: 12px; }
+      html, body { margin: 0; background: transparent; }
+      body { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; padding: 8px; font-family: var(--ac-body); }
+      [data-piece] { padding: var(--pad); display: inline-block; }
+      [data-piece] > * { display: block; }
+      .panel { box-sizing: border-box; }
+      .bubble-shape::before { border-radius: var(--ac-blob-bubble); }
+      .round { --ac-fill: var(--ac-red); }
+      .round::before { border-radius: var(--ac-blob-round); }
+      .pressed::before { box-shadow: 1px 2px 0 var(--ac-ink); }
+      .tail svg { width: 34px; height: 30px; display: block; filter: url(#ac-wobble); }
+      .tail path { stroke: var(--ac-ink); stroke-width: 4; stroke-linejoin: round; }
+      .badge {
+        width: 26px; height: 26px; box-sizing: border-box; border: 3px solid var(--ac-ink); border-radius: 50%;
+        background: var(--ac-paper);
+      }
+      .kbd {
+        width: 22px; height: 20px; box-sizing: border-box; border: 2.5px solid var(--ac-ink);
+        border-radius: 7px 9px 7px 8px; background: var(--ac-paper); box-shadow: 2px 2px 0 var(--ac-ink);
+      }
+      .tool { width: 48px; height: 48px; }
+      .tool svg { width: 48px; height: 48px; display: block; filter: var(--ac-icon-shadow); }
+    </style>
+  </head>
+  <body>
+    <div data-piece="hotbar" data-slice="34"><div class="panel ac-hand ac-umber" style="width: 180px; height: 110px"></div></div>
+    <div data-piece="slot" data-slice="0"><div class="panel ac-slot" style="--ac-slot: 64px"></div></div>
+    <div data-piece="slot_selected" data-slice="0"><div class="panel ac-slot is-selected" style="--ac-slot: 64px; transform: none"></div></div>
+    <div data-piece="slot_empty" data-slice="0"><div class="panel ac-slot is-empty" style="--ac-slot: 64px"></div></div>
+    <div data-piece="prompt" data-slice="26"><div class="panel ac-hand ac-cream" style="width: 170px; height: 60px"></div></div>
+    <div data-piece="prompt_blocked" data-slice="26"><div class="panel ac-hand ac-red" style="width: 170px; height: 60px"></div></div>
+    <div data-piece="bubble" data-slice="34"><div class="panel ac-hand ac-cream bubble-shape" style="width: 240px; height: 64px"></div></div>
+    <div data-piece="bubble_warning" data-slice="34"><div class="panel ac-hand ac-red bubble-shape" style="width: 240px; height: 64px"></div></div>
+    <div data-piece="bubble_tail" data-slice="0" class="tail"><svg viewBox="0 0 34 30"><path d="M3 2 L14 28 L31 2" fill="#fff6e0" /></svg></div>
+    <div data-piece="bubble_tail_warning" data-slice="0" class="tail"><svg viewBox="0 0 34 30"><path d="M3 2 L14 28 L31 2" fill="#e0543a" /></svg></div>
+    <div data-piece="action" data-slice="0"><div class="panel ac-hand round" style="width: 104px; height: 104px"></div></div>
+    <div data-piece="action_pressed" data-slice="0"><div class="panel ac-hand round pressed" style="width: 104px; height: 104px"></div></div>
+    <div data-piece="badge" data-slice="0"><div class="badge"></div></div>
+    <div data-piece="kbd" data-slice="0"><div class="kbd"></div></div>
+    <div data-piece="tool_axe" data-slice="0" class="tool" data-tool="axe"></div>
+    <div data-piece="tool_pickaxe" data-slice="0" class="tool" data-tool="pickaxe"></div>
+    <div data-piece="tool_net" data-slice="0" class="tool" data-tool="net"></div>
+    <div data-piece="tool_hand" data-slice="0" class="tool" data-tool="hand"></div>
+
+    <script src="armada-ui.js"></script>
+    <script>
+      ArmadaUI.install();
+      document.querySelectorAll("[data-tool]").forEach((node) => node.appendChild(ArmadaUI.toolIcon(node.dataset.tool)));
+      document.documentElement.dataset.ready = "1";
+    </script>
+  </body>
+</html>

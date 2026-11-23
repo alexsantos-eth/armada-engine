@@ -18,6 +18,10 @@ con sacudida y números con contorno que vuelan en arco hasta su slot.
 juego (`web/index.html`) carga las fuentes de Google Fonts, `ui/armada-ui.css` y
 `ui/armada-ui.js` antes de `adapter.js`.
 
+En el **build nativo** no hay navegador, así que el kit se **exporta a sprites** y Macroquad los
+dibuja (ver más abajo). El CSS sigue siendo la única fuente del aspecto: nada se redibuja a mano
+en Rust.
+
 ## Reglas del estilo
 
 - **Colores planos, sin degradados.** Todo color sale de un token `--ac-*`; un color nuevo se
@@ -114,6 +118,39 @@ salen de la regla de recolección (`hacha → Talar`, `pico → Picar`, `red →
 La build nativa y las corridas guionizadas no tienen HTML: siguen pintando la hotbar con
 Macroquad (`harvest::hotbar::draw_hotbar`), así que las capturas automáticas de los PR no
 muestran este HUD. Para verlo, sirve `dist/` y abre `/` o `/ui/`.
+
+## El HUD nativo (exportar a sprites)
+
+El build nativo (y las corridas guionizadas que alimentan las capturas de los PR) no puede
+abrir HTML, así que el kit se congela a imágenes y Macroquad las dibuja con las mismas medidas,
+el mismo troquelado y las mismas animaciones.
+
+| Pieza | Qué es |
+| --- | --- |
+| [`scripts/export-ui.cjs`](../scripts/export-ui.cjs) | Node + Playwright: abre `web/ui/export.html`, fotografía cada `[data-piece]` a un PNG transparente a 2× y escribe `content/ui/ui.json` (tamaño, margen alrededor de la forma, borde de troquelado y los colores de los tokens). Copia los iconos a `content/ui/items/`. |
+| [`web/ui/export.html`](../web/ui/export.html) | Un `[data-piece]` por pieza, pintado con el CSS real. `data-slice` marca el borde para el nine-slice (0 = estirar entero). |
+| `content/ui/` | La salida commiteada: PNG por pieza, `ui.json`, `items/<id>.png`. Se regenera con el script, no a mano. |
+| `content/fonts/Fredoka-Bold.ttf` | La fuente display del kit para Macroquad (descargada de Google Fonts). |
+| [`src/gui/clay/`](../src/gui/clay/mod.md) | El cliente Rust: `skin.rs` (carga el manifest, texturas y fuente), `slice.rs` (nine-slice puro), `layout.rs` (las mismas posiciones que `.ac-hud`), `motion.rs` (las curvas de `ac-pop`/`ac-out`/`ac-bump`/`ac-chop` y el vuelo, puras), `hud.rs` (estado de las animaciones: globo, vuelos, rebotes, cuentas en el aire) y `draw.rs` (lo pinta con Macroquad). |
+
+El cliente arma el mismo `UiFrame`/`UiGain` que manda el web (`harvest::web_hud`): en web con el
+kit se envía por `iso_ui_push`, en nativo lo consume `ClayHud` y `draw_clay_hud`. Así los dos HUD
+cuentan lo mismo. El botón de acción se maneja con ratón o toque (`action_pressed` en el bucle),
+y se suma a `E` por `MacroquadInput::action_held`.
+
+`ClaySkin::load` devuelve `None` (con un aviso) si falta `content/ui/ui.json`, una pieza o la
+fuente; entonces el cliente pinta la hotbar simple de `harvest::hotbar`. En web, con el HUD en
+HTML activo, el kit nativo no se carga.
+
+**Regenerar tras cambiar el CSS o los iconos:**
+
+```bash
+python3 scripts/build-ui-icons.py     # si cambiaron los sprites de ítems
+node scripts/export-ui.cjs            # necesita Playwright con Chromium
+```
+
+y commitea `content/ui/`. Si añades una pieza, decláralas en los tres sitios: `export.html`,
+`REQUIRED_PIECES` (`src/gui/clay/skin.rs`) y donde la dibuje `draw.rs`.
 
 ## Añadir algo al kit
 

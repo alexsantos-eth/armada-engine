@@ -34,15 +34,17 @@ El dominio no guarda nada ni conoce el inventario: es catálogo puro. El inventa
 
 - [`tool_speed_tenths`](catalog.rs#L18) — Velocidad de recolección de un nivel, en décimas de la velocidad a mano; el nivel 0 es la mano y un nivel mayor que 10 vale como 10.
   - Firma: `pub fn tool_speed_tenths(tier: u8) -> u32 {`
-- [`parse_items`](catalog.rs#L212) — Parsea y valida el contenido de items contra el catálogo de entidades que nombran sus reglas.
+- [`parse_items`](catalog.rs#L219) — Parsea y valida el contenido de items contra el catálogo de entidades que nombran sus reglas.
   - Firma: `pub fn parse_items(json: &str, entities: &EntityCatalog) -> Result<ItemCatalog, ItemsError> {`
 - [`ItemCatalog::item`](catalog.rs#L111) — El item con ese id.
   - Firma: `pub fn item(&self, id: &str) -> Option<&ItemDef> {`
-- [`ItemCatalog::tool`](catalog.rs#L116) — La herramienta con ese id.
+- [`ItemCatalog::item_ids`](catalog.rs#L116) — Los ids de todos los items, ordenados (el cliente carga un icono por cada uno para el HUD nativo).
+  - Firma: `pub fn item_ids(&self) -> Vec<&str> {`
+- [`ItemCatalog::tool`](catalog.rs#L123) — La herramienta con ese id.
   - Firma: `pub fn tool(&self, id: &str) -> Option<&ToolDef> {`
-- [`ItemCatalog::starting_tools`](catalog.rs#L121) — Las herramientas con que aterriza un jugador nuevo, en orden de archivo.
+- [`ItemCatalog::starting_tools`](catalog.rs#L128) — Las herramientas con que aterriza un jugador nuevo, en orden de archivo.
   - Firma: `pub fn starting_tools(&self) -> &[String] {`
-- [`ItemCatalog::harvest_rule`](catalog.rs#L126) — Cómo se recolecta una entidad de ese blueprint, si se puede.
+- [`ItemCatalog::harvest_rule`](catalog.rs#L133) — Cómo se recolecta una entidad de ese blueprint, si se puede.
   - Firma: `pub fn harvest_rule(&self, blueprint: &str) -> Option<&HarvestRule> {`
 - [`ItemDef::color`](catalog.rs#L61) — El color de sus astillas como `0xRRGGBB`, si declara uno.
   - Firma: `pub fn color(&self) -> Option<u32> {`
@@ -72,5 +74,5 @@ El dominio no guarda nada ni conoce el inventario: es catálogo puro. El inventa
   - Declaración: `pub struct HarvestRule { pub tool: Option<ToolKind>, pub tier: u8, pub ticks: u32, pub yields: Vec<HarvestYield> }`
 - [`ItemCatalog`](catalog.rs#L101) — El contenido validado; las búsquedas son por id, nunca por orden de `HashMap`.
   - Declaración: `pub struct ItemCatalog { ... }`
-- [`ItemsError`](catalog.rs#L133) — Todo lo que el contenido puede declarar mal: JSON ilegible, esquema no soportado, ids vacíos o repetidos, `stack` 0, nivel fuera de tabla (o una regla a mano con nivel), herramienta inicial no declarada, blueprint desconocido, repetido o que es un personaje, item desconocido, rendimiento vacío o 0, trabajo 0, color que no son seis dígitos hex.
+- [`ItemsError`](catalog.rs#L140) — Todo lo que el contenido puede declarar mal: JSON ilegible, esquema no soportado, ids vacíos o repetidos, `stack` 0, nivel fuera de tabla (o una regla a mano con nivel), herramienta inicial no declarada, blueprint desconocido, repetido o que es un personaje, item desconocido, rendimiento vacío o 0, trabajo 0, color que no son seis dígitos hex.
   - Declaración: `pub enum ItemsError { ... }`

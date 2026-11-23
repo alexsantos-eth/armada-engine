@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "scale": 2,
+  "items": "ui/items",
+  "colors": {
+    "ink": "#1a120d",
+    "paper": "#ecdcb9",
+    "paper_shade": "#d9c497",
+    "cream": "#fff6e0",
+    "umber": "#4b3324",
+    "gold": "#f4b934",
+    "red": "#e0543a",
+    "leaf": "#6f9d3a",
+    "sky": "#5b8fb4",
+    "text": "#f2e6cc",
+    "text_muted": "#b7a988"
+  },
+  "pieces": {
+    "hotbar": {
+      "file": "ui/hotbar.png",
+      "width": 408,
+      "height": 268,
+      "pad": 24,
+      "slice": 68
+    },
+    "slot": {
+      "file": "ui/slot.png",
+      "width": 176,
+      "height": 184,
+      "pad": 24,
+      "slice": 0
+    },
+    "slot_selected": {
+      "file": "ui/slot_selected.png",
+      "width": 176,
+      "height": 184,
+      "pad": 24,
+      "slice": 0
+    },
+    "slot_empty": {
+      "file": "ui/slot_empty.png",
+      "width": 176,
+      "height": 184,
+      "pad": 24,
+      "slice": 0
+    },
+    "prompt": {
+      "file": "ui/prompt.png",
+      "width": 388,
+      "height": 168,
+      "pad": 24,
+      "slice": 52
+    },
+    "prompt_blocked": {
+      "file": "ui/prompt_blocked.png",
+      "width": 388,
+      "height": 168,
+      "pad": 24,
+      "slice": 52
+    },
+    "bubble": {
+      "file": "ui/bubble.png",
+      "width": 528,
+      "height": 176,
+      "pad": 24,
+      "slice": 68
+    },
+    "bubble_warning": {
+      "file": "ui/bubble_warning.png",
+      "width": 528,
+      "height": 176,
+      "pad": 24,
+      "slice": 68
+    },
+    "bubble_tail": {
+      "file": "ui/bubble_tail.png",
+      "width": 116,
+      "height": 108,
+      "pad": 24,
+      "slice": 0
+    },
+    "bubble_tail_warning": {
+      "file": "ui/bubble_tail_warning.png",
+      "width": 116,
+      "height": 108,
+      "pad": 24,
+      "slice": 0
+    },
+    "action": {
+      "file": "ui/action.png",
+      "width": 256,
+      "height": 256,
+      "pad": 24,
+      "slice": 0
+    },
+    "action_pressed": {
+      "file": "ui/action_pressed.png",
+      "width": 256,
+      "height": 256,
+      "pad": 24,
+      "slice": 0
+    },
+    "badge": {
+      "file": "ui/badge.png",
+      "width": 100,
+      "height": 100,
+      "pad": 24,
+      "slice": 0
+    },
+    "kbd": {
+      "file": "ui/kbd.png",
+      "width": 92,
+      "height": 88,
+      "pad": 24,
+      "slice": 0
+    },
+    "tool_axe": {
+      "file": "ui/tool_axe.png",
+      "width": 144,
+      "height": 144,
+      "pad": 24,
+      "slice": 0
+    },
+    "tool_pickaxe": {
+      "file": "ui/tool_pickaxe.png",
+      "width": 144,
+      "height": 144,
+      "pad": 24,
+      "slice": 0
+    },
+    "tool_net": {
+      "file": "ui/tool_net.png",
+      "width": 144,
+      "height": 144,
+      "pad": 24,
+      "slice": 0
+    },
+    "tool_hand": {
+      "file": "ui/tool_hand.png",
+      "width": 144,
+      "height": 144,
+      "pad": 24,
+      "slice": 0
+    }
+  }
+}

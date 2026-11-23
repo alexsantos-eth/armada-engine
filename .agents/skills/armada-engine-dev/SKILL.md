@@ -72,7 +72,7 @@ Contratos clave (el detalle está en el `mod.md` correspondiente):
 ## Reglas de cambios
 
 - Sin `unsafe` en `iso`. En el cliente, `unsafe` solo para los FFI con la página (`localStorage` para el guardado WASM, `location.pathname` para la ruta web, `iso_ui_*` para el HUD en HTML), acotados y documentados en el `mod.md` de su dominio.
-- La interfaz en HTML de la build web (HUD, menús, diálogos) se hace con el kit de UI `lib/web/ui/` (tokens `--ac-*`, componentes `.ac-*`, `window.ArmadaUI`): nada de estilos sueltos fuera del kit. Guía, reglas del estilo y puente con Rust en `lib/docs/UI-KIT.md`; catálogo vivo en `/ui/`.
+- La interfaz en HTML de la build web (HUD, menús, diálogos) se hace con el kit de UI `lib/web/ui/` (tokens `--ac-*`, componentes `.ac-*`, `window.ArmadaUI`): nada de estilos sueltos fuera del kit. Guía, reglas del estilo y puente con Rust en `lib/docs/UI-KIT.md`; catálogo vivo en `/ui/`. En nativo el kit no se redibuja a mano: se exporta a sprites con `node scripts/export-ui.cjs` (→ `content/ui/`, commiteado) y lo dibuja `src/gui/clay/`; tras cambiar el CSS o los iconos, vuelve a exportar.
 - Errores con `Result` y contexto; nada de `panic!` ante datos externos (catálogos, guardados). `assert!` solo para invariantes internas.
 - `clippy --workspace --all-targets --locked -- -D warnings` en verde; `cargo fmt --all` limpio. **Nada de `#[allow(clippy::…)]` ni `#![allow(clippy::…)]`**: un lint de clippy no se silencia, se corrige o se reagrupa (parámetros relacionados → struct de dominio); si un lint es genuinamente inaplicable, la excepción la decide el usuario, nunca el código.
 - No mezclar dominio y cliente en un mismo módulo ni importar Macroquad/`winit`-like crates en `iso`.

@@ -112,6 +112,13 @@ impl ItemCatalog {
         self.items.get(id)
     }
 
+    /// Every item's id, sorted.
+    pub fn item_ids(&self) -> Vec<&str> {
+        let mut ids: Vec<&str> = self.items.keys().map(String::as_str).collect();
+        ids.sort_unstable();
+        ids
+    }
+
     /// The tool with `id`.
     pub fn tool(&self, id: &str) -> Option<&ToolDef> {
         self.tools.get(id)

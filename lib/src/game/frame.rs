@@ -326,6 +326,7 @@ impl Game {
         } else {
             let mut input_service = MacroquadInput {
                 touch: &mut self.touch,
+                action_held: self.clay_hud.held,
             };
             (input_service.poll(), Vec::new())
         };

@@ -3,6 +3,7 @@
 //! The overlay is route-gated on the web build: `/` paints nothing, `/playground` and `/maker`
 //! paint it all (see [`Route`]). Native always paints it.
 
+pub(crate) mod clay;
 mod hud;
 mod route;
 pub(crate) mod web_ui;

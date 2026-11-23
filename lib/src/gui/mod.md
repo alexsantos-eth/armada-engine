@@ -8,7 +8,7 @@ El **jetpack** vale en cualquier ruta. Se alterna con la tecla `J` o, con el ove
 
 La división es deliberada: `push_hud_update` publica lo que el jugador está haciendo mediante el servicio de UI (`UiEvent::HudUpdate`), y `draw_hud` renderiza lo que ese servicio retiene, incluidos los mensajes efímeros, que se vacían al pintarlos.
 
-El dominio tiene además el **puente con el HUD en HTML** de la build web (`web_ui.rs`): el kit de UI (`web/ui/armada-ui.js`, ver [`docs/UI-KIT.md`](../../docs/UI-KIT.md)) que `web/adapter.js` monta sobre el canvas. Es el tercer FFI acotado con la página, con el mismo patrón que `iso_route_path` y el guardado: `iso_ui_active` (si la página trae el kit), `iso_ui_push` (un JSON con el fotograma del HUD y las ganancias) e `iso_ui_gather_held` (si el botón de acción está pulsado). Fuera de WASM no hay página: `active` y `gather_held` devuelven `false` y nada se envía. Qué se manda lo arma `harvest::web_hud`.
+El dominio tiene además el **puente con el HUD en HTML** de la build web (`web_ui.rs`): el kit de UI (`web/ui/armada-ui.js`, ver [`docs/UI-KIT.md`](../../docs/UI-KIT.md)) que `web/adapter.js` monta sobre el canvas. Es el tercer FFI acotado con la página, con el mismo patrón que `iso_route_path` y el guardado: `iso_ui_active` (si la página trae el kit), `iso_ui_push` (un JSON con el fotograma del HUD y las ganancias) e `iso_ui_gather_held` (si el botón de acción está pulsado). Fuera de WASM no hay página: `active` y `gather_held` devuelven `false` y nada se envía. Qué se manda lo arma `harvest::web_hud`. En nativo (y en la web sin el kit) el mismo fotograma lo dibuja con Macroquad el subdominio [`clay/`](clay/mod.md), desde las piezas del kit exportadas a `content/ui/`.
 
 ## Catálogo de API pública
 
