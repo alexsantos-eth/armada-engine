@@ -121,20 +121,6 @@
       "pad": 24,
       "slice": 0
     },
-    "stick_lock": {
-      "file": "ui/stick_lock.png",
-      "width": 128,
-      "height": 128,
-      "pad": 24,
-      "slice": 0
-    },
-    "stick_lock_on": {
-      "file": "ui/stick_lock_on.png",
-      "width": 128,
-      "height": 128,
-      "pad": 24,
-      "slice": 0
-    },
     "badge": {
       "file": "ui/badge.png",
       "width": 100,

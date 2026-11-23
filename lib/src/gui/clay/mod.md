@@ -84,7 +84,7 @@ Todo es puro y se prueba (`skin`, `slice`, `layout`, `motion`, `hud`) salvo `dra
 
 ### `draw.rs`
 
-- [`draw_clay_stick`](draw.rs#L456) — Pinta el joystick táctil flotante con el kit: base, candado de carrera (pista al pasar el borde, encendido al bloquear), mando (rojo en carrera) y, si hay algo al alcance, su herramienta sobre el mando, que se balancea mientras el joystick quieto recolecta. Translúcido mientras descansa.
+- [`draw_clay_stick`](draw.rs#L462) — Pinta el joystick táctil flotante con el kit: la base y el mando (rojo en carrera) y, si hay algo al alcance, su herramienta sobre el mando, que se balancea mientras el joystick quieto recolecta. Invisible mientras el stick descansa idle. No-op si no hay dedo.
   - Firma: `pub(crate) fn draw_clay_stick( skin: &ClaySkin, view: &StickView, tool: Option<&str>, clock_ms: f64, ) {`
 - [`draw_clay_hud`](draw.rs#L528) — Pinta el aviso, el panel y los slots (con rebote, icono y cuenta con contorno), el botón de acción (aplastado si se pulsa, herramienta que se balancea mientras se trabaja), el globo y los números voladores.
   - Firma: `pub(crate) fn draw_clay_hud(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, layout: &HudLayout) {`

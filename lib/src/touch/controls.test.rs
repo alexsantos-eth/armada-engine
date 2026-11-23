@@ -114,13 +114,40 @@ fn dragging_walks_and_releasing_stops() {
         &[finger(1, RawTouchPhase::Ended, radius(), 0.0)],
         48.0,
     );
-    let released = step(&mut controls, &[], 48.0 + COAST_MS + 1.0);
+    let released = step(&mut controls, &[], 64.0);
 
     assert!((half.magnitude - 0.5).abs() < 1e-6);
     assert!(!half.run);
     assert_eq!(full.magnitude, 1.0);
     assert!(full.run);
     assert_eq!(released.walk, GridPoint { x: 0.0, y: 0.0 });
+    assert!(!controls.view(WIDTH, HEIGHT).active);
+}
+
+#[test]
+fn releasing_the_stick_stops_the_walk_right_away() {
+    let mut controls = TouchControls::new(false);
+    step(
+        &mut controls,
+        &[finger(1, RawTouchPhase::Started, 0.0, 0.0)],
+        0.0,
+    );
+    let walking = step(
+        &mut controls,
+        &[finger(1, RawTouchPhase::Moved, radius(), 0.0)],
+        16.0,
+    );
+    assert!(walking.magnitude > 0.0);
+
+    let released = step(
+        &mut controls,
+        &[finger(1, RawTouchPhase::Ended, radius(), 0.0)],
+        32.0,
+    );
+    let after = step(&mut controls, &[], 48.0);
+
+    assert_eq!(released.walk, GridPoint { x: 0.0, y: 0.0 });
+    assert_eq!(after, TouchFrame::default());
     assert!(!controls.view(WIDTH, HEIGHT).active);
 }
 
@@ -323,31 +350,6 @@ fn touches_on_the_inventory_rect_neither_jump_nor_place_the_stick() {
 }
 
 #[test]
-fn a_tap_that_drags_places_the_stick_without_jumping() {
-    let mut controls = TouchControls::new(false);
-    step(
-        &mut controls,
-        &[finger(1, RawTouchPhase::Started, 0.0, 0.0)],
-        0.0,
-    );
-    step(
-        &mut controls,
-        &[finger(1, RawTouchPhase::Moved, radius(), 0.0)],
-        40.0,
-    );
-    step(
-        &mut controls,
-        &[finger(1, RawTouchPhase::Ended, radius(), 0.0)],
-        80.0,
-    );
-
-    let next = tap(&mut controls, 2, 80.0 + COAST_MS + 1.0);
-
-    assert!(!next.jump_pressed);
-    assert_eq!(next.magnitude, 0.0);
-}
-
-#[test]
 fn a_second_finger_while_moving_jumps_and_does_not_steal_the_stick() {
     let mut controls = TouchControls::new(false);
     step(
@@ -400,112 +402,6 @@ fn a_cancelled_or_missing_touch_releases_the_stick() {
     assert!(!controls.view(WIDTH, HEIGHT).active);
 }
 
-fn walk_then_let_go(controls: &mut TouchControls) -> TouchFrame {
-    step(
-        controls,
-        &[finger(1, RawTouchPhase::Started, 0.0, 0.0)],
-        0.0,
-    );
-    let walking = step(
-        controls,
-        &[finger(1, RawTouchPhase::Moved, radius(), 0.0)],
-        400.0,
-    );
-    step(
-        controls,
-        &[finger(1, RawTouchPhase::Ended, radius(), 0.0)],
-        416.0,
-    );
-    walking
-}
-
-#[test]
-fn letting_go_of_a_walking_stick_coasts_for_a_moment() {
-    let mut controls = TouchControls::new(false);
-    let walking = walk_then_let_go(&mut controls);
-
-    let coasting = step(&mut controls, &[], 416.0 + COAST_MS - 1.0);
-    let stopped = step(&mut controls, &[], 416.0 + COAST_MS + 1.0);
-
-    assert_eq!(coasting.walk, walking.walk);
-    assert!(!coasting.jump_pressed);
-    assert_eq!(stopped, TouchFrame::default());
-}
-
-#[test]
-fn a_touch_while_coasting_places_the_stick_and_does_not_jump() {
-    let mut controls = TouchControls::new(false);
-    let walking = walk_then_let_go(&mut controls);
-
-    let placed = step(
-        &mut controls,
-        &[finger(2, RawTouchPhase::Started, 0.0, 0.0)],
-        500.0,
-    );
-
-    assert!(!placed.jump_pressed);
-    assert_eq!(placed.walk, walking.walk);
-}
-
-#[test]
-fn a_stick_placed_on_the_coast_steers_again() {
-    let mut controls = TouchControls::new(false);
-    let walking = walk_then_let_go(&mut controls);
-    step(
-        &mut controls,
-        &[finger(2, RawTouchPhase::Started, 0.0, 0.0)],
-        500.0,
-    );
-
-    let steered = step(
-        &mut controls,
-        &[finger(2, RawTouchPhase::Moved, 0.0, radius())],
-        516.0,
-    );
-
-    assert_eq!(steered.magnitude, 1.0);
-    assert_ne!(steered.walk, walking.walk);
-    assert!(!steered.jump_pressed);
-}
-
-#[test]
-fn a_touch_after_the_coast_does_not_jump() {
-    let mut controls = TouchControls::new(false);
-    walk_then_let_go(&mut controls);
-
-    let late = step(
-        &mut controls,
-        &[finger(2, RawTouchPhase::Started, 0.0, 0.0)],
-        416.0 + COAST_MS + 1.0,
-    );
-
-    assert!(!late.jump_pressed);
-    assert_eq!(late.magnitude, 0.0);
-}
-
-fn lock_reach() -> f32 {
-    LOCK_REACH * radius()
-}
-
-/// Drags finger 1 from `DOWN` past the lock reach to the right, locking the run.
-fn lock_right(controls: &mut TouchControls) -> TouchFrame {
-    step(
-        controls,
-        &[finger(1, RawTouchPhase::Started, 0.0, 0.0)],
-        0.0,
-    );
-    step(
-        controls,
-        &[finger(1, RawTouchPhase::Moved, radius(), 0.0)],
-        16.0,
-    );
-    step(
-        controls,
-        &[finger(1, RawTouchPhase::Moved, lock_reach() + 1.0, 0.0)],
-        32.0,
-    )
-}
-
 #[test]
 fn the_base_stays_put_when_the_finger_passes_the_rim() {
     let mut controls = TouchControls::new(false);
@@ -525,194 +421,5 @@ fn the_base_stays_put_when_the_finger_passes_the_rim() {
     assert_eq!(view.center, DOWN);
     assert!((view.knob.0 - (DOWN.0 + radius())).abs() < 1e-3);
     assert_eq!(frame.magnitude, 1.0);
-    assert!(!view.locked);
-    let hint = view
-        .lock_at
-        .expect("past the rim the lock shows where to slide");
-    assert!((hint.0 - (DOWN.0 + lock_reach())).abs() < 1e-3);
-}
-
-#[test]
-fn within_the_rim_there_is_no_lock_hint() {
-    let mut controls = TouchControls::new(false);
-    step(
-        &mut controls,
-        &[finger(1, RawTouchPhase::Started, 0.0, 0.0)],
-        0.0,
-    );
-    step(
-        &mut controls,
-        &[finger(1, RawTouchPhase::Moved, radius() * 0.5, 0.0)],
-        16.0,
-    );
-
-    assert!(controls.view(WIDTH, HEIGHT).lock_at.is_none());
-}
-
-#[test]
-fn sliding_past_the_lock_reach_locks_the_run() {
-    let mut controls = TouchControls::new(false);
-
-    let locked = lock_right(&mut controls);
-    let view = controls.view(WIDTH, HEIGHT);
-
-    assert!(locked.run);
-    assert_eq!(locked.magnitude, 1.0);
-    assert!(!locked.jump_pressed);
-    assert!(view.locked);
-    assert!((view.knob.0 - (DOWN.0 + radius())).abs() < 1e-3);
-}
-
-#[test]
-fn the_locked_run_keeps_going_without_a_finger() {
-    let mut controls = TouchControls::new(false);
-    let locked = lock_right(&mut controls);
-    let lifted = step(
-        &mut controls,
-        &[finger(1, RawTouchPhase::Ended, lock_reach(), 0.0)],
-        48.0,
-    );
-
-    let later = step(&mut controls, &[], 5000.0);
-
-    assert!(!lifted.jump_pressed);
-    assert_eq!(later.walk, locked.walk);
-    assert!(later.run);
-    assert!(controls.view(WIDTH, HEIGHT).locked);
-}
-
-#[test]
-fn a_new_touch_while_locked_jumps() {
-    let mut controls = TouchControls::new(false);
-    lock_right(&mut controls);
-    step(
-        &mut controls,
-        &[finger(1, RawTouchPhase::Ended, lock_reach(), 0.0)],
-        48.0,
-    );
-
-    let jump = step(
-        &mut controls,
-        &[finger(2, RawTouchPhase::Started, 0.0, 0.0)],
-        500.0,
-    );
-
-    assert!(jump.jump_pressed);
-    assert!(jump.run);
-    assert!(controls.view(WIDTH, HEIGHT).locked);
-}
-
-#[test]
-fn a_touch_while_locked_jumps() {
-    let mut controls = TouchControls::new(false);
-    lock_right(&mut controls);
-    step(
-        &mut controls,
-        &[finger(1, RawTouchPhase::Ended, lock_reach(), 0.0)],
-        48.0,
-    );
-
-    let jump = step(
-        &mut controls,
-        &[finger(2, RawTouchPhase::Started, radius() * 0.6, 0.0)],
-        500.0,
-    );
-    let up = step(
-        &mut controls,
-        &[finger(2, RawTouchPhase::Ended, radius() * 0.6, 0.0)],
-        580.0,
-    );
-
-    assert!(jump.jump_pressed);
-    assert!(jump.run);
-    assert!(up.run);
-    assert!(controls.view(WIDTH, HEIGHT).locked);
-}
-
-#[test]
-fn sliding_past_the_rim_while_locked_steers_the_run() {
-    let mut controls = TouchControls::new(false);
-    let right = lock_right(&mut controls);
-    step(
-        &mut controls,
-        &[finger(1, RawTouchPhase::Ended, lock_reach(), 0.0)],
-        48.0,
-    );
-
-    step(
-        &mut controls,
-        &[finger(2, RawTouchPhase::Started, radius(), 0.0)],
-        500.0,
-    );
-    let down = step(
-        &mut controls,
-        &[finger(2, RawTouchPhase::Moved, 0.0, radius() * 1.2)],
-        516.0,
-    );
-    let up = step(
-        &mut controls,
-        &[finger(2, RawTouchPhase::Ended, 0.0, radius() * 1.2)],
-        560.0,
-    );
-
-    assert_ne!(down.walk, right.walk);
-    assert!(down.run);
-    assert!(!up.jump_pressed);
-    assert!(controls.view(WIDTH, HEIGHT).locked);
-}
-
-#[test]
-fn sliding_back_to_the_centre_unlocks_and_the_finger_drives_again() {
-    let mut controls = TouchControls::new(false);
-    lock_right(&mut controls);
-    step(
-        &mut controls,
-        &[finger(1, RawTouchPhase::Ended, lock_reach(), 0.0)],
-        48.0,
-    );
-
-    step(
-        &mut controls,
-        &[finger(2, RawTouchPhase::Started, radius(), 0.0)],
-        500.0,
-    );
-    let unlocked = step(
-        &mut controls,
-        &[finger(2, RawTouchPhase::Moved, 0.0, 0.0)],
-        540.0,
-    );
-    let view = controls.view(WIDTH, HEIGHT);
-    let walking = step(
-        &mut controls,
-        &[finger(2, RawTouchPhase::Moved, -radius(), 0.0)],
-        560.0,
-    );
-    let released = step(
-        &mut controls,
-        &[finger(2, RawTouchPhase::Ended, -radius(), 0.0)],
-        580.0,
-    );
-    let stopped = step(&mut controls, &[], 580.0 + COAST_MS + 1.0);
-
-    assert_eq!(unlocked.magnitude, 0.0);
-    assert!(!view.locked);
-    assert_eq!(view.center, DOWN);
-    assert_eq!(walking.magnitude, 1.0);
-    assert!(!released.jump_pressed);
-    assert_eq!(stopped, TouchFrame::default());
-}
-
-#[test]
-fn the_locking_finger_can_unlock_without_lifting() {
-    let mut controls = TouchControls::new(false);
-    lock_right(&mut controls);
-
-    let unlocked = step(
-        &mut controls,
-        &[finger(1, RawTouchPhase::Moved, 0.0, 0.0)],
-        64.0,
-    );
-
-    assert_eq!(unlocked.magnitude, 0.0);
-    assert!(!controls.view(WIDTH, HEIGHT).locked);
+    assert!(frame.run);
 }

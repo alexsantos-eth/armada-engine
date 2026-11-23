@@ -22,7 +22,7 @@ El protagonista camina, corre, salta (doble salto con voltereta al aire), nada, 
 
 | Componente | Versión |
 |------------|---------|
-| **Juego (iso-core)** | **0.33.0** |
+| **Juego (iso-core)** | **0.34.0** |
 | Motor de dominio (iso) | 0.1.0 |
 | Gráficos / ventana | Macroquad 0.4.16 |
 | Lenguaje | Rust (edición 2024) |

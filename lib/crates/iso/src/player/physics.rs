@@ -15,7 +15,7 @@ pub const PLAYER_SPEED: f64 = 3.0;
 /// Maximum horizontal columns a walking player moves in one tick.
 pub const PLAYER_STEP: f64 = PLAYER_SPEED / TICKS_PER_SECOND as f64;
 /// Running speed of the player, in columns per second of simulation.
-pub const PLAYER_RUN_SPEED: f64 = 5.0;
+pub const PLAYER_RUN_SPEED: f64 = 4.0;
 /// Maximum horizontal columns a running player moves in one tick.
 pub const PLAYER_RUN_STEP: f64 = PLAYER_RUN_SPEED / TICKS_PER_SECOND as f64;
 /// Horizontal velocity change per tick while starting or redirecting on land.

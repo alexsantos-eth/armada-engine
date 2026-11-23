@@ -62,7 +62,7 @@ Toda superficie con contorno es `.ac-hand` más un relleno: `.ac-paper`, `.ac-cr
 | Botón de acción | `.ac-action`, `__icon`, `__label`, `__key`; `.is-pressed`, `.is-working` | `ArmadaUI.actionButton({ verb, tool, key })`, `ArmadaUI.setAction(btn, { verb, tool })`, `ArmadaUI.holdButton(btn, onChange, { refocus })` |
 | Número volador | `.ac-fly`, `__icon` | `ArmadaUI.fly({ from: {x, y}, to: elemento, amount, item, onLand })` |
 | Golpe | `.ac-hit` | `ArmadaUI.hit(el)` |
-| Joystick táctil | `.ac-stick`, `__knob` (`.is-running`), `__lock` (`.is-locked`); tamaños `--ac-stick`, `--ac-stick-knob`, `--ac-stick-lock` | `ArmadaUI.symbolIcon("lock")` para el candado |
+| Joystick táctil | `.ac-stick`, `__knob` (`.is-running`); tamaños `--ac-stick`, `--ac-stick-knob` | — |
 
 `bubble` mantiene un solo globo por capa (la capa es su contenedor posicionado) y lo esconde
 solo tras `ms` (1600 por defecto); `x`, `y` son la punta de la cola en píxeles de la capa.
@@ -94,8 +94,8 @@ se actualiza y rebota. El verbo y la herramienta salen de la regla de recolecci�
 bucle) y se suma a `E` por `MacroquadInput::action_held`. Con los controles táctiles en pantalla
 la barra sube arriba (una fila fina si cabe, como en un móvil apaisado; si no, filas de seis) y no
 hay botón de acción: se recolecta manteniendo quieto el joystick flotante, que también se pinta
-con el kit (`draw_clay_stick`: piezas `stick_base`, `stick_knob`, `stick_knob_run` y el candado de carrera `stick_lock`/`stick_lock_on`, con la
-herramienta de lo que está al alcance sobre el mando). Ver [`src/touch/`](../src/touch/mod.md).
+con el kit (`draw_clay_stick`: piezas `stick_base`, `stick_knob`, `stick_knob_run` con
+la herramienta de lo que está al alcance sobre el mando). Ver [`src/touch/`](../src/touch/mod.md).
 
 Es igual en nativo, en web y en las corridas guionizadas, así que las capturas automáticas de los
 PR muestran el HUD tal como se juega. `ClaySkin::load` devuelve `None` (con un aviso) si falta

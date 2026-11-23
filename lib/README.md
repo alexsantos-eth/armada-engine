@@ -40,11 +40,10 @@ o el progreso (los recursos y las reglas viven en `content/json/items.json`). En
 flotante: el primer toque lo coloca bajo el pulgar (sin dedo descansa abajo a la derecha); a media
 deflexión se camina a media velocidad y a tope enciende la carrera, el equivalente a `Shift`.
 Mantenerlo quieto recolecta; mientras te mueves, tocar la pantalla salta y otro toque mientras
-sigue moviéndote hace el doble salto. Deslizarlo más allá del borde hasta el candado bloquea la
-carrera en esa dirección: un toque nuevo en la pantalla salta y deslizar de vuelta al centro
-desbloquea. Para saltar en marcha con una sola mano basta soltar y tocar: al soltar se sigue un
-instante en la misma dirección y el toque coloca el joystick.
-muestra en dispositivos de puntero grueso o tras el primer toque (`/` incluido, porque son
+sigue moviéndote hace el doble salto. Deslizarlo más allá del borde con el dedo abajo sigue la
+dirección del dedo; al soltarlo el jugador se detiene. Para
+saltar en marcha con una sola mano basta tocar: el toque coloca el joystick sin saltar.
+Se muestra en dispositivos de puntero grueso o tras el primer toque (`/` incluido, porque son
 entrada de juego); la build web detecta el puntero grueso con el import FFI `iso_pointer_coarse`.
 En esas mismas plataformas la escena se dibuja alejada un poco (la casilla al 70 % de la
 referencia, `MOBILE_ZOOM` en `src/game/config.rs`), para ver más mundo en una pantalla táctil
