@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use iso::player::physics::{ScreenDirections, get_walk_direction};
 use iso::projection::GridPoint;
 use iso::services::{
-    AmbientLoop, AudioService, InputService, NormalizedInput, SoundEvent, SoundLoop, UiEvent,
-    UiService,
+    AmbientLoop, AudioService, Footing, InputService, NormalizedInput, SoundEvent, SoundLoop,
+    UiEvent, UiService,
 };
 use macroquad::audio::Sound;
 use macroquad::prelude::*;
@@ -85,9 +85,15 @@ const SOUND_FILES: [(SoundEvent, &str); 14] = [
 ];
 
 /// Looping sounds the client bundles; see [`SOUND_FILES`].
-const LOOP_FILES: [(SoundLoop, &str); 3] = [
-    (SoundLoop::Walk, "walk.wav"),
-    (SoundLoop::Run, "run.wav"),
+const LOOP_FILES: [(SoundLoop, &str); 9] = [
+    (SoundLoop::Walk(Footing::Grass), "walk-grass.wav"),
+    (SoundLoop::Walk(Footing::Sand), "walk-sand.wav"),
+    (SoundLoop::Walk(Footing::Dirt), "walk-dirt.wav"),
+    (SoundLoop::Walk(Footing::Stone), "walk-stone.wav"),
+    (SoundLoop::Run(Footing::Grass), "run-grass.wav"),
+    (SoundLoop::Run(Footing::Sand), "run-sand.wav"),
+    (SoundLoop::Run(Footing::Dirt), "run-dirt.wav"),
+    (SoundLoop::Run(Footing::Stone), "run-stone.wav"),
     (SoundLoop::Jetpack, "jetpack.wav"),
 ];
 
