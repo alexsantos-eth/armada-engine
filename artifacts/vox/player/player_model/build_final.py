@@ -30,6 +30,8 @@ NECK = 0.455            # the chin: above it is the head (ears and tuft included
 CROTCH = 0.13           # where the legs join the body
 LEG_OUT = 0.11          # how far out the middle of a leg is
 ARM_OUT = 15            # degrees the let-down arms hang out from the sides
+DEPTH = 1.4             # front to back, the model is stretched this much: seen from the side it
+                        # read too thin (Alex, 2026-11-23)
 
 
 def step(t):
@@ -73,6 +75,10 @@ def load(path):
 def main():
     src, out = sys.argv[sys.argv.index("--") + 1:][:2]
     co, nor, faces, colour = load(src)
+    centre = (co[:, 1].max() + co[:, 1].min()) / 2
+    co[:, 1] = centre + (co[:, 1] - centre) * DEPTH
+    nor[:, 1] /= DEPTH          # a stretch turns normals the other way
+    nor /= np.maximum(np.linalg.norm(nor, axis=1, keepdims=True), 1e-9)
     X, Z = co[:, 0], co[:, 2]
     arm = (step((np.abs(X) - ARM_FROM) / 0.02) * step((Z - ARM_LOW) / 0.015)
            * (1 - step((Z - ARM_HIGH) / 0.015)))
