@@ -120,13 +120,15 @@ Junto a las capturas queda un `report.json`:
   "player": { "x": 17.3, "y": 16.5, "elevation": 0.0, "cell": [17, 16] },
   "entities": [{ "blueprint": "runestone_tall", "cell": [14, 16], "elevation": 0 }],
   "notes": [],
-  "sounds": ["Jump", "Land", "HarvestHit", "HarvestFell", "ItemDrop", "ItemCollect"]
+  "sounds": ["Jump", "Land", "HarvestHit", "HarvestFell", "ItemDrop", "ItemCollect"],
+  "ambience": { "Birds": 0.41, "Wind": 0.22 }
 }
 ```
 
 `sounds` son los sonidos sueltos que hizo sonar la corrida, en orden y por el nombre de su evento
-(`SoundEvent`); los bucles de andar, correr y jetpack no aparecen. Así se comprueba que una acción
-suena sin escucharla.
+(`SoundEvent`); los bucles de andar, correr y jetpack no aparecen. `ambience` son los fondos que
+sonaban al acabar (viento, pájaros, fuego, géiser) con su volumen, ya atenuado por la distancia; uno
+en silencio no aparece. Así se comprueba que una acción o un lugar suenan sin escucharlos.
 
 `entities` lista lo que hay en pie en los chunks que dibujó el último fotograma, ordenado por
 celda, de modo que dos corridas de la misma escena responden igual. `notes` recoge lo que salió

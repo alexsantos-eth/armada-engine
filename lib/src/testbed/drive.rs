@@ -173,6 +173,16 @@ fn finish(game: &Game, run: &ScriptRun) {
         .iter()
         .map(|event| format!("{event:?}"))
         .collect();
+    report.ambience = [
+        iso::services::AmbientLoop::Wind,
+        iso::services::AmbientLoop::Birds,
+        iso::services::AmbientLoop::Fire,
+        iso::services::AmbientLoop::Geyser,
+    ]
+    .into_iter()
+    .map(|bed| (format!("{bed:?}"), game.audio.ambient_level(bed)))
+    .filter(|(_, level)| *level > 0.0)
+    .collect();
     let path = run.out().join(REPORT_FILE);
     match serde_json::to_string_pretty(&report) {
         Ok(json) => write_report(&path, &json),

@@ -86,6 +86,7 @@ impl ScriptRun {
             entities,
             notes,
             sounds: Vec::new(),
+            ambience: Default::default(),
         }
     }
 }

@@ -16,7 +16,7 @@ use iso::player::physics::{
 use iso::player::{PLAYER_JUMP_SPEED, PlayerMotionType};
 use iso::projection::{GridPoint, ProjectionConfig};
 use iso::services::{
-    AudioService, InputService, NormalizedInput, SoundEvent, SoundLoop, UiEvent, UiService,
+    AudioService, Footing, InputService, NormalizedInput, SoundEvent, SoundLoop, UiEvent, UiService,
 };
 use macroquad::prelude::*;
 
@@ -46,11 +46,11 @@ fn camera_after_follow(camera: Camera, target: GridPoint, elapsed_ms: f64) -> Ca
     )
 }
 
-/// The loop the motion state wants playing, if any.
-fn loop_for_motion(motion: PlayerMotionType) -> Option<SoundLoop> {
+/// The loop the motion state wants playing on `footing`, if any.
+fn loop_for_motion(motion: PlayerMotionType, footing: Footing) -> Option<SoundLoop> {
     match motion {
-        PlayerMotionType::Walking => Some(SoundLoop::Walk),
-        PlayerMotionType::Running => Some(SoundLoop::Run),
+        PlayerMotionType::Walking => Some(SoundLoop::Walk(footing)),
+        PlayerMotionType::Running => Some(SoundLoop::Run(footing)),
         PlayerMotionType::Flying => Some(SoundLoop::Jetpack),
         _ => None,
     }
@@ -65,18 +65,32 @@ fn shot_for_entering(motion: PlayerMotionType) -> Option<SoundEvent> {
     }
 }
 
-/// Fires the skid and climb shots and swaps the loop bound to the player's motion state.
-/// One call per frame; `last_motion` on `Game` is all the memory it needs.
+/// What the player's feet are on: the surface of the column under them, bare earth where it
+/// is not known (or is water).
+fn footing_under(game: &Game) -> Footing {
+    let cell = iso::player::physics::get_player_column(GridPoint {
+        x: game.player.x,
+        y: game.player.y,
+    });
+    game.manager
+        .column_at(cell.x, cell.y)
+        .and_then(|column| Footing::of(column.surface))
+        .unwrap_or(Footing::Dirt)
+}
+
+/// Fires the skid and climb shots and keeps the loop bound to the player's motion state and the
+/// ground under the feet. One call per frame; `last_motion` on `Game` is all the memory the
+/// shots need, and the audio service ignores a loop it is already playing.
 fn update_motion_audio(game: &mut Game) {
     let motion = game.player.motion;
-    if game.last_motion == Some(motion) {
-        return;
+    if game.last_motion != Some(motion) {
+        game.last_motion = Some(motion);
+        if let Some(shot) = shot_for_entering(motion) {
+            game.audio.play(shot);
+        }
     }
-    game.last_motion = Some(motion);
-    if let Some(shot) = shot_for_entering(motion) {
-        game.audio.play(shot);
-    }
-    game.audio.play_loop(loop_for_motion(motion));
+    let footing = footing_under(game);
+    game.audio.play_loop(loop_for_motion(motion, footing));
 }
 
 /// Whether the save should fire now: only with unsaved changes, and only on quit. Players save
@@ -148,7 +162,21 @@ impl Game {
             x: self.player.x,
             y: self.player.y,
         });
+        let before: Vec<(u64, u32)> = self
+            .npcs
+            .iter()
+            .map(|npc| (npc.id, npc.footfalls))
+            .collect();
         self.npcs.step(&ground, player, ticks);
+        let listener = GridPoint {
+            x: self.player.x,
+            y: self.player.y,
+        };
+        for (event, gain) in
+            iso::services::soundscape::footfall_sounds(&before, self.npcs.iter(), listener)
+        {
+            self.audio.play_with_volume(event, gain);
+        }
     }
 
     /// What the player is striking: the harvest's target while the player is in the gathering

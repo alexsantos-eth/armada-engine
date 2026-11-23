@@ -120,6 +120,7 @@ fn the_summary_says_what_happened_in_one_line() {
         entities: Vec::new(),
         notes: vec!["a note".to_owned()],
         sounds: Vec::new(),
+        ambience: Default::default(),
     };
 
     let line = summary(&report);

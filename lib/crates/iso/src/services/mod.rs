@@ -2,6 +2,7 @@
 
 pub mod audio;
 pub mod input;
+pub mod soundscape;
 pub mod ui;
 
 pub use audio::*;

@@ -1,0 +1,15 @@
+stack(
+  s("brown")
+    .attack(0)
+    .release(0)
+    .sustain(1)
+    .lpf(380)
+    .gain(0.5),
+  s("pink")
+    .attack(0)
+    .release(0)
+    .sustain(1)
+    .hpf(500)
+    .lpf(1400)
+    .gain(0.12),
+)

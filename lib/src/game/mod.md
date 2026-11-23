@@ -130,6 +130,19 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`update`](frame.rs#L261) — Entrada, ticks fijos, reloj del mundo (avanza solo en el paso fijo), fase efectiva de sombras (override o `phase_at` del reloj), streaming de chunks, sonido ligado al movimiento y guardado de un fotograma. `None` si el jugador pidió salir (tras volcar el guardado si hacía falta).
   - Firma: `pub(crate) fn update(&mut self, frame_ms: f64) -> Option<FrameView> {`
 
+### `soundscape.rs`
+
+Los fondos del mundo, mezclados una vez por fotograma desde donde está el jugador. `Game::update_soundscape` corre en la mitad de vista justo después de `collect_fires`, así que oye los fuegos y géiseres que hay en pantalla (`fire_spots`, `effect_spots`); cada fondo se suaviza hacia su nivel con `iso::services::soundscape::ease_volume` partiendo de `MacroquadAudio::ambient_level`.
+
+- `fire_weight` — Lo fuerte que crepita cada fuego a volumen entero: fogata 1,0, brasero 0,9, antorcha 0,6, farol 0,3, velas 0,25; `None` para un efecto que no arde.
+- `fire_level` — El crepitar de fogatas y efectos que arden, atenuado por distancia y combinado.
+- `geyser_level_at` — El vapor de los géiseres, que crece con su erupción: usa `geyser_burst` con el reloj del viento, el mismo con el que se dibuja el chorro.
+- `birds_level` — El canto de los árboles alrededor (`BIRDS_PER_TREE` por árbol, atenuado y combinado) por lo que cantan en la fase (`bird_level`).
+- `Game::trees_in_hearing` — Los árboles a menos de `HEARING_FAR`: entidades que se recolectan con hacha, de los chunks alrededor.
+- `Game::update_soundscape` — Viento (bioma bajo el jugador y rachas), pájaros, fuego y géiser, cada uno suavizado y entregado con `set_ambient`.
+
+Las pisadas de los NPCs suenan en `step_npcs` (`frame.rs`): guarda `Npc::footfalls` de cada uno antes del paso y reproduce lo que devuelve `footfall_sounds`, con `play_with_volume` según la distancia.
+
 ### `scene.rs`
 
 #### Funciones y métodos
@@ -177,7 +190,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 #### Tipos
 
 - [`Game`](state.rs#L68) — El juego compuesto: manager, archivo de guardado, jugador, cámara, stepper, reloj del mundo (`clock`), override de fase (`phase_override`), arte, sombras, polvo, cola de dibujo, servicios (audio, UI, perf), los controles táctiles (`touch`), las métricas de casilla (`tile_metrics`), el jetpack (`jetpack`, si lo lleva puesto), el catálogo de items (`items`), lo que lleva el jugador (`carried`, guardado en `systems.inventory`), la recolección en curso (`harvester`, `harvest_status`, `gain_note`, `impacts`), los montones del suelo (`drops`, guardados en `systems.drops`, y su vista `drop_views`) y la sesión de edición (`maker`, solo en la ruta del editor).
-  - Audio: `MacroquadAudio` carga los doce WAVs de `content/sounds/` al arrancar (nueve sueltos y tres bucles); `last_motion` es la memoria de una pasada por fotograma para los bucles.
+  - Audio: `MacroquadAudio` carga los veinticuatro WAVs de `content/sounds/` al arrancar (once sueltos, nueve bucles del jugador y cuatro fondos); `last_motion` es la memoria de una pasada por fotograma para los bucles.
   - Firma: `pub(crate) struct Game { ... }`
 
 #### Funciones y métodos
@@ -202,11 +215,12 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `fn frame_ticks(consumed: u64) -> u32 {`
 - [`camera_after_follow`](frame.rs#L39) — La traslación de la cámara un fotograma después, siguiendo a `target` con la semivida del seguimiento: filtra las esquinas de velocidad de los ticks de 50 ms para que no lleguen a la pantalla; el zoom nunca cambia.
   - Firma: `fn camera_after_follow(camera: Camera, target: GridPoint, elapsed_ms: f64) -> Camera {`
-- [`loop_for_motion`](frame.rs#L50) — El bucle que quiere el estado de movimiento: andar, correr o volar con el jetpack; `None` en cualquier otro (incluido estar quieto).
-  - Firma: `fn loop_for_motion(motion: PlayerMotionType) -> Option<SoundLoop> {`
+- [`loop_for_motion`](frame.rs#L50) — El bucle que quiere el estado de movimiento sobre `footing`: andar o correr con las pisadas de ese suelo, o volar con el jetpack; `None` en cualquier otro (incluido estar quieto).
+  - Firma: `fn loop_for_motion(motion: PlayerMotionType, footing: Footing) -> Option<SoundLoop> {`
+- `footing_under` — Lo que pisa el jugador: la superficie de la columna bajo sus pies (`Footing::of`), tierra si no se conoce o es agua.
 - [`shot_for_entering`](frame.rs#L60) — El sonido de un solo disparo que quiere el estado al entrar en él: `Skid` al patinar, `Climb` al trepar; `None` en el resto.
   - Firma: `fn shot_for_entering(motion: PlayerMotionType) -> Option<SoundEvent> {`
-- [`update_motion_audio`](frame.rs#L70) — Una pasada por fotograma del sonido ligado al movimiento: dispara el sonido al entrar en patinazo/escalada y cambia el bucle según `PlayerMotionType`. Decide solo desde `last_motion`.
+- [`update_motion_audio`](frame.rs#L70) — Una pasada por fotograma del sonido ligado al movimiento: dispara el sonido al entrar en patinazo/escalada (desde `last_motion`) y pide cada fotograma el bucle de `PlayerMotionType` y el suelo bajo los pies; el servicio ignora el bucle que ya suena, así que cambiar de hierba a arena cambia las pisadas sin cortar nada más.
   - Firma: `fn update_motion_audio(game: &mut Game) {`
 - [`should_save_on_quit`](frame.rs#L84) — El respaldo al salir: solo con cambios sin guardar. El guardado es manual (F5 / Ctrl+S); no hay temporizador de autoguardado.
   - Firma: `fn should_save_on_quit(unsaved_changes: bool, quitting: bool) -> bool {`

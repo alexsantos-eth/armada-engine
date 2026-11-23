@@ -1,0 +1,15 @@
+stack(
+  s("white")
+    .attack(0)
+    .release(0)
+    .sustain(1)
+    .hpf(2200)
+    .lpf(7000)
+    .gain(0.11),
+  s("brown")
+    .attack(0)
+    .release(0)
+    .sustain(1)
+    .lpf(220)
+    .gain(0.2),
+)

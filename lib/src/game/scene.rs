@@ -459,6 +459,7 @@ impl Game {
         self.collect_dust(view, moved);
         self.collect_particles(view);
         self.collect_fires(view);
+        self.update_soundscape(view.frame_ms);
 
         SceneStats {
             chunks_drawn,
