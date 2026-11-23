@@ -142,6 +142,13 @@ ve algo, sin la imagen, no vale.
 - Esta skill no commitea nada. El commit y el push solo los hace `armada-commit` cuando el
   usuario la invoca.
 
+## Interfaz
+
+Las escenas corren el cliente nativo y muestran el HUD tal como se juega (`scenes/pr-harvest.json`
+encuadra la barra, el aviso, el botón de acción y los números voladores). Lo que solo existe en
+web o en táctil (el joystick flotante, la barra de dos filas) se mira en Chromium con la build
+web; el procedimiento está en la skill `armada-ui`, paso 5.
+
 ## Mantenerla al día
 
 Si cambia el esquema de `scene.json`, los pasos, el informe o la forma de correrlo, actualiza en

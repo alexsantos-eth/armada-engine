@@ -60,6 +60,11 @@ merge ese título es el commit que queda en `iso-rust`.
   cambia una escena en `lib/scenes/<nombre>.json` que la encuadre** (formato en
   `lib/docs/TESTBED.md`; las subcarpetas `lib/scenes/*/` son salida y están ignoradas).
 
+Un cambio de interfaz sigue la skill `armada-ui`: el PR lleva el CSS del kit, `web/ui/export.html`
+y el `content/ui/` reexportado juntos (nunca PNG de `content/ui/` hechos a mano), y las capturas
+de web o móvil emulado en la descripción cuando la escena nativa no lo muestra (p. ej. controles
+táctiles).
+
 Detalles de los checks obligatorios y de la regla de rama: `lib/docs/CI.md`.
 
 ## 4. Abrir el PR
