@@ -1,0 +1,37 @@
+# Keeps the version row of the root README.md in sync with the iso-core version
+# in lib/Cargo.toml. .github/scripts/sync-readme-version.sh does the update; this
+# workflow runs it on every push and commits + pushes the result back, so the
+# README is always current.
+#
+# Source of truth is lib/Cargo.toml: bump the version there and the next push
+# refreshes the README row. To use the latest git tag instead, point the script
+# at `git tag -l --sort=-v:refname | head -n 1`.
+name: Update README
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync version in README.md
+        run: bash .github/scripts/sync-readme-version.sh
+      - name: Commit and push the README update
+        if: github.ref_type == 'branch'
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "readme-sync"
+            git config user.email "readme-sync@users.noreply.github.com"
+            git add README.md
+            git commit -m "docs(readme): sync iso-core version in README"
+            git push origin "HEAD:refs/heads/${{ github.ref_name }}"
+          else
+            echo "README.md is already up to date"
+          fi
