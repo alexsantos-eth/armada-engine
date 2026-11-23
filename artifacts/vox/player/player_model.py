@@ -44,10 +44,14 @@ FIGURE_JOINT = [(0, 0, 90), (0, 0, monkey.HEAD), (0, 58, 132), (0, -58, 132), (0
 
 STRETCH = 1.7                    # times its own size at which a triangle counts as a web
 WEB = 4.0                        # and the least length, in figure units, it must reach
-INSIDE = np.array([0.30, 0.165, 0.10], np.float32)   # the inside of the skin: fur in deep shade
+INSIDE_SHADE = 0.62                                  # the inside of the skin: its colour, shaded
 FRONT_SIGN = 1.0                 # set by which way the model's triangles wind on screen
 ARM_LIMIT = math.radians(30)     # how far an arm swings from the body before it is eased
 ARM_SHARE = 0.12                 # and how much of the swing past that is kept
+# The final monkey's legs are short under a deep belly: tucked as far as the boxes tuck them
+# (the flip, the jump's apex) they sink into it and vanish, so their swing is eased the same way.
+LEG_LIMIT = math.radians(25)
+LEG_SHARE = 0.15
 
 _cloud = None
 
@@ -64,8 +68,13 @@ def cloud():
     if _cloud is None:
         d = np.load(MODEL)
         v, f = d["v"].astype(np.float32), d["f"]
+        # A model whose skin is not fused anywhere it bends (the final monkey's arms were
+        # modelled away from the body) says so with stretch = 0: no triangle is a web there,
+        # and dropping the ones a swing stretches only opens holes in the legs.
+        stretch = float(d["stretch"]) if "stretch" in d.files else STRETCH
         _cloud = (v, d["n"].astype(np.float32), d["c"].astype(np.float32) / 255,
-                  d["w"].astype(np.float32) / 255, f, longest_edge(v, f), d["joints"].astype(float))
+                  d["w"].astype(np.float32) / 255, f, longest_edge(v, f) * (stretch or 1e6),
+                  d["joints"].astype(float))
     return _cloud
 
 
@@ -101,7 +110,7 @@ def eased(turn, body, limit, share):
     return (np.eye(3) + math.sin(a) * k + (1 - math.cos(a)) * (k @ k)) @ body
 
 
-def motions(parts, yaw, ease_arms=False):
+def motions(parts, yaw, ease_arms=False, ease_legs=False):
     """For each bone, the turn and shift that take a rest point of the model to the pose."""
     found = {}
     for part, lift in parts:
@@ -115,10 +124,11 @@ def motions(parts, yaw, ease_arms=False):
     out = []
     for bone in range(6):
         turn, o, c = found[bone]
-        if ease_arms and bone in (2, 3):
+        if (ease_arms and bone in (2, 3)) or (ease_legs and bone in (4, 5)):
             # Turn about the figure's joint, so easing the turn does not move the shoulder.
             joint = o + turn @ (np.array(FIGURE_JOINT[bone], float) - c)
-            turn = eased(turn, body, ARM_LIMIT, ARM_SHARE)
+            turn = (eased(turn, body, ARM_LIMIT, ARM_SHARE) if bone in (2, 3)
+                    else eased(turn, body, LEG_LIMIT, LEG_SHARE))
             o, c = joint, np.array(FIGURE_JOINT[bone], float)
         figure, model = np.array(FIGURE_JOINT[bone], float), cloud()[6][bone]
         # Where the figure's joint goes, moved to the model's joint as the body carries it.
@@ -127,11 +137,11 @@ def motions(parts, yaw, ease_arms=False):
     return out
 
 
-def render(parts, yaw, cell, ease_arms=False):
+def render(parts, yaw, cell, ease_arms=False, ease_legs=False):
     p, n, tint, w, faces, rest_edge, _ = cloud()
     pos = np.zeros_like(p)
     nor = np.zeros_like(n)
-    for bone, (turn, shift) in enumerate(motions(parts, yaw, ease_arms)):
+    for bone, (turn, shift) in enumerate(motions(parts, yaw, ease_arms, ease_legs)):
         wb = w[:, bone:bone + 1]
         pos += wb * (p @ turn.T + shift)
         nor += wb * (n @ turn.T)
@@ -152,7 +162,7 @@ def render(parts, yaw, cell, ease_arms=False):
     # own size is such a bridge and is dropped; what shows through the gap is the inside of
     # the skin, drawn dark (below), which reads as the shade of a crease.
     edge = longest_edge(pos, faces)
-    whole = ~((edge > rest_edge * STRETCH) & (edge > WEB))
+    whole = ~((edge > rest_edge) & (edge > WEB))
     a, b, c = faces[whole, 0], faces[whole, 1], faces[whole, 2]
     area = ((sx[b] - sx[a]) * (sy[c] - sy[a]) - (sx[c] - sx[a]) * (sy[b] - sy[a])) / 2
     front = area * FRONT_SIGN > 0
@@ -188,7 +198,9 @@ def render(parts, yaw, cell, ease_arms=False):
     glance = np.clip(nor @ HALF.astype(np.float32), 0, 1)
     shaded += (glance ** 10 * 0.07 + glance ** 60 * 0.10)[:, None]
     shaded = np.clip(shaded, 0, 1)
-    shaded[inner] = INSIDE
+    # The inside of the skin, where a gap opens, in its own colour in deep shade: a dark crease,
+    # not a black hole.
+    shaded[inner] = colour[inner] * INSIDE_SHADE
 
     def layer(mine):
         """The points of `mine` on the sample grid, the nearest winning, pinholes closed."""
@@ -232,7 +244,7 @@ def render_cell(job):
     name, row, column = job
     cell, frames, _ = grid_of(name)
     parts, yaw = poses_of(name, frames)(row, column)
-    return row, column, render(parts, yaw, cell, ease_arms=name == "idle")
+    return row, column, render(parts, yaw, cell, ease_arms=name == "idle", ease_legs=name in ("flip", "jump"))
 
 
 def main():

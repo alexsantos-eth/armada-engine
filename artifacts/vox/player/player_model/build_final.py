@@ -44,6 +44,21 @@ def load(path):
     bpy.ops.import_scene.gltf(filepath=path)
     obj = next(o for o in bpy.data.objects if o.type == "MESH")
     me = obj.data
+    # The generator's mesh has patches wound the wrong way round and seams of doubled
+    # vertices: the renderer takes a triangle that faces away for the inside of the skin, so
+    # those patches showed as dark scribbles, and the seams opened when a limb moved. Weld the
+    # seams and wind every face outwards first.
+    import bmesh
+    mesh = bmesh.new()
+    mesh.from_mesh(me)
+    welded = len(mesh.verts)
+    bmesh.ops.remove_doubles(mesh, verts=mesh.verts, dist=1e-5)
+    welded -= len(mesh.verts)
+    bmesh.ops.recalc_face_normals(mesh, faces=mesh.faces)
+    mesh.to_mesh(me)
+    mesh.free()
+    me.update()
+    print("welded", welded, "doubled vertices")
     me.calc_loop_triangles()
     n = len(me.vertices)
     world = np.array(obj.matrix_world)
@@ -60,14 +75,26 @@ def load(path):
     me.uv_layers.active.data.foreach_get("uv", uvl)
     lv = np.empty(len(me.loops), np.int64)
     me.loops.foreach_get("vertex_index", lv)
-    uv = np.zeros((n, 2))
-    uv[lv] = uvl.reshape(-1, 2)
     image = next(i for i in bpy.data.images if not any(k in i.name for k in ("normal", "metallic", "rough")))
     w, h = image.size
     px = np.empty(w * h * 4, np.float32)
     image.pixels.foreach_get(px)
     px = px.reshape(h, w, 4)
-    colour = px[np.clip((uv[:, 1] * h).astype(int), 0, h - 1), np.clip((uv[:, 0] * w).astype(int), 0, w - 1), :3]
+    # A vertex on a UV seam has one texture spot per face around it, and some of them fall in
+    # the gutter between islands (dark): each corner is sampled, and the vertex takes the
+    # brightest-but-typical of them (the median of the corners whose colour is not far darker
+    # than the vertex's own brightest corner), so no seam shows as a dark scribble.
+    uv = uvl.reshape(-1, 2)
+    corner = px[np.clip((uv[:, 1] * h).astype(int), 0, h - 1), np.clip((uv[:, 0] * w).astype(int), 0, w - 1), :3]
+    total = np.zeros((n, 3))
+    count = np.zeros(n)
+    luma = corner.sum(axis=1)
+    best = np.zeros(n)
+    np.maximum.at(best, lv, luma)
+    keep = luma >= best[lv] * 0.7
+    np.add.at(total, lv[keep], corner[keep])
+    np.add.at(count, lv[keep], 1)
+    colour = total / np.maximum(count, 1)[:, None]
     # The texture is stored as sRGB and Blender hands its pixels back as they are stored.
     return co, nor, tris.reshape(-1, 3), colour
 
@@ -83,8 +110,11 @@ def main():
     arm = (step((np.abs(X) - ARM_FROM) / 0.02) * step((Z - ARM_LOW) / 0.015)
            * (1 - step((Z - ARM_HIGH) / 0.015)))
     head = step((Z - NECK) / 0.02)
-    leg = step((CROTCH - Z) / 0.03) * (1 - arm)
-    side = step((X + 0.03) / 0.06)
+    # The legs ease into the body over a wide band, so a swing bends the hips instead of
+    # tearing them; the two legs are split sharply down the middle, since the feet nearly
+    # touch there and a blend of both would pull their inner edges apart.
+    leg = step((CROTCH + 0.02 - Z) / 0.06) * (1 - arm)
+    side = step((X + 0.008) / 0.016)
     w = np.zeros((len(co), 6), np.float32)
     w[:, 1] = head
     rest = 1 - head
@@ -117,7 +147,7 @@ def main():
     # Wound so the renderer's FRONT_SIGN keeps the outside: the glTF's triangles run the other way.
     np.savez_compressed(out, v=figure.astype(np.float32), n=normals.astype(np.float16),
                         c=(np.clip(colour, 0, 1) * 255).round().astype(np.uint8),
-                        w=(w * 255).round().astype(np.uint8), f=faces, joints=joints)
+                        w=(w * 255).round().astype(np.uint8), f=faces, joints=joints, stretch=0.0)
     print("ok", len(co), "vertices", len(faces), "faces", "scale %.1f" % scale)
 
 
