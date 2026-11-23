@@ -1,0 +1,15 @@
+stack(
+  note("[a5 e6] ~ ~ ~ ~ ~ ~ ~")
+    .s("triangle")
+    .attack(0.002)
+    .decay(0.09)
+    .sustain(0)
+    .release(0.03)
+    .gain(0.28),
+  note("[~ a6] ~ ~ ~ ~ ~ ~ ~")
+    .s("sine")
+    .attack(0.002)
+    .decay(0.15)
+    .sustain(0)
+    .gain(0.12),
+)

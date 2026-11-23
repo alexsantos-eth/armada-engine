@@ -19,9 +19,12 @@ fn tree() -> HarvestTarget {
 #[test]
 fn a_new_blow_shakes_its_target_and_queues_a_burst() {
     let mut impacts = Impacts::default();
-    impacts.notice(0, Some(&tree()), None, Some(0xa0703c));
+    assert_eq!(impacts.notice(0, Some(&tree()), None, Some(0xa0703c)), None);
     assert!(impacts.take_bursts().is_empty());
-    impacts.notice(1, Some(&tree()), None, Some(0xa0703c));
+    assert_eq!(
+        impacts.notice(1, Some(&tree()), None, Some(0xa0703c)),
+        Some(Blow::Strike)
+    );
     let bursts = impacts.take_bursts();
     assert_eq!(bursts.len(), 1);
     assert_eq!(bursts[0].anchor, WorldCoord { x: 1, y: 0 });
@@ -35,10 +38,20 @@ fn a_new_blow_shakes_its_target_and_queues_a_burst() {
 #[test]
 fn a_felling_queues_its_own_bigger_burst() {
     let mut impacts = Impacts::default();
-    impacts.notice(0, None, Some(&tree()), Some(0xa0703c));
+    assert_eq!(
+        impacts.notice(0, None, Some(&tree()), Some(0xa0703c)),
+        Some(Blow::Felled)
+    );
     let bursts = impacts.take_bursts();
     assert_eq!(bursts.len(), 1);
     assert!(bursts[0].felled);
+}
+
+#[test]
+fn a_blow_without_a_target_makes_no_sound() {
+    let mut impacts = Impacts::default();
+    assert_eq!(impacts.notice(1, None, None, None), None);
+    assert_eq!(impacts.notice(1, Some(&tree()), None, None), None);
 }
 
 #[test]

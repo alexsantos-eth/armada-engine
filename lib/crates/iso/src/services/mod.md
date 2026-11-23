@@ -32,7 +32,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - [`set_volume`](audio.rs#L38) — Establece el volumen maestro (0.0..=1.0).
   - Firma: `fn set_volume(&mut self, volume: f64);`
 
-Los tipos de intercambio son `SoundEvent` (`Jump`, `AirJump`, `Land`, `Footstep`, `Climb`, `Skid`) y `SoundLoop` (`Walk`, `Run`, `Jetpack`).
+Los tipos de intercambio son `SoundEvent` (`Jump`, `AirJump`, `Land`, `Footstep`, `Climb`, `Skid`, `HarvestHit`, `HarvestFell`, `ItemDrop`, `ItemCollect`) y `SoundLoop` (`Walk`, `Run`, `Jetpack`).
 
 ### `input.rs`
 

@@ -60,13 +60,21 @@ impl DropViews {
     }
 
     /// Ages the heaps in `drops` by `elapsed_ms`; a new one starts its toss, a gone one is
-    /// forgotten.
-    pub(crate) fn advance(&mut self, elapsed_ms: f64, drops: &[Drop]) {
+    /// forgotten. Returns how many heaps ended their toss on the ground in this call, for the
+    /// sound of them landing.
+    pub(crate) fn advance(&mut self, elapsed_ms: f64, drops: &[Drop]) -> usize {
         self.ages
             .retain(|id, _| drops.iter().any(|drop| drop.id == *id));
+        let mut landed = 0;
         for drop in drops {
-            *self.ages.entry(drop.id).or_insert(-elapsed_ms) += elapsed_ms.max(0.0);
+            let age = self.ages.entry(drop.id).or_insert(-elapsed_ms);
+            let before = *age;
+            *age += elapsed_ms.max(0.0);
+            if before < TOSS_MS && *age >= TOSS_MS {
+                landed += 1;
+            }
         }
+        landed
     }
 
     /// How long heap `id` has been on the ground; `0.0` for one it does not hold.

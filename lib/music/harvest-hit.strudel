@@ -1,0 +1,21 @@
+stack(
+  note("a2 ~ ~ ~ ~ ~ ~ ~")
+    .s("triangle")
+    .attack(0.001)
+    .decay(0.07)
+    .sustain(0)
+    .gain(0.3),
+  note("e3 ~ ~ ~ ~ ~ ~ ~")
+    .s("sine")
+    .attack(0.001)
+    .decay(0.12)
+    .sustain(0)
+    .gain(0.3),
+  s("white ~ ~ ~ ~ ~ ~ ~")
+    .attack(0.001)
+    .decay(0.03)
+    .sustain(0)
+    .hpf(700)
+    .lpf(3200)
+    .gain(0.22),
+)

@@ -113,6 +113,7 @@ fn a_report_serialises_its_fields_in_camel_case() {
         player: Some(player_of(1.5, 2.5, 0.0)),
         entities: Vec::new(),
         notes: vec!["nothing changed".to_owned()],
+        sounds: vec!["HarvestHit".to_owned()],
     };
 
     let json = serde_json::to_string(&report).expect("a report serialises");
@@ -120,6 +121,7 @@ fn a_report_serialises_its_fields_in_camel_case() {
     assert!(json.contains("\"stepsTaken\":2"), "{json}");
     assert!(json.contains("\"frames\":12"), "{json}");
     assert!(json.contains("\"cell\":[1,2]"), "{json}");
+    assert!(json.contains("\"sounds\":[\"HarvestHit\"]"), "{json}");
 }
 
 #[test]

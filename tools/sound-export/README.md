@@ -13,6 +13,7 @@ Strudel at runtime, and the game ships only plain WAVs.
 cd tools/sound-export
 npm ci          # installs deps and applies the local patches (patch-package)
 npm run render  # re-renders every sound into lib/content/sounds/
+npm run render -- item-drop item-collect  # only these, without re-rolling the others' noise
 ```
 
 Nothing is fetched from the network at render time: every sound uses
@@ -26,7 +27,7 @@ committing.
 
 | File           | Kind   | Cycles @ CPS 1 | Why |
 |----------------|--------|----------------|-----|
-| `jump`, `air-jump`, `land`, `skid`, `climb` | one-shot | 1 | The engine plays events whose onset is inside the first cycle; everything sounds in the first octave. |
+| `jump`, `air-jump`, `land`, `skid`, `climb`, `harvest-hit`, `harvest-fell`, `item-drop`, `item-collect` | one-shot | 1 | The engine plays events whose onset is inside the first cycle; everything sounds in the first octave. |
 | `walk`, `run`, `jetpack` | loop | 1 | Exactly one cycle, so Macroquad can loop the file seamlessly (`looped: true`). |
 
 Sample rate is 48000 Hz, stereo 16-bit PCM. A render fails loudly (non-zero

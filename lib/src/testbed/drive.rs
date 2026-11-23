@@ -158,7 +158,7 @@ fn finish(game: &Game, run: &ScriptRun) {
     let phase = game
         .phase_override
         .unwrap_or_else(|| iso::lighting::phase_at(game.clock.tick));
-    let report = run.report(
+    let mut report = run.report(
         Some(player_of(
             game.player.x,
             game.player.y,
@@ -167,6 +167,12 @@ fn finish(game: &Game, run: &ScriptRun) {
         entities_in(&game.manager, &game.shown),
         phase,
     );
+    report.sounds = game
+        .audio
+        .events
+        .iter()
+        .map(|event| format!("{event:?}"))
+        .collect();
     let path = run.out().join(REPORT_FILE);
     match serde_json::to_string_pretty(&report) {
         Ok(json) => write_report(&path, &json),

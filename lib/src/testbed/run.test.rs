@@ -119,6 +119,7 @@ fn the_summary_says_what_happened_in_one_line() {
         player: None,
         entities: Vec::new(),
         notes: vec!["a note".to_owned()],
+        sounds: Vec::new(),
     };
 
     let line = summary(&report);

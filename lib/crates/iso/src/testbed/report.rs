@@ -50,6 +50,8 @@ pub struct Report {
     pub entities: Vec<ReportEntity>,
     /// Anything worth knowing: an edit that changed nothing, a budget that ran out.
     pub notes: Vec<String>,
+    /// The one-shot sounds the run played, in order, by their event name (`HarvestHit`, …).
+    pub sounds: Vec<String>,
 }
 
 /// What a report says about an edit that changed nothing, with the state of the cell it was

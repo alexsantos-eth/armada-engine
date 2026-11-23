@@ -177,7 +177,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 #### Tipos
 
 - [`Game`](state.rs#L68) — El juego compuesto: manager, archivo de guardado, jugador, cámara, stepper, reloj del mundo (`clock`), override de fase (`phase_override`), arte, sombras, polvo, cola de dibujo, servicios (audio, UI, perf), los controles táctiles (`touch`), las métricas de casilla (`tile_metrics`), el jetpack (`jetpack`, si lo lleva puesto), el catálogo de items (`items`), lo que lleva el jugador (`carried`, guardado en `systems.inventory`), la recolección en curso (`harvester`, `harvest_status`, `gain_note`, `impacts`), los montones del suelo (`drops`, guardados en `systems.drops`, y su vista `drop_views`) y la sesión de edición (`maker`, solo en la ruta del editor).
-  - Audio: `MacroquadAudio` carga los ocho WAVs de `content/sounds/` al arrancar; `last_motion` es la memoria de una pasada por fotograma para los bucles.
+  - Audio: `MacroquadAudio` carga los doce WAVs de `content/sounds/` al arrancar (nueve sueltos y tres bucles); `last_motion` es la memoria de una pasada por fotograma para los bucles.
   - Firma: `pub(crate) struct Game { ... }`
 
 #### Funciones y métodos

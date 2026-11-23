@@ -56,3 +56,23 @@ fn ui_keeps_messages_and_the_latest_hud() {
     assert_eq!(ui.messages, ["saved"]);
     assert_eq!(ui.hud, Some((4.5, -2.0, 3, "walking".to_owned(), 9)));
 }
+
+#[test]
+fn every_bundled_sound_is_rendered_from_a_strudel_source() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let files = SOUND_FILES
+        .iter()
+        .map(|(_, file)| *file)
+        .chain(LOOP_FILES.iter().map(|(_, file)| *file));
+    for file in files {
+        assert!(
+            root.join("content/sounds").join(file).is_file(),
+            "{file} is not in content/sounds/"
+        );
+        let source = file.replace(".wav", ".strudel");
+        assert!(
+            root.join("music").join(&source).is_file(),
+            "{source} is not in music/"
+        );
+    }
+}

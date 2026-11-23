@@ -11,6 +11,14 @@ pub enum SoundEvent {
     Climb,
     /// The player entered the skid.
     Skid,
+    /// A blow of the gathering swing lands on what is being harvested.
+    HarvestHit,
+    /// The last blow: what was being harvested gives way.
+    HarvestFell,
+    /// A heap of items tossed out of something felled lands on the ground.
+    ItemDrop,
+    /// The player picks up a heap and it goes into the inventory.
+    ItemCollect,
 }
 
 /// A looping sound the client keeps playing until asked to stop.

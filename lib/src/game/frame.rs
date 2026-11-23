@@ -223,8 +223,14 @@ impl Game {
             }
         }
         let struck = held.then(|| status.target()).flatten();
-        self.impacts
+        let blow = self
+            .impacts
             .notice(self.harvester.strikes(), struck, felled.as_ref(), color);
+        match blow {
+            Some(crate::harvest::impact::Blow::Strike) => self.audio.play(SoundEvent::HarvestHit),
+            Some(crate::harvest::impact::Blow::Felled) => self.audio.play(SoundEvent::HarvestFell),
+            None => {}
+        }
         self.harvest_status = status;
         self.pick_up_drops(ticks);
     }
@@ -243,6 +249,7 @@ impl Game {
             .drops
             .collect(feet, &mut self.carried.inventory, &self.items, ticks);
         if !collected.gained.is_empty() {
+            self.audio.play(SoundEvent::ItemCollect);
             self.gain_note = Some((
                 crate::harvest::hotbar::gain_text(&collected.gained, &self.items),
                 crate::harvest::hotbar::GAIN_NOTE_MS,
