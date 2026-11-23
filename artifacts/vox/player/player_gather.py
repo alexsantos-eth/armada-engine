@@ -1,10 +1,10 @@
-# player_gather.py — gather sheet of the player (monkey.py's monkey): striking with both hands.
-# One row per facing, in the walk sheet's order and count; FRAMES columns of one blow, a loop: the
-# figure stands ready with its hands before it, swings both arms up over its head leaning back a
-# little, brings them down together onto what is in front of it (the blow lands at STRIKE_AT of the
-# cycle, which is HARVEST_STRIKE_AT / HARVEST_STRIKE_TICKS in iso::harvest), follows through
-# bent over it, and straightens back to ready. The feet keep still, so the engine draws it with the
-# walk sheet's cell and the feet never move.
+# player_gather.py — gather sheet of the player (monkey.py's monkey): throwing punches.
+# One row per facing, in the walk sheet's order and count; FRAMES columns of one blow, a loop of a
+# one-two: the figure stands in guard, fists up before it, one foot forward; throws a quick left
+# jab straight out and pulls it back; then leans in behind a right cross, which is the blow that
+# lands (at STRIKE_AT of the cycle, which is HARVEST_STRIKE_AT / HARVEST_STRIKE_TICKS in
+# iso::harvest), and comes back to guard. The feet keep still, so the engine draws it with the walk
+# sheet's cell and the feet never move.
 #
 # It reuses the climb's machinery (player_climb.py): a pose is the lean of the body and the swing
 # of each arm, hand, leg and foot, eased between key poses.
@@ -20,15 +20,17 @@ import math
 import monkey
 
 FRAMES = 8          # columns of one blow
-STRIKE_AT = 0.6     # share of the cycle at which the hands land
+STRIKE_AT = 0.6     # share of the cycle at which the cross lands
 
-# (lean, arm l, arm r, hand l, hand r, leg l, leg r, foot l, foot r), as in player_climb.py.
-READY = (6, -46, -42, -24, -24, -6, 4, 0, 0)
+# (lean, arm l, arm r, hand l, hand r, leg l, leg r, foot l, foot r), as in player_climb.py; a
+# negative arm swing takes the fist forward, -90 straight out at the shoulder's height.
+READY = (4, -66, -60, -40, -40, -12, 10, 4, 0)          # guard: fists up, left foot forward
 KEYS = [
-    (0.00, READY),                                      # ready, hands before the chest
-    (0.38, (-6, -168, -164, 28, 28, -4, 6, 0, 0)),     # wound up, both hands over the head
-    (STRIKE_AT, (22, -74, -70, -34, -34, -12, 10, 6, 0)),  # the blow: arms down and forward
-    (0.78, (24, -52, -48, -30, -30, -12, 10, 6, 0)),   # following through, bent over it
+    (0.00, READY),
+    (0.20, (8, -112, -56, 0, -40, -12, 10, 4, 0)),      # the jab: left fist straight out
+    (0.40, (-2, -64, -30, -40, -40, -12, 10, 4, 0)),    # jab back, the right drawn back to load
+    (STRIKE_AT, (18, -60, -118, -40, 0, -14, 14, 4, 6)),  # the cross lands, leaning in behind it
+    (0.80, (8, -64, -80, -40, -20, -12, 12, 4, 2)),     # pulling the right back
     (1.00, READY),
 ]
 
