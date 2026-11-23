@@ -2,4 +2,5 @@
 
 pub(crate) mod drop_view;
 pub(crate) mod hotbar;
+pub(crate) mod hud_frame;
 pub(crate) mod impact;

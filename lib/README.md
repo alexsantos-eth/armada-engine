@@ -36,10 +36,11 @@ alterna entre terreno y rejilla. En cualquier ruta, `J` (o el interruptor del HU
 que sigue a los botones de fase) le pone y le quita el jetpack: con él puesto, mantener la tecla
 de salto en el aire vuela. Mantener `E` junto a un árbol, una roca o una planta la recolecta:
 la barra de slots de abajo muestra el inventario y, encima, qué hay al alcance, qué herramienta falta
-o el progreso (los recursos y las reglas viven en `content/json/items.json`). En dispositivos táctiles aparecen dos controles en pantalla:
-un joystick analógico abajo a la izquierda (a media deflexión se camina a media velocidad; a
-tope enciende la carrera, el equivalente a `Shift`) y un botón `SALTAR` abajo a la derecha. Se
-muestran en dispositivos de puntero grueso o tras el primer toque (`/` incluido, porque son
+o el progreso (los recursos y las reglas viven en `content/json/items.json`). En dispositivos táctiles hay un único joystick analógico
+flotante: el primer toque lo coloca bajo el pulgar (sin dedo descansa abajo a la derecha); a media
+deflexión se camina a media velocidad y a tope enciende la carrera, el equivalente a `Shift`.
+Mantenerlo quieto recolecta, un doble toque salta y un triple toque hace el doble salto. Se
+muestra en dispositivos de puntero grueso o tras el primer toque (`/` incluido, porque son
 entrada de juego); la build web detecta el puntero grueso con el import FFI `iso_pointer_coarse`.
 En esas mismas plataformas la escena se dibuja alejada un poco (la casilla al 70 % de la
 referencia, `MOBILE_ZOOM` en `src/game/config.rs`), para ver más mundo en una pantalla táctil
@@ -146,6 +147,7 @@ El sitio tiene tres rutas servidas desde la raíz del dominio:
 - `http://127.0.0.1:8765/` — la presentación: el mundo del juego **sin ninguna GUI en pantalla** (ni borde, ni HUD).
 - `http://127.0.0.1:8765/playground` — la superficie de desarrollo: el mismo juego con el overlay de siempre (título y ayuda, lectura del mundo, panel de rendimiento y mensajes).
 - `http://127.0.0.1:8765/maker` — el editor de mundo: un chunk plano y un panel de herramientas para construirlo (ver [Editar un mundo](#editar-un-mundo)).
+- `http://127.0.0.1:8765/ui/` — el catálogo del kit de UI (arcilla y cómic) con el que se pinta el HUD: muestra interactiva y cada componente. El juego no carga HTML: el kit se exporta a sprites (`node scripts/export-ui.cjs` → `content/ui/`) y lo dibuja Macroquad en nativo y en web. Guía en [`docs/UI-KIT.md`](docs/UI-KIT.md); los iconos de ítems se regeneran con `python3 scripts/build-ui-icons.py`.
 
 `build-web.sh` publica las tres: la página `web/index.html` en `dist/index.html` y copias idénticas en `dist/playground/index.html` y `dist/maker/index.html` (con barra final funciona igual). La página usa `<base href="/">`, así que las tres rutas cargan el mismo `.wasm` y el mismo `content/` desde la raíz; por eso el sitio tiene que servirse desde la raíz del dominio —como hace Netlify— y no desde un subdirectorio. La ruta la lee el cliente en WASM mediante el import `iso_route_path` (mismo patrón FFI que el almacenamiento local); la build nativa no tiene ruta y la toma de sus argumentos (`--maker`, `--playground`; sin ellos, la presentación sin overlay, como la raíz). El servidor tiene que servir `dist/` desde la raíz, porque la página carga `iso-core.wasm`, `adapter.js` y
 `content/` desde la raíz del sitio; no abras el HTML con `file://`. En localhost la página añade

@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Armada UI kit</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@700;800;900&display=swap"
+    />
+    <link rel="stylesheet" href="armada-ui.css?v=1" />
+    <style>
+      /* Catalogue page only: layout around the kit's components. */
+      html, body { margin: 0; background: var(--ac-night); color: var(--ac-text); }
+      body {
+        font: 700 15px/1.45 var(--ac-body);
+        padding: 20px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px));
+      }
+      .wrap { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 26px; }
+      header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; }
+      h1 { margin: 0; font: 700 clamp(26px, 4vw, 36px)/1.1 var(--ac-display); }
+      h2.section { margin: 8px 0 0; font: 700 24px/1.1 var(--ac-display); }
+      .lede { margin: 0; color: var(--ac-text-muted); max-width: 56ch; }
+      code { font: 600 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ac-gold); }
+      .lede kbd, .note kbd {
+        font: 600 13px/1 var(--ac-display); background: var(--ac-paper); color: var(--ac-ink);
+        border: 2.5px solid var(--ac-ink); border-radius: 7px 9px 7px 8px; padding: 1px 6px; box-shadow: 2px 2px 0 var(--ac-ink);
+      }
+
+      .stage {
+        position: relative; min-height: 540px; overflow: hidden; border-radius: 28px 34px 26px 32px / 32px 26px 34px 28px;
+        background: var(--ac-ground); display: grid; grid-template-rows: auto 1fr auto; gap: 12px; padding: 18px;
+      }
+      .stage::before {
+        content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none; border: 4px solid var(--ac-ink);
+        border-radius: inherit; filter: url(#ac-wobble);
+      }
+      .stage::after {
+        content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; border-radius: inherit;
+        background-image: var(--ac-noise); opacity: 0.7; mix-blend-mode: multiply;
+      }
+      .ground { position: absolute; inset: auto -10% -38% -10%; height: 70%; border-radius: 50%; background: #2c352d; }
+      .ground.b { inset: auto 20% -46% -30%; background: #303a31; }
+      .top, .center, .bottom { position: relative; z-index: 2; }
+      .top { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+      .center { display: grid; place-items: center; align-content: center; gap: 4px; }
+      .target {
+        all: unset; cursor: pointer; position: relative; display: grid; place-items: center; width: 170px; height: 170px; border-radius: 50%;
+      }
+      .target:focus-visible { outline: 4px dashed var(--ac-gold); outline-offset: 6px; }
+      .target svg { width: 130px; height: 130px; filter: drop-shadow(5px 6px 0 var(--ac-ink)); }
+      .target .shadow { position: absolute; bottom: 6px; width: 120px; height: 22px; border-radius: 50%; background: #141815; z-index: -1; }
+      .target-label { font: 600 14px/1 var(--ac-display); color: var(--ac-text-muted); }
+      .bottom { display: flex; align-items: flex-end; justify-content: center; gap: 22px; flex-wrap: wrap; }
+      .bottom-col { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 22px; }
+      .specimen { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+      .specimen .show { min-height: 120px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; padding: 20px 10px; border-radius: 18px; background: var(--ac-ground); position: relative; }
+      .specimen p { margin: 0; color: var(--ac-text-muted); font-size: 14px; }
+      .specimen h3 { margin: 0; font: 700 18px/1.1 var(--ac-display); }
+      .swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+      .swatch { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--ac-text-muted); }
+      .swatch i { width: 38px; height: 38px; border: 3px solid var(--ac-ink); border-radius: 9px 11px 8px 10px; box-shadow: 2px 3px 0 var(--ac-ink); }
+      .note { margin: 0; color: var(--ac-text-muted); font-size: 13.5px; }
+      @media (max-width: 640px) {
+        .stage { min-height: 600px; padding: 14px; }
+        .stage { --ac-slot: 54px; --ac-action: 92px; }
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <symbol id="t-wood" viewBox="0 0 120 120"><g stroke="#1a120d" stroke-width="4.5" stroke-linejoin="round">
+        <path d="M50 70h20l4 40H46z" fill="#a9662f"/>
+        <circle cx="60" cy="44" r="30" fill="#5f8d33"/><circle cx="38" cy="58" r="19" fill="#6f9d3a"/><circle cx="83" cy="58" r="19" fill="#6f9d3a"/>
+        <circle cx="60" cy="24" r="17" fill="#80ad46"/></g></symbol>
+      <symbol id="t-stone" viewBox="0 0 120 120"><g stroke="#1a120d" stroke-width="4.5" stroke-linejoin="round">
+        <path d="M14 104 22 64l26-30 30 4 22 30 6 36z" fill="#8f9493"/>
+        <path d="M48 34l6 30 24-26M54 64l-32 0M54 64l-6 40M54 64l40 6" fill="none" stroke-width="3.5"/>
+        <path d="M62 70l26 6-4 22-24 2z" fill="#cfd3cf" stroke-width="3.5"/></g></symbol>
+      <symbol id="t-fiber" viewBox="0 0 120 120"><g stroke="#1a120d" stroke-width="4.5" stroke-linejoin="round">
+        <path d="M14 100c-6-28 10-56 46-58 36 2 52 30 46 58z" fill="#4f7d2a"/>
+        <path d="M28 76c4-16 18-24 32-24M60 52c14 0 26 8 30 22" fill="none" stroke-width="3"/></g></symbol>
+      <symbol id="t-mushroom" viewBox="0 0 120 120"><g stroke="#1a120d" stroke-width="4.5" stroke-linejoin="round">
+        <path d="M46 70h28l4 36H42z" fill="#ecdcb9"/>
+        <path d="M12 72c0-30 22-50 48-50s48 20 48 50z" fill="#c8384a"/>
+        <circle cx="40" cy="50" r="7" fill="#fff6e0" stroke-width="3"/><circle cx="70" cy="40" r="8" fill="#fff6e0" stroke-width="3"/><circle cx="86" cy="60" r="6" fill="#fff6e0" stroke-width="3"/></g></symbol>
+    </svg>
+
+    <div class="wrap">
+      <header>
+        <h1>Armada UI kit</h1>
+        <p class="lede">
+          El HUD del juego en arcilla y cómic. Mantén el botón rojo o <kbd>E</kbd> para recolectar, o toca el objetivo;
+          cambia de recurso con <kbd>1</kbd>–<kbd>4</kbd> o tocando un slot.
+        </p>
+      </header>
+
+      <section class="stage" id="stage" aria-label="Muestra del HUD">
+        <div class="ground"></div>
+        <div class="ground b"></div>
+        <div class="top">
+          <div class="ac-chip ac-hand ac-umber">Día <b>3</b> · Amanecer</div>
+          <div class="ac-chip ac-hand ac-umber">Recolectado <b id="total">0</b></div>
+        </div>
+        <div class="center">
+          <button class="target" id="target" aria-label="Recolectar del objetivo">
+            <span class="shadow"></span>
+            <svg viewBox="0 0 120 120"><use id="target-art" href="#t-wood" /></svg>
+          </button>
+          <div class="target-label" id="target-label">Abedul</div>
+        </div>
+        <div class="bottom">
+          <div class="bottom-col">
+            <div id="prompt"></div>
+            <div id="hotbar" aria-label="Inventario"></div>
+          </div>
+          <div id="action-holder"></div>
+        </div>
+      </section>
+
+      <h2 class="section">Componentes</h2>
+      <div class="grid">
+        <div class="specimen">
+          <div class="show"><div class="ac-chip ac-hand ac-umber">Día <b>3</b></div><div class="ac-chip ac-hand ac-paper">Nivel <b>2</b></div></div>
+          <h3>Chip · <code>.ac-chip</code></h3>
+          <p>Etiqueta corta sobre una píldora. Combínala con <code>.ac-hand</code> y un relleno: <code>.ac-umber</code>, <code>.ac-paper</code>, <code>.ac-gold</code>, <code>.ac-red</code>.</p>
+        </div>
+        <div class="specimen">
+          <div class="show" id="spec-slots"></div>
+          <h3>Slot · <code>.ac-slot</code></h3>
+          <p>Icono del ítem, cantidad con contorno y tecla opcional. <code>.is-selected</code> lo pinta de oro, <code>.is-empty</code> lo apaga y <code>.is-bump</code> lo hace rebotar.</p>
+        </div>
+        <div class="specimen">
+          <div class="show" id="spec-prompt"></div>
+          <h3>Aviso · <code>.ac-prompt</code></h3>
+          <p>Lo que está al alcance y la barra de trabajo (<code>.ac-progress</code>, variable <code>--ac-progress</code> de 0 a 1). <code>.is-blocked</code> lo pone en rojo.</p>
+        </div>
+        <div class="specimen">
+          <div class="show" id="spec-bubble" style="min-height: 150px"></div>
+          <h3>Globo · <code>ArmadaUI.bubble</code></h3>
+          <p>Aparece con sacudida y se va solo. Lleva <code>+N</code> con icono o una línea de texto; <code>warning</code> lo pinta en rojo.</p>
+        </div>
+        <div class="specimen">
+          <div class="show" id="spec-action"></div>
+          <h3>Botón de acción · <code>.ac-action</code></h3>
+          <p>Redondo, se aplasta al pulsarlo y se mantiene presionado para trabajar. Icono de herramienta: hacha, pico, red o mano.</p>
+        </div>
+        <div class="specimen ac-card ac-hand ac-paper">
+          <h3>Tarjeta · <code style="color: var(--ac-red)">.ac-card</code></h3>
+          <p style="color: inherit">Bloque de texto sobre papel. Para menús, diálogos y tooltips largos.</p>
+        </div>
+      </div>
+
+      <h2 class="section">Tokens</h2>
+      <div class="swatches" id="swatches"></div>
+      <p class="note">
+        Fredoka para cifras, botones y títulos; Nunito Black para el texto. Bordes de 4 px en tinta, sombra sólida desplazada y sin
+        degradados. Guía completa en <code>lib/docs/UI-KIT.md</code>.
+      </p>
+    </div>
+
+    <script src="armada-ui.js?v=1"></script>
+    <script>
+      (() => {
+        const UI = window.ArmadaUI;
+        UI.install();
+        const RES = [
+          { item: "wood", name: "Madera", verb: "Talar", tool: "axe", target: "Abedul", count: 12 },
+          { item: "stone", name: "Piedra", verb: "Picar", tool: "pickaxe", target: "Roca", count: 7 },
+          { item: "fiber", name: "Fibra", verb: "Recoger", tool: "hand", target: "Arbusto", count: 5 },
+          { item: "mushroom", name: "Hongo", verb: "Recoger", tool: "hand", target: "Hongos", count: 2 },
+        ];
+        const $ = (id) => document.getElementById(id);
+        let selected = 0;
+        let total = 0;
+
+        const hotbar = new UI.Hotbar($("hotbar"), { keys: true, buttons: true });
+        const stacks = () => RES.map(({ item, name, count }) => ({ item, name, count }));
+        hotbar.render(stacks());
+        hotbar.slots.forEach((slot, i) => slot.node.addEventListener("click", () => select(i)));
+
+        const prompt = new UI.Prompt($("prompt"));
+        const action = UI.actionButton({ verb: "Talar", tool: "axe", key: "E" });
+        $("action-holder").appendChild(action);
+
+        let work = null;
+        const WORK_MS = 1100;
+        function tick(now) {
+          if (!work) return;
+          const share = Math.min(1, (now - work.start) / WORK_MS);
+          prompt.render({ text: RES[selected].name, key: "E", progress: share });
+          if (share >= 1) {
+            gather();
+            work.start = now;
+          }
+          work.frame = requestAnimationFrame(tick);
+        }
+        function hold(held) {
+          action.classList.toggle("is-working", held);
+          if (held && !work) {
+            work = { start: performance.now() };
+            work.frame = requestAnimationFrame(tick);
+          } else if (!held && work) {
+            cancelAnimationFrame(work.frame);
+            work = null;
+            prompt.render({ text: RES[selected].name, key: "E" });
+          }
+        }
+        const holder = UI.holdButton(action, hold);
+
+        function select(i) {
+          selected = i;
+          hotbar.select(i);
+          const r = RES[i];
+          $("target-art").setAttribute("href", `#t-${r.item}`);
+          $("target-label").textContent = r.target;
+          UI.setAction(action, { verb: r.verb, tool: r.tool });
+          prompt.render({ text: r.name, key: "E" });
+        }
+
+        function gather() {
+          const r = RES[selected];
+          const amount = 1 + Math.floor(Math.random() * 4);
+          const target = $("target");
+          UI.hit(target);
+          const stage = $("stage").getBoundingClientRect();
+          const box = target.getBoundingClientRect();
+          UI.bubble($("stage"), { x: box.left - stage.left + box.width / 2, y: box.top - stage.top + 10, amount, item: r.item, name: r.name });
+          const slot = hotbar.slots[selected].node;
+          UI.fly({
+            from: { x: box.left + box.width / 2, y: box.top + box.height * 0.3 },
+            to: slot,
+            amount,
+            item: r.item,
+            onLand: () => {
+              r.count = Math.min(99, r.count + amount);
+              hotbar.render(stacks());
+              hotbar.bump(slot);
+              total += amount;
+              $("total").textContent = total;
+            },
+          });
+        }
+
+        $("target").addEventListener("click", gather);
+        let keyHeld = false;
+        addEventListener("keydown", (e) => {
+          const k = e.key.toLowerCase();
+          if (k === "e" && !keyHeld) {
+            keyHeld = true;
+            action.classList.add("is-pressed");
+            hold(true);
+          } else if (/^[1-4]$/.test(k)) select(Number(k) - 1);
+        });
+        addEventListener("keyup", (e) => {
+          if (e.key.toLowerCase() === "e" && keyHeld) {
+            keyHeld = false;
+            action.classList.remove("is-pressed");
+            hold(false);
+          }
+        });
+        select(0);
+
+        const specSlots = new UI.Hotbar($("spec-slots"));
+        specSlots.render([{ item: "wood", name: "Madera", count: 24 }, { item: "copper_ore", name: "Cobre", count: 3 }, null]);
+        specSlots.slots[0].node.classList.add("is-selected");
+        $("spec-slots").addEventListener("click", () => specSlots.bump(specSlots.slots[1].node));
+
+        const p1 = new UI.Prompt(document.createElement("div"));
+        p1.render({ text: "Madera", key: "E", progress: 0.6 });
+        const p2 = new UI.Prompt(document.createElement("div"));
+        p2.render({ text: "Necesitas pico nivel 3", blocked: true });
+        $("spec-prompt").append(p1.root, p2.root);
+
+        const bubbleHost = $("spec-bubble");
+        const popSpecimen = () => {
+          const w = bubbleHost.clientWidth;
+          UI.bubble(bubbleHost, { x: w / 2, y: 100, amount: 3, item: "stone", name: "Piedra", ms: 3600000 });
+        };
+        popSpecimen();
+        bubbleHost.addEventListener("click", popSpecimen);
+
+        ["axe", "pickaxe", "net", "hand"].forEach((tool, i) => {
+          const b = UI.actionButton({ verb: ["Talar", "Picar", "Atrapar", "Recoger"][i], tool });
+          b.style.setProperty("--ac-action", "78px");
+          if (i === 3) b.style.setProperty("--ac-fill", "var(--ac-leaf)");
+          $("spec-action").appendChild(b);
+        });
+
+        const tokens = ["ink", "paper", "paper-shade", "cream", "umber", "ground", "gold", "red", "leaf", "sky"];
+        $("swatches").innerHTML = tokens
+          .map((t) => `<span class="swatch"><i style="background:var(--ac-${t})"></i>--ac-${t}</span>`)
+          .join("");
+
+        setTimeout(() => {
+          const r = RES[0];
+          const stage = $("stage").getBoundingClientRect();
+          const box = $("target").getBoundingClientRect();
+          UI.bubble($("stage"), { x: box.left - stage.left + box.width / 2, y: box.top - stage.top + 10, amount: 3, item: r.item, name: r.name });
+        }, 300);
+      })();
+    </script>
+  </body>
+</html>

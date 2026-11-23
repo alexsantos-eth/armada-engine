@@ -1,17 +1,25 @@
-//! The touch controls' state machine: one tracked stick touch, a set of jump touches.
+//! The touch controls' state machine: one floating stick and its gestures.
 //!
-//! The platform adapter feeds raw touches in; `update` assigns each `Started`
-//! touch to the control whose hit area it landed in (jump wins over the stick,
-//! so a tap on the button never walks), keeps owners until `Ended`/`Cancelled`,
-//! and reports one [`TouchFrame`] per call. Drawing lives here too but is kept
-//! to macroquad calls with no decisions; the rules are all in `layout`/`stick`
-//! and in the tests.
+//! The platform adapter feeds raw touches in. The first finger down becomes the stick and its
+//! base appears under it; dragging walks (and runs past the threshold), and when the finger
+//! drags past the rim the base follows it. The same finger carries the other actions: held
+//! still it gathers, and taps chain into jumps (the second tap of a quick chain jumps, the third
+//! jumps again in the air). Other fingers are ignored while the stick is down. Drawing the
+//! plain fallback lives here too, as macroquad calls with no decisions; the rules are all in
+//! `update` and in the tests.
 
 use iso::projection::GridPoint;
 use macroquad::prelude::*;
 
 use super::layout::TouchLayout;
 use super::stick::{StickReading, clamp_offset, stick_reading};
+
+/// How long the stick must rest in its dead zone before it gathers, in milliseconds.
+pub(crate) const HOLD_MS: f64 = 300.0;
+/// The longest touch that still counts as a tap, in milliseconds.
+pub(crate) const TAP_MS: f64 = 250.0;
+/// The longest gap between a tap and the next touch for both to chain, in milliseconds.
+pub(crate) const TAP_GAP_MS: f64 = 320.0;
 
 /// The lifecycle phase of one touch, mirroring macroquad's `TouchPhase` without it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -40,24 +48,47 @@ pub(crate) struct TouchFrame {
     pub(crate) run: bool,
     pub(crate) jump_pressed: bool,
     pub(crate) jump_held: bool,
+    pub(crate) gather_held: bool,
 }
 
-const JUMP_FILL: Color = Color::from_rgba(255, 255, 255, 46);
-const JUMP_RING: Color = Color::from_rgba(255, 255, 255, 160);
-const JUMP_LABEL: Color = Color::from_rgba(255, 255, 255, 230);
+/// Where the stick is drawn this frame and what it is doing.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct StickView {
+    pub(crate) center: (f32, f32),
+    pub(crate) knob: (f32, f32),
+    pub(crate) radius: f32,
+    pub(crate) knob_radius: f32,
+    pub(crate) active: bool,
+    pub(crate) run: bool,
+    pub(crate) gathering: bool,
+}
+
+/// The finger that drives the stick.
+#[derive(Clone, Copy, Debug)]
+struct Stick {
+    id: u64,
+    center: (f32, f32),
+    finger: (f32, f32),
+    started_ms: f64,
+    still_since_ms: f64,
+    moved: bool,
+    jumping: bool,
+}
+
+/// The touch controls: visibility, the stick finger and the tap chain.
+pub(crate) struct TouchControls {
+    visible: bool,
+    stick: Option<Stick>,
+    run_active: bool,
+    gathering: bool,
+    taps: u32,
+    last_tap_ms: Option<f64>,
+}
+
 const STICK_FILL: Color = Color::from_rgba(255, 255, 255, 28);
 const STICK_RING: Color = Color::from_rgba(255, 255, 255, 110);
 const KNOB_IDLE: Color = Color::from_rgba(255, 255, 255, 170);
 const KNOB_RUN: Color = Color::from_rgba(255, 150, 60, 220);
-
-/// The touch controls: visibility, the tracked stick touch and the owned jump touches.
-pub(crate) struct TouchControls {
-    visible: bool,
-    joystick_id: Option<u64>,
-    joystick_offset: (f32, f32),
-    run_active: bool,
-    jump_ids: Vec<u64>,
-}
 
 impl TouchControls {
     /// `coarse_pointer` is the platform hint (false on the desktop); the first
@@ -65,10 +96,11 @@ impl TouchControls {
     pub(crate) fn new(coarse_pointer: bool) -> Self {
         Self {
             visible: coarse_pointer,
-            joystick_id: None,
-            joystick_offset: (0.0, 0.0),
+            stick: None,
             run_active: false,
-            jump_ids: Vec::new(),
+            gathering: false,
+            taps: 0,
+            last_tap_ms: None,
         }
     }
 
@@ -78,113 +110,146 @@ impl TouchControls {
         self.visible
     }
 
-    /// Advances the controls with this frame's touches and returns what they ask for.
-    pub(crate) fn update(&mut self, width: f32, height: f32, touches: &[RawTouch]) -> TouchFrame {
+    /// Advances the controls with this frame's touches at `now_ms` and returns what they ask for.
+    pub(crate) fn update(
+        &mut self,
+        width: f32,
+        height: f32,
+        touches: &[RawTouch],
+        now_ms: f64,
+    ) -> TouchFrame {
         let layout = TouchLayout::new(width, height);
         if !touches.is_empty() {
             self.visible = true;
         }
 
         let mut jump_pressed = false;
-        for touch in touches {
-            if touch.phase != RawTouchPhase::Started {
-                continue;
-            }
-            if layout.jump_hit(touch.x, touch.y) {
-                if !self.jump_ids.contains(&touch.id) {
-                    self.jump_ids.push(touch.id);
-                    jump_pressed = true;
-                }
-            } else if layout.grab_hit(touch.x, touch.y) && self.joystick_id.is_none() {
-                self.joystick_id = Some(touch.id);
-                self.joystick_offset = knob_offset(touch, &layout);
-            }
+        if self.stick.is_none()
+            && let Some(touch) = touches.iter().find(|t| t.phase == RawTouchPhase::Started)
+        {
+            let chained = self
+                .last_tap_ms
+                .is_some_and(|tap| now_ms - tap <= TAP_GAP_MS);
+            self.taps = if chained { self.taps + 1 } else { 1 };
+            let jumping = self.taps >= 2;
+            jump_pressed = jumping;
+            self.stick = Some(Stick {
+                id: touch.id,
+                center: (touch.x, touch.y),
+                finger: (touch.x, touch.y),
+                started_ms: now_ms,
+                still_since_ms: now_ms,
+                moved: false,
+                jumping,
+            });
         }
-        self.jump_ids.retain(|id| {
-            touches.iter().any(|t| {
-                t.id == *id && !matches!(t.phase, RawTouchPhase::Ended | RawTouchPhase::Cancelled)
-            })
-        });
 
-        let reading = match self.joystick_id {
-            Some(id) => match touches.iter().find(|t| t.id == id) {
-                Some(touch)
-                    if !matches!(touch.phase, RawTouchPhase::Ended | RawTouchPhase::Cancelled) =>
-                {
-                    let dx = f64::from(touch.x - layout.joystick_center.0);
-                    let dy = f64::from(touch.y - layout.joystick_center.1);
-                    self.joystick_offset = knob_offset(touch, &layout);
-                    let reading = stick_reading(dx, dy, f64::from(layout.joystick_radius));
-                    self.run_active = reading.run;
-                    reading
-                }
-                _ => {
-                    self.release_stick();
-                    StickReading::default()
-                }
-            },
-            None => {
-                self.run_active = false;
-                StickReading::default()
+        let Some(mut stick) = self.stick else {
+            self.run_active = false;
+            self.gathering = false;
+            return TouchFrame::default();
+        };
+        let live = touches.iter().find(|t| {
+            t.id == stick.id && !matches!(t.phase, RawTouchPhase::Ended | RawTouchPhase::Cancelled)
+        });
+        let Some(touch) = live else {
+            let tap = !stick.moved && now_ms - stick.started_ms <= TAP_MS;
+            self.last_tap_ms = tap.then_some(now_ms);
+            if !tap {
+                self.taps = 0;
             }
+            self.stick = None;
+            self.run_active = false;
+            self.gathering = false;
+            return TouchFrame {
+                jump_pressed,
+                ..TouchFrame::default()
+            };
         };
 
+        stick.finger = (touch.x, touch.y);
+        stick.center = leashed(stick.center, stick.finger, layout.radius);
+        let reading = stick_reading(
+            f64::from(stick.finger.0 - stick.center.0),
+            f64::from(stick.finger.1 - stick.center.1),
+            f64::from(layout.radius),
+        );
+        if reading.magnitude > 0.0 {
+            stick.moved = true;
+            stick.still_since_ms = now_ms;
+        }
+        let gathering = !stick.jumping && now_ms - stick.still_since_ms >= HOLD_MS;
+        self.stick = Some(stick);
+        self.run_active = reading.run;
+        self.gathering = gathering;
+        let StickReading {
+            walk,
+            magnitude,
+            run,
+        } = reading;
         TouchFrame {
-            walk: reading.walk,
-            magnitude: reading.magnitude,
-            run: reading.run,
+            walk,
+            magnitude,
+            run,
             jump_pressed,
-            jump_held: !self.jump_ids.is_empty(),
+            jump_held: stick.jumping,
+            gather_held: gathering,
         }
     }
 
-    /// Paints the controls. Call it last, over the overlay; no-op when hidden.
+    /// Where the stick is drawn: under the finger while one is down, resting in the corner otherwise.
+    pub(crate) fn view(&self, width: f32, height: f32) -> StickView {
+        let layout = TouchLayout::new(width, height);
+        let (center, knob, active) = match self.stick {
+            Some(stick) => {
+                let (dx, dy) = clamp_offset(
+                    f64::from(stick.finger.0 - stick.center.0),
+                    f64::from(stick.finger.1 - stick.center.1),
+                    f64::from(layout.radius),
+                );
+                (
+                    stick.center,
+                    (stick.center.0 + dx as f32, stick.center.1 + dy as f32),
+                    true,
+                )
+            }
+            None => (layout.rest, layout.rest, false),
+        };
+        StickView {
+            center,
+            knob,
+            radius: layout.radius,
+            knob_radius: layout.knob_radius,
+            active,
+            run: self.run_active,
+            gathering: self.gathering,
+        }
+    }
+
+    /// Paints the plain stick, for when the UI kit is missing. Call it last, over the overlay;
+    /// no-op when hidden.
     pub(crate) fn draw(&self) {
         if !self.visible {
             return;
         }
-        let width = screen_width();
-        let height = screen_height();
-        let layout = TouchLayout::new(width, height);
-        let (jx, jy) = layout.joystick_center;
-        draw_circle(jx, jy, layout.joystick_radius, STICK_FILL);
-        draw_circle_lines(jx, jy, layout.joystick_radius, 2.0, STICK_RING);
-        let knob = if self.run_active { KNOB_RUN } else { KNOB_IDLE };
-        draw_circle(
-            jx + self.joystick_offset.0,
-            jy + self.joystick_offset.1,
-            layout.knob_radius,
-            knob,
-        );
-        let (bx, by) = layout.jump_center;
-        draw_circle(bx, by, layout.jump_radius, JUMP_FILL);
-        draw_circle_lines(bx, by, layout.jump_radius, 2.0, JUMP_RING);
-        let label = "SALTAR";
-        let size = layout.jump_radius * 0.42;
-        let measured = measure_text(label, None, size as u16, 1.0);
-        draw_text(
-            label,
-            bx - measured.width * 0.5,
-            by + size * 0.35,
-            size,
-            JUMP_LABEL,
-        );
-    }
-
-    fn release_stick(&mut self) {
-        self.joystick_id = None;
-        self.joystick_offset = (0.0, 0.0);
-        self.run_active = false;
+        let view = self.view(screen_width(), screen_height());
+        let (cx, cy) = view.center;
+        draw_circle(cx, cy, view.radius, STICK_FILL);
+        draw_circle_lines(cx, cy, view.radius, 2.0, STICK_RING);
+        let knob = if view.run { KNOB_RUN } else { KNOB_IDLE };
+        draw_circle(view.knob.0, view.knob.1, view.knob_radius, knob);
     }
 }
 
-fn knob_offset(touch: &RawTouch, layout: &TouchLayout) -> (f32, f32) {
-    let (x, y) = clamp_offset(
-        f64::from(touch.x - layout.joystick_center.0),
-        f64::from(touch.y - layout.joystick_center.1),
-        f64::from(layout.joystick_radius),
-    );
-    (x as f32, y as f32)
+/// The base centre after the finger drags it: it follows once the finger passes the rim.
+fn leashed(center: (f32, f32), finger: (f32, f32), radius: f32) -> (f32, f32) {
+    let (dx, dy) = (finger.0 - center.0, finger.1 - center.1);
+    let distance = dx.hypot(dy);
+    if distance <= radius {
+        return center;
+    }
+    let pull = (distance - radius) / distance;
+    (center.0 + dx * pull, center.1 + dy * pull)
 }
 
 #[cfg(test)]

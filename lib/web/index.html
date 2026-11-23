@@ -39,8 +39,6 @@
     <script src="./mq_js_bundle.js?v=3"></script>
     <script src="./adapter.js?v=3"></script>
     <script>
-      // Registers the minimal service worker that makes the site installable.
-      // Relative to <base href="/">, so the same script works on /, /playground and /maker.
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
           navigator.serviceWorker.register("sw.js").catch(() => {});

@@ -309,3 +309,11 @@ fn an_item_may_name_the_sprite_of_its_heap_on_the_ground() {
     );
     assert_eq!(catalog.item("stone").unwrap().sprite, None);
 }
+
+#[test]
+fn item_ids_lists_every_item_sorted() {
+    assert_eq!(
+        parsed().item_ids(),
+        vec!["copper_ore", "fiber", "stone", "wood"]
+    );
+}

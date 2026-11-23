@@ -487,6 +487,20 @@ impl Game {
         })
     }
 
+    /// Where the player's chest is on screen this frame: the point a pick-up flies from.
+    pub(crate) fn player_chest(&self, view: &FrameView) -> ScreenPoint {
+        let rp = &view.rp;
+        let feet = player_feet(
+            GridPoint { x: rp.x, y: rp.y },
+            rp.elevation + rp.height,
+            view.projection,
+        );
+        ScreenPoint {
+            x: feet.x,
+            y: feet.y - view.projection.tile_height * 0.9,
+        }
+    }
+
     /// The key the player's body sorts by: see `figure_draw_key`.
     fn player_draw_key(&self, view: &FrameView) -> DrawKey {
         let rp = &view.rp;

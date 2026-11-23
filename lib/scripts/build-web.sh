@@ -12,8 +12,8 @@
 #      Netlify ships rustup and cargo but no toolchain at all, so this is what
 #      makes the build work there; locally it is a no-op.
 #   2. Compile the client to WebAssembly (release, locked).
-#   3. Copy the loader page, its adapter, content/, the .wasm and the PWA files
-#      (manifest.json, sw.js, icons/) into the output directory.
+#   3. Copy the loader page, its adapter, the UI kit (web/ui/), content/, the .wasm and the
+#      PWA files (manifest.json, sw.js, icons/) into the output directory.
 #   4. Emit the same loader page also at playground/index.html and maker/index.html:
 #      `/playground` is the development surface with the GUI, `/maker` is the world
 #      editor over one flat chunk, and `/` paints no GUI at all. The page's
@@ -56,10 +56,10 @@ cp web/mq_js_bundle.js "$out_dir/mq_js_bundle.js"
 cp web/adapter.js "$out_dir/adapter.js"
 cp -R content "$out_dir/content"
 cp "target/$target/release/iso-core.wasm" "$out_dir/iso-core.wasm"
-# PWA: manifest, icons and the minimal service worker that makes the site installable.
 cp web/manifest.json "$out_dir/manifest.json"
 cp web/sw.js "$out_dir/sw.js"
 cp -R web/icons "$out_dir/icons"
+cp -R web/ui "$out_dir/ui"
 
 echo "==> Done"
 du -h -d 1 "$out_dir" | sort -h
