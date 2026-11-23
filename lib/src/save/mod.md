@@ -15,14 +15,14 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`snapshot_of`](persistence.rs#L87) — La partida que se escribe para un archivo de chunks en un mundo de `seed`: sus chunks, la semilla en `systems.world` (para que un mundo nacido de `?fresh` se reabra igual) y, si se da, lo que lleva el jugador en `systems.inventory` (`iso::inventory::with_carried`).
-  - Firma: `pub fn snapshot_of( archive: &ChunkArchive, seed: u64, carried: Option<&iso::inventory::Carried>, ) -> WorldSave {`
-- [`boot_seed`](persistence.rs#L102) — La semilla con la que arranca el mundo: la de la escena, si no la recién tirada por `?fresh`/`--fresh`, si no la que guardó la partida, si no la por defecto.
+- [`snapshot_of`](persistence.rs#L95) — La partida que se escribe para un archivo de chunks en un mundo de `seed`: sus chunks, la semilla en `systems.world` (para que un mundo nacido de `?fresh` se reabra igual) y, si se dan (`SavedSystems`), lo que lleva el jugador en `systems.inventory` (`iso::inventory::with_carried`) y los montones del suelo en `systems.drops` (`iso::drops::with_drops`).
+  - Firma: `pub fn snapshot_of( archive: &ChunkArchive, seed: u64, parts: Option<SavedSystems<'_>>, ) -> WorldSave {`
+- [`boot_seed`](persistence.rs#L113) — La semilla con la que arranca el mundo: la de la escena, si no la recién tirada por `?fresh`/`--fresh`, si no la que guardó la partida, si no la por defecto.
   - Firma: `pub fn boot_seed( scene: Option<u64>, fresh: Option<u64>, saved: Option<u64>, default: u64, ) -> u64 {`
-- [`take_fresh_seed`](persistence.rs#L124) — Una semilla nueva cuando esta ejecución arranca un mundo fresco: en web lee y borra la nota `saves/iso_fresh_seed` que deja `adapter.js`; en nativo, con `--fresh`, borra el archivo de partida y la tira del reloj (la mezcla `iso::world::fresh_seed`).
+- [`take_fresh_seed`](persistence.rs#L135) — Una semilla nueva cuando esta ejecución arranca un mundo fresco: en web lee y borra la nota `saves/iso_fresh_seed` que deja `adapter.js`; en nativo, con `--fresh`, borra el archivo de partida y la tira del reloj (la mezcla `iso::world::fresh_seed`).
   - Firma: `pub fn take_fresh_seed() -> Option<u64> {`
-- [`save_archive`](persistence.rs#L148) — Escribe la partida de un mundo de `seed`, con lo que lleva el jugador, en disco o, en WASM, en `localStorage`.
-  - Firma: `pub fn save_archive(archive: &ChunkArchive, seed: u64, carried: &iso::inventory::Carried) {`
+- [`save_archive`](persistence.rs#L159) — Escribe la partida de un mundo de `seed`, con lo que lleva el jugador y los montones del suelo, en disco o, en WASM, en `localStorage`.
+  - Firma: `pub fn save_archive(archive: &ChunkArchive, seed: u64, parts: SavedSystems<'_>) {`
 - [`load_save`](persistence.rs) — Intenta cargar un archivo de guardado del disco. Devuelve `None` ante cualquier error o al ejecutarse en WASM. En nativo la ruta la resuelve `crate::app::save_path()`: dentro de un `.app`, `~/Library/Application Support/<GAME_TITLE>/saves/iso_save.json`; fuera, `saves/iso_save.json` junto al CWD.
   - Firma: `pub async fn load_save() -> Option<WorldSave> {`
 
@@ -30,13 +30,13 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `pub fn restore_archive(save: Option<WorldSave>) -> ChunkArchive {`
 
 
-- [`sync_manager_to_archive`](persistence.rs#L174) — Sincroniza los chunks descubiertos de un `ChunkManager` a un `ChunkArchive`, reemplazando cualquier
+- [`sync_manager_to_archive`](persistence.rs#L185) — Sincroniza los chunks descubiertos de un `ChunkManager` a un `ChunkArchive`, reemplazando cualquier
   - Firma: `pub fn sync_manager_to_archive(manager: &ChunkManager, archive: &mut ChunkArchive) {`
 
-- [`load_archive_into_manager`](persistence.rs#L181) — Carga en un `ChunkManager` los chunks guardados de un archivo, omitiendo la generación de terreno.
+- [`load_archive_into_manager`](persistence.rs#L192) — Carga en un `ChunkManager` los chunks guardados de un archivo, omitiendo la generación de terreno.
   - Firma: `pub fn load_archive_into_manager( manager: &mut ChunkManager, archive: &ChunkArchive, ) -> Vec<String> {`
 
-- [`restore_discovered_from_archive`](persistence.rs#L190) — Reemplaza los chunks recién generados por su copia archivada, donde el archivo la tenga.
+- [`restore_discovered_from_archive`](persistence.rs#L201) — Reemplaza los chunks recién generados por su copia archivada, donde el archivo la tenga.
   - Firma: `pub fn restore_discovered_from_archive( manager: &mut ChunkManager, archive: &ChunkArchive, discovered: &[iso::grid::ChunkCoord], ) -> Vec<String> {`
 
 

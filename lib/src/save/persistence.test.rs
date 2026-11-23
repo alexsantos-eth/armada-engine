@@ -44,16 +44,36 @@ fn a_saved_archive_records_the_world_seed() {
 }
 
 #[test]
-fn a_saved_archive_records_what_the_player_carries() {
+fn a_saved_archive_records_what_the_player_carries_and_the_heaps_on_the_ground() {
     let entities: iso::entities::EntityCatalog =
         serde_json::from_str(include_str!("../../content/json/entities.json")).unwrap();
     let items =
         iso::items::parse_items(include_str!("../../content/json/items.json"), &entities).unwrap();
     let mut carried = iso::inventory::Carried::starting(4, &items);
     carried.inventory.add("wood", 3, &items);
-    let save = snapshot_of(&ChunkArchive::new(), 77, Some(&carried));
+    let mut drops = iso::drops::Drops::default();
+    drops.spawn(
+        iso::drops::Felled {
+            id: "tree@0,0",
+            anchor: iso::grid::WorldCoord { x: 0, y: 0 },
+            elevation: 0,
+        },
+        &[iso::items::HarvestYield {
+            item: "wood".into(),
+            amount: 3,
+        }],
+    );
+    let save = snapshot_of(
+        &ChunkArchive::new(),
+        77,
+        Some(SavedSystems {
+            carried: &carried,
+            drops: &drops,
+        }),
+    );
     let restored = iso::inventory::saved_carried(&save.systems, 4, &items).unwrap();
     assert_eq!(restored.carried, carried);
+    assert_eq!(iso::drops::saved_drops(&save.systems, &items), Some(drops));
     assert_eq!(iso::world::saved_seed(&save.systems), Some(77));
 }
 

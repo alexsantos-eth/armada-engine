@@ -209,15 +209,14 @@ impl Game {
                 if let Some(shadows) = self.shadows.as_mut() {
                     shadows.erase(&self.manager, iso::harvest::shadow_area(target.anchor));
                 }
-                for gained in yields {
-                    self.carried
-                        .inventory
-                        .add(&gained.item, gained.amount, &self.items);
-                }
-                self.gain_note = Some((
-                    crate::harvest::hotbar::gain_text(yields, &self.items),
-                    crate::harvest::hotbar::GAIN_NOTE_MS,
-                ));
+                self.drops.spawn(
+                    iso::drops::Felled {
+                        id: &target.id,
+                        anchor: target.anchor,
+                        elevation: target.elevation,
+                    },
+                    yields,
+                );
                 self.unsaved_changes = true;
             } else {
                 self.manager.put_entity(taken);
@@ -227,6 +226,34 @@ impl Game {
         self.impacts
             .notice(self.harvester.strikes(), struck, felled.as_ref(), color);
         self.harvest_status = status;
+        self.pick_up_drops(ticks);
+    }
+
+    /// Picks up the heaps the player stands on: what fits goes to the inventory with a note of
+    /// it, and what does not stays on the ground with a note that the inventory is full.
+    fn pick_up_drops(&mut self, ticks: u32) {
+        let feet = iso::harvest::Feet {
+            at: GridPoint {
+                x: self.player.x,
+                y: self.player.y,
+            },
+            elevation: self.player.elevation,
+        };
+        let collected = self
+            .drops
+            .collect(feet, &mut self.carried.inventory, &self.items, ticks);
+        if !collected.gained.is_empty() {
+            self.gain_note = Some((
+                crate::harvest::hotbar::gain_text(&collected.gained, &self.items),
+                crate::harvest::hotbar::GAIN_NOTE_MS,
+            ));
+            self.unsaved_changes = true;
+        } else if collected.refused && self.gain_note.is_none() {
+            self.gain_note = Some((
+                crate::harvest::hotbar::FULL_NOTE.to_owned(),
+                crate::harvest::hotbar::GAIN_NOTE_MS,
+            ));
+        }
     }
 
     /// Input, ticks and streaming for one frame. Returns `None` when the player asked to quit
@@ -241,7 +268,14 @@ impl Game {
                     && (is_key_down(KeyCode::LeftControl) || is_key_down(KeyCode::RightControl))));
         if save_requested {
             sync_manager_to_archive(&mut self.manager, &mut self.archive);
-            save_archive(&self.archive, self.world_seed, &self.carried);
+            save_archive(
+                &self.archive,
+                self.world_seed,
+                crate::save::SavedSystems {
+                    carried: &self.carried,
+                    drops: &self.drops,
+                },
+            );
             self.unsaved_changes = false;
             self.last_save = get_time();
         }
@@ -412,7 +446,14 @@ impl Game {
         let quitting = is_quit_requested();
         if self.persists && should_save_on_quit(self.unsaved_changes, quitting) {
             sync_manager_to_archive(&mut self.manager, &mut self.archive);
-            save_archive(&self.archive, self.world_seed, &self.carried);
+            save_archive(
+                &self.archive,
+                self.world_seed,
+                crate::save::SavedSystems {
+                    carried: &self.carried,
+                    drops: &self.drops,
+                },
+            );
             self.unsaved_changes = false;
             self.last_save = get_time();
         }

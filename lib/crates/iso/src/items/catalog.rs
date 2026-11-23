@@ -51,6 +51,9 @@ pub struct ItemDef {
     /// Colour of the chips a blow knocks off what yields it, as six hex digits (`a0703c`).
     #[serde(default)]
     color: Option<String>,
+    /// Sprite of a heap of it lying on the ground, by its path in the asset manifest.
+    #[serde(default)]
+    pub sprite: Option<String>,
 }
 
 impl ItemDef {

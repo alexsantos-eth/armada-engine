@@ -95,17 +95,18 @@ pub(crate) fn prompt(status: &HarvestStatus, items: &ItemCatalog) -> Option<Prom
             text: yield_name(&target.blueprint, items),
             progress: Some(*progress as f32 / (*total).max(1) as f32),
         }),
-        HarvestStatus::Blocked { reason, .. } => Some(Prompt {
-            text: match reason {
-                HarvestBlock::NeedsTool { kind, tier } => {
-                    format!("Necesitas {} nivel {tier}", kind_name(*kind))
-                }
-                HarvestBlock::InventoryFull => "Inventario lleno".to_owned(),
-            },
+        HarvestStatus::Blocked {
+            reason: HarvestBlock::NeedsTool { kind, tier },
+            ..
+        } => Some(Prompt {
+            text: format!("Necesitas {} nivel {tier}", kind_name(*kind)),
             progress: None,
         }),
     }
 }
+
+/// The note a pick-up leaves when something in reach did not fit.
+pub(crate) const FULL_NOTE: &str = "Inventario lleno";
 
 /// The note of what a harvest gave: `+3 Madera`, one entry per yield.
 pub(crate) fn gain_text(yields: &[HarvestYield], items: &ItemCatalog) -> String {
