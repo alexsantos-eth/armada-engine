@@ -1,0 +1,14 @@
+stack(
+  note("f3 ~ ~ ~ ~ ~ ~ ~")
+    .s("sine")
+    .attack(0.002)
+    .decay(0.05)
+    .sustain(0)
+    .gain(0.45),
+  s("brown ~ ~ ~ ~ ~ ~ ~")
+    .attack(0.002)
+    .decay(0.03)
+    .sustain(0)
+    .lpf(600)
+    .gain(0.25),
+)

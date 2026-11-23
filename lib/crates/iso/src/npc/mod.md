@@ -98,7 +98,7 @@ No dibuja nada ni conoce sprites: la vista vive en el cliente (`src/npc`).
 
 - [`NpcPose`](wander.rs#L156) — Dónde están los pies: punto, nivel del suelo bajo ellos y altura del cuerpo sobre él.
 
-- [`Npc`](wander.rs#L200) — Un personaje: su casa, la casilla que pisa, su nivel, el paso en curso, hacia dónde mira y cuánto le queda de descanso.
+- [`Npc`](wander.rs#L200) — Un personaje: su casa, la casilla que pisa, su nivel, el paso en curso, hacia dónde mira, cuánto le queda de descanso y cuántos pasos lleva asentados (`footfalls`, que el cliente oye como pisadas).
 
 ### `body.rs`
 

@@ -26,10 +26,15 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
   - Firma: `fn poll(&mut self) -> NormalizedInput {`
   - MacroquadInput es ahora `pub struct MacroquadInput<'a> { pub touch: &'a mut TouchControls }`: el llamante (`game::frame::update`) presta su `TouchControls` a la pasada de entrada.
 
-- [`SOUND_FILES`](macroquad_adapters.rs#L69) y [`LOOP_FILES`](macroquad_adapters.rs#L78) — Correspondencia fija evento/bucle → WAV generado en `content/sounds/`.
+- `SOUND_FILES`, `LOOP_FILES` y `AMBIENT_FILES` — Correspondencia fija evento/bucle/fondo → WAV generado en `content/sounds/` (14 sueltos, tres de ellos las frases de pájaro `BirdCall(0..3)`; 9 bucles: andar y correr por cada `Footing` más el jetpack; 2 fondos: viento y géiser). Un test comprueba que cada WAV existe y tiene su `.strudel` en `music/`.
+- `load_sounds` — Carga una de esas listas; un archivo que no carga avisa y queda en silencio.
+- `AMBIENT_SILENCE` — Por debajo de este volumen un fondo se detiene en vez de sonar inaudible.
+- `EVENTS_KEPT` — Tope del registro `events`; al llenarse se tira la mitad más vieja.
 - [`sound_path`](macroquad_adapters.rs#L86) — Resuelve la ruta de un sonido: `./content/…` en WASM y `app::asset_path` en nativo (desarrollo: ruta relativa al CWD; `.app`: `Contents/Resources`).
 
-- [`load`](macroquad_adapters.rs#L109) — Carga los ocho WAVs. Un archivo que no carga registra un aviso y ese evento queda en silencio, como antes.
+- `ambient_level` — El volumen al que suena ahora un fondo; `0.0` si está parado. `Game::update_soundscape` lo usa como punto de partida del suavizado y el testbed lo escribe en `report.json` (`ambience`).
+- `set_ambient` — Arranca en bucle, ajusta o para el fondo según el volumen pedido; cada fondo es independiente y suena a la vez que el bucle del jugador.
+- [`load`](macroquad_adapters.rs#L109) — Carga los veinticinco WAVs. Un archivo que no carga registra un aviso y ese evento queda en silencio, como antes.
   - Firma: `pub async fn load() -> Self {`
 - [`default`](macroquad_adapters.rs#L154) — Implementación de `Default`: adaptador sin sonidos (eventos registrados, en silencio) para las pruebas.
   - Firma: `fn default() -> Self {`
@@ -44,7 +49,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
   - Firma: `fn play_with_volume(&mut self, event: SoundEvent, volume: f64) {`
 - [`play_loop`](macroquad_adapters.rs#L192) — Sustituye el bucle actual (silencio con `None`) por el de `sound`; repetir el mismo bucle es un no-op.
   - Firma: `fn play_loop(&mut self, sound: Option<SoundLoop>) {`
-- [`set_volume`](macroquad_adapters.rs#L212) — Fija el volumen maestro en `0.0..=1.0` y lo aplica al bucle en reproducción.
+- [`set_volume`](macroquad_adapters.rs#L212) — Fija el volumen maestro en `0.0..=1.0` y lo aplica al bucle en reproducción y a los fondos que suenan.
   - Firma: `fn set_volume(&mut self, volume: f64) {`
 
 - [`push`](macroquad_adapters.rs#L230) — Añade el valor recibido a la colección o secuencia administrada.

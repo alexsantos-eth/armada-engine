@@ -5,7 +5,8 @@ use std::collections::HashMap;
 use iso::player::physics::{ScreenDirections, get_walk_direction};
 use iso::projection::GridPoint;
 use iso::services::{
-    AudioService, InputService, NormalizedInput, SoundEvent, SoundLoop, UiEvent, UiService,
+    AmbientLoop, AudioService, Footing, InputService, NormalizedInput, SoundEvent, SoundLoop,
+    UiEvent, UiService,
 };
 use macroquad::audio::Sound;
 use macroquad::prelude::*;
@@ -66,20 +67,64 @@ impl InputService for MacroquadInput<'_> {
 
 /// Sounds the client bundles, as one statically-generated WAV per semantic name. The files are
 /// rendered from the `.strudel` sources with the superdough engine (see `tools/sound-export/`).
-const SOUND_FILES: [(SoundEvent, &str); 5] = [
+const SOUND_FILES: [(SoundEvent, &str); 14] = [
     (SoundEvent::Jump, "jump.wav"),
     (SoundEvent::AirJump, "air-jump.wav"),
     (SoundEvent::Land, "land.wav"),
     (SoundEvent::Skid, "skid.wav"),
     (SoundEvent::Climb, "climb.wav"),
+    (SoundEvent::HarvestHit, "harvest-hit.wav"),
+    (SoundEvent::HarvestFell, "harvest-fell.wav"),
+    (SoundEvent::ItemDrop, "item-drop.wav"),
+    (SoundEvent::ItemCollect, "item-collect.wav"),
+    (SoundEvent::RabbitHop, "rabbit-hop.wav"),
+    (SoundEvent::CrabStep, "crab-step.wav"),
+    (SoundEvent::BirdCall(0), "bird-call-1.wav"),
+    (SoundEvent::BirdCall(1), "bird-call-2.wav"),
+    (SoundEvent::BirdCall(2), "bird-call-3.wav"),
 ];
 
 /// Looping sounds the client bundles; see [`SOUND_FILES`].
-const LOOP_FILES: [(SoundLoop, &str); 3] = [
-    (SoundLoop::Walk, "walk.wav"),
-    (SoundLoop::Run, "run.wav"),
+const LOOP_FILES: [(SoundLoop, &str); 9] = [
+    (SoundLoop::Walk(Footing::Grass), "walk-grass.wav"),
+    (SoundLoop::Walk(Footing::Sand), "walk-sand.wav"),
+    (SoundLoop::Walk(Footing::Dirt), "walk-dirt.wav"),
+    (SoundLoop::Walk(Footing::Stone), "walk-stone.wav"),
+    (SoundLoop::Run(Footing::Grass), "run-grass.wav"),
+    (SoundLoop::Run(Footing::Sand), "run-sand.wav"),
+    (SoundLoop::Run(Footing::Dirt), "run-dirt.wav"),
+    (SoundLoop::Run(Footing::Stone), "run-stone.wav"),
     (SoundLoop::Jetpack, "jetpack.wav"),
 ];
+
+/// The beds of the world the client bundles, all looping at once at their own volumes; see
+/// [`SOUND_FILES`].
+const AMBIENT_FILES: [(AmbientLoop, &str); 2] = [
+    (AmbientLoop::Wind, "wind.wav"),
+    (AmbientLoop::Geyser, "geyser.wav"),
+];
+
+/// Below this a bed is stopped rather than played inaudibly.
+const AMBIENT_SILENCE: f64 = 0.005;
+
+/// Most one-shots kept in [`MacroquadAudio::events`]; past it the oldest half is dropped, so a
+/// long session does not grow the record without end.
+const EVENTS_KEPT: usize = 4096;
+
+/// Loads `files` from `content/sounds/`, warning about and skipping any that cannot be loaded.
+async fn load_sounds<K: std::hash::Hash + Eq + Copy>(files: &[(K, &str)]) -> HashMap<K, Sound> {
+    let mut loaded = HashMap::new();
+    for (key, file) in files {
+        let path = sound_path(&format!("content/sounds/{file}"));
+        match macroquad::audio::load_sound(&path).await {
+            Ok(sound) => {
+                loaded.insert(*key, sound);
+            }
+            Err(error) => eprintln!("[audio] {file} not loaded: {error}"),
+        }
+    }
+    loaded
+}
 
 /// Where a bundled sound is fetched from, as the world content does.
 #[cfg(target_arch = "wasm32")]
@@ -101,39 +146,34 @@ pub struct MacroquadAudio {
     sounds: HashMap<SoundEvent, Sound>,
     loops: HashMap<SoundLoop, Sound>,
     current_loop: Option<SoundLoop>,
+    ambient: HashMap<AmbientLoop, Sound>,
+    /// The level each bed plays at; a bed missing or at zero is stopped.
+    ambient_levels: HashMap<AmbientLoop, f64>,
 }
 
 impl MacroquadAudio {
     /// Loads every bundled sound. A file that cannot be loaded logs a warning and its event
     /// stays silent, like the previous silent adapter.
     pub async fn load() -> Self {
-        let mut sounds = HashMap::new();
-        for (event, file) in SOUND_FILES {
-            let path = sound_path(&format!("content/sounds/{file}"));
-            match macroquad::audio::load_sound(&path).await {
-                Ok(sound) => {
-                    sounds.insert(event, sound);
-                }
-                Err(error) => eprintln!("[audio] {file} not loaded: {error}"),
-            }
-        }
-        let mut loops = HashMap::new();
-        for (loop_, file) in LOOP_FILES {
-            let path = sound_path(&format!("content/sounds/{file}"));
-            match macroquad::audio::load_sound(&path).await {
-                Ok(sound) => {
-                    loops.insert(loop_, sound);
-                }
-                Err(error) => eprintln!("[audio] {file} not loaded: {error}"),
-            }
-        }
         Self {
-            volume: 1.0,
-            events: Vec::new(),
-            sounds,
-            loops,
-            current_loop: None,
+            sounds: load_sounds(&SOUND_FILES).await,
+            loops: load_sounds(&LOOP_FILES).await,
+            ambient: load_sounds(&AMBIENT_FILES).await,
+            ..Self::default()
         }
+    }
+
+    /// The level bed `sound` plays at now; `0.0` when it is stopped.
+    pub fn ambient_level(&self, sound: AmbientLoop) -> f64 {
+        self.ambient_levels.get(&sound).copied().unwrap_or(0.0)
+    }
+
+    /// Records a one-shot, dropping the oldest half of the record once it is full.
+    fn record(&mut self, event: SoundEvent) {
+        if self.events.len() >= EVENTS_KEPT {
+            self.events.drain(..EVENTS_KEPT / 2);
+        }
+        self.events.push(event);
     }
 
     /// The effective loudness of a one-shot played at `gain` (0.0..=1.0), scaled by the master volume.
@@ -158,13 +198,15 @@ impl Default for MacroquadAudio {
             sounds: HashMap::new(),
             loops: HashMap::new(),
             current_loop: None,
+            ambient: HashMap::new(),
+            ambient_levels: HashMap::new(),
         }
     }
 }
 
 impl AudioService for MacroquadAudio {
     fn play(&mut self, event: SoundEvent) {
-        self.events.push(event.clone());
+        self.record(event);
         if let Some(sound) = self.sounds.get(&event) {
             macroquad::audio::play_sound(
                 sound,
@@ -177,7 +219,7 @@ impl AudioService for MacroquadAudio {
     }
 
     fn play_with_volume(&mut self, event: SoundEvent, volume: f64) {
-        self.events.push(event.clone());
+        self.record(event);
         if let Some(sound) = self.sounds.get(&event) {
             macroquad::audio::play_sound(
                 sound,
@@ -209,12 +251,43 @@ impl AudioService for MacroquadAudio {
         }
     }
 
+    fn set_ambient(&mut self, sound: AmbientLoop, volume: f64) {
+        let volume = volume.clamp(0.0, 1.0);
+        let playing = self.ambient_level(sound) > 0.0;
+        let audible = volume >= AMBIENT_SILENCE;
+        let effective = self.effective_volume(volume);
+        if let Some(bed) = self.ambient.get(&sound) {
+            match (playing, audible) {
+                (false, true) => macroquad::audio::play_sound(
+                    bed,
+                    macroquad::audio::PlaySoundParams {
+                        looped: true,
+                        volume: effective,
+                    },
+                ),
+                (true, true) => macroquad::audio::set_sound_volume(bed, effective),
+                (true, false) => macroquad::audio::stop_sound(bed),
+                (false, false) => {}
+            }
+        }
+        if audible {
+            self.ambient_levels.insert(sound, volume);
+        } else {
+            self.ambient_levels.remove(&sound);
+        }
+    }
+
     fn set_volume(&mut self, volume: f64) {
         self.volume = volume.clamp(0.0, 1.0);
         if let Some(current) = self.current_loop
             && let Some(sound) = self.loops.get(&current)
         {
             macroquad::audio::set_sound_volume(sound, self.effective_volume(1.0));
+        }
+        for (kind, level) in &self.ambient_levels {
+            if let Some(bed) = self.ambient.get(kind) {
+                macroquad::audio::set_sound_volume(bed, self.effective_volume(*level));
+            }
         }
     }
 }

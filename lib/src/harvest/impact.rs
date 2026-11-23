@@ -26,6 +26,15 @@ pub(crate) struct Burst {
     pub(crate) felled: bool,
 }
 
+/// What a step's blow did, for the sound it makes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Blow {
+    /// A new blow landed on what is being struck.
+    Strike,
+    /// What was being struck gave way.
+    Felled,
+}
+
 /// The shakes and bursts in flight.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Impacts {
@@ -45,13 +54,14 @@ pub(crate) fn shake_offset(left_ms: f64) -> f64 {
 impl Impacts {
     /// Takes the harvester's count of blows landed, what is being struck, what was felled this
     /// step and the colour of what it yields; a new blow shakes the target and queues a burst.
+    /// Returns the blow it noticed, if any.
     pub(crate) fn notice(
         &mut self,
         strikes: u64,
         struck: Option<&HarvestTarget>,
         felled: Option<&HarvestTarget>,
         color: Option<u32>,
-    ) {
+    ) -> Option<Blow> {
         let landed = strikes > self.seen_strikes;
         self.seen_strikes = strikes;
         if let Some(target) = felled {
@@ -62,7 +72,7 @@ impl Impacts {
                 felled: true,
             });
             self.shake = None;
-            return;
+            return Some(Blow::Felled);
         }
         if let (true, Some(target)) = (landed, struck) {
             self.shake = Some((target.id.clone(), SHAKE_MS));
@@ -72,7 +82,9 @@ impl Impacts {
                 color,
                 felled: false,
             });
+            return Some(Blow::Strike);
         }
+        None
     }
 
     /// Ages the shake by `elapsed_ms` of real time.

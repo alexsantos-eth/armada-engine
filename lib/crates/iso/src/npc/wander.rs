@@ -168,6 +168,8 @@ pub struct Npc {
     pub strides_left: i32,
     /// Where it was a tick ago, for interpolation.
     pub previous: NpcPose,
+    /// Steps set down since it was born, wrapping: the client hears a new one as a footfall.
+    pub footfalls: u32,
     random: DustRandom,
 }
 
@@ -196,6 +198,7 @@ impl Npc {
                 elevation: 0.0,
                 height: 0.0,
             },
+            footfalls: 0,
             random,
         };
         npc.previous = npc.pose();
@@ -517,6 +520,7 @@ pub fn step_npc<G: PlayerGround>(npc: &mut Npc, ground: &G, taken: impl Fn(World
         y: npc.cell.y + step.heading.1 * step.span(),
     };
     npc.elevation += step.rise;
+    npc.footfalls = npc.footfalls.wrapping_add(1);
     npc.step = None;
     npc.progress = 0.0;
     let next = (npc.strides_left > 0)

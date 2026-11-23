@@ -50,6 +50,11 @@ pub struct Report {
     pub entities: Vec<ReportEntity>,
     /// Anything worth knowing: an edit that changed nothing, a budget that ran out.
     pub notes: Vec<String>,
+    /// The one-shot sounds the run played, in order, by their event name (`HarvestHit`, …).
+    pub sounds: Vec<String>,
+    /// The beds playing when the run ended and their levels (`Wind`,
+    /// `Geyser`); a silent bed is left out.
+    pub ambience: std::collections::BTreeMap<String, f64>,
 }
 
 /// What a report says about an edit that changed nothing, with the state of the cell it was

@@ -651,3 +651,22 @@ fn a_crab_never_hops() {
         assert!(crab.hopping().is_none());
     }
 }
+
+#[test]
+fn each_step_set_down_is_a_footfall() {
+    let ground = ground_from(&["000", "000", "000"]);
+    let mut npc = ready(cell(1, 1));
+    assert_eq!(npc.footfalls, 0);
+    for _ in 0..400 {
+        let cell_before = npc.cell;
+        let footfalls_before = npc.footfalls;
+        step_npc(&mut npc, &ground, nobody);
+        let landed = npc.cell != cell_before;
+        assert_eq!(
+            npc.footfalls,
+            footfalls_before + u32::from(landed),
+            "a footfall is counted exactly when a step reaches its cell"
+        );
+    }
+    assert!(npc.footfalls > 0, "it strolled at least once");
+}

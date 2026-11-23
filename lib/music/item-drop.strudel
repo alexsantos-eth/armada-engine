@@ -1,0 +1,20 @@
+stack(
+  note("[a3 ~ ~ ~ e4 ~ ~ ~] ~ ~ ~")
+    .s("sine")
+    .attack(0.001)
+    .decay(0.06)
+    .sustain(0)
+    .gain(0.5),
+  note("[~ ~ ~ ~ ~ ~ e4 ~] ~ ~ ~")
+    .s("sine")
+    .attack(0.001)
+    .decay(0.04)
+    .sustain(0)
+    .gain(0.2),
+  s("[brown ~ ~ ~ ~ ~ ~ ~] ~ ~ ~")
+    .attack(0.001)
+    .decay(0.04)
+    .sustain(0)
+    .lpf(1200)
+    .gain(0.3),
+)

@@ -6,7 +6,10 @@
 // and written to `lib/content/sounds/<name>.wav`, which `lib/scripts/build-web.sh` copies
 // into the deployed site and the native bundle ships as a resource.
 //
-// Usage: npm ci && npm run render
+// Usage: npm ci && npm run render [-- name ...]
+//
+// With names, only those sounds are rendered, so adding one does not re-roll the noise of the
+// others.
 import { readFile, writeFile, mkdir, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,10 +29,35 @@ const SOUNDS = [
   ['land', 1],
   ['skid', 1],
   ['climb', 1],
-  ['walk', 1],
-  ['run', 1],
+  ['walk-dirt', 1],
+  ['walk-grass', 1],
+  ['walk-sand', 1],
+  ['walk-stone', 1],
+  ['run-dirt', 1],
+  ['run-grass', 1],
+  ['run-sand', 1],
+  ['run-stone', 1],
   ['jetpack', 1],
+  ['harvest-hit', 1],
+  ['harvest-fell', 1],
+  ['item-drop', 1],
+  ['item-collect', 1],
+  ['rabbit-hop', 1],
+  ['crab-step', 1],
+  ['bird-call-1', 1],
+  ['bird-call-2', 1],
+  ['bird-call-3', 1],
+  ['wind', 4],
+  ['geyser', 2],
 ];
+
+const only = process.argv.slice(2);
+for (const name of only) {
+  if (!SOUNDS.some(([known]) => known === name)) {
+    console.error(`unknown sound: ${name}`);
+    process.exit(1);
+  }
+}
 
 function encodeWav({ left, right, sampleRate }) {
   const numChannels = 2;
@@ -65,6 +93,7 @@ const failures = [];
 await mkdir(OUT_DIR, { recursive: true });
 
 for (const [name, cycles] of SOUNDS) {
+  if (only.length > 0 && !only.includes(name)) continue;
   const source = path.join(SOURCE_DIR, `${name}.strudel`);
   let code;
   try {

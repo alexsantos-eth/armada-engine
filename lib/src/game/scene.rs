@@ -459,6 +459,7 @@ impl Game {
         self.collect_dust(view, moved);
         self.collect_particles(view);
         self.collect_fires(view);
+        self.update_soundscape(view.frame_ms);
 
         SceneStats {
             chunks_drawn,
@@ -1074,7 +1075,9 @@ impl Game {
     /// over a small shadow of its own, sorted with the figures by where it lies.
     fn collect_drops(&mut self, view: &FrameView) {
         let projection = view.projection;
-        self.drop_views.advance(view.frame_ms, self.drops.list());
+        if self.drop_views.advance(view.frame_ms, self.drops.list()) > 0 {
+            iso::services::AudioService::play(&mut self.audio, iso::services::SoundEvent::ItemDrop);
+        }
         let light = self
             .shadows
             .as_ref()

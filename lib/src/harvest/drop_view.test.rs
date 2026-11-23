@@ -50,3 +50,19 @@ fn heaps_already_there_at_the_start_do_not_fly_in() {
     views.advance(16.0, &[drop_at(2)]);
     assert_eq!(views.age(1), 0.0, "a heap picked up is forgotten");
 }
+
+#[test]
+fn a_heap_is_counted_once_when_its_toss_ends() {
+    let mut views = DropViews::landed(&[drop_at(1)]);
+    assert_eq!(
+        views.advance(16.0, &[drop_at(1)]),
+        0,
+        "already on the ground"
+    );
+    assert_eq!(views.advance(16.0, &[drop_at(1), drop_at(2)]), 0);
+    let mut landings = 0;
+    for _ in 0..40 {
+        landings += views.advance(16.0, &[drop_at(1), drop_at(2), drop_at(3)]);
+    }
+    assert_eq!(landings, 2, "heaps 2 and 3 land once each");
+}

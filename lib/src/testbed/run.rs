@@ -85,6 +85,8 @@ impl ScriptRun {
             player,
             entities,
             notes,
+            sounds: Vec::new(),
+            ambience: Default::default(),
         }
     }
 }

@@ -4,6 +4,7 @@ pub(crate) mod config;
 mod frame;
 pub(crate) mod ground;
 mod scene;
+mod soundscape;
 mod state;
 
 pub(crate) use state::Game;

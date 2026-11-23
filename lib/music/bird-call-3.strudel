@@ -1,0 +1,14 @@
+stack(
+  note("[~ [e7 c7] ~ [e7 c7 e7] ~ ~ ~ ~]")
+    .s("sine")
+    .attack(0.003)
+    .decay(0.04)
+    .sustain(0)
+    .gain(0.16),
+  note("[[g5 b5 d6] ~ ~ ~ ~ ~ ~ ~]")
+    .s("triangle")
+    .attack(0.006)
+    .decay(0.07)
+    .sustain(0)
+    .gain(0.1),
+)

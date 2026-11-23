@@ -1,0 +1,8 @@
+stack(
+  note("[~ [b6 e7 b6] ~ ~ ~ [d7 f#7 d7 f#7] ~ ~]")
+    .s("sine")
+    .attack(0.004)
+    .decay(0.045)
+    .sustain(0)
+    .gain(0.18),
+)

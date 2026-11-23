@@ -38,21 +38,22 @@ Las reglas viven en `iso::harvest`, `iso::inventory` e `iso::items`; el paso fij
 
 ### `impact.rs`
 
-Lo que un golpe hace a la vista. `Game::step_harvest` le pasa a `Impacts::notice` la cuenta de golpes del recolector, lo golpeado, lo derribado en ese paso y el color del item que da; un golpe nuevo sacude la entidad (`SHAKE_MS`, `SHAKE_AMPLITUDE` del ancho de la casilla, `SHAKE_SWINGS` vaivenes que se apagan) y deja una ráfaga pendiente; un derribo deja una ráfaga grande. La escena corre el ancla de la entidad con `shake_of` al colocarla y entrega las ráfagas al polvo (`DustPuffs::chip`). Todo es puro y se prueba en `impact.test.rs`.
+Lo que un golpe hace a la vista. `Game::step_harvest` le pasa a `Impacts::notice` la cuenta de golpes del recolector, lo golpeado, lo derribado en ese paso y el color del item que da; un golpe nuevo sacude la entidad (`SHAKE_MS`, `SHAKE_AMPLITUDE` del ancho de la casilla, `SHAKE_SWINGS` vaivenes que se apagan) y deja una ráfaga pendiente; un derribo deja una ráfaga grande. `notice` devuelve el `Blow` que notó y `step_harvest` lo hace sonar (`HarvestHit` o `HarvestFell`). La escena corre el ancla de la entidad con `shake_of` al colocarla y entrega las ráfagas al polvo (`DustPuffs::chip`). Todo es puro y se prueba en `impact.test.rs`.
 
-- [`shake_offset`](impact.rs#L39) — Desplazamiento lateral de un sprite que se sacude, en partes del ancho de la casilla: un seno que empieza y acaba quieto y se apaga.
+- [`shake_offset`](impact.rs#L48) — Desplazamiento lateral de un sprite que se sacude, en partes del ancho de la casilla: un seno que empieza y acaba quieto y se apaga.
   - Firma: `pub(crate) fn shake_offset(left_ms: f64) -> f64 {`
-- [`Impacts::notice`](impact.rs#L48) — Nota un golpe o un derribo nuevos: sacude el objetivo y deja la ráfaga pendiente.
-  - Firma: `pub(crate) fn notice( &mut self, strikes: u64, struck: Option<&HarvestTarget>, felled: Option<&HarvestTarget>, color: Option<u32>, ) {`
-- [`Impacts::advance`](impact.rs#L79) — Envejece la sacudida.
+- [`Impacts::notice`](impact.rs#L58) — Nota un golpe o un derribo nuevos: sacude el objetivo y deja la ráfaga pendiente.
+  - Firma: `pub(crate) fn notice( &mut self, strikes: u64, struck: Option<&HarvestTarget>, felled: Option<&HarvestTarget>, color: Option<u32>, ) -> Option<Blow> {`
+- [`Impacts::advance`](impact.rs#L91) — Envejece la sacudida.
   - Firma: `pub(crate) fn advance(&mut self, elapsed_ms: f64) {`
-- [`Impacts::shake_of`](impact.rs#L89) — El desplazamiento de una entidad mientras se sacude.
+- [`Impacts::shake_of`](impact.rs#L101) — El desplazamiento de una entidad mientras se sacude.
   - Firma: `pub(crate) fn shake_of(&self, id: &str) -> Option<f64> {`
-- [`Impacts::take_bursts`](impact.rs#L97) — Las ráfagas pendientes, vaciadas.
+- [`Impacts::take_bursts`](impact.rs#L109) — Las ráfagas pendientes, vaciadas.
   - Firma: `pub(crate) fn take_bursts(&mut self) -> Vec<Burst> {`
 - [`SHAKE_MS`](impact.rs#L12), [`SHAKE_AMPLITUDE`](impact.rs#L14), [`SHAKE_SWINGS`](impact.rs#L16) — Duración, amplitud y vaivenes de la sacudida.
 - [`Burst`](impact.rs#L20) — Una ráfaga pendiente: ancla, bloque, color y si es un derribo.
-- [`Impacts`](impact.rs#L31) — Sacudida y ráfagas en vuelo.
+- [`Blow`](impact.rs#L31) — Lo que hizo el golpe de un paso, para su sonido: `Strike` o `Felled`.
+- [`Impacts`](impact.rs#L40) — Sacudida y ráfagas en vuelo.
 
 ### `drop_view.rs`
 
@@ -62,8 +63,8 @@ Cómo se ve un montón en el suelo. Al aparecer vuela en arco desde lo que lo so
   - Firma: `pub(crate) fn toss(age_ms: f64, drop: &Drop) -> DropPose {`
 - [`DropViews::landed`](drop_view.rs#L56) — Vistas de montones que ya estaban en el suelo: ninguno vuela.
   - Firma: `pub(crate) fn landed(drops: &[Drop]) -> Self {`
-- [`DropViews::advance`](drop_view.rs#L64) — Envejece los montones; uno nuevo empieza a volar y uno que ya no está se olvida.
-  - Firma: `pub(crate) fn advance(&mut self, elapsed_ms: f64, drops: &[Drop]) {`
+- [`DropViews::advance`](drop_view.rs#L65) — Envejece los montones; uno nuevo empieza a volar y uno que ya no está se olvida. Devuelve cuántos terminaron su vuelo en esa llamada, y `collect_drops` hace sonar `ItemDrop` si fue alguno.
+  - Firma: `pub(crate) fn advance(&mut self, elapsed_ms: f64, drops: &[Drop]) -> usize {`
 - [`DropViews::age`](drop_view.rs#L73) — Cuánto lleva un montón en el suelo.
   - Firma: `pub(crate) fn age(&self, id: u64) -> f64 {`
 - [`TOSS_MS`](drop_view.rs#L13), [`TOSS_HEIGHT`](drop_view.rs#L15), [`BOB_LIFT`](drop_view.rs#L17), [`BOB_MS`](drop_view.rs#L19) — Duración y altura del lanzamiento, y altura y periodo del vaivén.

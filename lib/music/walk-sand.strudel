@@ -1,0 +1,6 @@
+s("brown*4")
+  .attack(0.001)
+  .decay(0.035)
+  .sustain(0)
+  .lpf(380)
+  .gain("0.35 0.25")
