@@ -33,7 +33,14 @@ fn carried(items: &ItemCatalog) -> Carried {
 #[test]
 fn the_frame_lists_every_slot_with_names() {
     let items = items();
-    let frame = hud_frame(&carried(&items), &items, &HarvestStatus::Idle, None, false);
+    let frame = hud_frame(
+        &carried(&items),
+        &items,
+        &HarvestStatus::Idle,
+        None,
+        false,
+        None,
+    );
     assert!(frame.visible);
     assert_eq!(frame.slots.len(), 4);
     let first = frame.slots[0].as_ref().unwrap();
@@ -42,7 +49,9 @@ fn the_frame_lists_every_slot_with_names() {
         ("wood", "Madera", 7)
     );
     assert!(frame.slots[1..].iter().all(Option::is_none));
-    assert_eq!(frame.prompt, None);
+    assert_eq!(frame.action, None);
+    assert_eq!(frame.progress, None);
+    assert_eq!(frame.progress_at, None);
 }
 
 #[test]
@@ -51,28 +60,38 @@ fn a_tree_in_sight_is_felled_with_the_axe() {
     let status = HarvestStatus::Ready {
         target: target("tree"),
     };
-    let prompt = hud_frame(&carried(&items), &items, &status, None, false)
-        .prompt
+    let action = hud_frame(&carried(&items), &items, &status, None, false, None)
+        .action
         .unwrap();
-    assert_eq!(prompt.text, "Madera");
-    assert_eq!((prompt.verb, prompt.tool), ("Talar", "axe"));
-    assert_eq!(prompt.progress, None);
-    assert!(!prompt.blocked);
+    assert_eq!(
+        (action.verb.as_str(), action.tool.as_str()),
+        ("Talar", "axe")
+    );
 }
 
 #[test]
-fn work_under_way_reports_its_share_in_hundredths() {
+fn work_under_way_reports_its_share_and_where_it_sits() {
     let items = items();
     let status = HarvestStatus::Working {
         target: target("rock_small"),
         progress: 1,
         total: 3,
     };
-    let prompt = hud_frame(&carried(&items), &items, &status, None, false)
-        .prompt
-        .unwrap();
-    assert_eq!((prompt.verb, prompt.tool), ("Picar", "pickaxe"));
-    assert_eq!(prompt.progress, Some(0.33));
+    let frame = hud_frame(
+        &carried(&items),
+        &items,
+        &status,
+        None,
+        false,
+        Some((10.0, 20.0)),
+    );
+    assert_eq!(frame.progress, Some(0.33));
+    assert_eq!(frame.progress_at, Some((10.0, 20.0)));
+    let action = frame.action.unwrap();
+    assert_eq!(
+        (action.verb.as_str(), action.tool.as_str()),
+        ("Picar", "pickaxe")
+    );
 }
 
 #[test]
@@ -81,14 +100,17 @@ fn what_is_gathered_by_hand_is_picked_up() {
     let status = HarvestStatus::Ready {
         target: target("bush"),
     };
-    let prompt = hud_frame(&carried(&items), &items, &status, None, false)
-        .prompt
+    let action = hud_frame(&carried(&items), &items, &status, None, false, None)
+        .action
         .unwrap();
-    assert_eq!((prompt.verb, prompt.tool), ("Recoger", "hand"));
+    assert_eq!(
+        (action.verb.as_str(), action.tool.as_str()),
+        ("Recoger", "hand")
+    );
 }
 
 #[test]
-fn a_missing_tool_blocks_the_prompt() {
+fn a_missing_tool_shows_no_action() {
     let items = items();
     let status = HarvestStatus::Blocked {
         target: target("ore_vein"),
@@ -97,11 +119,9 @@ fn a_missing_tool_blocks_the_prompt() {
             tier: 3,
         },
     };
-    let prompt = hud_frame(&carried(&items), &items, &status, None, true)
-        .prompt
-        .unwrap();
-    assert!(prompt.blocked);
-    assert_eq!(prompt.text, "Necesitas pico nivel 3");
+    let frame = hud_frame(&carried(&items), &items, &status, None, true, None);
+    assert_eq!(frame.action, None);
+    assert_eq!(frame.progress, None);
 }
 
 #[test]
@@ -113,6 +133,7 @@ fn only_the_full_inventory_note_reaches_the_kit() {
         &HarvestStatus::Idle,
         Some(crate::harvest::hotbar::FULL_NOTE),
         false,
+        None,
     );
     assert_eq!(full.note.as_deref(), Some("Inventario lleno"));
     let gained = hud_frame(
@@ -121,6 +142,7 @@ fn only_the_full_inventory_note_reaches_the_kit() {
         &HarvestStatus::Idle,
         Some("+3 Madera"),
         false,
+        None,
     );
     assert_eq!(gained.note, None);
 }

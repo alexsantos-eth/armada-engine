@@ -127,20 +127,31 @@ pub(crate) async fn run(mut game: Game) {
         if let Some(skin) = game.clay_skin.as_ref().filter(|_| game.streams) {
             let chest = game.player_chest(&view);
             let at = crate::harvest::hud_frame::screen_share(chest.x, chest.y, width, height);
+            // The work progress appears above the entity being harvested.
+            let progress_at = game.harvest_status.target().map(|target| {
+                let point = iso::projection::project_grid_point(
+                    iso::projection::GridPoint {
+                        x: f64::from(target.anchor.x),
+                        y: f64::from(target.anchor.y),
+                    },
+                    view.projection,
+                );
+                (point.x as f32, point.y as f32 - 30.0)
+            });
             let frame = crate::harvest::hud_frame::hud_frame(
                 &game.carried,
                 &game.items,
                 &game.harvest_status,
                 game.gain_note.as_ref().map(|(text, _)| text.as_str()),
                 game.touch.visible(),
+                progress_at,
             );
             let gains = crate::harvest::hud_frame::gains(&picked, &game.items, at);
             let layout =
                 crate::gui::clay::HudLayout::new(width, height, frame.slots.len(), frame.touch);
             game.clay_hud.apply(&frame, &gains, (width, height));
             game.clay_hud.advance(frame_ms);
-            game.clay_hud.held =
-                frame.prompt.as_ref().is_some_and(|p| !p.blocked) && action_pressed(&layout);
+            game.clay_hud.held = frame.action.is_some() && action_pressed(&layout);
             // The mobile inventory is a switch: open while a finger is down on the backpack
             // icon, hide it when the finger lifts or moves off the icon.
             game.clay_hud.inventory_open = touches().iter().any(|touch| {
@@ -148,13 +159,9 @@ pub(crate) async fn run(mut game: Game) {
                     && layout.backpack_hit(touch.position.x, touch.position.y)
             });
             crate::gui::clay::draw_clay_hud(skin, &game.clay_hud, &frame, &layout);
-            stick_tool = frame
-                .prompt
-                .as_ref()
-                .filter(|prompt| !prompt.blocked)
-                .map(|prompt| prompt.tool);
+            stick_tool = frame.action.as_ref().map(|action| action.tool.clone());
         } else if game.streams {
-            let prompt = crate::harvest::hotbar::prompt(&game.harvest_status, &game.items);
+            let prompt = crate::harvest::hotbar::prompt(&game.harvest_status);
             crate::harvest::hotbar::draw_hotbar(
                 &game.carried,
                 &game.items,
@@ -239,7 +246,7 @@ pub(crate) async fn run(mut game: Game) {
                 Some(skin) => crate::gui::clay::draw_clay_stick(
                     skin,
                     &game.touch.view(width, height),
-                    stick_tool,
+                    stick_tool.as_deref(),
                     game.clay_hud.clock_ms,
                 ),
                 None => game.touch.draw(),

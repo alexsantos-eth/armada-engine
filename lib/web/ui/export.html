@@ -24,10 +24,6 @@
         width: 26px; height: 26px; box-sizing: border-box; border: 3px solid var(--ac-ink); border-radius: 50%;
         background: var(--ac-paper);
       }
-      .kbd {
-        width: 22px; height: 20px; box-sizing: border-box; border: 2.5px solid var(--ac-ink);
-        border-radius: 7px 9px 7px 8px; background: var(--ac-paper); box-shadow: 2px 2px 0 var(--ac-ink);
-      }
       .tool { width: 48px; height: 48px; }
       .tool svg { width: 48px; height: 48px; display: block; filter: var(--ac-icon-shadow); }
     </style>
@@ -37,8 +33,6 @@
     <div data-piece="slot" data-slice="0"><div class="panel ac-slot" style="--ac-slot: 64px"></div></div>
     <div data-piece="slot_selected" data-slice="0"><div class="panel ac-slot is-selected" style="--ac-slot: 64px; transform: none"></div></div>
     <div data-piece="slot_empty" data-slice="0"><div class="panel ac-slot is-empty" style="--ac-slot: 64px"></div></div>
-    <div data-piece="prompt" data-slice="26"><div class="panel ac-hand ac-cream" style="width: 170px; height: 60px"></div></div>
-    <div data-piece="prompt_blocked" data-slice="26"><div class="panel ac-hand ac-red" style="width: 170px; height: 60px"></div></div>
     <div data-piece="bubble" data-slice="34"><div class="panel ac-hand ac-cream bubble-shape" style="width: 240px; height: 64px"></div></div>
     <div data-piece="bubble_warning" data-slice="34"><div class="panel ac-hand ac-red bubble-shape" style="width: 240px; height: 64px"></div></div>
     <div data-piece="bubble_tail" data-slice="0" class="tail"><svg viewBox="0 0 34 30"><path d="M3 2 L14 28 L31 2" fill="#fff6e0" /></svg></div>
@@ -49,7 +43,6 @@
     <div data-piece="stick_knob" data-slice="0"><div class="ac-stick__knob"></div></div>
     <div data-piece="stick_knob_run" data-slice="0"><div class="ac-stick__knob is-running"></div></div>
     <div data-piece="badge" data-slice="0"><div class="badge"></div></div>
-    <div data-piece="kbd" data-slice="0"><div class="kbd"></div></div>
     <div data-piece="tool_axe" data-slice="0" class="tool" data-tool="axe"></div>
     <div data-piece="tool_pickaxe" data-slice="0" class="tool" data-tool="pickaxe"></div>
     <div data-piece="tool_net" data-slice="0" class="tool" data-tool="net"></div>

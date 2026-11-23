@@ -8,7 +8,7 @@ El **jetpack** vale en cualquier ruta. Se alterna con la tecla `J` o, con el ove
 
 La división es deliberada: `push_hud_update` publica lo que el jugador está haciendo mediante el servicio de UI (`UiEvent::HudUpdate`), y `draw_hud` renderiza lo que ese servicio retiene, incluidos los mensajes efímeros, que se vacían al pintarlos.
 
-El HUD del juego (barra de slots, aviso, botón de acción, globos y números voladores) vive en el subdominio [`clay/`](clay/mod.md): el kit de UI exportado a sprites (`content/ui/`) y dibujado con Macroquad, igual en nativo y en web.
+El HUD del juego (barra de slots, globo de aviso, botón de acción y números voladores) vive en el subdominio [`clay/`](clay/mod.md): el kit de UI exportado a sprites (`content/ui/`) y dibujado con Macroquad, igual en nativo y en web.
 
 ## Catálogo de API pública
 

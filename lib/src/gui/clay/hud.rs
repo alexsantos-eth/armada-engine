@@ -1,33 +1,23 @@
-//! The native HUD's animation state: the comic bubble, the gains flying to their slots, the
+//! The native HUD's animation state: the warning bubble, the gains flying to their slots, the
 //! slots' bumps and the counts still in the air, from each frame's `UiFrame` and `UiGain`.
 //! Pure; `draw.rs` paints it.
 
 use std::collections::HashMap;
 
 use super::frame::{UiFrame, UiGain};
+use super::layout::HudLayout;
 use super::motion;
 
-/// How far above the player's chest the bubble's tail points.
-pub(crate) const BUBBLE_LIFT: f32 = 40.0;
-
-/// What the bubble says.
+/// What the warning bubble says.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum BubbleContent {
-    Gain {
-        item: String,
-        name: String,
-        amount: u32,
-    },
     Warning(String),
 }
 
-/// The bubble on screen: what it says, the tip of its tail and how long it has been up. A
-/// warning is placed over the bar when it is drawn (`x`, `y` unused).
+/// The warning bubble on screen and how long it has been up.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Bubble {
     pub(crate) content: BubbleContent,
-    pub(crate) x: f32,
-    pub(crate) y: f32,
     pub(crate) age_ms: f64,
 }
 
@@ -39,6 +29,20 @@ pub(crate) struct Flight {
     pub(crate) from: (f32, f32),
     pub(crate) slot: usize,
     pub(crate) age_ms: f64,
+}
+
+impl Flight {
+    /// The screen point the flight animates to: the backpack icon when the inventory is the
+    /// folded mobile one, otherwise the slot holding the item.
+    pub(crate) fn destination(&self, layout: &HudLayout) -> Option<(f32, f32)> {
+        if let Some(rect) = layout.backpack {
+            return Some((rect.x + rect.w / 2.0, rect.y + rect.h / 2.0));
+        }
+        layout
+            .slots
+            .get(self.slot)
+            .map(|rect| (rect.x + rect.w / 2.0, rect.y + rect.h / 2.0))
+    }
 }
 
 /// Everything the native HUD animates.
@@ -58,22 +62,12 @@ pub(crate) struct ClayHud {
 }
 
 impl ClayHud {
-    /// Takes this frame's HUD state and pick-ups on a screen of `size`: each gain pops the bubble
-    /// over the player and starts a flight to the slot holding its item (or the first empty
-    /// one); a new full-inventory note pops a warning.
+    /// Takes this frame's HUD state and pick-ups on a screen of `size`: each gain starts a
+    /// flight to the slot holding its item (or the first empty one); a new full-inventory note
+    /// pops a warning.
     pub(crate) fn apply(&mut self, frame: &UiFrame, gains: &[UiGain], size: (f32, f32)) {
         for gain in gains {
             let from = (gain.x * size.0, gain.y * size.1);
-            self.bubble = Some(Bubble {
-                content: BubbleContent::Gain {
-                    item: gain.item.clone(),
-                    name: gain.name.clone(),
-                    amount: gain.amount,
-                },
-                x: from.0,
-                y: from.1 - BUBBLE_LIFT,
-                age_ms: 0.0,
-            });
             let slot = frame
                 .slots
                 .iter()
@@ -93,8 +87,6 @@ impl ClayHud {
             if let Some(text) = &frame.note {
                 self.bubble = Some(Bubble {
                     content: BubbleContent::Warning(text.clone()),
-                    x: 0.0,
-                    y: 0.0,
                     age_ms: 0.0,
                 });
             }

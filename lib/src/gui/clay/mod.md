@@ -10,13 +10,13 @@ Todo es puro y se prueba (`skin`, `slice`, `layout`, `motion`, `hud`) salvo `dra
 
 ### `mod.rs`
 
-- Reexporta `draw_clay_hud`, `draw_clay_stick`, `UiFrame`, `UiGain`, `UiPrompt`, `UiStack`, `ClayHud`, `HudLayout` y `ClaySkin`.
+- Reexporta `draw_clay_hud`, `draw_clay_stick`, `UiFrame`, `UiGain`, `UiAction`, `UiStack`, `ClayHud`, `HudLayout` y `ClaySkin`.
 
 ### `frame.rs`
 
 - [`UiStack`](frame.rs#L6) — Una pila en un slot: id del item, nombre y cantidad.
-- [`UiPrompt`](frame.rs#L15) — El aviso: texto, verbo y herramienta del botón de acción, progreso (0–1) mientras se trabaja y si una herramienta que falta lo bloquea.
-- [`UiFrame`](frame.rs#L25) — Lo que muestra el HUD este fotograma: visible, controles táctiles en pantalla, slots, aviso y nota.
+- [`UiAction`](frame.rs#L18) — El botón de acción del HUD: la herramienta y el verbo del harvest.
+- [`UiFrame`](frame.rs#L25) — Lo que muestra el HUD este fotograma: visible, controles táctiles en pantalla, slots, progreso (0–1) y dónde satan, acción del botón de acción y nota.
 - [`UiGain`](frame.rs#L35) — Una recogida: item, nombre, cantidad y de dónde sale volando, como fracción de la pantalla.
 
 ### `skin.rs`
@@ -70,21 +70,21 @@ Todo es puro y se prueba (`skin`, `slice`, `layout`, `motion`, `hud`) salvo `dra
 
 ### `hud.rs`
 
-- [`ClayHud`](hud.rs#L46) — El estado de las animaciones: globo, vuelos, rebotes por slot, cuentas en el aire, reloj y si el botón está pulsado.
-- [`ClayHud::apply`](hud.rs#L62) — Toma el fotograma y las ganancias: cada ganancia abre el globo sobre el jugador y lanza un vuelo al slot que tiene el ítem (o al primero vacío); una nota nueva de inventario lleno abre un globo de aviso.
+- [`ClayHud`](hud.rs#L43) — El estado de las animaciones: globo de aviso, vuelos, rebotes por slot, cuentas en el aire, reloj y si el botón está pulsado.
+- [`ClayHud::apply`](hud.rs#L59) — Toma el fotograma y las ganancias: cada ganancia lanza un vuelo al slot que tiene el ítem (o al primero vacío); una nota nueva de inventario lleno abre el globo de aviso.
   - Firma: `pub(crate) fn apply(&mut self, frame: &UiFrame, gains: &[UiGain], size: (f32, f32)) {`
-- [`ClayHud::advance`](hud.rs#L105) — Envejece todo; un vuelo que aterriza entrega su cuenta y hace rebotar el slot.
+- [`ClayHud::advance`](hud.rs#L86) — Envejece todo; un vuelo que aterriza entrega su cuenta y hace rebotar el slot.
   - Firma: `pub(crate) fn advance(&mut self, elapsed_ms: f64) {`
-- [`ClayHud::shown_count`](hud.rs#L138) — Lo que muestra un slot: su cuenta menos lo que aún vuela hacia él.
+- [`ClayHud::shown_count`](hud.rs#L123) — Lo que muestra un slot: su cuenta menos lo que aún vuela hacia él.
   - Firma: `pub(crate) fn shown_count(&self, item: &str, count: u32) -> u32 {`
-- [`ClayHud::bump_age`](hud.rs#L143) — Cuánto lleva rebotando un slot, si rebota.
+- [`ClayHud::bump_age`](hud.rs#L128) — Cuánto lleva rebotando un slot, si rebota.
   - Firma: `pub(crate) fn bump_age(&self, slot: usize) -> Option<f64> {`
-- [`BubbleContent`](hud.rs#L15), [`Bubble`](hud.rs#L27), [`Flight`](hud.rs#L36) — Qué dice el globo, el globo en pantalla y un vuelo en curso.
-- [`BUBBLE_LIFT`](hud.rs#L11) — Cuánto por encima del pecho del jugador apunta la cola del globo.
+- [`Flight`](hud.rs#L35) — Un vuelo en curso: item, cantidad, de dónde sale, a qué slot va (o, con los controles táctiles, a la mochila) y a cuánto tiempo.
+- [`BubbleContent`](hud.rs#L13), [`Bubble`](hud.rs#L24) — Qué dice el globo de aviso.
 
 ### `draw.rs`
 
 - [`draw_clay_stick`](draw.rs#L462) — Pinta el joystick táctil flotante con el kit: la base y el mando (rojo en carrera) y, si hay algo al alcance, su herramienta sobre el mando, que se balancea mientras el joystick quieto recolecta. Invisible mientras el stick descansa idle. No-op si no hay dedo.
   - Firma: `pub(crate) fn draw_clay_stick( skin: &ClaySkin, view: &StickView, tool: Option<&str>, clock_ms: f64, ) {`
-- [`draw_clay_hud`](draw.rs#L528) — Pinta el aviso, el panel y los slots (con rebote, icono y cuenta con contorno), el botón de acción (aplastado si se pulsa, herramienta que se balancea mientras se trabaja), el globo y los números voladores.
+- [`draw_clay_hud`](draw.rs#L425) — Pinta la barra de progreso sobre la entidad que se está trabajando, el panel y los slots (con rebote, icono y cuenta con contorno), el botón de acción (aplastado si se pulsa, herramienta que se balancea mientras se trabaja), el globo de aviso y los números voladores.
   - Firma: `pub(crate) fn draw_clay_hud(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, layout: &HudLayout) {`

@@ -1,9 +1,9 @@
-//! Tests for the native HUD's animation state: bubbles, flights, bumps and counts in the air.
+//! Tests for the native HUD's animation state: flights, bumps and counts in the air.
 
 use super::*;
-use crate::gui::clay::{UiFrame, UiGain, UiStack};
+use crate::gui::clay::{HudLayout, UiFrame, UiGain, UiStack};
 
-fn frame(wood: u32) -> UiFrame {
+fn frame() -> UiFrame {
     UiFrame {
         visible: true,
         touch: false,
@@ -12,11 +12,13 @@ fn frame(wood: u32) -> UiFrame {
             Some(UiStack {
                 item: "wood".into(),
                 name: "Madera".into(),
-                count: wood,
+                count: 6,
             }),
             None,
         ],
-        prompt: None,
+        progress: None,
+        progress_at: None,
+        action: None,
         note: None,
     }
 }
@@ -32,19 +34,9 @@ fn gain(amount: u32) -> UiGain {
 }
 
 #[test]
-fn a_gain_pops_a_bubble_over_the_player_and_starts_a_flight_to_its_slot() {
+fn a_gain_starts_a_flight_to_its_slot() {
     let mut hud = ClayHud::default();
-    hud.apply(&frame(6), &[gain(3)], (800.0, 600.0));
-    let bubble = hud.bubble.as_ref().unwrap();
-    assert_eq!(
-        bubble.content,
-        BubbleContent::Gain {
-            item: "wood".into(),
-            name: "Madera".into(),
-            amount: 3
-        }
-    );
-    assert_eq!((bubble.x, bubble.y), (400.0, 300.0 - BUBBLE_LIFT));
+    hud.apply(&frame(), &[gain(3)], (800.0, 600.0));
     assert_eq!(hud.flights.len(), 1);
     assert_eq!(hud.flights[0].slot, 1);
     assert_eq!(hud.flights[0].from, (400.0, 300.0));
@@ -53,7 +45,7 @@ fn a_gain_pops_a_bubble_over_the_player_and_starts_a_flight_to_its_slot() {
 #[test]
 fn a_count_in_the_air_is_not_in_its_slot_until_it_lands() {
     let mut hud = ClayHud::default();
-    hud.apply(&frame(6), &[gain(3)], (800.0, 600.0));
+    hud.apply(&frame(), &[gain(3)], (800.0, 600.0));
     assert_eq!(hud.shown_count("wood", 6), 3);
     hud.advance(motion::FLY_MS + 1.0);
     assert_eq!(hud.shown_count("wood", 6), 6);
@@ -66,22 +58,38 @@ fn a_new_item_flies_to_the_first_empty_slot() {
     let mut hud = ClayHud::default();
     let mut stone = gain(2);
     stone.item = "stone".into();
-    hud.apply(&frame(6), &[stone], (800.0, 600.0));
+    hud.apply(&frame(), &[stone], (800.0, 600.0));
     assert_eq!(hud.flights[0].slot, 0);
 }
 
 #[test]
-fn the_bubble_goes_away_once_it_has_left() {
+fn a_flight_on_a_desktop_lands_on_its_slot() {
     let mut hud = ClayHud::default();
-    hud.apply(&frame(6), &[gain(1)], (800.0, 600.0));
-    hud.advance(motion::BUBBLE_HOLD_MS + motion::OUT_MS + 1.0);
-    assert!(hud.bubble.is_none());
+    let desktop = HudLayout::new(1280.0, 800.0, 4, false);
+    hud.apply(&frame(), &[gain(3)], (1280.0, 800.0));
+    let slot = desktop.slots[1];
+    assert_eq!(
+        hud.flights[0].destination(&desktop),
+        Some((slot.x + slot.w / 2.0, slot.y + slot.h / 2.0))
+    );
+}
+
+#[test]
+fn a_flight_on_mobile_lands_on_the_backpack_icon() {
+    let mut hud = ClayHud::default();
+    let mobile = HudLayout::new(390.0, 844.0, 3, true);
+    hud.apply(&frame(), &[gain(3)], (390.0, 844.0));
+    let backpack = mobile.backpack.unwrap();
+    assert_eq!(
+        hud.flights[0].destination(&mobile),
+        Some((backpack.x + backpack.w / 2.0, backpack.y + backpack.h / 2.0))
+    );
 }
 
 #[test]
 fn the_full_inventory_note_pops_a_warning_once_while_it_lasts() {
     let mut hud = ClayHud::default();
-    let mut full = frame(6);
+    let mut full = frame();
     full.note = Some("Inventario lleno".into());
     hud.apply(&full, &[], (800.0, 600.0));
     assert!(
@@ -93,7 +101,7 @@ fn the_full_inventory_note_pops_a_warning_once_while_it_lasts() {
         hud.bubble.as_ref().unwrap().age_ms >= 500.0,
         "the same note does not pop again"
     );
-    hud.apply(&frame(6), &[], (800.0, 600.0));
+    hud.apply(&frame(), &[], (800.0, 600.0));
     hud.apply(&full, &[], (800.0, 600.0));
     assert_eq!(
         hud.bubble.as_ref().unwrap().age_ms,

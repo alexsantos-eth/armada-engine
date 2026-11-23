@@ -1,10 +1,10 @@
-//! Tests for the hotbar's pure rules: where the slots sit, what each says and the gather prompt.
+//! Tests for the hotbar's pure rules: where the slots sit, what each says and the progress.
 
 use super::*;
 use iso::grid::WorldCoord;
-use iso::harvest::{HarvestBlock, HarvestStatus, HarvestTarget};
+use iso::harvest::{HarvestStatus, HarvestTarget};
 use iso::inventory::ItemStack;
-use iso::items::{HarvestYield, ItemCatalog, ToolKind};
+use iso::items::{HarvestYield, ItemCatalog};
 
 fn items() -> ItemCatalog {
     let entities: iso::entities::EntityCatalog =
@@ -59,45 +59,24 @@ fn a_slot_shows_its_item_s_name_and_count() {
 }
 
 #[test]
-fn nothing_in_reach_prompts_nothing() {
-    assert_eq!(prompt(&HarvestStatus::Idle, &items()), None);
+fn nothing_in_reach_shows_no_progress() {
+    assert_eq!(prompt(&HarvestStatus::Idle), None);
 }
 
 #[test]
-fn a_target_in_reach_tells_the_key_and_what_it_gives() {
-    let ready = prompt(&HarvestStatus::Ready { target: tree() }, &items()).unwrap();
-    assert_eq!(ready.text, "Manten E: Madera");
-    assert_eq!(ready.progress, None);
+fn a_target_in_reach_shows_no_progress_bar() {
+    assert_eq!(prompt(&HarvestStatus::Ready { target: tree() }), None);
 }
 
 #[test]
 fn work_under_way_shows_its_share() {
-    let working = prompt(
-        &HarvestStatus::Working {
-            target: tree(),
-            progress: 100,
-            total: 400,
-        },
-        &items(),
-    )
+    let prompt = prompt(&HarvestStatus::Working {
+        target: tree(),
+        progress: 100,
+        total: 400,
+    })
     .unwrap();
-    assert_eq!(working.progress, Some(0.25));
-}
-
-#[test]
-fn a_blocked_target_says_why() {
-    let tool = prompt(
-        &HarvestStatus::Blocked {
-            target: tree(),
-            reason: HarvestBlock::NeedsTool {
-                kind: ToolKind::Pickaxe,
-                tier: 3,
-            },
-        },
-        &items(),
-    )
-    .unwrap();
-    assert_eq!(tool.text, "Necesitas pico nivel 3");
+    assert_eq!(prompt.progress, 0.25);
 }
 
 #[test]

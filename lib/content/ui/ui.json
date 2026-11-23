@@ -44,20 +44,6 @@
       "pad": 24,
       "slice": 0
     },
-    "prompt": {
-      "file": "ui/prompt.png",
-      "width": 388,
-      "height": 168,
-      "pad": 24,
-      "slice": 52
-    },
-    "prompt_blocked": {
-      "file": "ui/prompt_blocked.png",
-      "width": 388,
-      "height": 168,
-      "pad": 24,
-      "slice": 52
-    },
     "bubble": {
       "file": "ui/bubble.png",
       "width": 528,
@@ -125,13 +111,6 @@
       "file": "ui/badge.png",
       "width": 100,
       "height": 100,
-      "pad": 24,
-      "slice": 0
-    },
-    "kbd": {
-      "file": "ui/kbd.png",
-      "width": 92,
-      "height": 88,
       "pad": 24,
       "slice": 0
     },
