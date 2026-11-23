@@ -32,3 +32,7 @@ __pycache__/
 *.njsproj
 *.sln
 *.sw?
+
+# The rigged player model (Meshy FBX) the sheets are rendered from; kept out of git like model.npz
+artifacts/vox/player/player_rig/*.fbx
+artifacts/vox/player/player_rig/poses.json

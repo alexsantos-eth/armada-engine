@@ -1,0 +1,21 @@
+{
+  "world": "procedural",
+  "window": [1280, 800],
+  "zoom": 3.0,
+  "phase": "day",
+  "steps": [
+    "settle",
+    { "shot": "rig-idle.png" },
+    { "walk": { "dir": [-1, 0], "frames": 14 } },
+    { "shot": "rig-walk.png" },
+    { "wait": { "frames": 30 } },
+    "jump",
+    { "wait": { "frames": 6 } },
+    { "shot": "rig-jump.png" },
+    { "wait": { "frames": 60 } },
+    { "gather": { "frames": 12 } },
+    { "shot": "rig-gather.png" }
+  ],
+  "out": "shots",
+  "maxFrames": 1800
+}
