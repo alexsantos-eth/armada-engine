@@ -39,7 +39,9 @@ la barra de slots de abajo muestra el inventario y, encima, qué hay al alcance,
 o el progreso (los recursos y las reglas viven en `content/json/items.json`). En dispositivos táctiles hay un único joystick analógico
 flotante: el primer toque lo coloca bajo el pulgar (sin dedo descansa abajo a la derecha); a media
 deflexión se camina a media velocidad y a tope enciende la carrera, el equivalente a `Shift`.
-Mantenerlo quieto recolecta, un doble toque salta y un triple toque hace el doble salto. Se
+Mantenerlo quieto recolecta, un doble toque salta y un triple toque hace el doble salto. Para
+saltar en marcha con una sola mano basta soltar y tocar: al soltar se sigue un instante en la
+misma dirección y el toque salta hacia allí. Se
 muestra en dispositivos de puntero grueso o tras el primer toque (`/` incluido, porque son
 entrada de juego); la build web detecta el puntero grueso con el import FFI `iso_pointer_coarse`.
 En esas mismas plataformas la escena se dibuja alejada un poco (la casilla al 70 % de la

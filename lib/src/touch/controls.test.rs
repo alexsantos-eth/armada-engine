@@ -109,11 +109,12 @@ fn dragging_walks_and_releasing_stops() {
         &[finger(1, RawTouchPhase::Moved, radius(), 0.0)],
         32.0,
     );
-    let released = step(
+    step(
         &mut controls,
         &[finger(1, RawTouchPhase::Ended, radius(), 0.0)],
         48.0,
     );
+    let released = step(&mut controls, &[], 48.0 + COAST_MS + 1.0);
 
     assert!((half.magnitude - 0.5).abs() < 1e-6);
     assert!(!half.run);
@@ -292,7 +293,7 @@ fn a_tap_that_drags_is_not_a_tap() {
         80.0,
     );
 
-    let next = tap(&mut controls, 2, 150.0);
+    let next = tap(&mut controls, 2, 80.0 + COAST_MS + 1.0);
 
     assert!(!next.jump_pressed);
 }
@@ -367,4 +368,110 @@ fn a_cancelled_or_missing_touch_releases_the_stick() {
     let gone = step(&mut controls, &[], 1016.0);
     assert_eq!(gone, TouchFrame::default());
     assert!(!controls.view(WIDTH, HEIGHT).active);
+}
+
+fn walk_then_let_go(controls: &mut TouchControls) -> TouchFrame {
+    step(
+        controls,
+        &[finger(1, RawTouchPhase::Started, 0.0, 0.0)],
+        0.0,
+    );
+    let walking = step(
+        controls,
+        &[finger(1, RawTouchPhase::Moved, radius(), 0.0)],
+        400.0,
+    );
+    step(
+        controls,
+        &[finger(1, RawTouchPhase::Ended, radius(), 0.0)],
+        416.0,
+    );
+    walking
+}
+
+#[test]
+fn letting_go_of_a_walking_stick_coasts_for_a_moment() {
+    let mut controls = TouchControls::new(false);
+    let walking = walk_then_let_go(&mut controls);
+
+    let coasting = step(&mut controls, &[], 416.0 + COAST_MS - 1.0);
+    let stopped = step(&mut controls, &[], 416.0 + COAST_MS + 1.0);
+
+    assert_eq!(coasting.walk, walking.walk);
+    assert!(!coasting.jump_pressed);
+    assert_eq!(stopped, TouchFrame::default());
+}
+
+#[test]
+fn a_touch_while_coasting_jumps_the_same_way() {
+    let mut controls = TouchControls::new(false);
+    let walking = walk_then_let_go(&mut controls);
+
+    let jump = step(
+        &mut controls,
+        &[finger(2, RawTouchPhase::Started, 0.0, 0.0)],
+        500.0,
+    );
+    let held = step(
+        &mut controls,
+        &[finger(2, RawTouchPhase::Stationary, 0.0, 0.0)],
+        900.0,
+    );
+
+    assert!(jump.jump_pressed);
+    assert!(jump.jump_held);
+    assert_eq!(jump.walk, walking.walk);
+    assert_eq!(held.walk, walking.walk);
+    assert!(!held.gather_held);
+}
+
+#[test]
+fn moving_after_a_coast_jump_steers_again() {
+    let mut controls = TouchControls::new(false);
+    let walking = walk_then_let_go(&mut controls);
+    step(
+        &mut controls,
+        &[finger(2, RawTouchPhase::Started, 0.0, 0.0)],
+        500.0,
+    );
+
+    let steered = step(
+        &mut controls,
+        &[finger(2, RawTouchPhase::Moved, 0.0, radius())],
+        516.0,
+    );
+
+    assert_eq!(steered.magnitude, 1.0);
+    assert_ne!(steered.walk, walking.walk);
+    assert!(steered.jump_held);
+}
+
+#[test]
+fn a_tap_after_a_coast_jump_jumps_again_and_keeps_the_way() {
+    let mut controls = TouchControls::new(false);
+    let walking = walk_then_let_go(&mut controls);
+
+    let first = tap(&mut controls, 2, 500.0);
+    let between = step(&mut controls, &[], 600.0);
+    let second = tap(&mut controls, 3, 700.0);
+
+    assert!(first.jump_pressed);
+    assert_eq!(between.walk, walking.walk);
+    assert!(second.jump_pressed);
+    assert_eq!(second.walk, walking.walk);
+}
+
+#[test]
+fn a_touch_after_the_coast_does_not_jump() {
+    let mut controls = TouchControls::new(false);
+    walk_then_let_go(&mut controls);
+
+    let late = step(
+        &mut controls,
+        &[finger(2, RawTouchPhase::Started, 0.0, 0.0)],
+        416.0 + COAST_MS + 1.0,
+    );
+
+    assert!(!late.jump_pressed);
+    assert_eq!(late.magnitude, 0.0);
 }
