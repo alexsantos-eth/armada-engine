@@ -1,6 +1,15 @@
-s("[brown ~ brown ~ ~ ~ ~ ~] ~ ~ ~")
-  .attack(0.001)
-  .decay(0.018)
-  .sustain(0)
-  .lpf(900)
-  .gain(0.7)
+stack(
+  s("[white ~ white ~ ~ white ~ ~] ~ ~ ~")
+    .attack(0.0005)
+    .decay(0.006)
+    .sustain(0)
+    .hpf(2500)
+    .lpf(7000)
+    .gain(0.35),
+  note("[g6 ~ d6 ~ ~ a6 ~ ~] ~ ~ ~")
+    .s("triangle")
+    .attack(0.0005)
+    .decay(0.01)
+    .sustain(0)
+    .gain(0.12),
+)
