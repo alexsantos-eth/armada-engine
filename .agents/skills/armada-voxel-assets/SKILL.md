@@ -10,8 +10,8 @@ tramo de tronco, una fruta) y el modelo armado se renderiza a sprite. Todas las 
 comparten las mismas piezas, la misma paleta y la misma luz, y por eso se ven de la misma
 familia. No se llama a ningún modelo de imagen y no cuesta nada.
 
-Este flujo es el oficial. `iso-asset-generator` (SVG dibujado + pintado fal.ai) está obsoleto —
-conservado solo como referencia histórica—; no uses nada del flujo antiguo para un asset nuevo.
+Este flujo es el oficial. El flujo antiguo (SVG dibujado + pintado fal.ai, skill `iso-asset-generator`)
+se retiró del repo; no uses nada de él para un asset nuevo.
 Todas las entidades (naturaleza, piedras rúnicas, casas y edificios) están migradas y viven en `lib/assets/`, junto con el terreno y los dos sprites fijos —el patrón de nubes y el téxel blanco— (ver `lib/docs/ASSET-PIPELINE.md`).
 
 ```
