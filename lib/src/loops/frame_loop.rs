@@ -26,6 +26,15 @@ fn action_pressed(layout: &crate::gui::clay::HudLayout) -> bool {
         })
 }
 
+/// Whether the mouse or a finger tapped the HUD's backpack icon.
+fn backpack_pressed(layout: &crate::gui::clay::HudLayout) -> bool {
+    let (mx, my) = mouse_position();
+    (is_mouse_button_pressed(MouseButton::Left) && layout.backpack_hit(mx, my))
+        || touches().iter().any(|touch| {
+            touch.phase == TouchPhase::Started && layout.backpack_hit(touch.position.x, touch.position.y)
+        })
+}
+
 /// How long a scripted frame counts as, whatever the window measured: one fixed step, so a
 /// scene's shots do not depend on how fast the machine drew them.
 const SCRIPTED_FRAME_MS: f64 = iso::simulation::STEP_MS;
@@ -141,6 +150,9 @@ pub(crate) async fn run(mut game: Game) {
             game.clay_hud.advance(frame_ms);
             game.clay_hud.held =
                 frame.prompt.as_ref().is_some_and(|p| !p.blocked) && action_pressed(&layout);
+            if backpack_pressed(&layout) {
+                game.clay_hud.inventory_open = !game.clay_hud.inventory_open;
+            }
             crate::gui::clay::draw_clay_hud(skin, &game.clay_hud, &frame, &layout);
             stick_tool = frame
                 .prompt

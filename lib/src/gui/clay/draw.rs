@@ -447,6 +447,15 @@ fn draw_flights(skin: &ClaySkin, hud: &ClayHud, layout: &HudLayout) {
     }
 }
 
+/// Paints the backpack icon that unfolds the inventory on mobile.
+fn draw_backpack(skin: &ClaySkin, hud: &ClayHud, layout: &HudLayout) {
+    let Some(rect) = layout.backpack.as_ref() else {
+        return;
+    };
+    let alpha = if hud.inventory_open { 1.0 } else { 0.85 };
+    draw_piece(skin, "backpack", *rect, alpha);
+}
+
 /// The sprint lock's radius as a share of the stick's radius (`--ac-stick-lock` / `--ac-stick`).
 const LOCK_SIZE: f32 = 40.0 / 120.0;
 
@@ -532,14 +541,20 @@ pub(crate) fn draw_clay_hud(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, lay
     if let Some(prompt) = frame.prompt.as_ref() {
         draw_prompt(skin, prompt, layout, frame.touch);
     }
-    draw_piece(skin, "hotbar", layout.panel, 1.0);
-    draw_slots(skin, hud, frame, layout);
+    // On mobile the inventory stays folded until the backpack icon is tapped;
+    // on desktop it is always visible.
+    let show_slots = !frame.touch || hud.inventory_open;
+    if show_slots {
+        draw_piece(skin, "hotbar", layout.panel, 1.0);
+        draw_slots(skin, hud, frame, layout);
+    }
     if let (Some(prompt), Some(rect)) = (
         frame.prompt.as_ref().filter(|prompt| !prompt.blocked),
         layout.action,
     ) {
         draw_action(skin, hud, prompt, rect);
     }
+    draw_backpack(skin, hud, layout);
     draw_bubble(skin, hud, layout);
     draw_flights(skin, hud, layout);
 }

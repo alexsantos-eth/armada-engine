@@ -3,7 +3,7 @@
 //! it fits, as on a landscape phone, else rows of six) and no action button (holding the stick
 //! gathers). Pure; tested in `layout.test.rs`.
 
-use macroquad::math::Rect;
+use macroquad::math::{Rect, Vec2};
 
 /// Gap between the bottom of the screen and the bar.
 pub(crate) const BOTTOM_MARGIN: f32 = 18.0;
@@ -24,6 +24,10 @@ pub(crate) const SLOT_ASPECT: f32 = 1.06;
 const TOUCH_ROW_SLOT: (f32, f32) = (34.0, 44.0);
 /// The action button's side on a desktop.
 const ACTION_SIZE: f32 = 104.0;
+/// The backpack icon's side on mobile (touch controls).
+const BACKPACK_SIZE: f32 = 56.0;
+/// Gap between the backpack icon and the screen's corner.
+const BACKPACK_MARGIN: f32 = 20.0;
 
 /// The HUD's rectangles for one screen size.
 #[derive(Clone, Debug, PartialEq)]
@@ -37,6 +41,8 @@ pub(crate) struct HudLayout {
     pub(crate) prompt_below: bool,
     /// The action button, on a desktop only.
     pub(crate) action: Option<Rect>,
+    /// The backpack icon's rectangle (mobile only; `None` on desktop).
+    pub(crate) backpack: Option<Rect>,
 }
 
 impl HudLayout {
@@ -99,6 +105,17 @@ impl HudLayout {
                 ACTION_SIZE,
             )
         });
+        let backpack = if touch {
+            let size = BACKPACK_SIZE;
+            Some(Rect::new(
+                width - BACKPACK_MARGIN - size,
+                BACKPACK_MARGIN,
+                size,
+                size,
+            ))
+        } else {
+            None
+        };
         Self {
             slot,
             slots,
@@ -106,6 +123,7 @@ impl HudLayout {
             prompt_anchor,
             prompt_below,
             action,
+            backpack,
         }
     }
 
@@ -115,6 +133,14 @@ impl HudLayout {
             let r = action.w / 2.0;
             (x - (action.x + r)).hypot(y - (action.y + r)) <= r
         })
+    }
+
+    /// Whether `(x, y)` lands on the backpack icon.
+    pub(crate) fn backpack_hit(&self, x: f32, y: f32) -> bool {
+        let Some(rect) = self.backpack else {
+            return false;
+        };
+        rect.contains(Vec2::new(x, y))
     }
 }
 
