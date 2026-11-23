@@ -2,14 +2,16 @@
 //!
 //! The platform adapter feeds raw touches in. The first finger down becomes the stick and its
 //! base appears under it; dragging walks (and runs past the threshold), and sliding past
-//! `LOCK_REACH` locks the run that way until a finger slides back to the centre (while locked,
-//! a tap jumps and another tap jumps again in the air). The same finger carries the other actions: held
-//! still it gathers, and taps chain into jumps (the second tap of a quick chain jumps, the third
-//! jumps again in the air). Letting go of a walking stick coasts the same way for `COAST_MS`, and
-//! a touch inside that window jumps that way and keeps walking it until the finger moves, so one
-//! thumb can run and jump. Other fingers are ignored while the stick is down. Drawing the
-//! plain fallback lives here too, as macroquad calls with no decisions; the rules are all in
-//! `update` and in the tests.
+//! `LOCK_REACH` locks the run that way until a finger slides back to the centre. The same stick
+//! moves the player like the keyboard does, but analog: the walk vector scales with the
+//! deflection. While the stick moves the player, a new touch anywhere on the screen jumps, and
+//! a second one while still moving jumps again: the double jump. The game tells the controls
+//! where the inventory button sits; a touch in it neither jumps nor places the stick. Holding
+//! the stick still gathers. Other fingers are ignored while the stick is down, except the jump
+//! touches. Letting go of a walking stick coasts the same way for `COAST_MS`; a touch while
+//! coasting places the stick and keeps walking without jumping. Drawing the plain fallback
+//! lives here too, as macroquad calls with no decisions; the rules are all in `update` and in
+//! the tests.
 
 use iso::projection::GridPoint;
 use macroquad::prelude::*;
@@ -19,12 +21,8 @@ use super::stick::{DEADZONE, StickReading, clamp_offset, stick_reading};
 
 /// How long the stick must rest in its dead zone before it gathers, in milliseconds.
 pub(crate) const HOLD_MS: f64 = 300.0;
-/// The longest touch that still counts as a tap, in milliseconds.
-pub(crate) const TAP_MS: f64 = 250.0;
-/// The longest gap between a tap and the next touch for both to chain, in milliseconds.
-pub(crate) const TAP_GAP_MS: f64 = 320.0;
 /// How long the player keeps walking the same way after the finger leaves a walking stick, in
-/// milliseconds; a touch inside that window jumps that way.
+/// milliseconds.
 pub(crate) const COAST_MS: f64 = 300.0;
 /// How far past the base centre, in stick radii, the finger must slide to lock the run.
 pub(crate) const LOCK_REACH: f32 = 1.6;
@@ -80,11 +78,9 @@ struct Stick {
     id: u64,
     center: (f32, f32),
     finger: (f32, f32),
-    started_ms: f64,
     still_since_ms: f64,
     moved: bool,
-    jumping: bool,
-    /// The walk a jump out of a coast keeps until the finger moves the stick.
+    /// The walk a coast keeps while the stick is placed on it.
     carry: Option<StickReading>,
     /// What the stick asked for last frame.
     last: StickReading,
@@ -98,11 +94,10 @@ struct Lock {
     touch: Option<LockTouch>,
 }
 
-/// A finger on the locked stick: a tap jumps, a slide back to the centre unlocks.
+/// A finger on the locked stick: a slide back to the centre unlocks.
 #[derive(Clone, Copy, Debug)]
 struct LockTouch {
     id: u64,
-    started_ms: f64,
     moved: bool,
     /// Whether it came down outside the dead zone, so reaching the centre is a slide back.
     from_outside: bool,
@@ -115,16 +110,16 @@ struct Coast {
     until_ms: f64,
 }
 
-/// The touch controls: visibility, the stick finger and the tap chain.
+/// The touch controls: visibility, the stick finger and the jump touches.
 pub(crate) struct TouchControls {
     visible: bool,
     stick: Option<Stick>,
     run_active: bool,
     gathering: bool,
-    taps: u32,
-    last_tap_ms: Option<f64>,
     coast: Option<Coast>,
     lock: Option<Lock>,
+    /// The inventory button's rect: touches inside it neither jump nor place the stick.
+    jump_block: Option<Rect>,
 }
 
 const STICK_FILL: Color = Color::from_rgba(255, 255, 255, 28);
@@ -141,10 +136,9 @@ impl TouchControls {
             stick: None,
             run_active: false,
             gathering: false,
-            taps: 0,
-            last_tap_ms: None,
             coast: None,
             lock: None,
+            jump_block: None,
         }
     }
 
@@ -152,6 +146,18 @@ impl TouchControls {
     /// pointer, or the player has touched the screen at least once.
     pub(crate) fn visible(&self) -> bool {
         self.visible
+    }
+
+    /// The rect the game paints the inventory button in: a touch inside it neither jumps nor
+    /// places the stick — the game's inventory toggle is what it is for.
+    pub(crate) fn set_jump_block(&mut self, rect: Option<Rect>) {
+        self.jump_block = rect;
+    }
+
+    /// Whether `touch` lands on the inventory button's rect.
+    fn jump_blocked(&self, touch: &RawTouch) -> bool {
+        self.jump_block
+            .is_some_and(|rect| rect.contains(Vec2::new(touch.x, touch.y)))
     }
 
     /// Advances the controls with this frame's touches at `now_ms` and returns what they ask for.
@@ -174,30 +180,19 @@ impl TouchControls {
         let mut jump_pressed = false;
         if self.stick.is_none()
             && let Some(touch) = touches.iter().find(|t| t.phase == RawTouchPhase::Started)
+            && !self.jump_blocked(touch)
         {
             let carry = self
                 .coast
                 .take()
                 .filter(|coast| now_ms <= coast.until_ms)
                 .map(|coast| coast.reading);
-            let chained = self
-                .last_tap_ms
-                .is_some_and(|tap| now_ms - tap <= TAP_GAP_MS);
-            self.taps = match (carry, chained) {
-                (Some(_), _) => 2,
-                (None, true) => self.taps + 1,
-                (None, false) => 1,
-            };
-            let jumping = self.taps >= 2;
-            jump_pressed = jumping;
             self.stick = Some(Stick {
                 id: touch.id,
                 center: (touch.x, touch.y),
                 finger: (touch.x, touch.y),
-                started_ms: now_ms,
                 still_since_ms: now_ms,
                 moved: false,
-                jumping,
                 carry,
                 last: carry.unwrap_or_default(),
             });
@@ -219,11 +214,6 @@ impl TouchControls {
             t.id == stick.id && !matches!(t.phase, RawTouchPhase::Ended | RawTouchPhase::Cancelled)
         });
         let Some(touch) = live else {
-            let tap = !stick.moved && now_ms - stick.started_ms <= TAP_MS;
-            self.last_tap_ms = tap.then_some(now_ms);
-            if !tap {
-                self.taps = 0;
-            }
             self.coast = (stick.last.magnitude > 0.0).then_some(Coast {
                 reading: stick.last,
                 until_ms: now_ms + COAST_MS,
@@ -255,7 +245,6 @@ impl TouchControls {
                 dir: (dx / reach, dy / reach),
                 touch: Some(LockTouch {
                     id: stick.id,
-                    started_ms: stick.started_ms,
                     moved: true,
                     from_outside: true,
                 }),
@@ -276,7 +265,12 @@ impl TouchControls {
         }
         let reading = stick.carry.unwrap_or(pushed);
         stick.last = reading;
-        let gathering = !stick.jumping && now_ms - stick.still_since_ms >= HOLD_MS;
+        if reading.magnitude > 0.0 {
+            jump_pressed = touches.iter().any(|t| {
+                t.phase == RawTouchPhase::Started && t.id != stick.id && !self.jump_blocked(t)
+            });
+        }
+        let gathering = now_ms - stick.still_since_ms >= HOLD_MS;
         self.stick = Some(stick);
         self.run_active = reading.run;
         self.gathering = gathering;
@@ -290,7 +284,7 @@ impl TouchControls {
             magnitude,
             run,
             jump_pressed,
-            jump_held: stick.jumping,
+            jump_held: jump_pressed,
             gather_held: gathering,
         }
     }
@@ -346,9 +340,9 @@ impl TouchControls {
         }
     }
 
-    /// The locked run: the player runs the lock's way; a tap on the screen jumps (again in the
-    /// air), sliding a finger past the rim steers the lock, and sliding it back to the centre
-    /// unlocks and hands that finger back to the stick.
+    /// The locked run: the player runs the lock's way; a new touch anywhere on the screen jumps
+    /// (the double jump), sliding a finger past the rim steers the lock, and sliding it back to
+    /// the centre unlocks and hands that finger back to the stick.
     fn update_locked(
         &mut self,
         layout: &TouchLayout,
@@ -359,16 +353,18 @@ impl TouchControls {
             return TouchFrame::default();
         };
         let mut jump_pressed = false;
-        if lock.touch.is_none()
-            && let Some(touch) = touches.iter().find(|t| t.phase == RawTouchPhase::Started)
+        if let Some(touch) = touches.iter().find(|t| t.phase == RawTouchPhase::Started)
+            && !self.jump_blocked(touch)
         {
-            let (dx, dy) = (touch.x - lock.center.0, touch.y - lock.center.1);
-            lock.touch = Some(LockTouch {
-                id: touch.id,
-                started_ms: now_ms,
-                moved: false,
-                from_outside: dx.hypot(dy) > DEADZONE as f32 * layout.radius,
-            });
+            jump_pressed = true;
+            if lock.touch.is_none() {
+                let (dx, dy) = (touch.x - lock.center.0, touch.y - lock.center.1);
+                lock.touch = Some(LockTouch {
+                    id: touch.id,
+                    moved: false,
+                    from_outside: dx.hypot(dy) > DEADZONE as f32 * layout.radius,
+                });
+            }
         }
         if let Some(mut held) = lock.touch {
             let live = touches.iter().find(|t| {
@@ -382,20 +378,19 @@ impl TouchControls {
                     if held.from_outside && reach <= DEADZONE as f32 * layout.radius {
                         self.lock = None;
                         self.run_active = false;
-                        self.taps = 0;
-                        self.last_tap_ms = None;
                         self.stick = Some(Stick {
                             id: held.id,
                             center: lock.center,
                             finger: (touch.x, touch.y),
-                            started_ms: now_ms,
                             still_since_ms: now_ms,
                             moved: true,
-                            jumping: false,
                             carry: None,
                             last: StickReading::default(),
                         });
-                        return TouchFrame::default();
+                        return TouchFrame {
+                            jump_pressed,
+                            ..TouchFrame::default()
+                        };
                     }
                     if reach >= layout.radius {
                         lock.dir = (dx / reach, dy / reach);
@@ -404,7 +399,6 @@ impl TouchControls {
                     lock.touch = Some(held);
                 }
                 None => {
-                    jump_pressed = !held.moved && now_ms - held.started_ms <= TAP_MS;
                     lock.touch = None;
                 }
             }

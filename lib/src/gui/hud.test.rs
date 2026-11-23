@@ -24,7 +24,7 @@ fn the_help_line_swaps_controls_for_touch() {
     assert!(help_line(false).contains("Shift"));
     assert!(!help_line(false).contains("Joystick"));
     assert!(help_line(true).contains("Joystick"));
-    assert!(help_line(true).contains("Doble toque: saltar"));
+    assert!(help_line(true).contains("Toco: saltar"));
     assert!(help_line(true).contains("recolectar"));
     assert!(!help_line(true).contains("Shift"));
 }

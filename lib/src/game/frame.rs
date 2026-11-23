@@ -319,6 +319,18 @@ impl Game {
         let width = screen_width();
         let height = screen_height();
 
+        // The inventory button is jump-blocked input: a touch on it opens the inventory and
+        // neither jumps nor moves the stick.
+        self.touch.set_jump_block(
+            crate::gui::clay::HudLayout::new(
+                width,
+                height,
+                self.carried.inventory.capacity(),
+                self.touch.visible(),
+            )
+            .backpack,
+        );
+
         let (input, shots): (NormalizedInput, Vec<String>) = if self.script.is_some() {
             let (frame, shots) = crate::testbed::advance(self)?;
             let mut input_service = crate::testbed::ScriptInput { frame };
