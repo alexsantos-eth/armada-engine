@@ -30,6 +30,7 @@ pub(crate) const REQUIRED_PIECES: &[&str] = &[
     "tool_pickaxe",
     "tool_net",
     "tool_hand",
+    "backpack",
 ];
 
 /// Where the manifest lives under `content/`.
