@@ -212,7 +212,6 @@ fn a_single_tap_does_nothing() {
 
 #[test]
 fn a_touch_while_the_stick_moves_the_player_jumps() {
-fn a_touch_while_the_stick_moves_the_player_jumps() {
     let mut controls = TouchControls::new(false);
     step(
         &mut controls,
@@ -220,40 +219,14 @@ fn a_touch_while_the_stick_moves_the_player_jumps() {
         0.0,
     );
     let walking = step(
-    step(
         &mut controls,
-        &[finger(1, RawTouchPhase::Started, 0.0, 0.0)],
-        0.0,
-    );
-    let walking = step(
-        &mut controls,
-        &[finger(1, RawTouchPhase::Moved, radius(), 0.0)],
-        16.0,
         &[finger(1, RawTouchPhase::Moved, radius(), 0.0)],
         16.0,
     );
     assert!(walking.magnitude > 0.0);
 
     let jump = step(
-    assert!(walking.magnitude > 0.0);
-
-    let jump = step(
         &mut controls,
-        &[
-            finger(1, RawTouchPhase::Moved, radius(), 0.0),
-            RawTouch {
-                id: 2,
-                phase: RawTouchPhase::Started,
-                x: 30.0,
-                y: 30.0,
-            },
-        ],
-        32.0,
-    );
-
-    assert!(jump.jump_pressed);
-    assert!(jump.jump_held);
-    assert_eq!(jump.magnitude, walking.magnitude);
         &[
             finger(1, RawTouchPhase::Moved, radius(), 0.0),
             RawTouch {
@@ -278,45 +251,6 @@ fn two_touches_while_moving_fire_two_jumps() {
         &mut controls,
         &[finger(1, RawTouchPhase::Started, 0.0, 0.0)],
         0.0,
-    );
-
-    let jump = step(
-        &mut controls,
-        &[
-            finger(1, RawTouchPhase::Stationary, 0.0, 0.0),
-            RawTouch {
-                id: 2,
-                phase: RawTouchPhase::Started,
-                x: 30.0,
-                y: 30.0,
-            },
-        ],
-        16.0,
-    );
-
-    assert!(!jump.jump_pressed);
-    assert!(!jump.gather_held);
-}
-
-#[test]
-fn touches_on_the_inventory_rect_neither_jump_nor_place_the_stick() {
-    let mut controls = TouchControls::new(false);
-    let rect = Rect::new(WIDTH - 60.0, 10.0, 40.0, 40.0);
-    controls.set_jump_block(Some(rect));
-    let on_rect = (rect.center().x - DOWN.0, rect.center().y - DOWN.1);
-
-    let down = step(
-        &mut controls,
-        &[finger(1, RawTouchPhase::Started, on_rect.0, on_rect.1)],
-        0.0,
-    );
-    assert!(!down.jump_pressed);
-    assert!(!controls.view(WIDTH, HEIGHT).active);
-
-    step(
-        &mut controls,
-        &[finger(1, RawTouchPhase::Started, 0.0, 0.0)],
-        100.0,
     );
     step(
         &mut controls,
@@ -438,7 +372,6 @@ fn a_second_finger_while_moving_jumps_and_does_not_steal_the_stick() {
         16.0,
     );
 
-    assert!(frame.jump_pressed);
     assert!(frame.jump_pressed);
     assert_eq!(frame.magnitude, 1.0);
     assert_eq!(controls.view(WIDTH, HEIGHT).center, DOWN);
