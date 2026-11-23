@@ -22,6 +22,8 @@ pub(crate) const REQUIRED_PIECES: &[&str] = &[
     "stick_base",
     "stick_knob",
     "stick_knob_run",
+    "stick_lock",
+    "stick_lock_on",
     "badge",
     "kbd",
     "tool_axe",

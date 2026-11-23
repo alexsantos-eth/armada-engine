@@ -10,7 +10,7 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@700;800;900&display=swap"
     />
-    <link rel="stylesheet" href="armada-ui.css?v=1" />
+    <link rel="stylesheet" href="armada-ui.css?v=2" />
     <style>
       /* Catalogue page only: layout around the kit's components. */
       html, body { margin: 0; background: var(--ac-night); color: var(--ac-text); }
@@ -149,6 +149,16 @@
           <h3>Botón de acción · <code>.ac-action</code></h3>
           <p>Redondo, se aplasta al pulsarlo y se mantiene presionado para trabajar. Icono de herramienta: hacha, pico, red o mano.</p>
         </div>
+        <div class="specimen">
+          <div class="show" style="gap: 18px; align-items: center">
+            <div class="ac-stick"><div class="ac-stick__knob"></div></div>
+            <div class="ac-stick"><div class="ac-stick__knob is-running"></div></div>
+            <div class="ac-stick__lock" data-symbol="lock"></div>
+            <div class="ac-stick__lock is-locked" data-symbol="lock"></div>
+          </div>
+          <h3>Joystick táctil · <code>.ac-stick</code></h3>
+          <p>Base flotante con su mando (<code>__knob</code>, rojo con <code>.is-running</code>) y el candado de carrera (<code>__lock</code>, verde con <code>.is-locked</code>). Solo en táctil; el juego lo dibuja desde las piezas <code>stick_*</code>.</p>
+        </div>
         <div class="specimen ac-card ac-hand ac-paper">
           <h3>Tarjeta · <code style="color: var(--ac-red)">.ac-card</code></h3>
           <p style="color: inherit">Bloque de texto sobre papel. Para menús, diálogos y tooltips largos.</p>
@@ -163,11 +173,12 @@
       </p>
     </div>
 
-    <script src="armada-ui.js?v=1"></script>
+    <script src="armada-ui.js?v=2"></script>
     <script>
       (() => {
         const UI = window.ArmadaUI;
         UI.install();
+        document.querySelectorAll("[data-symbol]").forEach((node) => node.appendChild(UI.symbolIcon(node.dataset.symbol)));
         const RES = [
           { item: "wood", name: "Madera", verb: "Talar", tool: "axe", target: "Abedul", count: 12 },
           { item: "stone", name: "Piedra", verb: "Picar", tool: "pickaxe", target: "Roca", count: 7 },
