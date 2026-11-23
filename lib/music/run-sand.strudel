@@ -1,15 +1,6 @@
-stack(
-  s("pink*6")
-    .attack(0.01)
-    .decay(0.07)
-    .sustain(0)
-    .hpf(700)
-    .lpf(3500)
-    .gain("0.17 0.125"),
-  s("brown*6")
-    .attack(0.003)
-    .decay(0.04)
-    .sustain(0)
-    .lpf(400)
-    .gain("0.09 0.065"),
-)
+s("brown*6")
+  .attack(0.001)
+  .decay(0.03)
+  .sustain(0)
+  .lpf(650)
+  .gain("0.45 0.32")

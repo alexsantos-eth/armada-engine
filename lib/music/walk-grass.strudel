@@ -1,15 +1,6 @@
-stack(
-  s("white*4")
-    .attack(0.004)
-    .decay(0.06)
-    .sustain(0)
-    .hpf(1800)
-    .lpf(5000)
-    .gain("0.064 0.048"),
-  s("brown*4")
-    .attack(0.001)
-    .decay(0.025)
-    .sustain(0)
-    .lpf(450)
-    .gain("0.088 0.064"),
-)
+s("brown*4")
+  .attack(0.001)
+  .decay(0.035)
+  .sustain(0)
+  .lpf(500)
+  .gain("0.35 0.25")
