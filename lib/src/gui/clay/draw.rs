@@ -447,8 +447,12 @@ fn draw_flights(skin: &ClaySkin, hud: &ClayHud, layout: &HudLayout) {
     }
 }
 
-/// Paints the floating touch stick with the kit: the base, the knob (red while running) and,
-/// when something is in reach, its tool on the knob, swinging while the held stick gathers.
+/// The sprint lock's radius as a share of the stick's radius (`--ac-stick-lock` / `--ac-stick`).
+const LOCK_SIZE: f32 = 40.0 / 120.0;
+
+/// Paints the floating touch stick with the kit: the base, the sprint lock (a hint while the
+/// finger nears it, lit while the run is locked), the knob (red while running) and, when
+/// something is in reach, its tool on the knob, swinging while the held stick gathers.
 pub(crate) fn draw_clay_stick(
     skin: &ClaySkin,
     view: &StickView,
@@ -464,6 +468,20 @@ pub(crate) fn draw_clay_stick(
         Rect::new(cx - r, cy - r, 2.0 * r, 2.0 * r),
         base_alpha,
     );
+    if let Some((lx, ly)) = view.lock_at {
+        let (piece, alpha) = if view.locked {
+            ("stick_lock_on", 1.0)
+        } else {
+            ("stick_lock", 0.75)
+        };
+        let l = r * LOCK_SIZE;
+        draw_piece(
+            skin,
+            piece,
+            Rect::new(lx - l, ly - l, 2.0 * l, 2.0 * l),
+            alpha,
+        );
+    }
     let knob = if view.run {
         "stick_knob_run"
     } else {

@@ -41,6 +41,9 @@
 
   --ac-slot: 64px;
   --ac-action: 104px;
+  --ac-stick: 120px;
+  --ac-stick-knob: 56px;
+  --ac-stick-lock: 40px;
 
   --ac-spring: cubic-bezier(0.3, 1.7, 0.5, 1);
   --ac-pop: cubic-bezier(0.2, 1.8, 0.4, 1);
@@ -390,6 +393,37 @@ button.ac-slot:hover { transform: translateY(-3px) rotate(-1.5deg); }
   0%, 100% { transform: rotate(0deg); }
   50% { transform: rotate(-22deg); }
 }
+
+/* ---------- touch stick: floating base, knob and the sprint lock ---------- */
+
+.ac-stick,
+.ac-stick__knob,
+.ac-stick__lock {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+}
+.ac-stick::before,
+.ac-stick__knob::before,
+.ac-stick__lock::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: var(--ac-line) solid var(--ac-ink);
+  border-radius: var(--ac-blob-round);
+  box-shadow: var(--ac-shadow-x) var(--ac-shadow-y) 0 var(--ac-ink);
+  background: var(--ac-noise), var(--ac-fill);
+  background-blend-mode: multiply;
+  filter: url(#ac-wobble);
+}
+.ac-stick { --ac-fill: var(--ac-paper); width: var(--ac-stick); height: var(--ac-stick); }
+.ac-stick__knob { --ac-fill: var(--ac-gold); width: var(--ac-stick-knob); height: var(--ac-stick-knob); }
+.ac-stick__knob.is-running { --ac-fill: var(--ac-red); }
+.ac-stick__lock { --ac-fill: var(--ac-cream); width: var(--ac-stick-lock); height: var(--ac-stick-lock); }
+.ac-stick__lock.is-locked { --ac-fill: var(--ac-leaf); }
+.ac-stick__lock .ac-icon { width: 70%; height: 70%; }
 
 @media (prefers-reduced-motion: reduce) {
   .ac-bubble.is-in, .ac-bubble.is-out, .ac-slot.is-bump, .ac-hit, .ac-action.is-working .ac-action__icon {

@@ -45,9 +45,11 @@
     <div data-piece="bubble_tail_warning" data-slice="0" class="tail"><svg viewBox="0 0 34 30"><path d="M3 2 L14 28 L31 2" fill="#e0543a" /></svg></div>
     <div data-piece="action" data-slice="0"><div class="panel ac-hand round" style="width: 104px; height: 104px"></div></div>
     <div data-piece="action_pressed" data-slice="0"><div class="panel ac-hand round pressed" style="width: 104px; height: 104px"></div></div>
-    <div data-piece="stick_base" data-slice="0"><div class="panel ac-hand ac-paper disc" style="width: 120px; height: 120px"></div></div>
-    <div data-piece="stick_knob" data-slice="0"><div class="panel ac-hand ac-gold disc" style="width: 56px; height: 56px"></div></div>
-    <div data-piece="stick_knob_run" data-slice="0"><div class="panel ac-hand ac-red disc" style="width: 56px; height: 56px"></div></div>
+    <div data-piece="stick_base" data-slice="0"><div class="ac-stick"></div></div>
+    <div data-piece="stick_knob" data-slice="0"><div class="ac-stick__knob"></div></div>
+    <div data-piece="stick_knob_run" data-slice="0"><div class="ac-stick__knob is-running"></div></div>
+    <div data-piece="stick_lock" data-slice="0"><div class="ac-stick__lock" data-symbol="lock"></div></div>
+    <div data-piece="stick_lock_on" data-slice="0"><div class="ac-stick__lock is-locked" data-symbol="lock"></div></div>
     <div data-piece="badge" data-slice="0"><div class="badge"></div></div>
     <div data-piece="kbd" data-slice="0"><div class="kbd"></div></div>
     <div data-piece="tool_axe" data-slice="0" class="tool" data-tool="axe"></div>
@@ -59,6 +61,7 @@
     <script>
       ArmadaUI.install();
       document.querySelectorAll("[data-tool]").forEach((node) => node.appendChild(ArmadaUI.toolIcon(node.dataset.tool)));
+      document.querySelectorAll("[data-symbol]").forEach((node) => node.appendChild(ArmadaUI.symbolIcon(node.dataset.symbol)));
       document.documentElement.dataset.ready = "1";
     </script>
   </body>
