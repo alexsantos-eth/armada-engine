@@ -22,7 +22,7 @@ El protagonista camina, corre, salta (doble salto con voltereta al aire), nada, 
 
 | Componente | Versión |
 |------------|---------|
-| **Juego (iso-core)** | **0.27.0** |
+| **Juego (iso-core)** | **0.33.0** |
 | Motor de dominio (iso) | 0.1.0 |
 | Gráficos / ventana | Macroquad 0.4.16 |
 | Lenguaje | Rust (edición 2024) |
@@ -36,7 +36,7 @@ El protagonista camina, corre, salta (doble salto con voltereta al aire), nada, 
 - 🏃 **Movimiento completo:** camina, corre, salta, doble-salto con voltereta, nada y trepa.
 - 🚀 **Mochila-reactor** (`J`) para volar libremente por el escenario.
 - 🐰 **NPCs:** cangrejos que escarban a la orilla y conejos que saltan por el prado.
-- 📱 **Controles táctiles** con joystick virtual y botón de salto en móviles/táctil.
+- 📱 **Controles táctiles** con joystick virtual en móviles/táctil.
 - 💾 **Guardado manual** (`F5` / `Ctrl+S`) del progreso y chunks descubiertos.
 - 🎨 **Arte en estilo clay/voxel**, renderizado en Blender desde piezas del kit oficial.
 
@@ -48,8 +48,8 @@ El protagonista camina, corre, salta (doble salto con voltereta al aire), nada, 
 |--------|---------|--------|
 | Moverse | `WASD` o flechas | Joystick virtual (izquierda) |
 | Correr | `Mayús` | Toque en el joystick |
-| Saltar | `Espacio` | Botón `Saltar` (derecha) |
-| Doble salto / voltereta | `Espacio` en el aire | `Saltar` en el aire |
+| Saltar | `Espacio` | Toque en la pantalla mientras te mueves |
+| Doble salto / voltereta | `Espacio` en el aire | Segundo toque en la pantalla |
 | Activar mochila-reactor | `J` | Botón de reactor en el HUD |
 | Guardar partida | `F5` o `Ctrl+S` | — |
 | Alternar vista de terreno | `T` | — |

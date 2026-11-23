@@ -91,7 +91,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `fn world_readout_line(readout: &Readout<'_>) -> String {`
 - [`readout_colour`](hud.rs#L144) — Colour del readout: `LIME` hasta 20 ms, `ORANGE` hasta 33.4 ms, `RED` por encima.
   - Firma: `fn readout_colour(frame_max: f64) -> Color {`
-- [`help_line`](hud.rs#L156) — La línea de controles del título: los atajos de teclado, o los del táctil (joystick, mantener para recolectar y doble toque para saltar) cuando los controles están visibles. Se prueba en `hud.test.rs`.
+- [`help_line`](hud.rs#L156) — La línea de controles del título: los atajos de teclado, o los del táctil (joystick, mantener para recolectar y tocar la pantalla para saltar) cuando los controles están visibles. Se prueba en `hud.test.rs`.
   - Firma: `fn help_line(touch_visible: bool) -> &'static str {`
 - [`phase_button_hit`](hud.rs#L39) — Devuelve la fase del botón que contiene el punto de pantalla dado; se prueba en `hud.test.rs`.
   - Firma: `fn phase_button_hit(x: f32, y: f32) -> Option<BakePhase> {`
