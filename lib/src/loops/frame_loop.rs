@@ -31,7 +31,8 @@ fn backpack_pressed(layout: &crate::gui::clay::HudLayout) -> bool {
     let (mx, my) = mouse_position();
     (is_mouse_button_pressed(MouseButton::Left) && layout.backpack_hit(mx, my))
         || touches().iter().any(|touch| {
-            touch.phase == TouchPhase::Started && layout.backpack_hit(touch.position.x, touch.position.y)
+            touch.phase == TouchPhase::Started
+                && layout.backpack_hit(touch.position.x, touch.position.y)
         })
 }
 
