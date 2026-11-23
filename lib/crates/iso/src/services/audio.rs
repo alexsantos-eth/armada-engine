@@ -25,7 +25,13 @@ pub enum SoundEvent {
     RabbitHop,
     /// A crab sets a step down: a couple of clicks of its legs.
     CrabStep,
+    /// A bird in the trees around sings one short phrase; the number picks one of
+    /// [`BIRD_CALLS`] phrases.
+    BirdCall(u8),
 }
+
+/// How many different bird phrases the client bundles.
+pub const BIRD_CALLS: u8 = 3;
 
 /// What the feet land on, for the footsteps: the terrain's surfaces grouped by how they sound.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -66,8 +72,6 @@ pub enum SoundLoop {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum AmbientLoop {
     Wind,
-    /// Birdsong from the trees around.
-    Birds,
     /// The crackle of torches, braziers, lanterns, candles and campfires near by.
     Fire,
     /// The steam of the geysers near by, swelling with each burst.

@@ -103,3 +103,15 @@ fn the_record_of_one_shots_stays_bounded() {
     }
     assert!(audio.events.len() <= EVENTS_KEPT);
 }
+
+#[test]
+fn every_bird_phrase_has_its_file() {
+    for phrase in 0..iso::services::BIRD_CALLS {
+        assert!(
+            SOUND_FILES
+                .iter()
+                .any(|(event, _)| *event == SoundEvent::BirdCall(phrase)),
+            "phrase {phrase} has no file"
+        );
+    }
+}

@@ -134,3 +134,39 @@ fn an_animal_born_since_is_not_a_footfall() {
     npc.footfalls = 3;
     assert!(footfall_sounds(&[], [&npc], at(0.0, 0.0)).is_empty());
 }
+
+#[test]
+fn birds_call_rarely_and_never_back_to_back() {
+    assert!(
+        !bird_call_due(1.0, 16.0, BIRD_CALL_GAP_MS / 2.0, 0.0),
+        "too soon"
+    );
+    assert!(
+        !bird_call_due(0.0, 16.0, BIRD_CALL_GAP_MS * 2.0, 0.0),
+        "no birds"
+    );
+    assert!(bird_call_due(1.0, 16.0, BIRD_CALL_GAP_MS, 0.0));
+    assert!(
+        !bird_call_due(1.0, 16.0, BIRD_CALL_GAP_MS, 0.5),
+        "a call is a rare roll"
+    );
+    // Over a long stretch at full song, with a uniform stream of rolls, a call comes every
+    // gap plus about a minute: one every two to four minutes.
+    let mut random = crate::player::DustRandom::new(11);
+    let frame = 16.0;
+    let minutes = 600.0;
+    let mut since = BIRD_CALL_GAP_MS;
+    let mut calls = 0;
+    for _ in 0..(minutes * 60_000.0 / frame) as u32 {
+        since += frame;
+        if bird_call_due(1.0, frame, since, random.roll()) {
+            calls += 1;
+            since = 0.0;
+        }
+    }
+    let minutes_apart = minutes / f64::from(calls);
+    assert!(
+        (2.5..=4.0).contains(&minutes_apart),
+        "a call every {minutes_apart} minutes"
+    );
+}

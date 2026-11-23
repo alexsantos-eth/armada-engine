@@ -67,7 +67,7 @@ impl InputService for MacroquadInput<'_> {
 
 /// Sounds the client bundles, as one statically-generated WAV per semantic name. The files are
 /// rendered from the `.strudel` sources with the superdough engine (see `tools/sound-export/`).
-const SOUND_FILES: [(SoundEvent, &str); 11] = [
+const SOUND_FILES: [(SoundEvent, &str); 14] = [
     (SoundEvent::Jump, "jump.wav"),
     (SoundEvent::AirJump, "air-jump.wav"),
     (SoundEvent::Land, "land.wav"),
@@ -79,6 +79,9 @@ const SOUND_FILES: [(SoundEvent, &str); 11] = [
     (SoundEvent::ItemCollect, "item-collect.wav"),
     (SoundEvent::RabbitHop, "rabbit-hop.wav"),
     (SoundEvent::CrabStep, "crab-step.wav"),
+    (SoundEvent::BirdCall(0), "bird-call-1.wav"),
+    (SoundEvent::BirdCall(1), "bird-call-2.wav"),
+    (SoundEvent::BirdCall(2), "bird-call-3.wav"),
 ];
 
 /// Looping sounds the client bundles; see [`SOUND_FILES`].
@@ -96,9 +99,8 @@ const LOOP_FILES: [(SoundLoop, &str); 9] = [
 
 /// The beds of the world the client bundles, all looping at once at their own volumes; see
 /// [`SOUND_FILES`].
-const AMBIENT_FILES: [(AmbientLoop, &str); 4] = [
+const AMBIENT_FILES: [(AmbientLoop, &str); 3] = [
     (AmbientLoop::Wind, "wind.wav"),
-    (AmbientLoop::Birds, "birds.wav"),
     (AmbientLoop::Fire, "fire.wav"),
     (AmbientLoop::Geyser, "geyser.wav"),
 ];

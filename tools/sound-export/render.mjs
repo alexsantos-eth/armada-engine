@@ -44,8 +44,10 @@ const SOUNDS = [
   ['item-collect', 1],
   ['rabbit-hop', 1],
   ['crab-step', 1],
+  ['bird-call-1', 1],
+  ['bird-call-2', 1],
+  ['bird-call-3', 1],
   ['wind', 4],
-  ['birds', 4],
   ['fire', 2],
   ['geyser', 2],
 ];

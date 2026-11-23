@@ -162,6 +162,10 @@ pub(crate) struct Game {
     /// Real time the wind has been blowing, for the sway of what reacts to it; accumulates
     /// frame time like the clouds and the dust, independent of the fixed step.
     pub(crate) wind_ms: f64,
+    /// Real time since a bird last sang, for the gap between calls.
+    pub(crate) since_bird_call_ms: f64,
+    /// The draws that decide when a bird sings and which phrase.
+    pub(crate) bird_random: iso::player::DustRandom,
 }
 
 impl Game {
@@ -511,6 +515,8 @@ impl Game {
             shown: Vec::new(),
             phase_override: None,
             wind_ms: 0.0,
+            since_bird_call_ms: 0.0,
+            bird_random: iso::player::DustRandom::new(world_seed),
             items,
             carried,
             harvester: iso::harvest::Harvester::default(),

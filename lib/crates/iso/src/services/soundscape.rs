@@ -19,6 +19,14 @@ pub const AMBIENT_EASE_HALF_LIFE_MS: f64 = 180.0;
 /// What one tree adds to the birdsong at its full volume: a stand of trees sings, one tree
 /// barely does.
 pub const BIRDS_PER_TREE: f64 = 0.22;
+/// Least real time between two bird calls, however many trees there are: two minutes, so a
+/// call is an event and not a bed.
+pub const BIRD_CALL_GAP_MS: f64 = 120_000.0;
+/// Chance a minute, past the gap and at full birdsong (a grove close by at dawn), that a bird
+/// sings: with fewer trees or less light it waits longer. At full song a call comes about
+/// every three minutes.
+pub const BIRD_CALLS_PER_MINUTE: f64 = 1.0;
+
 /// Geyser level while it only steams, as a share of its level at the height of a burst.
 pub const GEYSER_QUIET: f64 = 0.3;
 
@@ -73,6 +81,17 @@ pub fn bird_level(phase: BakePhase) -> f64 {
         BakePhase::Sunset => 0.4,
         BakePhase::Night => 0.0,
     }
+}
+
+/// Whether a bird sings now: never within [`BIRD_CALL_GAP_MS`] of the last call
+/// (`since_last_ms`), and past it with a chance over `elapsed_ms` that grows with `level` up
+/// to [`BIRD_CALLS_PER_MINUTE`]. `roll` is a draw in `[0, 1)`.
+pub fn bird_call_due(level: f64, elapsed_ms: f64, since_last_ms: f64, roll: f64) -> bool {
+    if since_last_ms < BIRD_CALL_GAP_MS || level <= 0.0 {
+        return false;
+    }
+    let chance = level.clamp(0.0, 1.0) * BIRD_CALLS_PER_MINUTE * elapsed_ms.max(0.0) / 60_000.0;
+    roll < chance
 }
 
 /// A geyser's level from its distance gain and how hard it is blowing (`0.0..=1.0`).

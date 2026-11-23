@@ -1,6 +1,7 @@
 //! The beds of the world, mixed once a frame from where the player stands: the wind of the
-//! biome, the birds in the trees around, the fires and the geysers on screen. Each bed eases to
-//! its level (`iso::services::soundscape`), so sources coming into view swell in.
+//! biome, the fires and the geysers on screen. Each bed eases to its level
+//! (`iso::services::soundscape`), so sources coming into view swell in. The birds are not a bed:
+//! now and then, minutes apart, one in the trees around sings a short phrase.
 //!
 //! The levels are pure and tested in `soundscape.test.rs`; `Game::update_soundscape` gathers
 //! the sources and hands the levels to the audio service.
@@ -8,10 +9,10 @@
 use iso::entities::EntityEffect;
 use iso::projection::GridPoint;
 use iso::services::soundscape::{
-    BIRDS_PER_TREE, HEARING_FAR, bird_level, combined, distance, distance_gain, ease_volume,
-    geyser_level, wind_level,
+    BIRD_CALL_GAP_MS, BIRDS_PER_TREE, HEARING_FAR, bird_call_due, bird_level, combined, distance,
+    distance_gain, ease_volume, geyser_level, wind_level,
 };
-use iso::services::{AmbientLoop, AudioService};
+use iso::services::{AmbientLoop, AudioService, BIRD_CALLS, SoundEvent};
 
 use crate::effects::emitters::{EffectSpot, geyser_burst};
 use crate::effects::fire::{FireSpot, spot_phase};
@@ -109,6 +110,35 @@ impl Game {
         trees
     }
 
+    /// Now and then a bird in the trees around sings one phrase, at the volume of the birdsong
+    /// there: never within `BIRD_CALL_GAP_MS` of the last one, and rarer with fewer trees or
+    /// less light. The trees are only looked for once the gap is over.
+    fn maybe_call_a_bird(
+        &mut self,
+        listener: GridPoint,
+        phase: iso::lighting::BakePhase,
+        frame_ms: f64,
+    ) {
+        self.since_bird_call_ms += frame_ms.max(0.0);
+        if self.since_bird_call_ms < BIRD_CALL_GAP_MS {
+            return;
+        }
+        let trees = self.trees_in_hearing(listener);
+        let level = birds_level(listener, &trees, bird_level(phase));
+        if !bird_call_due(
+            level,
+            frame_ms,
+            self.since_bird_call_ms,
+            self.bird_random.roll(),
+        ) {
+            return;
+        }
+        self.since_bird_call_ms = 0.0;
+        let phrase = (self.bird_random.roll() * f64::from(BIRD_CALLS)) as u8;
+        self.audio
+            .play_with_volume(SoundEvent::BirdCall(phrase.min(BIRD_CALLS - 1)), level);
+    }
+
     /// Mixes the beds for this frame from the player's position and eases each one there over
     /// `frame_ms`. Runs after the fires are gathered, so it hears what is on screen.
     pub(crate) fn update_soundscape(&mut self, frame_ms: f64) {
@@ -126,13 +156,9 @@ impl Game {
             .map_or(iso::wind::DEFAULT_WIND_STRENGTH, |world| {
                 world.biome(cell.x, cell.y).wind_strength
             });
-        let trees = self.trees_in_hearing(listener);
+        self.maybe_call_a_bird(listener, phase, frame_ms);
         let targets = [
             (AmbientLoop::Wind, wind_level(strength, self.wind_ms)),
-            (
-                AmbientLoop::Birds,
-                birds_level(listener, &trees, bird_level(phase)),
-            ),
             (
                 AmbientLoop::Fire,
                 fire_level(listener, &self.fire_spots, &self.effect_spots),
