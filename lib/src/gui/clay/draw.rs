@@ -466,8 +466,6 @@ pub(crate) fn draw_clay_hud(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, lay
     if let Some(prompt) = frame.prompt.as_ref() {
         draw_prompt(skin, prompt, layout, frame.touch);
     }
-    // On mobile the inventory stays folded until the backpack icon is tapped;
-    // on desktop it is always visible.
     let show_slots = !frame.touch || hud.inventory_open;
     if show_slots {
         draw_piece(skin, "hotbar", layout.panel, 1.0);
