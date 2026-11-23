@@ -31,19 +31,9 @@ fn the_default_play_with_volume_delegates_to_play() {
 #[test]
 fn the_default_play_loop_is_a_silent_no_op() {
     let mut audio = RecordingAudio::default();
-    audio.play_loop(Some(SoundLoop::Run(Footing::Sand)));
+    audio.play_loop(Some(SoundLoop::Run));
     audio.set_ambient(AmbientLoop::Wind, 0.5);
     audio.play_loop(None);
     assert_eq!(audio.events, Vec::<SoundEvent>::new());
     assert_eq!(audio.volume, None);
-}
-
-#[test]
-fn every_dry_surface_has_a_footing_and_water_has_none() {
-    assert_eq!(Footing::of(TerrainMaterial::Grass), Some(Footing::Grass));
-    assert_eq!(Footing::of(TerrainMaterial::Sand), Some(Footing::Sand));
-    assert_eq!(Footing::of(TerrainMaterial::Ground), Some(Footing::Dirt));
-    assert_eq!(Footing::of(TerrainMaterial::Path), Some(Footing::Stone));
-    assert_eq!(Footing::of(TerrainMaterial::Stairs), Some(Footing::Stone));
-    assert_eq!(Footing::of(TerrainMaterial::Water), None);
 }

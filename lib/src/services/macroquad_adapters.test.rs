@@ -23,17 +23,17 @@ fn audio_records_gain_scaled_one_shots() {
 #[test]
 fn audio_tracks_the_wanted_loop() {
     let mut audio = MacroquadAudio::default();
-    audio.play_loop(Some(SoundLoop::Walk(Footing::Grass)));
-    assert_eq!(audio.current_loop, Some(SoundLoop::Walk(Footing::Grass)));
+    audio.play_loop(Some(SoundLoop::Walk));
+    assert_eq!(audio.current_loop, Some(SoundLoop::Walk));
 
-    audio.play_loop(Some(SoundLoop::Walk(Footing::Grass))); // re-asking is a no-op
-    assert_eq!(audio.current_loop, Some(SoundLoop::Walk(Footing::Grass)));
+    audio.play_loop(Some(SoundLoop::Walk)); // re-asking is a no-op
+    assert_eq!(audio.current_loop, Some(SoundLoop::Walk));
 
-    audio.play_loop(Some(SoundLoop::Run(Footing::Stone))); // switching replaces the loop
-    assert_eq!(audio.current_loop, Some(SoundLoop::Run(Footing::Stone)));
+    audio.play_loop(Some(SoundLoop::Run)); // switching replaces the loop
+    assert_eq!(audio.current_loop, Some(SoundLoop::Run));
 
     audio.set_volume(0.25); // a master-volume change keeps the loop running
-    assert_eq!(audio.current_loop, Some(SoundLoop::Run(Footing::Stone)));
+    assert_eq!(audio.current_loop, Some(SoundLoop::Run));
 
     audio.play_loop(None); // `None` stops looping
     assert_eq!(audio.current_loop, None);

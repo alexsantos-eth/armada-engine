@@ -195,18 +195,13 @@ fn the_motion_loops_map_to_the_bundled_sounds() {
         Climbing, Flying, Idle, Jumping, Running, Skidding, Walking,
     };
 
-    use iso::services::Footing::{Grass, Sand, Stone};
-
-    assert_eq!(
-        loop_for_motion(Walking, Grass),
-        Some(SoundLoop::Walk(Grass))
-    );
-    assert_eq!(loop_for_motion(Running, Sand), Some(SoundLoop::Run(Sand)));
-    assert_eq!(loop_for_motion(Flying, Stone), Some(SoundLoop::Jetpack));
-    assert_eq!(loop_for_motion(Idle, Grass), None);
-    assert_eq!(loop_for_motion(Jumping, Grass), None);
-    assert_eq!(loop_for_motion(Skidding, Grass), None);
-    assert_eq!(loop_for_motion(Climbing, Grass), None);
+    assert_eq!(loop_for_motion(Walking), Some(SoundLoop::Walk));
+    assert_eq!(loop_for_motion(Running), Some(SoundLoop::Run));
+    assert_eq!(loop_for_motion(Flying), Some(SoundLoop::Jetpack));
+    assert_eq!(loop_for_motion(Idle), None);
+    assert_eq!(loop_for_motion(Jumping), None);
+    assert_eq!(loop_for_motion(Skidding), None);
+    assert_eq!(loop_for_motion(Climbing), None);
 }
 
 #[test]

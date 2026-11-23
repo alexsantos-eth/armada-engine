@@ -26,7 +26,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
   - Firma: `fn poll(&mut self) -> NormalizedInput {`
   - MacroquadInput es ahora `pub struct MacroquadInput<'a> { pub touch: &'a mut TouchControls }`: el llamante (`game::frame::update`) presta su `TouchControls` a la pasada de entrada.
 
-- `SOUND_FILES`, `LOOP_FILES` y `AMBIENT_FILES` — Correspondencia fija evento/bucle/fondo → WAV generado en `content/sounds/` (14 sueltos, tres de ellos las frases de pájaro `BirdCall(0..3)`; 9 bucles: andar y correr por cada `Footing` más el jetpack; 3 fondos). Un test comprueba que cada WAV existe y tiene su `.strudel` en `music/`.
+- `SOUND_FILES`, `LOOP_FILES` y `AMBIENT_FILES` — Correspondencia fija evento/bucle/fondo → WAV generado en `content/sounds/` (14 sueltos, tres de ellos las frases de pájaro `BirdCall(0..3)`; 3 bucles: andar, correr y jetpack; 3 fondos). Un test comprueba que cada WAV existe y tiene su `.strudel` en `music/`.
 - `load_sounds` — Carga una de esas listas; un archivo que no carga avisa y queda en silencio.
 - `AMBIENT_SILENCE` — Por debajo de este volumen un fondo se detiene en vez de sonar inaudible.
 - `EVENTS_KEPT` — Tope del registro `events`; al llenarse se tira la mitad más vieja.
@@ -34,7 +34,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 - `ambient_level` — El volumen al que suena ahora un fondo; `0.0` si está parado. `Game::update_soundscape` lo usa como punto de partida del suavizado y el testbed lo escribe en `report.json` (`ambience`).
 - `set_ambient` — Arranca en bucle, ajusta o para el fondo según el volumen pedido; cada fondo es independiente y suena a la vez que el bucle del jugador.
-- [`load`](macroquad_adapters.rs#L109) — Carga los veintiséis WAVs. Un archivo que no carga registra un aviso y ese evento queda en silencio, como antes.
+- [`load`](macroquad_adapters.rs#L109) — Carga los veinte WAVs. Un archivo que no carga registra un aviso y ese evento queda en silencio, como antes.
   - Firma: `pub async fn load() -> Self {`
 - [`default`](macroquad_adapters.rs#L154) — Implementación de `Default`: adaptador sin sonidos (eventos registrados, en silencio) para las pruebas.
   - Firma: `fn default() -> Self {`

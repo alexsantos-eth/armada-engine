@@ -1,7 +1,5 @@
 //! Audio playback contract. The core describes what to play; the client renders it.
 
-use crate::terrain::TerrainMaterial;
-
 /// A sound event the core wants played.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SoundEvent {
@@ -33,37 +31,11 @@ pub enum SoundEvent {
 /// How many different bird phrases the client bundles.
 pub const BIRD_CALLS: u8 = 3;
 
-/// What the feet land on, for the footsteps: the terrain's surfaces grouped by how they sound.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Footing {
-    Grass,
-    Sand,
-    /// Bare earth.
-    Dirt,
-    /// Paths and stairs.
-    Stone,
-}
-
-impl Footing {
-    /// How walking on `surface` sounds; `None` on water, where nobody walks.
-    pub fn of(surface: TerrainMaterial) -> Option<Self> {
-        match surface {
-            TerrainMaterial::Grass => Some(Self::Grass),
-            TerrainMaterial::Sand => Some(Self::Sand),
-            TerrainMaterial::Ground => Some(Self::Dirt),
-            TerrainMaterial::Path | TerrainMaterial::Stairs => Some(Self::Stone),
-            TerrainMaterial::Water => None,
-        }
-    }
-}
-
 /// A looping sound the client keeps playing until asked to stop.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SoundLoop {
-    /// Footsteps at a walk on the given footing.
-    Walk(Footing),
-    /// Footsteps at a run on the given footing.
-    Run(Footing),
+    Walk,
+    Run,
     Jetpack,
 }
 
