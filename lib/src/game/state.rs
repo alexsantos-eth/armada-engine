@@ -153,6 +153,10 @@ pub(crate) struct Game {
     pub(crate) harvest_status: iso::harvest::HarvestStatus,
     /// The note of the last harvest and how long it stays up, in milliseconds.
     pub(crate) gain_note: Option<(String, f64)>,
+    /// The heaps of items lying on the ground; saved in the save's `systems`.
+    pub(crate) drops: iso::drops::Drops,
+    /// How long each heap has been on the ground, for its toss and bob; view state.
+    pub(crate) drop_views: crate::harvest::drop_view::DropViews,
     /// The shake of what the player strikes and the bursts of chips due; view state.
     pub(crate) impacts: crate::harvest::impact::Impacts,
     /// Real time the wind has been blowing, for the sway of what reacts to it; accumulates
@@ -317,6 +321,11 @@ impl Game {
             }
             None => iso::inventory::Carried::starting(iso::inventory::STARTING_SLOTS, &items),
         };
+
+        let drops = saved_systems
+            .as_ref()
+            .and_then(|systems| iso::drops::saved_drops(systems, &items))
+            .unwrap_or_default();
 
         let biomes_json = include_str!("../../content/json/biomes.json");
         let biomes_catalog =
@@ -508,6 +517,8 @@ impl Game {
             harvest_status: iso::harvest::HarvestStatus::Idle,
             gain_note: None,
             impacts: crate::harvest::impact::Impacts::default(),
+            drop_views: crate::harvest::drop_view::DropViews::landed(drops.list()),
+            drops,
         }
     }
 }

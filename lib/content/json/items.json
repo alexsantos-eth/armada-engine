@@ -6,56 +6,64 @@
       "name": "Madera",
       "stack": 50,
       "rarity": "common",
-      "color": "9a6a3c"
+      "color": "9a6a3c",
+      "sprite": "/assets/items/wood.png"
     },
     {
       "id": "stone",
       "name": "Piedra",
       "stack": 50,
       "rarity": "common",
-      "color": "9c9a94"
+      "color": "9c9a94",
+      "sprite": "/assets/items/stone.png"
     },
     {
       "id": "fiber",
       "name": "Fibra",
       "stack": 99,
       "rarity": "common",
-      "color": "9fbf5a"
+      "color": "9fbf5a",
+      "sprite": "/assets/items/fiber.png"
     },
     {
       "id": "mushroom",
       "name": "Hongo",
       "stack": 20,
       "rarity": "common",
-      "color": "d8c3a0"
+      "color": "d8c3a0",
+      "sprite": "/assets/items/mushroom.png"
     },
     {
       "id": "coconut",
       "name": "Coco",
       "stack": 20,
       "rarity": "common",
-      "color": "7a5230"
+      "color": "7a5230",
+      "sprite": "/assets/items/coconut.png"
     },
     {
       "id": "bone",
       "name": "Hueso",
       "stack": 30,
       "rarity": "common",
-      "color": "eee6d2"
+      "color": "eee6d2",
+      "sprite": "/assets/items/bone.png"
     },
     {
       "id": "copper_ore",
       "name": "Cobre",
       "stack": 30,
       "rarity": "rare",
-      "color": "c07a45"
+      "color": "c07a45",
+      "sprite": "/assets/items/copper_ore.png"
     },
     {
       "id": "amber",
       "name": "Ambar",
       "stack": 30,
       "rarity": "rare",
-      "color": "e8a33a"
+      "color": "e8a33a",
+      "sprite": "/assets/items/amber.png"
     }
   ],
   "tools": [

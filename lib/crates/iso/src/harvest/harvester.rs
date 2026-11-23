@@ -15,8 +15,6 @@ pub const HARVEST_STRIKE_AT: u32 = 6;
 pub enum HarvestBlock {
     /// The rule asks for a tool of `kind` at `tier` or better, and none is carried.
     NeedsTool { kind: ToolKind, tier: u8 },
-    /// The yields do not all fit in the inventory.
-    InventoryFull,
 }
 
 /// What the harvest did this step.
@@ -113,13 +111,6 @@ impl Harvester {
                 }
             },
         };
-        if !carried.inventory.fits(&rule.yields, items) {
-            self.reset();
-            return HarvestStatus::Blocked {
-                target: target.clone(),
-                reason: HarvestBlock::InventoryFull,
-            };
-        }
         if self.target.as_deref() != Some(target.id.as_str()) {
             self.target = Some(target.id.clone());
             self.progress = 0;

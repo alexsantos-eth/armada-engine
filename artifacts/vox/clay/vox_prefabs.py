@@ -60,6 +60,7 @@ DEADWOOD = "#8e8576"
 FUR = "#dcc6a2"
 # the trees of the bare ground: dry olive scrub leaf, and the char of a tree a lightning bolt split
 LEAF_DRY, CHAR = "#a39c46", "#4a423c"
+COPPER = "#a8532c"                                             # copper ore: the dropped item
 # New colours go at the end: the indices of the files already written must not move.
 PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK, CUT, MOSS,
            RED, WHITE, YELLOW, PINK, CAP, STEM, DOT, OCHRE, RUST, ROCK, ROCK_DARK,
@@ -73,7 +74,7 @@ PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK,
            BONE, ASH, SOOT, RUSTED, THISTLE, THISTLE_HEAD, AMBER, STEEL,
            WAX, SINTER, HOT_WATER,
            SOIL_DEEP, SOIL_WET, CRACK, DEADWOOD, FUR,
-           LEAF_DRY, CHAR]
+           LEAF_DRY, CHAR, COPPER]
 
 
 def box(x, y, z0, sx, sy, sz, color, r):
@@ -637,7 +638,7 @@ PIECES = {
     "thistle": (thistle(44), {"": THISTLE}),
     "thistle_short": (thistle(30), {"": THISTLE}),
     "vein": (vein, dict(iron=STEEL, amber=AMBER)),
-    "ore": (lambda c: [box(0, 0, 0, 8, 7, 5, ROCK_DARK, 2.4), box(1, 0, 3, 5, 4, 3, c, 1.4)], dict(iron=STEEL, amber=AMBER)),
+    "ore": (lambda c: [box(0, 0, 0, 8, 7, 5, ROCK_DARK, 2.4), box(1, 0, 3, 5, 4, 3, c, 1.4)], dict(iron=STEEL, amber=AMBER, copper=COPPER)),
     "flat_stone": (stone(32, 26, 8, 3.5), STONES),            # a cairn's slab
     "flat_stone_small": (stone(22, 18, 8, 3), STONES),
     "menhir": (menhir, dict(grey=ROCK, sand=STONE_SAND)),

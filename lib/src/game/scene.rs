@@ -99,6 +99,9 @@ pub(crate) fn npc_sheets(
     }
 }
 
+/// Size of a heap's shadow on the ground against the player's.
+const DROP_SHADOW_SCALE: f64 = 0.45;
+
 /// The player's depth key for this frame. It stands on its rounded column, but the key's
 /// elevation rides the feet, so climbing or descending a flight tilts the order gradually
 /// instead of snapping with the column's integer level.
@@ -452,6 +455,7 @@ impl Game {
         let chunks_drawn = self.collect_world(view, player, &water);
         let moved = self.collect_player(view, &water);
         self.collect_npcs(view, &water);
+        self.collect_drops(view);
         self.collect_dust(view, moved);
         self.collect_particles(view);
         self.collect_fires(view);
@@ -1061,6 +1065,77 @@ impl Game {
 
     /// The characters on show: each one's ground shadow, its pose off the walk, idle, climb
     /// or jump sheet, the shadows falling on it and its reflection, laid out like the player's.
+    /// The heaps of items on the ground: each one tossed out of what dropped it, then bobbing
+    /// over a small shadow of its own, sorted with the figures by where it lies.
+    fn collect_drops(&mut self, view: &FrameView) {
+        let projection = view.projection;
+        self.drop_views.advance(view.frame_ms, self.drops.list());
+        let light = self
+            .shadows
+            .as_ref()
+            .map(crate::lighting::shadow_view::ShadowScene::phase)
+            .unwrap_or_else(|| iso::lighting::phase_at(self.clock.tick))
+            .light();
+        let box_height = projection.elevation_step.unwrap_or(projection.tile_height);
+        for drop in self.drops.list() {
+            let column = get_player_column(drop.at);
+            if !self.manager.is_visible(iso::grid::to_chunk_coord(column)) {
+                continue;
+            }
+            let Some(sprite) = self
+                .items
+                .item(&drop.item)
+                .and_then(|item| item.sprite.as_deref())
+            else {
+                continue;
+            };
+            let pose = crate::harvest::drop_view::toss(self.drop_views.age(drop.id), drop);
+            let ground = player_feet(pose.at, drop.elevation, projection);
+            let Some((frame, mut layout)) =
+                self.atlas.standing(sprite, ground, projection.tile_width)
+            else {
+                continue;
+            };
+            layout.y -= pose.lift * box_height;
+            if !SpriteAtlas::on_screen(layout) {
+                continue;
+            }
+            let texture = self.atlas.asset(sprite).map_or(0, |asset| asset.texture);
+            let shadow = crate::npc::npc_view::scaled_shadow(
+                player_shadow(ground, pose.lift, projection, light),
+                DROP_SHADOW_SCALE,
+            );
+            let outline = shadow_clip::sheared_ellipse(
+                shadow.centre,
+                shadow.width,
+                shadow.height,
+                shadow.shear,
+                16,
+            );
+            let clip =
+                shadow_clip::ground_diamonds(&outline, drop.elevation, projection, |x, y| {
+                    self.manager.column_at(x, y).map(|c| c.elevation)
+                });
+            self.draws.push(SpriteDraw::ground_ellipse(
+                player_key(
+                    column,
+                    drop.elevation,
+                    shadow_view::GROUND_SHADOW_LAYER,
+                    projection.tile_height,
+                ),
+                shadow.centre,
+                shadow.width,
+                shadow.height,
+                shadow.alpha,
+                shadow.shear,
+                clip,
+            ));
+            let key = self.figure_draw_key(pose.at, drop.elevation, projection.tile_height);
+            self.draws
+                .push(SpriteDraw::whole(key, texture, frame, layout));
+        }
+    }
+
     fn collect_npcs(&mut self, view: &FrameView, water: &WaterField) {
         let projection = view.projection;
         let alpha = self.stepper.interpolation_alpha();
