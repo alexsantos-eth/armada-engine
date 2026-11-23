@@ -16,7 +16,7 @@ use crate::gui::{draw_hud, push_hud_update};
 use crate::loops::clock::{FrameClock, frame_timestamp_seconds};
 use crate::perf::FrameSample;
 
-/// Whether the mouse or a finger is down on the native HUD's action button.
+/// Whether the mouse or a finger is down on the HUD's action button.
 fn action_pressed(layout: &crate::gui::clay::HudLayout) -> bool {
     let (mx, my) = mouse_position();
     (is_mouse_button_down(MouseButton::Left) && layout.action_hit(mx, my))
@@ -123,29 +123,24 @@ pub(crate) async fn run(mut game: Game) {
             (game.depth_target.texture(), view.depth.focus()),
         );
         let picked = std::mem::take(&mut game.pending_gains);
-        let clay = game.streams && (crate::gui::web_ui::active() || game.clay_skin.is_some());
-        if clay {
+        if let Some(skin) = game.clay_skin.as_ref().filter(|_| game.streams) {
             let chest = game.player_chest(&view);
-            let at = crate::harvest::web_hud::screen_share(chest.x, chest.y, width, height);
-            let frame = crate::harvest::web_hud::hud_frame(
+            let at = crate::harvest::hud_frame::screen_share(chest.x, chest.y, width, height);
+            let frame = crate::harvest::hud_frame::hud_frame(
                 &game.carried,
                 &game.items,
                 &game.harvest_status,
                 game.gain_note.as_ref().map(|(text, _)| text.as_str()),
                 game.touch.visible(),
             );
-            let gains = crate::harvest::web_hud::gains(&picked, &game.items, at);
-            if let Some(skin) = game.clay_skin.as_ref() {
-                let layout =
-                    crate::gui::clay::HudLayout::new(width, height, frame.slots.len(), frame.touch);
-                game.clay_hud.apply(&frame, &gains, (width, height));
-                game.clay_hud.advance(frame_ms);
-                game.clay_hud.held =
-                    frame.prompt.as_ref().is_some_and(|p| !p.blocked) && action_pressed(&layout);
-                crate::gui::clay::draw_clay_hud(skin, &game.clay_hud, &frame, &layout);
-            } else {
-                game.web_ui.send(&frame, &gains);
-            }
+            let gains = crate::harvest::hud_frame::gains(&picked, &game.items, at);
+            let layout =
+                crate::gui::clay::HudLayout::new(width, height, frame.slots.len(), frame.touch);
+            game.clay_hud.apply(&frame, &gains, (width, height));
+            game.clay_hud.advance(frame_ms);
+            game.clay_hud.held =
+                frame.prompt.as_ref().is_some_and(|p| !p.blocked) && action_pressed(&layout);
+            crate::gui::clay::draw_clay_hud(skin, &game.clay_hud, &frame, &layout);
         } else if game.streams {
             let prompt = crate::harvest::hotbar::prompt(&game.harvest_status, &game.items);
             crate::harvest::hotbar::draw_hotbar(

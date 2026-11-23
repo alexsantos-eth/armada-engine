@@ -6,7 +6,6 @@
 pub(crate) mod clay;
 mod hud;
 mod route;
-pub(crate) mod web_ui;
 
 pub(crate) use hud::{HudWorld, PerfCounts, draw_hud, push_hud_update};
 pub(crate) use route::{Route, current};

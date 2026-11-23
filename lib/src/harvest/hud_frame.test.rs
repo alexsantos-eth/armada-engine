@@ -1,4 +1,4 @@
-//! Tests for what the HTML HUD is told about the harvest.
+//! Tests for what the HUD is told about the harvest.
 
 use super::*;
 use iso::grid::WorldCoord;

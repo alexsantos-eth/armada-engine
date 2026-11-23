@@ -1,8 +1,8 @@
-//! What the HTML HUD is told about the harvest: the slots, the prompt with its verb and tool,
+//! What the HUD is told about the harvest: the slots, the prompt with its verb and tool,
 //! the full-inventory note and each pick-up with the point it flies from. Pure; tested in
-//! `web_hud.test.rs`.
+//! `hud_frame.test.rs`.
 
-use crate::gui::web_ui::{UiFrame, UiGain, UiPrompt, UiStack};
+use crate::gui::clay::{UiFrame, UiGain, UiPrompt, UiStack};
 use iso::harvest::HarvestStatus;
 use iso::inventory::Carried;
 use iso::items::{HarvestYield, ItemCatalog, ToolKind};
@@ -118,5 +118,5 @@ pub(crate) fn screen_share(x: f64, y: f64, width: f32, height: f32) -> (f32, f32
 }
 
 #[cfg(test)]
-#[path = "web_hud.test.rs"]
+#[path = "hud_frame.test.rs"]
 mod tests;

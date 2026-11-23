@@ -153,14 +153,12 @@ pub(crate) struct Game {
     pub(crate) harvest_status: iso::harvest::HarvestStatus,
     /// The note of the last harvest and how long it stays up, in milliseconds.
     pub(crate) gain_note: Option<(String, f64)>,
-    /// What the player picked up since the last frame was drawn, for the HTML HUD's flights.
+    /// What the player picked up since the last frame was drawn, for the HUD's flights.
     pub(crate) pending_gains: Vec<iso::items::HarvestYield>,
-    /// The bridge to the HTML HUD of the web build.
-    pub(crate) web_ui: crate::gui::web_ui::WebUi,
-    /// The exported UI kit the native HUD draws with; `None` on a page with the HTML HUD, or
-    /// when `content/ui/` cannot be loaded (the plain hotbar draws instead).
+    /// The exported UI kit the HUD draws with; `None` when `content/ui/` cannot be loaded (the
+    /// plain hotbar draws instead).
     pub(crate) clay_skin: Option<crate::gui::clay::ClaySkin>,
-    /// The native HUD's animations.
+    /// The HUD's animations.
     pub(crate) clay_hud: crate::gui::clay::ClayHud,
     /// The heaps of items lying on the ground; saved in the save's `systems`.
     pub(crate) drops: iso::drops::Drops,
@@ -323,15 +321,11 @@ impl Game {
 
         let items_json = include_str!("../../content/json/items.json");
         let items = iso::items::parse_items(items_json, &catalog).expect("item content validates");
-        let clay_skin = if crate::gui::web_ui::active() {
-            None
-        } else {
-            crate::gui::clay::ClaySkin::load(
-                client_path,
-                items.item_ids().into_iter().map(str::to_owned),
-            )
-            .await
-        };
+        let clay_skin = crate::gui::clay::ClaySkin::load(
+            client_path,
+            items.item_ids().into_iter().map(str::to_owned),
+        )
+        .await;
         let carried = match saved_systems.as_ref().and_then(|systems| {
             iso::inventory::saved_carried(systems, iso::inventory::STARTING_SLOTS, &items)
         }) {
@@ -541,7 +535,6 @@ impl Game {
             harvest_status: iso::harvest::HarvestStatus::Idle,
             gain_note: None,
             pending_gains: Vec::new(),
-            web_ui: crate::gui::web_ui::WebUi::default(),
             clay_skin,
             clay_hud: crate::gui::clay::ClayHud::default(),
             impacts: crate::harvest::impact::Impacts::default(),

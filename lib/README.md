@@ -146,7 +146,7 @@ El sitio tiene tres rutas servidas desde la raíz del dominio:
 - `http://127.0.0.1:8765/` — la presentación: el mundo del juego **sin ninguna GUI en pantalla** (ni borde, ni HUD).
 - `http://127.0.0.1:8765/playground` — la superficie de desarrollo: el mismo juego con el overlay de siempre (título y ayuda, lectura del mundo, panel de rendimiento y mensajes).
 - `http://127.0.0.1:8765/maker` — el editor de mundo: un chunk plano y un panel de herramientas para construirlo (ver [Editar un mundo](#editar-un-mundo)).
-- `http://127.0.0.1:8765/ui/` — el catálogo del kit de UI (arcilla y cómic) con el que se pinta el HUD: muestra interactiva y cada componente. En web es HTML; en nativo el kit se exporta a sprites (`node scripts/export-ui.cjs` → `content/ui/`) y lo dibuja Macroquad. Guía en [`docs/UI-KIT.md`](docs/UI-KIT.md); los iconos de ítems se regeneran con `python3 scripts/build-ui-icons.py`.
+- `http://127.0.0.1:8765/ui/` — el catálogo del kit de UI (arcilla y cómic) con el que se pinta el HUD: muestra interactiva y cada componente. El juego no carga HTML: el kit se exporta a sprites (`node scripts/export-ui.cjs` → `content/ui/`) y lo dibuja Macroquad en nativo y en web. Guía en [`docs/UI-KIT.md`](docs/UI-KIT.md); los iconos de ítems se regeneran con `python3 scripts/build-ui-icons.py`.
 
 `build-web.sh` publica las tres: la página `web/index.html` en `dist/index.html` y copias idénticas en `dist/playground/index.html` y `dist/maker/index.html` (con barra final funciona igual). La página usa `<base href="/">`, así que las tres rutas cargan el mismo `.wasm` y el mismo `content/` desde la raíz; por eso el sitio tiene que servirse desde la raíz del dominio —como hace Netlify— y no desde un subdirectorio. La ruta la lee el cliente en WASM mediante el import `iso_route_path` (mismo patrón FFI que el almacenamiento local); la build nativa no tiene ruta y la toma de sus argumentos (`--maker`, `--playground`; sin ellos, la presentación sin overlay, como la raíz). El servidor tiene que servir `dist/` desde la raíz, porque la página carga `iso-core.wasm`, `adapter.js` y
 `content/` desde la raíz del sitio; no abras el HTML con `file://`. En localhost la página añade
@@ -163,8 +163,7 @@ son herramientas nativas. La página va con un `viewport` que desactiva el zoom 
 
 La página carga el puente JavaScript oficial de Macroquad desde `not-fl3.github.io` y registra en
 su import `env` las operaciones de `localStorage`, la lectura de la ruta (`iso_route_path`) y la
-detección de puntero grueso (`iso_pointer_coarse`), y el puente con el HUD en HTML del kit de UI
-(`iso_ui_active`, `iso_ui_push`, `iso_ui_gather_held`; ver [`docs/UI-KIT.md`](docs/UI-KIT.md)). Conviene servir una copia versionada propia del
+detección de puntero grueso (`iso_pointer_coarse`). Conviene servir una copia versionada propia del
 puente, con sus cabeceras de caché, en vez de depender de ese dominio. El cliente no usa
 `web-sys`, porque su glue code de `wasm-bindgen` no es compatible con el cargador raw de
 Macroquad. La copia local `web/mq_js_bundle.js` lleva parches propios: los listeners de

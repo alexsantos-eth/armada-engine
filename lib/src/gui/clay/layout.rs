@@ -1,6 +1,6 @@
-//! Where the native HUD puts its pieces: the same layout as `.ac-hud` in `web/ui/armada-ui.css`
-//! (one bottom row on a desktop; two rows of six at the top and the action button above the jump
-//! button when the touch controls are on screen). Pure; tested in `layout.test.rs`.
+//! Where the HUD puts its pieces on every platform: one bottom row on a desktop; two rows of six
+//! at the top and the action button above the jump button when the touch controls are on
+//! screen. Pure; tested in `layout.test.rs`.
 
 use macroquad::math::Rect;
 

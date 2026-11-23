@@ -1,7 +1,7 @@
 //! Tests for the native HUD's animation state: bubbles, flights, bumps and counts in the air.
 
 use super::*;
-use crate::gui::web_ui::{UiFrame, UiGain, UiStack};
+use crate::gui::clay::{UiFrame, UiGain, UiStack};
 
 fn frame(wood: u32) -> UiFrame {
     UiFrame {

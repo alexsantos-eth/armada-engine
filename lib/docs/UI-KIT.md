@@ -1,26 +1,24 @@
 # Armada UI kit
 
-La librería HTML/CSS/JS con la que se hace toda la interfaz en HTML del juego: el HUD de la build
-web y cualquier menú, diálogo o panel que venga después. Estilo «arcilla y cómic», a juego con los
+La librería HTML/CSS/JS que define el aspecto de toda la interfaz del juego: el HUD y cualquier
+menú, diálogo o panel que venga después. El juego no carga HTML: el kit se **exporta a sprites** y
+Macroquad los dibuja igual en nativo y en web (ver «El HUD del juego»), así que hay un solo
+método en todas las plataformas. Estilo «arcilla y cómic», a juego con los
 sprites voxel clay: colores planos, contorno de tinta grueso que tiembla como crayón, sombra sólida
 desplazada y un grano fino de plastilina. Las cifras y los avisos son de cómic: globos que entran
 con sacudida y números con contorno que vuelan en arco hasta su slot.
 
 | Archivo | Qué es |
 | --- | --- |
-| [`web/ui/armada-ui.css`](../web/ui/armada-ui.css) | Tokens (`--ac-*`), componentes (`.ac-*`), animaciones y el layout del HUD del juego. |
-| [`web/ui/armada-ui.js`](../web/ui/armada-ui.js) | `window.ArmadaUI`: construye componentes, lanza las animaciones y monta el HUD del juego. Script plano, sin build. |
+| [`web/ui/armada-ui.css`](../web/ui/armada-ui.css) | Tokens (`--ac-*`), componentes (`.ac-*`), animaciones. |
+| [`web/ui/armada-ui.js`](../web/ui/armada-ui.js) | `window.ArmadaUI`: construye componentes y lanza las animaciones (catálogo y exportación). Script plano, sin build. |
 | [`web/ui/items/<id>.png`](../web/ui/items/) | Iconos de los ítems: el sprite que el juego usa para el montón en el suelo, recortado y centrado en 128 px. |
 | [`web/ui/index.html`](../web/ui/index.html) | Catálogo vivo: la muestra interactiva del HUD y cada componente con sus clases. Se publica en `/ui/`. |
 | [`scripts/build-ui-icons.py`](../scripts/build-ui-icons.py) | Regenera los iconos desde `assets/items/` (necesita Pillow). |
 
-`build-web.sh` copia `web/ui/` tal cual a `dist/ui/`; no hay paso de compilación. La página del
-juego (`web/index.html`) carga las fuentes de Google Fonts, `ui/armada-ui.css` y
-`ui/armada-ui.js` antes de `adapter.js`.
-
-En el **build nativo** no hay navegador, así que el kit se **exporta a sprites** y Macroquad los
-dibuja (ver más abajo). El CSS sigue siendo la única fuente del aspecto: nada se redibuja a mano
-en Rust.
+`build-web.sh` copia `web/ui/` tal cual a `dist/ui/` para servir el catálogo; no hay paso de
+compilación. La página del juego (`web/index.html`) no carga el kit. El CSS es la única fuente del
+aspecto: nada se redibuja a mano en Rust, todo sale de las piezas exportadas.
 
 ## Reglas del estilo
 
@@ -67,62 +65,9 @@ solo tras `ms` (1600 por defecto); `x`, `y` son la punta de la cola en píxeles 
 el centro de `to`, y entonces llama a `onLand`. `holdButton` sigue un puntero (ratón, dedo o
 lápiz) con captura, así que soltar fuera del botón también suelta.
 
-## El HUD del juego
+## El HUD del juego (exportar a sprites)
 
-`ArmadaUI.mountGameHud(document.body, { canvas })` construye `.ac-hud` encima del canvas: el
-aviso y la barra de slots abajo en el centro y el botón de acción abajo a la derecha. Todo es
-`pointer-events: none` salvo el botón, así que el canvas sigue recibiendo el ratón y los toques.
-El botón no toma el foco (`tabindex=-1`, `preventDefault` al pulsar) y al soltarlo devuelve el
-foco al canvas, para que el teclado siga llegando al juego.
-
-Con los controles táctiles en pantalla (`.is-touch`) la barra sube arriba en dos filas de seis y
-el botón de acción se pone encima del botón SALTAR, con las mismas medidas que
-`src/touch/layout.rs` (margen `0,14 vh`, radio `0,073 vh`). Si esas medidas cambian en Rust,
-cambian aquí.
-
-### Puente con el cliente Rust
-
-`web/adapter.js` monta el HUD y registra tres imports en `env`; el cliente los declara en
-[`src/gui/web_ui.rs`](../src/gui/mod.md):
-
-| Import | Qué hace |
-| --- | --- |
-| `iso_ui_active() -> i32` | 1 si la página tiene el kit. Si no, el cliente pinta su hotbar de Macroquad como en nativo. |
-| `iso_ui_push(ptr, len)` | El cliente manda un JSON `{ frame?, gains }`; el HUD lo aplica con `GameHud.apply`. |
-| `iso_ui_gather_held() -> i32` | 1 mientras el botón de acción está pulsado; se suma a la tecla `E` en `NormalizedInput::gather_held`. |
-
-El mensaje (`WebUi::message`) solo lleva `frame` cuando cambió desde el anterior, y lleva cada
-recogida del fotograma en `gains`:
-
-```json
-{
-  "frame": {
-    "visible": true,
-    "touch": false,
-    "slots": [{ "item": "wood", "name": "Madera", "count": 9 }, null],
-    "prompt": { "text": "Madera", "verb": "Talar", "tool": "axe", "progress": 0.4, "blocked": false },
-    "note": null
-  },
-  "gains": [{ "item": "wood", "name": "Madera", "amount": 3, "x": 0.5, "y": 0.42 }]
-}
-```
-
-`x`, `y` de una ganancia son el pecho del jugador como fracción de la pantalla
-(`Game::player_chest`, `harvest::web_hud::screen_share`): de ahí sale el globo `+3 Madera` y de
-ahí vuela el número hasta el slot. Mientras un número está en el aire, el slot sigue mostrando la
-cantidad anterior; al aterrizar se actualiza y rebota. `note` solo lleva «Inventario lleno»
-(globo rojo encima de la barra): las ganancias tienen su propio globo. El verbo y la herramienta
-salen de la regla de recolección (`hacha → Talar`, `pico → Picar`, `red → Atrapar`, a mano →
-`Recoger`).
-
-La build nativa y las corridas guionizadas no tienen HTML: siguen pintando la hotbar con
-Macroquad (`harvest::hotbar::draw_hotbar`), así que las capturas automáticas de los PR no
-muestran este HUD. Para verlo, sirve `dist/` y abre `/` o `/ui/`.
-
-## El HUD nativo (exportar a sprites)
-
-El build nativo (y las corridas guionizadas que alimentan las capturas de los PR) no puede
-abrir HTML, así que el kit se congela a imágenes y Macroquad las dibuja con las mismas medidas,
+El juego no abre HTML en ninguna plataforma, así que el kit se congela a imágenes y Macroquad las dibuja con las mismas medidas,
 el mismo troquelado y las mismas animaciones.
 
 | Pieza | Qué es |
@@ -131,16 +76,24 @@ el mismo troquelado y las mismas animaciones.
 | [`web/ui/export.html`](../web/ui/export.html) | Un `[data-piece]` por pieza, pintado con el CSS real. `data-slice` marca el borde para el nine-slice (0 = estirar entero). |
 | `content/ui/` | La salida commiteada: PNG por pieza, `ui.json`, `items/<id>.png`. Se regenera con el script, no a mano. |
 | `content/fonts/Fredoka-Bold.ttf` | La fuente display del kit para Macroquad (descargada de Google Fonts). |
-| [`src/gui/clay/`](../src/gui/clay/mod.md) | El cliente Rust: `skin.rs` (carga el manifest, texturas y fuente), `slice.rs` (nine-slice puro), `layout.rs` (las mismas posiciones que `.ac-hud`), `motion.rs` (las curvas de `ac-pop`/`ac-out`/`ac-bump`/`ac-chop` y el vuelo, puras), `hud.rs` (estado de las animaciones: globo, vuelos, rebotes, cuentas en el aire) y `draw.rs` (lo pinta con Macroquad). |
+| [`src/gui/clay/`](../src/gui/clay/mod.md) | El cliente Rust: `skin.rs` (carga el manifest, texturas y fuente), `slice.rs` (nine-slice puro), `layout.rs` (dónde va cada pieza en escritorio y con controles táctiles), `motion.rs` (las curvas de `ac-pop`/`ac-out`/`ac-bump`/`ac-chop` y el vuelo, puras), `hud.rs` (estado de las animaciones: globo, vuelos, rebotes, cuentas en el aire) y `draw.rs` (lo pinta con Macroquad). |
 
-El cliente arma el mismo `UiFrame`/`UiGain` que manda el web (`harvest::web_hud`): en web con el
-kit se envía por `iso_ui_push`, en nativo lo consume `ClayHud` y `draw_clay_hud`. Así los dos HUD
-cuentan lo mismo. El botón de acción se maneja con ratón o toque (`action_pressed` en el bucle),
-y se suma a `E` por `MacroquadInput::action_held`.
+Cada fotograma `harvest::hud_frame` arma un `UiFrame` (slots con id, nombre y cantidad; aviso con
+verbo y herramienta, progreso y si está bloqueado; nota de inventario lleno) y un `UiGain` por
+cada recogida, con el pecho del jugador como fracción de la pantalla (`Game::player_chest`,
+`hud_frame::screen_share`): de ahí sale el globo `+3 Madera` y de ahí vuela el número hasta el
+slot. Mientras un número está en el aire el slot sigue mostrando la cantidad anterior; al aterrizar
+se actualiza y rebota. El verbo y la herramienta salen de la regla de recolección
+(`hacha → Talar`, `pico → Picar`, `red → Atrapar`, a mano → `Recoger`). `ClayHud` anima y
+`draw_clay_hud` pinta. El botón de acción se maneja con ratón o toque (`action_pressed` en el
+bucle), se suma a `E` por `MacroquadInput::action_held` y es también el botón táctil de
+recolectar. Con los controles táctiles en pantalla la barra sube arriba en dos filas de seis y el
+botón de acción se pone encima del botón SALTAR, con las medidas de `src/touch/layout.rs`.
 
-`ClaySkin::load` devuelve `None` (con un aviso) si falta `content/ui/ui.json`, una pieza o la
-fuente; entonces el cliente pinta la hotbar simple de `harvest::hotbar`. En web, con el HUD en
-HTML activo, el kit nativo no se carga.
+Es igual en nativo, en web y en las corridas guionizadas, así que las capturas automáticas de los
+PR muestran el HUD tal como se juega. `ClaySkin::load` devuelve `None` (con un aviso) si falta
+`content/ui/ui.json`, una pieza o la fuente; entonces el cliente pinta la hotbar simple de
+`harvest::hotbar`.
 
 **Regenerar tras cambiar el CSS o los iconos:**
 
@@ -159,5 +112,5 @@ y commitea `content/ui/`. Si añades una pieza, decláralas en los tres sitios: 
    apoyado en `.ac-hand` o en el mismo patrón `::before` con `#ac-wobble`.
 3. Si necesita comportamiento, añade una función o clase a `ArmadaUI` en `armada-ui.js`.
 4. Añade su muestra a `web/ui/index.html` y su fila a la tabla de componentes de este documento.
-5. Sube el `?v=` de `armada-ui.css`/`armada-ui.js` en `web/index.html` para saltar la caché de
-   Safari, igual que con el adaptador.
+5. Si el juego la dibuja, añádela como pieza a `export.html`, vuelve a exportar y dibújala desde
+   `src/gui/clay/`.

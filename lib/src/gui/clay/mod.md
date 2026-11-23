@@ -1,8 +1,8 @@
 # Clay (HUD nativo del kit de UI)
 
-El kit de UI de arcilla y cómic (`web/ui/`, ver [`docs/UI-KIT.md`](../../../docs/UI-KIT.md)) dibujado con Macroquad. `scripts/export-ui.cjs` pinta cada pieza del kit con el CSS real a PNG en `content/ui/` y escribe `content/ui/ui.json` (tamaño, margen alrededor de la forma, borde de nine-slice y colores de los tokens). Este dominio carga esas piezas y la fuente Fredoka, las estira con nine-slice, las coloca con el mismo layout que `.ac-hud` y las anima con las curvas del CSS. Recibe el mismo `UiFrame`/`UiGain` que el HUD en HTML (`harvest::web_hud`), así que los dos HUD cuentan lo mismo.
+El kit de UI de arcilla y cómic (`web/ui/`, ver [`docs/UI-KIT.md`](../../../docs/UI-KIT.md)) dibujado con Macroquad. `scripts/export-ui.cjs` pinta cada pieza del kit con el CSS real a PNG en `content/ui/` y escribe `content/ui/ui.json` (tamaño, margen alrededor de la forma, borde de nine-slice y colores de los tokens). Este dominio carga esas piezas y la fuente Fredoka, las estira con nine-slice, las coloca (`layout.rs`) y las anima con las curvas del CSS. Pinta el `UiFrame`/`UiGain` que arma `harvest::hud_frame`.
 
-Se usa en la build nativa y en las corridas guionizadas (por eso las capturas de los PR muestran el HUD). En la web con el kit HTML activo no se carga. Si falta `content/ui/` o la fuente, `ClaySkin::load` devuelve `None` y el cliente pinta la hotbar simple de `harvest::hotbar`.
+Es el único HUD del juego: se usa igual en nativo, en web y en las corridas guionizadas (por eso las capturas de los PR muestran el HUD tal como se juega). Si falta `content/ui/` o la fuente, `ClaySkin::load` devuelve `None` y el cliente pinta la hotbar simple de `harvest::hotbar`.
 
 Todo es puro y se prueba (`skin`, `slice`, `layout`, `motion`, `hud`) salvo `draw.rs`, que solo llama a Macroquad y se comprueba con `scenes/pr-harvest.json` (excepción de GPU de `FILE_STRUCTURE.md`). Las rotaciones y escalas se aplican con una cámara de matriz propia (`pose_matrix`), como un `transform` de CSS con su origen en el pivote.
 
@@ -10,7 +10,14 @@ Todo es puro y se prueba (`skin`, `slice`, `layout`, `motion`, `hud`) salvo `dra
 
 ### `mod.rs`
 
-- Reexporta `draw_clay_hud`, `ClayHud`, `HudLayout` y `ClaySkin`.
+- Reexporta `draw_clay_hud`, `UiFrame`, `UiGain`, `UiPrompt`, `UiStack`, `ClayHud`, `HudLayout` y `ClaySkin`.
+
+### `frame.rs`
+
+- [`UiStack`](frame.rs#L6) — Una pila en un slot: id del item, nombre y cantidad.
+- [`UiPrompt`](frame.rs#L15) — El aviso: texto, verbo y herramienta del botón de acción, progreso (0–1) mientras se trabaja y si una herramienta que falta lo bloquea.
+- [`UiFrame`](frame.rs#L25) — Lo que muestra el HUD este fotograma: visible, controles táctiles en pantalla, slots, aviso y nota.
+- [`UiGain`](frame.rs#L35) — Una recogida: item, nombre, cantidad y de dónde sale volando, como fracción de la pantalla.
 
 ### `skin.rs`
 
@@ -41,7 +48,7 @@ Todo es puro y se prueba (`skin`, `slice`, `layout`, `motion`, `hud`) salvo `dra
   - Firma: `pub(crate) fn new(width: f32, height: f32, count: usize, touch: bool) -> Self {`
 - [`HudLayout::action_hit`](layout.rs#L107) — Si un punto cae en el botón de acción (redondo).
   - Firma: `pub(crate) fn action_hit(&self, x: f32, y: f32) -> bool {`
-- [`BOTTOM_MARGIN`](layout.rs#L8), [`TOP_MARGIN`](layout.rs#L10), [`ACTION_MARGIN`](layout.rs#L12), [`SLOT_GAP`](layout.rs#L14), [`SLOT_ASPECT`](layout.rs#L20) — Las medidas de `.ac-hud` en `armada-ui.css`.
+- [`BOTTOM_MARGIN`](layout.rs#L8), [`TOP_MARGIN`](layout.rs#L10), [`ACTION_MARGIN`](layout.rs#L12), [`SLOT_GAP`](layout.rs#L14), [`SLOT_ASPECT`](layout.rs#L20) — Las medidas del HUD en escritorio.
 
 ### `motion.rs`
 

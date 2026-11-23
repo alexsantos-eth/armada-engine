@@ -1,11 +1,11 @@
 //! The native HUD's animation state: the comic bubble, the gains flying to their slots, the
-//! slots' bumps and the counts still in the air. It takes the same `UiFrame` and `UiGain` the
-//! web build sends to the HTML kit, so both HUDs tell the same story. Pure; `draw.rs` paints it.
+//! slots' bumps and the counts still in the air, from each frame's `UiFrame` and `UiGain`.
+//! Pure; `draw.rs` paints it.
 
 use std::collections::HashMap;
 
+use super::frame::{UiFrame, UiGain};
 use super::motion;
-use crate::gui::web_ui::{UiFrame, UiGain};
 
 /// How far above the player's chest the bubble's tail points.
 pub(crate) const BUBBLE_LIFT: f32 = 40.0;

@@ -16,7 +16,7 @@ use crate::touch::{RawTouch, RawTouchPhase, TouchControls};
 /// Input service backed by Macroquad's keyboard and, on touch devices, the virtual controls.
 pub struct MacroquadInput<'a> {
     pub touch: &'a mut TouchControls,
-    /// Whether the native HUD's action button was held last frame.
+    /// Whether the HUD's action button was held last frame.
     pub action_held: bool,
 }
 
@@ -62,9 +62,7 @@ impl InputService for MacroquadInput<'_> {
             jump_held: is_key_down(KeyCode::Space) || frame.jump_held,
             run: is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift) || frame.run,
             jetpack_pressed: is_key_pressed(KeyCode::J),
-            gather_held: is_key_down(KeyCode::E)
-                || crate::gui::web_ui::gather_held()
-                || self.action_held,
+            gather_held: is_key_down(KeyCode::E) || self.action_held,
         }
     }
 }

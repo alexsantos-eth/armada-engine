@@ -5,12 +5,12 @@
 
 use macroquad::prelude::*;
 
+use super::frame::{UiFrame, UiPrompt};
 use super::hud::{BubbleContent, ClayHud};
 use super::layout::HudLayout;
 use super::motion;
 use super::skin::ClaySkin;
 use super::slice::nine_slice;
-use crate::gui::web_ui::{UiFrame, UiPrompt};
 
 /// A camera that draws in screen pixels through one pose matrix.
 struct Posed(Mat4);
