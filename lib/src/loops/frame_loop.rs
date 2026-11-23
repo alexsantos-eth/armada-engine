@@ -123,6 +123,7 @@ pub(crate) async fn run(mut game: Game) {
             (game.depth_target.texture(), view.depth.focus()),
         );
         let picked = std::mem::take(&mut game.pending_gains);
+        let mut stick_tool = None;
         if let Some(skin) = game.clay_skin.as_ref().filter(|_| game.streams) {
             let chest = game.player_chest(&view);
             let at = crate::harvest::hud_frame::screen_share(chest.x, chest.y, width, height);
@@ -141,6 +142,11 @@ pub(crate) async fn run(mut game: Game) {
             game.clay_hud.held =
                 frame.prompt.as_ref().is_some_and(|p| !p.blocked) && action_pressed(&layout);
             crate::gui::clay::draw_clay_hud(skin, &game.clay_hud, &frame, &layout);
+            stick_tool = frame
+                .prompt
+                .as_ref()
+                .filter(|prompt| !prompt.blocked)
+                .map(|prompt| prompt.tool);
         } else if game.streams {
             let prompt = crate::harvest::hotbar::prompt(&game.harvest_status, &game.items);
             crate::harvest::hotbar::draw_hotbar(
@@ -222,7 +228,17 @@ pub(crate) async fn run(mut game: Game) {
             game.maker = Some(session);
         }
 
-        game.touch.draw();
+        if game.touch.visible() {
+            match game.clay_skin.as_ref() {
+                Some(skin) => crate::gui::clay::draw_clay_stick(
+                    skin,
+                    &game.touch.view(width, height),
+                    stick_tool,
+                    game.clay_hud.clock_ms,
+                ),
+                None => game.touch.draw(),
+            }
+        }
 
         next_frame().await;
     }

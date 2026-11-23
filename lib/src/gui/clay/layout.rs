@@ -1,6 +1,7 @@
-//! Where the HUD puts its pieces on every platform: one bottom row on a desktop; two rows of six
-//! at the top and the action button above the jump button when the touch controls are on
-//! screen. Pure; tested in `layout.test.rs`.
+//! Where the HUD puts its pieces on every platform: one bottom row and the action button in the
+//! corner on a desktop; with the touch controls on screen, the bar at the top (one slim row when
+//! it fits, as on a landscape phone, else rows of six) and no action button (holding the stick
+//! gathers). Pure; tested in `layout.test.rs`.
 
 use macroquad::math::Rect;
 
@@ -18,10 +19,11 @@ const PROMPT_GAP: f32 = 16.0;
 const PANEL_PAD: (f32, f32, f32) = (12.0, 10.0, 12.0);
 /// A slot is this much taller than wide.
 pub(crate) const SLOT_ASPECT: f32 = 1.06;
+/// The smallest and largest slot side of a single top row with touch controls; below the
+/// smallest the bar wraps into rows of six.
+const TOUCH_ROW_SLOT: (f32, f32) = (34.0, 44.0);
 /// The action button's side on a desktop.
 const ACTION_SIZE: f32 = 104.0;
-/// Room between the action button and the jump button below it.
-const ACTION_OVER_JUMP: f32 = 18.0;
 
 /// The HUD's rectangles for one screen size.
 #[derive(Clone, Debug, PartialEq)]
@@ -33,7 +35,8 @@ pub(crate) struct HudLayout {
     /// with touch controls).
     pub(crate) prompt_anchor: (f32, f32),
     pub(crate) prompt_below: bool,
-    pub(crate) action: Rect,
+    /// The action button, on a desktop only.
+    pub(crate) action: Option<Rect>,
 }
 
 impl HudLayout {
@@ -41,14 +44,22 @@ impl HudLayout {
     /// controls on it.
     pub(crate) fn new(width: f32, height: f32, count: usize, touch: bool) -> Self {
         let count = count.max(1);
-        let slot = if touch {
+        let one_row = ((width - 48.0) / count as f32 - SLOT_GAP).min(TOUCH_ROW_SLOT.1);
+        let single_row = touch && one_row >= TOUCH_ROW_SLOT.0;
+        let slot = if single_row {
+            one_row
+        } else if touch {
             ((width - 48.0) / 6.0 - 10.0).clamp(30.0, 52.0)
         } else {
             ((width - 120.0) / count as f32 - 8.0).clamp(30.0, 54.0)
         };
         let room = (width - 32.0 - 2.0 * PANEL_PAD.0 + SLOT_GAP).max(slot + SLOT_GAP);
         let fit = ((room / (slot + SLOT_GAP)).floor() as usize).clamp(1, count);
-        let columns = if touch { fit.min(6) } else { fit };
+        let columns = if touch && !single_row {
+            fit.min(6)
+        } else {
+            fit
+        };
         let rows = count.div_ceil(columns);
         let slot_h = slot * SLOT_ASPECT;
         let row_w = |n: usize| n as f32 * slot + (n.saturating_sub(1)) as f32 * SLOT_GAP;
@@ -80,19 +91,14 @@ impl HudLayout {
         } else {
             ((width / 2.0, panel.y - PROMPT_GAP), false)
         };
-        let action = if touch {
-            let jump = crate::touch::TouchLayout::new(width, height);
-            let size = (0.13 * height).clamp(72.0, 96.0);
-            let bottom = jump.jump_center.1 - jump.jump_radius - ACTION_OVER_JUMP;
-            Rect::new(jump.jump_center.0 - size / 2.0, bottom - size, size, size)
-        } else {
+        let action = (!touch).then(|| {
             Rect::new(
                 width - ACTION_MARGIN - ACTION_SIZE,
                 height - ACTION_MARGIN - ACTION_SIZE,
                 ACTION_SIZE,
                 ACTION_SIZE,
             )
-        };
+        });
         Self {
             slot,
             slots,
@@ -105,9 +111,10 @@ impl HudLayout {
 
     /// Whether `(x, y)` lands on the action button (its round shape).
     pub(crate) fn action_hit(&self, x: f32, y: f32) -> bool {
-        let r = self.action.w / 2.0;
-        let (cx, cy) = (self.action.x + r, self.action.y + r);
-        (x - cx).hypot(y - cy) <= r
+        self.action.is_some_and(|action| {
+            let r = action.w / 2.0;
+            (x - (action.x + r)).hypot(y - (action.y + r)) <= r
+        })
     }
 }
 

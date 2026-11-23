@@ -17,6 +17,7 @@
       .round { --ac-fill: var(--ac-red); }
       .round::before { border-radius: var(--ac-blob-round); }
       .pressed::before { box-shadow: 1px 2px 0 var(--ac-ink); }
+      .disc::before { border-radius: var(--ac-blob-round); }
       .tail svg { width: 34px; height: 30px; display: block; filter: url(#ac-wobble); }
       .tail path { stroke: var(--ac-ink); stroke-width: 4; stroke-linejoin: round; }
       .badge {
@@ -44,6 +45,9 @@
     <div data-piece="bubble_tail_warning" data-slice="0" class="tail"><svg viewBox="0 0 34 30"><path d="M3 2 L14 28 L31 2" fill="#e0543a" /></svg></div>
     <div data-piece="action" data-slice="0"><div class="panel ac-hand round" style="width: 104px; height: 104px"></div></div>
     <div data-piece="action_pressed" data-slice="0"><div class="panel ac-hand round pressed" style="width: 104px; height: 104px"></div></div>
+    <div data-piece="stick_base" data-slice="0"><div class="panel ac-hand ac-paper disc" style="width: 120px; height: 120px"></div></div>
+    <div data-piece="stick_knob" data-slice="0"><div class="panel ac-hand ac-gold disc" style="width: 56px; height: 56px"></div></div>
+    <div data-piece="stick_knob_run" data-slice="0"><div class="panel ac-hand ac-red disc" style="width: 56px; height: 56px"></div></div>
     <div data-piece="badge" data-slice="0"><div class="badge"></div></div>
     <div data-piece="kbd" data-slice="0"><div class="kbd"></div></div>
     <div data-piece="tool_axe" data-slice="0" class="tool" data-tool="axe"></div>

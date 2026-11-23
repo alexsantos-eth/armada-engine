@@ -86,9 +86,11 @@ slot. Mientras un número está en el aire el slot sigue mostrando la cantidad a
 se actualiza y rebota. El verbo y la herramienta salen de la regla de recolección
 (`hacha → Talar`, `pico → Picar`, `red → Atrapar`, a mano → `Recoger`). `ClayHud` anima y
 `draw_clay_hud` pinta. El botón de acción se maneja con ratón o toque (`action_pressed` en el
-bucle), se suma a `E` por `MacroquadInput::action_held` y es también el botón táctil de
-recolectar. Con los controles táctiles en pantalla la barra sube arriba en dos filas de seis y el
-botón de acción se pone encima del botón SALTAR, con las medidas de `src/touch/layout.rs`.
+bucle) y se suma a `E` por `MacroquadInput::action_held`. Con los controles táctiles en pantalla
+la barra sube arriba (una fila fina si cabe, como en un móvil apaisado; si no, filas de seis) y no
+hay botón de acción: se recolecta manteniendo quieto el joystick flotante, que también se pinta
+con el kit (`draw_clay_stick`: piezas `stick_base`, `stick_knob` y `stick_knob_run`, con la
+herramienta de lo que está al alcance sobre el mando). Ver [`src/touch/`](../src/touch/mod.md).
 
 Es igual en nativo, en web y en las corridas guionizadas, así que las capturas automáticas de los
 PR muestran el HUD tal como se juega. `ClaySkin::load` devuelve `None` (con un aviso) si falta

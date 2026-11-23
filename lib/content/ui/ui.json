@@ -100,6 +100,27 @@
       "pad": 24,
       "slice": 0
     },
+    "stick_base": {
+      "file": "ui/stick_base.png",
+      "width": 288,
+      "height": 288,
+      "pad": 24,
+      "slice": 0
+    },
+    "stick_knob": {
+      "file": "ui/stick_knob.png",
+      "width": 160,
+      "height": 160,
+      "pad": 24,
+      "slice": 0
+    },
+    "stick_knob_run": {
+      "file": "ui/stick_knob_run.png",
+      "width": 160,
+      "height": 160,
+      "pad": 24,
+      "slice": 0
+    },
     "badge": {
       "file": "ui/badge.png",
       "width": 100,

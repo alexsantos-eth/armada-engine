@@ -36,10 +36,11 @@ alterna entre terreno y rejilla. En cualquier ruta, `J` (o el interruptor del HU
 que sigue a los botones de fase) le pone y le quita el jetpack: con él puesto, mantener la tecla
 de salto en el aire vuela. Mantener `E` junto a un árbol, una roca o una planta la recolecta:
 la barra de slots de abajo muestra el inventario y, encima, qué hay al alcance, qué herramienta falta
-o el progreso (los recursos y las reglas viven en `content/json/items.json`). En dispositivos táctiles aparecen dos controles en pantalla:
-un joystick analógico abajo a la izquierda (a media deflexión se camina a media velocidad; a
-tope enciende la carrera, el equivalente a `Shift`) y un botón `SALTAR` abajo a la derecha. Se
-muestran en dispositivos de puntero grueso o tras el primer toque (`/` incluido, porque son
+o el progreso (los recursos y las reglas viven en `content/json/items.json`). En dispositivos táctiles hay un único joystick analógico
+flotante: el primer toque lo coloca bajo el pulgar (sin dedo descansa abajo a la derecha); a media
+deflexión se camina a media velocidad y a tope enciende la carrera, el equivalente a `Shift`.
+Mantenerlo quieto recolecta, un doble toque salta y un triple toque hace el doble salto. Se
+muestra en dispositivos de puntero grueso o tras el primer toque (`/` incluido, porque son
 entrada de juego); la build web detecta el puntero grueso con el import FFI `iso_pointer_coarse`.
 En esas mismas plataformas la escena se dibuja alejada un poco (la casilla al 70 % de la
 referencia, `MOBILE_ZOOM` en `src/game/config.rs`), para ver más mundo en una pantalla táctil

@@ -11,6 +11,7 @@ use super::layout::HudLayout;
 use super::motion;
 use super::skin::ClaySkin;
 use super::slice::nine_slice;
+use crate::touch::StickView;
 
 /// A camera that draws in screen pixels through one pose matrix.
 struct Posed(Mat4);
@@ -226,8 +227,7 @@ fn draw_prompt(skin: &ClaySkin, prompt: &UiPrompt, layout: &HudLayout, touch: bo
     }
 }
 
-fn draw_action(skin: &ClaySkin, hud: &ClayHud, prompt: &UiPrompt, layout: &HudLayout, touch: bool) {
-    let rect = layout.action;
+fn draw_action(skin: &ClaySkin, hud: &ClayHud, prompt: &UiPrompt, rect: Rect) {
     let size = rect.w;
     let ink = rgb(skin.palette.ink, 1.0);
     let (offset, scale, piece) = if hud.held {
@@ -276,20 +276,18 @@ fn draw_action(skin: &ClaySkin, hud: &ClayHud, prompt: &UiPrompt, layout: &HudLa
                 2.0,
             );
         }
-        if !touch {
-            let badge = Rect::new(rect.x + size - 26.0, rect.y + 2.0, 26.0, 26.0);
-            draw_piece(skin, "badge", badge, 1.0);
-            let k = text_width(skin, "E", 13.0);
-            draw_label(
-                skin,
-                "E",
-                (badge.x + 13.0 - k / 2.0, badge.y + 6.0),
-                13.0,
-                ink,
-                ink,
-                0.0,
-            );
-        }
+        let badge = Rect::new(rect.x + size - 26.0, rect.y + 2.0, 26.0, 26.0);
+        draw_piece(skin, "badge", badge, 1.0);
+        let k = text_width(skin, "E", 13.0);
+        draw_label(
+            skin,
+            "E",
+            (badge.x + 13.0 - k / 2.0, badge.y + 6.0),
+            13.0,
+            ink,
+            ink,
+            0.0,
+        );
     });
 }
 
@@ -449,6 +447,65 @@ fn draw_flights(skin: &ClaySkin, hud: &ClayHud, layout: &HudLayout) {
     }
 }
 
+/// Paints the floating touch stick with the kit: the base, the knob (red while running) and,
+/// when something is in reach, its tool on the knob, swinging while the held stick gathers.
+pub(crate) fn draw_clay_stick(
+    skin: &ClaySkin,
+    view: &StickView,
+    tool: Option<&str>,
+    clock_ms: f64,
+) {
+    let (base_alpha, knob_alpha) = if view.active { (0.8, 1.0) } else { (0.45, 0.7) };
+    let (cx, cy) = view.center;
+    let r = view.radius;
+    draw_piece(
+        skin,
+        "stick_base",
+        Rect::new(cx - r, cy - r, 2.0 * r, 2.0 * r),
+        base_alpha,
+    );
+    let knob = if view.run {
+        "stick_knob_run"
+    } else {
+        "stick_knob"
+    };
+    let (kx, ky) = view.knob;
+    let k = view.knob_radius;
+    draw_piece(
+        skin,
+        knob,
+        Rect::new(kx - k, ky - k, 2.0 * k, 2.0 * k),
+        knob_alpha,
+    );
+    let Some(tool) = tool else {
+        return;
+    };
+    let name = format!("tool_{tool}");
+    let (Some(icon), Some(piece)) = (skin.pieces.get(&name), skin.manifest.pieces.get(&name))
+    else {
+        return;
+    };
+    let side = k * 1.3;
+    let room = piece.pad / skin.manifest.scale * side / 48.0;
+    let turn = if view.gathering {
+        motion::chop_angle(clock_ms)
+    } else {
+        0.0
+    };
+    posed((kx, ky), (1.0, 1.0), turn, (0.0, 0.0), || {
+        draw_icon(
+            icon,
+            Rect::new(
+                kx - side / 2.0 - room,
+                ky - side / 2.0 - room,
+                side + 2.0 * room,
+                side + 2.0 * room,
+            ),
+            knob_alpha,
+        );
+    });
+}
+
 /// Paints the whole HUD for `frame` with `skin`, as `hud` animates it.
 pub(crate) fn draw_clay_hud(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, layout: &HudLayout) {
     if !frame.visible {
@@ -459,8 +516,11 @@ pub(crate) fn draw_clay_hud(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, lay
     }
     draw_piece(skin, "hotbar", layout.panel, 1.0);
     draw_slots(skin, hud, frame, layout);
-    if let Some(prompt) = frame.prompt.as_ref().filter(|prompt| !prompt.blocked) {
-        draw_action(skin, hud, prompt, layout, frame.touch);
+    if let (Some(prompt), Some(rect)) = (
+        frame.prompt.as_ref().filter(|prompt| !prompt.blocked),
+        layout.action,
+    ) {
+        draw_action(skin, hud, prompt, rect);
     }
     draw_bubble(skin, hud, layout);
     draw_flights(skin, hud, layout);

@@ -47,7 +47,9 @@ impl InputService for MacroquadInput<'_> {
                 y: touch.position.y,
             })
             .collect();
-        let frame = self.touch.update(screen_width(), screen_height(), &raw);
+        let frame = self
+            .touch
+            .update(screen_width(), screen_height(), &raw, get_time() * 1000.0);
         let keyboard = get_walk_direction(&directions);
         let mut x = keyboard.x + frame.walk.x;
         let mut y = keyboard.y + frame.walk.y;
@@ -62,7 +64,7 @@ impl InputService for MacroquadInput<'_> {
             jump_held: is_key_down(KeyCode::Space) || frame.jump_held,
             run: is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift) || frame.run,
             jetpack_pressed: is_key_pressed(KeyCode::J),
-            gather_held: is_key_down(KeyCode::E) || self.action_held,
+            gather_held: is_key_down(KeyCode::E) || self.action_held || frame.gather_held,
         }
     }
 }

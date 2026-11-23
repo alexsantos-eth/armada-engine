@@ -10,7 +10,7 @@ mod motion;
 mod skin;
 mod slice;
 
-pub(crate) use draw::draw_clay_hud;
+pub(crate) use draw::{draw_clay_hud, draw_clay_stick};
 pub(crate) use frame::{UiFrame, UiGain, UiPrompt, UiStack};
 pub(crate) use hud::ClayHud;
 pub(crate) use layout::HudLayout;

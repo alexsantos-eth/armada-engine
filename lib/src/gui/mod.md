@@ -24,7 +24,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `pub(crate) use hud::{draw_hud, push_hud_update};`
 - [`Route`](route.rs#L11) — Lo que corre este proceso: `Plain`, `Playground`, `Maker` o `Script`.
   - Firma: `pub(crate) use route::{Route, current};`
-- [`current`](route.rs#L113) — La ruta de este proceso: el camino de la página en web, los argumentos en nativo.
+- [`current`](route.rs#L120) — La ruta de este proceso: el camino de la página en web, los argumentos en nativo.
   - Firma: `pub(crate) use route::{Route, current};`
 
 ### `route.rs`
@@ -38,11 +38,11 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`shows_overlay`](route.rs#L26) — Si esta ruta pinta el overlay: `Playground` y `Maker` sí, `Plain` no.
   - Firma: `pub(crate) fn shows_overlay(self) -> bool {`
-- [`keeps_the_save`](route.rs#L32) — Si esta ruta carga y escribe la partida del jugador: `Plain` y `Playground` sí; el editor y una corrida guionizada trabajan sobre un mundo propio y no la tocan.
+- [`keeps_the_save`](route.rs#L38) — Si esta ruta carga y escribe la partida del jugador: `Plain` y `Playground` sí; el editor y una corrida guionizada trabajan sobre un mundo propio y no la tocan.
   - Firma: `pub(crate) fn keeps_the_save(self) -> bool {`
 - [`edits_the_world`](route.rs#L43) — Si esta ruta edita un chunk a mano en vez de transmitir el mundo.
   - Firma: `pub(crate) fn edits_the_world(self) -> bool {`
-- [`current`](route.rs#L113) — En WASM consulta `window.location.pathname` mediante el import `iso_route_path` del bundle y aplica `route_for_path`; fuera de WASM lee los argumentos del proceso con `native_route`.
+- [`current`](route.rs#L120) — En WASM consulta `window.location.pathname` mediante el import `iso_route_path` del bundle y aplica `route_for_path`; fuera de WASM lee los argumentos del proceso con `native_route`.
   - Firma: `pub(crate) fn current() -> Route {`
 
 ### `hud.rs`
@@ -69,15 +69,15 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 - [`MAKER_FLAG`](route.rs#L50) — El argumento que abre el editor en una build nativa (`--maker`).
   - Firma: `const MAKER_FLAG: &str = "--maker";`
-- [`PLAIN_FLAG`](route.rs#L53) — El argumento que corre una build nativa como se presenta el juego, sin overlay (`--plain`).
+- [`PLAIN_FLAG`](route.rs#L57) — El argumento que corre una build nativa como se presenta el juego, sin overlay (`--plain`).
   - Firma: `const PLAIN_FLAG: &str = "--plain";`
-- [`SCENE_FLAG`](route.rs#L56) — El argumento que corre un archivo de escena (`--scene`); la escena misma la lee `testbed::scene_path`.
+- [`SCENE_FLAG`](route.rs#L60) — El argumento que corre un archivo de escena (`--scene`); la escena misma la lee `testbed::scene_path`.
   - Firma: `const SCENE_FLAG: &str = "--scene";`
-- [`browser_path`](route.rs#L69) — Lee `window.location.pathname` en WASM mediante el import `iso_route_path` (mismo patrón FFI acotado que `save::persistence`); devuelve `None` si el host falla.
+- [`browser_path`](route.rs#L73) — Lee `window.location.pathname` en WASM mediante el import `iso_route_path` (mismo patrón FFI acotado que `save::persistence`); devuelve `None` si el host falla.
   - Firma: `fn browser_path() -> Option<String> {`
-- [`route_for_path`](route.rs#L85) — La regla pura de la web: `/playground` es la superficie de desarrollo, `/maker` el editor, con barra final opcional; cualquier otra ruta es la presentación limpia. Se prueba en `route.test.rs`.
+- [`route_for_path`](route.rs#L89) — La regla pura de la web: `/playground` es la superficie de desarrollo, `/maker` el editor, con barra final opcional; cualquier otra ruta es la presentación limpia. Se prueba en `route.test.rs`.
   - Firma: `fn route_for_path(path: &str) -> Route {`
-- [`native_route`](route.rs#L96) — La regla pura de nativo: el playground salvo que los argumentos pidan otra cosa; el último argumento de ruta es el que cuenta. Se prueba en `route.test.rs`.
+- [`native_route`](route.rs#L100) — La regla pura de nativo: el playground salvo que los argumentos pidan otra cosa; el último argumento de ruta es el que cuenta. Se prueba en `route.test.rs`.
   - Firma: `fn native_route<'a>(arguments: impl Iterator<Item = &'a String>) -> Route {`
 
 ### `hud.rs`
@@ -91,7 +91,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `fn world_readout_line(readout: &Readout<'_>) -> String {`
 - [`readout_colour`](hud.rs#L144) — Colour del readout: `LIME` hasta 20 ms, `ORANGE` hasta 33.4 ms, `RED` por encima.
   - Firma: `fn readout_colour(frame_max: f64) -> Color {`
-- [`help_line`](hud.rs#L156) — La línea de controles del título: los atajos de teclado, o los del táctil (joystick y SALTAR) cuando los controles están visibles. Se prueba en `hud.test.rs`.
+- [`help_line`](hud.rs#L156) — La línea de controles del título: los atajos de teclado, o los del táctil (joystick, mantener para recolectar y doble toque para saltar) cuando los controles están visibles. Se prueba en `hud.test.rs`.
   - Firma: `fn help_line(touch_visible: bool) -> &'static str {`
 - [`phase_button_hit`](hud.rs#L39) — Devuelve la fase del botón que contiene el punto de pantalla dado; se prueba en `hud.test.rs`.
   - Firma: `fn phase_button_hit(x: f32, y: f32) -> Option<BakePhase> {`
