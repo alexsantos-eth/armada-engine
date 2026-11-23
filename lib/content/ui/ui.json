@@ -176,6 +176,13 @@
       "height": 144,
       "pad": 24,
       "slice": 0
+    },
+    "backpack": {
+      "file": "ui/backpack.png",
+      "width": 144,
+      "height": 144,
+      "pad": 24,
+      "slice": 0
     }
   }
 }
