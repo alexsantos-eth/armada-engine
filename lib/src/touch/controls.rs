@@ -4,7 +4,9 @@
 //! base appears under it; dragging walks (and runs past the threshold), and when the finger
 //! drags past the rim the base follows it. The same finger carries the other actions: held
 //! still it gathers, and taps chain into jumps (the second tap of a quick chain jumps, the third
-//! jumps again in the air). Other fingers are ignored while the stick is down. Drawing the
+//! jumps again in the air). Letting go of a walking stick coasts the same way for `COAST_MS`, and
+//! a touch inside that window jumps that way and keeps walking it until the finger moves, so one
+//! thumb can run and jump. Other fingers are ignored while the stick is down. Drawing the
 //! plain fallback lives here too, as macroquad calls with no decisions; the rules are all in
 //! `update` and in the tests.
 
@@ -20,6 +22,9 @@ pub(crate) const HOLD_MS: f64 = 300.0;
 pub(crate) const TAP_MS: f64 = 250.0;
 /// The longest gap between a tap and the next touch for both to chain, in milliseconds.
 pub(crate) const TAP_GAP_MS: f64 = 320.0;
+/// How long the player keeps walking the same way after the finger leaves a walking stick, in
+/// milliseconds; a touch inside that window jumps that way.
+pub(crate) const COAST_MS: f64 = 300.0;
 
 /// The lifecycle phase of one touch, mirroring macroquad's `TouchPhase` without it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -73,6 +78,17 @@ struct Stick {
     still_since_ms: f64,
     moved: bool,
     jumping: bool,
+    /// The walk a jump out of a coast keeps until the finger moves the stick.
+    carry: Option<StickReading>,
+    /// What the stick asked for last frame.
+    last: StickReading,
+}
+
+/// The walk the player keeps for a moment after the finger leaves a walking stick.
+#[derive(Clone, Copy, Debug)]
+struct Coast {
+    reading: StickReading,
+    until_ms: f64,
 }
 
 /// The touch controls: visibility, the stick finger and the tap chain.
@@ -83,6 +99,7 @@ pub(crate) struct TouchControls {
     gathering: bool,
     taps: u32,
     last_tap_ms: Option<f64>,
+    coast: Option<Coast>,
 }
 
 const STICK_FILL: Color = Color::from_rgba(255, 255, 255, 28);
@@ -101,6 +118,7 @@ impl TouchControls {
             gathering: false,
             taps: 0,
             last_tap_ms: None,
+            coast: None,
         }
     }
 
@@ -127,10 +145,19 @@ impl TouchControls {
         if self.stick.is_none()
             && let Some(touch) = touches.iter().find(|t| t.phase == RawTouchPhase::Started)
         {
+            let carry = self
+                .coast
+                .take()
+                .filter(|coast| now_ms <= coast.until_ms)
+                .map(|coast| coast.reading);
             let chained = self
                 .last_tap_ms
                 .is_some_and(|tap| now_ms - tap <= TAP_GAP_MS);
-            self.taps = if chained { self.taps + 1 } else { 1 };
+            self.taps = match (carry, chained) {
+                (Some(_), _) => 2,
+                (None, true) => self.taps + 1,
+                (None, false) => 1,
+            };
             let jumping = self.taps >= 2;
             jump_pressed = jumping;
             self.stick = Some(Stick {
@@ -141,13 +168,22 @@ impl TouchControls {
                 still_since_ms: now_ms,
                 moved: false,
                 jumping,
+                carry,
+                last: carry.unwrap_or_default(),
             });
         }
 
         let Some(mut stick) = self.stick else {
             self.run_active = false;
             self.gathering = false;
-            return TouchFrame::default();
+            let coast = self.coast.filter(|coast| now_ms <= coast.until_ms);
+            self.coast = coast;
+            return coast.map_or_else(TouchFrame::default, |coast| TouchFrame {
+                walk: coast.reading.walk,
+                magnitude: coast.reading.magnitude,
+                run: coast.reading.run,
+                ..TouchFrame::default()
+            });
         };
         let live = touches.iter().find(|t| {
             t.id == stick.id && !matches!(t.phase, RawTouchPhase::Ended | RawTouchPhase::Cancelled)
@@ -158,10 +194,17 @@ impl TouchControls {
             if !tap {
                 self.taps = 0;
             }
+            self.coast = (stick.last.magnitude > 0.0).then_some(Coast {
+                reading: stick.last,
+                until_ms: now_ms + COAST_MS,
+            });
             self.stick = None;
             self.run_active = false;
             self.gathering = false;
             return TouchFrame {
+                walk: stick.last.walk,
+                magnitude: stick.last.magnitude,
+                run: stick.last.run,
                 jump_pressed,
                 ..TouchFrame::default()
             };
@@ -169,15 +212,18 @@ impl TouchControls {
 
         stick.finger = (touch.x, touch.y);
         stick.center = leashed(stick.center, stick.finger, layout.radius);
-        let reading = stick_reading(
+        let pushed = stick_reading(
             f64::from(stick.finger.0 - stick.center.0),
             f64::from(stick.finger.1 - stick.center.1),
             f64::from(layout.radius),
         );
-        if reading.magnitude > 0.0 {
+        if pushed.magnitude > 0.0 {
             stick.moved = true;
             stick.still_since_ms = now_ms;
+            stick.carry = None;
         }
+        let reading = stick.carry.unwrap_or(pushed);
+        stick.last = reading;
         let gathering = !stick.jumping && now_ms - stick.still_since_ms >= HOLD_MS;
         self.stick = Some(stick);
         self.run_active = reading.run;
