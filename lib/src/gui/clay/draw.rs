@@ -449,6 +449,15 @@ fn draw_flights(skin: &ClaySkin, hud: &ClayHud, layout: &HudLayout) {
     }
 }
 
+/// Paints the backpack icon that unfolds the inventory on mobile.
+fn draw_backpack(skin: &ClaySkin, layout: &HudLayout, open: bool) {
+    let Some(rect) = layout.backpack.as_ref() else {
+        return;
+    };
+    let alpha = if open { 1.0 } else { 0.85 };
+    draw_piece(skin, "backpack", *rect, alpha);
+}
+
 /// Paints the whole HUD for `frame` with `skin`, as `hud` animates it.
 pub(crate) fn draw_clay_hud(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, layout: &HudLayout) {
     if !frame.visible {
@@ -457,10 +466,18 @@ pub(crate) fn draw_clay_hud(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, lay
     if let Some(prompt) = frame.prompt.as_ref() {
         draw_prompt(skin, prompt, layout, frame.touch);
     }
-    draw_piece(skin, "hotbar", layout.panel, 1.0);
-    draw_slots(skin, hud, frame, layout);
+    // On mobile the inventory stays folded until the backpack icon is tapped;
+    // on desktop it is always visible.
+    let show_slots = !frame.touch || hud.inventory_open;
+    if show_slots {
+        draw_piece(skin, "hotbar", layout.panel, 1.0);
+        draw_slots(skin, hud, frame, layout);
+    }
     if let Some(prompt) = frame.prompt.as_ref().filter(|prompt| !prompt.blocked) {
         draw_action(skin, hud, prompt, layout, frame.touch);
+    }
+    if layout.backpack.is_some() {
+        draw_backpack(skin, layout, hud.inventory_open);
     }
     draw_bubble(skin, hud, layout);
     draw_flights(skin, hud, layout);

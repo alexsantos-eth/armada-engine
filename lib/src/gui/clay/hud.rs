@@ -53,6 +53,8 @@ pub(crate) struct ClayHud {
     pub(crate) clock_ms: f64,
     /// Whether the action button is held this frame.
     pub(crate) held: bool,
+    /// Whether the inventory panel is unfolded (mobile: the backpack icon was tapped).
+    pub(crate) inventory_open: bool,
 }
 
 impl ClayHud {

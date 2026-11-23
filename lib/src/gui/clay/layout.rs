@@ -2,7 +2,7 @@
 //! at the top and the action button above the jump button when the touch controls are on
 //! screen. Pure; tested in `layout.test.rs`.
 
-use macroquad::math::Rect;
+use macroquad::math::{Rect, Vec2};
 
 /// Gap between the bottom of the screen and the bar.
 pub(crate) const BOTTOM_MARGIN: f32 = 18.0;
@@ -22,6 +22,10 @@ pub(crate) const SLOT_ASPECT: f32 = 1.06;
 const ACTION_SIZE: f32 = 104.0;
 /// Room between the action button and the jump button below it.
 const ACTION_OVER_JUMP: f32 = 18.0;
+/// The backpack icon's side on mobile (touch controls).
+const BACKPACK_SIZE: f32 = 56.0;
+/// Gap between the backpack icon and the screen's corner.
+const BACKPACK_MARGIN: f32 = 20.0;
 
 /// The HUD's rectangles for one screen size.
 #[derive(Clone, Debug, PartialEq)]
@@ -34,6 +38,8 @@ pub(crate) struct HudLayout {
     pub(crate) prompt_anchor: (f32, f32),
     pub(crate) prompt_below: bool,
     pub(crate) action: Rect,
+    /// The backpack icon's rectangle (mobile only; `None` on desktop).
+    pub(crate) backpack: Option<Rect>,
 }
 
 impl HudLayout {
@@ -93,6 +99,17 @@ impl HudLayout {
                 ACTION_SIZE,
             )
         };
+        let backpack = if touch {
+            let size = BACKPACK_SIZE;
+            Some(Rect::new(
+                width - BACKPACK_MARGIN - size,
+                BACKPACK_MARGIN,
+                size,
+                size,
+            ))
+        } else {
+            None
+        };
         Self {
             slot,
             slots,
@@ -100,6 +117,7 @@ impl HudLayout {
             prompt_anchor,
             prompt_below,
             action,
+            backpack,
         }
     }
 
@@ -108,6 +126,14 @@ impl HudLayout {
         let r = self.action.w / 2.0;
         let (cx, cy) = (self.action.x + r, self.action.y + r);
         (x - cx).hypot(y - cy) <= r
+    }
+
+    /// Whether `(x, y)` lands on the backpack icon.
+    pub(crate) fn backpack_hit(&self, x: f32, y: f32) -> bool {
+        let Some(rect) = self.backpack else {
+            return false;
+        };
+        rect.contains(Vec2::new(x, y))
     }
 }
 
