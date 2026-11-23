@@ -65,6 +65,7 @@ Revisa cada punto. Marca solo lo que realmente encuentres en el código, con arc
 - Imports entre responsabilidades solo vía los barrels `mod.rs`/`lib.rs`; sin dependencias circulares.
 - La escena no conoce entidades concretas por nombre; no hay `match`/`if` por `id` de entidad.
 - Estado del juego separado del dibujo: el render **lee** el estado, nunca es la fuente de verdad.
+- Interfaz fuera del kit de UI (formas, colores o fuentes inventados en Rust, HTML sobre el canvas, piezas en `content/ui/` editadas a mano): es un hallazgo y se corrige con el flujo de la skill `armada-ui`.
 
 ### 2. Determinismo y generación procedural
 
@@ -162,7 +163,7 @@ Si la revisión cambia algo que el desarrollador debe saber en su próximo traba
 
 Cómo: lee el `SKILL.md` actual de `armada-engine-dev` completo y genera la versión actualizada **entera** (conserva todo lo vigente, cambia solo lo necesario). Proponla con la herramienta de propuestas de skills si está disponible; si no, muestra el `SKILL.md` completo al usuario para que lo guarde. No dupliques en esa skill la lista de auditoría de esta: solo reglas que el desarrollador debe cumplir.
 
-Si cambia la geometría o la integración de assets, avisa de que `armada-voxel-assets` puede necesitar actualizarse. Si cambia el esquema de `scene.json`, sus pasos o su informe, actualiza también `armada-visual-check` y `lib/docs/TESTBED.md`.
+Si cambia la geometría o la integración de assets, avisa de que `armada-voxel-assets` puede necesitar actualizarse. Si cambia el esquema de `scene.json`, sus pasos o su informe, actualiza también `armada-visual-check` y `lib/docs/TESTBED.md`. Si cambia el kit de UI, su export o `src/gui/clay/`, actualiza `armada-ui` y `lib/docs/UI-KIT.md`.
 
 ## Informe final
 

@@ -28,6 +28,8 @@ Antes de tocar código, lee:
 
 Si el trabajo implica crear o modificar assets isométricos (geometría, proporciones, multi-bloque, `data-tiles`), invoca la skill **`armada-voxel-assets`**: es la fuente oficial de las reglas de assets. (Los sprites aún sin migrar a la ruta voxel son fijos; para ellos no se crean SVG nuevos.)
 
+Si el trabajo toca la **interfaz** (HUD, barra de slots, avisos, globos, botones, controles táctiles, menús, diálogos, iconos), invoca la skill **`armada-ui`**: se diseña o extiende el kit de UI en HTML/CSS, se exporta a sprites y Macroquad los dibuja. Es el único flujo de UI.
+
 Si el cambio se juzga **mirando** (terreno, colocación de entidades, sombras, reflejos, fases del día, animación del jugador, cámara, polvo), invoca la skill **`armada-visual-check`**: corre el juego desde un `scene.json` y devuelve capturas PNG y un informe, sin pedirle nada al usuario y sin pantalla en Linux. Un test verde no demuestra que algo se vea bien.
 
 ## Arquitectura
@@ -72,7 +74,7 @@ Contratos clave (el detalle está en el `mod.md` correspondiente):
 ## Reglas de cambios
 
 - Sin `unsafe` en `iso`. En el cliente, `unsafe` solo para los FFI con la página (`localStorage` para el guardado WASM, `location.pathname` para la ruta web), acotados y documentados en el `mod.md` de su dominio.
-- Toda interfaz del juego (HUD, menús, diálogos) sale del kit de UI `lib/web/ui/` (tokens `--ac-*`, componentes `.ac-*`): nada de estilos sueltos fuera del kit ni de HTML sobre el canvas. Un solo método en todas las plataformas: el kit se exporta a sprites con `node scripts/export-ui.cjs` (→ `content/ui/`, commiteado) y lo dibuja `src/gui/clay/` con Macroquad, en nativo y en web. Tras cambiar el CSS o los iconos, vuelve a exportar. Guía y reglas del estilo en `lib/docs/UI-KIT.md`; catálogo vivo en `/ui/`.
+- Toda interfaz del juego (HUD, menús, diálogos) sale del kit de UI `lib/web/ui/` (tokens `--ac-*`, componentes `.ac-*`): nada de estilos sueltos fuera del kit ni de HTML sobre el canvas. Un solo método en todas las plataformas: el kit se exporta a sprites con `node scripts/export-ui.cjs` (→ `content/ui/`, commiteado) y lo dibuja `src/gui/clay/` con Macroquad, en nativo y en web. Tras cambiar el CSS o los iconos, vuelve a exportar. Guía y reglas del estilo en `lib/docs/UI-KIT.md`; catálogo vivo en `/ui/`. El flujo completo (diseñar o extender el kit → exportar → dibujar en `src/gui/clay/`) es la skill **`armada-ui`**.
 - Errores con `Result` y contexto; nada de `panic!` ante datos externos (catálogos, guardados). `assert!` solo para invariantes internas.
 - `clippy --workspace --all-targets --locked -- -D warnings` en verde; `cargo fmt --all` limpio. **Nada de `#[allow(clippy::…)]` ni `#![allow(clippy::…)]`**: un lint de clippy no se silencia, se corrige o se reagrupa (parámetros relacionados → struct de dominio); si un lint es genuinamente inaplicable, la excepción la decide el usuario, nunca el código.
 - No mezclar dominio y cliente en un mismo módulo ni importar Macroquad/`winit`-like crates en `iso`.
@@ -88,7 +90,7 @@ Contratos clave (el detalle está en el `mod.md` correspondiente):
 - La única fuente de la versión del juego es `lib/Cargo.toml` (`[package].version`); `Cargo.lock` la acompaña siempre — si la subes, sincroniza antes el lockfile (`cargo check`) para que el gate `--locked` pase. `scripts/build-macos.sh` la lee como `CFBundleShortVersionString`.
 - `CFBundleVersion` (número de build) no se anota a mano: `scripts/build-macos.sh` lo deriva de `git rev-list --count HEAD` (o 1 fuera de un repositorio).
 - **Toda entrega incrementa la versión, en el mismo cambio**: PATCH para correcciones y mantenimiento, MINOR para funcionalidad (un dominio nuevo, un empaquetado, un contrato visible). Nunca se entrega un cambio sin subirla.
-- **Los skills se actualizan en el mismo cambio**: si un cambio mueve estructura, contratos, scripts, la política de versionado o un flujo de build, el skill afectado (este, `armada-core-review`, `armada-visual-check` o `armada-voxel-assets`) se actualiza en ese mismo cambio — nunca «en la próxima revisión».
+- **Los skills se actualizan en el mismo cambio**: si un cambio mueve estructura, contratos, scripts, la política de versionado o un flujo de build, el skill afectado (este, `armada-core-review`, `armada-ui`, `armada-visual-check` o `armada-voxel-assets`) se actualiza en ese mismo cambio — nunca «en la próxima revisión».
 
 ## Flujo de trabajo
 
@@ -120,7 +122,7 @@ Todo cambio que modifique el funcionamiento del core, sus contratos o el flujo d
 
 - `lib/docs/TESTBED.md` si cambia el esquema de `scene.json`, sus pasos o su informe; y entonces también la skill `armada-visual-check`.
 
-Si cambia la geometría o la integración de assets, avisa al usuario de que la skill `armada-voxel-assets` puede necesitar actualizarse. Si cambia lo que el desarrollador debe saber (estructura, contratos, scripts, versionado o flujos de build), la skill afectada se actualiza en este mismo cambio, no después (ver Versionado).
+Si cambia la geometría o la integración de assets, avisa al usuario de que la skill `armada-voxel-assets` puede necesitar actualizarse. Si cambia el kit de UI, su export o cómo lo dibuja el cliente, actualiza `lib/docs/UI-KIT.md` y la skill `armada-ui` en este mismo cambio. Si cambia lo que el desarrollador debe saber (estructura, contratos, scripts, versionado o flujos de build), la skill afectada se actualiza en este mismo cambio, no después (ver Versionado).
 
 ## Límites
 

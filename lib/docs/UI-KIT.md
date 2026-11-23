@@ -20,6 +20,10 @@ con sacudida y números con contorno que vuelan en arco hasta su slot.
 compilación. La página del juego (`web/index.html`) no carga el kit. El CSS es la única fuente del
 aspecto: nada se redibuja a mano en Rust, todo sale de las piezas exportadas.
 
+El flujo de trabajo para cualquier cambio de interfaz (diseñar o extender el kit, exportar y
+dibujar en el cliente, con cómo comprobarlo) está en la skill `armada-ui`
+(`.claude/skills/armada-ui/SKILL.md`).
+
 ## Reglas del estilo
 
 - **Colores planos, sin degradados.** Todo color sale de un token `--ac-*`; un color nuevo se

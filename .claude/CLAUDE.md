@@ -26,6 +26,13 @@ commit: `feature/pr-screenshots`, `fix/player-clipping-on-stairs`, `release/0.27
   escena en `lib/scenes/<nombre>.json` que la encuadre: el workflow corre todas las escenas
   `lib/scenes/pr-*.json` más las que el PR añade o modifica (formato en `lib/docs/TESTBED.md`).
 
+# Interfaz
+
+Todo cambio de UI (HUD, controles táctiles, menús, diálogos, iconos) sigue la skill `armada-ui`:
+se diseña o extiende el kit HTML/CSS de `lib/web/ui/`, se exporta a sprites con
+`lib/scripts/export-ui.cjs` (→ `lib/content/ui/`) y Macroquad lo dibuja en nativo y en web
+(`lib/src/gui/clay/`). Nunca HTML sobre el canvas ni formas o colores inventados en Rust.
+
 # Commits y títulos de PR
 
 Formato obligatorio, tanto para el título del PR como para el asunto de **cada** commit:
