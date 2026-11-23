@@ -12,16 +12,16 @@ pub enum PlayerSheet {
     Idle,
     Swim,
     Flip,
-    /// Striking what is in reach with both hands.
+    /// Striking what is in reach, one fist and then the other.
     Gather,
 }
 
 /// What the gather sheet is drawn from while the player strikes.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GatherInput {
-    /// Columns the sheet holds: the equal steps of one blow.
+    /// Columns the sheet holds: the equal steps of its blows (two, one with each fist).
     pub columns: i32,
-    /// How far through the current blow, from `0.0` (wound back) up to `1.0`.
+    /// How far through the sheet's blows, from `0.0` (wound back) up to `1.0`.
     pub swing: f64,
 }
 

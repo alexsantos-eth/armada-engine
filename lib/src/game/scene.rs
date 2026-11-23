@@ -874,8 +874,13 @@ impl Game {
         let struck = self.struck_target();
         let gather = struck.as_ref().map(|_| {
             let alpha = self.stepper.interpolation_alpha();
-            (f64::from(self.harvester.swing()) + alpha)
-                / f64::from(iso::harvest::HARVEST_STRIKE_TICKS)
+            let swing = (f64::from(self.harvester.swing()) + alpha)
+                / f64::from(iso::harvest::HARVEST_STRIKE_TICKS);
+            // The gather sheet holds two blows, one with each fist: odd blows take its second
+            // half. A blow counts in `strikes` once it lands, so one past its landing is still it.
+            let landed = u64::from(self.harvester.swing() >= iso::harvest::HARVEST_STRIKE_AT);
+            let blow = self.harvester.strikes().wrapping_sub(landed) % 2;
+            (blow as f64 + swing) / 2.0
         });
         let pose = self.animation.advance(
             PlayerMoment {

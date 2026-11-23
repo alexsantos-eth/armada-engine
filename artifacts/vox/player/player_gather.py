@@ -5,7 +5,9 @@
 # direction of each arm (shoulder to hand) and leg (hip to ankle), and how far the hips sank. The
 # player model has no rig, only the parts monkey.py's boxes stand for, so each box takes the turn
 # of what it stands for; the clip is timed so its impact (the hand reaching furthest) lands at
-# STRIKE_AT of the cycle, which is HARVEST_STRIKE_AT / HARVEST_STRIKE_TICKS in iso::harvest. The
+# STRIKE_AT of each blow, which is HARVEST_STRIKE_AT / HARVEST_STRIKE_TICKS in iso::harvest. The
+# sheet holds two blows, left hook then right hook (the clip mirrored), and the engine alternates
+# them (lib/src/game/scene.rs, by the parity of the blow). The
 # feet stay where they stand, so the engine draws it with the walk sheet's cell.
 #
 #   python3 player_model.py gather           -> lib/painted/player-16_gather.png
@@ -24,7 +26,9 @@ from player_walk import Part
 HERE = os.path.dirname(os.path.abspath(__file__))
 CLIP = os.path.join(HERE, "player_punch.json")
 
-FRAMES = 8          # columns of one blow
+BLOW = 8            # columns of one blow
+FRAMES = 2 * BLOW   # the sheet holds two: the clip's left hook, then the same hook mirrored onto
+                    # the right fist; the engine plays odd blows from the second half
 STRIKE_AT = 0.6     # share of the cycle at which the punch lands
 LEG_DAMP = 0.5      # how much of the clip's leg spread is kept: its stance is wider than the
                     # monkey's short legs can stand
@@ -105,15 +109,27 @@ def damp(m, k):
             [z * x * t - y * s, z * y * t + x * s, c + z * z * t]]
 
 
+def mirrored(f):
+    """Frame `f` with left and right swapped: the figure's y turned over."""
+    flip = lambda m: [[m[i][j] * (-1 if (i == 1) != (j == 1) else 1) for j in range(3)] for i in range(3)]
+    over = lambda d: [d[0], -d[1], d[2]]
+    return {"body": flip(f["body"]), "head": flip(f["head"]), "lift": f["lift"],
+            "arm+1": over(f["arm-1"]), "arm-1": over(f["arm+1"]),
+            "leg+1": over(f["leg-1"]), "leg-1": over(f["leg+1"])}
+
+
 def frame_at(index):
-    """The clip's frame for column `index`: the impact lands at STRIKE_AT of the cycle."""
+    """The clip's frame for column `index`: in each blow the impact lands at STRIKE_AT of it,
+    and the second blow is the first one mirrored."""
+    blow, index = divmod(index, BLOW)
     count, impact = len(clip()["frames"]), clip()["impact"]
-    t = index / FRAMES
+    t = index / BLOW
     if t <= STRIKE_AT:
         f = impact * t / STRIKE_AT
     else:
         f = impact + (count - impact) * (t - STRIKE_AT) / (1 - STRIKE_AT)
-    return clip()["frames"][round(f) % count]
+    frame = clip()["frames"][round(f) % count]
+    return mirrored(frame) if blow else frame
 
 
 def pose(index):
