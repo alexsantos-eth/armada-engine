@@ -1,13 +1,12 @@
-# player_gather.py — gather sheet of the player (monkey.py's monkey): throwing punches.
-# One row per facing, in the walk sheet's order and count; FRAMES columns of one blow, a loop of a
-# one-two: the figure stands in guard, fists up before it, one foot forward; throws a quick left
-# jab straight out and pulls it back; then leans in behind a right cross, which is the blow that
-# lands (at STRIKE_AT of the cycle, which is HARVEST_STRIKE_AT / HARVEST_STRIKE_TICKS in
-# iso::harvest), and comes back to guard. The feet keep still, so the engine draws it with the walk
-# sheet's cell and the feet never move.
-#
-# It reuses the climb's machinery (player_climb.py): a pose is the lean of the body and the swing
-# of each arm, hand, leg and foot, eased between key poses.
+# player_gather.py — gather sheet of the player (monkey.py's monkey): a punch.
+# One row per facing, in the walk sheet's order and count; FRAMES columns of one blow, a loop. The
+# blow is Mixamo's "Standing Melee Punch" (a left hook from a crouched guard), read off its rig by
+# player_punch_extract.py into player_punch.json: per frame, the chest's and the head's turn, the
+# direction of each arm (shoulder to hand) and leg (hip to ankle), and how far the hips sank. The
+# player model has no rig, only the parts monkey.py's boxes stand for, so each box takes the turn
+# of what it stands for; the clip is timed so its impact (the hand reaching furthest) lands at
+# STRIKE_AT of the cycle, which is HARVEST_STRIKE_AT / HARVEST_STRIKE_TICKS in iso::harvest. The
+# feet stay where they stand, so the engine draws it with the walk sheet's cell.
 #
 #   python3 player_model.py gather           -> lib/painted/player-16_gather.png
 #
@@ -15,49 +14,131 @@
 # draws the older clay boxes and is only where the poses are looked up.
 #
 # Requires shapely (see iso_lib.py).
-from player_climb import ClimbPart, HIP, SHOULDER, WRIST, ANKLE, ease
+import json
 import math
+import os
+
 import monkey
+from player_walk import Part
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+CLIP = os.path.join(HERE, "player_punch.json")
 
 FRAMES = 8          # columns of one blow
-STRIKE_AT = 0.6     # share of the cycle at which the cross lands
+STRIKE_AT = 0.6     # share of the cycle at which the punch lands
+LEG_DAMP = 0.5      # how much of the clip's leg spread is kept: its stance is wider than the
+                    # monkey's short legs can stand
+BODY_DAMP = 0.45   # and of the chest's and head's turn: the clip hunches far forward, which on a
+                    # monkey with a head this big hides the face
+NECK = (0, 0, monkey.HEAD)
+HIP = (0, 0, monkey.HIP[1])
 
-# (lean, arm l, arm r, hand l, hand r, leg l, leg r, foot l, foot r), as in player_climb.py; a
-# negative arm swing takes the fist forward, -90 straight out at the shoulder's height.
-READY = (4, -66, -60, -40, -40, -12, 10, 4, 0)          # guard: fists up, left foot forward
-KEYS = [
-    (0.00, READY),
-    (0.20, (8, -112, -56, 0, -40, -12, 10, 4, 0)),      # the jab: left fist straight out
-    (0.40, (-2, -64, -30, -40, -40, -12, 10, 4, 0)),    # jab back, the right drawn back to load
-    (STRIKE_AT, (18, -60, -118, -40, 0, -14, 14, 4, 6)),  # the cross lands, leaning in behind it
-    (0.80, (8, -64, -80, -40, -20, -12, 12, 4, 2)),     # pulling the right back
-    (1.00, READY),
-]
+_clip = None
 
 
-def gather_pose(t):
-    """The pose at `t` (0–1) of one blow, eased between the key poses around it."""
-    for (t0, a), (t1, b) in zip(KEYS, KEYS[1:]):
-        if t <= t1:
-            u = ease((t - t0) / (t1 - t0))
-            return tuple(x + (y - x) * u for x, y in zip(a, b))
-    return READY
+def clip():
+    global _clip
+    if _clip is None:
+        with open(CLIP, encoding="utf-8") as file:
+            _clip = json.load(file)
+    return _clip
+
+
+def mat_vec(m, v):
+    return tuple(sum(m[i][k] * v[k] for k in range(3)) for i in range(3))
+
+
+def mat_mul(a, b):
+    return [[sum(a[i][k] * b[k][j] for k in range(3)) for j in range(3)] for i in range(3)]
+
+
+def aim(d):
+    """The turn taking straight down (0, 0, -1) to direction `d` by the shortest way."""
+    x, y, z = d
+    n = math.sqrt(x * x + y * y + z * z)
+    x, y, z = x / n, y / n, z / n
+    # Rodrigues about axis (down x d) = (y, -x, 0), by the angle between them.
+    c = -z
+    ax, ay = y, -x
+    s = math.sqrt(ax * ax + ay * ay)
+    if s < 1e-9:
+        return [[1, 0, 0], [0, 1, 0], [0, 0, 1]] if c > 0 else [[1, 0, 0], [0, -1, 0], [0, 0, -1]]
+    ax, ay = ax / s, ay / s
+    t = 1 - c
+    return [[c + ax * ax * t, ax * ay * t, ay * s],
+            [ax * ay * t, c + ay * ay * t, -ax * s],
+            [-ay * s, ax * s, c]]
+
+
+class TurnedPart(Part):
+    """A Part turned by a matrix about a pivot, then carried to where the pivot went."""
+
+    def __init__(self, *args, turn, pivot, to=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.turn, self.pivot, self.to = turn, pivot, to if to is not None else pivot
+
+    def world(self, p, yaw, lift):
+        q = tuple(p[i] + self.c[i] - self.pivot[i] for i in range(3))
+        x, y, z = (a + b for a, b in zip(mat_vec(self.turn, q), self.to))
+        c, s = math.cos(yaw), math.sin(yaw)
+        return (x * c - y * s, x * s + y * c, z + lift)
+
+    def normal(self, n, yaw):
+        x, y, z = mat_vec(self.turn, n)
+        c, s = math.cos(yaw), math.sin(yaw)
+        return (x * c - y * s, x * s + y * c, z)
+
+
+def damp(m, k):
+    """The turn `m` with its angle scaled by `k`, about the same axis."""
+    c = max(-1.0, min(1.0, (m[0][0] + m[1][1] + m[2][2] - 1) / 2))
+    angle = math.acos(c)
+    if angle < 1e-6:
+        return [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+    ax = (m[2][1] - m[1][2], m[0][2] - m[2][0], m[1][0] - m[0][1])
+    n = math.sqrt(sum(a * a for a in ax))
+    x, y, z = (a / n for a in ax)
+    a = angle * k
+    c, s, t = math.cos(a), math.sin(a), 1 - math.cos(a)
+    return [[c + x * x * t, x * y * t - z * s, x * z * t + y * s],
+            [y * x * t + z * s, c + y * y * t, y * z * t - x * s],
+            [z * x * t - y * s, z * y * t + x * s, c + z * z * t]]
+
+
+def frame_at(index):
+    """The clip's frame for column `index`: the impact lands at STRIKE_AT of the cycle."""
+    count, impact = len(clip()["frames"]), clip()["impact"]
+    t = index / FRAMES
+    if t <= STRIKE_AT:
+        f = impact * t / STRIKE_AT
+    else:
+        f = impact + (count - impact) * (t - STRIKE_AT) / (1 - STRIKE_AT)
+    return clip()["frames"][round(f) % count]
 
 
 def pose(index):
-    """The figure's parts in gather pose `index`, each with how far it rises (none)."""
-    lean, arm_l, arm_r, hand_l, hand_r, leg_l, leg_r, foot_l, foot_r = gather_pose(index / FRAMES)
-    body = (*HIP, math.radians(lean))
+    """The figure's parts in gather pose `index`, each with how far it rises."""
+    f = frame_at(index)
+    body = damp(f["body"], BODY_DAMP)
+    head = damp(f["head"], BODY_DAMP)
+    lift = f["lift"] * HIP[2] * BODY_DAMP
 
-    def limb(parts, joint, angle, tip, bend, *after):
-        swung = (*joint, math.radians(angle))
-        return [(ClimbPart(*p, turns=(((*tip, math.radians(bend)),) if i else ()) + (swung, *after)), 0.0)
-                for i, p in enumerate(parts)]
+    def carried(point):
+        """Where a point of the standing figure goes with the body (turned about the hips)."""
+        q = tuple(point[i] - HIP[i] for i in range(3))
+        return tuple(a + b for a, b in zip(mat_vec(body, q), HIP))
 
     parts = []
-    for side, leg, foot in ((-1, leg_l, foot_l), (1, leg_r, foot_r)):
-        parts += limb(monkey.leg(side), HIP, leg, ANKLE, foot)
-    parts += [(ClimbPart(*p, turns=(body,)), 0.0) for p in monkey.body() + monkey.head() + monkey.tail()]
-    for side, arm, hand in ((-1, arm_l, hand_l), (1, arm_r, hand_r)):
-        parts += limb(monkey.arm(side), SHOULDER, arm, WRIST, hand, body)
+    for side in (-1, 1):
+        dx, dy, dz = f["leg%+d" % side]
+        spread = (dx * LEG_DAMP, dy * LEG_DAMP, dz - (1 - LEG_DAMP))
+        hip = (0, side * 38, HIP[2])
+        parts += [(TurnedPart(*p, turn=aim(spread), pivot=hip), 0.0) for p in monkey.leg(side)]
+    parts += [(TurnedPart(*p, turn=body, pivot=HIP), lift) for p in monkey.body() + monkey.tail()]
+    parts += [(TurnedPart(*p, turn=head, pivot=NECK, to=carried(NECK)), lift) for p in monkey.head()]
+    for side in (-1, 1):
+        shoulder = (0, side * 58, monkey.SHOULDER[1])
+        turn = aim(f["arm%+d" % side])
+        parts += [(TurnedPart(*p, turn=turn, pivot=shoulder, to=carried(shoulder)), lift)
+                  for p in monkey.arm(side)]
     return parts
