@@ -81,13 +81,17 @@ fn every_bundled_sound_is_rendered_from_a_strudel_source() {
 #[test]
 fn a_bed_plays_at_its_level_and_stops_when_silent() {
     let mut audio = MacroquadAudio::default();
-    assert_eq!(audio.ambient_level(AmbientLoop::Fire), 0.0);
-    audio.set_ambient(AmbientLoop::Fire, 0.4);
-    assert_eq!(audio.ambient_level(AmbientLoop::Fire), 0.4);
-    audio.set_ambient(AmbientLoop::Fire, 3.0);
-    assert_eq!(audio.ambient_level(AmbientLoop::Fire), 1.0, "levels clamp");
-    audio.set_ambient(AmbientLoop::Fire, AMBIENT_SILENCE / 2.0);
-    assert_eq!(audio.ambient_level(AmbientLoop::Fire), 0.0);
+    assert_eq!(audio.ambient_level(AmbientLoop::Geyser), 0.0);
+    audio.set_ambient(AmbientLoop::Geyser, 0.4);
+    assert_eq!(audio.ambient_level(AmbientLoop::Geyser), 0.4);
+    audio.set_ambient(AmbientLoop::Geyser, 3.0);
+    assert_eq!(
+        audio.ambient_level(AmbientLoop::Geyser),
+        1.0,
+        "levels clamp"
+    );
+    audio.set_ambient(AmbientLoop::Geyser, AMBIENT_SILENCE / 2.0);
+    assert_eq!(audio.ambient_level(AmbientLoop::Geyser), 0.0);
     assert_eq!(
         audio.ambient_level(AmbientLoop::Wind),
         0.0,

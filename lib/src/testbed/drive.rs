@@ -175,7 +175,6 @@ fn finish(game: &Game, run: &ScriptRun) {
         .collect();
     report.ambience = [
         iso::services::AmbientLoop::Wind,
-        iso::services::AmbientLoop::Fire,
         iso::services::AmbientLoop::Geyser,
     ]
     .into_iter()

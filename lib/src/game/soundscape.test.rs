@@ -16,46 +16,6 @@ fn effect(kind: EntityEffect, x: f64, y: f64) -> EffectSpot {
 const HERE: GridPoint = GridPoint { x: 0.0, y: 0.0 };
 
 #[test]
-fn only_burning_things_crackle_and_bigger_fires_louder() {
-    assert_eq!(fire_weight(None), Some(1.0));
-    assert!(fire_weight(Some(EntityEffect::Brazier)) > fire_weight(Some(EntityEffect::Torch)));
-    assert!(fire_weight(Some(EntityEffect::Torch)) > fire_weight(Some(EntityEffect::Lantern)));
-    assert_eq!(fire_weight(Some(EntityEffect::Geyser)), None);
-    assert_eq!(fire_weight(Some(EntityEffect::Flies)), None);
-    assert_eq!(fire_weight(Some(EntityEffect::Leaves)), None);
-}
-
-#[test]
-fn a_fire_is_louder_close_by_and_silent_far_off() {
-    let close = fire_level(HERE, &[spot(1.0, 0.0)], &[]);
-    let middle = fire_level(HERE, &[spot(6.0, 0.0)], &[]);
-    let far = fire_level(HERE, &[spot(40.0, 0.0)], &[]);
-    assert_eq!(close, 1.0);
-    assert!(middle > 0.0 && middle < close);
-    assert_eq!(far, 0.0);
-    assert_eq!(fire_level(HERE, &[], &[]), 0.0);
-}
-
-#[test]
-fn torches_count_as_fires_and_geysers_do_not() {
-    let torch = fire_level(HERE, &[], &[effect(EntityEffect::Torch, 1.0, 0.0)]);
-    assert!((torch - 0.6).abs() < 1e-12);
-    assert_eq!(
-        fire_level(HERE, &[], &[effect(EntityEffect::Geyser, 1.0, 0.0)]),
-        0.0
-    );
-    let two = fire_level(
-        HERE,
-        &[],
-        &[
-            effect(EntityEffect::Torch, 1.0, 0.0),
-            effect(EntityEffect::Torch, 0.0, 1.0),
-        ],
-    );
-    assert!(two > torch && two <= 1.0);
-}
-
-#[test]
 fn a_geyser_swells_with_its_burst_and_fades_with_distance() {
     let geyser = effect(EntityEffect::Geyser, 1.0, 0.0);
     let levels: Vec<f64> = (0..400)

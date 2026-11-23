@@ -52,7 +52,7 @@ pub struct Report {
     pub notes: Vec<String>,
     /// The one-shot sounds the run played, in order, by their event name (`HarvestHit`, …).
     pub sounds: Vec<String>,
-    /// The beds playing when the run ended and their levels (`Wind`, `Fire`,
+    /// The beds playing when the run ended and their levels (`Wind`,
     /// `Geyser`); a silent bed is left out.
     pub ambience: std::collections::BTreeMap<String, f64>,
 }

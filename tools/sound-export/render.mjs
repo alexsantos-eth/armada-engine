@@ -48,7 +48,6 @@ const SOUNDS = [
   ['bird-call-2', 1],
   ['bird-call-3', 1],
   ['wind', 4],
-  ['fire', 2],
   ['geyser', 2],
 ];
 

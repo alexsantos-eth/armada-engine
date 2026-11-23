@@ -99,9 +99,8 @@ const LOOP_FILES: [(SoundLoop, &str); 9] = [
 
 /// The beds of the world the client bundles, all looping at once at their own volumes; see
 /// [`SOUND_FILES`].
-const AMBIENT_FILES: [(AmbientLoop, &str); 3] = [
+const AMBIENT_FILES: [(AmbientLoop, &str); 2] = [
     (AmbientLoop::Wind, "wind.wav"),
-    (AmbientLoop::Fire, "fire.wav"),
     (AmbientLoop::Geyser, "geyser.wav"),
 ];
 

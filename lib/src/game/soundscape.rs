@@ -1,5 +1,5 @@
 //! The beds of the world, mixed once a frame from where the player stands: the wind of the
-//! biome, the fires and the geysers on screen. Each bed eases to its level
+//! biome and the geysers on screen. Each bed eases to its level
 //! (`iso::services::soundscape`), so sources coming into view swell in. The birds are not a bed:
 //! now and then, minutes apart, one in the trees around sings a short phrase.
 //!
@@ -18,37 +18,12 @@ use crate::effects::emitters::{EffectSpot, geyser_burst};
 use crate::effects::fire::{FireSpot, spot_phase};
 use crate::game::state::Game;
 
-/// How loud a fire of each kind crackles at its full volume: a campfire (`None`) or a brazier
-/// roars, a torch crackles, a lantern or candles barely hiss. `None` for an effect that is not
-/// a fire.
-pub(crate) fn fire_weight(effect: Option<EntityEffect>) -> Option<f64> {
-    match effect {
-        None => Some(1.0),
-        Some(EntityEffect::Brazier) => Some(0.9),
-        Some(EntityEffect::Torch) => Some(0.6),
-        Some(EntityEffect::Lantern) => Some(0.3),
-        Some(EntityEffect::Candles) => Some(0.25),
-        Some(EntityEffect::Flies | EntityEffect::Geyser | EntityEffect::Leaves) => None,
-    }
-}
-
 /// Where a spot is, as a point of the grid.
 fn point_of(spot: &FireSpot) -> GridPoint {
     GridPoint {
         x: spot.x,
         y: spot.y,
     }
-}
-
-/// The crackle of the campfires in `fires` and the burning effects in `effects`, heard from
-/// `listener`.
-pub(crate) fn fire_level(listener: GridPoint, fires: &[FireSpot], effects: &[EffectSpot]) -> f64 {
-    let campfires = fires.iter().map(|spot| (None, spot));
-    let lit = effects.iter().map(|spot| (Some(spot.kind), &spot.at));
-    combined(campfires.chain(lit).filter_map(|(effect, spot)| {
-        let weight = fire_weight(effect)?;
-        Some(weight * distance_gain(distance(point_of(spot), listener)))
-    }))
 }
 
 /// The steam of the geysers in `effects`, heard from `listener` at `time_ms` of the wind clock
@@ -140,7 +115,7 @@ impl Game {
     }
 
     /// Mixes the beds for this frame from the player's position and eases each one there over
-    /// `frame_ms`. Runs after the fires are gathered, so it hears what is on screen.
+    /// `frame_ms`. Runs after the effects are gathered, so it hears the geysers on screen.
     pub(crate) fn update_soundscape(&mut self, frame_ms: f64) {
         let listener = GridPoint {
             x: self.player.x,
@@ -159,10 +134,6 @@ impl Game {
         self.maybe_call_a_bird(listener, phase, frame_ms);
         let targets = [
             (AmbientLoop::Wind, wind_level(strength, self.wind_ms)),
-            (
-                AmbientLoop::Fire,
-                fire_level(listener, &self.fire_spots, &self.effect_spots),
-            ),
             (
                 AmbientLoop::Geyser,
                 geyser_level_at(listener, &self.effect_spots, self.wind_ms),

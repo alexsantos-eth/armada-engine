@@ -132,15 +132,13 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 ### `soundscape.rs`
 
-Los fondos del mundo y los cantos sueltos de pájaro, mezclados una vez por fotograma desde donde está el jugador. `Game::update_soundscape` corre en la mitad de vista justo después de `collect_fires`, así que oye los fuegos y géiseres que hay en pantalla (`fire_spots`, `effect_spots`); cada fondo se suaviza hacia su nivel con `iso::services::soundscape::ease_volume` partiendo de `MacroquadAudio::ambient_level`.
+Los fondos del mundo y los cantos sueltos de pájaro, mezclados una vez por fotograma desde donde está el jugador. `Game::update_soundscape` corre en la mitad de vista justo después de `collect_fires`, así que oye los géiseres que hay en pantalla (`effect_spots`); el fuego no suena; cada fondo se suaviza hacia su nivel con `iso::services::soundscape::ease_volume` partiendo de `MacroquadAudio::ambient_level`.
 
-- `fire_weight` — Lo fuerte que crepita cada fuego a volumen entero: fogata 1,0, brasero 0,9, antorcha 0,6, farol 0,3, velas 0,25; `None` para un efecto que no arde.
-- `fire_level` — El crepitar de fogatas y efectos que arden, atenuado por distancia y combinado.
 - `geyser_level_at` — El vapor de los géiseres, que crece con su erupción: usa `geyser_burst` con el reloj del viento, el mismo con el que se dibuja el chorro.
 - `birds_level` — El canto de los árboles alrededor (`BIRDS_PER_TREE` por árbol, atenuado y combinado) por lo que cantan en la fase (`bird_level`). Es a la vez la probabilidad y el volumen de un canto.
 - `Game::maybe_call_a_bird` — Los pájaros no son un fondo: cada fotograma suma a `since_bird_call_ms` y, pasado `BIRD_CALL_GAP_MS` (dos minutos), busca los árboles y tira `bird_call_due` con `bird_random` (semilla del mundo). Si toca, suena una de las `BIRD_CALLS` frases a `birds_level`.
 - `Game::trees_in_hearing` — Los árboles a menos de `HEARING_FAR`: entidades que se recolectan con hacha, de los chunks alrededor.
-- `Game::update_soundscape` — Viento (bioma bajo el jugador y rachas), fuego y géiser, cada uno suavizado y entregado con `set_ambient`, y la tirada de los pájaros.
+- `Game::update_soundscape` — Viento (bioma bajo el jugador y rachas) y géiser, cada uno suavizado y entregado con `set_ambient`, y la tirada de los pájaros.
 
 Las pisadas de los NPCs suenan en `step_npcs` (`frame.rs`): guarda `Npc::footfalls` de cada uno antes del paso y reproduce lo que devuelve `footfall_sounds`, con `play_with_volume` según la distancia.
 
@@ -191,7 +189,7 @@ Las pisadas de los NPCs suenan en `step_npcs` (`frame.rs`): guarda `Npc::footfal
 #### Tipos
 
 - [`Game`](state.rs#L68) — El juego compuesto: manager, archivo de guardado, jugador, cámara, stepper, reloj del mundo (`clock`), override de fase (`phase_override`), arte, sombras, polvo, cola de dibujo, servicios (audio, UI, perf), los controles táctiles (`touch`), las métricas de casilla (`tile_metrics`), el jetpack (`jetpack`, si lo lleva puesto), el catálogo de items (`items`), lo que lleva el jugador (`carried`, guardado en `systems.inventory`), la recolección en curso (`harvester`, `harvest_status`, `gain_note`, `impacts`), los montones del suelo (`drops`, guardados en `systems.drops`, y su vista `drop_views`) y la sesión de edición (`maker`, solo en la ruta del editor).
-  - Audio: `MacroquadAudio` carga los veinticuatro WAVs de `content/sounds/` al arrancar (catorce sueltos, nueve bucles del jugador y tres fondos); `last_motion` es la memoria de una pasada por fotograma para los bucles.
+  - Audio: `MacroquadAudio` carga los veinticuatro WAVs de `content/sounds/` al arrancar (catorce sueltos, nueve bucles del jugador y dos fondos); `last_motion` es la memoria de una pasada por fotograma para los bucles.
   - Firma: `pub(crate) struct Game { ... }`
 
 #### Funciones y métodos

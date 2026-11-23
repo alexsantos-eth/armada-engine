@@ -72,8 +72,6 @@ pub enum SoundLoop {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum AmbientLoop {
     Wind,
-    /// The crackle of torches, braziers, lanterns, candles and campfires near by.
-    Fire,
     /// The steam of the geysers near by, swelling with each burst.
     Geyser,
 }
