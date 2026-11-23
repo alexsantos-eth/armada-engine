@@ -60,7 +60,7 @@ impl InputService for MacroquadInput<'_> {
             jump_held: is_key_down(KeyCode::Space) || frame.jump_held,
             run: is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift) || frame.run,
             jetpack_pressed: is_key_pressed(KeyCode::J),
-            gather_held: is_key_down(KeyCode::E),
+            gather_held: is_key_down(KeyCode::E) || crate::gui::web_ui::gather_held(),
         }
     }
 }

@@ -4,6 +4,8 @@ La vista de la recolección: los montones de items en el suelo, lanzados desde l
 
 Las reglas viven en `iso::harvest`, `iso::inventory` e `iso::items`; el paso fijo que las corre es `Game::step_harvest` (`src/game/frame.rs`) y el guardado de lo que lleva el jugador es `save::snapshot_of`. Esta carpeta solo traduce el estado a pantalla. Es entrada de juego, no overlay: se pinta en todas las rutas que juegan el mundo (también `/` y las corridas guionizadas, antes de escribir las capturas) y no en `/maker`. Los textos van sin tildes porque la fuente por defecto de Macroquad no las dibuja.
 
+En la build web con el kit de UI (`web/ui/`, ver [`docs/UI-KIT.md`](../../docs/UI-KIT.md)) la hotbar, el aviso, la nota y las ganancias se pintan en HTML: `web_hud.rs` traduce el mismo estado a lo que manda `gui::web_ui`, y `draw_hotbar` queda para la build nativa, las corridas guionizadas y una página sin el kit.
+
 `draw_hotbar` solo pinta con Macroquad y no tiene test: se comprueba con `scenes/pr-harvest.json` (excepción de GPU de `FILE_STRUCTURE.md`); la geometría, las etiquetas y el aviso son puros y se prueban en `hotbar.test.rs`.
 
 ## Catálogo de API pública
@@ -35,6 +37,17 @@ Las reglas viven en `iso::harvest`, `iso::inventory` e `iso::items`; el paso fij
 
 - [`SlotRect`](hotbar.rs#L23) — El cuadrado de un slot en pantalla.
 - [`Prompt`](hotbar.rs#L31) — El aviso: texto y, mientras se trabaja, la fracción hecha.
+
+### `web_hud.rs`
+
+Lo que el HUD en HTML sabe de la recolección. Puro; se prueba en `web_hud.test.rs`.
+
+- [`hud_frame`](web_hud.rs#L65) — El fotograma del HUD: cada slot con id, nombre y cantidad; el aviso del `HarvestStatus` con su verbo y herramienta (`Talar`/`axe`, `Picar`/`pickaxe`, `Atrapar`/`net`, `Recoger`/`hand`, según la regla), el progreso en centésimas mientras se trabaja y `blocked` cuando falta herramienta (con el texto de `hotbar::prompt`); de la nota solo pasa «Inventario lleno», porque las ganancias van aparte.
+  - Firma: `pub(crate) fn hud_frame( carried: &Carried, items: &ItemCatalog, status: &HarvestStatus, note: Option<&str>, touch: bool, ) -> UiFrame {`
+- [`gains`](web_hud.rs#L95) — Una ganancia por rendimiento recogido, con id, nombre, cantidad y el punto de salida.
+  - Firma: `pub(crate) fn gains(yields: &[HarvestYield], items: &ItemCatalog, at: (f32, f32)) -> Vec<UiGain> {`
+- [`screen_share`](web_hud.rs#L110) — Un punto de pantalla como fracción del ancho y el alto, recortado a la pantalla; el centro si la pantalla no tiene tamaño.
+  - Firma: `pub(crate) fn screen_share(x: f64, y: f64, width: f32, height: f32) -> (f32, f32) {`
 
 ### `impact.rs`
 

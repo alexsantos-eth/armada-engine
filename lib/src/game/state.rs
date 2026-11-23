@@ -153,6 +153,10 @@ pub(crate) struct Game {
     pub(crate) harvest_status: iso::harvest::HarvestStatus,
     /// The note of the last harvest and how long it stays up, in milliseconds.
     pub(crate) gain_note: Option<(String, f64)>,
+    /// What the player picked up since the last frame was drawn, for the HTML HUD's flights.
+    pub(crate) pending_gains: Vec<iso::items::HarvestYield>,
+    /// The bridge to the HTML HUD of the web build.
+    pub(crate) web_ui: crate::gui::web_ui::WebUi,
     /// The heaps of items lying on the ground; saved in the save's `systems`.
     pub(crate) drops: iso::drops::Drops,
     /// How long each heap has been on the ground, for its toss and bob; view state.
@@ -522,6 +526,8 @@ impl Game {
             harvester: iso::harvest::Harvester::default(),
             harvest_status: iso::harvest::HarvestStatus::Idle,
             gain_note: None,
+            pending_gains: Vec::new(),
+            web_ui: crate::gui::web_ui::WebUi::default(),
             impacts: crate::harvest::impact::Impacts::default(),
             drop_views: crate::harvest::drop_view::DropViews::landed(drops.list()),
             drops,

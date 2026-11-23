@@ -1,0 +1,449 @@
+/*
+ * Armada UI kit: the clay / comic look of every HTML panel the game shows.
+ *
+ * Flat colours, thick hand-drawn ink outlines (an SVG displacement filter, #ac-wobble, that
+ * armada-ui.js injects once), a solid offset shadow and a fine plasticine grain. Every component
+ * is a class prefixed `ac-`; every colour, size and timing is a token below. The catalogue with
+ * live examples is web/ui/index.html (served at /ui/), and the guide is lib/docs/UI-KIT.md.
+ */
+
+:root {
+  --ac-ink: #1a120d;
+  --ac-paper: #ecdcb9;
+  --ac-paper-shade: #d9c497;
+  --ac-cream: #fff6e0;
+  --ac-umber: #4b3324;
+  --ac-night: #191d1a;
+  --ac-ground: #232a24;
+  --ac-gold: #f4b934;
+  --ac-red: #e0543a;
+  --ac-leaf: #6f9d3a;
+  --ac-sky: #5b8fb4;
+  --ac-text: #f2e6cc;
+  --ac-text-muted: #b7a988;
+  --ac-on-light: #1a120d;
+  --ac-on-dark: #ecdcb9;
+
+  --ac-display: "Fredoka", "Baloo 2", "Arial Rounded MT Bold", system-ui, sans-serif;
+  --ac-body: "Nunito", "Segoe UI", system-ui, sans-serif;
+
+  --ac-line: 4px;
+  --ac-line-thin: 3px;
+  --ac-shadow-x: 5px;
+  --ac-shadow-y: 6px;
+  --ac-icon-shadow: drop-shadow(2px 3px 0 var(--ac-ink));
+  --ac-number-stroke: 5px;
+
+  --ac-blob: 22px 26px 20px 28px / 26px 20px 28px 22px;
+  --ac-blob-small: 16px 20px 15px 19px / 19px 15px 20px 16px;
+  --ac-blob-round: 48% 52% 46% 54% / 54% 46% 52% 48%;
+  --ac-blob-bubble: 46% 54% 50% 50% / 58% 52% 48% 42%;
+
+  --ac-slot: 64px;
+  --ac-action: 104px;
+
+  --ac-spring: cubic-bezier(0.3, 1.7, 0.5, 1);
+  --ac-pop: cubic-bezier(0.2, 1.8, 0.4, 1);
+  --ac-fly-ms: 760ms;
+  --ac-bubble-ms: 1600ms;
+
+  --ac-noise: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' seed='7'/><feColorMatrix values='0 0 0 0 .3  0 0 0 0 .22  0 0 0 0 .15  0 0 0 .3 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+/* ---------- base: the hand-drawn shape every panel stands on ---------- */
+
+.ac-hand {
+  --ac-fill: var(--ac-paper);
+  position: relative;
+  isolation: isolate;
+  color: var(--ac-on-light);
+}
+.ac-hand::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: var(--ac-line) solid var(--ac-ink);
+  border-radius: var(--ac-blob);
+  box-shadow: var(--ac-shadow-x) var(--ac-shadow-y) 0 var(--ac-ink);
+  background: var(--ac-noise), var(--ac-fill);
+  background-blend-mode: multiply;
+  filter: url(#ac-wobble);
+}
+.ac-paper { --ac-fill: var(--ac-paper); color: var(--ac-on-light); }
+.ac-cream { --ac-fill: var(--ac-cream); color: var(--ac-on-light); }
+.ac-umber { --ac-fill: var(--ac-umber); color: var(--ac-on-dark); }
+.ac-gold { --ac-fill: var(--ac-gold); color: var(--ac-on-light); }
+.ac-red { --ac-fill: var(--ac-red); color: #fff; }
+.ac-leaf { --ac-fill: var(--ac-leaf); color: #fff; }
+
+/* Text with an ink outline, for numbers and labels over busy ground. */
+.ac-outlined {
+  -webkit-text-stroke: var(--ac-number-stroke) var(--ac-ink);
+  paint-order: stroke fill;
+}
+.ac-icon {
+  display: block;
+  object-fit: contain;
+  filter: var(--ac-icon-shadow);
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+/* ---------- chip: a short label on a pill ---------- */
+
+.ac-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 7px;
+  font: 600 15px/1.1 var(--ac-display);
+}
+.ac-chip b { font-weight: 700; color: var(--ac-gold); }
+.ac-chip.ac-paper b, .ac-chip.ac-cream b { color: var(--ac-red); }
+
+/* ---------- card: a block of text ---------- */
+
+.ac-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px 20px;
+  min-width: 0;
+  font: 700 14.5px/1.45 var(--ac-body);
+}
+.ac-card h2, .ac-card h3 { margin: 0; font: 700 20px/1.15 var(--ac-display); }
+.ac-card p { margin: 0; }
+
+/* ---------- hotbar and slots ---------- */
+
+.ac-hotbar {
+  --ac-fill: var(--ac-umber);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 14px 14px;
+}
+.ac-slot {
+  --ac-fill: var(--ac-paper);
+  appearance: none;
+  border: 0;
+  background: none;
+  font: inherit;
+  padding: 0;
+  margin: 0;
+  position: relative;
+  isolation: isolate;
+  width: var(--ac-slot);
+  height: calc(var(--ac-slot) * 1.06);
+  display: grid;
+  place-items: center;
+  color: var(--ac-on-light);
+  transition: transform 120ms;
+}
+.ac-slot::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: var(--ac-line) solid var(--ac-ink);
+  border-radius: var(--ac-blob-small);
+  box-shadow: 3px 4px 0 var(--ac-ink);
+  background: var(--ac-noise), var(--ac-fill);
+  background-blend-mode: multiply;
+  filter: url(#ac-wobble);
+}
+button.ac-slot { cursor: pointer; }
+button.ac-slot:hover { transform: translateY(-3px) rotate(-1.5deg); }
+.ac-slot:focus-visible { outline: 4px dashed var(--ac-gold); outline-offset: 4px; border-radius: 18px; }
+.ac-slot[aria-pressed="true"], .ac-slot.is-selected {
+  --ac-fill: var(--ac-gold);
+  transform: translateY(-6px) rotate(-2deg);
+}
+.ac-slot.is-empty { --ac-fill: var(--ac-paper-shade); }
+.ac-slot.is-empty::before { box-shadow: 2px 3px 0 var(--ac-ink); opacity: 0.8; }
+.ac-slot__icon { width: calc(var(--ac-slot) * 0.72); height: calc(var(--ac-slot) * 0.72); margin-top: -4px; }
+.ac-slot__key {
+  position: absolute;
+  top: -9px;
+  left: -7px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ac-ink);
+  color: var(--ac-paper);
+  font: 700 12px/1 var(--ac-display);
+}
+.ac-slot__count {
+  position: absolute;
+  right: -6px;
+  bottom: -8px;
+  z-index: 2;
+  color: #fff;
+  font: 700 calc(var(--ac-slot) * 0.34) / 1 var(--ac-display);
+  font-variant-numeric: tabular-nums;
+  -webkit-text-stroke: var(--ac-number-stroke) var(--ac-ink);
+  paint-order: stroke fill;
+}
+.ac-slot.is-bump { animation: ac-bump 450ms var(--ac-spring); }
+
+/* ---------- comic bubble ---------- */
+
+.ac-bubble {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+}
+.ac-bubble__body {
+  --ac-fill: var(--ac-cream);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 22px 12px;
+  white-space: nowrap;
+  font: 700 28px/1 var(--ac-display);
+  color: var(--ac-ink);
+}
+.ac-bubble__body::before { border-radius: var(--ac-blob-bubble); }
+.ac-bubble__tail {
+  position: absolute;
+  left: 44%;
+  bottom: -25px;
+  z-index: 2;
+  width: 34px;
+  height: 30px;
+  filter: url(#ac-wobble);
+}
+.ac-bubble__tail path { fill: var(--ac-cream); stroke: var(--ac-ink); stroke-width: 4; stroke-linejoin: round; }
+.ac-bubble__amount {
+  color: var(--ac-red);
+  font-size: 1.22em;
+  -webkit-text-stroke: 2px var(--ac-ink);
+  paint-order: stroke fill;
+}
+.ac-bubble__icon { width: 1.4em; height: 1.4em; flex: none; }
+.ac-bubble.is-warning .ac-bubble__body { --ac-fill: var(--ac-red); color: #fff; }
+.ac-bubble.is-warning .ac-bubble__tail path { fill: var(--ac-red); }
+.ac-bubble.is-in { animation: ac-pop 900ms var(--ac-pop) both; }
+.ac-bubble.is-out { animation: ac-out 250ms ease-in both; }
+
+/* ---------- action button: round, held to work ---------- */
+
+.ac-action {
+  --ac-fill: var(--ac-red);
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  margin: 0;
+  position: relative;
+  isolation: isolate;
+  width: var(--ac-action);
+  height: var(--ac-action);
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+  cursor: pointer;
+  color: #fff;
+  font: 700 calc(var(--ac-action) * 0.18) / 1 var(--ac-display);
+  touch-action: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 80ms;
+}
+.ac-action::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: var(--ac-line) solid var(--ac-ink);
+  border-radius: var(--ac-blob-round);
+  box-shadow: var(--ac-shadow-x) 7px 0 var(--ac-ink);
+  background: var(--ac-noise), var(--ac-fill);
+  background-blend-mode: multiply;
+  filter: url(#ac-wobble);
+}
+.ac-action:hover { transform: rotate(-3deg) scale(1.04); }
+.ac-action:active, .ac-action.is-pressed { transform: translate(4px, 5px) scale(0.95, 0.92); }
+.ac-action:active::before, .ac-action.is-pressed::before { box-shadow: 1px 2px 0 var(--ac-ink); }
+.ac-action:focus-visible { outline: 4px dashed var(--ac-gold); outline-offset: 6px; border-radius: 50%; }
+.ac-action:disabled { --ac-fill: var(--ac-paper-shade); color: var(--ac-ink); cursor: default; }
+.ac-action__icon { width: calc(var(--ac-action) * 0.42); height: calc(var(--ac-action) * 0.42); }
+.ac-action__label {
+  -webkit-text-stroke: 4px var(--ac-ink);
+  paint-order: stroke fill;
+  letter-spacing: 0.4px;
+}
+.ac-action__key {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  z-index: 2;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--ac-ink);
+  border-radius: 50%;
+  background: var(--ac-paper);
+  color: var(--ac-ink);
+  font: 700 13px/1 var(--ac-display);
+}
+.ac-action.is-working .ac-action__icon { animation: ac-chop 360ms ease-in-out infinite; }
+
+/* ---------- prompt: what is in reach, with the work's progress ---------- */
+
+.ac-prompt {
+  --ac-fill: var(--ac-cream);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px 9px;
+  font: 700 17px/1.1 var(--ac-display);
+  color: var(--ac-ink);
+}
+.ac-prompt kbd {
+  font: 700 13px/1 var(--ac-display);
+  padding: 2px 6px;
+  border: 2.5px solid var(--ac-ink);
+  border-radius: 7px 9px 7px 8px;
+  background: var(--ac-paper);
+  box-shadow: 2px 2px 0 var(--ac-ink);
+}
+.ac-prompt.is-blocked { --ac-fill: var(--ac-red); color: #fff; }
+.ac-progress {
+  position: relative;
+  width: 150px;
+  height: 14px;
+  border: var(--ac-line-thin) solid var(--ac-ink);
+  border-radius: 8px 10px 7px 9px;
+  background: var(--ac-umber);
+  overflow: hidden;
+}
+.ac-progress__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--ac-progress, 0) * 100%);
+  background: var(--ac-leaf);
+  border-right: var(--ac-line-thin) solid var(--ac-ink);
+  transition: width 90ms linear;
+}
+
+/* ---------- flying number: what was gathered, on its way to its slot ---------- */
+
+.ac-fly {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 20;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #fff;
+  font: 700 28px/1 var(--ac-display);
+  -webkit-text-stroke: 6px var(--ac-ink);
+  paint-order: stroke fill;
+  will-change: transform;
+}
+.ac-fly__icon { width: 40px; height: 40px; }
+
+/* ---------- animations ---------- */
+
+.ac-hit { animation: ac-hit 320ms var(--ac-spring); }
+
+@keyframes ac-hit {
+  0% { transform: scale(1, 1); }
+  30% { transform: scale(1.14, 0.84) rotate(-4deg); }
+  60% { transform: scale(0.94, 1.08) rotate(3deg); }
+  100% { transform: scale(1); }
+}
+@keyframes ac-bump {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.22, 0.86) rotate(5deg); }
+  50% { transform: scale(0.92, 1.1) rotate(-4deg); }
+  75% { transform: rotate(2deg); }
+  100% { transform: scale(1); }
+}
+@keyframes ac-pop {
+  0% { transform: translate(-50%, -100%) scale(0.2) rotate(-12deg); opacity: 0; }
+  35% { transform: translate(-50%, -100%) scale(1.12) rotate(4deg); opacity: 1; }
+  45% { transform: translate(calc(-50% - 6px), -100%) scale(1) rotate(-3deg); }
+  55% { transform: translate(calc(-50% + 6px), -100%) rotate(3deg); }
+  65% { transform: translate(calc(-50% - 4px), -100%) rotate(-2deg); }
+  75% { transform: translate(calc(-50% + 3px), -100%) rotate(1deg); }
+  100% { transform: translate(-50%, -100%) scale(1) rotate(-2deg); }
+}
+@keyframes ac-out {
+  to { transform: translate(-50%, calc(-100% - 14px)) scale(0.8); opacity: 0; }
+}
+@keyframes ac-chop {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-22deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-bubble.is-in, .ac-bubble.is-out, .ac-slot.is-bump, .ac-hit, .ac-action.is-working .ac-action__icon {
+    animation: none;
+  }
+}
+
+/* ---------- the game's HUD layout (web/index.html) ---------- */
+
+.ac-hud {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  font-family: var(--ac-body);
+  --ac-slot: clamp(30px, calc((100vw - 120px) / var(--ac-slots, 12) - 8px), 54px);
+}
+.ac-hud[hidden] { display: none; }
+.ac-hud__bottom {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+}
+.ac-hud .ac-hotbar { gap: 8px; padding: 10px 12px 12px; }
+.ac-hud__action {
+  position: absolute;
+  right: calc(env(safe-area-inset-right, 0px) + 28px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 28px);
+  pointer-events: auto;
+}
+.ac-hud__action[hidden] { display: none; }
+
+/* With the touch joystick and jump button on screen the hotbar climbs to the top and the action
+   button sits above the jump button, mirroring src/touch/layout.rs (margin 0.14 vh, radius 0.073 vh). */
+.ac-hud.is-touch .ac-hud__bottom {
+  bottom: auto;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  flex-direction: column-reverse;
+}
+.ac-hud.is-touch {
+  --ac-slot: clamp(30px, calc((100vw - 48px) / 6 - 10px), 52px);
+  --ac-action: clamp(72px, 13vh, 96px);
+}
+.ac-hud.is-touch .ac-hotbar { max-width: calc(6 * (var(--ac-slot) + 8px) + 24px); }
+.ac-hud.is-touch .ac-hud__action {
+  right: calc(clamp(63px, 14vh, 117.6px) - var(--ac-action) / 2);
+  bottom: calc(clamp(63px, 14vh, 117.6px) + clamp(33px, 7.33vh, 61.6px) + 18px);
+}
+.ac-hud.is-touch .ac-action__key { display: none; }
+.ac-hud.is-touch .ac-prompt kbd { display: none; }

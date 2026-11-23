@@ -8,6 +8,8 @@ El **jetpack** vale en cualquier ruta. Se alterna con la tecla `J` o, con el ove
 
 La división es deliberada: `push_hud_update` publica lo que el jugador está haciendo mediante el servicio de UI (`UiEvent::HudUpdate`), y `draw_hud` renderiza lo que ese servicio retiene, incluidos los mensajes efímeros, que se vacían al pintarlos.
 
+El dominio tiene además el **puente con el HUD en HTML** de la build web (`web_ui.rs`): el kit de UI (`web/ui/armada-ui.js`, ver [`docs/UI-KIT.md`](../../docs/UI-KIT.md)) que `web/adapter.js` monta sobre el canvas. Es el tercer FFI acotado con la página, con el mismo patrón que `iso_route_path` y el guardado: `iso_ui_active` (si la página trae el kit), `iso_ui_push` (un JSON con el fotograma del HUD y las ganancias) e `iso_ui_gather_held` (si el botón de acción está pulsado). Fuera de WASM no hay página: `active` y `gather_held` devuelven `false` y nada se envía. Qué se manda lo arma `harvest::web_hud`.
+
 ## Catálogo de API pública
 
 Este catálogo documenta las funciones, métodos y constantes exportados por este dominio. Incluye la firma y un enlace a la implementación; los helpers privados se mantienen junto al código porque no forman parte del contrato estable.
@@ -24,6 +26,27 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Firma: `pub(crate) use route::{Route, current};`
 - [`current`](route.rs#L113) — La ruta de este proceso: el camino de la página en web, los argumentos en nativo.
   - Firma: `pub(crate) use route::{Route, current};`
+
+### `web_ui.rs`
+
+#### Tipos
+
+- [`UiStack`](web_ui.rs#L10) — Una pila en un slot: id del item, nombre y cantidad.
+- [`UiPrompt`](web_ui.rs#L19) — El aviso: texto, verbo y herramienta del botón de acción, progreso (0–1) mientras se trabaja y si una herramienta que falta lo bloquea.
+- [`UiFrame`](web_ui.rs#L29) — Lo que muestra el HUD este fotograma: visible, controles táctiles en pantalla, slots, aviso y nota.
+- [`UiGain`](web_ui.rs#L39) — Una recogida: item, nombre, cantidad y de dónde sale volando, como fracción de la pantalla.
+- [`WebUi`](web_ui.rs#L56) — Recuerda el último fotograma enviado para no repetirlo.
+
+#### Funciones y métodos
+
+- [`WebUi::message`](web_ui.rs#L63) — El JSON de este fotograma: `frame` solo si cambió desde el último mensaje, y todas las ganancias; `None` si no hay nada nuevo. Se prueba en `web_ui.test.rs`.
+  - Firma: `pub(crate) fn message(&mut self, frame: &UiFrame, gains: &[UiGain]) -> Option<String> {`
+- [`WebUi::send`](web_ui.rs#L79) — Manda a la página el mensaje de este fotograma, si lo hay (`iso_ui_push`).
+  - Firma: `pub(crate) fn send(&mut self, frame: &UiFrame, gains: &[UiGain]) {`
+- [`active`](web_ui.rs#L96) — Si la página trae el HUD en HTML (`iso_ui_active`); siempre `false` fuera del navegador.
+  - Firma: `pub(crate) fn active() -> bool {`
+- [`gather_held`](web_ui.rs#L102) — Si el botón de acción del HUD está pulsado (`iso_ui_gather_held`); siempre `false` fuera del navegador.
+  - Firma: `pub(crate) fn gather_held() -> bool {`
 
 ### `route.rs`
 

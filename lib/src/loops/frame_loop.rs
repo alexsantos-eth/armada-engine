@@ -112,7 +112,20 @@ pub(crate) async fn run(mut game: Game) {
             &grade,
             (game.depth_target.texture(), view.depth.focus()),
         );
-        if game.streams {
+        let picked = std::mem::take(&mut game.pending_gains);
+        if game.streams && crate::gui::web_ui::active() {
+            let chest = game.player_chest(&view);
+            let at = crate::harvest::web_hud::screen_share(chest.x, chest.y, width, height);
+            let frame = crate::harvest::web_hud::hud_frame(
+                &game.carried,
+                &game.items,
+                &game.harvest_status,
+                game.gain_note.as_ref().map(|(text, _)| text.as_str()),
+                game.touch.visible(),
+            );
+            let gains = crate::harvest::web_hud::gains(&picked, &game.items, at);
+            game.web_ui.send(&frame, &gains);
+        } else if game.streams {
             let prompt = crate::harvest::hotbar::prompt(&game.harvest_status, &game.items);
             crate::harvest::hotbar::draw_hotbar(
                 &game.carried,

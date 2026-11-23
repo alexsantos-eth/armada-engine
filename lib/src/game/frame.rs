@@ -278,6 +278,7 @@ impl Game {
             .collect(feet, &mut self.carried.inventory, &self.items, ticks);
         if !collected.gained.is_empty() {
             self.audio.play(SoundEvent::ItemCollect);
+            self.pending_gains.extend(collected.gained.iter().cloned());
             self.gain_note = Some((
                 crate::harvest::hotbar::gain_text(&collected.gained, &self.items),
                 crate::harvest::hotbar::GAIN_NOTE_MS,
