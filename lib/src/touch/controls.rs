@@ -117,6 +117,18 @@ impl TouchControls {
             .is_some_and(|rect| rect.contains(Vec2::new(touch.x, touch.y)))
     }
 
+    /// The rect the game paints the inventory button in: a touch inside it neither jumps nor
+    /// places the stick — the game's inventory toggle is what it is for.
+    pub(crate) fn set_jump_block(&mut self, rect: Option<Rect>) {
+        self.jump_block = rect;
+    }
+
+    /// Whether `touch` lands on the inventory button's rect.
+    fn jump_blocked(&self, touch: &RawTouch) -> bool {
+        self.jump_block
+            .is_some_and(|rect| rect.contains(Vec2::new(touch.x, touch.y)))
+    }
+
     /// Advances the controls with this frame's touches at `now_ms` and returns what they ask for.
     pub(crate) fn update(
         &mut self,
@@ -179,6 +191,7 @@ impl TouchControls {
             magnitude: pushed.magnitude,
             run: pushed.run,
             jump_pressed,
+            jump_held: jump_pressed,
             jump_held: jump_pressed,
             gather_held: gathering,
         }

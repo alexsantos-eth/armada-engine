@@ -155,7 +155,7 @@ fn readout_colour(frame_max: f64) -> Color {
 /// once the touch controls are on screen.
 fn help_line(touch_visible: bool) -> &'static str {
     if touch_visible {
-        "Joystick: mover, a tope correr, mas alla: correr fijo | Mantener quieto: recolectar | Doble toque: saltar"
+        "Joystick: mover, a tope correr, mas alla: correr fijo | Mantener quieto: recolectar | Toco: saltar"
     } else {
         "WASD/Flechas | Espacio: saltar (mantener: volar con jetpack) | Shift: correr | J: jetpack | T: terreno | P: perf | H: ocultar panel | F5: guardar"
     }

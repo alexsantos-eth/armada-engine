@@ -1,4 +1,5 @@
 //! The on-screen touch controls: one floating analog stick that moves, gathers and jumps.
+//! The on-screen touch controls: one floating analog stick that moves, gathers and jumps.
 //!
 //! The first touch puts the stick's base under the thumb (it rests in the bottom-right corner
 //! otherwise) and drives the player like the keyboard does, but analog: the walk vector scales
