@@ -56,8 +56,6 @@ Toda superficie con contorno es `.ac-hand` más un relleno: `.ac-paper`, `.ac-cr
 | Tarjeta | `.ac-card` | — |
 | Barra de inventario | `.ac-hotbar` | `new ArmadaUI.Hotbar(el, { keys, buttons })`, `.render(slots)`, `.slotFor(item)`, `.select(i)`, `.bump(slotEl)` |
 | Slot | `.ac-slot`, `__icon`, `__count`, `__key`; estados `.is-selected` / `[aria-pressed=true]`, `.is-empty`, `.is-bump` | lo crea `Hotbar` |
-| Aviso | `.ac-prompt` (`kbd` opcional), `.is-blocked` | `new ArmadaUI.Prompt(el)`, `.render({ text, key, progress, blocked })` o `null` para ocultarlo |
-| Barra de progreso | `.ac-progress`, `__fill`, variable `--ac-progress` (0–1) | la usa `Prompt` |
 | Globo de cómic | `.ac-bubble`, `__body`, `__tail`, `__amount`, `__icon`; `.is-warning`, `.is-in`, `.is-out` | `ArmadaUI.bubble(capa, { x, y, amount, item, name, text, warning, ms })` |
 | Botón de acción | `.ac-action`, `__icon`, `__label`, `__key`; `.is-pressed`, `.is-working` | `ArmadaUI.actionButton({ verb, tool, key })`, `ArmadaUI.setAction(btn, { verb, tool })`, `ArmadaUI.holdButton(btn, onChange, { refocus })` |
 | Número volador | `.ac-fly`, `__icon` | `ArmadaUI.fly({ from: {x, y}, to: elemento, amount, item, onLand })` |

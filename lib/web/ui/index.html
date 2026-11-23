@@ -115,7 +115,6 @@
         </div>
         <div class="bottom">
           <div class="bottom-col">
-            <div id="prompt"></div>
             <div id="hotbar" aria-label="Inventario"></div>
           </div>
           <div id="action-holder"></div>
@@ -133,11 +132,6 @@
           <div class="show" id="spec-slots"></div>
           <h3>Slot · <code>.ac-slot</code></h3>
           <p>Icono del ítem, cantidad con contorno y tecla opcional. <code>.is-selected</code> lo pinta de oro, <code>.is-empty</code> lo apaga y <code>.is-bump</code> lo hace rebotar.</p>
-        </div>
-        <div class="specimen">
-          <div class="show" id="spec-prompt"></div>
-          <h3>Aviso · <code>.ac-prompt</code></h3>
-          <p>Lo que está al alcance y la barra de trabajo (<code>.ac-progress</code>, variable <code>--ac-progress</code> de 0 a 1). <code>.is-blocked</code> lo pone en rojo.</p>
         </div>
         <div class="specimen">
           <div class="show" id="spec-bubble" style="min-height: 150px"></div>
@@ -192,7 +186,6 @@
         hotbar.render(stacks());
         hotbar.slots.forEach((slot, i) => slot.node.addEventListener("click", () => select(i)));
 
-        const prompt = new UI.Prompt($("prompt"));
         const action = UI.actionButton({ verb: "Talar", tool: "axe", key: "E" });
         $("action-holder").appendChild(action);
 
@@ -201,7 +194,6 @@
         function tick(now) {
           if (!work) return;
           const share = Math.min(1, (now - work.start) / WORK_MS);
-          prompt.render({ text: RES[selected].name, key: "E", progress: share });
           if (share >= 1) {
             gather();
             work.start = now;
@@ -216,7 +208,6 @@
           } else if (!held && work) {
             cancelAnimationFrame(work.frame);
             work = null;
-            prompt.render({ text: RES[selected].name, key: "E" });
           }
         }
         const holder = UI.holdButton(action, hold);
@@ -228,7 +219,6 @@
           $("target-art").setAttribute("href", `#t-${r.item}`);
           $("target-label").textContent = r.target;
           UI.setAction(action, { verb: r.verb, tool: r.tool });
-          prompt.render({ text: r.name, key: "E" });
         }
 
         function gather() {
@@ -278,12 +268,6 @@
         specSlots.render([{ item: "wood", name: "Madera", count: 24 }, { item: "copper_ore", name: "Cobre", count: 3 }, null]);
         specSlots.slots[0].node.classList.add("is-selected");
         $("spec-slots").addEventListener("click", () => specSlots.bump(specSlots.slots[1].node));
-
-        const p1 = new UI.Prompt(document.createElement("div"));
-        p1.render({ text: "Madera", key: "E", progress: 0.6 });
-        const p2 = new UI.Prompt(document.createElement("div"));
-        p2.render({ text: "Necesitas pico nivel 3", blocked: true });
-        $("spec-prompt").append(p1.root, p2.root);
 
         const bubbleHost = $("spec-bubble");
         const popSpecimen = () => {

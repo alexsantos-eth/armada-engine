@@ -13,8 +13,6 @@ pub(crate) const TOP_MARGIN: f32 = 12.0;
 pub(crate) const ACTION_MARGIN: f32 = 28.0;
 /// Gap between two slots.
 pub(crate) const SLOT_GAP: f32 = 8.0;
-/// Gap between the bar and the prompt.
-const PROMPT_GAP: f32 = 16.0;
 /// The bar's padding: sides, top and bottom.
 const PANEL_PAD: (f32, f32, f32) = (12.0, 10.0, 12.0);
 /// A slot is this much taller than wide.
@@ -35,9 +33,8 @@ pub(crate) struct HudLayout {
     pub(crate) slot: f32,
     pub(crate) slots: Vec<Rect>,
     pub(crate) panel: Rect,
-    /// The prompt's centre x and the y of its edge toward the bar (bottom on a desktop, top
-    /// with touch controls).
-    pub(crate) prompt_anchor: (f32, f32),
+    /// Whether the warning bubble sits above the bar (`true` with touch controls, below on a
+    /// desktop).
     pub(crate) prompt_below: bool,
     /// The action button, on a desktop only.
     pub(crate) action: Option<Rect>,
@@ -92,11 +89,7 @@ impl HudLayout {
                 )
             })
             .collect();
-        let (prompt_anchor, prompt_below) = if touch {
-            ((width / 2.0, panel.y + panel.h + PROMPT_GAP), true)
-        } else {
-            ((width / 2.0, panel.y - PROMPT_GAP), false)
-        };
+        let prompt_below = touch;
         let action = (!touch).then(|| {
             Rect::new(
                 width - ACTION_MARGIN - ACTION_SIZE,
@@ -120,7 +113,6 @@ impl HudLayout {
             slot,
             slots,
             panel,
-            prompt_anchor,
             prompt_below,
             action,
             backpack,

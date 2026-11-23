@@ -1,12 +1,12 @@
 # Harvest (cliente)
 
-La vista de la recolección: los montones de items en el suelo, lanzados desde lo derribado y flotando sobre su sombra (`drop_view.rs`), la sacudida de lo golpeado y las ráfagas de astillas (`impact.rs`), la barra de slots del inventario abajo en el centro, el aviso de lo que hay al alcance encima (`Manten E: Madera`, `Necesitas pico nivel 3`, ), la barra de progreso mientras se trabaja y la nota de lo ganado (`+3 Madera`) durante `GAIN_NOTE_MS`.
+La vista de la recolección: los montones de items en el suelo, lanzados desde lo derribado y flotando sobre su sombra (`drop_view.rs`), la sacudida de lo golpeado y las ráfagas de astillas (`impact.rs`), la barra de slots del inventario (abajo en el centro; con controles táctiles, un icono de mochila arriba), la barra de progreso mientras se trabaja, encima de la entidad que se está cosechando, y la nota de lo ganado (`+3 Madera`) durante `GAIN_NOTE_MS`.
 
 Las reglas viven en `iso::harvest`, `iso::inventory` e `iso::items`; el paso fijo que las corre es `Game::step_harvest` (`src/game/frame.rs`) y el guardado de lo que lleva el jugador es `save::snapshot_of`. Esta carpeta solo traduce el estado a pantalla. Es entrada de juego, no overlay: se pinta en todas las rutas que juegan el mundo (también `/` y las corridas guionizadas, antes de escribir las capturas) y no en `/maker`. Los textos van sin tildes porque la fuente por defecto de Macroquad no las dibuja.
 
-La hotbar, el aviso, la nota y las ganancias los pinta el HUD de arcilla y cómic ([`gui::clay`](../gui/clay/mod.md), ver [`docs/UI-KIT.md`](../../docs/UI-KIT.md)), igual en nativo y en web: `hud_frame.rs` traduce el estado a lo que ese HUD dibuja, y `draw_hotbar` queda solo para cuando faltan las piezas exportadas (`content/ui/`).
+La hotbar, el globo de aviso, la nota y las ganancias los pinta el HUD de arcilla y cómic ([`gui::clay`](../gui/clay/mod.md), ver [`docs/UI-KIT.md`](../../docs/UI-KIT.md)), igual en nativo y en web: `hud_frame.rs` traduce el estado a lo que ese HUD dibuja, y `draw_hotbar` queda solo para cuando faltan las piezas exportadas (`content/ui/`).
 
-`draw_hotbar` solo pinta con Macroquad y no tiene test: se comprueba con `scenes/pr-harvest.json` (excepción de GPU de `FILE_STRUCTURE.md`); la geometría, las etiquetas y el aviso son puros y se prueban en `hotbar.test.rs`.
+`draw_hotbar` solo pinta con Macroquad y no tiene test: se comprueba con `scenes/pr-harvest.json` (excepción de GPU de `FILE_STRUCTURE.md`); la geometría, las etiquetas y la barra de progreso son puros y se prueban en `hotbar.test.rs`.
 
 ## Catálogo de API pública
 
@@ -14,39 +14,39 @@ La hotbar, el aviso, la nota y las ganancias los pinta el HUD de arcilla y cómi
 
 #### Funciones y métodos
 
-- [`slot_rects`](hotbar.rs#L38) — Los cuadrados de `capacity` slots en una fila centrada abajo, encogidos si la fila no cabe entre los márgenes.
+- [`slot_rects`](hotbar.rs#L37) — Los cuadrados de `capacity` slots en una fila centrada abajo, encogidos si la fila no cabe entre los márgenes.
   - Firma: `pub(crate) fn slot_rects(width: f32, height: f32, capacity: usize) -> Vec<SlotRect> {`
-- [`slot_label`](hotbar.rs#L57) — Nombre y cantidad de una pila tal como los escribe el slot.
+- [`slot_label`](hotbar.rs#L56) — Nombre y cantidad de una pila tal como los escribe el slot.
   - Firma: `pub(crate) fn slot_label(stack: &ItemStack, items: &ItemCatalog) -> (String, String) {`
-- [`prompt`](hotbar.rs#L83) — Lo que dice el aviso para un `HarvestStatus`; nada si no hay nada al alcance.
-  - Firma: `pub(crate) fn prompt(status: &HarvestStatus, items: &ItemCatalog) -> Option<Prompt> {`
-- [`gain_text`](hotbar.rs#L112) — La nota de lo que dio una recolección, una entrada por rendimiento.
+- [`prompt`](hotbar.rs#L64) — La barra de progreso del harvest mientras está en marcha, con su fracción hecha.
+  - Firma: `pub(crate) fn prompt(status: &HarvestStatus) -> Option<Prompt> {`
+- [`gain_text`](hotbar.rs#L83) — La nota de lo que dio una recolección, una entrada por rendimiento.
   - Firma: `pub(crate) fn gain_text(yields: &[HarvestYield], items: &ItemCatalog) -> String {`
-- [`draw_hotbar`](hotbar.rs#L138) — Pinta los slots, el aviso con su barra de progreso y la nota.
+- [`draw_hotbar`](hotbar.rs#L110) — Pinta los slots, la barra de progreso mientras se trabaja y la nota.
   - Firma: `pub(crate) fn draw_hotbar( carried: &Carried, items: &ItemCatalog, prompt: Option<&Prompt>, note: Option<&str>, ) {`
 
 #### Constantes
 
-- [`SLOT_SIZE`](hotbar.rs#L13) — Lado máximo de un slot en píxeles. `pub(crate) const SLOT_SIZE: f32 = 54.0;`
-- [`SLOT_GAP`](hotbar.rs#L15) — Separación entre slots. `pub(crate) const SLOT_GAP: f32 = 6.0;`
-- [`SLOT_MARGIN`](hotbar.rs#L17) — Margen entre la barra y los bordes de la pantalla. `pub(crate) const SLOT_MARGIN: f32 = 24.0;`
-- [`FULL_NOTE`](hotbar.rs#L109) — La nota que deja una recogida cuando algo al alcance no cupo: «Inventario lleno».
-- [`GAIN_NOTE_MS`](hotbar.rs#L19) — Cuánto dura la nota de una recolección. `pub(crate) const GAIN_NOTE_MS: f64 = 1600.0;`
+- [`SLOT_SIZE`](hotbar.rs#L19) — Lado máximo de un slot en píxeles. `pub(crate) const SLOT_SIZE: f32 = 54.0;`
+- [`SLOT_GAP`](hotbar.rs#L21) — Separación entre slots. `pub(crate) const SLOT_GAP: f32 = 6.0;`
+- [`SLOT_MARGIN`](hotbar.rs#L23) — Margen entre la barra y los bordes de la pantalla. `pub(crate) const SLOT_MARGIN: f32 = 24.0;`
+- [`FULL_NOTE`](hotbar.rs#L80) — La nota que deja una recogida cuando algo al alcance no cupo: «Inventario lleno».
+- [`GAIN_NOTE_MS`](hotbar.rs#L25) — Cuánto dura la nota de una recolección. `pub(crate) const GAIN_NOTE_MS: f64 = 1600.0;`
 
 #### Tipos
 
-- [`SlotRect`](hotbar.rs#L23) — El cuadrado de un slot en pantalla.
-- [`Prompt`](hotbar.rs#L31) — El aviso: texto y, mientras se trabaja, la fracción hecha.
+- [`SlotRect`](hotbar.rs#L29) — El cuadrado de un slot en pantalla.
+- [`Prompt`](hotbar.rs#L14) — La barra de progreso del harvest mientras está en marcha (su fracción hecha).
 
 ### `hud_frame.rs`
 
 Lo que el HUD sabe de la recolección. Puro; se prueba en `hud_frame.test.rs`.
 
-- [`hud_frame`](hud_frame.rs#L65) — El fotograma del HUD: cada slot con id, nombre y cantidad; el aviso del `HarvestStatus` con su verbo y herramienta (`Talar`/`axe`, `Picar`/`pickaxe`, `Atrapar`/`net`, `Recoger`/`hand`, según la regla), el progreso en centésimas mientras se trabaja y `blocked` cuando falta herramienta (con el texto de `hotbar::prompt`); de la nota solo pasa «Inventario lleno», porque las ganancias van aparte.
-  - Firma: `pub(crate) fn hud_frame( carried: &Carried, items: &ItemCatalog, status: &HarvestStatus, note: Option<&str>, touch: bool, ) -> UiFrame {`
-- [`gains`](hud_frame.rs#L95) — Una ganancia por rendimiento recogido, con id, nombre, cantidad y el punto de salida.
+- [`hud_frame`](hud_frame.rs#L28) — El fotograma del HUD: cada slot con id, nombre y cantidad; la acción del `HarvestStatus` con herramienta (`Talar`/`axe`, `Picar`/`pickaxe`, `Atrapar`/`net`, `Recoger`/`hand`, según la regla); el progreso en centésimas mientras se trabaja y dónde satan; de la nota solo pasa «Inventario lleno», porque las ganancias van aparte.
+  - Firma: `pub(crate) fn hud_frame( carried: &Carried, items: &ItemCatalog, status: &HarvestStatus, note: Option<&str>, touch: bool, progress_at: Option<(f32, f32)>, ) -> UiFrame {`
+- [`gains`](hud_frame.rs#L83) — Una ganancia por rendimiento recogido, con id, nombre, cantidad y el punto de salida.
   - Firma: `pub(crate) fn gains(yields: &[HarvestYield], items: &ItemCatalog, at: (f32, f32)) -> Vec<UiGain> {`
-- [`screen_share`](hud_frame.rs#L110) — Un punto de pantalla como fracción del ancho y el alto, recortado a la pantalla; el centro si la pantalla no tiene tamaño.
+- [`screen_share`](hud_frame.rs#L98) — Un punto de pantalla como fracción del ancho y el alto, recortado a la pantalla; el centro si la pantalla no tiene tamaño.
   - Firma: `pub(crate) fn screen_share(x: f64, y: f64, width: f32, height: f32) -> (f32, f32) {`
 
 ### `impact.rs`

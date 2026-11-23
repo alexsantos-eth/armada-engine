@@ -1,13 +1,19 @@
-//! The hotbar: the inventory slots along the bottom of the screen, the gather prompt above them
-//! and the note of what the last harvest gave.
+//! The hotbar: the inventory slots along the bottom of the screen, the progress bar of a
+//! harvest under way and the note of what the last harvest gave.
 //!
-//! The layout, the labels and the prompt are pure and tested in `hotbar.test.rs`; `draw_hotbar`
+//! The layout, the labels and the progress are pure and tested in `hotbar.test.rs`; `draw_hotbar`
 //! only paints them with Macroquad and is checked by eye with a scene run (`scenes/pr-harvest.json`).
 
-use iso::harvest::{HarvestBlock, HarvestStatus};
+use iso::harvest::HarvestStatus;
 use iso::inventory::{Carried, ItemStack};
-use iso::items::{HarvestYield, ItemCatalog, ToolKind};
+use iso::items::{HarvestYield, ItemCatalog};
 use macroquad::prelude::*;
+
+/// The progress bar of a harvest under way (share 0–1).
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Prompt {
+    pub(crate) progress: f32,
+}
 
 /// Largest side of one slot, in screen pixels.
 pub(crate) const SLOT_SIZE: f32 = 54.0;
@@ -24,13 +30,6 @@ pub(crate) struct SlotRect {
     pub(crate) x: f32,
     pub(crate) y: f32,
     pub(crate) size: f32,
-}
-
-/// The gather prompt: its text and, while work is under way, the share done.
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Prompt {
-    pub(crate) text: String,
-    pub(crate) progress: Option<f32>,
 }
 
 /// The squares of `capacity` slots in a row centred along the bottom of a `width` × `height`
@@ -61,47 +60,19 @@ pub(crate) fn slot_label(stack: &ItemStack, items: &ItemCatalog) -> (String, Str
     (name, stack.count.to_string())
 }
 
-/// The name of a tool kind in the prompt.
-const fn kind_name(kind: ToolKind) -> &'static str {
-    match kind {
-        ToolKind::Axe => "hacha",
-        ToolKind::Pickaxe => "pico",
-        ToolKind::Net => "red",
-    }
-}
-
-/// The name of the first item what `blueprint` yields, for the prompt.
-fn yield_name(blueprint: &str, items: &ItemCatalog) -> String {
-    items
-        .harvest_rule(blueprint)
-        .and_then(|rule| rule.yields.first())
-        .and_then(|first| items.item(&first.item))
-        .map_or_else(String::new, |def| def.name.clone())
-}
-
-/// What the prompt says for the harvest's `status`; nothing when nothing is in reach.
-pub(crate) fn prompt(status: &HarvestStatus, items: &ItemCatalog) -> Option<Prompt> {
+/// The harvest's progress while it is under way (share 0–1).
+pub(crate) fn prompt(status: &HarvestStatus) -> Option<Prompt> {
     match status {
-        HarvestStatus::Idle | HarvestStatus::Done { .. } => None,
-        HarvestStatus::Ready { target } | HarvestStatus::Approaching { target } => Some(Prompt {
-            text: format!("Manten E: {}", yield_name(&target.blueprint, items)),
-            progress: None,
-        }),
         HarvestStatus::Working {
-            target,
-            progress,
-            total,
+            progress, total, ..
         } => Some(Prompt {
-            text: yield_name(&target.blueprint, items),
-            progress: Some(*progress as f32 / (*total).max(1) as f32),
+            progress: *progress as f32 / (*total).max(1) as f32,
         }),
-        HarvestStatus::Blocked {
-            reason: HarvestBlock::NeedsTool { kind, tier },
-            ..
-        } => Some(Prompt {
-            text: format!("Necesitas {} nivel {tier}", kind_name(*kind)),
-            progress: None,
-        }),
+        HarvestStatus::Idle
+        | HarvestStatus::Done { .. }
+        | HarvestStatus::Ready { .. }
+        | HarvestStatus::Approaching { .. }
+        | HarvestStatus::Blocked { .. } => None,
     }
 }
 
@@ -134,7 +105,8 @@ fn draw_centred(text: &str, centre_x: f32, y: f32, size: u16, color: Color) {
     );
 }
 
-/// Paints the slots, the prompt above them and the note of the last harvest.
+/// Paints the slots, the progress bar while the harvest is under way and the note of the last
+/// harvest.
 pub(crate) fn draw_hotbar(
     carried: &Carried,
     items: &ItemCatalog,
@@ -158,22 +130,18 @@ pub(crate) fn draw_hotbar(
     let Some(first) = rects.first() else { return };
     let mut top = first.y - 12.0;
     if let Some(prompt) = prompt {
-        if let Some(share) = prompt.progress {
-            let bar_width = 160.0;
-            let left = (width - bar_width) / 2.0;
-            draw_rectangle(left, top - 10.0, bar_width, 10.0, panel);
-            draw_rectangle(
-                left,
-                top - 10.0,
-                bar_width * share.clamp(0.0, 1.0),
-                10.0,
-                GREEN,
-            );
-            draw_rectangle_lines(left, top - 10.0, bar_width, 10.0, 1.5, edge);
-            top -= 18.0;
-        }
-        draw_centred(&prompt.text, width / 2.0, top, 20, WHITE);
-        top -= 24.0;
+        let bar_width = 160.0;
+        let left = (width - bar_width) / 2.0;
+        draw_rectangle(left, top - 10.0, bar_width, 10.0, panel);
+        draw_rectangle(
+            left,
+            top - 10.0,
+            bar_width * prompt.progress.clamp(0.0, 1.0),
+            10.0,
+            GREEN,
+        );
+        draw_rectangle_lines(left, top - 10.0, bar_width, 10.0, 1.5, edge);
+        top -= 18.0;
     }
     if let Some(note) = note {
         draw_centred(note, width / 2.0, top, 22, YELLOW);

@@ -1,74 +1,54 @@
-//! What the HUD is told about the harvest: the slots, the prompt with its verb and tool,
-//! the full-inventory note and each pick-up with the point it flies from. Pure; tested in
-//! `hud_frame.test.rs`.
+//! What the HUD is told about the harvest: the slots, the work progress while it is under way
+//! and where it sits (above the entity), the desktop action button and the full-inventory note.
+//! Pure; tested in `hud_frame.test.rs`.
 
-use crate::gui::clay::{UiFrame, UiGain, UiPrompt, UiStack};
+use crate::gui::clay::{UiAction, UiFrame, UiGain, UiStack};
 use iso::harvest::HarvestStatus;
 use iso::inventory::Carried;
 use iso::items::{HarvestYield, ItemCatalog, ToolKind};
 
-/// The verb on the action button and the tool icon it shows, for what a target needs.
-const fn action_of(tool: Option<ToolKind>) -> (&'static str, &'static str) {
-    match tool {
+/// The tool and the verb of holding a blueprint's harvest.
+fn action_of(blueprint: &str, items: &ItemCatalog) -> UiAction {
+    let tool = items.harvest_rule(blueprint).and_then(|rule| rule.tool);
+    let (verb, tool_name) = match tool {
         Some(ToolKind::Axe) => ("Talar", "axe"),
         Some(ToolKind::Pickaxe) => ("Picar", "pickaxe"),
         Some(ToolKind::Net) => ("Atrapar", "net"),
         None => ("Recoger", "hand"),
-    }
-}
-
-fn item_name(item: &str, items: &ItemCatalog) -> String {
-    items
-        .item(item)
-        .map_or_else(|| item.to_owned(), |def| def.name.clone())
-}
-
-fn prompt_of(status: &HarvestStatus, items: &ItemCatalog) -> Option<UiPrompt> {
-    let target = status.target()?;
-    let rule = items.harvest_rule(&target.blueprint);
-    let (verb, tool) = action_of(rule.and_then(|rule| rule.tool));
-    let name = rule
-        .and_then(|rule| rule.yields.first())
-        .map(|first| item_name(&first.item, items))
-        .unwrap_or_default();
-    match status {
-        HarvestStatus::Idle | HarvestStatus::Done { .. } => None,
-        HarvestStatus::Ready { .. } | HarvestStatus::Approaching { .. } => Some(UiPrompt {
-            text: name,
-            verb,
-            tool,
-            progress: None,
-            blocked: false,
-        }),
-        HarvestStatus::Working {
-            progress, total, ..
-        } => Some(UiPrompt {
-            text: name,
-            verb,
-            tool,
-            progress: Some((*progress as f32 / (*total).max(1) as f32 * 100.0).round() / 100.0),
-            blocked: false,
-        }),
-        HarvestStatus::Blocked { .. } => Some(UiPrompt {
-            text: crate::harvest::hotbar::prompt(status, items)?.text,
-            verb,
-            tool,
-            progress: None,
-            blocked: true,
-        }),
+    };
+    UiAction {
+        tool: tool_name.into(),
+        verb: verb.into(),
     }
 }
 
 /// The HUD frame for what the player carries, the harvest's `status`, the hotbar's `note` (only
-/// the full-inventory one goes out: gains have their own bubble) and whether the touch controls
-/// are on screen.
+/// the full-inventory one goes out) and whether the touch controls are on screen. `progress_at`
+/// is where the progress bar sits when work is under way: above the entity being harvested.
 pub(crate) fn hud_frame(
     carried: &Carried,
     items: &ItemCatalog,
     status: &HarvestStatus,
     note: Option<&str>,
     touch: bool,
+    progress_at: Option<(f32, f32)>,
 ) -> UiFrame {
+    let (progress, action) = match status {
+        HarvestStatus::Ready { target } | HarvestStatus::Approaching { target } => {
+            (None, Some(action_of(&target.blueprint, items)))
+        }
+        HarvestStatus::Working {
+            target,
+            progress,
+            total,
+        } => (
+            Some((*progress as f32 / (*total).max(1) as f32 * 100.0).round() / 100.0),
+            Some(action_of(&target.blueprint, items)),
+        ),
+        HarvestStatus::Idle | HarvestStatus::Done { .. } | HarvestStatus::Blocked { .. } => {
+            (None, None)
+        }
+    };
     UiFrame {
         visible: true,
         touch,
@@ -84,11 +64,19 @@ pub(crate) fn hud_frame(
                 })
             })
             .collect(),
-        prompt: prompt_of(status, items),
+        progress,
+        progress_at,
+        action,
         note: note
             .filter(|text| *text == crate::harvest::hotbar::FULL_NOTE)
             .map(str::to_owned),
     }
+}
+
+fn item_name(item: &str, items: &ItemCatalog) -> String {
+    items
+        .item(item)
+        .map_or_else(|| item.to_owned(), |def| def.name.clone())
 }
 
 /// One flying gain per yield picked up, starting at `at` (shares of the screen).
