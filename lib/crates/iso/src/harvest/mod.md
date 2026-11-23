@@ -3,8 +3,8 @@
 Este dominio decide qué puede recolectar el jugador desde donde está y lleva el trabajo de recolectarlo. Es la Fase 1 del GDD: agarrar recursos del mundo (árboles, rocas, plantas) y llenarlos en el inventario.
 
 - **Alcance** (`reach.rs`): de las entidades con regla en `items.json`, la que deja menos hueco (`gap`) entre el cuerpo del jugador y el cuadrado de colisión de una casilla de su huella, medido por el eje en que están más lejos, como la colisión (`PLAYER_RADIUS` más medio lado de colisión). Se elige hasta `HARVEST_SIGHT` columnas de hueco y `HARVEST_LEVEL_REACH` bloques de altura; el objetivo dice cuál es esa casilla (`nearest`). Está al alcance (`in_reach`) solo cuando el hueco cabe en `HARVEST_CONTACT_SLACK`: el jugador golpea lo más cerca que deja la colisión. Si no, con la tecla mantenida la recolección queda en `Approaching` y el cliente lo hace caminar hacia esa casilla (`approach_walk`), frenando a lo largo de `HARVEST_APPROACH_EASE` hasta `HARVEST_APPROACH_CREEP` para llegar sin chocar ni rebotar. Un empate lo gana el id menor, así que el orden en que llegan las entidades no importa.
-- **Trabajo** (`harvester.rs`): mientras se mantiene la tecla de recolectar sobre el mismo objetivo, cada tick fijo suma la velocidad de la mejor herramienta del tipo pedido (`tool_speed_tenths`). Soltar la tecla pausa el trabajo; cambiar de objetivo o perderlo de alcance empieza de cero. Sin la herramienta o el nivel pedidos, o sin sitio para todo el rendimiento, el objetivo queda bloqueado y no avanza.
-- Al terminar (`HarvestStatus::Done`), quien llama saca la entidad del mundo (`ChunkManager::remove_entity_at`), pide a las sombras que borren la suya: solo las columnas donde podía caer (`shadow_area`, `HARVEST_SHADOW_SPAN`) se hornean otra vez, en parches pequeños copiados sobre el mapa de cada chunk (`iso::lighting::patch`), sin rehornear chunks enteros, y guarda el rendimiento; la entidad quitada viaja con su chunk en el guardado, así que no vuelve al reabrir.
+- **Trabajo** (`harvester.rs`): mientras se mantiene la tecla de recolectar sobre el mismo objetivo, cada tick fijo suma la velocidad de la mejor herramienta del tipo pedido (`tool_speed_tenths`). Soltar la tecla pausa el trabajo; cambiar de objetivo o perderlo de alcance empieza de cero. Sin la herramienta o el nivel pedidos el objetivo queda bloqueado y no avanza; un inventario lleno no lo bloquea: el rendimiento cae al suelo (`iso::drops`) y lo que no cabe espera ahí.
+- Al terminar (`HarvestStatus::Done`), quien llama saca la entidad del mundo (`ChunkManager::remove_entity_at`), pide a las sombras que borren la suya: solo las columnas donde podía caer (`shadow_area`, `HARVEST_SHADOW_SPAN`) se hornean otra vez, en parches pequeños copiados sobre el mapa de cada chunk (`iso::lighting::patch`), sin rehornear chunks enteros, y deja caer el rendimiento al suelo (`iso::drops::Drops::spawn`); la entidad quitada viaja con su chunk en el guardado, así que no vuelve al reabrir.
 
 - **Golpes** (`harvester.rs`): mientras se trabaja, el jugador golpea a un ritmo fijo, independiente de la herramienta: un golpe cada `HARVEST_STRIKE_TICKS` ticks, que cae en el tick `HARVEST_STRIKE_AT` (la pose de impacto de la hoja `gather` del jugador está en ese punto). `Harvester::swing` dice en qué tick del golpe va y `Harvester::strikes` cuenta los golpes dados, sin volver atrás, para que la vista note uno nuevo y sacuda la entidad y suelte astillas.
 - **Astillas** (`chips.rs`): formas del polvo del jugador (`DustShape`) con el color del item que da el objetivo (`strike_chips`, y `felled_chips`, más y más amplias, cuando cae), y el punto del objetivo donde caen las manos (`strike_point`, `STRIKE_LIFT`).
@@ -51,14 +51,14 @@ El trabajo en curso no se guarda: un objetivo a medias empieza de cero tras reca
 
 #### Funciones y métodos
 
-- [`HarvestStatus::target`](harvester.rs#L51) — El objetivo al alcance, pase lo que pase con él; `None` en `Idle`.
+- [`HarvestStatus::target`](harvester.rs#L49) — El objetivo al alcance, pase lo que pase con él; `None` en `Idle`.
   - Firma: `pub fn target(&self) -> Option<&HarvestTarget> {`
-- [`Harvester::swing`](harvester.rs#L171) — Ticks del golpe en curso, de `0` a `HARVEST_STRIKE_TICKS`; `0` es arriba, al empezar a bajar.
+- [`Harvester::swing`](harvester.rs#L162) — Ticks del golpe en curso, de `0` a `HARVEST_STRIKE_TICKS`; `0` es arriba, al empezar a bajar.
   - Firma: `pub fn swing(&self) -> u32 {`
-- [`Harvester::strikes`](harvester.rs#L176) — Golpes dados desde que existe este recolector; nunca baja.
+- [`Harvester::strikes`](harvester.rs#L167) — Golpes dados desde que existe este recolector; nunca baja.
   - Firma: `pub fn strikes(&self) -> u64 {`
 
-- [`Harvester::step`](harvester.rs#L86) — Avanza la recolección `ticks` ticks con lo que lleva el jugador y dice qué pasó.
+- [`Harvester::step`](harvester.rs#L84) — Avanza la recolección `ticks` ticks con lo que lleva el jugador y dice qué pasó.
   - Firma: `pub fn step( &mut self, input: HarvestInput<'_>, carried: &Carried, items: &ItemCatalog, ) -> HarvestStatus {`
 
 #### Constantes
@@ -70,13 +70,13 @@ El trabajo en curso no se guarda: un objetivo a medias empieza de cero tras reca
 
 #### Tipos
 
-- [`HarvestBlock`](harvester.rs#L15) — Por qué un objetivo no se puede recolectar: falta la herramienta (`NeedsTool { kind, tier }`) o el inventario está lleno.
-  - Declaración: `pub enum HarvestBlock { NeedsTool { kind: ToolKind, tier: u8 }, InventoryFull }`
-- [`HarvestStatus`](harvester.rs#L24) — Lo que hizo la recolección en este paso: `Idle`, `Ready`, `Approaching` (tecla mantenida, objetivo fuera de alcance: caminar hacia él), `Blocked`, `Working { progress, total }` (décimas de tick a mano; también en pausa, con la tecla suelta) o `Done { target, yields }`.
+- [`HarvestBlock`](harvester.rs#L15) — Por qué un objetivo no se puede recolectar: falta la herramienta (`NeedsTool { kind, tier }`).
+  - Declaración: `pub enum HarvestBlock { NeedsTool { kind: ToolKind, tier: u8 } }`
+- [`HarvestStatus`](harvester.rs#L22) — Lo que hizo la recolección en este paso: `Idle`, `Ready`, `Approaching` (tecla mantenida, objetivo fuera de alcance: caminar hacia él), `Blocked`, `Working { progress, total }` (décimas de tick a mano; también en pausa, con la tecla suelta) o `Done { target, yields }`.
   - Declaración: `pub enum HarvestStatus { Idle, Ready { .. }, Blocked { .. }, Working { .. }, Done { .. } }`
-- [`HarvestInput`](harvester.rs#L65) — La entrada de un paso: tecla mantenida, objetivo en alcance y ticks.
+- [`HarvestInput`](harvester.rs#L63) — La entrada de un paso: tecla mantenida, objetivo en alcance y ticks.
   - Declaración: `pub struct HarvestInput<'a> { pub held: bool, pub target: Option<&'a HarvestTarget>, pub ticks: u32 }`
-- [`Harvester`](harvester.rs#L77) — El trabajo sobre el objetivo actual; se conserva al soltar la tecla y se pierde al cambiar de objetivo, perderlo de alcance o quedar bloqueado.
+- [`Harvester`](harvester.rs#L75) — El trabajo sobre el objetivo actual; se conserva al soltar la tecla y se pierde al cambiar de objetivo, perderlo de alcance o quedar bloqueado.
   - Declaración: `pub struct Harvester { ... }`
 
 ### `chips.rs`

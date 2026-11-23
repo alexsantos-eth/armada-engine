@@ -98,15 +98,6 @@ fn a_blocked_target_says_why() {
     )
     .unwrap();
     assert_eq!(tool.text, "Necesitas pico nivel 3");
-    let full = prompt(
-        &HarvestStatus::Blocked {
-            target: tree(),
-            reason: HarvestBlock::InventoryFull,
-        },
-        &items(),
-    )
-    .unwrap();
-    assert_eq!(full.text, "Inventario lleno");
 }
 
 #[test]

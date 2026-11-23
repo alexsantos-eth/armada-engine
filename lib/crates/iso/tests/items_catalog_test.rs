@@ -73,3 +73,21 @@ fn ore_and_large_groves_wait_for_better_tools() {
         );
     }
 }
+
+#[test]
+fn every_item_has_the_sprite_of_its_heap_in_the_atlas() {
+    let manifest: iso::assets::AssetManifest =
+        serde_json::from_str(include_str!("../../../content/json/assets.manifest.json"))
+            .expect("the asset manifest is valid JSON");
+    let catalog: serde_json::Value =
+        serde_json::from_str(include_str!("../../../content/json/items.json")).unwrap();
+    for item in catalog["items"].as_array().unwrap() {
+        let sprite = item["sprite"]
+            .as_str()
+            .expect("every item names its sprite");
+        assert!(
+            manifest.entries.iter().any(|entry| entry.source == sprite),
+            "{sprite} is not in the atlas"
+        );
+    }
+}

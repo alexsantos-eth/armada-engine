@@ -78,6 +78,10 @@ centro del suelo de la casilla ancla: así el archivo dice dónde está plantado
 las tres casas y los edificios, los de dos casillas en sus dos orientaciones) con las piezas de
 piedra y de construcción: muros y tejados sobre el mismo módulo de 28.
 
+`artifacts/vox/clay/vox_items.py` arma los items que caen al suelo al recolectar (madera, piedra,
+fibra, hongo, coco, hueso, cobre y ámbar): montones pequeños en el centro de un volumen 1x1x1,
+renderizados a `lib/assets/items/<id>.png`, que cada item de `content/json/items.json` nombra en `sprite`.
+
 `artifacts/vox/clay/terrain_clay.py` genera todo el terreno de suelo: hierba
 (`grass/block.png` y `block_2..4.png`), tierra (`ground/block.png`, `block_2..3.png`), arena
 (`sand/block.png`, `block_2..3.png`) y los 16 caminos (`path/block_0..15.png`, uno por máscara

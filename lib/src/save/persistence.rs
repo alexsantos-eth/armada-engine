@@ -82,16 +82,27 @@ pub fn restore_archive(save: Option<WorldSave>) -> ChunkArchive {
     }
 }
 
+/// The systems a save carries besides the world's seed: what the player carries and the heaps
+/// on the ground.
+#[derive(Clone, Copy)]
+pub struct SavedSystems<'a> {
+    pub carried: &'a iso::inventory::Carried,
+    pub drops: &'a iso::drops::Drops,
+}
+
 /// The save written for `archive` in a world of `seed`: its chunks and the seed, so the world
 /// reopens as itself even when it was started from a fresh seed, and what the player `carried`.
 pub fn snapshot_of(
     archive: &ChunkArchive,
     seed: u64,
-    carried: Option<&iso::inventory::Carried>,
+    parts: Option<SavedSystems<'_>>,
 ) -> WorldSave {
     let systems = iso::world::seed_systems(seed);
-    let systems = match carried {
-        Some(carried) => iso::inventory::with_carried(systems, carried),
+    let systems = match parts {
+        Some(parts) => iso::drops::with_drops(
+            iso::inventory::with_carried(systems, parts.carried),
+            parts.drops,
+        ),
         None => systems,
     };
     archive.snapshot(serde_json::json!({}), systems)
@@ -145,8 +156,8 @@ pub fn take_fresh_seed() -> Option<u64> {
 }
 
 /// Persists the archive of a world of `seed` to disk, or to browser storage on WASM.
-pub fn save_archive(archive: &ChunkArchive, seed: u64, carried: &iso::inventory::Carried) {
-    let save = snapshot_of(archive, seed, Some(carried));
+pub fn save_archive(archive: &ChunkArchive, seed: u64, parts: SavedSystems<'_>) {
+    let save = snapshot_of(archive, seed, Some(parts));
     let json = match serde_json::to_string(&save) {
         Ok(j) => j,
         Err(_) => return,

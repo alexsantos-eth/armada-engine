@@ -180,19 +180,16 @@ fn a_hand_rule_needs_no_tool() {
 }
 
 #[test]
-fn a_full_inventory_refuses_the_harvest() {
+fn a_full_inventory_does_not_stop_the_harvest() {
     let items = items();
     let mut carried = Carried::starting(1, &items);
     carried.inventory.add("stone", 1, &items);
     let tree = target("tree", 1);
     let mut harvester = Harvester::default();
-    assert_eq!(
+    assert!(matches!(
         step(&mut harvester, true, Some(&tree), &carried, 50),
-        HarvestStatus::Blocked {
-            target: tree,
-            reason: HarvestBlock::InventoryFull
-        }
-    );
+        HarvestStatus::Done { .. }
+    ));
 }
 
 #[test]

@@ -1,6 +1,6 @@
 # Harvest (cliente)
 
-La vista de la recolección: la sacudida de lo golpeado y las ráfagas de astillas (`impact.rs`), la barra de slots del inventario abajo en el centro, el aviso de lo que hay al alcance encima (`Manten E: Madera`, `Necesitas pico nivel 3`, `Inventario lleno`), la barra de progreso mientras se trabaja y la nota de lo ganado (`+3 Madera`) durante `GAIN_NOTE_MS`.
+La vista de la recolección: los montones de items en el suelo, lanzados desde lo derribado y flotando sobre su sombra (`drop_view.rs`), la sacudida de lo golpeado y las ráfagas de astillas (`impact.rs`), la barra de slots del inventario abajo en el centro, el aviso de lo que hay al alcance encima (`Manten E: Madera`, `Necesitas pico nivel 3`, ), la barra de progreso mientras se trabaja y la nota de lo ganado (`+3 Madera`) durante `GAIN_NOTE_MS`.
 
 Las reglas viven en `iso::harvest`, `iso::inventory` e `iso::items`; el paso fijo que las corre es `Game::step_harvest` (`src/game/frame.rs`) y el guardado de lo que lleva el jugador es `save::snapshot_of`. Esta carpeta solo traduce el estado a pantalla. Es entrada de juego, no overlay: se pinta en todas las rutas que juegan el mundo (también `/` y las corridas guionizadas, antes de escribir las capturas) y no en `/maker`. Los textos van sin tildes porque la fuente por defecto de Macroquad no las dibuja.
 
@@ -18,9 +18,9 @@ Las reglas viven en `iso::harvest`, `iso::inventory` e `iso::items`; el paso fij
   - Firma: `pub(crate) fn slot_label(stack: &ItemStack, items: &ItemCatalog) -> (String, String) {`
 - [`prompt`](hotbar.rs#L83) — Lo que dice el aviso para un `HarvestStatus`; nada si no hay nada al alcance.
   - Firma: `pub(crate) fn prompt(status: &HarvestStatus, items: &ItemCatalog) -> Option<Prompt> {`
-- [`gain_text`](hotbar.rs#L111) — La nota de lo que dio una recolección, una entrada por rendimiento.
+- [`gain_text`](hotbar.rs#L112) — La nota de lo que dio una recolección, una entrada por rendimiento.
   - Firma: `pub(crate) fn gain_text(yields: &[HarvestYield], items: &ItemCatalog) -> String {`
-- [`draw_hotbar`](hotbar.rs#L137) — Pinta los slots, el aviso con su barra de progreso y la nota.
+- [`draw_hotbar`](hotbar.rs#L138) — Pinta los slots, el aviso con su barra de progreso y la nota.
   - Firma: `pub(crate) fn draw_hotbar( carried: &Carried, items: &ItemCatalog, prompt: Option<&Prompt>, note: Option<&str>, ) {`
 
 #### Constantes
@@ -28,6 +28,7 @@ Las reglas viven en `iso::harvest`, `iso::inventory` e `iso::items`; el paso fij
 - [`SLOT_SIZE`](hotbar.rs#L13) — Lado máximo de un slot en píxeles. `pub(crate) const SLOT_SIZE: f32 = 54.0;`
 - [`SLOT_GAP`](hotbar.rs#L15) — Separación entre slots. `pub(crate) const SLOT_GAP: f32 = 6.0;`
 - [`SLOT_MARGIN`](hotbar.rs#L17) — Margen entre la barra y los bordes de la pantalla. `pub(crate) const SLOT_MARGIN: f32 = 24.0;`
+- [`FULL_NOTE`](hotbar.rs#L109) — La nota que deja una recogida cuando algo al alcance no cupo: «Inventario lleno».
 - [`GAIN_NOTE_MS`](hotbar.rs#L19) — Cuánto dura la nota de una recolección. `pub(crate) const GAIN_NOTE_MS: f64 = 1600.0;`
 
 #### Tipos
@@ -52,3 +53,19 @@ Lo que un golpe hace a la vista. `Game::step_harvest` le pasa a `Impacts::notice
 - [`SHAKE_MS`](impact.rs#L12), [`SHAKE_AMPLITUDE`](impact.rs#L14), [`SHAKE_SWINGS`](impact.rs#L16) — Duración, amplitud y vaivenes de la sacudida.
 - [`Burst`](impact.rs#L20) — Una ráfaga pendiente: ancla, bloque, color y si es un derribo.
 - [`Impacts`](impact.rs#L31) — Sacudida y ráfagas en vuelo.
+
+### `drop_view.rs`
+
+Cómo se ve un montón en el suelo. Al aparecer vuela en arco desde lo que lo soltó hasta donde cae (`TOSS_MS`, `TOSS_HEIGHT`) y luego sube y baja un poco (`BOB_LIFT`, `BOB_MS`, con una fase por id para que no floten todos a la vez). `DropViews` lleva cuánto lleva cada uno en el suelo; los que ya estaban al abrir la partida no vuelan (`DropViews::landed`). `Game::collect_drops` (`src/game/scene.rs`) dibuja cada montón con el sprite de su item (`sprite` en `items.json`) sobre una sombra pequeña (`DROP_SHADOW_SCALE` de la del jugador), ordenado con las figuras. Las reglas de movimiento son puras y se prueban en `drop_view.test.rs`.
+
+- [`toss`](drop_view.rs#L29) — Dónde se dibuja un montón y a qué altura, `age_ms` después de caer.
+  - Firma: `pub(crate) fn toss(age_ms: f64, drop: &Drop) -> DropPose {`
+- [`DropViews::landed`](drop_view.rs#L56) — Vistas de montones que ya estaban en el suelo: ninguno vuela.
+  - Firma: `pub(crate) fn landed(drops: &[Drop]) -> Self {`
+- [`DropViews::advance`](drop_view.rs#L64) — Envejece los montones; uno nuevo empieza a volar y uno que ya no está se olvida.
+  - Firma: `pub(crate) fn advance(&mut self, elapsed_ms: f64, drops: &[Drop]) {`
+- [`DropViews::age`](drop_view.rs#L73) — Cuánto lleva un montón en el suelo.
+  - Firma: `pub(crate) fn age(&self, id: u64) -> f64 {`
+- [`TOSS_MS`](drop_view.rs#L13), [`TOSS_HEIGHT`](drop_view.rs#L15), [`BOB_LIFT`](drop_view.rs#L17), [`BOB_MS`](drop_view.rs#L19) — Duración y altura del lanzamiento, y altura y periodo del vaivén.
+- [`DropPose`](drop_view.rs#L23) — Dónde se dibuja un montón: su punto en el suelo y su altura.
+- [`DropViews`](drop_view.rs#L50) — Cuánto lleva cada montón en el suelo.

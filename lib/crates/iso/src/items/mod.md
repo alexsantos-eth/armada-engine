@@ -21,7 +21,7 @@ El dominio no guarda nada ni conoce el inventario: es catálogo puro. El inventa
 }
 ```
 
-- `stack`: unidades máximas por slot (≥ 1). `rarity`: `common`, `rare` o `exotic`. `color` (opcional): seis dígitos hex, el color de las astillas que suelta un golpe sobre lo que lo da (`ItemDef::color`).
+- `stack`: unidades máximas por slot (≥ 1). `rarity`: `common`, `rare` o `exotic`. `sprite` (opcional): el sprite del montón del item en el suelo (`/assets/items/<id>.png`). `color` (opcional): seis dígitos hex, el color de las astillas que suelta un golpe sobre lo que lo da (`ItemDef::color`).
 - `kind`: `axe`, `pickaxe` o `net`. `tier`: `1..=10`.
 - `ticks`: trabajo a mano, en ticks fijos (20 por segundo); una herramienta de nivel `n` lo divide por su multiplicador.
 - Los nombres no llevan tildes: la fuente por defecto de Macroquad no las dibuja.
@@ -34,17 +34,17 @@ El dominio no guarda nada ni conoce el inventario: es catálogo puro. El inventa
 
 - [`tool_speed_tenths`](catalog.rs#L18) — Velocidad de recolección de un nivel, en décimas de la velocidad a mano; el nivel 0 es la mano y un nivel mayor que 10 vale como 10.
   - Firma: `pub fn tool_speed_tenths(tier: u8) -> u32 {`
-- [`parse_items`](catalog.rs#L209) — Parsea y valida el contenido de items contra el catálogo de entidades que nombran sus reglas.
+- [`parse_items`](catalog.rs#L212) — Parsea y valida el contenido de items contra el catálogo de entidades que nombran sus reglas.
   - Firma: `pub fn parse_items(json: &str, entities: &EntityCatalog) -> Result<ItemCatalog, ItemsError> {`
-- [`ItemCatalog::item`](catalog.rs#L108) — El item con ese id.
+- [`ItemCatalog::item`](catalog.rs#L111) — El item con ese id.
   - Firma: `pub fn item(&self, id: &str) -> Option<&ItemDef> {`
-- [`ItemCatalog::tool`](catalog.rs#L113) — La herramienta con ese id.
+- [`ItemCatalog::tool`](catalog.rs#L116) — La herramienta con ese id.
   - Firma: `pub fn tool(&self, id: &str) -> Option<&ToolDef> {`
-- [`ItemCatalog::starting_tools`](catalog.rs#L118) — Las herramientas con que aterriza un jugador nuevo, en orden de archivo.
+- [`ItemCatalog::starting_tools`](catalog.rs#L121) — Las herramientas con que aterriza un jugador nuevo, en orden de archivo.
   - Firma: `pub fn starting_tools(&self) -> &[String] {`
-- [`ItemCatalog::harvest_rule`](catalog.rs#L123) — Cómo se recolecta una entidad de ese blueprint, si se puede.
+- [`ItemCatalog::harvest_rule`](catalog.rs#L126) — Cómo se recolecta una entidad de ese blueprint, si se puede.
   - Firma: `pub fn harvest_rule(&self, blueprint: &str) -> Option<&HarvestRule> {`
-- [`ItemDef::color`](catalog.rs#L58) — El color de sus astillas como `0xRRGGBB`, si declara uno.
+- [`ItemDef::color`](catalog.rs#L61) — El color de sus astillas como `0xRRGGBB`, si declara uno.
   - Firma: `pub fn color(&self) -> Option<u32> {`
 
 #### Constantes
@@ -64,13 +64,13 @@ El dominio no guarda nada ni conoce el inventario: es catálogo puro. El inventa
   - Declaración: `pub enum ToolKind { Axe, Pickaxe, Net }`
 - [`ItemDef`](catalog.rs#L44) — Un item cargable: id, nombre visible, tope por slot y rareza.
   - Declaración: `pub struct ItemDef { pub id: String, pub name: String, pub stack: u32, pub rarity: ItemRarity }`
-- [`ToolDef`](catalog.rs#L68) — Una herramienta: equipo aparte de los slots.
+- [`ToolDef`](catalog.rs#L71) — Una herramienta: equipo aparte de los slots.
   - Declaración: `pub struct ToolDef { pub id: String, pub name: String, pub kind: ToolKind, pub tier: u8 }`
-- [`HarvestYield`](catalog.rs#L79) — Unidades de un item que da una recolección.
+- [`HarvestYield`](catalog.rs#L82) — Unidades de un item que da una recolección.
   - Declaración: `pub struct HarvestYield { pub item: String, pub amount: u32 }`
-- [`HarvestRule`](catalog.rs#L86) — Cómo se recolecta una entidad: herramienta (o `None`, a mano), nivel mínimo, trabajo en ticks a mano y lo que da.
+- [`HarvestRule`](catalog.rs#L89) — Cómo se recolecta una entidad: herramienta (o `None`, a mano), nivel mínimo, trabajo en ticks a mano y lo que da.
   - Declaración: `pub struct HarvestRule { pub tool: Option<ToolKind>, pub tier: u8, pub ticks: u32, pub yields: Vec<HarvestYield> }`
-- [`ItemCatalog`](catalog.rs#L98) — El contenido validado; las búsquedas son por id, nunca por orden de `HashMap`.
+- [`ItemCatalog`](catalog.rs#L101) — El contenido validado; las búsquedas son por id, nunca por orden de `HashMap`.
   - Declaración: `pub struct ItemCatalog { ... }`
-- [`ItemsError`](catalog.rs#L130) — Todo lo que el contenido puede declarar mal: JSON ilegible, esquema no soportado, ids vacíos o repetidos, `stack` 0, nivel fuera de tabla (o una regla a mano con nivel), herramienta inicial no declarada, blueprint desconocido, repetido o que es un personaje, item desconocido, rendimiento vacío o 0, trabajo 0, color que no son seis dígitos hex.
+- [`ItemsError`](catalog.rs#L133) — Todo lo que el contenido puede declarar mal: JSON ilegible, esquema no soportado, ids vacíos o repetidos, `stack` 0, nivel fuera de tabla (o una regla a mano con nivel), herramienta inicial no declarada, blueprint desconocido, repetido o que es un personaje, item desconocido, rendimiento vacío o 0, trabajo 0, color que no son seis dígitos hex.
   - Declaración: `pub enum ItemsError { ... }`
