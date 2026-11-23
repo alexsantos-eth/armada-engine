@@ -56,11 +56,9 @@ cp web/mq_js_bundle.js "$out_dir/mq_js_bundle.js"
 cp web/adapter.js "$out_dir/adapter.js"
 cp -R content "$out_dir/content"
 cp "target/$target/release/iso-core.wasm" "$out_dir/iso-core.wasm"
-# PWA: manifest, icons and the minimal service worker that makes the site installable.
 cp web/manifest.json "$out_dir/manifest.json"
 cp web/sw.js "$out_dir/sw.js"
 cp -R web/icons "$out_dir/icons"
-# The clay UI kit: the HUD's styles and runtime, the item icons and the catalogue page at /ui/.
 cp -R web/ui "$out_dir/ui"
 
 echo "==> Done"
