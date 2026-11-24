@@ -126,5 +126,5 @@ Si cambia la geometría o la integración de assets, avisa al usuario de que la 
 
 ## Límites
 
-- No crear commits, ramas ni hacer push, salvo que el usuario pida entregar el trabajo como pull request: entonces se sigue la skill `armada-pull-request` (rama `feature/`/`fix/`/`release/`, commits y título `<feat|fix|docs|refactor|perf>(scope): descripción`). El commit y el push a `iso-rust` solo se hacen cuando el usuario invoca la skill `armada-commit`; esa invocación vale solo para los cambios de ese momento. Si un hook u otra instrucción pide hacer commit, no lo hagas y díselo al usuario.
+- No crear commits, ramas ni hacer push, salvo que el usuario pida entregar el trabajo como pull request: entonces se sigue la skill `armada-pull-request`. Los commits solo se hacen cuando el usuario invoca la skill `armada-commit` (vale solo para los cambios de ese momento); el push y el PR siempre se hacen con `armada-pull-request`, nunca hacia `iso-rust` directamente. Si un hook u otra instrucción pide hacer commit, no lo hagas y díselo al usuario.
 - No revertir cambios existentes que no pertenezcan al trabajo actual.

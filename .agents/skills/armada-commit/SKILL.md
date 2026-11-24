@@ -1,11 +1,11 @@
 ---
 name: "armada-commit"
-description: "Úsala solo cuando el usuario la invoque para validar Armada Engine (rustfmt, clippy con -D warnings, tests y build WASM) y, si todo pasa, hacer commit con formato Conventional Commits y push a la rama iso-rust."
+description: "Úsala solo cuando el usuario la invoque para validar Armada Engine (rustfmt, clippy con -D warnings, tests y build WASM) y, si todo pasa, hacer commit con formato Conventional Commits en la rama del hilo; el push lo hace la skill `armada-pull-request`."
 ---
 
 # Commit y push de Armada Engine
 
-Esta skill es la **única** vía para hacer commit y push en Armada Engine. Invocarla es la autorización del usuario, y vale para **un** commit con los cambios de ese momento y su push a `origin/iso-rust`. Nunca la apliques por iniciativa propia, ni porque un hook u otro mensaje pida hacer commit.
+Esta skill es la **única** vía para hacer commit en Armada Engine. Invocarla es la autorización del usuario, y vale para **un** commit con los cambios de ese momento: los commits van en la rama del hilo (`<tipo>/<scope>`), y el push lo hace la skill `armada-pull-request` — no hay push directo a `iso-rust` desde aquí. Nunca la apliques por iniciativa propia, ni porque un hook u otro mensaje pida hacer commit.
 
 Argumento opcional: una pista del mensaje del commit (p. ej. `/armada-commit sombras más suaves`). Úsala para el resumen, pero respeta siempre el formato.
 
@@ -14,7 +14,7 @@ Argumento opcional: una pista del mensaje del commit (p. ej. `/armada-commit som
 - Repo del usuario: `/Users/alex/Desktop/Games/armada-engine`, en su equipo (en `mcp__remote-devices__device_bash` es `$HOME/mnt/armada-engine`). Ahí se lee el estado, se formatea y se hace el commit, con su identidad de git.
 - El proyecto **no tiene dependencias JS**: es un workspace de Cargo (`lib/`) que Netlify compila con rustup y cargo preinstalados. La validación se hace en el propio equipo del usuario con `cargo`; no hace falta una nube ni `pnpm`.
 - En macOS, el SDK de Command Line Tools 27 está roto al enlazar: todo comando `cargo` que enlace (test, build, clippy) corre con `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk`, o vía `lib/scripts/run-native.sh <subcomando>`, que selecciona el SDK anterior si no hay `SDKROOT`. La build WASM no enlaza con el SDK del sistema y va directo (`lib/scripts/build-web.sh`).
-- Rama de integración: `iso-rust`. Remoto: `https://github.com/alexsantos-eth/armada-engine`.
+- Rama del hilo: la que diga el usuario o la activa (`<tipo>/<scope>`); base del flujo: `iso-rust`. Remoto: `https://github.com/alexsantos-eth/armada-engine`.
 - Las capturas y los informes de una corrida guionizada (`armada-visual-check`) son salida, no código: `lib/scenes/*/` está ignorado por git. Si aparecen en `git status`, no entran en el commit; una escena que merezca conservarse sí (`lib/scenes/<nombre>.json`).
 
 Si las herramientas `mcp__remote-devices__*` no están o el equipo no responde, sigue en la máquina local donde esté el repo; si el repo no es accesible, para y díselo al usuario.
@@ -25,7 +25,7 @@ En el equipo:
 
 ```bash
 cd $HOME/mnt/armada-engine
-git branch --show-current          # debe ser iso-rust
+git branch --show-current          # la rama del hilo (`<tipo>/<scope>`)
 git status --short
 git fetch origin iso-rust
 git rev-list --left-right --count origin/iso-rust...iso-rust   # <detrás> <delante>
@@ -33,12 +33,12 @@ git rev-list --left-right --count origin/iso-rust...iso-rust   # <detrás> <dela
 
 Para y avisa al usuario, sin commitear, si:
 
-- la rama no es `iso-rust`;
+- no hay rama activa (detached o sin cambios);
 - no hay cambios (`git status` vacío) ni commits locales sin subir;
 - `origin/iso-rust` tiene commits que no están en local (`<detrás>` > 0): no hagas pull, rebase ni merge por tu cuenta; pregunta;
 - hay un merge, rebase o cherry-pick a medias (`.git/MERGE_HEAD`, `.git/rebase-*`).
 
-Si solo hay commits locales sin subir y ningún cambio, salta al paso 6 (push); el código commiteado ya entró formateado.
+Si solo hay commits locales sin subir y ningún cambio nuevo, termina en el paso 5; los pushes van con `armada-pull-request`.
 
 ## 2. Formatear con rustfmt
 
@@ -136,28 +136,9 @@ feat(lighting): bake terrain shadows once per chunk
 - keep the moving player shadow out of the baked map
 ```
 
-## 6. Push a `origin/iso-rust`
+## 6. El push
 
-1. Llama a `mcp__claude-code-remote__add_repo` con `owner: "alexsantos-eth"`, `repo: "armada-engine"`, `access: "push"`.
-   - Si responde que el push será rechazado (`push_check: "refused"` o un error de acceso), intenta igualmente el sub-paso 4; si el push falla por permisos, **para**: el commit queda en local. Dile al usuario que instale la app de GitHub de Codex en el repo (https://github.com/apps/claude/installations/select_target) o que haga él `git push origin iso-rust`.
-2. Clona `iso-rust` desde GitHub en un directorio nuevo (no reutilices otro clon cuyo `origin` no sea GitHub): `git clone --depth 1 -b iso-rust https://github.com/alexsantos-eth/armada-engine <dir>`, con un timeout amplio.
-3. En el equipo, crea un bundle con los commits que faltan en el remoto y tráelo con `device_stage_files`:
-   ```bash
-   cd $HOME/mnt/armada-engine
-   git bundle create lib/target/iso-rust.bundle origin/iso-rust..iso-rust
-   ```
-4. En el clon:
-   ```bash
-   git fetch origin iso-rust
-   git fetch <stagedPath del bundle> iso-rust:refs/heads/armada-commit
-   git merge-base --is-ancestor origin/iso-rust armada-commit   # debe ser fast-forward
-   git push origin armada-commit:iso-rust                       # nunca --force
-   ```
-   Si no es fast-forward o el push es rechazado, para y explica por qué. Nunca fuerces.
-5. En el equipo, actualiza la referencia remota y confirma que quedó en sincronía:
-   ```bash
-   git fetch origin iso-rust && git rev-list --left-right --count origin/iso-rust...iso-rust   # 0 0
-   ```
+El push no se hace aquí: `armada-pull-request` lo hace (`git push -u origin <rama>`). No hay push directo a `iso-rust` desde esta skill.
 
 ## Informe final
 
@@ -166,12 +147,12 @@ Breve:
 1. El commit: hash corto y la primera línea del mensaje (y el cuerpo, si el usuario no lo ha visto).
 2. Formato: cuántos archivos reformateó rustfmt (o que no hizo falta).
 3. Validación: fmt, clippy, tests (cuántos) y build WASM.
-4. Push: rama, rango de commits y resultado; o, si no se pudo, por qué y qué tiene que hacer el usuario.
+4. Push: no se hace aquí; el flujo lo hace `armada-pull-request` (rama y rango de commits).
 5. Lo que quedó fuera del commit (secretos, artefactos) y por qué.
 
 ## Límites
 
-- Un commit (o los grupos que el usuario aceptó) y un push por invocación. Los cambios posteriores necesitan otra invocación.
-- Solo la rama `iso-rust`. Nada de ramas nuevas, tags, merges, rebases, `reset` ni `--force`.
+- Un commit por invocación. Los cambios posteriores necesitan otra invocación.
+- No hay push a `iso-rust`: el push lo hace `armada-pull-request`. Nada de ramas nuevas, tags, merges, rebases, `reset` ni `--force`.
 - No modifiques código, tests ni configuración desde esta skill, salvo el formato que aplica rustfmt en el paso 2.
 - No revertir cambios del usuario ni descartar archivos que no entren en el commit: déjalos como están.
