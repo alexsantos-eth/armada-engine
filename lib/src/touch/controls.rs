@@ -4,11 +4,13 @@
 //! base appears under it; dragging walks (and runs past the threshold) while the finger stays
 //! down. The same stick moves the player like the keyboard does, but analog: the walk vector
 //! scales with the deflection. While the stick moves the player, a new touch anywhere on the
-//! screen jumps, and a second one while still moving jumps again: the double jump. The game
-//! tells the controls where the inventory button sits; a touch in it neither jumps nor places
-//! the stick. Holding the stick still gathers. Other fingers are ignored while the stick is
-//! down, except the jump touches. Releasing the stick stops the walk right away. Drawing the
-//! plain fallback lives here too, as macroquad calls with no decisions; the rules are all in
+//! screen jumps, and a second one while still moving jumps again: the double jump. A jump
+//! touch stays held while the finger is down (`jump_held`, the variable jump, the touch
+//! counterpart of holding Space); the release is what makes the height vary. The game tells
+//! the controls where the inventory button sits; a touch in it neither jumps nor places the
+//! stick. Holding the stick still gathers. Other fingers are ignored while the stick is down,
+//! except the jump touches. Releasing the stick stops the walk right away. Drawing the plain
+//! fallback lives here too, as macroquad calls with no decisions; the rules are all in
 //! `update` and in the tests.
 
 use iso::projection::GridPoint;
@@ -46,6 +48,7 @@ pub(crate) struct TouchFrame {
     pub(crate) magnitude: f64,
     pub(crate) run: bool,
     pub(crate) jump_pressed: bool,
+    /// Whether a jump touch is still down: true on the frame it fires too.
     pub(crate) jump_held: bool,
     pub(crate) gather_held: bool,
 }
@@ -77,6 +80,8 @@ pub(crate) struct TouchControls {
     stick: Option<Stick>,
     run_active: bool,
     gathering: bool,
+    /// The id of the touch that fired the jump while it is down, so the jump can be held.
+    jump_touch: Option<u64>,
     /// The inventory button's rect: touches inside it neither jump nor place the stick.
     jump_block: Option<Rect>,
 }
@@ -95,6 +100,7 @@ impl TouchControls {
             stick: None,
             run_active: false,
             gathering: false,
+            jump_touch: None,
             jump_block: None,
         }
     }
@@ -118,6 +124,8 @@ impl TouchControls {
     }
 
     /// Advances the controls with this frame's touches at `now_ms` and returns what they ask for.
+    /// While the jump touch fired by them is down, the frame's `jump_held` is true: the
+    /// variable jump.
     pub(crate) fn update(
         &mut self,
         width: f32,
@@ -146,7 +154,10 @@ impl TouchControls {
         let Some(mut stick) = self.stick else {
             self.run_active = false;
             self.gathering = false;
-            return TouchFrame::default();
+            return TouchFrame {
+                jump_held: self.jump_held(touches),
+                ..TouchFrame::default()
+            };
         };
         let live = touches.iter().find(|t| {
             t.id == stick.id && !matches!(t.phase, RawTouchPhase::Ended | RawTouchPhase::Cancelled)
@@ -155,7 +166,10 @@ impl TouchControls {
             self.stick = None;
             self.run_active = false;
             self.gathering = false;
-            return TouchFrame::default();
+            return TouchFrame {
+                jump_held: self.jump_held(touches),
+                ..TouchFrame::default()
+            };
         };
 
         stick.finger = (touch.x, touch.y);
@@ -166,9 +180,12 @@ impl TouchControls {
         );
         if pushed.magnitude > 0.0 {
             stick.still_since_ms = now_ms;
-            jump_pressed = touches.iter().any(|t| {
+            if let Some(jump_touch) = touches.iter().find(|t| {
                 t.phase == RawTouchPhase::Started && t.id != stick.id && !self.jump_blocked(t)
-            });
+            }) {
+                self.jump_touch = Some(jump_touch.id);
+                jump_pressed = true;
+            }
         }
         let gathering = now_ms - stick.still_since_ms >= HOLD_MS;
         self.stick = Some(stick);
@@ -179,9 +196,18 @@ impl TouchControls {
             magnitude: pushed.magnitude,
             run: pushed.run,
             jump_pressed,
-            jump_held: jump_pressed,
+            jump_held: self.jump_held(touches),
             gather_held: gathering,
         }
+    }
+
+    /// Whether the jump touch fired by the controls is still down.
+    fn jump_held(&self, touches: &[RawTouch]) -> bool {
+        self.jump_touch.is_some_and(|id| {
+            touches.iter().any(|t| {
+                t.id == id && !matches!(t.phase, RawTouchPhase::Ended | RawTouchPhase::Cancelled)
+            })
+        })
     }
 
     /// Where the stick is drawn: under the finger while one is down, resting in the corner

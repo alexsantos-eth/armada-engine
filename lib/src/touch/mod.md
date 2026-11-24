@@ -5,7 +5,7 @@ Este dominio de cliente implementa el control en pantalla para dispositivos tác
 El mismo dedo hace el resto, con gestos:
 
 - **Mantener quieto** el joystick (dentro de la zona muerta) durante `HOLD_MS` recolecta: publica `gather_held` como la tecla `E`. Si el dedo vuelve a moverse deja de recolectar, y vuelve a hacerlo cuando descansa otra vez `HOLD_MS`.
-- **Salto** — mientras el joystick mueve al jugador, tocar cualquier parte de la pantalla publica `jump_pressed`; otro toque mientras sigue moviéndose lo publica otra vez, que en el aire es el doble salto (el flanco `jump_pressed` actúa como el `Space` del teclado). No hay candado de carrera: deslizar el dedo más allá del borde sigue la dirección del dedo con el mando en el borde; al soltarlo el jugador se detiene.
+- **Salto** — mientras el joystick mueve al jugador, tocar cualquier parte de la pantalla publica `jump_pressed`; otro toque mientras sigue moviéndose lo publica otra vez, que en el aire es el doble salto (el flanco `jump_pressed` actúa como el `Space` del teclado). Mientras el dedo del salto está abajo publica `jump_held`: el salto variable — al soltar el dedo se corta la subida, igual que Space en el teclado. No hay candado de carrera: deslizar el dedo más allá del borde sigue la dirección del dedo con el mando en el borde; al soltarlo el jugador se detiene.
 
 Mientras el joystick tiene dedo, los demás dedos se ignoran salvo los que saltan: un toque nuevo mientras el jugador se mueve salta. El botón de inventario (el rectángulo `backpack_hit` de `ui`) es un rectángulo de bloqueo de saltos: un toque en él ni salta ni coloca el joystick; el juego lo interpreta solo como el switch del inventario. No hay botón SALTAR ni botón de acción táctil: el HUD (`ui`) no dibuja el botón de acción con controles táctiles.
 
@@ -23,13 +23,13 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Reexportaciones
 
-- [`TouchControls`](controls.rs#L90) — Los controles: visibilidad, el dedo del joystick y el bloqueo de saltos del inventario.
+- [`TouchControls`](controls.rs#L78) — Los controles: visibilidad, el dedo del joystick y el bloqueo de saltos del inventario.
   - Firma: `pub(crate) use controls::{RawTouch, RawTouchPhase, StickView, TouchControls};`
-- [`StickView`](controls.rs#L59) — Dónde se dibuja el joystick este fotograma y qué hace.
+- [`StickView`](controls.rs#L58) — Dónde se dibuja el joystick este fotograma y qué hace.
   - Firma: `pub(crate) use controls::{RawTouch, RawTouchPhase, StickView, TouchControls};`
-- [`RawTouch`](controls.rs#L39) — Un dedo tal y como lo ve la máquina de estados, en píxeles de pantalla.
+- [`RawTouch`](controls.rs#L37) — Un dedo tal y como lo ve la máquina de estados, en píxeles de pantalla.
   - Firma: `pub(crate) use controls::{RawTouch, RawTouchPhase, StickView, TouchControls};`
-- [`RawTouchPhase`](controls.rs#L29) — La fase del ciclo de vida de un dedo (`Started`, `Stationary`, `Moved`, `Ended`, `Cancelled`).
+- [`RawTouchPhase`](controls.rs#L27) — La fase del ciclo de vida de un dedo (`Started`, `Stationary`, `Moved`, `Ended`, `Cancelled`).
   - Firma: `pub(crate) use controls::{RawTouch, RawTouchPhase, StickView, TouchControls};`
 - [`coarse_pointer`](platform.rs#L14) — Pista de plataforma: `true` si el puntero principal es táctil (FFI en WASM; `false` nativo).
   - Firma: `pub(crate) use platform::coarse_pointer;`
@@ -63,27 +63,27 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Constantes
 
-- [`HOLD_MS`](controls.rs#L22) — Cuánto debe descansar el joystick en su zona muerta para recolectar (300 ms).
+- [`HOLD_MS`](controls.rs#L23) — Cuánto debe descansar el joystick en su zona muerta para recolectar (300 ms).
 
 #### Tipos y funciones
 
-- [`RawTouchPhase`](controls.rs#L29) — La fase del ciclo de vida de un dedo.
+- [`RawTouchPhase`](controls.rs#L27) — La fase del ciclo de vida de un dedo.
   - Firma: `pub(crate) enum RawTouchPhase { Started, Stationary, Moved, Ended, Cancelled }`
-- [`RawTouch`](controls.rs#L39) — Un dedo en píxeles de pantalla.
+- [`RawTouch`](controls.rs#L37) — Un dedo en píxeles de pantalla.
   - Firma: `pub(crate) struct RawTouch { pub(crate) id: u64, pub(crate) phase: RawTouchPhase, pub(crate) x: f32, pub(crate) y: f32 }`
-- [`TouchFrame`](controls.rs#L48) — Lo que los controles piden este frame: `walk` analógico, `magnitude`, `run`, `jump_pressed` (flanco), `jump_held` y `gather_held`.
-- [`StickView`](controls.rs#L59) — Centro de la base, posición del mando, radios, si hay dedo, si corre, si recolecta.
-- [`TouchControls::new`](controls.rs#L108) — Crea los controles; `coarse_pointer` los deja visibles desde el arranque en móviles.
+- [`TouchFrame`](controls.rs#L46) — Lo que los controles piden este frame: `walk` analógico, `magnitude`, `run`, `jump_pressed` (flanco), `jump_held` (el salto variable: el dedo del salto sigue abajo) y `gather_held`.
+- [`StickView`](controls.rs#L58) — Centro de la base, posición del mando, radios, si hay dedo, si corre, si recolecta.
+- [`TouchControls::new`](controls.rs#L97) — Crea los controles; `coarse_pointer` los deja visibles desde el arranque en móviles.
   - Firma: `pub(crate) fn new(coarse_pointer: bool) -> Self {`
-- [`TouchControls::visible`](controls.rs#L121) — Si los controles se pintan: pista de plataforma o primer toque recibido.
+- [`TouchControls::visible`](controls.rs#L110) — Si los controles se pintan: pista de plataforma o primer toque recibido.
   - Firma: `pub(crate) fn visible(&self) -> bool {`
-- [`TouchControls::set_jump_block`](controls.rs#L127) — El rectángulo del botón de inventario: un toque en él ni salta ni coloca el joystick.
+- [`TouchControls::set_jump_block`](controls.rs#L116) — El rectángulo del botón de inventario: un toque en él ni salta ni coloca el joystick.
   - Firma: `pub(crate) fn set_jump_block(&mut self, rect: Option<Rect>) {`
-- [`TouchControls::update`](controls.rs#L138) — Avanza la máquina de estados con los dedos del frame en el instante `now_ms`: el primer `Started` sin joystick lo coloca bajo el dedo; el dedo arrastra la base; quieto `HOLD_MS` recolecta; al soltar el stick el jugador se detiene; mientras el stick mueve al jugador, un `Started` nuevo (fuera del rectángulo de inventario) publica `jump_pressed` (el doble salto con el segundo). Devuelve el `TouchFrame`.
+- [`TouchControls::update`](controls.rs#L129) — Avanza la máquina de estados con los dedos del frame en el instante `now_ms`: el primer `Started` sin joystick lo coloca bajo el dedo; el dedo arrastra la base; quieto `HOLD_MS` recolecta; al soltar el stick el jugador se detiene; mientras el stick mueve al jugador, un `Started` nuevo (fuera del rectángulo de inventario) publica `jump_pressed` (el doble salto con el segundo) y, mientras ese dedo siga abajo, `jump_held` (salto variable). Devuelve el `TouchFrame`.
   - Firma: `pub(crate) fn update( &mut self, width: f32, height: f32, touches: &[RawTouch], now_ms: f64, ) -> TouchFrame {`
-- [`TouchControls::view`](controls.rs#L240) — Dónde se dibuja el joystick: bajo el dedo si hay uno, descansando en la esquina si no.
+- [`TouchControls::view`](controls.rs#L215) — Dónde se dibuja el joystick: bajo el dedo si hay uno, descansando en la esquina si no.
   - Firma: `pub(crate) fn view(&self, width: f32, height: f32) -> StickView {`
-- [`TouchControls::draw`](controls.rs#L270) — Pinta el joystick simple (círculos; el mando naranja en carrera) para cuando falta el kit de UI; no se pinta mientras el stick descansa idle. No-op si no es visible.
+- [`TouchControls::draw`](controls.rs#L245) — Pinta el joystick simple (círculos; el mando naranja en carrera) para cuando falta el kit de UI; no se pinta mientras el stick descansa idle. No-op si no es visible.
   - Firma: `pub(crate) fn draw(&self) {`
 
 ## Detalles de implementación
