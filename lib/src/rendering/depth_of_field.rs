@@ -6,6 +6,7 @@
 //! the target) is checked by eye with the `armada-visual-check` scenes; the arithmetic the two
 //! shaders run is mirrored on the CPU in `depth_of_field.test.rs` and tested there.
 
+use iso::player::physics::get_player_column;
 use iso::projection::{GridPoint, ProjectionConfig};
 use iso::scene_order::DrawKey;
 use macroquad::prelude::*;
@@ -59,7 +60,13 @@ impl DepthFrame {
             .unwrap_or(projection.tile_height / 2.0);
         let ground_origin = projection.origin_y - level * elevation_step;
         let height = height.max(1.0);
-        let feet = ground_origin - (feet.x + feet.y) * (projection.tile_height / 2.0);
+        let column = get_player_column(GridPoint {
+            x: feet.x - 0.5,
+            y: feet.y - 0.5,
+        });
+        let feet = ground_origin
+            - ((f64::from(column.x) + 0.5) + (f64::from(column.y) + 0.5))
+                * (projection.tile_height / 2.0);
         Self {
             ground_origin,
             elevation_step,

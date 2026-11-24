@@ -1,4 +1,5 @@
 use super::*;
+use iso::player::physics::get_player_column;
 use iso::projection::{GridPoint, ProjectionConfig};
 use iso::scene_order::DrawKey;
 
@@ -66,13 +67,40 @@ fn a_depth_beyond_the_range_is_held_at_its_edge() {
 #[test]
 fn the_focus_is_where_the_players_feet_meet_the_ground() {
     let frame = frame(0.0);
-    assert!(close(frame.focus(), 450.0 / HEIGHT, 1e-6));
+    assert!(close(frame.focus(), 520.0 / HEIGHT, 1e-6));
     let further = DepthFrame::new(projection(0.0), 0.0, HEIGHT, GridPoint { x: 1.0, y: 1.0 });
-    assert!(close(
-        further.focus(),
-        (450.0 - TILE_HEIGHT as f32) / HEIGHT,
-        1e-6
-    ));
+    assert!(close(further.focus(), 240.0 / HEIGHT, 1e-6));
+}
+
+#[test]
+fn the_focus_reads_where_the_players_standing_sprite_sits() {
+    for feet in [
+        GridPoint { x: 3.9, y: 2.9 },
+        GridPoint { x: 3.4, y: 3.4 },
+        GridPoint { x: 2.6, y: 3.1 },
+        GridPoint { x: 4.8, y: 1.2 },
+        GridPoint { x: 1.3, y: 5.9 },
+    ] {
+        let frame = DepthFrame::new(projection(0.0), 0.0, HEIGHT, feet);
+        let column = get_player_column(GridPoint {
+            x: feet.x - 0.5,
+            y: feet.y - 0.5,
+        });
+        let key = scene_key(
+            f64::from(column.x) + 0.5,
+            f64::from(column.y) + 0.5,
+            0.0,
+            0,
+            TILE_HEIGHT,
+        );
+        let stamp = frame.stamp(key, Focus::Standing);
+        assert!(
+            close(depth_at(stamp, 0.0, HEIGHT), frame.focus(), 0.001),
+            "feet {feet:?}: stamp at {} vs focus {}",
+            depth_at(stamp, 0.0, HEIGHT),
+            frame.focus()
+        );
+    }
 }
 
 #[test]
