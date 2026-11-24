@@ -11,6 +11,9 @@ const FRESH_SEED_KEY: &str = "saves/iso_fresh_seed";
 /// The argument that starts a native run on a fresh world: no save, a new seed.
 #[cfg(any(not(target_arch = "wasm32"), test))]
 const FRESH_FLAG: &str = "--fresh";
+/// The environment variable that keeps a run in fresh mode forever: the save is neither loaded
+/// nor written, whatever the route says.
+const FLUSH_VAR: &str = "FLUSH";
 
 #[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "env")]
@@ -112,6 +115,17 @@ pub fn snapshot_of(
 /// one the save recorded, else the default world's.
 pub fn boot_seed(scene: Option<u64>, fresh: Option<u64>, saved: Option<u64>, default: u64) -> u64 {
     scene.or(fresh).or(saved).unwrap_or(default)
+}
+
+/// Whether the variable that asks for a run that never saves is set; only its presence matters.
+fn flush_variable_set(variable: Option<std::ffi::OsString>) -> bool {
+    variable.is_some()
+}
+
+/// Whether the FLUSH environment variable asks for a run that never saves: the game boots a
+/// fresh world and writes nothing, whatever the route says.
+pub fn flush_requested() -> bool {
+    flush_variable_set(std::env::var_os(FLUSH_VAR))
 }
 
 /// Reads the seed note `web/adapter.js` leaves for `?fresh`: a decimal `u64`, or nothing.

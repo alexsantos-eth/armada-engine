@@ -15,28 +15,30 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`snapshot_of`](persistence.rs#L95) — La partida que se escribe para un archivo de chunks en un mundo de `seed`: sus chunks, la semilla en `systems.world` (para que un mundo nacido de `?fresh` se reabra igual) y, si se dan (`SavedSystems`), lo que lleva el jugador en `systems.inventory` (`iso::inventory::with_carried`) y los montones del suelo en `systems.drops` (`iso::drops::with_drops`).
+- [`snapshot_of`](persistence.rs#L98) — La partida que se escribe para un archivo de chunks en un mundo de `seed`: sus chunks, la semilla en `systems.world` (para que un mundo nacido de `?fresh` se reabra igual) y, si se dan (`SavedSystems`), lo que lleva el jugador en `systems.inventory` (`iso::inventory::with_carried`) y los montones del suelo en `systems.drops` (`iso::drops::with_drops`).
   - Firma: `pub fn snapshot_of( archive: &ChunkArchive, seed: u64, parts: Option<SavedSystems<'_>>, ) -> WorldSave {`
-- [`boot_seed`](persistence.rs#L113) — La semilla con la que arranca el mundo: la de la escena, si no la recién tirada por `?fresh`/`--fresh`, si no la que guardó la partida, si no la por defecto.
+- [`boot_seed`](persistence.rs#L116) — La semilla con la que arranca el mundo: la de la escena, si no la recién tirada por `?fresh`/`--fresh`, si no la que guardó la partida, si no la por defecto.
   - Firma: `pub fn boot_seed( scene: Option<u64>, fresh: Option<u64>, saved: Option<u64>, default: u64, ) -> u64 {`
-- [`take_fresh_seed`](persistence.rs#L135) — Una semilla nueva cuando esta ejecución arranca un mundo fresco: en web lee y borra la nota `saves/iso_fresh_seed` que deja `adapter.js`; en nativo, con `--fresh`, borra el archivo de partida y la tira del reloj (la mezcla `iso::world::fresh_seed`).
+- [`take_fresh_seed`](persistence.rs#L149) — Una semilla nueva cuando esta ejecución arranca un mundo fresco: en web lee y borra la nota `saves/iso_fresh_seed` que deja `adapter.js`; en nativo, con `--fresh`, borra el archivo de partida y la tira del reloj (la mezcla `iso::world::fresh_seed`).
   - Firma: `pub fn take_fresh_seed() -> Option<u64> {`
-- [`save_archive`](persistence.rs#L159) — Escribe la partida de un mundo de `seed`, con lo que lleva el jugador y los montones del suelo, en disco o, en WASM, en `localStorage`.
+- [`flush_requested`](persistence.rs#L127) — Si la variable de entorno `FLUSH` está puesta (cualquier valor), la ejecución arranca en modo "fresh": el cliente no carga ni escribe partida, sin importar la ruta (ver `game::state`, que usa `flush_requested` para decidir `keeps_save`).
+  - Firma: `pub fn flush_requested() -> bool {`
+- [`save_archive`](persistence.rs#L173) — Escribe la partida de un mundo de `seed`, con lo que lleva el jugador y los montones del suelo, en disco o, en WASM, en `localStorage`.
   - Firma: `pub fn save_archive(archive: &ChunkArchive, seed: u64, parts: SavedSystems<'_>) {`
 - [`load_save`](persistence.rs) — Intenta cargar un archivo de guardado del disco. Devuelve `None` ante cualquier error o al ejecutarse en WASM. En nativo la ruta la resuelve `crate::app::save_path()`: dentro de un `.app`, `~/Library/Application Support/<GAME_TITLE>/saves/iso_save.json`; fuera, `saves/iso_save.json` junto al CWD.
   - Firma: `pub async fn load_save() -> Option<WorldSave> {`
 
-- [`restore_archive`](persistence.rs#L78) — Restaura un `ChunkArchive` desde un guardado ya parseado, o devuelve un archivo vacío.
+- [`restore_archive`](persistence.rs#L81) — Restaura un `ChunkArchive` desde un guardado ya parseado, o devuelve un archivo vacío.
   - Firma: `pub fn restore_archive(save: Option<WorldSave>) -> ChunkArchive {`
 
 
-- [`sync_manager_to_archive`](persistence.rs#L185) — Sincroniza los chunks descubiertos de un `ChunkManager` a un `ChunkArchive`, reemplazando cualquier
+- [`sync_manager_to_archive`](persistence.rs#L199) — Sincroniza los chunks descubiertos de un `ChunkManager` a un `ChunkArchive`, reemplazando cualquier
   - Firma: `pub fn sync_manager_to_archive(manager: &ChunkManager, archive: &mut ChunkArchive) {`
 
-- [`load_archive_into_manager`](persistence.rs#L192) — Carga en un `ChunkManager` los chunks guardados de un archivo, omitiendo la generación de terreno.
+- [`load_archive_into_manager`](persistence.rs#L206) — Carga en un `ChunkManager` los chunks guardados de un archivo, omitiendo la generación de terreno.
   - Firma: `pub fn load_archive_into_manager( manager: &mut ChunkManager, archive: &ChunkArchive, ) -> Vec<String> {`
 
-- [`restore_discovered_from_archive`](persistence.rs#L201) — Reemplaza los chunks recién generados por su copia archivada, donde el archivo la tenga.
+- [`restore_discovered_from_archive`](persistence.rs#L215) — Reemplaza los chunks recién generados por su copia archivada, donde el archivo la tenga.
   - Firma: `pub fn restore_discovered_from_archive( manager: &mut ChunkManager, archive: &ChunkArchive, discovered: &[iso::grid::ChunkCoord], ) -> Vec<String> {`
 
 
@@ -48,22 +50,25 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`iso_storage_get`](persistence.rs#L18) — Import FFI del navegador: lee `localStorage[key]` en un búfer y devuelve su longitud.
+- [`iso_storage_get`](persistence.rs#L21) — Import FFI del navegador: lee `localStorage[key]` en un búfer y devuelve su longitud.
   - Firma: `fn iso_storage_get( key_ptr: *const u8, key_len: usize, output_ptr: *mut u8, output_capacity: usize, ) -> isize;`
 
-- [`iso_storage_set`](persistence.rs#L24) — Import FFI del navegador: escribe `value` en `localStorage[key]`; devuelve 0 si tuvo éxito.
+- [`iso_storage_set`](persistence.rs#L27) — Import FFI del navegador: escribe `value` en `localStorage[key]`; devuelve 0 si tuvo éxito.
   - Firma: `fn iso_storage_set( key_ptr: *const u8, key_len: usize, value_ptr: *const u8, value_len: usize, ) -> i32;`
 
-- [`local_storage_get`](persistence.rs#L34) — Lee `localStorage[key]`; `None` si falta o la build no es WASM.
+- [`local_storage_get`](persistence.rs#L37) — Lee `localStorage[key]`; `None` si falta o la build no es WASM.
   - Firma: `fn local_storage_get(key: &str) -> Option<String> {`
 
-- [`local_storage_set`](persistence.rs#L56) — Escribe `value` en `localStorage[key]`; `false` si falló o la build no es WASM.
+- [`local_storage_set`](persistence.rs#L59) — Escribe `value` en `localStorage[key]`; `false` si falló o la build no es WASM.
   - Firma: `fn local_storage_set(key: &str, value: &str) -> bool {`
 
 #### Constantes internas
 
 - [`STORAGE_KEY`](persistence.rs) — Clave del almacenamiento local en WASM (solo build WASM); conserva el mismo nombre relativo que el archivo de desarrollo. En nativo no se usa: la ruta la resuelve `crate::app::save_path()` (ver `src/app/bundle.rs`). En WASM, `web/adapter.js` borra esta misma clave al cargar la página cuando la URL lleva `?fresh` y deja una semilla aleatoria en `saves/iso_fresh_seed` (en `/maker` no se toca); ver `lib/README.md`.
+
+- [`FLUSH_VAR`](persistence.rs#L16) — Variable de entorno que hace que una ejecución nunca guarde: `flush_requested` devuelve `true` cuando está puesta, y `game::state` lo usa para decidir el modo "fresh" sin importar la ruta.
+  - Declaración: `const FLUSH_VAR: &str = "FLUSH";`
   - Declaración: `const STORAGE_KEY: &str = "saves/iso_save.json";`
 
-- [`OUTPUT_CAPACITY`](persistence.rs#L35) — Tope del búfer de lectura del FFI (32 MiB).
+- [`OUTPUT_CAPACITY`](persistence.rs#L38) — Tope del búfer de lectura del FFI (32 MiB).
   - Declaración: `const OUTPUT_CAPACITY: usize = 32 * 1024 * 1024;`

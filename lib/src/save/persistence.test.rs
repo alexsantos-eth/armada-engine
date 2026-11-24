@@ -102,3 +102,18 @@ fn the_seed_a_world_boots_with_prefers_a_scene_then_a_fresh_draw_then_the_save()
     assert_eq!(boot_seed(None, None, Some(7), 9), 7);
     assert_eq!(boot_seed(None, None, None, 9), 9);
 }
+
+#[test]
+fn the_flush_variable_asks_for_a_run_that_never_saves() {
+    assert!(!flush_variable_set(None));
+    assert!(flush_variable_set(Some("1".into())));
+    assert!(flush_variable_set(Some("any value".into())));
+}
+
+#[test]
+fn a_run_with_the_flush_variable_set_is_a_run_that_never_saves() {
+    unsafe { std::env::set_var(FLUSH_VAR, "1") };
+    assert!(flush_requested());
+    unsafe { std::env::remove_var(FLUSH_VAR) };
+    assert!(!flush_requested());
+}
