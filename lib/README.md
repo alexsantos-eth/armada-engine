@@ -207,6 +207,10 @@ como un tirón, y de eso se encargan las dos piezas que `adapter.js` añade al b
   argumento `--fresh` hace lo mismo: borra `saves/iso_save.json` junto al CWD (o en la carpeta
   `Application Support` de un `.app`) y tira la semilla del reloj. Una partida anterior a la
   semilla guardada se reabre con la semilla por defecto.
+- **Siempre 'fresh' (`FLUSH`, nativo).** Si la variable de entorno `FLUSH` está puesta (cualquier
+  valor), el juego nunca carga ni guarda partida: arranque siempre en modo 'fresh', sin importar la
+  ruta —lo que se asienta en `save::flush_requested` y en el `keeps_save` del arranque de
+  `game::state`.
 
 ## Preparar despliegue
 

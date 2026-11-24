@@ -292,7 +292,8 @@ impl Game {
                 );
             }
         }
-        let (fresh, save) = if route.keeps_the_save() {
+        let keeps_save = route.keeps_the_save() && !crate::save::flush_requested();
+        let (fresh, save) = if keeps_save {
             let fresh = take_fresh_seed();
             let save = if fresh.is_some() {
                 None
@@ -379,7 +380,7 @@ impl Game {
         let blank = scene.map_or(route.edits_the_world(), |scene| {
             scene.world == iso::testbed::SceneWorld::Blank
         });
-        let archive = if !route.keeps_the_save() {
+        let archive = if !keeps_save {
             restore_archive(None)
         } else {
             let archive = restore_archive(save);
@@ -520,7 +521,7 @@ impl Game {
                 .then(|| MakerSession::new(MAKER_CHUNK)),
             script: None,
             streams: !blank,
-            persists: route.keeps_the_save(),
+            persists: keeps_save,
             lit: false,
             shown: Vec::new(),
             phase_override: None,
