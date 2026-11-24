@@ -321,9 +321,7 @@ impl UiService for MacroquadUi {
     }
 }
 
-/// Haptic feedback adapter. On the web it asks the browser to vibrate (falling back to the
-/// checkbox-switch trick for Safari); natively and in tests it only records what it is asked
-/// to do, like `MacroquadAudio`.
+/// Records requested haptic pulses and forwards them to the browser on WebAssembly.
 #[allow(dead_code)]
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct MacroquadHaptic {

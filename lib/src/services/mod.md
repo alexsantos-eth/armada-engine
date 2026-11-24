@@ -11,6 +11,10 @@ No añade reglas de juego a los puertos. Las políticas y decisiones siguen resi
 
 Este catálogo documenta las funciones, métodos y constantes exportados por este dominio. Incluye la firma y un enlace a la implementación; los helpers privados se mantienen junto a su código porque no forman parte del contrato estable.
 
+- `MacroquadHaptic` registra las solicitudes de vibración. En WASM las envía a
+  [`iso_vibrate`](../../web/adapter.js#L57), que informa si el navegador aceptó la solicitud.
+  El registro contiene las duraciones solicitadas y sirve también para las pruebas en nativo.
+
 
 ## Detalles de implementación
 
