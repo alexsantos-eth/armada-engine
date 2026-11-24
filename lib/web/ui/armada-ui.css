@@ -43,6 +43,19 @@
   --ac-action: 104px;
   --ac-stick: 120px;
   --ac-stick-knob: 56px;
+  --ac-progress-width: 110px;
+  --ac-progress-height: 9px;
+  --ac-progress-inset: 2px;
+  --ac-progress-shape: polygon(
+    0 41%, 2% 13%, 13% 4%, 29% 12%, 49% 2%, 68% 10%, 86% 0,
+    98% 10%, 100% 46%, 98% 84%, 88% 98%, 70% 92%, 52% 100%,
+    35% 92%, 17% 100%, 2% 87%
+  );
+  --ac-progress-fill-shape: polygon(
+    0 37%, 3% 8%, 18% 16%, 34% 0, 54% 12%, 73% 2%, 96% 11%,
+    100% 35%, 97% 59%, 99% 82%, 94% 98%, 75% 91%, 55% 100%,
+    32% 86%, 16% 100%, 2% 84%
+  );
 
   --ac-spring: cubic-bezier(0.3, 1.7, 0.5, 1);
   --ac-pop: cubic-bezier(0.2, 1.8, 0.4, 1);
@@ -196,28 +209,31 @@ button.ac-slot:hover { transform: translateY(-3px) rotate(-1.5deg); }
 /* ---------- progress bar of a harvest under way ---------- */
 
 .ac-progress {
-  --ac-fill: var(--ac-paper);
   position: relative;
-  isolation: isolate;
-  width: 110px;
-  height: 9px;
-  box-sizing: border-box;
+  width: var(--ac-progress-width);
+  height: var(--ac-progress-height);
+  background: var(--ac-ink);
+  clip-path: var(--ac-progress-shape);
 }
 .ac-progress::before {
   content: "";
   position: absolute;
-  inset: 0;
-  z-index: -1;
-  border: var(--ac-line) solid var(--ac-ink);
-  box-shadow: 3px 4px 0 var(--ac-ink);
-  background: var(--ac-noise), var(--ac-fill);
-  filter: url(#ac-wobble);
+  inset: calc(var(--ac-progress-inset) / 2);
+  background: var(--ac-umber);
+  clip-path: var(--ac-progress-shape);
 }
 .ac-progress__fill {
-  width: 50px;
-  height: 9px;
-  box-sizing: border-box;
-  background: var(--ac-leaf);
+  width: calc(var(--ac-progress-width) - 2 * var(--ac-progress-inset));
+  height: calc(var(--ac-progress-height) - 2 * var(--ac-progress-inset));
+  background: var(--ac-noise), var(--ac-leaf);
+  background-blend-mode: multiply;
+  clip-path: var(--ac-progress-fill-shape);
+}
+.ac-progress > .ac-progress__fill {
+  position: absolute;
+  top: var(--ac-progress-inset);
+  left: var(--ac-progress-inset);
+  width: calc((100% - 2 * var(--ac-progress-inset)) * var(--ac-progress-share, 0));
 }
 
 /* ---------- mobile inventory unfolds from a backpack icon ---------- */

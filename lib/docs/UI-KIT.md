@@ -58,6 +58,7 @@ Toda superficie con contorno es `.ac-hand` más un relleno: `.ac-paper`, `.ac-cr
 | Slot | `.ac-slot`, `__icon`, `__count`, `__key`; estados `.is-selected` / `[aria-pressed=true]`, `.is-empty`, `.is-bump` | lo crea `Hotbar` |
 | Globo de cómic | `.ac-bubble`, `__body`, `__tail`, `__amount`, `__icon`; `.is-warning`, `.is-in`, `.is-out` | `ArmadaUI.bubble(capa, { x, y, amount, item, name, text, warning, ms })` |
 | Botón de acción | `.ac-action`, `__icon`, `__label`, `__key`; `.is-pressed`, `.is-working` | `ArmadaUI.actionButton({ verb, tool, key })`, `ArmadaUI.setAction(btn, { verb, tool })`, `ArmadaUI.holdButton(btn, onChange, { refocus })` |
+| Progreso de cosecha | `.ac-progress`, `__fill`; `--ac-progress-share` de 0 a 1 | — |
 | Número volador | `.ac-fly`, `__icon` | `ArmadaUI.fly({ from: {x, y}, to: elemento, amount, item, onLand })` |
 | Golpe | `.ac-hit` | `ArmadaUI.hit(el)` |
 | Joystick táctil | `.ac-stick`, `__knob` (`.is-running`); tamaños `--ac-stick`, `--ac-stick-knob` | — |
@@ -72,6 +73,10 @@ lápiz) con captura, así que soltar fuera del botón también suelta.
 
 El juego no abre HTML en ninguna plataforma, así que el kit se congela a imágenes y Macroquad las dibuja con las mismas medidas,
 el mismo troquelado y las mismas animaciones.
+
+La barra de cosecha usa dos piezas troqueladas, `progress` para el fondo oscuro y
+`progress_fill` para el papel verde. El cliente estira el relleno dentro del borde según el
+avance y dibuja solo el fondo cuando el avance es cero.
 
 | Pieza | Qué es |
 | --- | --- |
