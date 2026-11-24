@@ -157,9 +157,9 @@ pub(crate) struct Game {
     pub(crate) pending_gains: Vec<iso::items::HarvestYield>,
     /// The exported UI kit the HUD draws with; `None` when `content/ui/` cannot be loaded (the
     /// plain hotbar draws instead).
-    pub(crate) clay_skin: Option<crate::gui::clay::ClaySkin>,
+    pub(crate) clay_skin: Option<crate::ui::ClaySkin>,
     /// The HUD's animations.
-    pub(crate) clay_hud: crate::gui::clay::ClayHud,
+    pub(crate) clay_hud: crate::ui::ClayHud,
     /// The heaps of items lying on the ground; saved in the save's `systems`.
     pub(crate) drops: iso::drops::Drops,
     /// How long each heap has been on the ground, for its toss and bob; view state.
@@ -321,11 +321,9 @@ impl Game {
 
         let items_json = include_str!("../../content/json/items.json");
         let items = iso::items::parse_items(items_json, &catalog).expect("item content validates");
-        let clay_skin = crate::gui::clay::ClaySkin::load(
-            client_path,
-            items.item_ids().into_iter().map(str::to_owned),
-        )
-        .await;
+        let clay_skin =
+            crate::ui::ClaySkin::load(client_path, items.item_ids().into_iter().map(str::to_owned))
+                .await;
         let carried = match saved_systems.as_ref().and_then(|systems| {
             iso::inventory::saved_carried(systems, iso::inventory::STARTING_SLOTS, &items)
         }) {
@@ -536,7 +534,7 @@ impl Game {
             gain_note: None,
             pending_gains: Vec::new(),
             clay_skin,
-            clay_hud: crate::gui::clay::ClayHud::default(),
+            clay_hud: crate::ui::ClayHud::default(),
             impacts: crate::harvest::impact::Impacts::default(),
             drop_views: crate::harvest::drop_view::DropViews::landed(drops.list()),
             drops,

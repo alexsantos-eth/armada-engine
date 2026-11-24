@@ -322,7 +322,7 @@ impl Game {
         // The inventory button is jump-blocked input: a touch on it opens the inventory and
         // neither jumps nor moves the stick.
         self.touch.set_jump_block(
-            crate::gui::clay::HudLayout::new(
+            crate::ui::HudLayout::new(
                 width,
                 height,
                 self.carried.inventory.capacity(),

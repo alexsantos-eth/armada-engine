@@ -4,7 +4,7 @@ La vista de la recolección: los montones de items en el suelo, lanzados desde l
 
 Las reglas viven en `iso::harvest`, `iso::inventory` e `iso::items`; el paso fijo que las corre es `Game::step_harvest` (`src/game/frame.rs`) y el guardado de lo que lleva el jugador es `save::snapshot_of`. Esta carpeta solo traduce el estado a pantalla. Es entrada de juego, no overlay: se pinta en todas las rutas que juegan el mundo (también `/` y las corridas guionizadas, antes de escribir las capturas) y no en `/maker`. Los textos van sin tildes porque la fuente por defecto de Macroquad no las dibuja.
 
-La hotbar, el globo de aviso, la nota y las ganancias los pinta el HUD de arcilla y cómic ([`gui::clay`](../gui/clay/mod.md), ver [`docs/UI-KIT.md`](../../docs/UI-KIT.md)), igual en nativo y en web: `hud_frame.rs` traduce el estado a lo que ese HUD dibuja, y `draw_hotbar` queda solo para cuando faltan las piezas exportadas (`content/ui/`).
+La hotbar, el globo de aviso, la nota y las ganancias los pinta el HUD de arcilla y cómic ([`ui`](../ui/mod.md), ver [`docs/UI-KIT.md`](../../docs/UI-KIT.md)), igual en nativo y en web: `hud_frame.rs` traduce el estado a lo que ese HUD dibuja, y `draw_hotbar` queda solo para cuando faltan las piezas exportadas (`content/ui/`).
 
 `draw_hotbar` solo pinta con Macroquad y no tiene test: se comprueba con `scenes/pr-harvest.json` (excepción de GPU de `FILE_STRUCTURE.md`); la geometría, las etiquetas y la barra de progreso son puros y se prueban en `hotbar.test.rs`.
 
@@ -42,7 +42,7 @@ La hotbar, el globo de aviso, la nota y las ganancias los pinta el HUD de arcill
 
 Lo que el HUD sabe de la recolección. Puro; se prueba en `hud_frame.test.rs`.
 
-- [`hud_frame`](hud_frame.rs#L28) — El fotograma del HUD: cada slot con id, nombre y cantidad; la acción del `HarvestStatus` con herramienta (`Talar`/`axe`, `Picar`/`pickaxe`, `Atrapar`/`net`, `Recoger`/`hand`, según la regla); el progreso en centésimas mientras se trabaja y dónde satan; de la nota solo pasa «Inventario lleno», porque las ganancias van aparte.
+- [`hud_frame`](hud_frame.rs#L38) — El fotograma del HUD: cada slot con id, nombre y cantidad; la acción del `HarvestStatus` con herramienta (`Talar`/`axe`, `Picar`/`pickaxe`, `Atrapar`/`net`, `Recoger`/`hand`, según la regla); el progreso en centésimas mientras se trabaja, el punto arriba del jugador donde satan y el material que va a soltar (el primer rendimiento del target, nombre del `ItemDef`); de la nota solo pasa «Inventario lleno», porque las ganancias van aparte.
   - Firma: `pub(crate) fn hud_frame( carried: &Carried, items: &ItemCatalog, status: &HarvestStatus, note: Option<&str>, touch: bool, progress_at: Option<(f32, f32)>, ) -> UiFrame {`
 - [`gains`](hud_frame.rs#L83) — Una ganancia por rendimiento recogido, con id, nombre, cantidad y el punto de salida.
   - Firma: `pub(crate) fn gains(yields: &[HarvestYield], items: &ItemCatalog, at: (f32, f32)) -> Vec<UiGain> {`

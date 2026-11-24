@@ -24,6 +24,7 @@ mod services;
 mod terrain;
 mod testbed;
 mod touch;
+mod ui;
 mod water;
 
 use app::window_conf;

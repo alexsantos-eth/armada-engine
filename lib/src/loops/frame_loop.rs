@@ -17,7 +17,7 @@ use crate::loops::clock::{FrameClock, frame_timestamp_seconds};
 use crate::perf::FrameSample;
 
 /// Whether the mouse or a finger is down on the HUD's action button.
-fn action_pressed(layout: &crate::gui::clay::HudLayout) -> bool {
+fn action_pressed(layout: &crate::ui::HudLayout) -> bool {
     let (mx, my) = mouse_position();
     (is_mouse_button_down(MouseButton::Left) && layout.action_hit(mx, my))
         || touches().iter().any(|touch| {
@@ -127,16 +127,10 @@ pub(crate) async fn run(mut game: Game) {
         if let Some(skin) = game.clay_skin.as_ref().filter(|_| game.streams) {
             let chest = game.player_chest(&view);
             let at = crate::harvest::hud_frame::screen_share(chest.x, chest.y, width, height);
-            // The work progress appears above the entity being harvested.
-            let progress_at = game.harvest_status.target().map(|target| {
-                let point = iso::projection::project_grid_point(
-                    iso::projection::GridPoint {
-                        x: f64::from(target.anchor.x),
-                        y: f64::from(target.anchor.y),
-                    },
-                    view.projection,
-                );
-                (point.x as f32, point.y as f32 - 30.0)
+            // The work progress appears just above the player while they harvest.
+            let progress_at = game.harvest_status.target().map(|_target| {
+                let chest = game.player_chest(&view);
+                (chest.x as f32, chest.y as f32)
             });
             let frame = crate::harvest::hud_frame::hud_frame(
                 &game.carried,
@@ -147,8 +141,7 @@ pub(crate) async fn run(mut game: Game) {
                 progress_at,
             );
             let gains = crate::harvest::hud_frame::gains(&picked, &game.items, at);
-            let layout =
-                crate::gui::clay::HudLayout::new(width, height, frame.slots.len(), frame.touch);
+            let layout = crate::ui::HudLayout::new(width, height, frame.slots.len(), frame.touch);
             game.clay_hud.apply(&frame, &gains, (width, height));
             game.clay_hud.advance(frame_ms);
             game.clay_hud.held = frame.action.is_some() && action_pressed(&layout);
@@ -158,7 +151,7 @@ pub(crate) async fn run(mut game: Game) {
                 !matches!(touch.phase, TouchPhase::Ended | TouchPhase::Cancelled)
                     && layout.backpack_hit(touch.position.x, touch.position.y)
             });
-            crate::gui::clay::draw_clay_hud(skin, &game.clay_hud, &frame, &layout);
+            crate::ui::draw_clay_hud(skin, &game.clay_hud, &frame, &layout);
             stick_tool = frame.action.as_ref().map(|action| action.tool.clone());
         } else if game.streams {
             let prompt = crate::harvest::hotbar::prompt(&game.harvest_status);
@@ -243,7 +236,7 @@ pub(crate) async fn run(mut game: Game) {
 
         if game.touch.visible() {
             match game.clay_skin.as_ref() {
-                Some(skin) => crate::gui::clay::draw_clay_stick(
+                Some(skin) => crate::ui::draw_clay_stick(
                     skin,
                     &game.touch.view(width, height),
                     stick_tool.as_deref(),

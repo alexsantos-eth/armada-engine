@@ -16,6 +16,27 @@
     "text_muted": "#b7a988"
   },
   "pieces": {
+    "backpack": {
+      "file": "ui/backpack.png",
+      "width": 216,
+      "height": 240,
+      "pad": 24,
+      "slice": 0
+    },
+    "progress": {
+      "file": "ui/progress.png",
+      "width": 220,
+      "height": 18,
+      "pad": 0,
+      "slice": 0
+    },
+    "progress_fill": {
+      "file": "ui/progress_fill.png",
+      "width": 100,
+      "height": 18,
+      "pad": 0,
+      "slice": 0
+    },
     "hotbar": {
       "file": "ui/hotbar.png",
       "width": 408,
@@ -137,13 +158,6 @@
     },
     "tool_hand": {
       "file": "ui/tool_hand.png",
-      "width": 144,
-      "height": 144,
-      "pad": 24,
-      "slice": 0
-    },
-    "backpack": {
-      "file": "ui/backpack.png",
       "width": 144,
       "height": 144,
       "pad": 24,

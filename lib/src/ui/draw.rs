@@ -1,7 +1,8 @@
-//! Paints the native HUD from the exported kit: the bar and its slots, the work progress
-//! bar above the entity it belongs to, the desktop action button, the warning bubble and the
-//! flying gains. Macroquad calls only; the layout, the slicing and the motion are pure and
-//! tested next door, and the whole is checked by eye with `scenes/pr-harvest.json`.
+//! Paints the native HUD from the exported kit: the bar and its slots, the small work progress
+//! bar with the material it yields, just above the player, the desktop action
+//! button, the warning bubble and the flying gains. Macroquad calls only; the layout, the slicing
+//! and the motion are pure and tested next door, and the whole is checked by eye with
+//! `scenes/pr-harvest.json`.
 
 use macroquad::prelude::*;
 
@@ -174,19 +175,30 @@ fn draw_slots(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, layout: &HudLayou
     }
 }
 
-/// Paints the work progress bar above the entity it belongs to.
-fn draw_progress(skin: &ClaySkin, share: f32, at: (f32, f32)) {
-    let ink = rgb(skin.palette.ink, 1.0);
-    let (w, h) = (150.0, 14.0);
-    let top = at.1 - h / 2.0 - 6.0;
+/// Paints the small work progress bar with the name of the entity it belongs to, just above the
+/// player.
+fn draw_progress(skin: &ClaySkin, share: f32, name: Option<&str>, at: (f32, f32)) {
+    let (w, h) = (110.0, 9.0);
+    let top = at.1 - h / 2.0 + 45.0;
     let left = at.0 - w / 2.0;
-    draw_rectangle(left, top, w, h, rgb(skin.palette.umber, 1.0));
+    draw_piece(skin, "progress", Rect::new(left, top, w, h), 1.0);
     let filled = w * share.clamp(0.0, 1.0);
-    draw_rectangle(left, top, filled, h, rgb(skin.palette.leaf, 1.0));
-    if filled > 0.0 && filled < w {
-        draw_line(left + filled, top, left + filled, top + h, 3.0, ink);
+    if filled > 0.0 {
+        draw_piece(skin, "progress_fill", Rect::new(left, top, filled, h), 1.0);
     }
-    draw_rectangle_lines(left, top, w, h, 3.0, ink);
+    if let Some(name) = name {
+        let size = 11.0;
+        let text_w = text_width(skin, name, size);
+        draw_label(
+            skin,
+            name,
+            (at.0 - text_w / 2.0, top - 7.0 - size),
+            size,
+            WHITE,
+            rgb(skin.palette.ink, 1.0),
+            1.5,
+        );
+    }
 }
 
 fn draw_action(skin: &ClaySkin, hud: &ClayHud, action: &UiAction, frame: &UiFrame, rect: Rect) {
@@ -419,7 +431,7 @@ pub(crate) fn draw_clay_hud(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, lay
         return;
     }
     if let (Some(share), Some(at)) = (frame.progress, frame.progress_at) {
-        draw_progress(skin, share, at);
+        draw_progress(skin, share, frame.progress_name.as_deref(), at);
     }
     // On mobile the inventory stays folded until the backpack icon is tapped;
     // on desktop it is always visible.

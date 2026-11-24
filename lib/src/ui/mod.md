@@ -1,6 +1,6 @@
 # Clay (HUD nativo del kit de UI)
 
-El kit de UI de arcilla y cómic (`web/ui/`, ver [`docs/UI-KIT.md`](../../../docs/UI-KIT.md)) dibujado con Macroquad. `scripts/export-ui.cjs` pinta cada pieza del kit con el CSS real a PNG en `content/ui/` y escribe `content/ui/ui.json` (tamaño, margen alrededor de la forma, borde de nine-slice y colores de los tokens). Este dominio carga esas piezas y la fuente Fredoka, las estira con nine-slice, las coloca (`layout.rs`) y las anima con las curvas del CSS. Pinta el `UiFrame`/`UiGain` que arma `harvest::hud_frame`.
+El kit de UI de arcilla y cómic (`web/ui/`, ver [`docs/UI-KIT.md`](../../docs/UI-KIT.md)) dibujado con Macroquad. `scripts/export-ui.cjs` pinta cada pieza del kit con el CSS real a PNG en `content/ui/` y escribe `content/ui/ui.json` (tamaño, margen alrededor de la forma, borde de nine-slice y colores de los tokens). Este dominio carga esas piezas y la fuente Fredoka, las estira con nine-slice, las coloca (`layout.rs`) y las anima con las curvas del CSS. Pinta el `UiFrame`/`UiGain` que arma `harvest::hud_frame`.
 
 Es el único HUD del juego: se usa igual en nativo, en web y en las corridas guionizadas (por eso las capturas de los PR muestran el HUD tal como se juega). Si falta `content/ui/` o la fuente, `ClaySkin::load` devuelve `None` y el cliente pinta la hotbar simple de `harvest::hotbar`.
 
@@ -15,9 +15,9 @@ Todo es puro y se prueba (`skin`, `slice`, `layout`, `motion`, `hud`) salvo `dra
 ### `frame.rs`
 
 - [`UiStack`](frame.rs#L6) — Una pila en un slot: id del item, nombre y cantidad.
-- [`UiAction`](frame.rs#L18) — El botón de acción del HUD: la herramienta y el verbo del harvest.
-- [`UiFrame`](frame.rs#L25) — Lo que muestra el HUD este fotograma: visible, controles táctiles en pantalla, slots, progreso (0–1) y dónde satan, acción del botón de acción y nota.
-- [`UiGain`](frame.rs#L35) — Una recogida: item, nombre, cantidad y de dónde sale volando, como fracción de la pantalla.
+- [`UiAction`](frame.rs#L14) — El botón de acción del HUD: la herramienta y el verbo del harvest.
+- [`UiFrame`](frame.rs#L21) — Lo que muestra el HUD este fotograma: visible, controles táctiles en pantalla, slots, progreso (0–1), el punto arriba del jugador dónde satan, el material que va a soltar y nota; acción del botón de acción.
+- [`UiGain`](frame.rs#L38) — Una recogida: item, nombre, cantidad y de dónde sale volando, como fracción de la pantalla.
 
 ### `skin.rs`
 
@@ -86,5 +86,5 @@ Todo es puro y se prueba (`skin`, `slice`, `layout`, `motion`, `hud`) salvo `dra
 
 - [`draw_clay_stick`](draw.rs#L462) — Pinta el joystick táctil flotante con el kit: la base y el mando (rojo en carrera) y, si hay algo al alcance, su herramienta sobre el mando, que se balancea mientras el joystick quieto recolecta. Invisible mientras el stick descansa idle. No-op si no hay dedo.
   - Firma: `pub(crate) fn draw_clay_stick( skin: &ClaySkin, view: &StickView, tool: Option<&str>, clock_ms: f64, ) {`
-- [`draw_clay_hud`](draw.rs#L425) — Pinta la barra de progreso sobre la entidad que se está trabajando, el panel y los slots (con rebote, icono y cuenta con contorno), el botón de acción (aplastado si se pulsa, herramienta que se balancea mientras se trabaja), el globo de aviso y los números voladores.
+- [`draw_clay_hud`](draw.rs#L429) — Pinta la pequeña barra de progreso con el material que va a soltar arriba del jugador (piezas `progress`/`progress_fill`), el panel y los slots (con rebote, icono y cuenta con contorno), el botón de acción (aplastado si se pulsa, herramienta que se balancea mientras se trabaja), el globo de aviso y los números voladores.
   - Firma: `pub(crate) fn draw_clay_hud(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, layout: &HudLayout) {`

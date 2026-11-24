@@ -1,9 +1,9 @@
 //! What the HUD is told about the harvest: the slots, the work progress while it is under way
-//! and where it sits (above the entity), the desktop action button and the full-inventory note.
+//! and where it sits (above the player), the desktop action button and the full-inventory note.
 //! Pure; tested in `hud_frame.test.rs`.
 
-use crate::gui::clay::{UiAction, UiFrame, UiGain, UiStack};
-use iso::harvest::HarvestStatus;
+use crate::ui::{UiAction, UiFrame, UiGain, UiStack};
+use iso::harvest::{HarvestStatus, HarvestTarget};
 use iso::inventory::Carried;
 use iso::items::{HarvestYield, ItemCatalog, ToolKind};
 
@@ -22,9 +22,19 @@ fn action_of(blueprint: &str, items: &ItemCatalog) -> UiAction {
     }
 }
 
+/// The name of what the harvest yields: the first yield's item, as the catalog names it.
+fn yield_name(target: &HarvestTarget, items: &ItemCatalog) -> Option<String> {
+    items
+        .harvest_rule(&target.blueprint)
+        .and_then(|rule| rule.yields.first())
+        .and_then(|yielded| items.item(&yielded.item))
+        .map(|def| def.name.clone())
+}
+
 /// The HUD frame for what the player carries, the harvest's `status`, the hotbar's `note` (only
 /// the full-inventory one goes out) and whether the touch controls are on screen. `progress_at`
-/// is where the progress bar sits when work is under way: above the entity being harvested.
+/// is where the progress bar sits when work is under way: just above the player;
+/// `progress_name` is the material it will yield.
 pub(crate) fn hud_frame(
     carried: &Carried,
     items: &ItemCatalog,
@@ -33,20 +43,23 @@ pub(crate) fn hud_frame(
     touch: bool,
     progress_at: Option<(f32, f32)>,
 ) -> UiFrame {
-    let (progress, action) = match status {
-        HarvestStatus::Ready { target } | HarvestStatus::Approaching { target } => {
-            (None, Some(action_of(&target.blueprint, items)))
-        }
+    let (progress, progress_name, action) = match status {
+        HarvestStatus::Ready { target } | HarvestStatus::Approaching { target } => (
+            None,
+            yield_name(target, items),
+            Some(action_of(&target.blueprint, items)),
+        ),
         HarvestStatus::Working {
             target,
             progress,
             total,
         } => (
             Some((*progress as f32 / (*total).max(1) as f32 * 100.0).round() / 100.0),
+            yield_name(target, items),
             Some(action_of(&target.blueprint, items)),
         ),
         HarvestStatus::Idle | HarvestStatus::Done { .. } | HarvestStatus::Blocked { .. } => {
-            (None, None)
+            (None, None, None)
         }
     };
     UiFrame {
@@ -66,6 +79,7 @@ pub(crate) fn hud_frame(
             .collect(),
         progress,
         progress_at,
+        progress_name,
         action,
         note: note
             .filter(|text| *text == crate::harvest::hotbar::FULL_NOTE)
