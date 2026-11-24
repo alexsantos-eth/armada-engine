@@ -244,6 +244,62 @@ fn a_touch_while_the_stick_moves_the_player_jumps() {
     assert_eq!(jump.magnitude, walking.magnitude);
 }
 
+/// The jump touch is the touch counterpart of holding Space: while the jump finger is
+/// down the jump stays held, so the player rises at full height and the release cuts it
+/// (the variable jump). Releasing the finger is what makes the height vary.
+#[test]
+fn the_jump_touch_is_held_while_the_finger_is_down() {
+    let mut controls = TouchControls::new(false);
+    step(
+        &mut controls,
+        &[finger(1, RawTouchPhase::Started, 0.0, 0.0)],
+        0.0,
+    );
+    step(
+        &mut controls,
+        &[finger(1, RawTouchPhase::Moved, radius(), 0.0)],
+        16.0,
+    );
+
+    let pressed = step(
+        &mut controls,
+        &[
+            finger(1, RawTouchPhase::Moved, radius(), 0.0),
+            RawTouch {
+                id: 2,
+                phase: RawTouchPhase::Started,
+                x: 30.0,
+                y: 30.0,
+            },
+        ],
+        32.0,
+    );
+    assert!(pressed.jump_pressed);
+    assert!(pressed.jump_held);
+
+    let held = step(
+        &mut controls,
+        &[
+            finger(1, RawTouchPhase::Moved, radius(), 0.0),
+            finger(2, RawTouchPhase::Stationary, 30.0, 30.0),
+        ],
+        48.0,
+    );
+    assert!(!held.jump_pressed);
+    assert!(held.jump_held);
+
+    let released = step(
+        &mut controls,
+        &[
+            finger(1, RawTouchPhase::Moved, radius(), 0.0),
+            finger(2, RawTouchPhase::Ended, 30.0, 30.0),
+        ],
+        64.0,
+    );
+    assert!(!released.jump_pressed);
+    assert!(!released.jump_held);
+}
+
 #[test]
 fn two_touches_while_moving_fire_two_jumps() {
     let mut controls = TouchControls::new(false);
