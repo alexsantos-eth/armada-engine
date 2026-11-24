@@ -101,87 +101,87 @@ El material escribe alfa opaco y se pinta con reemplazo (sin blend), de modo que
 
 ### `depth_of_field.rs`
 
-La profundidad de campo desenfoca por **profundidad isométrica** (`x + y` del mundo, la misma coordenada que ordena el dibujo) y no por la altura en pantalla: la copa de un árbol alto o el tejado de una torre quedan exactamente tan nítidos como su base. Tras dibujar la escena, el bucle redibuja la lista ya ordenada en un mapa de profundidad a media resolución (`DepthTarget`, `DepthMaterial`, `sprites::draw_depth`): cada draw lleva un `DepthStamp` en el color (dos cotas de 16 bits) y en `normal.x` (la elevación), y el fragmento escribe `clamp((y + lift) / alto, least, most)` en dos bytes, con prueba de alfa a 0,5. Un sprite en pie (`Focus::Standing`) tiene las dos cotas iguales, la de su casilla; la cara superior de una columna de terreno (`Focus::Surface`) se lee píxel a píxel entre la esquina lejana y la cercana de su casilla, así el suelo plano sigue siendo un degradado continuo y las caras laterales toman la esquina cercana. Las profundidades se miden como la altura en pantalla que tendría el suelo al nivel de la cámara (`DepthFrame`), así que un campo llano al nivel de la cámara lee igual que antes. No entran sombras, reflejos, la elipse del jugador ni lo que el jugador ve a través (X-Ray); lo que no se dibuja (el vacío) cae a la altura en pantalla. El grado lee el mapa y aplica tres zonas: banda focal centrada en los pies del jugador (`FOCAL_HALF_HEIGHT` 0,10, banda del 20 % del alto) con CoC 0, transición `smoothstep` de `TRANSITION_HEIGHT` 0,20 y meseta con `MAX_BLUR_RADIUS_PX` 4 hacia los bordes. El desenfoque en sí es el bokeh de disco de `lens.rs`. La parte GPU se comprueba con `armada-visual-check`; la aritmética de los dos shaders tiene su espejo en CPU en `depth_of_field.test.rs`.
+La profundidad de campo desenfoca por **profundidad isométrica** (`x + y` del mundo, la misma coordenada que ordena el dibujo) y no por la altura en pantalla: la copa de un árbol alto o el tejado de una torre quedan exactamente tan nítidos como su base. Tras dibujar la escena, el bucle redibuja la lista ya ordenada en un mapa de profundidad a media resolución (`DepthTarget`, `DepthMaterial`, `sprites::draw_depth`): cada draw lleva un `DepthStamp` en el color (dos cotas de 16 bits) y en `normal.x` (la elevación), y el fragmento escribe `clamp((y + lift) / alto, least, most)` en dos bytes, con prueba de alfa a 0,5. Un sprite en pie (`Focus::Standing`) tiene las dos cotas iguales, la de su casilla; la cara superior de una columna de terreno (`Focus::Surface`) se lee píxel a píxel entre la esquina lejana y la cercana de su casilla, así el suelo plano sigue siendo un degradado continuo y las caras laterales toman la esquina cercana. Las profundidades se miden como la altura en pantalla que tendría el suelo al nivel de la cámara (`DepthFrame`), así que un campo llano al nivel de la cámara lee igual que antes. El foco cae en la columna redondeada del jugador (`get_player_column`), la misma que use `scene_key` al ordenar sus dibujos, así el doble desempate mantiene al jugador nítido en cualquier fracción de casilla. No entran sombras, reflejos, la elipse del jugador ni lo que el jugador ve a través (X-Ray); lo que no se dibuja (el vacío) cae a la altura en pantalla. El grado lee el mapa y aplica tres zonas: banda focal centrada en los pies del jugador (`FOCAL_HALF_HEIGHT` 0,10, banda del 20 % del alto) con CoC 0, transición `smoothstep` de `TRANSITION_HEIGHT` 0,20 y meseta con `MAX_BLUR_RADIUS_PX` 4 hacia los bordes. El desenfoque en sí es el bokeh de disco de `lens.rs`. La parte GPU se comprueba con `armada-visual-check`; la aritmética de los dos shaders tiene su espejo en CPU en `depth_of_field.test.rs`.
 
 #### Tipos
 
-- [`DepthFrame`](depth_of_field.rs#L44) — Lo que la proyección del fotograma dice de la profundidad: dónde cae el suelo del nivel de la cámara y dónde está el foco.
+- [`DepthFrame`](depth_of_field.rs#L45) — Lo que la proyección del fotograma dice de la profundidad: dónde cae el suelo del nivel de la cámara y dónde está el foco.
   - Declaración: `pub struct DepthFrame { ground_origin, elevation_step, level, tile_height, height, focus }`
 
-- [`DepthStamp`](depth_of_field.rs#L107) — La profundidad que escribe un draw: `least`, `most` y `lift`.
+- [`DepthStamp`](depth_of_field.rs#L114) — La profundidad que escribe un draw: `least`, `most` y `lift`.
   - Declaración: `pub struct DepthStamp { pub least: f32, pub most: f32, pub lift: f32 }`
 
-- [`DepthMaterial`](depth_of_field.rs#L231) — El material de la pasada de profundidad.
+- [`DepthMaterial`](depth_of_field.rs#L238) — El material de la pasada de profundidad.
   - Declaración: `pub struct DepthMaterial { material: Material }`
 
-- [`DepthTarget`](depth_of_field.rs#L261) — El mapa de profundidad a media resolución que lee el grado.
+- [`DepthTarget`](depth_of_field.rs#L268) — El mapa de profundidad a media resolución que lee el grado.
   - Declaración: `pub struct DepthTarget { target: RenderTarget, size: (u32, u32) }`
 
 #### Funciones y métodos
 
-- [`encode_depth`](depth_of_field.rs#L35) — Empaqueta una profundidad en dos bytes (alto primero), acotada al rango del mapa.
+- [`encode_depth`](depth_of_field.rs#L36) — Empaqueta una profundidad en dos bytes (alto primero), acotada al rango del mapa.
   - Firma: `pub fn encode_depth(depth: f32) -> [u8; 2] {`
 
-- [`depth_target_size`](depth_of_field.rs#L124) — El tamaño del mapa: la mitad del framebuffer, redondeando hacia arriba y nunca cero.
+- [`depth_target_size`](depth_of_field.rs#L131) — El tamaño del mapa: la mitad del framebuffer, redondeando hacia arriba y nunca cero.
   - Firma: `pub fn depth_target_size(width: f32, height: f32) -> (u32, u32) {`
 
-- [`DepthFrame::new`](depth_of_field.rs#L56) — El marco de profundidad de `projection` al nivel de cámara `level`, enfocado en los pies del jugador (`feet`, punto centrado en la casilla).
+- [`DepthFrame::new`](depth_of_field.rs#L57) — El marco de profundidad de `projection` al nivel de cámara `level`, enfocado en la columna redondeada del jugador (`feet` = los pies como proyecta `player_feet`, esperada como `rp + 0,5`; `get_player_column(feet - 0,5)`), igual que ordena `scene_key`.
   - Firma: `pub fn new(projection: ProjectionConfig, level: f64, height: f32, feet: GridPoint) -> Self {`
 
-- [`DepthFrame::focus`](depth_of_field.rs#L74) — La profundidad de los pies del jugador, centro de la banda focal.
+- [`DepthFrame::focus`](depth_of_field.rs#L81) — La profundidad de la columna redondeada del jugador, centro de la banda focal.
   - Firma: `pub fn focus(&self) -> f32 {`
 
-- [`DepthFrame::height`](depth_of_field.rs#L79) — El alto de pantalla en píxeles del que las profundidades son fracción.
+- [`DepthFrame::height`](depth_of_field.rs#L86) — El alto de pantalla en píxeles del que las profundidades son fracción.
   - Firma: `pub fn height(&self) -> f32 {`
 
-- [`DepthFrame::stamp`](depth_of_field.rs#L84) — Dónde cae en profundidad un draw ordenado por `key`, leído como dice `focus`.
+- [`DepthFrame::stamp`](depth_of_field.rs#L91) — Dónde cae en profundidad un draw ordenado por `key`, leído como dice `focus`.
   - Firma: `pub fn stamp(&self, key: DrawKey, focus: Focus) -> DepthStamp {`
 
-- [`DepthStamp::over`](depth_of_field.rs#L115) — Pone el sello sobre un vértice: las dos cotas en el color, la elevación en `normal.x`.
+- [`DepthStamp::over`](depth_of_field.rs#L122) — Pone el sello sobre un vértice: las dos cotas en el color, la elevación en `normal.x`.
   - Firma: `pub fn over(&self, vertex: &mut Vertex) {`
 
-- [`DepthMaterial::load`](depth_of_field.rs#L237) — Carga el material; falla como el de la escena sin OpenGL, y entonces el desenfoque sigue la altura en pantalla.
+- [`DepthMaterial::load`](depth_of_field.rs#L244) — Carga el material; falla como el de la escena sin OpenGL, y entonces el desenfoque sigue la altura en pantalla.
   - Firma: `pub fn load() -> Result<Self, String> {`
 
-- [`DepthTarget::new`](depth_of_field.rs#L268) — Reserva el mapa para un framebuffer de `width` por `height`.
+- [`DepthTarget::new`](depth_of_field.rs#L275) — Reserva el mapa para un framebuffer de `width` por `height`.
   - Firma: `pub fn new(width: f32, height: f32) -> Self {`
 
-- [`DepthTarget::resize`](depth_of_field.rs#L283) — Solo vuelve a reservar al cambiar el tamaño.
+- [`DepthTarget::resize`](depth_of_field.rs#L290) — Solo vuelve a reservar al cambiar el tamaño.
   - Firma: `pub fn resize(&mut self, width: f32, height: f32) {`
 
-- [`DepthTarget::texture`](depth_of_field.rs#L292) — El mapa, para que el grado lo muestree.
+- [`DepthTarget::texture`](depth_of_field.rs#L299) — El mapa, para que el grado lo muestree.
   - Firma: `pub fn texture(&self) -> &Texture2D {`
 
-- [`DepthTarget::begin`](depth_of_field.rs#L298) — Limpia el mapa («nada dibujado») y dirige lo que sigue a él con el material, en píxeles de la escena.
+- [`DepthTarget::begin`](depth_of_field.rs#L305) — Limpia el mapa («nada dibujado») y dirige lo que sigue a él con el material, en píxeles de la escena.
   - Firma: `pub fn begin(&self, material: &DepthMaterial, frame: &DepthFrame) {`
 
-- [`DepthTarget::end`](depth_of_field.rs#L311) — Devuelve el dibujado al pipeline de Macroquad.
+- [`DepthTarget::end`](depth_of_field.rs#L318) — Devuelve el dibujado al pipeline de Macroquad.
   - Firma: `pub fn end(&self) {`
 
 #### Constantes
 
-- [`DEPTH_MIN`](depth_of_field.rs#L17) — La profundidad más baja del mapa, como fracción del alto desde arriba.
+- [`DEPTH_MIN`](depth_of_field.rs#L18) — La profundidad más baja del mapa, como fracción del alto desde arriba.
   - Declaración: `pub const DEPTH_MIN: f32 = -1.0;`
 
-- [`DEPTH_SPAN`](depth_of_field.rs#L20) — Cuánta profundidad abarca el mapa sobre `DEPTH_MIN` (pies muy por debajo de la pantalla siguen contando).
+- [`DEPTH_SPAN`](depth_of_field.rs#L21) — Cuánta profundidad abarca el mapa sobre `DEPTH_MIN` (pies muy por debajo de la pantalla siguen contando).
   - Declaración: `pub const DEPTH_SPAN: f32 = 3.0;`
 
-- [`FOCAL_HALF_HEIGHT`](depth_of_field.rs#L23) — Media altura de la banda focal nítida (CoC 0).
+- [`FOCAL_HALF_HEIGHT`](depth_of_field.rs#L24) — Media altura de la banda focal nítida (CoC 0).
   - Declaración: `pub const FOCAL_HALF_HEIGHT: f32 = 0.10;`
 
-- [`TRANSITION_HEIGHT`](depth_of_field.rs#L26) — Lo que tarda el desenfoque en llegar a su radio completo tras la banda.
+- [`TRANSITION_HEIGHT`](depth_of_field.rs#L27) — Lo que tarda el desenfoque en llegar a su radio completo tras la banda.
   - Declaración: `pub const TRANSITION_HEIGHT: f32 = 0.20;`
 
-- [`MAX_BLUR_RADIUS_PX`](depth_of_field.rs#L29) — El radio completo, en píxeles del target.
+- [`MAX_BLUR_RADIUS_PX`](depth_of_field.rs#L30) — El radio completo, en píxeles del target.
   - Declaración: `pub const MAX_BLUR_RADIUS_PX: f32 = 4.0;`
 
-- [`DEPTH_MAP`](depth_of_field.rs#L32) — El nombre del sampler del mapa en el grado.
+- [`DEPTH_MAP`](depth_of_field.rs#L33) — El nombre del sampler del mapa en el grado.
   - Declaración: `pub const DEPTH_MAP: &str = "DepthMap";`
 
-- [`GRADE_DEPTH_GLSL`](depth_of_field.rs#L135) — El GLSL que incluye el grado: lee el mapa (`sceneDepth`) y lo convierte en radio (`blurRadius`).
+- [`GRADE_DEPTH_GLSL`](depth_of_field.rs#L142) — El GLSL que incluye el grado: lee el mapa (`sceneDepth`) y lo convierte en radio (`blurRadius`).
   - Declaración: `pub const GRADE_DEPTH_GLSL: &str = r#"`
 
-- [`DEPTH_FRAGMENT`](depth_of_field.rs#L184) — El fragmento de la pasada de profundidad: prueba de alfa y profundidad en dos bytes.
+- [`DEPTH_FRAGMENT`](depth_of_field.rs#L191) — El fragmento de la pasada de profundidad: prueba de alfa y profundidad en dos bytes.
   - Declaración: `pub const DEPTH_FRAGMENT: &str = r#"#version 100`
 
 ### `lens.rs`
