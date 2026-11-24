@@ -84,7 +84,7 @@ Todo es puro y se prueba (`skin`, `slice`, `layout`, `motion`, `hud`) salvo `dra
 
 ### `draw.rs`
 
-- [`draw_clay_stick`](draw.rs#L462) — Pinta el joystick táctil flotante con el kit: la base y el mando (rojo en carrera) y, si hay algo al alcance, su herramienta sobre el mando, que se balancea mientras el joystick quieto recolecta. Invisible mientras el stick descansa idle. No-op si no hay dedo.
+- [`draw_clay_stick`](draw.rs#L380) — Pinta el joystick táctil flotante con el kit: la base y el mando (rojo en carrera) y, si hay algo al alcance, su herramienta sobre el mando, que se balancea mientras el joystick quieto recolecta. Invisible mientras el stick descansa idle. No-op si no hay dedo.
   - Firma: `pub(crate) fn draw_clay_stick( skin: &ClaySkin, view: &StickView, tool: Option<&str>, clock_ms: f64, ) {`
-- [`draw_clay_hud`](draw.rs#L429) — Pinta la pequeña barra de progreso con el material que va a soltar arriba del jugador (piezas `progress`/`progress_fill`), el panel y los slots (con rebote, icono y cuenta con contorno), el botón de acción (aplastado si se pulsa, herramienta que se balancea mientras se trabaja), el globo de aviso y los números voladores.
+- [`draw_clay_hud`](draw.rs#L435) — Pinta la barra de progreso con el material que va a soltar arriba del jugador, el panel y los slots, el botón de acción, el globo de aviso y los números voladores. La pieza `progress` es el fondo oscuro de la barra y `progress_fill` se estira dentro de su contorno según el avance.
   - Firma: `pub(crate) fn draw_clay_hud(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, layout: &HudLayout) {`

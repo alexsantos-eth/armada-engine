@@ -58,7 +58,15 @@
     },
     {
       "gather": {
-        "frames": 24
+        "frames": 13
+      }
+    },
+    {
+      "shot": "harvest-1b-progress-start.png"
+    },
+    {
+      "gather": {
+        "frames": 11
       }
     },
     {

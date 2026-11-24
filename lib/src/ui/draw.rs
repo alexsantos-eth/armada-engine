@@ -179,12 +179,18 @@ fn draw_slots(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, layout: &HudLayou
 /// player.
 fn draw_progress(skin: &ClaySkin, share: f32, name: Option<&str>, at: (f32, f32)) {
     let (w, h) = (110.0, 9.0);
+    let inset = 2.0;
     let top = at.1 - h / 2.0 + 40.0;
     let left = at.0 - w / 2.0;
     draw_piece(skin, "progress", Rect::new(left, top, w, h), 1.0);
-    let filled = w * share.clamp(0.0, 1.0);
+    let filled = (w - 2.0 * inset) * share.clamp(0.0, 1.0);
     if filled > 0.0 {
-        draw_piece(skin, "progress_fill", Rect::new(left, top, filled, h), 1.0);
+        draw_piece(
+            skin,
+            "progress_fill",
+            Rect::new(left + inset, top + inset, filled, h - 2.0 * inset),
+            1.0,
+        );
     }
     if let Some(name) = name {
         let size = 11.0;
