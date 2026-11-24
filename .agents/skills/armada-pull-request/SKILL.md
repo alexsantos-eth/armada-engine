@@ -1,25 +1,26 @@
 ---
 name: "armada-pull-request"
-description: "Úsala al abrir un pull request en Armada Engine (sobre todo desde un hilo o sesión de agente): rama feature/fix/release, commits y título <feat|fix|docs|refactor|perf>(scope): descripción, escena para las capturas automáticas y checks que debe pasar."
+description: "Úsala al abrir un pull request en Armada Engine (sobre todo desde un hilo o sesión de agente): rama <feature|fix|docs>/<scope>, commits y título <feat|fix|docs|refactor|perf>(scope): descripción, escena para las capturas automáticas y checks que debe pasar."
 ---
 
 # Pull requests de Armada Engine
 
 La base de todo PR es `iso-rust`. Esta skill dice cómo nombrar la rama, los commits y el título,
-y qué hace el CI con el PR. No sustituye a `armada-commit` (que hace commit y push directo a
-`iso-rust` cuando el usuario la invoca): se usa cuando el trabajo entra **por PR**.
+y qué hace el CI con el PR. No sustituye a `armada-commit` (que hace el commit en la rama del
+hilo): se usa cuando el trabajo entra **por PR**.
 
 ## 1. Rama
 
-`<tipo>/<descripcion>`, descripción corta, en inglés, minúsculas y guiones:
+`<tipo>/<scope>`: el prefijo indica la naturaleza del cambio y `<scope>` una palabra que
+describe el área principal (minúsculas y guiones).
 
 | Prefijo | Para qué |
 | --- | --- |
-| `feature/` | Comportamiento nuevo o cualquier cambio que no sea corrección ni versión (docs, refactor, perf, build, chore…). |
+| `feature/` | Comportamiento nuevo o cualquier cambio que no sea corrección ni docs (refactor, perf, build, chore…). |
 | `fix/` | Corrección de un error. |
-| `release/` | Preparar una versión (`version` en `lib/Cargo.toml`, notas). |
+| `docs/` | Solo Markdown, comentarios o skills. |
 
-Ejemplos: `feature/pr-screenshots`, `fix/player-clipping-on-stairs`, `release/0.27.0`.
+Ejemplos: `feature/pr-screenshots`, `fix/player-clipping-on-stairs`, `docs/skills`.
 
 **Nunca** `claude/…`, `codex/…` ni ids de sesión en el nombre, aunque el entorno proponga una rama
 así: `.claude/CLAUDE.md` es el permiso explícito del dueño del repo para crear y empujar la rama
@@ -69,7 +70,7 @@ Detalles de los checks obligatorios y de la regla de rama: `lib/docs/CI.md`.
 
 ## 4. Abrir el PR
 
-1. `git checkout -b feature/<descripcion> origin/iso-rust` y haz los commits con el formato.
+1. `git checkout -b <tipo>/<scope> origin/iso-rust` y haz los commits con el formato.
 2. Valida en `lib/` (fmt, clippy, tests, build wasm) y, si hay feature visible, la escena.
 3. `git push -u origin feature/<descripcion>`.
 4. PR contra `iso-rust`, título con el formato, cuerpo breve con qué cambia y por qué (y el pie de
