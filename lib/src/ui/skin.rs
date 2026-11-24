@@ -148,12 +148,18 @@ impl ClaySkin {
             }
         };
         let palette = manifest.palette()?;
+        let pieces_loaded =
+            futures::future::join_all(manifest.pieces.iter().map(|(name, piece)| async {
+                let path = path_of(&format!("content/{}", piece.file));
+                (name.clone(), load_texture(&path).await)
+            }))
+            .await;
         let mut pieces = HashMap::new();
-        for (name, piece) in &manifest.pieces {
-            match load_texture(&path_of(&format!("content/{}", piece.file))).await {
+        for (name, loaded) in pieces_loaded {
+            match loaded {
                 Ok(texture) => {
                     texture.set_filter(FilterMode::Linear);
-                    pieces.insert(name.clone(), texture);
+                    pieces.insert(name, texture);
                 }
                 Err(err) => {
                     warn(format!("could not load the piece {name}: {err}"));
@@ -161,10 +167,15 @@ impl ClaySkin {
                 }
             }
         }
-        let mut items = HashMap::new();
-        for id in item_ids {
+        let item_ids: Vec<String> = item_ids.collect();
+        let items_loaded = futures::future::join_all(item_ids.into_iter().map(|id| {
             let path = path_of(&format!("content/{}/{id}.png", manifest.items));
-            if let Ok(texture) = load_texture(&path).await {
+            async move { (id, load_texture(&path).await) }
+        }))
+        .await;
+        let mut items = HashMap::new();
+        for (id, loaded) in items_loaded {
+            if let Ok(texture) = loaded {
                 texture.set_filter(FilterMode::Linear);
                 items.insert(id, texture);
             }

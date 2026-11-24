@@ -192,17 +192,22 @@ impl Game {
             .unwrap_or_else(|err| panic!("could not load the atlas at {atlas_path}: {err}"));
         let texture = Texture2D::from_image(&atlas_image);
         let mut sheet_textures = Vec::new();
-        let mut sheet_paths: Vec<&String> = manifest
+        let mut sheet_paths: Vec<String> = manifest
             .entries
             .iter()
-            .filter_map(|entry| entry.texture.as_ref())
+            .filter_map(|entry| entry.texture.clone())
             .collect();
         sheet_paths.sort();
         sheet_paths.dedup();
-        for path in sheet_paths {
-            let loaded = load_texture(&client_path(path)).await;
+        let sheets_loaded = futures::future::join_all(sheet_paths.iter().map(|path| {
+            let path = path.clone();
+            let full_path = client_path(&path);
+            async move { (path, load_texture(&full_path).await) }
+        }))
+        .await;
+        for (path, loaded) in sheets_loaded {
             match loaded {
-                Ok(texture) => sheet_textures.push((path.clone(), texture)),
+                Ok(texture) => sheet_textures.push((path, texture)),
                 Err(err) => eprintln!("warning: could not load the sheet at {path}: {err}"),
             }
         }

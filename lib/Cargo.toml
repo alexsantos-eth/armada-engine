@@ -1,6 +1,6 @@
 [package]
 name = "iso-core"
-version = "0.37.0"
+version = "0.37.1"
 edition = "2024"
 default-run = "iso-core"
 autobins = false
@@ -24,6 +24,7 @@ resolver = "2"
 [dependencies]
 iso = { path = "crates/iso" }
 image = "0.24"
+futures = "0.3"
 macroquad = { version = "0.4.16", features = ["audio"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
