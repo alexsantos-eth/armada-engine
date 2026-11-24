@@ -32,7 +32,21 @@
             background: black;
             z-index: 0;
         }
+      /* Everything in the game is pixels: no element is selectable text. */
+      * {
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+      }
     </style>
+    <script>
+      (() => {
+        const stop = (event) => event.preventDefault();
+        for (const type of ["touchstart", "touchmove", "pointerdown", "mousedown", "contextmenu", "selectstart"]) {
+          document.addEventListener(type, stop, { passive: false, capture: true });
+        }
+      })();
+    </script>
   </head>
   <body>
     <canvas id="glcanvas" tabindex="0"></canvas>

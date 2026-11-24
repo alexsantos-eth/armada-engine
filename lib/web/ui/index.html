@@ -13,7 +13,12 @@
     <link rel="stylesheet" href="armada-ui.css?v=2" />
     <style>
       /* Catalogue page only: layout around the kit's components. */
-      html, body { margin: 0; background: var(--ac-night); color: var(--ac-text); }
+      html, body {
+        margin: 0; background: var(--ac-night); color: var(--ac-text);
+        user-select: none; -webkit-user-select: none; touch-action: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      * { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
       body {
         font: 700 15px/1.45 var(--ac-body);
         padding: 20px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px));

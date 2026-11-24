@@ -8,7 +8,10 @@
       /* The pieces scripts/export-ui.mjs screenshots for the native client: each [data-piece] is
          one PNG, with PAD px of room around the shape for the wobble and the offset shadow. */
       :root { --pad: 12px; }
-      html, body { margin: 0; background: transparent; }
+      html, body {
+        margin: 0; background: transparent;
+        user-select: none; -webkit-user-select: none; touch-action: none;
+      }
       body { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; padding: 8px; font-family: var(--ac-body); }
       [data-piece] { padding: var(--pad); display: inline-block; }
       [data-piece] > * { display: block; }
