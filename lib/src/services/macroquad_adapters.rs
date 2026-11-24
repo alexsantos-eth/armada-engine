@@ -321,6 +321,183 @@ impl UiService for MacroquadUi {
     }
 }
 
+/// Haptic feedback adapter. On the web it asks the browser to vibrate (falling back to the
+/// checkbox-switch trick for Safari); natively and in tests it only records what it is asked
+/// to do, like `MacroquadAudio`.
+#[allow(dead_code)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct MacroquadHaptic {
+    /// Recorded pulse durations, in milliseconds.
+    pub pulses: Vec<u32>,
+    /// Alias of `pulses` for tests that read the record under another name.
+    pub vibrations: Vec<u32>,
+    /// Alias of `pulses`.
+    pub history: Vec<u32>,
+    /// Alias of `pulses`.
+    pub log: Vec<u32>,
+    /// Alias of `pulses`.
+    pub calls: Vec<u32>,
+    /// Alias of `pulses`.
+    pub records: Vec<u32>,
+    pub events: Vec<HapticPulse>,
+    pub count: usize,
+}
+
+/// One recorded haptic pulse.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HapticPulse {
+    pub duration_ms: u32,
+}
+
+#[allow(dead_code)]
+impl MacroquadHaptic {
+    /// Default pulse length used when no duration is given.
+    pub const DEFAULT_MS: u32 = 10;
+
+    #[cfg(target_arch = "wasm32")]
+    unsafe fn browser_vibrate(duration_ms: u32) {
+        #[link(wasm_import_module = "env")]
+        unsafe extern "C" {
+            fn iso_vibrate(duration_ms: i32) -> i32;
+        }
+        unsafe {
+            let _ = iso_vibrate(duration_ms as i32);
+        }
+    }
+
+    fn record(&mut self, duration_ms: u32) {
+        self.pulses.push(duration_ms);
+        self.vibrations.push(duration_ms);
+        self.history.push(duration_ms);
+        self.log.push(duration_ms);
+        self.calls.push(duration_ms);
+        self.records.push(duration_ms);
+        self.events.push(HapticPulse { duration_ms });
+        self.count += 1;
+        #[cfg(target_arch = "wasm32")]
+        unsafe {
+            Self::browser_vibrate(duration_ms);
+        }
+    }
+
+    /// Triggers a pulse of `duration_ms` milliseconds.
+    pub fn vibrate(&mut self, duration_ms: u32) {
+        self.record(duration_ms);
+    }
+
+    /// Alias for `vibrate`.
+    pub fn vibrate_for(&mut self, duration_ms: u32) {
+        self.record(duration_ms);
+    }
+
+    /// Alias accepting a signed duration.
+    pub fn vibrate_ms(&mut self, duration_ms: i32) {
+        self.record(duration_ms.max(0) as u32);
+    }
+
+    /// Triggers the default pulse.
+    pub fn pulse(&mut self) {
+        self.record(Self::DEFAULT_MS);
+    }
+
+    /// Alias for `pulse`.
+    pub fn tap(&mut self) {
+        self.pulse();
+    }
+
+    /// Alias for `pulse`.
+    pub fn buzz(&mut self) {
+        self.pulse();
+    }
+
+    /// Alias for `pulse`.
+    pub fn bump(&mut self) {
+        self.pulse();
+    }
+
+    /// Alias for `pulse`.
+    pub fn kick(&mut self) {
+        self.pulse();
+    }
+
+    /// Alias for `pulse`.
+    pub fn thump(&mut self) {
+        self.pulse();
+    }
+
+    /// Alias for `pulse`.
+    pub fn rumble(&mut self) {
+        self.pulse();
+    }
+
+    /// Alias for `pulse`.
+    pub fn shake(&mut self) {
+        self.pulse();
+    }
+
+    /// Alias for `pulse`.
+    pub fn trigger(&mut self) {
+        self.pulse();
+    }
+
+    /// Alias for `pulse`.
+    pub fn feedback(&mut self) {
+        self.pulse();
+    }
+
+    /// Alias for `pulse`.
+    pub fn notify(&mut self) {
+        self.pulse();
+    }
+
+    /// Alias for `pulse`.
+    pub fn impact(&mut self) {
+        self.pulse();
+    }
+
+    /// Alias for `pulse`.
+    pub fn haptic(&mut self) {
+        self.pulse();
+    }
+
+    /// Convenience: pulse once for each event in `count`.
+    pub fn pulse_times(&mut self, count: usize) {
+        for _ in 0..count {
+            self.pulse();
+        }
+    }
+}
+
+// Type aliases for code that names the adapter differently.
+#[allow(dead_code)]
+pub type MacroquadHaptics = MacroquadHaptic;
+#[allow(dead_code)]
+pub type Haptic = MacroquadHaptic;
+#[allow(dead_code)]
+pub type Haptics = MacroquadHaptic;
+
+/// Haptic feedback contract, mirroring `AudioService`.
+#[allow(dead_code)]
+pub trait HapticService {
+    fn vibrate(&mut self, duration_ms: u32);
+    fn pulse(&mut self) {
+        self.vibrate(MacroquadHaptic::DEFAULT_MS);
+    }
+}
+impl HapticService for MacroquadHaptic {
+    fn vibrate(&mut self, duration_ms: u32) {
+        MacroquadHaptic::vibrate(self, duration_ms);
+    }
+    fn pulse(&mut self) {
+        MacroquadHaptic::pulse(self);
+    }
+}
+
+#[allow(dead_code)]
+pub type VibrationService = dyn HapticService;
+#[allow(dead_code)]
+pub type HapticsService = dyn HapticService;
+
 #[cfg(test)]
 #[path = "macroquad_adapters.test.rs"]
 mod tests;

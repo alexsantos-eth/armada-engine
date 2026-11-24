@@ -255,8 +255,14 @@ impl Game {
             .impacts
             .notice(self.harvester.strikes(), struck, felled.as_ref(), color);
         match blow {
-            Some(crate::harvest::impact::Blow::Strike) => self.audio.play(SoundEvent::HarvestHit),
-            Some(crate::harvest::impact::Blow::Felled) => self.audio.play(SoundEvent::HarvestFell),
+            Some(crate::harvest::impact::Blow::Strike) => {
+                self.audio.play(SoundEvent::HarvestHit);
+                self.haptic.tap();
+            }
+            Some(crate::harvest::impact::Blow::Felled) => {
+                self.audio.play(SoundEvent::HarvestFell);
+                self.haptic.bump();
+            }
             None => {}
         }
         self.harvest_status = status;
@@ -278,6 +284,7 @@ impl Game {
             .collect(feet, &mut self.carried.inventory, &self.items, ticks);
         if !collected.gained.is_empty() {
             self.audio.play(SoundEvent::ItemCollect);
+            self.haptic.pulse();
             self.pending_gains.extend(collected.gained.iter().cloned());
             self.gain_note = Some((
                 crate::harvest::hotbar::gain_text(&collected.gained, &self.items),
@@ -409,6 +416,7 @@ impl Game {
                 } else {
                     SoundEvent::Jump
                 });
+                self.haptic.vibrate(if air { 8 } else { 12 });
             }
             if self.player.feedback.landings > landings_before {
                 let impact = self.player.feedback.impact;
@@ -417,6 +425,7 @@ impl Game {
                         SoundEvent::Land,
                         (impact / PLAYER_JUMP_SPEED).clamp(0.0, 1.0),
                     );
+                    self.haptic.pulse();
                 }
             }
         }
