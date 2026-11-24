@@ -24,8 +24,10 @@ pub(crate) struct UiFrame {
     pub(crate) slots: Vec<Option<UiStack>>,
     /// The share of work done while the harvest is under way (0–1).
     pub(crate) progress: Option<f32>,
-    /// The screen point above the entity the progress belongs to.
+    /// The screen point above the player the progress sits at.
     pub(crate) progress_at: Option<(f32, f32)>,
+    /// The name of the entity the progress belongs to.
+    pub(crate) progress_name: Option<String>,
     /// The desktop action button when a target is ready.
     pub(crate) action: Option<UiAction>,
     pub(crate) note: Option<String>,

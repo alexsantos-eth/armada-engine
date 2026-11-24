@@ -52,6 +52,7 @@ fn the_frame_lists_every_slot_with_names() {
     assert_eq!(frame.action, None);
     assert_eq!(frame.progress, None);
     assert_eq!(frame.progress_at, None);
+    assert_eq!(frame.progress_name, None);
 }
 
 #[test]
@@ -87,6 +88,7 @@ fn work_under_way_reports_its_share_and_where_it_sits() {
     );
     assert_eq!(frame.progress, Some(0.33));
     assert_eq!(frame.progress_at, Some((10.0, 20.0)));
+    assert_eq!(frame.progress_name, Some("Piedra".into()));
     let action = frame.action.unwrap();
     assert_eq!(
         (action.verb.as_str(), action.tool.as_str()),

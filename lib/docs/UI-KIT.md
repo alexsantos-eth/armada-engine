@@ -77,7 +77,7 @@ el mismo troquelado y las mismas animaciones.
 | --- | --- |
 | [`scripts/export-ui.cjs`](../scripts/export-ui.cjs) | Node + Playwright: abre `web/ui/export.html`, fotografía cada `[data-piece]` a un PNG transparente a 2× y escribe `content/ui/ui.json` (tamaño, margen alrededor de la forma, borde de troquelado y los colores de los tokens). Copia los iconos a `content/ui/items/`. |
 | [`web/ui/export.html`](../web/ui/export.html) | Un `[data-piece]` por pieza, pintado con el CSS real. `data-slice` marca el borde para el nine-slice (0 = estirar entero). |
-| `content/ui/` | La salida commiteada: PNG por pieza, `ui.json`, `items/<id>.png`. Se regenera con el script, no a mano. |
+| [`content/ui/`](../content/ui/) | La salida commiteada: PNG por pieza, `ui.json`, `items/<id>.png`. Se regenera con el script, no a mano. |
 | `content/fonts/Fredoka-Bold.ttf` | La fuente display del kit para Macroquad (descargada de Google Fonts). |
 | [`src/gui/clay/`](../src/gui/clay/mod.md) | El cliente Rust: `skin.rs` (carga el manifest, texturas y fuente), `slice.rs` (nine-slice puro), `layout.rs` (dónde va cada pieza en escritorio y con controles táctiles), `motion.rs` (las curvas de `ac-pop`/`ac-out`/`ac-bump`/`ac-chop` y el vuelo, puras), `hud.rs` (estado de las animaciones: globo, vuelos, rebotes, cuentas en el aire) y `draw.rs` (lo pinta con Macroquad). |
 

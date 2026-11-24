@@ -127,16 +127,10 @@ pub(crate) async fn run(mut game: Game) {
         if let Some(skin) = game.clay_skin.as_ref().filter(|_| game.streams) {
             let chest = game.player_chest(&view);
             let at = crate::harvest::hud_frame::screen_share(chest.x, chest.y, width, height);
-            // The work progress appears above the entity being harvested.
-            let progress_at = game.harvest_status.target().map(|target| {
-                let point = iso::projection::project_grid_point(
-                    iso::projection::GridPoint {
-                        x: f64::from(target.anchor.x),
-                        y: f64::from(target.anchor.y),
-                    },
-                    view.projection,
-                );
-                (point.x as f32, point.y as f32 - 30.0)
+            // The work progress appears just above the player while they harvest.
+            let progress_at = game.harvest_status.target().map(|_target| {
+                let chest = game.player_chest(&view);
+                (chest.x as f32, chest.y as f32)
             });
             let frame = crate::harvest::hud_frame::hud_frame(
                 &game.carried,

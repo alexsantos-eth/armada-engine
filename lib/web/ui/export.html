@@ -12,6 +12,7 @@
       body { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; padding: 8px; font-family: var(--ac-body); }
       [data-piece] { padding: var(--pad); display: inline-block; }
       [data-piece] > * { display: block; }
+      [data-piece="progress"], [data-piece="progress_fill"] { padding: 0; }
       .panel { box-sizing: border-box; }
       .bubble-shape::before { border-radius: var(--ac-blob-bubble); }
       .round { --ac-fill: var(--ac-red); }
@@ -29,6 +30,9 @@
     </style>
   </head>
   <body>
+    <div data-piece="backpack" data-slice="0"><div class="ac-backpack"></div></div>
+    <div data-piece="progress" data-slice="0"><div class="ac-progress"></div></div>
+    <div data-piece="progress_fill" data-slice="0"><div class="ac-progress__fill"></div></div>
     <div data-piece="hotbar" data-slice="34"><div class="panel ac-hand ac-umber" style="width: 180px; height: 110px"></div></div>
     <div data-piece="slot" data-slice="0"><div class="panel ac-slot" style="--ac-slot: 64px"></div></div>
     <div data-piece="slot_selected" data-slice="0"><div class="panel ac-slot is-selected" style="--ac-slot: 64px; transform: none"></div></div>

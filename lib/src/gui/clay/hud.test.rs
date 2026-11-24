@@ -18,6 +18,7 @@ fn frame() -> UiFrame {
         ],
         progress: None,
         progress_at: None,
+        progress_name: None,
         action: None,
         note: None,
     }
