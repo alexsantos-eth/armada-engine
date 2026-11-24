@@ -79,7 +79,7 @@ el mismo troquelado y las mismas animaciones.
 | [`web/ui/export.html`](../web/ui/export.html) | Un `[data-piece]` por pieza, pintado con el CSS real. `data-slice` marca el borde para el nine-slice (0 = estirar entero). |
 | [`content/ui/`](../content/ui/) | La salida commiteada: PNG por pieza, `ui.json`, `items/<id>.png`. Se regenera con el script, no a mano. |
 | `content/fonts/Fredoka-Bold.ttf` | La fuente display del kit para Macroquad (descargada de Google Fonts). |
-| [`src/gui/clay/`](../src/gui/clay/mod.md) | El cliente Rust: `skin.rs` (carga el manifest, texturas y fuente), `slice.rs` (nine-slice puro), `layout.rs` (dónde va cada pieza en escritorio y con controles táctiles), `motion.rs` (las curvas de `ac-pop`/`ac-out`/`ac-bump`/`ac-chop` y el vuelo, puras), `hud.rs` (estado de las animaciones: globo, vuelos, rebotes, cuentas en el aire) y `draw.rs` (lo pinta con Macroquad). |
+| [`src/ui/`](../src/ui/mod.md) | El cliente Rust: `skin.rs` (carga el manifest, texturas y fuente), `slice.rs` (nine-slice puro), `layout.rs` (dónde va cada pieza en escritorio y con controles táctiles), `motion.rs` (las curvas de `ac-pop`/`ac-out`/`ac-bump`/`ac-chop` y el vuelo, puras), `hud.rs` (estado de las animaciones: globo, vuelos, rebotes, cuentas en el aire) y `draw.rs` (lo pinta con Macroquad). |
 
 Cada fotograma `harvest::hud_frame` arma un `UiFrame` (slots con id, nombre y cantidad; aviso con
 verbo y herramienta, progreso y si está bloqueado; nota de inventario lleno) y un `UiGain` por
@@ -108,7 +108,7 @@ node scripts/export-ui.cjs            # necesita Playwright con Chromium
 ```
 
 y commitea `content/ui/`. Si añades una pieza, decláralas en los tres sitios: `export.html`,
-`REQUIRED_PIECES` (`src/gui/clay/skin.rs`) y donde la dibuje `draw.rs`.
+`REQUIRED_PIECES` (`src/ui/skin.rs`) y donde la dibuje `draw.rs`.
 
 ## Añadir algo al kit
 
@@ -118,4 +118,4 @@ y commitea `content/ui/`. Si añades una pieza, decláralas en los tres sitios: 
 3. Si necesita comportamiento, añade una función o clase a `ArmadaUI` en `armada-ui.js`.
 4. Añade su muestra a `web/ui/index.html` y su fila a la tabla de componentes de este documento.
 5. Si el juego la dibuja, añádela como pieza a `export.html`, vuelve a exportar y dibújala desde
-   `src/gui/clay/`.
+   `src/ui/`.

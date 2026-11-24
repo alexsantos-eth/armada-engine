@@ -4,7 +4,7 @@ La vista de la recolección: los montones de items en el suelo, lanzados desde l
 
 Las reglas viven en `iso::harvest`, `iso::inventory` e `iso::items`; el paso fijo que las corre es `Game::step_harvest` (`src/game/frame.rs`) y el guardado de lo que lleva el jugador es `save::snapshot_of`. Esta carpeta solo traduce el estado a pantalla. Es entrada de juego, no overlay: se pinta en todas las rutas que juegan el mundo (también `/` y las corridas guionizadas, antes de escribir las capturas) y no en `/maker`. Los textos van sin tildes porque la fuente por defecto de Macroquad no las dibuja.
 
-La hotbar, el globo de aviso, la nota y las ganancias los pinta el HUD de arcilla y cómic ([`gui::clay`](../gui/clay/mod.md), ver [`docs/UI-KIT.md`](../../docs/UI-KIT.md)), igual en nativo y en web: `hud_frame.rs` traduce el estado a lo que ese HUD dibuja, y `draw_hotbar` queda solo para cuando faltan las piezas exportadas (`content/ui/`).
+La hotbar, el globo de aviso, la nota y las ganancias los pinta el HUD de arcilla y cómic ([`ui`](../ui/mod.md), ver [`docs/UI-KIT.md`](../../docs/UI-KIT.md)), igual en nativo y en web: `hud_frame.rs` traduce el estado a lo que ese HUD dibuja, y `draw_hotbar` queda solo para cuando faltan las piezas exportadas (`content/ui/`).
 
 `draw_hotbar` solo pinta con Macroquad y no tiene test: se comprueba con `scenes/pr-harvest.json` (excepción de GPU de `FILE_STRUCTURE.md`); la geometría, las etiquetas y la barra de progreso son puros y se prueban en `hotbar.test.rs`.
 

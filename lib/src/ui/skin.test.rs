@@ -2,7 +2,7 @@
 
 use super::*;
 
-const MANIFEST: &str = include_str!("../../../content/ui/ui.json");
+const MANIFEST: &str = include_str!("../../content/ui/ui.json");
 
 #[test]
 fn the_committed_manifest_has_every_piece_the_hud_draws() {

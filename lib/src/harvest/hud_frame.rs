@@ -2,7 +2,7 @@
 //! and where it sits (above the player), the desktop action button and the full-inventory note.
 //! Pure; tested in `hud_frame.test.rs`.
 
-use crate::gui::clay::{UiAction, UiFrame, UiGain, UiStack};
+use crate::ui::{UiAction, UiFrame, UiGain, UiStack};
 use iso::harvest::{HarvestStatus, HarvestTarget};
 use iso::inventory::Carried;
 use iso::items::{HarvestYield, ItemCatalog, ToolKind};

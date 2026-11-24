@@ -17,7 +17,7 @@ use crate::loops::clock::{FrameClock, frame_timestamp_seconds};
 use crate::perf::FrameSample;
 
 /// Whether the mouse or a finger is down on the HUD's action button.
-fn action_pressed(layout: &crate::gui::clay::HudLayout) -> bool {
+fn action_pressed(layout: &crate::ui::HudLayout) -> bool {
     let (mx, my) = mouse_position();
     (is_mouse_button_down(MouseButton::Left) && layout.action_hit(mx, my))
         || touches().iter().any(|touch| {
@@ -141,8 +141,7 @@ pub(crate) async fn run(mut game: Game) {
                 progress_at,
             );
             let gains = crate::harvest::hud_frame::gains(&picked, &game.items, at);
-            let layout =
-                crate::gui::clay::HudLayout::new(width, height, frame.slots.len(), frame.touch);
+            let layout = crate::ui::HudLayout::new(width, height, frame.slots.len(), frame.touch);
             game.clay_hud.apply(&frame, &gains, (width, height));
             game.clay_hud.advance(frame_ms);
             game.clay_hud.held = frame.action.is_some() && action_pressed(&layout);
@@ -152,7 +151,7 @@ pub(crate) async fn run(mut game: Game) {
                 !matches!(touch.phase, TouchPhase::Ended | TouchPhase::Cancelled)
                     && layout.backpack_hit(touch.position.x, touch.position.y)
             });
-            crate::gui::clay::draw_clay_hud(skin, &game.clay_hud, &frame, &layout);
+            crate::ui::draw_clay_hud(skin, &game.clay_hud, &frame, &layout);
             stick_tool = frame.action.as_ref().map(|action| action.tool.clone());
         } else if game.streams {
             let prompt = crate::harvest::hotbar::prompt(&game.harvest_status);
@@ -237,7 +236,7 @@ pub(crate) async fn run(mut game: Game) {
 
         if game.touch.visible() {
             match game.clay_skin.as_ref() {
-                Some(skin) => crate::gui::clay::draw_clay_stick(
+                Some(skin) => crate::ui::draw_clay_stick(
                     skin,
                     &game.touch.view(width, height),
                     stick_tool.as_deref(),

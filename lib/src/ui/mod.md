@@ -1,6 +1,6 @@
 # Clay (HUD nativo del kit de UI)
 
-El kit de UI de arcilla y cómic (`web/ui/`, ver [`docs/UI-KIT.md`](../../../docs/UI-KIT.md)) dibujado con Macroquad. `scripts/export-ui.cjs` pinta cada pieza del kit con el CSS real a PNG en `content/ui/` y escribe `content/ui/ui.json` (tamaño, margen alrededor de la forma, borde de nine-slice y colores de los tokens). Este dominio carga esas piezas y la fuente Fredoka, las estira con nine-slice, las coloca (`layout.rs`) y las anima con las curvas del CSS. Pinta el `UiFrame`/`UiGain` que arma `harvest::hud_frame`.
+El kit de UI de arcilla y cómic (`web/ui/`, ver [`docs/UI-KIT.md`](../../docs/UI-KIT.md)) dibujado con Macroquad. `scripts/export-ui.cjs` pinta cada pieza del kit con el CSS real a PNG en `content/ui/` y escribe `content/ui/ui.json` (tamaño, margen alrededor de la forma, borde de nine-slice y colores de los tokens). Este dominio carga esas piezas y la fuente Fredoka, las estira con nine-slice, las coloca (`layout.rs`) y las anima con las curvas del CSS. Pinta el `UiFrame`/`UiGain` que arma `harvest::hud_frame`.
 
 Es el único HUD del juego: se usa igual en nativo, en web y en las corridas guionizadas (por eso las capturas de los PR muestran el HUD tal como se juega). Si falta `content/ui/` o la fuente, `ClaySkin::load` devuelve `None` y el cliente pinta la hotbar simple de `harvest::hotbar`.
 
