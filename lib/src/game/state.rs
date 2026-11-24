@@ -47,7 +47,7 @@ use crate::rendering::scene_material::SceneMaterial;
 use crate::save::{
     boot_seed, load_archive_into_manager, load_save, restore_archive, take_fresh_seed,
 };
-use crate::services::{MacroquadAudio, MacroquadUi};
+use crate::services::{MacroquadAudio, MacroquadHaptic, MacroquadUi};
 use crate::terrain::terrain_view_appearance::TerrainLook;
 use crate::terrain::terrain_view_blocks::TerrainFrames;
 use crate::touch::{TouchControls, coarse_pointer};
@@ -116,6 +116,7 @@ pub(crate) struct Game {
     pub(crate) draws: Vec<SpriteDraw>,
     pub(crate) perf: PerfLog,
     pub(crate) audio: MacroquadAudio,
+    pub(crate) haptic: MacroquadHaptic,
     /// The motion state the audio layer last reacted to, one frame behind `player.motion`.
     pub(crate) last_motion: Option<iso::player::PlayerMotionType>,
     pub(crate) ui: MacroquadUi,
@@ -516,6 +517,7 @@ impl Game {
             draws: Vec::new(),
             perf: PerfLog::default(),
             audio: MacroquadAudio::load().await,
+            haptic: MacroquadHaptic::default(),
             last_motion: None,
             ui: MacroquadUi::default(),
             touch: TouchControls::new(coarse_pointer()),

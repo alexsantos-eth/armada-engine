@@ -11,6 +11,7 @@ mod assets;
 mod effects;
 mod game;
 mod gui;
+mod haptic;
 mod harvest;
 mod lighting;
 mod loops;
