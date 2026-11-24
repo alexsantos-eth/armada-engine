@@ -5,9 +5,7 @@
 ---
 
 <p align="center">
-  <img src="./lib/reference/reference.png" alt="Yorch Adventure — escena isométrica" width="700" />
-  <br>
-  <em>Mundo isométrico generado desde semilla, con ciclo día/noche y criaturas amigables.</em>
+  <img src="./lib/reference/yorch-adventure-banner.jpg" alt="Yorch Adventure — Yorch explora una costa tropical, un bosque y una aldea isométrica" width="900" />
 </p>
 
 ---
@@ -17,6 +15,12 @@
 **Yorch Adventure** es un cliente de mundo abierto isométrico escrito en Rust sobre [Macroquad]. El terreno se genera a partir de una semilla y se desfraga por trozos (*chunks*) a medida que avanzas, con sombras dinámicas que giran con el ciclo día/amanecer/anochecer, partículas ambientales, sonido posicional y guardado manual.
 
 El protagonista camina, corre, salta (doble salto con voltereta al aire), nada, trepa y puede activar un mochila-reactor para surcar los cielos. No hay combate ni objetivos fijos: solo explorar, observar y moverse a tu ritmo.
+
+<p align="center">
+  <img src="./lib/reference/reference.png" alt="Captura del juego con Yorch en una aldea isométrica" width="700" />
+  <br>
+  <em>Mundo isométrico generado desde semilla, con ciclo día/noche y criaturas amigables.</em>
+</p>
 
 ### 🔖 Versión
 
